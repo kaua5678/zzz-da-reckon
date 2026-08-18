@@ -280,6 +280,21 @@ export function computePanelPhases(
       panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + 12 * coverage
     }
   }
+  if (agent.id === '1321') {
+    // 伊芙琳影画2 赴火之舞：攻击力提升 15%（燎火返还部分未建模，见 status pending）。
+    const cinema = char.cinemaLevel ?? 0
+    if (cinema >= 2) {
+      panel.atk = Math.round(panel.atk * (1 + 0.15))
+    }
+  }
+  if (agent.id === '1331') {
+    // 薇薇安影画2《暴风雨夜，暴风雨夜》：以太异常积蓄效率 +25%
+    //（异放精通收益 130% 与无视 15% 全属性抗性部分未建模，见 status pending）。
+    const cinema = char.cinemaLevel ?? 0
+    if (cinema >= 2) {
+      panel.etherAnomalyBuildUpEfficiency = (panel.etherAnomalyBuildUpEfficiency ?? 0) + 25
+    }
+  }
   if (agent.id === '1481' || agent.teammateBuffId === '1481') {
     // 影画4：好评如潮状态下攻击力 +500，默认满覆盖（用户可在资源利用率页调节覆盖率）。
     const atkBonus = panel.liuyinGoodReviewAtkBonus ?? 0

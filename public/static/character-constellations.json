@@ -657,11 +657,12 @@
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "全队暴击率+10%（12s）：spec teamBuffs（source 影画四自动门控），覆盖率默认满"
+     ],
      "pending": [
-      "影画4 一起燃烧！：发动[连携技]或[终结技]时，全队角色暴击率提升10%，持续12秒。",
-      "待人工核对后补实现，勿直接默认省略。"
+      "12秒窗口按全程覆盖近似"
      ]
     },
     {
@@ -1854,11 +1855,12 @@
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "partially_implemented",
+     "implemented": [
+      "攻击力提升15%：computePanelPhases 1321 块（局内面板 atk ×1.15）"
+     ],
      "pending": [
-      "影画2 赴火之舞：伊芙琳的攻击力提升15%；伊芙琳发动[普通攻击：绞勒式·I型]或[普通攻击：绞勒式·II型]时，将返还所消耗的[燎火]，25秒内最多触发一次；伊芙琳消耗[燎索点]发动[连携技：月辉丝·绊]时，招式的打断等级提升。",
-      "待人工核对后补实现，勿直接默认省略。"
+      "燎火返还（绞勒式I/II型返还消耗的燎火，25s 最多一次）未建模"
      ]
     },
     {
@@ -1914,11 +1916,13 @@
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "partially_implemented",
+     "implemented": [
+      "以太异常积蓄效率+25%：computePanelPhases 1331 块"
+     ],
      "pending": [
-      "影画2 《暴风雨夜，暴风雨夜》：薇薇安的以太异常积蓄效率提升25%；[异放]从精通中获得的收益提升至原本的130%，且无视目标15%全属性伤害抗性。",
-      "待人工核对后补实现，勿直接默认省略。"
+      "异放精通收益提升至130%未建模",
+      "无视目标15%全属性伤害抗性未建模"
      ]
     },
     {
