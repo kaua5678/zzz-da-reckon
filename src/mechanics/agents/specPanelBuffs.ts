@@ -280,10 +280,14 @@ peiluoProminenceMechanic.settings = [{
   step: 1,
   suffix: '',
 }]
-peiluoProminenceMechanic.buildCharConfig = ({ cfg, panel }: any) => {
+peiluoProminenceMechanic.buildCharConfig = ({ cfg, panel, cinemaLevel }: any) => {
   const branch = Math.floor(Number((cfg as any)['setting:peiluo.ultBranch'] ?? 1) || 1)
   ;(cfg as any).peiluoUltBranch = branch
   ;(panel as any).__peiluoBranch = branch
+  // 影画1 黄昏旧章：进场获得 1000 点喧响值（勘域模式 180s 一次，整局口径按一次计）
+  if ((cinemaLevel ?? 0) >= 1) {
+    cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + 1000
+  }
 }
 peiluoProminenceMechanic.transformSkillExecutions = (input: any) => {
   const panel = input.panel

@@ -305,6 +305,17 @@ export function computePanelPhases(
       panel.etherAnomalyBuildUpEfficiency = (panel.etherAnomalyBuildUpEfficiency ?? 0) + 25
     }
   }
+  if (agent.id === '1551') {
+    // 佩洛伊斯影画1 黄昏旧章：暴击率 +8%（进场喧响 1000 在模块 buildCharConfig 注入）。
+    const cinema = char.cinemaLevel ?? 0
+    if (cinema >= 1) {
+      panel.critRate = (panel.critRate ?? 0) + 8
+    }
+    // 额外能力：队伍存在[击破]/[支援]角色时暴伤 +40%（连携回 300 喧响未建模，见 status pending）。
+    if ((panel.additionalAbilityActive ?? 0) > 0) {
+      panel.critDmg = (panel.critDmg ?? 0) + 40
+    }
+  }
   if (agent.id === '1481' || agent.teammateBuffId === '1481') {
     // 影画4：好评如潮状态下攻击力 +500，默认满覆盖（用户可在资源利用率页调节覆盖率）。
     const atkBonus = panel.liuyinGoodReviewAtkBonus ?? 0

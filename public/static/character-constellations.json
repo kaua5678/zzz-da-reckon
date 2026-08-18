@@ -3248,11 +3248,13 @@
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "暴击率+8%（computePanelPhases 1551 块）",
+      "进场喧响+1000 注入 initialDecibelGift（整局口径按一次计）"
+     ],
      "pending": [
-      "影画1 黄昏旧章：进入战场时，佩洛伊斯获得1000点[喧响值]，在勘域模式中此效果180秒内最多触发一次，暴击率提升8%。",
-      "待人工核对后补实现，勿直接默认省略。"
+      "勘域模式180s冷却按整局一次近似"
      ]
     },
     {
