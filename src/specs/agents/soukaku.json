@@ -2,18 +2,32 @@
   "schemaVersion": 1,
   "id": "agent:soukaku",
   "name": "苍角",
-  "agentIds": [
-    "1131"
-  ],
-  "status": "not_described_not_implemented",
+  "agentIds": ["1131"],
+  "status": "implemented_approximation",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
   "events": [],
   "verifications": [],
   "stateMachines": [],
+  "additionalAbility": {
+    "teamConditions": [
+      { "type": "sameAttributeAsSelf" },
+      { "type": "sameFactionAsSelf" }
+    ],
+    "note": "额外能力·团膳套餐：同属性或同阵营队友触发；耗涡流展旗时全队冰伤+20%。"
+  },
   "notes": [
-    "待录入：苍角 的机制、资源、事件与验证。"
+    "[已确认·近似] 核心·刃旗助威：展旗默认按耗涡流翻倍 → 全队攻击 初始攻×40% 顶1000（teammate-buffs）；文本为自身+入场传递，整局按全队满覆盖。",
+    "[已确认·数据] 额外能力：同属性或同阵营门控；耗涡流展旗全队冰伤+20%。",
+    "[已确认·数据] 影画1：增益时长+8s，默认已满覆盖无额外数值。",
+    "[近似] 影画2：命中概率叠涡流/满层回能未逐帧建模，跳过。",
+    "[已确认·数据] 影画3/5：通用技能等级+2。",
+    "[已确认·数据] 影画4：展旗命中冰抗-10%（teammate-buffs）。",
+    "[已确认·数据] 影画6：霜染强化普攻/冲刺伤害+45%（执行级）；次数上限12未逐次模拟。",
+    "[已确认·数据] 终结技：其他角色+10能量，下一位换入额外+20 → 邻位30/10。",
+    "[近似] 涡流层数状态机、展旗触发快支时间轴未建模。",
+    "实现：src/mechanics/agents/soukaku.ts + teammate-buffs 1131 组。"
   ],
   "teamBuffs": []
 }

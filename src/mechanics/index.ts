@@ -47,6 +47,7 @@ import { rinaMechanic } from './agents/rina'
 import { lighterMechanic } from './agents/lighter'
 import { yaojiayinMechanic } from './agents/yaojiayin'
 import { nicoleMechanic } from './agents/nicole'
+import { soukakuMechanic } from './agents/soukaku'
 import { agentSpecs } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
@@ -84,6 +85,7 @@ registerAgentMechanic(rinaMechanic)
 registerAgentMechanic(lighterMechanic)
 registerAgentMechanic(yaojiayinMechanic)
 registerAgentMechanic(nicoleMechanic)
+registerAgentMechanic(soukakuMechanic)
 registerAgentMechanic(aireProficiencyMechanic)
 registerAgentMechanic(peiluoProminenceMechanic)
 registerAgentMechanic(sethShieldMechanic)

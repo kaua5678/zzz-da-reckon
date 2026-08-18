@@ -3,6 +3,7 @@ import { applyLucyTeamEnergyFlags } from '@/mechanics/agents/lucy'
 import { applyRinaTeamEnergyFlags } from '@/mechanics/agents/rina'
 import { applyLighterTeamEnergyFlags, estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
 import { applyYaojiayinTeamFlags } from '@/mechanics/agents/yaojiayin'
+import { applySoukakuTeamEnergyFlags } from '@/mechanics/agents/soukaku'
 import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -155,6 +156,7 @@ export function useResourceCalc() {
     }
     // 耀嘉音：入场次数标记（快支+招架；连携在 runCalcRound 回填）
     applyYaojiayinTeamFlags(characters)
+    applySoukakuTeamEnergyFlags(characters)
 
     // 橘福福额外能力·八面威风：队伍有强攻/命破时，这些角色每次终结技 +300 喧响
     // （仪玄青溟云影走 ultimateCount；符法千重在收敛环用上一轮次数注入，见下方 1371 分支）。

@@ -752,54 +752,52 @@
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "增益时长+8s；默认满覆盖无额外面板数值"
+     ],
+     "pending": []
     },
     {
      "cinema": 2,
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "命中概率叠涡流/满层回能未逐帧建模"
      ]
     },
     {
      "cinema": 3,
      "status": "implemented_generic_skill_level",
      "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+      "通用技能等级+2"
      ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
+     "pending": []
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "展旗命中冰抗-10%（teammate-buffs）"
+     ],
+     "pending": []
     },
     {
      "cinema": 5,
      "status": "implemented_generic_skill_level",
      "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+      "通用技能等级+2"
      ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
+     "pending": []
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "霜染强化普攻/冲刺伤害+45%（执行级）"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "次数上限12未逐次模拟"
      ]
     }
    ]

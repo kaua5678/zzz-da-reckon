@@ -1378,6 +1378,8 @@ export interface CharacterOperationConfig {
   lighterC4BurstEnergy?: number
   /** 莱特后场时间占比（影画4 前场效率覆盖） */
   lighterBackstageRatio?: number
+  /** 苍角终结技每次给本槽位的能量（邻位 30/10） */
+  soukakuEnergyPerSoukakuUlt?: number
   /** 叶瞬光：队友整局帷幕次数（也可 setting 滑块） */
   yeshuguangTeamCurtainCount?: number
   /** 仪玄·2连墨痕化形次数（主页交互栏；#1+#3，40闪能/次） */

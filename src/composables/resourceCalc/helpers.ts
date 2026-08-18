@@ -264,10 +264,16 @@ export function computePanelPhases(
   const nicoleAdditionalActive = nicoleSlot >= 0
     ? evalAdditionalAbility(team, nicoleSlot, nicoleAgent, getAgentSpec('1031')?.additionalAbility) === true
     : false
+  const soukakuSlot = team.find(member => member.agentId === '1131')?.slot ?? -1
+  const soukakuAgent = soukakuSlot >= 0 ? catalogStore.getAgent('1131') ?? null : null
+  const soukakuAdditionalActive = soukakuSlot >= 0
+    ? evalAdditionalAbility(team, soukakuSlot, soukakuAgent, getAgentSpec('1131')?.additionalAbility) === true
+    : false
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
     .filter(buff => buff.id !== 'rina.additional_electric_damage' || rinaAdditionalActive)
     .filter(buff => buff.id !== 'lighter.additional_morale_ice_fire_dmg' || lighterAdditionalActive)
     .filter(buff => buff.id !== 'nicole.additional_ether_damage' || nicoleAdditionalActive)
+    .filter(buff => buff.id !== 'soukaku.additional_ice_damage' || soukakuAdditionalActive)
 
   const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
   for (const buff of allTeammateBuffs) {

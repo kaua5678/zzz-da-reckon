@@ -36,6 +36,18 @@ export function calcRinaUltEnergy(
   return Math.max(0, Number(target.rinaEnergyPerRinaUlt ?? 0)) * ultimateCount
 }
 
+/** 苍角终结技按槽位给当前角色补充的能量（邻位 30/10）。 */
+export function calcSoukakuUltEnergy(
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+  target: CharacterOperationConfig,
+): number {
+  const idx = configs.findIndex(config => config.agentId === '1131')
+  if (idx < 0) return 0
+  const ultimateCount = Math.max(0, Math.floor(states[idx]?.ultimateCount ?? 0))
+  return Math.max(0, Number((target as any).soukakuEnergyPerSoukakuUlt ?? 0)) * ultimateCount
+}
+
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 export function calcEnergySource(
   cfg: CharacterOperationConfig,
@@ -704,6 +716,7 @@ export function iterate(
     }
     // 支援角色终结技邻位回能（次数使用上一轮状态参与收敛）。
     const rinaEnergy = calcRinaUltEnergy(configs, prevStates, cfg)
+    const soukakuEnergy = calcSoukakuUltEnergy(configs, prevStates, cfg)
 
     // 露西：终结邻位回能 + 影画1 回旋全队回能（次数用上一轮露西 state）
     let lucyEnergy = 0
@@ -735,7 +748,7 @@ export function iterate(
       const x = Number((cfg as any).lighterC4BurstEnergy ?? 0)
       return Number.isFinite(x) && x > 0 ? x : 0
     })()
-    const totalEnergy = energySrc.total + supportUlt + teamUltFlash + rinaEnergy + lucyEnergy + lighterC4Energy
+    const totalEnergy = energySrc.total + supportUlt + teamUltFlash + rinaEnergy + soukakuEnergy + lucyEnergy + lighterC4Energy
     energies.push(totalEnergy)
 
     // 强特次数 = 总能量 ÷ 强特消耗（伊德海莉失衡内由轴连段反推，剩余打非失衡强特）
