@@ -269,64 +269,95 @@ export const peiluoProminenceMechanic = makePanelBuffModule(
   },
 )
 
-const peiluoSpec = getAgentSpec('1551')
+/* 佩洛伊斯终结技分支模型（用户口径）：
+ * - 一个大招消耗 2000 喧响（cfg.ultimateCost）；大招行按上分支 moveId 生成，patchExecutions 拆三分支。
+ * - 下分支·凯旋坦途：开局必打、整局仅一次（固定 1）；耀斑 = 能量获得效率+15%、伤害+40%（200s≈全程，面板无条件挂）。
+ *   影画2 发动时回 1500 喧响由编排层注入 extraSelfDecibelReward（上限不建模）。
+ * - 右分支·永陷幽囚 = 决算：一次失衡打一次（滑块 peiluo.verdictCount，-1=自动=失衡次数），
+ *   编排层解析后写入 cfg.peiluoVerdictCount；非轴模式不模拟失衡窗口截断（轴模式待接入）。
+ * - 上分支·万军诛绝：剩余喧响全打（+30日珥由 spec 资源规则承载）；阳炎暴伤+40% 按失衡内近似挂 critDmgBonus。
+ * - 左分支·无拘剑势：不建模（当前版本不打；未来新队友适配时由用户录入逻辑）。
+ */
+const PEILUO_ULT_COST = 2000
+const PEILUO_ULT_UPPER = '1551015' // 万军诛绝
+const PEILUO_ULT_LOWER = '1551014' // 凯旋坦途
+const PEILUO_ULT_VERDICT = '1551016' // 永陷幽囚（决算）
+const PEILUO_FLARE_ENERGY = 15 // 耀斑：能量获得效率 +15%
+const PEILUO_FLARE_DMG = 40 // 耀斑：造成的伤害 +40%
+const PEILUO_KAGEROU_CRIT = 40 // 阳炎：终结技对失衡敌人暴伤 +40%
+
 peiluoProminenceMechanic.settings = [{
-  id: 'peiluo.ultBranch',
-  label: '佩洛伊斯终结分支',
-  description: '1=上分支阳炎（暴伤）；2=下分支耀斑（回能与增伤）；3=左分支无拘剑势（900%）；4=右分支永陷幽囚（2250%）。',
-  default: 1,
-  min: 1,
-  max: 4,
+  id: 'peiluo.verdictCount',
+  label: '佩洛伊斯·决算次数（右分支终结）',
+  description: '-1=自动（一次失衡一次决算）；>=0=固定次数。封顶于可用大招数-1（下分支固定占 1 次）。',
+  default: -1,
+  min: -1,
+  max: 20,
   step: 1,
   suffix: '',
 }]
-peiluoProminenceMechanic.buildCharConfig = ({ cfg, panel, cinemaLevel }: any) => {
-  const branch = Math.floor(Number((cfg as any)['setting:peiluo.ultBranch'] ?? 1) || 1)
-  ;(cfg as any).peiluoUltBranch = branch
-  ;(panel as any).__peiluoBranch = branch
+peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel }: any) => {
   // 影画1 黄昏旧章：进场获得 1000 点喧响值（勘域模式 180s 一次，整局口径按一次计）
   if ((cinemaLevel ?? 0) >= 1) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + 1000
   }
+  // 大招口径：2000 喧响/次；通用大招行走上分支 moveId（patchExecutions 拆分三分支）
+  cfg.ultimateCost = PEILUO_ULT_COST
+  cfg.ultimateMoveId = PEILUO_ULT_UPPER
 }
 peiluoProminenceMechanic.transformSkillExecutions = (input: any) => {
   const panel = input.panel
   if (!panel) return
   delete (panel as any).__specPanelBuffApplied
-  const branch = (panel as any).__peiluoBranch ?? 1
-  const resource = input.charResult.specResources?.['peiluo_prominence']
-  if ((resource?.total ?? 0) < 30) return
-  if (branch === 1) {
-    panel.critDmg = (panel.critDmg ?? 0) + 40
-  } else if (branch === 2) {
-    panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + 15
-    panel.dmgBonus = (panel.dmgBonus ?? 0) + 40
-  }
+  // 耀斑（下分支开局必打，200s≈全程覆盖）：无条件挂面板
+  panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + PEILUO_FLARE_ENERGY
+  panel.dmgBonus = (panel.dmgBonus ?? 0) + PEILUO_FLARE_DMG
 }
-peiluoProminenceMechanic.buildExecutions = ({ cfg, state, executions }: any) => {
-  const branch = Number((cfg as any).peiluoUltBranch ?? 1)
-  const count = Math.floor(state.ultimateCount ?? 0)
-  if (count <= 0 || (branch !== 3 && branch !== 4)) return
-  executions.push({
-    moveId: '1551008',
-    moveName: branch === 3 ? '终结技：无拘剑势（浸染重击）' : '终结技：永陷幽囚（失衡重击）',
-    category: 'chain',
-    count,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
-    damageMultiplier: branch === 3 ? 900 : 2250,
-    damageMultiplierOverride: true,
-    element: 'physical',
-    skillTableNote: branch === 3 ? '无拘剑势：浸染目标额外900%攻击力' : '永陷幽囚：失衡目标额外2250%攻击力',
-  })
+peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }: any) => {
+  const ultCount = Math.max(0, Math.floor(state.ultimateCount ?? 0))
+  if (ultCount <= 0) return
+  const lower = 1
+  const verdict = Math.min(Math.max(0, Math.floor(Number(cfg.peiluoVerdictCount ?? 0))), ultCount - lower)
+  const upper = ultCount - lower - verdict
+  // 通用大招行（moveId = 上分支）改写为剩余上分支次数；阳炎暴伤挂执行行
+  const genericIdx = executions.findIndex((e: any) => e.moveId === PEILUO_ULT_UPPER && e.category === 'chain')
+  const ultActionTime = genericIdx >= 0 ? (executions[genericIdx].actionTime ?? 0) : (cfg.ultimateActionTime ?? 0)
+  const ultCar = genericIdx >= 0 ? (executions[genericIdx].comboAlignRatio ?? 0) : (cfg.ultimateComboAlignRatio ?? 0)
+  if (genericIdx >= 0) {
+    if (upper > 0) {
+      const g = executions[genericIdx]
+      g.count = upper
+      g.totalTime = (g.actionTime ?? 0) * upper
+      g.totalComboAlignTime = (g.actionTime ?? 0) * (g.comboAlignRatio ?? 0) * upper
+      g.totalDecibelRecovery = (g.decibelRecovery ?? 0) * upper
+      g.critDmgBonus = (g.critDmgBonus ?? 0) + PEILUO_KAGEROU_CRIT
+      g.skillTableNote = `上分支·万军诛绝 ×${upper}（剩余喧响；阳炎暴伤+40%按失衡内近似）`
+    } else {
+      executions.splice(genericIdx, 1)
+    }
+  }
+  const pushUlt = (moveId: string, count: number, note: string) => {
+    if (count <= 0) return
+    executions.push({
+      moveId,
+      moveName: note,
+      category: 'chain',
+      count,
+      actionTime: ultActionTime,
+      comboAlignRatio: ultCar,
+      totalTime: ultActionTime * count,
+      totalComboAlignTime: ultActionTime * ultCar * count,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      decibelRecovery: 0,
+      totalDecibelRecovery: 0,
+      energyRecovery: 0,
+      totalEnergyRecovery: 0,
+      skillTableNote: note,
+    })
+  }
+  pushUlt(PEILUO_ULT_LOWER, lower, '下分支·凯旋坦途（开局固定一次）')
+  pushUlt(PEILUO_ULT_VERDICT, verdict, `右分支·永陷幽囚（决算）×${verdict}`)
 }
 
 export const sethShieldMechanic = makePanelBuffModule(

@@ -54,12 +54,53 @@ describe('佩洛伊斯（1551）影画1 黄昏旧章', () => {
     expect(cfg0.initialDecibelGift ?? 0).toBe(0)
   })
 
-  it('终结分支逻辑不被影画1改动破坏：branch 写入 cfg', () => {
-    const cfg: any = { 'setting:peiluo.ultBranch': 2 }
+  it('大招口径：消耗 2000 喧响，通用大招行走上分支 moveId', () => {
+    const cfg: any = {}
+    peiluoProminenceMechanic.buildCharConfig!({ cfg, panel: {}, cinemaLevel: 0 } as any)
+    expect(cfg.ultimateCost).toBe(2000)
+    expect(cfg.ultimateMoveId).toBe('1551015')
+  })
+})
+
+describe('佩洛伊斯大招三分支拆分（patchExecutions）', () => {
+  function genericUlt(count: number): any {
+    return { moveId: '1551015', category: 'chain', count, actionTime: 3, comboAlignRatio: 0, totalTime: 3 * count, totalComboAlignTime: 0, decibelRecovery: 0, totalDecibelRecovery: 0 }
+  }
+
+  it('5 次大招 + 决算 2：下1 右2 上2，上行挂阳炎暴伤 +40', () => {
+    const executions = [genericUlt(5)]
+    peiluoProminenceMechanic.patchExecutions!({ cfg: { peiluoVerdictCount: 2 }, state: { ultimateCount: 5 }, executions } as any)
+    const upper = executions.find((e: any) => e.moveId === '1551015')
+    const lower = executions.find((e: any) => e.moveId === '1551014')
+    const verdict = executions.find((e: any) => e.moveId === '1551016')
+    expect(upper.count).toBe(2)
+    expect(upper.critDmgBonus).toBe(40)
+    expect(lower.count).toBe(1)
+    expect(verdict.count).toBe(2)
+    expect(lower.count + verdict.count + upper.count).toBe(5)
+  })
+
+  it('决算封顶：滑块 10 但只有 3 次大招 → 决算 2、上 0（上行删除）', () => {
+    const executions = [genericUlt(3)]
+    peiluoProminenceMechanic.patchExecutions!({ cfg: { peiluoVerdictCount: 10 }, state: { ultimateCount: 3 }, executions } as any)
+    expect(executions.find((e: any) => e.moveId === '1551015')).toBeUndefined()
+    expect(executions.find((e: any) => e.moveId === '1551016').count).toBe(2)
+    expect(executions.find((e: any) => e.moveId === '1551014').count).toBe(1)
+  })
+
+  it('0 次大招：不拆分、不加行', () => {
+    const executions: any[] = []
+    peiluoProminenceMechanic.patchExecutions!({ cfg: { peiluoVerdictCount: 3 }, state: { ultimateCount: 0 }, executions } as any)
+    expect(executions.length).toBe(0)
+  })
+})
+
+describe('佩洛伊斯耀斑 buff（下分支开局必打，全程覆盖）', () => {
+  it('transform：能量获得效率 +15%、伤害 +40%', () => {
     const panel: any = {}
-    peiluoProminenceMechanic.buildCharConfig!({ cfg, panel, cinemaLevel: 1 } as any)
-    expect(cfg.peiluoUltBranch).toBe(2)
-    expect(cfg.initialDecibelGift).toBe(1000)
+    peiluoProminenceMechanic.transformSkillExecutions!({ panel, charResult: {} } as any)
+    expect(panel.energyGainEfficiency).toBe(15)
+    expect(panel.dmgBonus).toBe(40)
   })
 })
 

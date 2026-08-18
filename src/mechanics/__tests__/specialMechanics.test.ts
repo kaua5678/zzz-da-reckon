@@ -230,18 +230,13 @@ describe('spec resource panel buffs', () => {
     expect(airePanel.anomalyProficiency).toBe(90)
   })
 
-  it('applies Peiluo and Seth shield panel buffs', () => {
+  it('applies Peiluo flare and Seth shield panel buffs', () => {
+    // 佩洛伊斯耀斑（下分支开局必打，全程覆盖）：能量效率+15%、伤害+40%
     const peiluoMap = resources('1551', {}, { frontlineTime: 60, exSpecialCount: 0, ultimateCount: 0 })
     const peiluoPanel = emptyPanel()
-    const peiluoBase = emptyPanel()
     transform(peiluoProminenceMechanic, '1551', peiluoPanel, peiluoMap)
-    expect(peiluoPanel.critDmg - peiluoBase.critDmg).toBe(40)
-
-    const peiluoBranch2 = emptyPanel()
-    ;(peiluoBranch2 as any).__peiluoBranch = 2
-    transform(peiluoProminenceMechanic, '1551', peiluoBranch2, peiluoMap)
-    expect(peiluoBranch2.energyGainEfficiency).toBe(15)
-    expect(peiluoBranch2.dmgBonus).toBe(40)
+    expect(peiluoPanel.energyGainEfficiency).toBe(15)
+    expect(peiluoPanel.dmgBonus).toBe(40)
 
     const sethMap = resources('1271', {}, { exSpecialCount: 1 })
     const sethPanel = emptyPanel()
@@ -340,17 +335,13 @@ describe('spec resource panel buffs', () => {
     expect(inactiveExecs[0].dmgBonus).toBe(0)
   })
 
-  it('builds Peiluo branch 3/4 fixed damage executions', () => {
-    const cfg3 = { peiluoUltBranch: 3 } as any
-    const state3 = { ultimateCount: 1 } as any
-    const execs3: any[] = []
-    peiluoProminenceMechanic.buildExecutions?.({ cfg: cfg3, state: state3, executions: execs3 })
-    expect(execs3[0]?.damageMultiplier).toBe(900)
-
-    const cfg4 = { peiluoUltBranch: 4 } as any
-    const execs4: any[] = []
-    peiluoProminenceMechanic.buildExecutions?.({ cfg: cfg4, state: state3, executions: execs4 })
-    expect(execs4[0]?.damageMultiplier).toBe(2250)
+  it('splits Peiluo ultimate row into three branches', () => {
+    // 3 次大招 + 决算 1 → 下1 右1 上1（细分断言在 peiluo.test.ts）
+    const execs: any[] = [{ moveId: '1551015', category: 'chain', count: 3, actionTime: 3, comboAlignRatio: 0, decibelRecovery: 0 }]
+    peiluoProminenceMechanic.patchExecutions?.({ cfg: { peiluoVerdictCount: 1 }, state: { ultimateCount: 3 }, executions: execs } as any)
+    expect(execs.find((e: any) => e.moveId === '1551015')?.count).toBe(1)
+    expect(execs.find((e: any) => e.moveId === '1551014')?.count).toBe(1)
+    expect(execs.find((e: any) => e.moveId === '1551016')?.count).toBe(1)
   })
 
   it('builds Billy radiant star (C6) and Anby zero vortex executions', () => {

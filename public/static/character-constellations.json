@@ -3259,12 +3259,12 @@
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 煜焰铁骑：发动[终结技：凯旋坦途]时回复1500点[喧响值]，该效果180秒最多触发一次；佩洛伊斯的喧响值上限提升1000点。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "发动凯旋坦途（下分支开局固定一次）回 1500 喧响：编排层注入 extraSelfDecibelReward",
+      "喧响上限+1000 按用户口径不建模（总量计算器不考虑单条上限）"
+     ],
+     "pending": []
     },
     {
      "cinema": 3,
