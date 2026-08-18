@@ -24,6 +24,18 @@ import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
 
 // ============ 单角色能量计算 ============
 
+/** 丽娜终结技按槽位给当前角色补充的能量。 */
+export function calcRinaUltEnergy(
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+  target: CharacterOperationConfig,
+): number {
+  const rinaIndex = configs.findIndex(config => config.agentId === '1211')
+  if (rinaIndex < 0) return 0
+  const ultimateCount = Math.max(0, Math.floor(states[rinaIndex]?.ultimateCount ?? 0))
+  return Math.max(0, Number(target.rinaEnergyPerRinaUlt ?? 0)) * ultimateCount
+}
+
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 export function calcEnergySource(
   cfg: CharacterOperationConfig,
@@ -690,6 +702,9 @@ export function iterate(
         teamUltFlash += prevStates[j].ultimateCount * (cfg.teamUltimateFlashBonus ?? 0)
       }
     }
+    // 支援角色终结技邻位回能（次数使用上一轮状态参与收敛）。
+    const rinaEnergy = calcRinaUltEnergy(configs, prevStates, cfg)
+
     // 露西：终结邻位回能 + 影画1 回旋全队回能（次数用上一轮露西 state）
     let lucyEnergy = 0
     const lucyIdx = configs.findIndex(c => c.agentId === '1151')
@@ -715,7 +730,7 @@ export function iterate(
         lucyEnergy += spinEst * 2
       }
     }
-    const totalEnergy = energySrc.total + supportUlt + teamUltFlash + lucyEnergy
+    const totalEnergy = energySrc.total + supportUlt + teamUltFlash + rinaEnergy + lucyEnergy
     energies.push(totalEnergy)
 
     // 强特次数 = 总能量 ÷ 强特消耗（伊德海莉失衡内由轴连段反推，剩余打非失衡强特）

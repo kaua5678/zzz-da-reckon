@@ -2216,7 +2216,10 @@
        "step": 0.1
       },
       "sourceStat": "penRatio",
-      "sourcePanelPhase": "outOfCombat"
+      "sourcePanelPhase": "outOfCombat",
+      "excludeTargetAgentIds": [
+       "1211"
+      ]
      }
     ],
     "sourceType": "teammate",

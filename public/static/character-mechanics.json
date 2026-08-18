@@ -4801,6 +4801,167 @@
     "codePaths": [],
     "status": "not_described_not_implemented"
    }
+  },
+  "1211": {
+   "name": {
+    "zhCN": "丽娜",
+    "en": "Rina"
+   },
+   "specialResources": [],
+   "mechanics": [
+    {
+     "id": "core_passive_1211",
+     "name": "核心被动：迷你毁灭拍档",
+     "implementation": "implemented_approximation",
+     "implementedParts": [
+      "队友穿透率=min(30, 丽娜局外穿透率×25%+12%)",
+      "仅作用其他角色",
+      "影画1使增益提升至130%"
+     ],
+     "pendingParts": [
+      "邦布逐秒离场状态按覆盖率近似"
+     ],
+     "codePaths": [
+      "src/mechanics/agents/rina.ts",
+      "public/static/teammate-buffs.json",
+      "src/core/inCombatBuffs.ts"
+     ],
+     "status": "implemented_approximation",
+     "pending": [
+      "邦布逐秒离场状态按覆盖率近似"
+     ]
+    },
+    {
+     "id": "additional_ability_1211",
+     "name": "额外能力：感电观察员",
+     "implementation": "implemented_approximation",
+     "implementedParts": [
+      "同属性或同阵营条件门控",
+      "感电持续时间+3秒",
+      "感电敌人期间全队电伤+10%"
+     ],
+     "pendingParts": [
+      "敌人感电逐秒状态按覆盖率近似"
+     ],
+     "codePaths": [
+      "src/specs/agents/rina.json",
+      "src/composables/resourceCalc/helpers.ts",
+      "public/static/teammate-buffs.json"
+     ],
+     "status": "implemented_approximation",
+     "pending": [
+      "敌人感电逐秒状态按覆盖率近似"
+     ]
+    },
+    {
+     "id": "ultimate_energy_1211",
+     "name": "终结技：女王的侍从们·回能",
+     "implementation": "implemented",
+     "implementedParts": [
+      "其他角色+10能量，下一位换入额外+20",
+      "三人队30/10、两人队30"
+     ],
+     "pendingParts": [],
+     "codePaths": [
+      "src/mechanics/agents/rina.ts",
+      "src/core/resource/helpers.ts",
+      "src/composables/useResourceCalc.ts"
+     ],
+     "status": "implemented",
+     "pending": []
+    }
+   ],
+   "cinemaImplementation": [
+    {
+     "cinema": 1,
+     "status": "implemented_approximation",
+     "implemented": [
+      "核心穿透增益提升至130%"
+     ],
+     "pending": [
+      "邦布额外停留5.5秒折入覆盖率"
+     ]
+    },
+    {
+     "cinema": 2,
+     "status": "implemented_approximation",
+     "implemented": [
+      "自身伤害+15%，按12/18覆盖折算为+10%"
+     ],
+     "pending": [
+      "未模拟18秒冷却时间轴"
+     ]
+    },
+    {
+     "cinema": 3,
+     "status": "implemented_generic_skill_level",
+     "implemented": [
+      "通用技能等级+2"
+     ],
+     "pending": []
+    },
+    {
+     "cinema": 4,
+     "status": "implemented_approximation",
+     "implemented": [
+      "双邦布在外时能量回复+0.5/s，覆盖率可调"
+     ],
+     "pending": [
+      "未模拟双邦布逐秒状态"
+     ]
+    },
+    {
+     "cinema": 5,
+     "status": "implemented_generic_skill_level",
+     "implemented": [
+      "通用技能等级+2"
+     ],
+     "pending": []
+    },
+    {
+     "cinema": 6,
+     "status": "implemented_approximation",
+     "implemented": [
+      "指定技能命中后全队电伤+15%，覆盖率可调"
+     ],
+     "pending": [
+      "未模拟8秒持续时间轴"
+     ]
+    }
+   ],
+   "corePassive": {
+    "id": "core_passive_1211",
+    "name": "核心被动：迷你毁灭拍档",
+    "implementation": "implemented_approximation",
+    "implementedParts": [
+     "穿透公式、排除自身、影画1修饰器"
+    ],
+    "pendingParts": [
+     "邦布时间轴"
+    ],
+    "codePaths": [
+     "src/mechanics/agents/rina.ts",
+     "public/static/teammate-buffs.json"
+    ],
+    "status": "implemented_approximation"
+   },
+   "additionalAbility": {
+    "id": "additional_ability_1211",
+    "name": "额外能力：感电观察员",
+    "trigger": "同属性或同阵营队友",
+    "implementation": "implemented_approximation",
+    "implementedParts": [
+     "感电持续+3秒、全队电伤+10%"
+    ],
+    "pendingParts": [
+     "感电状态覆盖率近似"
+    ],
+    "codePaths": [
+     "src/specs/agents/rina.json",
+     "src/composables/resourceCalc/helpers.ts"
+    ],
+    "status": "implemented_approximation"
+   }
   }
  }
 }

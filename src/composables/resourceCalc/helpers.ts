@@ -217,7 +217,20 @@ export function computePanelPhases(
       teammateId: '',
       teammateName: { zhCN: b.name },
     }))
+  const team = buildMechanicTeamMembers(configStore, catalogStore)
+  const rinaSlot = team.find(member => member.agentId === '1211')?.slot ?? -1
+  const rinaAgent = rinaSlot >= 0 ? catalogStore.getAgent('1211') ?? null : null
+  const rinaAdditionalActive = rinaSlot >= 0
+    ? evalAdditionalAbility(team, rinaSlot, rinaAgent, getAgentSpec('1211')?.additionalAbility) === true
+    : false
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
+    .filter(buff => buff.id !== 'rina.additional_electric_damage' || rinaAdditionalActive)
+
+  const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
+  for (const buff of allTeammateBuffs) {
+    const coverage = configStore.getTeammateBuffCoverage(buff.id) / 100
+    for (const effect of buff.effects ?? []) effectCoverageMap.set(effect.id, coverage)
+  }
 
   // 计算面板
   const result = calcPanel(
@@ -231,7 +244,7 @@ export function computePanelPhases(
       cinemaLevel: char.cinemaLevel,
       wEngineModLevel: char.wEngineModLevel,
       sourcePanelsByOwner,
-      effectCoverageMap: configStore.getWEngineEffectCoverageMap(),
+      effectCoverageMap,
     },
   )
 
@@ -241,7 +254,6 @@ export function computePanelPhases(
   panel.energyRegenOutOfCombat = (result.outOfCombat.energyRegen ?? 1.2)
     * (1 + (result.outOfCombat.energyRegenBonusPct ?? 0) / 100)
     + (result.outOfCombat.energyRegenBonusFlat ?? 0)
-  const team = buildMechanicTeamMembers(configStore, catalogStore)
   // 额外能力触发条件统一判定（声明式 spec.additionalAbility）：满足才写面板标记，模块/伤害池按标记开关。
   const aaSpec = getAgentSpec(agent.id)?.additionalAbility
   if (aaSpec) {
@@ -254,6 +266,13 @@ export function computePanelPhases(
     team,
     panel,
   })
+  if (agent.id === '1211' && (char.cinemaLevel ?? 0) >= 4) {
+    const coverage = Math.max(0, Math.min(1,
+      configStore.getMechanicSetting('rina.c4DoubleBangbooCoverage', 1),
+    ))
+    panel.energyRegenBonusFlat = (panel.energyRegenBonusFlat ?? 0) + 0.5 * coverage
+    panel.rinaCinema4EnergyRegen = 0.5 * coverage
+  }
   if (agent.id === '1531') {
     // 星徽·比利（模块 starlightBilly 的覆盖率面板块；applyPanel 阶段无 configStore，故在此施加）：
     // - 核心被动：接战状态每次动力压制后暴伤 +90%（Lv.7，45s 刷新）× 覆盖率滑块（默认 100%）
@@ -533,7 +552,12 @@ export function getTeamAnomalyDurationBonus(
   element: string,
 ): number {
   if (element === 'fire' && teamHasAgent(configStore, catalogStore, ['1171'])) return 3
-  if (element === 'electric' && teamHasAgent(configStore, catalogStore, ['1211'])) return 3
+  if (element === 'electric' && teamHasAgent(configStore, catalogStore, ['1211'])) {
+    const team = buildMechanicTeamMembers(configStore, catalogStore)
+    const rinaSlot = team.find(member => member.agentId === '1211')?.slot ?? -1
+    const rina = rinaSlot >= 0 ? catalogStore.getAgent('1211') ?? null : null
+    if (rinaSlot >= 0 && evalAdditionalAbility(team, rinaSlot, rina, getAgentSpec('1211')?.additionalAbility)) return 3
+  }
   if (element === 'ether' && teamHasAgent(configStore, catalogStore, ['aria'])) return 3
   if (element === 'physical' && teamHasAgent(configStore, catalogStore, ['1261'])) return 5
   return 0

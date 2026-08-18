@@ -1235,18 +1235,22 @@
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "核心被动穿透增益提升至130%"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "邦布额外停留5.5秒折入覆盖率"
      ]
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "自身伤害+15%，按12/18覆盖折算为+10%"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "未模拟18秒冷却时间轴"
      ]
     },
     {
@@ -1255,16 +1259,16 @@
      "implemented": [
       "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
      ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
+     "pending": []
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "双邦布在外时能量回复+0.5/s，覆盖率可调"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "未模拟双邦布逐秒状态"
      ]
     },
     {
@@ -1273,16 +1277,16 @@
      "implemented": [
       "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
      ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
+     "pending": []
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "指定技能命中后全队电伤+15%，覆盖率可调"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "未模拟8秒持续时间轴"
      ]
     }
    ]

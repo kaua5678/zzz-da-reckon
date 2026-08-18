@@ -1362,6 +1362,8 @@ export interface CharacterOperationConfig {
   yeshuguangSwordInitial?: number
   /** 叶瞬光：琉音转大赠送逐云次数（编排层注入） */
   yeshuguangGiftUltCount?: number
+  /** 丽娜终结技每次给本槽位的能量（邻位30/10） */
+  rinaEnergyPerRinaUlt?: number
   /** 露西终结技每次给本槽位的能量（邻位 30/10） */
   lucyEnergyPerLucyUlt?: number
   /** 露西影画1：回旋挥击全队回能标记 */

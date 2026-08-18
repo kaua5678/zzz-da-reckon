@@ -1,5 +1,6 @@
 import { YESHUGUANG_FULL_STUN_MOVES } from '@/mechanics/agents/yeshuguang'
 import { applyLucyTeamEnergyFlags } from '@/mechanics/agents/lucy'
+import { applyRinaTeamEnergyFlags } from '@/mechanics/agents/rina'
 import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -135,8 +136,9 @@ export function useResourceCalc() {
       if (cfg) characters.push(cfg)
     }
 
-    // 露西：邻位终结回能 / C1 标记写入各槽位 cfg
+    // 支援角色终结技邻位回能写入各槽位 cfg。
     applyLucyTeamEnergyFlags(characters)
+    applyRinaTeamEnergyFlags(characters)
 
     // 橘福福额外能力·八面威风：队伍有强攻/命破时，这些角色每次终结技 +300 喧响
     // （仪玄青溟云影走 ultimateCount；符法千重在收敛环用上一轮次数注入，见下方 1371 分支）。

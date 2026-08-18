@@ -5,15 +5,30 @@
   "agentIds": [
     "1211"
   ],
-  "status": "not_described_not_implemented",
+  "status": "implemented_approximation",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
   "events": [],
   "verifications": [],
   "stateMachines": [],
+  "additionalAbility": {
+    "teamConditions": [
+      { "type": "sameAttributeAsSelf" },
+      { "type": "sameFactionAsSelf" }
+    ],
+    "note": "额外能力·感电观察员：同属性或同阵营队友触发；感电持续时间+3秒，感电敌人存在期间全队电伤+10%。"
+  },
   "notes": [
-    "待录入：丽娜 的机制、资源、事件与验证。"
+    "[已确认·数据] 核心被动满级：队伍中其他角色穿透率提升=min(30, 丽娜局外穿透率×25%+12%)；邦布均返回后结束。静态队友增益承载，明确排除丽娜本人。",
+    "[已确认·数据] 影画1：核心被动增益提升至130%，通过 buffModifiers.multiplyResolvedValue 接入；邦布额外停留5.5秒折入核心增益覆盖率。",
+    "[已确认·数据] 额外能力：同属性或同阵营队友触发；感电持续时间+3秒已按条件门控，感电敌人期间全队电伤+10%按用户可调覆盖率近似。",
+    "[已确认·数据] 影画2：成为接战中的当前操作角色后自身伤害+15%，持续12秒、18秒冷却，整局按2/3覆盖率近似。",
+    "[已确认·数据] 影画4：双邦布均在外时能量自动回复+0.5点/秒；用 rina.c4DoubleBangbooCoverage 调节，默认满覆盖。",
+    "[已确认·数据] 影画6：强特/连携/终结命中后全队电伤+15%，持续8秒；静态队友增益承载，覆盖率可调。",
+    "[已确认·数据] 终结技回能：其他角色各+10，下一位换入额外+20；三人队下一位30、上一位10，两人队另一人30。",
+    "[近似] 未模拟杜苏拉/安娜塔莎逐秒离场状态与敌人感电逐秒状态，相关增益使用覆盖率表达。",
+    "实现：src/mechanics/agents/rina.ts + teammate-buffs.json 1211 组 + 资源迭代邻位回能接线。"
   ],
   "teamBuffs": []
 }

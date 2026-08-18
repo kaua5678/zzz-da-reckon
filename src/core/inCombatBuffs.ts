@@ -45,12 +45,46 @@ export function collectInCombatTeamBuffs(
 ): InCombatTeamBuff[] {
   const buffs: InCombatTeamBuff[] = []
 
-  // 角色队友拐：按用户在属性配置页的启用状态
-  for (const group of deps.teammateBuffGroups) {
-    for (const buff of group.buffs ?? []) {
-      if (!deps.isTeammateBuffEnabled(buff.id)) continue
-      buffs.push({ ...buff, includeOwner: true })
-    }
+  // 角色队友拐：按用户在属性配置页的启用状态。
+  // 先收集后应用修饰器，保证修饰器与目标在数据中的顺序无关。
+  const enabledAgentBuffs = deps.teammateBuffGroups.flatMap(group =>
+    (group.buffs ?? []).filter(buff => deps.isTeammateBuffEnabled(buff.id)),
+  )
+  const modifiers = enabledAgentBuffs
+    .filter(buff => buff.id === 'rina.cinema_1.core_pen_ratio_amplify')
+    .flatMap(buff => buff.buffModifiers ?? [])
+  for (const buff of enabledAgentBuffs) {
+    const effects = (buff.effects ?? []).map(effect => {
+      let resolved = effect
+      for (const modifier of modifiers) {
+        if (modifier.operation !== 'multiplyResolvedValue') continue
+        if (!(modifier.targetBuffIds ?? []).includes(buff.id)) continue
+        if (modifier.targetEffectIds?.length && !modifier.targetEffectIds.includes(effect.id)) continue
+        const factor = Number(modifier.factor)
+        if (!Number.isFinite(factor)) continue
+        if (resolved.type === 'formula') {
+          resolved = {
+            ...resolved,
+            formula: {
+              ...resolved.formula,
+              expression: `(${resolved.formula?.expression ?? '0'}) * ${factor}`,
+            },
+          }
+        } else if (resolved.type === 'derived') {
+          resolved = { ...resolved, ratio: (resolved.ratio ?? 0) * factor }
+        } else if (resolved.type === 'stacked') {
+          resolved = {
+            ...resolved,
+            value: (resolved.value ?? 0) * factor,
+            valuePerStack: resolved.valuePerStack == null ? undefined : resolved.valuePerStack * factor,
+          }
+        } else {
+          resolved = { ...resolved, value: (resolved.value ?? 0) * factor }
+        }
+      }
+      return resolved
+    })
+    buffs.push({ ...buff, effects, includeOwner: true })
   }
 
   for (const char of team) {
