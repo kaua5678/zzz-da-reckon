@@ -315,6 +315,10 @@ export function computePanelPhases(
     if ((panel.additionalAbilityActive ?? 0) > 0) {
       panel.critDmg = (panel.critDmg ?? 0) + 40
     }
+    // 影画4 焚昼孽火：持盾期间失衡值 +10%（护盾不建模，用户口径默认全覆盖）。
+    if (cinema >= 4) {
+      panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + 10
+    }
   }
   if (agent.id === '1481' || agent.teammateBuffId === '1481') {
     // 影画4：好评如潮状态下攻击力 +500，默认满覆盖（用户可在资源利用率页调节覆盖率）。
@@ -1133,6 +1137,7 @@ export function buildCharConfig(
     chainCountPerStun: char.chainCountPerStun ?? (isSupport ? 0 : 1),
     parryCount: char.parryCount ?? 0,
     perfectBlockCount: (char as { perfectBlockCount?: number }).perfectBlockCount ?? 0,
+    assaultOrderCount: (char as { assaultOrderCount?: number }).assaultOrderCount ?? 0,
     dodgeCounterCount: char.dodgeCounterCount ?? 0,
     blockCount: char.blockCount ?? 0,
     dualCounterCount: char.dualCounterCount ?? 0,

@@ -34,6 +34,7 @@ import { computeLuciaHealPctPerUlt } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueMingwangStacks, computeBanyueInteractionTopUp, C6_ATTACH_RATIO, C6_MINGWANG_EXTRA, MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
 import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import { computeYixuanNingshenBonus } from '@/mechanics/agents/yixuan'
+import { computePeiluoKagerouBonus, PEILUO_KAGEROU_CRIT } from '@/mechanics/agents/specPanelBuffs'
 import type {
   CharacterOperationConfig,
   ResourceCalcConfig,
@@ -1158,6 +1159,13 @@ function applyNormaHatChain(
     const cinema = yixuanSlot >= 0 ? configStore.team[yixuanSlot]?.cinemaLevel ?? 0 : 0
     return computeYixuanNingshenBonus(yixuanSlot, effectiveStunAxes.value, cinema)
   })
+  /** 佩洛伊斯阳炎 buff 轴覆盖：上分支发动后 21s 窗口内上分支/决算终结暴伤+40%（触发块自身也享受） */
+  const peiluoKagerouMap = computed(() => {
+    const peiluoSlot = configStore.team.findIndex(c => c.agentId === '1551')
+    if (peiluoSlot < 0 || effectiveStunAxes.value.length === 0) return new Map<string, number>()
+    return computePeiluoKagerouBonus(peiluoSlot, effectiveStunAxes.value)
+  })
+
   /** 当前命中的轴方案名（条件轴模式用于 UI 展示；无方案 = null） */
   const matchedPlanName = computed<string | null>(() => calcOutput.value?.matchedPlanName ?? null)
 
@@ -1561,6 +1569,12 @@ function applyNormaHatChain(
                 ? (yixuanNingshenMap.value.get(exec.moveId ?? '') ?? { critDmg: 0, sheerDmg: 0 })
                 : { critDmg: Math.round(40 * Math.max(0, Math.min(1, configStore.getMechanicSetting('yixuan.ningshenCoverage', 0.5)))), sheerDmg: 0 })
             : { critDmg: 0, sheerDmg: 0 }
+          // 佩洛伊斯阳炎：轴模式按 buff 轴扫描（上分支后 21s 窗口，仅上分支/决算终结吃），非轴按覆盖率滑块（默认满）
+          const peiluoKagerouCrit = charResult.agentId === '1551'
+            ? (isAxis
+              ? (peiluoKagerouMap.value.get(exec.moveId ?? '') ?? 0)
+              : PEILUO_KAGEROU_CRIT * Math.max(0, Math.min(1, configStore.getMechanicSetting('peiluo.kagerouCoverage', 1))))
+            : 0
           pushDirect({
             id: `${rowId}${idSuffix}`,
             slot,
@@ -1573,7 +1587,7 @@ function applyNormaHatChain(
             note: `${baseNote}${extraNote}${mingwangDmgBonus > 0 ? ` · 明王+${mingwangDmgBonus.toFixed(1)}%${isAxis ? '（轴内覆盖）' : '（覆盖率近似）'}` : ''}${yixuanNingshen.critDmg > 0 ? ` · 凝神暴伤+${yixuanNingshen.critDmg.toFixed(0)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${yixuanNingshen.sheerDmg > 0 ? ` · 凝神贯穿+${yixuanNingshen.sheerDmg.toFixed(0)}%` : ''}`,
             moveId: exec.moveId,
             critRateBonus,
-            critDmgBonus: critDmgBonus + yixuanNingshen.critDmg,
+            critDmgBonus: critDmgBonus + yixuanNingshen.critDmg + peiluoKagerouCrit,
             dmgBonus: (exec.dmgBonus ?? 0) + mingwangDmgBonus,
             sheerDmgBonus: (exec.sheerDmgBonus ?? 0) + yixuanNingshen.sheerDmg,
             flatDamageBonus: exec.flatDamageBonus,

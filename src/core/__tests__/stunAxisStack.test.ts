@@ -119,6 +119,7 @@ describe('calcStunAxisStack', () => {
   })
 })
 
+
 describe('窗口终结动作（佩洛伊斯决算）截断', () => {
   const base = {
     stunCount: 1,
@@ -126,6 +127,21 @@ describe('窗口终结动作（佩洛伊斯决算）截断', () => {
     energyBySlot: { 0: 1000 },
     decibelBySlot: { 0: 10000 },
   }
+
+  it('决算无视时间阀门：失衡最后一刻放出也执行（锁定失衡吃满易伤）', () => {
+    const r = calcStunAxisStack({
+      ...base,
+      axes: [{
+        actions: [
+          // 槽位时间已排到 11s，决算 3s 放不下（11+3>12）——普通动作会被时间门控跳过，决算豁免
+          { slot: 0, moveId: 'ex1', count: 1, actionTime: 11, energyCost: 40, decibelCost: 0, startTime: 0 },
+          { slot: 0, moveId: '1551016', count: 1, actionTime: 3, energyCost: 0, decibelCost: 2000, startTime: 0, endsStunWindow: true },
+        ],
+      }],
+    })
+    expect(r.executed['0:1551016'].count).toBe(1)
+    expect(r.skipped.some(k => k.moveId === '1551016')).toBe(false)
+  })
 
   it('决算做完清空剩余失衡时间：平A填充为 0，损失秒数 = 窗口 − 决算结束时刻', () => {
     const r = calcStunAxisStack({

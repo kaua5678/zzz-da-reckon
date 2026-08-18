@@ -144,8 +144,9 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     for (const act of window.actions) {
       for (let i = 0; i < act.count; i++) {
         const used = slotTime[act.slot] ?? 0
-        // 时间门控（优先级只作用于超时部分）：该槽位放不下 → 跳过（超时被截断）
-        if (act.actionTime > 0 && used + act.actionTime > windowDuration) {
+        // 时间门控（优先级只作用于超时部分）：该槽位放不下 → 跳过（超时被截断）。
+        // 例外：窗口终结动作（佩洛伊斯决算）无视时间阀门——发动时锁定失衡，即便失衡最后一刻放出也吃满易伤。
+        if (!act.endsStunWindow && act.actionTime > 0 && used + act.actionTime > windowDuration) {
           skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'time' })
           continue
         }

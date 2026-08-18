@@ -984,6 +984,8 @@ export interface CharacterOperationConfig {
   quickAssistCount: number
   /** 强特完美格挡次数（主页交互栏填写；佩洛伊斯日珥回复来源） */
   perfectBlockCount: number
+  /** 特殊技：强袭训令次数（主页交互栏填写；佩洛伊斯格挡招式） */
+  assaultOrderCount: number
   /** 闪避反击（Dodge Counter）move id */
   dodgeCounterMoveId: string
   /** 闪避反击 actionTime */

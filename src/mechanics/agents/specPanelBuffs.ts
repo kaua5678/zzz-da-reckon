@@ -286,10 +286,18 @@ const PEILUO_ULT_LOWER = '1551014' // 凯旋坦途
 const PEILUO_ULT_VERDICT = '1551016' // 永陷幽囚（决算）
 const PEILUO_FLARE_ENERGY = 15 // 耀斑：能量获得效率 +15%
 const PEILUO_FLARE_DMG = 40 // 耀斑：造成的伤害 +40%
-const PEILUO_KAGEROU_CRIT = 40 // 阳炎：终结技对失衡敌人暴伤 +40%
+export const PEILUO_KAGEROU_CRIT = 40 // 阳炎：终结技对失衡敌人暴伤 +40%
 
 // 决算次数无滑块：轴模式由轴内 1551016 块计数，非轴模式 = 失衡次数（编排层写入 cfg.peiluoVerdictCount）
-peiluoProminenceMechanic.settings = []
+peiluoProminenceMechanic.settings = [{
+  id: 'peiluo.kagerouCoverage',
+  label: '佩洛伊斯·阳炎暴伤覆盖率（非轴模式）',
+  description: '非轴模式近似：上分支/决算终结吃阳炎暴伤+40% 的覆盖率。轴模式走 buff 轴扫描，不用此滑块。',
+  default: 1,
+  min: 0,
+  max: 1,
+  step: 0.05,
+}]
 peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel }: any) => {
   // 影画1 黄昏旧章：进场获得 1000 点喧响值（勘域模式 180s 一次，整局口径按一次计）
   if ((cinemaLevel ?? 0) >= 1) {
@@ -324,8 +332,7 @@ peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }: any) => 
       g.totalTime = (g.actionTime ?? 0) * upper
       g.totalComboAlignTime = (g.actionTime ?? 0) * (g.comboAlignRatio ?? 0) * upper
       g.totalDecibelRecovery = (g.decibelRecovery ?? 0) * upper
-      g.critDmgBonus = (g.critDmgBonus ?? 0) + PEILUO_KAGEROU_CRIT
-      g.skillTableNote = `上分支·万军诛绝 ×${upper}（剩余喧响；阳炎暴伤+40%按失衡内近似）`
+      g.skillTableNote = `上分支·万军诛绝 ×${upper}（剩余喧响；阳炎暴伤+40% 走 buff 轴扫描，见 computePeiluoKagerouBonus）`
     } else {
       executions.splice(genericIdx, 1)
     }
@@ -457,6 +464,61 @@ peiluoProminenceMechanic.resourceSections = (input: AgentResourceSectionsInput) 
     },
     ...specSections,
   ]
+}
+
+/** 阳炎 buff 轴扫描（参考仪玄凝神模式）：上分支（1551015）发动后 21s 窗口内，
+ * [终结技]对失衡敌人的暴伤 +40%。用户口径：触发块自身也享受；受益限定上分支与右分支决算（1551016）。
+ * 返回 moveId → 实例加权平均暴伤（0-40），非轴模式由调用方按覆盖率滑块近似。 */
+// 特殊技：强袭训令（1551022，佩洛伊斯格挡招式）：主页交互栏填写次数 → 执行行（倍率表 166.4% 以太）
+peiluoProminenceMechanic.buildExecutions = ({ cfg, executions }: any) => {
+  const count = Math.max(0, Math.floor(cfg.assaultOrderCount ?? 0))
+  if (count <= 0) return
+  executions.push({
+    moveId: '1551022',
+    moveName: '特殊技：强袭训令',
+    category: 'special',
+    count,
+    actionTime: 0,
+    comboAlignRatio: 0,
+    totalTime: 0,
+    totalComboAlignTime: 0,
+    energyConsume: 0,
+    totalEnergyConsume: 0,
+    decibelRecovery: 0,
+    totalDecibelRecovery: 0,
+    energyRecovery: 0,
+    totalEnergyRecovery: 0,
+    skillTableNote: `特殊技：强袭训令 ×${count}（主页交互栏填写）`,
+  })
+}
+
+export const PEILUO_KAGEROU_SECONDS = 21
+export function computePeiluoKagerouBonus(
+  slot: number,
+  axes: { actions: { slot: number; moveId: string; count: number; startTime?: number }[] }[],
+): Map<string, number> {
+  const TRIGGER = '1551015'
+  const BENEFICIARIES = new Set<string>(['1551015', '1551016'])
+  const actions = axes
+    .flatMap(axis => axis.actions ?? [])
+    .filter(a => a.slot === slot)
+    .sort((a, b) => (a.startTime ?? 0) - (b.startTime ?? 0))
+  let windowEnd = Number.NEGATIVE_INFINITY
+  const weighted = new Map<string, { total: number; count: number }>()
+  for (const act of actions) {
+    const start = act.startTime ?? 0
+    const count = Math.max(0, Math.floor(act.count) || 1)
+    if (act.moveId === TRIGGER) windowEnd = start + PEILUO_KAGEROU_SECONDS
+    if (!BENEFICIARIES.has(act.moveId)) continue
+    if (start > windowEnd) continue
+    const prev = weighted.get(act.moveId) ?? { total: 0, count: 0 }
+    weighted.set(act.moveId, { total: prev.total + PEILUO_KAGEROU_CRIT * count, count: prev.count + count })
+  }
+  const result = new Map<string, number>()
+  for (const [moveId, w] of weighted) {
+    if (w.count > 0) result.set(moveId, w.total / w.count)
+  }
+  return result
 }
 
 export const sethShieldMechanic = makePanelBuffModule(

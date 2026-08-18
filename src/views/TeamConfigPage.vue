@@ -171,6 +171,19 @@
                           />
                         </div>
                       </n-gi>
+                      <n-gi v-if="selectedChar.agentId === '1551'">
+                        <div class="field" title="特殊技：强袭训令的发动次数（格挡招式，伤害计入倍率表 166.4% 以太行）">
+                          <span class="field-label">强袭训令次数</span>
+                          <n-input-number
+                            :value="selectedChar.assaultOrderCount || 0"
+                            :min="0"
+                            :max="999"
+                            size="small"
+                            style="width: 100%"
+                            @update:value="v => configStore.setAssaultOrderCount(configStore.selectedSlot, v ?? 0)"
+                          />
+                        </div>
+                      </n-gi>
                       <n-gi v-if="selectedChar.agentId === '1471'">
                         <div class="field">
                           <span class="field-label">双反<span v-if="banyueTopUpForSlot && banyueTopUpForSlot.dual > 0" class="field-hint">+{{ banyueTopUpForSlot.dual }}（轴自动）</span></span>

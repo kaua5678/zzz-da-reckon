@@ -74,7 +74,7 @@ describe('佩洛伊斯大招三分支拆分（patchExecutions）', () => {
     const lower = executions.find((e: any) => e.moveId === '1551014')
     const verdict = executions.find((e: any) => e.moveId === '1551016')
     expect(upper.count).toBe(2)
-    expect(upper.critDmgBonus).toBe(40)
+    expect(upper.critDmgBonus ?? 0).toBe(0) // 阳炎暴伤改走 buff 轴扫描（computePeiluoKagerouBonus），不挂执行行
     expect(lower.count).toBe(1)
     expect(verdict.count).toBe(2)
     expect(lower.count + verdict.count + upper.count).toBe(5)
@@ -192,5 +192,74 @@ describe('佩洛伊斯强特完美格挡回日珥（主页交互栏填写）', (
     expect(filled['peiluo_prominence'].gains['peiluo_perfect_block_gain']).toBe(30)
     const empty = Object.fromEntries(computeSpecResources(spec, { perfectBlockCount: 0 } as any, state))
     expect(empty['peiluo_prominence'].gains['peiluo_perfect_block_gain'] ?? 0).toBe(0)
+  })
+})
+
+describe('佩洛伊斯阳炎 buff 轴扫描（仪玄凝神模式）', () => {
+  it('上分支触发 21s 窗口：触发块自身与窗口内决算吃暴伤，窗外不吃', async () => {
+    const { computePeiluoKagerouBonus } = await import('@/mechanics/agents/specPanelBuffs')
+    const axes = [{ actions: [
+      { slot: 0, moveId: '1551014', count: 1, startTime: 0 },   // 下分支（不吃）
+      { slot: 0, moveId: '1551015', count: 1, startTime: 5 },   // 上分支触发（自身吃）
+      { slot: 0, moveId: '1551016', count: 1, startTime: 15 },  // 决算在窗口内（吃）
+      { slot: 0, moveId: '1551016', count: 1, startTime: 40 },  // 决算在窗外（不吃）
+    ] }]
+    const bonus = computePeiluoKagerouBonus(0, axes as any)
+    expect(bonus.get('1551015')).toBe(40) // 触发块自身享受（用户口径）
+    // 1551016：只对受益实例加权平均（同仪玄凝神口径）→ 窗外那次不进分母
+    expect(bonus.get('1551016')).toBe(40)
+    expect(bonus.has('1551014')).toBe(false)
+  })
+
+  it('其他槽位动作不参与扫描', async () => {
+    const { computePeiluoKagerouBonus } = await import('@/mechanics/agents/specPanelBuffs')
+    const axes = [{ actions: [
+      { slot: 1, moveId: '1551015', count: 1, startTime: 0 },
+    ] }]
+    const bonus = computePeiluoKagerouBonus(0, axes as any)
+    expect(bonus.size).toBe(0)
+  })
+})
+
+describe('佩洛伊斯特殊技：强袭训令（主页交互栏次数）', () => {
+  it('填写 3 次 → 执行行 1551022 ×3；未填写不出行', () => {
+    const execs3: any[] = []
+    peiluoProminenceMechanic.buildExecutions!({ cfg: { assaultOrderCount: 3 }, state: {}, executions: execs3 } as any)
+    expect(execs3.length).toBe(1)
+    expect(execs3[0].moveId).toBe('1551022')
+    expect(execs3[0].count).toBe(3)
+
+    const execs0: any[] = []
+    peiluoProminenceMechanic.buildExecutions!({ cfg: {}, state: {}, executions: execs0 } as any)
+    expect(execs0.length).toBe(0)
+  })
+})
+
+describe('佩洛伊斯影画4 焚昼孽火：失衡值 +10%（默认全覆盖）', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.stubGlobal('fetch', vi.fn(async (url: any) => {
+      const u = String(url)
+      if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
+      if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
+      if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
+      return { ok: false, json: async () => ({}) }
+    }))
+  })
+
+  it('命座差分：3命 → 4命，stunBuildUpBonus +10', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const config = useConfigStore()
+    config.team[0] = { slot: 0, agentId: '1551', cinemaLevel: 3, ...baseConfig } as any
+    config.team[1] = { slot: 1, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+    config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+    config.syncTeammateBuffsFromTeam()
+    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const p3 = computePanelPhases(0, config, catalog)!.inCombat as any
+    config.team[0].cinemaLevel = 4
+    const p4 = computePanelPhases(0, config, catalog)!.inCombat as any
+    expect((p4.stunBuildUpBonus ?? 0) - (p3.stunBuildUpBonus ?? 0)).toBe(10)
   })
 })

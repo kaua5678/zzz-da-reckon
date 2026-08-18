@@ -96,7 +96,8 @@
     "大招三分支模型（用户口径）：2000喧响/次；下分支固定1（耀斑 buff 全程）；右分支决算滑块 peiluo.verdictCount（-1=自动=失衡次数）；上分支剩余（阳炎暴伤+40%执行行近似）；左分支不建模。连携回300喧响+影画2回1500由编排层注入 extraSelfDecibelReward。旧 peiluo.ultBranch 滑块移除。",
     "日珥账本已接入：patchExecutions 按 moveId 汇总命中回复/天光消耗 → buildResourceResult 并入 peiluo_prominence 总账 → resourceSections 账本卡。倍率表无强化天光差异行，日珥仅校验循环可行性、不影响伤害。",
     "轴模式决算截断已接入：栈引擎 endsStunWindow（1551016）→ 窗口填充归零 + stunSecondsLost 回传 → computeStunCoverage 扣除损失秒数。决算无滑块：轴模式=轴内块计数，非轴=失衡次数。buildStackAxes 佩洛伊斯分支大招喧响消耗按 2000 计。",
-    "强特完美格挡回日珥改为用户填写：主页交互栏「强特完美格挡」→ cfg.perfectBlockCount → spec countSource perfectBlockCount ×10。"
+    "强特完美格挡回日珥改为用户填写：主页交互栏「强特完美格挡」→ cfg.perfectBlockCount → spec countSource perfectBlockCount ×10。",
+    "用户验收修正（第二轮）：①阳炎改 buff 轴扫描（computePeiluoKagerouBonus，21s 窗口，触发块自身也享受，受益限上分支/决算），非轴滑块 peiluo.kagerouCoverage 默认满；②决算无视时间阀门（endsStunWindow 豁免）；③4命失衡值+10% 默认全覆盖（stunBuildUpBonus）；④强袭训令次数主页交互栏填写（执行行 1551022）；⑤进场日珥30 = spec initialValue 已承载；6命不管。"
   ],
   "teamBuffs": [
     {

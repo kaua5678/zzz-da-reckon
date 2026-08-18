@@ -3276,11 +3276,12 @@
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "失衡值+10%：stunBuildUpBonus 面板（护盾不建模，用户口径默认全覆盖）"
+     ],
      "pending": [
-      "影画4 焚昼孽火：佩洛伊斯发动[强化特殊技：日华]触发完美格挡时，立刻获得等同于自身8%生命值上限的护盾，持续10秒，重复触发刷新持续时间，持有该护盾时，佩洛伊斯造成的失衡值提升10%。",
-      "待人工核对后补实现，勿直接默认省略。"
+      "护盾本体（8%生命上限）防御向不建模"
      ]
     },
     {
