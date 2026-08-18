@@ -10,11 +10,10 @@
  * - 观止：基础 2；C2 每耗 1 青溟剑势 +1。
  *
  * 轴（每轮明心境，setting: yeshuguang.formAxis）：
- * - full：打满 (灭#1+极)×2 + 扶摇 + 飞光×2（观止/6 缩放）+ 收尾
+ * - full：打满 (灭#1+极)×2 + 扶摇 + 飞光(总观止/6×满档倍率线性)+ 收尾
  * - 凛刃：白毛物理直伤，紊乱按物理继承（无需单独标签）
  * - 非白毛：通用普攻/连携(吃覆盖率易伤)/强特(基本无易伤)；局外剑势靠 attack_data_0 链接
- * - short_pair：灭#1+极（耗 3 豆）后剩余全飞光 —— 0–1 命 4 飞光 / 2 命+ 10 飞光
- * - short_mie：仅灭#1（耗 2 豆）后剩余全飞光 —— 0–1 命 5 飞光 / 2 命+ 12 飞光
+ * - short_pair / short_mie：少打灭极省时间，观止仍按耗剑势结算；飞光一律 总观止/6 线性
  *
  * 收尾：喧响逐云进 → 斩妄；照影/琉音转大进 → 归尘。
  * C6 明灯愿：进场 2 + 每进明心境 1；强化次数 = floor(次数/3) 把归尘换成斩妄；
@@ -125,9 +124,10 @@ export interface YeshuguangCycleResult {
   /** 本轴每轮消耗的青溟剑势（用于 C2 观止） */
   swordSpentPerForm: number
   guanzhiPerForm: number
-  /** 每轮飞光次数 */
+  /** 全局飞光：总观止/6（满档倍率当量，线性） */
+  feiguangFullCasts: number
+  /** @deprecated 兼容旧字段，= feiguangFullCasts */
   feiguangPerForm: number
-  /** 单次飞光相对满 6 观止表值的缩放（观止/6） */
   feiguangScaleEach: number
   miePerForm: number
   jiPerForm: number
@@ -169,33 +169,33 @@ export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangC
   let jiPerForm = 0
   let fuyaoPerForm = 0
   let swordSpentPerForm = 0
-  let feiguangPerForm = 1
 
   if (axis === 'full') {
     miePerForm = 2
     jiPerForm = 2
     fuyaoPerForm = 1
     swordSpentPerForm = FORM_SWORD // 6
-    feiguangPerForm = 2 // 用户确认：打满轴飞光 2 次
   } else if (axis === 'short_pair') {
+    // 灭#1+极耗 3，剩余资源压进观止→飞光线性
     miePerForm = 1
     jiPerForm = 1
     fuyaoPerForm = 0
     swordSpentPerForm = 3
-    feiguangPerForm = shortAxisFeiguangCount(axis, cinema)
   } else {
-    // short_mie
+    // short_mie：仅灭#1 耗 2
     miePerForm = 1
     jiPerForm = 0
     fuyaoPerForm = 0
     swordSpentPerForm = 2
-    feiguangPerForm = shortAxisFeiguangCount(axis, cinema)
   }
 
   // 观止：基础 2 + C2 每耗 1 青溟剑势 +1
   const guanzhiPerForm = BASE_GUANZHI + (cinema >= 2 ? swordSpentPerForm : 0)
-  // 飞光：表值对应 6 观止；每次飞光按本轮观止/6 等比缩放倍率与时间（短轴多次飞光各自同缩放）
-  const feiguangScaleEach = guanzhiPerForm / FEIGUANG_FULL_GUANZHI
+  // 飞光全局线性：总观止/6 × 满档倍率行（表值=耗 6 观止）；不再拆多次 hit
+  const guanzhiTotal = guanzhiPerForm * totalForms
+  const feiguangFullCasts = guanzhiTotal / FEIGUANG_FULL_GUANZHI
+  const feiguangPerForm = totalForms > 0 ? feiguangFullCasts / totalForms : 0
+  const feiguangScaleEach = 1 // 行上直接用满档倍率 × feiguangFullCasts 当 count 缩放
 
   // 基础收尾
   let finisherZhanwang = decibelForms
@@ -221,6 +221,7 @@ export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangC
     outsideSword: outside,
     swordSpentPerForm,
     guanzhiPerForm,
+    feiguangFullCasts,
     feiguangPerForm,
     feiguangScaleEach,
     miePerForm,
@@ -250,7 +251,8 @@ export function computeOutsideSwordGain(cfg: CharacterOperationConfig, state: {
   const perEx = Math.max(0, Number(record.yeshuguangAtk0Ex ?? 0) || 0)
   const perChain = Math.max(0, Number(record.yeshuguangAtk0Chain ?? 0) || 0)
   const fromDodge = (cfg.dodgeCounterCount ?? 0) * perDodge
-  const fromEx = (state.exSpecialCount ?? 0) * perEx
+  // 定风波：文本明确发动后 +1 青溟剑势（局外）；attack_data_0 表值为 0，单独 +1/次
+  const fromEx = (state.exSpecialCount ?? 0) * (perEx + 1)
   const fromChain = (state.chainCountTotal ?? 0) * perChain
   const curtains = Math.max(0, Math.floor(Number(record.yeshuguangTeamCurtainCount ?? cfgNum(cfg, 'yeshuguang.teamCurtainCount', 0)) || 0))
   const aa = Number(record.yeshuguangAdditionalAbilityActive ?? 0) > 0
@@ -378,7 +380,6 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const mie = cycle.miePerForm * forms
   const ji = cycle.jiPerForm * forms
   const fuyao = cycle.fuyaoPerForm * forms
-  const fg = cycle.feiguangPerForm * forms
 
   pushExec(
     executions, MOVE.mie1, '普通攻击：明心境·斩流光 灭 #1', 'basic',
@@ -396,13 +397,17 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     `扶摇势 ×${fuyao}`,
   )
 
-  const fgDmg = (dmg[MOVE.feiguang] ?? 0) * cycle.feiguangScaleEach
-  const fgTime = (times[MOVE.feiguang] ?? 0) * cycle.feiguangScaleEach
-  pushExec(
-    executions, MOVE.feiguang, '强化特殊技：明心境·飞光', 'special',
-    fg, fgTime, fgDmg,
-    `飞光 ×${fg}（${axisLabel} 每轮 ${cycle.feiguangPerForm}；观止 ${cycle.guanzhiPerForm}/6 → 单次 ×${fmt(cycle.feiguangScaleEach * 100, 1)}% 表值）`,
-  )
+  // 飞光：全局线性 总观止/6 × 满档倍率行（表=耗6观止）；count=1，倍率与时间按当量缩放
+  const fgCasts = cycle.feiguangFullCasts
+  const fgDmg = (dmg[MOVE.feiguang] ?? 0) * fgCasts
+  const fgTime = (times[MOVE.feiguang] ?? 0) * fgCasts
+  if (fgCasts > 0 && fgDmg > 0) {
+    pushExec(
+      executions, MOVE.feiguang, '强化特殊技：明心境·飞光', 'special',
+      1, fgTime, fgDmg,
+      `飞光 总观止 ${fmt(cycle.guanzhiPerForm * forms, 1)} ÷6 = ${fmt(fgCasts, 3)} 满档当量（${axisLabel}；线性）`,
+    )
+  }
 
   pushExec(
     executions, MOVE.zhanwang, '终结技：斩妄开天', 'chain',
@@ -433,14 +438,16 @@ function estimateExSpecialTime({ cfg, ultimateCount }: AgentExSpecialTimeInput):
     ?? resolveCycle(cfg, { ultimateCount })
   if (cycle.totalForms <= 0) return null
 
-  const perForm =
-    cycle.miePerForm * (times[MOVE.mie1] ?? 0)
-    + cycle.jiPerForm * (times[MOVE.ji] ?? 0)
-    + cycle.fuyaoPerForm * (times[MOVE.fuyao] ?? 0)
-    + cycle.feiguangPerForm * (times[MOVE.feiguang] ?? 0) * cycle.feiguangScaleEach
-    + Math.max(times[MOVE.guichen] ?? 0, times[MOVE.zhanwang] ?? 0) // 收尾近似
+  const melee =
+    cycle.totalForms * (
+      cycle.miePerForm * (times[MOVE.mie1] ?? 0)
+      + cycle.jiPerForm * (times[MOVE.ji] ?? 0)
+      + cycle.fuyaoPerForm * (times[MOVE.fuyao] ?? 0)
+      + Math.max(times[MOVE.guichen] ?? 0, times[MOVE.zhanwang] ?? 0)
+    )
+  const feiguangTime = cycle.feiguangFullCasts * (times[MOVE.feiguang] ?? 0)
   const zhao = cycle.zhaoyingForms * (times[MOVE.entryAssist] ?? 0)
-  return { necessaryTime: cycle.totalForms * perForm + zhao, comboAlignTime: 0 }
+  return { necessaryTime: melee + feiguangTime + zhao, comboAlignTime: 0 }
 }
 
 function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
@@ -489,7 +496,7 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
         bonusCount: 0,
         total: guanzhiTotal,
         remaining: 0,
-        spendCounts: { feiguang: cycle.totalForms * cycle.feiguangPerForm },
+        spendCounts: { feiguang: cycle.feiguangFullCasts },
         spendCosts: { feiguang: guanzhiTotal },
       },
       yeshuguang_mingxin: {
@@ -538,7 +545,8 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
     { label: '轴类型', value: axisLabel, detail: '时间不足时可换 short_pair / short_mie' },
     { label: '局外剑势', value: fmt(cycle.outsideSword, 1), detail: 'attack_data_0 + 帷幕×3 + 影画1' },
     { label: '明心境轮次', value: String(cycle.totalForms), detail: `逐云${cycle.decibelForms}+转大${cycle.giftForms}+照影${cycle.zhaoyingForms}` },
-    { label: '每轮结构', value: `灭${cycle.miePerForm}/极${cycle.jiPerForm}/扶摇${cycle.fuyaoPerForm}/飞光${cycle.feiguangPerForm}`, detail: `耗剑势 ${cycle.swordSpentPerForm} · 观止 ${cycle.guanzhiPerForm}` },
+    { label: '每轮结构', value: `灭${cycle.miePerForm}/极${cycle.jiPerForm}/扶摇${cycle.fuyaoPerForm}`, detail: `耗剑势 ${cycle.swordSpentPerForm} · 观止 ${cycle.guanzhiPerForm}` },
+    { label: '飞光', value: `${fmt(cycle.feiguangFullCasts, 3)} 满档当量`, detail: `总观止/6 × 倍率行` },
     { label: '收尾', value: `斩妄${cycle.finisherZhanwang}/归尘${cycle.finisherGuichen}`, detail: cycle.mingdengUpgrade > 0 ? `明灯愿强化 ${cycle.mingdengUpgrade}` : '喧响进斩妄，其余归尘' },
   ]
   if (cycle.c6AttachCount > 0) {
@@ -547,7 +555,7 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
   return [{
     id: 'yeshuguang-cycle',
     title: '叶瞬光·明心境账本',
-    summary: `${axisLabel} · ${cycle.totalForms} 轮 · 飞光/轮 ${cycle.feiguangPerForm}`,
+    summary: `${axisLabel} · ${cycle.totalForms} 轮 · 飞光 ${fmt(cycle.feiguangFullCasts, 2)} 满档当量`,
     rows,
   }]
 }

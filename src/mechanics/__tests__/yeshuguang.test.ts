@@ -6,7 +6,6 @@ import { useConfigStore } from '@/stores/config'
 import {
   computeOutsideSwordGain,
   computeYeshuguangCycle,
-  shortAxisFeiguangCount,
   yeshuguangMechanic,
   YESHUGUANG_FULL_STUN_MOVES,
 } from '@/mechanics/agents/yeshuguang'
@@ -57,54 +56,48 @@ const baseTimes = {
 }
 
 describe('叶瞬光 computeYeshuguangCycle', () => {
-  it('打满 0命：观止2，飞光×2 缩放2/6；喧响→斩妄', () => {
+  it('打满 0命：观止2/轮，飞光=总观止/6 线性；喧响→斩妄', () => {
     const c = computeYeshuguangCycle({
       ultimateCount: 2, giftUltCount: 1, zhaoyingCountSetting: -1,
       outsideSwordGain: 12, cinemaLevel: 0, battleTime: 180, formAxis: 'full',
     })
     expect(c.totalForms).toBe(5)
     expect(c.guanzhiPerForm).toBe(2)
-    expect(c.feiguangPerForm).toBe(2)
-    expect(c.feiguangScaleEach).toBeCloseTo(2 / 6)
+    expect(c.feiguangFullCasts).toBeCloseTo((2 * 5) / 6)
     expect(c.miePerForm).toBe(2)
     expect(c.jiPerForm).toBe(2)
     expect(c.finisherZhanwang).toBe(2)
     expect(c.finisherGuichen).toBe(3)
   })
 
-  it('打满 2命：观止8，飞光缩放8/6', () => {
+  it('打满 2命：观止8/轮，飞光=8/6 当量', () => {
     const c = computeYeshuguangCycle({
       ultimateCount: 1, giftUltCount: 0, zhaoyingCountSetting: 0,
       outsideSwordGain: 0, cinemaLevel: 2, battleTime: 180, formAxis: 'full',
     })
     expect(c.guanzhiPerForm).toBe(8)
-    expect(c.feiguangScaleEach).toBeCloseTo(8 / 6)
+    expect(c.feiguangFullCasts).toBeCloseTo(8 / 6)
   })
 
-  it('短轴灭极：0命 4 飞光；2命 10 飞光；耗剑势3', () => {
-    expect(shortAxisFeiguangCount('short_pair', 0)).toBe(4)
-    expect(shortAxisFeiguangCount('short_pair', 2)).toBe(10)
+  it('短轴灭极：耗剑势3；0命观止2→飞光2/6；2命观止5→飞光5/6', () => {
     const c0 = computeYeshuguangCycle({
       ultimateCount: 1, giftUltCount: 0, zhaoyingCountSetting: 0,
       outsideSwordGain: 0, cinemaLevel: 0, battleTime: 180, formAxis: 'short_pair',
     })
     expect(c0.miePerForm).toBe(1)
     expect(c0.jiPerForm).toBe(1)
-    expect(c0.fuyaoPerForm).toBe(0)
     expect(c0.swordSpentPerForm).toBe(3)
-    expect(c0.feiguangPerForm).toBe(4)
     expect(c0.guanzhiPerForm).toBe(2)
+    expect(c0.feiguangFullCasts).toBeCloseTo(2 / 6)
     const c2 = computeYeshuguangCycle({
       ultimateCount: 1, giftUltCount: 0, zhaoyingCountSetting: 0,
       outsideSwordGain: 0, cinemaLevel: 2, battleTime: 180, formAxis: 'short_pair',
     })
-    expect(c2.feiguangPerForm).toBe(10)
-    expect(c2.guanzhiPerForm).toBe(2 + 3)
+    expect(c2.guanzhiPerForm).toBe(5)
+    expect(c2.feiguangFullCasts).toBeCloseTo(5 / 6)
   })
 
-  it('短轴仅灭：0命 5 飞光；2命 12 飞光；耗剑势2', () => {
-    expect(shortAxisFeiguangCount('short_mie', 1)).toBe(5)
-    expect(shortAxisFeiguangCount('short_mie', 6)).toBe(12)
+  it('短轴仅灭：耗剑势2，观止线性飞光', () => {
     const c = computeYeshuguangCycle({
       ultimateCount: 1, giftUltCount: 0, zhaoyingCountSetting: 0,
       outsideSwordGain: 0, cinemaLevel: 0, battleTime: 180, formAxis: 'short_mie',
@@ -112,7 +105,7 @@ describe('叶瞬光 computeYeshuguangCycle', () => {
     expect(c.miePerForm).toBe(1)
     expect(c.jiPerForm).toBe(0)
     expect(c.swordSpentPerForm).toBe(2)
-    expect(c.feiguangPerForm).toBe(5)
+    expect(c.feiguangFullCasts).toBeCloseTo(2 / 6)
   })
 
   it('C6 明灯愿：进场2+每轮1，floor/3 归尘改斩妄；附伤=轮次', () => {
@@ -155,7 +148,7 @@ describe('叶瞬光面板', () => {
 })
 
 describe('叶瞬光 buildExecutions', () => {
-  it('打满 1 喧响：灭2 极2 扶摇1 飞光2 斩妄1', () => {
+  it('打满 1 喧响：灭2 极2 扶摇1；飞光倍率=表×(2/6)，count=1', () => {
     const cfg: any = {
       yeshuguangCinemaLevel: 0, yeshuguangSwordInitial: 0, yeshuguangGiftUltCount: 0,
       yeshuguangMoveDmg: baseDmg, yeshuguangMoveTimes: baseTimes,
@@ -170,7 +163,7 @@ describe('叶瞬光 buildExecutions', () => {
     expect(cnt('1431013')).toBe(2)
     expect(cnt('1431009')).toBe(2)
     expect(cnt('1431017')).toBe(1)
-    expect(cnt('1431018')).toBe(2)
+    expect(cnt('1431018')).toBe(1)
     expect(executions.find(e => e.moveId === '1431018').damageMultiplier).toBeCloseTo(2116 * (2 / 6))
     expect(cnt('1431027')).toBe(1)
   })
@@ -193,7 +186,7 @@ describe('叶瞬光 buildExecutions', () => {
     expect(executions.find(e => e.moveId === '1431013').defIgnore ?? 0).toBe(0)
   })
 
-  it('短轴灭极 0命：灭1 极1 飞光4', () => {
+  it('短轴灭极 0命：灭1 极1；飞光=2/6 满档当量', () => {
     const cfg: any = {
       yeshuguangCinemaLevel: 0, yeshuguangSwordInitial: 0, yeshuguangGiftUltCount: 0,
       yeshuguangMoveDmg: baseDmg, yeshuguangMoveTimes: baseTimes,
@@ -208,7 +201,8 @@ describe('叶瞬光 buildExecutions', () => {
     expect(cnt('1431013')).toBe(1)
     expect(cnt('1431009')).toBe(1)
     expect(cnt('1431017')).toBe(0)
-    expect(cnt('1431018')).toBe(4)
+    expect(cnt('1431018')).toBe(1)
+    expect(executions.find(e => e.moveId === '1431018').damageMultiplier).toBeCloseTo(2116 * (2 / 6))
   })
 
   it('C6：附伤次数=轮次，满易伤集合含附伤 id', () => {
@@ -236,5 +230,12 @@ describe('局外剑势', () => {
       yeshuguangTeamCurtainCount: 2, yeshuguangAdditionalAbilityActive: 1, dodgeCounterCount: 0,
     }
     expect(computeOutsideSwordGain(cfg, { basicAttackTime: 0, exSpecialCount: 0, chainCountTotal: 0 })).toBe(12)
+  })
+  it('定风波每次 +1 剑势（文本）', () => {
+    const cfg: any = {
+      yeshuguangSwordInitial: 0, yeshuguangAtk0PerSec: 0, yeshuguangAtk0Ex: 0,
+      yeshuguangAdditionalAbilityActive: 0, dodgeCounterCount: 0,
+    }
+    expect(computeOutsideSwordGain(cfg, { basicAttackTime: 0, exSpecialCount: 3, chainCountTotal: 0 })).toBe(3)
   })
 })
