@@ -694,52 +694,48 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "影画1 反作用力：发动[特殊技]或[强化特殊技]，成功格挡敌人的攻击时，攻击者造成的伤害降低30%，持续15秒。",
-      "待人工核对后补实现，勿直接默认省略。"
+      "格挡降敌伤害30%生存向跳过"
      ]
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 以守为攻：在[特殊技]或[强化特殊技]中，成功触发格挡反击时，额外造成本300%防御力的伤害。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "格挡反击附加300%防御力，次数≈max(招架,强特)"
+     ],
+     "pending": []
     },
     {
      "cinema": 3,
      "status": "implemented_generic_skill_level",
      "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+      "通用技能等级+2"
      ],
      "pending": []
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 灵活应变：在[特殊技]或[强化特殊技]中，通过无敌效果成功格挡攻击时 ，后继反击造成的伤害提升30%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "反击段伤害+30%"
+     ],
+     "pending": []
     },
     {
      "cinema": 5,
      "status": "implemented_generic_skill_level",
      "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+      "通用技能等级+2"
      ],
      "pending": []
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 野性斗志：在[强化特殊技]中发动攻击或追加强力打击后，[普通攻击]、[冲刺攻击]、[闪避反击]造成的失衡值提升20%，持续12秒。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "普攻/冲刺/闪反失衡+20%"
+     ],
+     "pending": []
     }
    ]
   },

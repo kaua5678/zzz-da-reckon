@@ -16,7 +16,6 @@ import {
   hugoAbyssEchoMechanic,
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
-  benGuardShieldMechanic,
   nekomataPurrMechanic,
   ellenFrostChargeMechanic,
   harumasaEdgeMechanic,
@@ -120,17 +119,12 @@ describe('spec resource panel buffs', () => {
     expect(panel.stunBuildUpBonus).toBe(30)
   })
 
-  it('applies Billy hit stack damage and Ben shield crit rate', () => {
+  it('applies Billy hit stack damage', () => {
     const billyMap = resources('1081', {}, { frontlineTime: 100 })
     const billyPanel = emptyPanel()
     transform(billyHitStacksMechanic, '1081', billyPanel, billyMap)
     expect(billyPanel.dmgBonus).toBe(30)
-
-    const benMap = resources('1121', {}, { exSpecialCount: 1 })
-    const benPanel = emptyPanel()
-    const benBase = emptyPanel()
-    transform(benGuardShieldMechanic, '1121', benPanel, benMap)
-    expect(benPanel.critRate - benBase.critRate).toBe(16)
+    // 本·守卫护盾暴击改由 teammate-buffs + benMechanic 承担，见 ben.test.ts
   })
 
   it('applies Nekomata, Ellen, Harumasa, Sigrid and Koleda panel buffs', () => {

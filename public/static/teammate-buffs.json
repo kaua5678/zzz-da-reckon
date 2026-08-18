@@ -6433,5 +6433,70 @@
     }
    }
   ]
+ },
+ {
+  "id": "1121",
+  "name": {
+   "zhCN": "本"
+  },
+  "attribute": "fire",
+  "specialty": "defense",
+  "buffs": [
+   {
+    "id": "ben.additional_shield_crit_rate",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "拥有[守卫]护盾时，角色暴击率提升16%（同属性或同阵营触发；默认满覆盖）。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "ben_additional_shield_crit_rate",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "critRate",
+      "mode": "flat",
+      "value": 16,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1121",
+    "ownerName": {
+     "zhCN": "本"
+    },
+    "teammateId": "1121",
+    "teammateName": {
+     "zhCN": "本"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/ben.png"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "本｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "拥有[守卫]护盾时，角色暴击率提升16%（同属性或同阵营触发；默认满覆盖）。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/ben.png"
+  }
  }
 ]

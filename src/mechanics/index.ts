@@ -18,7 +18,7 @@ import {
   hugoAbyssEchoMechanic,
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
-  benGuardShieldMechanic,
+  // benGuardShieldMechanic 已由 agents/ben.ts 替代（全队暴击+防转攻+命座）
   ellenFrostChargeMechanic,
   harumasaEdgeMechanic,
   sigridLanceMechanic,
@@ -49,6 +49,7 @@ import { yaojiayinMechanic } from './agents/yaojiayin'
 import { nicoleMechanic } from './agents/nicole'
 import { soukakuMechanic } from './agents/soukaku'
 import { caesarMechanic } from './agents/caesar'
+import { benMechanic } from './agents/ben'
 import { agentSpecs } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
@@ -67,7 +68,7 @@ registerAgentMechanic(piperMomentumMechanic)
 registerAgentMechanic(hugoAbyssEchoMechanic)
 registerAgentMechanic(pulchraHuntStepMechanic)
 registerAgentMechanic(billyHitStacksMechanic)
-registerAgentMechanic(benGuardShieldMechanic)
+// registerAgentMechanic(benGuardShieldMechanic) — replaced by benMechanic
 registerAgentMechanic(ellenFrostChargeMechanic)
 registerAgentMechanic(harumasaEdgeMechanic)
 registerAgentMechanic(sigridLanceMechanic)
@@ -88,6 +89,7 @@ registerAgentMechanic(yaojiayinMechanic)
 registerAgentMechanic(nicoleMechanic)
 registerAgentMechanic(soukakuMechanic)
 registerAgentMechanic(caesarMechanic)
+registerAgentMechanic(benMechanic)
 registerAgentMechanic(aireProficiencyMechanic)
 registerAgentMechanic(peiluoProminenceMechanic)
 registerAgentMechanic(sethShieldMechanic)

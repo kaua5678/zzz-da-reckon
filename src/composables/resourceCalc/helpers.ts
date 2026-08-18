@@ -277,12 +277,18 @@ export function computePanelPhases(
     : false
   const caesarAdditionalActive = caesarSlot >= 0
     && (caesarFactionActive || team.some(m => m.slot !== caesarSlot && !!m.agentId))
+  const benSlot = team.find(member => member.agentId === '1121')?.slot ?? -1
+  const benAgent = benSlot >= 0 ? catalogStore.getAgent('1121') ?? null : null
+  const benAdditionalActive = benSlot >= 0
+    ? evalAdditionalAbility(team, benSlot, benAgent, getAgentSpec('1121')?.additionalAbility) === true
+    : false
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
     .filter(buff => buff.id !== 'rina.additional_electric_damage' || rinaAdditionalActive)
     .filter(buff => buff.id !== 'lighter.additional_morale_ice_fire_dmg' || lighterAdditionalActive)
     .filter(buff => buff.id !== 'nicole.additional_ether_damage' || nicoleAdditionalActive)
     .filter(buff => buff.id !== 'soukaku.additional_ice_damage' || soukakuAdditionalActive)
     .filter(buff => buff.id !== 'caesar.additional_battle_spirit_dmg' || caesarAdditionalActive)
+    .filter(buff => buff.id !== 'ben.additional_shield_crit_rate' || benAdditionalActive)
 
   const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
   for (const buff of allTeammateBuffs) {
