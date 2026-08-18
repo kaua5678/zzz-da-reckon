@@ -5,15 +5,30 @@
   "agentIds": [
     "1161"
   ],
-  "status": "not_described_not_implemented",
+  "status": "implemented_approximation",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
   "events": [],
   "verifications": [],
   "stateMachines": [],
+  "additionalAbility": {
+    "teamConditions": [
+      { "type": "specialty", "values": ["attack"] },
+      { "type": "sameFactionAsSelf" }
+    ],
+    "note": "额外能力·斗志昂扬：队伍中存在[强攻]或与自身阵营（卡吕冬之子）相同的角色时触发；[士气喷发]中普攻第五段命中叠[昂扬]，满层冰火伤按冲击力公式（硬顶75%，C2×1.2）。"
+  },
   "notes": [
-    "待录入：莱特 的机制、资源、事件与验证。"
+    "[已确认·数据] 核心被动满级：士气时间回复2.9/s + 全队普通能量消耗×0.26（用户确认：不含闪能/命破），上限100；≥80进士气喷发。喷发耗士气每10点冲击力+2%最多+20%（默认吃满）。轻拳/刺拳命中冰火抗-15%（30s，teammate-buffs）。终结一击命中溃败：失衡时长+3s（C1→+5s）。",
+    "[已确认·用户口径] 昂扬：第一次快速刺拳按冲击力实时结算层数强度，之后永续 → 默认满层；perStack=1.25+floor((impact-170)/10)*0.25，×20层硬顶75%；C2×1.2。公式挂 teammate-buffs，source 冲击力含喷发+20%。",
+    "[已确认·数据] 影画1：溃败+5s、减抗再-10%、耗尽士气强力终结伤害+30%（执行级 dmgBonus）。",
+    "[已确认·数据] 影画2：溃败失衡易伤+25%；昂扬增益×1.2（teammate-buffs）。",
+    "[已确认·数据] 影画3/5：通用技能等级+2。",
+    "[已确认·数据] 影画4：莱特后场时前场能量获得效率+10%（lighter.backstageRatio 折算，默认2/3）；进士气喷发时后场角色+4能量，18s CD。",
+    "[已确认·用户口径] 影画6：士气回复×2；火焰冲击按8s CD×战斗时长 + 每次耗尽士气强力终结额外1次；倍率250%+冲击超额每点5%最多+500%。",
+    "[近似] 士气喷发进出与逐敌火焰冲击 CD 未逐帧模拟；强力终结次数按每100士气一轮近似；普攻循环本身仍走通用秒均。",
+    "实现：src/mechanics/agents/lighter.ts + teammate-buffs.json 1161 组 + 资源迭代能量消耗回填。"
   ],
   "teamBuffs": []
 }

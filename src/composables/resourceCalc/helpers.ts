@@ -186,6 +186,15 @@ export function computePanelPhases(
     isTeammateBuffEnabled: (id) => configStore.isTeammateBuffEnabled(id),
   })
 
+  // 莱特：昂扬公式读局内冲击力；喷发耗士气冲击 +20% 需并入 source 面板，否则公式少算一层。
+  const lighterSource = sourcePanelsByOwner['1161']
+  if (lighterSource?.inCombat) {
+    lighterSource.inCombat = {
+      ...lighterSource.inCombat,
+      impact: (lighterSource.inCombat.impact ?? 0) * 1.2,
+    }
+  }
+
   // 全局 Buff（属性配置页手动添加）转 TeammateBuff 并入 calcPanel 同批 apply：
   // 修复架构问题——此前全局 atkPct 等 core stat 在 calcPanel finalize 后补 apply，
   // applyCoreStatBonus 会把"当前合并 atk（含模块/硬编码块直加的局内固定值）"当 base 重新乘百分比，
@@ -223,8 +232,14 @@ export function computePanelPhases(
   const rinaAdditionalActive = rinaSlot >= 0
     ? evalAdditionalAbility(team, rinaSlot, rinaAgent, getAgentSpec('1211')?.additionalAbility) === true
     : false
+  const lighterSlot = team.find(member => member.agentId === '1161')?.slot ?? -1
+  const lighterAgent = lighterSlot >= 0 ? catalogStore.getAgent('1161') ?? null : null
+  const lighterAdditionalActive = lighterSlot >= 0
+    ? evalAdditionalAbility(team, lighterSlot, lighterAgent, getAgentSpec('1161')?.additionalAbility) === true
+    : false
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
     .filter(buff => buff.id !== 'rina.additional_electric_damage' || rinaAdditionalActive)
+    .filter(buff => buff.id !== 'lighter.additional_morale_ice_fire_dmg' || lighterAdditionalActive)
 
   const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
   for (const buff of allTeammateBuffs) {
@@ -272,6 +287,19 @@ export function computePanelPhases(
     ))
     panel.energyRegenBonusFlat = (panel.energyRegenBonusFlat ?? 0) + 0.5 * coverage
     panel.rinaCinema4EnergyRegen = 0.5 * coverage
+  }
+  // 莱特影画4：莱特位于后场时，前场角色能量获得效率 +10%（按后场时间占比折算；莱特本人不吃）。
+  {
+    const lighterTeamSlot = configStore.team.findIndex(c => c.agentId === '1161')
+    if (lighterTeamSlot >= 0 && agent.id !== '1161') {
+      const lighterCinema = configStore.team[lighterTeamSlot]?.cinemaLevel ?? 0
+      if (lighterCinema >= 4) {
+        const ratio = Math.max(0, Math.min(1,
+          configStore.getMechanicSetting('lighter.backstageRatio', 2 / 3),
+        ))
+        panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + 10 * ratio
+      }
+    }
   }
   if (agent.id === '1531') {
     // 星徽·比利（模块 starlightBilly 的覆盖率面板块；applyPanel 阶段无 configStore，故在此施加）：

@@ -50,9 +50,8 @@ export function collectInCombatTeamBuffs(
   const enabledAgentBuffs = deps.teammateBuffGroups.flatMap(group =>
     (group.buffs ?? []).filter(buff => deps.isTeammateBuffEnabled(buff.id)),
   )
-  const modifiers = enabledAgentBuffs
-    .filter(buff => buff.id === 'rina.cinema_1.core_pen_ratio_amplify')
-    .flatMap(buff => buff.buffModifiers ?? [])
+  // 收集所有已启用 buff 上的 multiplyResolvedValue 修饰器（丽娜C1 / 莱特C2 等）
+  const modifiers = enabledAgentBuffs.flatMap(buff => buff.buffModifiers ?? [])
   for (const buff of enabledAgentBuffs) {
     const effects = (buff.effects ?? []).map(effect => {
       let resolved = effect

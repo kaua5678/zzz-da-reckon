@@ -112,7 +112,7 @@ describe('丽娜·一尘不染执行行', () => {
     expect(cfg.rinaMidnightDmg).toBeCloseTo(420.1, 5)
   })
 
-  it('buildExecutions：生成晨间/午夜清扫执行行，后台不占前台时间', () => {
+  it('buildExecutions：生成晨间（物/电各半）/午夜清扫执行行，后台不占前台时间', () => {
     const cfg: any = { rinaSweepComboDmg: 105.3 * 3, rinaMidnightDmg: 420.1 }
     const executions: any[] = []
     rinaMechanic.buildExecutions!({
@@ -120,20 +120,26 @@ describe('丽娜·一尘不染执行行', () => {
       state: { exSpecialCount: 1, chainCountTotal: 0, ultimateCount: 1, frontlineTime: 30, backstageTime: 60 },
       executions,
     } as any)
-    const sweep = executions.find(e => e.moveId === '1211023')
+    const sweepPhys = executions.find(e => e.moveId === '1211023')
+    const sweepElec = executions.find(e => e.moveId === '1211024')
     const midnight = executions.find(e => e.moveId === '1211027')
-    expect(sweep.count).toBe(9)
-    expect(sweep.damageMultiplier).toBeCloseTo(105.3 * 3, 5)
-    expect(sweep.actionTime).toBe(0)
-    expect(sweep.element).toBe('physical')
+    expect(sweepPhys.count).toBe(9)
+    expect(sweepPhys.damageMultiplier).toBeCloseTo(105.3 * 3 * 0.5, 5)
+    expect(sweepPhys.actionTime).toBe(0)
+    expect(sweepPhys.element).toBe('physical')
+    expect(sweepElec.count).toBe(9)
+    expect(sweepElec.damageMultiplier).toBeCloseTo(105.3 * 3 * 0.5, 5)
+    expect(sweepElec.element).toBe('electric')
     expect(midnight.count).toBe(1)
     expect(midnight.damageMultiplier).toBeCloseTo(420.1, 5)
     expect(midnight.element).toBe('electric')
   })
 
-  it('resolveExecutionDamage：晨间覆盖为物理，午夜固定为电，其余不干预', () => {
-    const sweep = rinaMechanic.resolveExecutionDamage!({ exec: { moveId: '1211023' } } as any)
-    expect(sweep?.element).toBe('physical')
+  it('resolveExecutionDamage：晨间物理半+电半，午夜全电，其余不干预', () => {
+    const sweepPhys = rinaMechanic.resolveExecutionDamage!({ exec: { moveId: '1211023' } } as any)
+    expect(sweepPhys?.element).toBe('physical')
+    const sweepElec = rinaMechanic.resolveExecutionDamage!({ exec: { moveId: '1211024' } } as any)
+    expect(sweepElec?.element).toBe('electric')
     const midnight = rinaMechanic.resolveExecutionDamage!({ exec: { moveId: '1211027' } } as any)
     expect(midnight?.element).toBe('electric')
     const other = rinaMechanic.resolveExecutionDamage!({ exec: { moveId: '1211009' } } as any)

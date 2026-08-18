@@ -935,54 +935,57 @@
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "溃败失衡时长 3→5 秒（applyPanel stunDurationBonusSeconds）",
+      "核心减抗额外 -10% 冰/火（teammate-buffs）",
+      "耗尽士气强力终结伤害 +30%（执行级 dmgBonus）"
+     ],
+     "pending": []
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "溃败失衡易伤 +25%（teammate-buffs stunDmgMultiplierBonus）",
+      "昂扬冰火伤 ×1.2（buffModifiers multiplyResolvedValue）"
+     ],
+     "pending": []
     },
     {
      "cinema": 3,
      "status": "implemented_generic_skill_level",
      "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+      "通用技能等级+2"
      ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
+     "pending": []
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "后场时前场能量获得效率 +10%×后场占比（helpers + lighter.backstageRatio）",
+      "进士气喷发后场角色 +4 能量 / 18s CD（资源迭代 lighterC4BurstEnergy）"
+     ],
+     "pending": []
     },
     {
      "cinema": 5,
      "status": "implemented_generic_skill_level",
      "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+      "通用技能等级+2"
      ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
+     "pending": []
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "士气回复效率 ×2",
+      "火焰冲击：8s CD×战斗时长 + 耗尽士气终结额外次数；倍率 250%+冲击超额"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "逐敌独立 CD 未建模，按单目标整场 CD 近似"
      ]
     }
    ]

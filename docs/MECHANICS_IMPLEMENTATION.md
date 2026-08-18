@@ -234,3 +234,14 @@
 - **影画6**：队友强特 → 300% 攻火伤落地炸 + 1 次回旋。
 - **模块**：`src/mechanics/agents/lucy.ts` + `lucy.json`。
 
+### 莱特（lighter / 1161）—— 击破拐力 + 士气喷发
+
+- **核心减抗**：士气喷发中轻拳/刺拳命中 → 冰火抗 -15%（teammate-buffs，默认满覆盖）。
+- **溃败**：终结一击命中 → 失衡时长 +3s（C1→+5s），`applyPanel.stunDurationBonusSeconds`。
+- **冲击力**：喷发耗士气默认吃满 +20%（`impact ×1.2`）；昂扬公式 source 冲击同步 ×1.2。
+- **昂扬**（额外能力：强攻或同阵营）：满层 `min(75, 25+floor((impact-170)/10)*5)`；C2×1.2；用户口径首次刺拳后永续。
+- **士气**：2.9/s + 全队普通能量消耗×0.26（**不含闪能**）；C6×2；喷发/强力终结按每 100 点一轮。
+- **影画4**：后场→前场能量获得效率 +10%×`lighter.backstageRatio`；喷发后场 +4 能/18s CD。
+- **影画6**：火焰冲击按 8s CD + 耗尽士气额外次数。
+- **模块**：`src/mechanics/agents/lighter.ts` + `lighter.json`。
+

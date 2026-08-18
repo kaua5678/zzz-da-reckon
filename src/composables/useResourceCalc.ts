@@ -1,6 +1,7 @@
 import { YESHUGUANG_FULL_STUN_MOVES } from '@/mechanics/agents/yeshuguang'
 import { applyLucyTeamEnergyFlags } from '@/mechanics/agents/lucy'
 import { applyRinaTeamEnergyFlags } from '@/mechanics/agents/rina'
+import { applyLighterTeamEnergyFlags, estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
 import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -139,6 +140,18 @@ export function useResourceCalc() {
     // 支援角色终结技邻位回能写入各槽位 cfg。
     applyLucyTeamEnergyFlags(characters)
     applyRinaTeamEnergyFlags(characters)
+    // 莱特：后场占比设置；全队能量消耗与 C4 喷发回能在 runCalcRound 收敛环注入。
+    {
+      const lighterCfg = characters.find(c => c.agentId === '1161')
+      if (lighterCfg) {
+        const ratio = Math.max(0, Math.min(1, configStore.getMechanicSetting('lighter.backstageRatio', 2 / 3)))
+        ;(lighterCfg as any).lighterBackstageRatio = ratio
+        applyLighterTeamEnergyFlags(characters, {
+          exCounts: characters.map(() => 0),
+          combatTime: 180,
+        })
+      }
+    }
 
     // 橘福福额外能力·八面威风：队伍有强攻/命破时，这些角色每次终结技 +300 喧响
     // （仪玄青溟云影走 ultimateCount；符法千重在收敛环用上一轮次数注入，见下方 1371 分支）。
@@ -670,7 +683,7 @@ function applyNormaHatChain(
     return out
   }
 
-  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0): {
+  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0): {
     resourceResult: TeamResourceResult
     stunPool: StunPoolResult | null
     anomalyPool: AnomalyPoolResult | null
@@ -688,6 +701,7 @@ function applyNormaHatChain(
     teamUltimateForJufufu: number
     yeshuguangGiftUlt: number
     lucyTeammateEx: number
+    lighterTeamEnergy: number
   } | null {
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
@@ -986,8 +1000,26 @@ function applyNormaHatChain(
           lucyTeammateExTotal: prevLucyTeammateEx,
         }
       }
+      if (merged.agentId === '1161') {
+        const ratio = Math.max(0, Math.min(1, configStore.getMechanicSetting('lighter.backstageRatio', 2 / 3)))
+        return {
+          ...merged,
+          lighterBackstageRatio: ratio,
+          lighterTeamEnergyConsumed: Math.max(0, prevLighterTeamEnergy || 0),
+        }
+      }
       return merged
     })
+    // 莱特 C4/士气：用上一轮能量消耗重算喷发回能标记（写入各槽 lighterC4BurstEnergy）
+    {
+      const lighterCfg = characters.find(c => c.agentId === '1161')
+      if (lighterCfg) {
+        applyLighterTeamEnergyFlags(characters, {
+          combatTime: base.totalTime ?? 180,
+          teamEnergyConsumed: Math.max(0, prevLighterTeamEnergy || 0),
+        })
+      }
+    }
     // 特殊动作喧响奖励（弹刀215/闪反10/连携10/快支20，含伴随50%）：本轮即时结算——
     // 输入只有用户配置的次数与连携数（= chainCountTotalOverride ?? chainCountPerStun × stunCount），无 ultimateCount 反馈环
     const perSlotChainForBonus = [0, 0, 0]
@@ -1156,6 +1188,22 @@ function applyNormaHatChain(
       }
     }
 
+    // 莱特：下一轮注入全队普通能量消耗（强特次数×耗能，排除闪能/命破）
+    let lighterTeamEnergyNext = 0
+    {
+      const lighterCfg = characters.find(c => c.agentId === '1161')
+      if (lighterCfg) {
+        const exByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.exSpecialCount ?? 0]))
+        const exCounts = characters.map(c => Math.max(0, exByAgent.get(c.agentId) ?? 0))
+        lighterTeamEnergyNext = estimateTeamNormalEnergyConsumed(characters, exCounts)
+        applyLighterTeamEnergyFlags(characters, {
+          exCounts,
+          combatTime: base.totalTime ?? 180,
+          teamEnergyConsumed: lighterTeamEnergyNext,
+        })
+      }
+    }
+
     return {
       resourceResult: rrShown,
       stunPool: sp1.pool,
@@ -1174,6 +1222,7 @@ function applyNormaHatChain(
       teamUltimateForJufufu: teamUltimateForJufufuNext,
       yeshuguangGiftUlt: yeshuguangGiftUltNext,
       lucyTeammateEx: lucyTeammateExNext,
+      lighterTeamEnergy: lighterTeamEnergyNext,
     }
   }
 
@@ -1195,6 +1244,7 @@ function applyNormaHatChain(
     let prevTeamUltimateForJufufu = 0
     let prevYeshuguangGiftUlt = 0
     let prevLucyTeammateEx = 0
+    let prevLighterTeamEnergy = 0
     let prevAnomalyDecibelBonus: number[] = []
     let prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }
     let prevUltSeq = ''
@@ -1202,7 +1252,7 @@ function applyNormaHatChain(
     let prevTopUpSeq = ''
     const seenStunCounts = new Set<number>()
     for (let k = 0; k < MAX_OUTER_ITER; k++) {
-      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx)
+      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy)
       const ait = out?.auricInkTriggerCount ?? 0
       const gr = out?.goodReview
       if (gr !== undefined && gr >= 0) prevGoodReview = gr
@@ -1231,6 +1281,7 @@ function applyNormaHatChain(
       prevTeamUltimateForJufufu = out?.teamUltimateForJufufu ?? 0
       prevYeshuguangGiftUlt = out?.yeshuguangGiftUlt ?? 0
       prevLucyTeammateEx = out?.lucyTeammateEx ?? 0
+      prevLighterTeamEnergy = out?.lighterTeamEnergy ?? 0
       prevUltSeq = ultSeq
       prevAnomalySeq = anomalySeq
       prevTopUpSeq = topUpSeq

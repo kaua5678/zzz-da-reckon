@@ -730,7 +730,12 @@ export function iterate(
         lucyEnergy += spinEst * 2
       }
     }
-    const totalEnergy = energySrc.total + supportUlt + teamUltFlash + rinaEnergy + lucyEnergy
+    // 莱特影画4：进士气喷发时后场角色 +4 能量（18s CD，总额预写入 cfg.lighterC4BurstEnergy）
+    const lighterC4Energy = (() => {
+      const x = Number((cfg as any).lighterC4BurstEnergy ?? 0)
+      return Number.isFinite(x) && x > 0 ? x : 0
+    })()
+    const totalEnergy = energySrc.total + supportUlt + teamUltFlash + rinaEnergy + lucyEnergy + lighterC4Energy
     energies.push(totalEnergy)
 
     // 强特次数 = 总能量 ÷ 强特消耗（伊德海莉失衡内由轴连段反推，剩余打非失衡强特）

@@ -3087,7 +3087,7 @@
      "zhCN": "核心被动（F级）"
     },
     "description": {
-     "zhCN": "莱特进入[士气喷发]状态后，[轻拳]、[重拳]及终结一击命中敌人时，使目标的冰属性伤害抗性和火属性伤害抗性降低15%，持续30秒。"
+     "zhCN": "[士气喷发]状态下，轻拳起攻或刺拳连击命中敌人时，目标冰/火抗性降低15%，持续30秒。默认整局覆盖。"
     },
     "scope": "inCombat",
     "effects": [
@@ -3147,7 +3147,7 @@
      "zhCN": "莱特｜核心被动（F级）"
     },
     "conditionLabel": {
-     "zhCN": "莱特进入[士气喷发]状态后，[轻拳]、[重拳]及终结一击命中敌人时，使目标的冰属性伤害抗性和火属性伤害抗性降低15%，持续30秒。"
+     "zhCN": "[士气喷发]状态下，轻拳起攻或刺拳连击命中敌人时，目标冰/火抗性降低15%，持续30秒。默认整局覆盖。"
     }
    },
    {
@@ -3156,24 +3156,33 @@
      "zhCN": "额外能力"
     },
     "description": {
-     "zhCN": "队伍中任意角色消耗或回复[士气]时，全队获得[昂扬]，每层提升冰属性伤害与火属性伤害；按满层且冲击力满足上限折算，最高提升75%。"
+     "zhCN": "[士气喷发]中普攻第五段命中叠[昂扬]（最多20层）；每层冰火伤+1.25%，冲击力>170时每超10点每层再+0.25%，硬顶75%。用户口径：首次刺拳实时结算后永续，按莱特局内冲击力（含喷发+20%）满层计算。"
     },
     "scope": "inCombat",
     "effects": [
      {
       "id": "lighter_additional_ice_dmg",
-      "type": "derived",
+      "type": "formula",
       "target": {
        "kind": "default"
       },
       "stat": "iceDmg",
       "mode": "flat",
-      "sourceLabel": {
-       "zhCN": "冰属性伤害"
+      "source": {
+       "variable": "x",
+       "label": {
+        "zhCN": "莱特局内冲击力"
+       },
+       "defaultValue": 204,
+       "min": 100,
+       "max": 400
       },
-      "defaultSourceValue": 75,
-      "ratio": 100,
-      "cap": 75,
+      "formula": {
+       "expression": "min(75, 25 + floor(max(0, x - 170) / 10) * 5)",
+       "valueUnit": "storedPercent"
+      },
+      "sourceStat": "impact",
+      "sourcePanelPhase": "inCombat",
       "coverage": {
        "default": 1,
        "min": 0,
@@ -3183,18 +3192,27 @@
      },
      {
       "id": "lighter_additional_fire_dmg",
-      "type": "derived",
+      "type": "formula",
       "target": {
        "kind": "default"
       },
       "stat": "fireDmg",
       "mode": "flat",
-      "sourceLabel": {
-       "zhCN": "火属性伤害"
+      "source": {
+       "variable": "x",
+       "label": {
+        "zhCN": "莱特局内冲击力"
+       },
+       "defaultValue": 204,
+       "min": 100,
+       "max": 400
       },
-      "defaultSourceValue": 75,
-      "ratio": 100,
-      "cap": 75,
+      "formula": {
+       "expression": "min(75, 25 + floor(max(0, x - 170) / 10) * 5)",
+       "valueUnit": "storedPercent"
+      },
+      "sourceStat": "impact",
+      "sourcePanelPhase": "inCombat",
       "coverage": {
        "default": 1,
        "min": 0,
@@ -3226,7 +3244,7 @@
      "zhCN": "莱特｜额外能力"
     },
     "conditionLabel": {
-     "zhCN": "队伍中任意角色消耗或回复[士气]时，全队获得[昂扬]，每层提升冰属性伤害与火属性伤害；按满层且冲击力满足上限折算，最高提升75%。"
+     "zhCN": "[士气喷发]中普攻第五段命中叠[昂扬]（最多20层）；每层冰火伤+1.25%，冲击力>170时每超10点每层再+0.25%，硬顶75%。用户口径：首次刺拳实时结算后永续，按莱特局内冲击力（含喷发+20%）满层计算。"
     }
    },
    {
@@ -3235,7 +3253,7 @@
      "zhCN": "影画一"
     },
     "description": {
-     "zhCN": "[核心被动]施加的冰属性伤害抗性与火属性伤害抗性降低效果额外提升10%。"
+     "zhCN": "影画1：核心被动减抗额外-10%（合计冰火抗-25%）；溃败失衡时长提升至5秒（模块 applyPanel）。"
     },
     "scope": "inCombat",
     "effects": [
@@ -3295,7 +3313,7 @@
      "zhCN": "莱特｜影画一"
     },
     "conditionLabel": {
-     "zhCN": "[核心被动]施加的冰属性伤害抗性与火属性伤害抗性降低效果额外提升10%。"
+     "zhCN": "影画1：核心被动减抗额外-10%（合计冰火抗-25%）；溃败失衡时长提升至5秒（模块 applyPanel）。"
     }
    },
    {
@@ -3304,7 +3322,7 @@
      "zhCN": "影画二"
     },
     "description": {
-     "zhCN": "[溃败]使目标的失衡易伤倍率提升25%；[额外能力]中[昂扬]的冰属性伤害与火属性伤害增益提升至原本的120%。"
+     "zhCN": "影画2：溃败使目标失衡易伤倍率+25%；[昂扬]冰火伤增益提升至原本的120%。"
     },
     "scope": "inCombat",
     "effects": [
@@ -3377,7 +3395,7 @@
      "zhCN": "莱特｜影画二"
     },
     "conditionLabel": {
-     "zhCN": "[溃败]使目标的失衡易伤倍率提升25%；[额外能力]中[昂扬]的冰属性伤害与火属性伤害增益提升至原本的120%。"
+     "zhCN": "影画2：溃败使目标失衡易伤倍率+25%；[昂扬]冰火伤增益提升至原本的120%。"
     }
    }
   ],

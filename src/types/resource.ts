@@ -1370,6 +1370,14 @@ export interface CharacterOperationConfig {
   lucyC1Enabled?: number
   /** 露西：队友强特合计（编排注入） */
   lucyTeammateExTotal?: number
+  /** 莱特：全队普通能量消耗（士气能量来源；编排注入，不含闪能） */
+  lighterTeamEnergyConsumed?: number
+  /** 莱特影画等级（模块缓存） */
+  lighterCinemaLevel?: number
+  /** 莱特影画4：喷发时给后场角色的能量总额（次数×4，18s CD） */
+  lighterC4BurstEnergy?: number
+  /** 莱特后场时间占比（影画4 前场效率覆盖） */
+  lighterBackstageRatio?: number
   /** 叶瞬光：队友整局帷幕次数（也可 setting 滑块） */
   yeshuguangTeamCurtainCount?: number
   /** 仪玄·2连墨痕化形次数（主页交互栏；#1+#3，40闪能/次） */
