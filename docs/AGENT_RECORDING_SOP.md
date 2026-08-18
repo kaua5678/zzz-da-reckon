@@ -94,3 +94,90 @@ const pN = computePanelPhases(0, config, catalog)!.inCombat
 expect(pN.critDmg - p0.critDmg).toBe(90)        // 例：星徽·比利核心被动暴伤（0→1命应看到 enemyPhysicalResReduction +18 等）
 expect(pN.enemyPhysicalResReduction - p0.enemyPhysicalResReduction).toBe(18)
 ```
+
+## 6. 拐力 / 快录清单（莱特·妮可·苍角·凯撒实证）
+
+> 目标：已有 `teammate-buffs` 草稿的支援/防护，1～2 小时内可验证交付。
+
+### 6.1 拐力双轨：何时改哪边
+
+| 情况 | 做法 |
+|---|---|
+| `teammate-buffs.json` 已有该角色完整 buff 组 | **优先修/用现成 buff**（改 description、formula、cap、defaultStacks）；再补门控与薄模块 |
+| 草稿没有 / 错 id / 要新命座拐 | 录 **spec `teamBuffs`**（`source.zhCN` 写「影画X」自动命座门控），由 `mergeSpecTeamBuffs` 合并 |
+| 同一效果两边都有 | **不要双写**；保留一侧，另一侧 `hidden` 或删除 |
+
+`source` 写「影画一」…「影画六」→ `syncTeammateBuffsFromTeam` 按影画等级启停。核心/额外能力不写影画字样。
+
+### 6.2 额外能力标准接线（漏了就永远开着）
+
+1. spec `additionalAbility.teamConditions`（`sameAttributeAsSelf` / `sameFactionAsSelf` / `specialty`…）
+2. `computePanelPhases` 里 `evalAdditionalAbility(...)`
+3. **按 buff id 过滤**启用的 teammate buff，例如：
+   - `nicole.additional_ether_damage`
+   - `soukaku.additional_ice_damage`
+   - `lighter.additional_morale_ice_fire_dmg`
+   - `caesar.additional_battle_spirit_dmg`（凯撒另：有队友即近似「可招架支援」）
+4. 模块侧可读 `panel.additionalAbilityActive`
+
+只写第 1 步不做第 3 步 = 条件文本存在但计算不关门。
+
+### 6.3 `buffModifiers`（×1.2 / ×1.5）
+
+- 挂在**命座 buff**上，`operation: multiplyResolvedValue`，`targetBuffIds` / `targetEffectIds` 指向核心条。
+- 收集端扫**全部**已启用 buff 的 modifiers（不要写死某个 id）。
+- 测 C2：断言 `c2.field - c0.field` 等于放大后的差分（例：凯撒 1000→1500 差分 +500，不是绝对值 1500）。
+
+### 6.4 `hidden` buff
+
+- `hidden: true` 的条**不得**再进 `collectInCombatTeamBuffs`（已过滤）。
+- 若改由 `helpers` 手写数值（耀嘉音咏叹随技能等级）：notes 写清「本条 hidden，数值在 helpers」；**禁止** hidden 仍带 effects 又 helpers 再加一遍。
+
+### 6.5 公式读技能等级 `s` / 源面板
+
+- formula 里 `s` = `dynamicSkillLevel` = `12 + source.skillLevelBonus`。
+- 3/5 命要涨数值时：在 `buildTeammateBuffSourceContext` 之后给 `sourcePanelsByOwner[agentId].outOfCombat/inCombat.skillLevelBonus` 写入 2/4。
+- 冲击力等「先自身加成再给队友公式」：先改 source 面板再 `calcPanel`（莱特喷发 impact×1.2）。
+
+### 6.6 邻位回能模板（终结 +10 / 下一位再 +20）
+
+1. 纯函数 `assignXxxUltNeighborEnergy(slots, selfSlot)` → 三人 30/10，两人 30  
+2. `applyXxxTeamEnergyFlags(characters)` 写 `cfg.xxxEnergyPerXxxUlt`  
+3. `useResourceCalc` 组队后调用 apply  
+4. `calcXxxUltEnergy` 在 iterate 能量总和里 `+ per × ultimateCount`  
+（丽娜 / 露西 / 苍角同款）
+
+### 6.7 能量口径
+
+| 点 | 规则 |
+|---|---|
+| 普通能量 vs 闪能 | `cfg.isFlashUser === true` 的消耗**不要**计入「全队能量消耗」类机制（莱特士气） |
+| `exSpecialEnergyConsume = 0` | `resolveExSpecialCount` **恒返回 0**；和弦/士气等自管耗能时必须关掉通用强特 |
+| CD 回能整局近似 | `floor(battleTime / cd) × amount` 并入 `initialEnergyGift`（妮可 C2、莱特 C4 喷发定额等） |
+
+### 6.8 「简单角色」快录路径
+
+1. 读 nanoka 原文满级被动 + 影画；对照 `teammate-buffs` 组是否已有  
+2. 修 buff 文案/公式；补 `additionalAbility` + helpers 过滤  
+3. 薄 `src/mechanics/agents/<id>.ts`：只做草稿没有的（执行级增伤、邻位回能、转模、C6）  
+4. `mechanics/index.ts` 注册  
+5. 测试：纯函数 + 面板差分 +（如有）执行行 `moveId`  
+6. `character-constellations.json` 更新该 id 状态；`MECHANICS_IMPLEMENTATION.md` 加一小节  
+7. `npm test -- <file>` + `npm run typecheck` → commit/push  
+
+范围扩大/无敌/护盾吸收量等**无乘区**效果：constellations 标 skip/pending，不要假装进伤害。
+
+### 6.9 改静态 JSON 纪律
+
+- **禁止**对 `teammate-buffs.json` / `catalog.json` / `character-constellations.json` 整文件重 dump 改缩进。  
+- 只改目标 `group id` / `buff id` / `characters[id]`。  
+- 改完用脚本确认：`changed groups/chars` 只有预期 id。
+
+## 7. 测试卫生（面板断言）
+
+1. **stub fetch** 三个 static：`catalog.json` / `teammate-buffs.json` / `build-recommendations.json`  
+2. **关掉默认全局危局** `globalBuffs`（默认常带 `dmgBonus +15`，会污染绝对值）  
+3. 优先 **差分**：`inCombat - outOfCombat`、`cinema N - cinema 0`  
+4. 队友自带 buff 时不要 `expect(etherDmg).toBe(0)` 这类绝对值；用「相对局外增量」  
+5. 额外能力负例：选**不同属性且不同阵营**的队友  
+6. 执行级：只 assert `moveId`，不 assert 回填后的 name/note  
