@@ -1,0 +1,90 @@
+{
+  "id": "preset-1471-1571-1451",
+  "name": "常规",
+  "team": [
+    "1471",
+    "1571",
+    "1451"
+  ],
+  "note": "般岳+诺姆+卢西娅：每窗 2 个失衡连携（1471020 前两个）+ 1 个诺姆赠送连携（1471020 sourceTag='gift' 怒焰·赠块，不占般岳连携次数）；赠送次数由膛温自动决定 floor(膛温/80)（接战 180×1.5=270，帽子后场同速积蓄），块标记其中吃失衡易伤的数量。",
+  "axes": [
+    {
+      "name": "常规",
+      "actions": [
+        {
+          "slot": 0,
+          "moveId": "1471020",
+          "count": 1
+        },
+        {
+          "slot": 0,
+          "moveId": "banyue-combo",
+          "count": 1,
+          "startTime": 2.4
+        },
+        {
+          "slot": 0,
+          "moveId": "1471020",
+          "count": 1,
+          "startTime": 3.5
+        },
+        {
+          "slot": 0,
+          "moveId": "banyue-combo",
+          "count": 1,
+          "startTime": 5.9
+        },
+        {
+          "slot": 0,
+          "moveId": "1471020",
+          "count": 1,
+          "startTime": 7,
+          "sourceTag": "gift"
+        },
+        {
+          "slot": 0,
+          "moveId": "1471009",
+          "count": 1,
+          "startTime": 9.4
+        },
+        {
+          "slot": 0,
+          "moveId": "1471010",
+          "count": 1,
+          "startTime": 11.2
+        },
+        {
+          "slot": 0,
+          "moveId": "1471021",
+          "count": 1,
+          "startTime": 12.6
+        },
+        {
+          "slot": 0,
+          "moveId": "1471015",
+          "count": 1,
+          "startTime": 15
+        },
+        {
+          "slot": 0,
+          "moveId": "1471016",
+          "count": 1,
+          "startTime": 15.6
+        },
+        {
+          "slot": 0,
+          "moveId": "1471015",
+          "count": 1,
+          "startTime": 16.1
+        },
+        {
+          "slot": 0,
+          "moveId": "1471016",
+          "count": 1,
+          "startTime": 16.7
+        }
+      ],
+      "basicFillerSlot": 0
+    }
+  ]
+}

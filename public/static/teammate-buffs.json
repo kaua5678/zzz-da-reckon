@@ -1,0 +1,6415 @@
+[
+ {
+  "id": "1491",
+  "name": {
+   "zhCN": "千夏"
+  },
+  "attribute": "physical",
+  "specialty": "support",
+  "buffs": [
+   {
+    "id": "buff_j8kf2r9m4q",
+    "source": {
+     "zhCN": "核心被动"
+    },
+    "description": {
+     "zhCN": "处于「天使协律」状态下的角色的攻击力提升，提升数值等同于千夏30%初始攻击力，最高不超过1050点。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_d4n8q2lm",
+      "type": "derived",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "sourceLabel": {
+       "zhCN": "千夏初始攻击力"
+      },
+      "defaultSourceValue": 3500,
+      "ratio": 30,
+      "cap": 1050,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "atk",
+      "sourcePanelPhase": "outOfCombat"
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1491",
+    "ownerName": {
+     "zhCN": "千夏"
+    },
+    "teammateId": "1491",
+    "teammateName": {
+     "zhCN": "千夏"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/qianxia.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/4/46/gidrjjm8ujx5v07rwaofdyjzhwzzfjk.png"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动"
+    },
+    "name": {
+     "zhCN": "千夏｜核心被动"
+    },
+    "conditionLabel": {
+     "zhCN": "处于「天使协律」状态下的角色的攻击力提升，提升数值等同于千夏30%初始攻击力，最高不超过1050点。"
+    }
+   },
+   {
+    "id": "buff_23620b7000",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "处于「以太帷幕·妄想重奏」内的角色攻击命中敌人时，目标的失衡易伤倍率提升30%，持续40秒"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_3e2511fe0a",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonus",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "hidden": false,
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1491",
+    "ownerName": {
+     "zhCN": "千夏"
+    },
+    "teammateId": "1491",
+    "teammateName": {
+     "zhCN": "千夏"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/qianxia.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/4/46/gidrjjm8ujx5v07rwaofdyjzhwzzfjk.png"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "千夏｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "处于「以太帷幕·妄想重奏」内的角色攻击命中敌人时，目标的失衡易伤倍率提升30%，持续40秒"
+    }
+   },
+   {
+    "id": "buff_v6p3n8x2la",
+    "source": {
+     "zhCN": "强化特殊技"
+    },
+    "description": {
+     "zhCN": "「以太帷幕·妄想重奏」生效期间，全队角色攻击力额外提升50点，持续40秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_p7vx3k9a",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "value": 50,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1491",
+    "ownerName": {
+     "zhCN": "千夏"
+    },
+    "teammateId": "1491",
+    "teammateName": {
+     "zhCN": "千夏"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/qianxia.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/4/46/gidrjjm8ujx5v07rwaofdyjzhwzzfjk.png"
+    },
+    "sourceLabel": {
+     "zhCN": "强化特殊技"
+    },
+    "name": {
+     "zhCN": "千夏｜强化特殊技"
+    },
+    "conditionLabel": {
+     "zhCN": "「以太帷幕·妄想重奏」生效期间，全队角色攻击力额外提升50点，持续40秒。"
+    }
+   },
+   {
+    "id": "qianxia.cinema_1.cat_gaze_def_reduction",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "「猫的凝视」触发并命中敌人时，使目标的防御力降低7%，持续40秒，最多叠加3层，每层效果单独结算持续时间。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "qianxia_cinema_1_enemy_def_reduction",
+      "type": "stacked",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyDefReduction",
+      "mode": "flat",
+      "valuePerStack": 7,
+      "maxStacks": 3,
+      "defaultStacks": 3,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1491",
+    "ownerName": {
+     "zhCN": "千夏"
+    },
+    "teammateId": "1491",
+    "teammateName": {
+     "zhCN": "千夏"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/qianxia.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/4/46/gidrjjm8ujx5v07rwaofdyjzhwzzfjk.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "千夏｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "「猫的凝视」触发并命中敌人时，使目标的防御力降低7%，持续40秒，最多叠加3层，每层效果单独结算持续时间。"
+    }
+   },
+   {
+    "id": "qianxia.cinema_2.aether_curtain_atk_pct",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "千夏处于任意「以太帷幕」内时，使全队角色攻击力提升10%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "qianxia_cinema_2_team_atk_pct",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkPct",
+      "mode": "pct",
+      "basis": "outOfCombatAtk",
+      "value": 10,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1491",
+    "ownerName": {
+     "zhCN": "千夏"
+    },
+    "teammateId": "1491",
+    "teammateName": {
+     "zhCN": "千夏"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/qianxia.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/4/46/gidrjjm8ujx5v07rwaofdyjzhwzzfjk.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "千夏｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "千夏处于任意「以太帷幕」内时，使全队角色攻击力提升10%。"
+    }
+   },
+   {
+    "id": "qianxia.cinema_4.ultimate_team_dmg_bonus",
+    "source": {
+     "zhCN": "影画四"
+    },
+    "description": {
+     "zhCN": "千夏发动「终结技」时，使全队角色造成的伤害提升18%，持续60秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "qianxia_cinema_4_team_dmg_bonus",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 18,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1491",
+    "ownerName": {
+     "zhCN": "千夏"
+    },
+    "teammateId": "1491",
+    "teammateName": {
+     "zhCN": "千夏"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/qianxia.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/4/46/gidrjjm8ujx5v07rwaofdyjzhwzzfjk.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画四"
+    },
+    "name": {
+     "zhCN": "千夏｜影画四"
+    },
+    "conditionLabel": {
+     "zhCN": "千夏发动「终结技」时，使全队角色造成的伤害提升18%，持续60秒。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/qianxia.png",
+   "source": "https://patchwiki.biligame.com/images/zzz/4/46/gidrjjm8ujx5v07rwaofdyjzhwzzfjk.png"
+  }
+ },
+ {
+  "id": "1481",
+  "name": {
+   "zhCN": "琉音"
+  },
+  "attribute": "physical",
+  "specialty": "stun",
+  "buffs": [
+   {
+    "id": "buff_6646686e01",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "发动[强化特殊技]或[终结技]时全队角色获得[好评如潮]效果，[好评如潮]状态下的角色造成的伤害提升40%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_2690c691d0",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 40,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "effect_8615efa7f4",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonus",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1481",
+    "ownerName": {
+     "zhCN": "琉音"
+    },
+    "teammateId": "1481",
+    "teammateName": {
+     "zhCN": "琉音"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/liuyin.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/f/f4/ootwjjl52b9idun1izgsm6nfzyc06gh.png"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "琉音｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "发动[强化特殊技]或[终结技]时全队角色获得[好评如潮]效果，[好评如潮]状态下的角色造成的伤害提升40%。"
+    }
+   },
+   {
+    "id": "buff_81803b7f10",
+    "source": {
+     "zhCN": "核心被动"
+    },
+    "description": {
+     "zhCN": "「恶意投诉」效果下敌人进入失衡状态后的失衡持续时间提升2秒，失衡易伤倍率提升30%"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_323da6c809",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonus",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "hidden": false,
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1481",
+    "ownerName": {
+     "zhCN": "琉音"
+    },
+    "teammateId": "1481",
+    "teammateName": {
+     "zhCN": "琉音"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/liuyin.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/f/f4/ootwjjl52b9idun1izgsm6nfzyc06gh.png"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动"
+    },
+    "name": {
+     "zhCN": "琉音｜核心被动"
+    },
+    "conditionLabel": {
+     "zhCN": "「恶意投诉」效果下敌人进入失衡状态后的失衡持续时间提升2秒，失衡易伤倍率提升30%"
+    }
+   },
+   {
+    "id": "liuyin.cinema_1.good_review_res_ignore",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "「好评如潮」状态下的角色无视敌人15%全属性伤害抗性。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "liuyin_cinema_1_all_res_ignore",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyResReduction",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1481",
+    "ownerName": {
+     "zhCN": "琉音"
+    },
+    "teammateId": "1481",
+    "teammateName": {
+     "zhCN": "琉音"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/liuyin.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/f/f4/ootwjjl52b9idun1izgsm6nfzyc06gh.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "琉音｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "「好评如潮」状态下的角色无视敌人15%全属性伤害抗性。"
+    }
+   },
+   {
+    "id": "liuyin.cinema_2.complaint_damage_bonus",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "「恶意投诉」效果下敌人进入失衡状态后的失衡易伤倍率额外提升20%，所有单位对「恶意投诉」效果下的敌人造成的伤害提升15%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "liuyin_cinema_2_damage_bonus",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "effect_f0feb08e96",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonus",
+      "mode": "flat",
+      "value": 20,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1481",
+    "ownerName": {
+     "zhCN": "琉音"
+    },
+    "teammateId": "1481",
+    "teammateName": {
+     "zhCN": "琉音"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/liuyin.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/f/f4/ootwjjl52b9idun1izgsm6nfzyc06gh.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "琉音｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "「恶意投诉」效果下敌人进入失衡状态后的失衡易伤倍率额外提升20%，所有单位对「恶意投诉」效果下的敌人造成的伤害提升15%。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/liuyin.png",
+   "source": "https://patchwiki.biligame.com/images/zzz/f/f4/ootwjjl52b9idun1izgsm6nfzyc06gh.png"
+  }
+ },
+ {
+  "id": "1341",
+  "name": {
+   "zhCN": "照"
+  },
+  "attribute": "ice",
+  "specialty": "defense",
+  "buffs": [
+   {
+    "id": "buff_7a09645b2f",
+    "source": {
+     "zhCN": "核心被动"
+    },
+    "description": {
+     "zhCN": "「以太帷幕·涌泉」生效期间，全队角色最大生命值提升5%，持续40秒。\n照开启「以太帷幕·涌泉」时，使全队角色的攻击力提升1000点，持续50秒；\n照处于任意「以太帷幕」中时，使全队造成的伤害提升10%，照的初始最大生命值高于15000点时，每超过400点初始最大生命值，可使增伤效果额外提升1%，初始效果与额外提升最大总共提升至40%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_2b727bb5b2",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "hpPct",
+      "mode": "pct",
+      "basis": "outOfCombatHp",
+      "value": 5,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "effect_0400b55f89",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "value": 1000,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "effect_zhao_hp_to_dmg",
+      "type": "formula",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "source": {
+       "variable": "x",
+       "label": {
+        "zhCN": "照的初始最大生命值"
+       },
+       "defaultValue": 27000,
+       "min": 15000,
+       "max": 27000
+      },
+      "formula": {
+       "expression": "clamp(floor((x - 15000) / 400) + 10, 10, 40)",
+       "valueUnit": "storedPercent"
+      },
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "hp",
+      "sourcePanelPhase": "outOfCombat"
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1341",
+    "ownerName": {
+     "zhCN": "照"
+    },
+    "teammateId": "1341",
+    "teammateName": {
+     "zhCN": "照"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/zhao.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/a/a7/4x6ftmp0p7f3aiy07e2c05ramfc0gr7.png"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动"
+    },
+    "name": {
+     "zhCN": "照｜核心被动"
+    },
+    "conditionLabel": {
+     "zhCN": "「以太帷幕·涌泉」生效期间，全队角色最大生命值提升5%，持续40秒。\n照开启「以太帷幕·涌泉」时，使全队角色的攻击力提升1000点，持续50秒；\n照处于任意「以太帷幕」中时，使全队造成的伤害提升10%，照的初始最大生命值高于15000点时，每超过400点初始最大生命值，可使增伤效果额外提升1%，初始效果与额外提升最大总共提升至40%。"
+    }
+   },
+   {
+    "id": "zhao.cinema_1.off_field_res_ignore",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "照被切换为非当前操作角色时，使全队角色造成的伤害无视目标15%属性伤害抗性，持续50秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "zhao_cinema_1_res_ignore_as_res_reduction",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyResReduction",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1341",
+    "ownerName": {
+     "zhCN": "照"
+    },
+    "teammateId": "1341",
+    "teammateName": {
+     "zhCN": "照"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/zhao.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/a/a7/4x6ftmp0p7f3aiy07e2c05ramfc0gr7.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "照｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "照被切换为非当前操作角色时，使全队角色造成的伤害无视目标15%属性伤害抗性，持续50秒。"
+    }
+   },
+   {
+    "id": "zhao.cinema_2.heal_team_atk_pct",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "照的生命值回复时，提升20%攻击力，并使队伍中其他角色提升15%攻击力，持续50秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "zhao_cinema_2_team_atk_pct",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkPct",
+      "mode": "pct",
+      "basis": "outOfCombatAtk",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1341",
+    "ownerName": {
+     "zhCN": "照"
+    },
+    "teammateId": "1341",
+    "teammateName": {
+     "zhCN": "照"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/zhao.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/a/a7/4x6ftmp0p7f3aiy07e2c05ramfc0gr7.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "照｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "照的生命值回复时，提升20%攻击力，并使队伍中其他角色提升15%攻击力，持续50秒。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/zhao.png",
+   "source": "https://patchwiki.biligame.com/images/zzz/a/a7/4x6ftmp0p7f3aiy07e2c05ramfc0gr7.png"
+  }
+ },
+ {
+  "id": "1511",
+  "name": {
+   "zhCN": "南宫羽"
+  },
+  "attribute": "ether",
+  "specialty": "stun",
+  "buffs": [
+   {
+    "id": "buff_1f08564414",
+    "source": {
+     "zhCN": "核心被动"
+    },
+    "description": {
+     "zhCN": "南宫羽的「普通攻击」或「强化特殊技」命中敌人时，使全队造成的伤害提升25%，持续30秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_884161bbba",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 25,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "nangongyu",
+    "ownerName": {
+     "zhCN": "南宫羽"
+    },
+    "teammateId": "nangongyu",
+    "teammateName": {
+     "zhCN": "南宫羽"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/nangongyu.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/6/61/m3sghl98vjnpi06nnqfbk7hjqha8n1d.png"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动"
+    },
+    "name": {
+     "zhCN": "南宫羽｜核心被动"
+    },
+    "conditionLabel": {
+     "zhCN": "南宫羽的「普通攻击」或「强化特殊技」命中敌人时，使全队造成的伤害提升25%，持续30秒。"
+    }
+   },
+   {
+    "id": "buff_ee0be3abab",
+    "source": {
+     "zhCN": "以太帷幕.妄想重奏"
+    },
+    "description": {
+     "zhCN": "招式发动时，南宫羽会开启「以太帷幕·妄想重奏」，「以太帷幕·妄想重奏」生效期间，全队角色攻击力额外提升50点，持续30秒"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_884161bbba",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "value": 50,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "nangongyu",
+    "ownerName": {
+     "zhCN": "南宫羽"
+    },
+    "teammateId": "nangongyu",
+    "teammateName": {
+     "zhCN": "南宫羽"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/nangongyu.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/6/61/m3sghl98vjnpi06nnqfbk7hjqha8n1d.png"
+    },
+    "sourceLabel": {
+     "zhCN": "以太帷幕.妄想重奏"
+    },
+    "name": {
+     "zhCN": "南宫羽｜以太帷幕.妄想重奏"
+    },
+    "conditionLabel": {
+     "zhCN": "招式发动时，南宫羽会开启「以太帷幕·妄想重奏」，「以太帷幕·妄想重奏」生效期间，全队角色攻击力额外提升50点，持续30秒"
+    }
+   },
+   {
+    "id": "buff_ce11acbda2",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "南宫羽的「普通攻击：可爱地雷飞天撞」第三段攻击或「终结技：流落星群」命中敌人时，敌人获得「踉跄」效果，失衡易伤倍率提升30%"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_b37f029a3a",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonus",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "hidden": false,
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "nangongyu",
+    "ownerName": {
+     "zhCN": "南宫羽"
+    },
+    "teammateId": "nangongyu",
+    "teammateName": {
+     "zhCN": "南宫羽"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/nangongyu.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/6/61/m3sghl98vjnpi06nnqfbk7hjqha8n1d.png"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "南宫羽｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "南宫羽的「普通攻击：可爱地雷飞天撞」第三段攻击或「终结技：流落星群」命中敌人时，敌人获得「踉跄」效果，失衡易伤倍率提升30%"
+    }
+   },
+   {
+    "id": "buff_a9ab2c0d63",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "「强化特殊技：相当沉重的爱意」或「普通攻击：可爱地雷飞天撞」命中敌人时，使敌人的全属性伤害抗性降低18%，持续40秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_884161bbba",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyResReduction",
+      "mode": "flat",
+      "value": 18,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "nangongyu",
+    "ownerName": {
+     "zhCN": "南宫羽"
+    },
+    "teammateId": "nangongyu",
+    "teammateName": {
+     "zhCN": "南宫羽"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/nangongyu.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/6/61/m3sghl98vjnpi06nnqfbk7hjqha8n1d.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "南宫羽｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "「强化特殊技：相当沉重的爱意」或「普通攻击：可爱地雷飞天撞」命中敌人时，使敌人的全属性伤害抗性降低18%，持续40秒。"
+    }
+   },
+   {
+    "id": "buff_2c59dfda5b",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "每层「颤音」使「核心被动：天才偶像」中「异放」的伤害比例额外提升10%；\n「额外能力：天使队长」提供的失衡易伤倍率额外提升30%"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_4b7e6ff2ed",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonus",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "hidden": false,
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "nangongyu",
+    "ownerName": {
+     "zhCN": "南宫羽"
+    },
+    "teammateId": "nangongyu",
+    "teammateName": {
+     "zhCN": "南宫羽"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/nangongyu.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/6/61/m3sghl98vjnpi06nnqfbk7hjqha8n1d.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "南宫羽｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "每层「颤音」使「核心被动：天才偶像」中「异放」的伤害比例额外提升10%；\n「额外能力：天使队长」提供的失衡易伤倍率额外提升30%"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/nangongyu.png",
+   "source": "https://patchwiki.biligame.com/images/zzz/6/61/m3sghl98vjnpi06nnqfbk7hjqha8n1d.png"
+  }
+ },
+ {
+  "id": "1411",
+  "name": {
+   "zhCN": "浮波柚叶"
+  },
+  "attribute": "physical",
+  "specialty": "support",
+  "buffs": [
+   {
+    "id": "buff_883a921c63",
+    "source": {
+     "zhCN": "核心被动"
+    },
+    "description": {
+     "zhCN": "柚叶的「强化特殊技」和「终结技」攻击命中敌人时，为全队角色施加「狸之愿」效果；\n「狸之愿」效果会提供等同于柚叶的40%初始攻击力的攻击力加成，最多提升1200点，并使拥有者造成的伤害提升15%，持续40秒。\n当柚叶的初始攻击力达到3000点时，为全队角色提供的攻击力增益效果达到最大值。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_105516c8a1",
+      "type": "derived",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "sourceLabel": {
+       "zhCN": "柚叶初始攻击力"
+      },
+      "defaultSourceValue": 3000,
+      "ratio": 40,
+      "cap": 1200,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "atk",
+      "sourcePanelPhase": "outOfCombat"
+     },
+     {
+      "id": "effect_68de5894c8",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 15.04,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "youye",
+    "ownerName": {
+     "zhCN": "浮波柚叶"
+    },
+    "teammateId": "youye",
+    "teammateName": {
+     "zhCN": "浮波柚叶"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/youye.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/b/be/p6n16r8ky85he83f9dp2yzv0pi51xjv.png"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动"
+    },
+    "name": {
+     "zhCN": "浮波柚叶｜核心被动"
+    },
+    "conditionLabel": {
+     "zhCN": "柚叶的「强化特殊技」和「终结技」攻击命中敌人时，为全队角色施加「狸之愿」效果；\n「狸之愿」效果会提供等同于柚叶的40%初始攻击力的攻击力加成，最多提升1200点，并使拥有者造成的伤害提升15%，持续40秒。\n当柚叶的初始攻击力达到3000点时，为全队角色提供的攻击力增益效果达到最大值。"
+    }
+   },
+   {
+    "id": "1411.additional_ability.anomaly_damage_bonus",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "队伍中存在[异常]角色或与自身阵营相同的角色时触发：若柚叶的异常掌控大于100点，每超过1点异常掌控会使拥有[狸之愿]效果的角色的属性异常积蓄效率提升0.2%，最多提升20%，还会使其所有属性异常伤害和[紊乱]伤害提升0.2%，最多提升20%，当柚叶的异常掌控达到200点时，上述增益效果达到最大值。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "youye_additional_anomaly_damage_bonus",
+      "type": "formula",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "anomalyDamageBonus",
+      "mode": "flat",
+      "source": {
+       "variable": "x",
+       "label": {
+        "zhCN": "柚叶异常掌控"
+       },
+       "defaultValue": 200,
+       "min": 100,
+       "max": 200
+      },
+      "formula": {
+       "expression": "clamp((x - 100) * 0.2, 0, 20)",
+       "valueUnit": "storedPercent"
+      },
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "anomalyMastery",
+      "sourcePanelPhase": "inCombat"
+     },
+     {
+      "id": "youye_additional_disorder_damage_bonus",
+      "type": "formula",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "disorderDamageBonus",
+      "mode": "flat",
+      "source": {
+       "variable": "x",
+       "label": {
+        "zhCN": "柚叶异常掌控"
+       },
+       "defaultValue": 200,
+       "min": 100,
+       "max": 200
+      },
+      "formula": {
+       "expression": "clamp((x - 100) * 0.2, 0, 20)",
+       "valueUnit": "storedPercent"
+      },
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "anomalyMastery",
+      "sourcePanelPhase": "inCombat"
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "youye",
+    "ownerName": {
+     "zhCN": "浮波柚叶"
+    },
+    "teammateId": "youye",
+    "teammateName": {
+     "zhCN": "浮波柚叶"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/youye.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/b/be/p6n16r8ky85he83f9dp2yzv0pi51xjv.png"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "浮波柚叶｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "队伍中存在[异常]角色或与自身阵营相同的角色时触发：若柚叶的异常掌控大于100点，每超过1点异常掌控会使拥有[狸之愿]效果的角色的属性异常积蓄效率提升0.2%，最多提升20%，还会使其所有属性异常伤害和[紊乱]伤害提升0.2%，最多提升20%，当柚叶的异常掌控达到200点时，上述增益效果达到最大值。"
+    }
+   },
+   {
+    "id": "1411.cinema_1.amplify_additional_ability",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "处于[甜蜜惊吓]状态下的敌人全属性伤害抗性降低10%；[额外能力]中属性异常伤害和[紊乱]伤害增益效果提升至原本的130%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_4debdc78eb",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyResReduction",
+      "mode": "flat",
+      "value": 10,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [
+     {
+      "id": "youye_cinema1_amplify_additional",
+      "operation": "multiplyResolvedValue",
+      "factor": 1.3,
+      "targetBuffIds": [
+       "youye.additional_ability.anomaly_damage_bonus"
+      ],
+      "targetEffectIds": [
+       "youye_additional_anomaly_damage_bonus"
+      ],
+      "label": {
+       "zhCN": "[额外能力]中属性异常伤害提升至原本的130%。"
+      }
+     },
+     {
+      "id": "youye_cinema_1_amplify_additional_ability.modify_youye_additional_disorder_damage_bonus",
+      "operation": "multiplyResolvedValue",
+      "factor": 1.3,
+      "targetBuffIds": [
+       "youye.additional_ability.anomaly_damage_bonus"
+      ],
+      "targetEffectIds": [
+       "youye_additional_disorder_damage_bonus"
+      ],
+      "label": {
+       "zhCN": "[额外能力]中[紊乱]伤害增益效果提升至原本的130%。"
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "youye",
+    "ownerName": {
+     "zhCN": "浮波柚叶"
+    },
+    "teammateId": "youye",
+    "teammateName": {
+     "zhCN": "浮波柚叶"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/youye.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/b/be/p6n16r8ky85he83f9dp2yzv0pi51xjv.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "浮波柚叶｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "处于[甜蜜惊吓]状态下的敌人全属性伤害抗性降低10%；[额外能力]中属性异常伤害和[紊乱]伤害增益效果提升至原本的130%。"
+    }
+   },
+   {
+    "id": "buff_8857e98214",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "柚叶的「强化特殊技」和「终结技」攻击命中敌人时，会使全队角色造成的伤害提升15%，属性异常积蓄效率提升15%，持续40秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "effect_4debdc78eb",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "youye",
+    "ownerName": {
+     "zhCN": "浮波柚叶"
+    },
+    "teammateId": "youye",
+    "teammateName": {
+     "zhCN": "浮波柚叶"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/youye.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/b/be/p6n16r8ky85he83f9dp2yzv0pi51xjv.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "浮波柚叶｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "柚叶的「强化特殊技」和「终结技」攻击命中敌人时，会使全队角色造成的伤害提升15%，属性异常积蓄效率提升15%，持续40秒。"
+    }
+   },
+   {
+    "id": "1411.cinema_6.disorder_multiplier_bonus",
+    "source": {
+     "zhCN": "影画六"
+    },
+    "description": {
+     "zhCN": "「支援突击：夹心硬糖射击」的任意强力炮弹命中敌人时，会使全队角色「紊乱」效果的伤害倍率提升105%，持续40秒，最多叠加3层。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "youye_cinema_6_disorder_damage_bonus",
+      "type": "stacked",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "disorderBaseMultiplierBonus",
+      "mode": "flat",
+      "valuePerStack": 105,
+      "maxStacks": 3,
+      "defaultStacks": 3,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "youye",
+    "ownerName": {
+     "zhCN": "浮波柚叶"
+    },
+    "teammateId": "youye",
+    "teammateName": {
+     "zhCN": "浮波柚叶"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/youye.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/b/be/p6n16r8ky85he83f9dp2yzv0pi51xjv.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画六"
+    },
+    "name": {
+     "zhCN": "浮波柚叶｜影画六"
+    },
+    "conditionLabel": {
+     "zhCN": "「支援突击：夹心硬糖射击」的任意强力炮弹命中敌人时，会使全队角色「紊乱」效果的伤害倍率提升105%，持续40秒，最多叠加3层。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/youye.png",
+   "source": "https://patchwiki.biligame.com/images/zzz/b/be/p6n16r8ky85he83f9dp2yzv0pi51xjv.png"
+  }
+ },
+ {
+  "id": "1581",
+  "name": {
+   "zhCN": "蕾米埃尔"
+  },
+  "attribute": "lumiflux",
+  "specialty": "anomaly",
+  "buffs": [
+   {
+    "id": "1581.additional_ability.atk_1_anomaly",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "额外能力生效且队伍中有1名异常角色时：进入战场后，全队攻击力提升，数值等同于蕾米埃尔6%初始攻击力，最高不超过1600点。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "remielle_additional_atk_1_anomaly",
+      "type": "derived",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "sourceLabel": {
+       "zhCN": "蕾米埃尔初始攻击力"
+      },
+      "defaultSourceValue": 4000,
+      "ratio": 6,
+      "cap": 1600,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "atk",
+      "sourcePanelPhase": "outOfCombat"
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "remielle",
+    "ownerName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateId": "remielle",
+    "teammateName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateImages": {},
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "蕾米埃尔｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "自动判定：额外能力生效后，队伍中异常角色数为1时启用本档；其他档自动关闭。"
+    }
+   },
+   {
+    "id": "1581.additional_ability.atk_2_anomaly",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "额外能力生效且队伍中有2名异常角色时：进入战场后，全队攻击力提升，数值等同于蕾米埃尔12%初始攻击力，最高不超过1600点。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "remielle_additional_atk_2_anomaly",
+      "type": "derived",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "sourceLabel": {
+       "zhCN": "蕾米埃尔初始攻击力"
+      },
+      "defaultSourceValue": 4000,
+      "ratio": 12,
+      "cap": 1600,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "atk",
+      "sourcePanelPhase": "outOfCombat"
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "remielle",
+    "ownerName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateId": "remielle",
+    "teammateName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateImages": {},
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "蕾米埃尔｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "自动判定：额外能力生效后，队伍中异常角色数为2时启用本档；其他档自动关闭。"
+    }
+   },
+   {
+    "id": "1581.additional_ability.atk_3_anomaly",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "额外能力生效且队伍中有3名异常角色时：进入战场后，全队攻击力提升，数值等同于蕾米埃尔40%初始攻击力，最高不超过1600点。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "remielle_additional_atk_3_anomaly",
+      "type": "derived",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "sourceLabel": {
+       "zhCN": "蕾米埃尔初始攻击力"
+      },
+      "defaultSourceValue": 4000,
+      "ratio": 40,
+      "cap": 1600,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "atk",
+      "sourcePanelPhase": "outOfCombat"
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "remielle",
+    "ownerName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateId": "remielle",
+    "teammateName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateImages": {},
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "蕾米埃尔｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "自动判定：额外能力生效后，队伍中异常角色数为3时启用本档；其他档自动关闭。"
+    }
+   },
+   {
+    "id": "1581.additional_ability.prismatic_buildup",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "蕾米埃尔施加辉光积蓄时附加[Prismatic]：全队攻击带有[Prismatic]效果的敌人时，异常积蓄效率提升15%；[Prismatic]移除后该效果额外持续8秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "remielle_prismatic_anomaly_buildup_efficiency",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "anomalyBuildUpEfficiency",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "remielle",
+    "ownerName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateId": "remielle",
+    "teammateName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateImages": {},
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "蕾米埃尔｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "自动判定：蕾米额外能力生效时启用；目标处于[Prismatic]，或[Prismatic]移除后的8秒延长期内。"
+    }
+   },
+   {
+    "id": "1581.cinema_1.teammate_anomaly_dmg",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "一命：其他两名队员造成的属性异常伤害提升10%；计算器不考虑指定状态，视为全程生效，但不加给蕾米本人。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "remielle_cinema1_teammate_anomaly_dmg_bonus",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "anomalyDmgBonus",
+      "mode": "flat",
+      "value": 10,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "remielle",
+    "ownerName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateId": "remielle",
+    "teammateName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateImages": {},
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "蕾米埃尔｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "只对蕾米以外的两名队友生效；全程+10%异常增伤。"
+    },
+    "excludeTargetAgentIds": [
+     "1581",
+     "remielle"
+    ]
+   },
+   {
+    "id": "1581.cinema_2.prismatic_anomaly_def_ignore",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "二命：异化/折射系数提升20%，影响全队所有类型异常伤害公式；异常角色对Prismatic目标造成异常伤害时，无视目标15%防御。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "remielle_c2_team_refringe_coefficient_bonus_pct",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "remielleRefringeCoefficientBonusPct",
+      "mode": "flat",
+      "value": 20,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "remielle_cinema2_prismatic_anomaly_def_ignore",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyAnomalyDefReduction",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "remielle",
+    "ownerName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateId": "remielle",
+    "teammateName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateImages": {},
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "蕾米埃尔｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "异化/折射系数+20%按公式读取；异常专用减防要求异常角色、异常伤害、目标处于[Prismatic]或8秒延长期。"
+    }
+   },
+   {
+    "id": "1581.core_passive.refringe_3_anomaly",
+    "source": {
+     "zhCN": "核心被动"
+    },
+    "description": {
+     "zhCN": "核心被动：队伍中有3名异常角色时，蕾米埃尔异化/折射系数额外提升10%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "remielle_core_3_anomaly_refringe_bonus",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "remielleRefringeCoefficientBonusPct",
+      "mode": "flat",
+      "value": 10,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "remielle",
+    "ownerName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateId": "remielle",
+    "teammateName": {
+     "zhCN": "蕾米埃尔"
+    },
+    "teammateImages": {},
+    "sourceLabel": {
+     "zhCN": "核心被动"
+    },
+    "name": {
+     "zhCN": "蕾米埃尔｜核心被动"
+    },
+    "conditionLabel": {
+     "zhCN": "自动判定：队伍中异常角色数为3时启用。"
+    }
+   }
+  ],
+  "images": {}
+ },
+ {
+  "id": "1311",
+  "name": {
+   "zhCN": "耀嘉音"
+  },
+  "attribute": "ether",
+  "specialty": "support",
+  "buffs": [
+   {
+    "id": "yaojiayin.core_andante_atk",
+    "source": {
+     "zhCN": "核心被动"
+    },
+    "description": {
+     "zhCN": "[咏叹华彩]状态下，队伍中其他角色通过[快速支援]、[连携技]、[招架支援]或[回避支援]入场，耀嘉音消耗能量追加释放[震音]进行攻击时，耀嘉音和入场角色的攻击力提升，提升效果等同于耀嘉音初始攻击力的35%，最高不超过1200点。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "yaojiayin_core_andante_atk_flat",
+      "type": "derived",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "sourceLabel": {
+       "zhCN": "耀嘉音初始攻击力"
+      },
+      "defaultSourceValue": 3429,
+      "ratio": 35,
+      "cap": 1200,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "atk",
+      "sourcePanelPhase": "outOfCombat"
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1311",
+    "ownerName": {
+     "zhCN": "耀嘉音"
+    },
+    "teammateId": "1311",
+    "teammateName": {
+     "zhCN": "耀嘉音"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/yaojiayin.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/d/da/322lo9l3y2krzkkwukc3om19aa76l7s.png"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动"
+    },
+    "name": {
+     "zhCN": "耀嘉音｜核心被动"
+    },
+    "conditionLabel": {
+     "zhCN": "[咏叹华彩]状态下，队伍中其他角色通过[快速支援]、[连携技]、[招架支援]或[回避支援]入场，耀嘉音消耗能量追加释放[震音]进行攻击时，耀嘉音和入场角色的攻击力提升，提升效果等同于耀嘉音初始攻击力的35%，最高不超过1200点。"
+    }
+   },
+   {
+    "id": "yaojiayin.special_aria_buff",
+    "source": {
+     "zhCN": "特殊技"
+    },
+    "description": {
+     "zhCN": "耀嘉音进入[咏叹华彩]状态后，全队角色造成的伤害提升9%~24%，全队角色暴击伤害提升8.5%~31%，具体数值由耀嘉音特殊技等级决定。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "yaojiayin_special_aria_dmg_bonus",
+      "type": "formula",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "source": {
+       "variable": "x",
+       "label": {
+        "zhCN": "耀佳音特殊技等级"
+       },
+       "defaultValue": 12,
+       "min": 1,
+       "max": 16
+      },
+      "formula": {
+       "expression": "clamp(x + 8, 9, 24)",
+       "valueUnit": "storedPercent"
+      },
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "yaojiayin_special_aria_crit_dmg",
+      "type": "formula",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "critDmg",
+      "mode": "flat",
+      "source": {
+       "variable": "x",
+       "label": {
+        "zhCN": "耀佳音特殊技等级"
+       },
+       "defaultValue": 12,
+       "min": 1,
+       "max": 16
+      },
+      "formula": {
+       "expression": "clamp(x * 1.5 + 7, 8.5, 31)",
+       "valueUnit": "storedPercent"
+      },
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1311",
+    "ownerName": {
+     "zhCN": "耀嘉音"
+    },
+    "teammateId": "1311",
+    "teammateName": {
+     "zhCN": "耀嘉音"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/yaojiayin.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/d/da/322lo9l3y2krzkkwukc3om19aa76l7s.png"
+    },
+    "sourceLabel": {
+     "zhCN": "特殊技"
+    },
+    "name": {
+     "zhCN": "耀嘉音｜特殊技"
+    },
+    "conditionLabel": {
+     "zhCN": "耀嘉音进入[咏叹华彩]状态后，全队角色造成的伤害提升9%~24%，全队角色暴击伤害提升8.5%~31%，具体数值由耀嘉音特殊技等级决定。"
+    }
+   },
+   {
+    "id": "yaojiayin.cinema_1.enemy_res_reduction",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "耀嘉音攻击命中敌人时，目标的全属性伤害抗性降低6%，最多叠加3层，持续30秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "yaojiayin_cinema_1_enemy_res_reduction",
+      "type": "stacked",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyResReduction",
+      "mode": "flat",
+      "valuePerStack": 6,
+      "maxStacks": 3,
+      "defaultStacks": 3,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1311",
+    "ownerName": {
+     "zhCN": "耀嘉音"
+    },
+    "teammateId": "1311",
+    "teammateName": {
+     "zhCN": "耀嘉音"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/yaojiayin.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/d/da/322lo9l3y2krzkkwukc3om19aa76l7s.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "耀嘉音｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "耀嘉音攻击命中敌人时，目标的全属性伤害抗性降低6%，最多叠加3层，持续30秒。"
+    }
+   },
+   {
+    "id": "yaojiayin.cinema_2.core_andante_atk_bonus",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "[核心被动：《如歌的行板》]中的攻击力提升效果额外提升19%，上限额外提升400点。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "yaojiayin_cinema_2_core_atk_delta",
+      "type": "formula",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "source": {
+       "variable": "x",
+       "label": {
+        "zhCN": "耀嘉音初始攻击力"
+       },
+       "defaultValue": 3429,
+       "min": 0,
+       "max": 4000
+      },
+      "formula": {
+       "expression": "clamp(x * 0.54, 0, 1600) - clamp(x * 0.35, 0, 1200)",
+       "valueUnit": "storedValue"
+      },
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "atk",
+      "sourcePanelPhase": "outOfCombat"
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1311",
+    "ownerName": {
+     "zhCN": "耀嘉音"
+    },
+    "teammateId": "1311",
+    "teammateName": {
+     "zhCN": "耀嘉音"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/yaojiayin.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/d/da/322lo9l3y2krzkkwukc3om19aa76l7s.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "耀嘉音｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "[核心被动：《如歌的行板》]中的攻击力提升效果额外提升19%，上限额外提升400点。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/yaojiayin.png",
+   "source": "https://patchwiki.biligame.com/images/zzz/d/da/322lo9l3y2krzkkwukc3om19aa76l7s.png"
+  }
+ },
+ {
+  "id": "1211",
+  "name": {
+   "zhCN": "丽娜"
+  },
+  "attribute": "electric",
+  "specialty": "support",
+  "buffs": [
+   {
+    "id": "rina.core_pen_ratio",
+    "source": {
+     "zhCN": "核心被动"
+    },
+    "description": {
+     "zhCN": "指派杜苏拉或安娜塔莎进行攻击时，队伍中其他角色的穿透率随丽娜自身的穿透率提升，提升效果等同于丽娜自身穿透率的25%+12%，最高不超过30%，杜苏拉和安娜塔莎均返回丽娜身边后，对应增益效果结束。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "rina_core_pen_ratio",
+      "type": "formula",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "penRatio",
+      "mode": "flat",
+      "source": {
+       "variable": "x",
+       "label": {
+        "zhCN": "丽娜穿透率"
+       },
+       "defaultValue": 72,
+       "min": 0,
+       "max": 72
+      },
+      "formula": {
+       "expression": "clamp(x * 0.25 + 12, 0, 30)",
+       "valueUnit": "storedPercent"
+      },
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "penRatio",
+      "sourcePanelPhase": "outOfCombat"
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1211",
+    "ownerName": {
+     "zhCN": "丽娜"
+    },
+    "teammateId": "1211",
+    "teammateName": {
+     "zhCN": "丽娜"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/rina.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/8/8b/9y0kt391kj33gzaifu4uh8v2ljwguhw.png"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动"
+    },
+    "name": {
+     "zhCN": "丽娜｜核心被动"
+    },
+    "conditionLabel": {
+     "zhCN": "指派杜苏拉或安娜塔莎进行攻击时，队伍中其他角色的穿透率随丽娜自身的穿透率提升，提升效果等同于丽娜自身穿透率的25%+12%，最高不超过30%，杜苏拉和安娜塔莎均返回丽娜身边后，对应增益效果结束。"
+    }
+   },
+   {
+    "id": "rina.additional_electric_damage",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "队伍中存在与自身属性或阵营相同的角色时触发：队伍中任意角色对敌人施加[感电]效果时，持续时间提升3秒；场上存在处于[感电]状态下的敌人时，全队角色造成的电属性伤害提升10%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "rina_additional_electric_damage",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "electricDmg",
+      "mode": "flat",
+      "value": 10,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1211",
+    "ownerName": {
+     "zhCN": "丽娜"
+    },
+    "teammateId": "1211",
+    "teammateName": {
+     "zhCN": "丽娜"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/rina.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/8/8b/9y0kt391kj33gzaifu4uh8v2ljwguhw.png"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "丽娜｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "队伍中存在与自身属性或阵营相同的角色时触发：队伍中任意角色对敌人施加[感电]效果时，持续时间提升3秒；场上存在处于[感电]状态下的敌人时，全队角色造成的电属性伤害提升10%。"
+    }
+   },
+   {
+    "id": "rina.cinema_1.core_pen_ratio_amplify",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "被指派并发动攻击后，返回丽娜身边前，杜苏拉和安娜塔莎会在远处额外逗留5.5秒；在杜苏拉或安娜塔莎附近10米范围内的角色，从[核心被动：迷你毁灭拍档]中获得的增益效果提升至原本的130%。"
+    },
+    "scope": "inCombat",
+    "effects": [],
+    "buffModifiers": [
+     {
+      "id": "rina_cinema_1_amplify_core_pen_ratio",
+      "operation": "multiplyResolvedValue",
+      "factor": 1.3,
+      "targetBuffIds": [
+       "rina.core_pen_ratio"
+      ],
+      "targetEffectIds": [
+       "rina_core_pen_ratio"
+      ],
+      "label": {
+       "zhCN": "[核心被动]中穿透率增益效果提升至原本的130%。"
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1211",
+    "ownerName": {
+     "zhCN": "丽娜"
+    },
+    "teammateId": "1211",
+    "teammateName": {
+     "zhCN": "丽娜"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/rina.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/8/8b/9y0kt391kj33gzaifu4uh8v2ljwguhw.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "丽娜｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "被指派并发动攻击后，返回丽娜身边前，杜苏拉和安娜塔莎会在远处额外逗留5.5秒；在杜苏拉或安娜塔莎附近10米范围内的角色，从[核心被动：迷你毁灭拍档]中获得的增益效果提升至原本的130%。"
+    }
+   },
+   {
+    "id": "rina.cinema_6.electric_damage_bonus",
+    "source": {
+     "zhCN": "影画六"
+    },
+    "description": {
+     "zhCN": "[强化特殊技]、[连携技]或[终结技]命中敌人时，全队造成的电属性伤害提升15%，持续8秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "rina_cinema_6_electric_damage_bonus",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "electricDmg",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1211",
+    "ownerName": {
+     "zhCN": "丽娜"
+    },
+    "teammateId": "1211",
+    "teammateName": {
+     "zhCN": "丽娜"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/rina.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/8/8b/9y0kt391kj33gzaifu4uh8v2ljwguhw.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画六"
+    },
+    "name": {
+     "zhCN": "丽娜｜影画六"
+    },
+    "conditionLabel": {
+     "zhCN": "[强化特殊技]、[连携技]或[终结技]命中敌人时，全队造成的电属性伤害提升15%，持续8秒。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/rina.png",
+   "source": "https://patchwiki.biligame.com/images/zzz/8/8b/9y0kt391kj33gzaifu4uh8v2ljwguhw.png"
+  }
+ },
+ {
+  "id": "1151",
+  "name": {
+   "zhCN": "露西"
+  },
+  "attribute": "fire",
+  "specialty": "support",
+  "buffs": [
+   {
+    "id": "lucy.ex_special_cheer_on",
+    "source": {
+     "zhCN": "强化特殊技"
+    },
+    "description": {
+     "zhCN": "发动[强化特殊技]后，亲卫队小猪引发爆炸时，将为全队角色、邦布和亲卫队小猪施加[加油！]状态。[加油！]状态下，友方单位的攻击力提升，提升数值等同于露西25.8%初始攻击力+104点，最高不超过600点。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "lucy_ex_special_cheer_on_atk",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "value": 600,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1151",
+    "ownerName": {
+     "zhCN": "露西"
+    },
+    "teammateId": "1151",
+    "teammateName": {
+     "zhCN": "露西"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/lucy.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/4/4b/nun3urflupvt1lq85o81qxeoie6t9vk.png"
+    },
+    "sourceLabel": {
+     "zhCN": "强化特殊技"
+    },
+    "name": {
+     "zhCN": "露西｜强化特殊技"
+    },
+    "conditionLabel": {
+     "zhCN": "发动[强化特殊技]后，亲卫队小猪引发爆炸时，将为全队角色、邦布和亲卫队小猪施加[加油！]状态。[加油！]状态下，友方单位的攻击力提升，提升数值等同于露西25.8%初始攻击力+104点，最高不超过600点。"
+    }
+   },
+   {
+    "id": "lucy.cinema_4.cheer_on_crit_dmg",
+    "source": {
+     "zhCN": "影画四"
+    },
+    "description": {
+     "zhCN": "处于「加油！」状态下的友方单位，暴击伤害额外提升10%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "lucy_cinema_4_crit_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "critDmg",
+      "mode": "flat",
+      "value": 10,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1151",
+    "ownerName": {
+     "zhCN": "露西"
+    },
+    "teammateId": "1151",
+    "teammateName": {
+     "zhCN": "露西"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/lucy.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/4/4b/nun3urflupvt1lq85o81qxeoie6t9vk.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画四"
+    },
+    "name": {
+     "zhCN": "露西｜影画四"
+    },
+    "conditionLabel": {
+     "zhCN": "处于「加油！」状态下的友方单位，暴击伤害额外提升10%。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/lucy.png",
+   "source": "https://patchwiki.biligame.com/images/zzz/4/4b/nun3urflupvt1lq85o81qxeoie6t9vk.png"
+  }
+ },
+ {
+  "id": "1031",
+  "name": {
+   "zhCN": "妮可"
+  },
+  "attribute": "ether",
+  "specialty": "support",
+  "buffs": [
+   {
+    "id": "nicole.core_def_reduction",
+    "source": {
+     "zhCN": "核心被动"
+    },
+    "description": {
+     "zhCN": "妮可的强化子弹或能量场命中敌人时，目标的防御力降低40%，持续3.5秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "nicole_core_def_reduction",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyDefReduction",
+      "mode": "flat",
+      "value": 40,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1031",
+    "ownerName": {
+     "zhCN": "妮可"
+    },
+    "teammateId": "1031",
+    "teammateName": {
+     "zhCN": "妮可"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/nicole.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/a/ae/posa7yw93z9vnzep092rtnrqxksdx4k.png"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动"
+    },
+    "name": {
+     "zhCN": "妮可｜核心被动"
+    },
+    "conditionLabel": {
+     "zhCN": "妮可的强化子弹或能量场命中敌人时，目标的防御力降低40%，持续3.5秒。"
+    }
+   },
+   {
+    "id": "nicole.additional_ether_damage",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "队伍中存在与自身属性或阵营相同的角色时触发：妮可通过[核心被动：机关箱]对敌人施加减益效果时，所有单位对目标造成的以太伤害额外提升25%，持续3.5秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "nicole_additional_ether_damage",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "etherDmg",
+      "mode": "flat",
+      "value": 25,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1031",
+    "ownerName": {
+     "zhCN": "妮可"
+    },
+    "teammateId": "1031",
+    "teammateName": {
+     "zhCN": "妮可"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/nicole.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/a/ae/posa7yw93z9vnzep092rtnrqxksdx4k.png"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "妮可｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "队伍中存在与自身属性或阵营相同的角色时触发：妮可通过[核心被动：机关箱]对敌人施加减益效果时，所有单位对目标造成的以太伤害额外提升25%，持续3.5秒。"
+    }
+   },
+   {
+    "id": "nicole.cinema_6.energy_field_crit_rate",
+    "source": {
+     "zhCN": "影画六"
+    },
+    "description": {
+     "zhCN": "能量场对敌人造成伤害时，全队对该目标的暴击率提升1.5%，最多叠加10层，持续12秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "nicole_cinema_6_crit_rate",
+      "type": "stacked",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "critRate",
+      "mode": "flat",
+      "valuePerStack": 1.5,
+      "maxStacks": 10,
+      "defaultStacks": 10,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1031",
+    "ownerName": {
+     "zhCN": "妮可"
+    },
+    "teammateId": "1031",
+    "teammateName": {
+     "zhCN": "妮可"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/nicole.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/a/ae/posa7yw93z9vnzep092rtnrqxksdx4k.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画六"
+    },
+    "name": {
+     "zhCN": "妮可｜影画六"
+    },
+    "conditionLabel": {
+     "zhCN": "能量场对敌人造成伤害时，全队对该目标的暴击率提升1.5%，最多叠加10层，持续12秒。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/nicole.png",
+   "source": "https://patchwiki.biligame.com/images/zzz/a/ae/posa7yw93z9vnzep092rtnrqxksdx4k.png"
+  }
+ },
+ {
+  "id": "1131",
+  "name": {
+   "zhCN": "苍角"
+  },
+  "attribute": "ice",
+  "specialty": "support",
+  "buffs": [
+   {
+    "id": "soukaku.core_fly_the_flag_atk",
+    "source": {
+     "zhCN": "核心被动"
+    },
+    "description": {
+     "zhCN": "苍角发动[展旗]时，自身攻击力提升，提升数值等同于苍角20%初始攻击力，最高不超过500点。发动[展旗]并消耗[涡流]时，该增益效果翻倍，最高不超过1000点。队伍中其他角色通过[展旗]所触发的[快速支援]或[连携技]入场时，该增益效果将传递给对应的角色。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "soukaku_core_fly_the_flag_atk",
+      "type": "derived",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "sourceLabel": {
+       "zhCN": "苍角初始攻击力"
+      },
+      "defaultSourceValue": 2500,
+      "ratio": 40,
+      "cap": 1000,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "atk",
+      "sourcePanelPhase": "outOfCombat"
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1131",
+    "ownerName": {
+     "zhCN": "苍角"
+    },
+    "teammateId": "1131",
+    "teammateName": {
+     "zhCN": "苍角"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/soukaku.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/1/17/co1tz6xt4fuspz27d1dp4a29mla8i8x.png"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动"
+    },
+    "name": {
+     "zhCN": "苍角｜核心被动"
+    },
+    "conditionLabel": {
+     "zhCN": "苍角发动[展旗]时，自身攻击力提升，提升数值等同于苍角20%初始攻击力，最高不超过500点。发动[展旗]并消耗[涡流]时，该增益效果翻倍，最高不超过1000点。队伍中其他角色通过[展旗]所触发的[快速支援]或[连携技]入场时，该增益效果将传递给对应的角色。"
+    }
+   },
+   {
+    "id": "soukaku.additional_ice_damage",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "队伍中存在与自身属性或阵营相同的角色时触发：苍角消耗[涡流]发动[展旗]时，全队角色造成的冰属性伤害提升20%，持续22秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "soukaku_additional_ice_damage",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "iceDmg",
+      "mode": "flat",
+      "value": 20,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1131",
+    "ownerName": {
+     "zhCN": "苍角"
+    },
+    "teammateId": "1131",
+    "teammateName": {
+     "zhCN": "苍角"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/soukaku.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/1/17/co1tz6xt4fuspz27d1dp4a29mla8i8x.png"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "苍角｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "队伍中存在与自身属性或阵营相同的角色时触发：苍角消耗[涡流]发动[展旗]时，全队角色造成的冰属性伤害提升20%，持续22秒。"
+    }
+   },
+   {
+    "id": "soukaku.cinema_4.fly_the_flag_ice_res_reduction",
+    "source": {
+     "zhCN": "影画四"
+    },
+    "description": {
+     "zhCN": "「展旗」攻击命中敌人时，目标的冰属性伤害抗性降低10%，持续8秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "soukaku_cinema_4_enemy_ice_res_reduction",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyIceResReduction",
+      "mode": "flat",
+      "value": 10,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1131",
+    "ownerName": {
+     "zhCN": "苍角"
+    },
+    "teammateId": "1131",
+    "teammateName": {
+     "zhCN": "苍角"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/soukaku.png",
+     "source": "https://patchwiki.biligame.com/images/zzz/1/17/co1tz6xt4fuspz27d1dp4a29mla8i8x.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画四"
+    },
+    "name": {
+     "zhCN": "苍角｜影画四"
+    },
+    "conditionLabel": {
+     "zhCN": "「展旗」攻击命中敌人时，目标的冰属性伤害抗性降低10%，持续8秒。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/soukaku.png",
+   "source": "https://patchwiki.biligame.com/images/zzz/1/17/co1tz6xt4fuspz27d1dp4a29mla8i8x.png"
+  }
+ },
+ {
+  "id": "1221",
+  "name": {
+   "zhCN": "月城柳"
+  },
+  "attribute": "electric",
+  "specialty": "anomaly",
+  "buffs": [
+   {
+    "id": "yanagi.core_disorder_multiplier_bonus",
+    "source": {
+     "zhCN": "核心被动（F级）"
+    },
+    "description": {
+     "zhCN": "月城柳发动[强化特殊技]后，队伍中任意角色对敌人施加[紊乱]效果时，[紊乱]效果的伤害倍率提升250%，持续15秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "yanagi_core_disorder_base_multiplier_bonus",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "disorderBaseMultiplierBonus",
+      "mode": "flat",
+      "value": 250,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1221",
+    "ownerName": {
+     "zhCN": "月城柳"
+    },
+    "teammateId": "1221",
+    "teammateName": {
+     "zhCN": "月城柳"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/tsukishiro_yanagi.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/10/29/76099754/dc3af8ec666a63e03d49b88aac5bb044_8292939597769078774.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动（F级）"
+    },
+    "name": {
+     "zhCN": "月城柳｜核心被动（F级）"
+    },
+    "conditionLabel": {
+     "zhCN": "月城柳发动[强化特殊技]后，队伍中任意角色对敌人施加[紊乱]效果时，[紊乱]效果的伤害倍率提升250%，持续15秒。"
+    }
+   },
+   {
+    "id": "yanagi.cinema_4.insight_pen_ratio",
+    "source": {
+     "zhCN": "影画四"
+    },
+    "description": {
+     "zhCN": "月城柳对敌人造成属性异常伤害时，会为其施加[识破]效果，持续15秒；处于[识破]效果下的敌人受到攻击时，本次攻击的穿透率提升16%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "yanagi_cinema_4_insight_pen_ratio",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "penRatio",
+      "mode": "flat",
+      "value": 16,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1221",
+    "ownerName": {
+     "zhCN": "月城柳"
+    },
+    "teammateId": "1221",
+    "teammateName": {
+     "zhCN": "月城柳"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/tsukishiro_yanagi.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/10/29/76099754/dc3af8ec666a63e03d49b88aac5bb044_8292939597769078774.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "影画四"
+    },
+    "name": {
+     "zhCN": "月城柳｜影画四"
+    },
+    "conditionLabel": {
+     "zhCN": "月城柳对敌人造成属性异常伤害时，会为其施加[识破]效果，持续15秒；处于[识破]效果下的敌人受到攻击时，本次攻击的穿透率提升16%。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/tsukishiro_yanagi.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/10/29/76099754/dc3af8ec666a63e03d49b88aac5bb044_8292939597769078774.png",
+   "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+  }
+ },
+ {
+  "id": "1171",
+  "name": {
+   "zhCN": "柏妮思·怀特"
+  },
+  "attribute": "fire",
+  "specialty": "anomaly",
+  "buffs": [
+   {
+    "id": "1171.cinema_2_heat_pierce",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "触发[余烬]效果时，将对敌人施加[热意洞穿]，最多叠加5层，持续6秒；受到我方攻击时，目标每拥有一层[热意洞穿]，本次攻击的穿透率提升4%，最多提升20%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "burnice_cinema_2_heat_pierce_pen_ratio",
+      "type": "stacked",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "penRatio",
+      "mode": "flat",
+      "valuePerStack": 4,
+      "maxStacks": 5,
+      "defaultStacks": 5,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "burnice_white",
+    "ownerName": {
+     "zhCN": "柏妮思·怀特"
+    },
+    "teammateId": "burnice_white",
+    "teammateName": {
+     "zhCN": "柏妮思·怀特"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/burnice_white.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/10/08/76099754/c00700f00787444df5c7de8b09d81766_3155659045192705400.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "柏妮思·怀特｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "触发[余烬]效果时，将对敌人施加[热意洞穿]，最多叠加5层，持续6秒；受到我方攻击时，目标每拥有一层[热意洞穿]，本次攻击的穿透率提升4%，最多提升20%。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/burnice_white.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/10/08/76099754/c00700f00787444df5c7de8b09d81766_3155659045192705400.png",
+   "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+  }
+ },
+ {
+  "id": "1161",
+  "name": {
+   "zhCN": "莱特"
+  },
+  "attribute": "fire",
+  "specialty": "stun",
+  "buffs": [
+   {
+    "id": "lighter.core_morale_res_reduction",
+    "source": {
+     "zhCN": "核心被动（F级）"
+    },
+    "description": {
+     "zhCN": "莱特进入[士气喷发]状态后，[轻拳]、[重拳]及终结一击命中敌人时，使目标的冰属性伤害抗性和火属性伤害抗性降低15%，持续30秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "lighter_core_enemy_ice_res_reduction",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyIceResReduction",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "lighter_core_enemy_fire_res_reduction",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyFireResReduction",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1161",
+    "ownerName": {
+     "zhCN": "莱特"
+    },
+    "teammateId": "1161",
+    "teammateName": {
+     "zhCN": "莱特"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/lighter.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/11/21/76099754/97be522aa2bce70b13167df8b42e176f_6973279715938714866.png"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动（F级）"
+    },
+    "name": {
+     "zhCN": "莱特｜核心被动（F级）"
+    },
+    "conditionLabel": {
+     "zhCN": "莱特进入[士气喷发]状态后，[轻拳]、[重拳]及终结一击命中敌人时，使目标的冰属性伤害抗性和火属性伤害抗性降低15%，持续30秒。"
+    }
+   },
+   {
+    "id": "lighter.additional_morale_ice_fire_dmg",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "队伍中任意角色消耗或回复[士气]时，全队获得[昂扬]，每层提升冰属性伤害与火属性伤害；按满层且冲击力满足上限折算，最高提升75%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "lighter_additional_ice_dmg",
+      "type": "derived",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "iceDmg",
+      "mode": "flat",
+      "sourceLabel": {
+       "zhCN": "冰属性伤害"
+      },
+      "defaultSourceValue": 75,
+      "ratio": 100,
+      "cap": 75,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "lighter_additional_fire_dmg",
+      "type": "derived",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "fireDmg",
+      "mode": "flat",
+      "sourceLabel": {
+       "zhCN": "火属性伤害"
+      },
+      "defaultSourceValue": 75,
+      "ratio": 100,
+      "cap": 75,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1161",
+    "ownerName": {
+     "zhCN": "莱特"
+    },
+    "teammateId": "1161",
+    "teammateName": {
+     "zhCN": "莱特"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/lighter.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/11/21/76099754/97be522aa2bce70b13167df8b42e176f_6973279715938714866.png"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "莱特｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "队伍中任意角色消耗或回复[士气]时，全队获得[昂扬]，每层提升冰属性伤害与火属性伤害；按满层且冲击力满足上限折算，最高提升75%。"
+    }
+   },
+   {
+    "id": "lighter.cinema_1_extra_res_reduction",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "[核心被动]施加的冰属性伤害抗性与火属性伤害抗性降低效果额外提升10%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "lighter_cinema_1_enemy_ice_res_reduction",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyIceResReduction",
+      "mode": "flat",
+      "value": 10,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "lighter_cinema_1_enemy_fire_res_reduction",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyFireResReduction",
+      "mode": "flat",
+      "value": 10,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1161",
+    "ownerName": {
+     "zhCN": "莱特"
+    },
+    "teammateId": "1161",
+    "teammateName": {
+     "zhCN": "莱特"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/lighter.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/11/21/76099754/97be522aa2bce70b13167df8b42e176f_6973279715938714866.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "莱特｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "[核心被动]施加的冰属性伤害抗性与火属性伤害抗性降低效果额外提升10%。"
+    }
+   },
+   {
+    "id": "lighter.cinema_2_rout_stun_and_morale_bonus",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "[溃败]使目标的失衡易伤倍率提升25%；[额外能力]中[昂扬]的冰属性伤害与火属性伤害增益提升至原本的120%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "lighter_cinema_2_rout_stun_multiplier",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonus",
+      "mode": "flat",
+      "value": 25,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [
+     {
+      "id": "lighter_cinema_2_amplify_ice_dmg",
+      "operation": "multiplyResolvedValue",
+      "factor": 1.2,
+      "targetBuffIds": [
+       "lighter.additional_morale_ice_fire_dmg"
+      ],
+      "targetEffectIds": [
+       "lighter_additional_ice_dmg"
+      ],
+      "label": {
+       "zhCN": "[昂扬]冰属性伤害增益提升至原本的120%。"
+      }
+     },
+     {
+      "id": "lighter_cinema_2_amplify_fire_dmg",
+      "operation": "multiplyResolvedValue",
+      "factor": 1.2,
+      "targetBuffIds": [
+       "lighter.additional_morale_ice_fire_dmg"
+      ],
+      "targetEffectIds": [
+       "lighter_additional_fire_dmg"
+      ],
+      "label": {
+       "zhCN": "[昂扬]火属性伤害增益提升至原本的120%。"
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1161",
+    "ownerName": {
+     "zhCN": "莱特"
+    },
+    "teammateId": "1161",
+    "teammateName": {
+     "zhCN": "莱特"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/lighter.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/11/21/76099754/97be522aa2bce70b13167df8b42e176f_6973279715938714866.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "莱特｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "[溃败]使目标的失衡易伤倍率提升25%；[额外能力]中[昂扬]的冰属性伤害与火属性伤害增益提升至原本的120%。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/lighter.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/11/21/76099754/97be522aa2bce70b13167df8b42e176f_6973279715938714866.png"
+  }
+ },
+ {
+  "id": "1141",
+  "name": {
+   "zhCN": "冯·莱卡恩"
+  },
+  "attribute": "ice",
+  "specialty": "stun",
+  "buffs": [
+   {
+    "id": "lycaon.core_metal_legs_res_and_other_dmg",
+    "source": {
+     "zhCN": "核心被动（F级）"
+    },
+    "description": {
+     "zhCN": "[强化特殊技：狂猎时刻]、[支援突击：复仇反扑]或[支援突击：复仇反扑·冰舞]命中敌人时，目标的冰属性伤害抗性降低25%，受到的其他属性伤害提升30%，持续30秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "lycaon_core_enemy_ice_res_reduction",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyIceResReduction",
+      "mode": "flat",
+      "value": 25,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "lycaon_core_other_attribute_physical_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "physicalDmg",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "lycaon_core_other_attribute_fire_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "fireDmg",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "lycaon_core_other_attribute_electric_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "electricDmg",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "lycaon_core_other_attribute_ether_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "etherDmg",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "lycaon_core_other_attribute_wind_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "windDmg",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "lycaon_core_other_attribute_lumiflux_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "lumifluxDmg",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1141",
+    "ownerName": {
+     "zhCN": "冯·莱卡恩"
+    },
+    "teammateId": "1141",
+    "teammateName": {
+     "zhCN": "冯·莱卡恩"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/lycaon.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/05/25/76099754/66038988b3920216f826555eb31ec7d3_1374786350678823683.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/65/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动（F级）"
+    },
+    "name": {
+     "zhCN": "冯·莱卡恩｜核心被动（F级）"
+    },
+    "conditionLabel": {
+     "zhCN": "[强化特殊技：狂猎时刻]、[支援突击：复仇反扑]或[支援突击：复仇反扑·冰舞]命中敌人时，目标的冰属性伤害抗性降低25%，受到的其他属性伤害提升30%，持续30秒。"
+    }
+   },
+   {
+    "id": "lycaon.additional_graceful_pack_stun_multiplier",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "队伍中存在与自身属性或阵营相同的角色或其他[异常]角色时触发：莱卡恩攻击命中处于失衡状态下的敌人时，目标的失衡易伤倍率提升35%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "lycaon_additional_stun_multiplier",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonus",
+      "mode": "flat",
+      "value": 35,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1141",
+    "ownerName": {
+     "zhCN": "冯·莱卡恩"
+    },
+    "teammateId": "1141",
+    "teammateName": {
+     "zhCN": "冯·莱卡恩"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/lycaon.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/05/25/76099754/66038988b3920216f826555eb31ec7d3_1374786350678823683.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/65/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "冯·莱卡恩｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "队伍中存在与自身属性或阵营相同的角色或其他[异常]角色时触发：莱卡恩攻击命中处于失衡状态下的敌人时，目标的失衡易伤倍率提升35%。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/lycaon.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/05/25/76099754/66038988b3920216f826555eb31ec7d3_1374786350678823683.png",
+   "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/65/detail?mhy_presentation_style=fullscreen"
+  }
+ },
+ {
+  "id": "1251",
+  "name": {
+   "zhCN": "青衣"
+  },
+  "attribute": "electric",
+  "specialty": "stun",
+  "buffs": [
+   {
+    "id": "qingyi.core_subjugation_stun_multiplier",
+    "source": {
+     "zhCN": "核心被动（F级）"
+    },
+    "description": {
+     "zhCN": "青衣通过[闪络]命中敌人时，对其施加[羁服]；任意角色攻击处于失衡状态的[羁服]目标时，每层[羁服]使其受到的伤害提升4%，最多20层。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "qingyi_core_subjugation_stun_multiplier",
+      "type": "stacked",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonus",
+      "mode": "flat",
+      "valuePerStack": 4,
+      "maxStacks": 20,
+      "defaultStacks": 20,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1251",
+    "ownerName": {
+     "zhCN": "青衣"
+    },
+    "teammateId": "1251",
+    "teammateName": {
+     "zhCN": "青衣"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/qingyi.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/08/04/141353238/77d70d7c49d4785dbb8d98438219cde7_7990459774903021190.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动（F级）"
+    },
+    "name": {
+     "zhCN": "青衣｜核心被动（F级）"
+    },
+    "conditionLabel": {
+     "zhCN": "青衣通过[闪络]命中敌人时，对其施加[羁服]；任意角色攻击处于失衡状态的[羁服]目标时，每层[羁服]使其受到的伤害提升4%，最多20层。"
+    }
+   },
+   {
+    "id": "qingyi.cinema_1_def_reduction",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "[闪络电压]达到上限时，青衣发动招式会使目标的防御力降低15%，持续15秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "qingyi_cinema_1_enemy_def_reduction",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyDefReduction",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1251",
+    "ownerName": {
+     "zhCN": "青衣"
+    },
+    "teammateId": "1251",
+    "teammateName": {
+     "zhCN": "青衣"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/qingyi.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/08/04/141353238/77d70d7c49d4785dbb8d98438219cde7_7990459774903021190.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "青衣｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "[闪络电压]达到上限时，青衣发动招式会使目标的防御力降低15%，持续15秒。"
+    }
+   },
+   {
+    "id": "qingyi.cinema_2_subjugation_amplify",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "[羁服]每层使失衡易伤提升的效果变为原本的135%。"
+    },
+    "scope": "inCombat",
+    "effects": [],
+    "buffModifiers": [
+     {
+      "id": "qingyi_cinema_2_amplify_subjugation",
+      "operation": "multiplyResolvedValue",
+      "factor": 1.35,
+      "targetBuffIds": [
+       "qingyi.core_subjugation_stun_multiplier"
+      ],
+      "targetEffectIds": [
+       "qingyi_core_subjugation_stun_multiplier"
+      ],
+      "label": {
+       "zhCN": "[羁服]每层失衡易伤提升至原本的135%。"
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1251",
+    "ownerName": {
+     "zhCN": "青衣"
+    },
+    "teammateId": "1251",
+    "teammateName": {
+     "zhCN": "青衣"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/qingyi.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/08/04/141353238/77d70d7c49d4785dbb8d98438219cde7_7990459774903021190.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "青衣｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "[羁服]每层使失衡易伤提升的效果变为原本的135%。"
+    }
+   },
+   {
+    "id": "qingyi.cinema_6_res_reduction",
+    "source": {
+     "zhCN": "影画六"
+    },
+    "description": {
+     "zhCN": "敌人受到青衣指定攻击后，全属性伤害抗性降低20%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "qingyi_cinema_6_enemy_res_reduction",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyResReduction",
+      "mode": "flat",
+      "value": 20,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1251",
+    "ownerName": {
+     "zhCN": "青衣"
+    },
+    "teammateId": "1251",
+    "teammateName": {
+     "zhCN": "青衣"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/qingyi.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/08/04/141353238/77d70d7c49d4785dbb8d98438219cde7_7990459774903021190.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "影画六"
+    },
+    "name": {
+     "zhCN": "青衣｜影画六"
+    },
+    "conditionLabel": {
+     "zhCN": "敌人受到青衣指定攻击后，全属性伤害抗性降低20%。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/qingyi.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/08/04/141353238/77d70d7c49d4785dbb8d98438219cde7_7990459774903021190.png",
+   "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+  }
+ },
+ {
+  "id": "1361",
+  "name": {
+   "zhCN": "「扳机」"
+  },
+  "attribute": "electric",
+  "specialty": "stun",
+  "buffs": [
+   {
+    "id": "trigger.core_gap_stun_multiplier",
+    "source": {
+     "zhCN": "核心被动（F级）"
+    },
+    "description": {
+     "zhCN": "扳机施加[隙]后，目标的失衡易伤倍率提升35%；该效果在目标进入失衡状态前也会生效。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "trigger_core_gap_stun_multiplier_always",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonusAlways",
+      "mode": "flat",
+      "value": 35,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1361",
+    "ownerName": {
+     "zhCN": "「扳机」"
+    },
+    "teammateId": "1361",
+    "teammateName": {
+     "zhCN": "「扳机」"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/trigger.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/03/13/82500917/ba2daa1aecb62503215a1e0ef5711ba1_2157824041282199096.jpg"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动（F级）"
+    },
+    "name": {
+     "zhCN": "「扳机」｜核心被动（F级）"
+    },
+    "conditionLabel": {
+     "zhCN": "扳机施加[隙]后，目标的失衡易伤倍率提升35%；该效果在目标进入失衡状态前也会生效。"
+    }
+   },
+   {
+    "id": "trigger.cinema_1_extra_stun_multiplier",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "[核心被动]中[隙]提升失衡易伤倍率的效果额外提升20%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "trigger_cinema_1_gap_stun_multiplier_always",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonusAlways",
+      "mode": "flat",
+      "value": 20,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1361",
+    "ownerName": {
+     "zhCN": "「扳机」"
+    },
+    "teammateId": "1361",
+    "teammateName": {
+     "zhCN": "「扳机」"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/trigger.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/03/13/82500917/ba2daa1aecb62503215a1e0ef5711ba1_2157824041282199096.jpg"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "「扳机」｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "[核心被动]中[隙]提升失衡易伤倍率的效果额外提升20%。"
+    }
+   },
+   {
+    "id": "trigger.cinema_2_hunter_eye_crit_dmg",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "扳机发动追加攻击可使全队获得一层[猎眸]，每层暴击伤害提升6%，最多4层，持续10秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "trigger_cinema_2_hunter_eye_crit_dmg",
+      "type": "stacked",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "critDmg",
+      "mode": "flat",
+      "valuePerStack": 6,
+      "maxStacks": 4,
+      "defaultStacks": 4,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1361",
+    "ownerName": {
+     "zhCN": "「扳机」"
+    },
+    "teammateId": "1361",
+    "teammateName": {
+     "zhCN": "「扳机」"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/trigger.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/03/13/82500917/ba2daa1aecb62503215a1e0ef5711ba1_2157824041282199096.jpg"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "「扳机」｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "扳机发动追加攻击可使全队获得一层[猎眸]，每层暴击伤害提升6%，最多4层，持续10秒。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/trigger.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/03/13/82500917/ba2daa1aecb62503215a1e0ef5711ba1_2157824041282199096.jpg"
+  }
+ },
+ {
+  "id": "1241",
+  "name": {
+   "zhCN": "橘福福"
+  },
+  "attribute": "fire",
+  "specialty": "stun",
+  "buffs": [
+   {
+    "id": "juhufu.core_tiger_roar_crit_dmg",
+    "source": {
+     "zhCN": "核心被动（F级）"
+    },
+    "description": {
+     "zhCN": "拥有[威风]时，橘福福可为全队施加[虎啸]，使全队暴击伤害提升20%；根据橘福福初始攻击力额外提升，合计最高50%。[虎啸]状态下，角色的[连携技]造成的伤害提升20%，[终结技]造成的伤害提升40%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "juhufu_core_tiger_roar_crit_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "critDmg",
+      "mode": "flat",
+      "value": 50,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "juhufu_core_tiger_roar_chain_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "skill",
+       "skillTargets": [
+        {
+         "kind": "skillType",
+         "skillType": "chain"
+        }
+       ]
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 20,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "juhufu_core_tiger_roar_ultimate_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "skill",
+       "skillTargets": [
+        {
+         "kind": "skillType",
+         "skillType": "ultimate"
+        }
+       ]
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 40,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1241",
+    "ownerName": {
+     "zhCN": "橘福福"
+    },
+    "teammateId": "1241",
+    "teammateName": {
+     "zhCN": "橘福福"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/juhufu.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/06/11/158441880/27d747ee1c225cb739aeff92465972c4_5361421654416153803.png"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动（F级）"
+    },
+    "name": {
+     "zhCN": "橘福福｜核心被动（F级）"
+    },
+    "conditionLabel": {
+     "zhCN": "拥有[威风]时，橘福福可为全队施加[虎啸]，使全队暴击伤害提升20%；根据橘福福初始攻击力额外提升，合计最高50%。[虎啸]状态下，角色的[连携技]造成的伤害提升20%，[终结技]造成的伤害提升40%。"
+    }
+   },
+   {
+    "id": "juhufu.cinema_1_stun_multiplier",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "敌方目标进入失衡状态时，受到全队角色造成的伤害提升35%，持续至失衡状态结束。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "juhufu_cinema_1_stun_multiplier",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonus",
+      "mode": "flat",
+      "value": 35,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1241",
+    "ownerName": {
+     "zhCN": "橘福福"
+    },
+    "teammateId": "1241",
+    "teammateName": {
+     "zhCN": "橘福福"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/juhufu.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/06/11/158441880/27d747ee1c225cb739aeff92465972c4_5361421654416153803.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "橘福福｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "敌方目标进入失衡状态时，受到全队角色造成的伤害提升35%，持续至失衡状态结束。"
+    }
+   },
+   {
+    "id": "juhufu.cinema_2_tiger_roar_crit_dmg",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "[虎啸]状态下，全队暴击伤害额外提升22%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "juhufu_cinema_2_tiger_roar_crit_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "critDmg",
+      "mode": "flat",
+      "value": 22,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1241",
+    "ownerName": {
+     "zhCN": "橘福福"
+    },
+    "teammateId": "1241",
+    "teammateName": {
+     "zhCN": "橘福福"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/juhufu.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/06/11/158441880/27d747ee1c225cb739aeff92465972c4_5361421654416153803.png"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "橘福福｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "[虎啸]状态下，全队暴击伤害额外提升22%。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/juhufu.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/06/11/158441880/27d747ee1c225cb739aeff92465972c4_5361421654416153803.png"
+  }
+ },
+ {
+  "id": "1071",
+  "name": {
+   "zhCN": "凯撒·金"
+  },
+  "attribute": "physical",
+  "specialty": "defense",
+  "buffs": [
+   {
+    "id": "caesar.core_radiant_aegis_atk",
+    "source": {
+     "zhCN": "核心被动（F级）"
+    },
+    "description": {
+     "zhCN": "凯撒为队友提供[荣光之盾]时，护盾持有者的攻击力提升1000点。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "caesar_core_radiant_aegis_atk",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "value": 1000,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1071",
+    "ownerName": {
+     "zhCN": "凯撒·金"
+    },
+    "teammateId": "1071",
+    "teammateName": {
+     "zhCN": "凯撒·金"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/caesar_king.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/10/08/76099754/45788df6a0a15baf27d33f11a93e8c04_1410824794677572273.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动（F级）"
+    },
+    "name": {
+     "zhCN": "凯撒·金｜核心被动（F级）"
+    },
+    "conditionLabel": {
+     "zhCN": "凯撒为队友提供[荣光之盾]时，护盾持有者的攻击力提升1000点。"
+    }
+   },
+   {
+    "id": "caesar.additional_battle_spirit_dmg",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "凯撒触发指定招式或格挡反击时，可使附近全队角色对目标造成的伤害提升25%，持续30秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "caesar_additional_battle_spirit_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 25,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1071",
+    "ownerName": {
+     "zhCN": "凯撒·金"
+    },
+    "teammateId": "1071",
+    "teammateName": {
+     "zhCN": "凯撒·金"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/caesar_king.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/10/08/76099754/45788df6a0a15baf27d33f11a93e8c04_1410824794677572273.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "凯撒·金｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "凯撒触发指定招式或格挡反击时，可使附近全队角色对目标造成的伤害提升25%，持续30秒。"
+    }
+   },
+   {
+    "id": "caesar.cinema_1_aegis_res_reduction",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "[荣光之盾]持有者附近一定范围内的敌人全属性伤害抗性降低15%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "caesar_cinema_1_enemy_res_reduction",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyResReduction",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1071",
+    "ownerName": {
+     "zhCN": "凯撒·金"
+    },
+    "teammateId": "1071",
+    "teammateName": {
+     "zhCN": "凯撒·金"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/caesar_king.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/10/08/76099754/45788df6a0a15baf27d33f11a93e8c04_1410824794677572273.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "凯撒·金｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "[荣光之盾]持有者附近一定范围内的敌人全属性伤害抗性降低15%。"
+    }
+   },
+   {
+    "id": "caesar.cinema_2_core_atk_amplify",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "[核心被动]中[荣光之盾]的攻击力提升效果提升至原本的150%。"
+    },
+    "scope": "inCombat",
+    "effects": [],
+    "buffModifiers": [
+     {
+      "id": "caesar_cinema_2_amplify_core_atk",
+      "operation": "multiplyResolvedValue",
+      "factor": 1.5,
+      "targetBuffIds": [
+       "caesar.core_radiant_aegis_atk"
+      ],
+      "targetEffectIds": [
+       "caesar_core_radiant_aegis_atk"
+      ],
+      "label": {
+       "zhCN": "[荣光之盾]攻击力增益提升至原本的150%。"
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1071",
+    "ownerName": {
+     "zhCN": "凯撒·金"
+    },
+    "teammateId": "1071",
+    "teammateName": {
+     "zhCN": "凯撒·金"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/caesar_king.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/10/08/76099754/45788df6a0a15baf27d33f11a93e8c04_1410824794677572273.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "凯撒·金｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "[核心被动]中[荣光之盾]的攻击力提升效果提升至原本的150%。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/caesar_king.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/10/08/76099754/45788df6a0a15baf27d33f11a93e8c04_1410824794677572273.png",
+   "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+  }
+ },
+ {
+  "id": "1521",
+  "name": {
+   "zhCN": "希希芙"
+  },
+  "attribute": "electric",
+  "specialty": "attack",
+  "buffs": [
+   {
+    "id": "xixifu.core_electric_def_ignore",
+    "source": {
+     "zhCN": "核心被动（F级）"
+    },
+    "description": {
+     "zhCN": "希希芙可使全队角色造成的电属性伤害无视目标6%防御力；希希芙初始能量自动回复超过1.4点/秒时，每超过0.12点/秒额外无视1%，最多25%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "xixifu_core_electric_def_ignore",
+      "type": "formula",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyElectricDefReduction",
+      "mode": "flat",
+      "source": {
+       "variable": "x",
+       "label": {
+        "zhCN": "希希芙初始能量自动回复（点/秒）"
+       },
+       "defaultValue": 3.68,
+       "min": 1.4,
+       "max": 3.68
+      },
+      "formula": {
+       "expression": "clamp(floor((x - 1.4) / 0.12) + 6, 6, 25)",
+       "valueUnit": "storedPercent"
+      },
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "energyRegenTotal",
+      "sourcePanelPhase": "outOfCombat"
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1521",
+    "ownerName": {
+     "zhCN": "希希芙"
+    },
+    "teammateId": "1521",
+    "teammateName": {
+     "zhCN": "希希芙"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/xixifu.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2026/03/25/76099754/c0201856aafd51cad4e01b386d172af8_6170469607651397940.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动（F级）"
+    },
+    "name": {
+     "zhCN": "希希芙｜核心被动（F级）"
+    },
+    "conditionLabel": {
+     "zhCN": "希希芙可使全队角色造成的电属性伤害无视目标6%防御力；希希芙初始能量自动回复超过1.4点/秒时，每超过0.12点/秒额外无视1%，最多25%。"
+    }
+   },
+   {
+    "id": "xixifu.additional_toxin_crit_dmg",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "队伍中存在与自身属性或特性相同的角色时，敌方目标受到[毒素侵蚀]后，全队暴击伤害提升40%，持续20秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "xixifu_additional_toxin_crit_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "critDmg",
+      "mode": "flat",
+      "value": 40,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1521",
+    "ownerName": {
+     "zhCN": "希希芙"
+    },
+    "teammateId": "1521",
+    "teammateName": {
+     "zhCN": "希希芙"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/xixifu.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2026/03/25/76099754/c0201856aafd51cad4e01b386d172af8_6170469607651397940.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "希希芙｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "队伍中存在与自身属性或特性相同的角色时，敌方目标受到[毒素侵蚀]后，全队暴击伤害提升40%，持续20秒。"
+    }
+   },
+   {
+    "id": "xixifu.cinema_1_core_def_ignore_and_electric_res_ignore",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "[核心被动]中全队造成电属性伤害无视目标防御力的效果提升至原本的140%；全队角色造成电属性伤害无视目标5%电属性伤害抗性。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "xixifu_cinema_1_electric_res_ignore",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyElectricResReduction",
+      "mode": "flat",
+      "value": 5,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [
+     {
+      "id": "xixifu_cinema_1_amplify_core_def_ignore",
+      "operation": "multiplyResolvedValue",
+      "factor": 1.4,
+      "targetBuffIds": [
+       "xixifu.core_electric_def_ignore"
+      ],
+      "targetEffectIds": [
+       "xixifu_core_electric_def_ignore"
+      ],
+      "label": {
+       "zhCN": "全队电属性伤害无视防御效果提升至原本的140%。"
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1521",
+    "ownerName": {
+     "zhCN": "希希芙"
+    },
+    "teammateId": "1521",
+    "teammateName": {
+     "zhCN": "希希芙"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/xixifu.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2026/03/25/76099754/c0201856aafd51cad4e01b386d172af8_6170469607651397940.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "希希芙｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "[核心被动]中全队造成电属性伤害无视目标防御力的效果提升至原本的140%；全队角色造成电属性伤害无视目标5%电属性伤害抗性。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/xixifu.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2026/03/25/76099754/c0201856aafd51cad4e01b386d172af8_6170469607651397940.png",
+   "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+  }
+ },
+ {
+  "id": "1301",
+  "name": {
+   "zhCN": "奥菲丝&「鬼火」"
+  },
+  "attribute": "fire",
+  "specialty": "attack",
+  "buffs": [
+   {
+    "id": "orphie.core_crosshair_focus_atk",
+    "source": {
+     "zhCN": "核心被动（F级）"
+    },
+    "description": {
+     "zhCN": "奥菲丝&「鬼火」施加[准星聚焦]时，使全队代理人的攻击力提升280点；初始能量自动回复超过1.6点/秒时，每超过0.1点/秒额外提升20点，最高700点。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "orphie_core_crosshair_focus_atk",
+      "type": "formula",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "source": {
+       "variable": "x",
+       "label": {
+        "zhCN": "奥菲丝初始能量自动回复（点/秒）"
+       },
+       "defaultValue": 3.7,
+       "min": 1.6,
+       "max": 3.7
+      },
+      "formula": {
+       "expression": "clamp(floor((x - 1.6) / 0.1) * 20 + 280, 280, 700)",
+       "valueUnit": "storedValue"
+      },
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "energyRegenTotal",
+      "sourcePanelPhase": "outOfCombat"
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1301",
+    "ownerName": {
+     "zhCN": "奥菲丝&「鬼火」"
+    },
+    "teammateId": "1301",
+    "teammateName": {
+     "zhCN": "奥菲丝&「鬼火」"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/orphie_magusa.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/09/10/439466880/c609e84014fb1fc270b7cd6d6c62d2ef_8915699429557942577.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动（F级）"
+    },
+    "name": {
+     "zhCN": "奥菲丝&「鬼火」｜核心被动（F级）"
+    },
+    "conditionLabel": {
+     "zhCN": "奥菲丝&「鬼火」施加[准星聚焦]时，使全队代理人的攻击力提升280点；初始能量自动回复超过1.6点/秒时，每超过0.1点/秒额外提升20点，最高700点。"
+    }
+   },
+   {
+    "id": "orphie.cinema_1_crosshair_focus_dmg",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "处于[准星聚焦]状态下的队友造成的伤害提升20%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "orphie_cinema_1_crosshair_focus_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 20,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1301",
+    "ownerName": {
+     "zhCN": "奥菲丝&「鬼火」"
+    },
+    "teammateId": "1301",
+    "teammateName": {
+     "zhCN": "奥菲丝&「鬼火」"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/orphie_magusa.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/09/10/439466880/c609e84014fb1fc270b7cd6d6c62d2ef_8915699429557942577.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "奥菲丝&「鬼火」｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "处于[准星聚焦]状态下的队友造成的伤害提升20%。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/orphie_magusa.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/09/10/439466880/c609e84014fb1fc270b7cd6d6c62d2ef_8915699429557942577.png",
+   "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+  }
+ },
+ {
+  "id": "1461",
+  "name": {
+   "zhCN": "「席德」"
+  },
+  "attribute": "electric",
+  "specialty": "attack",
+  "buffs": [
+   {
+    "id": "seed.core_vanguard_bright_attack",
+    "source": {
+     "zhCN": "核心被动（F级）"
+    },
+    "description": {
+     "zhCN": "席德指定一名队友成为[正兵]并进入[围杀]时，使[正兵]获得[明攻]：攻击力提升1000点，暴击伤害提升30%；席德和[正兵]造成的伤害提升25%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "seed_core_bright_attack_atk",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "atkFlat",
+      "mode": "flat",
+      "value": 1000,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "seed_core_bright_attack_crit_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "critDmg",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "seed_core_encirclement_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 25,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1461",
+    "ownerName": {
+     "zhCN": "「席德」"
+    },
+    "teammateId": "1461",
+    "teammateName": {
+     "zhCN": "「席德」"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/seed.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/08/30/439466880/90e7d7b87f30e735ce89c2321035db49_42538056491852002.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动（F级）"
+    },
+    "name": {
+     "zhCN": "「席德」｜核心被动（F级）"
+    },
+    "conditionLabel": {
+     "zhCN": "席德指定一名队友成为[正兵]并进入[围杀]时，使[正兵]获得[明攻]：攻击力提升1000点，暴击伤害提升30%；席德和[正兵]造成的伤害提升25%。"
+    }
+   },
+   {
+    "id": "seed.cinema_2_encirclement_def_ignore",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "进入[围杀]后，席德和[正兵]造成的伤害无视目标20%防御力。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "seed_cinema_2_encirclement_def_ignore",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyAssaultDefReduction",
+      "mode": "flat",
+      "value": 20,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1461",
+    "ownerName": {
+     "zhCN": "「席德」"
+    },
+    "teammateId": "1461",
+    "teammateName": {
+     "zhCN": "「席德」"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/seed.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/08/30/439466880/90e7d7b87f30e735ce89c2321035db49_42538056491852002.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "「席德」｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "进入[围杀]后，席德和[正兵]造成的伤害无视目标20%防御力。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/seed.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/08/30/439466880/90e7d7b87f30e735ce89c2321035db49_42538056491852002.png",
+   "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+  }
+ },
+ {
+  "id": "1451",
+  "name": {
+   "zhCN": "卢西娅·艾洛温"
+  },
+  "attribute": "ether",
+  "specialty": "support",
+  "buffs": [
+   {
+    "id": "lucia_elowen.core_dream_song",
+    "source": {
+     "zhCN": "核心被动（F级）"
+    },
+    "description": {
+     "zhCN": "进入[梦境]状态时开启[以太帷幕·涌泉]，使全队角色最大生命值提升5%，持续40秒；卢西娅发动招式升级或[追加攻击]时，为全队施加[巡梦童谣]，使角色造成的伤害提升20%，持续12秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "lucia_elowen_core_team_hp_pct",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "hpPct",
+      "mode": "pct",
+      "basis": "outOfCombatHp",
+      "value": 5,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "lucia_elowen_core_dream_song_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 20,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1451",
+    "ownerName": {
+     "zhCN": "卢西娅·艾洛温"
+    },
+    "teammateId": "1451",
+    "teammateName": {
+     "zhCN": "卢西娅·艾洛温"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/lucia_elowen.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/10/10/76099754/59a4a2aca9680e8ddf9ebf8c2985007e_9204633087739368852.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1533/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动（F级）"
+    },
+    "name": {
+     "zhCN": "卢西娅·艾洛温｜核心被动（F级）"
+    },
+    "conditionLabel": {
+     "zhCN": "进入[梦境]状态时开启[以太帷幕·涌泉]，使全队角色最大生命值提升5%，持续40秒；卢西娅发动招式升级或[追加攻击]时，为全队施加[巡梦童谣]，使角色造成的伤害提升20%，持续12秒。"
+    }
+   },
+   {
+    "id": "lucia_elowen.ex_special_darkbreaker_sheer_force",
+    "source": {
+     "zhCN": "强化特殊技（技能等级随动）"
+    },
+    "description": {
+     "zhCN": "卢西娅发动[合唱]时为全队施加[破暗]；[破暗]使贯穿力提升12点，卢西娅每拥有200点初始最大生命值（局外生命）额外提升(5+技能等级×0.2)点，最多提升(612+技能等级×24)点，初始最大生命达到24000点时增益达到上限，持续20秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "lucia_elowen_ex_special_sheer_force",
+      "type": "formula",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "sheerForceFlat",
+      "mode": "flat",
+      "source": {
+       "variable": "x",
+       "label": {
+        "zhCN": "卢西娅初始最大生命值（强化特殊技，技能等级随动）"
+       },
+       "defaultValue": 24000,
+       "min": 0,
+       "max": 24000
+      },
+      "formula": {
+       "expression": "clamp(12 + floor(x / 200) * (5 + s * 0.2), 12, 612 + s * 24)",
+       "valueUnit": "storedValue"
+      },
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "hp",
+      "sourcePanelPhase": "outOfCombat"
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1451",
+    "ownerName": {
+     "zhCN": "卢西娅·艾洛温"
+    },
+    "teammateId": "1451",
+    "teammateName": {
+     "zhCN": "卢西娅·艾洛温"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/lucia_elowen.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/10/10/76099754/59a4a2aca9680e8ddf9ebf8c2985007e_9204633087739368852.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1533/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "强化特殊技（技能等级随动）"
+    },
+    "name": {
+     "zhCN": "卢西娅·艾洛温｜强化特殊技（技能等级随动）"
+    },
+    "conditionLabel": {
+     "zhCN": "卢西娅发动[合唱]时为全队施加[破暗]；[破暗]使贯穿力提升12点，卢西娅每拥有200点初始最大生命值（局外生命）额外提升(5+技能等级×0.2)点，最多提升(612+技能等级×24)点，初始最大生命达到24000点时增益达到上限，持续20秒。"
+    }
+   },
+   {
+    "id": "lucia_elowen.additional_long_night_crit_dmg",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "队伍中存在[命破]角色或[击破]角色时，卢西娅施加[破暗]状态时，额外附加暴击伤害提升30%效果。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "lucia_elowen_additional_crit_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "critDmg",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1451",
+    "ownerName": {
+     "zhCN": "卢西娅·艾洛温"
+    },
+    "teammateId": "1451",
+    "teammateName": {
+     "zhCN": "卢西娅·艾洛温"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/lucia_elowen.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/10/10/76099754/59a4a2aca9680e8ddf9ebf8c2985007e_9204633087739368852.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1533/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "卢西娅·艾洛温｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "队伍中存在[命破]角色或[击破]角色时，卢西娅施加[破暗]状态时，额外附加暴击伤害提升30%效果。"
+    }
+   },
+   {
+    "id": "lucia_elowen.cinema_1_dream_song_res_ignore",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "[巡梦童谣]额外附加造成伤害时无视敌人18%全属性伤害抗性；喧响值获取效率+5%（巡梦童谣状态，全队3人，含卢西娅自身）。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "lucia_elowen_cinema_1_all_res_ignore",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyResReduction",
+      "mode": "flat",
+      "value": 18,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "lucia_elowen_cinema_1_decibel_efficiency",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "decibelGainEfficiency",
+      "mode": "flat",
+      "value": 5,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1451",
+    "ownerName": {
+     "zhCN": "卢西娅·艾洛温"
+    },
+    "teammateId": "1451",
+    "teammateName": {
+     "zhCN": "卢西娅·艾洛温"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/lucia_elowen.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/10/10/76099754/59a4a2aca9680e8ddf9ebf8c2985007e_9204633087739368852.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1533/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "卢西娅·艾洛温｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "[巡梦童谣]额外附加造成伤害时无视敌人18%全属性伤害抗性和喧响值获取效率提升5%的效果；卢西娅还能通过[回音]延续[巡梦童谣]。喧响值获取效率仅保留在说明中。"
+    }
+   },
+   {
+    "id": "lucia_elowen.cinema_2_darkbreaker_sheer_dmg",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "拥有[破暗]状态的代理人处于[以太帷幕·涌泉]内时，额外获得贯穿伤害提升15%的效果（破暗随每次[合唱]重挂且持续20秒，按全队近似）；卢西娅自身[合唱]招式伤害+15%由模块执行级实现。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "lucia_elowen_cinema_2_sheer_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "sheerDmgBonus",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1451",
+    "ownerName": {
+     "zhCN": "卢西娅·艾洛温"
+    },
+    "teammateId": "1451",
+    "teammateName": {
+     "zhCN": "卢西娅·艾洛温"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/lucia_elowen.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/10/10/76099754/59a4a2aca9680e8ddf9ebf8c2985007e_9204633087739368852.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1533/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "卢西娅·艾洛温｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "拥有[破暗]状态的代理人处于[以太帷幕·涌泉]内时，额外获得贯穿伤害提升15%的效果。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/lucia_elowen.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/10/10/76099754/59a4a2aca9680e8ddf9ebf8c2985007e_9204633087739368852.png",
+   "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1533/detail?mhy_presentation_style=fullscreen"
+  }
+ },
+ {
+  "id": "1421",
+  "name": {
+   "zhCN": "潘引壶"
+  },
+  "attribute": "physical",
+  "specialty": "defense",
+  "buffs": [
+   {
+    "id": "pan_yinhu.core_open_meridians_sheer_force",
+    "source": {
+     "zhCN": "核心被动（F级）"
+    },
+    "description": {
+     "zhCN": "通过潘引壶触发的[快速支援]或[连携技]入场的代理人获得[通窍]，贯穿力提升潘引壶初始攻击力的18%，最多提升540点，持续25秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "pan_yinhu_core_sheer_force",
+      "type": "derived",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "sheerForceFlat",
+      "mode": "flat",
+      "sourceLabel": {
+       "zhCN": "潘引壶初始攻击力"
+      },
+      "defaultSourceValue": 3000,
+      "ratio": 18,
+      "cap": 540,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "atk",
+      "sourcePanelPhase": "outOfCombat"
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1421",
+    "ownerName": {
+     "zhCN": "潘引壶"
+    },
+    "teammateId": "1421",
+    "teammateName": {
+     "zhCN": "潘引壶"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/pan_yinhu.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/04/26/73751405/7151eee6ba7f9ad07176f604b37d8799_4441778457614666765.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1300/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动（F级）"
+    },
+    "name": {
+     "zhCN": "潘引壶｜核心被动（F级）"
+    },
+    "conditionLabel": {
+     "zhCN": "通过潘引壶触发的[快速支援]或[连携技]入场的代理人获得[通窍]，贯穿力提升潘引壶初始攻击力的18%，最多提升540点，持续25秒。"
+    }
+   },
+   {
+    "id": "pan_yinhu.additional_stupefaction_dmg",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "队伍中存在[命破]角色或与自身阵营相同的角色时，潘引壶通过[特殊技：断脉破穴手]对敌人施加[气绝]，使所有单位对其造成的伤害提升20%，持续10秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "pan_yinhu_additional_stupefaction_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 20,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1421",
+    "ownerName": {
+     "zhCN": "潘引壶"
+    },
+    "teammateId": "1421",
+    "teammateName": {
+     "zhCN": "潘引壶"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/pan_yinhu.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/04/26/73751405/7151eee6ba7f9ad07176f604b37d8799_4441778457614666765.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1300/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "潘引壶｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "队伍中存在[命破]角色或与自身阵营相同的角色时，潘引壶通过[特殊技：断脉破穴手]对敌人施加[气绝]，使所有单位对其造成的伤害提升20%，持续10秒。"
+    }
+   },
+   {
+    "id": "pan_yinhu.cinema_1_stupefaction_dmg",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "所有单位对被施加[气绝]效果的敌人造成伤害时，造成的伤害额外提升10%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "pan_yinhu_cinema_1_stupefaction_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 10,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1421",
+    "ownerName": {
+     "zhCN": "潘引壶"
+    },
+    "teammateId": "1421",
+    "teammateName": {
+     "zhCN": "潘引壶"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/pan_yinhu.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/04/26/73751405/7151eee6ba7f9ad07176f604b37d8799_4441778457614666765.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1300/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "潘引壶｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "所有单位对被施加[气绝]效果的敌人造成伤害时，造成的伤害额外提升10%。"
+    }
+   },
+   {
+    "id": "pan_yinhu.cinema_6_open_meridians_amplify",
+    "source": {
+     "zhCN": "影画六"
+    },
+    "description": {
+     "zhCN": "[核心被动：脉中乾坤]提供的[通窍]额外获得潘引壶初始攻击力6%的贯穿力，合计提升比例为24%，贯穿力上限提升至720点。"
+    },
+    "scope": "inCombat",
+    "effects": [],
+    "buffModifiers": [
+     {
+      "id": "pan_yinhu_cinema_6_amplify_core_sheer_force",
+      "operation": "multiplyResolvedValue",
+      "factor": 1.3333333333333333,
+      "targetBuffIds": [
+       "pan_yinhu.core_open_meridians_sheer_force"
+      ],
+      "targetEffectIds": [
+       "pan_yinhu_core_sheer_force"
+      ],
+      "label": {
+       "zhCN": "[通窍]贯穿力提升比例由18%提高至24%，上限由540点提高至720点。"
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1421",
+    "ownerName": {
+     "zhCN": "潘引壶"
+    },
+    "teammateId": "1421",
+    "teammateName": {
+     "zhCN": "潘引壶"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/pan_yinhu.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/04/26/73751405/7151eee6ba7f9ad07176f604b37d8799_4441778457614666765.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1300/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "影画六"
+    },
+    "name": {
+     "zhCN": "潘引壶｜影画六"
+    },
+    "conditionLabel": {
+     "zhCN": "[核心被动：脉中乾坤]提供的[通窍]额外获得潘引壶初始攻击力6%的贯穿力，合计提升比例为24%，贯穿力上限提升至720点。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/pan_yinhu.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/04/26/73751405/7151eee6ba7f9ad07176f604b37d8799_4441778457614666765.png",
+   "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1300/detail?mhy_presentation_style=fullscreen"
+  }
+ },
+ {
+  "id": "1261",
+  "name": {
+   "zhCN": "简"
+  },
+  "attribute": "physical",
+  "specialty": "anomaly",
+  "buffs": [
+   {
+    "id": "1261.core_insight",
+    "source": {
+     "zhCN": "核心被动（F级）"
+    },
+    "description": {
+     "zhCN": "简的攻击命中敌人时会使其陷入[啮咬]状态，持续10秒；队伍中任意角色对处于[啮咬]状态下的敌人触发[强击]并施加[畏缩]效果时，[畏缩]效果的持续时间提升5秒；对处于[啮咬]状态下的敌人造成的[强击]伤害有概率触发暴击，基础暴击率为40%，暴击伤害为50%，简的每点异常精通会使该效果的暴击率额外提升0.16%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "jane_doe_core_flinch_duration",
+      "type": "fixed",
+      "target": {
+       "kind": "anomaly",
+       "settlementType": "disorder",
+       "anomalyEffects": [
+        "flinch"
+       ]
+      },
+      "stat": "anomalyDurationBonusSeconds",
+      "mode": "flat",
+      "value": 5,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "jane_doe_core_assault_crit_rate",
+      "type": "formula",
+      "target": {
+       "kind": "anomaly",
+       "settlementType": "attribute",
+       "anomalyEffects": [
+        "assault"
+       ]
+      },
+      "stat": "assaultCritRate",
+      "mode": "flat",
+      "source": {
+       "variable": "x",
+       "label": {
+        "zhCN": "简异常精通"
+       },
+       "defaultValue": 375,
+       "min": 0,
+       "max": 375
+      },
+      "formula": {
+       "expression": "clamp(40 + x * 0.16, 0, 100)",
+       "valueUnit": "storedPercent"
+      },
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      },
+      "sourceStat": "anomalyProficiency",
+      "sourcePanelPhase": "outOfCombat"
+     },
+     {
+      "id": "jane_doe_core_assault_crit_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "anomaly",
+       "settlementType": "attribute",
+       "anomalyEffects": [
+        "assault"
+       ]
+      },
+      "stat": "assaultCritDmg",
+      "mode": "flat",
+      "value": 50,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "jane_doe",
+    "ownerName": {
+     "zhCN": "简"
+    },
+    "teammateId": "jane_doe",
+    "teammateName": {
+     "zhCN": "简"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/jane_doe.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/08/16/15559334/671b9f8d9227c19355e2eceb9f23ef28_7055750575833971395.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/759/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动（F级）"
+    },
+    "name": {
+     "zhCN": "简｜核心被动（F级）"
+    },
+    "conditionLabel": {
+     "zhCN": "简的攻击命中敌人时会使其陷入[啮咬]状态，持续10秒；队伍中任意角色对处于[啮咬]状态下的敌人触发[强击]并施加[畏缩]效果时，[畏缩]效果的持续时间提升5秒；对处于[啮咬]状态下的敌人造成的[强击]伤害有概率触发暴击，基础暴击率为40%，暴击伤害为50%，简的每点异常精通会使该效果的暴击率额外提升0.16%。"
+    }
+   },
+   {
+    "id": "1261.cinema_2_assault_crit",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "简的攻击命中处于[啮咬]状态下的敌人，或队伍中任意角色对处于[啮咬]状态下的敌人触发[强击]时，会无视目标15%的防御力；[强击]伤害触发暴击时，暴击伤害额外提升50%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "jane_doe_cinema_2_assault_def_ignore",
+      "type": "fixed",
+      "target": {
+       "kind": "anomaly",
+       "settlementType": "attribute",
+       "anomalyEffects": [
+        "assault"
+       ]
+      },
+      "stat": "enemyAssaultDefReduction",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "jane_doe_cinema_2_assault_crit_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "anomaly",
+       "settlementType": "attribute",
+       "anomalyEffects": [
+        "assault"
+       ]
+      },
+      "stat": "assaultCritDmg",
+      "mode": "flat",
+      "value": 50,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "jane_doe",
+    "ownerName": {
+     "zhCN": "简"
+    },
+    "teammateId": "jane_doe",
+    "teammateName": {
+     "zhCN": "简"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/jane_doe.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/08/16/15559334/671b9f8d9227c19355e2eceb9f23ef28_7055750575833971395.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/759/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "简｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "简的攻击命中处于[啮咬]状态下的敌人，或队伍中任意角色对处于[啮咬]状态下的敌人触发[强击]时，会无视目标15%的防御力；[强击]伤害触发暴击时，暴击伤害额外提升50%。"
+    }
+   },
+   {
+    "id": "1261.cinema_4_anomaly_damage",
+    "source": {
+     "zhCN": "影画四"
+    },
+    "description": {
+     "zhCN": "队伍中任意角色对敌人触发[强击]或[紊乱]效果时，全队造成的属性异常伤害提升18%，持续15秒。选中本 Buff 表示触发条件已经满足。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "jane_doe_cinema_4_attribute_anomaly_damage",
+      "type": "fixed",
+      "target": {
+       "kind": "anomaly",
+       "settlementType": "attribute"
+      },
+      "stat": "anomalyDamageBonus",
+      "mode": "flat",
+      "value": 18,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "jane_doe_cinema_4_disorder_damage",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "disorderDamageBonus",
+      "mode": "flat",
+      "value": 18,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "jane_doe",
+    "ownerName": {
+     "zhCN": "简"
+    },
+    "teammateId": "jane_doe",
+    "teammateName": {
+     "zhCN": "简"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/jane_doe.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/08/16/15559334/671b9f8d9227c19355e2eceb9f23ef28_7055750575833971395.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/759/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "影画四"
+    },
+    "name": {
+     "zhCN": "简｜影画四"
+    },
+    "conditionLabel": {
+     "zhCN": "队伍中任意角色对敌人触发[强击]或[紊乱]效果时，全队造成的属性异常伤害提升18%，持续15秒。选中本 Buff 表示触发条件已经满足。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/jane_doe.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2024/08/16/15559334/671b9f8d9227c19355e2eceb9f23ef28_7055750575833971395.png",
+   "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/759/detail?mhy_presentation_style=fullscreen"
+  }
+ },
+ {
+  "id": "1571",
+  "name": {
+   "zhCN": "诺姆·霍洛维尔"
+  },
+  "attribute": "fire",
+  "specialty": "stun",
+  "buffs": [
+   {
+    "id": "norma_hollowell.additional_technical_gap",
+    "source": {
+     "zhCN": "额外能力（技术鸿沟）"
+    },
+    "description": {
+     "zhCN": "队伍中存在[强攻]、[命破]角色或与诺姆阵营相同的角色时触发：诺姆及其造物、战斗邦布攻击命中敌人时，对敌人施加1层[技术鸿沟]，每层使目标的失衡易伤倍率提升3%，最多叠加10层，每0.5秒最多叠加1层；持有任意层数[技术鸿沟]的敌人进入失衡状态后，失衡持续时间提升2秒，同类效果不可叠加；敌人失衡结束时[技术鸿沟]结束。当前计算规则按默认10层结算失衡易伤；失衡持续时间提升保留为说明，不计入伤害结算。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "norma_hollowell_additional_technical_gap_stun_multiplier",
+      "type": "stacked",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonus",
+      "mode": "flat",
+      "valuePerStack": 3,
+      "maxStacks": 10,
+      "defaultStacks": 10,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1571",
+    "ownerName": {
+     "zhCN": "诺姆·霍洛维尔"
+    },
+    "teammateId": "1571",
+    "teammateName": {
+     "zhCN": "诺姆·霍洛维尔"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/norma_hollowell.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2026/06/20/82500917/88ab6fa91dc0e69c0d22780cb86b4db0_3734734092895620952.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1962/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力（技术鸿沟）"
+    },
+    "name": {
+     "zhCN": "诺姆·霍洛维尔｜额外能力（技术鸿沟）"
+    },
+    "conditionLabel": {
+     "zhCN": "队伍中存在[强攻]、[命破]角色或与诺姆阵营相同的角色时触发：诺姆及其造物、战斗邦布攻击命中敌人时，对敌人施加1层[技术鸿沟]，每层使目标的失衡易伤倍率提升3%，最多叠加10层，每0.5秒最多叠加1层；持有任意层数[技术鸿沟]的敌人进入失衡状态后，失衡持续时间提升2秒，同类效果不可叠加；敌人失衡结束时[技术鸿沟]结束。当前计算规则按默认10层结算失衡易伤；失衡持续时间提升保留为说明，不计入伤害结算。"
+    }
+   },
+   {
+    "id": "norma_hollowell.additional_bangboo_barrage",
+    "source": {
+     "zhCN": "额外能力（嗯呢弹幕）"
+    },
+    "description": {
+     "zhCN": "[嗯呢弹幕]期间，全队代理人造成的伤害提升20%。[嗯呢弹幕]基础持续32秒，发动[强化特殊技：嗯呢弹幕]时可通过持续消耗能量额外延长最多32秒，即最长持续64秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "norma_hollowell_additional_bangboo_barrage_team_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "dmgBonus",
+      "mode": "flat",
+      "value": 20,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1571",
+    "ownerName": {
+     "zhCN": "诺姆·霍洛维尔"
+    },
+    "teammateId": "1571",
+    "teammateName": {
+     "zhCN": "诺姆·霍洛维尔"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/norma_hollowell.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2026/06/20/82500917/88ab6fa91dc0e69c0d22780cb86b4db0_3734734092895620952.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1962/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力（嗯呢弹幕）"
+    },
+    "name": {
+     "zhCN": "诺姆·霍洛维尔｜额外能力（嗯呢弹幕）"
+    },
+    "conditionLabel": {
+     "zhCN": "[嗯呢弹幕]期间，全队代理人造成的伤害提升20%。[嗯呢弹幕]基础持续32秒，发动[强化特殊技：嗯呢弹幕]时可通过持续消耗能量额外延长最多32秒，即最长持续64秒。"
+    }
+   },
+   {
+    "id": "norma_hollowell.cinema_1_aggressive_foresight",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "任意招式中的[破甲弹头]或[高爆弹头]命中敌人时，使敌人的全属性伤害抗性降低15%，持续15秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "norma_hollowell_cinema_1_enemy_res_reduction",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyResReduction",
+      "mode": "flat",
+      "value": 15,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1571",
+    "ownerName": {
+     "zhCN": "诺姆·霍洛维尔"
+    },
+    "teammateId": "1571",
+    "teammateName": {
+     "zhCN": "诺姆·霍洛维尔"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/norma_hollowell.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2026/06/20/82500917/88ab6fa91dc0e69c0d22780cb86b4db0_3734734092895620952.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1962/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "诺姆·霍洛维尔｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "任意招式中的[破甲弹头]或[高爆弹头]命中敌人时，使敌人的全属性伤害抗性降低15%，持续15秒。"
+    }
+   },
+   {
+    "id": "norma_hollowell.cinema_2_technical_gap_amplify",
+    "source": {
+     "zhCN": "影画二"
+    },
+    "description": {
+     "zhCN": "[额外能力：集群优势]中，每层[技术鸿沟]提供的失衡易伤倍率由3%提升至6%；选中本 Buff 时，必须同时选中[额外能力（技术鸿沟）]才会生效。本条目为 C2 额外 +30%（合计 60%）。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "norma_c2_tech_gap_extra",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonus",
+      "mode": "flat",
+      "value": 30,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [
+     {
+      "id": "norma_hollowell_cinema_2_amplify_technical_gap",
+      "operation": "multiplyResolvedValue",
+      "factor": 2,
+      "targetBuffIds": [
+       "norma_hollowell.additional_technical_gap"
+      ],
+      "targetEffectIds": [
+       "norma_hollowell_additional_technical_gap_stun_multiplier"
+      ],
+      "label": {
+       "zhCN": "每层[技术鸿沟]提供的失衡易伤倍率由3%提升至6%。"
+      }
+     }
+    ],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1571",
+    "ownerName": {
+     "zhCN": "诺姆·霍洛维尔"
+    },
+    "teammateId": "1571",
+    "teammateName": {
+     "zhCN": "诺姆·霍洛维尔"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/norma_hollowell.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2026/06/20/82500917/88ab6fa91dc0e69c0d22780cb86b4db0_3734734092895620952.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1962/detail?mhy_presentation_style=fullscreen"
+    },
+    "sourceLabel": {
+     "zhCN": "影画二"
+    },
+    "name": {
+     "zhCN": "诺姆·霍洛维尔｜影画二"
+    },
+    "conditionLabel": {
+     "zhCN": "[额外能力：集群优势]中，每层[技术鸿沟]提供的失衡易伤倍率由3%提升至6%；选中本 Buff 时，必须同时选中[额外能力（技术鸿沟）]才会生效。本条目为 C2 额外 +30%（合计 60%）。"
+    }
+   }
+  ],
+  "images": {
+   "icon": "/assets/agents/norma_hollowell.png",
+   "source": "https://act-upload.mihoyo.com/nap-obc-indep/2026/06/20/82500917/88ab6fa91dc0e69c0d22780cb86b4db0_3734734092895620952.png",
+   "officialPage": "https://baike.mihoyo.com/zzz/wiki/content/1962/detail?mhy_presentation_style=fullscreen"
+  }
+ },
+ {
+  "id": "1611",
+  "name": {
+   "zhCN": "克拉蕾"
+  },
+  "attribute": "electric",
+  "specialty": "sharpen",
+  "images": {},
+  "buffs": [
+   {
+    "id": "claret.gleaming_edge_teammate",
+    "source": {
+     "zhCN": "核心被动·锋芒毕露"
+    },
+    "description": {
+     "zhCN": "克拉蕾通过[毁伤]进入[锋芒毕露]后，首次切换至[击破]或其他[锋御]队友时，延长状态时间并将增益复制给对应角色：穿透率+20%，造成失衡值+10%。当前按1名队友满覆盖处理。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "claret_gleaming_edge_pen_ratio",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "penRatio",
+      "mode": "pct",
+      "value": 20,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "claret_gleaming_edge_stun_build_up",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunBuildUpBonus",
+      "mode": "pct",
+      "value": 10,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1611",
+    "ownerName": {
+     "zhCN": "克拉蕾"
+    },
+    "teammateId": "1611",
+    "teammateName": {
+     "zhCN": "克拉蕾"
+    },
+    "teammateImages": {},
+    "sourceLabel": {
+     "zhCN": "核心被动·锋芒毕露"
+    },
+    "name": {
+     "zhCN": "克拉蕾｜锋芒毕露"
+    },
+    "conditionLabel": {
+     "zhCN": "克拉蕾通过毁伤进入锋芒毕露并首次切换至击破/锋御队友"
+    }
+   }
+  ]
+ },
+ {
+  "id": "1391",
+  "name": {
+   "zhCN": "橘福福"
+  },
+  "attribute": "fire",
+  "specialty": "stun",
+  "images": {},
+  "buffs": [
+   {
+    "id": "jufufu.core_tiger_roar",
+    "source": {
+     "zhCN": "核心被动"
+    },
+    "description": {
+     "zhCN": "发动[连携技：虎釜震煞]时，全队角色获得[虎啸]：暴击伤害基础提升20%，橘福福局外攻击力2800以上每100点再提升5%，最多额外30%（3400攻击时达50%）；[虎啸]下连携技伤害提升20%、终结技伤害提升40%。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "jufufu_tiger_roar_crit_dmg_from_atk",
+      "type": "formula",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "critDmg",
+      "mode": "flat",
+      "sourceStat": "atk",
+      "sourcePanelPhase": "outOfCombat",
+      "formula": {
+       "expression": "20 + min(30, floor(max(0, x - 2800) / 100) * 5)"
+      },
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "jufufu_tiger_roar_chain_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "skillDmgBonus",
+      "mode": "flat",
+      "value": 20,
+      "targetSkillType": "chain",
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     },
+     {
+      "id": "jufufu_tiger_roar_ult_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "skillDmgBonus",
+      "mode": "flat",
+      "value": 40,
+      "targetSkillType": "ultimate",
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1391",
+    "ownerName": {
+     "zhCN": "橘福福"
+    },
+    "teammateId": "1391",
+    "teammateName": {
+     "zhCN": "橘福福"
+    },
+    "teammateImages": {},
+    "sourceLabel": {
+     "zhCN": "核心被动"
+    },
+    "name": {
+     "zhCN": "橘福福｜核心被动·虎啸"
+    },
+    "conditionLabel": {
+     "zhCN": "橘福福发动[连携技：虎釜震煞]后，全队获得[虎啸]"
+    }
+   },
+   {
+    "id": "jufufu.extra_ability_team_decibel",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "队伍中所有角色喧响值上限提升1000点；[强攻]或[命破]角色发动[终结技]时，该角色获得300点喧响值，按该角色终结技释放次数 × 300计入。"
+    },
+    "scope": "inCombat",
+    "effects": [],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1391",
+    "ownerName": {
+     "zhCN": "橘福福"
+    },
+    "teammateId": "1391",
+    "teammateName": {
+     "zhCN": "橘福福"
+    },
+    "teammateImages": {},
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "橘福福｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "队伍中存在[强攻]或[命破]角色"
+    }
+   },
+   {
+    "id": "jufufu.cinema_1_stun_dmg_multiplier",
+    "source": {
+     "zhCN": "影画一"
+    },
+    "description": {
+     "zhCN": "橘福福的[连携技]命中失衡状态下的敌人时，目标失衡易伤倍率提升35%，持续30秒。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "jufufu_cinema_1_stun_dmg_multiplier",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "stunDmgMultiplierBonus",
+      "mode": "flat",
+      "value": 35,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1391",
+    "ownerName": {
+     "zhCN": "橘福福"
+    },
+    "teammateId": "1391",
+    "teammateName": {
+     "zhCN": "橘福福"
+    },
+    "teammateImages": {},
+    "sourceLabel": {
+     "zhCN": "影画一"
+    },
+    "name": {
+     "zhCN": "橘福福｜影画一"
+    },
+    "conditionLabel": {
+     "zhCN": "橘福福[连携技]命中失衡状态下的敌人"
+    }
+   }
+  ]
+ },
+ {
+  "id": "1051",
+  "name": {
+   "zhCN": "伊德海莉"
+  },
+  "attribute": "ice",
+  "specialty": "rupture",
+  "images": {},
+  "buffs": [
+   {
+    "id": "yidhari.core_curtain_hp",
+    "source": {
+     "zhCN": "核心被动"
+    },
+    "description": {
+     "zhCN": "以太帷幕·涌泉：全队角色最大生命值提升5%（0命；4命提升至10%）。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "yidhari_core_curtain_hp",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "hpPct",
+      "mode": "pct",
+      "value": 5,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1051",
+    "ownerName": {
+     "zhCN": "伊德海莉"
+    },
+    "teammateId": "1051",
+    "teammateName": {
+     "zhCN": "伊德海莉"
+    },
+    "sourceLabel": {
+     "zhCN": "核心被动"
+    },
+    "name": {
+     "zhCN": "伊德海莉｜核心被动（以太帷幕·涌泉）"
+    },
+    "conditionLabel": {
+     "zhCN": "以太帷幕·涌泉：全队最大生命值+5%"
+    }
+   },
+   {
+    "id": "yidhari.cinema4_curtain_hp",
+    "source": {
+     "zhCN": "影画四"
+    },
+    "description": {
+     "zhCN": "以太帷幕·涌泉生命提升由5%提升至10%（影画四，与核心被动叠加）。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "yidhari_cinema4_curtain_hp",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "hpPct",
+      "mode": "pct",
+      "value": 5,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1051",
+    "ownerName": {
+     "zhCN": "伊德海莉"
+    },
+    "teammateId": "1051",
+    "teammateName": {
+     "zhCN": "伊德海莉"
+    },
+    "sourceLabel": {
+     "zhCN": "影画四"
+    },
+    "name": {
+     "zhCN": "伊德海莉｜影画四（涌泉生命 5%→10%）"
+    },
+    "conditionLabel": {
+     "zhCN": "影画四：涌泉生命提升由5%提升至10%"
+    }
+   }
+  ]
+ }
+]

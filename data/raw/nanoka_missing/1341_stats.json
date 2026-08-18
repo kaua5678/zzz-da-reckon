@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1341,
+    "name_en": "Zhao",
+    "code_name": "Zhao",
+    "rarity": 4,
+    "element_type": "Ice",
+    "weapon_type": "Defense",
+    "hit_type": "Slash",
+    "camp": "Krampus Compliance Authority"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 733,
+    "hp_growth_per_level": 99.4816,
+    "atk_base_lvl1": 110,
+    "atk_growth_per_level": 6.5027,
+    "def_base_lvl1": 56,
+    "def_growth_per_level": 7.6592,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 93,
+    "anomaly_proficiency_base": 96,
+    "anomaly_mastery_base": 93,
+    "energy_auto_recover": 0.012,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 120,
+    "flash_energy_max": 0,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 503,
+      "atk": 39,
+      "def": 39
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 1006,
+      "atk": 79,
+      "def": 77
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1509,
+      "atk": 118,
+      "def": 116
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 2012,
+      "atk": 157,
+      "def": 155
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2515,
+      "atk": 197,
+      "def": 194
+    }
+  },
+  "extra_stats_lvl60": {
+    "HP": {
+      "value": 0.18,
+      "is_percent": true
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

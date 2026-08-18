@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1241,
+    "name_en": "Zhu Yuan",
+    "code_name": "Zhu Yuan",
+    "rarity": 4,
+    "element_type": "Ether",
+    "weapon_type": "Attack",
+    "hit_type": "Pierce",
+    "camp": "New Eridu Public Security"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 602,
+    "hp_growth_per_level": 81.6391,
+    "atk_base_lvl1": 132,
+    "atk_growth_per_level": 8.0729,
+    "def_base_lvl1": 48,
+    "def_growth_per_level": 6.5524,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 90,
+    "anomaly_proficiency_base": 92,
+    "anomaly_mastery_base": 93,
+    "energy_auto_recover": 0.012,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 120,
+    "flash_energy_max": 0,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 413,
+      "atk": 47,
+      "def": 33
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 826,
+      "atk": 95,
+      "def": 66
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1239,
+      "atk": 142,
+      "def": 99
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1651,
+      "atk": 189,
+      "def": 133
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2064,
+      "atk": 236,
+      "def": 166
+    }
+  },
+  "extra_stats_lvl60": {
+    "CRIT DMG": {
+      "value": 0.288,
+      "is_percent": true
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

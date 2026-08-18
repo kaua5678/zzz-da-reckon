@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:velina",
+  "name": "维琳娜",
+  "agentIds": [
+    "1561"
+  ],
+  "status": "partially_implemented",
+  "attributeConversions": [
+    {
+      "id": "velina_regen_to_dmg",
+      "name": "回能转模·伤害",
+      "sourceStat": "energyRegen",
+      "sourceValue": "energyRegenOutOfCombat",
+      "sourcePanelPhase": "outOfCombat",
+      "threshold": 1.2,
+      "stepSize": 0.01,
+      "targetStat": "dmgBonus",
+      "valuePerStep": 0.21,
+      "cap": 35,
+      "status": "implemented",
+      "note": "真元回能超出 1.2/s 的每 0.01 点转为 0.21% 伤害加成，上限 35%。"
+    },
+    {
+      "id": "velina_regen_to_mastery",
+      "name": "回能转模·掌控",
+      "sourceStat": "energyRegen",
+      "sourceValue": "energyRegenOutOfCombat",
+      "sourcePanelPhase": "outOfCombat",
+      "threshold": 1.2,
+      "stepSize": 0.01,
+      "targetStat": "anomalyMastery",
+      "valuePerStep": 0.5,
+      "cap": 84,
+      "status": "implemented",
+      "note": "真元回能超出 1.2/s 的每 0.01 点转为 0.5 异常掌控，上限 84。"
+    }
+  ],
+  "resources": [
+    {
+      "id": "velina_floria",
+      "name": "风华",
+      "nature": "resource",
+      "initialValue": 45,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "floria_energy_spent",
+          "trigger": "消耗能量",
+          "countSource": "energySpent",
+          "amountPerCount": 1,
+          "formula": "45 + exSpecialCount × energyConsume",
+          "status": "implemented"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "floria_broad_cyclone",
+          "trigger": "90 风华",
+          "cost": 90,
+          "result": "1 次广域风场",
+          "status": "implemented"
+        }
+      ],
+      "properties": {
+        "broadCycloneSegments": 10
+      }
+    },
+    {
+      "id": "velina_corrosion",
+      "name": "风蚀",
+      "nature": "state_machine",
+      "initialValue": 0,
+      "maxValue": 2,
+      "gainRules": [
+        {
+          "trigger": "触发乱流",
+          "amount": 1,
+          "formula": "未满 2 点时本次乱流 +1 风蚀并触发微域",
+          "status": "implemented"
+        },
+        {
+          "trigger": "2 命风化获得",
+          "amount": 1,
+          "coverage": 0.6667,
+          "formula": "风化次数 × 2/3 期望",
+          "status": "implemented_approximation",
+          "adjustable": {
+            "id": "1561.velina_corrosion.2 命风化获得.rate",
+            "label": "维琳娜·风蚀·2 命风化获得",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        }
+      ],
+      "spendRules": [
+        {
+          "trigger": "已有 2 点风蚀时再触发乱流",
+          "cost": 2,
+          "result": "本次微域替换为广域，紊乱倍率 +150%",
+          "status": "implemented"
+        }
+      ],
+      "properties": {
+        "cinema6Refund": 1,
+        "cinema6RefundTrigger": "6 命消耗风蚀后返还"
+      }
+    }
+  ],
+  "rowFusions": [
+    {
+      "id": "velina_broad_damage",
+      "name": "广域风场·伤害 10 段",
+      "agentId": "1561",
+      "moveId": "1561007",
+      "rowId": "damage",
+      "multiplier": 10,
+      "enabled": false,
+      "status": "implemented",
+      "note": "Sweeping Cyclone #1 ×10。默认关闭，避免与现有维琳娜 count×10 逻辑重复。"
+    },
+    {
+      "id": "velina_broad_buildup",
+      "name": "广域风场·积蓄 10 段",
+      "agentId": "1561",
+      "moveId": "1561007",
+      "rowId": "anomaly_buildup",
+      "multiplier": 10,
+      "enabled": false,
+      "status": "implemented",
+      "note": "Sweeping Cyclone #1 的异常积蓄 ×10，默认关闭。"
+    },
+    {
+      "id": "velina_colored_broad_damage",
+      "name": "赋彩广域·伤害 2 段",
+      "agentId": "1561",
+      "moveId": "1561020",
+      "rowId": "damage",
+      "multiplier": 2,
+      "enabled": false,
+      "status": "implemented",
+      "note": "Sweeping Cyclone #2 ×2，默认关闭。"
+    }
+  ],
+  "events": [
+    {
+      "id": "velina_broad_cyclone_wind_release",
+      "name": "广域风场风异放",
+      "trigger": "每次广域风场",
+      "formula": "releaseMultiplier = 255%",
+      "eventType": "release",
+      "countSource": "broadCycloneCount",
+      "carrierMoveId": "1561020",
+      "carrierMoveName": "广域气旋",
+      "fields": [
+        "velinaFloria",
+        "exSpecialCount",
+        "velinaSweepingCyclone1/2",
+        "releaseMultiplier=255"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "velina_ultimate_wind_release",
+      "name": "终结技风异放",
+      "trigger": "额外能力生效时释放终结技",
+      "formula": "releaseMultiplier = 680%",
+      "eventType": "release",
+      "countSource": "ultimateCount",
+      "carrierField": "ultimateMoveId",
+      "carrierMoveName": "终结技",
+      "enabledField": "velinaAdditionalAbilityActive",
+      "fields": [
+        "velinaAdditionalAbilityActive",
+        "ultimateCount",
+        "releaseMultiplier=680"
+      ],
+      "status": "implemented"
+    }
+  ],
+  "verifications": [
+    {
+      "id": "velina_regen_1_5",
+      "name": "回能 1.5/s 转模",
+      "panel": {
+        "energyRegen": 1.5,
+        "energyRegenOutOfCombat": 1.5
+      },
+      "expected": {
+        "dmgBonus": 6.3,
+        "anomalyMastery": 15
+      },
+      "tolerance": 0.0001,
+      "status": "implemented"
+    },
+    {
+      "id": "velina_regen_cap",
+      "name": "回能 10/s 转模封顶",
+      "panel": {
+        "energyRegen": 10,
+        "energyRegenOutOfCombat": 10
+      },
+      "expected": {
+        "dmgBonus": 35,
+        "anomalyMastery": 84
+      },
+      "tolerance": 0.0001,
+      "status": "implemented"
+    }
+  ],
+  "stateMachines": [
+    {
+      "id": "velina_corrosion_state_machine",
+      "name": "风蚀",
+      "initialValue": 0,
+      "maxValue": 2,
+      "spendThreshold": 2,
+      "gainPerEvent": 1,
+      "refundPerSpend": 1,
+      "outputs": [
+        {
+          "id": "microCycloneCount",
+          "kind": "micro"
+        },
+        {
+          "id": "broadCycloneCount",
+          "kind": "broad"
+        },
+        {
+          "id": "boostedTurbulenceCount",
+          "kind": "boosted"
+        },
+        {
+          "id": "cinema6RefundCount",
+          "kind": "refund"
+        }
+      ],
+      "note": "每次乱流先检查是否已有 2 点风蚀；若已有则消耗并替换微域为广域，否则 +1。"
+    }
+  ],
+  "notes": [
+    "普通风化 DoT 基础倍率模型尚未接入，风化 DoT 本体相关命座效果先记录为 partial。",
+    "状态机的 2 命风化获得按 2/3 期望值折算，可在资源利用率页调整。",
+    "回能转模按局外回能（energyRegenOutOfCombat）读取：基础回能 × 局外加成 + 局外固定，不含局内回能 buff。"
+  ],
+  "teamBuffs": [
+    {
+      "id": "velina_infection_zone",
+      "name": "维琳娜｜风化侵染",
+      "source": "风化/浸染机制",
+      "description": "风化状态下，风属性与被染队友属性的直伤进入独立乘区：风化系数 10%。默认按满覆盖处理，用户可在资源利用率页调整侵染覆盖率。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "infectionZoneBonus",
+          "value": 10,
+          "mode": "pct"
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "侵染独立乘区只对风属性与被染队友属性直伤生效。"
+    }
+  ]
+}

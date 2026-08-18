@@ -1,0 +1,49 @@
+{
+  "id": "yidhari-liuyin-lucia",
+  "name": "伊德海莉+琉音+卢西娅",
+  "note": "金数口径：3 限定 S 角色（伊德海莉/琉音/卢西娅）本体+专武 = 6 金基础（全带专武）。\n- 伊德海莉 专武 = 海妖摇篮(14105)，琉音 专武 = 昨夜来电(14148)，卢西娅 专武 = 铸梦炉歌(14145)\n- 加金顺序为模板（先 1 命后 2 命再精炼），可按命座提升率自行调整\n- 若琉音/卢西娅换成非限定音擎（如啜泣摇篮 14121），基础金会相应下降",
+  "team": [
+    "1051",
+    "1481",
+    "1451"
+  ],
+  "wEngines": [
+    "14105",
+    "14148",
+    "14145"
+  ],
+  "goldSteps": [
+    { "label": "伊德海莉 1命", "slot": 0, "kind": "cinema", "value": 1 },
+    { "label": "卢西娅 1命", "slot": 2, "kind": "cinema", "value": 1 },
+    { "label": "琉音 1命", "slot": 1, "kind": "cinema", "value": 1 },
+    { "label": "伊德海莉 2命", "slot": 0, "kind": "cinema", "value": 2 },
+    { "label": "卢西娅 2命", "slot": 2, "kind": "cinema", "value": 2 },
+    { "label": "琉音 2命", "slot": 1, "kind": "cinema", "value": 2 },
+    { "label": "伊德海莉 专武精炼2", "slot": 0, "kind": "wengine", "value": 2 },
+    { "label": "卢西娅 专武精炼2", "slot": 2, "kind": "wengine", "value": 2 },
+    { "label": "琉音 专武精炼2", "slot": 1, "kind": "wengine", "value": 2 },
+    { "label": "伊德海莉 3命", "slot": 0, "kind": "cinema", "value": 3 },
+    { "label": "卢西娅 3命", "slot": 2, "kind": "cinema", "value": 3 },
+    { "label": "琉音 3命", "slot": 1, "kind": "cinema", "value": 3 },
+    { "label": "伊德海莉 4命", "slot": 0, "kind": "cinema", "value": 4 },
+    { "label": "卢西娅 4命", "slot": 2, "kind": "cinema", "value": 4 },
+    { "label": "琉音 4命", "slot": 1, "kind": "cinema", "value": 4 },
+    { "label": "伊德海莉 5命", "slot": 0, "kind": "cinema", "value": 5 },
+    { "label": "卢西娅 5命", "slot": 2, "kind": "cinema", "value": 5 },
+    { "label": "琉音 5命", "slot": 1, "kind": "cinema", "value": 5 },
+    { "label": "伊德海莉 6命", "slot": 0, "kind": "cinema", "value": 6 },
+    { "label": "卢西娅 6命", "slot": 2, "kind": "cinema", "value": 6 },
+    { "label": "琉音 6命", "slot": 1, "kind": "cinema", "value": 6 },
+    { "label": "伊德海莉 专武精炼3", "slot": 0, "kind": "wengine", "value": 3 },
+    { "label": "卢西娅 专武精炼3", "slot": 2, "kind": "wengine", "value": 3 },
+    { "label": "琉音 专武精炼3", "slot": 1, "kind": "wengine", "value": 3 },
+    { "label": "伊德海莉 专武精炼4", "slot": 0, "kind": "wengine", "value": 4 },
+    { "label": "卢西娅 专武精炼4", "slot": 2, "kind": "wengine", "value": 4 },
+    { "label": "琉音 专武精炼4", "slot": 1, "kind": "wengine", "value": 4 },
+    { "label": "伊德海莉 专武精炼5", "slot": 0, "kind": "wengine", "value": 5 },
+    { "label": "卢西娅 专武精炼5", "slot": 2, "kind": "wengine", "value": 5 },
+    { "label": "琉音 专武精炼5", "slot": 1, "kind": "wengine", "value": 5 }
+  ],
+  "standardSteps": [],
+  "interactions": []
+}

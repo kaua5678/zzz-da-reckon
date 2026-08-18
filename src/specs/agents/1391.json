@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:1391",
+  "name": "橘福福",
+  "agentIds": [
+    "1391"
+  ],
+  "status": "partially_implemented",
+  "attributeConversions": [],
+  "resources": [
+    {
+      "id": "jufufu_awe",
+      "name": "威风",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 200,
+      "gainRules": [
+        {
+          "id": "jufufu_tiger_awe_gain",
+          "trigger": "「虎威」自动攻击命中（未使用「虎威」时）",
+          "countSource": "backstageTime",
+          "amountPerCount": 1,
+          "formula": "后场时间 × 1（虎威自动攻击频率近似）",
+          "status": "implemented_approximation",
+          "note": "[猜测·中] 虎威自动攻击真实频率与命中段数决定威风获取，按后场时间 1/秒近似。",
+          "adjustable": {
+            "id": "1391.jufufu_awe.jufufu_tiger_awe_gain.rate",
+            "label": "橘福福·威风·「虎威」自动攻击命中",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        },
+        {
+          "id": "jufufu_awe_ex_special",
+          "trigger": "发动强化特殊技",
+          "countSource": "exSpecialCount",
+          "amountPerCount": 80,
+          "formula": "强化特殊技次数 × 80",
+          "status": "implemented",
+          "note": "[已确认·数据] 强化特殊技·下山猛虎发动时获得 80 点威风。"
+        },
+        {
+          "id": "jufufu_awe_ultimate",
+          "trigger": "发动终结技",
+          "countSource": "ultimateCount",
+          "amountPerCount": 100,
+          "formula": "终结技次数 × 100",
+          "status": "implemented",
+          "note": "[已确认·数据] 终结技·猛虎炸开花发动时获得 100 点威风。"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "jufufu_tiger_chain_spend",
+          "trigger": "威风≥100 且非当前操作角色",
+          "cost": 100,
+          "result": "发动连携技：虎釜震煞，并给全队施加虎啸",
+          "deduct": true,
+          "status": "implemented",
+          "note": "[已确认·数据] 威风≥100 时虎釜震煞消耗 100 点。"
+        }
+      ],
+      "feedbackGainRules": [],
+      "properties": {
+        "tigerRoarCritDmg": 20,
+        "tigerRoarAtkBonusPer100": 5,
+        "tigerRoarAtkBonusMax": 30,
+        "tigerRoarImpactBonus": 50
+      }
+    },
+    {
+      "id": "jufufu_weishi",
+      "name": "威势",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 15,
+      "gainRules": [
+        {
+          "id": "jufufu_weishi_ex_special",
+          "trigger": "发动强化特殊技",
+          "countSource": "exSpecialCount",
+          "amountPerCount": 3,
+          "formula": "强化特殊技次数 × 3",
+          "status": "implemented",
+          "note": "[已确认·数据] 强化特殊技·下山猛虎发动时获得 3 点威势。"
+        },
+        {
+          "id": "jufufu_weishi_ultimate",
+          "trigger": "发动终结技",
+          "countSource": "ultimateCount",
+          "amountPerCount": 6,
+          "formula": "终结技次数 × 6",
+          "status": "implemented",
+          "note": "[已确认·数据] 终结技·猛虎炸开花发动时获得 6 点威势。"
+        },
+        {
+          "id": "jufufu_weishi_assist",
+          "trigger": "支援突击·彪形焰颌（10 秒一次）",
+          "countSource": "parryCount",
+          "amountPerCount": 1,
+          "formula": "招架支援次数 × 1（10 秒冷却近似）",
+          "status": "implemented_approximation",
+          "note": "[猜测·中] 支援突击 +1 威势有 10 秒冷却，按招架支援次数近似。",
+          "adjustable": {
+            "id": "1391.jufufu_weishi.jufufu_weishi_assist.rate",
+            "label": "橘福福·威势·支援突击",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        },
+        {
+          "id": "jufufu_team_ult_weishi_gain",
+          "trigger": "任意角色发动终结技（2 命）",
+          "countSource": "ultimateCount",
+          "amountPerCount": 3,
+          "formula": "终结技次数 × 3",
+          "status": "implemented",
+          "note": "[已确认·数据] 影画2：任意角色终结技时橘福福回复 3 点威势。",
+          "adjustable": {
+            "id": "1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate",
+            "label": "橘福福·威势·任意角色发动终结技（2命）",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        }
+      ],
+      "spendRules": [],
+      "feedbackGainRules": [],
+      "properties": {
+        "popcornDamagePerConsume": 160
+      }
+    }
+  ],
+  "rowFusions": [],
+  "events": [
+    {
+      "id": "jufufu_tiger_chain_execution",
+      "name": "连携技：虎釜震煞",
+      "trigger": "消耗100点威风",
+      "executionKind": "execution",
+      "countSource": "resourceSpend",
+      "countField": "resource:jufufu_awe:jufufu_tiger_chain_spend",
+      "carrierMoveId": "1391013",
+      "carrierMoveName": "连携技：虎釜震煞",
+      "multiplierRowId": "damage",
+      "status": "implemented",
+      "note": "[已确认·数据] 虎釜震煞（1391013）消耗 100 威风自动发动，造成 3545% 火伤（Lv.12）。"
+    }
+  ],
+  "verifications": [],
+  "stateMachines": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "attack",
+          "rupture"
+        ]
+      }
+    ],
+    "note": "额外能力·八面威风：队伍中存在[强攻]或[命破]角色时触发（全队喧响上限+1000 + 强攻/命破角色终结技时该角色+300 喧响）。拐力已在 teammate-buffs.json jufufu.extra_ability_team_decibel 承载。"
+  },
+  "teamBuffs": [],
+  "notes": [
+    "来源：nanoka.cc 3.2.1（Ju Fufu / 1391）。基础属性、技能倍率由脚本导入；核心被动/额外能力/影画机制文本见 data/raw/nanoka_missing/full/1391.json。",
+    "[已确认·数据] 核心被动·虎虎生威：[虎啸] 全队暴伤+20%（Lv.7）+ 橘福福初始攻击≥2800 每超 100 攻击额外暴伤+5%（最多+30%）+ 虎啸下连携/终结伤害+20%/40%，持续 30s；橘福福自身冲击力+50。拐力已在 teammate-buffs.json jufufu.core_tiger_roar 承载；自身冲击+50 由 specPanelBuffs.ts jufufuTigerRoarMechanic 门控写入。",
+    "[猜测·中] 虎啸覆盖率：虎啸持续 30s，由虎釜震煞触发（威风≥100 且非当前操作），默认按满覆盖处理（buff 默认满覆盖可调），实际触发节奏与威风获取速度相关。",
+    "[已确认·数据] 威势消耗（高速旋转）：消耗 1 点威势→火伤 +25 威风；威势≥1 且非操作中时虎釜震煞结束进入高速旋转。此为威势→威风的循环，spec 资源层未建模，标注待补。",
+    "[猜测·中] 影画1 超级可怕小老虎：入场暴击率+12% + 立即+100 威风；连携技命中失衡目标→失衡易伤+35%（30s）。易伤拐力已在 teammate-buffs.json jufufu.cinema_1_stun_dmg_multiplier；入场+100 威风未按命座动态处理。",
+    "[猜测·高] 影画2 神通广大青溟客：虎啸下角色暴伤额外+22%（含自身）；任意角色终结技→橘福福+3 威势（已接资源层）。暴伤+22% 未接入。",
+    "[已确认·数据] 影画3/5：技能等级+2（通用 implemented_generic_skill_level）。",
+    "[猜测·高] 影画4 降妖伏魔虎修者：橘福福虎啸下自身暴伤+35%（未接入）。",
+    "[猜测·高] 影画6 知我心中虎啸声：连携技伤害+30%（moveId 级）；高速旋转消耗威势命中发射 3 爆米花，每个 160% 攻击力伤害（视为连携技伤害）。爆米花附伤未接入。",
+    "猜测汇总(待核对): 共 5 条 —— 覆盖率 1（虎啸）/ 威势循环 1 / 影画 3（C1 入场威风、C2 暴伤、C4 暴伤、C6 连携+爆米花）。grep '[猜测' 逐条核对。"
+  ]
+}

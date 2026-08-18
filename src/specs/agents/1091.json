@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:1091",
+  "name": "雅",
+  "agentIds": [
+    "1091"
+  ],
+  "status": "partially_implemented",
+  "attributeConversions": [],
+  "resources": [
+    {
+      "id": "miyabi_frost_fall",
+      "name": "落霜",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 6,
+      "gainRules": [
+        {
+          "id": "miyabi_disorder_frost_fall_gain",
+          "trigger": "队伍任意角色触发紊乱（近似按强特次数）",
+          "countSource": "exSpecialCount",
+          "amountPerCount": 2,
+          "formula": "强特次数 × 2（紊乱次数在资源计算阶段不可得，用强特次数近似）",
+          "status": "implemented_approximation",
+          "adjustable": {
+            "id": "1091.miyabi_frost_fall.miyabi_disorder_frost_fall_gain.rate",
+            "label": "雅·落霜·紊乱获取",
+            "description": "紊乱获取落霜的期望利用率，默认 100%；实际获取量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        },
+        {
+          "id": "miyabi_frostburn_break_frost_fall_gain",
+          "trigger": "触发霜灼·破",
+          "countSource": "frostburnBreakCount",
+          "amountPerCount": 1,
+          "formula": "霜灼·破次数 × 1（10s CD，近似按强特次数）",
+          "status": "implemented_approximation",
+          "note": "核心被动：触发霜灼·破时获得1点落霜，10秒内最多触发一次。霜灼·破触发近似绑定强特次数，实际获取量用户可调。",
+          "adjustable": {
+            "id": "1091.miyabi_frost_fall.miyabi_frostburn_break_frost_fall_gain.rate",
+            "label": "雅·落霜·霜灼·破获取",
+            "description": "霜灼·破获取落霜的期望利用率，默认 100%；实际获取量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        },
+        {
+          "id": "miyabi_c2_flower_basic_frost_fall_gain",
+          "trigger": "影画二：普通攻击：风花第五段命中",
+          "countSource": "basicAttackCount",
+          "amountPerCount": 1,
+          "formula": "风花#5命中次数 × 1",
+          "status": "implemented_approximation",
+          "note": "影画二：第五段普通攻击：风花最后一击命中敌人时获得1点落霜。每套风花五段≈2s，按普攻时间折算命中次数。",
+          "adjustable": {
+            "id": "1091.miyabi_frost_fall.miyabi_c2_flower_basic_frost_fall_gain.rate",
+            "label": "雅·落霜·C2风花#5获取",
+            "description": "影画二风花#5获取落霜的期望利用率，默认 100%；实际获取量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "miyabi_frost_moon_spend",
+          "trigger": "霜月架势·蓄力三段",
+          "cost": 6,
+          "result": "释放普通攻击：霜月 #3（4282.8% 烈霜直伤）",
+          "deduct": true,
+          "status": "implemented_approximation"
+        }
+      ],
+      "feedbackGainRules": [],
+      "properties": {
+        "cinema2EntryGift": 6
+      }
+    }
+  ],
+  "rowFusions": [],
+  "events": [
+    {
+      "id": "miyabi_frostburn_break",
+      "name": "霜灼·破",
+      "trigger": "对带冰焰的敌人施加霜寒时触发",
+      "eventType": "direct_damage",
+      "executionKind": "execution",
+      "countSource": "fixed",
+      "count": 10,
+      "carrierMoveId": "1091018",
+      "carrierMoveName": "终结技：名残雪",
+      "multiplierRowId": "damage",
+      "status": "implemented_approximation",
+      "note": "霜灼·破是直伤 1500% ATK（Lv.7），吃双爆不吃精通。次数由 mechanics 模块根据 frostfire 异常触发次数近似，用户可调 cap 和利用率。载体的倍率仅用于参考，实际倍率由 mechanics 模块使用 core passive 等级公式计算。"
+    }
+  ],
+  "verifications": [],
+  "stateMachines": [],
+  "teamBuffs": [
+    {
+      "id": "miyabi_c1_team_buildup",
+      "name": "星见雅｜影画一",
+      "source": "影画一",
+      "description": "斩击命中[霜灼]敌人并消除[霜灼]时，全队角色属性异常积蓄效率提升 20%，持续 10 秒。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "anomalyBuildUpEfficiency",
+          "value": 20,
+          "mode": "flat"
+        }
+      ],
+      "status": "implemented_approximation"
+    }
+  ],
+  "notes": [
+    "来源：nanoka.cc 3.2.1（Miyabi）。",
+    "基础属性与技能倍率由脚本自动导入。",
+    "烈霜（frostfire）是独立元素：独立积蓄槽、独立异常触发，20s 持续时间，600/75 紊乱倍率，可与冰互相紊乱。",
+    "冰焰：烈霜伤害附着(30s)，带冰焰时烈霜积蓄效率 = 暴击率×100%（上限80%）。",
+    "霜灼·破：对带冰焰的敌人施加霜寒时触发，消耗冰焰，1500% ATK 烈霜直伤（Lv.7），目标进入霜灼状态。",
+    "霜灼状态：全队异常积蓄效率+20%，雅无法再附着冰焰；随霜寒结束，有风角色时覆盖率为0%。",
+    "霜月架势：强化特殊技/终结技后进入，普攻替换为霜月三段（消耗2/4/6落霜），默认用三段（6落霜）。",
+    "落霜获取：霜灼·破+1(10s CD)、紊乱+2、C2风花#5+1、C2入场+6；上限6点。",
+    "C1：每消耗1落霜，霜月无视6%防御（最多6层=36%）；三段蓄力命中霜灼敌人消除霜灼→全队积蓄效率+20%(10s)。",
+    "C2：风花/闪反伤害+30%；风花#5→+1落霜；入场+6落霜；暴击率+15%。",
+    "C4：霜灼·破伤害+30%；触发霜灼·破时+250喧响。",
+    "C6：霜月架势期间获得极意，霜月伤害+30%；消耗落霜时自动拔刀斩击(最多3次)。"
+  ]
+}

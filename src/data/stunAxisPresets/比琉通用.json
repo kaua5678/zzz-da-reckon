@@ -1,0 +1,116 @@
+{
+ "id": "preset-1531-1481-*",
+ "name": "常规轴",
+ "team": [
+  "1531",
+  "1481",
+  "*"
+ ],
+ "note": "自动轴（用户口径）：队伍含 星徽·比利(1531)+琉音(1481) 自动开启并选用；4 次失衡、3 次终结（喧响够 3 个大）：轴1「常规轴」打 3 次窗口（每窗 抓地→星光→60转大终结→抓地→连携→普通终结），轴2「喧响不够双连携」打 1 次（双连携 + 90 转大白送）。轴1 count:3 / 轴2 count:1 共 4 窗；第三槽通配（轴内无第三槽动作）。",
+ "axes": [
+  {
+   "name": "常规轴",
+   "actions": [
+    {
+     "slot": 0,
+     "moveId": "1531009",
+     "count": 1
+    },
+    {
+     "slot": 0,
+     "moveId": "1531010",
+     "count": 1,
+     "startTime": 2.2
+    },
+    {
+     "slot": 0,
+     "moveId": "1531016",
+     "count": 1,
+     "startTime": 5.4,
+     "promoteVariant": "60"
+    },
+    {
+     "slot": 0,
+     "moveId": "1531009",
+     "count": 1,
+     "startTime": 9.5
+    },
+    {
+     "slot": 0,
+     "moveId": "1531015",
+     "count": 1,
+     "startTime": 11.7
+    },
+    {
+     "slot": 1,
+     "moveId": "1481009",
+     "count": 1,
+     "startTime": 3.7
+    },
+    {
+     "slot": 1,
+     "moveId": "1481011",
+     "count": 1,
+     "startTime": 11
+    },
+    {
+     "slot": 0,
+     "moveId": "1531016",
+     "count": 1,
+     "startTime": 14.1
+    }
+   ],
+   "basicFillerSlot": 0,
+   "count": 3
+  },
+  {
+   "name": "喧响不够双连携",
+   "actions": [
+    {
+     "slot": 0,
+     "moveId": "1531009",
+     "count": 1,
+     "startTime": 3.2
+    },
+    {
+     "slot": 0,
+     "moveId": "1531010",
+     "count": 1
+    },
+    {
+     "slot": 0,
+     "moveId": "1531015",
+     "count": 1,
+     "startTime": 5.3
+    },
+    {
+     "slot": 0,
+     "moveId": "1531009",
+     "count": 1,
+     "startTime": 7.7
+    },
+    {
+     "slot": 0,
+     "moveId": "1531015",
+     "count": 1,
+     "startTime": 9.8
+    },
+    {
+     "slot": 0,
+     "moveId": "1531010",
+     "count": 1,
+     "startTime": 12.2
+    },
+    {
+     "slot": 0,
+     "moveId": "1531016",
+     "count": 1,
+     "startTime": 15.3,
+     "promoteVariant": "90"
+    }
+   ],
+   "basicFillerSlot": 0,
+   "count": 1
+  }
+ ]
+}

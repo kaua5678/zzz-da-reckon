@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const d=require\\('./public/static/teammate-buffs.json'\\); console.log\\(Object.keys\\(d\\).length, 'entries'\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(cd *)",
+      "Bash(echo \"exit: $?\")"
+    ]
+  }
+}

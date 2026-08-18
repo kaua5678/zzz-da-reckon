@@ -1,0 +1,513 @@
+{
+  "id": "1431",
+  "name_en": "Ye Shunguang",
+  "level": 12,
+  "skills": [
+    {
+      "id": "1431001",
+      "category": "basic",
+      "name": "Basic Attack: Swiftedge #1",
+      "energy_cost": {},
+      "damage": 159.7,
+      "daze": 40.8,
+      "energy_recovery": 1.734,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 10.615,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.1397
+      ],
+      "ether_purify": 48.17
+    },
+    {
+      "id": "1431002",
+      "category": "basic",
+      "name": "Basic Attack: Swiftedge #2",
+      "energy_cost": {},
+      "damage": 488.3,
+      "daze": 117.1,
+      "energy_recovery": 5.07,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 30.9925,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.3374
+      ],
+      "ether_purify": 140.84
+    },
+    {
+      "id": "1431003",
+      "category": "basic",
+      "name": "Basic Attack: Swiftedge #3",
+      "energy_cost": {},
+      "damage": 250.0,
+      "daze": 54.1,
+      "energy_recovery": 2.315,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 14.1625,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.1246
+      ],
+      "ether_purify": 64.31
+    },
+    {
+      "id": "1431005",
+      "category": "basic",
+      "name": "Basic Attack: Swiftedge #4",
+      "energy_cost": {},
+      "damage": 736.5,
+      "daze": 161.2,
+      "energy_recovery": 7.019,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 42.9,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.3996
+      ],
+      "ether_purify": 194.97
+    },
+    {
+      "id": "1431004",
+      "category": "basic",
+      "name": "Basic Attack: Cloudstream Sword Will",
+      "energy_cost": {},
+      "damage": 234.4,
+      "daze": 55.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 9.185,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0917
+      ],
+      "ether_purify": 41.66
+    },
+    {
+      "id": "1431006",
+      "category": "basic",
+      "name": "Basic Attack: Enlightened Mind - Splitting Currents #1",
+      "energy_cost": {},
+      "damage": 225.9,
+      "daze": 54.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 14.3,
+      "anomaly_buildup": 65.0,
+      "attack_data": [],
+      "ether_purify": 65.0
+    },
+    {
+      "id": "1431007",
+      "category": "basic",
+      "name": "Basic Attack: Enlightened Mind - Splitting Currents #2",
+      "energy_cost": {},
+      "damage": 312.1,
+      "daze": 74.8,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 19.8,
+      "anomaly_buildup": 90.0,
+      "attack_data": [],
+      "ether_purify": 90.0
+    },
+    {
+      "id": "1431008",
+      "category": "basic",
+      "name": "Basic Attack: Enlightened Mind - Splitting Currents #3",
+      "energy_cost": {},
+      "damage": 433.3,
+      "daze": 104.0,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 27.5275,
+      "anomaly_buildup": 125.0,
+      "attack_data": [],
+      "ether_purify": 125.01
+    },
+    {
+      "id": "1431017",
+      "category": "basic",
+      "name": "Basic Attack: Enlightened Mind - Skyward Ascent",
+      "energy_cost": {},
+      "damage": 182.3,
+      "daze": 54.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 7.15,
+      "anomaly_buildup": 32.5,
+      "attack_data": [],
+      "ether_purify": 32.5
+    },
+    {
+      "id": "1431009",
+      "category": "basic",
+      "name": "Basic Attack: Enlightened Mind - Sunderlight Maximum",
+      "energy_cost": {},
+      "damage": 1209.8,
+      "daze": 115.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 30.8,
+      "anomaly_buildup": 140.0,
+      "attack_data": [],
+      "ether_purify": 140.0
+    },
+    {
+      "id": "1431010",
+      "category": "basic",
+      "name": "Basic Attack: Enlightened Mind - Sunderlight #1",
+      "energy_cost": {},
+      "damage": 241.7,
+      "daze": 51.6,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 13.585,
+      "anomaly_buildup": 61.66,
+      "attack_data": [],
+      "ether_purify": 61.67
+    },
+    {
+      "id": "1431011",
+      "category": "basic",
+      "name": "Basic Attack: Enlightened Mind - Sunderlight #2",
+      "energy_cost": {},
+      "damage": 313.8,
+      "daze": 66.0,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 17.6,
+      "anomaly_buildup": 80.0,
+      "attack_data": [],
+      "ether_purify": 80.0
+    },
+    {
+      "id": "1431013",
+      "category": "basic",
+      "name": "Basic Attack: Enlightened Mind - Sunderlight Annihilation #1",
+      "energy_cost": {},
+      "damage": 1783.3,
+      "daze": 87.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 23.1275,
+      "anomaly_buildup": 105.03,
+      "attack_data": [],
+      "ether_purify": 150.0
+    },
+    {
+      "id": "1431012",
+      "category": "basic",
+      "name": "Basic Attack: Enlightened Mind - Sunderlight Annihilation #2",
+      "energy_cost": {},
+      "damage": 320.5,
+      "daze": 68.1,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 17.985,
+      "anomaly_buildup": 81.69,
+      "attack_data": [],
+      "ether_purify": 81.7
+    },
+    {
+      "id": "1431020",
+      "category": "dodge",
+      "name": "Dash Attack: Phantasm Dash",
+      "energy_cost": {},
+      "damage": 210.6,
+      "daze": 31.7,
+      "energy_recovery": 1.35,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 8.25,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0825
+      ],
+      "ether_purify": 37.5
+    },
+    {
+      "id": "1431022",
+      "category": "dodge",
+      "name": "Dodge Counter: Swallow Strike",
+      "energy_cost": {},
+      "damage": 692.8,
+      "daze": 176.8,
+      "energy_recovery": 4.08,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 24.9425,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.2494
+      ],
+      "ether_purify": 263.34
+    },
+    {
+      "id": "1431014",
+      "category": "special",
+      "name": "Special Attack: Guiding Tides #1",
+      "energy_cost": {},
+      "damage": 197.9,
+      "daze": 37.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 9.735,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 44.15
+    },
+    {
+      "id": "1431015",
+      "category": "special",
+      "name": "Special Attack: Guiding Tides #2",
+      "energy_cost": {},
+      "damage": 632.7,
+      "daze": 199.2,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 30.8275,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.6081
+      ],
+      "ether_purify": 290.01
+    },
+    {
+      "id": "1431016",
+      "category": "special",
+      "name": "EX Special Attack: Gale Suppression",
+      "energy_cost": {
+        "Energy Cost": "60"
+      },
+      "damage": 2357.6,
+      "daze": 510.6,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 185.185,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 283.34
+    },
+    {
+      "id": "1431021",
+      "category": "special",
+      "name": "Special Attack: Enlightened Mind - Clean Exit",
+      "energy_cost": {},
+      "damage": 142.5,
+      "daze": 26.3,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 6.985,
+      "anomaly_buildup": 31.66,
+      "attack_data": [],
+      "ether_purify": 31.67
+    },
+    {
+      "id": "1431018",
+      "category": "special",
+      "name": "EX Special Attack: Enlightened Mind - Soaring Light",
+      "energy_cost": {},
+      "damage": 2116.2,
+      "daze": 163.2,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 43.285,
+      "anomaly_buildup": 196.66,
+      "attack_data": [],
+      "ether_purify": 196.67
+    },
+    {
+      "id": "1431019",
+      "category": "special",
+      "name": "EX Special Attack: Enlightened Mind - Return to Dust",
+      "energy_cost": {},
+      "damage": 2322.7,
+      "daze": 209.8,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 55.7425,
+      "anomaly_buildup": 253.33,
+      "attack_data": [],
+      "ether_purify": 253.34
+    },
+    {
+      "id": "1431024",
+      "category": "chain",
+      "name": "Chain Attack: Smite the Wicked",
+      "energy_cost": {},
+      "damage": 1743.9,
+      "daze": 272.8,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 218.9,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.2541
+      ],
+      "ether_purify": 329.97
+    },
+    {
+      "id": "1431025",
+      "category": "chain",
+      "name": "Ultimate: Chasing Storms",
+      "energy_cost": {},
+      "damage": 3850.0,
+      "daze": 82.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 100.0,
+      "attack_data": [],
+      "ether_purify": 600.0
+    },
+    {
+      "id": "1431026",
+      "category": "chain",
+      "name": "Chain Attack: Enlightened Mind - Lure Thunder",
+      "energy_cost": {},
+      "damage": 1817.2,
+      "daze": 206.8,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 201.3,
+      "anomaly_buildup": 449.5,
+      "attack_data": [],
+      "ether_purify": 250.0
+    },
+    {
+      "id": "1431027",
+      "category": "chain",
+      "name": "Ultimate: Cleaving Heavens",
+      "energy_cost": {},
+      "damage": 6168.7,
+      "daze": 227.2,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 275.0,
+      "attack_data": [],
+      "ether_purify": 275.0
+    },
+    {
+      "id": "1431028",
+      "category": "assist",
+      "name": "Entry Skill: Illuminating Darkness",
+      "energy_cost": {},
+      "damage": 800.8,
+      "daze": 181.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 48.4,
+      "anomaly_buildup": 220.0,
+      "attack_data": [],
+      "ether_purify": 220.0
+    },
+    {
+      "id": "1431029",
+      "category": "assist",
+      "name": "Quick Assist: Support Guard",
+      "energy_cost": {},
+      "damage": 161.9,
+      "daze": 48.2,
+      "energy_recovery": 2.07,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 12.65,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 57.5
+    },
+    {
+      "id": "1431033",
+      "category": "assist",
+      "name": "Assist Follow-Up: Cease Hostility",
+      "energy_cost": {},
+      "damage": 828.4,
+      "daze": 210.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 74.03,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 131.67
+    },
+    {
+      "id": "1431030",
+      "category": "assist",
+      "name": "Defensive Assist: When I Return #1",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 293.2,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [],
+      "ether_purify": 450.04
+    },
+    {
+      "id": "1431031",
+      "category": "assist",
+      "name": "Defensive Assist: When I Return #2",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 311.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [],
+      "ether_purify": 466.64
+    },
+    {
+      "id": "1431032",
+      "category": "assist",
+      "name": "Defensive Assist: When I Return #3",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 179.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [],
+      "ether_purify": 166.64
+    },
+    {
+      "id": "1431035",
+      "category": "assist",
+      "name": "Quick Assist: Enlightened Mind - Tactical Support",
+      "energy_cost": {},
+      "damage": 135.5,
+      "daze": 50.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 13.2275,
+      "anomaly_buildup": 60.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 60.01
+    },
+    {
+      "id": "1431034",
+      "category": "assist",
+      "name": "Assist Follow-Up: Enlightened Mind - Unification",
+      "energy_cost": {},
+      "damage": 860.1,
+      "daze": 219.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 76.78,
+      "anomaly_buildup": 286.22,
+      "attack_data": [],
+      "ether_purify": 140.0
+    }
+  ]
+}

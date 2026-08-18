@@ -1,0 +1,84 @@
+{
+  "id": "banyue-liuyin-lucia",
+  "name": "般岳+琉音+卢西娅",
+  "note": "金数口径：3 限定 S 角色（般岳/琉音/卢西娅）本体+专武 = 6 金基础（全带专武）。\n- 交互已填（闪反10/招架6/金身20/双反5，用户确认）\n- 加金顺序为模板（先 1 命后 2 命再精炼），可按命座提升率自行调整\n- 若琉音/卢西娅换成非限定音擎（如啜泣摇篮 14121），基础金会相应下降",
+  "variants": [
+    {
+      "id": "normal",
+      "name": "普通轴",
+      "stunAxisPresetId": "preset-1471-1481-1451",
+      "note": "般琉通用轴（好评溢出逐窗升级），交互/加金与本体一致"
+    },
+    {
+      "id": "wrath5-ult10",
+      "name": "5嗔火10大",
+      "stunAxisPresetId": "preset-1471-1481-1451-fury5-ult10",
+      "note": "达成条件：4 失衡 + 1 秽盾送 60 能量；琉音回能足够（好评 ≥390）支撑 10 终结技。\n轴结构：1 波双转大 + 2 波循环轴 + 1 波末尾爆发。\n时间约束：总招式耗时 ≤ 180s - Boss 无敌时间（超出说明不可实现，需减少弹刀等交互）"
+    }
+  ],
+  "team": [
+    "1471",
+    "1481",
+    "1451"
+  ],
+  "wEngines": [
+    "14147",
+    "14148",
+    "14145"
+  ],
+  "goldSteps": [
+    { "label": "般岳 1命", "slot": 0, "kind": "cinema", "value": 1 },
+    { "label": "卢西娅 1命", "slot": 2, "kind": "cinema", "value": 1 },
+    { "label": "琉音 1命", "slot": 1, "kind": "cinema", "value": 1 },
+    { "label": "般岳 2命", "slot": 0, "kind": "cinema", "value": 2 },
+    { "label": "卢西娅 2命", "slot": 2, "kind": "cinema", "value": 2 },
+    { "label": "琉音 2命", "slot": 1, "kind": "cinema", "value": 2 },
+    { "label": "般岳 专武精炼2", "slot": 0, "kind": "wengine", "value": 2 },
+    { "label": "卢西娅 专武精炼2", "slot": 2, "kind": "wengine", "value": 2 },
+    { "label": "琉音 专武精炼2", "slot": 1, "kind": "wengine", "value": 2 },
+    { "label": "般岳 3命", "slot": 0, "kind": "cinema", "value": 3 },
+    { "label": "卢西娅 3命", "slot": 2, "kind": "cinema", "value": 3 },
+    { "label": "琉音 3命", "slot": 1, "kind": "cinema", "value": 3 },
+    { "label": "般岳 4命", "slot": 0, "kind": "cinema", "value": 4 },
+    { "label": "卢西娅 4命", "slot": 2, "kind": "cinema", "value": 4 },
+    { "label": "琉音 4命", "slot": 1, "kind": "cinema", "value": 4 },
+    { "label": "般岳 5命", "slot": 0, "kind": "cinema", "value": 5 },
+    { "label": "卢西娅 5命", "slot": 2, "kind": "cinema", "value": 5 },
+    { "label": "琉音 5命", "slot": 1, "kind": "cinema", "value": 5 },
+    { "label": "般岳 6命", "slot": 0, "kind": "cinema", "value": 6 },
+    { "label": "卢西娅 6命", "slot": 2, "kind": "cinema", "value": 6 },
+    { "label": "琉音 6命", "slot": 1, "kind": "cinema", "value": 6 },
+    { "label": "般岳 专武精炼3", "slot": 0, "kind": "wengine", "value": 3 },
+    { "label": "卢西娅 专武精炼3", "slot": 2, "kind": "wengine", "value": 3 },
+    { "label": "琉音 专武精炼3", "slot": 1, "kind": "wengine", "value": 3 },
+    { "label": "般岳 专武精炼4", "slot": 0, "kind": "wengine", "value": 4 },
+    { "label": "卢西娅 专武精炼4", "slot": 2, "kind": "wengine", "value": 4 },
+    { "label": "琉音 专武精炼4", "slot": 1, "kind": "wengine", "value": 4 },
+    { "label": "般岳 专武精炼5", "slot": 0, "kind": "wengine", "value": 5 },
+    { "label": "卢西娅 专武精炼5", "slot": 2, "kind": "wengine", "value": 5 },
+    { "label": "琉音 专武精炼5", "slot": 1, "kind": "wengine", "value": 5 }
+  ],
+  "standardSteps": [],
+  "interactions": [
+    {
+      "type": "dodge",
+      "count": 10,
+      "slot": 0
+    },
+    {
+      "type": "parry",
+      "count": 6,
+      "slot": 0
+    },
+    {
+      "type": "banyueGoldenParry",
+      "count": 20,
+      "slot": 0
+    },
+    {
+      "type": "banyueDualCounter",
+      "count": 5,
+      "slot": 0
+    }
+  ]
+}

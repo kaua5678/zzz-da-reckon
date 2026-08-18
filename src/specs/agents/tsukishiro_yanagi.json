@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:tsukishiro_yanagi",
+  "name": "月城柳",
+  "agentIds": [
+    "1221"
+  ],
+  "status": "not_described_not_implemented",
+  "attributeConversions": [],
+  "resources": [],
+  "rowFusions": [],
+  "events": [],
+  "verifications": [],
+  "stateMachines": [],
+  "notes": [
+    "待录入：月城柳 的机制、资源、事件与验证。"
+  ],
+  "teamBuffs": []
+}

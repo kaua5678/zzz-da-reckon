@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1121,
+    "name_en": "Ben",
+    "code_name": "Ben",
+    "rarity": 3,
+    "element_type": "Fire",
+    "weapon_type": "Defense",
+    "hit_type": "Strike",
+    "camp": "Belobog Heavy Industries"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 690,
+    "hp_growth_per_level": 93.5856,
+    "atk_base_lvl1": 94,
+    "atk_growth_per_level": 5.3574,
+    "def_base_lvl1": 58,
+    "def_growth_per_level": 7.8989,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 95,
+    "anomaly_proficiency_base": 90,
+    "anomaly_mastery_base": 86,
+    "energy_auto_recover": 0.012,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 120,
+    "flash_energy_max": 0,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 473,
+      "atk": 34,
+      "def": 40
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 947,
+      "atk": 67,
+      "def": 80
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1420,
+      "atk": 101,
+      "def": 120
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1893,
+      "atk": 134,
+      "def": 160
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2366,
+      "atk": 168,
+      "def": 200
+    }
+  },
+  "extra_stats_lvl60": {
+    "Base Energy Regen": {
+      "value": 36,
+      "is_percent": false
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

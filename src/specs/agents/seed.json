@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:seed",
+  "name": "希德",
+  "agentIds": [
+    "1461"
+  ],
+  "status": "not_described_not_implemented",
+  "attributeConversions": [],
+  "resources": [],
+  "rowFusions": [],
+  "events": [],
+  "verifications": [],
+  "stateMachines": [],
+  "notes": [
+    "待录入：希德 的机制、资源、事件与验证。"
+  ],
+  "teamBuffs": []
+}

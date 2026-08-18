@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:1471",
+  "name": "般岳",
+  "agentIds": [
+    "1471"
+  ],
+  "status": "partially_implemented",
+  "attributeConversions": [],
+  "resources": [
+    {
+      "id": "banyue_fury",
+      "name": "嗔火",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 150,
+      "gainRules": [
+        {
+          "id": "banyue_fury_from_flash_energy",
+          "trigger": "每消耗1点闪能",
+          "countSource": "energySpent",
+          "amountPerCount": 0.5,
+          "formula": "消耗闪能 × 0.5",
+          "status": "implemented_approximation",
+          "note": "[已确认] 怒相状态下无法再获得嗔火（整局近似：怒相期耗能不产嗔火，由战斗循环折算）。"
+        },
+        {
+          "id": "banyue_fury_from_parry",
+          "trigger": "发动招架支援",
+          "countSource": "parryCount",
+          "amountPerCount": 4,
+          "formula": "招架次数 × 4",
+          "status": "implemented_approximation",
+          "note": "[已确认] 招架支援回复4点嗔火。"
+        },
+        {
+          "id": "banyue_fury_from_block",
+          "trigger": "闪避：不动如山成功招架",
+          "countSource": "parryCount",
+          "amountPerCount": 4,
+          "formula": "格挡次数 × 4（完美格挡6；平均按4近似，1秒最多1次）",
+          "status": "implemented_approximation",
+          "note": "[猜测·中] 普通格挡4/完美格挡6，1s CD；与招架支援同源 parryCount，整局合并近似（默认按 4 点/次）。"
+        },
+        {
+          "id": "banyue_fury_from_dodge",
+          "trigger": "触发极限闪避",
+          "countSource": "dodgeCounterCount",
+          "amountPerCount": 4,
+          "formula": "极限闪避次数 × 4（1秒最多1次）",
+          "status": "implemented_approximation",
+          "note": "[已确认] 极限闪避回复4点嗔火。"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "banyue_fury_enter_rage",
+          "trigger": "嗔火≥120时发动普通攻击：焚身（1471027）",
+          "cost": 120,
+          "result": "进入[怒相]状态，获得4点[山威]；怒相中不再获得嗔火",
+          "deduct": true,
+          "status": "implemented_approximation",
+          "note": "[已确认] 怒相中无法再获得嗔火；焚身 221.7% 倍率（1471027）。"
+        }
+      ],
+      "properties": {
+        "rageEnterThreshold": 120,
+        "furyCap": 150
+      }
+    },
+    {
+      "id": "banyue_mountain_sway",
+      "name": "山威",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 4,
+      "gainRules": [
+        {
+          "id": "banyue_mountain_sway_from_rage",
+          "trigger": "进入[怒相]状态",
+          "countSource": "fixed",
+          "amountPerCount": 4,
+          "formula": "怒相进入次数 × 4",
+          "status": "implemented_approximation",
+          "note": "[已确认] 进入怒相获得4点山威；退出怒相（倾山）时清空。怒相进入次数 = 嗔火消耗 120 的次数（战斗循环待用户确认）。"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "banyue_mountain_sway_spend_ex",
+          "trigger": "怒相中发动强化特殊技",
+          "cost": 1,
+          "result": "不消耗闪能，回复10点闪能（无山威时仍消耗闪能）",
+          "deduct": true,
+          "status": "implemented_approximation",
+          "note": "[已确认] 山威替代闪能：每次消耗1山威并回复10闪能。"
+        }
+      ],
+      "properties": {
+        "flashRefundPerSway": 10
+      }
+    }
+  ],
+  "rowFusions": [],
+  "events": [
+    {
+      "id": "banyue_c6_crush_peaks_attach",
+      "name": "影画6·摧岳附伤",
+      "trigger": "发动普通攻击：摧岳（1471010）命中时",
+      "executionKind": "execution",
+      "countSource": "fixed",
+      "count": 0,
+      "carrierMoveId": "1471010",
+      "carrierMoveName": "普通攻击：摧岳",
+      "multiplierRowId": "damage",
+      "status": "not_described_not_implemented",
+      "note": "[已确认] 影画6：摧岳命中时对周身敌人造成等同于自身600%贯穿力的火属性伤害。摧岳次数由战斗循环决定，暂未接入（count=0 占位）。"
+    }
+  ],
+  "verifications": [],
+  "stateMachines": [],
+  "notes": [
+    "来源：nanoka.cc 3.2.1（Banyue）+ full/1471.json + catalog 1471。",
+    "基础属性与技能倍率已由脚本导入；般岳为命破（rupture）/火属性：火伤均为贯穿伤害（引擎按贯穿力基底+无视防御结算，无需额外实现）。",
+    "[已确认] 核心被动·群山如我：hp→贯穿力 0.1/点 = 命破通用公式（贯穿力 = atk×0.3 + hp×0.1 + sheerForceFlat）的描述，非额外叠加，无需单独实现。",
+    "招式映射（用户确认）：闪避次数→闪避反击：扬砾(1471019)；普通弹刀次数→支援突击：昂霄(1471026)；金身弹刀+双反次数→支援突击：冲霄(1471029)。招式表：普攻 峥嵘#1-4(1471001-4)/崔巍#1-4(1471005-8)/焚身(1471027)/倾山(1471009,1739.9%)/摧岳(1471010,756.7%)；强特 地动(1471013,510%,20闪能)/山摇(1471012,342.9%,20)/论道(1471015,325.2%,20)/狮子吼(1471014,307.7%,20)/山摇·怒(1471017,650.6%,40)/狮子吼·怒(1471016,600.4%,40)；连携怒焰(1471020,1121.9%)；终结撼天动地(1471021,3197.8%)；支援突击昂霄(1471026,483.6%)/冲霄(1471029,443.8%)。",
+    "[已确认] 山威：进入怒相+4；怒相中强特消耗1山威（回10闪能）替代闪能；退出怒相（倾山1471009）清空。不考虑「长按自动释放强特」逻辑（面向新手的免搓招，自动消耗点数打强特）：计算器直接假定技能已释放。",
+    "[已确认] 影画1·战栗：论道/地动命中→敌人火抗-10%（30s）；狮子吼/山摇（含·怒）/倾山/摧岳对战中栗敌人贯穿伤害+10%；摧岳命中失衡敌人→失衡时长+2s（一次失衡一次）。",
+    "[已确认] 影画2：核心被动增益暴伤/火伤各额外+15%（Lv.7时51%）；山威强特额外回5闪能。影画3/5：技能等级+2（implemented_generic_skill_level）。",
+    "[已确认] 影画4：狮子吼·怒/山摇·怒/倾山/摧岳伤害+30%（moveId级，未接入）。影画6：任意强特获得明王；明王火伤额外+8%（每层13%）、持续30s；摧岳命中→600%贯穿力火伤附伤；强特后衔接[闪避：叫阵]也可获得明王。",
+    "招式表：普攻 峥嵘#1-4(1471001-4)/崔巍#1-4(1471005-8)/焚身(1471027)/倾山(1471009,1739.9%)/摧岳(1471010,756.7%)；强特 地动(1471013,510%,20闪能)/山摇(1471012,342.9%,20)/论道(1471015,325.2%,20)/狮子吼(1471014,307.7%,20)/山摇·怒(1471017,650.6%,40)/狮子吼·怒(1471016,600.4%,40)；连携怒焰(1471020,1121.9%)；终结撼天动地(1471021,3197.8%)；支援突击昂霄(1471026,483.6%)/冲霄(1471029,443.8%)。",
+    "[已确认] 开局场外烧血把嗔火攒到最多120；通常回复115（不满120避免开局自动入怒相），战斗开始后第一次失衡直接焚身开怒相。模型开局嗔火=115。",
+    "[已确认] 强特连段末尾后摇（2026-08 录入）：每个强特连段（论道→狮子吼·怒 / 地动→山摇·怒）的末尾强特有后摇，时长 = 末尾强特自身动作时间，期间不能平A → 占用战场时间（计入 estimateExSpecialTime 的 necessaryTime，平A池变小）。失衡内/外拆分（2026-08 修正，用户口径：怒相基本在失衡内打完，失衡外以闪能连段为主）：失衡内 = 怒相内连段（焚身→连段→倾山→摧岳都在失衡窗口内，被连携/大招/瞬拳取消后摇，不计）；失衡外 = 闪能连段（轴模式轴内强特耗闪能 → 富余能量在失衡外打连段，次数由捏轴控制）+ 轴内未覆盖的怒相组（最多 2 组 = 一组怒相；非轴模式无轴可捏 → 怒相内默认失衡内全取消，只计怒相外自动连段）− 主页交互栏「嘲讽取消」次数（每次取消一次后摇，按两类连段占比拆分，地动山摇占比沿用 banyue.diDongComboCount 滑块）。执行计划推 0 倍率恢复行（banyue-recovery-lundao/didong，展示名「后摇（狮子吼·怒）/后摇（山摇·怒）」，仅展示不进伤害池）；资源卡片「后摇损失伤害（估算）」行（后摇时间占平A时间比例 = 平A伤害损失估算）。金身弹刀+双反（不动如山 0.666s + 冲霄）时间计入 estimateExSpecialTime 的 necessaryTime（修复前只出执行行不占时间预算 → 总计可超 180s）。",
+    "[已接入] 轴模式自动补齐交互次数（保底语义，2026-08 方案A）：轴内怒相/终结技对资源有硬性需求——嗔火不足自动抬双反（+10/次，目标 = 轴内连段块÷2 次怒相×120 − 当前嗔火）、喧响不足自动抬弹刀（+215/次，目标 = 轴内终结技需求 − 当前喧响供给）。有效次数 = 交互栏输入 + 补齐量（不写回 store，交互栏显示「弹刀 +N（轴自动）」）；computeBanyueInteractionTopUp 纯函数 + useResourceCalc 外不动点收敛（prevBanyueTopUp 线程），弹刀补齐量计入 calcSpecialActionBonus；设置 banyue.autoTopUpInteractions 可关闭。",
+    "[已接入] 能量分化（用户确认）：[普] 普通强特耗闪能（论道/狮子吼/山摇/地动 20，狮子吼·怒/山摇·怒 40）且回复嗔火（+0.5/闪能）；[怒] 怒相连段块耗山威免费（每怒相 4 山威 = 最多 2 组），不耗闪能、不回复嗔火。怒相内 2 组免费连段固定为论道→狮子吼·怒；怒相外连段自动打满 floor(剩余闪能/60)，banyue.diDongComboCount 滑块拆分「地动→山摇·怒」vs「论道→狮子吼·怒」（默认 0 = 全论道连段）。轴内捏的连段块（banyue-combo）= 怒相内免费连段的轴内表达，不占闪能预算、不回复嗔火（AXIS_EX_COST 不含连段块）。[已接入] 资源池迭代口径（修复）：resolveExSpecialCount 对般岳返回嗔火循环的强特总数（怒相内山威免费 4×rage + 怒相外连段 2×comboOut + 轴内普通强特），不再用 闪能/20；calcEnergySource 计入山威回闪能（rage×4×10，C2 +5/个 → banyueSwayRefund）。[已接入] 怒相增益：贯穿+300/火伤+36%/暴伤+36%（Lv.7，C2各+15），30s，覆盖率滑块近似（rageGainCoverage，默认100%）。[已接入] 明王（额外能力，AA 触发时）：非6命 = 8s 窗口、只有怒相技能（怒相连段块 banyue-combo）触发（首次2层、窗口内再触发3层并刷新，触发块自身不享受）——轴模式按失衡轴时间轴扫描（computeBanyueMingwangStacks，落窗招式 5%/层，按 moveId 实例加权，emitExecDirect 施加；单招强特不触发但可享受窗口）；非轴模式按 banyue.mingwangCoverage 覆盖率滑块近似（满层3×5%×覆盖率，默认50%）。6命：明王 30s + 任意强特常态刷新 → 满覆盖 → 全局火伤 +39%（3层×13%，applyPanel 施加，轴/非轴一致含 C6 附伤）。[已接入] C1 战栗（全覆盖）：贯穿伤害+10%（sheerDmgBonus）+ 摧岳命中失衡+2s；敌人火抗-10% 见 teamBuffs（coverage=1）。[已接入] C4 四招式+30%（patchExecutions moveId 级）；[已接入] C6 摧岳 600% 贯穿力火伤附伤：次数=倾山次数，自动触发不可调（useResourceCalc pushDirect，不产生资源利用率行）。[已接入] 轴编辑器：怒/普分化标注（[怒]连段 山威免费 / [普]单招 20/40闪+倍率）+ 明王平行道窗口条（computeBanyueMingwangBlocks）；般琉通用.json 预设（常规轴/末尾爆发轴）随队伍匹配。"
+  ],
+  "teamBuffs": [
+    {
+      "id": "banyue_c1_enemy_fire_debuff",
+      "name": "般岳｜影画一",
+      "source": "影画一",
+      "description": "强化特殊技使敌人陷入[战栗]：火属性伤害抗性降低 10%，持续 30 秒；[普通攻击：摧岳]命中失衡敌人时失衡持续时间提升 2 秒。",
+      "target": "enemy",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "enemyFireResReduction",
+          "value": 10,
+          "mode": "flat"
+        }
+      ],
+      "status": "implemented_approximation"
+    }
+  ],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "support",
+          "stun"
+        ]
+      }
+    ],
+    "note": "额外能力·绝巅：队伍中存在[支援]或[击破]角色时触发：怒相中消耗[山威]发动[强化特殊技]时获得[明王]，每层火属性伤害+5%，最多3层。非6命：8s 窗口，仅怒相技能触发（首次2层、窗口内再触发3层刷新），轴内时间轴扫描/非轴覆盖率滑块近似；6命：30s 且任意强特可触发刷新 → 满覆盖（+39%）。"
+  }
+}

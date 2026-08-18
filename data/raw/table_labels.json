@@ -1,0 +1,17 @@
+{
+  "categories": {
+    "basic": "普通攻击",
+    "special": "特殊技",
+    "dodge": "闪避",
+    "chain": "连携技",
+    "assist": "支援技"
+  },
+  "rows": {
+    "damage": "伤害倍率",
+    "daze": "失衡倍率",
+    "energy_recovery": "能量回复",
+    "decibel_recovery": "喧响回复",
+    "anomaly_buildup": "异常积蓄",
+    "ether_purify": "秽盾削减"
+  }
+}

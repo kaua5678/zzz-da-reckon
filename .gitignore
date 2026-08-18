@@ -1,0 +1,22 @@
+# Dependencies and build output
+node_modules/
+dist/
+
+# TypeScript / bundler artifacts
+*.tsbuildinfo
+scripts/check.mjs
+
+# Local-only state
+.trae-backups/
+.git-invalid/
+.npm-cache/
+*.log
+
+# Agent loop-mode task ledger (working state, not project knowledge)
+.claude/task-ledger.md
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

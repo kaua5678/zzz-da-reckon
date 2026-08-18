@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:qianxia",
+  "name": "千夏",
+  "agentIds": [
+    "1491"
+  ],
+  "status": "not_described_not_implemented",
+  "attributeConversions": [],
+  "resources": [],
+  "rowFusions": [],
+  "events": [],
+  "verifications": [],
+  "stateMachines": [],
+  "notes": [
+    "待录入：千夏 的机制、资源、事件与验证。"
+  ],
+  "teamBuffs": []
+}

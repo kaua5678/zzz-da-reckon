@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:alice",
+  "name": "爱丽丝",
+  "agentIds": [
+    "1401"
+  ],
+  "status": "partially_implemented",
+  "attributeConversions": [
+    {
+      "id": "alice_mastery_to_proficiency",
+      "name": "掌控转精通",
+      "sourceStat": "anomalyMastery",
+      "sourcePanelPhase": "inCombat",
+      "threshold": 140,
+      "stepSize": 1,
+      "targetStat": "anomalyProficiency",
+      "valuePerStep": 1.6,
+      "cap": null,
+      "status": "implemented",
+      "note": "异常掌控超过 140 后，每 1 点转为 1.6 异常精通。"
+    }
+  ],
+  "resources": [
+    {
+      "id": "alice_sword_will",
+      "name": "剑仪",
+      "nature": "resource",
+      "initialValueSource": "cfgField",
+      "initialValueField": "aliceInitialSwordWill",
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "alice_basic_gain",
+          "trigger": "平A",
+          "countSource": "basicTime",
+          "valueSource": "cfgField",
+          "valueField": "aliceSwordWillPerSec",
+          "formula": "每秒剑仪 = 普通段 attack_data_0 均值 / actionTime",
+          "status": "implemented"
+        },
+        {
+          "id": "alice_ex_gain",
+          "trigger": "强特",
+          "countSource": "exSpecialCount",
+          "valueSource": "cfgField",
+          "valueField": "aliceExSpecialSwordWill",
+          "status": "implemented"
+        },
+        {
+          "id": "alice_team_assault_gain",
+          "trigger": "全队强击",
+          "countSource": "teamAssaultCount",
+          "valueSource": "cfgField",
+          "valueField": "aliceTeamAssaultSwordWill",
+          "status": "implemented"
+        },
+        {
+          "id": "alice_disorder_gain",
+          "trigger": "紊乱",
+          "countSource": "disorderCount",
+          "valueSource": "cfgField",
+          "valueField": "aliceDisorderSwordWill",
+          "status": "implemented"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "base_spark",
+          "trigger": "基础剑意 300",
+          "cost": 300,
+          "result": "基础极性强击次数",
+          "deduct": false,
+          "bonusCountSource": "ultimateCount",
+          "bonusEnabledField": "aliceCinema2UltSpark",
+          "status": "implemented"
+        },
+        {
+          "id": "final_spark",
+          "trigger": "总剑意 300",
+          "cost": 300,
+          "result": "1 次星芒圆舞曲 #3",
+          "bonusCountSource": "ultimateCount",
+          "bonusEnabledField": "aliceCinema2UltSpark",
+          "status": "implemented"
+        }
+      ],
+      "feedbackGainRules": [
+        {
+          "id": "alice_polarity_feedback",
+          "trigger": "极性强击回复",
+          "countSource": "totalSparkCount",
+          "valueSource": "cfgField",
+          "valueField": "alicePolarityAssaultSwordWill",
+          "status": "implemented"
+        }
+      ],
+      "properties": {
+        "cinema1PolarityAssaultGain": 35,
+        "cinema2UltSpark": true
+      }
+    }
+  ],
+  "rowFusions": [],
+  "events": [
+    {
+      "id": "alice_cowering_dot",
+      "name": "畏缩被动 DOT",
+      "trigger": "敌人处于异常状态",
+      "formula": "强击伤害 × 2.5% / 0.95s",
+      "eventType": "other",
+      "countSource": "fixed",
+      "count": 1,
+      "fields": [
+        "aliceCoweringDotRatio",
+        "aliceCoweringDotInterval"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "alice_cinema6_attack",
+      "name": "6 命附伤",
+      "trigger": "每轮决胜状态",
+      "formula": "异常精通 × 3300% × 必爆",
+      "eventType": "direct_damage",
+      "countSource": "fixed",
+      "count": 1,
+      "fields": [
+        "aliceCinema6MaxTriggers",
+        "aliceCinema6DamageRatio"
+      ],
+      "status": "partially_implemented"
+    },
+    {
+      "id": "alice_sword_will_spark",
+      "name": "剑意触发：星芒圆舞曲 #3",
+      "trigger": "剑意满 300",
+      "formula": "count = 剑意总量 ÷ 300 + 二命终结技额外次数",
+      "eventType": "polar_assault",
+      "countSource": "aliceSparkCount",
+      "carrierMoveId": "1401012",
+      "carrierMoveName": "普通攻击：星芒圆舞曲 #3",
+      "fields": [
+        "aliceSwordWillPerSec",
+        "aliceExSpecialSwordWill",
+        "basicAttackTime",
+        "exSpecialCount",
+        "alicePolarityAssaultSwordWill",
+        "aliceTeamAssaultSwordWill",
+        "aliceDisorderSwordWill",
+        "aliceCinema2UltSpark",
+        "ultimateCount"
+      ],
+      "status": "implemented"
+    }
+  ],
+  "verifications": [
+    {
+      "id": "alice_mastery_150",
+      "name": "掌控 150 转精通",
+      "panel": {
+        "anomalyMastery": 150
+      },
+      "expected": {
+        "anomalyProficiency": 16
+      },
+      "tolerance": 0.0001,
+      "status": "implemented"
+    }
+  ],
+  "stateMachines": [],
+  "notes": [
+    "畏缩状态本身无 DOT，只是持续时间内敌人失衡值 +7.5% 的 buff。",
+    "6 命附伤是否吃增伤/防御/抗性等乘区尚未确认。"
+  ],
+  "teamBuffs": [
+    {
+      "id": "alice_c1_enemy_def_reduction",
+      "name": "爱丽丝｜影画一",
+      "source": "影画一",
+      "description": "爱丽丝触发[强击]时，目标防御力降低 20%。该减防不限定强击，视为全队可用的敌人减益，默认满覆盖。",
+      "target": "enemy",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "enemyDefReduction",
+          "value": 20,
+          "mode": "flat"
+        }
+      ],
+      "status": "implemented",
+      "note": "全减防，不只作用于强击。"
+    },
+    {
+      "id": "alice_c2_team_assault_damage",
+      "name": "爱丽丝｜影画二",
+      "source": "影画二",
+      "description": "全队强击伤害提升 15%，畏缩紊乱伤害提升 15%。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "anomalyDamageBonus",
+          "value": 15,
+          "mode": "flat"
+        },
+        {
+          "stat": "disorderDamageBonus",
+          "value": 15,
+          "mode": "flat"
+        }
+      ],
+      "status": "implemented",
+      "note": "强击与畏缩紊乱分别吃异常增伤区和紊乱增伤区。"
+    }
+  ]
+}

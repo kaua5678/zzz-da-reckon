@@ -1,0 +1,280 @@
+{
+  "id": "preset-1471-1481-*-fury5-ult10",
+  "name": "5火10大",
+  "team": [
+    "1471",
+    "1481",
+    "*"
+  ],
+  "note": "",
+  "axes": [
+    {
+      "name": "循环",
+      "actions": [
+        {
+          "slot": 0,
+          "moveId": "1471020",
+          "count": 1
+        },
+        {
+          "slot": 0,
+          "moveId": "banyue-combo",
+          "count": 1,
+          "startTime": 2.4
+        },
+        {
+          "slot": 0,
+          "moveId": "1471021",
+          "count": 1,
+          "startTime": 4.3,
+          "promoteVariant": "60"
+        },
+        {
+          "slot": 0,
+          "moveId": "banyue-combo",
+          "count": 1,
+          "startTime": 6.7
+        },
+        {
+          "slot": 0,
+          "moveId": "1471009",
+          "count": 1,
+          "startTime": 7.8
+        },
+        {
+          "slot": 0,
+          "moveId": "1471010",
+          "count": 1,
+          "startTime": 9.7
+        },
+        {
+          "slot": 0,
+          "moveId": "1471021",
+          "count": 1,
+          "startTime": 11.1
+        },
+        {
+          "slot": 0,
+          "moveId": "1471015",
+          "count": 1,
+          "startTime": 13.5
+        },
+        {
+          "slot": 0,
+          "moveId": "1471016",
+          "count": 1,
+          "startTime": 14.1
+        },
+        {
+          "slot": 0,
+          "moveId": "1471015",
+          "count": 1,
+          "startTime": 14.6
+        },
+        {
+          "slot": 0,
+          "moveId": "1471016",
+          "count": 1,
+          "startTime": 15.2
+        },
+        {
+          "slot": 1,
+          "moveId": "1481009",
+          "count": 1,
+          "startTime": 2.7
+        }
+      ],
+      "basicFillerSlot": 0
+    },
+    {
+      "name": "双转大",
+      "actions": [
+        {
+          "slot": 0,
+          "moveId": "1471021",
+          "count": 1,
+          "promoteVariant": "60"
+        },
+        {
+          "slot": 0,
+          "moveId": "banyue-combo",
+          "count": 1,
+          "startTime": 2.4
+        },
+        {
+          "slot": 0,
+          "moveId": "banyue-combo-didong",
+          "count": 1,
+          "startTime": 4.3
+        },
+        {
+          "slot": 1,
+          "moveId": "1481011",
+          "count": 1,
+          "startTime": 2.6
+        },
+        {
+          "slot": 1,
+          "moveId": "1481012",
+          "count": 1,
+          "startTime": 3.2
+        },
+        {
+          "slot": 1,
+          "moveId": "1481013",
+          "count": 1,
+          "startTime": 4.1
+        },
+        {
+          "slot": 1,
+          "moveId": "1481009",
+          "count": 1,
+          "startTime": 5.8
+        },
+        {
+          "slot": 0,
+          "moveId": "1471021",
+          "count": 1,
+          "startTime": 7.4,
+          "promoteVariant": "60"
+        },
+        {
+          "slot": 0,
+          "moveId": "1471021",
+          "count": 1,
+          "startTime": 9.8
+        },
+        {
+          "slot": 0,
+          "moveId": "1471009",
+          "count": 1,
+          "startTime": 12.2
+        },
+        {
+          "slot": 0,
+          "moveId": "1471010",
+          "count": 1,
+          "startTime": 14
+        },
+        {
+          "slot": 0,
+          "moveId": "1471014",
+          "count": 1,
+          "startTime": 15.4
+        },
+        {
+          "slot": 0,
+          "moveId": "1471015",
+          "count": 1,
+          "startTime": 15.9
+        },
+        {
+          "slot": 0,
+          "moveId": "1471016",
+          "count": 1,
+          "startTime": 16.5
+        }
+      ],
+      "count": 1,
+      "basicFillerSlot": 0
+    },
+    {
+      "name": "末尾",
+      "actions": [
+        {
+          "slot": 0,
+          "moveId": "1471021",
+          "count": 1,
+          "promoteVariant": "60"
+        },
+        {
+          "slot": 0,
+          "moveId": "banyue-combo",
+          "count": 1,
+          "startTime": 2.4
+        },
+        {
+          "slot": 0,
+          "moveId": "banyue-combo",
+          "count": 1,
+          "startTime": 3.5
+        },
+        {
+          "slot": 0,
+          "moveId": "1471009",
+          "count": 1,
+          "startTime": 4.6
+        },
+        {
+          "slot": 0,
+          "moveId": "1471010",
+          "count": 1,
+          "startTime": 6.4
+        },
+        {
+          "slot": 1,
+          "moveId": "1481016",
+          "count": 1,
+          "startTime": 4.6
+        },
+        {
+          "slot": 1,
+          "moveId": "1481011",
+          "count": 1,
+          "startTime": 6.3
+        },
+        {
+          "slot": 1,
+          "moveId": "1481012",
+          "count": 1,
+          "startTime": 6.9
+        },
+        {
+          "slot": 1,
+          "moveId": "1481013",
+          "count": 1,
+          "startTime": 7.8
+        },
+        {
+          "slot": 0,
+          "moveId": "1471021",
+          "count": 1,
+          "startTime": 8.2
+        },
+        {
+          "slot": 0,
+          "moveId": "1471013",
+          "count": 1,
+          "startTime": 10.7
+        },
+        {
+          "slot": 0,
+          "moveId": "1471021",
+          "count": 1,
+          "startTime": 12.3,
+          "promoteVariant": "90"
+        },
+        {
+          "slot": 1,
+          "moveId": "1481009",
+          "count": 1,
+          "startTime": 10.7
+        },
+        {
+          "slot": 0,
+          "moveId": "1471015",
+          "count": 1,
+          "startTime": 14.8
+        },
+        {
+          "slot": 0,
+          "moveId": "1471016",
+          "count": 1,
+          "startTime": 15.4
+        }
+      ],
+      "count": 1,
+      "basicFillerSlot": 0
+    }
+  ]
+}

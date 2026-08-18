@@ -1,0 +1,363 @@
+{
+  "id": "1551",
+  "name_en": "Pyrois",
+  "level": 12,
+  "skills": [
+    {
+      "id": "1551001",
+      "category": "basic",
+      "name": "Basic Attack: Emberglow #1",
+      "energy_cost": {},
+      "damage": 91.8,
+      "daze": 47.4,
+      "energy_recovery": 0.877,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 7.7275,
+      "anomaly_buildup": 28.0,
+      "attack_data": [
+        1.4001
+      ],
+      "ether_purify": 28.01
+    },
+    {
+      "id": "1551002",
+      "category": "basic",
+      "name": "Basic Attack: Emberglow #2",
+      "energy_cost": {},
+      "damage": 129.0,
+      "daze": 62.7,
+      "energy_recovery": 1.189,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 10.45,
+      "anomaly_buildup": 37.97,
+      "attack_data": [
+        1.5321
+      ],
+      "ether_purify": 37.98
+    },
+    {
+      "id": "1551003",
+      "category": "basic",
+      "name": "Basic Attack: Emberglow #3",
+      "energy_cost": {},
+      "damage": 553.5,
+      "daze": 268.8,
+      "energy_recovery": 5.083,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 44.66,
+      "anomaly_buildup": 162.36,
+      "attack_data": [
+        6.2014
+      ],
+      "ether_purify": 162.37
+    },
+    {
+      "id": "1551004",
+      "category": "basic",
+      "name": "Basic Attack: Celestial Light #1",
+      "energy_cost": {},
+      "damage": 214.8,
+      "daze": 78.7,
+      "energy_recovery": 0.744,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 13.0625,
+      "anomaly_buildup": 47.47,
+      "attack_data": [
+        0.0,
+        1.5007
+      ],
+      "ether_purify": 50.64
+    },
+    {
+      "id": "1551005",
+      "category": "basic",
+      "name": "Basic Attack: Celestial Light #2",
+      "energy_cost": {},
+      "damage": 287.9,
+      "daze": 130.5,
+      "energy_recovery": 1.231,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 21.6425,
+      "anomaly_buildup": 78.6,
+      "attack_data": [
+        0.0,
+        2.0459
+      ],
+      "ether_purify": 82.86
+    },
+    {
+      "id": "1551006",
+      "category": "basic",
+      "name": "Basic Attack: Celestial Light #3",
+      "energy_cost": {},
+      "damage": 1099.0,
+      "daze": 280.5,
+      "energy_recovery": 2.661,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 46.75,
+      "anomaly_buildup": 169.96,
+      "attack_data": [
+        0.0,
+        14.6107
+      ],
+      "ether_purify": 162.56
+    },
+    {
+      "id": "1551007",
+      "category": "basic",
+      "name": "Basic Attack: Celestial Light #4",
+      "energy_cost": {},
+      "damage": 1282.3,
+      "daze": 207.5,
+      "energy_recovery": 1.967,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 34.5675,
+      "anomaly_buildup": 125.61,
+      "attack_data": [
+        0.0,
+        11.8234
+      ],
+      "ether_purify": 125.62
+    },
+    {
+      "id": "1551010",
+      "category": "dodge",
+      "name": "Dash Attack: Sunrise",
+      "energy_cost": {},
+      "damage": 191.0,
+      "daze": 61.3,
+      "energy_recovery": 1.148,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 10.0925,
+      "anomaly_buildup": 36.65,
+      "attack_data": [
+        1.4661
+      ],
+      "ether_purify": 36.66
+    },
+    {
+      "id": "1551011",
+      "category": "dodge",
+      "name": "Dodge Counter: First Light",
+      "energy_cost": {},
+      "damage": 457.5,
+      "daze": 262.3,
+      "energy_recovery": 1.828,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 16.06,
+      "anomaly_buildup": 58.36,
+      "attack_data": [
+        2.3347
+      ],
+      "ether_purify": 208.37
+    },
+    {
+      "id": "1551008",
+      "category": "special",
+      "name": "Special Attack: Fading Rays",
+      "energy_cost": {},
+      "damage": 104.9,
+      "daze": 67.2,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 22.0275,
+      "anomaly_buildup": 40.01,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 40.02
+    },
+    {
+      "id": "1551009",
+      "category": "special",
+      "name": "EX Special Attack: Sun's Halo",
+      "energy_cost": {},
+      "damage": 1475.5,
+      "daze": 651.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 148.5825,
+      "anomaly_buildup": 430.64,
+      "attack_data": [
+        4.9987
+      ],
+      "ether_purify": 174.97
+    },
+    {
+      "id": "1551022",
+      "category": "special",
+      "name": "Special Attack: Assault Directive",
+      "energy_cost": {},
+      "damage": 166.4,
+      "daze": 0.0,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 0.0
+    },
+    {
+      "id": "1551012",
+      "category": "chain",
+      "name": "Chain Attack: Ceremonial March",
+      "energy_cost": {},
+      "damage": 2117.6,
+      "daze": 437.9,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 255.7775,
+      "anomaly_buildup": 464.53,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 265.04
+    },
+    {
+      "id": "1551015",
+      "category": "chain",
+      "name": "Ultimate: Total Annihilation",
+      "energy_cost": {},
+      "damage": 1733.0,
+      "daze": 401.9,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 243.29,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 593.3
+    },
+    {
+      "id": "1551014",
+      "category": "chain",
+      "name": "Ultimate: Triumphant Return",
+      "energy_cost": {},
+      "damage": 1071.4,
+      "daze": 190.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 115.03,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 115.04
+    },
+    {
+      "id": "1551013",
+      "category": "chain",
+      "name": "Ultimate: Unbound Swordstorm",
+      "energy_cost": {},
+      "damage": 1946.8,
+      "daze": 506.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 306.63,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 656.64
+    },
+    {
+      "id": "1551016",
+      "category": "chain",
+      "name": "Ultimate: Eternal Imprisonment",
+      "energy_cost": {},
+      "damage": 1994.7,
+      "daze": 377.8,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 228.36,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 578.37
+    },
+    {
+      "id": "1551017",
+      "category": "assist",
+      "name": "Quick Assist: Duskguard",
+      "energy_cost": {},
+      "damage": 83.0,
+      "daze": 52.5,
+      "energy_recovery": 0.992,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 8.7175,
+      "anomaly_buildup": 31.68,
+      "attack_data": [
+        1.2674
+      ],
+      "ether_purify": 31.69
+    },
+    {
+      "id": "1551018",
+      "category": "assist",
+      "name": "Defensive Assist: Ironhide Behemoth #1",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 407.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 366.64
+    },
+    {
+      "id": "1551019",
+      "category": "assist",
+      "name": "Defensive Assist: Ironhide Behemoth #2",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 514.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 416.64
+    },
+    {
+      "id": "1551020",
+      "category": "assist",
+      "name": "Defensive Assist: Ironhide Behemoth #3",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 250.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 116.64
+    },
+    {
+      "id": "1551021",
+      "category": "assist",
+      "name": "Assist Follow-Up: Return to Daylight",
+      "energy_cost": {},
+      "damage": 677.4,
+      "daze": 366.3,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 82.1975,
+      "anomaly_buildup": 241.17,
+      "attack_data": [
+        2.1327
+      ],
+      "ether_purify": 106.64
+    }
+  ]
+}

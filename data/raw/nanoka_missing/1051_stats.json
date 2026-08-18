@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1051,
+    "name_en": "Yidhari",
+    "code_name": "Yidhari",
+    "rarity": 4,
+    "element_type": "Ice",
+    "weapon_type": "Rupture",
+    "hit_type": "Strike",
+    "camp": "Spook Shack"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 683,
+    "hp_growth_per_level": 92.7143,
+    "atk_base_lvl1": 124,
+    "atk_growth_per_level": 7.4561,
+    "def_base_lvl1": 36,
+    "def_growth_per_level": 4.8889,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 95,
+    "anomaly_proficiency_base": 90,
+    "anomaly_mastery_base": 87,
+    "energy_auto_recover": 0.0,
+    "flash_energy_auto_recover": 0.02,
+    "energy_max": 0,
+    "flash_energy_max": 120,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 469,
+      "atk": 44,
+      "def": 25
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 938,
+      "atk": 88,
+      "def": 49
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1407,
+      "atk": 132,
+      "def": 74
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1875,
+      "atk": 177,
+      "def": 99
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2344,
+      "atk": 221,
+      "def": 124
+    }
+  },
+  "extra_stats_lvl60": {
+    "CRIT Rate": {
+      "value": 0.144,
+      "is_percent": true
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

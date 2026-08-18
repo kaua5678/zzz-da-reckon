@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1291,
+    "name_en": "Hugo",
+    "code_name": "Hugo",
+    "rarity": 4,
+    "element_type": "Ice",
+    "weapon_type": "Attack",
+    "hit_type": "Slash",
+    "camp": "Mockingbird"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 638,
+    "hp_growth_per_level": 86.6392,
+    "atk_base_lvl1": 132,
+    "atk_growth_per_level": 8.0729,
+    "def_base_lvl1": 50,
+    "def_growth_per_level": 6.7222,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 95,
+    "anomaly_proficiency_base": 90,
+    "anomaly_mastery_base": 86,
+    "energy_auto_recover": 0.012,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 120,
+    "flash_energy_max": 0,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 438,
+      "atk": 47,
+      "def": 34
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 876,
+      "atk": 95,
+      "def": 68
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1314,
+      "atk": 142,
+      "def": 102
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1753,
+      "atk": 189,
+      "def": 136
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2191,
+      "atk": 236,
+      "def": 170
+    }
+  },
+  "extra_stats_lvl60": {
+    "CRIT Rate": {
+      "value": 0.144,
+      "is_percent": true
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

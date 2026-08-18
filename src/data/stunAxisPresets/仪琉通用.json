@@ -1,0 +1,138 @@
+{
+  "id": "preset-1371-1481-*",
+  "name": "常规",
+  "team": [
+    "1371",
+    "1481",
+    "*"
+  ],
+  "note": "",
+  "axes": [
+    {
+      "name": "常规",
+      "actions": [
+        {
+          "slot": 0,
+          "moveId": "1371014",
+          "count": 1
+        },
+        {
+          "slot": 0,
+          "moveId": "1371022",
+          "count": 1,
+          "startTime": 3.9
+        },
+        {
+          "slot": 0,
+          "moveId": "1371020",
+          "count": 1,
+          "startTime": 6.4
+        },
+        {
+          "slot": 1,
+          "moveId": "1481016",
+          "count": 1,
+          "startTime": 6.6
+        },
+        {
+          "slot": 0,
+          "moveId": "1371014",
+          "count": 1,
+          "startTime": 8.8,
+          "promoteVariant": "60"
+        },
+        {
+          "slot": 0,
+          "moveId": "1371026",
+          "count": 1,
+          "startTime": 6
+        },
+        {
+          "slot": 0,
+          "moveId": "1371026",
+          "count": 1,
+          "startTime": 14.8
+        },
+        {
+          "slot": 0,
+          "moveId": "1371022",
+          "count": 1,
+          "startTime": 12.7
+        },
+        {
+          "slot": 0,
+          "moveId": "1371022",
+          "count": 1,
+          "startTime": 15.3
+        },
+        {
+          "slot": 0,
+          "moveId": "1371026",
+          "count": 1,
+          "startTime": 17.4
+        }
+      ],
+      "basicFillerSlot": 0
+    },
+    {
+      "name": "尾段",
+      "actions": [
+        {
+          "slot": 0,
+          "moveId": "1371014",
+          "count": 1
+        },
+        {
+          "slot": 0,
+          "moveId": "1371022",
+          "count": 1,
+          "startTime": 3.8
+        },
+        {
+          "slot": 0,
+          "moveId": "1371026",
+          "count": 1,
+          "startTime": 5.9
+        },
+        {
+          "slot": 0,
+          "moveId": "1371020",
+          "count": 1,
+          "startTime": 6.4
+        },
+        {
+          "slot": 0,
+          "moveId": "1371014",
+          "count": 1,
+          "startTime": 11
+        },
+        {
+          "slot": 0,
+          "moveId": "1371013",
+          "count": 1,
+          "startTime": 8.8
+        },
+        {
+          "slot": 1,
+          "moveId": "1481016",
+          "count": 1,
+          "startTime": 6.7
+        },
+        {
+          "slot": 0,
+          "moveId": "1371022",
+          "count": 1,
+          "startTime": 14.8
+        },
+        {
+          "slot": 0,
+          "moveId": "1371026",
+          "count": 1,
+          "startTime": 16.9
+        }
+      ],
+      "count": 0,
+      "basicFillerSlot": 0
+    }
+  ]
+}

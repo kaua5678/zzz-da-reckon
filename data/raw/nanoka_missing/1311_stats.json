@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1311,
+    "name_en": "Astra Yao",
+    "code_name": "Astra",
+    "rarity": 4,
+    "element_type": "Ether",
+    "weapon_type": "Support",
+    "hit_type": "Strike",
+    "camp": "Stars of Lyra"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 692,
+    "hp_growth_per_level": 93.9358,
+    "atk_base_lvl1": 103,
+    "atk_growth_per_level": 5.9961,
+    "def_base_lvl1": 48,
+    "def_growth_per_level": 6.5524,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 83,
+    "anomaly_proficiency_base": 92,
+    "anomaly_mastery_base": 93,
+    "energy_auto_recover": 0.012,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 120,
+    "flash_energy_max": 0,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 475,
+      "atk": 37,
+      "def": 33
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 950,
+      "atk": 74,
+      "def": 66
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1425,
+      "atk": 110,
+      "def": 99
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1900,
+      "atk": 147,
+      "def": 133
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2375,
+      "atk": 184,
+      "def": 166
+    }
+  },
+  "extra_stats_lvl60": {
+    "Base Energy Regen": {
+      "value": 36,
+      "is_percent": false
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

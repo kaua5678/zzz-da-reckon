@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1181,
+    "name_en": "Grace",
+    "code_name": "Grace",
+    "rarity": 4,
+    "element_type": "Electric",
+    "weapon_type": "Anomaly",
+    "hit_type": "Pierce",
+    "camp": "Belobog Heavy Industries"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 602,
+    "hp_growth_per_level": 81.6391,
+    "atk_base_lvl1": 119,
+    "atk_growth_per_level": 7.1181,
+    "def_base_lvl1": 48,
+    "def_growth_per_level": 6.5524,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 83,
+    "anomaly_proficiency_base": 116,
+    "anomaly_mastery_base": 115,
+    "energy_auto_recover": 0.012,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 120,
+    "flash_energy_max": 0,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 413,
+      "atk": 42,
+      "def": 33
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 826,
+      "atk": 85,
+      "def": 66
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1239,
+      "atk": 127,
+      "def": 99
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1651,
+      "atk": 170,
+      "def": 133
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2064,
+      "atk": 212,
+      "def": 166
+    }
+  },
+  "extra_stats_lvl60": {
+    "Anomaly Mastery": {
+      "value": 36,
+      "is_percent": false
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

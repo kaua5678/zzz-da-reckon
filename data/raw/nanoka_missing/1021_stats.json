@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1021,
+    "name_en": "Nekomata",
+    "code_name": "Nekomata",
+    "rarity": 4,
+    "element_type": "Physical",
+    "weapon_type": "Attack",
+    "hit_type": "Slash",
+    "camp": "Cunning Hares"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 608,
+    "hp_growth_per_level": 82.4778,
+    "atk_base_lvl1": 131,
+    "atk_growth_per_level": 7.9762,
+    "def_base_lvl1": 47,
+    "def_growth_per_level": 6.4166,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 92,
+    "anomaly_proficiency_base": 96,
+    "anomaly_mastery_base": 97,
+    "energy_auto_recover": 0.012,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 120,
+    "flash_energy_max": 0,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 417,
+      "atk": 47,
+      "def": 32
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 834,
+      "atk": 94,
+      "def": 65
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1251,
+      "atk": 140,
+      "def": 97
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1668,
+      "atk": 187,
+      "def": 130
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2086,
+      "atk": 234,
+      "def": 162
+    }
+  },
+  "extra_stats_lvl60": {
+    "CRIT Rate": {
+      "value": 0.144,
+      "is_percent": true
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

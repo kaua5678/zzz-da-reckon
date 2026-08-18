@@ -1,0 +1,77 @@
+{
+  "id": "1611",
+  "name": {
+    "zhCN": "克拉蕾"
+  },
+  "attribute": "electric",
+  "specialty": "sharpen",
+  "images": {},
+  "buffs": [
+    {
+      "id": "claret.gleaming_edge_teammate",
+      "source": {
+        "zhCN": "核心被动·锋芒毕露"
+      },
+      "description": {
+        "zhCN": "克拉蕾通过[毁伤]进入[锋芒毕露]后，首次切换至[击破]或其他[锋御]队友时，延长状态时间并将增益复制给对应角色：穿透率+20%，造成失衡值+10%。当前按1名队友满覆盖处理。"
+      },
+      "scope": "inCombat",
+      "effects": [
+        {
+          "id": "claret_gleaming_edge_pen_ratio",
+          "type": "fixed",
+          "target": {
+            "kind": "default"
+          },
+          "stat": "penRatio",
+          "mode": "pct",
+          "value": 20,
+          "coverage": {
+            "default": 1,
+            "min": 0,
+            "max": 1,
+            "step": 0.1
+          }
+        },
+        {
+          "id": "claret_gleaming_edge_stun_build_up",
+          "type": "fixed",
+          "target": {
+            "kind": "default"
+          },
+          "stat": "stunBuildUpBonus",
+          "mode": "pct",
+          "value": 10,
+          "coverage": {
+            "default": 1,
+            "min": 0,
+            "max": 1,
+            "step": 0.1
+          }
+        }
+      ],
+      "buffModifiers": [],
+      "sourceType": "teammate",
+      "sourceCategory": "agent",
+      "sourceKind": "teammate",
+      "ownerId": "1611",
+      "ownerName": {
+        "zhCN": "克拉蕾"
+      },
+      "teammateId": "1611",
+      "teammateName": {
+        "zhCN": "克拉蕾"
+      },
+      "teammateImages": {},
+      "sourceLabel": {
+        "zhCN": "核心被动·锋芒毕露"
+      },
+      "name": {
+        "zhCN": "克拉蕾｜锋芒毕露"
+      },
+      "conditionLabel": {
+        "zhCN": "克拉蕾通过毁伤进入锋芒毕露并首次切换至击破/锋御队友"
+      }
+    }
+  ]
+}

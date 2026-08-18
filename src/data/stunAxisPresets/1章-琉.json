@@ -1,0 +1,43 @@
+{
+  "id": "1章+琉",
+  "name": "轴1",
+  "team": [
+    "1051",
+    "1481",
+    "*"
+  ],
+  "note": "",
+  "axes": [
+    {
+      "name": "轴1",
+      "actions": [
+        {
+          "slot": 0,
+          "moveId": "1051016",
+          "count": 1,
+          "promoteVariant": "60"
+        },
+        {
+          "slot": 0,
+          "moveId": "yidhari-heavy-double",
+          "count": 1,
+          "startTime": 1.8
+        },
+        {
+          "slot": 0,
+          "moveId": "1051025",
+          "count": 1,
+          "startTime": 8
+        },
+        {
+          "slot": 0,
+          "moveId": "1051016",
+          "count": 1,
+          "startTime": 12.4
+        }
+      ],
+      "basicFillerSlot": 0
+    }
+  ],
+  "chapter": 1
+}

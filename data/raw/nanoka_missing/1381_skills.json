@@ -1,0 +1,361 @@
+{
+  "id": "1381",
+  "name_en": "Soldier 0 - Anby",
+  "level": 12,
+  "skills": [
+    {
+      "id": "1381001",
+      "category": "basic",
+      "name": "Basic Attack: Penetrating Shock #1",
+      "energy_cost": {},
+      "damage": 65.7,
+      "daze": 42.2,
+      "energy_recovery": 0.912,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 6.985,
+      "anomaly_buildup": 25.32,
+      "attack_data": [
+        4.7029
+      ],
+      "ether_purify": 25.33
+    },
+    {
+      "id": "1381002",
+      "category": "basic",
+      "name": "Basic Attack: Penetrating Shock #2",
+      "energy_cost": {},
+      "damage": 124.9,
+      "daze": 82.0,
+      "energy_recovery": 1.784,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 13.64,
+      "anomaly_buildup": 49.54,
+      "attack_data": [
+        7.4633
+      ],
+      "ether_purify": 49.55
+    },
+    {
+      "id": "1381003",
+      "category": "basic",
+      "name": "Basic Attack: Penetrating Shock #3",
+      "energy_cost": {},
+      "damage": 160.4,
+      "daze": 108.2,
+      "energy_recovery": 2.35,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 17.9575,
+      "anomaly_buildup": 65.27,
+      "attack_data": [
+        8.0766
+      ],
+      "ether_purify": 65.28
+    },
+    {
+      "id": "1381022",
+      "category": "basic",
+      "name": "Basic Attack: Penetrating Shock #4",
+      "energy_cost": {},
+      "damage": 200.2,
+      "daze": 115.5,
+      "energy_recovery": 2.52,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 19.25,
+      "anomaly_buildup": 69.99,
+      "attack_data": [
+        8.0766
+      ],
+      "ether_purify": 70.0
+    },
+    {
+      "id": "1381004",
+      "category": "basic",
+      "name": "Basic Attack: Penetrating Shock #5",
+      "energy_cost": {},
+      "damage": 80.6,
+      "daze": 94.0,
+      "energy_recovery": 2.031,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 15.5375,
+      "anomaly_buildup": 56.4,
+      "attack_data": [
+        7.3327
+      ],
+      "ether_purify": 56.41
+    },
+    {
+      "id": "1381005",
+      "category": "basic",
+      "name": "Basic Attack: Penetrating Shock #6",
+      "energy_cost": {},
+      "damage": 309.6,
+      "daze": 207.0,
+      "energy_recovery": 4.506,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 34.43,
+      "anomaly_buildup": 125.16,
+      "attack_data": [
+        16.2717
+      ],
+      "ether_purify": 125.17
+    },
+    {
+      "id": "1381006",
+      "category": "basic",
+      "name": "Basic Attack: Penetrating Shock #7",
+      "energy_cost": {},
+      "damage": 297.0,
+      "daze": 196.9,
+      "energy_recovery": 4.283,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 32.725,
+      "anomaly_buildup": 118.95,
+      "attack_data": [
+        17.1818
+      ],
+      "ether_purify": 118.96
+    },
+    {
+      "id": "1381012",
+      "category": "dodge",
+      "name": "Dash Attack: Torrent",
+      "energy_cost": {},
+      "damage": 165.0,
+      "daze": 62.2,
+      "energy_recovery": 1.35,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 10.3125,
+      "anomaly_buildup": 37.48,
+      "attack_data": [
+        4.8729
+      ],
+      "ether_purify": 37.49
+    },
+    {
+      "id": "1381013",
+      "category": "dodge",
+      "name": "Dodge Counter: Ground Flash Counter",
+      "energy_cost": {},
+      "damage": 501.4,
+      "daze": 328.2,
+      "energy_recovery": 3.539,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 27.06,
+      "anomaly_buildup": 98.3,
+      "attack_data": [
+        50.0
+      ],
+      "ether_purify": 248.31
+    },
+    {
+      "id": "1381010",
+      "category": "special",
+      "name": "Special Attack: Celestial Thunder",
+      "energy_cost": {},
+      "damage": 120.1,
+      "daze": 90.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 14.905,
+      "anomaly_buildup": 54.16,
+      "attack_data": [
+        14.0834
+      ],
+      "ether_purify": 54.17
+    },
+    {
+      "id": "1381007",
+      "category": "special",
+      "name": "Special Attack: Azure Flash #1",
+      "energy_cost": {},
+      "damage": 334.4,
+      "daze": 0.0,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 0.0
+    },
+    {
+      "id": "1381009",
+      "category": "special",
+      "name": "Special Attack: Azure Flash #2",
+      "energy_cost": {},
+      "damage": 87.0,
+      "daze": 50.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 8.2775,
+      "anomaly_buildup": 30.03,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 30.04
+    },
+    {
+      "id": "1381008",
+      "category": "special",
+      "name": "Special Attack: Thunder Smite",
+      "energy_cost": {},
+      "damage": 376.2,
+      "daze": 0.0,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 0.0
+    },
+    {
+      "id": "1381023",
+      "category": "special",
+      "name": "Special Attack: Azure Flash - Boundary",
+      "energy_cost": {},
+      "damage": 499.1,
+      "daze": 143.8,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 23.8425,
+      "anomaly_buildup": 86.66,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 86.67
+    },
+    {
+      "id": "1381011",
+      "category": "special",
+      "name": "EX Special Attack: Sundering Bolt",
+      "energy_cost": {
+        "Energy Cost": "60"
+      },
+      "damage": 760.2,
+      "daze": 688.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 167.5575,
+      "anomaly_buildup": 464.96,
+      "attack_data": [
+        100.0
+      ],
+      "ether_purify": 128.37
+    },
+    {
+      "id": "1381014",
+      "category": "chain",
+      "name": "Chain Attack: Leaping Thunderstrike",
+      "energy_cost": {},
+      "damage": 1128.1,
+      "daze": 298.2,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 232.4025,
+      "anomaly_buildup": 379.5,
+      "attack_data": [
+        23.4001
+      ],
+      "ether_purify": 180.01
+    },
+    {
+      "id": "1381015",
+      "category": "chain",
+      "name": "Ultimate: Voidstrike",
+      "energy_cost": {},
+      "damage": 3470.7,
+      "daze": 415.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 251.66,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 751.67
+    },
+    {
+      "id": "1381016",
+      "category": "assist",
+      "name": "Quick Assist: Cloud Flash",
+      "energy_cost": {},
+      "damage": 217.1,
+      "daze": 163.2,
+      "energy_recovery": 1.77,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 27.06,
+      "anomaly_buildup": 98.3,
+      "attack_data": [
+        6.3896
+      ],
+      "ether_purify": 49.16
+    },
+    {
+      "id": "1381017",
+      "category": "assist",
+      "name": "Defensive Assist: Counter Surge #1",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 407.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 366.64
+    },
+    {
+      "id": "1381018",
+      "category": "assist",
+      "name": "Defensive Assist: Counter Surge #2",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 514.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 416.64
+    },
+    {
+      "id": "1381019",
+      "category": "assist",
+      "name": "Defensive Assist: Counter Surge #3",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 250.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 116.64
+    },
+    {
+      "id": "1381020",
+      "category": "assist",
+      "name": "Assist Follow-Up: Conducting Blow",
+      "energy_cost": {},
+      "damage": 815.2,
+      "daze": 534.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 114.51,
+      "anomaly_buildup": 346.92,
+      "attack_data": [
+        24.0457
+      ],
+      "ether_purify": 184.97
+    }
+  ]
+}

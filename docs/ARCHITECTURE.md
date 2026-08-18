@@ -1,0 +1,83 @@
+# 代码架构地图（AI 导航用）
+
+> 本文不是代码百科全书——只回答一个问题：**"我拿到一个任务，该读哪些文件？"**
+> 细节（乘区公式、钩子语义、口径）在代码注释与测试里，文档不重复。
+> 配套阅读：`ENGINE_PIPELINE_GUIDE.md`（一轮计算的数据流/钩子/坑）、`AGENT_RECORDING_SOP.md`（角色录入）。
+> 阅读顺序建议：本文（地图）→ ENGINE_PIPELINE_GUIDE（管线）→ 按任务进对应层。
+
+## 0. 心智模型：五层 + 单向依赖
+
+```
+数据层   public/static/*.json        唯一事实源（倍率/属性/buff/boss/音擎/驱动盘），只经 scripts/ 导入，不手改
+状态层   src/stores/                  configStore（队伍/敌人/设置/滑块，可变）· catalogStore（只读数据快照）
+编排层   src/composables/             useResourceCalc.ts（一次计算的总管线，页面与引擎之间的胶水）
+引擎层   src/core/                    纯函数引擎：resource（资源池）/ damage（伤害乘区）/ panel / stunPool / anomalyPool / buff
+录入层   src/specs/ + src/mechanics/  角色机制：声明式 spec（agents/*.json）+ TS 机制模块（agents/*.ts）
+展示层   src/views/ + src/components/ 页面与卡片（读编排层产物）
+```
+
+依赖方向：展示 → 编排 → 引擎；录入层被编排/引擎经 registry 消费；数据层被状态层加载。
+**新 AI 读代码的捷径：从上往下读一遍调用链（页面 → useResourceCalc → core），每个文件头注释就是它的职责声明。**
+
+## 1. 一次计算的生命周期（点「计算」→ 出图）
+
+```
+useResourceCalc()                      编排层入口（composables/useResourceCalc.ts）
+  resourceConfig: buildCharConfig ×3   每角色 cfg（面板 + 招式数据 + 机制模块注入）
+  calcOutput: runCalcRound             外层固定点：失衡次数 ↔ 资源池 ↔ 转大 ↔ 异常喧响奖励（收敛；`enemy.stunCountLock>=0` 时失衡次数固定不回填，其余反馈仍收敛，命座对比固定场景用）
+    calcTeamResources                  core/resource.ts：iterate 多轮收敛（能量→强特→喧响→终结→时间）；喧响含特殊动作/异常奖励注入（specialAction/anomalyDecibelBonusPerSlot，参与终结技次数推导）
+      → buildExecutions                从收敛态生成执行计划（通用动作 + 模块专属 + patchExecutions 修正）
+      → buildResourceResult            角色资源结果（specResources / 专属 cycle）
+    enrichExecutionPlan                从倍率表回填 damage/daze/decibel/anomaly（覆盖 name/note！）
+    extractSkillExecutions             失衡池 / 异常积蓄池输入
+  → 失衡池 / 异常池 / 伤害池            最终伤害与覆盖率（damagePoolRows）
+```
+
+关键对象流转：`configStore.team` → `CharacterOperationConfig`（cfg，可被模块改写）→ `TeamResourceResult`（characters[].executions/energySource/...）→ `damagePoolRows`（展示行）。
+
+## 2. 核心类型地图（一句话定位，全部在 src/types/）
+
+| 类型 | 职责 | 谁产生 / 谁消费 |
+|---|---|---|
+| `PanelValues` | 角色面板（属性/乘区/敌方减益全字段，索引签名） | computePanelPhases 产生 → cfg.panel / 伤害池消费 |
+| `CharacterOperationConfig` | 单角色计算配置（可被机制模块改写） | buildCharConfig 产生 → 引擎 + 模块钩子消费 |
+| `IterationState` | 单轮迭代状态（次数/时间分配） | iterate 产生/消费 |
+| `SkillExecution` | 执行计划一行（moveId/倍率/时间/增伤字段） | buildExecutions 产生 → enrich 回填 → 各池消费 |
+| `TeamResourceResult` | 队伍资源结果（characters[] + executions + specResources） | calcTeamResources 产生 → 页面/池消费 |
+| `CharacterResourceResult` | 单角色资源结果（energySource/decibelSource/专属字段） | 同上 |
+| `StunAxis` / `StunAxisAction` | 失衡轴定义（槽位/动作/转大变体） | 用户/预设产生 → 轴引擎消费 |
+| `ResourceCalcConfig` | 全局计算配置（totalTime/stunCount/盾数） | useResourceCalc 产生 |
+
+## 3. 任务 → 文件决策树（本文件的核心）
+
+| 任务 | 先读 | 再改 |
+|---|---|---|
+| 录新角色 / 补机制 | README §3 → `AGENT_RECORDING_SOP.md` → `ENGINE_PIPELINE_GUIDE.md` | `src/specs/agents/<id>.json` + `src/mechanics/agents/<id>.ts`（注册进 `mechanics/index.ts`） |
+| 改伤害公式 / 乘区 | `core/damage.ts`（乘区顺序 = 代码顺序：基础→增伤→锐化→贯穿→防御→抗性→易伤→失衡→暴击） | core/damage.ts；执行级字段在 `types/resource.ts` SkillExecution |
+| 改资源池（能量/闪能/时间/连携/转大） | `core/resource.ts`（主循环）→ `core/resource/helpers.ts`（calcEnergySource/iterate） | 同上 + `types/resource.ts` |
+| 改失衡 / 异常 / 紊乱 | `core/stunPool/`、`core/anomalyPool/` | 同上 |
+| 改面板计算 / 局外局内 / 转模 | `composables/resourceCalc/helpers.ts`（computePanelPhases，applyPanel 调用点在此）→ `core/panel.ts` | 同上 |
+| 改页面 / 结果展示 | `views/` + `components/`；伤害行数据源 `calc.damagePoolRows` | 对应 .vue |
+| Excel 导出（结果页按钮） | `utils/exportExcel.ts`（buildExportWorkbook 纯组装 / exportExcelFile 动态加载 xlsx + Blob 下载；sheet：操作表/资源表/伤害行明细/异常池） | 同上；测试 `utils/__tests__/exportExcel.test.ts` |
+| 改失衡轴 / 自动轴 / 预设 | `data/stunAxisPresets.ts` + `data/stunAxisPresets/*.json` | 同上（自动匹配 `selectAutoStunAxisPreset`） |
+| 改队伍预设 | `data/teamPresets/*.json`（目录自动加载） | 同上 |
+| 改数据导入 / 校验 / 文档生成 | `scripts/`（validate-specs / docs:status / 各类 import） | 同上 |
+| 排查"某 buff / 命座没生效" | `AGENT_RECORDING_SOP.md` §3.5 根因表；页面「命座提升率」自检打标 | 按根因表定位字段消费端 |
+| 改音擎 / 驱动盘 / 敌人 / Boss | `public/static/catalog.json`（编译期快照，改数据走 scripts/ 导入脚本，勿手改） | scripts/ + catalogStore |
+
+## 4. 数据流速查（谁写谁读，防"录了没消费"）
+
+- **cfg**：composables 构建 → 模块 `buildCharConfig` 改写 → 引擎 iterate / buildExecutions 读。模块想在下一轮读自己的值 → 写 cfg 字段（`record.<key>`）。
+- **特殊动作/异常喧响奖励**：`calcSpecialActionBonus`（弹刀215/闪反10/连携10/快支20，含伴随50%）每轮即时结算、`anomalyPool.perSlotBonus`（异常/紊乱/乱流，含伴随）上一轮回填 → `ResourceCalcConfig` 按槽位注入 → iterate `totalDecibel` 与 `decibelSource` 同口径（`ultimateCount = floor(total/3000)`，界面喧响总览 = `decibelSource.total`，不再页面外拼）。失衡触发 20/次归属（每人/全队）无出处，未接入。
+- **panel**：`computePanelPhases` 产生（applyPanel + 硬编码块在此）→ `cfg.panel` → 伤害池。**applyPanel 阶段拿不到 configStore/settings**（见 ENGINE_PIPELINE §4 坑 1）。
+- **executions**：buildExecutions 产生 → `enrichExecutionPlan` 回填（**覆盖 name/note**，匹配一律用 moveId）→ 失衡/异常/伤害池。
+- **teammate-buffs**：`public/static/teammate-buffs.json`（采集）+ spec `teamBuffs`（人工）→ `stores/catalog.ts` 合并（spec 优先按 id 去重）→ 面板。
+- **数值唯一事实源**：`public/static/catalog.json`。改数值 = 改爬取/导入脚本重跑，不是改 JSON 本身。
+
+## 5. 导航技巧（减少迷宫感的操作习惯）
+
+1. **用 grep 找符号，不翻目录**：`grep -rn "computePanelPhases" src/` 一条命令定位生产/消费端，比逐层读文件快一个数量级。
+2. **测试是最好的行为文档**：`banyue-preset-int.test.ts`（轴+机制集成）、`teamCompare.test.ts`（全管线）、`billySmoke.test.ts`（新角色冒烟模板）、`specialMechanics.test.ts`（机制模块单元）。看"怎么调"比看"怎么实现"快。
+3. **每个 core/ 文件头部都有职责注释**——先读头注释，再决定进不进。
+4. **改完必跑 `npm run check`**（validate:data + validate:specs + vitest），再 typecheck/build。
+5. **新 AI 第一次任务前**：跑一遍 `npm test` + 用测试 stub 模板（`AGENT_RECORDING_SOP` §3 坑 7）搭一个全管线冒烟，建立"改哪 → 在哪验证"的闭环。

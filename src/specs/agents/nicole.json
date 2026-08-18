@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:nicole",
+  "name": "妮可",
+  "agentIds": [
+    "1031"
+  ],
+  "status": "not_described_not_implemented",
+  "attributeConversions": [],
+  "resources": [],
+  "rowFusions": [],
+  "events": [],
+  "verifications": [],
+  "stateMachines": [],
+  "notes": [
+    "待录入：妮可 的机制、资源、事件与验证。"
+  ],
+  "teamBuffs": []
+}

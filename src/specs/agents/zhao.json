@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:zhao",
+  "name": "赵",
+  "agentIds": [
+    "1341"
+  ],
+  "status": "not_described_not_implemented",
+  "attributeConversions": [],
+  "resources": [],
+  "rowFusions": [],
+  "events": [],
+  "verifications": [],
+  "stateMachines": [],
+  "notes": [
+    "待录入：赵 的机制、资源、事件与验证。"
+  ],
+  "teamBuffs": []
+}

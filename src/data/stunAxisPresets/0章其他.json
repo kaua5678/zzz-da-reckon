@@ -1,0 +1,66 @@
+{
+  "id": "0伊-任意",
+  "name": "常规循环轴",
+  "team": [
+    "1051",
+    "*",
+    "*"
+  ],
+  "note": "",
+  "axes": [
+    {
+      "name": "常规循环轴",
+      "actions": [
+        {
+          "slot": 0,
+          "moveId": "1051025",
+          "count": 1
+        },
+        {
+          "slot": 0,
+          "moveId": "1051011",
+          "count": 1,
+          "startTime": 2.5
+        },
+        {
+          "slot": 0,
+          "moveId": "1051012",
+          "count": 1,
+          "startTime": 3.5
+        },
+        {
+          "slot": 0,
+          "moveId": "1051024",
+          "count": 1,
+          "startTime": 6.1
+        },
+        {
+          "slot": 0,
+          "moveId": "1051025",
+          "count": 1,
+          "startTime": 6.1
+        },
+        {
+          "slot": 0,
+          "moveId": "1051016",
+          "count": 1,
+          "startTime": 8.6
+        },
+        {
+          "slot": 0,
+          "moveId": "1051011",
+          "count": 1,
+          "startTime": 10.4
+        },
+        {
+          "slot": 0,
+          "moveId": "1051012",
+          "count": 1,
+          "startTime": 11.4
+        }
+      ],
+      "basicFillerSlot": 0
+    }
+  ],
+  "chapter": 0
+}

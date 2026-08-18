@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:xixifu",
+  "name": "席西弗",
+  "agentIds": [
+    "1521"
+  ],
+  "status": "not_described_not_implemented",
+  "attributeConversions": [],
+  "resources": [],
+  "rowFusions": [],
+  "events": [],
+  "verifications": [],
+  "stateMachines": [],
+  "notes": [
+    "待录入：席西弗 的机制、资源、事件与验证。"
+  ],
+  "teamBuffs": []
+}

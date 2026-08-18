@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:norma_hollowell",
+  "name": "诺姆·霍洛韦尔",
+  "agentIds": [
+    "1571"
+  ],
+  "status": "partially_implemented",
+  "attributeConversions": [
+    {
+      "id": "norma_crit_to_critdmg",
+      "name": "暴击率转暴击伤害",
+      "sourceStat": "critRate",
+      "sourcePanelPhase": "inCombat",
+      "threshold": 50,
+      "stepSize": 1,
+      "targetStat": "critDmg",
+      "valuePerStep": 1.7,
+      "cap": 85,
+      "status": "implemented_approximation",
+      "note": "[猜测·中] 实现: attributeConversions critRate→critDmg，threshold=50、step=1%、cap=85 | 依据: \"初始暴击率超过50%时，每超过1%，暴击伤害提升X%\" | 待核对: valuePerStep 随核心技能等级(Lv1=0.86→Lv7=1.7)，默认按 max(Lv7)=1.7；cap Lv7=85。"
+    },
+    {
+      "id": "norma_crit_to_stun",
+      "name": "暴击率转强特/特/终结失衡",
+      "sourceStat": "critRate",
+      "sourcePanelPhase": "inCombat",
+      "threshold": 50,
+      "stepSize": 1,
+      "targetStat": "stunBuildUpBonus",
+      "valuePerStep": 0.8,
+      "cap": 40,
+      "status": "implemented_approximation",
+      "note": "[猜测·中] 实现: attributeConversions critRate→stunBuildUpBonus | 依据: \"每超过1%，[强化特殊技]、[特殊技]、[终结技]命中敌人时，造成的失衡值提升X%\" | 待核对: 引擎 stunBuildUpBonus 支持 targetSkillType 定向，spec 转模不支持定向，需 TS 或按全招式近似；valuePerStep Lv7=0.8、cap=40。"
+    },
+    {
+      "id": "norma_pen_to_atk",
+      "name": "贯穿力转攻击力",
+      "sourceStat": "penRatio",
+      "sourcePanelPhase": "inCombat",
+      "threshold": 0,
+      "stepSize": 1,
+      "targetStat": "atk",
+      "valuePerStep": 1.25,
+      "cap": 1200,
+      "status": "implemented_approximation",
+      "note": "[猜测·中] 实现: attributeConversions penRatio→atk，每1点贯穿力→1.25攻击，上限1200 | 依据: \"诺姆会根据自身贯穿力额外提升攻击力，每1点贯穿力将提升1.25点攻击力，最多提升1200点攻击力\" | 待核对: 贯穿力=atk×0.3+hp×0.1+sheerForceFlat，sourceStat 用 penRatio 是否口径正确。"
+    }
+  ],
+  "resources": [
+    {
+      "id": "norma_heat",
+      "name": "预热膛温",
+      "nature": "resource",
+      "initialValue": 60,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "norma_heat_frontline",
+          "trigger": "接战每秒 1.5%",
+          "countSource": "frontlineTime",
+          "amountPerCount": 1.5,
+          "formula": "frontlineTime × 1.5",
+          "status": "implemented_approximation",
+          "note": "[猜测·中] 实现: 每秒 1.5% 膛温 | 依据: \"诺姆为当前操作角色，且处于接战状态时，每秒获得1.5%[预热膛温]\" | 待核对: 需当前操作角色+接战状态，按前线时间近似。"
+        },
+        {
+          "id": "norma_heat_ex_special",
+          "trigger": "发动强化特殊技：嗯呢弹幕",
+          "countSource": "exSpecialCount",
+          "amountPerCount": 16,
+          "formula": "exSpecialCount × 40能量 × 0.4%",
+          "status": "implemented_approximation",
+          "note": "[已确认] 实现: 每次嗯呢弹幕 +16% 膛温 = 耗能 40 × 0.4% | 依据: \"招式发动后，诺姆获得16%\"；统一模型：膛温 = 消耗能量 × 0.4%。"
+        },
+        {
+          "id": "norma_heat_hold",
+          "trigger": "长按嗯呢弹幕（延长射击）",
+          "countSource": "holdSeconds",
+          "amountPerCount": 8,
+          "formula": "holdSeconds × 20能量/秒 × 0.4%",
+          "status": "implemented_approximation",
+          "note": "[已确认] 实现: 长按每秒 +8% 膛温（20/s × 0.4%），最多 2s = +16% | 依据: \"长按消耗1点能量，诺姆额外获得0.4%[预热膛温]\"；默认长按 2s（norma.holdSeconds 可调）。"
+        },
+        {
+          "id": "norma_heat_ultimate",
+          "trigger": "发动终结技",
+          "countSource": "ultimateCount",
+          "amountPerCount": 30,
+          "formula": "ultimateCount × 30",
+          "status": "implemented_approximation",
+          "note": "[已确认] 实现: 每次终结技 +30% 膛温 | 依据: \"招式发动时，立刻获得30%\"。"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "norma_hat_to_chain",
+          "trigger": "预热膛温 ≥80% 后帽子把戏",
+          "cost": 80,
+          "result": "下次[普通攻击：帽子把戏]无视冷却时间限制触发[快速支援]，并消耗80%膛温将其替换为[连携技]",
+          "status": "implemented_approximation",
+          "note": "[猜测·中] 实现: 膛温≥80%时帽子把戏→连携技替换 | 依据: \"[预热膛温]大于等于80%后，下次发动的[普通攻击：帽子把戏]将无视冷却时间限制触发[快速支援]，并消耗80%[预热膛温]将其替换为[连携技]\" | 待核对: 替换次数=floor(膛温总量/80)，4命喧响200，需 TS 处理。"
+        }
+      ],
+      "properties": {
+        "initialHeat": 60,
+        "heatPerSec": 1.5,
+        "heatPerExSpecial": 16,
+        "heatPerHoldSec": 8,
+        "heatPerUltimate": 30,
+        "heatPerEnergy": 0.4,
+        "hatToChainThreshold": 80,
+        "c2EnergyPerTrigger": 25,
+        "c2TriggerInterval": 20
+      }
+    },
+    {
+      "id": "norma_barrage",
+      "name": "嗯呢弹幕状态",
+      "nature": "state_machine",
+      "initialValue": 0,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "norma_barrage_from_ex",
+          "trigger": "发动强化特殊技：嗯呢弹幕",
+          "countSource": "exSpecialCount",
+          "amountPerCount": 1,
+          "formula": "exSpecialCount 次，每次持续 32 秒",
+          "status": "implemented_approximation",
+          "note": "[猜测·中] 实现: 每次嗯呢弹幕进入弹幕状态32秒 | 依据: \"进入[嗯呢弹幕]状态，持续32秒\" | 待核对: 覆盖率=min(1, 32×次数/战斗时间)。"
+        }
+      ],
+      "spendRules": [],
+      "properties": {
+        "durationSeconds": 32,
+        "teamDmgBonusDuringBarrage": 20,
+        "towerCount": 2
+      }
+    }
+  ],
+  "rowFusions": [],
+  "events": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "attack",
+          "rupture"
+        ]
+      },
+      {
+        "type": "sameFactionAsSelf"
+      }
+    ],
+    "note": "额外能力·集群优势：队伍中存在[强攻]、[命破]角色或与自身阵营相同的角色时触发（技术鸿沟、攻击提升、嗯呢弹幕全队增伤）。"
+  },
+  "verifications": [
+    {
+      "id": "norma_heat_unified_model",
+      "name": "预热膛温完整回复模型",
+      "claim": "预热膛温完整模型：进场+60，接战1.5/s，耗能×0.4%/点（瞬发40→16、长按20/s→8/s），终结+30",
+      "status": "implemented",
+      "verified": true,
+      "note": "用户确认：\"大招文本说了招式发动时，立刻获得30%[预热膛温]...这个资源回复有自动回复每秒1.5%，进入战场时，诺姆立刻获得60%[预热膛温]，消耗能量按比例获得，大招获得\"。长按额外膛温已计入（漏算即数据虚假）。"
+    },
+    {
+      "id": "norma_c2_energy",
+      "name": "影画2帽子把戏回能",
+      "claim": "影画2：帽子把戏回25能量，20秒冷却；按战斗时间驱动（默认180s→floor(180/20)=9次）",
+      "status": "implemented",
+      "verified": true,
+      "note": "用户确认：\"2命的加能量实现下，根据战斗时间决定，默认180秒可以触发9次，因为开局不可能在0秒时触发\"。"
+    },
+    {
+      "id": "norma_c6_skill_bonus",
+      "name": "影画6弹头技能专属加成",
+      "claim": "影画6：破甲弹头失衡值+30%（1571008/1571011/1571014）、高爆弹头伤害+30%（1571009/1571012/1571015），技能专属效果走倍率表对应行",
+      "status": "implemented",
+      "verified": true,
+      "note": "用户确认：\"6命的每次失衡都有，所以要把次数算进去。诺姆的[破甲弹头]造成的失衡值提升30%，[高爆弹头]造成的伤害提升30%。这个在倍率表中有对应的，你需要写专属于技能的增伤加成和失衡值加成\"。C6 导弹轰击每次失衡触发，30s 冷却封顶（floor(战斗时间/30)，默认180s→6次）。"
+    }
+  ],
+  "stateMachines": [],
+  "notes": [
+    "来源：nanoka.cc 3.2.1（Norma Hollowell/诺姆，1571，击破/火/罗斯凯利法）。",
+    "核心被动·精准制导：暴击>50%每1%→暴伤(0.86~1.7%，cap 43~85)、强特/特/终结失衡(0.44~0.8%，cap 22~40)；贯穿力→攻击(1.25/点，cap 1200)；进场+60%膛温；膛温≥80%后帽子把戏→连携技替换。",
+    "额外能力·集群优势：攻击命中叠[技术鸿沟](失衡易伤+3%/层×10层)；持鸿沟敌人失衡+2秒；期间攻击+44~870(随等级)；嗯呢弹幕期间全队+20%伤害。",
+    "预热膛温：接战每秒+1.5%、嗯呢弹幕+16%、终结+30%、长按每能量+0.4%膛温（瞬发40→16、长按20/s→8/s，默认长按2s）。",
+    "嗯呢弹幕：强特六段(1571007-1571012)，进入32秒弹幕状态放两座炮塔；炮塔自动攻击=打靶练习(1571013，3s间隔全程)；火力实验(1571014/1571015)在任意角色失衡或膛温换连携时展开导弹舱8秒(C1 12s，刷新封顶战斗时间)，强化2s间隔额外发射导弹。",
+    "[已确认] 帽子把戏→连携技替换：膛温≥80%时替换次数=floor(膛温总量/80)，帽子把戏触发上一位队友的快速支援→替换为该队友本人的连携技（招式 id/名称/倍率/时长取上一位队友技能表，非诺姆自己的 1571018；applyNormaHatChain 注入并带 normaGiftChain 标记，C4 喧响 200×次数）；诺姆不 push 自己的连携。",
+    "[已确认] 技术鸿沟失衡易伤由 teammate-buffs.json 承载（additional_technical_gap 30 + cinema_2 额外 30，C2=60；模块不重复累加——2026-08 修复双计）；失衡时长+2秒在 applyPanel 处理（computeWindowDuration 读展示面板，修复前从未生效）。",
+    "[已确认] 嗯呢弹幕实战易全覆盖，默认 100% 覆盖率（norma.barrageCoverage 可调）；期间全队+20%伤害（teammate-buff）与诺姆攻击+44~870（模块按弹幕覆盖率折算）。",
+    "[已确认] 嗯呢弹幕倍率对应（用户核对）：基础40能量=点射1571007(411.1%) + 破甲1571008(616%，未失衡)/高爆1571009(683.5%，失衡)；长按20/s=延长点射1571010(261.5%/s) + 延长破甲1571011(392.8%/s)/延长高爆1571012(433.4%/s)，最多2s。",
+    "[已确认] 嗯呢弹幕失衡期占比可调（norma.barrageStunShare，默认 0=全非失衡破甲，失衡期留给主C）；火力实验导弹舱失衡期自动开启，默认全打高爆弹（1571015）。",
+    "[已确认] 火力实验高爆/破甲按失衡时长拆：失衡总时长=失衡覆盖率×战斗时间（失衡次数×(基础12+连携补时4+技术鸿沟延时2)）；强化期失衡内打高爆弹(1571015)、超出失衡部分打破甲弹(1571014)——无法手动规避。",
+    "[已确认] 额外能力触发条件走声明式判定（spec.additionalAbility → panel.additionalAbilityActive），模块只读标记。",
+    "[已确认] 影画6：破甲弹头失衡值+30%（1571008/1571011/1571014）、高爆弹头伤害+30%（1571009/1571012/1571015）——技能专属效果按倍率表对应行缩放，只作用于对应弹头行；C6 导弹轰击每次失衡触发（30s 冷却封顶 floor(战斗时间/30)，默认 180s→6 次）。",
+    "命座：C1 导弹舱12秒+弹头命中全属性抗性-15%(15秒，teammate-buff)；C2 鸿沟6%/层(teammate-buff 额外30)+帽子把戏回25能量(20s一次，calcEnergySource)；C3/5 技能+2；C4 膛温换连携回200喧响(applyNormaHatChain)；C6 失衡后导弹轰击+弹头缩放。",
+    "等级随动：暴伤/1% 0.86→1.7，失衡/1% 0.44→0.8，攻击+44→870(每级+14)，默认取 max(Lv7)。",
+    "2026-08 修复（第三轮）：强特前台时间——通用公式只用嗯呢弹幕 #1 单段 0.493s × 次数，严重低估（实际一次 = 点射0.493 + 弹头0.74 + 长按延长1.0/s）；新增 estimateExSpecialTime 钩子（necessaryTime = 次数×1.233 + 长按秒×1.0），平A时间分配回归正确。"
+  ],
+  "teamBuffs": []
+}

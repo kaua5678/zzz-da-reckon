@@ -1,0 +1,16 @@
+{
+  "_comment": "=== 角色 spec 填写说明（AI 录入前必读；生成骨架时本字段会被剥离） ===\n标注约定（每条机制 note 必须带其一）：\n  [已确认] 用户拍板的口径 → 同时写入 verifications（panel→expected，vitest 自动跑）\n  [猜测·高/中/低] AI 从原文猜测 → 格式：实现:<字段/模块> | 依据:\"<原文片段>\" | 待核对:<点>\n字段说明：\n  status: not_described_not_implemented（未收到机制描述） / implemented_approximation（近似实现，通常带可调滑块） / implemented（完整）/ partially_implemented\n  attributeConversions: 属性转模（sourceStat/threshold/stepSize/valuePerStep/targetStat/cap）\n  resources: 专属资源（gainRules 获取 / spendRules 消耗 / properties 参数）\n  rowFusions: 倍率表融合（moveId 行的多段/放大；支持角色一般不填）\n  events: 专属事件（executionKind: execution 会生成实际招式执行，carrierMoveId 取倍率表行）\n  verifications: 用户确认的 golden test（panel→expected+tolerance）\n  stateMachines: 计数状态机（攒点→阈值消耗→可能返还）\n  teamBuffs: 全队/敌人拐力（已在 teammate-buffs.json 的不要重复填）\n  notes: 机制原文 + 口径说明 + 未建模项\n参考完整示例：src/specs/agents/lucia_elowen.json（1451）；TS 机制模块见 src/mechanics/agents/luciaElowen.ts 头注释。\n验收：npm run validate:specs && npm run check && npm run typecheck && npm run build && npm run docs:status",
+  "schemaVersion": 1,
+  "id": "agent:example",
+  "name": "示例角色",
+  "agentIds": [],
+  "status": "not_described_not_implemented",
+  "attributeConversions": [],
+  "resources": [],
+  "rowFusions": [],
+  "events": [],
+  "verifications": [],
+  "stateMachines": [],
+  "teamBuffs": [],
+  "notes": []
+}

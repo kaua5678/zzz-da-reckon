@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:1371",
+  "name": "仪玄",
+  "agentIds": [
+    "1371"
+  ],
+  "status": "partially_implemented",
+  "attributeConversions": [],
+  "resources": [
+    {
+      "id": "yixuan_shufa_value",
+      "name": "术法值",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 120,
+      "gainRules": [
+        {
+          "id": "yixuan_shufa_from_flash_energy",
+          "trigger": "消耗闪能",
+          "countSource": "cfgField",
+          "countField": "yixuanFlashEnergySpent",
+          "amountPerCount": 0.667,
+          "formula": "消耗闪能 × 0.667（模块按强特链实际耗能写入 cfg.yixuanFlashEnergySpent）",
+          "status": "implemented_approximation",
+          "note": "[已确认] 实现: 实际总耗闪能 × 0.667 | 依据: \"每消耗一点闪能，积累0.667点[术法值]\"；耗闪能由 yixuan.ts 强特链（墨痕化形链/凝云术链）汇总写入 cfgField。"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "yixuan_extra_ult_spend",
+          "trigger": "术法值足够时释放额外终结技",
+          "cost": 120,
+          "result": "释放终结技：符法千重，并获1点玄墨值",
+          "deduct": true,
+          "status": "implemented_approximation",
+          "note": "[猜测·高] 实现: 每 120 点术法值释放一次符法千重 | 依据: \"[术法值]足够时，可额外释放终结技：[终结技：符法千重]，[术法值]上限为120点\"。"
+        }
+      ],
+      "feedbackGainRules": [],
+      "properties": {},
+      "initialValueSource": "cfgField",
+      "initialValueField": "yixuanShufaInitial"
+    },
+    {
+      "id": "yixuan_xuanmo_value",
+      "name": "玄墨值",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 1,
+      "gainRules": [
+        {
+          "id": "yixuan_xuanmo_from_ult",
+          "trigger": "释放符法千重后",
+          "countSource": "cfgField",
+          "amountPerCount": 1,
+          "formula": "符法千重次数 × 1（模块按术法值消耗结算写入 cfgField）",
+          "status": "implemented_approximation",
+          "note": "[已确认] 玄墨值 = [终结技：符法千重]次数（用户口径）：一次符法千重可释放一次玄墨极阵（可合轴；动作链接后续再做）。模块先算术法值消耗（floor(术法值/120)）写 cfg.yixuanXuanmoGain，spec 按 cfgField 读取。",
+          "countField": "yixuanXuanmoGain"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "yixuan_xuanmo_basic_spend",
+          "trigger": "消耗1点玄墨值",
+          "cost": 1,
+          "result": "合轴消耗：1点玄墨值将合轴招式替换为玄墨极阵+青溟震击（次数 = min(合轴次数, 玄墨值)）",
+          "deduct": true,
+          "status": "implemented_approximation",
+          "note": "[已确认] 玄墨值 = [终结技：符法千重]次数（含影画6调息赠送）；合轴时 1 点玄墨值把合轴招式（墨影凝云+A5）替换为玄墨极阵+青溟震击（用户口径）：合轴次数 ≤ 玄墨值时全打玄墨极阵+青溟震击，超出部分打墨影凝云+A5；执行由 yixuan.ts 生成。"
+        }
+      ],
+      "feedbackGainRules": [],
+      "properties": {}
+    }
+  ],
+  "rowFusions": [],
+  "events": [
+    {
+      "id": "yixuan_extra_ult_execution",
+      "name": "终结技：符法千重",
+      "trigger": "消耗120点术法值",
+      "executionKind": "execution",
+      "countSource": "resourceSpend",
+      "countField": "resource:yixuan_shufa_value:yixuan_extra_ult_spend",
+      "carrierMoveId": "1371020",
+      "carrierMoveName": "终结技：符法千重",
+      "multiplierRowId": "damage",
+      "status": "implemented_approximation",
+      "note": "[猜测·高] 事件执行 actionTime=0 不计时间（引擎事件约定），符法千重实际施放时间/喧响未计入，待核对。"
+    }
+  ],
+  "verifications": [],
+  "stateMachines": [],
+  "teamBuffs": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "stun",
+          "support",
+          "defense"
+        ]
+      }
+    ],
+    "note": "额外能力·玄墨暗涌：队伍中存在[击破]或[支援]或[防护]角色时触发（stun/support/defense）。效果：队友终结技回 2 闪能/s×10s；极限支援换场落雷 225% 贯穿力+5 闪能；凝云术/墨烬影消命中失衡敌人伤害+30%；终结技后凝神 15s 暴伤+40%。"
+  },
+  "notes": [
+    "来源：nanoka.cc 3.2.1（Yixuan/仪玄，1371，命破/以太/云岿山，S级）；机制原文见 data/raw/nanoka_missing/full/1371.json。",
+    "基础属性与技能倍率由脚本自动导入；动作时间按 ether_purify 公式自动推算，部分追加段可能无秽盾数据，actionTime 未完全核对。",
+    "核心被动·术法宗师：",
+    "  [已确认] HP→贯穿力 0.1/点：不重复建模——命破角色被动均为同款描述，只是复述贯穿力基底公式（atk×0.3 + hp×0.1 + sheerForceFlat）本身含的 hp×0.1 项，引擎按命破基底自动结算（core/damage.ts RUPTURE_DAMAGE_PROFILE），spec 不再额外转模。",
+    "  [已确认] 玄墨伤害均为贯穿伤害：引擎命破基底自动结算（贯穿力作倍率、无视防御、贯穿增伤乘区），无需额外实现。",
+    "  [已确认] 进场恢复全部闪能 = 120：buildCharConfig cfg.initialEnergyGift=120（yixuan.ts）| 依据: \"仪玄进入战斗时即可恢复全部闪能\"（勘域模式 180s 最多一次）。",
+    "  [已确认] 强特链（用户口径，主页交互栏填写次数）：",
+    "    · 2连墨痕化形（#1 40闪能 → #3 免费）= 40 闪能/次；3连墨痕化形（#1 → #3 → #4 20闪能）= 60 闪能/次；#2 为触发完美格挡所赠送的免费招式（次数 = 主页完美格挡输入，回 10 闪能/次）。",
+    "    · 剩余闪能全部用于凝云术链：墨烬影消(1371026，20闪能) 前置 → 凝云术(1371022) 蓄力 0-2s、耗能 0-40（20/秒）、倍率跟随时间；轴外默认满蓄 2s（秒均折算 = 倍率 × 蓄力秒数/2）。",
+    "    · 失衡轴内凝云次数/时长由轴决定（新机制）：轴 action.duration 字段覆盖倍率表 actionTime（轴编辑器可调 0-2s），buildStackAxes/模块按该时长做时间门控与倍率/耗能/daze 秒均折算。",
+    "  [已确认] 其他闪能回复（文本明确数值，已录入 yixuan.ts）：",
+    "    · 完美格挡 +10 闪能/次（0.5s 最多一次；按主页完美格挡次数）| 依据: \"可触发完美格挡效果...回复10点闪能；完美格挡效果每0.5秒最多触发一次\"。",
+    "    · 极限闪避 +5 闪能/次（1s 最多一次；按 dodgeCounterCount 近似）| 依据: \"触发极限闪避时额外回复5点闪能，每1秒最多触发一次\"。",
+    "    · 额外能力·队友终结技 +20 闪能/次（2/s×10s；队伍有击破/支援/防护时生效，iterate 按队友终结技次数补算）。",
+    "    · 影画1·落雷 +5 闪能/次（6s 最多一次 → floor(战斗时间/6)，沿用诺姆 C2 战斗时间驱动口径）。",
+    "    · 玄墨异常触发 +10 闪能/次（10s 最多一次；按玄墨异常触发次数收敛反馈注入 cfg.yixuanAnomalyTriggerFlash，封顶 18 次）。",
+    "  [已确认] 术法值（yixuan_shufa_value）：消耗闪能 × 0.667（模块按强特链实际耗能写入 cfgField），120 点触发额外终结技符法千重（1371020）。实际打出次数由资源利用率页文本框 yixuan.shufaUltCount 控制（默认 -1 = 自动 = 全部，即术法值理论可打次数 floor(术法值/120)；手动填则封顶于理论可打次数）；下游玄墨值/合轴/聚墨/静心按实际次数结算。",
+    "  [已确认] 玄墨值（yixuan_xuanmo_value）：玄墨值 = [终结技：符法千重]次数（用户口径），1 次符法千重可释放 1 次普通攻击：玄墨极阵（1371021，可合轴；动作链接后续再做）；模块按术法值消耗（floor(术法值/120)）写 cfg.yixuanXuanmoGain，spec 按 cfgField 读取。",
+    "  [已确认] 核心被动 Lv.7 招式限定增伤 60%：目标招式 = 玄墨极阵(1371021)/青溟震击(1371007)/强化特殊技(1371009/1024/1023/1025/1022/1026)/支援突击(1371019)/连携技(1371013)/终结技(1371014+1371020)，不含霄云劲/墨影凝云/冲刺攻击；patchExecutions moveId 级 dmgBonus（yixuan.ts）| 依据: 原文 Lv.1-7（30/35/40/45/50/55/60）。",
+    "  [已确认] 墨影凝云合轴（已录入 yixuan.ts，用户口径）：主页输入合轴次数 N；玄墨值 M（= 符法千重总次数，含影画6 调息赠送）会把合轴招式替换为玄墨极阵(1371021)+青溟震击(1371007)：N ≤ M 全打玄墨极阵+青溟震击（吃核心被动 60%），N > M 超出部分打墨影凝云(1371005)+霄云劲#5(1371006)；全部 actionTime=0（合轴不占战场时间），倍率行全回填（伤害/失衡/喧响/异常）。",
+    "  [已确认] 玄墨异常独立积蓄槽：所有执行 element = 'ether_ink'（anomalyPool VARIANT_ELEMENT_TO_BASE 已注册 ether_ink→ether，独立分桶、与以太互紊；积蓄上限/持续时间/紊乱倍率继承以太；直伤元素仍走倍率表 ether）| 依据: \"仪玄累积玄墨异常积蓄值时，具有独立的属性异常积蓄槽\"。",
+    "额外能力·玄墨暗涌（队伍中存在[击破]或[支援]或[防护]角色时触发；spec additionalAbility 已声明 teamConditions: stun/support/defense）：",
+    "  [已确认] 强化特殊技（凝云术 1371022 / 墨烬影消 1371026）命中失衡敌人时伤害+30%：失衡轴模式按轴内行直接 +30（轴外行不加）；非轴模式已弃用（默认 0，滑块兜底自调）。",
+    "  [已确认] 发动终结技后进入[凝神]状态（15s，暴击伤害+40%）：失衡轴模式用 buff 轴扫描（般岳明王模式：大招块触发后 15s 窗口内动作加权暴伤）；非轴模式已弃用（默认 0，滑块兜底自调）。",
+    "  [已确认] 极限支援换场落雷（已录入 yixuan.ts）：225% 贯穿力 + 5 闪能/次；失衡期没有极限支援 → 次数很少，默认 = 队友正常弹刀次数求和（上限），主页可录入（缺省 -1 = 自动取上限，录入值封顶于上限）；不按 CD 自动算。",
+    "影画：",
+    "  [已确认] 影画1 清灵道心（已录入 yixuan.ts）：进场暴击率+10% → 用户口径改为等效暴伤+20%（防暴击溢出，applyPanel critDmg）；立即获得 120 术法值（cfg.yixuanShufaInitial）；落雷 50% 贯穿力伤害（假 id 执行）+5 闪能/次（CD 自动：轴模式 floor(轴内时间/6)，非轴 floor(战斗时间/6)）。",
+    "  [已确认] 影画3/影画5：通用技能等级+2（引擎 skillLevelBonus 自动处理，无需 spec 条目）。",
+    "  [已确认] 影画2 消灾渡厄（已录入 yixuan.ts）：[终结技]或[强化特殊技]无视 15% 以太伤害抗性（招式限定，patchExecutions 写 exec.resIgnore，pushDirect 消费）；青溟云影→失衡持续时间+3s（teamBuffs）；[聚墨]→符法千重-破：2 命专属，每发动一次符法千重获得 1 层（最多 1 层），消耗发动破 = 1200% 贯穿力（倍率行被隐藏，数值用户提供：伤害 1200/失衡 374.055/喧响 62.3425/异常 226.7），次数 = 符法千重总次数（含影画6 赠送）。",
+    "  [已确认] 影画4 术道归一（已录入 yixuan.ts）：发动终结技获得[静心]（≤2 层），每层使下一次凝云术/墨烬影消伤害+30%；层数来源 = 全部终结技（青溟云影 ultimateCount + 符法千重总次数，用户口径），增伤次数 = min(大招总次数, 凝云墨消总数)，期望加权摊入凝云/墨消全部执行。",
+    "  [已确认] 影画6 动静相宜（已录入 yixuan.ts）：[调息]青溟云影后获得一层（最多 1 层），无视术法值发动一次符法千重（30s CD 封顶 floor(战斗时间/30)）；赠送次数默认 = 大招次数（喧响大的次数，用户口径），滑块 yixuan.c6GiftUltCount 可调（-1=自动）；赠送的符法千重同样产玄墨值/聚墨，倍率走引擎技能等级系数（5 命 skillLevelBonus=4 → 16 级，含终结技，用户口径）。[凝神]状态下贯穿伤害+20% + 额外能力暴伤+40%：6 命因调息送大量符法千重，凝神默认满覆盖（用户口径，不走失衡 buff 轴扫描），yixuan.c6NingshenCoverage 滑块可调（默认 100%，pushDirect 按执行折算）；非 6 命维持 buff 轴扫描（暴伤+40%）+ 非轴滑块弃用默认 0。",
+    "catalog 说明：1371 强特 energyCost（墨痕化形#1=40、#4=20、凝云术=40、墨烬影消=20）为手工补充（用户确认；raw 数据缺失），重跑 import-nanoka-missing 不会覆盖，audit 一致性提示属预期。",
+    "失衡轴模式：轴内凝云块时长可调（duration 0-2s，轴编辑器）；轴内凝云次数由轴决定，轴外剩余闪能自动补凝云。",
+    "当前状态：强特交互链/闪能回复/玄墨独立积蓄槽/失衡强特+30%/凝神 buff 轴/核心被动60%已实现（yixuan.ts + useResourceCalc），术法值/玄墨值资源与两个事件执行已近似实现；剩余条目均为 [猜测] 标注，等待用户核对拍板。",
+    "命座对比口径：对比页面固定失衡次数（enemy.stunCountLock，\"操作够就能打 N 次失衡\"用户口径）——阈值收敛会被失衡联动自激（技能等级提高失衡值 → 失衡次数变多 → 连携/喧响变多），故直接锁定次数；技能等级提升包含终结技（用户确认），固定口径下 3/5 命 ≈ 5-6%，非固定场景会因失衡次数离散跳跃放大。"
+  ]
+}

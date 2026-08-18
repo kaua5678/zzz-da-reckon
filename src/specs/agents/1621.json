@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:1621",
+  "name": "洛克茜",
+  "agentIds": [
+    "1621"
+  ],
+  "status": "not_described_not_implemented",
+  "attributeConversions": [
+    {
+      "id": "roxy_def_to_atk",
+      "name": "初始防御→攻击",
+      "sourceStat": "def",
+      "sourcePanelPhase": "inCombat",
+      "threshold": 1500,
+      "stepSize": 1,
+      "targetStat": "atk",
+      "valuePerStep": 1.4,
+      "cap": 1000,
+      "status": "implemented_approximation",
+      "note": "初始防御超过1500时，每点额外+1.4攻击，最多+1000。"
+    },
+    {
+      "id": "roxy_def_to_impact",
+      "name": "初始防御→冲击",
+      "sourceStat": "def",
+      "sourcePanelPhase": "inCombat",
+      "threshold": 1500,
+      "stepSize": 1,
+      "targetStat": "impact",
+      "valuePerStep": 0.2,
+      "cap": 60,
+      "status": "implemented_approximation",
+      "note": "初始防御超过1500时，每点额外+0.2冲击，最多+60。"
+    }
+  ],
+  "resources": [
+    {
+      "id": "roxy_wind_energy",
+      "name": "风能",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 3,
+      "gainRules": [
+        {
+          "id": "wind_energy_per_30_energy",
+          "trigger": "每消耗30点能量",
+          "countSource": "energySpent",
+          "amountPerCount": 1,
+          "coverage": 1,
+          "status": "implemented_approximation",
+          "note": "按强特耗能折算总耗能，floor(总耗能/30)；3只是存量上限，整局总获得不设上限，默认获得多少消耗多少；由机制模块 computeRoxyWindEnergy 执行。",
+          "adjustable": {
+            "id": "1621.roxy_wind_energy.wind_energy_per_30_energy.rate",
+            "label": "洛克茜·风能·每消耗30点能量",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "wind_cannon_spend",
+          "trigger": "风炮",
+          "cost": 1,
+          "result": "触发强化特殊技：风炮，并生成1个风眼",
+          "status": "implemented_approximation"
+        }
+      ],
+      "properties": {
+        "cap": 3,
+        "energyPerPoint": 30
+      }
+    },
+    {
+      "id": "roxy_wind_eye",
+      "name": "风眼",
+      "nature": "state_machine",
+      "initialValue": 0,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "wind_eye_from_cannon",
+          "trigger": "风炮消耗风能",
+          "countSource": "exSpecialCount",
+          "amountPerCount": 1,
+          "coverage": 1,
+          "status": "implemented_approximation",
+          "note": "风眼数由风能模块的风炮次数决定；此处 countSource 仅作展示占位。",
+          "adjustable": {
+            "id": "1621.roxy_wind_eye.wind_eye_from_cannon.rate",
+            "label": "洛克茜·风眼·风炮消耗风能",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "wind_eye_cyclone_hammer",
+          "trigger": "旋风锤命中风眼",
+          "cost": 1,
+          "result": "引爆风眼并生成追踪小旋风（按秒伤害）",
+          "status": "implemented_approximation"
+        },
+        {
+          "id": "wind_eye_destroyed_other",
+          "trigger": "风眼被其他方式摧毁",
+          "cost": 1,
+          "result": "结算一次风眼毁坏伤害",
+          "status": "implemented_approximation"
+        }
+      ],
+      "properties": {
+        "miniTornadoMoveId": "1621006",
+        "windEyeMoveId": "1621021",
+        "defaultDurationSeconds": 5
+      }
+    }
+  ],
+  "rowFusions": [],
+  "events": [
+    {
+      "id": "roxy_wind_cannon_base",
+      "name": "风炮·起风倍率 30%",
+      "trigger": "风炮",
+      "eventType": "direct_damage",
+      "executionKind": "execution",
+      "countField": "roxyWindCannonCount",
+      "carrierMoveId": "1621008",
+      "carrierMoveName": "风炮（起风倍率 30%）",
+      "multiplierRatio": 0.3,
+      "status": "implemented_approximation",
+      "note": "风炮伤害 = 起风倍率 × 0.3 + 风炮爆炸倍率。"
+    },
+    {
+      "id": "roxy_wind_cannon_blast",
+      "name": "风炮·爆炸倍率",
+      "trigger": "风炮",
+      "eventType": "direct_damage",
+      "executionKind": "execution",
+      "countField": "roxyWindCannonCount",
+      "carrierMoveId": "1621009",
+      "carrierMoveName": "风炮·爆炸",
+      "status": "implemented_approximation",
+      "note": "风炮额外爆炸倍率。"
+    },
+    {
+      "id": "roxy_wind_eye_destroy",
+      "name": "风眼毁坏伤害",
+      "trigger": "风眼被摧毁",
+      "eventType": "direct_damage",
+      "executionKind": "execution",
+      "countField": "roxyWindEyeGenerated",
+      "carrierMoveId": "1621021",
+      "carrierMoveName": "风眼毁坏",
+      "status": "implemented_approximation",
+      "note": "次数由机制模块按风眼数计算。"
+    },
+    {
+      "id": "roxy_mini_tornado",
+      "name": "小旋风秒伤",
+      "trigger": "旋风锤引爆风眼",
+      "eventType": "direct_damage",
+      "executionKind": "execution",
+      "countField": "roxyMiniTornadoDamageSeconds",
+      "carrierMoveId": "1621006",
+      "carrierMoveName": "旋风锤·小旋风（秒伤）",
+      "status": "implemented_approximation",
+      "note": "按引爆风眼数 × 持续秒数计算，由机制模块执行。"
+    }
+  ],
+  "verifications": [],
+  "stateMachines": [],
+  "notes": [
+    "数据源：nanoka.cc raw JSON（data/raw/nanoka_1621.json）与技能倍率表（data/raw/nanoka_1621_skills_lv12.json）；60级基础属性与全部技能倍率已录入 catalog。",
+    "核心被动：每消耗30能量获得1点[风能]（Wind Energy），3为存量上限、不限制整局总消耗；默认获得多少消耗多少；已按 implemented_approximation 接入 resources，由机制模块 computeRoxyWindEnergy 执行。",
+    "核心被动：初始防御超过1500时，每点防御额外+1.4攻击、+0.2冲击，攻击上限+1000、冲击上限+60；已按 spec attributeConversions 接入引擎（def→atk/impact），当前按局内防御近似初始防御。",
+    "核心被动：战斗中暴击率>=65%时自身异常积蓄效率+60%，非防护队友暴击伤害+32%、防护队友暴击率+16%，持续到战斗结束后30秒；队友 buff 未接入。",
+    "额外能力：队内有强攻或防护角色时，自身暴击伤害+10%且每级+2%，上限130%；任意队友命中使敌人失衡易伤+30%，击破时失衡时间+2秒；风/污染状态目标额外+10%风直伤。待确认后录入。",
+    "技能数据注意：EX 特殊技·Riding the Wind 的持续大旋风按秒倍率（1621010）录入，能量消耗为固定20+每秒20；Wind Cannon/Eye of the Wind 的附加倍率也已按独立招式录入，使用时需确认按秒模型。",
+    "动作时间已按倍率表 ether_purify 公式自动录入：一般招式=秽盾/100，闪避反击=秽盾/100-1.5，弹刀=秽盾/100-2.5，终结技=秽盾/100-5；无秽盾数据的追加段不填 actionTime。",
+    "命座：nanoka 的命座文本基本为 PlaceHolder 占位，仅3/5命有通用技能等级+2；命座数据不可用，待用户提供正式文本。",
+    "特殊逻辑已开始实现：风能/风炮/风眼资源（src/mechanics/agents/roxy.ts）；旋风锤引爆风眼生成小旋风，其余风眼被摧毁结算一次伤害；小旋风持续秒数默认5秒可调，轮转次数待用户确认。"
+  ],
+  "teamBuffs": []
+}

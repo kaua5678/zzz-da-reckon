@@ -1,0 +1,51 @@
+{
+  "id": "billy-norma-lucia",
+  "name": "星徽·比利+诺姆+卢西娅",
+  "note": "金数口径：3 限定 S 角色本体 = 3 金基础；基础音擎用常驻/A（星徽·比利=青漪灵鼎 13019、诺姆=燃狱齿轮 14110、卢西娅=啜泣摇篮 14121，均不计限定金）。\n- 加金步含「专武本体」：4金=3角色+1专武、5金=+2专武、6金=3角色+3专武（与全专武队 6 金基础同口径）\n- 最优加金（≤12金）下每个金数档自动挑提升最大的组合（含买哪把专武）；关闭后按下列顺序取前 N 步\n- 交互已填（弹刀4/格挡5，用户确认默认值）",
+  "team": [
+    "1531",
+    "1571",
+    "1451"
+  ],
+  "wEngines": [
+    "13019",
+    "14110",
+    "14121"
+  ],
+  "goldSteps": [
+    { "label": "星徽·比利 专武（本体）", "slot": 0, "kind": "wengine", "value": 1, "wEngineId": "14153" },
+    { "label": "卢西娅 专武（本体）", "slot": 2, "kind": "wengine", "value": 1, "wEngineId": "14145" },
+    { "label": "诺姆 专武（本体）", "slot": 1, "kind": "wengine", "value": 1, "wEngineId": "14157" },
+    { "label": "星徽·比利 1命", "slot": 0, "kind": "cinema", "value": 1 },
+    { "label": "卢西娅 1命", "slot": 2, "kind": "cinema", "value": 1 },
+    { "label": "诺姆 1命", "slot": 1, "kind": "cinema", "value": 1 },
+    { "label": "星徽·比利 2命", "slot": 0, "kind": "cinema", "value": 2 },
+    { "label": "卢西娅 2命", "slot": 2, "kind": "cinema", "value": 2 },
+    { "label": "诺姆 2命", "slot": 1, "kind": "cinema", "value": 2 },
+    { "label": "星徽·比利 3命", "slot": 0, "kind": "cinema", "value": 3 },
+    { "label": "卢西娅 3命", "slot": 2, "kind": "cinema", "value": 3 },
+    { "label": "诺姆 3命", "slot": 1, "kind": "cinema", "value": 3 },
+    { "label": "星徽·比利 4命", "slot": 0, "kind": "cinema", "value": 4 },
+    { "label": "卢西娅 4命", "slot": 2, "kind": "cinema", "value": 4 },
+    { "label": "诺姆 4命", "slot": 1, "kind": "cinema", "value": 4 },
+    { "label": "星徽·比利 5命", "slot": 0, "kind": "cinema", "value": 5 },
+    { "label": "卢西娅 5命", "slot": 2, "kind": "cinema", "value": 5 },
+    { "label": "诺姆 5命", "slot": 1, "kind": "cinema", "value": 5 },
+    { "label": "星徽·比利 6命", "slot": 0, "kind": "cinema", "value": 6 },
+    { "label": "卢西娅 6命", "slot": 2, "kind": "cinema", "value": 6 },
+    { "label": "诺姆 6命", "slot": 1, "kind": "cinema", "value": 6 }
+  ],
+  "standardSteps": [],
+  "interactions": [
+    {
+      "type": "parry",
+      "count": 4,
+      "slot": 0
+    },
+    {
+      "type": "block",
+      "count": 5,
+      "slot": 0
+    }
+  ]
+}

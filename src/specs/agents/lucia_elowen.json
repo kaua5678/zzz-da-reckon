@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:lucia_elowen",
+  "name": "卢西娅·艾洛温",
+  "agentIds": [
+    "1451"
+  ],
+  "status": "implemented_approximation",
+  "attributeConversions": [
+    {
+      "id": "lucia_c6_hp_to_atk",
+      "name": "影画6·初始最大生命值转攻击",
+      "sourceStat": "hp",
+      "sourcePanelPhase": "outOfCombat",
+      "threshold": 0,
+      "stepSize": 1,
+      "targetStat": "atk",
+      "valuePerStep": 0.02,
+      "cap": null,
+      "coverage": 1,
+      "status": "implemented_approximation",
+      "note": "六命：处于任意[以太帷幕]内时按初始最大生命值（局外生命）2%提升自身攻击力（局内小攻击）。引擎 applyPanel 收到的为局内面板，按局内生命近似（涌泉+5%差异约5%，可接受）。"
+    }
+  ],
+  "resources": [
+    {
+      "id": "lucia_dream_value",
+      "name": "梦境值",
+      "nature": "resource",
+      "initialValue": 60,
+      "maxValue": 100,
+      "gainRules": [
+        {
+          "id": "dream_gain_ex_special",
+          "trigger": "发动强化特殊技（合唱）",
+          "countSource": "exSpecialCount",
+          "amountPerCount": 60,
+          "formula": "强特次数 × 60（未处于梦境时）",
+          "status": "implemented_approximation",
+          "note": "用户确认不区分梦境内/外触发；梦境内强特不再获得梦境值。"
+        },
+        {
+          "id": "dream_gain_chain",
+          "trigger": "发动连携技（合唱）",
+          "countSource": "chainCountTotal",
+          "amountPerCount": 40,
+          "formula": "连携次数 × 40（未处于梦境时）",
+          "status": "implemented_approximation"
+        },
+        {
+          "id": "dream_gain_ultimate",
+          "trigger": "发动终结技（合唱）",
+          "countSource": "ultimateCount",
+          "amountPerCount": 100,
+          "formula": "终结技次数 × 100（未处于梦境时；梦境中终结技可在退出梦境时再入梦）",
+          "status": "implemented_approximation"
+        },
+        {
+          "id": "dream_gain_basic_fifth",
+          "trigger": "普通攻击第五段「随想」",
+          "countSource": "basicTime",
+          "amountPerCount": 8.3,
+          "formula": "平A秒数 × 8.3（每4.817秒一套五段，五段末击+40）",
+          "status": "implemented_approximation",
+          "note": "按五段末击触发一次40点、整套五段4.817秒折算为秒均8.3点。"
+        },
+        {
+          "id": "dream_gain_dodge_counter",
+          "trigger": "闪避反击「随想」",
+          "countSource": "dodgeCounterCount",
+          "amountPerCount": 20,
+          "formula": "闪避反击次数 × 20（5秒内最多1次）",
+          "status": "implemented_approximation"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "dream_spend_upgrade",
+          "trigger": "梦境中发动招式升级或追加攻击",
+          "cost": 25,
+          "result": "升级随想为合唱 / 触发追加攻击（合唱）",
+          "deduct": true,
+          "status": "implemented_approximation",
+          "note": "实际计算由 src/mechanics/agents/luciaElowen.ts 按用户确认口径执行：目标500梦境值，追加攻击默认20次。"
+        }
+      ],
+      "feedbackGainRules": [],
+      "properties": {
+        "dreamEnterThreshold": 100,
+        "fieldDuration": 40,
+        "fieldMaxDuration": 300,
+        "additionalAttackCd": 8,
+        "echoMaxStacks": 4
+      }
+    }
+  ],
+  "rowFusions": [],
+  "events": [
+    {
+      "id": "lucia_additional_attack",
+      "name": "追加攻击（合唱）",
+      "trigger": "梦境中其他操作中的角色攻击命中敌人，消耗25梦境值发动（8秒CD）",
+      "executionKind": "execution",
+      "countSource": "resourceSpend",
+      "countField": "resource:lucia_dream_value:dream_spend_upgrade",
+      "carrierMoveId": "1451007",
+      "carrierMoveName": "追加攻击（合唱）",
+      "multiplierRowId": "damage",
+      "status": "implemented_approximation",
+      "note": "实际计算由 src/mechanics/agents/luciaElowen.ts 执行：默认20次（180s/平均9s一次），1100%倍率/200%异常积蓄（取倍率表1451007），0失衡，不占前台时间；已并入[合唱]行修正（最后一段固定伤害/2命15%增伤/6命必暴暴伤）。"
+    }
+  ],
+  "verifications": [
+    {
+      "id": "lucia_c6_hp24000_to_atk480",
+      "name": "六命 24000 初始生命 → 攻击 +480",
+      "panel": {
+        "hp": 24000
+      },
+      "expected": {
+        "atk": 480
+      },
+      "tolerance": 0.0001,
+      "status": "implemented"
+    },
+    {
+      "id": "lucia_c6_hp12000_to_atk240",
+      "name": "六命 12000 初始生命 → 攻击 +240",
+      "panel": {
+        "hp": 12000
+      },
+      "expected": {
+        "atk": 240
+      },
+      "tolerance": 0.0001,
+      "status": "implemented"
+    }
+  ],
+  "stateMachines": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "rupture",
+          "stun"
+        ]
+      }
+    ],
+    "note": "额外能力·长夜诗篇：队伍中存在[命破]或[击破]角色时触发，施加[破暗]时额外附加暴击伤害提升30%。拐力已在 teammate-buffs.json lucia_elowen.additional_long_night_crit_dmg。"
+  },
+  "teamBuffs": [],
+  "notes": [
+    "来源：bwiki（https://wiki.biligame.com/zzz/卢西娅）+ catalog 1451 + teammate-buffs.json 1451。",
+    "基础属性与技能倍率已由脚本导入 catalog；核心被动/额外能力/影画机制文本如下。",
+    "核心被动·迷途夜颂 Lv.1：进入战场时，卢西娅立刻获得60点[梦境值]，若在发动[随想]或[合唱]时，卢西娅的[梦境值]达到100点，会进入[梦境]状态；进入[梦境]状态时，将触发[快速支援]，并同时开启[以太帷幕·涌泉]，[以太帷幕·涌泉]生效期间，全队角色最大生命值提升5%，持续40秒，重复触发延长持续时间，最多延长至300秒；当卢西娅处于[梦境]状态中，发动任意[随想]时，会消耗25点[梦境值]将[随想]升级为[合唱]；其他操作中的角色攻击命中敌人时，会消耗25点[梦境值]发动[追加攻击]，[追加攻击]为[合唱]，卢西娅在发动招式升级或[追加攻击]后，8秒内不会触发[追加攻击]；卢西娅发动招式升级或[追加攻击]时，会为全队角色施加[巡梦童谣]状态，[巡梦童谣]状态下，角色造成的伤害提升10%，持续12秒，重复触发时刷新持续时间；[梦境值]不足或离开[以太帷幕]时，卢西娅退出[梦境]状态。核心被动 F 级：[巡梦童谣]伤害提升为20%。",
+    "强化特殊技·死神协奏曲·破晓：强化特殊技为[合唱]，发动时复现以骸形象向前方直线区域发动强力斩击；卢西娅发动[合唱]时，为全队角色施加[破暗]状态；[破暗]状态下，贯穿力提升12点，卢西娅每拥有200点初始最大生命值，可使贯穿力额外提升5.2点（12级为7.4点），最多提升636点（12级为900点），持续20秒，重复触发刷新；[合唱]造成伤害时，卢西娅会根据最大生命值的(34%+3%×技能等级)额外提升最后一段攻击的伤害（爬取公式 {CAL:0.34+AvatarSkillLevel(1)*0.03,100,2}，12级=70%）；发动后若自身处于[梦境]状态且[以太帷幕·涌泉]生效中，则使[以太帷幕·涌泉]持续时间延长16秒；发动后可直接衔接第五段[普通攻击]；未处于[梦境]状态时，发动此[合唱]可获得60点[梦境值]。",
+    "额外能力·长夜诗篇：队伍中存在[命破]角色或[击破]角色时触发：施加[破暗]状态时，额外附加暴击伤害提升30%效果。",
+    "终结技·进击，大铠甲！：终结技为[合唱]，突进停止时对周身大范围打击，命中敌人时触发[快速支援]，并留下[星光汇聚之地]持续8秒，当前操作中的角色在内每秒回复卢西娅最大生命值的(1%+0.05%×终结技等级)（爬取公式 {CAL:0.01+AvatarSkillLevel(3)*0.0005,100,2}，12级=1.6%/s），离开4秒后或下场时消失；若发动后卢西娅处于[梦境]状态且[以太帷幕·涌泉]生效中，则使[以太帷幕·涌泉]持续时间延长32秒；未处于[梦境]状态时，发动此[合唱]可获得100点[梦境值]，且若发动时自身处于[梦境]状态，可在下一次退出[梦境]状态时获得100点[梦境值]并重新进入[梦境]状态（不可重复获得）。",
+    "影画1 秘密朋友：[巡梦童谣]额外附加造成伤害时无视敌人18%全属性伤害抗性和喧响值获取效率+5%（巡梦童谣状态，全队3人）；卢西娅发动招式升级时获得1层[回音]，最多叠加4层，当[巡梦童谣]结束时若持有[回音]，自动消耗1层重新施加[巡梦童谣]——按用户口径只录减抗+5%喧响获取，回音延续不建模。",
+    "影画2 魔术大师：卢西娅处于[以太帷幕·涌泉]内时[合唱]造成伤害+15%（用户口径：合唱标签招式增伤15%，追加攻击/强特/连携/终结技/支援突击都算）；拥有[破暗]状态的代理人处于[以太帷幕·涌泉]内时，额外获得贯穿伤害+15%（破暗全覆盖近似全队）。",
+    "影画3/5：通用技能等级+2（implemented_generic_skill_level）。",
+    "影画4 深夜时间：当场上有[以太帷幕]开启或延长时，卢西娅使全队角色获得100点喧响值，该效果15秒内最多触发一次。触发计数（用户确认口径）：开启 = 开局入梦1 + 战中E+A5组入梦1 + Q退出再入梦×Q；延长 = 梦境内强特×dreamE + 梦境内终结技×Q；队友开帷幕（如伊德海莉终结技）每次+1；合计按 ceil(战斗时间/15) 封顶（默认轴 Q=2/E=2 为 8 次 → 全队每人+800 喧响）× lucia.c4CurtainCoverage 利用率滑块（默认100%，帷幕连着放卡CD时调低）。",
+    "影画6 永不结束的旅途：卢西娅处于任意[以太帷幕]内时，根据自身初始最大生命值的2%提升自身攻击力（局内小攻击），且[合唱]必定暴击，[合唱]造成暴击时暴击伤害+30%（用户口径：合唱标签招式几乎全覆盖，必暴+暴伤按执行级加在全部[合唱]行）。",
+    "梦境值（用户确认口径）：目标500点覆盖20次追加攻击（180s/平均9s一次）。开局白送60；场地外A5 +40（1次）；战斗中E(+60)+A5(+40) 两组；Q +100×2。默认 Q=2 时 A5×3、E×2、Q×2 共500点。Q 不够多打一组 E+A5，Q 多了少打一组 E+A5。计划外强特直接合轴，耗时0秒。实际计算由 src/mechanics/agents/luciaElowen.ts 执行。 失衡轴模式：追加攻击按 CD（8s）自动释放 = floor(轴内时间/8) 次（用户口径），受梦境值预算封顶。",
+    "追加攻击：默认20次（lucia.additionalAttackCount 可调），1100%倍率/200%异常积蓄（1451007），0失衡，不占前台时间。",
+    "必要时间 = A5×3 + E×2 + Q×2（随 Q 调整 E/A5 数量）；卢西娅不打通用平A（timeWeight=0）；强特后衔接第五段普攻由梦境值计划驱动（不是每下都打）。",
+    "回血：星光汇聚之地按终结技次数 × 8s × (1%+0.05%×终结技等级)/秒 = 每大 12.8%（12级）卢西娅最大生命 × 覆盖滑块（lucia.healingCoverage，默认50%）；换算成伊德海莉自身最大生命百分比（面板生命比）接入其烧血→喧响（伊德海莉在队时自动生效；不在队仅展示，不计入总伤）。",
+    "未建模/已裁（用户口径）：随想→合唱的招式升级伤害未单独拆分（A5统一按随想1451005）；影画1回音延续不建模；喧响获取效率仅作为5%效率录入；帷幕延长默认全覆盖不单独建模。"
+  ]
+}

@@ -1,0 +1,187 @@
+{
+  "id": "preset-1471-1481-1451",
+  "name": "般琉通用",
+  "team": [
+    "1471",
+    "1481",
+    "*"
+  ],
+  "note": "好评溢出爆发轴：默认全打常规轴（每窗 60 好评），好评富余时逐窗升级成末尾爆发轴（每窗 150 好评）",
+  "plans": [
+    {
+      "name": "好评溢出爆发轴",
+      "split": {
+        "algorithm": "goodReviewOverflow",
+        "baseAxis": {
+          "name": "常规",
+          "actions": [
+            {
+              "slot": 0,
+              "moveId": "1471020",
+              "count": 1
+            },
+            {
+              "slot": 0,
+              "moveId": "banyue-combo",
+              "count": 1,
+              "startTime": 2.4
+            },
+            {
+              "slot": 1,
+              "moveId": "1481009",
+              "count": 1,
+              "startTime": 2.4
+            },
+            {
+              "slot": 0,
+              "moveId": "1471021",
+              "count": 1,
+              "startTime": 4.1,
+              "promoteVariant": "60"
+            },
+            {
+              "slot": 0,
+              "moveId": "banyue-combo",
+              "count": 1,
+              "startTime": 6.6
+            },
+            {
+              "slot": 0,
+              "moveId": "1471021",
+              "count": 1,
+              "startTime": 7.8
+            },
+            {
+              "slot": 0,
+              "moveId": "1471009",
+              "count": 1,
+              "startTime": 10.3
+            },
+            {
+              "slot": 0,
+              "moveId": "1471010",
+              "count": 1,
+              "startTime": 12.2
+            },
+            {
+              "slot": 0,
+              "moveId": "1471016",
+              "count": 1,
+              "startTime": 13.7
+            },
+            {
+              "slot": 0,
+              "moveId": "1471015",
+              "count": 1,
+              "startTime": 14.2
+            },
+            {
+              "slot": 0,
+              "moveId": "1471014",
+              "count": 1,
+              "startTime": 14.8
+            }
+          ],
+          "basicFillerSlot": 0
+        },
+        "upgradeAxis": {
+          "name": "末尾爆发",
+          "actions": [
+            {
+              "slot": 0,
+              "moveId": "1471021",
+              "count": 1,
+              "promoteVariant": "60"
+            },
+            {
+              "slot": 0,
+              "moveId": "banyue-combo",
+              "count": 1,
+              "startTime": 2.5
+            },
+            {
+              "slot": 0,
+              "moveId": "banyue-combo",
+              "count": 1,
+              "startTime": 3.7
+            },
+            {
+              "slot": 0,
+              "moveId": "1471009",
+              "count": 1,
+              "startTime": 4.9
+            },
+            {
+              "slot": 0,
+              "moveId": "1471010",
+              "count": 1,
+              "startTime": 6.8
+            },
+            {
+              "slot": 1,
+              "moveId": "1481016",
+              "count": 1,
+              "startTime": 4.9
+            },
+            {
+              "slot": 1,
+              "moveId": "1481011",
+              "count": 1,
+              "startTime": 6.6
+            },
+            {
+              "slot": 1,
+              "moveId": "1481012",
+              "count": 1,
+              "startTime": 7.3
+            },
+            {
+              "slot": 1,
+              "moveId": "1481013",
+              "count": 1,
+              "startTime": 8.2
+            },
+            {
+              "slot": 0,
+              "moveId": "1471021",
+              "count": 1,
+              "startTime": 8.3
+            },
+            {
+              "slot": 0,
+              "moveId": "1471013",
+              "count": 1,
+              "startTime": 10.8
+            },
+            {
+              "slot": 1,
+              "moveId": "1481009",
+              "count": 1,
+              "startTime": 10.8
+            },
+            {
+              "slot": 0,
+              "moveId": "1471021",
+              "count": 1,
+              "startTime": 12.2,
+              "promoteVariant": "90"
+            },
+            {
+              "slot": 0,
+              "moveId": "1471015",
+              "count": 1,
+              "startTime": 14.7
+            },
+            {
+              "slot": 0,
+              "moveId": "1471016",
+              "count": 1,
+              "startTime": 15.4
+            }
+          ],
+          "basicFillerSlot": 0
+        }
+      }
+    }
+  ]
+}

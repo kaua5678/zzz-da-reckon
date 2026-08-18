@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1221,
+    "name_en": "Yanagi",
+    "code_name": "Yanagi",
+    "rarity": 4,
+    "element_type": "Electric",
+    "weapon_type": "Anomaly",
+    "hit_type": "Slash",
+    "camp": "Hollow Special Operations Section 6"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 626,
+    "hp_growth_per_level": 84.9779,
+    "atk_base_lvl1": 126,
+    "atk_growth_per_level": 7.586,
+    "def_base_lvl1": 49,
+    "def_growth_per_level": 6.6882,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 86,
+    "anomaly_proficiency_base": 114,
+    "anomaly_mastery_base": 112,
+    "energy_auto_recover": 0.012,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 120,
+    "flash_energy_max": 0,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 430,
+      "atk": 45,
+      "def": 34
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 859,
+      "atk": 90,
+      "def": 68
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1289,
+      "atk": 134,
+      "def": 101
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1719,
+      "atk": 179,
+      "def": 135
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2149,
+      "atk": 224,
+      "def": 169
+    }
+  },
+  "extra_stats_lvl60": {
+    "Anomaly Mastery": {
+      "value": 36,
+      "is_percent": false
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

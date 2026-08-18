@@ -1,0 +1,148 @@
+{
+  "id": "1伊-其他",
+  "name": "伊 1命·按闪能分配",
+  "team": [
+    "1051",
+    "*",
+    "*"
+  ],
+  "note": "1命：主C闪能(槽0)按鸡兔同笼分配窗口——先全给双连携+2E(100/窗)，富余能量每+35升一窗为单连携+3E(135/窗)。0命兜底双连携+2E。",
+  "plans": [
+    {
+      "name": "1命按闪能分配",
+      "when": {
+        "cinemaMin": 1,
+        "cinemaSlot": 0
+      },
+      "split": {
+        "algorithm": "energyOverflow",
+        "energySlot": 0,
+        "baseCost": 100,
+        "upgradeCost": 135,
+        "baseAxis": {
+          "name": "双连携+2E",
+          "basicFillerSlot": 0,
+          "actions": [
+            {
+              "slot": 0,
+              "moveId": "1051025",
+              "count": 1
+            },
+            {
+              "slot": 0,
+              "moveId": "yidhari-heavy-single",
+              "count": 1,
+              "startTime": 2.5
+            },
+            {
+              "slot": 0,
+              "moveId": "1051024",
+              "count": 1,
+              "startTime": 6.1
+            },
+            {
+              "slot": 0,
+              "moveId": "1051025",
+              "count": 1,
+              "startTime": 6.1
+            },
+            {
+              "slot": 0,
+              "moveId": "1051016",
+              "count": 1,
+              "startTime": 8.6
+            },
+            {
+              "slot": 0,
+              "moveId": "yidhari-heavy-single",
+              "count": 1,
+              "startTime": 10.4
+            }
+          ]
+        },
+        "upgradeAxis": {
+          "name": "单连携+3E",
+          "basicFillerSlot": 0,
+          "actions": [
+            {
+              "slot": 0,
+              "moveId": "yidhari-heavy-single",
+              "count": 1
+            },
+            {
+              "slot": 0,
+              "moveId": "1051025",
+              "count": 1,
+              "startTime": 3.6
+            },
+            {
+              "slot": 0,
+              "moveId": "1051024",
+              "count": 1,
+              "startTime": 6.1
+            },
+            {
+              "slot": 0,
+              "moveId": "1051016",
+              "count": 1,
+              "startTime": 6.1
+            },
+            {
+              "slot": 0,
+              "moveId": "yidhari-heavy-double",
+              "count": 1,
+              "startTime": 7.9
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "0命兜底（双连携+2E）",
+      "axes": [
+        {
+          "name": "双连携+2E",
+          "basicFillerSlot": 0,
+          "actions": [
+            {
+              "slot": 0,
+              "moveId": "1051025",
+              "count": 1
+            },
+            {
+              "slot": 0,
+              "moveId": "yidhari-heavy-single",
+              "count": 1,
+              "startTime": 2.5
+            },
+            {
+              "slot": 0,
+              "moveId": "1051024",
+              "count": 1,
+              "startTime": 6.1
+            },
+            {
+              "slot": 0,
+              "moveId": "1051025",
+              "count": 1,
+              "startTime": 6.1
+            },
+            {
+              "slot": 0,
+              "moveId": "1051016",
+              "count": 1,
+              "startTime": 8.6
+            },
+            {
+              "slot": 0,
+              "moveId": "yidhari-heavy-single",
+              "count": 1,
+              "startTime": 10.4
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "chapter": 1
+}

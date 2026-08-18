@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1271,
+    "name_en": "Seth",
+    "code_name": "Seth",
+    "rarity": 3,
+    "element_type": "Electric",
+    "weapon_type": "Defense",
+    "hit_type": "Slash",
+    "camp": "New Eridu Public Security"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 699,
+    "hp_growth_per_level": 94.9375,
+    "atk_base_lvl1": 93,
+    "atk_growth_per_level": 5.2593,
+    "def_base_lvl1": 60,
+    "def_growth_per_level": 8.1379,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 94,
+    "anomaly_proficiency_base": 90,
+    "anomaly_mastery_base": 86,
+    "energy_auto_recover": 0.012,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 120,
+    "flash_energy_max": 0,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 480,
+      "atk": 33,
+      "def": 41
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 960,
+      "atk": 66,
+      "def": 82
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1440,
+      "atk": 99,
+      "def": 123
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1920,
+      "atk": 132,
+      "def": 165
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2401,
+      "atk": 165,
+      "def": 206
+    }
+  },
+  "extra_stats_lvl60": {
+    "Base Energy Regen": {
+      "value": 36,
+      "is_percent": false
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

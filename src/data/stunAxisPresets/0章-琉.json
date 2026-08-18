@@ -1,0 +1,145 @@
+{
+  "id": "yidhari-liuyin-0life",
+  "name": "伊琉 0命爆发+末尾爆发（辅助通配）",
+  "team": [
+    "1051",
+    "1481",
+    "*"
+  ],
+  "note": "主体伊德海莉+琉音，第三槽辅助通配（*）且不进轴、按全局覆盖率单独算；换任意辅助轴仍适用。",
+  "axes": [
+    {
+      "name": "爆发轴",
+      "actions": [
+        {
+          "slot": 0,
+          "moveId": "1051025",
+          "count": 1
+        },
+        {
+          "slot": 0,
+          "moveId": "1051011",
+          "count": 1,
+          "startTime": 2.5
+        },
+        {
+          "slot": 0,
+          "moveId": "1051012",
+          "count": 1,
+          "startTime": 3.5
+        },
+        {
+          "slot": 0,
+          "moveId": "1051016",
+          "count": 1,
+          "startTime": 6.1,
+          "promoteVariant": "60"
+        },
+        {
+          "slot": 0,
+          "moveId": "1051016",
+          "count": 1,
+          "startTime": 7.9
+        },
+        {
+          "slot": 0,
+          "moveId": "1051011",
+          "count": 1,
+          "startTime": 9.7
+        },
+        {
+          "slot": 0,
+          "moveId": "1051012",
+          "count": 1,
+          "startTime": 10.6
+        },
+        {
+          "slot": 0,
+          "moveId": "1051007",
+          "count": 1,
+          "startTime": 13.2
+        },
+        {
+          "slot": 0,
+          "moveId": "1051003",
+          "count": 1,
+          "startTime": 14.5
+        },
+        {
+          "slot": 1,
+          "moveId": "1481011",
+          "count": 1,
+          "startTime": 3.8
+        },
+        {
+          "slot": 1,
+          "moveId": "1481009",
+          "count": 1,
+          "startTime": 4.5
+        }
+      ],
+      "count": 4,
+      "basicFillerSlot": 0
+    },
+    {
+      "name": "末尾爆发轴",
+      "actions": [
+        {
+          "slot": 0,
+          "moveId": "1051025",
+          "count": 1
+        },
+        {
+          "slot": 0,
+          "moveId": "1051011",
+          "count": 1,
+          "startTime": 2.5
+        },
+        {
+          "slot": 0,
+          "moveId": "1051012",
+          "count": 1,
+          "startTime": 3.5
+        },
+        {
+          "slot": 0,
+          "moveId": "1051025",
+          "count": 1,
+          "startTime": 6.1
+        },
+        {
+          "slot": 0,
+          "moveId": "1051011",
+          "count": 1,
+          "startTime": 8.6
+        },
+        {
+          "slot": 0,
+          "moveId": "1051012",
+          "count": 1,
+          "startTime": 9.5
+        },
+        {
+          "slot": 0,
+          "moveId": "1051016",
+          "count": 1,
+          "startTime": 12.1
+        },
+        {
+          "slot": 1,
+          "moveId": "1481011",
+          "count": 1,
+          "startTime": 9.8
+        },
+        {
+          "slot": 1,
+          "moveId": "1481009",
+          "count": 1,
+          "startTime": 10.5
+        }
+      ],
+      "basicFillerSlot": 0
+    }
+  ],
+  "chapter": 0
+}

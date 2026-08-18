@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:caesar_king",
+  "name": "凯撒",
+  "agentIds": [
+    "1071"
+  ],
+  "status": "not_described_not_implemented",
+  "attributeConversions": [],
+  "resources": [],
+  "rowFusions": [],
+  "events": [],
+  "verifications": [],
+  "stateMachines": [],
+  "notes": [
+    "待录入：凯撒 的机制、资源、事件与验证。"
+  ],
+  "teamBuffs": []
+}

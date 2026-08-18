@@ -1,0 +1,198 @@
+{
+  "1261": [
+    {
+      "id": "jane_bite",
+      "name": "啮咬",
+      "nature": "state_machine",
+      "initialValue": 0,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "bite_on_hit",
+          "trigger": "简攻击命中敌人",
+          "amount": 1,
+          "status": "implemented_approximation",
+          "note": "使敌人陷入[啮咬]状态，持续10秒。"
+        }
+      ],
+      "spendRules": [],
+      "properties": {
+        "durationSeconds": 10
+      }
+    },
+    {
+      "id": "jane_frenzy",
+      "name": "狂热",
+      "nature": "state_machine",
+      "initialValue": 0,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "frenzy_from_assault",
+          "trigger": "触发强击等条件进入狂热",
+          "amount": 1,
+          "status": "implemented_approximation",
+          "note": "狂热状态下物理异常积蓄效率与伤害提升（详见命座1/6）；萨霍夫跳可用次数+1。"
+        }
+      ],
+      "spendRules": [],
+      "properties": {
+        "assaultCritBase": 20,
+        "assaultCritPerMastery": 0.1
+      }
+    }
+  ],
+  "1581": [
+    {
+      "id": "remielle_voidflare",
+      "name": "虚曜",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 3,
+      "gainRules": [
+        {
+          "id": "voidflare_from_teammate_reaction",
+          "trigger": "队友触发属性异常反应",
+          "amount": 1,
+          "status": "implemented_approximation",
+          "note": "最多储存最新生成的3个虚曜。"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "voidflare_luminize",
+          "trigger": "花羽轮舞/缭乱终幕/垂虹/惊鸿命中后触发耀变",
+          "cost": 3,
+          "result": "基于储存虚曜的异常效果强度造成招式对应倍率异常伤害",
+          "status": "implemented_approximation"
+        }
+      ],
+      "properties": {
+        "luminizeMasteryRatio": 0.1
+      }
+    }
+  ],
+  "1411": [
+    {
+      "id": "yuzuha_sweetness",
+      "name": "甜度点",
+      "nature": "resource",
+      "initialValue": 3,
+      "maxValue": 6,
+      "gainRules": [
+        {
+          "id": "sweetness_from_chain_entry",
+          "trigger": "其他角色通过连携技入场",
+          "amount": 1,
+          "status": "implemented_approximation",
+          "note": "进入战场时立即获得3点，最多6点；二命起其他角色连携入场+1，六命招架成功额外+1。"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "sweetness_charged_cannon",
+          "trigger": "支援突击蓄能追加强力炮弹",
+          "cost": 1,
+          "result": "每蓄能0.4秒消耗1点，追加300%攻击力物理伤害",
+          "status": "implemented_approximation"
+        }
+      ],
+      "properties": {
+        "initial": 3,
+        "max": 6
+      }
+    }
+  ],
+  "1171": [
+    {
+      "id": "burnice_ignition",
+      "name": "燃点",
+      "nature": "resource",
+      "initialValue": 100,
+      "maxValue": 100,
+      "gainRules": [
+        {
+          "id": "ignition_from_energy",
+          "trigger": "消耗能量值",
+          "amountPerCount": 1.4,
+          "status": "implemented_approximation",
+          "note": "每消耗1点能量累积1.4点燃点；进入战场时立刻累积100点；一命上限140。"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "ignition_ember",
+          "trigger": "队友命中灼伤敌人触发余烬",
+          "cost": 8,
+          "result": "造成175%攻击力火伤并累积火属性异常积蓄，1.5秒最多一次",
+          "status": "implemented_approximation"
+        }
+      ],
+      "properties": {
+        "threshold": 50,
+        "emberDamageRatio": 175,
+        "emberCooldownSeconds": 1.5
+      }
+    }
+  ],
+  "1511": [
+    {
+      "id": "nangong_beat",
+      "name": "重拍",
+      "nature": "resource",
+      "initialValue": 30,
+      "maxValue": 100,
+      "gainRules": [
+        {
+          "id": "beat_regen_per_second",
+          "trigger": "接战状态每秒回复",
+          "amountPerCount": 3.8,
+          "status": "implemented_approximation",
+          "note": "接战每秒3.8点；队友使敌人进入异常状态额外12点，每6秒最多一次。"
+        },
+        {
+          "id": "beat_from_anomaly",
+          "trigger": "队伍任意角色使敌人进入属性异常状态",
+          "amount": 12,
+          "coverage": 1,
+          "status": "implemented_approximation",
+          "note": "每6秒最多触发一次。"
+        }
+      ],
+      "spendRules": [],
+      "properties": {
+        "initial": 30,
+        "max": 100
+      }
+    },
+    {
+      "id": "nangong_vibrato",
+      "name": "颤音",
+      "nature": "state_machine",
+      "initialValue": 0,
+      "maxValue": 4,
+      "gainRules": [
+        {
+          "id": "vibrato_on_stunned_anomaly",
+          "trigger": "失衡状态下异放/紊乱/进入异常",
+          "amount": 1,
+          "status": "implemented_approximation",
+          "note": "同一敌人最多4层；清除时按属性比例结算异放，每层额外+25%。"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "vibrato_clear",
+          "trigger": "叠满或敌人从失衡恢复",
+          "cost": 4,
+          "result": "清除并触发一次异放（以太720%/电360%/火900%/物理63%/冰90%/风36%，每层+25%）",
+          "status": "implemented_approximation"
+        }
+      ],
+      "properties": {
+        "maxStacks": 4,
+        "perStackBonusPct": 25
+      }
+    }
+  ]
+}

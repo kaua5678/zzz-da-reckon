@@ -1,0 +1,39 @@
+{
+  "id": "yidhari-lycaon-lucia",
+  "name": "伊德海莉+莱卡恩+卢西娅",
+  "note": "金数口径：莱卡恩是常驻 S，本体/专武/命座/精炼都不占限定金，故基础限定金 = 伊德海莉(本体+专武) + 卢西娅(本体+专武) = 4 金。\n- 6 金 = 4 基础 + 2 步 = 伊德海莉1命 + 卢西娅1命（影画 1/0/1）\n- 莱卡恩的命座/精炼写在 standardSteps（常驻配置，不占限定金）；默认空 = 莱卡恩 0命精1，要改就在该数组里加步骤（如 {\"label\":\"莱卡恩 1命\",\"slot\":1,\"kind\":\"cinema\",\"value\":1}），改完重跑对比即可\n- 加金顺序为模板（先 1 命后 2 命再精炼），可按命座提升率自行调整",
+  "team": [
+    "1051",
+    "1141",
+    "1451"
+  ],
+  "wEngines": [
+    "14105",
+    "14114",
+    "14145"
+  ],
+  "goldSteps": [
+    { "label": "伊德海莉 1命", "slot": 0, "kind": "cinema", "value": 1 },
+    { "label": "卢西娅 1命", "slot": 2, "kind": "cinema", "value": 1 },
+    { "label": "伊德海莉 2命", "slot": 0, "kind": "cinema", "value": 2 },
+    { "label": "卢西娅 2命", "slot": 2, "kind": "cinema", "value": 2 },
+    { "label": "伊德海莉 专武精炼2", "slot": 0, "kind": "wengine", "value": 2 },
+    { "label": "卢西娅 专武精炼2", "slot": 2, "kind": "wengine", "value": 2 },
+    { "label": "伊德海莉 3命", "slot": 0, "kind": "cinema", "value": 3 },
+    { "label": "卢西娅 3命", "slot": 2, "kind": "cinema", "value": 3 },
+    { "label": "伊德海莉 4命", "slot": 0, "kind": "cinema", "value": 4 },
+    { "label": "卢西娅 4命", "slot": 2, "kind": "cinema", "value": 4 },
+    { "label": "伊德海莉 专武精炼3", "slot": 0, "kind": "wengine", "value": 3 },
+    { "label": "卢西娅 专武精炼3", "slot": 2, "kind": "wengine", "value": 3 },
+    { "label": "伊德海莉 5命", "slot": 0, "kind": "cinema", "value": 5 },
+    { "label": "卢西娅 5命", "slot": 2, "kind": "cinema", "value": 5 },
+    { "label": "伊德海莉 6命", "slot": 0, "kind": "cinema", "value": 6 },
+    { "label": "卢西娅 6命", "slot": 2, "kind": "cinema", "value": 6 },
+    { "label": "伊德海莉 专武精炼4", "slot": 0, "kind": "wengine", "value": 4 },
+    { "label": "卢西娅 专武精炼4", "slot": 2, "kind": "wengine", "value": 4 },
+    { "label": "伊德海莉 专武精炼5", "slot": 0, "kind": "wengine", "value": 5 },
+    { "label": "卢西娅 专武精炼5", "slot": 2, "kind": "wengine", "value": 5 }
+  ],
+  "standardSteps": [],
+  "interactions": []
+}

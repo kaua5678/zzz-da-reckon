@@ -1,0 +1,331 @@
+{
+  "id": "1531",
+  "name_en": "Starlight - Billy",
+  "level": 12,
+  "skills": [
+    {
+      "id": "1531001",
+      "category": "basic",
+      "name": "Basic Attack: Knight's Technique #1",
+      "energy_cost": {},
+      "damage": 100.9,
+      "daze": 60.8,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.725,
+      "decibel_recovery": 9.9825,
+      "anomaly_buildup": 36.22,
+      "attack_data": [
+        1.932,
+        0.0203
+      ],
+      "ether_purify": 36.23
+    },
+    {
+      "id": "1531002",
+      "category": "basic",
+      "name": "Basic Attack: Knight's Technique #2",
+      "energy_cost": {},
+      "damage": 136.2,
+      "daze": 85.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 1.032,
+      "decibel_recovery": 14.19,
+      "anomaly_buildup": 51.57,
+      "attack_data": [
+        2.2,
+        0.0231
+      ],
+      "ether_purify": 51.58
+    },
+    {
+      "id": "1531003",
+      "category": "basic",
+      "name": "Basic Attack: Knight's Technique #3",
+      "energy_cost": {},
+      "damage": 109.5,
+      "daze": 72.2,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.872,
+      "decibel_recovery": 11.99,
+      "anomaly_buildup": 43.57,
+      "attack_data": [
+        1.4,
+        0.0147
+      ],
+      "ether_purify": 43.58
+    },
+    {
+      "id": "1531004",
+      "category": "basic",
+      "name": "Basic Attack: Knight's Technique #4",
+      "energy_cost": {},
+      "damage": 412.8,
+      "daze": 246.0,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 2.973,
+      "decibel_recovery": 40.8925,
+      "anomaly_buildup": 148.61,
+      "attack_data": [
+        5.668,
+        0.0596
+      ],
+      "ether_purify": 148.62
+    },
+    {
+      "id": "1531010",
+      "category": "basic",
+      "name": "Basic Attack: Full-Throttle Starlight",
+      "energy_cost": {},
+      "damage": 2087.1,
+      "daze": 512.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 85.2775,
+      "anomaly_buildup": 310.03,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 310.04
+    },
+    {
+      "id": "1531012",
+      "category": "dodge",
+      "name": "Dash Attack: Starlight Retribution",
+      "energy_cost": {},
+      "damage": 90.2,
+      "daze": 36.0,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.433,
+      "decibel_recovery": 5.9675,
+      "anomaly_buildup": 21.64,
+      "attack_data": [
+        0.866
+      ],
+      "ether_purify": 21.65
+    },
+    {
+      "id": "1531013",
+      "category": "dodge",
+      "name": "Dodge Counter: Duel King",
+      "energy_cost": {},
+      "damage": 239.4,
+      "daze": 146.8,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 1.768,
+      "decibel_recovery": 24.31,
+      "anomaly_buildup": 88.36,
+      "attack_data": [
+        3.5347
+      ],
+      "ether_purify": 88.37
+    },
+    {
+      "id": "1531014",
+      "category": "dodge",
+      "name": "Dodge Counter: Afterfire Spin",
+      "energy_cost": {},
+      "damage": 397.8,
+      "daze": 280.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 1.4,
+      "decibel_recovery": 19.25,
+      "anomaly_buildup": 69.99,
+      "attack_data": [
+        2.8
+      ],
+      "ether_purify": 220.0
+    },
+    {
+      "id": "1531006",
+      "category": "special",
+      "name": "Special Attack: Drive Suppression",
+      "energy_cost": {},
+      "damage": 104.8,
+      "daze": 165.0,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.8,
+      "decibel_recovery": 11.0,
+      "anomaly_buildup": 40.0,
+      "attack_data": [
+        4.0
+      ],
+      "ether_purify": 20.0
+    },
+    {
+      "id": "1531007",
+      "category": "special",
+      "name": "Special Attack: Run Wild",
+      "energy_cost": {},
+      "damage": 144.7,
+      "daze": 88.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 1.067,
+      "decibel_recovery": 14.685,
+      "anomaly_buildup": 53.3,
+      "attack_data": [
+        2.1321
+      ],
+      "ether_purify": 53.31
+    },
+    {
+      "id": "1531008",
+      "category": "special",
+      "name": "EX Special Attack: Cool Wheelie",
+      "energy_cost": {},
+      "damage": 780.2,
+      "daze": 209.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 3.733,
+      "decibel_recovery": 51.3425,
+      "anomaly_buildup": 186.63,
+      "attack_data": [
+        2.0654
+      ],
+      "ether_purify": 156.64
+    },
+    {
+      "id": "1531009",
+      "category": "special",
+      "name": "EX Special Attack: High-Traction Wheels",
+      "energy_cost": {},
+      "damage": 1860.5,
+      "daze": 1193.6,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 292.9025,
+      "anomaly_buildup": 808.54,
+      "attack_data": [
+        8.4014
+      ],
+      "ether_purify": 210.04
+    },
+    {
+      "id": "1531011",
+      "category": "special",
+      "name": "EX Special Attack: Rocking Footwork",
+      "energy_cost": {},
+      "damage": 1918.2,
+      "daze": 1236.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 301.1525,
+      "anomaly_buildup": 835.54,
+      "attack_data": [
+        9.2014
+      ],
+      "ether_purify": 230.04
+    },
+    {
+      "id": "1531015",
+      "category": "chain",
+      "name": "Chain Attack: Knight's Swagger",
+      "energy_cost": {},
+      "damage": 1326.2,
+      "daze": 394.2,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 248.435,
+      "anomaly_buildup": 437.83,
+      "attack_data": [
+        4.5334
+      ],
+      "ether_purify": 238.34
+    },
+    {
+      "id": "1531016",
+      "category": "chain",
+      "name": "Ultimate: Starlight Knight Flying Kick",
+      "energy_cost": {},
+      "damage": 3184.9,
+      "daze": 674.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 408.29,
+      "attack_data": [
+        6.332
+      ],
+      "ether_purify": 908.3
+    },
+    {
+      "id": "1531017",
+      "category": "assist",
+      "name": "Quick Assist: Starlight - Power of Bonds",
+      "energy_cost": {},
+      "damage": 184.4,
+      "daze": 74.0,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.884,
+      "decibel_recovery": 12.155,
+      "anomaly_buildup": 44.18,
+      "attack_data": [
+        1.7674
+      ],
+      "ether_purify": 44.19
+    },
+    {
+      "id": "1531018",
+      "category": "assist",
+      "name": "Defensive Assist: Hero's Entrance #1",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 407.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        2.6654
+      ],
+      "ether_purify": 366.64
+    },
+    {
+      "id": "1531019",
+      "category": "assist",
+      "name": "Defensive Assist: Hero's Entrance #2",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 514.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        4.6654
+      ],
+      "ether_purify": 416.64
+    },
+    {
+      "id": "1531020",
+      "category": "assist",
+      "name": "Defensive Assist: Hero's Entrance #3",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 250.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        4.6654
+      ],
+      "ether_purify": 116.64
+    },
+    {
+      "id": "1531021",
+      "category": "assist",
+      "name": "Assist Follow-Up: Villain's Exit",
+      "energy_cost": {},
+      "damage": 459.5,
+      "daze": 306.0,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 70.51,
+      "anomaly_buildup": 202.92,
+      "attack_data": [
+        3.1321
+      ],
+      "ether_purify": 78.31
+    }
+  ]
+}

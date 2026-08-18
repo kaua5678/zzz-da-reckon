@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:1531",
+  "name": "星徽·比利",
+  "agentIds": [
+    "1531"
+  ],
+  "status": "partially_implemented",
+  "attributeConversions": [],
+  "resources": [
+    {
+      "id": "billy_determination",
+      "name": "决意",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 120,
+      "gainRules": [
+        {
+          "id": "billy_frontline_determination_gain",
+          "trigger": "接战状态下缓慢回复",
+          "countSource": "battleTime",
+          "amountPerCount": 2,
+          "formula": "战斗时间 × 2 点/秒（接战状态 = 整场战斗，默认 180s → 360 点）",
+          "status": "implemented",
+          "note": "[已确认] 决意自动回复固定 2 点/秒，按全战斗时间（180×2=360）而非前台时间（用户口径）。实现:countSource battleTime × 2（新增 countSource，读 cfg.battleTime，默认 180）| 待核对:无。"
+        },
+        {
+          "id": "billy_attack_data_gain",
+          "trigger": "招式命中敌人（回复量按招式变化）",
+          "countSource": "cfgField",
+          "countField": "billyAttackDataDetermination",
+          "amountPerCount": 1,
+          "formula": "Σ(各招式执行次数 × 该招式 attack_data_0)（模块按执行计划计算写入 cfg；平A按秒均折算 = 四段总和/四段总时长 ≈ 4.0 点/秒 × 平A时间）",
+          "status": "implemented",
+          "note": "[已确认] 招式命中获得的决意 = 各招式倍率表 attack_data_0 行值；普攻不细分段数，按秒均折算（与伤害同款秒均倍率×时间模型，用户确认）。实现:countSource cfgField ← 模块 buildExecutions 写入 cfg.billyAttackDataDetermination | 待核对:无。"
+        },
+        {
+          "id": "billy_ex_determination_gain",
+          "trigger": "强化特殊技：孤轮特技命中（额外回复）",
+          "countSource": "cfgField",
+          "countField": "billyExExtraDetermination",
+          "amountPerCount": 1,
+          "formula": "孤轮特技总次数（含免费链/银河横行衔接）× 8（模块按执行计划写入 cfg）",
+          "status": "implemented",
+          "note": "[已确认] 额外回复数值在技能文本：\"招式命中敌人后，额外回复8点[决意]\"。实现:countSource cfgField ← 模块 buildExecutions 写入 cfg.billyExExtraDetermination = 孤轮特技总次数 × 8（原按 exSpecialCount 只计付费强特，免费链/银河横行衔接的孤轮会漏算，已修）| 待核对:无。"
+        },
+        {
+          "id": "billy_chain_determination_gain",
+          "trigger": "发动连携技：骑士漫步（额外回复）",
+          "countSource": "chainCountTotal",
+          "amountPerCount": 15,
+          "formula": "连携次数 × 15",
+          "status": "implemented",
+          "note": "[已确认] 额外回复数值在技能文本：\"招式发动时，回复15点[决意]\"。实现:countSource chainCountTotal × 15 | 待核对:无。"
+        },
+        {
+          "id": "billy_parry_determination_gain",
+          "trigger": "特殊技：动力压制期间触发格挡（额外回复）",
+          "countSource": "blockCount",
+          "amountPerCount": 5,
+          "formula": "格挡次数（主页交互次数，用户填写）× 5",
+          "status": "implemented",
+          "note": "[已确认] 额外回复 5 点来自技能文本\"触发格挡...并回复5点[决意]\"；格挡次数由用户在主页交互次数填写（cfg.blockCount，与般岳金身弹刀同一字段）。实现:countSource blockCount × 5 | 待核对:无。"
+        },
+        {
+          "id": "billy_dodge_determination_gain",
+          "trigger": "任意方式触发极限闪避（额外回复）",
+          "countSource": "dodgeCounterCount",
+          "amountPerCount": 3,
+          "formula": "极限闪避次数（按闪反次数近似）× 3",
+          "status": "implemented",
+          "note": "[已确认] 数值来自核心被动文本：\"任意方式触发[极限闪避]时，回复3点[决意]，此效果0.5秒内最多触发一次\"（0.5s 节流按次数模型忽略）。实现:countSource dodgeCounterCount × 3 | 待核对:无。"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "billy_max_power_spend",
+          "trigger": "决意≥100时长按",
+          "cost": 100,
+          "result": "发动普通攻击：最高马力星光（1531010，2087.1%），招式期间无敌",
+          "deduct": true,
+          "status": "implemented",
+          "note": "[已确认] 消耗数值来自核心被动文本：\"当[决意]大于等于100点时，长按会消耗100点[决意]发动[普通攻击：最高马力星光]\"。实现:spendRules cost 100 + event billy_max_power_execution | 待核对:无。"
+        }
+      ],
+      "feedbackGainRules": [],
+      "properties": {}
+    },
+    {
+      "id": "billy_star_glow",
+      "name": "星辉",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 2,
+      "gainRules": [
+        {
+          "id": "billy_star_ex_gain",
+          "trigger": "强化特殊技：孤轮特技命中",
+          "countSource": "cfgField",
+          "amountPerCount": 1,
+          "formula": "孤轮特技总次数（含动力压制免费衔接/银河横行衔接）× 1（模块写入 cfg）",
+          "status": "implemented",
+          "note": "[已确认·文本] 额外能力：\"[强化特殊技：孤轮特技]...命中敌人时获得一层[星辉]，同一招式至多获得一层\"。实现:countSource cfgField ← cfg.billyCoolWheelieCount（孤轮总次数，含免费衔接）| 待核对:无。",
+          "adjustable": {
+            "id": "1531.billy_star_glow.billy_star_ex_gain.rate",
+            "label": "星徽·比利·星辉·强化特殊技：孤轮特技命中",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          },
+          "countField": "billyCoolWheelieCount"
+        },
+        {
+          "id": "billy_star_basic4_gain",
+          "trigger": "普通攻击：骑士斗技第四段命中",
+          "countSource": "basicAttackCount",
+          "amountPerCount": 1,
+          "formula": "普攻四段次数（≈平A时间/2 近似）× 1",
+          "status": "implemented_approximation",
+          "note": "[猜测·低] 引擎无普攻四段独立计数源，用 basicAttackCount（floor(平A时间/2)）近似；层数受 2 层上限约束，实际影响小。实现:countSource basicAttackCount × 1 | 依据:\"[普通攻击：骑士斗技]第四段...命中敌人时获得一层[星辉]\" | 待核对:普攻四段占比。",
+          "adjustable": {
+            "id": "1531.billy_star_glow.billy_star_basic4_gain.rate",
+            "label": "星徽·比利·星辉·普通攻击：骑士斗技第四段命中",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        },
+        {
+          "id": "billy_star_chain_gain",
+          "trigger": "连携技命中",
+          "countSource": "chainCountTotal",
+          "amountPerCount": 1,
+          "formula": "连携次数 × 1",
+          "status": "implemented",
+          "note": "[已确认·文本] 额外能力：\"[连携技]...命中敌人时获得一层[星辉]，同一招式至多获得一层\"。实现:countSource chainCountTotal × 1 | 待核对:无。",
+          "adjustable": {
+            "id": "1531.billy_star_glow.billy_star_chain_gain.rate",
+            "label": "星徽·比利·星辉·连携技命中",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        },
+        {
+          "id": "billy_star_ultimate_gain",
+          "trigger": "终结技命中",
+          "countSource": "ultimateCount",
+          "amountPerCount": 1,
+          "formula": "终结技次数 × 1",
+          "status": "implemented",
+          "note": "[已确认·文本] 额外能力：\"[终结技]...命中敌人时获得一层[星辉]，同一招式至多获得一层\"。实现:countSource ultimateCount × 1 | 待核对:无。",
+          "adjustable": {
+            "id": "1531.billy_star_glow.billy_star_ultimate_gain.rate",
+            "label": "星徽·比利·星辉·终结技命中",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        }
+      ],
+      "spendRules": [],
+      "feedbackGainRules": [],
+      "properties": {
+        "damagePctPerStack": 20,
+        "durationSeconds": 45
+      }
+    },
+    {
+      "id": "billy_radiant_star",
+      "name": "煊赫星辉（6命）",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 6,
+      "gainRules": [
+        {
+          "id": "billy_radiant_basic4_gain",
+          "trigger": "第四段普通攻击：骑士斗技命中",
+          "countSource": "basicAttackCount",
+          "amountPerCount": 1,
+          "formula": "普攻四段次数（≈平A时间/2 近似）× 1",
+          "status": "implemented_approximation",
+          "note": "[猜测·低] 无独立计数源，用 basicAttackCount 近似；层数受 6 层上限约束。实现:countSource basicAttackCount × 1 | 依据:\"第四段[普通攻击：骑士斗技]...命中敌人后，可以获得1层[煊赫星辉]\" | 待核对:普攻四段占比。",
+          "adjustable": {
+            "id": "1531.billy_radiant_star.billy_radiant_basic4_gain.rate",
+            "label": "星徽·比利·煊赫星辉（6命）·第四段普通攻击命中",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        },
+        {
+          "id": "billy_radiant_ex_gain",
+          "trigger": "强化特殊技：孤轮特技命中",
+          "countSource": "cfgField",
+          "amountPerCount": 1,
+          "formula": "孤轮特技总次数（含动力压制免费衔接）× 1（模块写入 cfg）",
+          "status": "implemented",
+          "note": "[已确认·文本] 影画6：\"[强化特殊技：孤轮特技]...命中敌人后，可以获得1层[煊赫星辉]\"。实现:countSource cfgField ← cfg.billyCoolWheelieCount | 待核对:无。",
+          "adjustable": {
+            "id": "1531.billy_radiant_star.billy_radiant_ex_gain.rate",
+            "label": "星徽·比利·煊赫星辉（6命）·强化特殊技：孤轮特技命中",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          },
+          "countField": "billyCoolWheelieCount"
+        },
+        {
+          "id": "billy_radiant_chain_gain",
+          "trigger": "连携技：骑士漫步命中",
+          "countSource": "chainCountTotal",
+          "amountPerCount": 1,
+          "formula": "连携次数 × 1",
+          "status": "implemented",
+          "note": "[已确认·文本] 影画6：\"[连携技：骑士漫步]命中敌人后，可以获得1层[煊赫星辉]，同一招式内至多获得1层\"。实现:countSource chainCountTotal × 1 | 待核对:无。",
+          "adjustable": {
+            "id": "1531.billy_radiant_star.billy_radiant_chain_gain.rate",
+            "label": "星徽·比利·煊赫星辉（6命）·连携技命中",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "billy_radiant_spend",
+          "trigger": "发动终结技：骑士飞踢或普通攻击：最高马力星光",
+          "cost": 1,
+          "result": "每消耗1层使该招式最后一击额外造成100%贯穿力的物理伤害（每次施放至多消耗2层，模块按 2×(终结技+最高马力星光次数) 封顶）",
+          "deduct": true,
+          "status": "implemented_approximation",
+          "note": "[已确认·文本] 影画6：\"发动[终结技：骑士飞踢]或[普通攻击：最高马力星光]时，至多消耗2层[煊赫星辉]，每消耗1层[煊赫星辉]，使该招式的最后一击额外造成100%贯穿力的物理伤害\"；[猜测·中] 按次拆分简化为合并一次执行（总倍率 = 消耗层数 × 100%）。实现:spendRules cost 1 + 模块按施放次数封顶后合并执行 | 待核对:合并近似的误差。"
+        }
+      ],
+      "feedbackGainRules": [],
+      "properties": {
+        "maxConsumePerAttack": 2,
+        "damagePctPerStack": 100
+      }
+    }
+  ],
+  "rowFusions": [],
+  "events": [
+    {
+      "id": "billy_max_power_execution",
+      "name": "普通攻击：最高马力星光",
+      "trigger": "消耗100点决意",
+      "executionKind": "execution",
+      "countSource": "resourceSpend",
+      "countField": "resource:billy_determination:billy_max_power_spend",
+      "carrierMoveId": "1531010",
+      "carrierMoveName": "普通攻击：最高马力星光",
+      "multiplierRowId": "damage",
+      "status": "implemented",
+      "note": "[已确认] 招式动作时间 3.1s 由模块 estimateExSpecialTime 计入必做前台时间（事件行 actionTime=0 不计时）。实现:event execution → 1531010 行 2087.1% | 依据:\"对前方发动摩托突击...造成大量物理伤害\" | 待核对:无。"
+    }
+  ],
+  "verifications": [],
+  "stateMachines": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "stun",
+          "defense",
+          "support"
+        ]
+      }
+    ],
+    "note": "额外能力·炽热星辉：队伍中存在[击破]或[防护]或[支援]角色时触发：孤轮特技/普攻四段/连携/终结命中获得[星辉]（同一招式至多1层，45s，至多2层），每层使连携/终结/强化特殊技/最高马力星光伤害+20%。声明式条件，引擎判定写入 panel.additionalAbilityActive，模块 patchExecutions 按标记门控星辉增伤。"
+  },
+  "notes": [
+    "来源：nanoka.cc（Starlight - Billy，1531，命破/物理，狡兔屋）。",
+    "基础属性与倍率由脚本导入；机制实现见 src/mechanics/agents/starlightBilly.ts。",
+    "核心被动：骑士决心（用户确认口径）：",
+    "  [已确认] HP→贯穿力 0.1/点：不重复建模——命破角色被动都是这个描述，只是复述贯穿力基底公式（atk×0.3 + hp×0.1 + sheerForceFlat）本身含的 hp×0.1 项，引擎按命破基底自动结算，spec 不再额外转模（已删除原 attributeConversion 条目；般岳 1471 同款条目已一并修复）。",
+    "  [已确认] 物理伤害均为贯穿伤害：命破引擎按贯穿力基底+无视防御结算。",
+    "  [已确认] 动力压制消耗 16% 生命上限生命值，生命≤25% 无法发动；血量是战斗资源，按 HP 池建模（见下）。",
+    "  [已确认] 决意：缓慢回复固定 2 点/秒 × 全战斗时间（接战状态 = 整场战斗，180×2=360，非前台时间）；招式命中获得量 = 各招式 attack_data_0 行值（普攻不细分段数，按秒均折算 ≈ 4.0 点/秒 × 平A时间，与伤害同款秒均模型）；额外回复：孤轮特技命中 +8（按孤轮特技总次数计，含免费链/银河横行衔接）、连携 +15、格挡 +5、极限闪避 +3（文本数值）。",
+    "  [已确认] 回血百分比 = 各招式 attack_data_1 行值（普攻四段 2.03%/2.31%/1.47%/5.96%，按秒均折算 ≈ 0.042/s × 平A时间）；抓地 +30%/摇曳 +15%/闪反 +10% 文本数值不在数据行，保留硬编码。",
+    "  [已确认] 格挡次数由用户在主页交互次数填写（cfg.blockCount，与般岳金身弹刀同字段）；交互默认值：格挡 5 / 招架 4 / 闪反 0（用户确认，主页「战斗动作次数」预填展示 = 帮用户填好，AGENT_INTERACTION_DEFAULTS 与模块兜底同源）。",
+    "  [已确认] 生命≤25% 受伤-50%：防御向，只关注打 boss，不建模。",
+    "  [已确认] 伊德海莉无回血联动：其烧血→喧响只接卢西娅[星光汇聚之地]（yidhariExternalHealPerUltPct），Billy 自我回血不接入。",
+    "  [已确认] 进入战场 +60 闪能（勘域模式 180s 一次 = 整局一次）：cfg.initialEnergyGift = 60（C1 再 +60）。",
+    "HP 池模型（模块 starlightBilly，[已确认] 血量是战斗资源）：",
+    "  动力压制每发动一次 -16% 生命上限；回血：抓地轮毂 +30%、摇曳步伐 +15%、极限闪避发动的闪避反击（决斗之王）+10%、普攻命中 = attack_data_1 秒均 × 平A时间；",
+    "  [已确认] 普攻第四段衔接发动的动力压制耗血减半（16%→8%，普攻技能文本\"第四段攻击发动时...消耗生命值减少50%\"）：新增滑块 1531.driveSuppressionHpDiscountRatio（默认 0 = 没有动力压制经过该降低，用户可调比例）；",
+    "  整局口径：动力压制次数 ≤ floor((75 + 回血总量) / 平均耗血)，摇曳链数受此约束自动收敛，多出的闪能转打抓地轮毂；失衡轴模式轴内动作按轴执行，血量不足仅展示提示不裁剪。",
+    "  [已确认] 银河横行（[闪避：银河横行] = 动力压制期间摇杆/长按闪避的摩托漂移模式，触发极限闪避 → 尾焰全旋 1531014 → 自动衔接孤轮特技）：闪避次数关联银河横行（用户口径）——闪避反击次数 = 银河横行漂移触发次数，每次 = 尾焰全旋执行 + 衔接 1 次孤轮特技（0 闪能），次数 = min(闪反数, 动力压制数)（轴外；轴内由捏轴决定，可自行捏 1531014）；通用闪避反击（决斗之王 1531013）执行禁用，其 10% 回血随之不计入 HP 池。",
+    "EX 链模型（用户确认口径）：",
+    "  闪能收入 = 2/s×180 + 进场 60（C1 +60）+ 平A秒均回闪能 + 破盾；付费单位 E = floor(闪能总量/60)，只支付摇曳/抓地（孤轮与动力压制 0 闪能）。",
+    "  [已确认] 失衡轴之外全部打抓地轮毂（默认 rockingRatio=0，滑块可调）；失衡轴模式轴内动作按捏轴执行（模块 combos 'billy-ex-chain' 供轴内选用），轴外剩余闪能仍打抓地。",
+    "  主循环（用户确认：平时时间基本就是动力压制+孤轮就结束了，玩家很少平A）：动力压制（特殊技，0 闪能，烧血 16%）→ 孤轮特技（0 闪能，动力压制自动衔接）→ 结束（脱缰不建模）；链数 = 动力压制数 = 孤轮数，只受 HP 池约束，尽量多打刷决意。",
+    "  依据:\"[特殊技：动力压制]...自动衔接[强化特殊技：孤轮特技]...招式动作结束后，自动衔接[特殊技：脱缰]...闪能足够...衔接[强化特殊技：摇曳步伐]\"。",
+    "额外能力：炽热星辉（[已确认·文本]）：星辉 4 来源（孤轮/普攻四段/连携/终结），2 层封顶，每层使连携/终结/强化特殊技/最高马力星光 +20%（patchExecutions moveId 级 dmgBonus，受 panel.additionalAbilityActive 门控）。",
+    "影画1 英雄登场（[已确认·文本]）：进场闪能 +60（合计 120）；[强化特殊技]命中后自身攻击无视 18% 物理抗性（45s 刷新）× 覆盖率滑块 1531.c1ResIgnoreCoverage（默认 100%）。实现:computePanelPhases 1531 块 panel.enemyPhysicalResReduction。",
+    "  影画2 荒原机兵（[已确认·文本]）：最高马力星光/孤轮特技/骑士飞踢伤害 +50%（招式限定普通增伤，patchExecutions moveId 级 dmgBonus）；涡轮增压（[已确认] 有限次数，用户口径）：获得 = 摇曳步伐发动 + 抓地轮毂发动 + 动力压制命中失衡敌人（失衡动力压制 = 动力压制数 × 失衡覆盖率，轴内全失衡），至多叠加 1 层；消耗 = 动力压制 → 该次衔接的孤轮特技暴伤 +50%；buffed 孤轮数 = min(获得, 动力压制数)，buildExecutions 拆分为独立执行（critDmgBonus 50）。",
+    "影画3/5：通用技能等级 +2（引擎 skillLevelBonus 自动处理）。",
+    "影画4 审判底火（[已确认·文本]）：每次动力压制暴伤 +8%（至多 2 层 = 16%，45s 刷新）× 覆盖率滑块 1531.c4CritDmgCoverage（默认 100%）；后台回血至 35% 未建模（防御向）。",
+    "影画6 星徽骑士（[已确认·文本]）：骑士飞踢/最高马力星光贯穿伤害 +18%（招式限定贯穿增伤，进贯穿增伤乘区 exec.sheerDmgBonus，引擎新增执行级贯穿增伤通道）；煊赫星辉 3 来源（普攻四段/孤轮/连携，6 层封顶），消耗 ≤2 层/次（终结或最高马力星光），每层最后一击 +100% 贯穿力物理伤害（模块合并为一次执行，不重复计入失衡/异常积蓄）。",
+    "待核对总清单：无（全部口径已由用户确认；交互默认值 格挡5/招架4/闪反0 可主页调整）。"
+  ],
+  "teamBuffs": []
+}

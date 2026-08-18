@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1591,
+    "name_en": "Sigrid",
+    "code_name": "Sigrid",
+    "rarity": 4,
+    "element_type": "Ice",
+    "weapon_type": "Attack",
+    "hit_type": "Pierce",
+    "camp": "Roscaelifer"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 626,
+    "hp_growth_per_level": 84.9779,
+    "atk_base_lvl1": 135,
+    "atk_growth_per_level": 8.2578,
+    "def_base_lvl1": 49,
+    "def_growth_per_level": 6.6203,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 93,
+    "anomaly_proficiency_base": 90,
+    "anomaly_mastery_base": 92,
+    "energy_auto_recover": 0.012,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 120,
+    "flash_energy_max": 0,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 430,
+      "atk": 48,
+      "def": 33
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 859,
+      "atk": 96,
+      "def": 67
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1289,
+      "atk": 145,
+      "def": 100
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1719,
+      "atk": 193,
+      "def": 134
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2149,
+      "atk": 241,
+      "def": 167
+    }
+  },
+  "extra_stats_lvl60": {
+    "CRIT Rate": {
+      "value": 0.144,
+      "is_percent": true
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

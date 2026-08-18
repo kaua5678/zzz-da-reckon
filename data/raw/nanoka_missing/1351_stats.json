@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1351,
+    "name_en": "Pulchra",
+    "code_name": "Pulchra",
+    "rarity": 3,
+    "element_type": "Physical",
+    "weapon_type": "Stun",
+    "hit_type": "Slash",
+    "camp": "Sons of Calydon"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 612,
+    "hp_growth_per_level": 83.0642,
+    "atk_base_lvl1": 96,
+    "atk_growth_per_level": 5.4887,
+    "def_base_lvl1": 49,
+    "def_growth_per_level": 6.6203,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 118,
+    "anomaly_proficiency_base": 90,
+    "anomaly_mastery_base": 92,
+    "energy_auto_recover": 0.012,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 120,
+    "flash_energy_max": 0,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 420,
+      "atk": 34,
+      "def": 33
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 840,
+      "atk": 68,
+      "def": 67
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1260,
+      "atk": 103,
+      "def": 100
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1680,
+      "atk": 137,
+      "def": 134
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2100,
+      "atk": 171,
+      "def": 167
+    }
+  },
+  "extra_stats_lvl60": {
+    "Impact": {
+      "value": 18,
+      "is_percent": false
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

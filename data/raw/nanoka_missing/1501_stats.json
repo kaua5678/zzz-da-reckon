@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1501,
+    "name_en": "Aria",
+    "code_name": "Aria",
+    "rarity": 4,
+    "element_type": "Ether",
+    "weapon_type": "Anomaly",
+    "hit_type": "Strike",
+    "camp": "Angels of Delusion"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 623,
+    "hp_growth_per_level": 84.5544,
+    "atk_base_lvl1": 124,
+    "atk_growth_per_level": 7.4992,
+    "def_base_lvl1": 50,
+    "def_growth_per_level": 6.7561,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 87,
+    "anomaly_proficiency_base": 116,
+    "anomaly_mastery_base": 115,
+    "energy_auto_recover": 0.012,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 120,
+    "flash_energy_max": 0,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 428,
+      "atk": 44,
+      "def": 34
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 855,
+      "atk": 89,
+      "def": 68
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1283,
+      "atk": 133,
+      "def": 103
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1710,
+      "atk": 177,
+      "def": 137
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2138,
+      "atk": 222,
+      "def": 171
+    }
+  },
+  "extra_stats_lvl60": {
+    "Anomaly Mastery": {
+      "value": 36,
+      "is_percent": false
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

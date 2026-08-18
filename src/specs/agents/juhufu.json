@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:juhufu",
+  "name": "朱鸢",
+  "agentIds": [
+    "1241"
+  ],
+  "status": "not_described_not_implemented",
+  "attributeConversions": [],
+  "resources": [],
+  "rowFusions": [],
+  "events": [],
+  "verifications": [],
+  "stateMachines": [],
+  "notes": [
+    "待录入：朱鸢 的机制、资源、事件与验证。"
+  ],
+  "teamBuffs": []
+}

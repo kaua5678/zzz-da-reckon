@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1331,
+    "name_en": "Vivian",
+    "code_name": "Vivian",
+    "rarity": 4,
+    "element_type": "Ether",
+    "weapon_type": "Anomaly",
+    "hit_type": "Slash",
+    "camp": "Mockingbird"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 617,
+    "hp_growth_per_level": 83.7238,
+    "atk_base_lvl1": 127,
+    "atk_growth_per_level": 7.6728,
+    "def_base_lvl1": 49,
+    "def_growth_per_level": 6.6203,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 86,
+    "anomaly_proficiency_base": 118,
+    "anomaly_mastery_base": 108,
+    "energy_auto_recover": 0.012,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 120,
+    "flash_energy_max": 0,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 423,
+      "atk": 45,
+      "def": 33
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 847,
+      "atk": 90,
+      "def": 67
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1270,
+      "atk": 136,
+      "def": 100
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1694,
+      "atk": 181,
+      "def": 134
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2117,
+      "atk": 226,
+      "def": 167
+    }
+  },
+  "extra_stats_lvl60": {
+    "Anomaly Mastery": {
+      "value": 36,
+      "is_percent": false
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

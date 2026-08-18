@@ -1,0 +1,351 @@
+{
+  "id": "1541",
+  "name_en": "Promeia",
+  "level": 12,
+  "skills": [
+    {
+      "id": "1541001",
+      "category": "basic",
+      "name": "Basic Attack: Sweeping Edge #1",
+      "energy_cost": {},
+      "damage": 100.4,
+      "daze": 51.4,
+      "energy_recovery": 1.104,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 8.4425,
+      "anomaly_buildup": 43.48,
+      "attack_data": [
+        1.2257
+      ],
+      "ether_purify": 30.65
+    },
+    {
+      "id": "1541002",
+      "category": "basic",
+      "name": "Basic Attack: Sweeping Edge #2",
+      "energy_cost": {},
+      "damage": 206.6,
+      "daze": 104.3,
+      "energy_recovery": 2.261,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 17.2975,
+      "anomaly_buildup": 86.0,
+      "attack_data": [
+        2.5122
+      ],
+      "ether_purify": 62.81
+    },
+    {
+      "id": "1541003",
+      "category": "basic",
+      "name": "Basic Attack: Sweeping Edge #3",
+      "energy_cost": {},
+      "damage": 382.3,
+      "daze": 187.6,
+      "energy_recovery": 4.087,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 31.24,
+      "anomaly_buildup": 151.15,
+      "attack_data": [
+        4.5411
+      ],
+      "ether_purify": 113.53
+    },
+    {
+      "id": "1541004",
+      "category": "basic",
+      "name": "Basic Attack: Sweeping Edge #4",
+      "energy_cost": {},
+      "damage": 410.4,
+      "daze": 204.5,
+      "energy_recovery": 4.46,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 30.91,
+      "anomaly_buildup": 159.16,
+      "attack_data": [
+        4.9554
+      ],
+      "ether_purify": 123.89
+    },
+    {
+      "id": "1541005",
+      "category": "basic",
+      "name": "Basic Attack: Sweeping Edge #5",
+      "energy_cost": {},
+      "damage": 483.5,
+      "daze": 240.7,
+      "energy_recovery": 5.249,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 35.31,
+      "anomaly_buildup": 182.36,
+      "attack_data": [
+        5.8313
+      ],
+      "ether_purify": 145.79
+    },
+    {
+      "id": "1541008",
+      "category": "basic",
+      "name": "Basic Attack: Sweeping Edge #6",
+      "energy_cost": {},
+      "damage": 39.3,
+      "daze": 0.0,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 0.0
+    },
+    {
+      "id": "1541006",
+      "category": "basic",
+      "name": "Basic Attack: Whirling Blade",
+      "energy_cost": {},
+      "damage": 351.5,
+      "daze": 124.3,
+      "energy_recovery": 2.7,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 20.625,
+      "anomaly_buildup": 63.73,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 74.99
+    },
+    {
+      "id": "1541015",
+      "category": "dodge",
+      "name": "Dash Attack: Grim Reap",
+      "energy_cost": {},
+      "damage": 113.5,
+      "daze": 36.0,
+      "energy_recovery": 0.78,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 5.9675,
+      "anomaly_buildup": 18.4,
+      "attack_data": [
+        0.8661
+      ],
+      "ether_purify": 21.66
+    },
+    {
+      "id": "1541016",
+      "category": "dodge",
+      "name": "Dodge Counter: Soaring Bat",
+      "energy_cost": {},
+      "damage": 672.3,
+      "daze": 366.0,
+      "energy_recovery": 4.38,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 33.4675,
+      "anomaly_buildup": 158.81,
+      "attack_data": [
+        14.8667
+      ],
+      "ether_purify": 271.67
+    },
+    {
+      "id": "1541007",
+      "category": "special",
+      "name": "Special Attack: Execution - Cold Flash",
+      "energy_cost": {},
+      "damage": 256.5,
+      "daze": 81.6,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 13.53,
+      "anomaly_buildup": 41.77,
+      "attack_data": [
+        1.9661
+      ],
+      "ether_purify": 49.16
+    },
+    {
+      "id": "1541009",
+      "category": "special",
+      "name": "EX Special Attack: Execution - Glacial Death",
+      "energy_cost": {
+        "Energy Cost": "40"
+      },
+      "damage": 159.6,
+      "daze": 115.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 19.25,
+      "anomaly_buildup": 59.49,
+      "attack_data": [
+        2.8
+      ],
+      "ether_purify": 0.0
+    },
+    {
+      "id": "1541010",
+      "category": "special",
+      "name": "Special Attack: Execution - Descending Frost",
+      "energy_cost": {},
+      "damage": 767.7,
+      "daze": 411.8,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 93.8025,
+      "anomaly_buildup": 231.39,
+      "attack_data": [
+        4.4654
+      ],
+      "ether_purify": 111.64
+    },
+    {
+      "id": "1541011",
+      "category": "special",
+      "name": "Special Attack: Execution - Layered Frost #1",
+      "energy_cost": {},
+      "damage": 1216.5,
+      "daze": 676.1,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 144.6775,
+      "anomaly_buildup": 372.92,
+      "attack_data": [
+        9.3987
+      ],
+      "ether_purify": 234.97
+    },
+    {
+      "id": "1541012",
+      "category": "special",
+      "name": "Special Attack: Execution - Layered Frost #2",
+      "energy_cost": {},
+      "damage": 24.2,
+      "daze": 0.0,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [],
+      "ether_purify": 0.0
+    },
+    {
+      "id": "1541014",
+      "category": "special",
+      "name": "EX Special Attack: Execution - Merciless Judgment",
+      "energy_cost": {},
+      "damage": 1024.9,
+      "daze": 183.2,
+      "energy_recovery": 3.062,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 23.4025,
+      "anomaly_buildup": 72.27,
+      "attack_data": [],
+      "ether_purify": 85.04
+    },
+    {
+      "id": "1541017",
+      "category": "chain",
+      "name": "Chain Attack: Hanging Judgment",
+      "energy_cost": {},
+      "damage": 1662.4,
+      "daze": 397.2,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 248.9025,
+      "anomaly_buildup": 373.6,
+      "attack_data": [
+        4.8007
+      ],
+      "ether_purify": 240.04
+    },
+    {
+      "id": "1541018",
+      "category": "chain",
+      "name": "Ultimate: Glaciating Impalement",
+      "energy_cost": {},
+      "damage": 3077.3,
+      "daze": 374.8,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 604.09,
+      "attack_data": [
+        4.534
+      ],
+      "ether_purify": 726.7
+    },
+    {
+      "id": "1541019",
+      "category": "assist",
+      "name": "Quick Assist: Ambushing Strike",
+      "energy_cost": {},
+      "damage": 158.3,
+      "daze": 101.1,
+      "energy_recovery": 2.19,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 16.7475,
+      "anomaly_buildup": 51.7,
+      "attack_data": [
+        2.4334
+      ],
+      "ether_purify": 60.84
+    },
+    {
+      "id": "1541020",
+      "category": "assist",
+      "name": "Defensive Assist: Injunction #1",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 407.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [],
+      "ether_purify": 366.64
+    },
+    {
+      "id": "1541021",
+      "category": "assist",
+      "name": "Defensive Assist: Injunction #2",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 514.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [],
+      "ether_purify": 416.64
+    },
+    {
+      "id": "1541022",
+      "category": "assist",
+      "name": "Defensive Assist: Injunction #3",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 250.4,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [],
+      "ether_purify": 116.64
+    },
+    {
+      "id": "1541023",
+      "category": "assist",
+      "name": "Assist Follow-Up: Intercepting Strike",
+      "energy_cost": {},
+      "damage": 938.7,
+      "daze": 520.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 231.9075,
+      "anomaly_buildup": 287.23,
+      "attack_data": [
+        7.132
+      ],
+      "ether_purify": 178.3
+    }
+  ]
+}

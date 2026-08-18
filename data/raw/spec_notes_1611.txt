@@ -1,0 +1,10 @@
+name=克拉蕾
+skill_name=克拉蕾技能倍率
+note=数据源：nanoka.cc raw JSON（data/raw/nanoka_1611.json）与技能倍率表（data/raw/nanoka_1611_skills_lv12.json）；60级基础属性与全部技能倍率已录入 catalog。
+note=核心被动：技能伤害全部为锐化伤害（Sharp DMG），以防御力为伤害基数；暴击触发时以120%锐暴伤害替代暴击伤害，暴击率超过100%的部分额外进行锐暴判定。catalog 的伤害行 damageBasis 已按 def 录入，需确认。
+note=核心被动：锐化伤害累积裂伤值（Gash），满后使敌人进入[裂伤]最多3层；血誓技命中[裂伤]状态消耗1层触发[残害]追加伤害，全队触发[残害]时自身获得1点个人资源；未实现资源规则。
+note=进入[Crimson Engrave]状态后血誓技暴击率+35%、伤害+25%；额外能力需队内有击破或防护角色，触发残害后进入[Gleaming Edge Unveiled]状态：穿透率+20%、失衡+10%、持续10秒。状态机/事件规则未实现。
+note=基础面板：60级暴击率19.4%（核心突破提供14.4%），暴击伤害基础0%，锐暴伤害120%；能量字段按 ep_max=120/ep_recover=1.2 录入，实际是否为"锐度"消耗体系需确认。
+note=终结技已录入：moveId 1611021（nanoka 内部名 Claret_Skill_ExQTE_02_Title），倍率 4841.5%，catalog 展示名使用 Ultimate: Forged in Fire。
+note=动作时间已按倍率表 ether_purify 公式自动录入：一般招式=秽盾/100，闪避反击=秽盾/100-1.5，弹刀=秽盾/100-2.5，终结技=秽盾/100-5；无秽盾数据的追加段不填 actionTime。
+note=命座：1-5命 nanoka 有描述，6命为未翻译占位文本；命座实现待用户确认后录入。

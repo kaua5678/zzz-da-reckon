@@ -1,0 +1,85 @@
+{
+  "character_info": {
+    "id": 1441,
+    "name_en": "Manato",
+    "code_name": "Manato",
+    "rarity": 3,
+    "element_type": "Fire",
+    "weapon_type": "Rupture",
+    "hit_type": "Slash",
+    "camp": "Spook Shack"
+  },
+  "base_stats": {
+    "hp_base_lvl1": 621,
+    "hp_growth_per_level": 84.2857,
+    "atk_base_lvl1": 109,
+    "atk_growth_per_level": 6.3934,
+    "def_base_lvl1": 36,
+    "def_growth_per_level": 4.84,
+    "crit_rate_base": 0.05,
+    "crit_dmg_base": 0.5,
+    "impact_base": 95,
+    "anomaly_proficiency_base": 90,
+    "anomaly_mastery_base": 87,
+    "energy_auto_recover": 0.0,
+    "flash_energy_auto_recover": 0.0,
+    "energy_max": 0,
+    "flash_energy_max": 120,
+    "penetration_rate_base": 0.0,
+    "penetration_delta_base": 0
+  },
+  "level_progression": {
+    "1": {
+      "level_min": 0,
+      "level_max": 10,
+      "hp": 0,
+      "atk": 0,
+      "def": 0
+    },
+    "2": {
+      "level_min": 10,
+      "level_max": 20,
+      "hp": 426,
+      "atk": 39,
+      "def": 24
+    },
+    "3": {
+      "level_min": 20,
+      "level_max": 30,
+      "hp": 852,
+      "atk": 78,
+      "def": 49
+    },
+    "4": {
+      "level_min": 30,
+      "level_max": 40,
+      "hp": 1279,
+      "atk": 116,
+      "def": 73
+    },
+    "5": {
+      "level_min": 40,
+      "level_max": 50,
+      "hp": 1705,
+      "atk": 155,
+      "def": 98
+    },
+    "6": {
+      "level_min": 50,
+      "level_max": 60,
+      "hp": 2131,
+      "atk": 194,
+      "def": 122
+    }
+  },
+  "extra_stats_lvl60": {
+    "HP": {
+      "value": 0.18,
+      "is_percent": true
+    },
+    "Base ATK": {
+      "value": 75,
+      "is_percent": false
+    }
+  }
+}

@@ -1,0 +1,299 @@
+{
+  "id": "1021",
+  "name_en": "Nekomata",
+  "level": 12,
+  "skills": [
+    {
+      "id": "1021001",
+      "category": "basic",
+      "name": "Basic Attack: Kitty Slash #1",
+      "energy_cost": {},
+      "damage": 111.3,
+      "daze": 27.9,
+      "energy_recovery": 0.616,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 4.7025,
+      "anomaly_buildup": 17.08,
+      "attack_data": [
+        0.5981
+      ],
+      "ether_purify": 17.09
+    },
+    {
+      "id": "1021002",
+      "category": "basic",
+      "name": "Basic Attack: Kitty Slash #2",
+      "energy_cost": {},
+      "damage": 125.3,
+      "daze": 55.8,
+      "energy_recovery": 1.269,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 9.7075,
+      "anomaly_buildup": 35.24,
+      "attack_data": [
+        0.6231
+      ],
+      "ether_purify": 35.25
+    },
+    {
+      "id": "1021003",
+      "category": "basic",
+      "name": "Basic Attack: Kitty Slash #3",
+      "energy_cost": {},
+      "damage": 146.4,
+      "daze": 70.9,
+      "energy_recovery": 1.599,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 12.2375,
+      "anomaly_buildup": 44.4,
+      "attack_data": [
+        0.66
+      ],
+      "ether_purify": 44.41
+    },
+    {
+      "id": "1021004",
+      "category": "basic",
+      "name": "Basic Attack: Kitty Slash #4",
+      "energy_cost": {},
+      "damage": 340.7,
+      "daze": 156.5,
+      "energy_recovery": 3.555,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 27.17,
+      "anomaly_buildup": 98.73,
+      "attack_data": [
+        1.5398
+      ],
+      "ether_purify": 98.74
+    },
+    {
+      "id": "1021005",
+      "category": "basic",
+      "name": "Basic Attack: Kitty Slash #5",
+      "energy_cost": {},
+      "damage": 247.9,
+      "daze": 88.6,
+      "energy_recovery": 2.017,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 15.4275,
+      "anomaly_buildup": 56.02,
+      "attack_data": [
+        1.0321
+      ],
+      "ether_purify": 58.98
+    },
+    {
+      "id": "1021006",
+      "category": "basic",
+      "name": "Basic Attack: Crimson Blade",
+      "energy_cost": {},
+      "damage": 144.4,
+      "daze": 88.6,
+      "energy_recovery": 2.017,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 15.4275,
+      "anomaly_buildup": 56.02,
+      "attack_data": [
+        1.0321
+      ],
+      "ether_purify": 58.98
+    },
+    {
+      "id": "1021009",
+      "category": "dodge",
+      "name": "Dash Attack: Over Here!",
+      "energy_cost": {},
+      "damage": 70.3,
+      "daze": 26.4,
+      "energy_recovery": 0.601,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 16.06,
+      "anomaly_buildup": 16.68,
+      "attack_data": [
+        0.292
+      ],
+      "ether_purify": 16.69
+    },
+    {
+      "id": "1021010",
+      "category": "dodge",
+      "name": "Dodge Counter: Phantom Claws",
+      "energy_cost": {},
+      "damage": 456.7,
+      "daze": 299.6,
+      "energy_recovery": 3.239,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 24.75,
+      "anomaly_buildup": 89.96,
+      "attack_data": [
+        1.5745
+      ],
+      "ether_purify": 239.97
+    },
+    {
+      "id": "1021019",
+      "category": "dodge",
+      "name": "Dodge Counter: Fluffy Piercing Claw",
+      "energy_cost": {
+        "Purr Energy Cost": "40"
+      },
+      "damage": 2527.8,
+      "daze": 247.1,
+      "energy_recovery": 2.641,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 43.0925,
+      "anomaly_buildup": 156.66,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 156.67
+    },
+    {
+      "id": "1021007",
+      "category": "special",
+      "name": "Special Attack: Surprise Attack",
+      "energy_cost": {},
+      "damage": 94.6,
+      "daze": 71.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 12.4025,
+      "anomaly_buildup": 45.01,
+      "attack_data": [
+        0.7878
+      ],
+      "ether_purify": 45.02
+    },
+    {
+      "id": "1021008",
+      "category": "special",
+      "name": "EX Special Attack: Super Surprise Attack!",
+      "energy_cost": {
+        "Energy Cost": "40"
+      },
+      "damage": 1079.8,
+      "daze": 683.1,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 148.61,
+      "anomaly_buildup": 430.73,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 175.04
+    },
+    {
+      "id": "1021011",
+      "category": "chain",
+      "name": "Chain Attack: Claw Swipe",
+      "energy_cost": {},
+      "damage": 1073.0,
+      "daze": 239.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 229.185,
+      "anomaly_buildup": 367.86,
+      "attack_data": [
+        0.9465
+      ],
+      "ether_purify": 168.37
+    },
+    {
+      "id": "1021012",
+      "category": "chain",
+      "name": "Ultimate: Claw Smash",
+      "energy_cost": {},
+      "damage": 3143.0,
+      "daze": 177.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 124.96,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 624.97
+    },
+    {
+      "id": "1021013",
+      "category": "assist",
+      "name": "Quick Assist: Cat's Paw",
+      "energy_cost": {},
+      "damage": 189.1,
+      "daze": 141.8,
+      "energy_recovery": 3.239,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 24.75,
+      "anomaly_buildup": 89.96,
+      "attack_data": [
+        0.7873
+      ],
+      "ether_purify": 44.99
+    },
+    {
+      "id": "1021014",
+      "category": "assist",
+      "name": "Defensive Assist: Desperate Defense #1",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 388.8,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 366.64
+    },
+    {
+      "id": "1021015",
+      "category": "assist",
+      "name": "Defensive Assist: Desperate Defense #2",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 491.2,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 416.64
+    },
+    {
+      "id": "1021016",
+      "category": "assist",
+      "name": "Defensive Assist: Desperate Defense #3",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 239.6,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 116.64
+    },
+    {
+      "id": "1021017",
+      "category": "assist",
+      "name": "Assist Follow-Up: Shadow Strike",
+      "energy_cost": {},
+      "damage": 601.8,
+      "daze": 387.9,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 89.76,
+      "anomaly_buildup": 265.92,
+      "attack_data": [
+        2.187
+      ],
+      "ether_purify": 124.97
+    }
+  ]
+}

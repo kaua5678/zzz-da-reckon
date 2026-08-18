@@ -1,0 +1,368 @@
+{
+  "id": "1251",
+  "name_en": "Qingyi",
+  "level": 12,
+  "skills": [
+    {
+      "id": "1251001",
+      "category": "basic",
+      "name": "Basic Attack: Penultimate #1",
+      "energy_cost": {},
+      "damage": 94.5,
+      "daze": 35.7,
+      "energy_recovery": 0.771,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 5.9125,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 21.42
+    },
+    {
+      "id": "1251002",
+      "category": "basic",
+      "name": "Basic Attack: Penultimate #2",
+      "energy_cost": {},
+      "damage": 221.4,
+      "daze": 83.8,
+      "energy_recovery": 1.805,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 13.805,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 50.14
+    },
+    {
+      "id": "1251003",
+      "category": "basic",
+      "name": "Basic Attack: Penultimate #3",
+      "energy_cost": {},
+      "damage": 244.2,
+      "daze": 124.0,
+      "energy_recovery": 2.689,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 23.925,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 74.69
+    },
+    {
+      "id": "1251004",
+      "category": "basic",
+      "name": "Basic Attack: Penultimate #4",
+      "energy_cost": {},
+      "damage": 35.2,
+      "daze": 29.0,
+      "energy_recovery": 0.48,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 3.685,
+      "anomaly_buildup": 13.33,
+      "attack_data": [
+        3.3334
+      ],
+      "ether_purify": 13.34
+    },
+    {
+      "id": "1251005",
+      "category": "basic",
+      "name": "Basic Attack: Penultimate #5",
+      "energy_cost": {},
+      "damage": 213.1,
+      "daze": 160.2,
+      "energy_recovery": 3.477,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 26.565,
+      "anomaly_buildup": 64.54,
+      "attack_data": [
+        3.2271
+      ],
+      "ether_purify": 96.58
+    },
+    {
+      "id": "1251006",
+      "category": "basic",
+      "name": "Basic Attack: Penultimate #6",
+      "energy_cost": {},
+      "damage": 469.8,
+      "daze": 308.1,
+      "energy_recovery": 6.698,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 51.1775,
+      "anomaly_buildup": 153.99,
+      "attack_data": [
+        7.6999
+      ],
+      "ether_purify": 186.03
+    },
+    {
+      "id": "1251007",
+      "category": "basic",
+      "name": "Basic Attack: Enchanted Blossoms",
+      "energy_cost": {},
+      "damage": 171.4,
+      "daze": 128.5,
+      "energy_recovery": 2.799,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 21.395,
+      "anomaly_buildup": 77.74,
+      "attack_data": [
+        1.9436
+      ],
+      "ether_purify": 77.75
+    },
+    {
+      "id": "1251008",
+      "category": "basic",
+      "name": "Basic Attack: Enchanted Moonlit Blossoms #1",
+      "energy_cost": {},
+      "damage": 897.5,
+      "daze": 408.3,
+      "energy_recovery": 6.845,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 52.305,
+      "anomaly_buildup": 190.13,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 190.14
+    },
+    {
+      "id": "1251009",
+      "category": "basic",
+      "name": "Basic Attack: Enchanted Moonlit Blossoms #2",
+      "energy_cost": {},
+      "damage": 789.3,
+      "daze": 326.5,
+      "energy_recovery": 5.478,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 41.855,
+      "anomaly_buildup": 152.14,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 152.15
+    },
+    {
+      "id": "1251012",
+      "category": "dodge",
+      "name": "Dash Attack: Breach",
+      "energy_cost": {},
+      "damage": 99.0,
+      "daze": 38.0,
+      "energy_recovery": 0.81,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 6.1875,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 22.49
+    },
+    {
+      "id": "1251013",
+      "category": "dodge",
+      "name": "Dodge Counter: Lingering Sentiments",
+      "energy_cost": {},
+      "damage": 568.9,
+      "daze": 286.1,
+      "energy_recovery": 4.381,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 33.4675,
+      "anomaly_buildup": 121.66,
+      "attack_data": [
+        16.0834
+      ],
+      "ether_purify": 271.67
+    },
+    {
+      "id": "1251010",
+      "category": "special",
+      "name": "Special Attack: Sunlit Glory",
+      "energy_cost": {},
+      "damage": 125.1,
+      "daze": 94.3,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 15.5925,
+      "anomaly_buildup": 56.68,
+      "attack_data": [
+        2.8342
+      ],
+      "ether_purify": 56.69
+    },
+    {
+      "id": "1251011",
+      "category": "special",
+      "name": "EX Special Attack: Moonlit Begonia #1",
+      "energy_cost": {
+        "Energy Cost": "60",
+        "Additional Energy Cost": "20"
+      },
+      "damage": 301.4,
+      "daze": 167.2,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 40.865,
+      "anomaly_buildup": 124.65,
+      "attack_data": [
+        5.6162
+      ],
+      "ether_purify": 38.33
+    },
+    {
+      "id": "1251021",
+      "category": "special",
+      "name": "EX Special Attack: Moonlit Begonia #2",
+      "energy_cost": {
+        "Energy Cost": "60",
+        "Additional Energy Cost": "20"
+      },
+      "damage": 422.2,
+      "daze": 233.6,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 57.2,
+      "anomaly_buildup": 174.51,
+      "attack_data": [
+        7.8626
+      ],
+      "ether_purify": 53.66
+    },
+    {
+      "id": "1251022",
+      "category": "special",
+      "name": "EX Special Attack: Moonlit Begonia #3",
+      "energy_cost": {
+        "Energy Cost": "60",
+        "Additional Energy Cost": "20"
+      },
+      "damage": 483.1,
+      "daze": 266.8,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 65.3675,
+      "anomaly_buildup": 199.44,
+      "attack_data": [
+        8.9858
+      ],
+      "ether_purify": 61.32
+    },
+    {
+      "id": "1251014",
+      "category": "chain",
+      "name": "Chain Attack: Tranquil Serenade",
+      "energy_cost": {},
+      "damage": 1295.8,
+      "daze": 313.5,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 235.125,
+      "anomaly_buildup": 389.46,
+      "attack_data": [
+        25.0
+      ],
+      "ether_purify": 189.97
+    },
+    {
+      "id": "1251015",
+      "category": "chain",
+      "name": "Ultimate: Eight Sounds of Ganzhou",
+      "energy_cost": {},
+      "damage": 3341.6,
+      "daze": 1646.0,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 215.03,
+      "attack_data": [
+        80.0
+      ],
+      "ether_purify": 715.04
+    },
+    {
+      "id": "1251016",
+      "category": "assist",
+      "name": "Quick Assist: Wind Through the Pines",
+      "energy_cost": {},
+      "damage": 268.1,
+      "daze": 201.0,
+      "energy_recovery": 4.381,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 33.4675,
+      "anomaly_buildup": 121.66,
+      "attack_data": [
+        6.0834
+      ],
+      "ether_purify": 60.84
+    },
+    {
+      "id": "1251017",
+      "category": "assist",
+      "name": "Defensive Assist: Graceful Embellishment #1",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 374.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 366.64
+    },
+    {
+      "id": "1251018",
+      "category": "assist",
+      "name": "Defensive Assist: Graceful Embellishment #2",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 457.2,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 416.64
+    },
+    {
+      "id": "1251019",
+      "category": "assist",
+      "name": "Defensive Assist: Graceful Embellishment #3",
+      "energy_cost": {},
+      "damage": 0.0,
+      "daze": 193.2,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 0.0,
+      "anomaly_buildup": 0.0,
+      "attack_data": [
+        0.0
+      ],
+      "ether_purify": 116.64
+    },
+    {
+      "id": "1251020",
+      "category": "assist",
+      "name": "Assist Follow-Up: Song of the Clear River",
+      "energy_cost": {},
+      "damage": 753.7,
+      "daze": 418.7,
+      "energy_recovery": 0.0,
+      "flash_energy_recovery": 0.0,
+      "decibel_recovery": 45.4025,
+      "anomaly_buildup": 320.01,
+      "attack_data": [
+        14.8939
+      ],
+      "ether_purify": 165.04
+    }
+  ]
+}

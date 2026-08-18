@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:liuyin",
+  "name": "琉音",
+  "agentIds": [
+    "1481"
+  ],
+  "status": "partially_implemented",
+  "attributeConversions": [
+    {
+      "id": "liuyin_crit_to_impact",
+      "name": "暴击率转冲击力",
+      "sourceStat": "critRate",
+      "sourcePanelPhase": "inCombat",
+      "threshold": 50,
+      "stepSize": 1,
+      "targetStat": "impact",
+      "valuePerStep": 2,
+      "cap": 100,
+      "status": "implemented",
+      "note": "[已确认] 超过 50% 的每 1% 暴击率转 2 点局内固定冲击力，100% 暴击时转满 100 点。实现位置：mechanics/agents/liuyin.ts applyPanel（面板直加 impact），非 spec runtime 执行。"
+    }
+  ],
+  "resources": [
+    {
+      "id": "liuyin_good_review",
+      "name": "好评",
+      "nature": "resource",
+      "initialValue": 60,
+      "maxValue": 120,
+      "gainRules": [
+        {
+          "id": "liuyin_good_review_frontline",
+          "trigger": "接战每秒积攒 0.6 点",
+          "countSource": "frontlineTime",
+          "amountPerCount": 0.6,
+          "formula": "frontlineTime × 0.6",
+          "status": "implemented_approximation",
+          "note": "[猜测·高] 实现: 每秒 0.6 点好评，countSource=frontlineTime(接战/前线秒) | 依据: \"处于接战状态下，琉音每秒积攒0.6点[好评]\" | 待核对: 接战≈前线时间是否成立。"
+        },
+        {
+          "id": "liuyin_good_review_ex",
+          "trigger": "强化特殊技：石头/剪刀/布！重击命中 +7.5 点",
+          "countSource": "exSpecialCount",
+          "amountPerCount": 7.5,
+          "formula": "exSpecialCount × 7.5",
+          "status": "implemented_approximation",
+          "note": "[猜测·中] 实现: 每次强特重击 +7.5 好评 | 依据: \"发动[石头]/[剪刀]/[布！]的重击命中敌人时积攒7.5点\" | 待核对: 仅石头/剪刀/布三招给好评，送客！(1481009)不给；同一招式内最多一次；exSpecialCount 含送客会高估，需按强特类型拆分。"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "liuyin_good_review_teammate_ultimate",
+          "trigger": "好评满 90 且队友以终结技入场",
+          "cost": 60,
+          "result": "下一位出场角色连携强制升级为终结技",
+          "status": "implemented_approximation",
+          "note": "[猜测·中] 实现: 消耗 60 好评触发队友终结技入场 | 依据: \"好评满90点…下一位出场角色将连携强制升级为终结技，队友以此方式发动终结技时琉音消耗60点好评\" | 待核对: 通用解释器仅 floor(remaining/60) 不判\"满90\"阈值，且与消耗90路径互斥，需 TS 精确状态机。"
+        },
+        {
+          "id": "liuyin_good_review_force_chain",
+          "trigger": "好评满 90 且送客！命中未开连携窗口的敌人",
+          "cost": 90,
+          "result": "强制打开连携窗口",
+          "status": "implemented_approximation",
+          "note": "[猜测·中] 实现: 消耗 90 好评强制开窗 | 依据: \"好评满90点且送客！命中未打开连携窗口的敌人时，消耗90点好评强制打开连携窗口\" | 待核对: 同前，需满90阈值+互斥判断，需 TS。"
+        }
+      ],
+      "properties": {
+        "exGain": 7.5,
+        "exGainCapPerMove": 1,
+        "teammateUltimateCost": 60,
+        "forceChainCost": 90
+      }
+    },
+    {
+      "id": "liuyin_farewell",
+      "name": "抱拳（送客长按 1481009）",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "liuyin_farewell_from_promote",
+          "trigger": "好评满 90 开窗抱拳转大",
+          "countSource": "ultimateCount",
+          "amountPerCount": 1,
+          "formula": "转大次数 = floor(好评总量 / 90)",
+          "status": "implemented",
+          "note": "[已确认] 等效规则：好评满 90 可选择抱拳转大，转大次数 = floor(好评总量/90)。60/90 分配在 promoteFixpoint 按连携窗口拆。实现：liuyin.ts computeLiuyinSource.promoteWindows + computeLiuyinHugCounts。"
+        },
+        {
+          "id": "liuyin_farewell_from_ultimate",
+          "trigger": "琉音终结技送客诉 → 抱拳不转大",
+          "countSource": "ultimateCount",
+          "amountPerCount": 1,
+          "formula": "抱拳次数 += 琉音终结技次数",
+          "status": "implemented",
+          "note": "[已确认] 等效规则：终结技送一点客诉，就抱拳不转大（纯伤害）。抱拳总数 = 转大次数 + 终结技次数，整局总量结算不按客诉单条上限 1 截断。"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "liuyin_farewell_spend",
+          "trigger": "每次抱拳",
+          "cost": 1,
+          "result": "送客长按（1481009）：物理伤害并触发上一位角色快速支援；完整倍率行由 buildCharConfig 读取、执行计划直接覆盖",
+          "status": "implemented"
+        }
+      ],
+      "properties": {
+        "promoteWindow": 90
+      }
+    }
+  ],
+  "rowFusions": [],
+  "events": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "attack",
+          "rupture"
+        ]
+      }
+    ],
+    "note": "额外能力·场外连线：队伍中存在[强攻]或[命破]角色时触发（强特暴伤+50%、专属直伤、好评如潮）。声明式条件，引擎判定写入 panel.additionalAbilityActive。"
+  },
+  "verifications": [
+    {
+      "id": "liuyin_crit80_to_impact",
+      "name": "暴击 80% 转冲击",
+      "panel": {
+        "critRate": 80
+      },
+      "expected": {
+        "impact": 60
+      },
+      "tolerance": 0.0001,
+      "status": "implemented"
+    },
+    {
+      "id": "liuyin_crit100_to_impact_cap",
+      "name": "暴击 100% 转冲击封顶",
+      "panel": {
+        "critRate": 100
+      },
+      "expected": {
+        "impact": 100
+      },
+      "tolerance": 0.0001,
+      "status": "implemented"
+    }
+  ],
+  "stateMachines": [],
+  "teamBuffs": [],
+  "notes": [
+    "来源：nanoka.cc 3.2.1（Dialyn/琉音，1481，击破/物理/坎卜斯黑枝）。",
+    "基础属性与技能倍率已由脚本导入 catalog；专属机制由 TS 模块 liuyin.ts 实现，本 spec 的 attributeConversions/resources 仅作结构化留档。",
+    "团队/敌人 buff 已在 teammate-buffs.json 录好(4条)：额外能力·好评如潮(dmgBonus40)、核心被动·恶意投诉(stunDmgMultiplierBonus30)、影画1(enemyResReduction15)、影画2(dmgBonus15+stunDmgMultiplierBonus20)。spec 不重复录入，避免二次计数。",
+    "[已确认] 暴击转冲击：超过 50% 每 1% 转 2 点局内固定冲击力，100% 暴击转满 100 点。实现：liuyin.ts applyPanel。",
+    "[已确认] 额外能力·强特暴伤 +50%：新增技能专属暴伤 critDmg__exSpecial（core/buff.ts TARGETABLE_STATS 已扩展 + damage.ts 暴击乘区按 skillDamageTarget 定向读取），仅强化特殊技生效。",
+    "[已确认] 额外能力·专属直伤：读上一位队友面板，强攻=320%攻击力、命破=400%贯穿力；提供 liuyin.previousTeammateSlot 设置项防止自动认定错误。实现：useResourceCalc.ts damagePool 走 basisValueOverride。",
+    "[已确认] 等效总量规则（用户确认）：转大次数 = floor(好评总量/90)（好评满 90 开窗即可抱拳转大，60/90 分配在 promoteFixpoint 按连携窗口拆）；抱拳次数（送客长按 1481009）= 转大次数 + 琉音终结技次数（终结技送客诉→抱拳不转大，纯伤害）。整局总量结算，不按客诉单条上限 1 截断。",
+    "[已确认] 好评转大（60 替换 / 90 白送）：60 转大=目标队友有连携窗口时消耗 60 好评把连携升级为终结技（连携-1、终结+1 替换），90 转大=无连携窗口消耗 90 直接打出终结技（终结+1 白送）；60 默认按失衡次数（liuyin.hug60Count 可调）、受开窗次数与连携窗口双重夹紧；倍率表全走目标队友执行计划自然调用；目标队友槽位可调（liuyin.ultimateTargetSlot，默认上一位）。",
+    "[已确认] 连携次数=每次失衡连携次数×失衡次数：资源池 iterate 已按 config.stunCount 参数化实现；被 60 转大替换的连携真的没打，最终 chainCountTotal 与执行计划都扣减；失衡次数↔资源池↔失衡池外层不动点（calcOutput，6 轮兜底）+ 失衡↔转大内层不动点（8 轮兜底）全链路收敛。",
+    "[已确认] 三个强特：石头→剪刀→布 各耗 25，按 1→3 顺序连打；强特次数强制整数（cfg.exSpecialCountFloor）；失衡次数×25 能量留给失衡内首个强特（石头），剩余非失衡按 1→3 连打。实现：liuyin.ts buildExecutions 生成三段 + useResourceCalc damagePool 按 stunCount 拆易伤。",
+    "[已确认] 抱拳（送客长按 1481009）：次数=转大次数+琉音终结技次数，完整倍率行（damage/daze/anomaly/喧响/动作时间）由 buildCharConfig 读取、执行计划直接覆盖（liuyinFarewell* cfg 字段）。",
+    "[已确认] 强化A（普通攻击：猜拳把戏 #1-#4）：布（1481013）次数决定可打轮数，每轮 4 段各 push count=rounds（1481005-1481008，damageMultiplierOverride），占用平A时间——从 basic_attack 行 totalTime 扣减，平A时间不够按整轮截断。4 段秒均一致（damage≈326.5/s），与单条秒均行完全等效；4 段 push 让失衡/积蓄池按真实段调用（伤害池已支持秒均行，两种模型都进总伤）。",
+    "[已确认] 影画6·余音：转大次数（60+90 抱拳次数之和）× 12 次 × 480% 物理直伤（视为强特），默认全打满。",
+    "[已确认] 影画1·好评回复 ×1.16：乘算到每秒 0.6 与强特重击 7.5；好评如潮无视抗性已在 teammate-buffs。",
+    "[已确认] 影画4·进场能量 +20：走 cfg.initialEnergyGift。",
+    "[猜测·中] 影画6·真言: 队友经核心被动以终结技入场后获得[余音]，其攻击命中时琉音额外造成480%攻击力物理伤害(视为强特伤害)，1秒1次，最多12次，重复获得刷新次数。待核对: 触发次数上限与1秒CD折算。",
+    "[猜测·中] 影画4·好评如潮下攻击力+500：需按好评如潮覆盖率折算，尚未接入。",
+    "等级随动字段: 冲击力/1%暴击 Lv1=1.4→Lv7=2.0(已按 max=2.0 实现)；恶意投诉失衡易伤 Lv1=15%→Lv7=30%(teammate-buffs已取30)。好评如潮伤害40%恒定。",
+    "已全部按用户确认口径接入（剩余猜测已清零）：影画4 攻击力+500 已按默认满覆盖接入（liuyin.goodReviewAtkCoverage 可调）。"
+  ]
+}
