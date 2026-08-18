@@ -1132,6 +1132,7 @@ export function buildCharConfig(
     chainComboAlignRatio: ov(chainAttack?.moveId ?? '', chainAttack?.comboAlignRatio ?? 0),
     chainCountPerStun: char.chainCountPerStun ?? (isSupport ? 0 : 1),
     parryCount: char.parryCount ?? 0,
+    perfectBlockCount: (char as { perfectBlockCount?: number }).perfectBlockCount ?? 0,
     dodgeCounterCount: char.dodgeCounterCount ?? 0,
     blockCount: char.blockCount ?? 0,
     dualCounterCount: char.dualCounterCount ?? 0,

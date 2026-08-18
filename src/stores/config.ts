@@ -24,6 +24,7 @@ export interface CharacterConfig {
   parryCount: number       // 弹刀次数（per-character）
   dodgeCounterCount: number  // 闪避反击次数（per-character）
   blockCount: number        // 金身格挡/不动如山招架次数（per-character，般岳嗔火来源）
+  perfectBlockCount?: number // 强特完美格挡次数（per-character，佩洛伊斯日珥回复来源，主页交互栏填写）
   dualCounterCount?: number  // 双反次数（per-character，般岳专属：完美闪避+金身弹刀组合，+10嗔火/次；缺省 0）
   tauntCancelCount?: number  // 嘲讽取消次数（per-character，般岳专属：失衡外强特连段末尾后摇的嘲讽取消，每次取消一次后摇；缺省 0）
   yixuanInk2Count?: number  // 仪玄·2连墨痕化形次数（#1+#3，40闪能/次；主页交互栏填写）
@@ -112,6 +113,7 @@ function defaultCharacter(slot: number, agentId: string, element: string): Chara
     parryCount: 0,
     dodgeCounterCount: 0,
     blockCount: 0,
+    perfectBlockCount: 0,
     dualCounterCount: 0,
     tauntCancelCount: 0,
     yixuanInk2Count: 0,
@@ -435,6 +437,11 @@ export const useConfigStore = defineStore('config', () => {
   function setDodgeCounterCount(slot: number, count: number) {
     const char = team.value[slot]
     if (char) char.dodgeCounterCount = Math.max(0, Math.min(99, count))
+  }
+
+  function setPerfectBlockCount(slot: number, count: number) {
+    const char = team.value[slot]
+    if (char) char.perfectBlockCount = Math.max(0, Math.min(999, count))
   }
 
   function setBlockCount(slot: number, count: number) {
@@ -1043,6 +1050,7 @@ function parseCinemaRequirement(sourceLabel: string): number {
     setParryCount,
     setDodgeCounterCount,
     setBlockCount,
+    setPerfectBlockCount,
     setDualCounterCount,
     setYixuanInk2Count,
     setYixuanInk3Count,

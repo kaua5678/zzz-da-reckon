@@ -982,6 +982,8 @@ export interface CharacterOperationConfig {
   dodgeCounterCount: number
   /** 快速支援次数（per-character） */
   quickAssistCount: number
+  /** 强特完美格挡次数（主页交互栏填写；佩洛伊斯日珥回复来源） */
+  perfectBlockCount: number
   /** 闪避反击（Dodge Counter）move id */
   dodgeCounterMoveId: string
   /** 闪避反击 actionTime */

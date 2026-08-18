@@ -181,3 +181,16 @@ describe('佩洛伊斯日珥账本（命中回复/天光消耗）', () => {
     expect(card.rows.find((r: any) => r.label === '核对结论').value).toBe('日珥足够')
   })
 })
+
+describe('佩洛伊斯强特完美格挡回日珥（主页交互栏填写）', () => {
+  it('perfectBlockCount × 10 计入日珥获取；未填写为 0', async () => {
+    const { computeSpecResources } = await import('@/specs/resources')
+    const { getAgentSpec } = await import('@/specs/registry')
+    const spec = getAgentSpec('1551')!
+    const state = { frontlineTime: 0, exSpecialCount: 2, ultimateCount: 0, chainCountTotal: 0 } as any
+    const filled = Object.fromEntries(computeSpecResources(spec, { perfectBlockCount: 3 } as any, state))
+    expect(filled['peiluo_prominence'].gains['peiluo_perfect_block_gain']).toBe(30)
+    const empty = Object.fromEntries(computeSpecResources(spec, { perfectBlockCount: 0 } as any, state))
+    expect(empty['peiluo_prominence'].gains['peiluo_perfect_block_gain'] ?? 0).toBe(0)
+  })
+})

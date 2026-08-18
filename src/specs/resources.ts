@@ -185,6 +185,9 @@ function resolveGainCount(
     case 'blockCount':
       // 金身格挡/动力压制格挡等次数（主页交互次数，用户填写）
       return Math.max(0, cfg.blockCount ?? 0)
+    case 'perfectBlockCount':
+      // 强特完美格挡次数（主页交互栏填写；佩洛伊斯日珥回复来源）
+      return Math.max(0, cfg.perfectBlockCount ?? 0)
     case 'quickAssistCount':
       return Math.max(0, cfg.quickAssistCount ?? 0)
     case 'teamFrontlineSeconds':

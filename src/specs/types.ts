@@ -28,7 +28,7 @@ export interface ResourceRuleSpec {
   amount?: string | number
   amountPerCount?: number
   count?: number
-  countSource?: 'exSpecialCount' | 'energySpent' | 'ultimateCount' | 'basicTime' | 'frontlineTime' | 'backstageTime' | 'battleTime' | 'chainCountTotal' | 'dodgeCounterCount' | 'parryCount' | 'blockCount' | 'quickAssistCount' | 'teamFrontlineSeconds' | 'fixed' | 'teamAssaultCount' | 'disorderCount' | 'frostburnBreakCount' | 'basicAttackCount' | 'baseSparkCount' | 'totalSparkCount' | 'cfgField'
+  countSource?: 'exSpecialCount' | 'energySpent' | 'ultimateCount' | 'basicTime' | 'frontlineTime' | 'backstageTime' | 'battleTime' | 'chainCountTotal' | 'dodgeCounterCount' | 'parryCount' | 'blockCount' | 'perfectBlockCount' | 'quickAssistCount' | 'teamFrontlineSeconds' | 'fixed' | 'teamAssaultCount' | 'disorderCount' | 'frostburnBreakCount' | 'basicAttackCount' | 'baseSparkCount' | 'totalSparkCount' | 'cfgField'
   /** countSource='cfgField' 时读取的 cfg 字段名（模块写入，如星徽·比利招式命中决意合计） */
   countField?: string
   valueSource?: 'fixed' | 'cfgField'

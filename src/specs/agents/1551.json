@@ -54,14 +54,14 @@
         {
           "id": "peiluo_perfect_block_gain",
           "trigger": "强化特殊技触发完美格挡",
-          "countSource": "exSpecialCount",
+          "countSource": "perfectBlockCount",
           "amountPerCount": 10,
-          "formula": "强特次数 × 10（默认每次强特均完美格挡）",
+          "formula": "强特完美格挡次数 × 10（主页交互栏填写）",
           "status": "implemented_approximation",
           "adjustable": {
             "id": "1551.peiluo_prominence.peiluo_perfect_block_gain.rate",
-            "label": "佩洛伊斯·日珥·强化特殊技触发完美格挡",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "label": "佩洛伊斯·日珥·强特完美格挡（主页填写次数）",
+            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。完美格挡次数在主页「战斗动作次数」填写。",
             "default": 1,
             "min": 0,
             "max": 2,
@@ -95,7 +95,8 @@
     "大招三分支模型（用户口径）：2000喧响/次；下分支固定1（耀斑 buff 全程）；右分支决算滑块 peiluo.verdictCount（-1=自动=失衡次数）；上分支剩余（阳炎暴伤+40%执行行近似）；左分支不建模。连携回300喧响+影画2回1500由编排层注入 extraSelfDecibelReward。旧 peiluo.ultBranch 滑块移除。",
     "大招三分支模型（用户口径）：2000喧响/次；下分支固定1（耀斑 buff 全程）；右分支决算滑块 peiluo.verdictCount（-1=自动=失衡次数）；上分支剩余（阳炎暴伤+40%执行行近似）；左分支不建模。连携回300喧响+影画2回1500由编排层注入 extraSelfDecibelReward。旧 peiluo.ultBranch 滑块移除。",
     "日珥账本已接入：patchExecutions 按 moveId 汇总命中回复/天光消耗 → buildResourceResult 并入 peiluo_prominence 总账 → resourceSections 账本卡。倍率表无强化天光差异行，日珥仅校验循环可行性、不影响伤害。",
-    "轴模式决算截断已接入：栈引擎 endsStunWindow（1551016）→ 窗口填充归零 + stunSecondsLost 回传 → computeStunCoverage 扣除损失秒数。决算无滑块：轴模式=轴内块计数，非轴=失衡次数。buildStackAxes 佩洛伊斯分支大招喧响消耗按 2000 计。"
+    "轴模式决算截断已接入：栈引擎 endsStunWindow（1551016）→ 窗口填充归零 + stunSecondsLost 回传 → computeStunCoverage 扣除损失秒数。决算无滑块：轴模式=轴内块计数，非轴=失衡次数。buildStackAxes 佩洛伊斯分支大招喧响消耗按 2000 计。",
+    "强特完美格挡回日珥改为用户填写：主页交互栏「强特完美格挡」→ cfg.perfectBlockCount → spec countSource perfectBlockCount ×10。"
   ],
   "teamBuffs": [
     {
