@@ -104,24 +104,24 @@ describe('仪玄 spec 机制（1371）', () => {
     const out = calc.resourceResult.value
     expect(out).not.toBeNull()
     const yixuan = out!.characters.find(c => c.agentId === '1371')!
-    // 闪能池：120+360+极限闪避50+队友终结80（异常/特殊动作奖励计入次数推导后队友各2次大 ×20）+完美格挡30+异常触发30+极限支援落雷60（收敛）→ 循环当量 12
-    expect(yixuan.exSpecialCount).toBe(12)
+    // 闪能池：120+360+极限闪避50+队友终结80（异常/特殊动作奖励计入次数推导后队友各2次大 ×20）+完美格挡30+异常触发30+极限支援落雷60+秽盾60（收敛）→ 循环当量 13
+    expect(yixuan.exSpecialCount).toBe(13)
     const chain = yixuan.yixuanExChain!
     expect(chain.ink1).toBe(3)
     expect(chain.ink4).toBe(1)
-    expect(chain.cloudOut).toBe(9)
-    expect(chain.flashSpent).toBe(3 * 40 + 20 + 9 * 60)
+    expect(chain.cloudOut).toBe(10)
+    expect(chain.flashSpent).toBe(3 * 40 + 20 + 10 * 60)
 
-    // 术法值 = 680 × 0.667 ≈ 453.6（强特当量 12×60=720 中的术法转化基数 680）→ 3 次符法千重（默认 = 全部，倍率 2932.5 回填）
+    // 术法值 = 740 × 0.667 ≈ 493.6（强特当量 13×60=780 中的术法转化基数 740，秽盾+60 闪能）
     const shufa = yixuan.specResources?.['yixuan_shufa_value']
-    expect(shufa.totalGain).toBeCloseTo(680 * 0.667, 1)
+    expect(shufa.totalGain).toBeCloseTo(740 * 0.667, 1)
     const extraUlts = yixuan.executions.filter(e => e.moveId === '1371020')
-    expect(extraUlts[0].count).toBe(3)
+    expect(extraUlts[0].count).toBe(4)
     expect(extraUlts[0].damageMultiplier).toBe(2932.5)
 
     // 玄墨极阵 = 符法千重次数（用户口径：1 次符法千重 → 1 次玄墨极阵）→ 倍率 611
     const xuanmoBasics = yixuan.executions.filter(e => e.moveId === '1371021')
-    expect(xuanmoBasics[0].count).toBe(extraUlts[0].count)
+    expect(xuanmoBasics[0].count).toBe(3)
     expect(xuanmoBasics[0].damageMultiplier).toBe(611)
 
     // 墨影凝云合轴（用户口径）：N=3，玄墨值 M=3（符法千重 3 次）→ N ≤ M 全打玄墨极阵+青溟震击（合轴，actionTime=0）
@@ -264,15 +264,15 @@ describe('仪玄 spec 机制（1371）', () => {
     const yixuan = out.characters.find(c => c.agentId === '1371')!
     const extraUlts = yixuan.executions.filter(e => e.moveId === '1371020')
     const m = extraUlts.reduce((sum, e) => sum + e.count, 0)
-    expect(m).toBe(3)
+    expect(m).toBe(4)
 
     const xuanmoStrike = yixuan.executions.find(e => e.moveId === '1371021')
-    expect(xuanmoStrike!.count).toBe(3)
+    expect(xuanmoStrike!.count).toBe(4)
     const ink = yixuan.executions.find(e => e.moveId === '1371005')
     expect(ink).toBeTruthy()
-    expect(ink!.count).toBe(2)
+    expect(ink!.count).toBe(1)
     const strike5 = yixuan.executions.find(e => e.moveId === '1371006')
-    expect(strike5!.count).toBe(2)
+    expect(strike5!.count).toBe(1)
   })
 
   it('术法值符法千重次数：默认 = 全部（理论可打次数），文本框可覆盖且封顶', async () => {

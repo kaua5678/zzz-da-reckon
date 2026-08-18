@@ -147,7 +147,8 @@ describe('computeBanyueRageCycle（轴内普通强特扣闪能 → 自动连段�
     const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 0, 0)
     expect(c.axisExSpend).toBe(300)
     expect(c.comboOutCount).toBe(4)
-    expect(c.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60) * 0.5, 1) // 569
+    // 最后一怒相窗口的付费强特闪能(300/4=75)不产有效嗔火，569 - 75×0.5 = 531.5
+    expect(c.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 - 300 / 4) * 0.5, 1) // 531.5
     expect(c.rageCount).toBe(4)
     expect(c.flashSpent).toBe(300 + 4 * 60)
   })
@@ -168,17 +169,17 @@ describe('computeBanyueRageCycle（轴内普通强特扣闪能 → 自动连段�
   })
 
   it('轴内普通强特耗闪能并回复嗔火，免费连段块不回复', () => {
-    // 300 闪能普通强特：嗔火 = 115 + 184 + (300 + 4组连段×60)×0.5 = 569
+    // 300 闪能普通强特：嗔火 = 115 + 184 + (300 + 4组连段×60 - 300/4)×0.5 = 531.5
     const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 0, 0)
     expect(c.axisExSpend).toBe(300)
     expect(c.flashSpent).toBe(300 + 4 * 60)
-    expect(c.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60) * 0.5, 1)
+    expect(c.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 - 300 / 4) * 0.5, 1)
     // 同 300 但加 2 个免费连段块：连段块不产嗔火、不耗闪能，怒相外自动连段仍 4 组
     const c2 = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 2, 0)
     expect(c2.axisComboCount).toBe(2)
     expect(c2.comboOutCount).toBe(4)
     expect(c2.flashSpent).toBe(300 + 4 * 60)
-    expect(c2.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60) * 0.5, 1)
+    expect(c2.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 - 300 / 4) * 0.5, 1)
   })
 })
 

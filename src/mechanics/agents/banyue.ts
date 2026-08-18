@@ -239,12 +239,21 @@ export function computeBanyueRageCycle(
 
   let rage = 0
   let comboOut = 0
+  let furyTotal = 0
   for (let iter = 0; iter < 12; iter++) {
     const flashIncome = FLASH_INCOME + rage * swayRefundPerRage
     // 闪能扣掉轴内捏的普通强特后，剩余全部自动打成连段（不打单论道/单地动等零散招式，不足 60 的尾数忽略）
     const comboOutTotal = Math.max(0, Math.floor((flashIncome - axisSpend) / COMBO_COST))
     const flashSpent = axisSpend + comboOutTotal * COMBO_COST
-    const furyTotal = INITIAL_FURY + dodge * FURY_DODGE + parry * FURY_PARRY + block * FURY_BLOCK + dual * FURY_DUAL + flashSpent * FURY_PER_FLASH
+    // 嗔火总量 = 初始 + 交互 + 闪能消耗 × 0.5
+    const furyBase = INITIAL_FURY + dodge * FURY_DODGE + parry * FURY_PARRY + block * FURY_BLOCK + dual * FURY_DUAL
+    furyTotal = furyBase + flashSpent * FURY_PER_FLASH
+    // 最后一怒相窗口的付费强特闪能产生的嗔火是浪费的（怒相已开启，效果不满足下一轮怒相门槛）：
+    // 假设 axisSpend 在各怒相窗口均摊，减去最后一窗口的份额。
+    if (rage > 0 && axisSpend > 0) {
+      const wastedFlash = axisSpend / rage // 每怒相窗口的轴内闪能（近似均摊）
+      furyTotal = furyBase + (flashSpent - wastedFlash) * FURY_PER_FLASH
+    }
     const nextRage = Math.max(0, Math.floor(furyTotal / FURY_ENTER))
     comboOut = comboOutTotal
     if (nextRage === rage) {
@@ -254,6 +263,7 @@ export function computeBanyueRageCycle(
     rage = nextRage
   }
 
+  // furyTotal 已含浪费扣除（最后一怒相窗口付费强特闪能不产有效嗔火）
   const swayExCount = rage * RAGE_SWAY
   // 怒相内连段拆分：地动山摇组数 ≤ 山威配额（rage×2 组），其余打论道连段
   const diDongRage = Math.max(0, Math.min(Math.floor(rageDiDongCombo), rage * comboIn))
@@ -281,7 +291,7 @@ export function computeBanyueRageCycle(
 
   return {
     rageCount: rage,
-    furyTotal: INITIAL_FURY + dodge * FURY_DODGE + parry * FURY_PARRY + block * FURY_BLOCK + dual * FURY_DUAL + flashSpent * FURY_PER_FLASH,
+    furyTotal: furyTotal,
     dualCounterCount: dual,
     comboOutCount: comboOut,
     diDongComboCount: diDongComboOut,

@@ -203,7 +203,7 @@ function defaultEnemy(): EnemyConfig {
     anomalyCoeff: 1,
     bossAnomalyCoeff: 1.1,
     bossStunGift: 0,
-    shieldCount: 0,
+    shieldCount: 1,
     energyShield: 0,
     invincibleTime: 0,
     battleTime: 180,
