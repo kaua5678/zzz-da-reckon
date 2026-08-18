@@ -1570,10 +1570,13 @@ function applyNormaHatChain(
                 : { critDmg: Math.round(40 * Math.max(0, Math.min(1, configStore.getMechanicSetting('yixuan.ningshenCoverage', 0.5)))), sheerDmg: 0 })
             : { critDmg: 0, sheerDmg: 0 }
           // 佩洛伊斯阳炎：轴模式按 buff 轴扫描（上分支后 21s 窗口，仅上分支/决算终结吃），非轴按覆盖率滑块（默认满）
+          const peiluoKagerouCoverage = Math.max(0, Math.min(1, configStore.getMechanicSetting('peiluo.kagerouCoverage', 1)))
+          // 非轴模式配对折算：上分支全吃；决算按 min(上分支,决算)/决算 的比例吃（无上分支铺垫的决算不吃）
+          const peiluoPairRatio = exec.moveId === '1551016' ? ((exec as any).peiluoKagerouPairRatio ?? 0) : 1
           const peiluoKagerouCrit = charResult.agentId === '1551'
             ? (isAxis
               ? (peiluoKagerouMap.value.get(exec.moveId ?? '') ?? 0)
-              : PEILUO_KAGEROU_CRIT * Math.max(0, Math.min(1, configStore.getMechanicSetting('peiluo.kagerouCoverage', 1))))
+              : PEILUO_KAGEROU_CRIT * peiluoKagerouCoverage * peiluoPairRatio)
             : 0
           pushDirect({
             id: `${rowId}${idSuffix}`,

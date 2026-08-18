@@ -359,6 +359,12 @@ peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }: any) => 
   }
   pushUlt(PEILUO_ULT_LOWER, lower, '下分支·凯旋坦途（开局固定一次）')
   pushUlt(PEILUO_ULT_VERDICT, verdict, `右分支·永陷幽囚（决算）×${verdict}`)
+  // 阳炎配对比例（非轴模式用）：决算只在失衡内放，通常一次失衡 = 上分支+决算各一（都吃阳炎）；
+  // 喧响不够只打决算时没有上分支铺垫 → 不吃阳炎。可受益决算数 = min(上分支次数, 决算次数)。
+  if (verdict > 0) {
+    const row = executions.find((e: any) => e.moveId === PEILUO_ULT_VERDICT)
+    if (row) row.peiluoKagerouPairRatio = Math.min(upper, verdict) / verdict
+  }
 }
 
 /* 日珥账本（数据源 catalog attack_data_0=回复 / attack_data_1=消耗，原始值已 ÷100）：
@@ -454,7 +460,7 @@ peiluoProminenceMechanic.resourceSections = (input: AgentResourceSectionsInput) 
       title: '佩洛伊斯·日珥账本',
       summary: `回复 ${pf(totalGain)} · 消耗 ${pf(ledger.spend)} · ${affordable ? `结余 ${pf(surplus)}` : `缺口 ${pf(-surplus)}`}`,
       rows: [
-        { label: '回复·入场+被动+大招侧', value: pf(entry + passive + upper + block), detail: `入场30 / 接战0.5s×${pf(passive / 0.5)}s（上限60） / 上分支×30 / 完美格挡×10` },
+        { label: '回复·入场+被动+大招侧', value: pf(entry + passive + upper + block), detail: `入场30 / 被动固定60 / 上分支×30 / 完美格挡×10` },
         { label: '回复·技能命中', value: pf(ledger.hitGain), detail: '余晖/旭日/朝晖/EX日华/快支/支援突击 按段回复（attack_data_0）' },
         { label: '消耗·天光连段', value: pf(ledger.spend - ledger.lowSpend), detail: `a3×${ledger.a3}（14.61）+ a4×${ledger.a4}（11.82），连段 ${chainPairs} 组（单价 ${pf(PEILUO_CHAIN_COST)}）` },
         { label: '消耗·天光低段', value: pf(ledger.lowSpend), detail: 'a1（1.50）+ a2（2.05）' },

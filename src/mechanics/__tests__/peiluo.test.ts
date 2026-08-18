@@ -159,8 +159,8 @@ describe('佩洛伊斯日珥账本（命中回复/天光消耗）', () => {
     const out: any = peiluoProminenceMechanic.buildResourceResult!({ cfg, state: { frontlineTime: 0, exSpecialCount: 0, ultimateCount: 0 } } as any)
     const prom = out.specResources['peiluo_prominence']
     expect(prom.gains['peiluo_hit_gain']).toBe(20)
-    expect(prom.total).toBe(30 + 20) // 入场30 + 命中回复20（其他来源此 state 下为 0）
-    expect(prom.remaining).toBe(30 + 20 - 30)
+    expect(prom.total).toBe(30 + 60 + 20) // 入场30 + 被动固定60 + 命中回复20
+    expect(prom.remaining).toBe(30 + 60 + 20 - 30)
     expect(prom.spendCosts['peiluo_tianguang_spend']).toBe(30)
   })
 
@@ -209,6 +209,16 @@ describe('佩洛伊斯阳炎 buff 轴扫描（仪玄凝神模式）', () => {
     // 1551016：只对受益实例加权平均（同仪玄凝神口径）→ 窗外那次不进分母
     expect(bonus.get('1551016')).toBe(40)
     expect(bonus.has('1551014')).toBe(false)
+  })
+
+  it('喧响不够只打决算（无上分支铺垫）：决算不吃阳炎', async () => {
+    const { computePeiluoKagerouBonus } = await import('@/mechanics/agents/specPanelBuffs')
+    const axes = [{ actions: [
+      { slot: 0, moveId: '1551016', count: 1, startTime: 10 },
+      { slot: 0, moveId: '1551016', count: 1, startTime: 40 },
+    ] }]
+    const bonus = computePeiluoKagerouBonus(0, axes as any)
+    expect(bonus.size).toBe(0)
   })
 
   it('其他槽位动作不参与扫描', async () => {
@@ -261,5 +271,45 @@ describe('佩洛伊斯影画4 焚昼孽火：失衡值 +10%（默认全覆盖）
     config.team[0].cinemaLevel = 4
     const p4 = computePanelPhases(0, config, catalog)!.inCombat as any
     expect((p4.stunBuildUpBonus ?? 0) - (p3.stunBuildUpBonus ?? 0)).toBe(10)
+  })
+})
+
+describe('佩洛伊斯被动日珥：直接按 60 计', () => {
+  it('computeSpecResources：被动回复固定 60（不再按前台时间折算）', async () => {
+    const { computeSpecResources } = await import('@/specs/resources')
+    const { getAgentSpec } = await import('@/specs/registry')
+    const spec = getAgentSpec('1551')!
+    const out = Object.fromEntries(computeSpecResources(spec, {} as any, { frontlineTime: 10 } as any))
+    expect(out['peiluo_prominence'].gains['peiluo_frontline_gain']).toBe(60)
+    const out2 = Object.fromEntries(computeSpecResources(spec, {} as any, { frontlineTime: 500 } as any))
+    expect(out2['peiluo_prominence'].gains['peiluo_frontline_gain']).toBe(60)
+  })
+})
+
+describe('佩洛伊斯阳炎配对比例（非轴模式：无上分支铺垫的决算不吃 buff）', () => {
+  function genericUlt(count: number): any {
+    return { moveId: '1551015', category: 'chain', count, actionTime: 3, comboAlignRatio: 0, decibelRecovery: 0 }
+  }
+
+  it('上2 决算3 → 决算配对比例 2/3（大招6 = 下1 + 决3 + 上2）', () => {
+    const executions = [genericUlt(6)]
+    peiluoProminenceMechanic.patchExecutions!({ cfg: { peiluoVerdictCount: 3 }, state: { ultimateCount: 6 }, executions } as any)
+    const verdict = executions.find((e: any) => e.moveId === '1551016')
+    expect(verdict.peiluoKagerouPairRatio).toBeCloseTo(2 / 3, 5)
+  })
+
+  it('上0 决算2（喧响不够只打决算）→ 比例 0，全不吃阳炎', () => {
+    const executions = [genericUlt(3)]
+    peiluoProminenceMechanic.patchExecutions!({ cfg: { peiluoVerdictCount: 2 }, state: { ultimateCount: 3 }, executions } as any)
+    const verdict = executions.find((e: any) => e.moveId === '1551016')
+    expect(verdict.count).toBe(2)
+    expect(verdict.peiluoKagerouPairRatio).toBe(0)
+  })
+
+  it('上3 决算2 → 比例封顶 1（每次决算都有铺垫）', () => {
+    const executions = [genericUlt(6)]
+    peiluoProminenceMechanic.patchExecutions!({ cfg: { peiluoVerdictCount: 2 }, state: { ultimateCount: 6 }, executions } as any)
+    const verdict = executions.find((e: any) => e.moveId === '1551016')
+    expect(verdict.peiluoKagerouPairRatio).toBe(1)
   })
 })
