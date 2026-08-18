@@ -2,18 +2,54 @@
   "schemaVersion": 1,
   "id": "agent:lucy",
   "name": "露西",
-  "agentIds": [
-    "1151"
-  ],
-  "status": "not_described_not_implemented",
+  "agentIds": ["1151"],
+  "status": "partially_implemented",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
   "events": [],
   "verifications": [],
   "stateMachines": [],
-  "notes": [
-    "待录入：露西 的机制、资源、事件与验证。"
+  "additionalAbility": null,
+  "teamBuffs": [
+    {
+      "id": "lucy.ex_special_cheer_on",
+      "name": "露西｜加油！",
+      "source": "强化特殊技",
+      "description": "发动强化特殊技后亲卫队小猪爆炸施加[加油！]：全队攻击力提升 = 露西初始攻击×25.8%+104，上限600。默认满覆盖。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "atkFlat",
+          "mode": "flat",
+          "type": "formula",
+          "sourceStat": "atk",
+          "sourcePanelPhase": "outOfCombat",
+          "formula": { "expression": "min(600, floor(x * 0.258 + 104))" },
+          "note": "[已确认·数据] Lv.7 加油：25.8%初始攻+104，上限600"
+        }
+      ],
+      "status": "implemented",
+      "note": "覆盖 teammate-buffs 固定600；按露西局外攻击公式计算。"
+    },
+    {
+      "id": "lucy.cinema_4.cheer_on_crit_dmg",
+      "name": "露西｜影画四·加油暴伤",
+      "source": "影画四",
+      "description": "处于[加油！]的友方暴击伤害额外+10%。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        { "stat": "critDmg", "value": 10, "mode": "flat" }
+      ],
+      "status": "implemented"
+    }
   ],
-  "teamBuffs": []
+  "notes": [
+    "简单辅助：核心拐力=加油！攻击（公式）+ 影画4 暴伤+10%。",
+    "[已确认] 加油攻击 = min(600, 初始攻×25.8%+104)，满覆盖；影画3/5 技能等级通用。",
+    "[待描述] 影画1/2/6 与额外能力未提供完整文本，暂不实现。",
+    "自身输出（小猪/强特）按通用倍率表，无需专属模块。"
+  ]
 }
