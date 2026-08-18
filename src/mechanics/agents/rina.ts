@@ -6,14 +6,15 @@
  * - 影画4：双邦布均在外时回能+0.5/s，用 rina.c4DoubleBangbooCoverage 调节，默认满覆盖。
  * - 影画6：指定技能命中后全队电伤+15%持续8s，由队友增益覆盖率调节。
  * - 终结技：其他角色+10能量，下一位换入额外+20；三人队按下一位30、上一位10分配。
- * - [一尘不染]：强特/连携/终结各触发13s；期间邦布每2.5s攻击1次（晨间清扫，三段合计），
- *   每次攻击+1层[惊吓]，满6层后下一次攻击改为午夜清扫（消耗全部惊吓），即每7次1个午夜。
- *   后台自动，不占前台时间；buff 总时长按战斗总时长钳制。
+ * - [一尘不染]：强特/连携/终结各触发13s；期间邦布每2.5s攻击1次（晨间清扫，三段合计，按物理计），
+ *   每次攻击+1层[惊吓]，满6层后下一次攻击改为午夜清扫（按电计，消耗全部惊吓），即每7次1个午夜。
+ *   后台自动，不占前台时间；buff 总时长按战斗总时长钳制。元素经 resolveExecutionDamage 覆盖。
  *
  * 未建模：邦布逐秒离场状态、感电敌人的逐秒状态；对应效果采用整局覆盖率近似。
  */
 import type {
   AgentCharConfigInput,
+  AgentDamageResolutionInput,
   AgentMechanicModule,
   AgentResourceInput,
   AgentResourceResultInput,
@@ -145,6 +146,7 @@ function pushExec(
   count: number,
   dmg: number,
   note: string,
+  element: 'physical' | 'electric',
 ) {
   if (count <= 0 || dmg <= 0) return
   executions.push({
@@ -164,7 +166,7 @@ function pushExec(
     totalEnergyRecovery: 0,
     damageMultiplier: dmg,
     damageMultiplierOverride: true,
-    element: 'electric',
+    element,
     skillTableNote: note,
   } as SkillExecution)
 }
@@ -203,6 +205,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     sweepDmg,
     `晨间清扫 ×${bangboo.sweepCount}（一尘不染 ${bangboo.triggers} 次触发·${fmt(bangboo.buffTime)}s，`
       + `每${RINA_BANGBOO_INTERVAL}s 1套，三段合计）`,
+    'physical',
   )
 
   const midnightDmg = Number(record.rinaMidnightDmg ?? 0) || 0
@@ -213,6 +216,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     bangboo.midnightCount,
     midnightDmg,
     `午夜清扫 ×${bangboo.midnightCount}（每 ${RINA_FRIGHT_CYCLE} 次攻击转化 1 次，消耗惊吓 6 层）`,
+    'electric',
   )
 }
 
@@ -258,10 +262,25 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
     rows: [
       { label: '一尘不染触发', value: String(bangboo.triggers), detail: '强特/连携/终结各1次，每次13s' },
       { label: 'buff 时长', value: `${fmt(bangboo.buffTime)}s`, detail: '触发次数×13s，按战斗总时长钳制' },
-      { label: '晨间清扫', value: String(bangboo.sweepCount), detail: `每${RINA_BANGBOO_INTERVAL}s 1套，三段合计315.9%` },
-      { label: '午夜清扫', value: String(bangboo.midnightCount), detail: `惊吓满6层后下一次攻击转化（每${RINA_FRIGHT_CYCLE}次1个），420.1%` },
+      { label: '晨间清扫', value: String(bangboo.sweepCount), detail: `每${RINA_BANGBOO_INTERVAL}s 1套，三段合计315.9%（物理）` },
+      { label: '午夜清扫', value: String(bangboo.midnightCount), detail: `惊吓满6层后下一次攻击转化（每${RINA_FRIGHT_CYCLE}次1个），420.1%（电）` },
     ],
   }]
+}
+
+/**
+ * 直伤行元素覆盖（用户口径：晨间算物理，午夜算电）。
+ * 晨间清扫 moveId 在倍率表中 damageElement 为电，必须经此钩子改为物理；
+ * 午夜清扫倍率表即电，此处显式返回以固定口径。
+ */
+function resolveExecutionDamage({ exec }: AgentDamageResolutionInput): { element: string; source?: string; note?: string } | null {
+  if (exec.moveId === MOVE_SWEEP_1) {
+    return { element: 'physical', note: `${exec.skillTableNote ?? ''}；晨间清扫按物理伤害计（用户口径）。` }
+  }
+  if (exec.moveId === MOVE_MIDNIGHT) {
+    return { element: 'electric', note: `${exec.skillTableNote ?? ''}；午夜清扫按电属性伤害计（用户口径）。` }
+  }
+  return null
 }
 
 export const rinaMechanic: AgentMechanicModule = {
@@ -286,6 +305,7 @@ export const rinaMechanic: AgentMechanicModule = {
   buildCharConfig,
   buildExecutions,
   buildResourceResult,
+  resolveExecutionDamage,
   resourceSections,
 }
 
