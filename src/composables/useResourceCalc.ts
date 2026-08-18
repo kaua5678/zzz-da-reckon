@@ -593,7 +593,8 @@ function applyNormaHatChain(
           actionTime = typeof (act as { duration?: number }).duration === 'number'
             ? (act as { duration: number }).duration
             : (move?.actionTime ?? 0)
-          decibelCost = (move?.name?.en ?? '').toLowerCase().includes('ultimate') ? 3000 : 0
+          // 佩洛伊斯分支大招 2000 喧响/次（角色口径）；其余终结技 3000
+          decibelCost = (move?.name?.en ?? '').toLowerCase().includes('ultimate') ? (agentId === '1551' ? 2000 : 3000) : 0
           // 60/90 转大块是琉音好评赠送的终结技（白送，不耗目标喧响），只占窗口时间不扣喧响
           if (act.promoteVariant) decibelCost = 0
         }
@@ -605,6 +606,8 @@ function applyNormaHatChain(
           energyCost,
           decibelCost,
           startTime: act.startTime ?? 0,
+          // 佩洛伊斯右分支·永陷幽囚 = 决算：做完时清空窗口剩余失衡时间（填充归零+窗口截断）
+          ...(act.moveId === '1551016' ? { endsStunWindow: true } : {}),
         })
       }
       return { actions: axisActions, count: axis.count, basicFillerSlot: axis.basicFillerSlot }
@@ -673,11 +676,33 @@ function applyNormaHatChain(
   } | null {
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
-    // 当前轮失衡覆盖率（供诺姆火力实验高爆/破甲按失衡时长拆分；与 computeStunCoverage 同口径）
-    const provStunCoverage = computeStunCoverage({ stunCount })
     // 条件轴：按上一轮收敛出的好评/闪能（首轮缺省 → 条件方案未命中走兜底）解析生效轴
     const { axes: resolvedAxes, planName } = resolveAxes(stunCount, prevGoodReview, prevEnergyBySlot)
     const axisActive = (configStore.useStunAxis || autoActive.value) && resolvedAxes.length > 0
+    // 决算截断（佩洛伊斯右分支 1551016）：轴内决算做完时清空窗口剩余失衡时间 →
+    // 有效失衡时长按截断结束时刻计，损失秒数从覆盖率里扣除（失衡时间/比例重算口径）。
+    let verdictSecondsLost = 0
+    if (axisActive) {
+      const windowDur = computeWindowDuration()
+      const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
+      resolvedAxes.forEach((axis, ai) => {
+        const wins = winAlloc[ai] ?? 0
+        if (wins <= 0) return
+        let truncEnd = -1
+        for (const act of axis.actions) {
+          if (act.moveId !== '1551016') continue
+          const skills = catalogStore.getAgentSkills(configStore.team[act.slot]?.agentId ?? '')
+          const move = findMoveById(skills, act.moveId)
+          const dur = typeof (act as { duration?: number }).duration === 'number'
+            ? (act as { duration: number }).duration
+            : (move?.actionTime ?? 0)
+          truncEnd = Math.max(truncEnd, Math.max(0, act.startTime ?? 0) + dur)
+        }
+        if (truncEnd >= 0) verdictSecondsLost += Math.max(0, windowDur - truncEnd) * wins
+      })
+    }
+    // 当前轮失衡覆盖率（供诺姆火力实验高爆/破甲按失衡时长拆分；与 computeStunCoverage 同口径，含决算截断）
+    const provStunCoverage = computeStunCoverage({ stunCount }, verdictSecondsLost)
     // 般岳轴模式自动补齐（保底语义，方案 A）：轴内怒相/终结技对嗔火/喧响有硬性需求，不足时抬双反（补嗔火）与弹刀（补喧响），
     // 有效次数 = 交互栏输入 + 补齐量（不写回 store，不覆盖用户输入）；计算轮间通过 prevBanyueTopUp 线程收敛。
     const banyueSlot = configStore.team.findIndex(c => c.agentId === '1471')
@@ -801,11 +826,11 @@ function applyNormaHatChain(
         // 决算（右分支）次数：滑块 >=0 用滑块，缺省 -1 = 一次失衡一次决算。
         const cinema = configStore.team[merged.slot]?.cinemaLevel ?? 0
         const chainTotal = merged.chainCountTotalOverride ?? (merged.chainCountPerStun ?? 0) * stunCount
-        const verdictSlider = Math.floor(configStore.getMechanicSetting('peiluo.verdictCount', -1))
         return {
           ...merged,
           extraSelfDecibelReward: (merged.extraSelfDecibelReward ?? 0) + chainTotal * 300 + (cinema >= 2 ? 1500 : 0),
-          peiluoVerdictCount: verdictSlider >= 0 ? verdictSlider : stunCount,
+          // 决算次数 = 失衡次数（一次失衡只能决算一次，决算后即出失衡）；轴模式按轴内 1551016 块计数
+          peiluoVerdictCount: stunCount,
         }
       }
       if (merged.agentId === '1471') {
@@ -1032,7 +1057,7 @@ function applyNormaHatChain(
     // 展示层：resourceResult 也带上诺姆赠送连携（执行计划/次数在资源利用率页可见），
     // 不动点/失衡池仍用原始 rr（baseStun），避免赠送连携失衡反作用于转大收敛
     const rrShown = applyNormaHatChain(rr, configStore, catalogStore) ?? rr
-    const cov1 = computeStunCoverage(sp1.pool)
+    const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
     const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly)
 
     return {
@@ -1162,14 +1187,16 @@ function applyNormaHatChain(
   /** 轴编辑器同口径：当前失衡窗口时长（含全队失衡延时） */
   const windowDuration = computed<number>(() => computeWindowDuration())
 
-  function computeStunCoverage(sp: any): number {
+  function computeStunCoverage(sp: any, lostSeconds = 0): number {
     const stunCount = sp?.stunCount ?? 0
     if (stunCount <= 0) return 0
     const battleTime = configStore.enemy.battleTime ?? 180
     const invTime = configStore.enemy.invincibleTime ?? 0
     const effectiveTime = Math.max(0, battleTime - invTime)
     if (effectiveTime <= 0) return 0
-    return Math.min(1, (stunCount * computeWindowDuration()) / effectiveTime)
+    // 决算截断：有效失衡时长 = 窗口总时长 − 截断损失秒数（佩洛伊斯右分支做完即清空剩余失衡时间）
+    const stunSeconds = Math.max(0, stunCount * computeWindowDuration() - lostSeconds)
+    return Math.min(1, stunSeconds / effectiveTime)
   }
 
   /** 失衡易伤覆盖率：固定来自 calcOutput 收敛结果（捏轴只决定哪些动作吃易伤，不改变覆盖率） */

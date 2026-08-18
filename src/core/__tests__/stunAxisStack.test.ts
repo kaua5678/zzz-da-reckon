@@ -118,3 +118,61 @@ describe('calcStunAxisStack', () => {
     expect(r.basicFillBySlot[1]).toBe(8)
   })
 })
+
+describe('窗口终结动作（佩洛伊斯决算）截断', () => {
+  const base = {
+    stunCount: 1,
+    windowDuration: 12,
+    energyBySlot: { 0: 1000 },
+    decibelBySlot: { 0: 10000 },
+  }
+
+  it('决算做完清空剩余失衡时间：平A填充为 0，损失秒数 = 窗口 − 决算结束时刻', () => {
+    const r = calcStunAxisStack({
+      ...base,
+      axes: [{
+        actions: [
+          { slot: 0, moveId: 'ex1', count: 1, actionTime: 2, energyCost: 40, decibelCost: 0, startTime: 0 },
+          { slot: 0, moveId: '1551016', count: 1, actionTime: 3, energyCost: 0, decibelCost: 2000, startTime: 4, endsStunWindow: true },
+        ],
+        basicFillerSlot: 0,
+      }],
+    })
+    expect(r.executed['0:1551016'].count).toBe(1)
+    expect(r.truncatedWindows).toBe(1)
+    expect(r.stunSecondsLost).toBe(12 - 7) // 决算 4+3=7s 结束，损失 5s
+    expect(r.basicFillSeconds).toBe(0) // 剩余时间被清空，可填充平A为 0
+  })
+
+  it('防回归：无决算窗口照常填充（fill = 窗口 − 最后动作结束）', () => {
+    const r = calcStunAxisStack({
+      ...base,
+      axes: [{
+        actions: [
+          { slot: 0, moveId: 'ex1', count: 1, actionTime: 2, energyCost: 40, decibelCost: 0, startTime: 0 },
+          { slot: 0, moveId: 'ult', count: 1, actionTime: 3, energyCost: 0, decibelCost: 2000, startTime: 4 },
+        ],
+        basicFillerSlot: 0,
+      }],
+    })
+    expect(r.truncatedWindows).toBe(0)
+    expect(r.stunSecondsLost).toBe(0)
+    expect(r.basicFillSeconds).toBe(12 - 7)
+  })
+
+  it('多窗口：含决算的窗口逐个计损失', () => {
+    const r = calcStunAxisStack({
+      ...base,
+      stunCount: 3,
+      axes: [{
+        actions: [
+          { slot: 0, moveId: '1551016', count: 1, actionTime: 3, energyCost: 0, decibelCost: 2000, startTime: 6, endsStunWindow: true },
+        ],
+        basicFillerSlot: 0,
+      }],
+    })
+    expect(r.truncatedWindows).toBe(3)
+    expect(r.stunSecondsLost).toBe(3 * (12 - 9))
+    expect(r.basicFillSeconds).toBe(0)
+  })
+})

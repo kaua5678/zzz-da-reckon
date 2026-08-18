@@ -94,7 +94,8 @@
     "影画1 黄昏旧章已实现：暴击率+8%（computePanelPhases 1551 块）+ 进场喧响1000（模块 buildCharConfig 注入 initialDecibelGift）。额外能力暴伤+40% 已实现（additionalAbility 门控）；连携回300喧响未建模。",
     "大招三分支模型（用户口径）：2000喧响/次；下分支固定1（耀斑 buff 全程）；右分支决算滑块 peiluo.verdictCount（-1=自动=失衡次数）；上分支剩余（阳炎暴伤+40%执行行近似）；左分支不建模。连携回300喧响+影画2回1500由编排层注入 extraSelfDecibelReward。旧 peiluo.ultBranch 滑块移除。",
     "大招三分支模型（用户口径）：2000喧响/次；下分支固定1（耀斑 buff 全程）；右分支决算滑块 peiluo.verdictCount（-1=自动=失衡次数）；上分支剩余（阳炎暴伤+40%执行行近似）；左分支不建模。连携回300喧响+影画2回1500由编排层注入 extraSelfDecibelReward。旧 peiluo.ultBranch 滑块移除。",
-    "日珥账本已接入：patchExecutions 按 moveId 汇总命中回复/天光消耗 → buildResourceResult 并入 peiluo_prominence 总账 → resourceSections 账本卡。倍率表无强化天光差异行，日珥仅校验循环可行性、不影响伤害。"
+    "日珥账本已接入：patchExecutions 按 moveId 汇总命中回复/天光消耗 → buildResourceResult 并入 peiluo_prominence 总账 → resourceSections 账本卡。倍率表无强化天光差异行，日珥仅校验循环可行性、不影响伤害。",
+    "轴模式决算截断已接入：栈引擎 endsStunWindow（1551016）→ 窗口填充归零 + stunSecondsLost 回传 → computeStunCoverage 扣除损失秒数。决算无滑块：轴模式=轴内块计数，非轴=失衡次数。buildStackAxes 佩洛伊斯分支大招喧响消耗按 2000 计。"
   ],
   "teamBuffs": [
     {

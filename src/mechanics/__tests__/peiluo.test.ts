@@ -80,7 +80,7 @@ describe('佩洛伊斯大招三分支拆分（patchExecutions）', () => {
     expect(lower.count + verdict.count + upper.count).toBe(5)
   })
 
-  it('决算封顶：滑块 10 但只有 3 次大招 → 决算 2、上 0（上行删除）', () => {
+  it('决算封顶：失衡 10 次但只有 3 次大招 → 决算 2、上 0（上行删除）', () => {
     const executions = [genericUlt(3)]
     peiluoProminenceMechanic.patchExecutions!({ cfg: { peiluoVerdictCount: 10 }, state: { ultimateCount: 3 }, executions } as any)
     expect(executions.find((e: any) => e.moveId === '1551015')).toBeUndefined()

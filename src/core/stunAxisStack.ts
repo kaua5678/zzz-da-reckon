@@ -26,6 +26,9 @@ export interface StackActionCost {
   /** 动作开始时间（秒，相对失衡窗口起点；缺省 0，可为负=窗口外提前起手）。
    *  平A填充用：从该槽位最后一个动作的结束时刻填到窗口结束（富余才填），不是「窗口 − Σ动作时长」。 */
   startTime?: number
+  /** 窗口终结动作（如佩洛伊斯右分支决算）：该动作做完时清空窗口剩余失衡时间——
+   *  所在窗口平A填充恒为 0（剩余时间已被清空，没有可填充的富余），窗口有效失衡时长按其结束时刻截断。 */
+  endsStunWindow?: boolean
 }
 
 export interface StackAxisInput {
@@ -71,6 +74,10 @@ export interface StackTraversalResult {
   basicFillSeconds: number
   /** 各槽位兜底平A填充秒数（每轴可指定不同 filler slot） */
   basicFillBySlot: Record<number, number>
+  /** 含窗口终结动作（决算）被截断的窗口数 */
+  truncatedWindows: number
+  /** 截断损失的失衡秒数合计（Σ 窗口时长 − 截断结束时刻；供失衡覆盖率/易伤重算） */
+  stunSecondsLost: number
   note: string
 }
 
@@ -103,6 +110,8 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   const basicFillBySlot: Record<number, number> = {}
   let energyUsed = 0
   let decibelUsed = 0
+  let truncatedWindows = 0
+  let stunSecondsLost = 0
 
   const totalEnergy = Object.values(energyBySlot).reduce((a, b) => a + (b > 0 ? b : 0), 0)
   const totalDecibel = Object.values(decibelBySlot).reduce((a, b) => a + (b > 0 ? b : 0), 0)
@@ -129,6 +138,8 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     const slotMaxEnd: Record<number, number> = {}
     let windowDidSomething = false
     let windowTimeSum = 0
+    // 窗口终结（决算）：执行过 endsStunWindow 动作后，窗口剩余失衡时间被清空（截断结束时刻取最晚）
+    let windowTruncEnd = -1
 
     for (const act of window.actions) {
       for (let i = 0; i < act.count; i++) {
@@ -155,14 +166,21 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         slotMaxEnd[act.slot] = Math.max(slotMaxEnd[act.slot] ?? 0, end)
         windowTimeSum += act.actionTime
         windowDidSomething = true
+        if (act.endsStunWindow) windowTruncEnd = Math.max(windowTruncEnd, end)
       }
     }
 
     if (windowDidSomething) windowsUsed++
     timeUsed += windowTimeSum
-    // 兜底平A：从该槽位最后一个动作的结束时刻填到窗口结束（窗口有富余才填）。
-    // 动作之间的空隙（startTime 留白）不算平A——平A只补「最后一个动作之后」的富余。
-    if (window.basicFillerSlot !== undefined && windowDidSomething) {
+    if (windowTruncEnd >= 0) {
+      // 决算截断：窗口剩余失衡时间在决算做完时被清空。
+      // - 可填充的平A为 0（填充本意 = 剩余时间 − 最后动作结束时刻，剩余已被清空）
+      // - 有效失衡时长按截断结束时刻计，损失秒数回传供覆盖率/易伤重算
+      truncatedWindows++
+      stunSecondsLost += Math.max(0, windowDuration - windowTruncEnd)
+    } else if (window.basicFillerSlot !== undefined && windowDidSomething) {
+      // 兜底平A：从该槽位最后一个动作的结束时刻填到窗口结束（窗口有富余才填）。
+      // 动作之间的空隙（startTime 留白）不算平A——平A只补「最后一个动作之后」的富余。
       const end = slotMaxEnd[window.basicFillerSlot] ?? 0
       const fillSec = Math.max(0, windowDuration - end)
       basicFillSeconds += fillSec
@@ -173,6 +191,8 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   return {
     executed,
     timeUsed,
+    truncatedWindows,
+    stunSecondsLost,
     energyUsed,
     totalEnergy,
     decibelUsed,

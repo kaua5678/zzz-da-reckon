@@ -273,8 +273,10 @@ export const peiluoProminenceMechanic = makePanelBuffModule(
  * - 一个大招消耗 2000 喧响（cfg.ultimateCost）；大招行按上分支 moveId 生成，patchExecutions 拆三分支。
  * - 下分支·凯旋坦途：开局必打、整局仅一次（固定 1）；耀斑 = 能量获得效率+15%、伤害+40%（200s≈全程，面板无条件挂）。
  *   影画2 发动时回 1500 喧响由编排层注入 extraSelfDecibelReward（上限不建模）。
- * - 右分支·永陷幽囚 = 决算：一次失衡打一次（滑块 peiluo.verdictCount，-1=自动=失衡次数），
- *   编排层解析后写入 cfg.peiluoVerdictCount；非轴模式不模拟失衡窗口截断（轴模式待接入）。
+ * - 右分支·永陷幽囚 = 决算：一次失衡只能决算一次（决算后即出失衡）。无滑块——
+ *   非轴模式决算次数 = 失衡次数（编排层写入 cfg.peiluoVerdictCount）；轴模式按轴内 1551016 块计数。
+ *   轴模式窗口截断：1551016 块标记 endsStunWindow，栈引擎做完决算即清空窗口剩余失衡时间
+ *   （平A填充归零、有效失衡时长按截断时刻），损失秒数从失衡覆盖率扣除（useResourceCalc verdictSecondsLost）。
  * - 上分支·万军诛绝：剩余喧响全打（+30日珥由 spec 资源规则承载）；阳炎暴伤+40% 按失衡内近似挂 critDmgBonus。
  * - 左分支·无拘剑势：不建模（当前版本不打；未来新队友适配时由用户录入逻辑）。
  */
@@ -286,16 +288,8 @@ const PEILUO_FLARE_ENERGY = 15 // 耀斑：能量获得效率 +15%
 const PEILUO_FLARE_DMG = 40 // 耀斑：造成的伤害 +40%
 const PEILUO_KAGEROU_CRIT = 40 // 阳炎：终结技对失衡敌人暴伤 +40%
 
-peiluoProminenceMechanic.settings = [{
-  id: 'peiluo.verdictCount',
-  label: '佩洛伊斯·决算次数（右分支终结）',
-  description: '-1=自动（一次失衡一次决算）；>=0=固定次数。封顶于可用大招数-1（下分支固定占 1 次）。',
-  default: -1,
-  min: -1,
-  max: 20,
-  step: 1,
-  suffix: '',
-}]
+// 决算次数无滑块：轴模式由轴内 1551016 块计数，非轴模式 = 失衡次数（编排层写入 cfg.peiluoVerdictCount）
+peiluoProminenceMechanic.settings = []
 peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel }: any) => {
   // 影画1 黄昏旧章：进场获得 1000 点喧响值（勘域模式 180s 一次，整局口径按一次计）
   if ((cinemaLevel ?? 0) >= 1) {
