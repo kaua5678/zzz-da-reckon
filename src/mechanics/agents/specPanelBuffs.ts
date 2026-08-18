@@ -232,18 +232,8 @@ export const zhendouHeartfireMechanic = makePanelBuffModule(
   },
 )
 
-export const yeshuguangMingxinMechanic = makePanelBuffModule(
-  'agent:yeshuguang_mingxin',
-  ['1431'],
-  '叶瞬光·明心境',
-  'yeshuguang_mingxin',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) > 0) {
-      panel.critRate = (panel.critRate ?? 0) + 30
-      panel.dmgBonus = (panel.dmgBonus ?? 0) + 25
-    }
-  },
-)
+/** 叶瞬光完整模块见 agents/yeshuguang.ts；此处保留别名供旧测试 import */
+export { yeshuguangMechanic as yeshuguangMingxinMechanic } from './yeshuguang'
 
 export const aireProficiencyMechanic = makePanelBuffModule(
   'agent:aire_proficiency',
@@ -579,28 +569,357 @@ export const anbyZeroVortexMechanic: AgentMechanicModule = {
 }
 
 const jufufuSpec = getAgentSpec('1391')
+const jufufuSpecModule = jufufuSpec ? specToMechanicModule(jufufuSpec) : null
+
+/** 虎威自动攻击间隔（秒）：后台每 4 秒 1 次（用户确认） */
+export const JUFUFU_HUWEI_INTERVAL = 4
+/** 虎威命中回复威风 */
+export const JUFUFU_HUWEI_AWE = 20
+/** 虎釜震煞消耗威风 */
+export const JUFUFU_CHAIN_AWE_COST = 100
+/** 高速旋转（山君鼎戏·威势）每次消耗 1 威势 → +25 威风 */
+export const JUFUFU_SPIN_AWE = 25
+/** 影画6：每次旋转耗威势命中发射 3 爆米花，每个 160% 攻击力（视为连携） */
+export const JUFUFU_C6_POPCORN_PER_SPIN = 3
+export const JUFUFU_C6_POPCORN_MULT = 160
+export const JUFUFU_C6_CHAIN_DMG_BONUS = 30
+
+const JUFUFU_MOVE = {
+  huwei: '1391005', // 普通攻击：「虎威」
+  spinWeishi: '1391010', // 冲刺攻击：恶虎七式·山君鼎戏·威势
+  tigerChain: '1391013', // 连携技：虎釜震煞
+  tigerChainManual: '1391012', // 连携技：虎釜崩
+  popcorn: '1391_c6_popcorn',
+} as const
+
+export interface JufufuCycleInput {
+  backstageTime: number
+  exSpecialCount: number
+  ultimateCount: number
+  /** 支援突击近似（招架次数） */
+  parryCount: number
+  cinemaLevel: number
+  /** 影画1 进场威风 */
+  aweInitial: number
+  /** 影画2：任意角色终结技回威势量/次（0/3） */
+  c2WeishiPerUlt: number
+  /**
+   * 影画2 终结回威势的次数源：
+   * - 默认用自身 ultimateCount（与旧 spec 一致）
+   * - 编排层可注入队伍终结总次数（含仪玄符法千重等）
+   */
+  teamUltimateCount?: number
+}
+
+export interface JufufuCycleResult {
+  huweiHits: number
+  weishiGain: number
+  spinCount: number
+  aweBase: number
+  aweFromSpin: number
+  aweTotal: number
+  tigerChainCount: number
+  popcornHits: number
+}
+
+/**
+ * 橘福福威风/威势/虎釜震煞/旋转次数账本（用户确认口径）：
+ * - 虎威后台自动攻击：floor(后场时间/4) 次，每次 +20 威风
+ * - 威势 = 强特×3 + 终结×6 + 支援突击×1 + 影画2 队伍终结×3
+ * - 高速旋转（山君鼎戏·威势）：威势全部用于旋转命中，每次 +25 威风
+ * - 虎釜震煞 = floor(威风总量/100)；虎啸满覆盖
+ */
+export function computeJufufuCycle(input: JufufuCycleInput): JufufuCycleResult {
+  const backstage = Math.max(0, Number(input.backstageTime) || 0)
+  const ex = Math.max(0, Math.floor(Number(input.exSpecialCount) || 0))
+  const ult = Math.max(0, Math.floor(Number(input.ultimateCount) || 0))
+  const parry = Math.max(0, Math.floor(Number(input.parryCount) || 0))
+  const cinema = Math.max(0, Math.floor(Number(input.cinemaLevel) || 0))
+  const aweInitial = Math.max(0, Number(input.aweInitial) || 0)
+  const c2Per = Math.max(0, Number(input.c2WeishiPerUlt) || 0)
+  const teamUlt = Math.max(0, Math.floor(Number(input.teamUltimateCount ?? ult) || 0))
+
+  const huweiHits = Math.floor(backstage / JUFUFU_HUWEI_INTERVAL)
+  const weishiGain = ex * 3 + ult * 6 + parry * 1 + (cinema >= 2 ? teamUlt * c2Per : 0)
+  // 威势全部投入高速旋转（后台虎釜震煞后进入旋转；整局总量口径）
+  const spinCount = weishiGain
+  const aweFromHuwei = huweiHits * JUFUFU_HUWEI_AWE
+  const aweFromSkills = ex * 80 + ult * 100
+  const aweFromSpin = spinCount * JUFUFU_SPIN_AWE
+  const aweBase = aweInitial + aweFromHuwei + aweFromSkills
+  const aweTotal = aweBase + aweFromSpin
+  const tigerChainCount = Math.floor(aweTotal / JUFUFU_CHAIN_AWE_COST)
+  const popcornHits = cinema >= 6 ? spinCount * JUFUFU_C6_POPCORN_PER_SPIN : 0
+
+  return {
+    huweiHits,
+    weishiGain,
+    spinCount,
+    aweBase,
+    aweFromSpin,
+    aweTotal,
+    tigerChainCount,
+    popcornHits,
+  }
+}
+
+function jufufuRowValue(skills: any, moveId: string, rowId: string): number {
+  for (const cat of skills?.categories ?? []) {
+    const move = (cat.moves ?? []).find((m: any) => m.id === moveId)
+    if (!move) continue
+    const row = (move.rows ?? []).find((r: any) => r.id === rowId)
+    const vals = row?.values ?? []
+    if (!vals.length) return 0
+    return Number(vals[11] ?? vals[vals.length - 1] ?? 0) || 0
+  }
+  return 0
+}
+
+function pushJufufuExec(
+  executions: any[],
+  moveId: string,
+  moveName: string,
+  category: string,
+  count: number,
+  multiplier: number,
+  opts: { override?: boolean; dmgBonus?: number; skillDamageTarget?: string; note?: string; element?: string } = {},
+) {
+  if (count <= 0 || multiplier <= 0) return
+  executions.push({
+    moveId,
+    moveName,
+    category,
+    count,
+    actionTime: 0,
+    comboAlignRatio: 0,
+    totalTime: 0,
+    totalComboAlignTime: 0,
+    energyConsume: 0,
+    totalEnergyConsume: 0,
+    decibelRecovery: 0,
+    totalDecibelRecovery: 0,
+    energyRecovery: 0,
+    totalEnergyRecovery: 0,
+    damageMultiplier: multiplier,
+    damageMultiplierOverride: opts.override ?? true,
+    element: opts.element ?? 'fire',
+    dmgBonus: opts.dmgBonus ?? 0,
+    skillDamageTarget: opts.skillDamageTarget,
+    skillTableNote: opts.note ?? '',
+  })
+}
+
 export const jufufuTigerRoarMechanic: AgentMechanicModule = {
   id: 'agent:jufufu_tiger_roar',
   agentIds: ['1391'],
   name: '橘福福·虎啸',
-  description: '虎啸自身冲击+50（虎釜震煞消耗威风≥1 次即视为覆盖）；威风/威势资源与虎釜震煞事件由 spec 通用解释器承接。',
-  buildResourceResult: buildResourceResult('1391'),
-  buildCharConfig: jufufuSpec ? specToMechanicModule(jufufuSpec).buildCharConfig : undefined,
-  buildExecutions: jufufuSpec ? specToMechanicModule(jufufuSpec).buildExecutions : undefined,
-  buildAnomalyEvents: jufufuSpec ? specToMechanicModule(jufufuSpec).buildAnomalyEvents : undefined,
+  description: '虎威4秒/次驱动威风；虎釜震煞/山君鼎戏·威势次数由账本收敛；虎啸满覆盖冲击+50；影画1/2/4/6 面板与附伤。',
+  buildCharConfig: (input) => {
+    jufufuSpecModule?.buildCharConfig?.(input)
+    const cinema = input.cinemaLevel ?? 0
+    const cfg = input.cfg
+    cfg.jufufuCinemaLevel = cinema
+    // 影画1：进场 100 威风
+    if (cinema >= 1) {
+      cfg.jufufuAweInitial = (cfg.jufufuAweInitial ?? 0) + 100
+    }
+    // 影画2：终结回威势量/次（0命=0）
+    cfg.jufufuC2WeishiPerUlt = cinema >= 2 ? 3 : 0
+    // 预存倍率
+    const record = cfg as unknown as Record<string, unknown>
+    record.jufufuMoveDmg = {
+      [JUFUFU_MOVE.huwei]: jufufuRowValue(input.skills, JUFUFU_MOVE.huwei, 'damage'),
+      [JUFUFU_MOVE.spinWeishi]: jufufuRowValue(input.skills, JUFUFU_MOVE.spinWeishi, 'damage'),
+      [JUFUFU_MOVE.tigerChain]: jufufuRowValue(input.skills, JUFUFU_MOVE.tigerChain, 'damage'),
+      [JUFUFU_MOVE.tigerChainManual]: jufufuRowValue(input.skills, JUFUFU_MOVE.tigerChainManual, 'damage'),
+    }
+  },
+  buildExecutions: ({ cfg, state, executions }) => {
+    // 不再走 spec 事件（虎釜震煞改由账本精确次数生成）
+    const cinema = Math.max(0, Math.floor(Number(cfg.jufufuCinemaLevel ?? 0)))
+    const dmg = ((cfg as any).jufufuMoveDmg ?? {}) as Record<string, number>
+    const cycle = computeJufufuCycle({
+      backstageTime: state.backstageTime ?? 0,
+      exSpecialCount: state.exSpecialCount ?? 0,
+      ultimateCount: state.ultimateCount ?? 0,
+      parryCount: cfg.parryCount ?? 0,
+      cinemaLevel: cinema,
+      aweInitial: cfg.jufufuAweInitial ?? 0,
+      c2WeishiPerUlt: cfg.jufufuC2WeishiPerUlt ?? 0,
+      teamUltimateCount: (cfg as any).jufufuTeamUltimateCount,
+    })
+    cfg.jufufuHuweiHits = cycle.huweiHits
+    cfg.jufufuTigerChainCount = cycle.tigerChainCount
+    cfg.jufufuSpinCount = cycle.spinCount
+    ;(cfg as any).jufufuCycle = cycle
+
+    const c6Bonus = cinema >= 6 ? JUFUFU_C6_CHAIN_DMG_BONUS : 0
+
+    // 虎威自动攻击（后台，不占前台时间）
+    pushJufufuExec(
+      executions,
+      JUFUFU_MOVE.huwei,
+      '普通攻击：「虎威」',
+      'basic',
+      cycle.huweiHits,
+      dmg[JUFUFU_MOVE.huwei] ?? 0,
+      { note: `虎威自动 ×${cycle.huweiHits}（后场 floor(t/4)，每次 +20 威风）` },
+    )
+
+    // 虎釜震煞（后台连携，actionTime=0）
+    pushJufufuExec(
+      executions,
+      JUFUFU_MOVE.tigerChain,
+      '连携技：虎釜震煞',
+      'chain',
+      cycle.tigerChainCount,
+      dmg[JUFUFU_MOVE.tigerChain] ?? 0,
+      {
+        dmgBonus: c6Bonus,
+        skillDamageTarget: 'chain',
+        note: `虎釜震煞 ×${cycle.tigerChainCount}（威风 ${cycle.aweTotal.toFixed(0)}/100；影画6 连携+${c6Bonus}%）`,
+      },
+    )
+
+    // 山君鼎戏·威势（高速旋转耗威势命中）
+    pushJufufuExec(
+      executions,
+      JUFUFU_MOVE.spinWeishi,
+      '冲刺攻击：恶虎七式·山君鼎戏·威势',
+      'basic',
+      cycle.spinCount,
+      dmg[JUFUFU_MOVE.spinWeishi] ?? 0,
+      { note: `山君鼎戏·威势 ×${cycle.spinCount}（耗威势旋转，每次 +25 威风）` },
+    )
+
+    // 影画6 爆米花附伤：次数 = 旋转次数 × 3，每个 160% 攻击力，视为连携
+    if (cycle.popcornHits > 0) {
+      pushJufufuExec(
+        executions,
+        JUFUFU_MOVE.popcorn,
+        '影画6·爆米花附伤',
+        'chain',
+        cycle.popcornHits,
+        JUFUFU_C6_POPCORN_MULT,
+        {
+          dmgBonus: c6Bonus,
+          skillDamageTarget: 'chain',
+          note: `爆米花 ×${cycle.popcornHits}（旋转 ${cycle.spinCount}×3，每个 160% 攻击力，视为连携；影画6 连携+${c6Bonus}%）`,
+        },
+      )
+    }
+  },
+  patchExecutions: ({ cfg, executions }) => {
+    const cinema = Math.max(0, Math.floor(Number(cfg.jufufuCinemaLevel ?? 0)))
+    if (cinema < 6) return
+    // 影画6：所有连携技（含虎釜崩手动连携，若有）+30% 招式限定增伤
+    for (const e of executions) {
+      if (e.moveId === JUFUFU_MOVE.tigerChain || e.moveId === JUFUFU_MOVE.tigerChainManual || e.moveId === JUFUFU_MOVE.popcorn) {
+        e.dmgBonus = (e.dmgBonus ?? 0) // already set on generated rows
+        if (e.moveId === JUFUFU_MOVE.tigerChainManual) {
+          e.dmgBonus = (e.dmgBonus ?? 0) + JUFUFU_C6_CHAIN_DMG_BONUS
+          e.skillDamageTarget = e.skillDamageTarget ?? 'chain'
+        }
+      } else if (e.category === 'chain' && (e.moveId ?? '').startsWith('1391')) {
+        // 通用连携行（若引擎生成）
+        const name = `${e.moveName ?? ''}`
+        if (name.includes('连携') || name.toLowerCase().includes('chain')) {
+          e.dmgBonus = (e.dmgBonus ?? 0) + JUFUFU_C6_CHAIN_DMG_BONUS
+          e.skillDamageTarget = e.skillDamageTarget ?? 'chain'
+        }
+      }
+    }
+  },
+  buildResourceResult: ({ cfg, state }) => {
+    const cinema = Math.max(0, Math.floor(Number(cfg.jufufuCinemaLevel ?? 0)))
+    const cycle: JufufuCycleResult = (cfg as any).jufufuCycle ?? computeJufufuCycle({
+      backstageTime: state.backstageTime ?? 0,
+      exSpecialCount: state.exSpecialCount ?? 0,
+      ultimateCount: state.ultimateCount ?? 0,
+      parryCount: cfg.parryCount ?? 0,
+      cinemaLevel: cinema,
+      aweInitial: cfg.jufufuAweInitial ?? 0,
+      c2WeishiPerUlt: cfg.jufufuC2WeishiPerUlt ?? 0,
+      teamUltimateCount: (cfg as any).jufufuTeamUltimateCount,
+    })
+    // 覆盖 spec 资源账本为精确次数模型
+    const aweSpend = cycle.tigerChainCount * JUFUFU_CHAIN_AWE_COST
+    const aweGains: Record<string, number> = {
+      jufufu_tiger_awe_gain: cycle.huweiHits * JUFUFU_HUWEI_AWE,
+      jufufu_awe_ex_special: Math.max(0, Math.floor(state.exSpecialCount ?? 0)) * 80,
+      jufufu_awe_ultimate: Math.max(0, Math.floor(state.ultimateCount ?? 0)) * 100,
+      jufufu_awe_spin: cycle.aweFromSpin,
+    }
+    const weishiGains: Record<string, number> = {
+      jufufu_weishi_ex_special: Math.max(0, Math.floor(state.exSpecialCount ?? 0)) * 3,
+      jufufu_weishi_ultimate: Math.max(0, Math.floor(state.ultimateCount ?? 0)) * 6,
+      jufufu_weishi_assist: Math.max(0, Math.floor(cfg.parryCount ?? 0)) * 1,
+      jufufu_team_ult_weishi_gain: cinema >= 2
+        ? Math.max(0, Math.floor(Number((cfg as any).jufufuTeamUltimateCount ?? state.ultimateCount ?? 0))) * (cfg.jufufuC2WeishiPerUlt ?? 0)
+        : 0,
+    }
+    const aweTotalGain = Object.values(aweGains).reduce((a, b) => a + b, 0)
+    const weishiTotalGain = Object.values(weishiGains).reduce((a, b) => a + b, 0)
+    const aweInitial = cfg.jufufuAweInitial ?? 0
+    return {
+      jufufuCycle: cycle,
+      specResources: {
+        jufufu_awe: {
+          id: 'jufufu_awe',
+          name: '威风',
+          initialValue: aweInitial,
+          maxValue: 200,
+          totalGain: aweTotalGain,
+          gains: aweGains,
+          bonusCount: 0,
+          total: aweInitial + aweTotalGain,
+          remaining: Math.max(0, aweInitial + aweTotalGain - aweSpend),
+          spendCounts: { jufufu_tiger_chain_spend: cycle.tigerChainCount },
+          spendCosts: { jufufu_tiger_chain_spend: aweSpend },
+        },
+        jufufu_weishi: {
+          id: 'jufufu_weishi',
+          name: '威势',
+          initialValue: 0,
+          maxValue: 15,
+          totalGain: weishiTotalGain,
+          gains: weishiGains,
+          bonusCount: 0,
+          total: weishiTotalGain,
+          remaining: Math.max(0, weishiTotalGain - cycle.spinCount),
+          spendCounts: { jufufu_spin_spend: cycle.spinCount },
+          spendCosts: { jufufu_spin_spend: cycle.spinCount },
+        },
+      },
+    }
+  },
   transformSkillExecutions: (input: AgentSkillTransformInput) => {
     const panel = input.panel
     if (!panel) return
     if ((panel as any).__jufufuTigerRoarApplied) return
     ;(panel as any).__jufufuTigerRoarApplied = true
-    // [已确认·数据] 核心被动虎虎生威：虎啸状态下橘福福自身冲击力+50。
-    const resource = input.charResult.specResources?.['jufufu_awe']
-    const spend = resource?.spendCounts?.['jufufu_tiger_chain_spend'] ?? 0
-    if (spend > 0) {
-      panel.impact = (panel.impact ?? 0) + 50
-    }
+    // 虎啸满覆盖（用户确认）：自身冲击 +50
+    panel.impact = (panel.impact ?? 0) + 50
   },
   resourceSections: (input: AgentResourceSectionsInput) => {
-    return jufufuSpec ? specToMechanicModule(jufufuSpec).resourceSections?.(input) ?? [] : []
+    const cycle = (input.result as any)?.jufufuCycle as JufufuCycleResult | undefined
+    const awe = input.result.specResources?.['jufufu_awe']
+    const weishi = input.result.specResources?.['jufufu_weishi']
+    const rows = [
+      { label: '虎威次数', value: String(cycle?.huweiHits ?? 0), detail: '后场 floor(t/4)，每次 +20 威风' },
+      { label: '威风总量', value: String(cycle?.aweTotal ?? awe?.total ?? 0), detail: `初始+虎威+强特/终结+旋转(+${cycle?.aweFromSpin ?? 0})` },
+      { label: '虎釜震煞', value: String(cycle?.tigerChainCount ?? 0), detail: 'floor(威风/100)' },
+      { label: '威势/旋转', value: `${cycle?.weishiGain ?? weishi?.total ?? 0} / ${cycle?.spinCount ?? 0}`, detail: '威势全投山君鼎戏·威势，每次 +25 威风' },
+    ]
+    if ((cycle?.popcornHits ?? 0) > 0) {
+      rows.push({ label: '爆米花', value: String(cycle!.popcornHits), detail: '影画6：旋转×3，每个 160% 攻击力（连携）' })
+    }
+    return [{
+      id: 'jufufu-cycle',
+      title: '橘福福·威风/虎釜账本',
+      summary: `虎威 ${cycle?.huweiHits ?? 0} · 震煞 ${cycle?.tigerChainCount ?? 0} · 旋转 ${cycle?.spinCount ?? 0}`,
+      rows,
+    }]
   },
 }
+

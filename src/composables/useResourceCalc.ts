@@ -1,3 +1,4 @@
+import { YESHUGUANG_FULL_STUN_MOVES } from '@/mechanics/agents/yeshuguang'
 import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -133,8 +134,11 @@ export function useResourceCalc() {
       if (cfg) characters.push(cfg)
     }
 
-    // 橘福福额外能力：强攻/命破角色每次终结技额外获得 300 点喧响
-    if (characters.some(cfg => cfg.agentId === '1391')) {
+    // 橘福福额外能力·八面威风：队伍有强攻/命破时，这些角色每次终结技 +300 喧响
+    // （仪玄青溟云影走 ultimateCount；符法千重在收敛环用上一轮次数注入，见下方 1371 分支）。
+    const jufufuCfg = characters.find(cfg => cfg.agentId === '1391')
+    const jufufuAA = Boolean(jufufuCfg && (jufufuCfg.panel?.additionalAbilityActive ?? 0) > 0)
+    if (jufufuAA) {
       for (const cfg of characters) {
         const agent = catalogStore.getAgent(cfg.agentId)
         if (agent?.specialty === 'attack' || agent?.specialty === 'rupture') {
@@ -660,7 +664,7 @@ function applyNormaHatChain(
     return out
   }
 
-  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }): {
+  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0): {
     resourceResult: TeamResourceResult
     stunPool: StunPoolResult | null
     anomalyPool: AnomalyPoolResult | null
@@ -674,6 +678,9 @@ function applyNormaHatChain(
     energyBySlot: Record<number, number>
     auricInkTriggerCount: number
     banyueTopUp: BanyueInteractionTopUp
+    yixuanFuFaForJufufu: number
+    teamUltimateForJufufu: number
+    yeshuguangGiftUlt: number
   } | null {
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
@@ -891,6 +898,9 @@ function applyNormaHatChain(
         const c1Lightnings = yixuanCinema >= 1
           ? Math.max(0, Math.floor((axisInSeconds > 0 ? axisInSeconds : battleTime) / 6))
           : 0
+        // 橘福福额外能力：仪玄符法千重/调息赠送也算终结技，上一轮次数 ×300 喧响（青溟云影走 extraSelfDecibelPerUltimate）
+        const jufufuOn = base.characters.some(c => c.agentId === '1391' && (c.panel?.additionalAbilityActive ?? 0) > 0)
+        const fufaDecibel = jufufuOn && prevYixuanFuFaForJufufu > 0 ? prevYixuanFuFaForJufufu * 300 : 0
         const yixuanMerged = {
           ...merged,
           yixuanAxisEx,
@@ -901,6 +911,7 @@ function applyNormaHatChain(
           yixuanC1LightningCount: c1Lightnings,
           // 玄墨异常触发回闪能（10s CD 封顶 18 次）+ 极限支援落雷闪能（5/次）+ C1 落雷闪能（5/次）计入总账（外层收敛）
           yixuanFlashBonus: (merged.yixuanFlashBonus ?? 0) + auricInkTriggers * 10 + extremeAssists * 5 + c1Lightnings * 5,
+          extraSelfDecibelReward: (merged.extraSelfDecibelReward ?? 0) + fufaDecibel,
         }
         return yixuanMerged
       }
@@ -949,6 +960,18 @@ function applyNormaHatChain(
           lycaonC2Energy: c2Per > 0 ? (stunCount + teamChainTotal) * c2Per : 0,
         }
       }
+      if (merged.agentId === '1391') {
+        return {
+          ...merged,
+          jufufuTeamUltimateCount: prevTeamUltimateForJufufu > 0 ? prevTeamUltimateForJufufu : undefined,
+        }
+      }
+      if (merged.agentId === '1431') {
+        return {
+          ...merged,
+          yeshuguangGiftUltCount: prevYeshuguangGiftUlt,
+        }
+      }
       return merged
     })
     // 特殊动作喧响奖励（弹刀215/闪反10/连携10/快支20，含伴随50%）：本轮即时结算——
@@ -975,6 +998,29 @@ function applyNormaHatChain(
       specialActionDecibelBonusPerSlot: specialBonusPerSlot,
       anomalyDecibelBonusPerSlot: anomalyBonusPerSlot,
     }), catalogStore)
+    // 橘福福：收敛仪玄符法千重类终结次数 + 全队终结总次数（供额外能力 +300 / 影画2 威势）
+    let yixuanFuFaForJufufuNext = 0
+    let teamUltimateForJufufuNext = 0
+    {
+      let fufa = 0
+      let teamUlt = 0
+      for (const ch of rr.characters) {
+        teamUlt += ch.ultimateCount ?? 0
+        if (ch.agentId === '1371') {
+          for (const e of ch.executions ?? []) {
+            const mid = e.moveId ?? ''
+            const name = e.moveName ?? ''
+            if (mid === '1371020' || name.includes('符法千重')) {
+              fufa += e.count ?? 0
+            }
+          }
+          teamUlt += fufa // 符法千重不在 ultimateCount 内，补进队伍终结
+        }
+      }
+      yixuanFuFaForJufufuNext = fufa
+      teamUltimateForJufufuNext = teamUlt
+    }
+
     // 轴模式自动补齐下一轮量（保底）：嗔火缺口 → 双反；喧响缺口 → 弹刀。用 store 原始输入 + 本轮实际资源供给计算，
     // 外不动点收敛时 prevBanyueTopUp 稳定（round 0 无补齐 → 本轮算出的下一轮量即最终缺口）。
     let banyueTopUpNext = prevBanyueTopUp
@@ -1058,6 +1104,20 @@ function applyNormaHatChain(
     // 展示层：resourceResult 也带上诺姆赠送连携（执行计划/次数在资源利用率页可见），
     // 不动点/失衡池仍用原始 rr（baseStun），避免赠送连携失衡反作用于转大收敛
     const rrShown = applyNormaHatChain(rr, configStore, catalogStore) ?? rr
+
+    // 叶瞬光：琉音转大赠送的逐云次数（adj 后 gift 行）
+    let yeshuguangGiftUltNext = 0
+    {
+      const ye = (adj2 ?? rr).characters.find(c => c.agentId === '1431')
+      if (ye) {
+        for (const e of ye.executions ?? []) {
+          if ((e as any).source === 'gift' || (e.moveName ?? '').includes('好评转大')) {
+            yeshuguangGiftUltNext += e.count ?? 0
+          }
+        }
+      }
+    }
+
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
     const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly)
 
@@ -1075,6 +1135,9 @@ function applyNormaHatChain(
       goodReview,
       energyBySlot,
       banyueTopUp: banyueTopUpNext,
+      yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
+      teamUltimateForJufufu: teamUltimateForJufufuNext,
+      yeshuguangGiftUlt: yeshuguangGiftUltNext,
     }
   }
 
@@ -1092,6 +1155,9 @@ function applyNormaHatChain(
     let prevGoodReview = -1
     let prevEnergyBySlot: Record<number, number> = {}
     let prevAuricInkFlash = 0
+    let prevYixuanFuFaForJufufu = 0
+    let prevTeamUltimateForJufufu = 0
+    let prevYeshuguangGiftUlt = 0
     let prevAnomalyDecibelBonus: number[] = []
     let prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }
     let prevUltSeq = ''
@@ -1099,7 +1165,7 @@ function applyNormaHatChain(
     let prevTopUpSeq = ''
     const seenStunCounts = new Set<number>()
     for (let k = 0; k < MAX_OUTER_ITER; k++) {
-      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp)
+      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt)
       const ait = out?.auricInkTriggerCount ?? 0
       const gr = out?.goodReview
       if (gr !== undefined && gr >= 0) prevGoodReview = gr
@@ -1124,6 +1190,9 @@ function applyNormaHatChain(
       prevAnomalyDecibelBonus = out?.anomalyPool?.perSlotBonus ?? []
       prevAuricInkFlash = ait
       prevBanyueTopUp = out?.banyueTopUp ?? prevBanyueTopUp
+      prevYixuanFuFaForJufufu = out?.yixuanFuFaForJufufu ?? 0
+      prevTeamUltimateForJufufu = out?.teamUltimateForJufufu ?? 0
+      prevYeshuguangGiftUlt = out?.yeshuguangGiftUlt ?? 0
       prevUltSeq = ultSeq
       prevAnomalySeq = anomalySeq
       prevTopUpSeq = topUpSeq
@@ -1409,8 +1478,13 @@ function applyNormaHatChain(
       const stunForThis = row.stunOverride !== undefined
         ? row.stunOverride
         : stunCoverage.value
+      // 叶瞬光帷幕易伤：满易伤时倍率 = min(boss.stunVuln, panel.yeshuguangStunCapMult ?? 2.1)
+      let stunBase = configStore.enemy.stunVuln
+      if (row.agentId === '1431' && (panel as any).yeshuguangStunCapMult && stunForThis > 0) {
+        stunBase = Math.min(stunBase, Number((panel as any).yeshuguangStunCapMult) || 2.1)
+      }
       const stunMultVal = stunForThis > 0
-        ? 1 + (configStore.enemy.stunVuln - 1) * stunForThis
+        ? 1 + (stunBase - 1) * stunForThis
         : 1
       const rowAgent = catalogStore.getAgent(row.agentId)
       const result = calcDirectDamage({
@@ -1424,7 +1498,7 @@ function applyNormaHatChain(
         enemyLevel: configStore.enemy.level,
         enemyResistance: enemyDamageRes[row.element] ?? 0,
         enemyResReduction: (panel.enemyResReduction ?? 0) + (row.resIgnore ?? 0),
-        stunMultiplier: configStore.enemy.stunVuln,
+        stunMultiplier: stunBase,
         stunned: stunForThis,
         critMode: 'expect',
         count: row.count,
@@ -1618,6 +1692,9 @@ function applyNormaHatChain(
           const split = axisSplitFor(slot, exec.moveId, totalUnits)
           emitExecDirect(split.inUnits, 1, '', '', exec.source)
           emitExecDirect(split.outUnits, 0, '-out', ' · 轴外（无失衡易伤）')
+        } else if (charResult.agentId === '1431' && YESHUGUANG_FULL_STUN_MOVES.has(exec.moveId)) {
+          // 叶瞬光白毛：关键伤害一律满易伤（帷幕易伤），真失衡只送连携；上限 210%/300% 在 pushDirect 处理
+          emitExecDirect(totalUnits, 1, '', ' · 明心境满易伤', exec.source)
         } else {
           // 未进轴的槽位（如换的辅助、没捏进轴）按全局覆盖率单独算
           emitExecDirect(totalUnits, stunCoverage.value, '', '', exec.source)

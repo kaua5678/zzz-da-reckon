@@ -217,12 +217,13 @@ describe('spec resource panel buffs', () => {
     expect(zhendouPanel.critRate - zhendouBase.critRate).toBe(10)
     expect(zhendouPanel.fireDmg).toBe(20)
 
-    const yeMap = resources('1431', {}, { ultimateCount: 1 })
-    const yePanel = emptyPanel()
-    const yeBase = emptyPanel()
-    transform(yeshuguangMingxinMechanic, '1431', yePanel, yeMap)
-    expect(yePanel.critRate - yeBase.critRate).toBe(30)
-    expect(yePanel.dmgBonus).toBe(25)
+    // 叶瞬光合道改走 helpers 常驻；模块负责影画1 剑势初始 / 影画4 喧响
+    const yeCfg1: any = {}
+    yeshuguangMingxinMechanic.buildCharConfig?.({ cfg: yeCfg1, panel: {} as any, cinemaLevel: 1, skills: { categories: [] } as any, team: [], slot: 0, agent: null as any, wEngineId: '', wEngineModLevel: 1, getRowValue: () => 0 } as any)
+    expect(yeCfg1.yeshuguangSwordInitial).toBe(6)
+    const yeCfg0: any = {}
+    yeshuguangMingxinMechanic.buildCharConfig?.({ cfg: yeCfg0, panel: {} as any, cinemaLevel: 0, skills: { categories: [] } as any, team: [], slot: 0, agent: null as any, wEngineId: '', wEngineModLevel: 1, getRowValue: () => 0 } as any)
+    expect(yeCfg0.yeshuguangSwordInitial).toBe(0)
 
     const aireMap = resources('1501', {}, { frontlineTime: 1, disorderCount: 0 })
     const airePanel = emptyPanel()

@@ -28,7 +28,6 @@ import {
   graceChargeMechanic,
 	  prometheusGuiltyMechanic,
   zhendouHeartfireMechanic,
-  yeshuguangMingxinMechanic,
   aireProficiencyMechanic,
   peiluoProminenceMechanic,
   sethShieldMechanic,
@@ -42,6 +41,7 @@ import { starlightBillyMechanic } from './agents/starlightBilly'
 import { yixuanMechanic } from './agents/yixuan'
 import { lycaonMechanic } from './agents/lycaon'
 import { soldier11Mechanic } from './agents/soldier11'
+import { yeshuguangMechanic } from './agents/yeshuguang'
 import { agentSpecs } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
@@ -73,7 +73,7 @@ registerAgentMechanic(liuyinMechanic)
 registerAgentMechanic(normaMechanic)
 registerAgentMechanic(prometheusGuiltyMechanic)
 registerAgentMechanic(zhendouHeartfireMechanic)
-registerAgentMechanic(yeshuguangMingxinMechanic)
+registerAgentMechanic(yeshuguangMechanic)
 registerAgentMechanic(aireProficiencyMechanic)
 registerAgentMechanic(peiluoProminenceMechanic)
 registerAgentMechanic(sethShieldMechanic)

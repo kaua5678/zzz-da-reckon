@@ -74,6 +74,8 @@ export interface PanelValues {
   stunDmgMultiplierBonus: number // 失衡易伤（仅失衡时），百分比
   stunDmgMultiplierBonusAlways: number // 未失衡时也有的失衡易伤，百分比
   stunDmgMultiplierBonusCapAlways: number // 失衡易伤上限，百分比
+  /** 叶瞬光帷幕易伤倍率上限（2.1/3.0；0=未启用） */
+  yeshuguangStunCapMult: number
   // 异常积蓄相关
   anomalyBuildUpEfficiency: number // 异常积蓄效率提升，百分比
   electricAnomalyBuildUpEfficiency: number // 电属性异常积蓄效率提升，百分比

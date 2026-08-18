@@ -129,13 +129,23 @@
 - **数据/引擎**：`scripts/import-attack-data.mjs` 补 attack_data；`critDmgBonus` 为新增 moveId 级暴伤字段（`SkillExecution`→`DirectDamageInput`）；`basic_attack` 秒均支持机制覆盖。
 - **模块位置**：`src/mechanics/agents/qingyi.ts`。
 
-### 橘福福（jufufu / 1391）—— spec + 薄包装（验证「猜测标注」流程）
+### 橘福福（jufufu / 1391）—— 虎威账本 + 虎啸满覆盖
 
-- **核心被动·虎虎生威（虎啸）**：全队暴伤 +20% + 初始攻击 ≥2800 每超 100 额外暴伤 +5%（最多 +30%）+ 虎啸下连携/终结伤害 +20%/40%，持续 30s；橘福福自身冲击力 +50。拐力在 `teammate-buffs.json` `jufufu.core_tiger_roar`；自身冲击 +50 由 `specPanelBuffs.ts` `jufufuTigerRoarMechanic` 门控（虎釜震煞消耗威风 ≥1 次即视为虎啸覆盖）。
-- **威风/威势**（spec `resources`）：威风获取 = 虎威自动攻击（后场时间近似，可调）+ 强化特殊技 +80 + 终结技 +100；消耗 100 触发虎釜震煞（1391013，event execution 已接）。威势获取 = 强化特殊技 +3 + 终结技 +6 + 支援突击 +1（招架次数近似）+ C2 任意角色终结技 +3。
-- **额外能力·八面威风**（声明式：强攻/命破）：全队喧响上限 +1000 + 强攻/命破终结技时该角色 +300 喧响。拐力已在 `teammate-buffs.json` `jufufu.extra_ability_team_decibel`。
-- **待核对**：虎啸覆盖率默认满覆盖（可调）；威势→威风的高速旋转循环未建模；C2/C4 虎啸暴伤、C6 连携 +30% 与爆米花附伤未接入。
-- **模块位置**：`src/specs/agents/1391.json` + `specPanelBuffs.ts` `jufufuTigerRoarMechanic`。
+- **次数模型（用户确认）**：虎威后台自动 `floor(后场/4)` 次，每次 +20 威风；威势 = 强特×3 + 终结×6 + 支援突击×1 + 影画2 队伍终结×3；威势全投高速旋转（山君鼎戏·威势 1391010），每次 +25 威风；虎釜震煞（1391013）= `floor(威风总量/100)`。
+- **虎啸满覆盖**：全队暴伤公式/连携+20%/终结+40% 在 `teammate-buffs.json` `jufufu.core_tiger_roar`；自身冲击 +50 无条件。
+- **额外能力**：强攻/命破终结技 +300 喧响（仪玄青溟云影走 `ultimateCount`，符法千重按执行次数×300 注入）；喧响上限 +1000 不做。
+- **影画**：C1 暴击+12/威风+100/易伤拐；C2 虎啸暴伤+22 + 终结回3威势；C4 自身暴伤+35；C6 连携+30% + 爆米花（旋转×3×160% 攻击力，视为连携）。
+- **模块**：`specPanelBuffs.ts` `computeJufufuCycle` / `jufufuTigerRoarMechanic`。
+
+### 叶瞬光（yeshuguang / 1431）—— 白毛明心境（用户确认）
+
+- **无需失衡轴**：白毛关键伤害一律满易伤（`stunOverride=1`）；真失衡只送连携。帷幕易伤 = min(boss 最终易伤, 2.1)，影画4 = min(..., 3.0)。
+- **两套资源**：局外剑势（attack_data_0 + 帷幕×3 + C1 进场6，照影耗6启动）≠ 明心境内青溟剑势（进入固定 6，打满花光）。
+- **观止**：每轮基础 2；影画2 每耗 1 青溟剑势 +1（打满 → 8）。飞光倍率/时间 × 观止/6。
+- **打满一轮**：`(灭#1+极) → 扶摇 → (灭#1+极) → 飞光 → 收尾`；喧响逐云进 → 斩妄开天，照影/琉音转大进 → 归尘。
+- **进入**：喧响 逐云惊霆 / 琉音转大赠送逐云 / 照影。
+- **模块**：`src/mechanics/agents/yeshuguang.ts`。
+
 
 ### 般岳（banyue / 1471）—— 用户确认口径（TS 模块）
 

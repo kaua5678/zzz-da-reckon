@@ -1344,6 +1344,24 @@ export interface CharacterOperationConfig {
   teamUltimateFlashBonus?: number
   /** 仪玄术法值初始值（影画1：立即获得 120；spec 术法值 initialValueSource=cfgField 读取） */
   yixuanShufaInitial?: number
+  /** 橘福福威风初始值（影画1：进场立即获得 100；spec 威风 initialValueSource=cfgField 读取） */
+  jufufuAweInitial?: number
+  /** 橘福福影画2：任意角色终结技时威势回复量/次（未达2命为 0；spec gain valueSource=cfgField） */
+  jufufuC2WeishiPerUlt?: number
+  /** 橘福福·虎威自动攻击次数（后场 floor(t/4)） */
+  jufufuHuweiHits?: number
+  /** 橘福福·虎釜震煞次数（威风账本 floor(total/100)） */
+  jufufuTigerChainCount?: number
+  /** 橘福福·山君鼎戏·威势旋转命中次数（= 威势消耗） */
+  jufufuSpinCount?: number
+  /** 橘福福影画等级（模块缓存） */
+  jufufuCinemaLevel?: number
+  /** 叶瞬光青溟剑势初始（影画1：进场 6 点；未达1命为 0） */
+  yeshuguangSwordInitial?: number
+  /** 叶瞬光：琉音转大赠送逐云次数（编排层注入） */
+  yeshuguangGiftUltCount?: number
+  /** 叶瞬光：队友整局帷幕次数（也可 setting 滑块） */
+  yeshuguangTeamCurtainCount?: number
   /** 仪玄·2连墨痕化形次数（主页交互栏；#1+#3，40闪能/次） */
   yixuanInk2Count?: number
   /** 仪玄·3连墨痕化形次数（主页交互栏；#1+#3+#4，60闪能/次） */

@@ -2271,21 +2271,22 @@
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 超级可怕小老虎：进入战场时，橘福福的暴击率提升12%，立即获得100点[威风]；橘福福的[连携技]命中敌人时，目标处于失衡状态下时，失衡易伤倍率提升35%，持续30秒。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
+     "status": "implemented",
+     "implemented": [
+      "进场暴击+12",
+      "进场威风+100",
+      "失衡易伤拐力"
+     ],
+     "pending": []
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 神通广大青溟客：处于[虎啸]状态下角色的暴击伤害额外提升22%；任意角色发动[终结技]时，橘福福回复3点[威势]。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
+     "status": "implemented",
+     "implemented": [
+      "虎啸暴伤+22",
+      "终结回3威势"
+     ],
+     "pending": []
     },
     {
      "cinema": 3,
@@ -2297,12 +2298,11 @@
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 降妖伏魔虎修者：橘福福处于[虎啸]状态下时，自身的暴击伤害提升35%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
+     "status": "implemented",
+     "implemented": [
+      "自身暴伤+35满覆盖"
+     ],
+     "pending": []
     },
     {
      "cinema": 5,
@@ -2314,12 +2314,12 @@
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 知我心中虎啸声：橘福福的[连携技]造成的伤害提升30%；橘福福在高速旋转状态下时，消耗[威势]命中敌人时，会发射3个爆米花，每个爆米花造成福福攻击力160%的伤害，且造成的伤害视为[连携技]伤害。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
+     "status": "implemented",
+     "implemented": [
+      "连携+30%",
+      "爆米花×3×160%"
+     ],
+     "pending": []
     }
    ]
   },
@@ -2523,21 +2523,22 @@
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 梦中身：进入战场时，获得6点[青溟剑势]，在勘域模式中此效果180秒内最多触发一次； [核心被动：照破无明]中[合道]效果额外使造成的伤害提升10%，无视目标20%防御力。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
+     "status": "implemented",
+     "implemented": [
+      "进场剑势6",
+      "合道+10%伤",
+      "减防20%"
+     ],
+     "pending": []
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 光与影：[载物]可叠加层数提升至6层，[观止]可叠加至9层；[明心境]状态下，每消耗1点[青溟剑势]，则获得1层[观止]效果；[强化特殊技：明心境·飞光]和[终结技：斩妄开天]造成的伤害无视目标40%防御力。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "耗剑势回观止",
+      "飞光/斩妄减防40%近似"
+     ],
+     "pending": []
     },
     {
      "cinema": 3,
@@ -2549,12 +2550,12 @@
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 共黯尘：进入战场时，获得1000点喧响值，在勘域模式中此效果180秒内最多触发一次；[以太帷幕·决裁]提供的帷幕易伤加成上限提升至200%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
+     "status": "implemented",
+     "implemented": [
+      "进场喧响1000",
+      "帷幕易伤上限300%"
+     ],
+     "pending": []
     },
     {
      "cinema": 5,
@@ -2569,8 +2570,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "影画6 明灯愿：进入战场时，获得2层[明灯愿]；每次进入[明心境]状态会获得1层[明灯愿]，至多叠加4层；拥有3层[明灯愿]时，将[强化特殊技：明心境·归尘]替换为[终结技：斩妄开天]，发动此[终结技：斩妄开天]时，消耗3层[明灯愿]；[强化特殊技：明心境·归尘]和[终结技：斩妄开天]最后一击额外造成1500%攻击力的物理伤害。",
-      "待人工核对后补实现，勿直接默认省略。"
+      "明灯愿与斩妄附伤1500%"
      ]
     }
    ]
