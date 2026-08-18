@@ -4869,6 +4869,28 @@
      ],
      "status": "implemented",
      "pending": []
+    },
+    {
+     "id": "spotless_bangboo_1211",
+     "name": "[一尘不染]：邦布晨间/午夜清扫",
+     "implementation": "implemented",
+     "implementedParts": [
+      "强特/连携/终结各触发13秒[一尘不染]",
+      "期间邦布每2.5秒攻击1次（晨间清扫三段倍率之和315.9%）",
+      "每次攻击+1层惊吓，满6层后下一次攻击改为午夜清扫420.1%（每7次转化1次）",
+      "总buff时长按战斗总时长钳制；后台自动不占前台时间"
+     ],
+     "pendingParts": [
+      "惊吓层数跨窗口保留按整局累计近似",
+      "邦布攻击的元素构成（文本含物理）按倍率表电属性口径计"
+     ],
+     "codePaths": [
+      "src/mechanics/agents/rina.ts"
+     ],
+     "status": "implemented",
+     "pending": [
+      "惊吓层数跨窗口保留按整局累计近似"
+     ]
     }
    ],
    "cinemaImplementation": [

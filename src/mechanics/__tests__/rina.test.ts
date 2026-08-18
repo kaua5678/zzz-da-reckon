@@ -8,7 +8,10 @@ import { calcRinaUltEnergy } from '@/core/resource/helpers'
 import {
   applyRinaTeamEnergyFlags,
   assignRinaUltNeighborEnergy,
+  computeRinaBangboo,
   computeRinaCorePenRatio,
+  RINA_SPOTLESS_DURATION,
+  rinaMechanic,
 } from '@/mechanics/agents/rina'
 
 const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
@@ -54,6 +57,76 @@ describe('丽娜纯函数', () => {
   it('终结技邻位回能按30/10分配', () => {
     expect(assignRinaUltNeighborEnergy([0, 1, 2], 1)).toEqual({ 0: 10, 2: 30 })
     expect(assignRinaUltNeighborEnergy([0, 1], 1)).toEqual({ 0: 30 })
+  })
+
+  it('一尘不染：强特/连携/终结各触发13s，战斗时长钳制', () => {
+    expect(RINA_SPOTLESS_DURATION).toBe(13)
+    // 1 强特 + 1 终结 = 2 触发 = 26s，未超过战斗时长
+    const two = computeRinaBangboo({ exSpecialCount: 1, chainCountTotal: 0, ultimateCount: 1, combatTime: 90 })
+    expect(two.triggers).toBe(2)
+    expect(two.buffTime).toBe(26)
+    // 连携也计入触发
+    const chain = computeRinaBangboo({ exSpecialCount: 1, chainCountTotal: 2, ultimateCount: 0, combatTime: 90 })
+    expect(chain.triggers).toBe(3)
+    expect(chain.buffTime).toBe(39)
+    // 战斗时长 30s 钳制：3 触发理论 39s → 30s
+    const clamped = computeRinaBangboo({ exSpecialCount: 1, chainCountTotal: 1, ultimateCount: 1, combatTime: 30 })
+    expect(clamped.triggers).toBe(3)
+    expect(clamped.buffTime).toBe(30)
+  })
+
+  it('邦布攻击：每2.5s一次，惊吓满6层后每7次转化1次午夜清扫', () => {
+    // 26s / 2.5 = 10 次攻击；10 = 7×1+3 → 1 午夜 + 9 晨间
+    const two = computeRinaBangboo({ exSpecialCount: 1, chainCountTotal: 0, ultimateCount: 1, combatTime: 90 })
+    expect(two.attacks).toBe(10)
+    expect(two.midnightCount).toBe(1)
+    expect(two.sweepCount).toBe(9)
+    // 39s / 2.5 = 15 次攻击；15 = 7×2+1 → 2 午夜 + 13 晨间
+    const chain = computeRinaBangboo({ exSpecialCount: 1, chainCountTotal: 2, ultimateCount: 0, combatTime: 90 })
+    expect(chain.attacks).toBe(15)
+    expect(chain.midnightCount).toBe(2)
+    expect(chain.sweepCount).toBe(13)
+    // 无触发则无攻击
+    const none = computeRinaBangboo({ exSpecialCount: 0, chainCountTotal: 0, ultimateCount: 0, combatTime: 90 })
+    expect(none.attacks).toBe(0)
+    expect(none.sweepCount).toBe(0)
+    expect(none.midnightCount).toBe(0)
+  })
+})
+
+describe('丽娜·一尘不染执行行', () => {
+  it('buildCharConfig：晨间清扫取三段倍率之和，午夜清扫取单段倍率', () => {
+    const cfg: any = {}
+    const skills: any = {
+      categories: [{
+        moves: [
+          { id: '1211023', rows: [{ id: 'damage', values: [105.3] }] },
+          { id: '1211024', rows: [{ id: 'damage', values: [105.3] }] },
+          { id: '1211025', rows: [{ id: 'damage', values: [105.3] }] },
+          { id: '1211027', rows: [{ id: 'damage', values: [420.1] }] },
+        ],
+      }],
+    }
+    rinaMechanic.buildCharConfig!({ slot: 1, agent: {} as any, skills, cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, team: [], cfg } as any)
+    expect(cfg.rinaSweepComboDmg).toBeCloseTo(105.3 * 3, 5)
+    expect(cfg.rinaMidnightDmg).toBeCloseTo(420.1, 5)
+  })
+
+  it('buildExecutions：生成晨间/午夜清扫执行行，后台不占前台时间', () => {
+    const cfg: any = { rinaSweepComboDmg: 105.3 * 3, rinaMidnightDmg: 420.1 }
+    const executions: any[] = []
+    rinaMechanic.buildExecutions!({
+      cfg,
+      state: { exSpecialCount: 1, chainCountTotal: 0, ultimateCount: 1, frontlineTime: 30, backstageTime: 60 },
+      executions,
+    } as any)
+    const sweep = executions.find(e => e.moveId === '1211023')
+    const midnight = executions.find(e => e.moveId === '1211027')
+    expect(sweep.count).toBe(9)
+    expect(sweep.damageMultiplier).toBeCloseTo(105.3 * 3, 5)
+    expect(sweep.actionTime).toBe(0)
+    expect(midnight.count).toBe(1)
+    expect(midnight.damageMultiplier).toBeCloseTo(420.1, 5)
   })
 })
 
