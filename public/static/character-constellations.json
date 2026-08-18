@@ -30,11 +30,12 @@
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "能量获得效率+12%（30s 刷新），按覆盖率滑块折算写入 energyGainEfficiency（computePanelPhases 1011 块，默认 100%）"
+     ],
      "pending": [
-      "影画1 快充模式：[普通攻击]第四段斩击命中敌人时，安比的能量获得效率提升12%，持续30秒。",
-      "待人工核对后补实现，勿直接默认省略。"
+      "快充模式实际覆盖率由用户在资源利用率页设置，默认按全程覆盖处理"
      ]
     },
     {
