@@ -1,19 +1,31 @@
 {
   "schemaVersion": 1,
-  "id": "agent:caesar_king",
+  "id": "agent:caesar",
   "name": "凯撒",
-  "agentIds": [
-    "1071"
-  ],
-  "status": "not_described_not_implemented",
+  "agentIds": ["1071"],
+  "status": "implemented_approximation",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
   "events": [],
   "verifications": [],
   "stateMachines": [],
+  "additionalAbility": {
+    "teamConditions": [
+      { "type": "sameFactionAsSelf" }
+    ],
+    "note": "额外能力·战意激昂：同阵营或队中存在其他可招架支援角色时触发（有队友即近似满足招架路径）；全队伤害+25%。"
+  },
   "notes": [
-    "待录入：凯撒 的机制、资源、事件与验证。"
+    "[已确认·数据] 核心·荣光之盾：持有者攻击+1000（teammate-buffs，默认满覆盖）；护盾吸收量不进伤害。",
+    "[已确认·近似] 额外能力：有队友或同阵营 → 全队伤害+25%（helpers 门控）；触发招式未逐帧。",
+    "[已确认·数据] 影画1：荣光期间全抗-15%。",
+    "[已确认·数据] 影画2：核心攻击拐×1.5（→1500）；凯撒能量获得效率+10%。",
+    "[已确认·数据] 影画3/5：通用技能等级+2。",
+    "[近似] 影画4：支援点数/能量替代不建模。",
+    "[已确认·用户口径] 影画6：超强力盾击+支援之锋必定暴击、伤害+50%+主目标+50%（单目标按+100%）；自身暴击+30%暴伤+60%满覆盖。",
+    "[近似] 护盾值、格挡架势、攻防转换冲击短窗未建模。",
+    "实现：src/mechanics/agents/caesar.ts + teammate-buffs 1071 组。"
   ],
   "teamBuffs": []
 }

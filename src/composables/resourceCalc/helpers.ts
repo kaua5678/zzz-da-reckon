@@ -269,11 +269,20 @@ export function computePanelPhases(
   const soukakuAdditionalActive = soukakuSlot >= 0
     ? evalAdditionalAbility(team, soukakuSlot, soukakuAgent, getAgentSpec('1131')?.additionalAbility) === true
     : false
+  // 凯撒额外能力：同阵营或「其他可招架支援角色」（有任意队友即近似满足）
+  const caesarSlot = team.find(member => member.agentId === '1071')?.slot ?? -1
+  const caesarAgent = caesarSlot >= 0 ? catalogStore.getAgent('1071') ?? null : null
+  const caesarFactionActive = caesarSlot >= 0
+    ? evalAdditionalAbility(team, caesarSlot, caesarAgent, getAgentSpec('1071')?.additionalAbility) === true
+    : false
+  const caesarAdditionalActive = caesarSlot >= 0
+    && (caesarFactionActive || team.some(m => m.slot !== caesarSlot && !!m.agentId))
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
     .filter(buff => buff.id !== 'rina.additional_electric_damage' || rinaAdditionalActive)
     .filter(buff => buff.id !== 'lighter.additional_morale_ice_fire_dmg' || lighterAdditionalActive)
     .filter(buff => buff.id !== 'nicole.additional_ether_damage' || nicoleAdditionalActive)
     .filter(buff => buff.id !== 'soukaku.additional_ice_damage' || soukakuAdditionalActive)
+    .filter(buff => buff.id !== 'caesar.additional_battle_spirit_dmg' || caesarAdditionalActive)
 
   const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
   for (const buff of allTeammateBuffs) {
