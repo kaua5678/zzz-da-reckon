@@ -2,18 +2,31 @@
   "schemaVersion": 1,
   "id": "agent:nicole",
   "name": "妮可",
-  "agentIds": [
-    "1031"
-  ],
-  "status": "not_described_not_implemented",
+  "agentIds": ["1031"],
+  "status": "implemented_approximation",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
   "events": [],
   "verifications": [],
   "stateMachines": [],
+  "additionalAbility": {
+    "teamConditions": [
+      { "type": "sameAttributeAsSelf" },
+      { "type": "sameFactionAsSelf" }
+    ],
+    "note": "额外能力·狡兔三窟：同属性或同阵营队友触发；核心减益期间全队以太伤+25%。"
+  },
   "notes": [
-    "待录入：妮可 的机制、资源、事件与验证。"
+    "[已确认·数据] 核心被动：强化子弹/能量场命中 → 目标防御-40%（3.5s），teammate-buffs 默认满覆盖。",
+    "[已确认·数据] 额外能力：同属性或同阵营触发；核心减益时全队以太伤+25%，门控 helpers 过滤。",
+    "[已确认·数据] 影画1：强特伤害与异常积蓄+16%（执行级 EX 段）；蓄力延长能量场不建模。",
+    "[已确认·近似] 影画2：触发核心减益回5能量/15s → floor(战斗时长/15)×5 并入开局能量赠送。",
+    "[已确认·数据] 影画3/5：通用技能等级+2。",
+    "[已确认·数据] 影画4：能量场范围+3m，无乘区，不建模。",
+    "[已确认·数据] 影画6：能量场叠暴击1.5%×10层默认满层15%（teammate-buffs）。",
+    "[近似] 未模拟3.5s减益逐秒覆盖与子弹强化普攻循环。",
+    "实现：src/mechanics/agents/nicole.ts + teammate-buffs 1031 组。"
   ],
   "teamBuffs": []
 }

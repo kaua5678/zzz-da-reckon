@@ -151,55 +151,53 @@
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "强特伤害/异常积蓄+16%（执行级）"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "蓄力延长能量场不建模"
      ]
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "核心减益回5能量/15s → floor(t/15)×5 并入开局能量"
+     ],
+     "pending": []
     },
     {
      "cinema": 3,
      "status": "implemented_generic_skill_level",
      "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+      "通用技能等级+2"
      ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
+     "pending": []
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "范围扩大无乘区，明确跳过"
+     ],
+     "pending": []
     },
     {
      "cinema": 5,
      "status": "implemented_generic_skill_level",
      "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+      "通用技能等级+2"
      ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
+     "pending": []
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "能量场暴击1.5%×10默认满层（teammate-buffs）"
+     ],
+     "pending": []
     }
    ]
   },
