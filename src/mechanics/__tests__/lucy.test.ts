@@ -5,7 +5,10 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import {
   assignLucyUltNeighborEnergy,
+  computeLucyBoarCount,
   computeLucyCheer,
+  LUCY_BOAR_CD_DEFAULT,
+  lucyBoarCd,
   lucyMechanic,
 } from '@/mechanics/agents/lucy'
 
@@ -53,6 +56,59 @@ describe('露西纯函数', () => {
     expect(c6.c6Bombs).toBe(4)
     expect(c6.totalSpins).toBe(2 + 4)
     expect(c6.c1EnergyPerMember).toBe((2 + 4) * 2)
+  })
+})
+
+describe('露西·抄家伙', () => {
+  it('调用次数 = floor(前台时间 / cd)', () => {
+    expect(computeLucyBoarCount(60, 4)).toBe(15)
+    expect(computeLucyBoarCount(60, 6)).toBe(10)
+    expect(computeLucyBoarCount(59, 4)).toBe(14)
+    expect(computeLucyBoarCount(0, 4)).toBe(0)
+  })
+  it('冷却读取：缺省 4，钳制 4–6', () => {
+    expect(lucyBoarCd({} as any)).toBe(LUCY_BOAR_CD_DEFAULT)
+    expect(lucyBoarCd({ 'setting:lucy.boarCd': 5 } as any)).toBe(5)
+    expect(lucyBoarCd({ 'setting:lucy.boarCd': 9 } as any)).toBe(6)
+    expect(lucyBoarCd({ 'setting:lucy.boarCd': 1 } as any)).toBe(4)
+  })
+  it('模块声明抄家伙冷却设置：默认4，范围4–6', () => {
+    const st = lucyMechanic.settings!.find(x => x.id === 'lucy.boarCd')!
+    expect(st.default).toBe(4)
+    expect(st.min).toBe(4)
+    expect(st.max).toBe(6)
+  })
+  it('buildCharConfig：三段倍率之和 792.1', () => {
+    const cfg: any = {}
+    const skills: any = {
+      categories: [{
+        moves: [
+          { id: '1151023', rows: [{ id: 'damage', values: [186] }] },
+          { id: '1151024', rows: [{ id: 'damage', values: [255.1] }] },
+          { id: '1151025', rows: [{ id: 'damage', values: [351] }] },
+        ],
+      }],
+    }
+    lucyMechanic.buildCharConfig!({ slot: 0, agent: {} as any, skills, cinemaLevel: 0, wEngineId: '', wEngineModLevel: 5, team: [], cfg } as any)
+    expect(cfg.lucyBoarComboDmg).toBeCloseTo(186 + 255.1 + 351, 5)
+  })
+  it('buildExecutions：按冷却生成抄家伙执行，三段合计且不占前台时间', () => {
+    const cfg: any = {
+      lucyCinemaLevel: 0,
+      lucySpinDmg: 500.8,
+      lucyBoarComboDmg: 792.1,
+      'setting:lucy.boarCd': 5,
+    }
+    const executions: any[] = []
+    lucyMechanic.buildExecutions!({
+      cfg,
+      state: { exSpecialCount: 1, chainCountTotal: 0, ultimateCount: 0, frontlineTime: 60 },
+      executions,
+    } as any)
+    const boar = executions.find(e => e.moveId === '1151023')
+    expect(boar.count).toBe(12)
+    expect(boar.damageMultiplier).toBeCloseTo(792.1, 5)
+    expect(boar.actionTime).toBe(0)
   })
 })
 

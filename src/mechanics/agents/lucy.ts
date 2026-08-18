@@ -4,6 +4,7 @@
  * 拐力：加油！攻击公式 + 影画4 暴伤（spec teamBuffs）。
  * 终结技回能：下一位 +30、前一位 +10（两人队则另一人 +30）。
  * 加油触发：强特；影画2 连携/终结也触发 → 每次触发 回旋挥击(1151026)。
+ * 抄家伙(1151023-25)：4–6 秒调用一次（冷却可调，默认4），每次三段倍率之和，后台自动不占前台时间。
  * 影画1：回旋挥击命中全队 +2 能量。
  * 影画6：加油下队友强特命中 → 小猪落地 300% 攻火伤 + 一次回旋挥击。
  */
@@ -22,6 +23,13 @@ export const LUCY_ID = '1151'
 const MOVE_SPIN = '1151026' // 亲卫队小猪：回旋挥击！
 const MOVE_C6_BOMB = '1151_c6_pig_bomb'
 const C6_BOMB_MULT = 300
+// 亲卫队小猪：抄家伙！三段（#1 186 / #2 255.1 / #3 351，合计 792.1%）
+const MOVE_BOAR_1 = '1151023'
+const MOVE_BOAR_2 = '1151024'
+const MOVE_BOAR_3 = '1151025'
+export const LUCY_BOAR_CD_DEFAULT = 4
+export const LUCY_BOAR_CD_MIN = 4
+export const LUCY_BOAR_CD_MAX = 6
 
 function findMove(skills: AgentSkills | undefined, id: string): SkillMove | null {
   if (!skills) return null
@@ -143,6 +151,25 @@ function pushExec(
   } as SkillExecution)
 }
 
+function cfgNum(cfg: CharacterOperationConfig, key: string, fallback: number): number {
+  const record = cfg as unknown as Record<string, unknown>
+  const raw = Number(record[`setting:${key}`] ?? fallback)
+  return Number.isFinite(raw) ? raw : fallback
+}
+
+/** 抄家伙调用冷却（秒），钳制到 4–6；缺省 4 */
+export function lucyBoarCd(cfg: CharacterOperationConfig): number {
+  const raw = cfgNum(cfg, 'lucy.boarCd', LUCY_BOAR_CD_DEFAULT)
+  return Math.max(LUCY_BOAR_CD_MIN, Math.min(LUCY_BOAR_CD_MAX, raw))
+}
+
+/** 抄家伙调用次数 = floor(前台时间 / cd)；后台自动不占前台时间 */
+export function computeLucyBoarCount(frontlineTime: number, cd: number): number {
+  const t = Math.max(0, Number(frontlineTime) || 0)
+  const c = Math.max(0.1, Number(cd) || LUCY_BOAR_CD_DEFAULT)
+  return Math.floor(t / c)
+}
+
 function buildCharConfig({ skills, cinemaLevel, team, cfg }: AgentCharConfigInput): void {
   const cinema = cinemaLevel ?? 0
   const record = cfg as unknown as Record<string, unknown>
@@ -150,6 +177,13 @@ function buildCharConfig({ skills, cinemaLevel, team, cfg }: AgentCharConfigInpu
 
   const spin = findMove(skills, MOVE_SPIN)
   record.lucySpinDmg = rowVal(spin, 'damage')
+
+  // 抄家伙：三段倍率之和作为单次调用总倍率
+  const boarDmg =
+    rowVal(findMove(skills, MOVE_BOAR_1), 'damage')
+    + rowVal(findMove(skills, MOVE_BOAR_2), 'damage')
+    + rowVal(findMove(skills, MOVE_BOAR_3), 'damage')
+  record.lucyBoarComboDmg = boarDmg
 
   // 邻位回能标记写在全队 cfg 上（由 useResourceCalc 在组队后调用 applyLucyTeamEnergyFlags）
   record.lucyIsLucy = true
@@ -181,6 +215,21 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
       + '）',
   )
 
+  // 抄家伙：4–6 秒调用一次，每次打出三段倍率之和；后台自动，不占前台时间
+  const boarCd = lucyBoarCd(cfg)
+  const boarCount = computeLucyBoarCount(state.frontlineTime ?? 0, boarCd)
+  const boarDmg = Number(record.lucyBoarComboDmg ?? 0) || 0
+  record.lucyBoarCount = boarCount
+  pushExec(
+    executions,
+    MOVE_BOAR_1,
+    '亲卫队小猪：抄家伙！',
+    'basic',
+    boarCount,
+    boarDmg,
+    `抄家伙 ×${boarCount}（${boarCd}s/次，三段倍率之和）`,
+  )
+
   if (cheer.c6Bombs > 0) {
     pushExec(
       executions,
@@ -205,8 +254,12 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
     ultimateCount: state.ultimateCount ?? 0,
     teammateExSpecialTotal: mateEx,
   })
+  const boarCd = lucyBoarCd(cfg)
+  const boarCount = computeLucyBoarCount(state.frontlineTime ?? 0, boarCd)
   return {
     lucyCheer: cheer,
+    lucyBoarCount: boarCount,
+    lucyBoarCd: boarCd,
     specResources: {
       lucy_cheer: {
         id: 'lucy_cheer',
@@ -231,14 +284,17 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
 function resourceSections({ result }: AgentResourceSectionsInput) {
   const cheer = (result as any)?.lucyCheer as LucyCheerResult | undefined
   if (!cheer) return []
+  const boarCount = Number((result as any)?.lucyBoarCount ?? 0) || 0
+  const boarCd = Number((result as any)?.lucyBoarCd ?? LUCY_BOAR_CD_DEFAULT) || LUCY_BOAR_CD_DEFAULT
   return [{
     id: 'lucy-cheer',
     title: '露西·加油/小猪',
-    summary: `加油 ${cheer.cheerTriggers} · 回旋 ${cheer.totalSpins}`
+    summary: `加油 ${cheer.cheerTriggers} · 回旋 ${cheer.totalSpins} · 抄家伙 ${boarCount}`
       + (cheer.c6Bombs > 0 ? ` · C6炸 ${cheer.c6Bombs}` : ''),
     rows: [
       { label: '加油触发', value: String(cheer.cheerTriggers), detail: '强特' + (cheer.cheerTriggers > 0 ? '（+2命连携/终结）' : '') },
       { label: '回旋挥击', value: String(cheer.totalSpins), detail: '加油触发 + C6 落地后各 1 次' },
+      { label: '抄家伙调用', value: String(boarCount), detail: `前台时间 / ${boarCd}s，三段合计 792.1%` },
       { label: 'C1 全队回能', value: String(cheer.c1EnergyPerMember), detail: '回旋命中全队 +2/次' },
       { label: 'C6 落地炸', value: String(cheer.c6Bombs), detail: '队友强特次数 × 300% 攻' },
     ],
@@ -249,7 +305,17 @@ export const lucyMechanic: AgentMechanicModule = {
   id: 'agent:lucy',
   agentIds: [LUCY_ID],
   name: '露西·加油/小猪',
-  description: '终结邻位回能；加油触发回旋挥击；影画1/2/6 回能与落地炸附伤。',
+  description: '终结邻位回能；加油触发回旋挥击；抄家伙按冷却周期调用；影画1/2/6 回能与落地炸附伤。',
+  settings: [{
+    id: 'lucy.boarCd',
+    label: '露西·抄家伙调用冷却',
+    description: '亲卫队小猪：抄家伙！每 4–6 秒调用一次（三段合计 792.1%），默认按最快的 4 秒计。',
+    default: LUCY_BOAR_CD_DEFAULT,
+    min: LUCY_BOAR_CD_MIN,
+    max: LUCY_BOAR_CD_MAX,
+    step: 0.5,
+    suffix: '秒',
+  }],
   buildCharConfig,
   buildExecutions,
   buildResourceResult,
