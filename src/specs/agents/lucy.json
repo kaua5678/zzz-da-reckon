@@ -2,7 +2,9 @@
   "schemaVersion": 1,
   "id": "agent:lucy",
   "name": "露西",
-  "agentIds": ["1151"],
+  "agentIds": [
+    "1151"
+  ],
   "status": "partially_implemented",
   "attributeConversions": [],
   "resources": [],
@@ -26,7 +28,9 @@
           "type": "formula",
           "sourceStat": "atk",
           "sourcePanelPhase": "outOfCombat",
-          "formula": { "expression": "min(600, floor(x * 0.258 + 104))" },
+          "formula": {
+            "expression": "min(600, floor(x * 0.258 + 104))"
+          },
           "note": "[已确认·数据] Lv.7 加油：25.8%初始攻+104，上限600"
         }
       ],
@@ -41,15 +45,20 @@
       "target": "team",
       "coverage": 1,
       "effects": [
-        { "stat": "critDmg", "value": 10, "mode": "flat" }
+        {
+          "stat": "critDmg",
+          "value": 10,
+          "mode": "flat"
+        }
       ],
       "status": "implemented"
     }
   ],
   "notes": [
-    "简单辅助：核心拐力=加油！攻击（公式）+ 影画4 暴伤+10%。",
-    "[已确认] 加油攻击 = min(600, 初始攻×25.8%+104)，满覆盖；影画3/5 技能等级通用。",
-    "[待描述] 影画1/2/6 与额外能力未提供完整文本，暂不实现。",
-    "自身输出（小猪/强特）按通用倍率表，无需专属模块。"
+    "拐力：加油！攻击公式 + 影画4 暴伤（teamBuffs）。",
+    "[已确认] 终结技回能：下一位+30、前一位+10（两人队另一人+30）。",
+    "[已确认] 加油触发回旋挥击；影画2 连携/终结也触发加油。",
+    "[已确认] 影画1 回旋命中全队+2能量；影画6 队友强特→300%落地炸+回旋。",
+    "实现：src/mechanics/agents/lucy.ts + lucy.json teamBuffs。"
   ]
 }

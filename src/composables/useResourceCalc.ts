@@ -1,4 +1,5 @@
 import { YESHUGUANG_FULL_STUN_MOVES } from '@/mechanics/agents/yeshuguang'
+import { applyLucyTeamEnergyFlags } from '@/mechanics/agents/lucy'
 import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -133,6 +134,9 @@ export function useResourceCalc() {
       const cfg = buildCharConfig(i, configStore, catalogStore)
       if (cfg) characters.push(cfg)
     }
+
+    // 露西：邻位终结回能 / C1 标记写入各槽位 cfg
+    applyLucyTeamEnergyFlags(characters)
 
     // 橘福福额外能力·八面威风：队伍有强攻/命破时，这些角色每次终结技 +300 喧响
     // （仪玄青溟云影走 ultimateCount；符法千重在收敛环用上一轮次数注入，见下方 1371 分支）。
@@ -664,7 +668,7 @@ function applyNormaHatChain(
     return out
   }
 
-  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0): {
+  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0): {
     resourceResult: TeamResourceResult
     stunPool: StunPoolResult | null
     anomalyPool: AnomalyPoolResult | null
@@ -681,6 +685,7 @@ function applyNormaHatChain(
     yixuanFuFaForJufufu: number
     teamUltimateForJufufu: number
     yeshuguangGiftUlt: number
+    lucyTeammateEx: number
   } | null {
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
@@ -972,6 +977,13 @@ function applyNormaHatChain(
           yeshuguangGiftUltCount: prevYeshuguangGiftUlt,
         }
       }
+      if (merged.agentId === '1151') {
+        // 队友强特合计（不含自己）：用上一轮 resource 结果更好，这里用 prev 注入字段
+        return {
+          ...merged,
+          lucyTeammateExTotal: prevLucyTeammateEx,
+        }
+      }
       return merged
     })
     // 特殊动作喧响奖励（弹刀215/闪反10/连携10/快支20，含伴随50%）：本轮即时结算——
@@ -1121,6 +1133,27 @@ function applyNormaHatChain(
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
     const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly)
 
+    // 露西 C6：队友强特合计 + 回旋预估（供下一轮 C1 回能）
+    let lucyTeammateExNext = 0
+    {
+      let mateEx = 0
+      for (const ch of rr.characters) {
+        if (ch.agentId !== '1151') mateEx += ch.exSpecialCount ?? 0
+      }
+      lucyTeammateExNext = mateEx
+      const lucyCh = rr.characters.find(c => c.agentId === '1151')
+      if (lucyCh) {
+        const cinema = Math.max(0, Math.floor(Number((characters.find(c => c.agentId === '1151') as any)?.lucyCinemaLevel ?? 0)))
+        const spins = Math.max(0, Math.floor(lucyCh.exSpecialCount ?? 0))
+          + (cinema >= 2 ? Math.max(0, Math.floor(lucyCh.chainCountTotal ?? 0)) + Math.max(0, Math.floor(lucyCh.ultimateCount ?? 0)) : 0)
+          + (cinema >= 6 ? mateEx : 0)
+        for (const c of characters) {
+          ;(c as any).lucyCheerSpinsEstimate = spins
+          ;(c as any).lucyTeammateExTotal = mateEx
+        }
+      }
+    }
+
     return {
       resourceResult: rrShown,
       stunPool: sp1.pool,
@@ -1138,6 +1171,7 @@ function applyNormaHatChain(
       yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
       teamUltimateForJufufu: teamUltimateForJufufuNext,
       yeshuguangGiftUlt: yeshuguangGiftUltNext,
+      lucyTeammateEx: lucyTeammateExNext,
     }
   }
 
@@ -1158,6 +1192,7 @@ function applyNormaHatChain(
     let prevYixuanFuFaForJufufu = 0
     let prevTeamUltimateForJufufu = 0
     let prevYeshuguangGiftUlt = 0
+    let prevLucyTeammateEx = 0
     let prevAnomalyDecibelBonus: number[] = []
     let prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }
     let prevUltSeq = ''
@@ -1165,7 +1200,7 @@ function applyNormaHatChain(
     let prevTopUpSeq = ''
     const seenStunCounts = new Set<number>()
     for (let k = 0; k < MAX_OUTER_ITER; k++) {
-      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt)
+      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx)
       const ait = out?.auricInkTriggerCount ?? 0
       const gr = out?.goodReview
       if (gr !== undefined && gr >= 0) prevGoodReview = gr
@@ -1193,6 +1228,7 @@ function applyNormaHatChain(
       prevYixuanFuFaForJufufu = out?.yixuanFuFaForJufufu ?? 0
       prevTeamUltimateForJufufu = out?.teamUltimateForJufufu ?? 0
       prevYeshuguangGiftUlt = out?.yeshuguangGiftUlt ?? 0
+      prevLucyTeammateEx = out?.lucyTeammateEx ?? 0
       prevUltSeq = ultSeq
       prevAnomalySeq = anomalySeq
       prevTopUpSeq = topUpSeq

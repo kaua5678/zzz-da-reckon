@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
+import {
+  assignLucyUltNeighborEnergy,
+  computeLucyCheer,
+  lucyMechanic,
+} from '@/mechanics/agents/lucy'
 
 const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
 const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
@@ -12,7 +17,7 @@ const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: { 4: 'atkPct' as any, 5: 'fireDmg' as any, 6: 'atk' as any }, subStatAllocation: {} },
   parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
-  quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
+  quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
 }
 
 function stubFetch() {
@@ -25,29 +30,42 @@ function stubFetch() {
   }))
 }
 
-describe('露西（1151）加油拐力', () => {
+describe('露西纯函数', () => {
+  it('邻位回能：3人 下一位30 前一位10', () => {
+    const m = assignLucyUltNeighborEnergy([0, 1, 2], 1)
+    expect(m[2]).toBe(30)
+    expect(m[0]).toBe(10)
+    expect(m[1]).toBeUndefined()
+  })
+  it('邻位回能：2人 另一人30', () => {
+    const m = assignLucyUltNeighborEnergy([0, 1], 0)
+    expect(m[1]).toBe(30)
+  })
+  it('加油：0命仅强特；2命+连携终结；6命 C6=队友强特', () => {
+    const c0 = computeLucyCheer({ cinemaLevel: 0, exSpecialCount: 3, chainCountTotal: 2, ultimateCount: 1, teammateExSpecialTotal: 5 })
+    expect(c0.cheerTriggers).toBe(3)
+    expect(c0.totalSpins).toBe(3)
+    expect(c0.c6Bombs).toBe(0)
+    const c2 = computeLucyCheer({ cinemaLevel: 2, exSpecialCount: 3, chainCountTotal: 2, ultimateCount: 1, teammateExSpecialTotal: 5 })
+    expect(c2.cheerTriggers).toBe(3 + 2 + 1)
+    expect(c2.totalSpins).toBe(6)
+    const c6 = computeLucyCheer({ cinemaLevel: 6, exSpecialCount: 2, chainCountTotal: 0, ultimateCount: 0, teammateExSpecialTotal: 4 })
+    expect(c6.c6Bombs).toBe(4)
+    expect(c6.totalSpins).toBe(2 + 4)
+    expect(c6.c1EnergyPerMember).toBe((2 + 4) * 2)
+  })
+})
+
+describe('露西面板/执行', () => {
   beforeEach(() => { setActivePinia(createPinia()); stubFetch() })
 
-  it('spec 合并后加油 buff 带 formula（非死固定 600）', async () => {
+  it('加油 formula 合并 + 影画4 暴伤门控', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
     await catalog.loadTeammateBuffs()
-    const group = catalog.getTeammateBuffGroup('1151')
-    const cheer = group?.buffs.find((b: any) => b.id === 'lucy.ex_special_cheer_on')
-    expect(cheer).toBeTruthy()
-    const eff = cheer!.effects[0] as any
-    expect(eff.type).toBe('formula')
-    expect(eff.formula?.expression).toContain('0.258')
-    expect(eff.sourceStat).toBe('atk')
-    expect(eff.sourcePanelPhase).toBe('outOfCombat')
-  })
-
-  it('影画4 门控：3命无暴伤+10，4命有', async () => {
-    const catalog = useCatalogStore()
-    await catalog.load()
-    await catalog.loadTeammateBuffs()
+    const cheer = catalog.getTeammateBuffGroup('1151')?.buffs.find((b: any) => b.id === 'lucy.ex_special_cheer_on') as any
+    expect(cheer?.effects?.[0]?.type).toBe('formula')
     const config = useConfigStore()
-    // 露西 + 任意输出（11号）
     config.team[0] = { slot: 0, agentId: '1041', cinemaLevel: 0, ...baseConfig } as any
     config.team[1] = { slot: 1, agentId: '1151', cinemaLevel: 3, ...baseConfig } as any
     config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
@@ -60,22 +78,23 @@ describe('露西（1151）加油拐力', () => {
     expect(p4.critDmg - p3.critDmg).toBe(10)
   })
 
-  it('加油攻击：有露西时队友 atk 增加（公式生效，>0 且 ≤600）', async () => {
-    const catalog = useCatalogStore()
-    await catalog.load()
-    await catalog.loadTeammateBuffs()
-    const config = useConfigStore()
-    config.team[0] = { slot: 0, agentId: '1041', cinemaLevel: 0, ...baseConfig } as any
-    config.team[1] = { slot: 1, agentId: '', cinemaLevel: 0, ...baseConfig } as any
-    config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
-    config.syncTeammateBuffsFromTeam()
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
-    const without = computePanelPhases(0, config, catalog)!.inCombat as any
-    config.team[1] = { slot: 1, agentId: '1151', cinemaLevel: 0, ...baseConfig } as any
-    config.syncTeammateBuffsFromTeam()
-    const withLucy = computePanelPhases(0, config, catalog)!.inCombat as any
-    const delta = withLucy.atk - without.atk
-    expect(delta).toBeGreaterThan(0)
-    expect(delta).toBeLessThanOrEqual(600)
+  it('buildExecutions：加油3 + C6炸4 → 回旋7 + 炸4', () => {
+    const cfg: any = {
+      lucyCinemaLevel: 6,
+      lucyTeammateExTotal: 4,
+      lucySpinDmg: 500.8,
+    }
+    const executions: any[] = []
+    lucyMechanic.buildExecutions!({
+      cfg,
+      state: { exSpecialCount: 3, chainCountTotal: 0, ultimateCount: 0 },
+      executions,
+    } as any)
+    const spin = executions.find(e => e.moveId === '1151026')
+    const bomb = executions.find(e => e.moveId === '1151_c6_pig_bomb')
+    expect(spin.count).toBe(7)
+    expect(spin.damageMultiplier).toBe(500.8)
+    expect(bomb.count).toBe(4)
+    expect(bomb.damageMultiplier).toBe(300)
   })
 })

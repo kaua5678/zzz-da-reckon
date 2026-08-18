@@ -690,7 +690,32 @@ export function iterate(
         teamUltFlash += prevStates[j].ultimateCount * (cfg.teamUltimateFlashBonus ?? 0)
       }
     }
-    const totalEnergy = energySrc.total + supportUlt + teamUltFlash
+    // 露西：终结邻位回能 + 影画1 回旋全队回能（次数用上一轮露西 state）
+    let lucyEnergy = 0
+    const lucyIdx = configs.findIndex(c => c.agentId === '1151')
+    if (lucyIdx >= 0) {
+      const num = (v: unknown) => {
+        const x = Number(v)
+        return Number.isFinite(x) ? x : 0
+      }
+      const lucyPrev = prevStates[lucyIdx]
+      const lucyUlt = Math.max(0, Math.floor(lucyPrev?.ultimateCount ?? 0))
+      const lucyCfg = configs[lucyIdx]
+      const lucyCinema = Math.max(0, Math.floor(num((lucyCfg as any).lucyCinemaLevel)))
+      lucyEnergy += Math.max(0, num(cfg.lucyEnergyPerLucyUlt)) * lucyUlt
+      if (num(cfg.lucyC1Enabled) > 0) {
+        const spinsHint = Math.max(0, num((cfg as any).lucyCheerSpinsEstimate))
+        const spinEst = spinsHint > 0
+          ? spinsHint
+          : Math.max(0, Math.floor(lucyPrev?.exSpecialCount ?? 0))
+            + (lucyCinema >= 2
+              ? Math.max(0, Math.floor(lucyPrev?.chainCountTotal ?? 0)) + lucyUlt
+              : 0)
+            + (lucyCinema >= 6 ? Math.max(0, num((lucyCfg as any).lucyTeammateExTotal)) : 0)
+        lucyEnergy += spinEst * 2
+      }
+    }
+    const totalEnergy = energySrc.total + supportUlt + teamUltFlash + lucyEnergy
     energies.push(totalEnergy)
 
     // 强特次数 = 总能量 ÷ 强特消耗（伊德海莉失衡内由轴连段反推，剩余打非失衡强特）

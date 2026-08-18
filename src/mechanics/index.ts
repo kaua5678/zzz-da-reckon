@@ -42,6 +42,7 @@ import { yixuanMechanic } from './agents/yixuan'
 import { lycaonMechanic } from './agents/lycaon'
 import { soldier11Mechanic } from './agents/soldier11'
 import { yeshuguangMechanic } from './agents/yeshuguang'
+import { lucyMechanic } from './agents/lucy'
 import { agentSpecs } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
@@ -74,6 +75,7 @@ registerAgentMechanic(normaMechanic)
 registerAgentMechanic(prometheusGuiltyMechanic)
 registerAgentMechanic(zhendouHeartfireMechanic)
 registerAgentMechanic(yeshuguangMechanic)
+registerAgentMechanic(lucyMechanic)
 registerAgentMechanic(aireProficiencyMechanic)
 registerAgentMechanic(peiluoProminenceMechanic)
 registerAgentMechanic(sethShieldMechanic)

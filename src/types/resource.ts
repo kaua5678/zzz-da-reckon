@@ -1362,6 +1362,12 @@ export interface CharacterOperationConfig {
   yeshuguangSwordInitial?: number
   /** 叶瞬光：琉音转大赠送逐云次数（编排层注入） */
   yeshuguangGiftUltCount?: number
+  /** 露西终结技每次给本槽位的能量（邻位 30/10） */
+  lucyEnergyPerLucyUlt?: number
+  /** 露西影画1：回旋挥击全队回能标记 */
+  lucyC1Enabled?: number
+  /** 露西：队友强特合计（编排注入） */
+  lucyTeammateExTotal?: number
   /** 叶瞬光：队友整局帷幕次数（也可 setting 滑块） */
   yeshuguangTeamCurtainCount?: number
   /** 仪玄·2连墨痕化形次数（主页交互栏；#1+#3，40闪能/次） */
