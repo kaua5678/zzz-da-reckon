@@ -134,3 +134,50 @@ describe('佩洛伊斯额外能力：击破/支援队友门控暴伤 +40', () =>
     expect(withMate.critDmg - withoutMate.critDmg).toBe(40)
   })
 })
+
+describe('佩洛伊斯日珥账本（命中回复/天光消耗）', () => {
+  it('patchExecutions 汇总：余晖回复 + 天光 a3/a4 消耗与连段计数', () => {
+    const executions: any[] = [
+      { moveId: '1551003', count: 2 }, // 余晖#3 回复 6.2014×2
+      { moveId: '1551010', count: 1 }, // 旭日 回复 1.4661
+      { moveId: '1551006', count: 3 }, // 天光a3 消耗 14.6107×3
+      { moveId: '1551007', count: 2 }, // 天光a4 消耗 11.8234×2
+      { moveId: '1551004', count: 4 }, // 天光a1 消耗 1.5007×4
+    ]
+    const cfg: any = {}
+    peiluoProminenceMechanic.patchExecutions!({ cfg, state: { ultimateCount: 0 }, executions } as any)
+    const ledger = cfg.peiluoProminenceLedger
+    expect(ledger.hitGain).toBeCloseTo(6.2014 * 2 + 1.4661, 4)
+    expect(ledger.spend).toBeCloseTo(14.6107 * 3 + 11.8234 * 2 + 1.5007 * 4, 4)
+    expect(ledger.lowSpend).toBeCloseTo(1.5007 * 4, 4)
+    expect(ledger.a3).toBe(3)
+    expect(ledger.a4).toBe(2)
+  })
+
+  it('buildResourceResult：命中回复并入日珥总账、天光消耗计入剩余', () => {
+    const cfg: any = { peiluoProminenceLedger: { hitGain: 20, spend: 30, lowSpend: 5, a3: 1, a4: 1 } }
+    const out: any = peiluoProminenceMechanic.buildResourceResult!({ cfg, state: { frontlineTime: 0, exSpecialCount: 0, ultimateCount: 0 } } as any)
+    const prom = out.specResources['peiluo_prominence']
+    expect(prom.gains['peiluo_hit_gain']).toBe(20)
+    expect(prom.total).toBe(30 + 20) // 入场30 + 命中回复20（其他来源此 state 下为 0）
+    expect(prom.remaining).toBe(30 + 20 - 30)
+    expect(prom.spendCosts['peiluo_tianguang_spend']).toBe(30)
+  })
+
+  it('resourceSections：日珥账本卡输出核对结论', () => {
+    const result: any = {
+      specResources: {
+        peiluo_prominence: {
+          initialValue: 30, gains: { peiluo_frontline_gain: 60 }, total: 90, remaining: 10, totalGain: 60,
+          spendCounts: {}, spendCosts: {}, maxValue: 60, bonusCount: 0, id: 'peiluo_prominence', name: '日珥',
+        },
+      },
+      peiluoProminenceLedger: { hitGain: 25, spend: 80, lowSpend: 6, a3: 3, a4: 2 },
+    }
+    const sections: any[] = peiluoProminenceMechanic.resourceSections!({ result } as any)
+    const card = sections.find(s => s.id === 'peiluo-prominence-ledger')
+    expect(card).toBeTruthy()
+    expect(card.summary).toContain('结余') // 回复 30+60+25=115 > 消耗 80
+    expect(card.rows.find((r: any) => r.label === '核对结论').value).toBe('日珥足够')
+  })
+})

@@ -360,6 +360,111 @@ peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }: any) => 
   pushUlt(PEILUO_ULT_VERDICT, verdict, `右分支·永陷幽囚（决算）×${verdict}`)
 }
 
+/* 日珥账本（数据源 catalog attack_data_0=回复 / attack_data_1=消耗，原始值已 ÷100）：
+ * - 回复：余晖/旭日/朝晖/EX日华/快支/支援突击 命中按段回复 + 入场30 + 接战0.5/s(上限60) + 上分支30 + 强特完美格挡10（后四项在 spec 资源规则）
+ * - 消耗：天光 a1-a4 命中消耗（a3/a4 为连段主消耗）
+ * - 口径：账本核对型——倍率表无强化/普通天光差异行，日珥不足不改变伤害，只校验循环是否打得起 a3/a4 连段。
+ */
+const PEILUO_PROMINENCE_GAIN: Record<string, number> = {
+  '1551001': 1.4001, // 普通攻击：余晖 #1
+  '1551002': 1.5321, // 余晖 #2
+  '1551003': 6.2014, // 余晖 #3
+  '1551010': 1.4661, // 冲刺攻击：旭日
+  '1551011': 2.3347, // 闪避反击：朝晖
+  '1551009': 4.9987, // 强化特殊技：日华
+  '1551017': 1.2674, // 快速支援：黄昏禁卫
+  '1551021': 2.1327, // 支援突击：重睹天日
+}
+const PEILUO_PROMINENCE_SPEND: Record<string, number> = {
+  '1551004': 1.5007, // 天光 #1
+  '1551005': 2.0459, // 天光 #2
+  '1551006': 14.6107, // 天光 #3（连段）
+  '1551007': 11.8234, // 天光 #4（连段）
+}
+const PEILUO_CHAIN_COST = PEILUO_PROMINENCE_SPEND['1551006'] + PEILUO_PROMINENCE_SPEND['1551007'] // a3+a4 连段单价 26.4341
+
+const peiluoUltBranchPatch = peiluoProminenceMechanic.patchExecutions!
+peiluoProminenceMechanic.patchExecutions = (input: any) => {
+  peiluoUltBranchPatch(input)
+  const { cfg, executions } = input
+  let hitGain = 0
+  let spend = 0
+  let lowSpend = 0
+  let a3 = 0
+  let a4 = 0
+  for (const e of executions) {
+    const n = e.count ?? 0
+    const g = PEILUO_PROMINENCE_GAIN[e.moveId]
+    if (g) hitGain += g * n
+    const s = PEILUO_PROMINENCE_SPEND[e.moveId]
+    if (s) {
+      spend += s * n
+      if (e.moveId === '1551006') a3 += n
+      else if (e.moveId === '1551007') a4 += n
+      else lowSpend += s * n
+    }
+  }
+  cfg.peiluoProminenceLedger = { hitGain, spend, lowSpend, a3, a4 }
+}
+
+peiluoProminenceMechanic.buildResourceResult = ({ cfg, state }: any) => {
+  const spec = getAgentSpec('1551')
+  const specResources: Record<string, SpecResourceResult> = spec
+    ? Object.fromEntries(computeSpecResources(spec, cfg, state))
+    : {}
+  const prom = specResources['peiluo_prominence']
+  const ledger = cfg.peiluoProminenceLedger ?? { hitGain: 0, spend: 0, lowSpend: 0, a3: 0, a4: 0 }
+  if (prom) {
+    if (ledger.hitGain > 0) {
+      prom.gains['peiluo_hit_gain'] = ledger.hitGain
+      prom.totalGain += ledger.hitGain
+      prom.total += ledger.hitGain
+      prom.remaining += ledger.hitGain
+    }
+    if (ledger.spend > 0) {
+      prom.spendCounts['peiluo_tianguang_spend'] = 1
+      prom.spendCosts['peiluo_tianguang_spend'] = ledger.spend
+      prom.remaining -= ledger.spend
+    }
+  }
+  return { specResources, peiluoProminenceLedger: ledger }
+}
+
+peiluoProminenceMechanic.resourceSections = (input: AgentResourceSectionsInput) => {
+  const spec = getAgentSpec('1551')
+  const specSections = spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
+  const result = input.result as any
+  const prom = result.specResources?.['peiluo_prominence'] as SpecResourceResult | undefined
+  const ledger = result.peiluoProminenceLedger ?? { hitGain: 0, spend: 0, lowSpend: 0, a3: 0, a4: 0 }
+  if (!prom) return specSections
+  const pf = (n: number) => String(Math.round(n * 10) / 10)
+  const entry = prom.initialValue
+  const passive = prom.gains['peiluo_frontline_gain'] ?? 0
+  const upper = prom.gains['peiluo_upper_ult_gain'] ?? 0
+  const block = prom.gains['peiluo_perfect_block_gain'] ?? 0
+  const totalGain = entry + passive + upper + block + ledger.hitGain
+  const surplus = totalGain - ledger.spend
+  // 连段校验：a3+a4 成对为连段；日珥（含入场）能否支付全部天光消耗
+  const chainPairs = Math.min(ledger.a3, ledger.a4)
+  const affordable = surplus >= -1e-9
+  return [
+    {
+      id: 'peiluo-prominence-ledger',
+      title: '佩洛伊斯·日珥账本',
+      summary: `回复 ${pf(totalGain)} · 消耗 ${pf(ledger.spend)} · ${affordable ? `结余 ${pf(surplus)}` : `缺口 ${pf(-surplus)}`}`,
+      rows: [
+        { label: '回复·入场+被动+大招侧', value: pf(entry + passive + upper + block), detail: `入场30 / 接战0.5s×${pf(passive / 0.5)}s（上限60） / 上分支×30 / 完美格挡×10` },
+        { label: '回复·技能命中', value: pf(ledger.hitGain), detail: '余晖/旭日/朝晖/EX日华/快支/支援突击 按段回复（attack_data_0）' },
+        { label: '消耗·天光连段', value: pf(ledger.spend - ledger.lowSpend), detail: `a3×${ledger.a3}（14.61）+ a4×${ledger.a4}（11.82），连段 ${chainPairs} 组（单价 ${pf(PEILUO_CHAIN_COST)}）` },
+        { label: '消耗·天光低段', value: pf(ledger.lowSpend), detail: 'a1（1.50）+ a2（2.05）' },
+        { label: '核对结论', value: affordable ? '日珥足够' : '日珥不足', detail: affordable ? '循环打得起当前 a3/a4 配置' : '消耗超出回复，实战需减少天光连段或等待被动回复' },
+      ],
+      footer: '倍率表无强化/普通天光差异行，日珥只校验循环可行性、不影响伤害。消耗/回复数值来自 catalog attack_data 行（原始值÷100）。',
+    },
+    ...specSections,
+  ]
+}
+
 export const sethShieldMechanic = makePanelBuffModule(
   'agent:seth_shield',
   ['1271'],
