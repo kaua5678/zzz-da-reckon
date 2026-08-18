@@ -48,7 +48,7 @@ export function collectInCombatTeamBuffs(
   // 角色队友拐：按用户在属性配置页的启用状态。
   // 先收集后应用修饰器，保证修饰器与目标在数据中的顺序无关。
   const enabledAgentBuffs = deps.teammateBuffGroups.flatMap(group =>
-    (group.buffs ?? []).filter(buff => deps.isTeammateBuffEnabled(buff.id)),
+    (group.buffs ?? []).filter(buff => !buff.hidden && deps.isTeammateBuffEnabled(buff.id)),
   )
   // 收集所有已启用 buff 上的 multiplyResolvedValue 修饰器（丽娜C1 / 莱特C2 等）
   const modifiers = enabledAgentBuffs.flatMap(buff => buff.buffModifiers ?? [])

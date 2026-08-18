@@ -5,15 +5,32 @@
   "agentIds": [
     "1311"
   ],
-  "status": "not_described_not_implemented",
+  "status": "implemented_approximation",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
   "events": [],
   "verifications": [],
   "stateMachines": [],
+  "additionalAbility": {
+    "teamConditions": [
+      { "type": "specialty", "values": ["attack"] },
+      { "type": "specialty", "values": ["anomaly"] },
+      { "type": "specialty", "values": ["rupture"] }
+    ],
+    "note": "额外能力·月华乱舞：队伍存在强攻/异常/命破时，耗能精准支援或终曲额外 +1 震音 +3 音簇（整局按每次付费震音触发精准近似）。"
+  },
   "notes": [
-    "待录入：耀嘉音 的机制、资源、事件与验证。"
+    "[已确认·用户口径] 核心攻击拐全队都吃（含耀嘉音）：初始攻×35% 顶1200；C2 合计54%/1600。teammate-buffs derived + C2 差分 formula。",
+    "[已确认·数据] 咏叹华彩：全队伤害 clamp(s+8,9,24)、暴伤 clamp(s*1.5+7,8.5,31)，s=特殊技等级（12/14/16 随 0/3/5 命）；覆盖率 yaojiayin.ariaCoverage 默认100%。",
+    "[已确认·数据] 影画1：全抗-6%×3层默认满；开场额外+1000喧响（initialDecibelGift）。庇护之音无敌不建模。",
+    "[已确认·数据] 影画2：核心攻差分；入场额外+1震音+3音簇，3s CD。",
+    "[已确认·数据] 影画3/5：通用技能等级（咏叹公式经 source 面板 skillLevelBonus 联动）。",
+    "[已确认·用户口径] 影画4：按队内职业自动——强攻 300%攻附加行；异常积蓄效率+50%×覆盖；击破失衡+50%×覆盖；3s CD 窗口用 aria×0.5 近似。",
+    "[已确认·用户口径] 影画6：华彩震音/音簇倍率×2、暴击+80%；精准支援追加蓄力随想曲#4，10s CD。",
+    "[已确认·近似] 震音循环：付费次数=min(⌊能量/25⌋, 入场次数)；入场=全队快支+招架+连携；不走通用强特耗能。",
+    "[近似] 回避支援次数未单独录入（配置无字段），未计入入场；终曲/无和弦快支窗口未逐帧模拟。",
+    "实现：src/mechanics/agents/yaojiayin.ts + teammate-buffs 1311 组。"
   ],
   "teamBuffs": []
 }

@@ -1795,55 +1795,60 @@
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "全抗-6%×3层（teammate-buffs）",
+      "开场额外+1000喧响"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "庇护之音无敌不建模"
      ]
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "核心攻击 54%/1600 差分",
+      "入场额外震音+音簇 3s CD"
+     ],
+     "pending": []
     },
     {
      "cinema": 3,
      "status": "implemented_generic_skill_level",
      "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+      "通用技能等级+2，咏叹公式联动"
      ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
+     "pending": []
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "强攻300%附加行",
+      "异常积蓄+50%×覆盖",
+      "击破失衡+50%×覆盖"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "无和弦快支窗口未逐帧"
      ]
     },
     {
      "cinema": 5,
      "status": "implemented_generic_skill_level",
      "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+      "通用技能等级+2，咏叹公式联动"
      ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
+     "pending": []
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "震音/音簇倍率×2、暴击+80%",
+      "精准追加蓄力随想曲 10s CD"
+     ],
+     "pending": []
     }
    ]
   },

@@ -195,6 +195,28 @@ export function computePanelPhases(
     }
   }
 
+  // 耀嘉音：咏叹华彩公式用 dynamicSkillLevel（s）；源面板需写入 3/5 命技能等级加成。
+  {
+    const yjSlot = configStore.team.findIndex(c => c.agentId === '1311')
+    if (yjSlot >= 0) {
+      const yjCinema = configStore.team[yjSlot]?.cinemaLevel ?? 0
+      const skillBonus = yjCinema >= 5 ? 4 : yjCinema >= 3 ? 2 : 0
+      const yjSource = sourcePanelsByOwner['1311']
+      if (yjSource?.outOfCombat) {
+        yjSource.outOfCombat = {
+          ...yjSource.outOfCombat,
+          skillLevelBonus: Math.max(yjSource.outOfCombat.skillLevelBonus ?? 0, skillBonus),
+        }
+      }
+      if (yjSource?.inCombat) {
+        yjSource.inCombat = {
+          ...yjSource.inCombat,
+          skillLevelBonus: Math.max(yjSource.inCombat.skillLevelBonus ?? 0, skillBonus),
+        }
+      }
+    }
+  }
+
   // 全局 Buff（属性配置页手动添加）转 TeammateBuff 并入 calcPanel 同批 apply：
   // 修复架构问题——此前全局 atkPct 等 core stat 在 calcPanel finalize 后补 apply，
   // applyCoreStatBonus 会把"当前合并 atk（含模块/硬编码块直加的局内固定值）"当 base 重新乘百分比，
@@ -298,6 +320,33 @@ export function computePanelPhases(
           configStore.getMechanicSetting('lighter.backstageRatio', 2 / 3),
         ))
         panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + 10 * ratio
+      }
+    }
+  }
+  // 耀嘉音：咏叹华彩全队伤害/暴伤（按特殊技等级 12/14/16）+ 影画4职业分支。
+  {
+    const yjSlot = configStore.team.findIndex(c => c.agentId === '1311')
+    if (yjSlot >= 0) {
+      const yjCinema = configStore.team[yjSlot]?.cinemaLevel ?? 0
+      const cov = Math.max(0, Math.min(1,
+        configStore.getMechanicSetting('yaojiayin.ariaCoverage', 1),
+      ))
+      if (cov > 0) {
+        const skillLv = 12 + (yjCinema >= 5 ? 4 : yjCinema >= 3 ? 2 : 0)
+        const dmg = Math.min(24, Math.max(9, skillLv + 8))
+        const crit = Math.min(31, Math.max(8.5, skillLv * 1.5 + 7))
+        panel.dmgBonus = (panel.dmgBonus ?? 0) + dmg * cov
+        panel.critDmg = (panel.critDmg ?? 0) + crit * cov
+      }
+      if (yjCinema >= 4 && agent.id !== '1311') {
+        // 分支 CD 3s → 用 aria 覆盖 ×0.5 近似「下次快支」窗口
+        const branchCov = cov * 0.5
+        if (agent.specialty === 'anomaly') {
+          panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + 50 * branchCov
+        }
+        if (agent.specialty === 'stun') {
+          panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + 50 * branchCov
+        }
       }
     }
   }

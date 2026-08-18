@@ -2,6 +2,7 @@ import { YESHUGUANG_FULL_STUN_MOVES } from '@/mechanics/agents/yeshuguang'
 import { applyLucyTeamEnergyFlags } from '@/mechanics/agents/lucy'
 import { applyRinaTeamEnergyFlags } from '@/mechanics/agents/rina'
 import { applyLighterTeamEnergyFlags, estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
+import { applyYaojiayinTeamFlags } from '@/mechanics/agents/yaojiayin'
 import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -152,6 +153,8 @@ export function useResourceCalc() {
         })
       }
     }
+    // 耀嘉音：入场次数标记（快支+招架；连携在 runCalcRound 回填）
+    applyYaojiayinTeamFlags(characters)
 
     // 橘福福额外能力·八面威风：队伍有强攻/命破时，这些角色每次终结技 +300 喧响
     // （仪玄青溟云影走 ultimateCount；符法千重在收敛环用上一轮次数注入，见下方 1371 分支）。
@@ -1018,6 +1021,21 @@ function applyNormaHatChain(
           combatTime: base.totalTime ?? 180,
           teamEnergyConsumed: Math.max(0, prevLighterTeamEnergy || 0),
         })
+      }
+    }
+    // 耀嘉音：入场 = 全队快支+招架 + 全队连携（chainCountPerStun × 失衡次数）
+    {
+      const yj = characters.find(c => c.agentId === '1311')
+      if (yj) {
+        let teamChains = 0
+        let quickAssists = 0
+        for (const c of characters) {
+          teamChains += Math.max(0, (c.chainCountPerStun ?? 0) * stunCount)
+          quickAssists += Math.max(0, c.quickAssistCount ?? 0)
+        }
+        ;(yj as any).yaojiayinTeamChainTotal = teamChains
+        ;(yj as any).yaojiayinQuickAssistEntries = quickAssists
+        applyYaojiayinTeamFlags(characters)
       }
     }
     // 特殊动作喧响奖励（弹刀215/闪反10/连携10/快支20，含伴随50%）：本轮即时结算——
