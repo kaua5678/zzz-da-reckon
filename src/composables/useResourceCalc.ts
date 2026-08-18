@@ -1470,7 +1470,7 @@ function applyNormaHatChain(
     }
 
     function pushDirect(row: {
-      id: string; slot: number; agentId: string; name: string; element: string; source: string; count: number; multiplier: number; note?: string; skillDamageTarget?: any; moveId?: string; critRateBonus?: number; critDmgBonus?: number; dmgBonus?: number; sheerDmgBonus?: number; flatDamageBonus?: number; resIgnore?: number; basisValueOverride?: number; basisLabelOverride?: string; stunOverride?: number; sourceTag?: 'gift' | 'stun' | 'self'
+      id: string; slot: number; agentId: string; name: string; element: string; source: string; count: number; multiplier: number; note?: string; skillDamageTarget?: any; moveId?: string; critRateBonus?: number; critDmgBonus?: number; dmgBonus?: number; sheerDmgBonus?: number; flatDamageBonus?: number; resIgnore?: number; basisValueOverride?: number; basisLabelOverride?: string; stunOverride?: number; defIgnore?: number; sourceTag?: 'gift' | 'stun' | 'self'
     }) {
       if (row.count <= 0 || row.multiplier <= 0) return
       const panel = damagePanels.value[row.slot]
@@ -1493,7 +1493,7 @@ function applyNormaHatChain(
         damageElement: safeElement(row.element),
         damageBasis: 'atk',
         enemyDefense: configStore.enemy.defense,
-        enemyDefReduction: 0,
+        enemyDefReduction: row.defIgnore ?? 0,
         enemyDefFlatReduction: 0,
         enemyLevel: configStore.enemy.level,
         enemyResistance: enemyDamageRes[row.element] ?? 0,
@@ -1671,6 +1671,7 @@ function applyNormaHatChain(
             basisValueOverride: exec.basisValueOverride,
             basisLabelOverride: exec.basisLabelOverride,
             resIgnore,
+            defIgnore: exec.defIgnore ?? 0,
             skillDamageTarget: exec.skillDamageTarget,
             stunOverride,
             sourceTag: sourceTag ?? exec.source,

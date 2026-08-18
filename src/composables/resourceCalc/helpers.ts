@@ -307,7 +307,7 @@ export function computePanelPhases(
   }
   if (agent.id === '1431') {
     // 叶瞬光核心被动·合道：进场常驻暴击 +30%、伤害 +25%（Lv.7）。
-    // 影画1：合道额外伤害 +10%、无视防御 20%；影画2：飞光/斩妄额外无视 40% 防御（面板近似满覆盖）。
+    // 影画1：合道额外伤害 +10%、无视防御 20%；影画2：飞光/斩妄 40% 减防走 moveId defIgnore。
     // 帷幕易伤封顶：对关键伤害走满易伤，上限 210%（影画4 300%）→ 用 stunDmgMultiplierBonusAlways 封顶实现。
     const cinema = char.cinemaLevel ?? 0
     panel.critRate = (panel.critRate ?? 0) + 30
@@ -316,10 +316,7 @@ export function computePanelPhases(
       panel.dmgBonus = (panel.dmgBonus ?? 0) + 10
       panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + 20
     }
-    if (cinema >= 2) {
-      // 飞光/斩妄 40% 减防：关键白毛输出占比高，整面板近似 +40% 减防
-      panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + 40
-    }
+    // 影画2 飞光/斩妄 40% 减防：moveId 限定，见 yeshuguang.ts patchExecutions（defIgnore）
     // 帷幕易伤 = min(最终易伤, 2.1 或 3.0)。最终易伤 = boss.stunVuln + bonus/100。
     // 用 always 通道 + cap：bonusAlways 把基础易伤抬到目标，cap 卡住上限。
     // 在 damage 池对白毛招 stunOverride=1 时生效；非白毛招仍按全局覆盖率。

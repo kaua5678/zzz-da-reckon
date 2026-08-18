@@ -57,14 +57,14 @@ const baseTimes = {
 }
 
 describe('叶瞬光 computeYeshuguangCycle', () => {
-  it('打满 0命：观止2，飞光×1 缩放2/6；喧响→斩妄', () => {
+  it('打满 0命：观止2，飞光×2 缩放2/6；喧响→斩妄', () => {
     const c = computeYeshuguangCycle({
       ultimateCount: 2, giftUltCount: 1, zhaoyingCountSetting: -1,
       outsideSwordGain: 12, cinemaLevel: 0, battleTime: 180, formAxis: 'full',
     })
     expect(c.totalForms).toBe(5)
     expect(c.guanzhiPerForm).toBe(2)
-    expect(c.feiguangPerForm).toBe(1)
+    expect(c.feiguangPerForm).toBe(2)
     expect(c.feiguangScaleEach).toBeCloseTo(2 / 6)
     expect(c.miePerForm).toBe(2)
     expect(c.jiPerForm).toBe(2)
@@ -155,7 +155,7 @@ describe('叶瞬光面板', () => {
 })
 
 describe('叶瞬光 buildExecutions', () => {
-  it('打满 1 喧响：灭2 极2 扶摇1 飞光1 斩妄1', () => {
+  it('打满 1 喧响：灭2 极2 扶摇1 飞光2 斩妄1', () => {
     const cfg: any = {
       yeshuguangCinemaLevel: 0, yeshuguangSwordInitial: 0, yeshuguangGiftUltCount: 0,
       yeshuguangMoveDmg: baseDmg, yeshuguangMoveTimes: baseTimes,
@@ -170,9 +170,27 @@ describe('叶瞬光 buildExecutions', () => {
     expect(cnt('1431013')).toBe(2)
     expect(cnt('1431009')).toBe(2)
     expect(cnt('1431017')).toBe(1)
-    expect(cnt('1431018')).toBe(1)
+    expect(cnt('1431018')).toBe(2)
     expect(executions.find(e => e.moveId === '1431018').damageMultiplier).toBeCloseTo(2116 * (2 / 6))
     expect(cnt('1431027')).toBe(1)
+  })
+
+  it('影画2：飞光/斩妄 moveId 限定 defIgnore +40，其它招不加', () => {
+    const cfg: any = {
+      yeshuguangCinemaLevel: 2, yeshuguangSwordInitial: 0, yeshuguangGiftUltCount: 0,
+      yeshuguangMoveDmg: baseDmg, yeshuguangMoveTimes: baseTimes,
+      yeshuguangAtk0PerSec: 0, battleTime: 180, dodgeCounterCount: 0,
+      'setting:yeshuguang.formAxis': 0,
+    }
+    const executions: any[] = [
+      { moveId: '1431018', count: 1 },
+      { moveId: '1431027', count: 1 },
+      { moveId: '1431013', count: 1 },
+    ]
+    yeshuguangMechanic.patchExecutions!({ cfg, state: {}, executions } as any)
+    expect(executions.find(e => e.moveId === '1431018').defIgnore).toBe(40)
+    expect(executions.find(e => e.moveId === '1431027').defIgnore).toBe(40)
+    expect(executions.find(e => e.moveId === '1431013').defIgnore ?? 0).toBe(0)
   })
 
   it('短轴灭极 0命：灭1 极1 飞光4', () => {

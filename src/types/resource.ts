@@ -451,6 +451,8 @@ export interface SkillExecution {
   flatDamageBonus?: number
   /** 本行专属抗性无视（%）（如仪玄影画2：终结技/强化特殊技无视 15% 以太伤害抗性，招式限定） */
   resIgnore?: number
+  /** 本行专属防御无视（%）（与面板 enemyDefReduction 同乘区加算；如叶瞬光影画2 飞光/斩妄 40%） */
+  defIgnore?: number
   /** 本行专属失衡值提升（%，与面板 stunBuildUpBonus 同乘区加算；如莱卡恩 C1 有限次强特强化 +12%/+22%） */
   stunBuildUpBonus?: number
   /** 覆盖基底区数值（如专属直伤读贯穿力作为基底，其余乘区仍用本面板） */

@@ -10,7 +10,9 @@
  * - 观止：基础 2；C2 每耗 1 青溟剑势 +1。
  *
  * 轴（每轮明心境，setting: yeshuguang.formAxis）：
- * - full：打满 (灭#1+极)×2 + 扶摇 + 飞光×1（观止/6 缩放）+ 收尾
+ * - full：打满 (灭#1+极)×2 + 扶摇 + 飞光×2（观止/6 缩放）+ 收尾
+ * - 凛刃：白毛物理直伤，紊乱按物理继承（无需单独标签）
+ * - 非白毛：通用普攻/连携(吃覆盖率易伤)/强特(基本无易伤)；局外剑势靠 attack_data_0 链接
  * - short_pair：灭#1+极（耗 3 豆）后剩余全飞光 —— 0–1 命 4 飞光 / 2 命+ 10 飞光
  * - short_mie：仅灭#1（耗 2 豆）后剩余全飞光 —— 0–1 命 5 飞光 / 2 命+ 12 飞光
  *
@@ -125,7 +127,7 @@ export interface YeshuguangCycleResult {
   guanzhiPerForm: number
   /** 每轮飞光次数 */
   feiguangPerForm: number
-  /** 单次飞光相对满 6 观止表值的缩放（总观止摊到每次） */
+  /** 单次飞光相对满 6 观止表值的缩放（观止/6） */
   feiguangScaleEach: number
   miePerForm: number
   jiPerForm: number
@@ -174,7 +176,7 @@ export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangC
     jiPerForm = 2
     fuyaoPerForm = 1
     swordSpentPerForm = FORM_SWORD // 6
-    feiguangPerForm = 1
+    feiguangPerForm = 2 // 用户确认：打满轴飞光 2 次
   } else if (axis === 'short_pair') {
     miePerForm = 1
     jiPerForm = 1
@@ -580,6 +582,20 @@ export const yeshuguangSettings: MechanicSetting[] = [
   },
 ]
 
+
+const C2_DEF_IGNORE_MOVES = new Set<string>([MOVE.feiguang, MOVE.zhanwang])
+
+function patchExecutions({ cfg, executions }: AgentResourceInput): void {
+  const cinema = Math.max(0, Math.floor(Number((cfg as any).yeshuguangCinemaLevel ?? 0)))
+  if (cinema < 2) return
+  // 影画2：飞光、斩妄开天 无视目标 40% 防御（moveId 限定）
+  for (const exec of executions) {
+    if (C2_DEF_IGNORE_MOVES.has(exec.moveId)) {
+      exec.defIgnore = (exec.defIgnore ?? 0) + 40
+    }
+  }
+}
+
 export const yeshuguangMechanic: AgentMechanicModule = {
   id: 'agent:yeshuguang',
   agentIds: [YESHUGUANG_ID],
@@ -588,6 +604,7 @@ export const yeshuguangMechanic: AgentMechanicModule = {
   settings: yeshuguangSettings,
   buildCharConfig,
   buildExecutions,
+  patchExecutions,
   estimateExSpecialTime,
   buildResourceResult,
   resourceSections,
