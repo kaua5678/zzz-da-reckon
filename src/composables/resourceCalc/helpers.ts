@@ -280,6 +280,16 @@ export function computePanelPhases(
       panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + 12 * coverage
     }
   }
+  if (agent.id === '1041') {
+    // 「11号」额外能力·燎原（队伍存在同属性或同阵营角色）：
+    // 火属性伤害 +10%；攻击失衡敌人额外 +22.5% × 覆盖率滑块（非轴模式默认满覆盖）。
+    // 暴伤 +48%（潜能最高档）在模块 applyPanel 施加。
+    if ((panel.additionalAbilityActive ?? 0) > 0) {
+      panel.fireDmg = (panel.fireDmg ?? 0) + 10
+      const stunCov = configStore.getMechanicSetting('soldier11.prairieFireStunCoverage', 1)
+      panel.fireDmg = (panel.fireDmg ?? 0) + 22.5 * stunCov
+    }
+  }
   if (agent.id === '1321') {
     // 伊芙琳影画2 赴火之舞：攻击力提升 15%（燎火返还部分未建模，见 status pending）。
     const cinema = char.cinemaLevel ?? 0

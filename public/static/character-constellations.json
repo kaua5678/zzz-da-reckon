@@ -211,20 +211,22 @@
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "接战回能（不足40回复至80，50s/次）按整局口径注入 initialEnergyGift：floor(battleTime/50)×40"
+     ],
      "pending": [
-      "影画1 快速升温：成为接战状态下的当前操作角色时，若「11号」的能量不足40点，则立即回复至80点，50秒内最多触发一次。",
-      "待人工核对后补实现，勿直接默认省略。"
+      "不做50s时间轴模拟（整局总量口径）"
      ]
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "满层36%（3%×12层）按覆盖率滑块摊入 basic/dodge 类执行行（patchExecutions）"
+     ],
      "pending": [
-      "影画2 高温汇聚：触发[火力镇压]时，[普通攻击]、[冲刺攻击]、[闪避反击]造成的伤害提升3%，最多叠加12层，持续15秒，每层效果单独结算持续时间。",
-      "待人工核对后补实现，勿直接默认省略。"
+      "层数累积/逐层持续时间按满层近似"
      ]
     },
     {
@@ -237,11 +239,10 @@
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
+     "status": "partially_implemented",
      "implemented": [],
      "pending": [
-      "影画4 纵情燃烧：[普通攻击]第一、二、三段或[冲刺攻击]发动时，若触发[火力镇压]，则在招式发动期间抗打断等级提升，受到的伤害降低18%；[普通攻击]第四段发动时，若触发[火力镇压]，则在招式发动期间获得无敌效果。",
-      "待人工核对后补实现，勿直接默认省略。"
+      "防御向效果（抗打断/受伤-18%/无敌）伤害计算器不建模"
      ]
     },
     {
@@ -254,11 +255,12 @@
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "充能（强特/连携/终结×8层）由 spec soldier11_charge 承载；火力镇压无视25%火抗按期望加权 resIgnore（min(1, 充能来源×8/火力镇压次数)）"
+     ],
      "pending": [
-      "影画6 炽热心流：发动[强化特殊技]、[连携技]或[终结技]时，「11号」获得8层充能（上限8层）；触发[火力镇压]时，消耗1层充能，使当前招式无视目标25%火属性伤害抗性。",
-      "待人工核对后补实现，勿直接默认省略。"
+      "充能池上限/消耗时序按期望加权近似"
      ]
     }
    ]

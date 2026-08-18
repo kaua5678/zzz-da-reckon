@@ -184,18 +184,6 @@ export const anbyChargeMechanic = makePanelBuffModule(
   },
 )
 
-export const soldier11ChargeMechanic = makePanelBuffModule(
-  'agent:soldier11_charge',
-  ['1041'],
-  '「11号」·充能',
-  'soldier11_charge',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) > 0) {
-      panel.enemyFireResReduction = (panel.enemyFireResReduction ?? 0) + 25
-    }
-  },
-)
-
 export const corinChargeMechanic = makePanelBuffModule(
   'agent:corin_charge',
   ['1061'],

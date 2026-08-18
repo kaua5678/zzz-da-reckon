@@ -24,7 +24,6 @@ import {
   sigridLanceMechanic,
   koledaFurnaceMechanic,
   anbyChargeMechanic,
-  soldier11ChargeMechanic,
   corinChargeMechanic,
   graceChargeMechanic,
 	  prometheusGuiltyMechanic,
@@ -42,6 +41,7 @@ import { banyueMechanic } from './agents/banyue'
 import { starlightBillyMechanic } from './agents/starlightBilly'
 import { yixuanMechanic } from './agents/yixuan'
 import { lycaonMechanic } from './agents/lycaon'
+import { soldier11Mechanic } from './agents/soldier11'
 import { agentSpecs } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
@@ -66,7 +66,6 @@ registerAgentMechanic(harumasaEdgeMechanic)
 registerAgentMechanic(sigridLanceMechanic)
 registerAgentMechanic(koledaFurnaceMechanic)
 registerAgentMechanic(anbyChargeMechanic)
-registerAgentMechanic(soldier11ChargeMechanic)
 registerAgentMechanic(corinChargeMechanic)
 registerAgentMechanic(graceChargeMechanic)
 registerAgentMechanic(miyabiMechanic)
@@ -86,6 +85,7 @@ registerAgentMechanic(banyueMechanic)
 registerAgentMechanic(starlightBillyMechanic)
 registerAgentMechanic(yixuanMechanic)
 registerAgentMechanic(lycaonMechanic)
+registerAgentMechanic(soldier11Mechanic)
 
 for (const spec of agentSpecs) {
   if (spec.agentIds.every(id => !getAgentMechanic(id))) {

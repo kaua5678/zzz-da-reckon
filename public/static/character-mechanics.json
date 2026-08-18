@@ -259,9 +259,12 @@
       "「11号」在[普通攻击]或[冲刺攻击]中触发[火力镇压]时，招式造成的伤害提升70%。"
      ],
      "codePaths": [],
-     "status": "not_described_not_implemented",
+     "status": "implemented_approximation",
      "pending": [
-      "「11号」在[普通攻击]或[冲刺攻击]中触发[火力镇压]时，招式造成的伤害提升70%。"
+      "覆盖率默认满覆盖；失衡轴内精确计算待接入"
+     ],
+     "implemented": [
+      "火力镇压行（moveId 级）dmgBonus +70% × 覆盖率滑块 soldier11.fireSuppressCoverage"
      ]
     },
     {
@@ -273,9 +276,12 @@
       "队伍中存在与自身属性或阵营相同的角色时触发： 「11号」造成的火属性伤害提升10%，攻击处于失衡状态下的敌人时，该增益效果额外提升22.5%。"
      ],
      "codePaths": [],
-     "status": "not_described_not_implemented",
+     "status": "implemented_approximation",
      "pending": [
-      "队伍中存在与自身属性或阵营相同的角色时触发： 「11号」造成的火属性伤害提升10%，攻击处于失衡状态下的敌人时，该增益效果额外提升22.5%。"
+      "失衡增伤非轴模式按覆盖率滑块"
+     ],
+     "implemented": [
+      "火伤+10%（无条件部分）+ 失衡增伤22.5%×滑块（computePanelPhases 1041 块），spec additionalAbility 同属性/同阵营门控"
      ]
     },
     {
@@ -291,13 +297,12 @@
       "潜能（炽焰行歌 VI） 潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升48%。"
      ],
      "codePaths": [],
-     "status": "not_described_not_implemented",
+     "status": "implemented_approximation",
      "pending": [
-      "潜能（炽焰行歌 II） 潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升16%。",
-      "潜能（炽焰行歌 III） 潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升24%。",
-      "潜能（炽焰行歌 IV） 潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升32%。",
-      "潜能（炽焰行歌 V） 潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升40%。",
-      "潜能（炽焰行歌 VI） 潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升48%。"
+      "失衡增伤非轴模式按覆盖率滑块"
+     ],
+     "implemented": [
+      "火伤+10%（无条件部分）+ 失衡增伤22.5%×滑块（computePanelPhases 1041 块），spec additionalAbility 同属性/同阵营门控"
      ]
     }
    ],

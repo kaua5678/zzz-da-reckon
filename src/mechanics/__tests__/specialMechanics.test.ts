@@ -23,7 +23,6 @@ import {
   sigridLanceMechanic,
   koledaFurnaceMechanic,
   anbyChargeMechanic,
-  soldier11ChargeMechanic,
   corinChargeMechanic,
   graceChargeMechanic,
   prometheusGuiltyMechanic,
@@ -165,16 +164,11 @@ describe('spec resource panel buffs', () => {
     expect(koledaPanel.dmgBonus).toBe(25)
   })
 
-  it('applies Anby, Soldier11, Corin, Grace, Banyue and Jufufu panel buffs', () => {
+  it('applies Anby, Corin, Grace, Banyue and Jufufu panel buffs', () => {
     const anbyMap = resources('1011', {}, { exSpecialCount: 1 })
     const anbyPanel = emptyPanel()
     transform(anbyChargeMechanic, '1011', anbyPanel, anbyMap)
     expect(anbyPanel.dmgBonus).toBe(45)
-
-    const soldierMap = resources('1041', {}, { exSpecialCount: 1, chainCountTotal: 0, ultimateCount: 0 })
-    const soldierPanel = emptyPanel()
-    transform(soldier11ChargeMechanic, '1041', soldierPanel, soldierMap)
-    expect(soldierPanel.enemyFireResReduction).toBe(25)
 
     const corinMap = resources('1061', {}, { frontlineTime: 40 })
     const corinPanel = emptyPanel()
