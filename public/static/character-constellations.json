@@ -1968,24 +1968,26 @@
   },
   "1341": {
    "name": {
-    "zhCN": "赵",
+    "zhCN": "照",
     "en": "Zhao"
    },
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "全队伤害无视目标15%全属性伤害抗性（teammate-buff enemyResReduction 近似，切后台触发与50秒持续按整局覆盖近似）"
+     ],
+     "pending": []
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "队伍中其他角色攻击力提升15%（teammate-buff atkPct，生命回复触发条件按常驻近似）"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "照自身攻击力提升20%未建模（属照自身面板）"
      ]
     },
     {
@@ -2003,7 +2005,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "轻盈踏痕：开启[以太帷幕]获得250点喧响值；[终结技]/[连携技]/[普通攻击：最终裁决]暴击伤害提升40%（均属照自身，未建模）"
      ]
     },
     {
@@ -2021,7 +2023,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "无价亦是价值：核心被动暴击率效果提升至125%；[普通攻击：最终裁决]蓄力额外伤害提升至140%且蓄力时长不被消耗（均属照自身，未建模）"
      ]
     }
    ]

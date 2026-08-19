@@ -288,6 +288,12 @@ export function computePanelPhases(
   const qianxiaAdditionalActive = qianxiaSlot >= 0
     ? evalAdditionalAbility(team, qianxiaSlot, qianxiaAgent, getAgentSpec('1491')?.additionalAbility) === true
     : false
+  // 照额外能力·凝聚力：队伍存在[强攻]或[异常]或[支援]角色时触发（全队增伤10%~40%按初始生命公式）
+  const zhaoSlot = team.find(member => member.agentId === '1341')?.slot ?? -1
+  const zhaoAgent = zhaoSlot >= 0 ? catalogStore.getAgent('1341') ?? null : null
+  const zhaoAdditionalActive = zhaoSlot >= 0
+    ? evalAdditionalAbility(team, zhaoSlot, zhaoAgent, getAgentSpec('1341')?.additionalAbility) === true
+    : false
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
     .filter(buff => buff.id !== 'rina.additional_electric_damage' || rinaAdditionalActive)
     .filter(buff => buff.id !== 'lighter.additional_morale_ice_fire_dmg' || lighterAdditionalActive)
@@ -296,6 +302,7 @@ export function computePanelPhases(
     .filter(buff => buff.id !== 'caesar.additional_battle_spirit_dmg' || caesarAdditionalActive)
     .filter(buff => buff.id !== 'ben.additional_shield_crit_rate' || benAdditionalActive)
     .filter(buff => buff.id !== 'buff_23620b7000' || qianxiaAdditionalActive)
+    .filter(buff => buff.id !== 'zhao.additional_ability.dmg_bonus' || zhaoAdditionalActive)
 
   const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
   for (const buff of allTeammateBuffs) {
