@@ -2465,24 +2465,24 @@
   },
   "1421": {
    "name": {
-    "zhCN": "潘银狐",
+    "zhCN": "潘引壶",
     "en": "Pan Yinhu"
    },
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "对被施加[气绝]的敌人造成伤害额外+10%（teammate-buff dmgBonus，与额外能力同源门控，气绝目标按满覆盖近似）"
+     ],
+     "pending": []
     },
     {
      "cinema": 2,
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "云岿点穴手：每消耗6点[破劲]回复4点能量（潘引壶自身资源循环）；[气绝]时长10秒→12秒（静态面板无时长维度）"
      ]
     },
     {
@@ -2500,7 +2500,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "特等上厨：终结技生命回复+25%与[储粮]代偿回复（治疗乘区未建模）"
      ]
     },
     {
@@ -2515,11 +2515,11 @@
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "[通窍]贯穿力比例18%→24%、上限540→720（teammate-buff buffModifiers multiplyResolvedValue ×4/3，引擎 derived 分支同步放大 cap）"
+     ],
+     "pending": []
     }
    ]
   },

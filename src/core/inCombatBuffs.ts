@@ -70,7 +70,12 @@ export function collectInCombatTeamBuffs(
             },
           }
         } else if (resolved.type === 'derived') {
-          resolved = { ...resolved, ratio: (resolved.ratio ?? 0) * factor }
+          // cap 与 ratio 同源放大（如潘引壶6命：比例18%→24%，上限540→720）
+          resolved = {
+            ...resolved,
+            ratio: (resolved.ratio ?? 0) * factor,
+            cap: resolved.cap == null ? undefined : resolved.cap * factor,
+          }
         } else if (resolved.type === 'stacked') {
           resolved = {
             ...resolved,

@@ -311,3 +311,11 @@
 - **未建模**：影画1 冷却/绝意资源、影画4 断离（触发者为其他角色）、影画6 破甲凶弹伤害行。
 - **模块**：`src/mechanics/agents/trigger.ts`（薄模块：额外能力失衡值公式）。
 
+### 潘引壶（pan_yinhu / 1421）—— 云岿山物理防护
+
+- **核心**：[通窍]贯穿力 += 潘引壶初始攻×18%（上限540，teammate-buff derived，`sheerForceFlat`）。
+- **额外能力**：队伍有[命破]或同阵营 → [气绝]敌人受伤 +20%（`pan_yinhu.additional_stupefaction_dmg` 按 spec.additionalAbility 门控）；**影画1** 气绝敌人再 +10%（同源门控）。
+- **影画6**：[通窍]比例→24%、上限→720（buffModifiers ×4/3；引擎 derived 分支同步放大 cap）。
+- **未建模**：影画2 破劲换能/气绝延长、影画4 治疗与储粮、潘引壶自身破劲循环。
+- **模块**：`src/specs/agents/pan_yinhu.json`（声明式，无独立模块；helpers 过滤链门控气绝增伤）。
+

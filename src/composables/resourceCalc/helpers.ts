@@ -294,6 +294,12 @@ export function computePanelPhases(
   const zhaoAdditionalActive = zhaoSlot >= 0
     ? evalAdditionalAbility(team, zhaoSlot, zhaoAgent, getAgentSpec('1341')?.additionalAbility) === true
     : false
+  // 潘引壶额外能力·食铁纳金：队伍存在[命破]或同阵营（云岿山）角色时触发（[气绝]增伤+20%，影画1再+10%）
+  const panYinhuSlot = team.find(member => member.agentId === '1421')?.slot ?? -1
+  const panYinhuAgent = panYinhuSlot >= 0 ? catalogStore.getAgent('1421') ?? null : null
+  const panYinhuAdditionalActive = panYinhuSlot >= 0
+    ? evalAdditionalAbility(team, panYinhuSlot, panYinhuAgent, getAgentSpec('1421')?.additionalAbility) === true
+    : false
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
     .filter(buff => buff.id !== 'rina.additional_electric_damage' || rinaAdditionalActive)
     .filter(buff => buff.id !== 'lighter.additional_morale_ice_fire_dmg' || lighterAdditionalActive)
@@ -303,6 +309,8 @@ export function computePanelPhases(
     .filter(buff => buff.id !== 'ben.additional_shield_crit_rate' || benAdditionalActive)
     .filter(buff => buff.id !== 'buff_23620b7000' || qianxiaAdditionalActive)
     .filter(buff => buff.id !== 'zhao.additional_ability.dmg_bonus' || zhaoAdditionalActive)
+    .filter(buff => buff.id !== 'pan_yinhu.additional_stupefaction_dmg' || panYinhuAdditionalActive)
+    .filter(buff => buff.id !== 'pan_yinhu.cinema_1_stupefaction_dmg' || panYinhuAdditionalActive)
 
   const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
   for (const buff of allTeammateBuffs) {

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "agent:pan_yinhu",
-  "name": "潘银狐",
+  "name": "潘引壶",
   "agentIds": [
     "1421"
   ],
-  "status": "not_described_not_implemented",
+  "status": "partially_implemented",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
@@ -13,7 +13,27 @@
   "verifications": [],
   "stateMachines": [],
   "notes": [
-    "待录入：潘银狐 的机制、资源、事件与验证。"
+    "来源：nanoka 3.2.3+18244196 zh character/1421.json（抓于 2026-08-19），术语表 noun_3.2.3.json 无潘引壶专属术语。基础信息：S 级物理·防护（hit_type 打击），云岿山。原始数据：data/raw/nanoka_missing/full/1421.json。",
+    "核心被动·脉中乾坤（Lv.12 原文）：潘引壶发动[强化特殊技：贴山震脉靠]命中敌人触发[快速支援]的一段时间内，通过[快速支援]或[连携技]入场的下一位代理人获得[通窍]：贯穿力提升 = 潘引壶初始攻击力×18%（技能等级1~12 对应 9%~18%），上限540点，持续25秒。",
+    "额外能力·食铁纳金（原文）：队伍中存在[命破]角色或与自身阵营相同的角色时触发：潘引壶发动[特殊技：断脉破穴手]命中敌人时施加[气绝]，使所有单位对其造成的伤害提升20%，持续10秒，不可叠加、重复命中延长时长。",
+    "影画1 气劲护体：对被施加[气绝]的敌人造成伤害额外+10%。影画2 云岿点穴手：每消耗6点[破劲]回复4点能量；[气绝]时长提升至12秒。影画4 特等上厨：终结技治疗+25%与[储粮]代偿回复。影画6 气穴论：[通窍]额外获得初始攻击力6%的贯穿力，上限提升至720点。影画3/5 技能等级+2。",
+    "[已确认·继承草稿] 拐力数据在 teammate-buffs.json 1421 组：核心被动[通窍]贯穿力（derived 18%初始攻 cap540，stat=sheerForceFlat）、额外能力[气绝]全队增伤+20%、影画1 气绝敌人增伤+10%、影画6 buffModifiers multiplyResolvedValue ×4/3 放大核心 derived（比例→24%、上限→720）。",
+    "实现口径 [已确认]：① [气绝]增伤两条 buff（额外能力+20%、影画1+10%）都按 spec.additionalAbility（specialty rupture / sameFactionAsSelf）由 computePanelPhases 过滤链门控——[气绝]状态本身由额外能力施加，未激活时影画1也无目标；② 气绝10秒持续与断脉破穴手命中条件按静态面板满覆盖近似；③ 影画6 需要引擎 derived 修饰器同步放大 cap（inCombatBuffs.ts 已改，540×4/3=720）；④ [通窍]只给入场代理人，按全队生效近似（不区分入场顺序）。",
+    "未建模项：影画2 破劲换能与气绝12秒延长（潘引壶自身资源/时长）、影画4 治疗与[储粮]（治疗乘区未建模）、潘引壶自身[破劲]资源循环。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "rupture"
+        ]
+      },
+      {
+        "type": "sameFactionAsSelf"
+      }
+    ],
+    "note": "额外能力·食铁纳金：队伍中存在[命破]角色或与自身阵营（云岿山）相同的角色时触发（断脉破穴手施加[气绝]：全队对其增伤20%，影画1 再+10%）。声明式条件，引擎判定写入 panel.additionalAbilityActive；buff pan_yinhu.additional_stupefaction_dmg 与 pan_yinhu.cinema_1_stupefaction_dmg 按此门控。[已确认]"
+  }
 }
