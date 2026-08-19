@@ -1,5 +1,8 @@
-import type { AgentMechanicModule, AgentPanelInput } from '../types'
+import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput } from '../types'
 import type { MechanicSetting } from '@/types/resource'
+import { getAgentSpec } from '@/specs/registry'
+import { computeSpecResources } from '@/specs/resources'
+import { specToMechanicModule } from '@/specs/mechanics'
 
 /**
  * 朱鸢（1241，以太·击破，新艾利都治安局）—— 自身机制模块。
@@ -21,9 +24,14 @@ import type { MechanicSetting } from '@/types/resource'
  *   （作用范围扩至全部以太伤害）。
  * - 影画4：请勿抵抗/火力压制无视25%以太抗性 → 面板级 enemyEtherResReduction+25
  *   近似（同影画2 口径）。
+ * - 强化霰弹资源循环（spec resource zhuyuan_shells，用户口径：资源条是角色核心特色）：
+ *   初始6枚；突击段4/5、闪避反击、全弹连射、歼灭模式/MAX、掩护射击、自卫还击获取；
+ *   影画1 快速装填连携+6/终结+9（原文6/9 口径用户确认，cfgField 按命座门控）；
+ *   消耗=压制模式开火（总量口径）。
+ * - 影画6 以太余温：累计消耗12枚得1次余温，追加4枚×220%攻击力以太鹿弹
+ *   （buildExecutions 执行行）；余温强特耗能-30 影响能量结算未建模。
  *
- * 未建模（spec notes）：强化霰弹/快速装填/以太余温资源循环、影画2 防御向、
- * 影画6 追加鹿弹与强特耗能-30。
+ * 未建模（spec notes）：影画2 防御向、影画6 强特耗能-30。
  */
 
 const ZHUYUAN_AGENT_ID = '1241'
@@ -31,6 +39,14 @@ const ZHUYUAN_AA_CRIT_RATE = 30
 const ZHUYUAN_CORE_SHELL_DMG = 40
 const ZHUYUAN_C2_ETHER_DMG = 50
 const ZHUYUAN_C4_ETHER_RES_IGNORE = 25
+const ZHUYUAN_SHELLS_RESOURCE_ID = 'zhuyuan_shells'
+/** 影画1 快速装填（原文6/9 口径用户确认：连携6枚/终结9枚） */
+const ZHUYUAN_C1_RELOAD_CHAIN = 6
+const ZHUYUAN_C1_RELOAD_ULTIMATE = 9
+/** 影画6 以太余温（原文）：累计消耗12枚得1次，追加4枚×220%攻击力以太鹿弹 */
+const ZHUYUAN_C6_AFTERGLOW_COST = 12
+const ZHUYUAN_C6_EXTRA_BULLETS = 4
+const ZHUYUAN_C6_BULLET_RATIO = 220
 
 function applyZhuYuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   if ((panel.additionalAbilityActive ?? 0) > 0) {
@@ -59,11 +75,90 @@ const settings: MechanicSetting[] = [
   },
 ]
 
+function buildZhuYuanCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): void {
+  cfg.zhuyuanCinemaLevel = cinemaLevel
+}
+
+function computeZhuYuanShellsTotal(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): number {
+  const spec = getAgentSpec(ZHUYUAN_AGENT_ID)
+  if (!spec) return 0
+  // 影画1 快速装填：连携+6/终结+9（initialValue/gain 的 cfgField 门控；
+  // buildExecutions 先于 buildResourceResult 调用，此处写入保证两条路径一致）
+  const cinema = Math.max(0, Math.floor(Number((cfg as any).zhuyuanCinemaLevel ?? 0)))
+  ;(cfg as any).zhuyuanC1ChainReload = cinema >= 1 ? ZHUYUAN_C1_RELOAD_CHAIN : 0
+  ;(cfg as any).zhuyuanC1UltReload = cinema >= 1 ? ZHUYUAN_C1_RELOAD_ULTIMATE : 0
+  const shells = computeSpecResources(spec, cfg, state).get(ZHUYUAN_SHELLS_RESOURCE_ID)
+  if (!shells) return 0
+  return Math.max(0, Math.floor(shells.initialValue + shells.totalGain))
+}
+
+function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const cinema = Math.max(0, Math.floor(Number((cfg as any).zhuyuanCinemaLevel ?? 0)))
+  if (cinema < 6) return
+  const shellsTotal = computeZhuYuanShellsTotal(cfg, state)
+  const afterglowCount = Math.floor(shellsTotal / ZHUYUAN_C6_AFTERGLOW_COST)
+  if (afterglowCount <= 0) return
+  executions.push({
+    moveId: 'zhuyuan_c6_afterglow_bullets',
+    moveName: '以太余温·追加鹿弹',
+    category: 'special',
+    count: afterglowCount * ZHUYUAN_C6_EXTRA_BULLETS,
+    actionTime: 0,
+    comboAlignRatio: 0,
+    totalTime: 0,
+    totalComboAlignTime: 0,
+    energyConsume: 0,
+    totalEnergyConsume: 0,
+    decibelRecovery: 0,
+    totalDecibelRecovery: 0,
+    energyRecovery: 0,
+    totalEnergyRecovery: 0,
+    damageMultiplier: ZHUYUAN_C6_BULLET_RATIO,
+    damageMultiplierOverride: true,
+    element: 'ether',
+    skillTableNote: `以太余温 ×${afterglowCount} 次 ×${ZHUYUAN_C6_EXTRA_BULLETS} 枚鹿弹（累计消耗${ZHUYUAN_C6_AFTERGLOW_COST}枚霰弹得1次；每枚 ${ZHUYUAN_C6_BULLET_RATIO}% 攻击力）`,
+  })
+}
+
+function buildZhuYuanResourceResult({ cfg, state }: AgentResourceResultInput) {
+  const spec = getAgentSpec(ZHUYUAN_AGENT_ID)
+  if (!spec) return {}
+  computeZhuYuanShellsTotal(cfg, state) // 写入影画门控的快速装填量
+  return { specResources: Object.fromEntries(computeSpecResources(spec, cfg, state)) }
+}
+
+function buildZhuYuanResourceSections(input: AgentResourceSectionsInput) {
+  const spec = getAgentSpec(ZHUYUAN_AGENT_ID)
+  const sections = spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
+  const shells = (input.result?.specResources ?? {})[ZHUYUAN_SHELLS_RESOURCE_ID] as
+    { initialValue: number; totalGain: number } | undefined
+  if (shells) {
+    const shellsTotal = Math.max(0, Math.floor(shells.initialValue + shells.totalGain))
+    const afterglow = Math.floor(shellsTotal / ZHUYUAN_C6_AFTERGLOW_COST)
+    sections.push({
+      id: 'zhuyuan-afterglow',
+      title: '朱鸢·以太余温（影画6）',
+      summary: `余温次数 ≈ ${afterglow}`,
+      rows: [{
+        label: '追加鹿弹',
+        value: `${afterglow * ZHUYUAN_C6_EXTRA_BULLETS} 枚`,
+        detail: `累计消耗${ZHUYUAN_C6_AFTERGLOW_COST}枚霰弹得1次余温（霰弹总量 ${shellsTotal}），每次追加${ZHUYUAN_C6_EXTRA_BULLETS}枚×${ZHUYUAN_C6_BULLET_RATIO}%攻击力以太鹿弹`,
+      }],
+      footer: '余温使下次强特耗能-30 影响能量结算，未建模（spec properties 记录数值）。',
+    })
+  }
+  return sections
+}
+
 export const zhuYuanMechanic: AgentMechanicModule = {
   id: 'agent:juhufu',
   agentIds: [ZHUYUAN_AGENT_ID],
   name: '朱鸢',
-  description: '额外能力暴击率+30%（门控）、核心被动强化霰弹增伤+40%（basic/dashAttack 定向近似，失衡部分走覆盖率滑块）、影画2/4 以太增伤与抗穿。',
+  description: '额外能力暴击率+30%（门控）、核心被动强化霰弹增伤+40%（basic/dashAttack 定向近似，失衡部分走覆盖率滑块）、影画2/4 以太增伤与抗穿；强化霰弹资源循环（spec resource）+ 影画6 以太余温追加鹿弹（buildExecutions）。',
   applyPanel: applyZhuYuanPanel,
+  buildCharConfig: buildZhuYuanCharConfig,
+  buildExecutions: buildZhuYuanExecutions,
+  buildResourceResult: buildZhuYuanResourceResult,
+  resourceSections: buildZhuYuanResourceSections,
   settings,
 }

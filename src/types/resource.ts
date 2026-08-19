@@ -1273,6 +1273,12 @@ export interface CharacterOperationConfig {
   xixifuCinemaLevel?: number
   /** 希希芙进场毒素（3，影画1→6；computeXixifuToxinTotal 写入） */
   xixifuInitialToxin?: number
+  /** 朱鸢命座等级（霰弹资源门控影画1 快速装填/影画6 以太余温） */
+  zhuyuanCinemaLevel?: number
+  /** 朱鸢影画1 快速装填连携回复量（6，非影画1 为 0；computeZhuYuanShellsTotal 写入） */
+  zhuyuanC1ChainReload?: number
+  /** 朱鸢影画1 快速装填终结回复量（9，非影画1 为 0；computeZhuYuanShellsTotal 写入） */
+  zhuyuanC1UltReload?: number
   /** 青衣失衡次数（外层不动点传入，供醉花月云转轮数） */
   qingyiStunCount?: number
   /** 青衣可分配循环秒均（一煞#4→醉花月云转） */

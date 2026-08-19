@@ -122,3 +122,66 @@ describe('朱鸢核心被动与影画（自身面板）', () => {
     expect((off.panel as any).etherDmg ?? 0).toBeCloseTo(0, 5)
   })
 })
+
+describe('朱鸢强化霰弹资源循环', () => {
+  const mkState = () => ({
+    basicAttackTime: 20, dodgeCounterCount: 1, exSpecialCount: 2,
+    chainCountTotal: 2, ultimateCount: 1, quickAssistCount: 1,
+    frontlineTime: 40, backstageTime: 0,
+  }) as any
+
+  it('霰弹账目：初始6+突击10+闪反1+强特6+连携6+终结3+快支1+支援突击3；消耗=总量', () => {
+    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    const result: any = zhuYuanMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    const shells = result.specResources.zhuyuan_shells
+    expect(shells).toBeTruthy()
+    expect(shells.initialValue).toBe(6)
+    expect(shells.gains.shells_basic_combo).toBeCloseTo(10, 5)
+    expect(shells.gains.shells_dodge_counter).toBeCloseTo(1, 5)
+    expect(shells.gains.shells_ex_special).toBeCloseTo(6, 5)
+    expect(shells.gains.shells_chain).toBeCloseTo(6, 5)
+    expect(shells.gains.shells_ultimate).toBeCloseTo(3, 5)
+    expect(shells.gains.shells_quick_assist).toBeCloseTo(1, 5)
+    expect(shells.gains.shells_def_assist).toBeCloseTo(3, 5)
+    expect(shells.gains.shells_c1_reload_chain ?? 0).toBeCloseTo(0, 5)
+    // 压制模式消耗次数 = 初始6 + 总获取30 = 36
+    expect(shells.spendCounts.shells_suppression_spend).toBe(36)
+  })
+
+  it('影画1 快速装填（用户口径：连携6枚/终结9枚）', () => {
+    const cfg: any = { zhuyuanCinemaLevel: 1, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    const result: any = zhuYuanMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    const shells = result.specResources.zhuyuan_shells
+    expect(shells.gains.shells_c1_reload_chain).toBeCloseTo(12, 5)  // 连携2次×6
+    expect(shells.gains.shells_c1_reload_ultimate).toBeCloseTo(9, 5) // 终结1次×9
+    expect(shells.spendCounts.shells_suppression_spend).toBe(36 + 21)
+  })
+
+  it('影画6 以太余温：floor(霰弹总量/12)次 ×4枚鹿弹执行行', () => {
+    const cfg: any = { zhuyuanCinemaLevel: 6, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    const executions: any[] = []
+    zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions } as any)
+    expect(executions.length).toBe(1)
+    expect(executions[0].moveId).toBe('zhuyuan_c6_afterglow_bullets')
+    // cinema6 含影画1 快速装填：总量 36+21=57 → floor(57/12)=4 次 ×4 枚
+    expect(executions[0].count).toBe(4 * 4)
+    expect(executions[0].damageMultiplier).toBe(220)
+    expect(executions[0].element).toBe('ether')
+
+    // 非6命不生成
+    const cfg0: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    const empty: any[] = []
+    zhuYuanMechanic.buildExecutions!({ cfg: cfg0, state: mkState(), executions: empty } as any)
+    expect(empty.length).toBe(0)
+  })
+
+  it('resourceSections 输出以太余温卡', () => {
+    const cfg: any = { zhuyuanCinemaLevel: 6, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    const result: any = zhuYuanMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    const sections = zhuYuanMechanic.resourceSections!({ result, cfg } as any)
+    expect(sections.some((s: any) => s.title?.includes('强化霰弹'))).toBe(true)
+    const afterglow = sections.find((s: any) => s.id === 'zhuyuan-afterglow')
+    expect(afterglow).toBeTruthy()
+    expect(afterglow!.summary).toContain('4')
+  })
+})

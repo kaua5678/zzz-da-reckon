@@ -1353,11 +1353,11 @@
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "快速装填：连携/终结获得[快速装填]，耗尽强化霰弹后立刻获得6/9枚（资源机制，未建模）"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "快速装填：连携来源+6枚/终结来源+9枚（原文6/9 口径用户确认；总量口径按全部触发近似，spec resource zhuyuan_shells）"
+     ],
+     "pending": []
     },
     {
      "cinema": 2,
@@ -1399,10 +1399,12 @@
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "以太余温：累计消耗12枚霰弹得1次，追加4枚×220%攻击力以太鹿弹（buildExecutions 执行行）"
+     ],
      "pending": [
-      "扩容能源包：[以太余温]使下次强特耗能-30并追加4枚220%攻击力以太鹿弹（资源与追加伤害，未建模）"
+      "余温使下次强特能量消耗-30（影响能量结算，未建模）"
      ]
     }
    ]

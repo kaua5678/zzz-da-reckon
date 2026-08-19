@@ -7,7 +7,104 @@
   ],
   "status": "partially_implemented",
   "attributeConversions": [],
-  "resources": [],
+  "resources": [
+    {
+      "id": "zhuyuan_shells",
+      "name": "强化霰弹",
+      "nature": "resource",
+      "initialValue": 6,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "shells_basic_combo",
+          "trigger": "突击模式（不许动）第四/五段命中+1（同一招式至多1枚）",
+          "countSource": "basicAttackCount",
+          "amountPerCount": 1,
+          "formula": "第四/五段每招式至多1枚，按普攻连段次数近似",
+          "status": "implemented_approximation"
+        },
+        {
+          "id": "shells_dodge_counter",
+          "trigger": "闪避反击：火力震爆发动+1",
+          "countSource": "dodgeCounterCount",
+          "amountPerCount": 1,
+          "status": "implemented"
+        },
+        {
+          "id": "shells_ex_special",
+          "trigger": "强化特殊技：全弹连射发动+3",
+          "countSource": "exSpecialCount",
+          "amountPerCount": 3,
+          "status": "implemented"
+        },
+        {
+          "id": "shells_chain",
+          "trigger": "连携技：歼灭模式发动+3",
+          "countSource": "chainCountTotal",
+          "amountPerCount": 3,
+          "status": "implemented"
+        },
+        {
+          "id": "shells_ultimate",
+          "trigger": "终结技：歼灭模式MAX发动+3",
+          "countSource": "ultimateCount",
+          "amountPerCount": 3,
+          "status": "implemented"
+        },
+        {
+          "id": "shells_quick_assist",
+          "trigger": "快速支援：掩护射击发动+1",
+          "countSource": "quickAssistCount",
+          "amountPerCount": 1,
+          "status": "implemented"
+        },
+        {
+          "id": "shells_def_assist",
+          "trigger": "支援突击：自卫还击发动+3",
+          "countSource": "cfgField",
+          "countField": "defAssistCount",
+          "amountPerCount": 3,
+          "status": "implemented"
+        },
+        {
+          "id": "shells_c1_reload_chain",
+          "trigger": "影画1 快速装填（连携来源）：耗尽霰弹后立刻获得6枚",
+          "countSource": "chainCountTotal",
+          "valueSource": "cfgField",
+          "valueField": "zhuyuanC1ChainReload",
+          "formula": "连携/终结发动获得快速装填，耗尽霰弹后消耗；总量口径按全部触发近似；原文6/9 用户确认=连携6枚",
+          "status": "implemented_approximation"
+        },
+        {
+          "id": "shells_c1_reload_ultimate",
+          "trigger": "影画1 快速装填（终结来源）：耗尽霰弹后立刻获得9枚",
+          "countSource": "ultimateCount",
+          "valueSource": "cfgField",
+          "valueField": "zhuyuanC1UltReload",
+          "formula": "原文6/9 用户确认=终结9枚",
+          "status": "implemented_approximation"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "shells_suppression_spend",
+          "trigger": "压制模式（请勿抵抗/火力压制）开火消耗",
+          "cost": 1,
+          "result": "每消耗1枚打一次强化霰弹射击（大量以太伤害）",
+          "deduct": true,
+          "status": "implemented_approximation",
+          "note": "整局总量口径：所有霰弹均经压制模式消耗，count=初始+总获取；无单次存量上限"
+        }
+      ],
+      "feedbackGainRules": [],
+      "properties": {
+        "cinema6AfterglowCost": 12,
+        "cinema6ExtraBullets": 4,
+        "cinema6BulletRatio": 220,
+        "cinema6EnergyDiscount": 30
+      }
+    }
+  ],
   "rowFusions": [],
   "events": [],
   "verifications": [],
@@ -18,7 +115,7 @@
     "额外能力·武装协同（原文）：队伍中存在[支援]角色或与自身阵营相同的角色时触发：朱鸢发动[强化特殊技]、[连携技]或[终结技]时，自身暴击率提升30%，持续10秒。",
     "影画1 快速装填：连携/终结获得[快速装填]，耗尽强化霰弹后消耗之立刻获得6/9枚（资源机制）。影画2 以太余烬：压制模式抗打断提升、受伤-10%；消耗强化霰弹命中使[请勿抵抗]/[火力压制]以太伤害+10%最多5层（5秒）。影画4 以太侵彻：消耗强化霰弹命中使[请勿抵抗]/[火力压制]无视目标25%以太伤害抗性。影画6 扩容能源包：累计消耗12枚强化霰弹得[以太余温]，下次强特耗能-30并追加4枚220%攻击力以太鹿弹。影画3/5 技能等级+2。",
     "实现口径 [已确认]：① 朱鸢机制全部自身向，无团队 buff；② 核心被动增伤+40% 限定消耗强化霰弹的招式（请勿抵抗#1~#6/火力压制#1~#2），通用池平A为聚合行无法按 moveId 拆分，近似为 skillDmgBonus__basic + skillDmgBonus__dashAttack 定向（作用范围略宽：含不许动/火力奇袭）；③ 失衡状态额外+40%：用户口径——轴模式参照仪玄凝云术（轴内行直加，待朱鸢轴接入），非轴按覆盖率滑块 zhuYuan.coreStunnedCoverage 粗略近似，默认 0（自调兜底），在 helpers 面板块施加同一定向通道；④ 额外能力暴击率+30% 按常驻近似（10秒窗口高频刷新）；⑤ 影画2 以太伤害+50%（5层×10%）与影画4 以太抗性无视25% 原文限定请勿抵抗/火力压制，面板级近似作用全部以太伤害（含全弹连射/歼灭模式），spec 注明。",
-    "未建模项：[强化霰弹]/[快速装填]/[以太余温]资源循环、影画2 抗打断/受伤-10%（防御向）、影画6 追加鹿弹伤害与强特耗能-30。"
+    "强化霰弹资源循环 [已确认]（spec resource zhuyuan_shells）：初始6枚无存量上限；获取=突击模式段4/5每连段+1、闪避反击+1、全弹连射+3、歼灭模式+3、歼灭模式MAX+3、掩护射击+1、自卫还击+3（cfgField defAssistCount）、影画1 快速装填连携+6/终结+9（原文6/9 口径用户确认，cfgField 按命座门控）；消耗=压制模式开火每枚1次（总量口径）。影画6 以太余温：累计消耗12枚得1次余温，追加4枚×220%攻击力以太鹿弹走 buildExecutions 执行行；余温使下次强特耗能-30 影响能量结算未建模（spec properties 记录数值）。"
   ],
   "teamBuffs": [],
   "additionalAbility": {
