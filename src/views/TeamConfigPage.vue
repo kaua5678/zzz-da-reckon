@@ -1024,7 +1024,7 @@ const availableAgentOptions = computed(() => {
     anomaly: '异常',
     support: '支援',
     defense: '防护',
-    rupture: '裂御',
+    rupture: '命破',
     edgeguard: '锋御',
     sharpen: '锋御',
   }
