@@ -1776,10 +1776,12 @@
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "蓄热充能/终结技激光命中追加250%攻击力火伤（patchExecutions moveId 限定，flatDamageBonus 进基础区；口径：不按激光时长建独立行，按招式触发各挂一次，视为追加攻击）"
+     ],
      "pending": [
-      "魔法种子：火刀衔接灼红旋涡、回复蓄炎、激光追加250%攻击力火伤（均属奥菲丝自身机制）"
+      "火刀衔接灼红旋涡、回复10点蓄炎（操作/资源机制，未建模）"
      ]
     }
    ]

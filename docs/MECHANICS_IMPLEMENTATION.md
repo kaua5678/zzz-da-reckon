@@ -355,7 +355,7 @@
 - **额外能力**：队伍有[击破]或[支援] → 准星聚焦代理人追加攻击无视 25% 防御（`orphie.additional_def_ignore`，enemyDefReduction 近似，按 spec.additionalAbility 门控）。
 - **核心（自身）**：暴击率 +25%；[追加攻击]伤害 +85%——**增伤区**（`skillDmgBonus__additionalAttack`），不是独立乘区；引擎新增 SkillDamageTarget `additionalAttack`，catalog 对 13 个「视为追加攻击」招式打 `skillTags`（高压火枪全6段/小心脚下/灼红旋涡/蓄热充能/燥焰迸射/枪管过热/与火共舞#1~#2）。
 - **影画1**：准星聚焦代理人伤害 +20%；自身4招无视 15% 火抗（面板级近似）。
-- **影画2**：终结技后自身攻击 +20%（满覆盖近似，面板乘法）；**影画4**：终结技增伤 +40%（`skillDmgBonus__ultimate`）。
-- **未建模**：蓄炎资源/后台自动释放、影画4 蓄热充能+40%（无 moveId 级通道）、影画6 激光追加火伤（触发频率静态不可算）。
+- **影画2**：终结技后自身攻击 +20%（满覆盖近似，面板乘法）；**影画4**：终结技增伤 +40%（`skillDmgBonus__ultimate`）；**影画6**：蓄热充能/终结技激光附加 250% 攻击力火伤（`patchExecutions` moveId 限定挂 `flatDamageBonus`，不按激光时长建独立行，视为追加攻击——用户确认口径）。
+- **未建模**：蓄炎资源/后台自动释放、影画4 蓄热充能+40%（无 moveId 级通道）。
 - **模块**：`src/mechanics/agents/orphie.ts`（自身机制 applyPanel）+ spec 声明式（helpers 过滤链门控额外能力）。
 

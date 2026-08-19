@@ -1259,6 +1259,10 @@ export interface CharacterOperationConfig {
   sigridCinemaLevel?: number
   /** 希格莉德局内攻击力（敛枪式最后一击附加伤害的基数，buildCharConfig 预存） */
   sigridAtk?: number
+  /** 奥菲丝命座等级（patchExecutions 门控影画6 激光附加伤害） */
+  orphieCinemaLevel?: number
+  /** 奥菲丝局内攻击力（影画6 激光附加伤害的基数，buildCharConfig 预存） */
+  orphieAtk?: number
   /** 青衣失衡次数（外层不动点传入，供醉花月云转轮数） */
   qingyiStunCount?: number
   /** 青衣可分配循环秒均（一煞#4→醉花月云转） */

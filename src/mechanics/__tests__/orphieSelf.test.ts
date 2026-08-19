@@ -6,6 +6,7 @@ import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { inferSkillDamageTarget } from '@/core/damage'
 import { getTargetedStat } from '@/core/buff'
+import { orphieMechanic } from '@/mechanics/agents/orphie'
 
 const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
 const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
@@ -115,5 +116,36 @@ describe('奥菲丝（1301）追加攻击 tag 与定向增伤', () => {
     const ultDmg4 = getTargetedStat(p4, 'skillDmgBonus', 'ultimate')
     const ultDmg2 = getTargetedStat(p2, 'skillDmgBonus', 'ultimate')
     expect(ultDmg4 - ultDmg2).toBeCloseTo(40, 5)
+  })
+})
+
+describe('奥菲丝影画6 激光附加伤害（patchExecutions moveId 限定）', () => {
+  const mkExec = (moveId: string) => ({ moveId, skillTableNote: '' }) as any
+
+  it('6命：蓄热充能/与火共舞行附加 250% 局内攻；其余招式与非6命不附加', () => {
+    const cfg: any = { orphieCinemaLevel: 6, orphieAtk: 3000 }
+    const laser = mkExec('1301011')
+    const ult1 = mkExec('1301015')
+    const ult2 = mkExec('1301016')
+    const other = mkExec('1301009')
+    orphieMechanic.patchExecutions!({ cfg, state: {} as any, executions: [laser, ult1, ult2, other], teamFrontlineSeconds: 0 } as any)
+    expect(laser.flatDamageBonus).toBeCloseTo(3000 * 2.5, 5)
+    expect(ult1.flatDamageBonus).toBeCloseTo(3000 * 2.5, 5)
+    expect(ult2.flatDamageBonus).toBeCloseTo(3000 * 2.5, 5)
+    expect(other.flatDamageBonus ?? 0).toBeCloseTo(0, 5)
+    expect(laser.skillTableNote).toContain('影画6')
+
+    // 非6命不附加
+    const cfg5: any = { orphieCinemaLevel: 5, orphieAtk: 3000 }
+    const exec5 = mkExec('1301011')
+    orphieMechanic.patchExecutions!({ cfg: cfg5, state: {} as any, executions: [exec5], teamFrontlineSeconds: 0 } as any)
+    expect(exec5.flatDamageBonus ?? 0).toBeCloseTo(0, 5)
+  })
+
+  it('buildCharConfig 预存命座与局内攻（flatDamageBonus 基数）', () => {
+    const cfg: any = {}
+    orphieMechanic.buildCharConfig!({ cfg, cinemaLevel: 6, panel: { atk: 4321 } } as any)
+    expect(cfg.orphieCinemaLevel).toBe(6)
+    expect(cfg.orphieAtk).toBe(4321)
   })
 })
