@@ -2724,10 +2724,11 @@
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "钢能建模部分：崩坠消耗120→100（buildResourceResult 后处理）、进场+40钢能、终结技额外+20钢能（spec resource xide_steel_energy）"
+     ],
      "pending": [
-      "冻眠期：钢能消耗降至100、进场/终结技额外累积钢能（钢能资源未建模）",
       "落华·崩坠暴击伤害+30%（面板级无法限定单招，未建模）"
      ]
     },

@@ -147,3 +147,57 @@ describe('席德自身机制（额外能力/影画4/影画6）', () => {
     expect(exec5.flatDamageBonus ?? 0).toBeCloseTo(0, 5)
   })
 })
+
+describe('席德钢能资源循环（spec resource）', () => {
+  const mkState = () => ({
+    exSpecialCount: 4, ultimateCount: 2, chainCountTotal: 0,
+    basicAttackTime: 0, frontlineTime: 30, backstageTime: 0,
+  }) as any
+  // energySpent = exSpecialCount × exSpecialEnergyConsume(默认45) = 180
+  const mkCfg = (cinema: number) => ({ xideCinemaLevel: cinema, exSpecialEnergyConsume: 45 }) as any
+
+  it('获取=自身耗能×0.5+正兵耗能×0.5+终结技60×次数，消耗=崩坠每次120', () => {
+    const cfg = mkCfg(0)
+    const result: any = xideMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    const steel = result.specResources.xide_steel_energy
+    expect(steel).toBeTruthy()
+    expect(steel.initialValue).toBe(60)
+    expect(steel.maxValue).toBe(150)
+    expect(steel.gains.xide_self_energy_to_steel).toBeCloseTo(90, 5)
+    expect(steel.gains.xide_vanguard_energy_to_steel).toBeCloseTo(90, 5)
+    expect(steel.gains.xide_ultimate_steel).toBeCloseTo(120, 5)
+    expect(steel.gains.xide_c1_ultimate_steel ?? 0).toBeCloseTo(0, 5)
+    // 崩坠次数 = floor((60 + 90 + 90 + 120) / 120) = 3
+    expect(steel.spendCounts.xide_bengzhui_spend).toBe(3)
+    expect(steel.remaining).toBeCloseTo(360 - 3 * 120, 5)
+  })
+
+  it('影画1：进场+40、终结技额外+20、崩坠消耗降至100', () => {
+    const cfg = mkCfg(1)
+    const result: any = xideMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    const steel = result.specResources.xide_steel_energy
+    expect(steel.initialValue).toBe(100)
+    expect(steel.gains.xide_c1_ultimate_steel).toBeCloseTo(40, 5)
+    // total = 100 + 90 + 90 + 120 + 40 = 440 → floor(440/100) = 4 次，余 40
+    expect(steel.spendCounts.xide_bengzhui_spend).toBe(4)
+    expect(steel.remaining).toBeCloseTo(40, 5)
+  })
+
+  it('正兵耗能近似比例滑块生效（调0则不计正兵部分）', () => {
+    const cfg = mkCfg(0)
+    cfg['setting:1461.xide_steel_energy.xide_vanguard_energy_to_steel.rate'] = 0
+    const result: any = xideMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    const steel = result.specResources.xide_steel_energy
+    expect(steel.gains.xide_vanguard_energy_to_steel).toBeCloseTo(0, 5)
+    // total = 60 + 90 + 120 = 270 → 2 次
+    expect(steel.spendCounts.xide_bengzhui_spend).toBe(2)
+  })
+
+  it('resourceSections 输出钢能资源卡', () => {
+    const cfg = mkCfg(0)
+    const result: any = xideMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    const sections = xideMechanic.resourceSections!({ result, cfg } as any)
+    expect(sections.length).toBeGreaterThan(0)
+    expect(sections.some((s: any) => s.title?.includes('钢能'))).toBe(true)
+  })
+})
