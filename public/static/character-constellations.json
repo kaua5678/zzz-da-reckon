@@ -1296,7 +1296,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "知己知彼：[洞悉]层数机制与持有[洞悉]时月城柳异常精通+80（月城柳自身面板，未建模）"
      ]
     },
     {
@@ -1304,7 +1304,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "卓越适应性：突刺积蓄+20%、长按追加突刺耗能与[极性紊乱]倍率机制（月城柳自身，未建模）"
      ]
     },
     {
@@ -1319,11 +1319,11 @@
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "[识破]下敌人受击穿透率+16%（teammate-buff penRatio，识破施加条件按常驻近似）"
+     ],
+     "pending": []
     },
     {
      "cinema": 5,
@@ -1340,7 +1340,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "非人之血：[森罗万象]延长与强化特殊技+20%、极性紊乱上限4次与耗能减半（月城柳自身，未建模）"
      ]
     }
    ]

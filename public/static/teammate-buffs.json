@@ -2931,7 +2931,7 @@
    {
     "id": "yanagi.core_disorder_multiplier_bonus",
     "source": {
-     "zhCN": "核心被动（F级）"
+     "zhCN": "核心被动"
     },
     "description": {
      "zhCN": "月城柳发动[强化特殊技]后，队伍中任意角色对敌人施加[紊乱]效果时，[紊乱]效果的伤害倍率提升250%，持续15秒。"
@@ -2973,10 +2973,10 @@
      "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
     },
     "sourceLabel": {
-     "zhCN": "核心被动（F级）"
+     "zhCN": "核心被动"
     },
     "name": {
-     "zhCN": "月城柳｜核心被动（F级）"
+     "zhCN": "月城柳｜核心被动"
     },
     "conditionLabel": {
      "zhCN": "月城柳发动[强化特殊技]后，队伍中任意角色对敌人施加[紊乱]效果时，[紊乱]效果的伤害倍率提升250%，持续15秒。"

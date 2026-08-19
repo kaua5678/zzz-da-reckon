@@ -1,0 +1,101 @@
+import { readFileSync } from 'node:fs'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { useCatalogStore } from '@/stores/catalog'
+import { useConfigStore } from '@/stores/config'
+import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { yanagiMechanic } from '@/mechanics/agents/yanagi'
+
+const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
+const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
+const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
+
+const baseConfig = {
+  wEngineId: '', wEngineModLevel: 1,
+  driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
+  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
+  quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
+}
+
+function stubFetch() {
+  vi.stubGlobal('fetch', vi.fn(async (url: unknown) => {
+    const value = String(url)
+    if (value.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
+    if (value.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
+    if (value.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
+    return { ok: false, json: async () => ({}) }
+  }))
+}
+
+async function setup(mateId = '1331', cinemaLevel = 0) {
+  const catalog = useCatalogStore()
+  await catalog.load()
+  await catalog.loadTeammateBuffs()
+  const config = useConfigStore()
+  for (const buff of config.globalBuffs) buff.enabled = false
+  // slot0 月城柳，slot1 队友（1331 薇薇安 = 以太·异常，无队友 buff → 纯专精命中）
+  config.team[0] = { slot: 0, agentId: '1221', cinemaLevel, ...baseConfig } as any
+  config.team[1] = { slot: 1, agentId: mateId, cinemaLevel: 0, ...baseConfig } as any
+  config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+  config.syncTeammateBuffsFromTeam()
+  return { catalog, config }
+}
+
+describe('月城柳（1221）核心被动[紊乱]倍率与影画4[识破]穿透', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    stubFetch()
+  })
+
+  it('全队紊乱伤害倍率+250%（Lv.12）；影画4 识破穿透率+16%', async () => {
+    const { catalog, config } = await setup('1331', 0)
+    const withBuff = (computePanelPhases(1, config, catalog)!.inCombat as any).disorderBaseMultiplierBonus as number
+    config.toggleTeammateBuff('yanagi.core_disorder_multiplier_bonus', false)
+    const withoutBuff = (computePanelPhases(1, config, catalog)!.inCombat as any).disorderBaseMultiplierBonus as number
+    config.toggleTeammateBuff('yanagi.core_disorder_multiplier_bonus', true)
+    expect(withBuff - withoutBuff).toBeCloseTo(250, 5)
+
+    const pen0 = (computePanelPhases(1, config, catalog)!.inCombat as any).penRatio as number
+    config.team[0].cinemaLevel = 4
+    config.syncTeammateBuffsFromTeam()
+    const pen4 = (computePanelPhases(1, config, catalog)!.inCombat as any).penRatio as number
+    expect(pen4 - pen0).toBeCloseTo(16, 5)
+  })
+})
+
+describe('月城柳额外能力·月相（电属性异常积蓄值+45%）', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    stubFetch()
+  })
+
+  it('模块：按 additionalAbilityActive 门控施加', () => {
+    const mk = (active: number) => ({
+      slot: 0, agent: { id: '1221' } as any, cinemaLevel: 0, team: [],
+      panel: { electricAnomalyBuildUpEfficiency: 0, additionalAbilityActive: active } as any,
+    })
+    const on = mk(1); yanagiMechanic.applyPanel!(on as any)
+    expect((on.panel as any).electricAnomalyBuildUpEfficiency).toBeCloseTo(45, 5)
+
+    const off = mk(0); yanagiMechanic.applyPanel!(off as any)
+    expect((off.panel as any).electricAnomalyBuildUpEfficiency).toBeCloseTo(0, 5)
+  })
+
+  it('门控：其他[异常]或同属性（电）队友激活；强攻队友不激活', async () => {
+    // 正例1：1331 薇薇安（以太·异常 → 纯专精命中）
+    const pos1 = await setup('1331', 0)
+    const p1 = computePanelPhases(0, pos1.config, pos1.catalog)!.inCombat as any
+    expect(p1.additionalAbilityActive).toBe(1)
+    expect(p1.electricAnomalyBuildUpEfficiency).toBeCloseTo(45, 5)
+
+    // 正例2：1181 格莉丝（电属性 → 同属性命中）
+    const pos2 = await setup('1181', 0)
+    expect((computePanelPhases(0, pos2.config, pos2.catalog)!.inCombat as any).additionalAbilityActive).toBe(1)
+
+    // 负例：1081 比利（物理·强攻 → 不激活）
+    const neg = await setup('1081', 0)
+    const pNeg = computePanelPhases(0, neg.config, neg.catalog)!.inCombat as any
+    expect(pNeg.additionalAbilityActive ?? 0).toBe(0)
+    expect(pNeg.electricAnomalyBuildUpEfficiency ?? 0).toBeCloseTo(0, 5)
+  })
+})

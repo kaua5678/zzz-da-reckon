@@ -5,7 +5,7 @@
   "agentIds": [
     "1221"
   ],
-  "status": "not_described_not_implemented",
+  "status": "partially_implemented",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
@@ -13,7 +13,27 @@
   "verifications": [],
   "stateMachines": [],
   "notes": [
-    "待录入：月城柳 的机制、资源、事件与验证。"
+    "来源：nanoka 3.2.3+18244196 zh character/1221.json（抓于 2026-08-19），术语表 noun_3.2.3.json 无月城柳专属术语。基础信息：S 级电属性·异常（hit_type 斩击），对空洞特别行动部第六课。原始数据：data/raw/nanoka_missing/full/1221.json。",
+    "核心被动·月蚀（Lv.12 原文）：月城柳发动[强化特殊技]后，队伍中任意角色对敌人施加[紊乱]效果时，[紊乱]效果的伤害倍率提升250%（技能等级1~12 对应 125%~250%），持续15秒；[强化特殊技]命中敌人时，月城柳对目标造成的电属性伤害提升20%（Lv.1~12 对应 10%~20%），持续15秒。",
+    "额外能力·月相（原文）：队伍中存在其他[异常]角色或与自身属性相同的角色时触发：架势切换后，月城柳发动[普通攻击：夜见尊神乐]命中敌人时累积的电属性异常积蓄值提升45%，持续8秒。",
+    "影画1 知己知彼：属性异常施加叠[洞悉]（至多3层，15秒）；持[洞悉]时月城柳异常精通+80。影画2 卓越适应性：强化特殊技突刺积蓄+20%、长按追加突刺与[极性紊乱]倍率机制。影画4 掌棋者：月城柳造成属性异常伤害施加[识破]（15秒），识破下敌人受击时该次攻击穿透率+16%。影画6 非人之血：[森罗万象]延长30秒、强化特殊技伤害+20%、极性紊乱上限4次且耗能减半。影画3/5 技能等级+2。",
+    "[已确认·继承草稿] 拐力数据在 teammate-buffs.json 1221 组：核心被动[紊乱]伤害倍率+250%（disorderBaseMultiplierBonus，Lv.12 值）、影画4 [识破]穿透率+16%（penRatio，按 cinemaLevel≥4 自动门控）。",
+    "实现口径 [已确认]：① 紊乱倍率/识破穿透都是敌方 debuff 性质，全队受益，无需额外能力门控；② 额外能力「电属性异常积蓄值+45%」属月城柳自身面板，由 yanagi.ts applyPanel 施加 panel.electricAnomalyBuildUpEfficiency+=45，按 panel.additionalAbilityActive 门控（teamConditions：specialty anomaly / sameAttributeAsSelf；evalTeamConditions 天然排除自身，贴合原文「其他异常角色」）；③ 架势切换/8秒窗口与强化特殊技前置条件按静态面板满覆盖近似。",
+    "未建模项：核心被动「月城柳对目标电属性伤害+20%」（月城柳自身伤害行）、影画1 [洞悉]与异常精通+80（月城柳自身）、影画2/6 突刺与极性紊乱机制（月城柳自身）、[森罗万象]状态。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "anomaly"
+        ]
+      },
+      {
+        "type": "sameAttributeAsSelf"
+      }
+    ],
+    "note": "额外能力·月相：队伍中存在其他[异常]角色或与自身属性（电）相同的角色时触发（夜见尊神乐电属性异常积蓄值+45%，月城柳自身面板）。声明式条件，引擎判定写入 panel.additionalAbilityActive；yanagi.ts applyPanel 按此门控。evalTeamConditions 候选排除自身，天然满足「其他」。[已确认]"
+  }
 }

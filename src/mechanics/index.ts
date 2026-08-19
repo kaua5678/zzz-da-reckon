@@ -53,6 +53,7 @@ import { sigridMechanic } from './agents/sigrid'
 import { qianxiaMechanic } from './agents/qianxia'
 import { triggerMechanic } from './agents/trigger'
 import { xixifuMechanic } from './agents/xixifu'
+import { yanagiMechanic } from './agents/yanagi'
 import { agentSpecs } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
@@ -79,6 +80,7 @@ registerAgentMechanic(sigridMechanic)
 registerAgentMechanic(qianxiaMechanic)
 registerAgentMechanic(triggerMechanic)
 registerAgentMechanic(xixifuMechanic)
+registerAgentMechanic(yanagiMechanic)
 registerAgentMechanic(koledaFurnaceMechanic)
 registerAgentMechanic(anbyChargeMechanic)
 registerAgentMechanic(corinChargeMechanic)

@@ -14,7 +14,7 @@
 | 防护 | `defense` | |
 | 锋御 | `sharpen` | |
 
-铁律：① 写 `additionalAbility.teamConditions` 的 specialty 值前先查本表；② 门控测试失败时先核对**测试队友的 specialty 是否选对**，禁止修改 spec 枚举值迁就测试（曾发生：希希芙[击破]误改为 rupture，语义整个反转而测试仍绿）；③ 门控测试必须带「最易混淆项」负例（击破↔命破互为负例）。注：`src/components/CharacterCard.vue` 的 SPECIALTY_LABEL 中 `rupture: '裂御'` 是 UI 错字，以本表为准。
+铁律：① 写 `additionalAbility.teamConditions` 的 specialty 值前先查本表；② 门控测试失败时先核对**测试队友的 specialty 是否选对**，禁止修改 spec 枚举值迁就测试（曾发生：希希芙[击破]误改为 rupture，语义整个反转而测试仍绿）；③ 门控测试必须带「最易混淆项」负例（击破↔命破互为负例）。历史备注：UI 层 SPECIALTY_LABEL 曾把 rupture 标为「裂御」，已于 2026-08-19 统一修正为「命破」。
 
 ## 1. 理解机制的顺序
 
@@ -340,4 +340,12 @@
 - **影画1**：核心公式 ×1.4（buffModifiers，等效上限35%）+ 全队无视 5% 电属性伤害抗性。
 - **未建模**：[毒素]资源与[蚀骨]伤害行（含失衡值+40%/60%）、影画1/2/4/6 的自身伤害与资源部分。
 - **模块**：`src/mechanics/agents/xixifu.ts`（薄模块：额外能力自身暴伤+10%）。
+
+### 月城柳（tsukishiro_yanagi / 1221）—— 对空洞特别行动部第六课电异常
+
+- **核心**：[紊乱]伤害倍率 +250%（Lv.12，`disorderBaseMultiplierBonus`，全队受益）。
+- **额外能力**：队伍有其他[异常]或同属性（电）→ 月城柳自身电属性异常积蓄值 +45%（`yanagi.ts applyPanel` 按 additionalAbilityActive 门控，`electricAnomalyBuildUpEfficiency`）。
+- **影画4**：[识破]下敌人受击穿透率 +16%（`penRatio`，识破施加按常驻近似）。
+- **未建模**：核心被动自身电伤+20%、影画1 洞悉/异常精通、影画2/6 突刺与极性紊乱机制。
+- **模块**：`src/mechanics/agents/yanagi.ts`（薄模块：额外能力异常积蓄）。
 
