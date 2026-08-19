@@ -282,6 +282,12 @@ export function computePanelPhases(
   const benAdditionalActive = benSlot >= 0
     ? evalAdditionalAbility(team, benSlot, benAgent, getAgentSpec('1121')?.additionalAbility) === true
     : false
+  // 千夏额外能力·白日梦对位法：队伍存在[强攻]或与自身阵营（妄想天使）相同的角色时触发（帷幕失衡易伤+30%）
+  const qianxiaSlot = team.find(member => member.agentId === '1491')?.slot ?? -1
+  const qianxiaAgent = qianxiaSlot >= 0 ? catalogStore.getAgent('1491') ?? null : null
+  const qianxiaAdditionalActive = qianxiaSlot >= 0
+    ? evalAdditionalAbility(team, qianxiaSlot, qianxiaAgent, getAgentSpec('1491')?.additionalAbility) === true
+    : false
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
     .filter(buff => buff.id !== 'rina.additional_electric_damage' || rinaAdditionalActive)
     .filter(buff => buff.id !== 'lighter.additional_morale_ice_fire_dmg' || lighterAdditionalActive)
@@ -289,6 +295,7 @@ export function computePanelPhases(
     .filter(buff => buff.id !== 'soukaku.additional_ice_damage' || soukakuAdditionalActive)
     .filter(buff => buff.id !== 'caesar.additional_battle_spirit_dmg' || caesarAdditionalActive)
     .filter(buff => buff.id !== 'ben.additional_shield_crit_rate' || benAdditionalActive)
+    .filter(buff => buff.id !== 'buff_23620b7000' || qianxiaAdditionalActive)
 
   const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
   for (const buff of allTeammateBuffs) {

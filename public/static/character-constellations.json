@@ -1,3576 +1,3576 @@
 {
- "version": 1,
- "statusLegend": {
-  "implemented_generic_skill_level": "通用技能等级/倍率等级逻辑已实现",
-  "implemented_approximation": "已实现，但使用期望值或简化模型",
-  "implemented_state_machine": "已按状态机或明确规则实现",
-  "partially_implemented": "部分字段或事件已实现，最终伤害/完整机制仍缺口",
-  "not_described_not_implemented": "未收到机制描述，未实现专属效果"
- },
- "globalRules": [
-  {
-   "cinemas": [
-    3,
-    5
-   ],
-   "status": "implemented_generic_skill_level",
-   "codePaths": [
-    "src/core/skillLevel.ts",
-    "src/composables/useResourceCalc.ts"
-   ],
-   "note": "3命/5命按通用技能等级加成处理；专属额外效果不自动推断。"
+  "version": 1,
+  "statusLegend": {
+    "implemented_generic_skill_level": "通用技能等级/倍率等级逻辑已实现",
+    "implemented_approximation": "已实现，但使用期望值或简化模型",
+    "implemented_state_machine": "已按状态机或明确规则实现",
+    "partially_implemented": "部分字段或事件已实现，最终伤害/完整机制仍缺口",
+    "not_described_not_implemented": "未收到机制描述，未实现专属效果"
+  },
+  "globalRules": [
+    {
+      "cinemas": [
+        3,
+        5
+      ],
+      "status": "implemented_generic_skill_level",
+      "codePaths": [
+        "src/core/skillLevel.ts",
+        "src/composables/useResourceCalc.ts"
+      ],
+      "note": "3命/5命按通用技能等级加成处理；专属额外效果不自动推断。"
+    }
+  ],
+  "characters": {
+    "1011": {
+      "name": {
+        "zhCN": "安比",
+        "en": "Anby"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "能量获得效率+12%（30s 刷新），按覆盖率滑块折算写入 energyGainEfficiency（computePanelPhases 1011 块，默认 100%）"
+          ],
+          "pending": [
+            "快充模式实际覆盖率由用户在资源利用率页设置，默认按全程覆盖处理"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 精准放电：[普通攻击：落雷]命中处于失衡状态下的敌人时，招式造成的伤害提升30%；[强化特殊技]命中未处于失衡状态下的敌人时，招式造成的失衡值提升10%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 电荷传导：发动[连携技]或[终结技]时，为后场电属性角色回复3点能量；安比每拥有12%能量获得效率，回复量额外提升2点，最多额外提升6点。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 充能电场：发动[强化特殊技]时，安比获得8层充能（上限8层）；[普通攻击]或[冲刺攻击]命中敌人时，消耗1层充能，使当前招式造成的伤害提升45%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1021": {
+      "name": {
+        "zhCN": "猫又",
+        "en": "Nekomata"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 猎鸟技巧：从背后攻击命中敌人时，猫又无视目标16%物理伤害抗性；敌方处于失衡状态时，猫又对其的所有攻击均被视为背后攻击。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 猫鼠游戏：当场上只有一名敌人且自身位于前场时，猫又的能量获得效率提升25%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 磨爪：发动[强化特殊技]时，猫又的暴击率提升7%，最多叠加2层，持续15秒，每层效果单独结算持续时间。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 捕食者血统：发动[连携技]或[终结技]时，猫又的暴击伤害提升18%，最多叠加3层，退出接战状态时增益效果结束；猫又击败敌人时，该增益效果直接叠加至层数上限。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1031": {
+      "name": {
+        "zhCN": "妮可",
+        "en": "Nicole"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "强特伤害/异常积蓄+16%（执行级）"
+          ],
+          "pending": [
+            "蓄力延长能量场不建模"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "核心减益回5能量/15s → floor(t/15)×5 并入开局能量"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented_approximation",
+          "implemented": [
+            "范围扩大无乘区，明确跳过"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "能量场暴击1.5%×10默认满层（teammate-buffs）"
+          ],
+          "pending": []
+        }
+      ]
+    },
+    "1041": {
+      "name": {
+        "zhCN": "「11号」",
+        "en": "Soldier 11"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "接战回能（不足40回复至80，50s/次）按整局口径注入 initialEnergyGift：floor(battleTime/50)×40"
+          ],
+          "pending": [
+            "不做50s时间轴模拟（整局总量口径）"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "满层36%（3%×12层）按覆盖率滑块摊入 basic/dodge 类执行行（patchExecutions）"
+          ],
+          "pending": [
+            "层数累积/逐层持续时间按满层近似"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "partially_implemented",
+          "implemented": [],
+          "pending": [
+            "防御向效果（抗打断/受伤-18%/无敌）伤害计算器不建模"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "充能（强特/连携/终结×8层）由 spec soldier11_charge 承载；火力镇压无视25%火抗按期望加权 resIgnore（min(1, 充能来源×8/火力镇压次数)）"
+          ],
+          "pending": [
+            "充能池上限/消耗时序按期望加权近似"
+          ]
+        }
+      ]
+    },
+    "1051": {
+      "name": {
+        "zhCN": "伊德海莉",
+        "en": "Yidhari"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 过往沉溺于渊下：伊德海莉发动[强化特殊技]所需消耗的闪能减少10点；发动[强化特殊技：缠霜]或[强化特殊技：极寒重碾]后，保持长按「普通攻击」或「特殊攻击」按键，可以消耗35闪能，放弃回复生命值并立即衔接1次[强化特殊技：极寒重碾]，并使本次[强化特殊技：极寒重碾]回复的生命值额外提升100%；伊德海莉的[普通攻击]、[强化特殊技]无视目标20%冰属性伤害抗性。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 何人于此遐思：伊德海莉的暴击伤害提升40%；成功触发[溯寒]或[追碾]后，持续回复闪能，每秒回复0.5点，最多30秒，重复触发时刷新持续时间。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 在静默中盛放：[核心被动：拾梦空想]中，生命值降低时，伊德海莉获得的喧响值增加10%；处于[以太帷幕·涌泉]中时，伊德海莉的最大生命值额外提升5%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 终逢安宁之梦：伊德海莉消耗喧响值开启或延长[以太帷幕·涌泉]后，将获得[启谛]，持续30秒；[启谛]期间，伊德海莉造成的贯穿伤害提高25%，首次受到致命伤害时，生命值最多降低至1，在5秒内不会战败退场并持续回复25%生命值。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1061": {
+      "name": {
+        "zhCN": "可琳",
+        "en": "Corin"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 开放性创伤：[连携技]或[终结技]命中敌人时，可琳对目标造成的伤害提升12%，持续15秒。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 裂解效应：[强化特殊技]、[连携技]或[终结技]命中敌人时，目标的物理伤害抗性下降0.5%，最多叠加20层，持续5秒，每层效果单独结算持续时间。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 战场随侍：发动[快速支援]、[招架支援]或[连携技]时，可琳回复7.2点能量，16秒内最多触发一次。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 厚积薄发：持续斩击命中敌人时，可琳获得1层充能（最多40层）；在[闪避反击]、[特殊技]、[强化特殊技]、[快速支援]、[支援突击]中，引爆电锯命中敌人时，消耗所有充能，每层充能使本次攻击额外造成可琳3%攻击力的伤害。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1071": {
+      "name": {
+        "zhCN": "凯撒",
+        "en": "Caesar King"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "荣光之盾期间全抗-15%",
+            "接战开盾300s一次按满覆盖近似"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "核心攻击拐×1.5（1000→1500）",
+            "凯撒能量获得效率+10%"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "支援点数/能量替代未建模"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "超强力盾击/支援之锋必定暴击+伤害100%（单目标）",
+            "自身暴击+30%暴伤+60%"
+          ],
+          "pending": []
+        }
+      ]
+    },
+    "1081": {
+      "name": {
+        "zhCN": "比利",
+        "en": "Billy"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 闪亮登场：[冲刺攻击]或[闪避反击]命中敌人时，比利额外回复2.7点能量，5秒内最多触发一次。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 游斗射术：[闪避反击]造成的伤害提升25%；[普通攻击]中的翻滚射击将被视为闪避动作，在招式发动期间获得无敌效果，并且能够触发[极限闪避]，翻滚射击触发[极限闪避]时，将自动衔接[闪避反击]。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 星徽-惩戒弹药：[强化特殊技]命中敌人时，招式的暴击率随自身与目标之间的距离而提升；比利与目标距离越近，提升效果越显著，最高提升32%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 星徽-英雄时刻：累计命中敌人10次或触发[极限闪避]时，比利造成的伤害提升6%，最多叠加5层，被敌方击退或击飞后增益效果重置。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1091": {
+      "name": {
+        "zhCN": "雅",
+        "en": "Miyabi"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 雪上加霜：在[霜月架势]期间，每消耗1点[落霜]，[普通攻击：霜月]将无视目标6%防御力，最多叠加6层，退出[霜月架势]后增益效果结束；在[普通攻击：霜月]中进行三段蓄力，斩击命中处于[霜灼]状态下的敌人时，可以立即消除目标的[霜灼]状态，并使全队角色属性异常积蓄效率提升20%，持续10秒。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 吐纳法：[普通攻击：风花]和[闪避反击]造成的伤害提升30%；第五段[普通攻击：风花]最后一击命中敌人时，星见雅获得1点[落霜]；进入战场时，星见雅立刻获得6点[落霜]，自身暴击率提升15%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 皲裂：[霜灼·破]造成的伤害提升30%，触发[霜灼·破]时，星见雅额外获得250点喧响值。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 天资卓越：在[霜月架势]期间，星见雅将获得[极意]效果，使[普通攻击：霜月]造成的伤害提升30%，获得[极意]效果后，消耗[落霜]时，星见雅会根据当前蓄力段数，自动拔刀向前方发动强力斩击；在[落霜]耗尽前，拔刀斩击不会打断[霜月架势]下的蓄力进度；在一次[霜月架势]期间，最多连续发动3次拔刀斩击。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1101": {
+      "name": {
+        "zhCN": "珂蕾妲",
+        "en": "Koleda"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 锤击节奏：当衔接在[普通攻击]第二、第四段或强化[普通攻击]后，快速发动[特殊技]或[强化特殊技]时，招式造成的失衡值提升15%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 动能回收：[强化特殊技]命中敌人时，珂蕾妲回复60点能量，45秒内最多触发一次。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 熔炉余温：消耗[熔炉升温]发动强化[普通攻击]时，珂蕾妲获得1层充能（上限2层）；[连携技：天崩-地裂]或[终结技：锤进地心]命中敌人时，消耗所有充能，每层充能使当前招式造成的伤害提升18%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 饱和爆破：在[强化特殊技]、[连携技]或[终结技]中，引发爆炸命中敌人时，额外造成珂蕾妲360%攻击力的伤害。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1111": {
+      "name": {
+        "zhCN": "安东",
+        "en": "Anton"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 热身运动：[电钻攻击]命中敌人时，能够额外回复能量；同一招式内，该效果最多为安东回复5点能量。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 气势如虹：发动[强化特殊技]进入[爆发状态]时，获得等同于安东7.5%生命值上限的护盾；在[爆发状态]下进入接战状态或换入前场时，将刷新护盾效果，15秒内最多触发一次；退出[爆发状态]时，该护盾效果结束。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented_approximation",
+          "implemented": [
+            "全队暴击率+10%（12s）：spec teamBuffs（source 影画四自动门控），覆盖率默认满"
+          ],
+          "pending": [
+            "12秒窗口按全程覆盖近似"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 突破极限：[打桩攻击]造成暴击时，[普通攻击：热血上工操（爆发状态）]和[闪避反击：过载钻击（爆发状态）]造成的伤害提升4%，最多叠加6层，持续30秒，重复触发时刷新持续时间。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1121": {
+      "name": {
+        "zhCN": "本",
+        "en": "Ben"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "格挡降敌伤害30%生存向跳过"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "格挡反击附加300%防御力，次数≈max(招架,强特)"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented_approximation",
+          "implemented": [
+            "反击段伤害+30%"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "普攻/冲刺/闪反失衡+20%"
+          ],
+          "pending": []
+        }
+      ]
+    },
+    "1131": {
+      "name": {
+        "zhCN": "苍角",
+        "en": "Soukaku"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "增益时长+8s；默认满覆盖无额外面板数值"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "命中概率叠涡流/满层回能未逐帧建模"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented_approximation",
+          "implemented": [
+            "展旗命中冰抗-10%（teammate-buffs）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "霜染强化普攻/冲刺伤害+45%（执行级）"
+          ],
+          "pending": [
+            "次数上限12未逐次模拟"
+          ]
+        }
+      ]
+    },
+    "1141": {
+      "name": {
+        "zhCN": "莱卡恩",
+        "en": "Lycaon"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "强特双模式（点按 40/#1+#2、长按 60/#1+#3，滑块 lycaon.exHoldRatio 默认全长按）",
+            "强特失衡+12%（8s CD→覆盖率 lycaon.c1Coverage，只给有限次），长按蓄力 #3 +22%（执行级 stunBuildUpBonus 乘区加算）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 2,
+          "status": "implemented",
+          "implemented": [
+            "使敌人失衡或触发队友连携时回 5 能量：次数 = 失衡次数 + 队友连携总次数（排除莱卡恩自己，用户确认）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 保持风度（受击护盾）：用户确认不建模"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "莱卡恩自己对目标伤害 +50%（用户口径全覆盖，applyPanel dmgBonus）"
+          ],
+          "pending": []
+        }
+      ]
+    },
+    "1151": {
+      "name": {
+        "zhCN": "露西",
+        "en": "Lucy"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        }
+      ]
+    },
+    "1161": {
+      "name": {
+        "zhCN": "莱特",
+        "en": "Lighter"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "溃败失衡时长 3→5 秒（applyPanel stunDurationBonusSeconds）",
+            "核心减抗额外 -10% 冰/火（teammate-buffs）",
+            "耗尽士气强力终结伤害 +30%（执行级 dmgBonus）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "溃败失衡易伤 +25%（teammate-buffs stunDmgMultiplierBonus）",
+            "昂扬冰火伤 ×1.2（buffModifiers multiplyResolvedValue）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented_approximation",
+          "implemented": [
+            "后场时前场能量获得效率 +10%×后场占比（helpers + lighter.backstageRatio）",
+            "进士气喷发后场角色 +4 能量 / 18s CD（资源迭代 lighterC4BurstEnergy）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "士气回复效率 ×2",
+            "火焰冲击：8s CD×战斗时长 + 耗尽士气终结额外次数；倍率 250%+冲击超额"
+          ],
+          "pending": [
+            "逐敌独立 CD 未建模，按单目标整场 CD 近似"
+          ]
+        }
+      ]
+    },
+    "1171": {
+      "name": {
+        "zhCN": "柏妮思",
+        "en": "Burnice"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        }
+      ]
+    },
+    "1181": {
+      "name": {
+        "zhCN": "格莉丝",
+        "en": "Grace"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 再充能弹膛：[普通攻击]第四段每次命中敌人时，全队角色回复0.25点能量； 同一招式内，该效果最多为全队回复2点能量。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 电致击穿：在[普通攻击]、[特殊技]、[强化特殊技]等招式中投掷手雷命中敌人时，目标的电属性伤害抗性降低8.5%，电属性异常积蓄抗性降低8.5%，持续8秒。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 爆破电容：发动[强化特殊技]时，格莉丝获得6层充能（上限6层）；[普通攻击：高压射钉]或[冲刺攻击：突击检查]命中敌人时，消耗1层充能，使当前招式的能量获得效率提升20%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 起爆扳机：消耗所有[电能]发动[特殊技]或[强化特殊技]时，能够强化招式效果，额外投掷一颗手雷，并使每颗手雷造成的伤害提升至原本的200%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1191": {
+      "name": {
+        "zhCN": "艾莲",
+        "en": "Ellen"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 凛冬前兆：在[冲刺攻击：冰渊潜袭]中发动快速剪击命中敌人时，获得的[急冻充能]提升至3点；在[冲刺攻击：冰渊潜袭]中发动蓄力剪击命中敌人时，获得的[急冻充能]提升至6点；每消耗1点[急冻充能]，艾莲的暴击率提升2%，持续15秒，最多叠加6层，每层效果单独结算持续时间。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 冰洋掠食者：发动第三段[普通攻击：急冻修剪法]后，可以直接衔接发动[强化特殊技：鲨卷风]；发动[强化特殊技]时，每拥有1点[急冻充能]，当前招式造成的暴击伤害提升20%，最多提升60%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 无休寒潮：队伍中任意角色对敌人施加[冻结]效果或使敌人失衡时，自身获得6点[急冻充能]和[快蓄]效果，并回复4点能量，能量回复效果10秒内最多触发一次。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 盛宴时分：发动[强化特殊技]、[连携技]或获得[快蓄]时，艾莲的穿透率提升20%，持续6秒，同时获得1层[盛宴]，[盛宴]最多叠加3层；拥有3层[盛宴]后，在[冲刺攻击：冰渊潜袭]中发动蓄力剪击命中敌人时，消耗所有[盛宴]，使当前招式造成的伤害提升250%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1201": {
+      "name": {
+        "zhCN": "悠真",
+        "en": "Harumasa"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 「意气风发」：[普通攻击：甲乙矢]中，[电囚]效果的叠加层数上限提升至14层；[电壶]被激活时，将会向目标连续发射2支[甲乙矢]。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 挥霍：发动[连携技]或[终结技]时，悠真获得7层[电掣]，最多叠加7层；拥有[电掣]时，[冲刺攻击：飞弦·斩]造成的伤害提升50%；[冲刺攻击：飞弦·斩]结束后，消耗1层[电掣]。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 偶有充盈：[电囚]效果的持续时间提升至20秒；[冲刺攻击：飞弦·斩]命中敌人时，悠真获得30点喧响值，同一招式内最多触发一次；发动[终结技]时，将为场上所有敌人施加满层[电囚]效果。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 会心：[甲乙矢]命中处于失衡状态或属性异常状态下的敌人后，悠真将无视其15%电属性伤害抗性，持续12秒；[甲乙矢]每命中同一名敌人12次，将额外触发1次电磁爆炸，对目标造成悠真1500%攻击力的电属性伤害。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1211": {
+      "name": {
+        "zhCN": "丽娜",
+        "en": "Rina"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "核心被动穿透增益提升至130%"
+          ],
+          "pending": [
+            "邦布额外停留5.5秒折入覆盖率"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "自身伤害+15%，按12/18覆盖折算为+10%"
+          ],
+          "pending": [
+            "未模拟18秒冷却时间轴"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented_approximation",
+          "implemented": [
+            "双邦布在外时能量回复+0.5/s，覆盖率可调"
+          ],
+          "pending": [
+            "未模拟双邦布逐秒状态"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "指定技能命中后全队电伤+15%，覆盖率可调"
+          ],
+          "pending": [
+            "未模拟8秒持续时间轴"
+          ]
+        }
+      ]
+    },
+    "1221": {
+      "name": {
+        "zhCN": "月城柳",
+        "en": "Tsukishiro Yanagi"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        }
+      ]
+    },
+    "1241": {
+      "name": {
+        "zhCN": "朱鸢",
+        "en": "Juhufu"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        }
+      ]
+    },
+    "1251": {
+      "name": {
+        "zhCN": "青衣",
+        "en": "Qingyi"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        }
+      ]
+    },
+    "1261": {
+      "name": {
+        "zhCN": "简",
+        "en": "Jane"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "物理异常积蓄效率+15%",
+            "每点异常精通增伤0.1%，最多30%，按狂热覆盖率折算"
+          ],
+          "pending": [
+            "狂热覆盖率由用户在资源利用率页设置，默认90%"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "强击无视15%防御写入 enemyAssaultDefReduction",
+            "强击暴击伤害+50%写入 assaultCritDmg",
+            "强击及其物理乱流按结算面板读取强击暴击字段"
+          ],
+          "pending": [
+            "Gnawed/啮咬状态未按时间轴模拟，按全程满足条件处理"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "implemented",
+          "implemented": [
+            "全队属性异常伤害+18%通过 teammate-buffs 写入 anomalyDmgBonus",
+            "全队紊乱伤害+18%通过 teammate-buffs 写入 disorderDamageBonus"
+          ],
+          "pending": [
+            "15秒触发窗口未按时间轴模拟，按全程覆盖处理"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "狂热覆盖率按100%，暴击率+20%、暴伤+40%",
+            "强击暴击附伤按简异常精通×1600%计入，次数=强击次数×强击暴击率"
+          ],
+          "pending": [
+            "附伤是否吃增伤/防御/抗性等乘区尚未确认"
+          ]
+        }
+      ]
+    },
+    "1271": {
+      "name": {
+        "zhCN": "赛斯",
+        "en": "Seth"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 英雄主义：[匪石之盾]提供的护盾及其上限提升30%，[匪石之盾]失效时，[核心被动：守望者]提供的异常精通提升效果额外维持10秒。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 年少轻狂：进入战场时，赛斯立刻为自身累积75%[意气]；发动[普通攻击：雷霆击-感电]命中敌人时，招式累积的电属性异常积蓄值提升35%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 初心：[招架支援：迅雷盾]造成的失衡值提升25%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 理想主义：赛斯在[普通攻击：雷霆击-感电]中发动终结一击命中敌人时，额外造成自身500%攻击力的伤害，本次攻击必定触发暴击，且暴击伤害提升60%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1281": {
+      "name": {
+        "zhCN": "派派",
+        "en": "Piper"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 悠闲一刻：派派在[特殊技：轮胎转]、[强化特殊技：引擎转]或[终结技]中发动旋转斩击命中敌人时，有50%概率额外获得1层[动力]，[动力]的叠加层数上限提升至30层。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 上进心：在[特殊技：轮胎转]和[强化特殊技：引擎转]发动期间，派派的移动速度有所提升；在[特殊技：有亿点重]、[强化特殊技：非常重]和[终结技]中发动下砸攻击命中敌人时，招式造成的物理伤害提升10%，每拥有1层[动力]，该增益效果额外提升1%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 技巧娴熟：队伍中任意角色对敌人施加属性异常效果时，派派回复20点能量，30秒内最多触发一次。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 轻度兴奋：[强化特殊技：引擎转]的持续时间上限提升2秒，[动力]的持续时间提升4秒。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1291": {
+      "name": {
+        "zhCN": "雨果",
+        "en": "Hugo"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 仇恨之子：[暗渊回响]状态下，触发[决算]效果时招式的暴击率额外提升12%，暴击伤害额外提升30%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 内在小孩：[终结技：渎神者]触发[决算]效果时不会使敌人的失衡状态结束；此外，触发[决算]效果时招式将会无视其15%防御力。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 拟剧论：蓄力射击命中敌人后，雨果的攻击对该目标无视12%冰属性伤害抗性，持续15秒，重复触发时刷新持续时间。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 荆棘王冠：所有射击攻击命中敌人时，均可触发[暗渊回响]状态，最多持续6秒，重复触发时刷新持续时间；此外，任意招式触发[决算]效果时，此次伤害额外提升60%；[强化特殊技：魂狩·惩戒]的终结一击命中非失衡状态下的敌人时也可触发[决算]效果，使得招式的终结一击伤害倍率固定提升1000%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1301": {
+      "name": {
+        "zhCN": "奥菲与玛格莎",
+        "en": "Orphie & Magusa"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        }
+      ]
+    },
+    "1311": {
+      "name": {
+        "zhCN": "耀嘉音",
+        "en": "Yaojiayin"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "全抗-6%×3层（teammate-buffs）",
+            "开场额外+1000喧响"
+          ],
+          "pending": [
+            "庇护之音无敌不建模"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "核心攻击 54%/1600 差分",
+            "入场额外震音+音簇 3s CD"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，咏叹公式联动"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented_approximation",
+          "implemented": [
+            "强攻300%附加行",
+            "异常积蓄+50%×覆盖",
+            "击破失衡+50%×覆盖"
+          ],
+          "pending": [
+            "无和弦快支窗口未逐帧"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，咏叹公式联动"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "震音/音簇倍率×2、暴击+80%",
+            "精准追加蓄力随想曲 10s CD"
+          ],
+          "pending": []
+        }
+      ]
+    },
+    "1321": {
+      "name": {
+        "zhCN": "伊芙琳",
+        "en": "Evelyn"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 织梦：进入战场时，伊芙琳立刻获得1500点喧响值，在勘域模式中此效果180秒内最多触发一次；敌人进入[牵缠禁制]后，将被施加[禁锢]效果，伊芙琳攻击带有[禁锢]效果的敌人时，无视目标12%防御力；伊芙琳发动[特殊技：束裂式·I型]或[强化特殊技：束裂式·终型]时，会将[禁锢]效果扩散给所有被招式命中的敌人，被扩散的[禁锢]效果持续10秒。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "partially_implemented",
+          "implemented": [
+            "攻击力提升15%：computePanelPhases 1321 块（局内面板 atk ×1.15）"
+          ],
+          "pending": [
+            "燎火返还（绞勒式I/II型返还消耗的燎火，25s 最多一次）未建模"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 命运的弦音：发动[连携技]或[终结技]时，伊芙琳立刻获得等同于自身10%生命值上限的护盾，持有该护盾时，伊芙琳的暴击伤害提升40%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 光与影的牵绊：发动[连携技]或[终结技]时，伊芙琳将获得[弦影绝锋]，持续20秒；[弦影绝锋]期间，伊芙琳发动[普通攻击]、[冲刺攻击]、[特殊技]或[强化特殊技]命中主要攻击目标时，将额外释放一段[月辉丝·弦]进行追击，对范围内敌人造成等同于伊芙琳375%攻击力的火属性伤害，该伤害会被视为[连携技]伤害，最多触发16次，再次获得[弦影绝锋]时刷新可触发次数。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1331": {
+      "name": {
+        "zhCN": "薇薇安",
+        "en": "Vivian"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 《在春天走进果园》：累计消耗4点[护羽]时回复1点[飞羽]；处于[薇薇安的预言]下的目标受到的所有属性异常伤害和[紊乱]伤害提升16%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "partially_implemented",
+          "implemented": [
+            "以太异常积蓄效率+25%：computePanelPhases 1331 块"
+          ],
+          "pending": [
+            "异放精通收益提升至130%未建模",
+            "无视目标15%全属性伤害抗性未建模"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 《苇间风》：[普通攻击：裙裾浮游·悬落]和[普通攻击：落羽生花]命中时必定暴击，并使薇薇安的攻击力提升12%，持续12秒，重复触发时刷新持续时间；进入战场时，薇薇安立即获得5点[护羽]。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 《薇薇安》：薇薇安造成的以太伤害提升40%；[普通攻击：淑女礼仪·舞步]突进期间触发极限闪避、发动[强化特殊技：堇花悼亡]时，均额外回复1点[飞羽]；发动[普通攻击：裙裾浮游·悬落]时会消耗全部[护羽]，下落攻击的范围大幅增加，并在命中时触发一次特殊的[异放]，额外消耗的[护羽]会提高此次[异放]结算的额外异常伤害的比例，最多消耗5点[护羽]，使伤害比例提高至原本的5倍。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1341": {
+      "name": {
+        "zhCN": "赵",
+        "en": "Zhao"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        }
+      ]
+    },
+    "1351": {
+      "name": {
+        "zhCN": "波可娜",
+        "en": "Pulchra"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 利己主义：对被施加[困迹]效果的敌人造成伤害时，自身暴击率提升10%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 借势而为：处于[核心被动：猎手本能]的[猎步]状态时，波可娜的攻击力额外提升10%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 狩猎乐趣：发动[强化特殊技：噬爪·瞬步]时的能量消耗降低5点。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 面具之下：[特殊技：噬爪·噩梦袭影]造成的伤害提升15%，重复攻击的可触发次数额外提升2次；[额外能力：业务搭档]中[困迹]的效果对[追加攻击]以外的伤害类型也会生效。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1361": {
+      "name": {
+        "zhCN": "扳机",
+        "en": "Trigger"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        }
+      ]
+    },
+    "1371": {
+      "name": {
+        "zhCN": "仪玄",
+        "en": "Yixuan"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "进场暴伤+20%（等效10%暴击，用户口径）",
+            "进场+120术法值",
+            "落雷50%贯穿力+5闪能/次（CD自动）"
+          ],
+          "pending": [
+            "落雷次数口径沿用诺姆C2战斗时间驱动先例，待用户复核"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "已录入 yixuan.ts（招式限定减抗/聚墨破/静心加权/调息赠送/凝神贯穿）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented_approximation",
+          "implemented": [
+            "已录入 yixuan.ts（招式限定减抗/聚墨破/静心加权/调息赠送/凝神贯穿）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "已录入 yixuan.ts（招式限定减抗/聚墨破/静心加权/调息赠送/凝神贯穿）"
+          ],
+          "pending": []
+        }
+      ]
+    },
+    "1381": {
+      "name": {
+        "zhCN": "零号·安比",
+        "en": "Soldier 0 - Anby"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 静滞电荷：零号·安比发动[强化特殊技]命中敌人时，将会连续触发3次[白雷]的额外伤害，该效果不会消耗[白雷]层数。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 冗余协议：零号·安比的暴击率提升12%；发动[终结技]时，零号·安比会获得6层[电鸣]（上限6层）；拥有[电鸣]后，零号·安比[特殊技：苍光]命中拥有[白雷]的敌人时，将改为消耗1层[电鸣]作为代替，同一招式命中多名敌人时最多消耗1层[电鸣]，消耗[电鸣]时仍会触发[白雷]的额外伤害； 激发潜能后，每消耗3层[电鸣]，下次发动[特殊技：苍光·临界]时速度加快。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 银白残响：攻击命中拥有[银星]标记的敌人时，零号·安比无视目标12%电属性伤害抗性。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 前传主角：触发6次[白雷]的额外伤害时，将会引发电磁涡流，对目标及其周围的敌人造成零号·安比1000%攻击力的电属性伤害，该伤害被视为[追加攻击]伤害。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1391": {
+      "name": {
+        "zhCN": "橘福福",
+        "en": "Ju Fufu"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented",
+          "implemented": [
+            "进场暴击+12",
+            "进场威风+100",
+            "失衡易伤拐力"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 2,
+          "status": "implemented",
+          "implemented": [
+            "虎啸暴伤+22",
+            "终结回3威势"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented",
+          "implemented": [
+            "自身暴伤+35满覆盖"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "implemented",
+          "implemented": [
+            "连携+30%",
+            "爆米花×3×160%"
+          ],
+          "pending": []
+        }
+      ]
+    },
+    "1401": {
+      "name": {
+        "zhCN": "爱丽丝",
+        "en": "Alice"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "partially_implemented",
+          "implemented": [
+            "触发强击目标防御-20%持续30s",
+            "触发极性强击回复25剑仪"
+          ],
+          "pending": [
+            "强击减防未接入Buff引擎",
+            "极性强击/剑仪池未建模"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "partially_implemented",
+          "implemented": [
+            "全队强击伤害+15%",
+            "物理紊乱伤害+15%",
+            "终结技终结一击触发极性强击"
+          ],
+          "pending": [
+            "极性强击未建模",
+            "强击增伤近似为全异常增伤"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 skillLevelBonus / skillLevelCoef 接入"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "partially_implemented",
+          "implemented": [
+            "无视10%物理抗性",
+            "强化星仪序曲异常积蓄+25%"
+          ],
+          "pending": [
+            "物理抗性无视未接入",
+            "积蓄加成未建模"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 skillLevelBonus / skillLevelCoef 接入"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "partially_implemented",
+          "implemented": [
+            "决胜状态30s",
+            "3300%精通物理额外攻击×6次必暴"
+          ],
+          "pending": [
+            "决胜状态/额外攻击事件均未建模"
+          ]
+        }
+      ]
+    },
+    "1411": {
+      "name": {
+        "zhCN": "柚叶",
+        "en": "Yuzuha"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        }
+      ]
+    },
+    "1421": {
+      "name": {
+        "zhCN": "潘银狐",
+        "en": "Pan Yinhu"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        }
+      ]
+    },
+    "1431": {
+      "name": {
+        "zhCN": "叶瞬光",
+        "en": "Ye Shunguang"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented",
+          "implemented": [
+            "进场剑势6",
+            "合道+10%伤",
+            "减防20%"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "耗剑势回观止",
+            "飞光/斩妄减防40%近似"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented",
+          "implemented": [
+            "进场喧响1000",
+            "帷幕易伤上限300%"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "明灯愿与斩妄附伤1500%"
+          ]
+        }
+      ]
+    },
+    "1441": {
+      "name": {
+        "zhCN": "真斗",
+        "en": "Manato"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 流浪生存法则：真斗的生命值降低时，累积已损失生命值，每有相当于最大生命值1%的已损失生命值使[支援突击]和[普通攻击]造成的火属性伤害提升0.4%，最多提升20%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 昼夜、厨房与爱：[熔锋]状态下，真斗无视目标8%火属性伤害抗性；[特殊技：归烬]或[特殊技：归烬·舍身]发动期间受到敌人攻击后，点按 可以发动[支援突击]。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 幼年的誓言：最大生命值提升8%；[特殊技：归烬]和[特殊技：归烬·舍身]发动期间，真斗受到致命伤害时不会在招式发动期间战败退场，生命值最多降低至1，10秒内最多触发一次。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 越过昔年梦：[特殊技：归烬]命中处于失衡状态下的敌人时，真斗回复75点[炽心]，获得4层[残焰]，点按 可以发动[支援突击]，获得[残焰]的效果在20秒内最多触发一次；[支援突击]命中敌人时，造成的火属性伤害提升3%，持续8秒，最多叠加5层，重复触发刷新持续时间。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1451": {
+      "name": {
+        "zhCN": "卢西娅·艾洛温",
+        "en": "Lucia Elowen"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "[巡梦童谣]额外附加造成伤害时无视敌人18%全属性伤害抗性：已由 teammate-buffs.json lucia_elowen.cinema_1_dream_song_res_ignore 接入",
+            "喧响值获取效率+5%：巡梦童谣状态全队3人（含卢西娅自身），已由 teammate-buffs.json lucia_elowen.cinema_1_dream_song_res_ignore 接入"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "全队贯穿伤害+15%：破暗随每次[合唱]重挂且持续20秒，按全队近似；已由 teammate-buffs.json lucia_elowen.cinema_2_darkbreaker_sheer_dmg 接入",
+            "卢西娅自身[合唱]招式伤害+15%：由模块 patchExecutions 执行级实现（追加攻击/强特/连携/终结技/支援突击均算[合唱]）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "implemented_approximation",
+          "implemented": [
+            "帷幕开启/延长（含伊德海莉大招开帷幕）→ 全队每人+100喧响：开启=开局入梦1+战中E+A5组入梦1+Q退出再入梦×Q；延长=梦境内强特×dreamE+梦境内终结技×Q；15s CD封顶 ceil(180/15)=12 × lucia.c4CurtainCoverage 利用率滑块（默认轴 8 次 → 每人+800）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "初始最大生命值（局外生命）2% → 攻击力（局内小攻击）：spec attributeConversions + 模块 applyPanel（局内面板近似，涌泉+5%差异可接受）",
+            "[合唱]必定暴击 + 暴击时暴击伤害+30%：由模块 patchExecutions 执行级实现（全部[合唱]行）"
+          ],
+          "pending": []
+        }
+      ]
+    },
+    "1461": {
+      "name": {
+        "zhCN": "希德",
+        "en": "Seed"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        }
+      ]
+    },
+    "1471": {
+      "name": {
+        "zhCN": "般岳",
+        "en": "BanYue"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "战栗：敌人火抗-10%（teammate-buffs）"
+          ],
+          "pending": [
+            "对战栗敌人贯穿+10%",
+            "摧岳失衡时长+2s"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "怒相增益+15%暴伤/火伤",
+            "山威强特额外回5闪能"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented_approximation",
+          "implemented": [
+            "四招式伤害+30%（moveId级）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "明王强化（13%/层、30s）",
+            "摧岳600%贯穿力附伤"
+          ],
+          "pending": []
+        }
+      ]
+    },
+    "1481": {
+      "name": {
+        "zhCN": "留银",
+        "en": "Liuyin"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented",
+          "implemented": [
+            "好评回复 ×1.16（乘算到每秒0.6与强特重击7.5）；好评如潮下无视敌人15%全属性抗性（teammate-buffs）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 2,
+          "status": "implemented",
+          "implemented": [
+            "恶意投诉失衡易伤额外+20%、对恶意投诉敌人伤害+15%（teammate-buffs）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "implemented",
+          "implemented": [
+            "进场能量+20（cfg.initialEnergyGift）；好评如潮下攻击力+500（默认满覆盖，liuyin.goodReviewAtkCoverage可调）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "implemented",
+          "implemented": [
+            "余音：转大次数×12次×480%攻击力物理直伤（视为强特，默认全打满）"
+          ],
+          "pending": []
+        }
+      ]
+    },
+    "1491": {
+      "name": {
+        "zhCN": "千夏",
+        "en": "Qianxia"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "猫的凝视触发命中目标防御力降低7%×3层（teammate-buff stacked，默认满层满覆盖）",
+            "进场回能15 与额外能力同源不叠加（qianxia.ts initialEnergyGift 门控注入）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "千夏在帷幕内全队攻击+10%（teammate-buff atkPct）"
+          ],
+          "pending": [
+            "磨爪器资源未建模",
+            "猫的凝视触发倍率提升（强攻+200%/异常+300%）未建模（触发伤害属触发代理人）"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented",
+          "implemented": [
+            "终结技后全队伤害+18%（60秒，teammate-buff 默认满覆盖）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "潜心创作中（必暴/暴伤随初始攻/减伤/凝视代触发/全队凝视伤害+50%）未建模，千夏自身伤害不在支援拐口径内"
+          ]
+        }
+      ]
+    },
+    "1501": {
+      "name": {
+        "zhCN": "爱芮",
+        "en": "Aria"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 元气声浪：爱芮的[普通攻击]、[特殊技]，[强化特殊技]对敌人造成伤害时，无视目标10%的以太异常积蓄抗性；且自身触发[异放]时有概率触发暴击：基础暴击率为25%，暴击伤害为25%；若初始异常掌控大于100点，每超过1点初始异常掌控会使该效果的暴击率额外提升0.5%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 梦幻节拍：爱芮攻击和触发[异放]时无视目标16%防御力；在[妄想时刻]持续时间内，攻击和触发[异放]时额外无视目标8%防御力。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 机械天使：爱芮触发[异放]时，自身获得4点能量和70点喧响值，10秒内最多触发一次。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 构造体之梦：进入战场时，爱芮立即获得1200点喧响值，在勘域模式中此效果180秒内最多触发一次；且爱芮进入[妄想时刻]后将不会退出，强化版[普通攻击：绝对音准]和[终结技]造成的以太伤害提升40%；当爱芮处于[妄想时刻]时，若场上有敌人进入属性异常状态，爱芮获得1层[全场应援]，该效果6秒内最多触发一次；在获得[全场应援]效果时，若自身已有3层[全场应援]效果，则会将溢出的[全场应援]效果转化为2个[应援能量]生成在场上。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1511": {
+      "name": {
+        "zhCN": "南宫羽",
+        "en": "Nangong Yu"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        }
+      ]
+    },
+    "1521": {
+      "name": {
+        "zhCN": "席西弗",
+        "en": "Xixifu"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "尚未提供该命座机制描述，当前不应默认视为已实现"
+          ]
+        }
+      ]
+    },
+    "1531": {
+      "name": {
+        "zhCN": "星徽·比利",
+        "en": "Starlight - Billy"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "进场闪能+60（合计120）",
+            "强特命中后 18% 物理抗性无视（45s 刷新，覆盖率滑块默认100%）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "最高马力星光/孤轮特技/骑士飞踢 伤害+50%（patchExecutions moveId 级）",
+            "涡轮增压：摇曳步伐/抓地轮毂/失衡动力压制后孤轮特技暴伤+50%（覆盖率滑块默认50%）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_approximation",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented_approximation",
+          "implemented": [
+            "动力压制每次暴伤+8%（至多2层=16%，45s 刷新，覆盖率滑块默认100%）"
+          ],
+          "pending": [
+            "后台生命<35% 持续回血至35%（防御向，未建模）"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_approximation",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "implemented_approximation",
+          "implemented": [
+            "骑士飞踢/最高马力星光 贯穿伤害+18%（patchExecutions moveId 级）",
+            "煊赫星辉：普攻四段/孤轮/连携命中攒层（6层封顶），终结/最高马力星光时至多耗2层/次，每层最后一击+100%贯穿力物理伤害（合并执行近似）"
+          ],
+          "pending": []
+        }
+      ]
+    },
+    "1541": {
+      "name": {
+        "zhCN": "普罗米娅",
+        "en": "Promeia"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 理想稚嫩：普罗米娅发动[终结技：彻骨磔罚]时额外获得效果：[霜刑]不满时获得1点[霜刑]，该效果在发动[终结技：彻骨磔罚]后可触发一次；全队角色对[有罪推定]状态的敌人造成[异放]效果时额外无视20%防御力。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 信念飘摇：普罗米娅的异常精通提升40点；消耗[霜刑]造成的[异放]效果的倍率提升120%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 冷酷罪名：普罗米娅触发[异放]效果时，回复5点[寒蚀值]，0.5秒内最多触发一次。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 故事未完待续：普罗米娅消耗[霜刑]触发[异放]效果时，额外触发一次特殊的[异放]效果，固定结算200%倍率的对应属性的属性异常伤害，同时回复5点[寒蚀值]、100点喧响值，该效果每15秒最多触发一次；此外，普罗米娅造成的属性异常伤害、[紊乱]伤害无视敌人15%全属性伤害抗性。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1551": {
+      "name": {
+        "zhCN": "佩洛伊斯",
+        "en": "(Test1)Pyrois"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "暴击率+8%（computePanelPhases 1551 块）",
+            "进场喧响+1000 注入 initialDecibelGift（整局口径按一次计）"
+          ],
+          "pending": [
+            "勘域模式180s冷却按整局一次近似"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "发动凯旋坦途（下分支开局固定一次）回 1500 喧响：编排层注入 extraSelfDecibelReward",
+            "喧响上限+1000 按用户口径不建模（总量计算器不考虑单条上限）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented_approximation",
+          "implemented": [
+            "失衡值+10%：stunBuildUpBonus 面板（护盾不建模，用户口径默认全覆盖）"
+          ],
+          "pending": [
+            "护盾本体（8%生命上限）防御向不建模"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 拂晓晨星：影画效果未揭示",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    },
+    "1561": {
+      "name": {
+        "zhCN": "维琳娜",
+        "en": "Velina"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "partially_implemented",
+          "implemented": [
+            "广域气旋造成的失衡值额外提升20%，与额外能力广域失衡+30%相乘接入",
+            "维琳娜触发乱流时无视目标20%全属性伤害抗性，已接入乱流结算区",
+            "全队造成风化/风属性异常伤害时无视20%风抗：已在风属性异放伤害池结算中接入"
+          ],
+          "pending": [
+            "普通风化DoT伤害模型尚未显示，因此风化DoT本体的20%风抗无视仍等待风化伤害池接入"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "触发风化时获得1点风蚀：默认按风化次数×2/3期望值摊入，资源利用率页可调",
+            "解锁赋彩属性广域气旋的异常积蓄效果：赋彩属性获得与广域气旋同等的异常积蓄，生成赠送积蓄记录",
+            "额外能力中风化和乱流伤害提升额外+15%，写入 windAnomalyDmgBonus / turbulenceDamageBonus"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 skillLevelBonus / skillLevelCoef 接入"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "implemented",
+          "implemented": [
+            "维琳娜局内攻击力+15%已接入面板计算"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 skillLevelBonus / skillLevelCoef 接入"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "partially_implemented",
+          "implemented": [
+            "消耗2点风蚀提升乱流倍率后返还1点风蚀",
+            "维琳娜造成的风属性异常积蓄值提升20%，已接入维琳娜风属性积蓄贡献"
+          ],
+          "pending": [
+            "再次施加风化时按剩余持续时间提升此次风化伤害：逻辑已记录，但普通风化DoT基础伤害池尚未接入，暂不计入最终伤害"
+          ]
+        }
+      ]
+    },
+    "1571": {
+      "name": {
+        "zhCN": "诺玛·霍洛韦尔",
+        "en": "Norma Hollowell"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented",
+          "implemented": [
+            "火力实验导弹舱 8s→12s",
+            "弹头命中全属性抗性-15%（15s，默认满覆盖）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 2,
+          "status": "implemented",
+          "implemented": [
+            "技术鸿沟 3%→6%/层（60 总）",
+            "帽子把戏回 25 能量/20s 冷却（按战斗时间驱动）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "implemented",
+          "implemented": [
+            "膛温换连携时诺姆+上一位队友各 +200 不可分享喧响（applyNormaHatChain）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "implemented",
+          "implemented": [
+            "失衡后导弹轰击 6s/0.75s≈8发×200%攻击火伤，30s 冷却封顶",
+            "破甲弹头失衡+30%/高爆弹头伤害+30%（倍率表对应行缩放）"
+          ],
+          "pending": []
+        }
+      ]
+    },
+    "1581": {
+      "name": {
+        "zhCN": "蕾米埃尔",
+        "en": "Remielle"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "partially_implemented",
+          "implemented": [
+            "开局3个特殊虚耀与垂虹载体动作已接入",
+            "花羽轮舞额外喧响与自身全属性抗性无视字段已录入",
+            "队友异常增伤+10%已写入队友Buff，并排除蕾米本人",
+            "特殊虚耀伤害已按垂虹耀变倍率×2.5独立乘区接入结果页"
+          ],
+          "pending": [
+            "Luminous Reflection状态未模拟，队友异常增伤按全程覆盖处理",
+            "特殊虚耀公式待实测校对"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "partially_implemented",
+          "implemented": [
+            "异化/折射系数+20%已写入队友Buff面板字段",
+            "异常角色对Prismatic目标异常伤害无视15%防御已写入队友Buff",
+            "核心被动3异常+10%异化系数已补录"
+          ],
+          "pending": [
+            "Prismatic状态与8秒延长期未模拟，按静态覆盖率处理",
+            "异化/折射系数已在虚耀公式读取，普通异常伤害公式仍未读取"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "partially_implemented",
+          "implemented": [
+            "特殊虚耀再装填数量进入事件与垂虹载体动作",
+            "耀变倍率加成写入面板字段",
+            "4命补充3个特殊虚曜点，特殊虚耀次数变为6次（6命为12次）"
+          ],
+          "pending": [
+            "特殊虚耀与普通耀变公式待实测校对"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "partially_implemented",
+          "implemented": [
+            "特殊虚耀/耀变等触发次数倍率写入面板和资源事件",
+            "特殊虚耀次数翻倍；普通攻击惊鸿耀变次数翻倍"
+          ],
+          "pending": [
+            "六命全部专属动作的最终伤害拆分仍需实测校对"
+          ]
+        }
+      ]
+    },
+    "1591": {
+      "name": {
+        "zhCN": "希格莉德",
+        "en": "(Test1)Sigrid"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画1 很久很久以前：发动[普通攻击：敛枪式]第三段时，获得[巡空枪势]和一次发动[普通攻击：敛枪式]的机会；[普通攻击：敛枪式]发动机会溢出时，下一次[普通攻击：敛枪式]的最后一击额外造成100%攻击力的冰属性伤害；希格莉德自身攻击力提升25%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 2,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画2 传说的第一幕：[出枪式]和[普通攻击：敛枪式]造成伤害的穿透率提升24%；[巡空枪势]效果的持续时间延长2秒；希格莉德的喧响值获取效率提升10%。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画4 英雄养成中：每次获得[巡空枪势]时，自身造成的伤害提升18%，持续8秒，重复触发时可使持续时间延长8秒，最多不超过40秒。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 天空的骑士：[普通攻击：敛枪式]第一/二/三段的最后一击命中敌人时，额外造成80%/90%/100%攻击力的冰属性伤害；招式[连携技：冰凌卷地]命中失衡状态下的敌人时，自身进入[破阵]状态不再有次数限制；在[破阵]状态下，希格莉德会更快地发动[普通攻击：敛枪式]。",
+            "待人工核对后补实现，勿直接默认省略。"
+          ]
+        }
+      ]
+    }
   }
- ],
- "characters": {
-  "1011": {
-   "name": {
-    "zhCN": "安比",
-    "en": "Anby"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "能量获得效率+12%（30s 刷新），按覆盖率滑块折算写入 energyGainEfficiency（computePanelPhases 1011 块，默认 100%）"
-     ],
-     "pending": [
-      "快充模式实际覆盖率由用户在资源利用率页设置，默认按全程覆盖处理"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 精准放电：[普通攻击：落雷]命中处于失衡状态下的敌人时，招式造成的伤害提升30%；[强化特殊技]命中未处于失衡状态下的敌人时，招式造成的失衡值提升10%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 电荷传导：发动[连携技]或[终结技]时，为后场电属性角色回复3点能量；安比每拥有12%能量获得效率，回复量额外提升2点，最多额外提升6点。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 充能电场：发动[强化特殊技]时，安比获得8层充能（上限8层）；[普通攻击]或[冲刺攻击]命中敌人时，消耗1层充能，使当前招式造成的伤害提升45%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1021": {
-   "name": {
-    "zhCN": "猫又",
-    "en": "Nekomata"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 猎鸟技巧：从背后攻击命中敌人时，猫又无视目标16%物理伤害抗性；敌方处于失衡状态时，猫又对其的所有攻击均被视为背后攻击。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 猫鼠游戏：当场上只有一名敌人且自身位于前场时，猫又的能量获得效率提升25%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 磨爪：发动[强化特殊技]时，猫又的暴击率提升7%，最多叠加2层，持续15秒，每层效果单独结算持续时间。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 捕食者血统：发动[连携技]或[终结技]时，猫又的暴击伤害提升18%，最多叠加3层，退出接战状态时增益效果结束；猫又击败敌人时，该增益效果直接叠加至层数上限。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1031": {
-   "name": {
-    "zhCN": "妮可",
-    "en": "Nicole"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "强特伤害/异常积蓄+16%（执行级）"
-     ],
-     "pending": [
-      "蓄力延长能量场不建模"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "核心减益回5能量/15s → floor(t/15)×5 并入开局能量"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented_approximation",
-     "implemented": [
-      "范围扩大无乘区，明确跳过"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "能量场暴击1.5%×10默认满层（teammate-buffs）"
-     ],
-     "pending": []
-    }
-   ]
-  },
-  "1041": {
-   "name": {
-    "zhCN": "「11号」",
-    "en": "Soldier 11"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "接战回能（不足40回复至80，50s/次）按整局口径注入 initialEnergyGift：floor(battleTime/50)×40"
-     ],
-     "pending": [
-      "不做50s时间轴模拟（整局总量口径）"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "满层36%（3%×12层）按覆盖率滑块摊入 basic/dodge 类执行行（patchExecutions）"
-     ],
-     "pending": [
-      "层数累积/逐层持续时间按满层近似"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "partially_implemented",
-     "implemented": [],
-     "pending": [
-      "防御向效果（抗打断/受伤-18%/无敌）伤害计算器不建模"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "充能（强特/连携/终结×8层）由 spec soldier11_charge 承载；火力镇压无视25%火抗按期望加权 resIgnore（min(1, 充能来源×8/火力镇压次数)）"
-     ],
-     "pending": [
-      "充能池上限/消耗时序按期望加权近似"
-     ]
-    }
-   ]
-  },
-  "1051": {
-   "name": {
-    "zhCN": "伊德海莉",
-    "en": "Yidhari"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 过往沉溺于渊下：伊德海莉发动[强化特殊技]所需消耗的闪能减少10点；发动[强化特殊技：缠霜]或[强化特殊技：极寒重碾]后，保持长按「普通攻击」或「特殊攻击」按键，可以消耗35闪能，放弃回复生命值并立即衔接1次[强化特殊技：极寒重碾]，并使本次[强化特殊技：极寒重碾]回复的生命值额外提升100%；伊德海莉的[普通攻击]、[强化特殊技]无视目标20%冰属性伤害抗性。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 何人于此遐思：伊德海莉的暴击伤害提升40%；成功触发[溯寒]或[追碾]后，持续回复闪能，每秒回复0.5点，最多30秒，重复触发时刷新持续时间。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 在静默中盛放：[核心被动：拾梦空想]中，生命值降低时，伊德海莉获得的喧响值增加10%；处于[以太帷幕·涌泉]中时，伊德海莉的最大生命值额外提升5%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 终逢安宁之梦：伊德海莉消耗喧响值开启或延长[以太帷幕·涌泉]后，将获得[启谛]，持续30秒；[启谛]期间，伊德海莉造成的贯穿伤害提高25%，首次受到致命伤害时，生命值最多降低至1，在5秒内不会战败退场并持续回复25%生命值。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1061": {
-   "name": {
-    "zhCN": "可琳",
-    "en": "Corin"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 开放性创伤：[连携技]或[终结技]命中敌人时，可琳对目标造成的伤害提升12%，持续15秒。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 裂解效应：[强化特殊技]、[连携技]或[终结技]命中敌人时，目标的物理伤害抗性下降0.5%，最多叠加20层，持续5秒，每层效果单独结算持续时间。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 战场随侍：发动[快速支援]、[招架支援]或[连携技]时，可琳回复7.2点能量，16秒内最多触发一次。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 厚积薄发：持续斩击命中敌人时，可琳获得1层充能（最多40层）；在[闪避反击]、[特殊技]、[强化特殊技]、[快速支援]、[支援突击]中，引爆电锯命中敌人时，消耗所有充能，每层充能使本次攻击额外造成可琳3%攻击力的伤害。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1071": {
-   "name": {
-    "zhCN": "凯撒",
-    "en": "Caesar King"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "荣光之盾期间全抗-15%",
-      "接战开盾300s一次按满覆盖近似"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "核心攻击拐×1.5（1000→1500）",
-      "凯撒能量获得效率+10%"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "支援点数/能量替代未建模"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "超强力盾击/支援之锋必定暴击+伤害100%（单目标）",
-      "自身暴击+30%暴伤+60%"
-     ],
-     "pending": []
-    }
-   ]
-  },
-  "1081": {
-   "name": {
-    "zhCN": "比利",
-    "en": "Billy"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 闪亮登场：[冲刺攻击]或[闪避反击]命中敌人时，比利额外回复2.7点能量，5秒内最多触发一次。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 游斗射术：[闪避反击]造成的伤害提升25%；[普通攻击]中的翻滚射击将被视为闪避动作，在招式发动期间获得无敌效果，并且能够触发[极限闪避]，翻滚射击触发[极限闪避]时，将自动衔接[闪避反击]。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 星徽-惩戒弹药：[强化特殊技]命中敌人时，招式的暴击率随自身与目标之间的距离而提升；比利与目标距离越近，提升效果越显著，最高提升32%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 星徽-英雄时刻：累计命中敌人10次或触发[极限闪避]时，比利造成的伤害提升6%，最多叠加5层，被敌方击退或击飞后增益效果重置。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1091": {
-   "name": {
-    "zhCN": "雅",
-    "en": "Miyabi"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 雪上加霜：在[霜月架势]期间，每消耗1点[落霜]，[普通攻击：霜月]将无视目标6%防御力，最多叠加6层，退出[霜月架势]后增益效果结束；在[普通攻击：霜月]中进行三段蓄力，斩击命中处于[霜灼]状态下的敌人时，可以立即消除目标的[霜灼]状态，并使全队角色属性异常积蓄效率提升20%，持续10秒。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 吐纳法：[普通攻击：风花]和[闪避反击]造成的伤害提升30%；第五段[普通攻击：风花]最后一击命中敌人时，星见雅获得1点[落霜]；进入战场时，星见雅立刻获得6点[落霜]，自身暴击率提升15%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 皲裂：[霜灼·破]造成的伤害提升30%，触发[霜灼·破]时，星见雅额外获得250点喧响值。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 天资卓越：在[霜月架势]期间，星见雅将获得[极意]效果，使[普通攻击：霜月]造成的伤害提升30%，获得[极意]效果后，消耗[落霜]时，星见雅会根据当前蓄力段数，自动拔刀向前方发动强力斩击；在[落霜]耗尽前，拔刀斩击不会打断[霜月架势]下的蓄力进度；在一次[霜月架势]期间，最多连续发动3次拔刀斩击。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1101": {
-   "name": {
-    "zhCN": "珂蕾妲",
-    "en": "Koleda"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 锤击节奏：当衔接在[普通攻击]第二、第四段或强化[普通攻击]后，快速发动[特殊技]或[强化特殊技]时，招式造成的失衡值提升15%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 动能回收：[强化特殊技]命中敌人时，珂蕾妲回复60点能量，45秒内最多触发一次。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 熔炉余温：消耗[熔炉升温]发动强化[普通攻击]时，珂蕾妲获得1层充能（上限2层）；[连携技：天崩-地裂]或[终结技：锤进地心]命中敌人时，消耗所有充能，每层充能使当前招式造成的伤害提升18%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 饱和爆破：在[强化特殊技]、[连携技]或[终结技]中，引发爆炸命中敌人时，额外造成珂蕾妲360%攻击力的伤害。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1111": {
-   "name": {
-    "zhCN": "安东",
-    "en": "Anton"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 热身运动：[电钻攻击]命中敌人时，能够额外回复能量；同一招式内，该效果最多为安东回复5点能量。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 气势如虹：发动[强化特殊技]进入[爆发状态]时，获得等同于安东7.5%生命值上限的护盾；在[爆发状态]下进入接战状态或换入前场时，将刷新护盾效果，15秒内最多触发一次；退出[爆发状态]时，该护盾效果结束。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented_approximation",
-     "implemented": [
-      "全队暴击率+10%（12s）：spec teamBuffs（source 影画四自动门控），覆盖率默认满"
-     ],
-     "pending": [
-      "12秒窗口按全程覆盖近似"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 突破极限：[打桩攻击]造成暴击时，[普通攻击：热血上工操（爆发状态）]和[闪避反击：过载钻击（爆发状态）]造成的伤害提升4%，最多叠加6层，持续30秒，重复触发时刷新持续时间。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1121": {
-   "name": {
-    "zhCN": "本",
-    "en": "Ben"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "格挡降敌伤害30%生存向跳过"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "格挡反击附加300%防御力，次数≈max(招架,强特)"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented_approximation",
-     "implemented": [
-      "反击段伤害+30%"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "普攻/冲刺/闪反失衡+20%"
-     ],
-     "pending": []
-    }
-   ]
-  },
-  "1131": {
-   "name": {
-    "zhCN": "苍角",
-    "en": "Soukaku"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "增益时长+8s；默认满覆盖无额外面板数值"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "命中概率叠涡流/满层回能未逐帧建模"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented_approximation",
-     "implemented": [
-      "展旗命中冰抗-10%（teammate-buffs）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "霜染强化普攻/冲刺伤害+45%（执行级）"
-     ],
-     "pending": [
-      "次数上限12未逐次模拟"
-     ]
-    }
-   ]
-  },
-  "1141": {
-   "name": {
-    "zhCN": "莱卡恩",
-    "en": "Lycaon"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "强特双模式（点按 40/#1+#2、长按 60/#1+#3，滑块 lycaon.exHoldRatio 默认全长按）",
-      "强特失衡+12%（8s CD→覆盖率 lycaon.c1Coverage，只给有限次），长按蓄力 #3 +22%（执行级 stunBuildUpBonus 乘区加算）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 2,
-     "status": "implemented",
-     "implemented": [
-      "使敌人失衡或触发队友连携时回 5 能量：次数 = 失衡次数 + 队友连携总次数（排除莱卡恩自己，用户确认）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 保持风度（受击护盾）：用户确认不建模"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "莱卡恩自己对目标伤害 +50%（用户口径全覆盖，applyPanel dmgBonus）"
-     ],
-     "pending": []
-    }
-   ]
-  },
-  "1151": {
-   "name": {
-    "zhCN": "露西",
-    "en": "Lucy"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1161": {
-   "name": {
-    "zhCN": "莱特",
-    "en": "Lighter"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "溃败失衡时长 3→5 秒（applyPanel stunDurationBonusSeconds）",
-      "核心减抗额外 -10% 冰/火（teammate-buffs）",
-      "耗尽士气强力终结伤害 +30%（执行级 dmgBonus）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "溃败失衡易伤 +25%（teammate-buffs stunDmgMultiplierBonus）",
-      "昂扬冰火伤 ×1.2（buffModifiers multiplyResolvedValue）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented_approximation",
-     "implemented": [
-      "后场时前场能量获得效率 +10%×后场占比（helpers + lighter.backstageRatio）",
-      "进士气喷发后场角色 +4 能量 / 18s CD（资源迭代 lighterC4BurstEnergy）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "士气回复效率 ×2",
-      "火焰冲击：8s CD×战斗时长 + 耗尽士气终结额外次数；倍率 250%+冲击超额"
-     ],
-     "pending": [
-      "逐敌独立 CD 未建模，按单目标整场 CD 近似"
-     ]
-    }
-   ]
-  },
-  "1171": {
-   "name": {
-    "zhCN": "柏妮思",
-    "en": "Burnice"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1181": {
-   "name": {
-    "zhCN": "格莉丝",
-    "en": "Grace"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 再充能弹膛：[普通攻击]第四段每次命中敌人时，全队角色回复0.25点能量； 同一招式内，该效果最多为全队回复2点能量。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 电致击穿：在[普通攻击]、[特殊技]、[强化特殊技]等招式中投掷手雷命中敌人时，目标的电属性伤害抗性降低8.5%，电属性异常积蓄抗性降低8.5%，持续8秒。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 爆破电容：发动[强化特殊技]时，格莉丝获得6层充能（上限6层）；[普通攻击：高压射钉]或[冲刺攻击：突击检查]命中敌人时，消耗1层充能，使当前招式的能量获得效率提升20%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 起爆扳机：消耗所有[电能]发动[特殊技]或[强化特殊技]时，能够强化招式效果，额外投掷一颗手雷，并使每颗手雷造成的伤害提升至原本的200%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1191": {
-   "name": {
-    "zhCN": "艾莲",
-    "en": "Ellen"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 凛冬前兆：在[冲刺攻击：冰渊潜袭]中发动快速剪击命中敌人时，获得的[急冻充能]提升至3点；在[冲刺攻击：冰渊潜袭]中发动蓄力剪击命中敌人时，获得的[急冻充能]提升至6点；每消耗1点[急冻充能]，艾莲的暴击率提升2%，持续15秒，最多叠加6层，每层效果单独结算持续时间。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 冰洋掠食者：发动第三段[普通攻击：急冻修剪法]后，可以直接衔接发动[强化特殊技：鲨卷风]；发动[强化特殊技]时，每拥有1点[急冻充能]，当前招式造成的暴击伤害提升20%，最多提升60%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 无休寒潮：队伍中任意角色对敌人施加[冻结]效果或使敌人失衡时，自身获得6点[急冻充能]和[快蓄]效果，并回复4点能量，能量回复效果10秒内最多触发一次。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 盛宴时分：发动[强化特殊技]、[连携技]或获得[快蓄]时，艾莲的穿透率提升20%，持续6秒，同时获得1层[盛宴]，[盛宴]最多叠加3层；拥有3层[盛宴]后，在[冲刺攻击：冰渊潜袭]中发动蓄力剪击命中敌人时，消耗所有[盛宴]，使当前招式造成的伤害提升250%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1201": {
-   "name": {
-    "zhCN": "悠真",
-    "en": "Harumasa"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 「意气风发」：[普通攻击：甲乙矢]中，[电囚]效果的叠加层数上限提升至14层；[电壶]被激活时，将会向目标连续发射2支[甲乙矢]。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 挥霍：发动[连携技]或[终结技]时，悠真获得7层[电掣]，最多叠加7层；拥有[电掣]时，[冲刺攻击：飞弦·斩]造成的伤害提升50%；[冲刺攻击：飞弦·斩]结束后，消耗1层[电掣]。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 偶有充盈：[电囚]效果的持续时间提升至20秒；[冲刺攻击：飞弦·斩]命中敌人时，悠真获得30点喧响值，同一招式内最多触发一次；发动[终结技]时，将为场上所有敌人施加满层[电囚]效果。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 会心：[甲乙矢]命中处于失衡状态或属性异常状态下的敌人后，悠真将无视其15%电属性伤害抗性，持续12秒；[甲乙矢]每命中同一名敌人12次，将额外触发1次电磁爆炸，对目标造成悠真1500%攻击力的电属性伤害。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1211": {
-   "name": {
-    "zhCN": "丽娜",
-    "en": "Rina"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "核心被动穿透增益提升至130%"
-     ],
-     "pending": [
-      "邦布额外停留5.5秒折入覆盖率"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "自身伤害+15%，按12/18覆盖折算为+10%"
-     ],
-     "pending": [
-      "未模拟18秒冷却时间轴"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented_approximation",
-     "implemented": [
-      "双邦布在外时能量回复+0.5/s，覆盖率可调"
-     ],
-     "pending": [
-      "未模拟双邦布逐秒状态"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "指定技能命中后全队电伤+15%，覆盖率可调"
-     ],
-     "pending": [
-      "未模拟8秒持续时间轴"
-     ]
-    }
-   ]
-  },
-  "1221": {
-   "name": {
-    "zhCN": "月城柳",
-    "en": "Tsukishiro Yanagi"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1241": {
-   "name": {
-    "zhCN": "朱鸢",
-    "en": "Juhufu"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1251": {
-   "name": {
-    "zhCN": "青衣",
-    "en": "Qingyi"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1261": {
-   "name": {
-    "zhCN": "简",
-    "en": "Jane"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "物理异常积蓄效率+15%",
-      "每点异常精通增伤0.1%，最多30%，按狂热覆盖率折算"
-     ],
-     "pending": [
-      "狂热覆盖率由用户在资源利用率页设置，默认90%"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "强击无视15%防御写入 enemyAssaultDefReduction",
-      "强击暴击伤害+50%写入 assaultCritDmg",
-      "强击及其物理乱流按结算面板读取强击暴击字段"
-     ],
-     "pending": [
-      "Gnawed/啮咬状态未按时间轴模拟，按全程满足条件处理"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "implemented",
-     "implemented": [
-      "全队属性异常伤害+18%通过 teammate-buffs 写入 anomalyDmgBonus",
-      "全队紊乱伤害+18%通过 teammate-buffs 写入 disorderDamageBonus"
-     ],
-     "pending": [
-      "15秒触发窗口未按时间轴模拟，按全程覆盖处理"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "狂热覆盖率按100%，暴击率+20%、暴伤+40%",
-      "强击暴击附伤按简异常精通×1600%计入，次数=强击次数×强击暴击率"
-     ],
-     "pending": [
-      "附伤是否吃增伤/防御/抗性等乘区尚未确认"
-     ]
-    }
-   ]
-  },
-  "1271": {
-   "name": {
-    "zhCN": "赛斯",
-    "en": "Seth"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 英雄主义：[匪石之盾]提供的护盾及其上限提升30%，[匪石之盾]失效时，[核心被动：守望者]提供的异常精通提升效果额外维持10秒。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 年少轻狂：进入战场时，赛斯立刻为自身累积75%[意气]；发动[普通攻击：雷霆击-感电]命中敌人时，招式累积的电属性异常积蓄值提升35%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 初心：[招架支援：迅雷盾]造成的失衡值提升25%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 理想主义：赛斯在[普通攻击：雷霆击-感电]中发动终结一击命中敌人时，额外造成自身500%攻击力的伤害，本次攻击必定触发暴击，且暴击伤害提升60%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1281": {
-   "name": {
-    "zhCN": "派派",
-    "en": "Piper"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 悠闲一刻：派派在[特殊技：轮胎转]、[强化特殊技：引擎转]或[终结技]中发动旋转斩击命中敌人时，有50%概率额外获得1层[动力]，[动力]的叠加层数上限提升至30层。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 上进心：在[特殊技：轮胎转]和[强化特殊技：引擎转]发动期间，派派的移动速度有所提升；在[特殊技：有亿点重]、[强化特殊技：非常重]和[终结技]中发动下砸攻击命中敌人时，招式造成的物理伤害提升10%，每拥有1层[动力]，该增益效果额外提升1%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 技巧娴熟：队伍中任意角色对敌人施加属性异常效果时，派派回复20点能量，30秒内最多触发一次。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 轻度兴奋：[强化特殊技：引擎转]的持续时间上限提升2秒，[动力]的持续时间提升4秒。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1291": {
-   "name": {
-    "zhCN": "雨果",
-    "en": "Hugo"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 仇恨之子：[暗渊回响]状态下，触发[决算]效果时招式的暴击率额外提升12%，暴击伤害额外提升30%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 内在小孩：[终结技：渎神者]触发[决算]效果时不会使敌人的失衡状态结束；此外，触发[决算]效果时招式将会无视其15%防御力。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 拟剧论：蓄力射击命中敌人后，雨果的攻击对该目标无视12%冰属性伤害抗性，持续15秒，重复触发时刷新持续时间。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 荆棘王冠：所有射击攻击命中敌人时，均可触发[暗渊回响]状态，最多持续6秒，重复触发时刷新持续时间；此外，任意招式触发[决算]效果时，此次伤害额外提升60%；[强化特殊技：魂狩·惩戒]的终结一击命中非失衡状态下的敌人时也可触发[决算]效果，使得招式的终结一击伤害倍率固定提升1000%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1301": {
-   "name": {
-    "zhCN": "奥菲与玛格莎",
-    "en": "Orphie & Magusa"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1311": {
-   "name": {
-    "zhCN": "耀嘉音",
-    "en": "Yaojiayin"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "全抗-6%×3层（teammate-buffs）",
-      "开场额外+1000喧响"
-     ],
-     "pending": [
-      "庇护之音无敌不建模"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "核心攻击 54%/1600 差分",
-      "入场额外震音+音簇 3s CD"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，咏叹公式联动"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented_approximation",
-     "implemented": [
-      "强攻300%附加行",
-      "异常积蓄+50%×覆盖",
-      "击破失衡+50%×覆盖"
-     ],
-     "pending": [
-      "无和弦快支窗口未逐帧"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，咏叹公式联动"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "震音/音簇倍率×2、暴击+80%",
-      "精准追加蓄力随想曲 10s CD"
-     ],
-     "pending": []
-    }
-   ]
-  },
-  "1321": {
-   "name": {
-    "zhCN": "伊芙琳",
-    "en": "Evelyn"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 织梦：进入战场时，伊芙琳立刻获得1500点喧响值，在勘域模式中此效果180秒内最多触发一次；敌人进入[牵缠禁制]后，将被施加[禁锢]效果，伊芙琳攻击带有[禁锢]效果的敌人时，无视目标12%防御力；伊芙琳发动[特殊技：束裂式·I型]或[强化特殊技：束裂式·终型]时，会将[禁锢]效果扩散给所有被招式命中的敌人，被扩散的[禁锢]效果持续10秒。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "partially_implemented",
-     "implemented": [
-      "攻击力提升15%：computePanelPhases 1321 块（局内面板 atk ×1.15）"
-     ],
-     "pending": [
-      "燎火返还（绞勒式I/II型返还消耗的燎火，25s 最多一次）未建模"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 命运的弦音：发动[连携技]或[终结技]时，伊芙琳立刻获得等同于自身10%生命值上限的护盾，持有该护盾时，伊芙琳的暴击伤害提升40%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 光与影的牵绊：发动[连携技]或[终结技]时，伊芙琳将获得[弦影绝锋]，持续20秒；[弦影绝锋]期间，伊芙琳发动[普通攻击]、[冲刺攻击]、[特殊技]或[强化特殊技]命中主要攻击目标时，将额外释放一段[月辉丝·弦]进行追击，对范围内敌人造成等同于伊芙琳375%攻击力的火属性伤害，该伤害会被视为[连携技]伤害，最多触发16次，再次获得[弦影绝锋]时刷新可触发次数。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1331": {
-   "name": {
-    "zhCN": "薇薇安",
-    "en": "Vivian"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 《在春天走进果园》：累计消耗4点[护羽]时回复1点[飞羽]；处于[薇薇安的预言]下的目标受到的所有属性异常伤害和[紊乱]伤害提升16%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "partially_implemented",
-     "implemented": [
-      "以太异常积蓄效率+25%：computePanelPhases 1331 块"
-     ],
-     "pending": [
-      "异放精通收益提升至130%未建模",
-      "无视目标15%全属性伤害抗性未建模"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 《苇间风》：[普通攻击：裙裾浮游·悬落]和[普通攻击：落羽生花]命中时必定暴击，并使薇薇安的攻击力提升12%，持续12秒，重复触发时刷新持续时间；进入战场时，薇薇安立即获得5点[护羽]。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 《薇薇安》：薇薇安造成的以太伤害提升40%；[普通攻击：淑女礼仪·舞步]突进期间触发极限闪避、发动[强化特殊技：堇花悼亡]时，均额外回复1点[飞羽]；发动[普通攻击：裙裾浮游·悬落]时会消耗全部[护羽]，下落攻击的范围大幅增加，并在命中时触发一次特殊的[异放]，额外消耗的[护羽]会提高此次[异放]结算的额外异常伤害的比例，最多消耗5点[护羽]，使伤害比例提高至原本的5倍。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1341": {
-   "name": {
-    "zhCN": "赵",
-    "en": "Zhao"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1351": {
-   "name": {
-    "zhCN": "波可娜",
-    "en": "Pulchra"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 利己主义：对被施加[困迹]效果的敌人造成伤害时，自身暴击率提升10%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 借势而为：处于[核心被动：猎手本能]的[猎步]状态时，波可娜的攻击力额外提升10%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 狩猎乐趣：发动[强化特殊技：噬爪·瞬步]时的能量消耗降低5点。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 面具之下：[特殊技：噬爪·噩梦袭影]造成的伤害提升15%，重复攻击的可触发次数额外提升2次；[额外能力：业务搭档]中[困迹]的效果对[追加攻击]以外的伤害类型也会生效。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1361": {
-   "name": {
-    "zhCN": "扳机",
-    "en": "Trigger"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1371": {
-   "name": {
-    "zhCN": "仪玄",
-    "en": "Yixuan"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "进场暴伤+20%（等效10%暴击，用户口径）",
-      "进场+120术法值",
-      "落雷50%贯穿力+5闪能/次（CD自动）"
-     ],
-     "pending": [
-      "落雷次数口径沿用诺姆C2战斗时间驱动先例，待用户复核"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "已录入 yixuan.ts（招式限定减抗/聚墨破/静心加权/调息赠送/凝神贯穿）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented_approximation",
-     "implemented": [
-      "已录入 yixuan.ts（招式限定减抗/聚墨破/静心加权/调息赠送/凝神贯穿）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "已录入 yixuan.ts（招式限定减抗/聚墨破/静心加权/调息赠送/凝神贯穿）"
-     ],
-     "pending": []
-    }
-   ]
-  },
-  "1381": {
-   "name": {
-    "zhCN": "零号·安比",
-    "en": "Soldier 0 - Anby"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 静滞电荷：零号·安比发动[强化特殊技]命中敌人时，将会连续触发3次[白雷]的额外伤害，该效果不会消耗[白雷]层数。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 冗余协议：零号·安比的暴击率提升12%；发动[终结技]时，零号·安比会获得6层[电鸣]（上限6层）；拥有[电鸣]后，零号·安比[特殊技：苍光]命中拥有[白雷]的敌人时，将改为消耗1层[电鸣]作为代替，同一招式命中多名敌人时最多消耗1层[电鸣]，消耗[电鸣]时仍会触发[白雷]的额外伤害； 激发潜能后，每消耗3层[电鸣]，下次发动[特殊技：苍光·临界]时速度加快。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 银白残响：攻击命中拥有[银星]标记的敌人时，零号·安比无视目标12%电属性伤害抗性。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 前传主角：触发6次[白雷]的额外伤害时，将会引发电磁涡流，对目标及其周围的敌人造成零号·安比1000%攻击力的电属性伤害，该伤害被视为[追加攻击]伤害。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1391": {
-   "name": {
-    "zhCN": "橘福福",
-    "en": "Ju Fufu"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented",
-     "implemented": [
-      "进场暴击+12",
-      "进场威风+100",
-      "失衡易伤拐力"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 2,
-     "status": "implemented",
-     "implemented": [
-      "虎啸暴伤+22",
-      "终结回3威势"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented",
-     "implemented": [
-      "自身暴伤+35满覆盖"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "implemented",
-     "implemented": [
-      "连携+30%",
-      "爆米花×3×160%"
-     ],
-     "pending": []
-    }
-   ]
-  },
-  "1401": {
-   "name": {
-    "zhCN": "爱丽丝",
-    "en": "Alice"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "partially_implemented",
-     "implemented": [
-      "触发强击目标防御-20%持续30s",
-      "触发极性强击回复25剑仪"
-     ],
-     "pending": [
-      "强击减防未接入Buff引擎",
-      "极性强击/剑仪池未建模"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "partially_implemented",
-     "implemented": [
-      "全队强击伤害+15%",
-      "物理紊乱伤害+15%",
-      "终结技终结一击触发极性强击"
-     ],
-     "pending": [
-      "极性强击未建模",
-      "强击增伤近似为全异常增伤"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 skillLevelBonus / skillLevelCoef 接入"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "partially_implemented",
-     "implemented": [
-      "无视10%物理抗性",
-      "强化星仪序曲异常积蓄+25%"
-     ],
-     "pending": [
-      "物理抗性无视未接入",
-      "积蓄加成未建模"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 skillLevelBonus / skillLevelCoef 接入"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "partially_implemented",
-     "implemented": [
-      "决胜状态30s",
-      "3300%精通物理额外攻击×6次必暴"
-     ],
-     "pending": [
-      "决胜状态/额外攻击事件均未建模"
-     ]
-    }
-   ]
-  },
-  "1411": {
-   "name": {
-    "zhCN": "柚叶",
-    "en": "Yuzuha"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1421": {
-   "name": {
-    "zhCN": "潘银狐",
-    "en": "Pan Yinhu"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1431": {
-   "name": {
-    "zhCN": "叶瞬光",
-    "en": "Ye Shunguang"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented",
-     "implemented": [
-      "进场剑势6",
-      "合道+10%伤",
-      "减防20%"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "耗剑势回观止",
-      "飞光/斩妄减防40%近似"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented",
-     "implemented": [
-      "进场喧响1000",
-      "帷幕易伤上限300%"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "明灯愿与斩妄附伤1500%"
-     ]
-    }
-   ]
-  },
-  "1441": {
-   "name": {
-    "zhCN": "真斗",
-    "en": "Manato"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 流浪生存法则：真斗的生命值降低时，累积已损失生命值，每有相当于最大生命值1%的已损失生命值使[支援突击]和[普通攻击]造成的火属性伤害提升0.4%，最多提升20%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 昼夜、厨房与爱：[熔锋]状态下，真斗无视目标8%火属性伤害抗性；[特殊技：归烬]或[特殊技：归烬·舍身]发动期间受到敌人攻击后，点按 可以发动[支援突击]。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 幼年的誓言：最大生命值提升8%；[特殊技：归烬]和[特殊技：归烬·舍身]发动期间，真斗受到致命伤害时不会在招式发动期间战败退场，生命值最多降低至1，10秒内最多触发一次。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 越过昔年梦：[特殊技：归烬]命中处于失衡状态下的敌人时，真斗回复75点[炽心]，获得4层[残焰]，点按 可以发动[支援突击]，获得[残焰]的效果在20秒内最多触发一次；[支援突击]命中敌人时，造成的火属性伤害提升3%，持续8秒，最多叠加5层，重复触发刷新持续时间。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1451": {
-   "name": {
-    "zhCN": "卢西娅·艾洛温",
-    "en": "Lucia Elowen"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "[巡梦童谣]额外附加造成伤害时无视敌人18%全属性伤害抗性：已由 teammate-buffs.json lucia_elowen.cinema_1_dream_song_res_ignore 接入",
-      "喧响值获取效率+5%：巡梦童谣状态全队3人（含卢西娅自身），已由 teammate-buffs.json lucia_elowen.cinema_1_dream_song_res_ignore 接入"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "全队贯穿伤害+15%：破暗随每次[合唱]重挂且持续20秒，按全队近似；已由 teammate-buffs.json lucia_elowen.cinema_2_darkbreaker_sheer_dmg 接入",
-      "卢西娅自身[合唱]招式伤害+15%：由模块 patchExecutions 执行级实现（追加攻击/强特/连携/终结技/支援突击均算[合唱]）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "implemented_approximation",
-     "implemented": [
-      "帷幕开启/延长（含伊德海莉大招开帷幕）→ 全队每人+100喧响：开启=开局入梦1+战中E+A5组入梦1+Q退出再入梦×Q；延长=梦境内强特×dreamE+梦境内终结技×Q；15s CD封顶 ceil(180/15)=12 × lucia.c4CurtainCoverage 利用率滑块（默认轴 8 次 → 每人+800）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "初始最大生命值（局外生命）2% → 攻击力（局内小攻击）：spec attributeConversions + 模块 applyPanel（局内面板近似，涌泉+5%差异可接受）",
-      "[合唱]必定暴击 + 暴击时暴击伤害+30%：由模块 patchExecutions 执行级实现（全部[合唱]行）"
-     ],
-     "pending": []
-    }
-   ]
-  },
-  "1461": {
-   "name": {
-    "zhCN": "希德",
-    "en": "Seed"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1471": {
-   "name": {
-    "zhCN": "般岳",
-    "en": "BanYue"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "战栗：敌人火抗-10%（teammate-buffs）"
-     ],
-     "pending": [
-      "对战栗敌人贯穿+10%",
-      "摧岳失衡时长+2s"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "怒相增益+15%暴伤/火伤",
-      "山威强特额外回5闪能"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "技能等级+2"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented_approximation",
-     "implemented": [
-      "四招式伤害+30%（moveId级）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "技能等级+2"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "明王强化（13%/层、30s）",
-      "摧岳600%贯穿力附伤"
-     ],
-     "pending": []
-    }
-   ]
-  },
-  "1481": {
-   "name": {
-    "zhCN": "留银",
-    "en": "Liuyin"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented",
-     "implemented": [
-      "好评回复 ×1.16（乘算到每秒0.6与强特重击7.5）；好评如潮下无视敌人15%全属性抗性（teammate-buffs）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 2,
-     "status": "implemented",
-     "implemented": [
-      "恶意投诉失衡易伤额外+20%、对恶意投诉敌人伤害+15%（teammate-buffs）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "implemented",
-     "implemented": [
-      "进场能量+20（cfg.initialEnergyGift）；好评如潮下攻击力+500（默认满覆盖，liuyin.goodReviewAtkCoverage可调）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "implemented",
-     "implemented": [
-      "余音：转大次数×12次×480%攻击力物理直伤（视为强特，默认全打满）"
-     ],
-     "pending": []
-    }
-   ]
-  },
-  "1491": {
-   "name": {
-    "zhCN": "千夏",
-    "en": "Qianxia"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1501": {
-   "name": {
-    "zhCN": "爱芮",
-    "en": "Aria"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 元气声浪：爱芮的[普通攻击]、[特殊技]，[强化特殊技]对敌人造成伤害时，无视目标10%的以太异常积蓄抗性；且自身触发[异放]时有概率触发暴击：基础暴击率为25%，暴击伤害为25%；若初始异常掌控大于100点，每超过1点初始异常掌控会使该效果的暴击率额外提升0.5%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 梦幻节拍：爱芮攻击和触发[异放]时无视目标16%防御力；在[妄想时刻]持续时间内，攻击和触发[异放]时额外无视目标8%防御力。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 机械天使：爱芮触发[异放]时，自身获得4点能量和70点喧响值，10秒内最多触发一次。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 构造体之梦：进入战场时，爱芮立即获得1200点喧响值，在勘域模式中此效果180秒内最多触发一次；且爱芮进入[妄想时刻]后将不会退出，强化版[普通攻击：绝对音准]和[终结技]造成的以太伤害提升40%；当爱芮处于[妄想时刻]时，若场上有敌人进入属性异常状态，爱芮获得1层[全场应援]，该效果6秒内最多触发一次；在获得[全场应援]效果时，若自身已有3层[全场应援]效果，则会将溢出的[全场应援]效果转化为2个[应援能量]生成在场上。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1511": {
-   "name": {
-    "zhCN": "南宫羽",
-    "en": "Nangong Yu"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1521": {
-   "name": {
-    "zhCN": "席西弗",
-    "en": "Xixifu"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
-    }
-   ]
-  },
-  "1531": {
-   "name": {
-    "zhCN": "星徽·比利",
-    "en": "Starlight - Billy"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "进场闪能+60（合计120）",
-      "强特命中后 18% 物理抗性无视（45s 刷新，覆盖率滑块默认100%）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "最高马力星光/孤轮特技/骑士飞踢 伤害+50%（patchExecutions moveId 级）",
-      "涡轮增压：摇曳步伐/抓地轮毂/失衡动力压制后孤轮特技暴伤+50%（覆盖率滑块默认50%）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_approximation",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented_approximation",
-     "implemented": [
-      "动力压制每次暴伤+8%（至多2层=16%，45s 刷新，覆盖率滑块默认100%）"
-     ],
-     "pending": [
-      "后台生命<35% 持续回血至35%（防御向，未建模）"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_approximation",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "implemented_approximation",
-     "implemented": [
-      "骑士飞踢/最高马力星光 贯穿伤害+18%（patchExecutions moveId 级）",
-      "煊赫星辉：普攻四段/孤轮/连携命中攒层（6层封顶），终结/最高马力星光时至多耗2层/次，每层最后一击+100%贯穿力物理伤害（合并执行近似）"
-     ],
-     "pending": []
-    }
-   ]
-  },
-  "1541": {
-   "name": {
-    "zhCN": "普罗米娅",
-    "en": "Promeia"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 理想稚嫩：普罗米娅发动[终结技：彻骨磔罚]时额外获得效果：[霜刑]不满时获得1点[霜刑]，该效果在发动[终结技：彻骨磔罚]后可触发一次；全队角色对[有罪推定]状态的敌人造成[异放]效果时额外无视20%防御力。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 信念飘摇：普罗米娅的异常精通提升40点；消耗[霜刑]造成的[异放]效果的倍率提升120%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 冷酷罪名：普罗米娅触发[异放]效果时，回复5点[寒蚀值]，0.5秒内最多触发一次。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 故事未完待续：普罗米娅消耗[霜刑]触发[异放]效果时，额外触发一次特殊的[异放]效果，固定结算200%倍率的对应属性的属性异常伤害，同时回复5点[寒蚀值]、100点喧响值，该效果每15秒最多触发一次；此外，普罗米娅造成的属性异常伤害、[紊乱]伤害无视敌人15%全属性伤害抗性。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1551": {
-   "name": {
-    "zhCN": "佩洛伊斯",
-    "en": "(Test1)Pyrois"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented_approximation",
-     "implemented": [
-      "暴击率+8%（computePanelPhases 1551 块）",
-      "进场喧响+1000 注入 initialDecibelGift（整局口径按一次计）"
-     ],
-     "pending": [
-      "勘域模式180s冷却按整局一次近似"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "发动凯旋坦途（下分支开局固定一次）回 1500 喧响：编排层注入 extraSelfDecibelReward",
-      "喧响上限+1000 按用户口径不建模（总量计算器不考虑单条上限）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented_approximation",
-     "implemented": [
-      "失衡值+10%：stunBuildUpBonus 面板（护盾不建模，用户口径默认全覆盖）"
-     ],
-     "pending": [
-      "护盾本体（8%生命上限）防御向不建模"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 拂晓晨星：影画效果未揭示",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  },
-  "1561": {
-   "name": {
-    "zhCN": "维琳娜",
-    "en": "Velina"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "partially_implemented",
-     "implemented": [
-      "广域气旋造成的失衡值额外提升20%，与额外能力广域失衡+30%相乘接入",
-      "维琳娜触发乱流时无视目标20%全属性伤害抗性，已接入乱流结算区",
-      "全队造成风化/风属性异常伤害时无视20%风抗：已在风属性异放伤害池结算中接入"
-     ],
-     "pending": [
-      "普通风化DoT伤害模型尚未显示，因此风化DoT本体的20%风抗无视仍等待风化伤害池接入"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "implemented_approximation",
-     "implemented": [
-      "触发风化时获得1点风蚀：默认按风化次数×2/3期望值摊入，资源利用率页可调",
-      "解锁赋彩属性广域气旋的异常积蓄效果：赋彩属性获得与广域气旋同等的异常积蓄，生成赠送积蓄记录",
-      "额外能力中风化和乱流伤害提升额外+15%，写入 windAnomalyDmgBonus / turbulenceDamageBonus"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 skillLevelBonus / skillLevelCoef 接入"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "implemented",
-     "implemented": [
-      "维琳娜局内攻击力+15%已接入面板计算"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 skillLevelBonus / skillLevelCoef 接入"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "partially_implemented",
-     "implemented": [
-      "消耗2点风蚀提升乱流倍率后返还1点风蚀",
-      "维琳娜造成的风属性异常积蓄值提升20%，已接入维琳娜风属性积蓄贡献"
-     ],
-     "pending": [
-      "再次施加风化时按剩余持续时间提升此次风化伤害：逻辑已记录，但普通风化DoT基础伤害池尚未接入，暂不计入最终伤害"
-     ]
-    }
-   ]
-  },
-  "1571": {
-   "name": {
-    "zhCN": "诺玛·霍洛韦尔",
-    "en": "Norma Hollowell"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "implemented",
-     "implemented": [
-      "火力实验导弹舱 8s→12s",
-      "弹头命中全属性抗性-15%（15s，默认满覆盖）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 2,
-     "status": "implemented",
-     "implemented": [
-      "技术鸿沟 3%→6%/层（60 总）",
-      "帽子把戏回 25 能量/20s 冷却（按战斗时间驱动）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "implemented",
-     "implemented": [
-      "膛温换连携时诺姆+上一位队友各 +200 不可分享喧响（applyNormaHatChain）"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "implemented",
-     "implemented": [
-      "失衡后导弹轰击 6s/0.75s≈8发×200%攻击火伤，30s 冷却封顶",
-      "破甲弹头失衡+30%/高爆弹头伤害+30%（倍率表对应行缩放）"
-     ],
-     "pending": []
-    }
-   ]
-  },
-  "1581": {
-   "name": {
-    "zhCN": "蕾米埃尔",
-    "en": "Remielle"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "partially_implemented",
-     "implemented": [
-      "开局3个特殊虚耀与垂虹载体动作已接入",
-      "花羽轮舞额外喧响与自身全属性抗性无视字段已录入",
-      "队友异常增伤+10%已写入队友Buff，并排除蕾米本人",
-      "特殊虚耀伤害已按垂虹耀变倍率×2.5独立乘区接入结果页"
-     ],
-     "pending": [
-      "Luminous Reflection状态未模拟，队友异常增伤按全程覆盖处理",
-      "特殊虚耀公式待实测校对"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "partially_implemented",
-     "implemented": [
-      "异化/折射系数+20%已写入队友Buff面板字段",
-      "异常角色对Prismatic目标异常伤害无视15%防御已写入队友Buff",
-      "核心被动3异常+10%异化系数已补录"
-     ],
-     "pending": [
-      "Prismatic状态与8秒延长期未模拟，按静态覆盖率处理",
-      "异化/折射系数已在虚耀公式读取，普通异常伤害公式仍未读取"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 4,
-     "status": "partially_implemented",
-     "implemented": [
-      "特殊虚耀再装填数量进入事件与垂虹载体动作",
-      "耀变倍率加成写入面板字段",
-      "4命补充3个特殊虚曜点，特殊虚耀次数变为6次（6命为12次）"
-     ],
-     "pending": [
-      "特殊虚耀与普通耀变公式待实测校对"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
-     ],
-     "pending": [
-      "若该角色3/5命存在额外非通用效果，需要另行补充"
-     ]
-    },
-    {
-     "cinema": 6,
-     "status": "partially_implemented",
-     "implemented": [
-      "特殊虚耀/耀变等触发次数倍率写入面板和资源事件",
-      "特殊虚耀次数翻倍；普通攻击惊鸿耀变次数翻倍"
-     ],
-     "pending": [
-      "六命全部专属动作的最终伤害拆分仍需实测校对"
-     ]
-    }
-   ]
-  },
-  "1591": {
-   "name": {
-    "zhCN": "希格莉德",
-    "en": "(Test1)Sigrid"
-   },
-   "cinemas": [
-    {
-     "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画1 很久很久以前：发动[普通攻击：敛枪式]第三段时，获得[巡空枪势]和一次发动[普通攻击：敛枪式]的机会；[普通攻击：敛枪式]发动机会溢出时，下一次[普通攻击：敛枪式]的最后一击额外造成100%攻击力的冰属性伤害；希格莉德自身攻击力提升25%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画2 传说的第一幕：[出枪式]和[普通攻击：敛枪式]造成伤害的穿透率提升24%；[巡空枪势]效果的持续时间延长2秒；希格莉德的喧响值获取效率提升10%。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 3,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画4 英雄养成中：每次获得[巡空枪势]时，自身造成的伤害提升18%，持续8秒，重复触发时可使持续时间延长8秒，最多不超过40秒。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    },
-    {
-     "cinema": 5,
-     "status": "implemented_generic_skill_level",
-     "implemented": [
-      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
-     ],
-     "pending": []
-    },
-    {
-     "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "影画6 天空的骑士：[普通攻击：敛枪式]第一/二/三段的最后一击命中敌人时，额外造成80%/90%/100%攻击力的冰属性伤害；招式[连携技：冰凌卷地]命中失衡状态下的敌人时，自身进入[破阵]状态不再有次数限制；在[破阵]状态下，希格莉德会更快地发动[普通攻击：敛枪式]。",
-      "待人工核对后补实现，勿直接默认省略。"
-     ]
-    }
-   ]
-  }
- }
 }
