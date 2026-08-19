@@ -64,6 +64,12 @@ export interface StunAxisPreset {
    * 仅用于「队伍含伊德海莉 → 自动开启失衡轴并选对应轴」的自动选择；手动应用预设不需要该字段。
    */
   chapter?: number
+  /**
+   * 保底目标（≥ N，0 = 不保底）：应用/自动命中该预设时自动勾选配装页「保底目标」。
+   * - stun：保底 N 次失衡；fury：保底 N 次嗔火（般岳怒相）；ultimate：保底 N 次喧响（终结技）。
+   * 如 5火10大 = { stun: 4, fury: 4, ultimate: 4 }（另需琉音好评≥6，见 note）。
+   */
+  guarantee?: { stun?: number; fury?: number; ultimate?: number }
 }
 
 /** 手写预设（可选；也可全用 JSON 文件） */

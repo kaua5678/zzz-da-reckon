@@ -115,10 +115,17 @@
                     </div>
                   </div>
 
-                  <!-- 战斗动作次数 -->
-                  <div class="section">
-                    <div class="section-title">战斗动作次数</div>
-                    <n-grid cols="6" :x-gap="8">
+                  <!-- 战斗动作次数 + 保底目标（折叠 tag） -->
+                  <n-collapse class="section" :default-expanded-names="['battle-actions']">
+                    <n-collapse-item title="战斗动作与保底目标" name="battle-actions">
+                      <div class="guarantee-row">
+                        <span class="section-title" style="margin-right: 12px">保底目标</span>
+                        <n-checkbox :checked="guaranteeStun" @update:checked="v => setGuarantee('stun', v)">保底4失衡</n-checkbox>
+                        <n-checkbox :checked="guaranteeFury" @update:checked="v => setGuarantee('fury', v)">保底4嗔火</n-checkbox>
+                        <n-checkbox :checked="guaranteeUltimate" @update:checked="v => setGuarantee('ultimate', v)">保底4喧响</n-checkbox>
+                      </div>
+                      <div class="section-title">战斗动作次数</div>
+                      <n-grid cols="6" :x-gap="8">
                       <n-gi>
                         <div class="field">
                           <span class="field-label">弹刀次数<span v-if="selectedChar.agentId === '1471' && banyueTopUpForSlot && banyueTopUpForSlot.parry > 0" class="field-hint">+{{ banyueTopUpForSlot.parry }}（轴自动）</span></span>
@@ -316,7 +323,8 @@
                         </div>
                       </n-gi>
                     </n-grid>
-                  </div>
+                    </n-collapse-item>
+                  </n-collapse>
 
                   <!-- 音擎属性加成 -->
                   <div v-if="wengine" class="section">
@@ -717,7 +725,7 @@
 import { ref, computed, watch } from 'vue'
 import {
   NCard, NSpace, NGrid, NGi, NSelect, NSlider, NInputNumber, NText,
-  NRadioGroup, NRadioButton, NTag, NButton, NModal, useMessage,
+  NRadioGroup, NRadioButton, NTag, NButton, NModal, NCollapse, NCollapseItem, NCheckbox, useMessage,
 } from 'naive-ui'
 import { useConfigStore, getInteractionDefaults } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -910,11 +918,26 @@ function copyPresetJson() {
 const selectedChar = computed<CharacterConfig>(() => configStore.team[configStore.selectedSlot])
 // 交互次数默认值（如星徽·比利 招架4/闪反0/格挡5）：char 未填（0）时输入框预填展示，计算侧同口径
 const interactionDefaults = computed(() => getInteractionDefaults(selectedChar.value?.agentId ?? ''))
+// ========== 保底目标（0/1 勾选；预设轴/队伍应用时自动填充） ==========
+const guaranteeStun = computed(() => configStore.getMechanicSetting('guarantee.stun', 0) !== 0)
+const guaranteeFury = computed(() => configStore.getMechanicSetting('guarantee.fury', 0) !== 0)
+const guaranteeUltimate = computed(() => configStore.getMechanicSetting('guarantee.ultimate', 0) !== 0)
+function setGuarantee(kind: 'stun' | 'fury' | 'ultimate', v: boolean) {
+  configStore.setMechanicSetting(`guarantee.${kind}`, v ? 1 : 0)
+}
 // 般岳轴模式自动补齐（保底语义）：弹刀/双反在交互栏输入之上补的量（懒计算，仅般岳选中时求值）
-const { banyueInteractionTopUp } = useResourceCalc()
+const { banyueInteractionTopUp, autoPreset } = useResourceCalc()
 const banyueTopUpForSlot = computed(() => {
   const t = banyueInteractionTopUp.value
   return t && t.slot === configStore.selectedSlot ? t : null
+})
+// 自动轴预设命中时，按预设 guarantee 自动勾选保底目标（只在预设声明时填，不自动清除用户手勾）
+watch(autoPreset, (p) => {
+  const g = p?.guarantee
+  if (!g) return
+  if (g.stun !== undefined) configStore.setMechanicSetting('guarantee.stun', g.stun > 0 ? 1 : 0)
+  if (g.fury !== undefined) configStore.setMechanicSetting('guarantee.fury', g.fury > 0 ? 1 : 0)
+  if (g.ultimate !== undefined) configStore.setMechanicSetting('guarantee.ultimate', g.ultimate > 0 ? 1 : 0)
 })
 const currentAgent = computed(() => {
   const id = selectedChar.value?.agentId

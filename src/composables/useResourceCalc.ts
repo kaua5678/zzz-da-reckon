@@ -740,7 +740,12 @@ function applyNormaHatChain(
     // 般岳轴模式自动补齐（保底语义，方案 A）：轴内怒相/终结技对嗔火/喧响有硬性需求，不足时抬双反（补嗔火）与弹刀（补喧响），
     // 有效次数 = 交互栏输入 + 补齐量（不写回 store，不覆盖用户输入）；计算轮间通过 prevBanyueTopUp 线程收敛。
     const banyueSlot = configStore.team.findIndex(c => c.agentId === '1471')
-    const autoTopUp = axisActive && banyueSlot >= 0 && configStore.getMechanicSetting('banyue.autoTopUpInteractions', 1) !== 0
+    // 保底开关（配装页「保底目标」勾选）：保底4嗔火 → 抬双反补嗔火；保底4喧响 → 抬弹刀补喧响。
+    // 轴模式自动补齐（axisActive）之外，保底开关也可独立驱动（非轴亦生效）。
+    const guaranteeFury = configStore.getMechanicSetting('guarantee.fury', 0) !== 0
+    const guaranteeUltimate = configStore.getMechanicSetting('guarantee.ultimate', 0) !== 0
+    const autoTopUp = (axisActive || guaranteeFury || guaranteeUltimate) && banyueSlot >= 0
+      && configStore.getMechanicSetting('banyue.autoTopUpInteractions', 1) !== 0
 
     /** 轴内某槽位捏的块次数（moveId → 总次数 = 块数 × 窗口数；赠品连携块不计） */
     const computeBanyueAxisExFor = (slot: number): Record<string, number> => {
@@ -1101,7 +1106,8 @@ function applyNormaHatChain(
         dualCounterCount: storeChar?.dualCounterCount ?? 0,
         cinemaLevel: storeChar?.cinemaLevel ?? 0,
         axisEx: computeBanyueAxisExFor(banyueSlot),
-        ultimateCountNeeded: ultNeed,
+        ultimateCountNeeded: Math.max(ultNeed, guaranteeUltimate ? 4 : 0),
+        minRageCount: guaranteeFury ? 4 : 0,
         ultimateCost: base.characters[banyueSlot]?.ultimateCost ?? ULTIMATE_COST_DEFAULT,
         decibelHave,
       })
