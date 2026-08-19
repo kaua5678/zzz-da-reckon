@@ -86,10 +86,10 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 终结技伤害提升 X% | `skillDmgBonus__ultimate` | 招式限定增伤，只对终结技生效 |
 | 连携技伤害提升 X% | `skillDmgBonus__chain` | 招式限定增伤，只对连携技生效 |
 | 闪避反击伤害提升 X% | `skillDmgBonus__dodgeCounter` | 招式限定增伤 |
-| 追加攻击伤害提升 X% | `追加攻击伤害` | 走 `skillDmgBonus` 配合 `targetSkillType` |
+| 追加攻击伤害提升 X% | `skillDmgBonus__additionalAttack` | 走 `skillDmgBonus` 配合 `targetSkillType: 'additionalAttack'`（带 skillTag 的招式） |
 | X 招式造成的伤害提升 X% | `skillDmgBonus` + `targetSkillType` | 通用招式限定，指定生效的招式类型 |
 
-**注意**：`skillDmgBonus` 字段支持 `targetSkillType` 指定招式类型（basic/special/exSpecial/ultimate/chain/assist/dodgeCounter/dashAttack）。带 `targetSkillType` 的 buff 会解析到 `skillDmgBonus__{type}` 字段。
+**注意**：`skillDmgBonus` 字段支持 `targetSkillType` 指定招式类型（all/basic/special/exSpecial/ultimate/chain/assist/dodgeCounter/dashAttack/additionalAttack）。带 `targetSkillType` 的 buff 会解析到 `skillDmgBonus__{type}` 字段。
 
 ---
 
@@ -112,7 +112,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 
 ## 5. 抗性/易伤区
 
-**有效抗性公式**：`有效抗性 = max(0, 怪物抗性 - 抗性降低/100)`，抗性区 = `1 - 有效抗性/100`
+**有效抗性公式**：`有效抗性 = 怪物抗性 - 抗性降低/100 - 无视抗性/100`，抗性区 = `1 - 有效抗性/100`（**抗性区不设上限**：抗性降低/无视抗性会线性提高该乘区）
 
 | 游戏文本 | 字段 | 说明 |
 |---------|------|------|
@@ -165,7 +165,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 |---------|------|------|
 | 异常伤害提升 X% | `anomalyDmgBonus` | 异常伤害增伤，影响 DOT/初始化伤害 |
 | 紊乱伤害提升 X% | `disorderDamageBonus` | 紊乱增伤，替代 `anomalyDmgBonus`，不影响 DOT |
-| 异放伤害提升 X% | `releaseDamageBonus` | 异放增伤，子类加算 |
+| 异放伤害提升 X% | `anomalyReleaseDmgBonus` | 异放专用独立增伤区，只在 settlementType=release 时进入公式 |
 | 灼烧/感电/侵蚀 DOT | `calcStandardDotDamage()` | 引擎自动算，`STANDARD_DOT_CONFIG` 注册参数 |
 | 风化/畏缩/霜寒 | 无 DOT | 只有持续状态（buff），没有 DOT 伤害；风化有浸染(infection)直伤+10%独立乘区 |
 | X 属性异常伤害提升 X% | `windAnomalyDmgBonus` 等 | 元素专属异常增伤 |
@@ -209,7 +209,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 |---------|------|------|
 | 技能等级+2 | `skillLevelBonus` | 3命/5命通用，引擎自动算伤害/失衡系数 |
 | 能量上限提升 X 点 | `energyMax` | 默认 120 |
-| 喧响值上限提升 X 点 | 走 `decibelOverflow` 配置 | 在 EnemyConfig 中配置 |
+| 喧响值上限提升 X 点 | 不建模 | 计算器按整局总量口径，不设单条喧响上限（如橘福福额外能力「喧响上限+1000」明确不做） |
 | 物理异常[畏缩] | 覆盖率折入 `enemyStunTakenBonus` | 畏缩使敌人受到失衡值+7.5%，按覆盖率折算 |
 
 ---

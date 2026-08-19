@@ -39,7 +39,7 @@
 1. 机制描述先写进 `src/specs/agents/<id>.json` 的 `resources` / `events` / `attributeConversions` / `notes`。
 2. 能在通用解释器表达的用 spec 数据；需要按动作轴计算的在 `src/mechanics/agents/<id>.ts` 实现并注册。
 3. 可确认数值写进 `verifications`，变成 golden test。
-4. 猜测机制先落库并标 `[猜测·置信度]`（见 `docs/GUESSING_GUIDE.md`），未确认的保持 `not_described_not_implemented` 或 `implemented_approximation`，在 notes 里写清缺口与待核对点。
+4. 猜测机制先落库并标 `[猜测·高/中/低]`（标注格式见 `src/specs/template.json` 的 `_comment` 与 `scripts/validate-specs.mjs` 头注释），未确认的保持 `not_described_not_implemented` 或 `implemented_approximation`，在 notes 里写清缺口与待核对点。
 
 ## 3.1 事件 → 倍率表映射
 

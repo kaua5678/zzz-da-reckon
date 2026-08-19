@@ -15,7 +15,7 @@
 3. 应用 Boss 时除填充敌人配置外，**自动把该 Boss 当期关卡固有 buff（layer_buff 数值效果）写入全局 Buff 表**（id 前缀 `layer-buff:`，切 Boss 时先清旧）
 3. 一键填充字段：血量 / 失衡值 / 防御 / 等级 / 危局异常系数（`bossAnomalyCoeff`）/ 失衡易伤（`stunVuln`）/ 失衡时间（`stunTime`）/ 三张抗性表 / 战斗时间 180s / 秽盾触发次数 / 能量盾次数。
    **不动的字段**：无敌时间（招式机制只能手填）、快支次数（角色侧）。
-4. 底部「全部 Boss」折叠：9 个预设按危局异构/危局阵容分组，点 chip 跳转到该 Boss 最新危局期。
+4. 底部「全部 Boss」折叠：16 个 Boss 按「危局异构（困难）」「危局常规（普通）」两组分组，点 chip 跳转到该 Boss 最新危局期。
 5. 已应用 Boss 卡片高亮；「清除已选」撤销高亮（不影响已填数值）。
 6. 期数标注：`(测试服)` 期的 buff 是 (Test1)TBD 占位，等正式服重跑 import 自动更新。
 
@@ -54,7 +54,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 - 规则表在 `RULES`（正则数组，先命中先得；段落内循环删匹配继续解析；按 `。\n;` 分句）
 - **两个数据源都走同一解析器**：`selectable_buff`（当期可选牌 3 张）与 `layer_buff`（当期关卡固有 buff，随 Boss 卡展示/应用）
 - 新 buff 文案类型解析不了时：加规则到 `RULES`，或把属性名加进 `RANKED_STAT_MAP`（分档）、`STAT_LABELS`（显示名）
-- 测试：`src/composables/__tests__/phaseBuffParser.test.ts`（6 条，覆盖分档/限定/多招式/测试服）
+- 测试：`src/composables/__tests__/phaseBuffParser.test.ts`（7 条，覆盖分档/限定/多招式/测试服）
 
 ### 1.5 已知口径
 
@@ -131,11 +131,11 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 页面注册 | `src/views/CalculatorView.vue` pageMap + `src/components/AppHeader.vue`（`teamCompare` tab） |
 | 测试 | `src/composables/__tests__/teamCompare.test.ts`（金数/难度/批量/现场恢复/buff 推荐/buff 条件） |
 
-## 3. 验证命令
+## 4. 验证命令
 
 ```bash
 npm run typecheck      # 类型
-npm run check          # validate:data + validate:specs + vitest（153+ 测试）
+npm run check          # validate:data + validate:specs + vitest（451 测试）
 npm run build          # 产物（public/ 自动拷入 dist/）
 ```
 
