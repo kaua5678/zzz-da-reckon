@@ -1348,7 +1348,7 @@
   "1241": {
    "name": {
     "zhCN": "朱鸢",
-    "en": "Juhufu"
+    "en": "Zhu Yuan"
    },
    "cinemas": [
     {
@@ -1356,15 +1356,17 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "快速装填：连携/终结获得[快速装填]，耗尽强化霰弹后立刻获得6/9枚（资源机制，未建模）"
      ]
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "请勿抵抗/火力压制以太伤害+10%×5层（面板级 etherDmg+50 近似，作用范围扩至全部以太伤害）"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "压制模式抗打断提升与受到伤害-10%（防御向，未建模）"
      ]
     },
     {
@@ -1379,11 +1381,11 @@
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "请勿抵抗/火力压制无视25%以太伤害抗性（面板级 enemyEtherResReduction+25 近似，作用范围扩至全部以太伤害）"
+     ],
+     "pending": []
     },
     {
      "cinema": 5,
@@ -1400,7 +1402,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "扩容能源包：[以太余温]使下次强特耗能-30并追加4枚220%攻击力以太鹿弹（资源与追加伤害，未建模）"
      ]
     }
    ]

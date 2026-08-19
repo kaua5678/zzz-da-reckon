@@ -459,6 +459,16 @@ export function computePanelPhases(
       panel.dmgBonus = (panel.dmgBonus ?? 0) + 18 * c4Cov
     }
   }
+  if (agent.id === '1241') {
+    // 朱鸢核心被动：消耗强化霰弹攻击命中失衡敌人时增伤额外+40%（增伤区，仅失衡时生效）。
+    // 用户口径：轴模式参照仪玄凝云术（轴内行直加，待朱鸢轴接入）；非轴按覆盖率滑块粗略近似，
+    // 默认 0 自调兜底。定向通道与模块 applyPanel 一致（basic/dashAttack 近似强化霰弹招式）。
+    const stunnedCov = Math.max(0, Math.min(1, configStore.getMechanicSetting('zhuYuan.coreStunnedCoverage', 0)))
+    if (stunnedCov > 0) {
+      panel['skillDmgBonus__basic'] = (panel['skillDmgBonus__basic'] ?? 0) + 40 * stunnedCov
+      panel['skillDmgBonus__dashAttack'] = (panel['skillDmgBonus__dashAttack'] ?? 0) + 40 * stunnedCov
+    }
+  }
   if (agent.id === '1011') {
     // 安比影画1 快充模式：[普通攻击]第四段斩击命中敌人时能量获得效率 +12%（持续 30s），
     // 按时段覆盖率折算（覆盖率滑块默认 100%）。
