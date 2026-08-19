@@ -2718,7 +2718,7 @@
   },
   "1461": {
    "name": {
-    "zhCN": "希德",
+    "zhCN": "「席德」",
     "en": "Seed"
    },
    "cinemas": [
@@ -2727,15 +2727,18 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "冻眠期：钢能消耗降至100、进场/终结技额外累积钢能（钢能资源未建模）",
+      "落华·崩坠暴击伤害+30%（面板级无法限定单招，未建模）"
      ]
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "围杀生效时伤害无视20%防御力（teammate-buff enemyDefReduction 近似，草稿误用 enemyAssaultDefReduction 已修正；全队生效近似）"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "铁萼雨幕耗能延长与落华·重戮增伤机制（未建模）"
      ]
     },
     {
@@ -2750,11 +2753,11 @@
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "围杀生效时喧响值获取效率+10%（decibelGainEfficiency）、终结技伤害+20%（skillDmgBonus__ultimate）"
+     ],
+     "pending": []
     },
     {
      "cinema": 5,
@@ -2768,11 +2771,11 @@
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "自身暴伤+50%（面板直加）；落华·重戮附加3道激光共495%攻击力（patchExecutions moveId 限定，3秒至多1次近似每次重戮1次）"
+     ],
+     "pending": []
     }
    ]
   },

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "agent:seed",
-  "name": "希德",
+  "name": "「席德」",
   "agentIds": [
     "1461"
   ],
-  "status": "not_described_not_implemented",
+  "status": "partially_implemented",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
@@ -13,7 +13,24 @@
   "verifications": [],
   "stateMachines": [],
   "notes": [
-    "待录入：希德 的机制、资源、事件与验证。"
+    "来源：nanoka 3.2.3+18244196 zh character/1461.json（抓于 2026-08-19），术语表无席德专属术语。基础信息：S 级电属性·强攻（hit_type 斩击），新艾利都防卫军。原始数据：data/raw/nanoka_missing/full/1461.json。",
+    "核心被动·花链协议（Lv.12 原文摘要）：席德将初始攻击力最高的[强攻]队友视为[正兵]；正兵释放强特使席德获得[强袭]（攻击+1000、暴伤+30%），席德释放强特使正兵获得[明攻]（攻击+1000、暴伤+30%）；明攻+强袭共存时席德与正兵获得[围杀]（伤害+25%）；进场存在正兵时双方立刻获得全部状态（40秒，刷新）；正兵/席德消耗能量每点回0.5钢能。",
+    "额外能力·奇兵轰临（原文）：队伍中存在其他[强攻]角色时触发：席德作为操作中角色造成伤害时为[正兵]回复2点能量（1秒至多1次）；席德[落华·重戮]/[落华·崩坠]/[终结技：机芯花园·绽放！]伤害+30%，且无视敌人25%电属性伤害抗性。",
+    "影画1 冻眠期：钢能消耗降至100、进场/终结技额外累积钢能、崩坠暴伤+30%。影画2 汲光法：围杀生效时该代理人伤害无视20%防御力；铁萼雨幕耗能延长与落华·重戮增伤机制。影画4 芳香调：围杀生效时喧响获取效率+10%、终结技伤害+20%。影画6 有心论：席德暴伤+50%；落华·重戮额外3道165%攻击力激光（3秒至多1次）。影画3/5 技能等级+2。",
+    "[已确认·继承草稿] 拐力数据在 teammate-buffs.json 1461 组：核心被动明攻/围杀（atkFlat 1000 + critDmg 30 + dmgBonus 25）、影画2 围杀无视20%防御（草稿 stat 误用 enemyAssaultDefReduction——该通道仅物理伤害结算消费，席德为电属性，已修正为 enemyDefReduction）。",
+    "实现口径 [已确认]：① 正兵为动态指定（初始攻击最高的强攻队友），静态面板无法判定具体对象，两条 buff 按全队生效近似（第三人会多吃，spec 注明），并按 spec.additionalAbility（specialty attack，evalTeamConditions 天然排除席德自身，贴合原文「其他强攻」）由 computePanelPhases 过滤链门控——无强攻队友时不生效；② 明攻/强袭/围杀按常驻近似（进场即得、40秒刷新、强特循环高频维持）；③ 席德自身的强袭/围杀收益由 teammate buff 自然覆盖（owner 含自身）；④ 额外能力自身增伤+30% 限定落华·重戮/崩坠（basic 段）与终结技，近似 skillDmgBonus__basic + __ultimate 定向（basic 范围略宽含霜蕊轮舞），无视25%电抗按面板级 enemyElectricResReduction（范围略宽）；⑤ 影画4 终结技+20% 走 skillDmgBonus__ultimate、喧响效率+10% 走 decibelGainEfficiency，均按围杀条件（additionalAbilityActive）门控；⑥ 影画6 暴伤+50% 面板直加；3道激光（3×165%攻击力）按落华·重戮招式触发挂 flatDamageBonus（moveId 1461006，3秒至多1次近似为每次重戮1次）。",
+    "未建模项：[钢能]资源循环（含影画1 消耗/累积调整）、影画1 崩坠暴伤+30%（面板级无法限定单招）、影画2 铁萼雨幕耗能延长与重戮增伤机制、额外能力为正兵回能（能量资源向）。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "attack"
+        ]
+      }
+    ],
+    "note": "额外能力·奇兵轰临：队伍中存在其他[强攻]角色时触发（evalTeamConditions 候选排除席德自身，贴合「其他强攻」）。核心被动[正兵]机制（明攻/围杀）与影画2 围杀无视防御同条件，两条 buff 一并门控。[已确认]"
+  }
 }

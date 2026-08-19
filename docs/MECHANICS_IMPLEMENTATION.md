@@ -369,3 +369,12 @@
 - **未建模**：强化霰弹/快速装填/以太余温资源循环、影画2 防御向、影画6 追加鹿弹与强特耗能-30。
 - **模块**：`src/mechanics/agents/zhuYuan.ts`（applyPanel）+ helpers 失衡覆盖率块。
 
+### 「席德」（seed / 1461）—— 新艾利都防卫军电强攻
+
+- **正兵拐**（teammate-buffs，按「其他强攻」门控）：明攻攻击 +1000（Lv.12）/暴伤 +30%、围杀增伤 +25%；正兵为动态指定（初始攻最高的强攻队友），静态面板按全队生效近似（第三人会多吃，spec 注明）。
+- **影画2**：围杀生效时无视 20% 防御（草稿 stat 误用 `enemyAssaultDefReduction`——仅物理结算消费，已修正为 `enemyDefReduction`）。
+- **额外能力（自身）**：落华·重戮/崩坠/终结技增伤 +30%（`skillDmgBonus__basic`/`__ultimate` 定向近似）+ 无视 25% 电抗。
+- **影画4**：围杀生效时喧响效率 +10%、终结技增伤 +20%；**影画6**：自身暴伤 +50%，落华·重戮附加 3 道激光共 495% 攻击力（`patchExecutions` moveId 限定）。
+- **未建模**：钢能资源循环（含影画1）、影画1 崩坠暴伤、影画2 铁萼雨幕机制、为正兵回能。
+- **模块**：`src/mechanics/agents/xide.ts`（applyPanel + patchExecutions）+ helpers 过滤链门控正兵拐。
+

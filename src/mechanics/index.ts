@@ -56,6 +56,7 @@ import { xixifuMechanic } from './agents/xixifu'
 import { yanagiMechanic } from './agents/yanagi'
 import { orphieMechanic } from './agents/orphie'
 import { zhuYuanMechanic } from './agents/zhuYuan'
+import { xideMechanic } from './agents/xide'
 import { agentSpecs } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
@@ -85,6 +86,7 @@ registerAgentMechanic(xixifuMechanic)
 registerAgentMechanic(yanagiMechanic)
 registerAgentMechanic(orphieMechanic)
 registerAgentMechanic(zhuYuanMechanic)
+registerAgentMechanic(xideMechanic)
 registerAgentMechanic(koledaFurnaceMechanic)
 registerAgentMechanic(anbyChargeMechanic)
 registerAgentMechanic(corinChargeMechanic)

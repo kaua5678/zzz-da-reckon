@@ -312,6 +312,12 @@ export function computePanelPhases(
   const orphieAdditionalActive = orphieSlot >= 0
     ? evalAdditionalAbility(team, orphieSlot, orphieAgent, getAgentSpec('1301')?.additionalAbility) === true
     : false
+  // 席德核心被动/额外能力·花链协议/奇兵轰临：队伍存在其他[强攻]角色时触发（正兵明攻/围杀拐与影画2 无视防御）
+  const xideSlot = team.find(member => member.agentId === '1461')?.slot ?? -1
+  const xideAgent = xideSlot >= 0 ? catalogStore.getAgent('1461') ?? null : null
+  const xideAdditionalActive = xideSlot >= 0
+    ? evalAdditionalAbility(team, xideSlot, xideAgent, getAgentSpec('1461')?.additionalAbility) === true
+    : false
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
     .filter(buff => buff.id !== 'rina.additional_electric_damage' || rinaAdditionalActive)
     .filter(buff => buff.id !== 'lighter.additional_morale_ice_fire_dmg' || lighterAdditionalActive)
@@ -325,6 +331,8 @@ export function computePanelPhases(
     .filter(buff => buff.id !== 'pan_yinhu.cinema_1_stupefaction_dmg' || panYinhuAdditionalActive)
     .filter(buff => buff.id !== 'xixifu.additional_toxin_crit_dmg' || xixifuAdditionalActive)
     .filter(buff => buff.id !== 'orphie.additional_def_ignore' || orphieAdditionalActive)
+    .filter(buff => buff.id !== 'seed.core_vanguard_bright_attack' || xideAdditionalActive)
+    .filter(buff => buff.id !== 'seed.cinema_2_encirclement_def_ignore' || xideAdditionalActive)
 
   const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
   for (const buff of allTeammateBuffs) {
