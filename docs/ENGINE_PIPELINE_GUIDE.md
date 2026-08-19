@@ -12,11 +12,13 @@ computePanelPhases(slot)         逐角色面板（局外→局内）
 buildCharConfig(slot)            逐角色操作配置 cfg
   └─ module.buildCharConfig      cfg 级机制（初始能量/跳过通用强特/预存倍率表）
 calcTeamResources()              资源池主循环（core/resource.ts calcTeamResources）
-  ├─ iterate()                   不动点：能量→强特次数→喧响→终结技→时间分配（多轮收敛）；
-  │    喧响含按槽位注入的奖励（specialAction/anomalyDecibelBonusPerSlot，含伴随50%），
-  │    终结技次数 = floor(totalDecibel/3000) 与 decibelSource.total 同口径；
-  │    快支 20 奖励只在 specialActionBonus 计一次，bonusRegen 仅剩时光切片
-  │    └─ module.estimateExSpecialTime   强特链占用的必做前台时间（每轮调用）
+  ├─ 时间预算收敛外层循环（maxTimeIterations 缺省 8，见 §4 坑12）
+  │    ├─ iterate()               不动点：能量→强特次数→喧响→终结技→时间分配（多轮收敛）；
+  │    │    喧响含按槽位注入的奖励（specialAction/anomalyDecibelBonusPerSlot，含伴随50%），
+  │    │    终结技次数 = floor(totalDecibel/3000) 与 decibelSource.total 同口径；
+  │    │    快支 20 奖励只在 specialActionBonus 计一次，bonusRegen 仅剩时光切片
+  │    │    └─ module.estimateExSpecialTime   强特链占用的必做前台时间（每轮调用）
+  │    └─ 测执行行前台时间：excess = Σ执行行 totalTime − 战斗时间，只折正 excess 进 necessaryTime（压缩平A池）重收敛
   ├─ buildExecutions()           招式执行计划（从收敛后的 state 生成）
   │    ├─ 通用动作（平A汇总/强特/终结/连携/闪反/弹刀/支援突击）
   │    ├─ module.buildExecutions 模块专属动作（EX 链/附伤）
@@ -89,6 +91,12 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
 10. **进场闪能**：`cfg.initialEnergyGift` 默认 40（composables 构建），命破角色需模块设为 60（伊德海莉/星徽·比利）。
 11. **星辉类"指定招式增伤"**：不要加全局 panel.dmgBonus，在 patchExecutions 按 moveId 集合加 exec.dmgBonus
     （星徽·比利 6 个目标招式 / 般岳 C4 / 诺姆弹头行 override 同款）。
+12. **时间预算收敛（引擎外层循环，2026-08）**：模块 buildExecutions 物化的专属动作行（雅霜月架势/叶瞬光飞光/
+    柏妮思双喷/星徽比利EX链等）占用前台但若未计入 estimateExSpecialTime，会使 Σ执行行 totalTime > 战斗时间。
+    引擎在 calcTeamResources 外层循环测量 excess = Σ执行行 totalTime − 战斗时间，**只折正 excess** 进
+    necessaryTime（压缩平A池）后重收敛；负 excess（estimate 高估/空闲前台）不动——否则 necessary 变负、basic 膨胀。
+    新增模块若推专属 on-field 行且不占 estimate，会被本循环自动纠正；若推后台行应显式 `totalTime: 0`
+    （蕾米 Radiant Turn 模式），否则被误判为 on-field 占用。
 
 ## 5. 验收命令
 

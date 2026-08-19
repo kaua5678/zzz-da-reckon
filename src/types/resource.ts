@@ -1193,6 +1193,8 @@ export interface CharacterOperationConfig {
   isSupport: boolean
   /** 时间分配权重（3个角色的权重比，用于分配平A时间） */
   timeWeight: number
+  /** 时间预算收敛：执行计划前台时间超出战斗时间的部分（秒），折入必要前台时间以压缩平A池（引擎时间收敛外层循环写入） */
+  timeBudgetExcess?: number
   /** 嘲讽取消次数（般岳专属：失衡外强特连段末尾后摇的嘲讽取消，每次取消一次后摇；缺省 0） */
   tauntCancelCount?: number
   /** 资源利用率覆盖：actionId/eventId -> 释放率/上限 */
@@ -1464,6 +1466,8 @@ export interface ResourceCalcConfig {
   energyShieldCount: number
   /** 最大迭代次数 */
   maxIterations: number
+  /** 时间预算收敛最大外层循环次数（缺省 8）：模块专属动作行超出战斗时间时折入必要前台重收敛 */
+  maxTimeIterations?: number
   /** 失衡次数输入（连携次数 = chainCountPerStun × stunCount）；由外部失衡池不动点收敛后回填 */
   stunCount?: number
   /** 特殊动作喧响奖励（弹刀/闪反/连携/快支，含伴随50%）按槽位注入；参与终结技次数推导 */

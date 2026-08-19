@@ -37,27 +37,59 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     comboAlignTime: 0,
   }))
 
-  // 循环迭代
+  // 时间预算收敛（外层）+ 资源收敛（内层）：
+  // 模块 buildExecutions 会物化出占用前台、但未计入 estimateExSpecialTime 的动作行
+  // （雅霜月架势/叶瞬光飞光/柏妮思双喷/星徽比利EX链等），使 Σ执行行时间 > 战斗时间。
+  // 本循环测量每个角色执行计划的超出量，折入 necessaryTime（压缩平A池）后重收敛，
+  // 直到执行行前台时间 ≤ 战斗时间（游戏内 180s 必须打完，链式循环不可多算）。
+  const invTime = config.invincibleTime ?? 0
+  const budget = totalTime - invTime
+  const maxTimeIter = config.maxTimeIterations || 8
+  // 重置上一轮调用残留的时间预算（cfg 可能被外层不动点复用）
+  for (const cfg of configs) cfg.timeBudgetExcess = 0
   let converged = false
   let iter = 0
-  for (iter = 0; iter < maxIter; iter++) {
-    const newStates = iterate(configs, states, config)
+  for (let timePass = 0; timePass < maxTimeIter; timePass++) {
+    for (iter = 0; iter < maxIter; iter++) {
+      const newStates = iterate(configs, states, config)
 
-    // 检查收敛：强特次数和大招次数是否稳定
-    let changed = false
-    for (let i = 0; i < states.length; i++) {
-      if (newStates[i].exSpecialCount !== states[i].exSpecialCount ||
-          newStates[i].ultimateCount !== states[i].ultimateCount) {
-        changed = true
+      // 检查收敛：强特次数和大招次数是否稳定
+      let changed = false
+      for (let i = 0; i < states.length; i++) {
+        if (newStates[i].exSpecialCount !== states[i].exSpecialCount ||
+            newStates[i].ultimateCount !== states[i].ultimateCount) {
+          changed = true
+          break
+        }
+      }
+
+      states = newStates
+      if (!changed) {
+        converged = true
         break
       }
     }
 
-    states = newStates
-    if (!changed) {
-      converged = true
-      break
+    // 测量每个角色执行计划前台时间（含模块专属动作行），超出战斗时间的部分折入必要时间。
+    // 只折正超出（真溢出）：负值 = estimate 高估必要时间 / 有空闲前台，属正常，不动（否则 necessary 变负、basic 膨胀）。
+    let maxExcess = 0
+    for (let i = 0; i < configs.length; i++) {
+      const cfg = configs[i]
+      const state = states[i]
+      const teammateFrontlineSeconds = configs.reduce(
+        (sum, _, j) => (j === i ? sum : sum + states[j].frontlineTime),
+        0,
+      )
+      const executions = buildExecutions(cfg, state, state.chainCountTotal, teammateFrontlineSeconds)
+      const rowTime = executions.reduce((sum, e) => sum + (e.totalTime ?? 0), 0)
+      const excess = rowTime - budget
+      if (excess > 1e-6) {
+        // 量化（floor 次数）导致残差 ~1s 属合轴可覆盖，不追求精确 0
+        cfg.timeBudgetExcess = (cfg.timeBudgetExcess ?? 0) + excess
+        if (excess > maxExcess) maxExcess = excess
+      }
     }
+    if (maxExcess <= 1e-6) break
   }
 
   // 失衡次数由外部失衡池不动点收敛后传入（连携次数 = chainCountPerStun × stunCount，见 iterate）

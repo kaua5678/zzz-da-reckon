@@ -25,7 +25,7 @@
 useResourceCalc()                      编排层入口（composables/useResourceCalc.ts）
   resourceConfig: buildCharConfig ×3   每角色 cfg（面板 + 招式数据 + 机制模块注入）
   calcOutput: runCalcRound             外层固定点：失衡次数 ↔ 资源池 ↔ 转大 ↔ 异常喧响奖励（收敛；`enemy.stunCountLock>=0` 时失衡次数固定不回填，其余反馈仍收敛，命座对比固定场景用）
-    calcTeamResources                  core/resource.ts：iterate 多轮收敛（能量→强特→喧响→终结→时间）；喧响含特殊动作/异常奖励注入（specialAction/anomalyDecibelBonusPerSlot，参与终结技次数推导）
+    calcTeamResources                  core/resource.ts：iterate 多轮收敛（能量→强特→喧响→终结→时间）+ 时间预算收敛外层循环（测执行行前台时间，超出战斗时间的部分折入 necessaryTime 压缩平A池）；喧响含特殊动作/异常奖励注入（specialAction/anomalyDecibelBonusPerSlot，参与终结技次数推导）
       → buildExecutions                从收敛态生成执行计划（通用动作 + 模块专属 + patchExecutions 修正）
       → buildResourceResult            角色资源结果（specResources / 专属 cycle）
     enrichExecutionPlan                从倍率表回填 damage/daze/decibel/anomaly（覆盖 name/note！）

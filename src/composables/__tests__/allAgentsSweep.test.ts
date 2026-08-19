@@ -3,15 +3,12 @@
  *
  * 把 AGENT_RECORDING_SOP §3.5 的人工「命座提升率自检」与单角色冒烟不能覆盖的
  * 全局性回归关进测试笼子。每条断言对应一类历史事故：
+ * - 前台时间不溢出：模块 buildExecutions 物化专属动作行（雅霜月架势/叶瞬光飞光/柏妮思双喷/
+ *   星徽比利EX链等）占用前台但曾未计入必要时间 → Σ执行行时间 > 战斗时间（般岳金身弹刀/双反
+ *   漏计的同款 bug 泛化版，2026-08 引擎时间收敛外层循环修复）；容差 0.5s 吸收量化残差与合轴节约。
  * - moveId 存在：错误 moveId 会被 enrichExecutionPlan 替换成「未在倍率表中找到」（ENGINE_PIPELINE §4 坑3/4）；
  * - 次数非负 / 伤害有限：资源池收敛或命座门槛写错的表现；
  * - 时间字段非负/有限：时间预算字段被写成 NaN/负数的表现。
- *
- * 刻意不做「frontlineTime ≤ 战斗时间」全局断言：引擎时间预算是必要前台超时后
- * 平A池钳 0、动作照计（整局总量口径），单人队下 1051/1091/1171/1401/1431/1471/1481/
- * 1531/1561 等 23 个场景的必要前台本身超预算（2026-08 sweep 实测，属近似口径缺口，
- * 记录在 task-ledger Open）。时间溢出类回归由角色级测试守（banyue-timeoverflow.debug、
- * banyue.test 的 rowsSum+basic≤180 断言）。
  *
  * 数值口径改动若导致本测试失败：先读失败断言定位角色，再判断是「该角色合法口径」
  * （需把该角色/断言收窄并注释理由）还是「真回归」（修引擎）。
@@ -37,16 +34,21 @@ describe(`全角色不变量 sweep（${agentIds.length} 角色 × 命座 ${CINEM
   for (const agentId of agentIds) {
     for (const cinemaLevel of CINEMA_LEVELS) {
       it(`${agentId} 命座${cinemaLevel}：时间不溢出 / moveId 有效 / 次数非负 / 伤害有限`, async () => {
-        await setupHarness([{ agentId, cinemaLevel }])
+        const { config } = await setupHarness([{ agentId, cinemaLevel }])
         const calc = useResourceCalc()
         const out = calc.resourceResult.value
         expect(out, `${agentId} 资源结果为 null`).not.toBeNull()
+        const battleTime = config.enemy.battleTime ?? 180
 
         for (const c of out!.characters) {
-          // 时间字段非负/有限（不做 ≤ 战斗时间 断言，理由见文件头注释）
+          // 时间预算不变量（引擎时间收敛外层循环已保证）：执行计划前台时间 ≤ 战斗时间 + 容差
           const ta = c.timeAllocation
           expect(Number.isFinite(ta?.frontlineTime ?? 0), `${agentId} ${c.agentId} frontlineTime 非有限`).toBe(true)
           expect(Number.isFinite(ta?.backstageTime ?? 0), `${agentId} ${c.agentId} backstageTime 非有限`).toBe(true)
+          expect(
+            (ta?.frontlineTime ?? 0),
+            `${agentId} ${c.agentId} 前台时间溢出：${(ta?.frontlineTime ?? 0).toFixed(2)}s > ${battleTime}s`,
+          ).toBeLessThanOrEqual(battleTime + 0.5)
           expect((ta?.necessaryTime ?? 0) >= 0, `${agentId} ${c.agentId} necessaryTime 为负`).toBe(true)
           expect((ta?.basicAttackTime ?? 0) >= 0, `${agentId} ${c.agentId} basicAttackTime 为负`).toBe(true)
           expect((ta?.backstageTime ?? 0) >= 0, `${agentId} ${c.agentId} backstageTime 为负`).toBe(true)

@@ -849,6 +849,9 @@ export function iterate(
       + cfg.dodgeCounterCount * cfg.dodgeCounterActionTime
       + cfg.parryCount * (cfg.defensiveAssistActionTime + cfg.assistFollowUpActionTime)
       + remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndActionTime
+      // 时间预算收敛：执行计划中模块专属动作行（如雅霜月架势、叶瞬光飞光）占用前台但未计入
+      // estimateExSpecialTime → Σ执行行时间超战斗时间；外层循环把超出部分折入必要时间，压缩平A池。
+      + (cfg.timeBudgetExcess ?? 0)
     totalNecessary.push(necessary)
   }
 
