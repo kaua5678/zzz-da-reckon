@@ -300,6 +300,12 @@ export function computePanelPhases(
   const panYinhuAdditionalActive = panYinhuSlot >= 0
     ? evalAdditionalAbility(team, panYinhuSlot, panYinhuAgent, getAgentSpec('1421')?.additionalAbility) === true
     : false
+  // 希希芙额外能力·毒素发酵：队伍存在[击破]或同属性（电）角色时触发（全队暴伤+40%、自身额外+10%）
+  const xixifuSlot = team.find(member => member.agentId === '1521')?.slot ?? -1
+  const xixifuAgent = xixifuSlot >= 0 ? catalogStore.getAgent('1521') ?? null : null
+  const xixifuAdditionalActive = xixifuSlot >= 0
+    ? evalAdditionalAbility(team, xixifuSlot, xixifuAgent, getAgentSpec('1521')?.additionalAbility) === true
+    : false
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
     .filter(buff => buff.id !== 'rina.additional_electric_damage' || rinaAdditionalActive)
     .filter(buff => buff.id !== 'lighter.additional_morale_ice_fire_dmg' || lighterAdditionalActive)
@@ -311,6 +317,7 @@ export function computePanelPhases(
     .filter(buff => buff.id !== 'zhao.additional_ability.dmg_bonus' || zhaoAdditionalActive)
     .filter(buff => buff.id !== 'pan_yinhu.additional_stupefaction_dmg' || panYinhuAdditionalActive)
     .filter(buff => buff.id !== 'pan_yinhu.cinema_1_stupefaction_dmg' || panYinhuAdditionalActive)
+    .filter(buff => buff.id !== 'xixifu.additional_toxin_crit_dmg' || xixifuAdditionalActive)
 
   const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
   for (const buff of allTeammateBuffs) {

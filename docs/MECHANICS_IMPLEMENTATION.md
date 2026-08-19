@@ -319,3 +319,11 @@
 - **未建模**：影画2 破劲换能/气绝延长、影画4 治疗与储粮、潘引壶自身破劲循环。
 - **模块**：`src/specs/agents/pan_yinhu.json`（声明式，无独立模块；helpers 过滤链门控气绝增伤）。
 
+### 希希芙（xixifu / 1521）—— 新艾利都治安局电强攻
+
+- **核心**：全队电属性伤害无视防御 = `clamp(floor((希希芙局外回能-1.4)/0.12)+6, 6, 25)`（formula，`enemyElectricDefReduction`）。
+- **额外能力**：队伍有[命破]或同属性（电）→ 全队暴伤 +40%（`xixifu.additional_toxin_crit_dmg` 按 spec.additionalAbility 门控），希希芙自身额外 +10%（`xixifu.ts applyPanel`）。
+- **影画1**：核心公式 ×1.4（buffModifiers，等效上限35%）+ 全队无视 5% 电属性伤害抗性。
+- **未建模**：[毒素]资源与[蚀骨]伤害行（含失衡值+40%/60%）、影画1/2/4/6 的自身伤害与资源部分。
+- **模块**：`src/mechanics/agents/xixifu.ts`（薄模块：额外能力自身暴伤+10%）。
+

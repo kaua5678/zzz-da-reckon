@@ -3073,16 +3073,20 @@
   },
   "1521": {
    "name": {
-    "zhCN": "席西弗",
+    "zhCN": "希希芙",
     "en": "Xixifu"
    },
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "核心被动无视防御效果提升至140%（teammate-buff buffModifiers ×1.4）",
+      "全队伤害无视目标5%电属性伤害抗性（teammate-buff enemyElectricResReduction）"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "进场[毒素]3→6点未建模（希希芙自身资源）",
+      "[蚀骨]伤害无视目标10%电属性伤害抗性未建模（属希希芙自身蚀骨伤害行）"
      ]
     },
     {
@@ -3090,7 +3094,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "饥肠与箴言：失衡下连携/终结命中额外+3点[毒素]（自身资源）；[普通攻击：蛇吻]伤害+35%（自身伤害行）"
      ]
     },
     {
@@ -3108,7 +3112,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "坏蛋的觉悟：[觉悟]层数使蛇吻追加不耗[毒素]的特殊[蚀骨]（希希芙自身伤害机制）"
      ]
     },
     {
@@ -3126,7 +3130,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "家与六分街道：[蚀骨印记]使全队攻击命中追加特殊[蚀骨]（3秒至多1层，触发频率与蚀骨伤害行均未建模）"
      ]
     }
    ]

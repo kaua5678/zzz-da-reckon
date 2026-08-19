@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "agent:xixifu",
-  "name": "席西弗",
+  "name": "希希芙",
   "agentIds": [
     "1521"
   ],
-  "status": "not_described_not_implemented",
+  "status": "partially_implemented",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
@@ -13,7 +13,27 @@
   "verifications": [],
   "stateMachines": [],
   "notes": [
-    "待录入：席西弗 的机制、资源、事件与验证。"
+    "来源：nanoka 3.2.3+18244196 zh character/1521.json（抓于 2026-08-19），术语表 noun_3.2.3.json 收录 [毒素] 等通用术语、无希希芙专属。基础信息：S 级电属性·强攻（hit_type 斩击），新艾利都治安局。原始数据：data/raw/nanoka_missing/full/1521.json。",
+    "核心被动·致命私酿（Lv.12 原文摘要）：进入战场获得3点[毒素]（勘域模式180秒一次）；接战中每5秒消耗1点[毒素]触发[蚀骨]（电属性伤害，附加自身335%攻击力）；拥有[毒素]时全队电属性伤害无视敌人6%防御力，初始能量自动回复>1.4时，每超过0.12额外无视1%，至多无视25%，持续至[毒素]耗尽后30秒（技能等级1~12：基础3%~6%、超额0.52%~1%、上限12.88%~25%）；队伍有1/2名电属性角色时[蚀骨]失衡值+40%/60%；[毒素]每溢出1点触发一次[蚀骨]。",
+    "额外能力·毒素发酵（原文）：队伍中存在[击破]或与自身属性相同的角色时触发：拥有[毒素]时，使全队角色暴击伤害提升40%，自身额外提升10%，持续至[毒素]耗尽后30秒。",
+    "影画1 旅人与猎物：进场[毒素]3→6点；核心被动无视防御效果提升至140%；全队伤害无视目标5%电属性伤害抗性；[蚀骨]伤害无视目标10%电属性伤害抗性。影画2 饥肠与箴言：失衡下连携/终结命中+3点[毒素]；[普通攻击：蛇吻]伤害+35%。影画4 坏蛋的觉悟：[觉悟]层数使蛇吻追加不耗毒素的特殊[蚀骨]。影画6 家与六分街道：[蚀骨印记]使全队攻击命中消耗印记追加特殊[蚀骨]（3秒至多1层）。影画3/5 技能等级+2。",
+    "[已确认·继承草稿] 拐力数据在 teammate-buffs.json 1521 组：核心被动电系无视防御公式 clamp(floor((回能-1.4)/0.12)+6,6,25)（sourceStat=energyRegenTotal/outOfCombat，stat=enemyElectricDefReduction）、额外能力全队暴伤+40%、影画1 电抗无视5% + buffModifiers ×1.4 放大核心公式（先 clamp 后 ×1.4，等效上限35%）。",
+    "实现口径 [已确认]：① 额外能力暴伤 buff 按 spec.additionalAbility（specialty stun / sameAttributeAsSelf）由 computePanelPhases 过滤链门控；② 原文「自身额外提升10%」由 xixifu.ts applyPanel 施加 panel.critDmg+=10（同样按 additionalAbilityActive 门控），队友只吃 buff 的40%；③ [毒素]持有条件按静态面板近似为常开（进场即得3点，耗尽需约15秒且触发蚀骨循环）；④ 草稿额外能力描述与 3.2.3 原文不符（旧版「毒素侵蚀/20秒」措辞），已按原文重写。",
+    "未建模项：[毒素]资源循环与[蚀骨]伤害行（含227%~335%攻击力附加、失衡值+40%/60%）、影画1 进场毒素6点与[蚀骨]无视10%电抗（希希芙自身蚀骨）、影画2 蛇吻+35%（自身伤害行）、影画4 [觉悟]特殊蚀骨、影画6 [蚀骨印记]全队追加蚀骨机制。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "rupture"
+        ]
+      },
+      {
+        "type": "sameAttributeAsSelf"
+      }
+    ],
+    "note": "额外能力·毒素发酵：队伍中存在[击破]或与自身属性（电）相同的角色时触发（[毒素]持有期间全队暴伤+40%、自身额外+10%）。声明式条件，引擎判定写入 panel.additionalAbilityActive；buff xixifu.additional_toxin_crit_dmg 与 xixifu.ts 自身+10% 按此门控。[已确认]"
+  }
 }
