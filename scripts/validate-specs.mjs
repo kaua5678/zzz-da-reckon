@@ -7,6 +7,9 @@
  *   不允许存在既无确认又无标注的机制描述。
  * - status 语义：not_described_not_implemented（没收到机制描述）/ implemented_approximation
  *   （近似实现，通常带可调滑块）/ implemented / partially_implemented。
+ * - 死数据检查（AGENTS 规则 4）：已在 src/mechanics/agents/*.ts 注册模块的角色，
+ *   spec attributeConversions 必须可证明被消费（模块显式调用 applySpecAttributeConversions，
+ *   或条目 note 标注「实现位置：」），否则 FAIL；adjustable 滑块给出 WARN。
  * - 完整字段说明见 src/specs/template.json 的 _comment；完整角色示例见
  *   src/specs/agents/lucia_elowen.json（1451）。
  * - 已在 public/static/teammate-buffs.json 承载的拐力不要重复填 teamBuffs。
@@ -42,6 +45,29 @@ const moves = new Set()
 for (const skills of catalog.agentSkills ?? []) {
   for (const category of skills.categories ?? []) {
     for (const move of category.moves ?? []) moves.add(move.id)
+  }
+}
+
+// ===== 死数据检查（AGENTS 规则 4）：自定义 TS 模块角色的 spec 字段无解释器消费者 =====
+// 模块来源 = src/mechanics/agents/*.ts 里声明的 agentIds（含 const 解析）。
+// attributeConversions 必须可证明被消费，否则 FAIL：
+//   ① 模块文件显式调用 applySpecAttributeConversions；或
+//   ② 条目 note 标注「实现位置：」（纯记录条目）。
+// adjustable 资源（滑块）给出 WARN（无可靠静态证据，先警示不打断）。
+const mechanicsDir = join(root, 'src', 'mechanics', 'agents')
+const moduleSourceByAgent = new Map()
+for (const file of readdirSync(mechanicsDir)) {
+  if (!file.endsWith('.ts')) continue
+  const src = readFileSync(join(mechanicsDir, file), 'utf8')
+  const consts = new Map()
+  for (const m of src.matchAll(/(?:const|export const)\s+(\w+)\s*=\s*'(\d+)'/g)) consts.set(m[1], m[2])
+  for (const m of src.matchAll(/agentIds:\s*\[([^\]]*)\]/g)) {
+    for (const tok of m[1].split(',')) {
+      const lit = tok.match(/'(\d+)'/)
+      const name = tok.trim().match(/^([A-Za-z_]\w*)$/)
+      const id = lit ? lit[1] : (name ? consts.get(name[1]) : undefined)
+      if (id) moduleSourceByAgent.set(id, src)
+    }
   }
 }
 
@@ -89,6 +115,26 @@ for (const file of files) {
 
   for (const fusion of spec.rowFusions ?? []) {
     check(`${label}: fusion move ${fusion.moveId} exists in catalog`, moves.has(fusion.moveId), fusion.moveId)
+  }
+
+  // 死数据检查（AGENTS 规则 4，见文件头注释）
+  const hasCustomModule = spec.agentIds.some(id => moduleSourceByAgent.has(id))
+  if (hasCustomModule) {
+    const moduleCallsConverter = spec.agentIds.some(id =>
+      /applySpecAttributeConversions\s*\(/.test(moduleSourceByAgent.get(id) ?? ''))
+    for (const conv of spec.attributeConversions ?? []) {
+      const noteMarked = typeof conv.note === 'string' && conv.note.includes('实现位置：')
+      check(
+        `${label}: conversion ${conv.id} 有消费者（模块显式调用 applySpecAttributeConversions 或 note 标注「实现位置：」）`,
+        moduleCallsConverter || noteMarked,
+        `自定义模块角色的 attributeConversions 不会被 spec 解释器消费（死数据）。机制须在模块实现并在 note 写「实现位置：<模块/函数>」，或删除该条目（防双计，参见般岳 hp→贯穿力 修复）。`
+      )
+    }
+    for (const res of spec.resources ?? []) {
+      if (res.adjustable && !(typeof res.note === 'string' && res.note.includes('实现位置：'))) {
+        console.log(`  WARN ${label}: adjustable 资源 ${res.id} 在自定义模块角色 spec 无消费者（AGENTS 规则 4）——机制必须在模块实现；仅作记录请在 note 写「实现位置：」`)
+      }
+    }
   }
 }
 

@@ -125,5 +125,67 @@ for (const s of skills) {
 }
 check('attack_data imported for moves that nanoka provides', missingAttackData.length === 0, `缺 attack_data: ${missingAttackData.join(', ')} → node scripts/import-attack-data.mjs <nanokaId> --write`)
 
+// ===== src/data JSON 解析校验（import.meta.glob 运行时加载的坏 JSON 要到页面才炸） =====
+function walkJson(dir) {
+  const out = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, entry.name)
+    if (entry.isDirectory()) out.push(...walkJson(p))
+    else if (entry.name.endsWith('.json')) out.push(p)
+  }
+  return out
+}
+const dataJsonFiles = walkJson(join(root, 'src', 'data'))
+let dataJsonParseFailed = false
+for (const f of dataJsonFiles) {
+  try {
+    JSON.parse(readFileSync(f, 'utf8'))
+  } catch (e) {
+    dataJsonParseFailed = true
+    console.log(`  FAIL ${f.replace(join(root, 'src', 'data') + '/', '')} JSON 解析失败 - ${e.message}`)
+  }
+}
+check('src/data/**/*.json all parse', !dataJsonParseFailed)
+
+for (const f of dataJsonFiles) {
+  const rel = f.replace(join(root, 'src', 'data') + '/', '')
+  const data = JSON.parse(readFileSync(f, 'utf8'))
+  if (rel.startsWith('teamPresets/')) {
+    check(`${rel}: has id + team array`, typeof data.id === 'string' && Array.isArray(data.team) && data.team.length > 0)
+    check(`${rel}: team members are strings`, (data.team ?? []).every(t => typeof t === 'string'))
+  } else if (rel.startsWith('stunAxisPresets/')) {
+    check(`${rel}: has id + team + axes/plans`,
+      typeof data.id === 'string' && Array.isArray(data.team) && data.team.length > 0 &&
+      (Array.isArray(data.axes) || Array.isArray(data.plans)))
+  }
+}
+
+// ===== 状态表同步护栏（README §3.7）：新增角色必须同步两张状态表 =====
+// 历史欠账白名单：数据补齐后逐条删除（删除后即强制）。护栏只约束「新增缺口」，不自动补数据。
+const KNOWN_MISSING_MECHANICS_CHARACTERS = new Set([
+  '1261', '1411', '1171', '1511', '1491', '1341', '1311', '1151', '1031',
+  '1131', '1221', '1161', '1251', '1361', '1241', '1071', '1521', '1301',
+  '1461', '1421', '1611', '1621',
+])
+const KNOWN_MISSING_CONSTELLATION_CHARACTERS = new Set(['1611', '1621'])
+
+const mechanicsChars = new Set(Object.keys((load('public/static/character-mechanics.json').characters ?? {})))
+const constellationChars = new Set(Object.keys((load('public/static/character-constellations.json').characters ?? {})))
+
+const missingMechanics = agents.filter(a => !mechanicsChars.has(String(a.id)) && !KNOWN_MISSING_MECHANICS_CHARACTERS.has(String(a.id)))
+check('every catalog agent has a character-mechanics.json entry (or whitelisted historical debt)',
+  missingMechanics.length === 0,
+  `缺 mechanics 条目: ${missingMechanics.map(a => a.id).join(', ')} → 同步 README §3.7，补齐后从 KNOWN_MISSING_MECHANICS_CHARACTERS 删除`)
+
+const missingConstellations = agents.filter(a => !constellationChars.has(String(a.id)) && !KNOWN_MISSING_CONSTELLATION_CHARACTERS.has(String(a.id)))
+check('every catalog agent has a character-constellations.json entry (or whitelisted historical debt)',
+  missingConstellations.length === 0,
+  `缺 constellations 条目: ${missingConstellations.map(a => a.id).join(', ')} → 同步 README §3.7，补齐后从 KNOWN_MISSING_CONSTELLATION_CHARACTERS 删除`)
+
+const orphanMechanics = [...mechanicsChars].filter(id => !agents.some(a => String(a.id) === id))
+const orphanConstellations = [...constellationChars].filter(id => !agents.some(a => String(a.id) === id))
+check('status tables have no orphan ids (absent from catalog)', orphanMechanics.length === 0 && orphanConstellations.length === 0,
+  `orphan mechanics: ${orphanMechanics.join(', ')}; orphan constellations: ${orphanConstellations.join(', ')}`)
+
 console.log(failed === 0 ? `\n${checks} data checks passed` : `\n${failed} data check(s) failed`)
 process.exit(failed === 0 ? 0 : 1)

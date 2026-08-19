@@ -14,7 +14,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm run check
-      - run: npm test
-      - run: npm run build
+      # verify = validate:data + validate:specs + vitest + typecheck + build（一条链，无重复执行）
+      - run: npm run verify
+      # 自动生成文档漂移检查：docs:status 重新生成后必须无 diff（README §2 唯一权威进度）
+      - name: Docs drift check (implementation-status.md)
+        run: |
+          node scripts/generate-implementation-status.mjs
+          git diff --exit-code -- docs/implementation-status.md

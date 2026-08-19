@@ -18,7 +18,7 @@
       "valuePerStep": 0.1,
       "cap": null,
       "status": "implemented_approximation",
-      "note": "每1点最大生命值提高0.1点贯穿力；贯穿伤害基底（贯穿力=atk×0.3+hp×0.1+贯穿力提升）、无视防御、贯穿增伤乘区已接入伤害池（pushDirect 按 specialty=rupture 解析 specialDamageProfile）。"
+      "note": "每1点最大生命值提高0.1点贯穿力；贯穿伤害基底（贯穿力=atk×0.3+hp×0.1+贯穿力提升）、无视防御、贯穿增伤乘区已接入伤害池（pushDirect 按 specialty=rupture 解析 specialDamageProfile）。实现位置：引擎贯穿力基底公式（core/damage.ts）；本条目仅作记录，勿经 spec runtime 应用（防双计，参见般岳 hp→贯穿力 修复）。"
     }
   ],
   "resources": [

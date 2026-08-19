@@ -18,15 +18,20 @@ npm run preview    # 预览产物
 ## 2. 检查与验收命令
 
 ```bash
-npm run check          # validate:data + validate:specs + vitest（改完必跑）
-npm run typecheck      # vue-tsc --noEmit
+npm run verify          # 一条链验收：validate:data + validate:specs + vitest + typecheck + build
+npm run check           # validate:data + validate:specs + vitest（快速环，改完必跑）
+npm run typecheck       # vue-tsc --noEmit
 npm run build
-npm run validate:specs # spec 结构/状态/倍率行引用校验（60 个角色 spec）
+npm run validate:specs # spec 结构/状态/倍率行引用校验（60 个角色 spec，含自定义模块死数据强制检查）
 npm run specs:coverage # 60 角色覆盖矩阵（转模/资源/融合/事件/验证数）
-npm run docs:status    # 重新生成 docs/implementation-status.md
+npm run docs:status    # 重新生成 docs/implementation-status.md（CI 会检查漂移，漏跑即红）
 ```
 
 数据/爬取类命令见 `package.json` 的 scripts（specs:new / specs:import / specs:bootstrap 等）。
+
+> 测试约定：新测试一律用 `src/test/harness.ts`（`setupHarness` / `mockStaticFetch` / `setTeam`）装配
+> pinia + 三文件 fetch stub + 队伍，禁止复制样板；全局回归网 = `src/composables/__tests__/allAgentsSweep.test.ts`
+> （60 角色 × 命座 0/6 不变量）。
 
 ## 3. 角色录入（唯一高频工作流）
 

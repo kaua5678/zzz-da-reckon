@@ -70,7 +70,8 @@
 ## 4. 验收命令（录入完成后）
 
 ```bash
-npm run validate:specs && npm run check && npm run typecheck && npm run build
+npm run verify      # validate:data + validate:specs + vitest + typecheck + build（一条链）
+npm run docs:status # 重新生成 implementation-status.md（CI 检查漂移）
 ```
 
 ## 5. 生效测试模板（机制录入必备）
@@ -175,9 +176,12 @@ expect(pN.enemyPhysicalResReduction - p0.enemyPhysicalResReduction).toBe(18)
 
 ## 7. 测试卫生（面板断言）
 
-1. **stub fetch** 三个 static：`catalog.json` / `teammate-buffs.json` / `build-recommendations.json`  
-2. **关掉默认全局危局** `globalBuffs`（默认常带 `dmgBonus +15`，会污染绝对值）  
-3. 优先 **差分**：`inCombat - outOfCombat`、`cinema N - cinema 0`  
-4. 队友自带 buff 时不要 `expect(etherDmg).toBe(0)` 这类绝对值；用「相对局外增量」  
-5. 额外能力负例：选**不同属性且不同阵营**的队友  
-6. 执行级：只 assert `moveId`，不 assert 回填后的 name/note  
+1. **用公共 harness，不要复制 stub**：`src/test/harness.ts` 提供 `mockStaticFetch()`（stub catalog/teammate-buffs/build-recommendations 三静态文件）、`setupHarness(team)`（pinia + 加载 + 队伍装配 + syncTeammateBuffsFromTeam）、`setTeam(config, team)` 自由组合；模板见 `src/mechanics/__tests__/billySmoke.test.ts`（已迁移）
+2. **关掉默认全局危局** `globalBuffs`（默认常带 `dmgBonus +15`，会污染绝对值）
+3. 优先 **差分**：`inCombat - outOfCombat`、`cinema N - cinema 0`
+4. 队友自带 buff 时不要 `expect(etherDmg).toBe(0)` 这类绝对值；用「相对局外增量」
+5. 额外能力负例：选**不同属性且不同阵营**的队友
+6. 执行级：只 assert `moveId`，不 assert 回填后的 name/note
+7. 全量回归网：`src/composables/__tests__/allAgentsSweep.test.ts` 自动跑 60 角色 × 命座 0/6 的
+   数字 moveId 有效性 / 次数非负 / 时间字段非负 / 伤害有限断言——改引擎后跑一遍可提前发现跨角色回归
+   （刻意不做 frontlineTime ≤ 战斗时间 全局断言，口径见该文件头注释）

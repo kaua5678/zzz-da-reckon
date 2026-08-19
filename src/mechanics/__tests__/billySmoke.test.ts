@@ -1,49 +1,18 @@
 import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
-import { useCatalogStore } from '@/stores/catalog'
-import { useConfigStore } from '@/stores/config'
+import { describe, expect, it } from 'vitest'
+import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const teammateBuffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
 const biliLiuAxisText = readFileSync(new URL('../../../src/data/stunAxisPresets/比琉通用.json', import.meta.url), 'utf8')
-
-beforeEach(() => {
-  setActivePinia(createPinia())
-  vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-    if (String(url).includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (String(url).includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(teammateBuffsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
-})
-
-function teamChar(slot: number, agentId: string, cinemaLevel = 0) {
-  return {
-    slot,
-    agentId,
-    cinemaLevel,
-    wEngineId: '',
-    wEngineModLevel: 1,
-    driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} },
-    parryCount: 6,
-    blockCount: 0,
-    dodgeCounterCount: 10,
-    quickAssistCount: 3,
-    chainCountPerStun: 1,
-    basicAttackTimeWeight: 1,
-  }
-}
 
 describe('星徽·比利全管线冒烟（1531）', () => {
   it('EX 链/决意/星辉/煊赫星辉在资源池中正常产出', async () => {
-    const catalog = useCatalogStore()
-    await catalog.load()
-    const config = useConfigStore()
     // 队伍：星徽·比利(6命) + 青衣(击破，触发额外能力) + 赛斯(防护)
-    config.team[0] = teamChar(0, '1531', 6)
-    config.team[1] = teamChar(1, '1251')
-    config.team[2] = teamChar(2, '1271')
+    const { config } = await setupHarness([
+      { agentId: '1531', cinemaLevel: 6 },
+      { agentId: '1251' },
+      { agentId: '1271' },
+    ])
 
     const calc = useResourceCalc()
     const out = calc.resourceResult.value
@@ -107,12 +76,11 @@ describe('星徽·比利全管线冒烟（1531）', () => {
   })
 
   it('失衡轴模式：轴内动作按捏轴执行，轴外剩余闪能打抓地', async () => {
-    const catalog = useCatalogStore()
-    await catalog.load()
-    const config = useConfigStore()
-    config.team[0] = teamChar(0, '1531', 0)
-    config.team[1] = teamChar(1, '1251')
-    config.team[2] = teamChar(2, '1271')
+    const { config } = await setupHarness([
+      { agentId: '1531' },
+      { agentId: '1251' },
+      { agentId: '1271' },
+    ])
     // 轴内每窗捏一条「动力压制链」（combos 'billy-ex-chain' 展开成 动力压制+孤轮+摇曳）
     config.useStunAxis = true
     config.stunAxes = [
@@ -140,12 +108,11 @@ describe('星徽·比利全管线冒烟（1531）', () => {
   })
 
   it('比琉通用轴（1531+1481+1451）：轴1×3 + 轴2×1 可正常计算', async () => {
-    const catalog = useCatalogStore()
-    await catalog.load()
-    const config = useConfigStore()
-    config.team[0] = teamChar(0, '1531', 6)
-    config.team[1] = teamChar(1, '1481')
-    config.team[2] = teamChar(2, '1451')
+    const { config } = await setupHarness([
+      { agentId: '1531', cinemaLevel: 6 },
+      { agentId: '1481' },
+      { agentId: '1451' },
+    ])
     const preset = JSON.parse(biliLiuAxisText)
     expect(preset.axes[0].count).toBe(3) // 常规轴 ×3
     expect(preset.axes[1].count).toBe(1) // 喧响不够双连携 ×1
@@ -169,12 +136,11 @@ describe('星徽·比利全管线冒烟（1531）', () => {
   })
 
   it('比琉自动轴：队伍含 1531+1481 自动开启并选用「比琉通用」预设（轴1×3 + 轴2×1）', async () => {
-    const catalog = useCatalogStore()
-    await catalog.load()
-    const config = useConfigStore()
-    config.team[0] = teamChar(0, '1531', 6)
-    config.team[1] = teamChar(1, '1481')
-    config.team[2] = teamChar(2, '1451')
+    const { config } = await setupHarness([
+      { agentId: '1531', cinemaLevel: 6 },
+      { agentId: '1481' },
+      { agentId: '1451' },
+    ])
     // 不手动设置轴/开关：自动轴总开关默认开 → 应自动命中比琉预设并计算
     expect(config.useStunAxis).toBe(false)
     expect(config.stunAxes.length).toBe(0)
@@ -199,12 +165,11 @@ describe('星徽·比利全管线冒烟（1531）', () => {
   })
 
   it('章鱼+比利双主C弱队：比琉预设不匹配，章鱼体系通配接管（用户口径：不精细服务弱队组合）', async () => {
-    const catalog = useCatalogStore()
-    await catalog.load()
-    const config = useConfigStore()
-    config.team[0] = teamChar(0, '1051', 0)
-    config.team[1] = teamChar(1, '1531')
-    config.team[2] = teamChar(2, '1481')
+    const { config } = await setupHarness([
+      { agentId: '1051' },
+      { agentId: '1531' },
+      { agentId: '1481' },
+    ])
 
     const calc = useResourceCalc()
     // 比琉通用 [1531,1481,*] 槽0=1051 不命中；章鱼体系 [1051,*,*] 通配命中（伊德海莉主C常规轴）
@@ -213,12 +178,11 @@ describe('星徽·比利全管线冒烟（1531）', () => {
   })
 
   it('非命破队友与 0 命比利也能正常计算', async () => {
-    const catalog = useCatalogStore()
-    await catalog.load()
-    const config = useConfigStore()
-    config.team[0] = teamChar(0, '1531', 0)
-    config.team[1] = teamChar(1, '1251')
-    config.team[2] = teamChar(2, '1271')
+    const { config } = await setupHarness([
+      { agentId: '1531' },
+      { agentId: '1251' },
+      { agentId: '1271' },
+    ])
 
     const calc = useResourceCalc()
     const out = calc.resourceResult.value

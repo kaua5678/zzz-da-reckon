@@ -18,7 +18,7 @@
       "valuePerStep": 1.7,
       "cap": 85,
       "status": "implemented_approximation",
-      "note": "[猜测·中] 实现: attributeConversions critRate→critDmg，threshold=50、step=1%、cap=85 | 依据: \"初始暴击率超过50%时，每超过1%，暴击伤害提升X%\" | 待核对: valuePerStep 随核心技能等级(Lv1=0.86→Lv7=1.7)，默认按 max(Lv7)=1.7；cap Lv7=85。"
+      "note": "[猜测·中] 依据: \"初始暴击率超过50%时，每超过1%，暴击伤害提升X%\" | 待核对: valuePerStep 随核心技能等级(Lv1=0.86→Lv7=1.7)，默认按 max(Lv7)=1.7；cap Lv7=85。实现位置：mechanics/agents/norma.ts applyNormaPanel（面板直加 critDmg，threshold=50、step=1%、cap=85；spec 本条目仅作记录，勿经 spec runtime 应用）"
     },
     {
       "id": "norma_crit_to_stun",
@@ -31,7 +31,7 @@
       "valuePerStep": 0.8,
       "cap": 40,
       "status": "implemented_approximation",
-      "note": "[猜测·中] 实现: attributeConversions critRate→stunBuildUpBonus | 依据: \"每超过1%，[强化特殊技]、[特殊技]、[终结技]命中敌人时，造成的失衡值提升X%\" | 待核对: 引擎 stunBuildUpBonus 支持 targetSkillType 定向，spec 转模不支持定向，需 TS 或按全招式近似；valuePerStep Lv7=0.8、cap=40。"
+      "note": "[猜测·中] 依据: \"每超过1%，[强化特殊技]、[特殊技]、[终结技]命中敌人时，造成的失衡值提升X%\" | 待核对: valuePerStep Lv7=0.8、cap=40。实现位置：mechanics/agents/norma.ts applyNormaPanel（面板直加 stunBuildUpBonus__exSpecial/special/ultimate 定向失衡，spec 转模不支持定向；spec 本条目仅作记录，勿经 spec runtime 应用）"
     },
     {
       "id": "norma_pen_to_atk",
@@ -44,7 +44,7 @@
       "valuePerStep": 1.25,
       "cap": 1200,
       "status": "implemented_approximation",
-      "note": "[猜测·中] 实现: attributeConversions penRatio→atk，每1点贯穿力→1.25攻击，上限1200 | 依据: \"诺姆会根据自身贯穿力额外提升攻击力，每1点贯穿力将提升1.25点攻击力，最多提升1200点攻击力\" | 待核对: 贯穿力=atk×0.3+hp×0.1+sheerForceFlat，sourceStat 用 penRatio 是否口径正确。"
+      "note": "[猜测·中] 依据: \"诺姆会根据自身贯穿力额外提升攻击力，每1点贯穿力将提升1.25点攻击力，最多提升1200点攻击力\" | 待核对: 贯穿力=atk×0.3+hp×0.1+sheerForceFlat，sourceStat 用 penRatio 是否口径正确。实现位置：mechanics/agents/norma.ts applyNormaPanel（calcPenetrationPower ×1.25、cap 1200 面板直加；spec 本条目仅作记录，勿经 spec runtime 应用）"
     }
   ],
   "resources": [

@@ -93,13 +93,11 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
 ## 5. 验收命令
 
 ```bash
-npm run validate:specs   # spec 结构 + 事件 moveId 引用
-npm run check            # validate:data + validate:specs + vitest
-npm run typecheck
-npm run build
-npm run docs:status      # 重新生成 docs/implementation-status.md（勿手改）
+npm run verify      # validate:data + validate:specs + vitest + typecheck + build（一条链）
+npm run docs:status # 重新生成 docs/implementation-status.md（勿手改；CI 检查漂移）
 ```
 
 新增机制后同步 `public/static/character-mechanics.json` / `character-constellations.json`
-（实现状态 + codePaths），并补一条全管线冒烟测试（参考 `src/mechanics/__tests__/billySmoke.test.ts` 的
-harness：fetch stub catalog + pinia + `useResourceCalc().resourceResult`）。
+（实现状态 + codePaths；`validate:data` 有状态表同步护栏——新角色缺条目即红），并补一条全管线冒烟测试
+（参考 `src/mechanics/__tests__/billySmoke.test.ts` 的 harness：`src/test/harness.ts` 的
+`setupHarness` + `useResourceCalc().resourceResult`；三文件 fetch stub 不再复制，用 `mockStaticFetch()`）。

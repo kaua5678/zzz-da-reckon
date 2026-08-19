@@ -77,7 +77,7 @@ useResourceCalc()                      编排层入口（composables/useResource
 ## 5. 导航技巧（减少迷宫感的操作习惯）
 
 1. **用 grep 找符号，不翻目录**：`grep -rn "computePanelPhases" src/` 一条命令定位生产/消费端，比逐层读文件快一个数量级。
-2. **测试是最好的行为文档**：`banyue-preset-int.test.ts`（轴+机制集成）、`teamCompare.test.ts`（全管线）、`billySmoke.test.ts`（新角色冒烟模板）、`specialMechanics.test.ts`（机制模块单元）。看"怎么调"比看"怎么实现"快。
+2. **测试是最好的行为文档**：`banyue-preset-int.test.ts`（轴+机制集成）、`teamCompare.test.ts`（全管线）、`billySmoke.test.ts`（新角色冒烟模板，已用 `src/test/harness.ts` 装配）、`allAgentsSweep.test.ts`（60 角色 × 命座 0/6 全局不变量回归网）、`specialMechanics.test.ts`（机制模块单元）。看"怎么调"比看"怎么实现"快。
 3. **每个 core/ 文件头部都有职责注释**——先读头注释，再决定进不进。
-4. **改完必跑 `npm run check`**（validate:data + validate:specs + vitest），再 typecheck/build。
-5. **新 AI 第一次任务前**：跑一遍 `npm test` + 用测试 stub 模板（`AGENT_RECORDING_SOP` §3 坑 7）搭一个全管线冒烟，建立"改哪 → 在哪验证"的闭环。
+4. **改完必跑 `npm run verify`**（validate:data + validate:specs + vitest + typecheck + build 一条链），再 `npm run docs:status`（CI 检查漂移）。
+5. **新 AI 第一次任务前**：跑一遍 `npm test` + 用测试 stub 模板（`AGENT_RECORDING_SOP` §7）搭一个全管线冒烟，建立"改哪 → 在哪验证"的闭环。

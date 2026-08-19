@@ -1,46 +1,28 @@
-import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
-import { useCatalogStore } from '@/stores/catalog'
-import { useConfigStore } from '@/stores/config'
+import { describe, expect, it } from 'vitest'
+import { setupHarness, type HarnessTeamSlot } from '@/test/harness'
 
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
-
-const baseConfig = {
-  wEngineId: '', wEngineModLevel: 5,
-  driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: { 4: 'atkPct' as any, 5: 'physicalDmg' as any, 6: 'critRate' as any }, subStatAllocation: {} },
-  parryCount: 10, dodgeCounterCount: 6, blockCount: 20,
-  quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
-}
-
-function stubFetch() {
-  vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-    const u = String(url)
-    if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-    if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
+// 本文件统一槽位配置（与旧模板 baseConfig 同口径）
+function wave1Slot(agentId: string, cinemaLevel = 0): HarnessTeamSlot {
+  return {
+    agentId,
+    cinemaLevel,
+    wEngineId: '',
+    wEngineModLevel: 5,
+    driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: { 4: 'atkPct', 5: 'physicalDmg', 6: 'critRate' }, subStatAllocation: {} },
+    parryCount: 10,
+    dodgeCounterCount: 6,
+    blockCount: 20,
+    quickAssistCount: 0,
+    chainCountPerStun: 0,
+    basicAttackTimeWeight: 1,
+  }
 }
 
 async function setup(team: Array<{ agentId: string; cinemaLevel: number }>) {
-  const catalog = useCatalogStore()
-  await catalog.load()
-  await catalog.loadTeammateBuffs()
-  const config = useConfigStore()
-  for (let i = 0; i < 3; i++) {
-    const t = team[i]
-    config.team[i] = { slot: i, agentId: t?.agentId ?? '', cinemaLevel: t?.cinemaLevel ?? 0, ...baseConfig } as any
-  }
-  config.syncTeammateBuffsFromTeam()
-  return { catalog, config }
+  return setupHarness(team.map(t => wave1Slot(t.agentId, t.cinemaLevel)))
 }
 
 describe('伊芙琳（1321）影画2 赴火之舞：攻击力 +15%', () => {
-  beforeEach(() => { setActivePinia(createPinia()); stubFetch() })
-
   it('命座差分：1命 → 2命，攻击力 ×1.15', async () => {
     const { catalog, config } = await setup([{ agentId: '1321', cinemaLevel: 1 }])
     const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
@@ -61,8 +43,6 @@ describe('伊芙琳（1321）影画2 赴火之舞：攻击力 +15%', () => {
 })
 
 describe('薇薇安（1331）影画2《暴风雨夜，暴风雨夜》：以太异常积蓄效率 +25%', () => {
-  beforeEach(() => { setActivePinia(createPinia()); stubFetch() })
-
   it('命座差分：1命 → 2命，etherAnomalyBuildUpEfficiency +25', async () => {
     const { catalog, config } = await setup([{ agentId: '1331', cinemaLevel: 1 }])
     const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
@@ -81,8 +61,6 @@ describe('薇薇安（1331）影画2《暴风雨夜，暴风雨夜》：以太�
 })
 
 describe('安东（1111）影画4 一起燃烧！：全队暴击率 +10%（影画四门控）', () => {
-  beforeEach(() => { setActivePinia(createPinia()); stubFetch() })
-
   it('安东4命在队：队友（安比）暴击率 +10', async () => {
     const { catalog, config } = await setup([
       { agentId: '1111', cinemaLevel: 4 },
