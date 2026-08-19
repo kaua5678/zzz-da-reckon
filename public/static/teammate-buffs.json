@@ -4733,7 +4733,7 @@
    {
     "id": "orphie.core_crosshair_focus_atk",
     "source": {
-     "zhCN": "核心被动（F级）"
+     "zhCN": "核心被动"
     },
     "description": {
      "zhCN": "奥菲丝&「鬼火」施加[准星聚焦]时，使全队代理人的攻击力提升280点；初始能量自动回复超过1.6点/秒时，每超过0.1点/秒额外提升20点，最高700点。"
@@ -4789,13 +4789,67 @@
      "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
     },
     "sourceLabel": {
-     "zhCN": "核心被动（F级）"
+     "zhCN": "核心被动"
     },
     "name": {
-     "zhCN": "奥菲丝&「鬼火」｜核心被动（F级）"
+     "zhCN": "奥菲丝&「鬼火」｜核心被动"
     },
     "conditionLabel": {
      "zhCN": "奥菲丝&「鬼火」施加[准星聚焦]时，使全队代理人的攻击力提升280点；初始能量自动回复超过1.6点/秒时，每超过0.1点/秒额外提升20点，最高700点。"
+    }
+   },
+   {
+    "id": "orphie.additional_def_ignore",
+    "source": {
+     "zhCN": "额外能力"
+    },
+    "description": {
+     "zhCN": "队伍中存在[击破]角色或[支援]角色时触发：拥有[准星聚焦]的代理人攻击造成的[追加攻击]伤害无视25%防御力（面板级近似：全队所有伤害生效，无视防御按减防通道近似）。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "orphie_additional_def_ignore",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "enemyDefReduction",
+      "mode": "flat",
+      "value": 25,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1301",
+    "ownerName": {
+     "zhCN": "奥菲丝&「鬼火」"
+    },
+    "teammateId": "1301",
+    "teammateName": {
+     "zhCN": "奥菲丝&「鬼火」"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/orphie_magusa.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2025/09/10/439466880/c609e84014fb1fc270b7cd6d6c62d2ef_8915699429557942577.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "额外能力"
+    },
+    "name": {
+     "zhCN": "奥菲丝&「鬼火」｜额外能力"
+    },
+    "conditionLabel": {
+     "zhCN": "队伍中存在[击破]角色或[支援]角色时触发：拥有[准星聚焦]的代理人攻击造成的[追加攻击]伤害无视25%防御力（面板级近似：全队所有伤害生效，无视防御按减防通道近似）。"
     }
    },
    {

@@ -1720,16 +1720,18 @@
   },
   "1301": {
    "name": {
-    "zhCN": "奥菲与玛格莎",
+    "zhCN": "奥菲丝&「鬼火」",
     "en": "Orphie & Magusa"
    },
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "拥有[准星聚焦]的代理人造成的伤害+20%（teammate-buff dmgBonus，准星聚焦按常驻近似）"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "奥菲丝自身指定招式无视15%火属性伤害抗性（自身伤害行，未建模）"
      ]
     },
     {
@@ -1737,7 +1739,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "怪味食品清单：追加攻击回复65点喧响值（4秒一次）；终结技后自身攻击+20%（45秒，均属奥菲丝自身）"
      ]
     },
     {
@@ -1755,7 +1757,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "粉红色枪套：[准星聚焦]初始时长12→16秒（静态面板无时长维度）；蓄热充能/终结技伤害+40%（奥菲丝自身伤害行）"
      ]
     },
     {
@@ -1773,7 +1775,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "魔法种子：火刀衔接灼红旋涡、回复蓄炎、激光追加250%攻击力火伤（均属奥菲丝自身机制）"
      ]
     }
    ]

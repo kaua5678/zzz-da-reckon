@@ -306,6 +306,12 @@ export function computePanelPhases(
   const xixifuAdditionalActive = xixifuSlot >= 0
     ? evalAdditionalAbility(team, xixifuSlot, xixifuAgent, getAgentSpec('1521')?.additionalAbility) === true
     : false
+  // 奥菲丝额外能力·熔炉所铸：队伍存在[击破]或[支援]角色时触发（准星聚焦追加攻击无视25%防御）
+  const orphieSlot = team.find(member => member.agentId === '1301')?.slot ?? -1
+  const orphieAgent = orphieSlot >= 0 ? catalogStore.getAgent('1301') ?? null : null
+  const orphieAdditionalActive = orphieSlot >= 0
+    ? evalAdditionalAbility(team, orphieSlot, orphieAgent, getAgentSpec('1301')?.additionalAbility) === true
+    : false
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
     .filter(buff => buff.id !== 'rina.additional_electric_damage' || rinaAdditionalActive)
     .filter(buff => buff.id !== 'lighter.additional_morale_ice_fire_dmg' || lighterAdditionalActive)
@@ -318,6 +324,7 @@ export function computePanelPhases(
     .filter(buff => buff.id !== 'pan_yinhu.additional_stupefaction_dmg' || panYinhuAdditionalActive)
     .filter(buff => buff.id !== 'pan_yinhu.cinema_1_stupefaction_dmg' || panYinhuAdditionalActive)
     .filter(buff => buff.id !== 'xixifu.additional_toxin_crit_dmg' || xixifuAdditionalActive)
+    .filter(buff => buff.id !== 'orphie.additional_def_ignore' || orphieAdditionalActive)
 
   const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
   for (const buff of allTeammateBuffs) {

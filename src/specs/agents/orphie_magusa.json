@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "agent:orphie_magusa",
-  "name": "奥菲与玛格莎",
+  "name": "奥菲丝&「鬼火」",
   "agentIds": [
     "1301"
   ],
-  "status": "not_described_not_implemented",
+  "status": "partially_implemented",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
@@ -13,7 +13,25 @@
   "verifications": [],
   "stateMachines": [],
   "notes": [
-    "待录入：奥菲与玛格莎 的机制、资源、事件与验证。"
+    "来源：nanoka 3.2.3+18244196 zh character/1301.json（抓于 2026-08-19），术语表 noun_3.2.3.json 无奥菲丝专属术语。基础信息：S 级火属性·强攻（hit_type 穿透），新艾利都防卫军，双形态角色。原始数据：data/raw/nanoka_missing/full/1301.json。",
+    "核心被动·衔风驭火（Lv.12 原文摘要）：奥菲丝自身暴击率+25%、[追加攻击]伤害+85%；初始100点[蓄炎]（上限125）；后台满足条件自动以30能量释放灼红旋涡；[强化特殊技：蓄热充能]激光命中使全队获得[准星聚焦]（12秒，追加攻击可延长至多20秒）：攻击力+280点，初始能量自动回复≥1.6时每超过0.1再+20点，合计上限700点（技能等级1~12：基础130~280、上限340~700）；高压火枪火刀/各强化特殊技/连携/终结技均视为[追加攻击]。",
+    "额外能力·熔炉所铸（原文）：队伍中存在[击破]角色或[支援]角色时触发：拥有[准星聚焦]的代理人攻击造成的[追加攻击]伤害无视25%防御力。",
+    "影画1 豪华猫屋：奥菲丝自身指定招式无视15%火属性伤害抗性；拥有[准星聚焦]的代理人伤害+20%。影画2 怪味食品清单：追加攻击回65喧响（4秒一次）；终结技后自身攻击+20%（45秒）。影画4 粉红色枪套：准星聚焦初始16秒；蓄热充能/终结技伤害+40%。影画6 魔法种子：火刀衔接灼红旋涡、回蓄炎、激光追加250%攻击力火伤（视为强化特殊技与追加攻击）。影画3/5 技能等级+2。",
+    "[已确认·继承草稿] 拐力数据在 teammate-buffs.json 1301 组：核心被动[准星聚焦]攻击公式 clamp(floor((回能-1.6)/0.1)*20+280,280,700)（sourceStat=energyRegenTotal/outOfCombat，stat=atkFlat）、影画1 准星聚焦代理人伤害+20%。",
+    "实现口径 [已确认]：① 额外能力 buff orphie.additional_def_ignore（enemyDefReduction +25，无视防御≈减防近似）为本次新增——草稿遗漏；按 spec.additionalAbility（specialty stun/support，[击破]=stun、[支援]=support 依 §0 映射表）由 computePanelPhases 过滤链门控；② 原文限定「追加攻击伤害」无视防御按面板级近似（全队所有伤害生效）；③ [准星聚焦]施加条件（蓄热充能激光命中）按静态面板常驻近似；④ 奥菲丝自身暴击率/追加攻击增伤/蓄炎/自动释放属自身循环未建模。",
+    "未建模项：奥菲丝自身暴击率+25%与追加攻击伤害+85%（自身面板/伤害类别）、[蓄炎]资源与后台自动释放机制、影画1 自身招式无视15%火抗、影画2 喧响回复与终结技后攻击+20%、影画4 蓄热充能/终结技+40%、影画6 激光追加火伤。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "stun",
+          "support"
+        ]
+      }
+    ],
+    "note": "额外能力·熔炉所铸：队伍中存在[击破]（stun）或[支援]（support）角色时触发（准星聚焦代理人的追加攻击伤害无视25%防御）。声明式条件，引擎判定写入 panel.additionalAbilityActive；buff orphie.additional_def_ignore 按此门控。[已确认]"
+  }
 }
