@@ -7,7 +7,107 @@
   ],
   "status": "partially_implemented",
   "attributeConversions": [],
-  "resources": [],
+  "resources": [
+    {
+      "id": "xixifu_toxin",
+      "name": "毒素",
+      "nature": "resource",
+      "initialValue": 3,
+      "maxValue": 125,
+      "gainRules": [
+        {
+          "id": "toxin_tuxin_stage4",
+          "trigger": "普通攻击：吐信第四段命中+2（失衡敌人额外+1另计）",
+          "countSource": "basicAttackCount",
+          "amountPerCount": 2,
+          "formula": "吐信第四段频率按 basicAttackTime/2 近似",
+          "status": "implemented_approximation",
+          "adjustable": {
+            "id": "1521.xixifu_toxin.toxin_tuxin_stage4.rate",
+            "label": "希希芙·毒素·吐信第四段",
+            "description": "吐信第四段命中频率近似比例，默认 100%。",
+            "default": 1,
+            "min": 0,
+            "max": 2,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        },
+        {
+          "id": "toxin_tuxin_stunned_bonus",
+          "trigger": "吐信第四段命中失衡敌人额外+1",
+          "countSource": "basicAttackCount",
+          "amountPerCount": 1,
+          "formula": "失衡命中占比默认按50%近似，滑块可调",
+          "status": "implemented_approximation",
+          "adjustable": {
+            "id": "1521.xixifu_toxin.toxin_tuxin_stunned_bonus.rate",
+            "label": "希希芙·毒素·失衡命中占比",
+            "description": "吐信第四段命中失衡敌人的占比，默认 50%。",
+            "default": 0.5,
+            "min": 0,
+            "max": 1,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        },
+        {
+          "id": "toxin_duya_base",
+          "trigger": "强化特殊技：毒牙发动+3",
+          "countSource": "exSpecialCount",
+          "amountPerCount": 3,
+          "status": "implemented"
+        },
+        {
+          "id": "toxin_duya_hold",
+          "trigger": "毒牙长按每额外消耗20能量+1（至多+3）",
+          "countSource": "exSpecialCount",
+          "amountPerCount": 3,
+          "formula": "默认按满长按（+3/次）近似，滑块可调",
+          "status": "implemented_approximation",
+          "adjustable": {
+            "id": "1521.xixifu_toxin.toxin_duya_hold.rate",
+            "label": "希希芙·毒素·毒牙长按利用率",
+            "description": "毒牙长按额外毒素的利用率，默认 100%（每次满长按+3）。",
+            "default": 1,
+            "min": 0,
+            "max": 1,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        },
+        {
+          "id": "toxin_chain",
+          "trigger": "连携技：团伙作案发动+3",
+          "countSource": "chainCountTotal",
+          "amountPerCount": 3,
+          "status": "implemented"
+        },
+        {
+          "id": "toxin_ultimate",
+          "trigger": "终结技：爬行恐惧发动+3",
+          "countSource": "ultimateCount",
+          "amountPerCount": 3,
+          "status": "implemented"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "toxin_shigu_spend",
+          "trigger": "蚀骨消耗（接战每5秒耗1点/蛇吻快速消耗全部/溢出触发）",
+          "cost": 1,
+          "result": "每消耗1点毒素触发1次蚀骨",
+          "deduct": true,
+          "status": "implemented_approximation",
+          "note": "整局总量口径：所有毒素均经蚀骨流出，蚀骨次数=毒素总获取量；125上限只限单次存量不截断整局"
+        }
+      ],
+      "feedbackGainRules": [],
+      "properties": {},
+      "initialValueSource": "cfgField",
+      "initialValueField": "xixifuInitialToxin"
+    }
+  ],
   "rowFusions": [],
   "events": [],
   "verifications": [],
@@ -19,7 +119,7 @@
     "影画1 旅人与猎物：进场[毒素]3→6点；核心被动无视防御效果提升至140%；全队伤害无视目标5%电属性伤害抗性；[蚀骨]伤害无视目标10%电属性伤害抗性。影画2 饥肠与箴言：失衡下连携/终结命中+3点[毒素]；[普通攻击：蛇吻]伤害+35%。影画4 坏蛋的觉悟：[觉悟]层数使蛇吻追加不耗毒素的特殊[蚀骨]。影画6 家与六分街道：[蚀骨印记]使全队攻击命中消耗印记追加特殊[蚀骨]（3秒至多1层）。影画3/5 技能等级+2。",
     "[已确认·继承草稿] 拐力数据在 teammate-buffs.json 1521 组：核心被动电系无视防御公式 clamp(floor((回能-1.4)/0.12)+6,6,25)（sourceStat=energyRegenTotal/outOfCombat，stat=enemyElectricDefReduction）、额外能力全队暴伤+40%、影画1 电抗无视5% + buffModifiers ×1.4 放大核心公式（先 clamp 后 ×1.4，等效上限35%）。",
     "实现口径 [已确认]：① 额外能力暴伤 buff 按 spec.additionalAbility（specialty stun / sameAttributeAsSelf）由 computePanelPhases 过滤链门控；② 原文「自身额外提升10%」由 xixifu.ts applyPanel 施加 panel.critDmg+=10（同样按 additionalAbilityActive 门控），队友只吃 buff 的40%；③ [毒素]持有条件按静态面板近似为常开（进场即得3点，耗尽需约15秒且触发蚀骨循环）；④ 草稿额外能力描述与 3.2.3 原文不符（旧版「毒素侵蚀/20秒」措辞），已按原文重写。",
-    "未建模项：[毒素]资源循环与[蚀骨]伤害行（含227%~335%攻击力附加、失衡值+40%/60%）、影画1 进场毒素6点与[蚀骨]无视10%电抗（希希芙自身蚀骨）、影画2 蛇吻+35%（自身伤害行）、影画4 [觉悟]特殊蚀骨、影画6 [蚀骨印记]全队追加蚀骨机制。"
+    "毒素资源循环 [已确认]（spec resource xixifu_toxin）：初始3上限125；获取=吐信第四段+2（进场初始3点记在 initialValue）（失衡额外+1按50%占比滑块）、毒牙+3（长按额外+3带利用率滑块）、团伙作战/爬行恐惧各+3；消耗=蚀骨（每1点毒素触发1次，总量口径 count=毒素总获取）。蚀骨伤害行 [已确认]（模块 buildExecutions）：倍率表无蚀骨行，按 Lv.12 附加 335% 攻击力建模，基础倍率无数据源未建模。蛇吻次数=floor(毒素总量/6)（每6点毒素得1层蛇影），模块资源卡输出。终结技[以太帷幕：冷血]全队暴伤+5%（30秒）为原文团队拐（此前遗漏），teammate-buffs xixifu.ultimate_curtain_crit_dmg 按常驻近似。"
   ],
   "teamBuffs": [],
   "additionalAbility": {

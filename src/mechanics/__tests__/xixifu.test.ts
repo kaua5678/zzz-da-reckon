@@ -104,8 +104,8 @@ describe('希希芙额外能力·毒素发酵（全队暴伤+40%、自身额外+
     const selfCdOff = (computePanelPhases(0, pos1.config, pos1.catalog)!.inCombat as any).critDmg as number
     pos1.config.toggleTeammateBuff('xixifu.additional_toxin_crit_dmg', true)
     expect(selfCd - selfCdOff).toBeCloseTo(40, 5) // 全队 buff 部分
-    expect(selfCdOff - critBase).toBeCloseTo(10, 5) // 模块「自身额外10%」部分
-    expect(selfCd - critBase).toBeCloseTo(50, 5) // 合计
+    expect(selfCdOff - critBase).toBeCloseTo(15, 5) // 模块自身+10% + 终结技帷幕+5%
+    expect(selfCd - critBase).toBeCloseTo(55, 5) // 合计
 
     const mateCd = (computePanelPhases(1, pos1.config, pos1.catalog)!.inCombat as any).critDmg as number
     pos1.config.toggleTeammateBuff('xixifu.additional_toxin_crit_dmg', false)
@@ -134,5 +134,84 @@ describe('希希芙额外能力·毒素发酵（全队暴伤+40%、自身额外+
     neg.config.toggleTeammateBuff('xixifu.additional_toxin_crit_dmg', true)
     expect(pNegOn.additionalAbilityActive ?? 0).toBe(0)
     expect(pNegOn.critDmg).toBeCloseTo(pNegOff.critDmg, 5)
+  })
+})
+
+describe('希希芙毒素资源循环与蚀骨', () => {
+  const mkState = () => ({
+    basicAttackTime: 20, exSpecialCount: 2, chainCountTotal: 1, ultimateCount: 1,
+    frontlineTime: 40, backstageTime: 0,
+  }) as any
+
+  it('毒素账目：进场3+吐信段4×2+失衡占比0.5+毒牙3×2+长按3×2+连携3+终结3；蚀骨次数=总量', () => {
+    const cfg: any = {}
+    const result: any = xixifuMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    const toxin = result.specResources.xixifu_toxin
+    expect(toxin).toBeTruthy()
+    expect(toxin.initialValue).toBe(3)
+    expect(toxin.maxValue).toBe(125)
+    expect(toxin.gains.toxin_tuxin_stage4).toBeCloseTo(20, 5)      // basicAttackCount 10 × 2
+    expect(toxin.gains.toxin_tuxin_stunned_bonus).toBeCloseTo(5, 5) // 10 × 1 × 0.5
+    expect(toxin.gains.toxin_duya_base).toBeCloseTo(6, 5)
+    expect(toxin.gains.toxin_duya_hold).toBeCloseTo(6, 5)
+    expect(toxin.gains.toxin_chain).toBeCloseTo(3, 5)
+    expect(toxin.gains.toxin_ultimate).toBeCloseTo(3, 5)
+    // 蚀骨次数 = 初始3 + 总获取43 = 46（cost 1）
+    expect(toxin.spendCounts.toxin_shigu_spend).toBe(46)
+  })
+
+  it('buildExecutions 生成蚀骨伤害行：次数=毒素总量、335% 攻击力、电属性', () => {
+    const cfg: any = {}
+    const executions: any[] = []
+    xixifuMechanic.buildExecutions!({ cfg, state: mkState(), executions } as any)
+    expect(executions.length).toBe(1)
+    const shigu = executions[0]
+    expect(shigu.moveId).toBe('xixifu_shigu')
+    expect(shigu.count).toBe(46)
+    expect(shigu.damageMultiplier).toBe(335)
+    expect(shigu.element).toBe('electric')
+
+    // 空 state 仍有进场初始3点毒素 → 蚀骨×3
+    const empty: any[] = []
+    xixifuMechanic.buildExecutions!({ cfg: {}, state: { basicAttackTime: 0, exSpecialCount: 0, chainCountTotal: 0, ultimateCount: 0 } as any, executions: empty } as any)
+    expect(empty.length).toBe(1)
+    expect(empty[0].count).toBe(3)
+  })
+
+  it('影画1：进场毒素 3→6（蚀骨次数随之+3）', () => {
+    const cfg0: any = { xixifuCinemaLevel: 0 }
+    const r0: any = xixifuMechanic.buildResourceResult!({ cfg: cfg0, state: mkState() } as any)
+    const cfg1: any = { xixifuCinemaLevel: 1 }
+    const r1: any = xixifuMechanic.buildResourceResult!({ cfg: cfg1, state: mkState() } as any)
+    expect(r0.specResources.xixifu_toxin.initialValue).toBe(3)
+    expect(r1.specResources.xixifu_toxin.initialValue).toBe(6)
+    expect(r1.specResources.xixifu_toxin.spendCounts.toxin_shigu_spend
+      - r0.specResources.xixifu_toxin.spendCounts.toxin_shigu_spend).toBe(3)
+  })
+
+  it('resourceSections 输出蛇吻次数卡 = floor(毒素总量/6)', () => {
+    const cfg: any = {}
+    const result: any = xixifuMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    const sections = xixifuMechanic.resourceSections!({ result, cfg } as any)
+    expect(sections.some((s: any) => s.title?.includes('毒素'))).toBe(true)
+    const shekiss = sections.find((s: any) => s.id === 'xixifu-shekiss')
+    expect(shekiss).toBeTruthy()
+    expect(shekiss!.summary).toContain(String(Math.floor(46 / 6)))
+  })
+})
+
+describe('希希芙终结技帷幕（全队暴伤+5%）', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    stubFetch()
+  })
+
+  it('队友面板暴伤差分 +5%', async () => {
+    const { catalog, config } = await setup('1621', 0)
+    const on = (computePanelPhases(1, config, catalog)!.inCombat as any).critDmg as number
+    config.toggleTeammateBuff('xixifu.ultimate_curtain_crit_dmg', false)
+    const off = (computePanelPhases(1, config, catalog)!.inCombat as any).critDmg as number
+    config.toggleTeammateBuff('xixifu.ultimate_curtain_crit_dmg', true)
+    expect(on - off).toBeCloseTo(5, 5)
   })
 })

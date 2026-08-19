@@ -4497,6 +4497,60 @@
     "conditionLabel": {
      "zhCN": "[核心被动]中无视敌人防御力效果提升至原本的140%（buffModifiers ×1.4）；并使全队角色造成的伤害无视目标5%电属性伤害抗性。"
     }
+   },
+   {
+    "id": "xixifu.ultimate_curtain_crit_dmg",
+    "source": {
+     "zhCN": "终结技"
+    },
+    "description": {
+     "zhCN": "终结技：爬行恐惧发动后开启[以太帷幕：冷血]，持续30秒，期间全队角色暴击伤害提升5%；重复开启前关闭已有帷幕（静态面板按常驻近似）。"
+    },
+    "scope": "inCombat",
+    "effects": [
+     {
+      "id": "xixifu_ultimate_curtain_crit_dmg",
+      "type": "fixed",
+      "target": {
+       "kind": "default"
+      },
+      "stat": "critDmg",
+      "mode": "flat",
+      "value": 5,
+      "coverage": {
+       "default": 1,
+       "min": 0,
+       "max": 1,
+       "step": 0.1
+      }
+     }
+    ],
+    "buffModifiers": [],
+    "sourceType": "teammate",
+    "sourceCategory": "agent",
+    "sourceKind": "teammate",
+    "ownerId": "1521",
+    "ownerName": {
+     "zhCN": "希希芙"
+    },
+    "teammateId": "1521",
+    "teammateName": {
+     "zhCN": "希希芙"
+    },
+    "teammateImages": {
+     "icon": "/assets/agents/xixifu.png",
+     "source": "https://act-upload.mihoyo.com/nap-obc-indep/2026/03/25/76099754/c0201856aafd51cad4e01b386d172af8_6170469607651397940.png",
+     "officialPage": "https://baike.mihoyo.com/zzz/wiki/channel/map/2/43"
+    },
+    "sourceLabel": {
+     "zhCN": "终结技"
+    },
+    "name": {
+     "zhCN": "希希芙｜终结技帷幕"
+    },
+    "conditionLabel": {
+     "zhCN": "终结技：爬行恐惧发动后开启[以太帷幕：冷血]，持续30秒，期间全队角色暴击伤害提升5%；重复开启前关闭已有帷幕（静态面板按常驻近似）。"
+    }
    }
   ],
   "images": {

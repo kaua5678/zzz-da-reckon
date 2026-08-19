@@ -338,8 +338,9 @@
 - **核心**：全队电属性伤害无视防御 = `clamp(floor((希希芙局外回能-1.4)/0.12)+6, 6, 25)`（formula，`enemyElectricDefReduction`）。
 - **额外能力**：队伍有[击破]（stun）或同属性（电）→ 全队暴伤 +40%（`xixifu.additional_toxin_crit_dmg` 按 spec.additionalAbility 门控），希希芙自身额外 +10%（`xixifu.ts applyPanel`）。
 - **影画1**：核心公式 ×1.4（buffModifiers，等效上限35%）+ 全队无视 5% 电属性伤害抗性。
-- **未建模**：[毒素]资源与[蚀骨]伤害行（含失衡值+40%/60%）、影画1/2/4/6 的自身伤害与资源部分。
-- **模块**：`src/mechanics/agents/xixifu.ts`（薄模块：额外能力自身暴伤+10%）。
+- **毒素资源循环**（spec resource `xixifu_toxin`）：初始3上限125（影画1→6，cfgField 门控）；获取=吐信第四段+2（失衡额外+1按50%占比滑块）、毒牙+3（长按额外+3带利用率滑块）、团伙作案/爬行恐惧各+3；消耗=蚀骨（每1点毒素触发1次，总量口径，蚀骨次数=初始+总获取）。**蚀骨伤害行**：`buildExecutions` 固定 335% 攻击力电伤行（Lv.12 附加部分，基础倍率无数据源）；蛇吻次数=floor(毒素总量/6) 资源卡输出。**终结技[以太帷幕：冷血]全队暴伤+5%**（原文团队拐，此前遗漏，teammate-buffs 常驻近似）。
+- **未建模**：蚀骨基础倍率与失衡值+40%/60%、蛇吻本体直伤与蛇吻+35%（影画2）、影画4 [觉悟]特殊蚀骨、影画6 [蚀骨印记]全队追加蚀骨。
+- **模块**：`src/mechanics/agents/xixifu.ts`（额外能力自身暴伤 + 毒素循环 buildExecutions/buildResourceResult）。
 
 ### 月城柳（tsukishiro_yanagi / 1221）—— 对空洞特别行动部第六课电异常
 

@@ -3095,12 +3095,12 @@
      "cinema": 1,
      "status": "implemented_approximation",
      "implemented": [
-      "核心被动无视防御效果提升至140%（teammate-buff buffModifiers ×1.4）",
-      "全队伤害无视目标5%电属性伤害抗性（teammate-buff enemyElectricResReduction）"
+      "全队伤害无视目标5%电属性伤害抗性（teammate-buff enemyElectricResReduction）",
+      "核心被动无视防御效果×140%（buffModifiers）",
+      "进场毒素3→6点（spec resource xixifu_toxin，cfgField 按命座门控）"
      ],
      "pending": [
-      "进场[毒素]3→6点未建模（希希芙自身资源）",
-      "[蚀骨]伤害无视目标10%电属性伤害抗性未建模（属希希芙自身蚀骨伤害行）"
+      "[蚀骨]伤害无视目标10%电属性伤害抗性（属蚀骨伤害行限定，未建模）"
      ]
     },
     {

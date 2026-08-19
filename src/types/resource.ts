@@ -1269,6 +1269,10 @@ export interface CharacterOperationConfig {
   xideCinemaLevel?: number
   /** 席德局内攻击力（影画6 激光附加伤害的基数，buildCharConfig 预存） */
   xideAtk?: number
+  /** 希希芙命座等级（毒素初始值门控影画1） */
+  xixifuCinemaLevel?: number
+  /** 希希芙进场毒素（3，影画1→6；computeXixifuToxinTotal 写入） */
+  xixifuInitialToxin?: number
   /** 青衣失衡次数（外层不动点传入，供醉花月云转轮数） */
   qingyiStunCount?: number
   /** 青衣可分配循环秒均（一煞#4→醉花月云转） */
