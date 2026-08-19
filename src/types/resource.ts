@@ -1263,6 +1263,8 @@ export interface CharacterOperationConfig {
   orphieCinemaLevel?: number
   /** 奥菲丝局内攻击力（影画6 激光附加伤害的基数，buildCharConfig 预存） */
   orphieAtk?: number
+  /** 奥菲丝影画6 火刀触发次数（buildResourceResult 按 cinema>=6 写入，蓄炎资源读取） */
+  orphieBladeHits?: number
   /** 青衣失衡次数（外层不动点传入，供醉花月云转轮数） */
   qingyiStunCount?: number
   /** 青衣可分配循环秒均（一煞#4→醉花月云转） */

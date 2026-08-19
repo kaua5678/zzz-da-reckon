@@ -7,7 +7,88 @@
   ],
   "status": "partially_implemented",
   "attributeConversions": [],
-  "resources": [],
+  "resources": [
+    {
+      "id": "orphie_xuyan",
+      "name": "蓄炎",
+      "nature": "resource",
+      "initialValue": 100,
+      "maxValue": 125,
+      "gainRules": [
+        {
+          "id": "xuyan_ex_special_gain",
+          "trigger": "强化特殊技（小心脚下/灼红旋涡/蓄热充能）发动回复蓄炎",
+          "countSource": "exSpecialCount",
+          "amountPerCount": 20,
+          "formula": "原文：小心脚下/灼红旋涡/蓄热充能发动时各回复20点；通用池强特为单选招式，若所选强特为不回复蓄炎的燥焰迸射，请把滑块调0",
+          "status": "implemented_approximation",
+          "adjustable": {
+            "id": "1301.orphie_xuyan.xuyan_ex_special_gain.rate",
+            "label": "奥菲丝·蓄炎·强化特殊技回复",
+            "description": "强特发动回复蓄炎的近似转化比例，默认 100%；所选强特为燥焰迸射（不回复蓄炎）时调 0。",
+            "default": 1,
+            "min": 0,
+            "max": 1,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        },
+        {
+          "id": "xuyan_chain_gain",
+          "trigger": "连携技：枪管过热发动回复蓄炎",
+          "countSource": "chainCountTotal",
+          "amountPerCount": 20,
+          "status": "implemented"
+        },
+        {
+          "id": "xuyan_ultimate_gain",
+          "trigger": "终结技：与火共舞发动回复蓄炎",
+          "countSource": "ultimateCount",
+          "amountPerCount": 20,
+          "status": "implemented"
+        },
+        {
+          "id": "xuyan_shiguang_gain",
+          "trigger": "特殊技：蚀光一闪发动回复蓄炎（每5秒至多1次）",
+          "countSource": "battleTime",
+          "amountPerCount": 4,
+          "formula": "原文：队友攻击时自动发动、回复20点、每5秒至多1次 → 20/5 = 4点/秒 × 全战斗时间（理论上限，实际受触发条件限制可用滑块下调）",
+          "status": "implemented_approximation",
+          "adjustable": {
+            "id": "1301.orphie_xuyan.xuyan_shiguang_gain.rate",
+            "label": "奥菲丝·蓄炎·蚀光一闪利用率",
+            "description": "蚀光一闪自动触发回复蓄炎的利用率，默认 100%（每5秒一次的整局理论上限）。",
+            "default": 1,
+            "min": 0,
+            "max": 1,
+            "step": 0.05,
+            "suffix": "%"
+          }
+        },
+        {
+          "id": "xuyan_c6_blade_gain",
+          "trigger": "影画6：高压火枪火刀攻击发动回复蓄炎",
+          "countSource": "cfgField",
+          "countField": "orphieBladeHits",
+          "amountPerCount": 10,
+          "formula": "仅影画6生效：模块按 cinema>=6 写 cfg.orphieBladeHits = floor(普攻时间/2)（火刀为普攻段末攻击）",
+          "status": "implemented_approximation"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "xuyan_heat_charge_spend",
+          "trigger": "强化特殊技：蓄热充能（蓄炎≥100时长按发动）",
+          "cost": 100,
+          "result": "消耗100点蓄炎，发动蓄热充能激光",
+          "deduct": true,
+          "status": "implemented"
+        }
+      ],
+      "feedbackGainRules": [],
+      "properties": {}
+    }
+  ],
   "rowFusions": [],
   "events": [],
   "verifications": [],
@@ -21,7 +102,7 @@
     "实现口径 [已确认]：① 额外能力 buff orphie.additional_def_ignore（enemyDefReduction +25，无视防御≈减防近似）为本次新增——草稿遗漏；按 spec.additionalAbility（specialty stun/support，[击破]=stun、[支援]=support 依 §0 映射表）由 computePanelPhases 过滤链门控；② 原文限定「追加攻击伤害」无视防御按面板级近似（全队所有伤害生效）；③ [准星聚焦]施加条件（蓄热充能激光命中）按静态面板常驻近似；④ 奥菲丝自身暴击率/追加攻击增伤/蓄炎/自动释放属自身循环未建模。",
     "自身机制补录 [已确认]（agents/orphie.ts applyPanel）：① 核心被动自身暴击率+25%（Lv.12）；② 追加攻击伤害+85%（Lv.12）——口径由用户明确：属「增伤区」（skillDmgBonus），不是独立乘区，只作用于带 additionalAttack tag 的招式；引擎新增 SkillDamageTarget 'additionalAttack'（buff.ts/damage.ts inferSkillDamageTarget 识别 skillTags），catalog 1301 组 13 个招式打标（高压火枪#1~#6 全6段经用户确认、小心脚下、灼红旋涡、蓄热充能、燥焰迸射、枪管过热、与火共舞#1/#2）。",
     "影画自身部分口径：影画1 自身4招（蚀光一闪/灼红旋涡/蓄热充能/燥焰迸射）无视15%火抗——引擎无 moveId 级抗性通道，按面板级 enemyFireResReduction+15 近似（作用范围略宽）；影画2 终结技后攻击+20%（45秒）按满覆盖近似；影画4 终结技+40% 走 skillDmgBonus__ultimate，蓄热充能+40% 无 moveId 级增伤通道未建模；影画6 激光附加250%攻击力火伤 [已确认] 不按激光时长建独立行——蓄热充能/与火共舞招式本身带 additionalAttack tag，按招式触发挂到对应行（patchExecutions，moveId 限定 1301011/1301015/1301016，flatDamageBonus=局内攻×250%，希格莉德先例）。",
-    "未建模项：[蓄炎]资源与后台自动释放机制、影画4 蓄热充能+40%（无 moveId 级通道）。"
+    "蓄炎资源循环 [已确认]（spec resource orphie_xuyan）：初始100上限125；获取=强特（小心脚下/灼红旋涡/蓄热充能各+20，通用池强特单选口径带滑块）、枪管过热+20、与火共舞+20、蚀光一闪 20点/5秒按战斗时长折算（带利用率滑块）、影画6 火刀+10（模块按 cinema>=6 写 cfg.orphieBladeHits）；消耗=蓄热充能每次100点，spend 次数=floor((初始+总获取)/100)。"
   ],
   "teamBuffs": [],
   "additionalAbility": {

@@ -149,3 +149,46 @@ describe('奥菲丝影画6 激光附加伤害（patchExecutions moveId 限定）
     expect(cfg.orphieAtk).toBe(4321)
   })
 })
+
+describe('奥菲丝蓄炎资源循环（spec resource）', () => {
+  const mkState = () => ({
+    exSpecialCount: 2, chainCountTotal: 1, ultimateCount: 1,
+    basicAttackTime: 10, frontlineTime: 30, backstageTime: 0,
+  }) as any
+
+  it('获取=强特20×2+连携20+终结20+蚀光一闪(战斗时长×4)，消耗=蓄热充能每次100', () => {
+    const cfg: any = { orphieCinemaLevel: 0, battleTime: 100 }
+    const result: any = orphieMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    const xuyan = result.specResources.orphie_xuyan
+    expect(xuyan).toBeTruthy()
+    expect(xuyan.initialValue).toBe(100)
+    expect(xuyan.maxValue).toBe(125)
+    expect(xuyan.gains.xuyan_ex_special_gain).toBeCloseTo(40, 5)
+    expect(xuyan.gains.xuyan_chain_gain).toBeCloseTo(20, 5)
+    expect(xuyan.gains.xuyan_ultimate_gain).toBeCloseTo(20, 5)
+    expect(xuyan.gains.xuyan_shiguang_gain).toBeCloseTo(400, 5)
+    expect(xuyan.gains.xuyan_c6_blade_gain ?? 0).toBeCloseTo(0, 5)
+    // 蓄热充能次数 = floor((初始100 + 总获取520) / 100)
+    expect(xuyan.spendCounts.xuyan_heat_charge_spend).toBe(Math.floor((100 + 40 + 20 + 20 + 400) / 100))
+  })
+
+  it('影画6 火刀+10 按 cinema>=6 门控（次数=floor(普攻时间/2)）', () => {
+    const cfg6: any = { orphieCinemaLevel: 6, battleTime: 100 }
+    const r6: any = orphieMechanic.buildResourceResult!({ cfg: cfg6, state: mkState() } as any)
+    expect(cfg6.orphieBladeHits).toBe(5)
+    expect(r6.specResources.orphie_xuyan.gains.xuyan_c6_blade_gain).toBeCloseTo(50, 5)
+
+    const cfg5: any = { orphieCinemaLevel: 5, battleTime: 100 }
+    const r5: any = orphieMechanic.buildResourceResult!({ cfg: cfg5, state: mkState() } as any)
+    expect(cfg5.orphieBladeHits).toBe(0)
+    expect(r5.specResources.orphie_xuyan.gains.xuyan_c6_blade_gain ?? 0).toBeCloseTo(0, 5)
+  })
+
+  it('resourceSections 输出蓄炎资源卡', () => {
+    const cfg: any = { orphieCinemaLevel: 0, battleTime: 100 }
+    const result: any = orphieMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    const sections = orphieMechanic.resourceSections!({ result, cfg } as any)
+    expect(sections.length).toBeGreaterThan(0)
+    expect(sections.some((s: any) => s.title?.includes('蓄炎'))).toBe(true)
+  })
+})

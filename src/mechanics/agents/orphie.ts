@@ -1,4 +1,7 @@
-import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput } from '../types'
+import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput } from '../types'
+import { getAgentSpec } from '@/specs/registry'
+import { computeSpecResources } from '@/specs/resources'
+import { specToMechanicModule } from '@/specs/mechanics'
 
 /**
  * 奥菲丝&「鬼火」（1301，火·强攻，新艾利都防卫军）—— 自身机制补录模块。
@@ -68,12 +71,29 @@ function patchOrphieExecutions({ cfg, executions }: AgentResourceInput): void {
   }
 }
 
+/** 蓄炎资源：影画6 火刀次数写入 cfg（cinema>=6 才计），spec 解释器按 cfgField 读取 */
+function buildOrphieResourceResult({ cfg, state }: AgentResourceResultInput) {
+  const cinema = Math.max(0, Math.floor(Number((cfg as any).orphieCinemaLevel ?? 0)))
+  ;(cfg as any).orphieBladeHits = cinema >= 6 ? Math.max(0, Math.floor((state.basicAttackTime ?? 0) / 2)) : 0
+  const spec = getAgentSpec(ORPHIE_AGENT_ID)
+  return {
+    specResources: spec ? Object.fromEntries(computeSpecResources(spec, cfg, state)) : {},
+  }
+}
+
+function buildOrphieResourceSections(input: AgentResourceSectionsInput) {
+  const spec = getAgentSpec(ORPHIE_AGENT_ID)
+  return spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
+}
+
 export const orphieMechanic: AgentMechanicModule = {
   id: 'agent:orphie_magusa',
   agentIds: [ORPHIE_AGENT_ID],
   name: '奥菲丝&「鬼火」',
-  description: '自身暴击率+25%、追加攻击增伤+85%（增伤区，按 additionalAttack tag 定向）、影画1/2/4自身部分；影画6 激光附加伤害在 patchExecutions（moveId 限定）。',
+  description: '自身暴击率+25%、追加攻击增伤+85%（增伤区，按 additionalAttack tag 定向）、影画1/2/4自身部分；影画6 激光附加伤害在 patchExecutions（moveId 限定）；蓄炎资源循环走 spec resource。',
   applyPanel: applyOrphiePanel,
   buildCharConfig: buildOrphieCharConfig,
   patchExecutions: patchOrphieExecutions,
+  buildResourceResult: buildOrphieResourceResult,
+  resourceSections: buildOrphieResourceSections,
 }
