@@ -5996,27 +5996,10 @@
      "zhCN": "影画二"
     },
     "description": {
-     "zhCN": "[额外能力：集群优势]中，每层[技术鸿沟]提供的失衡易伤倍率由3%提升至6%；选中本 Buff 时，必须同时选中[额外能力（技术鸿沟）]才会生效。本条目为 C2 额外 +30%（合计 60%）。"
+     "zhCN": "[额外能力：集群优势]中，每层[技术鸿沟]提供的失衡易伤倍率由3%提升至6%；选中本 Buff 时，必须同时选中[额外能力（技术鸿沟）]才会生效。本条目通过 buffModifiers ×2 放大基础条（30→60），不自带 effects，避免双计。"
     },
     "scope": "inCombat",
-    "effects": [
-     {
-      "id": "norma_c2_tech_gap_extra",
-      "type": "fixed",
-      "target": {
-       "kind": "default"
-      },
-      "stat": "stunDmgMultiplierBonus",
-      "mode": "flat",
-      "value": 30,
-      "coverage": {
-       "default": 1,
-       "min": 0,
-       "max": 1,
-       "step": 0.1
-      }
-     }
-    ],
+    "effects": [],
     "buffModifiers": [
      {
       "id": "norma_hollowell_cinema_2_amplify_technical_gap",
