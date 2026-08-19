@@ -351,9 +351,11 @@
 
 ### 奥菲丝&「鬼火」（orphie_magusa / 1301）—— 新艾利都防卫军火强攻
 
-- **核心**：[准星聚焦]全队攻击 = `clamp(floor((奥菲丝局外回能-1.6)/0.1)*20+280, 280, 700)`（formula，`atkFlat`）。
-- **额外能力**：队伍有[击破]或[支援] → 准星聚焦代理人追加攻击无视 25% 防御（`orphie.additional_def_ignore`，enemyDefReduction 近似，按 spec.additionalAbility 门控；本次新增，草稿遗漏）。
-- **影画1**：准星聚焦代理人伤害 +20%。
-- **未建模**：奥菲丝自身暴击率/追加攻击增伤/蓄炎/自动释放、影画1 自身火抗无视、影画2/4/6 自身机制。
-- **模块**：`src/specs/agents/orphie_magusa.json`（声明式，无独立模块；helpers 过滤链门控额外能力）。
+- **核心（全队）**：[准星聚焦]全队攻击 = `clamp(floor((奥菲丝局外回能-1.6)/0.1)*20+280, 280, 700)`（formula，`atkFlat`）。
+- **额外能力**：队伍有[击破]或[支援] → 准星聚焦代理人追加攻击无视 25% 防御（`orphie.additional_def_ignore`，enemyDefReduction 近似，按 spec.additionalAbility 门控）。
+- **核心（自身）**：暴击率 +25%；[追加攻击]伤害 +85%——**增伤区**（`skillDmgBonus__additionalAttack`），不是独立乘区；引擎新增 SkillDamageTarget `additionalAttack`，catalog 对 13 个「视为追加攻击」招式打 `skillTags`（高压火枪全6段/小心脚下/灼红旋涡/蓄热充能/燥焰迸射/枪管过热/与火共舞#1~#2）。
+- **影画1**：准星聚焦代理人伤害 +20%；自身4招无视 15% 火抗（面板级近似）。
+- **影画2**：终结技后自身攻击 +20%（满覆盖近似，面板乘法）；**影画4**：终结技增伤 +40%（`skillDmgBonus__ultimate`）。
+- **未建模**：蓄炎资源/后台自动释放、影画4 蓄热充能+40%（无 moveId 级通道）、影画6 激光追加火伤（触发频率静态不可算）。
+- **模块**：`src/mechanics/agents/orphie.ts`（自身机制 applyPanel）+ spec 声明式（helpers 过滤链门控额外能力）。
 

@@ -1728,18 +1728,19 @@
      "cinema": 1,
      "status": "implemented_approximation",
      "implemented": [
-      "拥有[准星聚焦]的代理人造成的伤害+20%（teammate-buff dmgBonus，准星聚焦按常驻近似）"
+      "拥有[准星聚焦]的代理人造成的伤害+20%（teammate-buff dmgBonus，准星聚焦按常驻近似）",
+      "自身蚀光一闪/灼红旋涡/蓄热充能/燥焰迸射无视15%火抗（面板级 enemyFireResReduction 近似，作用范围略宽于原文4招）"
      ],
-     "pending": [
-      "奥菲丝自身指定招式无视15%火属性伤害抗性（自身伤害行，未建模）"
-     ]
+     "pending": []
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "终结技后自身攻击力提升20%（45秒，按满覆盖近似 atkPct+20）"
+     ],
      "pending": [
-      "怪味食品清单：追加攻击回复65点喧响值（4秒一次）；终结技后自身攻击+20%（45秒，均属奥菲丝自身）"
+      "追加攻击回复65点喧响值（4秒一次，喧响资源未建模）"
      ]
     },
     {
@@ -1754,10 +1755,13 @@
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "终结技伤害+40%（skillDmgBonus__ultimate）"
+     ],
      "pending": [
-      "粉红色枪套：[准星聚焦]初始时长12→16秒（静态面板无时长维度）；蓄热充能/终结技伤害+40%（奥菲丝自身伤害行）"
+      "蓄热充能伤害+40%（引擎无 moveId 级增伤通道，未建模）",
+      "[准星聚焦]初始时长12→16秒（静态面板无时长维度）"
      ]
     },
     {

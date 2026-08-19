@@ -55,6 +55,8 @@ function getElementEnemyAnomalyResReduction(panel: PanelValues, element: DamageE
 export function inferSkillDamageTarget(category: SkillCategory, move: SkillMove): SkillDamageTarget {
   if (move.timeType === 'dodgeCounter') return 'dodgeCounter'
   if (move.skillTags?.includes('dashAttack')) return 'dashAttack'
+  // 「视为追加攻击」的招式（如奥菲丝高压火枪/各强化特殊技/连携/终结技，见各角色核心被动原文）
+  if (move.skillTags?.includes('additionalAttack')) return 'additionalAttack'
 
   const categoryId = (category.id ?? '').toLowerCase()
   const moveName = `${move.name?.en ?? ''} ${move.name?.zhCN ?? ''}`.toLowerCase()

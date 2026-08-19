@@ -52985,6 +52985,9 @@
                     11.32
                   ]
                 }
+              ],
+              "skillTags": [
+                "additionalAttack"
               ]
             },
             {
@@ -53068,6 +53071,9 @@
                     31.18
                   ]
                 }
+              ],
+              "skillTags": [
+                "additionalAttack"
               ]
             },
             {
@@ -53151,6 +53157,9 @@
                     24.24
                   ]
                 }
+              ],
+              "skillTags": [
+                "additionalAttack"
               ]
             },
             {
@@ -53234,6 +53243,9 @@
                     51.21
                   ]
                 }
+              ],
+              "skillTags": [
+                "additionalAttack"
               ]
             },
             {
@@ -53317,6 +53329,9 @@
                     101.21
                   ]
                 }
+              ],
+              "skillTags": [
+                "additionalAttack"
               ]
             },
             {
@@ -53400,6 +53415,9 @@
                     94.17
                   ]
                 }
+              ],
+              "skillTags": [
+                "additionalAttack"
               ]
             }
           ]
@@ -53666,7 +53684,10 @@
               ],
               "energyCost": {
                 "Energy Cost": "30"
-              }
+              },
+              "skillTags": [
+                "additionalAttack"
+              ]
             },
             {
               "id": "1301010",
@@ -53752,7 +53773,10 @@
               ],
               "energyCost": {
                 "Energy Cost": "30"
-              }
+              },
+              "skillTags": [
+                "additionalAttack"
+              ]
             },
             {
               "id": "1301011",
@@ -53835,6 +53859,9 @@
                     24
                   ]
                 }
+              ],
+              "skillTags": [
+                "additionalAttack"
               ]
             },
             {
@@ -53918,6 +53945,9 @@
                     16
                   ]
                 }
+              ],
+              "skillTags": [
+                "additionalAttack"
               ]
             }
           ]
@@ -54195,6 +54225,9 @@
                     303.3
                   ]
                 }
+              ],
+              "skillTags": [
+                "additionalAttack"
               ]
             },
             {
@@ -54278,6 +54311,9 @@
                     327
                   ]
                 }
+              ],
+              "skillTags": [
+                "additionalAttack"
               ]
             },
             {
@@ -54361,6 +54397,9 @@
                     218
                   ]
                 }
+              ],
+              "skillTags": [
+                "additionalAttack"
               ]
             }
           ]

@@ -17,7 +17,7 @@ export type StatId = string
 export type BuffScope = 'outOfCombat' | 'inCombat'
 export type EffectType = 'fixed' | 'derived' | 'stacked' | 'formula'
 export type StatMode = 'flat' | 'pct' | 'decimal'
-export type SkillDamageTarget = 'all' | 'basic' | 'special' | 'exSpecial' | 'ultimate' | 'chain' | 'assist' | 'dodgeCounter' | 'dashAttack'
+export type SkillDamageTarget = 'all' | 'basic' | 'special' | 'exSpecial' | 'ultimate' | 'chain' | 'assist' | 'dodgeCounter' | 'dashAttack' | 'additionalAttack'
 
 // ============ 面板属性 ============
 

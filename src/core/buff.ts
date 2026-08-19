@@ -12,7 +12,7 @@ import { GENERATED_ENEMY_DEBUFF_STAT_IDS, LEGACY_ENEMY_DEBUFF_STAT_IDS, normaliz
 
 
 export const SKILL_DMG_TARGETS: SkillDamageTarget[] = [
-  'all', 'basic', 'special', 'exSpecial', 'ultimate', 'chain', 'assist', 'dodgeCounter', 'dashAttack',
+  'all', 'basic', 'special', 'exSpecial', 'ultimate', 'chain', 'assist', 'dodgeCounter', 'dashAttack', 'additionalAttack',
 ]
 
 export const SKILL_DMG_TARGET_LABELS: Record<SkillDamageTarget, string> = {
@@ -25,6 +25,7 @@ export const SKILL_DMG_TARGET_LABELS: Record<SkillDamageTarget, string> = {
   assist: '支援技',
   dodgeCounter: '闪避反击',
   dashAttack: '冲刺攻击',
+  additionalAttack: '追加攻击',
 }
 
 export function normalizeSkillDamageTarget(target?: string): SkillDamageTarget {
@@ -90,6 +91,7 @@ function effectSkillDamageTargets(effect: BuffEffect): SkillDamageTarget[] {
     if (target.kind === 'skillType' && target.skillType) result.push(normalizeSkillDamageTarget(target.skillType))
     if (target.kind === 'skillTag' && target.skillTag === 'exSpecial') result.push('exSpecial')
     if (target.kind === 'skillTag' && target.skillTag === 'dashAttack') result.push('dashAttack')
+    if (target.kind === 'skillTag' && target.skillTag === 'additionalAttack') result.push('additionalAttack')
   }
   const unique = Array.from(new Set(result))
   return unique.length > 0 ? unique : ['all']
