@@ -1579,11 +1579,15 @@ function applyNormaHatChain(
     }
 
     function pushDirect(row: {
-      id: string; slot: number; agentId: string; name: string; element: string; source: string; count: number; multiplier: number; note?: string; skillDamageTarget?: any; moveId?: string; critRateBonus?: number; critDmgBonus?: number; dmgBonus?: number; sheerDmgBonus?: number; flatDamageBonus?: number; resIgnore?: number; basisValueOverride?: number; basisLabelOverride?: string; stunOverride?: number; defIgnore?: number; sourceTag?: 'gift' | 'stun' | 'self'
+      id: string; slot: number; agentId: string; name: string; element: string; source: string; count: number; multiplier: number; note?: string; skillDamageTarget?: any; moveId?: string; critRateBonus?: number; critDmgBonus?: number; dmgBonus?: number; sheerDmgBonus?: number; flatDamageBonus?: number; resIgnore?: number; basisValueOverride?: number; basisLabelOverride?: string; stunOverride?: number; defIgnore?: number; penRatioBonus?: number; sourceTag?: 'gift' | 'stun' | 'self'
     }) {
       if (row.count <= 0 || row.multiplier <= 0) return
-      const panel = damagePanels.value[row.slot]
-      if (!panel) return
+      const basePanel = damagePanels.value[row.slot]
+      if (!basePanel) return
+      // 行级穿透率（如希格莉德影画2 出枪式/敛枪式 +24%）：浅克隆面板叠加 penRatio，其余字段不变
+      const panel = row.penRatioBonus
+        ? { ...basePanel, penRatio: (basePanel.penRatio ?? 0) + row.penRatioBonus }
+        : basePanel
       const stunForThis = row.stunOverride !== undefined
         ? row.stunOverride
         : stunCoverage.value
@@ -1781,6 +1785,7 @@ function applyNormaHatChain(
             basisLabelOverride: exec.basisLabelOverride,
             resIgnore,
             defIgnore: exec.defIgnore ?? 0,
+            penRatioBonus: exec.penRatioBonus,
             skillDamageTarget: exec.skillDamageTarget,
             stunOverride,
             sourceTag: sourceTag ?? exec.source,

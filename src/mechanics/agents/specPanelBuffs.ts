@@ -148,18 +148,6 @@ export const harumasaEdgeMechanic = makePanelBuffModule(
   },
 )
 
-export const sigridLanceMechanic = makePanelBuffModule(
-  'agent:sigrid_lance',
-  ['1591'],
-  '希格莉德·敛枪式',
-  'sigrid_lance_opportunity',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) > 0) {
-      panel.critRate = (panel.critRate ?? 0) + 66
-    }
-  },
-)
-
 export const koledaFurnaceMechanic = makePanelBuffModule(
   'agent:koleda_furnace',
   ['1101'],

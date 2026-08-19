@@ -21,7 +21,6 @@ import {
   // benGuardShieldMechanic 已由 agents/ben.ts 替代（全队暴击+防转攻+命座）
   ellenFrostChargeMechanic,
   harumasaEdgeMechanic,
-  sigridLanceMechanic,
   koledaFurnaceMechanic,
   anbyChargeMechanic,
   corinChargeMechanic,
@@ -50,6 +49,7 @@ import { nicoleMechanic } from './agents/nicole'
 import { soukakuMechanic } from './agents/soukaku'
 import { caesarMechanic } from './agents/caesar'
 import { benMechanic } from './agents/ben'
+import { sigridMechanic } from './agents/sigrid'
 import { agentSpecs } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
@@ -71,7 +71,8 @@ registerAgentMechanic(billyHitStacksMechanic)
 // registerAgentMechanic(benGuardShieldMechanic) — replaced by benMechanic
 registerAgentMechanic(ellenFrostChargeMechanic)
 registerAgentMechanic(harumasaEdgeMechanic)
-registerAgentMechanic(sigridLanceMechanic)
+// sigridLanceMechanic 已由 agents/sigrid.ts 替代（出枪式/巡空枪势/影画，面板块在 computePanelPhases）
+registerAgentMechanic(sigridMechanic)
 registerAgentMechanic(koledaFurnaceMechanic)
 registerAgentMechanic(anbyChargeMechanic)
 registerAgentMechanic(corinChargeMechanic)

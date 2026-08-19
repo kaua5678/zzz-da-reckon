@@ -19,7 +19,6 @@ import {
   nekomataPurrMechanic,
   ellenFrostChargeMechanic,
   harumasaEdgeMechanic,
-  sigridLanceMechanic,
   koledaFurnaceMechanic,
   anbyChargeMechanic,
   corinChargeMechanic,
@@ -127,7 +126,7 @@ describe('spec resource panel buffs', () => {
     // 本·守卫护盾暴击改由 teammate-buffs + benMechanic 承担，见 ben.test.ts
   })
 
-  it('applies Nekomata, Ellen, Harumasa, Sigrid and Koleda panel buffs', () => {
+  it('applies Nekomata, Ellen, Harumasa and Koleda panel buffs', () => {
     const nekoMap = resources('1021', {}, { frontlineTime: 60, exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 })
     expect(nekoMap.nekomata_purr?.total).toBe(100)
     const nekoPanel = emptyPanel()
@@ -146,11 +145,7 @@ describe('spec resource panel buffs', () => {
     transform(harumasaEdgeMechanic, '1201', haruPanel, haruMap)
     expect(haruPanel.critDmg - haruBase.critDmg).toBe(72)
 
-    const sigridMap = resources('1591', {}, { frontlineTime: 1 })
-    const sigridPanel = emptyPanel()
-    const sigridBase = emptyPanel()
-    transform(sigridLanceMechanic, '1591', sigridPanel, sigridMap)
-    expect(sigridPanel.critRate - sigridBase.critRate).toBe(66)
+    // 希格莉德（1591）已迁移到 agents/sigrid.ts 模块，面板差分见 __tests__/sigrid.test.ts
 
     const koledaMap = resources('1101', { parryCount: 0 }, { exSpecialCount: 1, chainCountTotal: 0, ultimateCount: 0 })
     const koledaPanel = emptyPanel()

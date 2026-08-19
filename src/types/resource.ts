@@ -453,6 +453,8 @@ export interface SkillExecution {
   resIgnore?: number
   /** 本行专属防御无视（%）（与面板 enemyDefReduction 同乘区加算；如叶瞬光影画2 飞光/斩妄 40%） */
   defIgnore?: number
+  /** 本行专属穿透率加成（%）（叠加面板 penRatio 后进防御乘区乘算；如希格莉德影画2 出枪式/敛枪式 +24%） */
+  penRatioBonus?: number
   /** 本行专属失衡值提升（%，与面板 stunBuildUpBonus 同乘区加算；如莱卡恩 C1 有限次强特强化 +12%/+22%） */
   stunBuildUpBonus?: number
   /** 覆盖基底区数值（如专属直伤读贯穿力作为基底，其余乘区仍用本面板） */
@@ -1253,6 +1255,10 @@ export interface CharacterOperationConfig {
   normaC2TriggerInterval?: number
   /** 青衣命座等级 */
   qingyiCinemaLevel?: number
+  /** 希格莉德命座等级（patchExecutions 门控影画2/1/6 执行级效果） */
+  sigridCinemaLevel?: number
+  /** 希格莉德局内攻击力（敛枪式最后一击附加伤害的基数，buildCharConfig 预存） */
+  sigridAtk?: number
   /** 青衣失衡次数（外层不动点传入，供醉花月云转轮数） */
   qingyiStunCount?: number
   /** 青衣可分配循环秒均（一煞#4→醉花月云转） */
