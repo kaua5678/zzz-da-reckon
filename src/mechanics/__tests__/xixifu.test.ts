@@ -27,13 +27,13 @@ function stubFetch() {
   }))
 }
 
-async function setup(mateId = '1441', cinemaLevel = 0) {
+async function setup(mateId = '1621', cinemaLevel = 0) {
   const catalog = useCatalogStore()
   await catalog.load()
   await catalog.loadTeammateBuffs()
   const config = useConfigStore()
   for (const buff of config.globalBuffs) buff.enabled = false
-  // slot0 希希芙，slot1 队友（1441 真斗 = 命破 → 触发额外能力）
+  // slot0 希希芙，slot1 队友（1621 洛克茜 = 风·击破 → 触发额外能力）
   config.team[0] = { slot: 0, agentId: '1521', cinemaLevel, ...baseConfig } as any
   config.team[1] = { slot: 1, agentId: mateId, cinemaLevel: 0, ...baseConfig } as any
   config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
@@ -53,7 +53,7 @@ describe('希希芙（1521）核心被动电系无视防御公式', () => {
   })
 
   it('按希希芙局外回能取公式值；影画1 放大140%并附带5%电抗无视', async () => {
-    const { catalog, config } = await setup('1441', 0)
+    const { catalog, config } = await setup('1621', 0)
     const phases0 = computePanelPhases(0, config, catalog)!
     const out = phases0.outOfCombat as any
     const regen = out.energyRegen * (1 + (out.energyRegenBonusPct ?? 0) / 100) + (out.energyRegenBonusFlat ?? 0)
@@ -93,9 +93,9 @@ describe('希希芙额外能力·毒素发酵（全队暴伤+40%、自身额外+
     expect((off.panel as any).critDmg).toBeCloseTo(50, 5)
   })
 
-  it('门控：[击破]或同属性（电）队友激活 → 队友暴伤+40%、希希芙自己+50%；无命中不生效', async () => {
-    // 正例1：1441 真斗（命破，怪啖屋 ≠ 新艾利都治安局 → 纯专精命中）
-    const pos1 = await setup('1441', 0)
+  it('门控：[击破]或同属性（电）队友激活 → 队友暴伤+40%、希希芙自己+50%；命破/强攻不生效', async () => {
+    // 正例1：1621 洛克茜（风·击破=stun，非电属性、无队友 buff → 纯专精命中）
+    const pos1 = await setup('1621', 0)
     const phases1 = computePanelPhases(0, pos1.config, pos1.catalog)!
     expect((phases1.inCombat as any).additionalAbilityActive).toBe(1)
     const critBase = (phases1.outOfCombat as any).critDmg as number
@@ -117,7 +117,16 @@ describe('希希芙额外能力·毒素发酵（全队暴伤+40%、自身额外+
     const pos2 = await setup('1181', 0)
     expect((computePanelPhases(0, pos2.config, pos2.catalog)!.inCombat as any).additionalAbilityActive).toBe(1)
 
-    // 负例：1081 比利（强攻，狡兔屋）→ 不激活，开关无差分
+    // 负例1：1441 真斗（命破=rupture，原文不触发——击破≠命破，最易混淆项）
+    const neg1 = await setup('1441', 0)
+    const pNeg1On = computePanelPhases(0, neg1.config, neg1.catalog)!.inCombat as any
+    neg1.config.toggleTeammateBuff('xixifu.additional_toxin_crit_dmg', false)
+    const pNeg1Off = computePanelPhases(0, neg1.config, neg1.catalog)!.inCombat as any
+    neg1.config.toggleTeammateBuff('xixifu.additional_toxin_crit_dmg', true)
+    expect(pNeg1On.additionalAbilityActive ?? 0).toBe(0)
+    expect(pNeg1On.critDmg).toBeCloseTo(pNeg1Off.critDmg, 5)
+
+    // 负例2：1081 比利（强攻，狡兔屋）→ 不激活，开关无差分
     const neg = await setup('1081', 0)
     const pNegOn = computePanelPhases(0, neg.config, neg.catalog)!.inCombat as any
     neg.config.toggleTeammateBuff('xixifu.additional_toxin_crit_dmg', false)

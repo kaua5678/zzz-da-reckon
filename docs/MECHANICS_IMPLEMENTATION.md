@@ -2,6 +2,20 @@
 
 > 给后续 AI 记录角色特殊机制时的统一思路，目标是减少来回确认、把机制落到可计算的数据和代码。
 
+## 0. 特化（specialty）中英映射表（权威，禁止凭记忆推断）
+
+| 中文 | 枚举值 | 备注 |
+| --- | --- | --- |
+| 强攻 | `attack` | |
+| 击破 | `stun` | ⚠️ 不是 rupture |
+| 命破 | `rupture` | ⚠️ 不是 stun |
+| 异常 | `anomaly` | |
+| 支援 | `support` | |
+| 防护 | `defense` | |
+| 锋御 | `sharpen` | |
+
+铁律：① 写 `additionalAbility.teamConditions` 的 specialty 值前先查本表；② 门控测试失败时先核对**测试队友的 specialty 是否选对**，禁止修改 spec 枚举值迁就测试（曾发生：希希芙[击破]误改为 rupture，语义整个反转而测试仍绿）；③ 门控测试必须带「最易混淆项」负例（击破↔命破互为负例）。注：`src/components/CharacterCard.vue` 的 SPECIALTY_LABEL 中 `rupture: '裂御'` 是 UI 错字，以本表为准。
+
 ## 1. 理解机制的顺序
 
 1. 先读 `passive`（核心被动 + 额外能力），确认机制主干：伤害形态、资源、状态、触发条件。
@@ -322,7 +336,7 @@
 ### 希希芙（xixifu / 1521）—— 新艾利都治安局电强攻
 
 - **核心**：全队电属性伤害无视防御 = `clamp(floor((希希芙局外回能-1.4)/0.12)+6, 6, 25)`（formula，`enemyElectricDefReduction`）。
-- **额外能力**：队伍有[命破]或同属性（电）→ 全队暴伤 +40%（`xixifu.additional_toxin_crit_dmg` 按 spec.additionalAbility 门控），希希芙自身额外 +10%（`xixifu.ts applyPanel`）。
+- **额外能力**：队伍有[击破]（stun）或同属性（电）→ 全队暴伤 +40%（`xixifu.additional_toxin_crit_dmg` 按 spec.additionalAbility 门控），希希芙自身额外 +10%（`xixifu.ts applyPanel`）。
 - **影画1**：核心公式 ×1.4（buffModifiers，等效上限35%）+ 全队无视 5% 电属性伤害抗性。
 - **未建模**：[毒素]资源与[蚀骨]伤害行（含失衡值+40%/60%）、影画1/2/4/6 的自身伤害与资源部分。
 - **模块**：`src/mechanics/agents/xixifu.ts`（薄模块：额外能力自身暴伤+10%）。
