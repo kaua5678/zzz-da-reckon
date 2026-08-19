@@ -51,6 +51,7 @@ import { caesarMechanic } from './agents/caesar'
 import { benMechanic } from './agents/ben'
 import { sigridMechanic } from './agents/sigrid'
 import { qianxiaMechanic } from './agents/qianxia'
+import { triggerMechanic } from './agents/trigger'
 import { agentSpecs } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
@@ -75,6 +76,7 @@ registerAgentMechanic(harumasaEdgeMechanic)
 // sigridLanceMechanic 已由 agents/sigrid.ts 替代（出枪式/巡空枪势/影画，面板块在 computePanelPhases）
 registerAgentMechanic(sigridMechanic)
 registerAgentMechanic(qianxiaMechanic)
+registerAgentMechanic(triggerMechanic)
 registerAgentMechanic(koledaFurnaceMechanic)
 registerAgentMechanic(anbyChargeMechanic)
 registerAgentMechanic(corinChargeMechanic)

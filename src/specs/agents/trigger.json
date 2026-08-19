@@ -5,7 +5,7 @@
   "agentIds": [
     "1361"
   ],
-  "status": "not_described_not_implemented",
+  "status": "partially_implemented",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
@@ -13,7 +13,27 @@
   "verifications": [],
   "stateMachines": [],
   "notes": [
-    "待录入：扳机 的机制、资源、事件与验证。"
+    "来源：nanoka 3.2.3+18244196 zh character/1361.json（抓于 2026-08-19），术语表 noun_3.2.3.json 无扳机专属术语。基础信息：S 级电属性·击破（hit_type 穿透），新艾利都防卫军。原始数据：data/raw/nanoka_missing/full/1361.json。",
+    "核心被动·破隙幽瞳（Lv.12 原文）：「扳机」发动[追加攻击]命中敌人时，目标的失衡易伤倍率提升35%（技能等级1~12 对应 20%~35%），持续5秒，通过这种途径施加的失衡易伤倍率提升效果，在目标未进入失衡状态时亦可生效。",
+    "额外能力·灵目银灯（原文）：队伍中存在[强攻]角色或与自身属性相同的角色时触发：「扳机」的暴击率高于40%时，每超过1%暴击率会使自身发动[追加攻击]造成的失衡值提升1.5%，最多提升75%。",
+    "影画1 精准感知：核心被动失衡易伤倍率额外提升20%；[普通攻击：协奏狙杀]冷却降至2秒；[狙击姿态]连续射击/蓄力反击命中获得的[绝意]+25%、上限提升至125。影画2「以太视域」：追加攻击得1层[猎眸]、狙击姿态终结一击得2层，每层全队暴伤+6%，最多4层，10秒。影画4 匿息隐踪：协战状态中队伍其他角色下次协奏狙杀命中触发[断离]，附加扳机200%攻击力伤害并累积120%冲击力失衡值。影画6 冥河彼岸：[破甲凶弹]命中额外造成1200%攻击力电伤且该伤害+50%。影画3/5 技能等级+2。",
+    "[已确认·继承草稿] 拐力数据在 teammate-buffs.json 1361 组：核心被动失衡易伤+35%（stunDmgMultiplierBonusAlways，原文「失衡前亦生效」走 Always 通道）、影画1 额外+20%（同通道）、影画2 猎眸4层全队暴伤+6%/层（stacked 默认满层）。",
+    "实现口径 [已确认]：① 核心被动/影画1 用 stunDmgMultiplierBonusAlways —— calcStunMultiplier 中 Always 与失衡窗口叠加、非失衡按覆盖率天然支持「失衡前亦生效」；② 额外能力失衡值公式 min(75, max(0, (暴击率-40)×1.5)) 在 trigger.ts applyPanel 施加到 panel.stunBuildUpBonus，按 panel.additionalAbilityActive 门控（critRate 取叠加 buff 后的面板值）；③ 原文限定「追加攻击」的失衡值提升按面板级近似（扳机失衡贡献集中于追加攻击）；④ 影画2 按常驻满层近似（实战循环内快速叠满）。",
+    "未建模项：影画1 协奏狙杀2秒冷却与[绝意]+25%/上限125（扳机自身资源）、影画4 [断离]追加伤害与失衡值（触发者为队伍其他角色）、影画6 [破甲凶弹]1200%电伤（扳机自身伤害行）。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "attack"
+        ]
+      },
+      {
+        "type": "sameAttributeAsSelf"
+      }
+    ],
+    "note": "额外能力·灵目银灯：队伍中存在[强攻]角色或与自身属性（电）相同的角色时触发（暴击率超40%部分转追加攻击失衡值提升）。声明式条件，引擎判定写入 panel.additionalAbilityActive；trigger.ts applyPanel 按此门控。[已确认]"
+  }
 }

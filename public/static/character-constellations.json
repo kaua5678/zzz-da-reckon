@@ -2096,19 +2096,22 @@
    "cinemas": [
     {
      "cinema": 1,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "核心被动施加的失衡易伤倍率额外+20%（teammate-buff stunDmgMultiplierBonusAlways，合计55%）"
+     ],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "协奏狙杀冷却降至2秒未建模（扳机自身循环）",
+      "[绝意]获取+25%与上限125未建模（扳机自身资源）"
      ]
     },
     {
      "cinema": 2,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "[猎眸]每层全队暴伤+6%、最多4层（teammate-buff stacked 默认满层近似）"
+     ],
+     "pending": []
     },
     {
      "cinema": 3,
@@ -2125,7 +2128,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "匿息隐踪：队伍其他角色协奏狙杀触发[断离]，附加扳机200%攻击力伤害并累积120%冲击力失衡值（触发者为其他角色，未建模）"
      ]
     },
     {
@@ -2143,7 +2146,7 @@
      "status": "not_described_not_implemented",
      "implemented": [],
      "pending": [
-      "尚未提供该命座机制描述，当前不应默认视为已实现"
+      "冥河彼岸：[破甲凶弹]命中额外造成扳机1200%攻击力电伤且该伤害+50%（扳机自身伤害行，未建模）"
      ]
     }
    ]
