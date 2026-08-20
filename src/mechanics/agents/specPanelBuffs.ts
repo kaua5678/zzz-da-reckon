@@ -100,18 +100,6 @@ export const nekomataPurrMechanic = makePanelBuffModule(
   },
 )
 
-export const koledaFurnaceMechanic = makePanelBuffModule(
-  'agent:koleda_furnace',
-  ['1101'],
-  '珂蕾妲·熔炉升温',
-  'koleda_furnace',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) > 0) {
-      panel.dmgBonus = (panel.dmgBonus ?? 0) + 25
-    }
-  },
-)
-
 export const anbyChargeMechanic = makePanelBuffModule(
   'agent:anby_charge',
   ['1011'],

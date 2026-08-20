@@ -15,7 +15,6 @@ import {
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
   nekomataPurrMechanic,
-  koledaFurnaceMechanic,
   anbyChargeMechanic,
   corinChargeMechanic,
   graceChargeMechanic,
@@ -102,7 +101,7 @@ describe('spec resource panel buffs', () => {
     // 本·守卫护盾暴击改由 teammate-buffs + benMechanic 承担，见 ben.test.ts
   })
 
-  it('applies Nekomata and Koleda panel buffs', () => {
+  it('applies Nekomata panel buffs', () => {
     const nekoMap = resources('1021', {}, { frontlineTime: 60, exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 })
     expect(nekoMap.nekomata_purr?.total).toBe(100)
     const nekoPanel = emptyPanel()
@@ -110,11 +109,7 @@ describe('spec resource panel buffs', () => {
     expect(nekoPanel.dmgBonus).toBe(60)
 
     // 希格莉德（1591）已迁移到 agents/sigrid.ts 模块，面板差分见 __tests__/sigrid.test.ts
-
-    const koledaMap = resources('1101', { parryCount: 0 }, { exSpecialCount: 1, chainCountTotal: 0, ultimateCount: 0 })
-    const koledaPanel = emptyPanel()
-    transform(koledaFurnaceMechanic, '1101', koledaPanel, koledaMap)
-    expect(koledaPanel.dmgBonus).toBe(25)
+    // 珂蕾妲爆破锤已迁移到 agents/koleda.ts 模块，见 __tests__/koleda.test.ts
   })
 
   it('applies Anby, Corin, Grace, Banyue and Jufufu panel buffs', () => {

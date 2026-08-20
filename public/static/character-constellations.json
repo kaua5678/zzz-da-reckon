@@ -570,11 +570,12 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "衔接特定普攻后特殊技/强化特殊技失衡值+15%按覆盖率折算stunBuildUpBonus。"
+          ],
           "pending": [
-            "影画1 锤击节奏：当衔接在[普通攻击]第二、第四段或强化[普通攻击]后，快速发动[特殊技]或[强化特殊技]时，招式造成的失衡值提升15%。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "仅当衔接特定普攻段后发动的条件按整局覆盖率近似。"
           ]
         },
         {
@@ -582,8 +583,7 @@
           "status": "not_described_not_implemented",
           "implemented": [],
           "pending": [
-            "影画2 动能回收：[强化特殊技]命中敌人时，珂蕾妲回复60点能量，45秒内最多触发一次。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "强化特殊技命中回60能量（45秒一次）无干净回能通道，未接入能量结算。"
           ]
         },
         {
@@ -596,11 +596,12 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "消耗熔炉升温得充能（上限2），连携/终结每层充能伤害+18%按层数滑块折算dmgBonus。"
+          ],
           "pending": [
-            "影画4 熔炉余温：消耗[熔炉升温]发动强化[普通攻击]时，珂蕾妲获得1层充能（上限2层）；[连携技：天崩-地裂]或[终结技：锤进地心]命中敌人时，消耗所有充能，每层充能使当前招式造成的伤害提升18%。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "充能获取/消耗逐时序按层数滑块近似。"
           ]
         },
         {
@@ -613,11 +614,12 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "强化特殊技/连携/终结引发爆炸额外360%攻击力火伤，按三类招式次数之和生成合成执行行。"
+          ],
           "pending": [
-            "影画6 饱和爆破：在[强化特殊技]、[连携技]或[终结技]中，引发爆炸命中敌人时，额外造成珂蕾妲360%攻击力的伤害。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "爆炸命中范围结算按单目标近似。"
           ]
         }
       ]
