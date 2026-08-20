@@ -112,17 +112,6 @@ export const ellenFrostChargeMechanic = makePanelBuffModule(
   },
 )
 
-export const harumasaEdgeMechanic = makePanelBuffModule(
-  'agent:harumasa_edge',
-  ['1201'],
-  '悠真·锋芒',
-  'harumasa_edge',
-  (resource, panel) => {
-    const stacks = stackCount(resource)
-    panel.critDmg = (panel.critDmg ?? 0) + stacks * 12
-  },
-)
-
 export const koledaFurnaceMechanic = makePanelBuffModule(
   'agent:koleda_furnace',
   ['1101'],

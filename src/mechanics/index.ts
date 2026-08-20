@@ -15,12 +15,12 @@ import { liuyinMechanic } from './agents/liuyin'
 import { normaMechanic } from './agents/norma'
 import { piperMechanic } from './agents/piper'
 import { hugoMechanic } from './agents/hugo'
+import { harumasaMechanic } from './agents/harumasa'
 import {
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
   // benGuardShieldMechanic 已由 agents/ben.ts 替代（全队暴击+防转攻+命座）
   ellenFrostChargeMechanic,
-  harumasaEdgeMechanic,
   koledaFurnaceMechanic,
   anbyChargeMechanic,
   corinChargeMechanic,
@@ -78,7 +78,7 @@ registerAgentMechanic(pulchraHuntStepMechanic)
 registerAgentMechanic(billyHitStacksMechanic)
 // registerAgentMechanic(benGuardShieldMechanic) — replaced by benMechanic
 registerAgentMechanic(ellenFrostChargeMechanic)
-registerAgentMechanic(harumasaEdgeMechanic)
+registerAgentMechanic(harumasaMechanic)
 // sigridLanceMechanic 已由 agents/sigrid.ts 替代（出枪式/巡空枪势/影画，面板块在 computePanelPhases）
 registerAgentMechanic(sigridMechanic)
 registerAgentMechanic(qianxiaMechanic)
