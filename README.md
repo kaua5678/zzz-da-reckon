@@ -75,13 +75,14 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 - **合轴率** `comboAlignRatio`：动作时间内可与其他操作并行的比例，硬编码进 catalog 静态数据。
 - **失衡轴**：`src/data/stunAxisPresets/` 下的预设 JSON（`team` 按槽位匹配、`*` 通配、`chapter` 字段用于章鱼自动轴按伊德海莉命座选轴）。
 
-## 6. 文档（共 8 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（共 9 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
 | `docs/ARCHITECTURE.md` | **代码架构地图（AI 导航）**：五层心智模型、一次计算生命周期、核心类型地图、任务→文件决策树、数据流速查（动手前必读） |
 | `docs/ENGINE_PIPELINE_GUIDE.md` | **引擎管线导读**：一轮计算的数据流、模块钩子调用顺序、常见坑（AI 录入排查用） |
 | `docs/AGENT_RECORDING_SOP.md` | **角色录入 SOP（AI 快速上手）**：spec 字段→消费者→生效测试清单、防死数据铁律、踩坑清单 |
+| `docs/MECHANIC_PATTERNS.md` | **机制模式目录**：游戏文本 → 计算逻辑的翻译词典——九个计算维度、确定性四级（L0 直读/L1 直译/L2 近似/L3 凹分拍板）、凹分思想提炼路径（录新角色先做模式匹配） |
 | `docs/GAME_TERM_TO_CODE_FIELD.md` | 中文游戏术语 → 计算器字段映射（AI 录入时查字段用） |
 | `docs/MECHANICS_IMPLEMENTATION.md` | 角色特殊机制档案：已实现机制角色口径（洛克茜/克拉蕾/柏妮思/雅/琉音/诺姆/青衣/般岳/卢西娅/星徽·比利等）与通用自动失衡轴 |
 | `docs/FEATURES_GUIDE.md` | **Boss 选择 + 队伍对比功能手册**：操作方式、数据管道命令、修改入口表、口径与验证命令（新功能必更新） |
@@ -89,4 +90,4 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mechanism-reference.md` | 游戏底层机制理论（啵啵獭 10 期：能量/喧响/击破/异常/紊乱/防御/秽盾/风），纯参考，不随代码维护 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建。
-> 文档数量以本表为准（8 份），新增文档需同步本表。
+> 文档数量以本表为准（9 份），新增文档需同步本表。

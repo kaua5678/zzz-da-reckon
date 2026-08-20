@@ -17,7 +17,7 @@
 2. `docs/ENGINE_PIPELINE_GUIDE.md` —— 一轮计算的数据流、模块钩子调用顺序、常见坑（applyPanel 拿不到 settings、enrich 回填覆盖、moveId 匹配等）
 3. `docs/AGENT_RECORDING_SOP.md` —— 角色录入 SOP：spec 字段→消费者→生效测试清单、防死数据铁律、**命座提升率丢失根因表**
 
-辅助：`docs/GAME_TERM_TO_CODE_FIELD.md`（中文术语→字段）、`docs/MECHANICS_IMPLEMENTATION.md`（角色机制档案）、`README.md` §3（录入工作流）。
+辅助：`docs/GAME_TERM_TO_CODE_FIELD.md`（中文术语→字段）、`docs/MECHANIC_PATTERNS.md`（**机制模式目录：录新角色前先做模式匹配**）、`docs/MECHANICS_IMPLEMENTATION.md`（角色机制档案）、`README.md` §3（录入工作流）。
 
 ## 1. 硬性规则
 
