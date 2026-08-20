@@ -36,7 +36,7 @@ import { calcStunPool } from '@/core/stunPool'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { calcAnomalyPool, calcSpecialActionBonus } from '@/core/anomalyPool'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
-import { getAgentMechanic, getRegisteredAgentMechanics, type MechanicTeamMember } from '@/mechanics'
+import { getAgentMechanic, getRegisteredAgentMechanics, getRegisteredMechanicSettings, type MechanicTeamMember } from '@/mechanics'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import type {
@@ -158,6 +158,23 @@ export function computePanel(
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): PanelValues | null {
   return computePanelPhases(slot, configStore, catalogStore)?.inCombat ?? null
+}
+
+/**
+ * 把全部已注册机制滑块解析成 `id → 当前值`（用户值优先，缺省回落 setting.default）。
+ *
+ * 供 `applyPanel` 钩子读覆盖率类滑块用（AgentPanelInput.settings）——在此之前 applyPanel
+ * 拿不到 configStore，只能靠「computePanelPhases 硬编码块」或「经 panel 字段走私」两种绕法，
+ * 后者曾静默失效（般岳 rageGainCoverage）。见 mechanics/types.ts 的 AgentPanelInput 注释。
+ */
+export function resolveMechanicSettings(
+  configStore: ReturnType<typeof useConfigStore>,
+): Readonly<Record<string, number>> {
+  const out: Record<string, number> = {}
+  for (const setting of getRegisteredMechanicSettings()) {
+    out[setting.id] = configStore.getMechanicSetting(setting.id, setting.default)
+  }
+  return out
 }
 
 /**
@@ -381,14 +398,8 @@ export function computePanelPhases(
     team,
     outOfCombatPanel: result.outOfCombat,
     panel,
+    settings: resolveMechanicSettings(configStore),
   })
-  if (agent.id === '1211' && (char.cinemaLevel ?? 0) >= 4) {
-    const coverage = Math.max(0, Math.min(1,
-      configStore.getMechanicSetting('rina.c4DoubleBangbooCoverage', 1),
-    ))
-    panel.energyRegenBonusFlat = (panel.energyRegenBonusFlat ?? 0) + 0.5 * coverage
-    panel.rinaCinema4EnergyRegen = 0.5 * coverage
-  }
   // 莱特影画4：莱特位于后场时，前场角色能量获得效率 +10%（按后场时间占比折算；莱特本人不吃）。
   {
     const lighterTeamSlot = configStore.team.findIndex(c => c.agentId === '1161')

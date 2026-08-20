@@ -51,14 +51,14 @@ async function setup(cinemaLevel = 0, mateId = '1101') {
 describe('本模块', () => {
   it('防转攻 applyPanel', () => {
     const panel: any = { def: 1000, atk: 500 }
-    benMechanic.applyPanel!({ slot: 1, agent: {} as any, cinemaLevel: 0, team: [], outOfCombatPanel: panel, panel })
+    benMechanic.applyPanel!({ slot: 1, agent: {} as any, cinemaLevel: 0, team: [], outOfCombatPanel: panel, panel, settings: {} })
     expect(panel.atk).toBeCloseTo(500 + 1000 * BEN_DEF_TO_ATK)
   })
 
   it('影画2 附加行 + 影画4 反击增伤 + 影画6 失衡', () => {
     const cfg: any = { benCinemaLevel: 6, benDef: 800, parryCount: 3 }
     const panel: any = { def: 800, atk: 0 }
-    benMechanic.applyPanel!({ slot: 1, agent: {} as any, cinemaLevel: 6, team: [], outOfCombatPanel: panel, panel })
+    benMechanic.applyPanel!({ slot: 1, agent: {} as any, cinemaLevel: 6, team: [], outOfCombatPanel: panel, panel, settings: {} })
     expect(panel.stunBuildUpBonus__basic).toBe(BEN_C6_STUN_BONUS)
 
     const executions: any[] = [

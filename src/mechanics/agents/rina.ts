@@ -311,9 +311,17 @@ export const rinaMechanic: AgentMechanicModule = {
     max: 1,
     step: 0.1,
   }],
-  applyPanel: ({ cinemaLevel, panel }) => {
+  applyPanel: ({ cinemaLevel, panel, settings }) => {
     if (cinemaLevel >= 2) {
       panel.dmgBonus = (panel.dmgBonus ?? 0) + 15 * C2_COVERAGE
+    }
+    // 影画4·双邦布在外：全队能量自动回复 +0.5/s × 覆盖率滑块。
+    // 原先是 computePanelPhases 里 `agent.id === '1211'` 的硬编码块（applyPanel 拿不到滑块的历史绕法），
+    // AgentPanelInput.settings 就位后归位到模块自身。
+    if (cinemaLevel >= 4) {
+      const coverage = Math.max(0, Math.min(1, settings['rina.c4DoubleBangbooCoverage'] ?? 1))
+      panel.energyRegenBonusFlat = (panel.energyRegenBonusFlat ?? 0) + 0.5 * coverage
+      panel.rinaCinema4EnergyRegen = 0.5 * coverage
     }
   },
   buildCharConfig,

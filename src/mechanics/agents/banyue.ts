@@ -441,9 +441,10 @@ function buildBanyueCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInpu
   cfg.banyueMoveDmg = dmg
 }
 
-function applyBanyuePanel({ panel, cinemaLevel }: AgentPanelInput): void {
-  const cfg = panel as unknown as { banyueRageCoverage?: number }
-  const rageCov = Math.max(0, Math.min(1, cfg.banyueRageCoverage ?? 1))
+function applyBanyuePanel({ panel, cinemaLevel, settings }: AgentPanelInput): void {
+  // 怒相增益覆盖率：直接读已解析的滑块（历史上读 `panel.banyueRageCoverage`，而该字段从未被
+  // 写入 → 滑块恒等于 1、静默失效，见 AGENT_RECORDING_SOP §3.5「面板 buff 施加点错误」）
+  const rageCov = Math.max(0, Math.min(1, settings['banyue.rageGainCoverage'] ?? 1))
 
   // 怒相增益（强特/支援突击后，30s；覆盖率滑块近似）
   if (rageCov > 0) {
@@ -488,7 +489,6 @@ function buildBanyueExecutions({ cfg, state, executions }: AgentResourceInput): 
     // 轴模式：失衡内 = 轴内实际捏的连段块，失衡外 = 全部连段 − 轴内捏块（后摇按轴外单位数计）
     !!(cfg as unknown as Record<string, unknown>).banyueAxisActive,
   )
-  record.banyueRageCoverage = Math.max(0, Math.min(1, cfgNum(cfg, 'banyue.rageGainCoverage', 1)))
   record.banyueSwayExCount = cycle.swayExCount
 
   const times = (record.banyueMoveTimes ?? {}) as Record<string, number>

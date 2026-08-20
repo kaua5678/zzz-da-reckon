@@ -234,6 +234,21 @@ const baseConfig = {
   quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
 }
 
+// 每个用例一份干净 pinia + fetch stub。
+// 历史隐患：只有「轴内捏强特集成」describe 有 beforeEach，后面的 describe 靠上一个用例
+// 泄漏的 pinia 运行 —— 任何用例调 setMechanicSetting 都会污染后续断言（覆盖率滑块修活后立刻暴露：
+// 一个用例把 rageGainCoverage 调成 0.5，后面「怒相增益 300」用例就读到 150）。
+beforeEach(() => {
+  setActivePinia(createPinia())
+  vi.stubGlobal('fetch', vi.fn(async (url: any) => {
+    const u = String(url)
+    if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
+    if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
+    if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
+    return { ok: false, json: async () => ({}) }
+  }))
+})
+
 describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -496,6 +511,33 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     const rows2 = calc.damagePoolRows.value
     const fenShen2 = rows2.find(r => r.moveId === '1471027')
     expect(fenShen2!.note).toContain('明王+15.0%（覆盖率近似）')
+  })
+
+  // 生效测试：怒相增益覆盖率滑块必须真的改面板。
+  // 历史缺陷（AGENT_RECORDING_SOP §3.5「面板 buff 施加点错误」）：applyPanel 读
+  // `panel.banyueRageCoverage`，而该字段从未被任何代码写入 → 滑块恒等 1、静默失效。
+  // 修法：AgentPanelInput 新增已解析的 settings，applyPanel 直接读滑块。
+  // 本测试锁死「滑块 → 面板」这条链，防再次退化成死数据。
+  it('怒相增益覆盖率滑块生效：0% → 不加怒相面板；100% → 贯穿/火伤/暴伤按 Lv.7 全量加', async () => {
+    const config = await setupTeam(null)
+    const catalog = useCatalogStore()
+    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+
+    config.setMechanicSetting('banyue.rageGainCoverage', 0)
+    const panel0 = computePanelPhases(0, config, catalog)!.inCombat
+
+    config.setMechanicSetting('banyue.rageGainCoverage', 1)
+    const panel1 = computePanelPhases(0, config, catalog)!.inCombat
+
+    // 怒相增益（Lv.7，0 命）：贯穿+300 / 火伤+36% / 暴伤+36%
+    expect((panel1.sheerForceFlat ?? 0) - (panel0.sheerForceFlat ?? 0)).toBeCloseTo(300, 6)
+    expect((panel1.fireDmg ?? 0) - (panel0.fireDmg ?? 0)).toBeCloseTo(36, 6)
+    expect((panel1.critDmg ?? 0) - (panel0.critDmg ?? 0)).toBeCloseTo(36, 6)
+
+    // 半覆盖 = 线性折算（滑块真的按比例进面板，而不是 0/1 开关）
+    config.setMechanicSetting('banyue.rageGainCoverage', 0.5)
+    const panelHalf = computePanelPhases(0, config, catalog)!.inCombat
+    expect((panelHalf.fireDmg ?? 0) - (panel0.fireDmg ?? 0)).toBeCloseTo(18, 6)
   })
 })
 
