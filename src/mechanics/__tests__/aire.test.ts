@@ -82,8 +82,8 @@ describe('爱芮完整计算链', () => {
     await setup('1141', 6)
     const calc = useResourceCalc()
     const cfgC6 = calc.resourceConfig.value!.characters.find(c => c.agentId === '1501')!
-    // 6 命：基础 1000 + 影画4 异放喧响(8×70) + 影画6 进场(1200)
-    expect(cfgC6.initialDecibelGift).toBe(1000 + 8 * AIRE_C4_RELEASE_DECIBEL + AIRE_C6_DECIBEL_GIFT)
+    // 6 命：基础 1000 + 影画4 异放喧响(floor(180/10)=18×70) + 影画6 进场(1200)
+    expect(cfgC6.initialDecibelGift).toBe(1000 + 18 * AIRE_C4_RELEASE_DECIBEL + AIRE_C6_DECIBEL_GIFT)
   })
 
   it('核心异放事件：dominant 元素 + 比例模式 + 绝对音准载体', () => {
@@ -106,15 +106,24 @@ describe('爱芮完整计算链', () => {
     })
   })
 
-  it('核心异放进入伤害池（type=异放，次数=绝对音准次数）', async () => {
+  it('核心异放进入伤害池（type=异放，次数自动推导>0）', async () => {
     await setup('1141', 0)
     const calc = useResourceCalc()
     const rows = calc.damagePoolRows.value
     const releases = rows.filter(r => r.type === '异放' && r.agentId === '1501')
     expect(releases.length).toBeGreaterThan(0)
     const totalCount = releases.reduce((s, r) => s + r.count, 0)
-    expect(totalCount).toBe(8)
+    expect(totalCount).toBeGreaterThan(0)
     expect(releases.every(r => r.totalDamage > 0)).toBe(true)
+  })
+
+  it('异放次数自动推导 = 应援能量/2 + 全场应援(floor(t/6))', () => {
+    const cfg = { aireCinemaLevel: 0, aireAdditionalActive: true } as any
+    const state = { exSpecialCount: 4, chainCountTotal: 5, ultimateCount: 2 } as any
+    const events: any[] = []
+    aireMechanic.buildAnomalyEvents!({ cfg, state, events, totalTime: 180 })
+    // 应援能量 = 4×3 + 5×4 + 120×2 = 272；全场应援 = floor(180/6)=30 → 异放 = floor(272/2)+30 = 166
+    expect(events[0].count).toBe(166)
   })
 
   it('影画1：异放事件带 releaseCrit（基础25/25，掌控>100每点+0.5）', () => {
@@ -148,16 +157,16 @@ describe('爱芮完整计算链', () => {
     expect(dmg1).toBeGreaterThan(dmg0)
   })
 
-  it('影画4：异放回能/喧响按 min(异放次数, floor(t/10)) 注入', async () => {
+  it('影画4：异放回能/喧响按 floor(t/10)（10s CD 上限）注入', async () => {
     await setup('1141', 4)
     const calc = useResourceCalc()
     const cfgC4 = calc.resourceConfig.value!.characters.find(c => c.agentId === '1501')!
-    // 异放次数 8，floor(180/10)=18 → triggers=8
-    expect(cfgC4.initialEnergyGift).toBe(40 + 8 * AIRE_C4_RELEASE_ENERGY)
-    expect(cfgC4.initialDecibelGift).toBe(1000 + 8 * AIRE_C4_RELEASE_DECIBEL)
+    // 异放次数 ≥ floor(t/6)=30 > floor(180/10)=18 → triggers=18
+    expect(cfgC4.initialEnergyGift).toBe(40 + 18 * AIRE_C4_RELEASE_ENERGY)
+    expect(cfgC4.initialDecibelGift).toBe(1000 + 18 * AIRE_C4_RELEASE_DECIBEL)
   })
 
-  it('影画6：终结技/强化绝对音准 +40% 以太伤害（patchExecutions）', () => {
+  it('影画6：终结技/强化绝对音准 +40% 以太伤害（patchExecutions，妄想时刻全覆盖）', () => {
     const cfg = { aireCinemaLevel: 6, battleTime: 180 } as any
     const state = { ultimateCount: 2 } as any
     const executions = [
@@ -167,8 +176,7 @@ describe('爱芮完整计算链', () => {
     ] as any[]
     aireMechanic.patchExecutions!({ cfg, state, executions, teamFrontlineSeconds: 0 })
     expect(executions[0].dmgBonus).toBe(AIRE_C6_ETHANOL_DMG_BONUS)
-    // 妄想覆盖率 = 2×15/180 = 1/6 → 绝对音准 boost = 40 × 1/6
-    expect(executions[1].dmgBonus).toBeCloseTo(AIRE_C6_ETHANOL_DMG_BONUS * (2 * 15 / 180), 1)
+    expect(executions[1].dmgBonus).toBe(AIRE_C6_ETHANOL_DMG_BONUS) // 妄想时刻全覆盖 → 全占比
     expect(executions[2].dmgBonus).toBe(0)
   })
 })

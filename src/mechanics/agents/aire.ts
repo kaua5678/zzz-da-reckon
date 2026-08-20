@@ -15,8 +15,8 @@
  * 核心异放已建模：第三段绝对音准 #3 命中异常目标 → release 事件（dominant 元素按覆盖率分配），
  * 倍率 = 原异常单次/单跳倍率 × (初始掌控/10 × 元素比例%) × (失衡?1.5:1)，结算区=爱芮。
  * 影画1 异放暴击已建模：基础25%暴击率/25%暴伤，掌控>100每点+0.5%暴击率（releaseCrit）。
- * 影画4 异放回能/喧响已建模：min(异放次数, floor(t/10)) × (4能量+70喧响) 并入 initialEnergyGift/initialDecibelGift。
- * 影画6 强化绝对音准/终结技以太伤害+40%已建模：patchExecutions 按 moveId 加 dmgBonus（绝对音准按妄想覆盖率折算）。
+ * 影画4 异放回能/喧响已建模：floor(t/10)（10s CD 上限，异放次数≥floor(t/6)>floor(t/10)）× (4能量+70喧响) 并入 initialEnergyGift/initialDecibelGift。
+ * 影画6 强化绝对音准/终结技以太伤害+40%已建模：patchExecutions 按 moveId 加 dmgBonus（妄想时刻不退出 → 强化绝对音准全覆盖）。
  */
 import type {
   AgentCharConfigInput,
@@ -63,6 +63,12 @@ export const AIRE_C4_CD_SECONDS = 10
 /** 影画6 强化绝对音准/终结技以太伤害 +40% */
 export const AIRE_C6_ETHANOL_DMG_BONUS = 40
 export const AIRE_ULTIMATE_MOVE_ID = '1501016'
+/** 应援能量来源（总量近似）：强特 +3 / 连携 +4 / 甜心四段 +1 / 帷幕 4/s×30s=120 */
+export const AIRE_CHEER_EX = 3
+export const AIRE_CHEER_CHAIN = 4
+export const AIRE_CHEER_VEIL_PER_ULT = 120
+/** 全场应援获取 CD（秒） */
+export const AIRE_CHEER_CD_SECONDS = 6
 
 export interface AireCycle {
   cinemaLevel: number
@@ -113,10 +119,9 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput):
   record.aireC2DelusionCoverage = clampRatio(setting(cfg, 'aire.c2DelusionCoverage', 1))
   record.aireAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
   if (cinemaLevel >= 4) {
-    // 影画4：异放触发回 4 能量 + 70 喧响，10秒一次 → 整局 min(异放次数, floor(t/10)) 次
-    const releaseCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount', 8)))
-    const cdTriggers = Math.max(0, Math.floor((cfg.battleTime ?? 180) / AIRE_C4_CD_SECONDS))
-    const triggers = Math.min(releaseCount, cdTriggers)
+    // 影画4：异放触发回 4 能量 + 70 喧响，10秒一次。
+    // 异放次数 = 应援能量/2 + 全场应援 ≥ floor(t/6) > floor(t/10)，故触发次数取 10s CD 上限。
+    const triggers = Math.max(0, Math.floor((cfg.battleTime ?? 180) / AIRE_C4_CD_SECONDS))
     cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + triggers * AIRE_C4_RELEASE_ENERGY
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + triggers * AIRE_C4_RELEASE_DECIBEL
     record.aireC4ReleaseTriggers = triggers
@@ -155,13 +160,24 @@ function buildAireResourceResult({ cfg }: AgentResourceResultInput) {
   return { specResources: { aire_cycle: cycleFromCfg(cfg) } }
 }
 
-function buildAireAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
-  const pitchCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount', 8)))
-  if (pitchCount <= 0) return
+function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = Number(record.aireCinemaLevel ?? 0)
-  const totalTime = state.frontlineTime + state.backstageTime
-  // 强化版占比 ≈ 妄想时刻覆盖 = min(1, 大招次数 × 15s / 全局时间)；核心异放不区分强化/原版，仅用于口径展示
+  const additionalActive = record.aireAdditionalActive === true
+  // 绝对音准#3 次数：手动覆盖（>0）优先；否则按「应援能量/2 + 全场应援次数」自动推导
+  const manualCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount', 0)))
+  let pitchCount = manualCount
+  if (pitchCount <= 0) {
+    // 应援能量总量近似：强特 +3、连携 +4、帷幕 4/s×30s×终结技次数（额外能力门控）
+    const cheerEnergy = state.exSpecialCount * AIRE_CHEER_EX
+      + state.chainCountTotal * AIRE_CHEER_CHAIN
+      + (additionalActive ? AIRE_CHEER_VEIL_PER_ULT * state.ultimateCount : 0)
+      + Math.max(0, setting(cfg, 'aire.cheerEnergyBonus', 0))
+    // 全场应援次数 = min(异常触发次数, floor(t/6))；异常队异常触发次数通常远超 CD 上限，取上限近似
+    const cheerGain = Math.floor(totalTime / AIRE_CHEER_CD_SECONDS)
+    pitchCount = Math.floor(cheerEnergy / 2) + cheerGain
+  }
+  if (pitchCount <= 0) return
   const delusionCoverage = totalTime > 0
     ? Math.min(1, (state.ultimateCount * AIRE_DELUSION_DURATION) / totalTime)
     : 0
@@ -188,26 +204,22 @@ function buildAireAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
           masteryPerPointRatePct: AIRE_C1_RELEASE_CRIT_PER_POINT_RATE,
         }
       : undefined,
-    note: `第三段绝对音准 #3 命中异常目标触发；基底属性取基底异常元素主施加者，结算区=爱芮。强化版占比≈${(delusionCoverage * 100).toFixed(0)}%（大招次数×${AIRE_DELUSION_DURATION}s/全局时间）。`,
+    note: `第三段绝对音准 #3 命中异常目标触发（次数=应援能量/2+全场应援）；基底属性取基底异常元素主施加者，结算区=爱芮。全场应援≈${Math.floor(totalTime / AIRE_CHEER_CD_SECONDS)}次（6秒CD上限近似，异常触发次数通常远超上限）。`,
   })
 }
 
-function patchAireExecutions({ cfg, state, executions }: AgentResourceInput): void {
+function patchAireExecutions({ cfg, executions }: AgentResourceInput): void {
   const cinema = Number((cfg as unknown as Record<string, unknown>).aireCinemaLevel ?? 0)
   if (cinema < 6) return
-  const battleTime = cfg.battleTime ?? 180
-  const delusionCoverage = battleTime > 0
-    ? Math.min(1, (state.ultimateCount * AIRE_DELUSION_DURATION) / battleTime)
-    : 0
-  const pitchBoost = AIRE_C6_ETHANOL_DMG_BONUS * delusionCoverage
+  // 6命：妄想时刻不退出 → 强化版绝对音准全覆盖，强化直伤 +40% 全占比
   for (const exec of executions) {
     if (!exec.moveId) continue
     if (exec.moveId === AIRE_ULTIMATE_MOVE_ID) {
       exec.dmgBonus = (exec.dmgBonus ?? 0) + AIRE_C6_ETHANOL_DMG_BONUS
       exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画6 终结技以太伤害+${AIRE_C6_ETHANOL_DMG_BONUS}%`
-    } else if (AIRE_ABSOLUTE_PITCH_MOVE_IDS.has(exec.moveId) && pitchBoost > 0) {
-      exec.dmgBonus = (exec.dmgBonus ?? 0) + pitchBoost
-      exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画6 强化绝对音准以太伤害+${AIRE_C6_ETHANOL_DMG_BONUS}%×妄想覆盖${(delusionCoverage * 100).toFixed(0)}%`
+    } else if (AIRE_ABSOLUTE_PITCH_MOVE_IDS.has(exec.moveId)) {
+      exec.dmgBonus = (exec.dmgBonus ?? 0) + AIRE_C6_ETHANOL_DMG_BONUS
+      exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画6 强化绝对音准以太伤害+${AIRE_C6_ETHANOL_DMG_BONUS}%（妄想时刻全覆盖）`
     }
   }
 }
@@ -236,7 +248,8 @@ export const aireMechanic: AgentMechanicModule = {
   description: '异常精通+90、影画1以太积蓄抗性无视+异放暴击、影画2无视防御、影画4异放回能/喧响、影画6进场喧响+强化直伤；核心异放已按异常比例结算。',
   settings: [
     { id: 'aire.c2DelusionCoverage', label: '妄想时刻覆盖率', description: '影画2妄想时刻内额外无视8%防御的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
-    { id: 'aire.absolutePitchCount', label: '第三段绝对音准次数', description: '第三段[普通攻击：绝对音准 #3]的整局次数（每次命中异常目标触发一次异放）；默认值待按实际循环校准', default: 8, min: 0, max: 60, step: 1 },
+    { id: 'aire.absolutePitchCount', label: '绝对音准#3次数覆盖', description: '第三段[普通攻击：绝对音准 #3]整局次数的手动覆盖；0=自动（应援能量/2+全场应援），>0 强制用该值', default: 0, min: 0, max: 200, step: 1 },
+    { id: 'aire.cheerEnergyBonus', label: '应援能量额外', description: '应援能量总量额外补充（自动公式已含强特×3+连携×4+帷幕120/大招，此处补甜心四段等次要来源）', default: 0, min: 0, max: 400, step: 10 },
   ],
   buildCharConfig: buildAireCharConfig,
   buildAnomalyEvents: buildAireAnomalyEvents,
