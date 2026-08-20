@@ -13,8 +13,8 @@ import { nekomataMechanic } from './agents/nekomata'
 import { miyabiMechanic } from './agents/miyabi'
 import { liuyinMechanic } from './agents/liuyin'
 import { normaMechanic } from './agents/norma'
+import { piperMechanic } from './agents/piper'
 import {
-  piperMomentumMechanic,
   hugoAbyssEchoMechanic,
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
@@ -72,7 +72,7 @@ registerAgentMechanic(nangongMechanic)
 registerAgentMechanic(remielleMechanic)
 registerAgentMechanic(yidhariMechanic)
 registerAgentMechanic(nekomataMechanic)
-registerAgentMechanic(piperMomentumMechanic)
+registerAgentMechanic(piperMechanic)
 registerAgentMechanic(hugoAbyssEchoMechanic)
 registerAgentMechanic(pulchraHuntStepMechanic)
 registerAgentMechanic(billyHitStacksMechanic)

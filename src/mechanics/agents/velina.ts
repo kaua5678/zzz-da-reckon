@@ -467,6 +467,7 @@ export const velinaMechanic: AgentMechanicModule = {
   buildExecutions: buildVelinaExecutions,
   buildAnomalyEvents: buildVelinaAnomalyEvents,
   buildResourceResult: buildVelinaResourceResult,
+  replaceSkillExecutionExtraction: true,
   transformSkillExecutions: transformVelinaSkillExecutions,
   transformAnomalyPool: transformVelinaAnomalyPool,
   resolveExecutionDamage: resolveVelinaExecutionDamage,

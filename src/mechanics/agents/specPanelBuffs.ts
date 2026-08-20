@@ -53,18 +53,6 @@ function stackCount(resource: SpecResourceResult | undefined): number {
   return cap == null ? total : Math.min(total, Math.floor(cap))
 }
 
-export const piperMomentumMechanic = makePanelBuffModule(
-  'agent:piper_momentum',
-  ['1281'],
-  '派派·动力',
-  'piper_momentum',
-  (resource, panel) => {
-    const stacks = stackCount(resource)
-    panel.physicalAnomalyBuildUpEfficiency = (panel.physicalAnomalyBuildUpEfficiency ?? 0) + stacks * 4
-    if (stacks >= 20) panel.dmgBonus = (panel.dmgBonus ?? 0) + 18
-  },
-)
-
 export const hugoAbyssEchoMechanic = makePanelBuffModule(
   'agent:hugo_abyss_echo',
   ['1291'],

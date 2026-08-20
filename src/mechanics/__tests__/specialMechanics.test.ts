@@ -12,7 +12,6 @@ import { emptyPanel } from '@/core/panel'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import {
-  piperMomentumMechanic,
   hugoAbyssEchoMechanic,
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
@@ -93,14 +92,6 @@ describe('spec resource panel buffs', () => {
       normalizeResourceSkillType: () => 'special',
     } as any)
   }
-
-  it('applies Piper momentum stacks to physical buildup and 20-stack team damage', () => {
-    const map = resources('1281', {}, { exSpecialCount: 4, ultimateCount: 1 })
-    const panel = emptyPanel()
-    transform(piperMomentumMechanic, '1281', panel, map)
-    expect(panel.physicalAnomalyBuildUpEfficiency).toBe(80)
-    expect(panel.dmgBonus).toBe(18)
-  })
 
   it('applies Hugo abyss echo crit stats when active', () => {
     const map = resources('1291', {}, { chainCountTotal: 1, ultimateCount: 0 })

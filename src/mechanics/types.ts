@@ -154,7 +154,12 @@ export interface AgentMechanicModule {
   buildAnomalyEvents?(input: AgentEventInput): void
   /** 向角色资源结果追加专属资源明细 */
   buildResourceResult?(input: AgentResourceResultInput): Partial<CharacterResourceResult>
-  /** 倍率表提取阶段，处理专属失衡/积蓄贡献 */
+  /**
+   * 是否由 transformSkillExecutions 完全接管非普攻倍率提取。
+   * 仅在钩子会自行重建全部非普攻失衡/积蓄执行时开启；只做面板后处理时保持 false。
+   */
+  replaceSkillExecutionExtraction?: boolean
+  /** 倍率表提取阶段，处理专属失衡/积蓄贡献或最终面板后处理 */
   transformSkillExecutions?(input: AgentSkillTransformInput): void
   /** 直伤行元素/来源解析，返回 null 时走通用规则 */
   resolveExecutionDamage?(input: AgentDamageResolutionInput): { element: string; source?: string; note?: string } | null

@@ -294,6 +294,12 @@ export function computePanelPhases(
   const zhaoAdditionalActive = zhaoSlot >= 0
     ? evalAdditionalAbility(team, zhaoSlot, zhaoAgent, getAgentSpec('1341')?.additionalAbility) === true
     : false
+  // 派派额外能力·同步疾驰：同属性、同阵营或其他异常队友在队，动力20层按稳态覆盖近似。
+  const piperSlot = team.find(member => member.agentId === '1281')?.slot ?? -1
+  const piperAgent = piperSlot >= 0 ? catalogStore.getAgent('1281') ?? null : null
+  const piperAdditionalActive = piperSlot >= 0
+    ? evalAdditionalAbility(team, piperSlot, piperAgent, getAgentSpec('1281')?.additionalAbility) === true
+    : false
   // 潘引壶额外能力·食铁纳金：队伍存在[命破]或同阵营（云岿山）角色时触发（[气绝]增伤+20%，影画1再+10%）
   const panYinhuSlot = team.find(member => member.agentId === '1421')?.slot ?? -1
   const panYinhuAgent = panYinhuSlot >= 0 ? catalogStore.getAgent('1421') ?? null : null
@@ -327,6 +333,7 @@ export function computePanelPhases(
     .filter(buff => buff.id !== 'ben.additional_shield_crit_rate' || benAdditionalActive)
     .filter(buff => buff.id !== 'buff_23620b7000' || qianxiaAdditionalActive)
     .filter(buff => buff.id !== 'zhao.additional_ability.dmg_bonus' || zhaoAdditionalActive)
+    .filter(buff => buff.id !== 'piper_extra_team_damage' || piperAdditionalActive)
     .filter(buff => buff.id !== 'pan_yinhu.additional_stupefaction_dmg' || panYinhuAdditionalActive)
     .filter(buff => buff.id !== 'pan_yinhu.cinema_1_stupefaction_dmg' || panYinhuAdditionalActive)
     .filter(buff => buff.id !== 'xixifu.additional_toxin_crit_dmg' || xixifuAdditionalActive)
@@ -1471,6 +1478,7 @@ export function extractSkillExecutions(
   const charCfg = configStore.team[slot]
   const mechanic = getAgentMechanic(agentId)
   const usesModuleTransform = !!mechanic?.transformSkillExecutions
+  const replacesSkillExecutionExtraction = mechanic?.replaceSkillExecutionExtraction === true
   const team = buildMechanicTeamMembers(configStore, catalogStore)
   const anomalyUtilizationRate = configStore.getAnomalyUtilizationRate(slot)
 
@@ -1539,8 +1547,8 @@ export function extractSkillExecutions(
       continue
     }
 
-    // 模块角色由角色机制模块负责处理所有非平A倍率行。
-    if (usesModuleTransform) continue
+    // 仅显式声明接管的模块负责处理全部非普攻倍率行；面板后处理钩子仍保留通用提取。
+    if (replacesSkillExecutionExtraction) continue
 
     // 其他招式（强特、终结技、连携等）
     if (foundMove) {
