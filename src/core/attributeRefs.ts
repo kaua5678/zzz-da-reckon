@@ -24,7 +24,7 @@ export interface DamageEventAttrRef {
   /** 事件唯一标识 */
   event: string
   /** 事件类型 */
-  kind: 'anomaly' | 'disorder' | 'turbulence' | 'voidflare' | 'special_voidflare' | 'polar_assault' | 'passive_dot' | 'direct_attack'
+  kind: 'anomaly' | 'disorder' | 'turbulence' | 'voidflare' | 'special_voidflare' | 'polar_assault' | 'passive_dot' | 'direct_attack' | 'release'
   /** 基础区来源 */
   baseSource: 'virtual_weighted' | 'applier' | 'recorded_panel' | 'self' | 'none'
   /** 基础区参与属性 */
@@ -148,6 +148,18 @@ export const DAMAGE_EVENT_ATTR_REFS: Record<string, DamageEventAttrRef> = {
     dmgZone: ['anomalyDmgBonus(蕾米)', 'luminize(特殊独立乘区)'],
     multiplier: '进场记录面板 × 2.5（6命翻倍）',
     note: '基础区=蕾米进场时记录的面板；独立乘区 ×2.5。',
+  },
+  // ============ 异放（release） ============
+  release: {
+    event: '异放',
+    kind: 'release',
+    baseSource: 'applier',
+    baseStats: ['atk', 'anomalyProficiency', 'dmgBonus', 'elementDmg', 'penRatio', 'penFlat', 'refringe(异化区)'],
+    settlementSource: 'self',
+    settlementStats: ['anomalyDmgBonus', 'anomalyReleaseDmgBonus', 'anomalyCritRate', 'anomalyCritDmg', 'enemyDefReduction', 'enemyAnomalyDefReduction', 'enemyResReduction', 'enemyDamageTakenBonus', 'stunDmgMultiplierBonus'],
+    dmgZone: ['anomalyDmgBonus', 'anomalyReleaseDmgBonus(异放增伤，独立加算)'],
+    multiplier: '固定倍率（如 300%/635%）或 原异常单次倍率 × (触发者掌控/精通/10 × 初始比例%)',
+    note: '基础区=底层异常施加者（继承原异常全部质量）；结算区=异放触发者。异放不消耗原异常、不参与紊乱序列。比例型异放各元素 × 初始比例 ≈ 17.5%（风 1250×1.4%=17.5、火 50×35.7%=17.85），再乘触发者掌控/10。',
   },
   // ============ 极性强击（爱丽丝） ============
   physical_polar_assault: {

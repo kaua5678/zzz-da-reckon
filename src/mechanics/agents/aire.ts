@@ -11,15 +11,15 @@
  * - 额外能力合作舞台：击破/支援/同阵营/异常队友激活；侵蚀持续+3秒沿用 spec teamBuffs。
  *
  * 明确未建模（异常结算区/状态机）：
- * - 核心被动异放：第三段绝对音准重击命中异常目标额外结算属性异常伤害，
- *   比例为每10点初始异常掌控27.5%/14.3%/35.7%/2.5%/3.6%/1.4%（失衡时再+50%）。
- *   calcAnomalyDamage 已内置精通乘区，直接叠加会重复计入精通，故不臆造。
  * - 影画1 异放暴击（基础25%、暴伤25%、掌控>100每点+0.5%暴击率）。
  * - 影画4 异放触发回4能量+70喧响（10秒一次）。
  * - 影画6 妄想时刻不退出、强化绝对音准/终结技以太伤害+40%、全场应援/应援能量转化。
+ * 核心异放已建模：第三段绝对音准 #3 命中异常目标 → release 事件（dominant 元素按覆盖率分配），
+ * 倍率 = 原异常单次/单跳倍率 × (初始掌控/10 × 元素比例%) × (失衡?1.5:1)，结算区=爱芮。
  */
 import type {
   AgentCharConfigInput,
+  AgentEventInput,
   AgentMechanicModule,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
@@ -32,6 +32,21 @@ export const AIRE_C1_ETHER_ANOMALY_RES_IGNORE = 10
 export const AIRE_C2_DEF_IGNORE = 16
 export const AIRE_C2_DELUSION_DEF_IGNORE = 8
 export const AIRE_C6_DECIBEL_GIFT = 1200
+/** 第三段[普通攻击：绝对音准 #3] 的 moveId（异放载体） */
+export const AIRE_ABSOLUTE_PITCH_MOVE_ID = '1501007'
+/** 核心被动 Lv.7：每 10 点初始异常掌控 → 各元素异放比例（%） */
+export const AIRE_RELEASE_RATIO_PER_TEN: Record<string, number> = {
+  ether: 27.5,
+  electric: 14.3,
+  fire: 35.7,
+  physical: 2.5,
+  ice: 3.6,
+  wind: 1.4,
+}
+/** 目标失衡时，异放比例额外提升 50% */
+export const AIRE_RELEASE_STUN_BONUS_PCT = 50
+/** 妄想时刻（终极技 buff）单次持续时间（秒），用于估算强化版绝对音准占比 */
+export const AIRE_DELUSION_DURATION = 15
 
 export interface AireCycle {
   cinemaLevel: number
@@ -115,6 +130,33 @@ function buildAireResourceResult({ cfg }: AgentResourceResultInput) {
   return { specResources: { aire_cycle: cycleFromCfg(cfg) } }
 }
 
+function buildAireAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
+  const pitchCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount', 8)))
+  if (pitchCount <= 0) return
+  const totalTime = state.frontlineTime + state.backstageTime
+  // 强化版占比 ≈ 妄想时刻覆盖 = min(1, 大招次数 × 15s / 全局时间)；核心异放不区分强化/原版，仅用于口径展示
+  const delusionCoverage = totalTime > 0
+    ? Math.min(1, (state.ultimateCount * AIRE_DELUSION_DURATION) / totalTime)
+    : 0
+  events.push({
+    eventId: 'aire_absolute_pitch_release',
+    eventName: '绝对音准·异放',
+    eventType: 'release',
+    element: 'dominant',
+    carrierMoveId: AIRE_ABSOLUTE_PITCH_MOVE_ID,
+    carrierMoveName: '普通攻击：绝对音准 #3',
+    count: pitchCount,
+    formula: 'releaseMultiplier = 原异常单次倍率 × (异常掌控/10 × 初始比例%) × (失衡?1.5:1)',
+    fields: ['anomalyMastery', 'AIRE_RELEASE_RATIO_PER_TEN', 'AIRE_RELEASE_STUN_BONUS_PCT'],
+    releaseRatio: {
+      basis: 'anomalyMastery',
+      perTenByElement: AIRE_RELEASE_RATIO_PER_TEN,
+      stunBonusPct: AIRE_RELEASE_STUN_BONUS_PCT,
+    },
+    note: `第三段绝对音准 #3 命中异常目标触发；基底属性取基底异常元素主施加者，结算区=爱芮。强化版占比≈${(delusionCoverage * 100).toFixed(0)}%（大招次数×${AIRE_DELUSION_DURATION}s/全局时间）。`,
+  })
+}
+
 function buildAireResourceSections({ result }: AgentResourceSectionsInput) {
   const cycle = result.specResources?.aire_cycle as AireCycle | undefined
   if (!cycle) return []
@@ -136,11 +178,13 @@ export const aireMechanic: AgentMechanicModule = {
   id: 'agent:aire',
   agentIds: [AIRE_ID],
   name: '爱芮·控场核心',
-  description: '异常精通+90、影画1以太积蓄抗性无视、影画2无视防御、影画6进场喧响；异放未建模。',
+  description: '异常精通+90、影画1以太积蓄抗性无视、影画2无视防御、影画6进场喧响；核心异放已按异常比例结算。',
   settings: [
     { id: 'aire.c2DelusionCoverage', label: '妄想时刻覆盖率', description: '影画2妄想时刻内额外无视8%防御的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
+    { id: 'aire.absolutePitchCount', label: '第三段绝对音准次数', description: '第三段[普通攻击：绝对音准 #3]的整局次数（每次命中异常目标触发一次异放）；默认值待按实际循环校准', default: 8, min: 0, max: 60, step: 1 },
   ],
   buildCharConfig: buildAireCharConfig,
+  buildAnomalyEvents: buildAireAnomalyEvents,
   transformSkillExecutions: applyAirePanel,
   buildResourceResult: buildAireResourceResult,
   resourceSections: buildAireResourceSections,

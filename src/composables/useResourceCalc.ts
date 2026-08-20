@@ -32,7 +32,7 @@ import { calcStunAxisStack, allocateAxisWindows } from '@/core/stunAxisStack'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
 import { calcAnomalyPool, calcSpecialActionBonus } from '@/core/anomalyPool'
-import { distributeIntegerByWeight, getMainApplierSlot } from '@/core/anomalyPool/helpers'
+import { distributeIntegerByWeight, getMainApplierSlot, ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentMechanic, getRegisteredAgentMechanics, type MechanicTeamMember } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, computeLiuyinHugCounts, resolveUltimateTargetSlot, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
@@ -50,6 +50,7 @@ import type {
   SpecialActionBonusResult,
   SkillExecution,
   AnomalyEventRecord,
+  AnomalyEventExecution,
   AnomalyProgress,
 } from '@/types/resource'
 import type { PanelValues, TeammateBuff, AgentSkills, SkillMove, Agent } from '@/types/catalog'
@@ -1692,6 +1693,18 @@ function applyNormaHatChain(
       })
     }
 
+    /** 解析异放倍率：固定 releaseMultiplier（Type A）或「原异常单次倍率 × 比例」（Type B） */
+    function releaseMultiplierFor(event: AnomalyEventExecution, element: string, triggerPanel: PanelValues, stunCov: number): number {
+      if (event.releaseRatio) {
+        const rr = event.releaseRatio
+        const basisValue = Number(triggerPanel[rr.basis] ?? 0)
+        const perTenPct = rr.perTenByElement[element] ?? 0
+        const stunMult = (rr.stunBonusPct ?? 0) > 0 ? 1 + ((rr.stunBonusPct ?? 0) / 100) * stunCov : 1
+        return (ANOMALY_SINGLE_HIT_MULTIPLIER[element] ?? 0) * (basisValue / 10) * (perTenPct / 100) * stunMult
+      }
+      return parseReleaseMultiplier(event)
+    }
+
     const seenDirectIds = new Map<string, number>()
     for (const charResult of adjustedResourceResult.value.characters) {
       const slot = charResult.slot
@@ -1825,16 +1838,19 @@ function applyNormaHatChain(
       for (const event of charResult.anomalyEventExecutions ?? []) {
         if (event.count <= 0) continue
         if (event.eventType === 'release') {
-          if (event.eventId === 'burnice_flowfire_release') {
+          const triggerPanel = damagePanels.value[slot]
+          if (event.element === 'dominant') {
+            // 异放元素 = 目标当前异常状态，按异常覆盖率占比分配次数（柏妮思/爱芮同款）
             const totalRelease = Math.max(0, Math.floor(event.count))
             const coverageRates = anomalyPoolResult.value?.coverage?.perElementCoverageRate ?? {}
             let candidates = Object.entries(coverageRates)
               .filter(([, rate]) => rate > 0)
               .map(([element, rate]) => ({ element, autoRatio: rate }))
-            if (candidates.length === 0) candidates = [{ element: 'fire', autoRatio: 1 }]
+            if (candidates.length === 0) candidates = [{ element: agent?.damageElement ?? 'physical', autoRatio: 1 }]
+            const settingNs = event.eventId.split('_')[0] ?? 'release'
             const userWeights = candidates.map(({ element, autoRatio }) => ({
               element,
-              weight: Math.max(0, configStore.getMechanicSetting(`burnice.releaseShare:${element}`, autoRatio)),
+              weight: Math.max(0, configStore.getMechanicSetting(`${settingNs}.releaseShare:${element}`, autoRatio)),
             }))
             const totalWeight = userWeights.reduce((sum, item) => sum + item.weight, 0)
             const effectiveWeights = totalWeight > 0
@@ -1857,12 +1873,12 @@ function applyNormaHatChain(
                 agentId: charResult.agentId,
                 name: event.eventName,
                 count,
-                multiplier: parseReleaseMultiplier(event),
+                multiplier: releaseMultiplierFor(event, element, triggerPanel, stunCoverage.value),
                 source: event.carrierMoveName || event.carrierMoveId || event.eventId,
                 note: `${event.note ?? ''}；${element}异常覆盖占比分配`,
                 element,
-                panel: damagePanels.value[baseSlot] ?? damagePanels.value[slot],
-                settlementPanel: damagePanels.value[slot],
+                panel: damagePanels.value[baseSlot] ?? triggerPanel,
+                settlementPanel: triggerPanel,
               })
             }
             continue
@@ -1873,11 +1889,11 @@ function applyNormaHatChain(
             agentId: charResult.agentId,
             name: event.eventName,
             count: event.count,
-            multiplier: parseReleaseMultiplier(event),
+            multiplier: releaseMultiplierFor(event, event.element ?? 'wind', triggerPanel, stunCoverage.value),
             source: event.carrierMoveName || event.carrierMoveId || event.eventId,
             note: event.note,
             element: event.element ?? 'wind',
-            settlementPanel: damagePanels.value[slot],
+            settlementPanel: triggerPanel,
           })
         }
       }

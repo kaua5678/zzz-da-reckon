@@ -7,6 +7,9 @@ import {
   AIRE_C2_DELUSION_DEF_IGNORE,
   AIRE_C6_DECIBEL_GIFT,
   AIRE_CORE_PROFICIENCY,
+  AIRE_ABSOLUTE_PITCH_MOVE_ID,
+  AIRE_RELEASE_RATIO_PER_TEN,
+  AIRE_RELEASE_STUN_BONUS_PCT,
   computeAireCycle,
   aireMechanic,
 } from '@/mechanics/agents/aire'
@@ -77,5 +80,36 @@ describe('爱芮完整计算链', () => {
     const calc = useResourceCalc()
     const cfgC6 = calc.resourceConfig.value!.characters.find(c => c.agentId === '1501')!
     expect(cfgC6.initialDecibelGift).toBe(1000 + AIRE_C6_DECIBEL_GIFT)
+  })
+
+  it('核心异放事件：dominant 元素 + 比例模式 + 绝对音准载体', () => {
+    const cfg = { 'setting:aire.absolutePitchCount': 8 } as any
+    const state = { frontlineTime: 120, backstageTime: 60, ultimateCount: 2 } as any
+    const events: any[] = []
+    aireMechanic.buildAnomalyEvents!({ cfg, state, events, totalTime: 180 })
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      eventId: 'aire_absolute_pitch_release',
+      eventType: 'release',
+      element: 'dominant',
+      carrierMoveId: AIRE_ABSOLUTE_PITCH_MOVE_ID,
+      count: 8,
+    })
+    expect(events[0].releaseRatio).toMatchObject({
+      basis: 'anomalyMastery',
+      perTenByElement: AIRE_RELEASE_RATIO_PER_TEN,
+      stunBonusPct: AIRE_RELEASE_STUN_BONUS_PCT,
+    })
+  })
+
+  it('核心异放进入伤害池（type=异放，次数=绝对音准次数）', async () => {
+    await setup('1141', 0)
+    const calc = useResourceCalc()
+    const rows = calc.damagePoolRows.value
+    const releases = rows.filter(r => r.type === '异放' && r.agentId === '1501')
+    expect(releases.length).toBeGreaterThan(0)
+    const totalCount = releases.reduce((s, r) => s + r.count, 0)
+    expect(totalCount).toBe(8)
+    expect(releases.every(r => r.totalDamage > 0)).toBe(true)
   })
 })

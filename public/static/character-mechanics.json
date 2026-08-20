@@ -4327,27 +4327,24 @@
           "codePaths": [
             "src/mechanics/agents/aire.ts"
           ],
-          "note": "异常精通+90计入面板；影画1以太积蓄抗性无视、影画2无视防御、影画6进场喧响接入。"
+          "note": "异常精通+90计入面板；核心异放（绝对音准#3→release事件，dominant按覆盖率分配）接入；影画1以太积蓄抗性无视、影画2无视防御、影画6进场喧响接入。"
         }
       ],
       "mechanics": [
         {
           "id": "core_passive_1501",
           "name": "核心被动：控场核心",
-          "implementation": "partially_implemented",
+          "implementation": "implemented",
           "implementedParts": [
-            "异常精通提升90点计入面板，抬升异常/异放基底。"
+            "异常精通提升90点计入面板，抬升异常/异放基底。",
+            "核心异放：第三段[普通攻击：绝对音准#3]命中异常目标触发release事件（dominant元素按覆盖率分配）；倍率=原异常单次/单跳倍率×(初始掌控/10×元素比例%)×(失衡?1.5:1)；基底取主施加者、结算区=爱芮。"
           ],
-          "pendingParts": [
-            "异放（每10点初始异常掌控27.5%/14.3%/35.7%/2.5%/3.6%/1.4%，失衡再+50%）属异常结算区，calcAnomalyDamage已内置精通乘区，未建模以免重复计入精通。"
-          ],
+          "pendingParts": [],
           "codePaths": [
             "src/mechanics/agents/aire.ts"
           ],
-          "status": "partially_implemented",
-          "pending": [
-            "异放（每10点初始异常掌控27.5%/14.3%/35.7%/2.5%/3.6%/1.4%，失衡再+50%）属异常结算区，calcAnomalyDamage已内置精通乘区，未建模以免重复计入精通。"
-          ]
+          "status": "implemented",
+          "pending": []
         },
         {
           "id": "additional_ability_1501",
@@ -4427,17 +4424,16 @@
       "corePassive": {
         "id": "core_passive_1501",
         "name": "核心被动：控场核心",
-        "implementation": "partially_implemented",
+        "implementation": "implemented",
         "implementedParts": [
-          "异常精通提升90点计入面板，抬升异常/异放基底。"
+          "异常精通提升90点计入面板，抬升异常/异放基底。",
+          "核心异放：第三段[普通攻击：绝对音准#3]命中异常目标触发release事件（dominant元素按覆盖率分配）；倍率=原异常单次/单跳倍率×(初始掌控/10×元素比例%)×(失衡?1.5:1)；基底取主施加者、结算区=爱芮。"
         ],
-        "pendingParts": [
-          "异放（每10点初始异常掌控27.5%/14.3%/35.7%/2.5%/3.6%/1.4%，失衡再+50%）属异常结算区，calcAnomalyDamage已内置精通乘区，未建模以免重复计入精通。"
-        ],
+        "pendingParts": [],
         "codePaths": [
           "src/mechanics/agents/aire.ts"
         ],
-        "status": "partially_implemented"
+        "status": "implemented"
       },
       "additionalAbility": {
         "id": "additional_ability_1501",

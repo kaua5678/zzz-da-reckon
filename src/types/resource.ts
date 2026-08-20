@@ -490,6 +490,18 @@ export interface AnomalyEventExecution {
   fields: string[]
   /** 说明 */
   note?: string
+  /**
+   * 比例型异放（eventType='release' 且非固定 releaseMultiplier）。
+   * 倍率 = 原异常单次/单跳倍率(element) × (触发者[basis]/10 × perTenByElement[element]%) × 失衡加成。
+   * basis 取触发者面板的异常掌控或异常精通；stunBonusPct 为失衡时比例额外提升（%）。
+   */
+  releaseRatio?: {
+    basis: 'anomalyMastery' | 'anomalyProficiency'
+    /** 每 10 点 basis → 的百分比（key = element，如 { ether: 27.5, wind: 1.4 }） */
+    perTenByElement: Record<string, number>
+    /** 目标失衡时，该比例额外提升 N%（如 50 = ×1.5） */
+    stunBonusPct?: number
+  }
 }
 
 /** 通用专属资源展示段，由角色机制模块生成 */

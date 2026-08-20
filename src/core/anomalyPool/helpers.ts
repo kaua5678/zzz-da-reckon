@@ -1288,6 +1288,21 @@ export const STANDARD_DOT_CONFIG: Record<string, { tickMultiplier: number; tickI
 }
 
 /**
+ * 异常「单次/单跳」倍率（%）：异放/单次结算类事件的基底倍率。
+ * DoT 类取单跳倍率，单次类（强击/碎冰/风化）取单次倍率。
+ * 与「原属性异常伤害 × 初始比例」口径对齐：例如风 1250%×1.4%=17.5%、火 50%×35.7%=17.85%，
+ * 各元素 × 初始比例 ≈ 17.5%，再乘掌控/10 转模（用户确认口径）。
+ */
+export const ANOMALY_SINGLE_HIT_MULTIPLIER: Record<string, number> = {
+  fire: STANDARD_DOT_CONFIG.fire.tickMultiplier,        // 50
+  electric: STANDARD_DOT_CONFIG.electric.tickMultiplier, // 125
+  ether: STANDARD_DOT_CONFIG.ether.tickMultiplier,      // 62.5
+  physical: 713,                                        // 强击 713% 单次
+  ice: 500,                                             // 碎冰 500% 单次
+  wind: 1250,                                           // 风化 1250% 单次
+}
+
+/**
  * 计算标准元素 DOT 伤害（灼烧/感电/侵蚀）
  *
  * 每 tick 伤害 = 异常质量 × 结算区
