@@ -19,7 +19,6 @@ import {
   anbyChargeMechanic,
   corinChargeMechanic,
   graceChargeMechanic,
-  prometheusGuiltyMechanic,
   zhendouHeartfireMechanic,
   yeshuguangMingxinMechanic,
   peiluoProminenceMechanic,
@@ -156,11 +155,7 @@ describe('spec resource panel buffs', () => {
       normalizeResourceSkillType: () => 'special',
     })
     expect(miyabiPanel.enemyDefReduction).toBe(36)
-
-    const guiltyMap = resources('1541', {}, { exSpecialCount: 1, disorderCount: 0, ultimateCount: 0 })
-    const guiltyPanel = emptyPanel()
-    transform(prometheusGuiltyMechanic, '1541', guiltyPanel, guiltyMap)
-    expect(guiltyPanel.enemyDefReduction).toBe(40)
+    // 普罗米娅有罪推定已迁移到 agents/promia.ts 模块，见 __tests__/promia.test.ts
   })
 
   it('applies Zhendou heartfire, Yeshuguang mingxin and Aire proficiency', () => {

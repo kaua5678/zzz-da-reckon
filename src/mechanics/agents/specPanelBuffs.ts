@@ -147,18 +147,6 @@ export const graceChargeMechanic = makePanelBuffModule(
   },
 )
 
-export const prometheusGuiltyMechanic = makePanelBuffModule(
-  'agent:prometheus_guilty',
-  ['1541'],
-  '普罗米娅·有罪推定',
-  'prometheus_guilty_presumption',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) > 0) {
-      panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + 40
-    }
-  },
-)
-
 export const zhendouHeartfireMechanic = makePanelBuffModule(
   'agent:zhendou_heartfire',
   ['1441'],

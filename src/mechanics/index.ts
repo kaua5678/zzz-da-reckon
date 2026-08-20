@@ -21,6 +21,7 @@ import { evelynMechanic } from './agents/evelyn'
 import { vivianMechanic } from './agents/vivian'
 import { anbyZeroMechanic } from './agents/anbyZero'
 import { aireMechanic } from './agents/aire'
+import { promiaMechanic } from './agents/promia'
 import {
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
@@ -29,8 +30,7 @@ import {
   anbyChargeMechanic,
   corinChargeMechanic,
   graceChargeMechanic,
-	  prometheusGuiltyMechanic,
-  zhendouHeartfireMechanic,
+	  zhendouHeartfireMechanic,
   peiluoProminenceMechanic,
   sethShieldMechanic,
   jufufuTigerRoarMechanic,
@@ -99,7 +99,6 @@ registerAgentMechanic(graceChargeMechanic)
 registerAgentMechanic(miyabiMechanic)
 registerAgentMechanic(liuyinMechanic)
 registerAgentMechanic(normaMechanic)
-registerAgentMechanic(prometheusGuiltyMechanic)
 registerAgentMechanic(zhendouHeartfireMechanic)
 registerAgentMechanic(yeshuguangMechanic)
 registerAgentMechanic(lucyMechanic)
@@ -112,6 +111,7 @@ registerAgentMechanic(caesarMechanic)
 registerAgentMechanic(zhaoMechanic)
 registerAgentMechanic(benMechanic)
 registerAgentMechanic(aireMechanic)
+registerAgentMechanic(promiaMechanic)
 registerAgentMechanic(peiluoProminenceMechanic)
 registerAgentMechanic(sethShieldMechanic)
 registerAgentMechanic(anbyZeroMechanic)
