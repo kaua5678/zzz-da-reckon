@@ -1404,34 +1404,55 @@
         "zhCN": "艾莲",
         "en": "Ellen"
       },
-      "specialResources": [],
+      "specialResources": [
+        {
+          "id": "ellen_cycle",
+          "name": "急冻充能与冰渊潜袭",
+          "status": "implemented_approximation",
+          "codePaths": [
+            "src/mechanics/agents/ellen.ts"
+          ],
+          "note": "充能获取按原文拆分（剪击/强特/影画4），消耗折算为急冻修剪法段数；冰渊潜袭按真实moveId生成。"
+        }
+      ],
       "mechanics": [
         {
           "id": "core_passive_1191",
           "name": "核心被动：凌牙厉齿",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "艾莲在[冲刺攻击：冰渊潜袭]中发动蓄力剪击，或消耗[急冻充能]发动[普通攻击：急冻修剪法]时，招式的暴击伤害提升100%； 上述效果对[连携技]、[终结技]、[普通攻击：霜锋]和[普通攻击：冰刃浪]同样生效。"
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "采用catalog当前导入的潜能强化版核心被动Lv.7：冰渊潜袭（蓄力剪击）与急冻修剪法暴伤+100%，强化版并对连携技、终结技、霜锋、冰刃浪生效。",
+            "暴伤按执行行级critDmgBonus定向挂在受益招式，不再全局加面板暴伤。",
+            "冰渊潜袭、急冻修剪法按真实moveId轮转生成执行行，计入伤害与失衡/异常提取。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
+          "pendingParts": [
+            "潜能强化版对连携/终结/霜锋/冰刃浪的生效按catalog口径启用，未做潜能门控。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/ellen.ts"
+          ],
+          "status": "implemented_approximation",
           "pending": [
-            "艾莲在[冲刺攻击：冰渊潜袭]中发动蓄力剪击，或消耗[急冻充能]发动[普通攻击：急冻修剪法]时，招式的暴击伤害提升100%； 上述效果对[连携技]、[终结技]、[普通攻击：霜锋]和[普通攻击：冰刃浪]同样生效。"
+            "潜能强化版对连携/终结/霜锋/冰刃浪的生效按catalog口径启用，未做潜能门控。"
           ]
         },
         {
           "id": "additional_ability_1191",
           "name": "额外能力：风暴潮",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "队伍中存在与自身属性或阵营相同的角色或[击破]角色时触发： 艾莲造成冰属性伤害时，后继冰属性伤害提升3%，持续10秒，最多叠加10层，重复触发时刷新持续时间。"
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "同属性或同阵营（强化版另含击破）队友激活；风暴潮每层冰伤+3%按平均层数计入面板冰伤。",
+            "10秒刷新与最多10层按平均层数近似。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
+          "pendingParts": [
+            "潜能极冰带每层暴伤与满层无视冰抗未建模（项目暂无潜能输入）。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/ellen.ts"
+          ],
+          "status": "implemented_approximation",
           "pending": [
-            "队伍中存在与自身属性或阵营相同的角色或[击破]角色时触发： 艾莲造成冰属性伤害时，后继冰属性伤害提升3%，持续10秒，最多叠加10层，重复触发时刷新持续时间。"
+            "潜能极冰带每层暴伤与满层无视冰抗未建模（项目暂无潜能输入）。"
           ]
         },
         {
@@ -1460,18 +1481,22 @@
       "cinemaImplementation": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "冰渊潜袭快速剪击获取急冻充能提升至3点、蓄力剪击提升至6点；每消耗1点充能暴击率+2%按平均层数计入面板。"
+          ],
           "pending": [
-            "影画1 凛冬前兆：在[冲刺攻击：冰渊潜袭]中发动快速剪击命中敌人时，获得的[急冻充能]提升至3点；在[冲刺攻击：冰渊潜袭]中发动蓄力剪击命中敌人时，获得的[急冻充能]提升至6点；每消耗1点[急冻充能]，艾莲的暴击率提升2%，持续15秒，最多叠加6层，每层效果单独结算持续时间。"
+            "每层15秒独立结算持续时间按平均层数近似。"
           ]
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "发动强化特殊技时每点持有急冻充能暴伤+20%（封顶60%），按平均持有充能折算。"
+          ],
           "pending": [
-            "影画2 冰洋掠食者：发动第三段[普通攻击：急冻修剪法]后，可以直接衔接发动[强化特殊技：鲨卷风]；发动[强化特殊技]时，每拥有1点[急冻充能]，当前招式造成的暴击伤害提升20%，最多提升60%。"
+            "第三段急冻修剪法直接衔接鲨卷风的招式衔接未建模。"
           ]
         },
         {
@@ -1484,10 +1509,12 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "partially_implemented",
+          "implemented": [
+            "队伍角色冻结/失衡时获得6点急冻充能，按连携次数近似计入充能获取。"
+          ],
           "pending": [
-            "影画4 无休寒潮：队伍中任意角色对敌人施加[冻结]效果或使敌人失衡时，自身获得6点[急冻充能]和[快蓄]效果，并回复4点能量，能量回复效果10秒内最多触发一次。"
+            "[快蓄]状态与回复4点能量（10秒一次）未建模。"
           ]
         },
         {
@@ -1500,35 +1527,48 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "partially_implemented",
+          "implemented": [
+            "发动强特/连携/快蓄后穿透率+20%按整局覆盖率计入面板。"
+          ],
           "pending": [
-            "影画6 盛宴时分：发动[强化特殊技]、[连携技]或获得[快蓄]时，艾莲的穿透率提升20%，持续6秒，同时获得1层[盛宴]，[盛宴]最多叠加3层；拥有3层[盛宴]后，在[冲刺攻击：冰渊潜袭]中发动蓄力剪击命中敌人时，消耗所有[盛宴]，使当前招式造成的伤害提升250%。"
+            "[盛宴]3层后蓄力剪击伤害+250%缺蓄力剪击独立moveId载体，未建模。"
           ]
         }
       ],
       "corePassive": {
         "id": "core_passive_1191",
         "name": "核心被动：凌牙厉齿",
-        "implementation": "not_described_not_implemented",
-        "implementedParts": [],
-        "pendingParts": [
-          "艾莲在[冲刺攻击：冰渊潜袭]中发动蓄力剪击，或消耗[急冻充能]发动[普通攻击：急冻修剪法]时，招式的暴击伤害提升100%； 上述效果对[连携技]、[终结技]、[普通攻击：霜锋]和[普通攻击：冰刃浪]同样生效。"
+        "implementation": "implemented_approximation",
+        "implementedParts": [
+          "采用catalog当前导入的潜能强化版核心被动Lv.7：冰渊潜袭（蓄力剪击）与急冻修剪法暴伤+100%，强化版并对连携技、终结技、霜锋、冰刃浪生效。",
+          "暴伤按执行行级critDmgBonus定向挂在受益招式，不再全局加面板暴伤。",
+          "冰渊潜袭、急冻修剪法按真实moveId轮转生成执行行，计入伤害与失衡/异常提取。"
         ],
-        "codePaths": [],
-        "status": "not_described_not_implemented"
+        "pendingParts": [
+          "潜能强化版对连携/终结/霜锋/冰刃浪的生效按catalog口径启用，未做潜能门控。"
+        ],
+        "codePaths": [
+          "src/mechanics/agents/ellen.ts"
+        ],
+        "status": "implemented_approximation"
       },
       "additionalAbility": {
         "id": "additional_ability_1191",
         "name": "额外能力：风暴潮",
-        "trigger": "待人工核对触发条件",
-        "implementation": "not_described_not_implemented",
-        "implementedParts": [],
-        "pendingParts": [
-          "队伍中存在与自身属性或阵营相同的角色或[击破]角色时触发： 艾莲造成冰属性伤害时，后继冰属性伤害提升3%，持续10秒，最多叠加10层，重复触发时刷新持续时间。"
+        "trigger": "同属性或同阵营角色（强化版另含击破）",
+        "implementation": "implemented_approximation",
+        "implementedParts": [
+          "同属性或同阵营（强化版另含击破）队友激活；风暴潮每层冰伤+3%按平均层数计入面板冰伤。",
+          "10秒刷新与最多10层按平均层数近似。"
         ],
-        "codePaths": [],
-        "status": "not_described_not_implemented"
+        "pendingParts": [
+          "潜能极冰带每层暴伤与满层无视冰抗未建模（项目暂无潜能输入）。"
+        ],
+        "codePaths": [
+          "src/mechanics/agents/ellen.ts"
+        ],
+        "status": "implemented_approximation"
       }
     },
     "1201": {

@@ -15,7 +15,6 @@ import {
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
   nekomataPurrMechanic,
-  ellenFrostChargeMechanic,
   koledaFurnaceMechanic,
   anbyChargeMechanic,
   corinChargeMechanic,
@@ -106,18 +105,12 @@ describe('spec resource panel buffs', () => {
     // 本·守卫护盾暴击改由 teammate-buffs + benMechanic 承担，见 ben.test.ts
   })
 
-  it('applies Nekomata, Ellen and Koleda panel buffs', () => {
+  it('applies Nekomata and Koleda panel buffs', () => {
     const nekoMap = resources('1021', {}, { frontlineTime: 60, exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 })
     expect(nekoMap.nekomata_purr?.total).toBe(100)
     const nekoPanel = emptyPanel()
     transform(nekomataPurrMechanic, '1021', nekoPanel, nekoMap)
     expect(nekoPanel.dmgBonus).toBe(60)
-
-    const ellenMap = resources('1191', {}, { chainCountTotal: 1, ultimateCount: 0 })
-    const ellenPanel = emptyPanel()
-    const ellenBase = emptyPanel()
-    transform(ellenFrostChargeMechanic, '1191', ellenPanel, ellenMap)
-    expect(ellenPanel.critDmg - ellenBase.critDmg).toBe(100)
 
     // 希格莉德（1591）已迁移到 agents/sigrid.ts 模块，面板差分见 __tests__/sigrid.test.ts
 

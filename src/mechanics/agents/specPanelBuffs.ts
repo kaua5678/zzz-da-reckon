@@ -100,18 +100,6 @@ export const nekomataPurrMechanic = makePanelBuffModule(
   },
 )
 
-export const ellenFrostChargeMechanic = makePanelBuffModule(
-  'agent:ellen_frost_charge',
-  ['1191'],
-  '艾莲·急冻充能',
-  'ellen_frost_charge',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) > 0) {
-      panel.critDmg = (panel.critDmg ?? 0) + 100
-    }
-  },
-)
-
 export const koledaFurnaceMechanic = makePanelBuffModule(
   'agent:koleda_furnace',
   ['1101'],
