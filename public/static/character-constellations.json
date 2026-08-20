@@ -2112,11 +2112,12 @@
      "cinema": 1,
      "status": "implemented_approximation",
      "implemented": [
-      "核心被动施加的失衡易伤倍率额外+20%（teammate-buff stunDmgMultiplierBonusAlways，合计55%）"
+      "核心被动施加的失衡易伤倍率额外+20%（teammate-buff stunDmgMultiplierBonusAlways，合计55%）",
+      "狙击姿态有效命中获得绝意由25提升至31.25，上限由100提升至125",
+      "普通协奏狙杀2秒冷却通过可调总次数控制"
      ],
      "pending": [
-      "协奏狙杀冷却降至2秒未建模（扳机自身循环）",
-      "[绝意]获取+25%与上限125未建模（扳机自身资源）"
+      "协奏狙杀2秒冷却未建立逐秒时间轴"
      ]
     },
     {
@@ -2139,10 +2140,13 @@
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "每次进入或延长协战后，下一次协奏生成200%攻击力的断离伤害行",
+      "断离120%冲击力失衡倍率已保留在合成执行数据"
+     ],
      "pending": [
-      "匿息隐踪：队伍其他角色协奏狙杀触发[断离]，附加扳机200%攻击力伤害并累积120%冲击力失衡值（触发者为其他角色，未建模）"
+      "合成断离行尚未进入失衡池"
      ]
     },
     {
@@ -2157,10 +2161,13 @@
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "implemented_approximation",
+     "implemented": [
+      "进场获得5枚破甲凶弹，每消耗25点绝意补1枚（整局总量按无库存溢出近似）",
+      "狙击姿态命中触发1200%攻击力电伤，独立伤害行获得50%增伤"
+     ],
      "pending": [
-      "冥河彼岸：[破甲凶弹]命中额外造成扳机1200%攻击力电伤且该伤害+50%（扳机自身伤害行，未建模）"
+      "0.2秒触发冷却与库存溢出等待逐事件顺序模型"
      ]
     }
    ]

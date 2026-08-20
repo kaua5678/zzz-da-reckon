@@ -1,53 +1,28 @@
-import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
-import { useCatalogStore } from '@/stores/catalog'
-import { useConfigStore } from '@/stores/config'
+import { describe, expect, it } from 'vitest'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
-import { triggerMechanic } from '@/mechanics/agents/trigger'
-
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
-
-const baseConfig = {
-  wEngineId: '', wEngineModLevel: 1,
-  driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
-  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
-  quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
-}
-
-function stubFetch() {
-  vi.stubGlobal('fetch', vi.fn(async (url: unknown) => {
-    const value = String(url)
-    if (value.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (value.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-    if (value.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
-}
+import { setupHarness } from '@/test/harness'
+import {
+  TRIGGER_ADDITIONAL_MOVE_IDS,
+  TRIGGER_C4_DAMAGE_MULTIPLIER,
+  TRIGGER_C4_DAZE_MULTIPLIER,
+  TRIGGER_C6_DAMAGE_MULTIPLIER,
+  TRIGGER_C6_DMG_BONUS,
+  computeTriggerCycle,
+  triggerMechanic,
+} from '@/mechanics/agents/trigger'
 
 async function setup(mateId = '1081', cinemaLevel = 0) {
-  const catalog = useCatalogStore()
-  await catalog.load()
-  await catalog.loadTeammateBuffs()
-  const config = useConfigStore()
-  for (const buff of config.globalBuffs) buff.enabled = false
-  // slot0 扳机，slot1 队友（1081 比利 = 物理·强攻 → 触发额外能力）
-  config.team[0] = { slot: 0, agentId: '1361', cinemaLevel, ...baseConfig } as any
-  config.team[1] = { slot: 1, agentId: mateId, cinemaLevel: 0, ...baseConfig } as any
-  config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
-  config.syncTeammateBuffsFromTeam()
-  return { catalog, config }
+  const result = await setupHarness([
+    { agentId: '1361', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    '',
+  ])
+  for (const buff of result.config.globalBuffs) buff.enabled = false
+  return result
 }
 
 describe('「扳机」（1361）失衡易伤拐与命座差分', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
-  })
-
-  it('核心被动失衡易伤+35%（Always 通道，失衡前亦生效）；影画1 再+20%、影画2 全队暴伤+24%', async () => {
+  it('核心被动失衡易伤+35%；影画1再+20%、影画2全队暴伤+24%', async () => {
     const { catalog, config } = await setup('1081', 0)
     const p0 = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(p0.stunDmgMultiplierBonusAlways).toBeCloseTo(35, 5)
@@ -64,46 +39,81 @@ describe('「扳机」（1361）失衡易伤拐与命座差分', () => {
   })
 })
 
-describe('「扳机」额外能力·灵目银灯（暴击率超40%转失衡值）', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
+describe('「扳机」额外能力·灵目银灯', () => {
+  it('公式有阈值和上限，并且只修正三条追加攻击', () => {
+    const panel = { critRate: 80, additionalAbilityActive: 1 } as any
+    triggerMechanic.applyPanel!({ panel } as any)
+    expect(panel.triggerAdditionalStunBuildUp).toBe(60)
+    expect(panel.stunBuildUpBonus ?? 0).toBe(0)
+
+    const target = [...TRIGGER_ADDITIONAL_MOVE_IDS].map(moveId => ({ moveId, stunBuildUpBonus: 0 }))
+    const other = [{ moveId: '1361010', stunBuildUpBonus: 0 }, { moveId: '1361014', stunBuildUpBonus: 0 }]
+    triggerMechanic.patchExecutions!({ cfg: { panel }, executions: [...target, ...other], state: {} } as any)
+    for (const exec of target) expect(exec.stunBuildUpBonus).toBe(60)
+    for (const exec of other) expect(exec.stunBuildUpBonus).toBe(0)
+
+    const capped = { critRate: 120, additionalAbilityActive: 1 } as any
+    triggerMechanic.applyPanel!({ panel: capped } as any)
+    expect(capped.triggerAdditionalStunBuildUp).toBe(75)
+    const off = { critRate: 120, additionalAbilityActive: 0 } as any
+    triggerMechanic.applyPanel!({ panel: off } as any)
+    expect(off.triggerAdditionalStunBuildUp ?? 0).toBe(0)
   })
 
-  it('公式 min(75, (暴击率-40)×1.5)，未激活不施加', () => {
-    const mk = (critRate: number, active: number) => ({
-      slot: 0, agent: { id: '1361' } as any, cinemaLevel: 0, team: [],
-      panel: { critRate, additionalAbilityActive: active, stunBuildUpBonus: 0 } as any,
-    })
-    const cap = mk(90, 1); triggerMechanic.applyPanel!(cap as any)
-    expect((cap.panel as any).stunBuildUpBonus).toBeCloseTo(75, 5)
+  it('门控：强攻或同属性队友激活，火属性防护队友不激活', async () => {
+    const attack = await setup('1081')
+    expect((computePanelPhases(0, attack.config, attack.catalog)!.inCombat as any).additionalAbilityActive).toBe(1)
+    const electric = await setup('1181')
+    expect((computePanelPhases(0, electric.config, electric.catalog)!.inCombat as any).additionalAbilityActive).toBe(1)
+    const defense = await setup('1121')
+    expect((computePanelPhases(0, defense.config, defense.catalog)!.inCombat as any).additionalAbilityActive ?? 0).toBe(0)
+  })
+})
 
-    const mid = mk(80, 1); triggerMechanic.applyPanel!(mid as any)
-    expect((mid.panel as any).stunBuildUpBonus).toBeCloseTo(60, 5)
-
-    const low = mk(40, 1); triggerMechanic.applyPanel!(low as any)
-    expect((low.panel as any).stunBuildUpBonus).toBeCloseTo(0, 5)
-
-    const off = mk(90, 0); triggerMechanic.applyPanel!(off as any)
-    expect((off.panel as any).stunBuildUpBonus).toBeCloseTo(0, 5)
+describe('「扳机」绝意、协奏与影画伤害行', () => {
+  it('影画1将单次绝意获取提高25%并把上限提高到125', () => {
+    const c0 = computeTriggerCycle({ cinemaLevel: 0, sniperHitCount: 5, normalCount: 0, hellCount: 0, exSpecialCount: 0, ultimateCount: 0 })
+    const c1 = computeTriggerCycle({ cinemaLevel: 1, sniperHitCount: 5, normalCount: 0, hellCount: 0, exSpecialCount: 0, ultimateCount: 0 })
+    expect(c0.resolveGainPerSniperHit).toBe(25)
+    expect(c0.resolveGain).toBe(100)
+    expect(c1.resolveGainPerSniperHit).toBe(31.25)
+    expect(c1.resolveGain).toBe(125)
   })
 
-  it('门控：[强攻]或同属性（电）队友激活；火属性防护队友不激活', async () => {
-    // 正例1：1081 比利（强攻）
-    const pos1 = await setup('1081')
-    const pPos1 = computePanelPhases(0, pos1.config, pos1.catalog)!.inCombat as any
-    expect(pPos1.additionalAbilityActive).toBe(1)
+  it('协战免费次数与付费绝意共同形成协奏总量', () => {
+    const cycle = computeTriggerCycle({ cinemaLevel: 4, sniperHitCount: 4, normalCount: 4, hellCount: 2, exSpecialCount: 1, ultimateCount: 1 })
+    expect(cycle.resolveSpent).toBe(22)
+    expect(cycle.freeCoordinatedCount).toBe(10)
+    expect(cycle.coordinatedCount).toBe(16)
+    expect(cycle.c4DuanliCount).toBe(2)
+  })
 
-    // 正例2：1181 格莉丝（电属性，同属性）
-    const pos2 = await setup('1181')
-    const pPos2 = computePanelPhases(0, pos2.config, pos2.catalog)!.inCombat as any
-    expect(pPos2.additionalAbilityActive).toBe(1)
+  it('影画4生成200%攻击伤害和120%冲击失衡的断离行', () => {
+    const executions: any[] = []
+    triggerMechanic.buildExecutions!({
+      cfg: { triggerCinemaLevel: 4, triggerSniperHitCount: 4, triggerNormalCount: 4, triggerHellCount: 2 },
+      state: { exSpecialCount: 1, ultimateCount: 1 }, executions,
+    } as any)
+    const row = executions.find(e => e.moveId === '1361_c4_duanli')
+    expect(row.count).toBe(2)
+    expect(row.damageMultiplier).toBe(TRIGGER_C4_DAMAGE_MULTIPLIER)
+    expect(row.dazeMultiplier).toBe(TRIGGER_C4_DAZE_MULTIPLIER)
+  })
 
-    // 负例：1121 本（火属性·防护，非[强攻]非同属性）
-    const neg = await setup('1121')
-    const pNeg = computePanelPhases(0, neg.config, neg.catalog)!.inCombat as any
-    expect(pNeg.additionalAbilityActive ?? 0).toBe(0)
-    // 基础暴击率5 < 40 阈值：即使激活失衡值加成也为0
-    expect(pPos1.stunBuildUpBonus ?? 0).toBeCloseTo(0, 5)
+  it('影画6按狙击命中与弹药总量生成1200%电伤、行级增伤50%', () => {
+    const cycle = computeTriggerCycle({ cinemaLevel: 6, sniperHitCount: 8, normalCount: 10, hellCount: 0, exSpecialCount: 0, ultimateCount: 0 })
+    expect(cycle.c6BulletGainFromSpend).toBe(1)
+    expect(cycle.c6BulletCount).toBe(6)
+
+    const executions: any[] = []
+    triggerMechanic.buildExecutions!({
+      cfg: { triggerCinemaLevel: 6, triggerSniperHitCount: 8, triggerNormalCount: 10, triggerHellCount: 0 },
+      state: { exSpecialCount: 0, ultimateCount: 0 }, executions,
+    } as any)
+    const row = executions.find(e => e.moveId === '1361_c6_armor_piercing')
+    expect(row.count).toBe(6)
+    expect(row.damageMultiplier).toBe(TRIGGER_C6_DAMAGE_MULTIPLIER)
+    expect(row.dmgBonus).toBe(TRIGGER_C6_DMG_BONUS)
+    expect(row.element).toBe('electric')
   })
 })

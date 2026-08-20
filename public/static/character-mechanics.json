@@ -2455,6 +2455,160 @@
     "status": "not_described_not_implemented"
    }
   },
+  "1361": {
+   "name": {
+    "zhCN": "扳机",
+    "en": "Trigger"
+   },
+   "specialResources": [
+    {
+     "id": "trigger_resolve",
+     "name": "绝意与协奏",
+     "implementation": "implemented_approximation",
+     "implementedParts": [
+      "狙击命中获得绝意",
+      "普通协奏与冥狱消耗绝意",
+      "强特与终结技协战提供免费协奏"
+     ],
+     "pendingParts": [
+      "协奏、冥狱冷却与协战持续时间的逐秒状态"
+     ],
+     "codePaths": [
+      "src/mechanics/agents/trigger.ts"
+     ],
+     "status": "implemented_approximation",
+     "pending": []
+    }
+   ],
+   "mechanics": [
+    {
+     "id": "core_passive_1361",
+     "name": "核心被动：破隙幽瞳",
+     "implementation": "implemented_approximation",
+     "implementedParts": [
+      "追加攻击施加35%失衡易伤，失衡前亦生效",
+      "影画1额外20%失衡易伤"
+     ],
+     "pendingParts": [
+      "5秒持续时间按整局高覆盖近似"
+     ],
+     "codePaths": [
+      "public/static/teammate-buffs.json",
+      "src/mechanics/agents/trigger.ts"
+     ],
+     "status": "implemented_approximation",
+     "pending": []
+    },
+    {
+     "id": "additional_ability_1361",
+     "name": "额外能力：灵目银灯",
+     "implementation": "implemented",
+     "implementedParts": [
+      "强攻或同属性队友门控",
+      "暴击率超40%部分按1.5倍转追加攻击失衡值，上限75%",
+      "仅作用于协奏狙杀与冥狱三条追加攻击"
+     ],
+     "pendingParts": [],
+     "codePaths": [
+      "src/specs/agents/trigger.json",
+      "src/mechanics/agents/trigger.ts"
+     ],
+     "status": "implemented",
+     "pending": []
+    }
+   ],
+   "cinemaImplementation": [
+    {
+     "cinema": 1,
+     "status": "implemented_approximation",
+     "implemented": [
+      "失衡易伤额外20%",
+      "绝意获取25%强化与上限125",
+      "协奏冷却通过可调次数控制"
+     ],
+     "pending": [
+      "2秒冷却未建立逐秒时间轴"
+     ]
+    },
+    {
+     "cinema": 2,
+     "status": "implemented_approximation",
+     "implemented": [
+      "猎眸按满4层近似，全队暴伤提升24%"
+     ],
+     "pending": []
+    },
+    {
+     "cinema": 3,
+     "status": "implemented_generic_skill_level",
+     "implemented": [
+      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+     ],
+     "pending": []
+    },
+    {
+     "cinema": 4,
+     "status": "implemented_approximation",
+     "implemented": [
+      "协战后下一次协奏触发200%攻击力断离伤害",
+      "120%冲击力失衡倍率保留在执行数据"
+     ],
+     "pending": [
+      "断离合成行尚未进入失衡池"
+     ]
+    },
+    {
+     "cinema": 5,
+     "status": "implemented_generic_skill_level",
+     "implemented": [
+      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+     ],
+     "pending": []
+    },
+    {
+     "cinema": 6,
+     "status": "implemented_approximation",
+     "implemented": [
+      "进场5枚、每消耗25绝意补1枚破甲凶弹",
+      "1200%攻击力电伤与行级50%增伤"
+     ],
+     "pending": [
+      "库存溢出与0.2秒冷却等待逐事件顺序模型"
+     ]
+    }
+   ],
+   "corePassive": {
+    "id": "core_passive_1361",
+    "name": "核心被动：破隙幽瞳",
+    "implementation": "implemented_approximation",
+    "implementedParts": [
+     "35%失衡易伤与影画1额外20%"
+    ],
+    "pendingParts": [
+     "5秒窗口按高覆盖近似"
+    ],
+    "codePaths": [
+     "public/static/teammate-buffs.json"
+    ],
+    "status": "implemented_approximation"
+   },
+   "additionalAbility": {
+    "id": "additional_ability_1361",
+    "name": "额外能力：灵目银灯",
+    "trigger": "队伍存在强攻或同属性角色",
+    "implementation": "implemented",
+    "implementedParts": [
+     "teamConditions",
+     "追加攻击定向失衡值公式"
+    ],
+    "pendingParts": [],
+    "codePaths": [
+     "src/specs/agents/trigger.json",
+     "src/mechanics/agents/trigger.ts"
+    ],
+    "status": "implemented"
+   }
+  },
   "1371": {
    "name": {
     "zhCN": "仪玄",
