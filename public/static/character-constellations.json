@@ -2587,11 +2587,12 @@
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "明灯愿与斩妄附伤1500%"
-     ]
+     "status": "implemented",
+     "implemented": [
+      "明灯愿：进场2层、每轮明心境+1层，每3层将一次归尘改为斩妄",
+      "每次白毛收尾追加1500%攻击力物理伤害，并按满帷幕易伤结算"
+     ],
+     "pending": []
     }
    ]
   },

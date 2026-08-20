@@ -3014,30 +3014,38 @@
     {
      "id": "core_passive_1431",
      "name": "核心被动：照破无明",
-     "implementation": "not_described_not_implemented",
-     "implementedParts": [],
-     "pendingParts": [
-      "非[明心境]状态且未拥有6点[青溟剑势]时，部分攻击会缓慢积攒[青溟剑势]；任意方式获得[青溟剑势]时，每溢出1点[青溟剑势]，将转化为1层[载物]效果，至多叠加3层，在退出[明心境]状态时，会消耗所有[载物]获得对应层数的[青溟剑势]。 进入战场时，获得[合道]效果，暴击率提升30%，造成的伤害提升25%。 释放[终结技：逐云惊霆]或[登场技：照影]后，叶瞬光将进入[明心境]状态，并开启[以太帷幕·决裁]；[以太帷幕·决裁]与[明心境]持续时间相同，持续16秒，处于后场时，持续时间不再减少；处于[明心境]状态下，叶瞬光将使用更加强力的招式，造成的物理伤害均为凛刃伤害。 [以太帷幕·决裁]持续期间，敌人进入[以太帷幕·决裁]时，将基于其此时的失衡易伤倍率为其附加帷幕易伤效果，期间叶瞬光发动的招式对敌人造成伤害时都将不计算敌人的失衡易伤加成，转而计算帷幕易伤加成；帷幕易伤加成上限为110%，[以太帷幕·决裁]结束时移除帷幕易伤效果。"
+     "implementation": "implemented_approximation",
+     "implementedParts": [
+      "合道常驻暴击率与伤害提升",
+      "局外剑势、青溟剑势、观止与载物的整局循环",
+      "明心境打满与短轴招式计划",
+      "帷幕易伤封顶及白毛招式满易伤结算",
+      "凛刃按物理直伤继承，紊乱按物理继承"
      ],
-     "codePaths": [],
-     "status": "not_described_not_implemented",
-     "pending": [
-      "非[明心境]状态且未拥有6点[青溟剑势]时，部分攻击会缓慢积攒[青溟剑势]；任意方式获得[青溟剑势]时，每溢出1点[青溟剑势]，将转化为1层[载物]效果，至多叠加3层，在退出[明心境]状态时，会消耗所有[载物]获得对应层数的[青溟剑势]。 进入战场时，获得[合道]效果，暴击率提升30%，造成的伤害提升25%。 释放[终结技：逐云惊霆]或[登场技：照影]后，叶瞬光将进入[明心境]状态，并开启[以太帷幕·决裁]；[以太帷幕·决裁]与[明心境]持续时间相同，持续16秒，处于后场时，持续时间不再减少；处于[明心境]状态下，叶瞬光将使用更加强力的招式，造成的物理伤害均为凛刃伤害。 [以太帷幕·决裁]持续期间，敌人进入[以太帷幕·决裁]时，将基于其此时的失衡易伤倍率为其附加帷幕易伤效果，期间叶瞬光发动的招式对敌人造成伤害时都将不计算敌人的失衡易伤加成，转而计算帷幕易伤加成；帷幕易伤加成上限为110%，[以太帷幕·决裁]结束时移除帷幕易伤效果。"
-     ]
+     "pendingParts": [],
+     "codePaths": [
+      "src/mechanics/agents/yeshuguang.ts"
+     ],
+     "status": "implemented_approximation",
+     "pending": []
     },
     {
      "id": "additional_ability_1431",
      "name": "额外能力：溯影惊鸿",
-     "implementation": "not_described_not_implemented",
-     "implementedParts": [],
-     "pendingParts": [
-      "队伍中存在[支援]或[防护]角色时触发： 队友开启任意[以太帷幕]时，获得3点[青溟剑势]，若自身已经处于[明心境]状态，则会转化为3层[载物]效果。"
+     "implementation": "implemented_approximation",
+     "implementedParts": [
+      "支援或防护队友条件门控",
+      "队友帷幕次数可调，每次为叶瞬光提供3点局外剑势"
      ],
-     "codePaths": [],
-     "status": "not_described_not_implemented",
-     "pending": [
-      "队伍中存在[支援]或[防护]角色时触发： 队友开启任意[以太帷幕]时，获得3点[青溟剑势]，若自身已经处于[明心境]状态，则会转化为3层[载物]效果。"
-     ]
+     "pendingParts": [
+      "后续新增帷幕角色时，可由对应角色模块自动注入帷幕次数"
+     ],
+     "codePaths": [
+      "src/specs/agents/1431.json",
+      "src/mechanics/agents/yeshuguang.ts"
+     ],
+     "status": "implemented_approximation",
+     "pending": []
     }
    ],
    "cinemaImplementation": [
@@ -3087,11 +3095,12 @@
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "明灯愿与斩妄附伤1500%"
-     ]
+     "status": "implemented",
+     "implemented": [
+      "明灯愿：进场2层、每轮明心境+1层，每3层将一次归尘改为斩妄",
+      "每次白毛收尾追加1500%攻击力物理伤害，并按满帷幕易伤结算"
+     ],
+     "pending": []
     }
    ],
    "corePassive": {
@@ -3100,14 +3109,13 @@
     "implementation": "implemented_approximation",
     "implementedParts": [
      "合道常驻",
-     "明心境打满循环",
+     "局外剑势、青溟剑势、观止与载物的整局循环",
+     "明心境打满与短轴招式计划",
      "满易伤白毛",
-     "帷幕易伤封顶"
+     "帷幕易伤封顶",
+     "凛刃按物理直伤继承"
     ],
-    "pendingParts": [
-     "凛刃标签",
-     "明灯愿"
-    ],
+    "pendingParts": [],
     "codePaths": [
      "src/mechanics/agents/yeshuguang.ts"
     ],
@@ -3117,16 +3125,19 @@
     "id": "additional_ability_1431",
     "name": "额外能力：溯影惊鸿",
     "trigger": "队伍存在支援或防护",
-    "implementation": "partially_implemented",
+    "implementation": "implemented_approximation",
     "implementedParts": [
      "teamConditions",
-     "帷幕次数滑块+3剑势"
+     "帷幕次数可调，每次提供3点局外剑势"
     ],
     "pendingParts": [
-     "后续角色自动注入帷幕次数"
+     "后续新增帷幕角色时，可由对应角色模块自动注入帷幕次数"
     ],
-    "codePaths": [],
-    "status": "partially_implemented"
+    "codePaths": [
+     "src/specs/agents/1431.json",
+     "src/mechanics/agents/yeshuguang.ts"
+    ],
+    "status": "implemented_approximation"
    }
   },
   "1441": {
