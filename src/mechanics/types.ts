@@ -28,6 +28,8 @@ export interface AgentPanelInput {
   agent: Agent
   cinemaLevel: number
   team: MechanicTeamMember[]
+  /** 未合并局内 buff 的面板，供“初始属性”类转化读取 */
+  outOfCombatPanel: Readonly<PanelValues>
   panel: PanelValues
 }
 

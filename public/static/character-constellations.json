@@ -1996,11 +1996,10 @@
      "cinema": 2,
      "status": "implemented_approximation",
      "implemented": [
+      "照自身攻击力提升20%（zhao.ts 按局外攻击基底结算，生命回复触发与50秒持续按整局覆盖近似）",
       "队伍中其他角色攻击力提升15%（teammate-buff atkPct，生命回复触发条件按常驻近似）"
      ],
-     "pending": [
-      "照自身攻击力提升20%未建模（属照自身面板）"
-     ]
+     "pending": []
     },
     {
      "cinema": 3,
@@ -2014,11 +2013,12 @@
     },
     {
      "cinema": 4,
-     "status": "not_described_not_implemented",
-     "implemented": [],
-     "pending": [
-      "轻盈踏痕：开启[以太帷幕]获得250点喧响值；[终结技]/[连携技]/[普通攻击：最终裁决]暴击伤害提升40%（均属照自身，未建模）"
-     ]
+     "status": "implemented_approximation",
+     "implemented": [
+      "进场满霜寒开启一次以太帷幕时获得250点喧响（zhao.ts 按开局一次性赠送近似）",
+      "终结技、连携技、普通攻击：最终裁决按moveId获得40%暴击伤害"
+     ],
+     "pending": []
     },
     {
      "cinema": 5,
@@ -2032,10 +2032,12 @@
     },
     {
      "cinema": 6,
-     "status": "not_described_not_implemented",
-     "implemented": [],
+     "status": "partially_implemented",
+     "implemented": [
+      "核心被动按初始最大生命值提高暴击率的效果提升至原本125%"
+     ],
      "pending": [
-      "无价亦是价值：核心被动暴击率效果提升至125%；[普通攻击：最终裁决]蓄力额外伤害提升至140%且蓄力时长不被消耗（均属照自身，未建模）"
+      "普通攻击：最终裁决的蓄力生命附伤提升至140%且蓄力时长不消耗，等待蓄力时长池与生命附伤执行模型"
      ]
     }
    ]

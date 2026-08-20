@@ -2213,6 +2213,138 @@
     "status": "not_described_not_implemented"
    }
   },
+  "1341": {
+   "name": {
+    "zhCN": "照",
+    "en": "Zhao"
+   },
+   "specialResources": [],
+   "mechanics": [
+    {
+     "id": "core_passive_1341",
+     "name": "核心被动：最佳同事",
+     "implementation": "implemented_approximation",
+     "implementedParts": [
+      "按局外初始最大生命值每1000点提高1.4%暴击率",
+      "进场100点霜寒值按可开启一次以太帷幕近似",
+      "帷幕期间全队最大生命值提升5%，开启时全队攻击力提升1000"
+     ],
+     "pendingParts": [
+      "霜寒值后续积攒与重复登场技、帷幕循环"
+     ],
+     "codePaths": [
+      "src/mechanics/agents/zhao.ts",
+      "src/specs/agents/zhao.json"
+     ],
+     "status": "implemented_approximation",
+     "pending": []
+    },
+    {
+     "id": "additional_ability_1341",
+     "name": "额外能力：凝聚力",
+     "implementation": "implemented_approximation",
+     "implementedParts": [
+      "强攻、异常或支援队友条件门控",
+      "按照局外生命值计算全队10%至40%增伤"
+     ],
+     "pendingParts": [],
+     "codePaths": [
+      "src/specs/agents/zhao.json",
+      "src/composables/resourceCalc/helpers.ts"
+     ],
+     "status": "implemented_approximation",
+     "pending": []
+    }
+   ],
+   "cinemaImplementation": [
+    {
+     "cinema": 1,
+     "status": "implemented_approximation",
+     "implemented": [
+      "全队无视目标15%全属性伤害抗性"
+     ],
+     "pending": []
+    },
+    {
+     "cinema": 2,
+     "status": "implemented_approximation",
+     "implemented": [
+      "照自身攻击力提升20%",
+      "队伍中其他角色攻击力提升15%"
+     ],
+     "pending": []
+    },
+    {
+     "cinema": 3,
+     "status": "implemented_generic_skill_level",
+     "implemented": [
+      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+     ],
+     "pending": []
+    },
+    {
+     "cinema": 4,
+     "status": "implemented_approximation",
+     "implemented": [
+      "开启一次帷幕获得250点喧响",
+      "最终裁决、连携技、终结技暴击伤害提升40%"
+     ],
+     "pending": []
+    },
+    {
+     "cinema": 5,
+     "status": "implemented_generic_skill_level",
+     "implemented": [
+      "通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。"
+     ],
+     "pending": []
+    },
+    {
+     "cinema": 6,
+     "status": "partially_implemented",
+     "implemented": [
+      "核心被动生命转暴击效果提升至原本125%"
+     ],
+     "pending": [
+      "最终裁决蓄力生命附伤提升至140%且蓄力时长不消耗"
+     ]
+    }
+   ],
+   "corePassive": {
+    "id": "core_passive_1341",
+    "name": "核心被动：最佳同事",
+    "implementation": "implemented_approximation",
+    "implementedParts": [
+     "初始生命转暴击",
+     "进场满霜寒开启一次帷幕近似",
+     "帷幕生命与攻击拐力"
+    ],
+    "pendingParts": [
+     "后续霜寒积攒与重复帷幕循环"
+    ],
+    "codePaths": [
+     "src/mechanics/agents/zhao.ts",
+     "src/specs/agents/zhao.json"
+    ],
+    "status": "implemented_approximation"
+   },
+   "additionalAbility": {
+    "id": "additional_ability_1341",
+    "name": "额外能力：凝聚力",
+    "trigger": "队伍存在强攻、异常或支援",
+    "implementation": "implemented_approximation",
+    "implementedParts": [
+     "teamConditions",
+     "按局外生命计算10%至40%全队增伤"
+    ],
+    "pendingParts": [],
+    "codePaths": [
+     "src/specs/agents/zhao.json",
+     "src/composables/resourceCalc/helpers.ts"
+    ],
+    "status": "implemented_approximation"
+   }
+  },
   "1351": {
    "name": {
     "zhCN": "波可娜",

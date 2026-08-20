@@ -372,6 +372,7 @@ export function computePanelPhases(
     agent,
     cinemaLevel: char.cinemaLevel ?? 0,
     team,
+    outOfCombatPanel: result.outOfCombat,
     panel,
   })
   if (agent.id === '1211' && (char.cinemaLevel ?? 0) >= 4) {

@@ -1,43 +1,21 @@
-import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
-import { useCatalogStore } from '@/stores/catalog'
-import { useConfigStore } from '@/stores/config'
+import { describe, expect, it } from 'vitest'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
-
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
-
-const baseConfig = {
-  wEngineId: '', wEngineModLevel: 1,
-  driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
-  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
-  quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
-}
-
-function stubFetch() {
-  vi.stubGlobal('fetch', vi.fn(async (url: unknown) => {
-    const value = String(url)
-    if (value.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (value.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-    if (value.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
-}
+import { setupHarness } from '@/test/harness'
+import {
+  ZHAO_C4_CRIT_DMG,
+  ZHAO_C4_DECIBEL,
+  ZHAO_C4_MOVE_IDS,
+  zhaoMechanic,
+} from '@/mechanics/agents/zhao'
 
 async function setup(mateId = '1081', cinemaLevel = 0) {
-  const catalog = useCatalogStore()
-  await catalog.load()
-  await catalog.loadTeammateBuffs()
-  const config = useConfigStore()
-  for (const buff of config.globalBuffs) buff.enabled = false
-  // slot0 照，slot1 队友（1081 比利 = 物理·强攻 → 触发额外能力）
-  config.team[0] = { slot: 0, agentId: '1341', cinemaLevel, ...baseConfig } as any
-  config.team[1] = { slot: 1, agentId: mateId, cinemaLevel: 0, ...baseConfig } as any
-  config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
-  config.syncTeammateBuffsFromTeam()
-  return { catalog, config }
+  const result = await setupHarness([
+    { agentId: '1341', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    '',
+  ])
+  for (const buff of result.config.globalBuffs) buff.enabled = false
+  return result
 }
 
 /** 照的增伤公式：clamp(floor((初始最大生命值-15000)/400)+10, 10, 40) */
@@ -46,11 +24,6 @@ function zhaoDmgBonusExpected(hp: number): number {
 }
 
 describe('照（1341）额外能力·凝聚力门控', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
-  })
-
   it('[强攻]队友在队：全队增伤公式生效；仅防护队友：被门控过滤', async () => {
     // 正例：1081 比利（强攻）→ 增伤 buff 生效，差分 = 公式值（源 = 照局外生命）
     const pos = await setup('1081')
@@ -77,11 +50,6 @@ describe('照（1341）额外能力·凝聚力门控', () => {
 })
 
 describe('照核心被动拐力（无条件部分）', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
-  })
-
   it('以太帷幕·涌泉：全队生命+5%、攻击+1000（Lv.12）', async () => {
     const { catalog, config } = await setup('1081', 0)
     const phases = computePanelPhases(0, config, catalog)!
@@ -93,12 +61,53 @@ describe('照核心被动拐力（无条件部分）', () => {
   })
 })
 
-describe('照影画拐力（teammate-buffs 按命座门控）', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
+describe('照自身核心与影画机制', () => {
+  it('核心按局外生命转暴击，影画6只将该转化提升至125%', async () => {
+    const c0 = await setup('1081', 0)
+    const p0 = computePanelPhases(0, c0.config, c0.catalog)!
+    const outHp = (p0.outOfCombat as any).hp as number
+    const coreAtC0 = (p0.inCombat as any).zhaoCoreCritRate as number
+    expect(coreAtC0).toBeCloseTo(outHp / 1000 * 1.4, 5)
+
+    const c6 = await setup('1081', 6)
+    const p6 = computePanelPhases(0, c6.config, c6.catalog)!
+    const coreAtC6 = (p6.inCombat as any).zhaoCoreCritRate as number
+    expect(coreAtC6 - coreAtC0).toBeCloseTo(outHp / 1000 * 1.4 * 0.25, 5)
   })
 
+  it('影画2自身攻击按局外攻击的20%增加，不放大局内固定攻击', async () => {
+    const c0 = await setup('1081', 0)
+    const p0 = computePanelPhases(0, c0.config, c0.catalog)!
+    const c2 = await setup('1081', 2)
+    const p2 = computePanelPhases(0, c2.config, c2.catalog)!
+    expect((p2.inCombat as any).atk - (p0.inCombat as any).atk)
+      .toBeCloseTo((p2.outOfCombat as any).atk * 0.2, 5)
+  })
+
+  it('影画4开帷幕一次性获得250喧响', () => {
+    const cfg3 = { initialDecibelGift: 1000 } as any
+    zhaoMechanic.buildCharConfig!({ cinemaLevel: 3, cfg: cfg3 } as any)
+    expect(cfg3.initialDecibelGift).toBe(1000)
+
+    const cfg4 = { initialDecibelGift: 1000 } as any
+    zhaoMechanic.buildCharConfig!({ cinemaLevel: 4, cfg: cfg4 } as any)
+    expect(cfg4.initialDecibelGift).toBe(1000 + ZHAO_C4_DECIBEL)
+  })
+
+  it('影画4只为最终裁决、连携和终结技增加40%暴伤', () => {
+    const target = [...ZHAO_C4_MOVE_IDS].map(moveId => ({ moveId, critDmgBonus: 0 }))
+    const other = [{ moveId: '1341001', critDmgBonus: 0 }, { moveId: '1341010', critDmgBonus: 0 }]
+    zhaoMechanic.patchExecutions!({
+      cfg: { zhaoCinemaLevel: 4 },
+      executions: [...target, ...other],
+      state: {},
+    } as any)
+    for (const exec of target) expect(exec.critDmgBonus).toBe(ZHAO_C4_CRIT_DMG)
+    for (const exec of other) expect(exec.critDmgBonus).toBe(0)
+  })
+})
+
+describe('照影画拐力（teammate-buffs 按命座门控）', () => {
   it('命座差分（作用于队友 slot1）：1命全属抗无视15%、2命队伍其他角色攻击+15%', async () => {
     const { catalog, config } = await setup('1081', 0)
     const phases0 = computePanelPhases(1, config, catalog)!
@@ -118,14 +127,15 @@ describe('照影画拐力（teammate-buffs 按命座门控）', () => {
     expect(p2.atk - p0.atk).toBeCloseTo(atkBase * 0.15, 0)
   })
 
-  it('影画2 原文「队伍中其他角色」：照自身不吃该攻击加成', async () => {
+  it('影画2 原文「队伍中其他角色」：照自身只获得自身20%，不叠加队友15%', async () => {
     const { catalog, config } = await setup('1081', 2)
     const phases2 = computePanelPhases(0, config, catalog)!
     const atkWithC2 = (phases2.inCombat as any).atk as number
+    const atkBase = (phases2.outOfCombat as any).atk as number
 
     config.team[0].cinemaLevel = 0
     config.syncTeammateBuffsFromTeam()
     const atkAtC0 = (computePanelPhases(0, config, catalog)!.inCombat as any).atk as number
-    expect(atkWithC2 - atkAtC0).toBeCloseTo(0, 0)
+    expect(atkWithC2 - atkAtC0).toBeCloseTo(atkBase * 0.2, 5)
   })
 })

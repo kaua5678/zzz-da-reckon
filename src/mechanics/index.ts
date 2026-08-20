@@ -48,6 +48,7 @@ import { yaojiayinMechanic } from './agents/yaojiayin'
 import { nicoleMechanic } from './agents/nicole'
 import { soukakuMechanic } from './agents/soukaku'
 import { caesarMechanic } from './agents/caesar'
+import { zhaoMechanic } from './agents/zhao'
 import { benMechanic } from './agents/ben'
 import { sigridMechanic } from './agents/sigrid'
 import { qianxiaMechanic } from './agents/qianxia'
@@ -104,6 +105,7 @@ registerAgentMechanic(yaojiayinMechanic)
 registerAgentMechanic(nicoleMechanic)
 registerAgentMechanic(soukakuMechanic)
 registerAgentMechanic(caesarMechanic)
+registerAgentMechanic(zhaoMechanic)
 registerAgentMechanic(benMechanic)
 registerAgentMechanic(aireProficiencyMechanic)
 registerAgentMechanic(peiluoProminenceMechanic)
