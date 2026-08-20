@@ -3065,34 +3065,52 @@
         "zhCN": "零号·安比",
         "en": "Soldier 0 - Anby"
       },
-      "specialResources": [],
+      "specialResources": [
+        {
+          "id": "anby_zero_cycle",
+          "name": "银星、白雷与电磁涡流",
+          "status": "implemented_approximation",
+          "codePaths": [
+            "src/mechanics/agents/anbyZero.ts"
+          ],
+          "note": "白雷次数=苍光发动+影画1强特×3；雷殛每3次、电磁涡流每6次折算为追加攻击执行行。"
+        }
+      ],
       "mechanics": [
         {
           "id": "core_passive_1381",
           "name": "核心被动：电位差",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "零号·安比对拥有[银星]标记的敌人造成的伤害提升25%；敌方单位被施加[银星]标记后，受到的[追加攻击]暴击伤害额外提升，提升效果等同于零号·安比暴击伤害的30%；[银星]标记期间，受到来自队友的[追加攻击]伤害会为敌方单位累积[银星]充能，该效果5秒内最多触发一次； [银星]的[追加攻击]暴击伤害提升效果，额外提升零号·安比暴击伤害的5%；拥有[白雷]的敌方目标被击败时，会对最近的敌方目标发动[特殊技：雷殛]。"
+          "implementation": "partially_implemented",
+          "implementedParts": [
+            "对银星标记敌人伤害+25%按可调整局覆盖率折算面板增伤。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
+          "pendingParts": [
+            "银星使追加攻击暴击伤害额外提升=自身暴伤30%（另+5%）为敌方目标向增益，未接面板；银星充能→白雷叠层逐时序未建模。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/anbyZero.ts"
+          ],
+          "status": "partially_implemented",
           "pending": [
-            "零号·安比对拥有[银星]标记的敌人造成的伤害提升25%；敌方单位被施加[银星]标记后，受到的[追加攻击]暴击伤害额外提升，提升效果等同于零号·安比暴击伤害的30%；[银星]标记期间，受到来自队友的[追加攻击]伤害会为敌方单位累积[银星]充能，该效果5秒内最多触发一次； [银星]的[追加攻击]暴击伤害提升效果，额外提升零号·安比暴击伤害的5%；拥有[白雷]的敌方目标被击败时，会对最近的敌方目标发动[特殊技：雷殛]。"
+            "银星使追加攻击暴击伤害额外提升=自身暴伤30%（另+5%）为敌方目标向增益，未接面板；银星充能→白雷叠层逐时序未建模。"
           ]
         },
         {
           "id": "additional_ability_1381",
           "name": "额外能力：电极化",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "队伍中存在[击破]或[支援]角色时触发： 零号·安比的暴击率提升10%；当前操作中的角色为零号·安比时，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升25%； 零号·安比的[连携技]和[终结技]视为[追加攻击]伤害。"
+          "implementation": "partially_implemented",
+          "implementedParts": [
+            "击破/支援队友激活自身暴击率+10%。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
+          "pendingParts": [
+            "全队追加攻击对银星敌人+25%为全队向增益未接全队通道；连携/终结视为追加攻击的定向未建模。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/anbyZero.ts"
+          ],
+          "status": "partially_implemented",
           "pending": [
-            "队伍中存在[击破]或[支援]角色时触发： 零号·安比的暴击率提升10%；当前操作中的角色为零号·安比时，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升25%； 零号·安比的[连携技]和[终结技]视为[追加攻击]伤害。"
+            "全队追加攻击对银星敌人+25%为全队向增益未接全队通道；连携/终结视为追加攻击的定向未建模。"
           ]
         },
         {
@@ -3121,18 +3139,22 @@
       "cinemaImplementation": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "强化特殊技命中连续触发3次白雷额外伤害（不耗白雷层数），按强特次数×3计入白雷总量。"
+          ],
           "pending": [
-            "影画1 静滞电荷：零号·安比发动[强化特殊技]命中敌人时，将会连续触发3次[白雷]的额外伤害，该效果不会消耗[白雷]层数。"
+            "白雷层数不消耗的逐时序未建模。"
           ]
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "partially_implemented",
+          "implemented": [
+            "暴击率+12%计入面板。"
+          ],
           "pending": [
-            "影画2 冗余协议：零号·安比的暴击率提升12%；发动[终结技]时，零号·安比会获得6层[电鸣]（上限6层）；拥有[电鸣]后，零号·安比[特殊技：苍光]命中拥有[白雷]的敌人时，将改为消耗1层[电鸣]作为代替，同一招式命中多名敌人时最多消耗1层[电鸣]，消耗[电鸣]时仍会触发[白雷]的额外伤害； 激发潜能后，每消耗3层[电鸣]，下次发动[特殊技：苍光·临界]时速度加快。"
+            "终结技获得6层电鸣、电鸣替代白雷消耗与苍光·临界加速未建模。"
           ]
         },
         {
@@ -3145,10 +3167,12 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "命中银星标记敌人无视12%电属性伤害抗性，按银星覆盖率折算面板enemyElectricResReduction。"
+          ],
           "pending": [
-            "影画4 银白残响：攻击命中拥有[银星]标记的敌人时，零号·安比无视目标12%电属性伤害抗性。"
+            "银星标记逐目标时序按覆盖率近似。"
           ]
         },
         {
@@ -3161,35 +3185,45 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "每6次白雷额外伤害引发电磁涡流，1000%攻击力电伤（视为追加攻击），合成执行行damageMultiplierOverride结算。"
+          ],
           "pending": [
-            "影画6 前传主角：触发6次[白雷]的额外伤害时，将会引发电磁涡流，对目标及其周围的敌人造成零号·安比1000%攻击力的电属性伤害，该伤害被视为[追加攻击]伤害。"
+            "涡流对周围敌人的范围结算按单目标近似。"
           ]
         }
       ],
       "corePassive": {
         "id": "core_passive_1381",
         "name": "核心被动：电位差",
-        "implementation": "not_described_not_implemented",
-        "implementedParts": [],
-        "pendingParts": [
-          "零号·安比对拥有[银星]标记的敌人造成的伤害提升25%；敌方单位被施加[银星]标记后，受到的[追加攻击]暴击伤害额外提升，提升效果等同于零号·安比暴击伤害的30%；[银星]标记期间，受到来自队友的[追加攻击]伤害会为敌方单位累积[银星]充能，该效果5秒内最多触发一次； [银星]的[追加攻击]暴击伤害提升效果，额外提升零号·安比暴击伤害的5%；拥有[白雷]的敌方目标被击败时，会对最近的敌方目标发动[特殊技：雷殛]。"
+        "implementation": "partially_implemented",
+        "implementedParts": [
+          "对银星标记敌人伤害+25%按可调整局覆盖率折算面板增伤。"
         ],
-        "codePaths": [],
-        "status": "not_described_not_implemented"
+        "pendingParts": [
+          "银星使追加攻击暴击伤害额外提升=自身暴伤30%（另+5%）为敌方目标向增益，未接面板；银星充能→白雷叠层逐时序未建模。"
+        ],
+        "codePaths": [
+          "src/mechanics/agents/anbyZero.ts"
+        ],
+        "status": "partially_implemented"
       },
       "additionalAbility": {
         "id": "additional_ability_1381",
         "name": "额外能力：电极化",
-        "trigger": "待人工核对触发条件",
-        "implementation": "not_described_not_implemented",
-        "implementedParts": [],
-        "pendingParts": [
-          "队伍中存在[击破]或[支援]角色时触发： 零号·安比的暴击率提升10%；当前操作中的角色为零号·安比时，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升25%； 零号·安比的[连携技]和[终结技]视为[追加攻击]伤害。"
+        "trigger": "击破角色或支援角色",
+        "implementation": "partially_implemented",
+        "implementedParts": [
+          "击破/支援队友激活自身暴击率+10%。"
         ],
-        "codePaths": [],
-        "status": "not_described_not_implemented"
+        "pendingParts": [
+          "全队追加攻击对银星敌人+25%为全队向增益未接全队通道；连携/终结视为追加攻击的定向未建模。"
+        ],
+        "codePaths": [
+          "src/mechanics/agents/anbyZero.ts"
+        ],
+        "status": "partially_implemented"
       }
     },
     "1391": {

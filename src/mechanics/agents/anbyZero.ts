@@ -1,0 +1,227 @@
+/**
+ * 零号·安比（1381）—— 银星、白雷、雷殛与电磁涡流整局总量模型
+ *
+ * 原文来源：data/raw/nanoka_missing/full/1381.json，按核心被动 Lv.7。
+ * - 额外能力电极化：击破/支援队友激活，自身暴击率+10%。
+ * - 影画2 冗余协议：暴击率+12%（电鸣替代白雷层数的资源细节未建模）。
+ * - 核心被动电位差：对银星标记敌人伤害+25%，按可调整局覆盖率折算面板增伤。
+ * - 影画4 银白残响：命中银星敌人无视12%电抗，按同一覆盖率折算面板电抗无视。
+ * - 白雷额外伤害次数 = 苍光发动次数（每次消耗1层白雷触发1次）+ 影画1强特命中×3（不耗层）。
+ *   白雷额外伤害用真实 moveId 1381007（苍光#1，actionTime=0，视为追加攻击）结算。
+ * - 特殊技雷殛：同一敌人连续3次白雷额外伤害触发1次，真实 moveId 1381008（视为追加攻击）。
+ * - 影画6 前传主角：每6次白雷额外伤害引发电磁涡流，1000%攻击力电伤（视为追加攻击），
+ *   合成执行行 damageMultiplierOverride 结算（不伪造 catalog moveId）。
+ *
+ * 明确未建模：
+ * - 核心被动「银星使追加攻击暴击伤害额外提升=自身暴伤30%（另+5%）」与额外能力「全队追加攻击对
+ *   银星敌人+25%」均为敌方目标向/全队向增益，模块仅作用自身面板，未接全队通道。
+ * - 银星充能→白雷叠层（每1/3充能1层，上限3）的逐时序、电鸣替代白雷消耗、潜能觉醒全队追加攻击提升。
+ */
+import type {
+  AgentCharConfigInput,
+  AgentMechanicModule,
+  AgentResourceInput,
+  AgentResourceResultInput,
+  AgentResourceSectionsInput,
+  AgentSkillTransformInput,
+} from '../types'
+
+export const ANBY_ZERO_ID = '1381'
+export const ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID = '1381007'
+export const ANBY_ZERO_RAIJITU_MOVE_ID = '1381008'
+export const ANBY_ZERO_CORE_DMG = 25
+export const ANBY_ZERO_ADDITIONAL_CRIT_RATE = 10
+export const ANBY_ZERO_C2_CRIT_RATE = 12
+export const ANBY_ZERO_C4_RES_IGNORE = 12
+export const ANBY_ZERO_C1_WHITE_LIGHTNING_PER_EX = 3
+export const ANBY_ZERO_RAIJITU_PER_LIGHTNING = 3
+export const ANBY_ZERO_VORTEX_PER_LIGHTNING = 6
+export const ANBY_ZERO_C6_VORTEX_MULTIPLIER = 1000
+
+export interface AnbyZeroCycle {
+  cinemaLevel: number
+  cangguangCount: number
+  silverStarCoverage: number
+  additionalActive: boolean
+  whiteLightningFromCangguang: number
+  whiteLightningFromC1: number
+  whiteLightningTotal: number
+  raijituCount: number
+  vortexCount: number
+  coreDmgBonus: number
+  c4ResIgnore: number
+  critRateGain: number
+  note: string
+}
+
+function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
+  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
+  return Number.isFinite(value) ? value : fallback
+}
+
+function clampRatio(value: number): number {
+  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
+}
+
+function whole(value: number): number {
+  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
+}
+
+export function computeAnbyZeroCycle(input: {
+  cinemaLevel: number
+  cangguangCount: number
+  exSpecialCount: number
+  additionalActive: boolean
+  silverStarCoverage: number
+}): AnbyZeroCycle {
+  const cinemaLevel = whole(input.cinemaLevel)
+  const cangguangCount = whole(input.cangguangCount)
+  const silverStarCoverage = clampRatio(input.silverStarCoverage)
+  const whiteLightningFromCangguang = cangguangCount
+  const whiteLightningFromC1 = cinemaLevel >= 1
+    ? whole(input.exSpecialCount) * ANBY_ZERO_C1_WHITE_LIGHTNING_PER_EX
+    : 0
+  const whiteLightningTotal = whiteLightningFromCangguang + whiteLightningFromC1
+  return {
+    cinemaLevel,
+    cangguangCount,
+    silverStarCoverage,
+    additionalActive: input.additionalActive,
+    whiteLightningFromCangguang,
+    whiteLightningFromC1,
+    whiteLightningTotal,
+    raijituCount: Math.floor(whiteLightningTotal / ANBY_ZERO_RAIJITU_PER_LIGHTNING),
+    vortexCount: cinemaLevel >= 6
+      ? Math.floor(whiteLightningTotal / ANBY_ZERO_VORTEX_PER_LIGHTNING)
+      : 0,
+    coreDmgBonus: ANBY_ZERO_CORE_DMG * silverStarCoverage,
+    c4ResIgnore: cinemaLevel >= 4 ? ANBY_ZERO_C4_RES_IGNORE * silverStarCoverage : 0,
+    critRateGain: (input.additionalActive ? ANBY_ZERO_ADDITIONAL_CRIT_RATE : 0)
+      + (cinemaLevel >= 2 ? ANBY_ZERO_C2_CRIT_RATE : 0),
+    note: '白雷次数=苍光发动+影画1强特×3；雷殛每3次、电磁涡流每6次折算；银星/电鸣逐时序未建模。',
+  }
+}
+
+function buildAnbyZeroCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  record.anbyZeroCinemaLevel = cinemaLevel
+  record.anbyZeroCangguangCount = whole(setting(cfg, 'anbyZero.cangguangCount', 6))
+  record.anbyZeroSilverStarCoverage = clampRatio(setting(cfg, 'anbyZero.silverStarCoverage', 1))
+  record.anbyZeroAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+}
+
+function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): AnbyZeroCycle {
+  const record = cfg as unknown as Record<string, unknown>
+  return computeAnbyZeroCycle({
+    cinemaLevel: Number(record.anbyZeroCinemaLevel ?? 0),
+    cangguangCount: Number(record.anbyZeroCangguangCount ?? 6),
+    exSpecialCount: state.exSpecialCount,
+    additionalActive: record.anbyZeroAdditionalActive === true,
+    silverStarCoverage: Number(record.anbyZeroSilverStarCoverage ?? 1),
+  })
+}
+
+function pushAnbyZeroExecution(executions: AgentResourceInput['executions'], input: {
+  moveId: string
+  moveName: string
+  count: number
+  damageMultiplier?: number
+}): void {
+  if (input.count <= 0) return
+  executions.push({
+    moveId: input.moveId,
+    moveName: input.moveName,
+    category: 'special',
+    element: 'electric',
+    count: input.count,
+    actionTime: 0,
+    comboAlignRatio: 0,
+    totalTime: 0,
+    totalComboAlignTime: 0,
+    energyConsume: 0,
+    totalEnergyConsume: 0,
+    decibelRecovery: 0,
+    totalDecibelRecovery: 0,
+    energyRecovery: 0,
+    totalEnergyRecovery: 0,
+    skillDamageTarget: 'additionalAttack',
+    ...(input.damageMultiplier == null
+      ? {}
+      : { damageMultiplier: input.damageMultiplier, damageMultiplierOverride: true }),
+  })
+}
+
+function buildAnbyZeroExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const cycle = cycleFromInput({ cfg, state })
+  pushAnbyZeroExecution(executions, {
+    moveId: ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID,
+    moveName: '白雷额外伤害（苍光追击）',
+    count: cycle.whiteLightningTotal,
+  })
+  pushAnbyZeroExecution(executions, {
+    moveId: ANBY_ZERO_RAIJITU_MOVE_ID,
+    moveName: '特殊技：雷殛',
+    count: cycle.raijituCount,
+  })
+  pushAnbyZeroExecution(executions, {
+    moveId: '1381_c6_electromagnetic_vortex',
+    moveName: '电磁涡流（影画6）',
+    count: cycle.vortexCount,
+    damageMultiplier: ANBY_ZERO_C6_VORTEX_MULTIPLIER,
+  })
+}
+
+function applyAnbyZeroPanel({ charResult, panel }: AgentSkillTransformInput): void {
+  if (!panel) return
+  if ((panel as Record<string, unknown>).__anbyZeroPanelApplied) return
+  ;(panel as Record<string, unknown>).__anbyZeroPanelApplied = true
+  const cycle = charResult.specResources?.anby_zero_cycle as AnbyZeroCycle | undefined
+  if (!cycle) return
+  if (cycle.critRateGain > 0) panel.critRate = (panel.critRate ?? 0) + cycle.critRateGain
+  if (cycle.coreDmgBonus > 0) panel.dmgBonus = (panel.dmgBonus ?? 0) + cycle.coreDmgBonus
+  if (cycle.c4ResIgnore > 0) {
+    panel.enemyElectricResReduction = (panel.enemyElectricResReduction ?? 0) + cycle.c4ResIgnore
+  }
+}
+
+function buildAnbyZeroResourceResult({ cfg, state }: AgentResourceResultInput) {
+  return { specResources: { anby_zero_cycle: cycleFromInput({ cfg, state }) } }
+}
+
+function buildAnbyZeroResourceSections({ result }: AgentResourceSectionsInput) {
+  const cycle = result.specResources?.anby_zero_cycle as AnbyZeroCycle | undefined
+  if (!cycle) return []
+  return [{
+    id: 'anby-zero-cycle',
+    title: '零号·安比·白雷与电磁涡流',
+    summary: `白雷 ${cycle.whiteLightningTotal} 次 · 雷殛 ${cycle.raijituCount} · 涡流 ${cycle.vortexCount}`,
+    rows: [
+      { label: '苍光发动', value: `${cycle.cangguangCount} 次`, detail: '每次消耗1层白雷触发1次白雷额外伤害' },
+      { label: '影画1强特白雷', value: `+${cycle.whiteLightningFromC1}`, detail: '强化特殊技命中×3，不耗白雷层数' },
+      { label: '雷殛', value: `${cycle.raijituCount} 次`, detail: '同一敌人每3次白雷额外伤害触发' },
+      { label: '电磁涡流', value: `${cycle.vortexCount} 次`, detail: '影画6每6次白雷触发1000%攻击力电伤' },
+      { label: '银星增伤', value: `+${cycle.coreDmgBonus}%`, detail: '对银星标记敌人，按覆盖率折算' },
+      { label: '影画4电抗无视', value: `+${cycle.c4ResIgnore}%`, detail: '命中银星敌人，按覆盖率折算' },
+      { label: '暴击率', value: `+${cycle.critRateGain}%`, detail: '额外能力+10，影画2+12' },
+    ],
+    footer: cycle.note,
+  }]
+}
+
+export const anbyZeroMechanic: AgentMechanicModule = {
+  id: 'agent:anby_zero',
+  agentIds: [ANBY_ZERO_ID],
+  name: '零号·安比·电位差',
+  description: '银星增伤、白雷/雷殛/电磁涡流折算、额外能力与影画2暴击、影画4电抗无视。',
+  settings: [
+    { id: 'anbyZero.cangguangCount', label: '苍光发动次数', description: '整局发动特殊技苍光的次数，每次消耗1层白雷触发1次白雷额外伤害', default: 6, min: 0, max: 40, step: 1, suffix: '次' },
+    { id: 'anbyZero.silverStarCoverage', label: '银星覆盖率', description: '对银星标记敌人增伤与无视电抗的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
+  ],
+  buildCharConfig: buildAnbyZeroCharConfig,
+  buildExecutions: buildAnbyZeroExecutions,
+  transformSkillExecutions: applyAnbyZeroPanel,
+  buildResourceResult: buildAnbyZeroResourceResult,
+  resourceSections: buildAnbyZeroResourceSections,
+}
+
+export default anbyZeroMechanic

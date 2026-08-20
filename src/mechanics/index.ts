@@ -19,6 +19,7 @@ import { harumasaMechanic } from './agents/harumasa'
 import { ellenMechanic } from './agents/ellen'
 import { evelynMechanic } from './agents/evelyn'
 import { vivianMechanic } from './agents/vivian'
+import { anbyZeroMechanic } from './agents/anbyZero'
 import {
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
@@ -32,7 +33,6 @@ import {
   aireProficiencyMechanic,
   peiluoProminenceMechanic,
   sethShieldMechanic,
-  anbyZeroVortexMechanic,
   jufufuTigerRoarMechanic,
 } from './agents/specPanelBuffs'
 import { qingyiMechanic } from './agents/qingyi'
@@ -114,7 +114,7 @@ registerAgentMechanic(benMechanic)
 registerAgentMechanic(aireProficiencyMechanic)
 registerAgentMechanic(peiluoProminenceMechanic)
 registerAgentMechanic(sethShieldMechanic)
-registerAgentMechanic(anbyZeroVortexMechanic)
+registerAgentMechanic(anbyZeroMechanic)
 registerAgentMechanic(jufufuTigerRoarMechanic)
 registerAgentMechanic(qingyiMechanic)
 registerAgentMechanic(luciaElowenMechanic)

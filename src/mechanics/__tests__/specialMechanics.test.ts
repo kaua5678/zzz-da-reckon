@@ -25,7 +25,6 @@ import {
   aireProficiencyMechanic,
   peiluoProminenceMechanic,
   sethShieldMechanic,
-  anbyZeroVortexMechanic,
 } from '@/mechanics/agents/specPanelBuffs'
 import { computeBillyChain, computeBillyHpModel, starlightBillyMechanic } from '@/mechanics/agents/starlightBilly'
 
@@ -327,14 +326,7 @@ describe('spec resource panel buffs', () => {
       executions: noCarrierExecs,
     })
     expect(noCarrierExecs.find(e => e.skillTableNote?.includes('煊赫星辉'))).toBeUndefined()
-
-    const anbyCfg = {} as any
-    const anbyState = { exSpecialCount: 4 }
-    const anbyExecs: any[] = []
-    anbyZeroVortexMechanic.buildExecutions?.({ cfg: anbyCfg, state: anbyState as any, executions: anbyExecs })
-    const vortex = anbyExecs.find(e => e.moveName === '电磁涡流')
-    expect(vortex?.count).toBe(2)
-    expect(vortex?.damageMultiplier).toBe(1000)
+    // 零号·安比电磁涡流已迁移到 agents/anbyZero.ts 模块，见 __tests__/anbyZero.test.ts
   })
 })
 

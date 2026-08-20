@@ -469,45 +469,6 @@ export const sethShieldMechanic = makePanelBuffModule(
   },
 )
 
-const anbyZeroSpec = getAgentSpec('1381')
-export const anbyZeroVortexMechanic: AgentMechanicModule = {
-  id: 'agent:anby_zero_vortex',
-  agentIds: ['1381'],
-  name: '零号·安比·电磁涡流',
-  buildResourceResult: buildResourceResult('1381'),
-  buildExecutions: ({ cfg, state, executions }: AgentResourceInput) => {
-    if (!anbyZeroSpec) return
-    const resources = computeSpecResources(anbyZeroSpec, cfg, state)
-    const whiteLightning = resources.get('anby_zero_white_lightning')
-    const total = Math.floor(whiteLightning?.total ?? 0)
-    const count = Math.floor(total / 6)
-    if (count <= 0) return
-    executions.push({
-      moveId: '1381004',
-      moveName: '电磁涡流',
-      category: 'special',
-      count,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
-      damageMultiplier: 1000,
-      damageMultiplierOverride: true,
-      element: 'electric',
-      skillTableNote: '6命电磁涡流：每6次白雷额外伤害触发一次',
-    })
-  },
-  resourceSections: (input: AgentResourceSectionsInput) => {
-    return anbyZeroSpec ? specToMechanicModule(anbyZeroSpec).resourceSections?.(input) ?? [] : []
-  },
-}
-
 const jufufuSpec = getAgentSpec('1391')
 const jufufuSpecModule = jufufuSpec ? specToMechanicModule(jufufuSpec) : null
 

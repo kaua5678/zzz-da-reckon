@@ -2255,20 +2255,22 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "强化特殊技命中连续触发3次白雷额外伤害（不耗白雷层数），按强特次数×3计入白雷总量。"
+          ],
           "pending": [
-            "影画1 静滞电荷：零号·安比发动[强化特殊技]命中敌人时，将会连续触发3次[白雷]的额外伤害，该效果不会消耗[白雷]层数。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "白雷层数不消耗的逐时序未建模。"
           ]
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "partially_implemented",
+          "implemented": [
+            "暴击率+12%计入面板。"
+          ],
           "pending": [
-            "影画2 冗余协议：零号·安比的暴击率提升12%；发动[终结技]时，零号·安比会获得6层[电鸣]（上限6层）；拥有[电鸣]后，零号·安比[特殊技：苍光]命中拥有[白雷]的敌人时，将改为消耗1层[电鸣]作为代替，同一招式命中多名敌人时最多消耗1层[电鸣]，消耗[电鸣]时仍会触发[白雷]的额外伤害； 激发潜能后，每消耗3层[电鸣]，下次发动[特殊技：苍光·临界]时速度加快。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "终结技获得6层电鸣、电鸣替代白雷消耗与苍光·临界加速未建模。"
           ]
         },
         {
@@ -2281,11 +2283,12 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "命中银星标记敌人无视12%电属性伤害抗性，按银星覆盖率折算面板enemyElectricResReduction。"
+          ],
           "pending": [
-            "影画4 银白残响：攻击命中拥有[银星]标记的敌人时，零号·安比无视目标12%电属性伤害抗性。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "银星标记逐目标时序按覆盖率近似。"
           ]
         },
         {
@@ -2298,11 +2301,12 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "每6次白雷额外伤害引发电磁涡流，1000%攻击力电伤（视为追加攻击），合成执行行damageMultiplierOverride结算。"
+          ],
           "pending": [
-            "影画6 前传主角：触发6次[白雷]的额外伤害时，将会引发电磁涡流，对目标及其周围的敌人造成零号·安比1000%攻击力的电属性伤害，该伤害被视为[追加攻击]伤害。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "涡流对周围敌人的范围结算按单目标近似。"
           ]
         }
       ]
