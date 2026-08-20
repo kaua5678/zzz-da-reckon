@@ -17,6 +17,7 @@ import { piperMechanic } from './agents/piper'
 import { hugoMechanic } from './agents/hugo'
 import { harumasaMechanic } from './agents/harumasa'
 import { ellenMechanic } from './agents/ellen'
+import { evelynMechanic } from './agents/evelyn'
 import {
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
@@ -78,6 +79,7 @@ registerAgentMechanic(pulchraHuntStepMechanic)
 registerAgentMechanic(billyHitStacksMechanic)
 // registerAgentMechanic(benGuardShieldMechanic) — replaced by benMechanic
 registerAgentMechanic(ellenMechanic)
+registerAgentMechanic(evelynMechanic)
 registerAgentMechanic(harumasaMechanic)
 // sigridLanceMechanic 已由 agents/sigrid.ts 替代（出枪式/巡空枪势/影画，面板块在 computePanelPhases）
 registerAgentMechanic(sigridMechanic)

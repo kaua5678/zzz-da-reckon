@@ -5,167 +5,36 @@
   "agentIds": [
     "1321"
   ],
-  "status": "partially_implemented",
+  "status": "implemented_approximation",
   "attributeConversions": [],
-  "resources": [
-    {
-      "id": "evelyn_blaze_fire",
-      "name": "燎火",
-      "nature": "resource",
-      "initialValue": 0,
-      "maxValue": 100,
-      "gainRules": [
-        {
-          "id": "evelyn_attack_blaze_gain",
-          "trigger": "发动招式对敌人造成伤害",
-          "countSource": "frontlineTime",
-          "amountPerCount": 5,
-          "formula": "前台时间 × 5%（命中累积近似）",
-          "status": "implemented_approximation",
-          "adjustable": {
-            "id": "1321.evelyn_blaze_fire.evelyn_attack_blaze_gain.rate",
-            "label": "伊芙琳·燎火·发动招式对敌人造成伤害",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
-        },
-        {
-          "id": "evelyn_ex_dodge_blaze_gain",
-          "trigger": "特殊技/强特触发极限闪避",
-          "countSource": "exSpecialCount",
-          "amountPerCount": 25,
-          "formula": "强特次数 × 25%",
-          "status": "implemented_approximation",
-          "adjustable": {
-            "id": "1321.evelyn_blaze_fire.evelyn_ex_dodge_blaze_gain.rate",
-            "label": "伊芙琳·燎火·特殊技/强特触发极限闪避",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
-        }
-      ],
-      "spendRules": [
-        {
-          "id": "evelyn_blaze_spend",
-          "trigger": "燎火≥50%时发动月辉丝·弦/绞勒式",
-          "cost": 50,
-          "result": "消耗50%燎火，使用月辉丝·弦斩击并积1点燎索点",
-          "deduct": true,
-          "status": "implemented_approximation"
-        }
-      ],
-      "feedbackGainRules": [],
-      "properties": {
-        "cinema2RefundEnabled": true
-      }
-    },
-    {
-      "id": "evelyn_blaze_anchor",
-      "name": "燎索点",
-      "nature": "resource",
-      "initialValue": 0,
-      "maxValue": 3,
-      "gainRules": [
-        {
-          "id": "evelyn_ult_anchor_gain",
-          "trigger": "发动终结技",
-          "countSource": "ultimateCount",
-          "amountPerCount": 1,
-          "formula": "终结技次数 × 1",
-          "status": "implemented_approximation",
-          "adjustable": {
-            "id": "1321.evelyn_blaze_anchor.evelyn_ult_anchor_gain.rate",
-            "label": "伊芙琳·燎索点·发动终结技",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
-        },
-        {
-          "id": "evelyn_ex_anchor_gain",
-          "trigger": "消耗燎火或发动月辉丝·弦",
-          "countSource": "exSpecialCount",
-          "amountPerCount": 1,
-          "formula": "强特次数 × 1（燎火消耗近似）",
-          "status": "implemented_approximation",
-          "adjustable": {
-            "id": "1321.evelyn_blaze_anchor.evelyn_ex_anchor_gain.rate",
-            "label": "伊芙琳·燎索点·消耗燎火或发动月辉丝·弦",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
-        }
-      ],
-      "spendRules": [
-        {
-          "id": "evelyn_anchor_spend",
-          "trigger": "拥有3点燎索点时发动绞勒式",
-          "cost": 3,
-          "result": "替换为连携技：月辉丝·绊",
-          "deduct": true,
-          "status": "implemented_approximation"
-        }
-      ],
-      "feedbackGainRules": [],
-      "properties": {
-        "cinema6KeepOneOnConsume": true
-      }
-    }
-  ],
+  "resources": [],
   "rowFusions": [],
-  "events": [
-    {
-      "id": "evelyn_blaze_execution",
-      "name": "普通攻击：绞勒式（月辉丝·弦）",
-      "trigger": "消耗50%燎火",
-      "executionKind": "execution",
-      "countSource": "resourceSpend",
-      "countField": "resource:evelyn_blaze_fire:evelyn_blaze_spend",
-      "carrierMoveId": "1321004",
-      "carrierMoveName": "普通攻击：绞勒式",
-      "multiplierRowId": "damage",
-      "status": "implemented_approximation"
-    },
-    {
-      "id": "evelyn_anchor_execution",
-      "name": "连携技：月辉丝·绊",
-      "trigger": "消耗3点燎索点",
-      "executionKind": "execution",
-      "countSource": "resourceSpend",
-      "countField": "resource:evelyn_blaze_anchor:evelyn_anchor_spend",
-      "carrierMoveId": "1321011",
-      "carrierMoveName": "连携技：月辉丝·绊",
-      "multiplierRowId": "damage",
-      "status": "implemented_approximation"
-    }
-  ],
+  "events": [],
   "verifications": [],
   "stateMachines": [],
   "notes": [
     "来源：nanoka.cc 3.2.1（Evelyn）。",
-    "基础属性与技能倍率由脚本自动导入；核心被动/额外能力/命座/专属资源等机制未实现，等待用户核对后补充。",
+    "基础属性与技能倍率由脚本自动导入；核心被动、额外能力、燎火/燎索点循环与影画1/4/6已由独立模块接入。",
     "动作时间按 ether_purify 公式自动推算（一般 /100、闪反 -1.5、弹刀 -2.5、终结 -5），部分追加段可能无秽盾数据，actionTime 未完全核对。",
     "机制文本来源：nanoka full zh JSON",
     "核心被动/额外能力（文本，Lv.1-7）：\n核心被动：缠丝 Lv.1：进入[牵缠禁制]时，伊芙琳的暴击率提升12.5%，退出[牵缠禁制]后，伊芙琳仍可继续保有增益，持续10秒；在[牵缠禁制]期间切换至其他角色时，伊芙琳将自动衔接[特殊技：束裂式·I型]。\n额外能力：潜袭支点：队伍中存在[击破]角色或[支援]角色时触发： 伊芙琳的[连携技]和[终结技]造成的伤害提升30%；当伊芙琳的暴击率大于等于80%时，[连携技：月辉丝·绊]、[终结技：月辉丝·弦音]和[终结技：月辉丝·弦影]的伤害倍率提升至原本的125%。\n核心被动：缠丝 Lv.2：进入[牵缠禁制]时，伊芙琳的暴击率提升14.6%，退出[牵缠禁制]后，伊芙琳仍可继续保有增益，持续10秒；在[牵缠禁制]期间切换至其他角色时，伊芙琳将自动衔接[特殊技：束裂式·I型]。\n额外能力：潜袭支点：队伍中存在[击破]角色或[支援]角色时触发： 伊芙琳的[连携技]和[终结技]造成的伤害提升30%；当伊芙琳的暴击率大于等于80%时，[连携技：月辉丝·绊]、[终结技：月辉丝·弦音]和[终结技：月辉丝·弦影]的伤害倍率提升至原本的125%。\n核心被动：缠丝 Lv.3：进入[牵缠禁制]时，伊芙琳的暴击率提升16.7%，退出[牵缠禁制]后，伊芙琳仍可继续保有增益，持续10秒；在[牵缠禁制]期间切换至其他角色时，伊芙琳将自动衔接[特殊技：束裂式·I型]。\n额外能力：潜袭支点：队伍中存在[击破]角色或[支援]角色时触发： 伊芙琳的[连携技]和[终结技]造成的伤害提升30%；当伊芙琳的暴击率大于等于80%时，[连携技：月辉丝·绊]、[终结技：月辉丝·弦音]和[终结技：月辉丝·弦影]的伤害倍率提升至原本的125%。\n核心被动：缠丝 Lv.4：进入[牵缠禁制]时，伊芙琳的暴击率提升18.8%，退出[牵缠禁制]后，伊芙琳仍可继续保有增益，持续10秒；在[牵缠禁制]期间切换至其他角色时，伊芙琳将自动衔接[特殊技：束裂式·I型]。\n额外能力：潜袭支点：队伍中存在[击破]角色或[支援]角色时触发： 伊芙琳的[连携技]和[终结技]造成的伤害提升30%；当伊芙琳的暴击率大于等于80%时，[连携技：月辉丝·绊]、[终结技：月辉丝·弦音]和[终结技：月辉丝·弦影]的伤害倍率提升至原本的125%。\n核心被动：缠丝 Lv.5：进入[牵缠禁制]时，伊芙琳的暴击率提升20.8%，退出[牵缠禁制]后，伊芙琳仍可继续保有增益，持续10秒；在[牵缠禁制]期间切换至其他角色时，伊芙琳将自动衔接[特殊技：束裂式·I型]。\n额外能力：潜袭支点：队伍中存在[击破]角色或[支援]角色时触发： 伊芙琳的[连携技]和[终结技]造成的伤害提升30%；当伊芙琳的暴击率大于等于80%时，[连携技：月辉丝·绊]、[终结技：月辉丝·弦音]和[终结技：月辉丝·弦影]的伤害倍率提升至原本的125%。\n核心被动：缠丝 Lv.6：进入[牵缠禁制]时，伊芙琳的暴击率提升23%，退出[牵缠禁制]后，伊芙琳仍可继续保有增益，持续10秒；在[牵缠禁制]期间切换至其他角色时，伊芙琳将自动衔接[特殊技：束裂式·I型]。\n额外能力：潜袭支点：队伍中存在[击破]角色或[支援]角色时触发： 伊芙琳的[连携技]和[终结技]造成的伤害提升30%；当伊芙琳的暴击率大于等于80%时，[连携技：月辉丝·绊]、[终结技：月辉丝·弦音]和[终结技：月辉丝·弦影]的伤害倍率提升至原本的125%。\n核心被动：缠丝 Lv.7：进入[牵缠禁制]时，伊芙琳的暴击率提升25%，退出[牵缠禁制]后，伊芙琳仍可继续保有增益，持续10秒；在[牵缠禁制]期间切换至其他角色时，伊芙琳将自动衔接[特殊技：束裂式·I型]。\n额外能力：潜袭支点：队伍中存在[击破]角色或[支援]角色时触发： 伊芙琳的[连携技]和[终结技]造成的伤害提升30%；当伊芙琳的暴击率大于等于80%时，[连携技：月辉丝·绊]、[终结技：月辉丝·弦音]和[终结技：月辉丝·弦影]的伤害倍率提升至原本的125%。",
     "影画机制文本：\n影画1 织梦：进入战场时，伊芙琳立刻获得1500点喧响值，在勘域模式中此效果180秒内最多触发一次；敌人进入[牵缠禁制]后，将被施加[禁锢]效果，伊芙琳攻击带有[禁锢]效果的敌人时，无视目标12%防御力；伊芙琳发动[特殊技：束裂式·I型]或[强化特殊技：束裂式·终型]时，会将[禁锢]效果扩散给所有被招式命中的敌人，被扩散的[禁锢]效果持续10秒。\n影画2 赴火之舞：伊芙琳的攻击力提升15%；伊芙琳发动[普通攻击：绞勒式·I型]或[普通攻击：绞勒式·II型]时，将返还所消耗的[燎火]，25秒内最多触发一次；伊芙琳消耗[燎索点]发动[连携技：月辉丝·绊]时，招式的打断等级提升。\n影画3 破茧：[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2\n影画4 命运的弦音：发动[连携技]或[终结技]时，伊芙琳立刻获得等同于自身10%生命值上限的护盾，持有该护盾时，伊芙琳的暴击伤害提升40%。\n影画5 丹缕如霞：[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2\n影画6 光与影的牵绊：发动[连携技]或[终结技]时，伊芙琳将获得[弦影绝锋]，持续20秒；[弦影绝锋]期间，伊芙琳发动[普通攻击]、[冲刺攻击]、[特殊技]或[强化特殊技]命中主要攻击目标时，将额外释放一段[月辉丝·弦]进行追击，对范围内敌人造成等同于伊芙琳375%攻击力的火属性伤害，该伤害会被视为[连携技]伤害，最多触发16次，再次获得[弦影绝锋]时刷新可触发次数。",
-    "以上仅录入原始机制文本，尚未按 spec attributeConversions/resources/events 实现，待人工核对后补充。",
-    "燎火/燎索点：燎火按前台命中×5%、强特极限闪避+25%近似，50%触发月辉丝·弦；燎索点按终结+1、强特+1近似，3点替换连携。牵缠禁制/禁锢/弦影绝锋尚未建模。",
-    "影画2 赴火之舞已实现攻击力+15%（computePanelPhases 1321 块）；燎火返还部分未建模。"
+    "实现口径：按核心被动Lv.7；牵缠禁制暴击率+25%按可调整局覆盖率折算；额外能力连携/终结增伤+30%，暴击率≥80%时月辉丝·绊/弦音倍率×1.25（预缩倍率表精确结算）。",
+    "燎火累积速率原文未给数值，绞勒式次数显式可调；燎索点=绞勒式+终结技各+1，终结技后焰舞觉醒使月辉丝·绊消耗降为净2点，按此折算追加连携（真实moveId 1321015）。",
+    "影画1进场喧响+1500与无视12%防御、影画4持盾暴伤+40%、影画6月辉丝·弦追击375%按覆盖率/次数接入；影画2攻击+15%沿用面板块。",
+    "近似边界：牵缠禁制/禁锢作为敌方状态、禁锢扩散、束裂式自动衔接、燎火返还与打断等级逐状态未建模。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "stun",
+          "support"
+        ]
+      }
+    ],
+    "note": "潜袭支点：队伍中存在击破或支援角色时触发。"
+  }
 }

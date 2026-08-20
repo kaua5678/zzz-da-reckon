@@ -2145,52 +2145,76 @@
         "zhCN": "伊芙琳",
         "en": "Evelyn"
       },
-      "specialResources": [],
+      "specialResources": [
+        {
+          "id": "evelyn_cycle",
+          "name": "燎火、燎索点与月辉丝",
+          "status": "implemented_approximation",
+          "codePaths": [
+            "src/mechanics/agents/evelyn.ts"
+          ],
+          "note": "绞勒式次数显式可调（燎火累积速率原文未给数值）；燎索点=绞勒式+终结技各+1，焰舞觉醒后消耗降为净2点折算追加连携。"
+        }
+      ],
       "mechanics": [
         {
           "id": "core_passive_1321",
           "name": "核心被动：缠丝",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "进入[牵缠禁制]时，伊芙琳的暴击率提升25%，退出[牵缠禁制]后，伊芙琳仍可继续保有增益，持续10秒；在[牵缠禁制]期间切换至其他角色时，伊芙琳将自动衔接[特殊技：束裂式·I型]。"
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "核心被动Lv.7：牵缠禁制暴击率+25%按可调整局覆盖率折算面板暴率（退出后保有10秒并入覆盖率）。",
+            "牵缠禁制作为敌方状态与束裂式自动衔接不在总量模型内，未建模。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
+          "pendingParts": [
+            "牵缠禁制/禁锢敌方状态、进入/退出时序与10秒保有逐秒未建模。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/evelyn.ts"
+          ],
+          "status": "implemented_approximation",
           "pending": [
-            "进入[牵缠禁制]时，伊芙琳的暴击率提升25%，退出[牵缠禁制]后，伊芙琳仍可继续保有增益，持续10秒；在[牵缠禁制]期间切换至其他角色时，伊芙琳将自动衔接[特殊技：束裂式·I型]。"
+            "牵缠禁制/禁锢敌方状态、进入/退出时序与10秒保有逐秒未建模。"
           ]
         },
         {
           "id": "additional_ability_1321",
           "name": "额外能力：潜袭支点",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "队伍中存在[击破]角色或[支援]角色时触发： 伊芙琳的[连携技]和[终结技]造成的伤害提升30%；当伊芙琳的暴击率大于等于80%时，[连携技：月辉丝·绊]、[终结技：月辉丝·弦音]和[终结技：月辉丝·弦影]的伤害倍率提升至原本的125%。"
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "击破/支援队友激活；连携技与终结技增伤+30%按执行行dmgBonus定向。",
+            "自身暴击率≥80%时月辉丝·绊/弦音倍率×1.25，预缩倍率表值经damageMultiplierOverride精确结算。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
+          "pendingParts": [
+            "暴击率阈值按面板+核心被动覆盖率判定，未含逐动作时序。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/evelyn.ts"
+          ],
+          "status": "implemented_approximation",
           "pending": [
-            "队伍中存在[击破]角色或[支援]角色时触发： 伊芙琳的[连携技]和[终结技]造成的伤害提升30%；当伊芙琳的暴击率大于等于80%时，[连携技：月辉丝·绊]、[终结技：月辉丝·弦音]和[终结技：月辉丝·弦影]的伤害倍率提升至原本的125%。"
+            "暴击率阈值按面板+核心被动覆盖率判定，未含逐动作时序。"
           ]
         }
       ],
       "cinemaImplementation": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "partially_implemented",
+          "implemented": [
+            "进场喧响+1500（180秒一次整局近似）计入initialDecibelGift；攻击禁锢敌人无视12%防御按覆盖率折算enemyDefReduction。"
+          ],
           "pending": [
-            "影画1 织梦：进入战场时，伊芙琳立刻获得1500点喧响值，在勘域模式中此效果180秒内最多触发一次；敌人进入[牵缠禁制]后，将被施加[禁锢]效果，伊芙琳攻击带有[禁锢]效果的敌人时，无视目标12%防御力；伊芙琳发动[特殊技：束裂式·I型]或[强化特殊技：束裂式·终型]时，会将[禁锢]效果扩散给所有被招式命中的敌人，被扩散的[禁锢]效果持续10秒。"
+            "[禁锢]施加与束裂式扩散禁锢、10秒持续逐状态未建模。"
           ]
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "partially_implemented",
+          "implemented": [
+            "攻击力+15%沿用computePanelPhases既有面板块。"
+          ],
           "pending": [
-            "影画2 赴火之舞：伊芙琳的攻击力提升15%；伊芙琳发动[普通攻击：绞勒式·I型]或[普通攻击：绞勒式·II型]时，将返还所消耗的[燎火]，25秒内最多触发一次；伊芙琳消耗[燎索点]发动[连携技：月辉丝·绊]时，招式的打断等级提升。"
+            "燎火返还（25秒一次）与月辉丝·绊打断等级提升未建模。"
           ]
         },
         {
@@ -2203,10 +2227,12 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "连携/终结获得护盾期间暴伤+40%，按持盾覆盖率折算面板暴伤。"
+          ],
           "pending": [
-            "影画4 命运的弦音：发动[连携技]或[终结技]时，伊芙琳立刻获得等同于自身10%生命值上限的护盾，持有该护盾时，伊芙琳的暴击伤害提升40%。"
+            "护盾量（10%生命上限）为防御向，不进伤害模型。"
           ]
         },
         {
@@ -2219,35 +2245,47 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "弦影绝锋期间月辉丝·弦追击375%攻击力火伤（视为连携伤害）按可调次数生成合成执行行，并吃额外能力连携增伤。"
+          ],
           "pending": [
-            "影画6 光与影的牵绊：发动[连携技]或[终结技]时，伊芙琳将获得[弦影绝锋]，持续20秒；[弦影绝锋]期间，伊芙琳发动[普通攻击]、[冲刺攻击]、[特殊技]或[强化特殊技]命中主要攻击目标时，将额外释放一段[月辉丝·弦]进行追击，对范围内敌人造成等同于伊芙琳375%攻击力的火属性伤害，该伤害会被视为[连携技]伤害，最多触发16次，再次获得[弦影绝锋]时刷新可触发次数。"
+            "弦影绝锋20秒持续/再获得刷新、每窗口16次上限的逐时序未建模。"
           ]
         }
       ],
       "corePassive": {
         "id": "core_passive_1321",
         "name": "核心被动：缠丝",
-        "implementation": "not_described_not_implemented",
-        "implementedParts": [],
-        "pendingParts": [
-          "进入[牵缠禁制]时，伊芙琳的暴击率提升25%，退出[牵缠禁制]后，伊芙琳仍可继续保有增益，持续10秒；在[牵缠禁制]期间切换至其他角色时，伊芙琳将自动衔接[特殊技：束裂式·I型]。"
+        "implementation": "implemented_approximation",
+        "implementedParts": [
+          "核心被动Lv.7：牵缠禁制暴击率+25%按可调整局覆盖率折算面板暴率（退出后保有10秒并入覆盖率）。",
+          "牵缠禁制作为敌方状态与束裂式自动衔接不在总量模型内，未建模。"
         ],
-        "codePaths": [],
-        "status": "not_described_not_implemented"
+        "pendingParts": [
+          "牵缠禁制/禁锢敌方状态、进入/退出时序与10秒保有逐秒未建模。"
+        ],
+        "codePaths": [
+          "src/mechanics/agents/evelyn.ts"
+        ],
+        "status": "implemented_approximation"
       },
       "additionalAbility": {
         "id": "additional_ability_1321",
         "name": "额外能力：潜袭支点",
-        "trigger": "待人工核对触发条件",
-        "implementation": "not_described_not_implemented",
-        "implementedParts": [],
-        "pendingParts": [
-          "队伍中存在[击破]角色或[支援]角色时触发： 伊芙琳的[连携技]和[终结技]造成的伤害提升30%；当伊芙琳的暴击率大于等于80%时，[连携技：月辉丝·绊]、[终结技：月辉丝·弦音]和[终结技：月辉丝·弦影]的伤害倍率提升至原本的125%。"
+        "trigger": "击破角色或支援角色",
+        "implementation": "implemented_approximation",
+        "implementedParts": [
+          "击破/支援队友激活；连携技与终结技增伤+30%按执行行dmgBonus定向。",
+          "自身暴击率≥80%时月辉丝·绊/弦音倍率×1.25，预缩倍率表值经damageMultiplierOverride精确结算。"
         ],
-        "codePaths": [],
-        "status": "not_described_not_implemented"
+        "pendingParts": [
+          "暴击率阈值按面板+核心被动覆盖率判定，未含逐动作时序。"
+        ],
+        "codePaths": [
+          "src/mechanics/agents/evelyn.ts"
+        ],
+        "status": "implemented_approximation"
       }
     },
     "1331": {
