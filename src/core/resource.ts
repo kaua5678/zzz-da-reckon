@@ -49,7 +49,13 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   for (const cfg of configs) cfg.timeBudgetExcess = 0
   let converged = false
   let iter = 0
+  // 收敛诊断：三层不动点里第 ② 层（时间预算）原先耗尽上限就静默接受末轮结果，见 ConvergenceReport
+  let timeBudgetPasses = 0
+  let timeBudgetConverged = false
+  let timeBudgetResidualSeconds = 0
+  let timeBudgetIdleSeconds = 0
   for (let timePass = 0; timePass < maxTimeIter; timePass++) {
+    timeBudgetPasses = timePass + 1
     for (iter = 0; iter < maxIter; iter++) {
       const newStates = iterate(configs, states, config)
 
@@ -73,6 +79,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 测量每个角色执行计划前台时间（含模块专属动作行），超出战斗时间的部分折入必要时间。
     // 只折正超出（真溢出）：负值 = estimate 高估必要时间 / 有空闲前台，属正常，不动（否则 necessary 变负、basic 膨胀）。
     let maxExcess = 0
+    let maxIdle = 0
     for (let i = 0; i < configs.length; i++) {
       const cfg = configs[i]
       const state = states[i]
@@ -87,9 +94,18 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         // 量化（floor 次数）导致残差 ~1s 属合轴可覆盖，不追求精确 0
         cfg.timeBudgetExcess = (cfg.timeBudgetExcess ?? 0) + excess
         if (excess > maxExcess) maxExcess = excess
+      } else if (-excess > maxIdle) {
+        // 负溢出按设计不折回（折回会让 necessaryTime 变负、平A池膨胀），但要上报：
+        // 持续偏大 = 某模块 estimateExSpecialTime 系统性高估，单侧钳制会掩盖这类建模错误
+        maxIdle = -excess
       }
     }
-    if (maxExcess <= 1e-6) break
+    timeBudgetResidualSeconds = maxExcess
+    timeBudgetIdleSeconds = maxIdle
+    if (maxExcess <= 1e-6) {
+      timeBudgetConverged = true
+      break
+    }
   }
 
   // 失衡次数由外部失衡池不动点收敛后传入（连携次数 = chainCountPerStun × stunCount，见 iterate）
@@ -210,6 +226,12 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     characters,
     iterations: iter,
     converged,
+    convergence: {
+      timeBudgetConverged,
+      timeBudgetPasses,
+      timeBudgetResidualSeconds,
+      timeBudgetIdleSeconds,
+    },
   }
 }
 

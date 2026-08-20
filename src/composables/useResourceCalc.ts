@@ -1251,7 +1251,13 @@ function applyNormaHatChain(
     let prevAnomalySeq = ''
     let prevTopUpSeq = ''
     const seenStunCounts = new Set<number>()
+    // 收敛诊断（三层不动点第 ③ 层）：原先耗尽 MAX_OUTER_ITER 就静默 return 末轮结果——
+    // 失衡次数/异常喧响奖励可能停在错误值而无任何信号。这里记录落地方式，拼进结果供界面与测试断言。
+    let outerRounds = 0
+    let outerConverged = false
+    let outerExit: 'stable' | 'cycle' | 'maxIter' = 'maxIter'
     for (let k = 0; k < MAX_OUTER_ITER; k++) {
+      outerRounds = k + 1
       out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy)
       const ait = out?.auricInkTriggerCount ?? 0
       const gr = out?.goodReview
@@ -1265,12 +1271,13 @@ function applyNormaHatChain(
       const topUpSeq = `${out?.banyueTopUp?.parry},${out?.banyueTopUp?.dual}`
       const feedbackStable = ultSeq === prevUltSeq && anomalySeq === prevAnomalySeq && topUpSeq === prevTopUpSeq
       if (lockedStunCount >= 0) {
-        if (feedbackStable) break
+        if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
       } else {
         // 失衡次数与玄墨异常触发次数双稳定才收敛（异常触发 → 回闪能 → 强特 → 积蓄 → 触发）
-        if (next === stunCount && ait === prevAuricInkFlash && feedbackStable) break
-        // 轴内失衡值失效/异常反馈可能产生离散 2-循环（如 5→4→5），检测到重复即停
-        if (seenStunCounts.has(next)) break
+        if (next === stunCount && ait === prevAuricInkFlash && feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
+        // 轴内失衡值失效/异常反馈可能产生离散 2-循环（如 5→4→5），检测到重复即停。
+        // 这是离散场景的正确兜底（不是失败），但要与「真收敛」区分开，故单独记 'cycle'。
+        if (seenStunCounts.has(next)) { outerExit = 'cycle'; break }
         seenStunCounts.add(stunCount)
         stunCount = next
       }
@@ -1285,6 +1292,20 @@ function applyNormaHatChain(
       prevUltSeq = ultSeq
       prevAnomalySeq = anomalySeq
       prevTopUpSeq = topUpSeq
+    }
+    if (out?.resourceResult) {
+      out = {
+        ...out,
+        resourceResult: {
+          ...out.resourceResult,
+          convergence: {
+            ...out.resourceResult.convergence,
+            outerConverged,
+            outerRounds,
+            outerExit,
+          },
+        },
+      }
     }
     return out
   })

@@ -80,6 +80,20 @@ describe(`全角色不变量 sweep（${agentIds.length} 角色 × 命座 ${CINEM
         expect(Number.isFinite(damage), `${agentId} 伤害非有限值：${damage}`).toBe(true)
         expect(damage, `${agentId} 全队伤害 ≤ 0`).toBeGreaterThan(0)
         damageByAgentCinema.set(`${agentId}:${cinemaLevel}`, damage)
+
+        // 收敛可观测性（三层不动点都要落地，别只看内层）：
+        // 时间预算外层耗尽上限 = 仍有执行行前台时间超出战斗时间（通常是模块推了占前台的行
+        // 却没计入 estimateExSpecialTime）；失衡外层 maxIter = 反馈量还在变，结果可能停在非稳定点。
+        const conv = out!.convergence
+        expect(conv, `${agentId} 缺收敛诊断`).toBeTruthy()
+        expect(
+          conv.timeBudgetConverged,
+          `${agentId} 命座${cinemaLevel} 时间预算外层未收敛：${conv.timeBudgetPasses} 轮后仍溢出 ${conv.timeBudgetResidualSeconds.toFixed(2)}s`,
+        ).toBe(true)
+        expect(
+          conv.outerExit,
+          `${agentId} 命座${cinemaLevel} 失衡外层耗尽迭代上限（${conv.outerRounds} 轮），失衡/异常反馈未稳定`,
+        ).not.toBe('maxIter')
       })
     }
   }

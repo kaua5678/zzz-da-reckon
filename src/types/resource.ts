@@ -955,6 +955,47 @@ export interface CharacterResourceResult {
 
 // ============ 队伍资源汇总 ============
 
+/**
+ * 收敛诊断（一次计算里三层不动点各自的落地情况）。
+ *
+ * 背景：本引擎有三层嵌套不动点——
+ *   ① `iterate` 内层（能量→强特→喧响→终结→时间，判据 = 强特/终结次数整数相等）
+ *   ② `calcTeamResources` 时间预算外层（Σ执行行前台时间 ≤ 战斗时间，只折正 excess）
+ *   ③ `useResourceCalc.runCalcRound` 失衡外层（失衡次数 ↔ 资源池 ↔ 转大 ↔ 异常喧响奖励）
+ * 但原先只有 ① 上报 `converged`，② 与 ③ 耗尽迭代上限时**静默接受末轮结果**：既无告警也无残差，
+ * 测试也断言不到 —— 建模错误（例如某模块 estimateExSpecialTime 系统性高估）会被悄悄吞掉。
+ * 本结构把三层的收敛状态与残差一起抬到结果对象上，让「没收敛」变成可观测、可断言的事实。
+ */
+export interface ConvergenceReport {
+  /** 时间预算外层：是否在上限内收敛（Σ执行行前台时间 ≤ 战斗时间） */
+  timeBudgetConverged: boolean
+  /** 时间预算外层实际跑的轮数 */
+  timeBudgetPasses: number
+  /** 退出时仍未消化的最大正溢出（秒）；0 = 完全收敛 */
+  timeBudgetResidualSeconds: number
+  /**
+   * 退出时的最大「负溢出」（秒）：执行行前台时间比战斗时间**少**的量。
+   * 按设计不折回（折回会让 necessaryTime 变负、平A池膨胀），但持续偏大意味着
+   * `estimateExSpecialTime` 系统性高估必要时间 —— 单侧钳制会掩盖这类建模错误，故单独上报。
+   */
+  timeBudgetIdleSeconds: number
+  /**
+   * 失衡外层不动点（runCalcRound 环）是否真收敛。
+   * 由编排层回填；`calcTeamResources` 单独调用时保持 false（它看不到外层）。
+   */
+  outerConverged?: boolean
+  /** 失衡外层实际跑的轮数 */
+  outerRounds?: number
+  /**
+   * 失衡外层的退出方式：
+   * - `stable`：反馈量全稳定（真收敛）；
+   * - `cycle`：检测到离散 2-循环（如失衡次数 5→4→5）后主动停 —— 离散场景的正确兜底，不是失败，
+   *   但结果取的是循环中的一支，需与真收敛区分；
+   * - `maxIter`：耗尽迭代上限（**可疑**：反馈量仍在变，结果可能停在错误值）。
+   */
+  outerExit?: 'stable' | 'cycle' | 'maxIter'
+}
+
 /** 队伍资源池计算结果 */
 export interface TeamResourceResult {
   /** 总时间（秒，默认180） */
@@ -963,10 +1004,12 @@ export interface TeamResourceResult {
   stunCount: number
   /** 3个角色的资源结果 */
   characters: CharacterResourceResult[]
-  /** 迭代次数 */
+  /** 迭代次数（内层 iterate） */
   iterations: number
-  /** 是否达到收敛 */
+  /** 是否达到收敛（内层 iterate：强特/终结次数稳定） */
   converged: boolean
+  /** 三层不动点的收敛诊断（见 ConvergenceReport） */
+  convergence: ConvergenceReport
 }
 
 // ============ 计算输入 ============

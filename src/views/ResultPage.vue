@@ -108,14 +108,29 @@
         </n-grid>
       </n-card>
 
-      <!-- 计算状态（所有 tab 共用） -->
+      <!-- 计算状态（所有 tab 共用）：三层不动点都要可见，别只报内层 -->
       <div v-if="resourceResult" class="result-summary">
-        <n-alert :type="resourceResult.converged ? 'success' : 'warning'" size="small">
+        <n-alert :type="convergenceOk ? 'success' : 'warning'" size="small">
           <template #header>
             迭代 {{ resourceResult.iterations }} 次
             {{ resourceResult.converged ? '已收敛' : '未收敛（已达最大迭代次数）' }}
             · 失衡次数: {{ stunPoolResult?.stunCount ?? resourceResult.stunCount }}
           </template>
+          <div v-if="!convergenceOk" style="font-size:12px;line-height:1.6">
+            <div v-if="!resourceResult.convergence.timeBudgetConverged">
+              时间预算外层未收敛（{{ resourceResult.convergence.timeBudgetPasses }} 轮）：仍有
+              {{ fmt(resourceResult.convergence.timeBudgetResidualSeconds, 2) }}s 执行行前台时间超出战斗时间
+              —— 通常是某模块 buildExecutions 推了占前台的行但没计入 estimateExSpecialTime。
+            </div>
+            <div v-if="resourceResult.convergence.outerExit === 'maxIter'">
+              失衡外层耗尽迭代上限（{{ resourceResult.convergence.outerRounds }} 轮）：失衡次数/异常喧响奖励仍在变，
+              结果可能停在非稳定点。
+            </div>
+            <div v-else-if="resourceResult.convergence.outerExit === 'cycle'">
+              失衡外层检测到离散循环（{{ resourceResult.convergence.outerRounds }} 轮）后停止：
+              结果取循环中的一支，属离散场景的正常兜底。
+            </div>
+          </div>
         </n-alert>
         <div class="combo-align-btn-row">
           <n-button size="small" type="primary" secondary @click="showComboAlignModal = true">
@@ -697,6 +712,19 @@ const {
 // 是否有队伍数据
 const hasTeam = computed(() => {
   return configStore.team.some(c => c.agentId)
+})
+
+/**
+ * 三层不动点是否都健康落地（只报内层「已收敛」会掩盖外层耗尽上限的情况）。
+ * `cycle` 视为正常兜底（离散场景取循环中一支），只有真·未收敛才转黄。
+ */
+const convergenceOk = computed(() => {
+  const r = resourceResult.value
+  if (!r) return true
+  const c = r.convergence
+  return r.converged
+    && c.timeBudgetConverged
+    && (c.outerExit === undefined || c.outerExit !== 'maxIter')
 })
 
 /** 导出 Excel：操作表（配置快照）/ 资源表 / 伤害行明细 / 异常池；文件名带队伍名 */
