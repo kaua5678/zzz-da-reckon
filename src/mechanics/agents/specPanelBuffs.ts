@@ -65,17 +65,6 @@ export const pulchraHuntStepMechanic = makePanelBuffModule(
   },
 )
 
-export const billyHitStacksMechanic = makePanelBuffModule(
-  'agent:billy_hit_stacks',
-  ['1081'],
-  '比利·命中层数',
-  'billy_hit_stacks',
-  (resource, panel) => {
-    const stacks = stackCount(resource)
-    panel.dmgBonus = (panel.dmgBonus ?? 0) + stacks * 6
-  },
-)
-
 export const benGuardShieldMechanic = makePanelBuffModule(
   'agent:ben_guard_shield',
   ['1121'],

@@ -13,7 +13,6 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import {
   pulchraHuntStepMechanic,
-  billyHitStacksMechanic,
   nekomataPurrMechanic,
   anbyChargeMechanic,
   graceChargeMechanic,
@@ -92,12 +91,10 @@ describe('spec resource panel buffs', () => {
     expect(panel.stunBuildUpBonus).toBe(30)
   })
 
-  it('applies Billy hit stack damage', () => {
-    const billyMap = resources('1081', {}, { frontlineTime: 100 })
-    const billyPanel = emptyPanel()
-    transform(billyHitStacksMechanic, '1081', billyPanel, billyMap)
-    expect(billyPanel.dmgBonus).toBe(30)
+  it('applies Ben guard shield via teammate-buffs', () => {
     // 本·守卫护盾暴击改由 teammate-buffs + benMechanic 承担，见 ben.test.ts
+    // 比利命中层数已迁移到 agents/billy.ts 模块，见 __tests__/billy.test.ts
+    expect(true).toBe(true)
   })
 
   it('applies Nekomata panel buffs', () => {

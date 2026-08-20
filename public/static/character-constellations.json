@@ -455,17 +455,17 @@
           "status": "not_described_not_implemented",
           "implemented": [],
           "pending": [
-            "影画1 闪亮登场：[冲刺攻击]或[闪避反击]命中敌人时，比利额外回复2.7点能量，5秒内最多触发一次。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "冲刺/闪避反击命中回2.7能量（5秒一次）无干净回能通道，未接入能量结算。"
           ]
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "闪避反击伤害+25%挂闪避反击行dmgBonus。"
+          ],
           "pending": [
-            "影画2 游斗射术：[闪避反击]造成的伤害提升25%；[普通攻击]中的翻滚射击将被视为闪避动作，在招式发动期间获得无敌效果，并且能够触发[极限闪避]，翻滚射击触发[极限闪避]时，将自动衔接[闪避反击]。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "翻滚射击视为闪避/无敌/触发极限闪避自动衔接闪避反击未建模。"
           ]
         },
         {
@@ -478,11 +478,12 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "强特暴击率随距离提升（上限32%）按数值滑块折算强特行critRateBonus。"
+          ],
           "pending": [
-            "影画4 星徽-惩戒弹药：[强化特殊技]命中敌人时，招式的暴击率随自身与目标之间的距离而提升；比利与目标距离越近，提升效果越显著，最高提升32%。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "距离衰减曲线按上限滑块近似。"
           ]
         },
         {
@@ -495,11 +496,12 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "命中10次/极限闪避叠层，每层伤害+6%上限5层按层数滑块折算面板dmgBonus。"
+          ],
           "pending": [
-            "影画6 星徽-英雄时刻：累计命中敌人10次或触发[极限闪避]时，比利造成的伤害提升6%，最多叠加5层，被敌方击退或击飞后增益效果重置。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "叠层/被击退重置逐时序按层数滑块近似。"
           ]
         }
       ]

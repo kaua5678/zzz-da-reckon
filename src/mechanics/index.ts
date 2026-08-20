@@ -24,9 +24,9 @@ import { aireMechanic } from './agents/aire'
 import { promiaMechanic } from './agents/promia'
 import { koledaMechanic } from './agents/koleda'
 import { corinMechanic } from './agents/corin'
+import { billyMechanic } from './agents/billy'
 import {
   pulchraHuntStepMechanic,
-  billyHitStacksMechanic,
   // benGuardShieldMechanic 已由 agents/ben.ts 替代（全队暴击+防转攻+命座）
   anbyChargeMechanic,
   graceChargeMechanic,
@@ -77,7 +77,7 @@ registerAgentMechanic(nekomataMechanic)
 registerAgentMechanic(piperMechanic)
 registerAgentMechanic(hugoMechanic)
 registerAgentMechanic(pulchraHuntStepMechanic)
-registerAgentMechanic(billyHitStacksMechanic)
+registerAgentMechanic(billyMechanic)
 // registerAgentMechanic(benGuardShieldMechanic) — replaced by benMechanic
 registerAgentMechanic(ellenMechanic)
 registerAgentMechanic(evelynMechanic)
