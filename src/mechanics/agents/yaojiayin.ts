@@ -24,6 +24,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentTeamConfigInput,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
@@ -221,6 +222,30 @@ export function applyYaojiayinTeamFlags(characters: CharacterOperationConfig[]):
   ;(yj as any).yaojiayinEntryCount = entries
 }
 
+/**
+ * 队伍级机制（原先由 useResourceCalc 手工调用 + 在编排层内联写 cfg 字段）：
+ * 入场次数 = 全队快支 + 招架（build 阶段即可算）+ 全队连携（需要失衡次数 → converge 阶段）。
+ * 连携总数与快支入场数原本由 useResourceCalc 直接写进 cfg（`yaojiayinTeamChainTotal` /
+ * `yaojiayinQuickAssistEntries`），现在在模块内自算，编排层不再有 1311 特判分支。
+ */
+export function applyYaojiayinTeamHook(input: AgentTeamConfigInput): void {
+  const { characters, phase, stunCount } = input
+  if (phase !== 'build' && phase !== 'converge') return
+  const yj = characters.find(c => c.agentId === YAOJIAYIN_ID)
+  if (!yj) return
+  if (phase === 'converge') {
+    let teamChains = 0
+    let quickAssists = 0
+    for (const c of characters) {
+      teamChains += Math.max(0, (c.chainCountPerStun ?? 0) * stunCount)
+      quickAssists += Math.max(0, c.quickAssistCount ?? 0)
+    }
+    ;(yj as any).yaojiayinTeamChainTotal = teamChains
+    ;(yj as any).yaojiayinQuickAssistEntries = quickAssists
+  }
+  applyYaojiayinTeamFlags(characters)
+}
+
 function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
   // C4 异常/击破分支的面板加成在 helpers 按队内职业写到对应角色；此处不处理。
   void cinemaLevel
@@ -385,6 +410,7 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
 }
 
 export const yaojiayinMechanic: AgentMechanicModule = {
+  applyTeamConfig: applyYaojiayinTeamHook,
   id: 'agent:yaojiayin',
   agentIds: [YAOJIAYIN_ID],
   name: '耀嘉音·咏叹华彩',

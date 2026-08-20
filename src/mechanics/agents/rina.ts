@@ -298,6 +298,12 @@ function resolveExecutionDamage({ exec }: AgentDamageResolutionInput): { element
 }
 
 export const rinaMechanic: AgentMechanicModule = {
+  // 队伍级机制（原先由 useResourceCalc 手工 import + 调用 applyRinaTeamEnergyFlags）：
+  // 丽娜终结技邻位回能。只在 build 阶段动手，与迁移前的调用时机一致。
+  applyTeamConfig: ({ characters, phase }) => {
+    if (phase !== 'build') return
+    applyRinaTeamEnergyFlags(characters)
+  },
   id: 'agent:rina',
   agentIds: [RINA_ID],
   name: '丽娜·邦布支援',

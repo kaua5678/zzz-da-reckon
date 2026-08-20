@@ -36,7 +36,7 @@ import { calcStunPool } from '@/core/stunPool'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { calcAnomalyPool, calcSpecialActionBonus } from '@/core/anomalyPool'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
-import { getAgentMechanic, getRegisteredAgentMechanics, getRegisteredMechanicSettings, type MechanicTeamMember } from '@/mechanics'
+import { getAgentMechanic, getRegisteredAgentMechanics, getRegisteredMechanicSettings, type AgentTeamPhase, type MechanicTeamMember } from '@/mechanics'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import type {
@@ -175,6 +175,51 @@ export function resolveMechanicSettings(
     out[setting.id] = configStore.getMechanicSetting(setting.id, setting.default)
   }
   return out
+}
+
+/**
+ * 派发队伍级机制钩子（`applyTeamConfig`）。
+ *
+ * 顺序 = 槽位 0→1→2（确定、可复现；不用 registry 插入顺序，避免注册顺序影响数值）。
+ * 编排层只需在三个阶段各调一次本函数，不再 import 具体角色的 applyXxxTeamFlags：
+ *   build（cfg 刚建好）→ converge（带上一轮次数）→ postRound（为下一轮注入派生量）。
+ */
+export function applyTeamMechanics(params: {
+  characters: CharacterOperationConfig[]
+  configStore: ReturnType<typeof useConfigStore>
+  catalogStore: ReturnType<typeof useCatalogStore>
+  phase: AgentTeamPhase
+  combatTime?: number
+  exCounts?: number[]
+  stunCount?: number
+  teamEnergyConsumed?: number
+}): void {
+  const { characters, configStore, catalogStore, phase } = params
+  if (characters.length === 0) return
+  const team = buildMechanicTeamMembers(configStore, catalogStore)
+  const settings = resolveMechanicSettings(configStore)
+  const combatTime = params.combatTime ?? 180
+  const exCounts = params.exCounts ?? characters.map(() => 0)
+  const stunCount = params.stunCount ?? 0
+  const teamEnergyConsumed = params.teamEnergyConsumed ?? 0
+
+  for (const cfg of [...characters].sort((a, b) => a.slot - b.slot)) {
+    const hook = getAgentMechanic(cfg.agentId)?.applyTeamConfig
+    if (!hook) continue
+    hook({
+      slot: cfg.slot,
+      agent: catalogStore.getAgent(cfg.agentId) ?? null,
+      cinemaLevel: configStore.team[cfg.slot]?.cinemaLevel ?? 0,
+      characters,
+      team,
+      settings,
+      phase,
+      combatTime,
+      exCounts,
+      stunCount,
+      teamEnergyConsumed,
+    })
+  }
 }
 
 /**

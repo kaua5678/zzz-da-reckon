@@ -65,6 +65,44 @@ export interface AgentResourceInput {
   teamFrontlineSeconds?: number
 }
 
+/**
+ * 队伍级钩子的调用阶段（编排层按固定顺序派发，语义必须稳定）：
+ * - `build`：全队 cfg 刚构建完（次数全未知，exCounts/stunCount 均为 0）；
+ * - `converge`：外层不动点进入本轮，带**上一轮**收敛出的次数（次数反馈用）；
+ * - `postRound`：本轮资源结果已出，为**下一轮**注入派生量（如全队能量消耗）。
+ */
+export type AgentTeamPhase = 'build' | 'converge' | 'postRound'
+
+/**
+ * 队伍级机制输入（`applyTeamConfig` 钩子）。
+ *
+ * 存在的理由：其余钩子都只能改**自己**那一份 cfg，而「我的终结技给邻位回能」「我在后场时
+ * 全队能量获得效率 +10%」这类跨槽位联动无处可去，于是长期沉淀成编排层里按 agentId 分支的
+ * 手工调用——曾有 5 个 `applyXxxTeamFlags` 被 useResourceCalc 直接 import、在 3 个位置手工
+ * 按序调用（其中莱特那条被调 3 次，漏调一处就是静默错值）。
+ * 有了本钩子，跨角色联动回到角色模块自己家里，新角色的队伍级机制不必再改 useResourceCalc。
+ */
+export interface AgentTeamConfigInput {
+  /** 本模块角色所在槽位 */
+  slot: number
+  agent: Agent | null
+  cinemaLevel: number
+  /** 全队 cfg（**可写**：写任意槽位的字段正是队伍级联动的目的） */
+  characters: CharacterOperationConfig[]
+  team: MechanicTeamMember[]
+  /** 已解析的机制滑块值（与 AgentPanelInput.settings 同源） */
+  settings: Readonly<Record<string, number>>
+  phase: AgentTeamPhase
+  /** 战斗时间（秒） */
+  combatTime: number
+  /** 各槽位强特次数（build 阶段全 0；converge/postRound 为对应轮次的收敛值） */
+  exCounts: number[]
+  /** 失衡次数（build 阶段 0） */
+  stunCount: number
+  /** 全队普通能量消耗（莱特影画4 用；build 阶段 0） */
+  teamEnergyConsumed: number
+}
+
 export interface AgentExSpecialTimeInput {
   cfg: CharacterOperationConfig
   exSpecialCount: number
@@ -149,6 +187,14 @@ export interface AgentMechanicModule {
   applyPanel?(input: AgentPanelInput): void
   /** 资源池操作配置构建后追加专属字段 */
   buildCharConfig?(input: AgentCharConfigInput): void
+  /**
+   * 队伍级机制：跨槽位联动（邻位回能、后场全队增益、入场次数汇总等）。
+   *
+   * 与 `buildCharConfig` 的分工：后者只改自己那份 cfg，本钩子可写**全队** cfg。
+   * 按槽位顺序（0→1→2）派发，一轮计算内会被调用三次（phase = build / converge / postRound），
+   * 模块必须按 `input.phase` 决定在哪个阶段动手（阶段语义见 AgentTeamPhase）。
+   */
+  applyTeamConfig?(input: AgentTeamConfigInput): void
   /** 向招式执行计划追加专属动作 */
   buildExecutions?(input: AgentResourceInput): void
   /**

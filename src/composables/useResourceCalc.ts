@@ -1,9 +1,5 @@
 import { YESHUGUANG_FULL_STUN_MOVES } from '@/mechanics/agents/yeshuguang'
-import { applyLucyTeamEnergyFlags } from '@/mechanics/agents/lucy'
-import { applyRinaTeamEnergyFlags } from '@/mechanics/agents/rina'
-import { applyLighterTeamEnergyFlags, estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
-import { applyYaojiayinTeamFlags } from '@/mechanics/agents/yaojiayin'
-import { applySoukakuTeamEnergyFlags } from '@/mechanics/agents/soukaku'
+import { estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
 import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -120,7 +116,7 @@ function applyLiuyinPromote(
     }),
   }
 }
-const { parseReleaseMultiplier, safeElement, elementLabel, buildMechanicTeamMembers, computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionElement, getWindInfectionCoverage, buildAnomalyVirtualPanel, buildAnomalySettlementEntries, getRemielleLevelValue, remielleSpecialVoidflareCount, calcVoidflareDamage, findMoveById, enrichExecutionPlan, buildCharConfig, extractSkillExecutions } = ResourceCalcHelpers
+const { parseReleaseMultiplier, safeElement, elementLabel, buildMechanicTeamMembers, computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionElement, getWindInfectionCoverage, buildAnomalyVirtualPanel, buildAnomalySettlementEntries, getRemielleLevelValue, remielleSpecialVoidflareCount, calcVoidflareDamage, findMoveById, enrichExecutionPlan, buildCharConfig, extractSkillExecutions, applyTeamMechanics } = ResourceCalcHelpers
 export function useResourceCalc() {
   const configStore = useConfigStore()
   const catalogStore = useCatalogStore()
@@ -140,24 +136,10 @@ export function useResourceCalc() {
       if (cfg) characters.push(cfg)
     }
 
-    // 支援角色终结技邻位回能写入各槽位 cfg。
-    applyLucyTeamEnergyFlags(characters)
-    applyRinaTeamEnergyFlags(characters)
-    // 莱特：后场占比设置；全队能量消耗与 C4 喷发回能在 runCalcRound 收敛环注入。
-    {
-      const lighterCfg = characters.find(c => c.agentId === '1161')
-      if (lighterCfg) {
-        const ratio = Math.max(0, Math.min(1, configStore.getMechanicSetting('lighter.backstageRatio', 2 / 3)))
-        ;(lighterCfg as any).lighterBackstageRatio = ratio
-        applyLighterTeamEnergyFlags(characters, {
-          exCounts: characters.map(() => 0),
-          combatTime: 180,
-        })
-      }
-    }
-    // 耀嘉音：入场次数标记（快支+招架；连携在 runCalcRound 回填）
-    applyYaojiayinTeamFlags(characters)
-    applySoukakuTeamEnergyFlags(characters)
+    // 队伍级机制（跨槽位联动）统一经 applyTeamConfig 钩子派发，按槽位 0→1→2。
+    // 迁移前这里是 5 个 applyXxxTeamFlags 的手工 import + 手工按序调用（含莱特后场占比等
+    // 内联 cfg 写入）；现在新角色的队伍级机制只改自己的模块，不必再动本文件。
+    applyTeamMechanics({ characters, configStore, catalogStore, phase: 'build' })
 
     // 橘福福额外能力·八面威风：队伍有强攻/命破时，这些角色每次终结技 +300 喧响
     // （仪玄青溟云影走 ultimateCount；符法千重在收敛环用上一轮次数注入，见下方 1371 分支）。
@@ -1021,31 +1003,17 @@ function applyNormaHatChain(
       }
       return merged
     })
-    // 莱特 C4/士气：用上一轮能量消耗重算喷发回能标记（写入各槽 lighterC4BurstEnergy）
-    {
-      const lighterCfg = characters.find(c => c.agentId === '1161')
-      if (lighterCfg) {
-        applyLighterTeamEnergyFlags(characters, {
-          combatTime: base.totalTime ?? 180,
-          teamEnergyConsumed: Math.max(0, prevLighterTeamEnergy || 0),
-        })
-      }
-    }
-    // 耀嘉音：入场 = 全队快支+招架 + 全队连携（chainCountPerStun × 失衡次数）
-    {
-      const yj = characters.find(c => c.agentId === '1311')
-      if (yj) {
-        let teamChains = 0
-        let quickAssists = 0
-        for (const c of characters) {
-          teamChains += Math.max(0, (c.chainCountPerStun ?? 0) * stunCount)
-          quickAssists += Math.max(0, c.quickAssistCount ?? 0)
-        }
-        ;(yj as any).yaojiayinTeamChainTotal = teamChains
-        ;(yj as any).yaojiayinQuickAssistEntries = quickAssists
-        applyYaojiayinTeamFlags(characters)
-      }
-    }
+    // 队伍级机制·converge 阶段：带上一轮收敛量（莱特按上一轮全队能量消耗重算喷发回能；
+    // 耀嘉音按失衡次数汇总全队连携入场）。各角色的具体口径在自己的模块里。
+    applyTeamMechanics({
+      characters,
+      configStore,
+      catalogStore,
+      phase: 'converge',
+      combatTime: base.totalTime ?? 180,
+      stunCount,
+      teamEnergyConsumed: Math.max(0, prevLighterTeamEnergy || 0),
+    })
     // 特殊动作喧响奖励（弹刀215/闪反10/连携10/快支20，含伴随50%）：本轮即时结算——
     // 输入只有用户配置的次数与连携数（= chainCountTotalOverride ?? chainCountPerStun × stunCount），无 ultimateCount 反馈环
     const perSlotChainForBonus = [0, 0, 0]
@@ -1215,20 +1183,25 @@ function applyNormaHatChain(
       }
     }
 
-    // 莱特：下一轮注入全队普通能量消耗（强特次数×耗能，排除闪能/命破）
+    // 队伍级机制·postRound 阶段：本轮次数已收敛 → 为下一轮注入派生量。
+    // `lighterTeamEnergyNext` 仍需在编排层线程化（作为下一轮 converge 的输入），
+    // 但计算与写入 cfg 的责任已经回到莱特模块自己的 applyTeamConfig。
     let lighterTeamEnergyNext = 0
     {
-      const lighterCfg = characters.find(c => c.agentId === '1161')
-      if (lighterCfg) {
-        const exByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.exSpecialCount ?? 0]))
-        const exCounts = characters.map(c => Math.max(0, exByAgent.get(c.agentId) ?? 0))
+      const exByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.exSpecialCount ?? 0]))
+      const exCounts = characters.map(c => Math.max(0, exByAgent.get(c.agentId) ?? 0))
+      if (characters.some(c => c.agentId === '1161')) {
         lighterTeamEnergyNext = estimateTeamNormalEnergyConsumed(characters, exCounts)
-        applyLighterTeamEnergyFlags(characters, {
-          exCounts,
-          combatTime: base.totalTime ?? 180,
-          teamEnergyConsumed: lighterTeamEnergyNext,
-        })
       }
+      applyTeamMechanics({
+        characters,
+        configStore,
+        catalogStore,
+        phase: 'postRound',
+        combatTime: base.totalTime ?? 180,
+        exCounts,
+        stunCount,
+      })
     }
 
     return {

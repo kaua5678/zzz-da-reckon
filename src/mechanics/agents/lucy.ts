@@ -302,6 +302,12 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
 }
 
 export const lucyMechanic: AgentMechanicModule = {
+  // 队伍级机制（原先由 useResourceCalc 手工 import + 调用 applyLucyTeamEnergyFlags）：
+  // 露西终结邻位回能 + 影画1 回旋全队回能标记。只在 build 阶段动手，与迁移前的调用时机一致。
+  applyTeamConfig: ({ characters, phase }) => {
+    if (phase !== 'build') return
+    applyLucyTeamEnergyFlags(characters)
+  },
   id: 'agent:lucy',
   agentIds: [LUCY_ID],
   name: '露西·加油/小猪',

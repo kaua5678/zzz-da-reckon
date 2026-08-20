@@ -86,6 +86,12 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 export const soukakuMechanic: AgentMechanicModule = {
+  // 队伍级机制（原先由 useResourceCalc 手工 import + 调用 applySoukakuTeamEnergyFlags）：
+  // 苍角终结技邻位回能（邻位 30/10）。只在 build 阶段动手，与迁移前的调用时机一致。
+  applyTeamConfig: ({ characters, phase }) => {
+    if (phase !== 'build') return
+    applySoukakuTeamEnergyFlags(characters)
+  },
   id: 'agent:soukaku',
   agentIds: [SOUKAKU_ID],
   name: '苍角·刃旗助威',

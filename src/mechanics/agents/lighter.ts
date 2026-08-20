@@ -510,6 +510,37 @@ export const lighterMechanic: AgentMechanicModule = {
     max: 1,
     step: 0.05,
   }],
+  /**
+   * 队伍级机制（原先 useResourceCalc 手工 import 并在**三处**调用
+   * `applyLighterTeamEnergyFlags`——漏掉任一处就是静默错值；后场占比也在编排层内联写 cfg）。
+   * 三个阶段对应迁移前的三个调用点，语义逐一保持：
+   * - build：写后场占比滑块 + 用 exCounts=0 预置标记；
+   * - converge：用**上一轮**全队能量消耗重算喷发回能；
+   * - postRound：用本轮收敛的 exCounts 估出全队能量消耗，供下一轮使用。
+   */
+  applyTeamConfig: ({ characters, phase, settings, combatTime, exCounts, teamEnergyConsumed }) => {
+    const lighter = characters.find(c => c.agentId === LIGHTER_ID)
+    if (!lighter) return
+    if (phase === 'build') {
+      const ratio = Math.max(0, Math.min(1, settings['lighter.backstageRatio'] ?? 2 / 3))
+      ;(lighter as any).lighterBackstageRatio = ratio
+      applyLighterTeamEnergyFlags(characters, { exCounts: characters.map(() => 0), combatTime: 180 })
+      return
+    }
+    if (phase === 'converge') {
+      applyLighterTeamEnergyFlags(characters, {
+        combatTime,
+        teamEnergyConsumed: Math.max(0, teamEnergyConsumed || 0),
+      })
+      return
+    }
+    // postRound：本轮次数已知 → 估下一轮全队普通能量消耗
+    applyLighterTeamEnergyFlags(characters, {
+      exCounts,
+      combatTime,
+      teamEnergyConsumed: estimateTeamNormalEnergyConsumed(characters, exCounts),
+    })
+  },
   applyPanel,
   buildCharConfig,
   buildExecutions,
