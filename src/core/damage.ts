@@ -649,6 +649,8 @@ export interface AnomalyDamageInput {
   damageKind?: 'anomaly' | 'disorder' | 'release'
   /** 额外全局异常乘区，例如蕾米异化系数 */
   anomalyMultiplier?: number
+  /** 异放/异常暴击覆盖（release 等事件专属暴击；传入后替代 getAnomalyCritStats） */
+  anomalyCritOverride?: { rate: number; dmg: number; labelPrefix: string }
 }
 
 export function calcAnomalyDamage(
@@ -774,7 +776,9 @@ export function calcAnomalyDamage(
   }
 
   // 10. 异常暴击区：紊乱不继承异常暴击；物理强击额外读取强击暴击字段
-  const anomalyCritStats = isDisorder ? { rate: 0, dmg: 0, labelPrefix: '异常暴击' } : getAnomalyCritStats(settle, element)
+  const anomalyCritStats = isDisorder
+    ? { rate: 0, dmg: 0, labelPrefix: '异常暴击' }
+    : (input.anomalyCritOverride ?? getAnomalyCritStats(settle, element))
   const anomalyCritRate = anomalyCritStats.rate
   const anomalyCritDmg = anomalyCritStats.dmg + (settle.enemyCritDmgTakenBonus ?? 0)
   let critMult = 1

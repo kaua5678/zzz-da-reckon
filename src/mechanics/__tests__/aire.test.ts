@@ -10,6 +10,9 @@ import {
   AIRE_ABSOLUTE_PITCH_MOVE_ID,
   AIRE_RELEASE_RATIO_PER_TEN,
   AIRE_RELEASE_STUN_BONUS_PCT,
+  AIRE_C4_RELEASE_ENERGY,
+  AIRE_C4_RELEASE_DECIBEL,
+  AIRE_C6_ETHANOL_DMG_BONUS,
   computeAireCycle,
   aireMechanic,
 } from '@/mechanics/agents/aire'
@@ -79,7 +82,8 @@ describe('爱芮完整计算链', () => {
     await setup('1141', 6)
     const calc = useResourceCalc()
     const cfgC6 = calc.resourceConfig.value!.characters.find(c => c.agentId === '1501')!
-    expect(cfgC6.initialDecibelGift).toBe(1000 + AIRE_C6_DECIBEL_GIFT)
+    // 6 命：基础 1000 + 影画4 异放喧响(8×70) + 影画6 进场(1200)
+    expect(cfgC6.initialDecibelGift).toBe(1000 + 8 * AIRE_C4_RELEASE_DECIBEL + AIRE_C6_DECIBEL_GIFT)
   })
 
   it('核心异放事件：dominant 元素 + 比例模式 + 绝对音准载体', () => {
@@ -111,5 +115,60 @@ describe('爱芮完整计算链', () => {
     const totalCount = releases.reduce((s, r) => s + r.count, 0)
     expect(totalCount).toBe(8)
     expect(releases.every(r => r.totalDamage > 0)).toBe(true)
+  })
+
+  it('影画1：异放事件带 releaseCrit（基础25/25，掌控>100每点+0.5）', () => {
+    const state = { frontlineTime: 120, backstageTime: 60, ultimateCount: 2 } as any
+    const cfg = { 'setting:aire.absolutePitchCount': 8, aireCinemaLevel: 1 } as any
+    const events: any[] = []
+    aireMechanic.buildAnomalyEvents!({ cfg, state, events, totalTime: 180 })
+    expect(events[0].releaseCrit).toMatchObject({
+      ratePct: 25,
+      dmgPct: 25,
+      masteryThreshold: 100,
+      masteryPerPointRatePct: 0.5,
+    })
+    const cfg0 = { 'setting:aire.absolutePitchCount': 8, aireCinemaLevel: 0 } as any
+    const events0: any[] = []
+    aireMechanic.buildAnomalyEvents!({ cfg: cfg0, state, events: events0, totalTime: 180 })
+    expect(events0[0].releaseCrit).toBeUndefined()
+  })
+
+  it('影画1：异放伤害高于 0 命（releaseCrit 生效）', async () => {
+    await setup('1141', 0)
+    const dmg0 = useResourceCalc().damagePoolRows.value
+      .filter(r => r.type === '异放' && r.agentId === '1501')
+      .reduce((s, r) => s + r.totalDamage, 0)
+    expect(dmg0).toBeGreaterThan(0)
+
+    await setup('1141', 1)
+    const dmg1 = useResourceCalc().damagePoolRows.value
+      .filter(r => r.type === '异放' && r.agentId === '1501')
+      .reduce((s, r) => s + r.totalDamage, 0)
+    expect(dmg1).toBeGreaterThan(dmg0)
+  })
+
+  it('影画4：异放回能/喧响按 min(异放次数, floor(t/10)) 注入', async () => {
+    await setup('1141', 4)
+    const calc = useResourceCalc()
+    const cfgC4 = calc.resourceConfig.value!.characters.find(c => c.agentId === '1501')!
+    // 异放次数 8，floor(180/10)=18 → triggers=8
+    expect(cfgC4.initialEnergyGift).toBe(40 + 8 * AIRE_C4_RELEASE_ENERGY)
+    expect(cfgC4.initialDecibelGift).toBe(1000 + 8 * AIRE_C4_RELEASE_DECIBEL)
+  })
+
+  it('影画6：终结技/强化绝对音准 +40% 以太伤害（patchExecutions）', () => {
+    const cfg = { aireCinemaLevel: 6, battleTime: 180 } as any
+    const state = { ultimateCount: 2 } as any
+    const executions = [
+      { moveId: '1501016', dmgBonus: 0, skillTableNote: '' }, // 终结技
+      { moveId: '1501007', dmgBonus: 0, skillTableNote: '' }, // 绝对音准 #3（强化版）
+      { moveId: '1501001', dmgBonus: 0, skillTableNote: '' }, // 甜心律动，不 boost
+    ] as any[]
+    aireMechanic.patchExecutions!({ cfg, state, executions, teamFrontlineSeconds: 0 })
+    expect(executions[0].dmgBonus).toBe(AIRE_C6_ETHANOL_DMG_BONUS)
+    // 妄想覆盖率 = 2×15/180 = 1/6 → 绝对音准 boost = 40 × 1/6
+    expect(executions[1].dmgBonus).toBeCloseTo(AIRE_C6_ETHANOL_DMG_BONUS * (2 * 15 / 180), 1)
+    expect(executions[2].dmgBonus).toBe(0)
   })
 })

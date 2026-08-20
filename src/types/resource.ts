@@ -502,6 +502,21 @@ export interface AnomalyEventExecution {
     /** 目标失衡时，该比例额外提升 N%（如 50 = ×1.5） */
     stunBonusPct?: number
   }
+  /**
+   * 异放专属暴击（eventType='release' 的异常暴击，仅作用于异放结算）。
+   * 爱芮影画1：基础暴击率 ratePct、暴伤 dmgPct；异常掌控超过 masteryThreshold 后
+   * 每点额外 +masteryPerPointRatePct 暴击率。
+   */
+  releaseCrit?: {
+    /** 基础暴击率（%） */
+    ratePct: number
+    /** 暴击伤害（%） */
+    dmgPct: number
+    /** 掌控阈值（超过后每点额外加暴击率） */
+    masteryThreshold?: number
+    /** 掌控超过阈值后，每点额外 +的暴击率（%） */
+    masteryPerPointRatePct?: number
+  }
 }
 
 /** 通用专属资源展示段，由角色机制模块生成 */

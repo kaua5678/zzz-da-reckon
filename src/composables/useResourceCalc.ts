@@ -1652,7 +1652,7 @@ function applyNormaHatChain(
       })
     }
 
-    function pushRelease(row: { id: string; slot: number; agentId: string; name: string; count: number; multiplier: number; source: string; note?: string; element?: string; panel?: PanelValues; settlementPanel?: PanelValues }) {
+    function pushRelease(row: { id: string; slot: number; agentId: string; name: string; count: number; multiplier: number; source: string; note?: string; element?: string; panel?: PanelValues; settlementPanel?: PanelValues; releaseCrit?: AnomalyEventExecution['releaseCrit'] }) {
       if (row.count <= 0 || row.multiplier <= 0) return
       const basePanel = row.panel ?? damagePanels.value[row.slot]
       const settlementPanel = row.settlementPanel ?? basePanel
@@ -1660,6 +1660,16 @@ function applyNormaHatChain(
       const element = row.element ?? 'wind'
       const releaseMod = getAgentMechanic(row.agentId)?.releaseModifier?.({ panels: damagePanels.value })
         ?? { enemyResReduction: 0, note: '' }
+      // 异放专属暴击（如爱芮影画1）：掌控超过阈值后每点额外加暴击率
+      const critOverride = row.releaseCrit
+        ? {
+            rate: row.releaseCrit.ratePct
+              + Math.max(0, (settlementPanel?.anomalyMastery ?? 0) - (row.releaseCrit.masteryThreshold ?? 0))
+                * (row.releaseCrit.masteryPerPointRatePct ?? 0),
+            dmg: row.releaseCrit.dmgPct,
+            labelPrefix: '异放暴击',
+          }
+        : undefined
       const result = calcAnomalyDamage({
         panel: basePanel,
         settlementPanel,
@@ -1676,6 +1686,7 @@ function applyNormaHatChain(
         critMode: 'expect',
         damageKind: 'release',
         anomalyMultiplier: remielleAnomalyMultiplier.value,
+        anomalyCritOverride: critOverride,
       })
       rows.push({
         id: row.id,
@@ -1879,6 +1890,7 @@ function applyNormaHatChain(
                 element,
                 panel: damagePanels.value[baseSlot] ?? triggerPanel,
                 settlementPanel: triggerPanel,
+                releaseCrit: event.releaseCrit,
               })
             }
             continue
@@ -1894,6 +1906,7 @@ function applyNormaHatChain(
             note: event.note,
             element: event.element ?? 'wind',
             settlementPanel: triggerPanel,
+            releaseCrit: event.releaseCrit,
           })
         }
       }

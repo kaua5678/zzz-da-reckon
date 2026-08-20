@@ -10,17 +10,19 @@
  * - 影画6 构造体之梦：进场喧响+1200计入 initialDecibelGift（180秒一次整局近似）。
  * - 额外能力合作舞台：击破/支援/同阵营/异常队友激活；侵蚀持续+3秒沿用 spec teamBuffs。
  *
- * 明确未建模（异常结算区/状态机）：
- * - 影画1 异放暴击（基础25%、暴伤25%、掌控>100每点+0.5%暴击率）。
- * - 影画4 异放触发回4能量+70喧响（10秒一次）。
- * - 影画6 妄想时刻不退出、强化绝对音准/终结技以太伤害+40%、全场应援/应援能量转化。
+ * 明确未建模（状态机）：
+ * - 影画6 妄想时刻不退出、全场应援/应援能量转化（场上资源状态机）。
  * 核心异放已建模：第三段绝对音准 #3 命中异常目标 → release 事件（dominant 元素按覆盖率分配），
  * 倍率 = 原异常单次/单跳倍率 × (初始掌控/10 × 元素比例%) × (失衡?1.5:1)，结算区=爱芮。
+ * 影画1 异放暴击已建模：基础25%暴击率/25%暴伤，掌控>100每点+0.5%暴击率（releaseCrit）。
+ * 影画4 异放回能/喧响已建模：min(异放次数, floor(t/10)) × (4能量+70喧响) 并入 initialEnergyGift/initialDecibelGift。
+ * 影画6 强化绝对音准/终结技以太伤害+40%已建模：patchExecutions 按 moveId 加 dmgBonus（绝对音准按妄想覆盖率折算）。
  */
 import type {
   AgentCharConfigInput,
   AgentEventInput,
   AgentMechanicModule,
+  AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentSkillTransformInput,
@@ -34,6 +36,8 @@ export const AIRE_C2_DELUSION_DEF_IGNORE = 8
 export const AIRE_C6_DECIBEL_GIFT = 1200
 /** 第三段[普通攻击：绝对音准 #3] 的 moveId（异放载体） */
 export const AIRE_ABSOLUTE_PITCH_MOVE_ID = '1501007'
+/** 绝对音准全段 moveId（影画6 强化版以太伤害 +40% 的作用范围） */
+export const AIRE_ABSOLUTE_PITCH_MOVE_IDS = new Set(['1501005', '1501006', '1501007', '1501022', '1501008'])
 /** 核心被动 Lv.7：每 10 点初始异常掌控 → 各元素异放比例（%） */
 export const AIRE_RELEASE_RATIO_PER_TEN: Record<string, number> = {
   ether: 27.5,
@@ -47,6 +51,18 @@ export const AIRE_RELEASE_RATIO_PER_TEN: Record<string, number> = {
 export const AIRE_RELEASE_STUN_BONUS_PCT = 50
 /** 妄想时刻（终极技 buff）单次持续时间（秒），用于估算强化版绝对音准占比 */
 export const AIRE_DELUSION_DURATION = 15
+/** 影画1 异放暴击：基础暴击率/暴伤，掌控>阈值后每点额外加暴击率 */
+export const AIRE_C1_RELEASE_CRIT_RATE = 25
+export const AIRE_C1_RELEASE_CRIT_DMG = 25
+export const AIRE_C1_RELEASE_CRIT_MASTERY_THRESHOLD = 100
+export const AIRE_C1_RELEASE_CRIT_PER_POINT_RATE = 0.5
+/** 影画4 异放触发回能/喧响（10秒一次） */
+export const AIRE_C4_RELEASE_ENERGY = 4
+export const AIRE_C4_RELEASE_DECIBEL = 70
+export const AIRE_C4_CD_SECONDS = 10
+/** 影画6 强化绝对音准/终结技以太伤害 +40% */
+export const AIRE_C6_ETHANOL_DMG_BONUS = 40
+export const AIRE_ULTIMATE_MOVE_ID = '1501016'
 
 export interface AireCycle {
   cinemaLevel: number
@@ -87,7 +103,7 @@ export function computeAireCycle(input: {
       ? AIRE_C2_DEF_IGNORE + AIRE_C2_DELUSION_DEF_IGNORE * c2DelusionCoverage
       : 0,
     c6DecibelGift: cinemaLevel >= 6 ? AIRE_C6_DECIBEL_GIFT : 0,
-    note: '异放精通比例结算、异放暴击、妄想时刻与应援能量转化属异常结算区/状态机，未建模。',
+    note: '妄想时刻与应援能量转化属状态机、异放回能/喧响（影画4）未建模；异放比例结算与影画1暴击已接入。',
   }
 }
 
@@ -96,6 +112,15 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput):
   record.aireCinemaLevel = cinemaLevel
   record.aireC2DelusionCoverage = clampRatio(setting(cfg, 'aire.c2DelusionCoverage', 1))
   record.aireAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  if (cinemaLevel >= 4) {
+    // 影画4：异放触发回 4 能量 + 70 喧响，10秒一次 → 整局 min(异放次数, floor(t/10)) 次
+    const releaseCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount', 8)))
+    const cdTriggers = Math.max(0, Math.floor((cfg.battleTime ?? 180) / AIRE_C4_CD_SECONDS))
+    const triggers = Math.min(releaseCount, cdTriggers)
+    cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + triggers * AIRE_C4_RELEASE_ENERGY
+    cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + triggers * AIRE_C4_RELEASE_DECIBEL
+    record.aireC4ReleaseTriggers = triggers
+  }
   if (cinemaLevel >= 6) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + AIRE_C6_DECIBEL_GIFT
   }
@@ -133,6 +158,8 @@ function buildAireResourceResult({ cfg }: AgentResourceResultInput) {
 function buildAireAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
   const pitchCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount', 8)))
   if (pitchCount <= 0) return
+  const record = cfg as unknown as Record<string, unknown>
+  const cinemaLevel = Number(record.aireCinemaLevel ?? 0)
   const totalTime = state.frontlineTime + state.backstageTime
   // 强化版占比 ≈ 妄想时刻覆盖 = min(1, 大招次数 × 15s / 全局时间)；核心异放不区分强化/原版，仅用于口径展示
   const delusionCoverage = totalTime > 0
@@ -153,8 +180,36 @@ function buildAireAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
       perTenByElement: AIRE_RELEASE_RATIO_PER_TEN,
       stunBonusPct: AIRE_RELEASE_STUN_BONUS_PCT,
     },
+    releaseCrit: cinemaLevel >= 1
+      ? {
+          ratePct: AIRE_C1_RELEASE_CRIT_RATE,
+          dmgPct: AIRE_C1_RELEASE_CRIT_DMG,
+          masteryThreshold: AIRE_C1_RELEASE_CRIT_MASTERY_THRESHOLD,
+          masteryPerPointRatePct: AIRE_C1_RELEASE_CRIT_PER_POINT_RATE,
+        }
+      : undefined,
     note: `第三段绝对音准 #3 命中异常目标触发；基底属性取基底异常元素主施加者，结算区=爱芮。强化版占比≈${(delusionCoverage * 100).toFixed(0)}%（大招次数×${AIRE_DELUSION_DURATION}s/全局时间）。`,
   })
+}
+
+function patchAireExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const cinema = Number((cfg as unknown as Record<string, unknown>).aireCinemaLevel ?? 0)
+  if (cinema < 6) return
+  const battleTime = cfg.battleTime ?? 180
+  const delusionCoverage = battleTime > 0
+    ? Math.min(1, (state.ultimateCount * AIRE_DELUSION_DURATION) / battleTime)
+    : 0
+  const pitchBoost = AIRE_C6_ETHANOL_DMG_BONUS * delusionCoverage
+  for (const exec of executions) {
+    if (!exec.moveId) continue
+    if (exec.moveId === AIRE_ULTIMATE_MOVE_ID) {
+      exec.dmgBonus = (exec.dmgBonus ?? 0) + AIRE_C6_ETHANOL_DMG_BONUS
+      exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画6 终结技以太伤害+${AIRE_C6_ETHANOL_DMG_BONUS}%`
+    } else if (AIRE_ABSOLUTE_PITCH_MOVE_IDS.has(exec.moveId) && pitchBoost > 0) {
+      exec.dmgBonus = (exec.dmgBonus ?? 0) + pitchBoost
+      exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画6 强化绝对音准以太伤害+${AIRE_C6_ETHANOL_DMG_BONUS}%×妄想覆盖${(delusionCoverage * 100).toFixed(0)}%`
+    }
+  }
 }
 
 function buildAireResourceSections({ result }: AgentResourceSectionsInput) {
@@ -178,13 +233,14 @@ export const aireMechanic: AgentMechanicModule = {
   id: 'agent:aire',
   agentIds: [AIRE_ID],
   name: '爱芮·控场核心',
-  description: '异常精通+90、影画1以太积蓄抗性无视、影画2无视防御、影画6进场喧响；核心异放已按异常比例结算。',
+  description: '异常精通+90、影画1以太积蓄抗性无视+异放暴击、影画2无视防御、影画4异放回能/喧响、影画6进场喧响+强化直伤；核心异放已按异常比例结算。',
   settings: [
     { id: 'aire.c2DelusionCoverage', label: '妄想时刻覆盖率', description: '影画2妄想时刻内额外无视8%防御的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
     { id: 'aire.absolutePitchCount', label: '第三段绝对音准次数', description: '第三段[普通攻击：绝对音准 #3]的整局次数（每次命中异常目标触发一次异放）；默认值待按实际循环校准', default: 8, min: 0, max: 60, step: 1 },
   ],
   buildCharConfig: buildAireCharConfig,
   buildAnomalyEvents: buildAireAnomalyEvents,
+  patchExecutions: patchAireExecutions,
   transformSkillExecutions: applyAirePanel,
   buildResourceResult: buildAireResourceResult,
   resourceSections: buildAireResourceSections,
