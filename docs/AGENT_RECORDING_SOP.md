@@ -54,7 +54,7 @@
 
 | 根因 | 症状 | 实测案例 | 自查 |
 |---|---|---|---|
-| 面板 buff 施加点错误 | 覆盖率滑块不生效，提升率恒定不变 | 般岳 `rageGainCoverage`：applyPanel 读 `panel.banyueRageCoverage`（从未被写入的对象）→ 滑块失效 | `applyPanel` 早于 `buildCharConfig`、拿不到 configStore/settings。覆盖率滑块只有两条合法路径：① `computePanelPhases` 硬编码块（jane/liuyin/1531 模式，能读 configStore）；② buildCharConfig 写 panel 字段、后续 transform/patch 钩子读取（miyabi 模式） |
+| 面板 buff 施加点错误 | 覆盖率滑块不生效，提升率恒定不变 | 般岳 `rageGainCoverage`：applyPanel 读 `panel.banyueRageCoverage`（从未被写入的对象）→ 滑块**长期静默失效**（已修） | **已修接口**：`AgentPanelInput` 现在带已解析的 `settings`，面板阶段直接 `input.settings['<id>'] ?? 默认值`。旧两条绕法（computePanelPhases 硬编码块 / 经 panel 字段走私）**已废弃，勿再用**。滑块必须配一条「改滑块 → 面板/结果确实变」的生效测试 |
 | 作用域错误 | 提升率偏高（buff 作用到不该作用的招式/角色） | 旧 `billyStarGlowMechanic` 把星辉挂**全局 dmgBonus**（文本只作用 6 个目标招式） | 每录一个 buff 问三问：谁受益（自身/全队/敌人）？哪些招式（moveId 集合）？哪个乘区？ |
 | 乘区位置错误 | 提升率数值不对（非零但错） | C6"贯穿伤害+18%"最初挂通用增伤区，应为**贯穿增伤乘区**（`sheerDmgBonus`，引擎后补执行级通道） | 乘区查表：通用 `dmgBonus` / 元素 / `skillDmgBonus*` / 贯穿 `sheerDmgBonus` / 暴伤 `critDmgBonus` / 抗性 `enemyXxxResReduction` / 基础区 `flatDamageBonus` |
 | 计数源错误 | 次数类 buff 量不对 | 孤轮+8 决意只按付费强特计（**免费衔接的孤轮漏算**，后改按孤轮总次数）；格挡按招架近似（应为 `blockCount` 交互次数） | buff 次数由什么驱动：闪能 / HP / 交互次数 / 命中次数？按真实来源计数，**不要拿邻近计数近似** |

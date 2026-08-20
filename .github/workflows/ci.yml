@@ -16,6 +16,19 @@ jobs:
       - run: npm ci
       # verify = validate:data + validate:specs + vitest + typecheck + build（一条链，无重复执行）
       - run: npm run verify
+
+  # 文档漂移检查独立成 job：原先它是 verify job 里 `npm run verify` 之后的一个 step，
+  # 于是任何一条测试变红都会连带让文档护栏不再报信（一红全哑——实测发生过：
+  # yixuanSmoke 长期红期间，docs:status 漂移检查其实一次都没跑）。拆开后两条护栏互不遮挡。
+  docs-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       # 自动生成文档漂移检查：docs:status 重新生成后必须无 diff（README §2 唯一权威进度）
       - name: Docs drift check (implementation-status.md)
         run: |

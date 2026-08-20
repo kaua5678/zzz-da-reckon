@@ -38,17 +38,34 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
 
 | 钩子 | 调用时机 | 能做什么 | 拿不到什么 |
 |---|---|---|---|
-| `applyPanel` | 面板计算时（最早） | 面板字段（critDmg/抗性无视/转模） | configStore、settings（滑块值） |
+| `applyPanel` | 面板计算时（最早） | 面板字段（critDmg/抗性无视/转模）；覆盖率滑块直接读 `input.settings` | cfg、state（轮次数） |
+| `applyTeamConfig` | 全队 cfg 就绪后（三阶段，见下） | **写全队 cfg**：跨槽位联动（邻位回能/后场全队增益/入场次数汇总） | state（用 input 里的 exCounts/stunCount） |
 | `buildCharConfig` | 面板之后、资源池之前 | cfg 字段、initialEnergyGift、skipGenericExSpecial、预存倍率表 | state（轮次数） |
 | `estimateExSpecialTime` | iterate 每轮 | 强特链/专属动作的必做前台时间 | state（可用 cfg 字段存上轮值） |
 | `buildExecutions` | 收敛后一次 | push 专属执行（EX 链/附伤/事件执行） | — |
 | `patchExecutions` | buildExecutions 末尾 | 按 moveId 补 dmgBonus/critDmgBonus | — |
 | `buildResourceResult` | buildExecutions 之后 | specResources/专属展示数据 | — |
+| `buildAnomalyEvents` | 异常事件计划构建时 | push 专属异常事件 | — |
+| `resolveExecutionDamage` | 直伤行结算时 | 覆盖该行的元素/来源/note（返回 null 走通用规则） | — |
+| `releaseModifier` | 异放/乱流释放伤害 | 减抗修正 | — |
+| `transformAnomalyPool` | 异常池 perElement 汇总前 | 向 elementMap 注入积蓄贡献（风蚀等） | — |
 | `resourceSections` | 展示 | 资源卡片（资源利用率页） | cfg（只读 result） |
-| `transformSkillExecutions` | 失衡/异常提取时 | 接管全部非平A的 daze/anomaly 提取 | — |
+| `transformSkillExecutions` | 失衡/异常提取时 | 专属失衡/积蓄贡献或最终面板后处理 | — |
 
-**定义 `transformSkillExecutions` 后，通用失衡/异常提取对全角色禁用**（`usesModuleTransform`
-分支），模块必须自己把所有执行的行值补进 stunExecs/anomalyExecs——大部分角色不要定义它。
+**`transformSkillExecutions` 只做面板后处理时不要开 `replaceSkillExecutionExtraction`**：该标志为 true
+才会关掉通用失衡/积蓄提取（目前只有雅/维琳娜开）。历史事故：旧代码按「是否定义了钩子」判断，
+导致仅做面板后处理的 specPanelBuffs 模块（赛斯等 9 个角色）连非普攻行的失衡值一并被跳过，
+修正（f20b2d5）后这些角色失衡值重新进池 —— 连带把仪玄冒烟的强特当量从 13 抬到 14。
+
+**`applyTeamConfig` 的三个阶段**（`AgentTeamPhase`，编排层按槽位 0→1→2 派发）：
+
+| phase | 时机 | 手上有什么 | 典型用途 |
+|---|---|---|---|
+| `build` | 全队 cfg 刚构建完 | 次数全 0 | 邻位回能表、读滑块写 cfg |
+| `converge` | 外层不动点进入本轮 | **上一轮**收敛的 exCounts/stunCount/teamEnergyConsumed | 按失衡次数汇总全队连携、按上轮能耗算回能 |
+| `postRound` | 本轮资源结果已出 | 本轮 exCounts | 为**下一轮**估派生量（全队能量消耗） |
+
+跨角色联动一律走这个钩子，**不要**再往 `useResourceCalc` 里加 `agentId === 'xxxx'` 分支。
 
 ## 3. 关键文件地图
 
@@ -65,10 +82,12 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
 
 ## 4. 常见坑（实测踩过）
 
-1. **面板滑块拿不到 settings**：`applyPanel` 早于 cfg 构建，模块内读不到 `configStore`。
-   两种既有解法：① 在 `computePanelPhases` 里硬编码块（简 passionCoverage / 琉音 goodReviewAtkCoverage /
-   星徽·比利 1531 块）；② buildCharConfig 把滑块值写进 panel 字段，后续 transform/patch 钩子读取
-   （雅 iceFlameCoverage 模式）。
+1. **~~面板滑块拿不到 settings~~（已修，2026-08）**：`AgentPanelInput` 现在带 `settings`
+   （已解析：用户值优先、回落 `setting.default`），applyPanel 直接 `input.settings['xxx'] ?? 默认值`。
+   **两条历史绕法都已废弃**，不要再用：① 在 `computePanelPhases` 里写 agentId 硬编码块；
+   ② 把滑块值经 panel 字段走私。走私路径本身就是 bug 温床——般岳 applyPanel 读
+   `panel.banyueRageCoverage`，而该字段从未被任何代码写入 → 怒相增益覆盖率滑块**长期静默失效**
+   （已修 + 补生效测试）。丽娜影画4 的硬编码块也已归位到 `rinaMechanic.applyPanel`。
 2. **state.exSpecialCount 由闪能池驱动**：`resolveExSpecialCount` 用 `exSpecialEnergyConsume` 除。
    模块接管 EX 链时设 `skipGenericExSpecial = true` + `exSpecialCountFloor = true` + 一个合理 cost，
    让 state.exSpecialCount 表达"付费强特数"，再在 buildExecutions 里 push 自己的执行（般岳/星徽·比利模式）。
@@ -97,6 +116,17 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
     necessaryTime（压缩平A池）后重收敛；负 excess（estimate 高估/空闲前台）不动——否则 necessary 变负、basic 膨胀。
     新增模块若推专属 on-field 行且不占 estimate，会被本循环自动纠正；若推后台行应显式 `totalTime: 0`
     （蕾米 Radiant Turn 模式），否则被误判为 on-field 占用。
+13. **队伍级联动别写进编排层**：跨槽位效果用 `applyTeamConfig` 钩子（见 §2），不要往
+    `useResourceCalc` 加 agentId 分支。历史上 5 条队伍级机制被编排层手工 import + 手工按序调用，
+    其中莱特那条要在 3 个位置各调一次，漏一处就是静默错值。
+14. **能量口径分两个数**：`energySource.total`（展示明细合计，含队友联动 `crossAgent`）与
+    `derivedEnergy`（真正驱动 exSpecialCount 的收敛能量）。二者的差值是**已知口径差**：
+    iterate 内调 `calcEnergySource` 时 chainCountTotal 传 0（连携次数尚未收敛），因此连携驱动的
+    回能（莱卡恩影画2 等）只进展示、不参与次数推导。两个字段都在结果上，便于对账。
+    跨角色回能只改 `calcCrossAgentEnergy` 一处（单一事实源）。
+15. **收敛状态要看三层**：`TeamResourceResult.convergence` 上报时间预算层（converged/轮数/
+    正残差/负残差 idle）与失衡外层（`stable | cycle | maxIter`）。`cycle` = 离散 2-循环兜底，正常；
+    `maxIter` = 反馈量仍在变，结果可疑。`allAgentsSweep` 已对全角色断言这两条。
 
 ## 5. 验收命令
 

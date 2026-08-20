@@ -52,12 +52,17 @@ useResourceCalc()                      编排层入口（composables/useResource
 
 | 任务 | 先读 | 再改 |
 |---|---|---|
-| 录新角色 / 补机制 | README §3 → `AGENT_RECORDING_SOP.md` → `ENGINE_PIPELINE_GUIDE.md` | `src/specs/agents/<id>.json` + `src/mechanics/agents/<id>.ts`（注册进 `mechanics/index.ts`） |
+| 录新角色 / 补机制 | README §3 → `AGENT_RECORDING_SOP.md` → `ENGINE_PIPELINE_GUIDE.md` | `src/specs/agents/<agentId>.json`（**文件名必须 = agentId**，validate:specs 强制）+ `src/mechanics/agents/<id>.ts`（注册进 `mechanics/index.ts`） |
+| **跨角色 / 队伍级联动**（邻位回能、后场全队增益、入场次数汇总） | `ENGINE_PIPELINE_GUIDE.md` §2 的 `applyTeamConfig` 三阶段表 | **只改角色模块自己的 `applyTeamConfig`**；派发器 `applyTeamMechanics`（composables/resourceCalc/helpers.ts）无需改。禁止往 `useResourceCalc` 加 agentId 分支 |
+| **加一个可调滑块（覆盖率/次数近似）** | `src/mechanics/types.ts` 的 `MechanicSetting`；面板阶段读法见 `AgentPanelInput.settings` | 模块 `settings: [...]` 声明 → 面板阶段 `input.settings['<id>']`、cfg 阶段 `configStore.getMechanicSetting`。**必须补一条「滑块改了面板/结果确实变」的生效测试**（般岳 rageGainCoverage 曾静默失效） |
 | 改伤害公式 / 乘区 | `core/damage.ts`（乘区顺序 = 代码顺序：基础→增伤→锐化→贯穿→防御→抗性→易伤→失衡→暴击） | core/damage.ts；执行级字段在 `types/resource.ts` SkillExecution |
-| 改资源池（能量/闪能/时间/连携/转大） | `core/resource.ts`（主循环）→ `core/resource/helpers.ts`（calcEnergySource/iterate） | 同上 + `types/resource.ts` |
+| 改资源池（能量/闪能/时间/连携/转大） | `core/resource.ts`（主循环）→ `core/resource/helpers.ts`（calcEnergySource/iterate） | 同上 + `types/resource.ts`；**跨角色回能只改 `calcCrossAgentEnergy`**（单一事实源，iterate 与最终装配共用） |
+| 排查「界面能量总额和次数不对应」 | `types/resource.ts` 的 `CrossAgentEnergy` / `derivedEnergy` 注释 | 看 `energySource.total`（展示，含 crossAgent）vs `derivedEnergy`（驱动次数）；已知差值 = iterate 内 chainCountTotal 传 0 |
+| 排查「算出来没收敛 / 数值抖动」 | `types/resource.ts` 的 `ConvergenceReport`；结果页计算状态条 | `convergence.timeBudgetConverged` / `outerExit`（`cycle` 正常、`maxIter` 可疑）；全角色断言在 `allAgentsSweep` |
 | 改失衡 / 异常 / 紊乱 | `core/stunPool/`、`core/anomalyPool/` | 同上 |
 | 改面板计算 / 局外局内 / 转模 | `composables/resourceCalc/helpers.ts`（computePanelPhases，applyPanel 调用点在此）→ `core/panel.ts` | 同上 |
 | 改页面 / 结果展示 | `views/` + `components/`；伤害行数据源 `calc.damagePoolRows` | 对应 .vue |
+| 命座提升率 / 死数据自检 | `composables/cinemaUplift.ts`（`analyzeCinemaUplift`，页面与测试同源） | 同上；全角色红灯在 `allAgentsSweep`「命座有效性不变量」 |
 | Excel 导出（结果页按钮） | `utils/exportExcel.ts`（buildExportWorkbook 纯组装 / exportExcelFile 动态加载 xlsx + Blob 下载；sheet：操作表/资源表/伤害行明细/异常池） | 同上；测试 `utils/__tests__/exportExcel.test.ts` |
 | 改失衡轴 / 自动轴 / 预设 | `data/stunAxisPresets.ts` + `data/stunAxisPresets/*.json` | 同上（自动匹配 `selectAutoStunAxisPreset`） |
 | 改队伍预设 | `data/teamPresets/*.json`（目录自动加载） | 同上 |
@@ -67,7 +72,9 @@ useResourceCalc()                      编排层入口（composables/useResource
 
 ## 4. 数据流速查（谁写谁读，防"录了没消费"）
 
-- **cfg**：composables 构建 → 模块 `buildCharConfig` 改写 → 引擎 iterate / buildExecutions 读。模块想在下一轮读自己的值 → 写 cfg 字段（`record.<key>`）。
+- **cfg**：composables 构建 → 模块 `buildCharConfig` 改写 → **模块 `applyTeamConfig` 改写全队**（跨槽位联动，三阶段 build/converge/postRound）→ 引擎 iterate / buildExecutions 读。模块想在下一轮读自己的值 → 写 cfg 字段（`record.<key>`）。
+- **跨角色回能**：`calcCrossAgentEnergy`（core/resource/helpers.ts）是唯一事实源，被 iterate（参与次数推导）与 calcTeamResources 最终装配（写 `energySource.crossAgent` 并计入 total）共用。新增跨角色回能只改这一处 + `CrossAgentEnergy` 加字段。
+- **收敛诊断**：`TeamResourceResult.convergence` 由 core（时间预算层）+ useResourceCalc（失衡外层）共同回填 → 结果页计算状态条 + `allAgentsSweep` 断言。
 - **特殊动作/异常喧响奖励**：`calcSpecialActionBonus`（弹刀215/闪反10/连携10/快支20，含伴随50%）每轮即时结算、`anomalyPool.perSlotBonus`（异常/紊乱/乱流，含伴随）上一轮回填 → `ResourceCalcConfig` 按槽位注入 → iterate `totalDecibel` 与 `decibelSource` 同口径（`ultimateCount = floor(total/3000)`，界面喧响总览 = `decibelSource.total`，不再页面外拼）。失衡触发 20/次归属（每人/全队）无出处，未接入。
 - **panel**：`computePanelPhases` 产生（applyPanel + 硬编码块在此）→ `cfg.panel` → 伤害池。**applyPanel 阶段拿不到 configStore/settings**（见 ENGINE_PIPELINE §4 坑 1）。
 - **executions**：buildExecutions 产生 → `enrichExecutionPlan` 回填（**覆盖 name/note**，匹配一律用 moveId）→ 失衡/异常/伤害池。

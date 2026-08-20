@@ -25,19 +25,23 @@
 2. **数值唯一事实源 = `public/static/catalog.json`**：改数值走 `scripts/` 导入/爬取脚本重跑，不要手改 JSON 本体。
 3. **执行行匹配一律用 `moveId`**，不按 name/note（`enrichExecutionPlan` 会从倍率表回填覆盖它们）。
 4. **自定义 TS 模块角色**（`src/mechanics/agents/*.ts` 注册过）的 spec 字段是死数据：adjustable 滑块/attributeConversions 必须在模块里实现，spec 只作记录（`validate:specs` 已强制：模块角色的 attributeConversions 必须可证明被消费——模块显式调用 `applySpecAttributeConversions` 或条目 note 标注「实现位置：」，否则校验失败）。
-5. **每个录入的机制 = spec 字段 + 生效测试**；命座效果录完跑一次「资源利用率页·命座提升率」确认无橙色「⚠无变化」警示（效果未接进计算的信号）。
-6. **知识单一事实源在代码**：改代码时同步更新受影响的文档（`docs/` 清单见 README §6）；不要新建"复述代码"的文档，优先更新决策树条目。
-7. **完成必须声明 verifier + coverage**：每个改动结束时，回复里写明——由哪个命令/测试证明它生效（verifier），以及影响范围（哪些角色/页面/文件）。没有测试覆盖的改动先补测试，不算完成。
-8. **check 失败先诊断再动手**：先读失败断言/错误文件，写一句根因，再修。禁止不读输出直接重跑或直接改测试；若根因指向测试本身，先复核口径再改。
-9. **跨文件常量只从单一来源引用**：能量/喧响/倍率/异常等共享数值必须引用 `core/`、类型定义或 `statMeta` 中的常量，禁止在模块/页面里复制字面量；改口径先改源，再跑 check。
+5. **每个录入的机制 = spec 字段 + 生效测试**；命座效果录完跑一次「资源利用率页·命座提升率」确认无橙色「⚠无变化」警示（效果未接进计算的信号）。该自检已有自动化护栏兜底：`allAgentsSweep` 断言「声明已实现命座的角色 C6 伤害 > C0 伤害」，逐级三态判据在 `composables/cinemaUplift.ts`（页面与测试同源）——但页面自检仍要跑，它能定位到具体是哪一级。
+6. **跨角色/队伍级机制走 `applyTeamConfig` 钩子**（三阶段 build/converge/postRound，见 `docs/ENGINE_PIPELINE_GUIDE.md` §2），禁止往 `useResourceCalc` 新增 `agentId === 'xxxx'` 分支；面板阶段的覆盖率滑块直接读 `AgentPanelInput.settings`，不要经 panel 字段走私（曾致般岳滑块静默失效）。
+7. **spec 文件名必须是 `<agentId>.json`**（`validate:specs` 强制）：拼音 slug 会与别的角色撞车（`juhufu`=朱鸢 vs `jufufu`=橘福福），改错文件代价极高。
+8. **知识单一事实源在代码**：改代码时同步更新受影响的文档（`docs/` 清单见 README §6）；不要新建"复述代码"的文档，优先更新决策树条目。
+9. **完成必须声明 verifier + coverage**：每个改动结束时，回复里写明——由哪个命令/测试证明它生效（verifier），以及影响范围（哪些角色/页面/文件）。没有测试覆盖的改动先补测试，不算完成。
+10. **check 失败先诊断再动手**：先读失败断言/错误文件，写一句根因，再修。禁止不读输出直接重跑或直接改测试；若根因指向测试本身，先复核口径再改。**红基线不允许过夜**：曾有一条 `yixuanSmoke` 断言被当成"既存红"跨多个任务放着，而 CI 里文档漂移检查排在 `npm run verify` 之后同一 job——一红全哑、护栏整张失效（该 job 已拆开）。
+11. **跨文件常量只从单一来源引用**：能量/喧响/倍率/异常等共享数值必须引用 `core/`、类型定义或 `statMeta` 中的常量，禁止在模块/页面里复制字面量；改口径先改源，再跑 check。跨角色回能只改 `calcCrossAgentEnergy`（单一事实源）。
 
 ## 2. 常见任务入口（完整决策树见 docs/ARCHITECTURE.md §3）
 
 | 任务 | 改哪 |
 |---|---|
-| 录新角色 / 补机制 | `src/specs/agents/<id>.json` + `src/mechanics/agents/<id>.ts`（注册进 `src/mechanics/index.ts`） |
+| 录新角色 / 补机制 | `src/specs/agents/<agentId>.json`（文件名必须=agentId）+ `src/mechanics/agents/<id>.ts`（注册进 `src/mechanics/index.ts`） |
+| **跨角色 / 队伍级联动** | 角色模块自己的 `applyTeamConfig`（三阶段）；派发器在 `resourceCalc/helpers.ts`，勿动 `useResourceCalc` |
+| **加一个可调滑块** | 模块 `settings` 声明 + 面板阶段读 `AgentPanelInput.settings`；必须补「改滑块→结果确实变」生效测试 |
 | 改伤害公式 / 乘区 | `src/core/damage.ts`（乘区顺序 = 代码顺序） |
-| 改资源池 / 失衡 / 异常 | `src/core/resource*.ts`、`src/core/stunPool/`、`src/core/anomalyPool/` |
+| 改资源池 / 失衡 / 异常 | `src/core/resource*.ts`、`src/core/stunPool/`、`src/core/anomalyPool/`；跨角色回能只改 `calcCrossAgentEnergy` |
 | 改面板 / 转模 / 局外局内 | `src/composables/resourceCalc/helpers.ts`（computePanelPhases） |
 | 改失衡轴 / 自动轴 / 预设 | `src/data/stunAxisPresets.ts` + `src/data/stunAxisPresets/*.json` |
 | 排查 buff / 命座没生效 | `docs/AGENT_RECORDING_SOP.md` §3.5 根因表；页面「命座提升率」自检 |

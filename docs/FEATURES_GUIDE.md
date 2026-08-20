@@ -135,7 +135,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 
 ```bash
 npm run typecheck      # 类型
-npm run check          # validate:data + validate:specs + vitest（451 测试）
+npm run check          # validate:data + validate:specs + vitest（数量见 vitest 输出，勿在文档写死）
 npm run build          # 产物（public/ 自动拷入 dist/）
 ```
 

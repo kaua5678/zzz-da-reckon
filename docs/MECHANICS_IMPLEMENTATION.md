@@ -490,7 +490,9 @@
 - **未建模**：影画4 蓄热充能+40%（无 moveId 级通道）。
 - **模块**：`src/mechanics/agents/orphie.ts`（自身机制 applyPanel）+ spec 声明式（helpers 过滤链门控额外能力）。
 
-### 朱鸢（juhufu / 1241）—— 新艾利都治安局以太击破
+### 朱鸢（旧文件名 juhufu / agentId 1241）—— 新艾利都治安局以太击破
+
+> spec 现为 `src/specs/agents/1241.json`。旧文件名 `juhufu` 与橘福福拼音 `jufufu` 只差一字，改文件务必按 agentId。
 
 - **定位**：机制全部自身向，无团队 buff（原 1241 teammate-buffs 组为误挂的橘福福旧版草稿，已删除；橘福福正式版在 1391 组）。
 - **额外能力**：队伍有[支援]或同阵营（治安局）→ 自身暴击率 +30%（10 秒窗口按常驻近似）。
