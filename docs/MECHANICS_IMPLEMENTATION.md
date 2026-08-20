@@ -460,7 +460,7 @@
 - **额外能力**：队伍有[命破]或同阵营 → [气绝]敌人受伤 +20%（`pan_yinhu.additional_stupefaction_dmg` 按 spec.additionalAbility 门控）；**影画1** 气绝敌人再 +10%（同源门控）。
 - **影画6**：[通窍]比例→24%、上限→720（buffModifiers ×4/3；引擎 derived 分支同步放大 cap）。
 - **未建模**：影画2 破劲换能/气绝延长、影画4 治疗与储粮、潘引壶自身破劲循环。
-- **模块**：`src/specs/agents/pan_yinhu.json`（声明式，无独立模块；helpers 过滤链门控气绝增伤）。
+- **模块**：`src/specs/agents/1421.json`（声明式，无独立模块；helpers 过滤链门控气绝增伤）。
 
 ### 希希芙（xixifu / 1521）—— 新艾利都治安局电强攻
 

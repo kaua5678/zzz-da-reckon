@@ -11,7 +11,7 @@
  *   spec attributeConversions 必须可证明被消费（模块显式调用 applySpecAttributeConversions，
  *   或条目 note 标注「实现位置：」），否则 FAIL；adjustable 滑块给出 WARN。
  * - 完整字段说明见 src/specs/template.json 的 _comment；完整角色示例见
- *   src/specs/agents/lucia_elowen.json（1451）。
+ *   src/specs/agents/1451.json（卢西娅·艾洛温）。
  * - 已在 public/static/teammate-buffs.json 承载的拐力不要重复填 teamBuffs。
  */
 import { readFileSync, readdirSync } from 'node:fs'
@@ -47,6 +47,11 @@ for (const skills of catalog.agentSkills ?? []) {
     for (const move of category.moves ?? []) moves.add(move.id)
   }
 }
+/** catalog 里的 agentId → 中文名（用于 spec 文件名/名称一致性校验） */
+const agentNameById = new Map()
+for (const agent of catalog.agents ?? []) {
+  agentNameById.set(String(agent.id), agent.name?.zhCN ?? '')
+}
 
 // ===== 死数据检查（AGENTS 规则 4）：自定义 TS 模块角色的 spec 字段无解释器消费者 =====
 // 模块来源 = src/mechanics/agents/*.ts 里声明的 agentIds（含 const 解析）。
@@ -73,6 +78,41 @@ for (const file of readdirSync(mechanicsDir)) {
 
 const files = readdirSync(specDir).filter(file => file.endsWith('.json'))
 check('spec directory has JSON files', files.length > 0)
+
+// ===== 文件名 ↔ agentId ↔ 中文名 三方一致性 =====
+// 动机（实际踩过的改错文件陷阱）：spec 曾经命名双轨（`<id>.json` 与 `<拼音slug>.json` 并存），
+// 而 slug 会与另一个角色的拼音撞车 —— `juhufu.json` 实为朱鸢(1241)，橘福福(1391) 的拼音恰是
+// `jufufu` 且其 spec 是 `1391.json`；配上 `jufufu.test.ts`(橘福福)，两者只差一字，AI/人都极易
+// 改错文件（docs 里也确实写出过指向不存在的 `jufufu.json`）。
+// 规则（spec 由 import.meta.glob 加载，文件名对运行时无意义 → 可无痛统一）：
+//   ① 文件名必须是 `<agentIds[0]>.json`，不允许拼音 slug —— 从根上消灭romanization 撞车；
+//   ② spec.name 必须与 catalog 中该 agentId 的中文名同源（防 spec 挂错角色）。
+//      同源判定放宽到「互相包含 或 共同前缀≥2 字」，容忍官方全名/简称/书名号差异
+//      （雅/星见雅、「扳机」/扳机、诺姆·霍洛韦尔/霍洛维尔、奥菲丝&「鬼火」/奥菲丝·马格努森&「鬼火」），
+//      但拦住「朱鸢 vs 橘福福」这类完全不同的角色。
+const stripDecor = s => String(s ?? '').replace(/[「」·&\s]/g, '')
+const sameOrigin = (a, b) => {
+  const x = stripDecor(a)
+  const y = stripDecor(b)
+  if (!x || !y) return true
+  if (x.includes(y) || y.includes(x)) return true
+  let i = 0
+  while (i < x.length && i < y.length && x[i] === y[i]) i++
+  return i >= 2
+}
+for (const file of files) {
+  const spec = JSON.parse(readFileSync(join(specDir, file), 'utf8'))
+  const base = file.replace(/\.json$/, '')
+  const primaryId = String(spec.agentIds?.[0] ?? '')
+  check(`spec 文件名 ${file} = <agentId>.json`, base === primaryId,
+    `文件名必须等于 agentIds[0]（${primaryId}）。拼音 slug 已禁用：slug 会与别的角色撞车（juhufu=朱鸢 vs jufufu=橘福福），改错文件的代价极高。`)
+  if (primaryId && agentNameById.has(primaryId)) {
+    const catalogName = agentNameById.get(primaryId)
+    check(`${file}: spec.name「${spec.name}」与 catalog 中 ${primaryId}「${catalogName}」同源`,
+      sameOrigin(spec.name, catalogName),
+      `spec 可能挂错角色（agentIds 与 name 不是同一个人）`)
+  }
+}
 
 const allIds = new Set()
 

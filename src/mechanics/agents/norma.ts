@@ -91,7 +91,7 @@ function cfgNum(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number):
 }
 
 /** 额外能力触发条件由 spec.additionalAbility 声明式统一判定写入 panel.additionalAbilityActive；
- *  本模块只读标记开关，不硬编码条件（条件见 src/specs/agents/norma_hollowell.json）。 */
+ *  本模块只读标记开关，不硬编码条件（条件见 src/specs/agents/1571.json）。 */
 function isNormaExtraAbilityActive(panel: PanelValues | undefined, team: MechanicTeamMember[], ownSlot: number, agentFaction: string): boolean {
   return (panel?.additionalAbilityActive ?? 0) > 0
     || (panel?.additionalAbilityActive === undefined && team.some(m => m.slot !== ownSlot && m.agent && (

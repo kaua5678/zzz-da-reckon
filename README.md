@@ -38,7 +38,7 @@ npm run docs:status    # 重新生成 docs/implementation-status.md（CI 会检�
 新增角色或补机制：
 
 1. 生成骨架：`npm run specs:new -- <agentId> --write`（或复制 `src/specs/template.json`，其 `_comment` 字段带字段说明）。
-2. **先看完整角色模板**：`src/specs/agents/lucia_elowen.json`（1451）——梦境值计划/追加攻击/[合唱]行修正/4命帷幕喧响/6命转模/回血接入伊德海莉的全口径示例。
+2. **先看完整角色模板**：`src/specs/agents/1451.json`（卢西娅·艾洛温）——梦境值计划/追加攻击/[合唱]行修正/4命帷幕喧响/6命转模/回血接入伊德海莉的全口径示例。
 3. 填写 `attributeConversions` / `resources` / `events` / `verifications` / `notes`。**标注约定**（`[猜测·高/中/低]` / `[已确认]`）见 `src/specs/template.json` 的 `_comment` 与 `scripts/validate-specs.mjs` 头注释。
 4. 用户确认的数值 → 写入 `verifications`（panel → expected），vitest 自动执行，成为回归测试。
 5. 需要 TS 机制模块的角色：新建 `src/mechanics/agents/<id>.ts`（钩子清单与职责见 `src/mechanics/types.ts` 的 `AgentMechanicModule` JSDoc），并在 `src/mechanics/index.ts` 注册；模块头注释按 JSDoc 要求写完整口径。
