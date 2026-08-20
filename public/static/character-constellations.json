@@ -1670,20 +1670,20 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "影画1 仇恨之子：[暗渊回响]状态下，触发[决算]效果时招式的暴击率额外提升12%，暴击伤害额外提升30%。",
-            "待人工核对后补实现，勿直接默认省略。"
-          ]
+          "status": "implemented",
+          "implemented": [
+            "决算执行行获得12%暴击率与30%暴击伤害。"
+          ],
+          "pending": []
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "partially_implemented",
+          "implemented": [
+            "所有决算执行行无视目标15%防御力。"
+          ],
           "pending": [
-            "影画2 内在小孩：[终结技：渎神者]触发[决算]效果时不会使敌人的失衡状态结束；此外，触发[决算]效果时招式将会无视其15%防御力。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "终结技决算不结束失衡尚未接入精确失衡轴。"
           ]
         },
         {
@@ -1696,11 +1696,12 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "雨果冰属性招式按可调15秒覆盖率无视目标12%冰属性伤害抗性。"
+          ],
           "pending": [
-            "影画4 拟剧论：蓄力射击命中敌人后，雨果的攻击对该目标无视12%冰属性伤害抗性，持续15秒，重复触发时刷新持续时间。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "蓄力射击命中后的逐目标15秒窗口按整局覆盖率近似。"
           ]
         },
         {
@@ -1713,11 +1714,12 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "暗渊回响固定满覆盖；决算增伤60%；非失衡强特终结一击生成固定1000%决算。"
+          ],
           "pending": [
-            "影画6 荆棘王冠：所有射击攻击命中敌人时，均可触发[暗渊回响]状态，最多持续6秒，重复触发时刷新持续时间；此外，任意招式触发[决算]效果时，此次伤害额外提升60%；[强化特殊技：魂狩·惩戒]的终结一击命中非失衡状态下的敌人时也可触发[决算]效果，使得招式的终结一击伤害倍率固定提升1000%。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "射击逐命中刷新6秒状态按满覆盖近似。"
           ]
         }
       ]

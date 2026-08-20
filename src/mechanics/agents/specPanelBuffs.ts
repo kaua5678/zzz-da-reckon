@@ -53,19 +53,6 @@ function stackCount(resource: SpecResourceResult | undefined): number {
   return cap == null ? total : Math.min(total, Math.floor(cap))
 }
 
-export const hugoAbyssEchoMechanic = makePanelBuffModule(
-  'agent:hugo_abyss_echo',
-  ['1291'],
-  '雨果·暗渊回响',
-  'hugo_abyss_echo',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) > 0) {
-      panel.critRate = (panel.critRate ?? 0) + 12
-      panel.critDmg = (panel.critDmg ?? 0) + 25
-    }
-  },
-)
-
 export const pulchraHuntStepMechanic = makePanelBuffModule(
   'agent:pulchra_hunt_step',
   ['1351'],

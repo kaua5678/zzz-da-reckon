@@ -14,8 +14,8 @@ import { miyabiMechanic } from './agents/miyabi'
 import { liuyinMechanic } from './agents/liuyin'
 import { normaMechanic } from './agents/norma'
 import { piperMechanic } from './agents/piper'
+import { hugoMechanic } from './agents/hugo'
 import {
-  hugoAbyssEchoMechanic,
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
   // benGuardShieldMechanic 已由 agents/ben.ts 替代（全队暴击+防转攻+命座）
@@ -73,7 +73,7 @@ registerAgentMechanic(remielleMechanic)
 registerAgentMechanic(yidhariMechanic)
 registerAgentMechanic(nekomataMechanic)
 registerAgentMechanic(piperMechanic)
-registerAgentMechanic(hugoAbyssEchoMechanic)
+registerAgentMechanic(hugoMechanic)
 registerAgentMechanic(pulchraHuntStepMechanic)
 registerAgentMechanic(billyHitStacksMechanic)
 // registerAgentMechanic(benGuardShieldMechanic) — replaced by benMechanic

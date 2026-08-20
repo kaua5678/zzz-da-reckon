@@ -12,7 +12,6 @@ import { emptyPanel } from '@/core/panel'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import {
-  hugoAbyssEchoMechanic,
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
   nekomataPurrMechanic,
@@ -92,15 +91,6 @@ describe('spec resource panel buffs', () => {
       normalizeResourceSkillType: () => 'special',
     } as any)
   }
-
-  it('applies Hugo abyss echo crit stats when active', () => {
-    const map = resources('1291', {}, { chainCountTotal: 1, ultimateCount: 0 })
-    const panel = emptyPanel()
-    const base = emptyPanel()
-    transform(hugoAbyssEchoMechanic, '1291', panel, map)
-    expect(panel.critRate - base.critRate).toBe(12)
-    expect(panel.critDmg - base.critDmg).toBe(25)
-  })
 
   it('applies Pulchra hunt step stun bonus', () => {
     const map = resources('1351', {}, { exSpecialCount: 1, chainCountTotal: 0 })
