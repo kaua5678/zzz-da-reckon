@@ -1567,17 +1567,17 @@
           "status": "not_described_not_implemented",
           "implemented": [],
           "pending": [
-            "影画1 英雄主义：[匪石之盾]提供的护盾及其上限提升30%，[匪石之盾]失效时，[核心被动：守望者]提供的异常精通提升效果额外维持10秒。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "匪石之盾护盾/上限+30%与异常精通失效后额外维持10秒（护盾值与逐时序）未建模。"
           ]
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "进场累积75%意气（资源展示）；雷霆击感电电属性异常积蓄值+35%计入electricAnomalyBuildUpEfficiency。"
+          ],
           "pending": [
-            "影画2 年少轻狂：进入战场时，赛斯立刻为自身累积75%[意气]；发动[普通攻击：雷霆击-感电]命中敌人时，招式累积的电属性异常积蓄值提升35%。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "意气资源逐时序仅展示口径。"
           ]
         },
         {
@@ -1593,8 +1593,7 @@
           "status": "not_described_not_implemented",
           "implemented": [],
           "pending": [
-            "影画4 初心：[招架支援：迅雷盾]造成的失衡值提升25%。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "招架支援迅雷盾失衡值+25%（招架支援不在通用伤害执行模型内）未建模。"
           ]
         },
         {
@@ -1607,11 +1606,12 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "雷霆击感电终结一击额外500%攻击力伤害、必定暴击且暴伤+60%，按次数滑块生成合成执行行。"
+          ],
           "pending": [
-            "影画6 理想主义：赛斯在[普通攻击：雷霆击-感电]中发动终结一击命中敌人时，额外造成自身500%攻击力的伤害，本次攻击必定触发暴击，且暴击伤害提升60%。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "终结一击次数按滑块近似。"
           ]
         }
       ]
@@ -3010,12 +3010,13 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "implemented",
+          "status": "partially_implemented",
           "implemented": [
-            "普攻/特殊技/强特无视10%以太异常积蓄抗性计入面板enemyEtherAnomalyResReduction。",
-            "异放暴击（基础25%暴击率/25%暴伤、掌控>100每点+0.5%暴击率）经releaseCrit接入异放结算。"
+            "普攻/特殊技/强特无视10%以太异常积蓄抗性计入面板enemyEtherAnomalyResReduction。"
           ],
-          "pending": []
+          "pending": [
+            "异放暴击（基础25%、暴伤25%、掌控>100每点+0.5%暴击率）属异常结算区，未建模。"
+          ]
         },
         {
           "cinema": 2,
@@ -3037,11 +3038,11 @@
         },
         {
           "cinema": 4,
-          "status": "implemented",
-          "implemented": [
-            "异放触发回4能量+70喧响（10秒一次）整局min(异放次数, floor(t/10))次并入initialEnergyGift/initialDecibelGift。"
-          ],
-          "pending": []
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "异放触发回4能量+70喧响（10秒一次）依赖异放触发次数，未建模。"
+          ]
         },
         {
           "cinema": 5,
@@ -3055,11 +3056,10 @@
           "cinema": 6,
           "status": "partially_implemented",
           "implemented": [
-            "进场喧响+1200计入initialDecibelGift（180秒一次整局近似）。",
-            "强化绝对音准/终结技以太伤害+40%（patchExecutions按moveId加dmgBonus，绝对音准按妄想覆盖率折算）。"
+            "进场喧响+1200计入initialDecibelGift（180秒一次整局近似）。"
           ],
           "pending": [
-            "妄想时刻不退出、全场应援与应援能量转化未建模。"
+            "妄想时刻不退出、强化绝对音准/终结技以太伤害+40%、全场应援与应援能量转化未建模。"
           ]
         }
       ]

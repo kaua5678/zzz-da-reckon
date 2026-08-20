@@ -399,18 +399,6 @@ export function computePeiluoKagerouBonus(
   return result
 }
 
-export const sethShieldMechanic = makePanelBuffModule(
-  'agent:seth_shield',
-  ['1271'],
-  '赛斯·匪石之盾',
-  'seth_stone_shield',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) > 0) {
-      panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + 100
-    }
-  },
-)
-
 const jufufuSpec = getAgentSpec('1391')
 const jufufuSpecModule = jufufuSpec ? specToMechanicModule(jufufuSpec) : null
 

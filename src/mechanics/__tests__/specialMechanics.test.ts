@@ -19,7 +19,6 @@ import {
   zhendouHeartfireMechanic,
   yeshuguangMingxinMechanic,
   peiluoProminenceMechanic,
-  sethShieldMechanic,
 } from '@/mechanics/agents/specPanelBuffs'
 import { computeBillyChain, computeBillyHpModel, starlightBillyMechanic } from '@/mechanics/agents/starlightBilly'
 
@@ -171,11 +170,7 @@ describe('spec resource panel buffs', () => {
     transform(peiluoProminenceMechanic, '1551', peiluoPanel, peiluoMap)
     expect(peiluoPanel.energyGainEfficiency).toBe(15)
     expect(peiluoPanel.dmgBonus).toBe(40)
-
-    const sethMap = resources('1271', {}, { exSpecialCount: 1 })
-    const sethPanel = emptyPanel()
-    transform(sethShieldMechanic, '1271', sethPanel, sethMap)
-    expect(sethPanel.anomalyProficiency).toBe(100)
+    // 赛斯匪石之盾已迁移到 agents/seth.ts 模块，见 __tests__/seth.test.ts
   })
 
   it('builds Billy main loop (drive suppression→cool wheelie), HP pool and star glow move-targeted damage', () => {

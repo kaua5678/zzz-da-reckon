@@ -25,6 +25,7 @@ import { promiaMechanic } from './agents/promia'
 import { koledaMechanic } from './agents/koleda'
 import { corinMechanic } from './agents/corin'
 import { billyMechanic } from './agents/billy'
+import { sethMechanic } from './agents/seth'
 import {
   pulchraHuntStepMechanic,
   // benGuardShieldMechanic 已由 agents/ben.ts 替代（全队暴击+防转攻+命座）
@@ -32,7 +33,6 @@ import {
   graceChargeMechanic,
 	  zhendouHeartfireMechanic,
   peiluoProminenceMechanic,
-  sethShieldMechanic,
   jufufuTigerRoarMechanic,
 } from './agents/specPanelBuffs'
 import { qingyiMechanic } from './agents/qingyi'
@@ -113,7 +113,7 @@ registerAgentMechanic(benMechanic)
 registerAgentMechanic(aireMechanic)
 registerAgentMechanic(promiaMechanic)
 registerAgentMechanic(peiluoProminenceMechanic)
-registerAgentMechanic(sethShieldMechanic)
+registerAgentMechanic(sethMechanic)
 registerAgentMechanic(anbyZeroMechanic)
 registerAgentMechanic(jufufuTigerRoarMechanic)
 registerAgentMechanic(qingyiMechanic)
