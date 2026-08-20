@@ -175,18 +175,6 @@ export const zhendouHeartfireMechanic = makePanelBuffModule(
 /** 叶瞬光完整模块见 agents/yeshuguang.ts；此处保留别名供旧测试 import */
 export { yeshuguangMechanic as yeshuguangMingxinMechanic } from './yeshuguang'
 
-export const aireProficiencyMechanic = makePanelBuffModule(
-  'agent:aire_proficiency',
-  ['1501'],
-  '爱芮·异常精通',
-  'aire_cheer_energy',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) >= 0) {
-      panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + 90
-    }
-  },
-)
-
 export const peiluoProminenceMechanic = makePanelBuffModule(
   'agent:peiluo_prominence',
   ['1551'],

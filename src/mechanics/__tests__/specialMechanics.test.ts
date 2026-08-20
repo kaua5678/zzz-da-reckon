@@ -22,7 +22,6 @@ import {
   prometheusGuiltyMechanic,
   zhendouHeartfireMechanic,
   yeshuguangMingxinMechanic,
-  aireProficiencyMechanic,
   peiluoProminenceMechanic,
   sethShieldMechanic,
 } from '@/mechanics/agents/specPanelBuffs'
@@ -179,11 +178,7 @@ describe('spec resource panel buffs', () => {
     const yeCfg0: any = {}
     yeshuguangMingxinMechanic.buildCharConfig?.({ cfg: yeCfg0, panel: {} as any, cinemaLevel: 0, skills: { categories: [] } as any, team: [], slot: 0, agent: null as any, wEngineId: '', wEngineModLevel: 1, getRowValue: () => 0 } as any)
     expect(yeCfg0.yeshuguangSwordInitial).toBe(0)
-
-    const aireMap = resources('1501', {}, { frontlineTime: 1, disorderCount: 0 })
-    const airePanel = emptyPanel()
-    transform(aireProficiencyMechanic, '1501', airePanel, aireMap)
-    expect(airePanel.anomalyProficiency).toBe(90)
+    // 爱芮异常精通已迁移到 agents/aire.ts 模块，见 __tests__/aire.test.ts
   })
 
   it('applies Peiluo flare and Seth shield panel buffs', () => {

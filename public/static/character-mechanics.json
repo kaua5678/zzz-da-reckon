@@ -4223,52 +4223,74 @@
         "zhCN": "爱芮",
         "en": "Aria"
       },
-      "specialResources": [],
+      "specialResources": [
+        {
+          "id": "aire_cycle",
+          "name": "异常精通与无视",
+          "status": "implemented_approximation",
+          "codePaths": [
+            "src/mechanics/agents/aire.ts"
+          ],
+          "note": "异常精通+90计入面板；影画1以太积蓄抗性无视、影画2无视防御、影画6进场喧响接入。"
+        }
+      ],
       "mechanics": [
         {
           "id": "core_passive_1501",
           "name": "核心被动：控场核心",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "爱芮的异常精通提升90点； 爱芮的第三段[普通攻击：绝对音准]重击命中处于以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、冰属性异常状态、风属性异常状态的目标时，触发一次[异放]：额外结算一次属性异常伤害，相对于原属性异常伤害的比例为每10点初始异常掌控27.5%/14.3%/35.7%/2.5%/3.6%/1.4%，当目标处于失衡状态下时，该伤害比例额外提升50%。"
+          "implementation": "partially_implemented",
+          "implementedParts": [
+            "异常精通提升90点计入面板，抬升异常/异放基底。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
+          "pendingParts": [
+            "异放（每10点初始异常掌控27.5%/14.3%/35.7%/2.5%/3.6%/1.4%，失衡再+50%）属异常结算区，calcAnomalyDamage已内置精通乘区，未建模以免重复计入精通。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/aire.ts"
+          ],
+          "status": "partially_implemented",
           "pending": [
-            "爱芮的异常精通提升90点； 爱芮的第三段[普通攻击：绝对音准]重击命中处于以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、冰属性异常状态、风属性异常状态的目标时，触发一次[异放]：额外结算一次属性异常伤害，相对于原属性异常伤害的比例为每10点初始异常掌控27.5%/14.3%/35.7%/2.5%/3.6%/1.4%，当目标处于失衡状态下时，该伤害比例额外提升50%。"
+            "异放（每10点初始异常掌控27.5%/14.3%/35.7%/2.5%/3.6%/1.4%，失衡再+50%）属异常结算区，calcAnomalyDamage已内置精通乘区，未建模以免重复计入精通。"
           ]
         },
         {
           "id": "additional_ability_1501",
           "name": "额外能力：合作舞台",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "队伍中存在[击破]、[支援]或与自身阵营相同的角色或其他[异常]角色时触发： 当有[以太帷幕]开启时，会在场上生成4个[应援能量]，1秒内最多触发1次； 队伍中任意角色对敌人施加[侵蚀]效果时，该效果的持续时间提升3秒。"
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "击破/支援/同阵营/异常队友激活；侵蚀持续+3秒沿用spec teamBuffs。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
+          "pendingParts": [
+            "以太帷幕生成应援能量（1秒一次）为场上资源状态，未建模。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/aire.ts"
+          ],
+          "status": "implemented_approximation",
           "pending": [
-            "队伍中存在[击破]、[支援]或与自身阵营相同的角色或其他[异常]角色时触发： 当有[以太帷幕]开启时，会在场上生成4个[应援能量]，1秒内最多触发1次； 队伍中任意角色对敌人施加[侵蚀]效果时，该效果的持续时间提升3秒。"
+            "以太帷幕生成应援能量（1秒一次）为场上资源状态，未建模。"
           ]
         }
       ],
       "cinemaImplementation": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "partially_implemented",
+          "implemented": [
+            "普攻/特殊技/强特无视10%以太异常积蓄抗性计入面板enemyEtherAnomalyResReduction。"
+          ],
           "pending": [
-            "影画1 元气声浪：爱芮的[普通攻击]、[特殊技]，[强化特殊技]对敌人造成伤害时，无视目标10%的以太异常积蓄抗性；且自身触发[异放]时有概率触发暴击：基础暴击率为25%，暴击伤害为25%；若初始异常掌控大于100点，每超过1点初始异常掌控会使该效果的暴击率额外提升0.5%。"
+            "异放暴击（基础25%、暴伤25%、掌控>100每点+0.5%暴击率）属异常结算区，未建模。"
           ]
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "攻击与异放无视16%防御计入面板enemyDefReduction；妄想时刻内额外无视8%按覆盖率折算。"
+          ],
           "pending": [
-            "影画2 梦幻节拍：爱芮攻击和触发[异放]时无视目标16%防御力；在[妄想时刻]持续时间内，攻击和触发[异放]时额外无视目标8%防御力。"
+            "妄想时刻逐时序按覆盖率近似。"
           ]
         },
         {
@@ -4284,7 +4306,7 @@
           "status": "not_described_not_implemented",
           "implemented": [],
           "pending": [
-            "影画4 机械天使：爱芮触发[异放]时，自身获得4点能量和70点喧响值，10秒内最多触发一次。"
+            "异放触发回4能量+70喧响（10秒一次）依赖异放触发次数，未建模。"
           ]
         },
         {
@@ -4297,35 +4319,45 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "partially_implemented",
+          "implemented": [
+            "进场喧响+1200计入initialDecibelGift（180秒一次整局近似）。"
+          ],
           "pending": [
-            "影画6 构造体之梦：进入战场时，爱芮立即获得1200点喧响值，在勘域模式中此效果180秒内最多触发一次；且爱芮进入[妄想时刻]后将不会退出，强化版[普通攻击：绝对音准]和[终结技]造成的以太伤害提升40%；当爱芮处于[妄想时刻]时，若场上有敌人进入属性异常状态，爱芮获得1层[全场应援]，该效果6秒内最多触发一次；在获得[全场应援]效果时，若自身已有3层[全场应援]效果，则会将溢出的[全场应援]效果转化为2个[应援能量]生成在场上。"
+            "妄想时刻不退出、强化绝对音准/终结技以太伤害+40%、全场应援与应援能量转化未建模。"
           ]
         }
       ],
       "corePassive": {
         "id": "core_passive_1501",
         "name": "核心被动：控场核心",
-        "implementation": "not_described_not_implemented",
-        "implementedParts": [],
-        "pendingParts": [
-          "爱芮的异常精通提升90点； 爱芮的第三段[普通攻击：绝对音准]重击命中处于以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、冰属性异常状态、风属性异常状态的目标时，触发一次[异放]：额外结算一次属性异常伤害，相对于原属性异常伤害的比例为每10点初始异常掌控27.5%/14.3%/35.7%/2.5%/3.6%/1.4%，当目标处于失衡状态下时，该伤害比例额外提升50%。"
+        "implementation": "partially_implemented",
+        "implementedParts": [
+          "异常精通提升90点计入面板，抬升异常/异放基底。"
         ],
-        "codePaths": [],
-        "status": "not_described_not_implemented"
+        "pendingParts": [
+          "异放（每10点初始异常掌控27.5%/14.3%/35.7%/2.5%/3.6%/1.4%，失衡再+50%）属异常结算区，calcAnomalyDamage已内置精通乘区，未建模以免重复计入精通。"
+        ],
+        "codePaths": [
+          "src/mechanics/agents/aire.ts"
+        ],
+        "status": "partially_implemented"
       },
       "additionalAbility": {
         "id": "additional_ability_1501",
         "name": "额外能力：合作舞台",
-        "trigger": "待人工核对触发条件",
-        "implementation": "not_described_not_implemented",
-        "implementedParts": [],
-        "pendingParts": [
-          "队伍中存在[击破]、[支援]或与自身阵营相同的角色或其他[异常]角色时触发： 当有[以太帷幕]开启时，会在场上生成4个[应援能量]，1秒内最多触发1次； 队伍中任意角色对敌人施加[侵蚀]效果时，该效果的持续时间提升3秒。"
+        "trigger": "击破/支援/同阵营/异常角色",
+        "implementation": "implemented_approximation",
+        "implementedParts": [
+          "击破/支援/同阵营/异常队友激活；侵蚀持续+3秒沿用spec teamBuffs。"
         ],
-        "codePaths": [],
-        "status": "not_described_not_implemented"
+        "pendingParts": [
+          "以太帷幕生成应援能量（1秒一次）为场上资源状态，未建模。"
+        ],
+        "codePaths": [
+          "src/mechanics/agents/aire.ts"
+        ],
+        "status": "implemented_approximation"
       }
     },
     "1531": {

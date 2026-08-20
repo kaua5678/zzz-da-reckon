@@ -20,6 +20,7 @@ import { ellenMechanic } from './agents/ellen'
 import { evelynMechanic } from './agents/evelyn'
 import { vivianMechanic } from './agents/vivian'
 import { anbyZeroMechanic } from './agents/anbyZero'
+import { aireMechanic } from './agents/aire'
 import {
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
@@ -30,7 +31,6 @@ import {
   graceChargeMechanic,
 	  prometheusGuiltyMechanic,
   zhendouHeartfireMechanic,
-  aireProficiencyMechanic,
   peiluoProminenceMechanic,
   sethShieldMechanic,
   jufufuTigerRoarMechanic,
@@ -111,7 +111,7 @@ registerAgentMechanic(soukakuMechanic)
 registerAgentMechanic(caesarMechanic)
 registerAgentMechanic(zhaoMechanic)
 registerAgentMechanic(benMechanic)
-registerAgentMechanic(aireProficiencyMechanic)
+registerAgentMechanic(aireMechanic)
 registerAgentMechanic(peiluoProminenceMechanic)
 registerAgentMechanic(sethShieldMechanic)
 registerAgentMechanic(anbyZeroMechanic)
