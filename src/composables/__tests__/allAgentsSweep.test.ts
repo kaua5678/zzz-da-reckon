@@ -30,6 +30,16 @@ for (const skills of catalogData.agentSkills ?? []) {
 
 const CINEMA_LEVELS = [0, 6] as const
 
+/** 逐 (角色, 命座) 记录全队伤害，供末尾的「命座必须有效果」不变量比对（零额外算力）。 */
+const damageByAgentCinema = new Map<string, number>()
+
+/** 命座状态表：agentId → 是否至少有一级命座被声明为已实现（implemented* 前缀） */
+const constellations: Record<string, { cinemas?: { cinema: number; status?: string }[] }> =
+  JSON.parse(readFileSync(new URL('../../../public/static/character-constellations.json', import.meta.url), 'utf8')).characters ?? {}
+function declaresImplementedCinema(agentId: string): boolean {
+  return (constellations[agentId]?.cinemas ?? []).some(c => String(c.status ?? '').startsWith('implemented'))
+}
+
 describe(`全角色不变量 sweep（${agentIds.length} 角色 × 命座 ${CINEMA_LEVELS.join('/')}）`, () => {
   for (const agentId of agentIds) {
     for (const cinemaLevel of CINEMA_LEVELS) {
@@ -69,7 +79,43 @@ describe(`全角色不变量 sweep（${agentIds.length} 角色 × 命座 ${CINEM
         const damage = calc.teamTotalDamage.value
         expect(Number.isFinite(damage), `${agentId} 伤害非有限值：${damage}`).toBe(true)
         expect(damage, `${agentId} 全队伤害 ≤ 0`).toBeGreaterThan(0)
+        damageByAgentCinema.set(`${agentId}:${cinemaLevel}`, damage)
       })
     }
   }
+
+  /**
+   * 防死数据（AGENTS 规则 5 的自动化版）：命座必须真的进计算。
+   *
+   * 原先这条只有人工路径——去「资源利用率页·命座提升率」用肉眼找橙色「⚠无变化」。
+   * 但上面的 sweep 已经把每个角色的命座0/命座6 全管线都算过了，比一下就是零额外算力，
+   * 而「录了机制但没接进计算」正是本项目最高频的事故类型。
+   *
+   * 判据：命座状态表里至少有一级标了 implemented* 的角色，damage(C6) 必须 > damage(C0)。
+   * 即便角色专属命座全是「未描述」，C3/C5 的通用技能等级+2 也会经 skillLevelBonus 抬倍率，
+   * 因此单角色场景下这条对全部有状态表条目的角色都应成立。
+   * 失败含义：该角色 0→6 命一分伤害都没多 → 命座效果没接进任何计算通道（死数据），
+   * 或状态表把未实现的命座标成了 implemented（状态表撒谎）。
+   */
+  it('命座有效性不变量：声明已实现命座的角色，命座6 伤害必须高于命座0（防死数据）', () => {
+    const offenders: string[] = []
+    const missing: string[] = []
+    for (const agentId of agentIds) {
+      const d0 = damageByAgentCinema.get(`${agentId}:0`)
+      const d6 = damageByAgentCinema.get(`${agentId}:6`)
+      if (d0 == null || d6 == null) {
+        missing.push(agentId)
+        continue
+      }
+      if (!declaresImplementedCinema(agentId)) continue
+      if (!(d6 > d0)) {
+        offenders.push(`${agentId}（C0=${d0.toFixed(0)} → C6=${d6.toFixed(0)}，提升 ${(((d6 - d0) / d0) * 100).toFixed(3)}%）`)
+      }
+    }
+    expect(missing, `以下角色缺少 sweep 伤害采样：${missing.join(', ')}`).toHaveLength(0)
+    expect(
+      offenders,
+      `以下角色声明了已实现的命座，但 0→6 命伤害没有提升（命座效果未接进计算 = 死数据，或状态表标错）：\n  ${offenders.join('\n  ')}`,
+    ).toHaveLength(0)
+  })
 })

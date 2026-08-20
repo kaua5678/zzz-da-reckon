@@ -313,6 +313,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { analyzeCinemaUplift, type CinemaUpliftRow } from '@/composables/cinemaUplift'
 import { fmt } from '@/utils/format'
 import { getAgentMechanic } from '@/mechanics'
 import type { MechanicSetting } from '@/types/resource'
@@ -517,19 +518,8 @@ const marginalGainsBySlot = computed(() => {
     .filter((x): x is { slot: number; name: string; sortedGains: Record<string, number> } => !!x)
 })
 
-interface CinemaGainEntry {
-  to: number
-  gainPct: number
-  /** 本级命座切换前后的全队终结技总次数（检测加喧响/加能量类命座是否推动大招 +1） */
-  ultBefore: number
-  ultAfter: number
-  /** 本级命座切换前后该角色局内面板有变化的字段（命座自检：无字段变化 = 效果可能未接进计算） */
-  changedFields: string[]
-  /** 命座自检结论：ok = 有字段变化；execLevel = 无面板变化但伤害提升（执行级效果，正常）；unimplemented = 无字段无伤害（可能未实现） */
-  warn: 'ok' | 'execLevel' | 'unimplemented'
-}
-interface CinemaGainRow { slot: number; name: string; entries: CinemaGainEntry[] }
-const cinemaGains = ref<CinemaGainRow[]>([])
+// 类型与算法同源于 composables/cinemaUplift.ts（勿在此另抄一份）
+const cinemaGains = ref<CinemaUpliftRow[]>([])
 const cinemaComputing = ref(false)
 
 function teamUltimateTotal(): number {
@@ -549,68 +539,20 @@ function entryBadgeStyle(e: { warn: 'ok' | 'execLevel' | 'unimplemented' }): Rec
 
 async function computeCinemaGains() {
   cinemaComputing.value = true
-  const original = configStore.team.map(c => c.cinemaLevel ?? 0)
-  const originalStunValue = configStore.enemy.stunValue
-  const targetCount = stunPoolResult.value?.stunCount ?? 4 // 固定场景：以当前配置收敛的失衡次数为准
-  const rows: CinemaGainRow[] = []
   try {
-    // 固定失衡次数：命座提升率 = 同场景对比（只变命座）。技能等级会提高失衡值 → 失衡次数联动放大，
-    // 与「操作够就能打 N 次失衡」的用户口径不符 → 临时把失衡阈值调到「当前命座总失衡 / (N+0.5)」，
-    // 收敛 stunCount 稳定在 N，轴窗口/怒相次数不再随命座膨胀。
-    async function fixedStunDamage(): Promise<number> {
-      // 锁定失衡次数：3/5 命（技能等级提高失衡值）若走阈值收敛会被失衡联动放大成 20%+ 的假提升
-      // （失衡次数变多 → 连携/喧响变多 → 失衡总量自激，阈值调节无稳定点）；
-      // 改为直接锁定 stunCount=targetCount（"操作够就能打 N 次失衡"口径），一轮按固定次数计算。
-      if (targetCount > 0) {
-        configStore.enemy.stunCountLock = targetCount
-        await nextTick()
-        const dmg = teamTotalDamage.value
-        configStore.enemy.stunCountLock = -1
-        await nextTick()
-        return dmg
-      }
-      return teamTotalDamage.value
-    }
-    for (let slot = 0; slot < 3; slot++) {
-      const char = configStore.team[slot]
-      if (!char?.agentId) continue
-      const name = agentNames.value[char.agentId] || catalogStore.getAgent(char.agentId)?.name?.zhCN || `槽${slot + 1}`
-      const entries: CinemaGainEntry[] = []
-      for (let to = 1; to <= 6; to++) {
-        configStore.setCinemaLevel(slot, to - 1)
-        configStore.syncTeammateBuffsFromTeam()
-        const base = await fixedStunDamage()
-        const ultBefore = teamUltimateTotal()
-        // 命座自检：本级切换前后的局内面板字段 diff（发现"效果没接进计算"的命座）
-        const panelBefore = computePanelPhases(slot, configStore, catalogStore)?.inCombat ?? null
-        configStore.setCinemaLevel(slot, to)
-        configStore.syncTeammateBuffsFromTeam()
-        const next = await fixedStunDamage()
-        const ultAfter = teamUltimateTotal()
-        const panelAfter = computePanelPhases(slot, configStore, catalogStore)?.inCombat ?? null
-        const changedFields = panelBefore && panelAfter
-          ? Object.keys(panelAfter).filter(k => Math.abs((panelAfter[k] ?? 0) - (panelBefore[k] ?? 0)) > 1e-9)
-          : []
-        const gainPct = base > 0 ? ((next - base) / base) * 100 : 0
-        const warn: CinemaGainEntry['warn'] = changedFields.length > 0
-          ? 'ok'
-          : gainPct >= 0.05
-            ? 'execLevel' // 面板无变化但伤害有提升：执行级效果（moveId 增伤/暴伤/附伤等）
-            : 'unimplemented' // 无字段无伤害：效果可能未接进计算
-        entries.push({ to, gainPct, ultBefore, ultAfter, changedFields, warn })
-      }
-      rows.push({ slot, name, entries })
-    }
+    // 算法已抽到 composables/cinemaUplift.ts（同一份实现同时服务页面与测试：
+    // 「命座必须有效果」的红灯断言见 composables/__tests__/cinemaUplift.test.ts 与 allAgentsSweep）
+    cinemaGains.value = await analyzeCinemaUplift({
+      configStore,
+      catalogStore,
+      readDamage: () => teamTotalDamage.value,
+      readUltimateTotal: teamUltimateTotal,
+      targetStunCount: stunPoolResult.value?.stunCount ?? 4, // 固定场景：以当前配置收敛的失衡次数为准
+      resolveName: agentId => agentNames.value[agentId] || '',
+    })
   } finally {
-    for (let i = 0; i < configStore.team.length; i++) {
-      configStore.setCinemaLevel(i, original[i] ?? 0)
-    }
-    configStore.enemy.stunValue = originalStunValue
-    configStore.syncTeammateBuffsFromTeam()
-    await nextTick()
     cinemaComputing.value = false
   }
-  cinemaGains.value = rows
 }
 
 function settingDisplayValue(setting: MechanicSetting): number {
