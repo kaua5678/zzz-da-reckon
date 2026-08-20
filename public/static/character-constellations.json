@@ -331,20 +331,22 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "连携/终结命中后对目标伤害+12%（15秒）按覆盖率折算面板dmgBonus。"
+          ],
           "pending": [
-            "影画1 开放性创伤：[连携技]或[终结技]命中敌人时，可琳对目标造成的伤害提升12%，持续15秒。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "15秒持续时序按覆盖率近似。"
           ]
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "强特/连携/终结命中使目标物理抗性-0.5%×20层（上限10%）按覆盖率折算enemyPhysicalResReduction。"
+          ],
           "pending": [
-            "影画2 裂解效应：[强化特殊技]、[连携技]或[终结技]命中敌人时，目标的物理伤害抗性下降0.5%，最多叠加20层，持续5秒，每层效果单独结算持续时间。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "每层独立结算5秒持续按时序近似。"
           ]
         },
         {
@@ -360,8 +362,7 @@
           "status": "not_described_not_implemented",
           "implemented": [],
           "pending": [
-            "影画4 战场随侍：发动[快速支援]、[招架支援]或[连携技]时，可琳回复7.2点能量，16秒内最多触发一次。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "快速支援/招架支援/连携回7.2能量（16秒一次）无干净回能通道，未接入能量结算。"
           ]
         },
         {
@@ -374,11 +375,12 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "持续斩击充能（上限40），引爆电锯每层+3%攻击力按引爆次数×充能层数生成合成执行行。"
+          ],
           "pending": [
-            "影画6 厚积薄发：持续斩击命中敌人时，可琳获得1层充能（最多40层）；在[闪避反击]、[特殊技]、[强化特殊技]、[快速支援]、[支援突击]中，引爆电锯命中敌人时，消耗所有充能，每层充能使本次攻击额外造成可琳3%攻击力的伤害。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "充能逐层积累/消耗时序按层数滑块近似。"
           ]
         }
       ]

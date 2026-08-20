@@ -16,7 +16,6 @@ import {
   billyHitStacksMechanic,
   nekomataPurrMechanic,
   anbyChargeMechanic,
-  corinChargeMechanic,
   graceChargeMechanic,
   zhendouHeartfireMechanic,
   yeshuguangMingxinMechanic,
@@ -112,16 +111,13 @@ describe('spec resource panel buffs', () => {
     // 珂蕾妲爆破锤已迁移到 agents/koleda.ts 模块，见 __tests__/koleda.test.ts
   })
 
-  it('applies Anby, Corin, Grace, Banyue and Jufufu panel buffs', () => {
+  it('applies Anby, Grace, Banyue and Jufufu panel buffs', () => {
     const anbyMap = resources('1011', {}, { exSpecialCount: 1 })
     const anbyPanel = emptyPanel()
     transform(anbyChargeMechanic, '1011', anbyPanel, anbyMap)
     expect(anbyPanel.dmgBonus).toBe(45)
 
-    const corinMap = resources('1061', {}, { frontlineTime: 40 })
-    const corinPanel = emptyPanel()
-    transform(corinChargeMechanic, '1061', corinPanel, corinMap)
-    expect(corinPanel.dmgBonus).toBe(120)
+    // 可琳专注电锯已迁移到 agents/corin.ts 模块，见 __tests__/corin.test.ts
 
     const graceMap = resources('1181', {}, { basicAttackTime: 8 })
     const gracePanel = emptyPanel()

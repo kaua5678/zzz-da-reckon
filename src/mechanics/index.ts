@@ -23,12 +23,12 @@ import { anbyZeroMechanic } from './agents/anbyZero'
 import { aireMechanic } from './agents/aire'
 import { promiaMechanic } from './agents/promia'
 import { koledaMechanic } from './agents/koleda'
+import { corinMechanic } from './agents/corin'
 import {
   pulchraHuntStepMechanic,
   billyHitStacksMechanic,
   // benGuardShieldMechanic 已由 agents/ben.ts 替代（全队暴击+防转攻+命座）
   anbyChargeMechanic,
-  corinChargeMechanic,
   graceChargeMechanic,
 	  zhendouHeartfireMechanic,
   peiluoProminenceMechanic,
@@ -94,7 +94,7 @@ registerAgentMechanic(zhuYuanMechanic)
 registerAgentMechanic(xideMechanic)
 registerAgentMechanic(koledaMechanic)
 registerAgentMechanic(anbyChargeMechanic)
-registerAgentMechanic(corinChargeMechanic)
+registerAgentMechanic(corinMechanic)
 registerAgentMechanic(graceChargeMechanic)
 registerAgentMechanic(miyabiMechanic)
 registerAgentMechanic(liuyinMechanic)

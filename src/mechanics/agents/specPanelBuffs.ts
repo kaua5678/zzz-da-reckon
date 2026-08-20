@@ -112,17 +112,6 @@ export const anbyChargeMechanic = makePanelBuffModule(
   },
 )
 
-export const corinChargeMechanic = makePanelBuffModule(
-  'agent:corin_charge',
-  ['1061'],
-  '可琳·充能',
-  'corin_charge',
-  (resource, panel) => {
-    const stacks = stackCount(resource)
-    panel.dmgBonus = (panel.dmgBonus ?? 0) + stacks * 3
-  },
-)
-
 export const graceChargeMechanic = makePanelBuffModule(
   'agent:grace_charge',
   ['1181'],
