@@ -12,7 +12,7 @@
 import type {
   ResourceCalcConfig, CharacterOperationConfig,
   TeamResourceResult, CharacterResourceResult,
-  EnergySource, DecibelSource, TimeAllocation,
+  EnergySource, CrossAgentEnergy, DecibelSource, TimeAllocation,
   SkillExecution, IterationState, AnomalyEventExecution,
 } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
@@ -46,6 +46,99 @@ export function calcSoukakuUltEnergy(
   if (idx < 0) return 0
   const ultimateCount = Math.max(0, Math.floor(states[idx]?.ultimateCount ?? 0))
   return Math.max(0, Number((target as any).soukakuEnergyPerSoukakuUlt ?? 0)) * ultimateCount
+}
+
+/**
+ * 队友联动回能（跨角色能量来源的单一事实源）。
+ *
+ * 全部来源都依赖「其他槽位的次数」，因此必须同时被两处消费：
+ * ① `iterate` —— 参与强特次数推导（收敛项）；
+ * ② `calcTeamResources` 最终装配 —— 写进 `energySource.crossAgent` 与 `total`，让界面总览
+ *    与真正驱动次数的能量同口径。
+ *
+ * 历史事故：两处各写一份，最终装配只补回 supportUltimateRegen，其余 5 项（仪玄队友终结闪能/
+ * 丽娜/苍角/露西/莱特C4）在界面上不可见 —— 仪玄实测 energySource.total 720 而实际驱动 840，
+ * 导致测试注释里的手算账本无法与界面对账、并在 f20b2d5 失衡提取语义修正后静默漂移。
+ * 新增跨角色回能来源请只改本函数（并在 CrossAgentEnergy 上加字段）。
+ */
+export function calcCrossAgentEnergy(
+  slotIndex: number,
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+): CrossAgentEnergy {
+  const cfg = configs[slotIndex]
+  const num = (v: unknown) => {
+    const x = Number(v)
+    return Number.isFinite(x) ? x : 0
+  }
+
+  let supportUltimateRegen = 0
+  let teamUltimateFlash = 0
+  for (let j = 0; j < configs.length; j++) {
+    if (j === slotIndex) continue
+    const other = configs[j]
+    if (other.supportUltimateEnergyRegen > 0) {
+      supportUltimateRegen += states[j].ultimateCount * other.supportUltimateEnergyRegen
+    }
+    // 模块声明：队友终结技每次回闪能（如仪玄额外能力·队友释放终结技回 2/s×10s=20）
+    if ((cfg.teamUltimateFlashBonus ?? 0) > 0) {
+      teamUltimateFlash += states[j].ultimateCount * (cfg.teamUltimateFlashBonus ?? 0)
+    }
+  }
+
+  // 支援角色终结技邻位回能（次数使用传入状态参与收敛）
+  const rinaUltEnergy = calcRinaUltEnergy(configs, states, cfg)
+  const soukakuUltEnergy = calcSoukakuUltEnergy(configs, states, cfg)
+
+  // 露西：终结邻位回能 + 影画1 回旋全队回能（次数用传入的露西 state）
+  let lucyEnergy = 0
+  const lucyIdx = configs.findIndex(c => c.agentId === '1151')
+  if (lucyIdx >= 0) {
+    const lucyPrev = states[lucyIdx]
+    const lucyUlt = Math.max(0, Math.floor(lucyPrev?.ultimateCount ?? 0))
+    const lucyCfg = configs[lucyIdx]
+    const lucyCinema = Math.max(0, Math.floor(num((lucyCfg as any).lucyCinemaLevel)))
+    lucyEnergy += Math.max(0, num(cfg.lucyEnergyPerLucyUlt)) * lucyUlt
+    if (num(cfg.lucyC1Enabled) > 0) {
+      const spinsHint = Math.max(0, num((cfg as any).lucyCheerSpinsEstimate))
+      const spinEst = spinsHint > 0
+        ? spinsHint
+        : Math.max(0, Math.floor(lucyPrev?.exSpecialCount ?? 0))
+          + (lucyCinema >= 2
+            ? Math.max(0, Math.floor(lucyPrev?.chainCountTotal ?? 0)) + lucyUlt
+            : 0)
+          + (lucyCinema >= 6 ? Math.max(0, num((lucyCfg as any).lucyTeammateExTotal)) : 0)
+      lucyEnergy += spinEst * 2
+    }
+  }
+
+  // 莱特影画4：进士气喷发时后场角色 +4 能量（18s CD，总额预写入 cfg.lighterC4BurstEnergy）
+  const lighterC4Raw = num((cfg as any).lighterC4BurstEnergy)
+  const lighterC4Energy = lighterC4Raw > 0 ? lighterC4Raw : 0
+
+  return {
+    supportUltimateRegen,
+    teamUltimateFlash,
+    rinaUltEnergy,
+    soukakuUltEnergy,
+    lucyEnergy,
+    lighterC4Energy,
+    total: supportUltimateRegen + teamUltimateFlash + rinaUltEnergy
+      + soukakuUltEnergy + lucyEnergy + lighterC4Energy,
+  }
+}
+
+/** 空的队友联动明细（calcEnergySource 单角色阶段用，由调用方按 calcCrossAgentEnergy 回填）。 */
+export function emptyCrossAgentEnergy(): CrossAgentEnergy {
+  return {
+    supportUltimateRegen: 0,
+    teamUltimateFlash: 0,
+    rinaUltEnergy: 0,
+    soukakuUltEnergy: 0,
+    lucyEnergy: 0,
+    lighterC4Energy: 0,
+    total: 0,
+  }
 }
 
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
@@ -170,6 +263,8 @@ export function calcEnergySource(
     banyueSwayRefund,
     yixuanFlashBonus,
     supportUltimateRegen,
+    // 队友联动明细在此阶段拿不到其他槽位的收敛次数，由调用方用 calcCrossAgentEnergy 回填
+    crossAgent: emptyCrossAgentEnergy(),
     initialGift,
     shieldBreakGift,
     energyShieldBreakGift,
@@ -698,57 +793,13 @@ export function iterate(
     const cfg = configs[i]
     const prev = prevStates[i]
 
-    // 能量
+    // 能量。注意：此处 chainCountTotal 传 0（连携次数尚未收敛），因此连携驱动的回能
+    // （莱卡恩影画2 等）只在最终装配的展示明细里出现、不参与次数推导 —— 该口径差已由
+    // CharacterResourceResult.derivedEnergy 与 energySource.total 双字段暴露，见类型注释。
     const energySrc = calcEnergySource(cfg, prev, configs, globalCfg.shieldCount, globalCfg.energyShieldCount, 0, globalCfg.totalTime)
-    // 补充辅助大招回能：其他角色的终结技次数 × 该角色的辅助回能
-    let supportUlt = 0
-    let teamUltFlash = 0
-    for (let j = 0; j < configs.length; j++) {
-      if (j === i) continue
-      const other = configs[j]
-      if (other.supportUltimateEnergyRegen > 0) {
-        supportUlt += prevStates[j].ultimateCount * other.supportUltimateEnergyRegen
-      }
-      // 模块声明：队友终结技每次回闪能（如仪玄额外能力·队友释放终结技回 2/s×10s=20）
-      if ((cfg.teamUltimateFlashBonus ?? 0) > 0) {
-        teamUltFlash += prevStates[j].ultimateCount * (cfg.teamUltimateFlashBonus ?? 0)
-      }
-    }
-    // 支援角色终结技邻位回能（次数使用上一轮状态参与收敛）。
-    const rinaEnergy = calcRinaUltEnergy(configs, prevStates, cfg)
-    const soukakuEnergy = calcSoukakuUltEnergy(configs, prevStates, cfg)
-
-    // 露西：终结邻位回能 + 影画1 回旋全队回能（次数用上一轮露西 state）
-    let lucyEnergy = 0
-    const lucyIdx = configs.findIndex(c => c.agentId === '1151')
-    if (lucyIdx >= 0) {
-      const num = (v: unknown) => {
-        const x = Number(v)
-        return Number.isFinite(x) ? x : 0
-      }
-      const lucyPrev = prevStates[lucyIdx]
-      const lucyUlt = Math.max(0, Math.floor(lucyPrev?.ultimateCount ?? 0))
-      const lucyCfg = configs[lucyIdx]
-      const lucyCinema = Math.max(0, Math.floor(num((lucyCfg as any).lucyCinemaLevel)))
-      lucyEnergy += Math.max(0, num(cfg.lucyEnergyPerLucyUlt)) * lucyUlt
-      if (num(cfg.lucyC1Enabled) > 0) {
-        const spinsHint = Math.max(0, num((cfg as any).lucyCheerSpinsEstimate))
-        const spinEst = spinsHint > 0
-          ? spinsHint
-          : Math.max(0, Math.floor(lucyPrev?.exSpecialCount ?? 0))
-            + (lucyCinema >= 2
-              ? Math.max(0, Math.floor(lucyPrev?.chainCountTotal ?? 0)) + lucyUlt
-              : 0)
-            + (lucyCinema >= 6 ? Math.max(0, num((lucyCfg as any).lucyTeammateExTotal)) : 0)
-        lucyEnergy += spinEst * 2
-      }
-    }
-    // 莱特影画4：进士气喷发时后场角色 +4 能量（18s CD，总额预写入 cfg.lighterC4BurstEnergy）
-    const lighterC4Energy = (() => {
-      const x = Number((cfg as any).lighterC4BurstEnergy ?? 0)
-      return Number.isFinite(x) && x > 0 ? x : 0
-    })()
-    const totalEnergy = energySrc.total + supportUlt + teamUltFlash + rinaEnergy + soukakuEnergy + lucyEnergy + lighterC4Energy
+    // 队友联动回能（单一事实源，与最终装配同函数）
+    const crossAgent = calcCrossAgentEnergy(i, configs, prevStates)
+    const totalEnergy = energySrc.total + crossAgent.total
     energies.push(totalEnergy)
 
     // 强特次数 = 总能量 ÷ 强特消耗（伊德海莉失衡内由轴连段反推，剩余打非失衡强特）

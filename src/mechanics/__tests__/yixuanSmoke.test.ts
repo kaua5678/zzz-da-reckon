@@ -104,17 +104,33 @@ describe('仪玄 spec 机制（1371）', () => {
     const out = calc.resourceResult.value
     expect(out).not.toBeNull()
     const yixuan = out!.characters.find(c => c.agentId === '1371')!
-    // 闪能池：120+360+极限闪避50+队友终结80（异常/特殊动作奖励计入次数推导后队友各2次大 ×20）+完美格挡30+异常触发30+极限支援落雷60+秽盾60（收敛）→ 循环当量 13
-    expect(yixuan.exSpecialCount).toBe(13)
+    // 闪能池账本（收敛后实测，改动时按此逐项对账）：
+    //   自动回复 360 + 进场赠送 120 + 破秽盾 60 + 额外闪能总账 180
+    //     （额外总账 180 = 极限闪避 10×5 + 完美格挡 3×10 + 玄墨异常触发 4×10 + 极限支援落雷 12×5）
+    //   + 队友终结技闪能 120（额外能力·玄墨暗涌：队友各 3 次终结 × 20，走 calcCrossAgentEnergy）
+    //   = 840 → 循环当量 floor(840 / 60) = 14
+    // 口径变更史：本行曾为 13，根因是 f20b2d5 修正了 transformSkillExecutions 语义
+    //   （旧代码 `if (usesModuleTransform) continue` 让所有定义该钩子的模块——含仅做面板后处理的
+    //   specPanelBuffs 面板 buff 模块——连非普攻失衡/积蓄提取一并被跳过）。赛斯(1271) 属该类模块，
+    //   修正后其强特/终结/连携失衡值重新进池 → 失衡次数上升 → 连携/喧响上升 → 队友终结 2→3 次
+    //   → 队友终结闪能 80→120，且玄墨异常触发 3→4（+10）→ 闪能池 790→840，当量 13→14。
+    expect(yixuan.exSpecialCount).toBe(14)
+    // 上游归因锚点：队友终结次数变动会直接改上面的账本，先看这条再查仪玄自身
+    expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([3, 3])
+    // 展示口径 = 计算口径：队友联动回能已并入 energySource.total（含队友终结闪能 120）
+    expect(yixuan.energySource.total).toBe(840)
+    expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(120)
+    expect(yixuan.derivedEnergy).toBe(840)
     const chain = yixuan.yixuanExChain!
     expect(chain.ink1).toBe(3)
     expect(chain.ink4).toBe(1)
-    expect(chain.cloudOut).toBe(10)
-    expect(chain.flashSpent).toBe(3 * 40 + 20 + 10 * 60)
+    // 循环当量 14 = 墨痕化形链 3 + 轴外凝云链 11（当量 13 时为 10，随上面的闪能账本联动）
+    expect(chain.cloudOut).toBe(11)
+    expect(chain.flashSpent).toBe(3 * 40 + 20 + 11 * 60) // = 800
 
-    // 术法值 = 740 × 0.667 ≈ 493.6（强特当量 13×60=780 中的术法转化基数 740，秽盾+60 闪能）
+    // 术法值 = 耗闪能 × 0.667 = 800 × 0.667 ≈ 533.6（转化基数 = chain.flashSpent，不是能量池总额）
     const shufa = yixuan.specResources?.['yixuan_shufa_value']
-    expect(shufa.totalGain).toBeCloseTo(740 * 0.667, 1)
+    expect(shufa.totalGain).toBeCloseTo(800 * 0.667, 1)
     const extraUlts = yixuan.executions.filter(e => e.moveId === '1371020')
     expect(extraUlts[0].count).toBe(4)
     expect(extraUlts[0].damageMultiplier).toBe(2932.5)

@@ -113,6 +113,29 @@
           <span class="bd-label">辅助大招</span>
           <span class="bd-value">{{ fmt(result.energySource.supportUltimateRegen) }}</span>
         </div>
+        <div v-if="(result.energySource.crossAgent?.teamUltimateFlash ?? 0) > 0" class="breakdown-row">
+          <span class="bd-label">队友终结技回能</span>
+          <span class="bd-value">{{ fmt(result.energySource.crossAgent.teamUltimateFlash) }}</span>
+          <span class="bd-detail">额外能力：队友每次终结技回能（队友终结次数 × 单次量）</span>
+        </div>
+        <div v-if="(result.energySource.crossAgent?.rinaUltEnergy ?? 0) > 0" class="breakdown-row">
+          <span class="bd-label">丽娜终结邻位</span>
+          <span class="bd-value">{{ fmt(result.energySource.crossAgent.rinaUltEnergy) }}</span>
+        </div>
+        <div v-if="(result.energySource.crossAgent?.soukakuUltEnergy ?? 0) > 0" class="breakdown-row">
+          <span class="bd-label">苍角终结邻位</span>
+          <span class="bd-value">{{ fmt(result.energySource.crossAgent.soukakuUltEnergy) }}</span>
+        </div>
+        <div v-if="(result.energySource.crossAgent?.lucyEnergy ?? 0) > 0" class="breakdown-row">
+          <span class="bd-label">露西回能</span>
+          <span class="bd-value">{{ fmt(result.energySource.crossAgent.lucyEnergy) }}</span>
+          <span class="bd-detail">终结邻位 + 影画1 回旋全队</span>
+        </div>
+        <div v-if="(result.energySource.crossAgent?.lighterC4Energy ?? 0) > 0" class="breakdown-row">
+          <span class="bd-label">莱特影画4 喷发</span>
+          <span class="bd-value">{{ fmt(result.energySource.crossAgent.lighterC4Energy) }}</span>
+          <span class="bd-detail">后场 +4/次 × 18s 冷却</span>
+        </div>
         <div class="breakdown-row">
           <span class="bd-label">开局赠送</span>
           <span class="bd-value">{{ fmt(result.energySource.initialGift) }}</span>

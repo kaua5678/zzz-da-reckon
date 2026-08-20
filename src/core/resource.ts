@@ -14,7 +14,7 @@ import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
 
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 import * as ResourceCalcHelpers from './resource/helpers'
-const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, buildAnomalyEventExecutions, iterate } = ResourceCalcHelpers
+const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy } = ResourceCalcHelpers
 export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResult {
   const totalTime = config.totalTime
   const maxIter = config.maxIterations || 20
@@ -125,17 +125,12 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     }
 
     const energySrc = calcEnergySource(cfg, state, configs, config.shieldCount, config.energyShieldCount, chainCountTotal, config.totalTime)
-    // 补充辅助大招回能
-    let supportUlt = 0
-    for (let j = 0; j < configs.length; j++) {
-      if (j === i) continue
-      const other = configs[j]
-      if (other.supportUltimateEnergyRegen > 0) {
-        supportUlt += states[j].ultimateCount * other.supportUltimateEnergyRegen
-      }
-    }
-    energySrc.supportUltimateRegen = supportUlt
-    energySrc.total += supportUlt
+    // 队友联动回能：与 iterate 同一函数（calcCrossAgentEnergy），保证展示明细与次数推导同口径。
+    // 曾只补回 supportUltimateRegen，其余 5 项在界面上不可见（见 CrossAgentEnergy 注释）。
+    const crossAgent = calcCrossAgentEnergy(i, configs, states)
+    energySrc.crossAgent = crossAgent
+    energySrc.supportUltimateRegen = crossAgent.supportUltimateRegen
+    energySrc.total += crossAgent.total
 
     // 喧响伴随
     let teammateShare = 0
@@ -192,6 +187,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       isFlashUser: cfg.isFlashUser,
       timeAllocation: timeAlloc,
       energySource: energySrc,
+      // 真正驱动 exSpecialCount 的收敛后总能量（iterate 末轮 totalEnergy）
+      derivedEnergy: state.totalEnergy,
       exSpecialCount: state.exSpecialCount,
       exSpecialMoveId: cfg.exSpecialMoveId,
       exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,

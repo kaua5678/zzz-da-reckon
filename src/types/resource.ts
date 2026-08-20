@@ -23,6 +23,31 @@ export interface TimeAllocation {
 
 // ============ 能量资源 ============
 
+/**
+ * 队友联动回能明细（依赖「其他槽位的次数」的能量来源）。
+ *
+ * 这些来源既要参与 iterate 的次数推导，也必须出现在最终 energySource 明细里。
+ * 单一事实源 = `core/resource/helpers.ts` 的 `calcCrossAgentEnergy`（两处调用同一函数）。
+ * 历史事故：曾在 iterate 与最终装配各写一份，且最终明细只补回 supportUltimateRegen，
+ * 导致界面「能量/闪能总览」比真正驱动次数的能量少一截（仪玄队友终结闪能 120 全程不可见）。
+ */
+export interface CrossAgentEnergy {
+  /** 辅助角色终结技邻位回能（其他角色 supportUltimateEnergyRegen × 其终结技次数） */
+  supportUltimateRegen: number
+  /** 模块声明的「队友终结技回闪能」（仪玄额外能力·玄墨暗涌 20/次） */
+  teamUltimateFlash: number
+  /** 丽娜（1211）终结技按槽位补充能量 */
+  rinaUltEnergy: number
+  /** 苍角（1131）终结技邻位回能（邻位 30/10） */
+  soukakuUltEnergy: number
+  /** 露西（1151）终结邻位回能 + 影画1 回旋全队回能 */
+  lucyEnergy: number
+  /** 莱特（1161）影画4 士气喷发后场回能 */
+  lighterC4Energy: number
+  /** 合计（已计入 EnergySource.total） */
+  total: number
+}
+
 /** 能量回复来源明细 */
 export interface EnergySource {
   /** 自动回复：基础回能 × 战斗时间，不含百分比/固定/效率加成 */
@@ -59,8 +84,10 @@ export interface EnergySource {
   banyueSwayRefund: number
   /** 仪玄：额外闪能总账（完美格挡+10/次、极限闪避+5/次、影画1落雷+5/次，模块汇总进 cfg.yixuanFlashBonus） */
   yixuanFlashBonus: number
-  /** 辅助大招回复：辅助大招次数 × 每次回能量 */
+  /** 辅助大招回复：辅助大招次数 × 每次回能量（= crossAgent.supportUltimateRegen，保留旧字段供界面直读） */
   supportUltimateRegen: number
+  /** 队友联动回能明细（已计入 total；单一事实源 calcCrossAgentEnergy） */
+  crossAgent: CrossAgentEnergy
   /** 开局赠送（普通人40，仪玄120闪能，般岳/比利60闪能，部分命座额外） */
   initialGift: number
   /** 破秽盾赠送（60点能量/闪能） */
@@ -844,6 +871,15 @@ export interface CharacterResourceResult {
 
   // --- 能量 ---
   energySource: EnergySource
+  /**
+   * 真正驱动 exSpecialCount 的收敛后总能量（= 收敛末轮 iterate 的 totalEnergy）。
+   *
+   * 与 `energySource.total` 的差值是**已知口径差**，不是 bug：iterate 内 calcEnergySource
+   * 以 chainCountTotal=0 调用（连携次数此时尚未收敛），而最终装配用收敛后的连携次数，
+   * 因此连携驱动的回能（如莱卡恩影画2 lycaonC2Energy）只出现在展示明细里、不参与次数推导。
+   * 暴露本字段的目的：让这个差值可被测试/界面观测，而不是静默存在。
+   */
+  derivedEnergy: number
   /** 可用强特次数 = 总能量 ÷ 强特消耗 */
   exSpecialCount: number
   /** 强特 move id */
