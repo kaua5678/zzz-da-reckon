@@ -78,6 +78,8 @@ export interface EnergySource {
   qingyiC4Energy: number
   /** 莱卡恩影画2·能量回馈回能：失衡或队友连携触发回5能量；次数 = 失衡次数 + 队伍连携总次数 */
   lycaonC2Energy: number
+  /** 比利影画1：冲刺攻击/闪避反击命中回能（合并原始次数后按5秒冷却封顶） */
+  billyC1Energy: number
   /** 伊德海莉：非失衡（溯寒后）极寒重碾每次回 15 闪能 */
   yidhariRefund: number
   /** 般岳：怒相内山威强特回闪能（4 山威/怒相 × 10/个，影画2 额外 +5/个） */
@@ -1462,6 +1464,8 @@ export interface CharacterOperationConfig {
   banyueMoveTimes?: Record<string, number>
   /** 般岳招式 damage 倍率表（buildCharConfig 从倍率表预存） */
   banyueMoveDmg?: Record<string, number>
+  /** 比利影画1：冲刺/闪反额外回能总额（模块按原始次数与5秒冷却计算） */
+  billyC1Energy?: number
   /** 星徽·比利招式 actionTime 表（buildCharConfig 从倍率表预存） */
   billyMoveTimes?: Record<string, number>
   /** 星徽·比利招式 damage 倍率表（buildCharConfig 从倍率表预存） */
