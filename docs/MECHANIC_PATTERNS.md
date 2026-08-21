@@ -37,54 +37,136 @@ L3 是当前唯一必须人肉的部分，也是未来自动化收益最高的�
 - **指纹**：无"效果文本"——倍率表行、基础属性、动作时间、等级成长
 - **落点**：`public/static/catalog.json`（唯一事实源，脚本导入，勿手改）
 - **验收**：`validate:data`（完整性/孤儿 id/状态表同步）
+- **范例索引**（录新角色时对照；实现落点与测试均经 grep 验证存在）
+
+| 模式子类 | 角色 | 触发句式 | 实现落点 | 验收 | 等级 |
+|---|---|---|---|---|---|
+| 倍率表行直读 | 通用 | 从 SkillMove.rows 取 damage/daze/anomaly_buildup/decibel_recovery | `getRowValue (composables/resourceCalc/helpers.ts)` | 无 | L0 |
+| 基础属性面板直读 | 通用 | 角色+音擎基础属性进面板（hp/atk/def/暴击/冲击/精通…） | `calcBasePanel (core/panel.ts)` 读 `agent.level60.*Base` | catalogData.test.ts | L0 |
+| 等级成长系数 | 通用 | 技能等级 → 伤害/失衡系数（12 级基准，3 命+2、5 命+4） | `getSkillLevelCoef (core/skillLevel.ts)` `(skillLevel+10)/22` | skillLevel.test.ts | L0 |
+| 倍率表等级分段取值 | 蕾米埃尔 | 倍率表按技能等级索引 levelValues 取分段值 | `pickRemielleLevelValue (core/damage.ts)` | 无 | L0 |
+| 动作时间直读 | 通用 | 强特/终结/连携动作时间从 catalog move.actionTime 读 | `findExSpecial (core/resource.ts)` `move.actionTime ?? 0` | 无 | L0 |
+| catalog 数据加载（唯一事实源） | 通用 | fetch('/static/catalog.json') 脚本导入 | `load (stores/catalog.ts)` | catalogData.test.ts | L0 |
 
 ### D2 panel_effect —— 面板字段型（buff/减抗/转模）
 - **指纹**："自身攻击提升X%"、"敌人X抗性降低Y%"、"每点A提高B"、"处于X状态时…"
 - **落点**：`applyPanel`（读 `input.settings` 取滑块，勿走私 panel 字段）；属性转模走 `attributeConversions` + `applySpecAttributeConversions`
 - **验收**：面板 diff 生效测试（例：banyue 怒相增益 0/0.5/1 三档差 300/36/36）
-- **范例**：般岳怒相增益（settings 直读）、简 精通转攻击、伊德海莉 hp→贯穿力基底（注意基底勿双计）
+- **范例索引**（录新角色时对照；实现落点与测试均经 grep 验证存在）
+
+| 模式子类 | 角色 | 触发句式 | 实现落点 | 验收 | 等级 |
+|---|---|---|---|---|---|
+| 状态增益·覆盖率滑块 | 般岳(1471) | 强特后贯穿+300/火伤+36%/暴伤+36% | applyBanyuePanel（banyue.ts） | banyue.test.ts | L2 |
+| 额外能力暴击+减抗 | 朱鸢(1241) | 额外能力暴击+30%；C4无视25%以太抗性 | applyZhuYuanPanel（zhuYuan.ts） | zhuYuan.test.ts | L1 |
+| 属性转模·精通→攻击 | 简(1261) | 精通>120每点+2攻击（上限600） | applyJanePanel（jane.ts） | 无 | L1 |
+| 属性转模·hp→贯穿力 | 伊德海莉(1051) | 核心被动 hp→贯穿力 0.1/点 | applyYidhariPanel（yidhari.ts） | 无 | L1 |
+| 减抗+精通转模 | 爱丽丝(1401) | C4无视10%物理抗性+精通转掌控 | applyAlicePanel（alice.ts） | 无 | L1 |
+| 生命转攻击·转模 | 卢西娅(1451) | C6 以太帷幕内 生命2%→攻击 | applyLuciaPanel（luciaElowen.ts） | luciaElowen.test.ts | L1 |
 
 ### D3 multiplier —— 乘区型（增伤/暴伤/贯穿/易伤）
 - **指纹**："伤害提升X%"、"暴击伤害+X%"、"无视Y%防御"、"失衡易伤+X%"
 - **落点**：全局加 panel 字段；**招式限定的按 moveId 集合在 `patchExecutions` 加 exec 级字段**（ENGINE_PIPELINE §4 坑11：星辉类指定招式增伤不要挂全局）
 - **验收**：moveId 级 golden 值（该加的招式有、不该加的没有）
-- **范例**：妮可影画1 强特+16%、艾莲核心暴伤定向挂载（CORE_TARGETS）、雨果强特倍率拆分
+- **范例索引**（录新角色时对照；实现落点与测试均经 grep 验证存在）
+
+| 模式子类 | 角色 | 触发句式 | 实现落点 | 验收 | 等级 |
+|---|---|---|---|---|---|
+| 招式限定增伤 | 妮可(1031) | C1 强化特殊技伤害+16% | patchExecutions（nicole.ts） | nicole.test.ts | L1 |
+| 核心暴伤定向挂载 | 艾莲(1191) | 核心被动指定招式暴伤+ | patchEllenExecutions（ellen.ts） | ellen.test.ts | L1 |
+| 强特倍率拆分 | 雨果(1291) | 强特拆决算/普通两段结算 | patchHugoExecutions（hugo.ts） | hugo.test.ts | L1 |
+| 额外能力乘区 | 伊芙琳(1321) | 额外能力×1.25 连携/终结增伤 | patchEvelynExecutions（evelyn.ts） | evelyn.test.ts | L1 |
+| 覆盖率增伤 | 悠真(1201) | 核心暴伤定向+C2电壶增伤 | patchHarumasaExecutions（harumasa.ts） | harumasa.test.ts | L2 |
+| 覆盖率增伤·挂普攻 | 可琳(1061) | 核心专注 电锯斩击+37.5% | patchCorinExecutions（corin.ts） | corin.test.ts | L2 |
 
 ### D4 count_cycle —— 次数/循环型（资源循环、层数状态机）
 - **指纹**："每次命中得1层"、"消耗N层"、"每 X 次触发一次"
 - **落点**：简单计数走 spec resources 解释器；复杂循环走模块纯函数（computeXxxCycle）；「模块写 cfg、spec 读」用 `countSource: cfgField`
 - **验收**：循环次数 golden 值 + 全管线冒烟
-- **范例**：猫又呼噜能量、伊芙琳攒层、耀嘉音付费震音（user_meta 口径）
+- **范例索引**（录新角色时对照；实现落点与测试均经 grep 验证存在）
+
+| 模式子类 | 角色 | 触发句式 | 实现落点 | 验收 | 等级 |
+|---|---|---|---|---|---|
+| 简单计数（spec resources 解释器 + 模块分账） | 猫又 | 呼噜能量按「消耗占比」分给尾巴失踪术 30 点/绒爪穿刺 40 点 | `adjustPurrSpendCounts (nekomata.ts)` + `computeSpecResources` | 无 | L2 |
+| 复杂循环（模块纯函数） | 伊芙琳 | 燎索点每满 3 点替换下一次绞勒式为月辉丝·绊 | `computeEvelynCycle (evelyn.ts)` | evelyn.test.ts | L2 |
+| 资源兑换双上限（用户口径） | 耀嘉音 | 付费震音 = min(⌊能量/25⌋, 入场次数) | `computeYaojiayinTremolos (yaojiayin.ts)` | yaojiayin.test.ts | L3 |
+| 复杂循环（模块纯函数） | 悠真 | 甲乙矢命中/锋芒叠层；每 12 次甲乙矢生成一次电磁爆炸 | `computeHarumasaCycle (harumasa.ts)` | harumasa.test.ts | L2 |
+| 复杂循环（模块纯函数） | 扳机 | 狙击命中得绝意，普通协奏耗 3 绝意/冥狱耗 5 绝意 | `computeTriggerCycle (trigger.ts)` | trigger.test.ts | L2 |
+| 模块写 cfg、spec 读（valueSource/countSource: cfgField） | 朱鸢 | 强化霰弹获取/消耗循环；影画1 快速装填连携 6/终结 9 | `computeZhuYuanShellsTotal (zhuYuan.ts)` + `spec 1241.json` | zhuYuan.test.ts | L1 |
 
 ### D5 time_window —— 时间窗口/CD 驱动型
 - **指纹**："X秒内最多一次"、"每X秒"、"状态持续Y秒"
 - **落点**：`floor(战斗时间 / CD)` 次数折算进 cfg；覆盖率进 panel；**占前台时间的动作必须计 estimateExSpecialTime**（否则时间预算外层兜底压缩平A池）
 - **验收**：次数 golden 值；占用前台的行在 sweep 断言不溢出
-- **范例**：妮可影画2 15s CD 回能、莱卡恩后台时间分配模型（user_meta）
+- **范例索引**（录新角色时对照；实现落点与测试均经 grep 验证存在）
+
+| 模式子类 | 角色 | 触发句式 | 实现落点 | 验收 | 等级 |
+|---|---|---|---|---|---|
+| CD 次数折算进 cfg（floor 开局能量） | 妮可 | 触发核心减益回 5 能量，15s CD | `buildCharConfig (nicole.ts)` `NICOLE_C2_CD=15` → `floor(battleTime/15)×5` | nicole.test.ts | L1 |
+| CD 次数折算（floor 前台时间） | 露西 | 抄家伙调用次数 = floor(前台时间 / cd)，后台不占前台 | `computeLucyBoarCount (lucy.ts)` `lucyBoarCd` 钳制 4–6s | lucy.test.ts | L1 |
+| CD 次数折算进回能/喧响（10s 上限） | 爱芮 | 异放触发回 4 能量 + 70 喧响，10 秒一次 | `buildAireCharConfig (aire.ts)` `AIRE_C4_CD_SECONDS=10` → `floor(t/10)` | aire.test.ts | L1 |
+| CD 次数 × 覆盖率滑块 | 莱卡恩 | 影画1 强化攻击 8s CD 触发一次 | `buildExecutions (lycaon.ts)` `min(exCount, floor(t/8)×lycaonC1Coverage)` | lycaonSmoke.test.ts | L2 |
+| CD 次数折算（蓄力段） | 耀嘉音 | 影画6 精准支援追加随想曲蓄力段，10s CD | `computeYaojiayinTremolos (yaojiayin.ts)` `YAOJIAYIN_C6_CAPRICCIO_CD=10` → `min(precise, floor(t/10))` | yaojiayin.test.ts | L1 |
+| 占前台时间 estimateExSpecialTime | 诺姆 | 长按延长射击占前台（点射#1 0.493s + 弹头 0.74s + 延长/s） | `estimateExSpecialTime (norma.ts)` 返回 necessaryTime | normaSmoke.test.ts | L1 |
 
 ### D6 resource_pool —— 能量/闪能/喧响资源池
 - **指纹**："回复X能量"、"消耗Y喧响"、"进入战场获得Z闪能"、"每降低1%生命获得…"
 - **落点**：`calcEnergySource` 或跨角色回能走 `calcCrossAgentEnergy`（单一事实源）；喧响走 decibel 通道；入场赠送 `initialEnergyGift`
 - **验收**：energySource 账本逐项对账（yixuanSmoke 的账本注释模式）；derivedEnergy 与 exSpecialCount 口径一致
-- **范例**：仪玄闪能池账本、伊德海莉烧血喧响、丽娜/苍角/露西邻位回能
+- **范例索引**（录新角色时对照；实现落点与测试均经 grep 验证存在）
+
+| 模式子类 | 角色 | 触发句式 | 实现落点 | 验收 | 等级 |
+|---|---|---|---|---|---|
+| 入场闪能赠送 | 仪玄(1371) | 进场恢复全部闪能（120） | buildYixuanCharConfig→cfg.initialEnergyGift（yixuan.ts） | yixuanSmoke.test.ts | L1 |
+| 烧血喧响·decibel | 伊德海莉(1051) | 每降低1%生命回复10喧响 | computeYidhariHpSource（yidhari.ts） | 无 | L1 |
+| CD驱动回能 | 莱卡恩(1141) | C2 失衡+连携次数×5能量 | buildCharConfig→cfg.lycaonC2EnergyPerTrigger（lycaon.ts） | lycaonSmoke.test.ts | L1 |
+| CD驱动回能 | 诺姆(1571) | C2 帽子把戏回25能量/20s | buildNormaCharConfig→cfg.normaC2EnergyPerTrigger（norma.ts） | normaSmoke.test.ts | L1 |
+| 终结技邻位回能 | 丽娜(1211) | 终结技 下一位+30/上一位+10 | assignRinaUltNeighborEnergy（rina.ts） | rina.test.ts | L1 |
+| 邻位+全队回能 | 露西(1151) | 终结邻位+30/10；C1全队+2 | assignLucyUltNeighborEnergy（lucy.ts） | lucy.test.ts | L1 |
 
 ### D7 team_link —— 队伍联动型
 - **指纹**："队伍存在X时"、"全队攻击+"、"邻位角色…"、"同属性队友…"
 - **落点**：静态拐力进 `teammate-buffs.json`（按命座门控）；动态/需要次数的走 `applyTeamConfig` 三阶段钩子（禁止往 useResourceCalc 加 agentId 分支）
 - **验收**：teamHook.test.ts 模式（crossAgent 明细作观测口）；条件门控测试（不满足条件=0）
-- **范例**：凯撒攻击拐、青衣羁服易伤、耀嘉音咏叹公式、赛斯精通拐覆盖折算
+- **范例索引**（录新角色时对照；实现落点与测试均经 grep 验证存在）
+
+| 模式子类 | 角色 | 触发句式 | 实现落点 | 验收 | 等级 |
+|---|---|---|---|---|---|
+| 静态拐力（teammate-buffs fixed） | 凯撒 | 荣光之盾持有者攻击力提升 1000 点 | teammate-buffs.json 1071（fixed atkFlat） | caesar.test.ts | L1 |
+| 静态拐力（teammate-buffs stacked） | 青衣 | 羁服每层使失衡易伤 +4%，最多 20 层 | teammate-buffs.json 1251（stacked stunDmgMultiplierBonus，defaultStacks=20） | 无 | L2 |
+| 静态拐力（teammate-buffs formula） | 耀嘉音 | 咏叹华彩全队伤害/暴伤随特殊技等级 | `computeAriaBonuses (yaojiayin.ts)` + teammate-buffs.json 1311 | yaojiayin.test.ts | L1 |
+| 动态邻位回能（applyTeamConfig build） | 丽娜 | 终结技邻位回能 30/隔位 10 | `applyTeamConfig` → `applyRinaTeamEnergyFlags (rina.ts)` | teamHook.test.ts | L1 |
+| 动态邻位回能（applyTeamConfig build） | 露西 / 苍角 | 终结技其他角色 +10 能量，下一位换入额外 +20 | `applyTeamConfig` → `applyLucyTeamEnergyFlags (lucy.ts)` / `applySoukakuTeamEnergyFlags (soukaku.ts)` | teamHook.test.ts | L1 |
+| 动态三阶段（applyTeamConfig build/converge/postRound） | 莱特 | 影画4 后场喷发回能 +4/次（18s CD），后场占比滑块 | `applyTeamConfig` → `applyLighterTeamEnergyFlags (lighter.ts)` | teamHook.test.ts | L2 |
 
 ### D8 damage_event —— 附伤/事件伤害行
 - **指纹**："额外造成X%攻击力伤害"、"追加Y%…"、"每N次生成一次…"
 - **落点**：模块 `buildExecutions`/`patchExecutions` 推合成行（假 moveId 防 daze/anomaly 双计）；倍率 override `damageMultiplierOverride`
 - **验收**：行存在 + 倍率 golden + 假 id 不进失衡/异常池
-- **范例**：珂蕾妲饱和爆破、朱鸢 C6 以太余温、悠真 C6 电磁爆炸
+- **范例索引**（录新角色时对照；实现落点与测试均经 grep 验证存在）
+
+| 模式子类 | 角色 | 触发句式 | 实现落点 | 验收 | 等级 |
+|---|---|---|---|---|---|
+| 合成执行行（buildExecutions + 假 moveId） | 珂蕾妲 | 影画6 饱和爆破额外 360% 攻击力伤害 | `buildKoledaExecutions (koleda.ts)`（moveId `1101_c6_saturation_explosion`） | koleda.test.ts | L1 |
+| 合成执行行（buildExecutions + 假 moveId） | 朱鸢 | 影画6 以太余温：累计消耗 12 枚追加 4 枚×220% 鹿弹 | `buildZhuYuanExecutions (zhuYuan.ts)`（moveId `zhuyuan_c6_afterglow_bullets`） | zhuYuan.test.ts | L1 |
+| 合成执行行（buildExecutions + 假 moveId） | 悠真 | 影画6 每 12 次甲乙矢生成 1500% 电磁爆炸 | `buildHarumasaExecutions (harumasa.ts)`（moveId `1201_c6_electromagnetic_explosion`） | harumasa.test.ts | L2 |
+| 合成执行行（buildExecutions + 假 moveId） | 赛斯 | 影画6 雷霆击感电终结一击额外 500% 攻击力、必暴+暴伤 60% | `buildSethExecutions (seth.ts)`（moveId `1271_c6_finish_strike`） | seth.test.ts | L2 |
+| 合成执行行（buildExecutions + 假 moveId） | 扳机 | 影画4 断离 200% 攻击/120% 冲击；影画6 凶弹 1200% 电伤 | `buildTriggerExecutions (trigger.ts)`（moveId `1361_c4_duanli`） | trigger.test.ts | L2 |
+| 合成执行行（buildExecutions + 假 moveId） | 露西 | 影画6 加油下队友强特 → 小猪落地 300% 攻火伤 | `buildExecutions (lucy.ts)`（moveId `1151_c6_pig_bomb`） | lucy.test.ts | L1 |
 
 ### D9 stun_axis —— 失衡轴型
 - **指纹**："失衡时…"、"失衡窗口内…"、"每失衡打X轮…"
 - **落点**：失衡轴预设 JSON + 轴引擎；窗口内增伤按轴时间轴扫描或覆盖率滑块；「每失衡打几轮」是 L3 凹分口径
 - **验收**：轴预设测试 + 窗口内/外差值断言
-- **范例**：雨果决算倍率按剩余失衡秒数、青衣每失衡2轮醉花月云转（L3）、柏妮思 C6 迸发跟随双喷
+- **范例索引**（录新角色时对照；实现落点与测试均经 grep 验证存在）
+
+| 模式子类 | 角色 | 触发句式 | 实现落点 | 验收 | 等级 |
+|---|---|---|---|---|---|
+| 窗口内增伤按剩余失衡秒数（滑块） | 雨果 | 决算按触发时剩余失衡秒数额外倍率（前5s 每秒+280%，5~15s 每秒+100%，上限 3400%） | `computeHugoVerdictMultiplier (hugo.ts)` | hugo.test.ts | L2 |
+| 每失衡打 N 轮（凹分口径） | 青衣 | 每失衡打 2 轮醉花月云转（1 轮 = 100% 电压） | `computeQingyiSource (qingyi.ts)` `ROUNDS_PER_STUN=2` | 无 | L3 |
+| 窗口终结动作截断 | 佩洛伊斯 | 决算（1551016）做完清空窗口剩余失衡时间 | `calcStunAxisStack (stunAxisStack.ts)` `endsStunWindow` | stunAxisStack.test.ts | L1 |
+| 窗口分配（精确轮数 / 兜底吃剩余） | 通用轴引擎 | count 有值 = 精确轮数，缺省 = 兜底吃剩余窗口 | `allocateAxisWindows (stunAxisStack.ts)` | stunAxisStack.test.ts | L1 |
+| 跨边界动作窗口覆盖折算 | 通用轴引擎 | 跨边界动作按窗口内时长比例折算轴内易伤 | `computeInAxisRatio (stunAxis.ts)` | stunAxis.test.ts | L1 |
+| 失衡轴预设 JSON（自动加载 + 匹配） | 般岳/琉音 | 好评溢出爆发轴：默认常规轴，好评富余逐窗升级爆发轴 | `stunAxisPresets.ts`（import.meta.glob 加载 `stunAxisPresets/*.json`，如 般琉通用.json） | stunAxisPresets.test.ts | L0 |
 
 ## 3. 维度 × 确定性 实测分布
 
