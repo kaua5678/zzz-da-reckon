@@ -36,7 +36,7 @@ import { computeLuciaHealPctPerUlt } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueMingwangStacks, computeBanyueInteractionTopUp, C6_ATTACH_RATIO, C6_MINGWANG_EXTRA, MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
 import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import { computeCorinStunBonusMoves, CORIN_ADDITIONAL_DMG } from '@/mechanics/agents/corin'
-import { SIGRID_LANCE_SEGMENT_IDS } from '@/mechanics/agents/sigrid'
+import { SIGRID_LANCE_SEGMENT_IDS, SIGRID_INFECTION_DMG } from '@/mechanics/agents/sigrid'
 import { computeYixuanNingshenBonus } from '@/mechanics/agents/yixuan'
 import { computePeiluoKagerouBonus, PEILUO_KAGEROU_CRIT } from '@/mechanics/agents/specPanelBuffs'
 import type {
@@ -1402,11 +1402,12 @@ function applyNormaHatChain(
       return agent?.damageElement === 'wind'
     })
     const infectionBonus = hasWindChar ? 10 * infectionCoverage : 0
-    if (frostBonus <= 0 && infectionBonus <= 0) return panels.value
+    // windInfectionRate：风化侵染覆盖率原值盖章（队伍无风角色时 0）——角色模块按自身口径消费（如希格莉德浸染增伤 15%×覆盖率）
     return panels.value.map(p => ({
       ...p,
       enemyCritDmgTakenBonus: (p.enemyCritDmgTakenBonus ?? 0) + frostBonus,
       infectionZoneBonus: Math.max(0, infectionBonus),
+      windInfectionRate: hasWindChar ? infectionCoverage : 0,
     }))
   })
 
@@ -1845,6 +1846,13 @@ function applyNormaHatChain(
               corinStunBonus = CORIN_ADDITIONAL_DMG * cov
             }
           }
+          // 希格莉德额外能力·天际联军：命中[浸染]敌人伤害+15% × 风化侵染覆盖率
+          // （用户口径 2026-02：直接读风化覆盖率；damagePanels 已盖章 windInfectionRate，无风角色=0）
+          let sigridInfectionBonus = 0
+          if (charResult.agentId === '1591' && (execPanel?.additionalAbilityActive ?? 0) > 0) {
+            const rate = Math.max(0, Math.min(1, Number(execPanel?.windInfectionRate ?? 0)))
+            sigridInfectionBonus = SIGRID_INFECTION_DMG * rate
+          }
           // 仪玄凝神：6 命默认满覆盖（调息送大量符法千重，用户口径：暴伤+40% + 贯穿+20%，不走轴扫描），
           // yixuan.c6NingshenCoverage 滑块可调；非 6 命轴模式按 buff 轴扫描（大招后 15s 窗口），非轴模式按滑块近似（仅暴伤）
           const yixuanCinema = configStore.team[slot]?.cinemaLevel ?? 0
@@ -1876,11 +1884,11 @@ function applyNormaHatChain(
             source: resolved?.source ?? exec.moveId,
             count: isPerSecondRow ? 1 : units,
             multiplier: unitMultiplier * (isPerSecondRow ? units : 1),
-            note: `${baseNote}${extraNote}${mingwangDmgBonus > 0 ? ` · 明王+${mingwangDmgBonus.toFixed(1)}%${isAxis ? '（轴内覆盖）' : '（覆盖率近似）'}` : ''}${corinStunBonus > 0 ? ` · 失衡增伤+${corinStunBonus.toFixed(1)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${yixuanNingshen.critDmg > 0 ? ` · 凝神暴伤+${yixuanNingshen.critDmg.toFixed(0)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${yixuanNingshen.sheerDmg > 0 ? ` · 凝神贯穿+${yixuanNingshen.sheerDmg.toFixed(0)}%` : ''}`,
+            note: `${baseNote}${extraNote}${mingwangDmgBonus > 0 ? ` · 明王+${mingwangDmgBonus.toFixed(1)}%${isAxis ? '（轴内覆盖）' : '（覆盖率近似）'}` : ''}${corinStunBonus > 0 ? ` · 失衡增伤+${corinStunBonus.toFixed(1)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${sigridInfectionBonus > 0 ? ` · 浸染增伤+${sigridInfectionBonus.toFixed(1)}%（风化覆盖率×15%）` : ''}${yixuanNingshen.critDmg > 0 ? ` · 凝神暴伤+${yixuanNingshen.critDmg.toFixed(0)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${yixuanNingshen.sheerDmg > 0 ? ` · 凝神贯穿+${yixuanNingshen.sheerDmg.toFixed(0)}%` : ''}`,
             moveId: exec.moveId,
             critRateBonus,
             critDmgBonus: critDmgBonus + yixuanNingshen.critDmg + peiluoKagerouCrit,
-            dmgBonus: (exec.dmgBonus ?? 0) + mingwangDmgBonus + corinStunBonus,
+            dmgBonus: (exec.dmgBonus ?? 0) + mingwangDmgBonus + corinStunBonus + sigridInfectionBonus,
             sheerDmgBonus: (exec.sheerDmgBonus ?? 0) + yixuanNingshen.sheerDmg,
             flatDamageBonus: exec.flatDamageBonus,
             basisValueOverride: exec.basisValueOverride,

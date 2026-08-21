@@ -68,9 +68,8 @@ describe('希格莉德（1591）面板：核心被动 / 额外能力 / 影画', 
     const pNeg = neg.computePanelPhases(0, neg.config, useCatalogStore())!.inCombat as any
     expect(pPos.additionalAbilityActive).toBe(1)
     expect(pNeg.additionalAbilityActive ?? 0).toBe(0)
-    // 面板差分：正例比负例多 840 攻击与 15 增伤（其余条件一致）
+    // 面板差分：正例比负例多 840 攻击（浸染增伤已移到伤害行，按风化覆盖率折算——见全链用例）
     expect(pPos.atk - pNeg.atk).toBeCloseTo(840, 0)
-    expect(pPos.dmgBonus - pNeg.dmgBonus).toBeCloseTo(15, 5)
   })
 
   it('命座差分：1命攻击 ×1.25、2命喧响获取 +10、4命增伤 +18', async () => {
@@ -98,20 +97,6 @@ describe('希格莉德（1591）面板：核心被动 / 额外能力 / 影画', 
     config.setMechanicSetting('sigrid.corePassiveCoverage', 0.5)
     const pHalf = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
     expect(pHalf.critRate - pOff.critRate).toBeCloseTo(33, 5)
-  })
-
-  // 刻度回归锁：滑块曾按 0-100 百分比声明、消费端 clamp01 按 0-1 消费——UI 拖中间值被钳成 100%。
-  // 迁移 applyPanel 时统一为 0-1 分数刻度，本用例锁「0.5 真的是一半」。
-  it('浸染覆盖率滑块（0-1 分数刻度）：0.5 → 浸染增伤 +7.5（不是 +15）', async () => {
-    const { config, computePanelPhases } = await setup(['1591', '1211', ''])
-    config.setMechanicSetting('sigrid.infectionCoverage', 0)
-    const p0 = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
-    config.setMechanicSetting('sigrid.infectionCoverage', 0.5)
-    const pHalf = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
-    expect(pHalf.dmgBonus - p0.dmgBonus).toBeCloseTo(7.5, 5)
-    config.setMechanicSetting('sigrid.infectionCoverage', 1)
-    const pFull = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
-    expect(pFull.dmgBonus - p0.dmgBonus).toBeCloseTo(15, 5)
   })
 })
 
@@ -207,6 +192,12 @@ describe('希格莉德 buildExecutions：敛枪式三段轮转 + 破阵 + 影画
   })
 
 
+  it('[砥砺]：敛枪式三段行 dmgBonus +20%（连携发动获得，默认全覆盖）', () => {
+    const execs = build({ sigridStunCount: 1, sigridCinemaLevel: 0, sigridAtk: 0 })
+    expect(execs.length).toBe(3)
+    for (const e of execs) expect(e.dmgBonus).toBe(20)
+  })
+
   it('破阵口径：非轴 C6 = 连携总次数；非轴非 C6 = 失衡次数', () => {
     // C6：chainCountPerStun 2 × 失衡 3 = 6 套
     const c6 = build({ sigridStunCount: 3, chainCountPerStun: 2, sigridCinemaLevel: 6, sigridAtk: 0 })
@@ -299,5 +290,50 @@ describe('希格莉德全链：敛枪式三段行进入执行计划', () => {
     // 出枪式行（如终结技霜天 1591016）也吃穿透率
     const frost = char.executions.find(e => e.moveId === '1591016')
     if (frost) expect(frost.penRatioBonus ?? 0).toBe(24)
+  })
+})
+
+describe('希格莉德浸染增伤（读风化侵染覆盖率）', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.stubGlobal('fetch', vi.fn(async (url: any) => {
+      const u = String(url)
+      if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
+      if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
+      if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
+      return { ok: false, json: async () => ({}) }
+    }))
+  })
+
+  // 生效测试（用户口径：直接读风化覆盖率×15%）：风角色在队 + 额外能力激活 → 行 note 带浸染增伤；
+  // 覆盖率滑块（wind.infectionCoverage，资源利用率页口径）线性折算。
+  it('风角色在队：浸染增伤按覆盖率进伤害行；无风角色不生效', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const config = useConfigStore()
+    config.team[0] = { slot: 0, agentId: '1591', cinemaLevel: 0, ...baseConfig } as any
+    config.team[1] = { slot: 1, agentId: '1561', cinemaLevel: 0, ...baseConfig } as any // 维琳娜（风）→ 浸染存在
+    config.team[2] = { slot: 2, agentId: '1211', cinemaLevel: 0, ...baseConfig } as any // 丽娜（支援）→ 额外能力激活
+    config.syncTeammateBuffsFromTeam()
+    const { useResourceCalc } = await import('@/composables/useResourceCalc')
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+
+    config.setMechanicSetting('wind.infectionCoverage', 0.5)
+    let rows = calc.damagePoolRows.value.filter(r => r.slot === 0 && r.agentId === '1591')
+    expect(rows.some(r => (r.note ?? '').includes('浸染增伤+7.5%'))).toBe(true)
+
+    config.setMechanicSetting('wind.infectionCoverage', 1)
+    rows = calc.damagePoolRows.value.filter(r => r.slot === 0 && r.agentId === '1591')
+    expect(rows.some(r => (r.note ?? '').includes('浸染增伤+15.0%'))).toBe(true)
+
+    // 无风角色：不生效（保留支援触发额外能力，隔离变量）
+    config.team[1] = { slot: 1, agentId: '1211', cinemaLevel: 0, ...baseConfig } as any
+    config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+    config.syncTeammateBuffsFromTeam()
+    await new Promise(r => setTimeout(r, 50))
+    rows = calc.damagePoolRows.value.filter(r => r.slot === 0 && r.agentId === '1591')
+    expect(rows.every(r => !(r.note ?? '').includes('浸染增伤'))).toBe(true)
   })
 })

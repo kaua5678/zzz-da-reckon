@@ -5440,7 +5440,8 @@
           "name": "核心被动：天空骑士",
           "implementation": "implemented_approximation",
           "implementedParts": [
-            "出枪式集合（凛冽枪尖四段/乱琼/碎玉/冰饕/冰凌卷地/霜天/回马枪）命中进入/刷新[巡空枪势]并获得敛枪式机会（机会获取按前台命中1次/秒近似，spec resources 状态机）；巡空枪势暴击率+66% × 覆盖率滑块、命中失衡敌人失衡易伤+20% × 覆盖率（applyPanel 折算面板）。"
+            "出枪式集合（凛冽枪尖四段/乱琼/碎玉/冰饕/冰凌卷地/霜天/回马枪）命中进入/刷新[巡空枪势]并获得敛枪式机会（机会获取按前台命中1次/秒近似，spec resources 状态机）；巡空枪势暴击率+66% × 覆盖率滑块、命中失衡敌人失衡易伤+20% × 覆盖率（applyPanel 折算面板）。",
+            "[砥砺]（连携技·冰凌卷地发动时获得，持续50s）：后续敛枪式伤害+20% 默认全覆盖，挂敛枪式三段行 dmgBonus。"
           ],
           "pendingParts": [
             "敛枪式段数状态机（8/7/6秒递减、段数升降）不建模；破阵「更快发动」时间轴不建模（破阵连放本身已按每次失衡一套建模）。"
@@ -5458,10 +5459,10 @@
           "name": "额外能力：天际联军",
           "implementation": "implemented_approximation",
           "implementedParts": [
-            "队伍存在[支援]/[击破]队友（声明式 spec.additionalAbility 门控）：攻击力+840（applyPanel 固定值）；命中[浸染]敌人伤害+15% × 覆盖率滑块（applyPanel 折算面板 dmgBonus）。"
+            "队伍存在[支援]/[击破]队友（声明式门控）：攻击力+840 局内小攻击自拐（applyPanel）；命中[浸染]敌人伤害+15% × 风化侵染覆盖率（damagePanels 盖章 windInfectionRate → emitExecDirect 折算，用户口径：直接读风化覆盖率）。"
           ],
           "pendingParts": [
-            "浸染命中的逐次时序按覆盖率近似（默认100%）。"
+            "浸染覆盖率默认取异常池风化覆盖率，可在资源利用率页手动覆盖。"
           ],
           "codePaths": [
             "src/mechanics/agents/sigrid.ts"
@@ -5536,7 +5537,8 @@
         "name": "核心被动：天空骑士",
         "implementation": "implemented_approximation",
         "implementedParts": [
-          "出枪式集合（凛冽枪尖四段/乱琼/碎玉/冰饕/冰凌卷地/霜天/回马枪）命中进入/刷新[巡空枪势]并获得敛枪式机会（机会获取按前台命中1次/秒近似，spec resources 状态机）；巡空枪势暴击率+66% × 覆盖率滑块、命中失衡敌人失衡易伤+20% × 覆盖率（applyPanel 折算面板）。"
+          "出枪式集合（凛冽枪尖四段/乱琼/碎玉/冰饕/冰凌卷地/霜天/回马枪）命中进入/刷新[巡空枪势]并获得敛枪式机会（机会获取按前台命中1次/秒近似，spec resources 状态机）；巡空枪势暴击率+66% × 覆盖率滑块、命中失衡敌人失衡易伤+20% × 覆盖率（applyPanel 折算面板）。",
+          "[砥砺]：后续敛枪式伤害+20% 默认全覆盖。"
         ],
         "pendingParts": [
           "敛枪式段数状态机（8/7/6秒递减、段数升降）不建模；破阵「更快发动」时间轴不建模（破阵连放本身已按每次失衡一套建模）。"
@@ -5555,7 +5557,7 @@
         "trigger": "待人工核对触发条件",
         "implementation": "implemented_approximation",
         "implementedParts": [
-          "队伍存在[支援]/[击破]队友（声明式 spec.additionalAbility 门控）：攻击力+840（applyPanel 固定值）；命中[浸染]敌人伤害+15% × 覆盖率滑块（applyPanel 折算面板 dmgBonus）。"
+          "攻击力+840 局内小攻击自拐（applyPanel）；命中[浸染]敌人伤害+15% × 风化侵染覆盖率（emitExecDirect 折算）。"
         ],
         "pendingParts": [
           "浸染命中的逐次时序按覆盖率近似（默认100%）。"

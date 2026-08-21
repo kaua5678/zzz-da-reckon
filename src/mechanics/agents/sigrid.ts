@@ -20,7 +20,10 @@ import { specToMechanicModule } from '@/specs/mechanics'
  * - 核心被动·天空骑士 Lv.7：巡空枪势暴击率 +66% × 覆盖率；失衡易伤倍率 +20% × 覆盖率
  *   （引擎只在失衡行计入，轴模式窗口内自动生效，非轴按失衡占比折算）
  * - 额外能力·天际联军（[支援]/[击破]队友，声明式 spec.additionalAbility 门控）：
- *   攻击力 +840（Lv60 上限）；命中[浸染]敌人伤害 +15% × 覆盖率
+ *   攻击力 +840（Lv60 上限，局内小攻击自拐）；命中[浸染]敌人伤害 +15% × 风化侵染覆盖率
+ *   （emitExecDirect 分支读 damagePanels.windInfectionRate，用户口径 2026-02：直接读风化覆盖率）
+ * - [砥砺]（连携技·冰凌卷地发动时获得，持续50s）：后续敛枪式伤害 +20%，默认全覆盖，
+ *   挂敛枪式三段行 dmgBonus（用户口径 2026-02）
  * - 影画1：自身攻击力 +25%（先乘百分比，再叠加额外能力固定值）
  * - 影画2：喧响值获取效率 +10%（穿透率 +24% 为 moveId 限定，见 patchExecutions；巡空枪势时长 +2s 不建模）
  * - 影画4：每次获得巡空枪势伤害 +18%（8s 上限 40s）× 覆盖率
@@ -67,7 +70,10 @@ export const SIGRID_CHUQIANG_MOVE_IDS: Set<string> = new Set([
 export const SIGRID_CORE_CRIT_RATE = 66
 export const SIGRID_CORE_STUN_VULN = 20
 export const SIGRID_ADDITIONAL_ATK_FLAT = 840
+/** 浸染增伤：15% × 风化侵染覆盖率（emitExecDirect 分支读 damagePanels 的 windInfectionRate，用户口径 2026-02） */
 export const SIGRID_INFECTION_DMG = 15
+/** [砥砺]（连携技发动时获得）：后续敛枪式伤害 +20%，默认全覆盖（用户口径 2026-02） */
+export const SIGRID_DILI_DMG = 20
 export const SIGRID_C2_DECIBEL_EFFICIENCY = 10
 export const SIGRID_C4_DMG = 18
 export const SIGRID_C1_ATK_PCT = 25
@@ -105,8 +111,7 @@ function applySigridPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
   }
   if ((panel.additionalAbilityActive ?? 0) > 0) {
     panel.atk = (panel.atk ?? 0) + SIGRID_ADDITIONAL_ATK_FLAT
-    const infectionCov = clamp01(settingOf(settings, 'sigrid.infectionCoverage', 1))
-    panel.dmgBonus = (panel.dmgBonus ?? 0) + SIGRID_INFECTION_DMG * infectionCov
+    // 浸染增伤不在这里：读风化侵染覆盖率（异常池结果），emitExecDirect 分支按覆盖率逐行折算
   }
   panel.critRate = (panel.critRate ?? 0) + SIGRID_CORE_CRIT_RATE * coreCov
   panel.stunDmgMultiplierBonus = (panel.stunDmgMultiplierBonus ?? 0) + SIGRID_CORE_STUN_VULN * coreCov
@@ -243,6 +248,8 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
       category: 'basic',
       element: 'ice',
       count,
+      // [砥砺]（连携技发动时获得，持续50s）：后续敛枪式伤害 +20%，默认全覆盖（用户口径）
+      dmgBonus: SIGRID_DILI_DMG,
       actionTime: meta.actionTime,
       comboAlignRatio: 0,
       // totalTime=0：敛枪式时间已含在操作循环的前台预算内，不进时间预算收敛
@@ -301,16 +308,6 @@ const settings: MechanicSetting[] = [
     id: 'sigrid.corePassiveCoverage',
     label: '希格莉德巡空枪势覆盖率',
     description: '核心被动：巡空枪势状态下暴击率+66%、命中失衡敌人失衡易伤+20% 的时间覆盖率，默认 100%（出枪式命中即刷新，近似常驻）。',
-    default: 1,
-    min: 0,
-    max: 1,
-    step: 0.05,
-    suffix: '%',
-  },
-  {
-    id: 'sigrid.infectionCoverage',
-    label: '希格莉德浸染命中覆盖率',
-    description: '额外能力·天际联军：命中[浸染]状态敌人时伤害+15% 的覆盖率（队内风异常/染色频率决定），默认 100%。',
     default: 1,
     min: 0,
     max: 1,
