@@ -3,12 +3,15 @@ import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   BILLY_ADDITIONAL_ULT_PER_STACK,
+  BILLY_C1_ENERGY,
   BILLY_C2_DODGE_DMG,
   BILLY_C4_EX_CRIT_MAX,
   BILLY_C6_DMG_PER_STACK,
   BILLY_CORE_CROUCH_DMG,
+  BILLY_MOVE_IDS,
   computeBillyCycle,
   billyMechanic,
+  resolveBillyC1TriggerCount,
 } from '@/mechanics/agents/billy'
 import { setupHarness } from '@/test/harness'
 
@@ -29,8 +32,25 @@ function cycle(overrides: Partial<Parameters<typeof computeBillyCycle>[0]> = {})
     ultimateStacks: 2,
     c4ExCrit: 32,
     c6HitStacks: 5,
+    battleTime: 180,
     ...overrides,
   })
+}
+
+function cfgWith(cinema: number, extra: Record<string, unknown> = {}) {
+  return {
+    ultimateMoveId: BILLY_MOVE_IDS.ultimate,
+    dodgeCounterMoveId: BILLY_MOVE_IDS.dodgeCounter,
+    exSpecialMoveId: BILLY_MOVE_IDS.exSpecial,
+    billyCinemaLevel: cinema,
+    billyCoreCrouchCoverage: 1,
+    billyUltimateStacks: 2,
+    billyC4ExCrit: 32,
+    billyC6HitStacks: 5,
+    billyAdditionalActive: true,
+    billyBattleTime: 180,
+    ...extra,
+  }
 }
 
 describe('比利（1081）总量', () => {
@@ -42,7 +62,7 @@ describe('比利（1081）总量', () => {
     expect(cycle({ additionalActive: false }).ultimateDmg).toBe(0)
   })
 
-  it('影画2闪避反击、影画4强特暴击、影画6命中增伤按命座/滑块门控', () => {
+  it('影画2闪避反击、影画4强特暴击、影画6命中增伤按命座和输入门控', () => {
     expect(cycle({ cinemaLevel: 2 }).c2DodgeDmg).toBe(BILLY_C2_DODGE_DMG)
     expect(cycle({ cinemaLevel: 1 }).c2DodgeDmg).toBe(0)
     expect(cycle({ cinemaLevel: 4, c4ExCrit: 32 }).c4ExCritRate).toBe(BILLY_C4_EX_CRIT_MAX)
@@ -53,49 +73,58 @@ describe('比利（1081）总量', () => {
   })
 })
 
-describe('比利执行行定向结算', () => {
-  const cfgWith = (cinema: number, extra: Record<string, unknown> = {}) => ({
-    ultimateMoveId: '1081014',
-    dodgeCounterMoveId: '1081013',
-    exSpecialMoveId: '1081011',
-    billyCinemaLevel: cinema,
-    billyCoreCrouchCoverage: 1,
-    billyUltimateStacks: 2,
-    billyC4ExCrit: 32,
-    billyC6HitStacks: 5,
-    billyAdditionalActive: true,
-    ...extra,
+describe('比利影画确定性规则', () => {
+  it('C1 合并冲刺与闪反原始次数，并按5秒ICD封顶', () => {
+    expect(resolveBillyC1TriggerCount(8, 20)).toBe(4)
+    expect(resolveBillyC1TriggerCount(2, 20)).toBe(2)
+    const value = cycle({ cinemaLevel: 1, dashAttackCount: 5, dodgeEnergyTriggerCount: 3, battleTime: 20 })
+    expect(value.c1Energy).toBe(BILLY_C1_ENERGY * 4)
   })
 
-  it('终结吃额外能力增伤、闪避反击吃影画2、强特吃影画4暴击', () => {
-    const ult: any = { moveId: '1081014', category: 'chain' }
-    const dodge: any = { moveId: '1081013', category: 'dodge' }
-    const ex: any = { moveId: '1081011', category: 'special' }
-    billyMechanic.patchExecutions!({
-      cfg: cfgWith(4),
-      state: { exSpecialCount: 1, ultimateCount: 1, chainCountTotal: 1 },
-      executions: [ult, dodge, ex],
-    } as any)
+  it('C2 成功翻滚次数才增加闪避反击与C6层数', () => {
+    expect(cycle({ cinemaLevel: 6, c6HitStacks: 0, c2SuccessfulRolls: 2 }).c6Dmg).toBe(BILLY_C6_DMG_PER_STACK * 2)
+    expect(cycle({ cinemaLevel: 6, c6HitStacks: 0, c2SuccessfulRolls: 0 }).c6Dmg).toBe(0)
+  })
+})
+
+describe('比利执行行定向结算', () => {
+  it('真实moveId：终结吃额外增伤、闪反吃C2、强特吃C4', () => {
+    const ult: any = { moveId: '1081019', category: 'chain' }
+    const chain: any = { moveId: '1081018', category: 'chain' }
+    const dodge: any = { moveId: '1081017', category: 'dodge' }
+    const ex: any = { moveId: '1081013', category: 'special' }
+    const neighboring: any[] = [
+      { moveId: '1081014', category: 'dodge' },
+      { moveId: '1081011', category: 'special' },
+    ]
+    billyMechanic.patchExecutions!({ cfg: cfgWith(4), state: {} as any, executions: [ult, chain, dodge, ex, ...neighboring] } as any)
     expect(ult.dmgBonus).toBe(BILLY_ADDITIONAL_ULT_PER_STACK * 2)
+    expect(chain.dmgBonus).toBeUndefined()
     expect(dodge.dmgBonus).toBe(BILLY_C2_DODGE_DMG)
     expect(ex.critRateBonus).toBe(BILLY_C4_EX_CRIT_MAX)
+    for (const row of neighboring) {
+      expect(row.dmgBonus).toBeUndefined()
+      expect(row.critRateBonus).toBeUndefined()
+    }
   })
 
-  it('低命座不应用影画2/4', () => {
-    const dodge: any = { moveId: '1081013', category: 'dodge' }
-    const ex: any = { moveId: '1081011', category: 'special' }
-    billyMechanic.patchExecutions!({
-      cfg: cfgWith(1),
-      state: { exSpecialCount: 1, ultimateCount: 0, chainCountTotal: 0 },
-      executions: [dodge, ex],
-    } as any)
-    expect(dodge.dmgBonus).toBeUndefined()
-    expect(ex.critRateBonus).toBeUndefined()
+  it('C2成功翻滚会显式增加闪避反击执行次数', () => {
+    const dodge: any = { moveId: BILLY_MOVE_IDS.dodgeCounter, count: 1, actionTime: 1, comboAlignRatio: 0, decibelRecovery: 0, totalTime: 1, totalComboAlignTime: 0, totalDecibelRecovery: 0 }
+    billyMechanic.patchExecutions!({ cfg: cfgWith(2, { billyC2SuccessfulRolls: 2 }), state: {} as any, executions: [dodge] } as any)
+    expect(dodge.count).toBe(3)
+  })
+
+  it('核心蹲姿增伤只作用真实普通攻击行', () => {
+    const basics = ['1081002', '1081003', '1081004', '1081007', '1081008'].map(moveId => ({ moveId })) as any[]
+    const nonBasics: any[] = [{ moveId: '1081013' }, { moveId: '1081019' }, { moveId: 'basic_attack' }]
+    billyMechanic.patchExecutions!({ cfg: cfgWith(0, { billyAdditionalActive: false }), state: {} as any, executions: [...basics, ...nonBasics] } as any)
+    for (const row of basics) expect(row.dmgBonus).toBe(BILLY_CORE_CROUCH_DMG)
+    for (const row of nonBasics) expect(row.dmgBonus).toBeUndefined()
   })
 })
 
 describe('比利完整计算链', () => {
-  it('额外能力由同属性/同阵营队友激活，异属性异阵营队友不激活', async () => {
+  it('额外能力由同属性或同阵营队友激活，异属性异阵营不激活', async () => {
     for (const mateId of ['1021', '1011']) {
       const { catalog, config } = await setup(mateId)
       expect((computePanelPhases(0, config, catalog)!.inCombat as any).additionalAbilityActive).toBe(1)
@@ -104,14 +133,19 @@ describe('比利完整计算链', () => {
     expect((computePanelPhases(0, neg.config, neg.catalog)!.inCombat as any).additionalAbilityActive ?? 0).toBe(0)
   })
 
-  it('资源池写入比利循环，面板进入蹲姿+影画6增伤', async () => {
-    await setup('1021', 6)
+  it('C1回能进入资源总账，C3/C5走通用技能等级', async () => {
+    const { catalog, config } = await setup('1021', 1)
+    config.setMechanicSetting('billy.dashAttackCount', 5)
+    config.setMechanicSetting('billy.dodgeEnergyTriggerCount', 3)
+    config.enemy.battleTime = 20
     const calc = useResourceCalc()
     const billy = calc.resourceResult.value!.characters.find(row => row.agentId === '1081')!
-    expect(billy.specResources?.billy_cycle).toBeTruthy()
-    expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1081')!.specResources?.billy_cycle).toBeTruthy()
-    const panel = calc.panels.value[0] as any
-    expect(panel.__billyPanelApplied).toBe(true)
-    expect(panel.dmgBonus).toBeGreaterThanOrEqual(BILLY_CORE_CROUCH_DMG + BILLY_C6_DMG_PER_STACK * 5)
+    expect(billy.energySource.billyC1Energy).toBe(BILLY_C1_ENERGY * 4)
+    expect(billy.energySource.total).toBeGreaterThan(billy.energySource.autoRegen)
+
+    config.team[0].cinemaLevel = 3
+    expect(computePanelPhases(0, config, catalog)!.inCombat.skillLevelBonus).toBe(2)
+    config.team[0].cinemaLevel = 5
+    expect(computePanelPhases(0, config, catalog)!.inCombat.skillLevelBonus).toBe(4)
   })
 })
