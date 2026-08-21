@@ -15,10 +15,11 @@ import {
 } from '@/mechanics/agents/ben'
 
 describe('本模块', () => {
-  it('防转攻 applyPanel', () => {
-    const panel: any = { def: 1000, atk: 500 }
-    benMechanic.applyPanel!({ slot: 1, agent: {} as any, cinemaLevel: 0, team: [], outOfCombatPanel: panel, panel, settings: {} })
-    expect(panel.atk).toBeCloseTo(500 + 1000 * BEN_DEF_TO_ATK)
+  it('防转攻严格读取局外防御', () => {
+    const outOfCombatPanel: any = { def: 1000, atk: 500 }
+    const panel: any = { def: 1400, atk: 600 }
+    benMechanic.applyPanel!({ slot: 1, agent: {} as any, cinemaLevel: 0, team: [], outOfCombatPanel, panel, settings: {} })
+    expect(panel.atk).toBeCloseTo(600 + 1000 * BEN_DEF_TO_ATK)
   })
 
   it('影画2 只跟成功招架次数，影画4只增强成功反击段，影画6提升失衡', () => {
@@ -31,6 +32,9 @@ describe('本模块', () => {
     const panel: any = { def: 800, atk: 0 }
     benMechanic.applyPanel!({ slot: 1, agent: {} as any, cinemaLevel: 6, team: [], outOfCombatPanel: panel, panel, settings: {} })
     expect(panel.stunBuildUpBonus__basic).toBe(BEN_C6_STUN_BONUS)
+    expect(panel.stunBuildUpBonus__dashAttack).toBe(BEN_C6_STUN_BONUS)
+    expect(panel.stunBuildUpBonus__dodgeCounter).toBe(BEN_C6_STUN_BONUS)
+    expect(panel.stunBuildUpBonus__special ?? 0).toBe(0)
 
     const executions: any[] = []
     benMechanic.buildExecutions!({ cfg, state: { exSpecialCount: 4 } as any, executions } as any)
@@ -44,11 +48,12 @@ describe('本模块', () => {
     expect(c2?.count).toBe(2)
     expect(c2?.damageMultiplier).toBe(BEN_C2_DEF_MULT)
     expect(c2?.basisValueOverride).toBe(800)
-    expect(c2?.dmgBonus).toBe(BEN_C4_COUNTER_DMG)
+    expect(c2?.dmgBonus ?? 0).toBe(0)
 
     benMechanic.patchExecutions!({ cfg, state: {} as any, executions } as any)
     expect(executions.find(e => e.moveId === '1121008')?.dmgBonus ?? 0).toBe(0)
-    expect(executions.find(e => e.moveId === '1121010')?.dmgBonus).toBe(BEN_C4_COUNTER_DMG)
+    expect(executions.find(e => e.moveId === '1121010')?.dmgBonus ?? 0).toBe(0)
+    expect(executions.find(e => e.moveId === '1121011')?.dmgBonus).toBe(BEN_C4_COUNTER_DMG)
   })
 })
 

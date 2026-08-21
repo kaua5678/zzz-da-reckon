@@ -2,18 +2,18 @@
  * 本（1121）—— 整局近似口径
  *
  * 核心·守卫（满级）
- * - 初始攻击随初始防御提升：防御×80% 转入攻击（局外 def → 局内 atkFlat）
+ * - 初始攻击随初始防御提升：局外防御×80% 作为局外小攻击加成计入面板
  * - 强特追加强力打击 → 全队护盾（30%防+550，30s）—— 吸收量不进伤害
  *
  * 额外能力·协议合同（同属性或同阵营）
- * - 持有守卫护盾时全队暴击 +16%（默认满覆盖；teammate-buffs + helpers 门控）
+ * - 触发额外能力后全队暴击 +16%（默认满覆盖；teammate-buffs + helpers 门控）
  *
  * 影画
- * - C1：格挡成功敌人伤害-30% —— 仅作生存说明展示，不计入伤害
+ * - C1：不建模
  * - C2：格挡反击额外 300% 防御力伤害 → 仅按成功招架的强特连招次数触发
  * - C3/C5：通用技能等级
- * - C4：无敌格挡后反击伤害 +30% → 反击类 moveId dmgBonus+30%（与 C2 同行可叠加）
- * - C6：强特后普攻/冲刺/闪反失衡 +20% → stunBuildUpBonus__basic/dashAttack/dodgeCounter
+ * - C4：无敌格挡后的后继反击伤害 +30% → 仅 moveId 1121011
+ * - C6：普通攻击/冲刺攻击/闪避反击失衡 +20% → 对三类招式全局生效
  *
  * 强特口径
  * - 总连招次数 = floor(可用总能量 / 60)，每组两段各耗 30
@@ -53,12 +53,8 @@ export const BEN_EX_PARRY_MOVE_IDS = ['1121010', '1121011'] as const
 /** 假 id：C2 格挡反击附加（防御力基底） */
 export const MOVE_C2_COUNTER = '1121c2_guard_counter'
 
-/** 特殊/成功格挡反击相关段（到期还拳等） */
-export const BEN_COUNTER_MOVE_IDS = new Set([
-  '1121005', '1121006', // 特殊技
-  ...BEN_EX_PARRY_MOVE_IDS, // 强特成功招架
-  '1121020', // 支援突击
-])
+/** 影画4：只有成功格挡后的后继反击招式 1121011 获得增伤 */
+export const BEN_C4_MOVE_IDS = new Set(['1121011'])
 
 function clamp01(value: unknown, fallback = 1): number {
   const parsed = Number(value)
@@ -76,10 +72,10 @@ function findMoveActionTime(
   return 0
 }
 
-function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
-  // 初始防转攻：用当前面板 def（局内已含装备）近似「初始防御」；与满级 80% 一致
-  const def = Math.max(0, panel.def ?? 0)
-  const bonus = def * BEN_DEF_TO_ATK
+function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): void {
+  // 「初始」严格取局外面板：局外防御×80% 作为局外小攻击加成计入最终面板。
+  const outOfCombatDef = Math.max(0, outOfCombatPanel.def ?? 0)
+  const bonus = outOfCombatDef * BEN_DEF_TO_ATK
   if (bonus > 0) panel.atk = (panel.atk ?? 0) + bonus
   ;(panel as any).benDefToAtk = bonus
 
@@ -176,7 +172,6 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     basisLabelOverride: '本的防御力',
     element: 'fire',
     skillTableNote: `C2 格挡反击附加 ×${successCount}（仅成功招架；300% 防御力）`,
-    ...(cinema >= 4 ? { dmgBonus: BEN_C4_COUNTER_DMG } : {}),
   } as any)
 }
 
@@ -184,11 +179,9 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).benCinemaLevel ?? 0)))
   if (cinema < 4) return
   for (const exec of executions) {
-    if (!exec.moveId || !BEN_COUNTER_MOVE_IDS.has(exec.moveId)) continue
-    // C2 假行已在 build 加过；真实反击段再 +30%
-    if (exec.moveId === MOVE_C2_COUNTER) continue
+    if (!exec.moveId || !BEN_C4_MOVE_IDS.has(exec.moveId)) continue
     exec.dmgBonus = (exec.dmgBonus ?? 0) + BEN_C4_COUNTER_DMG
-    exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画4 反击伤害 +${BEN_C4_COUNTER_DMG}%`
+    exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画4 后继反击伤害 +${BEN_C4_COUNTER_DMG}%`
   }
 }
 

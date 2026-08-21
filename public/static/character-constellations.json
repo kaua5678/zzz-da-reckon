@@ -700,7 +700,7 @@
           "status": "not_described_not_implemented",
           "implemented": [],
           "pending": [
-            "格挡降敌伤害30%为生存说明，仅展示，不计入伤害"
+            "影画1不参与当前计算"
           ]
         },
         {
@@ -723,7 +723,7 @@
           "cinema": 4,
           "status": "implemented_approximation",
           "implemented": [
-            "反击段伤害+30%"
+            "仅招式1121011伤害+30%"
           ],
           "pending": []
         },
