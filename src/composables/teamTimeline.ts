@@ -20,7 +20,8 @@
  *   新角色实装当期未进最优队时，用阶段①参考伤害标注「平替·可不抽 / 未上位」（零额外求值）。
  *
  * 搜索口径：
- * - 队友候选 = AGENT_RELEASE_NODE 收录的 S 级角色（用户口径：四星不做）中，实装 ≤ 当前节点的。
+ * - 队友候选 = AGENT_RELEASE_NODE 收录的角色（S 级 + 用户口径特例潘引壶：唯一收录的
+ *   A 级贯穿拐，0 金不占限定金）中，实装 ≤ 当前节点的。
  * - 配装 = 每队跑一遍 store.applyTeamPreset（邦布精灵推荐驱动盘 + 词条优化器），
  *   再显式覆盖音擎/命座/精炼/交互（交互基准：弹刀6 闪反10 快支3 连携1，般岳/星徽·比利按角色默认）。
  * - Boss 一次应用（applyBossPreset）；当期可选 buff 牌不参与（与「队伍对比」的「不使用」一致）。
@@ -117,7 +118,7 @@ export interface TeamTimelineOptions {
   /** 目标总限定金（低于队伍基础金自动钳制） */
   budget: number
   onProgress?: (p: { pct: number; text: string }) => void
-  /** 测试/调试用：限定队友候选池（缺省 = 全部 S 级）。必须含主C以外的候选；候选必须都实装于主C实装节点之前或同时。 */
+  /** 测试/调试用：限定队友候选池（缺省 = 全部候选，见 AGENT_RELEASE_NODE：S 级 + 潘引壶特例）。必须含主C以外的候选；候选必须都实装于主C实装节点之前或同时。 */
   candidatePool?: string[]
   /** 是否包含测试服角色（3.2 未实装；缺省 false，防止测试服数值污染「跟随版本」曲线） */
   includeTestServer?: boolean

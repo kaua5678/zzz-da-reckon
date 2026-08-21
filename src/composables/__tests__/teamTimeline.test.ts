@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { isLimitedWEngine } from '@/composables/teamCompare'
 import { setupHarness } from '@/test/harness'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, nodesFrom, releaseNodeOf } from '@/data/versionTimeline'
 import {
@@ -45,12 +46,13 @@ describe('版本时间线数据不变量', () => {
     }
   })
 
-  it('S 级实装节点：收录的角色都存在且不在「目录错标 S 的四星」清单里', async () => {
+  it('S 级实装节点：收录的角色都存在且不在「目录错标 S 的四星」清单里（潘引壶为用户口径特例）', async () => {
     const h = await boot()
     const catalog = useCatalogStore()
-    // 历史 catalog 导入错标：妮可/苍角/露西/潘引壶 曾被标 S（已由 scripts/fix-agent-rarity.mjs 修为 A）。
+    // 历史 catalog 导入错标：妮可/苍角/露西 曾被标 S（已由 scripts/fix-agent-rarity.mjs 修为 A）。
     // 保留排除清单作为防御：即使 rarity 回归错标，时间线也不收录四星（限定金口径依赖 isLimitedAgent 的 rarity 判断）。
-    const knownMislabeledA = new Set(['1031', '1131', '1151', '1421'])
+    // 唯一特例：潘引壶（1421，A 级）——贯穿拐演变路径必需，随仪玄 2.0-1 实装（用户口径）。
+    const knownMislabeledA = new Set(['1031', '1131', '1151'])
     const ids = Object.keys(AGENT_RELEASE_NODE)
     for (const id of ids) {
       expect(catalog.getAgent(id), `目录缺角色 ${id}`).toBeDefined()
@@ -64,8 +66,9 @@ describe('版本时间线数据不变量', () => {
       .filter(a => !releaseNodeOf(a.id))
       .map(a => a.id + a.name.zhCN)
     expect(missing).toEqual([])
-    // 不收录四星（用户口径）
+    // 不收录四星（用户口径；潘引壶为唯一特例）
     for (const id of knownMislabeledA) expect(releaseNodeOf(id)).toBeNull()
+    expect(releaseNodeOf('1421')).toBe('2.0-1') // 潘引壶（A 级特例）
   })
 
   it('仪玄及关键队友实装节点正确（用户口径：2.0上/2.0下/2.3卢/2.4琉/3.0诺）', () => {
@@ -213,6 +216,33 @@ describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
       expect(ev.swapUpliftPct).toBe(node.swapUpliftPct)
     }
     // 现场恢复
+    expect(JSON.stringify(config.team)).toBe(originalTeam)
+  }, 120000)
+
+  it('A 级特例潘引壶全链路：入队搜索、0 限定金（预算步数全给限定队友）、配装生效', async () => {
+    await boot()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const originalTeam = JSON.stringify(config.team)
+    // 池子只有凯撒 + 潘引壶（无排名敏感性）：仪玄+凯撒+潘引壶 基础金 = 仪(本体+专武)2 + 凯(本体+专武)2 + 潘(A级)0 = 4
+    const pool = ['1071', '1421']
+    const res = await computeTeamTimeline(calc, {
+      mainAgentId: '1371',
+      boss: firstBoss as BossPreset,
+      phase: firstPhase,
+      budget: 6,
+      candidatePool: pool,
+    })
+    expect(res.nodes.length).toBeGreaterThan(0)
+    const first = res.nodes[0]
+    expect(first.team).toContain('1421')
+    // 潘 0 命、不带限定音擎（A 级签名/同职业免费音擎）
+    const panSlot = first.team.indexOf('1421')
+    expect(first.state.cinemas[panSlot]).toBe(0)
+    expect(isLimitedWEngine(first.state.wEngines[panSlot])).toBe(false)
+    // 0 限定金口径：预算 6 = 基础 4 + 2 步全花在限定角色身上
+    expect(first.totalGold).toBe(6)
+    expect(first.goldLabel).toContain('6金')
     expect(JSON.stringify(config.team)).toBe(originalTeam)
   }, 120000)
 
