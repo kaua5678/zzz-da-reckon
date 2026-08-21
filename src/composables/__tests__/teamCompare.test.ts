@@ -10,6 +10,7 @@ import {
   applyGoldSteps,
   baseGoldOf,
   buildGoldStepsFromConfig,
+  computeAutoEnginePicks,
   computeDifficulty,
   computeOptimalGoldAllocations,
   computeTeamComparePoints,
@@ -576,6 +577,9 @@ describe('teamCompare 批量计算', () => {
       boss: FAKE_BOSS,
       phase: FAKE_PHASE,
       optimalGold: true,
+      // 本用例锁「金数预算精确」口径；TEST_PRESET 未声明 wEngines，自动下位会把精炼换成
+      // 择优档（如常驻 R3 → [3,3,3]）——择优生效由「自动下位音擎」describe 单独覆盖
+      autoEngine: false,
     })
     expect(points.map(p => p.goldCount)).toEqual([3, 4, 6])
     expect(points[0].goldLabel).toContain('基础')
@@ -725,5 +729,101 @@ describe('teamCompare 批量计算', () => {
     // 队伍无强攻 → 限定效果不生效
     const effSpec: any = { stat: 'critDmg', value: 30, cond: { specialty: '强攻' } }
     expect(resolveBuffEffect(effSpec, TEST_PRESET)).toBeNull()
+  })
+})
+
+// ========== 自动下位音擎（装填池择优） ==========
+
+/** 引擎评分假伤害：按各槽位音擎 id/精炼计分（与真实引擎解耦，只测择优口径） */
+function engineScoreCalc(config: ReturnType<typeof useConfigStore>, score: (wId: string, mod: number, slot: number) => number) {
+  return {
+    resourceResult: computed(() => null),
+    teamTotalDamage: computed(() =>
+      100 + config.team.reduce((sum, c, s) => sum + score(c.wEngineId, c.wEngineModLevel, s), 0),
+    ),
+  } as unknown as ReturnType<typeof useResourceCalc>
+}
+
+describe('teamCompare 自动下位音擎（装填池择优）', () => {
+  const emptySlot = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
+
+  function setupTeam(rows: { slot: number; agentId: string; wEngineId?: string }[]) {
+    const config = useConfigStore()
+    for (let s = 0; s < 3; s++) {
+      const row = rows.find(r => r.slot === s)
+      config.team[s] = { ...emptySlot, slot: s, agentId: row?.agentId ?? '', wEngineId: row?.wEngineId ?? '' }
+    }
+    return config
+  }
+
+  it('生效测试：池内择优 + A 级默认精炼可调（改档伤害确实变）；池外候选不参与', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    // 打分：13019 每精炼级 +30，其余候选一律 +0 → 池含 13019 时必选它
+    const config = setupTeam([{ slot: 0, agentId: '1531' }])
+    const calc = engineScoreCalc(config, (wId, mod) => (wId === '13019' ? 30 * mod : 0))
+    const preset: TeamPreset = { id: 'auto-a', name: '自动下位A', team: ['1531', '', ''], wEngines: ['', '', ''], goldSteps: [], interactions: [] }
+    const run = (aMod: number, pool?: string[]) => computeTeamComparePoints(calc, {
+      presets: [preset], goldLevels: [3], boss: FAKE_BOSS, phase: FAKE_PHASE,
+      autoEngine: true, autoEngineMods: { aRank: aMod },
+      ...(pool ? { autoEnginePool: pool } : {}),
+    })
+    // 默认装填池（常驻 S + 13019）：择优 13019@R5；改默认精炼档 → 伤害随之变
+    expect(run(5)[0].damage).toBe(100 + 150)
+    expect(run(2)[0].damage).toBe(100 + 60)
+    expect(run(5)[0].standardGoldLabel).toContain('自动下位')
+    expect(run(2)[0].standardGoldLabel).toContain('R2')
+    // 池不含 13019 → 只能在剩余候选里挑（全 0 分），证明「只在池内试算」
+    expect(run(5, ['14110'])[0].damage).toBe(100)
+  })
+
+  it('池过滤：限定 S 音擎与未知 id 被忽略；限定基础音擎的槽位不参与替换', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    const config = setupTeam([
+      { slot: 0, agentId: '1051', wEngineId: '14105' },
+      { slot: 1, agentId: '1531' },
+      { slot: 2, agentId: '1261' },
+    ])
+    const preset: TeamPreset = { id: 'auto-filter', name: '过滤测试', team: ['1051', '1531', '1261'], wEngines: ['14105', '', ''], goldSteps: [], interactions: [] }
+    // 打分：14145（限定专武）+300 —— 若未被过滤会赢过 13019@R4 的 120 分
+    const calc = engineScoreCalc(config, wId => (wId === '14145' ? 300 : wId === '13019' ? 30 : 0))
+    const picks = computeAutoEnginePicks(calc, config, preset, {
+      autoEnginePool: ['99999', '14145', '13019'],
+      autoEngineMods: { aRank: 4 },
+    })
+    expect(picks.map(p => p.slot)).toEqual([1, 2]) // slot0 带限定基础音擎（占金持有物）→ 不替换
+    expect(picks.every(p => p.id === '13019')).toBe(true) // 14145 被过滤、99999 未知 id 被忽略
+    expect(picks[0].mod).toBe(4)
+    expect(picks[0].label).toContain('R4')
+  })
+
+  it('最优路径集成：base 档穿下位择优，买到专武的槽位换回专武（精炼回 1），其余槽保持下位', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    const config = setupTeam([{ slot: 0, agentId: '1531' }, { slot: 1, agentId: '1571' }, { slot: 2, agentId: '1451' }])
+    const preset: TeamPreset = {
+      id: 'auto-acquire', name: '买专武换回', team: ['1531', '1571', '1451'], wEngines: ['', '', ''],
+      goldSteps: [
+        { label: '星徽·比利 专武（本体）', slot: 0, kind: 'wengine', value: 1, wEngineId: '14153' },
+        { label: '诺姆 专武（本体）', slot: 1, kind: 'wengine', value: 1, wEngineId: '14157' },
+        { label: '星徽·比利 1命', slot: 0, kind: 'cinema', value: 1 },
+      ],
+      interactions: [],
+    }
+    // 打分：任意限定音擎每把 +300；13019 每精炼级 +30 → 三槽 base 全择优 13019@R5
+    const calc = engineScoreCalc(config, (wId, mod) => (isLimitedWEngine(wId) ? 300 : wId === '13019' ? 30 * mod : 0))
+    const picks = computeAutoEnginePicks(calc, config, preset, {})
+    expect(picks.map(p => p.id)).toEqual(['13019', '13019', '13019'])
+    const allocs = computeOptimalGoldAllocations(calc, config, preset, baseGoldOf(preset), picks)
+    expect(allocs[0].wEngines).toEqual(['13019', '13019', '13019'])
+    expect(allocs[0].wengineMods).toEqual([5, 5, 5])
+    // 4 金：三个获取步并列 +150，贪婪取第一个（slot0）→ 换专武、精炼回 1；其余槽保持下位
+    const at4 = allocs.find(a => a.totalGold === 4)!
+    expect(at4.label).toContain('本体')
+    expect(at4.wEngines[0]).toBe('14153')
+    expect(at4.wengineMods[0]).toBe(1)
+    expect(at4.wEngines[1]).toBe('13019')
+    expect(at4.wengineMods[1]).toBe(5)
   })
 })

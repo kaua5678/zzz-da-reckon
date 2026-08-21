@@ -77,7 +77,8 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 
 1. 「队伍对比」Tab → **先选期数（全部 Boss 期数并集，新的在前，含老期数）→ 再选该期 Boss**（下拉只列选中期数出现过的 Boss，困难标「（困难）」）→ 预设队伍（多选）+ 限定金区间 + **当期 Buff**（默认「自动推荐（每队取最优）」，可手动指定某张牌）→ 计算。
    - **最优加金（≤12金）**（默认开）：≤12 金不用预设 goldSteps 的排列顺序，逐金贪婪挑伤害提升最大的可用步骤（每金档试算全部「下一个未购级别」）；12 金以上回退预设顺序。勾掉即完全按预设顺序。
-2. **最优加金口径**（用户拍板）：候选只来自该预设 `goldSteps` 里写过的级别（尊重作者设定的命座/精炼范围，如只写到 2 命就只在这范围内挑）；`standardSteps` 全量应用（不占金）；每步同场景对比（boss/buff 已应用，只变这一级）；金数预算精确（总金 = 基础金 + 已选步数）。计算量：每金档 × 候选数（≤6）次全量伤害，封顶 12 金内最多 ~48 次/队，比预设顺序慢。
+   - **自动下位音擎**（默认开）：基础音擎**非限定**的槽位，运行时从「下位装填池」按全队伤害试算择优穿戴（不计金）；A 级默认精炼 5、常驻 S 默认精炼 3（页面可调）。装填池默认 = 常驻 S 全量 + 预设常用 A 级（`DEFAULT_AUTO_ENGINE_POOL`），页面多选框可增删，择优只在池内试算（不做全目录遍历）；池内限定 S 音擎会被过滤（占金获取物，免费穿破坏金数口径）。预设 `wEngines` 仅**限定**音擎保留（真实持有物），常驻/A/空槽位一律以择优结果为准——预设不是下位口径的事实源。买上专武的金档该槽换回专武（精炼回 1），其余槽保持下位；击破系等低收益音擎可能落选（按伤害择优的预期行为）。实现 `computeAutoEnginePicks` + `substituteAutoEngines`，两条金档路径同口径。
+2. **最优加金口径**（用户拍板）：候选只来自该预设 `goldSteps` 里写过的级别（尊重作者设定的命座/精炼范围，如只写到 2 命就只在这范围内挑）；`standardSteps` 全量应用（不占金）；每步同场景对比（boss/buff 已应用，只变这一级）；金数预算精确（总金 = 基础金 + 已选步数）。计算量：每金档 × 候选数（≤6）次全量伤害 + 下位装填池 × 有角色槽位数（每队一次），比预设顺序慢。
 2. 散点图：横轴 = 操作难度（交互加权和），纵轴 = 伤害/血量%（100% = 击杀线，200% = 两倍血量）。
    点颜色 = 队伍、半径 = 金数；hover 显示明细（含 buff 名）；底部明细表（含 Buff 列）+ CSV 导出。
 3. **buff 推荐**：自动模式对每个队伍三张可用牌各算一次伤害（用第一个金数档，在所选 Boss 期数应用后评估），取最高者作为该队所有点的 buff；手动模式全队用指定牌。测试服牌不参与。
@@ -91,7 +92,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 {
   "id": "my-team", "name": "队名",
   "team": ["1561", "1261", "1411"],
-  "wEngines": ["", "", ""],                    // 缺省 '' = 自动推荐
+  "wEngines": ["", "", ""],                    // '' = 对比页由「自动下位」择优；填限定音擎 = 真实持有（计入基础金）
   "driveDiscs": [ { "fourPieceSetId": "", "twoPieceSetId": "" } ],
   "goldSteps": [
     { "label": "主C 1命", "slot": 0, "kind": "cinema", "value": 1 },
@@ -109,7 +110,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 3. 刷新页面自动加载（`import.meta.glob`，照 `stunAxisPresets` 模式）。
 
 **口径**：金数 = **总限定金**（用户定义）= 限定 S 角色本体 1 + 限定音擎本体 1 + 影画/精炼每级 1。**常驻 S 角色（莱卡恩/丽娜/猫又/11号/珂蕾妲/格莉丝）与 A 级角色、常驻音擎不计限定金**；例：伊德海莉+莱卡恩+卢西娅全带专武 = 4 金（莱卡恩与拘缚者不计）。选择的目标限定金**越界自动钳制**到队伍档位范围 [基础金, 基础金+goldSteps 数]（大于最高取最高=全步数，小于最低取最低=0 步）；全队 0命1精带专武 = 6 金，212121 = 12 金；应用前 N 步取最大值；
-**常驻配置**：预设里 `standardSteps` 数组（与 goldSteps 同构）给常驻角色/非限定音擎设命座与精炼，**不占限定金、默认全量应用**；改该数组后重跑一次对比即可，不在页面里逐档选择。常驻精炼不残留到被「专武本体」获取步换装的槽位（换上限定专武即回精炼1，最优加金同口径）。
+**常驻配置**：预设里 `standardSteps` 数组（与 goldSteps 同构）给常驻角色/非限定音擎设命座与精炼，**不占限定金、默认全量应用**；改该数组后重跑一次对比即可，不在页面里逐档选择。常驻精炼不残留到被「专武本体」获取步换装的槽位（换上限定专武即回精炼1，最优加金同口径）。注意：`standardSteps` 写入的**非限定音擎**会被自动下位择优覆盖（命座步不受影响）。
 **加金档位（用户口径，见 `_template.json` note）**：两位 = 一个角色的「影画+精炼」（21 = 2命1精）；下限 4~5 金 → 12 金（212121 = 全队 2命1精）→ 612121（主C 6命1精）→ 616161（全队 6命1精）→ 656565（全队 6命5精，最高档）；
 难度 = Σ(count × weight)，权重查 `INTERACTION_WEIGHTS`（`src/types/teamPreset.ts`），条目可覆盖；
 内置交互类型 parry/dodge/quickAssist 会映射到对应角色的 `parryCount/dodgeCounterCount/quickAssistCount`（槽位 = `it.slot`，缺省 0），角色专属类型只进难度轴。
@@ -125,11 +126,12 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | buff 应用/推荐 | 同上 `applyBuffToStore`（写全局 Buff 表）/ `pickBestBuff`（每队三张牌取伤害最高）/ `resolveBuffEffect`（特性限定/异常人数分档，导出供测试） |
 | 批量计算管线（含现场快照/恢复） | 同上 `computeTeamComparePoints`（改 configStore → 读 `calc.teamTotalDamage` computed → 收集 → 恢复；快照含 team/enemy/globalBuffs/stunAxes） |
 | 最优加金（≤12金贪婪） | 同上 `computeOptimalGoldAllocations`（候选只来自 goldSteps、standardSteps 全量应用、封顶 `GOLD_OPTIMIZE_CAP`=12、同场景对比）；页面对勾 `TeamComparePage.vue` 的 `optimalGold` |
+| 自动下位音擎（装填池择优） | 同上 `computeAutoEnginePicks`（池解析/过滤/逐槽试算）+ `substituteAutoEngines`（非限定槽位覆盖）；默认池 `DEFAULT_AUTO_ENGINE_POOL`；页面开关/精炼档/装填框 = `TeamComparePage.vue` 的 `autoEngine`/`autoEngineMods`/`autoEnginePool` |
 | 交互 → 角色配置映射（含 tauntCancel） | `src/composables/teamCompare.ts` `applyTeamToStore`（parry/dodge/quickAssist/block/tauntCancel → `set*Count`） |
 | 般岳轴模式自动补齐交互次数 | `src/mechanics/agents/banyue.ts` `computeBanyueInteractionTopUp`（纯函数：嗔火缺口→双反、喧响缺口→弹刀）+ `src/composables/useResourceCalc.ts`（外不动点 `prevBanyueTopUp` 线程、弹刀计入 `calcSpecialActionBonus`、暴露 `banyueInteractionTopUp`）；交互栏显示在 `TeamConfigPage.vue` |
 | 散点图/控制面板/明细表 | `src/views/TeamComparePage.vue`（自绘 SVG，无图表库；buff 选择器 = 自动推荐/手动指定） |
 | 页面注册 | `src/views/CalculatorView.vue` pageMap + `src/components/AppHeader.vue`（`teamCompare` tab） |
-| 测试 | `src/composables/__tests__/teamCompare.test.ts`（金数/难度/批量/现场恢复/buff 推荐/buff 条件） |
+| 测试 | `src/composables/__tests__/teamCompare.test.ts`（金数/难度/批量/现场恢复/buff 推荐/buff 条件/自动下位择优） |
 
 ## 4. 时间图表（「时间图表」Tab）
 

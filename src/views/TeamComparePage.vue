@@ -46,6 +46,29 @@
         <div class="ctl-field" title="≤12金：自动逐金挑选伤害提升最大的加金组合（含专武本体购买，贪婪搜索，每队多算几轮全量伤害，较慢）；12金以上仍按预设 goldSteps 顺序">
           <n-checkbox v-model:checked="optimalGold" size="small">最优加金（≤12金）</n-checkbox>
         </div>
+        <div class="ctl-field" title="未穿限定音擎的槽位自动从下方装填池按伤害择优穿戴（不计金）；预设 wEngines 仅限定音擎保留。关闭则回退预设基础音擎">
+          <n-checkbox v-model:checked="autoEngine" size="small">自动下位</n-checkbox>
+        </div>
+        <template v-if="autoEngine">
+          <div class="ctl-field" title="自动下位音擎的默认精炼档：A 级 / 常驻 S">
+            <span class="ctl-label">下位精炼 A/常驻</span>
+            <n-input-number v-model:value="autoModA" size="small" :min="1" :max="5" style="width: 56px" />
+            <span class="ctl-sep">/</span>
+            <n-input-number v-model:value="autoModStd" size="small" :min="1" :max="5" style="width: 56px" />
+          </div>
+          <div class="ctl-field" title="自动下位只在池内试算择优（避免全目录遍历过慢）；池内限定 S 音擎会被忽略">
+            <span class="ctl-label">下位装填池</span>
+            <n-select
+              v-model:value="autoEnginePool"
+              :options="enginePoolOptions"
+              size="small"
+              multiple
+              filterable
+              style="width: 260px"
+              placeholder="候选音擎"
+            />
+          </div>
+        </template>
         <div class="ctl-field">
           <span class="ctl-label">当期 Buff</span>
           <n-select
@@ -82,7 +105,8 @@
         已预选最新期数 / 全部队伍 / 限定金区间 —— 点「计算」生成散点图（默认不带当期 buff，可下拉开启）。
         限定金只统计限定 S 角色/音擎（常驻角色如莱卡恩不计）；选择越界自动钳制到队伍档位范围。
         「最优加金（≤12金）」默认开启：≤12金自动逐金挑选伤害提升最大的加金组合（含专武本体购买，贪婪搜索，较慢），12金以上仍按预设 goldSteps 顺序；
-        基础音擎（常驻/A，不计金）在预设文件 wEngines 里，限定专武作为加金步（goldSteps 里带 wEngineId 的步骤）；如星徽·比利队基础 3 金（3 角色本体、无专武），4 金起在对比里逐步买专武，改完重跑一次对比即可。
+        「自动下位」默认开启：未穿限定音擎的槽位从「下位装填池」（默认常驻 S + 预设常用 A 级，可增删）按伤害择优穿戴，A 级默认精炼 5、常驻默认精炼 3 可调，预设 wEngines 仅限定音擎保留；
+        限定专武作为加金步（goldSteps 里带 wEngineId 的步骤），如星徽·比利队基础 3 金（3 角色本体、无专武），4 金起在对比里逐步买专武，改完重跑一次对比即可。
       </div>
     </n-card>
 
@@ -170,14 +194,16 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { NCard, NSelect, NInputNumber, NButton, NCheckbox } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
+import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computeTeamComparePoints } from '@/composables/teamCompare'
+import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine } from '@/composables/teamCompare'
 import { teamPresets } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
 
 const configStore = useConfigStore()
+const catalogStore = useCatalogStore()
 const calc = useResourceCalc()
 
 // ========== Boss 预设 ==========
@@ -292,6 +318,18 @@ const goldMin = ref(0)
 const goldMax = ref(6)
 /** 最优加金（≤12金）：不用预设排列顺序，逐金挑提升最大的组合；12金以上回退预设顺序 */
 const optimalGold = ref(true)
+/** 自动下位音擎（缺省开）：非限定槽位从装填池按伤害择优穿戴（不计金） */
+const autoEngine = ref(true)
+/** 自动下位默认精炼档：A 级 / 常驻 S */
+const autoModA = ref(5)
+const autoModStd = ref(3)
+/** 自动下位候选装填池：择优只在池内试算（避免全目录遍历过慢），可增删；限定 S 音擎不进池（占金获取物） */
+const autoEnginePool = ref<string[]>([...DEFAULT_AUTO_ENGINE_POOL])
+const enginePoolOptions = computed(() =>
+  (catalogStore.displayWEngines ?? [])
+    .filter(w => !isLimitedWEngine(w.id))
+    .map(w => ({ value: w.id, label: `${w.name.zhCN ?? w.name.en ?? w.id}（${w.rarity}级）` })),
+)
 
 // ========== 计算 ==========
 const computing = ref(false)
@@ -326,6 +364,9 @@ async function runCompare() {
       goldLevels: levels,
       boss,
       optimalGold: optimalGold.value,      phase,
+      autoEngine: autoEngine.value,
+      autoEngineMods: { aRank: autoModA.value, standard: autoModStd.value },
+      autoEnginePool: autoEnginePool.value,
       buffs: buffChoice.value === 'none' ? [] : buffs,
       manualBuffTitle: buffChoice.value === '' || buffChoice.value === 'none' ? undefined : buffChoice.value,
     }))
