@@ -454,6 +454,18 @@ const allMoves = computed(() => {
       })
       out.push({ slot: c.slot, moveId: 'norma-hat-chain', label: '诺姆转连携', actionTime: 0, remaining: Math.max(0, 9 - consumed), key: `${c.slot}:norma-hat-chain` })
     }
+    // 希格莉德破阵连段：连携命中失衡敌人后长按连放敛枪式一至三段（免费，不耗闪能/喧响）。
+    // C6 加快 25% → 块时长 ×0.75；窗口时间门控自动决定「失衡内打了几段」（超窗段不吃易伤）。
+    if (c.agentId === '1591') {
+      const pzSkills = catalogStore.getAgentSkills(c.agentId)
+      const pzSum = ['1591007', '1591008', '1591022'].reduce((sum, mid) => sum + (findMove(pzSkills, mid)?.actionTime ?? 0), 0)
+      const pzScale = (configStore.team[c.slot]?.cinemaLevel ?? 0) >= 6 ? 0.75 : 1
+      let consumed = 0
+      axes.value.forEach((ax, ai) => {
+        for (const a of ax.actions) if (a.slot === c.slot && a.moveId === 'sigrid-pozhen') consumed += a.count * axisTimes(ai)
+      })
+      out.push({ slot: c.slot, moveId: 'sigrid-pozhen', label: '破阵连段', actionTime: pzSum * pzScale, remaining: Math.max(0, 9 - consumed), key: `${c.slot}:sigrid-pozhen` })
+    }
     // 连段（打包招式，如 单次/双次）：能量按打包口径一次扣（50/85），比裸强特（极寒重碾）的能量消耗更准
     const combos = getAgentMechanic(c.agentId)?.combos
     if (combos) {

@@ -137,6 +137,31 @@ function buildSigridCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCon
     }
   })
   ;(cfg as unknown as Record<string, unknown>).sigridLanceSegments = segments
+  // 平A四段元数据（凛冽枪尖 #1-#4）：#4 命中次数按段循环计数（用户口径：不用平均值×秒数）
+  const basicCycle = ['1591001', '1591002', '1591004', '1591005'].map(moveId => ({
+    moveId,
+    actionTime: basicMoves.find(m => m.id === moveId)?.actionTime ?? 0,
+  }))
+  ;(cfg as unknown as Record<string, unknown>).sigridBasicCycle = basicCycle
+}
+
+/**
+ * 平A按段循环下的 #4（出枪式）命中次数（用户口径 2026-02：按段数 1-4 循环计数，不用平均数据×秒数）。
+ * 压枪（取消 a1/a2）时循环变为 a3→a4：完整循环时长 2.983s → 1.765s，同样平A时间 #4 次数变多。
+ * 完整循环各计 1 次 #4；尾部余量推进到 #4（≥ 前三段/前一段时长）再计 1 次。
+ */
+export function countBasicFinisherHits(basicTime: number, cycle: { moveId: string; actionTime: number }[], pressCancel: boolean): number {
+  const segs = pressCancel
+    ? cycle.filter(s => s.moveId === '1591004' || s.moveId === '1591005')
+    : cycle
+  if (segs.length === 0 || basicTime <= 0) return 0
+  const cycleTime = segs.reduce((sum, s) => sum + s.actionTime, 0)
+  if (cycleTime <= 0) return 0
+  const fullCycles = Math.floor(basicTime / cycleTime)
+  const tail = basicTime - fullCycles * cycleTime
+  // 尾部要推进到 #4：需打完它之前的所有段
+  const beforeFinisher = segs.slice(0, -1).reduce((sum, s) => sum + s.actionTime, 0)
+  return fullCycles + (tail >= beforeFinisher ? 1 : 0)
 }
 
 /**
@@ -181,10 +206,24 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
       }
     }
   }
-  const pozhenSets = Math.max(0, Math.floor(Number(record.sigridStunCount ?? 0)))
+  // 破阵套数（用户口径 2026-02）：
+  // - 轴模式：轴内「破阵连段」块数（含诺姆赠送连携触发的破阵），由 useResourceCalc 注入；
+  //   块经窗口时间门控，窗内放得下几套就几套（易伤归属随之自然成立）
+  // - 非轴：C6 = 连携总次数（每次连携命中失衡敌人触发一次）；非 C6 = 失衡次数
+  const cinema = Math.max(0, Math.floor(Number(record.sigridCinemaLevel ?? 0)))
+  const axisActive = record.sigridAxisActive === true
+  let pozhenSets: number
+  if (axisActive) {
+    pozhenSets = Math.max(0, Math.floor(Number(record.sigridAxisPozhenSets ?? 0)))
+  } else if (cinema >= 6) {
+    // C6：破阵次数 = 失衡内连携次数（含诺姆赠送，轴模式由 chainCountTotalOverride 之外的 gift 计数另行并入）
+    const chainTotal = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * Number(record.sigridStunCount ?? 0)
+    pozhenSets = Math.max(0, Math.floor(chainTotal))
+  } else {
+    pozhenSets = Math.max(0, Math.floor(Number(record.sigridStunCount ?? 0)))
+  }
 
   const rotation = splitLanceRotation(rotationCasts)
-  const cinema = Math.max(0, Math.floor(Number(record.sigridCinemaLevel ?? 0)))
   const atk = Math.max(0, Number(record.sigridAtk ?? 0))
   const overflowCov = clamp01(cfgSetting(cfg, 'sigrid.c1OverflowCoverage', 1))
 
@@ -221,9 +260,6 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
 }
 
-/** 凛冽枪尖一轮循环时长（#1+#2+#3+#4 actionTime 合计，秒）——#4 命中次数按平A时间÷循环近似 */
-const LANCE_BASIC_CYCLE_SECONDS = 2.987
-
 function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).sigridCinemaLevel ?? 0)))
   // 机会来源（原文：任意[出枪式]命中获得1次机会）：统计出枪式招式次数 + 凛冽枪尖#4 近似，
@@ -234,8 +270,11 @@ function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
       chuqiangHits += Math.max(0, exec.count ?? 0)
     }
   }
-  const basicTime = Math.max(0, (state as any)?.basicAttackTime ?? 0)
-  chuqiangHits += Math.floor(basicTime / LANCE_BASIC_CYCLE_SECONDS)
+  // #4 命中：按段循环计数（用户口径 2026-02），压枪开关取消 a1/a2 → 循环 1.765s
+  const record = cfg as unknown as Record<string, unknown>
+  const basicCycle = (record.sigridBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
+  const pressCancel = clamp01(cfgSetting(cfg, 'sigrid.pressCancel', 0)) > 0
+  chuqiangHits += countBasicFinisherHits(Math.max(0, (state as any)?.basicAttackTime ?? 0), basicCycle, pressCancel)
   ;(cfg as unknown as Record<string, unknown>).sigridChuqiangHits = chuqiangHits
 
   for (const exec of executions) {
@@ -248,6 +287,16 @@ function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
 }
 
 const settings: MechanicSetting[] = [
+  {
+    id: 'sigrid.pressCancel',
+    label: '希格莉德压枪',
+    description: '压枪技巧：取消凛冽枪尖 a1/a2，平A循环变为 a3→a4（2.983s → 1.765s），同样平A时间下 #4 出枪式命中更多 → 敛枪式机会更多。1=开 0=关。',
+    default: 0,
+    min: 0,
+    max: 1,
+    step: 1,
+    suffix: '',
+  },
   {
     id: 'sigrid.corePassiveCoverage',
     label: '希格莉德巡空枪势覆盖率',

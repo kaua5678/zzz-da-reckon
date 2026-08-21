@@ -36,6 +36,7 @@ import { computeLuciaHealPctPerUlt } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueMingwangStacks, computeBanyueInteractionTopUp, C6_ATTACH_RATIO, C6_MINGWANG_EXTRA, MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
 import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import { computeCorinStunBonusMoves, CORIN_ADDITIONAL_DMG } from '@/mechanics/agents/corin'
+import { SIGRID_LANCE_SEGMENT_IDS } from '@/mechanics/agents/sigrid'
 import { computeYixuanNingshenBonus } from '@/mechanics/agents/yixuan'
 import { computePeiluoKagerouBonus, PEILUO_KAGEROU_CRIT } from '@/mechanics/agents/specPanelBuffs'
 import type {
@@ -579,6 +580,18 @@ function applyNormaHatChain(
           }
           continue
         }
+        // 希格莉德破阵连段（连携命中失衡敌人后长按连放敛枪式一至三段）：
+        // 展开成真实三段 id 进时间门控——窗内放得下几套就几套（超窗段被跳过=不吃易伤）；
+        // C6 加快 25% → 块时长 ×0.75。免费（不耗闪能/喧响）。
+        if (act.moveId === 'sigrid-pozhen') {
+          const pzSkills = catalogStore.getAgentSkills(configStore.team[act.slot]?.agentId ?? '')
+          const pzScale = (configStore.team[act.slot]?.cinemaLevel ?? 0) >= 6 ? 0.75 : 1
+          for (const segId of SIGRID_LANCE_SEGMENT_IDS) {
+            const segMove = findMoveById(pzSkills, segId)
+            axisActions.push({ slot: act.slot, moveId: segId, count: act.count, actionTime: (segMove?.actionTime ?? 0) * pzScale, energyCost: 0, decibelCost: 0, startTime: act.startTime ?? 0 })
+          }
+          continue
+        }
         const agentId = configStore.team[act.slot]?.agentId ?? ''
         const skills = catalogStore.getAgentSkills(agentId)
         const cinema = configStore.team[act.slot]?.cinemaLevel ?? 0
@@ -952,6 +965,26 @@ function applyNormaHatChain(
           })
         }
         return { ...merged, billyAxisEx, billyAxisActive: axisActive, billyStunCoverage: provStunCoverage }
+      }
+      if (merged.agentId === '1591') {
+        // 希格莉德：轴内「破阵连段」块数（含诺姆赠送连携触发的破阵）→ 模块按套数生成三段行。
+        // C6 解锁次数限制后破阵按连携计（每次连携/赠送连携一次）；非 C6 每个失衡窗口一次，由模块自行处理。
+        let sigridAxisPozhenSets = 0
+        if (axisActive) {
+          const pzCinema = configStore.team[cfg.slot]?.cinemaLevel ?? 0
+          const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
+          resolvedAxes.forEach((axis, ai) => {
+            const wins = winAlloc[ai] ?? 0
+            for (const act of axis.actions) {
+              if (act.slot !== cfg.slot) continue
+              if (act.moveId === 'sigrid-pozhen') sigridAxisPozhenSets += act.count * wins
+              // 诺姆赠送的希格连携（gift 块）命中失衡敌人也触发一次破阵（C6 解锁限制后）
+              else if (pzCinema >= 6 && act.sourceTag === 'gift' && act.moveId === '1591015') sigridAxisPozhenSets += act.count * wins
+            }
+          })
+          if (pzCinema < 6) sigridAxisPozhenSets = Math.min(sigridAxisPozhenSets, winAlloc.reduce((a, b) => a + b, 0))
+        }
+        return { ...merged, sigridAxisPozhenSets, sigridAxisActive: axisActive }
       }
       if (merged.agentId === '1141') {
         // 莱卡恩围猎（2.6 潜能激发）：次数 = 失衡次数；后台跟随闪反 = 队伍其他角色闪反次数之和；

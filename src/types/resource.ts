@@ -1548,6 +1548,10 @@ export interface CharacterOperationConfig {
   billyAxisEx?: Record<string, number>
   /** 星徽·比利是否失衡轴模式（useResourceCalc 注入） */
   billyAxisActive?: boolean
+  /** 希格莉德轴内破阵连段套数（useResourceCalc 注入：破阵块 + C6 时诺姆赠送连携触发的破阵，经窗口时间门控） */
+  sigridAxisPozhenSets?: number
+  /** 希格莉德是否失衡轴模式（useResourceCalc 注入） */
+  sigridAxisActive?: boolean
   /** 星徽·比利失衡覆盖率（useResourceCalc 注入，涡轮增压「失衡动力压制」获得计数用） */
   billyStunCoverage?: number
   /** 星徽·比利普攻秒均决意（attack_data_0 四段总和/四段时长，buildCharConfig 从倍率表预存） */

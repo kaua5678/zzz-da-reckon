@@ -9,6 +9,7 @@ import {
   SIGRID_C6_LAST_HIT_RATIOS,
   sigridMechanic,
   splitLanceRotation,
+  countBasicFinisherHits,
 } from '@/mechanics/agents/sigrid'
 
 const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
@@ -187,22 +188,51 @@ describe('希格莉德 buildExecutions：敛枪式三段轮转 + 破阵 + 影画
   })
 
   it('影画6精确分段：最后一击附加 80%/90%/100% 攻击力（不再取中值）', () => {
-    const execs = build({ sigridStunCount: 1, sigridCinemaLevel: 6, sigridAtk: 2000, 'setting:sigrid.c1OverflowCoverage': 0 })
+    const execs = build({ sigridStunCount: 1, chainCountPerStun: 1, sigridCinemaLevel: 6, sigridAtk: 2000, 'setting:sigrid.c1OverflowCoverage': 0 })
     expect(execs.find(e => e.moveId === '1591007')!.flatDamageBonus).toBeCloseTo(2000 * 0.8, 5)
     expect(execs.find(e => e.moveId === '1591008')!.flatDamageBonus).toBeCloseTo(2000 * 0.9, 5)
     expect(execs.find(e => e.moveId === '1591022')!.flatDamageBonus).toBeCloseTo(2000 * 1.0, 5)
   })
 
   it('影画1溢出挂在第三段（最后一击），覆盖率滑块生效', () => {
-    const execs = build({ sigridStunCount: 1, sigridCinemaLevel: 6, sigridAtk: 2000 })
+    const execs = build({ sigridStunCount: 1, chainCountPerStun: 1, sigridCinemaLevel: 6, sigridAtk: 2000 })
     // 三段 = 影画6 100% + 影画1 溢出 100%×默认覆盖1 = 4000；一段/二段只有影画6 部分
     expect(execs.find(e => e.moveId === '1591022')!.flatDamageBonus).toBeCloseTo(2000 * 2.0, 5)
-    const half = build({ sigridStunCount: 1, sigridCinemaLevel: 6, sigridAtk: 2000, 'setting:sigrid.c1OverflowCoverage': 0.5 })
+    const half = build({ sigridStunCount: 1, chainCountPerStun: 1, sigridCinemaLevel: 6, sigridAtk: 2000, 'setting:sigrid.c1OverflowCoverage': 0.5 })
     expect(half.find(e => e.moveId === '1591022')!.flatDamageBonus).toBeCloseTo(2000 * 1.5, 5)
     // 5命（<6命）：只有影画1 溢出部分
     const c1only = build({ sigridStunCount: 1, sigridCinemaLevel: 1, sigridAtk: 2000 })
     expect(c1only.find(e => e.moveId === '1591022')!.flatDamageBonus).toBeCloseTo(2000 * 1.0, 5)
     expect(c1only.find(e => e.moveId === '1591007')!.flatDamageBonus ?? 0).toBe(0)
+  })
+
+
+  it('破阵口径：非轴 C6 = 连携总次数；非轴非 C6 = 失衡次数', () => {
+    // C6：chainCountPerStun 2 × 失衡 3 = 6 套
+    const c6 = build({ sigridStunCount: 3, chainCountPerStun: 2, sigridCinemaLevel: 6, sigridAtk: 0 })
+    expect(c6.map(e => e.count)).toEqual([6, 6, 6])
+    // 非 C6：失衡 3 次 = 3 套（连携再多也不加）
+    const c0 = build({ sigridStunCount: 3, chainCountPerStun: 2, sigridCinemaLevel: 0, sigridAtk: 0 })
+    expect(c0.map(e => e.count)).toEqual([3, 3, 3])
+  })
+
+  it('破阵口径：轴模式用注入的轴内套数（含诺姆赠送），覆盖非轴口径', () => {
+    const axis = build({ sigridStunCount: 3, chainCountPerStun: 2, sigridCinemaLevel: 6, sigridAtk: 0, sigridAxisActive: true, sigridAxisPozhenSets: 4 })
+    expect(axis.map(e => e.count)).toEqual([4, 4, 4])
+  })
+
+  it('countBasicFinisherHits：段循环计数 + 压枪取消 a1/a2', () => {
+    const cycle = [
+      { moveId: '1591001', actionTime: 0.44 },
+      { moveId: '1591002', actionTime: 0.778 },
+      { moveId: '1591004', actionTime: 0.507 },
+      { moveId: '1591005', actionTime: 1.258 },
+    ]
+    // 完整循环 2.983s：5s = 1 整循环 + 尾 2.017 ≥ 前三段 1.725 → 2 次 #4
+    expect(countBasicFinisherHits(5, cycle, false)).toBe(2)
+    // 压枪：循环 a3→a4 = 1.765s：5s = 2 整循环 + 尾 1.47 ≥ a3 0.507 → 3 次 #4
+    expect(countBasicFinisherHits(5, cycle, true)).toBe(3)
+    expect(countBasicFinisherHits(0, cycle, false)).toBe(0)
   })
 
   it('轮转与破阵合并计数：spend=4 且 stunCount=2 → 三段 (2+2, 1+2, 1+2)', () => {
