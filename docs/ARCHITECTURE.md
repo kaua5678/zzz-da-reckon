@@ -66,7 +66,7 @@ useResourceCalc()                      编排层入口（composables/useResource
 | Excel 导出（结果页按钮） | `utils/exportExcel.ts`（buildExportWorkbook 纯组装 / exportExcelFile 动态加载 xlsx + Blob 下载；sheet：操作表/资源表/伤害行明细/异常池） | 同上；测试 `utils/__tests__/exportExcel.test.ts` |
 | 改失衡轴 / 自动轴 / 预设 | `data/stunAxisPresets.ts` + `data/stunAxisPresets/*.json` | 同上（自动匹配 `selectAutoStunAxisPreset`） |
 | 改队伍预设 | `data/teamPresets/*.json`（目录自动加载） | 同上 |
-| **时间图表页（队伍随版本演变）** | `composables/teamTimeline.ts`（精确增量搜索 + 预算感知排名 + 逐金贪婪最优加金 + maxIter 收敛过滤）+ `data/versionTimeline.ts`（版本节点/S级实装版本） | `views/TimeChartsPage.vue`；口径见 `FEATURES_GUIDE.md` §4 |
+| **时间图表页（队伍随版本演变）** | `composables/teamTimeline.ts`（精确增量搜索 + 预算感知排名 + 逐金贪婪最优加金 + maxIter 收敛过滤 + 换人上位/平替判定 `classifySwapUplift`）+ `data/versionTimeline.ts`（版本节点/S级实装版本） | `views/TimeChartsPage.vue`；口径见 `FEATURES_GUIDE.md` §4 |
 | 改数据导入 / 校验 / 文档生成 | `scripts/`（validate-specs / docs:status / 各类 import） | 同上 |
 | 排查"某 buff / 命座没生效" | `AGENT_RECORDING_SOP.md` §3.5 根因表；页面「命座提升率」自检打标 | 按根因表定位字段消费端 |
 | 改音擎 / 驱动盘 / 敌人 / Boss | `public/static/catalog.json`（编译期快照，改数据走 scripts/ 导入脚本，勿手改） | scripts/ + catalogStore |

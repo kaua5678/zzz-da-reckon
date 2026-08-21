@@ -13,7 +13,9 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, nodesFrom, releaseNodeOf } from '@/data/versionTimeline'
 import {
+  SWAP_UPGRADE_UPLIFT_PCT,
   baseGoldOfTeam,
+  classifySwapUplift,
   computeOptimalTeamAllocation,
   computeTeamTimeline,
   nextGoldCandidates,
@@ -122,6 +124,18 @@ describe('最优加金分配（computeOptimalTeamAllocation）', () => {
   })
 })
 
+describe('换人判定 classifySwapUplift（上位/平替单一事实源）', () => {
+  it('提升 ≥ 阈值 → 上位；< 阈值 → 平替；prev≤0 防御性归平替', () => {
+    expect(SWAP_UPGRADE_UPLIFT_PCT).toBe(10)
+    expect(classifySwapUplift(100, 110)).toEqual({ kind: 'upgrade', pct: 10 }) // 恰好阈值
+    expect(classifySwapUplift(100, 109.9)).toEqual({ kind: 'lateral', pct: 9.9 })
+    expect(classifySwapUplift(100, 112.34)).toEqual({ kind: 'upgrade', pct: 12.3 }) // 1 位小数
+    expect(classifySwapUplift(100, 100)).toEqual({ kind: 'lateral', pct: 0 })
+    expect(classifySwapUplift(0, 999)).toEqual({ kind: 'lateral', pct: 0 })
+    expect(classifySwapUplift(-1, 999)).toEqual({ kind: 'lateral', pct: 0 })
+  })
+})
+
 describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
   it('节点结构 / 成员实装 ≤ 节点 / 换人事件 / 现场恢复', async () => {
     const h = await boot()
@@ -173,7 +187,60 @@ describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
     const stunInPool = pool.filter(id => useCatalogStore().getAgent(id)?.specialty === 'stun').length
     const expectedPairs = pool.length * (pool.length - 1) / 2 - (stunInPool * (stunInPool - 1) / 2)
     expect(res.stats.teamsEvaluated).toBe(expectedPairs)
+    // 换人判定自洽：有 swappedIn 必有 swapKind/swapUpliftPct 且与前后节点伤害一致；无换人则无判定字段
+    for (let i = 0; i < res.nodes.length; i++) {
+      const n = res.nodes[i]
+      if (n.swappedIn) {
+        expect(['upgrade', 'lateral']).toContain(n.swapKind)
+        const expected = Math.round(((n.damage - res.nodes[i - 1].damage) / res.nodes[i - 1].damage) * 1000) / 10
+        expect(n.swapUpliftPct).toBeCloseTo(expected, 6)
+      } else {
+        expect(n.swapKind).toBeUndefined()
+        expect(n.swapUpliftPct).toBeUndefined()
+      }
+      // 实装未进队标注自洽：所列角色确实不在队伍里，且差距为负（平替/未上位）
+      if (n.newAgentBench) {
+        expect(n.newAgentBench.gapPct).toBeLessThan(0)
+        expect(['lateral', 'worse']).toContain(n.newAgentBench.kind)
+        for (const a of n.newAgentBench.agents) expect(n.team).not.toContain(a)
+      }
+    }
+    // 换人事件与节点判定字段同步
+    for (const ev of res.swapEvents) {
+      const node = res.nodes.find(n => n.nodeId === ev.nodeId)!
+      expect(ev.swappedIn).toBe(node.swappedIn)
+      expect(ev.swapKind).toBe(node.swapKind)
+      expect(ev.swapUpliftPct).toBe(node.swapUpliftPct)
+    }
     // 现场恢复
+    expect(JSON.stringify(config.team)).toBe(originalTeam)
+  }, 120000)
+
+  it('实装未进队判定：晚实装角色当期未进最优队 → 节点带 bench 标注（柚叶 2.1-1，实测差 12% 判未上位）', async () => {
+    await boot()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const originalTeam = JSON.stringify(config.team)
+    // 池子只有早期双队友 + 柚叶（2.1-1 实装）；柚叶打不过 仪玄+耀嘉音+凯撒 → bench
+    const pool = ['1311', '1071', '1411']
+    const res = await computeTeamTimeline(calc, {
+      mainAgentId: '1371',
+      boss: firstBoss as BossPreset,
+      phase: firstPhase,
+      budget: 6,
+      candidatePool: pool,
+    })
+    const node = res.nodes.find(n => n.nodeId === '2.1-1')
+    expect(node).toBeDefined()
+    if (node!.team.includes('1411')) {
+      // 打进最优队 → 不应有 bench 标注
+      expect(node!.newAgentBench).toBeUndefined()
+    } else {
+      expect(node!.newAgentBench).toBeDefined()
+      expect(node!.newAgentBench!.agents).toContain('1411')
+      expect(node!.newAgentBench!.gapPct).toBeLessThan(0)
+      expect(['lateral', 'worse']).toContain(node!.newAgentBench!.kind)
+    }
     expect(JSON.stringify(config.team)).toBe(originalTeam)
   }, 120000)
 })

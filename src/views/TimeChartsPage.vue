@@ -178,6 +178,7 @@
         <div class="hc-row">伤害 {{ compact(hoverInfo.damage) }}（{{ fmt(hoverInfo.hpRatio, 1) }}%）</div>
         <div class="hc-row">{{ hoverInfo.goldLabel }}</div>
         <div v-if="hoverInfo.swap" class="hc-row hc-swap">{{ hoverInfo.swap }}</div>
+        <div v-if="hoverInfo.bench" class="hc-row hc-bench">{{ hoverInfo.bench }}</div>
       </div>
       </div>
 
@@ -190,6 +191,7 @@
           class="swap-chip"
         >
           {{ ev.nodeLabel }}：换上 {{ agentName(ev.swappedIn) }}（换下 {{ agentName(ev.swappedOut) }}）
+          <span v-if="ev.swapKind" class="swap-kind" :class="ev.swapKind">{{ swapKindLabel(ev.swapKind, ev.swapUpliftPct) }}</span>
         </span>
       </div>
     </n-card>
@@ -233,7 +235,9 @@
               <td>
                 <span v-if="r.swappedIn" class="swap-badge">
                   换入 {{ agentName(r.swappedIn) }} ⬅ 换出 {{ agentName(r.swappedOut ?? '') }}
+                  <span v-if="r.swapKind" class="swap-kind" :class="r.swapKind">{{ swapKindLabel(r.swapKind, r.swapUpliftPct) }}</span>
                 </span>
+                <span v-else-if="r.newAgentBench" class="bench-note">{{ benchText(r.newAgentBench) }}</span>
                 <span v-else class="no-change">—</span>
               </td>
             </tr>
@@ -258,7 +262,7 @@ import { NCard, NSelect, NInputNumber, NButton, NProgress } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computeTeamTimeline, type TeamTimelineResult } from '@/composables/teamTimeline'
+import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamTimelineResult } from '@/composables/teamTimeline'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
@@ -492,6 +496,19 @@ const xTicks = computed(() => {
 
 // 悬浮
 const hoverNode = ref(-1)
+/** 换人判定徽标文案：上位 +12.4% / 平替 +0.8% */
+function swapKindLabel(kind: SwapKind, pct?: number): string {
+  const label = kind === 'upgrade' ? '上位' : '平替'
+  return pct == null ? label : `${label} ${pct > 0 ? '+' : ''}${fmt(pct, 1)}%`
+}
+/** 实装未进队标注：X 实装未进队 · 平替（差 y%，可不抽）/ 未上位（差 y%） */
+function benchText(b: NewAgentBench): string {
+  const names = b.agents.map(agentName).join('/')
+  const gap = fmt(Math.abs(b.gapPct), 1)
+  return b.kind === 'lateral'
+    ? `${names} 实装未进队 · 平替（差 ${gap}%，可不抽）`
+    : `${names} 实装未进队 · 未上位（差 ${gap}%）`
+}
 const hoverInfo = computed(() => {
   const n = result.value?.nodes[hoverNode.value]
   if (!n) return null
@@ -501,7 +518,11 @@ const hoverInfo = computed(() => {
     damage: n.damage,
     hpRatio: n.hpRatio,
     goldLabel: n.goldLabel,
-    swap: n.swappedIn ? `换上 ${agentName(n.swappedIn)}，换下 ${agentName(n.swappedOut!)}` : '',
+    swap: n.swappedIn
+      ? `换上 ${agentName(n.swappedIn)}，换下 ${agentName(n.swappedOut!)}` +
+        (n.swapKind ? `（${swapKindLabel(n.swapKind, n.swapUpliftPct)}）` : '')
+      : '',
+    bench: n.newAgentBench ? benchText(n.newAgentBench) : '',
   }
 })
 const hoverCardX = ref(0)
@@ -737,6 +758,24 @@ function onSvgMove(e: MouseEvent) {
 .swap-badge {
   color: #f6ad55;
   font-weight: 600;
+}
+.swap-kind {
+  font-weight: 700;
+  margin-left: 4px;
+}
+.swap-kind.upgrade {
+  color: #ff8f5a;
+}
+.swap-kind.lateral {
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 500;
+}
+.bench-note {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+}
+.hc-bench {
+  color: rgba(255, 255, 255, 0.55);
 }
 .no-change {
   color: rgba(255, 255, 255, 0.3);

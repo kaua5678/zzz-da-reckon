@@ -15,6 +15,10 @@
  * - 每个节点展示的「最强队伍」= 该节点参考（基础金）下 Top-3 队伍里、按所选金数
  *   做最优加金后伤害最高者（缓解「高金数下队伍偏好可能不同」的偏差）。
  *
+ * - **换人判定**：换人节点的最优队伤害对比上一节点旧队伤害（同预算下各自最优加金），
+ *   提升 ≥ SWAP_UPGRADE_UPLIFT_PCT%（默认 10）→ 上位，否则平替（classifySwapUplift 单一事实源）。
+ *   新角色实装当期未进最优队时，用阶段①参考伤害标注「平替·可不抽 / 未上位」（零额外求值）。
+ *
  * 搜索口径：
  * - 队友候选 = AGENT_RELEASE_NODE 收录的 S 级角色（用户口径：四星不做）中，实装 ≤ 当前节点的。
  * - 配装 = 每队跑一遍 store.applyTeamPreset（邦布精灵推荐驱动盘 + 词条优化器），
@@ -39,6 +43,18 @@ export interface TeamGoldState {
   wEngines: [string, string, string]
 }
 
+/** 换人判定：upgrade = 上位（提升 ≥ SWAP_UPGRADE_UPLIFT_PCT%），lateral = 平替 */
+export type SwapKind = 'upgrade' | 'lateral'
+
+/** 实装未进队判定：lateral = 平替（差距 < 阈值，可不抽），worse = 未上位（差距 ≥ 阈值） */
+export interface NewAgentBench {
+  /** 当期实装但未进最优队的角色 */
+  agents: string[]
+  kind: 'lateral' | 'worse'
+  /** 含新角色的最强组合相对现役（不含新角色）最强组合的差距，负数 % */
+  gapPct: number
+}
+
 /** 单节点结果（折线图一个点 + 泳道图一格） */
 export interface TimelineNodeResult {
   nodeId: string
@@ -54,9 +70,14 @@ export interface TimelineNodeResult {
   damage: number
   /** 伤害/Boss血量 × 100（100 = 击杀线） */
   hpRatio: number
-  /** 相对上一节点的换人（仅换入者/被换出者 id，无变化为空） */
+  /** 相对上一节点的换人（仅换入者/被换出者 id，无变化为空；双槽位同节点变化只记最后一个） */
   swappedIn?: string
   swappedOut?: string
+  /** 换人判定：本节点最优队 vs 上一节点旧队伤害（同预算各自最优加金） */
+  swapKind?: SwapKind
+  swapUpliftPct?: number
+  /** 当期新实装角色全部未进最优队时的判定（指导跳卡池） */
+  newAgentBench?: NewAgentBench
 }
 
 export interface TeamTimelineSwapEvent {
@@ -64,6 +85,8 @@ export interface TeamTimelineSwapEvent {
   nodeLabel: string
   swappedIn: string
   swappedOut: string
+  swapKind?: SwapKind
+  swapUpliftPct?: number
 }
 
 export interface TeamTimelineStats {
@@ -138,6 +161,21 @@ function restoreStore(configStore: ReturnType<typeof useConfigStore>, snap: Stor
 
 function teamKey(main: string, a: string, b: string): string {
   return `${main},${a},${b}`
+}
+
+// ========== 换人判定（上位 / 平替） ==========
+
+/** 上位阈值：换入后全队伤害提升 ≥ 该百分比 → 上位，否则平替（用户口径，单一事实源） */
+export const SWAP_UPGRADE_UPLIFT_PCT = 10
+
+/**
+ * 换人判定：pct = (cur − prev) / prev × 100（1 位小数）。
+ * ≥ SWAP_UPGRADE_UPLIFT_PCT → 上位，否则平替；prev ≤ 0 防御性归平替（pct 0）。
+ * 换人事件与「实装未进队」标注共用该阈值口径。
+ */
+export function classifySwapUplift(prevDamage: number, curDamage: number): { kind: SwapKind; pct: number } {
+  const pct = prevDamage > 0 ? Math.round(((curDamage - prevDamage) / prevDamage) * 1000) / 10 : 0
+  return { kind: pct >= SWAP_UPGRADE_UPLIFT_PCT ? 'upgrade' : 'lateral', pct }
 }
 
 /** 基础音擎（0 金档）：
@@ -474,7 +512,17 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
     await yieldNow()
 
     // ---- 阶段 2：每节点参考 Top-3（可达前缀）----
+    // 当期新实装角色（候选池内反查实装表；主C已排除）——「实装未进队」判定用
+    const releasedAt = new Map<string, string[]>()
+    for (const id of candidates) {
+      const nodeId = AGENT_RELEASE_NODE[id]
+      const list = releasedAt.get(nodeId) ?? []
+      list.push(id)
+      releasedAt.set(nodeId, list)
+    }
     const top3ByNode: { key: string; dmg: number }[][] = []
+    // 每节点「含 / 不含当期新实装角色」的最强参考伤害（同一 refDamage 空间，零额外求值）
+    const newAgentStatsByNode: { agents: string[]; withNew: number; withoutNew: number }[] = []
     let running: { key: string; dmg: number }[] = []
     let pairPtr = 0
     for (let n = 0; n < nodes.length; n++) {
@@ -488,6 +536,22 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
       }
       const ranked = [...running].sort((x, y) => y.dmg - x.dmg)
       top3ByNode.push(ranked.slice(0, 3))
+      const newHere = releasedAt.get(nodes[n].id) ?? []
+      let stats: { agents: string[]; withNew: number; withoutNew: number } | null = null
+      if (newHere.length > 0 && running.length > 0) {
+        const newSet = new Set(newHere)
+        let withNew = Number.NEGATIVE_INFINITY
+        let withoutNew = Number.NEGATIVE_INFINITY
+        for (const r of running) {
+          const [, x, y] = r.key.split(',')
+          if (newSet.has(x) || newSet.has(y)) withNew = Math.max(withNew, r.dmg)
+          else withoutNew = Math.max(withoutNew, r.dmg)
+        }
+        if (withNew > Number.NEGATIVE_INFINITY && withoutNew > Number.NEGATIVE_INFINITY) {
+          stats = { agents: newHere, withNew, withoutNew }
+        }
+      }
+      newAgentStatsByNode.push(stats ?? { agents: [], withNew: 0, withoutNew: 0 })
     }
 
     // ---- 阶段 3：对 Top-3 队伍按所选金数做最优加金（按队伍去重缓存）----
@@ -539,6 +603,22 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
           }
         }
       }
+      // 换人判定：本节点最优队 vs 上一节点旧队伤害（同预算各自最优加金）
+      const swapCls = prev && swappedIn ? classifySwapUplift(prev.damage, alloc.damage) : null
+      // 实装未进队：当期新角色全部不在展示队伍里 → 参考伤害差距定平替/未上位
+      // （gapPct ≥ 0 说明参考最强含新角色但最优加金后被反超，排名分歧场景不标注）
+      const stats = newAgentStatsByNode[n]
+      let newAgentBench: NewAgentBench | undefined
+      if (stats.agents.length > 0 && !stats.agents.some(a => team.includes(a))) {
+        const gapPct = Math.round(((stats.withNew - stats.withoutNew) / stats.withoutNew) * 1000) / 10
+        if (gapPct < 0) {
+          newAgentBench = {
+            agents: stats.agents,
+            kind: gapPct > -SWAP_UPGRADE_UPLIFT_PCT ? 'lateral' : 'worse',
+            gapPct,
+          }
+        }
+      }
       nodesResult.push({
         nodeId: nodes[n].id,
         nodeLabel: nodes[n].label,
@@ -550,12 +630,20 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
         damage: alloc.damage,
         hpRatio,
         ...(swappedIn ? { swappedIn, swappedOut } : {}),
+        ...(swapCls ? { swapKind: swapCls.kind, swapUpliftPct: swapCls.pct } : {}),
+        ...(newAgentBench ? { newAgentBench } : {}),
       })
     }
 
     const swapEvents: TeamTimelineSwapEvent[] = nodesResult
       .filter(r => r.swappedIn)
-      .map(r => ({ nodeId: r.nodeId, nodeLabel: r.nodeLabel, swappedIn: r.swappedIn!, swappedOut: r.swappedOut! }))
+      .map(r => ({
+        nodeId: r.nodeId,
+        nodeLabel: r.nodeLabel,
+        swappedIn: r.swappedIn!,
+        swappedOut: r.swappedOut!,
+        ...(r.swapKind ? { swapKind: r.swapKind, swapUpliftPct: r.swapUpliftPct } : {}),
+      }))
 
     report(1, `完成：${nodesResult.length} 个节点，${swapEvents.length} 次换人`)
     return {
