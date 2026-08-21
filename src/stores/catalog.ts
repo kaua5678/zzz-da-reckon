@@ -56,6 +56,8 @@ export const useCatalogStore = defineStore('catalog', () => {
       teammateName: { zhCN: agent?.name?.zhCN ?? agentId },
       conditionLabel: { zhCN: tb.description },
       name: { zhCN: nameZh },
+      // SOP §6.4：hidden 条只作 UI 展示，collectInCombatTeamBuffs 按 buff.hidden 过滤
+      ...(tb.hidden ? { hidden: true } : {}),
     }
   }
 

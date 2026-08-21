@@ -503,7 +503,7 @@
           "codePaths": [
             "src/mechanics/agents/corin.ts"
           ],
-          "note": "电锯增伤37.5%挂普攻聚合行；额外能力失衡增伤、影画1/2/6接入；影画4回能未建模。"
+          "note": "电锯增伤37.5%全招式生效（applyPanel普通增伤）；额外能力失衡增伤35%轴模式按buff轴扫描（轴内全招式，只吃轴内段）、非轴按覆盖率滑块（默认0.5）；影画1/2/6接入；影画4按快支+招架支援+连携次数计触发（CD上限）在converge阶段并入开局能量赠送。"
         }
       ],
       "mechanics": [
@@ -530,17 +530,17 @@
           "name": "额外能力：扫除帮手",
           "implementation": "implemented_approximation",
           "implementedParts": [
-            "同属性/同阵营队友激活；命中失衡敌人自身伤害+35%按覆盖率折算面板dmgBonus。"
+            "同属性/同阵营队友激活；命中失衡敌人自身伤害+35%。轴模式按buff轴扫描（轴内全招式+35%，平A块归并basic_attack键，只吃轴内段）；非轴模式按覆盖率滑块近似（默认0.5）。"
           ],
           "pendingParts": [
-            "失衡状态逐时序按覆盖率近似。"
+            "非轴模式失衡状态逐时序按覆盖率近似（默认0.5，用户口径）。"
           ],
           "codePaths": [
             "src/mechanics/agents/corin.ts"
           ],
           "status": "implemented_approximation",
           "pending": [
-            "失衡状态逐时序按覆盖率近似。"
+            "非轴模式失衡状态逐时序按覆盖率近似（默认0.5，用户口径）。"
           ]
         }
       ],
@@ -621,10 +621,10 @@
         "trigger": "同属性或同阵营角色",
         "implementation": "implemented_approximation",
         "implementedParts": [
-          "同属性/同阵营队友激活；命中失衡敌人自身伤害+35%按覆盖率折算面板dmgBonus。"
+          "同属性/同阵营队友激活；命中失衡敌人自身伤害+35%。轴模式按buff轴扫描（轴内全招式+35%，平A块归并basic_attack键，只吃轴内段）；非轴模式按覆盖率滑块近似（默认0.5）。"
         ],
         "pendingParts": [
-          "失衡状态逐时序按覆盖率近似。"
+          "非轴模式失衡状态逐时序按覆盖率近似（默认0.5，用户口径）。"
         ],
         "codePaths": [
           "src/mechanics/agents/corin.ts"

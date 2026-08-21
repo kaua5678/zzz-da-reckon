@@ -397,11 +397,13 @@
 
 ### 可琳（corin / 1061）—— 专注电锯
 
-- **核心口径**：按核心被动 Lv.7；电锯持续斩击伤害 +37.5% 挂普攻聚合行 `dmgBonus`（覆盖率折算，无法精确区分电锯与其他普攻段）。
-- **额外能力**：同属性/同阵营队友激活；命中失衡敌人自身伤害 +35% 按覆盖率折算面板 `dmgBonus`。
-- **影画1**：连携/终结命中后 +12% 按覆盖率。**影画2**：物理抗性 -0.5%×20层（上限10%）按覆盖率折算 `enemyPhysicalResReduction`。
-- **影画6**：持续斩击充能（上限40），引爆电锯每层 +3% 攻击力，按引爆次数×充能层数生成合成执行行（`damageMultiplierOverride`，不伪造 catalog moveId）。
-- **明确未建模**：影画4 快速支援/招架支援/连携回7.2能量（无干净回能通道）、影画2/6 逐层时序。
+- **核心口径**：按核心被动 Lv.7；电锯持续斩击伤害 +37.5% **全招式生效**（用户口径：每个招式都写了长按持续斩击），作为普通增伤直接加面板 `dmgBonus`（applyPanel，不限定行）。
+- **额外能力**：同属性/同阵营队友激活；命中失衡敌人自身伤害 +35%。**轴模式按 buff 轴**（般岳明王同款：`computeCorinStunBonusMoves` 扫轴，轴内所有招式都在失衡窗口内 → 全部 +35%，平A块 'basic'/普攻段归并 `basic_attack` 聚合行键，装配端按 `stunOverride` 只吃轴内段）；**非轴模式**按 `corin.additionalStunCoverage` 覆盖率滑块近似（默认 0.5，用户口径）。
+- **影画1**：连携/终结命中后 +12% 按覆盖率。**影画2**：物理抗性 -0.5%×20层（上限10%）默认全覆盖，按覆盖率折算 `enemyPhysicalResReduction`（**单通道**：spec teamBuffs 条已 `hidden`，曾与模块双计面板 +20）。
+- **影画4**：快速支援/招架支援/连携技回 7.2 能量（16s 一次）。**按已有次数计触发**（快支 + 招架支援 + 连携总数，用户口径），CD `floor(战斗时长/16)` 做上限；在 `applyTeamConfig` converge 阶段写入 `initialEnergyGift`（cfg 构建早于失衡次数收敛，那里拿不到 stunCount——莱特 C4 同阶段）。
+- **影画6**：持续斩击充能（上限40），引爆电锯每层 +3% 攻击力，按引爆次数×充能层数生成合成执行行（`damageMultiplierOverride`，不伪造 catalog moveId）。catalog 无 hit/段数数据 → 次数/层数按滑块默认。
+- **面板通道**：电锯/影画1/影画2 走 `applyPanel` 读 `input.settings`。曾走 `transformSkillExecutions` + `__corinPanelApplied` 对象守卫——模块无 applyPanel 时 `panels` computed 不追踪滑块，守卫又挡住重施，覆盖率滑块首次求值后**静默冻结**（般岳 rageGainCoverage 同类，已修 + 生效测试锁死）。
+- **明确未建模**：影画2/6 逐层时序（按滑块近似）。
 - **模块**：`src/mechanics/agents/corin.ts`（替代旧 `corinChargeMechanic`）。
 
 ### 比利（billy / 1081）—— 稳定据枪

@@ -62,6 +62,8 @@
 | 无回归断言 | 改引擎后悄悄丢 | — | 每个命座效果补**命座差分测试**（见 §5），而非只断言"开着时字段=某值" |
 | 命座切换不刷新资源配置 | 执行级命座效果（buildExecutions/patchExecutions 读 `record.<agent>CinemaLevel`）全部 +0%，面板级效果（applyPanel）却正常 | 仪玄 2/4/6 命 +0%：`setCinemaLevel` 不触发 `refreshTrigger` → `resourceConfig`（buildCharConfig 产物）缓存不失效 → 模块命座字段永远是旧值 | 模块级命座效果必须验证「setCinemaLevel 切换后生效」；`setCinemaLevel` 需 `refreshTrigger++`（该 setter 已修复，新角色照此） |
 | 命座门槛缺失 | 低命座也有高命座专属执行 | 仪玄 0/1 命也生成聚墨·符法千重-破（影画2 专属，缺 `cinemaLevel >= 2` 判断） | 命座专属执行 push 前必须带 `cinemaLevel >= N` 门槛，并用差分测试断言 0 命不生成 |
+| 面板通道走 transformSkillExecutions + 对象守卫 | 覆盖率滑块**首次求值后永久冻结**：改滑块后面板不重算 | 可琳影画1/2、额外能力覆盖率：模块无 applyPanel → `computePanelPhases` 从不调 `resolveMechanicSettings` → `panels` computed 不追踪滑块；缓存面板对象上的 `__corinPanelApplied` 守卫又挡住 extractSkillExecutions 重施（已修：迁入 applyPanel 读 settings） | 面板级效果一律走 `applyPanel`；不要在 transformSkillExecutions 里改 panel 再用对象守卫防重复——守卫会把「滑块变化后的重算」一并挡掉。另注意测试读取顺序：transformSkillExecutions 的面板改写发生在 calcOutput 求值期间，只读 `panels` 不触发它 |
+| 同一效果双通道双计 | 提升率/面板值恰好是正确值的两倍 | 可琳影画2：spec teamBuffs 条（+10 固定）与模块覆盖率折算（+10）叠加 → 面板 +20；旧断言 `toBeGreaterThanOrEqual(10)` 掩盖了双计 | 录完 grep 一遍 spec teamBuffs / teammate-buffs / 模块三处是否声明同一 stat；面板断言用精确值（`toBeCloseTo`），不用 `>=` |
 
 **铁律补充**：命座效果录完后，必须跑一次**该命座开/关的差分断言**（`computePanelPhases` / `damagePoolRows` / `resourceResult` 的字段差异）。只断言"开着时字段=某值"发现不了"效果从未接进计算"——字段恒为默认值的断言照样通过（般岳战栗减抗就是靠用户肉眼发现的）。
 
@@ -131,8 +133,9 @@ expect(pN.enemyPhysicalResReduction - p0.enemyPhysicalResReduction).toBe(18)
 
 ### 6.4 `hidden` buff
 
-- `hidden: true` 的条**不得**再进 `collectInCombatTeamBuffs`（已过滤）。
+- `hidden: true` 的条**不得**再进 `collectInCombatTeamBuffs`（已过滤；spec `teamBuffs` 的 hidden 经 `specTeamBuffToTeammateBuff` 透传——2026-02 修复，此前 spec 路径不透传该字段，hidden 形同虚设）。
 - 若改由 `helpers` 手写数值（耀嘉音咏叹随技能等级）：notes 写清「本条 hidden，数值在 helpers」；**禁止** hidden 仍带 effects 又 helpers 再加一遍。
+- 典型场景：同一效果「模块已接入（带滑块）+ spec teamBuffs 又录一条」→ teamBuffs 条改 hidden 保 UI 展示（可琳影画2 曾双计面板 +20）。
 
 ### 6.5 公式读技能等级 `s` / 源面板
 

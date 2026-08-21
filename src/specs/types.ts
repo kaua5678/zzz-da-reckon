@@ -141,6 +141,11 @@ export interface TeamBuffSpec {
   effects: TeamBuffEffectSpec[]
   status: SpecStatus
   note?: string
+  /**
+   * true = 只作 UI 展示，不进 collectInCombatTeamBuffs（数值由模块/helpers 单通道接入）。
+   * SOP §6.4：hidden 条禁止再在别处重复声明同一 effects 数值。
+   */
+  hidden?: boolean
 }
 
 export interface CounterStateMachineOutput {

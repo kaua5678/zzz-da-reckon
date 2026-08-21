@@ -35,6 +35,7 @@ import { LIUYIN_EX_MOVE_IDS, computeLiuyinHugCounts, resolveUltimateTargetSlot, 
 import { computeLuciaHealPctPerUlt } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueMingwangStacks, computeBanyueInteractionTopUp, C6_ATTACH_RATIO, C6_MINGWANG_EXTRA, MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
 import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
+import { computeCorinStunBonusMoves, CORIN_ADDITIONAL_DMG } from '@/mechanics/agents/corin'
 import { computeYixuanNingshenBonus } from '@/mechanics/agents/yixuan'
 import { computePeiluoKagerouBonus, PEILUO_KAGEROU_CRIT } from '@/mechanics/agents/specPanelBuffs'
 import type {
@@ -1344,6 +1345,16 @@ function applyNormaHatChain(
     if (peiluoSlot < 0 || effectiveStunAxes.value.length === 0) return new Map<string, number>()
     return computePeiluoKagerouBonus(peiluoSlot, effectiveStunAxes.value)
   })
+  /** 可琳额外能力扫除帮手 buff 轴（失衡轴内）：轴内所有招式都在失衡窗口内 → 全部 +35%；普攻段归并 basic_attack 聚合行键 */
+  const corinStunBonusMap = computed(() => {
+    const corinSlot = configStore.team.findIndex(c => c.agentId === '1061')
+    if (corinSlot < 0 || effectiveStunAxes.value.length === 0) return new Map<string, number>()
+    const basicMoveIds = new Set(
+      (catalogStore.getAgentSkills('1061')?.categories ?? [])
+        .find(c => c.id === 'basic')?.moves.map(m => m.id) ?? [],
+    )
+    return computeCorinStunBonusMoves(corinSlot, effectiveStunAxes.value, basicMoveIds)
+  })
 
   /** 当前命中的轴方案名（条件轴模式用于 UI 展示；无方案 = null） */
   const matchedPlanName = computed<string | null>(() => calcOutput.value?.matchedPlanName ?? null)
@@ -1389,10 +1400,31 @@ function applyNormaHatChain(
   /** 失衡易伤覆盖率：固定来自 calcOutput 收敛结果（捏轴只决定哪些动作吃易伤，不改变覆盖率） */
   const stunCoverage = computed<number>(() => calcOutput.value?.stunCoverage ?? 0)
 
+  /** 普攻段 id → 'basic' 归一（轴编辑器口径）：catalog 平A段（如 1061001）在轴内时归并到 basic 池/聚合行，
+   *  与 computeCorinStunBonusMoves 的 basicMoveIds 归并口径一致（否则 raw 普攻段永远匹配不上 '0:basic' 池）。 */
+  const basicMoveIdsBySlot = computed<Map<number, Set<string>>>(() => {
+    const m = new Map<number, Set<string>>()
+    for (const c of configStore.team) {
+      const skills = catalogStore.getAgentSkills(c.agentId)
+      const ids = skills?.categories.find(cat => cat.id === 'basic')?.moves.map(mv => mv.id) ?? []
+      if (ids.length > 0) m.set(c.slot, new Set(ids))
+    }
+    return m
+  })
+
   /** 失衡轴计算结果（轴启用时计算，否则 null） */
   const stunAxisResult = computed(() => {
     if (!configStore.useStunAxis && !autoActive.value) return null
-    const axes = effectiveStunAxes.value.filter(a => a.actions.length > 0)
+    const axes = effectiveStunAxes.value
+      .filter(a => a.actions.length > 0)
+      .map(axis => ({
+        ...axis,
+        actions: axis.actions.map(act => {
+          const basicIds = basicMoveIdsBySlot.value.get(act.slot)
+          if (basicIds?.has(act.moveId)) return { ...act, moveId: 'basic' }
+          return act
+        }),
+      }))
     if (axes.length === 0) return null
     const stunRes = stunPoolResult.value
     const resRes = adjustedResourceResult.value
@@ -1767,6 +1799,19 @@ function applyNormaHatChain(
               mingwangDmgBonus = MINGWANG_BASE_PER_STACK * 3 * cov
             }
           }
+          // 可琳额外能力扫除帮手：命中失衡敌人自身伤害+35%。
+          // 轴模式按 buff 轴扫描（轴内所有招式都在失衡窗口内，普攻段归并 basic_attack 聚合行键），
+          // 且只吃轴内段（stunOverride=0 的轴外段敌人未失衡，不符合「命中失衡敌人」条件）；
+          // 非轴模式按覆盖率滑块近似（默认 0.5，用户口径）
+          let corinStunBonus = 0
+          if (charResult.agentId === '1061' && (execPanel?.additionalAbilityActive ?? 0) > 0) {
+            if (isAxis) {
+              corinStunBonus = stunOverride > 0 ? (corinStunBonusMap.value.get(exec.moveId ?? '') ?? 0) : 0
+            } else {
+              const cov = Math.max(0, Math.min(1, configStore.getMechanicSetting('corin.additionalStunCoverage', 0.5)))
+              corinStunBonus = CORIN_ADDITIONAL_DMG * cov
+            }
+          }
           // 仪玄凝神：6 命默认满覆盖（调息送大量符法千重，用户口径：暴伤+40% + 贯穿+20%，不走轴扫描），
           // yixuan.c6NingshenCoverage 滑块可调；非 6 命轴模式按 buff 轴扫描（大招后 15s 窗口），非轴模式按滑块近似（仅暴伤）
           const yixuanCinema = configStore.team[slot]?.cinemaLevel ?? 0
@@ -1798,11 +1843,11 @@ function applyNormaHatChain(
             source: resolved?.source ?? exec.moveId,
             count: isPerSecondRow ? 1 : units,
             multiplier: unitMultiplier * (isPerSecondRow ? units : 1),
-            note: `${baseNote}${extraNote}${mingwangDmgBonus > 0 ? ` · 明王+${mingwangDmgBonus.toFixed(1)}%${isAxis ? '（轴内覆盖）' : '（覆盖率近似）'}` : ''}${yixuanNingshen.critDmg > 0 ? ` · 凝神暴伤+${yixuanNingshen.critDmg.toFixed(0)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${yixuanNingshen.sheerDmg > 0 ? ` · 凝神贯穿+${yixuanNingshen.sheerDmg.toFixed(0)}%` : ''}`,
+            note: `${baseNote}${extraNote}${mingwangDmgBonus > 0 ? ` · 明王+${mingwangDmgBonus.toFixed(1)}%${isAxis ? '（轴内覆盖）' : '（覆盖率近似）'}` : ''}${corinStunBonus > 0 ? ` · 失衡增伤+${corinStunBonus.toFixed(1)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${yixuanNingshen.critDmg > 0 ? ` · 凝神暴伤+${yixuanNingshen.critDmg.toFixed(0)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${yixuanNingshen.sheerDmg > 0 ? ` · 凝神贯穿+${yixuanNingshen.sheerDmg.toFixed(0)}%` : ''}`,
             moveId: exec.moveId,
             critRateBonus,
             critDmgBonus: critDmgBonus + yixuanNingshen.critDmg + peiluoKagerouCrit,
-            dmgBonus: (exec.dmgBonus ?? 0) + mingwangDmgBonus,
+            dmgBonus: (exec.dmgBonus ?? 0) + mingwangDmgBonus + corinStunBonus,
             sheerDmgBonus: (exec.sheerDmgBonus ?? 0) + yixuanNingshen.sheerDmg,
             flatDamageBonus: exec.flatDamageBonus,
             basisValueOverride: exec.basisValueOverride,

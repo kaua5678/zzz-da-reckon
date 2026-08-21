@@ -359,10 +359,12 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "快速支援/招架支援/连携技回7.2能量（16s一次）：按已有次数计触发（快支+招架支援+连携总数，用户口径），CD floor(战斗时长/16) 做上限，在applyTeamConfig converge阶段并入开局能量赠送。"
+          ],
           "pending": [
-            "快速支援/招架支援/连携回7.2能量（16秒一次）无干净回能通道，未接入能量结算。"
+            "连携总数在首轮迭代用上一轮收敛的失衡次数，随不动点收敛。"
           ]
         },
         {
