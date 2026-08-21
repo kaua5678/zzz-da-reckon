@@ -14,25 +14,14 @@
           />
         </div>
         <div class="ctl-field">
-          <span class="ctl-label">期数</span>
-          <n-select
-            v-model:value="selectedPeriodId"
-            :options="periodOptions"
-            size="small"
-            filterable
-            style="width: 220px"
-            placeholder="先选期数"
-          />
-        </div>
-        <div class="ctl-field">
           <span class="ctl-label">Boss</span>
           <n-select
             v-model:value="selectedBossId"
-            :options="bossOptionsForPeriod"
+            :options="bossOptions"
             size="small"
             filterable
             style="width: 240px"
-            placeholder="再选该期 Boss"
+            placeholder="选择 Boss（必选，默认最新危局）"
           />
         </div>
         <div class="ctl-field">
@@ -288,7 +277,7 @@
     <!-- 未计算时的引导 -->
     <n-card v-else size="small" :bordered="true">
       <div class="empty-hint">
-        选择主C、期数/Boss 与限定金预算后点击「计算」。<br />
+        选择主C、Boss（必选，默认最新危局）与限定金预算后点击「计算」；横轴自动覆盖主C实装起到最新的全部期数，所选 Boss 的历次出场会在「当期Boss」车道高亮。<br />
         示例：仪玄（2.0 上半实装）→ 可见橘福福（2.0 下半）、卢西娅（2.3）、琉音（2.4）、诺姆（3.0）等节点换人带来的队伍强度变化。
       </div>
     </n-card>
@@ -296,7 +285,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { NCard, NSelect, NInputNumber, NButton, NProgress } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -305,7 +294,7 @@ import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamTimeli
 import { buildBossSchedule, scheduleByNode, type BossScheduleEntry } from '@/composables/bossSchedule'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
 import { fmt, compact } from '@/utils/format'
-import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
+import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -322,11 +311,23 @@ const mainAgentOptions = computed(() =>
     })),
 )
 
-// ========== Boss / 期数 ==========
+// ========== Boss（必选直选；期数概念已移除——横轴固定为主C实装起到最新） ==========
 const bossPresets = ref<BossPreset[]>([])
-const phaseViews = ref<PhaseView[]>([])
-const selectedPeriodId = ref('')
 const selectedBossId = ref('')
+
+/** Boss 最近一次出场开打时间（倒序排列用） */
+function latestBeginOf(b: BossPreset): string {
+  let latest = ''
+  for (const ph of b.phases) {
+    if (ph.begin > latest) latest = ph.begin
+  }
+  return latest
+}
+const bossOptions = computed(() =>
+  [...bossPresets.value]
+    .sort((a, b) => latestBeginOf(b).localeCompare(latestBeginOf(a)))
+    .map(b => ({ value: b.id, label: b.name })),
+)
 
 onMounted(async () => {
   try {
@@ -334,61 +335,23 @@ onMounted(async () => {
     if (res.ok) {
       const data = (await res.json()) as BossPresetFile
       bossPresets.value = data.bosses ?? []
-      phaseViews.value = data.phaseViews ?? []
-      const first = allPeriods.value[0]
-      if (first) selectedPeriodId.value = first.phaseId
+      // 默认选最新危局 Boss（无危局期数的 Boss 不作默认）
+      const withCA = bossOptions.value.filter(o => {
+        const b = bossPresets.value.find(x => x.id === o.value)
+        return b?.phases.some(p => p.modeType === 'critical_assault')
+      })
+      selectedBossId.value = withCA[0]?.value ?? bossOptions.value[0]?.value ?? ''
     }
   } catch { /* boss 数据缺失时页面显示引导 */ }
 })
 
-const allPeriods = computed(() => {
-  const map = new Map<string, { phaseId: string; label: string; begin: string; hasCA: boolean }>()
-  for (const b of bossPresets.value) {
-    for (const ph of b.phases) {
-      const cur = map.get(ph.phaseId)
-      if (cur) {
-        if (ph.modeType === 'critical_assault') cur.hasCA = true
-      } else {
-        map.set(ph.phaseId, {
-          phaseId: ph.phaseId,
-          label: ph.label,
-          begin: ph.begin,
-          hasCA: ph.modeType === 'critical_assault',
-        })
-      }
-    }
-  }
-  return [...map.values()].sort((a, b) => (b.begin || b.phaseId).localeCompare(a.begin || a.phaseId))
-})
-const periodOptions = computed(() =>
-  allPeriods.value.map(p => ({ value: p.phaseId, label: `${p.label}${p.hasCA ? '（危局）' : ''}` })),
-)
-const bossOptionsForPeriod = computed(() => {
-  if (!selectedPeriodId.value) return []
-  const out: { value: string; label: string }[] = []
-  const seen = new Set<string>()
-  for (const b of bossPresets.value) {
-    if (seen.has(b.id)) continue
-    const phases = b.phases.filter(p => p.phaseId === selectedPeriodId.value)
-    if (phases.length === 0) continue
-    seen.add(b.id)
-    const ph = phases.find(p => p.modeType === 'critical_assault') ?? phases[0]
-    out.push({ value: b.id, label: `${b.name}${ph.modeType === 'critical_assault' ? '（困难）' : '（普通）'}` })
-  }
-  return out
-})
-watch(selectedPeriodId, () => {
-  const opts = bossOptionsForPeriod.value
-  if (!opts.some(o => o.value === selectedBossId.value)) {
-    selectedBossId.value = opts[0]?.value ?? ''
-  }
-})
 const selectedBoss = computed(() => bossPresets.value.find(b => b.id === selectedBossId.value) ?? null)
+/** 数值取该 Boss 最新一期：优先危局，否则最新期（结果标题会显示所用期数） */
 const selectedPhase = computed(() => {
   const b = selectedBoss.value
   if (!b) return null
-  const phases = b.phases.filter(p => p.phaseId === selectedPeriodId.value)
-  return phases.find(p => p.modeType === 'critical_assault') ?? phases[0] ?? b.phases[0] ?? null
+  const sorted = [...b.phases].filter(p => p.begin).sort((x, y) => y.begin.localeCompare(x.begin))
+  return sorted.find(p => p.modeType === 'critical_assault') ?? sorted[0] ?? b.phases[0] ?? null
 })
 
 // ========== Boss 排期 × 版本节点（危局/试炼期数按开打时间归入节点；选中 Boss 高亮历次出场） ==========

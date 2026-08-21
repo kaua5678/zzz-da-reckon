@@ -277,7 +277,16 @@ export function budgetAwareStateFor(
   }
 }
 
-/** 装配队伍到 store：推荐配装 + 显式覆盖（音擎/命座/精炼/交互基准） */
+/**
+ * 装配队伍到 store：推荐配装 + 显式覆盖（音擎/命座/精炼/交互基准）。
+ *
+ * 性能口径（实测）：applyTeamPreset 仅 ~0.6ms/队（推荐多为查表，优化器极少触发），
+ * 真正的成本是每次伤害求值 ~30ms —— 全候选 ~900 对 ≈ 27s。因此这里不做配装缓存
+ * （按 agentId 缓存会忽略「队友可用 buff 组随组合变化」通道，导致同角色副词条跨队漂移，
+ * 实测末节点伤害 -13%）；防卡死靠阶段边界的 yield 节奏（阶段1每2队、阶段3每2队，
+ * 单帧 ≈ 60ms）。贪婪试算区不做 yield：临时改动未还原时让出会触发 store 的 team watch
+ * （syncTeammateBuffsFromTeam）重入，扭曲后续试算。
+ */
 function applyTeamToStore(
   configStore: ReturnType<typeof useConfigStore>,
   team: [string, string, string],
@@ -397,6 +406,9 @@ export function computeOptimalTeamAllocation(
       else if (c.kind === 'wengine') configStore.setWEngine(c.slot, c.wEngineId!)
       else configStore.setWEngineModLevel(c.slot, c.value)
       stepsEvaluated++
+      // 注意：贪婪循环内不做 yield——试算是「临时改动→读伤害→还原」，中途让出会触发
+      // store 的 team watch（syncTeammateBuffsFromTeam）在改动未还原时重入，扭曲后续试算。
+      // 让出只发生在阶段边界（阶段1每2队、阶段3每2队）。
       // 收敛过滤：试算态外层未收敛（maxIter）→ 该步伤害虚高不可信，视作 -Inf 拒绝
       // （calcOutput 里 convergence 被重建过，TS 推断丢了 maxIter 字面量，运行时确实会出现，故显式断言）
       const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
@@ -504,7 +516,7 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
       }
       teamsEvaluated++
       evalCount++
-      if (evalCount % 8 === 0) {
+      if (evalCount % 2 === 0) {
         report((evalCount / totalEval) * 0.75, `队伍搜索 ${evalCount}/${totalEval}（${catalog.getAgent(a)?.name.zhCN ?? a}+${catalog.getAgent(b)?.name.zhCN ?? b}）…`)
         await yieldNow()
       }
