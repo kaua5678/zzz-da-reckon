@@ -45,6 +45,7 @@ import LogicEditorPage from '@/views/LogicEditorPage.vue'
 import MechanicsTablePage from '@/views/MechanicsTablePage.vue'
 import TeamComparePage from '@/views/TeamComparePage.vue'
 import StunBreakerComparePage from '@/views/StunBreakerComparePage.vue'
+import TimeChartsPage from '@/views/TimeChartsPage.vue'
 
 const catalogStore = useCatalogStore()
 const configStore = useConfigStore()
@@ -58,6 +59,7 @@ const pageMap: Record<string, any> = {
   stunAxis: StunAxisPage,
   teamCompare: TeamComparePage,
   breakerCompare: StunBreakerComparePage,
+  timeline: TimeChartsPage,
   debug: DebugPage,
   wengineFields: WEngineFieldPage,
   logic: LogicEditorPage,

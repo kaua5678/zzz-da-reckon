@@ -131,7 +131,37 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 页面注册 | `src/views/CalculatorView.vue` pageMap + `src/components/AppHeader.vue`（`teamCompare` tab） |
 | 测试 | `src/composables/__tests__/teamCompare.test.ts`（金数/难度/批量/现场恢复/buff 推荐/buff 条件） |
 
-## 4. 验证命令
+## 4. 时间图表（「时间图表」Tab）
+
+### 4.1 用户操作
+
+1. 「时间图表」Tab → 选主C（只列 S 级，默认仪玄）→ 期数 + Boss（同队伍对比页口径）→ 限定金预算 → 计算。
+2. 输出：
+   - **队伍强度折线**：横轴 = 版本节点（上半/下半卡池期，从主C实装那期到最新），纵轴 = 伤害/Boss血量%（100 = 击杀线）。
+   - **队伍构成泳道**：主C/队友1/队友2 三轨，换人节点可视化；换人垂直参考线 + 事件 chips。
+   - **明细表**：每节点队伍、伤害、血量%、金数明细、换人事件。
+3. 可选「包含测试服角色（3.2 未实装）」（缺省关，防测试服数值污染曲线；开时 3.2 节点标注「测试服数据」）。
+
+### 4.2 口径（用户拍板 + 实现细节）
+
+- **版本节点** = 卡池期（上半/下半），数据在 `src/data/versionTimeline.ts`（来源：zzz.163.moe/banners + B 站卡池记录；只收 **S 级**，四星不做）。
+- **队伤与节点无关**（同队伍 × 同 Boss × 同金数）→ 全组合 C(n,2) 各算一次，每节点最强 = 可达前缀最大值（**精确增量，非贪心/波束**）。
+- **搜索排名用「预算感知确定性分配」**（主C优先加金，`budgetAwareStateFor`）：排名贴近所选金数，换人时机正确；**最终加金 = 逐金贪婪最优**（`computeOptimalTeamAllocation`：影画/音擎本体/精炼，每金档试算全部候选取最大提升；非限定槽位也可花 1 金佩戴限定音擎）。
+- **收敛过滤**：失衡外层未收敛（`convergence.outerExit === 'maxIter'`）的队伍伤害虚高（实测青衣系阵容 407%+ vs 收敛 meta 队 105-127%），排除出排名（统计在页头显示）。
+- **队伍结构约束**：至多 1 名击破（stun）——真实 meta 无双击破；引擎失衡循环对双击破高估。
+- 交互基准：全槽位 弹刀6/闪反10/快支3/连携1（般岳/星徽·比利按角色默认）；配装 = 邦布精灵推荐（含词条优化器）；当期可选 Buff 不参与（沿用当前全局 Buff 表）。
+
+### 4.3 修改入口
+
+| 要改什么 | 改哪里 |
+| --- | --- |
+| 版本节点 / S 级实装版本 | `src/data/versionTimeline.ts`（新增版本/角色时更新；3.2 测试服 note 标注） |
+| 搜索 / 加金 / 收敛过滤算法 | `src/composables/teamTimeline.ts`（`computeTeamTimeline` / `computeOptimalTeamAllocation` / `budgetAwareStateFor`） |
+| 图表 / 控制面板 / 明细表 | `src/views/TimeChartsPage.vue`（自绘 SVG，无图表库） |
+| 页面注册 | `CalculatorView.vue` pageMap + `AppHeader.vue`（`timeline` tab） |
+| 测试 | `src/composables/__tests__/teamTimeline.test.ts`（数据不变量/基础金/贪婪金/演变冒烟） |
+
+## 5. 验证命令
 
 ```bash
 npm run typecheck      # 类型

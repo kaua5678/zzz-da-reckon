@@ -24,6 +24,7 @@
           <n-tab-pane name="stunAxis" tab="失衡轴" />
           <n-tab-pane name="teamCompare" tab="队伍对比" />
           <n-tab-pane name="breakerCompare" tab="击破手对比" />
+          <n-tab-pane name="timeline" tab="时间图表" />
         </n-tabs>
       </div>
       <div class="tab-divider"></div>
@@ -53,7 +54,7 @@ import { useConfigStore } from '@/stores/config'
 
 const configStore = useConfigStore()
 
-const calculatorTabs = ['team', 'attribute', 'resource', 'result', 'resourceUtilization', 'stunAxis', 'teamCompare', 'breakerCompare']
+const calculatorTabs = ['team', 'attribute', 'resource', 'result', 'resourceUtilization', 'stunAxis', 'teamCompare', 'breakerCompare', 'timeline']
 const developerTabs = ['debug', 'wengineFields', 'logic', 'mechanic']
 const calculatorTabValue = computed(() => calculatorTabs.includes(configStore.activeTab) ? configStore.activeTab : '')
 const developerTabValue = computed(() => developerTabs.includes(configStore.activeTab) ? configStore.activeTab : '')

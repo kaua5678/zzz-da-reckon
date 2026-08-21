@@ -893,7 +893,7 @@
         "zhCN": "露西",
         "en": "Lucy"
       },
-      "rarity": "S",
+      "rarity": "A",
       "attribute": "fire",
       "specialty": "support",
       "attackTypes": [],
@@ -939,7 +939,7 @@
         "zhCN": "妮可",
         "en": "Nicole"
       },
-      "rarity": "S",
+      "rarity": "A",
       "attribute": "ether",
       "specialty": "support",
       "attackTypes": [],
@@ -985,7 +985,7 @@
         "zhCN": "苍角",
         "en": "Soukaku"
       },
-      "rarity": "S",
+      "rarity": "A",
       "attribute": "ice",
       "specialty": "support",
       "attackTypes": [],
@@ -1537,7 +1537,7 @@
         "zhCN": "潘引壶",
         "en": "Pan Yinhu"
       },
-      "rarity": "S",
+      "rarity": "A",
       "attribute": "physical",
       "specialty": "defense",
       "attackTypes": [],
