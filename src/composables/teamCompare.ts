@@ -240,7 +240,8 @@ export function resolveGoldLevel(goldSteps: GoldStep[], targetTotalGold: number,
  * 应用前 N 个加金步骤（同角色取步骤最大值；音擎获取步先装备本体，精炼步再叠加）。
  * 金数口径（用户定义）：**总限定金** = 角色本体1 + 限定音擎本体1 + 影画/精炼每级1；
  * targetTotalGold 为**目标总限定金**，越界按 resolveGoldLevel 钳制到最近档位。
- * standardSteps 为常驻配置：不占限定金，默认全量应用（决定常驻角色最终命座/精炼/音擎）。
+ * standardSteps 为常驻配置：不占限定金，默认全量应用（决定常驻角色最终命座/精炼/音擎）；
+ * 但常驻精炼不残留到被获取步换装的槽位（换上限定专武即回精炼1）。
  * baseWEngines = 各槽位基础音擎（缺省 ''，通常传 preset.wEngines）；音擎获取步从它出发换装。
  */
 export function applyGoldSteps(
@@ -263,9 +264,15 @@ export function applyGoldSteps(
   for (const s of [...steps, ...standardSteps]) {
     if (s.kind === 'wengine' && s.wEngineId) wEngines[s.slot] = s.wEngineId
   }
-  for (const s of [...steps, ...standardSteps]) {
+  for (const s of steps) {
     if (s.kind === 'cinema') cinemas[s.slot] = Math.max(cinemas[s.slot], s.value)
     else if (!s.wEngineId) wengineMods[s.slot] = Math.max(wengineMods[s.slot], s.value)
+  }
+  // 常驻精炼只对未被获取步换装的槽位生效：旧音擎的精炼不残留到新专武（新专武从精炼1起）
+  const acquiredSlots = new Set(steps.filter(s => s.kind === 'wengine' && s.wEngineId).map(s => s.slot))
+  for (const s of standardSteps) {
+    if (s.kind === 'cinema') cinemas[s.slot] = Math.max(cinemas[s.slot], s.value)
+    else if (!s.wEngineId && !acquiredSlots.has(s.slot)) wengineMods[s.slot] = Math.max(wengineMods[s.slot], s.value)
   }
   const clamped = stepsApplied !== targetTotalGold - baseGold
   const label = stepsApplied === 0
@@ -299,7 +306,8 @@ export interface OptimalGoldAllocation {
  * 每金档试算所有「下一个可用级别」（每槽位影画/精炼各一 + 音擎本体获取各一，只列作者写过的级别），
  * 提交伤害提升最大的那个——忽略作者手排顺序，自动优先选优质金。
  * 音擎获取：槽位当前带非限定音擎（常驻/A/空）时，可花 1 金装备作者声明的限定音擎本体（通常 = 专武）；
- * 精炼候选只对已带限定音擎的槽位开放。这样低金档（如 4 限金 = 3 角色 + 1 专武）也能被正确表达。
+ * 精炼候选只对已带限定音擎的槽位开放，且换装后该槽位精炼从 1 重算（旧音擎的常驻精炼不虚标到新专武）。
+ * 这样低金档（如 4 限金 = 3 角色 + 1 专武）也能被正确表达。
  * 口径：候选只来自 preset.goldSteps（尊重作者设定的音擎/命座/精炼范围）；standardSteps 全量应用（不占金）；
  * 每步同场景对比（boss/buff 已由调用方应用，只变这一级）。
  * 计算量：每金档 × 候选数（≤ 9）次全量伤害，封顶 12 金内最多 ~100 次/队。
@@ -415,6 +423,7 @@ export function computeOptimalGoldAllocations(
     // 提交最佳候选
     if (best.kind === 'acquire') {
       wEngines[best.slot] = best.id!
+      wengineMods[best.slot] = 1 // 换装即回精炼1：旧基础音擎的常驻精炼不残留到新专武
       configStore.setWEngine(best.slot, best.id!)
       configStore.setWEngineModLevel(best.slot, 1)
     } else if (best.kind === 'cinema') {
@@ -643,6 +652,14 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
           if (baseAlloc.wEngines[slot]) configStore.setWEngine(slot, baseAlloc.wEngines[slot])
         }
       }
+      const baseGold = baseGoldOf(preset)
+      // boss 一次应用（与金数档无关）；必须在选 buff 前应用，推荐排序才基于所选期数的敌人配置
+      configStore.applyBossPreset(
+        { id: options.boss.id },
+        options.phase,
+        options.boss.monster,
+        options.boss.defaults,
+      )
       // 选 buff：手动指定 > 每队自动取三张牌伤害最高（用第一个金数档推荐）
       let chosen: PhaseBuffCard | null = null
       if (options.manualBuffTitle) {
@@ -651,14 +668,6 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
         chosen = pickBestBuff(calc, configStore, preset, options)
       }
       applyBuffToStore(configStore, chosen, preset)
-      const baseGold = baseGoldOf(preset)
-      // boss 一次应用（与金数档无关，从循环里提出来）
-      configStore.applyBossPreset(
-        { id: options.boss.id },
-        options.phase,
-        options.boss.monster,
-        options.boss.defaults,
-      )
       // 最优加金：预计算 ≤12 金各档的最优分配（含伤害，避免点循环里重算）
       const optimalMap = new Map<number, OptimalGoldAllocation>()
       if (options.optimalGold) {

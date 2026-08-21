@@ -21,7 +21,7 @@ import {
 } from '@/composables/teamCompare'
 import { teamPresets } from '@/data/teamPresets'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
-import type { TeamPreset } from '@/types/teamPreset'
+import type { GoldStep, TeamPreset } from '@/types/teamPreset'
 
 const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
 const teammateBuffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
@@ -137,12 +137,20 @@ describe('teamCompare 金数/难度口径', () => {
     expect(r.standardLabel).toContain('莱卡恩 专武精炼2')
   })
 
-  it('常驻 S 角色/音擎不计限定金（莱卡恩本体+拘缚者 = 0 金）', () => {
+  it('常驻 S 角色/音擎不计限定金（莱卡恩本体+拘缚者 = 0 金）', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load() // 稀有度断言须走真实 catalog（历史导入曾把 A 级错标 S）
     expect(isLimitedAgent('1141')).toBe(false) // 莱卡恩 = 常驻 S
     expect(isLimitedAgent('1051')).toBe(true) // 伊德海莉 = 限定
+    // A 级角色不计限定金（妮可/苍角/露西/潘引壶曾被导入脚本错标 S，已修复——防回归）
+    expect(isLimitedAgent('1031')).toBe(false) // 妮可
+    expect(isLimitedAgent('1131')).toBe(false) // 苍角
+    expect(isLimitedAgent('1151')).toBe(false) // 露西
+    expect(isLimitedAgent('1421')).toBe(false) // 潘引壶
     expect(isLimitedWEngine('14114')).toBe(false) // 拘缚者（莱卡恩专武）
     expect(isLimitedWEngine('14110')).toBe(false) // 燃狱齿轮（珂蕾妲专武，常驻）
     expect(isLimitedWEngine('14121')).toBe(false) // 啜泣摇篮（丽娜专武，常驻）
+    expect(isLimitedWEngine('13019')).toBe(false) // 青漪灵鼎 = A 级音擎
     expect(isLimitedWEngine('14116')).toBe(true) // 焰心桂冠（莱特专武，限定）
     expect(isLimitedWEngine('14105')).toBe(true) // 海妖摇篮（伊德海莉专武）
     const preset: TeamPreset = { ...TEST_PRESET, team: ['1051', '1141', '1451'], wEngines: ['14105', '14114', '14145'] }
@@ -211,6 +219,25 @@ describe('teamCompare 金数/难度口径', () => {
     expect(r.goldSteps.map(s => `${s.kind}:${s.slot}:${s.value}`)).toEqual(['cinema:0:1', 'cinema:0:2', 'cinema:0:3'])
     // 槽位1 空 → 跳过；槽位2 常驻 → standardSteps
     expect(r.standardSteps.map(s => `${s.kind}:${s.slot}:${s.value}`)).toEqual(['cinema:2:1', 'cinema:2:2'])
+  })
+
+  it('applyGoldSteps：常驻音擎精炼不残留到获取步换上的限定专武（换装即回精炼1）', () => {
+    const stdRefine: GoldStep[] = [{ label: '莱卡恩 拘缚者精炼2', slot: 1, kind: 'wengine', value: 2 }]
+    // 莱卡恩槽位：standardSteps 给拘缚者精炼2，goldSteps 同槽位买焰心桂冠（本体）→ 精炼应回到 1
+    const r = applyGoldSteps(
+      [{ label: '莱卡恩 换焰心桂冠（本体）', slot: 1, kind: 'wengine', value: 1, wEngineId: '14116' }],
+      5, // 目标金 = 基础4 + 1 步（买专武）
+      4,
+      stdRefine,
+      ['14105', '14114', '14145'],
+    )
+    expect(r.totalGold).toBe(5)
+    expect(r.wEngines[1]).toBe('14116')
+    expect(r.wengineMods).toEqual([1, 1, 1]) // 回归：曾是 [1,2,1]（旧拘缚者精炼残留到新专武）
+    // 对照：同槽位无获取步时，常驻精炼照常生效（既有口径不变）
+    const r2 = applyGoldSteps([], 4, 4, stdRefine, ['14105', '14114', '14145'])
+    expect(r2.wEngines[1]).toBe('14114')
+    expect(r2.wengineMods).toEqual([1, 2, 1])
   })
 
   it('buildGoldStepsFromConfig：传 baseWEngineIds 后，基础音擎本就是限定专武时不重复写「本体」步（修复：保存预设时不会把 yidhari 队基础专武 14105 误判成升级步抬高基础金）', async () => {
@@ -387,6 +414,61 @@ describe('teamCompare 最优加金（≤12金贪婪）', () => {
     expect(allocs[4].label).toContain('卢西娅 1命')
     expect(allocs[5].label).toContain('卢西娅 2命')
     expect(allocs[6].label).toContain('伊德海莉 专武精炼2')
+    // 伤害单调不减 + 每档总金 = 基础 + 步数
+    for (let i = 1; i < allocs.length; i++) {
+      expect(allocs[i].damage).toBeGreaterThanOrEqual(allocs[i - 1].damage)
+      expect(allocs[i].totalGold).toBe(base + i)
+    }
+  })
+
+  it('贪婪：acquire 提交后该槽位精炼从 1 重算（常驻旧音擎的精炼不虚标到新专武）', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    const config = useConfigStore()
+    // 伊德海莉+莱卡恩+卢西娅，莱卡恩槽位基础音擎 = 拘缚者（常驻）
+    config.team[0].agentId = '1051'; config.team[0].wEngineId = '14105'
+    config.team[1].agentId = '1141'; config.team[1].wEngineId = '14114'
+    config.team[2].agentId = '1451'; config.team[2].wEngineId = '14145'
+    const preset: TeamPreset = {
+      id: 'acquire-reset-test', name: '换装重置精炼测试',
+      team: ['1051', '1141', '1451'],
+      wEngines: ['14105', '14114', '14145'],
+      goldSteps: [
+        { label: '莱卡恩 换焰心桂冠（本体）', slot: 1, kind: 'wengine', value: 1, wEngineId: '14116' },
+        { label: '伊德海莉 1命', slot: 0, kind: 'cinema', value: 1 },
+        { label: '卢西娅 1命', slot: 2, kind: 'cinema', value: 1 },
+        { label: '焰心桂冠精炼2', slot: 1, kind: 'wengine', value: 2 },
+        { label: '焰心桂冠精炼3', slot: 1, kind: 'wengine', value: 3 },
+      ],
+      standardSteps: [
+        { label: '莱卡恩 拘缚者精炼2', slot: 1, kind: 'wengine', value: 2 },
+      ],
+      interactions: [],
+    }
+    // 假伤害：换焰心桂冠 +120，精炼每级 +8，伊/卢影画 +50/+49（买专武 > 影画 > 精炼）
+    const calc = {
+      teamTotalDamage: computed(() => {
+        const c = config.team
+        const m1 = c[1].wEngineModLevel
+        return 100
+          + (c[1].wEngineId === '14116' ? 120 : 0)
+          + 8 * (m1 - 1)
+          + 50 * c[0].cinemaLevel
+          + 49 * c[2].cinemaLevel
+      }),
+    } as unknown as ReturnType<typeof useResourceCalc>
+
+    const base = baseGoldOf(preset) // 4 = 伊/卢 本体+专武，莱卡恩与拘缚者不计
+    expect(base).toBe(4)
+    const allocs = computeOptimalGoldAllocations(calc, config, preset, base)
+    // 5金=换专武、6金=伊1命、7金=卢1命、8金=精炼2、9金=精炼3（候选耗尽即止）
+    expect(allocs.map(a => a.totalGold)).toEqual([4, 5, 6, 7, 8, 9])
+    // 回归：换装档精炼必须回到 1（曾是 [1,2,1]——拘缚者精炼2 虚标到焰心桂冠上）
+    expect(allocs[1].label).toContain('焰心桂冠')
+    expect(allocs[1].wengineMods).toEqual([1, 1, 1])
+    // 后续精炼逐级推进（8金=R2、9金=R3），而不是从残留的 2 直接跳 R3 少算 1 金
+    expect(allocs[4].wengineMods).toEqual([1, 2, 1])
+    expect(allocs[5].wengineMods).toEqual([1, 3, 1])
     // 伤害单调不减 + 每档总金 = 基础 + 步数
     for (let i = 1; i < allocs.length; i++) {
       expect(allocs[i].damage).toBeGreaterThanOrEqual(allocs[i - 1].damage)
@@ -599,6 +681,34 @@ describe('teamCompare 批量计算', () => {
 
     // 现场恢复：全局 buff 表回到计算前
     expect(JSON.stringify(config.globalBuffs)).toBe(globalBefore)
+  })
+
+  it('buff 自动推荐在 Boss 应用之后评估（排序基于所选期数敌人配置）', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    const config = useConfigStore()
+    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
+    config.team[1] = { ...config.team[0], slot: 1 }
+    config.team[2] = { ...config.team[0], slot: 2 }
+    // 假伤害：Boss 已应用 → 「后期牌」最优；未应用 → 「前期牌」最优。
+    // 若推荐发生在 applyBossPreset 之前（回归），会选择「前期牌」。
+    const hasCard = (title: string) => config.globalBuffs.some(b => b.name === title)
+    const calc = {
+      resourceResult: computed(() => null),
+      teamTotalDamage: computed(() => {
+        if (config.appliedBoss) return hasCard('后期牌') ? 50 : 10
+        return hasCard('前期牌') ? 40 : 10
+      }),
+    } as unknown as ReturnType<typeof useResourceCalc>
+    const buffs: PhaseBuffCard[] = [
+      { title: '前期牌', testOnly: false, effects: [{ stat: 'atkPct', value: 10 }], unparsed: [] },
+      { title: '后期牌', testOnly: false, effects: [{ stat: 'critDmg', value: 30 }], unparsed: [] },
+    ]
+    const points = computeTeamComparePoints(calc, {
+      presets: [TEST_PRESET], goldLevels: [3], boss: FAKE_BOSS, phase: FAKE_PHASE, buffs,
+    })
+    expect(points.length).toBe(1)
+    expect(points[0].buffTitle).toBe('后期牌')
   })
 
   it('buff 条件：特性限定/异常人数分档（resolveBuffEffect）', async () => {

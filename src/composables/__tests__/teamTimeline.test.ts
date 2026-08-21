@@ -46,7 +46,8 @@ describe('版本时间线数据不变量', () => {
   it('S 级实装节点：收录的角色都存在且不在「目录错标 S 的四星」清单里', async () => {
     const h = await boot()
     const catalog = useCatalogStore()
-    // 已知 catalog 导入 bug：妮可/苍角/露西/潘引壶 实为四星但目录标 S —— 时间线必须排除
+    // 历史 catalog 导入错标：妮可/苍角/露西/潘引壶 曾被标 S（已由 scripts/fix-agent-rarity.mjs 修为 A）。
+    // 保留排除清单作为防御：即使 rarity 回归错标，时间线也不收录四星（限定金口径依赖 isLimitedAgent 的 rarity 判断）。
     const knownMislabeledA = new Set(['1031', '1131', '1151', '1421'])
     const ids = Object.keys(AGENT_RELEASE_NODE)
     for (const id of ids) {
