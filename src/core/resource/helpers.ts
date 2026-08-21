@@ -214,6 +214,9 @@ export function calcEnergySource(
   // 莱卡恩影画2·能量回馈：使敌人失衡或触发队友[连携技]时回 5 能量；次数 = 失衡次数 + 队伍连携总次数（外层注入总额）
   const lycaonC2Energy = n(cfg.lycaonC2Energy)
 
+  // 比利影画1·闪亮登场：冲刺/闪反原始命中次数合并后按5秒ICD封顶，由模块预计算总额。
+  const billyC1Energy = n(cfg.billyC1Energy)
+
   // 伊德海莉：非失衡（溯寒后）极寒重碾每次回闪能；失衡内 = 轴连段反推（有轴）或 每次失衡次数 × 失衡次数，剩余为非失衡
   const yidhariRefundPer = cfg.yidhariRefundPerOutStunEx !== undefined ? n(cfg.yidhariRefundPerOutStunEx) : 0
   const yidhariInStun = cfg.agentId === '1051' && cfg.yidhariInStunExCount !== undefined
@@ -229,6 +232,7 @@ export function calcEnergySource(
 
   // 仪玄：额外闪能总账（模块在 buildCharConfig 汇总：完美格挡+10/次、极限闪避+5/次、影画1落雷+5/次）
   const yixuanFlashBonus = n(cfg.yixuanFlashBonus)
+  const antonC1EnergyGift = cfg.agentId === '1111' ? n((cfg as any).antonC1EnergyGift) : 0
 
   const initialGift = cfg.initialEnergyGift
   const shieldBreakGift = shieldCount * 60
@@ -239,9 +243,11 @@ export function calcEnergySource(
     + hatTrickEnergy
     + qingyiC4Energy
     + lycaonC2Energy
+    + billyC1Energy
     + yidhariRefund
     + banyueSwayRefund
     + yixuanFlashBonus
+    + antonC1EnergyGift
     + initialGift + shieldBreakGift + energyShieldBreakGift
 
   return {
@@ -259,9 +265,11 @@ export function calcEnergySource(
     hatTrickEnergy,
     qingyiC4Energy,
     lycaonC2Energy,
+    billyC1Energy,
     yidhariRefund,
     banyueSwayRefund,
     yixuanFlashBonus,
+    antonC1EnergyGift,
     supportUltimateRegen,
     // 队友联动明细在此阶段拿不到其他槽位的收敛次数，由调用方用 calcCrossAgentEnergy 回填
     crossAgent: emptyCrossAgentEnergy(),

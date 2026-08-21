@@ -700,14 +700,14 @@
           "status": "not_described_not_implemented",
           "implemented": [],
           "pending": [
-            "格挡降敌伤害30%生存向跳过"
+            "影画1不参与当前计算"
           ]
         },
         {
           "cinema": 2,
           "status": "implemented_approximation",
           "implemented": [
-            "格挡反击附加300%防御力，次数≈max(招架,强特)"
+            "成功格挡反击附加300%防御力，仅按强特招架成功次数触发"
           ],
           "pending": []
         },
@@ -723,7 +723,7 @@
           "cinema": 4,
           "status": "implemented_approximation",
           "implemented": [
-            "反击段伤害+30%"
+            "仅招式1121011伤害+30%"
           ],
           "pending": []
         },

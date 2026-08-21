@@ -42,6 +42,7 @@ import { starlightBillyMechanic } from './agents/starlightBilly'
 import { yixuanMechanic } from './agents/yixuan'
 import { lycaonMechanic } from './agents/lycaon'
 import { soldier11Mechanic } from './agents/soldier11'
+import { antonMechanic } from './agents/anton'
 import { yeshuguangMechanic } from './agents/yeshuguang'
 import { lucyMechanic } from './agents/lucy'
 import { rinaMechanic } from './agents/rina'
@@ -100,6 +101,7 @@ registerAgentMechanic(miyabiMechanic)
 registerAgentMechanic(liuyinMechanic)
 registerAgentMechanic(normaMechanic)
 registerAgentMechanic(zhendouHeartfireMechanic)
+registerAgentMechanic(antonMechanic)
 registerAgentMechanic(yeshuguangMechanic)
 registerAgentMechanic(lucyMechanic)
 registerAgentMechanic(rinaMechanic)
