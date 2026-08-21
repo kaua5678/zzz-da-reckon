@@ -147,6 +147,31 @@
           >{{ label.text }}</text>
         </g>
 
+        <!-- 泳道：当期 Boss 排期（选中 Boss 命中的节点高亮） -->
+        <g>
+          <text :x="padL - 8" :y="bossLaneY + laneH / 2 + 3" class="lane-label" text-anchor="end">当期Boss</text>
+          <template v-for="(n, i) in result?.nodes ?? []" :key="'b' + n.nodeId">
+            <rect
+              :x="i === 0 ? padL : padL + i * cellW"
+              :y="bossLaneY"
+              :width="cellW + 0.5"
+              :height="laneH"
+              :fill="selectedBossAppearances.has(n.nodeId) ? 'rgba(246,173,85,0.22)' : 'rgba(255,255,255,0.04)'"
+              :stroke="selectedBossAppearances.has(n.nodeId) ? '#f6ad55' : 'none'"
+              stroke-width="1"
+              class="lane-cell"
+            >
+              <title>{{ bossCellTitle(n.nodeId) }}</title>
+            </rect>
+            <text
+              :x="padL + i * cellW + 4"
+              :y="bossLaneY + laneH / 2 + 3"
+              class="lane-text"
+              :class="{ 'boss-hit': selectedBossAppearances.has(n.nodeId) }"
+            >{{ bossCellText(n.nodeId) || '—' }}</text>
+          </template>
+        </g>
+
         <!-- X 轴节点标签 -->
         <g v-for="(t, i) in xTicks" :key="'x' + i">
           <text
@@ -177,6 +202,7 @@
         <div class="hc-row">队伍：{{ hoverInfo.teamNames.join(' + ') }}</div>
         <div class="hc-row">伤害 {{ compact(hoverInfo.damage) }}（{{ fmt(hoverInfo.hpRatio, 1) }}%）</div>
         <div class="hc-row">{{ hoverInfo.goldLabel }}</div>
+        <div v-if="hoverInfo.schedule" class="hc-row">{{ hoverInfo.schedule }}</div>
         <div v-if="hoverInfo.swap" class="hc-row hc-swap">{{ hoverInfo.swap }}</div>
         <div v-if="hoverInfo.bench" class="hc-row hc-bench">{{ hoverInfo.bench }}</div>
       </div>
@@ -194,6 +220,11 @@
           <span v-if="ev.swapKind" class="swap-kind" :class="ev.swapKind">{{ swapKindLabel(ev.swapKind, ev.swapUpliftPct) }}</span>
         </span>
       </div>
+
+      <!-- 选中 Boss 的出场节点摘要 -->
+      <div v-if="selectedBossName && selectedBossAppearances.size > 0" class="boss-appearance">
+        {{ selectedBossName }} 出场节点（{{ selectedBossAppearances.size }}）：{{ appearanceLabels.join(' · ') || '不在当前主C时间范围内' }}
+      </div>
     </n-card>
 
     <!-- ============ 明细表 ============ -->
@@ -207,6 +238,7 @@
               <th>伤害</th>
               <th>伤害/血量%</th>
               <th>金数明细</th>
+              <th>当期Boss</th>
               <th>变化</th>
             </tr>
           </thead>
@@ -232,6 +264,13 @@
               <td>{{ compact(r.damage) }}</td>
               <td :class="{ 'kill-line': r.hpRatio >= 100 }">{{ fmt(r.hpRatio, 1) }}%</td>
               <td class="gold-cell">{{ r.goldLabel }}</td>
+              <td>
+                <span
+                  v-if="bossCellText(r.nodeId)"
+                  :class="{ 'boss-hit': selectedBossAppearances.has(r.nodeId) }"
+                >{{ bossCellText(r.nodeId) }}</span>
+                <span v-else class="no-change">—</span>
+              </td>
               <td>
                 <span v-if="r.swappedIn" class="swap-badge">
                   换入 {{ agentName(r.swappedIn) }} ⬅ 换出 {{ agentName(r.swappedOut ?? '') }}
@@ -263,6 +302,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamTimelineResult } from '@/composables/teamTimeline'
+import { buildBossSchedule, scheduleByNode, type BossScheduleEntry } from '@/composables/bossSchedule'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
@@ -351,6 +391,37 @@ const selectedPhase = computed(() => {
   return phases.find(p => p.modeType === 'critical_assault') ?? phases[0] ?? b.phases[0] ?? null
 })
 
+// ========== Boss 排期 × 版本节点（危局/试炼期数按开打时间归入节点；选中 Boss 高亮历次出场） ==========
+const bossSchedule = computed(() => scheduleByNode(buildBossSchedule(VERSION_NODES, bossPresets.value)))
+function scheduleOf(nodeId: string): BossScheduleEntry[] {
+  return bossSchedule.value.get(nodeId) ?? []
+}
+/** 节点车道文案：优先危局 Boss；仅试炼时显示首个试炼 Boss（标注试炼） */
+function bossCellText(nodeId: string): string {
+  const sched = scheduleOf(nodeId)
+  const ca = sched.find(e => e.modeType === 'critical_assault')
+  if (ca) return ca.bossName
+  const def = sched[0]
+  return def ? `${def.bossName}（试炼）` : ''
+}
+function bossCellTitle(nodeId: string): string {
+  const sched = scheduleOf(nodeId)
+  if (sched.length === 0) return '当期无排期数据'
+  return sched.map(e => `${e.modeType === 'critical_assault' ? '危局' : '试炼'}：${e.bossName}（${e.phaseLabel}）`).join('\n')
+}
+const selectedBossAppearances = computed(() => {
+  const out = new Set<string>()
+  if (!selectedBossId.value) return out
+  for (const [nodeId, entries] of bossSchedule.value) {
+    if (entries.some(e => e.bossId === selectedBossId.value)) out.add(nodeId)
+  }
+  return out
+})
+const selectedBossName = computed(() => bossPresets.value.find(b => b.id === selectedBossId.value)?.name ?? '')
+const appearanceLabels = computed(() =>
+  (result.value?.nodes ?? []).filter(n => selectedBossAppearances.value.has(n.nodeId)).map(n => n.nodeLabel),
+)
+
 // ========== 金数 ==========
 const budget = ref(6)
 const includeTestServer = ref(false)
@@ -403,8 +474,10 @@ const plotH = 300
 const laneH = 22
 const laneGap = 6
 const laneTotalH = laneH * 3 + laneGap * 2
+// 第 4 条车道：当期 Boss 排期（危局/试炼）
+const bossLaneY = padT + plotH + 12 + laneTotalH + laneGap
 const xLabelH = 26
-const svgH = computed(() => padT + plotH + 12 + laneTotalH + xLabelH)
+const svgH = computed(() => padT + plotH + 12 + laneTotalH + laneGap + laneH + xLabelH)
 
 const nodeCount = computed(() => result.value?.nodes.length ?? 0)
 const plotW = computed(() => svgW.value - padL - padR)
@@ -523,6 +596,12 @@ const hoverInfo = computed(() => {
         (n.swapKind ? `（${swapKindLabel(n.swapKind, n.swapUpliftPct)}）` : '')
       : '',
     bench: n.newAgentBench ? benchText(n.newAgentBench) : '',
+    schedule: (() => {
+      const sched = scheduleOf(n.nodeId)
+      const ca = sched.find(e => e.modeType === 'critical_assault')
+      const dfd = [...new Set(sched.filter(e => e.modeType !== 'critical_assault').map(e => e.bossName))]
+      return [ca ? `危局：${ca.bossName}` : '', dfd.length > 0 ? `试炼：${dfd.join('/')}` : ''].filter(Boolean).join(' · ')
+    })(),
   }
 })
 const hoverCardX = ref(0)
@@ -773,6 +852,15 @@ function onSvgMove(e: MouseEvent) {
 .bench-note {
   color: rgba(255, 255, 255, 0.45);
   font-size: 11px;
+}
+.boss-hit {
+  color: #f6ad55;
+  font-weight: 700;
+}
+.boss-appearance {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #f6ad55;
 }
 .hc-bench {
   color: rgba(255, 255, 255, 0.55);
