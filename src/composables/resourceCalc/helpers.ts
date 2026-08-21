@@ -502,35 +502,6 @@ export function computePanelPhases(
       panel.enemyPhysicalResReduction = (panel.enemyPhysicalResReduction ?? 0) + 18 * c1Coverage
     }
   }
-  if (agent.id === '1591') {
-    // 希格莉德（nanoka 3.2.3 原文，术语已解析：出枪式/巡空枪势）：
-    // - 核心被动·天空骑士 Lv7：激活/刷新巡空枪势暴击率 +66%（8s 刷新上限 40s，近似常驻 × 覆盖率）
-    // - 核心被动：巡空枪势下命中失衡敌人失衡易伤倍率 +20%（引擎只在失衡行计入，× 覆盖率）
-    // - 额外能力·天际联军（队伍存在[支援]/[击破]，声明式 spec.additionalAbility）：
-    //   攻击力 +840（Lv60 上限：120+12×等级）；命中[浸染]敌人伤害 +15% × 覆盖率
-    // - 影画1：自身攻击力 +25%（先乘百分比，再叠加额外能力固定值）
-    // - 影画2：喧响值获取效率 +10%（穿透率 +24% 为 moveId 限定，见 sigrid.ts patchExecutions；巡空枪势时长 +2s 不建模）
-    // - 影画4：每次获得巡空枪势伤害 +18%（8s 上限 40s）× 覆盖率
-    const cinema = char.cinemaLevel ?? 0
-    const coreCoverage = Math.max(0, Math.min(1, configStore.getMechanicSetting('sigrid.corePassiveCoverage', 1)))
-    if (cinema >= 1) {
-      panel.atk = Math.round((panel.atk ?? 0) * 1.25)
-    }
-    if ((panel.additionalAbilityActive ?? 0) > 0) {
-      panel.atk = (panel.atk ?? 0) + 840
-      const infectionCov = Math.max(0, Math.min(1, configStore.getMechanicSetting('sigrid.infectionCoverage', 1)))
-      panel.dmgBonus = (panel.dmgBonus ?? 0) + 15 * infectionCov
-    }
-    panel.critRate = (panel.critRate ?? 0) + 66 * coreCoverage
-    panel.stunDmgMultiplierBonus = (panel.stunDmgMultiplierBonus ?? 0) + 20 * coreCoverage
-    if (cinema >= 2) {
-      panel.decibelGainEfficiency = (panel.decibelGainEfficiency ?? 0) + 10
-    }
-    if (cinema >= 4) {
-      const c4Cov = Math.max(0, Math.min(1, configStore.getMechanicSetting('sigrid.cinema4Coverage', 1)))
-      panel.dmgBonus = (panel.dmgBonus ?? 0) + 18 * c4Cov
-    }
-  }
   if (agent.id === '1241') {
     // 朱鸢核心被动：消耗强化霰弹攻击命中失衡敌人时增伤额外+40%（增伤区，仅失衡时生效）。
     // 用户口径：轴模式参照仪玄凝云术（轴内行直加，待朱鸢轴接入）；非轴按覆盖率滑块粗略近似，

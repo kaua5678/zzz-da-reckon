@@ -3586,20 +3586,22 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "敛枪式机会溢出时下一次敛枪式最后一击（第三段1591022）额外+100%攻击力冰伤 × 溢出覆盖率滑块，进敛枪式第三段行 flatDamageBonus（buildExecutions）；自身攻击力+25%（applyPanel，先乘百分比再叠额外能力固定值）。"
+          ],
           "pending": [
-            "影画1 很久很久以前：发动[普通攻击：敛枪式]第三段时，获得[巡空枪势]和一次发动[普通攻击：敛枪式]的机会；[普通攻击：敛枪式]发动机会溢出时，下一次[普通攻击：敛枪式]的最后一击额外造成100%攻击力的冰属性伤害；希格莉德自身攻击力提升25%。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "「发动敛枪式第三段获得巡空枪势+1次机会」的段数状态机不建模（机会获取按前台命中1次/秒近似）。"
           ]
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "出枪式（凛冽枪尖#4/乱琼/碎玉/回马枪/冰凌卷地/霜天/冰饕）+敛枪式三段穿透率+24%：moveId 限定 → exec.penRatioBonus（patchExecutions）；喧响值获取效率+10%（applyPanel）。"
+          ],
           "pending": [
-            "影画2 传说的第一幕：[出枪式]和[普通攻击：敛枪式]造成伤害的穿透率提升24%；[巡空枪势]效果的持续时间延长2秒；希格莉德的喧响值获取效率提升10%。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "巡空枪势持续时间+2秒不建模（无乘区）。"
           ]
         },
         {
@@ -3612,11 +3614,12 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "每次获得巡空枪势伤害+18%（8s上限40s）× 覆盖率滑块 sigrid.cinema4Coverage 折算面板 dmgBonus（applyPanel）。"
+          ],
           "pending": [
-            "影画4 英雄养成中：每次获得[巡空枪势]时，自身造成的伤害提升18%，持续8秒，重复触发时可使持续时间延长8秒，最多不超过40秒。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "逐次触发的时间轴按覆盖率近似。"
           ]
         },
         {
@@ -3629,11 +3632,14 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "敛枪式一/二/三段最后一击额外80%/90%/100%攻击力冰伤：catalog 真实分段 id（1591007/1591008/1591022）精确建模，各段行 flatDamageBonus（buildExecutions）。",
+            "破阵连放：每次失衡送一套敛枪式三段（免费不耗机会，用户口径2026-02），触发次数=失衡次数，并入三段行计数。"
+          ],
           "pending": [
-            "影画6 天空的骑士：[普通攻击：敛枪式]第一/二/三段的最后一击命中敌人时，额外造成80%/90%/100%攻击力的冰属性伤害；招式[连携技：冰凌卷地]命中失衡状态下的敌人时，自身进入[破阵]状态不再有次数限制；在[破阵]状态下，希格莉德会更快地发动[普通攻击：敛枪式]。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "破阵「更快发动」为时间轴效果不建模；破阵三段在轴模式下的失衡易伤归属未接入（行按轴外处理，待引擎支持）。",
+            "「不再有次数限制」：基础版即按每次失衡一次建模（用户口径），C6 未再单独放开。"
           ]
         }
       ]

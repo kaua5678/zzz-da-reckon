@@ -1,9 +1,11 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentTeamConfigInput,
 } from '../types'
 import type { MechanicSetting } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
@@ -14,44 +16,66 @@ import { specToMechanicModule } from '@/specs/mechanics'
  * 希格莉德（1591，冰属性·强攻，罗斯凯利法）。
  * 机制文本来源：nanoka 3.2.3+18244196 zh character/1591.json + noun.json 术语解析（出枪式=Term:1000029、巡空枪势=Term:1000030、破阵=Term:1000028）。
  *
- * 本模块只承接「执行级」效果；面板级效果（暴击+66%/失衡易伤+20%/额外能力攻击+840/浸染增伤15%/
- * 影画1攻击25%/影画2喧响10%/影画4增伤18%）在 resourceCalc/helpers.ts computePanelPhases 的
- * agent.id === '1591' 块施加（那里才有 configStore 读覆盖率滑块）。
+ * 面板级效果走 applyPanel 读 input.settings（文档化通道）：
+ * - 核心被动·天空骑士 Lv.7：巡空枪势暴击率 +66% × 覆盖率；失衡易伤倍率 +20% × 覆盖率
+ *   （引擎只在失衡行计入，轴模式窗口内自动生效，非轴按失衡占比折算）
+ * - 额外能力·天际联军（[支援]/[击破]队友，声明式 spec.additionalAbility 门控）：
+ *   攻击力 +840（Lv60 上限）；命中[浸染]敌人伤害 +15% × 覆盖率
+ * - 影画1：自身攻击力 +25%（先乘百分比，再叠加额外能力固定值）
+ * - 影画2：喧响值获取效率 +10%（穿透率 +24% 为 moveId 限定，见 patchExecutions；巡空枪势时长 +2s 不建模）
+ * - 影画4：每次获得巡空枪势伤害 +18%（8s 上限 40s）× 覆盖率
  *
- * 执行级（patchExecutions）：
- * - 影画2：[出枪式]+[普通攻击：敛枪式] 造成伤害的穿透率 +24%（moveId 限定 → exec.penRatioBonus）
- * - 影画1：敛枪式发动机会溢出时，下一次敛枪式最后一击额外 100% 攻击力冰伤 × 覆盖率滑块（近似进敛枪式行 flatDamageBonus）
- * - 影画6：敛枪式一/二/三段最后一击额外 80%/90%/100% 攻击力冰伤（三段近似取中值 90%，进敛枪式行 flatDamageBonus）
+ * 历史（2026-02 迁移）：面板效果原在 computePanelPhases agent.id==='1591' 硬编码块施加
+ * （SOP 废弃绕法①），且滑块按 0-100 百分比声明、消费端 clamp01 按 0-1 消费——UI 拖到中间值
+ * 会被钳成 100%，只有 0/100 两档生效。迁移时统一为 0-1 分数刻度。
+ *
+ * 执行级：
+ * - 敛枪式三段执行行（buildExecutions，catalog 真实分段 id）：机会 spend 按一/二/三段轮转均摊
+ *   （用户口径：1次机会打1段）；破阵每次失衡送一套三段（免费不耗机会，用户口径）
+ * - 影画2：[出枪式]+[敛枪式三段] 穿透率 +24%（moveId 限定 → exec.penRatioBonus）
+ * - 影画1：机会溢出时下一次敛枪式最后一击（第三段）额外 100% 攻击力冰伤 × 溢出覆盖率滑块
+ * - 影画6：敛枪式一/二/三段最后一击额外 80%/90%/100% 攻击力冰伤（真实分段 id，精确建模）
  *
  * 未建模（无乘区/时间轴效果，notes 记录）：
- * - [破阵]（连携命中失衡精英/首领进入，长按连放敛枪式一至三段；影画6 取消次数限制、加快发动）
- * - 影画2 巡空枪势持续时间 +2 秒
+ * - [破阵]的"更快发动"与轴内易伤归属（破阵行在轴模式下按轴外处理，待引擎支持）、
+ *   影画2 巡空枪势持续时间 +2 秒、敛枪式段数状态机（8/7/6 秒递减与段数升降）
  */
 
 const SIGRID_AGENT_ID = '1591'
 
-/** 普通攻击：敛枪式（巡空枪势下长按发动） */
-export const SIGRID_LANCE_MOVE_ID = '1591002'
+/**
+ * 敛枪式三段（catalog 倍率表真实 id，轮转一→二→三）。
+ * ⚠️ 历史事故（2026-02 用户复查发现）：旧录制把 nanoka skill_list 的 id 当倍率表 id 用——
+ * 1591002 实为凛冽枪尖#2（倍率 287.9%）而非敛枪式、1591008 实为敛枪式第二段而非连携技、
+ * 1591009 在倍率表中不存在；敛枪式整招缺失且 C2 穿透率挂错 5 个招式。已按 catalog 全表重排。
+ */
+export const SIGRID_LANCE_SEGMENT_IDS: readonly string[] = ['1591007', '1591008', '1591022']
 
-/** [出枪式] 集合：凛冽枪尖第四段（整行近似）、乱琼、碎玉、回马枪、冰凌卷地、霜天、冰饕。
- *  原文：凛冽枪尖第四段/强化特殊技乱琼/碎玉/支援突击冰饕/连携技冰凌卷地/终结技霜天/闪避反击回马枪 视为[出枪式]。
- *  凛冽枪尖（1591001）只有第四段算出枪式，倍率表未按段拆行，整行计入为近似。 */
+/** [出枪式] 集合（catalog 真实 id）：凛冽枪尖第四段、乱琼、碎玉、回马枪、冰凌卷地、霜天、冰饕。
+ *  凛冽枪尖（1591001-1591005）只有第四段算出枪式。 */
 export const SIGRID_CHUQIANG_MOVE_IDS: Set<string> = new Set([
-  '1591001', // 普通攻击：凛冽枪尖（仅第四段，整行近似）
-  '1591004', // 强化特殊技：乱琼
-  '1591005', // 强化特殊技：碎玉
-  '1591007', // 闪避反击：回马枪
-  '1591008', // 连携技：冰凌卷地
-  '1591009', // 终结技：霜天
-  '1591012', // 支援突击：冰饕
+  '1591005', // 普通攻击：凛冽枪尖 #4
+  '1591011', // 强化特殊技：乱琼
+  '1591012', // 强化特殊技：碎玉
+  '1591014', // 闪避反击：回马枪
+  '1591015', // 连携技：冰凌卷地
+  '1591016', // 终结技：霜天
+  '1591021', // 支援突击：冰饕
 ])
 
-// 影画2 穿透率
+// 面板级常量（nanoka 3.2.3 Lv.7 / 满级影画）
+export const SIGRID_CORE_CRIT_RATE = 66
+export const SIGRID_CORE_STUN_VULN = 20
+export const SIGRID_ADDITIONAL_ATK_FLAT = 840
+export const SIGRID_INFECTION_DMG = 15
+export const SIGRID_C2_DECIBEL_EFFICIENCY = 10
+export const SIGRID_C4_DMG = 18
+export const SIGRID_C1_ATK_PCT = 25
+// 执行级常量
 const CINEMA2_PEN_RATIO = 24
-// 影画1 溢出附加（100% 攻击力）
 const CINEMA1_OVERFLOW_RATIO = 100
-// 影画6 最后一击附加 80/90/100%（一/二/三段）→ 近似取中值
-const CINEMA6_LAST_HIT_RATIO = 90
+/** 影画6 最后一击附加：一/二/三段 = 80/90/100%（catalog 有真实分段 id，精确建模不再取中值） */
+export const SIGRID_C6_LAST_HIT_RATIOS: readonly number[] = [80, 90, 100]
 
 function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
   const record = cfg as unknown as Record<string, unknown>
@@ -63,42 +87,162 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value))
 }
 
-function buildSigridCharConfig({ cfg, cinemaLevel, panel }: AgentCharConfigInput): void {
+function settingOf(settings: Readonly<Record<string, number>>, id: string, fallback: number): number {
+  const value = Number(settings?.[id])
+  return Number.isFinite(value) ? value : fallback
+}
+
+/**
+ * 面板级机制（核心被动 / 额外能力 / 影画1·2·4）——applyPanel 读 input.settings（已解析滑块，0-1 分数）。
+ * 从 computePanelPhases 硬编码块迁入（SOP 废弃绕法① → 文档化通道）。
+ * 顺序保持原口径：影画1 攻击先乘百分比，再叠加额外能力固定 +840。
+ */
+function applySigridPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
+  if (!panel) return
+  const coreCov = clamp01(settingOf(settings, 'sigrid.corePassiveCoverage', 1))
+  if (cinemaLevel >= 1) {
+    panel.atk = Math.round((panel.atk ?? 0) * (1 + SIGRID_C1_ATK_PCT / 100))
+  }
+  if ((panel.additionalAbilityActive ?? 0) > 0) {
+    panel.atk = (panel.atk ?? 0) + SIGRID_ADDITIONAL_ATK_FLAT
+    const infectionCov = clamp01(settingOf(settings, 'sigrid.infectionCoverage', 1))
+    panel.dmgBonus = (panel.dmgBonus ?? 0) + SIGRID_INFECTION_DMG * infectionCov
+  }
+  panel.critRate = (panel.critRate ?? 0) + SIGRID_CORE_CRIT_RATE * coreCov
+  panel.stunDmgMultiplierBonus = (panel.stunDmgMultiplierBonus ?? 0) + SIGRID_CORE_STUN_VULN * coreCov
+  if (cinemaLevel >= 2) {
+    panel.decibelGainEfficiency = (panel.decibelGainEfficiency ?? 0) + SIGRID_C2_DECIBEL_EFFICIENCY
+  }
+  if (cinemaLevel >= 4) {
+    const c4Cov = clamp01(settingOf(settings, 'sigrid.cinema4Coverage', 1))
+    panel.dmgBonus = (panel.dmgBonus ?? 0) + SIGRID_C4_DMG * c4Cov
+  }
+}
+
+function buildSigridCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
   cfg.sigridCinemaLevel = cinemaLevel
   // 敛枪式最后一击的附加伤害按「局内最终攻击力 × 百分比」进基础区（flatDamageBonus），
   // 此 panel 为 computePanel 的局内权威面板（已含额外能力+840 与影画1 攻击25%）。
   cfg.sigridAtk = Math.max(0, panel?.atk ?? 0)
+  // 敛枪式三段元数据从 catalog 预存（buildExecutions 输入无 skills；单一事实源仍是倍率表）
+  const basicMoves = skills?.categories?.find(c => c.id === 'basic')?.moves ?? []
+  const segments = SIGRID_LANCE_SEGMENT_IDS.map(moveId => {
+    const move = basicMoves.find(m => m.id === moveId)
+    const row = (id: string) => move?.rows?.find(r => r.id === id)?.values?.[0] ?? 0
+    return {
+      moveId,
+      actionTime: move?.actionTime ?? 0,
+      decibelRecovery: row('decibel_recovery'),
+      energyRecovery: row('energy_recovery'),
+    }
+  })
+  ;(cfg as unknown as Record<string, unknown>).sigridLanceSegments = segments
 }
 
-function patchSigridExecutions({ cfg, executions }: AgentResourceInput): void {
+/**
+ * applyTeamConfig · converge：记录上一轮收敛的失衡次数。
+ * 破阵口径（用户 2026-02）：每次失衡送一套敛枪式三段（免费，不耗机会）→ 触发次数 = 失衡次数。
+ */
+function applySigridTeamConfig({ slot, characters, phase, stunCount }: AgentTeamConfigInput): void {
+  if (phase !== 'converge') return
+  const cfg = characters[slot]
+  if (!cfg) return
+  ;(cfg as unknown as Record<string, unknown>).sigridStunCount = stunCount
+}
+
+/** N 次轮转（一→二→三循环）各段次数：N=4 → (2,1,1) */
+export function splitLanceRotation(count: number): [number, number, number] {
+  const n = Math.max(0, Math.floor(count))
+  return [Math.floor((n + 2) / 3), Math.floor((n + 1) / 3), Math.floor(n / 3)]
+}
+
+/**
+ * 敛枪式执行行（模块接管，spec event 已删除——旧 carrierMoveId 1591002 是错误 id 且解释器从未接线）：
+ * - 巡空枪势轮转：机会 spend 次数按一/二/三段均摊（用户口径：1次机会打1段轮转）
+ * - 破阵：每次失衡送一套三段（免费不耗机会，用户口径），段数 = 失衡次数
+ * 两部分合并进同一段行（count 相加）；真实 moveId → enrich 从倍率表回填倍率/失衡/积蓄。
+ */
+function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  const segments = (record.sigridLanceSegments as
+    | { moveId: string; actionTime: number; decibelRecovery: number; energyRecovery: number }[]
+    | undefined) ?? []
+  if (segments.length !== 3) return
+
+  // 机会 spend 次数：复用 spec 解释器的资源账本（含可调滑块）
+  let rotationCasts = 0
+  const spec = getAgentSpec(SIGRID_AGENT_ID)
+  if (spec) {
+    for (const [, entry] of computeSpecResources(spec, cfg, state)) {
+      const spendCounts = (entry as { spendCounts?: Record<string, number> })?.spendCounts
+      if (spendCounts?.sigrid_lance_spend != null) {
+        rotationCasts = Math.max(0, Math.floor(spendCounts.sigrid_lance_spend))
+        break
+      }
+    }
+  }
+  const pozhenSets = Math.max(0, Math.floor(Number(record.sigridStunCount ?? 0)))
+
+  const rotation = splitLanceRotation(rotationCasts)
+  const cinema = Math.max(0, Math.floor(Number(record.sigridCinemaLevel ?? 0)))
+  const atk = Math.max(0, Number(record.sigridAtk ?? 0))
+  const overflowCov = clamp01(cfgSetting(cfg, 'sigrid.c1OverflowCoverage', 1))
+
+  for (let i = 0; i < 3; i++) {
+    const count = rotation[i] + pozhenSets
+    if (count <= 0) continue
+    const meta = segments[i]
+    // 影画6：各段最后一击附加 80/90/100% 攻击力（精确分段，进基础区 flatDamageBonus）
+    let flat = cinema >= 6 && atk > 0 ? atk * SIGRID_C6_LAST_HIT_RATIOS[i] / 100 : 0
+    // 影画1：机会溢出时下一次敛枪式的最后一击（= 第三段）额外 +100% × 溢出覆盖率
+    if (i === 2 && cinema >= 1 && overflowCov > 0 && atk > 0) {
+      flat += atk * CINEMA1_OVERFLOW_RATIO * overflowCov / 100
+    }
+    executions.push({
+      moveId: meta.moveId,
+      moveName: `普通攻击：敛枪式 ${['一', '二', '三'][i]}段`,
+      category: 'basic',
+      element: 'ice',
+      count,
+      actionTime: meta.actionTime,
+      comboAlignRatio: 0,
+      // totalTime=0：敛枪式时间已含在操作循环的前台预算内，不进时间预算收敛
+      // （若按真实时长计入，机会获取→执行行时间→前台时间→更多机会 正反馈发散，sweep 实测 3200 亿秒）
+      totalTime: 0,
+      totalComboAlignTime: 0,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      decibelRecovery: meta.decibelRecovery,
+      totalDecibelRecovery: count * meta.decibelRecovery,
+      energyRecovery: meta.energyRecovery,
+      totalEnergyRecovery: count * meta.energyRecovery,
+      ...(flat > 0 ? { flatDamageBonus: flat } : {}),
+    })
+  }
+}
+
+/** 凛冽枪尖一轮循环时长（#1+#2+#3+#4 actionTime 合计，秒）——#4 命中次数按平A时间÷循环近似 */
+const LANCE_BASIC_CYCLE_SECONDS = 2.987
+
+function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).sigridCinemaLevel ?? 0)))
-  const atk = Math.max(0, Number((cfg as any).sigridAtk ?? 0))
+  // 机会来源（原文：任意[出枪式]命中获得1次机会）：统计出枪式招式次数 + 凛冽枪尖#4 近似，
+  // 写 cfg 供下一轮 spec 资源账本读取（cfgField sigridChuqiangHits，轮间收敛）
+  let chuqiangHits = 0
+  for (const exec of executions) {
+    if (exec.moveId && SIGRID_CHUQIANG_MOVE_IDS.has(exec.moveId)) {
+      chuqiangHits += Math.max(0, exec.count ?? 0)
+    }
+  }
+  const basicTime = Math.max(0, (state as any)?.basicAttackTime ?? 0)
+  chuqiangHits += Math.floor(basicTime / LANCE_BASIC_CYCLE_SECONDS)
+  ;(cfg as unknown as Record<string, unknown>).sigridChuqiangHits = chuqiangHits
+
   for (const exec of executions) {
     if (!exec.moveId) continue
-    // 影画2：出枪式 + 敛枪式 穿透率 +24%（moveId 限定，用户口径）
-    if (cinema >= 2 && (SIGRID_CHUQIANG_MOVE_IDS.has(exec.moveId) || exec.moveId === SIGRID_LANCE_MOVE_ID)) {
+    // 影画2：出枪式 + 敛枪式三段 穿透率 +24%（moveId 限定，用户口径）
+    if (cinema >= 2 && (SIGRID_CHUQIANG_MOVE_IDS.has(exec.moveId) || SIGRID_LANCE_SEGMENT_IDS.includes(exec.moveId))) {
       exec.penRatioBonus = (exec.penRatioBonus ?? 0) + CINEMA2_PEN_RATIO
-      exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画2 穿透率 +${CINEMA2_PEN_RATIO}%（出枪式/敛枪式）`
-    }
-    // 敛枪式最后一击附加伤害（影画1 溢出 + 影画6 段末），近似为整行基础区固定附加
-    if (exec.moveId === SIGRID_LANCE_MOVE_ID) {
-      let ratio = 0
-      const parts: string[] = []
-      if (cinema >= 6) {
-        ratio += CINEMA6_LAST_HIT_RATIO
-        parts.push(`影画6 最后一击 +${CINEMA6_LAST_HIT_RATIO}%（80/90/100 三段取中值）`)
-      }
-      if (cinema >= 1) {
-        const overflowCov = clamp01(cfgSetting(cfg, 'sigrid.c1OverflowCoverage', 1))
-        if (overflowCov > 0) {
-          ratio += CINEMA1_OVERFLOW_RATIO * overflowCov
-          parts.push(`影画1 机会溢出最后一击 +${CINEMA1_OVERFLOW_RATIO}%×${Math.round(overflowCov * 100)}%`)
-        }
-      }
-      if (ratio > 0 && atk > 0) {
-        exec.flatDamageBonus = (exec.flatDamageBonus ?? 0) + atk * ratio / 100
-        exec.skillTableNote = `${exec.skillTableNote ?? ''}；${parts.join('、')}`
-      }
     }
   }
 }
@@ -108,40 +252,40 @@ const settings: MechanicSetting[] = [
     id: 'sigrid.corePassiveCoverage',
     label: '希格莉德巡空枪势覆盖率',
     description: '核心被动：巡空枪势状态下暴击率+66%、命中失衡敌人失衡易伤+20% 的时间覆盖率，默认 100%（出枪式命中即刷新，近似常驻）。',
-    default: 100,
+    default: 1,
     min: 0,
-    max: 100,
-    step: 1,
+    max: 1,
+    step: 0.05,
     suffix: '%',
   },
   {
     id: 'sigrid.infectionCoverage',
     label: '希格莉德浸染命中覆盖率',
     description: '额外能力·天际联军：命中[浸染]状态敌人时伤害+15% 的覆盖率（队内风异常/染色频率决定），默认 100%。',
-    default: 100,
+    default: 1,
     min: 0,
-    max: 100,
-    step: 1,
+    max: 1,
+    step: 0.05,
     suffix: '%',
   },
   {
     id: 'sigrid.cinema4Coverage',
     label: '希格莉德影画4覆盖率',
     description: '影画4·英雄养成中：每次获得巡空枪势伤害+18%（8秒，上限40秒）的覆盖率，默认 100%。',
-    default: 100,
+    default: 1,
     min: 0,
-    max: 100,
-    step: 1,
+    max: 1,
+    step: 0.05,
     suffix: '%',
   },
   {
     id: 'sigrid.c1OverflowCoverage',
     label: '希格莉德影画1机会溢出覆盖率',
     description: '影画1·很久很久以前：敛枪式发动机会（上限1）溢出频率，溢出时下一次敛枪式最后一击额外+100%攻击力，默认 100%。',
-    default: 100,
+    default: 1,
     min: 0,
-    max: 100,
-    step: 1,
+    max: 1,
+    step: 0.05,
     suffix: '%',
   },
 ]
@@ -150,8 +294,11 @@ export const sigridMechanic: AgentMechanicModule = {
   id: 'agent:sigrid',
   agentIds: [SIGRID_AGENT_ID],
   name: '希格莉德',
-  description: '出枪式/巡空枪势/敛枪式：面板效果在 computePanelPhases 施加（暴击+66%、失衡易伤+20%、额外能力攻击/浸染增伤、影画1/2/4）；执行级影画2穿透率+24%（moveId 限定）与影画1/6敛枪式最后一击附加伤害在本模块 patchExecutions。',
+  description: '出枪式/巡空枪势/敛枪式：面板效果 applyPanel（暴击+66%、失衡易伤+20%、额外能力攻击/浸染增伤、影画1/2/4）；敛枪式三段轮转执行行 + 破阵（每次失衡送一套，免费）在 buildExecutions；影画2穿透率+24%（moveId 限定）与影画1/6最后一击附加在 patchExecutions/buildExecutions。',
+  applyPanel: applySigridPanel,
+  applyTeamConfig: applySigridTeamConfig,
   buildCharConfig: buildSigridCharConfig,
+  buildExecutions: buildSigridExecutions,
   patchExecutions: patchSigridExecutions,
   // spec 资源（敛枪式发动机会）与资源卡沿用 spec 解释器
   buildResourceResult: ({ cfg, state }: AgentResourceResultInput) => ({
