@@ -33720,7 +33720,7 @@
               "damageElement": "ether",
               "skillType": "dodge",
               "timeType": "dodgeCounter",
-              "actionTime": null,
+              "actionTime": 0.3164,
               "rows": [
                 {
                   "id": "damage",
@@ -33803,7 +33803,7 @@
               "damageElement": "ether",
               "skillType": "dodge",
               "timeType": "dodgeCounter",
-              "actionTime": null,
+              "actionTime": 0.3164,
               "rows": [
                 {
                   "id": "damage",
@@ -34149,7 +34149,7 @@
               "damageElement": "ether",
               "skillType": "chain",
               "timeType": "ultimate",
-              "actionTime": null,
+              "actionTime": 0.36,
               "rows": [
                 {
                   "id": "damage",
@@ -34232,7 +34232,7 @@
               "damageElement": "ether",
               "skillType": "chain",
               "timeType": "ultimate",
-              "actionTime": null,
+              "actionTime": 0.54,
               "rows": [
                 {
                   "id": "damage",
@@ -54239,7 +54239,7 @@
               "damageElement": "fire",
               "skillType": "chain",
               "timeType": "ultimate",
-              "actionTime": null,
+              "actionTime": 0.27,
               "rows": [
                 {
                   "id": "damage",
@@ -54325,7 +54325,7 @@
               "damageElement": "fire",
               "skillType": "chain",
               "timeType": "ultimate",
-              "actionTime": null,
+              "actionTime": 0.18,
               "rows": [
                 {
                   "id": "damage",
@@ -67204,7 +67204,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1011016",
@@ -67888,7 +67888,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.067,
+              "actionTime": 1.5666,
               "energyCost": {
                 "Purr Energy Cost": "40"
               }
@@ -68336,7 +68336,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1021017",
@@ -69630,7 +69630,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1041023",
@@ -70939,7 +70939,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1051021",
@@ -71442,7 +71442,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 0.6581
             },
             {
               "id": "1061016",
@@ -71501,7 +71501,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 0.6581
             }
           ]
         },
@@ -72169,7 +72169,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1061024",
@@ -74458,7 +74458,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1091025",
@@ -75687,7 +75687,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1101505",
@@ -76776,7 +76776,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1111023",
@@ -77723,7 +77723,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 0.833
             },
             {
               "id": "1121020",
@@ -80033,7 +80033,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1191022",
@@ -81324,7 +81324,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 0.833
             },
             {
               "id": "1201019",
@@ -82298,7 +82298,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1271019",
@@ -83342,7 +83342,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1281019",
@@ -84108,7 +84108,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.1333
             },
             {
               "id": "1291014",
@@ -84167,7 +84167,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.483
             }
           ]
         },
@@ -84729,7 +84729,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1291023",
@@ -85866,7 +85866,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1321021",
@@ -86815,7 +86815,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1331019",
@@ -89009,7 +89009,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1371019",
@@ -90314,7 +90314,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1381020",
@@ -91309,7 +91309,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1391019",
@@ -92799,7 +92799,7 @@
                 }
               ],
               "timeType": "ultimate",
-              "actionTime": 0.001
+              "actionTime": 2.75
             }
           ]
         },
@@ -93058,7 +93058,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.666
             },
             {
               "id": "1431035",
@@ -94448,7 +94448,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1441024",
@@ -95990,7 +95990,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1471026",
@@ -97270,7 +97270,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1501021",
@@ -97843,7 +97843,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 0.8836
             },
             {
               "id": "1531014",
@@ -98549,7 +98549,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1531021",
@@ -99819,7 +99819,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1541023",
@@ -100824,7 +100824,7 @@
                 }
               ],
               "timeType": "ultimate",
-              "actionTime": 0.933
+              "actionTime": 2.4329
             },
             {
               "id": "1551014",
@@ -100876,7 +100876,7 @@
                 }
               ],
               "timeType": "ultimate",
-              "actionTime": 0.001
+              "actionTime": 1.1503
             },
             {
               "id": "1551013",
@@ -100928,7 +100928,7 @@
                 }
               ],
               "timeType": "ultimate",
-              "actionTime": 1.566
+              "actionTime": 3.0663
             },
             {
               "id": "1551016",
@@ -100980,7 +100980,7 @@
                 }
               ],
               "timeType": "ultimate",
-              "actionTime": 0.784
+              "actionTime": 2.2836
             }
           ]
         },
@@ -101165,7 +101165,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1551021",
@@ -102229,7 +102229,7 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 0.001
+              "actionTime": 1.166
             },
             {
               "id": "1591021",

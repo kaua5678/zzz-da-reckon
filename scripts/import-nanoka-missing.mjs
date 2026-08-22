@@ -62,12 +62,23 @@ function level60(stats) {
 
 function actionTime(skill) {
   const ether = num(skill.ether_purify)
+  const buildup = num(skill.anomaly_buildup)
   const name = skill.name || ''
+  const bonus = /Dodge Counter/.test(name) ? 150 : /Defensive Assist/.test(name) ? 250 : /Ultimate/.test(name) ? 500 : 0
+  // 秽盾语义 = 动作时间×100 + 类型加成（闪反+150/弹刀+250/终结+500）。
+  // 加成缺失时秽盾即裸时间、与积蓄相等：真实时间 = 积蓄/100（佩洛伊斯凯旋坦途、叶瞬光大招等）；
+  // 无积蓄时 = 秽盾/100（招架支援#3 的秽盾本就是裸时间，被 -2.5 会错钳成 0.001）。
+  // 特例：佩洛伊斯其余三个大招秽盾 = 积蓄 + 350.01，公式推不出，
+  // 由 scripts/patch-move-action-time.mjs 显式覆盖为用户核对值。
+  if (bonus > 0 && ether > 0) {
+    if (buildup > 0 && Math.abs(ether - buildup) <= 2) return Math.round(buildup / 100 * 10000) / 10000
+    if (buildup <= 0 && ether <= bonus) return Math.round(ether / 100 * 1000) / 1000
+  }
   let t = ether > 0 ? ether / 100 : 0
   if (/Dodge Counter/.test(name)) t -= 1.5
   else if (/Defensive Assist/.test(name)) t -= 2.5
   else if (/Ultimate/.test(name)) t -= 5
-  return t > 0 ? Math.round(t * 1000) / 1000 : (ether > 0 ? 0.001 : 0)
+  return t > 0 ? Math.round(t * 1000) / 1000 : (buildup > 0 ? Math.round(buildup / 100 * 10000) / 10000 : (ether > 0 ? 0.001 : 0))
 }
 
 function moveRow(id, kind, values, extra = {}) {
@@ -168,7 +179,7 @@ for (const id of missing) {
       notes: [
         `来源：nanoka.cc 3.2.1（${info.name_en || ''}）。`,
         '基础属性与技能倍率由脚本自动导入；核心被动/额外能力/命座/专属资源等机制未实现，等待用户核对后补充。',
-        `动作时间按 ether_purify 公式自动推算（一般 /100、闪反 -1.5、弹刀 -2.5、终结 -5），部分追加段可能无秽盾数据，actionTime 未完全核对。`,
+        `动作时间按「秽盾 = 时间×100 + 类型加成」推算（一般 /100、闪反 -1.5、弹刀 -2.5、终结 -5）；加成缺失时（秽盾≈积蓄）按积蓄/100 还原，招架支援#3 型无积蓄按秽盾/100。个别角色第三种偏移（如佩洛伊斯 +350）公式推不出，需 scripts/patch-move-action-time.mjs 用户核对值覆盖。`,
       ],
     }, null, 2))
   }
