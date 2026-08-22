@@ -25,6 +25,8 @@ const MIYABI_AGENT_ID = '1091'
 const FROSTFIRE = 'frostfire'
 /** 霜月架势三段（最赚，消耗6落霜） */
 const FROST_MOON_MOVE_ID = '1091029'
+/** 0命且无风队时冰焰覆盖率的自动默认：标准紊乱轮转中蓄力斩打在[霜寒]上吃不到 80% 加成（用户口径，[猜测·中]） */
+const MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE = 0.6
 /** 霜月架势三段动作时间（秒） */
 const FROST_MOON_ACTION_TIME = 3.434
 /** 霜月架势三段消耗落霜 */
@@ -147,14 +149,23 @@ function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelI
 
 // ============ buildCharConfig ============
 
-function buildMiyabiCharConfig({ skills, cfg, panel }: AgentCharConfigInput): void {
+function buildMiyabiCharConfig({ skills, cfg, panel, cinemaLevel }: AgentCharConfigInput): void {
   cfg.miyabiEnabled = true
   cfg.miyabiFrostMoonMoveId = FROST_MOON_MOVE_ID
   cfg.miyabiFrostMoonCount = FROST_MOON_COST
   cfg.miyabiFrostMoonActionTime = FROST_MOON_ACTION_TIME
-  // 冰焰覆盖率（0-1）：冰焰与霜灼互斥，覆盖率 ≈ 1 - 霜灼覆盖率；用户可调
-  const coverageRaw = Number((cfg as unknown as Record<string, unknown>)['setting:miyabi.iceFlameCoverage'] ?? 0.5)
-  const coverage = Math.max(0, Math.min(1, Number.isFinite(coverageRaw) ? coverageRaw : 0.5))
+  // 冰焰覆盖率（0-1）：冰焰与霜灼互斥。
+  // 影画1/风队上下文化默认（用户口径 2026-08）：有风队友（风化全程覆盖，雅不做霜寒）或
+  // ≥影画1（霜寒后保留冰焰）时，蓄力斩窗口也吃满暴击率折算的 80% 积蓄加成 → 默认 100%；
+  // 0命且无风队时，标准紊乱轮转的蓄力斩打在[霜寒]上吃不到加成 → 默认 [猜测·中] 60%。
+  // 显式设为非 1.0 的滑块值优先于自动默认。
+  const coverageRaw = Number((cfg as unknown as Record<string, unknown>)['setting:miyabi.iceFlameCoverage'])
+  const hasWind = panel.miyabiHasWindTeammate === 1
+  const autoDefault = hasWind || cinemaLevel >= 1 ? 1 : MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE
+  const coverage =
+    Number.isFinite(coverageRaw) && coverageRaw !== 1
+      ? Math.max(0, Math.min(1, coverageRaw))
+      : autoDefault
   panel.miyabiIceFlameCoverage = coverage
 }
 
@@ -425,7 +436,7 @@ export const miyabiMechanic: AgentMechanicModule = {
     {
       id: 'miyabi.iceFlameCoverage',
       label: '雅·冰焰覆盖率',
-      description: '冰焰（烈霜积蓄效率+80%上限）的覆盖率。冰焰（30s）与霜灼（20s）互斥，覆盖率 ≈ 1 - 霜灼占比。雅是速切打紊乱角色，默认 100% 冰焰全覆盖。',
+      description: '冰焰（烈霜积蓄效率+80%上限）的覆盖率。自动默认：有风队友或≥影画1（霜寒后保留冰焰）= 100%；0命无风队 = 60%（蓄力斩打在霜寒上吃不到加成）。显式设为非 100% 的值优先。',
       default: 1.0,
       min: 0,
       max: 1,
