@@ -516,21 +516,22 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "影画1 雪上加霜：在[霜月架势]期间，每消耗1点[落霜]，[普通攻击：霜月]将无视目标6%防御力，最多叠加6层，退出[霜月架势]后增益效果结束；在[普通攻击：霜月]中进行三段蓄力，斩击命中处于[霜灼]状态下的敌人时，可以立即消除目标的[霜灼]状态，并使全队角色属性异常积蓄效率提升20%，持续10秒。",
-            "待人工核对后补实现，勿直接默认省略。"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "每消耗1点[落霜]无视目标6%防御力（最多6层=36%）：miyabi.ts 按落霜消耗量写入 enemyDefReduction（C1 落霜无视防御段）。",
+            "[猜测·低] 三段蓄力斩击消除[霜灼]后全队积蓄效率+20%(10s)：随霜灼覆盖率折算，未单列建模。"
+          ],
+          "pending": []
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "影画2 吐纳法：[普通攻击：风花]和[闪避反击]造成的伤害提升30%；第五段[普通攻击：风花]最后一击命中敌人时，星见雅获得1点[落霜]；进入战场时，星见雅立刻获得6点[落霜]，自身暴击率提升15%。",
-            "待人工核对后补实现，勿直接默认省略。"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "[普通攻击：风花]与[闪避反击]伤害+30%：panel skillDmgBonus__basic / __dodgeCounter 定向接入。",
+            "暴击率+15%：panel critRate 接入。",
+            "入场立刻获得6点[落霜]：panel.miyabiCinema2EntryFrostFall=6；风花#5 命中+1落霜：spec 资源 gainRule miyabi_c2_flower_basic_frost_fall_gain（按普攻时间折算，可调）。"
+          ],
+          "pending": []
         },
         {
           "cinema": 3,
@@ -542,12 +543,12 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "影画4 皲裂：[霜灼·破]造成的伤害提升30%，触发[霜灼·破]时，星见雅额外获得250点喧响值。",
-            "待人工核对后补实现，勿直接默认省略。"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "[霜灼·破]伤害+30%：C4_FROSTBURN_DMG 接入霜灼·破直伤执行（resolveMiyabiExecutionDamage）。",
+            "[猜测·低] 触发[霜灼·破]额外获得250喧响：常量 C4_FROSTBURN_DECIBEL=250 已定义，喧响整局总量口径下未单列建模。"
+          ],
+          "pending": []
         },
         {
           "cinema": 5,
@@ -559,12 +560,12 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "影画6 天资卓越：在[霜月架势]期间，星见雅将获得[极意]效果，使[普通攻击：霜月]造成的伤害提升30%，获得[极意]效果后，消耗[落霜]时，星见雅会根据当前蓄力段数，自动拔刀向前方发动强力斩击；在[落霜]耗尽前，拔刀斩击不会打断[霜月架势]下的蓄力进度；在一次[霜月架势]期间，最多连续发动3次拔刀斩击。",
-            "待人工核对后补实现，勿直接默认省略。"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "[极意]使[普通攻击：霜月]伤害+30%：panel skillDmgBonus__basic 定向接入（限定基本攻击）。",
+            "[猜测·中] 消耗[落霜]自动拔刀斩击（最多3次）：拔刀倍率无独立录入，未单列建模；如需精确请提供拔刀段倍率与触发次数口径。"
+          ],
+          "pending": []
         }
       ]
     },

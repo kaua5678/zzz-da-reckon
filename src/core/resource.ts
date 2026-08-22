@@ -21,9 +21,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   const maxIter = config.maxIterations || 20
   const configs = config.characters
 
-  // 初始 state：平A时间按权重分配，强特/大招次数初始为0
+  // 初始 state：平A时间按权重分配，强特/大招次数初始为0（可注入初值——连续松弛下与初值无关）
   const totalWeight = configs.reduce((a, c) => a + c.timeWeight, 0)
-  let states: IterationState[] = configs.map(cfg => ({
+  const coldStates = (): IterationState[] => configs.map(cfg => ({
     basicAttackTime: totalWeight > 0
       ? totalTime * (cfg.timeWeight / totalWeight)
       : 0,
@@ -37,6 +37,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     backstageTime: 0,
     comboAlignTime: 0,
   }))
+  let states: IterationState[] = config.initialStates && config.initialStates.length === configs.length
+    ? config.initialStates.map(s => ({ ...s }))
+    : coldStates()
 
   // 时间预算收敛（外层）+ 资源收敛（内层）：
   // 模块 buildExecutions 会物化出占用前台、但未计入 estimateExSpecialTime 的动作行
@@ -61,11 +64,13 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     for (iter = 0; iter < maxIter; iter++) {
       const newStates = iterate(configs, states, config)
 
-      // 检查收敛：强特次数和大招次数是否稳定
+      // 检查收敛：强特/终结次数（实数）与平A时间稳定（ε=1e-9：收敛残差压到浮点尘埃，
+      // 与到达路径无关；终局 floor(+1e-6) 的松弛带吸收边界误差）
       let changed = false
       for (let i = 0; i < states.length; i++) {
-        if (newStates[i].exSpecialCount !== states[i].exSpecialCount ||
-            newStates[i].ultimateCount !== states[i].ultimateCount) {
+        if (Math.abs(newStates[i].exSpecialCount - states[i].exSpecialCount) > 1e-9 ||
+            Math.abs(newStates[i].ultimateCount - states[i].ultimateCount) > 1e-9 ||
+            Math.abs(newStates[i].basicAttackTime - states[i].basicAttackTime) > 1e-9) {
           changed = true
           break
         }
@@ -111,6 +116,17 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       break
     }
   }
+
+  // 连续松弛终局取整：迭代期次数为实数，此处一次性取**最近整数**（+1e-6 防浮点边界），
+  // 再用整数次数重装配一轮派生量（能量/喧响/时间）。取最近而非 floor：连续均衡是「时间公平
+  // 的平均战场」，最近的整数是其最小失真代表；floor 会留下系统性向下偏差（小数次数已按比例
+  // 占用时间，floor 等于白交时间税），曾致失衡窗口 4→2、后场喷发 8→7 等边界塌缩。
+  // 收敛态仍是输入的纯函数（消除 floor 滞回：不同初值不再落到 12/3 vs 12/4 相邻不动点）。
+  const toFinalCount = (x: number) => Math.round(x + 1e-6)
+  states = iterate(configs, states, config, {
+    ex: states.map(s => toFinalCount(s.exSpecialCount)),
+    ult: states.map(s => toFinalCount(s.ultimateCount)),
+  })
 
   // 失衡次数由外部失衡池不动点收敛后传入（连携次数 = chainCountPerStun × stunCount，见 iterate）
   const inputStunCount = config.stunCount ?? 0
