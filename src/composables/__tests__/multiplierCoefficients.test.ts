@@ -185,6 +185,49 @@ describe('倍率表系数演算：招式分类', () => {
     expect(verticalOf('1441').directDamage, '真斗已无支援突击，直伤应为 —').toBeNull()
   })
 
+  it('快速支援两版口径：翻倍版（星见雅）与标准版（照）各自 ≈1', () => {
+    // 分版判据 = 喧响速率 ≥40/s；伤害两版同为 200t，分版列 = 失衡/喧响/回能/积蓄
+    const yagyu = report.moves.find((m) => m.agentId === '1091' && m.moveType === 'quickAssistLegacy')
+    expect(yagyu, '星见雅快支应判为翻倍版').toBeDefined()
+    for (const rowId of ['damage', 'daze', 'decibel_recovery']) {
+      const cell = yagyu!.cells.find((c) => c.rowId === rowId)
+      expect(cell, `星见雅快支 ${rowId} 格应存在`).toBeDefined()
+      expectNear(cell!.ratio, 1.0, 0.02, `星见雅快支(翻倍) ${rowId}`)
+    }
+    const sho = report.moves.find((m) => m.agentId === '1341' && m.moveType === 'quickAssist')
+    expect(sho, '照快支应判为标准版').toBeDefined()
+    for (const rowId of ['damage', 'daze', 'decibel_recovery']) {
+      const cell = sho!.cells.find((c) => c.rowId === rowId)
+      expect(cell, `照快支 ${rowId} 格应存在`).toBeDefined()
+      expectNear(cell!.ratio, 1.0, 0.02, `照快支(标准) ${rowId}`)
+    }
+  })
+
+  it('倍率行融合：星见雅飞雪两击与连携三段合计后代入公式 ≈1', () => {
+    // 融合后 Σ = nanoka 官方倍率（斩击 788.3%/483.4%、追击 967.2%/608.5%）；
+    // 手算斩击：(5.55835×40+140×0.967)×2×1.1 = 786.97 → 788.3/786.97 ≈ 1.0017
+    const zhanji = report.moves.find((m) => m.agentId === '1091' && m.moveName.includes('飞雪') && m.moveName.includes('融合'))
+    expect(zhanji, '飞雪融合单元应存在').toBeDefined()
+    expect(zhanji!.flags.join('')).toContain('倍率行融合')
+    for (const [rowId, expected] of [['damage', 1.002], ['daze', 1.001], ['decibel_recovery', 1.0]] as const) {
+      const cell = zhanji!.cells.find((c) => c.rowId === rowId)
+      expect(cell, `飞雪融合 ${rowId} 格应存在`).toBeDefined()
+      expectNear(cell!.ratio, expected, 0.01, `飞雪融合 ${rowId}`)
+    }
+    // 连携三段合一：(400+100×1.717)×2×1.1 = 1257.74 → 1258.3/1257.74 ≈ 1.0005；喧响精确
+    const lianhun = report.moves.find((m) => m.agentId === '1091' && m.moveName.includes('春临') && m.moveName.includes('融合'))
+    expect(lianhun, '春临融合单元应存在').toBeDefined()
+    const dmgCell = lianhun!.cells.find((c) => c.rowId === 'damage')
+    expect(dmgCell).toBeDefined()
+    expectNear(dmgCell!.ratio, 1.0005, 0.01, '连携融合 damage')
+    const dbCell = lianhun!.cells.find((c) => c.rowId === 'decibel_recovery')
+    expect(dbCell).toBeDefined()
+    expectNear(dbCell!.ratio, 1.0, 0.005, '连携融合 decibel')
+    // 仪玄墨痕化形同样按 #1+#2=斩击 / #3+#4=追击 融合展示（其特调由偏差如实呈现）
+    const yixuanFused = report.moves.filter((m) => m.agentId === '1371' && m.flags.some((f) => f.includes('倍率行融合')))
+    expect(yixuanFused.length).toBe(2)
+  })
+
   it('招架常数数据校准后两段比值中位数 ≈1（主簇中位 95.511/95.178）', () => {
     const medOf = (moveType: string, rowId: string, minSamples: number) => {
       const ratios = report.moves

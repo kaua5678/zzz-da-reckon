@@ -14,9 +14,11 @@ import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
 import {
   DECIBEL_PER_SECOND,
   FLASH_ENERGY_QUALITY,
+  MOVE_FUSION_GROUPS,
   MOVE_TIME_ADJUSTMENTS,
   MOVE_TYPE_LABELS,
   MOVE_TYPE_OVERRIDES,
+  MOVE_TYPE_TIME_SCALE,
   STANDARD_MULTIPLIER_TABLE,
   STANDARD_ROW_IDS,
   STANDARD_S_AGENT_IDS,
@@ -60,7 +62,13 @@ export function classifyMove(move: SkillMove, categoryId: string, specialty: str
       return 'other'
     case 'assist':
       if (name.startsWith('支援突击')) return 'assistFollowUp'
-      if (name.startsWith('快速支援')) return 'quickAssist'
+      if (name.startsWith('快速支援')) {
+        // 两版口径：喧响速率 ≥40/s 判为翻倍版（喧响不受稀有度系数影响，可直接比）
+        const db = (move.rows ?? []).find((r) => r.id === 'decibel_recovery')?.values[0]
+        return typeof db === 'number' && typeof move.actionTime === 'number' && move.actionTime > MIN_ACTION_TIME && db / move.actionTime >= 40
+          ? 'quickAssistLegacy'
+          : 'quickAssist'
+      }
       if (name.startsWith('招架支援')) {
         const part = name.match(/#(\d+)/)?.[1]
         if (part === '3') return 'parryChain'
@@ -152,21 +160,41 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
     }
   }
 
+  // 倍率行融合组：catalog 把一套招式拆成多行/多段时，加总为一个评估单元（前缀项/耗能只计一次）。
+  // 实证：星见雅「飞雪 #1+#2」融合后 = nanoka 官方斩击倍率 788.3%，代入强特公式三列比值 ≈1.001；
+  // 连携 #1~#3 融合后伤害/喧响比值 ≈1.000（逐段评估会得到 ~0.38 的假象）。
+  const fusedIds = new Set<string>()
+  for (const group of MOVE_FUSION_GROUPS) {
+    const members = units.filter((u) => group.members.includes(u.moveId))
+    if (members.length < 2) continue
+    const head = members[0]
+    for (const extra of members.slice(1)) {
+      head.t = (head.t ?? 0) + (extra.t ?? 0)
+      for (const [rowId, v] of Object.entries(extra.values)) {
+        head.values[rowId as StandardRowId] = (head.values[rowId as StandardRowId] ?? 0) + (v ?? 0)
+      }
+      fusedIds.add(extra.moveId)
+    }
+    head.moveName = `${stripPartSuffix(head.moveName)}（融合${members.length}段）`
+    head.flags.push(`倍率行融合(${members.length}段)`)
+  }
+  const out = units.filter((u) => !fusedIds.has(u.moveId))
+
   // 支援突击的「#N」分段是同一套招式的分段，标准式前缀项只计一次：按去段号名称合并后再评估。
   // 实证：苍角「席卷打击 #1+#2」合并后伤害/失衡/喧响三列比值 ≈1.000（分段单算各 88.7%/59.2%，
-  // 会把直伤锚点拖到 0.74）。例外见待确认口径：真斗「孤影·断獠」合并后伤害≈1.02 但失衡/喧响仍偏离。
+  // 会把直伤锚点拖到 0.74）。
   const merged = new Map<string, RawUnit>()
-  const out: RawUnit[] = []
-  for (const unit of units) {
+  const result: RawUnit[] = []
+  for (const unit of out) {
     if (unit.moveType !== 'assistFollowUp' || !/ #\d+$/.test(unit.moveName)) {
-      out.push(unit)
+      result.push(unit)
       continue
     }
     const key = `${unit.agentId}/${stripPartSuffix(unit.moveName)}`
     const head = merged.get(key)
     if (!head) {
       merged.set(key, unit)
-      out.push(unit)
+      result.push(unit)
       continue
     }
     head.t = (head.t ?? 0) + (unit.t ?? 0)
@@ -176,7 +204,7 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
     head.moveName = stripPartSuffix(head.moveName)
     head.flags.push('支援突击分段已合并')
   }
-  return out
+  return result
 }
 
 /** 等级系数：标准表按 1 级记录，catalog 录 12 级单值 */
@@ -214,7 +242,8 @@ export interface MoveEval {
 function evaluateUnit(unit: RawUnit): MoveEval {
   const cells: MoveCellEval[] = []
   const table = unit.moveType === 'other' ? undefined : STANDARD_MULTIPLIER_TABLE[unit.moveType]
-  const t = unit.t != null && unit.t > MIN_ACTION_TIME ? unit.t : null
+  const timeScale = unit.moveType === 'other' ? 1 : MOVE_TYPE_TIME_SCALE[unit.moveType] ?? 1
+  const t = unit.t != null && unit.t > MIN_ACTION_TIME ? unit.t * timeScale : null
   for (const rowId of STANDARD_ROW_IDS) {
     const formula = table?.[rowId]
     const actual = unit.values[rowId]

@@ -41,7 +41,8 @@ export type MoveType =
   | 'exSpecial' // 强化特殊技（含耗能项）
   | 'dashAttack' // 冲刺攻击
   | 'dodgeCounter' // 闪避反击
-  | 'quickAssist' // 快速支援
+  | 'quickAssist' // 快速支援（标准版）
+  | 'quickAssistLegacy' // 快速支援（翻倍版：失衡/喧响/回能/积蓄 ×2，伤害同为 200t）
   | 'assistFollowUp' // 支援突击（纵向系数锚点：通常不随角色变化）
   | 'parryLight' // 招架支援 #1（轻招架）
   | 'parryHeavy' // 招架支援 #2（重招架）
@@ -58,6 +59,7 @@ export const MOVE_TYPE_LABELS: Record<MoveType, string> = {
   dashAttack: '冲刺攻击',
   dodgeCounter: '闪避反击',
   quickAssist: '快速支援',
+  quickAssistLegacy: '快速支援(翻倍)',
   assistFollowUp: '支援突击',
   parryLight: '轻招架',
   parryHeavy: '重招架',
@@ -83,8 +85,10 @@ export interface StdFormula {
  *   47/53、48/54 条实录取隐含截距中位数；两段仅差 0.33）。来源：用户按单角色推算的
  *   官方口径 92.4 / 89.1 偏低 ~3.4%，经用户确认改用全体平均值。连续招架 = 130t 不变。
  *   这两类不参与纵向系数聚合；
- * - 快速支援的伤害/失衡/喧响与原表出入较大且新旧角色分层（疑似部分快支的秽盾基准实为 200t
- *   导致时间口径差一倍；喧响 27.5/s 校准仅对喧响未特调的角色成立），同样不进纵向聚合的强约束。
+ * - 快速支援存在两版录入口径（2026-08 数据校准，n=30+34）：伤害两版同为 **200t**（原表 100t
+ *   系笔误）；分版列 = 失衡/喧响/回能/积蓄（标准 100t/27.5t/3.6t/100t vs 翻倍 200t/55t/7.2t/200t），
+ *   秽盾恒 100t。分版判据 = 喧响速率 ≥40/s（不受稀有度系数影响）。另有 ~5 条减半/离群记录
+ *   （安东、卢西娅等）按标准版评估后由偏差清单呈现。
  */
 export const STANDARD_MULTIPLIER_TABLE: Record<MoveType, Partial<Record<StandardRowId, StdFormula>>> = {
   basic: {
@@ -129,12 +133,25 @@ export const STANDARD_MULTIPLIER_TABLE: Record<MoveType, Partial<Record<Standard
     ether_purify: { const: 150, perT: 100 },
   },
   quickAssist: {
+    // 数据校准（2026-08，n=30）：伤害 200t（原表 100t 系笔误，两版中仅翻倍版为 100t）；
+    // 失衡/喧响/回能/积蓄/秽盾 = 原表值
+    damage: { perT: 200 },
+    daze: { perT: 100.78 },
+    energy_recovery: { perT: 3.6 },
+    decibel_recovery: { perT: 27.5 },
+    anomaly_buildup: { perT: 100 },
+    ether_purify: { perT: 100 },
+  },
+  quickAssistLegacy: {
+    // 「翻倍版」真实语义（用户口径）：录制的 actionTime 为真实有效时间的 1/2（其秽盾基准为
+    // 50t 而非 100t），评估时按 MOVE_TYPE_TIME_SCALE ×2 还原；各列速率与标准版相同，
+    // 仅伤害为 100t（标准版为 200t）。实测还原后全列比值 ≈1.00。
     damage: { perT: 100 },
     daze: { perT: 100 },
     energy_recovery: { perT: 3.6 },
     decibel_recovery: { perT: 27.5 },
     anomaly_buildup: { perT: 100 },
-    ether_purify: { perT: 100 },
+    ether_purify: { perT: 50 },
   },
   assistFollowUp: {
     damage: { const: 111.35, perT: 140 },
@@ -217,20 +234,11 @@ export const DECIBEL_PER_SECOND = 27.5
  *   弹刀后连续攻击，结构同闪反（纯 t 项）：喧响 27.5t / 积蓄 100t 两列精确命中（≈1.000）；
  *   伤害/失衡/秽盾为各段自有数值（设计空间，偏差清单呈现）。改判后真斗无支援突击锚点，
  *   其直伤系数记「—」。
- * - 仪玄(1371) 的强化特技六条：强特后可跟免费招式、特调严重，按用户口径暂不参与展示与
- *   评估（归 other 跳过）。耗能口径已确认与 catalog 一致：凝云术为 2s 通道共 40（20/s）、
- *   墨痕化形 #1=40、#4=20（触发反击回 10 能量接 #2、#3 免费）、墨烬影消=20。
  */
 export const MOVE_TYPE_OVERRIDES: Record<string, MoveType | 'other'> = {
   '1471029': 'dodgeCounter',
   '1441024': 'dodgeCounter',
   '1441025': 'dodgeCounter',
-  '1371009': 'other',
-  '1371024': 'other',
-  '1371023': 'other',
-  '1371025': 'other',
-  '1371022': 'other',
-  '1371026': 'other',
 }
 
 /**
@@ -242,6 +250,28 @@ export const MOVE_TYPE_OVERRIDES: Record<string, MoveType | 'other'> = {
 export const MOVE_TIME_ADJUSTMENTS: Record<string, number> = {
   '1471029': -1.5,
 }
+
+/** 招式类型级时间缩放：quickAssistLegacy 录制的 actionTime 是真实有效时间的 1/2（秽盾 50t 基准），评估时 ×2 还原 */
+export const MOVE_TYPE_TIME_SCALE: Partial<Record<MoveType, number>> = {
+  quickAssistLegacy: 2,
+}
+
+/**
+ * 倍率行融合组：catalog 把一套招式拆成了多行/多段，需加总为一个评估单元
+ * （期望值的前缀项/耗能只计一次，t 与各列数值求和）。
+ * - 星见雅(1091)「飞雪 #1+#2」= 一次斩击（耗能40）、「#3+#4」= 一次追击（耗能40）——
+ *   融合后与 nanoka 官方倍率（788.3%/967.2%）逐位相同，且代入强特公式三列比值 ≈1.001；
+ * - 星见雅连携「春临 #1~#3」三段合计才是一次连携：融合后伤害/喧响比值 ≈1.000（逐段评估
+ *   会得到 ~0.38 的假象）；
+ * - 仪玄(1371)「墨痕化形 #1+#2」= 斩击（40 闪能）、「#3+#4」= 追击（40 闪能）。
+ */
+export const MOVE_FUSION_GROUPS: Array<{ members: string[] }> = [
+  { members: ['1091009', '1091010'] },
+  { members: ['1091011', '1091012'] },
+  { members: ['1091015', '1091016', '1091017'] },
+  { members: ['1371009', '1371024'] },
+  { members: ['1371023', '1371025'] },
+]
 
 /** 稀有度 + 命破修正后的列系数（等级系数除外） */
 export function getRarityMultiplier(rarity: string, agentId: string, specialty: string, rowId: StandardRowId): number {
