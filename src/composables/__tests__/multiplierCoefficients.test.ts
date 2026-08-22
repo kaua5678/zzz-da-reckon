@@ -169,6 +169,22 @@ describe('倍率表系数演算：招式分类', () => {
     }
   })
 
+  it('真斗「孤影·断獠」改判闪避反击：纯 t 列（喧响/积蓄）精确命中，无支援突击锚点', () => {
+    // 用户口径：弹刀后连续攻击，结构同闪反（只有 t 项）。喧响 27.5t / 积蓄 100t 两列 ≈1.000；
+    // 伤害/失衡/秽盾为各段自有数值。改判后真斗不再有支援突击 → 直伤系数记 null。
+    for (const moveId of ['1441024', '1441025']) {
+      const move = report.moves.find((m) => m.moveId === moveId)
+      expect(move, `断獠段 ${moveId} 应在演算结果中`).toBeDefined()
+      expect(move!.moveType).toBe('dodgeCounter')
+      for (const rowId of ['decibel_recovery', 'anomaly_buildup']) {
+        const cell = move!.cells.find((c) => c.rowId === rowId)
+        expect(cell, `断獠 ${moveId} ${rowId} 格应存在`).toBeDefined()
+        expectNear(cell!.ratio, 1.0, 0.01, `断獠 ${moveId} ${rowId}`)
+      }
+    }
+    expect(verticalOf('1441').directDamage, '真斗已无支援突击，直伤应为 —').toBeNull()
+  })
+
   it('招架常数数据校准后两段比值中位数 ≈1（主簇中位 95.511/95.178）', () => {
     const medOf = (moveType: string, rowId: string, minSamples: number) => {
       const ratios = report.moves
