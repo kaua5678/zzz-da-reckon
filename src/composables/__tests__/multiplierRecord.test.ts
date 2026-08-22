@@ -28,6 +28,7 @@ const ROW_LABELS: Record<StandardRowId, string> = {
   decibel_recovery: '喧响',
   anomaly_buildup: '积蓄',
   ether_purify: '秽盾',
+  attack_data_0: '专属资源',
 }
 
 const SPECIALTY_LABELS: Record<string, string> = {

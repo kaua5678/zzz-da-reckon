@@ -147,6 +147,18 @@ describe('倍率表系数演算：招式分类', () => {
     expect(classifyMove(mkMove({ id: 'x5', name: { zhCN: '普通攻击：扫除开始 #3' }, skillTags: ['dashAttack'] }), 'basic', 'attack')).toBe('dashAttack')
   })
 
+  it('专属资源列（attack_data_0）：无标准式也展示实际值——青衣一煞#4 平A电压可见（用户报告的显示缺口）', () => {
+    const yisha4 = report.moves.find((m) => m.moveId === '1251004')
+    expect(yisha4, '青衣一煞#4 应在演算结果中').toBeDefined()
+    const cell = yisha4!.cells.find((c) => c.rowId === 'attack_data_0')
+    expect(cell, '平A电压格应存在（曾整列不显示）').toBeDefined()
+    expect(cell!.actual).toBeCloseTo(3.3334, 4)
+    expect(cell!.ratio, '无标准式 → 无比值，不进纵向聚合/偏差判定').toBeNull()
+    // 终结技电压 80 同样可见
+    const ult = report.moves.find((m) => m.moveId === '1251015')
+    expect(ult!.cells.find((c) => c.rowId === 'attack_data_0')?.actual).toBeCloseTo(80, 1)
+  })
+
   it('定点分类覆盖：般岳「支援突击：冲霄」实为闪避反击公式（金身格挡后招式，时间 −1.5s）', () => {
     expect(classifyMove(mkMove({ id: '1471029', name: { zhCN: '支援突击：冲霄' } }), 'assist', 'rupture')).toBe('dodgeCounter')
     // 锚点由「支援突击：昂霄」承担：与支援突击公式五列比值 ≈1.000
@@ -155,7 +167,7 @@ describe('倍率表系数演算：招式分类', () => {
     for (const rowId of ['damage', 'daze', 'decibel_recovery', 'anomaly_buildup']) {
       const cell = axiao!.cells.find((c) => c.rowId === rowId)
       expect(cell, `昂霄 ${rowId} 格应存在`).toBeDefined()
-      expectNear(cell!.ratio, 1.0, 0.01, `昂霄 ${rowId}`)
+      expectNear(cell!.ratio ?? NaN, 1.0, 0.01, `昂霄 ${rowId}`)
     }
     // 冲霄有效时间 = 2.667 − 1.5 = 1.167s：秽盾 150+100×1.167=266.7 精确相等，积蓄/喧响 ≈1.000；
     // 伤害/失衡为 ~0.94/~0.93（般岳自身特调，偏差清单呈现）
@@ -165,7 +177,7 @@ describe('倍率表系数演算：招式分类', () => {
     for (const [rowId, expected] of [['ether_purify', 1.0], ['anomaly_buildup', 1.0], ['decibel_recovery', 1.0], ['damage', 0.94], ['daze', 0.93]] as const) {
       const cell = cxiao!.cells.find((c) => c.rowId === rowId)
       expect(cell, `冲霄 ${rowId} 格应存在`).toBeDefined()
-      expectNear(cell!.ratio, expected, 0.01, `冲霄 ${rowId}`)
+      expectNear(cell!.ratio ?? NaN, expected, 0.01, `冲霄 ${rowId}`)
     }
   })
 
@@ -179,7 +191,7 @@ describe('倍率表系数演算：招式分类', () => {
       for (const rowId of ['decibel_recovery', 'anomaly_buildup']) {
         const cell = move!.cells.find((c) => c.rowId === rowId)
         expect(cell, `断獠 ${moveId} ${rowId} 格应存在`).toBeDefined()
-        expectNear(cell!.ratio, 1.0, 0.01, `断獠 ${moveId} ${rowId}`)
+        expectNear(cell!.ratio ?? NaN, 1.0, 0.01, `断獠 ${moveId} ${rowId}`)
       }
     }
     expect(verticalOf('1441').directDamage, '真斗已无支援突击，直伤应为 —').toBeNull()
@@ -192,14 +204,14 @@ describe('倍率表系数演算：招式分类', () => {
     for (const rowId of ['damage', 'daze', 'decibel_recovery']) {
       const cell = yagyu!.cells.find((c) => c.rowId === rowId)
       expect(cell, `星见雅快支 ${rowId} 格应存在`).toBeDefined()
-      expectNear(cell!.ratio, 1.0, 0.02, `星见雅快支(翻倍) ${rowId}`)
+      expectNear(cell!.ratio ?? NaN, 1.0, 0.02, `星见雅快支(翻倍) ${rowId}`)
     }
     const sho = report.moves.find((m) => m.agentId === '1341' && m.moveType === 'quickAssist')
     expect(sho, '照快支应判为标准版').toBeDefined()
     for (const rowId of ['damage', 'daze', 'decibel_recovery']) {
       const cell = sho!.cells.find((c) => c.rowId === rowId)
       expect(cell, `照快支 ${rowId} 格应存在`).toBeDefined()
-      expectNear(cell!.ratio, 1.0, 0.02, `照快支(标准) ${rowId}`)
+      expectNear(cell!.ratio ?? NaN, 1.0, 0.02, `照快支(标准) ${rowId}`)
     }
   })
 
@@ -212,17 +224,17 @@ describe('倍率表系数演算：招式分类', () => {
     for (const [rowId, expected] of [['damage', 1.002], ['daze', 1.001], ['decibel_recovery', 1.0]] as const) {
       const cell = zhanji!.cells.find((c) => c.rowId === rowId)
       expect(cell, `飞雪融合 ${rowId} 格应存在`).toBeDefined()
-      expectNear(cell!.ratio, expected, 0.01, `飞雪融合 ${rowId}`)
+      expectNear(cell!.ratio ?? NaN, expected, 0.01, `飞雪融合 ${rowId}`)
     }
     // 连携三段合一：(400+100×1.717)×2×1.1 = 1257.74 → 1258.3/1257.74 ≈ 1.0005；喧响精确
     const lianhun = report.moves.find((m) => m.agentId === '1091' && m.moveName.includes('春临') && m.moveName.includes('融合'))
     expect(lianhun, '春临融合单元应存在').toBeDefined()
     const dmgCell = lianhun!.cells.find((c) => c.rowId === 'damage')
     expect(dmgCell).toBeDefined()
-    expectNear(dmgCell!.ratio, 1.0005, 0.01, '连携融合 damage')
+    expectNear(dmgCell!.ratio ?? NaN, 1.0005, 0.01, '连携融合 damage')
     const dbCell = lianhun!.cells.find((c) => c.rowId === 'decibel_recovery')
     expect(dbCell).toBeDefined()
-    expectNear(dbCell!.ratio, 1.0, 0.005, '连携融合 decibel')
+    expectNear(dbCell!.ratio ?? NaN, 1.0, 0.005, '连携融合 decibel')
     // 仪玄墨痕化形同样按 #1+#2=斩击 / #3+#4=追击 融合展示（其特调由偏差如实呈现）
     const yixuanFused = report.moves.filter((m) => m.agentId === '1371' && m.flags.some((f) => f.includes('倍率行融合')))
     expect(yixuanFused.length).toBe(2)
@@ -263,7 +275,7 @@ describe('倍率表系数演算：招式分类', () => {
     const medOf = (moveType: string, rowId: string, minSamples: number) => {
       const ratios = report.moves
         .filter((m) => m.moveType === moveType)
-        .flatMap((m) => m.cells.filter((c) => c.rowId === rowId).map((c) => c.ratio))
+        .flatMap((m): number[] => m.cells.filter((c) => c.rowId === rowId && c.ratio != null).map((c) => c.ratio as number))
         .sort((a, b) => a - b)
       expect(ratios.length, `${moveType} ${rowId} 应有样本`).toBeGreaterThan(minSamples)
       return ratios[Math.floor(ratios.length / 2)]
@@ -313,7 +325,7 @@ describe('倍率表系数演算：强化特殊技（逐段评估，不参与纵�
     const ratioOf = (rowId: string) => {
       const cell = move!.cells.find((c) => c.rowId === rowId)
       expect(cell, `山摇 ${rowId} 格应存在`).toBeDefined()
-      return cell!.ratio
+      return cell!.ratio ?? NaN
     }
     expectNear(ratioOf('damage'), 0.868, 0.01, '山摇 damage')
     expectNear(ratioOf('decibel_recovery'), 0.737, 0.01, '山摇 decibel')
@@ -332,7 +344,7 @@ describe('倍率表系数演算：强化特殊技（逐段评估，不参与纵�
     for (const rowId of ['damage', 'daze', 'decibel_recovery', 'anomaly_buildup', 'ether_purify']) {
       const cell = zd!.cells.find((c) => c.rowId === rowId)
       expect(cell, `真斗强特 ${rowId} 格应存在`).toBeDefined()
-      expectNear(cell!.ratio, 1.0, 0.01, `真斗强特 ${rowId}（闪能×1.2 锚点）`)
+      expectNear(cell!.ratio ?? NaN, 1.0, 0.01, `真斗强特 ${rowId}（闪能×1.2 锚点）`)
     }
   })
 })

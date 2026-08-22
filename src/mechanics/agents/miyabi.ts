@@ -190,9 +190,10 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
     category: 'basic',
     count: frostMoonCount,
     actionTime: actionTime,
-    comboAlignRatio: FROST_MOON_3_LOCK_SECONDS / actionTime,
+    // 用户口径：三段蓄力只有 1s 锁定窗口在前台，其余时间全部合轴
+    comboAlignRatio: (actionTime - FROST_MOON_3_LOCK_SECONDS) / actionTime,
     totalTime: frostMoonCount * actionTime,
-    totalComboAlignTime: frostMoonCount * FROST_MOON_3_LOCK_SECONDS,
+    totalComboAlignTime: frostMoonCount * (actionTime - FROST_MOON_3_LOCK_SECONDS),
     energyConsume: 0,
     totalEnergyConsume: 0,
     decibelRecovery: 0,
@@ -204,7 +205,8 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
 
   // C6：消耗落霜释放霜月#3时，额外赠送一次霜月#1 与 #2
   // 非C6只有霜月#3；C6固定额外赠送#1（910.1%）和#2（1717.2%），各随次数翻倍
-  // C6合轴：霜月#1（0.4s完整动作）+霜月#2（0.567s完整动作）+霜月#3（1s锁定）= 1.967s/次
+  // 前台时间：霜月#1（0.4s完整动作，不合轴）+霜月#2（0.567s完整动作，不合轴）
+  // +霜月#3（仅 1s 锁定在前台，其余合轴）= 每次前台合计 1.967s
   const hasC6 = Boolean((cfg.panel as any)?.miyabiCinema6)
   if (hasC6 && frostMoonCount > 0) {
     for (const gift of [
@@ -217,9 +219,9 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
         category: 'basic',
         count: frostMoonCount,
         actionTime: gift.at,
-        comboAlignRatio: 1.0,
+        comboAlignRatio: 0,
         totalTime: frostMoonCount * gift.at,
-        totalComboAlignTime: frostMoonCount * gift.at,
+        totalComboAlignTime: 0,
         energyConsume: 0,
         totalEnergyConsume: 0,
         decibelRecovery: 0,

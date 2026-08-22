@@ -227,10 +227,10 @@ export interface MoveCellEval {
   rowId: StandardRowId
   /** catalog 实际录入值（Lv12） */
   actual: number
-  /** 标准表期望值（含等级/稀有度/命破系数） */
-  expected: number
-  /** 实际/期望，即该格的角色系数表现 */
-  ratio: number
+  /** 标准表期望值（含等级/稀有度/命破系数）；无标准式的行（attack_data_0 专属资源）为 null */
+  expected: number | null
+  /** 实际/期望，即该格的角色系数表现；无标准式为 null（不参与纵向聚合与偏差判定） */
+  ratio: number | null
   /** 数据缺口格（显式录 0）：仅展示，不参与纵向聚合与偏差判定 */
   dataGap?: boolean
 }
@@ -258,7 +258,13 @@ function evaluateUnit(unit: RawUnit): MoveEval {
   for (const rowId of STANDARD_ROW_IDS) {
     const formula = table?.[rowId]
     const actual = unit.values[rowId]
-    if (!formula || actual == null) continue
+    if (actual == null) continue
+    // 无标准式的行（attack_data_0 专属资源）：仅输出实际值（ratio=null，不进纵向聚合/偏差判定）——
+    // 含普攻聚合行，平A的电压/专属资源由此在倍率表可见
+    if (!formula) {
+      if (actual > 0) cells.push({ rowId, actual, expected: null, ratio: null })
+      continue
+    }
     // 普攻回能显式录 0 属数据缺口：合成 0 比值单元格展示（其余 0 值多为后台禁用置 0，仍跳过）
     if (actual <= 0 && !(actual === 0 && rowId === 'energy_recovery' && unit.zeroEnergyRow)) continue
     if (t == null) continue
@@ -323,12 +329,14 @@ function buildVertical(moves: MoveEval[]): AgentVerticalRow[] {
       if (rowId === 'damage') continue
       const ratios = list
         .filter((m) => isCleanVerticalType(m.moveType))
-        .flatMap((m) => m.cells.filter((c) => c.rowId === rowId && !c.dataGap).map((c) => c.ratio))
+        .flatMap((m): number[] => m.cells
+          .filter((c) => c.rowId === rowId && !c.dataGap && c.ratio != null)
+          .map((c) => c.ratio as number))
       if (ratios.length) coefficients[rowId] = { value: median(ratios), samples: ratios.length }
     }
     const ddRatios = list
       .filter((m) => m.moveType === 'assistFollowUp')
-      .flatMap((m) => m.cells.filter((c) => c.rowId === 'damage' && !c.dataGap).map((c) => c.ratio))
+      .flatMap((m) => m.cells.filter((c) => c.rowId === 'damage' && !c.dataGap && c.ratio != null).map((c) => c.ratio as number))
     rows.push({
       agentId,
       agentName: head.agentName,
@@ -364,7 +372,7 @@ function buildDeviations(moves: MoveEval[], vertical: AgentVerticalRow[]): MoveD
     const base = baseByAgent.get(m.agentId)
     if (!base) continue
     for (const cell of m.cells) {
-      if (cell.rowId === 'damage' || cell.dataGap) continue
+      if (cell.rowId === 'damage' || cell.dataGap || cell.ratio == null) continue
       const baseline = base.coefficients[cell.rowId]?.value
       if (baseline == null || baseline <= 0) continue
       const deviation = cell.ratio / baseline

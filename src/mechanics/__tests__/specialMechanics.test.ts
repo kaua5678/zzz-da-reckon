@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { setupHarness } from '@/test/harness'
+import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeRoxyWindEnergy } from '@/mechanics/agents/roxy'
 import { computeClaretSharpResource } from '@/mechanics/agents/claret'
 import { computeJaneMechanic } from '@/mechanics/agents/jane'
@@ -121,27 +123,15 @@ describe('spec resource panel buffs', () => {
     expect(gracePanel.electricAnomalyBuildUpEfficiency).toBe(130)
   })
 
-  it('applies Miyabi frost fall defense ignore and Prometheus guilty presumption', () => {
-    const spec = getAgentSpec('1091')!
-    const miyabiMap = Object.fromEntries(
-      computeSpecResources(spec, {} as any, { basicAttackTime: 0, exSpecialCount: 3, ultimateCount: 0, chainCountTotal: 0, totalEnergy: 0, totalDecibel: 0, necessaryTime: 0, frontlineTime: 0, backstageTime: 0, comboAlignTime: 0 } as any)
-    )
-    const miyabiPanel = emptyPanel()
-    miyabiMechanic.transformSkillExecutions?.({
-      slot: 0,
-      agent: { id: '1091' } as any,
-      skills: undefined,
-      charResult: { specResources: miyabiMap, executions: [] } as any,
-      panel: miyabiPanel,
-      cinemaLevel: 1,
-      team: [] as any,
-      dazeCoef: 1,
-      stunExecs: [] as any,
-      anomalyExecs: [] as any,
-      getRowValue: () => 0,
-      normalizeResourceSkillType: () => 'special',
-    })
-    expect(miyabiPanel.enemyDefReduction).toBe(36)
+  it('applies Miyabi frost fall defense ignore (影画1 招式限定：霜月#1/#2/#3 = 12/24/36 执行级)', async () => {
+    // 旧实现：面板级堆叠（min(6,层)×6%，会泄漏到非霜月招式）——已改为招式限定执行级字段。
+    const { config } = await setupHarness([{ agentId: '1091', cinemaLevel: 6 }, '', ''])
+    const calc = useResourceCalc()
+    const execs = calc.resourceResult.value!.characters[0].executions ?? []
+    expect(execs.find(e => e.moveId === '1091029')?.enemyDefReduction).toBe(36)
+    expect(execs.find(e => e.moveId === '1091027')?.enemyDefReduction).toBe(12)
+    expect(execs.find(e => e.moveId === '1091028')?.enemyDefReduction).toBe(24)
+    void config
     // 普罗米娅有罪推定已迁移到 agents/promia.ts 模块，见 __tests__/promia.test.ts
   })
 

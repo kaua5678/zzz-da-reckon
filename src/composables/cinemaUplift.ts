@@ -12,7 +12,8 @@
  * - **固定失衡次数**：命座提升率 = 只变命座的同场景对比。3/5 命的技能等级会抬失衡值 →
  *   失衡次数联动放大成 20%+ 的假提升（失衡次数↑ → 连携/喧响↑ → 失衡总量自激，阈值无稳定点），
  *   因此用 `enemy.stunCountLock` 把失衡次数锁在当前收敛值上再逐级对比。
- * - **自检三态**：`ok` = 局内面板有字段变化；`execLevel` = 面板无变化但伤害有提升
+ * - **自检三态**：`ok` = 局内面板有字段变化；`execLevel` = 面板无变化但伤害有移动（含负号——
+ *   资源侧联动可能被时间预算抵消，如卢西娅C4帷幕喧响，命座定案 2026-08）
  *   （执行级效果：moveId 增伤/暴伤/附伤，正常）；`unimplemented` = 面板无变化且伤害无提升
  *   （效果可能完全没接进计算 —— 需要人看的信号）。
  *
@@ -34,7 +35,7 @@ export interface CinemaUpliftEntry {
   ultAfter: number
   /** 本级命座切换前后该角色局内面板有变化的字段（无字段变化 = 效果可能未接进计算） */
   changedFields: string[]
-  /** 自检结论：ok 有字段变化 / execLevel 无面板变化但有伤害提升 / unimplemented 疑似未实现 */
+  /** 自检结论：ok 有字段变化 / execLevel 无面板变化但伤害有移动（含负号）/ unimplemented 疑似未实现 */
   warn: 'ok' | 'execLevel' | 'unimplemented'
 }
 
@@ -45,7 +46,7 @@ export interface CinemaUpliftRow {
   entries: CinemaUpliftEntry[]
 }
 
-/** 判定 execLevel 与 unimplemented 的伤害提升阈值（百分比）。低于此视为「没提升」。 */
+/** 判定 execLevel 与 unimplemented 的伤害变化阈值（百分比，取绝对值）。零移动才是「未接入」。 */
 export const UPLIFT_EPSILON_PCT = 0.05
 
 export interface AnalyzeCinemaUpliftParams {
@@ -121,10 +122,13 @@ export async function analyzeCinemaUplift(params: AnalyzeCinemaUpliftParams): Pr
           ? Object.keys(panelAfter).filter(k => Math.abs((panelAfter[k] ?? 0) - (panelBefore[k] ?? 0)) > 1e-9)
           : []
         const gainPct = base > 0 ? ((next - base) / base) * 100 : 0
+        // 三态判定：面板字段变化 → ok；无面板变化但伤害移动（|gain| ≥ ε，含负号）→ execLevel
+        // ——伤害发生符号变化本身就是执行/资源级生效的证据（如卢西娅C4帷幕喧响挤占时间预算，
+        // 命座定案 2026-08：预算极紧时可为轻微负增益），不是死数据；零移动才是未接入。
         const warn: CinemaUpliftEntry['warn'] = changedFields.length > 0
           ? 'ok'
-          : gainPct >= UPLIFT_EPSILON_PCT
-            ? 'execLevel' // 面板无变化但伤害有提升：执行级效果（moveId 增伤/暴伤/附伤等）
+          : Math.abs(gainPct) >= UPLIFT_EPSILON_PCT
+            ? 'execLevel' // 面板无变化但伤害有移动：执行级效果（moveId 增伤/暴伤/附伤/资源侧联动等）
             : 'unimplemented' // 无字段无伤害：效果可能未接进计算
         entries.push({ to, gainPct, ultBefore, ultAfter, changedFields, warn })
       }
