@@ -703,11 +703,11 @@ export interface QingyiMechanicSource {
   c1StartVoltage: number
   /** 通用招式（强特/大招/连携/闪反/快支/支援突击）电压合计 */
   genericVoltage: number
-  /** 剩余需由一煞#4 补齐的电压 */
+  /** 剩余需由一煞整套弦（#4+#5+#6 ≈ 14.26 电压/2.96s）补齐的电压 */
   remainingVoltage: number
-  /** 一煞#4 补电压次数 */
+  /** 一煞整套弦补电压套数（每套 = #4/#5/#6 各一段） */
   yisha4Hits: number
-  /** 一煞#4 补电压所需时间（秒） */
+  /** 一煞整套弦补电压所需时间（秒） */
   yisha4NecessaryTime: number
   /** 醉花月云转总时间（秒） */
   zuiHuaTime: number
@@ -1245,6 +1245,8 @@ export interface CharacterOperationConfig {
   claretGashCoverage?: number
   /** 克拉蕾命座等级（用于二命锐能额外回复） */
   claretCinemaLevel?: number
+  /** 星见雅命座等级（影画1 招式限定减防等按此门控） */
+  miyabiCinemaLevel?: number
   /** 爱丽丝畏缩 DOT 伤害比例（% 强击伤害），默认 2.5 */
   aliceCoweringDotRatio?: number
   /** 爱丽丝畏缩 DOT 间隔（秒），默认 0.95 */
@@ -1404,7 +1406,9 @@ export interface CharacterOperationConfig {
   zhuyuanC1UltReload?: number
   /** 青衣失衡次数（外层不动点传入，供醉花月云转轮数） */
   qingyiStunCount?: number
-  /** 青衣可分配循环秒均（一煞#4→醉花月云转） */
+  /** 青衣通用行实测总时间（buildExecutions 写入，电压计划预算扣减用） */
+  qingyiGenericRowsTime?: number
+  /** 青衣可分配循环秒均（一煞#4 连打→醉花月云转） */
   qingyiLoopRates?: {
     yisha4Voltage: number
     yisha4ActionTime: number
@@ -1418,7 +1422,7 @@ export interface CharacterOperationConfig {
   /** 青衣醉花月云转 #1/#2 倍率行（含 +25% 伤害 / +12.5% 失衡） */
   qingyiZuiHuaMove1?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
   qingyiZuiHuaMove2?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
-  /** 青衣一煞#4 倍率行 */
+  /** 青衣一煞#4（1251004）倍率行——补电压专用快段（≈25 电压/秒） */
   qingyiYisha4?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
   /** 青衣通用招式电压回复量（attack_data） */
   qingyiExSpecialVoltage?: number

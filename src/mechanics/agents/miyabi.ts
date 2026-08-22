@@ -25,8 +25,8 @@ const MIYABI_AGENT_ID = '1091'
 const FROSTFIRE = 'frostfire'
 /** 霜月架势三段（最赚，消耗6落霜） */
 const FROST_MOON_MOVE_ID = '1091029'
-/** 0命且无风队时冰焰覆盖率的自动默认：标准紊乱轮转中蓄力斩打在[霜寒]上吃不到 80% 加成（用户口径，[猜测·中]） */
-const MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE = 0.6
+/** 0命且无风队时冰焰覆盖率的自动默认：手法上总是打出霜寒后才够6豆，三段蓄力全打在[霜寒]上，全吃不到 80% 加成（用户口径） */
+const MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE = 0
 /** 霜月架势三段动作时间（秒） */
 const FROST_MOON_ACTION_TIME = 3.434
 /** 霜月架势三段消耗落霜 */
@@ -154,10 +154,11 @@ function buildMiyabiCharConfig({ skills, cfg, panel, cinemaLevel }: AgentCharCon
   cfg.miyabiFrostMoonMoveId = FROST_MOON_MOVE_ID
   cfg.miyabiFrostMoonCount = FROST_MOON_COST
   cfg.miyabiFrostMoonActionTime = FROST_MOON_ACTION_TIME
+  cfg.miyabiCinemaLevel = cinemaLevel
   // 冰焰覆盖率（0-1）：冰焰与霜灼互斥。
   // 影画1/风队上下文化默认（用户口径 2026-08）：有风队友（风化全程覆盖，雅不做霜寒）或
   // ≥影画1（霜寒后保留冰焰）时，蓄力斩窗口也吃满暴击率折算的 80% 积蓄加成 → 默认 100%；
-  // 0命且无风队时，标准紊乱轮转的蓄力斩打在[霜寒]上吃不到加成 → 默认 [猜测·中] 60%。
+  // 0命且无风队时，手法上总是打出霜寒后才够 6 豆，三段蓄力全打在[霜寒]上 → 全吃不到，默认 0。
   // 显式设为非 1.0 的滑块值优先于自动默认。
   const coverageRaw = Number((cfg as unknown as Record<string, unknown>)['setting:miyabi.iceFlameCoverage'])
   const hasWind = panel.miyabiHasWindTeammate === 1
@@ -177,6 +178,9 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
 
   const frostMoonCount = res.frostMoonCount
   const actionTime = cfg.miyabiFrostMoonActionTime ?? FROST_MOON_ACTION_TIME
+  // 影画1（招式限定）：三段蓄力的每一段按已消耗落霜无视防御——#1(2豆)=12%、#2(4豆)=24%、#3(6豆)=36%
+  const cinemaLevel = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).miyabiCinemaLevel ?? 0)))
+  const m1DefShred = cinemaLevel >= 1
 
   // 霜月架势三段
   // 合轴：蓄力1秒后即可合轴，totalComboAlignTime = count × 1.0
@@ -195,6 +199,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
     totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
+    ...(m1DefShred ? { enemyDefReduction: 36 } : {}),
   })
 
   // C6：消耗落霜释放霜月#3时，额外赠送一次霜月#1 与 #2
@@ -221,6 +226,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
         totalDecibelRecovery: 0,
         energyRecovery: 0,
         totalEnergyRecovery: 0,
+        ...(m1DefShred ? { enemyDefReduction: gift.moveId === FROST_MOON_1_MOVE_ID ? 12 : 24 } : {}),
       })
     }
   }
@@ -326,14 +332,8 @@ if (anomaly > 0 && count > 0) {
 	  }
 
   // ---- C1：落霜无视防御 ----
-  if (cinemaLevel >= 1 && panel) {
-    const specResources = charResult.specResources
-    const frostFall = specResources?.['miyabi_frost_fall'] as { total?: number } | undefined
-    if (frostFall?.total) {
-      const stacks = Math.min(6, Math.floor(frostFall.total))
-      panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + Math.min(C1_DEF_IGNORE_MAX, stacks * C1_DEF_IGNORE_PER_STACK)
-    }
-  }
+  // 已改为招式限定执行级字段（buildMiyabiExecutions：霜月#1/#2/#3 = 12/24/36），
+  // 不再走面板级堆叠（面板版会把减防泄漏到非霜月招式）。
 
   // ---- 额外能力：紊乱触发霜月无视30%冰抗 ----
   // 次数 = min(紊乱次数, 霜月攻击次数)，计入霜月招式
