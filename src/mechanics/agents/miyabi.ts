@@ -200,7 +200,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
     totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
-    ...(m1DefShred ? { enemyDefReduction: 36 } : {}),
+    ...(m1DefShred ? { defIgnore: 36 } : {}),
   })
 
   // C6：消耗落霜释放霜月#3时，额外赠送一次霜月#1 与 #2
@@ -228,7 +228,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
         totalDecibelRecovery: 0,
         energyRecovery: 0,
         totalEnergyRecovery: 0,
-        ...(m1DefShred ? { enemyDefReduction: gift.moveId === FROST_MOON_1_MOVE_ID ? 12 : 24 } : {}),
+        ...(m1DefShred ? { defIgnore: gift.moveId === FROST_MOON_1_MOVE_ID ? 12 : 24 } : {}),
       })
     }
   }

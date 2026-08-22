@@ -128,9 +128,9 @@ describe('spec resource panel buffs', () => {
     const { config } = await setupHarness([{ agentId: '1091', cinemaLevel: 6 }, '', ''])
     const calc = useResourceCalc()
     const execs = calc.resourceResult.value!.characters[0].executions ?? []
-    expect(execs.find(e => e.moveId === '1091029')?.enemyDefReduction).toBe(36)
-    expect(execs.find(e => e.moveId === '1091027')?.enemyDefReduction).toBe(12)
-    expect(execs.find(e => e.moveId === '1091028')?.enemyDefReduction).toBe(24)
+    expect(execs.find(e => e.moveId === '1091029')?.defIgnore).toBe(36)
+    expect(execs.find(e => e.moveId === '1091027')?.defIgnore).toBe(12)
+    expect(execs.find(e => e.moveId === '1091028')?.defIgnore).toBe(24)
     void config
     // 普罗米娅有罪推定已迁移到 agents/promia.ts 模块，见 __tests__/promia.test.ts
   })
