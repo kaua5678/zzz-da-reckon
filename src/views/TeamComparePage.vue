@@ -80,7 +80,6 @@
           />
         </div>
         <n-button type="primary" size="small" :loading="computing" @click="runCompare">计算</n-button>
-        <n-button size="small" quaternary :disabled="points.length === 0" @click="exportCSV">导出CSV</n-button>
       </div>
 
       <!-- 进度 -->
@@ -495,21 +494,6 @@ const hoverTips = computed(() => {
   ]
 })
 
-// ========== CSV ==========
-function exportCSV() {
-  if (points.value.length === 0) return
-  let csv = '队伍,限定金,常驻,Buff,伤害,伤害/血量%,难度,交互明细,影画,精炼,时间\n'
-  for (const p of points.value) {
-    csv += [p.presetName, p.goldLabel, p.standardGoldLabel ?? '', p.buffTitle ?? '', fmt(p.damage, 0), fmt(p.hpRatio, 1), fmt(p.difficulty, 2), p.difficultyDetail, p.cinemas.join('/'), p.wengineMods.join('/'), `"${p.timeDetail}"`].join(',') + '\n'
-  }
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `team_compare_${selectedBoss.value?.id ?? 'boss'}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
-}
 </script>
 
 <style scoped>
