@@ -237,6 +237,70 @@
       </div>
     </n-card>
 
+    <!-- ============ Chart 2：多队并存强度（队伍×版本矩阵，跌出 Top-K 即淘汰） ============ -->
+    <n-card v-if="result && result.strengthSeeds.length > 0" size="small" :bordered="true">
+      <template #header>
+        多队并存强度
+        <span class="chart-subtitle">每个版本包容前 K 名；可达集合只增 ⇒ 排名不升，跌出即永久淘汰</span>
+      </template>
+      <template #header-extra>
+        <span class="ctl-label">每期并存 K</span>
+        <n-input-number v-model:value="survivalK" :min="1" :max="6" size="small" style="width: 90px" />
+      </template>
+      <div class="timeline-wrap">
+        <svg :viewBox="`0 0 ${svgW} ${strengthSvgH}`" class="timeline-svg">
+          <!-- 网格 + Y 轴（复用 Chart1 的血量%尺度） -->
+          <g v-for="(y, i) in yTicks" :key="'sg' + i">
+            <line :x1="padL" :x2="svgW - padR" :y1="y" :y2="y" class="grid-line" />
+            <text :x="padL - 8" :y="y + 3" class="axis-label" text-anchor="end">{{ yLabel(i) }}%</text>
+          </g>
+          <!-- 每队一条存活横带：覆盖其存活的版本格 -->
+          <g v-for="b in strengthBands" :key="b.seed.key" class="strength-row">
+            <line
+              :x1="padL + b.startIndex * cellW"
+              :y1="bandY(b.seed.hpRatio)"
+              :x2="padL + (b.endIndex + 1) * cellW"
+              :y2="bandY(b.seed.hpRatio)"
+              :stroke="colorOf(b.seed.key)"
+              stroke-width="3.5"
+              stroke-linecap="round"
+            >
+              <title>{{ bandTitle(b) }}</title>
+            </line>
+            <text
+              :x="padL + b.startIndex * cellW + 5"
+              :y="bandY(b.seed.hpRatio) - 5"
+              :fill="colorOf(b.seed.key)"
+              class="strength-label"
+            >{{ b.seed.shortLabel }} {{ fmt(b.seed.hpRatio, 1) }}%</text>
+            <g v-if="b.eliminatedAt != null">
+              <line
+                :x1="padL + (b.endIndex + 1) * cellW - 4"
+                :y1="bandY(b.seed.hpRatio) - 4"
+                :x2="padL + (b.endIndex + 1) * cellW + 4"
+                :y2="bandY(b.seed.hpRatio) + 4"
+                stroke="#ff6b6b"
+                stroke-width="1.6"
+              />
+              <line
+                :x1="padL + (b.endIndex + 1) * cellW - 4"
+                :y1="bandY(b.seed.hpRatio) + 4"
+                :x2="padL + (b.endIndex + 1) * cellW + 4"
+                :y2="bandY(b.seed.hpRatio) - 4"
+                stroke="#ff6b6b"
+                stroke-width="1.6"
+              />
+              <title>{{ bandTitle(b) }}</title>
+            </g>
+          </g>
+          <!-- X 轴节点标签（抽稀同 Chart1） -->
+          <g v-for="(t, i) in xTicks" :key="'sx' + i">
+            <text :x="t.x" :y="strengthSvgH - 8" class="axis-label x-label" text-anchor="middle">{{ t.label }}</text>
+          </g>
+        </svg>
+      </div>
+    </n-card>
+
     <!-- ============ 明细表 ============ -->
     <n-card v-if="result" size="small" :bordered="true" title="各版本节点明细">
       <div class="table-wrap">
@@ -372,7 +436,7 @@ import { NCard, NSelect, NInputNumber, NButton, NProgress } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamTimelineResult } from '@/composables/teamTimeline'
+import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamStrengthSeed, type TeamTimelineResult } from '@/composables/teamTimeline'
 import { buildBossSchedule, scheduleByNode, type BossScheduleEntry } from '@/composables/bossSchedule'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
 import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
@@ -686,6 +750,49 @@ const hoverInfo = computed(() => {
     })(),
   }
 })
+// ========== 多队并存强度（演示.xlsx 口径：队伍×版本矩阵，跌出 Top-K 即永久淘汰） ==========
+const survivalK = ref(3)
+interface StrengthBand {
+  seed: TeamStrengthSeed
+  startIndex: number
+  endIndex: number
+  /** 首次跌出 Top-K 的节点下标（null = 存活到最后） */
+  eliminatedAt: number | null
+}
+const strengthBands = computed<StrengthBand[]>(() => {
+  const seeds = result.value?.strengthSeeds ?? []
+  const nodeCount = result.value?.nodes.length ?? 0
+  const k = Math.max(1, Math.floor(survivalK.value || 1))
+  if (seeds.length === 0 || nodeCount === 0) return []
+  // 逐节点排名：可达（已实装且未被淘汰）按伤害取前 K；可达集合只增 ⇒ 排名单调不升 ⇒ 淘汰永久
+  const eliminatedAt = new Map<string, number>()
+  for (let n = 0; n < nodeCount; n++) {
+    const reachable = seeds.filter(s => s.startIndex <= n && !eliminatedAt.has(s.key))
+    reachable.sort((a, b) => b.damage - a.damage)
+    for (let r = k; r < reachable.length; r++) eliminatedAt.set(reachable[r].key, n)
+    if (reachable.length === 0) break
+  }
+  return seeds
+    .map(seed => {
+      const cut = eliminatedAt.get(seed.key)
+      const endIndex = cut == null ? nodeCount - 1 : cut - 1
+      return { seed, startIndex: seed.startIndex, endIndex, eliminatedAt: cut ?? null }
+    })
+    .filter(b => b.endIndex >= b.startIndex)
+})
+const strengthSvgH = computed(() => padT + plotH + 12 + xLabelH)
+/** 横带 Y = 血量% 尺度，钳制进绘图区 */
+function bandY(hpRatio: number): number {
+  return yOf(Math.min(hpRatio, yMax.value))
+}
+function bandTitle(b: StrengthBand): string {
+  const team = b.seed.team.map(agentName).join('+')
+  const span = `${result.value?.nodes[b.startIndex]?.nodeLabel ?? ''} ~ ${result.value?.nodes[b.endIndex]?.nodeLabel ?? ''}`
+  const elim = b.eliminatedAt != null && result.value?.nodes[b.eliminatedAt]
+    ? `｜${result.value.nodes[b.eliminatedAt].nodeLabel} 起跌出 Top-${survivalK.value} 淘汰`
+    : '｜存活到最后'
+  return `${team}｜伤害 ${compact(b.seed.damage)}（${fmt(b.seed.hpRatio, 1)}%）｜${span}${elim}`
+}
 const hoverCardX = ref(0)
 const hoverCardY = ref(0)
 function onSvgMove(e: MouseEvent) {
@@ -1039,6 +1146,18 @@ function ddLabelY(p: DirectDamagePoint): number {
   margin-top: 6px;
   font-size: 11px;
   color: #f6ad55;
+}
+.strength-row {
+  cursor: default;
+}
+.strength-row:hover line {
+  stroke-width: 6;
+}
+.strength-label {
+  font-size: 11px;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 2.5px;
 }
 .hc-bench {
   color: rgba(255, 255, 255, 0.55);

@@ -215,6 +215,27 @@ describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
       expect(ev.swapKind).toBe(node.swapKind)
       expect(ev.swapUpliftPct).toBe(node.swapUpliftPct)
     }
+    // 多队并存强度种子：池内收敛组合全覆盖、起点在节点范围内、按伤害降序
+    const seeds = res.strengthSeeds
+    expect(seeds.length).toBeGreaterThan(0)
+    const expectedPairKeys = new Set<string>()
+    for (let i = 0; i < pool.length; i++) {
+      for (let j = i + 1; j < pool.length; j++) {
+        expectedPairKeys.add(`1371,${[pool[i], pool[j]].sort().join(',')}`)
+        expectedPairKeys.add(`1371,${pool[i]},${pool[j]}`)
+        expectedPairKeys.add(`1371,${pool[j]},${pool[i]}`)
+      }
+    }
+    for (const s of seeds) {
+      expect(expectedPairKeys.has(s.key), `未知组合 ${s.key}`).toBe(true)
+      expect(s.team[0]).toBe('1371')
+      expect(s.startIndex).toBeGreaterThanOrEqual(0)
+      expect(s.startIndex).toBeLessThan(res.nodes.length)
+      expect(s.damage).toBeGreaterThan(0)
+      expect(s.hpRatio).toBeGreaterThan(0)
+      expect(s.shortLabel).toHaveLength(3)
+    }
+    for (let i = 1; i < seeds.length; i++) expect(seeds[i - 1].damage).toBeGreaterThanOrEqual(seeds[i].damage)
     // 现场恢复
     expect(JSON.stringify(config.team)).toBe(originalTeam)
   }, 120000)

@@ -100,6 +100,22 @@ export interface TeamTimelineStats {
   durationMs: number
 }
 
+/**
+ * 多队并存强度种子（用户口径「队伍×版本强度矩阵」）：池内每个收敛组合一条，
+ * damage 跨节点恒定（同 Boss 数值不变、当期 Buff 不参与）；startIndex = 双队友均实装的
+ * 首个节点（nodes 数组下标）。淘汰点（首次跌出 Top-K 即永久出局——可达集合只增 ⇒ 排名单调不升）
+ * 由展示层按 K 计算，不在数据层固化。
+ */
+export interface TeamStrengthSeed {
+  key: string
+  team: [string, string, string]
+  /** 队伍简称：主C与队友名首字拼接（如 仪青潘） */
+  shortLabel: string
+  damage: number
+  hpRatio: number
+  startIndex: number
+}
+
 export interface TeamTimelineResult {
   mainAgentId: string
   mainName: string
@@ -108,6 +124,8 @@ export interface TeamTimelineResult {
   phaseLabel: string
   nodes: TimelineNodeResult[]
   swapEvents: TeamTimelineSwapEvent[]
+  /** 多队并存强度种子（池内全部收敛组合；展示层按 Top-K 裁剪存活区间） */
+  strengthSeeds: TeamStrengthSeed[]
   stats: TeamTimelineStats
 }
 
@@ -551,6 +569,27 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
     report(0.75, '队伍搜索完成，节点归并…')
     await yieldNow()
 
+    // ---- 多队并存强度种子（用户口径「队伍×版本强度矩阵」，演示.xlsx）----
+    // 池内每个收敛组合一条：damage 跨期恒定，startIndex = 双队友均实装的首个节点。
+    const shortName = (id: string) => catalog.getAgent(id)?.name.zhCN?.[0] ?? id
+    const strengthSeeds: TeamStrengthSeed[] = [...refDamage.entries()]
+      .map(([key, dmg]) => {
+        const [m, a, b] = key.split(',') as [string, string, string]
+        const startNodeIdx = Math.max(
+          nodeIndexOf(AGENT_RELEASE_NODE[a] ?? ''),
+          nodeIndexOf(AGENT_RELEASE_NODE[b] ?? ''),
+        ) - startIdx
+        return {
+          key,
+          team: [m, a, b] as [string, string, string],
+          shortLabel: `${shortName(m)}${shortName(a)}${shortName(b)}`,
+          damage: dmg,
+          hpRatio: opts.phase.hp > 0 ? Math.round((dmg / opts.phase.hp) * 10000) / 100 : 0,
+          startIndex: Math.max(0, startNodeIdx),
+        }
+      })
+      .sort((x, y) => y.damage - x.damage)
+
     // ---- 阶段 2：每节点参考 Top-3（可达前缀）----
     // 当期新实装角色（候选池内反查实装表；主C已排除）——「实装未进队」判定用
     const releasedAt = new Map<string, string[]>()
@@ -706,6 +745,7 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
       phaseLabel: opts.phase.label,
       nodes: nodesResult,
       swapEvents,
+      strengthSeeds,
       stats: { teamsEvaluated, nonConverged, goldEvaluations, durationMs: Date.now() - t0 },
     }
   } finally {
