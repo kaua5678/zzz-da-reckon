@@ -761,9 +761,7 @@ export function buildAnomalyEventExecutions(cfg: CharacterOperationConfig, state
 // ============ 单次迭代 ============
 
 /**
- * 计算强特次数（迭代期连续松弛，2026-08）：次数以实数参与迭代，resource.ts 终局统一
- * floor 取整——floor 留在迭代里会制造相邻不动点滞回（同输入不同初值 → 12/3 vs 12/4），
- * 是跨路径数值漂移的根源。模块行只在装配期构建，消费的是终局整数次数，不受影响。
+ * 计算强特次数。
  * 伊德海莉：失衡内强特由失衡轴连段反推（yidhariInStunExCount），
  * 剩下闪能打非失衡强特（每次 50 闪能，回 15，净耗 35 由 refund 循环收敛）。
  */
@@ -786,20 +784,19 @@ function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy: numbe
     const inStun = cfg.yidhariInStunExCount
     const inStunCost = cfg.yidhariInStunEnergyCost ?? inStun * cfg.exSpecialEnergyConsume
     const remaining = totalEnergy - inStunCost
-    const outStun = remaining > 0 ? remaining / cfg.exSpecialEnergyConsume : 0
+    const outStun = remaining > 0 ? Math.floor(remaining / cfg.exSpecialEnergyConsume) : 0
     return inStun + outStun
   }
-  return totalEnergy / cfg.exSpecialEnergyConsume
+  return cfg.exSpecialCountFloor || !cfg.skipGenericExSpecial
+    ? Math.floor(totalEnergy / cfg.exSpecialEnergyConsume)
+    : totalEnergy / cfg.exSpecialEnergyConsume
 }
 
-/** 单次迭代：根据当前 state 计算新的 state。
- *  finalCounts（终局装配）：给定整数次数时跳过实数推导，用整数重装配派生量（能量/喧响/时间）——
- *  连续松弛的收尾步骤，保证输出次数恒为整数且与展示明细一致。 */
+/** 单次迭代：根据当前 state 计算新的 state */
 export function iterate(
   configs: CharacterOperationConfig[],
   prevStates: IterationState[],
   globalCfg: ResourceCalcConfig,
-  finalCounts?: { ex: number[]; ult: number[] },
 ): IterationState[] {
   const totalTime = globalCfg.totalTime
   const newStates: IterationState[] = []
@@ -822,8 +819,8 @@ export function iterate(
     const totalEnergy = energySrc.total + crossAgent.total
     energies.push(totalEnergy)
 
-    // 强特次数 = 总能量 ÷ 强特消耗（连续实数；终局装配用 finalCounts 整数覆盖）
-    const exSpecialCount = finalCounts ? finalCounts.ex[i] : resolveExSpecialCount(cfg, totalEnergy)
+    // 强特次数 = 总能量 ÷ 强特消耗（伊德海莉失衡内由轴连段反推，剩余打非失衡强特）
+    const exSpecialCount = resolveExSpecialCount(cfg, totalEnergy)
 
     // 喧响（先算独立可分享部分，效率在接收者获得时统一乘入）。
     // 连携次数与展示口径一致（chainCountTotalOverride ?? chainCountPerStun × stunCount），
@@ -907,8 +904,8 @@ export function iterate(
   const totalNecessary: number[] = []
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]
-    const exSpecialCount = finalCounts ? finalCounts.ex[i] : resolveExSpecialCount(cfg, energies[i])
-    const ultimateCount = finalCounts ? finalCounts.ult[i] : decibels[i] / cfg.ultimateCost
+    const exSpecialCount = resolveExSpecialCount(cfg, energies[i])
+    const ultimateCount = Math.floor(decibels[i] / cfg.ultimateCost)
 
     // 连携次数 = 每次失衡连携次数 × 失衡次数（失衡次数由外部失衡池不动点收敛后传入 globalCfg.stunCount）
     // 失衡轴模式用 chainCountTotalOverride（各轴按窗口数加权后的最终连携次数）
@@ -937,8 +934,8 @@ export function iterate(
 
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]
-    const exSpecialCount = finalCounts ? finalCounts.ex[i] : resolveExSpecialCount(cfg, energies[i])
-    const ultimateCount = finalCounts ? finalCounts.ult[i] : decibels[i] / cfg.ultimateCost
+    const exSpecialCount = resolveExSpecialCount(cfg, energies[i])
+    const ultimateCount = Math.floor(decibels[i] / cfg.ultimateCost)
 
     const basicAttackTime = totalWeight > 0
       ? availableBasicTime * (cfg.timeWeight / totalWeight)

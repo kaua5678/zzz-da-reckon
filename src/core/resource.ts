@@ -21,9 +21,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   const maxIter = config.maxIterations || 20
   const configs = config.characters
 
-  // 初始 state：平A时间按权重分配，强特/大招次数初始为0（可注入初值——连续松弛下与初值无关）
+  // 初始 state：平A时间按权重分配，强特/大招次数初始为0（initialStates 注入：测试/热启动用）
   const totalWeight = configs.reduce((a, c) => a + c.timeWeight, 0)
-  const coldStates = (): IterationState[] => configs.map(cfg => ({
+  let states: IterationState[] = config.initialStates && config.initialStates.length === configs.length
+    ? config.initialStates.map(s => ({ ...s }))
+    : configs.map(cfg => ({
     basicAttackTime: totalWeight > 0
       ? totalTime * (cfg.timeWeight / totalWeight)
       : 0,
@@ -37,9 +39,6 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     backstageTime: 0,
     comboAlignTime: 0,
   }))
-  let states: IterationState[] = config.initialStates && config.initialStates.length === configs.length
-    ? config.initialStates.map(s => ({ ...s }))
-    : coldStates()
 
   // 时间预算收敛（外层）+ 资源收敛（内层）：
   // 模块 buildExecutions 会物化出占用前台、但未计入 estimateExSpecialTime 的动作行
@@ -64,13 +63,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     for (iter = 0; iter < maxIter; iter++) {
       const newStates = iterate(configs, states, config)
 
-      // 检查收敛：强特/终结次数（实数）与平A时间稳定（ε=1e-9：收敛残差压到浮点尘埃，
-      // 与到达路径无关；终局 floor(+1e-6) 的松弛带吸收边界误差）
+      // 检查收敛：强特次数和大招次数是否稳定
       let changed = false
       for (let i = 0; i < states.length; i++) {
-        if (Math.abs(newStates[i].exSpecialCount - states[i].exSpecialCount) > 1e-9 ||
-            Math.abs(newStates[i].ultimateCount - states[i].ultimateCount) > 1e-9 ||
-            Math.abs(newStates[i].basicAttackTime - states[i].basicAttackTime) > 1e-9) {
+        if (newStates[i].exSpecialCount !== states[i].exSpecialCount ||
+            newStates[i].ultimateCount !== states[i].ultimateCount) {
           changed = true
           break
         }
@@ -115,111 +112,6 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       timeBudgetConverged = true
       break
     }
-  }
-
-  // 连续松弛终局：整数化 + 整数态折叠（恒等式在最终整数状态上构造成立）。
-  // 迭代期次数为实数（消 floor 滞回：不同初值不再落到相邻不动点，种子不变性见
-  // seedInvariance.test.ts）；终局从 floor 基线出发——
-  //   ① 按整数次数装配并重测前台行 vs 账本：模块行对次数非线性（整段结构/反馈块），
-  //      实数期校准的折叠量在整数态会失准 → 超出部分折入 timeBudgetExcess 压缩平A池；
-  //   ② 无溢出后按「小数部分降序」受试加回 +1（结构性整数槽 exSpecialCountFloor=true
-  //      不参与；每个候选装配确认团队必要时间仍 ≤ 预算才提交）——消除 floor 时间税的
-  //      系统性向下偏差（曾致失衡窗口 4→2、后场喷发 8→7）。
-  // 已知取舍：预算极紧时加回候选间的时间竞争可产生轻微负命座提升（卢西娅C4 −1.2% 量级，
-  // 旧整数动力学靠路径运气掩盖该权衡）；按伤害评估加回候选待架构支持。
-  const invBudget = totalTime - (config.invincibleTime ?? 0)
-  let n = {
-    ex: states.map(s => Math.floor(s.exSpecialCount + 1e-6)),
-    ult: states.map(s => Math.floor(s.ultimateCount + 1e-6)),
-  }
-  for (let intPass = 0; intPass < 4; intPass++) {
-    const prevInt = states.map((s, i) => ({ ...s, exSpecialCount: n.ex[i], ultimateCount: n.ult[i] }))
-    states = iterate(configs, prevInt, config, n)
-
-    // 整数态折叠测量：前台行超出账本的部分折入必要时间（压缩平A池）
-    let maxExcess = 0
-    for (let i = 0; i < configs.length; i++) {
-      const cfg = configs[i]
-      const teamFront = states.reduce((sum, s) => sum + s.frontlineTime, 0) - states[i].frontlineTime
-      const frontRows = buildExecutions(cfg, states[i], states[i].chainCountTotal, teamFront).reduce(
-        (sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
-      const ledger = states[i].necessaryTime + states[i].basicAttackTime
-      const excess = frontRows - ledger
-      if (excess > 1e-6) {
-        configs[i].timeBudgetExcess = (configs[i].timeBudgetExcess ?? 0) + excess
-        if (excess > maxExcess) maxExcess = excess
-      }
-    }
-    // 折入后同轮重装配（不再 continue：守卫与加回必须每轮都执行，否则微超出永不修正）
-    if (maxExcess > 1e-6) {
-      const prevFolded = states.map((s, i) => ({ ...s, exSpecialCount: n.ex[i], ultimateCount: n.ult[i] }))
-      states = iterate(configs, prevFolded, config, n)
-    }
-
-    // 预算守卫：floor 基线的模块行非线性响应可能让 Σ账本略超预算——
-    // 先温和杠杆：把超额折入平A池最大的槽位（压其平A时间，伤害损失 ~0.04s 量级）；
-    // 仍超才硬回撤：从必要时间最大的槽位逐次回撤 1 次（先强特后终结）
-    const measureFront = (sts: IterationState[]) => sts.reduce((sum, st, i) => {
-      const cfg = configs[i]
-      const teamFront = sts.reduce((acc, s) => acc + s.frontlineTime, 0) - st.frontlineTime
-      return sum + buildExecutions(cfg, st, st.chainCountTotal, teamFront).reduce(
-        (a, e) => a + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
-    }, 0)
-    let teamFrontNow = measureFront(states)
-    let guard = 60
-    while (teamFrontNow > invBudget + 1e-6 && guard-- > 0) {
-      const over = teamFrontNow - invBudget
-      const basicSlot = states.reduce((best, s, i) => (s.basicAttackTime > states[best].basicAttackTime ? i : best), 0)
-      if (states[basicSlot].basicAttackTime > over) {
-        // 温和杠杆：超额计入该槽 timeBudgetExcess → 平A池收缩同一量级
-        configs[basicSlot].timeBudgetExcess = (configs[basicSlot].timeBudgetExcess ?? 0) + over
-        const prevGentle = states.map((s, i) => ({ ...s, exSpecialCount: n.ex[i], ultimateCount: n.ult[i] }))
-        states = iterate(configs, prevGentle, config, n)
-        teamFrontNow = measureFront(states)
-        continue
-      }
-      let victim = -1
-      let maxNec = 0
-      for (let i = 0; i < configs.length; i++) {
-        if (states[i].necessaryTime > maxNec && (n.ex[i] > 0 || n.ult[i] > 0)) {
-          maxNec = states[i].necessaryTime
-          victim = i
-        }
-      }
-      if (victim < 0) break
-      if (n.ex[victim] > 0) n.ex[victim] -= 1
-      else if (n.ult[victim] > 0) n.ult[victim] -= 1
-      const prevInt2 = states.map((s, i) => ({ ...s, exSpecialCount: n.ex[i], ultimateCount: n.ult[i] }))
-      states = iterate(configs, prevInt2, config, n)
-      teamFrontNow = measureFront(states)
-    }
-
-    // 无溢出 → 受试加回：小数降序逐个 +1，装配确认团队必要时间仍 ≤ 预算才提交
-    type Cand = { slot: number; kind: 'ex' | 'ult'; frac: number }
-    const cands: Cand[] = []
-    for (let i = 0; i < configs.length; i++) {
-      const cfg = configs[i]
-      const linearEx = !cfg.exSpecialCountFloor
-      const fx = states[i].exSpecialCount - n.ex[i]
-      const fu = states[i].ultimateCount - n.ult[i]
-      if (linearEx && fx > 1e-9) cands.push({ slot: i, kind: 'ex', frac: fx })
-      if (fu > 1e-9) cands.push({ slot: i, kind: 'ult', frac: fu })
-    }
-    cands.sort((a, b) => b.frac - a.frac)
-    let didAdd = false
-    for (const cand of cands) {
-      const trialN = { ex: [...n.ex], ult: [...n.ult] }
-      trialN[cand.kind][cand.slot] += 1
-      const trialPrev = states.map((s, i) => ({ ...s, exSpecialCount: trialN.ex[i], ultimateCount: trialN.ult[i] }))
-      const trialState = iterate(configs, trialPrev, config, trialN)
-      // 门条件量测**前台行总和**（含模块非线性行），而非线性必要时间——后者会低估整段结构行
-      if (measureFront(trialState) <= invBudget + 0.05) {
-        n = trialN
-        states = trialState
-        didAdd = true
-      }
-    }
-    if (!didAdd && maxExcess <= 1e-6) break
   }
 
   // 失衡次数由外部失衡池不动点收敛后传入（连携次数 = chainCountPerStun × stunCount，见 iterate）
@@ -297,27 +189,6 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 显示口径统一：前台时间 = **前台**执行行 ΣtotalTime（后台行不占共享轴，如莱卡恩围猎蓄力；
     // 含合轴，机制改写行/倍率表行都在内），后台 = 总时间 - 前台。
     // 折叠循环已把前台行对其账本收敛，故 Σ前台行 ≈ 账本 ≤ 战斗时间。
-    const execFrontlineTimeRaw = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
-    // 时间预算守卫：迭代必要时间是线性估计，模块物化行（结构性整数槽位如琉音三段等）
-    // 可能超出估计——Σ前台 > 战斗时间时（实测琉音 solo 181.67/180），优先从 count=0 的
-    // 纯时间载流平A行扣减溢出（平A是弹性填充桶）；扣尽仍溢出再按比例收缩全部前台行。
-    let overflow = execFrontlineTimeRaw - totalTime
-    if (overflow > 1e-6) {
-      for (const e of executions) {
-        if (overflow <= 1e-6) break
-        if (!isFrontlineExecution(e) || (e.count ?? 0) !== 0) continue
-        const t = e.totalTime ?? 0
-        if (t <= 0) continue
-        const cut = Math.min(t, overflow)
-        e.totalTime = t - cut
-        overflow -= cut
-      }
-      const afterFiller = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
-      if (afterFiller > totalTime + 1e-6) {
-        const k = totalTime / afterFiller
-        for (const e of executions) if (isFrontlineExecution(e)) e.totalTime = (e.totalTime ?? 0) * k
-      }
-    }
     const execFrontlineTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
     const timeAlloc = {
       ...calcTimeAllocation(cfg, state, totalTime),
