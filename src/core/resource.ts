@@ -117,16 +117,76 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     }
   }
 
-  // 连续松弛终局取整：迭代期次数为实数，此处一次性取**最近整数**（+1e-6 防浮点边界），
-  // 再用整数次数重装配一轮派生量（能量/喧响/时间）。取最近而非 floor：连续均衡是「时间公平
-  // 的平均战场」，最近的整数是其最小失真代表；floor 会留下系统性向下偏差（小数次数已按比例
-  // 占用时间，floor 等于白交时间税），曾致失衡窗口 4→2、后场喷发 8→7 等边界塌缩。
-  // 收敛态仍是输入的纯函数（消除 floor 滞回：不同初值不再落到 12/3 vs 12/4 相邻不动点）。
-  const toFinalCount = (x: number) => Math.round(x + 1e-6)
-  states = iterate(configs, states, config, {
-    ex: states.map(s => toFinalCount(s.exSpecialCount)),
-    ult: states.map(s => toFinalCount(s.ultimateCount)),
-  })
+  // 连续松弛终局整数化（贪心装包）：迭代期次数为实数；终局先取 floor 基线（与旧整数动力学同
+  // 量级，天然不溢出），再把各次数的**小数部分**按降序在剩余预算内逐一加回——消除 floor 的
+  // 「时间税」系统性向下偏差（曾致失衡窗口 4→2、后场喷发 8→7 等边界塌缩），同时 Σ前台 ≤
+  // 战斗−无敌由构造保证。收敛态仍是输入的纯函数（消滞回：不同初值不再落到相邻不动点）。
+  // 结构性整数（般岳怒相循环、琉音三段等）小数恒 0，自动不参与加回。
+  const invBudget = totalTime - (config.invincibleTime ?? 0)
+  let n = {
+    ex: states.map(s => Math.floor(s.exSpecialCount + 1e-6)),
+    ult: states.map(s => Math.floor(s.ultimateCount + 1e-6)),
+  }
+  {
+    // 组装 floor 基线并求剩余预算（必要时间为次数的线性函数，贪心可直接按单价扣减）
+    const basePrev = states.map((s, i) => ({ ...s, exSpecialCount: n.ex[i], ultimateCount: n.ult[i] }))
+    const baseState = iterate(configs, basePrev, config, n)
+    let spare = invBudget - baseState.reduce((sum, s) => sum + s.necessaryTime, 0)
+    type Cand = { slot: number; kind: 'ex' | 'ult'; frac: number; cost: number }
+    const cands: Cand[] = []
+    for (let i = 0; i < configs.length; i++) {
+      const cfg = configs[i]
+      // 结构性整数槽位（exSpecialCountFloor=true：琉音三段/诺姆弹幕/比利EX链等）不参与加回——
+      // 其模块必要时间对次数是非线性的（整段结构），线性单价假设会突破时间预算
+      const linearEx = !cfg.exSpecialCountFloor
+      const fx = states[i].exSpecialCount - n.ex[i]
+      const fu = states[i].ultimateCount - n.ult[i]
+      if (linearEx && fx > 1e-9 && cfg.exSpecialActionTime > 0) cands.push({ slot: i, kind: 'ex', frac: fx, cost: cfg.exSpecialActionTime })
+      if (fu > 1e-9 && cfg.ultimateActionTime > 0) cands.push({ slot: i, kind: 'ult', frac: fu, cost: cfg.ultimateActionTime })
+    }
+    cands.sort((a, b) => b.frac - a.frac)
+    for (const cand of cands) {
+      if (cand.cost <= spare) {
+        n[cand.kind][cand.slot] += 1
+        spare -= cand.cost
+      }
+    }
+    const finalPrev = states.map((s, i) => ({ ...s, exSpecialCount: n.ex[i], ultimateCount: n.ult[i] }))
+    states = iterate(configs, finalPrev, config, n)
+    // 整数态重推抬升：整数装配的基础池 ≥ 均衡假设（小数时间税被归还）→ 重推实数次数可能更高；
+    // 用重推结果再走一轮贪心，直到 n 稳定（≤3 轮）。无此环时邻槽次数被税压低（卢西娅C4 负提升案例）。
+    for (let lift = 0; lift < 3; lift++) {
+      const rederived = iterate(configs, states, config)
+      const nextN = {
+        ex: rederived.map(s => Math.floor(s.exSpecialCount + 1e-6)),
+        ult: rederived.map(s => Math.floor(s.ultimateCount + 1e-6)),
+      }
+      if (nextN.ex.every((v, i) => v === n.ex[i]) && nextN.ult.every((v, i) => v === n.ult[i])) break
+      // 以重推态为新基线重走贪心装包
+      const prev2 = rederived.map((s, i) => ({ ...s, exSpecialCount: nextN.ex[i], ultimateCount: nextN.ult[i] }))
+      const base2 = iterate(configs, prev2, config, nextN)
+      let spare2 = invBudget - base2.reduce((sum, s) => sum + s.necessaryTime, 0)
+      const cands2: Array<{ slot: number; kind: 'ex' | 'ult'; frac: number; cost: number }> = []
+      for (let i = 0; i < configs.length; i++) {
+        const cfg = configs[i]
+        const linearEx = !cfg.exSpecialCountFloor
+        const fx = rederived[i].exSpecialCount - nextN.ex[i]
+        const fu = rederived[i].ultimateCount - nextN.ult[i]
+        if (linearEx && fx > 1e-9 && cfg.exSpecialActionTime > 0) cands2.push({ slot: i, kind: 'ex', frac: fx, cost: cfg.exSpecialActionTime })
+        if (fu > 1e-9 && cfg.ultimateActionTime > 0) cands2.push({ slot: i, kind: 'ult', frac: fu, cost: cfg.ultimateActionTime })
+      }
+      cands2.sort((a, b) => b.frac - a.frac)
+      for (const cand of cands2) {
+        if (cand.cost <= spare2) {
+          nextN[cand.kind][cand.slot] += 1
+          spare2 -= cand.cost
+        }
+      }
+      const prev3 = rederived.map((s, i) => ({ ...s, exSpecialCount: nextN.ex[i], ultimateCount: nextN.ult[i] }))
+      states = iterate(configs, prev3, config, nextN)
+      n = nextN
+    }
+  }
 
   // 失衡次数由外部失衡池不动点收敛后传入（连携次数 = chainCountPerStun × stunCount，见 iterate）
   const inputStunCount = config.stunCount ?? 0

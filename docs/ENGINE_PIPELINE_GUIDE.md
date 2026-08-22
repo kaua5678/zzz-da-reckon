@@ -137,6 +137,13 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
     空数据语义），config store 在数据晚到时 watch 自动重同步。**新测试只 `await catalog.load()`
     会在就绪门上拿到 null**——必须补 `await catalog.loadTeammateBuffs()`（或直接用 setupHarness）。
     回归：`determinism.test.ts`（双全新会话逐位一致）。
+17. **连续松弛终局整数化（2026-08）**：强特/终结次数在迭代期以**实数**参与（`iterate` 的
+    `finalCounts` 参数供终局覆盖），收敛判据 ε=1e-9（次数+平A时间）；终局「floor 基线 + 小数
+    降序预算内加回」贪心装包 + 整数态重推抬升（≤3 轮）。floor 滞回曾致同输入不同初值落到相邻
+    不动点（12/3 vs 12/4）；结构性整数模块（`exSpecialCountFloor=true`：琉音/诺姆/比利EX链等）
+    不参与加回（其必要时间对次数非线性）。种子不变性回归：`seedInvariance.test.ts`。
+    已知取舍：预算极紧时「小数次数按比例占时间」可产生轻微负命座提升（卢西娅C4 −1.2% 量级），
+    旧整数动力学靠路径运气掩盖该权衡——彻底解法需按伤害评估加回候选，待定。
 
 ## 5. 验收命令
 
