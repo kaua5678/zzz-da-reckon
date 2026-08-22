@@ -170,7 +170,39 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 页面注册 | `CalculatorView.vue` pageMap + `AppHeader.vue`（`timeline` tab） |
 | 测试 | `src/composables/__tests__/teamTimeline.test.ts`（数据不变量/基础金/贪婪金/演变冒烟） |
 
-## 5. 验证命令
+## 5. 倍率表系数演算记录（「倍率系数记录」Tab，开发组）
+
+### 5.1 用户操作
+
+1. 「倍率系数记录」Tab（开发组）自动对全角色跑一遍演算，无需点按钮：
+   - **标准职业稀有度倍率表**：14 类招式 × 六列（伤害/失衡/回能/喧响/积蓄/秽盾）的 1 级 A 级基准式；
+   - **角色纵向系数总表**：每角色五列资源系数 + 直伤系数，偏离 100% 即该角色专属系数（点击行跳转明细）;
+   - **单角色招式明细**：逐招式逐列「实际/期望」比值与标记；
+   - **招式特定偏差清单**：单招式比值偏离本角色列基准 ±5% 以上（连携增强/大招削弱一类设计空间）；
+   - **快速支援时间校准清单**：actionTime 与喧响基准反推 t（= 喧响值 ÷ 27.5）偏差 >15% 的记录。
+
+### 5.2 口径
+
+- **模型**：实际录入值(Lv12) = 标准式(const + b×t [+ c×e]) × 等级系数（伤害×2 / 失衡×1.5，引用 `core/skillLevel.ts` 同源常量 `LEVEL1_TO_LEVEL12`）× 稀有度系数（限定S ×1.1 / 常驻S ×1.05，只乘伤害失衡；命破伤害另×0.8）× 角色系数。t = actionTime，e = energyCost 首个非持续项。**特殊技不回能**（原表 3.6t 系笔误，已从标准表删除）。
+- **闪能质量 ×1.2**：命破角色的「能」均指闪能。强特消耗闪能（Flash Energy Cost）时，四个耗能利用率系数（伤害 5.55835 / 失衡 4.175 / 喧响 1.909 / 积蓄 4.86）先 ×1.2 再乘闪能量——相同闪能比相同能量多转化 20%。**锚点真斗**：强特「归烬·天坠」耗 80 点闪能（nanoka param 确认，`scripts/patch-move-energy-cost.mjs` 录入），代入后五列比值全部 ≈1.000（测试钉住）；仪玄/般岳在规则之上仍有各自机制偏移，由偏差清单呈现。
+- **纵向系数聚合口径**：只取干净类型（排除强化特殊技、轻/重招架、未分类），列内取中位数抗脏行；**支援突击为锚点**（通常不随角色变化），其伤害列比值即「版本直伤系数」。
+- **已验证钉子（测试钉住）**：爱丽丝失衡 90%、伊德海莉（章鱼）喧响 ~49%、耀嘉音/琉音回能 50%、叶瞬光失衡 50%+喧响 80%、蕾米埃尔喧响 50%、悠真积蓄 70%、薇薇安积蓄 80%、南宫羽喧响 90%、凯撒/月城柳失衡 ~91%；可琳 A 级基线五列 ≈100%；秽盾列全角色无偏差；般岳「山摇」闪能 ×1.2 手算比值。
+- **固化产物 `docs/multiplier-record.md`**：「描述倍率表的句子」与倍率表一样静止——老角色倍率不变则描述不变。由演算结果确定性渲染（总表 / 性质描述 / 招式特定偏差 / 时间校准清单），数据或口径变了漂移测试变红，跑 `npm run gen:multiplier-record` 再生成并随数据改动一起提交；手改无效。
+- **待确认口径（页面底部有同款清单）**：轻/重招架恒为标准的 ~110.7%/~108.3%；快速支援伤害/失衡 ≈2×、喧响 ≈55% 且新旧分层；强特耗能分摊因角色而异（露西每段独立计 60、妮可为通道共享），逐段评估仅供参考。
+- 标准表常数单一来源 `src/data/standardMultiplierTable.ts`（常驻 S 名单也移到此为单一来源，`teamCompare.ts` 转出保持原 API）。
+
+### 5.3 修改入口
+
+| 要改什么 | 改哪里 |
+| --- | --- |
+| 标准表常数 / 稀有度系数 / 新增招式类型 | `src/data/standardMultiplierTable.ts` |
+| 分类规则 / 聚合口径 / 偏差阈值 | `src/composables/multiplierCoefficients.ts`（`classifyMove` / `isCleanVerticalType` / 阈值常量） |
+| 页面展示 | `src/views/MultiplierCoeffPage.vue` |
+| 页面注册 | `CalculatorView.vue` pageMap + `AppHeader.vue`（`multiplierCoeff` tab） |
+| 测试（口径钉子） | `src/composables/__tests__/multiplierCoefficients.test.ts` |
+| 固化产物再生成 | `npm run gen:multiplier-record`（生成器 + 漂移检查在 `src/composables/__tests__/multiplierRecord.test.ts`，产物 `docs/multiplier-record.md`） |
+
+## 6. 验证命令
 
 ```bash
 npm run typecheck      # 类型

@@ -17,6 +17,7 @@
     "specs:bootstrap": "node scripts/bootstrap-specs.mjs",
     "specs:coverage": "node scripts/spec-coverage.mjs",
     "docs:status": "node scripts/generate-implementation-status.mjs",
+    "gen:multiplier-record": "GEN_MULTIPLIER_RECORD=1 vitest run src/composables/__tests__/multiplierRecord.test.ts",
     "check": "npm run validate:data && npm run validate:specs && npm test",
     "verify": "npm run validate:data && npm run validate:specs && npm test && npm run typecheck && npm run build"
   },

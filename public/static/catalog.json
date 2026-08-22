@@ -94155,7 +94155,10 @@
                 }
               ],
               "timeType": "normal",
-              "actionTime": 2.017
+              "actionTime": 2.017,
+              "energyCost": {
+                "Flash Energy Cost": "80"
+              }
             }
           ]
         },

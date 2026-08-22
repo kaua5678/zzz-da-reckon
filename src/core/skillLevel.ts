@@ -43,3 +43,12 @@ export function getSkillLevelCoef(skillLevelBonus: number): SkillLevelCoef {
     dazeCoef: (skillLevel + 21) / 33,
   }
 }
+
+/**
+ * 1 级表 → 12 级表的固定换算（与上方线性式同源反推：L=1 时系数为 11/22、22/33）。
+ * 标准倍率表口径用：社区标准表按 1 级 A 角色记录，catalog 录的是 12 级单值。
+ */
+export const LEVEL1_TO_LEVEL12 = {
+  damage: 22 / (1 + 10),
+  daze: 33 / (1 + 21),
+} as const

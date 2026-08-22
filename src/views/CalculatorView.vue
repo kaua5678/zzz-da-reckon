@@ -46,6 +46,7 @@ import MechanicsTablePage from '@/views/MechanicsTablePage.vue'
 import TeamComparePage from '@/views/TeamComparePage.vue'
 import StunBreakerComparePage from '@/views/StunBreakerComparePage.vue'
 import TimeChartsPage from '@/views/TimeChartsPage.vue'
+import MultiplierCoeffPage from '@/views/MultiplierCoeffPage.vue'
 
 const catalogStore = useCatalogStore()
 const configStore = useConfigStore()
@@ -64,6 +65,7 @@ const pageMap: Record<string, any> = {
   wengineFields: WEngineFieldPage,
   logic: LogicEditorPage,
   mechanic: MechanicsTablePage,
+  multiplierCoeff: MultiplierCoeffPage,
 }
 
 const currentPage = computed(() => pageMap[configStore.activeTab] ?? TeamConfigPage)

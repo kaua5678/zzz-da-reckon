@@ -41,6 +41,7 @@
           <n-tab-pane name="wengineFields" tab="音擎字段" />
           <n-tab-pane name="logic" tab="逻辑编辑" />
           <n-tab-pane name="mechanic" tab="机制表" />
+          <n-tab-pane name="multiplierCoeff" tab="倍率系数记录" />
         </n-tabs>
       </div>
     </div>
@@ -55,7 +56,7 @@ import { useConfigStore } from '@/stores/config'
 const configStore = useConfigStore()
 
 const calculatorTabs = ['team', 'attribute', 'resource', 'result', 'resourceUtilization', 'stunAxis', 'teamCompare', 'breakerCompare', 'timeline']
-const developerTabs = ['debug', 'wengineFields', 'logic', 'mechanic']
+const developerTabs = ['debug', 'wengineFields', 'logic', 'mechanic', 'multiplierCoeff']
 const calculatorTabValue = computed(() => calculatorTabs.includes(configStore.activeTab) ? configStore.activeTab : '')
 const developerTabValue = computed(() => developerTabs.includes(configStore.activeTab) ? configStore.activeTab : '')
 
