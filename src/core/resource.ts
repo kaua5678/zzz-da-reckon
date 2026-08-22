@@ -263,6 +263,27 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 显示口径统一：前台时间 = **前台**执行行 ΣtotalTime（后台行不占共享轴，如莱卡恩围猎蓄力；
     // 含合轴，机制改写行/倍率表行都在内），后台 = 总时间 - 前台。
     // 折叠循环已把前台行对其账本收敛，故 Σ前台行 ≈ 账本 ≤ 战斗时间。
+    const execFrontlineTimeRaw = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
+    // 时间预算守卫：迭代必要时间是线性估计，模块物化行（结构性整数槽位如琉音三段等）
+    // 可能超出估计——Σ前台 > 战斗时间时（实测琉音 solo 181.67/180），优先从 count=0 的
+    // 纯时间载流平A行扣减溢出（平A是弹性填充桶）；扣尽仍溢出再按比例收缩全部前台行。
+    let overflow = execFrontlineTimeRaw - totalTime
+    if (overflow > 1e-6) {
+      for (const e of executions) {
+        if (overflow <= 1e-6) break
+        if (!isFrontlineExecution(e) || (e.count ?? 0) !== 0) continue
+        const t = e.totalTime ?? 0
+        if (t <= 0) continue
+        const cut = Math.min(t, overflow)
+        e.totalTime = t - cut
+        overflow -= cut
+      }
+      const afterFiller = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
+      if (afterFiller > totalTime + 1e-6) {
+        const k = totalTime / afterFiller
+        for (const e of executions) if (isFrontlineExecution(e)) e.totalTime = (e.totalTime ?? 0) * k
+      }
+    }
     const execFrontlineTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
     const timeAlloc = {
       ...calcTimeAllocation(cfg, state, totalTime),
