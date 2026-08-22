@@ -786,7 +786,8 @@ function actionTimeTotal(
     }
   }
   const available = battleTime - invincibleTime
-  const exceeded = totalActionTime > available
+  // 容差 1e-6：终局贪心会把预算用满到浮点边界（180.000000…），零容差会把「刚好打满」误报为超时
+  const exceeded = totalActionTime > available + 1e-6
   return {
     timeExceeded: exceeded,
     timeDetail: exceeded

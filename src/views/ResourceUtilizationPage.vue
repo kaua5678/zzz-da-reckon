@@ -228,7 +228,7 @@
                 :key="e.to"
                 :style="entryBadgeStyle(e)"
               >
-                影画{{ e.to - 1 }}→{{ e.to }} +{{ fmt(e.gainPct, 1) }}%<template v-if="e.ultAfter !== e.ultBefore">（全队大招 {{ e.ultBefore }}→{{ e.ultAfter }}）</template><template v-if="e.warn === 'execLevel'"> · 执行级</template><template v-if="e.warn === 'unimplemented'"> · ⚠无变化</template>
+                影画{{ e.to - 1 }}→{{ e.to }} {{ e.gainPct >= 0 ? '+' : '' }}{{ fmt(e.gainPct, 1) }}%<template v-if="e.gainPct < 0">（预算权衡：该命座资源侧收益被时间成本抵消）</template><template v-if="e.ultAfter !== e.ultBefore">（全队大招 {{ e.ultBefore }}→{{ e.ultAfter }}）</template><template v-if="e.warn === 'execLevel'"> · 执行级</template><template v-if="e.warn === 'unimplemented'"> · ⚠无变化</template>
                 <template v-if="e.warn === 'unimplemented' && e.changedFields.length === 0">（该命座无面板字段与伤害变化，效果可能未接进计算）</template>
               </span>
             </div>

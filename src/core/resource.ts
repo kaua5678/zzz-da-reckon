@@ -117,75 +117,109 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     }
   }
 
-  // 连续松弛终局整数化（贪心装包）：迭代期次数为实数；终局先取 floor 基线（与旧整数动力学同
-  // 量级，天然不溢出），再把各次数的**小数部分**按降序在剩余预算内逐一加回——消除 floor 的
-  // 「时间税」系统性向下偏差（曾致失衡窗口 4→2、后场喷发 8→7 等边界塌缩），同时 Σ前台 ≤
-  // 战斗−无敌由构造保证。收敛态仍是输入的纯函数（消滞回：不同初值不再落到相邻不动点）。
-  // 结构性整数（般岳怒相循环、琉音三段等）小数恒 0，自动不参与加回。
+  // 连续松弛终局：整数化 + 整数态折叠（恒等式在最终整数状态上构造成立）。
+  // 迭代期次数为实数（消 floor 滞回：不同初值不再落到相邻不动点，种子不变性见
+  // seedInvariance.test.ts）；终局从 floor 基线出发——
+  //   ① 按整数次数装配并重测前台行 vs 账本：模块行对次数非线性（整段结构/反馈块），
+  //      实数期校准的折叠量在整数态会失准 → 超出部分折入 timeBudgetExcess 压缩平A池；
+  //   ② 无溢出后按「小数部分降序」受试加回 +1（结构性整数槽 exSpecialCountFloor=true
+  //      不参与；每个候选装配确认团队必要时间仍 ≤ 预算才提交）——消除 floor 时间税的
+  //      系统性向下偏差（曾致失衡窗口 4→2、后场喷发 8→7）。
+  // 已知取舍：预算极紧时加回候选间的时间竞争可产生轻微负命座提升（卢西娅C4 −1.2% 量级，
+  // 旧整数动力学靠路径运气掩盖该权衡）；按伤害评估加回候选待架构支持。
   const invBudget = totalTime - (config.invincibleTime ?? 0)
   let n = {
     ex: states.map(s => Math.floor(s.exSpecialCount + 1e-6)),
     ult: states.map(s => Math.floor(s.ultimateCount + 1e-6)),
   }
-  {
-    // 组装 floor 基线并求剩余预算（必要时间为次数的线性函数，贪心可直接按单价扣减）
-    const basePrev = states.map((s, i) => ({ ...s, exSpecialCount: n.ex[i], ultimateCount: n.ult[i] }))
-    const baseState = iterate(configs, basePrev, config, n)
-    let spare = invBudget - baseState.reduce((sum, s) => sum + s.necessaryTime, 0)
-    type Cand = { slot: number; kind: 'ex' | 'ult'; frac: number; cost: number }
+  for (let intPass = 0; intPass < 4; intPass++) {
+    const prevInt = states.map((s, i) => ({ ...s, exSpecialCount: n.ex[i], ultimateCount: n.ult[i] }))
+    states = iterate(configs, prevInt, config, n)
+
+    // 整数态折叠测量：前台行超出账本的部分折入必要时间（压缩平A池）
+    let maxExcess = 0
+    for (let i = 0; i < configs.length; i++) {
+      const cfg = configs[i]
+      const teamFront = states.reduce((sum, s) => sum + s.frontlineTime, 0) - states[i].frontlineTime
+      const frontRows = buildExecutions(cfg, states[i], states[i].chainCountTotal, teamFront).reduce(
+        (sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
+      const ledger = states[i].necessaryTime + states[i].basicAttackTime
+      const excess = frontRows - ledger
+      if (excess > 1e-6) {
+        configs[i].timeBudgetExcess = (configs[i].timeBudgetExcess ?? 0) + excess
+        if (excess > maxExcess) maxExcess = excess
+      }
+    }
+    // 折入后同轮重装配（不再 continue：守卫与加回必须每轮都执行，否则微超出永不修正）
+    if (maxExcess > 1e-6) {
+      const prevFolded = states.map((s, i) => ({ ...s, exSpecialCount: n.ex[i], ultimateCount: n.ult[i] }))
+      states = iterate(configs, prevFolded, config, n)
+    }
+
+    // 预算守卫：floor 基线的模块行非线性响应可能让 Σ账本略超预算——
+    // 先温和杠杆：把超额折入平A池最大的槽位（压其平A时间，伤害损失 ~0.04s 量级）；
+    // 仍超才硬回撤：从必要时间最大的槽位逐次回撤 1 次（先强特后终结）
+    const measureFront = (sts: IterationState[]) => sts.reduce((sum, st, i) => {
+      const cfg = configs[i]
+      const teamFront = sts.reduce((acc, s) => acc + s.frontlineTime, 0) - st.frontlineTime
+      return sum + buildExecutions(cfg, st, st.chainCountTotal, teamFront).reduce(
+        (a, e) => a + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
+    }, 0)
+    let teamFrontNow = measureFront(states)
+    let guard = 60
+    while (teamFrontNow > invBudget + 1e-6 && guard-- > 0) {
+      const over = teamFrontNow - invBudget
+      const basicSlot = states.reduce((best, s, i) => (s.basicAttackTime > states[best].basicAttackTime ? i : best), 0)
+      if (states[basicSlot].basicAttackTime > over) {
+        // 温和杠杆：超额计入该槽 timeBudgetExcess → 平A池收缩同一量级
+        configs[basicSlot].timeBudgetExcess = (configs[basicSlot].timeBudgetExcess ?? 0) + over
+        const prevGentle = states.map((s, i) => ({ ...s, exSpecialCount: n.ex[i], ultimateCount: n.ult[i] }))
+        states = iterate(configs, prevGentle, config, n)
+        teamFrontNow = measureFront(states)
+        continue
+      }
+      let victim = -1
+      let maxNec = 0
+      for (let i = 0; i < configs.length; i++) {
+        if (states[i].necessaryTime > maxNec && (n.ex[i] > 0 || n.ult[i] > 0)) {
+          maxNec = states[i].necessaryTime
+          victim = i
+        }
+      }
+      if (victim < 0) break
+      if (n.ex[victim] > 0) n.ex[victim] -= 1
+      else if (n.ult[victim] > 0) n.ult[victim] -= 1
+      const prevInt2 = states.map((s, i) => ({ ...s, exSpecialCount: n.ex[i], ultimateCount: n.ult[i] }))
+      states = iterate(configs, prevInt2, config, n)
+      teamFrontNow = measureFront(states)
+    }
+
+    // 无溢出 → 受试加回：小数降序逐个 +1，装配确认团队必要时间仍 ≤ 预算才提交
+    type Cand = { slot: number; kind: 'ex' | 'ult'; frac: number }
     const cands: Cand[] = []
     for (let i = 0; i < configs.length; i++) {
       const cfg = configs[i]
-      // 结构性整数槽位（exSpecialCountFloor=true：琉音三段/诺姆弹幕/比利EX链等）不参与加回——
-      // 其模块必要时间对次数是非线性的（整段结构），线性单价假设会突破时间预算
       const linearEx = !cfg.exSpecialCountFloor
       const fx = states[i].exSpecialCount - n.ex[i]
       const fu = states[i].ultimateCount - n.ult[i]
-      if (linearEx && fx > 1e-9 && cfg.exSpecialActionTime > 0) cands.push({ slot: i, kind: 'ex', frac: fx, cost: cfg.exSpecialActionTime })
-      if (fu > 1e-9 && cfg.ultimateActionTime > 0) cands.push({ slot: i, kind: 'ult', frac: fu, cost: cfg.ultimateActionTime })
+      if (linearEx && fx > 1e-9) cands.push({ slot: i, kind: 'ex', frac: fx })
+      if (fu > 1e-9) cands.push({ slot: i, kind: 'ult', frac: fu })
     }
     cands.sort((a, b) => b.frac - a.frac)
+    let didAdd = false
     for (const cand of cands) {
-      if (cand.cost <= spare) {
-        n[cand.kind][cand.slot] += 1
-        spare -= cand.cost
+      const trialN = { ex: [...n.ex], ult: [...n.ult] }
+      trialN[cand.kind][cand.slot] += 1
+      const trialPrev = states.map((s, i) => ({ ...s, exSpecialCount: trialN.ex[i], ultimateCount: trialN.ult[i] }))
+      const trialState = iterate(configs, trialPrev, config, trialN)
+      // 门条件量测**前台行总和**（含模块非线性行），而非线性必要时间——后者会低估整段结构行
+      if (measureFront(trialState) <= invBudget + 0.05) {
+        n = trialN
+        states = trialState
+        didAdd = true
       }
     }
-    const finalPrev = states.map((s, i) => ({ ...s, exSpecialCount: n.ex[i], ultimateCount: n.ult[i] }))
-    states = iterate(configs, finalPrev, config, n)
-    // 整数态重推抬升：整数装配的基础池 ≥ 均衡假设（小数时间税被归还）→ 重推实数次数可能更高；
-    // 用重推结果再走一轮贪心，直到 n 稳定（≤3 轮）。无此环时邻槽次数被税压低（卢西娅C4 负提升案例）。
-    for (let lift = 0; lift < 3; lift++) {
-      const rederived = iterate(configs, states, config)
-      const nextN = {
-        ex: rederived.map(s => Math.floor(s.exSpecialCount + 1e-6)),
-        ult: rederived.map(s => Math.floor(s.ultimateCount + 1e-6)),
-      }
-      if (nextN.ex.every((v, i) => v === n.ex[i]) && nextN.ult.every((v, i) => v === n.ult[i])) break
-      // 以重推态为新基线重走贪心装包
-      const prev2 = rederived.map((s, i) => ({ ...s, exSpecialCount: nextN.ex[i], ultimateCount: nextN.ult[i] }))
-      const base2 = iterate(configs, prev2, config, nextN)
-      let spare2 = invBudget - base2.reduce((sum, s) => sum + s.necessaryTime, 0)
-      const cands2: Array<{ slot: number; kind: 'ex' | 'ult'; frac: number; cost: number }> = []
-      for (let i = 0; i < configs.length; i++) {
-        const cfg = configs[i]
-        const linearEx = !cfg.exSpecialCountFloor
-        const fx = rederived[i].exSpecialCount - nextN.ex[i]
-        const fu = rederived[i].ultimateCount - nextN.ult[i]
-        if (linearEx && fx > 1e-9 && cfg.exSpecialActionTime > 0) cands2.push({ slot: i, kind: 'ex', frac: fx, cost: cfg.exSpecialActionTime })
-        if (fu > 1e-9 && cfg.ultimateActionTime > 0) cands2.push({ slot: i, kind: 'ult', frac: fu, cost: cfg.ultimateActionTime })
-      }
-      cands2.sort((a, b) => b.frac - a.frac)
-      for (const cand of cands2) {
-        if (cand.cost <= spare2) {
-          nextN[cand.kind][cand.slot] += 1
-          spare2 -= cand.cost
-        }
-      }
-      const prev3 = rederived.map((s, i) => ({ ...s, exSpecialCount: nextN.ex[i], ultimateCount: nextN.ult[i] }))
-      states = iterate(configs, prev3, config, nextN)
-      n = nextN
-    }
+    if (!didAdd && maxExcess <= 1e-6) break
   }
 
   // 失衡次数由外部失衡池不动点收敛后传入（连携次数 = chainCountPerStun × stunCount，见 iterate）
