@@ -49,11 +49,12 @@ export { STANDARD_S_AGENT_IDS }
 export const STANDARD_S_WENGINE_IDS = new Set(['14102', '14104', '14110', '14114', '14118', '14121'])
 
 /**
- * 自动下位默认候选池（装填框初始值）：常驻 S 音擎全量 + 预设数据在用的 A 级音擎。
- * 只是试算起点，不是口径上限——对比页装填框可增删任意非限定音擎；限定 S 音擎即使填入也会被
- * 过滤（限定音擎是占金获取物，免费穿上会破坏金数口径）。
+ * 自动下位默认候选池（用户准信，2026-08）：击破 = 人为刀俎(A)/燃狱齿轮(S常驻)，
+ * 辅助 = 好斗的阿炮(A)/逍遥游球(A)/啜泣摇篮(S常驻)。精炼档沿用 A 默认 5、常驻 S 默认 3
+ * （与准信 精5/精3 一一对应，页面可调）。只是试算起点，不是口径上限——装填框可增删任意音擎，
+ * 限定音擎也可加入：选中即按本体（精炼1）如实计入总限定金（有金就是金）。
  */
-export const DEFAULT_AUTO_ENGINE_POOL = [...STANDARD_S_WENGINE_IDS, '13019']
+export const DEFAULT_AUTO_ENGINE_POOL = ['13005', '14110', '13115', '14002', '14121']
 
 /** 角色是否算限定金（S 级且非常驻；A/B 级不算）。catalog 未加载时按常驻清单兜底。 */
 export function isLimitedAgent(agentId: string): boolean {
@@ -99,7 +100,8 @@ export interface TeamCompareOptions {
   autoEngineMods?: { aRank?: number; standard?: number }
   /**
    * 自动下位候选池（装填框，音擎 id 列表）：择优只在池内试算，避免全目录遍历过慢。
-   * 缺省 = DEFAULT_AUTO_ENGINE_POOL（常驻 S + 预设常用 A 级）；池内限定音擎被过滤。
+   * 缺省 = DEFAULT_AUTO_ENGINE_POOL（用户准信五件）；池内限定音擎可选，选中按本体（精炼1）
+   * 如实计入总限定金（有金就是金）。
    */
   autoEnginePool?: string[]
 }
@@ -314,10 +316,12 @@ export interface AutoEnginePick {
   slot: number
   /** 选中的音擎 id */
   id: string
-  /** 穿戴精炼档（默认精炼，非购买步） */
+  /** 穿戴精炼档（限定候选按本体精炼1） */
   mod: number
-  /** 如 "燃狱齿轮 R3"（悬停/明细表展示用） */
+  /** 如 "燃狱齿轮 R3"（悬停/明细表展示用；限定为 "焰心桂冠 R1（限定）"） */
   label: string
+  /** 是否限定音擎（选中即按本体如实计入总限定金） */
+  limited: boolean
 }
 
 function clampMod(v: number | undefined | null, fallback: number): number {
@@ -328,30 +332,46 @@ function clampMod(v: number | undefined | null, fallback: number): number {
 /**
  * 把自动下位择优结果替换进一个配装态：仅当该槽位最终音擎**非限定**时覆盖
  * （含空音擎与 standardSteps 写入的常驻/A 音擎——预设不作为下位口径的事实源）；
- * 已花金买到的限定专武不动。
+ * 已花金买到的限定专武不动。返回实际生效（仍穿在身上）的**限定**下位件数——
+ * 口径「有金就是金」：这些件各按本体计入总限定金；`acquiredSlots`（被预算步购买过音擎的
+ * 槽位）不计——那件金已含在预算步里，重复计就是双算。
  */
 function substituteAutoEngines(
   wEngines: string[],
   wengineMods: number[],
   picks: AutoEnginePick[],
-) {
+  acquiredSlots: ReadonlySet<number> = new Set(),
+): number {
+  let limitedApplied = 0
   for (const p of picks) {
     if (!isLimitedWEngine(wEngines[p.slot] ?? '')) {
       wEngines[p.slot] = p.id
       wengineMods[p.slot] = p.mod
+      if (p.limited && !acquiredSlots.has(p.slot)) limitedApplied++
     }
   }
+  return limitedApplied
+}
+
+/** 配装态里仍穿在身上的限定下位件数（未被预算步购买顶替的才计；有穿就算金，不双算） */
+function countLimitedAutoApplied(
+  wEngines: string[],
+  picks: AutoEnginePick[],
+  acquiredSlots: ReadonlySet<number> = new Set(),
+): number {
+  return picks.filter(p => p.limited && wEngines[p.slot] === p.id && !acquiredSlots.has(p.slot)).length
 }
 
 /**
  * 自动下位音擎择优：对每个「基础音擎非限定」的槽位（限定基础音擎 = 占金的真实持有物，保留），
  * 在候选装填池内逐个试算全队伤害取最高者，按默认精炼穿戴（A 级默认 5、常驻默认 3，
  * 经 options.autoEngineMods 调整）。逐槽贪心、顺序提交：后一槽的试算在前一槽已定的基础上进行。
- * 候选池缺省 = DEFAULT_AUTO_ENGINE_POOL（常驻 S + 预设常用 A 级），页面装填框可增删；
- * 池内未知 id / 限定音擎被过滤（限定音擎免费穿会破坏金数口径）。**不做全目录遍历。**
+ * 候选池缺省 = DEFAULT_AUTO_ENGINE_POOL（用户准信五件），页面装填框可增删；
+ * 池内未知 id 过滤；**限定音擎可选**——按本体（精炼1）参与择优，选中由调用方如实计金。
+ * **不做全目录遍历。**
  * 音擎被动带专精要求 → 试算天然只让匹配角色吃满；击破系等低收益音擎可能落选（按伤害择优的预期行为）。
  * 调用方须已应用 boss/buff（择优从真实场景出发）；池为空返回 []。
- * 计算量：池大小（默认 7）× 有角色槽位数（≤3）次全量伤害，每队一次。
+ * 计算量：池大小 × 有角色槽位数（≤3）次全量伤害，每队一次。
  */
 export function computeAutoEnginePicks(
   calc: Calc,
@@ -362,9 +382,8 @@ export function computeAutoEnginePicks(
   const catalog = useCatalogStore()
   const requested = options.autoEnginePool?.length ? options.autoEnginePool : DEFAULT_AUTO_ENGINE_POOL
   const byId = new Map((catalog.displayWEngines ?? []).map(w => [w.id, w]))
-  // 去重 + 过滤：catalog 未收录的 id、限定 S 音擎（占金获取物，免费穿上会破坏口径）
+  // 去重 + 过滤：仅剔除 catalog 未收录的 id；限定音擎可选（本体 R1 参与择优，选中计金）
   const pool = [...new Set(requested)]
-    .filter(id => !isLimitedWEngine(id))
     .flatMap(id => {
       const w = byId.get(id)
       return w ? [w] : []
@@ -381,19 +400,21 @@ export function computeAutoEnginePicks(
     if (isLimitedWEngine(baseId)) continue
     let best: { id: string; mod: number; label: string; damage: number } | null = null
     for (const w of pool) {
-      const mod = w.rarity === 'A' ? aMod : stdMod
+      // 限定候选按本体（精炼1）试算：下位拿限定 = 只买本体 1 金，不预设精炼投入
+      const mod = isLimitedWEngine(w.id) ? 1 : w.rarity === 'A' ? aMod : stdMod
       configStore.setWEngine(slot, w.id)
       configStore.setWEngineModLevel(slot, mod)
       const damage = calc.teamTotalDamage.value
       if (!best || damage > best.damage) {
-        best = { id: w.id, mod, label: `${w.name.zhCN ?? w.name.en ?? w.id} R${mod}`, damage }
+        const limited = isLimitedWEngine(w.id)
+        best = { id: w.id, mod, label: `${w.name.zhCN ?? w.name.en ?? w.id} R${mod}${limited ? '（限定）' : ''}`, damage }
       }
     }
     if (best) {
       // 提交最优并留在 store：下一槽的试算场景包含本槽结果
       configStore.setWEngine(slot, best.id)
       configStore.setWEngineModLevel(slot, best.mod)
-      picks.push({ slot, id: best.id, mod: best.mod, label: best.label })
+      picks.push({ slot, id: best.id, mod: best.mod, label: best.label, limited: isLimitedWEngine(best.id) })
     }
   }
   return picks
@@ -406,8 +427,10 @@ export const GOLD_OPTIMIZE_CAP = 12
 
 /** 最优加金的一个档位分配 */
 export interface OptimalGoldAllocation {
-  /** 总限定金（= baseGold + 已选步骤数） */
+  /** 总限定金（= baseGold + 已选步骤数 + 仍穿在身上的限定下位件数——有金就是金） */
   totalGold: number
+  /** 预算口径金数（= baseGold + 已选步骤数，不含限定下位）；点循环按它查档与钳制 */
+  budgetGold: number
   cinemas: [number, number, number]
   wengineMods: [number, number, number]
   /** 该档最终装备的音擎 id（base 档 = 基础音擎，常驻/A 不计金） */
@@ -473,8 +496,10 @@ export function computeOptimalGoldAllocations(
     else if (s.kind === 'wengine' && s.wEngineId) wEngines[s.slot] = s.wEngineId
     else wengineMods[s.slot] = Math.max(wengineMods[s.slot], s.value)
   }
-  // 自动下位：非限定槽位换成 A ∪ 常驻池择优结果（覆盖 standardSteps 写入的常驻/A 音擎）
-  substituteAutoEngines(wEngines, wengineMods, autoPicks)
+  // 自动下位：非限定槽位换成装填池择优结果（覆盖 standardSteps 写入的常驻/A 音擎）；
+  // 生效的限定下位按本体如实计入总限定金（有金就是金）
+  const baseAutoLimited = substituteAutoEngines(wEngines, wengineMods, autoPicks)
+  const autoLimitedNow = () => countLimitedAutoApplied(wEngines, autoPicks, acquiredSlots)
   const applyState = (c: number[], m: number[], w: string[]) => {
     for (let i = 0; i < 3; i++) {
       configStore.setCinemaLevel(i, c[i])
@@ -485,15 +510,17 @@ export function computeOptimalGoldAllocations(
   applyState(cinemas, wengineMods, wEngines)
 
   const allocations: OptimalGoldAllocation[] = [{
-    totalGold: baseGold,
+    totalGold: baseGold + baseAutoLimited,
+    budgetGold: baseGold,
     cinemas: [...cinemas] as [number, number, number],
     wengineMods: [...wengineMods] as [number, number, number],
     wEngines: [...wEngines] as [string, string, string],
-    label: `${baseGold}金（基础）`,
+    label: `${baseGold + baseAutoLimited}金（基础${baseAutoLimited ? `，含下位限定 ${baseAutoLimited} 金` : ''}）`,
     damage: calc.teamTotalDamage.value,
   }]
 
   const taken: { label: string }[] = []
+  const acquiredSlots = new Set<number>()
   while (true) {
     const nextGold = baseGold + taken.length + 1
     if (nextGold > GOLD_OPTIMIZE_CAP) break
@@ -505,9 +532,11 @@ export function computeOptimalGoldAllocations(
       label: string
       damage: number
     } | null = null
-    // 候选1：音擎获取（槽位当前非限定音擎 → 装备作者声明的限定音擎本体，1 金）
+    // 自动下位穿上的限定件不阻止购买步：购买同一/另一把都合法，金数经 acquiredSlots 去重
+    const autoLimitedSlots = new Set(autoPicks.filter(p => p.limited).map(p => p.slot))
+    // 候选1：音擎获取（槽位当前非限定音擎、或限定件只是自动下位穿的 → 装备作者声明的限定音擎本体，1 金）
     for (const [slot, acq] of acquireBySlot) {
-      if (isLimitedWEngine(wEngines[slot])) continue
+      if (isLimitedWEngine(wEngines[slot]) && !autoLimitedSlots.has(slot)) continue
       const prevId = wEngines[slot]
       const prevMod = wengineMods[slot]
       configStore.setWEngine(slot, acq.id)
@@ -544,6 +573,7 @@ export function computeOptimalGoldAllocations(
     if (!best) break // 无更多候选（或已到 12 金）
     // 提交最佳候选
     if (best.kind === 'acquire') {
+      acquiredSlots.add(best.slot)
       wEngines[best.slot] = best.id!
       wengineMods[best.slot] = 1 // 换装即回精炼1：旧基础音擎的常驻精炼不残留到新专武
       configStore.setWEngine(best.slot, best.id!)
@@ -556,12 +586,15 @@ export function computeOptimalGoldAllocations(
       configStore.setWEngineModLevel(best.slot, best.value)
     }
     taken.push(best)
+    // 总金如实：预算金 + 仍穿在身上的限定下位（买专武可能顶掉下位限定 → 总金不变但结构更优）
+    const autoLimitedNowN = autoLimitedNow()
     allocations.push({
-      totalGold: nextGold,
+      totalGold: nextGold + autoLimitedNowN,
+      budgetGold: nextGold,
       cinemas: [...cinemas] as [number, number, number],
       wengineMods: [...wengineMods] as [number, number, number],
       wEngines: [...wEngines] as [string, string, string],
-      label: `${nextGold}金（最优）：${taken.map(t => t.label).join(' + ')}`,
+      label: `${nextGold + autoLimitedNowN}金（最优）${autoLimitedNowN ? `（含下位限定 ${autoLimitedNowN} 金）` : ''}：${taken.map(t => t.label).join(' + ')}`,
       damage: best.damage,
     })
   }
@@ -678,15 +711,22 @@ function applyGoldToStore(
   targetTotalGold: number,
   autoPicks: AutoEnginePick[] = [],
 ) {
-  const { cinemas, wengineMods, wEngines } = applyGoldSteps(
+  const applied = applyGoldSteps(
     preset.goldSteps,
     targetTotalGold,
     baseGoldOf(preset),
     preset.standardSteps ?? [],
     preset.wEngines ?? [],
   )
+  const { cinemas, wengineMods, wEngines } = applied
+  // 被预算步购买过音擎的槽位（其金已在预算内，避免下位限定双算）
+  const acquiredSlots = new Set(
+    preset.goldSteps.slice(0, applied.stepsApplied)
+      .filter(s => s.kind === 'wengine' && s.wEngineId)
+      .map(s => s.slot),
+  )
   // 自动下位：最终非限定的槽位换成装填池择优结果（已买到限定专武的槽位不动）
-  substituteAutoEngines(wEngines, wengineMods, autoPicks)
+  substituteAutoEngines(wEngines, wengineMods, autoPicks, acquiredSlots)
   for (let slot = 0; slot < 3; slot++) {
     configStore.setCinemaLevel(slot, cinemas[slot])
     configStore.setWEngineModLevel(slot, wengineMods[slot])
@@ -804,7 +844,7 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
       const optimalMap = new Map<number, OptimalGoldAllocation>()
       if (options.optimalGold) {
         for (const a of computeOptimalGoldAllocations(calc, configStore, preset, baseGold, autoPicks)) {
-          optimalMap.set(a.totalGold, a)
+          optimalMap.set(a.budgetGold, a) // 预算域键：resolveGoldLevel 的钳制口径不含限定下位附加
         }
       }
       const seen = new Set<number>()
@@ -832,31 +872,43 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
         const { timeExceeded, timeDetail } = actionTimeTotal(calc, invTime, battleTime)
         const { difficulty, detail } = computeDifficulty(preset.interactions, preset.team)
         const std = preset.standardSteps ?? []
-        // 常驻配置行追加自动下位说明（两分支同格式：常驻：…｜自动下位：…）
-        const autoLabel = autoPicks.length === 0 ? '' : `自动下位：${autoPicks.map(p => p.label).join('、')}`
-        const withAuto = (s: string) => [s, autoLabel].filter(Boolean).join('｜')
         let cinemas: [number, number, number]
         let wengineMods: [number, number, number]
         let label: string
         let standardLabel: string
+        // 自动下位中「仍穿在身上」的限定件数：有金就是金，按本体各计 1 金入总限定金
+        let autoLimitedGold = 0
         if (opt) {
           cinemas = opt.cinemas
           wengineMods = opt.wengineMods
           label = opt.label
-          standardLabel = withAuto(std.length === 0 ? '' : `常驻：${std.map(s => s.label).join(' + ')}`)
+          autoLimitedGold = Math.max(0, opt.totalGold - totalGold)
+          standardLabel = std.length === 0 ? '' : `常驻：${std.map(s => s.label).join(' + ')}`
         } else {
           const r = applyGoldSteps(preset.goldSteps, gold, baseGold, std)
-          substituteAutoEngines(r.wEngines, r.wengineMods, autoPicks)
+          const acquiredSlots = new Set(
+            preset.goldSteps.slice(0, r.stepsApplied)
+              .filter(st => st.kind === 'wengine' && st.wEngineId)
+              .map(st => st.slot),
+          )
+          autoLimitedGold = substituteAutoEngines(r.wEngines, r.wengineMods, autoPicks, acquiredSlots)
           cinemas = r.cinemas
           wengineMods = r.wengineMods
           label = r.label
-          standardLabel = withAuto(r.standardLabel)
+          standardLabel = r.standardLabel
         }
+        // 常驻配置行追加自动下位说明（两分支同格式：常驻：…｜自动下位：…｜含下位限定 N 金）
+        const autoParts: string[] = []
+        if (autoPicks.length > 0) autoParts.push(`自动下位：${autoPicks.map(p => p.label).join('、')}`)
+        if (autoLimitedGold > 0) autoParts.push(`含下位限定 ${autoLimitedGold} 金`)
+        const autoLabel = autoParts.join('｜')
+        const withAuto = (base: string) => [base, autoLabel].filter(Boolean).join('｜')
+        standardLabel = withAuto(standardLabel)
         points.push({
           presetId: preset.id,
           presetName: preset.name,
-          // 显示用金数 = 总限定金（限定角色本体+限定音擎本体+影画/精炼步）
-          goldCount: totalGold,
+          // 显示用金数 = 总限定金（限定角色本体+限定音擎本体+影画/精炼步+仍穿的限定下位本体）
+          goldCount: totalGold + autoLimitedGold,
           goldLabel: label,
           standardGoldLabel: standardLabel || undefined,
           cinemas,

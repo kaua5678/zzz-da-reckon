@@ -48,10 +48,6 @@
         </div>
         <div class="ctl-field">
           <label class="ctl-check">
-            <input v-model="includeTestServer" type="checkbox" />
-            包含测试服角色（3.2 未实装）
-          </label>
-          <label class="ctl-check">
             <input v-model="autoBuild" type="checkbox" />
             自动配装（推荐+词条优化，慢）
           </label>
@@ -505,7 +501,7 @@ const selectedPhase = computed(() => {
 // 演变只看危局·普通（defense）；危局·困难（critical_assault）仅记录不作为轴依据。测试服占位期默认剔除。
 const testServerVersions = computed(() => new Set(VERSION_NODES.filter(n => (n.note ?? '').includes('测试服')).map(n => n.version)))
 const periodAxis = computed(() =>
-  buildPeriodAxis(bossPresets.value, { includeTestServer: includeTestServer.value, testServerVersions: testServerVersions.value }),
+  buildPeriodAxis(bossPresets.value, { testServerVersions: testServerVersions.value }),
 )
 const periodById = computed(() => new Map(periodAxis.value.map(p => [p.id, p])))
 /** 所选 Boss 的登场期数（从首次登场起）：横轴只算这些期，体现对抗单 Boss 的队伍成长 */
@@ -547,7 +543,6 @@ const appearanceLabels = computed(() =>
 
 // ========== 金数 ==========
 const budget = ref(6)
-const includeTestServer = ref(false)
 
 // ========== 候选队友策展池（localStorage 持久化；轻量速算 = 只枚举池内 C(n,2) 组合） ==========
 const CANDIDATE_POOL_KEY = 'zzz-timeline-candidate-pool'
@@ -606,7 +601,6 @@ async function runCompute() {
       boss,
       phase,
       budget: budget.value ?? 6,
-      includeTestServer: includeTestServer.value,
       // 横轴刻度用期号（seq，如「45」代表 69045）；只算所选 Boss 登场的期数
       axisNodes: bossPeriodAxis.value.map(p => ({ id: p.id, label: `${p.seq}`, date: p.begin })),
       candidatePool: candidatePool.value,

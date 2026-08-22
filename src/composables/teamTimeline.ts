@@ -564,9 +564,10 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
     const testNodes = new Set(
       VERSION_NODES.filter(n => (n.note ?? '').includes('测试服')).map(n => n.id),
     )
+    // 显式传候选池时池子说了算（测试服角色也可被用户选入）；仅缺省全量模式排除测试服
     const candidates = (opts.candidatePool ?? Object.keys(AGENT_RELEASE_NODE))
       .filter(id => id !== opts.mainAgentId)
-      .filter(id => opts.includeTestServer || !testNodes.has(AGENT_RELEASE_NODE[id]))
+      .filter(id => opts.candidatePool?.length || opts.includeTestServer || !testNodes.has(AGENT_RELEASE_NODE[id]))
     // 队伍结构约束：至多 1 名击破（stun）。真实 meta 无双击破阵容（失衡窗口重叠浪费），
     // 且引擎失衡循环对双击破组合严重高估（实测 仪玄+莱卡恩+青衣 8金 ≈ 437% 血量，远高于
     // 单击破 meta 队 105-127%）；用户确认的演变路径（橘福福/卢西娅/琉音/诺姆）均为 ≤1 击破。

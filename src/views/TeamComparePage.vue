@@ -46,7 +46,7 @@
         <div class="ctl-field" title="≤12金：自动逐金挑选伤害提升最大的加金组合（含专武本体购买，贪婪搜索，每队多算几轮全量伤害，较慢）；12金以上仍按预设 goldSteps 顺序">
           <n-checkbox v-model:checked="optimalGold" size="small">最优加金（≤12金）</n-checkbox>
         </div>
-        <div class="ctl-field" title="未穿限定音擎的槽位自动从下方装填池按伤害择优穿戴（不计金）；预设 wEngines 仅限定音擎保留。关闭则回退预设基础音擎">
+        <div class="ctl-field" title="未穿限定音擎的槽位自动从下方装填池按伤害择优穿戴；选中的限定音擎按本体（精炼1）如实计入总限定金——有金就是金。预设 wEngines 仅限定音擎保留。关闭则回退预设基础音擎">
           <n-checkbox v-model:checked="autoEngine" size="small">自动下位</n-checkbox>
         </div>
         <template v-if="autoEngine">
@@ -56,7 +56,7 @@
             <span class="ctl-sep">/</span>
             <n-input-number v-model:value="autoModStd" size="small" :min="1" :max="5" style="width: 56px" />
           </div>
-          <div class="ctl-field" title="自动下位只在池内试算择优（避免全目录遍历过慢）；池内限定 S 音擎会被忽略">
+          <div class="ctl-field" title="自动下位只在池内试算择优（避免全目录遍历过慢）；池内限定音擎按本体精炼1参与，选中即计金。配置持久化在浏览器本地">
             <span class="ctl-label">下位装填池</span>
             <n-select
               v-model:value="autoEnginePool"
@@ -197,7 +197,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine } from '@/composables/teamCompare'
-import { teamPresets } from '@/data/teamPresets'
+import { teamPresets, teamPresetGroupOptions } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
@@ -308,7 +308,8 @@ watch([currentPhaseView], () => {
 
 // ========== 预设队伍 ==========
 const selectedPresetIds = ref<string[]>([])
-const presetOptions = computed(() => teamPresets.map(t => ({ value: t.id, label: t.name })))
+/** 两级下拉：一级分类（如 命破队）→ 二级队伍 */
+const presetOptions = teamPresetGroupOptions
 const selectedPresets = computed<TeamPreset[]>(() =>
   teamPresets.filter(t => selectedPresetIds.value.includes(t.id)),
 )
@@ -318,17 +319,36 @@ const goldMin = ref(0)
 const goldMax = ref(6)
 /** 最优加金（≤12金）：不用预设排列顺序，逐金挑提升最大的组合；12金以上回退预设顺序 */
 const optimalGold = ref(true)
-/** 自动下位音擎（缺省开）：非限定槽位从装填池按伤害择优穿戴（不计金） */
+/** 自动下位音擎（缺省开）：非限定槽位从装填池按伤害择优穿戴；选中限定音擎按本体如实计金 */
 const autoEngine = ref(true)
 /** 自动下位默认精炼档：A 级 / 常驻 S */
 const autoModA = ref(5)
 const autoModStd = ref(3)
-/** 自动下位候选装填池：择优只在池内试算（避免全目录遍历过慢），可增删；限定 S 音擎不进池（占金获取物） */
-const autoEnginePool = ref<string[]>([...DEFAULT_AUTO_ENGINE_POOL])
+// 装填池：玩家可增删，localStorage 持久化；种子 = 用户准信五件（击破：人为刀俎/燃狱齿轮，辅助：阿炮/逍遥游球/啜泣摇篮）
+const AUTO_ENGINE_POOL_KEY = 'zzz-compare-auto-engine-pool'
+function loadAutoEnginePool(): string[] {
+  try {
+    const raw = localStorage.getItem(AUTO_ENGINE_POOL_KEY)
+    if (raw) {
+      const arr = JSON.parse(raw)
+      if (Array.isArray(arr)) {
+        const valid = [...new Set(arr.filter((id: unknown) => typeof id === 'string' && catalogStore.getWEngine(id as string)))] as string[]
+        if (valid.length > 0) return valid
+      }
+    }
+  } catch { /* 损坏回落默认 */ }
+  return [...DEFAULT_AUTO_ENGINE_POOL]
+}
+const autoEnginePool = ref<string[]>(loadAutoEnginePool())
+watch(autoEnginePool, v => {
+  try { localStorage.setItem(AUTO_ENGINE_POOL_KEY, JSON.stringify(v)) } catch { /* 忽略 */ }
+}, { deep: true })
 const enginePoolOptions = computed(() =>
   (catalogStore.displayWEngines ?? [])
-    .filter(w => !isLimitedWEngine(w.id))
-    .map(w => ({ value: w.id, label: `${w.name.zhCN ?? w.name.en ?? w.id}（${w.rarity}级）` })),
+    .map(w => ({
+      value: w.id,
+      label: `${w.name.zhCN ?? w.name.en ?? w.id}（${w.rarity}${isLimitedWEngine(w.id) ? '·限定' : ''}）`,
+    })),
 )
 
 // ========== 计算 ==========
