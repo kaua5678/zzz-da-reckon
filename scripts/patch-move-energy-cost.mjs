@@ -19,10 +19,18 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const catalogPath = join(root, 'public', 'static', 'catalog.json')
 
 /** moveId → 要写入的 energyCost 对象（整对象覆盖） */
-const OVERRIDES = {
+const ENERGY_COST_OVERRIDES = {
   // 真斗「强化特殊技：归烬·天坠」：闪能消耗 80 点（命破角色的能均指闪能）
   1441015: { 'Flash Energy Cost': '80' },
 }
+
+/**
+ * moveId → 倍率行数值覆盖（{rowId: Lv12 值}，整行值覆盖）。当前为空。
+ * 教训（2026-08）：曾按「用户口径 50%」给爱丽丝「星芒圆舞曲 #1~#3」补录回能 2.011/2.821/7.169，
+ * 但 gachabase 原始数据（energy_gain_base=0）与 catalog 双源一致确认官方就是 0，已撤销。
+ * 结论：数值覆盖必须先经第二数据源交叉验证；gachabase 爬取见 scripts/fetch-gachabase-agent.mjs。
+ */
+const ROW_VALUE_OVERRIDES = {}
 
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'))
 
@@ -30,17 +38,36 @@ let changed = 0
 for (const skills of catalog.agentSkills ?? []) {
   for (const category of skills.categories ?? []) {
     for (const move of category.moves ?? []) {
-      const patch = OVERRIDES[move.id]
-      if (!patch) continue
-      const before = JSON.stringify(move.energyCost ?? null)
-      const after = JSON.stringify(patch)
-      if (before === after) {
-        console.log(`unchanged ${move.id} ${move.name?.zhCN ?? ''}`)
-        continue
+      const costPatch = ENERGY_COST_OVERRIDES[move.id]
+      if (costPatch) {
+        const before = JSON.stringify(move.energyCost ?? null)
+        const after = JSON.stringify(costPatch)
+        if (before !== after) {
+          console.log(`patch ${move.id} ${move.name?.zhCN ?? ''}: energyCost ${before} → ${after}`)
+          move.energyCost = costPatch
+          changed++
+        } else {
+          console.log(`unchanged ${move.id} ${move.name?.zhCN ?? ''}`)
+        }
       }
-      console.log(`patch ${move.id} ${move.name?.zhCN ?? ''}: ${before} → ${after}`)
-      move.energyCost = patch
-      changed++
+      const rowPatch = ROW_VALUE_OVERRIDES[move.id]
+      if (rowPatch) {
+        for (const [rowId, value] of Object.entries(rowPatch)) {
+          const row = (move.rows ?? []).find((r) => r.id === rowId)
+          if (!row) {
+            console.error(`MISSING row ${rowId} on ${move.id}，跳过`)
+            continue
+          }
+          const before = row.values[0]
+          if (before === value) {
+            console.log(`unchanged ${move.id} ${move.name?.zhCN ?? ''}.${rowId} = ${value}`)
+            continue
+          }
+          console.log(`patch ${move.id} ${move.name?.zhCN ?? ''}.${rowId}: ${before} → ${value}`)
+          row.values[0] = value
+          changed++
+        }
+      }
     }
   }
 }

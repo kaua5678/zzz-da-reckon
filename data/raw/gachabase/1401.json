@@ -1,0 +1,363 @@
+{
+  "source": "https://zzz.gachabase.net/agents/1401/alice/beta?lang=chs",
+  "fetchedAt": "2026-08-22T06:36:11.995Z",
+  "skill_data": [
+    {
+      "id": 1401001,
+      "damage_multiplier_base": 5510,
+      "damage_multiplier_step": 510,
+      "daze_multiplier_base": 3970,
+      "daze_multiplier_step": 190,
+      "energy_gain_base": 14410,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 2976,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 77275,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 4003,
+      "attack_data": [
+        98177
+      ]
+    },
+    {
+      "id": 1401002,
+      "damage_multiplier_base": 8800,
+      "damage_multiplier_step": 800,
+      "daze_multiplier_base": 6980,
+      "daze_multiplier_step": 320,
+      "energy_gain_base": 25380,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 5213,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 135850,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 7048,
+      "attack_data": [
+        156912
+      ]
+    },
+    {
+      "id": 1401003,
+      "damage_multiplier_base": 6610,
+      "damage_multiplier_step": 610,
+      "daze_multiplier_base": 5990,
+      "daze_multiplier_step": 280,
+      "energy_gain_base": 21790,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 4445,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 116600,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 6051,
+      "attack_data": [
+        117733
+      ]
+    },
+    {
+      "id": 1401004,
+      "damage_multiplier_base": 11190,
+      "damage_multiplier_step": 1020,
+      "daze_multiplier_base": 10510,
+      "daze_multiplier_step": 480,
+      "energy_gain_base": 38200,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 7781,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 204325,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 10609,
+      "attack_data": [
+        199492
+      ]
+    },
+    {
+      "id": 1401005,
+      "damage_multiplier_base": 13030,
+      "damage_multiplier_step": 1190,
+      "daze_multiplier_base": 13170,
+      "daze_multiplier_step": 600,
+      "energy_gain_base": 47870,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 9720,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 256025,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 13295,
+      "attack_data": [
+        232261
+      ]
+    },
+    {
+      "id": 1401006,
+      "damage_multiplier_base": 21830,
+      "damage_multiplier_step": 1990,
+      "daze_multiplier_base": 21090,
+      "daze_multiplier_step": 960,
+      "energy_gain_base": 76670,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 15600,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 410025,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 21296,
+      "attack_data": [
+        389238
+      ]
+    },
+    {
+      "id": 1401010,
+      "damage_multiplier_base": 18890,
+      "damage_multiplier_step": 1720,
+      "daze_multiplier_base": 5530,
+      "daze_multiplier_step": 260,
+      "energy_gain_base": 0,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 7816,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 215050,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 11167,
+      "attack_data": [
+        0
+      ]
+    },
+    {
+      "id": 1401011,
+      "damage_multiplier_base": 30440,
+      "damage_multiplier_step": 2770,
+      "daze_multiplier_base": 7760,
+      "daze_multiplier_step": 360,
+      "energy_gain_base": 0,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 10966,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 301675,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 15667,
+      "attack_data": [
+        0
+      ]
+    },
+    {
+      "id": 1401012,
+      "damage_multiplier_base": 96570,
+      "damage_multiplier_step": 8780,
+      "daze_multiplier_base": 19720,
+      "daze_multiplier_step": 900,
+      "energy_gain_base": 0,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 46783,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 766975,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 39834,
+      "attack_data": [
+        0
+      ]
+    },
+    {
+      "id": 1401013,
+      "damage_multiplier_base": 7530,
+      "damage_multiplier_step": 690,
+      "daze_multiplier_base": 3390,
+      "daze_multiplier_step": 160,
+      "energy_gain_base": 12310,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 2392,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 66000,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 3419,
+      "attack_data": [
+        57675
+      ]
+    },
+    {
+      "id": 1401014,
+      "damage_multiplier_base": 28400,
+      "damage_multiplier_step": 2590,
+      "daze_multiplier_base": 21950,
+      "daze_multiplier_step": 1000,
+      "energy_gain_base": 43800,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 8516,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 234300,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 27167,
+      "attack_data": [
+        238736
+      ]
+    },
+    {
+      "id": 1401017,
+      "damage_multiplier_base": 16330,
+      "damage_multiplier_step": 1490,
+      "daze_multiplier_base": 14690,
+      "daze_multiplier_step": 670,
+      "energy_gain_base": 26710,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 10385,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 285725,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 7419,
+      "attack_data": [
+        125163
+      ]
+    },
+    {
+      "id": 1401018,
+      "damage_multiplier_base": 0,
+      "damage_multiplier_step": 0,
+      "daze_multiplier_base": 24420,
+      "daze_multiplier_step": 1110,
+      "energy_gain_base": 0,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 0,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 0,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 36664,
+      "attack_data": [
+        0
+      ]
+    },
+    {
+      "id": 1401019,
+      "damage_multiplier_base": 0,
+      "damage_multiplier_step": 0,
+      "daze_multiplier_base": 30860,
+      "daze_multiplier_step": 1410,
+      "energy_gain_base": 0,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 0,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 0,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 41664,
+      "attack_data": [
+        0
+      ]
+    },
+    {
+      "id": 1401020,
+      "damage_multiplier_base": 0,
+      "damage_multiplier_step": 0,
+      "daze_multiplier_base": 15020,
+      "daze_multiplier_step": 690,
+      "energy_gain_base": 0,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 0,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 0,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 11664,
+      "attack_data": [
+        0
+      ]
+    },
+    {
+      "id": 1401021,
+      "damage_multiplier_base": 33270,
+      "damage_multiplier_step": 3030,
+      "daze_multiplier_base": 25840,
+      "daze_multiplier_step": 1180,
+      "energy_gain_base": 0,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 19717,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 661925,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 13664,
+      "attack_data": [
+        813164
+      ]
+    },
+    {
+      "id": 1401008,
+      "damage_multiplier_base": 6240,
+      "damage_multiplier_step": 570,
+      "daze_multiplier_base": 5610,
+      "daze_multiplier_step": 260,
+      "energy_gain_base": 0,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 3965,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 218350,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 5666,
+      "attack_data": [
+        95580
+      ]
+    },
+    {
+      "id": 1401009,
+      "damage_multiplier_base": 46000,
+      "damage_multiplier_step": 4190,
+      "daze_multiplier_base": 34520,
+      "daze_multiplier_step": 1570,
+      "energy_gain_base": 0,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 31706,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 939125,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 13997,
+      "attack_data": [
+        1003584
+      ]
+    },
+    {
+      "id": 1401007,
+      "damage_multiplier_base": 53200,
+      "damage_multiplier_step": 4840,
+      "daze_multiplier_base": 40530,
+      "daze_multiplier_step": 1850,
+      "energy_gain_base": 0,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 36446,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 1073875,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 18667,
+      "attack_data": [
+        1064254
+      ]
+    },
+    {
+      "id": 1401015,
+      "damage_multiplier_base": 66630,
+      "damage_multiplier_step": 6060,
+      "daze_multiplier_base": 20470,
+      "daze_multiplier_step": 940,
+      "energy_gain_base": 0,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 28434,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 1678050,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 20671,
+      "attack_data": [
+        405590
+      ]
+    },
+    {
+      "id": 1401016,
+      "damage_multiplier_base": 226200,
+      "damage_multiplier_step": 20570,
+      "daze_multiplier_base": 24260,
+      "daze_multiplier_step": 1110,
+      "energy_gain_base": 0,
+      "energy_gain_step": 0,
+      "anomaly_buildup": 72225,
+      "sp_consume": 0,
+      "individual_decibel_gain_base": 0,
+      "individual_decibel_gain_step": 0,
+      "ether_purify": 74504,
+      "attack_data": [
+        0
+      ]
+    }
+  ]
+}

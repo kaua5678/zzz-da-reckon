@@ -116,6 +116,8 @@ interface RawUnit {
   energy: EnergyCostInfo | null
   values: Partial<Record<StandardRowId, number>>
   flags: string[]
+  /** 普攻回能显式录 0（数据缺口）：合成 0 比值单元格展示 */
+  zeroEnergyRow?: boolean
 }
 
 /** 去掉结尾的「 #N」段号（分段合并分组键） */
@@ -142,6 +144,12 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
       const flags: string[] = []
       if (moveType === 'exSpecial' && energy == null) flags.push('缺耗能标注')
       if (moveType === 'exSpecial' && energy?.kind === 'flashEnergy') flags.push('闪能消耗(质量×1.2)')
+      // 普攻的回能恒应存在：显式录入 0 属数据缺口（全库 15 条，如爱丽丝「星芒圆舞曲」），
+      // 合成 0 比值单元格并打标，避免静默隐藏
+      const zeroEnergyRow =
+        moveType === 'basic' && typeof move.actionTime === 'number' && move.actionTime > MIN_ACTION_TIME &&
+        move.rows.some((r) => r.id === 'energy_recovery' && r.values[0] === 0)
+      if (zeroEnergyRow) flags.push('回能录入为0(待补)')
       units.push({
         agentId: String(agent.id),
         agentName: agent.name.zhCN ?? agent.id,
@@ -156,6 +164,7 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
         energy,
         values: rowValuesById(move),
         flags,
+        zeroEnergyRow,
       })
     }
   }
@@ -222,6 +231,8 @@ export interface MoveCellEval {
   expected: number
   /** 实际/期望，即该格的角色系数表现 */
   ratio: number
+  /** 数据缺口格（显式录 0）：仅展示，不参与纵向聚合与偏差判定 */
+  dataGap?: boolean
 }
 
 export interface MoveEval {
@@ -247,13 +258,16 @@ function evaluateUnit(unit: RawUnit): MoveEval {
   for (const rowId of STANDARD_ROW_IDS) {
     const formula = table?.[rowId]
     const actual = unit.values[rowId]
-    if (!formula || actual == null || actual <= 0) continue
+    if (!formula || actual == null) continue
+    // 普攻回能显式录 0 属数据缺口：合成 0 比值单元格展示（其余 0 值多为后台禁用置 0，仍跳过）
+    if (actual <= 0 && !(actual === 0 && rowId === 'energy_recovery' && unit.zeroEnergyRow)) continue
     if (t == null) continue
     const eFactor = unit.energy?.kind === 'flashEnergy' ? FLASH_ENERGY_QUALITY : 1
     const std = (formula.const ?? 0) + (formula.perT ?? 0) * t + (formula.perE ?? 0) * (unit.energy?.value ?? 0) * eFactor
     const expected = std * levelMultiplier(rowId) * getRarityMultiplier(unit.rarity, unit.agentId, unit.specialty, rowId)
     if (expected <= 0) continue
-    cells.push({ rowId, actual, expected, ratio: actual / expected })
+    const dataGap = actual === 0
+    cells.push({ rowId, actual, expected, ratio: actual / expected, ...(dataGap ? { dataGap: true } : {}) })
   }
   return {
     agentId: unit.agentId,
@@ -309,12 +323,12 @@ function buildVertical(moves: MoveEval[]): AgentVerticalRow[] {
       if (rowId === 'damage') continue
       const ratios = list
         .filter((m) => isCleanVerticalType(m.moveType))
-        .flatMap((m) => m.cells.filter((c) => c.rowId === rowId).map((c) => c.ratio))
+        .flatMap((m) => m.cells.filter((c) => c.rowId === rowId && !c.dataGap).map((c) => c.ratio))
       if (ratios.length) coefficients[rowId] = { value: median(ratios), samples: ratios.length }
     }
     const ddRatios = list
       .filter((m) => m.moveType === 'assistFollowUp')
-      .flatMap((m) => m.cells.filter((c) => c.rowId === 'damage').map((c) => c.ratio))
+      .flatMap((m) => m.cells.filter((c) => c.rowId === 'damage' && !c.dataGap).map((c) => c.ratio))
     rows.push({
       agentId,
       agentName: head.agentName,
@@ -350,7 +364,7 @@ function buildDeviations(moves: MoveEval[], vertical: AgentVerticalRow[]): MoveD
     const base = baseByAgent.get(m.agentId)
     if (!base) continue
     for (const cell of m.cells) {
-      if (cell.rowId === 'damage') continue
+      if (cell.rowId === 'damage' || cell.dataGap) continue
       const baseline = base.coefficients[cell.rowId]?.value
       if (baseline == null || baseline <= 0) continue
       const deviation = cell.ratio / baseline

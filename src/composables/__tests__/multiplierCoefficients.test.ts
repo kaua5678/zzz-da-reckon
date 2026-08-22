@@ -228,6 +228,37 @@ describe('倍率表系数演算：招式分类', () => {
     expect(yixuanFused.length).toBe(2)
   })
 
+  it('爱丽丝「星芒圆舞曲」三段回能：双源确认官方为 0，按缺口展示且不参与聚合', () => {
+    // nanoka 无普攻能量项；gachabase energy_gain_base=0（scripts/fetch-gachabase-agent.mjs
+    // 抓取 data/raw/gachabase/1401.json，其余字段与 catalog 全部互验）——两源一致，官方即 0。
+    // 曾按「应為50%」补录过 3.6t×0.5，因与双源矛盾已撤销。
+    for (const moveId of ['1401010', '1401011', '1401012']) {
+      const move = report.moves.find((m) => m.moveId === moveId)
+      expect(move, `${moveId} 应在演算结果中`).toBeDefined()
+      expect(move!.flags.join('')).toContain('回能录入为0')
+      const cell = move!.cells.find((c) => c.rowId === 'energy_recovery')
+      expect(cell, `${moveId} 回能格应合成展示`).toBeDefined()
+      expect(cell!.ratio).toBe(0)
+      expect(cell!.dataGap).toBe(true)
+    }
+    // 数据缺口不污染角色系数：爱丽丝回能纵向仍 ≈1
+    const enCoef = verticalOf('1401').coefficients.energy_recovery
+    if (enCoef) expectNear(enCoef.value, 1.0, 0.02, '爱丽丝回能纵向系数')
+  })
+
+  it('普攻回能显式录 0 的数据缺口：合成 0 比值单元格并打标，不参与纵向聚合', () => {
+    const gap = report.moves.find((m) => m.agentId === '1411' && m.moveName.includes('狸之帐'))
+    expect(gap, '柚叶「狸之帐」应在演算结果中').toBeDefined()
+    expect(gap!.flags.join('')).toContain('回能录入为0')
+    const cell = gap!.cells.find((c) => c.rowId === 'energy_recovery')
+    expect(cell, '回能格应合成展示').toBeDefined()
+    expect(cell!.ratio).toBe(0)
+    expect(cell!.dataGap).toBe(true)
+    // 数据缺口不污染角色系数：柚叶回能纵向仍 ≈1
+    const enCoef = verticalOf('1411').coefficients.energy_recovery
+    if (enCoef) expectNear(enCoef.value, 1.0, 0.02, '柚叶回能纵向系数')
+  })
+
   it('招架常数数据校准后两段比值中位数 ≈1（主簇中位 95.511/95.178）', () => {
     const medOf = (moveType: string, rowId: string, minSamples: number) => {
       const ratios = report.moves
