@@ -147,7 +147,7 @@ describe('倍率表系数演算：招式分类', () => {
     expect(classifyMove(mkMove({ id: 'x5', name: { zhCN: '普通攻击：扫除开始 #3' }, skillTags: ['dashAttack'] }), 'basic', 'attack')).toBe('dashAttack')
   })
 
-  it('定点分类覆盖：般岳「支援突击：冲霄」实为闪避反击公式（金身格挡后招式）', () => {
+  it('定点分类覆盖：般岳「支援突击：冲霄」实为闪避反击公式（金身格挡后招式，时间 −1.5s）', () => {
     expect(classifyMove(mkMove({ id: '1471029', name: { zhCN: '支援突击：冲霄' } }), 'assist', 'rupture')).toBe('dodgeCounter')
     // 锚点由「支援突击：昂霄」承担：与支援突击公式五列比值 ≈1.000
     const axiao = report.moves.find((m) => m.moveId === '1471026')
@@ -157,6 +157,30 @@ describe('倍率表系数演算：招式分类', () => {
       expect(cell, `昂霄 ${rowId} 格应存在`).toBeDefined()
       expectNear(cell!.ratio, 1.0, 0.01, `昂霄 ${rowId}`)
     }
+    // 冲霄有效时间 = 2.667 − 1.5 = 1.167s：秽盾 150+100×1.167=266.7 精确相等，积蓄/喧响 ≈1.000；
+    // 伤害/失衡为 ~0.94/~0.93（般岳自身特调，偏差清单呈现）
+    const cxiao = report.moves.find((m) => m.moveId === '1471029')
+    expect(cxiao, '冲霄应在演算结果中').toBeDefined()
+    expectNear(cxiao!.t ?? 0, 1.167, 0.001, '冲霄有效时间')
+    for (const [rowId, expected] of [['ether_purify', 1.0], ['anomaly_buildup', 1.0], ['decibel_recovery', 1.0], ['damage', 0.94], ['daze', 0.93]] as const) {
+      const cell = cxiao!.cells.find((c) => c.rowId === rowId)
+      expect(cell, `冲霄 ${rowId} 格应存在`).toBeDefined()
+      expectNear(cell!.ratio, expected, 0.01, `冲霄 ${rowId}`)
+    }
+  })
+
+  it('招架常数数据校准后两段比值中位数 ≈1（主簇中位 95.511/95.178）', () => {
+    const medOf = (moveType: string, rowId: string, minSamples: number) => {
+      const ratios = report.moves
+        .filter((m) => m.moveType === moveType)
+        .flatMap((m) => m.cells.filter((c) => c.rowId === rowId).map((c) => c.ratio))
+        .sort((a, b) => a - b)
+      expect(ratios.length, `${moveType} ${rowId} 应有样本`).toBeGreaterThan(minSamples)
+      return ratios[Math.floor(ratios.length / 2)]
+    }
+    expectNear(medOf('parryLight', 'daze', 40), 1.0, 0.01, '轻招架失衡')
+    expectNear(medOf('parryHeavy', 'daze', 40), 1.0, 0.01, '重招架失衡')
+    expectNear(medOf('parryChain', 'daze', 20), 1.0, 0.01, '连续招架失衡')
   })
 
   it('parseEnergyCost 取首个非持续项数值并区分闪能', () => {

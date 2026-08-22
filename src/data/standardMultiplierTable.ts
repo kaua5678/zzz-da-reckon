@@ -79,8 +79,9 @@ export interface StdFormula {
  * 标准倍率表本体。列 = StandardRowId；只录社区表给出的格子，缺格 = 该类型无此列标准。
  * 注意：
  * - 普攻弱/强段伤害不同（130t / 183t），catalog 不分段，basic 按 130t 记，伤害列比值仅供参考；
- * - 轻招架 92.4+130t / 重招架 89.1+130t 为用户提供的官方口径（2026-08 修正，旧表 71.661/71.2935
- *   偏小 ~10%）；catalog 实录隐含截距 ~95.4+130t，比该口径高 ~1.4%/~2.6%，残差待确认，
+ * - 轻招架 95.511+130t / 重招架 95.178+130t：数据校准值（斜率固定 130，对 catalog 主簇
+ *   47/53、48/54 条实录取隐含截距中位数；两段仅差 0.33）。来源：用户按单角色推算的
+ *   官方口径 92.4 / 89.1 偏低 ~3.4%，经用户确认改用全体平均值。连续招架 = 130t 不变。
  *   这两类不参与纵向系数聚合；
  * - 快速支援的伤害/失衡/喧响与原表出入较大且新旧角色分层（疑似部分快支的秽盾基准实为 200t
  *   导致时间口径差一倍；喧响 27.5/s 校准仅对喧响未特调的角色成立），同样不进纵向聚合的强约束。
@@ -144,11 +145,11 @@ export const STANDARD_MULTIPLIER_TABLE: Record<MoveType, Partial<Record<Standard
     ether_purify: { const: 0 },
   },
   parryLight: {
-    daze: { const: 92.4, perT: 130 },
+    daze: { const: 95.511, perT: 130 },
     ether_purify: { const: 250, perT: 100 },
   },
   parryHeavy: {
-    daze: { const: 89.1, perT: 130 },
+    daze: { const: 95.178, perT: 130 },
     ether_purify: { const: 250, perT: 100 },
   },
   parryChain: {
@@ -225,6 +226,16 @@ export const MOVE_TYPE_OVERRIDES: Record<string, MoveType | 'other'> = {
   '1371025': 'other',
   '1371022': 'other',
   '1371026': 'other',
+}
+
+/**
+ * 定点时间修正（moveId → actionTime 增量，秒）：
+ * - 1471029 般岳「支援突击：冲霄」：录制 t=2.667s 含金身格挡持盾时间，闪反公式口径需 −1.5
+ *   （有效 t=1.167s）。三列同时验证：秽盾 150+100×1.167=266.7（实录精确相等）、积蓄/喧响 ≈1.000；
+ *   伤害/失衡在该 t 下为 ~0.94/~0.93，属般岳自身特调，由偏差清单呈现。
+ */
+export const MOVE_TIME_ADJUSTMENTS: Record<string, number> = {
+  '1471029': -1.5,
 }
 
 /** 稀有度 + 命破修正后的列系数（等级系数除外） */

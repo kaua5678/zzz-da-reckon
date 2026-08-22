@@ -14,6 +14,7 @@ import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
 import {
   DECIBEL_PER_SECOND,
   FLASH_ENERGY_QUALITY,
+  MOVE_TIME_ADJUSTMENTS,
   MOVE_TYPE_LABELS,
   MOVE_TYPE_OVERRIDES,
   STANDARD_MULTIPLIER_TABLE,
@@ -141,7 +142,9 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
         moveId: move.id,
         moveName: move.name?.zhCN ?? move.id,
         moveType,
-        t: typeof move.actionTime === 'number' ? move.actionTime : null,
+        t: typeof move.actionTime === 'number'
+          ? move.actionTime + (MOVE_TIME_ADJUSTMENTS[move.id] ?? 0)
+          : null,
         energy,
         values: rowValuesById(move),
         flags,
