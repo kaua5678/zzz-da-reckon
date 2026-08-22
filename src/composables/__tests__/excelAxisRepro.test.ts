@@ -61,6 +61,7 @@ describe('Excel 轴复现：资源计算产出', () => {
   it('队伍A 星辉比利（1531 比利0+专武 / 1481 琉音0 / 1451 卢西娅0）vs Excel 总伤 203M', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     // Excel 操作表：比利 0命 专武；琉 0命；卢 0命 专武（琉音"火锅"/卢西娅专武未录入 catalog，留空）
     config.team[0] = teamChar(0, '1531', 0, { wEngineId: '13004' })
@@ -87,6 +88,7 @@ describe('Excel 轴复现：资源计算产出', () => {
   it('队伍B 普罗米娅白巧（1541 普1命 / 1511 南宫羽0+专武 / 1411 柚叶0）vs Excel 总伤 226M', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     // Excel 操作表：普 1命（专武 false）；南 0命 专武（南宫羽专武未录入，留空）；柚 0命
     config.team[0] = teamChar(0, '1541', 1)

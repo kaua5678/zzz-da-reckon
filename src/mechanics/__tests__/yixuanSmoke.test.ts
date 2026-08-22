@@ -94,6 +94,7 @@ describe('仪玄 spec 机制（1371）', () => {
   it('全管线冒烟：交互链/术法值/符法千重/玄墨极阵产出，60% 招式限定增伤，玄墨异常分桶', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     // 仪玄(0命) + 青衣(击破) + 赛斯(防护)：额外能力触发；2连×2 + 3连×1 + 完美格挡×3 + 后台合轴×3
     config.team[0] = teamChar(0, '1371', 0, { yixuanInk2Count: 2, yixuanInk3Count: 1, yixuanPerfectBlockCount: 3, yixuanBackstageComboCount: 3 })
@@ -180,6 +181,7 @@ describe('仪玄 spec 机制（1371）', () => {
   it('4 失衡轴（3+1）：常规轴 3 窗 + 爆发轴 1 窗（含大招触发凝神 + 凝云），符法千重等事件执行不进轴', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     config.team[0] = teamChar(0, '1371')
     config.team[1] = teamChar(1, '1251')
@@ -213,6 +215,7 @@ describe('仪玄 spec 机制（1371）', () => {
   it('失衡轴模式：轴内凝云时长可调（duration 覆盖）、轴内行 +30% 失衡强特增伤、C1 落雷按轴内时间/CD 自动', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     config.team[0] = teamChar(0, '1371', 1) // 影画1：落雷按 CD 自动（轴模式 = floor(轴内时间/6)）
     config.team[1] = teamChar(1, '1251')
@@ -269,6 +272,7 @@ describe('仪玄 spec 机制（1371）', () => {
   it('墨影凝云合轴：N > 玄墨值时超出部分打墨影凝云+A5（用户口径）', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     // 0命：符法千重 3 次（术法值 620×0.667≈413.5 → 3，默认 = 全部）；合轴次数 5 → 玄墨值替换 3 + 墨影凝云+A5 ×2
     config.team[0] = teamChar(0, '1371', 0, { yixuanInk2Count: 2, yixuanInk3Count: 1, yixuanPerfectBlockCount: 3, yixuanBackstageComboCount: 5 })
@@ -294,6 +298,7 @@ describe('仪玄 spec 机制（1371）', () => {
   it('术法值符法千重次数：默认 = 全部（理论可打次数），文本框可覆盖且封顶', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
 
     function run(cinema: number, override: number | undefined): { theoretical: number; actual: number } {
@@ -329,6 +334,7 @@ describe('仪玄 spec 机制（1371）', () => {
   it('影画2/4/6：聚墨·符法千重-破（1200/374.055/62.3425/226.7）、减抗招式限定、静心加权、调息赠送', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     config.team[0] = teamChar(0, '1371', 6, { yixuanInk2Count: 2, yixuanInk3Count: 1, yixuanPerfectBlockCount: 3 })
     config.team[1] = teamChar(1, '1251')
@@ -395,6 +401,7 @@ describe('仪玄失衡延时（影画2，回归：2026-08 修复全队多计）'
   it('影画2：终结技使失衡敌人失衡时长 +3s → windowDuration = 12+4+3 = 19；0 命 = 16', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     await catalog.loadTeammateBuffs()
     const config = useConfigStore()
     config.team[0] = teamChar(0, '1371', 2)

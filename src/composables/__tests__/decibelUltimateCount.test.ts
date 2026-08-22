@@ -40,6 +40,7 @@ describe('终结技次数口径：异常/特殊动作奖励计入喧响推导', 
   it('用户场景回归：星徽·比利1 + 琉音0 + 卢西娅[合唱]1，界面总点数与次数推导同口径', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     config.team[0] = teamChar(0, '1531', 1)
     config.team[1] = teamChar(1, '1481', 0)
@@ -65,6 +66,7 @@ describe('终结技次数口径：异常/特殊动作奖励计入喧响推导', 
   it('快支 20/次 奖励只在 specialActionBonus 计一次（bonusRegen 不再重复）', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     config.team[0] = teamChar(0, '1531', 0, { quickAssistCount: 3 })
     config.team[1] = teamChar(1, '1251', 0, { quickAssistCount: 0 })
@@ -86,6 +88,7 @@ describe('终结技次数口径：异常/特殊动作奖励计入喧响推导', 
   it('异常/紊乱/乱流奖励通过外层不动点回填（异常池产出 > 0 时 anomalyBonus > 0 且参与次数）', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     // 火+以太异常队（露西+柏妮思路线用简配：异常角色打出异常 → 每触发 170，含队友伴随 85）
     config.team[0] = teamChar(0, '1561', 0)

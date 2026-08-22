@@ -130,6 +130,13 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
 15. **收敛状态要看三层**：`TeamResourceResult.convergence` 上报时间预算层（converged/轮数/
     正残差/负残差 idle）与失衡外层（`stable | cycle | maxIter`）。`cycle` = 离散 2-循环兜底，正常；
     `maxIter` = 反馈量仍在变，结果可疑。`allAgentsSweep` 已对全角色断言这两条。
+16. **异步数据就绪门（2026-08）**：teammate-buffs 由 `useResourceCalc` 工厂**不 await** 地触发加载，
+    面板在数据未就绪时照算 → 首算无队友 buff、fetch 返回后数值漂移（曾致同配置两次全新计算
+    给出 12/3,9/1 vs 12/4,8/1）；`setAgent → syncTeammateBuffsFromTeam` 同样时机敏感（数据晚到 =
+    整队漏 buff）。现在：`resourceConfig` 在 `teammateBuffsReady` 前返回 **null**（失败也置就绪，
+    空数据语义），config store 在数据晚到时 watch 自动重同步。**新测试只 `await catalog.load()`
+    会在就绪门上拿到 null**——必须补 `await catalog.loadTeammateBuffs()`（或直接用 setupHarness）。
+    回归：`determinism.test.ts`（双全新会话逐位一致）。
 
 ## 5. 验收命令
 

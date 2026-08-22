@@ -130,7 +130,9 @@ export function useResourceCalc() {
     // 依赖 refreshTrigger，用户点击刷新键时强制重算
     configStore.refreshTrigger
 
-    if (!catalogStore.ready) return null
+    // 就绪门：teammate-buffs 未就绪时返回 null，杜绝「首算无队友 buff、数据到达后数值漂移」的
+    // 异步竞态（曾致同配置两次全新计算 12/3,9/1 vs 12/4,8/1）。失败也会置就绪（空数据语义）。
+    if (!catalogStore.ready || !catalogStore.teammateBuffsReady) return null
 
     const characters: CharacterOperationConfig[] = []
     for (let i = 0; i < 3; i++) {

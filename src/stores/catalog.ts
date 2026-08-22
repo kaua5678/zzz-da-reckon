@@ -16,6 +16,9 @@ export const useCatalogStore = defineStore('catalog', () => {
   const teammateBuffGroups = ref<TeammateBuffGroup[]>([])
   const teammateBuffsLoading = ref(false)
   const teammateBuffsLoaded = ref(false)
+  // in-flight 去重：useResourceCalc 每次实例化都会 fire 一次加载（不 await），
+  // 并发 fetch 曾一次跑出 3 个请求；存 promise 让并发调用共享同一次加载
+  let teammateBuffsPromise: Promise<TeammateBuffGroup[] | null> | null = null
 
   /**
    * spec teamBuffs（人工录入）→ 采集文件同构条目。
@@ -170,24 +173,34 @@ export const useCatalogStore = defineStore('catalog', () => {
     }
   }
 
+  /** 就绪门：teammate-buffs 已加载（失败也置位，见 loadTeammateBuffs 的 finally） */
+  const teammateBuffsReady = computed(() => teammateBuffsLoaded.value)
+
   // 加载队友 Buff 数据
   async function loadTeammateBuffs() {
     if (teammateBuffsLoaded.value) return teammateBuffGroups.value
+    if (teammateBuffsPromise) return teammateBuffsPromise
     teammateBuffsLoading.value = true
-    try {
-      const res = await fetch('/static/teammate-buffs.json', { cache: 'no-store' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json() as TeammateBuffGroup[]
-      teammateBuffGroups.value = mergeSpecTeamBuffs(data) // 合并 spec 人工录入的 teamBuffs（去重，spec 优先）
-      teammateBuffsLoaded.value = true
-      return teammateBuffGroups.value
-    } catch (e: any) {
-      console.warn('Failed to load teammate buffs:', e?.message)
-      teammateBuffGroups.value = []
-      return []
-    } finally {
-      teammateBuffsLoading.value = false
-    }
+    teammateBuffsPromise = (async () => {
+      try {
+        const res = await fetch('/static/teammate-buffs.json', { cache: 'no-store' })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json() as TeammateBuffGroup[]
+        teammateBuffGroups.value = mergeSpecTeamBuffs(data) // 合并 spec 人工录入的 teamBuffs（去重，spec 优先）
+        return teammateBuffGroups.value
+      } catch (e: any) {
+        console.warn('Failed to load teammate buffs:', e?.message)
+        teammateBuffGroups.value = []
+        return null
+      } finally {
+        // 无论成败都标记「已就绪」：就绪门（useResourceCalc 的 resourceConfig）依赖此标志，
+        // 失败不置位会让整条计算管线在 fetch 失败时永久返回 null
+        teammateBuffsLoaded.value = true
+        teammateBuffsLoading.value = false
+        teammateBuffsPromise = null
+      }
+    })()
+    return teammateBuffsPromise
   }
 
   // 根据角色 ID 获取队友 Buff 组
@@ -253,6 +266,8 @@ export const useCatalogStore = defineStore('catalog', () => {
     teammateBuffGroups,
     teammateBuffsLoading,
     teammateBuffsLoaded,
+    /** 就绪门：数据已加载（含失败置空）——resourceConfig 等待此标志，杜绝半载状态下的静默错值 */
+    teammateBuffsReady,
     buildRecommendations,
     buildRecsLoading,
     buildRecsLoaded,

@@ -22,6 +22,7 @@ describe('Excel 导出（utils/exportExcel）', () => {
   it('工作簿含 4 个 sheet，操作表配置快照与资源表次数/喧响与计算结果一致', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     config.team[0] = { slot: 0, agentId: '1531', cinemaLevel: 1, wEngineId: '13004', wEngineModLevel: 5,
       driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} },

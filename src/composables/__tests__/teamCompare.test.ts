@@ -141,6 +141,7 @@ describe('teamCompare 金数/难度口径', () => {
   it('常驻 S 角色/音擎不计限定金（莱卡恩本体+拘缚者 = 0 金）', async () => {
     const catalog = useCatalogStore()
     await catalog.load() // 稀有度断言须走真实 catalog（历史导入曾把 A 级错标 S）
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     expect(isLimitedAgent('1141')).toBe(false) // 莱卡恩 = 常驻 S
     expect(isLimitedAgent('1051')).toBe(true) // 伊德海莉 = 限定
     // A 级角色不计限定金（妮可/苍角/露西/潘引壶曾被导入脚本错标 S，已修复——防回归）
@@ -180,6 +181,7 @@ describe('teamCompare 金数/难度口径', () => {
   it('buildGoldStepsFromConfig：限定进 goldSteps、常驻/A级进 standardSteps，按槽位展开且口径自洽', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     // 伊德海莉(限定)+莱卡恩(常驻)+卢西娅(限定)，影画 2/1/0、精炼 1/2/1
     const r = buildGoldStepsFromConfig(
       [
@@ -244,6 +246,7 @@ describe('teamCompare 金数/难度口径', () => {
   it('buildGoldStepsFromConfig：传 baseWEngineIds 后，基础音擎本就是限定专武时不重复写「本体」步（修复：保存预设时不会把 yidhari 队基础专武 14105 误判成升级步抬高基础金）', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     // 当前配置 = 预设基础音擎（伊德海莉专武 14105 / 莱卡恩专武 14114 / 卢西娅专武 14145），无精炼
     const base = ['14105', '14114', '14145']
     const r = buildGoldStepsFromConfig(
@@ -277,6 +280,7 @@ describe('teamCompare 金数/难度口径', () => {
   it('星徽·比利队预设：基础 3 金（3 限定角色本体、基础音擎常驻/A 不计金），4 金起逐步买专武', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const preset = teamPresets.find(p => p.id === 'billy-norma-lucia')
     expect(preset).toBeDefined()
     const p = preset!
@@ -339,6 +343,7 @@ describe('teamCompare 金数/难度口径', () => {
   it('interactions：tauntCancel 映射到 setTauntCancelCount（般岳后摇取消），weight 0 不计难度', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
     config.team[1] = { ...config.team[0], slot: 1 }
@@ -425,6 +430,7 @@ describe('teamCompare 最优加金（≤12金贪婪）', () => {
   it('贪婪：acquire 提交后该槽位精炼从 1 重算（常驻旧音擎的精炼不虚标到新专武）', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     // 伊德海莉+莱卡恩+卢西娅，莱卡恩槽位基础音擎 = 拘缚者（常驻）
     config.team[0].agentId = '1051'; config.team[0].wEngineId = '14105'
@@ -480,6 +486,7 @@ describe('teamCompare 最优加金（≤12金贪婪）', () => {
   it('贪婪：低金档优先买专武本体（acquire 候选）—— 3 金基础无专武时 4 金买一把专武', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     // 星徽·比利队口径：3 限定角色、基础音擎常驻/A（无专武）
     config.team[0].agentId = '1531'; config.team[0].wEngineId = '13019' // 比利（限定）+ A 音擎
@@ -530,6 +537,7 @@ describe('teamCompare 批量计算', () => {
   it('产出 队伍×金数 个点，伤害>0，计算后现场恢复', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
     config.team[1] = { ...config.team[0], slot: 1 }
@@ -565,6 +573,7 @@ describe('teamCompare 批量计算', () => {
   it('最优加金模式：≤12金用贪婪分配（label 带「最优」），金数预算精确，伤害单调不减', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
     config.team[1] = { ...config.team[0], slot: 1 }
@@ -598,6 +607,7 @@ describe('teamCompare 批量计算', () => {
   it('minGold：难度门槛过滤——低于变体最低总限定金的档位不生成点（如 5嗔火10大 需琉音配置足够高）', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
     config.team[1] = { ...config.team[0], slot: 1 }
@@ -616,6 +626,7 @@ describe('teamCompare 批量计算', () => {
   it('难度变体轴绑定：stunAxisPresetId 写入对应轴（plans 型 → stunAxisPlans），未绑定/绑错恢复快照轴状态', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     // 用户手动轴现场（快照基准）：一条手动轴 + 开关开
     config.stunAxes.splice(0, config.stunAxes.length, { name: '用户轴', actions: [{ slot: 0, moveId: '1471020', count: 1 }] })
@@ -656,6 +667,7 @@ describe('teamCompare 批量计算', () => {
   it('buff：自动推荐取三张牌伤害最高，手动指定覆盖，现场恢复', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
     config.team[1] = { ...config.team[0], slot: 1 }
@@ -690,6 +702,7 @@ describe('teamCompare 批量计算', () => {
   it('buff 自动推荐在 Boss 应用之后评估（排序基于所选期数敌人配置）', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
     config.team[1] = { ...config.team[0], slot: 1 }
@@ -718,6 +731,7 @@ describe('teamCompare 批量计算', () => {
   it('buff 条件：特性限定/异常人数分档（resolveBuffEffect）', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     // 测试队：1561(异常) 1261(异常) 1411(支援) —— 2 名异常
     const eff2: any = { stat: 'atkPct', value: 70, cond: { anomalyCount: [10, 70] } }
     expect(resolveBuffEffect(eff2, TEST_PRESET)).toMatchObject({ stat: 'atkPct', value: 10 })
@@ -759,6 +773,7 @@ describe('teamCompare 自动下位音擎（装填池择优）', () => {
   it('生效测试：池内择优 + A 级默认精炼可调（改档伤害确实变）；池外候选不参与', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     // 打分：13019 每精炼级 +30，其余候选一律 +0 → 池含 13019 时必选它
     const config = setupTeam([{ slot: 0, agentId: '1531' }])
     const calc = engineScoreCalc(config, (wId, mod) => (wId === '13019' ? 30 * mod : 0))
@@ -780,6 +795,7 @@ describe('teamCompare 自动下位音擎（装填池择优）', () => {
   it('池过滤：限定 S 音擎与未知 id 被忽略；限定基础音擎的槽位不参与替换', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = setupTeam([
       { slot: 0, agentId: '1051', wEngineId: '14105' },
       { slot: 1, agentId: '1531' },
@@ -801,6 +817,7 @@ describe('teamCompare 自动下位音擎（装填池择优）', () => {
   it('最优路径集成：base 档穿下位择优，买到专武的槽位换回专武（精炼回 1），其余槽保持下位', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = setupTeam([{ slot: 0, agentId: '1531' }, { slot: 1, agentId: '1571' }, { slot: 2, agentId: '1451' }])
     const preset: TeamPreset = {
       id: 'auto-acquire', name: '买专武换回', team: ['1531', '1571', '1451'], wEngines: ['', '', ''],

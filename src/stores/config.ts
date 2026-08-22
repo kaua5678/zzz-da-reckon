@@ -810,6 +810,11 @@ function parseCinemaRequirement(sourceLabel: string): number {
   /** 根据队伍配置自动同步队友 buff 的启用状态
    *  规则：队伍中有该角色 + 影画等级 >= buff 所需影画 → 启用
    */
+  // teammate-buffs 晚到自动补同步：加载完成时若队伍已就位（存档恢复/预设应用先于 fetch 返回），
+  // 重跑一次选择——消除「数据到达时机决定 buff 是否生效」的竞态
+  watch(() => catalogStore.teammateBuffsLoaded, loaded => {
+    if (loaded) syncTeammateBuffsFromTeam()
+  })
   function syncTeammateBuffsFromTeam() {
     if (!catalogStore.teammateBuffGroups.length) return
 

@@ -46,6 +46,7 @@ const PHASE: BossPresetPhase = {
 async function setupYidhariTeam() {
   const catalog = useCatalogStore()
   await catalog.load()
+  await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
   const config = useConfigStore()
   const team = ['1051', '1141', '1451']
   const engines = ['14105', '', '14145']
@@ -90,6 +91,7 @@ describe('队伍对比超时判定（只累计前台行）', () => {
   it('伊德海莉+莱卡恩+卢西娅队：后台行不再计入 → 不再误报「超时」', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     config.setAgent(0, '1051'); config.setWEngine(0, '14105'); config.setCinemaLevel(0, 1)
     config.setAgent(1, '1141')
