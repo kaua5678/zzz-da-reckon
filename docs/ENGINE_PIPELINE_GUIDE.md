@@ -110,12 +110,15 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
 10. **进场闪能**：`cfg.initialEnergyGift` 默认 40（composables 构建），命破角色需模块设为 60（伊德海莉/星徽·比利）。
 11. **星辉类"指定招式增伤"**：不要加全局 panel.dmgBonus，在 patchExecutions 按 moveId 集合加 exec.dmgBonus
     （星徽·比利 6 个目标招式 / 般岳 C4 / 诺姆弹头行 override 同款）。
-12. **时间预算收敛（引擎外层循环，2026-08）**：模块 buildExecutions 物化的专属动作行（雅霜月架势/叶瞬光飞光/
-    柏妮思双喷/星徽比利EX链等）占用前台但若未计入 estimateExSpecialTime，会使 Σ执行行 totalTime > 战斗时间。
-    引擎在 calcTeamResources 外层循环测量 excess = Σ执行行 totalTime − 战斗时间，**只折正 excess** 进
-    necessaryTime（压缩平A池）后重收敛；负 excess（estimate 高估/空闲前台）不动——否则 necessary 变负、basic 膨胀。
-    新增模块若推专属 on-field 行且不占 estimate，会被本循环自动纠正；若推后台行应显式 `totalTime: 0`
-    （蕾米 Radiant Turn 模式），否则被误判为 on-field 占用。
+12. **时间预算收敛（引擎外层循环，2026-08；同月改为对自家账本收敛）**：模块 buildExecutions 物化的专属
+    动作行（雅霜月架势/叶瞬光飞光/柏妮思双喷/星徽比利EX链等）占用前台但若未计入 estimateExSpecialTime，
+    会使前台行时间超过其账本份额。引擎在 calcTeamResources 外层循环测量 excess = Σ**前台**行 totalTime −
+    （necessaryTime + basicAttackTime）【2026-08 起对自家账本收敛，不再对单人战斗预算】，**只折正 excess**
+    进 timeBudgetExcess（压缩全队平A池）后重收敛；负 excess（estimate 高估/空闲前台）不动——否则
+    necessary 变负、basic 膨胀。收敛后 Σ前台行 ≡ 账本，三人账本合计 ≤ 战斗时间（iterate 共享池钳制）。
+    新增模块若推专属 on-field 行且不占 estimate，会被本循环自动纠正；**后台行必须显式
+    `timeBucket: 'backstage'`**（如莱卡恩围猎蓄力/蕾米 Radiant Turn）——后台行不进折叠目标与队伍对比的
+    超时校验（`isFrontlineExecution`，未打标按前台保守处理），否则会误报「超时」并虚增账本。
 13. **队伍级联动别写进编排层**：跨槽位效果用 `applyTeamConfig` 钩子（见 §2），不要往
     `useResourceCalc` 加 agentId 分支。历史上 5 条队伍级机制被编排层手工 import + 手工按序调用，
     其中莱特那条要在 3 个位置各调一次，漏一处就是静默错值。

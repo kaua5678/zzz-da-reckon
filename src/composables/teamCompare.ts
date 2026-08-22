@@ -33,6 +33,7 @@ import {
   type TeamPreset,
 } from '@/types/teamPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
+import { isFrontlineExecution } from '@/types/resource'
 
 type Calc = ReturnType<typeof useResourceCalc>
 
@@ -726,10 +727,9 @@ export function applyAxisBinding(
 }
 
 /**
- * 从引擎资源结果提取总动作时间（秒）= 所有角色所有执行行 totalTime 之和。
- * 引擎已按 count × actionTime 精确计算每招时间（含弹刀/闪避等交互动作的 moveId 对应时长）。
- * 超过 battleTime − invincibleTime 时标记为「时间不可行」。
- * 返回 { timeExceeded, timeDetail }。
+ * 从引擎资源结果提取总动作时间（秒）= 所有角色所有**前台**执行行 totalTime 之和
+ * （timeBucket='backstage' 的后台行不占共享时间轴，如莱卡恩围猎蓄力——isFrontlineExecution）。
+ * 引擎折叠循环已把前台行对其账本收敛（Σ前台行 ≡ 账本 ≤ 战斗时间），仍超出 = 收敛残差/极端配置。
  */
 function actionTimeTotal(
   calc: Calc,
@@ -741,7 +741,7 @@ function actionTimeTotal(
   if (rr) {
     for (const char of rr.characters) {
       for (const exec of char.executions) {
-        totalActionTime += exec.totalTime ?? 0
+        if (isFrontlineExecution(exec)) totalActionTime += exec.totalTime ?? 0
       }
     }
   }

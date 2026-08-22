@@ -226,6 +226,7 @@ export const lycaonMechanic: AgentMechanicModule = {
         totalEnergyRecovery: 0,
         anomalyBuildUp: 0,
         skillTableNote: `围猎后台跟随闪反 × ${backstageDodgeCount} 次（队伍其他角色闪反次数之和）；仅伤害+失衡值（吃核心被动闪反失衡+80%）`,
+        timeBucket: 'backstage',
       })
     }
 
@@ -254,6 +255,7 @@ export const lycaonMechanic: AgentMechanicModule = {
         dazeMultiplierOverride: true,
         anomalyBuildUp: 0,
         skillTableNote: `围猎·后台蓄力平A：${huntBasicTotal.toFixed(1)}s（后台 ${backstageTotal.toFixed(1)}s − 闪反 ${dodgeTime.toFixed(1)}s，每次≤8s × ${huntCount}）；仅伤害+失衡值（吃核心被动蓄力失衡+80%）`,
+        timeBucket: 'backstage',
       })
     }
   },

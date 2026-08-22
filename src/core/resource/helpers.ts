@@ -524,6 +524,7 @@ export function buildExecutions(
       totalDecibelRecovery: state.basicAttackTime * cfg.basicAttackDecibelPerSec,
       energyRecovery: cfg.basicAttackRegenPerSec,
       totalEnergyRecovery: state.basicAttackTime * cfg.basicAttackRegenPerSec,
+      timeBucket: 'basic',
     })
   }
 
@@ -546,6 +547,7 @@ export function buildExecutions(
       totalDecibelRecovery: remielleRainbowEndCount * cfg.remielleRainbowEndDecibelRecovery,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
+      timeBucket: 'necessary',
     })
   }
 
@@ -567,6 +569,7 @@ export function buildExecutions(
       totalDecibelRecovery: state.exSpecialCount * cfg.exSpecialDecibelRecovery,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
+      timeBucket: 'necessary',
     })
   }
 
@@ -588,6 +591,7 @@ export function buildExecutions(
       totalDecibelRecovery: state.ultimateCount * cfg.ultimateDecibelRecovery,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
+      timeBucket: 'necessary',
     })
   }
 
@@ -610,6 +614,7 @@ export function buildExecutions(
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       source: 'stun',
+      timeBucket: 'necessary',
     })
   }
 
@@ -631,11 +636,12 @@ export function buildExecutions(
         totalComboAlignTime: 0,
         energyConsume: 0,
         totalEnergyConsume: 0,
-        decibelRecovery: cfg.remielleRadiantTurnDecibelRecovery ?? 0,
-        totalDecibelRecovery: radiantTurnCount * (cfg.remielleRadiantTurnDecibelRecovery ?? 0),
-        energyRecovery: 0,
-        totalEnergyRecovery: 0,
-      })
+      decibelRecovery: cfg.remielleRadiantTurnDecibelRecovery ?? 0,
+      totalDecibelRecovery: radiantTurnCount * (cfg.remielleRadiantTurnDecibelRecovery ?? 0),
+      energyRecovery: 0,
+      totalEnergyRecovery: 0,
+      timeBucket: 'backstage',
+    })
     }
   }
 
@@ -657,6 +663,7 @@ export function buildExecutions(
       totalDecibelRecovery: cfg.dodgeCounterCount * cfg.dodgeCounterDecibelRecovery,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
+      timeBucket: 'necessary',
     })
   }
 
@@ -678,6 +685,7 @@ export function buildExecutions(
       totalDecibelRecovery: cfg.parryCount * cfg.defensiveAssistDecibelRecovery,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
+      timeBucket: 'necessary',
     })
   }
 
@@ -699,6 +707,7 @@ export function buildExecutions(
       totalDecibelRecovery: cfg.parryCount * cfg.assistFollowUpDecibelRecovery,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
+      timeBucket: 'necessary',
     })
   }
 

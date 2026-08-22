@@ -77,7 +77,9 @@ describe('Excel 轴复现：资源计算产出', () => {
     const out = calc.resourceResult.value!
     const billy = out.characters.find(c => c.agentId === '1531')!
     expect(billy.exSpecialCount).toBeGreaterThanOrEqual(6)
-    expect(billy.ultimateCount).toBeGreaterThanOrEqual(3)
+    // 时间桶恒等式（2026-08）：前台模块行对自家账本折叠后，平A池收缩 → 喧响回收减少，
+    // 终结技从 3 掉到 2（此前 3 是未入账模块行白占时间轴的虚高）
+    expect(billy.ultimateCount).toBeGreaterThanOrEqual(2)
     expect(calc.stunPoolResult.value!.stunCount).toBeGreaterThanOrEqual(3)
     expect(calc.teamTotalDamage.value).toBeGreaterThan(0)
   })

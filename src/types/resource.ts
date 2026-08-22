@@ -497,6 +497,15 @@ export interface SkillExecution {
   /** 诺姆膛温换连携标记：本行是帽子把戏赠送的连携（招式取上一位队友技能表），
    *  失衡捏轴下吃易伤的次数由诺姆槽位 'norma-hat-chain' 轴内块决定（见 useResourceCalc） */
   normaGiftChain?: boolean
+  /** 时间桶：necessary=必做动作（必要池）/ basic=平A池渲染 / backstage=后台活动。
+   *  前台判定见 isFrontlineExecution：未打标按前台处理（保守，不漏计）。
+   *  Σ前台行时间 ≡ 该角色账本（necessaryTime+basicAttackTime）由折叠循环强制收敛（resource.ts）。 */
+  timeBucket?: 'necessary' | 'basic' | 'backstage'
+}
+
+/** 行是否占用三人共享前台时间轴（后台行不进超时校验与账本折叠；未打标默认前台） */
+export function isFrontlineExecution(e: { timeBucket?: 'necessary' | 'basic' | 'backstage' }): boolean {
+  return e.timeBucket !== 'backstage'
 }
 
 /** 异常事件执行记录：不属于普通直伤/失衡/积蓄招式行，但会由动作或资源触发 */

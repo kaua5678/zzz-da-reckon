@@ -4,6 +4,7 @@ import type {
   EnergySource, DecibelSource, TimeAllocation,
   SkillExecution, IterationState, AnomalyEventExecution,
 } from '@/types/resource'
+import { isFrontlineExecution } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { fmt } from '@/utils/format'
 import { getAgentMechanic } from '@/mechanics'
@@ -39,11 +40,12 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
 
   // 时间预算收敛（外层）+ 资源收敛（内层）：
   // 模块 buildExecutions 会物化出占用前台、但未计入 estimateExSpecialTime 的动作行
-  // （雅霜月架势/叶瞬光飞光/柏妮思双喷/星徽比利EX链等），使 Σ执行行时间 > 战斗时间。
-  // 本循环测量每个角色执行计划的超出量，折入 necessaryTime（压缩平A池）后重收敛，
-  // 直到执行行前台时间 ≤ 战斗时间（游戏内 180s 必须打完，链式循环不可多算）。
-  const invTime = config.invincibleTime ?? 0
-  const budget = totalTime - invTime
+  // （雅霜月架势/叶瞬光飞光/柏妮思双喷/星徽比利EX链等）。本循环把每个角色执行行的
+  // **前台时间**（timeBucket ≠ 'backstage'，见 isFrontlineExecution）对其**自家账本**
+  // （necessaryTime + basicAttackTime）收敛：超出量折入 timeBudgetExcess → 压缩全队平A池
+  // → 平A回能减少 → 次数重收敛。三人账本合计恒 ≤ 战斗时间（iterate 的共享池钳制保证），
+  // 收敛后 Σ前台执行行 ≡ 账本 ≡ 共享时间轴的占用（构造性恒等式，游戏内 180s 必须打完）。
+  // （战斗时间 − 无敌时间）仍由 iterate 的共享平A池钳制消费：availableBasicTime = max(0, 预算 − Σ必要)。
   const maxTimeIter = config.maxTimeIterations || 8
   // 重置上一轮调用残留的时间预算（cfg 可能被外层不动点复用）
   for (const cfg of configs) cfg.timeBudgetExcess = 0
@@ -76,7 +78,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       }
     }
 
-    // 测量每个角色执行计划前台时间（含模块专属动作行），超出战斗时间的部分折入必要时间。
+    // 测量每个角色执行计划的**前台**时间（后台行不占共享轴），对自家账本收敛：
+    // 超出账本 = 该角色有未付费的前台行 → 折入必要时间压缩平A池（团队级，非单人预算）。
     // 只折正超出（真溢出）：负值 = estimate 高估必要时间 / 有空闲前台，属正常，不动（否则 necessary 变负、basic 膨胀）。
     let maxExcess = 0
     let maxIdle = 0
@@ -88,8 +91,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         0,
       )
       const executions = buildExecutions(cfg, state, state.chainCountTotal, teammateFrontlineSeconds)
-      const rowTime = executions.reduce((sum, e) => sum + (e.totalTime ?? 0), 0)
-      const excess = rowTime - budget
+      const rowTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
+      // 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget）
+      const excess = rowTime - (state.necessaryTime + state.basicAttackTime)
       if (excess > 1e-6) {
         // 量化（floor 次数）导致残差 ~1s 属合轴可覆盖，不追求精确 0
         cfg.timeBudgetExcess = (cfg.timeBudgetExcess ?? 0) + excess
@@ -180,10 +184,10 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       config.specialActionDecibelBonusPerSlot?.[i] ?? 0,
       config.anomalyDecibelBonusPerSlot?.[i] ?? 0)
     const executions = buildExecutions(cfg, state, chainCountTotal, teammateFrontlineSeconds)
-    // 显示口径统一：前台时间 = 执行计划 ΣtotalTime（含合轴，机制改写行/倍率表行都在内），
-    // 后台 = 总时间 - 前台。这样「占用操作 + 合轴 + 后台」恒等于战斗时间。
-    // 注意：state.frontlineTime（机制 estimate 口径）仍用于资源计算，不受影响。
-    const execFrontlineTime = executions.reduce((sum, e) => sum + (e.totalTime ?? 0), 0)
+    // 显示口径统一：前台时间 = **前台**执行行 ΣtotalTime（后台行不占共享轴，如莱卡恩围猎蓄力；
+    // 含合轴，机制改写行/倍率表行都在内），后台 = 总时间 - 前台。
+    // 折叠循环已把前台行对其账本收敛，故 Σ前台行 ≈ 账本 ≤ 战斗时间。
+    const execFrontlineTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
     const timeAlloc = {
       ...calcTimeAllocation(cfg, state, totalTime),
       frontlineTime: execFrontlineTime,
