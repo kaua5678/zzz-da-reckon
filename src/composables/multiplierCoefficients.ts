@@ -17,11 +17,13 @@ import {
   MOVE_TYPE_LABELS,
   STANDARD_MULTIPLIER_TABLE,
   STANDARD_ROW_IDS,
+  STANDARD_S_AGENT_IDS,
   getRarityMultiplier,
   type MoveType,
   type StandardRowId,
 } from '@/data/standardMultiplierTable'
 import { LEVEL1_TO_LEVEL12 } from '@/core/skillLevel'
+import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
 
 /** actionTime 低于此值视为录入噪声（0 / 0.001 的子段行），不参与期望值计算 */
 const MIN_ACTION_TIME = 0.01
@@ -353,4 +355,44 @@ export function deriveCoefficientReport(agents: Agent[], agentSkillsList: AgentS
     deviations: buildDeviations(moves, vertical),
     calibrations: buildCalibrations(moves),
   }
+}
+
+export interface DirectDamagePoint {
+  agentId: string
+  agentName: string
+  nodeId: string
+  nodeLabel: string
+  nodeIndex: number
+  /** 版本节点备注（如 3.2 测试服标注） */
+  nodeNote?: string
+  /** 版本直伤系数（支援突击伤害比值）；无支援突击样本的角色为 null */
+  value: number | null
+}
+
+/**
+ * 限定S「首次 UP 版本 × 版本直伤系数（支援突击锚点）」散点，按节点序排序。
+ * 常驻 S 不参与（无 UP 概念）；A 级不参与（非限定金）。时间图表页的直伤系数图用。
+ */
+export function buildDirectDamageTimeline(agents: Agent[], agentSkillsList: AgentSkills[]): DirectDamagePoint[] {
+  const report = deriveCoefficientReport(agents, agentSkillsList)
+  const nodeById = new Map(VERSION_NODES.map((n) => [n.id, n]))
+  return report.vertical
+    .filter((v) => v.rarity === 'S' && !STANDARD_S_AGENT_IDS.has(v.agentId))
+    .flatMap((v) => {
+      const nodeId = AGENT_RELEASE_NODE[v.agentId]
+      if (!nodeId) return []
+      const node = nodeById.get(nodeId)
+      return [
+        {
+          agentId: v.agentId,
+          agentName: v.agentName,
+          nodeId,
+          nodeLabel: node?.label ?? nodeId,
+          nodeIndex: nodeIndexOf(nodeId),
+          nodeNote: node?.note,
+          value: v.directDamage?.value ?? null,
+        },
+      ]
+    })
+    .sort((a, b) => a.nodeIndex - b.nodeIndex || a.agentId.localeCompare(b.agentId))
 }

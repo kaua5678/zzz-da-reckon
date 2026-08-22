@@ -302,6 +302,67 @@
         示例：仪玄（2.0 上半实装）→ 可见橘福福（2.0 下半）、卢西娅（2.3）、琉音（2.4）、诺姆（3.0）等节点换人带来的队伍强度变化。
       </div>
     </n-card>
+
+    <!-- ============ 限定S首次UP × 版本直伤系数（倍率演算引擎静态推导，无需点计算） ============ -->
+    <n-card
+      size="small"
+      :bordered="true"
+      title="限定S首次UP · 版本直伤系数（中心系数 = 支援突击伤害 / 标准值；支援突击通常不随角色改版，偏离即历代直伤膨胀档位）"
+    >
+      <svg :width="svgW" :height="ddSvgH" class="dd-svg">
+        <!-- 测试服节点阴影 -->
+        <rect
+          v-for="r in ddTestServerRects"
+          :key="`ddts${r.x}`"
+          :x="r.x"
+          :y="ddPadT"
+          :width="r.w"
+          :height="ddPlotBottom - ddPadT"
+          fill="rgba(246, 173, 85, 0.06)"
+        />
+        <!-- 版本分隔网格 + 版本号刻度 -->
+        <g v-for="t in ddXTicks" :key="`ddx${t.index}`">
+          <line :x1="ddX(t.index)" :y1="ddPadT" :x2="ddX(t.index)" :y2="ddPlotBottom" stroke="rgba(255,255,255,0.06)" />
+          <text :x="ddX(t.index)" :y="ddPlotBottom + 14" text-anchor="middle" class="dd-tick">{{ t.label }}</text>
+        </g>
+        <!-- y 刻度 -->
+        <text v-for="t in ddYTicks" :key="`ddy${t}`" :x="ddPadL - 6" :y="ddY(t) + 4" text-anchor="end" class="dd-tick">
+          {{ Math.round(t * 100) }}%
+        </text>
+        <!-- 100% 基准线 -->
+        <line
+          :x1="ddPadL"
+          :y1="ddY(1)"
+          :x2="svgW - ddPadR"
+          :y2="ddY(1)"
+          stroke="rgba(255,255,255,0.28)"
+          stroke-dasharray="4 4"
+        />
+        <text :x="svgW - ddPadR - 2" :y="ddY(1) - 5" text-anchor="end" class="dd-baseline">100% 标准</text>
+        <!-- 散点 -->
+        <g v-for="p in ddPoints" :key="`ddp${p.agentId}`">
+          <circle
+            v-if="p.value != null"
+            :cx="ddX(p.nodeIndex) + ddJitter(p.agentId)"
+            :cy="ddY(p.value)"
+            r="4"
+            :fill="ddColor(p.value)"
+          >
+            <title>{{ p.agentName }}（{{ p.nodeLabel }}{{ p.nodeNote ? '，' + p.nodeNote : '' }}）：{{ (p.value * 100).toFixed(1) }}%</title>
+          </circle>
+          <text
+            v-if="p.value != null && ddNeedLabel(p.value)"
+            :x="ddX(p.nodeIndex) + ddJitter(p.agentId)"
+            :y="ddLabelY(p)"
+            text-anchor="middle"
+            class="dd-label"
+          >{{ ddShortName(p.agentName) }}</text>
+        </g>
+      </svg>
+      <div class="dd-caption">
+        每点 = 一位限定S在其首次 UP 节点的支援突击伤害比值。灰 ≈100%（无直伤特调）、蓝 &gt;105%（当期加强档）、橙 &lt;95%；悬停看数值。3.2 阴影为测试服数据；常驻 S 与 A 级不参与。演算口径见「倍率系数记录」页。
+      </div>
+    </n-card>
   </div>
 </template>
 
@@ -314,6 +375,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamTimelineResult } from '@/composables/teamTimeline'
 import { buildBossSchedule, scheduleByNode, type BossScheduleEntry } from '@/composables/bossSchedule'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
+import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
 
@@ -649,6 +711,102 @@ function onSvgMove(e: MouseEvent) {
     hoverNode.value = -1
   }
 }
+// ============ 限定S首次UP × 版本直伤系数（倍率演算引擎静态推导，见 composables/multiplierCoefficients.ts） ============
+
+const ddPoints = computed(() =>
+  buildDirectDamageTimeline(catalogStore.catalog?.agents ?? [], catalogStore.catalog?.agentSkills ?? []),
+)
+
+const ddPadL = 46
+const ddPadR = 18
+const ddPadT = 18
+const ddPadB = 32
+const ddSvgH = 268
+const ddPlotBottom = ddSvgH - ddPadB
+const ddNodeMaxIndex = VERSION_NODES.length - 1
+
+function ddX(nodeIndex: number): number {
+  return ddPadL + (nodeIndex / ddNodeMaxIndex) * (svgW.value - ddPadL - ddPadR)
+}
+
+const ddVMin = computed(() => {
+  const vs = ddPoints.value.map((p) => p.value).filter((v): v is number => v != null)
+  return Math.min(0.7, ...(vs.length ? vs : [0.7])) - 0.03
+})
+const ddVMax = computed(() => {
+  const vs = ddPoints.value.map((p) => p.value).filter((v): v is number => v != null)
+  return Math.max(1.3, ...(vs.length ? vs : [1.3])) + 0.03
+})
+
+function ddY(v: number): number {
+  const span = ddVMax.value - ddVMin.value
+  return ddPadT + (1 - (v - ddVMin.value) / span) * (ddPlotBottom - ddPadT)
+}
+
+const ddYTicks = [0.75, 0.9, 1.0, 1.1, 1.25]
+
+/** 每个版本只标首个节点的版本号 */
+const ddXTicks = (() => {
+  const seen = new Set<string>()
+  return VERSION_NODES.map((n, index) => ({ index, label: n.version })).filter(({ label }) => {
+    if (seen.has(label)) return false
+    seen.add(label)
+    return true
+  })
+})()
+
+/** 测试服节点阴影（note 含「测试服」），随 svgW 响应式 */
+const ddTestServerRects = computed(() => {
+  const rects: Array<{ x: number; w: number }> = []
+  VERSION_NODES.forEach((n, index) => {
+    if (!(n.note ?? '').includes('测试服')) return
+    const left = index > 0 ? ddX(index - 0.5) : ddPadL
+    const right = index < ddNodeMaxIndex ? ddX(index + 0.5) : svgW.value - ddPadR
+    rects.push({ x: left, w: Math.max(8, right - left) })
+  })
+  return rects
+})
+
+function ddJitter(agentId: string): number {
+  let h = 0
+  for (let i = 0; i < agentId.length; i++) h = (h * 31 + agentId.charCodeAt(i)) | 0
+  return ((h % 7) - 3) * 4
+}
+
+function ddColor(v: number): string {
+  if (v > 1.05) return '#7dd3fc'
+  if (v < 0.95) return '#fdba74'
+  return 'rgba(255,255,255,0.55)'
+}
+
+function ddNeedLabel(v: number): boolean {
+  return Math.abs(v - 1) > 0.05
+}
+
+function ddShortName(name: string): string {
+  const cleaned = name.replace(/「|」/g, '')
+  return cleaned.length > 6 ? `${cleaned.slice(0, 6)}…` : cleaned
+}
+
+/** 同节点多个带标签点纵向错开；≥1 标在点上方、<1 标在下方 */
+const ddLabelSlots = computed(() => {
+  const groups = new Map<number, string[]>()
+  for (const p of ddPoints.value) {
+    if (p.value == null || !ddNeedLabel(p.value)) continue
+    const arr = groups.get(p.nodeIndex) ?? []
+    arr.push(p.agentId)
+    groups.set(p.nodeIndex, arr)
+  }
+  const m = new Map<string, number>()
+  for (const [, ids] of groups) ids.forEach((id, i) => m.set(id, i))
+  return m
+})
+
+function ddLabelY(p: DirectDamagePoint): number {
+  const v = p.value ?? 1
+  const slot = ddLabelSlots.value.get(p.agentId) ?? 0
+  return v >= 1 ? ddY(v) - (9 + slot * 13) : ddY(v) + 16 + slot * 13
+}
 </script>
 
 <style scoped>
@@ -901,5 +1059,30 @@ function onSvgMove(e: MouseEvent) {
   font-size: 13px;
   line-height: 1.8;
   padding: 12px 4px;
+}
+.dd-svg {
+  display: block;
+  max-width: 100%;
+}
+.dd-tick {
+  fill: rgba(255, 255, 255, 0.45);
+  font-size: 10px;
+}
+.dd-baseline {
+  fill: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+}
+.dd-label {
+  fill: rgba(255, 255, 255, 0.82);
+  font-size: 10px;
+  paint-order: stroke;
+  stroke: rgba(10, 10, 14, 0.85);
+  stroke-width: 3px;
+}
+.dd-caption {
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11.5px;
+  line-height: 1.7;
 }
 </style>

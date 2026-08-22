@@ -146,6 +146,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
    - **队伍构成泳道**：主C/队友1/队友2 三轨，换人节点可视化；换人垂直参考线 + 事件 chips。
    - **明细表**：每节点队伍、伤害、血量%、金数明细、换人事件（含**上位/平替**徽标与提升%）；新角色实装当期未进最优队时标注「实装未进队 · 平替（可不抽）/ 未上位」。
    - **当期 Boss 排期车道**：泳道区第 4 轨按节点显示该期危局 Boss（仅试炼时标注「（试炼）」）；选中某 Boss（如秽息司祭）即高亮其历次出场节点，hover 卡片与明细表同步显示，图表下方给出场节点摘要——这些节点上的换人/入队判定即「当期新队友入队比较」。
+   - **限定S首次UP × 版本直伤系数散点**（页面底部静态卡片，无需点计算）：每位限定 S 在首次 UP 节点的支援突击伤害比值（中心系数，`buildDirectDamageTimeline` 推导）；灰 ≈100%、蓝 >105%、橙 <95%，3.2 测试服节点阴影标注——直读历代直伤膨胀档位（1.18/1.27 等，口径见 §5）。
 3. 可选「包含测试服角色（3.2 未实装）」（缺省关，防测试服数值污染曲线；开时 3.2 节点标注「测试服数据」）。
 
 ### 4.2 口径（用户拍板 + 实现细节）
@@ -169,6 +170,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 版本节点 / S 级实装版本 | `src/data/versionTimeline.ts`（新增版本/角色时更新；3.2 测试服 note 标注） |
 | 搜索 / 加金 / 收敛过滤算法 | `src/composables/teamTimeline.ts`（`computeTeamTimeline` / `computeOptimalTeamAllocation` / `budgetAwareStateFor`） |
 | 图表 / 控制面板 / 明细表 | `src/views/TimeChartsPage.vue`（自绘 SVG，无图表库） |
+| 直伤系数散点数据 | `composables/multiplierCoefficients.ts` 的 `buildDirectDamageTimeline`（限定S × 首次UP节点 × 支援突击锚点比值；口径见 §5） |
 | 页面注册 | `CalculatorView.vue` pageMap + `AppHeader.vue`（`timeline` tab） |
 | 测试 | `src/composables/__tests__/teamTimeline.test.ts`（数据不变量/基础金/贪婪金/演变冒烟） |
 

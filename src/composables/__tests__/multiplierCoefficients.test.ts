@@ -16,7 +16,9 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { Agent, AgentSkills } from '@/types/catalog'
 import { LEVEL1_TO_LEVEL12 } from '@/core/skillLevel'
+import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import {
+  buildDirectDamageTimeline,
   classifyMove,
   deriveCoefficientReport,
   parseEnergyCost,
@@ -200,5 +202,35 @@ describe('倍率表系数演算：等级换算常量', () => {
   it('1级→12级：伤害×2、失衡×1.5（与 core/skillLevel 同源）', () => {
     expect(LEVEL1_TO_LEVEL12.damage).toBeCloseTo(2, 10)
     expect(LEVEL1_TO_LEVEL12.daze).toBeCloseTo(1.5, 10)
+  })
+})
+
+describe('倍率表系数演算：限定S首次UP × 版本直伤系数（时间图表页数据源）', () => {
+  const points = buildDirectDamageTimeline(catalogData.agents, catalogData.agentSkills)
+
+  it('覆盖全部限定 S 角色，常驻 S 不参与', () => {
+    const limitedS = catalogData.agents.filter((a) => a.rarity === 'S' && !STANDARD_S_AGENT_IDS.has(String(a.id)))
+    expect(points.length).toBe(limitedS.length)
+    expect(points.find((p) => p.agentId === '1021'), '猫又是常驻S，不应出现').toBeUndefined()
+    expect(points.every((p) => p.nodeIndex >= 0)).toBe(true)
+  })
+
+  it('按首次 UP 节点序排序；叶瞬光(2.5 合并池) 直伤 ≈×1.27', () => {
+    for (let i = 1; i < points.length; i++) {
+      expect(points[i].nodeIndex).toBeGreaterThanOrEqual(points[i - 1].nodeIndex)
+    }
+    const ysg = points.find((p) => p.agentId === '1431')
+    expect(ysg, '叶瞬光应在散点中').toBeDefined()
+    expect(ysg!.nodeId).toBe('2.5')
+    expectNear(ysg!.value ?? 0, 1.274, 0.02, '叶瞬光直伤系数')
+  })
+
+  it('早期角色 ≈ 标准、3.2 测试服节点带备注', () => {
+    const yixuan = points.find((p) => p.agentId === '1371')
+    expect(yixuan!.nodeId).toBe('2.0-1')
+    expectNear(yixuan!.value ?? 0, 1.0, 0.03, '仪玄直伤系数')
+    const testServer = points.filter((p) => p.nodeId === '3.2-1')
+    expect(testServer.length).toBeGreaterThan(0)
+    expect(testServer.every((p) => (p.nodeNote ?? '').includes('测试服'))).toBe(true)
   })
 })
