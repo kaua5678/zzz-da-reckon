@@ -30,6 +30,7 @@
 import { getInteractionDefaults, useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
+import { indexForDate } from '@/composables/bossSchedule'
 import { isLimitedAgent, isLimitedWEngine, applyGoldSteps } from '@/composables/teamCompare'
 import type { Agent } from '@/types/catalog'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
@@ -129,6 +130,16 @@ export interface TeamTimelineResult {
   stats: TeamTimelineStats
 }
 
+/** 演变轴节点：带日期即可。缺省由 VERSION_NODES 合成（版本卡池节点）；页面传危局期数轴 */
+export interface TimelineAxisNode {
+  id: string
+  label: string
+  /** 节点起始日期 YYYY-MM-DD（窗口 [date, 下一节点 date)） */
+  date: string
+  /** 测试服占位节点：includeTestServer=false 时剔除 */
+  testServer?: boolean
+}
+
 export interface TeamTimelineOptions {
   mainAgentId: string
   boss: BossPreset
@@ -137,10 +148,15 @@ export interface TeamTimelineOptions {
   budget: number
   onProgress?: (p: { pct: number; text: string }) => void
   /**
+   * 演变轴（危局期数轴由页面经 buildPeriodAxis 构造后传入）。缺省 = VERSION_NODES 合成。
+   * 角色在期数中途实装也算该期可用：实装日落在某节点 [date, 下一节点 date) 窗口内即算该节点；
+   * 早于轴起点的队友从轴起点可用。
+   */
+  axisNodes?: TimelineAxisNode[]
+  /**
    * 限定队友候选池（用户策展，页面持久化在 localStorage；缺省 = 全部候选）。
-   * 必须含主C以外的候选；候选必须都实装于主C实装节点之前或同时。
-   * 轻量速算的关键：C(池,2) 对组合各算一次（同队跨期面对同一 Boss 数值不变，伤害直接复用），
-   * 池 5 人 = 10 对 ≈ 10 次求值，而不是全候选 ~900 次。
+   * 必须含主C以外的候选；轻量速算的关键：C(池,2) 对组合各算一次（同队跨期面对同一 Boss 数值不变，
+   * 伤害直接复用），池 5 人 = 10 对 ≈ 10 次求值，而不是全候选 ~900 次。
    */
   candidatePool?: string[]
   /** 是否包含测试服角色（3.2 未实装；缺省 false，防止测试服数值污染「跟随版本」曲线） */
@@ -507,9 +523,38 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
   try {
     const mainRelease = releaseNodeOf(opts.mainAgentId)
     if (!mainRelease) throw new Error(`角色 ${opts.mainAgentId} 未收录实装版本（时间线只做 S 级）`)
-    const startIdx = nodeIndexOf(mainRelease)
-    if (startIdx < 0) throw new Error(`未知版本节点 ${mainRelease}`)
-    const nodes = VERSION_NODES.slice(startIdx)
+    const mainDate = VERSION_NODES[nodeIndexOf(mainRelease)]?.date
+    if (!mainDate) throw new Error(`版本节点 ${mainRelease} 缺日期，无法映射演变轴`)
+
+    // 演变轴：页面传入的危局期数轴优先；缺省由 VERSION_NODES 合成（回归兼容）。
+    // 角色可用性按日期窗口匹配：实装日落在某节点 [date, 下一节点 date) 内即从该节点起可用
+    //（期数中途实装也算该期）；早于轴起点的队友从轴起点可用。
+    const defaultAxis: TimelineAxisNode[] = VERSION_NODES.map(n => ({
+      id: n.id,
+      label: n.label,
+      date: n.date,
+      testServer: (n.note ?? '').includes('测试服'),
+    }))
+    const fullAxis = (opts.axisNodes?.length ? opts.axisNodes : defaultAxis)
+      .filter(a => a.testServer !== true || opts.includeTestServer === true)
+    const mainAxisIdx = indexForDate(fullAxis, mainDate)
+    if (mainAxisIdx < 0) throw new Error(`主C实装日期 ${mainDate} 早于演变轴起点（轴共 ${fullAxis.length} 节点）`)
+    const nodes: TimelineAxisNode[] = fullAxis.slice(mainAxisIdx)
+
+    const releaseDateOf = (id: string) => {
+      const rel = AGENT_RELEASE_NODE[id]
+      return rel ? VERSION_NODES[nodeIndexOf(rel)]?.date : undefined
+    }
+    /** 实装 → 轴下标（未裁剪；-1 = 早于轴起点） */
+    const axisIndexRaw = (id: string) => {
+      const d = releaseDateOf(id)
+      return d ? indexForDate(nodes, d) : -1
+    }
+    /** 实装 → 可用轴下标（早于轴起点钳制为 0 = 从轴起点可用） */
+    const axisIndexFor = (id: string) => {
+      const idx = axisIndexRaw(id)
+      return idx < 0 ? 0 : idx
+    }
 
     // Boss 一次应用（与节点无关）
     configStore.applyBossPreset({ id: opts.boss.id }, opts.phase, opts.boss.monster, opts.boss.defaults)
@@ -526,17 +571,16 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
     // 单击破 meta 队 105-127%）；用户确认的演变路径（橘福福/卢西娅/琉音/诺姆）均为 ≤1 击破。
     const isStun = (id: string) => (catalog.getAgent(id)?.specialty ?? '') === 'stun'
     const stunBudget = isStun(opts.mainAgentId) ? 0 : 1
-    const releaseIdx = (id: string) => nodeIndexOf(AGENT_RELEASE_NODE[id])
 
     // ---- 阶段 1：全对参考伤害（精确增量，每对只算一次）----
-    // 按「较晚实装成员」的节点排序求值，让早期节点先完成（进度单调）
+    // 按「较晚实装成员」的轴位置排序求值，让早期节点先完成（进度单调）
     const pairs: { a: string; b: string; at: number }[] = []
     for (let i = 0; i < candidates.length; i++) {
       for (let j = i + 1; j < candidates.length; j++) {
         const a = candidates[i]
         const b = candidates[j]
         if ((isStun(a) ? 1 : 0) + (isStun(b) ? 1 : 0) > stunBudget) continue
-        pairs.push({ a, b, at: Math.max(releaseIdx(a), releaseIdx(b)) })
+        pairs.push({ a, b, at: Math.max(axisIndexFor(a), axisIndexFor(b)) })
       }
     }
     pairs.sort((x, y) => x.at - y.at)
@@ -575,10 +619,7 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
     const strengthSeeds: TeamStrengthSeed[] = [...refDamage.entries()]
       .map(([key, dmg]) => {
         const [m, a, b] = key.split(',') as [string, string, string]
-        const startNodeIdx = Math.max(
-          nodeIndexOf(AGENT_RELEASE_NODE[a] ?? ''),
-          nodeIndexOf(AGENT_RELEASE_NODE[b] ?? ''),
-        ) - startIdx
+        const startNodeIdx = Math.max(axisIndexFor(a), axisIndexFor(b))
         return {
           key,
           team: [m, a, b] as [string, string, string],
@@ -591,13 +632,15 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
       .sort((x, y) => y.damage - x.damage)
 
     // ---- 阶段 2：每节点参考 Top-3（可达前缀）----
-    // 当期新实装角色（候选池内反查实装表；主C已排除）——「实装未进队」判定用
-    const releasedAt = new Map<string, string[]>()
+    // 当期新实装角色（候选池内按实装日期映射轴下标；主C已排除）——「实装未进队」判定用。
+    // 用未钳制下标：早于轴起点的是存量队友，不算「当期新实装」
+    const releasedAtByAxis = new Map<number, string[]>()
     for (const id of candidates) {
-      const nodeId = AGENT_RELEASE_NODE[id]
-      const list = releasedAt.get(nodeId) ?? []
+      const idx = axisIndexRaw(id)
+      if (idx < 0) continue
+      const list = releasedAtByAxis.get(idx) ?? []
       list.push(id)
-      releasedAt.set(nodeId, list)
+      releasedAtByAxis.set(idx, list)
     }
     const top3ByNode: { key: string; dmg: number }[][] = []
     // 每节点「含 / 不含当期新实装角色」的最强参考伤害（同一 refDamage 空间，零额外求值）
@@ -605,8 +648,7 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
     let running: { key: string; dmg: number }[] = []
     let pairPtr = 0
     for (let n = 0; n < nodes.length; n++) {
-      const nodeIdx = startIdx + n
-      while (pairPtr < pairs.length && pairs[pairPtr].at <= nodeIdx) {
+      while (pairPtr < pairs.length && pairs[pairPtr].at <= n) {
         const { a, b } = pairs[pairPtr]
         const key = teamKey(opts.mainAgentId, a, b)
         const dmg = refDamage.get(key)
@@ -615,7 +657,7 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
       }
       const ranked = [...running].sort((x, y) => y.dmg - x.dmg)
       top3ByNode.push(ranked.slice(0, 3))
-      const newHere = releasedAt.get(nodes[n].id) ?? []
+      const newHere = releasedAtByAxis.get(n) ?? []
       let stats: { agents: string[]; withNew: number; withoutNew: number } | null = null
       if (newHere.length > 0 && running.length > 0) {
         const newSet = new Set(newHere)
@@ -713,7 +755,7 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
       nodesResult.push({
         nodeId: nodes[n].id,
         nodeLabel: nodes[n].label,
-        ...(nodes[n].note ? { nodeNote: nodes[n].note } : {}),
+        ...(nodes[n].testServer ? { nodeNote: '测试服数据' } : {}),
         team,
         state: nodeState,
         totalGold,

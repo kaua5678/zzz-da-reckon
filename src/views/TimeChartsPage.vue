@@ -68,7 +68,7 @@
         <div class="ctl-field ctl-hint">
           <span class="ctl-label">说明：只枚举候选池内组合（C(n,2)，每队只算一次——同队跨期面对同一 Boss 数值不变，
             当期 Buff 不参与），默认轻量速算 = 兜底配装 + 主C优先确定性加金；
-            勾选「自动配装 / 最优加金」切换全量档（慢）。横轴 = 主C实装起到最新的全部期数。</span>
+            勾选「自动配装 / 最优加金」切换全量档（慢）。横轴 = 危局期数（一版约 3 期、每期 ~14 天，只看普通模式），从主C实装那期起；角色期数中途实装也算该期可用。</span>
         </div>
       </div>
 
@@ -437,7 +437,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamStrengthSeed, type TeamTimelineResult } from '@/composables/teamTimeline'
-import { buildBossSchedule, scheduleByNode, type BossScheduleEntry } from '@/composables/bossSchedule'
+import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
 import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
 import { fmt, compact } from '@/utils/format'
@@ -501,29 +501,36 @@ const selectedPhase = computed(() => {
   return sorted.find(p => p.modeType === 'critical_assault') ?? sorted[0] ?? b.phases[0] ?? null
 })
 
-// ========== Boss 排期 × 版本节点（危局/试炼期数按开打时间归入节点；选中 Boss 高亮历次出场） ==========
-const bossSchedule = computed(() => scheduleByNode(buildBossSchedule(VERSION_NODES, bossPresets.value)))
-function scheduleOf(nodeId: string): BossScheduleEntry[] {
-  return bossSchedule.value.get(nodeId) ?? []
+// ========== 危局期数轴（横轴：一版约 3 期、每期 ~14 天）+ 每期 Boss 排期 ==========
+// 演变只看危局·普通（defense）；危局·困难（critical_assault）仅记录不作为轴依据。测试服占位期默认剔除。
+const testServerVersions = computed(() => new Set(VERSION_NODES.filter(n => (n.note ?? '').includes('测试服')).map(n => n.version)))
+const periodAxis = computed(() =>
+  buildPeriodAxis(bossPresets.value, { includeTestServer: includeTestServer.value, testServerVersions: testServerVersions.value }),
+)
+const periodById = computed(() => new Map(periodAxis.value.map(p => [p.id, p])))
+function periodOf(nodeId: string): PeriodAxisNode | undefined {
+  return periodById.value.get(nodeId)
 }
-/** 节点车道文案：优先危局 Boss；仅试炼时显示首个试炼 Boss（标注试炼） */
+/** 节点车道文案：该期危局·普通首个 Boss（多个标注 ×n） */
 function bossCellText(nodeId: string): string {
-  const sched = scheduleOf(nodeId)
-  const ca = sched.find(e => e.modeType === 'critical_assault')
-  if (ca) return ca.bossName
-  const def = sched[0]
-  return def ? `${def.bossName}（试炼）` : ''
+  const p = periodOf(nodeId)
+  if (!p || p.normalBosses.length === 0) return ''
+  const first = p.normalBosses[0].bossName
+  return p.normalBosses.length > 1 ? `${first} 等${p.normalBosses.length}` : first
 }
 function bossCellTitle(nodeId: string): string {
-  const sched = scheduleOf(nodeId)
-  if (sched.length === 0) return '当期无排期数据'
-  return sched.map(e => `${e.modeType === 'critical_assault' ? '危局' : '试炼'}：${e.bossName}（${e.phaseLabel}）`).join('\n')
+  const p = periodOf(nodeId)
+  if (!p) return '当期无排期数据'
+  const parts: string[] = []
+  if (p.normalBosses.length > 0) parts.push(`危局·普通：${p.normalBosses.map(b => b.bossName).join('/')}`)
+  if (p.criticalBosses.length > 0) parts.push(`危局·困难：${p.criticalBosses.map(b => b.bossName).join('/')}`)
+  return parts.join('\n') || '当期无排期数据'
 }
 const selectedBossAppearances = computed(() => {
   const out = new Set<string>()
   if (!selectedBossId.value) return out
-  for (const [nodeId, entries] of bossSchedule.value) {
-    if (entries.some(e => e.bossId === selectedBossId.value)) out.add(nodeId)
+  for (const [pid, p] of periodById.value) {
+    if ([...p.normalBosses, ...p.criticalBosses].some(b => b.bossId === selectedBossId.value)) out.add(pid)
   }
   return out
 })
@@ -589,6 +596,7 @@ async function runCompute() {
       phase,
       budget: budget.value ?? 6,
       includeTestServer: includeTestServer.value,
+      axisNodes: periodAxis.value.map(p => ({ id: p.id, label: p.label, date: p.begin })),
       candidatePool: candidatePool.value,
       autoBuild: autoBuild.value,
       optimalGold: optimalGold.value,
@@ -743,10 +751,12 @@ const hoverInfo = computed(() => {
       : '',
     bench: n.newAgentBench ? benchText(n.newAgentBench) : '',
     schedule: (() => {
-      const sched = scheduleOf(n.nodeId)
-      const ca = sched.find(e => e.modeType === 'critical_assault')
-      const dfd = [...new Set(sched.filter(e => e.modeType !== 'critical_assault').map(e => e.bossName))]
-      return [ca ? `危局：${ca.bossName}` : '', dfd.length > 0 ? `试炼：${dfd.join('/')}` : ''].filter(Boolean).join(' · ')
+      const p = periodOf(n.nodeId)
+      if (!p) return ''
+      const parts: string[] = []
+      if (p.normalBosses.length > 0) parts.push(`危局·普通：${p.normalBosses.map(x => x.bossName).join('/')}`)
+      if (p.criticalBosses.length > 0) parts.push(`危局·困难：${p.criticalBosses.map(x => x.bossName).join('/')}`)
+      return parts.join(' · ')
     })(),
   }
 })
@@ -765,12 +775,13 @@ const strengthBands = computed<StrengthBand[]>(() => {
   const k = Math.max(1, Math.floor(survivalK.value || 1))
   if (seeds.length === 0 || nodeCount === 0) return []
   // 逐节点排名：可达（已实装且未被淘汰）按伤害取前 K；可达集合只增 ⇒ 排名单调不升 ⇒ 淘汰永久
+  // 注意：可达集合为空（如首期新队友尚未实装/全被收敛排除）不能提前 break——
+  // 否则后续所有期的 Top-K 裁剪都不会执行，弱队全部存活到最后（曾致淘汰失效）
   const eliminatedAt = new Map<string, number>()
   for (let n = 0; n < nodeCount; n++) {
     const reachable = seeds.filter(s => s.startIndex <= n && !eliminatedAt.has(s.key))
     reachable.sort((a, b) => b.damage - a.damage)
     for (let r = k; r < reachable.length; r++) eliminatedAt.set(reachable[r].key, n)
-    if (reachable.length === 0) break
   }
   return seeds
     .map(seed => {

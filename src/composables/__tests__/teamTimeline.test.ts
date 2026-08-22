@@ -154,8 +154,9 @@ describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
       budget: 6,
       candidatePool: pool,
     })
-    // 节点数 = 主C实装节点起
-    expect(res.nodes.length).toBe(nodesFrom('2.0-1').length)
+    // 节点数 = 主C实装节点起（默认剔除测试服占位节点）
+    const expectedAxis = nodesFrom('2.0-1').filter(n => !(n.note ?? '').includes('测试服'))
+    expect(res.nodes.length).toBe(expectedAxis.length)
     expect(res.nodes[0].nodeId).toBe('2.0-1')
     // 每节点成员实装 ≤ 该节点
     for (const n of res.nodes) {

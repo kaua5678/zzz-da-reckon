@@ -1,86 +1,98 @@
 /**
- * Boss 排期 × 版本节点：危局/试炼期数按开打时间（phase.begin）归入版本节点窗口，
- * 供时间图表页把「Boss 排期」标在「角色 UP 节点」时间轴上——选中某 Boss 时高亮其历次出场，
- * 这些节点上的换人/入队判定（上位/平替、实装未进队）即「当期新队友入队比较」。
+ * Boss 排期 × 危局期数轴：把 bosses[].phases 按 phaseId 聚合成「危局期数」节点
+ * （一个版本上下两个卡池，但约 3 期危局、每期 ~14 天），供时间图表页做横轴与排期车道。
  *
- * 匹配规则：begin 落入 [node.date, 下一 node.date) 窗口即归该节点；早于首节点 → null
- * （不在时间轴上）；晚于末节点 → 归末节点（当期）。不依赖 phase.version 字符串
- * （label/version 有错位先例）。危局期数目前仅数期（导入管道随版本增长），补导历史后标记自动变全。
- * 计算口径不变：整条曲线仍用所选 Boss 一套数值（跨节点强度可比），排期标记只负责定位比较窗口。
+ * 口径（用户拍板）：
+ * - 演变只看**危局·普通**（defense）；**危局·困难**（critical_assault，仅最近数期有）仅记录不作为轴依据。
+ * - 排序按 begin（尾部 3.2 测试服占位期 id 不单调，不能按 id 数值序）。
+ * - 角色在期数中途实装也算该期可用：实装日落在某期 [begin, 下一期 begin) 窗口内即算该期
+ *   （`indexForDate` 窗口匹配；早于首期 → -1，由调用方钳制为「从轴起点可用」）。
  */
 import type { VersionNode } from '@/data/versionTimeline'
 import type { BossPreset } from '@/types/bossPreset'
 
-/** 单条排期：某 Boss 某期数落在某版本节点 */
-export interface BossScheduleEntry {
-  nodeId: string
-  bossId: string
-  bossName: string
-  phaseId: string
-  /** 期数标签（如 '3.1 · 2026-08-14'） */
-  phaseLabel: string
-  /** 开打日期（YYYY-MM-DD，取 begin 前 10 位） */
-  beginDate: string
-  modeType: 'critical_assault' | 'defense'
-  stageName: string
-}
-
 type ScheduleNode = Pick<VersionNode, 'id' | 'date'>
 
-/** 日期字符串（YYYY-MM-DD 或带时分秒）→ 版本节点 id；早于首节点/空值返回 null */
+/**
+ * 日期字符串（YYYY-MM-DD 或带时分秒）→ 轴节点 id；早于首节点/空值返回 null。
+ * 窗口 = [node.date, 下一 node.date)；末节点无上界。
+ */
 export function nodeIdForDate(nodes: ScheduleNode[], date: string): string | null {
-  if (!date) return null
+  const idx = indexForDate(nodes, date)
+  return idx < 0 ? null : nodes[idx].id
+}
+
+/** 同 nodeIdForDate 的下标版；早于首节点返回 -1 */
+export function indexForDate(nodes: ScheduleNode[], date: string): number {
+  if (!date) return -1
   const d = date.slice(0, 10)
   for (let i = 0; i < nodes.length; i++) {
     const next = nodes[i + 1]?.date
-    if (d >= nodes[i].date && (next == null || d < next)) return nodes[i].id
+    if (d >= nodes[i].date && (next == null || d < next)) return i
   }
-  return null
+  return -1
+}
+
+/** 危局·普通 Boss 条目 */
+export interface PeriodBossBrief {
+  bossId: string
+  bossName: string
+}
+
+/** 危局期数轴节点：一个 phaseId = 一期 */
+export interface PeriodAxisNode {
+  /** 期数 id（phaseId，如 '690421'） */
+  id: string
+  /** 期数标签（如 '3.1 · 2026-08-14'） */
+  label: string
+  version: string
+  /** 开打日期 YYYY-MM-DD */
+  begin: string
+  /** 危局·普通 Boss（defense 模式，去重，通常 1~3 个） */
+  normalBosses: PeriodBossBrief[]
+  /** 危局·困难 Boss（critical_assault 模式；历史期多为空） */
+  criticalBosses: PeriodBossBrief[]
 }
 
 /**
- * 全部 Boss 期数 → 排期表（时间轴顺序；同节点内危局在前、按开打日期排序）。
- * 缺 begin 的期数跳过（无法定位节点）；同 (节点, Boss, 模式) 去重（复刻/数据重复只留一条）。
+ * 危局期数轴：聚合全部 Boss 的 phases 按 phaseId 归期、按 begin 排序（同 begin 按 id 稳定）。
+ * 默认排除测试服占位期（version ∈ testServerVersions）；同 (期, Boss, 模式) 去重。
  */
-export function buildBossSchedule(nodes: ScheduleNode[], bosses: BossPreset[]): BossScheduleEntry[] {
-  const out: BossScheduleEntry[] = []
-  const seen = new Set<string>()
+export function buildPeriodAxis(
+  bosses: BossPreset[],
+  opts: { includeTestServer?: boolean; testServerVersions?: Set<string> } = {},
+): PeriodAxisNode[] {
+  interface Draft extends Omit<PeriodAxisNode, 'normalBosses' | 'criticalBosses'> {
+    normalBosses: PeriodBossBrief[]
+    criticalBosses: PeriodBossBrief[]
+    seen: Set<string>
+  }
+  const map = new Map<string, Draft>()
   for (const b of bosses) {
     for (const ph of b.phases) {
       if (!ph.begin) continue
-      const nodeId = nodeIdForDate(nodes, ph.begin)
-      if (!nodeId) continue
-      const key = `${nodeId}:${b.id}:${ph.modeType}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      out.push({
-        nodeId,
-        bossId: b.id,
-        bossName: b.name,
-        phaseId: ph.phaseId,
-        phaseLabel: ph.label,
-        beginDate: ph.begin.slice(0, 10),
-        modeType: ph.modeType,
-        stageName: ph.stageName,
-      })
+      let node = map.get(ph.phaseId)
+      if (!node) {
+        node = {
+          id: ph.phaseId,
+          label: ph.label,
+          version: ph.version,
+          begin: ph.begin.slice(0, 10),
+          normalBosses: [],
+          criticalBosses: [],
+          seen: new Set(),
+        }
+        map.set(ph.phaseId, node)
+      }
+      const kind = ph.modeType === 'critical_assault' ? 'criticalBosses' : 'normalBosses'
+      const dedupeKey = `${kind}:${b.id}`
+      if (node.seen.has(dedupeKey)) continue
+      node.seen.add(dedupeKey)
+      node[kind].push({ bossId: b.id, bossName: b.name })
     }
   }
-  const orderOf = (id: string) => nodes.findIndex(n => n.id === id)
-  out.sort((x, y) =>
-    orderOf(x.nodeId) - orderOf(y.nodeId)
-    || x.beginDate.localeCompare(y.beginDate)
-    || (x.modeType === y.modeType ? 0 : x.modeType === 'critical_assault' ? -1 : 1),
-  )
-  return out
-}
-
-/** 排期按节点分组（渲染用；组内保持 buildBossSchedule 的排序） */
-export function scheduleByNode(entries: BossScheduleEntry[]): Map<string, BossScheduleEntry[]> {
-  const m = new Map<string, BossScheduleEntry[]>()
-  for (const e of entries) {
-    const list = m.get(e.nodeId) ?? []
-    list.push(e)
-    m.set(e.nodeId, list)
-  }
-  return m
+  return [...map.values()]
+    .sort((x, y) => x.begin.localeCompare(y.begin) || x.id.localeCompare(y.id))
+    .filter(node => opts.includeTestServer || !opts.testServerVersions?.has(node.version))
+    .map(({ seen, ...node }) => node)
 }
