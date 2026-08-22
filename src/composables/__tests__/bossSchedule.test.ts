@@ -113,6 +113,9 @@ describe('真实数据冒烟', () => {
     for (const p of axis) {
       expect(p.normalBosses.length).toBeGreaterThan(0)
     }
+    // 期号 seq 连续：1..N 按时间序（横轴刻度「45」代表第 45 期）
+    expect(axis[0].seq).toBe(1)
+    for (let i = 1; i < axis.length; i++) expect(axis[i].seq).toBe(axis[i - 1].seq + 1)
     // 仅最近数期才有困难行
     const withCritical = axis.filter(p => p.criticalBosses.length > 0)
     expect(withCritical.length).toBeGreaterThan(0)

@@ -537,8 +537,9 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
     }))
     const fullAxis = (opts.axisNodes?.length ? opts.axisNodes : defaultAxis)
       .filter(a => a.testServer !== true || opts.includeTestServer === true)
-    const mainAxisIdx = indexForDate(fullAxis, mainDate)
-    if (mainAxisIdx < 0) throw new Error(`主C实装日期 ${mainDate} 早于演变轴起点（轴共 ${fullAxis.length} 节点）`)
+    if (fullAxis.length === 0) throw new Error('演变轴为空（无可用期数）')
+    // 主C实装日期不在轴内（如所选 Boss 首登晚于主C实装）→ 从轴起点开始；主C作为存量队友从起点可用
+    const mainAxisIdx = Math.max(0, indexForDate(fullAxis, mainDate))
     const nodes: TimelineAxisNode[] = fullAxis.slice(mainAxisIdx)
 
     const releaseDateOf = (id: string) => {

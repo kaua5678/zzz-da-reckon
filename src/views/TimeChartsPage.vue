@@ -68,7 +68,7 @@
         <div class="ctl-field ctl-hint">
           <span class="ctl-label">说明：只枚举候选池内组合（C(n,2)，每队只算一次——同队跨期面对同一 Boss 数值不变，
             当期 Buff 不参与），默认轻量速算 = 兜底配装 + 主C优先确定性加金；
-            勾选「自动配装 / 最优加金」切换全量档（慢）。横轴 = 危局期数（一版约 3 期、每期 ~14 天，只看普通模式），从主C实装那期起；角色期数中途实装也算该期可用。</span>
+            勾选「自动配装 / 最优加金」切换全量档（慢）。横轴 = 所选 Boss 登场的危局期数（期号如「45」代表 69045；一版约 3 期、每期 ~14 天，只看普通模式），从其首次登场起算到最新——只对抗这一个 Boss 看队伍成长；角色期数中途实装也算该期可用。</span>
         </div>
       </div>
 
@@ -307,7 +307,7 @@
         <table class="tl-table">
           <thead>
             <tr>
-              <th>版本</th>
+              <th>期数</th>
               <th>队伍（{{ result.mainName }} + 队友）</th>
               <th>伤害</th>
               <th>伤害/血量%</th>
@@ -508,6 +508,12 @@ const periodAxis = computed(() =>
   buildPeriodAxis(bossPresets.value, { includeTestServer: includeTestServer.value, testServerVersions: testServerVersions.value }),
 )
 const periodById = computed(() => new Map(periodAxis.value.map(p => [p.id, p])))
+/** 所选 Boss 的登场期数（从首次登场起）：横轴只算这些期，体现对抗单 Boss 的队伍成长 */
+const bossPeriodAxis = computed(() => {
+  const boss = selectedBoss.value
+  if (!boss) return []
+  return periodAxis.value.filter(p => [...p.normalBosses, ...p.criticalBosses].some(b => b.bossId === boss.id))
+})
 function periodOf(nodeId: string): PeriodAxisNode | undefined {
   return periodById.value.get(nodeId)
 }
@@ -586,6 +592,11 @@ async function runCompute() {
     setTimeout(() => { progress.value = null }, 2500)
     return
   }
+  if (bossPeriodAxis.value.length === 0) {
+    progress.value = { pct: 1, text: '所选 Boss 在危局期数数据中无登场记录' }
+    setTimeout(() => { progress.value = null }, 2500)
+    return
+  }
   computing.value = true
   progress.value = { pct: 0, text: '准备…' }
   await nextTick()
@@ -596,7 +607,8 @@ async function runCompute() {
       phase,
       budget: budget.value ?? 6,
       includeTestServer: includeTestServer.value,
-      axisNodes: periodAxis.value.map(p => ({ id: p.id, label: p.label, date: p.begin })),
+      // 横轴刻度用期号（seq，如「45」代表 69045）；只算所选 Boss 登场的期数
+      axisNodes: bossPeriodAxis.value.map(p => ({ id: p.id, label: `${p.seq}`, date: p.begin })),
       candidatePool: candidatePool.value,
       autoBuild: autoBuild.value,
       optimalGold: optimalGold.value,

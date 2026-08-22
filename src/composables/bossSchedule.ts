@@ -46,6 +46,8 @@ export interface PeriodAxisNode {
   /** 期数标签（如 '3.1 · 2026-08-14'） */
   label: string
   version: string
+  /** 期数序号：剔除测试服占位期后按时间序 1 起编（横轴刻度用，如「45」代表 69045） */
+  seq: number
   /** 开打日期 YYYY-MM-DD */
   begin: string
   /** 危局·普通 Boss（defense 模式，去重，通常 1~3 个） */
@@ -62,7 +64,7 @@ export function buildPeriodAxis(
   bosses: BossPreset[],
   opts: { includeTestServer?: boolean; testServerVersions?: Set<string> } = {},
 ): PeriodAxisNode[] {
-  interface Draft extends Omit<PeriodAxisNode, 'normalBosses' | 'criticalBosses'> {
+  interface Draft extends Omit<PeriodAxisNode, 'normalBosses' | 'criticalBosses' | 'seq'> {
     normalBosses: PeriodBossBrief[]
     criticalBosses: PeriodBossBrief[]
     seen: Set<string>
@@ -94,5 +96,5 @@ export function buildPeriodAxis(
   return [...map.values()]
     .sort((x, y) => x.begin.localeCompare(y.begin) || x.id.localeCompare(y.id))
     .filter(node => opts.includeTestServer || !opts.testServerVersions?.has(node.version))
-    .map(({ seen, ...node }) => node)
+    .map(({ seen, ...node }, i) => ({ ...node, seq: i + 1 }))
 }
