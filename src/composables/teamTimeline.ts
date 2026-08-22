@@ -118,10 +118,25 @@ export interface TeamTimelineOptions {
   /** 目标总限定金（低于队伍基础金自动钳制） */
   budget: number
   onProgress?: (p: { pct: number; text: string }) => void
-  /** 测试/调试用：限定队友候选池（缺省 = 全部候选，见 AGENT_RELEASE_NODE：S 级 + 潘引壶特例）。必须含主C以外的候选；候选必须都实装于主C实装节点之前或同时。 */
+  /**
+   * 限定队友候选池（用户策展，页面持久化在 localStorage；缺省 = 全部候选）。
+   * 必须含主C以外的候选；候选必须都实装于主C实装节点之前或同时。
+   * 轻量速算的关键：C(池,2) 对组合各算一次（同队跨期面对同一 Boss 数值不变，伤害直接复用），
+   * 池 5 人 = 10 对 ≈ 10 次求值，而不是全候选 ~900 次。
+   */
   candidatePool?: string[]
   /** 是否包含测试服角色（3.2 未实装；缺省 false，防止测试服数值污染「跟随版本」曲线） */
   includeTestServer?: boolean
+  /**
+   * 自动配装（推荐驱动盘 + 词条优化器）。缺省 **false = 轻量速算**：
+   * 只用 setAgent 兜底配装（专属音擎/兜底套装/5号位主词条），并清掉上一队残留的 4/6 号主词条与副词条分配。
+   */
+  autoBuild?: boolean
+  /**
+   * 最优加金分配（逐金贪婪，每步多次求值）。缺省 **false**：
+   * 用主C优先确定性分配（budgetAwareStateFor，零额外求值），展示态与排名同源。
+   */
+  optimalGold?: boolean
 }
 
 // ========== 现场快照 / 恢复 ==========
@@ -263,7 +278,7 @@ export function budgetAwareStateFor(
   team: [string, string, string],
   budget: number,
   catalog: ReturnType<typeof useCatalogStore>,
-): { state: TeamGoldState; totalGold: number } {
+): { state: TeamGoldState; totalGold: number; label: string } {
   const { steps, baseWEngines } = buildBudgetAwareGoldSteps(team, catalog)
   const base = baseGoldOfTeam(team, catalog)
   const applied = applyGoldSteps(steps, budget, base, [], baseWEngines)
@@ -274,25 +289,36 @@ export function budgetAwareStateFor(
       wEngines: applied.wEngines,
     },
     totalGold: applied.totalGold,
+    label: applied.label,
   }
 }
 
 /**
  * 装配队伍到 store：推荐配装 + 显式覆盖（音擎/命座/精炼/交互基准）。
  *
- * 性能口径（实测）：applyTeamPreset 仅 ~0.6ms/队（推荐多为查表，优化器极少触发），
- * 真正的成本是每次伤害求值 ~30ms —— 全候选 ~900 对 ≈ 27s。因此这里不做配装缓存
- * （按 agentId 缓存会忽略「队友可用 buff 组随组合变化」通道，导致同角色副词条跨队漂移，
- * 实测末节点伤害 -13%）；防卡死靠阶段边界的 yield 节奏（阶段1每2队、阶段3每2队，
- * 单帧 ≈ 60ms）。贪婪试算区不做 yield：临时改动未还原时让出会触发 store 的 team watch
- * （syncTeammateBuffsFromTeam）重入，扭曲后续试算。
+ * autoBuild=false（轻量速算，默认）：跳过推荐/优化器，只用 setAgent 兜底配装
+ * （专属音擎、兜底套装、5号位主词条），并清掉上一队残留的 4/6 号主词条与副词条分配
+ * （setAgent 不重置它们，不清会跨队泄漏）。
  */
 function applyTeamToStore(
   configStore: ReturnType<typeof useConfigStore>,
   team: [string, string, string],
   state: TeamGoldState,
+  autoBuild = false,
 ) {
-  configStore.applyTeamPreset(team)
+  if (autoBuild) {
+    configStore.applyTeamPreset(team)
+  } else {
+    for (let s = 0; s < 3; s++) configStore.setAgent(s, team[s], { defer: true })
+    configStore.syncTeammateBuffsFromTeam()
+    for (let s = 0; s < 3; s++) {
+      const char = configStore.team[s]
+      if (!char) continue
+      const m5 = char.driveDisc.mainStats[5]
+      char.driveDisc.mainStats = { 5: m5 } as typeof char.driveDisc.mainStats
+      char.driveDisc.subStatAllocation = {}
+    }
+  }
   for (let s = 0; s < 3; s++) {
     configStore.setCinemaLevel(s, state.cinemas[s])
     configStore.setWEngineModLevel(s, state.wengineMods[s])
@@ -374,11 +400,12 @@ export function computeOptimalTeamAllocation(
   configStore: ReturnType<typeof useConfigStore>,
   team: [string, string, string],
   budget: number,
+  autoBuild = false,
 ): GoldAllocationResult {
   const catalog = useCatalogStore()
   const base = baseGoldOfTeam(team, catalog)
   const state = baseStateFor(team, catalog)
-  applyTeamToStore(configStore, team, state)
+  applyTeamToStore(configStore, team, state, autoBuild)
   // 防御：基础态外层未收敛 → 整队不可信（正常流程已由 refDamage 收敛过滤挡掉）
   if (calc.resourceResult.value?.convergence?.outerExit === 'maxIter') {
     return {
@@ -505,7 +532,7 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
       // 搜索排名用「预算感知确定性分配」（主C优先）：排名贴近所选金数下的真实强度，
       // 换人时机 = 该金数下变强的时刻（比基础金排名准确；最优加金仍由阶段 3 逐金贪婪给出）
       const { state } = budgetAwareStateFor(team, opts.budget, catalog)
-      applyTeamToStore(configStore, team, state)
+      applyTeamToStore(configStore, team, state, opts.autoBuild === true)
       // 收敛过滤：失衡外层不动点未收敛（outerExit='maxIter'）的队伍伤害虚高不可信
       // （实测 青衣 系阵容 8金 407% vs 收敛 meta 队 105-127%），排除出排名
       const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
@@ -567,19 +594,21 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
       newAgentStatsByNode.push(stats ?? { agents: [], withNew: 0, withoutNew: 0 })
     }
 
-    // ---- 阶段 3：对 Top-3 队伍按所选金数做最优加金（按队伍去重缓存）----
+    // ---- 阶段 3：对 Top-3 队伍按所选金数做最优加金（逐金贪婪；optimalGold=false 轻量档跳过，零额外求值）----
     const goldCache = new Map<string, GoldAllocationResult>()
-    const distinctTeams = new Set<string>()
-    for (const tops of top3ByNode) for (const t of tops) distinctTeams.add(t.key)
-    const distinctList = [...distinctTeams]
-    for (let i = 0; i < distinctList.length; i++) {
-      const key = distinctList[i]
-      const [m, a, b] = key.split(',') as [string, string, string]
-      const alloc = computeOptimalTeamAllocation(calc, configStore, [m, a, b], opts.budget)
-      goldCache.set(key, alloc)
-      goldEvaluations += alloc.stepsEvaluated
-      report(0.75 + (i / distinctList.length) * 0.22, `加金优化 ${i + 1}/${distinctList.length}（${catalog.getAgent(a)?.name.zhCN ?? a}+${catalog.getAgent(b)?.name.zhCN ?? b}）…`)
-      if (i % 2 === 0) await yieldNow()
+    if (opts.optimalGold) {
+      const distinctTeams = new Set<string>()
+      for (const tops of top3ByNode) for (const t of tops) distinctTeams.add(t.key)
+      const distinctList = [...distinctTeams]
+      for (let i = 0; i < distinctList.length; i++) {
+        const key = distinctList[i]
+        const [m, a, b] = key.split(',') as [string, string, string]
+        const alloc = computeOptimalTeamAllocation(calc, configStore, [m, a, b], opts.budget, opts.autoBuild === true)
+        goldCache.set(key, alloc)
+        goldEvaluations += alloc.stepsEvaluated
+        report(0.75 + (i / distinctList.length) * 0.22, `加金优化 ${i + 1}/${distinctList.length}（${catalog.getAgent(a)?.name.zhCN ?? a}+${catalog.getAgent(b)?.name.zhCN ?? b}）…`)
+        if (i % 2 === 0) await yieldNow()
+      }
     }
 
     // ---- 阶段 4：节点结果装配 ----
@@ -597,14 +626,24 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
         continue
       }
       let best = tops[0]
-      for (const t of tops) {
-        const a1 = goldCache.get(t.key)!
-        const a2 = goldCache.get(best.key)!
-        if (a1.damage > a2.damage + 1e-9) best = t
+      if (opts.optimalGold) {
+        for (const t of tops) {
+          const a1 = goldCache.get(t.key)!
+          const a2 = goldCache.get(best.key)!
+          if (a1.damage > a2.damage + 1e-9) best = t
+        }
       }
-      const alloc = goldCache.get(best.key)!
       const team = best.key.split(',') as [string, string, string]
-      const hpRatio = opts.phase.hp > 0 ? Math.round((alloc.damage / opts.phase.hp) * 10000) / 100 : 0
+      // 轻量档：排名伤害（阶段1参考值）直接复用——同队跨期面对同一 Boss 数值不变，仅当期 buff 不同（不参与）
+      const alloc = opts.optimalGold ? goldCache.get(best.key) : null
+      const budgetAware = alloc ? null : budgetAwareStateFor(team, opts.budget, catalog)
+      const damage = alloc ? alloc.damage : refDamage.get(best.key)!
+      const totalGold = alloc ? alloc.totalGold : budgetAware!.totalGold
+      const goldLabel = alloc ? alloc.label : budgetAware!.label
+      const nodeState: TeamGoldState = alloc
+        ? { cinemas: alloc.cinemas, wengineMods: alloc.wengineMods, wEngines: alloc.wEngines }
+        : budgetAware!.state
+      const hpRatio = opts.phase.hp > 0 ? Math.round((damage / opts.phase.hp) * 10000) / 100 : 0
       const prev = nodesResult[n - 1]
       let swappedIn: string | undefined
       let swappedOut: string | undefined
@@ -616,8 +655,8 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
           }
         }
       }
-      // 换人判定：本节点最优队 vs 上一节点旧队伤害（同预算各自最优加金）
-      const swapCls = prev && swappedIn ? classifySwapUplift(prev.damage, alloc.damage) : null
+      // 换人判定：本节点最优队 vs 上一节点旧队伤害（同预算各自配装态）
+      const swapCls = prev && swappedIn ? classifySwapUplift(prev.damage, damage) : null
       // 实装未进队：当期新角色全部不在展示队伍里 → 参考伤害差距定平替/未上位
       // （gapPct ≥ 0 说明参考最强含新角色但最优加金后被反超，排名分歧场景不标注）
       const stats = newAgentStatsByNode[n]
@@ -637,10 +676,10 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
         nodeLabel: nodes[n].label,
         ...(nodes[n].note ? { nodeNote: nodes[n].note } : {}),
         team,
-        state: { cinemas: alloc.cinemas, wengineMods: alloc.wengineMods, wEngines: alloc.wEngines },
-        totalGold: alloc.totalGold,
-        goldLabel: alloc.label,
-        damage: alloc.damage,
+        state: nodeState,
+        totalGold,
+        goldLabel,
+        damage,
         hpRatio,
         ...(swappedIn ? { swappedIn, swappedOut } : {}),
         ...(swapCls ? { swapKind: swapCls.kind, swapUpliftPct: swapCls.pct } : {}),

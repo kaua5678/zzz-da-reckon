@@ -35,9 +35,29 @@
           />
         </div>
         <div class="ctl-field">
+          <span class="ctl-label">候选队友（策展池）</span>
+          <n-select
+            v-model:value="candidatePool"
+            :options="candidateOptions"
+            multiple
+            size="small"
+            filterable
+            style="width: 340px"
+            placeholder="至少 2 名；默认 青衣/潘引壶/橘福福/卢西娅/琉音"
+          />
+        </div>
+        <div class="ctl-field">
           <label class="ctl-check">
             <input v-model="includeTestServer" type="checkbox" />
             包含测试服角色（3.2 未实装）
+          </label>
+          <label class="ctl-check">
+            <input v-model="autoBuild" type="checkbox" />
+            自动配装（推荐+词条优化，慢）
+          </label>
+          <label class="ctl-check">
+            <input v-model="optimalGold" type="checkbox" />
+            最优加金分配（逐金贪婪，慢）
           </label>
         </div>
         <div class="ctl-field">
@@ -46,8 +66,9 @@
           </n-button>
         </div>
         <div class="ctl-field ctl-hint">
-          <span class="ctl-label">说明：按版本节点增量搜索最强 S 级配队（队伤与节点无关 → 每组合只算一次），
-            再对每个节点最强队伍按所选金数做最优加金分配。当期可选 Buff 不参与（沿用当前全局 Buff 表）。</span>
+          <span class="ctl-label">说明：只枚举候选池内组合（C(n,2)，每队只算一次——同队跨期面对同一 Boss 数值不变，
+            当期 Buff 不参与），默认轻量速算 = 兜底配装 + 主C优先确定性加金；
+            勾选「自动配装 / 最优加金」切换全量档（慢）。横轴 = 主C实装起到最新的全部期数。</span>
         </div>
       </div>
 
@@ -285,7 +306,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { NCard, NSelect, NInputNumber, NButton, NProgress } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -389,6 +410,33 @@ const appearanceLabels = computed(() =>
 const budget = ref(6)
 const includeTestServer = ref(false)
 
+// ========== 候选队友策展池（localStorage 持久化；轻量速算 = 只枚举池内 C(n,2) 组合） ==========
+const CANDIDATE_POOL_KEY = 'zzz-timeline-candidate-pool'
+/** 用户口径种子：仪玄演变路径的队友（青衣/潘引壶/橘福福/卢西娅/琉音） */
+const DEFAULT_CANDIDATE_POOL = ['1251', '1421', '1391', '1451', '1481']
+const candidatePool = ref<string[]>(loadCandidatePool())
+function loadCandidatePool(): string[] {
+  try {
+    const raw = localStorage.getItem(CANDIDATE_POOL_KEY)
+    if (raw) {
+      const arr = JSON.parse(raw)
+      if (Array.isArray(arr)) {
+        const valid = arr.filter((id: unknown) => typeof id === 'string' && id !== '1371' && AGENT_RELEASE_NODE[id as string])
+        if (valid.length >= 2) return valid as string[]
+      }
+    }
+  } catch { /* 损坏回落默认 */ }
+  return [...DEFAULT_CANDIDATE_POOL]
+}
+watch(candidatePool, v => {
+  try { localStorage.setItem(CANDIDATE_POOL_KEY, JSON.stringify(v)) } catch { /* 忽略 */ }
+}, { deep: true })
+const autoBuild = ref(false)
+const optimalGold = ref(false)
+const candidateOptions = Object.keys(AGENT_RELEASE_NODE)
+  .sort((x, y) => nodeIndexOf(AGENT_RELEASE_NODE[x]) - nodeIndexOf(AGENT_RELEASE_NODE[y]))
+  .map(id => ({ value: id, label: `${catalogStore.getAgent(id)?.name.zhCN ?? id}（${AGENT_RELEASE_NODE[id]}）` }))
+
 // ========== 计算 ==========
 const computing = ref(false)
 const progress = ref<{ pct: number; text: string } | null>(null)
@@ -399,6 +447,12 @@ async function runCompute() {
   const phase = selectedPhase.value
   if (!boss || !phase) return
   if (!releaseNodeOf(mainAgentId.value)) return
+  const pool = candidatePool.value.filter(id => id !== mainAgentId.value)
+  if (pool.length < 2) {
+    progress.value = { pct: 1, text: '候选队友至少需要 2 名（不含主C）' }
+    setTimeout(() => { progress.value = null }, 2500)
+    return
+  }
   computing.value = true
   progress.value = { pct: 0, text: '准备…' }
   await nextTick()
@@ -409,6 +463,9 @@ async function runCompute() {
       phase,
       budget: budget.value ?? 6,
       includeTestServer: includeTestServer.value,
+      candidatePool: candidatePool.value,
+      autoBuild: autoBuild.value,
+      optimalGold: optimalGold.value,
       onProgress: p => { progress.value = p },
     })
   } finally {

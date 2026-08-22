@@ -246,6 +246,50 @@ describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
     expect(JSON.stringify(config.team)).toBe(originalTeam)
   }, 120000)
 
+  it('轻量默认档：不走最优加金（label 无「最优」、零贪婪求值），求值量级 = 池内组合数', async () => {
+    await boot()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const originalTeam = JSON.stringify(config.team)
+    const pool = ['1311', '1071', '1391'] // 3 候选 → C(3,2)=3 对
+    const res = await computeTeamTimeline(calc, {
+      mainAgentId: '1371',
+      boss: firstBoss as BossPreset,
+      phase: firstPhase,
+      budget: 6,
+      candidatePool: pool,
+    })
+    expect(res.stats.teamsEvaluated).toBe(3)
+    expect(res.stats.goldEvaluations).toBe(0)
+    for (const n of res.nodes) {
+      expect(n.goldLabel).not.toContain('最优')
+      expect(n.totalGold).toBeGreaterThanOrEqual(6)
+      expect(n.damage).toBeGreaterThan(0)
+    }
+    expect(JSON.stringify(config.team)).toBe(originalTeam)
+  }, 120000)
+
+  it('全量档（autoBuild+optimalGold）：贪婪求值发生，预算花满到可达上限', async () => {
+    await boot()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const originalTeam = JSON.stringify(config.team)
+    const res = await computeTeamTimeline(calc, {
+      mainAgentId: '1371',
+      boss: firstBoss as BossPreset,
+      phase: firstPhase,
+      budget: 8,
+      candidatePool: ['1311', '1071'],
+      autoBuild: true,
+      optimalGold: true,
+    })
+    expect(res.stats.goldEvaluations).toBeGreaterThan(0)
+    expect(res.nodes.length).toBeGreaterThan(0)
+    expect(res.nodes[0].totalGold).toBe(8) // 基础 6 + 2 步（影画候选充足）
+    expect(res.nodes[0].damage).toBeGreaterThan(0)
+    expect(JSON.stringify(config.team)).toBe(originalTeam)
+  }, 120000)
+
   it('实装未进队判定：晚实装角色当期未进最优队 → 节点带 bench 标注（柚叶 2.1-1，实测差 12% 判未上位）', async () => {
     await boot()
     const config = useConfigStore()
