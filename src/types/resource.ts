@@ -224,7 +224,9 @@ export interface RoxyWindEnergySource {
 export interface ClaretSharpResourceSource {
   /** 队友前台时间（秒）：队友为当前操作角色时每秒积累 3% 残痕值 */
   teammateFrontlineSeconds: number
-  /** 总残痕值（%）= 队友前台时间 × 3% */
+  /** 影画1：残痕积累速率倍率（≥1命时 1.15，否则 1） */
+  gashBuildupRateMultiplier: number
+  /** 总残痕值（%）= 队友前台时间 × 3% × 速率倍率 */
   gashValuePct: number
   /** 残痕层数 = 残痕值 / 33.33 */
   gashStacks: number

@@ -22,6 +22,11 @@ const C2_SHARPNESS_PER_MAIM = 0.25
 const GASH_PCT_PER_ACTIVE_SECOND = 3
 const GASH_PCT_PER_STACK = 100 / 3
 const PERSONAL_RESOURCE_DMG_BONUS_PER_POINT = 6.5
+/** 影画1：攻击触发锐化爆炸时残痕积累 +15% */
+const M1_GASH_RATE_MULT = 1.15
+/** 影画1：全队施加[残痕]时暴击率 +5%/层，最多 3 层（按满层近似） */
+const M1_CRIT_PER_STACK = 5
+const M1_CRIT_MAX_STACKS = 3
 
 function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
   if (!skills) return null
@@ -65,7 +70,8 @@ export function computeClaretSharpResource(input: {
   sharpnessCost: number
 }): ClaretSharpResourceSource {
   const teammateFrontlineSeconds = Math.max(0, input.teammateFrontlineSeconds)
-  const gashValuePct = teammateFrontlineSeconds * GASH_PCT_PER_ACTIVE_SECOND
+  const gashRatePctPerSecond = GASH_PCT_PER_ACTIVE_SECOND * (input.cinemaLevel >= 1 ? M1_GASH_RATE_MULT : 1)
+  const gashValuePct = teammateFrontlineSeconds * gashRatePctPerSecond
   const gashStacks = gashValuePct / GASH_PCT_PER_STACK
   const exCount = Math.max(0, Math.floor(input.exSpecialCount))
   const cleaveCount = Math.max(0, Math.floor(input.cleaveSpecialCount))
@@ -85,6 +91,7 @@ export function computeClaretSharpResource(input: {
 
   return {
     teammateFrontlineSeconds,
+    gashBuildupRateMultiplier: input.cinemaLevel >= 1 ? M1_GASH_RATE_MULT : 1,
     gashValuePct,
     gashStacks,
     gashStackGain,
@@ -96,7 +103,7 @@ export function computeClaretSharpResource(input: {
     sharpnessGain,
     sharpnessSpend,
     sharpnessRemaining,
-    note: '队友为当前操作角色时每秒积累3%残痕值，1层=33.33%；斩金断铁/葬血强袭命中消耗1层触发毁伤；全队毁伤给1点个人资源，二命额外回复0.25锐能；葬血强袭消耗所有个人资源，每点使葬血强袭与毁伤伤害倍率+6.5%；秘血铸锋消耗60锐能。',
+    note: '队友为当前操作角色时每秒积累3%残痕值（影画1起 ×1.15），1层=33.33%；斩金断铁/葬血强袭命中消耗1层触发毁伤；全队毁伤给1点个人资源，二命额外回复0.25锐能；葬血强袭消耗所有个人资源，每点使葬血强袭与毁伤伤害倍率+6.5%；秘血铸锋消耗60锐能。',
   }
 }
 
@@ -133,6 +140,7 @@ function buildClaretResourceResult({ cfg, state, teamFrontlineSeconds }: AgentRe
 }
 
 function buildClaretExecutions({ cfg, state, executions, teamFrontlineSeconds }: AgentResourceInput): void {
+  const cinemaLevel = Math.max(0, Math.floor(cfg.claretCinemaLevel ?? 0))
   const source = computeClaretSharpResource({
     teammateFrontlineSeconds: teamFrontlineSeconds ?? 0,
     exSpecialCount: state.exSpecialCount,
@@ -162,6 +170,14 @@ function buildClaretExecutions({ cfg, state, executions, teamFrontlineSeconds }:
     getRowValue: (moveId, rowId) => (rowId === 'damage' ? (cfg.mechanicRowValues?.[moveId] ?? 0) : 0),
   })
   executions.push(...generated)
+  // 影画1：全队施加[残痕]时克拉蕾暴击率 +5%/层（15s，最多 3 层）——按满层 +15% 近似，
+  // 施加到她全部执行行含融合生成的毁伤/葬血强袭（critRateBonus 为执行级字段，参照 caesar）。
+  if (cinemaLevel >= 1) {
+    for (const exec of executions) {
+      if (!exec.moveId || !String(exec.moveId).startsWith(CLARET_AGENT_ID)) continue
+      exec.critRateBonus = (exec.critRateBonus ?? 0) + M1_CRIT_PER_STACK * M1_CRIT_MAX_STACKS
+    }
+  }
 }
 
 function buildClaretResourceSections({ result }: AgentResourceSectionsInput) {
