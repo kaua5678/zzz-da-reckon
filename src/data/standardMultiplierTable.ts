@@ -79,9 +79,11 @@ export interface StdFormula {
  * 标准倍率表本体。列 = StandardRowId；只录社区表给出的格子，缺格 = 该类型无此列标准。
  * 注意：
  * - 普攻弱/强段伤害不同（130t / 183t），catalog 不分段，basic 按 130t 记，伤害列比值仅供参考；
- * - 轻招架 71.661+130t 与重招架 71.2935+130t 在数据里分别恒定偏 +10.7% / +8.3%（待确认口径），
- *   常数按原表保留，演算时这两类不参与纵向系数聚合；
- * - 快速支援的伤害/失衡/喧响与原表出入较大且新旧角色分层（待确认口径），同样不进纵向聚合的强约束。
+ * - 轻招架 92.4+130t / 重招架 89.1+130t 为用户提供的官方口径（2026-08 修正，旧表 71.661/71.2935
+ *   偏小 ~10%）；catalog 实录隐含截距 ~95.4+130t，比该口径高 ~1.4%/~2.6%，残差待确认，
+ *   这两类不参与纵向系数聚合；
+ * - 快速支援的伤害/失衡/喧响与原表出入较大且新旧角色分层（疑似部分快支的秽盾基准实为 200t
+ *   导致时间口径差一倍；喧响 27.5/s 校准仅对喧响未特调的角色成立），同样不进纵向聚合的强约束。
  */
 export const STANDARD_MULTIPLIER_TABLE: Record<MoveType, Partial<Record<StandardRowId, StdFormula>>> = {
   basic: {
@@ -142,11 +144,11 @@ export const STANDARD_MULTIPLIER_TABLE: Record<MoveType, Partial<Record<Standard
     ether_purify: { const: 0 },
   },
   parryLight: {
-    daze: { const: 71.661, perT: 130 },
+    daze: { const: 92.4, perT: 130 },
     ether_purify: { const: 250, perT: 100 },
   },
   parryHeavy: {
-    daze: { const: 71.2935, perT: 130 },
+    daze: { const: 89.1, perT: 130 },
     ether_purify: { const: 250, perT: 100 },
   },
   parryChain: {
@@ -205,6 +207,25 @@ export const FLASH_ENERGY_QUALITY = 1.2
 
 /** 喧响回复基准（每秒）：快速支援等 actionTime 存疑招式用 t_db = 喧响实际值 / DECIBEL_PER_SECOND 校准 */
 export const DECIBEL_PER_SECOND = 27.5
+
+/**
+ * 定点分类覆盖（moveId → 标准表招式类型）：catalog 的类别/命名无法表达的特殊归属。
+ * - 1471029 般岳「支援突击：冲霄」：金身格挡后跟的招式，实为闪避反击公式（用户口径）；
+ *   般岳的中心系数锚点由「支援突击：昂霄」承担（与支援突击公式五列比值 ≈1.000）。
+ *   注意：冲霄录制的 actionTime 2.667s 疑似含金身持盾时间——喧响/积蓄两列精确反推为
+ *   闪避反击 @ t≈1.167s，有效时长口径待确认；伤害/失衡另叠 ~0.93 特调，偏差清单会呈现。
+ * - 仪玄(1371) 的强化特技六条：强特后可跟免费招式、特调严重且耗能口径未定（凝云术/墨痕
+ *   nanoka 记 40 点 vs 「20/秒」说法不一），按用户口径暂不参与展示与评估（归 other 跳过）。
+ */
+export const MOVE_TYPE_OVERRIDES: Record<string, MoveType | 'other'> = {
+  '1471029': 'dodgeCounter',
+  '1371009': 'other',
+  '1371024': 'other',
+  '1371023': 'other',
+  '1371025': 'other',
+  '1371022': 'other',
+  '1371026': 'other',
+}
 
 /** 稀有度 + 命破修正后的列系数（等级系数除外） */
 export function getRarityMultiplier(rarity: string, agentId: string, specialty: string, rowId: StandardRowId): number {

@@ -15,6 +15,7 @@ import {
   DECIBEL_PER_SECOND,
   FLASH_ENERGY_QUALITY,
   MOVE_TYPE_LABELS,
+  MOVE_TYPE_OVERRIDES,
   STANDARD_MULTIPLIER_TABLE,
   STANDARD_ROW_IDS,
   STANDARD_S_AGENT_IDS,
@@ -39,8 +40,10 @@ export function isCleanVerticalType(moveType: MoveType | 'other'): boolean {
   return moveType !== 'exSpecial' && moveType !== 'parryLight' && moveType !== 'parryHeavy' && moveType !== 'other'
 }
 
-/** 招式分类：名称前缀 + 类别 + timeType + energyCost + 职业 → 标准表行单位 */
+/** 招式分类：定点覆盖 + 名称前缀 + 类别 + timeType + energyCost + 职业 → 标准表行单位 */
 export function classifyMove(move: SkillMove, categoryId: string, specialty: string): MoveType | 'other' {
+  const override = MOVE_TYPE_OVERRIDES[move.id]
+  if (override) return override
   const name = move.name?.zhCN ?? ''
   if (move.timeType === 'ultimate' || name.includes('终结')) {
     if (specialty === 'stun') return 'ultimateStun'
@@ -106,6 +109,11 @@ interface RawUnit {
   flags: string[]
 }
 
+/** 去掉结尾的「 #N」段号（分段合并分组键） */
+function stripPartSuffix(name: string): string {
+  return name.replace(/\s*#\d+$/, '')
+}
+
 function rowValuesById(move: SkillMove): Partial<Record<StandardRowId, number>> {
   const out: Partial<Record<StandardRowId, number>> = {}
   for (const rowId of STANDARD_ROW_IDS) {
@@ -140,7 +148,32 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
       })
     }
   }
-  return units
+
+  // 支援突击的「#N」分段是同一套招式的分段，标准式前缀项只计一次：按去段号名称合并后再评估。
+  // 实证：苍角「席卷打击 #1+#2」合并后伤害/失衡/喧响三列比值 ≈1.000（分段单算各 88.7%/59.2%，
+  // 会把直伤锚点拖到 0.74）。例外见待确认口径：真斗「孤影·断獠」合并后伤害≈1.02 但失衡/喧响仍偏离。
+  const merged = new Map<string, RawUnit>()
+  const out: RawUnit[] = []
+  for (const unit of units) {
+    if (unit.moveType !== 'assistFollowUp' || !/ #\d+$/.test(unit.moveName)) {
+      out.push(unit)
+      continue
+    }
+    const key = `${unit.agentId}/${stripPartSuffix(unit.moveName)}`
+    const head = merged.get(key)
+    if (!head) {
+      merged.set(key, unit)
+      out.push(unit)
+      continue
+    }
+    head.t = (head.t ?? 0) + (unit.t ?? 0)
+    for (const [rowId, v] of Object.entries(unit.values)) {
+      head.values[rowId as StandardRowId] = (head.values[rowId as StandardRowId] ?? 0) + (v ?? 0)
+    }
+    head.moveName = stripPartSuffix(head.moveName)
+    head.flags.push('支援突击分段已合并')
+  }
+  return out
 }
 
 /** 等级系数：标准表按 1 级记录，catalog 录 12 级单值 */

@@ -100,6 +100,18 @@ describe('倍率表系数演算：角色纵向系数', () => {
     expect(med).toBeLessThan(1.05)
   })
 
+  it('般岳锚点修正后直伤 ≈1（冲霄已改判闪避反击，昂霄为锚点）；苍角分段合并后直伤 ≈1', () => {
+    for (const [agentId, label] of [['1471', '般岳'], ['1131', '苍角']] as const) {
+      const ddValue = verticalOf(agentId).directDamage?.value
+      expect(ddValue, `${label}应有直伤系数`).toBeDefined()
+      expectNear(ddValue!, 1.0, 0.015, `${label} 直伤锚点`)
+    }
+    // 分段合并标记：苍角「席卷打击」合并为一条
+    const xijuan = report.moves.find((m) => m.agentId === '1131' && m.moveName === '支援突击：席卷打击')
+    expect(xijuan, '席卷打击合并单元应存在').toBeDefined()
+    expect(xijuan!.flags).toContain('支援突击分段已合并')
+  })
+
   it('覆盖全部在册角色', () => {
     expect(report.vertical.length).toBeGreaterThanOrEqual(55)
     expect(report.vertical.length).toBeLessThanOrEqual(catalogData.agents.length)
@@ -127,11 +139,24 @@ describe('倍率表系数演算：招式分类', () => {
     expect(classifyMove(mkMove({ name: { zhCN: '招架支援：铁壁 #3' } }), 'assist', 'defense')).toBe('parryChain')
   })
 
-  it('强化特殊技看 energyCost；冲刺攻击在 dodge/basic 类都能识别', () => {
-    expect(classifyMove(mkMove({ name: { zhCN: '强化特殊技：飞雪 #1' }, energyCost: { 'Energy Cost': '40' } }), 'special', 'anomaly')).toBe('exSpecial')
-    expect(classifyMove(mkMove({ name: { zhCN: '特殊技：飞雪' } }), 'special', 'anomaly')).toBe('special')
-    expect(classifyMove(mkMove({ name: { zhCN: '冲刺攻击：冬蜂' } }), 'dodge', 'attack')).toBe('dashAttack')
-    expect(classifyMove(mkMove({ name: { zhCN: '普通攻击：扫除开始 #3' }, skillTags: ['dashAttack'] }), 'basic', 'attack')).toBe('dashAttack')
+  it('强化特殊技看 energyCost 或名称前缀；冲刺攻击在 dodge/basic 类都能识别', () => {
+    expect(classifyMove(mkMove({ id: 'x1', name: { zhCN: '强化特殊技：飞雪 #1' }, energyCost: { 'Energy Cost': '40' } }), 'special', 'anomaly')).toBe('exSpecial')
+    expect(classifyMove(mkMove({ id: 'x2', name: { zhCN: '强化特殊技：归烬·天坠' } }), 'special', 'rupture')).toBe('exSpecial')
+    expect(classifyMove(mkMove({ id: 'x3', name: { zhCN: '特殊技：飞雪' } }), 'special', 'anomaly')).toBe('special')
+    expect(classifyMove(mkMove({ id: 'x4', name: { zhCN: '冲刺攻击：冬蜂' } }), 'dodge', 'attack')).toBe('dashAttack')
+    expect(classifyMove(mkMove({ id: 'x5', name: { zhCN: '普通攻击：扫除开始 #3' }, skillTags: ['dashAttack'] }), 'basic', 'attack')).toBe('dashAttack')
+  })
+
+  it('定点分类覆盖：般岳「支援突击：冲霄」实为闪避反击公式（金身格挡后招式）', () => {
+    expect(classifyMove(mkMove({ id: '1471029', name: { zhCN: '支援突击：冲霄' } }), 'assist', 'rupture')).toBe('dodgeCounter')
+    // 锚点由「支援突击：昂霄」承担：与支援突击公式五列比值 ≈1.000
+    const axiao = report.moves.find((m) => m.moveId === '1471026')
+    expect(axiao, '昂霄应在演算结果中').toBeDefined()
+    for (const rowId of ['damage', 'daze', 'decibel_recovery', 'anomaly_buildup']) {
+      const cell = axiao!.cells.find((c) => c.rowId === rowId)
+      expect(cell, `昂霄 ${rowId} 格应存在`).toBeDefined()
+      expectNear(cell!.ratio, 1.0, 0.01, `昂霄 ${rowId}`)
+    }
   })
 
   it('parseEnergyCost 取首个非持续项数值并区分闪能', () => {
@@ -225,12 +250,16 @@ describe('倍率表系数演算：限定S首次UP × 版本直伤系数（时间
     expectNear(ysg!.value ?? 0, 1.274, 0.02, '叶瞬光直伤系数')
   })
 
-  it('早期角色 ≈ 标准、3.2 测试服节点带备注', () => {
+  it('早期角色 ≈ 标准、3.2 测试服节点带备注；佩洛伊斯为 3.0 上半赠送 S', () => {
     const yixuan = points.find((p) => p.agentId === '1371')
     expect(yixuan!.nodeId).toBe('2.0-1')
     expectNear(yixuan!.value ?? 0, 1.0, 0.03, '仪玄直伤系数')
+    const peiroysi = points.find((p) => p.agentId === '1551')
+    expect(peiroysi, '佩洛伊斯应在散点中').toBeDefined()
+    expect(peiroysi!.nodeId).toBe('3.0-1')
     const testServer = points.filter((p) => p.nodeId === '3.2-1')
     expect(testServer.length).toBeGreaterThan(0)
+    expect(points.find((p) => p.agentId === '1551' && p.nodeId === '3.2-1')).toBeUndefined()
     expect(testServer.every((p) => (p.nodeNote ?? '').includes('测试服'))).toBe(true)
   })
 })
