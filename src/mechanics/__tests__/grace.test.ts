@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { createPinia, setActivePinia } from 'pinia'
 import {
+  PULSE_CAP,
   PULSE_PER_GRENADE,
   PULSE_PER_ULT,
   graceRotationSeconds,
@@ -87,30 +88,28 @@ describe('格莉丝全管线集成（harness）', () => {
       expect(vortex!.count).toBe(exRow.count) // 每发强特附一枚涡流手雷
     }
 
-    // [脉冲]：终结×25 层 → 每 8 层兑换一枚[脉冲手雷]（次数=floor(25×终结/8)，封顶特殊技槽）
+    // [脉冲]：终结×25 层、上限 25（多大都卡住）→ 一次大恒 floor(25/8)=3 枚[脉冲手雷]
     const pulse = grace.executions.find(e => e.moveId === '1181019')
     const ult = grace.ultimateCount ?? 0
     if (ult > 0) {
       expect(pulse).toBeTruthy()
-      expect(pulse!.count).toBe(Math.min(Math.floor(ult * PULSE_PER_ULT / PULSE_PER_GRENADE), Math.max(0, slots)))
+      expect(pulse!.count).toBe(Math.min(Math.floor(Math.min(ult * PULSE_PER_ULT, PULSE_CAP) / PULSE_PER_GRENADE), Math.max(0, slots)))
     }
   })
 
-  it('积蓄 +130% 仅限定特殊技/强特（transform 钩子行级缩放，面板效率区不挂）', async () => {
+  it('积蓄 +130% 加算进积蓄效率区（非独立乘区）：面板 electricAnomalyBuildUpEfficiency = 130', async () => {
     await setupHarness([{ agentId: '1181' }, '', ''])
     const calc = useResourceCalc()
     const panel = computePanelPhases(0, useConfigStoreForPanel(), useCatalogStoreForPanel())!.inCombat
-    // 回归护栏：面板级效率必须为 0（否则会波及终结/连携的积蓄）
-    expect(panel.electricAnomalyBuildUpEfficiency ?? 0).toBeCloseTo(0, 4)
+    expect(panel.electricAnomalyBuildUpEfficiency ?? 0).toBeCloseTo(130, 4)
 
     const electric = calc.anomalyPoolResult.value?.perElement?.find(p => p.element === 'electric')
     expect(electric).toBeTruthy()
     const sp = electric!.contributions?.find(c => c.moveId === '1181005')
-    const ex = electric!.contributions?.find(c => c.moveId === '1181006')
-    expect(sp ?? ex).toBeTruthy()
-    // 缩放后每发积蓄 > 表值原值（70.03 / 143.34 × 2.3 × 掌控等系数）
-    if (sp) expect(sp.perHitBuildUp).toBeGreaterThan(70.03)
-    if (ex) expect(ex.perHitBuildUp).toBeGreaterThan(143.34)
+    expect(sp).toBeTruthy()
+    // 特殊技行经效率区缩放：70.03 × 掌控系数 × (1 + 130%)（加算进积蓄效率区）
+    const masteryCoef = (panel.anomalyMastery ?? 100) / 100
+    expect(sp!.perHitBuildUp).toBeCloseTo(70.03 * masteryCoef * (1 + 130 / 100), 1)
   })
 
   it('脉冲手雷附带异放事件：anomalyEventExecutions 含 release 事件，伤害池按 84.9 结算', async () => {

@@ -6,7 +6,6 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { AnomalyEventExecution, SkillExecution } from '@/types/resource'
-import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
@@ -52,8 +51,9 @@ const VORTEX_MOVE_ID = '1181020'
 /** [脉冲]兑换附带[脉冲手雷]（8 层换一次额外投掷）：1181019 表值 84.9，at=0；附带异放事件 */
 const PULSE_GRENADE_MOVE_ID = '1181019'
 export const PULSE_PER_ULT = 25 // 终结技每次获得 25 层[脉冲]（用户口供）
+export const PULSE_CAP = 25 // [脉冲]上限 25 层：多大都卡在 25，一次大招只能换 floor(25/8)=3 次
 export const PULSE_PER_GRENADE = 8 // 8 层[脉冲] → 下次投掷手雷额外丢一枚脉冲手雷 + 异放事件
-export const GRACE_BUILDUP_MULTIPLIER = 2.3 // 电属性异常积蓄 +130%（仅特殊技/强特，transform 钩子限定）
+export const GRACE_BUILDUP_BONUS_PCT = 130 // 电属性异常积蓄 +130%：加算进积蓄效率区（非独立乘区）
 export const GRACE_SPECIAL_MOVE_IDS = [SP_MOVE_ID, EX_MOVE_ID]
 
 const spec = getAgentSpec(GRACE_AGENT_ID)!
@@ -90,8 +90,10 @@ function buildGraceCharConfig(input: AgentCharConfigInput): void {
 /** 永续面板项：潜能电伤（C2-C6 = 10~30%）+ AA 感电强化层数 */
 function applyGracePanel(input: AgentPanelInput): void {
   const { panel, cinemaLevel, settings } = input
-  // 积蓄 +130% 不在此处挂（面板级会波及终结/连携）——由 transformSkillExecutions 仅对
-  // 特殊技/强特两行的异常行 ×2.3 限定（口供：文字明确只有这两招吃）
+  // 电能满层消耗 → 电属性异常积蓄 +130%（Lv.7）：**加算进积蓄效率区**（异常积蓄效率与
+  // 其他来源加算，非独立乘区——用户口供 2026-08-23 二轮修正）。面板级对全电积蓄生效，
+  // 属近似（特殊技/强特在循环中占绝对主导），文档已注明。
+  panel.electricAnomalyBuildUpEfficiency = (panel.electricAnomalyBuildUpEfficiency ?? 0) + GRACE_BUILDUP_BONUS_PCT
   if (cinemaLevel >= 2) {
     const bonus = [10, 15, 20, 25, 30][Math.min(cinemaLevel, 6) - 2]
     if (bonus != null) {
@@ -124,9 +126,10 @@ function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): v
     executions.push(graceRow(SP_MOVE_ID, '特殊技：工程清障（电能强化）', plan.normalUsed, SP_TIME))
   }
 
-  // [脉冲]：终结技 ×25 层 → 每 8 层兑换一次「下次投掷手雷额外丢一枚[脉冲手雷]（1181019）」
+  // [脉冲]：终结技 ×25 层、**上限 25**（用户口供：留 1 层，多大都卡在 25）→
+  // 一次大招恒 3 次兑换（floor(25/8)=3），每 8 层兑换一枚[脉冲手雷]（1181019）
   const pulseTotal = Math.max(0, Math.floor(state.ultimateCount ?? 0)) * PULSE_PER_ULT
-  const pulseGrenades = Math.min(Math.floor(pulseTotal / PULSE_PER_GRENADE), Math.max(0, slots))
+  const pulseGrenades = Math.min(Math.floor(Math.min(pulseTotal, PULSE_CAP) / PULSE_PER_GRENADE), Math.max(0, slots))
   ;(cfg as unknown as Record<string, unknown>).gracePulseGrenadeCount = pulseGrenades
   if (pulseGrenades > 0) {
     executions.push(graceRow(PULSE_GRENADE_MOVE_ID, '脉冲手雷（脉冲兑换·附带）', pulseGrenades, 0))
@@ -166,16 +169,7 @@ function graceRow(moveId: string, name: string, count: number, actionTime: numbe
     totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
-    skillTableNote: `消耗全部电能（8层）→ 电属性异常积蓄 +130%（仅特殊技/强特，${moveId}）`,
-  }
-}
-
-/** 积蓄限定缩放：异常行里只对特殊技/强特 ×2.3（文字明确只有这两招吃 +130%） */
-function transformGraceExecutions({ anomalyExecs }: { anomalyExecs: AnomalySkillExecution[] }): void {
-  for (const exec of anomalyExecs) {
-    if (exec.moveId === SP_MOVE_ID || exec.moveId === EX_MOVE_ID) {
-      exec.baseBuildUp = (exec.baseBuildUp ?? 0) * GRACE_BUILDUP_MULTIPLIER
-    }
+    skillTableNote: `消耗全部电能（8层）→ 电属性异常积蓄 +130%（积蓄效率区加算）`,
   }
 }
 
@@ -192,7 +186,6 @@ export const graceMechanic: AgentMechanicModule = {
   applyPanel: applyGracePanel,
   buildCharConfig: buildGraceCharConfig,
   buildExecutions: buildGraceExecutions,
-  transformSkillExecutions: transformGraceExecutions,
   buildAnomalyEvents: buildGraceAnomalyEvents,
   estimateExSpecialTime: ({ cfg, exSpecialCount }) => {
     const prevPool = Math.max(0, Number((cfg as unknown as Record<string, unknown>).graceBasicPoolPrev ?? 0))
