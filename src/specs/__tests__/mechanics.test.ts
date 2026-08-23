@@ -84,10 +84,11 @@ describe('spec mechanics interpreter', () => {
     const executions: any[] = []
     module.buildExecutions?.({ cfg, state, executions })
 
-    // 预算 = 初始40 + 30 + 10 + 20 + 50 = 150；默认占比 -1 → 自动覆盖率 0 → 全 30 档
-    // ≥40 门控沉底 10 点：floor((150−10)/30) = 4 发，载体只有绒爪穿刺
+    // 预算 = 白送60 + 初始40 + 30 + 10 + 20 + 50 = 210？——本单测未注入命中回复/接战规则按 spec：
+    // 初始40 + 前台白送60 + 终结20 + 连携50 + 强特10 = 180；默认占比 -1 → 自动覆盖率 0 → 全 30 档
+    // 门控不建模：floor(180/30) = 6 发，载体只有绒爪穿刺
     const pierce = executions.find(e => e.moveId === '1021019')!
-    expect(pierce.count).toBe(4)
+    expect(pierce.count).toBe(6)
     expect(pierce.damageMultiplier).toBe(800)
     expect(pierce.actionTime).toBeCloseTo(1.5666, 4)
     // 旧实现曾把尾巴失踪术错挂终结技 1021012 产出行——解释器层不得再出现

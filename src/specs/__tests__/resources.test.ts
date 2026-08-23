@@ -77,16 +77,17 @@ describe('spec resource interpreter', () => {
     const purr = computeSpecResources(spec, cfg, state).get('nekomata_purr')!
 
     expect(purr.initialValue).toBe(40)
-    expect(purr.gains['nekomata_frontline_gain']).toBe(30)
+    // 接战回能按总量白送 60（用户口供 2026-08-23：每秒1点、实战贴上限）
+    expect(purr.gains['nekomata_frontline_gain']).toBe(60)
     expect(purr.gains['nekomata_ultimate_gain']).toBe(20)
     expect(purr.gains['nekomata_chain_gain']).toBe(50)
     expect(purr.gains['nekomata_ex_gain']).toBe(10)
-    expect(purr.total).toBe(150)
-    // 解释器层两档各自独立计数（deduct:false）；模块层再按「失衡内40档/失衡外30档 + ≥40门控」
-    // 覆盖为真实分配（见 src/mechanics/__tests__/nekomata.test.ts，用户口供 2026-08-23）
-    expect(purr.spendCounts['nekomata_pierce_hold']).toBe(3)   // floor(150/40)
-    expect(purr.spendCounts['nekomata_pierce_dodge']).toBe(5)  // floor(150/30)
-    expect(purr.remaining).toBe(150)
+    expect(purr.total).toBe(180)
+    // 解释器层两档各自独立计数（deduct:false）；模块层再按「失衡内40档/失衡外30档」覆盖为真实分配
+    // （见 src/mechanics/__tests__/nekomata.test.ts）
+    expect(purr.spendCounts['nekomata_pierce_hold']).toBe(4)   // floor(180/40)
+    expect(purr.spendCounts['nekomata_pierce_dodge']).toBe(6)  // floor(180/30)
+    expect(purr.remaining).toBe(180)
   })
 
   it('applies adjustable conversion rate to approximate spec gains', () => {
@@ -102,10 +103,11 @@ describe('spec resource interpreter', () => {
     } as unknown as IterationState
 
     const purr = computeSpecResources(spec, cfg, state).get('nekomata_purr')!
-    expect(purr.gains['nekomata_frontline_gain']).toBe(20)
+    // 固定总量 60 × 倍率 2 = 120（不再随前台时间变化）
+    expect(purr.gains['nekomata_frontline_gain']).toBe(120)
   })
 
-  it('猫又呼噜能量分配（2026-08-23 口供）：自动覆盖率 0 → 全 30 档，≥40 门控沉底 10 点', () => {
+  it('猫又呼噜能量分配（2026-08-23 口供）：自动覆盖率 0 → 全 30 档，门控不建模', () => {
     const cfg = {} as unknown as CharacterOperationConfig
     const state = {
       frontlineTime: 30,
@@ -115,10 +117,10 @@ describe('spec resource interpreter', () => {
     } as unknown as IterationState
     const result = nekomataMechanic.buildResourceResult?.({ cfg, state } as any) as { specResources: Record<string, any> }
     const purr = result?.specResources?.['nekomata_purr']
-    expect(purr.total).toBe(150)
-    // 失衡内 40 档占比 = teamStunCoverage（未注入视为 0）→ 全走 30 档：floor((150−10)/30) = 4
+    expect(purr.total).toBe(180)
+    // 失衡内 40 档占比 = teamStunCoverage（未注入视为 0）→ 全走 30 档：floor(180/30) = 6
     expect(purr.spendCounts['nekomata_pierce_hold']).toBe(0)
-    expect(purr.spendCounts['nekomata_pierce_dodge']).toBe(4)
+    expect(purr.spendCounts['nekomata_pierce_dodge']).toBe(6)
   })
 
   it('adds extra decibel per ultimate from Jufufu extra ability', () => {
