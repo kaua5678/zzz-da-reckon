@@ -423,6 +423,150 @@
         每点 = 一位限定S在其首次 UP 节点的支援突击伤害比值。灰 ≈100%（无直伤特调）、蓝 &gt;105%（当期加强档）、橙 &lt;95%；悬停看数值。3.2 阴影为测试服数据；常驻 S 与 A 级不参与。演算口径见「倍率系数记录」页。
       </div>
     </n-card>
+
+    <!-- ============ Chart 3：每期新角色 · 强队强度（横轴 = 版本，点 = 当期新角色强队，用户清单 + 引擎辅助） ============ -->
+    <n-card size="small" :bordered="true">
+      <template #header>
+        每期新角色 · 强队强度
+        <span class="chart-subtitle">横轴 = 版本（卡池期）；每个点 = 当期新 S 角色的强队（你指定清单，可手改/引擎建议；按当前全部已实装 + 所选金数配装）</span>
+      </template>
+      <template #header-extra>
+        <div class="chart3-actions">
+          <span class="ctl-label">未配置强队的角色不出点</span>
+          <n-button size="small" type="primary" :loading="chart3Computing" @click="runChart3">
+            {{ chart3Points.length > 0 ? '重新计算强队图' : '计算强队图' }}
+          </n-button>
+        </div>
+      </template>
+
+      <!-- 强队清单（版本 → 新角色 → 强队三人） -->
+      <div class="table-wrap chart3-list">
+        <table class="tl-table">
+          <thead>
+            <tr>
+              <th>版本</th>
+              <th>当期新角色</th>
+              <th>强队（主C + 队友1 + 队友2）</th>
+              <th>引擎建议</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in chart3Rows" :key="row.charId">
+              <td>
+                {{ row.nodeLabel }}
+                <span v-if="row.nodeNote" class="node-note" :title="row.nodeNote">{{ row.nodeNote }}</span>
+              </td>
+              <td>
+                <span class="dot" :style="{ background: colorOf(row.charId) }"></span>{{ agentName(row.charId) }}
+              </td>
+              <td class="team-cell chart3-team-inputs">
+                <n-select
+                  v-model:value="chart3Teams[row.charId][0]"
+                  :options="allAgentOptions"
+                  size="tiny"
+                  filterable
+                  style="width: 118px"
+                  placeholder="主C"
+                />
+                <n-select
+                  v-model:value="chart3Teams[row.charId][1]"
+                  :options="allAgentOptions"
+                  size="tiny"
+                  filterable
+                  style="width: 118px"
+                  placeholder="队友1"
+                />
+                <n-select
+                  v-model:value="chart3Teams[row.charId][2]"
+                  :options="allAgentOptions"
+                  size="tiny"
+                  filterable
+                  style="width: 118px"
+                  placeholder="队友2"
+                />
+              </td>
+              <td>
+                <n-button
+                  size="tiny"
+                  :loading="suggestingChar === row.charId"
+                  :disabled="!!suggestingChar && suggestingChar !== row.charId"
+                  @click="suggestFor(row.charId)"
+                >引擎建议</n-button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 强队强度散点 -->
+      <div v-if="chart3Points.length > 0" class="timeline-wrap chart3-plot">
+        <svg
+          :viewBox="`0 0 ${svgW} ${chart3SvgH}`"
+          class="timeline-svg"
+          @mousemove="onChart3Move"
+          @mouseleave="chart3Hover = -1"
+        >
+          <g v-for="(y, i) in chart3YGrid" :key="'c3g' + i">
+            <line :x1="padL" :x2="svgW - padR" :y1="y" :y2="y" class="grid-line" />
+            <text :x="padL - 8" :y="y + 3" class="axis-label" text-anchor="end">{{ chart3YLabel(i) }}%</text>
+          </g>
+          <!-- 100% 击杀线 -->
+          <line :x1="padL" :y1="yOf3(100)" :x2="svgW - padR" :y2="yOf3(100)" class="kill-line-ref" />
+          <text :x="svgW - padR - 2" :y="yOf3(100) - 5" class="axis-label" text-anchor="end">100% 击杀线</text>
+          <!-- X 轴版本刻度 -->
+          <g v-for="t in chart3XTicks" :key="'c3x' + t.index">
+            <line :x1="chart3X(t.index)" :y1="padT" :x2="chart3X(t.index)" :y2="padT + plotH" stroke="rgba(255,255,255,0.06)" />
+            <text :x="chart3X(t.index)" :y="chart3SvgH - 8" class="axis-label x-label" text-anchor="middle">{{ t.label }}</text>
+          </g>
+          <!-- 点 -->
+          <g v-for="(p, i) in chart3Pts" :key="'c3p' + i">
+            <circle
+              :cx="p.x"
+              :cy="p.y"
+              r="4.5"
+              :fill="p.color"
+              :stroke="chart3Hover === i ? '#fff' : 'rgba(255,255,255,0.25)'"
+              :stroke-width="chart3Hover === i ? 2 : 1"
+              class="trend-point"
+            >
+              <title>{{ p.charName }}：{{ p.teamNames.join('+') }}（{{ fmt(p.hpRatio, 1) }}%）</title>
+            </circle>
+          </g>
+          <line
+            v-if="chart3Hover >= 0"
+            :x1="chart3Pts[chart3Hover].x" :y1="padT"
+            :x2="chart3Pts[chart3Hover].x" :y2="padT + plotH"
+            class="hover-line"
+          />
+        </svg>
+
+        <!-- 悬浮卡片 -->
+        <div
+          v-if="chart3Hover >= 0 && chart3HoverInfo"
+          class="hover-card"
+          :style="{ left: chart3CardX + 'px', top: chart3CardY + 'px' }"
+        >
+          <div class="hc-title">{{ chart3HoverInfo.nodeLabel }} · {{ chart3HoverInfo.charName }}</div>
+          <div class="hc-row">强队：{{ chart3HoverInfo.teamNames.join(' + ') }}</div>
+          <div class="hc-row">伤害 {{ compact(chart3HoverInfo.damage) }}（{{ fmt(chart3HoverInfo.hpRatio, 1) }}%）</div>
+          <div class="hc-row">{{ chart3HoverInfo.goldLabel }}</div>
+        </div>
+      </div>
+      <div v-else class="empty-hint small-hint">
+        为角色配置强队（手填三人或点「引擎建议」）后点「计算强队图」；预填 = 仓库 preset 队伍。
+      </div>
+
+      <!-- 进度条 -->
+      <div v-if="chart3Computing || chart3Progress" class="chart-progress">
+        <n-progress
+          type="line"
+          :percentage="Math.round((chart3Progress?.pct ?? 0) * 100)"
+          :show-indicator="false"
+          :height="6"
+        />
+        <span class="progress-text">{{ chart3Progress?.text ?? '' }}</span>
+      </div>
+    </n-card>
   </div>
 </template>
 
@@ -433,6 +577,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamStrengthSeed, type TeamTimelineResult } from '@/composables/teamTimeline'
+import { buildNewCharacterRows, computeNewCharacterPoints, prefillStrongTeamsFromPresets, suggestStrongTeam, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
 import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
@@ -931,6 +1076,141 @@ function ddLabelY(p: DirectDamagePoint): number {
   const slot = ddLabelSlots.value.get(p.agentId) ?? 0
   return v >= 1 ? ddY(v) - (9 + slot * 13) : ddY(v) + 16 + slot * 13
 }
+
+// ========== Chart 3：每期新角色 · 强队强度（横轴 = 版本，点 = 当期新角色强队） ==========
+const chart3Rows = computed<NewCharacterRow[]>(() => buildNewCharacterRows())
+/** 强队清单：charId → 三人（'' = 未配置，不出点）；预填仓库 preset 队伍（主C匹配） */
+const chart3Teams = ref<Record<string, [string, string, string]>>(initChart3Teams())
+function initChart3Teams(): Record<string, [string, string, string]> {
+  const out: Record<string, [string, string, string]> = {}
+  const prefill = prefillStrongTeamsFromPresets()
+  for (const row of buildNewCharacterRows()) out[row.charId] = prefill[row.charId] ?? ['', '', '']
+  return out
+}
+/** 强队成员可选全部角色（S+A；A 级支援如苍角/妮可可作队友） */
+const allAgentOptions = computed(() =>
+  catalogStore.displayAgents.map(a => ({ value: a.id, label: `${a.name.zhCN ?? a.id}（${a.rarity}）` })),
+)
+
+const suggestingChar = ref('')
+async function suggestFor(charId: string) {
+  if (suggestingChar.value) return
+  suggestingChar.value = charId
+  try {
+    const s = await suggestStrongTeam(calc, configStore, charId, budget.value ?? 6, { autoBuild: autoBuild.value })
+    if (s) chart3Teams.value[charId] = [...s.team] as [string, string, string]
+  } finally {
+    suggestingChar.value = ''
+  }
+}
+
+const chart3Computing = ref(false)
+const chart3Progress = ref<{ pct: number; text: string } | null>(null)
+const chart3Points = ref<NewCharacterPoint[]>([])
+async function runChart3() {
+  const boss = selectedBoss.value
+  const phase = selectedPhase.value
+  if (!boss || !phase) return
+  chart3Computing.value = true
+  chart3Progress.value = { pct: 0, text: '准备…' }
+  try {
+    chart3Points.value = await computeNewCharacterPoints(calc, {
+      rows: chart3Rows.value,
+      teams: chart3Teams.value,
+      boss,
+      phase,
+      budget: budget.value ?? 6,
+      autoBuild: autoBuild.value,
+      optimalGold: optimalGold.value,
+      onProgress: p => { chart3Progress.value = p },
+    })
+  } finally {
+    chart3Computing.value = false
+    chart3Progress.value = null
+  }
+}
+
+// ---- Chart 3 SVG ----
+const chart3SvgH = padT + plotH + 30
+const chart3YMax = computed(() => {
+  const maxR = Math.max(...(chart3Points.value.map(p => p.hpRatio) ?? [0]), 0)
+  const target = Math.max(100, maxR * 1.05)
+  const step = target <= 200 ? 50 : 100
+  return Math.ceil(target / step) * step
+})
+function yOf3(v: number): number {
+  return padT + plotH - (v / chart3YMax.value) * plotH
+}
+const chart3YGrid = computed(() => {
+  const step = chart3YMax.value <= 200 ? 50 : 100
+  const out: number[] = []
+  for (let v = 0; v <= chart3YMax.value; v += step) out.push(yOf3(v))
+  return out
+})
+function chart3YLabel(i: number): number {
+  const step = chart3YMax.value <= 200 ? 50 : 100
+  return i * step
+}
+function chart3X(i: number): number {
+  const total = VERSION_NODES.length
+  if (total <= 1) return padL + plotW.value / 2
+  return padL + (i / (total - 1)) * plotW.value
+}
+const chart3XTicks = computed(() => {
+  const step = Math.max(1, Math.ceil(VERSION_NODES.length / 16))
+  const out: { index: number; label: string }[] = []
+  for (let i = 0; i < VERSION_NODES.length; i += step) out.push({ index: i, label: VERSION_NODES[i].label })
+  return out
+})
+/** 散点：同节点多角色横向错开；颜色按角色稳定映射 */
+const chart3Pts = computed(() => {
+  const perNode = new Map<string, number>()
+  for (const p of chart3Points.value) perNode.set(p.nodeId, (perNode.get(p.nodeId) ?? 0) + 1)
+  const seen = new Map<string, number>()
+  return chart3Points.value.map(p => {
+    const idx = nodeIndexOf(p.nodeId)
+    const total = perNode.get(p.nodeId) ?? 1
+    const k = seen.get(p.nodeId) ?? 0
+    seen.set(p.nodeId, k + 1)
+    const offset = (k - (total - 1) / 2) * 7
+    return {
+      x: chart3X(idx) + offset,
+      y: yOf3(Math.min(p.hpRatio, chart3YMax.value)),
+      color: colorOf(p.charId),
+      charName: p.charName,
+      nodeLabel: p.nodeLabel,
+      teamNames: p.team.map(agentName),
+      damage: p.damage,
+      hpRatio: p.hpRatio,
+      goldLabel: p.goldLabel,
+    }
+  })
+})
+const chart3Hover = ref(-1)
+const chart3HoverInfo = computed(() => chart3Pts.value[chart3Hover.value] ?? null)
+const chart3CardX = ref(0)
+const chart3CardY = ref(0)
+function onChart3Move(e: MouseEvent) {
+  const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
+  const scale = svgW.value / rect.width
+  const svgX = (e.clientX - rect.left) * scale
+  let best = -1
+  let bestDist = Infinity
+  chart3Pts.value.forEach((p, i) => {
+    const d = Math.abs(p.x - svgX)
+    if (d < bestDist) {
+      bestDist = d
+      best = i
+    }
+  })
+  if (best >= 0 && bestDist < (plotW.value / Math.max(1, VERSION_NODES.length)) * 2) {
+    chart3Hover.value = best
+    chart3CardX.value = Math.min(rect.width - 240, e.clientX - rect.left + 12)
+    chart3CardY.value = e.clientY - rect.top + 8
+  } else {
+    chart3Hover.value = -1
+  }
+}
 </script>
 
 <style scoped>
@@ -1220,5 +1500,32 @@ function ddLabelY(p: DirectDamagePoint): number {
   color: rgba(255, 255, 255, 0.5);
   font-size: 11.5px;
   line-height: 1.7;
+}
+
+/* ========== Chart 3：每期新角色 · 强队强度 ========== */
+.chart3-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chart3-list {
+  max-height: 340px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+.chart3-team-inputs {
+  gap: 6px;
+}
+.chart3-plot {
+  margin-top: 4px;
+}
+.kill-line-ref {
+  stroke: rgba(99, 226, 183, 0.35);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.small-hint {
+  font-size: 12px;
+  padding: 8px 2px;
 }
 </style>

@@ -32,6 +32,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
 import { indexForDate } from '@/composables/bossSchedule'
 import { isLimitedAgent, isLimitedWEngine, applyGoldSteps } from '@/composables/teamCompare'
+import { teamPresets } from '@/data/teamPresets'
 import type { Agent } from '@/types/catalog'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
@@ -795,4 +796,208 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
   } finally {
     restoreStore(configStore, snap)
   }
+}
+
+// ========== Chart 3：每期新角色 · 强队强度（横轴 = 版本，点 = 当期新角色强队） ==========
+//
+// 用户口径（2026-08 确认）：横轴 = 版本（卡池期节点）；每个点 = 该期新 S 角色的「强队」，
+// 强队由**用户指定清单**（页面可编辑，预填仓库 preset 队伍），每行可点「引擎建议」从
+// STRONG_TEAM_SUGGESTION_POOL 快速补一个候选；强度按**当前全部已实装**（队伍可含晚于
+// 主C实装的队友）+ 所选金数做最优加金（optimalGold=false 轻量档 = 主C优先确定性分配）。
+
+/** 一行 = 一个版本节点的「当期新 S 角色」（强队由用户清单指定，引擎辅助） */
+export interface NewCharacterRow {
+  nodeId: string
+  nodeLabel: string
+  nodeNote?: string
+  charId: string
+}
+
+/** 全部版本节点 × 当期新 S 角色 → 行清单（含测试服节点，行带 note；是否出点由用户是否配置强队决定） */
+export function buildNewCharacterRows(): NewCharacterRow[] {
+  const rows: NewCharacterRow[] = []
+  for (const node of VERSION_NODES) {
+    for (const [id, nodeId] of Object.entries(AGENT_RELEASE_NODE)) {
+      if (nodeId === node.id) {
+        rows.push({
+          nodeId: node.id,
+          nodeLabel: node.label,
+          ...(node.note ? { nodeNote: node.note } : {}),
+          charId: id,
+        })
+      }
+    }
+  }
+  return rows
+}
+
+/**
+ * 引擎建议队友池：泛用支援/击破/异常拐（含 苍角/妮可/露西 三个 A 级支援，catalog 稀有度已修正）。
+ * 主C 从池中排除；建议结果由用户拍板（可手改）。
+ */
+export const STRONG_TEAM_SUGGESTION_POOL = [
+  '1131', // 苍角（A 支援）
+  '1031', // 妮可（A 支援）
+  '1151', // 露西（A 支援）
+  '1311', // 耀嘉音
+  '1211', // 丽娜
+  '1451', // 卢西娅
+  '1071', // 凯撒
+  '1571', // 诺姆
+  '1141', // 莱卡恩
+  '1251', // 青衣
+  '1481', // 琉音
+  '1391', // 橘福福
+  '1501', // 爱芮
+  '1091', // 星见雅
+  '1171', // 柏妮思
+  '1221', // 月城柳
+]
+
+export interface TeamSuggestion {
+  team: [string, string, string]
+  damage: number
+}
+
+/**
+ * 引擎建议：主C + 建议池内最优双队友（预算感知排名 + 收敛过滤，约 C(n,2) 次求值）。
+ * 供 Chart 3 每行「引擎建议」填充；用户可再手改。
+ */
+export async function suggestStrongTeam(
+  calc: Calc,
+  configStore: ReturnType<typeof useConfigStore>,
+  mainId: string,
+  budget: number,
+  opts: { autoBuild?: boolean; pool?: string[] } = {},
+): Promise<TeamSuggestion | null> {
+  const catalog = useCatalogStore()
+  const candidates = (opts.pool ?? STRONG_TEAM_SUGGESTION_POOL).filter(id => id !== mainId && catalog.getAgent(id))
+  let best: TeamSuggestion | null = null
+  let evalCount = 0
+  const totalEval = (candidates.length * (candidates.length - 1)) / 2
+  for (let i = 0; i < candidates.length; i++) {
+    for (let j = i + 1; j < candidates.length; j++) {
+      const team: [string, string, string] = [mainId, candidates[i], candidates[j]]
+      const { state } = budgetAwareStateFor(team, budget, catalog)
+      applyTeamToStore(configStore, team, state, opts.autoBuild === true)
+      const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
+      if (conv !== 'maxIter') {
+        const dmg = calc.teamTotalDamage.value
+        if (!best || dmg > best.damage + 1e-9) best = { team, damage: dmg }
+      }
+      evalCount++
+      if (evalCount % 8 === 0) await yieldNow()
+    }
+  }
+  return best
+}
+
+/** 一个点 = 用户清单里某新角色的强队（按所选金数配装）的强度 */
+export interface NewCharacterPoint {
+  charId: string
+  charName: string
+  nodeId: string
+  nodeLabel: string
+  nodeNote?: string
+  team: [string, string, string]
+  state: TeamGoldState
+  totalGold: number
+  goldLabel: string
+  damage: number
+  hpRatio: number
+}
+
+export interface NewCharacterChartOptions {
+  rows: NewCharacterRow[]
+  /** charId → 用户配置的强队（含主C，3 名不同角色；缺省/空/重复 = 不出点） */
+  teams: Record<string, [string, string, string]>
+  boss: BossPreset
+  phase: BossPresetPhase
+  budget: number
+  /** 自动配装（推荐驱动盘 + 词条优化器）；缺省 false = 轻量速算 */
+  autoBuild?: boolean
+  /** 最优加金（逐金贪婪）；缺省 false = 主C优先确定性分配（与排名同源） */
+  optimalGold?: boolean
+  onProgress?: (p: { pct: number; text: string }) => void
+}
+
+/**
+ * 计算 Chart 3 各点：对用户清单里每个已配置强队，按所选金数配装（optimalGold=false 轻量档
+ * 用 budgetAwareStateFor，零额外求值；true 用逐金贪婪），收敛过滤 + 现场快照/恢复。
+ */
+export async function computeNewCharacterPoints(calc: Calc, opts: NewCharacterChartOptions): Promise<NewCharacterPoint[]> {
+  const configStore = useConfigStore()
+  const catalog = useCatalogStore()
+  const snap = snapshotStore(configStore)
+  const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
+  try {
+    configStore.applyBossPreset({ id: opts.boss.id }, opts.phase, opts.boss.monster, opts.boss.defaults)
+    const configured = opts.rows.filter(r => {
+      const t = opts.teams[r.charId]
+      return t && new Set(t).size === 3 && t.every(id => id && catalog.getAgent(id))
+    })
+    const points: NewCharacterPoint[] = []
+    for (let i = 0; i < configured.length; i++) {
+      const row = configured[i]
+      const team = opts.teams[row.charId]
+      let damage: number
+      let totalGold: number
+      let goldLabel: string
+      let nodeState: TeamGoldState
+      if (opts.optimalGold) {
+        const alloc = computeOptimalTeamAllocation(calc, configStore, team, opts.budget, opts.autoBuild === true)
+        // 基础态未收敛 → 返回 -Inf，跳过该点
+        if (!Number.isFinite(alloc.damage)) continue
+        damage = alloc.damage
+        totalGold = alloc.totalGold
+        goldLabel = alloc.label
+        nodeState = { cinemas: alloc.cinemas, wengineMods: alloc.wengineMods, wEngines: alloc.wEngines }
+      } else {
+        const budgetAware = budgetAwareStateFor(team, opts.budget, catalog)
+        applyTeamToStore(configStore, team, budgetAware.state, opts.autoBuild === true)
+        const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
+        if (conv === 'maxIter') continue
+        damage = calc.teamTotalDamage.value
+        totalGold = budgetAware.totalGold
+        goldLabel = budgetAware.label
+        nodeState = budgetAware.state
+      }
+      const char = catalog.getAgent(row.charId)
+      points.push({
+        charId: row.charId,
+        charName: char?.name.zhCN ?? row.charId,
+        nodeId: row.nodeId,
+        nodeLabel: row.nodeLabel,
+        ...(row.nodeNote ? { nodeNote: row.nodeNote } : {}),
+        team,
+        state: nodeState,
+        totalGold,
+        goldLabel,
+        damage,
+        hpRatio: opts.phase.hp > 0 ? Math.round((damage / opts.phase.hp) * 10000) / 100 : 0,
+      })
+      report((i + 1) / configured.length, `强队强度 ${i + 1}/${configured.length}（${char?.name.zhCN ?? row.charId}）…`)
+      if (i % 2 === 0) await yieldNow()
+    }
+    report(1, `完成：${points.length} 个点`)
+    return points
+  } finally {
+    restoreStore(configStore, snap)
+  }
+}
+
+/** 预填：仓库 preset 队伍中主C匹配的强队（同主C多预设取 goldSteps 最多者——配置最完整；平手取后者） */
+export function prefillStrongTeamsFromPresets(): Record<string, [string, string, string]> {
+  const out: Record<string, [string, string, string]> = {}
+  const bestSteps: Record<string, number> = {}
+  for (const p of teamPresets) {
+    const main = p.team[0]
+    if (!main) continue
+    const steps = p.goldSteps?.length ?? 0
+    if (!(main in bestSteps) || steps >= bestSteps[main]) {
+      bestSteps[main] = steps
+      out[main] = [p.team[0], p.team[1], p.team[2]]
+    }
+  }
+  return out
 }

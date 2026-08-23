@@ -1,9 +1,10 @@
 /**
- * 队伍时间线（timeCharts 页 Chart 1 数据服务）测试：
+ * 队伍时间线（timeCharts 页数据服务）测试：
  * - 版本时间线数据不变量（S 级实装节点齐全/有序、仪玄等关键角色节点正确）
  * - 基础金口径（限定 S 本体 + 限定音擎，常驻不计）
  * - 最优加金分配（预算钳制 / 单调不减 / 非限定槽位可换限定音擎）
  * - 队伍演变集成冒烟（候选池裁剪下：节点结构、成员实装 ≤ 节点、换人事件、现场恢复）
+ * - Chart 3：每期新角色 · 强队强度（行清单 / preset 预填 / 引擎建议 / 逐队配装求值）
  */
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -16,11 +17,16 @@ import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, nodesFrom, releaseNodeO
 import {
   SWAP_UPGRADE_UPLIFT_PCT,
   baseGoldOfTeam,
+  buildNewCharacterRows,
   classifySwapUplift,
+  computeNewCharacterPoints,
   computeOptimalTeamAllocation,
   computeTeamTimeline,
   nextGoldCandidates,
+  prefillStrongTeamsFromPresets,
+  suggestStrongTeam,
 } from '@/composables/teamTimeline'
+import { teamPresets } from '@/data/teamPresets'
 import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
 
 const bossText = readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')
@@ -338,6 +344,81 @@ describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
       expect(node!.newAgentBench!.gapPct).toBeLessThan(0)
       expect(['lateral', 'worse']).toContain(node!.newAgentBench!.kind)
     }
+    expect(JSON.stringify(config.team)).toBe(originalTeam)
+  }, 120000)
+})
+
+// ========== Chart 3：每期新角色 · 强队强度 ==========
+
+describe('Chart 3：每期新角色强队（buildNewCharacterRows / suggest / computeNewCharacterPoints / 预填）', () => {
+  it('行清单：覆盖全部 AGENT_RELEASE_NODE 角色，每行实装节点 = 所在节点，测试服行带 note', () => {
+    const rows = buildNewCharacterRows()
+    const rowChars = new Set(rows.map(r => r.charId))
+    // 全量覆盖（含潘引壶 A 级特例）
+    for (const id of Object.keys(AGENT_RELEASE_NODE)) {
+      expect(rowChars.has(id), `缺 ${id}`).toBe(true)
+    }
+    // 每行归属其实装节点；行序 = 节点序
+    for (const row of rows) {
+      expect(releaseNodeOf(row.charId)).toBe(row.nodeId)
+    }
+    for (let i = 1; i < rows.length; i++) {
+      expect(nodeIndexOf(rows[i].nodeId)).toBeGreaterThanOrEqual(nodeIndexOf(rows[i - 1].nodeId))
+    }
+    const testRow = rows.find(r => r.nodeId === '3.2-1')
+    expect(testRow?.nodeNote).toBeDefined()
+  })
+
+  it('预填：从仓库 preset 取主C匹配强队（仪玄预填为 3 名不同角色）', () => {
+    const prefill = prefillStrongTeamsFromPresets()
+    expect(prefill['1371']).toBeDefined()
+    expect(new Set(prefill['1371']).size).toBe(3)
+    expect(prefill['1371'][0]).toBe('1371')
+    // 预填队伍必须来自仓库 preset（主C匹配）
+    const presetTeam = teamPresets.find(p => p.team[0] === '1371')
+    expect(presetTeam).toBeDefined()
+  })
+
+  it('引擎建议：小池子下返回 主C+双队友 且收敛、伤害有限', async () => {
+    await boot()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const s = await suggestStrongTeam(calc, config, '1371', 6, { pool: ['1311', '1071', '1141'] })
+    expect(s).not.toBeNull()
+    expect(s!.team[0]).toBe('1371')
+    expect(new Set(s!.team).size).toBe(3)
+    expect(s!.damage).toBeGreaterThan(0)
+  }, 120000)
+
+  it('computeNewCharacterPoints：配置 2 队出 2 点；无效队（重复成员）跳过；现场恢复', async () => {
+    await boot()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const originalTeam = JSON.stringify(config.team)
+    const rows = [
+      { nodeId: '2.0-1', nodeLabel: '2.0 上半', charId: '1371' },
+      { nodeId: '1.4', nodeLabel: '1.4 合并', charId: '1091' },
+      { nodeId: '2.3-1', nodeLabel: '2.3 上半', charId: '1451' },
+    ]
+    const teams: Record<string, [string, string, string]> = {
+      '1371': ['1371', '1451', '1481'], // 仪玄+卢西娅+琉音
+      '1091': ['1091', '1141', '1131'], // 星见雅+莱卡恩+苍角
+      '1451': ['1451', '1451', '1481'], // 重复成员 → 应跳过
+    }
+    const points = await computeNewCharacterPoints(calc, {
+      rows,
+      teams,
+      boss: firstBoss as BossPreset,
+      phase: firstPhase,
+      budget: 6,
+    })
+    expect(points.length).toBe(2)
+    for (const p of points) {
+      expect(p.hpRatio).toBeGreaterThan(0)
+      expect(p.goldLabel).toContain('金')
+      expect(p.team[0]).toBe(p.charId)
+    }
+    expect(points.find(p => p.charId === '1451')).toBeUndefined()
     expect(JSON.stringify(config.team)).toBe(originalTeam)
   }, 120000)
 })
