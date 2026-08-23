@@ -16,15 +16,92 @@ import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 import * as ResourceCalcHelpers from './resource/helpers'
 const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy } = ResourceCalcHelpers
+
+// ============ 热启动缓存 ============
+/**
+ * 热启动（2026-08 复活）：把上次收敛的 IterationState[] 缓存、同配置再次计算时作为初值注入。
+ * **只做精确键命中**：从上一轮的收敛末态出发时，iterate 落在不动点上，结果与冷算逐位一致
+ * （下方测试锁定）。**队签名近似命中（改滑块/命座后复用邻域初值）暂不做的度量依据**：
+ * 内层循环只对强特/终结次数判稳，次数稳定后 basicAttackTime/喧响的小数位仍随初值漂移
+ * （实测同队签名扰动下喧响总数差 ~0.1%）——近似命中会让结果依赖计算历史，
+ * 违反 seedInvariance「收敛态与初值无关」的安全性前提；前置是先把内层收敛判据
+ * 加强到小数位稳定（会整体微移全库数值基线，须单独立项验证后再启用近似命中）。
+ */
+interface WarmStartEntry {
+  exactKey: string
+  states: IterationState[]
+}
+const WARM_START_CACHE_MAX = 16
+/** 收敛后写回 cfg 的反馈字段 + 每次进入先清零的草稿字段：不是输入，进精确键只会造成假未命中。
+ *  新增「收敛后写回 cfg」的字段时必须同步加进这里。 */
+const WARM_KEY_OMIT_CFG = new Set([
+  'timeBudgetExcess',
+  'luciaCurtainTriggerCount',
+  'yidhariExternalHealPct',
+  'normaHatToChainCount',
+])
+const warmStartCache: WarmStartEntry[] = []
+const warmStartStats = { stored: 0, seeded: 0 }
+
+function sanitizeWarmKeyCfg(cfg: CharacterOperationConfig): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(cfg as unknown as Record<string, unknown>)) {
+    if (!WARM_KEY_OMIT_CFG.has(k)) out[k] = v
+  }
+  return out
+}
+
+function warmStartExactKey(config: ResourceCalcConfig): string {
+  const globals: Record<string, unknown> = { ...config }
+  delete globals.initialStates
+  delete globals.characters
+  return JSON.stringify([globals, config.characters.map(sanitizeWarmKeyCfg)])
+}
+
+/** 命中则返回缓存的收敛态（只读，调用方自行浅拷贝）；显式 initialStates 时返回 null */
+function lookupWarmStart(config: ResourceCalcConfig): WarmStartEntry | null {
+  if (config.initialStates) return null
+  const entry = warmStartCache.find(e => e.exactKey === warmStartExactKey(config)) ?? null
+  if (entry) warmStartStats.seeded++
+  return entry
+}
+
+function storeWarmStart(exactKey: string, states: IterationState[]): void {
+  const idx = warmStartCache.findIndex(e => e.exactKey === exactKey)
+  if (idx >= 0) warmStartCache.splice(idx, 1)
+  warmStartCache.push({ exactKey, states: states.map(s => ({ ...s })) })
+  if (warmStartCache.length > WARM_START_CACHE_MAX) warmStartCache.shift()
+  warmStartStats.stored++
+}
+
+/** 清空热启动缓存与统计（测试隔离用） */
+export function clearWarmStartCache(): void {
+  warmStartCache.length = 0
+  warmStartStats.stored = 0
+  warmStartStats.seeded = 0
+}
+
+/** 热启动统计（测试/诊断用）：stored=写入次数，seeded=命中注入次数 */
+export function getWarmStartStats(): { stored: number; seeded: number } {
+  return { ...warmStartStats }
+}
+
 export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResult {
   const totalTime = config.totalTime
   const maxIter = config.maxIterations || 20
   const configs = config.characters
 
+  // 热启动：无显式种子时查缓存，命中则从上次收敛态出发（逐位透明，见块注释）
+  const warmExactKey = config.initialStates ? '' : warmStartExactKey(config)
+  const warmSeed = lookupWarmStart(config)
+
   // 初始 state：平A时间按权重分配，强特/大招次数初始为0（initialStates 注入：测试/热启动用）
   const totalWeight = configs.reduce((a, c) => a + c.timeWeight, 0)
-  let states: IterationState[] = config.initialStates && config.initialStates.length === configs.length
-    ? config.initialStates.map(s => ({ ...s }))
+  const injectedStates = config.initialStates && config.initialStates.length === configs.length
+    ? config.initialStates
+    : warmSeed?.states
+  let states: IterationState[] = injectedStates
+    ? injectedStates.map(s => ({ ...s }))
     : configs.map(cfg => ({
     basicAttackTime: totalWeight > 0
       ? totalTime * (cfg.timeWeight / totalWeight)
@@ -116,6 +193,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
 
   // 失衡次数由外部失衡池不动点收敛后传入（连携次数 = chainCountPerStun × stunCount，见 iterate）
   const inputStunCount = config.stunCount ?? 0
+
+  // 热启动回写：本轮末态（无论是否完全收敛，同配置下次都从它出发）
+  if (!config.initialStates) storeWarmStart(warmExactKey, states)
 
   // 收敛后按最终状态折算跨角色联动：卢西娅4命帷幕触发次数（含伊德海莉大招开帷幕）、回血按卢西娅大招次数
   const luciaSlot = configs.findIndex(c => c.agentId === '1451')
