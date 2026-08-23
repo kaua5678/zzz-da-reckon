@@ -22,6 +22,15 @@
         <div class="control">
           <span class="label">预设队伍（各自自动轴）</span>
           <n-select v-model:value="selectedPresetIds" :options="presetOptions" multiple size="small" style="width: 320px" />
+          <n-select
+            v-model:value="quickPickMainC"
+            :options="mainCQuickOptions"
+            size="small"
+            style="width: 130px"
+            placeholder="按主C快选"
+            title="选择主C → 勾选替换为仅含该主C的队伍（其他主C的队伍移除）"
+            clearable
+          />
         </div>
         <div class="control">
           <span class="label">限定金</span>
@@ -75,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NSelect, NButton, NTable, NInputNumber } from 'naive-ui'
 import { teamPresets, teamPresetGroupOptions } from '@/data/teamPresets'
 import { useCatalogStore } from '@/stores/catalog'
@@ -90,6 +99,7 @@ interface BossPresetFile {
 }
 
 const bossPresets = ref<BossPreset[]>([])
+const catalogStore = useCatalogStore()
 const selectedBossId = ref('')
 const selectedPhaseId = ref('')
 const selectedPresetIds = ref<string[]>([])
@@ -121,6 +131,20 @@ const selectedPhase = computed(() =>
 /** 两级下拉：一级分类（如 命破队）→ 二级队伍 */
 const presetOptions = teamPresetGroupOptions
 const canRun = computed(() => selectedPresetIds.value.length >= 1 && selectedBoss.value && selectedPhase.value)
+/** 按主C快选 */
+const quickPickMainC = ref<string | null>(null)
+const mainCQuickOptions = computed(() => {
+  const seen = new Map<string, string>()
+  for (const t of teamPresets) {
+    const main = t.team[0]
+    if (!seen.has(main)) seen.set(main, catalogStore.getAgent(main)?.name.zhCN ?? main)
+  }
+  return [...seen.entries()].map(([value, label]) => ({ value, label }))
+})
+watch(quickPickMainC, main => {
+  if (!main) return
+  selectedPresetIds.value = teamPresets.filter(t => t.team[0] === main).map(t => t.id)
+})
 
 async function run() {
   if (!canRun.value) return
