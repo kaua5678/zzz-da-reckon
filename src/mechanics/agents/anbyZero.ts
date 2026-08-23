@@ -80,16 +80,18 @@ function clampRatio(value: number): number {
   return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
 }
 
-function whole(value: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
+function whole(value: number | undefined): number {
+  const n = value ?? 0
+  return Math.max(0, Math.floor(Number.isFinite(n) ? n : 0))
 }
 
 export function computeAnbyZeroCycle(input: {
   cinemaLevel: number
   cangguangCount: number
   exSpecialCount: number
-  ultimateCount: number
-  teammateWhiteLightning: number
+  /** 缺省按 0（whole 兜底）：外层线程未回填/纯函数测试省略时合法 */
+  ultimateCount?: number
+  teammateWhiteLightning?: number
   additionalActive: boolean
   silverStarCoverage: number
 }): AnbyZeroCycle {
@@ -125,6 +127,7 @@ export function computeAnbyZeroCycle(input: {
     whiteLightningFromCangguang,
     whiteLightningFromC1,
     whiteLightningFromC2Thunder,
+    whiteLightningFromTeammates,
     whiteLightningTotal,
     raijituCount,
     vortexCount: cinemaLevel >= 6
@@ -224,6 +227,7 @@ function buildAnbyZeroExecutions({ cfg, state, executions }: AgentResourceInput)
 }
 
 function applyAnbyZeroPanel({ charResult, panel }: AgentSkillTransformInput): void {
+  if (!panel) return
   ;(panel as Record<string, unknown>).__anbyZeroPanelApplied = true
   const ids = (charResult.executions ?? []).map(e => e.moveId).join(',')
   let patched = 0
