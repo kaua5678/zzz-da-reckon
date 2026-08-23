@@ -15,10 +15,10 @@
  * 明确未建模：
  * - 核心被动「银星使追加攻击暴击伤害额外提升=自身暴伤30%（另+5%）」与额外能力「全队追加攻击对
  *   银星敌人+25%」均为敌方目标向/全队向增益，模块仅作用自身面板，未接全队通道。
- * - 电鸣替代白雷消耗按数量近似（影画2：苍光触发白雷的次数不变，层数经济折进苍光次数输入）；
- *   潜能觉醒全队追加攻击提升经 spec teamBuffs 表达（25 基线 / 潜能满 50）。
+ * - 影画2（用户口径 2026-08）：终结技 6 电鸣等效白雷直接计入总量；苍光·临界速度加快 50%
+ *   （每 3 层电鸣一招，动作时间 ÷1.5，按电鸣配额折算均摊）；潜能觉醒经 teamBuffs 表达。
  * - 苍光·临界（1381023）：每轮 3 层白雷打完后接一招收尾，499.1%、真实动作时间 0.867s 占前台。
- * - 核心被动银星追攻暴伤 = 自身暴伤×35%：按白雷/雷殛行级 critDmgBonus 接入；
+ * - 核心被动银星追攻暴伤 = 自身暴伤×35%：按白雷/雷殛/涡流行级 critDmgBonus 接入；
  *   连携/终结视为追加攻击伤害（Lv7 文本），供限定追击增伤命中。
  */
 import type {
@@ -42,6 +42,10 @@ export const ANBY_ZERO_RAIJITU_PER_LIGHTNING = 3
 export const ANBY_ZERO_VORTEX_PER_LIGHTNING = 6
 export const ANBY_ZERO_CRITICAL_MOVE_ID = '1381023'
 export const ANBY_ZERO_CRITICAL_ACTION_TIME = 0.867
+/** 影画2：每次终结技获得 6 层电鸣（等效白雷触发，计入总量） */
+export const ANBY_ZERO_C2_THUNDER_PER_ULT = 6
+/** 影画2：每消耗 3 层电鸣，下一次苍光·临界速度加快 50%（动作时间 ÷1.5） */
+export const ANBY_ZERO_C2_CRITICAL_SPEEDUP = 1.5
 /** 核心被动：银星敌人受到的追加攻击暴伤额外提升 = 自身暴伤 ×（30% + 延伸 5%） */
 export const ANBY_ZERO_FOLLOWUP_CRIT_DMG_RATIO = 0.35
 export const ANBY_ZERO_C6_VORTEX_MULTIPLIER = 1000
@@ -53,9 +57,13 @@ export interface AnbyZeroCycle {
   additionalActive: boolean
   whiteLightningFromCangguang: number
   whiteLightningFromC1: number
+  whiteLightningFromC2Thunder: number
   whiteLightningTotal: number
   raijituCount: number
   vortexCount: number
+  criticalCount: number
+  criticalFastCount: number
+  criticalActionTime: number
   coreDmgBonus: number
   c4ResIgnore: number
   critRateGain: number
@@ -79,17 +87,31 @@ export function computeAnbyZeroCycle(input: {
   cinemaLevel: number
   cangguangCount: number
   exSpecialCount: number
+  ultimateCount: number
   additionalActive: boolean
   silverStarCoverage: number
 }): AnbyZeroCycle {
   const cinemaLevel = whole(input.cinemaLevel)
   const cangguangCount = whole(input.cangguangCount)
+  const ultimateCount = whole(input.ultimateCount)
   const silverStarCoverage = clampRatio(input.silverStarCoverage)
   const whiteLightningFromCangguang = cangguangCount
   const whiteLightningFromC1 = cinemaLevel >= 1
     ? whole(input.exSpecialCount) * ANBY_ZERO_C1_WHITE_LIGHTNING_PER_EX
     : 0
-  const whiteLightningTotal = whiteLightningFromCangguang + whiteLightningFromC1
+  // 影画2：每次终结技获得 6 层电鸣，等效白雷触发——用户口径「不需要时序建模，直接加总量」
+  const whiteLightningFromC2Thunder = cinemaLevel >= 2
+    ? ultimateCount * ANBY_ZERO_C2_THUNDER_PER_ULT
+    : 0
+  const whiteLightningTotal = whiteLightningFromCangguang + whiteLightningFromC1 + whiteLightningFromC2Thunder
+  const raijituCount = Math.floor(whiteLightningTotal / ANBY_ZERO_RAIJITU_PER_LIGHTNING)
+  // 苍光·临界：每轮 3 白雷打完接一招；C2 后每消耗 3 层电鸣有一招收尾加速 50%（动作时间 ÷1.5）
+  const criticalCount = raijituCount
+  const criticalFastCount = cinemaLevel >= 2 ? Math.min(criticalCount, ultimateCount * 2) : 0
+  const criticalSlowCount = criticalCount - criticalFastCount
+  const criticalActionTime = criticalCount > 0
+    ? ANBY_ZERO_CRITICAL_ACTION_TIME * (criticalFastCount / ANBY_ZERO_C2_CRITICAL_SPEEDUP + criticalSlowCount) / criticalCount
+    : ANBY_ZERO_CRITICAL_ACTION_TIME
   return {
     cinemaLevel,
     cangguangCount,
@@ -97,16 +119,20 @@ export function computeAnbyZeroCycle(input: {
     additionalActive: input.additionalActive,
     whiteLightningFromCangguang,
     whiteLightningFromC1,
+    whiteLightningFromC2Thunder,
     whiteLightningTotal,
-    raijituCount: Math.floor(whiteLightningTotal / ANBY_ZERO_RAIJITU_PER_LIGHTNING),
+    raijituCount,
     vortexCount: cinemaLevel >= 6
       ? Math.floor(whiteLightningTotal / ANBY_ZERO_VORTEX_PER_LIGHTNING)
       : 0,
+    criticalCount,
+    criticalFastCount,
+    criticalActionTime,
     coreDmgBonus: ANBY_ZERO_CORE_DMG * silverStarCoverage,
     c4ResIgnore: cinemaLevel >= 4 ? ANBY_ZERO_C4_RES_IGNORE * silverStarCoverage : 0,
     critRateGain: (input.additionalActive ? ANBY_ZERO_ADDITIONAL_CRIT_RATE : 0)
       + (cinemaLevel >= 2 ? ANBY_ZERO_C2_CRIT_RATE : 0),
-    note: '攻击数据充能：攻击命中→银星充能，每1/3充能=1层白雷（上限3）→3次苍光消耗3层并触发3白雷+1雷殛，轮末接苍光·临界；电鸣替代白雷消耗按数量近似（影画2）。',
+    note: '攻击数据充能：攻击命中→银星充能，每1/3充能=1层白雷（上限3）→3次苍光消耗3层并触发3白雷+1雷殛+1临界；影画2 终结技 6 电鸣等效白雷直接加总量、临界加速50%按电鸣配额折算。',
   }
 }
 
@@ -124,6 +150,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     cinemaLevel: Number(record.anbyZeroCinemaLevel ?? 0),
     cangguangCount: Number(record.anbyZeroCangguangCount ?? 6),
     exSpecialCount: state.exSpecialCount,
+    ultimateCount: state.ultimateCount,
     additionalActive: record.anbyZeroAdditionalActive === true,
     silverStarCoverage: Number(record.anbyZeroSilverStarCoverage ?? 1),
   })
@@ -179,8 +206,8 @@ function buildAnbyZeroExecutions({ cfg, state, executions }: AgentResourceInput)
   pushAnbyZeroExecution(executions, {
     moveId: ANBY_ZERO_CRITICAL_MOVE_ID,
     moveName: '特殊技：苍光·临界',
-    count: cycle.raijituCount,
-    actionTime: ANBY_ZERO_CRITICAL_ACTION_TIME,
+    count: cycle.criticalCount,
+    actionTime: cycle.criticalActionTime,
   })
   pushAnbyZeroExecution(executions, {
     moveId: '1381_c6_electromagnetic_vortex',
@@ -231,7 +258,8 @@ function buildAnbyZeroResourceSections({ result }: AgentResourceSectionsInput) {
     summary: `白雷 ${cycle.whiteLightningTotal} 次 · 雷殛 ${cycle.raijituCount} · 涡流 ${cycle.vortexCount}`,
     rows: [
       { label: '苍光发动', value: `${cycle.cangguangCount} 次`, detail: '每次消耗1层白雷触发1次白雷额外伤害；每轮3层打完接一招苍光·临界' },
-      { label: '苍光·临界', value: `${cycle.raijituCount} 次`, detail: '每轮白雷打完后的收尾强技（499.1%，占前台 0.867s/次）' },
+      { label: '苍光·临界', value: `${cycle.criticalCount} 次`, detail: `每轮白雷打完后的收尾强技（499.1%）；影画2 加速 ${cycle.criticalFastCount} 次（÷1.5），均摊 ${cycle.criticalActionTime.toFixed(3)}s/次` },
+      { label: '影画2 电鸣', value: `+${cycle.whiteLightningFromC2Thunder}`, detail: '每次终结技 6 层电鸣等效白雷触发，计入总量' },
       { label: '影画1强特白雷', value: `+${cycle.whiteLightningFromC1}`, detail: '强化特殊技命中×3，不耗白雷层数' },
       { label: '雷殛', value: `${cycle.raijituCount} 次`, detail: '同一敌人每3次白雷额外伤害触发' },
       { label: '电磁涡流', value: `${cycle.vortexCount} 次`, detail: '影画6每6次白雷触发1000%攻击力电伤' },
