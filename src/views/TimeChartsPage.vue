@@ -579,6 +579,113 @@
         <span class="progress-text">{{ chart3Progress?.text ?? '' }}</span>
       </div>
     </n-card>
+
+    <!-- ============ Chart 4：菲林经济模拟（队伍强度随菲林投入） ============ -->
+    <n-card size="small" :bordered="true">
+      <template #header>
+        菲林经济模拟 · 队伍强度
+        <span class="chart-subtitle">横轴 = 所选 Boss 登场的危局期数（含日期）；每期发菲林（默认 ≈1金/版本）→ 按占比花/存 → 主C优先买金步 → 用当期 Boss 数值 + 关卡固有 buff 算队伍强度（伤害/当期 Boss 血量%）</span>
+      </template>
+      <template #header-extra>
+        <div class="chart3-actions">
+          <n-button size="small" type="primary" :loading="simComputing" @click="runFilmSim">
+            {{ simPoints.length > 0 ? '重新模拟' : '模拟' }}
+          </n-button>
+        </div>
+      </template>
+
+      <!-- 参数表单 -->
+      <div class="sim-controls">
+        <div class="ctl-field">
+          <span class="ctl-label">队伍（主C + 队友1 + 队友2）</span>
+          <div class="team-cell chart3-team-inputs">
+            <n-select v-model:value="simTeam[0]" :options="allAgentOptions" size="tiny" filterable style="width: 118px" placeholder="主C" />
+            <n-select v-model:value="simTeam[1]" :options="allAgentOptions" size="tiny" filterable style="width: 118px" placeholder="队友1" />
+            <n-select v-model:value="simTeam[2]" :options="allAgentOptions" size="tiny" filterable style="width: 118px" placeholder="队友2" />
+          </div>
+        </div>
+        <div class="ctl-field">
+          <span class="ctl-label">初始金数</span>
+          <n-input-number v-model:value="simInitialGold" :min="0" :max="24" size="small" style="width: 90px" />
+        </div>
+        <div class="ctl-field">
+          <span class="ctl-label">菲林/版本（≈1金=15000）</span>
+          <n-input-number v-model:value="simFilmPerVersion" :min="0" :max="100000" :step="1000" size="small" style="width: 110px" />
+        </div>
+        <div class="ctl-field">
+          <span class="ctl-label">消耗占比（0~1）</span>
+          <n-input-number v-model:value="simSpendRatio" :min="0" :max="1" :step="0.05" size="small" style="width: 90px" />
+        </div>
+        <div class="ctl-field">
+          <span class="ctl-label">每版本充值（元）</span>
+          <n-input-number v-model:value="simTopUp" :min="0" :max="10000" :step="30" size="small" style="width: 100px" />
+        </div>
+        <div class="ctl-field">
+          <span class="ctl-label">充值汇率（菲林/元，首充双倍=20）</span>
+          <n-input-number v-model:value="simTopUpRate" :min="1" :max="100" size="small" style="width: 80px" />
+        </div>
+        <div class="ctl-field">
+          <span class="ctl-label">目标卡池（清空银行投入）</span>
+          <n-select v-model:value="simTargetPeriod" :options="simTargetOptions" size="small" clearable filterable style="width: 180px" placeholder="无（不加码）" />
+        </div>
+      </div>
+
+      <!-- 折线图：血量%主线 + 金数副线 -->
+      <div v-if="simPoints.length > 0" class="timeline-wrap sim-plot">
+        <svg
+          :viewBox="`0 0 ${svgW} ${simSvgH}`"
+          class="timeline-svg"
+          @mousemove="onSimMove"
+          @mouseleave="simHover = -1"
+        >
+          <g v-for="(y, i) in simYGrid" :key="'fg' + i">
+            <line :x1="padL" :x2="svgW - padR" :y1="y" :y2="y" class="grid-line" />
+            <text :x="padL - 8" :y="y + 3" class="axis-label" text-anchor="end">{{ simYLabel(i) }}%</text>
+          </g>
+          <!-- 100% 击杀线 -->
+          <line :x1="padL" :y1="simY(100)" :x2="svgW - padR" :y2="simY(100)" class="kill-line-ref" />
+          <text :x="svgW - padR - 2" :y="simY(100) - 5" class="axis-label" text-anchor="end">100%</text>
+          <!-- 队伍强度主线 -->
+          <polyline :points="simHpLine" class="sim-line" />
+          <!-- 金数副线（右轴） -->
+          <polyline :points="simGoldLine" class="sim-gold-line" />
+          <!-- 金数右轴刻度 -->
+          <text v-for="g in 4" :key="'gp' + g" :x="svgW - padR + 2" :y="simGoldY((simGoldMax / 4) * g) + 3" class="axis-label gold-axis-label">{{ Math.round((simGoldMax / 4) * g) }}</text>
+          <!-- 点 -->
+          <g v-for="(p, i) in simPts" :key="'fp' + i">
+            <circle :cx="p.x" :cy="p.y" r="3.5" :fill="p.color" :stroke="simHover === i ? '#fff' : 'rgba(255,255,255,0.25)'" :stroke-width="simHover === i ? 2 : 1" class="trend-point">
+              <title>{{ p.label }}：{{ fmt(p.hpRatio, 1) }}%（{{ p.totalGold }}金）</title>
+            </circle>
+          </g>
+          <!-- X 轴标签（抽稀） -->
+          <g v-for="t in simXTicks" :key="'fx' + t.index">
+            <text :x="simX(t.index)" :y="simSvgH - 8" class="axis-label x-label" text-anchor="middle">{{ t.label }}</text>
+          </g>
+          <line v-if="simHover >= 0" :x1="simPts[simHover].x" :y1="padT" :x2="simPts[simHover].x" :y2="padT + plotH" class="hover-line" />
+        </svg>
+
+        <!-- 悬浮卡片 -->
+        <div v-if="simHover >= 0 && simHoverInfo" class="hover-card" :style="{ left: simCardX + 'px', top: simCardY + 'px' }">
+          <div class="hc-title">期 {{ simHoverInfo.label }}</div>
+          <div class="hc-row">{{ simHoverInfo.date }} · 队伍 {{ simHoverInfo.teamNames.join('+') }}</div>
+          <div class="hc-row">伤害 {{ compact(simHoverInfo.damage) }}（{{ fmt(simHoverInfo.hpRatio, 1) }}%）</div>
+          <div class="hc-row">{{ simHoverInfo.totalGold }} 金 · {{ simHoverInfo.goldLabel }}</div>
+          <div class="hc-row">菲林：存 {{ simHoverInfo.filmBank }} · 本期投 {{ simHoverInfo.filmSpent }} · 累计 {{ simHoverInfo.filmInvestedTotal }}</div>
+        </div>
+      </div>
+      <div v-else class="empty-hint small-hint">设置模拟参数后点「模拟」：每期按菲林投放 → 占比花/存 → 主C优先买金 → 当期 Boss + buff 出强度。</div>
+
+      <!-- 进度条 -->
+      <div v-if="simComputing || simProgress" class="chart-progress">
+        <n-progress
+          type="line"
+          :percentage="Math.round((simProgress?.pct ?? 0) * 100)"
+          :show-indicator="false"
+          :height="6"
+        />
+        <span class="progress-text">{{ simProgress?.text ?? '' }}</span>
+      </div>
+    </n-card>
   </div>
 </template>
 
@@ -589,12 +696,12 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamStrengthSeed, type TeamTimelineResult } from '@/composables/teamTimeline'
-import { buildNewCharacterRows, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
+import { buildNewCharacterRows, computeFilmSimulation, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
 import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
 import { fmt, compact } from '@/utils/format'
-import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
+import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -613,6 +720,7 @@ const mainAgentOptions = computed(() =>
 
 // ========== Boss（必选直选；期数概念已移除——横轴固定为主C实装起到最新） ==========
 const bossPresets = ref<BossPreset[]>([])
+const phaseViews = ref<PhaseView[]>([])
 const selectedBossId = ref('')
 
 /** Boss 最近一次出场开打时间（倒序排列用） */
@@ -635,6 +743,7 @@ onMounted(async () => {
     if (res.ok) {
       const data = (await res.json()) as BossPresetFile
       bossPresets.value = data.bosses ?? []
+      phaseViews.value = data.phaseViews ?? []
       // 默认选最新危局 Boss（无危局期数的 Boss 不作默认）
       const withCA = bossOptions.value.filter(o => {
         const b = bossPresets.value.find(x => x.id === o.value)
@@ -1249,6 +1358,148 @@ function onChart3Move(e: MouseEvent) {
     chart3Hover.value = -1
   }
 }
+
+// ========== Chart 4：菲林经济模拟（队伍强度随菲林投入） ==========
+const simTeam = ref<[string, string, string]>(['1371', '1251', '1421']) // 默认 仪青潘
+const simInitialGold = ref(6)
+const simFilmPerVersion = ref(15000)
+const simSpendRatio = ref(0.5)
+const simTopUp = ref(0)
+const simTopUpRate = ref(10)
+const simTargetPeriod = ref('')
+const simComputing = ref(false)
+const simProgress = ref<{ pct: number; text: string } | null>(null)
+const simPoints = ref<FilmSimPoint[]>([])
+
+const simTargetOptions = computed(() =>
+  bossPeriodAxis.value.map(p => ({ value: p.id, label: `${p.seq} · ${p.label}` })),
+)
+
+async function runFilmSim() {
+  const boss = selectedBoss.value
+  if (!boss) return
+  const axis = bossPeriodAxis.value.map(p => ({ id: p.id, label: `${p.seq}`, date: p.begin }))
+  if (axis.length === 0) {
+    simProgress.value = { pct: 1, text: '所选 Boss 在危局期数数据中无登场记录' }
+    setTimeout(() => { simProgress.value = null }, 2500)
+    return
+  }
+  simComputing.value = true
+  simProgress.value = { pct: 0, text: '准备…' }
+  try {
+    const res = await computeFilmSimulation(calc, {
+      boss,
+      axisNodes: axis,
+      periodViews: phaseViews.value,
+      team: simTeam.value,
+      initialGold: simInitialGold.value ?? 6,
+      filmPerVersion: simFilmPerVersion.value ?? 15000,
+      spendRatio: simSpendRatio.value ?? 0.5,
+      topUpPerVersion: simTopUp.value ?? 0,
+      topUpFilmPerYuan: simTopUpRate.value ?? 10,
+      targetPeriodId: simTargetPeriod.value || undefined,
+      autoBuild: autoBuild.value,
+      onProgress: p => { simProgress.value = p },
+    })
+    simPoints.value = res.points
+  } finally {
+    simComputing.value = false
+    simProgress.value = null
+  }
+}
+
+// ---- Chart 4 SVG（血量%主线 + 金数副线） ----
+const simSvgH = padT + plotH + 30
+const simYMax = computed(() => {
+  const maxR = Math.max(...(simPoints.value.map(p => p.hpRatio) ?? [0]), 0)
+  const target = Math.max(100, maxR * 1.05)
+  const step = target <= 200 ? 50 : 100
+  return Math.ceil(target / step) * step
+})
+function simY(v: number): number {
+  return padT + plotH - (v / simYMax.value) * plotH
+}
+const simYGrid = computed(() => {
+  const step = simYMax.value <= 200 ? 50 : 100
+  const out: number[] = []
+  for (let v = 0; v <= simYMax.value; v += step) out.push(simY(v))
+  return out
+})
+function simYLabel(i: number): number {
+  const step = simYMax.value <= 200 ? 50 : 100
+  return i * step
+}
+const simGoldMax = computed(() => Math.max(...(simPoints.value.map(p => p.totalGold) ?? [6]), 6))
+function simGoldY(g: number): number {
+  return padT + plotH - (g / simGoldMax.value) * plotH
+}
+function simX(i: number): number {
+  const n = simPoints.value.length
+  if (n <= 1) return padL + plotW.value / 2
+  return padL + (i / (n - 1)) * plotW.value
+}
+const simXTicks = computed(() => {
+  const pts = simPoints.value
+  const step = Math.max(1, Math.ceil(pts.length / 12))
+  const out: { index: number; label: string }[] = []
+  for (let i = 0; i < pts.length; i += step) out.push({ index: i, label: pts[i].label })
+  if (pts.length > 1 && (pts.length - 1) % step !== 0) out.push({ index: pts.length - 1, label: pts[pts.length - 1].label })
+  return out
+})
+const simPts = computed(() =>
+  simPoints.value.map((p, i) => ({
+    x: simX(i),
+    y: simY(Math.min(p.hpRatio, simYMax.value)),
+    color: colorOf(p.team.join(',')),
+    label: p.label,
+    hpRatio: p.hpRatio,
+    totalGold: p.totalGold,
+  })),
+)
+const simHpLine = computed(() => simPts.value.map(p => `${p.x},${p.y}`).join(' '))
+const simGoldLine = computed(() =>
+  simPoints.value.map((p, i) => `${simX(i)},${simGoldY(Math.min(p.totalGold, simGoldMax.value))}`).join(' '),
+)
+const simHover = ref(-1)
+const simHoverInfo = computed(() => {
+  const p = simPoints.value[simHover.value]
+  if (!p) return null
+  return {
+    label: p.label,
+    date: p.date,
+    teamNames: p.team.map(agentName),
+    damage: p.damage,
+    hpRatio: p.hpRatio,
+    totalGold: p.totalGold,
+    goldLabel: p.goldLabel,
+    filmBank: p.filmBank,
+    filmSpent: p.filmSpent,
+    filmInvestedTotal: p.filmInvestedTotal,
+  }
+})
+const simCardX = ref(0)
+const simCardY = ref(0)
+function onSimMove(e: MouseEvent) {
+  const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
+  const scale = svgW.value / rect.width
+  const svgX = (e.clientX - rect.left) * scale
+  let best = -1
+  let bestDist = Infinity
+  simPts.value.forEach((p, i) => {
+    const d = Math.abs(p.x - svgX)
+    if (d < bestDist) {
+      bestDist = d
+      best = i
+    }
+  })
+  if (best >= 0 && bestDist < (plotW.value / Math.max(1, simPoints.value.length)) * 2) {
+    simHover.value = best
+    simCardX.value = Math.min(rect.width - 260, e.clientX - rect.left + 12)
+    simCardY.value = e.clientY - rect.top + 8
+  } else {
+    simHover.value = -1
+  }
+}
 </script>
 
 <style scoped>
@@ -1613,5 +1864,35 @@ function onChart3Move(e: MouseEvent) {
   font-size: 11.5px;
   color: rgba(255, 255, 255, 0.72);
   white-space: nowrap;
+}
+
+/* ========== Chart 4：菲林经济模拟 ========== */
+.sim-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-end;
+  margin-bottom: 10px;
+}
+.sim-plot {
+  margin-top: 4px;
+}
+.sim-line {
+  fill: none;
+  stroke: #4c8bf5;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.sim-gold-line {
+  fill: none;
+  stroke: #f6ad55;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.gold-axis-label {
+  fill: rgba(246, 173, 85, 0.75);
 }
 </style>

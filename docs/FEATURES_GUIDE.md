@@ -166,7 +166,8 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
    - **当期 Boss 排期车道**：泳道区第 4 轨按节点显示该期危局 Boss（仅试炼时标注「（试炼）」）；选中某 Boss（如秽息司祭）即高亮其历次出场节点，hover 卡片与明细表同步显示，图表下方给出场节点摘要——这些节点上的换人/入队判定即「当期新队友入队比较」。
    - **限定S首次UP × 版本直伤系数散点**（页面底部静态卡片，无需点计算）：每位限定 S 在首次 UP 节点的支援突击伤害比值（中心系数，`buildDirectDamageTimeline` 推导）；灰 ≈100%、蓝 >105%、橙 <95%，3.2 测试服节点阴影标注——直读历代直伤膨胀档位（1.18/1.27 等，口径见 §5）。
 3. **每期新角色 · 强队强度卡**（页面底部，横轴 = **版本卡池期**，与上面的危局期数轴不同）：每个点 = 当期新 S 角色的**强队**（**纯用户手填展示**——已删引擎建议；预填 `src/data/strongTeamPresets.ts` 用户口述预设（2026-08-23，18 队），仓库 preset 补剩余；**同一角色可添加多支队伍 = 同一时间点多点对比**，点色按队伍构成映射）。行清单**排除 1.0 常驻 S**（猫又/11号/珂蕾妲/莱卡恩/格莉丝/丽娜 不是当期新角色；潘引壶 A 级特例保留）。强度按**当前全部已实装**（队伍可含晚于主C实装的队友，如 诺姆 队里的 佩洛伊斯 是 3.2 测试服角色）+ 所选金数配装（默认轻量档主C优先确定性分配；勾选最优加金则逐金贪婪）。未配置强队的角色不出点；3.2 测试服行带标注。
-4. 可选「包含测试服角色（3.2 未实装）」（缺省关，防测试服数值污染曲线；开时 3.2 节点标注「测试服数据」）。
+4. **菲林经济模拟卡**（页面底部，横轴 = 所选 Boss 登场的危局期数 + 日期）：选定 Boss（复用顶部选择）+ 队伍（主C+队友，默认仪青潘）→ 逐期发菲林（默认 ≈1金/版本 = 15000，可编辑）→ 按**消耗占比**花/存（如给 1 金用半金 = 0.5）→ 抽卡资金按**主C优先**顺序买金步（命座金 = 93.75 抽 = 15000 菲林；音擎金 = 62.5 抽 = 10000 菲林——依据游戏内调频详情：角色池综率 1.6% × 50/50 保底、音擎池综率 2% × 75/25 保底）→ **每期只用「当前期数」的 Boss 血量 + 关卡固有 buff（layer_buff，期视图有数据才应用）+ 队伍**算伤害/血量%。可选**目标卡池**（把银行菲林一期清空投入抽卡）、**每版本充值（元）× 直充汇率（默认 10 菲林/元，首充双倍 = 20）**加额外菲林。初始金数/占比/汇率均可设定；纵轴 = 血量%（主线）+ 金数（右轴虚线副线），悬停看详情。
+5. 可选「包含测试服角色（3.2 未实装）」（缺省关，防测试服数值污染曲线；开时 3.2 节点标注「测试服数据」）。
 
 ### 4.2 口径（用户拍板 + 实现细节）
 
@@ -189,6 +190,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 版本节点 / S 级实装版本 | `src/data/versionTimeline.ts`（新增版本/角色时更新；3.2 测试服 note 标注） |
 | 搜索 / 加金 / 收敛过滤算法 | `src/composables/teamTimeline.ts`（`computeTeamTimeline` / `computeOptimalTeamAllocation` / `budgetAwareStateFor`） |
 | 每期新角色·强队强度（Chart 3） | `teamTimeline.ts`：`buildNewCharacterRows`（版本×新角色行，**排除 1.0 常驻 S**）/ `computeNewCharacterPoints`（**同角色多队**逐队配装+收敛过滤）/ `prefillStrongTeamsFromPresets`（口述预设优先 + 仓库 preset 补剩余）；**口述强队单一事实源 = `data/strongTeamPresets.ts`** |
+| 菲林经济模拟（Chart 4） | `teamTimeline.ts`：`computeFilmSimulation`（经济累积 + 主C优先买金 + 逐期 Boss/buff 求值）；**抽卡期望/汇率常量 = `data/filmEconomy.ts`**（角色金 93.75 抽 / 音擎金 62.5 抽 / 直充 10 菲林/元，萌百·游戏内调频详情） |
 | 图表 / 控制面板 / 明细表 | `src/views/TimeChartsPage.vue`（自绘 SVG，无图表库） |
 | 直伤系数散点数据 | `composables/multiplierCoefficients.ts` 的 `buildDirectDamageTimeline`（限定S × 首次UP节点 × 支援突击锚点比值；口径见 §5） |
 | 页面注册 | `CalculatorView.vue` pageMap + `AppHeader.vue`（`timeline` tab） |
