@@ -58,6 +58,7 @@ export interface AnbyZeroCycle {
   whiteLightningFromCangguang: number
   whiteLightningFromC1: number
   whiteLightningFromC2Thunder: number
+  whiteLightningFromTeammates: number
   whiteLightningTotal: number
   raijituCount: number
   vortexCount: number
@@ -88,6 +89,7 @@ export function computeAnbyZeroCycle(input: {
   cangguangCount: number
   exSpecialCount: number
   ultimateCount: number
+  teammateWhiteLightning: number
   additionalActive: boolean
   silverStarCoverage: number
 }): AnbyZeroCycle {
@@ -103,7 +105,10 @@ export function computeAnbyZeroCycle(input: {
   const whiteLightningFromC2Thunder = cinemaLevel >= 2
     ? ultimateCount * ANBY_ZERO_C2_THUNDER_PER_ULT
     : 0
-  const whiteLightningTotal = whiteLightningFromCangguang + whiteLightningFromC1 + whiteLightningFromC2Thunder
+  // 队友追加攻击命中充能折算（外层线程回填，含 5s ICD 与 75% 计入系数）
+  const whiteLightningFromTeammates = whole(input.teammateWhiteLightning)
+  const whiteLightningTotal = whiteLightningFromCangguang + whiteLightningFromC1
+    + whiteLightningFromC2Thunder + whiteLightningFromTeammates
   const raijituCount = Math.floor(whiteLightningTotal / ANBY_ZERO_RAIJITU_PER_LIGHTNING)
   // 苍光·临界：每轮 3 白雷打完接一招；C2 后每消耗 3 层电鸣有一招收尾加速 50%（动作时间 ÷1.5）
   const criticalCount = raijituCount
@@ -151,6 +156,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     cangguangCount: Number(record.anbyZeroCangguangCount ?? 6),
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
+    teammateWhiteLightning: Number(record.anbyZeroTeammateWhiteLightning ?? 0),
     additionalActive: record.anbyZeroAdditionalActive === true,
     silverStarCoverage: Number(record.anbyZeroSilverStarCoverage ?? 1),
   })
@@ -260,6 +266,7 @@ function buildAnbyZeroResourceSections({ result }: AgentResourceSectionsInput) {
       { label: '苍光发动', value: `${cycle.cangguangCount} 次`, detail: '每次消耗1层白雷触发1次白雷额外伤害；每轮3层打完接一招苍光·临界' },
       { label: '苍光·临界', value: `${cycle.criticalCount} 次`, detail: `每轮白雷打完后的收尾强技（499.1%）；影画2 加速 ${cycle.criticalFastCount} 次（÷1.5），均摊 ${cycle.criticalActionTime.toFixed(3)}s/次` },
       { label: '影画2 电鸣', value: `+${cycle.whiteLightningFromC2Thunder}`, detail: '每次终结技 6 层电鸣等效白雷触发，计入总量' },
+      { label: '队友追攻白雷', value: `+${cycle.whiteLightningFromTeammates}`, detail: '队友追加攻击命中充能 16.667/次（5s ICD、计入 75%）→ 每 1/3 充能 1 层' },
       { label: '影画1强特白雷', value: `+${cycle.whiteLightningFromC1}`, detail: '强化特殊技命中×3，不耗白雷层数' },
       { label: '雷殛', value: `${cycle.raijituCount} 次`, detail: '同一敌人每3次白雷额外伤害触发' },
       { label: '电磁涡流', value: `${cycle.vortexCount} 次`, detail: '影画6每6次白雷触发1000%攻击力电伤' },

@@ -1,4 +1,5 @@
 import { YESHUGUANG_FULL_STUN_MOVES } from '@/mechanics/agents/yeshuguang'
+import { inferSkillDamageTarget } from '@/core/damage'
 import { estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
 import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
@@ -687,7 +688,7 @@ function applyNormaHatChain(
     return out
   }
 
-  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0): {
+  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevAnbyZeroTeammateWl = 0): {
     resourceResult: TeamResourceResult
     stunPool: StunPoolResult | null
     anomalyPool: AnomalyPoolResult | null
@@ -704,6 +705,7 @@ function applyNormaHatChain(
     yixuanFuFaForJufufu: number
     teamUltimateForJufufu: number
     yeshuguangGiftUlt: number
+    anbyZeroTeammateWl: number
     lucyTeammateEx: number
     lighterTeamEnergy: number
   } | null {
@@ -870,6 +872,10 @@ function applyNormaHatChain(
           // 决算次数 = 失衡次数（一次失衡只能决算一次，决算后即出失衡）；轴模式按轴内 1551016 块计数
           peiluoVerdictCount: stunCount,
         }
+      }
+      if (merged.agentId === '1381') {
+        // 零号·安比：队友追加攻击命中折算的白雷层数（外层不动点线程回填）
+        return { ...merged, anbyZeroTeammateWhiteLightning: prevAnbyZeroTeammateWl }
       }
       if (merged.agentId === '1471') {
         // 般岳：轴内捏的强特/连段块 → 次数反馈给模块（先扣闪能，剩余自动补连段）；轴模式地动滑块归 0
@@ -1195,6 +1201,32 @@ function applyNormaHatChain(
       }
     }
 
+    // 零号·安比：队友追加攻击命中 → 银星充能（每次 16.667；每满 1/3=33.333 得 1 层白雷）；
+    // 5 秒内最多触发一次（ICD 上限 = floor(战斗时长/5)）；默认只计 75%
+    let anbyZeroTeammateWlNext = 0
+    {
+      const az = adj2 ?? rr
+      const hits = az.characters
+        .filter(c => c.agentId !== '1381')
+        .reduce((sum, c) => {
+          const skills = catalogStore.getAgentSkills(c.agentId)
+          return sum + (c.executions ?? []).reduce((a, e) => {
+            if ((e as any).skillDamageTarget === 'additionalAttack') return a + (e.count ?? 0)
+            // resourceResult 行上没有现成标记：按 catalog moveId 现场推断（同伤害池 infer 口径）
+            for (const cat of skills?.categories ?? []) {
+              const mv = (cat.moves ?? []).find(m => String(m.id) === String(e.moveId))
+              if (mv && inferSkillDamageTarget(cat, mv) === 'additionalAttack') return a + (e.count ?? 0)
+            }
+            return a
+          }, 0)
+        }, 0)
+      const icdCap = Math.floor((configStore.enemy.battleTime ?? 180) / 5)
+      const triggers = Math.min(hits, icdCap)
+      if (az.characters.some(c => c.agentId === '1381')) {
+        anbyZeroTeammateWlNext = Math.floor(triggers * (16.667 / 33.333) * 0.75)
+      }
+    }
+
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
     const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly)
 
@@ -1257,6 +1289,7 @@ function applyNormaHatChain(
       yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
       teamUltimateForJufufu: teamUltimateForJufufuNext,
       yeshuguangGiftUlt: yeshuguangGiftUltNext,
+      anbyZeroTeammateWl: anbyZeroTeammateWlNext,
       lucyTeammateEx: lucyTeammateExNext,
       lighterTeamEnergy: lighterTeamEnergyNext,
     }
@@ -1279,6 +1312,7 @@ function applyNormaHatChain(
     let prevYixuanFuFaForJufufu = 0
     let prevTeamUltimateForJufufu = 0
     let prevYeshuguangGiftUlt = 0
+    let prevAnbyZeroTeammateWl = 0
     let prevLucyTeammateEx = 0
     let prevLighterTeamEnergy = 0
     let prevAnomalyDecibelBonus: number[] = []
@@ -1300,7 +1334,7 @@ function applyNormaHatChain(
       outerRounds = k + 1
       // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
       const locked = lockedStunCount >= 0
-      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy)
+      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevAnbyZeroTeammateWl)
       const ait = out?.auricInkTriggerCount ?? 0
       const gr = out?.goodReview
       if (gr !== undefined && gr >= 0) prevGoodReview = gr
@@ -1340,6 +1374,7 @@ function applyNormaHatChain(
       prevYixuanFuFaForJufufu = out?.yixuanFuFaForJufufu ?? 0
       prevTeamUltimateForJufufu = out?.teamUltimateForJufufu ?? 0
       prevYeshuguangGiftUlt = out?.yeshuguangGiftUlt ?? 0
+      prevAnbyZeroTeammateWl = out?.anbyZeroTeammateWl ?? 0
       prevLucyTeammateEx = out?.lucyTeammateEx ?? 0
       prevLighterTeamEnergy = out?.lighterTeamEnergy ?? 0
       prevUltSeq = ultSeq
