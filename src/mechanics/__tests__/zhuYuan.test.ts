@@ -184,4 +184,16 @@ describe('朱鸢强化霰弹资源循环', () => {
     expect(afterglow).toBeTruthy()
     expect(afterglow!.summary).toContain('4')
   })
+
+  it('影画6 余温回能：floor(霰弹总量/12)次 ×30 能量并入 initialEnergyGift（用户口径 2026-08）', () => {
+    // cinema6 含影画1 快速装填：总量 36+21=57 → floor(57/12)=4 次 ×30 = 120 能量
+    const cfg: any = { zhuyuanCinemaLevel: 6, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    zhuYuanMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    expect(cfg.initialEnergyGift).toBe(4 * 30)
+
+    // 非6命不注入
+    const cfg0: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    zhuYuanMechanic.buildResourceResult!({ cfg: cfg0, state: mkState() } as any)
+    expect(cfg0.initialEnergyGift ?? 0).toBe(0)
+  })
 })

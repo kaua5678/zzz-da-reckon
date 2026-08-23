@@ -19,6 +19,18 @@
 
 辅助：`docs/GAME_TERM_TO_CODE_FIELD.md`（中文术语→字段）、`docs/MECHANIC_PATTERNS.md`（**机制模式目录：录新角色前先做模式匹配**）、`docs/MECHANICS_IMPLEMENTATION.md`（角色机制档案）、`README.md` §3（录入工作流）。
 
+### 录入角色 / 补机制：角色档案必读（仅此类任务）
+
+**任务是「录入新角色 / 给已有角色补机制 / 核对角色机制口径」时，动手前必须读 `docs/MECHANICS_IMPLEMENTATION.md` 中该角色的档案段**（`grep -n "角色名\|agentId" docs/MECHANICS_IMPLEMENTATION.md` 定位）：
+
+- 档案段记录了该角色**已确认的口径**（资源循环、触发条件、乘区归属、命座语义）与**明确未建模项**——不读它 = 凭印象实现 = 必然踩坑（2026-08 薇薇安实证：档案已写「额外能力侵蚀+12% / 异放 / 预言DoT 未建模」，未读档案的 AI 重新"发现"了这些并做错口径）。
+- 档案段首行有「**当前实现状态**」标注（`[已实现]` / `[部分实现]` / `[未建模]` + 实现位置），以它为准核对现状，不要凭 spec status 或记忆判断。
+- 补机制时**同步更新档案段**（改完机制 → 更新实现状态行 + 关键口径），保持档案 = 当前事实源。
+
+**其他任务（改引擎 / 排查 / UI）不需要读档案**——按任务决策树进对应层即可，档案只服务角色录入。
+
+> ⚠️ 例外：`docs/MECHANICS_IMPLEMENTATION.md` 未收录的角色（新角色刚导入、档案还没建），以 `src/specs/agents/<id>.json` 的 notes + raw 数据为准，并在录入时**新建档案段**。
+
 ## 1. 硬性规则
 
 1. **基线先绿再动手**：改代码前跑 `npm run check` 确认通过；改完跑 check + `npm run typecheck` + `npm run build`（验收命令见 §3）。

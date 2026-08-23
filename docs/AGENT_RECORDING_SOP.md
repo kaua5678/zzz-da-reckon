@@ -79,6 +79,27 @@ npm run verify      # validate:data + validate:specs + vitest + typecheck + buil
 npm run docs:status # 重新生成 implementation-status.md（CI 检查漂移）
 ```
 
+## 3.8 异常结算区与跨角色计数（薇薇安 1331 实证，2026-08）
+
+**异放（release）跟随事件触发**，不是独立资源。录入异放类核心被动时：
+- 载体 = 触发异放的招式（如薇薇安落羽生花、爱芮绝对音准#3）；**触发有条件**——「命中处于异常状态的目标」才触发（异常角色默认满覆盖，`xxx.releaseCoverage` 滑块默认 1）。
+- 次数口径：`载体命中异常目标次数 = 载体次数 × releaseCoverage`；`releaseRatio`（basis=anomalyProficiency / anomalyMastery，perTenByElement 各元素比例）→ 引擎按元素覆盖率分配次数、算倍率（参照爱芮模板）。
+- **异放限定增益**（如「异放无视 15% 抗性」）必须走模块 `releaseModifier` 返回 `enemyResReduction`——**只作用于异放结算**（`pushRelease` 单独加）。禁止写成面板级 `enemyResReduction`（会让全伤害都无视抗性）。
+- **异放暴击**（如爱芮 C1）用事件的 `releaseCrit` 字段（基础率/伤 + 掌控阈值递增）。
+
+**跨角色计数（团队级触发）**：机制依赖「全队强特次数」「全队异常触发次数」时，`buildAnomalyEvents` 阶段拿不到（异常池在更后阶段）。用**收敛注入**模式（参照露西 `lucyTeammateExNext` / 莱卡恩 `backstageDodgeCount`）：
+1. `useResourceCalc.ts` runCalcRound 增加 `prev<Agent><Metric>` 参数 + 返回值字段
+2. 异常池算完后聚合（`rr.characters` 的 exSpecialCount、`ap1.perElement` 的 triggerCount）
+3. merged 块按 agentId 注入 cfg（`vivianTeamExTotal` 等）
+4. 模块 `cycleFromInput` 读注入字段，首轮回退 `state.exSpecialCount`
+5. 收敛循环传 prev（`prevVivianTeamEx = out?.vivianTeamEx`）
+
+**后台自动招式**（预言 DoT、邦布、虎威等）：`timeBucket: 'backstage'`、`actionTime 0` 不占前台时间；次数 = `floor(战斗时长 × 覆盖率 / 间隔)`（如预言 DoT = floor(t × dotCoverage × releaseCoverage / 0.55)）。文档先例：莱卡恩围猎蓄力、橘福福虎威、露西邦布、丽娜邦布。
+
+**资源循环双资源**（飞羽→护羽→消耗）：spec `resources` 表达不了跨资源转化状态机 → 在模块 `computeXxxCycle` 实现（纯函数 + 单测），spec `resources: []` 留空并注明「实现位置：模块」。
+
+**异常触发机制（失衡轴内，待建系统）**：异常触发目前是总量口径（总积蓄/阈值表）。用户口径（2026-08）：失衡轴内应建模「初始进失衡积蓄值 → 动作积满异常条 → 触发异常 + 伴随事件」的逐事件系统。这是引擎级新系统（`stunAxis` 与 `anomalyPool` 目前无交互），接入后源2/异放次数直接用该系统计数。当前先以收敛注入近似，标注 pending。
+
 ## 5. 生效测试模板（机制录入必备）
 
 ```ts
@@ -179,6 +200,25 @@ expect(pN.enemyPhysicalResReduction - p0.enemyPhysicalResReduction).toBe(18)
 - **禁止**对 `teammate-buffs.json` / `catalog.json` / `character-constellations.json` 整文件重 dump 改缩进。  
 - 只改目标 `group id` / `buff id` / `characters[id]`。  
 - 改完用脚本确认：`changed groups/chars` 只有预期 id。
+
+## 6.10 录入完成清单（交付前必须逐项自检，用户按此核对）
+
+> 录入角色 / 补机制结束时，回复里**逐项列出本清单**，每一项写「✅ + verifier（命令/测试名）」或「❌ + 为什么没做」。禁止用「已实现」概括——用户按此表核对，缺项 = 未完成。
+
+| # | 检查项 | 判定标准（verifier） | 常见"假装完成" |
+|---|---|---|---|
+| 1 | **读了角色档案**（MECHANICS_IMPLEMENTATION.md 对应段） | 回复引用档案里的关键口径（触发条件/乘区归属） | 凭印象实现，不读档案 |
+| 2 | **每条机制有生效测试**（不是字段存在） | 测试断言「改机制 → 伤害池/面板**真的变**」（差分断言）；`npm test -- <file>` 绿 | 只断言字段被赋值，不验证进结算 |
+| 3 | **额外能力门控**（漏了永远开着） | 正例 + 负例（不同属性不同阵营队友不触发）；`computePanelPhases` 断言 | 只做正例，负例没测 |
+| 4 | **命座提升率页自检** | 「资源利用率页·命座提升率」无橙色「⚠无变化」；`allAgentsSweep` 绿 | 不看页面，只跑单测 |
+| 5 | **跨角色计数**（依赖队友数据） | 收敛注入字段（如 `vivianTeamExTotal`）有来源、有消费、测试断言真实值 | 用滑块近似假装"可调" |
+| 6 | **异放限定增益走 `releaseModifier`** | 只作用于异放结算；普通伤害不受影响（差分断言） | 写面板级 `enemyResReduction` 让全伤害生效 |
+| 7 | **乘区归属正确** | 百分比攻击走 `atkPct` 加算、伤害% 走 `dmgBonus`，不独立乘算 | `atk × 1.12` 独立乘算 |
+| 8 | **资源循环闭环**（消耗→收益→加强） | 纯函数单测覆盖来源/消耗/上限；资源卡展示真实值 | 只展示不生效（如返还飞羽只是 UI 文案） |
+| 9 | **档案段已更新** | `MECHANICS_IMPLEMENTATION.md` 对应段「当前实现状态」行已改 + 关键口径同步 | 只改代码，档案留旧 |
+| 10 | **spec/JSON 校验绿** | `npm run validate:specs` + `validate:data` 绿；JSON 无手改缩进 | 只跑 vitest |
+
+**核心原则**：完成 = 「机制进了伤害池/面板 **且** 有测试证明它进了」。写了代码改了 spec 但机制没进结算 = 未完成（2026-08 薇薇安实证：额外能力 +12% 声称"teammate-buffs 承载"实际没承载）。
 
 ## 7. 测试卫生（面板断言）
 

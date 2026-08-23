@@ -243,7 +243,7 @@
     }
   ],
   "notes": [
-    "普通风化 DoT 基础倍率模型尚未接入，风化 DoT 本体相关命座效果先记录为 partial。",
+    "[已接入·用户口径 2026-08] 风化无 DOT：风化触发后直接造成一次 1250% 倍率直伤，并施加 30s 风化效果（不可被覆盖）。引擎实现：ANOMALY_SINGLE_HIT_MULTIPLIER.wind=1250（anomalyPool/helpers.ts:1302）+ ANOMALY_DURATION.wind=30（helpers.ts:183）+ useResourceCalc.ts:2338 按风化触发次数结算直伤；6命对风化状态敌人再次施加按平均剩余时长增伤（每1s +2.5%，上限40%，useResourceCalc.ts:2362-2371）。",
     "状态机的 2 命风化获得按 2/3 期望值折算，可在资源利用率页调整。",
     "回能转模按局外回能（energyRegenOutOfCombat）读取：基础回能 × 局外加成 + 局外固定，不含局内回能 buff。"
   ],

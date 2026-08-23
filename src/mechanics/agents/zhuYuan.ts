@@ -29,9 +29,10 @@ import { specToMechanicModule } from '@/specs/mechanics'
  *   影画1 快速装填连携+6/终结+9（原文6/9 口径用户确认，cfgField 按命座门控）；
  *   消耗=压制模式开火（总量口径）。
  * - 影画6 以太余温：累计消耗12枚得1次余温，追加4枚×220%攻击力以太鹿弹
- *   （buildExecutions 执行行）；余温强特耗能-30 影响能量结算未建模。
+ *   （buildExecutions 执行行）；余温强特耗能-30 按回能口径接入（每次余温 → 30 能量
+ *   并入 initialEnergyGift，buildResourceResult，用户口径 2026-08）。
  *
- * 未建模（spec notes）：影画2 防御向、影画6 强特耗能-30。
+ * 未建模（spec notes）：影画2 防御向。
  */
 
 const ZHUYUAN_AGENT_ID = '1241'
@@ -47,6 +48,8 @@ const ZHUYUAN_C1_RELOAD_ULTIMATE = 9
 const ZHUYUAN_C6_AFTERGLOW_COST = 12
 const ZHUYUAN_C6_EXTRA_BULLETS = 4
 const ZHUYUAN_C6_BULLET_RATIO = 220
+/** 影画6 余温强特耗能-30 → 按回能口径：每次余温等价回 30 能量（用户口径 2026-08） */
+const ZHUYUAN_C6_AFTERGLOW_ENERGY = 30
 
 function applyZhuYuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   if ((panel.additionalAbilityActive ?? 0) > 0) {
@@ -124,6 +127,15 @@ function buildZhuYuanResourceResult({ cfg, state }: AgentResourceResultInput) {
   const spec = getAgentSpec(ZHUYUAN_AGENT_ID)
   if (!spec) return {}
   computeZhuYuanShellsTotal(cfg, state) // 写入影画门控的快速装填量
+  const shellsTotal = computeZhuYuanShellsTotal(cfg, state)
+  const cinema = Math.max(0, Math.floor(Number((cfg as any).zhuyuanCinemaLevel ?? 0)))
+  if (cinema >= 6) {
+    // 影画6 余温强特耗能-30 → 回能口径：余温次数 × 30 并入开局能量总账（用户口径 2026-08）
+    const afterglow = Math.floor(shellsTotal / ZHUYUAN_C6_AFTERGLOW_COST)
+    if (afterglow > 0) {
+      cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + afterglow * ZHUYUAN_C6_AFTERGLOW_ENERGY
+    }
+  }
   return { specResources: Object.fromEntries(computeSpecResources(spec, cfg, state)) }
 }
 
@@ -139,12 +151,19 @@ function buildZhuYuanResourceSections(input: AgentResourceSectionsInput) {
       id: 'zhuyuan-afterglow',
       title: '朱鸢·以太余温（影画6）',
       summary: `余温次数 ≈ ${afterglow}`,
-      rows: [{
-        label: '追加鹿弹',
-        value: `${afterglow * ZHUYUAN_C6_EXTRA_BULLETS} 枚`,
-        detail: `累计消耗${ZHUYUAN_C6_AFTERGLOW_COST}枚霰弹得1次余温（霰弹总量 ${shellsTotal}），每次追加${ZHUYUAN_C6_EXTRA_BULLETS}枚×${ZHUYUAN_C6_BULLET_RATIO}%攻击力以太鹿弹`,
-      }],
-      footer: '余温使下次强特耗能-30 影响能量结算，未建模（spec properties 记录数值）。',
+      rows: [
+        {
+          label: '追加鹿弹',
+          value: `${afterglow * ZHUYUAN_C6_EXTRA_BULLETS} 枚`,
+          detail: `累计消耗${ZHUYUAN_C6_AFTERGLOW_COST}枚霰弹得1次余温（霰弹总量 ${shellsTotal}），每次追加${ZHUYUAN_C6_EXTRA_BULLETS}枚×${ZHUYUAN_C6_BULLET_RATIO}%攻击力以太鹿弹`,
+        },
+        {
+          label: '余温回能',
+          value: `+${afterglow * ZHUYUAN_C6_AFTERGLOW_ENERGY} 能量`,
+          detail: `余温强特耗能-30 按回能口径：每次余温等价回 ${ZHUYUAN_C6_AFTERGLOW_ENERGY} 能量（并入开局能量总账）`,
+        },
+      ],
+      footer: '余温回能按整局口径并入 initialEnergyGift（buildResourceResult）。',
     })
   }
   return sections
