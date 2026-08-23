@@ -22,7 +22,7 @@
     "潜能觉醒文本：\n潜能（银白色的心 II） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至34%\n潜能（银白色的心 III） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至38%\n潜能（银白色的心 IV） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至42%\n潜能（银白色的心 V） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至46%\n潜能（银白色的心 VI） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至50%",
     "实现口径：按核心被动Lv.7；额外能力由击破/支援队友激活自身暴击率+10%，影画2暴击率+12%；核心被动对银星敌人增伤+25%与影画4无视12%电抗按同一覆盖率折算面板。",
     "白雷额外伤害次数=苍光发动次数+影画1强特命中×3（真实moveId 1381007）；雷殛每3次白雷（1381008）、电磁涡流每6次白雷（合成行1000%电伤），均视为追加攻击。",
-    "未建模：银星使追加攻击暴伤提升=自身暴伤30%（另+5%）与全队追加攻击对银星敌人+25%（敌方目标向/全队向）；银星充能→白雷叠层逐时序、电鸣替代白雷消耗、潜能觉醒全队追加攻击提升。"
+    "未建模（收敛为）：银星充能→白雷叠层逐时序、电鸣替代白雷消耗的层数经济（数量近似已覆盖）、潜能觉醒档位滑块。已实现：银星追攻暴伤×35% 行级接入、连携/终结论证追击、苍光·临界收尾行、全队追攻+25% 定向 buff。"
   ],
   "teamBuffs": [
     {
@@ -33,8 +33,8 @@
       "target": "enemy",
       "coverage": 1,
       "effects": [],
-      "status": "partially_implemented",
-      "note": "按来源暴击伤害折算的追加攻击暴伤暂未接成面板字段。"
+      "status": "implemented_approximation",
+      "note": "已按行级接入：白雷(1381007)/雷殛(1381008)行 critDmgBonus += 自身暴伤×35%（Lv7 含延伸5%）。"
     },
     {
       "id": "anby_zero_extra_team_followup",
@@ -43,9 +43,27 @@
       "description": "当前操作为零号·安比时，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升 25%。",
       "target": "team",
       "coverage": 1,
-      "effects": [],
-      "status": "partially_implemented",
-      "note": "追加攻击限定增伤暂未接成面板字段。"
+      "effects": [
+        {
+          "id": "anby-zero-team-followup-dmg",
+          "type": "fixed",
+          "stat": "dmgBonus",
+          "mode": "flat",
+          "value": 25,
+          "target": {
+            "kind": "default"
+          },
+          "coverage": {
+            "default": 1,
+            "min": 0,
+            "max": 1,
+            "step": 0.05
+          },
+          "targetSkillType": "additionalAttack"
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "全队追加攻击对银星敌人+25%（潜能满级 50，暂以基线 25 建模）；经队友 buff 通道按 targetSkillType=additionalAttack 定向生效。"
     },
     {
       "id": "anby_zero_potential_followup",
@@ -55,7 +73,8 @@
       "target": "team",
       "coverage": 1,
       "effects": [],
-      "status": "partially_implemented"
+      "status": "partially_implemented",
+      "note": "潜能档位（34/38/42/46/50）待滑块支持；当前基线建模取额外能力 25。"
     }
   ],
   "additionalAbility": {

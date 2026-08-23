@@ -15,7 +15,11 @@
  * 明确未建模：
  * - 核心被动「银星使追加攻击暴击伤害额外提升=自身暴伤30%（另+5%）」与额外能力「全队追加攻击对
  *   银星敌人+25%」均为敌方目标向/全队向增益，模块仅作用自身面板，未接全队通道。
- * - 银星充能→白雷叠层（每1/3充能1层，上限3）的逐时序、电鸣替代白雷消耗、潜能觉醒全队追加攻击提升。
+ * - 电鸣替代白雷消耗按数量近似（影画2：苍光触发白雷的次数不变，层数经济折进苍光次数输入）；
+ *   潜能觉醒全队追加攻击提升经 spec teamBuffs 表达（25 基线 / 潜能满 50）。
+ * - 苍光·临界（1381023）：每轮 3 层白雷打完后接一招收尾，499.1%、真实动作时间 0.867s 占前台。
+ * - 核心被动银星追攻暴伤 = 自身暴伤×35%：按白雷/雷殛行级 critDmgBonus 接入；
+ *   连携/终结视为追加攻击伤害（Lv7 文本），供限定追击增伤命中。
  */
 import type {
   AgentCharConfigInput,
@@ -36,6 +40,10 @@ export const ANBY_ZERO_C4_RES_IGNORE = 12
 export const ANBY_ZERO_C1_WHITE_LIGHTNING_PER_EX = 3
 export const ANBY_ZERO_RAIJITU_PER_LIGHTNING = 3
 export const ANBY_ZERO_VORTEX_PER_LIGHTNING = 6
+export const ANBY_ZERO_CRITICAL_MOVE_ID = '1381023'
+export const ANBY_ZERO_CRITICAL_ACTION_TIME = 0.867
+/** 核心被动：银星敌人受到的追加攻击暴伤额外提升 = 自身暴伤 ×（30% + 延伸 5%） */
+export const ANBY_ZERO_FOLLOWUP_CRIT_DMG_RATIO = 0.35
 export const ANBY_ZERO_C6_VORTEX_MULTIPLIER = 1000
 
 export interface AnbyZeroCycle {
@@ -98,7 +106,7 @@ export function computeAnbyZeroCycle(input: {
     c4ResIgnore: cinemaLevel >= 4 ? ANBY_ZERO_C4_RES_IGNORE * silverStarCoverage : 0,
     critRateGain: (input.additionalActive ? ANBY_ZERO_ADDITIONAL_CRIT_RATE : 0)
       + (cinemaLevel >= 2 ? ANBY_ZERO_C2_CRIT_RATE : 0),
-    note: '白雷次数=苍光发动+影画1强特×3；雷殛每3次、电磁涡流每6次折算；银星/电鸣逐时序未建模。',
+    note: '攻击数据充能：攻击命中→银星充能，每1/3充能=1层白雷（上限3）→3次苍光消耗3层并触发3白雷+1雷殛，轮末接苍光·临界；电鸣替代白雷消耗按数量近似（影画2）。',
   }
 }
 
@@ -126,17 +134,20 @@ function pushAnbyZeroExecution(executions: AgentResourceInput['executions'], inp
   moveName: string
   count: number
   damageMultiplier?: number
+  /** 非零 = 占用前台的真实动作时间（如苍光·临界收尾招） */
+  actionTime?: number
 }): void {
   if (input.count <= 0) return
+  const actionTime = input.actionTime ?? 0
   executions.push({
     moveId: input.moveId,
     moveName: input.moveName,
     category: 'special',
     element: 'electric',
     count: input.count,
-    actionTime: 0,
+    actionTime,
     comboAlignRatio: 0,
-    totalTime: 0,
+    totalTime: actionTime * input.count,
     totalComboAlignTime: 0,
     energyConsume: 0,
     totalEnergyConsume: 0,
@@ -163,6 +174,14 @@ function buildAnbyZeroExecutions({ cfg, state, executions }: AgentResourceInput)
     moveName: '特殊技：雷殛',
     count: cycle.raijituCount,
   })
+  // 苍光·临界：每轮 3 层白雷打完（= 雷殛一次的节奏）后接一招收尾强化特殊技，
+  // 真实动作时间 0.867s/次占用前台；倍率 499.1% 走倍率表（含失衡/喧响/异常行）
+  pushAnbyZeroExecution(executions, {
+    moveId: ANBY_ZERO_CRITICAL_MOVE_ID,
+    moveName: '特殊技：苍光·临界',
+    count: cycle.raijituCount,
+    actionTime: ANBY_ZERO_CRITICAL_ACTION_TIME,
+  })
   pushAnbyZeroExecution(executions, {
     moveId: '1381_c6_electromagnetic_vortex',
     moveName: '电磁涡流（影画6）',
@@ -172,15 +191,30 @@ function buildAnbyZeroExecutions({ cfg, state, executions }: AgentResourceInput)
 }
 
 function applyAnbyZeroPanel({ charResult, panel }: AgentSkillTransformInput): void {
-  if (!panel) return
-  if ((panel as Record<string, unknown>).__anbyZeroPanelApplied) return
   ;(panel as Record<string, unknown>).__anbyZeroPanelApplied = true
+  const ids = (charResult.executions ?? []).map(e => e.moveId).join(',')
+  let patched = 0
   const cycle = charResult.specResources?.anby_zero_cycle as AnbyZeroCycle | undefined
   if (!cycle) return
   if (cycle.critRateGain > 0) panel.critRate = (panel.critRate ?? 0) + cycle.critRateGain
   if (cycle.coreDmgBonus > 0) panel.dmgBonus = (panel.dmgBonus ?? 0) + cycle.coreDmgBonus
   if (cycle.c4ResIgnore > 0) {
     panel.enemyElectricResReduction = (panel.enemyElectricResReduction ?? 0) + cycle.c4ResIgnore
+  }
+  // 核心被动：银星敌人受到的追加攻击暴伤额外提升 = 自身暴伤 ×35%（Lv7 含延伸 5%）
+  // ——按行级 critDmgBonus 接入白雷/雷殛行（敌方目标向增益，单目标口径下等效常驻）
+  const followupCrit = Math.round((panel.critDmg ?? 0) * ANBY_ZERO_FOLLOWUP_CRIT_DMG_RATIO)
+  for (const exec of charResult.executions ?? []) {
+    // moveId 在不同装配阶段可能为 string 或 number，统一字符串化比较
+    const mid = String(exec.moveId)
+    if (mid === ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID || mid === ANBY_ZERO_RAIJITU_MOVE_ID || mid === '1381_c6_electromagnetic_vortex') {
+      // 绝对值赋值（非 +=）：transform 可能随面板重算被多次触发，增量式会累积
+      exec.critDmgBonus = followupCrit
+    }
+    // 核心被动 Lv7：零号·安比的连携技和终结技视为追加攻击伤害（供限定追击增伤命中）
+    if (mid === '1381014' || mid === '1381015') {
+      exec.skillDamageTarget = 'additionalAttack'
+    }
   }
 }
 
@@ -196,7 +230,8 @@ function buildAnbyZeroResourceSections({ result }: AgentResourceSectionsInput) {
     title: '零号·安比·白雷与电磁涡流',
     summary: `白雷 ${cycle.whiteLightningTotal} 次 · 雷殛 ${cycle.raijituCount} · 涡流 ${cycle.vortexCount}`,
     rows: [
-      { label: '苍光发动', value: `${cycle.cangguangCount} 次`, detail: '每次消耗1层白雷触发1次白雷额外伤害' },
+      { label: '苍光发动', value: `${cycle.cangguangCount} 次`, detail: '每次消耗1层白雷触发1次白雷额外伤害；每轮3层打完接一招苍光·临界' },
+      { label: '苍光·临界', value: `${cycle.raijituCount} 次`, detail: '每轮白雷打完后的收尾强技（499.1%，占前台 0.867s/次）' },
       { label: '影画1强特白雷', value: `+${cycle.whiteLightningFromC1}`, detail: '强化特殊技命中×3，不耗白雷层数' },
       { label: '雷殛', value: `${cycle.raijituCount} 次`, detail: '同一敌人每3次白雷额外伤害触发' },
       { label: '电磁涡流', value: `${cycle.vortexCount} 次`, detail: '影画6每6次白雷触发1000%攻击力电伤' },
