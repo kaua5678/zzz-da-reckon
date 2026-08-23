@@ -36,6 +36,15 @@
             style="width: 300px"
             placeholder="选择队伍（可多选）"
           />
+          <n-select
+            v-model:value="quickPickMainC"
+            :options="mainCQuickOptions"
+            size="small"
+            style="width: 130px"
+            placeholder="按主C快选"
+            title="选择主C → 勾选替换为仅含该主C的队伍（其他主C的队伍移除）"
+            clearable
+          />
         </div>
         <div class="ctl-field">
           <span class="ctl-label">限定金</span>
@@ -312,6 +321,20 @@ const presetOptions = teamPresetGroupOptions
 const selectedPresets = computed<TeamPreset[]>(() =>
   teamPresets.filter(t => selectedPresetIds.value.includes(t.id)),
 )
+/** 按主C快选：选一个主C → 勾选替换为「仅含该主C的队伍」（其他主C的队伍移除）；清空不影响已选 */
+const quickPickMainC = ref<string | null>(null)
+const mainCQuickOptions = computed(() => {
+  const seen = new Map<string, string>()
+  for (const t of teamPresets) {
+    const main = t.team[0]
+    if (!seen.has(main)) seen.set(main, catalogStore.getAgent(main)?.name.zhCN ?? main)
+  }
+  return [...seen.entries()].map(([value, label]) => ({ value, label }))
+})
+watch(quickPickMainC, main => {
+  if (!main) return
+  selectedPresetIds.value = teamPresets.filter(t => t.team[0] === main).map(t => t.id)
+})
 
 // ========== 金数 ==========
 const goldMin = ref(0)
