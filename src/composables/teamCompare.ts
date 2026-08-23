@@ -33,6 +33,8 @@ import {
   type TeamPreset,
 } from '@/types/teamPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
+import ENGINE_POOLS_SRC from '@/data/enginePools.json'
+const ENGINE_POOLS = ENGINE_POOLS_SRC as Record<string, string[]>
 import { isFrontlineExecution } from '@/types/resource'
 
 type Calc = ReturnType<typeof useResourceCalc>
@@ -380,20 +382,37 @@ export function computeAutoEnginePicks(
   options: Pick<TeamCompareOptions, 'autoEngineMods' | 'autoEnginePool'> = {},
 ): AutoEnginePick[] {
   const catalog = useCatalogStore()
-  const requested = options.autoEnginePool?.length ? options.autoEnginePool : DEFAULT_AUTO_ENGINE_POOL
+  const requested = options.autoEnginePool ?? []
   const byId = new Map((catalog.displayWEngines ?? []).map(w => [w.id, w]))
-  // 去重 + 过滤：仅剔除 catalog 未收录的 id；限定音擎可选（本体 R1 参与择优，选中计金）
-  const pool = [...new Set(requested)]
-    .flatMap(id => {
+  const toWengines = (ids: string[]) =>
+    [...new Set(ids)].flatMap(id => {
       const w = byId.get(id)
       return w ? [w] : []
     })
-  if (pool.length === 0) return []
-  const aMod = clampMod(options.autoEngineMods?.aRank, 5)
-  const stdMod = clampMod(options.autoEngineMods?.standard, 3)
+  // 预设级声明解析（声明即覆盖页面设置）
+  const cfg = preset.autoEngine
+  const layerIds = (layer?: { pool?: string[]; poolRef?: string }): string[] => [
+    ...(layer?.pool ?? []),
+    ...(layer?.poolRef ? ENGINE_POOLS[layer.poolRef] ?? [] : []),
+  ]
+  /** 每槽取池优先级：bySlot[slot] > byAgent[该槽角色] > 整队 pool/poolRef > 页面装填框 > 默认五件 */
+  const resolveSlotPool = (slot: number): string[] => {
+    for (const layer of [cfg?.bySlot?.[String(slot)], preset.team[slot] ? cfg?.byAgent?.[preset.team[slot]] : undefined]) {
+      const ids = layerIds(layer)
+      if (ids.length > 0) return ids
+    }
+    const top = layerIds(cfg)
+    if (top.length > 0) return top
+    return requested.length > 0 ? requested : DEFAULT_AUTO_ENGINE_POOL
+  }
+  // 精炼档：preset.mods 覆盖页面输入；A 级默认 5 不变，常驻 S 可调（缺省 3）
+  const aMod = clampMod(cfg?.mods?.aRank ?? options.autoEngineMods?.aRank, 5)
+  const stdMod = clampMod(cfg?.mods?.standard ?? options.autoEngineMods?.standard, 3)
   const picks: AutoEnginePick[] = []
   for (let slot = 0; slot < 3; slot++) {
     if (!preset.team[slot]) continue
+    const pool = toWengines(resolveSlotPool(slot))
+    if (pool.length === 0) continue
     // 基础音擎只认预设声明（与 baseGoldOf 同源）：setAgent 会给角色自动推荐专属音擎，
     // 回读 store 会把「预设没声明的限定专武」误当成已持有物而跳过替换
     const baseId = preset.wEngines?.[slot] ?? ''

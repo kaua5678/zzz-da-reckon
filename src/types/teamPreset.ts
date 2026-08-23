@@ -67,15 +67,42 @@ export interface TeamPresetVariant {
   minGold?: number
 }
 
+/**
+ * 预设级「自动下位音擎」声明：声明即覆盖队伍对比页的装填框/精炼输入。
+ * 全部字段可选；未声明的层回落页面设置。每槽取池优先级：
+ * bySlot[slot] > byAgent[该槽角色] > 整队 pool/poolRef > 页面装填框 > DEFAULT_AUTO_ENGINE_POOL。
+ */
+export interface AutoEngineSlotConfig {
+  /** 候选音擎 id 列表（直写） */
+  pool?: string[]
+  /** 候选音擎命名池（src/data/enginePools.ts 的键），与 pool 二选一或并用（并集） */
+  poolRef?: string
+}
+
+export interface AutoEngineConfig {
+  /** 整队默认池 */
+  pool?: string[]
+  /** 整队默认命名池 */
+  poolRef?: string
+  /** 按角色 id 声明（该角色所在槽生效；如琉音写一次，任何含她的预设都复用） */
+  byAgent?: Record<string, AutoEngineSlotConfig>
+  /** 按槽位声明（键 = 槽位号字符串 '0'|'1'|'2'） */
+  bySlot?: Record<string, AutoEngineSlotConfig>
+  /** 默认精炼档覆盖：A 级 / 常驻 S（缺省 5 / 3） */
+  mods?: { aRank?: number; standard?: number }
+}
+
 /** 预设队伍 */
 export interface TeamPreset {
   /** 唯一 id（英文 kebab） */
   id: string
   /** 展示名 */
   name: string
+  /** 一级分类（下拉第一级，如「命破队」；缺省归「未分组」——新预设必须归类） */
+  group?: string
   /** 说明/备注 */
   note?: string
-  /** 队伍：按槽位 0/1/2 的 agentId，须三项齐全 */
+  /** 队伍：按槽位 0/1/2 的 agentId，须三项齐全。槽位约定：0=主C、1=击破、2=辅助 */
   team: [string, string, string]
   /** 各槽位基础音擎 id（缺省 '' = 自动推荐）。基础音擎 = 0 金档的配装：常驻/A 音擎不计限定金；
    *  限定专武作为「音擎本体」加金步（见 GoldStep.wEngineId），从基础音擎往上买。 */
@@ -102,6 +129,8 @@ export interface TeamPreset {
   stunAxisPresetId?: string
   /** 该预设存在的最低总限定金（低于此金数不生成对比点；变体可覆盖） */
   minGold?: number
+  /** 预设级自动下位声明（可选）：按角色/按槽位的下位池与精炼档，声明即覆盖页面设置 */
+  autoEngine?: AutoEngineConfig
   /** 展开标记：本条目由哪个源预设展开而来（仅加载器写入；保存回写 goldSteps 时重定向到源文件） */
   variantOf?: string
 }

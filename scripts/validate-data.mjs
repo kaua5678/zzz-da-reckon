@@ -22,6 +22,8 @@ function check(name, condition, detail = '') {
 
 const catalog = load('public/static/catalog.json')
 const agents = catalog.agents ?? []
+const ENGINE_POOLS = load('src/data/enginePools.json')
+const catalogWEngines = new Set((load('public/static/catalog.json').wEngines ?? []).map(w => String(w.id)))
 const skills = catalog.agentSkills ?? []
 
 check('catalog has agents and skills', agents.length > 0 && skills.length > 0)
@@ -153,6 +155,20 @@ for (const f of dataJsonFiles) {
   if (rel.startsWith('teamPresets/')) {
     check(`${rel}: has id + team array`, typeof data.id === 'string' && Array.isArray(data.team) && data.team.length > 0)
     check(`${rel}: team members are strings`, (data.team ?? []).every(t => typeof t === 'string'))
+    // autoEngine 声明校验：poolRef 必须在命名池有定义；池内音擎 id 必须在 catalog 存在（防手滑 typo）
+    const ae = data.autoEngine
+    if (ae) {
+      const layers = [ae, ...Object.values(ae.byAgent ?? {}), ...Object.values(ae.bySlot ?? {})]
+      for (let li = 0; li < layers.length; li++) {
+        const layer = layers[li]
+        for (const ref of layer?.poolRef ? [layer.poolRef] : []) {
+          check(`${rel}: autoEngine poolRef「${ref}」在 enginePools 有定义`, ENGINE_POOLS[ref] != null)
+        }
+        for (const id of layer?.pool ?? []) {
+          check(`${rel}: autoEngine 音擎 ${id} 在 catalog`, catalogWEngines.has(String(id)))
+        }
+      }
+    }
   } else if (rel.startsWith('stunAxisPresets/')) {
     check(`${rel}: has id + team + axes/plans`,
       typeof data.id === 'string' && Array.isArray(data.team) && data.team.length > 0 &&

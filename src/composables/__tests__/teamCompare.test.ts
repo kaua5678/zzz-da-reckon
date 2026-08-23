@@ -821,6 +821,34 @@ describe('teamCompare 自动下位音擎（装填池择优）', () => {
     expect(picks[0].label).toContain('（限定）')
   })
 
+  it('预设级 autoEngine：bySlot > byAgent(poolRef) > 整队池 > 页面池；mods 覆盖页面精炼', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const config = setupTeam([
+      { slot: 0, agentId: '1531' },
+      { slot: 1, agentId: '1481' },
+      { slot: 2, agentId: '1451' },
+    ])
+    const preset: TeamPreset = {
+      id: 'ae-schema', name: '下位池声明', team: ['1531', '1481', '1451'], wEngines: ['', '', ''],
+      goldSteps: [], interactions: [],
+      autoEngine: {
+        pool: ['13005'],
+        byAgent: { '1481': { poolRef: '琉音槽下位' } },
+        bySlot: { '2': { pool: ['13115'] } },
+        mods: { standard: 4 },
+      },
+    }
+    // 并列打分 → 各层取池内第一件，直接验证「哪一层被用上」
+    const calc = engineScoreCalc(config, () => 10)
+    const picks = computeAutoEnginePicks(calc, config, preset, { autoEnginePool: ['14002'], autoEngineMods: { standard: 2 } })
+    expect(picks.find(p => p.slot === 0)!.id).toBe('13005') // 整队池压过页面池
+    expect(picks.find(p => p.slot === 1)!.id).toBe('14110') // byAgent poolRef → 琉音槽下位[燃狱齿轮]
+    expect(picks.find(p => p.slot === 2)!.id).toBe('13115') // bySlot 压过 byAgent/整队
+    expect(picks.find(p => p.slot === 1)!.mod).toBe(4) // preset.mods.standard=4 覆盖页面的 2
+  })
+
   it('有金就是金：下位选中限定按本体计入总金；预算步买到专武顶掉下位后不再重复计', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
