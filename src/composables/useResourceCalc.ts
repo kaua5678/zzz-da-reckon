@@ -1353,6 +1353,17 @@ function applyNormaHatChain(
           next = maxFull + Math.min(Math.max(0, excess), residualFactor)
         }
       }
+      // 非失衡时间充足性约束：失衡次数过高时，角色的必做动作（回能/强特/喧响）时间
+      // 会被挤到没有足够非失衡时间去执行，打法循环本身就不成立。
+      // 收敛到非失衡时间 ≥ 该轮实际必要时间（含链的保守上界，但安全）。
+      if (!locked && stunEffTime > 0 && stunWindowDur > 0) {
+        const totalNecessary = (out?.resourceResult?.characters ?? []).reduce(
+          (s, c) => s + (c.timeAllocation?.necessaryTime ?? 0), 0)
+        const nonStunTime = stunEffTime - next * stunWindowDur
+        if (nonStunTime < totalNecessary) {
+          next = Math.max(0, (stunEffTime - totalNecessary) / stunWindowDur)
+        }
+      }
       // 终结技次数与异常喧响奖励序列稳定才收敛（异常奖励 → 终结技次数 → 执行计划/时间分配 → 异常触发次数）
       const ultSeq = (out?.resourceResult?.characters ?? []).map(c => c.ultimateCount).join(',')
       const anomalySeq = (out?.anomalyPool?.perSlotBonus ?? []).map(v => Math.round(v)).join(',')
