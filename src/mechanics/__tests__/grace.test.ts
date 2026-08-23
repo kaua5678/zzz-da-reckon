@@ -9,8 +9,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { createPinia, setActivePinia } from 'pinia'
 import {
-  GRACE_EX_CHARGE_MOVE_ID,
-  GRACE_SPECIAL_CHARGE_MOVE_ID,
+  PULSE_PER_GRENADE,
+  PULSE_PER_ULT,
   graceRotationSeconds,
   planGraceRotation,
 } from '@/mechanics/agents/grace'
@@ -61,7 +61,7 @@ describe('格莉丝全管线集成（harness）', () => {
     }))
   })
 
-  it('循环落位：A 段走通用平A池行、两发电能强化特殊技行积蓄 ×2.3、真实招式 id 不双计', async () => {
+  it('循环落位：A 段走通用平A池行；特殊技/强特真实 id 行 + 强特附带涡流手雷 + 脉冲兑换脉冲手雷', async () => {
     await setupHarness([{ agentId: '1181' }, '', ''])
     const calc = useResourceCalc()
     const grace = calc.resourceResult.value!.characters.find(c => c.agentId === '1181')!
@@ -70,32 +70,63 @@ describe('格莉丝全管线集成（harness）', () => {
     const basic = grace.executions.find(e => e.moveId === 'basic_attack')
     expect(basic).toBeTruthy()
     expect(basic!.totalTime ?? 0).toBeGreaterThan(0)
-    // 回归护栏：真实 A1-A4/普通特殊技/强特 id 不作为模块独立行（避免双计）
-    for (const id of ['1181001', '1181002', '1181003', '1181004', '1181005', '1181006']) {
+    // 回归护栏：A1-A4 不作为模块独立行（避免双计）
+    for (const id of ['1181001', '1181002', '1181003', '1181004']) {
       expect(grace.executions.some(e => e.moveId === id)).toBe(false)
     }
 
-    // 两发电能强化特殊技：伤害走表值；积蓄经面板 electricAnomalyBuildUpEfficiency +130 整体缩放
-    const exCharge = grace.executions.find(e => e.moveId === GRACE_EX_CHARGE_MOVE_ID)
-    const spCharge = grace.executions.find(e => e.moveId === GRACE_SPECIAL_CHARGE_MOVE_ID)
-    expect(exCharge ?? spCharge).toBeTruthy()
-    if (exCharge) expect(exCharge.damageMultiplier).toBe(334.1)
-    if (spCharge) expect(spCharge.damageMultiplier).toBe(85)
-    // 特殊技总槽 = 2 × 循环数
-    const slots = (exCharge?.count ?? 0) + (spCharge?.count ?? 0)
+    // 两发电能强化特殊技（真实 id）：强特行 + 每发附带[涡流集束手雷]
+    const exRow = grace.executions.find(e => e.moveId === '1181006')
+    const spRow = grace.executions.find(e => e.moveId === '1181005')
+    expect(exRow ?? spRow).toBeTruthy()
+    const slots = (exRow?.count ?? 0) + (spRow?.count ?? 0)
     expect(slots % 2).toBe(0)
+    const vortex = grace.executions.find(e => e.moveId === '1181020')
+    if (exRow && exRow.count > 0) {
+      expect(vortex).toBeTruthy()
+      expect(vortex!.count).toBe(exRow.count) // 每发强特附一枚涡流手雷
+    }
+
+    // [脉冲]：终结×25 层 → 每 8 层兑换一枚[脉冲手雷]（次数=floor(25×终结/8)，封顶特殊技槽）
+    const pulse = grace.executions.find(e => e.moveId === '1181019')
+    const ult = grace.ultimateCount ?? 0
+    if (ult > 0) {
+      expect(pulse).toBeTruthy()
+      expect(pulse!.count).toBe(Math.min(Math.floor(ult * PULSE_PER_ULT / PULSE_PER_GRENADE), Math.max(0, slots)))
+    }
   })
 
-  it('积蓄 +130% 经面板效率区生效：平A池行（A 段）积蓄被 electricAnomalyBuildUpEfficiency 缩放', async () => {
+  it('积蓄 +130% 仅限定特殊技/强特（transform 钩子行级缩放，面板效率区不挂）', async () => {
+    await setupHarness([{ agentId: '1181' }, '', ''])
+    const calc = useResourceCalc()
+    const panel = computePanelPhases(0, useConfigStoreForPanel(), useCatalogStoreForPanel())!.inCombat
+    // 回归护栏：面板级效率必须为 0（否则会波及终结/连携的积蓄）
+    expect(panel.electricAnomalyBuildUpEfficiency ?? 0).toBeCloseTo(0, 4)
+
+    const electric = calc.anomalyPoolResult.value?.perElement?.find(p => p.element === 'electric')
+    expect(electric).toBeTruthy()
+    const sp = electric!.contributions?.find(c => c.moveId === '1181005')
+    const ex = electric!.contributions?.find(c => c.moveId === '1181006')
+    expect(sp ?? ex).toBeTruthy()
+    // 缩放后每发积蓄 > 表值原值（70.03 / 143.34 × 2.3 × 掌控等系数）
+    if (sp) expect(sp.perHitBuildUp).toBeGreaterThan(70.03)
+    if (ex) expect(ex.perHitBuildUp).toBeGreaterThan(143.34)
+  })
+
+  it('脉冲手雷附带异放事件：anomalyEventExecutions 含 release 事件，伤害池按 84.9 结算', async () => {
     await setupHarness([{ agentId: '1181' }, '', ''])
     const calc = useResourceCalc()
     const grace = calc.resourceResult.value!.characters.find(c => c.agentId === '1181')!
-    const panel = computePanelPhases(0, useConfigStoreForPanel(), useCatalogStoreForPanel())!.inCombat
-    expect(panel.electricAnomalyBuildUpEfficiency ?? 0).toBeCloseTo(130, 4)
-    const electric = calc.anomalyPoolResult.value?.perElement?.find(p => p.element === 'electric')
-    expect(electric).toBeTruthy()
-    expect(electric!.totalBuildUp ?? 0).toBeGreaterThan(0)
-    void grace
+    if ((grace.ultimateCount ?? 0) <= 0) return // 无终结则无脉冲手雷
+    const evt = grace.anomalyEventExecutions?.find(e => e.eventId === 'grace_pulse_grenade_release')
+    expect(evt).toBeTruthy()
+    expect(evt!.eventType).toBe('release')
+    expect(evt!.element).toBe('electric')
+    const releaseRow = calc.damagePoolRows.value.find(r => r.type === '异放' && r.name?.includes('脉冲手雷'))
+    expect(releaseRow).toBeTruthy()
+    expect(releaseRow!.element).toBe('electric')
+    expect(releaseRow!.perDamage).toBeGreaterThan(0)
+    expect(releaseRow!.totalDamage).toBeGreaterThan(0)
   })
 
   it('面板：潜能电伤逐命座永续；AA 层数滑杆驱动 anomalyDmgBonus', async () => {

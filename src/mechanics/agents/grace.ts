@@ -5,7 +5,8 @@ import type {
   AgentResourceInput,
   AgentResourceSectionsInput,
 } from '../types'
-import type { SkillExecution } from '@/types/resource'
+import type { AnomalyEventExecution, SkillExecution } from '@/types/resource'
+import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
@@ -40,16 +41,20 @@ const A1_TIME = 0.171
 const A2_TIME = 0.33
 const A3_TIME = 0.682
 const A4_TIME = 1.134
-/** 合成载体行（非纯数字过 sweep）：表值 ×2.3 后显式携带 */
-export const GRACE_SPECIAL_CHARGE_MOVE_ID = 'grace_special_charge'
-export const GRACE_EX_CHARGE_MOVE_ID = 'grace_exspecial_charge'
-const SP_DAMAGE = 85
+const SP_MOVE_ID = '1181005'
+const EX_MOVE_ID = '1181006'
 const SP_BUILDUP = 70.03
 const SP_TIME = 0.2
-const EX_DAMAGE = 334.1
 const EX_BUILDUP = 143.34
 const EX_TIME = 0.342
-export const GRACE_BUILDUP_MULTIPLIER = 2.3 // 电属性异常积蓄 +130%
+/** 强特附带[涡流集束手雷]（电能满层额外投掷）：1181020 表值 175.5，at=0 */
+const VORTEX_MOVE_ID = '1181020'
+/** [脉冲]兑换附带[脉冲手雷]（8 层换一次额外投掷）：1181019 表值 84.9，at=0；附带异放事件 */
+const PULSE_GRENADE_MOVE_ID = '1181019'
+export const PULSE_PER_ULT = 25 // 终结技每次获得 25 层[脉冲]（用户口供）
+export const PULSE_PER_GRENADE = 8 // 8 层[脉冲] → 下次投掷手雷额外丢一枚脉冲手雷 + 异放事件
+export const GRACE_BUILDUP_MULTIPLIER = 2.3 // 电属性异常积蓄 +130%（仅特殊技/强特，transform 钩子限定）
+export const GRACE_SPECIAL_MOVE_IDS = [SP_MOVE_ID, EX_MOVE_ID]
 
 const spec = getAgentSpec(GRACE_AGENT_ID)!
 const base = specToMechanicModule(spec) // 垫层：catalog 派生 cfg 字段由它统一填充
@@ -85,10 +90,8 @@ function buildGraceCharConfig(input: AgentCharConfigInput): void {
 /** 永续面板项：潜能电伤（C2-C6 = 10~30%）+ AA 感电强化层数 */
 function applyGracePanel(input: AgentPanelInput): void {
   const { panel, cinemaLevel, settings } = input
-  // 电能满层消耗 → 电属性异常积蓄 +130%（Lv.7）：异常池无执行行级积蓄 override，
-  // 走施加者面板 electricAnomalyBuildUpEfficiency（引擎唯一积蓄缩放区）。口径近似：
-  // 面板对所有电属性积蓄生效（含终结/连携），与口供「循环保证每一发特殊技都吃满」对齐。
-  panel.electricAnomalyBuildUpEfficiency = (panel.electricAnomalyBuildUpEfficiency ?? 0) + 130
+  // 积蓄 +130% 不在此处挂（面板级会波及终结/连携）——由 transformSkillExecutions 仅对
+  // 特殊技/强特两行的异常行 ×2.3 限定（口供：文字明确只有这两招吃）
   if (cinemaLevel >= 2) {
     const bonus = [10, 15, 20, 25, 30][Math.min(cinemaLevel, 6) - 2]
     if (bonus != null) {
@@ -108,18 +111,46 @@ function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): v
   const basicPool = state.basicAttackTime ?? 0
   ;(cfg as unknown as Record<string, unknown>).graceBasicPoolPrev = basicPool // 留给下一轮 estimate（iterate/buildExecutions 分离惯例）
   const plan = planGraceRotation(basicPool, state.exSpecialCount ?? 0)
+  const slots = plan.cycles * 2
 
-  // A1-A4 走通用 basic 池行（平A秒均），这里只发两发电能强化特殊技
+  // A1-A4 走通用 basic 池行（平A秒均），这里发两发电能强化特殊技（真实 id，enrich 回填伤害/积蓄，
+  // 积蓄 ×2.3 由 transformSkillExecutions 只对这两行限定）
   if (plan.exUsed > 0) {
-    executions.push(graceChargeRow(GRACE_EX_CHARGE_MOVE_ID, '强化特殊技：超规工程清障（电能强化）', plan.exUsed, EX_DAMAGE, EX_BUILDUP, EX_TIME))
+    executions.push(graceRow(EX_MOVE_ID, '强化特殊技：超规工程清障（电能强化）', plan.exUsed, EX_TIME))
+    // 电能满层时强特额外投掷一枚[涡流集束手雷]（1181020，表值 175.5）
+    executions.push(graceRow(VORTEX_MOVE_ID, '涡流集束手雷（电能满层·强特附带）', plan.exUsed, 0))
   }
   if (plan.normalUsed > 0) {
-    executions.push(graceChargeRow(GRACE_SPECIAL_CHARGE_MOVE_ID, '特殊技：工程清障（电能强化）', plan.normalUsed, SP_DAMAGE, SP_BUILDUP, SP_TIME))
+    executions.push(graceRow(SP_MOVE_ID, '特殊技：工程清障（电能强化）', plan.normalUsed, SP_TIME))
+  }
+
+  // [脉冲]：终结技 ×25 层 → 每 8 层兑换一次「下次投掷手雷额外丢一枚[脉冲手雷]（1181019）」
+  const pulseTotal = Math.max(0, Math.floor(state.ultimateCount ?? 0)) * PULSE_PER_ULT
+  const pulseGrenades = Math.min(Math.floor(pulseTotal / PULSE_PER_GRENADE), Math.max(0, slots))
+  ;(cfg as unknown as Record<string, unknown>).gracePulseGrenadeCount = pulseGrenades
+  if (pulseGrenades > 0) {
+    executions.push(graceRow(PULSE_GRENADE_MOVE_ID, '脉冲手雷（脉冲兑换·附带）', pulseGrenades, 0))
   }
 }
 
-/** 电能强化载体行（合成 id）：伤害/积蓄 = 倍率表值 ×2.3，显式全字段防 enrich 覆盖 */
-function graceChargeRow(moveId: string, name: string, count: number, damage: number, buildup: number, actionTime: number): SkillExecution {
+/** 手雷附带异放事件（用户口供：脉冲手雷「还有附带异放事件」）：以脉冲手雷倍率 84.9 结算电异放 */
+function buildGraceAnomalyEvents({ cfg, events }: { cfg: AgentResourceInput['cfg']; events: AnomalyEventExecution[] }): void {
+  const count = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).gracePulseGrenadeCount ?? 0)))
+  if (count <= 0) return
+  events.push({
+    eventId: 'grace_pulse_grenade_release',
+    eventName: '脉冲手雷·异放',
+    eventType: 'release',
+    element: 'electric',
+    count,
+    formula: 'releaseMultiplier=84.9（脉冲手雷倍率）；附带异放事件',
+    fields: ['releaseMultiplier=84.9'],
+    note: '消耗8层脉冲 → 下次投掷手雷额外丢一枚脉冲手雷并附带异放事件（用户口供 2026-08-23）',
+  })
+}
+
+/** 特殊技/手雷行（真实 id）：enrich 回填伤害/积蓄；动作时间不覆盖；积蓄缩放走 transform 钩子 */
+function graceRow(moveId: string, name: string, count: number, actionTime: number): SkillExecution {
   return {
     moveId,
     moveName: name,
@@ -135,19 +166,20 @@ function graceChargeRow(moveId: string, name: string, count: number, damage: num
     totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
-    damageMultiplier: damage,
-    damageMultiplierOverride: true,
-    skillTableNote: `消耗全部电能（8层）→ 电属性异常积蓄 +130%（面板 electricAnomalyBuildUpEfficiency，${buildup.toFixed(2)} × 2.3）`,
+    skillTableNote: `消耗全部电能（8层）→ 电属性异常积蓄 +130%（仅特殊技/强特，${moveId}）`,
   }
 }
 
-/** 合成载体行固定电属性（无倍率表行，显式声明避免依赖角色属性回退） */
-function resolveGraceExecutionDamage({ exec }: { exec: SkillExecution }): { element: string; source: string } | null {
-  if (exec.moveId === GRACE_SPECIAL_CHARGE_MOVE_ID || exec.moveId === GRACE_EX_CHARGE_MOVE_ID) {
-    return { element: 'electric', source: exec.moveId }
+/** 积蓄限定缩放：异常行里只对特殊技/强特 ×2.3（文字明确只有这两招吃 +130%） */
+function transformGraceExecutions({ anomalyExecs }: { anomalyExecs: AnomalySkillExecution[] }): void {
+  for (const exec of anomalyExecs) {
+    if (exec.moveId === SP_MOVE_ID || exec.moveId === EX_MOVE_ID) {
+      exec.baseBuildUp = (exec.baseBuildUp ?? 0) * GRACE_BUILDUP_MULTIPLIER
+    }
   }
-  return null
 }
+
+
 
 function buildGraceResourceSections(input: AgentResourceSectionsInput) {
   return [] // 专属资源卡暂无（电能计划体现在执行行 note）
@@ -160,6 +192,8 @@ export const graceMechanic: AgentMechanicModule = {
   applyPanel: applyGracePanel,
   buildCharConfig: buildGraceCharConfig,
   buildExecutions: buildGraceExecutions,
+  transformSkillExecutions: transformGraceExecutions,
+  buildAnomalyEvents: buildGraceAnomalyEvents,
   estimateExSpecialTime: ({ cfg, exSpecialCount }) => {
     const prevPool = Math.max(0, Number((cfg as unknown as Record<string, unknown>).graceBasicPoolPrev ?? 0))
     const plan = planGraceRotation(prevPool, exSpecialCount)
@@ -168,7 +202,6 @@ export const graceMechanic: AgentMechanicModule = {
       comboAlignTime: 0,
     }
   },
-  resolveExecutionDamage: resolveGraceExecutionDamage,
   resourceSections: buildGraceResourceSections,
   settings: [
     {
