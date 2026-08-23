@@ -584,7 +584,7 @@
     <n-card size="small" :bordered="true">
       <template #header>
         菲林经济模拟 · 队伍强度
-        <span class="chart-subtitle">横轴 = 所选 Boss 登场的危局期数（含日期）；每期发菲林（默认 ≈1金/版本）→ 按占比花/存 → 主C优先买金步 → 用当期 Boss 数值 + 关卡固有 buff 算队伍强度（伤害/当期 Boss 血量%）</span>
+        <span class="chart-subtitle">主C 固定（顶部选择），队友 = 候选池按当前金数自动换最优（如 琉音换青衣、卢西娅换潘引壶）；起点 = 主C 首次 UP 之后的 Boss 初登场；每期用当期 Boss 数值 + 关卡固有 buff 算强度（伤害/当期 Boss 血量%）</span>
       </template>
       <template #header-extra>
         <div class="chart3-actions">
@@ -597,12 +597,12 @@
       <!-- 参数表单 -->
       <div class="sim-controls">
         <div class="ctl-field">
-          <span class="ctl-label">队伍（主C + 队友1 + 队友2）</span>
-          <div class="team-cell chart3-team-inputs">
-            <n-select v-model:value="simTeam[0]" :options="allAgentOptions" size="tiny" filterable style="width: 118px" placeholder="主C" />
-            <n-select v-model:value="simTeam[1]" :options="allAgentOptions" size="tiny" filterable style="width: 118px" placeholder="队友1" />
-            <n-select v-model:value="simTeam[2]" :options="allAgentOptions" size="tiny" filterable style="width: 118px" placeholder="队友2" />
-          </div>
+          <span class="ctl-label">主C（顶部「主C角色」选择）</span>
+          <span class="sim-main-name">{{ agentName(mainAgentId) }}</span>
+        </div>
+        <div class="ctl-field">
+          <span class="ctl-label">队友候选池（顶部「候选队友」；按金数自动换最优双人）</span>
+          <span class="sim-main-name">{{ candidatePool.map(agentName).join(' / ') || '—' }}</span>
         </div>
         <div class="ctl-field">
           <span class="ctl-label">初始金数</span>
@@ -617,12 +617,9 @@
           <n-input-number v-model:value="simSpendRatio" :min="0" :max="1" :step="0.05" size="small" style="width: 90px" />
         </div>
         <div class="ctl-field">
-          <span class="ctl-label">每版本充值（元）</span>
-          <n-input-number v-model:value="simTopUp" :min="0" :max="10000" :step="30" size="small" style="width: 100px" />
-        </div>
-        <div class="ctl-field">
-          <span class="ctl-label">充值汇率（菲林/元，首充双倍=20）</span>
-          <n-input-number v-model:value="simTopUpRate" :min="1" :max="100" size="small" style="width: 80px" />
+          <span class="ctl-label">每版本充值预算（元）</span>
+          <n-input-number v-model:value="simBudgetYuan" :min="0" :max="100000" :step="30" size="small" style="width: 110px" />
+          <span class="ctl-note">按性价比自动分配：月卡(30元→3300) → 大月卡(68元→≈2600) → 直充(10菲林/元)，汇率固定</span>
         </div>
         <div class="ctl-field">
           <span class="ctl-label">目标卡池（清空银行投入）</span>
@@ -1359,13 +1356,11 @@ function onChart3Move(e: MouseEvent) {
   }
 }
 
-// ========== Chart 4：菲林经济模拟（队伍强度随菲林投入） ==========
-const simTeam = ref<[string, string, string]>(['1371', '1251', '1421']) // 默认 仪青潘
+// ========== Chart 4：菲林经济模拟（队伍强度随菲林投入；主C固定，队友按金数换最优） ==========
 const simInitialGold = ref(6)
 const simFilmPerVersion = ref(15000)
 const simSpendRatio = ref(0.5)
-const simTopUp = ref(0)
-const simTopUpRate = ref(10)
+const simBudgetYuan = ref(0)
 const simTargetPeriod = ref('')
 const simComputing = ref(false)
 const simProgress = ref<{ pct: number; text: string } | null>(null)
@@ -1384,6 +1379,11 @@ async function runFilmSim() {
     setTimeout(() => { simProgress.value = null }, 2500)
     return
   }
+  if (candidatePool.value.filter(id => id !== mainAgentId.value).length < 2) {
+    simProgress.value = { pct: 1, text: '候选队友至少 2 名（不含主C）' }
+    setTimeout(() => { simProgress.value = null }, 2500)
+    return
+  }
   simComputing.value = true
   simProgress.value = { pct: 0, text: '准备…' }
   try {
@@ -1391,12 +1391,12 @@ async function runFilmSim() {
       boss,
       axisNodes: axis,
       periodViews: phaseViews.value,
-      team: simTeam.value,
+      mainAgentId: mainAgentId.value,
+      candidatePool: candidatePool.value,
       initialGold: simInitialGold.value ?? 6,
       filmPerVersion: simFilmPerVersion.value ?? 15000,
       spendRatio: simSpendRatio.value ?? 0.5,
-      topUpPerVersion: simTopUp.value ?? 0,
-      topUpFilmPerYuan: simTopUpRate.value ?? 10,
+      budgetYuanPerVersion: simBudgetYuan.value ?? 0,
       targetPeriodId: simTargetPeriod.value || undefined,
       autoBuild: autoBuild.value,
       onProgress: p => { simProgress.value = p },
@@ -1804,6 +1804,18 @@ function onSimMove(e: MouseEvent) {
 }
 .chart3-team-inputs {
   gap: 6px;
+}
+.sim-main-name {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 3px 0 6px;
+  white-space: nowrap;
+}
+.ctl-note {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.45);
+  max-width: 220px;
+  line-height: 1.5;
 }
 .chart3-teams-cell {
   display: flex;

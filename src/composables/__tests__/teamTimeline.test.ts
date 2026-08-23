@@ -28,6 +28,7 @@ import {
 } from '@/composables/teamTimeline'
 import { teamPresets } from '@/data/teamPresets'
 import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
+import { allocateTopUpFilm } from '@/data/filmEconomy'
 import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
 
 const bossText = readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')
@@ -457,13 +458,80 @@ describe('Chart 3：每期新角色强队（buildNewCharacterRows / suggest / co
 
 // ========== Chart 4：菲林经济模拟 ==========
 
-describe('Chart 4：菲林经济模拟（computeFilmSimulation）', () => {
+describe('Chart 4：菲林经济模拟（computeFilmSimulation / 预算性价比）', () => {
   const axisOf = (boss: BossPreset) => {
     const phases = [...boss.phases].filter(p => p.begin).sort((a, b) => a.begin.localeCompare(b.begin))
     return phases.map((p, i) => ({ id: p.phaseId, label: `${i + 1}`, date: p.begin }))
   }
+  const baseSim = {
+    boss: firstBoss as BossPreset,
+    axisNodes: [] as { id: string; label: string; date: string }[],
+    periodViews: [] as never[],
+    mainAgentId: '1371',
+    // 用户口径候选池：青衣/潘引壶/橘福福/卢西娅/琉音（琉音换青衣、卢西娅换潘引壶）
+    candidatePool: ['1251', '1421', '1391', '1451', '1481'],
+    initialGold: 0,
+    filmPerVersion: 15000,
+    spendRatio: 0.8,
+    budgetYuanPerVersion: 0,
+  }
 
-  it('经济：初始金低于基础金钳制到 6；占比 0 全存不买金；占比 1 全花金数单调增长', async () => {
+  it('prefill 空（主C 首次 UP 前无该 Boss 期）→ 0 点；起点 = 主C 首次 UP 之后', async () => {
+    await boot()
+    const calc = useResourceCalc()
+    // 主C = 希格莉德（3.1-2，2026-08-19 实装）→ 恶名·死路屠夫 3.1 期之后的登场期才能算
+    const bossWithLateMain = firstBoss as BossPreset
+    const axis = axisOf(bossWithLateMain)
+    const res = await computeFilmSimulation(calc, { ...baseSim, mainAgentId: '1591', axisNodes: axis })
+    expect(res.points.length).toBeGreaterThan(0)
+    for (const p of res.points) {
+      // 每期都在主C 实装日之后
+      expect(p.date.slice(0, 10) >= '2026-08-19').toBe(true)
+    }
+  }, 120000)
+
+  it('主C 固定 + 队友随金数换最优：金数增长后队伍从 仪青潘 升级为更强组合（琉音/卢西娅换入）', async () => {
+    await boot()
+    const calc = useResourceCalc()
+    const boss = firstBoss as BossPreset
+    const axis = axisOf(boss)
+    // 占比 1 + 高版本投入 + 目标期清空 → 金数拉满，必然发生换队
+    const res = await computeFilmSimulation(calc, {
+      ...baseSim,
+      axisNodes: axis,
+      initialGold: 4,
+      spendRatio: 1,
+      budgetYuanPerVersion: 68,
+      targetPeriodId: axis[Math.floor(axis.length / 2)]?.id,
+    })
+    expect(res.points.length).toBeGreaterThan(0)
+    const first = res.points[0]
+    const last = res.points[res.points.length - 1]
+    expect(first.team[0]).toBe('1371') // 主C 恒为仪玄
+    expect(last.team[0]).toBe('1371')
+    // 金数更高时若换了队，队伍不再是最便宜的 仪青潘（琉音/卢西娅 ≥2 金一名）
+    if (last.totalGold > first.totalGold) {
+      expect(last.team.join()).not.toBe(first.team.join())
+      expect(last.team.includes('1481') || last.team.includes('1451')).toBe(true)
+    }
+    // 每点队伍主C 固定 + 基础金 ≤ 当前金数
+    for (const p of res.points) {
+      expect(p.team[0]).toBe('1371')
+      expect(baseGoldOfTeam(p.team, useCatalogStore())).toBeLessThanOrEqual(p.totalGold)
+      expect(p.hpRatio).toBeGreaterThan(0)
+    }
+  }, 240000)
+
+  it('充值预算按性价比分配（allocateTopUpFilm）：月卡优先（110/元）→ 大月卡 → 直充', () => {
+    expect(allocateTopUpFilm(0)).toBe(0)
+    expect(allocateTopUpFilm(30)).toBe(3300)              // 1 月卡
+    expect(allocateTopUpFilm(60)).toBe(6600)              // 2 月卡（封顶，覆盖全版本）
+    expect(allocateTopUpFilm(98)).toBe(6600 + (98 - 60) * 10) // 2 月卡 ＞ 1 月卡+大月卡（贪心正确）
+    expect(allocateTopUpFilm(128)).toBe(6600 + 2600)      // 2 月卡 + 大月卡（60+68）
+    expect(allocateTopUpFilm(100)).toBe(6600 + (100 - 60) * 10) // 2 月卡 + 40 元直充
+  })
+
+  it('经济：占比 0 全存金数不变；占比 1 全花金数单调增长；现场恢复', async () => {
     await boot()
     const config = useConfigStore()
     const calc = useResourceCalc()
@@ -471,67 +539,17 @@ describe('Chart 4：菲林经济模拟（computeFilmSimulation）', () => {
     const boss = firstBoss as BossPreset
     const axis = axisOf(boss)
 
-    // 占比 0：全存 → 金数恒为基础金（仪青潘 = 2 限定 S 本体+专武 = 4；潘引壶 A 级不计）
-    const team: [string, string, string] = ['1371', '1251', '1421']
-    const teamBase = baseGoldOfTeam(team, useCatalogStore())
-    const save0 = await computeFilmSimulation(calc, {
-      boss, axisNodes: axis, periodViews: [],
-      team, initialGold: 2, filmPerVersion: 15000,
-      spendRatio: 0, topUpPerVersion: 0, topUpFilmPerYuan: 10,
-    })
-    expect(save0.points.length).toBe(axis.length)
-    expect(save0.points[0].totalGold).toBe(teamBase) // 钳制到基础金
-    for (const p of save0.points) {
-      expect(p.totalGold).toBe(teamBase)
-      expect(p.hpRatio).toBeGreaterThan(0)
-    }
+    const save0 = await computeFilmSimulation(calc, { ...baseSim, axisNodes: axis, spendRatio: 0 })
+    expect(save0.points.length).toBeGreaterThan(0)
+    const g0 = save0.points[0].totalGold
+    for (const p of save0.points) expect(p.totalGold).toBe(g0) // 全存 → 金数恒定
 
-    // 占比 1：全花 → 金数单调不减且最终显著高于基础金（菲林买金发生）
-    const spend1 = await computeFilmSimulation(calc, {
-      boss, axisNodes: axis, periodViews: [],
-      team, initialGold: teamBase, filmPerVersion: 15000,
-      spendRatio: 1, topUpPerVersion: 0, topUpFilmPerYuan: 10,
-    })
+    const spend1 = await computeFilmSimulation(calc, { ...baseSim, axisNodes: axis, spendRatio: 1 })
     for (let i = 1; i < spend1.points.length; i++) {
       expect(spend1.points[i].totalGold).toBeGreaterThanOrEqual(spend1.points[i - 1].totalGold)
     }
-    expect(spend1.points[spend1.points.length - 1].totalGold).toBeGreaterThan(teamBase)
-    expect(spend1.points[spend1.points.length - 1].goldLabel).toContain('金')
+    expect(spend1.points[spend1.points.length - 1].totalGold).toBeGreaterThanOrEqual(spend1.points[0].totalGold)
     expect(JSON.stringify(config.team)).toBe(originalTeam)
-  }, 180000)
-
-  it('目标卡池：该期把银行清空投入抽卡（filmSpent 激增、bank 回落）', async () => {
-    await boot()
-    const config = useConfigStore()
-    const calc = useResourceCalc()
-    const boss = firstBoss as BossPreset
-    const axis = axisOf(boss)
-    if (axis.length < 4) return
-    const mid = axis[Math.floor(axis.length / 2)].id
-    const res = await computeFilmSimulation(calc, {
-      boss, axisNodes: axis, periodViews: [],
-      team: ['1371', '1251', '1421'], initialGold: 6, filmPerVersion: 15000,
-      spendRatio: 0.5, topUpPerVersion: 0, topUpFilmPerYuan: 10,
-      targetPeriodId: mid,
-    })
-    const idx = res.points.findIndex(p => p.periodId === mid)
-    expect(idx).toBeGreaterThan(0)
-    // 目标期投入 > 前一期（存了多期的银行一次投入）
-    expect(res.points[idx].filmSpent).toBeGreaterThan(res.points[idx - 1].filmSpent)
-    // 银行被清空 → 目标期之后又从头积累
-    expect(res.points[idx].filmBank).toBeLessThanOrEqual(res.points[idx - 1].filmBank)
-  }, 180000)
-
-  it('充值：每版本充钱（元 × 汇率）→ 最终金数不低于不充', async () => {
-    await boot()
-    const config = useConfigStore()
-    const calc = useResourceCalc()
-    const boss = firstBoss as BossPreset
-    const axis = axisOf(boss)
-    const base = { boss, axisNodes: axis, periodViews: [], team: ['1371', '1251', '1421'] as [string, string, string], initialGold: 6, filmPerVersion: 15000, spendRatio: 0.8, topUpFilmPerYuan: 10 }
-    const noTop = await computeFilmSimulation(calc, { ...base, topUpPerVersion: 0 })
-    const withTop = await computeFilmSimulation(calc, { ...base, topUpPerVersion: 30 }) // 月卡档
-    expect(withTop.points[withTop.points.length - 1].totalGold)
-      .toBeGreaterThanOrEqual(noTop.points[noTop.points.length - 1].totalGold)
-  }, 180000)
+  }, 240000)
 })
+

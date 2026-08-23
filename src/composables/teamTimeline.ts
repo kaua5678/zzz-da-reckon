@@ -953,20 +953,25 @@ export function prefillStrongTeamsFromPresets(): Record<string, [string, string,
   return out
 }
 
-// ========== Chart 4：菲林经济模拟（选定 Boss + 队伍，逐期菲林投放 → 加金 → 当期 Boss 强度） ==========
+// ========== Chart 4：菲林经济模拟（选定 Boss + 主C，逐期菲林投放 → 加金 → 当期 Boss 强度） ==========
 //
-// 用户口径（2026-08-23）：
+// 用户口径（2026-08-23 修订）：
 // - 横轴 = 危局期数（含日期）；纵轴 = 队伍强度（伤害/该期 Boss 血量 %）。
+// - **选的是主C不是队伍**：加金可让队友换人（如 琉音换青衣、卢西娅换潘引壶——主C 固定，
+//   队友 = 候选池内「当前总限定金下伤害最高」的双人组，随金数增长自动换队）。
 // - 每个版本有菲林投放（默认 ≈ 1 金 = 15000 菲林，可编辑）；按「消耗占比」决定每期花多少
 //   抽卡、存多少（如给 1 金用半金 = 0.5）；「目标卡池」期把银行菲林全部投入抽卡加金。
 // - 抽卡成本按期望（萌百·游戏内调频详情）：命座金 = 93.75 抽 = 15000 菲林；
 //   音擎金 = 62.5 抽 = 10000 菲林（角色池 1.6% 综率 × 50/50 保底；音擎池 2% 综率 × 75/25 保底）。
-// - 每版本充钱（元）× 直充汇率（10 菲林/元，首充双倍 = 20）折算额外菲林。
-// - 买金顺序 = 主C 优先（buildBudgetAwareGoldSteps：主C 影画 1-6 → 主C 精炼 2-5 → 队友…）；
-//   初始金数/队伍可设定（初始金低于基础金自动钳制到 0 命 1 精带专武）。
+// - **充值 = 用户只输入每版本预算（元），按性价比固定分配**（汇率不可改）：
+//   月卡（30 元 → 3300 菲林）> 大月卡（68 元 → ≈2600 菲林）> 直充（10 菲林/元），
+//   见 data/filmEconomy.ts allocateTopUpFilm。
+// - 买金顺序 = 当前最优队的主C 优先步（buildBudgetAwareGoldSteps：主C 影画 1-6 → 主C 精炼
+//   2-5 → 队友…）；初始金数可设定（低于基础金自动钳制到 0 命 1 精带专武）。
+// - **起点 = 主C 首次 UP 之后的 Boss 初登场**（axisNodes 按主C 实装日期裁剪）。
 // - 每期只算「当前期数」的 Boss 血量与关卡固有 buff（layer_buff，期视图有数据才应用）+ 队伍。
 
-import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM, PERIODS_PER_VERSION } from '@/data/filmEconomy'
+import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM, PERIODS_PER_VERSION, allocateTopUpFilm } from '@/data/filmEconomy'
 import type { PhaseBossBrief, PhaseView } from '@/types/bossPreset'
 
 /** 模拟一个点的结果（一个危局期数） */
@@ -996,18 +1001,18 @@ export interface FilmSimulationOptions {
   axisNodes: TimelineAxisNode[]
   /** 期视图（当期关卡固有 buff 数据；缺省空 = 老期无 buff） */
   periodViews: PhaseView[]
-  /** 模拟队伍（主C + 队友1 + 队友2） */
-  team: [string, string, string]
+  /** 主C（固定；队友从候选池搜最优） */
+  mainAgentId: string
+  /** 队友候选池（用户策展；主C 自动排除；每期按当前总限定金搜最优双人组） */
+  candidatePool: string[]
   /** 初始总限定金（低于基础金自动钳制） */
   initialGold: number
   /** 每版本免费菲林（默认 15000 ≈ 1 金） */
   filmPerVersion: number
   /** 消耗占比 0-1：每期菲林花多少抽卡（其余存银行） */
   spendRatio: number
-  /** 每版本充值（元，0 = 不充） */
-  topUpPerVersion: number
-  /** 直充汇率（菲林/元，默认 10；首充双倍 = 20） */
-  topUpFilmPerYuan: number
+  /** 每版本充值预算（元，0 = 不充）——按性价比固定分配（月卡→大月卡→直充，汇率不可改） */
+  budgetYuanPerVersion: number
   /** 目标卡池期（期 id）：该期把银行菲林全部投入抽卡 */
   targetPeriodId?: string
   /** 自动配装（推荐驱动盘 + 词条优化器）；缺省 false = 轻量速算 */
@@ -1063,8 +1068,9 @@ function nextGoldStepCost(
 }
 
 /**
- * 菲林经济模拟：从初始金出发，逐期发菲林（+充钱折算）→ 按占比花/存 →
- * 抽卡资金按主C 优先顺序买金步 → 用「当前期数」Boss 数值 + 关卡固有 buff 求队伍强度。
+ * 菲林经济模拟：主C 固定，每期发菲林（+预算按性价比折算）→ 按占比花/存 →
+ * 抽卡资金按当前最优队的主C 优先步买金 → 用「当前期数」Boss 数值 + 关卡固有 buff，
+ * 在候选池内搜「当前总限定金下伤害最高」的双队友组合求队伍强度（队友随金数增长可换人）。
  */
 export async function computeFilmSimulation(calc: Calc, opts: FilmSimulationOptions): Promise<FilmSimulationResult> {
   const configStore = useConfigStore()
@@ -1073,62 +1079,106 @@ export async function computeFilmSimulation(calc: Calc, opts: FilmSimulationOpti
   const t0 = Date.now()
   const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
   try {
-    const team = opts.team
-    const base = baseGoldOfTeam(team, catalog)
-    const { steps } = buildBudgetAwareGoldSteps(team, catalog)
-    let totalGold = Math.min(Math.max(opts.initialGold, base), base + steps.length)
+    // 起点 = 主C 首次 UP 之后的 Boss 登场期（用户口径；主C 实装前的期不算）
+    const mainRelease = releaseNodeOf(opts.mainAgentId)
+    const mainDate = mainRelease ? VERSION_NODES[nodeIndexOf(mainRelease)]?.date : undefined
+    const axis = opts.axisNodes.filter(n => !mainDate || (n.date ?? '') >= mainDate)
+    if (axis.length === 0) {
+      report(1, '主C 首次 UP 之后无该 Boss 登场期')
+      return { points: [], stats: { nonConverged: 0, durationMs: Date.now() - t0 } }
+    }
+
+    // 候选双队友（主C 排除；至多 1 击破；预算感知配装）
+    const isStun = (id: string) => (catalog.getAgent(id)?.specialty ?? '') === 'stun'
+    const stunBudget = isStun(opts.mainAgentId) ? 0 : 1
+    const candidates = opts.candidatePool.filter(id => id !== opts.mainAgentId && catalog.getAgent(id))
+    const pairs: [string, string][] = []
+    for (let i = 0; i < candidates.length; i++) {
+      for (let j = i + 1; j < candidates.length; j++) {
+        const a = candidates[i]
+        const b = candidates[j]
+        if ((isStun(a) ? 1 : 0) + (isStun(b) ? 1 : 0) > stunBudget) continue
+        pairs.push([a, b])
+      }
+    }
+    if (pairs.length === 0) {
+      report(1, '候选池不足（至少 2 名非主C队友）')
+      return { points: [], stats: { nonConverged: 0, durationMs: Date.now() - t0 } }
+    }
+
+    /** 在当期 Boss/buff（已应用）下搜「当前总限定金」的最优双队友组合（预算感知 + 收敛过滤） */
+    const searchBest = (totalGold: number): { team: [string, string, string]; damage: number; budgetAware: ReturnType<typeof budgetAwareStateFor> } | null => {
+      let best: { team: [string, string, string]; damage: number; budgetAware: ReturnType<typeof budgetAwareStateFor> } | null = null
+      for (const [a, b] of pairs) {
+        const team: [string, string, string] = [opts.mainAgentId, a, b]
+        if (baseGoldOfTeam(team, catalog) > totalGold) continue // 买不起
+        const budgetAware = budgetAwareStateFor(team, totalGold, catalog)
+        applyTeamToStore(configStore, team, budgetAware.state, opts.autoBuild === true)
+        const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
+        if (conv === 'maxIter') continue
+        const dmg = calc.teamTotalDamage.value
+        if (!best || dmg > best.damage + 1e-9) best = { team, damage: dmg, budgetAware }
+      }
+      return best
+    }
+
+    const minPairBase = Math.min(...pairs.map(([a, b]) => baseGoldOfTeam([opts.mainAgentId, a, b], catalog)))
+    let totalGold = Math.max(opts.initialGold, minPairBase) // 初始金低于最便宜队基础金 → 钳到最便宜队
     let bank = 0
     let filmWallet = 0 // 抽卡资金（累计投入，买金步前先攒）
     let filmInvestedTotal = 0
-    const filmPerPeriod = (opts.filmPerVersion + opts.topUpPerVersion * opts.topUpFilmPerYuan) / PERIODS_PER_VERSION
+    const topUpFilm = allocateTopUpFilm(opts.budgetYuanPerVersion)
+    const filmPerPeriod = (opts.filmPerVersion + topUpFilm) / PERIODS_PER_VERSION
     const points: FilmSimPoint[] = []
     let nonConverged = 0
-    const total = opts.axisNodes.length
+    const total = axis.length
     for (let i = 0; i < total; i++) {
-      const node = opts.axisNodes[i]
+      const node = axis[i]
+      // 当前期数 Boss + 关卡固有 buff 一次应用（本期所有候选队共用）
+      const phase = opts.boss.phases.find(p => p.phaseId === node.id)
+        ?? opts.boss.phases.find(p => p.begin.slice(0, 10) === (node.date ?? '').slice(0, 10))
+      if (!phase) continue
+      configStore.applyBossPreset({ id: opts.boss.id }, phase, opts.boss.monster, opts.boss.defaults)
+      applyPeriodLayerBuffs(configStore, opts.periodViews, node.id, opts.boss)
       // ---- 经济：收入 → 存/花 ----
-      bank += filmPerPeriod * (1 - Math.max(0, Math.min(1, opts.spendRatio)))
-      let spend = filmPerPeriod * Math.max(0, Math.min(1, opts.spendRatio))
+      const ratio = Math.max(0, Math.min(1, opts.spendRatio))
+      bank += filmPerPeriod * (1 - ratio)
+      let spend = filmPerPeriod * ratio
       if (node.id === opts.targetPeriodId && bank > 0) {
         spend += bank
         bank = 0
       }
       filmWallet += spend
       filmInvestedTotal += spend
-      // ---- 抽卡资金按主C 优先顺序买金步 ----
-      while (totalGold < base + steps.length) {
-        const cost = nextGoldStepCost(team, totalGold, catalog)
+      // ---- 买金：按当前最优队的下一步成本；换队时累计金数按新队主C 优先重新解释 ----
+      let guard = 0
+      while (guard++ < 40) {
+        const best = searchBest(totalGold)
+        if (!best) break
+        const cost = nextGoldStepCost(best.team, totalGold, catalog)
         if (cost == null || filmWallet < cost) break
         filmWallet -= cost
         totalGold++
       }
-      // ---- 当前期数 Boss + 关卡固有 buff + 队伍强度 ----
-      const phase = opts.boss.phases.find(p => p.phaseId === node.id)
-        ?? opts.boss.phases.find(p => p.begin.slice(0, 10) === (node.date ?? '').slice(0, 10))
-      if (!phase) continue
-      const budgetAware = budgetAwareStateFor(team, totalGold, catalog)
-      applyTeamToStore(configStore, team, budgetAware.state, opts.autoBuild === true)
-      configStore.applyBossPreset({ id: opts.boss.id }, phase, opts.boss.monster, opts.boss.defaults)
-      applyPeriodLayerBuffs(configStore, opts.periodViews, node.id, opts.boss)
-      const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
-      if (conv === 'maxIter') {
+      // ---- 最终最优队 + 本期强度 ----
+      const best = searchBest(totalGold)
+      if (!best) {
         nonConverged++
         continue
       }
-      const damage = calc.teamTotalDamage.value
       points.push({
         periodId: node.id,
         seq: i + 1,
         label: node.label,
         date: node.date,
-        team,
+        team: best.team,
         totalGold,
-        goldLabel: budgetAware.label,
+        goldLabel: best.budgetAware.label,
         filmBank: Math.round(bank),
         filmSpent: Math.round(spend),
         filmInvestedTotal: Math.round(filmInvestedTotal),
-        damage,
-        hpRatio: phase.hp > 0 ? Math.round((damage / phase.hp) * 10000) / 100 : 0,
+        damage: best.damage,
+        hpRatio: phase.hp > 0 ? Math.round((best.damage / phase.hp) * 10000) / 100 : 0,
       })
       report((i + 1) / total, `期 ${node.label}：${totalGold} 金（${filmInvestedTotal.toFixed(0)} 菲林投入）…`)
       if (i % 2 === 0) await yieldNow()
@@ -1139,3 +1189,4 @@ export async function computeFilmSimulation(calc: Calc, opts: FilmSimulationOpti
     restoreStore(configStore, snap)
   }
 }
+
