@@ -93,14 +93,13 @@
     "以上仅录入原始机制文本，尚未按 spec attributeConversions/resources/events 实现，待人工核对后补充。",
     "日珥：已按入场30 + 前台0.5/秒 + 上分支终结30 + 强特完美格挡10 近似；下分支凯旋坦途/耀斑、左分支无拘剑势、右分支永陷幽囚的收益尚未建模。",
     "影画1 黄昏旧章已实现：暴击率+8%（computePanelPhases 1551 块）+ 进场喧响1000（模块 buildCharConfig 注入 initialDecibelGift）。额外能力暴伤+40% 已实现（additionalAbility 门控）；连携回300喧响未建模。",
-    "大招三分支模型（用户口径）：2000喧响/次；下分支固定1（耀斑 buff 全程）；右分支决算滑块 peiluo.verdictCount（-1=自动=失衡次数）；上分支剩余（阳炎暴伤+40%执行行近似）；左分支不建模。连携回300喧响+影画2回1500由编排层注入 extraSelfDecibelReward。旧 peiluo.ultBranch 滑块移除。",
-    "大招三分支模型（用户口径）：2000喧响/次；下分支固定1（耀斑 buff 全程）；右分支决算滑块 peiluo.verdictCount（-1=自动=失衡次数）；上分支剩余（阳炎暴伤+40%执行行近似）；左分支不建模。连携回300喧响+影画2回1500由编排层注入 extraSelfDecibelReward。旧 peiluo.ultBranch 滑块移除。",
     "日珥账本已接入：patchExecutions 按 moveId 汇总命中回复/天光消耗 → buildResourceResult 并入 peiluo_prominence 总账 → resourceSections 账本卡。倍率表无强化天光差异行，日珥仅校验循环可行性、不影响伤害。",
     "轴模式决算截断已接入：栈引擎 endsStunWindow（1551016）→ 窗口填充归零 + stunSecondsLost 回传 → computeStunCoverage 扣除损失秒数。决算无滑块：轴模式=轴内块计数，非轴=失衡次数。buildStackAxes 佩洛伊斯分支大招喧响消耗按 2000 计。",
     "强特完美格挡回日珥改为用户填写：主页交互栏「强特完美格挡」→ cfg.perfectBlockCount → spec countSource perfectBlockCount ×10。",
     "用户验收修正（第二轮）：①阳炎改 buff 轴扫描（computePeiluoKagerouBonus，21s 窗口，触发块自身也享受，受益限上分支/决算），非轴滑块 peiluo.kagerouCoverage 默认满；②决算无视时间阀门（endsStunWindow 豁免）；③4命失衡值+10% 默认全覆盖（stunBuildUpBonus）；④强袭训令次数主页交互栏填写（执行行 1551022）；⑤进场日珥30 = spec initialValue 已承载；6命不管。",
     "被动日珥回复（0.5/s 上限60）按用户口径直接计 60（spec countSource fixed）。",
-    "用户验收修正（第三轮）：①被动日珥 0.5/s(上限60) 直接按 60 计（countSource fixed）；②阳炎只给大招（受益 moveId 限 1551015/1551016，与凝神给全招式不同）；③非轴模式阳炎配对：可受益决算数 = min(上分支,决算)，喧响不够只打决算时决算不吃阳炎（peiluoKagerouPairRatio 折算）；轴模式 buff 轴扫描天然满足（无上分支触发则窗口不成立）。"
+    "用户验收修正（第三轮）：①被动日珥 0.5/s(上限60) 直接按 60 计（countSource fixed）；②阳炎只给大招（受益 moveId 限 1551015/1551016，与凝神给全招式不同）；③非轴模式阳炎配对：可受益决算数 = min(上分支,决算)，喧响不够只打决算时决算不吃阳炎（peiluoKagerouPairRatio 折算）；轴模式 buff 轴扫描天然满足（无上分支触发则窗口不成立）。",
+    "[已确认·最终口供 2026-08] 大招三分支模型：2000 喧响/次；下分支[终结技：凯旋坦途] = 200s 耀斑 buff（伤害+40%/能量获得效率+15%，战斗 180s 全程覆盖），全局首次必打一次（影画2 额外回 1500 喧响同挂）；剩余大招先给右分支决算（非轴默认一次失衡一次=失衡次数，轴模式 = 轴内 1551016 决算块计数），再全给上分支阳炎（暴伤+40% 执行行，仅 1551015/1551016 受益）；左分支不建模。C6 拂晓晨星：官方未公布（2026-08），暂不实现。"
   ],
   "teamBuffs": [
     {
