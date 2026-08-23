@@ -80,6 +80,7 @@ export function computeRoxyWindEnergy(input: {
 }
 
 function buildRoxyCharConfig({ skills, cfg }: AgentCharConfigInput): void {
+  cfg.skipGenericExSpecial = true
   cfg.roxyWindCannonMoveId = findMoveById(skills, WIND_CANNON_MOVE_ID)?.id ?? ''
   cfg.roxyWindEyeMoveId = findMoveById(skills, WIND_EYE_MOVE_ID)?.id ?? ''
   cfg.roxyMiniTornadoMoveId = findMoveById(skills, MINI_TORNADO_MOVE_ID)?.id ?? ''
