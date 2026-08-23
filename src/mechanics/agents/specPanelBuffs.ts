@@ -101,18 +101,8 @@ export const anbyChargeMechanic = makePanelBuffModule(
   },
 )
 
-export const graceChargeMechanic = makePanelBuffModule(
-  'agent:grace_charge',
-  ['1181'],
-  '格莉丝·电能',
-  'grace_electric_charge',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) > 0) {
-      panel.electricAnomalyBuildUpEfficiency = (panel.electricAnomalyBuildUpEfficiency ?? 0) + 130
-    }
-  },
-)
-
+// 格莉丝电能（旧全局 electricAnomalyBuildUpEfficiency+130 面板近似）已由 agents/grace.ts
+// 完整模块取代（2026-08-23 口供：行级 ×2.3 精确限定特殊技 + A3/特/A4/特 显式循环）。
 export const zhendouHeartfireMechanic = makePanelBuffModule(
   'agent:zhendou_heartfire',
   ['1441'],

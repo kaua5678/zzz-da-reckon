@@ -9,6 +9,7 @@ import { yuzuhaMechanic } from './agents/yuzuha'
 import { nangongMechanic } from './agents/nangong'
 import { remielleMechanic } from './agents/remielle'
 import { yidhariMechanic } from './agents/yidhari'
+import { graceMechanic } from './agents/grace'
 import { nekomataMechanic } from './agents/nekomata'
 import { miyabiMechanic } from './agents/miyabi'
 import { liuyinMechanic } from './agents/liuyin'
@@ -30,7 +31,6 @@ import {
   pulchraHuntStepMechanic,
   // benGuardShieldMechanic 已由 agents/ben.ts 替代（全队暴击+防转攻+命座）
   anbyChargeMechanic,
-  graceChargeMechanic,
 	  zhendouHeartfireMechanic,
   peiluoProminenceMechanic,
   jufufuTigerRoarMechanic,
@@ -74,6 +74,7 @@ registerAgentMechanic(yuzuhaMechanic)
 registerAgentMechanic(nangongMechanic)
 registerAgentMechanic(remielleMechanic)
 registerAgentMechanic(yidhariMechanic)
+registerAgentMechanic(graceMechanic)
 registerAgentMechanic(nekomataMechanic)
 registerAgentMechanic(piperMechanic)
 registerAgentMechanic(hugoMechanic)
@@ -96,7 +97,6 @@ registerAgentMechanic(xideMechanic)
 registerAgentMechanic(koledaMechanic)
 registerAgentMechanic(anbyChargeMechanic)
 registerAgentMechanic(corinMechanic)
-registerAgentMechanic(graceChargeMechanic)
 registerAgentMechanic(miyabiMechanic)
 registerAgentMechanic(liuyinMechanic)
 registerAgentMechanic(normaMechanic)

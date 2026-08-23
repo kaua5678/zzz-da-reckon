@@ -11,13 +11,13 @@ import { computeRemielleMechanic } from '@/mechanics/agents/remielle'
 import { miyabiMechanic } from '@/mechanics/agents/miyabi'
 import { calcAnomalyCritExpect } from '@/core/anomalyPool/helpers'
 import { emptyPanel } from '@/core/panel'
+import { getAgentMechanic } from '@/mechanics'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import {
   pulchraHuntStepMechanic,
   nekomataPurrMechanic,
   anbyChargeMechanic,
-  graceChargeMechanic,
   zhendouHeartfireMechanic,
   yeshuguangMingxinMechanic,
   peiluoProminenceMechanic,
@@ -117,10 +117,9 @@ describe('spec resource panel buffs', () => {
 
     // 可琳专注电锯已迁移到 agents/corin.ts 模块，见 __tests__/corin.test.ts
 
-    const graceMap = resources('1181', {}, { basicAttackTime: 8 })
-    const gracePanel = emptyPanel()
-    transform(graceChargeMechanic, '1181', gracePanel, graceMap)
-    expect(gracePanel.electricAnomalyBuildUpEfficiency).toBe(130)
+    // 格莉丝电能（旧面板模块）已迁移到 agents/grace.ts 完整模块：积蓄 +130% 走 applyPanel 的
+    // electricAnomalyBuildUpEfficiency（面板差分见 __tests__/grace.test.ts）
+    expect(getAgentMechanic('1181')?.id).toBe('agent:grace')
   })
 
   it('applies Miyabi frost fall defense ignore (影画1 招式限定：霜月#1/#2/#3 = 12/24/36 执行级)', async () => {
