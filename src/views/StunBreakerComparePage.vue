@@ -23,6 +23,10 @@
           <span class="label">预设队伍（各自自动轴）</span>
           <n-select v-model:value="selectedPresetIds" :options="presetOptions" multiple size="small" style="width: 320px" />
         </div>
+        <div class="control">
+          <span class="label">限定金</span>
+          <n-input-number v-model:value="gold" :min="0" :max="20" size="small" style="width: 90px" />
+        </div>
         <n-button type="primary" size="small" :loading="computing" :disabled="!canRun" @click="run">
           对比
         </n-button>
@@ -36,6 +40,8 @@
             <th>队伍</th>
             <th>击破手</th>
             <th>失衡次数</th>
+            <th>失衡值</th>
+            <th>失衡占比</th>
             <th>总伤</th>
             <th>击破手自身</th>
             <th>送连携/赠送</th>
@@ -48,6 +54,8 @@
             <td>{{ r.presetName }}</td>
             <td>{{ r.breakerName }}</td>
             <td>{{ r.stunCount }}</td>
+            <td class="num">{{ fmt(r.breakerDaze) }}</td>
+            <td class="num">{{ r.dazeShare.toFixed(1) }}%</td>
             <td class="num">{{ fmt(r.totalDamage) }}</td>
             <td class="num">{{ fmt(r.selfDamage) }} <span class="pct">{{ pct(r.selfDamage, r.totalDamage) }}</span></td>
             <td class="num">{{ fmt(r.giftDamage) }} <span class="pct">{{ pct(r.giftDamage, r.totalDamage) }}</span></td>
@@ -57,6 +65,8 @@
         </tbody>
       </n-table>
       <p class="hint">
+        同款限定金数：所有参比队伍先按同一金档应用各自预设 goldSteps 再比较（公平换人边际）。
+        失衡值/占比来自失衡池逐槽统计，后台自动招式（莱卡恩围猎闪反、橘福福虎威、露西、丽娜邦布、仪玄合轴等）的失衡贡献已计入。
         拐力提升 = 关掉该击破手 teammate-buffs（失衡易伤/增伤/减抗等）重算的总伤差值（含拐力带来的失衡次数变化）。
         各自队伍自动匹配各自预设轴（琉音队用琉音转大轴等）。送连携 = source='gift' 行（诺姆膛温换连携/琉音好评转大等）。
       </p>
@@ -66,8 +76,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { NCard, NSelect, NButton, NTable } from 'naive-ui'
-import { teamPresets } from '@/data/teamPresets'
+import { NCard, NSelect, NButton, NTable, NInputNumber } from 'naive-ui'
+import { teamPresets, teamPresetGroupOptions } from '@/data/teamPresets'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeBreakerCompare, type BreakerBreakdown } from '@/composables/breakerCompare'
@@ -85,6 +95,8 @@ const selectedPhaseId = ref('')
 const selectedPresetIds = ref<string[]>([])
 const results = ref<BreakerBreakdown[]>([])
 const computing = ref(false)
+/** 同款限定金数：所有参比队伍按同一金档应用各自预设 goldSteps */
+const gold = ref(6)
 
 onMounted(async () => {
   try {
@@ -106,9 +118,8 @@ const selectedPhase = computed(() =>
   selectedBoss.value?.phases.find(p => p.phaseId === selectedPhaseId.value)
   ?? selectedBoss.value?.phases[0] ?? null,
 )
-const presetOptions = computed(() =>
-  teamPresets.map(p => ({ value: p.id, label: p.name })),
-)
+/** 两级下拉：一级分类（如 命破队）→ 二级队伍 */
+const presetOptions = teamPresetGroupOptions
 const canRun = computed(() => selectedPresetIds.value.length >= 1 && selectedBoss.value && selectedPhase.value)
 
 async function run() {
@@ -124,7 +135,7 @@ async function run() {
     await catalog.load()
     await catalog.loadTeammateBuffs()
     const calc = useResourceCalc()
-    results.value = computeBreakerCompare(calc, presets, boss, phase)
+    results.value = computeBreakerCompare(calc, presets, boss, phase, { gold: gold.value })
   } finally {
     computing.value = false
   }

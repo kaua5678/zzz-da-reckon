@@ -10,11 +10,18 @@
  *
  * 对比基准（用户口径）：各自用预设队伍 + 自动匹配的预设轴（不同击破手轴不同——
  * 如琉音必须有琉音转大轴，换人不同轴是预期行为）。
+ *
+ * 同款限定金数（用户口径）：所有参比队伍按同一金档应用各自预设 goldSteps
+ * （options.gold，缺省 6），复用队伍对比页 applyGoldSteps——公平比较「换击破手」的边际。
+ * 失衡占比：击破手槽位失衡 / 全队失衡（失衡池 perSlotStun），后台自动招式
+ * （莱卡恩围猎闪反/橘福福虎威/露西/丽娜邦布/仪玄合轴等，totalTime=0 或 backstage 行）
+ * 的 daze 经倍率表回填后同样进池，已含在分子分母里。
  */
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
+import { applyGoldSteps, baseGoldOf } from '@/composables/teamCompare'
 
 type Calc = ReturnType<typeof import('@/composables/useResourceCalc').useResourceCalc>
 
@@ -30,6 +37,10 @@ export interface BreakerBreakdown {
   buffContribution: number
   otherDamage: number
   stunCount: number
+  /** 击破手槽位的失衡值（含后台自动招式贡献；来自失衡池 perSlotStun） */
+  breakerDaze: number
+  /** 击破手失衡占全队失衡比例（%），后台招式失衡已含在分子分母里 */
+  dazeShare: number
 }
 
 function snapshotStore(configStore: ReturnType<typeof useConfigStore>) {
@@ -56,7 +67,6 @@ function restoreStore(configStore: ReturnType<typeof useConfigStore>, snap: Retu
   Object.assign(selections, snap.buffSelections)
 }
 
-/** 应用预设队伍（含装备/交互），不应用金数/buff 牌——保持与队伍对比页同口径 */
 function applyTeamToStore(configStore: ReturnType<typeof useConfigStore>, preset: TeamPreset) {
   for (let slot = 0; slot < 3; slot++) {
     configStore.setAgent(slot, preset.team[slot])
@@ -86,14 +96,29 @@ export function computeBreakerCompare(
   presets: TeamPreset[],
   boss: BossPreset,
   phase: BossPresetPhase,
+  options: { gold?: number } = {},
 ): BreakerBreakdown[] {
   const configStore = useConfigStore()
   const catalogStore = useCatalogStore()
   const snap = snapshotStore(configStore)
   const out: BreakerBreakdown[] = []
   try {
+    const gold = options.gold ?? 6
     for (const preset of presets) {
       applyTeamToStore(configStore, preset)
+      // 同款限定金数：所有参比队伍按同一金档应用预设 goldSteps（复用队伍对比页 applyGoldSteps 口径）
+      const applied = applyGoldSteps(
+        preset.goldSteps,
+        gold,
+        baseGoldOf(preset),
+        preset.standardSteps ?? [],
+        preset.wEngines ?? [],
+      )
+      for (let slot = 0; slot < 3; slot++) {
+        configStore.setCinemaLevel(slot, applied.cinemas[slot])
+        configStore.setWEngineModLevel(slot, applied.wengineMods[slot])
+        if (applied.wEngines[slot]) configStore.setWEngine(slot, applied.wEngines[slot])
+      }
       // 各自预设轴：不手动设轴，队伍满 3 人自动匹配 stunAxisPresets（selectAutoStunAxisPreset）
       configStore.useStunAxis = false
       configStore.stunAxes.splice(0, configStore.stunAxes.length)
@@ -136,7 +161,13 @@ export function computeBreakerCompare(
         configStore.refreshTrigger++
       }
 
-      const stunCount = calc.stunPoolResult?.value?.stunCount ?? 0
+      const pool = calc.stunPoolResult?.value
+      const stunCount = pool?.stunCount ?? 0
+      // 逐槽失衡（含后台自动招式贡献）：击破手占比 = 该槽 / 全队合计
+      const perSlot = pool?.perSlotStun ?? []
+      const breakerDaze = perSlot[breakerSlot] ?? 0
+      const totalDaze = perSlot.reduce((sum, v) => sum + v, 0)
+      const dazeShare = totalDaze > 0 ? Math.round((breakerDaze / totalDaze) * 10000) / 100 : 0
       out.push({
         presetId: preset.id,
         presetName: preset.name,
@@ -149,6 +180,8 @@ export function computeBreakerCompare(
         buffContribution,
         otherDamage: Math.max(0, total - selfDamage - giftDamage - buffContribution),
         stunCount,
+        breakerDaze,
+        dazeShare,
       })
     }
   } finally {

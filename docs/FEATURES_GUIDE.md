@@ -224,7 +224,15 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 测试（口径钉子） | `src/composables/__tests__/multiplierCoefficients.test.ts` |
 | 固化产物再生成 | `npm run gen:multiplier-record`（生成器 + 漂移检查在 `src/composables/__tests__/multiplierRecord.test.ts`，产物 `docs/multiplier-record.md`） |
 
-## 6. 验证命令
+## 6. 击破手对比（「击破手对比」Tab）
+
+回答「击破手这个位置选谁」：同一支队伍只换击破手（如诺姆 ↔ 琉音），总伤拆成 自身直伤 / 送连携 / 拐力差分 / 其他 四块。
+
+- **同款限定金数**：所有参比队伍先按同一金档应用各自预设 `goldSteps`（控件「限定金」，缺省 6）再比较——公平看换击破手的边际收益。
+- **失衡值 / 失衡占比**：来自失衡池逐槽统计（`perSlotStun`）。**后台自动招式（莱卡恩围猎闪反/蓄力平A、橘福福虎威、露西、丽娜邦布、仪玄合轴等）的失衡贡献已计入**——这些行 daze 经倍率表回填进失衡池，分子分母都含。
+- 各队自动匹配各自预设轴；拐力 = 关掉该击破手 teammate-buffs 重算的总伤差值。实现 `composables/breakerCompare.ts` + `views/StunBreakerComparePage.vue`。
+
+## 7. 验证命令
 
 ```bash
 npm run typecheck      # 类型
