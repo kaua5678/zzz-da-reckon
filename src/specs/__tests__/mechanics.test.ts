@@ -7,6 +7,7 @@ import {
   buildSpecResourceSections,
   specToMechanicModule,
 } from '@/specs/mechanics'
+import { nekomataMechanic } from '@/mechanics/agents/nekomata'
 import type { AgentMechanicSpec } from '@/specs/types'
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
 
@@ -64,11 +65,10 @@ describe('spec mechanics interpreter', () => {
     expect(module.resourceSections?.({ result: null as any })).toHaveLength(1)
   })
 
-  it('generates Nekomata resource spend executions from spec counts', () => {
+  it('generates Nekomata resource spend executions from spec counts（2026-08-23 口供：单载体 1021019，30/40 档预算分配）', () => {
     const spec = getAgentSpec('1021')!
     const cfg = {
       mechanicRowValues: {
-        '1021012': 1000,
         '1021019': 800,
       },
     } as unknown as CharacterOperationConfig
@@ -79,16 +79,19 @@ describe('spec mechanics interpreter', () => {
       chainCountTotal: 5,
     } as unknown as IterationState
 
-    const module = specToMechanicModule(spec)
+    // 1021 是自定义 TS 模块角色：真实消费者是 nekomataMechanic（spec 解释器不单独驱动它）
+    const module = nekomataMechanic
     const executions: any[] = []
     module.buildExecutions?.({ cfg, state, executions })
 
-    const tail = executions.find(e => e.moveId === '1021012')
-    const pierce = executions.find(e => e.moveId === '1021019')
-    expect(tail?.count).toBe(5)
-    expect(tail?.damageMultiplier).toBe(1000)
-    expect(pierce?.count).toBe(3)
-    expect(pierce?.damageMultiplier).toBe(800)
+    // 预算 = 初始40 + 30 + 10 + 20 + 50 = 150；默认占比 -1 → 自动覆盖率 0 → 全 30 档
+    // ≥40 门控沉底 10 点：floor((150−10)/30) = 4 发，载体只有绒爪穿刺
+    const pierce = executions.find(e => e.moveId === '1021019')!
+    expect(pierce.count).toBe(4)
+    expect(pierce.damageMultiplier).toBe(800)
+    expect(pierce.actionTime).toBeCloseTo(1.5666, 4)
+    // 旧实现曾把尾巴失踪术错挂终结技 1021012 产出行——解释器层不得再出现
+    expect(executions.some(e => e.moveId === '1021012')).toBe(false)
   })
 
   it('filters events by enabled field and zero count', () => {

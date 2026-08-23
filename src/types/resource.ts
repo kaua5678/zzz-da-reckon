@@ -1533,6 +1533,10 @@ export interface CharacterOperationConfig {
   lighterC4BurstEnergy?: number
   /** 莱特后场时间占比（影画4 前场效率覆盖） */
   lighterBackstageRatio?: number
+  /** 全队通用：当前轮失衡时间覆盖率（0-1；编排层按失衡次数×窗口时长/有效时间统一注入，供模块近似拆失衡内外） */
+  teamStunCoverage?: number
+  /** 全队通用：轴内各 moveId 捏块总次数（块数×窗口数；轴模式由编排层注入，非轴为空对象） */
+  axisActionCounts?: Record<string, number>
   /** 苍角终结技每次给本槽位的能量（邻位 30/10） */
   soukakuEnergyPerSoukakuUlt?: number
   /** 叶瞬光：队友整局帷幕次数（也可 setting 滑块） */

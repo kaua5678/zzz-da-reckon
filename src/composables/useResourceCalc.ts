@@ -849,13 +849,22 @@ function applyNormaHatChain(
       ? allocateAxisWindows(resolvedAxes, stunCount).reduce((a, b) => a + b, 0) * computeWindowDuration()
       : 0
     // 把当前失衡次数/覆盖率/战斗时间传给角色配置（诺姆火力实验导弹舱、炮塔全程射击依赖）
+    // 各槽位轴内捏块总次数（块数×窗口数）：通用注入用（般岳分支与下方 merged 均取同一来源）
+    const axisActionCountsBySlot: Record<number, Record<string, number>> = {}
+    for (const c of base.characters) axisActionCountsBySlot[c.slot] = computeBanyueAxisExFor(c.slot)
     const characters = base.characters.map(cfg => {
       cfg.axisInSeconds = axisInSeconds
       // 轴模式：连携总次数完全由轴决定（未列连携块的槽位 = 0 次，轴即最终次数）
       const chainOverride = axisActive
         ? (axisChainTotal[cfg.slot] ?? 0)
         : undefined
-      const merged = chainOverride !== undefined ? { ...cfg, chainCountTotalOverride: chainOverride } : cfg
+      // 全队通用注入（无 agent 分支）：失衡时间覆盖率 + 本槽位轴内捏块计数。
+      // 供需要「失衡内/外拆分」或「轴内精确次数」的模块自取（猫又 30/40 档穿刺用）；其余角色字段闲置。
+      const merged = {
+        ...(chainOverride !== undefined ? { ...cfg, chainCountTotalOverride: chainOverride } : cfg),
+        teamStunCoverage: provStunCoverage,
+        axisActionCounts: axisActionCountsBySlot[cfg.slot],
+      }
       if (merged.agentId === '1571') {
         return { ...merged, normaStunCount: stunCount, normaStunCoverage: provStunCoverage, normaBattleTime: base.totalTime }
       }

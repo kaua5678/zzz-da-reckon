@@ -90,18 +90,18 @@
       ],
       "spendRules": [
         {
-          "id": "nekomata_tail_loss",
-          "trigger": "拥有至少40点呼噜能量时，极限闪避后点按",
+          "id": "nekomata_pierce_dodge",
+          "trigger": "拥有至少40点呼噜能量时，触发[极限闪避]后点按（失衡内敌人无法被极限闪避，此档只在失衡外可用）",
           "cost": 30,
-          "result": "发动闪避：尾巴失踪术",
+          "result": "发动[闪避：尾巴失踪术]（无伤害，纯闪避位移），随后点按可免耗发动一次[闪避反击：绒爪穿刺]——净效果 = 花30获得一次穿刺，相比40档省10点（用户口供 2026-08-23）",
           "deduct": false,
           "status": "implemented_approximation"
         },
         {
-          "id": "nekomata_nail_pierce",
-          "trigger": "拥有至少40点呼噜能量时长按",
+          "id": "nekomata_pierce_hold",
+          "trigger": "拥有至少40点呼噜能量时长按（失衡内无法极限闪避 → 失衡内只能用此档）",
           "cost": 40,
-          "result": "发动闪避反击：绒爪穿刺",
+          "result": "直接发动一次[闪避反击：绒爪穿刺]",
           "deduct": false,
           "status": "implemented_approximation"
         }
@@ -113,26 +113,15 @@
   "rowFusions": [],
   "events": [
     {
-      "id": "nekomata_tail_loss_execution",
-      "name": "闪避：尾巴失踪术",
-      "trigger": "消耗30点呼噜能量",
+      "id": "nekomata_pierce_execution",
+      "name": "闪避反击：绒爪穿刺（呼噜能量释放）",
+      "trigger": "每消耗一档呼噜能量产出一行穿刺：30档（尾巴失踪术+免费穿刺）或40档（直接穿刺）——两档伤害载体相同，总次数由模块按失衡内外预算分配注入",
       "executionKind": "execution",
       "countSource": "resourceSpend",
-      "countField": "resource:nekomata_purr:nekomata_tail_loss",
-      "carrierMoveId": "1021012",
-      "carrierMoveName": "闪避：尾巴失踪术",
-      "multiplierRowId": "damage",
-      "status": "implemented_approximation"
-    },
-    {
-      "id": "nekomata_nail_pierce_execution",
-      "name": "闪避反击：绒爪穿刺",
-      "trigger": "消耗40点呼噜能量",
-      "executionKind": "execution",
-      "countSource": "resourceSpend",
-      "countField": "resource:nekomata_purr:nekomata_nail_pierce",
+      "countField": "resource:nekomata_purr:nekomata_casts_total",
       "carrierMoveId": "1021019",
       "carrierMoveName": "闪避反击：绒爪穿刺",
+      "actionTime": 1.5666,
       "multiplierRowId": "damage",
       "status": "implemented_approximation"
     }
@@ -148,7 +137,7 @@
     "影画机制文本：\n影画1 猎鸟技巧：从背后攻击命中敌人时，猫又无视目标16%物理伤害抗性；敌方处于失衡状态时，猫又对其的所有攻击均被视为背后攻击。\n影画2 猫鼠游戏：当场上只有一名敌人且自身位于前场时，猫又的能量获得效率提升25%。\n影画3 好奇的左尾：[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2\n影画4 磨爪：发动[强化特殊技]时，猫又的暴击率提升7%，最多叠加2层，持续15秒，每层效果单独结算持续时间。\n影画5 幸运的右尾：[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2\n影画6 捕食者血统：发动[连携技]或[终结技]时，猫又的暴击伤害提升18%，最多叠加3层，退出接战状态时增益效果结束；猫又击败敌人时，该增益效果直接叠加至层数上限。",
     "潜能觉醒文本：\n潜能（猫的报恩 II） 潜能觉醒：夜行习性：猫又处于[肉球突袭]状态时，暴击伤害提升20%。\n潜能（猫的报恩 III） 潜能觉醒：夜行习性：猫又处于[肉球突袭]状态时，暴击伤害提升30%。\n潜能（猫的报恩 IV） 潜能觉醒：夜行习性：猫又处于[肉球突袭]状态时，暴击伤害提升40%。\n潜能（猫的报恩 V） 潜能觉醒：夜行习性：猫又处于[肉球突袭]状态时，暴击伤害提升50%。\n潜能（猫的报恩 VI） 潜能觉醒：夜行习性：猫又处于[肉球突袭]状态时，暴击伤害提升60%。",
     "以上仅录入原始机制文本，尚未按 spec attributeConversions/resources/events 实现，待人工核对后补充。",
-    "呼噜能量：已按入场40 + 前台1/秒 + 终结20 + 连携10 + 强特5 近似；总回复量按尾巴失踪术（30/次）与绒爪穿刺（40/次）默认各50%分配，可在资源利用率页调整比例；绒爪次数用于倍率表调用。"
+    "呼噜能量：入场40 + 前台1/秒 + 终结20 + 连携10 + 强特5；全部用于释放[闪避反击：绒爪穿刺](1021019)。分配口径（用户口供 2026-08-23）：失衡内无法极限闪避 → 只能打40档长按；失衡外一律打30档（尾巴失踪术无伤害，价值=免费接一次穿刺，净省10点）。非轴模式按「失衡内释放占比」滑杆拆分（-1=自动按失衡时间覆盖率）；轴模式按轴内捏的穿刺块精确计40档。"
   ],
   "teamBuffs": []
 }
