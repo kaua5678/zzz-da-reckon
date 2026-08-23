@@ -50,7 +50,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     const panel = panels[exec.slot] ?? panels[0]
     // 按基础元素取抗性（变种元素与基础元素共享抗性）
     const elementRes = enemyAnomalyResistances[getBaseElement(exec.element)] ?? 0
-    const perHit = calcPerHitBuildUp(exec.baseBuildUp, panel, elementRes, exec.element)
+    const perHit = calcPerHitBuildUp(exec.baseBuildUp, panel, elementRes, exec.element, exec.buildUpEfficiencyBonusPct ?? 0)
     const total = perHit * exec.count
 
     const contrib: AnomalyContribution = {

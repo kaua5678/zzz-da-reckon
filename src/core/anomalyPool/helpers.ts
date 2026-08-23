@@ -243,6 +243,9 @@ export interface AnomalySkillExecution {
   baseBuildUp: number
   /** 招式元素 */
   element: string
+  /** 行级异常积蓄效率加成（%）：进「异常积蓄效率区」与面板/元素效率**加算**（非独立乘区）。
+   *  招式限定用（如格莉丝电能强化只加特殊技/强特两行）；由 transformSkillExecutions 或提取器写入 */
+  buildUpEfficiencyBonusPct?: number
 }
 
 /**
@@ -471,13 +474,16 @@ export function calcPerHitBuildUp(
   panel: PanelValues,
   enemyAnomalyResistance: number,
   element: string,
+  rowEfficiencyBonusPct = 0,
 ): number {
   // 异常掌控区（anomalyMastery / 100，无上限）
   const mastery = Math.floor(panel.anomalyMastery ?? 0)
   const afterMastery = baseBuildUp * (mastery / 100)
 
-  // 异常积蓄效率区
-  const buildUpEff = (panel.anomalyBuildUpEfficiency ?? 0) + getElementAnomalyBuildUpEfficiency(panel, element)
+  // 异常积蓄效率区（面板 + 元素 + 行级招式限定，全部**加算**）
+  const buildUpEff = (panel.anomalyBuildUpEfficiency ?? 0)
+    + getElementAnomalyBuildUpEfficiency(panel, element)
+    + rowEfficiencyBonusPct
   const afterEff = afterMastery * (1 + buildUpEff / 100)
 
   // 异常积蓄抗性区

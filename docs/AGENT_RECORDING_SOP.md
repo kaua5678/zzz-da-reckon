@@ -10,6 +10,8 @@
 2. **spec 不是数据源，代码消费端才是**。录入后先回答：哪个函数读它？
 3. **不要依赖 `enrichExecutionPlan` 之后的 name/note 匹配**（会被倍率表回填覆盖），测试/逻辑按 `moveId` 匹配。
 4. **自定义 TS 模块角色**（`src/mechanics/agents/*.ts` 注册过的）**绕过 spec 解释器**：spec 里的 adjustable 滑块、attributeConversions 是死数据，机制必须在模块里实现。
+5. **加成一律进既有乘区加算，禁止造独立乘区**（2026-08-23 用户铁律）：任何「提升 X%」都落在引擎既有的某个乘区里与同区其他来源**加算**——绝不写成行级 ×(1+X) 的独立乘区（如格莉丝积蓄 +130% 曾误写成 baseBuildUp×2.3，正确做法是进「异常积蓄效率区」+130）。先回答「这个加成属于哪个既有乘区」再写代码。
+6. **招式限定必须落实到位，禁止一视同仁近似**：文本写明「只有某几招生效」时就做**引擎级招式限定**（行级字段/钩子按 moveId 精确到行），面板级/全局级一视同仁是马虎。确需近似的唯一合法姿势：先算限定招式的**占比**（如该招积蓄占总量比例），用 `边际效用 × 占比` 做最终加权修正，并注释公式——不是把满额加成分给所有人。
 
 ## 1. spec 字段 → 消费者 → 生效测试 清单
 
@@ -47,6 +49,7 @@
 5. **命座提升率联动放大**：技能等级 → daze → 失衡次数变化 → 伤害暴涨假象（3 命技能+2 曾被放大成 +20%）。`computeCinemaGains` 固定失衡次数场景：**阈值调节会被失衡自激破坏**（阈值变小 → 失衡次数变多 → 连携/喧响变多 → 失衡总量暴涨，无稳定点），已改为 `enemy.stunCountLock` 直接锁定次数（`calcOutput` 按固定次数算一轮，不收敛）；手工对比命座时同样锁定。
 6. **失衡窗口时长**：引擎 `computeWindowDuration` = stunTime + 4 + 全队 `stunDurationBonusSeconds`（角色级延长），轴编辑器 `maxDur` 用导出的 `windowDuration`，不要硬编码。
 7. **测试环境**：fetch 需 stub 三个静态文件（catalog/teammate-buffs/build-recommendations），见 `src/mechanics/__tests__/banyue.test.ts` 顶部模板。
+8. **新角色配装推荐缺专武块**：`build-recommendations.json` 是初始爬取快照，新角色驱动盘/主词条有、专武块没有 → 配装面板不显示专武、「一键应用」不装专武。专武归属唯一事实源 = catalog `wEngines[].ownerAgentId`；录完新角色跑 `npm run sync:wengine-recs` 补齐（幂等，只补缺、不覆盖爬取值），护栏测试 `src/data/__tests__/buildRecWengine.test.ts`（无专武归属的角色快照也在该测试里，录入后必须更新）。
 
 ## 3.5 命座提升率丢失 / buff 丢失 · 根因与自查（星徽·比利 1531 录入实证）
 

@@ -6,6 +6,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { AnomalyEventExecution, SkillExecution } from '@/types/resource'
+import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
@@ -90,10 +91,8 @@ function buildGraceCharConfig(input: AgentCharConfigInput): void {
 /** 永续面板项：潜能电伤（C2-C6 = 10~30%）+ AA 感电强化层数 */
 function applyGracePanel(input: AgentPanelInput): void {
   const { panel, cinemaLevel, settings } = input
-  // 电能满层消耗 → 电属性异常积蓄 +130%（Lv.7）：**加算进积蓄效率区**（异常积蓄效率与
-  // 其他来源加算，非独立乘区——用户口供 2026-08-23 二轮修正）。面板级对全电积蓄生效，
-  // 属近似（特殊技/强特在循环中占绝对主导），文档已注明。
-  panel.electricAnomalyBuildUpEfficiency = (panel.electricAnomalyBuildUpEfficiency ?? 0) + GRACE_BUILDUP_BONUS_PCT
+  // 积蓄 +130% 不走面板（会波及终结/连携）：行级引擎字段 buildUpEfficiencyBonusPct 仅挂
+  // 特殊技/强特两行（transform 钩子），进积蓄效率区与面板/元素效率加算（非独立乘区）
   if (cinemaLevel >= 2) {
     const bonus = [10, 15, 20, 25, 30][Math.min(cinemaLevel, 6) - 2]
     if (bonus != null) {
@@ -137,6 +136,16 @@ function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): v
 }
 
 /** 手雷附带异放事件（用户口供：脉冲手雷「还有附带异放事件」）：以脉冲手雷倍率 84.9 结算电异放 */
+/** 招式限定（引擎级，非近似）：只对特殊技/强特两行的异常行加行级积蓄效率 +130%，
+ *  进积蓄效率区与其他来源加算（用户口供：文字明确只有这两招吃，一视同仁是马虎） */
+function transformGraceExecutions({ anomalyExecs }: { anomalyExecs: AnomalySkillExecution[] }): void {
+  for (const exec of anomalyExecs) {
+    if (exec.moveId === SP_MOVE_ID || exec.moveId === EX_MOVE_ID) {
+      exec.buildUpEfficiencyBonusPct = (exec.buildUpEfficiencyBonusPct ?? 0) + GRACE_BUILDUP_BONUS_PCT
+    }
+  }
+}
+
 function buildGraceAnomalyEvents({ cfg, events }: { cfg: AgentResourceInput['cfg']; events: AnomalyEventExecution[] }): void {
   const count = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).gracePulseGrenadeCount ?? 0)))
   if (count <= 0) return
@@ -186,6 +195,7 @@ export const graceMechanic: AgentMechanicModule = {
   applyPanel: applyGracePanel,
   buildCharConfig: buildGraceCharConfig,
   buildExecutions: buildGraceExecutions,
+  transformSkillExecutions: transformGraceExecutions,
   buildAnomalyEvents: buildGraceAnomalyEvents,
   estimateExSpecialTime: ({ cfg, exSpecialCount }) => {
     const prevPool = Math.max(0, Number((cfg as unknown as Record<string, unknown>).graceBasicPoolPrev ?? 0))

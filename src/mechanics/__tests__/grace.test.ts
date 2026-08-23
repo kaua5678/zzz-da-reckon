@@ -97,19 +97,25 @@ describe('格莉丝全管线集成（harness）', () => {
     }
   })
 
-  it('积蓄 +130% 加算进积蓄效率区（非独立乘区）：面板 electricAnomalyBuildUpEfficiency = 130', async () => {
+  it('积蓄 +130% 引擎级招式限定：只特殊技/强特两行吃，面板效率区=0、终结/连携不缩放', async () => {
     await setupHarness([{ agentId: '1181' }, '', ''])
     const calc = useResourceCalc()
     const panel = computePanelPhases(0, useConfigStoreForPanel(), useCatalogStoreForPanel())!.inCombat
-    expect(panel.electricAnomalyBuildUpEfficiency ?? 0).toBeCloseTo(130, 4)
+    // 回归护栏：面板效率区必须为 0（行级字段承载，不波及全电积蓄）
+    expect(panel.electricAnomalyBuildUpEfficiency ?? 0).toBeCloseTo(0, 4)
 
     const electric = calc.anomalyPoolResult.value?.perElement?.find(p => p.element === 'electric')
     expect(electric).toBeTruthy()
+    const masteryCoef = (panel.anomalyMastery ?? 100) / 100
+    // 特殊技行：行级效率 +130% 进积蓄效率区加算 → 70.03 × 掌控 × (1 + 1.3)
     const sp = electric!.contributions?.find(c => c.moveId === '1181005')
     expect(sp).toBeTruthy()
-    // 特殊技行经效率区缩放：70.03 × 掌控系数 × (1 + 130%)（加算进积蓄效率区）
-    const masteryCoef = (panel.anomalyMastery ?? 100) / 100
     expect(sp!.perHitBuildUp).toBeCloseTo(70.03 * masteryCoef * (1 + 130 / 100), 1)
+    // 终结技行不缩放（招式限定证明）：895.7 × 掌控，远小于 ×2.3 的量级
+    const ult = electric!.contributions?.find(c => c.moveId === '1181010')
+    expect(ult).toBeTruthy()
+    expect(ult!.perHitBuildUp).toBeCloseTo(895.7 * masteryCoef, 1)
+    expect(ult!.perHitBuildUp).toBeLessThan(895.7 * masteryCoef * 1.3)
   })
 
   it('脉冲手雷附带异放事件：anomalyEventExecutions 含 release 事件，伤害池按 84.9 结算', async () => {
