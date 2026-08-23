@@ -108,24 +108,26 @@ describe('仪玄 spec 机制（1371）', () => {
     // 闪能池账本（收敛后实测，改动时按此逐项对账）：
     //   自动回复 360 + 进场赠送 120 + 破秽盾 60 + 额外闪能总账 180
     //     （额外总账 180 = 极限闪避 10×5 + 完美格挡 3×10 + 玄墨异常触发 4×10 + 极限支援落雷 12×5）
-    //   + 队友终结技闪能 120（额外能力·玄墨暗涌：队友各 3 次终结 × 20，走 calcCrossAgentEnergy）
-    //   = 840 → 循环当量 floor(840 / 60) = 14
+    //   + 队友终结技闪能 80（额外能力·玄墨暗涌：青衣2+赛斯2 = 4 次终结 × 20，走 calcCrossAgentEnergy）
+    //   = 800 → 循环当量 floor(800 / 60) = 13
     // 口径变更史：本行曾为 13，根因是 f20b2d5 修正了 transformSkillExecutions 语义
     //   （旧代码 `if (usesModuleTransform) continue` 让所有定义该钩子的模块——含仅做面板后处理的
     //   specPanelBuffs 面板 buff 模块——连非普攻失衡/积蓄提取一并被跳过）。赛斯(1271) 属该类模块，
     //   净失衡模型（2026-08 收敛）：非失衡占比缩放全来源净失衡，超时残缺失衡折小数；
     //   连携 daze 不再自引用 → 失衡次数/连携/喧响 回落 → 当量稳定在 13。
     //   历史对照：旧发散模型曾达 14（连携 daze 白送），13→14 的修复被净失衡正确替代。
+    //   队友终结次数（2026-08-23 重推导）：赛斯喧响在净失衡模型下少跨一档（3→2 次）→
+    //   队友终结闪能 120→80、总账 840→800，当量仍为 13。
     expect(yixuan.exSpecialCount).toBe(13)
-    // 上游归因锚点：净失衡模型收敛基线（2026-08）
-    expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([2, 3])
-    expect(yixuan.energySource.total).toBe(820)
-    expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(100)
-    expect(yixuan.derivedEnergy).toBe(820)
+    // 上游归因锚点：净失衡模型收敛基线（2026-08）；队友终结 [青衣, 赛斯] = [2, 2]
+    expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([2, 2])
+    expect(yixuan.energySource.total).toBeCloseTo(800.45, 1)
+    expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(80)
+    expect(yixuan.derivedEnergy).toBeCloseTo(806.5, 1)
     const chain = yixuan.yixuanExChain!
     expect(chain.ink1).toBe(3)
     expect(chain.ink4).toBe(1)
-    expect(chain.cloudOut).toBe(10)
+    expect(chain.cloudOut).toBe(8)
     expect(chain.flashSpent).toBe(740)
     const shufa = yixuan.specResources?.['yixuan_shufa_value']
     expect(shufa.totalGain).toBeCloseTo(493.6, 1)
@@ -230,6 +232,9 @@ describe('仪玄 spec 机制（1371）', () => {
         { slot: 0, moveId: '1371022', count: 2, duration: 2, startTime: 2 }, // 凝云（满蓄）吃凝神
       ], basicFillerSlot: 0 },
     ]
+    // 锁窗（2026-08-23）：充足性约束（4b9ab22）会把裸默认配置的失衡窗口压到 0，本用例验证轴接线，
+    // 按「操作够就能打 N 次失衡」口径锁 4 窗（与命座提升率页同款机制），隔离约束保持原场景。
+    config.enemy.stunCountLock = 4
 
     const calc = useResourceCalc()
     const out = calc.resourceResult.value
@@ -237,7 +242,7 @@ describe('仪玄 spec 机制（1371）', () => {
     const yixuan = out!.characters.find(c => c.agentId === '1371')!
     const chain = yixuan.yixuanExChain!
 
-    // 轴内凝云 = 常规轴 3 窗×1 + 爆发轴 1 窗×2 = 5（若失衡池收敛 4 次；不足则更少，但至少 >0）
+    // 轴内凝云 = 常规轴 3 窗×1 + 爆发轴 1 窗×2 = 5（锁窗 4 次）
     expect(chain.axisCloud).toBeGreaterThan(0)
     expect(chain.axisCloudSeconds).toBe(2)
     // 轴内行都带失衡强特 +30
@@ -267,6 +272,8 @@ describe('仪玄 spec 机制（1371）', () => {
         basicFillerSlot: 0,
       },
     ]
+    // 锁窗（2026-08-23，同上）：隔离充足性约束，按轴声明锁 3 窗。
+    config.enemy.stunCountLock = 3
 
     const calc = useResourceCalc()
     const out = calc.resourceResult.value
@@ -274,7 +281,7 @@ describe('仪玄 spec 机制（1371）', () => {
     const yixuan = out!.characters.find(c => c.agentId === '1371')!
     const chain = yixuan.yixuanExChain!
 
-    // 轴内凝云：每窗 2 次、蓄力 1s（窗口数由失衡池收敛决定）；轴内消耗 40/次
+    // 轴内凝云：每窗 2 次、蓄力 1s（锁窗 3）；轴内消耗 40/次
     expect(chain.axisCloud).toBeGreaterThan(0)
     expect(chain.axisCloudSeconds).toBe(1)
     const income = yixuan.exSpecialCount * 60

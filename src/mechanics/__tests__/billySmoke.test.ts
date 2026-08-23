@@ -91,6 +91,9 @@ describe('星徽·比利全管线冒烟（1531）', () => {
         basicFillerSlot: 0,
       },
     ]
+    // 锁窗（2026-08-23）：充足性约束（4b9ab22）会把裸默认配置的失衡窗口压到 0，本用例验证轴内捏轴接线，
+    // 按「操作够就能打 N 次失衡」口径锁 3 窗（与命座提升率页同款机制），隔离约束保持原场景。
+    config.enemy.stunCountLock = 3
 
     const calc = useResourceCalc()
     const out = calc.resourceResult.value

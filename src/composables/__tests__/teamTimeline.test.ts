@@ -111,7 +111,8 @@ describe('最优加金分配（computeOptimalTeamAllocation）', () => {
     expect(alloc.wengineMods).toEqual([1, 1, 1])
   })
 
-  it('预算内逐金贪婪：总金数正确、伤害单调不减', async () => {
+  // 贪婪求值逐金跑全管线，单跑 ~1.6s；全量并行负载下曾触顶 vitest 默认 5s（2026-08-23 观测）→ 显式放宽
+  it('预算内逐金贪婪：总金数正确、伤害单调不减', { timeout: 30_000 }, async () => {
     await boot()
     const config = useConfigStore()
     const calc = useResourceCalc()

@@ -261,7 +261,13 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     }))
   })
 
-  async function setupTeam(axes: any[] | null) {
+  /**
+   * stunCountLock（2026-08-23）：非失衡时间充足性约束（4b9ab22）会把「必做动作时间超战斗时间」的
+   * 裸默认配置收敛到 0 个失衡窗口（金身20/招架10 等交互行的机制时长真实计入后，般岳队必要时间 ≈184s），
+   * 轴内块随之全灭。本 describe 验证的是**轴内捏块/易伤/自动轴接线**而非可行性约束本身，
+   * 故按「操作够就能打 N 次失衡」口径锁窗（与命座提升率页同款机制），隔离新约束保持原锚点。
+   */
+  async function setupTeam(axes: any[] | null, stunLock = 0) {
     const catalog = useCatalogStore()
     await catalog.load()
     const config = useConfigStore()
@@ -272,6 +278,7 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
       config.useStunAxis = true
       config.stunAxes = axes
     }
+    if (stunLock > 0) config.enemy.stunCountLock = stunLock
     return config
   }
 
@@ -293,7 +300,7 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     await setupTeam([{ name: '轴1', actions: [
       { slot: 0, moveId: '1471013', count: 2, startTime: 0 }, // 地动×2
       { slot: 0, moveId: '1471017', count: 1, startTime: 2 }, // 山摇·怒×1
-    ] }])
+    ] }], 3)
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 50))
     expect(calc.stunAxisResult.value).not.toBeNull()
@@ -327,7 +334,7 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     // 单窗口 1 个 didong 块 × 3 失衡窗口 → 怒相内 3 组地动山摇连段（rageDiDongCombo = 3）
     await setupTeam([{ name: '轴1', actions: [
       { slot: 0, moveId: 'banyue-combo-didong', count: 1, startTime: 0 },
-    ] }])
+    ] }], 3)
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 50))
     const rr = calc.resourceResult.value
@@ -429,7 +436,7 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
       { slot: 0, moveId: '1471010', count: 1, startTime: 8 }, // 摧岳
       { slot: 0, moveId: '1471013', count: 2, startTime: 10 },
       { slot: 0, moveId: '1471017', count: 1, startTime: 12 },
-    ] }])
+    ] }], 2) // 净失衡基线锚点在 2 窗（axisInCombo = 每窗2连段块 × 2窗 = 4）
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 50))
     const c0 = calc.resourceResult.value!.characters[0]
@@ -442,22 +449,22 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     const recoveryTime = recoveryRows.reduce((s, e) => s + (e.totalTime ?? 0), 0)
     const lunDaoT = recoveryRows.find(e => e.moveId === 'banyue-recovery-lundao')?.actionTime ?? 0
     const diDongT = recoveryRows.find(e => e.moveId === 'banyue-recovery-didong')?.actionTime ?? 0
-    // 净失衡模型收敛基线
-    // —— 具体数据（该固定场景实测值，管线确定性稳定）——
-    // 净失衡模型收敛基线（2026-08）：窗口数低于旧发散模型 → 轴内覆盖减少，失衡外连段/闪能相应增加。
+    // 锁窗 2 基线（2026-08-23 重推导，净失衡+充足性约束后口径）：闪能收入 580（净失衡迭代后行情）
+    // → 轴内强特支出 160 → 怒相外自动连段 = floor((580−160)/60) = 7 组；总支出 = 160 + 7×60 = 580。
     expect(cycle.rageCount).toBe(4)
     expect(cycle.axisInComboCount).toBe(4)
     expect(outStunRageGroups).toBe(2)
     expect(Math.ceil(outStunRageGroups / 2)).toBe(1)
     expect(cycle.outStunComboCount).toBe(cycle.comboOutCount + outStunRageGroups)
     expect(cycle.axisExSpend).toBe(160)
-    expect(cycle.comboOutCount).toBe(9)
-    expect(cycle.flashSpent).toBe(700)
+    expect(cycle.flashIncome).toBe(580)
+    expect(cycle.comboOutCount).toBe(7)
+    expect(cycle.flashSpent).toBe(580)
     expect(cycle.flashSpent).toBe(inStunFlash + outStunFlash)
-    // 失衡外后摇：5 + 2 次 = 7 次；时间 = 狮子吼·怒 0.517s × 7 = 3.619s（= 恢复行总时长，已计入必做前台时间）
-    expect(cycle.comboOutRecoveryCount).toBe(7)
+    // 失衡外后摇：每连段组 1 次（含轴内未覆盖怒相组）→ 9 次；时间 = 论道组后摇 × 9（恢复行总时长计入必做前台）
+    expect(cycle.comboOutRecoveryCount).toBe(9)
     expect(recoveryTime).toBeCloseTo(cycle.lunDaoRecoveryCount * lunDaoT + cycle.diDongRecoveryCount * diDongT, 3)
-    expect(recoveryTime).toBeCloseTo(3.619, 3)
+    expect(recoveryTime).toBeCloseTo(cycle.lunDaoRecoveryCount * lunDaoT, 3)
     expect(c0.timeAllocation.necessaryTime).toBeGreaterThanOrEqual(recoveryTime - 1e-6)
   })
 
@@ -720,17 +727,18 @@ describe('般岳交互板块（扬砾/昂霄/冲霄 招式映射，用户确认�
 })
 
 describe('般岳自动轴 + 失衡窗口延时（用户口径）', () => {
-  async function setupBanyueTeam() {
+  async function setupBanyueTeam(stunLock = 0) {
     const catalog = useCatalogStore()
     await catalog.load()
     const config = useConfigStore()
     config.team[0] = { slot: 0, agentId: '1471', cinemaLevel: 0, ...baseConfig } as any
     config.team[1] = { slot: 1, agentId: '1481', cinemaLevel: 0, ...baseConfig } as any
     config.team[2] = { slot: 2, agentId: '1451', cinemaLevel: 0, ...baseConfig } as any
+    if (stunLock > 0) config.enemy.stunCountLock = stunLock
     return config
   }
   it('队伍 [1471,1481,1451]：通用自动轴生效并选中般琉通用预设（好评溢出爆发轴）', async () => {
-    await setupBanyueTeam()
+    await setupBanyueTeam(3)
     const config = useConfigStore()
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 60))

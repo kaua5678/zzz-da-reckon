@@ -11,7 +11,10 @@
  *
  * 数值口径（实测且可推导，非快照）：
  * - 丽娜/苍角/露西 终结邻位回能 = 终结次数 × 30（邻位）/ × 10（隔位）
- * - 莱特影画4 喷发：后场角色各 +4/次 × 8 次（18s CD 封顶）= 32；莱特本人不吃
+ * - 莱特影画4 喷发：后场角色各 +4/次 × 7 次 = 28；莱特本人不吃。
+ *   7 次推导（2026-08-23）：士气 = 2.9/s×180 + 0.26×全队强特耗能；该队耗能
+ *   = 莱特40×8 + 11号80×4 + 科琳60×6 = 1000 → 士气 782 → floor(782/100)=7 次。
+ *   （1b91d58 把 11号快速A4/A5 计入必要时间后其强特次数下降，队伍耗能跌破 8 次阈值 1069。）
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -68,12 +71,12 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     expect(bySlot.get(2)!.energySource.crossAgent.soukakuUltEnergy).toBe(0)
   })
 
-  it('莱特影画4：后场喷发回能只给队友（32 = 4/次 × 8 次），莱特本人为 0', async () => {
+  it('莱特影画4：后场喷发回能只给队友（28 = 4/次 × 7 次），莱特本人为 0', async () => {
     const out = await run([{ agentId: '1161', cinemaLevel: 4 }, { agentId: '1041' }, { agentId: '1101' }])
     const bySlot = new Map(out.characters.map(c => [c.slot, c]))
     expect(bySlot.get(0)!.energySource.crossAgent.lighterC4Energy).toBe(0)
-    expect(bySlot.get(1)!.energySource.crossAgent.lighterC4Energy).toBe(32)
-    expect(bySlot.get(2)!.energySource.crossAgent.lighterC4Energy).toBe(32)
+    expect(bySlot.get(1)!.energySource.crossAgent.lighterC4Energy).toBe(28)
+    expect(bySlot.get(2)!.energySource.crossAgent.lighterC4Energy).toBe(28)
   })
 
   it('莱特 0 命：不触发影画4 喷发回能（钩子按命座门控，不是无条件写）', async () => {
