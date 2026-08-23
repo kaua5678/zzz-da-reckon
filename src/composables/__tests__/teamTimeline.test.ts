@@ -27,6 +27,7 @@ import {
   suggestStrongTeam,
 } from '@/composables/teamTimeline'
 import { teamPresets } from '@/data/teamPresets'
+import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
 import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
 
 const bossText = readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')
@@ -369,14 +370,36 @@ describe('Chart 3：每期新角色强队（buildNewCharacterRows / suggest / co
     expect(testRow?.nodeNote).toBeDefined()
   })
 
-  it('预填：从仓库 preset 取主C匹配强队（仪玄预填为 3 名不同角色）', () => {
+  it('预填：用户口述预设优先，仓库 preset 补剩余（仪玄 = 仪青潘）', () => {
     const prefill = prefillStrongTeamsFromPresets()
     expect(prefill['1371']).toBeDefined()
     expect(new Set(prefill['1371']).size).toBe(3)
     expect(prefill['1371'][0]).toBe('1371')
-    // 预填队伍必须来自仓库 preset（主C匹配）
-    const presetTeam = teamPresets.find(p => p.team[0] === '1371')
-    expect(presetTeam).toBeDefined()
+    // 口述优先：仪玄 = 仪青潘（STRONG_TEAM_PRESETS），而非仓库 preset 的青衣/卢西娅变体
+    expect(prefill['1371']).toEqual(STRONG_TEAM_PRESETS['1371'])
+    // 仓库 preset 仍有（作为其他角色预填来源）
+    expect(teamPresets.some(p => p.team[0] === '1371')).toBe(true)
+  })
+
+  it('口述强队清单（STRONG_TEAM_PRESETS）：18 队、每队 3 名不同角色且都在目录、键 = 当期新 S 角色', async () => {
+    await boot()
+    const catalog = useCatalogStore()
+    const entries = Object.entries(STRONG_TEAM_PRESETS)
+    expect(entries.length).toBe(18)
+    for (const [charId, team] of entries) {
+      // 键必须是 Chart 3 行（AGENT_RELEASE_NODE 收录）
+      expect(releaseNodeOf(charId), `键 ${charId} 无实装节点`).not.toBeNull()
+      // 队内 3 名不同角色且 catalog 都存在
+      expect(new Set(team).size, `${charId} 队伍有重复成员`).toBe(3)
+      for (const id of team) {
+        expect(catalog.getAgent(id), `${charId} 队友 ${id} 不在目录`).toBeDefined()
+      }
+    }
+    // 抽查关键口述队
+    expect(STRONG_TEAM_PRESETS['1371']).toEqual(['1371', '1251', '1421']) // 2.0 仪青潘
+    expect(STRONG_TEAM_PRESETS['1391']).toEqual(['1371', '1391', '1421']) // 下半 仪橘潘
+    expect(STRONG_TEAM_PRESETS['1481']).toEqual(['1371', '1481', '1451']) // 2.4 琉音卡池 仪琉卢
+    expect(STRONG_TEAM_PRESETS['1591']).toEqual(['1591', '1571', '1211']) // 希格莉德 诺姆丽娜
   })
 
   it('引擎建议：小池子下返回 主C+双队友 且收敛、伤害有限', async () => {

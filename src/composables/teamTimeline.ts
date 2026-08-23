@@ -33,6 +33,7 @@ import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@
 import { indexForDate } from '@/composables/bossSchedule'
 import { isLimitedAgent, isLimitedWEngine, applyGoldSteps } from '@/composables/teamCompare'
 import { teamPresets } from '@/data/teamPresets'
+import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
 import type { Agent } from '@/types/catalog'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
@@ -986,13 +987,13 @@ export async function computeNewCharacterPoints(calc: Calc, opts: NewCharacterCh
   }
 }
 
-/** 预填：仓库 preset 队伍中主C匹配的强队（同主C多预设取 goldSteps 最多者——配置最完整；平手取后者） */
+/** 预填 Chart 3 强队清单：用户口述预设（STRONG_TEAM_PRESETS）优先，仓库 preset 队伍补剩余（同主C取 goldSteps 最多者——配置最完整；平手取后者） */
 export function prefillStrongTeamsFromPresets(): Record<string, [string, string, string]> {
-  const out: Record<string, [string, string, string]> = {}
+  const out: Record<string, [string, string, string]> = { ...STRONG_TEAM_PRESETS }
   const bestSteps: Record<string, number> = {}
   for (const p of teamPresets) {
     const main = p.team[0]
-    if (!main) continue
+    if (!main || out[main]) continue
     const steps = p.goldSteps?.length ?? 0
     if (!(main in bestSteps) || steps >= bestSteps[main]) {
       bestSteps[main] = steps

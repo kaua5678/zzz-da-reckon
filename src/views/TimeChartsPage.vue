@@ -380,10 +380,10 @@
           :height="ddPlotBottom - ddPadT"
           fill="rgba(246, 173, 85, 0.06)"
         />
-        <!-- 版本分隔网格 + 版本号刻度 -->
+        <!-- 版本分隔网格 + 版本号刻度（网格线在版本列左缘，刻度文字在列中心） -->
         <g v-for="t in ddXTicks" :key="`ddx${t.index}`">
           <line :x1="ddX(t.index)" :y1="ddPadT" :x2="ddX(t.index)" :y2="ddPlotBottom" stroke="rgba(255,255,255,0.06)" />
-          <text :x="ddX(t.index)" :y="ddPlotBottom + 14" text-anchor="middle" class="dd-tick">{{ t.label }}</text>
+          <text :x="ddTickCenterX(t.index)" :y="ddPlotBottom + 14" text-anchor="middle" class="dd-tick">{{ t.label }}</text>
         </g>
         <!-- y 刻度 -->
         <text v-for="t in ddYTicks" :key="`ddy${t}`" :x="ddPadL - 6" :y="ddY(t) + 4" text-anchor="end" class="dd-tick">
@@ -403,7 +403,7 @@
         <g v-for="p in ddPoints" :key="`ddp${p.agentId}`">
           <circle
             v-if="p.value != null"
-            :cx="ddX(p.nodeIndex) + ddJitter(p.agentId)"
+            :cx="ddCX(p.nodeIndex) + ddJitter(p.agentId)"
             :cy="ddY(p.value)"
             r="4"
             :fill="ddColor(p.value)"
@@ -412,7 +412,7 @@
           </circle>
           <text
             v-if="p.value != null && ddNeedLabel(p.value)"
-            :x="ddX(p.nodeIndex) + ddJitter(p.agentId)"
+            :x="ddCX(p.nodeIndex) + ddJitter(p.agentId)"
             :y="ddLabelY(p)"
             text-anchor="middle"
             class="dd-label"
@@ -992,10 +992,41 @@ const ddPadT = 18
 const ddPadB = 32
 const ddSvgH = 268
 const ddPlotBottom = ddSvgH - ddPadB
-const ddNodeMaxIndex = VERSION_NODES.length - 1
 
+/**
+ * 直伤系数图横轴：按节点**宽度权重**排布（修 1.4/2.5 合并卡池列视觉偏窄——
+ * 此前按节点索引等距，合并版只有一个节点、只有普通两期版一半宽）。
+ * 合并卡池（phaseLabel='合并'，1.4/2.5）一个节点覆盖整个版本 = 2 格；上半/下半 = 1 格。
+ */
+const ddNodeWidths = VERSION_NODES.map(n => (n.phaseLabel === '合并' ? 2 : 1))
+const ddTotalWidth = ddNodeWidths.reduce((a, b) => a + b, 0)
+const ddNodeFrac = (() => {
+  const lefts: number[] = []
+  const centers: number[] = []
+  let acc = 0
+  for (const w of ddNodeWidths) {
+    lefts.push(acc / ddTotalWidth)
+    centers.push((acc + w / 2) / ddTotalWidth)
+    acc += w
+  }
+  return { lefts, centers }
+})()
+function ddPlotSpan(): number {
+  return svgW.value - ddPadL - ddPadR
+}
+/** 节点列左缘（版本网格线 / 测试服阴影） */
 function ddX(nodeIndex: number): number {
-  return ddPadL + (nodeIndex / ddNodeMaxIndex) * (svgW.value - ddPadL - ddPadR)
+  return ddPadL + (ddNodeFrac.lefts[nodeIndex] ?? 0) * ddPlotSpan()
+}
+/** 节点列中心（散点 / 标签） */
+function ddCX(nodeIndex: number): number {
+  return ddPadL + (ddNodeFrac.centers[nodeIndex] ?? 0) * ddPlotSpan()
+}
+/** 版本列中心（版本号刻度文字，t.index = 该版本首节点下标） */
+function ddTickCenterX(firstIndex: number): number {
+  let w = 0
+  for (let j = firstIndex; j < VERSION_NODES.length && VERSION_NODES[j].version === VERSION_NODES[firstIndex].version; j++) w += ddNodeWidths[j]
+  return ddPadL + (ddNodeFrac.lefts[firstIndex] + w / 2) * ddPlotSpan()
 }
 
 const ddVMin = computed(() => {
@@ -1024,14 +1055,14 @@ const ddXTicks = (() => {
   })
 })()
 
-/** 测试服节点阴影（note 含「测试服」），随 svgW 响应式 */
+/** 测试服节点阴影（note 含「测试服」）：覆盖该节点列（合并节点 = 2 格宽），随 svgW 响应式 */
 const ddTestServerRects = computed(() => {
   const rects: Array<{ x: number; w: number }> = []
   VERSION_NODES.forEach((n, index) => {
     if (!(n.note ?? '').includes('测试服')) return
-    const left = index > 0 ? ddX(index - 0.5) : ddPadL
-    const right = index < ddNodeMaxIndex ? ddX(index + 0.5) : svgW.value - ddPadR
-    rects.push({ x: left, w: Math.max(8, right - left) })
+    const left = ddX(index)
+    const w = (ddNodeWidths[index] / ddTotalWidth) * ddPlotSpan()
+    rects.push({ x: left, w: Math.max(8, w) })
   })
   return rects
 })
