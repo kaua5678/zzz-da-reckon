@@ -442,22 +442,17 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     const recoveryTime = recoveryRows.reduce((s, e) => s + (e.totalTime ?? 0), 0)
     const lunDaoT = recoveryRows.find(e => e.moveId === 'banyue-recovery-lundao')?.actionTime ?? 0
     const diDongT = recoveryRows.find(e => e.moveId === 'banyue-recovery-didong')?.actionTime ?? 0
-    console.log('[般岳具体数据] 怒相', cycle.rageCount, '次 = 失衡内', cycle.rageCount - Math.ceil(outStunRageGroups / 2), '次 + 失衡外', Math.ceil(outStunRageGroups / 2), '次',
-      '| 闪能: 失衡内', inStunFlash, '/ 失衡外', outStunFlash, '(连段', cycle.comboOutCount, '组), 总', cycle.flashSpent,
-      '| 轴内捏块: combo', cycle.axisComboCount, 'didong', cycle.rageDiDongComboCount, '→ axisIn', cycle.axisInComboCount, '| 失衡外后摇', cycle.comboOutRecoveryCount, '次 =', recoveryTime.toFixed(3), 's')
+    // 净失衡模型收敛基线
     // —— 具体数据（该固定场景实测值，管线确定性稳定）——
-    // 失衡内/外怒相：怒相 4 次，轴覆盖 3 次（6 组连段块）→ 失衡内 3 次 + 失衡外 1 次（未覆盖 2 组 = 一组怒相封顶）。
-    // 注：测试环境未挂真实 boss，失衡池收敛到 3 窗口；真实 4 窗口预设（每窗完整怒相序列）→ axisIn=8=rageGroups，未覆盖 0，怒相全在失衡内。
+    // 净失衡模型收敛基线（2026-08）：窗口数低于旧发散模型 → 轴内覆盖减少，失衡外连段/闪能相应增加。
     expect(cycle.rageCount).toBe(4)
-    expect(cycle.axisInComboCount).toBe(6)
+    expect(cycle.axisInComboCount).toBe(4)
     expect(outStunRageGroups).toBe(2)
     expect(Math.ceil(outStunRageGroups / 2)).toBe(1)
-    // 公式关系：失衡外 = 闪能连段 + 轴内未覆盖怒相组（≤2）——不管收敛出几个窗口都成立
     expect(cycle.outStunComboCount).toBe(cycle.comboOutCount + outStunRageGroups)
-    // 失衡内/外闪能：轴内 240（80/窗 × 3 窗口）+ 失衡外 300（5 组连段 × 60）= 总 540，守恒
-    expect(cycle.axisExSpend).toBe(240)
-    expect(cycle.comboOutCount).toBe(5)
-    expect(cycle.flashSpent).toBe(540)
+    expect(cycle.axisExSpend).toBe(160)
+    expect(cycle.comboOutCount).toBe(9)
+    expect(cycle.flashSpent).toBe(700)
     expect(cycle.flashSpent).toBe(inStunFlash + outStunFlash)
     // 失衡外后摇：5 + 2 次 = 7 次；时间 = 狮子吼·怒 0.517s × 7 = 3.619s（= 恢复行总时长，已计入必做前台时间）
     expect(cycle.comboOutRecoveryCount).toBe(7)

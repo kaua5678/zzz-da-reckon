@@ -113,44 +113,37 @@ describe('仪玄 spec 机制（1371）', () => {
     // 口径变更史：本行曾为 13，根因是 f20b2d5 修正了 transformSkillExecutions 语义
     //   （旧代码 `if (usesModuleTransform) continue` 让所有定义该钩子的模块——含仅做面板后处理的
     //   specPanelBuffs 面板 buff 模块——连非普攻失衡/积蓄提取一并被跳过）。赛斯(1271) 属该类模块，
-    //   修正后其强特/终结/连携失衡值重新进池 → 失衡次数上升 → 连携/喧响上升 → 队友终结 2→3 次
-    //   → 队友终结闪能 80→120，且玄墨异常触发 3→4（+10）→ 闪能池 790→840，当量 13→14。
-    expect(yixuan.exSpecialCount).toBe(14)
-    // 上游归因锚点：队友终结次数变动会直接改上面的账本，先看这条再查仪玄自身
-    expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([3, 3])
-    // 展示口径 = 计算口径：队友联动回能已并入 energySource.total（含队友终结闪能 120）
-    expect(yixuan.energySource.total).toBe(840)
-    expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(120)
-    expect(yixuan.derivedEnergy).toBe(840)
+    //   净失衡模型（2026-08 收敛）：非失衡占比缩放全来源净失衡，超时残缺失衡折小数；
+    //   连携 daze 不再自引用 → 失衡次数/连携/喧响 回落 → 当量稳定在 13。
+    //   历史对照：旧发散模型曾达 14（连携 daze 白送），13→14 的修复被净失衡正确替代。
+    expect(yixuan.exSpecialCount).toBe(13)
+    // 上游归因锚点：净失衡模型收敛基线（2026-08）
+    expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([2, 3])
+    expect(yixuan.energySource.total).toBe(820)
+    expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(100)
+    expect(yixuan.derivedEnergy).toBe(820)
     const chain = yixuan.yixuanExChain!
     expect(chain.ink1).toBe(3)
     expect(chain.ink4).toBe(1)
-    // 循环当量 14 = 墨痕化形链 3 + 轴外凝云链 11（当量 13 时为 10，随上面的闪能账本联动）
-    expect(chain.cloudOut).toBe(11)
-    expect(chain.flashSpent).toBe(3 * 40 + 20 + 11 * 60) // = 800
-
-    // 术法值 = 耗闪能 × 0.667 = 800 × 0.667 ≈ 533.6（转化基数 = chain.flashSpent，不是能量池总额）
+    expect(chain.cloudOut).toBe(10)
+    expect(chain.flashSpent).toBe(740)
     const shufa = yixuan.specResources?.['yixuan_shufa_value']
-    expect(shufa.totalGain).toBeCloseTo(800 * 0.667, 1)
+    expect(shufa.totalGain).toBeCloseTo(493.6, 1)
     const extraUlts = yixuan.executions.filter(e => e.moveId === '1371020')
     expect(extraUlts[0].count).toBe(4)
     expect(extraUlts[0].damageMultiplier).toBe(2932.5)
-
-    // 玄墨极阵 = 符法千重次数（用户口径：1 次符法千重 → 1 次玄墨极阵）→ 倍率 611
+    expect(extraUlts[0].actionTime, '符法千重施放时间应计入前台（catalog 1371020 = 2.267s）').toBe(2.267)
     const xuanmoBasics = yixuan.executions.filter(e => e.moveId === '1371021')
     expect(xuanmoBasics[0].count).toBe(3)
     expect(xuanmoBasics[0].damageMultiplier).toBe(611)
-
-    // 墨影凝云合轴（用户口径）：N=3，玄墨值 M=3（符法千重 3 次）→ N ≤ M 全打玄墨极阵+青溟震击（合轴，actionTime=0）
     const xuanmoStrike = yixuan.executions.find(e => e.moveId === '1371021')
     expect(xuanmoStrike).toBeTruthy()
     expect(xuanmoStrike!.count).toBe(3)
     expect(xuanmoStrike!.actionTime).toBe(0)
-    expect(xuanmoStrike!.damageMultiplier).toBe(611) // 倍率表回填
+    expect(xuanmoStrike!.damageMultiplier).toBe(611)
     const qingmingStrike = yixuan.executions.find(e => e.moveId === '1371007')
     expect(qingmingStrike!.count).toBe(3)
     expect(qingmingStrike!.damageMultiplier).toBe(221.7)
-    // 无超出部分 → 不打墨影凝云/A5
     expect(yixuan.executions.some(e => e.moveId === '1371005')).toBe(false)
     expect(yixuan.executions.some(e => e.moveId === '1371006')).toBe(false)
     // 聚墨·符法千重-破是影画2 专属：0 命不生成
@@ -176,6 +169,48 @@ describe('仪玄 spec 机制（1371）', () => {
     }
     // 全队伤害为正
     expect(calc.teamTotalDamage.value).toBeGreaterThan(0)
+  })
+
+  it('3连墨痕化形/完美格挡 ≤0 = 自动（用户口径 2026-08）：剩余闪能全打 3 连（cloudOut=0），完美格挡=弹刀次数', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
+    const config = useConfigStore()
+    // 与上一条同队伍，但不填墨痕/格挡（缺省 0 = 自动）；teamChar 弹刀默认 6
+    config.team[0] = teamChar(0, '1371', 0, { yixuanBackstageComboCount: 3 })
+    config.team[1] = teamChar(1, '1251')
+    config.team[2] = teamChar(2, '1271')
+
+    const calc = useResourceCalc()
+    const yixuan = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!
+    const chain = yixuan.yixuanExChain!
+    // 自动完美格挡 = 弹刀次数（6），#2 赠送行 ×6；闪能收入侧同样按 6 次 +60 计
+    expect(chain.perfectBlockCount).toBe(6)
+    expect(chain.ink2).toBe(6)
+    // 自动 3 连：income（= 循环当量 × 60）打完轴内消耗后剩余全部打 3 连（60/次）→ 轴外凝云清零
+    expect(chain.ink2Count).toBe(0)
+    expect(chain.ink3Count).toBe(yixuan.exSpecialCount)
+    expect(chain.ink1).toBe(yixuan.exSpecialCount)
+    expect(chain.cloudOut).toBe(0)
+    // 手填 ≥1 仍覆盖自动（上一条测试的 2连×2+3连×1 手填口径不变）
+  })
+
+  it('影画4 自动：保留 1 轮凝云作为 C4 静心载体（轴外凝云=1，非 0）', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
+    const config = useConfigStore()
+    config.team[0] = teamChar(0, '1371', 4, { yixuanBackstageComboCount: 3 }) // 影画4
+    config.team[1] = teamChar(1, '1251')
+    config.team[2] = teamChar(2, '1271')
+
+    const calc = useResourceCalc()
+    const yixuan = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!
+    const chain = yixuan.yixuanExChain!
+    // C4 激活 → 自动 3 连少打 1 次，留出 1 轮凝云当载体
+    expect(chain.ink3Count).toBe(yixuan.exSpecialCount - 1)
+    expect(chain.cloudOut).toBe(1)
+    expect(chain.ink2Count).toBe(0)
   })
 
   it('4 失衡轴（3+1）：常规轴 3 窗 + 爆发轴 1 窗（含大招触发凝神 + 凝云），符法千重等事件执行不进轴', async () => {
@@ -239,11 +274,14 @@ describe('仪玄 spec 机制（1371）', () => {
     const yixuan = out!.characters.find(c => c.agentId === '1371')!
     const chain = yixuan.yixuanExChain!
 
-    // 轴内凝云：每窗 2 次、蓄力 1s（窗口数由失衡池收敛决定）；轴内消耗 40/次 → 剩余 → 轴外满蓄
+    // 轴内凝云：每窗 2 次、蓄力 1s（窗口数由失衡池收敛决定）；轴内消耗 40/次
     expect(chain.axisCloud).toBeGreaterThan(0)
     expect(chain.axisCloudSeconds).toBe(1)
     const income = yixuan.exSpecialCount * 60
-    expect(chain.cloudOut).toBe(Math.floor((income - chain.axisCloud! * 40) / 60))
+    // 新口径（2026-08）：轴内消耗后剩余闪能全部自动打 3 连墨痕化形（60/次）→ 轴外凝云清零
+    expect(chain.cloudOut).toBe(0)
+    expect(chain.ink3Count).toBe(Math.floor((income - chain.axisCloud! * 40) / 60))
+    expect(yixuan.executions.some(e => e.moveId === '1371022' && e.actionTime === 2)).toBe(false)
 
     // 轴内凝云执行：actionTime=1、倍率秒均折算 1343.9×0.5≈672、dmgBonus 含 +30（失衡强特）+60（核心被动）
     // （enrich 会把 moveName 回填成倍率表名，按 actionTime/倍率区分轴内/轴外行）
@@ -253,13 +291,11 @@ describe('仪玄 spec 机制（1371）', () => {
     expect(axisCloud!.damageMultiplier).toBeCloseTo(672, 0)
     // 字段实现确认：轴内行 dmgBonus = 核心被动 60 + 失衡强特 30 = 90（buildExecutions 写入）
     expect(axisCloud!.dmgBonus).toBe(90)
-    // 轴外凝云：满蓄回填、无失衡 +30（仅核心被动 60）
-    const outCloud = yixuan.executions.find(e => e.moveId === '1371022' && e.actionTime === 2)
-    expect(outCloud).toBeTruthy()
-    expect(outCloud!.count).toBe(chain.cloudOut)
-    expect(outCloud!.damageMultiplier).toBe(1343.9)
-    // 轴外行：仅核心被动 60（无失衡 +30）
-    expect(outCloud!.dmgBonus).toBe(60)
+    // 轴外 3 连墨痕化形自动补位：#1 行次数 = 3连次数（无 2 连手填）
+    const ink1 = yixuan.executions.find(e => e.moveId === '1371009')
+    expect(ink1).toBeTruthy()
+    expect(ink1!.count).toBe(chain.ink3Count)
+    expect(ink1!.dmgBonus).toBe(60)
 
     // 影画1落雷按 CD 自动：轴内时间 = 窗口数×16s → floor(轴内时间/6) 次（少于非轴模式 floor(180/6)=30）
     const lightning = yixuan.executions.find(e => e.moveId === '1371_c1_lightning')

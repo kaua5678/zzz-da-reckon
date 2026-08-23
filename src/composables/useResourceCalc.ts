@@ -60,7 +60,7 @@ import type { DamagePoolRow, AnomalyVirtualPanelBuild } from './resourceCalc/hel
 /** 琉音好评转大不动点迭代上限（好评≥90 开窗次数有界，正反馈单调收敛，8 轮兜底极端情况） */
 const MAX_PROMOTE_ITER = 8
 /** 失衡次数 ↔ 资源池（连携=每失衡连携×失衡次数）↔ 失衡池 外不动点迭代上限 */
-const MAX_OUTER_ITER = 6
+const MAX_OUTER_ITER = 12
 
 /**
  * 叠加琉音好评转大修正的资源池结果：
@@ -1292,15 +1292,33 @@ function applyNormaHatChain(
     let outerRounds = 0
     let outerConverged = false
     let outerExit: 'stable' | 'cycle' | 'maxIter' = 'maxIter'
+    // 净失衡迭代（用户 Excel 口径）：覆盖率由上一轮失衡次数得出，非失衡占比缩放全来源净失衡，
+    // 时间预算把超出的残失衡折成小数——正反馈被全局负反馈对抗，收敛到静止
+    const stunWindowDur = computeWindowDuration()
+    const stunEffTime = Math.max(0, (configStore.enemy.battleTime ?? 180) - (configStore.enemy.invincibleTime ?? 0))
     for (let k = 0; k < MAX_OUTER_ITER; k++) {
       outerRounds = k + 1
+      // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
+      const locked = lockedStunCount >= 0
       out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy)
       const ait = out?.auricInkTriggerCount ?? 0
       const gr = out?.goodReview
       if (gr !== undefined && gr >= 0) prevGoodReview = gr
       const eb = out?.energyBySlot
       if (eb) prevEnergyBySlot = eb
-      const next = out?.stunPool?.stunCount ?? 0
+      const rawNext = out?.stunPool?.stunCount ?? 0
+      // 净失衡缩放 + 时间可行性截断：非失衡占比缩放全来源净失衡，超出可容纳窗口数的残失衡按残差时间系数折成小数
+      let next = rawNext
+      if (!locked && stunWindowDur > 0 && stunEffTime > 0) {
+        const coverage = Math.min(1, stunCount * stunWindowDur / stunEffTime)
+        next = rawNext * (1 - coverage)
+        const maxFull = Math.floor(stunEffTime / stunWindowDur)
+        if (next > maxFull) {
+          const residualFactor = stunEffTime / stunWindowDur - maxFull
+          const excess = next - maxFull
+          next = maxFull + Math.min(Math.max(0, excess), residualFactor)
+        }
+      }
       // 终结技次数与异常喧响奖励序列稳定才收敛（异常奖励 → 终结技次数 → 执行计划/时间分配 → 异常触发次数）
       const ultSeq = (out?.resourceResult?.characters ?? []).map(c => c.ultimateCount).join(',')
       const anomalySeq = (out?.anomalyPool?.perSlotBonus ?? []).map(v => Math.round(v)).join(',')
@@ -1310,11 +1328,10 @@ function applyNormaHatChain(
         if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
       } else {
         // 失衡次数与玄墨异常触发次数双稳定才收敛（异常触发 → 回闪能 → 强特 → 积蓄 → 触发）
-        if (next === stunCount && ait === prevAuricInkFlash && feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
-        // 轴内失衡值失效/异常反馈可能产生离散 2-循环（如 5→4→5），检测到重复即停。
-        // 这是离散场景的正确兜底（不是失败），但要与「真收敛」区分开，故单独记 'cycle'。
-        if (seenStunCounts.has(next)) { outerExit = 'cycle'; break }
-        seenStunCounts.add(stunCount)
+        // 小数失衡时代：浮点比较改 0.05 容差；2-循环去重键取 0.1 粒度
+        if (Math.abs(next - stunCount) < 0.05 && ait === prevAuricInkFlash && feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
+        if (seenStunCounts.has(Math.round(next * 10))) { outerExit = 'cycle'; break }
+        seenStunCounts.add(Math.round(stunCount * 10))
         stunCount = next
       }
       prevAnomalyDecibelBonus = out?.anomalyPool?.perSlotBonus ?? []
