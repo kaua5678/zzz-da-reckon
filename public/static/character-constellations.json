@@ -2274,12 +2274,10 @@
         },
         {
           "cinema": 2,
-          "status": "partially_implemented",
-          "implemented": [
-            "暴击率+12%计入面板。"
-          ],
+          "status": "implemented_approximation",
+          "implemented": true,
           "pending": [
-            "终结技获得6层电鸣、电鸣替代白雷消耗与苍光·临界加速未建模。"
+            "电鸣替代白雷消耗按数量近似（6/大招直接加总量），未建模逐时序；苍光·临界加速按电鸣配额折算"
           ]
         },
         {
