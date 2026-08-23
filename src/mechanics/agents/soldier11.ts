@@ -45,6 +45,14 @@ const C1_REFILL_AMOUNT = 40 // 影画1：能量不足 40 回复至 80 ≈ +40/�
 const C1_INTERVAL_SECONDS = 50 // 影画1：50s 最多触发一次
 const POTENTIAL_CRIT_DMG = 48 // 潜能觉醒·绝焰最高档：暴伤 +48%（额外能力门控）
 
+// A45 快速循环（用户口径 2026-08）：窗口招（强特/连携/终结）后必打快速 A4+A5，
+// 动作时间各为原段一半（快速取消）；必要时间含此循环，剩余平A池 = 火力镇压均值填充。
+const A4_MOVE_ID = '1041008'
+const A4_QUICK_TIME = 1.828 * 0.5
+const A5_MOVE_ID = '1041025'
+const A5_QUICK_TIME = 1.383 * 0.5
+const CYCLE_TIME = A4_QUICK_TIME + A5_QUICK_TIME
+
 const specBase = specToMechanicModule(getAgentSpec(AGENT_ID)!)
 
 function cfgNum(cfg: AgentCharConfigInput['cfg'], key: string, fallback: number): number {
@@ -127,6 +135,16 @@ export const soldier11Mechanic: AgentMechanicModule = {
       step: 0.05,
     },
   ],
+  estimateExSpecialTime: ({ cfg, exSpecialCount, ultimateCount }) => {
+    // A45 循环计入必要时间（窗口数 = 强特+终结+连携；受平A池约束由折叠循环收敛）
+    const chainOverride = cfg.chainCountTotalOverride
+    const chain = chainOverride ?? 0
+    const cycles = Math.max(0, Math.floor(exSpecialCount) + Math.floor(ultimateCount) + Math.floor(chain))
+    const loopTime = cycles * CYCLE_TIME
+    const base = exSpecialCount * (cfg.exSpecialActionTime ?? 0)
+    const comboBase = exSpecialCount * (cfg.exSpecialActionTime ?? 0) * (cfg.exSpecialComboAlignRatio ?? 0)
+    return { necessaryTime: base + loopTime, comboAlignTime: comboBase }
+  },
   applyPanel: ({ panel }) => {
     // 潜能觉醒·绝焰（最高档）：额外能力·燎原触发时自身暴伤 +48%
     if ((panel.additionalAbilityActive ?? 0) > 0) {
@@ -134,6 +152,31 @@ export const soldier11Mechanic: AgentMechanicModule = {
     }
   },
   buildCharConfig: buildSoldier11CharConfig,
+  // A45 快速循环伤害行：窗口招（强特/连携/终结）后必打，动作时间减半占前台；
+  // 倍率走倍率表（#4=火力镇压、#5=结算6段），核心被动/C6 经 patchExecutions 咬合
+  buildExecutions: ({ cfg, state, executions }: AgentResourceInput): void => {
+    const windows = Math.max(0,
+      Math.floor(state.exSpecialCount ?? 0)
+      + Math.floor(state.chainCountTotal ?? 0)
+      + Math.floor(state.ultimateCount ?? 0))
+    const basicPool = state.basicAttackTime ?? 0
+    const cycles = Math.min(windows, CYCLE_TIME > 0 ? Math.floor(basicPool / CYCLE_TIME) : 0)
+    if (cycles <= 0) return
+    executions.push({
+      moveId: A4_MOVE_ID, moveName: '火力镇压 #4（快速取消）', category: 'basic',
+      count: cycles, actionTime: A4_QUICK_TIME, comboAlignRatio: 0,
+      totalTime: A4_QUICK_TIME * cycles, totalComboAlignTime: 0,
+      energyConsume: 0, totalEnergyConsume: 0, decibelRecovery: 0, totalDecibelRecovery: 0,
+      energyRecovery: 0, totalEnergyRecovery: 0,
+    })
+    executions.push({
+      moveId: A5_MOVE_ID, moveName: '火力镇压 #5（结算6段）', category: 'basic',
+      count: cycles, actionTime: A5_QUICK_TIME, comboAlignRatio: 0,
+      totalTime: A5_QUICK_TIME * cycles, totalComboAlignTime: 0,
+      energyConsume: 0, totalEnergyConsume: 0, decibelRecovery: 0, totalDecibelRecovery: 0,
+      energyRecovery: 0, totalEnergyRecovery: 0,
+    })
+  },
   patchExecutions: patchSoldier11Executions,
   buildResourceResult: ({ cfg, state }: AgentResourceResultInput) => {
     const spec = getAgentSpec(AGENT_ID)

@@ -681,6 +681,14 @@ function applyNormaHatChain(
         const loops = loopTime > 0 ? fillSec / loopTime : 0
         add(slot, '1051007', loops)
         add(slot, '1051003', loops)
+      } else if (fillerAgentId === '1041') {
+        // 「11号」可分配平A时间：普通火力镇压连打填充（全额时间；A45 快速循环已计入必要时间）。
+        // 以 #4 为代表行按「火力镇压均值 × 时间」口径折算。
+        const skills = catalogStore.getAgentSkills(fillerAgentId)
+        const rep = findMoveById(skills, '1041008')
+        const repT = rep?.actionTime ?? 1.828
+        const reps = repT > 0 ? fillSec / repT : 0
+        add(slot, '1041008', reps)
       } else {
         add(slot, 'basic', fillSec)
       }
