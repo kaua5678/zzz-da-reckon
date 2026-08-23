@@ -176,4 +176,25 @@ describe('永续面板项与猫步秀（2026-08-23 第二批口供）', () => {
     expect(row).toBeTruthy()
     expect(row!.element).toBe('physical')
   })
+
+  it('轴模式：CD 自动行（autoSplitByStun）自动按失衡时间占比拆失衡内满易伤/轴外', async () => {
+    const { config } = await setupHarness([{ agentId: '1021' }, { agentId: '1251' }, ''])
+    config.useStunAxis = true
+    config.stunAxes = [
+      { name: '轴1', actions: [{ slot: 1, moveId: '1251007', count: 1 }] },
+    ] as never
+    config.enemy.stunCountLock = 3
+    await new Promise(r => setTimeout(r, 60))
+    const calc = useResourceCalc()
+    const clawRows = calc.damagePoolRows.value.filter(r => r.moveId === 'nekomata_chaoxiong_claw')
+    expect(clawRows.length).toBeGreaterThanOrEqual(2) // 失衡内 + 轴外两段
+    const inStun = clawRows.find(r => (r.stunMult ?? 1) > 1)
+    const outStun = clawRows.find(r => (r.stunMult ?? 1) <= 1)
+    expect(inStun).toBeTruthy()
+    expect(outStun).toBeTruthy()
+    expect(inStun!.count).toBeGreaterThan(0)
+    expect(outStun!.count).toBeGreaterThan(0)
+    // 占比内份额 ≈ 失衡时间占比 × 总秒数（3窗 × ~16s / 180 ≈ 26%）
+    expect(inStun!.count).toBeLessThan(outStun!.count)
+  })
 })

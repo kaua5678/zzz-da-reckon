@@ -27,8 +27,8 @@ import { computeSpecResources } from '@/specs/resources'
  * - 猫步秀（额外能力）：[强化特殊技]/[闪避反击]命中伤害 +35%×2 层永续 = +70%，
  *   moveId 限定 {1021008 强特, 1021010 闪避反击, 1021019 绒爪穿刺}，按 additionalAbility 门控。
  * - [超凶爪印]：肉球突袭永续 → 每秒自动一次 30% 攻击力物理伤害（后台行 actionTime 0，
- *   不占前台）。非轴模式引擎按全局覆盖率套易伤；轴模式下该行进轴编辑器动作池，
- *   可捏进轴让失衡内份额精确吃满易伤（般岳占位行同款）。
+ *   不占前台）。CD 自动行（autoSplitByStun 通用机制）：非轴按全局覆盖率吃易伤；
+ *   轴模式自动按失衡时间占比拆「失衡内满易伤 / 其余无易伤」，无需手动捏轴。
  */
 
 const NEKOMATA_AGENT_ID = '1021'
@@ -231,7 +231,8 @@ function buildNekoExecutions({ cfg, state, executions }: AgentResourceInput): vo
       totalEnergyRecovery: 0,
       damageMultiplier: 30,
       damageMultiplierOverride: true,
-      skillTableNote: '肉球突袭永续：每 1 秒触发一次 30% 攻击力物理伤害；非轴按失衡覆盖率吃易伤，轴模式可把本行捏进轴让失衡内份额吃满易伤',
+      autoSplitByStun: true,
+      skillTableNote: '肉球突袭永续：每 1 秒触发一次 30% 攻击力物理伤害；CD 自动行——非轴按失衡覆盖率吃易伤，轴模式自动按失衡时间占比拆失衡内（满易伤）/轴外',
     }
     executions.push(claw)
   }

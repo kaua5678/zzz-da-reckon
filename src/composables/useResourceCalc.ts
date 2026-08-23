@@ -1994,6 +1994,13 @@ function applyNormaHatChain(
           const inUnits = Math.min(totalUnits, Math.max(0, giftInUnits))
           emitExecDirect(inUnits, 1, '', '', exec.source)
           emitExecDirect(totalUnits - inUnits, 0, '-out', ' · 轴外（无失衡易伤）')
+        } else if (isAxis && exec.autoSplitByStun) {
+          // CD 驱动的后台自动行（通用机制，如猫又超凶爪印每秒 dot）：不按捏轴认领、无放置语义，
+          // 轴模式改按失衡时间占比拆「占比内吃满易伤 / 其余无易伤」（非轴模式本就走全局覆盖率）。
+          // 附加在特定招式上的事件不走此路——它们经 attachedEvents 跟随父动作判断是否在轴内。
+          const inUnits = Math.min(totalUnits, Math.round(totalUnits * Math.max(0, Math.min(1, stunCoverage.value))))
+          emitExecDirect(inUnits, 1, '', ' · 失衡内（CD自动行按占比）')
+          emitExecDirect(totalUnits - inUnits, 0, '-out', ' · 轴外（CD自动行按占比，无易伤）')
         } else if (isAxis && axisSlots.has(slot)) {
           // 捏轴：把总单位切成轴内（易伤=1）/轴外（易伤=0）两段
           const split = axisSplitFor(slot, exec.moveId, totalUnits)
