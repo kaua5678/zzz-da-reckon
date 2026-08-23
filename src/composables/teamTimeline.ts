@@ -31,7 +31,7 @@ import { getInteractionDefaults, useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
 import { indexForDate } from '@/composables/bossSchedule'
-import { isLimitedAgent, isLimitedWEngine, applyGoldSteps } from '@/composables/teamCompare'
+import { isLimitedAgent, isLimitedWEngine, applyGoldSteps, STANDARD_S_AGENT_IDS } from '@/composables/teamCompare'
 import { teamPresets } from '@/data/teamPresets'
 import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
 import type { Agent } from '@/types/catalog'
@@ -801,12 +801,15 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
 
 // ========== Chart 3：每期新角色 · 强队强度（横轴 = 版本，点 = 当期新角色强队） ==========
 //
-// 用户口径（2026-08 确认）：横轴 = 版本（卡池期节点）；每个点 = 该期新 S 角色的「强队」，
-// 强队由**用户指定清单**（页面可编辑，预填仓库 preset 队伍），每行可点「引擎建议」从
-// STRONG_TEAM_SUGGESTION_POOL 快速补一个候选；强度按**当前全部已实装**（队伍可含晚于
-// 主C实装的队友）+ 所选金数做最优加金（optimalGold=false 轻量档 = 主C优先确定性分配）。
+// 用户口径（2026-08-23）：横轴 = 版本（卡池期节点）；每个点 = 该期新 S 角色的「强队」，
+// 强队完全由**用户手填**（页面可编辑，预填口述清单 STRONG_TEAM_PRESETS，不提供引擎建议——
+// 引擎搜出来的组合偏差大，本图只是用户填什么就展示什么的展示层）；
+// **同一时间点（同一角色）可配置多支队伍**，各出一独立点。
+// 强度按**当前全部已实装**（队伍可含晚于主C实装的队友）+ 所选金数配装
+// （optimalGold=false 轻量档 = 主C优先确定性分配）。
+// 行清单排除 1.0 常驻 S（用户口径：常驻 S 不是「当期新角色」，不占行）。
 
-/** 一行 = 一个版本节点的「当期新 S 角色」（强队由用户清单指定，引擎辅助） */
+/** 一行 = 一个版本节点的「当期新 S 角色」（强队由用户手填，可多支） */
 export interface NewCharacterRow {
   nodeId: string
   nodeLabel: string
@@ -814,86 +817,25 @@ export interface NewCharacterRow {
   charId: string
 }
 
-/** 全部版本节点 × 当期新 S 角色 → 行清单（含测试服节点，行带 note；是否出点由用户是否配置强队决定） */
+/** 全部版本节点 × 当期新 S 角色 → 行清单（含测试服节点行带 note；排除 1.0 常驻 S） */
 export function buildNewCharacterRows(): NewCharacterRow[] {
   const rows: NewCharacterRow[] = []
   for (const node of VERSION_NODES) {
     for (const [id, nodeId] of Object.entries(AGENT_RELEASE_NODE)) {
-      if (nodeId === node.id) {
-        rows.push({
-          nodeId: node.id,
-          nodeLabel: node.label,
-          ...(node.note ? { nodeNote: node.note } : {}),
-          charId: id,
-        })
-      }
+      if (nodeId !== node.id) continue
+      if (STANDARD_S_AGENT_IDS.has(id)) continue // 1.0 常驻 S 不是当期新角色（用户口径）
+      rows.push({
+        nodeId: node.id,
+        nodeLabel: node.label,
+        ...(node.note ? { nodeNote: node.note } : {}),
+        charId: id,
+      })
     }
   }
   return rows
 }
 
-/**
- * 引擎建议队友池：泛用支援/击破/异常拐（含 苍角/妮可/露西 三个 A 级支援，catalog 稀有度已修正）。
- * 主C 从池中排除；建议结果由用户拍板（可手改）。
- */
-export const STRONG_TEAM_SUGGESTION_POOL = [
-  '1131', // 苍角（A 支援）
-  '1031', // 妮可（A 支援）
-  '1151', // 露西（A 支援）
-  '1311', // 耀嘉音
-  '1211', // 丽娜
-  '1451', // 卢西娅
-  '1071', // 凯撒
-  '1571', // 诺姆
-  '1141', // 莱卡恩
-  '1251', // 青衣
-  '1481', // 琉音
-  '1391', // 橘福福
-  '1501', // 爱芮
-  '1091', // 星见雅
-  '1171', // 柏妮思
-  '1221', // 月城柳
-]
-
-export interface TeamSuggestion {
-  team: [string, string, string]
-  damage: number
-}
-
-/**
- * 引擎建议：主C + 建议池内最优双队友（预算感知排名 + 收敛过滤，约 C(n,2) 次求值）。
- * 供 Chart 3 每行「引擎建议」填充；用户可再手改。
- */
-export async function suggestStrongTeam(
-  calc: Calc,
-  configStore: ReturnType<typeof useConfigStore>,
-  mainId: string,
-  budget: number,
-  opts: { autoBuild?: boolean; pool?: string[] } = {},
-): Promise<TeamSuggestion | null> {
-  const catalog = useCatalogStore()
-  const candidates = (opts.pool ?? STRONG_TEAM_SUGGESTION_POOL).filter(id => id !== mainId && catalog.getAgent(id))
-  let best: TeamSuggestion | null = null
-  let evalCount = 0
-  const totalEval = (candidates.length * (candidates.length - 1)) / 2
-  for (let i = 0; i < candidates.length; i++) {
-    for (let j = i + 1; j < candidates.length; j++) {
-      const team: [string, string, string] = [mainId, candidates[i], candidates[j]]
-      const { state } = budgetAwareStateFor(team, budget, catalog)
-      applyTeamToStore(configStore, team, state, opts.autoBuild === true)
-      const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
-      if (conv !== 'maxIter') {
-        const dmg = calc.teamTotalDamage.value
-        if (!best || dmg > best.damage + 1e-9) best = { team, damage: dmg }
-      }
-      evalCount++
-      if (evalCount % 8 === 0) await yieldNow()
-    }
-  }
-  return best
-}
-
-/** 一个点 = 用户清单里某新角色的强队（按所选金数配装）的强度 */
+/** 一个点 = 用户清单里某新角色的某支强队（按所选金数配装）的强度 */
 export interface NewCharacterPoint {
   charId: string
   charName: string
@@ -901,6 +843,8 @@ export interface NewCharacterPoint {
   nodeLabel: string
   nodeNote?: string
   team: [string, string, string]
+  /** 该角色第几支队伍（0 起；同角色多队伍展示用） */
+  teamIndex: number
   state: TeamGoldState
   totalGold: number
   goldLabel: string
@@ -910,8 +854,8 @@ export interface NewCharacterPoint {
 
 export interface NewCharacterChartOptions {
   rows: NewCharacterRow[]
-  /** charId → 用户配置的强队（含主C，3 名不同角色；缺省/空/重复 = 不出点） */
-  teams: Record<string, [string, string, string]>
+  /** charId → 用户手填的强队列表（每支含主C，3 名不同角色；空/缺省/重复成员 = 不出点） */
+  teams: Record<string, [string, string, string][]>
   boss: BossPreset
   phase: BossPresetPhase
   budget: number
@@ -923,8 +867,9 @@ export interface NewCharacterChartOptions {
 }
 
 /**
- * 计算 Chart 3 各点：对用户清单里每个已配置强队，按所选金数配装（optimalGold=false 轻量档
- * 用 budgetAwareStateFor，零额外求值；true 用逐金贪婪），收敛过滤 + 现场快照/恢复。
+ * 计算 Chart 3 各点：对用户清单里每个已配置强队（同角色多队各出一点），按所选金数配装
+ * （optimalGold=false 轻量档用 budgetAwareStateFor，零额外求值；true 用逐金贪婪），
+ * 收敛过滤 + 现场快照/恢复。
  */
 export async function computeNewCharacterPoints(calc: Calc, opts: NewCharacterChartOptions): Promise<NewCharacterPoint[]> {
   const configStore = useConfigStore()
@@ -933,14 +878,18 @@ export async function computeNewCharacterPoints(calc: Calc, opts: NewCharacterCh
   const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
   try {
     configStore.applyBossPreset({ id: opts.boss.id }, opts.phase, opts.boss.monster, opts.boss.defaults)
-    const configured = opts.rows.filter(r => {
-      const t = opts.teams[r.charId]
-      return t && new Set(t).size === 3 && t.every(id => id && catalog.getAgent(id))
-    })
+    // 展开成 (行, 队) 平铺：同角色多队各一任务
+    const tasks: { row: NewCharacterRow; team: [string, string, string] }[] = []
+    for (const row of opts.rows) {
+      for (const team of opts.teams[row.charId] ?? []) {
+        if (new Set(team).size === 3 && team.every(id => id && catalog.getAgent(id))) {
+          tasks.push({ row, team })
+        }
+      }
+    }
     const points: NewCharacterPoint[] = []
-    for (let i = 0; i < configured.length; i++) {
-      const row = configured[i]
-      const team = opts.teams[row.charId]
+    for (let i = 0; i < tasks.length; i++) {
+      const { row, team } = tasks[i]
       let damage: number
       let totalGold: number
       let goldLabel: string
@@ -971,13 +920,14 @@ export async function computeNewCharacterPoints(calc: Calc, opts: NewCharacterCh
         nodeLabel: row.nodeLabel,
         ...(row.nodeNote ? { nodeNote: row.nodeNote } : {}),
         team,
+        teamIndex: (opts.teams[row.charId] ?? []).indexOf(team),
         state: nodeState,
         totalGold,
         goldLabel,
         damage,
         hpRatio: opts.phase.hp > 0 ? Math.round((damage / opts.phase.hp) * 10000) / 100 : 0,
       })
-      report((i + 1) / configured.length, `强队强度 ${i + 1}/${configured.length}（${char?.name.zhCN ?? row.charId}）…`)
+      report((i + 1) / tasks.length, `强队强度 ${i + 1}/${tasks.length}（${char?.name.zhCN ?? row.charId}）…`)
       if (i % 2 === 0) await yieldNow()
     }
     report(1, `完成：${points.length} 个点`)

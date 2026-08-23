@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { isLimitedWEngine } from '@/composables/teamCompare'
+import { isLimitedWEngine, STANDARD_S_AGENT_IDS } from '@/composables/teamCompare'
 import { setupHarness } from '@/test/harness'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, nodesFrom, releaseNodeOf } from '@/data/versionTimeline'
 import {
@@ -24,7 +24,6 @@ import {
   computeTeamTimeline,
   nextGoldCandidates,
   prefillStrongTeamsFromPresets,
-  suggestStrongTeam,
 } from '@/composables/teamTimeline'
 import { teamPresets } from '@/data/teamPresets'
 import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
@@ -352,12 +351,16 @@ describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
 // ========== Chart 3：每期新角色 · 强队强度 ==========
 
 describe('Chart 3：每期新角色强队（buildNewCharacterRows / suggest / computeNewCharacterPoints / 预填）', () => {
-  it('行清单：覆盖全部 AGENT_RELEASE_NODE 角色，每行实装节点 = 所在节点，测试服行带 note', () => {
+  it('行清单：覆盖全部非 1.0 常驻 S 的收录角色（潘引壶特例含），每行实装节点 = 所在节点，测试服行带 note', () => {
     const rows = buildNewCharacterRows()
     const rowChars = new Set(rows.map(r => r.charId))
-    // 全量覆盖（含潘引壶 A 级特例）
+    // 覆盖 AGENT_RELEASE_NODE 中除 1.0 常驻 S 外的全部角色（常驻 S 不是当期新角色，用户口径）
     for (const id of Object.keys(AGENT_RELEASE_NODE)) {
-      expect(rowChars.has(id), `缺 ${id}`).toBe(true)
+      if (STANDARD_S_AGENT_IDS.has(id)) {
+        expect(rowChars.has(id), `${id} 常驻 S 不应占行`).toBe(false)
+      } else {
+        expect(rowChars.has(id), `缺 ${id}`).toBe(true)
+      }
     }
     // 每行归属其实装节点；行序 = 节点序
     for (const row of rows) {
@@ -402,18 +405,7 @@ describe('Chart 3：每期新角色强队（buildNewCharacterRows / suggest / co
     expect(STRONG_TEAM_PRESETS['1591']).toEqual(['1591', '1571', '1211']) // 希格莉德 诺姆丽娜
   })
 
-  it('引擎建议：小池子下返回 主C+双队友 且收敛、伤害有限', async () => {
-    await boot()
-    const config = useConfigStore()
-    const calc = useResourceCalc()
-    const s = await suggestStrongTeam(calc, config, '1371', 6, { pool: ['1311', '1071', '1141'] })
-    expect(s).not.toBeNull()
-    expect(s!.team[0]).toBe('1371')
-    expect(new Set(s!.team).size).toBe(3)
-    expect(s!.damage).toBeGreaterThan(0)
-  }, 120000)
-
-  it('computeNewCharacterPoints：配置 2 队出 2 点；无效队（重复成员）跳过；现场恢复', async () => {
+  it('computeNewCharacterPoints：同角色多队各出一点；无效队（重复成员）跳过；现场恢复', async () => {
     await boot()
     const config = useConfigStore()
     const calc = useResourceCalc()
@@ -423,10 +415,13 @@ describe('Chart 3：每期新角色强队（buildNewCharacterRows / suggest / co
       { nodeId: '1.4', nodeLabel: '1.4 合并', charId: '1091' },
       { nodeId: '2.3-1', nodeLabel: '2.3 上半', charId: '1451' },
     ]
-    const teams: Record<string, [string, string, string]> = {
-      '1371': ['1371', '1451', '1481'], // 仪玄+卢西娅+琉音
-      '1091': ['1091', '1141', '1131'], // 星见雅+莱卡恩+苍角
-      '1451': ['1451', '1451', '1481'], // 重复成员 → 应跳过
+    const teams: Record<string, [string, string, string][]> = {
+      '1371': [
+        ['1371', '1451', '1481'], // 仪玄+卢西娅+琉音（第 1 队）
+        ['1371', '1251', '1421'], // 仪玄+青衣+潘引壶（第 2 队，同时间点多队展示）
+      ],
+      '1091': [['1091', '1141', '1131']], // 星见雅+莱卡恩+苍角
+      '1451': [['1451', '1451', '1481']], // 重复成员 → 应跳过
     }
     const points = await computeNewCharacterPoints(calc, {
       rows,
@@ -435,13 +430,26 @@ describe('Chart 3：每期新角色强队（buildNewCharacterRows / suggest / co
       phase: firstPhase,
       budget: 6,
     })
-    expect(points.length).toBe(2)
+    expect(points.length).toBe(3) // 仪玄 2 点 + 星见雅 1 点
     for (const p of points) {
       expect(p.hpRatio).toBeGreaterThan(0)
       expect(p.goldLabel).toContain('金')
-      expect(p.team[0]).toBe(p.charId)
     }
+    const yixuanPts = points.filter(p => p.charId === '1371')
+    expect(yixuanPts.length).toBe(2)
+    expect(yixuanPts.map(p => p.teamIndex).sort()).toEqual([0, 1])
     expect(points.find(p => p.charId === '1451')).toBeUndefined()
     expect(JSON.stringify(config.team)).toBe(originalTeam)
   }, 120000)
+
+  it('行清单排除 1.0 常驻 S（猫又/11号/珂蕾妲/莱卡恩/格莉丝/丽娜 无行），潘引壶特例保留', () => {
+    const rows = buildNewCharacterRows()
+    const rowChars = new Set(rows.map(r => r.charId))
+    for (const std of ['1021', '1041', '1101', '1141', '1181', '1211']) {
+      expect(rowChars.has(std), `${std} 常驻 S 不应占行`).toBe(false)
+    }
+    expect(rowChars.has('1191')).toBe(true) // 艾莲（1.0 限定期）
+    expect(rowChars.has('1241')).toBe(true) // 朱鸢（1.0 下半）
+    expect(rowChars.has('1421')).toBe(true) // 潘引壶（A 级特例）
+  })
 })

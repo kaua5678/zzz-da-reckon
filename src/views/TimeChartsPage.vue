@@ -68,6 +68,22 @@
         </div>
       </div>
 
+      <!-- Boss 数据（所选 Boss 最新危局期的数值；换 Boss 即切换） -->
+      <div v-if="selectedBoss && selectedPhase" class="boss-data-strip">
+        <span class="boss-data-title">Boss 数据 · {{ selectedBoss.name }}</span>
+        <span class="boss-data-item">期 {{ selectedPhase.label }}</span>
+        <span class="boss-data-item">血量 {{ compact(selectedPhase.hp) }}</span>
+        <span class="boss-data-item">失衡值 {{ fmt(selectedPhase.stunValue, 0) }}</span>
+        <span class="boss-data-item">防御 {{ selectedPhase.defense }}</span>
+        <span class="boss-data-item">Lv{{ selectedPhase.level }}</span>
+        <span class="boss-data-item">异常系数 ×{{ selectedPhase.bossAnomalyCoeff }}</span>
+        <span class="boss-data-item">失衡倍率 ×{{ selectedBoss.monster.stunVuln }}</span>
+        <span class="boss-data-item">失衡时间 {{ fmt(selectedBoss.monster.stunTime, 1) }}s</span>
+        <span class="boss-data-item">战斗 {{ selectedBoss.defaults.battleTime }}s</span>
+        <span class="boss-data-item">弱点 {{ selectedPhase.weakness.join('/') || '—' }}</span>
+        <span class="boss-data-item">抗性 {{ selectedPhase.resistance.join('/') || '—' }}</span>
+      </div>
+
       <!-- 进度条 -->
       <div v-if="computing || progress" class="chart-progress">
         <n-progress
@@ -428,7 +444,7 @@
     <n-card size="small" :bordered="true">
       <template #header>
         每期新角色 · 强队强度
-        <span class="chart-subtitle">横轴 = 版本（卡池期）；每个点 = 当期新 S 角色的强队（你指定清单，可手改/引擎建议；按当前全部已实装 + 所选金数配装）</span>
+        <span class="chart-subtitle">横轴 = 版本（卡池期）；点 = 当期新 S 角色的强队（纯用户手填展示，同角色可加多队对比；按当前全部已实装 + 所选金数配装）</span>
       </template>
       <template #header-extra>
         <div class="chart3-actions">
@@ -439,15 +455,14 @@
         </div>
       </template>
 
-      <!-- 强队清单（版本 → 新角色 → 强队三人） -->
+      <!-- 强队清单（版本 → 新角色 → 强队列表；同角色多队 = 同一时间点多点展示） -->
       <div class="table-wrap chart3-list">
         <table class="tl-table">
           <thead>
             <tr>
               <th>版本</th>
               <th>当期新角色</th>
-              <th>强队（主C + 队友1 + 队友2）</th>
-              <th>引擎建议</th>
+              <th>强队（每支 = 主C + 队友1 + 队友2；可添加多支）</th>
             </tr>
           </thead>
           <tbody>
@@ -459,39 +474,36 @@
               <td>
                 <span class="dot" :style="{ background: colorOf(row.charId) }"></span>{{ agentName(row.charId) }}
               </td>
-              <td class="team-cell chart3-team-inputs">
-                <n-select
-                  v-model:value="chart3Teams[row.charId][0]"
-                  :options="allAgentOptions"
-                  size="tiny"
-                  filterable
-                  style="width: 118px"
-                  placeholder="主C"
-                />
-                <n-select
-                  v-model:value="chart3Teams[row.charId][1]"
-                  :options="allAgentOptions"
-                  size="tiny"
-                  filterable
-                  style="width: 118px"
-                  placeholder="队友1"
-                />
-                <n-select
-                  v-model:value="chart3Teams[row.charId][2]"
-                  :options="allAgentOptions"
-                  size="tiny"
-                  filterable
-                  style="width: 118px"
-                  placeholder="队友2"
-                />
-              </td>
-              <td>
-                <n-button
-                  size="tiny"
-                  :loading="suggestingChar === row.charId"
-                  :disabled="!!suggestingChar && suggestingChar !== row.charId"
-                  @click="suggestFor(row.charId)"
-                >引擎建议</n-button>
+              <td class="chart3-teams-cell">
+                <div v-for="(team, ti) in chart3Teams[row.charId]" :key="ti" class="team-cell chart3-team-inputs">
+                  <span class="team-no">{{ ti + 1 }}</span>
+                  <n-select
+                    v-model:value="team[0]"
+                    :options="allAgentOptions"
+                    size="tiny"
+                    filterable
+                    style="width: 118px"
+                    placeholder="主C"
+                  />
+                  <n-select
+                    v-model:value="team[1]"
+                    :options="allAgentOptions"
+                    size="tiny"
+                    filterable
+                    style="width: 118px"
+                    placeholder="队友1"
+                  />
+                  <n-select
+                    v-model:value="team[2]"
+                    :options="allAgentOptions"
+                    size="tiny"
+                    filterable
+                    style="width: 118px"
+                    placeholder="队友2"
+                  />
+                  <n-button size="tiny" quaternary @click="removeChart3Team(row.charId, ti)">✕</n-button>
+                </div>
+                <n-button size="tiny" quaternary dashed class="add-team-btn" @click="addChart3Team(row.charId)">＋ 添加队伍</n-button>
               </td>
             </tr>
           </tbody>
@@ -546,7 +558,7 @@
           class="hover-card"
           :style="{ left: chart3CardX + 'px', top: chart3CardY + 'px' }"
         >
-          <div class="hc-title">{{ chart3HoverInfo.nodeLabel }} · {{ chart3HoverInfo.charName }}</div>
+          <div class="hc-title">{{ chart3HoverInfo.nodeLabel }} · {{ chart3HoverInfo.charName }} · 第{{ chart3HoverInfo.teamNo }}队</div>
           <div class="hc-row">强队：{{ chart3HoverInfo.teamNames.join(' + ') }}</div>
           <div class="hc-row">伤害 {{ compact(chart3HoverInfo.damage) }}（{{ fmt(chart3HoverInfo.hpRatio, 1) }}%）</div>
           <div class="hc-row">{{ chart3HoverInfo.goldLabel }}</div>
@@ -577,7 +589,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamStrengthSeed, type TeamTimelineResult } from '@/composables/teamTimeline'
-import { buildNewCharacterRows, computeNewCharacterPoints, prefillStrongTeamsFromPresets, suggestStrongTeam, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
+import { buildNewCharacterRows, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
 import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
@@ -1110,30 +1122,24 @@ function ddLabelY(p: DirectDamagePoint): number {
 
 // ========== Chart 3：每期新角色 · 强队强度（横轴 = 版本，点 = 当期新角色强队） ==========
 const chart3Rows = computed<NewCharacterRow[]>(() => buildNewCharacterRows())
-/** 强队清单：charId → 三人（'' = 未配置，不出点）；预填仓库 preset 队伍（主C匹配） */
-const chart3Teams = ref<Record<string, [string, string, string]>>(initChart3Teams())
-function initChart3Teams(): Record<string, [string, string, string]> {
-  const out: Record<string, [string, string, string]> = {}
+/** 强队清单：charId → 强队列表（每支 3 人；同角色多队 = 同一时间点多点展示；空数组 = 不出点）；预填口述预设 */
+const chart3Teams = ref<Record<string, [string, string, string][]>>(initChart3Teams())
+function initChart3Teams(): Record<string, [string, string, string][]> {
+  const out: Record<string, [string, string, string][]> = {}
   const prefill = prefillStrongTeamsFromPresets()
-  for (const row of buildNewCharacterRows()) out[row.charId] = prefill[row.charId] ?? ['', '', '']
+  for (const row of buildNewCharacterRows()) out[row.charId] = prefill[row.charId] ? [prefill[row.charId]] : []
   return out
+}
+function addChart3Team(charId: string) {
+  chart3Teams.value[charId].push(['', '', ''])
+}
+function removeChart3Team(charId: string, index: number) {
+  chart3Teams.value[charId].splice(index, 1)
 }
 /** 强队成员可选全部角色（S+A；A 级支援如苍角/妮可可作队友） */
 const allAgentOptions = computed(() =>
   catalogStore.displayAgents.map(a => ({ value: a.id, label: `${a.name.zhCN ?? a.id}（${a.rarity}）` })),
 )
-
-const suggestingChar = ref('')
-async function suggestFor(charId: string) {
-  if (suggestingChar.value) return
-  suggestingChar.value = charId
-  try {
-    const s = await suggestStrongTeam(calc, configStore, charId, budget.value ?? 6, { autoBuild: autoBuild.value })
-    if (s) chart3Teams.value[charId] = [...s.team] as [string, string, string]
-  } finally {
-    suggestingChar.value = ''
-  }
-}
 
 const chart3Computing = ref(false)
 const chart3Progress = ref<{ pct: number; text: string } | null>(null)
@@ -1193,7 +1199,7 @@ const chart3XTicks = computed(() => {
   for (let i = 0; i < VERSION_NODES.length; i += step) out.push({ index: i, label: VERSION_NODES[i].label })
   return out
 })
-/** 散点：同节点多角色横向错开；颜色按角色稳定映射 */
+/** 散点：同节点多角色/多队伍横向错开；颜色按队伍构成稳定映射（同队同色，跨角色可对比） */
 const chart3Pts = computed(() => {
   const perNode = new Map<string, number>()
   for (const p of chart3Points.value) perNode.set(p.nodeId, (perNode.get(p.nodeId) ?? 0) + 1)
@@ -1207,10 +1213,11 @@ const chart3Pts = computed(() => {
     return {
       x: chart3X(idx) + offset,
       y: yOf3(Math.min(p.hpRatio, chart3YMax.value)),
-      color: colorOf(p.charId),
+      color: colorOf(p.team.join(',')),
       charName: p.charName,
       nodeLabel: p.nodeLabel,
       teamNames: p.team.map(agentName),
+      teamNo: p.teamIndex + 1,
       damage: p.damage,
       hpRatio: p.hpRatio,
       goldLabel: p.goldLabel,
@@ -1547,6 +1554,30 @@ function onChart3Move(e: MouseEvent) {
 .chart3-team-inputs {
   gap: 6px;
 }
+.chart3-teams-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.chart3-teams-cell .team-cell {
+  gap: 6px;
+}
+.team-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+.add-team-btn {
+  margin-top: 2px;
+}
 .chart3-plot {
   margin-top: 4px;
 }
@@ -1558,5 +1589,29 @@ function onChart3Move(e: MouseEvent) {
 .small-hint {
   font-size: 12px;
   padding: 8px 2px;
+}
+
+/* ========== Boss 数据条 ========== */
+.boss-data-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.boss-data-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f6ad55;
+  white-space: nowrap;
+}
+.boss-data-item {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.72);
+  white-space: nowrap;
 }
 </style>
