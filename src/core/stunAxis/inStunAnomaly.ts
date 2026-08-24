@@ -13,6 +13,8 @@ import { ANOMALY_DURATION, BUILDUP_THRESHOLD_TABLE, getBaseElement } from '@/cor
 export interface InStunAction {
   /** 来源招式 id（可选）：填了才会在触发事件上标注「哪个招式触发的」（轴编辑器块级可视化用） */
   moveId?: string
+  /** 原始动作索引（可选）：编辑器把积蓄槽快照映射回动作块用 */
+  srcIndex?: number
   /** 招式积蓄元素 */
   element: string
   /** 单次积蓄值（池口径 perHit，已含效率区） */
@@ -42,14 +44,28 @@ export interface InStunTrigger {
   offsetSeconds: number
   /** 触发来源招式（动作带 moveId 时回填） */
   moveId?: string
+  /**
+   * 稳定 id：`${windowIndex}:${基础元素}:${序数}`。轴条目 suppressedTriggers 引用该 id——
+   * 被抑制的触发不生效且满槽保持（模拟施加者后台/CD 无法结算触发），可在编辑器恢复。
+   */
+  id?: string
+}
+
+/** 动作完成后的积蓄槽快照（用户口径：每个动作块末尾显示对应积蓄槽状态） */
+export interface InStunGaugeSnapshot {
+  windowIndex: number
+  /** 原始动作索引（InStunAction.srcIndex 回传） */
+  srcIndex?: number
+  /** 各元素槽占第一管百分比（0-100，超满截断到 100） */
+  pct: Record<string, number>
 }
 
 export interface InStunAnomalyResult {
   triggers: InStunTrigger[]
   /** 每窗各元素异常覆盖占比（0-1；key=element，仅含有覆盖的元素） */
   coveragePerWindow: Array<Record<string, number>>
-  /** 每窗结束时各元素槽余量（下一窗的 entryStates 继承用） */
-  endGaiges: Array<InStunEntryState[]>
+  /** 每个动作块完成后的积蓄槽状态快照 */
+  gaugeSnapshots: InStunGaugeSnapshot[]
   note: string
 }
 
@@ -58,6 +74,8 @@ interface SlotEvent {
   time: number
   amount: number
   moveId?: string
+  srcIndex?: number
+  actionIndex: number
 }
 
 export function computeInStunAnomalyTimeline(input: {
@@ -66,53 +84,67 @@ export function computeInStunAnomalyTimeline(input: {
   windowDuration: number
   /** 阈值系数（bossCoeff × 危局系数），同 simulateTriggerCount 口径 */
   coeff?: number
+  /**
+   * 被抑制的触发事件 id（`${windowIndex}:${基础元素}:${序数}`）：
+   * 满槽保持不触发（施加者后台/CD 无法结算的场景由用户自行判断），编辑器可恢复。
+   */
+  suppressedTriggerIds?: string[]
 }): InStunAnomalyResult {
   const windowDuration = Math.max(0, input.windowDuration)
   const coeff = input.coeff && input.coeff > 0 ? input.coeff : 1
+  const suppressed = new Set(input.suppressedTriggerIds ?? [])
   const triggers: InStunTrigger[] = []
   const coveragePerWindow: Array<Record<string, number>> = []
-  const endGaiges: Array<InStunEntryState[]> = []
+  const gaugeSnapshots: InStunGaugeSnapshot[] = []
 
-  let carried: InStunEntryState[] = []
+  // 窗口独立模拟（2026-08-24 用户口径）：跨出窗口是非失衡期且未建模，下次失衡拿不到
+  // 先前状态——每窗仅按条目声明的 entryStates 初始化，无跨窗余量/状态继承。
   for (let w = 0; w < input.windows.length; w++) {
     const win = input.windows[w]
-    // entryStates 部分注入（2026-08-24 用户口径）：每次失衡都是中间态——声明的元素覆盖
-    // 上一窗余量，其余元素条并存继承（多属性异常条互不清除）
-    let entry = carried
-    if (win.entryStates?.length) {
-      if (carried.length === 0) {
-        entry = win.entryStates
-      } else {
-        const merged = new Map(carried.map(s => [s.element, Math.max(0, s.gauge)]))
-        for (const st of win.entryStates) merged.set(st.element, Math.max(0, st.gauge))
-        entry = [...merged.entries()].map(([element, gauge]) => ({ element, gauge }))
-      }
-    }
     const gauges = new Map<string, number>()
     const activeUntil = new Map<string, number>()
-    for (const st of entry) {
+    for (const st of win.entryStates ?? []) {
       gauges.set(st.element, Math.max(0, st.gauge))
     }
 
     // 展开动作 → 槽事件序列（积蓄按时长均摊；瞬发记起点）
     const slotEvents: SlotEvent[] = []
-    for (const act of win.actions ?? []) {
+    for (let ai = 0; ai < (win.actions?.length ?? 0); ai++) {
+      const act = win.actions![ai]
       const n = Math.max(0, Math.floor(act.count))
       if (n <= 0 || act.perHitBuildUp <= 0) continue
       const dur = Math.max(0, act.duration ?? 0)
       for (let i = 0; i < n; i++) {
         const t = dur > 0 ? (act.startTime ?? 0) + ((i + 0.5) / n) * dur : (act.startTime ?? 0)
-        slotEvents.push({ element: act.element, time: t, amount: act.perHitBuildUp, moveId: act.moveId })
+        slotEvents.push({ element: act.element, time: t, amount: act.perHitBuildUp, moveId: act.moveId, srcIndex: act.srcIndex ?? ai, actionIndex: ai })
       }
     }
     slotEvents.sort((a, b) => a.time - b.time)
+    const actionTotals = new Map<number, number>()
+    for (const ev of slotEvents) actionTotals.set(ev.actionIndex, (actionTotals.get(ev.actionIndex) ?? 0) + 1)
+    const actionDone = new Map<number, number>()
 
     let cursor = 0
     const coverage: Record<string, number> = {}
-    const baseElementOf = new Map<string, string>()
+    // 同一元素同一窗的触发序数（含被抑制的提案，保证 id 稳定）；被抑制后满槽封顶不再提案
+    const ordinalByEl = new Map<string, number>()
+    const saturated = new Set<string>()
+
+    const snapshotIfActionDone = (ev: SlotEvent, triggeredHere: boolean) => {
+      const done = (actionDone.get(ev.actionIndex) ?? 0) + 1
+      actionDone.set(ev.actionIndex, done)
+      if (done !== actionTotals.get(ev.actionIndex)) return
+      const pct: Record<string, number> = {}
+      for (const [key, g] of gauges) {
+        const th = (BUILDUP_THRESHOLD_TABLE[key] ?? BUILDUP_THRESHOLD_TABLE.ice)[0] * coeff
+        pct[key] = th > 0 ? Math.min(100, Math.round((g / th) * 1000) / 10) : 0
+      }
+      if (triggeredHere) pct[getBaseElement(ev.element)] = 0
+      gaugeSnapshots.push({ windowIndex: w, srcIndex: ev.srcIndex, pct })
+    }
+
     for (const ev of slotEvents) {
       const base = getBaseElement(ev.element)
-      baseElementOf.set(base, ev.element)
       // 结算 [cursor, ev.time] 的覆盖时长
       for (const [el, until] of activeUntil) {
         const overlap = Math.max(0, Math.min(until, windowDuration) - Math.min(cursor, windowDuration))
@@ -120,16 +152,27 @@ export function computeInStunAnomalyTimeline(input: {
       }
       cursor = ev.time
 
-      const key = base
-      const g = (gauges.get(key) ?? 0) + ev.amount
-      const thresholds = BUILDUP_THRESHOLD_TABLE[key] ?? BUILDUP_THRESHOLD_TABLE.ice
-      gauges.set(key, g)
-      if (activeUntil.has(key)) continue // 同元素同窗只触发一次
-      if (g >= thresholds[0] * coeff) {
-        triggers.push({ windowIndex: w, element: ev.element, offsetSeconds: ev.time, moveId: ev.moveId })
-        activeUntil.set(key, ev.time + (ANOMALY_DURATION[base] ?? 10))
-        gauges.set(key, g - thresholds[0] * coeff)
+      const g = (gauges.get(base) ?? 0) + ev.amount
+      gauges.set(base, g)
+
+      const thresholds = BUILDUP_THRESHOLD_TABLE[base] ?? BUILDUP_THRESHOLD_TABLE.ice
+      const full = thresholds[0] * coeff
+      let triggeredHere = false
+      if (g >= full && !saturated.has(base)) {
+        const ordinal = (ordinalByEl.get(base) ?? 0) + 1
+        ordinalByEl.set(base, ordinal)
+        const id = `${w}:${base}:${ordinal}`
+        if (suppressed.has(id)) {
+          saturated.add(base) // 已满槽且被抑制：保持满槽不触发，积蓄浪费
+        } else {
+          triggers.push({ windowIndex: w, element: ev.element, offsetSeconds: ev.time, moveId: ev.moveId, id })
+          activeUntil.set(base, ev.time + (ANOMALY_DURATION[base] ?? 10))
+          gauges.set(base, 0) // 触发块清空满槽，下一波重新积蓄尝试
+          triggeredHere = true
+        }
       }
+      // 动作末尾槽状态快照：触发事件附着在动作末尾——取触发结算后的槽（清空后）
+      snapshotIfActionDone(ev, triggeredHere)
     }
     // 收尾覆盖
     for (const [el, until] of activeUntil) {
@@ -142,21 +185,13 @@ export function computeInStunAnomalyTimeline(input: {
       if (v > 0) covOut[el] = v
     }
     coveragePerWindow.push(covOut)
-
-    const ends: InStunEntryState[] = []
-    for (const [key, g] of gauges) {
-      const displayEl = baseElementOf.get(key) ?? key
-      ends.push({ element: displayEl, gauge: g })
-    }
-    endGaiges.push(ends)
-    carried = ends
   }
 
   return {
     triggers,
     coveragePerWindow,
-    endGaiges,
-    note: `逐窗多属性积蓄槽模拟：共 ${triggers.length} 次轴内异常触发；同元素同窗一次、激活持续按 ANOMALY_DURATION 表。`,
+    gaugeSnapshots,
+    note: `逐窗独立积蓄槽模拟：每窗按条目声明初始化（无跨窗继承），满槽经触发块清空并触发异常；被抑制的触发保持满槽。`,
   }
 }
 
@@ -197,7 +232,7 @@ export interface BossAnomalyStateResult {
   stateChainsPerWindow: BossStateSegment[][]
   /** 风化覆盖层逐窗时段（独立计时，持续 ANOMALY_DURATION.wind） */
   windOverlayPerWindow: BossStateSegment[][]
-  /** 替换型紊乱点：element = **被替换的原状态**元素（「当前时点的状态」口径，如需改新状态一行可翻） */
+  /** 替换型紊乱点：time=相对该窗口起点的秒；element = **被替换的原状态**元素（「当前时点的状态」口径，如需改新状态一行可翻） */
   disorders: Array<{ windowIndex: number; time: number; element: string }>
   /**
    * 接线层注入（纯函数不填）：本轮失衡总次数。轴条目按「代表窗」模拟，
@@ -230,102 +265,82 @@ export function computeBossAnomalyStateTimeline(input: {
   triggers: InStunTrigger[]
   windowDuration: number
   windowCount: number
-  /** 开战时目标身上已有的属性异常（可选） */
-  entryElement?: string
-  /** 窗口边界强制状态注入（轴条目声明「以什么状态进入该段失衡」；不记紊乱，风化走覆盖层） */
+  /**
+   * 窗口边界强制状态注入（轴条目声明「以什么状态进入该段失衡」；不记紊乱，风化走覆盖层）。
+   * 每个窗口独立模拟：未声明的窗口开局无状态——跨窗继承已按用户口径移除（窗口外未建模）。
+   */
   boundaryStates?: BoundaryStateInjection[]
 }): BossAnomalyStateResult {
   const D = Math.max(0, input.windowDuration)
-  const totalEnd = D * Math.max(1, input.windowCount)
   const durOf = (el: string) => ANOMALY_DURATION[getBaseElement(el)] ?? 10
 
-  const stdIntervals: ActiveInterval[] = []
-  const windIntervals: ActiveInterval[] = []
+  const chainsPerWindow: BossStateSegment[][] = []
+  const windPerWindow: BossStateSegment[][] = []
   const disorders: BossAnomalyStateResult['disorders'] = []
 
-  let std: ActiveInterval | null = null
-  let windEnd = -1
-  if (input.entryElement) {
-    const base = getBaseElement(input.entryElement)
-    const iv: ActiveInterval = { start: 0, end: durOf(base), element: input.entryElement }
-    if (base === 'wind') {
-      windIntervals.push(iv)
-      windEnd = iv.end
-    } else {
-      stdIntervals.push(iv)
-      std = iv
+  // 逐窗独立：每窗从边界声明（或空）开始，窗内触发演化，不与相邻窗互通
+  for (let w = 0; w < Math.max(1, input.windowCount); w++) {
+    const chain: BossStateSegment[] = []
+    const windSegs: BossStateSegment[] = []
+    let std: ActiveInterval | null = null
+    let windEnd = -1
+
+    const applyWind = (t: number, el: string) => {
+      if (windEnd >= t) windSegs[windSegs.length - 1].end = t + durOf(el)
+      else windSegs.push({ start: t, end: t + durOf(el), element: el })
+      windEnd = windSegs[windSegs.length - 1].end
     }
-  }
 
-  // 统一时间序事件：边界注入优先于同时刻触发（先「以什么状态进窗」再演化窗内触发）
-  type SchedEv = { time: number; kind: 'bound' | 'trig'; el: string; win: number }
-  const evs: SchedEv[] = []
-  for (const b of input.boundaryStates ?? []) {
-    evs.push({ time: b.windowIndex * D, kind: 'bound', el: b.element, win: b.windowIndex })
-  }
-  for (const t of input.triggers) {
-    evs.push({ time: t.windowIndex * D + t.offsetSeconds, kind: 'trig', el: t.element, win: t.windowIndex })
-  }
-  evs.sort((a, b) => a.time - b.time || (a.kind === 'bound' ? -1 : 1))
-
-  for (const ev of evs) {
-    const t = ev.time
-    const base = getBaseElement(ev.el)
-    if (ev.kind === 'bound') {
+    const bounds = (input.boundaryStates ?? []).filter(b => b.windowIndex === w)
+    if (bounds.length > 0) {
+      const b = bounds[bounds.length - 1]
+      const base = getBaseElement(b.element)
       if (base === 'wind') {
-        // 风化保持不变：覆盖层激活/刷新
-        if (windEnd >= t) windIntervals[windIntervals.length - 1].end = t + durOf(ev.el)
-        else windIntervals.push({ start: t, end: t + durOf(ev.el), element: ev.el })
-        windEnd = windIntervals[windIntervals.length - 1].end
+        applyWind(0, b.element)
+      } else {
+        std = { start: 0, end: durOf(b.element), element: b.element }
+        chain.push(std)
+      }
+    }
+
+    const trigs = input.triggers
+      .filter(t => t.windowIndex === w)
+      .sort((a, b) => a.offsetSeconds - b.offsetSeconds)
+    for (const trig of trigs) {
+      const t = trig.offsetSeconds
+      const base = getBaseElement(trig.element)
+      if (base === 'wind') {
+        // 风化保持不变：独立层激活/刷新，不动标准槽
+        applyWind(t, trig.element)
         continue
       }
-      // 强制设状态：截断现时段（不记紊乱——这是进窗状态声明，不是窗内触发事件）
-      if (std && std.end > t) std.end = t
-      std = { start: t, end: t + durOf(ev.el), element: ev.el }
-      stdIntervals.push(std)
-      continue
-    }
-    if (base === 'wind') {
-      // 风化保持不变：独立层激活/刷新，不动标准槽
-      if (windEnd >= t) windIntervals[windIntervals.length - 1].end = t + durOf(ev.el)
-      else windIntervals.push({ start: t, end: t + durOf(ev.el), element: ev.el })
-      windEnd = windIntervals[windIntervals.length - 1].end
-      continue
-    }
-    if (!std || std.end <= t) {
-      // 无活跃状态（含过期后重激活）：不算紊乱
-      std = { start: t, end: t + durOf(ev.el), element: ev.el }
-      stdIntervals.push(std)
-      continue
-    }
-    if (getBaseElement(std.element) === base) {
-      std.end = t + durOf(ev.el) // 同元素刷新
-      continue
-    }
-    // 替换型紊乱：归因取被替换的原状态（当前时点状态），随后状态切到新元素
-    disorders.push({ windowIndex: ev.win, time: t, element: std.element })
-    std.end = t // 截断原状态时段，避免新旧重叠
-    std = { start: t, end: t + durOf(ev.el), element: ev.el }
-    stdIntervals.push(std)
-  }
-
-  const projectToWindows = (intervals: ActiveInterval[]): BossStateSegment[][] => {
-    const out: BossStateSegment[][] = Array.from({ length: Math.max(1, input.windowCount) }, () => [])
-    for (const iv of intervals) {
-      for (let w = 0; w < out.length; w++) {
-        const s = Math.max(iv.start, w * D)
-        const e = Math.min(Math.min(iv.end, totalEnd), (w + 1) * D)
-        if (e - s > 1e-9) out[w].push({ start: s - w * D, end: e - w * D, element: iv.element })
+      if (!std || std.end <= t) {
+        // 无活跃状态（含过期后重激活）：不算紊乱
+        std = { start: t, end: t + durOf(trig.element), element: trig.element }
+        chain.push(std)
+        continue
       }
+      if (getBaseElement(std.element) === base) {
+        std.end = t + durOf(trig.element) // 同元素刷新
+        continue
+      }
+      // 替换型紊乱：归因取被替换的原状态（当前时点状态），随后状态切到新元素
+      disorders.push({ windowIndex: w, time: t, element: std.element })
+      std.end = t // 截断原状态时段，避免新旧重叠
+      std = { start: t, end: t + durOf(trig.element), element: trig.element }
+      chain.push(std)
     }
-    return out
+    // 截断到窗口时长内展示（状态本身只在本窗有意义——跨窗继承已移除）
+    for (const seg of [...chain, ...windSegs]) seg.end = Math.min(seg.end, D)
+    chainsPerWindow.push(chain.filter(s => s.end - s.start > 1e-9))
+    windPerWindow.push(windSegs.filter(s => s.end - s.start > 1e-9))
   }
 
   return {
-    stateChainsPerWindow: projectToWindows(stdIntervals),
-    windOverlayPerWindow: projectToWindows(windIntervals),
+    stateChainsPerWindow: chainsPerWindow,
+    windOverlayPerWindow: windPerWindow,
     disorders,
-    note: `Boss 异常状态轴：不同属性异常触发即紊乱并替换状态（归因取原状态）；风化为独立覆盖层不参与替换。共 ${disorders.length} 次替换型紊乱。`,
+    note: `Boss 异常状态轴：逐窗独立模拟（跨窗继承已按用户口径移除）；不同属性异常触发即紊乱并替换状态（归因取原状态）；风化为独立覆盖层。共 ${disorders.length} 次替换型紊乱。`,
   }
 }
 

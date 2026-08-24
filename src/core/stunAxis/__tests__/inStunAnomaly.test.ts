@@ -15,7 +15,8 @@ describe('computeInStunAnomalyTimeline（失衡内多属性积蓄槽）', () => 
     expect(r.triggers[0]).toMatchObject({ windowIndex: 0, element: 'ether' })
     expect(r.triggers[0].offsetSeconds).toBeCloseTo(4.5)
     expect(r.coveragePerWindow[0].ether).toBeCloseTo(10 / 16)
-    expect(r.endGaiges[0][0].gauge).toBeCloseTo(100)
+    // v2.9 触发块清空满槽
+    expect(r.gaugeSnapshots[0]?.pct.ether ?? 0).toBe(0)
   })
 
   it('多槽并行：以太触发不影响火槽继续累积并独立触发', () => {
@@ -33,17 +34,54 @@ describe('computeInStunAnomalyTimeline（失衡内多属性积蓄槽）', () => 
     expect(r.coveragePerWindow[0].fire).toBeGreaterThan(0)
   })
 
-  it('同元素同窗只触发一次（第二管不重复出事件）；跨窗余量继承', () => {
+  it('触发块清空满槽：同元素同窗可再次积蓄再触发（多波连打口径，v2.9）', () => {
     const r = computeInStunAnomalyTimeline({
       windows: [
-        { actions: [{ element: 'electric', perHitBuildUp: 3200, count: 2, startTime: 0 }] },
-        { actions: [{ element: 'electric', perHitBuildUp: 2900, count: 1, startTime: 0 }] },
+        { actions: [{ moveId: 'm1', element: 'electric', perHitBuildUp: 3200, count: 2, startTime: 0 }] },
+        { actions: [{ element: 'electric', perHitBuildUp: 3100, count: 1, startTime: 0 }] },
       ],
       windowDuration: 16,
     })
-    expect(r.triggers.filter(t => t.windowIndex === 0)).toHaveLength(1)
-    expect(r.endGaiges[0][0].gauge).toBeCloseTo(3400)
+    // 窗0：首击过管触发清槽（id 0:electric:1），次击再过管二次触发（0:electric:2）
+    const w0 = r.triggers.filter(t => t.windowIndex === 0)
+    expect(w0.map(t => t.id)).toEqual(['0:electric:1', '0:electric:2'])
+    expect(w0[0].moveId).toBe('m1')
+    // 窗口独立：窗1 不继承窗0任何东西，单击过管照常触发
     expect(r.triggers.filter(t => t.windowIndex === 1)).toHaveLength(1)
+  })
+
+  it('抑制触发：满槽保持不触发且本窗不再提案（施加者后台/CD 场景），恢复后重新生效', () => {
+    const mk = (suppressed: string[]) => computeInStunAnomalyTimeline({
+      windows: [
+        { actions: [{ moveId: 'm1', element: 'electric', perHitBuildUp: 3200, count: 2, startTime: 0 }] },
+      ],
+      windowDuration: 16,
+      suppressedTriggerIds: suppressed,
+    })
+    const off = mk([])
+    expect(off.triggers).toHaveLength(2)
+    const on = mk(['0:electric:1'])
+    // 第一次提案被抑制：满槽保持、后续积蓄不再提案（无第二次）
+    expect(on.triggers).toHaveLength(0)
+    const snap = on.gaugeSnapshots.find(g => g.srcIndex === 0)!
+    expect(snap.pct.electric).toBe(100)
+  })
+
+  it('动作末尾积蓄槽快照：每块完成后的各元素槽百分比', () => {
+    const r = computeInStunAnomalyTimeline({
+      windows: [
+        {
+          actions: [
+            { srcIndex: 0, moveId: 'a', element: 'electric', perHitBuildUp: 900, count: 2, startTime: 0 },
+            { srcIndex: 1, moveId: 'b', element: 'ether', perHitBuildUp: 1500, count: 1, startTime: 2 },
+          ],
+        },
+      ],
+      windowDuration: 16,
+    })
+    // 电块完成：1800/3000=60%；以太块完成：1500/3000=50%（未传 coeff）
+    expect(r.gaugeSnapshots.find(g => g.srcIndex === 0)?.pct.electric).toBeCloseTo(60, 1)
+    expect(r.gaugeSnapshots.find(g => g.srcIndex === 1)?.pct.ether).toBeCloseTo(50, 1)
   })
 
   it('零动作窗口：仅继承 entry 状态，无触发', () => {
@@ -107,26 +145,25 @@ describe('computeBossAnomalyStateTimeline（Boss 异常状态轴）', () => {
     expect(r.stateChainsPerWindow[0].map(s => s.element)).toEqual(['electric', 'fire'])
   })
 
-  it('跨窗延续：状态未过期则下一窗继续同一状态链', () => {
+  it('窗口独立：上一窗的状态不带进下一窗（跨窗继承已移除）', () => {
     const r = computeBossAnomalyStateTimeline({
       triggers: [{ windowIndex: 0, element: 'ether', offsetSeconds: 12 }],
       windowDuration: 16,
       windowCount: 2,
     })
-    expect(r.stateChainsPerWindow[0][0]).toEqual({ start: 12, end: 16, element: 'ether' })
-    expect(r.stateChainsPerWindow[1][0].element).toBe('ether')
-    expect(r.stateChainsPerWindow[1][0].start).toBe(0)
+    expect(r.stateChainsPerWindow[0]).toEqual([{ start: 12, end: 16, element: 'ether' }])
+    expect(r.stateChainsPerWindow[1]).toEqual([])
   })
 
-  it('进窗初始 entryElement 作为开战状态参与替换循环', () => {
+  it('边界注入作为开局状态参与替换循环（entryElement 已并入 boundaryStates）', () => {
     const r = computeBossAnomalyStateTimeline({
       triggers: [{ windowIndex: 0, element: 'ice', offsetSeconds: 3 }],
       windowDuration: 16,
       windowCount: 1,
-      entryElement: 'fire',
+      boundaryStates: [{ windowIndex: 0, element: 'fire' }],
     })
     expect(r.disorders).toEqual([{ windowIndex: 0, time: 3, element: 'fire' }])
-    // 开场火 [0,3)，被冰替换后截断；冰激活持续 ANOMALY_DURATION.ice=10s → [3,13)
+    // 开场火 [0,3)，被冰替换后截断；冰持续 ANOMALY_DURATION.ice=10s，截到窗尾内 [3,13)
     expect(r.stateChainsPerWindow[0]).toEqual([
       { start: 0, end: 3, element: 'fire' },
       { start: 3, end: 13, element: 'ice' },
@@ -157,18 +194,17 @@ describe('attributeCountByStateChain（极性紊乱点时归因）', () => {
 })
 
 describe('中间态注入（2026-08-24 用户口径：每次失衡都是中间态）', () => {
-  it('entryStates 部分注入：声明的元素覆盖余量、其余元素条并存继承', () => {
+  it('窗口独立：每窗仅按声明 entryStates 初始化（无跨窗余量继承）', () => {
     const r = computeInStunAnomalyTimeline({
       windows: [
         { actions: [{ element: 'ether', perHitBuildUp: 1600, count: 2, startTime: 0 }] },
-        { entryStates: [{ element: 'ether', gauge: 50 }], actions: [{ element: 'electric', perHitBuildUp: 3200, count: 1, startTime: 0 }] },
+        { entryStates: [{ element: 'electric', gauge: 3100 }], actions: [{ element: 'electric', perHitBuildUp: 400, count: 1, startTime: 0 }] },
       ],
       windowDuration: 16,
     })
+    // 窗0 以太触发一次；窗1 只带电的声明条（3100+400 过管触发），以太余量不跨窗
+    expect(r.triggers.filter(t => t.windowIndex === 0).map(t => t.element)).toEqual(['ether'])
     expect(r.triggers.filter(t => t.windowIndex === 1).map(t => t.element)).toEqual(['electric'])
-    const find = (w: number, el: string) => r.endGaiges[w].find(s => s.element === el)?.gauge
-    expect(find(1, 'ether')).toBe(50)
-    expect(find(1, 'electric')).toBe(200)
   })
 
   it('边界注入：轴段开始强制设状态（不记紊乱），窗内触发按新状态演化', () => {
@@ -178,8 +214,8 @@ describe('中间态注入（2026-08-24 用户口径：每次失衡都是中间�
       windowCount: 2,
       boundaryStates: [{ windowIndex: 1, element: 'ice' }],
     })
-    // 窗1 开局(t=16)强制冰；t=20 火替换冰 → 紊乱归因冰
-    expect(r.disorders).toEqual([{ windowIndex: 1, time: 20, element: 'ice' }])
+    // 窗1 开局强制冰（相对时刻 0）；t=4 火替换冰 → 紊乱归因冰（time 已改相对该窗口）
+    expect(r.disorders).toEqual([{ windowIndex: 1, time: 4, element: 'ice' }])
     expect(r.stateChainsPerWindow[1][0]).toEqual({ start: 0, end: 4, element: 'ice' })
   })
 })

@@ -112,10 +112,10 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
     const calc = useResourceCalc()
     const boss = calc.bossAnomalyState.value!
     expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['ether', 'electric'])
-    // 替换型紊乱点：窗0 电@8s 替换以太；窗1 以太@22s 重激活（电已过期）后电@30s 再替换
+    // 窗口独立重演：每窗 电@8s 替换以太（time=相对该窗起点）
     expect(boss.disorders).toEqual([
       { windowIndex: 0, time: 8, element: 'ether' },
-      { windowIndex: 1, time: 30, element: 'ether' },
+      { windowIndex: 1, time: 8, element: 'ether' },
     ])
     // 总次数守恒（事件侧收敛后的实际失衡次数为准）。
     // 代表窗取样（D=22s、n=3）：t≈3.7 落以太段、11 落电段[8,18)、18.3 落电过期后的空档
@@ -192,22 +192,20 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
     }]
     const calc = useResourceCalc()
     const boss = calc.bossAnomalyState.value!
-    // 开场火 @0s 被以太替换、@8s 电再替换以太；窗1 以太@22 重激活后被电@30 替换 → 火→以太→以太
-    expect(boss.disorders.map(d => d.element)).toEqual(['fire', 'ether', 'ether'])
+    // 两窗独立重演：每窗 开场火被以太@0 替换、电@8 再替换以太 → 火/以太 各 2 次
+    expect(boss.disorders.map(d => d.element)).toEqual(['fire', 'ether', 'fire', 'ether'])
     // 零长开场段被丢弃，可见链仍为 以太→电
     expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['ether', 'electric'])
   })
 })
 
-describe('逐失衡展开（count 展开，2026-08-24 单独立项）', () => {
-  it('跨窗余量继承：单窗不够积蓄的配置在第 2 窗触发——代表窗近似下永远为 0', async () => {
+describe('逐失衡展开（count 展开）：窗口独立 + 多轮重演', () => {
+  it('单窗不足的积蓄不再幻影继承：两窗均无触发（跨窗继承已移除）', async () => {
     const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1371' }])
     config.enemy.stunCountLock = 2
     config.useStunAxis = true
-    // 格莉丝强特 ≈194/击 ×14 = 2716 < 第一管 3000：单窗内永不触发；
-    // 展开后第 1 窗余量 2716 继承到第 2 窗（2716+2716 ≥ 3000）→ 第 2 窗触发电异常
     config.stunAxes = [{
-      name: '继承证明轴',
+      name: '独立轴',
       count: 2,
       actions: [{ slot: 0, moveId: '1181005', count: 14, startTime: 0 }],
       basicFillerSlot: 0,
@@ -215,7 +213,25 @@ describe('逐失衡展开（count 展开，2026-08-24 单独立项）', () => {
     const calc = useResourceCalc()
     const st = calc.inStunAnomalyState.value!
     expect(st.windows).toBe(2)
-    expect(st.elements.find(e => e.element === 'electric')?.triggerCount).toBe(1)
+    expect(st.elements.find(e => e.element === 'electric')?.triggerCount ?? 0).toBe(0)
+  })
+
+  it('多轮重演：预填条让每窗都当窗触发 → triggerCount = 窗数', async () => {
+    const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1371' }])
+    config.enemy.stunCountLock = 3
+    config.useStunAxis = true
+    config.stunAxes = [{
+      name: '重演轴',
+      count: 3,
+      actions: [{ slot: 0, moveId: '1181005', count: 14, startTime: 0 }],
+      basicFillerSlot: 0,
+      entryBars: { electric: 30 },
+    }]
+    const calc = useResourceCalc()
+    const st = calc.inStunAnomalyState.value!
+    expect(st.windows).toBe(3)
+    // 每窗独立初始化（30% 预填 + 14 击过管）→ 每窗恰好一次，共 3 次
+    expect(st.elements.find(e => e.element === 'electric')?.triggerCount).toBe(3)
   })
 })
 
@@ -338,11 +354,12 @@ describe('轴条目级初始异常/多条异常条（v2.6→v2.8，随预设导�
     }]
     const calc = useResourceCalc()
     const boss = calc.bossAnomalyState.value!
-    // 预填 90%=2970：地雷撞首击即过管（以太@0），强特第二击过管（电@8 替换以太）；
-    // 窗1 电已过期、以太重激活后再被电替换（余量跨窗继承的连触）
+    // 预填 90%=2970（每窗独立初始化）：地雷撞首击过管清槽、剩余五击再过管二次触发电？——
+    // 实际序列：首击以太@0 触发清槽，余 5 击 3434≥3300 二次触发以太（同元素刷新）；
+    // 强特 @8 过管替换以太。两窗按同序列独立重演。
     expect(boss.disorders).toEqual([
       { windowIndex: 0, time: 8, element: 'ether' },
-      { windowIndex: 1, time: 30, element: 'ether' },
+      { windowIndex: 1, time: 8, element: 'ether' },
     ])
     expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['ether', 'electric'])
   })
@@ -378,10 +395,9 @@ describe('逐条目边界注入（v2.7 中间态口径）', () => {
     // 段1 无触发无状态；段2 边界注入火（不记紊乱——是进窗状态声明而非窗内触发事件）
     expect(boss.disorders).toHaveLength(0)
     expect(boss.stateChainsPerWindow[0]).toEqual([])
+    // 每窗独立重演：二段两个窗口开局都按声明注入火（无跨窗继承；二段两击不足以触发，链只有火段）
     expect(boss.stateChainsPerWindow[1][0]).toMatchObject({ element: 'fire', start: 0 })
-    // 火持续 10s 到不了下一窗（窗距 22s）；二段两击/窗的电余量跨窗累积（2593→2963→3333≥3300）
-    // 在第 3 窗开局触发电——边界注入与跨窗继承并存
-    expect(boss.stateChainsPerWindow[2][0].element).toBe('electric')
+    expect(boss.stateChainsPerWindow[2][0].element).toBe('fire')
   })
 
   it('极性紊乱基数用当前状态元素的明细均摊（fallback 全池均摊）', async () => {

@@ -1380,44 +1380,56 @@ function applyNormaHatChain(
         // ——在该条目首个窗口边界注入；未填条目不注入。阈值系数对齐全局池
         // （store/pool 两端字段命名互换，取乘积规避）
         const thresholdCoeff = (configStore.enemy.anomalyCoeff ?? 1) * (configStore.enemy.bossAnomalyCoeff ?? 1)
+        // 窗口独立模拟（v2.9 用户口径）：跨出窗口是非失衡期且未建模——每窗仅按条目声明的
+        // 初始状态/异常条初始化，无跨窗余量继承；多轮重复段每窗重演同一序列。
         const windows: InStunWindowInput[] = []
         const windowEntryIdx: number[] = []
         resolvedAxes.forEach((axis, ai) => {
           const wins = Math.floor(winAlloc[ai] ?? 0)
           if (wins <= 0) return
           const actions = (axis.actions ?? [])
-            .filter(a => contribMap.has(a.moveId))
-            .map(a => {
+            .map((a, srcIndex) => ({ a, srcIndex }))
+            .filter(({ a }) => contribMap.has(a.moveId))
+            .map(({ a, srcIndex }) => {
               const cm = contribMap.get(a.moveId)!
-              return { moveId: a.moveId, element: cm.element, perHitBuildUp: cm.perHit, count: Math.max(0, Math.floor(a.count || 1)), startTime: a.startTime ?? 0 }
+              return { moveId: a.moveId, srcIndex, element: cm.element, perHitBuildUp: cm.perHit, count: Math.max(0, Math.floor(a.count || 1)), startTime: a.startTime ?? 0 }
             })
+          const entryStates = Object.entries(axis.entryBars ?? {})
+            .map(([element, pct]) => {
+              const p = Math.max(0, Math.min(100, Number(pct)))
+              if (!Number.isFinite(p) || p <= 0) return null
+              const firstPipe = (BUILDUP_THRESHOLD_TABLE[element] ?? BUILDUP_THRESHOLD_TABLE.ice)[0]
+              return { element, gauge: (p / 100) * firstPipe * thresholdCoeff }
+            })
+            .filter((x): x is { element: string; gauge: number } => x !== null)
           for (let k = 0; k < wins; k++) {
-            windows.push({ actions })
+            windows.push({ actions, entryStates: entryStates.length > 0 ? entryStates : undefined })
             windowEntryIdx.push(ai)
           }
         })
-        // 条目边界注入（v2.8 多条异常条）：每条唯一生效条目的首个窗口——
-        // entryAnomaly 强制设状态（不记紊乱）；entryBars 按元素**多条**独立预填
-        // （多角色各攒各的条，两条接近满时进窗一碰即连续触发紊乱）。未填条目不注入。
+        // 边界注入：声明了初始状态的条目，其每个窗口开局强制设状态；同时把条目级抑制 id
+        // （局部窗序）映射到全局窗口序
         const boundaryStates: Array<{ windowIndex: number; element: string }> = []
+        const suppressedGlobal: string[] = []
         {
-          const seenEntries = new Set<number>()
-          windows.forEach((win, wi) => {
+          const firstWinByEntry = new Map<number, number>()
+          windows.forEach((_, wi) => {
             const ei = windowEntryIdx[wi]
-            if (seenEntries.has(ei)) return
-            seenEntries.add(ei)
+            if (!firstWinByEntry.has(ei)) firstWinByEntry.set(ei, wi)
+          })
+          windows.forEach((_, wi) => {
+            const ei = windowEntryIdx[wi]
             const axis = resolvedAxes[ei]
             const el = bossEntryAnomalyElement(axis.entryAnomaly ?? 0)
             if (el) boundaryStates.push({ windowIndex: wi, element: el })
-            for (const [element, pct] of Object.entries(axis.entryBars ?? {})) {
-              const p = Math.max(0, Math.min(100, Number(pct)))
-              if (!Number.isFinite(p) || p <= 0) continue
-              const firstPipe = (BUILDUP_THRESHOLD_TABLE[element] ?? BUILDUP_THRESHOLD_TABLE.ice)[0]
-              ;(win.entryStates ??= []).push({ element, gauge: (p / 100) * firstPipe * thresholdCoeff })
+            const localK = wi - (firstWinByEntry.get(ei) ?? wi)
+            for (const sid of axis.suppressedTriggers ?? []) {
+              const [kStr, rest] = [sid.split(':')[0], sid.split(':').slice(1).join(':')]
+              if (Number(kStr) === localK) suppressedGlobal.push(`${wi}:${rest}`)
             }
           })
         }
-        const tl = computeInStunAnomalyTimeline({ windows, windowDuration: computeWindowDuration(), coeff: thresholdCoeff })
+        const tl = computeInStunAnomalyTimeline({ windows, windowDuration: computeWindowDuration(), coeff: thresholdCoeff, suppressedTriggerIds: suppressedGlobal })
         inStunWindowTriggersNext = windows.length > 0
           ? Math.round((tl.triggers.length / windows.length) * 10) / 10
           : 0
@@ -1446,8 +1458,8 @@ function applyNormaHatChain(
           })),
           windowEntryIdx,
           triggerSources: tl.triggers
-            .filter(t => t.moveId)
-            .map(t => ({ windowIndex: t.windowIndex, moveId: t.moveId!, element: getBaseElement(t.element), offsetSeconds: t.offsetSeconds })),
+            .filter(t => t.moveId && t.id)
+            .map(t => ({ windowIndex: t.windowIndex, moveId: t.moveId!, element: getBaseElement(t.element), offsetSeconds: t.offsetSeconds, id: t.id! })),
           note: `轴内逐窗积蓄槽模拟（${windows.length} 窗）：进窗继承上一窗余量，积蓄超阈值即触发对应异常；覆盖=异常激活时长占窗口比例。`,
         }
         if (prevInStunWindowTriggers <= 0) {

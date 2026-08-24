@@ -172,7 +172,7 @@
 
       <!-- 失衡内异常状态（逐窗积蓄模拟，从资源利用率页迁入）：说明 + 每元素摘要 + 逐窗状态链 + 逐条目事件 -->
       <div v-if="inStunAnomalyState && useAxes" class="sap-section-title" style="margin-top:10px">
-        失衡内异常状态（每次失衡都是中间态：条目「初始状态/异常条」声明敌方以什么状态进入该段失衡）
+        失衡内异常状态（窗口独立模拟：每次失衡都是中间态——跨出窗口是非失衡期且未建模，每窗按条目声明的初始状态/异常条初始化；满槽经触发块清空并触发，下一波重新积蓄；✕ 抑制=满槽保持不触发（施加者后台/CD 无法判断时用），恢复即重新生效）
       </div>
       <div v-if="inStunAnomalyState" style="font-size:12px;color:rgba(255,255,255,0.75);display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
         <div style="display:flex;flex-wrap:wrap;gap:4px">
@@ -186,8 +186,16 @@
           style="color:rgba(255,255,255,0.55)">
           窗{{ wi + 1 }}状态链：{{ formatBossStateChain(chain, bossAnomalyState?.windOverlayPerWindow[wi]) }}
         </div>
-        <div v-for="(axis, ai) in axes" :key="'ev'+ai" style="color:rgba(255,255,255,0.65)">
-          <template v-if="entryEventLine(ai)">「{{ axis.name }}」{{ entryEventLine(ai) }}</template>
+        <div v-for="(axis, ai) in axes" :key="'ev'+ai" style="color:rgba(255,255,255,0.65);display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+          <span v-if="entryEventLine(ai)" style="margin-right:4px">「{{ axis.name }}」{{ entryEventLine(ai) }}</span>
+          <span v-for="chip in entryTriggerChips(ai)" :key="chip.id"
+            style="display:inline-flex;align-items:center;gap:2px;background:rgba(255,255,255,0.06);padding:1px 6px;border-radius:3px"
+            :style="chip.suppressed ? 'opacity:0.45;text-decoration:line-through' : ''">
+            {{ chip.label }}
+            <n-button size="tiny" quaternary type="warning" @click="toggleTriggerSuppressed(axis, chip.id)">
+              {{ chip.suppressed ? '恢复' : '✕' }}
+            </n-button>
+          </span>
         </div>
         <div style="color:rgba(255,255,255,0.4);margin-top:2px">动作块上的「触X」标签 = 该招式在此段首窗触发的异常；带·紊乱 = 触发时替换了原状态。极性紊乱/异放的归因与基数都按触发时刻的当前状态结算。</div>
       </div>
@@ -419,22 +427,49 @@ function moveNameOf(mid?: string): string {
   }
   return mid
 }
+/** 条目代表窗的触发 chip 数据（含抑制切换） */
+function entryTriggerChips(ai: number): Array<{ id: string; label: string; suppressed: boolean }> {
+  const st = inStunAnomalyState.value
+  const boss = bossAnomalyState.value
+  const axis = axes.value[ai]
+  const wi = entryFirstWindow(ai)
+  if (!st || !axis || wi < 0) return []
+  const suppressed = new Set(axis.suppressedTriggers ?? [])
+  const out: Array<{ id: string; label: string; suppressed: boolean }> = []
+  for (const t of st.triggerSources ?? []) {
+    if (t.windowIndex !== wi || !t.id) continue
+    const replaced = (boss?.disorders ?? []).some(d => d.windowIndex === wi && Math.abs(d.time - t.offsetSeconds) < 1e-6)
+    out.push({
+      id: t.id,
+      label: `@${t.offsetSeconds.toFixed(1)}s ${moveNameOf(t.moveId)}→${entryBarLabel(t.element)}${replaced ? '·紊' : ''}`,
+      suppressed: suppressed.has(t.id),
+    })
+  }
+  return out
+}
+function toggleTriggerSuppressed(axis: StunAxis, id: string) {
+  const target = ensureWritableAxis(axis); if (!target) return
+  const set = new Set(target.suppressedTriggers ?? [])
+  if (set.has(id)) set.delete(id)
+  else set.add(id)
+  target.suppressedTriggers = set.size > 0 ? [...set] : undefined
+}
 function entryEventLine(ai: number): string {
   const st = inStunAnomalyState.value
   const boss = bossAnomalyState.value
-  const wi = entryFirstWindow(ai)
-  if (!st || wi < 0) return ''
-  const wd = maxDur.value
-  const parts: string[] = []
   const axis = axes.value[ai]
-  if (axis && (axis.entryAnomaly ?? 0) > 0) {
+  const wi = entryFirstWindow(ai)
+  if (!st || !axis || wi < 0) return ''
+  const parts: string[] = []
+  if ((axis.entryAnomaly ?? 0) > 0) {
     const el = BOSS_ENTRY_ANOMALY_OPTIONS.find(o => o.value === axis.entryAnomaly)?.element
     if (el) parts.push(`边界注入 ${entryBarLabel(el)}${(axis.entryBars?.[el] ?? 0) > 0 ? ` ${axis.entryBars![el]}%` : ''}`)
   }
   for (const t of st.triggerSources ?? []) {
     if (t.windowIndex !== wi) continue
-    const replaced = (boss?.disorders ?? []).some(d => d.windowIndex === wi && Math.abs(d.time - (wi * wd + t.offsetSeconds)) < 1e-6)
-    parts.push(`@${t.offsetSeconds.toFixed(1)}s ${moveNameOf(t.moveId)}→${entryBarLabel(t.element)}${replaced ? '（紊乱替换）' : ''}`)
+    const suppressed = (axis.suppressedTriggers ?? []).includes(t.id ?? '')
+    const replaced = (boss?.disorders ?? []).some(d => d.windowIndex === wi && Math.abs(d.time - t.offsetSeconds) < 1e-6)
+    parts.push(`@${t.offsetSeconds.toFixed(1)}s ${moveNameOf(t.moveId)}→${entryBarLabel(t.element)}${replaced ? '（紊乱替换）' : ''}${suppressed ? '（已抑制·满槽保持）' : ''}`)
   }
   return parts.length > 0 ? parts.join('；') : ''
 }
@@ -453,10 +488,19 @@ function anomalyTagsFor(ai: number, aii: number): Array<{ text: string; cls: str
     const el = BOSS_ENTRY_ANOMALY_OPTIONS.find(o => o.value === axis.entryAnomaly)?.element
     if (el) out.push({ text: `入窗·${entryBarLabel(el)}`, cls: 'mw-l3' })
   }
+  const suppressed = new Set(axis.suppressedTriggers ?? [])
   for (const t of st.triggerSources ?? []) {
-    if (t.windowIndex !== wi || t.moveId !== mid) continue
-    const replaced = (boss?.disorders ?? []).some(d => d.windowIndex === wi && Math.abs(d.time - (wi * wd + t.offsetSeconds)) < 1e-6)
+    if (t.windowIndex !== wi || t.moveId !== mid || !t.id || suppressed.has(t.id)) continue
+    const replaced = (boss?.disorders ?? []).some(d => d.windowIndex === wi && Math.abs(d.time - t.offsetSeconds) < 1e-6)
     out.push({ text: `触${entryBarLabel(t.element)}${replaced ? '·紊' : ''}`, cls: replaced ? 'mw-l3' : 'mw-trigger' })
+  }
+  // 动作块末尾积蓄槽状态（用户口径：每个动作块都有对应积蓄值与槽状态）
+  const snap = (st as unknown as { gaugeSnapshots?: Array<{ windowIndex: number; srcIndex?: number; pct: Record<string, number> }> })
+    .gaugeSnapshots?.find(g => g.windowIndex === wi && g.srcIndex === aii)
+  if (snap) {
+    const txt = Object.entries(snap.pct).filter(([, v]) => v > 0)
+      .map(([el, v]) => `${entryBarLabel(el)}${Math.round(v)}%`).join('·')
+    if (txt) out.push({ text: `条${txt}`, cls: 'mw-l2' })
   }
   return out
 }

@@ -586,8 +586,8 @@ export interface InStunAnomalySummary {
   elements: InStunAnomalyElementState[]
   /** 展开后的每个窗口属于哪条轴条目（索引对齐窗口序）——捏轴页按条目标注触发事件用 */
   windowEntryIdx?: number[]
-  /** 触发来源明细（动作带 moveId 时回填）：捏轴页块级「这个招式触发了什么」可视化用 */
-  triggerSources?: Array<{ windowIndex: number; moveId: string; element: string; offsetSeconds: number }>
+  /** 触发来源明细（动作带 moveId 时回填，id=抑制引用键）：捏轴页块级「这个招式触发了什么」可视化用 */
+  triggerSources?: Array<{ windowIndex: number; moveId: string; element: string; offsetSeconds: number; id: string }>
   note: string
 }
 
@@ -2080,6 +2080,11 @@ export interface StunAxis {
    * 多个角色各攒各的条，两条都接近满时进窗一碰即连续触发打紊乱。随预设导出保留。
    */
   entryBars?: Record<string, number>
+  /**
+   * 被抑制的异常触发事件 id（`${条目内局部窗序}:${基础元素}:${序数}`）。
+   * 满槽保持不触发（施加者后台/CD 无法结算由用户自行判断），编辑器可恢复。随预设导出保留。
+   */
+  suppressedTriggers?: string[]
 }
 
 /** 轴方案命中条件（全部满足才命中） */
