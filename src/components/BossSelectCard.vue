@@ -4,18 +4,27 @@
       <n-space align="center" justify="space-between" style="width: 100%">
         <span>Boss 选择</span>
         <n-space size="small">
-          <!-- 版本 + 危局期数两级选择（一期 = 1 困难 + 3 普通，都是危局强袭战） -->
+          <!-- 大版本 + 小版本 + 危局期数三级选择（1.4–3.2 全部 Boss 数据支撑） -->
           <n-select
-            v-model:value="selectedVersion"
-            :options="versionOptions"
+            v-model:value="selectedMajor"
+            :options="majorVersionOptions"
             size="small"
-            style="width: 90px"
+            style="width: 72px"
+            placeholder="大版本"
+          />
+          <n-select
+            v-model:value="selectedMinor"
+            :options="minorVersionOptions"
+            size="small"
+            style="width: 62px"
+            placeholder="小版本"
           />
           <n-select
             v-model:value="selectedPhaseId"
-            :options="phaseOptions"
+            :options="periodOptions"
             size="small"
-            style="width: 240px"
+            style="width: 210px"
+            placeholder="期数"
           />
           <n-button
             v-if="configStore.appliedBoss"
@@ -31,7 +40,7 @@
     <div v-if="loading" class="boss-loading">Boss 数据加载中...</div>
     <div v-else-if="error" class="boss-error">加载失败：{{ error }}</div>
     <div v-else-if="!view" class="boss-empty">
-      当前选中期数无视图数据 —— 请从顶部版本/期数下拉选择其他期
+      当前选中期数无视图数据 —— 请从顶部大版本/小版本/期数下拉选择其他期
     </div>
 
     <template v-else>
@@ -126,7 +135,7 @@ import { NCard, NSpace, NSelect, NButton, NTag, NCollapse, NCollapseItem } from 
 import { useConfigStore } from '@/stores/config'
 import { fmt, compact } from '@/utils/format'
 import BossCard from './BossCard.vue'
-import type { BossPreset, BossPresetFile, PhaseBossBrief, PhaseBuffEffect, PhaseView } from '@/types/bossPreset'
+import type { BossPreset, BossPresetFile, BossPresetPhase, PhaseBossBrief, PhaseBuffEffect, PhaseView } from '@/types/bossPreset'
 
 const configStore = useConfigStore()
 
@@ -134,7 +143,8 @@ const loading = ref(true)
 const error = ref('')
 const presets = ref<BossPreset[]>([])
 const phaseViews = ref<PhaseView[]>([])
-const selectedVersion = ref('')
+const selectedMajor = ref('')
+const selectedMinor = ref('')
 const selectedPhaseId = ref('')
 const iconFailed = reactive(new Set<string>())
 
@@ -145,12 +155,14 @@ onMounted(async () => {
     const data = (await res.json()) as BossPresetFile
     presets.value = data.bosses ?? []
     phaseViews.value = data.phaseViews ?? []
-    // 默认选最新正式服期（跳过 testOnly buff 的测试服期）
-    const firstStable = phaseViews.value.find(v => !v.buffs.some(b => b.testOnly))
-    const target = firstStable ?? phaseViews.value[0]
-    if (target) {
-      selectedVersion.value = target.version
-      selectedPhaseId.value = target.phaseId
+    // 默认选最新期（从所有 Boss phases 数据中取最新；覆盖 1.4–3.2）
+    const sorted = allPhases.value
+    if (sorted.length > 0) {
+      const latest = sorted[0]
+      const parts = latest.version.split('.')
+      selectedMajor.value = parts[0]
+      selectedMinor.value = parts[1]
+      selectedPhaseId.value = latest.phaseId
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
@@ -159,25 +171,81 @@ onMounted(async () => {
   }
 })
 
-// ========== 版本 + 期数两级选择 ==========
-const versionOptions = computed(() => {
-  const versions = [...new Set(phaseViews.value.map(v => v.version).filter(Boolean))]
-  return versions.sort().reverse().map(v => ({ value: v, label: v }))
+// ========== 大版本 + 小版本 + 期数三级选择（从全部 Boss phases 数据构建） ==========
+/** 从所有 Boss 的 phases 收集唯一期数，覆盖 1.4–3.2 */
+const allPhases = computed(() => {
+  const seen = new Set<string>()
+  const phases: BossPresetPhase[] = []
+  for (const b of presets.value) {
+    for (const p of b.phases) {
+      if (!seen.has(p.phaseId)) {
+        seen.add(p.phaseId)
+        phases.push(p)
+      }
+    }
+  }
+  return phases.sort((a, b) => b.begin.localeCompare(a.begin))
 })
 
-const phaseOptions = computed(() =>
-  phaseViews.value
-    .filter(v => !selectedVersion.value || v.version === selectedVersion.value)
-    .map(v => ({
-      value: v.phaseId,
-      label: `${(v.begin || '').slice(5, 10)} 期${v.buffs.some(b => b.testOnly) ? '（测试服）' : ''}`,
-    })),
-)
+const majorVersionOptions = computed(() => {
+  const majors = [...new Set(allPhases.value.map(p => p.version.split('.')[0]))]
+  return majors.sort((a, b) => parseInt(b) - parseInt(a)).map(v => ({ value: v, label: `v${v}` }))
+})
 
-watch(selectedVersion, ver => {
-  if (!ver) return
-  const inVer = phaseViews.value.find(v => v.version === ver)
-  if (inVer && selectedPhaseId.value !== inVer.phaseId) selectedPhaseId.value = inVer.phaseId
+const minorVersionOptions = computed(() => {
+  if (!selectedMajor.value) return []
+  const minors = [...new Set(
+    allPhases.value
+      .filter(p => p.version.startsWith(selectedMajor.value + '.'))
+      .map(p => p.version.split('.')[1])
+  )]
+  return minors.sort((a, b) => parseInt(b) - parseInt(a)).map(v => ({ value: v, label: `.${v}` }))
+})
+
+const fullVersion = computed(() => {
+  if (!selectedMajor.value || !selectedMinor.value) return ''
+  return `${selectedMajor.value}.${selectedMinor.value}`
+})
+
+const periodOptions = computed(() => {
+  if (!fullVersion.value) return []
+  return allPhases.value
+    .filter(p => p.version === fullVersion.value)
+    .map(p => {
+      const periodNum = p.phaseId.slice(3, 5) // 从 phaseId 提取危局期数（如 690451 → 45）
+      const date = (p.begin || '').slice(0, 10) // YYYY-MM-DD
+      return {
+        value: p.phaseId,
+        label: `${periodNum}期 ${date}`,
+        // 按 begin 降序（最新在前）
+      }
+    })
+    .sort((a, b) => b.value.localeCompare(a.value))
+})
+
+watch(selectedMajor, (major) => {
+  if (!major) { selectedMinor.value = ''; selectedPhaseId.value = ''; return }
+  // 大版本切换 → 重置小版本和期数，自动选该大版本下最新小版本
+  selectedMinor.value = ''
+  selectedPhaseId.value = ''
+  const versions = [...new Set(
+    allPhases.value.filter(p => p.version.startsWith(major + '.')).map(p => p.version)
+  )].sort().reverse()
+  if (versions.length > 0) {
+    const parts = versions[0].split('.')
+    selectedMinor.value = parts[1]
+  }
+})
+
+watch(selectedMinor, (minor) => {
+  if (!minor || !selectedMajor.value) { selectedPhaseId.value = ''; return }
+  // 小版本切换 → 重置期数，自动选该版本下最新期
+  selectedPhaseId.value = ''
+  const ver = `${selectedMajor.value}.${minor}`
+  const phases = allPhases.value.filter(p => p.version === ver).sort((a, b) => b.begin.localeCompare(a.begin))
+  if (phases.length > 0) {
+    selectedPhaseId.value = phases[0].phaseId
+  }
 })
 
 const view = computed(() => phaseViews.value.find(v => v.phaseId === selectedPhaseId.value) ?? null)
@@ -236,13 +304,15 @@ const bossGroups = computed(() => {
 })
 
 function jumpToBoss(boss: BossPreset) {
-  // 只跳转到期视图里存在的期（phaseViews 只收含危局 mode 的期）；
-  // 该 Boss 在视图里没有任何期（如老版本 Boss）则不跳，避免 selectedPhaseId 悬空导致面板收起。
+  // 优先跳转到有 phaseView 的期数，否则跳转到该 Boss 的最新期
   const viewIds = new Set(phaseViews.value.map(v => v.phaseId))
   const target = boss.phases.find(p => p.modeType === 'critical_assault' && viewIds.has(p.phaseId))
     ?? boss.phases.find(p => viewIds.has(p.phaseId))
+    ?? boss.phases.sort((a, b) => b.begin.localeCompare(a.begin))[0]
   if (target) {
-    selectedVersion.value = target.version || selectedVersion.value
+    const parts = target.version.split('.')
+    selectedMajor.value = parts[0]
+    selectedMinor.value = parts[1]
     selectedPhaseId.value = target.phaseId
   }
 }
