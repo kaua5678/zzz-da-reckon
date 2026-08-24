@@ -71,6 +71,42 @@
         }
       ],
       "status": "implemented_approximation"
+    },
+    {
+      "id": "promia_ice_team_release_dmg",
+      "name": "普罗米娅｜饮冰·全队异放增伤",
+      "source": "额外能力：饮冰",
+      "description": "若初始异常掌控大于150点，每超过1点提升全队造成的[异放]伤害0.35%。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "id": "effect_promia_team_release_dmg",
+          "type": "formula",
+          "target": {
+            "kind": "default"
+          },
+          "stat": "anomalyReleaseDmgBonus",
+          "mode": "flat",
+          "source": {
+            "variable": "x",
+            "label": {
+              "zhCN": "普罗米娅的初始异常掌控"
+            },
+            "defaultValue": 0,
+            "min": 0,
+            "max": 600
+          },
+          "formula": {
+            "expression": "clamp((x - 150) * 0.35, 0, 999)",
+            "valueUnit": "storedPercent"
+          },
+          "sourceStat": "anomalyMastery",
+          "sourcePanelPhase": "outOfCombat"
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "[已接] formula 型 teamBuff（照 hp→dmgBonus 同款）：每个队员面板各自读取 anomalyReleaseDmgBonus，异放结算区生效。"
     }
   ],
   "additionalAbility": {

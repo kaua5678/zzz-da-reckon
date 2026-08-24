@@ -144,27 +144,32 @@ function buildPromiaResourceSections({ result }: AgentResourceSectionsInput) {
   }]
 }
 
-/** 绝裁异放固定倍率（原文「固定结算635%倍率的对应属性异常伤害」）；C2 消耗霜刑的异放倍率提升120%（×2.2，[猜测·中]：亦可能为+120个百分点=755%，待口供） */
+/** 绝裁异放固定倍率（原文「固定结算635%倍率的对应属性异常伤害」）；C2 倍率提升120% = 加120个百分点（用户口供 2026-08-24：635→755） */
 export const PROMIA_EXECUTION_RELEASE_MULTIPLIER = 635
-export const PROMIA_C2_RELEASE_MULTIPLIER_RATIO = 2.2
-/** 霜刑上限：进场 2 点，C1 终结技后可再获 1 点；寒蚀值 50→1 转化逐时序 pending */
-export function promiaFrostCap(cinemaLevel: number): number {
-  return 2 + (cinemaLevel >= 1 ? 1 : 0)
-}
+export const PROMIA_C2_RELEASE_BONUS = 120
 
 /**
- * 处刑式·绝裁终结一击异放（核心被动）：命中异常状态敌人触发，固定结算 635%（C2 ×2.2）倍率
- * 的对应属性异常伤害，消耗 1 点[霜刑]。次数 = min(霜刑上限, 强特次数)——每次绝裁强特消耗一点；
- * 寒蚀值积累→霜刑转化的收入端逐时序 pending，当前仅按初始/C1 上限钳制（L2 近似）。
+ * 处刑式·绝裁终结一击异放（核心被动）：命中异常状态敌人触发，固定结算 635%（C2=755%）倍率
+ * 的对应属性异常伤害，发动时消耗 1 点[霜刑]。
+ * 次数完全由回复端驱动（用户口径：总量计算器不管单条持有上限，霜刑来多少打多少，
+ * 实战约20次；A5+绝裁连发耗时极小不构成约束）：
+ *   寒蚀收入 = 冻结/紊乱触发×5 + 乱流×5（池口径近似：totalTriggerCount×5）
+ *            + 自身强特×10 + 队友异放×15（收敛注入 cfg.promiaTeammateReleaseCount）
+ *   次数 = 进场2 + C1终结技1 + floor(寒蚀收入 / 50)
  * 结算语义与全角色一致：基础者=该元素异常主施加者、结算者=普罗米娅（dominant 分支自动）。
  */
 function buildPromiaAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = Math.max(0, Math.floor(Number(record.promiaCinemaLevel ?? 0)))
+  const override = Math.max(0, Math.floor(setting(cfg, 'promia.releaseCountOverride', 0)))
+  const triggerHits = Math.max(0, Math.floor(Number(record.promiaTriggerHitCount ?? 0)))
+  const teammateReleases = Math.max(0, Math.floor(Number(record.promiaTeammateReleaseCount ?? 0)))
   const exCasts = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
-  const count = Math.min(promiaFrostCap(cinemaLevel), exCasts)
+  const frostGain = triggerHits * 5 + exCasts * 10 + teammateReleases * 15
+  const initial = 2 + (cinemaLevel >= 1 ? 1 : 0)
+  const count = override > 0 ? override : initial + Math.floor(frostGain / 50)
   if (count <= 0) return
-  const mult = PROMIA_EXECUTION_RELEASE_MULTIPLIER * (cinemaLevel >= 2 ? PROMIA_C2_RELEASE_MULTIPLIER_RATIO : 1)
+  const mult = PROMIA_EXECUTION_RELEASE_MULTIPLIER + (cinemaLevel >= 2 ? PROMIA_C2_RELEASE_BONUS : 0)
   events.push({
     eventId: 'promia_execution_release',
     eventName: '处刑式·绝裁终结一击·异放',
@@ -172,10 +177,15 @@ function buildPromiaAnomalyEvents({ cfg, state, events }: AgentEventInput): void
     element: 'dominant',
     carrierMoveName: '强化特殊技：处刑式·绝裁（终结一击）',
     count,
-    formula: `releaseMultiplier=${Math.round(mult)}（固定倍率${cinemaLevel >= 2 ? '，C2 倍率提升120%' : ''}）`,
-    fields: [`releaseMultiplier=${Math.round(mult)}`, `frostCap=${promiaFrostCap(cinemaLevel)}`],
-    note: `min(霜刑上限${promiaFrostCap(cinemaLevel)}, 强特${exCasts}) = ${count} 次；元素按目标当前异常分配。寒蚀→霜刑转化收入端 pending。`,
+    formula: `releaseMultiplier=${mult}（固定倍率${cinemaLevel >= 2 ? '，C2=635+120' : ''}）`,
+    fields: [`releaseMultiplier=${mult}`, `frostGain=${frostGain}`, `casts=${count}`],
+    note: `回复端：初始${initial} + 寒蚀${frostGain}/50 → ${count} 次（不受持有上限钳制）；元素按目标当前异常分配。`,
   })
+}
+
+function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
+  const v = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
+  return Number.isFinite(v) ? v : fallback
 }
 
 export const promiaMechanic: AgentMechanicModule = {
@@ -189,6 +199,18 @@ export const promiaMechanic: AgentMechanicModule = {
   buildAnomalyEvents: buildPromiaAnomalyEvents,
   buildResourceResult: buildPromiaResourceResult,
   resourceSections: buildPromiaResourceSections,
+  settings: [
+    {
+      id: 'promia.releaseCountOverride',
+      label: '普罗米娅·绝裁异放次数覆盖',
+      description: '手动指定整局绝裁异放次数；0=自动（回复端计数：初始霜刑+寒蚀收入/50，实战约20次）。',
+      default: 0,
+      min: 0,
+      max: 60,
+      step: 1,
+      suffix: '次',
+    },
+  ],
 }
 
 export default promiaMechanic

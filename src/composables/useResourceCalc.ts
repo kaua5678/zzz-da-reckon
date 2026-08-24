@@ -701,7 +701,7 @@ function applyNormaHatChain(
     return out
   }
 
-  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0): {
+  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0, prevPromiaTriggerHits = 0, prevPromiaTeammateReleases = 0): {
     resourceResult: TeamResourceResult
     stunPool: StunPoolResult | null
     anomalyPool: AnomalyPoolResult | null
@@ -723,6 +723,8 @@ function applyNormaHatChain(
     lighterTeamEnergy: number
     vivianTeamEx: number
     vivianAnomalyTriggers: number
+    promiaTriggerHits: number
+    promiaTeammateReleases: number
   } | null {
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
@@ -1059,6 +1061,14 @@ function applyNormaHatChain(
           lucyTeammateExTotal: prevLucyTeammateEx,
         }
       }
+      if (merged.agentId === '1541') {
+        // 普罗米娅·霜刑回复端（上一轮池结果）：触发命中数 + 队友异放次数
+        return {
+          ...merged,
+          promiaTriggerHitCount: Math.max(0, Math.floor(prevPromiaTriggerHits)),
+          promiaTeammateReleaseCount: Math.max(0, Math.floor(prevPromiaTeammateReleases)),
+        }
+      }
       if (merged.agentId === '1331') {
         // 薇薇安落羽生花双源（上一轮收敛值）：
         //   源1 = 全队强特命中次数（任意角色强化特殊技命中，同一招式至多一次）
@@ -1309,6 +1319,24 @@ function applyNormaHatChain(
     // 薇薇安落羽生花双源（下一轮注入）：
     //   源1 = 全队强特命中次数（含薇薇安自己；同一招式至多一次）
     //   源2 = 全队异常触发次数（队友施加属性异常；0.5s CD 折算在模块内）
+    // 普罗米娅·霜刑回复端（下一轮注入）：触发命中数 + 队友异放次数
+    let promiaTriggerHitsNext = 0
+    let promiaTeammateReleasesNext = 0
+    if (characters.some(c => c.agentId === '1541')) {
+      promiaTriggerHitsNext = ap1?.totalTriggerCount ?? 0
+      promiaTeammateReleasesNext = (rrShown?.characters ?? rr.characters)
+        .flatMap(ch => ch.anomalyEventExecutions ?? [])
+        .filter(e => e.eventType === 'release' && e.count > 0)
+        .reduce((sum, e) => sum + Math.floor(e.count), 0)
+      if (prevPromiaTriggerHits <= 0 && prevPromiaTeammateReleases <= 0) {
+        for (const c of characters) {
+          if (c.agentId === '1541') {
+            ;(c as any).promiaTriggerHitCount = promiaTriggerHitsNext
+            ;(c as any).promiaTeammateReleaseCount = promiaTeammateReleasesNext
+          }
+        }
+      }
+    }
     let vivianTeamExNext = 0
     let vivianAnomalyTriggersNext = 0
     if (characters.some(c => c.agentId === '1331')) {
@@ -1343,6 +1371,8 @@ function applyNormaHatChain(
       matchedPlanName: planName,
       goodReview,
       energyBySlot,
+      promiaTriggerHits: promiaTriggerHitsNext,
+      promiaTeammateReleases: promiaTeammateReleasesNext,
       banyueTopUp: banyueTopUpNext,
       yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
       teamUltimateForJufufu: teamUltimateForJufufuNext,
@@ -1377,6 +1407,8 @@ function applyNormaHatChain(
     let prevLighterTeamEnergy = 0
     let prevVivianTeamEx = 0
     let prevVivianAnomalyTriggers = 0
+    let prevPromiaTriggerHits = 0
+    let prevPromiaTeammateReleases = 0
     let prevAnomalyDecibelBonus: number[] = []
     let prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }
     let prevUltSeq = ''
@@ -1396,7 +1428,7 @@ function applyNormaHatChain(
       outerRounds = k + 1
       // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
       const locked = lockedStunCount >= 0
-      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers)
+      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers, prevPromiaTriggerHits, prevPromiaTeammateReleases)
       const ait = out?.auricInkTriggerCount ?? 0
       const gr = out?.goodReview
       if (gr !== undefined && gr >= 0) prevGoodReview = gr
@@ -1452,6 +1484,8 @@ function applyNormaHatChain(
       prevLighterTeamEnergy = out?.lighterTeamEnergy ?? 0
       prevVivianTeamEx = out?.vivianTeamEx ?? 0
       prevVivianAnomalyTriggers = out?.vivianAnomalyTriggers ?? 0
+      prevPromiaTriggerHits = out?.promiaTriggerHits ?? 0
+      prevPromiaTeammateReleases = out?.promiaTeammateReleases ?? 0
       prevUltSeq = ultSeq
       prevAnomalySeq = anomalySeq
       prevTopUpSeq = topUpSeq
