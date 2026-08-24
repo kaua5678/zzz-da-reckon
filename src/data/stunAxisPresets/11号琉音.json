@@ -1,0 +1,89 @@
+{
+  "id": "preset-1041-1481-1451",
+  "name": "轴1",
+  "team": [
+    "1041",
+    "1481",
+    "*"
+  ],
+  "note": "",
+  "axes": [
+    {
+      "name": "轴1",
+      "actions": [
+        {
+          "slot": 0,
+          "moveId": "1041017",
+          "count": 1,
+          "promoteVariant": "60"
+        },
+        {
+          "slot": 0,
+          "moveId": "1041008",
+          "count": 1,
+          "startTime": 2.5
+        },
+        {
+          "slot": 0,
+          "moveId": "1041025",
+          "count": 1,
+          "startTime": 3.4
+        },
+        {
+          "slot": 0,
+          "moveId": "1041016",
+          "count": 1,
+          "startTime": 4.1
+        },
+        {
+          "slot": 0,
+          "moveId": "1041008",
+          "count": 1,
+          "startTime": 6.1
+        },
+        {
+          "slot": 0,
+          "moveId": "1041025",
+          "count": 1,
+          "startTime": 7
+        },
+        {
+          "slot": 0,
+          "moveId": "1041017",
+          "count": 1,
+          "startTime": 7.7
+        },
+        {
+          "slot": 0,
+          "moveId": "1041008",
+          "count": 1,
+          "startTime": 10.2
+        },
+        {
+          "slot": 0,
+          "moveId": "1041025",
+          "count": 1,
+          "startTime": 11.1
+        },
+        {
+          "slot": 0,
+          "moveId": "1041011",
+          "count": 1,
+          "startTime": 11.8
+        },
+        {
+          "slot": 0,
+          "moveId": "1041008",
+          "count": 1,
+          "startTime": 13.2
+        },
+        {
+          "slot": 0,
+          "moveId": "1041025",
+          "count": 1,
+          "startTime": 14.1
+        }
+      ]
+    }
+  ]
+}

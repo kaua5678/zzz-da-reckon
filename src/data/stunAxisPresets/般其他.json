@@ -1,15 +1,15 @@
 {
   "id": "preset-1471-1571-1451",
-  "name": "常规",
+  "name": "轴1",
   "team": [
     "1471",
-    "1571",
+    "*",
     "*"
   ],
-  "note": "般岳+诺姆+卢西娅：每窗 2 个失衡连携（1471020 前两个）+ 1 个诺姆赠送连携（1471020 sourceTag='gift' 怒焰·赠块，不占般岳连携次数）；赠送次数由膛温自动决定 floor(膛温/80)（接战 180×1.5=270，帽子后场同速积蓄），块标记其中吃失衡易伤的数量。",
+  "note": "",
   "axes": [
     {
-      "name": "常规",
+      "name": "轴1",
       "actions": [
         {
           "slot": 0,
@@ -36,10 +36,9 @@
         },
         {
           "slot": 0,
-          "moveId": "1471020",
+          "moveId": "1471021",
           "count": 1,
-          "startTime": 7,
-          "sourceTag": "gift"
+          "startTime": 7
         },
         {
           "slot": 0,
@@ -55,7 +54,7 @@
         },
         {
           "slot": 0,
-          "moveId": "1471021",
+          "moveId": "1471014",
           "count": 1,
           "startTime": 12.6
         },
@@ -63,28 +62,21 @@
           "slot": 0,
           "moveId": "1471015",
           "count": 1,
-          "startTime": 15
+          "startTime": 13.1
         },
         {
           "slot": 0,
           "moveId": "1471016",
           "count": 1,
-          "startTime": 15.6
+          "startTime": 13.7
         },
         {
           "slot": 0,
-          "moveId": "1471015",
+          "moveId": "1471013",
           "count": 1,
-          "startTime": 16.1
-        },
-        {
-          "slot": 0,
-          "moveId": "1471016",
-          "count": 1,
-          "startTime": 16.7
+          "startTime": 14.2
         }
-      ],
-      "basicFillerSlot": 0
+      ]
     }
   ]
 }

@@ -1,0 +1,212 @@
+{
+  "id": "billy-roxy-lucia",
+  "group": "命破队",
+  "name": "星徽·比利+洛克茜+卢西娅",
+  "note": "金数口径：3 限定 S 角色（星徽·比利/洛克茜/卢西娅）本体+专武 = 6 金基础（全带专武）",
+  "team": [
+    "1531",
+    "1621",
+    "1451"
+  ],
+  "wEngines": [
+    "14153",
+    "14162",
+    "14145"
+  ],
+  "goldSteps": [
+    {
+      "label": "主C 1命",
+      "slot": 0,
+      "kind": "cinema",
+      "value": 1
+    },
+    {
+      "label": "主C 2命",
+      "slot": 0,
+      "kind": "cinema",
+      "value": 2
+    },
+    {
+      "label": "主C 精炼2",
+      "slot": 0,
+      "kind": "wengine",
+      "value": 2
+    },
+    {
+      "label": "击破 1命",
+      "slot": 1,
+      "kind": "cinema",
+      "value": 1
+    },
+    {
+      "label": "击破 2命",
+      "slot": 1,
+      "kind": "cinema",
+      "value": 2
+    },
+    {
+      "label": "支援 1命",
+      "slot": 2,
+      "kind": "cinema",
+      "value": 1
+    },
+    {
+      "label": "支援 2命",
+      "slot": 2,
+      "kind": "cinema",
+      "value": 2
+    },
+    {
+      "label": "主C 3命",
+      "slot": 0,
+      "kind": "cinema",
+      "value": 3
+    },
+    {
+      "label": "主C 4命",
+      "slot": 0,
+      "kind": "cinema",
+      "value": 4
+    },
+    {
+      "label": "主C 5命",
+      "slot": 0,
+      "kind": "cinema",
+      "value": 5
+    },
+    {
+      "label": "主C 6命",
+      "slot": 0,
+      "kind": "cinema",
+      "value": 6
+    },
+    {
+      "label": "主C 精炼3",
+      "slot": 0,
+      "kind": "wengine",
+      "value": 3
+    },
+    {
+      "label": "击破 3命",
+      "slot": 1,
+      "kind": "cinema",
+      "value": 3
+    },
+    {
+      "label": "击破 4命",
+      "slot": 1,
+      "kind": "cinema",
+      "value": 4
+    },
+    {
+      "label": "击破 5命",
+      "slot": 1,
+      "kind": "cinema",
+      "value": 5
+    },
+    {
+      "label": "击破 6命",
+      "slot": 1,
+      "kind": "cinema",
+      "value": 6
+    },
+    {
+      "label": "支援 3命",
+      "slot": 2,
+      "kind": "cinema",
+      "value": 3
+    },
+    {
+      "label": "支援 4命",
+      "slot": 2,
+      "kind": "cinema",
+      "value": 4
+    },
+    {
+      "label": "支援 5命",
+      "slot": 2,
+      "kind": "cinema",
+      "value": 5
+    },
+    {
+      "label": "支援 6命",
+      "slot": 2,
+      "kind": "cinema",
+      "value": 6
+    },
+    {
+      "label": "主C 精炼4",
+      "slot": 0,
+      "kind": "wengine",
+      "value": 4
+    },
+    {
+      "label": "主C 精炼5",
+      "slot": 0,
+      "kind": "wengine",
+      "value": 5
+    },
+    {
+      "label": "击破 精炼2",
+      "slot": 1,
+      "kind": "wengine",
+      "value": 2
+    },
+    {
+      "label": "击破 精炼3",
+      "slot": 1,
+      "kind": "wengine",
+      "value": 3
+    },
+    {
+      "label": "击破 精炼4",
+      "slot": 1,
+      "kind": "wengine",
+      "value": 4
+    },
+    {
+      "label": "击破 精炼5",
+      "slot": 1,
+      "kind": "wengine",
+      "value": 5
+    },
+    {
+      "label": "支援 精炼2",
+      "slot": 2,
+      "kind": "wengine",
+      "value": 2
+    },
+    {
+      "label": "支援 精炼3",
+      "slot": 2,
+      "kind": "wengine",
+      "value": 3
+    },
+    {
+      "label": "支援 精炼4",
+      "slot": 2,
+      "kind": "wengine",
+      "value": 4
+    },
+    {
+      "label": "支援 精炼5",
+      "slot": 2,
+      "kind": "wengine",
+      "value": 5
+    }
+  ],
+  "interactions": [
+    {
+      "type": "parry",
+      "count": 8
+    },
+    {
+      "type": "dodge",
+      "count": 4
+    },
+    {
+      "type": "quickAssist",
+      "count": 3
+    }
+  ]
+}

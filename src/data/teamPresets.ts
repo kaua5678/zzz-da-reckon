@@ -8,8 +8,9 @@
  * {
  *   "id": "miyabi-yanagi-soukaku",
  *   "name": "雅柳苍（示例）",
+ *   "group": "命破队",                       // 一级分类（下拉两级：分类 → 队伍），缺省归「未分组」
  *   "note": "加金顺序：雅 1 命 → 专武精炼 1 → 柳 2 命 …",
- *   "team": ["1081", "1071", "1041"],
+ *   "team": ["1081", "1071", "1041"],       // 槽位约定：0=主C、1=击破、2=辅助
  *   "wEngines": ["14121", "", ""],          // 缺省 '' = 自动推荐
  *   "driveDiscs": [{ "fourPieceSetId": "31500", "twoPieceSetId": "" }],
  *   "goldSteps": [
@@ -45,6 +46,7 @@
  * 加载时展开成独立条目：id = `${id}__${变体id}`、名 = `${name}·${变体名}`，
  * team/wEngines/goldSteps 共用本体；带 variants 的队伍本体条目不再单独出现。
  */
+import type { SelectGroupOption, SelectOption } from 'naive-ui'
 import type { TeamPreset } from '@/types/teamPreset'
 
 export interface TeamPresetFile extends TeamPreset {
@@ -91,3 +93,40 @@ export const teamPresets: TeamPreset[] = Object.values(jsonModules)
   .map(({ disabled: _disabled, ...preset }) => preset)
   .flatMap(expandVariants)
   .sort((a, b) => a.name.localeCompare(b.name))
+
+/** 未填 group 的预设归入的兜底分类（测试锁「不出现」——新预设必须归类） */
+export const UNGROUPED_LABEL = '未分组'
+
+/** n-select 单条选项 */
+export interface TeamPresetOption {
+  value: string
+  label: string
+}
+
+/** n-select 一级分组选项（Naive UI group options：type='group' + children） */
+export interface TeamPresetOptionGroup {
+  type: 'group'
+  label: string
+  key: string
+  children: TeamPresetOption[]
+}
+
+/**
+ * 分组下拉选项（两级：分类 → 队伍）。三个消费点（首页预设下拉/保存弹窗、队伍对比页、
+ * 击破对比页）共用，避免各自 teamPresets.map(...) 重复平铺。组名按 localeCompare 排序、
+ * 「未分组」恒排最后，组内沿用 teamPresets 的名称序。
+ */
+export const teamPresetGroupOptions: Array<SelectOption | SelectGroupOption> = (() => {
+  const groups = new Map<string, TeamPresetOption[]>()
+  for (const p of teamPresets) {
+    const label = p.group?.trim() || UNGROUPED_LABEL
+    if (!groups.has(label)) groups.set(label, [])
+    groups.get(label)!.push({ value: p.id, label: p.name })
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) =>
+      a === UNGROUPED_LABEL ? 1 : b === UNGROUPED_LABEL ? -1 : a.localeCompare(b),
+    )
+    .map(([label, children]) => ({ type: 'group' as const, label, key: label, children }))
+})()
+

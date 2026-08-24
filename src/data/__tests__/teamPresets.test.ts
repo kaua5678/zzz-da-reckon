@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { teamPresets } from '@/data/teamPresets'
+import { teamPresets, teamPresetGroupOptions, UNGROUPED_LABEL } from '@/data/teamPresets'
 
 const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
 const catalog = JSON.parse(catalogText) as {
@@ -91,5 +91,36 @@ describe('teamPresets 预设队伍库', () => {
         expect(['14157', '14110'], `${preset.id} 诺姆音擎 ${wEngineId} 口径待确认`).toContain(wEngineId)
       }
     }
+  })
+})
+
+describe('预设分组（两级下拉：分类 → 队伍）', () => {
+  it('每个预设都有非空 group，不落「未分组」（新预设必须归类）', () => {
+    for (const preset of teamPresets)
+      expect(preset.group?.trim(), `${preset.id} 缺一级分类 group（下拉第一级）`).toBeTruthy()
+    expect(teamPresetGroupOptions.some(o => 'label' in o && o.label === UNGROUPED_LABEL)).toBe(false)
+  })
+
+  it('分组 options 恰好覆盖全部预设，组内成员与 preset.group 一致且无空组', () => {
+    type Option = (typeof teamPresetGroupOptions)[number]
+    const isGroup = (o: Option): o is { type: 'group'; label: string; children: { value: string; label: string }[] } =>
+      (o as { type?: unknown }).type === 'group'
+    const groups = teamPresetGroupOptions.filter(isGroup)
+    expect(groups.length).toBeGreaterThan(0)
+    const ids = groups.flatMap(g => g.children.map(c => c.value)).sort()
+    expect(ids).toEqual(teamPresets.map(p => p.id).sort())
+    for (const g of groups) {
+      expect(g.children.length).toBeGreaterThan(0)
+      for (const c of g.children) {
+        const preset = teamPresets.find(p => p.id === c.value)!
+        expect(preset, `选项 ${c.value} 无对应预设`).toBeTruthy()
+        expect(c.label).toBe(preset.name)
+        expect(g.label, `${preset.id} 归组与 preset.group 不一致`).toBe(preset.group)
+      }
+    }
+  })
+
+  it('当前分类快照 = 命破队（新增分类时有意更新此断言）', () => {
+    expect([...new Set(teamPresets.map(p => p.group))]).toEqual(['命破队'])
   })
 })
