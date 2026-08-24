@@ -268,14 +268,115 @@ export const MOVE_TYPE_TIME_SCALE: Partial<Record<MoveType, number>> = {
  *   融合后与 nanoka 官方倍率（788.3%/967.2%）逐位相同，且代入强特公式三列比值 ≈1.001；
  * - 星见雅连携「春临 #1~#3」三段合计才是一次连携：融合后伤害/喧响比值 ≈1.000（逐段评估
  *   会得到 ~0.38 的假象）；
- * - 仪玄(1371)「墨痕化形 #1+#2」= 斩击（40 闪能）、「#3+#4」= 追击（40 闪能）。
+ * 注：仪玄(1371)强特原按「#1+#2=斩击 / #3+#4=追击」融合，评估得 ~0.46~2.56 假象（追击段
+ * 头行无耗能标注、且拆法与真实强特链不符），已改为交互变体定点整链记录（FIXED_RECORD_UNITS）。
  */
 export const MOVE_FUSION_GROUPS: Array<{ members: string[] }> = [
   { members: ['1091009', '1091010'] },
   { members: ['1091011', '1091012'] },
   { members: ['1091015', '1091016', '1091017'] },
-  { members: ['1371009', '1371024'] },
-  { members: ['1371023', '1371025'] },
+]
+
+/** 定点整链记录的耗能（整链一次计；kind 区分普通能量与闪能，闪能质量 ×1.2） */
+export interface FixedRecordEnergy {
+  value: number
+  kind: 'energy' | 'flashEnergy'
+}
+
+/**
+ * 定点整链记录（FIXED_RECORD_UNITS）：catalog 把一套交互招式拆成多行、且逐段/简单融合都
+ * 无法表达「整链一次评估」时（耗能整链只计一次、弹刀赠送段免费），按交互变体手工记录合成
+ * 评估单元，替代该角色对应 catalog 行的自动评估（成员行不再单独/融合评估）。
+ *
+ * 仪玄(1371)「墨痕化形」强特链（用户口径，见 src/mechanics/agents/yixuan.ts 与 spec notes）：
+ *   #1=1371009（40 闪能）/ #2=1371024（完美格挡赠送，免费）/ #3=1371023（跟随#1，免费）/
+ *   #4=1371025（20 闪能）；2连 = #1+#3（40 闪能）、3连 = #1+#3+#4（60 闪能）、单E = #1（40 闪能）；
+ *   弹刀与否 = 是否追加免费 #2。每变体 = 完整一次链：t 与各列数值求和、耗能整链一次计。
+ *   原「#1+#2=斩击 / #3+#4=追击」融合评估得 ~0.46~2.56 假象（追击头行 1371023 无耗能标注、
+ *   拆法与真实强特链不符），按交互变体记录后各变体比值如实反映整链调优
+ *   （单E 伤害 ~0.82、3连·弹刀 喧响/积蓄 ≈0.99、全变体秽盾 ≈1.000）。
+ * 普罗米娅(1541)「处刑式·重霜/坠霜」（用户口径）：实为消耗 40 能量（封喉霜径 1541009 /
+ *   匿影）后接的免费招——本质上算作 40 能量换来的奖励，评估时按强特公式带 40 能量（否则
+ *   按特殊技公式 e=0 得 2.2~3.1 倍虚高比值，且污染其纵向积蓄系数）；重霜 #1+#2 合一
+ *   （#2 子段 24.2%，t=0）。
+ */
+export interface FixedRecordUnit {
+  agentId: string
+  /** 展示用 moveId（合成 id，避免与 catalog 行混淆；不参与任何 catalog 行匹配） */
+  moveId: string
+  moveName: string
+  moveType: MoveType
+  /** 参与合成的 catalog 行（t 与各列数值求和） */
+  members: string[]
+  /** 整链耗能（一次计）：null = 按头行 energyCost 解析 */
+  energy: FixedRecordEnergy | null
+}
+
+export const FIXED_RECORD_UNITS: FixedRecordUnit[] = [
+  {
+    agentId: '1371',
+    moveId: '1371_ink_solo',
+    moveName: '强化特殊技：墨痕化形（单E）',
+    moveType: 'exSpecial',
+    members: ['1371009'],
+    energy: { value: 40, kind: 'flashEnergy' },
+  },
+  {
+    agentId: '1371',
+    moveId: '1371_ink_solo_parry',
+    moveName: '强化特殊技：墨痕化形（单E·弹刀）',
+    moveType: 'exSpecial',
+    members: ['1371009', '1371024'],
+    energy: { value: 40, kind: 'flashEnergy' },
+  },
+  {
+    agentId: '1371',
+    moveId: '1371_ink_2x',
+    moveName: '强化特殊技：墨痕化形（2连）',
+    moveType: 'exSpecial',
+    members: ['1371009', '1371023'],
+    energy: { value: 40, kind: 'flashEnergy' },
+  },
+  {
+    agentId: '1371',
+    moveId: '1371_ink_2x_parry',
+    moveName: '强化特殊技：墨痕化形（2连·弹刀）',
+    moveType: 'exSpecial',
+    members: ['1371009', '1371024', '1371023'],
+    energy: { value: 40, kind: 'flashEnergy' },
+  },
+  {
+    agentId: '1371',
+    moveId: '1371_ink_3x',
+    moveName: '强化特殊技：墨痕化形（3连）',
+    moveType: 'exSpecial',
+    members: ['1371009', '1371023', '1371025'],
+    energy: { value: 60, kind: 'flashEnergy' },
+  },
+  {
+    agentId: '1371',
+    moveId: '1371_ink_3x_parry',
+    moveName: '强化特殊技：墨痕化形（3连·弹刀）',
+    moveType: 'exSpecial',
+    members: ['1371009', '1371024', '1371023', '1371025'],
+    energy: { value: 60, kind: 'flashEnergy' },
+  },
+  {
+    agentId: '1541',
+    moveId: '1541_zhuishuang',
+    moveName: '特殊技：处刑式·坠霜（40能量奖励）',
+    moveType: 'exSpecial',
+    members: ['1541010'],
+    energy: { value: 40, kind: 'energy' },
+  },
+  {
+    agentId: '1541',
+    moveId: '1541_zhongshuang',
+    moveName: '特殊技：处刑式·重霜（40能量奖励）',
+    moveType: 'exSpecial',
+    members: ['1541011', '1541012'],
+    energy: { value: 40, kind: 'energy' },
+  },
 ]
 
 /** 稀有度 + 命破修正后的列系数（等级系数除外） */

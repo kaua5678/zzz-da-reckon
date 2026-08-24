@@ -13,6 +13,7 @@
 import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
 import {
   DECIBEL_PER_SECOND,
+  FIXED_RECORD_UNITS,
   FLASH_ENERGY_QUALITY,
   MOVE_FUSION_GROUPS,
   MOVE_TIME_ADJUSTMENTS,
@@ -144,8 +145,9 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
       const flags: string[] = []
       if (moveType === 'exSpecial' && energy == null) flags.push('缺耗能标注')
       if (moveType === 'exSpecial' && energy?.kind === 'flashEnergy') flags.push('闪能消耗(质量×1.2)')
-      // 普攻的回能恒应存在：显式录入 0 属数据缺口（全库 15 条，如爱丽丝「星芒圆舞曲」），
-      // 合成 0 比值单元格并打标，避免静默隐藏
+      // 普攻的回能恒应存在：显式录入 0 属数据缺口（全库 13 条，如爱丽丝「星芒圆舞曲」；
+      // 席德「霜蕊轮舞 #1/#2」等 2 条已由 scripts/patch-misplaced-attack-data.mjs 回填——
+      // 其真实回能/喧响错位在 attack_data 1/2 位），合成 0 比值单元格并打标，避免静默隐藏
       const zeroEnergyRow =
         moveType === 'basic' && typeof move.actionTime === 'number' && move.actionTime > MIN_ACTION_TIME &&
         move.rows.some((r) => r.id === 'energy_recovery' && r.values[0] === 0)
@@ -169,6 +171,39 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
     }
   }
 
+  // 定点整链记录（FIXED_RECORD_UNITS）：以合成评估单元替代 catalog 行的自动评估——
+  // 整链一次计耗能、弹刀赠送段免费，逐段/简单融合都表达不了（仪玄墨痕化形 2连/3连×弹刀
+  // + 单E×弹刀；原「#1+#2 / #3+#4」融合评估得 ~0.46~2.56 假象）。成员行不再单独/融合评估。
+  const replacedByFixed = new Set<string>()
+  const fixedUnits: RawUnit[] = []
+  for (const rec of FIXED_RECORD_UNITS) {
+    if (String(rec.agentId) !== String(agent.id)) continue
+    const members = units.filter((u) => rec.members.includes(u.moveId))
+    if (members.length !== rec.members.length) continue // 缺 catalog 行则跳过（保留原评估）
+    for (const m of members) replacedByFixed.add(m.moveId)
+    const t = members.reduce((s, u) => s + (u.t ?? 0), 0)
+    const values: Partial<Record<StandardRowId, number>> = {}
+    for (const u of members) {
+      for (const [rowId, v] of Object.entries(u.values)) {
+        values[rowId as StandardRowId] = (values[rowId as StandardRowId] ?? 0) + (v ?? 0)
+      }
+    }
+    fixedUnits.push({
+      agentId: String(agent.id),
+      agentName: agent.name.zhCN ?? String(agent.id),
+      rarity: agent.rarity,
+      specialty: agent.specialty,
+      moveId: rec.moveId,
+      moveName: rec.moveName,
+      moveType: rec.moveType,
+      t,
+      energy: rec.energy,
+      values,
+      flags: [`定点整链记录(${rec.members.length}段)`],
+    })
+  }
+  units.push(...fixedUnits)
+
   // 倍率行融合组：catalog 把一套招式拆成多行/多段时，加总为一个评估单元（前缀项/耗能只计一次）。
   // 实证：星见雅「飞雪 #1+#2」融合后 = nanoka 官方斩击倍率 788.3%，代入强特公式三列比值 ≈1.001；
   // 连携 #1~#3 融合后伤害/喧响比值 ≈1.000（逐段评估会得到 ~0.38 的假象）。
@@ -187,7 +222,7 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
     head.moveName = `${stripPartSuffix(head.moveName)}（融合${members.length}段）`
     head.flags.push(`倍率行融合(${members.length}段)`)
   }
-  const out = units.filter((u) => !fusedIds.has(u.moveId))
+  const out = units.filter((u) => !fusedIds.has(u.moveId) && !replacedByFixed.has(u.moveId))
 
   // 支援突击的「#N」分段是同一套招式的分段，标准式前缀项只计一次：按去段号名称合并后再评估。
   // 实证：苍角「席卷打击 #1+#2」合并后伤害/失衡/喧响三列比值 ≈1.000（分段单算各 88.7%/59.2%，

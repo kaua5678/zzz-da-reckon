@@ -235,9 +235,52 @@ describe('倍率表系数演算：招式分类', () => {
     const dbCell = lianhun!.cells.find((c) => c.rowId === 'decibel_recovery')
     expect(dbCell).toBeDefined()
     expectNear(dbCell!.ratio ?? NaN, 1.0, 0.005, '连携融合 decibel')
-    // 仪玄墨痕化形同样按 #1+#2=斩击 / #3+#4=追击 融合展示（其特调由偏差如实呈现）
-    const yixuanFused = report.moves.filter((m) => m.agentId === '1371' && m.flags.some((f) => f.includes('倍率行融合')))
-    expect(yixuanFused.length).toBe(2)
+    // 仪玄强特（用户口径）按交互变体定点整链记录：单E / 2连 / 3连 × 弹刀与否，替代原
+    // 「#1+#2=斩击 / #3+#4=追击」融合（逐段/融合评估得 ~0.46~2.56 假象——追击头行无耗能标注、
+    // 拆法与真实强特链不符）。每变体 = 完整一次链：t 与各列数值求和、耗能整链一次计
+    // （单E/2连 = 40 闪能、3连 = 60 闪能；弹刀追加免费 #2 不加耗）。
+    const yixuanVariants = report.moves.filter(
+      (m) => m.agentId === '1371' && m.moveType === 'exSpecial' && m.flags.some((f) => f.includes('定点整链记录')),
+    )
+    expect(yixuanVariants.length, '应记录 6 个交互变体').toBe(6)
+    // 成员行不再单独/融合评估
+    for (const mid of ['1371009', '1371024', '1371023', '1371025']) {
+      expect(report.moves.find((m) => m.agentId === '1371' && m.moveId === mid), `${mid} 应被定点整链记录替代`).toBeUndefined()
+    }
+    // 凝云术/墨烬影消仍是独立行（不在变体范围内）
+    for (const mid of ['1371022', '1371026']) {
+      expect(report.moves.find((m) => m.agentId === '1371' && m.moveId === mid), `${mid} 应保持逐行评估`).toBeDefined()
+    }
+    // 变体结构：t（弹刀 +0.2s #2）/ 耗能（整链一次计）
+    const variant = (name: string) => {
+      const v = yixuanVariants.find((m) => m.moveName === name)
+      expect(v, `变体 ${name} 应存在`).toBeDefined()
+      return v!
+    }
+    expectNear(variant('强化特殊技：墨痕化形（单E）').t ?? 0, 1.083, 0.001, '单E t')
+    expectNear(variant('强化特殊技：墨痕化形（单E·弹刀）').t ?? 0, 1.283, 0.001, '单E·弹刀 t')
+    expectNear(variant('强化特殊技：墨痕化形（2连）').t ?? 0, 2.65, 0.001, '2连 t')
+    expectNear(variant('强化特殊技：墨痕化形（2连·弹刀）').t ?? 0, 2.85, 0.001, '2连·弹刀 t')
+    expectNear(variant('强化特殊技：墨痕化形（3连）').t ?? 0, 3.616, 0.001, '3连 t')
+    expectNear(variant('强化特殊技：墨痕化形（3连·弹刀）').t ?? 0, 3.816, 0.001, '3连·弹刀 t')
+    for (const v of yixuanVariants) {
+      expect(v.energy?.kind, `${v.moveName} 耗能为闪能`).toBe('flashEnergy')
+      expect(v.energy?.value, `${v.moveName} 整链耗能一次计`).toBe(v.moveName.includes('3连') ? 60 : 40)
+    }
+    // 比值钉子（命破限定S：伤害×2×1.1×0.8、失衡×1.5×1.1、喧响/积蓄纯 t+e、秽盾纯 t）：
+    const ratioOf = (v: MoveEval, rowId: string) => {
+      const cell = v.cells.find((c) => c.rowId === rowId)
+      expect(cell, `${v.moveName} ${rowId} 格应存在`).toBeDefined()
+      return cell!.ratio ?? NaN
+    }
+    // 秽盾 = 100t 纯时间列：全部变体 ≈1.000（整链 t 求和精确）
+    for (const v of yixuanVariants) expectNear(ratioOf(v, 'ether_purify'), 1.0, 0.005, `${v.moveName} 秽盾`)
+    // 单E：伤害 600.6 / (140×1.083 + 5.55835×40×1.2)×1.76 ≈ 0.816（仪玄单段伤害低于标准）
+    expectNear(ratioOf(variant('强化特殊技：墨痕化形（单E）'), 'damage'), 0.816, 0.01, '单E 伤害')
+    // 3连·弹刀：喧响/积蓄 ≈0.99（接近标准整链调优）、失衡 ~0.947
+    expectNear(ratioOf(variant('强化特殊技：墨痕化形（3连·弹刀）'), 'decibel_recovery'), 0.991, 0.01, '3连·弹刀 喧响')
+    expectNear(ratioOf(variant('强化特殊技：墨痕化形（3连·弹刀）'), 'anomaly_buildup'), 0.992, 0.01, '3连·弹刀 积蓄')
+    expectNear(ratioOf(variant('强化特殊技：墨痕化形（3连·弹刀）'), 'daze'), 0.947, 0.01, '3连·弹刀 失衡')
   })
 
   it('爱丽丝「星芒圆舞曲」三段回能：双源确认官方为 0，按缺口展示且不参与聚合', () => {
@@ -346,6 +389,37 @@ describe('倍率表系数演算：强化特殊技（逐段评估，不参与纵�
       expect(cell, `真斗强特 ${rowId} 格应存在`).toBeDefined()
       expectNear(cell!.ratio ?? NaN, 1.0, 0.01, `真斗强特 ${rowId}（闪能×1.2 锚点）`)
     }
+  })
+
+  it('普罗米娅「处刑式·重霜/坠霜」= 40 能量奖励：按强特公式带 40 能量评估（用户口径）', () => {
+    // 重霜/坠霜实为消耗 40 能量（封喉霜径 1541009 / 匿影）后接的免费招——本质上算作 40 能量
+    // 换来的奖励，记录为强特公式 + 40 能量；否则按特殊技公式（无 perE、e=0）得 2.2~3.1 倍
+    // 虚高比值（曾污染纵向积蓄系数 125.1%）并充斥偏差清单。
+    const reward = report.moves.filter((m) => m.agentId === '1541' && m.flags.some((f) => f.includes('定点整链记录')))
+    expect(reward.length, '应记录 2 个 40 能量奖励单元').toBe(2)
+    const chuishuang = reward.find((m) => m.moveName.includes('坠霜'))!
+    const zhongshuang = reward.find((m) => m.moveName.includes('重霜'))!
+    // 成员行不再单独评估；40 能量消耗者（封喉霜径）保留原行
+    for (const mid of ['1541010', '1541011', '1541012']) {
+      expect(report.moves.find((m) => m.agentId === '1541' && m.moveId === mid), `${mid} 应被定点整链记录替代`).toBeUndefined()
+    }
+    expect(report.moves.find((m) => m.agentId === '1541' && m.moveId === '1541009'), '封喉霜径应保留（40 能量消耗者）').toBeDefined()
+    for (const v of reward) {
+      expect(v.moveType, `${v.moveName} 按强特公式评估`).toBe('exSpecial')
+      expect(v.energy, `${v.moveName} 带 40 能量奖励`).toEqual({ value: 40, kind: 'energy' })
+    }
+    // 重霜 #1+#2 合一（#2 子段 24.2%、t=0）：t=2.35
+    expectNear(zhongshuang.t ?? 0, 2.35, 0.001, '重霜 t')
+    // 比值钉子：重霜伤害 ≈1.023（40 能量口径下命中标准）、坠霜伤害 ≈0.922；秽盾纯 t 列 ≈1.000
+    const ratioOf = (v: MoveEval, rowId: string) => {
+      const cell = v.cells.find((c) => c.rowId === rowId)
+      expect(cell, `${v.moveName} ${rowId} 格应存在`).toBeDefined()
+      return cell!.ratio ?? NaN
+    }
+    expectNear(ratioOf(zhongshuang, 'damage'), 1.023, 0.01, '重霜 伤害')
+    expectNear(ratioOf(zhongshuang, 'ether_purify'), 1.0, 0.005, '重霜 秽盾')
+    expectNear(ratioOf(chuishuang, 'damage'), 0.922, 0.01, '坠霜 伤害')
+    expectNear(ratioOf(chuishuang, 'ether_purify'), 1.0, 0.005, '坠霜 秽盾')
   })
 })
 

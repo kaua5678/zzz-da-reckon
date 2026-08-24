@@ -54899,7 +54899,7 @@
                   },
                   "kind": "energy",
                   "values": [
-                    0
+                    0.667
                   ]
                 },
                 {
@@ -54910,7 +54910,7 @@
                   },
                   "kind": "decibel",
                   "values": [
-                    0
+                    7.3425
                   ]
                 },
                 {
@@ -54941,20 +54941,6 @@
                   "kind": "special",
                   "values": [
                     2.9334
-                  ]
-                },
-                {
-                  "id": "attack_data_1",
-                  "kind": "special",
-                  "values": [
-                    0.667
-                  ]
-                },
-                {
-                  "id": "attack_data_2",
-                  "kind": "special",
-                  "values": [
-                    7.3425
                   ]
                 }
               ]
@@ -55003,7 +54989,7 @@
                   },
                   "kind": "energy",
                   "values": [
-                    0
+                    1.884
                   ]
                 },
                 {
@@ -55014,7 +55000,7 @@
                   },
                   "kind": "decibel",
                   "values": [
-                    0
+                    20.735
                   ]
                 },
                 {
@@ -55045,20 +55031,6 @@
                   "kind": "special",
                   "values": [
                     8.2867
-                  ]
-                },
-                {
-                  "id": "attack_data_1",
-                  "kind": "special",
-                  "values": [
-                    1.884
-                  ]
-                },
-                {
-                  "id": "attack_data_2",
-                  "kind": "special",
-                  "values": [
-                    20.735
                   ]
                 }
               ]
@@ -55561,7 +55533,7 @@
                   },
                   "kind": "decibel",
                   "values": [
-                    0
+                    11.935
                   ]
                 },
                 {
@@ -55592,13 +55564,6 @@
                   "kind": "special",
                   "values": [
                     4.7685
-                  ]
-                },
-                {
-                  "id": "attack_data_2",
-                  "kind": "special",
-                  "values": [
-                    11.935
                   ]
                 }
               ]
@@ -55834,7 +55799,7 @@
                   },
                   "kind": "energy",
                   "values": [
-                    0
+                    0.73
                   ]
                 },
                 {
@@ -55845,7 +55810,7 @@
                   },
                   "kind": "decibel",
                   "values": [
-                    0
+                    8.03
                   ]
                 },
                 {
@@ -55876,20 +55841,6 @@
                   "kind": "special",
                   "values": [
                     3.2084
-                  ]
-                },
-                {
-                  "id": "attack_data_1",
-                  "kind": "special",
-                  "values": [
-                    0.73
-                  ]
-                },
-                {
-                  "id": "attack_data_2",
-                  "kind": "special",
-                  "values": [
-                    8.03
                   ]
                 }
               ]
@@ -55938,7 +55889,7 @@
                   },
                   "kind": "energy",
                   "values": [
-                    0
+                    3.293
                   ]
                 },
                 {
@@ -55949,7 +55900,7 @@
                   },
                   "kind": "decibel",
                   "values": [
-                    0
+                    36.2175
                   ]
                 },
                 {
@@ -55980,20 +55931,6 @@
                   "kind": "special",
                   "values": [
                     24.487
-                  ]
-                },
-                {
-                  "id": "attack_data_1",
-                  "kind": "special",
-                  "values": [
-                    3.293
-                  ]
-                },
-                {
-                  "id": "attack_data_2",
-                  "kind": "special",
-                  "values": [
-                    36.2175
                   ]
                 }
               ]
@@ -56243,7 +56180,7 @@
                   },
                   "kind": "energy",
                   "values": [
-                    0
+                    1.75
                   ]
                 },
                 {
@@ -56254,7 +56191,7 @@
                   },
                   "kind": "decibel",
                   "values": [
-                    0
+                    19.25
                   ]
                 },
                 {
@@ -56285,20 +56222,6 @@
                   "kind": "special",
                   "values": [
                     7.7
-                  ]
-                },
-                {
-                  "id": "attack_data_1",
-                  "kind": "special",
-                  "values": [
-                    1.75
-                  ]
-                },
-                {
-                  "id": "attack_data_2",
-                  "kind": "special",
-                  "values": [
-                    19.25
                   ]
                 }
               ]
@@ -56607,7 +56530,7 @@
                   },
                   "kind": "decibel",
                   "values": [
-                    0
+                    127.6
                   ]
                 },
                 {
@@ -56638,13 +56561,6 @@
                   "kind": "special",
                   "values": [
                     23.8371
-                  ]
-                },
-                {
-                  "id": "attack_data_2",
-                  "kind": "special",
-                  "values": [
-                    127.6
                   ]
                 }
               ]
