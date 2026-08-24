@@ -31,7 +31,7 @@ import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
 import { calcAnomalyPool, calcSpecialActionBonus } from '@/core/anomalyPool'
 import { distributeIntegerByWeight, getMainApplierSlot, ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement } from '@/core/anomalyPool/helpers'
-import { computeBossAnomalyStateTimeline, computeInStunAnomalyTimeline, attributeCountByStateChain, bossEntryAnomalyElement, type BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
+import { computeBossAnomalyStateTimeline, computeInStunAnomalyTimeline, attributeCountByStateChain, bossEntryAnomalyElement, type BossAnomalyStateResult, type InStunWindowInput } from '@/core/stunAxis/inStunAnomaly'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentMechanic, getRegisteredAgentMechanics, type MechanicTeamMember } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, computeLiuyinHugCounts, resolveUltimateTargetSlot, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
@@ -1359,14 +1359,22 @@ function applyNormaHatChain(
         for (const c of prog.contributions ?? []) contribMap.set(c.moveId, { element: prog.element, perHit: c.perHitBuildUp })
       }
       if (contribMap.size > 0) {
-        const windows = resolvedAxes.map(axis => ({
-          actions: (axis.actions ?? [])
+        // 逐失衡展开窗口（2026-08-24 单独立项收口）：allocateAxisWindows 把总失衡数按轴条目
+        // 顺序分配——条目 count=该动作模式重复的失衡窗数，受实际收敛失衡数钳制；小数失衡
+        // 取整窗模拟（残窗忽略）。积蓄余量/异常状态因此逐窗真实继承，不再代表窗近似。
+        const winAlloc = allocateAxisWindows(resolvedAxes, Math.round(stunCount))
+        const windows: InStunWindowInput[] = []
+        resolvedAxes.forEach((axis, ai) => {
+          const wins = Math.floor(winAlloc[ai] ?? 0)
+          if (wins <= 0) return
+          const actions = (axis.actions ?? [])
             .filter(a => contribMap.has(a.moveId))
             .map(a => {
               const cm = contribMap.get(a.moveId)!
               return { element: cm.element, perHitBuildUp: cm.perHit, count: Math.max(0, Math.floor(a.count || 1)), startTime: a.startTime ?? 0 }
-            }),
-        }))
+            })
+          for (let k = 0; k < wins; k++) windows.push({ actions })
+        })
         const tl = computeInStunAnomalyTimeline({ windows, windowDuration: computeWindowDuration() })
         inStunWindowTriggersNext = windows.length > 0
           ? Math.round((tl.triggers.length / windows.length) * 10) / 10
@@ -1406,12 +1414,10 @@ function applyNormaHatChain(
           ...computeBossAnomalyStateTimeline({
             triggers: tl.triggers,
             windowDuration: bossWindowDur,
-            windowCount: Math.max(1, resolvedAxes.length),
+            windowCount: Math.max(1, windows.length),
             // 用户口径 v2 需求②：可指定进入窗口时的异常状态（机制设置 boss.entryAnomaly，0=无）
             entryElement: bossEntryAnomalyElement(configStore.getMechanicSetting('boss.entryAnomaly', 0)) || undefined,
           }),
-          // 轴条目按代表窗模拟，stunsTotal 供事件总次数缩放回代表窗取样。
-          // debt: 轴条目 count>1 未逐失衡展开窗口继承（与 v2 平均口径一致），升级路径=flatMap(count) 展开窗口列表。
           stunsTotal: Math.max(1, Math.round(stunCount)),
           windowDuration: bossWindowDur,
         }
@@ -2235,19 +2241,26 @@ function applyNormaHatChain(
             // releaseShare 覆盖才启用，手动分配/非轴模式回落下方覆盖率权重路径。
             const totalRelease = Math.max(0, Math.floor(event.count))
             const bossRel = isAxis ? bossAnomalyState.value : null
-            const relChain = bossRel ? [...(bossRel.stateChainsPerWindow[0] ?? []), ...(bossRel.windOverlayPerWindow[0] ?? [])] : []
-            if (bossRel && relChain.length > 0) {
+            const relWindows = bossRel?.stateChainsPerWindow.length ?? 0
+            const relAnySegment = !!bossRel && (bossRel.stateChainsPerWindow.some(c => c.length > 0) || bossRel.windOverlayPerWindow.some(c => c.length > 0))
+            if (bossRel && relWindows > 0 && relAnySegment) {
               const relNs = event.eventId.split('_')[0] ?? 'release'
-              const chainEls = [...new Set(relChain.map(s => s.element))]
+              const chainEls = [...new Set(
+                bossRel.stateChainsPerWindow.flat().concat(bossRel.windOverlayPerWindow.flat()).map(s => s.element),
+              )]
               const hasManualShare = chainEls.some(el => configStore.getMechanicSetting(`${relNs}.releaseShare:${el}`, -1) >= 0)
               if (!hasManualShare) {
-                const perRepWindow = Math.max(1, Math.round(totalRelease / Math.max(1, bossRel.stunsTotal ?? 1)))
-                const parts = attributeCountByStateChain(
-                  perRepWindow,
-                  relChain,
-                  bossRel.windowDuration && bossRel.windowDuration > 0 ? bossRel.windowDuration : computeWindowDuration(),
-                  agent?.damageElement ?? 'physical',
-                )
+                const D = bossRel.windowDuration && bossRel.windowDuration > 0 ? bossRel.windowDuration : computeWindowDuration()
+                // 与极性紊乱同口径：总次数均分到各真实失衡窗，逐窗按该窗状态链取样
+                const winShares = distributeIntegerByWeight(totalRelease, Array(relWindows).fill(1))
+                const merged = new Map<string, number>()
+                for (let w = 0; w < relWindows; w++) {
+                  const chain = [...(bossRel.stateChainsPerWindow[w] ?? []), ...(bossRel.windOverlayPerWindow[w] ?? [])]
+                  for (const p of attributeCountByStateChain(winShares[w] ?? 0, chain, D, agent?.damageElement ?? 'physical')) {
+                    merged.set(p.element, (merged.get(p.element) ?? 0) + p.count)
+                  }
+                }
+                const parts = [...merged.entries()].map(([element, count]) => ({ element, count })).sort((a, b) => b.count - a.count)
                 const shares = distributeIntegerByWeight(totalRelease, parts.map(p => p.count))
                 for (let i = 0; i < parts.length; i++) {
                   const count = shares[i] ?? 0
@@ -2342,16 +2355,21 @@ function applyNormaHatChain(
           const dd = anomalyPoolResult.value?.disorderDamage
           const perEvent = (dd?.avgDamage ?? 0) * 0.25
           const boss = isAxis ? bossAnomalyState.value : null
-          const repChain = boss ? [...(boss.stateChainsPerWindow[0] ?? []), ...(boss.windOverlayPerWindow[0] ?? [])] : []
+          const bossWindows = boss?.stateChainsPerWindow.length ?? 0
+          const anySegment = !!boss && (boss.stateChainsPerWindow.some(c => c.length > 0) || boss.windOverlayPerWindow.some(c => c.length > 0))
           let parts: Array<{ element: string; count: number }> = []
-          if (perEvent > 0 && event.count > 0 && event.element === 'dominant' && boss && repChain.length > 0) {
-            const perRepWindow = Math.max(1, Math.round(event.count / Math.max(1, boss.stunsTotal ?? 1)))
-            parts = attributeCountByStateChain(
-              perRepWindow,
-              repChain,
-              boss.windowDuration && boss.windowDuration > 0 ? boss.windowDuration : computeWindowDuration(),
-              agent?.damageElement ?? 'ether',
-            )
+          if (perEvent > 0 && event.count > 0 && event.element === 'dominant' && boss && bossWindows > 0 && anySegment) {
+            const D = boss.windowDuration && boss.windowDuration > 0 ? boss.windowDuration : computeWindowDuration()
+            // 事件总次数均分到各真实失衡窗，逐窗按该窗状态链取样归因（展开后每窗链可能不同）
+            const winShares = distributeIntegerByWeight(Math.max(0, Math.floor(event.count)), Array(bossWindows).fill(1))
+            const merged = new Map<string, number>()
+            for (let w = 0; w < bossWindows; w++) {
+              const chain = [...(boss.stateChainsPerWindow[w] ?? []), ...(boss.windOverlayPerWindow[w] ?? [])]
+              for (const p of attributeCountByStateChain(winShares[w] ?? 0, chain, D, agent?.damageElement ?? 'ether')) {
+                merged.set(p.element, (merged.get(p.element) ?? 0) + p.count)
+              }
+            }
+            parts = [...merged.entries()].map(([element, count]) => ({ element, count })).sort((a, b) => b.count - a.count)
             const shares = distributeIntegerByWeight(Math.max(0, Math.floor(event.count)), parts.map(p => p.count))
             for (let i = 0; i < parts.length; i++) {
               const shareCount = shares[i] ?? 0

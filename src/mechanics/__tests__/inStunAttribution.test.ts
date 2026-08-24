@@ -97,6 +97,7 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
   it('双属性错峰触发：极性紊乱次数按状态段时占拆分（代表窗 3 取样 → 以太段 1、电段 2 → 总 9 次拆 3/6）', async () => {
     const { config } = await setupHarness([{ agentId: '1511', cinemaLevel: 2 }, { agentId: '1181' }])
     config.useStunAxis = true
+    config.enemy.stunCountLock = 2
     // 以太地雷撞 @0s 触发（第5击过管），电强特 @8s 才开始积蓄（第16击过管）
     // → 状态链 以太[0,8) → 电[8,窗尾)；紊乱替换链 电→…不影响消费端「当时状态」归因
     config.stunAxes = [{
@@ -111,8 +112,11 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
     const calc = useResourceCalc()
     const boss = calc.bossAnomalyState.value!
     expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['ether', 'electric'])
-    // 替换型紊乱点：电替换以太 @8s，归因取被替换的原状态（以太）
-    expect(boss.disorders).toEqual([{ windowIndex: 0, time: 8, element: 'ether' }])
+    // 替换型紊乱点：窗0 电@8s 替换以太；窗1 以太@22s 重激活（电已过期）后电@30s 再替换
+    expect(boss.disorders).toEqual([
+      { windowIndex: 0, time: 8, element: 'ether' },
+      { windowIndex: 1, time: 30, element: 'ether' },
+    ])
     // 总次数守恒（事件侧收敛后的实际失衡次数为准）。
     // 代表窗取样（D=22s、n=3）：t≈3.7 落以太段、11 落电段[8,18)、18.3 落电过期后的空档
     // → 回退触发者自身元素（南宫羽=以太）→ 以太:电 = 2:1 → 6 次拆 4/2
@@ -128,6 +132,7 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
   it('异放同口径：无手动分配时按状态段取样归因', async () => {
     const { config } = await setupHarness([{ agentId: '1511', cinemaLevel: 2 }, { agentId: '1181' }])
     config.useStunAxis = true
+    config.enemy.stunCountLock = 2
     config.stunAxes = [{
       name: '点时归因轴',
       count: 3,
@@ -150,6 +155,7 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
   it('手动 releaseShare 覆盖点时归因：回落权重路径且次数守恒', async () => {
     const { config } = await setupHarness([{ agentId: '1511', cinemaLevel: 2 }, { agentId: '1181' }])
     config.useStunAxis = true
+    config.enemy.stunCountLock = 2
     config.stunAxes = [{
       name: '手动覆盖轴',
       count: 3,
@@ -173,6 +179,7 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
   it('进窗初始状态可指定（v2 需求②）：entryElement 参与替换循环，紊乱归因取初始状态', async () => {
     const { config } = await setupHarness([{ agentId: '1511', cinemaLevel: 2 }, { agentId: '1181' }])
     config.useStunAxis = true
+    config.enemy.stunCountLock = 2
     config.setMechanicSetting('boss.entryAnomaly', 1) // 火
     config.stunAxes = [{
       name: '进窗状态轴',
@@ -185,9 +192,29 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
     }]
     const calc = useResourceCalc()
     const boss = calc.bossAnomalyState.value!
-    // 开场火 @0s 被以太替换、@8s 电再替换以太 → 紊乱归因链 火→以太
-    expect(boss.disorders.map(d => d.element)).toEqual(['fire', 'ether'])
+    // 开场火 @0s 被以太替换、@8s 电再替换以太；窗1 以太@22 重激活后被电@30 替换 → 火→以太→以太
+    expect(boss.disorders.map(d => d.element)).toEqual(['fire', 'ether', 'ether'])
     // 零长开场段被丢弃，可见链仍为 以太→电
     expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['ether', 'electric'])
+  })
+})
+
+describe('逐失衡展开（count 展开，2026-08-24 单独立项）', () => {
+  it('跨窗余量继承：单窗不够积蓄的配置在第 2 窗触发——代表窗近似下永远为 0', async () => {
+    const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1371' }])
+    config.enemy.stunCountLock = 2
+    config.useStunAxis = true
+    // 格莉丝强特 ≈194/击 ×14 = 2716 < 第一管 3000：单窗内永不触发；
+    // 展开后第 1 窗余量 2716 继承到第 2 窗（2716+2716 ≥ 3000）→ 第 2 窗触发电异常
+    config.stunAxes = [{
+      name: '继承证明轴',
+      count: 2,
+      actions: [{ slot: 0, moveId: '1181005', count: 14, startTime: 0 }],
+      basicFillerSlot: 0,
+    }]
+    const calc = useResourceCalc()
+    const st = calc.inStunAnomalyState.value!
+    expect(st.windows).toBe(2)
+    expect(st.elements.find(e => e.element === 'electric')?.triggerCount).toBe(1)
   })
 })
