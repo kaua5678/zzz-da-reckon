@@ -121,7 +121,8 @@
                       <div class="guarantee-row">
                         <span class="section-title" style="margin-right: 12px">保底目标</span>
                         <n-checkbox :checked="guaranteeStun" @update:checked="v => setGuarantee('stun', v)">保底4失衡</n-checkbox>
-                        <n-checkbox :checked="guaranteeFury" @update:checked="v => setGuarantee('fury', v)">保底4嗔火</n-checkbox>
+                        <!-- 嗔火是般岳专属资源：队里没有般岳不显示（引擎侧 banyueSlot>=0 才消费） -->
+                        <n-checkbox v-if="teamHasBanyue" :checked="guaranteeFury" @update:checked="v => setGuarantee('fury', v)">保底4嗔火</n-checkbox>
                         <n-checkbox :checked="guaranteeUltimate" @update:checked="v => setGuarantee('ultimate', v)">保底4喧响</n-checkbox>
                       </div>
                       <div class="section-title">战斗动作次数</div>
@@ -231,27 +232,29 @@
                         </div>
                       </n-gi>
                       <n-gi v-if="selectedChar.agentId === '1371'">
-                        <div class="field">
-                          <span class="field-label">3连墨痕化形</span>
+                        <div class="field" title="≤0/清空 = 自动：总闪能打完失衡内消耗，剩余全部轴外打 3 连墨痕化形（60闪能/次）；填正数覆盖">
+                          <span class="field-label">3连墨痕化形<span class="field-hint">≤0=自动</span></span>
                           <n-input-number
-                            :value="selectedChar.yixuanInk3Count ?? 0"
+                            :value="(selectedChar.yixuanInk3Count ?? 0) > 0 ? selectedChar.yixuanInk3Count : null"
                             :min="0"
                             :max="99"
                             size="small"
                             style="width: 100%"
+                            placeholder="自动"
                             @update:value="v => configStore.setYixuanInk3Count(configStore.selectedSlot, v ?? 0)"
                           />
                         </div>
                       </n-gi>
                       <n-gi v-if="selectedChar.agentId === '1371'">
-                        <div class="field">
-                          <span class="field-label">完美格挡</span>
+                        <div class="field" title="≤0/清空 = 自动：全完美格挡 = 弹刀次数（每次 #2 赠送 +10 闪能）；填正数覆盖">
+                          <span class="field-label">完美格挡<span class="field-hint">≤0=自动</span></span>
                           <n-input-number
-                            :value="selectedChar.yixuanPerfectBlockCount ?? 0"
+                            :value="(selectedChar.yixuanPerfectBlockCount ?? 0) > 0 ? selectedChar.yixuanPerfectBlockCount : null"
                             :min="0"
                             :max="99"
                             size="small"
                             style="width: 100%"
+                            placeholder="自动"
                             @update:value="v => configStore.setYixuanPerfectBlockCount(configStore.selectedSlot, v ?? 0)"
                           />
                         </div>
@@ -747,10 +750,11 @@ const catalogStore = useCatalogStore()
 const { statLabel, formatStatValue } = useStatLabel()
 
 // ========== 预设队伍（下拉，与「队伍对比」页共用 src/data/teamPresets/） ==========
-import { teamPresets } from '@/data/teamPresets'
+import { teamPresets, teamPresetGroupOptions } from '@/data/teamPresets'
 import { buildGoldStepsFromConfig, teamGoldOf } from '@/composables/teamCompare'
 const presetSelectValue = ref<string | null>(null)
-const presetTeamOptions = computed(() => teamPresets.map(t => ({ value: t.id, label: t.name })))
+/** 两级下拉：一级分类（如 命破队）→ 二级队伍 */
+const presetTeamOptions = teamPresetGroupOptions
 /** 最近一次应用的预设 id（「预设金数」弹窗保存到预设文件时默认目标） */
 const lastAppliedPresetId = ref<string | null>(null)
 function onPresetSelect(id: string | number | null) {
@@ -919,6 +923,7 @@ const selectedChar = computed<CharacterConfig>(() => configStore.team[configStor
 // 交互次数默认值（如星徽·比利 招架4/闪反0/格挡5）：char 未填（0）时输入框预填展示，计算侧同口径
 const interactionDefaults = computed(() => getInteractionDefaults(selectedChar.value?.agentId ?? ''))
 // ========== 保底目标（0/1 勾选；预设轴/队伍应用时自动填充） ==========
+const teamHasBanyue = computed(() => configStore.team.some(c => c?.agentId === '1471'))
 const guaranteeStun = computed(() => configStore.getMechanicSetting('guarantee.stun', 0) !== 0)
 const guaranteeFury = computed(() => configStore.getMechanicSetting('guarantee.fury', 0) !== 0)
 const guaranteeUltimate = computed(() => configStore.getMechanicSetting('guarantee.ultimate', 0) !== 0)

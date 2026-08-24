@@ -17,8 +17,11 @@ import { fmt } from '@/utils/format'
  *   2连墨痕化形（#1 40闪能 → #3 免费）= 40 闪能/次；
  *   3连墨痕化形（#1 → #3 → #4 20闪能）= 60 闪能/次；
  *   完美格挡次数（#2 赠送招式，免费，回 10 闪能/次）；
- *   剩余闪能全部用于凝云术链（墨烬影消 20 → 凝云术蓄力 0-2s/0-40 耗能/倍率随时间），
- *   轴外默认满蓄 2s（秒均折算）；失衡轴内凝云次数/时长由轴决定（可延长缩短：轴 action 的
+ *   3连/完美格挡 ≤0 = 自动（2026-08 用户口径）：完美格挡 = 弹刀次数（全完美）；
+ *   总闪能先打完失衡内（轴内凝云等）消耗，剩余闪能全部轴外打 3 连墨痕化形 → 轴外凝云清零；
+ *   影画4 静心（增伤载体=凝云/墨烬影消）：自动口径下留 1 轮凝云（60 闪能）当载体，不归零。
+ *   手填 ≥1 覆盖自动值（此时剩余闪能用于凝云术链：墨烬影消 20 → 凝云术蓄力 0-2s/0-40 耗能/倍率随时间），
+ *   轴外凝云默认满蓄 2s（秒均折算）；失衡轴内凝云次数/时长由轴决定（可延长缩短：轴 action 的
  *   duration 字段覆盖倍率表 actionTime，模块按秒均折算倍率/耗能/daze）。
  * - 失衡强特增伤（额外能力·玄墨暗涌）：凝云术/墨烬影消命中失衡敌人伤害+30%——
  *   轴模式读取失衡轴内强特（轴内行直接 +30）；非轴模式已弃用（默认 0，滑块兜底自调）。
@@ -329,9 +332,12 @@ function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg }: AgentCharConf
   }
 
   // 额外闪能总账（文本明确数值，次数按现有交互输入近似）：
-  // 完美格挡 +10/次（yixuanPerfectBlockCount）、极限闪避 +5/次（dodgeCounterCount）、
+  // 完美格挡 +10/次（yixuanPerfectBlockCount，≤0=自动=弹刀次数全完美）、极限闪避 +5/次（dodgeCounterCount）、
   // 影画1 落雷 +5/次（6s CD 战斗时间驱动）、玄墨异常触发 +10/次（外层收敛注入 cfg.yixuanAnomalyTriggerFlash）
-  const perfectBlocks = Math.max(0, Math.floor(Number(record.yixuanPerfectBlockCount ?? 0)))
+  const pbRaw = Number(record.yixuanPerfectBlockCount ?? 0)
+  const perfectBlocks = pbRaw >= 1
+    ? Math.floor(pbRaw)
+    : Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).parryCount ?? 0)))
   const dodges = Math.max(0, Math.floor(cfg.dodgeCounterCount ?? 0))
   const anomalyFlash = Math.min(ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(record.yixuanAnomalyTriggerFlash ?? 0))))
   // 极限支援换场落雷（额外能力，用户口径）：默认次数 = 队友正常弹刀次数求和（上限），主页可录入；
@@ -380,17 +386,47 @@ function applyYixuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   specBase.applyPanel?.({ panel, cinemaLevel } as AgentPanelInput)
 }
 
+/**
+ * 哨兵自动口径（用户口径 2026-08）：3连墨痕化形 / 完美格挡 次数 ≤0（缺省/清空）= 自动——
+ * 总闪能先打完失衡内（轴内凝云等）消耗，剩余闪能全部在轴外打 3连墨痕化形（60/次）；
+ * 完美格挡按「全完美」= 弹刀次数（每次 +10 闪能进收入）。手填 ≥1 覆盖自动值。
+ */
+function resolveYixuanAutoInputs(
+  record: Record<string, unknown>,
+  cfg: AgentCharConfigInput['cfg'],
+  income: number,
+  ink2: number,
+  axisCloudSpent: number,
+): { ink3: number; perfectBlocks: number } {
+  const ink3Raw = Number(record.yixuanInk3Count ?? 0)
+  const ink3 = ink3Raw >= 1
+    ? Math.floor(ink3Raw)
+    : Math.floor(Math.max(0, income - ink2 * INK2_COST - axisCloudSpent) / INK3_COST)
+  const pbRaw = Number(record.yixuanPerfectBlockCount ?? 0)
+  const perfectBlocks = pbRaw >= 1
+    ? Math.floor(pbRaw)
+    : Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).parryCount ?? 0)))
+  // 影画4 静心（增伤载体=凝云/墨烬影消）：自动口径下留 1 轮凝云（60 闪能）当载体，
+  // 否则轴外凝云全被 3 连吃掉 → C4 0 增幅 —— 用户口径 2026-08
+  const cinemaLevel = Math.max(0, Math.floor(Number(record.yixuanCinemaLevel ?? 0)))
+  if (cinemaLevel >= 4 && ink3 > 0) {
+    const reserved = Math.min(ink3, 1) // 留 1 轮凝云 = 少打 1 次 3 连
+    return { ink3: ink3 - reserved, perfectBlocks }
+  }
+  return { ink3, perfectBlocks }
+}
+
 /** 从 cfg 读链输入并分解（buildExecutions/estimate/resourceSections 共用） */
 function resolveYixuanChain(cfg: AgentCharConfigInput['cfg'], exSpecialCount: number): YixuanExChain {
   const record = cfg as unknown as Record<string, unknown>
   const ink2 = Math.max(0, Math.floor(Number(record.yixuanInk2Count ?? 0)))
-  const ink3 = Math.max(0, Math.floor(Number(record.yixuanInk3Count ?? 0)))
-  const perfectBlocks = Math.max(0, Math.floor(Number(record.yixuanPerfectBlockCount ?? 0)))
   const axisEx = readAxisEx(cfg)
   const axisCloud = axisEx[MOVE.cloud] ?? 0
   const axisSec = Number(record.yixuanAxisCloudSeconds ?? CLOUD_MAX_SECONDS) || CLOUD_MAX_SECONDS
   // 池子隐含收入（上轮口径）：exSpecialCount × 循环当量 60 —— 收敛后 ≈ 闪能总收入（含队友终结/异常触发）
   const income = Math.max(0, exSpecialCount) * CLOUD_CYCLE_COST
+  const axisCloudSpent = axisCloud * (ASHEN_COST + axisSec * (CLOUD_MAX_COST / CLOUD_MAX_SECONDS))
+  const { ink3, perfectBlocks } = resolveYixuanAutoInputs(record, cfg, income, ink2, axisCloudSpent)
   return computeYixuanExChain(income, ink2, ink3, perfectBlocks, axisCloud, axisSec)
 }
 
@@ -609,16 +645,17 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
     })
   }
 
-  // 影画6：赠送的符法千重执行（真实 moveId 回填，不耗术法值/喧响）
+  // 影画6：赠送的符法千重执行（真实 moveId 回填，不耗术法值/喧响；施放时间同本体 2.267s）
   if (giftUlts > 0) {
+    const giftAt = times[MOVE.extraUlt] ?? 0
     executions.push({
       moveId: MOVE.extraUlt,
       moveName: '终结技：符法千重（影画6·调息赠送）',
       category: 'chain',
       count: giftUlts,
-      actionTime: 0,
+      actionTime: giftAt,
       comboAlignRatio: 0,
-      totalTime: 0,
+      totalTime: giftAt * giftUlts,
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
@@ -633,14 +670,15 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   // 影画2·聚墨：每发动一次符法千重获得一层（最多 1 层）→ 消耗发动符法千重-破（1200% 贯穿力，倍率行被隐藏，
   // 数值为用户提供：伤害 1200 / 失衡 374.055 / 喧响 62.3425 / 异常 226.7；假 id 不进失衡/异常池，daze/异常走执行字段）
   if (cinemaLevel >= 2 && totalFuFaUlts > 0) {
+    const poAt = times[MOVE.extraUlt] ?? 0 // 符法千重-破 = 符法千重的破版，施放时长同本体（2.267s，用户口径 2026-08）
     executions.push({
       moveId: C2_PO_MOVE_ID,
       moveName: '强化特殊技：符法千重-破',
       category: 'special',
       count: totalFuFaUlts,
-      actionTime: 0,
+      actionTime: poAt,
       comboAlignRatio: 0,
-      totalTime: 0,
+      totalTime: poAt * totalFuFaUlts,
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
@@ -657,17 +695,19 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
     })
   }
 
-  // 术法值驱动的符法千重（真实 moveId 回填，不设 override）：次数 = min(术法值可打次数, 文本框/自动默认)
+  // 术法值驱动的符法千重（真实 moveId 回填，不设 override）：次数 = min(术法值可打次数, 文本框/自动默认)；
+  // 施放时间 = 本体 2.267s 计前台（用户口径 2026-08，曾 0 时间不计）
   // 玄墨值/合轴/聚墨/静心等下游已在上面按 totalFuFaUlts（实际次数）结算。
   if (shufaUlts > 0) {
+    const shufaAt = times[MOVE.extraUlt] ?? 0
     executions.push({
       moveId: MOVE.extraUlt,
       moveName: '终结技：符法千重（术法值）',
       category: 'special',
       count: shufaUlts,
-      actionTime: 0,
+      actionTime: shufaAt,
       comboAlignRatio: 0,
-      totalTime: 0,
+      totalTime: shufaAt * shufaUlts,
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,

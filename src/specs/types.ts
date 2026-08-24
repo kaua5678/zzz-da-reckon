@@ -96,6 +96,8 @@ export interface EventSpec {
   carrierMoveId?: string
   carrierField?: string
   carrierMoveName?: string
+  /** 事件执行行的动作时间（秒）；缺省 0 = 不计时间（引擎事件约定，抽象事件）。真实施放类事件必须填 */
+  actionTime?: number
   /** 调用倍率表的哪一行（默认 damage） */
   multiplierRowId?: string
   /** 调用倍率时的缩放系数（如风炮 = 起风倍率 × 0.3） */

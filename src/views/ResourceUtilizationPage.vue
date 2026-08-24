@@ -213,7 +213,12 @@
       </n-card>
 
       <n-card size="small" class="mechanic-card" :bordered="true">
-        <template #header>命座提升率（当前配队与滑块下，逐级影画带来的伤害增量）</template>
+        <template #header>
+          命座提升率（当前配队与滑块下，逐级影画带来的伤害增量）
+          <n-tag v-if="!axisActiveForUplift" size="tiny" type="warning" :bordered="false" style="margin-left:8px;vertical-align:middle">
+            非轴模式：本页命座提升率仅供参考，失衡轴模式才可信
+          </n-tag>
+        </template>
         <div class="intro-actions">
           <n-button size="small" type="primary" secondary :loading="cinemaComputing" @click="computeCinemaGains">
             {{ cinemaComputing ? '计算中' : (cinemaGains.length > 0 ? '重新计算' : '计算') }}
@@ -320,7 +325,11 @@ import type { MechanicSetting } from '@/types/resource'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
-const { resourceResult, anomalyVirtualPanels, anomalyPoolResult, panels, agentNames, teamTotalDamage, stunPoolResult } = useResourceCalc()
+const { resourceResult, anomalyVirtualPanels, anomalyPoolResult, panels, agentNames, teamTotalDamage, stunPoolResult, autoActive, effectiveStunAxes } = useResourceCalc()
+/** 命座提升率可信度：轴模式（用户开轴或自动命中预设轴）才可信；非轴是退化兜底，仅提示用途 */
+const axisActiveForUplift = computed(() =>
+  (configStore.useStunAxis || autoActive.value) && (effectiveStunAxes.value?.length ?? 0) > 0,
+)
 
 // 元素减抗 key 映射（从 useResourceCalc 复制）
 const ELEMENT_RES_REDUCTION_KEYS: Record<string, string> = {

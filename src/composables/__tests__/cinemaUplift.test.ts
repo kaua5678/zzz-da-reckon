@@ -16,6 +16,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
+import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useCatalogStore } from '@/stores/catalog'
 import { analyzeCinemaUplift, UPLIFT_EPSILON_PCT } from '@/composables/cinemaUplift'
@@ -29,8 +30,9 @@ function declaresImplemented(agentId: string, cinema: number): boolean {
   return String(entry?.status ?? '').startsWith('implemented')
 }
 
-async function analyze(agentId: string, mates: string[] = []) {
+async function analyze(agentId: string, mates: string[] = [], configure?: (config: ReturnType<typeof useConfigStore>) => void) {
   const { config } = await setupHarness([{ agentId }, ...mates.map(id => ({ agentId: id }))])
+  configure?.(config)
   const calc = useResourceCalc()
   const catalogStore = useCatalogStore()
   const rows = await analyzeCinemaUplift({
@@ -79,13 +81,14 @@ describe('analyzeCinemaUplift（命座提升率 + 死数据自检）', () => {
     }
   })
 
-  it('自检语义：面板有字段变化 → ok；无面板变化但有伤害提升 → execLevel（阈值 UPLIFT_EPSILON_PCT）', async () => {
+  it('自检语义：面板有字段变化 → ok；无面板变化但伤害移动 |gain| ≥ ε（含微负）→ execLevel；零移动 → unimplemented', async () => {
     const { rows } = await analyze('1371', ['1251', '1271'])
     for (const e of rows[0].entries) {
       if (e.changedFields.length > 0) {
         expect(e.warn, `命座${e.to} 有面板变化却不是 ok`).toBe('ok')
-      } else if (e.gainPct >= UPLIFT_EPSILON_PCT) {
-        expect(e.warn, `命座${e.to} 无面板变化但有提升，应为 execLevel`).toBe('execLevel')
+      } else if (Math.abs(e.gainPct) >= UPLIFT_EPSILON_PCT) {
+        // 与 analyzer 同源：伤害符号变化本身是执行/资源级生效证据（预算极紧时可轻微负增益）
+        expect(e.warn, `命座${e.to} 无面板变化但有移动，应为 execLevel`).toBe('execLevel')
       } else {
         expect(e.warn).toBe('unimplemented')
       }
@@ -93,12 +96,19 @@ describe('analyzeCinemaUplift（命座提升率 + 死数据自检）', () => {
   })
 
   it('防死数据：状态表声明已实现的命座级别不得被判为 unimplemented（仪玄/般岳/卢西娅）', async () => {
-    for (const [agentId, mates] of [
-      ['1371', ['1251', '1271']],
-      ['1471', ['1481', '']],
-      ['1451', ['1051', '']],
-    ] as const) {
-      const { rows } = await analyze(agentId, (mates as readonly string[]).filter(Boolean) as string[])
+    type Configure = (config: ReturnType<typeof useConfigStore>) => void
+    const cases: Array<[string, string[], Configure | undefined]> = [
+      // 仪玄 4命（静心）增伤载体 = 凝云/墨烬影消行：自动口径下轴外闪能全打 3 连墨痕化形（cloudOut=0），
+      // 非轴模式 C4 无载体会被误报死数据——按实战口径挂失衡轴（轴内凝云）验证
+      ['1371', ['1251', '1271'], config => {
+        config.useStunAxis = true
+        config.stunAxes = [{ name: '轴1', count: 3, actions: [{ slot: 0, moveId: '1371022', count: 1 }], basicFillerSlot: 0 }]
+      }],
+      ['1471', ['1481'], undefined],
+      ['1451', ['1051'], undefined],
+    ]
+    for (const [agentId, mates, configure] of cases) {
+      const { rows } = await analyze(agentId, mates, configure)
       const bad = rows[0].entries
         .filter(e => declaresImplemented(agentId, e.to) && e.warn === 'unimplemented')
         .map(e => `影画${e.to}（提升 ${e.gainPct.toFixed(3)}%）`)
