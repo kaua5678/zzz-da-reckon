@@ -71,7 +71,18 @@ export function computeInStunAnomalyTimeline(input: {
   let carried: InStunEntryState[] = []
   for (let w = 0; w < input.windows.length; w++) {
     const win = input.windows[w]
-    const entry = win.entryStates?.length ? win.entryStates : carried
+    // entryStates 部分注入（2026-08-24 用户口径）：每次失衡都是中间态——声明的元素覆盖
+    // 上一窗余量，其余元素条并存继承（多属性异常条互不清除）
+    let entry = carried
+    if (win.entryStates?.length) {
+      if (carried.length === 0) {
+        entry = win.entryStates
+      } else {
+        const merged = new Map(carried.map(s => [s.element, Math.max(0, s.gauge)]))
+        for (const st of win.entryStates) merged.set(st.element, Math.max(0, st.gauge))
+        entry = [...merged.entries()].map(([element, gauge]) => ({ element, gauge }))
+      }
+    }
     const gauges = new Map<string, number>()
     const activeUntil = new Map<string, number>()
     for (const st of entry) {
@@ -193,6 +204,12 @@ export interface BossAnomalyStateResult {
   note: string
 }
 
+/** 窗口边界强制状态注入（用户口径：每次失衡都是中间态——轴条目声明敌方以什么状态进入该段失衡） */
+export interface BoundaryStateInjection {
+  windowIndex: number
+  element: string
+}
+
 interface ActiveInterval {
   start: number
   end: number
@@ -210,6 +227,8 @@ export function computeBossAnomalyStateTimeline(input: {
   windowCount: number
   /** 开战时目标身上已有的属性异常（可选） */
   entryElement?: string
+  /** 窗口边界强制状态注入（轴条目声明「以什么状态进入该段失衡」；不记紊乱，风化走覆盖层） */
+  boundaryStates?: BoundaryStateInjection[]
 }): BossAnomalyStateResult {
   const D = Math.max(0, input.windowDuration)
   const totalEnd = D * Math.max(1, input.windowCount)
@@ -233,32 +252,55 @@ export function computeBossAnomalyStateTimeline(input: {
     }
   }
 
-  const sorted = [...input.triggers].sort((a, b) =>
-    (a.windowIndex * D + a.offsetSeconds) - (b.windowIndex * D + b.offsetSeconds))
-  for (const trig of sorted) {
-    const t = trig.windowIndex * D + trig.offsetSeconds
-    const base = getBaseElement(trig.element)
+  // 统一时间序事件：边界注入优先于同时刻触发（先「以什么状态进窗」再演化窗内触发）
+  type SchedEv = { time: number; kind: 'bound' | 'trig'; el: string; win: number }
+  const evs: SchedEv[] = []
+  for (const b of input.boundaryStates ?? []) {
+    evs.push({ time: b.windowIndex * D, kind: 'bound', el: b.element, win: b.windowIndex })
+  }
+  for (const t of input.triggers) {
+    evs.push({ time: t.windowIndex * D + t.offsetSeconds, kind: 'trig', el: t.element, win: t.windowIndex })
+  }
+  evs.sort((a, b) => a.time - b.time || (a.kind === 'bound' ? -1 : 1))
+
+  for (const ev of evs) {
+    const t = ev.time
+    const base = getBaseElement(ev.el)
+    if (ev.kind === 'bound') {
+      if (base === 'wind') {
+        // 风化保持不变：覆盖层激活/刷新
+        if (windEnd >= t) windIntervals[windIntervals.length - 1].end = t + durOf(ev.el)
+        else windIntervals.push({ start: t, end: t + durOf(ev.el), element: ev.el })
+        windEnd = windIntervals[windIntervals.length - 1].end
+        continue
+      }
+      // 强制设状态：截断现时段（不记紊乱——这是进窗状态声明，不是窗内触发事件）
+      if (std && std.end > t) std.end = t
+      std = { start: t, end: t + durOf(ev.el), element: ev.el }
+      stdIntervals.push(std)
+      continue
+    }
     if (base === 'wind') {
       // 风化保持不变：独立层激活/刷新，不动标准槽
-      if (windEnd >= t) windIntervals[windIntervals.length - 1].end = t + durOf(trig.element)
-      else windIntervals.push({ start: t, end: t + durOf(trig.element), element: trig.element })
+      if (windEnd >= t) windIntervals[windIntervals.length - 1].end = t + durOf(ev.el)
+      else windIntervals.push({ start: t, end: t + durOf(ev.el), element: ev.el })
       windEnd = windIntervals[windIntervals.length - 1].end
       continue
     }
     if (!std || std.end <= t) {
       // 无活跃状态（含过期后重激活）：不算紊乱
-      std = { start: t, end: t + durOf(trig.element), element: trig.element }
+      std = { start: t, end: t + durOf(ev.el), element: ev.el }
       stdIntervals.push(std)
       continue
     }
     if (getBaseElement(std.element) === base) {
-      std.end = t + durOf(trig.element) // 同元素刷新
+      std.end = t + durOf(ev.el) // 同元素刷新
       continue
     }
     // 替换型紊乱：归因取被替换的原状态（当前时点状态），随后状态切到新元素
-    disorders.push({ windowIndex: trig.windowIndex, time: t, element: std.element })
+    disorders.push({ windowIndex: ev.win, time: t, element: std.element })
     std.end = t // 截断原状态时段，避免新旧重叠
-    std = { start: t, end: t + durOf(trig.element), element: trig.element }
+    std = { start: t, end: t + durOf(ev.el), element: ev.el }
     stdIntervals.push(std)
   }
 

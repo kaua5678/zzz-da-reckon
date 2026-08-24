@@ -155,3 +155,31 @@ describe('attributeCountByStateChain（极性紊乱点时归因）', () => {
     expect(parts).toContainEqual({ element: 'ice', count: 2 })
   })
 })
+
+describe('中间态注入（2026-08-24 用户口径：每次失衡都是中间态）', () => {
+  it('entryStates 部分注入：声明的元素覆盖余量、其余元素条并存继承', () => {
+    const r = computeInStunAnomalyTimeline({
+      windows: [
+        { actions: [{ element: 'ether', perHitBuildUp: 1600, count: 2, startTime: 0 }] },
+        { entryStates: [{ element: 'ether', gauge: 50 }], actions: [{ element: 'electric', perHitBuildUp: 3200, count: 1, startTime: 0 }] },
+      ],
+      windowDuration: 16,
+    })
+    expect(r.triggers.filter(t => t.windowIndex === 1).map(t => t.element)).toEqual(['electric'])
+    const find = (w: number, el: string) => r.endGaiges[w].find(s => s.element === el)?.gauge
+    expect(find(1, 'ether')).toBe(50)
+    expect(find(1, 'electric')).toBe(200)
+  })
+
+  it('边界注入：轴段开始强制设状态（不记紊乱），窗内触发按新状态演化', () => {
+    const r = computeBossAnomalyStateTimeline({
+      triggers: [{ windowIndex: 1, element: 'fire', offsetSeconds: 4 }],
+      windowDuration: 16,
+      windowCount: 2,
+      boundaryStates: [{ windowIndex: 1, element: 'ice' }],
+    })
+    // 窗1 开局(t=16)强制冰；t=20 火替换冰 → 紊乱归因冰
+    expect(r.disorders).toEqual([{ windowIndex: 1, time: 20, element: 'ice' }])
+    expect(r.stateChainsPerWindow[1][0]).toEqual({ start: 0, end: 4, element: 'ice' })
+  })
+})

@@ -1363,24 +1363,13 @@ function applyNormaHatChain(
         // 顺序分配——条目 count=该动作模式重复的失衡窗数，受实际收敛失衡数钳制；小数失衡
         // 取整窗模拟（残窗忽略）。积蓄余量/异常状态因此逐窗真实继承，不再代表窗近似。
         const winAlloc = allocateAxisWindows(resolvedAxes, Math.round(stunCount))
-        // 用户口径：轴可设「进窗初始异常状态」+「初始异常条值(%)」（随预设导出）——取首个生效
-        // 轴条目上的显式设置，未填回落全局 boss.entryAnomaly/boss.entryGauge；
-        // 阈值系数对齐全局池（store/pool 两端字段命名互换，取乘积规避）
-        let axisEntrySource: StunAxis | undefined
-        for (let ai = 0; ai < resolvedAxes.length; ai++) {
-          if ((winAlloc[ai] ?? 0) <= 0) continue
-          if ((resolvedAxes[ai].entryAnomaly ?? 0) > 0) axisEntrySource = resolvedAxes[ai]
-          break
-        }
-        const entryElement = bossEntryAnomalyElement(
-          axisEntrySource ? axisEntrySource.entryAnomaly! : configStore.getMechanicSetting('boss.entryAnomaly', 0),
-        )
-        const entryGaugePct = axisEntrySource
-          ? Math.max(0, Math.min(100, axisEntrySource.entryGauge ?? 0))
-          : Math.max(0, Math.min(100, configStore.getMechanicSetting('boss.entryGauge', 0)))
+        // 用户口径（2026-08-24 纠正）：第一次失衡前也有非失衡积累期，**每次失衡都是中间态**。
+        // 轴条目的 entryAnomaly/entryGauge = 敌方以什么状态进入该段失衡——在该条目首个窗口
+        // 边界强制注入（状态机设状态、积蓄槽部分预填，其余元素条继承）；未填条目不注入，
+        // window0 未填回落全局 boss.*；阈值系数对齐全局池（store/pool 字段命名互换，取乘积规避）
         const thresholdCoeff = (configStore.enemy.anomalyCoeff ?? 1) * (configStore.enemy.bossAnomalyCoeff ?? 1)
         const windows: InStunWindowInput[] = []
-        let firstWindow = true
+        const windowEntryIdx: number[] = []
         resolvedAxes.forEach((axis, ai) => {
           const wins = Math.floor(winAlloc[ai] ?? 0)
           if (wins <= 0) return
@@ -1391,15 +1380,33 @@ function applyNormaHatChain(
               return { element: cm.element, perHitBuildUp: cm.perHit, count: Math.max(0, Math.floor(a.count || 1)), startTime: a.startTime ?? 0 }
             })
           for (let k = 0; k < wins; k++) {
-            if (firstWindow && entryElement && entryGaugePct > 0) {
-              const firstPipe = (BUILDUP_THRESHOLD_TABLE[entryElement] ?? BUILDUP_THRESHOLD_TABLE.ice)[0]
-              windows.push({ actions, entryStates: [{ element: entryElement, gauge: (entryGaugePct / 100) * firstPipe * thresholdCoeff }] })
-            } else {
-              windows.push({ actions })
-            }
-            firstWindow = false
+            windows.push({ actions })
+            windowEntryIdx.push(ai)
           }
         })
+        // 条目边界注入：每条唯一生效条目的首个窗口应用其显式设置；window0 未填时回落全局设置
+        const boundaryStates: Array<{ windowIndex: number; element: string }> = []
+        {
+          const seenEntries = new Set<number>()
+          windows.forEach((win, wi) => {
+            const ei = windowEntryIdx[wi]
+            if (seenEntries.has(ei)) return
+            seenEntries.add(ei)
+            const axis = resolvedAxes[ei]
+            const explicit = (axis.entryAnomaly ?? 0) > 0
+            const idx = explicit ? axis.entryAnomaly! : (wi === 0 ? configStore.getMechanicSetting('boss.entryAnomaly', 0) : 0)
+            const el = bossEntryAnomalyElement(idx)
+            if (!el) return
+            const pct = explicit
+              ? Math.max(0, Math.min(100, axis.entryGauge ?? 0))
+              : (wi === 0 ? Math.max(0, Math.min(100, configStore.getMechanicSetting('boss.entryGauge', 0))) : 0)
+            if (pct > 0) {
+              const firstPipe = (BUILDUP_THRESHOLD_TABLE[el] ?? BUILDUP_THRESHOLD_TABLE.ice)[0]
+              ;(win.entryStates ??= []).push({ element: el, gauge: (pct / 100) * firstPipe * thresholdCoeff })
+            }
+            boundaryStates.push({ windowIndex: wi, element: el })
+          })
+        }
         const tl = computeInStunAnomalyTimeline({ windows, windowDuration: computeWindowDuration(), coeff: thresholdCoeff })
         inStunWindowTriggersNext = windows.length > 0
           ? Math.round((tl.triggers.length / windows.length) * 10) / 10
@@ -1440,8 +1447,8 @@ function applyNormaHatChain(
             triggers: tl.triggers,
             windowDuration: bossWindowDur,
             windowCount: Math.max(1, windows.length),
-            // 用户口径 v2 需求②：可指定进入窗口时的异常状态（机制设置 boss.entryAnomaly，0=无）
-            entryElement: entryElement || undefined,
+            // 条目边界注入：敌方以声明状态进入该段失衡（不记紊乱）
+            boundaryStates,
           }),
           stunsTotal: Math.max(1, Math.round(stunCount)),
           windowDuration: bossWindowDur,
@@ -2445,19 +2452,27 @@ function applyNormaHatChain(
             for (let i = 0; i < parts.length; i++) {
               const shareCount = shares[i] ?? 0
               if (shareCount <= 0) continue
+              // 极性基数用「现在的基础值」（用户口径）：当前状态元素的紊乱明细均摊；
+              // 池无该元素明细时回落全池均摊
+              const el = parts[i].element
+              const elDetails = (dd?.details ?? []).filter(d => getBaseElement(d.element) === getBaseElement(el))
+              const elEvents = elDetails.reduce((s, d) => s + (d.events ?? 0), 0)
+              const elDamage = elDetails.reduce((s, d) => s + (d.damage ?? 0), 0)
+              const perEventEl = elEvents > 0 ? (elDamage / elEvents) * 0.25 : perEvent
+              if (perEventEl <= 0) continue
               rows.push({
-                id: `polar-${slot}-${event.eventId}-${parts[i].element}`,
+                id: `polar-${slot}-${event.eventId}-${el}`,
                 slot,
                 agentId: charResult.agentId,
                 agentName: agentName(charResult.agentId, slot),
                 type: '极性紊乱',
                 name: event.eventName,
-                element: safeElement(parts[i].element),
+                element: safeElement(el),
                 source: event.carrierMoveName || event.carrierMoveId || event.eventId,
                 count: shareCount,
-                perDamage: perEvent,
-                totalDamage: perEvent * shareCount,
-                note: `${event.note ?? ''}；Boss异常状态轴·按触发时刻状态归因`,
+                perDamage: perEventEl,
+                totalDamage: perEventEl * shareCount,
+                note: `${event.note ?? ''}；${el}·Boss异常状态轴·按触发时刻状态归因·基数=该元素紊乱均摊`,
               })
             }
             continue

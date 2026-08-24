@@ -347,3 +347,54 @@ describe('轴条目级初始异常（v2.6，随预设导出）', () => {
     expect(out2[0].entryGauge).toBeUndefined()
   })
 })
+
+describe('逐条目边界注入（v2.7 中间态口径）', () => {
+  it('第二段轴声明「以火进入」：该段窗口开局即火状态，边界不记紊乱', async () => {
+    const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1371' }])
+    config.enemy.stunCountLock = 3
+    config.useStunAxis = true
+    config.stunAxes = [
+      { name: '一段', count: 1, actions: [{ slot: 0, moveId: '1181005', count: 14, startTime: 0 }] },
+      // 二段只补两击（不足以触发），验证空触发段也能携带边界注入
+      { name: '二段', count: 2, actions: [{ slot: 0, moveId: '1181005', count: 2, startTime: 0 }], entryAnomaly: 1, entryGauge: 30 },
+    ]
+    const calc = useResourceCalc()
+    const boss = calc.bossAnomalyState.value!
+    expect(boss.stateChainsPerWindow.length).toBe(3)
+    // 段1 无触发无状态；段2 边界注入火（不记紊乱——是进窗状态声明而非窗内触发事件）
+    expect(boss.disorders).toHaveLength(0)
+    expect(boss.stateChainsPerWindow[0]).toEqual([])
+    expect(boss.stateChainsPerWindow[1][0]).toMatchObject({ element: 'fire', start: 0 })
+    // 火持续 10s 到不了下一窗（窗距 22s）；二段两击/窗的电余量跨窗累积（2593→2963→3333≥3300）
+    // 在第 3 窗开局触发电——边界注入与跨窗继承并存
+    expect(boss.stateChainsPerWindow[2][0].element).toBe('electric')
+  })
+
+  it('极性紊乱基数用当前状态元素的明细均摊（fallback 全池均摊）', async () => {
+    const { config } = await setupHarness([{ agentId: '1511', cinemaLevel: 2 }, { agentId: '1181' }])
+    config.enemy.stunCountLock = 2
+    config.useStunAxis = true
+    config.stunAxes = [{
+      name: '基数轴',
+      count: 2,
+      actions: [
+        { slot: 0, moveId: '1511006', count: 6, startTime: 0 },
+        { slot: 1, moveId: '1181005', count: 18, startTime: 8 },
+      ],
+      basicFillerSlot: 0,
+    }]
+    const calc = useResourceCalc()
+    const dd = calc.anomalyPoolResult.value?.disorderDamage
+    if (!dd || dd.details.length === 0) return
+    const polar = calc.damagePoolRows.value.filter(r => r.type === '极性紊乱')
+    expect(polar.length).toBeGreaterThan(0)
+    for (const r of polar) {
+      const rows = dd.details.filter(d => d.element === r.element)
+      const evSum = rows.reduce((s, d) => s + (d.events ?? 0), 0)
+      const dmgSum = rows.reduce((s, d) => s + (d.damage ?? 0), 0)
+      const expected = evSum > 0 ? (dmgSum / evSum) * 0.25 : dd.avgDamage * 0.25
+      expect(r.perDamage).toBeCloseTo(expected, 4)
+      expect(r.note).toContain('基数=该元素紊乱均摊')
+    }
+  })
+})
