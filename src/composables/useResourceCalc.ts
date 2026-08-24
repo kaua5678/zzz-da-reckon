@@ -1970,7 +1970,7 @@ function applyNormaHatChain(
       })
     }
 
-    function pushRelease(row: { id: string; slot: number; agentId: string; name: string; count: number; multiplier: number; source: string; note?: string; element?: string; panel?: PanelValues; settlementPanel?: PanelValues; releaseCrit?: AnomalyEventExecution['releaseCrit'] }) {
+    function pushRelease(row: { id: string; slot: number; agentId: string; name: string; count: number; multiplier: number; source: string; note?: string; element?: string; panel?: PanelValues; settlementPanel?: PanelValues; releaseCrit?: AnomalyEventExecution['releaseCrit']; stunnedOverride?: number }) {
       if (row.count <= 0 || row.multiplier <= 0) return
       const basePanel = row.panel ?? damagePanels.value[row.slot]
       const settlementPanel = row.settlementPanel ?? basePanel
@@ -1999,7 +1999,7 @@ function applyNormaHatChain(
         enemyLevel: configStore.enemy.level,
         enemyResistance: enemyDamageRes[element] ?? 0,
         enemyResReduction: (settlementPanel?.enemyResReduction ?? 0) + releaseMod.enemyResReduction,
-        stunned: stunCoverage.value,
+        stunned: row.stunnedOverride ?? stunCoverage.value,
         stunMultiplier: configStore.enemy.stunVuln,
         critMode: 'expect',
         damageKind: 'release',
@@ -2042,6 +2042,41 @@ function applyNormaHatChain(
       (inStunAnomalyState.value?.elements ?? [])
         .filter(e => e.avgCoverage > 0 || e.triggerCount > 0)
         .map(e => ({ element: e.element, autoRatio: e.avgCoverage > 0 ? e.avgCoverage : 0.01 }))
+
+    /**
+     * 事件计数器（用户口径 2026-08-24「异放次数源」）：元素失衡内触发占比 =
+     * 时间线轴内触发数 / 全局池触发数（基础元素归并）。池无该元素数据 → 0（全部视为轴外）。
+     * 非轴场景不建逐事件状态机——轴外 = 总量 − 失衡内（用户裁决，平凡减法）。
+     */
+    const inWindowFraction = (element: string): number => {
+      const base = getBaseElement(element)
+      let total = 0
+      for (const p of anomalyPoolResult.value?.perElement ?? []) {
+        if (getBaseElement(p.element) === base) total += p.triggerCount ?? 0
+      }
+      if (total <= 0) return 0
+      const inside = inStunAnomalyState.value?.elements.find(e => e.element === base)?.triggerCount ?? 0
+      return Math.max(0, Math.min(1, inside / total))
+    }
+
+    /**
+     * 异放失衡易伤拆分：inStunBound 事件全额记失衡内；其余按事件计数器占比拆
+     * 「失衡内(stunned=1 全额易伤)/轴外(stunned=0 无易伤)」两段。非轴模式返回单段旧口径。
+     */
+    const releaseStunSegments = (
+      event: AnomalyEventExecution,
+      element: string,
+      count: number,
+    ): Array<{ count: number; stunned: number; suffix: string; tag: string }> => {
+      if (!isAxis || count <= 0) return [{ count, stunned: -1, suffix: '', tag: '' }]
+      if (event.inStunBound) return [{ count, stunned: 1, suffix: '-in', tag: '失衡内·全额失衡易伤' }]
+      const frac = inWindowFraction(element)
+      const countIn = Math.min(count, Math.round(count * frac))
+      const segs: Array<{ count: number; stunned: number; suffix: string; tag: string }> = []
+      if (countIn > 0) segs.push({ count: countIn, stunned: 1, suffix: '-in', tag: '失衡内·全额失衡易伤' })
+      if (count - countIn > 0) segs.push({ count: count - countIn, stunned: 0, suffix: '-out', tag: '轴外·无易伤' })
+      return segs
+    }
 
     const seenDirectIds = new Map<string, number>()
 
@@ -2268,20 +2303,23 @@ function applyNormaHatChain(
                   const element = parts[i].element
                   const prog = anomalyPoolResult.value?.perElement.find(p => p.element === element)
                   const baseSlot = prog ? getMainApplierSlot(prog.contributions) : slot
-                  pushRelease({
-                    id: `release-${slot}-${event.eventId}-${element}`,
-                    slot,
-                    agentId: charResult.agentId,
-                    name: event.eventName,
-                    count,
-                    multiplier: releaseMultiplierFor(event, element, triggerPanel, stunCoverage.value),
-                    source: event.carrierMoveName || event.carrierMoveId || event.eventId,
-                    note: `${event.note ?? ''}；${element}·Boss异常状态轴·按触发时刻状态归因`,
-                    element,
-                    panel: damagePanels.value[baseSlot] ?? triggerPanel,
-                    settlementPanel: triggerPanel,
-                    releaseCrit: event.releaseCrit,
-                  })
+                  for (const seg of releaseStunSegments(event, element, count)) {
+                    pushRelease({
+                      id: `release-${slot}-${event.eventId}-${element}${seg.suffix}`,
+                      slot,
+                      agentId: charResult.agentId,
+                      name: event.eventName,
+                      count: seg.count,
+                      multiplier: releaseMultiplierFor(event, element, triggerPanel, seg.stunned < 0 ? stunCoverage.value : seg.stunned),
+                      source: event.carrierMoveName || event.carrierMoveId || event.eventId,
+                      note: `${event.note ?? ''}；${element}·Boss异常状态轴·按触发时刻状态归因${seg.tag ? `；${seg.tag}` : ''}`,
+                      element,
+                      panel: damagePanels.value[baseSlot] ?? triggerPanel,
+                      settlementPanel: triggerPanel,
+                      releaseCrit: event.releaseCrit,
+                      stunnedOverride: seg.stunned < 0 ? undefined : seg.stunned,
+                    })
+                  }
                 }
                 continue
               }
@@ -2317,36 +2355,44 @@ function applyNormaHatChain(
               const element = effectiveWeights[i].element
               const prog = anomalyPoolResult.value?.perElement.find(p => p.element === element)
               const baseSlot = prog ? getMainApplierSlot(prog.contributions) : slot
-              pushRelease({
-                id: `release-${slot}-${event.eventId}-${element}`,
-                slot,
-                agentId: charResult.agentId,
-                name: event.eventName,
-                count,
-                multiplier: releaseMultiplierFor(event, element, triggerPanel, stunCoverage.value),
-                source: event.carrierMoveName || event.carrierMoveId || event.eventId,
-                note: `${event.note ?? ''}；${element}·${attributionLabel}`,
-                element,
-                panel: damagePanels.value[baseSlot] ?? triggerPanel,
-                settlementPanel: triggerPanel,
-                releaseCrit: event.releaseCrit,
-              })
+              for (const seg of releaseStunSegments(event, element, count)) {
+                pushRelease({
+                  id: `release-${slot}-${event.eventId}-${element}${seg.suffix}`,
+                  slot,
+                  agentId: charResult.agentId,
+                  name: event.eventName,
+                  count: seg.count,
+                  multiplier: releaseMultiplierFor(event, element, triggerPanel, seg.stunned < 0 ? stunCoverage.value : seg.stunned),
+                  source: event.carrierMoveName || event.carrierMoveId || event.eventId,
+                  note: `${event.note ?? ''}；${element}·${attributionLabel}${seg.tag ? `；${seg.tag}` : ''}`,
+                  element,
+                  panel: damagePanels.value[baseSlot] ?? triggerPanel,
+                  settlementPanel: triggerPanel,
+                  releaseCrit: event.releaseCrit,
+                  stunnedOverride: seg.stunned < 0 ? undefined : seg.stunned,
+                })
+              }
             }
             continue
           }
-          pushRelease({
-            id: `release-${slot}-${event.eventId}`,
-            slot: slot,
-            agentId: charResult.agentId,
-            name: event.eventName,
-            count: event.count,
-            multiplier: releaseMultiplierFor(event, event.element ?? 'wind', triggerPanel, stunCoverage.value),
-            source: event.carrierMoveName || event.carrierMoveId || event.eventId,
-            note: event.note,
-            element: event.element ?? 'wind',
-            settlementPanel: triggerPanel,
-            releaseCrit: event.releaseCrit,
-          })
+          const fixElement = event.element ?? 'wind'
+          for (const seg of releaseStunSegments(event, fixElement, event.count)) {
+            if (seg.count <= 0) continue
+            pushRelease({
+              id: `release-${slot}-${event.eventId}${seg.suffix}`,
+              slot: slot,
+              agentId: charResult.agentId,
+              name: event.eventName,
+              count: seg.count,
+              multiplier: releaseMultiplierFor(event, fixElement, triggerPanel, seg.stunned < 0 ? stunCoverage.value : seg.stunned),
+              source: event.carrierMoveName || event.carrierMoveId || event.eventId,
+              note: `${event.note ?? ''}${seg.tag ? `；${seg.tag}` : ''}`,
+              element: fixElement,
+              settlementPanel: triggerPanel,
+              releaseCrit: event.releaseCrit,
+              stunnedOverride: seg.stunned < 0 ? undefined : seg.stunned,
+            })
+          }
         } else if (event.eventType === 'polar_disorder') {
           // 极性紊乱 = 原本[紊乱]效果的25%伤害（池收敛后取紊乱均伤），不清除目标异常状态；
           // C2 门控在模块侧。归因（用户口径 2026-08-24「看当前时间点是什么属性异常状态」）：

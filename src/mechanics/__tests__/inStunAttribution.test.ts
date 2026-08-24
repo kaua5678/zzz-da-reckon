@@ -218,3 +218,56 @@ describe('逐失衡展开（count 展开，2026-08-24 单独立项）', () => {
     expect(st.elements.find(e => e.element === 'electric')?.triggerCount).toBe(1)
   })
 })
+
+describe('异放次数源·事件计数器（v2.3）', () => {
+  it('inStunBound 事件：全额记失衡内（stunned=1），不拆轴外段', async () => {
+    const { config } = await setupHarness([{ agentId: '1511', cinemaLevel: 2 }, { agentId: '1181' }])
+    config.enemy.stunCountLock = 2
+    config.useStunAxis = true
+    config.stunAxes = [{
+      name: 'bound轴',
+      count: 2,
+      actions: [
+        { slot: 0, moveId: '1511006', count: 6, startTime: 0 },
+        { slot: 1, moveId: '1181005', count: 18, startTime: 8 },
+      ],
+      basicFillerSlot: 0,
+    }]
+    const calc = useResourceCalc()
+    const evRel = (calc.resourceResult.value!.characters.find(c => c.agentId === '1511')!
+      .anomalyEventExecutions ?? []).find(e => e.eventId === 'nangong_vibrato_release')!
+    const rel = calc.damagePoolRows.value.filter(r => r.type === '异放' && r.id.includes('nangong_vibrato_release'))
+    expect(rel.reduce((s, r) => s + r.count, 0)).toBe(evRel.count)
+    expect(rel.length).toBeGreaterThan(0)
+    for (const r of rel) {
+      expect(r.id.endsWith('-in'), `颤音异放行应全部为失衡内段：${r.id}`).toBe(true)
+      expect(r.note).toContain('失衡内·全额失衡易伤')
+    }
+  })
+
+  it('未标记事件按计数器拆分：次数守恒、in 段单位伤害高于 out 段（stunBonusPct=50 → ×1.5 vs ×1.0）', async () => {
+    const { config } = await setupHarness([{ agentId: '1331' }, { agentId: '1181' }])
+    config.enemy.stunCountLock = 2
+    config.useStunAxis = true
+    config.stunAxes = [{
+      name: 'split轴',
+      count: 2,
+      actions: [{ slot: 1, moveId: '1181005', count: 18, startTime: 0 }],
+      basicFillerSlot: 0,
+    }]
+    const calc = useResourceCalc()
+    const evRel = (calc.resourceResult.value!.characters.find(c => c.agentId === '1331')!
+      .anomalyEventExecutions ?? []).find(e => e.eventId === 'vivian_luoyu_release')!
+    const rel = calc.damagePoolRows.value.filter(r => r.type === '异放' && r.id.includes('vivian_luoyu_release'))
+    expect(rel.reduce((s, r) => s + r.count, 0)).toBe(evRel.count)
+    expect(rel.length).toBeGreaterThan(0)
+    for (const r of rel) {
+      expect(r.id.endsWith('-in') || r.id.endsWith('-out'), `薇薇安异放行应为轴内/轴外段：${r.id}`).toBe(true)
+    }
+    const inRow = rel.find(r => r.id.endsWith('-in'))
+    const outRow = rel.find(r => r.id.endsWith('-out'))
+    if (inRow && outRow) {
+      expect(inRow.perDamage).toBeGreaterThan(outRow.perDamage)
+    }
+  })
+})

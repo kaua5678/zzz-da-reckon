@@ -237,6 +237,8 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
       element: 'dominant',
       carrierMoveName: '核心被动：天才偶像（颤音清除）',
       count: releaseCount,
+      // 次数全部发生在失衡窗口内（进窗清除结算）→ 结算区全额记失衡内易伤，不做轴内外拆分
+      inStunBound: true,
       formula: `releaseMultiplier = ${flat}（DOT基准×比例≈450%统一倍率 × 层数系数(1+${stackPct}%×${stacks})）`,
       fields: ['RELEASE_RATIOS', `vibratoStacks=${stacks}`, `releaseMultiplier=${flat}`],
       note: `失衡窗口清除颤音结算 ≈ 失衡次数×覆盖 = ${releaseCount} 次；层数=${stacks}${sliderStacks > 0 ? '（手动）' : '（自动=满层4）'}；次数按目标异常覆盖分配元素。`,
@@ -275,6 +277,7 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
         element: 'dominant',
         carrierMoveName: '影画6（进失衡清除颤音:改）',
         count: stunCount,
+        inStunBound: true,
         formula: `releaseMultiplier = ${flat6}（500%统一倍率 × 层数系数(1+25%×${stacks6})）`,
         fields: [`primeStacks=${stacks6}`, `gained=${gained}`, `releaseMultiplier=${flat6}`],
         note: `非失衡期获取计数 强特${Math.floor(Number(state.exSpecialCount ?? 0))} + 地雷撞段${Math.floor(Number(record.nangongMinePairs ?? 0)) * 2} + 终结×2 ${Math.floor(Number(state.ultimateCount ?? 0)) * 2} = ${gained}，均摊每窗 ${stacks6} 层。`,
