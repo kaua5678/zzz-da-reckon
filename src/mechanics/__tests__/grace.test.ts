@@ -118,7 +118,7 @@ describe('格莉丝全管线集成（harness）', () => {
     expect(ult!.perHitBuildUp).toBeLessThan(895.7 * masteryCoef * 1.3)
   })
 
-  it('脉冲手雷附带异放事件：anomalyEventExecutions 含 release 事件，伤害池按 84.9 结算', async () => {
+  it('脉冲手雷附带异放事件：anomalyEventExecutions 含 release 事件，伤害池按 350 结算', async () => {
     await setupHarness([{ agentId: '1181' }, '', ''])
     const calc = useResourceCalc()
     const grace = calc.resourceResult.value!.characters.find(c => c.agentId === '1181')!
@@ -126,10 +126,10 @@ describe('格莉丝全管线集成（harness）', () => {
     const evt = grace.anomalyEventExecutions?.find(e => e.eventId === 'grace_pulse_grenade_release')
     expect(evt).toBeTruthy()
     expect(evt!.eventType).toBe('release')
-    expect(evt!.element).toBe('electric')
+    expect(evt!.element).toBe('dominant') // 异放按目标当前异常状态结算（审计修正 2026-08-24）
     const releaseRow = calc.damagePoolRows.value.find(r => r.type === '异放' && r.name?.includes('脉冲手雷'))
     expect(releaseRow).toBeTruthy()
-    expect(releaseRow!.element).toBe('electric')
+    expect(['electric','ether','fire','physical','ice','wind']).toContain(releaseRow!.element) // 按目标活跃异常
     expect(releaseRow!.perDamage).toBeGreaterThan(0)
     expect(releaseRow!.totalDamage).toBeGreaterThan(0)
   })

@@ -153,11 +153,13 @@ function buildGraceAnomalyEvents({ cfg, events }: { cfg: AgentResourceInput['cfg
     eventId: 'grace_pulse_grenade_release',
     eventName: '脉冲手雷·异放',
     eventType: 'release',
-    element: 'electric',
+    // 手雷本体是直伤；触发的异放按目标当前异常状态结算（基础者=该元素主施加者，dominant 分支）
+    element: 'dominant',
     count,
-    formula: 'releaseMultiplier=84.9（脉冲手雷倍率）；附带异放事件',
-    fields: ['releaseMultiplier=84.9'],
-    note: '消耗8层脉冲 → 下次投掷手雷额外丢一枚脉冲手雷并附带异放事件（用户口供 2026-08-23）',
+    // 比例组 560/280/700/50/70/28 × DOT基准(62.5/125/50/713/500/1250) 收敛 ≈350% 固定倍率
+    formula: 'releaseMultiplier=350（原属性异常比例×DOT基准收敛值）；命中异常目标触发',
+    fields: ['releaseMultiplier=350'],
+    note: '消耗8层脉冲 → 下次投掷手雷额外丢一枚脉冲手雷，命中异常状态目标触发一次异放（用户口供 2026-08-23；倍率口径 2026-08-24 审计修正）',
   })
 }
 
