@@ -200,26 +200,54 @@ function transformNangongSkillExecutions({ charResult, cinemaLevel }: AgentSkill
   }
 }
 
-function buildNangongAnomalyEvents({ cfg, events }: AgentEventInput): void {
-  const stacks = Math.min(VIBRATO_MAX, Math.max(0, Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', VIBRATO_MAX))))
+function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  const cinemaLevel = Math.max(0, Math.floor(Number(record.nangongCinemaLevel ?? 0)))
+  const stunCount = Math.max(0, Math.floor(Number(record.nangongStunCount ?? 0)))
+  const triggersPerWindow = Math.max(0, Math.floor(Number(record.nangongTriggersPerWindow ?? 0)))
+  const activeCoverage = Math.max(0, Math.min(1, Number(record.nangongAnomalyActiveCoverage ?? 0)))
+  // 颤音层数：滑块 >0 = 手动覆盖；0 = 自动（失衡内异常系统：窗口内触发数夹紧 0-4）
+  const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
+  const stacks = sliderStacks > 0
+    ? Math.min(VIBRATO_MAX, sliderStacks)
+    : Math.min(VIBRATO_MAX, triggersPerWindow)
   const coverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
-  const stunCount = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).nangongStunCount ?? 0)))
   const releaseCount = Math.round(stunCount * coverage)
-  if (releaseCount <= 0 || stacks <= 0) return
-  const stackMult = 1 + (VIBRATO_STACK_PCT / 100) * stacks
-  const folded = Object.fromEntries(Object.entries(RELEASE_RATIOS).map(([k, v]) => [k, v * stackMult]))
-  events.push({
-    eventId: 'nangong_vibrato_release',
-    eventName: '南宫羽·颤音异放',
-    eventType: 'release',
-    element: 'dominant',
-    carrierMoveName: '核心被动：天才偶像（颤音清除）',
-    count: releaseCount,
-    formula: `releaseMultiplier = 原属性异常伤害 × 元素比例% × (1+25%×${stacks}层)`,
-    fields: ['RELEASE_RATIOS', `vibratoStacks=${stacks}`, 'anomalyDamageRatio'],
-    releaseRatio: { basis: 'anomalyDamageRatio', perTenByElement: folded },
-    note: `失衡窗口清除颤音结算 ≈ 失衡次数×覆盖 = ${releaseCount} 次；元素=目标当前异常按覆盖率分配；层数/次数为滑块近似（逐事件系统 pending）。`,
-  })
+  if (releaseCount > 0 && stacks > 0) {
+    const stackMult = 1 + (VIBRATO_STACK_PCT / 100) * stacks
+    const folded = Object.fromEntries(Object.entries(RELEASE_RATIOS).map(([k, v]) => [k, v * stackMult]))
+    events.push({
+      eventId: 'nangong_vibrato_release',
+      eventName: '南宫羽·颤音异放',
+      eventType: 'release',
+      element: 'dominant',
+      carrierMoveName: '核心被动：天才偶像（颤音清除）',
+      count: releaseCount,
+      formula: `releaseMultiplier = 原属性异常伤害 × 元素比例% × (1+25%×${stacks}层)`,
+      fields: ['RELEASE_RATIOS', `vibratoStacks=${stacks}`, 'anomalyDamageRatio'],
+      releaseRatio: { basis: 'anomalyDamageRatio', perTenByElement: folded },
+      note: `失衡窗口清除颤音结算 ≈ 失衡次数×覆盖 = ${releaseCount} 次；层数=${stacks}${sliderStacks > 0 ? '（手动）' : `（自动：窗口内触发 ${triggersPerWindow}）`}；元素按覆盖率分配。`,
+    })
+  }
+  // C2 极性紊乱：连携重击命中「异常+失衡」目标 → 原紊乱伤25%，每失衡期间一次；
+  // 窗口内异常存活覆盖由 inStunEvents 分配，载体受连携次数约束
+  if (cinemaLevel >= 2 && stunCount > 0 && activeCoverage > 0) {
+    const chainCarriers = Math.max(0, Math.floor(Number((state as unknown as Record<string, unknown>).chainCountTotal ?? stunCount)))
+    const polarCount = Math.round(Math.min(stunCount, chainCarriers) * activeCoverage)
+    if (polarCount > 0) {
+      events.push({
+        eventId: 'nangong_polar_disorder',
+        eventName: '南宫羽·极性紊乱',
+        eventType: 'polar_disorder',
+        element: 'dominant',
+        carrierMoveName: '连携技重击（影画2）',
+        count: polarCount,
+        formula: 'polarDisorderDamage = 原紊乱伤害 × 25%（不清除异常状态）',
+        fields: ['activeCoverage', `chains=${chainCarriers}`, 'disorder.avgDamage×0.25'],
+        note: `≈ min(失衡${stunCount}, 连携${chainCarriers}) × 异常存活覆盖 ${Math.round(activeCoverage * 100)}% = ${polarCount} 次。`,
+      } as never)
+    }
+  }
 }
 
 function buildNangongResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
@@ -229,7 +257,9 @@ function buildNangongResourceResult({ cfg, state }: AgentResourceResultInput): P
   const frontline = Math.max(0, Number(state.frontlineTime ?? 0))
   const beatInitial = cinemaLevel >= 1 ? BEAT_CAP : BEAT_INITIAL
   const totalBeat = nangongBeatIncome(cinemaLevel, frontline, battleTime)
-  const stacks = Math.min(VIBRATO_MAX, Math.max(0, Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', VIBRATO_MAX))))
+  const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
+  const autoStacks = Math.min(VIBRATO_MAX, Math.max(0, Math.floor(Number(record.nangongTriggersPerWindow ?? 0))))
+  const stacks = sliderStacks > 0 ? Math.min(VIBRATO_MAX, sliderStacks) : autoStacks
   const releaseCoverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
   const stunCount = Math.max(0, Math.floor(Number(record.nangongStunCount ?? 0)))
   const source = computeNangongMechanic({
@@ -287,8 +317,8 @@ const settings: MechanicSetting[] = [
   {
     id: 'nangong.vibratoStacksPerRelease',
     label: '南宫羽·颤音层数（每次异放）',
-    description: '颤音清除时的层数（0-4），决定异放比例加成（每层+25%）；精确层数依赖异常逐事件系统（pending），默认满层 4。',
-    default: 4,
+    description: '颤音清除时的层数（0-4），决定异放比例加成（每层+25%）；0=自动（失衡内异常系统：窗口内触发数夹紧 0-4）。',
+    default: 0,
     min: 0,
     max: 4,
     step: 1,

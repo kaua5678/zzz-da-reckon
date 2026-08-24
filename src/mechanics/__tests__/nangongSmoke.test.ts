@@ -78,7 +78,7 @@ describe('南宫羽重拍账本 → 地雷撞执行行', () => {
 })
 
 describe('南宫羽颤音异放（releaseRatio basis=anomalyDamageRatio）', () => {
-  it('失衡>0 时事件存在，元素比例按满层 4 × (1+25%×4)=2× 折叠，以太 1440%', async () => {
+  it('失衡>0 时事件存在，元素比例按层数折叠（自动口径：层数由窗口内触发数夹紧，比例间比值守恒）', async () => {
     const { calc } = await setupNangong(0)
     const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1511')!
     const ev = (char.anomalyEventExecutions ?? []).find(e => e.eventId === 'nangong_vibrato_release')
@@ -86,8 +86,31 @@ describe('南宫羽颤音异放（releaseRatio basis=anomalyDamageRatio）', () 
     expect(ev!.eventType).toBe('release')
     expect(ev!.element).toBe('dominant')
     expect(ev!.releaseRatio?.basis).toBe('anomalyDamageRatio')
-    expect(ev!.releaseRatio?.perTenByElement.ether).toBe(720 * 2)
+    const ratios = ev!.releaseRatio!.perTenByElement
+    // 层数折叠对全元素同乘：以太/物理恒为 720/63
+    expect(ratios.ether / ratios.physical).toBeCloseTo(720 / 63)
+    expect(ratios.ether).toBeGreaterThanOrEqual(720)
+    expect(ratios.ether).toBeLessThanOrEqual(720 * 2)
     expect(ev!.count).toBeGreaterThan(0)
+  })
+
+  it('C2 差分：极性紊乱行走 rows 聚合（伤害=紊乱均伤×25%）；C0 无', async () => {
+    const polarRowsOf = (c: ReturnType<typeof useResourceCalc>) =>
+      (c.damagePoolRows.value ?? []).filter((r: { type?: string; agentId?: string }) => r.type === '极性紊乱' && r.agentId === '1511')
+    const { calc: calc2 } = await setupNangong(2)
+    const ddAvg = calc2.anomalyPoolResult.value?.disorderDamage?.avgDamage ?? 0
+    const polar2 = polarRowsOf(calc2)
+    if (ddAvg <= 0) {
+      // 无紊乱结算的阵容不产生极性紊乱行
+      expect(polar2.length).toBe(0)
+      return
+    }
+    expect(polar2.length).toBeGreaterThan(0)
+    for (const r of polar2) {
+      expect((r as { perDamage?: number }).perDamage).toBeCloseTo(ddAvg * 0.25, 1)
+    }
+    const { calc: calc0 } = await setupNangong(0)
+    expect(polarRowsOf(calc0).length).toBe(0)
   })
 })
 
@@ -102,6 +125,8 @@ describe('南宫羽 teamBuffs（核心被动全队伤害 / 踉跄）', () => {
     expect(on.dmgBonus - off.dmgBonus).toBeCloseTo(25)
     expect((on as unknown as Record<string, number>).stunDmgMultiplierBonus
       - (off as unknown as Record<string, number>).stunDmgMultiplierBonus).toBeCloseTo(30)
-    expect(on.stunDurationBonusSeconds - off.stunDurationBonusSeconds).toBeCloseTo(3)
+    // 踉跄失衡持续+3s 暂缓：stunDurationBonusSeconds 进窗口时长反馈环，C6 高失衡值下发散
+    // （allAgentsSweep maxIter 实证），待引擎稳定性处理后再接（档案段 Open）
+    expect(on.stunDurationBonusSeconds - off.stunDurationBonusSeconds).toBe(0)
   })
 })
