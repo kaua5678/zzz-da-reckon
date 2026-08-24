@@ -1,0 +1,22 @@
+{
+  "id": "seed-liuyin-orphie",
+  "name": "席德+琉音+奥菲斯（席德主体）",
+  "team": [
+    "1461",
+    "1481",
+    "1301"
+  ],
+  "note": "席德主体（槽0）：每失衡 3 崩坠（xide-bengzhui=重戮+一式+二式三连）+ 1 终结技 + 1 琉音60转大；喧响不够时终结换连携（1461014）。奥菲斯（槽2）失衡内动作待补。",
+  "axes": [
+    {
+      "name": "席德爆发",
+      "count": 3,
+      "basicFillerSlot": 0,
+      "actions": [
+        { "slot": 0, "moveId": "xide-bengzhui", "count": 3 },
+        { "slot": 0, "moveId": "1461015", "count": 1, "startTime": 10.401 },
+        { "slot": 0, "moveId": "1461015", "count": 1, "startTime": 15.818, "promoteVariant": "60" }
+      ]
+    }
+  ]
+}

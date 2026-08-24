@@ -1129,14 +1129,16 @@ export function getHealingAmount(move: SkillMove): number {
 }
 
 export function getSpecialResourceRecovery(move: SkillMove): number {
+  // 专属资源回复：attack_data_0（kind=special 第一行 = 席德钢能/比利决意/青衣电压/普罗米娅寒蚀）。
+  // attack_data_1/2… 是其他通道（如回血），不混入本字段；观察：attack_data_0 秒均 ≈ 11（钢能）。
+  for (const row of move.rows as any[]) {
+    if (String((row as any).kind ?? '') === 'special') {
+      return row.values?.[0] ?? 0
+    }
+  }
+  // 兜底：非标准 recovery 行（旧式专属回复）求和
   let total = 0
   for (const row of move.rows as any[]) {
-    // 专属资源回复：attack_data_N（kind=special，如席德钢能/比利决意/青衣电压/普罗米娅寒蚀）。
-    // 多个 attack_data_N = 多段命中，逐段求和（与伤害倍率同款「倍率行值」口径）。
-    if (String((row as any).kind ?? '') === 'special') {
-      total += row.values?.[0] ?? 0
-      continue
-    }
     const id = String(row.id ?? '')
     if (!id.includes('recovery')) continue
     if (id === 'energy_recovery' || id === 'decibel_recovery') continue

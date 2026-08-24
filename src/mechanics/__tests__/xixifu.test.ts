@@ -137,7 +137,7 @@ describe('希希芙额外能力·毒素发酵（全队暴伤+40%、自身额外+
   })
 })
 
-describe('希希芙毒素资源循环与蚀骨', () => {
+describe('希希芙毒素资源循环、蚀骨与蛇吻', () => {
   const mkState = () => ({
     basicAttackTime: 20, exSpecialCount: 2, chainCountTotal: 1, ultimateCount: 1,
     frontlineTime: 40, backstageTime: 0,
@@ -160,21 +160,31 @@ describe('希希芙毒素资源循环与蚀骨', () => {
     expect(toxin.spendCounts.toxin_shigu_spend).toBe(46)
   })
 
-  it('buildExecutions 生成蚀骨伤害行：次数=毒素总量、335% 攻击力、电属性', () => {
-    const cfg: any = {}
+  it('buildExecutions：蚀骨（基础254.4%随等级 + 附加335% flat）+ 蛇吻（1009.1%×7）', () => {
+    const cfg: any = { xixifuElectricCount: 1, xixifuAtk: 3000 }
     const executions: any[] = []
     xixifuMechanic.buildExecutions!({ cfg, state: mkState(), executions } as any)
-    expect(executions.length).toBe(1)
-    const shigu = executions[0]
-    expect(shigu.moveId).toBe('xixifu_shigu')
+    // 46 毒素 → 蚀骨 46 次 + 蛇吻 floor(46/6)=7 次（无特殊蚀骨）
+    expect(executions.length).toBe(2)
+    const shigu = executions.find((e: any) => e.moveId === '1521019')
+    const shekiss = executions.find((e: any) => e.moveId === '1521006')
+    expect(shigu).toBeTruthy()
     expect(shigu.count).toBe(46)
-    expect(shigu.damageMultiplier).toBe(335)
+    expect(shigu.damageMultiplier).toBeCloseTo(254.4, 5) // 基础随等级
+    expect(shigu.flatDamageBonus).toBeCloseTo(3000 * 3.35, 5) // 附加 335% 不随等级
     expect(shigu.element).toBe('electric')
+    expect(shigu.stunBuildUpBonus).toBe(40) // 1 名电属性
+    expect(shigu.resIgnore ?? 0).toBe(0) // 影画0 无
+    expect(shekiss).toBeTruthy()
+    expect(shekiss.count).toBe(7)
+    expect(shekiss.damageMultiplier).toBeCloseTo(1009.1, 5)
+    expect(shekiss.dmgBonus ?? 0).toBe(0)
 
-    // 空 state 仍有进场初始3点毒素 → 蚀骨×3
+    // 空 state 仍有进场初始3点毒素 → 蚀骨×3（蛇吻 floor(3/6)=0，无蛇吻行）
     const empty: any[] = []
-    xixifuMechanic.buildExecutions!({ cfg: {}, state: { basicAttackTime: 0, exSpecialCount: 0, chainCountTotal: 0, ultimateCount: 0 } as any, executions: empty } as any)
+    xixifuMechanic.buildExecutions!({ cfg: { xixifuElectricCount: 1, xixifuAtk: 3000 }, state: { basicAttackTime: 0, exSpecialCount: 0, chainCountTotal: 0, ultimateCount: 0 } as any, executions: empty } as any)
     expect(empty.length).toBe(1)
+    expect(empty[0].moveId).toBe('1521019')
     expect(empty[0].count).toBe(3)
   })
 
@@ -187,6 +197,73 @@ describe('希希芙毒素资源循环与蚀骨', () => {
     expect(r1.specResources.xixifu_toxin.initialValue).toBe(6)
     expect(r1.specResources.xixifu_toxin.spendCounts.toxin_shigu_spend
       - r0.specResources.xixifu_toxin.spendCounts.toxin_shigu_spend).toBe(3)
+  })
+
+  it('影画2：蛇吻伤害 +35%（dmgBonus 定向）', () => {
+    const executions: any[] = []
+    xixifuMechanic.buildExecutions!({ cfg: { xixifuCinemaLevel: 2, xixifuElectricCount: 1 }, state: mkState(), executions } as any)
+    const shekiss = executions.find((e: any) => e.moveId === '1521006')
+    expect(shekiss.dmgBonus).toBe(35)
+  })
+
+  it('影画2：失衡下连携/终结额外+3毒素（连携全吃 + min(终结, 失衡)）', () => {
+    const cfg: any = { xixifuCinemaLevel: 2, xixifuStunCount: 1 }
+    const result: any = xixifuMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    const toxin = result.specResources.xixifu_toxin
+    // 连携 1 + min(终结 1, 失衡 1) = 2 次 × 3 = 6
+    expect(toxin.gains.toxin_c2_stunned_chain_ultimate).toBeCloseTo(6, 5)
+    // 无失衡（stunCount=0）时只剩连携 1×3 = 3
+    const cfg0: any = { xixifuCinemaLevel: 2, xixifuStunCount: 0 }
+    const r0: any = xixifuMechanic.buildResourceResult!({ cfg: cfg0, state: mkState() } as any)
+    expect(r0.specResources.xixifu_toxin.gains.toxin_c2_stunned_chain_ultimate).toBeCloseTo(3, 5)
+  })
+
+  it('影画4：觉悟计数器（强特2+连携1+终结1=4层）→ 特殊蚀骨 4（无失衡值假 id）', () => {
+    const executions: any[] = []
+    xixifuMechanic.buildExecutions!({ cfg: { xixifuCinemaLevel: 4, xixifuElectricCount: 1, xixifuAtk: 3000 }, state: mkState(), executions } as any)
+    const special = executions.find((e: any) => e.moveId === 'xixifu_shigu_special')
+    expect(special).toBeTruthy()
+    // 觉悟 = 强特2 + 连携1 + 终结1 = 4（默认全消耗）；影画4 已含影画1 → 毒素总量 49
+    expect(special.count).toBe(4)
+    expect(special.damageMultiplier).toBeCloseTo(254.4, 5)
+    expect(special.flatDamageBonus).toBeCloseTo(3000 * 3.35, 5)
+  })
+
+  it('影画6：印记计数器 → 特殊蚀骨 = min(蚀骨56, 180/3=60) = 56（+影画4 4 = 60）', () => {
+    const executions: any[] = []
+    xixifuMechanic.buildExecutions!({ cfg: { xixifuCinemaLevel: 6, xixifuElectricCount: 1, xixifuAtk: 3000 }, state: mkState(), executions } as any)
+    const special = executions.find((e: any) => e.moveId === 'xixifu_shigu_special')
+    expect(special).toBeTruthy()
+    // 影画6 含影画1/2/4：毒素总量 52（含 C2 连携 3）、蚀骨 52+4=56、印记 3 秒 ICD 上限 60 → 特殊蚀骨 = 4(觉悟)+56(印记)=60
+    expect(special.count).toBe(60)
+    const shigu = executions.find((e: any) => e.moveId === '1521019')
+    expect(shigu.count).toBe(52)
+  })
+
+  it('影画1：蚀骨伤害无视 10% 电抗（resIgnore 招式限定）', () => {
+    const executions: any[] = []
+    xixifuMechanic.buildExecutions!({ cfg: { xixifuCinemaLevel: 1, xixifuElectricCount: 1, xixifuAtk: 3000 }, state: mkState(), executions } as any)
+    const shigu = executions.find((e: any) => e.moveId === '1521019')
+    expect(shigu.resIgnore).toBe(10)
+  })
+
+  it('蚀骨自拐暴击率：+6%×3层 = +18%（applyPanel 面板直加，无条件）', () => {
+    const mk = (critRate: number) => ({
+      slot: 0, agent: { id: '1521' } as any, cinemaLevel: 0, team: [],
+      panel: { critRate, additionalAbilityActive: 0 } as any,
+    })
+    const on = mk(50); xixifuMechanic.applyPanel!(on as any)
+    expect((on.panel as any).critRate).toBeCloseTo(68, 5)
+  })
+
+  it('蚀骨失衡值 +40%/60%：按队伍电属性角色数门控', () => {
+    const one: any[] = []
+    xixifuMechanic.buildExecutions!({ cfg: { xixifuElectricCount: 1 }, state: mkState(), executions: one } as any)
+    expect(one.find((e: any) => e.moveId === '1521019').stunBuildUpBonus).toBe(40)
+
+    const two: any[] = []
+    xixifuMechanic.buildExecutions!({ cfg: { xixifuElectricCount: 2 }, state: mkState(), executions: two } as any)
+    expect(two.find((e: any) => e.moveId === '1521019').stunBuildUpBonus).toBe(60)
   })
 
   it('resourceSections 输出蛇吻次数卡 = floor(毒素总量/6)', () => {

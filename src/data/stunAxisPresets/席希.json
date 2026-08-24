@@ -1,0 +1,27 @@
+{
+  "id": "seed-xixifu",
+  "name": "席德+希希芙（无琉音，席德主体）",
+  "team": [
+    "1461",
+    "1521",
+    "*"
+  ],
+  "note": "席德主体（槽0）：每失衡 3 崩坠（xide-bengzhui=重戮+一式+二式三连）+ 1 终结技；喧响不够时终结换连携（1461014）。希希芙（槽1）：1 长按毒牙(125) + 1 大招 + 2 蛇吻 + 1 长按毒牙(85)。",
+  "axes": [
+    {
+      "name": "席德爆发+希希芙循环",
+      "count": 3,
+      "basicFillerSlot": 0,
+      "actions": [
+        { "slot": 0, "moveId": "xide-bengzhui", "count": 3 },
+        { "slot": 0, "moveId": "1461015", "count": 1, "startTime": 10.401 },
+        { "slot": 1, "moveId": "1521008", "count": 1, "startTime": 0 },
+        { "slot": 1, "moveId": "1521009", "count": 3, "startTime": 0.565 },
+        { "slot": 1, "moveId": "1521013", "count": 1, "startTime": 1.129 },
+        { "slot": 1, "moveId": "1521006", "count": 2, "startTime": 2.229 },
+        { "slot": 1, "moveId": "1521008", "count": 1, "startTime": 4.841 },
+        { "slot": 1, "moveId": "1521009", "count": 1, "startTime": 5.406 }
+      ]
+    }
+  ]
+}

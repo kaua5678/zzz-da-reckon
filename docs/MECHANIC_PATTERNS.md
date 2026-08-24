@@ -92,6 +92,7 @@ L3 是当前唯一必须人肉的部分，也是未来自动化收益最高的�
 | 复杂循环（模块纯函数） | 悠真 | 甲乙矢命中/锋芒叠层；每 12 次甲乙矢生成一次电磁爆炸 | `computeHarumasaCycle (harumasa.ts)` | harumasa.test.ts | L2 |
 | 复杂循环（模块纯函数） | 扳机 | 狙击命中得绝意，普通协奏耗 3 绝意/冥狱耗 5 绝意 | `computeTriggerCycle (trigger.ts)` | trigger.test.ts | L2 |
 | 模块写 cfg、spec 读（valueSource/countSource: cfgField） | 朱鸢 | 强化霰弹获取/消耗循环；影画1 快速装填连携 6/终结 9 | `computeZhuYuanShellsTotal (zhuYuan.ts)` + `spec 1241.json` | zhuYuan.test.ts | L1 |
+| 计数器资源·回复端+消耗端 | 希希芙 | 「发动强特/连携/终结各得1层[觉悟]，至多3层；蛇吻消耗全部，每层1次特殊蚀骨」；「每次蚀骨得1层[印记]；全队命中消耗印记触发特殊蚀骨，3秒至多1层」 | `computeXixifuCounts (xixifu.ts)`：回复端=计数（EX/连携/终结 或 蚀骨总数），消耗端=上限（蛇吻×3 或 战斗时间/3）→ 生成特殊蚀骨假 moveId 行 | xixifu.test.ts | L1 |
 
 ### D5 time_window —— 时间窗口/CD 驱动型
 - **指纹**："X秒内最多一次"、"每X秒"、"状态持续Y秒"

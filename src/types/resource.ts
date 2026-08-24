@@ -1439,6 +1439,12 @@ export interface CharacterOperationConfig {
   xixifuInitialToxin?: number
   /** 希希芙队伍电属性角色数（含自身；buildCharConfig 写入，蚀骨失衡值 +40%/60% 门控） */
   xixifuElectricCount?: number
+  /** 希希芙局内攻击力（蚀骨核心附加 335% 的 flatDamageBonus 基数，buildCharConfig 写入） */
+  xixifuAtk?: number
+  /** 希希芙失衡次数（applyTeamConfig converge 写入，影画2 失衡下终结+3毒素门控） */
+  xixifuStunCount?: number
+  /** 希希芙影画2 失衡下连携/终结额外毒素合计（computeXixifuToxinTotal 写入，spec gain rule cfgField 读取） */
+  xixifuC2Toxin?: number
   /** 朱鸢命座等级（霰弹资源门控影画1 快速装填/影画6 以太余温） */
   zhuyuanCinemaLevel?: number
   /** 朱鸢影画1 快速装填连携回复量（6，非影画1 为 0；computeZhuYuanShellsTotal 写入） */

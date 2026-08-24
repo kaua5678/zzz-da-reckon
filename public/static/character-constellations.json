@@ -2764,20 +2764,22 @@
           "cinema": 1,
           "status": "implemented_approximation",
           "implemented": [
-            "钢能建模部分：崩坠消耗120→100（buildResourceResult 后处理）、进场+40钢能、终结技额外+20钢能（spec resource xide_steel_energy）"
+            "钢能建模部分：崩坠消耗120→100（buildResourceResult 后处理）、进场+40钢能、终结技额外+20钢能（spec resource xide_steel_energy）",
+            "落华·崩坠暴伤+30%（patchExecutions 执行级 critDmgBonus，moveId 1461007/1461008 限定）"
           ],
           "pending": [
-            "落华·崩坠暴击伤害+30%（面板级无法限定单招，未建模）"
+            "原文未写 CD，按每套崩坠计（用户确认）"
           ]
         },
         {
           "cinema": 2,
           "status": "implemented_approximation",
           "implemented": [
-            "围杀生效时伤害无视20%防御力（teammate-buff enemyDefReduction 近似，草稿误用 enemyAssaultDefReduction 已修正；全队生效近似）"
+            "围杀生效时伤害无视20%防御力（teammate-buff enemyDefReduction 近似，草稿误用 enemyAssaultDefReduction 已修正；全队生效近似）",
+            "铁萼雨幕衔接落华·重戮增伤+60%（每消耗5点能量+5% × 60能量，dmgBonus 招式限定）"
           ],
           "pending": [
-            "铁萼雨幕耗能延长与落华·重戮增伤机制（未建模）"
+            "铁萼雨幕 60→120 延长（用户口径按固定 60 能量/发简化，不单独建模）"
           ]
         },
         {
@@ -2812,7 +2814,7 @@
           "cinema": 6,
           "status": "implemented_approximation",
           "implemented": [
-            "自身暴伤+50%（面板直加）；落华·重戮附加3道激光共495%攻击力（patchExecutions moveId 限定，3秒至多1次近似每次重戮1次）"
+            "自身暴伤+50%（面板直加）；落华·重戮附加3道激光共495%攻击力（patchExecutions moveId 限定，每招一次用次数算——重戮间隔必超3秒，不计3秒 ICD）"
           ],
           "pending": []
         }
@@ -3136,19 +3138,21 @@
           "status": "implemented_approximation",
           "implemented": [
             "全队伤害无视目标5%电属性伤害抗性（teammate-buff enemyElectricResReduction）",
-            "核心被动无视防御效果×140%（buffModifiers）",
-            "进场毒素3→6点（spec resource xixifu_toxin，cfgField 按命座门控）"
+            "核心被动无视防御效果×140%（buffModifiers，上限25→35%）",
+            "进场毒素3→6点（spec resource xixifu_toxin，cfgField 按命座门控）",
+            "蚀骨伤害无视10%电属性伤害抗性（patchExecutions/exec 级 resIgnore，蚀骨行限定）"
           ],
-          "pending": [
-            "[蚀骨]伤害无视目标10%电属性伤害抗性（属蚀骨伤害行限定，未建模）"
-          ]
+          "pending": []
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "普通攻击：蛇吻 伤害+35%（dmgBonus 定向，moveId 1521006）",
+            "失衡下连携/终结命中额外+3点毒素（资源回复端：连携全吃 + min(终结次数,失衡次数)，模块写 cfg.xixifuC2Toxin）"
+          ],
           "pending": [
-            "饥肠与箴言：失衡下连携/终结命中额外+3点[毒素]（自身资源）；[普通攻击：蛇吻]伤害+35%（自身伤害行）"
+            "轴模式需轴内连携/终结计数（待接）"
           ]
         },
         {
@@ -3163,10 +3167,12 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "坏蛋的觉悟（计数器资源）：强特/连携/终结各+1层[觉悟]，蛇吻消耗全部，每层1次特殊蚀骨 → 特殊蚀骨=三者次数之和（默认全消耗近似，无失衡值）"
+          ],
           "pending": [
-            "坏蛋的觉悟：[觉悟]层数使蛇吻追加不耗[毒素]的特殊[蚀骨]（希希芙自身伤害机制）"
+            "[觉悟]层数状态机未逐事件建模（按默认全消耗近似）"
           ]
         },
         {
@@ -3181,10 +3187,12 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "家与六分街道（计数器资源）：每次蚀骨得1层[蚀骨印记]，全队攻击命中消耗印记追加特殊蚀骨 → 特殊蚀骨=min(蚀骨总触发数, 战斗时间/3)，无失衡值"
+          ],
           "pending": [
-            "家与六分街道：[蚀骨印记]使全队攻击命中追加特殊[蚀骨]（3秒至多1层，触发频率与蚀骨伤害行均未建模）"
+            "3秒至多1层 ICD 按「战斗时间/3」上限近似（未逐事件模拟全队命中频率）"
           ]
         }
       ]

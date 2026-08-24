@@ -89,6 +89,15 @@
           "countSource": "ultimateCount",
           "amountPerCount": 3,
           "status": "implemented"
+        },
+        {
+          "id": "toxin_c2_stunned_chain_ultimate",
+          "trigger": "影画2：连携技团伙作案/终结技爬行恐惧命中失衡敌人额外+3毒素",
+          "countSource": "cfgField",
+          "countField": "xixifuC2Toxin",
+          "amountPerCount": 1,
+          "formula": "模块写 cfg.xixifuC2Toxin = (连携次数 + min(终结次数, 失衡次数)) × 3（非轴默认连携全吃、终结按失衡次数；轴模式需轴内计数，待接）",
+          "status": "implemented"
         }
       ],
       "spendRules": [
@@ -119,7 +128,7 @@
     "影画1 旅人与猎物：进场[毒素]3→6点；核心被动无视防御效果提升至140%；全队伤害无视目标5%电属性伤害抗性；[蚀骨]伤害无视目标10%电属性伤害抗性。影画2 饥肠与箴言：失衡下连携/终结命中+3点[毒素]；[普通攻击：蛇吻]伤害+35%。影画4 坏蛋的觉悟：[觉悟]层数使蛇吻追加不耗毒素的特殊[蚀骨]。影画6 家与六分街道：[蚀骨印记]使全队攻击命中消耗印记追加特殊[蚀骨]（3秒至多1层）。影画3/5 技能等级+2。",
     "[已确认·继承草稿] 拐力数据在 teammate-buffs.json 1521 组：核心被动电系无视防御公式 clamp(floor((回能-1.4)/0.12)+6,6,25)（sourceStat=energyRegenTotal/outOfCombat，stat=enemyElectricDefReduction）、额外能力全队暴伤+40%、影画1 电抗无视5% + buffModifiers ×1.4 放大核心公式（先 clamp 后 ×1.4，等效上限35%）。",
     "实现口径 [已确认]：① 额外能力暴伤 buff 按 spec.additionalAbility（specialty stun / sameAttributeAsSelf）由 computePanelPhases 过滤链门控；② 原文「自身额外提升10%」由 xixifu.ts applyPanel 施加 panel.critDmg+=10（同样按 additionalAbilityActive 门控），队友只吃 buff 的40%；③ [毒素]持有条件按静态面板近似为常开（进场即得3点，耗尽需约15秒且触发蚀骨循环）；④ 草稿额外能力描述与 3.2.3 原文不符（旧版「毒素侵蚀/20秒」措辞），已按原文重写。",
-    "毒素资源循环 [已确认]（spec resource xixifu_toxin）：初始3上限125；获取=吐信第四段+2（进场初始3点记在 initialValue）（失衡额外+1按50%占比滑块）、毒牙+3（长按额外+3带利用率滑块）、团伙作战/爬行恐惧各+3；消耗=蚀骨（每1点毒素触发1次，总量口径 count=毒素总获取）。蚀骨伤害行 [已确认]（模块 buildExecutions）：倍率表无蚀骨行，按 Lv.12 附加 335% 攻击力建模，基础倍率无数据源未建模。蛇吻次数=floor(毒素总量/6)（每6点毒素得1层蛇影），模块资源卡输出。终结技[以太帷幕：冷血]全队暴伤+5%（30秒）为原文团队拐（此前遗漏），teammate-buffs xixifu.ultimate_curtain_crit_dmg 按常驻近似。"
+    "毒素资源循环 [已确认]（spec resource xixifu_toxin）：初始3上限125；获取=吐信第四段+2（失衡额外+1按50%占比滑块）、毒牙+3（长按额外+3带利用率滑块）、团伙作案/爬行恐惧各+3、影画2 失衡下连携/终结额外+3（连携全吃 + min(终结次数, 失衡次数)，模块写 cfg.xixifuC2Toxin）；消耗=蚀骨（每1点毒素触发1次，总量口径）。蚀骨伤害行 [已确认]（模块 buildExecutions）：真实 moveId 1521019，**基础倍率 254.4%（随技能等级缩放）+ 核心被动附加 335%（不随等级缩放，flatDamageBonus = 攻击力×3.35）**；失衡倍率由倍率表回填 233.2%，队伍电属性角色 1/2 名时失衡值 +40%/60%（stunBuildUpBonus）；影画1 蚀骨无视 10% 电抗（resIgnore 招式限定）。蚀骨自拐暴击率 [已确认]：每次触发 +6%（15秒，至多3层）→ 常驻 +18%（applyPanel 面板直加）。蛇吻伤害行 [已确认]：moveId 1521006，倍率 1009.1%（随技能等级），次数=floor(毒素总量/6)；影画2 蛇吻 +35%（dmgBonus 定向）。影画4 [觉悟]（计数器：强特/连携/终结各+1层，至多3层，蛇吻消耗全部）→ 特殊蚀骨=三者次数之和（默认全消耗近似），无失衡值（假 moveId xixifu_shigu_special）。影画6 [蚀骨印记]（计数器：每次蚀骨得1层印记，全队命中消耗，3秒至多1层）→ 特殊蚀骨=min(蚀骨总触发数, 战斗时间/3)，无失衡值。终结技[以太帷幕：冷血]全队暴伤+5%（30秒）为原文团队拐，teammate-buffs xixifu.ultimate_curtain_crit_dmg 按常驻近似。"
   ],
   "teamBuffs": [],
   "additionalAbility": {

@@ -1,0 +1,25 @@
+{
+  "id": "xixifu-solo",
+  "name": "希希芙单C（无琉音）",
+  "team": [
+    "1521",
+    "*",
+    "*"
+  ],
+  "note": "希希芙主体（槽0）：每失衡 1 长按毒牙(125=毒牙#1+3×#2) + 1 大招 + 2 蛇吻 + 1 长按毒牙(85=毒牙#1+1×#2)。",
+  "axes": [
+    {
+      "name": "希希芙循环",
+      "count": 3,
+      "basicFillerSlot": 0,
+      "actions": [
+        { "slot": 0, "moveId": "1521008", "count": 1 },
+        { "slot": 0, "moveId": "1521009", "count": 3, "startTime": 0.565 },
+        { "slot": 0, "moveId": "1521013", "count": 1, "startTime": 1.129 },
+        { "slot": 0, "moveId": "1521006", "count": 2, "startTime": 2.229 },
+        { "slot": 0, "moveId": "1521008", "count": 1, "startTime": 4.841 },
+        { "slot": 0, "moveId": "1521009", "count": 1, "startTime": 5.406 }
+      ]
+    }
+  ]
+}

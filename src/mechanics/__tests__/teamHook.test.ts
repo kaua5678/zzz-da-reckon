@@ -86,6 +86,20 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     }
   })
 
+  it('席德：为正兵回能（2 能量/秒 × 席德前台时间），正兵槽位吃到、席德本人不吃', async () => {
+    // 槽0 席德（1461）、槽1 比利（1081 强攻 = 正兵）、槽2 空
+    const out = await run([{ agentId: '1461' }, { agentId: '1081' }, ''])
+    const bySlot = new Map(out.characters.map(c => [c.slot, c]))
+    const vanguard = bySlot.get(1)!
+    expect(vanguard.energySource.crossAgent.xideVanguardEnergy).toBeGreaterThan(0)
+    // 席德本人（槽0）不是正兵，不吃
+    expect(bySlot.get(0)!.energySource.crossAgent.xideVanguardEnergy).toBe(0)
+    // 无强攻队友时（槽1 改为击破）正兵槽位 = -1，无回能
+    const outNoVanguard = await run([{ agentId: '1461' }, { agentId: '1621' }, ''])
+    const bySlot2 = new Map(outNoVanguard.characters.map(c => [c.slot, c]))
+    expect(bySlot2.get(1)!.energySource.crossAgent.xideVanguardEnergy).toBe(0)
+  })
+
   it('耀嘉音：入场次数（全队快支+招架+连携）经 converge 阶段汇总 → 咏叹资源非零', async () => {
     const out = await run([{ agentId: '1311' }, { agentId: '1041' }, { agentId: '1101' }])
     const yj = out.characters.find(c => c.agentId === '1311')!
