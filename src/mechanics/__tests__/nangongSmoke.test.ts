@@ -78,20 +78,20 @@ describe('南宫羽重拍账本 → 地雷撞执行行', () => {
 })
 
 describe('南宫羽颤音异放（releaseRatio basis=anomalyDamageRatio）', () => {
-  it('失衡>0 时事件存在，元素比例按层数折叠（自动口径：层数由窗口内触发数夹紧，比例间比值守恒）', async () => {
+  it('失衡>0 时事件存在；异放为固定倍率表达（满层4=900%），C2 满层=1080%', async () => {
     const { calc } = await setupNangong(0)
     const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1511')!
     const ev = (char.anomalyEventExecutions ?? []).find(e => e.eventId === 'nangong_vibrato_release')
     expect(ev, '失衡次数>0 时颤音异放事件必须存在').toBeTruthy()
     expect(ev!.eventType).toBe('release')
     expect(ev!.element).toBe('dominant')
-    expect(ev!.releaseRatio?.basis).toBe('anomalyDamageRatio')
-    const ratios = ev!.releaseRatio!.perTenByElement
-    // 层数折叠对全元素同乘：以太/物理恒为 720/63
-    expect(ratios.ether / ratios.physical).toBeCloseTo(720 / 63)
-    expect(ratios.ether).toBeGreaterThanOrEqual(720)
-    expect(ratios.ether).toBeLessThanOrEqual(720 * 2)
+    // 固定倍率口径（DOT基准×比例≈450%，满层×2）
+    expect(ev!.fields).toContain('releaseMultiplier=900')
     expect(ev!.count).toBeGreaterThan(0)
+    const { calc: calc2 } = await setupNangong(2)
+    const char2 = calc2.resourceResult.value!.characters.find(c => c.agentId === '1511')!
+    const ev2 = (char2.anomalyEventExecutions ?? []).find(e => e.eventId === 'nangong_vibrato_release')
+    expect(ev2!.fields).toContain('releaseMultiplier=1080') // C2 每层35% → ×2.4
   })
 
   it('C2 差分：极性紊乱行走 rows 聚合（伤害=紊乱均伤×25%）；C0 无', async () => {
@@ -111,6 +111,7 @@ describe('南宫羽颤音异放（releaseRatio basis=anomalyDamageRatio）', () 
     }
     const { calc: calc0 } = await setupNangong(0)
     expect(polarRowsOf(calc0).length).toBe(0)
+    // 舞力全开口径：C2 每窗 3 次（2 层舞力全开 + 连携 1），C0 无极性紊乱（次数在事件侧断言）
   })
 })
 
@@ -132,16 +133,7 @@ describe('南宫羽 teamBuffs（核心被动全队伤害 / 踉跄）', () => {
 })
 
 describe('南宫羽三轮收口（C2 每层+10% / 强特免能 / 失衡内积蓄）', () => {
-  it('C2 差分：颤音异放 ether 比例 = 720×(1+35%×4)=1728；C0 ≤1440', async () => {
-    const ratioOf = async (cl: number) => {
-      const { calc } = await setupNangong(cl)
-      const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1511')!
-      const ev = (char.anomalyEventExecutions ?? []).find(e => e.eventId === 'nangong_vibrato_release')
-      return ev?.releaseRatio?.perTenByElement.ether ?? 0
-    }
-    expect(await ratioOf(2)).toBeCloseTo(720 * 2.4)
-    expect(await ratioOf(0)).toBeLessThanOrEqual(720 * 2)
-  })
+
 
   it('强特免能：每次失衡白送一次E——总E数含免费次数，能量只扣付费部分', async () => {
     const { calc } = await setupNangong(0)

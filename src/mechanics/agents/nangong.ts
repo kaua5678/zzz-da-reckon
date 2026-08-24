@@ -46,6 +46,11 @@ const CORE_EFFICIENCY_BONUS = 35
 const C1_ALL_RES_REDUCTION = 18
 const VIBRATO_MAX = 4
 const VIBRATO_STACK_PCT = 25
+/** 异放固定倍率：原文以「原属性异常伤害×比例」表达，各元素 DOT 基准(62.5/125/50/713/500/1250)
+ *  ×各自比例 全部收敛到 450%（物理 713×63%≈449.2），故按固定倍率建模（用户口径 2026-08） */
+const RELEASE_FLAT_MULTIPLIER = 450
+/** C6 颤音:改异放：800/400/1000/70/100/40 比例 × 同一套 DOT 基准全部收敛到 500% */
+const PRIME_RELEASE_FLAT_MULTIPLIER = 500
 /** 异放比例（% 原属性异常单次伤害），key = element */
 const RELEASE_RATIOS: Record<string, number> = {
   ether: 720,
@@ -211,8 +216,6 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = Math.max(0, Math.floor(Number(record.nangongCinemaLevel ?? 0)))
   const stunCount = Math.max(0, Math.floor(Number(record.nangongStunCount ?? 0)))
-  const triggersPerWindow = Math.max(0, Math.floor(Number(record.nangongTriggersPerWindow ?? 0)))
-  const activeCoverage = Math.max(0, Math.min(1, Number(record.nangongAnomalyActiveCoverage ?? 0)))
   // 颤音层数：滑块 >0 = 手动覆盖；0 = 自动 = 满层 4（用户口径 2026-08：失衡中全队
   // 异放/紊乱/进异常频密，达到 4 层很容易，每次失衡都按满层颤音）
   const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
@@ -222,8 +225,8 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
   const coverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
   const releaseCount = Math.round(stunCount * coverage)
   if (releaseCount > 0 && stacks > 0) {
-    const stackMult = 1 + (stackPct / 100) * stacks
-    const folded = Object.fromEntries(Object.entries(RELEASE_RATIOS).map(([k, v]) => [k, v * stackMult]))
+    // 固定倍率表达：450% × 层数系数（满层4 = 900%；C2 满层 = 1080%）
+    const flat = Math.round(RELEASE_FLAT_MULTIPLIER * (1 + (stackPct / 100) * stacks))
     events.push({
       eventId: 'nangong_vibrato_release',
       eventName: '南宫羽·颤音异放',
@@ -231,28 +234,47 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
       element: 'dominant',
       carrierMoveName: '核心被动：天才偶像（颤音清除）',
       count: releaseCount,
-      formula: `releaseMultiplier = 原属性异常伤害 × 元素比例% × (1+${stackPct}%×${stacks}层)`,
-      fields: ['RELEASE_RATIOS', `vibratoStacks=${stacks}`, 'anomalyDamageRatio'],
-      releaseRatio: { basis: 'anomalyDamageRatio', perTenByElement: folded },
-      note: `失衡窗口清除颤音结算 ≈ 失衡次数×覆盖 = ${releaseCount} 次；层数=${stacks}${sliderStacks > 0 ? '（手动）' : `（自动：窗口内触发 ${triggersPerWindow}）`}；元素按覆盖率分配。`,
+      formula: `releaseMultiplier = ${flat}（DOT基准×比例≈450%统一倍率 × 层数系数(1+${stackPct}%×${stacks})）`,
+      fields: ['RELEASE_RATIOS', `vibratoStacks=${stacks}`, `releaseMultiplier=${flat}`],
+      note: `失衡窗口清除颤音结算 ≈ 失衡次数×覆盖 = ${releaseCount} 次；层数=${stacks}${sliderStacks > 0 ? '（手动）' : '（自动=满层4）'}；次数按目标异常覆盖分配元素。`,
     })
   }
-  // C2 极性紊乱：连携重击命中「异常+失衡」目标 → 原紊乱伤25%，每失衡期间一次；
-  // 窗口内异常存活覆盖由 inStunEvents 分配，载体受连携次数约束
-  if (cinemaLevel >= 2 && stunCount > 0 && activeCoverage > 0) {
-    const chainCarriers = Math.max(0, Math.floor(Number((state as unknown as Record<string, unknown>).chainCountTotal ?? stunCount)))
-    const polarCount = Math.round(Math.min(stunCount, chainCarriers) * activeCoverage)
-    if (polarCount > 0) {
+  // 极性紊乱（用户口径 2026-08：文本明确——每次失衡入场获 2 层舞力全开，强特/地雷撞/快速支援
+  // 重击命中异常+失衡敌消耗 1 层触发一次极性紊乱，2 层必在失衡内消耗完；C2 连携重击路径独立，
+  // 每失衡期间一次）：极性紊乱次数 = 失衡次数 × (2 + C2?1)
+  if (stunCount > 0 && cinemaLevel >= 2) {
+    const polarPerWindow = 2 + 1 // 舞力全开 2 层 + C2 连携 1 次
+    events.push({
+      eventId: 'nangong_polar_disorder',
+      eventName: '南宫羽·极性紊乱',
+      eventType: 'polar_disorder',
+      element: 'dominant',
+      carrierMoveName: '强特/地雷撞/快速支援重击（舞力全开）+ 连携重击（影画2）',
+      count: stunCount * polarPerWindow,
+      formula: 'polarDisorderDamage = 原紊乱伤害 × 25%（不清除异常状态）',
+      fields: ['danceFullStacks=2/window', 'cinema2Chain=1/window', 'disorder.avgDamage×0.25'],
+      note: `每次失衡 2 层舞力全开必消耗完${cinemaLevel >= 2 ? ' + C2 连携 1 次' : ''} = 每窗 ${polarPerWindow} 次 × ${stunCount} 窗。`,
+    } as never)
+  }
+  // C6 颤音:改：非失衡期叠层（强特/地雷撞重击 +1、终结技重击 +2，上限4），进入失衡清除结算
+  // 异放（固定倍率 500%，每层+25%）——回复端按执行计数器近似（用户指令：需要计数器做回复端）
+  if (cinemaLevel >= 6 && stunCount > 0) {
+    const gained = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
+      + Math.max(0, Math.floor(Number(record.nangongMinePairs ?? 0))) * 2
+      + Math.max(0, Math.floor(Number(state.ultimateCount ?? 0))) * 2
+    const stacks6 = Math.min(VIBRATO_MAX, Math.floor(gained / Math.max(1, stunCount)))
+    if (stacks6 > 0) {
+      const flat6 = Math.round(PRIME_RELEASE_FLAT_MULTIPLIER * (1 + (VIBRATO_STACK_PCT / 100) * stacks6))
       events.push({
-        eventId: 'nangong_polar_disorder',
-        eventName: '南宫羽·极性紊乱',
-        eventType: 'polar_disorder',
+        eventId: 'nangong_vibrato_prime_release',
+        eventName: '南宫羽·颤音:改异放（影画6）',
+        eventType: 'release',
         element: 'dominant',
-        carrierMoveName: '连携技重击（影画2）',
-        count: polarCount,
-        formula: 'polarDisorderDamage = 原紊乱伤害 × 25%（不清除异常状态）',
-        fields: ['activeCoverage', `chains=${chainCarriers}`, 'disorder.avgDamage×0.25'],
-        note: `≈ min(失衡${stunCount}, 连携${chainCarriers}) × 异常存活覆盖 ${Math.round(activeCoverage * 100)}% = ${polarCount} 次。`,
+        carrierMoveName: '影画6（进失衡清除颤音:改）',
+        count: stunCount,
+        formula: `releaseMultiplier = ${flat6}（500%统一倍率 × 层数系数(1+25%×${stacks6})）`,
+        fields: [`primeStacks=${stacks6}`, `gained=${gained}`, `releaseMultiplier=${flat6}`],
+        note: `非失衡期获取计数 强特${Math.floor(Number(state.exSpecialCount ?? 0))} + 地雷撞段${Math.floor(Number(record.nangongMinePairs ?? 0)) * 2} + 终结×2 ${Math.floor(Number(state.ultimateCount ?? 0)) * 2} = ${gained}，均摊每窗 ${stacks6} 层。`,
       } as never)
     }
   }

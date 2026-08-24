@@ -30,7 +30,6 @@ import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
 import { calcAnomalyPool, calcSpecialActionBonus } from '@/core/anomalyPool'
 import { distributeIntegerByWeight, getMainApplierSlot, ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
-import { computeInStunAnomalyEvents } from '@/core/anomalyPool/inStunEvents'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentMechanic, getRegisteredAgentMechanics, type MechanicTeamMember } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, computeLiuyinHugCounts, resolveUltimateTargetSlot, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
@@ -702,7 +701,7 @@ function applyNormaHatChain(
     return out
   }
 
-  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0, prevNangongTriggersInWindows = 0, prevNangongActiveCoverage = 0): {
+  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0): {
     resourceResult: TeamResourceResult
     stunPool: StunPoolResult | null
     anomalyPool: AnomalyPoolResult | null
@@ -724,8 +723,6 @@ function applyNormaHatChain(
     lighterTeamEnergy: number
     vivianTeamEx: number
     vivianAnomalyTriggers: number
-    nangongTriggersInWindows: number
-    nangongActiveCoverage: number
   } | null {
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
@@ -1072,15 +1069,6 @@ function applyNormaHatChain(
           vivianAnomalyTriggerTotal: prevVivianAnomalyTriggers,
         }
       }
-      if (merged.agentId === '1511') {
-        // 南宫羽·失衡内异常系统 v1（上一轮池结果经 inStunEvents 分配）：
-        // 窗口内触发数 → 颤音自动层数；异常存活覆盖 → 极性紊乱窗口占比
-        return {
-          ...merged,
-          nangongTriggersPerWindow: Math.max(0, Math.floor(prevNangongTriggersInWindows)),
-          nangongAnomalyActiveCoverage: Math.max(0, Math.min(1, prevNangongActiveCoverage)),
-        }
-      }
       if (merged.agentId === '1161') {
         const ratio = Math.max(0, Math.min(1, configStore.getMechanicSetting('lighter.backstageRatio', 2 / 3)))
         return {
@@ -1341,28 +1329,6 @@ function applyNormaHatChain(
       }
     }
 
-    // 南宫羽·失衡内异常系统 v1（下一轮注入）：窗口内异常触发数 / 异常存活覆盖
-    let nangongTriggersInWindowsNext = 0
-    let nangongActiveCoverageNext = 0
-    if (characters.some(c => c.agentId === '1511')) {
-      const inStun = computeInStunAnomalyEvents({
-        perElement: (ap1?.perElement ?? []).map(p => ({ element: p.element, triggerCount: p.triggerCount ?? 0 })),
-        totalTime: configStore.enemy.battleTime ?? 180,
-        stunCount,
-        windowDuration: computeWindowDuration(),
-      })
-      nangongTriggersInWindowsNext = inStun.triggersInWindows
-      nangongActiveCoverageNext = inStun.activeCoveragePerWindow
-      // 首轮无 prev → 用本轮值直接注入（buildAnomalyEvents 读 cfg）
-      if (prevNangongTriggersInWindows <= 0 && prevNangongActiveCoverage <= 0) {
-        for (const c of characters) {
-          if (c.agentId === '1511') {
-            ;(c as any).nangongTriggersPerWindow = nangongTriggersInWindowsNext
-            ;(c as any).nangongAnomalyActiveCoverage = nangongActiveCoverageNext
-          }
-        }
-      }
-    }
 
     return {
       resourceResult: rrShown,
@@ -1383,8 +1349,6 @@ function applyNormaHatChain(
       yeshuguangGiftUlt: yeshuguangGiftUltNext,
       anbyZeroTeammateWl: anbyZeroTeammateWlNext,
       lucyTeammateEx: lucyTeammateExNext,
-      nangongTriggersInWindows: nangongTriggersInWindowsNext,
-      nangongActiveCoverage: nangongActiveCoverageNext,
       lighterTeamEnergy: lighterTeamEnergyNext,
       vivianTeamEx: vivianTeamExNext,
       vivianAnomalyTriggers: vivianAnomalyTriggersNext,
@@ -1413,8 +1377,6 @@ function applyNormaHatChain(
     let prevLighterTeamEnergy = 0
     let prevVivianTeamEx = 0
     let prevVivianAnomalyTriggers = 0
-    let prevNangongTriggersInWindows = 0
-    let prevNangongActiveCoverage = 0
     let prevAnomalyDecibelBonus: number[] = []
     let prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }
     let prevUltSeq = ''
@@ -1434,7 +1396,7 @@ function applyNormaHatChain(
       outerRounds = k + 1
       // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
       const locked = lockedStunCount >= 0
-      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers, prevNangongTriggersInWindows, prevNangongActiveCoverage)
+      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers)
       const ait = out?.auricInkTriggerCount ?? 0
       const gr = out?.goodReview
       if (gr !== undefined && gr >= 0) prevGoodReview = gr
@@ -1490,8 +1452,6 @@ function applyNormaHatChain(
       prevLighterTeamEnergy = out?.lighterTeamEnergy ?? 0
       prevVivianTeamEx = out?.vivianTeamEx ?? 0
       prevVivianAnomalyTriggers = out?.vivianAnomalyTriggers ?? 0
-      prevNangongTriggersInWindows = out?.nangongTriggersInWindows ?? 0
-      prevNangongActiveCoverage = out?.nangongActiveCoverage ?? 0
       prevUltSeq = ultSeq
       prevAnomalySeq = anomalySeq
       prevTopUpSeq = topUpSeq
