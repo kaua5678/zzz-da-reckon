@@ -47,6 +47,7 @@ L3 是当前唯一必须人肉的部分，也是未来自动化收益最高的�
 | 倍率表等级分段取值 | 蕾米埃尔 | 倍率表按技能等级索引 levelValues 取分段值 | `pickRemielleLevelValue (core/damage.ts)` | 无 | L0 |
 | 动作时间直读 | 通用 | 强特/终结/连携动作时间从 catalog move.actionTime 读 | `findExSpecial (core/resource.ts)` `move.actionTime ?? 0` | 无 | L0 |
 | catalog 数据加载（唯一事实源） | 通用 | fetch('/static/catalog.json') 脚本导入 | `load (stores/catalog.ts)` | catalogData.test.ts | L0 |
+| 专属资源回复行（attack_data_N） | 席德/希希芙/比利/青衣 | attack_data_0=第一通道（钢能/决意/电压，秒均≈11）；attack_data_1/2=其他通道（回血等），不混和 | `getSpecialResourceRecovery (composables/resourceCalc/helpers.ts)` 取 kind=special **第一行**；多段命中不要 sum 全部 attack_data_N | xide.test.ts | L0 |
 
 ### D2 panel_effect —— 面板字段型（buff/减抗/转模）
 - **指纹**："自身攻击提升X%"、"敌人X抗性降低Y%"、"每点A提高B"、"处于X状态时…"
@@ -62,6 +63,7 @@ L3 是当前唯一必须人肉的部分，也是未来自动化收益最高的�
 | 属性转模·hp→贯穿力 | 伊德海莉(1051) | 核心被动 hp→贯穿力 0.1/点 | applyYidhariPanel（yidhari.ts） | 无 | L1 |
 | 减抗+精通转模 | 爱丽丝(1401) | C4无视10%物理抗性+精通转掌控 | applyAlicePanel（alice.ts） | 无 | L1 |
 | 生命转攻击·转模 | 卢西娅(1451) | C6 以太帷幕内 生命2%→攻击 | applyLuciaPanel（luciaElowen.ts） | luciaElowen.test.ts | L1 |
+| 招式限定增伤/减抗（执行级，勿走面板级） | 席德 | 额外能力落华·重戮/崩坠/终结技增伤+30%、无视25%电抗 | `patchExecutions` 执行级 `dmgBonus`/`resIgnore` 挂 moveId（1461006/07/08/1015）；**不要**用面板级 `skillDmgBonus__basic`/`enemyElectricResReduction`（范围过宽连累其他招式） | xide.test.ts | L1 |
 
 ### D3 multiplier —— 乘区型（增伤/暴伤/贯穿/易伤）
 - **指纹**："伤害提升X%"、"暴击伤害+X%"、"无视Y%防御"、"失衡易伤+X%"
@@ -138,6 +140,7 @@ L3 是当前唯一必须人肉的部分，也是未来自动化收益最高的�
 | 动态邻位回能（applyTeamConfig build） | 丽娜 | 终结技邻位回能 30/隔位 10 | `applyTeamConfig` → `applyRinaTeamEnergyFlags (rina.ts)` | teamHook.test.ts | L1 |
 | 动态邻位回能（applyTeamConfig build） | 露西 / 苍角 | 终结技其他角色 +10 能量，下一位换入额外 +20 | `applyTeamConfig` → `applyLucyTeamEnergyFlags (lucy.ts)` / `applySoukakuTeamEnergyFlags (soukaku.ts)` | teamHook.test.ts | L1 |
 | 动态三阶段（applyTeamConfig build/converge/postRound） | 莱特 | 影画4 后场喷发回能 +4/次（18s CD），后场占比滑块 | `applyTeamConfig` → `applyLighterTeamEnergyFlags (lighter.ts)` | teamHook.test.ts | L2 |
+| 回能→耗能→反哺层级（严格读对端，勿近似） | 席德 | 席德为正兵回 2 能量/秒 → 正兵能量多 → 正兵强特多 → 正兵耗能 → 席德钢能 ×0.5 | `applyTeamConfig` 定正兵槽位 + `calcCrossAgentEnergy`（单一事实源）写 `cfg.xideVanguardEnergySpent` = 正兵强特次数×正兵强特耗能 | teamHook.test.ts / xide.test.ts | L1 |
 
 ### D8 damage_event —— 附伤/事件伤害行
 - **指纹**："额外造成X%攻击力伤害"、"追加Y%…"、"每N次生成一次…"
@@ -153,6 +156,7 @@ L3 是当前唯一必须人肉的部分，也是未来自动化收益最高的�
 | 合成执行行（buildExecutions + 假 moveId） | 赛斯 | 影画6 雷霆击感电终结一击额外 500% 攻击力、必暴+暴伤 60% | `buildSethExecutions (seth.ts)`（moveId `1271_c6_finish_strike`） | seth.test.ts | L2 |
 | 合成执行行（buildExecutions + 假 moveId） | 扳机 | 影画4 断离 200% 攻击/120% 冲击；影画6 凶弹 1200% 电伤 | `buildTriggerExecutions (trigger.ts)`（moveId `1361_c4_duanli`） | trigger.test.ts | L2 |
 | 合成执行行（buildExecutions + 假 moveId） | 露西 | 影画6 加油下队友强特 → 小猪落地 300% 攻火伤 | `buildExecutions (lucy.ts)`（moveId `1151_c6_pig_bomb`） | lucy.test.ts | L1 |
+| 基础随技能等级 + 附加不随等级拆分 | 希希芙 | 蚀骨 = 倍率表基础 254.4%（随 C3/C5 等级系数）+ 核心被动附加 335%（不随等级） | `buildXixifuExecutions (xixifu.ts)`：`damageMultiplier 254.4`（随等级）+ `flatDamageBonus 攻击力×3.35`（不随等级） | xixifu.test.ts | L1 |
 
 **异放倍率的两种通用表达（2026-08 南宫羽实证，录入时先做判别再选通道）**
 
@@ -188,6 +192,8 @@ Type B 比例式（releaseRatio.basis=掌控/精通）的基数取**施放者自
 | 窗口分配（精确轮数 / 兜底吃剩余） | 通用轴引擎 | count 有值 = 精确轮数，缺省 = 兜底吃剩余窗口 | `allocateAxisWindows (stunAxisStack.ts)` | stunAxisStack.test.ts | L1 |
 | 跨边界动作窗口覆盖折算 | 通用轴引擎 | 跨边界动作按窗口内时长比例折算轴内易伤 | `computeInAxisRatio (stunAxis.ts)` | stunAxis.test.ts | L1 |
 | 失衡轴预设 JSON（自动加载 + 匹配） | 般岳/琉音 | 好评溢出爆发轴：默认常规轴，好评富余逐窗升级爆发轴 | `stunAxisPresets.ts`（import.meta.glob 加载 `stunAxisPresets/*.json`，如 般琉通用.json） | stunAxisPresets.test.ts | L0 |
+| 连段动作块（combos） | 席德 | 崩坠 = 重戮+一式+二式三连（中间自动衔接，连着一块放） | `xide.ts combos['xide-bengzhui']`：`{ moves: [{1461006,1},{1461007,1},{1461008,1}], energyCost:0 }`，轴预设里 `moveId:'xide-bengzhui', count:3` | stunAxisPresets.test.ts | L1 |
+| 自动触发招式·资源占比结算 | 希希芙 | 蚀骨自动触发本按时间占比进失衡；蛇吻手动消耗毒素 → 失衡内回复的毒素全部失衡内爆发 | `useResourceCalc.ts xixifuToxinInAxisFraction`：毒牙/终结/连携按轴内单位折算、C2 全轴内 → 蚀骨行按占比切轴内/轴外 | xixifu.test.ts | L2 |
 
 ## 3. 维度 × 确定性 实测分布
 
