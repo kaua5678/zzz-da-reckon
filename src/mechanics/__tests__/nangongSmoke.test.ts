@@ -90,3 +90,18 @@ describe('南宫羽颤音异放（releaseRatio basis=anomalyDamageRatio）', () 
     expect(ev!.count).toBeGreaterThan(0)
   })
 })
+
+describe('南宫羽 teamBuffs（核心被动全队伤害 / 踉跄）', () => {
+  it('队友面板差分：有南宫羽 → dmgBonus+25 / stunDmgMultiplierBonus+30 / 失衡持续+3s', async () => {
+    const withN = await setupHarness([{ agentId: '1511' }, { agentId: '1371' }])
+    const without = await setupHarness([{ agentId: '1051' }, { agentId: '1371' }])
+    const inC = (h: Awaited<ReturnType<typeof setupHarness>>) =>
+      computePanelPhases(1, h.config, h.catalog)!.inCombat
+    const on = inC(withN)
+    const off = inC(without)
+    expect(on.dmgBonus - off.dmgBonus).toBeCloseTo(25)
+    expect((on as unknown as Record<string, number>).stunDmgMultiplierBonus
+      - (off as unknown as Record<string, number>).stunDmgMultiplierBonus).toBeCloseTo(30)
+    expect(on.stunDurationBonusSeconds - off.stunDurationBonusSeconds).toBeCloseTo(3)
+  })
+})
