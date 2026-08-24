@@ -271,3 +271,29 @@ describe('异放次数源·事件计数器（v2.3）', () => {
     }
   })
 })
+
+describe('初始异常条值（v2.5）', () => {
+  it('预填积蓄让单窗不足的配置当窗触发；阈值系数与全局池对齐（×1.1）', async () => {
+    const setup = async () => {
+      const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1371' }])
+      config.enemy.stunCountLock = 1
+      config.useStunAxis = true
+      config.stunAxes = [{
+        name: 'prefill轴',
+        count: 1,
+        actions: [{ slot: 0, moveId: '1181005', count: 14, startTime: 0 }],
+        basicFillerSlot: 0,
+      }]
+      return { config, calc: useResourceCalc() }
+    }
+    // 无预填：14 击 ≈2593（185.23/击）< 第一管 3300（3000×系数1.1）→ 不触发
+    const bare = await setup()
+    expect(bare.calc.inStunAnomalyState.value!.elements.find(e => e.element === 'electric')?.triggerCount ?? 0).toBe(0)
+    // 预填电 30% = 990 → 2593+990=3583 ≥ 3300 → 当窗触发
+    const prefilled = await setup()
+    prefilled.config.setMechanicSetting('boss.entryAnomaly', 2)
+    prefilled.config.setMechanicSetting('boss.entryGauge', 30)
+    const st = prefilled.calc.inStunAnomalyState.value!
+    expect(st.elements.find(e => e.element === 'electric')?.triggerCount).toBe(1)
+  })
+})

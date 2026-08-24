@@ -30,7 +30,7 @@ import { calcStunAxisStack, allocateAxisWindows } from '@/core/stunAxisStack'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
 import { calcAnomalyPool, calcSpecialActionBonus } from '@/core/anomalyPool'
-import { distributeIntegerByWeight, getMainApplierSlot, ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement } from '@/core/anomalyPool/helpers'
+import { distributeIntegerByWeight, getMainApplierSlot, ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/helpers'
 import { computeBossAnomalyStateTimeline, computeInStunAnomalyTimeline, attributeCountByStateChain, bossEntryAnomalyElement, type BossAnomalyStateResult, type InStunWindowInput } from '@/core/stunAxis/inStunAnomaly'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentMechanic, getRegisteredAgentMechanics, type MechanicTeamMember } from '@/mechanics'
@@ -1363,7 +1363,13 @@ function applyNormaHatChain(
         // 顺序分配——条目 count=该动作模式重复的失衡窗数，受实际收敛失衡数钳制；小数失衡
         // 取整窗模拟（残窗忽略）。积蓄余量/异常状态因此逐窗真实继承，不再代表窗近似。
         const winAlloc = allocateAxisWindows(resolvedAxes, Math.round(stunCount))
+        // 用户口径：轴可设「进窗初始异常状态」+「初始异常条值(%)」——首窗 entryStates 预填积蓄；
+        // 阈值系数对齐全局池（store/pool 两端字段命名互换，取乘积规避）
+        const entryElement = bossEntryAnomalyElement(configStore.getMechanicSetting('boss.entryAnomaly', 0))
+        const entryGaugePct = Math.max(0, Math.min(100, configStore.getMechanicSetting('boss.entryGauge', 0)))
+        const thresholdCoeff = (configStore.enemy.anomalyCoeff ?? 1) * (configStore.enemy.bossAnomalyCoeff ?? 1)
         const windows: InStunWindowInput[] = []
+        let firstWindow = true
         resolvedAxes.forEach((axis, ai) => {
           const wins = Math.floor(winAlloc[ai] ?? 0)
           if (wins <= 0) return
@@ -1373,9 +1379,17 @@ function applyNormaHatChain(
               const cm = contribMap.get(a.moveId)!
               return { element: cm.element, perHitBuildUp: cm.perHit, count: Math.max(0, Math.floor(a.count || 1)), startTime: a.startTime ?? 0 }
             })
-          for (let k = 0; k < wins; k++) windows.push({ actions })
+          for (let k = 0; k < wins; k++) {
+            if (firstWindow && entryElement && entryGaugePct > 0) {
+              const firstPipe = (BUILDUP_THRESHOLD_TABLE[entryElement] ?? BUILDUP_THRESHOLD_TABLE.ice)[0]
+              windows.push({ actions, entryStates: [{ element: entryElement, gauge: (entryGaugePct / 100) * firstPipe * thresholdCoeff }] })
+            } else {
+              windows.push({ actions })
+            }
+            firstWindow = false
+          }
         })
-        const tl = computeInStunAnomalyTimeline({ windows, windowDuration: computeWindowDuration() })
+        const tl = computeInStunAnomalyTimeline({ windows, windowDuration: computeWindowDuration(), coeff: thresholdCoeff })
         inStunWindowTriggersNext = windows.length > 0
           ? Math.round((tl.triggers.length / windows.length) * 10) / 10
           : 0
@@ -1416,7 +1430,7 @@ function applyNormaHatChain(
             windowDuration: bossWindowDur,
             windowCount: Math.max(1, windows.length),
             // 用户口径 v2 需求②：可指定进入窗口时的异常状态（机制设置 boss.entryAnomaly，0=无）
-            entryElement: bossEntryAnomalyElement(configStore.getMechanicSetting('boss.entryAnomaly', 0)) || undefined,
+            entryElement: entryElement || undefined,
           }),
           stunsTotal: Math.max(1, Math.round(stunCount)),
           windowDuration: bossWindowDur,

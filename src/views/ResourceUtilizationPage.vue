@@ -214,7 +214,7 @@
           <div class="mechanic-row">
             <div class="mechanic-copy">
               <div class="field-title">Boss 异常状态轴（紊乱替换状态 · 风化保持不变 · 极性紊乱/异放按触发时刻状态归因）</div>
-              <div class="field-desc">指定进窗时目标已带的异常状态；不同属性异常触发即替换（归因取原状态）。</div>
+              <div class="field-desc">指定进窗时目标已带的异常状态与异常条进度；不同属性异常触发即替换（归因取原状态）。积蓄超第一管即触发对应异常。</div>
             </div>
             <n-select
               :value="configStore.getMechanicSetting('boss.entryAnomaly', 0)"
@@ -222,6 +222,17 @@
               style="width:110px"
               :options="bossEntryOptions"
               @update:value="(v: number | null) => configStore.setMechanicSetting('boss.entryAnomaly', v ?? 0)"
+            />
+            <n-input-number
+              v-if="(configStore.getMechanicSetting('boss.entryAnomaly', 0) ?? 0) > 0"
+              :value="configStore.getMechanicSetting('boss.entryGauge', 0)"
+              size="small"
+              style="width:120px"
+              :min="0"
+              :max="100"
+              :step="10"
+              suffix="%"
+              @update:value="(v: number | null) => configStore.setMechanicSetting('boss.entryGauge', v ?? 0)"
             />
           </div>
           <div
