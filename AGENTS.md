@@ -19,17 +19,15 @@
 
 辅助：`docs/GAME_TERM_TO_CODE_FIELD.md`（中文术语→字段）、`docs/MECHANIC_PATTERNS.md`（**机制模式目录：录新角色前先做模式匹配**）、`docs/MECHANICS_IMPLEMENTATION.md`（角色机制档案）、`README.md` §3（录入工作流）。
 
-### 录入角色 / 补机制：角色档案必读（仅此类任务）
+### 录入角色 / 补机制：先读原文 + 角色档案（仅此类任务）
 
-**任务是「录入新角色 / 给已有角色补机制 / 核对角色机制口径」时，动手前必须读 `docs/MECHANICS_IMPLEMENTATION.md` 中该角色的档案段**（`grep -n "角色名\|agentId" docs/MECHANICS_IMPLEMENTATION.md` 定位）：
+任务涉及「录入新角色 / 补机制 / 核对角色口径」时，按序做三件事：
 
-- 档案段记录了该角色**已确认的口径**（资源循环、触发条件、乘区归属、命座语义）与**明确未建模项**——不读它 = 凭印象实现 = 必然踩坑（2026-08 薇薇安实证：档案已写「额外能力侵蚀+12% / 异放 / 预言DoT 未建模」，未读档案的 AI 重新"发现"了这些并做错口径）。
-- 档案段首行有「**当前实现状态**」标注（`[已实现]` / `[部分实现]` / `[未建模]` + 实现位置），以它为准核对现状，不要凭 spec status 或记忆判断。
-- 补机制时**同步更新档案段**（改完机制 → 更新实现状态行 + 关键口径），保持档案 = 当前事实源。
+1. **读 nanoka 原文自主分析**（`data/raw/nanoka_missing/full/<id>.json`）：逻辑/资源/字段/数值都在原文里，能自主确定的直接实现，只把「原文没给数值/口径歧义/引擎缺通道」列成清单一次性问用户——见 `docs/AGENT_RECORDING_SOP.md` §0.5。
+2. **读角色档案段**（`grep -n "角色名\|agentId" docs/MECHANICS_IMPLEMENTATION.md`）：已确认口径 + 未建模项。无状态行的段 = 尚未核对，录入时先核对现状再补状态行。
+3. 改完机制同步更新档案段。
 
-**其他任务（改引擎 / 排查 / UI）不需要读档案**——按任务决策树进对应层即可，档案只服务角色录入。
-
-> ⚠️ 例外：`docs/MECHANICS_IMPLEMENTATION.md` 未收录的角色（新角色刚导入、档案还没建），以 `src/specs/agents/<id>.json` 的 notes + raw 数据为准，并在录入时**新建档案段**。
+其他任务（改引擎/排查/UI）不需读原文/档案。未收录的新角色以 spec notes + raw 数据为准，录入时新建档案段。
 
 ## 1. 硬性规则
 
@@ -61,9 +59,12 @@
 ## 3. 验收命令
 
 ```bash
-npm run verify        # validate:data + validate:specs + vitest + typecheck + build（一条链，无重复执行）
+npm run verify        # validate:data + validate:specs + verify:recording + vitest + typecheck + build（一条链）
+npm run verify:recording  # 录入完成判据：声称 implemented 的角色必须有测试引用 + expect 断言 + 档案状态行
 npm run docs:status   # 重新生成 docs/implementation-status.md（CI 会检查漂移，漏跑即红）
 ```
+
+`verify:recording` 是**机器判据**——防止"写了代码改了 spec 就声称完成"：对每个 `status ∈ implemented*` 的角色，检查①测试文件引用 agentId（无=FAIL）②有 expect 断言（无=WARN）③档案段有状态行（无=WARN）。录入角色后跑它确认无 FAIL；WARN（档案无状态行）按 SOP §6.10 第 3 项补状态行后消除。
 
 新测试一律用 `src/test/harness.ts`（`setupHarness` / `mockStaticFetch` / `setTeam`），禁止复制三文件 fetch stub；全局回归网 = `src/composables/__tests__/allAgentsSweep.test.ts`（60 角色 × 命座 0/6 不变量）。
 
