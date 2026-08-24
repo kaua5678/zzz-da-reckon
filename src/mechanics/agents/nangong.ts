@@ -206,11 +206,10 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
   const stunCount = Math.max(0, Math.floor(Number(record.nangongStunCount ?? 0)))
   const triggersPerWindow = Math.max(0, Math.floor(Number(record.nangongTriggersPerWindow ?? 0)))
   const activeCoverage = Math.max(0, Math.min(1, Number(record.nangongAnomalyActiveCoverage ?? 0)))
-  // 颤音层数：滑块 >0 = 手动覆盖；0 = 自动（失衡内异常系统：窗口内触发数夹紧 0-4）
+  // 颤音层数：滑块 >0 = 手动覆盖；0 = 自动 = 满层 4（用户口径 2026-08：失衡中全队
+  // 异放/紊乱/进异常频密，达到 4 层很容易，每次失衡都按满层颤音）
   const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
-  const stacks = sliderStacks > 0
-    ? Math.min(VIBRATO_MAX, sliderStacks)
-    : Math.min(VIBRATO_MAX, triggersPerWindow)
+  const stacks = sliderStacks > 0 ? Math.min(VIBRATO_MAX, sliderStacks) : VIBRATO_MAX
   const coverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
   const releaseCount = Math.round(stunCount * coverage)
   if (releaseCount > 0 && stacks > 0) {
@@ -258,8 +257,7 @@ function buildNangongResourceResult({ cfg, state }: AgentResourceResultInput): P
   const beatInitial = cinemaLevel >= 1 ? BEAT_CAP : BEAT_INITIAL
   const totalBeat = nangongBeatIncome(cinemaLevel, frontline, battleTime)
   const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
-  const autoStacks = Math.min(VIBRATO_MAX, Math.max(0, Math.floor(Number(record.nangongTriggersPerWindow ?? 0))))
-  const stacks = sliderStacks > 0 ? Math.min(VIBRATO_MAX, sliderStacks) : autoStacks
+  const stacks = sliderStacks > 0 ? Math.min(VIBRATO_MAX, sliderStacks) : VIBRATO_MAX
   const releaseCoverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
   const stunCount = Math.max(0, Math.floor(Number(record.nangongStunCount ?? 0)))
   const source = computeNangongMechanic({
@@ -317,7 +315,7 @@ const settings: MechanicSetting[] = [
   {
     id: 'nangong.vibratoStacksPerRelease',
     label: '南宫羽·颤音层数（每次异放）',
-    description: '颤音清除时的层数（0-4），决定异放比例加成（每层+25%）；0=自动（失衡内异常系统：窗口内触发数夹紧 0-4）。',
+    description: '颤音清除时的层数（0-4），决定异放比例加成（每层+25%）；0=自动=满层 4（叠满很容易，每次失衡都按满层）。',
     default: 0,
     min: 0,
     max: 4,

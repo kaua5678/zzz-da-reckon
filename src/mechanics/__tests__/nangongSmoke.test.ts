@@ -125,8 +125,8 @@ describe('南宫羽 teamBuffs（核心被动全队伤害 / 踉跄）', () => {
     expect(on.dmgBonus - off.dmgBonus).toBeCloseTo(25)
     expect((on as unknown as Record<string, number>).stunDmgMultiplierBonus
       - (off as unknown as Record<string, number>).stunDmgMultiplierBonus).toBeCloseTo(30)
-    // 踉跄失衡持续+3s 暂缓：stunDurationBonusSeconds 进窗口时长反馈环，C6 高失衡值下发散
-    // （allAgentsSweep maxIter 实证），待引擎稳定性处理后再接（档案段 Open）
-    expect(on.stunDurationBonusSeconds - off.stunDurationBonusSeconds).toBe(0)
+    // 失衡持续+3s：经 computeWindowDuration 生效（初版误判发散已纠正——
+    // 实为阻尼振荡收敛慢，MAX_OUTER_ITER 12→20 后 sweep 恢复绿）
+    expect(on.stunDurationBonusSeconds - off.stunDurationBonusSeconds).toBeCloseTo(3)
   })
 })

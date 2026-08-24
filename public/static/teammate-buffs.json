@@ -1001,7 +1001,8 @@
        "max": 1,
        "step": 0.1
       }
-     }
+     },
+    { "id": "effect_b37f029a3a_dur", "type": "fixed", "target": { "kind": "default" }, "stat": "enemyStunDurationBonusSeconds", "mode": "flat", "value": 3, "coverage": { "default": 1, "min": 0, "max": 1, "step": 0.1 } }
     ],
     "buffModifiers": [],
     "hidden": false,
