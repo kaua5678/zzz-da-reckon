@@ -2127,10 +2127,17 @@ function applyNormaHatChain(
             releaseCrit: event.releaseCrit,
           })
         } else if (event.eventType === 'polar_disorder') {
-          // 失衡内异常系统 v1：极性紊乱 = 原本[紊乱]效果的25%伤害（池收敛后取紊乱均伤），
-          // 不清除目标异常状态；C2 门控在模块侧，次数已按「异常+失衡同时存在」覆盖折算
+          // 极性紊乱 = 原本[紊乱]效果的25%伤害（池收敛后取紊乱均伤），不清除目标异常状态；
+          // C2 门控在模块侧。状态判定（用户口径：极性紊乱触发需依据目标当前异常状态）：
+          // dominant 时元素取当前活跃异常的主元素（覆盖率最高者）——完整逐事件状态机见 SOP §3.8 待建系统
           const dd = anomalyPoolResult.value?.disorderDamage
           const perEvent = (dd?.avgDamage ?? 0) * 0.25
+          let polarElement = event.element
+          if (polarElement === 'dominant') {
+            const rates = anomalyPoolResult.value?.coverage?.perElementCoverageRate ?? {}
+            const best = Object.entries(rates).filter(([, r]) => r > 0).sort((a, b) => b[1] - a[1])[0]?.[0]
+            polarElement = best ?? agent?.damageElement ?? 'ether'
+          }
           if (perEvent > 0 && event.count > 0) {
             rows.push({
               id: `polar-${slot}-${event.eventId}`,
@@ -2139,7 +2146,7 @@ function applyNormaHatChain(
               agentName: agentName(charResult.agentId, slot),
               type: '极性紊乱',
               name: event.eventName,
-              element: safeElement(event.element),
+              element: safeElement(polarElement),
               source: event.carrierMoveName || event.carrierMoveId || event.eventId,
               count: event.count,
               perDamage: perEvent,
