@@ -76,13 +76,23 @@
             <span class="sap-label">次（空=兜底）</span>
             <span class="sap-label">兜底平A</span>
             <n-select :value="fillerValue(ai)" @update:value="v => setFiller(ai, v)" size="small" style="width:110px" :options="fillerOptions" />
-            <span class="sap-label">初始异常</span>
+            <span class="sap-label">初始状态</span>
             <n-select :value="axis.entryAnomaly ?? 0" size="small" style="width:96px" :options="entryAnomalyOptions"
               :disabled="hasPlans" :title="hasPlans ? '条件轴方案模式下只读' : undefined"
               @update:value="v => setEntryAnomaly(axis, v ?? 0)" />
-            <n-input-number v-if="(axis.entryAnomaly ?? 0) > 0" :value="axis.entryGauge ?? 0" size="small" style="width:104px"
-              :min="0" :max="100" :step="10" suffix="%" :disabled="hasPlans"
-              @update:value="v => setEntryGauge(axis, v)" />
+            <span class="sap-label">异常条</span>
+            <template v-for="el in entryBarList(axis)" :key="el">
+              <span class="sap-label">{{ entryBarLabel(el) }}</span>
+              <n-input-number :value="axis.entryBars?.[el] ?? 0" size="small" style="width:92px"
+                :min="0" :max="100" :step="10" suffix="%" :disabled="hasPlans"
+                @update:value="v => setEntryBar(axis, el, v)" />
+            </template>
+            <n-select
+              v-if="!hasPlans && entryBarCandidates(axis).length > 0"
+              size="small" style="width:86px" placeholder="+异常条"
+              :options="entryBarCandidates(axis).map(el => ({ label: entryBarLabel(el), value: el }))"
+              @update:value="v => v && addEntryBar(axis, String(v))"
+            />
             <n-button size="tiny" quaternary type="warning" @click="axes.splice(ai,1)">删除</n-button>
             <span class="sap-stat">实际 ×{{ axisResult?.axisDetails?.[ai]?.times ?? '?' }} 次 · 单轮 {{ (axisResult?.axisDetails?.[ai]?.axisDuration ?? 0).toFixed(1) }}s · 窗口 {{ maxDur }}s</span>
           </div>
@@ -340,12 +350,30 @@ function setEntryAnomaly(axis: StunAxis, v: number) {
   if (v > 0) target.entryAnomaly = v
   else {
     target.entryAnomaly = undefined
-    target.entryGauge = undefined
+    target.entryBars = undefined
   }
 }
-function setEntryGauge(axis: StunAxis, v: number | null) {
+
+// 多条异常条（v2.8 用户口径：多个角色各攒各的条，两条接近满进窗一碰即连续触发紊乱）
+function entryBarList(axis: StunAxis): string[] {
+  return Object.keys(axis.entryBars ?? {})
+}
+function entryBarCandidates(axis: StunAxis): string[] {
+  const used = new Set(entryBarList(axis))
+  return BOSS_ENTRY_ANOMALY_OPTIONS.filter(o => o.value > 0 && !used.has(o.element)).map(o => o.element)
+}
+function entryBarLabel(el: string): string { return ENTRY_ANOMALY_LABELS[el] ?? el }
+function addEntryBar(axis: StunAxis, el: string) {
   const target = ensureWritableAxis(axis); if (!target) return
-  target.entryGauge = v ?? undefined
+  ;(target.entryBars ??= {})[el] = 50
+}
+function setEntryBar(axis: StunAxis, el: string, v: number | null) {
+  if (v === null || !Number.isFinite(v) || v <= 0) {
+    // 清空 = 移除该元素的条
+    if (axis.entryBars) delete axis.entryBars[el]
+    return
+  }
+  axis.entryBars = { ...(axis.entryBars ?? {}), [el]: Math.min(100, Math.round(v)) }
 }
 
 // 栈遍历警告：资源不足（energy/decibel）= 固定轴只提示；超时（time）= 超窗截断

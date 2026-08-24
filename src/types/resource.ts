@@ -2066,13 +2066,16 @@ export interface StunAxis {
   /** 兜底平A角色槽位：资源不足时剩余窗口时间由该角色打平A填充（吃易伤）；缺省不填充 */
   basicFillerSlot?: number
   /**
-   * 进窗初始异常状态（BOSS_ENTRY_ANOMALY_OPTIONS 索引，0/缺省=未指定→回落全局 boss.entryAnomaly）。
-   * 仅首个生效（winAlloc>0）轴条目上的设置参与计算——初始状态描述战斗开始时目标身上的状态。
-   * 随预设导出（normalizeAxesForExport 保留）。
+   * 进窗初始异常状态（BOSS_ENTRY_ANOMALY_OPTIONS 索引，0/缺省=未指定）。
+   * 中间态口径（2026-08-24 用户纠正）：每次失衡都是中间态——该声明表示敌方以什么异常状态
+   * 进入这段失衡，在该条目首个窗口边界注入状态机（不记紊乱）。随预设导出保留。
    */
   entryAnomaly?: number
-  /** 进窗初始异常条值（第一管百分比 0-100，配合 entryAnomaly 生效；随预设导出保留） */
-  entryGauge?: number
+  /**
+   * 进窗时各元素异常条的进度（key=基础元素，value=第一管百分比 0-100）。**可同时填多个**：
+   * 多个角色各攒各的条，两条都接近满时进窗一碰即连续触发打紊乱。随预设导出保留。
+   */
+  entryBars?: Record<string, number>
 }
 
 /** 轴方案命中条件（全部满足才命中） */

@@ -180,10 +180,10 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
     const { config } = await setupHarness([{ agentId: '1511', cinemaLevel: 2 }, { agentId: '1181' }])
     config.useStunAxis = true
     config.enemy.stunCountLock = 2
-    config.setMechanicSetting('boss.entryAnomaly', 1) // 火
     config.stunAxes = [{
       name: '进窗状态轴',
       count: 3,
+      entryAnomaly: 1, // 火
       actions: [
         { slot: 0, moveId: '1511006', count: 6, startTime: 0 },
         { slot: 1, moveId: '1181005', count: 18, startTime: 8 },
@@ -291,22 +291,17 @@ describe('初始异常条值（v2.5）', () => {
     expect(bare.calc.inStunAnomalyState.value!.elements.find(e => e.element === 'electric')?.triggerCount ?? 0).toBe(0)
     // 预填电 30% = 990 → 2593+990=3583 ≥ 3300 → 当窗触发
     const prefilled = await setup()
-    prefilled.config.setMechanicSetting('boss.entryAnomaly', 2)
-    prefilled.config.setMechanicSetting('boss.entryGauge', 30)
+    prefilled.config.stunAxes = prefilled.config.stunAxes.map(a => ({ ...a, entryBars: { electric: 30 } }))
     const st = prefilled.calc.inStunAnomalyState.value!
     expect(st.elements.find(e => e.element === 'electric')?.triggerCount).toBe(1)
   })
 })
 
-describe('轴条目级初始异常（v2.6，随预设导出）', () => {
-  const setupWith = async (axisExtra: Record<string, unknown>, globalAnomaly = 0, globalGauge = 0) => {
+describe('轴条目级初始异常/多条异常条（v2.6→v2.8，随预设导出）', () => {
+  const setupWith = async (axisExtra: Record<string, unknown>) => {
     const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1371' }])
     config.enemy.stunCountLock = 1
     config.useStunAxis = true
-    if (globalAnomaly > 0) {
-      config.setMechanicSetting('boss.entryAnomaly', globalAnomaly)
-      config.setMechanicSetting('boss.entryGauge', globalGauge)
-    }
     config.stunAxes = [{
       name: 'entry轴',
       count: 1,
@@ -317,34 +312,53 @@ describe('轴条目级初始异常（v2.6，随预设导出）', () => {
     return useResourceCalc()
   }
 
-  it('轴条目显式设置优先生效（无全局设置）：预填 30% 当窗触发', async () => {
-    const calc = await setupWith({ entryAnomaly: 2, entryGauge: 30 })
+  it('entryBars 预填：电 30% 当窗触发', async () => {
+    const calc = await setupWith({ entryBars: { electric: 30 } })
     expect(calc.inStunAnomalyState.value!.elements.find(e => e.element === 'electric')?.triggerCount).toBe(1)
   })
 
-  it('轴条目设置优先于全局：轴填风(不触发)时忽略全局电预填', async () => {
-    const calc = await setupWith({ entryAnomaly: 6, entryGauge: 30 }, 2, 30)
-    // 风化是独立覆盖层，其预填不进标准槽 → 电无触发
+  it('风化条不进标准槽：只预填风时电无触发', async () => {
+    const calc = await setupWith({ entryBars: { wind: 30 } })
     expect(calc.inStunAnomalyState.value!.elements.find(e => e.element === 'electric')?.triggerCount ?? 0).toBe(0)
   })
 
-  it('轴条目未填回落全局：全局电 30% 照常生效', async () => {
-    const calc = await setupWith({}, 2, 30)
-    expect(calc.inStunAnomalyState.value!.elements.find(e => e.element === 'electric')?.triggerCount).toBe(1)
+  it('双条近满连触紊乱（用户口径：两个角色各攒一条快满，进窗一碰即连续触发）：电90+以太90', async () => {
+    const { config } = await setupHarness([{ agentId: '1511', cinemaLevel: 2 }, { agentId: '1181' }])
+    config.enemy.stunCountLock = 2
+    config.useStunAxis = true
+    config.stunAxes = [{
+      name: '双条轴',
+      count: 2,
+      actions: [
+        { slot: 0, moveId: '1511006', count: 6, startTime: 0 },
+        { slot: 1, moveId: '1181005', count: 18, startTime: 8 },
+      ],
+      basicFillerSlot: 0,
+      entryBars: { ether: 90, electric: 90 },
+    }]
+    const calc = useResourceCalc()
+    const boss = calc.bossAnomalyState.value!
+    // 预填 90%=2970：地雷撞首击即过管（以太@0），强特第二击过管（电@8 替换以太）；
+    // 窗1 电已过期、以太重激活后再被电替换（余量跨窗继承的连触）
+    expect(boss.disorders).toEqual([
+      { windowIndex: 0, time: 8, element: 'ether' },
+      { windowIndex: 1, time: 30, element: 'ether' },
+    ])
+    expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['ether', 'electric'])
   })
 
   it('导出清洗保留 entry 字段：normalizeAxesForExport 不丢初始异常设置', async () => {
     const { normalizeAxesForExport } = await import('@/data/stunAxisPresets')
     const out = normalizeAxesForExport([{
       name: 'x', actions: [{ slot: 0, moveId: '1181005', count: 1 }],
-      entryAnomaly: 2, entryGauge: 30,
+      entryAnomaly: 2, entryBars: { electric: 30, ether: 50 },
     }])
     expect(out[0].entryAnomaly).toBe(2)
-    expect(out[0].entryGauge).toBe(30)
-    // 未填写时不产生字段（预设最小化）
-    const out2 = normalizeAxesForExport([{ name: 'y', actions: [{ slot: 0, moveId: '1181005', count: 1 }] }])
+    expect(out[0].entryBars).toEqual({ electric: 30, ether: 50 })
+    // 未填写时不产生字段（预设最小化）；非法值清洗掉
+    const out2 = normalizeAxesForExport([{ name: 'y', actions: [{ slot: 0, moveId: '1181005', count: 1 }], entryBars: { fire: 0 } }])
     expect(out2[0].entryAnomaly).toBeUndefined()
-    expect(out2[0].entryGauge).toBeUndefined()
+    expect(out2[0].entryBars).toBeUndefined()
   })
 })
 
@@ -356,7 +370,7 @@ describe('逐条目边界注入（v2.7 中间态口径）', () => {
     config.stunAxes = [
       { name: '一段', count: 1, actions: [{ slot: 0, moveId: '1181005', count: 14, startTime: 0 }] },
       // 二段只补两击（不足以触发），验证空触发段也能携带边界注入
-      { name: '二段', count: 2, actions: [{ slot: 0, moveId: '1181005', count: 2, startTime: 0 }], entryAnomaly: 1, entryGauge: 30 },
+      { name: '二段', count: 2, actions: [{ slot: 0, moveId: '1181005', count: 2, startTime: 0 }], entryAnomaly: 1, entryBars: { fire: 30 } },
     ]
     const calc = useResourceCalc()
     const boss = calc.bossAnomalyState.value!

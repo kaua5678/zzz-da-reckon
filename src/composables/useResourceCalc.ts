@@ -1364,9 +1364,9 @@ function applyNormaHatChain(
         // 取整窗模拟（残窗忽略）。积蓄余量/异常状态因此逐窗真实继承，不再代表窗近似。
         const winAlloc = allocateAxisWindows(resolvedAxes, Math.round(stunCount))
         // 用户口径（2026-08-24 纠正）：第一次失衡前也有非失衡积累期，**每次失衡都是中间态**。
-        // 轴条目的 entryAnomaly/entryGauge = 敌方以什么状态进入该段失衡——在该条目首个窗口
-        // 边界强制注入（状态机设状态、积蓄槽部分预填，其余元素条继承）；未填条目不注入，
-        // window0 未填回落全局 boss.*；阈值系数对齐全局池（store/pool 字段命名互换，取乘积规避）
+        // 轴条目的 entryAnomaly/entryBars = 敌方以什么状态、带着哪些元素的异常条进入该段失衡
+        // ——在该条目首个窗口边界注入；未填条目不注入。阈值系数对齐全局池
+        // （store/pool 两端字段命名互换，取乘积规避）
         const thresholdCoeff = (configStore.enemy.anomalyCoeff ?? 1) * (configStore.enemy.bossAnomalyCoeff ?? 1)
         const windows: InStunWindowInput[] = []
         const windowEntryIdx: number[] = []
@@ -1384,7 +1384,9 @@ function applyNormaHatChain(
             windowEntryIdx.push(ai)
           }
         })
-        // 条目边界注入：每条唯一生效条目的首个窗口应用其显式设置；window0 未填时回落全局设置
+        // 条目边界注入（v2.8 多条异常条）：每条唯一生效条目的首个窗口——
+        // entryAnomaly 强制设状态（不记紊乱）；entryBars 按元素**多条**独立预填
+        // （多角色各攒各的条，两条接近满时进窗一碰即连续触发紊乱）。未填条目不注入。
         const boundaryStates: Array<{ windowIndex: number; element: string }> = []
         {
           const seenEntries = new Set<number>()
@@ -1393,18 +1395,14 @@ function applyNormaHatChain(
             if (seenEntries.has(ei)) return
             seenEntries.add(ei)
             const axis = resolvedAxes[ei]
-            const explicit = (axis.entryAnomaly ?? 0) > 0
-            const idx = explicit ? axis.entryAnomaly! : (wi === 0 ? configStore.getMechanicSetting('boss.entryAnomaly', 0) : 0)
-            const el = bossEntryAnomalyElement(idx)
-            if (!el) return
-            const pct = explicit
-              ? Math.max(0, Math.min(100, axis.entryGauge ?? 0))
-              : (wi === 0 ? Math.max(0, Math.min(100, configStore.getMechanicSetting('boss.entryGauge', 0))) : 0)
-            if (pct > 0) {
-              const firstPipe = (BUILDUP_THRESHOLD_TABLE[el] ?? BUILDUP_THRESHOLD_TABLE.ice)[0]
-              ;(win.entryStates ??= []).push({ element: el, gauge: (pct / 100) * firstPipe * thresholdCoeff })
+            const el = bossEntryAnomalyElement(axis.entryAnomaly ?? 0)
+            if (el) boundaryStates.push({ windowIndex: wi, element: el })
+            for (const [element, pct] of Object.entries(axis.entryBars ?? {})) {
+              const p = Math.max(0, Math.min(100, Number(pct)))
+              if (!Number.isFinite(p) || p <= 0) continue
+              const firstPipe = (BUILDUP_THRESHOLD_TABLE[element] ?? BUILDUP_THRESHOLD_TABLE.ice)[0]
+              ;(win.entryStates ??= []).push({ element, gauge: (p / 100) * firstPipe * thresholdCoeff })
             }
-            boundaryStates.push({ windowIndex: wi, element: el })
           })
         }
         const tl = computeInStunAnomalyTimeline({ windows, windowDuration: computeWindowDuration(), coeff: thresholdCoeff })

@@ -260,7 +260,8 @@ export function normalizeAxesForExport(axes: StunAxis[]): StunAxis[] {
     if (axis.count !== undefined) clean.count = axis.count
     if (axis.basicFillerSlot !== undefined) clean.basicFillerSlot = axis.basicFillerSlot
     if (axis.entryAnomaly && axis.entryAnomaly > 0) clean.entryAnomaly = axis.entryAnomaly
-    if (axis.entryGauge !== undefined && axis.entryGauge > 0) clean.entryGauge = axis.entryGauge
+    const bars = Object.entries(axis.entryBars ?? {}).filter(([, v]) => v > 0)
+    if (bars.length > 0) clean.entryBars = Object.fromEntries(bars)
     return clean
   })
 }
