@@ -127,9 +127,10 @@ function computeNormaSource(input: NormaSourceInput): NormaMechanicSource {
 
   // 预热膛温（完整回复链，用户确认）：帽子在原地积蓄、诺姆后场不停——
   // 进入战场 +60 → 接战自动 1.5%/s（按整局战斗时间，后场同速）→ 消耗能量 × 0.4%（瞬发 40→16，长按 20/s→8/s）→ 终结技释放 +30。
+  // 长按按「每次弹幕都长按 holdSeconds」计（能量侧 exSpecialEnergyConsume = 40+20×hold 已按此收费，2026-08 对齐）。
   const frontlineGain = battleTime * HEAT_PER_SEC
   const exGain = exCount * HEAT_PER_EX
-  const holdGain = holdSeconds * HEAT_PER_HOLD_SEC
+  const holdGain = exCount * holdSeconds * HEAT_PER_HOLD_SEC
   const ultGain = ultCount * HEAT_PER_ULTIMATE
   const heatTotal = HEAT_INITIAL + frontlineGain + exGain + holdGain + ultGain
   // 膛温≥80%帽子把戏→连携技替换次数 = floor(膛温总量/80)
@@ -356,12 +357,14 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
     pushBarrage(SHOT_MOVE, '嗯呢弹幕·射击', exCount, 0, '基础 40 能量：点射 411.1%')
     pushBarrage(ARMOR_PIERCE_SHOT_MOVE, '嗯呢弹幕·破甲弹头', Math.round(exCount * (1 - stunShare)), 1, `未失衡目标：破甲弹头 616%（占比 ${Math.round((1 - stunShare) * 100)}%）`)
     pushBarrage(HIGH_EXPLOSIVE_SHOT_MOVE, '嗯呢弹幕·高爆弹头', Math.round(exCount * stunShare), 2, `失衡目标：高爆弹头 683.5%（占比 ${Math.round(stunShare * 100)}%）`)
-    // 长按：延长射击每秒（1571010）+ 延长破甲/高爆每秒（1571011/1571012），count = 秒数
+    // 长按：延长射击每秒（1571010）+ 延长破甲/高爆每秒（1571011/1571012）。
+    // 每次弹幕都长按 holdSeconds（能量已按 40+20×hold/次 收费），延长总秒数 = 次数 × holdSeconds。
     const holdInt = Math.max(0, Math.floor(holdSeconds))
     if (holdInt > 0) {
-      pushBarrage(EXTEND_SHOT_MOVE, '嗯呢弹幕·延长射击', holdInt, 3, `长按 ${holdInt}s：延长点射 261.5%/s`)
-      pushBarrage(EXTEND_ARMOR_PIERCE_MOVE, '嗯呢弹幕·延长破甲', Math.max(0, Math.round(holdInt * (1 - stunShare))), 4, `长按延长：破甲 392.8%/s（占比 ${Math.round((1 - stunShare) * 100)}%）`)
-      pushBarrage(EXTEND_HIGH_EXPLOSIVE_MOVE, '嗯呢弹幕·延长高爆', Math.max(0, Math.round(holdInt * stunShare)), 5, `长按延长：高爆 433.4%/s（占比 ${Math.round(stunShare * 100)}%）`)
+      const holdSecs = holdInt * exCount
+      pushBarrage(EXTEND_SHOT_MOVE, '嗯呢弹幕·延长射击', holdSecs, 3, `每次长按 ${holdInt}s × ${exCount} 次：延长点射 261.5%/s`)
+      pushBarrage(EXTEND_ARMOR_PIERCE_MOVE, '嗯呢弹幕·延长破甲', Math.max(0, Math.round(holdSecs * (1 - stunShare))), 4, `长按延长：破甲 392.8%/s（占比 ${Math.round((1 - stunShare) * 100)}%）`)
+      pushBarrage(EXTEND_HIGH_EXPLOSIVE_MOVE, '嗯呢弹幕·延长高爆', Math.max(0, Math.round(holdSecs * stunShare)), 5, `长按延长：高爆 433.4%/s（占比 ${Math.round(stunShare * 100)}%）`)
     }
   }
 

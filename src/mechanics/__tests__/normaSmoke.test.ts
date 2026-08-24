@@ -41,16 +41,21 @@ describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/�
     return { catalog, config }
   }
 
-  it('膛温完整模型：进场+60 + 接战×1.5 + 弹幕×16 + 长按×8/s + 终结×30 → 帽子把戏 = floor(膛温/80)', async () => {
+  it('膛温完整模型：进场+60 + 接战×1.5 + 弹幕×16/次 + 长按×8/s×次数 + 终结×30 → 帽子把戏 = floor(膛温/80)', async () => {
     const { config } = await setup(0)
     const calc = useResourceCalc()
     const norma = calc.resourceResult.value!.characters.find(c => c.agentId === '1571')!
     const src = norma.normaMechanicSource!
     expect(src.heatInitial).toBe(60)
     expect(src.heatFromExSpecial).toBeGreaterThan(0) // 弹幕次数 > 0
-    expect(src.heatFromHold).toBe(2 * 8) // 默认长按 2s × 8
+    // 长按膛温按「每次弹幕都长按 2s」计（能量侧 40+20×2/次 同口径），不再只算一次
+    expect(src.heatFromHold).toBe(norma.exSpecialCount * 2 * 8)
     expect(src.heatTotal).toBeGreaterThan(60 + 8 * 2)
     expect(src.hatToChainCount).toBe(Math.floor(src.heatTotal / 80))
+    // 延长射击行同样随次数缩放：总秒数 = 次数 × 长按 2s
+    const extend = norma.executions.find(e => e.moveId === '1571010')
+    expect(extend).toBeTruthy()
+    expect(extend!.count).toBe(norma.exSpecialCount * 2)
   })
 
   it('嗯呢弹幕执行：点射×次数 + 破甲/高爆按失衡占比拆 + 延长行；炮塔全程 3s 间隔', async () => {

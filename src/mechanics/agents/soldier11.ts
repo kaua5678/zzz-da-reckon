@@ -163,14 +163,14 @@ export const soldier11Mechanic: AgentMechanicModule = {
     const cycles = Math.min(windows, CYCLE_TIME > 0 ? Math.floor(basicPool / CYCLE_TIME) : 0)
     if (cycles <= 0) return
     executions.push({
-      moveId: A4_MOVE_ID, moveName: '火力镇压 #4（快速取消）', category: 'basic',
+      moveId: A4_MOVE_ID, moveName: '火力镇压A4（快速取消）', category: 'basic',
       count: cycles, actionTime: A4_QUICK_TIME, comboAlignRatio: 0,
       totalTime: A4_QUICK_TIME * cycles, totalComboAlignTime: 0,
       energyConsume: 0, totalEnergyConsume: 0, decibelRecovery: 0, totalDecibelRecovery: 0,
       energyRecovery: 0, totalEnergyRecovery: 0,
     })
     executions.push({
-      moveId: A5_MOVE_ID, moveName: '火力镇压 #5（结算6段）', category: 'basic',
+      moveId: A5_MOVE_ID, moveName: '火力镇压A5（结算6段）', category: 'basic',
       count: cycles, actionTime: A5_QUICK_TIME, comboAlignRatio: 0,
       totalTime: A5_QUICK_TIME * cycles, totalComboAlignTime: 0,
       energyConsume: 0, totalEnergyConsume: 0, decibelRecovery: 0, totalDecibelRecovery: 0,

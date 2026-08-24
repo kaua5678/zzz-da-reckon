@@ -10,7 +10,8 @@ import { applySpecAttributeConversions } from '@/specs/runtime'
  * 卢西娅·艾洛温（1451）战斗逻辑（用户确认口径）：
  * - 帷幕延长按全覆盖，不单独建模。
  * - 快支有单独输入，梦境值不依赖快支。
- * - 追加攻击默认 20 次（180s / 平均9s一次）；全局只需约 500 梦境值覆盖。
+ * - 追加攻击默认 20 次；全局只需约 500 梦境值覆盖。队友命中触发、CD 8s 全球性（180s/8s≈22 次），
+ *   不受失衡轴窗口限制——按 CD 全局消耗接近 500 梦境值不难（用户口径 2026-08，废除「轴模式按轴内时间折算」）。
  * - 梦境值：开局白送 60；场地外 A5 +40；战斗中 E(+60)+A5(+40)；Q +100。
  * - 默认 Q=2 时：A5×3、E×2、Q×2 → 60+120+120+200=500。
  *   Q 不足就多打一组 E+A5；Q 多了就少打一组 E+A5。
@@ -30,8 +31,7 @@ const A5_DREAM_GAIN = 40
 const EX_DREAM_GAIN = 60
 const ULTIMATE_DREAM_GAIN = 100
 const ADDITIONAL_ATTACK_DREAM_COST = 25
-const DEFAULT_ADDITIONAL_ATTACK_COUNT = 20
-const ADDITIONAL_ATTACK_CD_SECONDS = 8 // 追加攻击 CD（队友命中触发，用户口径：轴模式按轴内时间自动释放）
+const DEFAULT_ADDITIONAL_ATTACK_COUNT = 20 // ≈ 500 梦境值 ÷ 25/次；CD 8s × 180s ≈ 22 次 > 20，梦境值才是瓶颈
 const HEAL_SECONDS = 8 // 星光汇聚之地持续 8 秒
 const HEAL_RATE_PCT_BASE = 1 // 每秒回血 = 1% + 0.05%×终结技等级（爬取公式 0.01+AvatarSkillLevel(3)*0.0005）
 const HEAL_RATE_PCT_PER_LEVEL = 0.05
@@ -257,7 +257,7 @@ function buildLuciaExecutions({ cfg, state, executions }: AgentResourceInput): v
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
-      skillTableNote: '追加攻击 1100%/200异常（默认20次，按9秒平均触发）',
+      skillTableNote: '追加攻击 1100%/200异常（默认20次，CD 8s 队友命中触发，不受失衡轴窗口限制）',
     })
   }
 }
@@ -290,7 +290,7 @@ function computeLuciaSource(
     curtainTriggerCount,
     c4DecibelPerTrigger: c4PerTrigger,
     c4TeamDecibelPerChar: curtainTriggerCount * c4PerTrigger,
-    note: '追加攻击默认20次（180s/9s平均）；计划外强特合轴0秒；回血按终结技等级公式（12级12.8%/大）×覆盖滑块折算；4命帷幕触发次数含15s CD封顶。',
+    note: '追加攻击默认20次（CD 8s 全球性、队友命中触发，不受失衡轴窗口限制）；计划外强特合轴0秒；回血按终结技等级公式（12级12.8%/大）×覆盖滑块折算；4命帷幕触发次数含15s CD封顶。',
   }
 }
 
@@ -299,9 +299,7 @@ function buildLuciaResourceResult({ cfg, state }: AgentResourceResultInput): Par
     luciaMechanicSource: computeLuciaSource(
       cfg as unknown as Record<string, unknown>,
       state,
-      cfg.axisInSeconds && cfg.axisInSeconds > 0
-        ? Math.floor(cfg.axisInSeconds / ADDITIONAL_ATTACK_CD_SECONDS)
-        : cfgNum(cfg, 'lucia.additionalAttackCount', DEFAULT_ADDITIONAL_ATTACK_COUNT),
+      cfgNum(cfg, 'lucia.additionalAttackCount', DEFAULT_ADDITIONAL_ATTACK_COUNT),
       cfgNum(cfg, 'lucia.healingCoverage', DEFAULT_HEALING_COVERAGE),
     ),
   }
@@ -343,7 +341,7 @@ const settings: MechanicSetting[] = [
   {
     id: 'lucia.additionalAttackCount',
     label: '卢西娅·追加攻击次数',
-    description: '全局追加攻击（合唱）次数；默认 20 次（180s / 平均9秒一次）。',
+    description: '全局追加攻击（合唱）次数；默认 20 次（≈500 梦境值 ÷ 25/次，CD 8s 队友命中触发、不限失衡窗口）。',
     default: DEFAULT_ADDITIONAL_ATTACK_COUNT,
     min: 0,
     max: 40,
@@ -380,9 +378,7 @@ export const luciaElowenMechanic: AgentMechanicModule = {
   applyPanel: applyLuciaPanel,
   buildCharConfig: buildLuciaCharConfig,
   estimateExSpecialTime: ({ cfg, exSpecialCount, ultimateCount }) => {
-    const plan = computeLuciaDreamPlan(exSpecialCount, ultimateCount, cfg.axisInSeconds && cfg.axisInSeconds > 0
-      ? Math.floor(cfg.axisInSeconds / ADDITIONAL_ATTACK_CD_SECONDS)
-      : cfgNum(cfg, 'lucia.additionalAttackCount', DEFAULT_ADDITIONAL_ATTACK_COUNT))
+    const plan = computeLuciaDreamPlan(exSpecialCount, ultimateCount, cfgNum(cfg, 'lucia.additionalAttackCount', DEFAULT_ADDITIONAL_ATTACK_COUNT))
     const exTime = cfg.exSpecialActionTime
     const a5Time = cfg.luciaA5ActionTime ?? 1.887
     return {
