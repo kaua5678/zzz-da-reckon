@@ -580,16 +580,19 @@ describe('Yuzuha sweetness / Liwang Wish', () => {
 })
 
 describe('Nangong beat / vibrato', () => {
-  it('converts mastery to impact and caps beat regen', () => {
+  it('converts mastery to impact and accumulates beat income (cap delays, not swallows)', () => {
     const result = computeNangongMechanic({
       anomalyMastery: 150,
-      totalTime: 180,
-      anomalyProcCount: 5,
+      frontlineSeconds: 180,
+      battleTime: 180,
+      beatInitial: 30,
+      minePairs: 10,
       vibratoStacks: 4,
       releaseCount: 1,
     })
     expect(result.impactFromMastery).toBe(40)
-    expect(result.beatTotal).toBe(100)
+    // 收入累进：30 + 180×3.8 + floor(180/6)×12 = 1074（上限100只限瞬时存量）
+    expect(result.beatTotal).toBe(1074)
     expect(result.vibratoStacks).toBe(4)
     expect(result.releaseRatios.ether).toBe(720)
   })
