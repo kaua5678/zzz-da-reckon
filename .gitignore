@@ -20,3 +20,6 @@ scripts/check.mjs
 Thumbs.db
 .idea/
 .vscode/
+
+# ZCode session plans (working state, not project knowledge)
+.zcode/
