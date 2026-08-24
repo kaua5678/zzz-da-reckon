@@ -1363,10 +1363,21 @@ function applyNormaHatChain(
         // 顺序分配——条目 count=该动作模式重复的失衡窗数，受实际收敛失衡数钳制；小数失衡
         // 取整窗模拟（残窗忽略）。积蓄余量/异常状态因此逐窗真实继承，不再代表窗近似。
         const winAlloc = allocateAxisWindows(resolvedAxes, Math.round(stunCount))
-        // 用户口径：轴可设「进窗初始异常状态」+「初始异常条值(%)」——首窗 entryStates 预填积蓄；
+        // 用户口径：轴可设「进窗初始异常状态」+「初始异常条值(%)」（随预设导出）——取首个生效
+        // 轴条目上的显式设置，未填回落全局 boss.entryAnomaly/boss.entryGauge；
         // 阈值系数对齐全局池（store/pool 两端字段命名互换，取乘积规避）
-        const entryElement = bossEntryAnomalyElement(configStore.getMechanicSetting('boss.entryAnomaly', 0))
-        const entryGaugePct = Math.max(0, Math.min(100, configStore.getMechanicSetting('boss.entryGauge', 0)))
+        let axisEntrySource: StunAxis | undefined
+        for (let ai = 0; ai < resolvedAxes.length; ai++) {
+          if ((winAlloc[ai] ?? 0) <= 0) continue
+          if ((resolvedAxes[ai].entryAnomaly ?? 0) > 0) axisEntrySource = resolvedAxes[ai]
+          break
+        }
+        const entryElement = bossEntryAnomalyElement(
+          axisEntrySource ? axisEntrySource.entryAnomaly! : configStore.getMechanicSetting('boss.entryAnomaly', 0),
+        )
+        const entryGaugePct = axisEntrySource
+          ? Math.max(0, Math.min(100, axisEntrySource.entryGauge ?? 0))
+          : Math.max(0, Math.min(100, configStore.getMechanicSetting('boss.entryGauge', 0)))
         const thresholdCoeff = (configStore.enemy.anomalyCoeff ?? 1) * (configStore.enemy.bossAnomalyCoeff ?? 1)
         const windows: InStunWindowInput[] = []
         let firstWindow = true

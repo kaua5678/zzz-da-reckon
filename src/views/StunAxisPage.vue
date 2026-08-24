@@ -76,6 +76,11 @@
             <span class="sap-label">次（空=兜底）</span>
             <span class="sap-label">兜底平A</span>
             <n-select :value="fillerValue(ai)" @update:value="v => setFiller(ai, v)" size="small" style="width:110px" :options="fillerOptions" />
+            <span class="sap-label">初始异常</span>
+            <n-select :value="axis.entryAnomaly ?? 0" size="small" style="width:96px" :options="entryAnomalyOptions"
+              @update:value="v => setEntryAnomaly(axis, v ?? 0)" />
+            <n-input-number v-if="(axis.entryAnomaly ?? 0) > 0" :value="axis.entryGauge ?? 0" size="small" style="width:104px"
+              :min="0" :max="100" :step="10" suffix="%" @update:value="v => { axis.entryGauge = v ?? undefined }" />
             <n-button size="tiny" quaternary type="warning" @click="axes.splice(ai,1)">删除</n-button>
             <span class="sap-stat">实际 ×{{ axisResult?.axisDetails?.[ai]?.times ?? '?' }} 次 · 单轮 {{ (axisResult?.axisDetails?.[ai]?.axisDuration ?? 0).toFixed(1) }}s · 窗口 {{ maxDur }}s</span>
           </div>
@@ -189,7 +194,8 @@ import { computeBanyueMingwangBlocks, BANYUE_AXIS_MOVE_META } from '@/mechanics/
 import { computeYixuanNingshenBlocks } from '@/mechanics/agents/yixuan'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 import { fmt } from '@/utils/format'
-import type { StunAxisAction, StunAxisPlan } from '@/types/resource'
+import type { StunAxisAction, StunAxisPlan, StunAxis } from '@/types/resource'
+import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/core/stunAxis/inStunAnomaly'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -306,6 +312,20 @@ function setFiller(ai: number, v: number) {
   const axis = axes.value[ai]; if (!axis) return
   if (v < 0) delete axis.basicFillerSlot
   else axis.basicFillerSlot = v
+}
+
+// 进窗初始异常状态/异常条（随预设导出；引擎取首个生效轴条目上的显式设置，未填回落全局 boss.*）
+const ENTRY_ANOMALY_LABELS: Record<string, string> = { fire: '火', electric: '电', ice: '冰', ether: '以太', physical: '物理', wind: '风' }
+const entryAnomalyOptions = [
+  { label: '无', value: 0 },
+  ...BOSS_ENTRY_ANOMALY_OPTIONS.filter(o => o.value > 0).map(o => ({ label: ENTRY_ANOMALY_LABELS[o.element] ?? o.element, value: o.value })),
+]
+function setEntryAnomaly(axis: StunAxis, v: number) {
+  if (v > 0) axis.entryAnomaly = v
+  else {
+    axis.entryAnomaly = undefined
+    axis.entryGauge = undefined
+  }
 }
 
 // 栈遍历警告：资源不足（energy/decibel）= 固定轴只提示；超时（time）= 超窗截断

@@ -297,3 +297,53 @@ describe('初始异常条值（v2.5）', () => {
     expect(st.elements.find(e => e.element === 'electric')?.triggerCount).toBe(1)
   })
 })
+
+describe('轴条目级初始异常（v2.6，随预设导出）', () => {
+  const setupWith = async (axisExtra: Record<string, unknown>, globalAnomaly = 0, globalGauge = 0) => {
+    const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1371' }])
+    config.enemy.stunCountLock = 1
+    config.useStunAxis = true
+    if (globalAnomaly > 0) {
+      config.setMechanicSetting('boss.entryAnomaly', globalAnomaly)
+      config.setMechanicSetting('boss.entryGauge', globalGauge)
+    }
+    config.stunAxes = [{
+      name: 'entry轴',
+      count: 1,
+      actions: [{ slot: 0, moveId: '1181005', count: 14, startTime: 0 }],
+      basicFillerSlot: 0,
+      ...axisExtra,
+    }]
+    return useResourceCalc()
+  }
+
+  it('轴条目显式设置优先生效（无全局设置）：预填 30% 当窗触发', async () => {
+    const calc = await setupWith({ entryAnomaly: 2, entryGauge: 30 })
+    expect(calc.inStunAnomalyState.value!.elements.find(e => e.element === 'electric')?.triggerCount).toBe(1)
+  })
+
+  it('轴条目设置优先于全局：轴填风(不触发)时忽略全局电预填', async () => {
+    const calc = await setupWith({ entryAnomaly: 6, entryGauge: 30 }, 2, 30)
+    // 风化是独立覆盖层，其预填不进标准槽 → 电无触发
+    expect(calc.inStunAnomalyState.value!.elements.find(e => e.element === 'electric')?.triggerCount ?? 0).toBe(0)
+  })
+
+  it('轴条目未填回落全局：全局电 30% 照常生效', async () => {
+    const calc = await setupWith({}, 2, 30)
+    expect(calc.inStunAnomalyState.value!.elements.find(e => e.element === 'electric')?.triggerCount).toBe(1)
+  })
+
+  it('导出清洗保留 entry 字段：normalizeAxesForExport 不丢初始异常设置', async () => {
+    const { normalizeAxesForExport } = await import('@/data/stunAxisPresets')
+    const out = normalizeAxesForExport([{
+      name: 'x', actions: [{ slot: 0, moveId: '1181005', count: 1 }],
+      entryAnomaly: 2, entryGauge: 30,
+    }])
+    expect(out[0].entryAnomaly).toBe(2)
+    expect(out[0].entryGauge).toBe(30)
+    // 未填写时不产生字段（预设最小化）
+    const out2 = normalizeAxesForExport([{ name: 'y', actions: [{ slot: 0, moveId: '1181005', count: 1 }] }])
+    expect(out2[0].entryAnomaly).toBeUndefined()
+    expect(out2[0].entryGauge).toBeUndefined()
+  })
+})
