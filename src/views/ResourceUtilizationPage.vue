@@ -209,7 +209,17 @@
           </div>
           <div v-if="inStunAnomalyState.elements.length === 0" class="field-desc">轴内招式未产生积蓄触发。</div>
         </div>
-        <div class="field-desc" style="margin-top:6px">{{ inStunAnomalyState.note }} 异放/极性紊乱按该时间线的实际活跃元素归因。</div>
+        <div class="field-desc" style="margin-top:6px">{{ inStunAnomalyState.note }} 异放按该时间线的实际活跃元素归因。</div>
+        <div v-if="bossAnomalyState" style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.08);padding-top:6px">
+          <div class="field-title">Boss 异常状态轴（紊乱替换状态 · 风化保持不变 · 极性紊乱按触发时刻状态归因）</div>
+          <div
+            v-for="(chain, w) in bossAnomalyState.stateChainsPerWindow"
+            :key="w"
+            class="field-desc"
+          >
+            窗{{ w + 1 }}：{{ formatBossStateChain(chain, bossAnomalyState.windOverlayPerWindow[w]) }}
+          </div>
+        </div>
       </n-card>
 
       <n-card v-if="marginalGainsBySlot.length > 0" size="small" class="mechanic-card" :bordered="true">
@@ -341,7 +351,7 @@ import type { MechanicSetting } from '@/types/resource'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
-const { resourceResult, anomalyVirtualPanels, anomalyPoolResult, panels, agentNames, teamTotalDamage, stunPoolResult, autoActive, effectiveStunAxes, inStunAnomalyState } = useResourceCalc()
+const { resourceResult, anomalyVirtualPanels, anomalyPoolResult, panels, agentNames, teamTotalDamage, stunPoolResult, autoActive, effectiveStunAxes, inStunAnomalyState, bossAnomalyState } = useResourceCalc()
 /** 命座提升率可信度：轴模式（用户开轴或自动命中预设轴）才可信；非轴是退化兜底，仅提示用途 */
 const axisActiveForUplift = computed(() =>
   (configStore.useStunAxis || autoActive.value) && (effectiveStunAxes.value?.length ?? 0) > 0,
@@ -367,6 +377,20 @@ const ELEMENT_LABELS: Record<string, string> = {
 
 function elementLabel(element: string): string {
   return ELEMENT_LABELS[element] ?? element
+}
+
+interface BossStateChainSegment {
+  start: number
+  end: number
+  element: string
+}
+
+/** Boss 异常状态轴逐窗链格式化：标准状态段 + 风化覆盖层（括注，不参与替换） */
+function formatBossStateChain(chain: BossStateChainSegment[], wind?: BossStateChainSegment[]): string {
+  const fmt = (s: BossStateChainSegment) => `${elementLabel(s.element)} ${s.start.toFixed(1)}~${s.end.toFixed(1)}s`
+  const segs = chain.map(fmt)
+  if (wind?.length) segs.push(`（风化层 ${wind.map(fmt).join('、')}）`)
+  return segs.length > 0 ? segs.join(' → ') : '无异常状态'
 }
 
 const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))

@@ -143,3 +143,147 @@ export function computeInStunAnomalyTimeline(input: {
     note: `逐窗多属性积蓄槽模拟：共 ${triggers.length} 次轴内异常触发；同元素同窗一次、激活持续按 ANOMALY_DURATION 表。`,
   }
 }
+
+// ============ Boss 异常状态轴（2026-08-24 用户指令） ============
+//
+// 用户口径：极性紊乱看「当前时间点」目标处于什么属性异常状态，就触发对应效果；
+// 不同属性异常在已有时状态下触发 = 紊乱并**替换**状态；风化保持不变（独立覆盖层，
+// 不参与替换、也不被替换）。本函数把 v2 时间线的触发序列推进成逐窗状态链。
+
+/** 状态时段（相对该窗口起点的秒；end 截断到窗口时长，状态本身可跨窗延续） */
+export interface BossStateSegment {
+  start: number
+  end: number
+  element: string
+}
+
+export interface BossAnomalyStateResult {
+  /** 每窗标准属性异常状态链（风化除外） */
+  stateChainsPerWindow: BossStateSegment[][]
+  /** 风化覆盖层逐窗时段（独立计时，持续 ANOMALY_DURATION.wind） */
+  windOverlayPerWindow: BossStateSegment[][]
+  /** 替换型紊乱点：element = **被替换的原状态**元素（「当前时点的状态」口径，如需改新状态一行可翻） */
+  disorders: Array<{ windowIndex: number; time: number; element: string }>
+  /**
+   * 接线层注入（纯函数不填）：本轮失衡总次数。轴条目按「代表窗」模拟，
+   * 事件总次数按 stunsTotal 缩放回代表窗取样。
+   */
+  stunsTotal?: number
+  /** 接线层注入（纯函数不填）：构建状态链用的窗口时长；消费端取样必须用同一值，禁止重算 */
+  windowDuration?: number
+  note: string
+}
+
+interface ActiveInterval {
+  start: number
+  end: number
+  element: string
+}
+
+/**
+ * Boss 异常状态轴：把 v2 触发序列（窗口/元素/相对时刻）按绝对时间序推进状态机。
+ * 规则：无状态→激活；同元素→刷新时长；不同标准元素→紊乱（记原状态）+替换；
+ * 风化走独立覆盖层（刷新/激活均不影响标准槽）；状态过期后再触发=重新激活（非紊乱）。
+ */
+export function computeBossAnomalyStateTimeline(input: {
+  triggers: InStunTrigger[]
+  windowDuration: number
+  windowCount: number
+  /** 开战时目标身上已有的属性异常（可选） */
+  entryElement?: string
+}): BossAnomalyStateResult {
+  const D = Math.max(0, input.windowDuration)
+  const totalEnd = D * Math.max(1, input.windowCount)
+  const durOf = (el: string) => ANOMALY_DURATION[getBaseElement(el)] ?? 10
+
+  const stdIntervals: ActiveInterval[] = []
+  const windIntervals: ActiveInterval[] = []
+  const disorders: BossAnomalyStateResult['disorders'] = []
+
+  let std: ActiveInterval | null = null
+  let windEnd = -1
+  if (input.entryElement) {
+    const base = getBaseElement(input.entryElement)
+    const iv: ActiveInterval = { start: 0, end: durOf(base), element: input.entryElement }
+    if (base === 'wind') {
+      windIntervals.push(iv)
+      windEnd = iv.end
+    } else {
+      stdIntervals.push(iv)
+      std = iv
+    }
+  }
+
+  const sorted = [...input.triggers].sort((a, b) =>
+    (a.windowIndex * D + a.offsetSeconds) - (b.windowIndex * D + b.offsetSeconds))
+  for (const trig of sorted) {
+    const t = trig.windowIndex * D + trig.offsetSeconds
+    const base = getBaseElement(trig.element)
+    if (base === 'wind') {
+      // 风化保持不变：独立层激活/刷新，不动标准槽
+      if (windEnd >= t) windIntervals[windIntervals.length - 1].end = t + durOf(trig.element)
+      else windIntervals.push({ start: t, end: t + durOf(trig.element), element: trig.element })
+      windEnd = windIntervals[windIntervals.length - 1].end
+      continue
+    }
+    if (!std || std.end <= t) {
+      // 无活跃状态（含过期后重激活）：不算紊乱
+      std = { start: t, end: t + durOf(trig.element), element: trig.element }
+      stdIntervals.push(std)
+      continue
+    }
+    if (getBaseElement(std.element) === base) {
+      std.end = t + durOf(trig.element) // 同元素刷新
+      continue
+    }
+    // 替换型紊乱：归因取被替换的原状态（当前时点状态），随后状态切到新元素
+    disorders.push({ windowIndex: trig.windowIndex, time: t, element: std.element })
+    std.end = t // 截断原状态时段，避免新旧重叠
+    std = { start: t, end: t + durOf(trig.element), element: trig.element }
+    stdIntervals.push(std)
+  }
+
+  const projectToWindows = (intervals: ActiveInterval[]): BossStateSegment[][] => {
+    const out: BossStateSegment[][] = Array.from({ length: Math.max(1, input.windowCount) }, () => [])
+    for (const iv of intervals) {
+      for (let w = 0; w < out.length; w++) {
+        const s = Math.max(iv.start, w * D)
+        const e = Math.min(Math.min(iv.end, totalEnd), (w + 1) * D)
+        if (e - s > 1e-9) out[w].push({ start: s - w * D, end: e - w * D, element: iv.element })
+      }
+    }
+    return out
+  }
+
+  return {
+    stateChainsPerWindow: projectToWindows(stdIntervals),
+    windOverlayPerWindow: projectToWindows(windIntervals),
+    disorders,
+    note: `Boss 异常状态轴：不同属性异常触发即紊乱并替换状态（归因取原状态）；风化为独立覆盖层不参与替换。共 ${disorders.length} 次替换型紊乱。`,
+  }
+}
+
+/**
+ * 极性紊乱点时归因：把一次事件的次数按「窗口内均匀取样时刻查当时状态」分配到元素。
+ * 返回按元素合计的次数（总量守恒，最大余数法取整）；无状态的取样点计入 fallback 元素。
+ */
+export function attributeCountByStateChain(
+  count: number,
+  chain: BossStateSegment[],
+  windowDuration: number,
+  fallbackElement: string,
+): Array<{ element: string; count: number }> {
+  const n = Math.max(0, Math.floor(count))
+  if (n <= 0) return []
+  const D = Math.max(0, windowDuration)
+  const hits = new Map<string, number>()
+  for (let i = 0; i < n; i++) {
+    const t = ((i + 0.5) / n) * D
+    const seg = chain.find(s => t >= s.start && t < s.end)
+    const el = seg?.element ?? fallbackElement
+    hits.set(el, (hits.get(el) ?? 0) + 1)
+  }
+  return [...hits.entries()]
+    .map(([element, c]) => ({ element, count: c }))
+    .sort((a, b) => b.count - a.count)
+}

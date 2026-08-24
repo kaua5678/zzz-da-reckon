@@ -31,7 +31,7 @@ import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
 import { calcAnomalyPool, calcSpecialActionBonus } from '@/core/anomalyPool'
 import { distributeIntegerByWeight, getMainApplierSlot, ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement } from '@/core/anomalyPool/helpers'
-import { computeInStunAnomalyTimeline } from '@/core/stunAxis/inStunAnomaly'
+import { computeBossAnomalyStateTimeline, computeInStunAnomalyTimeline, attributeCountByStateChain, type BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentMechanic, getRegisteredAgentMechanics, type MechanicTeamMember } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, computeLiuyinHugCounts, resolveUltimateTargetSlot, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
@@ -729,6 +729,7 @@ function applyNormaHatChain(
     promiaTeammateReleases: number
     inStunWindowTriggers: number
     inStunAnomalyState: InStunAnomalySummary | null
+    bossAnomalyState: BossAnomalyStateResult | null
   } | null {
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
@@ -1349,6 +1350,9 @@ function applyNormaHatChain(
     // 全部异常角色通用（不限定南宫羽）：消费方=异放/极性紊乱 dominant 归因、南宫羽颤音自动层数、UI「失衡内异常状态」栏
     let inStunAnomalyStateNext: InStunAnomalySummary | null = null
     let inStunWindowTriggersNext = 0
+    // Boss 异常状态轴（用户口径 2026-08-24）：v2 触发序列推进状态机——不同属性触发=紊乱并
+    // 替换状态（归因取被替换原状态），风化独立层不参与替换；极性紊乱按点时归因消费。
+    let bossAnomalyStateNext: BossAnomalyStateResult | null = null
     if (axisActive) {
       const contribMap = new Map<string, { element: string; perHit: number }>()
       for (const prog of ap1?.perElement ?? []) {
@@ -1397,6 +1401,18 @@ function applyNormaHatChain(
             if (c.agentId === '1511') (c as any).inStunWindowTriggers = inStunWindowTriggersNext
           }
         }
+        const bossWindowDur = computeWindowDuration()
+        bossAnomalyStateNext = {
+          ...computeBossAnomalyStateTimeline({
+            triggers: tl.triggers,
+            windowDuration: bossWindowDur,
+            windowCount: Math.max(1, resolvedAxes.length),
+          }),
+          // 轴条目按代表窗模拟，stunsTotal 供事件总次数缩放回代表窗取样。
+          // debt: 轴条目 count>1 未逐失衡展开窗口继承（与 v2 平均口径一致），升级路径=flatMap(count) 展开窗口列表。
+          stunsTotal: Math.max(1, Math.round(stunCount)),
+          windowDuration: bossWindowDur,
+        }
       }
     }
     let vivianTeamExNext = 0
@@ -1437,6 +1453,7 @@ function applyNormaHatChain(
       promiaTeammateReleases: promiaTeammateReleasesNext,
       inStunWindowTriggers: inStunWindowTriggersNext,
       inStunAnomalyState: inStunAnomalyStateNext,
+      bossAnomalyState: bossAnomalyStateNext,
       banyueTopUp: banyueTopUpNext,
       yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
       teamUltimateForJufufu: teamUltimateForJufufuNext,
@@ -1578,6 +1595,8 @@ function applyNormaHatChain(
   const stunPoolResult = computed<StunPoolResult | null>(() => calcOutput.value?.stunPool ?? null)
   /** 失衡内异常状态（轴模式）：每元素触发次数/窗均覆盖（失衡内异常系统 v2） */
   const inStunAnomalyState = computed<InStunAnomalySummary | null>(() => calcOutput.value?.inStunAnomalyState ?? null)
+  /** Boss 异常状态轴（轴模式）：逐窗状态链 + 风化覆盖层，极性紊乱点时归因数据源 */
+  const bossAnomalyState = computed<BossAnomalyStateResult | null>(() => calcOutput.value?.bossAnomalyState ?? null)
   const anomalyPoolResult = computed<AnomalyPoolResult | null>(() => calcOutput.value?.anomalyPool ?? null)
   const adjustedResourceResult = computed<TeamResourceResult | null>(() => calcOutput.value?.adjustedResourceResult ?? null)
   /** 琉音好评转大收敛后的转大次数（60+90 抱拳之和），供伤害池/影画6/倍率表消费 */
@@ -2275,11 +2294,43 @@ function applyNormaHatChain(
           })
         } else if (event.eventType === 'polar_disorder') {
           // 极性紊乱 = 原本[紊乱]效果的25%伤害（池收敛后取紊乱均伤），不清除目标异常状态；
-          // C2 门控在模块侧。状态判定（用户口径：极性紊乱触发需依据目标当前异常状态）：
-          // 轴模式 dominant 取失衡内时间线实际活跃元素中窗均覆盖最高者；非轴回落全局覆盖率最高者
-          // （逐事件状态机剩余部分见 SOP §3.8）
+          // C2 门控在模块侧。归因（用户口径 2026-08-24「看当前时间点是什么属性异常状态」）：
+          // 轴模式 dominant 走 Boss 异常状态轴——事件次数按代表窗内均匀取样时刻查当时状态链
+          // 分摊到元素（标准链优先、风化覆盖层补空档）；无状态轴数据时 dominant 回落覆盖率最高者。
           const dd = anomalyPoolResult.value?.disorderDamage
           const perEvent = (dd?.avgDamage ?? 0) * 0.25
+          const boss = isAxis ? bossAnomalyState.value : null
+          const repChain = boss ? [...(boss.stateChainsPerWindow[0] ?? []), ...(boss.windOverlayPerWindow[0] ?? [])] : []
+          let parts: Array<{ element: string; count: number }> = []
+          if (perEvent > 0 && event.count > 0 && event.element === 'dominant' && boss && repChain.length > 0) {
+            const perRepWindow = Math.max(1, Math.round(event.count / Math.max(1, boss.stunsTotal ?? 1)))
+            parts = attributeCountByStateChain(
+              perRepWindow,
+              repChain,
+              boss.windowDuration && boss.windowDuration > 0 ? boss.windowDuration : computeWindowDuration(),
+              agent?.damageElement ?? 'ether',
+            )
+            const shares = distributeIntegerByWeight(Math.max(0, Math.floor(event.count)), parts.map(p => p.count))
+            for (let i = 0; i < parts.length; i++) {
+              const shareCount = shares[i] ?? 0
+              if (shareCount <= 0) continue
+              rows.push({
+                id: `polar-${slot}-${event.eventId}-${parts[i].element}`,
+                slot,
+                agentId: charResult.agentId,
+                agentName: agentName(charResult.agentId, slot),
+                type: '极性紊乱',
+                name: event.eventName,
+                element: safeElement(parts[i].element),
+                source: event.carrierMoveName || event.carrierMoveId || event.eventId,
+                count: shareCount,
+                perDamage: perEvent,
+                totalDamage: perEvent * shareCount,
+                note: `${event.note ?? ''}；Boss异常状态轴·按触发时刻状态归因`,
+              })
+            }
+            continue
+          }
           let polarElement = event.element
           if (polarElement === 'dominant') {
             const axisBest = [...(isAxis ? inStunAttributionCandidates() : [])]
@@ -3122,6 +3173,7 @@ const teamTotalDamage = computed(() =>
     resourceResult,
     stunPoolResult,
     inStunAnomalyState,
+    bossAnomalyState,
     anomalyPoolResult,
     specialActionBonus,
     damagePoolRows,

@@ -92,3 +92,36 @@ describe('异常事件 dominant 归因走失衡内时间线（v2.1）', () => {
     expect(ev!.fields).toContain('releaseMultiplier=765')
   })
 })
+
+describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2）', () => {
+  it('双属性错峰触发：极性紊乱次数按状态段时占拆分（代表窗 3 取样 → 以太段 1、电段 2 → 总 9 次拆 3/6）', async () => {
+    const { config } = await setupHarness([{ agentId: '1511', cinemaLevel: 2 }, { agentId: '1181' }])
+    config.useStunAxis = true
+    // 以太地雷撞 @0s 触发（第5击过管），电强特 @8s 才开始积蓄（第16击过管）
+    // → 状态链 以太[0,8) → 电[8,窗尾)；紊乱替换链 电→…不影响消费端「当时状态」归因
+    config.stunAxes = [{
+      name: '点时归因轴',
+      count: 3,
+      actions: [
+        { slot: 0, moveId: '1511006', count: 6, startTime: 0 },
+        { slot: 1, moveId: '1181005', count: 18, startTime: 8 },
+      ],
+      basicFillerSlot: 0,
+    }]
+    const calc = useResourceCalc()
+    const boss = calc.bossAnomalyState.value!
+    expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['ether', 'electric'])
+    // 替换型紊乱点：电替换以太 @8s，归因取被替换的原状态（以太）
+    expect(boss.disorders).toEqual([{ windowIndex: 0, time: 8, element: 'ether' }])
+    // 总次数守恒（事件侧收敛后的实际失衡次数为准）。
+    // 代表窗取样（D=22s、n=3）：t≈3.7 落以太段、11 落电段[8,18)、18.3 落电过期后的空档
+    // → 回退触发者自身元素（南宫羽=以太）→ 以太:电 = 2:1 → 6 次拆 4/2
+    const evPolar = (calc.resourceResult.value!.characters.find(c => c.agentId === '1511')!
+      .anomalyEventExecutions ?? []).find(e => e.eventId === 'nangong_polar_disorder')!
+    const polar = calc.damagePoolRows.value.filter(r => r.type === '极性紊乱' && r.agentId === '1511')
+    expect(polar.reduce((s, r) => s + r.count, 0)).toBe(evPolar.count)
+    const byEl = new Map(polar.map(r => [r.element, r.count]))
+    expect(byEl.get('ether')).toBe(Math.round((evPolar.count / 3) * 2))
+    expect(byEl.get('electric')).toBe(evPolar.count - Math.round((evPolar.count / 3) * 2))
+  })
+})
