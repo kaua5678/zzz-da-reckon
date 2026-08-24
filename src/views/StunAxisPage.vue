@@ -139,6 +139,7 @@
               <span v-if="mingwangTag(ai, aii)" class="sap-mw" :class="mingwangTag(ai, aii)!.cls">{{ mingwangTag(ai, aii)!.text }}</span>
               <span v-if="ningshenTag(ai, aii)" class="sap-mw" :class="ningshenTag(ai, aii)!.cls">{{ ningshenTag(ai, aii)!.text }}</span>
               <span v-if="stunExTag(ai, aii)" class="sap-mw mw-trigger">{{ stunExTag(ai, aii)!.text }}</span>
+              <span v-for="(tg, ti) in anomalyTagsFor(ai, aii)" :key="'at'+ti" class="sap-mw" :class="tg.cls">{{ tg.text }}</span>
             </div>
           </div>
 
@@ -167,6 +168,28 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- 失衡内异常状态（逐窗积蓄模拟，从资源利用率页迁入）：说明 + 每元素摘要 + 逐窗状态链 + 逐条目事件 -->
+      <div v-if="inStunAnomalyState && useAxes" class="sap-section-title" style="margin-top:10px">
+        失衡内异常状态（每次失衡都是中间态：条目「初始状态/异常条」声明敌方以什么状态进入该段失衡）
+      </div>
+      <div v-if="inStunAnomalyState" style="font-size:12px;color:rgba(255,255,255,0.75);display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          <span v-for="el in inStunAnomalyState.elements" :key="el.element"
+            style="background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:3px">
+            {{ entryBarLabel(el.element) }} · 触发 {{ el.triggerCount }} 次 · 窗均覆盖 {{ (el.avgCoverage * 100).toFixed(1) }}%
+          </span>
+          <span v-if="inStunAnomalyState.elements.length === 0" style="color:rgba(255,255,255,0.35)">轴内动作未产生积蓄触发。</span>
+        </div>
+        <div v-for="(chain, wi) in bossAnomalyState?.stateChainsPerWindow ?? []" :key="'w'+wi"
+          style="color:rgba(255,255,255,0.55)">
+          窗{{ wi + 1 }}状态链：{{ formatBossStateChain(chain, bossAnomalyState?.windOverlayPerWindow[wi]) }}
+        </div>
+        <div v-for="(axis, ai) in axes" :key="'ev'+ai" style="color:rgba(255,255,255,0.65)">
+          <template v-if="entryEventLine(ai)">「{{ axis.name }}」{{ entryEventLine(ai) }}</template>
+        </div>
+        <div style="color:rgba(255,255,255,0.4);margin-top:2px">动作块上的「触X」标签 = 该招式在此段首窗触发的异常；带·紊乱 = 触发时替换了原状态。极性紊乱/异放的归因与基数都按触发时刻的当前状态结算。</div>
       </div>
 
       <!-- 统计 -->
@@ -212,7 +235,7 @@ import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/core/stunAxis/inStunAnomaly'
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
 const message = useMessage()
-const { resourceResult, stunAxisResult: axisResult, stunPoolResult, stackTraversalResult: stack, matchedPlanName, effectiveStunAxes, autoPreset, autoActive, windowDuration } = useResourceCalc()
+const { resourceResult, stunAxisResult: axisResult, stunPoolResult, stackTraversalResult: stack, matchedPlanName, effectiveStunAxes, autoPreset, autoActive, windowDuration, inStunAnomalyState, bossAnomalyState } = useResourceCalc()
 
 const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 // 通用自动轴：队伍匹配到预设失衡轴即自动选用（手动配置过轴时让路）
@@ -374,6 +397,68 @@ function setEntryBar(axis: StunAxis, el: string, v: number | null) {
     return
   }
   axis.entryBars = { ...(axis.entryBars ?? {}), [el]: Math.min(100, Math.round(v)) }
+}
+
+// ===== 失衡内异常状态：板块展示 + 块级触发标注 =====
+interface BossChainSeg { start: number; end: number; element: string }
+function formatBossStateChain(chain: BossChainSeg[], wind?: BossChainSeg[]): string {
+  const fmt = (x: BossChainSeg) => `${entryBarLabel(x.element)} ${x.start.toFixed(1)}~${x.end.toFixed(1)}s`
+  const segs = chain.map(fmt)
+  if (wind?.length) segs.push(`（风化层 ${wind.map(fmt).join('、')}）`)
+  return segs.length > 0 ? segs.join(' → ') : '无异常状态'
+}
+/** 该条目展开后的首个窗口索引（编辑器展示单轮模式，事件取代表窗） */
+function entryFirstWindow(ai: number): number {
+  return (inStunAnomalyState.value?.windowEntryIdx ?? []).indexOf(ai)
+}
+function moveNameOf(mid?: string): string {
+  if (!mid) return ''
+  for (const slot of [0, 1, 2]) {
+    const m = findMove(catalogStore.getAgentSkills(configStore.team[slot]?.agentId ?? ''), mid)
+    if (m?.name?.zhCN) return m.name.zhCN
+  }
+  return mid
+}
+function entryEventLine(ai: number): string {
+  const st = inStunAnomalyState.value
+  const boss = bossAnomalyState.value
+  const wi = entryFirstWindow(ai)
+  if (!st || wi < 0) return ''
+  const wd = maxDur.value
+  const parts: string[] = []
+  const axis = axes.value[ai]
+  if (axis && (axis.entryAnomaly ?? 0) > 0) {
+    const el = BOSS_ENTRY_ANOMALY_OPTIONS.find(o => o.value === axis.entryAnomaly)?.element
+    if (el) parts.push(`边界注入 ${entryBarLabel(el)}${(axis.entryBars?.[el] ?? 0) > 0 ? ` ${axis.entryBars![el]}%` : ''}`)
+  }
+  for (const t of st.triggerSources ?? []) {
+    if (t.windowIndex !== wi) continue
+    const replaced = (boss?.disorders ?? []).some(d => d.windowIndex === wi && Math.abs(d.time - (wi * wd + t.offsetSeconds)) < 1e-6)
+    parts.push(`@${t.offsetSeconds.toFixed(1)}s ${moveNameOf(t.moveId)}→${entryBarLabel(t.element)}${replaced ? '（紊乱替换）' : ''}`)
+  }
+  return parts.length > 0 ? parts.join('；') : ''
+}
+/** 块级标注：该招式在本段代表窗触发的异常；紊乱替换加粗标 */
+function anomalyTagsFor(ai: number, aii: number): Array<{ text: string; cls: string }> {
+  const st = inStunAnomalyState.value
+  const boss = bossAnomalyState.value
+  const axis = axes.value[ai]
+  const wi = entryFirstWindow(ai)
+  if (!st || wi < 0 || !axis) return []
+  const mid = axis.actions[aii]?.moveId
+  if (!mid) return []
+  const wd = maxDur.value
+  const out: Array<{ text: string; cls: string }> = []
+  if ((axis.entryAnomaly ?? 0) > 0 && aii === 0) {
+    const el = BOSS_ENTRY_ANOMALY_OPTIONS.find(o => o.value === axis.entryAnomaly)?.element
+    if (el) out.push({ text: `入窗·${entryBarLabel(el)}`, cls: 'mw-l3' })
+  }
+  for (const t of st.triggerSources ?? []) {
+    if (t.windowIndex !== wi || t.moveId !== mid) continue
+    const replaced = (boss?.disorders ?? []).some(d => d.windowIndex === wi && Math.abs(d.time - (wi * wd + t.offsetSeconds)) < 1e-6)
+    out.push({ text: `触${entryBarLabel(t.element)}${replaced ? '·紊' : ''}`, cls: replaced ? 'mw-l3' : 'mw-trigger' })
+  }
+  return out
 }
 
 // 栈遍历警告：资源不足（energy/decibel）= 固定轴只提示；超时（time）= 超窗截断

@@ -11,6 +11,8 @@
 import { ANOMALY_DURATION, BUILDUP_THRESHOLD_TABLE, getBaseElement } from '@/core/anomalyPool/helpers'
 
 export interface InStunAction {
+  /** 来源招式 id（可选）：填了才会在触发事件上标注「哪个招式触发的」（轴编辑器块级可视化用） */
+  moveId?: string
   /** 招式积蓄元素 */
   element: string
   /** 单次积蓄值（池口径 perHit，已含效率区） */
@@ -38,6 +40,8 @@ export interface InStunTrigger {
   element: string
   /** 触发时刻（相对该窗口起点，秒） */
   offsetSeconds: number
+  /** 触发来源招式（动作带 moveId 时回填） */
+  moveId?: string
 }
 
 export interface InStunAnomalyResult {
@@ -53,6 +57,7 @@ interface SlotEvent {
   element: string
   time: number
   amount: number
+  moveId?: string
 }
 
 export function computeInStunAnomalyTimeline(input: {
@@ -97,7 +102,7 @@ export function computeInStunAnomalyTimeline(input: {
       const dur = Math.max(0, act.duration ?? 0)
       for (let i = 0; i < n; i++) {
         const t = dur > 0 ? (act.startTime ?? 0) + ((i + 0.5) / n) * dur : (act.startTime ?? 0)
-        slotEvents.push({ element: act.element, time: t, amount: act.perHitBuildUp })
+        slotEvents.push({ element: act.element, time: t, amount: act.perHitBuildUp, moveId: act.moveId })
       }
     }
     slotEvents.sort((a, b) => a.time - b.time)
@@ -121,7 +126,7 @@ export function computeInStunAnomalyTimeline(input: {
       gauges.set(key, g)
       if (activeUntil.has(key)) continue // 同元素同窗只触发一次
       if (g >= thresholds[0] * coeff) {
-        triggers.push({ windowIndex: w, element: ev.element, offsetSeconds: ev.time })
+        triggers.push({ windowIndex: w, element: ev.element, offsetSeconds: ev.time, moveId: ev.moveId })
         activeUntil.set(key, ev.time + (ANOMALY_DURATION[base] ?? 10))
         gauges.set(key, g - thresholds[0] * coeff)
       }

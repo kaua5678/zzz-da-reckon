@@ -412,3 +412,44 @@ describe('逐条目边界注入（v2.7 中间态口径）', () => {
     }
   })
 })
+
+describe('南宫羽快支动作块（v2.9）', () => {
+  it('非轴模式：1511013 以 count 0 灰块存在（不进伤害/时间预算，零基线影响）', async () => {
+    const { config } = await setupHarness([{ agentId: '1511' }])
+    const calc = useResourceCalc()
+    const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1511')!
+    const qa = char.executions.find(e => e.moveId === '1511013')
+    expect(qa).toBeTruthy()
+    expect(qa!.count).toBe(0)
+    // 伤害池不出现 count=0 行
+    expect(calc.damagePoolRows.value.filter(r => r.moveId === '1511013').length).toBe(0)
+  })
+
+  it('捏轴放置快支：失衡值计入（放置后轴内失衡高于不放），且吃易伤', async () => {
+    const mk = async (withAssist: boolean) => {
+      const { config } = await setupHarness([{ agentId: '1511' }, { agentId: '1371' }])
+      config.enemy.stunCountLock = 2
+      config.useStunAxis = true
+      config.stunAxes = [{
+        name: '快支轴',
+        count: 2,
+        actions: [
+          { slot: 0, moveId: '1511006', count: 4, startTime: 0 },
+          ...(withAssist ? [{ slot: 0, moveId: '1511013', count: 2, startTime: 6 }] : []),
+        ],
+        basicFillerSlot: 0,
+      }]
+      return useResourceCalc()
+    }
+    const without = await mk(false)
+    const withA = await mk(true)
+    // 窗内招式不产失衡值（引擎口径）：快支块的价值 = 极性载体 + 窗内伤害吃易伤。
+    // 放置后出现直伤行且全额易伤（轴内），未放置则无该行
+    const rowsWith = withA.damagePoolRows.value.filter(r => r.moveId === '1511013')
+    expect(rowsWith.length).toBeGreaterThan(0)
+    const inRow = rowsWith.find(r => String(r.source ?? '').includes('轴内') || Number((r as { stunMult?: number }).stunMult ?? 0) > 1)
+      ?? rowsWith[0]
+    expect(inRow.totalDamage).toBeGreaterThan(0)
+    expect(without.damagePoolRows.value.filter(r => r.moveId === '1511013').length).toBe(0)
+  })
+})

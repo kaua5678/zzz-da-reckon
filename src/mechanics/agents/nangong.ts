@@ -39,6 +39,8 @@ const BEAT_PER_ANOMALY = 12
 const ANOMALY_PROC_CD = 6
 const MINE2_MOVE_ID = '1511005'
 const MINE3_MOVE_ID = '1511006'
+/** 快速支援：救场技巧（极性紊乱载体之一；轴内动作块，默认 count 0 供放置） */
+const NANGONG_QUICK_ASSIST_MOVE_ID = '1511013'
 const PRECISE_DAZE_BONUS = 20
 const CORE_BUILD_UP_BONUS = 20
 const C6_BUILD_UP_BONUS = 50
@@ -154,6 +156,29 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = Math.max(0, Math.floor(Number(record.nangongCinemaLevel ?? 0)))
   const pairSeconds = Number(record.nangongMinePairSeconds ?? 0)
+  // 快速支援（1511013）动作块：非轴/未放置 = count 0（动作池 ×0 灰块，不进伤害/时间预算）；
+  // 捏轴放置后引擎注入 nangongQuickAssistPlaced → 按块数生成真实行（吃失衡易伤+时间门控，
+  // 倍率/失衡值由 enrich 按技能表回填）。快支重击是极性紊乱载体之一。
+  const quickAssistPlaced = Math.max(0, Math.floor(Number(record.nangongQuickAssistPlaced ?? 0)))
+  executions.push({
+    moveId: NANGONG_QUICK_ASSIST_MOVE_ID,
+    moveName: '快速支援：救场技巧',
+    category: 'assist',
+    count: quickAssistPlaced,
+    actionTime: 0.575,
+    comboAlignRatio: 0,
+    totalTime: quickAssistPlaced > 0 ? 0.575 * quickAssistPlaced : 0,
+    totalComboAlignTime: 0,
+    energyConsume: 0,
+    totalEnergyConsume: 0,
+    decibelRecovery: 0,
+    totalDecibelRecovery: 0,
+    energyRecovery: 0,
+    totalEnergyRecovery: 0,
+    skillTableNote: quickAssistPlaced > 0
+      ? `快速支援重击 ×${quickAssistPlaced}（捏轴放置：极性紊乱载体，命中异常+失衡敌消耗舞力全开；窗内伤害吃易伤）`
+      : '快速支援重击（极性紊乱载体）；捏轴放置后按块数结算（×0 灰块）',
+  })
   const basicExec = executions.find(e => e.moveId === 'basic_attack')
   if (!basicExec || pairSeconds <= 0) return
   const battleTime = Math.max(0, Number(record.battleTime ?? 180))

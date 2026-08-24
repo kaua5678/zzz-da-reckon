@@ -183,3 +183,23 @@ describe('中间态注入（2026-08-24 用户口径：每次失衡都是中间�
     expect(r.stateChainsPerWindow[1][0]).toEqual({ start: 0, end: 4, element: 'ice' })
   })
 })
+
+describe('触发来源标注（v2.9 块级可视化）', () => {
+  it('动作带 moveId 时，触发事件回填来源招式', () => {
+    const r = computeInStunAnomalyTimeline({
+      windows: [
+        {
+          entryStates: [{ element: 'ether', gauge: 2500 }],
+          actions: [{ moveId: '1511006', element: 'ether', perHitBuildUp: 600, count: 1, startTime: 4, duration: 1 }],
+        },
+        {
+          actions: [{ moveId: '1181005', element: 'electric', perHitBuildUp: 3200, count: 1, startTime: 0 }],
+        },
+      ],
+      windowDuration: 16,
+    })
+    expect(r.triggers).toHaveLength(2)
+    expect(r.triggers[0]).toMatchObject({ windowIndex: 0, element: 'ether', moveId: '1511006' })
+    expect(r.triggers[1]).toMatchObject({ windowIndex: 1, element: 'electric', moveId: '1181005' })
+  })
+})

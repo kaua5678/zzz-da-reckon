@@ -584,6 +584,10 @@ export interface InStunAnomalyElementState {
 export interface InStunAnomalySummary {
   windows: number
   elements: InStunAnomalyElementState[]
+  /** 展开后的每个窗口属于哪条轴条目（索引对齐窗口序）——捏轴页按条目标注触发事件用 */
+  windowEntryIdx?: number[]
+  /** 触发来源明细（动作带 moveId 时回填）：捏轴页块级「这个招式触发了什么」可视化用 */
+  triggerSources?: Array<{ windowIndex: number; moveId: string; element: string; offsetSeconds: number }>
   note: string
 }
 

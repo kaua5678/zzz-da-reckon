@@ -1067,8 +1067,20 @@ function applyNormaHatChain(
         }
       }
       if (merged.agentId === '1511') {
-        // 失衡内异常系统 v2（上一轮时间线）：每窗轴内异常触发数 → 颤音自动层数
-        return { ...merged, inStunWindowTriggers: Math.max(0, prevInStunWindowTriggers) }
+        // 失衡内异常系统 v2（上一轮时间线）：每窗轴内异常触发数 → 颤音自动层数；
+        // 轴内「快速支援」放置块数 → 模块按块数生成快支行（极性载体+窗内伤害吃易伤）
+        let nangongQuickAssistPlaced = 0
+        if (axisActive) {
+          const qaWinAlloc = allocateAxisWindows(resolvedAxes, stunCount)
+          resolvedAxes.forEach((axis, ai) => {
+            const wins = qaWinAlloc[ai] ?? 0
+            for (const act of axis.actions) {
+              if (act.slot !== cfg.slot || act.moveId !== '1511013') continue
+              nangongQuickAssistPlaced += act.count * wins
+            }
+          })
+        }
+        return { ...merged, inStunWindowTriggers: Math.max(0, prevInStunWindowTriggers), nangongQuickAssistPlaced }
       }
       if (merged.agentId === '1541') {
         // 普罗米娅·霜刑回复端（上一轮池结果）：触发命中数 + 队友异放次数
@@ -1377,7 +1389,7 @@ function applyNormaHatChain(
             .filter(a => contribMap.has(a.moveId))
             .map(a => {
               const cm = contribMap.get(a.moveId)!
-              return { element: cm.element, perHitBuildUp: cm.perHit, count: Math.max(0, Math.floor(a.count || 1)), startTime: a.startTime ?? 0 }
+              return { moveId: a.moveId, element: cm.element, perHitBuildUp: cm.perHit, count: Math.max(0, Math.floor(a.count || 1)), startTime: a.startTime ?? 0 }
             })
           for (let k = 0; k < wins; k++) {
             windows.push({ actions })
@@ -1432,6 +1444,10 @@ function applyNormaHatChain(
             triggerCount: a.triggerCount,
             avgCoverage: windows.length > 0 ? Math.round((a.covSum / windows.length) * 1000) / 1000 : 0,
           })),
+          windowEntryIdx,
+          triggerSources: tl.triggers
+            .filter(t => t.moveId)
+            .map(t => ({ windowIndex: t.windowIndex, moveId: t.moveId!, element: getBaseElement(t.element), offsetSeconds: t.offsetSeconds })),
           note: `轴内逐窗积蓄槽模拟（${windows.length} 窗）：进窗继承上一窗余量，积蓄超阈值即触发对应异常；覆盖=异常激活时长占窗口比例。`,
         }
         if (prevInStunWindowTriggers <= 0) {
