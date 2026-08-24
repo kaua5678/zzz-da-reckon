@@ -78,9 +78,11 @@
             <n-select :value="fillerValue(ai)" @update:value="v => setFiller(ai, v)" size="small" style="width:110px" :options="fillerOptions" />
             <span class="sap-label">初始异常</span>
             <n-select :value="axis.entryAnomaly ?? 0" size="small" style="width:96px" :options="entryAnomalyOptions"
+              :disabled="hasPlans" :title="hasPlans ? '条件轴方案模式下只读' : undefined"
               @update:value="v => setEntryAnomaly(axis, v ?? 0)" />
             <n-input-number v-if="(axis.entryAnomaly ?? 0) > 0" :value="axis.entryGauge ?? 0" size="small" style="width:104px"
-              :min="0" :max="100" :step="10" suffix="%" @update:value="v => { axis.entryGauge = v ?? undefined }" />
+              :min="0" :max="100" :step="10" suffix="%" :disabled="hasPlans"
+              @update:value="v => setEntryGauge(axis, v)" />
             <n-button size="tiny" quaternary type="warning" @click="axes.splice(ai,1)">删除</n-button>
             <span class="sap-stat">实际 ×{{ axisResult?.axisDetails?.[ai]?.times ?? '?' }} 次 · 单轮 {{ (axisResult?.axisDetails?.[ai]?.axisDuration ?? 0).toFixed(1) }}s · 窗口 {{ maxDur }}s</span>
           </div>
@@ -320,12 +322,30 @@ const entryAnomalyOptions = [
   { label: '无', value: 0 },
   ...BOSS_ENTRY_ANOMALY_OPTIONS.filter(o => o.value > 0).map(o => ({ label: ENTRY_ANOMALY_LABELS[o.element] ?? o.element, value: o.value })),
 ]
+// 自动命中/条件方案模式下展示的是解析副本，直接改不落盘（改动会被下一帧重算冲掉）——
+// 自动模式下首次编辑把展示的轴物化为手动轴（自动轴让路）；条件方案无法写回，控件禁用
+const editingEphemeral = computed(() => hasPlans.value || autoActive.value)
+function ensureWritableAxis(axis: StunAxis): StunAxis | null {
+  if (!editingEphemeral.value) return axis
+  if (hasPlans.value) return null
+  const idx = axes.value.indexOf(axis)
+  if (idx < 0) return null
+  const clones = cloneStunAxes(axes.value)
+  configStore.stunAxes.splice(0, configStore.stunAxes.length, ...clones)
+  message.info('已从自动命中的预设轴派生为手动轴，后续编辑直接生效')
+  return configStore.stunAxes[idx]
+}
 function setEntryAnomaly(axis: StunAxis, v: number) {
-  if (v > 0) axis.entryAnomaly = v
+  const target = ensureWritableAxis(axis); if (!target) return
+  if (v > 0) target.entryAnomaly = v
   else {
-    axis.entryAnomaly = undefined
-    axis.entryGauge = undefined
+    target.entryAnomaly = undefined
+    target.entryGauge = undefined
   }
+}
+function setEntryGauge(axis: StunAxis, v: number | null) {
+  const target = ensureWritableAxis(axis); if (!target) return
+  target.entryGauge = v ?? undefined
 }
 
 // 栈遍历警告：资源不足（energy/decibel）= 固定轴只提示；超时（time）= 超窗截断
