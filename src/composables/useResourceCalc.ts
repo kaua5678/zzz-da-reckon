@@ -30,6 +30,7 @@ import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
 import { calcAnomalyPool, calcSpecialActionBonus } from '@/core/anomalyPool'
 import { distributeIntegerByWeight, getMainApplierSlot, ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
+import { computeInStunAnomalyTimeline } from '@/core/stunAxis/inStunAnomaly'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentMechanic, getRegisteredAgentMechanics, type MechanicTeamMember } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, computeLiuyinHugCounts, resolveUltimateTargetSlot, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
@@ -701,7 +702,7 @@ function applyNormaHatChain(
     return out
   }
 
-  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0, prevPromiaTriggerHits = 0, prevPromiaTeammateReleases = 0): {
+  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0, prevPromiaTriggerHits = 0, prevPromiaTeammateReleases = 0, prevInStunWindowTriggers = 0): {
     resourceResult: TeamResourceResult
     stunPool: StunPoolResult | null
     anomalyPool: AnomalyPoolResult | null
@@ -725,6 +726,7 @@ function applyNormaHatChain(
     vivianAnomalyTriggers: number
     promiaTriggerHits: number
     promiaTeammateReleases: number
+    inStunWindowTriggers: number
   } | null {
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
@@ -1061,6 +1063,10 @@ function applyNormaHatChain(
           lucyTeammateExTotal: prevLucyTeammateEx,
         }
       }
+      if (merged.agentId === '1511') {
+        // 失衡内异常系统 v2（上一轮时间线）：每窗轴内异常触发数 → 颤音自动层数
+        return { ...merged, inStunWindowTriggers: Math.max(0, prevInStunWindowTriggers) }
+      }
       if (merged.agentId === '1541') {
         // 普罗米娅·霜刑回复端（上一轮池结果）：触发命中数 + 队友异放次数
         return {
@@ -1337,6 +1343,31 @@ function applyNormaHatChain(
         }
       }
     }
+    // 失衡内异常系统 v2（下一轮注入）：轴内逐窗积蓄槽时间线 → 平均每窗触发次数
+    let inStunWindowTriggersNext = 0
+    if (axisActive && characters.some(c => c.agentId === '1511')) {
+      const contribMap = new Map<string, { element: string; perHit: number }>()
+      for (const prog of ap1?.perElement ?? []) {
+        for (const c of prog.contributions ?? []) contribMap.set(c.moveId, { element: prog.element, perHit: c.perHitBuildUp })
+      }
+      const windows = resolvedAxes.map(axis => ({
+        actions: (axis.actions ?? [])
+          .filter(a => contribMap.has(a.moveId))
+          .map(a => {
+            const cm = contribMap.get(a.moveId)!
+            return { element: cm.element, perHitBuildUp: cm.perHit, count: Math.max(0, Math.floor(a.count || 1)), startTime: a.startTime ?? 0 }
+          }),
+      }))
+      const tl = computeInStunAnomalyTimeline({ windows, windowDuration: computeWindowDuration() })
+      inStunWindowTriggersNext = windows.length > 0
+        ? Math.round((tl.triggers.length / windows.length) * 10) / 10
+        : 0
+      if (prevInStunWindowTriggers <= 0) {
+        for (const c of characters) {
+          if (c.agentId === '1511') (c as any).inStunWindowTriggers = inStunWindowTriggersNext
+        }
+      }
+    }
     let vivianTeamExNext = 0
     let vivianAnomalyTriggersNext = 0
     if (characters.some(c => c.agentId === '1331')) {
@@ -1373,6 +1404,7 @@ function applyNormaHatChain(
       energyBySlot,
       promiaTriggerHits: promiaTriggerHitsNext,
       promiaTeammateReleases: promiaTeammateReleasesNext,
+      inStunWindowTriggers: inStunWindowTriggersNext,
       banyueTopUp: banyueTopUpNext,
       yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
       teamUltimateForJufufu: teamUltimateForJufufuNext,
@@ -1409,6 +1441,7 @@ function applyNormaHatChain(
     let prevVivianAnomalyTriggers = 0
     let prevPromiaTriggerHits = 0
     let prevPromiaTeammateReleases = 0
+    let prevInStunWindowTriggers = 0
     let prevAnomalyDecibelBonus: number[] = []
     let prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }
     let prevUltSeq = ''
@@ -1428,7 +1461,7 @@ function applyNormaHatChain(
       outerRounds = k + 1
       // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
       const locked = lockedStunCount >= 0
-      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers, prevPromiaTriggerHits, prevPromiaTeammateReleases)
+      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers, prevPromiaTriggerHits, prevPromiaTeammateReleases, prevInStunWindowTriggers)
       const ait = out?.auricInkTriggerCount ?? 0
       const gr = out?.goodReview
       if (gr !== undefined && gr >= 0) prevGoodReview = gr
@@ -1486,6 +1519,7 @@ function applyNormaHatChain(
       prevVivianAnomalyTriggers = out?.vivianAnomalyTriggers ?? 0
       prevPromiaTriggerHits = out?.promiaTriggerHits ?? 0
       prevPromiaTeammateReleases = out?.promiaTeammateReleases ?? 0
+      prevInStunWindowTriggers = out?.inStunWindowTriggers ?? 0
       prevUltSeq = ultSeq
       prevAnomalySeq = anomalySeq
       prevTopUpSeq = topUpSeq

@@ -44,6 +44,8 @@ export interface CrossAgentEnergy {
   lucyEnergy: number
   /** 莱特（1161）影画4 士气喷发后场回能 */
   lighterC4Energy: number
+  /** 席德（1461）额外能力为正兵回能（2 能量/秒 × 席德前台时间，1秒至多1次） */
+  xideVanguardEnergy: number
   /** 合计（已计入 EnergySource.total） */
   total: number
 }
@@ -1077,10 +1079,13 @@ export interface CharacterOperationConfig {
   /** 强特 move id */
   exSpecialMoveId: string
   /** 强特单次能量消耗 */
+  promiaNiyingCount?: number  // 普罗米娅·处刑式·匿影次数（交互栏填写；+10寒蚀/次并解锁重霜）
   /** 免费强特次数（不耗能量，照常计时/喧响/伤害；如南宫羽天使队长「每次失衡白送一次E」）。
    *  由机制模块经 applyTeamConfig converge 写入；resolveExSpecialCount 在付费次数外累加，
    *  通用执行行只对付费部分扣能量 */
   freeExSpecialCount?: number
+  /** 失衡内异常系统 v2：上一轮时间线统计的每窗轴内异常触发次数（南宫羽颤音自动层数用） */
+  inStunWindowTriggers?: number
   exSpecialEnergyConsume: number
   /** 强特 actionTime */
   exSpecialActionTime: number
@@ -1403,10 +1408,24 @@ export interface CharacterOperationConfig {
   xideCinemaLevel?: number
   /** 席德局内攻击力（影画6 激光附加伤害的基数，buildCharConfig 预存） */
   xideAtk?: number
+  /** 席德正兵槽位（applyTeamConfig build 阶段确定：初始攻击最高的强攻队友；无强攻队友为 -1） */
+  xideVanguardSlot?: number
+  /** 席德正兵实际耗能（calcCrossAgentEnergy 算席德能量时写入 = 正兵强特次数 × 正兵强特耗能） */
+  xideVanguardEnergySpent?: number
+  /** 席德额外能力门控（buildCharConfig 写入：additionalAbilityActive>0 为 1；patchExecutions 招式限定用） */
+  xideAAActive?: number
+  /** 席德钢能平A秒均（四段 attack_data 总和 ÷ 四段 actionTime 总和） */
+  xideBasicSteelPerSec?: number
+  /** 席德钢能各招式 attack_data 总和（moveId → 钢能点，buildCharConfig 统一对全部倍率页求和） */
+  xideAttackDataMap?: Record<string, number>
+  /** 席德钢能招式攻击数据总回复（buildExecutions 统一对全部执行行求和写入） */
+  xideAttackSteel?: number
   /** 希希芙命座等级（毒素初始值门控影画1） */
   xixifuCinemaLevel?: number
   /** 希希芙进场毒素（3，影画1→6；computeXixifuToxinTotal 写入） */
   xixifuInitialToxin?: number
+  /** 希希芙队伍电属性角色数（含自身；buildCharConfig 写入，蚀骨失衡值 +40%/60% 门控） */
+  xixifuElectricCount?: number
   /** 朱鸢命座等级（霰弹资源门控影画1 快速装填/影画6 以太余温） */
   zhuyuanCinemaLevel?: number
   /** 朱鸢影画1 快速装填连携回复量（6，非影画1 为 0；computeZhuYuanShellsTotal 写入） */

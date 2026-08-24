@@ -216,10 +216,13 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = Math.max(0, Math.floor(Number(record.nangongCinemaLevel ?? 0)))
   const stunCount = Math.max(0, Math.floor(Number(record.nangongStunCount ?? 0)))
-  // 颤音层数：滑块 >0 = 手动覆盖；0 = 自动 = 满层 4（用户口径 2026-08：失衡中全队
-  // 异放/紊乱/进异常频密，达到 4 层很容易，每次失衡都按满层颤音）
+  // 颤音层数：滑块 >0 = 手动覆盖；0 = 自动——失衡内异常系统 v2 有轴内真实触发数用之，
+  // 非轴/无数据回落满层 4（用户口径：失衡中叠满很容易）
   const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
-  const stacks = sliderStacks > 0 ? Math.min(VIBRATO_MAX, sliderStacks) : VIBRATO_MAX
+  const systemTriggers = Math.max(0, Number(record.inStunWindowTriggers ?? 0))
+  const stacks = sliderStacks > 0
+    ? Math.min(VIBRATO_MAX, sliderStacks)
+    : (systemTriggers > 0 ? Math.min(VIBRATO_MAX, Math.floor(systemTriggers)) : VIBRATO_MAX)
   // C2：每层[颤音]使[核心被动]异放比例额外 +10%（25% → 35%/层）
   const stackPct = VIBRATO_STACK_PCT + (cinemaLevel >= 2 ? 10 : 0)
   const coverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
