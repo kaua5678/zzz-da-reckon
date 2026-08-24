@@ -21,6 +21,7 @@ import type {
   AgentMechanicModule,
   AgentPanelInput,
   AgentResourceResultInput,
+  AgentEventInput,
   AgentResourceSectionsInput,
   AgentSkillTransformInput,
 } from '../types'
@@ -143,14 +144,49 @@ function buildPromiaResourceSections({ result }: AgentResourceSectionsInput) {
   }]
 }
 
+/** 绝裁异放固定倍率（原文「固定结算635%倍率的对应属性异常伤害」）；C2 消耗霜刑的异放倍率提升120%（×2.2，[猜测·中]：亦可能为+120个百分点=755%，待口供） */
+export const PROMIA_EXECUTION_RELEASE_MULTIPLIER = 635
+export const PROMIA_C2_RELEASE_MULTIPLIER_RATIO = 2.2
+/** 霜刑上限：进场 2 点，C1 终结技后可再获 1 点；寒蚀值 50→1 转化逐时序 pending */
+export function promiaFrostCap(cinemaLevel: number): number {
+  return 2 + (cinemaLevel >= 1 ? 1 : 0)
+}
+
+/**
+ * 处刑式·绝裁终结一击异放（核心被动）：命中异常状态敌人触发，固定结算 635%（C2 ×2.2）倍率
+ * 的对应属性异常伤害，消耗 1 点[霜刑]。次数 = min(霜刑上限, 强特次数)——每次绝裁强特消耗一点；
+ * 寒蚀值积累→霜刑转化的收入端逐时序 pending，当前仅按初始/C1 上限钳制（L2 近似）。
+ * 结算语义与全角色一致：基础者=该元素异常主施加者、结算者=普罗米娅（dominant 分支自动）。
+ */
+function buildPromiaAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  const cinemaLevel = Math.max(0, Math.floor(Number(record.promiaCinemaLevel ?? 0)))
+  const exCasts = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
+  const count = Math.min(promiaFrostCap(cinemaLevel), exCasts)
+  if (count <= 0) return
+  const mult = PROMIA_EXECUTION_RELEASE_MULTIPLIER * (cinemaLevel >= 2 ? PROMIA_C2_RELEASE_MULTIPLIER_RATIO : 1)
+  events.push({
+    eventId: 'promia_execution_release',
+    eventName: '处刑式·绝裁终结一击·异放',
+    eventType: 'release',
+    element: 'dominant',
+    carrierMoveName: '强化特殊技：处刑式·绝裁（终结一击）',
+    count,
+    formula: `releaseMultiplier=${Math.round(mult)}（固定倍率${cinemaLevel >= 2 ? '，C2 倍率提升120%' : ''}）`,
+    fields: [`releaseMultiplier=${Math.round(mult)}`, `frostCap=${promiaFrostCap(cinemaLevel)}`],
+    note: `min(霜刑上限${promiaFrostCap(cinemaLevel)}, 强特${exCasts}) = ${count} 次；元素按目标当前异常分配。寒蚀→霜刑转化收入端 pending。`,
+  })
+}
+
 export const promiaMechanic: AgentMechanicModule = {
   id: 'agent:promia',
   agentIds: [PROMIA_ID],
   name: '普罗米娅·盗火',
-  description: '异常掌控转精通、影画2精通、额外能力冰异常积蓄效率；寒蚀值/霜刑/异放未建模。',
+  description: '异常掌控转精通、影画2精通、额外能力冰异常积蓄效率；绝裁异放已接（霜刑上限钳制），全队异放增伤 0.35%/点未接面板。',
   applyPanel: applyPromiaPanel,
   buildCharConfig: buildPromiaCharConfig,
   transformSkillExecutions: applyPromiaBuildUp,
+  buildAnomalyEvents: buildPromiaAnomalyEvents,
   buildResourceResult: buildPromiaResourceResult,
   resourceSections: buildPromiaResourceSections,
 }
