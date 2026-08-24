@@ -554,6 +554,8 @@ export function buildExecutions(
   // 强特
   if (state.exSpecialCount > 0 && !cfg.skipGenericExSpecial) {
     const car = cfg.exSpecialComboAlignRatio
+    const freeEx = Math.max(0, Math.floor(cfg.freeExSpecialCount ?? 0))
+    const paidEx = Math.max(0, state.exSpecialCount - freeEx)
     executions.push({
       moveId: cfg.exSpecialMoveId,
       moveName: '强化特殊技（EX Special）',
@@ -564,7 +566,8 @@ export function buildExecutions(
       totalTime: state.exSpecialCount * cfg.exSpecialActionTime,
       totalComboAlignTime: state.exSpecialCount * cfg.exSpecialActionTime * car,
       energyConsume: cfg.exSpecialEnergyConsume,
-      totalEnergyConsume: state.exSpecialCount * cfg.exSpecialEnergyConsume,
+      // 免费强特不扣能量（只对付费部分收费）
+      totalEnergyConsume: paidEx * cfg.exSpecialEnergyConsume,
       decibelRecovery: cfg.exSpecialDecibelRecovery,
       totalDecibelRecovery: state.exSpecialCount * cfg.exSpecialDecibelRecovery,
       energyRecovery: 0,
@@ -787,9 +790,11 @@ function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy: numbe
     const outStun = remaining > 0 ? Math.floor(remaining / cfg.exSpecialEnergyConsume) : 0
     return inStun + outStun
   }
-  return cfg.exSpecialCountFloor || !cfg.skipGenericExSpecial
+  const paid = cfg.exSpecialCountFloor || !cfg.skipGenericExSpecial
     ? Math.floor(totalEnergy / cfg.exSpecialEnergyConsume)
     : totalEnergy / cfg.exSpecialEnergyConsume
+  // 免费强特（如南宫羽每次失衡一次免能E）：不占闪能预算，照常计次/计时/喧响
+  return paid + Math.max(0, Math.floor(cfg.freeExSpecialCount ?? 0))
 }
 
 /** 单次迭代：根据当前 state 计算新的 state */

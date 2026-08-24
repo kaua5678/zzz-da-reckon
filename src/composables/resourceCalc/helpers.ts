@@ -1612,6 +1612,7 @@ export function extractSkillExecutions(
           count,
           baseBuildUp: anomaly * anomalyUtilizationRate,
           element: foundElement,
+          skillType: normalizeResourceSkillType(foundMove, exec.moveId),
         })
       }
     }

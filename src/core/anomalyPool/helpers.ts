@@ -246,6 +246,8 @@ export interface AnomalySkillExecution {
   /** 行级异常积蓄效率加成（%）：进「异常积蓄效率区」与面板/元素效率**加算**（非独立乘区）。
    *  招式限定用（如格莉丝电能强化只加特殊技/强特两行）；由 transformSkillExecutions 或提取器写入 */
   buildUpEfficiencyBonusPct?: number
+  /** 招式类型（normalizeResourceSkillType 口径）：失衡内积蓄的连携限定加成按此判定 */
+  skillType?: string
 }
 
 /**

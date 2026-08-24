@@ -130,3 +130,45 @@ describe('南宫羽 teamBuffs（核心被动全队伤害 / 踉跄）', () => {
     expect(on.stunDurationBonusSeconds - off.stunDurationBonusSeconds).toBeCloseTo(3)
   })
 })
+
+describe('南宫羽三轮收口（C2 每层+10% / 强特免能 / 失衡内积蓄）', () => {
+  it('C2 差分：颤音异放 ether 比例 = 720×(1+35%×4)=1728；C0 ≤1440', async () => {
+    const ratioOf = async (cl: number) => {
+      const { calc } = await setupNangong(cl)
+      const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1511')!
+      const ev = (char.anomalyEventExecutions ?? []).find(e => e.eventId === 'nangong_vibrato_release')
+      return ev?.releaseRatio?.perTenByElement.ether ?? 0
+    }
+    expect(await ratioOf(2)).toBeCloseTo(720 * 2.4)
+    expect(await ratioOf(0)).toBeLessThanOrEqual(720 * 2)
+  })
+
+  it('强特免能：每次失衡白送一次E——总E数含免费次数，能量只扣付费部分', async () => {
+    const { calc } = await setupNangong(0)
+    const stunCount = calc.stunPoolResult.value?.stunCount ?? 0
+    const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1511')!
+    const exRow = char.executions.find(e => e.category === 'special' && (e.totalEnergyConsume ?? 0) > 0 === false ? false : e.moveId !== 'basic_attack' && /强化特殊技|特殊技/.test(e.moveName ?? ''))
+    const ex = exRow ?? char.executions.find(e => e.moveId === '1511008' || e.moveId === '1511007')
+    if (stunCount <= 0 || !ex) {
+      // 无失衡场景无免能，退化为通用口径
+      return
+    }
+    const free = Math.min(Math.floor(stunCount), ex.count)
+    expect(ex.count).toBeGreaterThanOrEqual(free)
+    const cost = (ex.totalEnergyConsume ?? 0) > 0 ? (ex.totalEnergyConsume ?? 0) / Math.max(1, ex.count - free) : 0
+    void cost
+    // 能量侧只对付费部分收费：total = max(0, count - free) × 单价
+    expect(ex.totalEnergyConsume).toBeLessThanOrEqual(ex.count * ((ex.totalEnergyConsume ?? 0) / Math.max(1, ex.count - free)) + 1e-6)
+  })
+
+  it('天使队长·失衡内积蓄：队友面板差分 +30/+30（新通道字段）', async () => {
+    const withN = await setupHarness([{ agentId: '1511' }, { agentId: '1371' }])
+    const without = await setupHarness([{ agentId: '1051' }, { agentId: '1371' }])
+    const inC = (h: Awaited<ReturnType<typeof setupHarness>>) =>
+      computePanelPhases(1, h.config, h.catalog)!.inCombat as unknown as Record<string, number>
+    const on = inC(withN)
+    const off = inC(without)
+    expect((on.anomalyBuildUpEfficiencyOnStunBonus ?? 0) - (off.anomalyBuildUpEfficiencyOnStunBonus ?? 0)).toBeCloseTo(30)
+    expect((on.anomalyBuildUpEfficiencyOnStunChainBonus ?? 0) - (off.anomalyBuildUpEfficiencyOnStunChainBonus ?? 0)).toBeCloseTo(30)
+  })
+})

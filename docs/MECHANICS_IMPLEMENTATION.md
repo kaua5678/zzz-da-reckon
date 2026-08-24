@@ -634,4 +634,5 @@
 - C4：精通+40、地雷撞积蓄值 ×1.35（transformSkillExecutions 在 enrich 后放大，避免被倍率表覆盖）。C6：失衡值+50%（面板区加算）。
 - 失衡内异常系统 v1 已落地（2026-08-24 用户指令）：`core/anomalyPool/inStunEvents.ts` computeInStunAnomalyEvents——均匀速率近似把全池触发数分配到失衡窗口内 + 异常存活覆盖；经 useResourceCalc 收敛注入（nangongTriggersPerWindow/nangongAnomalyActiveCoverage）供极性紊乱次数与颤音自动层数消费；极性紊乱结算走 eventType=polar_disorder 新分支（伤害=池紊乱均伤×25%，DamagePoolRow 类型加「极性紊乱」）。后续可升级为逐事件仿真。
 - 踉跄双半已收口（2026-08-24 二轮）：易伤+30% + 失衡持续+3s 均走采集侧 buff_ce11acbda2。初版曾误判「+3s 发散」撤回——插桩实证为**阻尼振荡收敛慢**而非发散：窗口延长加强负反馈（窗口↑→前台预算↓→失衡值↓→失衡次数↓），整数边界间振幅≈×0.55/轮，12 轮上限不够落定；MAX_OUTER_ITER 12→20 后收敛正常（游戏口径：失衡窗口内招式不产失衡值、结束归零，窗口延长不可能正反馈）。
-- pending：② 天使队长「失衡内全队积蓄+30%（连携再+30%）」需失衡内积蓄限定通道。③ 舞力全开消耗口径/强特免能15s/爱芮绝对音准联动。④ C6 颤音:改非失衡叠层。
+- 三轮收口（2026-08-24 用户指令）：① C2「每层颤音异放比例额外+10%」已录（25→35%/层）；② 强特免能=每次失衡白送一次E——通用通道 cfg.freeExSpecialCount（resolveExSpecialCount 付费外累加次数、执行行只对付费部分扣能量，轴/非轴通用），模块 applyTeamConfig converge 写入；③ 天使队长失衡内积蓄走引擎新字段 anomalyBuildUpEfficiencyOnStunBonus（全招式+30）/anomalyBuildUpEfficiencyOnStunChainBonus（连携再+30）——buff.ts 映射面板、池侧按失衡覆盖折算、连携限定按执行行 skillType 判定。
+- pending：① 舞力全开消耗口径与极性紊乱的「消耗1层」联动（当前不建模层数消耗）；② 爱芮绝对音准联动；③ C6 颤音:改非失衡叠层。

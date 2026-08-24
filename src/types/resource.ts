@@ -1077,6 +1077,10 @@ export interface CharacterOperationConfig {
   /** 强特 move id */
   exSpecialMoveId: string
   /** 强特单次能量消耗 */
+  /** 免费强特次数（不耗能量，照常计时/喧响/伤害；如南宫羽天使队长「每次失衡白送一次E」）。
+   *  由机制模块经 applyTeamConfig converge 写入；resolveExSpecialCount 在付费次数外累加，
+   *  通用执行行只对付费部分扣能量 */
+  freeExSpecialCount?: number
   exSpecialEnergyConsume: number
   /** 强特 actionTime */
   exSpecialActionTime: number

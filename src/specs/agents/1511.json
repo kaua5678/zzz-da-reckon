@@ -127,7 +127,43 @@
     "[已确认·原文] 颤音异放=原属性异常伤害×元素比例×(1+25%/层)，引擎 releaseRatio basis=anomalyDamageRatio（2026-08 新通道）；层数/次数滑块近似。",
     "[pending] 天使队长四子机制（失衡内全队积蓄+30%连携再+30%/舞力全开极性紊乱/强特免能15s/爱芮联动）——需逐事件系统与失衡内积蓄限定通道。",
     "[pending] 踉跄（失衡易伤倍率+30%、失衡持续+3s，地雷撞#3/终结命中一次/目标）拟走 teamBuffs；C6颤音:改非失衡叠层 pending。",
-    "[pending→部分收口 2026-08-24] 踉跄易伤+30%/核心被动全队伤害+25%/C2易伤再+30% 已由采集侧 teammate-buffs.json 组1511 承载（勿在 spec 重复录入，防双计——曾实测差分×2）；本次仅补缺失的踉跄失衡延长+3s 进采集组 buff_ce11acbda2。"
+    "[pending→部分收口 2026-08-24] 踉跄易伤+30%/核心被动全队伤害+25%/C2易伤再+30% 已由采集侧 teammate-buffs.json 组1511 承载（勿在 spec 重复录入，防双计——曾实测差分×2）；本次仅补缺失的踉跄失衡延长+3s 进采集组 buff_ce11acbda2。",
+    "[收口 2026-08-24 三轮] C2每层异放比例+10%（25→35）已录；强特免能=每次失衡白送一次E经通用通道 cfg.freeExSpecialCount（resolveExSpecialCount 加次数、执行行只对付费部分扣能量）；天使队长失衡内积蓄走引擎新字段 anomalyBuildUpEfficiencyOnStunBonus/ChainBonus（池侧按失衡覆盖折算，连携限定按 skillType）。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [
+    {
+      "id": "nangong_angel_stun_buildup",
+      "name": "南宫羽｜天使队长·失衡内积蓄",
+      "source": "额外能力：天使队长",
+      "description": "队伍中任意角色攻击命中处于失衡状态的敌人造成的属性异常积蓄值提升30%。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "anomalyBuildUpEfficiencyOnStunBonus",
+          "value": 30,
+          "mode": "flat"
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "[近似] 引擎新通道 anomalyBuildUpEfficiencyOnStunBonus，池侧按失衡覆盖折算（轴/非轴同口径）；额外能力条件（队伍有异常角色或同阵营）未门控，与踉跄同口径近似。"
+    },
+    {
+      "id": "nangong_angel_stun_buildup_chain",
+      "name": "南宫羽｜天使队长·失衡内连携积蓄",
+      "source": "额外能力：天使队长",
+      "description": "[连携技]攻击命中处于失衡状态的敌人造成的属性异常积蓄值额外提升30%（与全招式+30%叠加至60%）。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "anomalyBuildUpEfficiencyOnStunChainBonus",
+          "value": 30,
+          "mode": "flat"
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "[近似] 连携限定按执行行 skillType==='chain' 判定；覆盖折算同上。"
+    }
+  ]
 }

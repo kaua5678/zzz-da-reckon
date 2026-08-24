@@ -122,9 +122,16 @@ function buildNangongCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInp
 }
 
 function buildNangongTeamConfig(input: AgentTeamConfigInput): void {
-  // converge 阶段把收敛的失衡次数写进自己槽位 cfg（颤音异放的窗口数上界）
+  // converge 阶段把收敛的失衡次数写进自己槽位 cfg：
+  // - nangongStunCount：颤音异放的窗口数上界
+  // - freeExSpecialCount：天使队长「任意角色使敌人失衡 → 下一次强特免能」，用户口径简化为
+  //   每次失衡白送一次E（不区分轴内首次/15s CD），轴/非轴通用直接加总E数
   const own = input.characters[input.slot] as unknown as Record<string, unknown> | undefined
-  if (own && input.phase === 'converge') own.nangongStunCount = Math.max(0, Math.floor(input.stunCount))
+  if (own && input.phase === 'converge') {
+    const stuns = Math.max(0, Math.floor(input.stunCount))
+    own.nangongStunCount = stuns
+    own.freeExSpecialCount = stuns
+  }
 }
 
 /** 重拍账本 → 地雷撞 #2/#3 双击套数（时间从平A池划拨，真实 moveId 行进失衡/伤害池） */
@@ -210,10 +217,12 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
   // 异放/紊乱/进异常频密，达到 4 层很容易，每次失衡都按满层颤音）
   const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
   const stacks = sliderStacks > 0 ? Math.min(VIBRATO_MAX, sliderStacks) : VIBRATO_MAX
+  // C2：每层[颤音]使[核心被动]异放比例额外 +10%（25% → 35%/层）
+  const stackPct = VIBRATO_STACK_PCT + (cinemaLevel >= 2 ? 10 : 0)
   const coverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
   const releaseCount = Math.round(stunCount * coverage)
   if (releaseCount > 0 && stacks > 0) {
-    const stackMult = 1 + (VIBRATO_STACK_PCT / 100) * stacks
+    const stackMult = 1 + (stackPct / 100) * stacks
     const folded = Object.fromEntries(Object.entries(RELEASE_RATIOS).map(([k, v]) => [k, v * stackMult]))
     events.push({
       eventId: 'nangong_vibrato_release',
@@ -222,7 +231,7 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
       element: 'dominant',
       carrierMoveName: '核心被动：天才偶像（颤音清除）',
       count: releaseCount,
-      formula: `releaseMultiplier = 原属性异常伤害 × 元素比例% × (1+25%×${stacks}层)`,
+      formula: `releaseMultiplier = 原属性异常伤害 × 元素比例% × (1+${stackPct}%×${stacks}层)`,
       fields: ['RELEASE_RATIOS', `vibratoStacks=${stacks}`, 'anomalyDamageRatio'],
       releaseRatio: { basis: 'anomalyDamageRatio', perTenByElement: folded },
       note: `失衡窗口清除颤音结算 ≈ 失衡次数×覆盖 = ${releaseCount} 次；层数=${stacks}${sliderStacks > 0 ? '（手动）' : `（自动：窗口内触发 ${triggersPerWindow}）`}；元素按覆盖率分配。`,

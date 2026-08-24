@@ -705,6 +705,8 @@ export function applyStat(panel: PanelValues, stat: StatId, value: number, mode:
     case 'enemyStunTakenBonus': panel.enemyStunTakenBonus += value; break
     // 兼容别名：采集/旧数据曾用 enemyStunDurationBonusSeconds（无消费端），映射到角色级失衡时长字段
     case 'enemyStunDurationBonusSeconds': panel.stunDurationBonusSeconds += value; break
+    case 'anomalyBuildUpEfficiencyOnStunBonus': panel.anomalyBuildUpEfficiencyOnStunBonus += value; break
+    case 'anomalyBuildUpEfficiencyOnStunChainBonus': panel.anomalyBuildUpEfficiencyOnStunChainBonus += value; break
     case 'infectionZoneBonus': panel.infectionZoneBonus += value; break
     case 'disorderDamageBonus': panel.disorderDamageBonus += value; break
     case 'disorderBaseMultiplierBonus': panel.disorderBaseMultiplierBonus += value; break

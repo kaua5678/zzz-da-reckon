@@ -42,6 +42,8 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
 
   // ---- 1. 按元素分组累积 ----
   const elementMap = new Map<string, AnomalyContribution[]>()
+  // 失衡内积蓄（南宫羽天使队长）：命中失衡目标时积蓄效率提升，按失衡覆盖折算；连携再叠加
+  const stunnedRatio = Math.max(0, Math.min(1, Number(stunned) || 0))
 
   for (const exec of executions) {
     if (exec.count <= 0 || exec.baseBuildUp <= 0) continue
@@ -50,7 +52,9 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     const panel = panels[exec.slot] ?? panels[0]
     // 按基础元素取抗性（变种元素与基础元素共享抗性）
     const elementRes = enemyAnomalyResistances[getBaseElement(exec.element)] ?? 0
-    const perHit = calcPerHitBuildUp(exec.baseBuildUp, panel, elementRes, exec.element, exec.buildUpEfficiencyBonusPct ?? 0)
+    const onStunEff = ((panel.anomalyBuildUpEfficiencyOnStunBonus ?? 0)
+      + (exec.skillType === 'chain' ? (panel.anomalyBuildUpEfficiencyOnStunChainBonus ?? 0) : 0)) * stunnedRatio
+    const perHit = calcPerHitBuildUp(exec.baseBuildUp, panel, elementRes, exec.element, (exec.buildUpEfficiencyBonusPct ?? 0) + onStunEff)
     const total = perHit * exec.count
 
     const contrib: AnomalyContribution = {

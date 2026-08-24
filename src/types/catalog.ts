@@ -78,6 +78,10 @@ export interface PanelValues {
   yeshuguangStunCapMult: number
   // 异常积蓄相关
   anomalyBuildUpEfficiency: number // 异常积蓄效率提升，百分比
+  /** 命中失衡状态敌人时的属性异常积蓄效率提升（%），池侧按失衡覆盖折算（南宫羽天使队长：全招式 +30） */
+  anomalyBuildUpEfficiencyOnStunBonus: number
+  /** 连携技命中失衡目标时的额外积蓄效率（%，与上一字段同区加算，南宫羽天使队长连携再 +30） */
+  anomalyBuildUpEfficiencyOnStunChainBonus: number
   electricAnomalyBuildUpEfficiency: number // 电属性异常积蓄效率提升，百分比
   physicalAnomalyBuildUpEfficiency: number // 物理属性异常积蓄效率提升，百分比
   // 异常伤害相关

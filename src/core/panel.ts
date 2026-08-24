@@ -29,6 +29,8 @@ export function emptyPanel(): PanelValues {
     skillDmgBonus: 0,
     // 失衡相关
     stunBuildUpBonus: 0,
+    anomalyBuildUpEfficiencyOnStunBonus: 0,
+    anomalyBuildUpEfficiencyOnStunChainBonus: 0,
     stunDmgMultiplierBonus: 0,
     stunDmgMultiplierBonusAlways: 0,
     stunDmgMultiplierBonusCapAlways: 0,
