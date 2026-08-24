@@ -24,6 +24,7 @@ export type StandardRowId =
   | 'decibel_recovery'
   | 'anomaly_buildup'
   | 'ether_purify'
+  | 'attack_data_0'
 
 export const STANDARD_ROW_IDS: StandardRowId[] = [
   'damage',
@@ -32,7 +33,11 @@ export const STANDARD_ROW_IDS: StandardRowId[] = [
   'decibel_recovery',
   'anomaly_buildup',
   'ether_purify',
+  'attack_data_0',
 ]
+
+// attack_data_0 = 角色专属资源回复（青衣闪络电压/星徽·比利决意等）：无标准式、不推导系数，
+// 仅展示实际值（含普攻聚合行）——曾整列不显示（用户 2026-08 报告"倍率表没显示平A的电压值"）。
 
 /** 招式类型（标准表的行单位）。分类规则见 composables/multiplierCoefficients.classifyMove */
 export type MoveType =

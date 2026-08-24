@@ -15,8 +15,10 @@ const QINGYI_AGENT_ID = '1251'
 // 普通攻击：醉花月云转（一轮 = #1 突进 + #2 终结一击）
 const ZUIHUA_MOVE_1 = '1251008'
 const ZUIHUA_MOVE_2 = '1251009'
-// 普通攻击：一煞 #4（四段 1251005），attack_data = 闪络电压回复量
-const YISHA4_MOVE_ID = '1251005'
+// 普通攻击：一煞 #4（1251004）——补电压专用快段：3.3334 电压/击 × 0.133s/击 ≈ 25 电压/秒，
+// 30 击 ≈ 4 秒积满一轮（用户口径 2026-08：只打 #4，电压好了接醉花，秒均电压全表最高；
+// 曾误用 #5 慢挥 3.23/0.97s ≈ 3.3 电压/秒 × 31 击 ≈ 30s/轮，导致"一煞上百秒"）
+const YISHA4_MOVE_ID = '1251004'
 
 // 闪络电压常量（点，100 点 = 100% = 1 轮醉花）
 const VOLTAGE_PER_ROUND = 100
@@ -59,8 +61,11 @@ function sumVoltage(moves: SkillMove[]): number {
 }
 
 interface LoopRates {
+  /** 一煞#4 单击电压（受 1命效率 ×1.3） */
   yisha4Voltage: number
+  /** 一煞#4 单击动作时间 */
   yisha4ActionTime: number
+  /** 攒满一轮 100 电压需要的击数 */
   hitsPerRound: number
   yisha4TimePerRound: number
   zuiHuaTimePerRound: number
@@ -69,14 +74,13 @@ interface LoopRates {
   anomalyPerSec: number
 }
 
-/** 可分配循环：一煞#4 打满 100 电压 → 醉花月云转 #1+#2（电压受 1命效率 ×1.3 影响）。 */
+/** 可分配循环：一煞#4 连打攒满 100 电压（≈4s）→ 醉花月云转 #1+#2（电压受 1命效率 ×1.3 影响）。 */
 function computeLoopRates(skills: AgentSkills | undefined, cinemaLevel: number): LoopRates {
   const yisha4 = findMoveById(skills, YISHA4_MOVE_ID)
   const z1 = findMoveById(skills, ZUIHUA_MOVE_1)
   const z2 = findMoveById(skills, ZUIHUA_MOVE_2)
   const efficiency = cinemaLevel >= 1 ? C1_VOLTAGE_EFFICIENCY : 1
-  const baseVoltage = rowValue(yisha4, 'attack_data_0')
-  const yisha4Voltage = baseVoltage * efficiency
+  const yisha4Voltage = rowValue(yisha4, 'attack_data_0') * efficiency
   const yisha4At = yisha4?.actionTime ?? 0
   const z1At = z1?.actionTime ?? 0
   const z2At = z2?.actionTime ?? 0
@@ -186,8 +190,9 @@ export function computeQingyiSource(cfg: Record<string, unknown>, state: { exSpe
   const cinemaLevel = Math.max(0, Math.floor(Number(cfg.qingyiCinemaLevel ?? 0)))
   const loop = cfg.qingyiLoopRates as LoopRates | undefined
   const yisha4Voltage = loop?.yisha4Voltage ?? 0
+  const battleTime = Math.max(0, Number(cfg.battleTime ?? 180))
 
-  const rounds = ROUNDS_PER_STUN * stunCount
+  const roundsTarget = ROUNDS_PER_STUN * stunCount
   const totalNeeded = VOLTAGE_PER_STUN * stunCount
   const c1Start = cinemaLevel >= 1 ? C1_START_VOLTAGE : 0
   // 1命·后继累积效率 +30%：通用招式电压也 ×1.3
@@ -200,10 +205,36 @@ export function computeQingyiSource(cfg: Record<string, unknown>, state: { exSpe
     + Math.max(0, Number(cfg.quickAssistCount ?? 0)) * Number(cfg.qingyiQuickAssistVoltage ?? 0)
     + Math.max(0, Number(cfg.parryCount ?? 0)) * Number(cfg.qingyiAssistFollowUpVoltage ?? 0)) * efficiency
 
-  const remaining = totalNeeded - c1Start - genericVoltage
+  // 时间预算（用户口径 2026-08：4 失衡 8 轮醉花，一煞#4 补电压不能无限打）：
+  // 通用电压覆盖的轮只花醉花时间；超出部分每轮 = 一煞#4 攒满 100 电压 + 醉花，按整轮时间计。
+  // 预算 = 战斗时间 − 通用招式必要时间（强特/大招/连携/闪反/弹刀，那些行引擎另行计时）。
+  // 总轮数 = min(2×失衡, 电压可达轮数 + 时间可行的补电压轮数)，自激回路（失衡↑→轮数↑→一煞#4
+  // 失衡值↑→失衡↑，曾收敛到 13-15 次失衡/445 次一煞#4/必要时间 518s）就此截断。
+  // 通用必要时间：优先用 buildExecutions 实测的通用行总时间（构造保证 通用+循环 ≤ 战斗时间）；
+  // 公式估算仅作 resourceResult/sections 展示兜底（无 executions 上下文）。
+  const genericNecessaryTime =
+    Math.max(0, Math.floor(state.exSpecialCount)) * Number(cfg.exSpecialActionTime ?? 0)
+    + Math.max(0, Math.floor(state.ultimateCount)) * Number(cfg.ultimateActionTime ?? 0)
+    + Math.max(0, Math.floor(state.chainCountTotal)) * Number(cfg.chainActionTime ?? 0)
+    + Math.max(0, Number(cfg.dodgeCounterCount ?? 0)) * Number(cfg.dodgeCounterActionTime ?? 0)
+    + Math.max(0, Number(cfg.parryCount ?? 0)) * Number(cfg.assistFollowUpActionTime ?? 0)
+  const genericRowsTime = Math.max(0, Number(cfg.qingyiGenericRowsTime ?? 0))
+  const effectiveGenericTime = Math.max(genericNecessaryTime, genericRowsTime)
+  const roundsFromGeneric = Math.floor((c1Start + genericVoltage) / VOLTAGE_PER_ROUND)
+  const zuiHuaAt = loop?.zuiHuaTimePerRound ?? 0
+  const fullRoundAt = (loop?.yisha4TimePerRound ?? 0) + zuiHuaAt
+  const budgetRounds = Math.min(roundsTarget, roundsFromGeneric)
+  const extraBudget = Math.max(0, battleTime - effectiveGenericTime - budgetRounds * zuiHuaAt)
+  const extraFeasible = fullRoundAt > 0 ? Math.floor(extraBudget / fullRoundAt) : 0
+  const extraWanted = Math.max(0, roundsTarget - roundsFromGeneric)
+  const rounds = Math.max(0, budgetRounds + Math.min(extraWanted, extraFeasible))
+
+  // 一煞#4 连打补电压（3.3334 电压/击 × 0.133s/击 ≈ 25 电压/秒，一轮 30 击 ≈ 4s；
+  // 大招 80/连携 25/闪反 16/强特 22.5 已在通用电压）
+  const remaining = rounds * VOLTAGE_PER_ROUND - c1Start - genericVoltage
   const yisha4Hits = yisha4Voltage > 0 ? Math.max(0, Math.ceil(remaining / yisha4Voltage)) : 0
   const yisha4Time = yisha4Hits * (loop?.yisha4ActionTime ?? 0)
-  const zuiHuaTime = rounds * (loop?.zuiHuaTimePerRound ?? 0)
+  const zuiHuaTime = rounds * zuiHuaAt
   const necessaryTime = yisha4Time + zuiHuaTime
 
   return {
@@ -218,11 +249,17 @@ export function computeQingyiSource(cfg: Record<string, unknown>, state: { exSpe
     zuiHuaTime,
     necessaryTime,
     note:
-      '每失衡打 2 轮醉花月云转（1 轮 = 100% 电压）；总电压 200×失衡 − 1命开局 − 通用招式电压，剩余由一煞#4 补齐。',
+      '每失衡打 2 轮醉花月云转（1 轮 = 100% 电压）；总电压 200×失衡 − 1命开局 − 通用招式电压，剩余由一煞#4 补齐；' +
+      '轮数受时间预算约束（通用电压轮只花醉花时间、补电压轮按整轮计，总时间 ≤ 战斗时间），电压/时间不足则少打——防失衡次数自激。',
   }
 }
 
 function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  // 实测通用行总时间（强特/大招/连携/闪反/弹刀/快支等已生成行），供电压计划预算扣减
+  const genericRowsTime = executions
+    .filter(e => e.moveId !== 'basic_attack')
+    .reduce((s, e) => s + (e.totalTime ?? 0), 0)
+  ;(cfg as unknown as Record<string, unknown>).qingyiGenericRowsTime = genericRowsTime
   const source = computeQingyiSource(cfg as unknown as Record<string, unknown>, state)
   const loop = cfg.qingyiLoopRates
   const cinemaLevel = Math.max(0, Math.floor(cfg.qingyiCinemaLevel ?? 0))
@@ -237,7 +274,7 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
     allocCycles = Math.floor(allocTime / cycleTime)
     const remainderTime = allocTime - allocCycles * cycleTime
     const remainderHits = loop.yisha4ActionTime > 0 ? Math.floor(remainderTime / loop.yisha4ActionTime) : 0
-    allocYisha4Hits = allocCycles * loop.hitsPerRound + remainderHits
+    allocYisha4Hits = Math.round(allocCycles * loop.hitsPerRound + remainderHits)
     // 平A时间全部折算成显式招式，basic_attack 汇总行清零
     basicExec.totalTime = 0
     basicExec.totalDecibelRecovery = 0
@@ -245,7 +282,7 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
 
   const totalRounds = source.rounds + allocCycles
-  const totalYisha4Hits = source.yisha4Hits + Math.floor(allocYisha4Hits)
+  const totalYisha4Hits = source.yisha4Hits + allocYisha4Hits
 
   // 醉花月云转：单独结算（不跟一煞平均），固定 +25% 伤害 / +12.5% 失衡；
   // 1命满电压→自身暴击率+20%；6命→醉花暴伤+100%
@@ -282,9 +319,9 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
     }
   }
 
-  // 一煞#4：单独结算（补电压 + 可分配循环的一煞部分）
+  // 一煞#4 连打：补电压 + 可分配循环的一煞部分（1251004，3.3334 电压/击 × 0.133s ≈ 25 电压/秒）
   if (totalYisha4Hits > 0 && cfg.qingyiYisha4) {
-    const y = cfg.qingyiYisha4
+    const y = cfg.qingyiYisha4 as { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
     executions.push({
       moveId: y.id,
       moveName: '普通攻击：一煞 #4（补电压）',
@@ -306,7 +343,7 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
       dazeMultiplierOverride: true,
       anomalyBuildUp: y.anomaly,
       totalAnomalyBuildUp: y.anomaly * totalYisha4Hits,
-      skillTableNote: `一煞#4 共 ${totalYisha4Hits} 次（补电压 ${source.yisha4Hits} + 可分配循环 ${Math.floor(allocYisha4Hits)}）`,
+      skillTableNote: `一煞#4 共 ${totalYisha4Hits} 击（补电压 ${source.yisha4Hits} + 可分配循环 ${allocYisha4Hits}）；3.33 电压/击 × 0.133s ≈ 25 电压/秒`,
     })
   }
 }
@@ -326,7 +363,7 @@ function buildQingyiResourceSections({ result }: AgentResourceSectionsInput) {
       { label: '总电压需求', value: `${fmt(src.totalVoltageNeeded)}`, detail: '200 × 失衡次数' },
       { label: '1命开局', value: `-${fmt(src.c1StartVoltage)}`, detail: '介电击穿：入场电压回满' },
       { label: '通用招式', value: `-${fmt(src.genericVoltage)}`, detail: '强特/大招/连携/闪反/快支/支援突击' },
-      { label: '一煞#4 补电压', value: `${fmt(src.yisha4Hits)} 次`, detail: `电压缺口 ${fmt(src.remainingVoltage)}` },
+      { label: '一煞#4 补电压', value: `${fmt(src.yisha4Hits)} 击`, detail: `电压缺口 ${fmt(src.remainingVoltage)}（一煞#4 ≈ 3.33 电压/击 × 0.133s ≈ 25 电压/秒；大招 80/连携 25/闪反 16/强特 22.5 已在通用电压）` },
     ],
     footer: '醉花月云转固定 +25% 伤害 / +12.5% 失衡；剩余平A时间按「一煞#4→醉花」循环秒均结算。',
   }]
@@ -336,7 +373,7 @@ export const qingyiMechanic: AgentMechanicModule = {
   id: 'agent:qingyi',
   agentIds: [QINGYI_AGENT_ID],
   name: '青衣',
-  description: '闪络电压/醉花月云转/羁服满层：每失衡 2 轮醉花，电压缺口由一煞#4 补齐，剩余平A按循环秒均。',
+  description: '闪络电压/醉花月云转/羁服满层：每失衡 2 轮醉花，电压大头来自大招/强特/连携（通用电压），缺口由一煞#4 连打（≈25 电压/秒）补齐，剩余平A按循环秒均。',
   applyPanel: applyQingyiPanel,
   buildCharConfig: buildQingyiCharConfig,
   buildExecutions: buildQingyiExecutions,

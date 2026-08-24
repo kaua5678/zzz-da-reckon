@@ -149,6 +149,7 @@ const ROW_LABELS: Record<StandardRowId, string> = {
   decibel_recovery: '喧响',
   anomaly_buildup: '积蓄',
   ether_purify: '秽盾',
+  attack_data_0: '专属资源',
 }
 
 function pct(v: number | null | undefined, digits = 1): string {
@@ -258,6 +259,16 @@ const detailColumns: DataTableColumns<MoveEval> = [
   { title: '喧响', key: 'decibel', width: 90, render: detailCell('decibel_recovery') },
   { title: '积蓄', key: 'anomaly', width: 90, render: detailCell('anomaly_buildup') },
   { title: '秽盾', key: 'purify', width: 90, render: detailCell('ether_purify') },
+  {
+    // attack_data_0 专属资源（青衣闪络电压/星徽·比利决意等）：无标准式，只展示实际值
+    title: '专属资源',
+    key: 'attackData',
+    width: 90,
+    render: (r) => {
+      const cell = r.cells.find((c) => c.rowId === 'attack_data_0')
+      return cell ? String(Number(cell.actual.toFixed(1))) : '—'
+    },
+  },
   {
     title: '标记',
     key: 'flags',
