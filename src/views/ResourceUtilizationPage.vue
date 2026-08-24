@@ -196,6 +196,22 @@
         </div>
       </n-card>
 
+      <n-card v-if="inStunAnomalyState" size="small" class="mechanic-card" :bordered="true">
+        <template #header>
+          失衡内异常状态
+          <n-tag size="tiny" type="info" :bordered="false" style="margin-left:8px;vertical-align:middle">
+            失衡轴 {{ inStunAnomalyState.windows }} 窗
+          </n-tag>
+        </template>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div v-for="el in inStunAnomalyState.elements" :key="el.element" class="field-title">
+            {{ elementLabel(el.element) }} · 触发 {{ el.triggerCount }} 次 · 覆盖 {{ fmt(el.avgCoverage * 100, 1) }}%
+          </div>
+          <div v-if="inStunAnomalyState.elements.length === 0" class="field-desc">轴内招式未产生积蓄触发。</div>
+        </div>
+        <div class="field-desc" style="margin-top:6px">{{ inStunAnomalyState.note }} 异放/极性紊乱按该时间线的实际活跃元素归因。</div>
+      </n-card>
+
       <n-card v-if="marginalGainsBySlot.length > 0" size="small" class="mechanic-card" :bordered="true">
         <template #header>全队边际收益（各词条再 +1 步的伤害期望增量）</template>
         <div style="font-size:11px;color:rgba(255,255,255,0.45);padding:0 0 8px;line-height:1.5">
@@ -325,7 +341,7 @@ import type { MechanicSetting } from '@/types/resource'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
-const { resourceResult, anomalyVirtualPanels, anomalyPoolResult, panels, agentNames, teamTotalDamage, stunPoolResult, autoActive, effectiveStunAxes } = useResourceCalc()
+const { resourceResult, anomalyVirtualPanels, anomalyPoolResult, panels, agentNames, teamTotalDamage, stunPoolResult, autoActive, effectiveStunAxes, inStunAnomalyState } = useResourceCalc()
 /** 命座提升率可信度：轴模式（用户开轴或自动命中预设轴）才可信；非轴是退化兜底，仅提示用途 */
 const axisActiveForUplift = computed(() =>
   (configStore.useStunAxis || autoActive.value) && (effectiveStunAxes.value?.length ?? 0) > 0,

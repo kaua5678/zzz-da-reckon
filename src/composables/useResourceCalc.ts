@@ -1345,54 +1345,57 @@ function applyNormaHatChain(
         }
       }
     }
-    // 失衡内异常系统 v2（下一轮注入）：轴内逐窗积蓄槽时间线 → 平均每窗触发次数
+    // 失衡内异常系统 v2：轴内逐窗积蓄槽时间线 → 平均每窗触发次数 + 逐元素活跃覆盖。
+    // 全部异常角色通用（不限定南宫羽）：消费方=异放/极性紊乱 dominant 归因、南宫羽颤音自动层数、UI「失衡内异常状态」栏
     let inStunAnomalyStateNext: InStunAnomalySummary | null = null
     let inStunWindowTriggersNext = 0
-    if (axisActive && characters.some(c => c.agentId === '1511')) {
+    if (axisActive) {
       const contribMap = new Map<string, { element: string; perHit: number }>()
       for (const prog of ap1?.perElement ?? []) {
         for (const c of prog.contributions ?? []) contribMap.set(c.moveId, { element: prog.element, perHit: c.perHitBuildUp })
       }
-      const windows = resolvedAxes.map(axis => ({
-        actions: (axis.actions ?? [])
-          .filter(a => contribMap.has(a.moveId))
-          .map(a => {
-            const cm = contribMap.get(a.moveId)!
-            return { element: cm.element, perHitBuildUp: cm.perHit, count: Math.max(0, Math.floor(a.count || 1)), startTime: a.startTime ?? 0 }
-          }),
-      }))
-      const tl = computeInStunAnomalyTimeline({ windows, windowDuration: computeWindowDuration() })
-      inStunWindowTriggersNext = windows.length > 0
-        ? Math.round((tl.triggers.length / windows.length) * 10) / 10
-        : 0
-      // 摘要（UI「失衡内异常状态」栏）：每元素 触发次数合计 + 各窗覆盖均值
-      const agg = new Map<string, { triggerCount: number; covSum: number }>()
-      for (const t of tl.triggers) {
-        const key = getBaseElement(t.element)
-        const cur = agg.get(key) ?? { triggerCount: 0, covSum: 0 }
-        cur.triggerCount += 1
-        agg.set(key, cur)
-      }
-      tl.coveragePerWindow.forEach(cov => {
-        for (const [el, v] of Object.entries(cov)) {
-          const key = getBaseElement(el)
+      if (contribMap.size > 0) {
+        const windows = resolvedAxes.map(axis => ({
+          actions: (axis.actions ?? [])
+            .filter(a => contribMap.has(a.moveId))
+            .map(a => {
+              const cm = contribMap.get(a.moveId)!
+              return { element: cm.element, perHitBuildUp: cm.perHit, count: Math.max(0, Math.floor(a.count || 1)), startTime: a.startTime ?? 0 }
+            }),
+        }))
+        const tl = computeInStunAnomalyTimeline({ windows, windowDuration: computeWindowDuration() })
+        inStunWindowTriggersNext = windows.length > 0
+          ? Math.round((tl.triggers.length / windows.length) * 10) / 10
+          : 0
+        // 摘要（UI「失衡内异常状态」栏）：每元素 触发次数合计 + 各窗覆盖均值
+        const agg = new Map<string, { triggerCount: number; covSum: number }>()
+        for (const t of tl.triggers) {
+          const key = getBaseElement(t.element)
           const cur = agg.get(key) ?? { triggerCount: 0, covSum: 0 }
-          cur.covSum += v
+          cur.triggerCount += 1
           agg.set(key, cur)
         }
-      })
-      inStunAnomalyStateNext = {
-        windows: windows.length,
-        elements: [...agg.entries()].map(([element, a]) => ({
-          element,
-          triggerCount: a.triggerCount,
-          avgCoverage: windows.length > 0 ? Math.round((a.covSum / windows.length) * 1000) / 1000 : 0,
-        })),
-        note: `轴内逐窗积蓄槽模拟（${windows.length} 窗）：进窗继承上一窗余量，积蓄超阈值即触发对应异常；覆盖=异常激活时长占窗口比例。`,
-      }
-      if (prevInStunWindowTriggers <= 0) {
-        for (const c of characters) {
-          if (c.agentId === '1511') (c as any).inStunWindowTriggers = inStunWindowTriggersNext
+        tl.coveragePerWindow.forEach(cov => {
+          for (const [el, v] of Object.entries(cov)) {
+            const key = getBaseElement(el)
+            const cur = agg.get(key) ?? { triggerCount: 0, covSum: 0 }
+            cur.covSum += v
+            agg.set(key, cur)
+          }
+        })
+        inStunAnomalyStateNext = {
+          windows: windows.length,
+          elements: [...agg.entries()].map(([element, a]) => ({
+            element,
+            triggerCount: a.triggerCount,
+            avgCoverage: windows.length > 0 ? Math.round((a.covSum / windows.length) * 1000) / 1000 : 0,
+          })),
+          note: `轴内逐窗积蓄槽模拟（${windows.length} 窗）：进窗继承上一窗余量，积蓄超阈值即触发对应异常；覆盖=异常激活时长占窗口比例。`,
+        }
+        if (prevInStunWindowTriggers <= 0) {
+          for (const c of characters) {
+            if (c.agentId === '1511') (c as any).inStunWindowTriggers = inStunWindowTriggersNext
+          }
         }
       }
     }
@@ -2006,6 +2009,13 @@ function applyNormaHatChain(
       return parseReleaseMultiplier(event)
     }
 
+    // 失衡内异常系统 v2：轴模式下 dominant 归因候选 = 时间线实际活跃元素（窗均覆盖为权重，
+    // 有触发但覆盖极小的元素给最小权重保底）；空数组 = 无时间线可用，回落全局覆盖率近似
+    const inStunAttributionCandidates = (): Array<{ element: string; autoRatio: number }> =>
+      (inStunAnomalyState.value?.elements ?? [])
+        .filter(e => e.avgCoverage > 0 || e.triggerCount > 0)
+        .map(e => ({ element: e.element, autoRatio: e.avgCoverage > 0 ? e.avgCoverage : 0.01 }))
+
     const seenDirectIds = new Map<string, number>()
     for (const charResult of adjustedResourceResult.value.characters) {
       const slot = charResult.slot
@@ -2168,13 +2178,20 @@ function applyNormaHatChain(
         if (event.eventType === 'release') {
           const triggerPanel = damagePanels.value[slot]
           if (event.element === 'dominant') {
-            // 异放元素 = 目标当前异常状态，按异常覆盖率占比分配次数（柏妮思/爱芮同款）
+            // 异放元素 = 目标当前异常状态。轴模式：失衡内异常时间线的实际活跃元素（逐窗积蓄模拟）；
+            // 非轴模式：按全局异常覆盖率占比分配次数（柏妮思/爱芮同款）
             const totalRelease = Math.max(0, Math.floor(event.count))
-            const coverageRates = anomalyPoolResult.value?.coverage?.perElementCoverageRate ?? {}
-            let candidates = Object.entries(coverageRates)
-              .filter(([, rate]) => rate > 0)
-              .map(([element, rate]) => ({ element, autoRatio: rate }))
-            if (candidates.length === 0) candidates = [{ element: agent?.damageElement ?? 'physical', autoRatio: 1 }]
+            const axisCandidates = isAxis ? inStunAttributionCandidates() : []
+            let attributionLabel = '失衡内活跃元素归因'
+            let candidates = axisCandidates
+            if (candidates.length === 0) {
+              attributionLabel = '异常覆盖占比分配'
+              const coverageRates = anomalyPoolResult.value?.coverage?.perElementCoverageRate ?? {}
+              candidates = Object.entries(coverageRates)
+                .filter(([, rate]) => rate > 0)
+                .map(([element, rate]) => ({ element, autoRatio: rate }))
+              if (candidates.length === 0) candidates = [{ element: agent?.damageElement ?? 'physical', autoRatio: 1 }]
+            }
             const settingNs = event.eventId.split('_')[0] ?? 'release'
             const userWeights = candidates.map(({ element, autoRatio }) => ({
               element,
@@ -2203,7 +2220,7 @@ function applyNormaHatChain(
                 count,
                 multiplier: releaseMultiplierFor(event, element, triggerPanel, stunCoverage.value),
                 source: event.carrierMoveName || event.carrierMoveId || event.eventId,
-                note: `${event.note ?? ''}；${element}异常覆盖占比分配`,
+                note: `${event.note ?? ''}；${element}·${attributionLabel}`,
                 element,
                 panel: damagePanels.value[baseSlot] ?? triggerPanel,
                 settlementPanel: triggerPanel,
@@ -2228,14 +2245,20 @@ function applyNormaHatChain(
         } else if (event.eventType === 'polar_disorder') {
           // 极性紊乱 = 原本[紊乱]效果的25%伤害（池收敛后取紊乱均伤），不清除目标异常状态；
           // C2 门控在模块侧。状态判定（用户口径：极性紊乱触发需依据目标当前异常状态）：
-          // dominant 时元素取当前活跃异常的主元素（覆盖率最高者）——完整逐事件状态机见 SOP §3.8 待建系统
+          // 轴模式 dominant 取失衡内时间线实际活跃元素中窗均覆盖最高者；非轴回落全局覆盖率最高者
+          // （逐事件状态机剩余部分见 SOP §3.8）
           const dd = anomalyPoolResult.value?.disorderDamage
           const perEvent = (dd?.avgDamage ?? 0) * 0.25
           let polarElement = event.element
           if (polarElement === 'dominant') {
-            const rates = anomalyPoolResult.value?.coverage?.perElementCoverageRate ?? {}
-            const best = Object.entries(rates).filter(([, r]) => r > 0).sort((a, b) => b[1] - a[1])[0]?.[0]
-            polarElement = best ?? agent?.damageElement ?? 'ether'
+            const axisBest = [...(isAxis ? inStunAttributionCandidates() : [])]
+              .sort((a, b) => b.autoRatio - a.autoRatio)[0]?.element
+            if (axisBest) polarElement = axisBest
+            else {
+              const rates = anomalyPoolResult.value?.coverage?.perElementCoverageRate ?? {}
+              polarElement = Object.entries(rates).filter(([, r]) => r > 0).sort((a, b) => b[1] - a[1])[0]?.[0]
+                ?? agent?.damageElement ?? 'ether'
+            }
           }
           if (perEvent > 0 && event.count > 0) {
             rows.push({
