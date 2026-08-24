@@ -24,12 +24,13 @@ import {
 import { calcStunPool } from '@/core/stunPool'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { calcStunAxis } from '@/core/stunAxis'
+import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis, StunAxisResult } from '@/types/resource'
 import { calcStunAxisStack, allocateAxisWindows } from '@/core/stunAxisStack'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
 import { calcAnomalyPool, calcSpecialActionBonus } from '@/core/anomalyPool'
-import { distributeIntegerByWeight, getMainApplierSlot, ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
+import { distributeIntegerByWeight, getMainApplierSlot, ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement } from '@/core/anomalyPool/helpers'
 import { computeInStunAnomalyTimeline } from '@/core/stunAxis/inStunAnomaly'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentMechanic, getRegisteredAgentMechanics, type MechanicTeamMember } from '@/mechanics'
@@ -727,6 +728,7 @@ function applyNormaHatChain(
     promiaTriggerHits: number
     promiaTeammateReleases: number
     inStunWindowTriggers: number
+    inStunAnomalyState: InStunAnomalySummary | null
   } | null {
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
@@ -1344,6 +1346,7 @@ function applyNormaHatChain(
       }
     }
     // 失衡内异常系统 v2（下一轮注入）：轴内逐窗积蓄槽时间线 → 平均每窗触发次数
+    let inStunAnomalyStateNext: InStunAnomalySummary | null = null
     let inStunWindowTriggersNext = 0
     if (axisActive && characters.some(c => c.agentId === '1511')) {
       const contribMap = new Map<string, { element: string; perHit: number }>()
@@ -1362,6 +1365,31 @@ function applyNormaHatChain(
       inStunWindowTriggersNext = windows.length > 0
         ? Math.round((tl.triggers.length / windows.length) * 10) / 10
         : 0
+      // 摘要（UI「失衡内异常状态」栏）：每元素 触发次数合计 + 各窗覆盖均值
+      const agg = new Map<string, { triggerCount: number; covSum: number }>()
+      for (const t of tl.triggers) {
+        const key = getBaseElement(t.element)
+        const cur = agg.get(key) ?? { triggerCount: 0, covSum: 0 }
+        cur.triggerCount += 1
+        agg.set(key, cur)
+      }
+      tl.coveragePerWindow.forEach(cov => {
+        for (const [el, v] of Object.entries(cov)) {
+          const key = getBaseElement(el)
+          const cur = agg.get(key) ?? { triggerCount: 0, covSum: 0 }
+          cur.covSum += v
+          agg.set(key, cur)
+        }
+      })
+      inStunAnomalyStateNext = {
+        windows: windows.length,
+        elements: [...agg.entries()].map(([element, a]) => ({
+          element,
+          triggerCount: a.triggerCount,
+          avgCoverage: windows.length > 0 ? Math.round((a.covSum / windows.length) * 1000) / 1000 : 0,
+        })),
+        note: `轴内逐窗积蓄槽模拟（${windows.length} 窗）：进窗继承上一窗余量，积蓄超阈值即触发对应异常；覆盖=异常激活时长占窗口比例。`,
+      }
       if (prevInStunWindowTriggers <= 0) {
         for (const c of characters) {
           if (c.agentId === '1511') (c as any).inStunWindowTriggers = inStunWindowTriggersNext
@@ -1405,6 +1433,7 @@ function applyNormaHatChain(
       promiaTriggerHits: promiaTriggerHitsNext,
       promiaTeammateReleases: promiaTeammateReleasesNext,
       inStunWindowTriggers: inStunWindowTriggersNext,
+      inStunAnomalyState: inStunAnomalyStateNext,
       banyueTopUp: banyueTopUpNext,
       yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
       teamUltimateForJufufu: teamUltimateForJufufuNext,
@@ -1544,6 +1573,8 @@ function applyNormaHatChain(
   // 下游统一从 calcOutput 取（名称保持，伤害池/结果页等无需改动）
   const resourceResult = computed<TeamResourceResult | null>(() => calcOutput.value?.resourceResult ?? null)
   const stunPoolResult = computed<StunPoolResult | null>(() => calcOutput.value?.stunPool ?? null)
+  /** 失衡内异常状态（轴模式）：每元素触发次数/窗均覆盖（失衡内异常系统 v2） */
+  const inStunAnomalyState = computed<InStunAnomalySummary | null>(() => calcOutput.value?.inStunAnomalyState ?? null)
   const anomalyPoolResult = computed<AnomalyPoolResult | null>(() => calcOutput.value?.anomalyPool ?? null)
   const adjustedResourceResult = computed<TeamResourceResult | null>(() => calcOutput.value?.adjustedResourceResult ?? null)
   /** 琉音好评转大收敛后的转大次数（60+90 抱拳之和），供伤害池/影画6/倍率表消费 */
@@ -3036,6 +3067,7 @@ const teamTotalDamage = computed(() =>
     resourceConfig,
     resourceResult,
     stunPoolResult,
+    inStunAnomalyState,
     anomalyPoolResult,
     specialActionBonus,
     damagePoolRows,

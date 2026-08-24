@@ -568,6 +568,19 @@ export interface AnomalyEventExecution {
   }
 }
 
+/** 失衡内异常状态摘要（失衡内异常系统 v2，轴模式）：每元素触发次数与窗均覆盖 */
+export interface InStunAnomalyElementState {
+  element: string
+  triggerCount: number
+  avgCoverage: number
+}
+
+export interface InStunAnomalySummary {
+  windows: number
+  elements: InStunAnomalyElementState[]
+  note: string
+}
+
 /** 通用专属资源展示段，由角色机制模块生成 */
 export interface SpecialResourceSection {
   /** 展示段 id */
