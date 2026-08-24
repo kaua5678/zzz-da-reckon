@@ -1131,6 +1131,12 @@ export function getHealingAmount(move: SkillMove): number {
 export function getSpecialResourceRecovery(move: SkillMove): number {
   let total = 0
   for (const row of move.rows as any[]) {
+    // 专属资源回复：attack_data_N（kind=special，如席德钢能/比利决意/青衣电压/普罗米娅寒蚀）。
+    // 多个 attack_data_N = 多段命中，逐段求和（与伤害倍率同款「倍率行值」口径）。
+    if (String((row as any).kind ?? '') === 'special') {
+      total += row.values?.[0] ?? 0
+      continue
+    }
     const id = String(row.id ?? '')
     if (!id.includes('recovery')) continue
     if (id === 'energy_recovery' || id === 'decibel_recovery') continue
@@ -1424,6 +1430,7 @@ export function buildCharConfig(
     tauntCancelCount: char.tauntCancelCount ?? 0,
     quickAssistCount: char.quickAssistCount ?? 0,
     yixuanInk2Count: char.yixuanInk2Count ?? 0,
+    promiaNiyingCount: char.promiaNiyingCount ?? 0,
     yixuanInk3Count: char.yixuanInk3Count ?? 0,
     yixuanPerfectBlockCount: char.yixuanPerfectBlockCount ?? 0,
     yixuanExtremeAssistCount: char.yixuanExtremeAssistCount ?? -1,

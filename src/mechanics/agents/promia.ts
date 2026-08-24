@@ -167,7 +167,8 @@ function buildPromiaAnomalyEvents({ cfg, state, events }: AgentEventInput): void
   const teammateReleases = Math.max(0, Math.floor(Number(record.promiaTeammateReleaseCount ?? 0)))
   const exCasts = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
   const attackFrost = Math.max(0, Math.floor(Number(record.promiaAttackFrostGain ?? 0)))
-  const frostGain = triggerHits * 5 + exCasts * 10 + teammateReleases * 15 + attackFrost
+  const niying = Math.max(0, Math.min(99, Math.floor(Number(record.promiaNiyingCount ?? 0))))
+  const frostGain = triggerHits * 5 + exCasts * 10 + niying * 10 + teammateReleases * 15 + attackFrost
   const initial = 2 + (cinemaLevel >= 1 ? 1 : 0)
   const count = override > 0 ? override : initial + Math.floor(frostGain / 50)
   if (count <= 0) return
@@ -180,8 +181,8 @@ function buildPromiaAnomalyEvents({ cfg, state, events }: AgentEventInput): void
     carrierMoveName: '强化特殊技：处刑式·绝裁（终结一击）',
     count,
     formula: `releaseMultiplier=${mult}（固定倍率${cinemaLevel >= 2 ? '，C2=635+120' : ''}）`,
-    fields: [`releaseMultiplier=${mult}`, `frostGain=${frostGain}`, `attackFrost=${attackFrost}`, `casts=${count}`],
-    note: `回复端：初始${initial} + 寒蚀${frostGain}/50（含攻击数据 ${attackFrost}）→ ${count} 次（不受持有上限钳制）；元素按目标当前异常分配。`,
+    fields: [`releaseMultiplier=${mult}`, `frostGain=${frostGain}`, `attackFrost=${attackFrost}`, `niying=${niying}`, `casts=${count}`],
+    note: `回复端：初始${initial} + 寒蚀${frostGain}/50（含攻击数据 ${attackFrost}、匿影×10×${niying}）→ ${count} 次（不受持有上限钳制）；元素按目标当前异常分配。`,
   })
 }
 
@@ -192,6 +193,27 @@ function buildPromiaAnomalyEvents({ cfg, state, events }: AgentEventInput): void
 function buildPromiaExecutions({ cfg, executions }: AgentResourceInput): void {
   const attackFrost = executions.reduce((s, e) => s + (e.totalSpecialResourceRecovery ?? 0), 0)
   ;(cfg as unknown as Record<string, unknown>).promiaAttackFrostGain = Math.max(0, Math.floor(attackFrost))
+  // 匿影后解锁特殊技「处刑式·重霜」：每次匿影可接一次（真实 moveId，前台时间由引擎时间预算外层折算）
+  const niying = Math.max(0, Math.min(99, Math.floor(Number((cfg as unknown as Record<string, unknown>).promiaNiyingCount ?? 0))))
+  if (niying > 0) {
+    executions.push({
+      moveId: '1541011',
+      moveName: '特殊技：处刑式·重霜（匿影后接）',
+      category: 'special',
+      count: niying,
+      actionTime: 2.35,
+      comboAlignRatio: 0,
+      totalTime: 2.35 * niying,
+      totalComboAlignTime: 0,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      decibelRecovery: 0,
+      totalDecibelRecovery: 0,
+      energyRecovery: 0,
+      totalEnergyRecovery: 0,
+      skillTableNote: `处刑式·重霜 ×${niying}（匿影后解锁；#2 子段 24.2% 未单列）`,
+    })
+  }
 }
 
 function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {

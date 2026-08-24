@@ -218,6 +218,19 @@
                           />
                         </div>
                       </n-gi>
+                      <n-gi v-if="selectedChar.agentId === '1541'">
+                        <div class="field" title="强特变体：耗强特能量（用户自控预算）；每次触发+10寒蚀值，之后可接特殊技「处刑式·重霜」">
+                          <span class="field-label">处刑式·匿影</span>
+                          <n-input-number
+                            :value="selectedChar.promiaNiyingCount ?? 0"
+                            :min="0"
+                            :max="99"
+                            size="small"
+                            style="width: 100%"
+                            @update:value="v => configStore.setPromiaNiyingCount(configStore.selectedSlot, v ?? 0)"
+                          />
+                        </div>
+                      </n-gi>
                       <n-gi v-if="selectedChar.agentId === '1371'">
                         <div class="field">
                           <span class="field-label">2连墨痕化形</span>

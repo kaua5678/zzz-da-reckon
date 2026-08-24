@@ -29,6 +29,7 @@ export interface CharacterConfig {
   dualCounterCount?: number  // 双反次数（per-character，般岳专属：完美闪避+金身弹刀组合，+10嗔火/次；缺省 0）
   tauntCancelCount?: number  // 嘲讽取消次数（per-character，般岳专属：失衡外强特连段末尾后摇的嘲讽取消，每次取消一次后摇；缺省 0）
   yixuanInk2Count?: number  // 仪玄·2连墨痕化形次数（#1+#3，40闪能/次；主页交互栏填写）
+  promiaNiyingCount?: number  // 普罗米娅·处刑式·匿影次数（强特变体，耗强特能量；每次+10寒蚀并解锁重霜；交互栏填写，用户自控能量预算）
   yixuanInk3Count?: number  // 仪玄·3连墨痕化形次数（#1+#3+#4，60闪能/次；≤0=自动=剩余闪能全打3连，≥1 手填）
   yixuanPerfectBlockCount?: number  // 仪玄·完美格挡次数（#2 赠送 + 回10闪能/次；≤0=自动=弹刀次数全完美，≥1 手填）
   yixuanExtremeAssistCount?: number  // 仪玄·极限支援换场次数（落雷 225% 贯穿力 + 5闪能/次；缺省 -1 = 自动取队友弹刀和上限）
@@ -119,6 +120,7 @@ function defaultCharacter(slot: number, agentId: string, element: string): Chara
     dualCounterCount: 0,
     tauntCancelCount: 0,
     yixuanInk2Count: 0,
+    promiaNiyingCount: 0,
     yixuanInk3Count: 0, // ≤0 = 自动：剩余闪能全部轴外打 3 连墨痕化形（60/次）；≥1 手填
     yixuanPerfectBlockCount: 0, // ≤0 = 自动：全完美格挡 = 弹刀次数（+10 闪能/次）；≥1 手填
     yixuanExtremeAssistCount: -1,
@@ -463,6 +465,11 @@ export const useConfigStore = defineStore('config', () => {
   function setYixuanInk2Count(slot: number, count: number) {
     const char = team.value[slot]
     if (char) char.yixuanInk2Count = Math.max(0, Math.min(99, count))
+  }
+
+  function setPromiaNiyingCount(slot: number, count: number) {
+    const char = team.value[slot]
+    if (char) char.promiaNiyingCount = Math.max(0, Math.min(99, count))
   }
 
   // 3连/完美格挡 ≤0 = 自动（剩余闪能打3连 / 全弹刀完美），≥1 手填（与模块哨兵同口径）
@@ -1067,6 +1074,7 @@ function parseCinemaRequirement(sourceLabel: string): number {
     setAssaultOrderCount,
     setDualCounterCount,
     setYixuanInk2Count,
+    setPromiaNiyingCount,
     setYixuanInk3Count,
     setYixuanPerfectBlockCount,
     setYixuanExtremeAssistCount,
