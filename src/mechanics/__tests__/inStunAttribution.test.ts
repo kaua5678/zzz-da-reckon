@@ -124,4 +124,70 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
     expect(byEl.get('ether')).toBe(Math.round((evPolar.count / 3) * 2))
     expect(byEl.get('electric')).toBe(evPolar.count - Math.round((evPolar.count / 3) * 2))
   })
+
+  it('异放同口径：无手动分配时按状态段取样归因', async () => {
+    const { config } = await setupHarness([{ agentId: '1511', cinemaLevel: 2 }, { agentId: '1181' }])
+    config.useStunAxis = true
+    config.stunAxes = [{
+      name: '点时归因轴',
+      count: 3,
+      actions: [
+        { slot: 0, moveId: '1511006', count: 6, startTime: 0 },
+        { slot: 1, moveId: '1181005', count: 18, startTime: 8 },
+      ],
+      basicFillerSlot: 0,
+    }]
+    const calc = useResourceCalc()
+    // 颤音异放次数=收敛后失衡数×覆盖 → 代表窗取样 1 点 @D/2≈11s 落电段[8,18) → 全部归电
+    const evRel = (calc.resourceResult.value!.characters.find(c => c.agentId === '1511')!
+      .anomalyEventExecutions ?? []).find(e => e.eventId === 'nangong_vibrato_release')!
+    const rel = calc.damagePoolRows.value.filter(r => r.type === '异放' && r.id.includes('nangong_vibrato_release'))
+    expect(rel.reduce((s, r) => s + r.count, 0)).toBe(evRel.count)
+    expect(rel.length).toBeGreaterThan(0)
+    for (const r of rel) expect(r.element).toBe('electric')
+  })
+
+  it('手动 releaseShare 覆盖点时归因：回落权重路径且次数守恒', async () => {
+    const { config } = await setupHarness([{ agentId: '1511', cinemaLevel: 2 }, { agentId: '1181' }])
+    config.useStunAxis = true
+    config.stunAxes = [{
+      name: '手动覆盖轴',
+      count: 3,
+      actions: [
+        { slot: 0, moveId: '1511006', count: 6, startTime: 0 },
+        { slot: 1, moveId: '1181005', count: 18, startTime: 8 },
+      ],
+      basicFillerSlot: 0,
+    }]
+    // 手动：电全拿、以太不给 → 检测到任一链上元素有覆盖即走权重路径
+    config.setMechanicSetting('nangong.releaseShare:electric', 1)
+    config.setMechanicSetting('nangong.releaseShare:ether', 0)
+    const calc = useResourceCalc()
+    const evRel = (calc.resourceResult.value!.characters.find(c => c.agentId === '1511')!
+      .anomalyEventExecutions ?? []).find(e => e.eventId === 'nangong_vibrato_release')!
+    const rel = calc.damagePoolRows.value.filter(r => r.type === '异放' && r.id.includes('nangong_vibrato_release'))
+    expect(rel.reduce((s, r) => s + r.count, 0)).toBe(evRel.count)
+    expect(rel.filter(r => r.element === 'ether').reduce((s, r) => s + r.count, 0)).toBe(0)
+  })
+
+  it('进窗初始状态可指定（v2 需求②）：entryElement 参与替换循环，紊乱归因取初始状态', async () => {
+    const { config } = await setupHarness([{ agentId: '1511', cinemaLevel: 2 }, { agentId: '1181' }])
+    config.useStunAxis = true
+    config.setMechanicSetting('boss.entryAnomaly', 1) // 火
+    config.stunAxes = [{
+      name: '进窗状态轴',
+      count: 3,
+      actions: [
+        { slot: 0, moveId: '1511006', count: 6, startTime: 0 },
+        { slot: 1, moveId: '1181005', count: 18, startTime: 8 },
+      ],
+      basicFillerSlot: 0,
+    }]
+    const calc = useResourceCalc()
+    const boss = calc.bossAnomalyState.value!
+    // 开场火 @0s 被以太替换、@8s 电再替换以太 → 紊乱归因链 火→以太
+    expect(boss.disorders.map(d => d.element)).toEqual(['fire', 'ether'])
+    // 零长开场段被丢弃，可见链仍为 以太→电
+    expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['ether', 'electric'])
+  })
 })

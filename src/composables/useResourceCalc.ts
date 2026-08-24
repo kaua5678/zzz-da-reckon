@@ -31,7 +31,7 @@ import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
 import { calcAnomalyPool, calcSpecialActionBonus } from '@/core/anomalyPool'
 import { distributeIntegerByWeight, getMainApplierSlot, ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement } from '@/core/anomalyPool/helpers'
-import { computeBossAnomalyStateTimeline, computeInStunAnomalyTimeline, attributeCountByStateChain, type BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
+import { computeBossAnomalyStateTimeline, computeInStunAnomalyTimeline, attributeCountByStateChain, bossEntryAnomalyElement, type BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentMechanic, getRegisteredAgentMechanics, type MechanicTeamMember } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, computeLiuyinHugCounts, resolveUltimateTargetSlot, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
@@ -1407,6 +1407,8 @@ function applyNormaHatChain(
             triggers: tl.triggers,
             windowDuration: bossWindowDur,
             windowCount: Math.max(1, resolvedAxes.length),
+            // 用户口径 v2 需求②：可指定进入窗口时的异常状态（机制设置 boss.entryAnomaly，0=无）
+            entryElement: bossEntryAnomalyElement(configStore.getMechanicSetting('boss.entryAnomaly', 0)) || undefined,
           }),
           // 轴条目按代表窗模拟，stunsTotal 供事件总次数缩放回代表窗取样。
           // debt: 轴条目 count>1 未逐失衡展开窗口继承（与 v2 平均口径一致），升级路径=flatMap(count) 展开窗口列表。
@@ -2228,9 +2230,49 @@ function applyNormaHatChain(
         if (event.eventType === 'release') {
           const triggerPanel = damagePanels.value[slot]
           if (event.element === 'dominant') {
-            // 异放元素 = 目标当前异常状态。轴模式：失衡内异常时间线的实际活跃元素（逐窗积蓄模拟）；
-            // 非轴模式：按全局异常覆盖率占比分配次数（柏妮思/爱芮同款）
+            // 异放元素 = 目标当前异常状态。Boss 异常状态轴点时归因（v2.2，与极性紊乱同口径）：
+            // 轴模式下事件次数按代表窗内均匀取样时刻查当时状态分摊——链上元素无手动
+            // releaseShare 覆盖才启用，手动分配/非轴模式回落下方覆盖率权重路径。
             const totalRelease = Math.max(0, Math.floor(event.count))
+            const bossRel = isAxis ? bossAnomalyState.value : null
+            const relChain = bossRel ? [...(bossRel.stateChainsPerWindow[0] ?? []), ...(bossRel.windOverlayPerWindow[0] ?? [])] : []
+            if (bossRel && relChain.length > 0) {
+              const relNs = event.eventId.split('_')[0] ?? 'release'
+              const chainEls = [...new Set(relChain.map(s => s.element))]
+              const hasManualShare = chainEls.some(el => configStore.getMechanicSetting(`${relNs}.releaseShare:${el}`, -1) >= 0)
+              if (!hasManualShare) {
+                const perRepWindow = Math.max(1, Math.round(totalRelease / Math.max(1, bossRel.stunsTotal ?? 1)))
+                const parts = attributeCountByStateChain(
+                  perRepWindow,
+                  relChain,
+                  bossRel.windowDuration && bossRel.windowDuration > 0 ? bossRel.windowDuration : computeWindowDuration(),
+                  agent?.damageElement ?? 'physical',
+                )
+                const shares = distributeIntegerByWeight(totalRelease, parts.map(p => p.count))
+                for (let i = 0; i < parts.length; i++) {
+                  const count = shares[i] ?? 0
+                  if (count <= 0) continue
+                  const element = parts[i].element
+                  const prog = anomalyPoolResult.value?.perElement.find(p => p.element === element)
+                  const baseSlot = prog ? getMainApplierSlot(prog.contributions) : slot
+                  pushRelease({
+                    id: `release-${slot}-${event.eventId}-${element}`,
+                    slot,
+                    agentId: charResult.agentId,
+                    name: event.eventName,
+                    count,
+                    multiplier: releaseMultiplierFor(event, element, triggerPanel, stunCoverage.value),
+                    source: event.carrierMoveName || event.carrierMoveId || event.eventId,
+                    note: `${event.note ?? ''}；${element}·Boss异常状态轴·按触发时刻状态归因`,
+                    element,
+                    panel: damagePanels.value[baseSlot] ?? triggerPanel,
+                    settlementPanel: triggerPanel,
+                    releaseCrit: event.releaseCrit,
+                  })
+                }
+                continue
+              }
+            }
             const axisCandidates = isAxis ? inStunAttributionCandidates() : []
             let attributionLabel = '失衡内活跃元素归因'
             let candidates = axisCandidates

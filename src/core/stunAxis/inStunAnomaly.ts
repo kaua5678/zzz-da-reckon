@@ -150,6 +150,25 @@ export function computeInStunAnomalyTimeline(input: {
 // 不同属性异常在已有时状态下触发 = 紊乱并**替换**状态；风化保持不变（独立覆盖层，
 // 不参与替换、也不被替换）。本函数把 v2 时间线的触发序列推进成逐窗状态链。
 
+/**
+ * Boss 进窗初始异常状态选项（用户口径 v2 需求②「可指定进入窗口时的异常状态」）。
+ * 机制设置键 `boss.entryAnomaly`，存 number 索引（设置存储为 number），0=无。
+ */
+export const BOSS_ENTRY_ANOMALY_OPTIONS: ReadonlyArray<{ value: number; element: string }> = [
+  { value: 0, element: '' },
+  { value: 1, element: 'fire' },
+  { value: 2, element: 'electric' },
+  { value: 3, element: 'ice' },
+  { value: 4, element: 'ether' },
+  { value: 5, element: 'physical' },
+  { value: 6, element: 'wind' },
+]
+
+/** 设置索引 → 初始状态元素（''=无） */
+export function bossEntryAnomalyElement(settingValue: number): string {
+  return BOSS_ENTRY_ANOMALY_OPTIONS.find(o => o.value === settingValue)?.element ?? ''
+}
+
 /** 状态时段（相对该窗口起点的秒；end 截断到窗口时长，状态本身可跨窗延续） */
 export interface BossStateSegment {
   start: number

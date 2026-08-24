@@ -211,7 +211,19 @@
         </div>
         <div class="field-desc" style="margin-top:6px">{{ inStunAnomalyState.note }} 异放按该时间线的实际活跃元素归因。</div>
         <div v-if="bossAnomalyState" style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.08);padding-top:6px">
-          <div class="field-title">Boss 异常状态轴（紊乱替换状态 · 风化保持不变 · 极性紊乱按触发时刻状态归因）</div>
+          <div class="mechanic-row">
+            <div class="mechanic-copy">
+              <div class="field-title">Boss 异常状态轴（紊乱替换状态 · 风化保持不变 · 极性紊乱/异放按触发时刻状态归因）</div>
+              <div class="field-desc">指定进窗时目标已带的异常状态；不同属性异常触发即替换（归因取原状态）。</div>
+            </div>
+            <n-select
+              :value="configStore.getMechanicSetting('boss.entryAnomaly', 0)"
+              size="small"
+              style="width:110px"
+              :options="bossEntryOptions"
+              @update:value="(v: number | null) => configStore.setMechanicSetting('boss.entryAnomaly', v ?? 0)"
+            />
+          </div>
           <div
             v-for="(chain, w) in bossAnomalyState.stateChainsPerWindow"
             :key="w"
@@ -347,6 +359,7 @@ import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { analyzeCinemaUplift, type CinemaUpliftRow } from '@/composables/cinemaUplift'
 import { fmt } from '@/utils/format'
 import { getAgentMechanic } from '@/mechanics'
+import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/core/stunAxis/inStunAnomaly'
 import type { MechanicSetting } from '@/types/resource'
 
 const configStore = useConfigStore()
@@ -392,6 +405,12 @@ function formatBossStateChain(chain: BossStateChainSegment[], wind?: BossStateCh
   if (wind?.length) segs.push(`（风化层 ${wind.map(fmt).join('、')}）`)
   return segs.length > 0 ? segs.join(' → ') : '无异常状态'
 }
+
+/** 进窗初始异常状态选择项（0=无；机制设置 boss.entryAnomaly） */
+const bossEntryOptions = BOSS_ENTRY_ANOMALY_OPTIONS.map(o => ({
+  label: o.element ? elementLabel(o.element) : '无',
+  value: o.value,
+}))
 
 const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 
