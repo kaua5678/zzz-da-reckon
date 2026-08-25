@@ -12,14 +12,15 @@
  * - 影画6 前传主角：每6次白雷额外伤害引发电磁涡流，1000%攻击力电伤（视为追加攻击），
  *   合成执行行 damageMultiplierOverride 结算（不伪造 catalog moveId）。
  *
- * 明确未建模：
- * - 核心被动「银星使追加攻击暴击伤害额外提升=自身暴伤30%（另+5%）」与额外能力「全队追加攻击对
- *   银星敌人+25%」均为敌方目标向/全队向增益，模块仅作用自身面板，未接全队通道。
+ * 明确未建模/近似：
+ * - 核心被动「银星使追加攻击暴击伤害额外提升=自身暴伤×35%（30%+延伸5%）」：经 spec teamBuffs
+ *   derived 通道全队生效（sourceStat=critDmg 取安比自身局内暴伤，targetSkillType=additionalAttack）。
+ * - 额外能力「全队追加攻击对银星敌人+25%」：经 spec teamBuffs fixed 通道全队生效
+ *   （dmgBonus__additionalAttack）；潜能电脉冲 34-50% 档位待 teamBuff 通道支持 potentialLevel，暂以基线 25 建模。
  * - 影画2（用户口径 2026-08）：终结技 6 电鸣等效白雷直接计入总量；苍光·临界速度加快 50%
- *   （每 3 层电鸣一招，动作时间 ÷1.5，按电鸣配额折算均摊）；潜能觉醒经 teamBuffs 表达。
+ *   （每 3 层电鸣一招，动作时间 ÷1.5，按电鸣配额折算均摊）。
  * - 苍光·临界（1381023）：每轮 3 层白雷打完后接一招收尾，499.1%、真实动作时间 0.867s 占前台。
- * - 核心被动银星追攻暴伤 = 自身暴伤×35%：按白雷/雷殛/涡流行级 critDmgBonus 接入；
- *   连携/终结视为追加攻击伤害（Lv7 文本），供限定追击增伤命中。
+ * - 连携/终结视为追加攻击伤害（Lv7 文本），供限定追击增伤命中。
  */
 import type {
   AgentCharConfigInput,
@@ -49,9 +50,12 @@ export const ANBY_ZERO_C2_CRITICAL_SPEEDUP = 1.5
 /** 核心被动：银星敌人受到的追加攻击暴伤额外提升 = 自身暴伤 ×（30% + 延伸 5%） */
 export const ANBY_ZERO_FOLLOWUP_CRIT_DMG_RATIO = 0.35
 export const ANBY_ZERO_C6_VORTEX_MULTIPLIER = 1000
+/** 额外能力电极化「全队追加攻击对银星敌人伤害提升」按潜能等级（index 0 占位，1=I=25% … 6=VI=50%） */
+export const ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL = [0, 25, 34, 38, 42, 46, 50] as const
 
 export interface AnbyZeroCycle {
   cinemaLevel: number
+  potentialLevel: number
   cangguangCount: number
   silverStarCoverage: number
   additionalActive: boolean
@@ -66,6 +70,7 @@ export interface AnbyZeroCycle {
   criticalFastCount: number
   criticalActionTime: number
   coreDmgBonus: number
+  teamFollowupDmgBonus: number
   c4ResIgnore: number
   critRateGain: number
   note: string
@@ -87,6 +92,7 @@ function whole(value: number | undefined): number {
 
 export function computeAnbyZeroCycle(input: {
   cinemaLevel: number
+  potentialLevel: number
   cangguangCount: number
   exSpecialCount: number
   /** 缺省按 0（whole 兜底）：外层线程未回填/纯函数测试省略时合法 */
@@ -96,6 +102,7 @@ export function computeAnbyZeroCycle(input: {
   silverStarCoverage: number
 }): AnbyZeroCycle {
   const cinemaLevel = whole(input.cinemaLevel)
+  const potentialLevel = Math.max(1, Math.min(6, whole(input.potentialLevel)))
   const cangguangCount = whole(input.cangguangCount)
   const ultimateCount = whole(input.ultimateCount)
   const silverStarCoverage = clampRatio(input.silverStarCoverage)
@@ -121,6 +128,7 @@ export function computeAnbyZeroCycle(input: {
     : ANBY_ZERO_CRITICAL_ACTION_TIME
   return {
     cinemaLevel,
+    potentialLevel,
     cangguangCount,
     silverStarCoverage,
     additionalActive: input.additionalActive,
@@ -137,6 +145,9 @@ export function computeAnbyZeroCycle(input: {
     criticalFastCount,
     criticalActionTime,
     coreDmgBonus: ANBY_ZERO_CORE_DMG * silverStarCoverage,
+    teamFollowupDmgBonus: input.additionalActive
+      ? ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL[potentialLevel] * silverStarCoverage
+      : 0,
     c4ResIgnore: cinemaLevel >= 4 ? ANBY_ZERO_C4_RES_IGNORE * silverStarCoverage : 0,
     critRateGain: (input.additionalActive ? ANBY_ZERO_ADDITIONAL_CRIT_RATE : 0)
       + (cinemaLevel >= 2 ? ANBY_ZERO_C2_CRIT_RATE : 0),
@@ -144,9 +155,10 @@ export function computeAnbyZeroCycle(input: {
   }
 }
 
-function buildAnbyZeroCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
+function buildAnbyZeroCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   record.anbyZeroCinemaLevel = cinemaLevel
+  record.anbyZeroPotentialLevel = potentialLevel
   record.anbyZeroCangguangCount = whole(setting(cfg, 'anbyZero.cangguangCount', 6))
   record.anbyZeroSilverStarCoverage = clampRatio(setting(cfg, 'anbyZero.silverStarCoverage', 1))
   record.anbyZeroAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
@@ -156,6 +168,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
   const record = cfg as unknown as Record<string, unknown>
   return computeAnbyZeroCycle({
     cinemaLevel: Number(record.anbyZeroCinemaLevel ?? 0),
+    potentialLevel: Number(record.anbyZeroPotentialLevel ?? 6),
     cangguangCount: Number(record.anbyZeroCangguangCount ?? 6),
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
@@ -238,17 +251,12 @@ function applyAnbyZeroPanel({ charResult, panel }: AgentSkillTransformInput): vo
   if (cycle.c4ResIgnore > 0) {
     panel.enemyElectricResReduction = (panel.enemyElectricResReduction ?? 0) + cycle.c4ResIgnore
   }
-  // 核心被动：银星敌人受到的追加攻击暴伤额外提升 = 自身暴伤 ×35%（Lv7 含延伸 5%）
-  // ——按行级 critDmgBonus 接入白雷/雷殛行（敌方目标向增益，单目标口径下等效常驻）
-  const followupCrit = Math.round((panel.critDmg ?? 0) * ANBY_ZERO_FOLLOWUP_CRIT_DMG_RATIO)
+  // 全队追加攻击增伤（额外能力25%+潜能34-50%）与银星追攻暴伤（自身暴伤×35%）——
+  // 均为全队向/敌方目标向增益，已由 spec teamBuffs 经 collectInCombatTeamBuffs 全队合并生效，
+  // 不在此落自身面板（防双计，见 spec 1381 teamBuffs anby_zero_extra_team_followup / anby_zero_core_silverstar_crit）。
   for (const exec of charResult.executions ?? []) {
-    // moveId 在不同装配阶段可能为 string 或 number，统一字符串化比较
-    const mid = String(exec.moveId)
-    if (mid === ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID || mid === ANBY_ZERO_RAIJITU_MOVE_ID || mid === '1381_c6_electromagnetic_vortex') {
-      // 绝对值赋值（非 +=）：transform 可能随面板重算被多次触发，增量式会累积
-      exec.critDmgBonus = followupCrit
-    }
     // 核心被动 Lv7：零号·安比的连携技和终结技视为追加攻击伤害（供限定追击增伤命中）
+    const mid = String(exec.moveId)
     if (mid === '1381014' || mid === '1381015') {
       exec.skillDamageTarget = 'additionalAttack'
     }
@@ -275,6 +283,7 @@ function buildAnbyZeroResourceSections({ result }: AgentResourceSectionsInput) {
       { label: '雷殛', value: `${cycle.raijituCount} 次`, detail: '同一敌人每3次白雷额外伤害触发' },
       { label: '电磁涡流', value: `${cycle.vortexCount} 次`, detail: '影画6每6次白雷触发1000%攻击力电伤' },
       { label: '银星增伤', value: `+${cycle.coreDmgBonus}%`, detail: '对银星标记敌人，按覆盖率折算' },
+      { label: '全队追攻增伤', value: `+25%`, detail: '额外能力电极化（teamBuff 全队通道 dmgBonus__additionalAttack）；潜能电脉冲 34-50% 档位待 teamBuff 支持 potentialLevel' },
       { label: '影画4电抗无视', value: `+${cycle.c4ResIgnore}%`, detail: '命中银星敌人，按覆盖率折算' },
       { label: '暴击率', value: `+${cycle.critRateGain}%`, detail: '额外能力+10，影画2+12' },
     ],

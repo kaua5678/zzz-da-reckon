@@ -9,15 +9,16 @@ import {
   ANBY_ZERO_CORE_DMG,
   ANBY_ZERO_RAIJITU_MOVE_ID,
   ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID,
+  ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL,
   computeAnbyZeroCycle,
   anbyZeroMechanic,
 } from '@/mechanics/agents/anbyZero'
 import { setupHarness } from '@/test/harness'
 
-async function setup(mateId = '1141', cinemaLevel = 0) {
+async function setup(mateId = '1141', cinemaLevel = 0, potentialLevel = 6) {
   const result = await setupHarness([
-    { agentId: '1381', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-    { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: '1381', cinemaLevel, potentialLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: mateId, cinemaLevel: 0, potentialLevel: 6, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
   ])
   for (const buff of result.config.globalBuffs) buff.enabled = false
   return result
@@ -26,6 +27,7 @@ async function setup(mateId = '1141', cinemaLevel = 0) {
 function cycle(overrides: Partial<Parameters<typeof computeAnbyZeroCycle>[0]> = {}) {
   return computeAnbyZeroCycle({
     cinemaLevel: 6,
+    potentialLevel: 6,
     cangguangCount: 6,
     exSpecialCount: 2,
     additionalActive: true,
@@ -127,5 +129,36 @@ describe('零号·安比完整计算链', () => {
     expect(panel.critRate).toBeGreaterThanOrEqual(ANBY_ZERO_ADDITIONAL_CRIT_RATE + ANBY_ZERO_C2_CRIT_RATE)
     expect(panel.dmgBonus).toBeGreaterThanOrEqual(ANBY_ZERO_CORE_DMG)
     expect(panel.enemyElectricResReduction).toBeGreaterThanOrEqual(ANBY_ZERO_C4_RES_IGNORE)
+  })
+})
+
+describe('零号·安比全队追加攻击增伤（teamBuff 全队通道）', () => {
+  it('额外能力电极化：全队 dmgBonus__additionalAttack +25%（teamBuff 合并）', async () => {
+    const { catalog, config } = await setup('1141', 0)
+    const p0 = computePanelPhases(0, config, catalog)!.inCombat as any
+    expect(p0.dmgBonus__additionalAttack).toBeGreaterThanOrEqual(25)
+    // 队友面板也吃到（全队向）
+    const p1 = computePanelPhases(1, config, catalog)!.inCombat as any
+    expect(p1.dmgBonus__additionalAttack).toBeGreaterThanOrEqual(25)
+  })
+
+  it('核心被动银星追攻暴伤：全队 critDmg__additionalAttack = 安比自身暴伤×35%（derived）', async () => {
+    const { catalog, config } = await setup('1141', 0)
+    const p0 = computePanelPhases(0, config, catalog)!.inCombat as any
+    // 自身暴伤基准 50 → 追加攻击暴伤额外 ≈ 50×0.35 = 17.5
+    expect(p0.critDmg__additionalAttack).toBeGreaterThanOrEqual(17)
+    const p1 = computePanelPhases(1, config, catalog)!.inCombat as any
+    expect(p1.critDmg__additionalAttack).toBeGreaterThanOrEqual(17)
+  })
+
+  it('潜能电脉冲档位驱动全队追攻增伤：潜能I=25% / 潜能VI=50%', async () => {
+    const p1 = (await setup('1141', 0, 1))
+    const p1p = computePanelPhases(0, p1.config, p1.catalog)!.inCombat as any
+    expect(p1p.dmgBonus__additionalAttack).toBeGreaterThanOrEqual(25)
+    expect(p1p.dmgBonus__additionalAttack).toBeLessThan(34)
+
+    const p6 = (await setup('1141', 0, 6))
+    const p6p = computePanelPhases(0, p6.config, p6.catalog)!.inCombat as any
+    expect(p6p.dmgBonus__additionalAttack).toBeGreaterThanOrEqual(50)
   })
 })

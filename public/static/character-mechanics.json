@@ -390,29 +390,44 @@
         {
           "id": "core_passive_1051",
           "name": "核心被动：拾梦空想",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "伊德海莉会额外根据自身最大生命值提高贯穿力，每1点最大生命值将提高0.1点贯穿力； 伊德海莉发动招式造成的冰属性伤害均为贯穿伤害，无视敌人防御，使用贯穿力作为招式伤害倍率；伊德海莉进入战场时即可恢复60闪能，在勘域模式中此效果180秒内最多触发一次， 伊德海莉的当前生命值百分比越低，招式造成的伤害越高； 当伊德海莉生命值低于50%时，获得的增益效果达到最大值，攻击造成的伤害最多提升100%，伊德海莉生命值重新回到50%后，最大值增益效果仍会持续5秒； 伊德海莉通过招式命中获得喧响值降低，伊德海莉生命值降低时，获得喧响值，每降低1%生命值会获得10点喧响值。"
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "HP→贯穿力转模（每1点最大生命值+0.1贯穿力）：仅作记录，实现位置在引擎贯穿力基底（core/damage.ts：atk×0.3+hp×0.1+sheerForceFlat），勿经 spec runtime 应用防双计。",
+            "冰伤=贯穿伤、无视防御、贯穿增伤乘区：specialty=rupture 由 pushDirect 解析 specialDamageProfile。",
+            "进场60闪能：buildCharConfig initialEnergyGift=60（勘域180s一次按开局赠送近似）。",
+            "低血增伤最多+100%：烧血频繁→按100%覆盖，applyPanel dmgBonus+100。",
+            "烧血喧响：每降低1%生命值+10喧响（影画4+10%），computeYidhariHpSource 按烧血比例折算。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
+          "pendingParts": [
+            "生命值回50%后增益持续5秒按100%覆盖近似（未逐时序）。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/yidhari.ts",
+            "src/core/damage.ts"
+          ],
+          "status": "implemented_approximation",
           "pending": [
-            "伊德海莉会额外根据自身最大生命值提高贯穿力，每1点最大生命值将提高0.1点贯穿力； 伊德海莉发动招式造成的冰属性伤害均为贯穿伤害，无视敌人防御，使用贯穿力作为招式伤害倍率；伊德海莉进入战场时即可恢复60闪能，在勘域模式中此效果180秒内最多触发一次， 伊德海莉的当前生命值百分比越低，招式造成的伤害越高； 当伊德海莉生命值低于50%时，获得的增益效果达到最大值，攻击造成的伤害最多提升100%，伊德海莉生命值重新回到50%后，最大值增益效果仍会持续5秒； 伊德海莉通过招式命中获得喧响值降低，伊德海莉生命值降低时，获得喧响值，每降低1%生命值会获得10点喧响值。"
+            "生命值回50%后增益持续5秒按100%覆盖近似（未逐时序）。"
           ]
         },
         {
           "id": "additional_ability_1051",
           "name": "额外能力：完形叙事",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "队伍中存在[击破]角色或[支援]角色时触发： 伊德海莉生命值低于50%时，暴击伤害提升30%，受到的伤害降低25%； 伊德海莉处于[以太帷幕·涌泉]中时，额外获得以下效果： 伊德海莉的[普通攻击：霜寒拥覆]第三段蓄力攻击、[强化特殊技：极寒重碾]的招式结束后，将召唤寒冰触手进行攻击，造成额外伤害，每12秒最多触发1次； 发动上述招式视为发动[强化特殊技]，伤害倍率跟随强化特殊技的技能等级提升。"
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "击破/支援队友触发（spec additionalAbility 门控，2026-08-25 补声明）；生命<50%暴伤+30%。",
+            "寒冰触手（1051024）：蓄力3段/极寒重碾后召唤，12s CD（默认13.5s可调），只有伤害、倍率随强特技能等级。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
+          "pendingParts": [
+            "寒冰触手触发间隔按可调近似（12s CD 无法完美卡轴）。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/yidhari.ts",
+            "src/specs/agents/1051.json"
+          ],
+          "status": "implemented_approximation",
           "pending": [
-            "队伍中存在[击破]角色或[支援]角色时触发： 伊德海莉生命值低于50%时，暴击伤害提升30%，受到的伤害降低25%； 伊德海莉处于[以太帷幕·涌泉]中时，额外获得以下效果： 伊德海莉的[普通攻击：霜寒拥覆]第三段蓄力攻击、[强化特殊技：极寒重碾]的招式结束后，将召唤寒冰触手进行攻击，造成额外伤害，每12秒最多触发1次； 发动上述招式视为发动[强化特殊技]，伤害倍率跟随强化特殊技的技能等级提升。"
+            "寒冰触手触发间隔按可调近似（12s CD 无法完美卡轴）。"
           ]
         }
       ],
@@ -784,30 +799,38 @@
         {
           "id": "core_passive_1091",
           "name": "核心被动：寒炎",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "星见雅对敌人造成烈霜伤害时，将会为目标附着[冰焰]，持续30秒；对附着[冰焰]的敌人累积烈霜异常积蓄值时，会基于星见雅暴击率的100%提升烈霜异常积蓄效率，最多提升80%；星见雅累积烈霜异常积蓄值时，具有独立的属性异常积蓄槽，随之触发的[冻结]、[碎冰]和[霜寒]效果，可以与包括冰属性异常效果在内的其他属性异常效果互相结算[紊乱]； 星见雅对附着[冰焰]的敌人施加[霜寒]效果时，将会消除[冰焰]并触发[霜灼·破]，对目标造成星见雅1500%攻击力的烈霜伤害，同时使目标进入[霜灼]状态；[霜灼]状态下，所有单位对目标累积的属性异常积蓄值提升20%，但星见雅无法再次为其附着[冰焰]；[霜灼]状态将会随本次[霜寒]效果一起结束，状态持续期间，对敌人重新施加属性异常效果可以覆盖[霜寒]并消除[霜灼]； 触发[霜灼·破]时，星见雅获得1点[落霜]，10秒内最多触发一次。"
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "烈霜（frostfire）独立元素：独立积蓄槽/异常触发/20s/600-75紊乱倍率/冰属性增伤键，可与原生冰互相紊乱（anomalyPool/helpers.ts 内置）。",
+            "冰焰：造成烈霜伤害附着30s；对冰焰敌人烈霜积蓄效率=暴击率×100%（上限80%），按 miyabi.iceFlameCoverage 覆盖率折算（transformSkillExecutions）。",
+            "落霜资源：紊乱×2获取、上限6；霜月架势三段消耗6落霜（buildExecutions）。",
+            "霜灼·破：1500%直伤（吃双爆不吃精通），次数滑块控制；冰焰与霜灼互斥。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
+          "pendingParts": [
+            "冰焰/霜灼互斥逐时序未建模（按覆盖率）。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/miyabi.ts",
+            "src/core/anomalyPool/helpers.ts"
+          ],
+          "status": "implemented_approximation",
           "pending": [
-            "星见雅对敌人造成烈霜伤害时，将会为目标附着[冰焰]，持续30秒；对附着[冰焰]的敌人累积烈霜异常积蓄值时，会基于星见雅暴击率的100%提升烈霜异常积蓄效率，最多提升80%；星见雅累积烈霜异常积蓄值时，具有独立的属性异常积蓄槽，随之触发的[冻结]、[碎冰]和[霜寒]效果，可以与包括冰属性异常效果在内的其他属性异常效果互相结算[紊乱]； 星见雅对附着[冰焰]的敌人施加[霜寒]效果时，将会消除[冰焰]并触发[霜灼·破]，对目标造成星见雅1500%攻击力的烈霜伤害，同时使目标进入[霜灼]状态；[霜灼]状态下，所有单位对目标累积的属性异常积蓄值提升20%，但星见雅无法再次为其附着[冰焰]；[霜灼]状态将会随本次[霜寒]效果一起结束，状态持续期间，对敌人重新施加属性异常效果可以覆盖[霜寒]并消除[霜灼]； 触发[霜灼·破]时，星见雅获得1点[落霜]，10秒内最多触发一次。"
+            "冰焰/霜灼互斥逐时序未建模（按覆盖率）。"
           ]
         },
         {
           "id": "additional_ability_1091",
           "name": "额外能力：同沐霜雪",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "队伍中存在[支援]角色或与自身阵营相同的角色或其他[异常]角色时触发： [普通攻击：霜月]造成的伤害提升60%；队伍中任意角色触发[紊乱]效果时，星见雅获得2点[落霜]，且在下一次[霜月架势]期间，[普通攻击：霜月]将无视目标30%冰属性伤害抗性。"
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "支援/同阵营/异常队友触发：霜月伤害+60%（skillDmgBonus__basic）；紊乱→2落霜+下次霜月架势无视30%冰抗（enemyIceResReduction）。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
-          "pending": [
-            "队伍中存在[支援]角色或与自身阵营相同的角色或其他[异常]角色时触发： [普通攻击：霜月]造成的伤害提升60%；队伍中任意角色触发[紊乱]效果时，星见雅获得2点[落霜]，且在下一次[霜月架势]期间，[普通攻击：霜月]将无视目标30%冰属性伤害抗性。"
-          ]
+          "pendingParts": [],
+          "codePaths": [
+            "src/mechanics/agents/miyabi.ts"
+          ],
+          "status": "implemented_approximation",
+          "pending": []
         }
       ],
       "cinemaImplementation": [
@@ -1519,18 +1542,15 @@
           "implementedParts": [
             "采用catalog当前导入的潜能强化版核心被动Lv.7：冰渊潜袭（蓄力剪击）与急冻修剪法暴伤+100%，强化版并对连携技、终结技、霜锋、冰刃浪生效。",
             "暴伤按执行行级critDmgBonus定向挂在受益招式，不再全局加面板暴伤。",
-            "冰渊潜袭、急冻修剪法按真实moveId轮转生成执行行，计入伤害与失衡/异常提取。"
+            "冰渊潜袭、急冻修剪法按真实moveId轮转生成执行行，计入伤害与失衡/异常提取。",
+            "受益招式范围按潜能门控：潜能 I = 冰渊潜袭/急冻修剪法；潜能 II+（强化版）= 另含连携技/终结技/霜锋/冰刃浪。"
           ],
-          "pendingParts": [
-            "潜能强化版对连携/终结/霜锋/冰刃浪的生效按catalog口径启用，未做潜能门控。"
-          ],
+          "pendingParts": [],
           "codePaths": [
             "src/mechanics/agents/ellen.ts"
           ],
           "status": "implemented_approximation",
-          "pending": [
-            "潜能强化版对连携/终结/霜锋/冰刃浪的生效按catalog口径启用，未做潜能门控。"
-          ]
+          "pending": []
         },
         {
           "id": "additional_ability_1191",
@@ -1538,40 +1558,31 @@
           "implementation": "implemented_approximation",
           "implementedParts": [
             "同属性或同阵营（强化版另含击破）队友激活；风暴潮每层冰伤+3%按平均层数计入面板冰伤。",
-            "10秒刷新与最多10层按平均层数近似。"
+            "10秒刷新与最多10层按平均层数近似。",
+            "潜能极冰带每层暴伤与满层无视冰抗已按潜能等级接入（见潜能觉醒条目）。"
           ],
-          "pendingParts": [
-            "潜能极冰带每层暴伤与满层无视冰抗未建模（项目暂无潜能输入）。"
-          ],
+          "pendingParts": [],
           "codePaths": [
             "src/mechanics/agents/ellen.ts"
           ],
           "status": "implemented_approximation",
-          "pending": [
-            "潜能极冰带每层暴伤与满层无视冰抗未建模（项目暂无潜能输入）。"
-          ]
+          "pending": []
         },
         {
           "id": "potential_1191",
           "name": "潜能觉醒",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "潜能（鲨气汹汹 II） 潜能觉醒：极冰带：艾莲[额外能力：风暴潮]，每层暴击伤害提升1.6%。叠加至10层时，攻击目标无视3.3%的冰属性伤害抗性",
-            "潜能（鲨气汹汹 III） 潜能觉醒：极冰带：艾莲[额外能力：风暴潮]，每层暴击伤害提升2.4%。叠加至10层时，攻击目标无视5%的冰属性伤害抗性",
-            "潜能（鲨气汹汹 IV） 潜能觉醒：极冰带：艾莲[额外能力：风暴潮]，每层暴击伤害提升3.2%。叠加至10层时，攻击目标无视6.7%的冰属性伤害抗性",
-            "潜能（鲨气汹汹 V） 潜能觉醒：极冰带：艾莲[额外能力：风暴潮]，每层暴击伤害提升4%。叠加至10层时，攻击目标无视8.3%的冰属性伤害抗性",
-            "潜能（鲨气汹汹 VI） 潜能觉醒：极冰带：艾莲[额外能力：风暴潮]，每层暴击伤害提升4.8%。叠加至10层时，攻击目标无视10%的冰属性伤害抗性"
+          "implementation": "implemented",
+          "implementedParts": [
+            "潜能觉醒·极冰带按潜能等级 1-6 档位接入：风暴潮每层追加暴伤（II..VI = 1.6/2.4/3.2/4.0/4.8%），叠满10层无视冰抗（3.3/5/6.7/8.3/10%）；潜能 I 无觉醒=0。经 potentialLevel 输入驱动（store 字段 + UI 滑块 + 模块按档位取值）。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
-          "pending": [
-            "潜能（鲨气汹汹 II） 潜能觉醒：极冰带：艾莲[额外能力：风暴潮]，每层暴击伤害提升1.6%。叠加至10层时，攻击目标无视3.3%的冰属性伤害抗性",
-            "潜能（鲨气汹汹 III） 潜能觉醒：极冰带：艾莲[额外能力：风暴潮]，每层暴击伤害提升2.4%。叠加至10层时，攻击目标无视5%的冰属性伤害抗性",
-            "潜能（鲨气汹汹 IV） 潜能觉醒：极冰带：艾莲[额外能力：风暴潮]，每层暴击伤害提升3.2%。叠加至10层时，攻击目标无视6.7%的冰属性伤害抗性",
-            "潜能（鲨气汹汹 V） 潜能觉醒：极冰带：艾莲[额外能力：风暴潮]，每层暴击伤害提升4%。叠加至10层时，攻击目标无视8.3%的冰属性伤害抗性",
-            "潜能（鲨气汹汹 VI） 潜能觉醒：极冰带：艾莲[额外能力：风暴潮]，每层暴击伤害提升4.8%。叠加至10层时，攻击目标无视10%的冰属性伤害抗性"
-          ]
+          "pendingParts": [],
+          "codePaths": [
+            "src/mechanics/agents/ellen.ts",
+            "src/stores/config.ts",
+            "src/views/TeamConfigPage.vue"
+          ],
+          "status": "implemented",
+          "pending": []
         }
       ],
       "cinemaImplementation": [
@@ -3206,60 +3217,58 @@
         {
           "id": "core_passive_1381",
           "name": "核心被动：电位差",
-          "implementation": "partially_implemented",
+          "implementation": "implemented_approximation",
           "implementedParts": [
-            "对银星标记敌人伤害+25%按可调整局覆盖率折算面板增伤。"
+            "对银星标记敌人伤害+25%（coreDmgBonus，按银星覆盖率折算）。",
+            "银星使追加攻击暴伤额外提升=自身暴伤×35%（30%+延伸5%）：按行级 critDmgBonus 接入白雷/雷殛/涡流行（敌方目标向增益，单目标口径等效常驻）。",
+            "白雷额外伤害/雷殛/苍光·临界/电磁涡流按总量哲学折算（苍光次数+影画1强特×3+影画2终结6电鸣+队友追攻充能）。"
           ],
           "pendingParts": [
-            "银星使追加攻击暴击伤害额外提升=自身暴伤30%（另+5%）为敌方目标向增益，未接面板；银星充能→白雷叠层逐时序未建模。"
+            "银星充能→白雷叠层的逐时序未建模（按总量近似）。"
           ],
           "codePaths": [
             "src/mechanics/agents/anbyZero.ts"
           ],
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "pending": [
-            "银星使追加攻击暴击伤害额外提升=自身暴伤30%（另+5%）为敌方目标向增益，未接面板；银星充能→白雷叠层逐时序未建模。"
+            "银星充能→白雷叠层的逐时序未建模（按总量近似）。"
           ]
         },
         {
           "id": "additional_ability_1381",
           "name": "额外能力：电极化",
-          "implementation": "partially_implemented",
+          "implementation": "implemented_approximation",
           "implementedParts": [
-            "击破/支援队友激活自身暴击率+10%。"
+            "自身暴击率+10%（额外能力电极化，击破/支援门控）。",
+            "全队追加攻击对银星敌人+25%（+潜能电脉冲34-50%）：接自身面板 skillDmgBonus__additionalAttack（potentialLevel 档位×银星覆盖率），追加攻击主体是零号安比自身，队友追攻同源收益近似并入。",
+            "连携技/终结技视为追加攻击伤害（moveId 1381014/1381015 打 skillDamageTarget=additionalAttack）。"
           ],
           "pendingParts": [
-            "全队追加攻击对银星敌人+25%为全队向增益未接全队通道；连携/终结视为追加攻击的定向未建模。"
+            "队友追加攻击的全队向增伤未单列（近似并入自身口径）。"
           ],
           "codePaths": [
             "src/mechanics/agents/anbyZero.ts"
           ],
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "pending": [
-            "全队追加攻击对银星敌人+25%为全队向增益未接全队通道；连携/终结视为追加攻击的定向未建模。"
+            "队友追加攻击的全队向增伤未单列（近似并入自身口径）。"
           ]
         },
         {
           "id": "potential_1381",
           "name": "潜能觉醒",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "潜能（银白色的心 II） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至34%",
-            "潜能（银白色的心 III） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至38%",
-            "潜能（银白色的心 IV） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至42%",
-            "潜能（银白色的心 V） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至46%",
-            "潜能（银白色的心 VI） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至50%"
+          "implementation": "implemented",
+          "implementedParts": [
+            "潜能觉醒·电脉冲：额外能力电极化「全队追加攻击对银星敌人增伤」按 potentialLevel 1-6 档位（I=25%、II..VI=34/38/42/46/50%）接入（ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL）。"
           ],
-          "codePaths": [],
-          "status": "not_described_not_implemented",
-          "pending": [
-            "潜能（银白色的心 II） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至34%",
-            "潜能（银白色的心 III） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至38%",
-            "潜能（银白色的心 IV） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至42%",
-            "潜能（银白色的心 V） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至46%",
-            "潜能（银白色的心 VI） 潜能觉醒：电脉冲：[额外能力：电极化]中，全队角色[追加攻击]对拥有[银星]标记的敌人造成的伤害提升效果提升至50%"
-          ]
+          "pendingParts": [],
+          "codePaths": [
+            "src/mechanics/agents/anbyZero.ts",
+            "src/stores/config.ts",
+            "src/views/TeamConfigPage.vue"
+          ],
+          "status": "implemented",
+          "pending": []
         }
       ],
       "cinemaImplementation": [
@@ -5748,6 +5757,268 @@
         ],
         "status": "implemented_approximation"
       }
+    },
+    "1221": {
+      "name": {
+        "zhCN": "月城柳",
+        "en": "Tsukishiro Yanagi"
+      },
+      "specialResources": [],
+      "mechanics": [
+        {
+          "id": "core_passive_1221",
+          "name": "核心被动：月蚀",
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "强特后队伍任意角色施加紊乱时紊乱伤害倍率+250%（teammate-buffs 1221 组 disorderBaseMultiplierBonus，全队受益）。",
+            "强特命中后自身电属性伤害+20%（15s 刷新，yanagi.ts applyPanel panel.electricDmg+=20，整局高频强特近似常驻）。"
+          ],
+          "pendingParts": [
+            "紊乱倍率/电伤的15s窗口按整局常驻近似（未逐时序）。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/yanagi.ts",
+            "public/static/teammate-buffs.json"
+          ],
+          "status": "implemented_approximation",
+          "pending": [
+            "紊乱倍率/电伤的15s窗口按整局常驻近似（未逐时序）。"
+          ]
+        },
+        {
+          "id": "additional_ability_1221",
+          "name": "额外能力：月相",
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "队伍存在其他异常或同属性（电）角色时，架势切换后夜见尊神乐电属性异常积蓄值+45%（yanagi.ts applyPanel panel.electricAnomalyBuildUpEfficiency+=45，additionalAbilityActive 门控）。"
+          ],
+          "pendingParts": [
+            "架势切换与8s窗口按静态面板满覆盖近似。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/yanagi.ts"
+          ],
+          "status": "implemented_approximation",
+          "pending": [
+            "架势切换与8s窗口按静态面板满覆盖近似。"
+          ]
+        }
+      ]
+    },
+    "1241": {
+      "name": {
+        "zhCN": "朱鸢",
+        "en": "Zhu Yuan"
+      },
+      "specialResources": [
+        {
+          "id": "zhuyuan_shells",
+          "name": "强化霰弹",
+          "status": "implemented_approximation",
+          "codePaths": [
+            "src/mechanics/agents/zhuYuan.ts",
+            "src/specs/agents/1241.json"
+          ],
+          "note": "初始6枚；获取=突击段4/5+闪反+全弹连射+歼灭模式+掩护射击+自卫还击+影画1快速装填；消耗=压制模式开火（总量口径）。"
+        }
+      ],
+      "mechanics": [
+        {
+          "id": "core_passive_1241",
+          "name": "核心被动：特种弹药",
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "压制模式消耗强化霰弹攻击伤害+40%（skillDmgBonus__basic/dashAttack 定向近似）。",
+            "失衡状态额外+40%走覆盖率滑块（helpers 面板块，非轴默认0自调）。",
+            "进场6枚强化霰弹（spec resource initialValue）。"
+          ],
+          "pendingParts": [
+            "失衡增伤轴模式待接入（参照仪玄凝云术）。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/zhuYuan.ts",
+            "src/specs/agents/1241.json"
+          ],
+          "status": "implemented_approximation",
+          "pending": [
+            "失衡增伤轴模式待接入（参照仪玄凝云术）。"
+          ]
+        },
+        {
+          "id": "additional_ability_1241",
+          "name": "额外能力：武装协同",
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "支援或同阵营队友触发，强特/连携/终结后自身暴击率+30%（10s窗口高频刷新按常驻近似，additionalAbilityActive 门控）。"
+          ],
+          "pendingParts": [],
+          "codePaths": [
+            "src/mechanics/agents/zhuYuan.ts"
+          ],
+          "status": "implemented_approximation",
+          "pending": []
+        }
+      ]
+    },
+    "1251": {
+      "name": {
+        "zhCN": "青衣",
+        "en": "Qingyi"
+      },
+      "specialResources": [
+        {
+          "id": "qingyi_voltage",
+          "name": "闪络电压/醉花月云转",
+          "status": "implemented_approximation",
+          "codePaths": [
+            "src/mechanics/agents/qingyi.ts"
+          ],
+          "note": "每失衡2轮醉花（1轮=100%电压）；总电压=200×失衡−1命开局−通用招式电压×效率，缺口由一煞#4补齐；受时间预算约束防失衡自激。"
+        }
+      ],
+      "mechanics": [
+        {
+          "id": "core_passive_1251",
+          "name": "核心被动：千秋岁",
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "羁服每层失衡易伤+4%（默认满层20层），teammate-buffs qingyi.core_subjugation_stun_multiplier。",
+            "醉花月云转满电压释放，伤害+25%/失衡+12.5%（moveId级 override）。",
+            "羁服满层连携伤害+60%（panel.skillDmgBonus__chain）。"
+          ],
+          "pendingParts": [],
+          "codePaths": [
+            "src/mechanics/agents/qingyi.ts",
+            "public/static/teammate-buffs.json"
+          ],
+          "status": "implemented_approximation",
+          "pending": []
+        },
+        {
+          "id": "additional_ability_1251",
+          "name": "额外能力：阳关三叠",
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "强攻/同阵营队友触发：普攻失衡值+20%（stunBuildUpBonus__basic）+ 冲击力>120每超1点攻击+6（最多+600，panel.atk）。"
+          ],
+          "pendingParts": [],
+          "codePaths": [
+            "src/mechanics/agents/qingyi.ts"
+          ],
+          "status": "implemented_approximation",
+          "pending": []
+        }
+      ]
+    },
+    "1261": {
+      "name": {
+        "zhCN": "简",
+        "en": "Jane Doe"
+      },
+      "specialResources": [
+        {
+          "id": "jane_bite",
+          "name": "啮咬",
+          "status": "implemented_approximation",
+          "codePaths": [
+            "src/mechanics/agents/jane.ts"
+          ],
+          "note": "攻击命中施加啮咬10s；强击对啮咬目标可暴击（基础20%+精通×0.1%/点、暴伤50%）。"
+        },
+        {
+          "id": "jane_frenzy",
+          "name": "狂热",
+          "status": "implemented_approximation",
+          "codePaths": [
+            "src/composables/resourceCalc/helpers.ts"
+          ],
+          "note": "狂热物理积蓄+25%、精通>120转攻cap600（helpers 简专属分支，jane.passionCoverage 滑块默认90%）。"
+        }
+      ],
+      "mechanics": [
+        {
+          "id": "core_passive_1261",
+          "name": "核心被动：洞察",
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "啮咬状态：攻击命中施加，10秒；强击对啮咬目标可暴击（基础20%+精通×0.1%/点，暴伤50%），jane.ts assaultCritRate/assaultCritDmg。",
+            "潜能觉醒致命舞步：强击暴伤额外+30%（满级），janeAssaultCritDmgBonus 仅自身强击吃。"
+          ],
+          "pendingParts": [
+            "啮咬10s窗口按全程满足近似（未逐时序）。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/jane.ts"
+          ],
+          "status": "implemented_approximation",
+          "pending": [
+            "啮咬10s窗口按全程满足近似（未逐时序）。"
+          ]
+        },
+        {
+          "id": "additional_ability_1261",
+          "name": "额外能力：痛点",
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "其他异常/同阵营队友触发：物理异常积蓄效率+20%、敌异常态额外+15%（helpers.ts 简专属分支本地门控）。"
+          ],
+          "pendingParts": [],
+          "codePaths": [
+            "src/composables/resourceCalc/helpers.ts"
+          ],
+          "status": "implemented_approximation",
+          "pending": []
+        }
+      ]
+    },
+    "1411": {
+      "name": {
+        "zhCN": "浮波柚叶",
+        "en": "Yuzuha"
+      },
+      "specialResources": [
+        {
+          "id": "yuzuha_sweetness",
+          "name": "甜度点",
+          "status": "implemented_approximation",
+          "codePaths": [
+            "src/mechanics/agents/yuzuha.ts"
+          ],
+          "note": "进场3/上限6；连携入场+1；影画6招架+1；蓄能炮弹每0.4s耗1甜度追加一枚300%攻击力物理炮弹。"
+        }
+      ],
+      "mechanics": [
+        {
+          "id": "core_passive_1411",
+          "name": "核心被动：奇巧缤纷",
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "甜度点：进场3/上限6（yuzuha.ts）。",
+            "狸之愿：40%初始攻击力（上限1200）+15%伤害持续40s，teammate-buffs derived buff 自动生效。"
+          ],
+          "pendingParts": [],
+          "codePaths": [
+            "src/mechanics/agents/yuzuha.ts",
+            "public/static/teammate-buffs.json"
+          ],
+          "status": "implemented_approximation",
+          "pending": []
+        },
+        {
+          "id": "additional_ability_1411",
+          "name": "额外能力：人多乐趣大",
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "异常/同阵营队友触发：异常掌控>100时，狸之愿角色异常积蓄效率+0.2%/点（最多20%）、异常/紊乱伤害+0.2%/点（最多20%），teammate-buffs 承载（C1 额外能力易伤/异常伤）。"
+          ],
+          "pendingParts": [],
+          "codePaths": [
+            "public/static/teammate-buffs.json"
+          ],
+          "status": "implemented_approximation",
+          "pending": []
+        }
+      ]
     }
   }
 }

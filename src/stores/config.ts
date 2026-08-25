@@ -21,6 +21,7 @@ export interface CharacterConfig {
   slot: number       // 0, 1, 2
   agentId: string
   cinemaLevel: number  // 影画/命座 0-6
+  potentialLevel?: number  // 潜能觉醒等级 1-6（缺省 6 = 满级；潜能效果见各模块按档位取值）
   wEngineId: string
   wEngineModLevel: number  // 精修/精炼 1-5
   driveDisc: DriveDiscConfig
@@ -75,6 +76,8 @@ export interface EnemyConfig {
   invincibleTime: number   // boss无敌时间（仅用于 DoT 扣减）
   battleTime: number       // 总战斗时间（秒，默认180）
   stunCountLock: number    // 锁定失衡次数（-1 = 正常收敛；命座对比固定场景用）
+  /** 敌方体型：影响体型相关招式倍率（如艾莲霜锋剑气 0/3/6 段） */
+  bodySize?: 'small' | 'medium' | 'large'
   /** 伤害抗性：用于直伤、异常伤害、紊乱/乱流结算 */
   damageResistances: Record<string, number>
   /** 失衡抗性：用于失衡值计算 */
@@ -112,6 +115,7 @@ function defaultCharacter(slot: number, agentId: string, element: string): Chara
     slot,
     agentId,
     cinemaLevel: 6,
+    potentialLevel: 6,
     wEngineId: '',
     wEngineModLevel: 5,
     driveDisc: defaultDriveDisc(element),
@@ -216,6 +220,7 @@ function defaultEnemy(): EnemyConfig {
     energyShield: 0,
     invincibleTime: 0,
     battleTime: 180,
+    bodySize: 'large',
     damageResistances: defaultResistanceTable(0),
     stunResistances: defaultResistanceTable(0),
     anomalyResistances: defaultResistanceTable(0),
@@ -388,6 +393,15 @@ export const useConfigStore = defineStore('config', () => {
     if (char) {
       char.cinemaLevel = Math.max(0, Math.min(6, level))
       // 触发 resourceConfig 失效重算：模块 buildCharConfig 写入的命座字段（如仪玄 yixuanCinemaLevel）依赖此刷新
+      refreshTrigger.value++
+    }
+  }
+
+  function setPotentialLevel(slot: number, level: number) {
+    const char = team.value[slot]
+    if (char) {
+      char.potentialLevel = Math.max(1, Math.min(6, level))
+      // 潜能效果多数在 applyPanel/buildCharConfig 里按档位取值，切换档位同样需失效重算
       refreshTrigger.value++
     }
   }
@@ -872,6 +886,7 @@ function parseCinemaRequirement(sourceLabel: string): number {
       agentId: char.agentId ?? '',
       agent: agent ?? null,
       cinemaLevel: char.cinemaLevel ?? 0,
+      potentialLevel: char.potentialLevel ?? 6,
       wEngineId: char.wEngineId ?? '',
       wEngineModLevel: char.wEngineModLevel ?? 1,
     }))
@@ -1087,6 +1102,7 @@ function parseCinemaRequirement(sourceLabel: string): number {
     getWEngine,
     setAgent,
     setCinemaLevel,
+    setPotentialLevel,
     setWEngine,
     setWEngineModLevel,
     setTauntCancelCount,

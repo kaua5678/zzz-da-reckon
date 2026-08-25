@@ -239,7 +239,7 @@ export function calcPanel(
   setsMap: Map<string, DriveDiscSet>,
   teammateBuffs: TeammateBuff[],
   statRules: StatRules | null,
-  config: { cinemaLevel: number; wEngineModLevel: number; sourcePanelsByOwner?: import('./buff').SourcePanelsByOwner; effectCoverageMap?: Map<string, number> }
+  config: { cinemaLevel: number; wEngineModLevel: number; potentialLevel?: number; sourcePanelsByOwner?: import('./buff').SourcePanelsByOwner; effectCoverageMap?: Map<string, number> }
 ): PanelResult {
   // 1. 基础面板
   const base = calcBasePanel(agent, wEngine)
@@ -273,6 +273,11 @@ export function calcPanel(
   // 5. 局内面板 = 局外总属性 × (1 + Σ局内百分比加成) + Σ局内固定值加成。
   // 音擎被动、驱动4件套、队友战斗 buff 等触发型效果默认属于局内。
   const inCombat = applyBuffs(outOfCombat, buffs.inCombat, config.effectCoverageMap)
+
+  // 潜能等级写入源面板（供 teamBuff formula/derived 通道读 potentialLevel）
+  const potentialLevel = Math.max(1, Math.min(6, config.potentialLevel ?? 6))
+  outOfCombat.potentialLevel = potentialLevel
+  inCombat.potentialLevel = potentialLevel
 
   return { base, withDiscs, outOfCombat, inCombat, buffs }
 }

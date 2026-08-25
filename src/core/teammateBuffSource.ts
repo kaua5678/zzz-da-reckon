@@ -12,6 +12,7 @@ export interface TeamMemberPanelConfig {
   driveDisc: DriveDiscConfig
   cinemaLevel: number
   wEngineModLevel: number
+  potentialLevel?: number
 }
 
 export interface TeammateBuffSourceDeps {
@@ -62,6 +63,7 @@ export function buildTeammateBuffSourceContext(
       {
         cinemaLevel: char.cinemaLevel,
         wEngineModLevel: char.wEngineModLevel,
+        potentialLevel: char.potentialLevel,
       },
     )
     addSourcePanelAliases(sourcePanelsByOwner, agent, {

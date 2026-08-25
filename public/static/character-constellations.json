@@ -271,20 +271,22 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "强特闪能消耗-10（exSpecialEnergyCost 60→50）；普攻/强特无视20%冰抗（enemyIceResReduction__basic/exSpecial+20）；连续重碾（combo yidhari-heavy-double）。"
+          ],
           "pending": [
-            "影画1 过往沉溺于渊下：伊德海莉发动[强化特殊技]所需消耗的闪能减少10点；发动[强化特殊技：缠霜]或[强化特殊技：极寒重碾]后，保持长按「普通攻击」或「特殊攻击」按键，可以消耗35闪能，放弃回复生命值并立即衔接1次[强化特殊技：极寒重碾]，并使本次[强化特殊技：极寒重碾]回复的生命值额外提升100%；伊德海莉的[普通攻击]、[强化特殊技]无视目标20%冰属性伤害抗性。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "影画1衔接重碾的回复生命+100%未建模（数值叠加于重碾回血，未单独计价）。"
           ]
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "暴伤+40%（critDmg）；溯寒/追碾后闪能回0.5/s（flashEnergyRegenBonusFlat，按永续近似）。"
+          ],
           "pending": [
-            "影画2 何人于此遐思：伊德海莉的暴击伤害提升40%；成功触发[溯寒]或[追碾]后，持续回复闪能，每秒回复0.5点，最多30秒，重复触发时刷新持续时间。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "溯寒/追碾触发后30s闪能回复按永续近似（未逐时序）。"
           ]
         },
         {
@@ -297,12 +299,11 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "影画4 在静默中盛放：[核心被动：拾梦空想]中，生命值降低时，伊德海莉获得的喧响值增加10%；处于[以太帷幕·涌泉]中时，伊德海莉的最大生命值额外提升5%。",
-            "待人工核对后补实现，勿直接默认省略。"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "核心被动生命降低获得喧响+10%（decibelPerHpPct 10→11）；以太帷幕·涌泉中最大生命+5%（teammate-buffs yidhari.cinema4_curtain_hp）。"
+          ],
+          "pending": []
         },
         {
           "cinema": 5,
@@ -314,11 +315,12 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "启谛期间贯穿伤害+25%（sheerDmgBonus，跟随涌泉帷幕默认100%覆盖）。"
+          ],
           "pending": [
-            "影画6 终逢安宁之梦：伊德海莉消耗喧响值开启或延长[以太帷幕·涌泉]后，将获得[启谛]，持续30秒；[启谛]期间，伊德海莉造成的贯穿伤害提高25%，首次受到致命伤害时，生命值最多降低至1，在5秒内不会战败退场并持续回复25%生命值。",
-            "待人工核对后补实现，勿直接默认省略。"
+            "首次致命伤害免疫（生命降至1、5秒不死+回复25%）为防御向，未建模。"
           ]
         }
       ]
@@ -1310,18 +1312,22 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "持[洞悉]（属性异常施加叠层，15s刷新）时异常精通+80（panel.anomalyProficiency，整局近似常驻）。"
+          ],
           "pending": [
-            "知己知彼：[洞悉]层数机制与持有[洞悉]时月城柳异常精通+80（月城柳自身面板，未建模）"
+            "[洞悉]受击无敌与逐层时序未建模。"
           ]
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "强化特殊技快速突刺累积电异常积蓄+20%（panel.electricAnomalyBuildUpEfficiency）。"
+          ],
           "pending": [
-            "卓越适应性：突刺积蓄+20%、长按追加突刺耗能与[极性紊乱]倍率机制（月城柳自身，未建模）"
+            "长按追加突刺耗能与[极性紊乱]倍率机制未建模（月城柳自身）。"
           ]
         },
         {
@@ -1354,10 +1360,12 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "森罗万象状态期间强化特殊技伤害+20%（panel.skillDmgBonus__exSpecial）。"
+          ],
           "pending": [
-            "非人之血：[森罗万象]延长与强化特殊技+20%、极性紊乱上限4次与耗能减半（月城柳自身，未建模）"
+            "[森罗万象]延长30s、极性紊乱上限4次与耗能减半未建模（逐时序）。"
           ]
         }
       ]
@@ -1418,11 +1426,10 @@
           "cinema": 6,
           "status": "implemented_approximation",
           "implemented": [
-            "以太余温：累计消耗12枚霰弹得1次，追加4枚×220%攻击力以太鹿弹（buildExecutions 执行行）"
+            "以太余温：累计消耗12枚霰弹得1次，追加4枚×220%攻击力以太鹿弹（buildExecutions 执行行）",
+            "余温使下次强特能量消耗-30：按回能口径并入 initialEnergyGift（buildResourceResult）。"
           ],
-          "pending": [
-            "余温使下次强特能量消耗-30（影响能量结算，未建模）"
-          ]
+          "pending": []
         }
       ]
     },
@@ -1434,19 +1441,19 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "入场闪络电压回满（100点）+后继累积效率+30%（×1.3）+满电压醉花自身暴击率+20%（critRateBonus）+降防15%（teammate-buffs enemyDefReduction，敌方全队受益）。"
+          ],
+          "pending": []
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "羁服每层失衡易伤×135%（teammate-buffs）+羁服满层自身失衡+15%（stunBuildUpBonus，覆盖率50%）。"
+          ],
+          "pending": []
         },
         {
           "cinema": 3,
@@ -1460,11 +1467,11 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "进出闪络状态护盾刷新回5能量/10s（calcEnergySource 接入）。"
+          ],
+          "pending": []
         },
         {
           "cinema": 5,
@@ -1478,11 +1485,11 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "醉花月云转暴伤+100%（critDmgBonus，moveId级）+命中全抗-20%（teammate-buffs enemyResReduction）。"
+          ],
+          "pending": []
         }
       ]
     },
@@ -2458,18 +2465,22 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "进场回30能量（180s一次，initialEnergyGift）；甜蜜惊吓敌人全抗-10% 与额外能力异常/紊乱伤害增益×130%（teammate-buffs C1）。"
+          ],
           "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
+            "甜蜜惊吓逐时序未建模。"
           ]
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "强特/终结命中全队伤害+15%+异常积蓄+15%（teammate-buffs C2 全队伤）；其他角色连携入场柚叶+1甜度。"
+          ],
           "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
+            "强制连携（20s CD）/硬糖射击CD-25% 未建模（时序）。"
           ]
         },
         {
@@ -2484,10 +2495,12 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "支援突击伤害+30%+异常积蓄+20%（teammate-buffs）。"
+          ],
           "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
+            "触发快速支援未建模。"
           ]
         },
         {
@@ -2502,10 +2515,12 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "招架+1甜度 + 蓄能炮弹（0.4s/枚，300%攻击力物理，yuzuha.ts 假moveId 1411_charged_cannon）+ 强力炮弹命中全队紊乱倍率+105%（teammate-buffs C6）。"
+          ],
           "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
+            "彩糖花火·极/蓄能自动闪避未建模（时序）。"
           ]
         }
       ]

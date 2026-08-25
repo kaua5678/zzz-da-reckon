@@ -5,7 +5,7 @@
   "agentIds": [
     "1091"
   ],
-  "status": "partially_implemented",
+  "status": "implemented_approximation",
   "attributeConversions": [],
   "resources": [
     {
@@ -139,5 +139,26 @@
     "C4：霜灼·破伤害+30%；触发霜灼·破时+250喧响。",
     "C6：霜月架势期间获得极意，霜月伤害+30%；消耗落霜时自动拔刀斩击(最多3次)。",
     "命座定案（2026-08）：character-constellations.json 六条影画全部定案——M1 落霜无视防御已接入 enemyDefReduction、M2 暴击/风花闪反增伤/入场6落霜、M4 霜灼·破+30%（+250喧响常量已定义未单列建模）、M6 极意+30% 已接入；拔刀斩击与 M4 喧响为 [猜测] 项待精化。生效测试 miyabiCinema.test.ts。"
-  ]
+  ],
+  "teamBuffs": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "support"
+        ]
+      },
+      {
+        "type": "sameFactionAsSelf"
+      },
+      {
+        "type": "specialty",
+        "values": [
+          "anomaly"
+        ]
+      }
+    ],
+    "note": "额外能力·同沐霜雪：队伍中存在支援角色、与自身阵营相同或其他异常角色时触发（霜月伤害+60%、紊乱→2落霜+下次霜月架势无视30%冰抗）。"
+  }
 }

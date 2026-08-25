@@ -79,6 +79,29 @@
                     </div>
                   </div>
 
+                  <!-- 潜能等级 -->
+                  <div class="section">
+                    <div class="section-title">潜能等级</div>
+                    <div class="row-item">
+                      <n-slider
+                        :value="selectedChar.potentialLevel ?? 6"
+                        :min="1"
+                        :max="6"
+                        :step="1"
+                        style="flex: 1"
+                        @update:value="v => configStore.setPotentialLevel(configStore.selectedSlot, v)"
+                      />
+                      <n-input-number
+                        :value="selectedChar.potentialLevel ?? 6"
+                        :min="1"
+                        :max="6"
+                        size="small"
+                        style="width: 80px; margin-left: 12px"
+                        @update:value="v => configStore.setPotentialLevel(configStore.selectedSlot, v ?? 6)"
+                      />
+                    </div>
+                  </div>
+
                   <!-- 音擎选择 -->
                   <div class="section">
                     <div class="section-title">音擎选择</div>

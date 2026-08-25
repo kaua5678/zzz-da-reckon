@@ -5,7 +5,7 @@
   "agentIds": [
     "1481"
   ],
-  "status": "partially_implemented",
+  "status": "implemented_approximation",
   "attributeConversions": [
     {
       "id": "liuyin_crit_to_impact",

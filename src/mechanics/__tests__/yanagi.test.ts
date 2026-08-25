@@ -99,3 +99,34 @@ describe('月城柳额外能力·月相（电属性异常积蓄值+45%）', () =
     expect(pNeg.electricAnomalyBuildUpEfficiency ?? 0).toBeCloseTo(0, 5)
   })
 })
+
+describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    stubFetch()
+  })
+
+  it('核心被动电伤+20% 常驻；影画1 异常精通+80；影画2 突刺电积蓄+20；影画6 强特伤害+20', async () => {
+    const { catalog, config } = await setup('1331', 6)
+    const p = computePanelPhases(0, config, catalog)!.inCombat as any
+    expect(p.electricDmg).toBeGreaterThanOrEqual(20)
+    expect(p.anomalyProficiency).toBeGreaterThanOrEqual(80)
+    expect(p.electricAnomalyBuildUpEfficiency).toBeGreaterThanOrEqual(45 + 20)
+    expect(p.skillDmgBonus__exSpecial).toBeGreaterThanOrEqual(20)
+  })
+
+  it('影画差分：0命 vs 6命字段变化', async () => {
+    const p0 = await setup('1331', 0)
+    const p0p = computePanelPhases(0, p0.config, p0.catalog)!.inCombat as any
+    const p6 = await setup('1331', 6)
+    const p6p = computePanelPhases(0, p6.config, p6.catalog)!.inCombat as any
+    expect(p6p.anomalyProficiency - p0p.anomalyProficiency).toBe(80)
+    expect(p6p.skillDmgBonus__exSpecial - (p0p.skillDmgBonus__exSpecial ?? 0)).toBe(20)
+  })
+
+  it('低命座无影画加成：0命精通/强特伤不叠加', async () => {
+    const { catalog, config } = await setup('1331', 0)
+    const p = computePanelPhases(0, config, catalog)!.inCombat as any
+    expect(p.skillDmgBonus__exSpecial ?? 0).toBe(0)
+  })
+})

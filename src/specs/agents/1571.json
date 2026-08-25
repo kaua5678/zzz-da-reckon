@@ -5,7 +5,7 @@
   "agentIds": [
     "1571"
   ],
-  "status": "partially_implemented",
+  "status": "implemented_approximation",
   "attributeConversions": [
     {
       "id": "norma_crit_to_critdmg",

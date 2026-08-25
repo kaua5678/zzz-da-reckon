@@ -2180,6 +2180,7 @@ function applyNormaHatChain(
           exec,
           team: buildMechanicTeamMembers(configStore, catalogStore),
           cinemaLevel: configStore.team[slot]?.cinemaLevel ?? 0,
+          potentialLevel: configStore.team[slot]?.potentialLevel ?? 6,
         })
         const element = resolved?.element ?? move?.damageElement ?? agent?.damageElement ?? 'physical'
         const execPanel = damagePanels.value[slot]

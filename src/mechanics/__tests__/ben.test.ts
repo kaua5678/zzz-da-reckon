@@ -18,7 +18,7 @@ describe('本模块', () => {
   it('防转攻严格读取局外防御', () => {
     const outOfCombatPanel: any = { def: 1000, atk: 500 }
     const panel: any = { def: 1400, atk: 600 }
-    benMechanic.applyPanel!({ slot: 1, agent: {} as any, cinemaLevel: 0, team: [], outOfCombatPanel, panel, settings: {} })
+    benMechanic.applyPanel!({ slot: 1, agent: {} as any, cinemaLevel: 0, potentialLevel: 6, team: [], outOfCombatPanel, panel, settings: {} })
     expect(panel.atk).toBeCloseTo(600 + 1000 * BEN_DEF_TO_ATK)
   })
 
@@ -30,7 +30,7 @@ describe('本模块', () => {
       benExActionTimes: {},
     }
     const panel: any = { def: 800, atk: 0 }
-    benMechanic.applyPanel!({ slot: 1, agent: {} as any, cinemaLevel: 6, team: [], outOfCombatPanel: panel, panel, settings: {} })
+    benMechanic.applyPanel!({ slot: 1, agent: {} as any, cinemaLevel: 6, potentialLevel: 6, team: [], outOfCombatPanel: panel, panel, settings: {} })
     expect(panel.stunBuildUpBonus__basic).toBe(BEN_C6_STUN_BONUS)
     expect(panel.stunBuildUpBonus__dashAttack).toBe(BEN_C6_STUN_BONUS)
     expect(panel.stunBuildUpBonus__dodgeCounter).toBe(BEN_C6_STUN_BONUS)

@@ -5,7 +5,7 @@
   "agentIds": [
     "1411"
   ],
-  "status": "partially_implemented",
+  "status": "implemented_approximation",
   "attributeConversions": [],
   "resources": [
     {
@@ -83,5 +83,19 @@
     "2026-08-25 审计：甜度点/狸之愿账本已实现并有生效测试；连携入场滑块断线已修复接线。C2/C6 拐力走 teammate-buffs 已生效；逐秒窗口未建模。状态由 not_described_not_implemented 修正为 partially_implemented。",
     "实现口径 [2026-08-25 影画6补录]：招架支援/狸之帐成功招架+1甜度点（次数≈parryCount，仅C6）；蓄能强力炮弹=影画6整条机制——每次支援突击夹心硬糖射击长按蓄能，每0.4秒耗1甜度点追加一枚300%攻击力物理伤害（合成假moveId 1411_charged_cannon 后台行，300% override），受甜度存量钳制，蓄能时长滑块 yuzuha.chargeSeconds 默认满0.8秒。未建模项：硬糖射击8秒CD追击（甜度预算全部计入炮弹）、逐秒窗口。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "anomaly"
+        ]
+      },
+      {
+        "type": "sameFactionAsSelf"
+      }
+    ],
+    "note": "额外能力·人多乐趣大：队伍中存在异常或同阵营角色时触发（异常掌控>100时，狸之愿角色异常积蓄+0.2%/点、异常/紊乱伤害+0.2%/点，最多各20%）。实现位置：teammate-buffs 1411 组。"
+  }
 }

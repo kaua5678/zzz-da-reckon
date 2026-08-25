@@ -73,6 +73,22 @@
                 </n-gi>
                 <n-gi>
                   <div class="field">
+                    <span class="field-label">敌方体型</span>
+                    <n-select
+                      :value="configStore.enemy.bodySize ?? 'large'"
+                      :options="[
+                        { label: '大型（剑气6段）', value: 'large' },
+                        { label: '中型（剑气3段）', value: 'medium' },
+                        { label: '小型（剑气0段）', value: 'small' },
+                      ]"
+                      size="small"
+                      style="width: 100%"
+                      @update:value="v => configStore.setEnemy({ bodySize: v ?? 'large' })"
+                    />
+                  </div>
+                </n-gi>
+                <n-gi>
+                  <div class="field">
                     <span class="field-label">快速支援（队伍页配置）</span>
                     <n-input-number
                       :value="configStore.team.reduce((sum, c) => sum + (c.quickAssistCount ?? 0), 0)"

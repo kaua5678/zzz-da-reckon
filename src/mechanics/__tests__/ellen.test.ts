@@ -9,6 +9,7 @@ import {
   ELLEN_DASH_MOVE_IDS,
   ELLEN_EX_MOVE_IDS,
   ELLEN_FROST_TRIM_MOVE_IDS,
+  ELLEN_ICE_WAVE_MOVE_IDS,
   ELLEN_STORM_SURGE_PER_STACK,
   ELLEN_ULT_MOVE_ID,
   computeEllenCycle,
@@ -16,10 +17,10 @@ import {
 } from '@/mechanics/agents/ellen'
 import { setupHarness } from '@/test/harness'
 
-async function setup(mateId = '1191', cinemaLevel = 0) {
+async function setup(mateId = '1191', cinemaLevel = 0, potentialLevel = 6) {
   const result = await setupHarness([
-    { agentId: '1191', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-    { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: '1191', cinemaLevel, potentialLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: mateId, cinemaLevel: 0, potentialLevel: 6, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
   ])
   for (const buff of result.config.globalBuffs) buff.enabled = false
   return result
@@ -28,6 +29,7 @@ async function setup(mateId = '1191', cinemaLevel = 0) {
 function cycle(overrides: Partial<Parameters<typeof computeEllenCycle>[0]> = {}) {
   return computeEllenCycle({
     cinemaLevel: 0,
+    potentialLevel: 6,
     dashQuickCount: 6,
     dashChargedCount: 3,
     exSpecialCount: 2,
@@ -44,9 +46,10 @@ function cycle(overrides: Partial<Parameters<typeof computeEllenCycle>[0]> = {})
 describe('艾莲（1191）急冻充能总量', () => {
   it('充能获取按原文拆分，影画1提升剪击获取，终结技不获取充能', () => {
     const c0 = cycle({ cinemaLevel: 0, exSpecialCount: 2 })
-    // 快速6×1 + 蓄力3×3 + 强特2×1 = 17
+    // 快速6×1 + 蓄力3×3 + 强特2×1 = 17 → 冰刃浪 3 轮(15充能) + 急冻 3段+2段余量
     expect(c0.totalChargeGain).toBe(6 * 1 + 3 * 3 + 2)
-    expect(c0.frostTrimSegments).toBe(c0.totalChargeGain)
+    expect(c0.iceWaveCount).toBe(3)
+    expect(c0.frostTrimSegments).toBe(3 * 3 + 2)
 
     const c1 = cycle({ cinemaLevel: 1, exSpecialCount: 2 })
     // 快速6×3 + 蓄力3×6 + 强特2×1 = 38
@@ -72,6 +75,29 @@ describe('艾莲（1191）急冻充能总量', () => {
     expect(cycle({ cinemaLevel: 0 }).c1CritRate).toBe(0)
     expect(cycle({ cinemaLevel: 0 }).c6PenRatio).toBe(0)
     expect(cycle({ additionalActive: false }).stormSurgeIceDmg).toBe(0)
+  })
+
+  it('潜能极冰带按潜能等级结算：每层暴伤 + 满10层无视冰抗，潜能I无觉醒', () => {
+    // 潜能 VI（6）：10 层 → 每层 4.8% × 10 = 48% 暴伤，无视 10% 冰抗
+    const c6 = cycle({ potentialLevel: 6, stormSurgeStacks: 10 })
+    expect(c6.potentialCritDmg).toBeCloseTo(10 * 4.8)
+    expect(c6.potentialIceResIgnore).toBeCloseTo(10)
+    // 潜能 III（3）：每层 2.4% → 24% 暴伤，无视 5% 冰抗
+    const c3 = cycle({ potentialLevel: 3, stormSurgeStacks: 10 })
+    expect(c3.potentialCritDmg).toBeCloseTo(10 * 2.4)
+    expect(c3.potentialIceResIgnore).toBeCloseTo(5)
+    // 潜能 I（1）：无觉醒 → 0
+    const c1 = cycle({ potentialLevel: 1, stormSurgeStacks: 10 })
+    expect(c1.potentialCritDmg).toBe(0)
+    expect(c1.potentialIceResIgnore).toBe(0)
+    // 未叠满 10 层：只有每层暴伤，不触发无视冰抗
+    const c9 = cycle({ potentialLevel: 6, stormSurgeStacks: 9 })
+    expect(c9.potentialCritDmg).toBeCloseTo(9 * 4.8)
+    expect(c9.potentialIceResIgnore).toBe(0)
+    // 额外能力未激活：全部为 0
+    const off = cycle({ potentialLevel: 6, additionalActive: false })
+    expect(off.potentialCritDmg).toBe(0)
+    expect(off.potentialIceResIgnore).toBe(0)
   })
 })
 
@@ -102,6 +128,30 @@ describe('艾莲招式定向与执行行', () => {
     expect(ex.critDmgBonus).toBe(ELLEN_C2_CRIT_DMG_MAX)
   })
 
+  it('核心被动受益招式按潜能门控：潜能I不给连携/终结/霜锋/冰刃浪挂暴伤', () => {
+    const trim: any = { moveId: ELLEN_FROST_TRIM_MOVE_IDS[0], element: 'ice' }
+    const ult: any = { moveId: ELLEN_ULT_MOVE_ID, element: 'ice' }
+    const baseCfg = {
+      ellenCinemaLevel: 0,
+      ellenPotentialLevel: 1,
+      ellenDashQuickCount: 0,
+      ellenDashChargedCount: 0,
+      ellenC1CritStacks: 0,
+      ellenC2AvgCharge: 0,
+      ellenStormSurgeStacks: 0,
+      ellenC6PenCoverage: 0,
+      ellenAdditionalActive: false,
+    }
+    ellenMechanic.patchExecutions!({
+      cfg: baseCfg,
+      state: { exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 },
+      executions: [trim, ult],
+    } as any)
+    // 潜能 I：急冻修剪法吃暴伤，终结技不吃
+    expect(trim.critDmgBonus).toBe(ELLEN_CORE_CRIT_DMG)
+    expect(ult.critDmgBonus ?? 0).toBe(0)
+  })
+
   it('按充能消耗生成真实moveId的急冻修剪法与冰渊潜袭执行行', () => {
     const executions: any[] = []
     ellenMechanic.buildExecutions!({
@@ -118,10 +168,13 @@ describe('艾莲招式定向与执行行', () => {
       state: { exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 },
       executions,
     } as any)
-    // 充能 = 4×1 + 2×3 = 10 → 急冻修剪法 10 段
+    // 充能 = 4×1 + 2×3 = 10 → 冰刃浪 2 轮（floor(10/5)=2，耗4充能）+ 急冻修剪法 6 段（10-4）
     const trimTotal = ELLEN_FROST_TRIM_MOVE_IDS.reduce(
       (sum, id) => sum + (executions.find(row => row.moveId === id)?.count ?? 0), 0)
-    expect(trimTotal).toBe(10)
+    expect(trimTotal).toBe(6)
+    const iceWaveTotal = ELLEN_ICE_WAVE_MOVE_IDS.reduce(
+      (sum, id) => sum + (executions.find(row => row.moveId === id)?.count ?? 0), 0)
+    expect(iceWaveTotal).toBe(2)
     const dashTotal = ELLEN_DASH_MOVE_IDS.reduce(
       (sum, id) => sum + (executions.find(row => row.moveId === id)?.count ?? 0), 0)
     expect(dashTotal).toBe(6)
@@ -129,6 +182,69 @@ describe('艾莲招式定向与执行行', () => {
       expect(row.element).toBe('ice')
       expect(row.totalTime).toBe(row.count * row.actionTime)
     }
+  })
+
+  it('强化特殊技：0命横扫+鲨卷风、影画2全鲨卷风；霜锋免费自动派生', () => {
+    // 0命：模块显式补横扫；通用生成鲨卷风（此处只测模块推的横扫/霜锋）
+    const ex0: any[] = []
+    ellenMechanic.buildExecutions!({
+      cfg: {
+        ellenCinemaLevel: 0, ellenPotentialLevel: 6,
+        ellenDashQuickCount: 0, ellenDashChargedCount: 0,
+        ellenC1CritStacks: 0, ellenC2AvgCharge: 0, ellenStormSurgeStacks: 0, ellenC6PenCoverage: 0,
+        ellenAdditionalActive: false,
+      },
+      state: { exSpecialCount: 2, ultimateCount: 0, chainCountTotal: 0 },
+      executions: ex0,
+    } as any)
+    const sweep0 = ex0.filter(r => r.moveId === '1191011').reduce((s, r) => s + (r.count ?? 0), 0)
+    expect(sweep0).toBe(2) // 横扫 = 强特次数
+    // 霜锋（倍率表融合，默认大体型 qi=6）：挥刀 1191027×3、剑气 1191028×6 每触发
+    const blade0 = ex0.filter(r => r.moveId === '1191027').reduce((s, r) => s + (r.count ?? 0), 0)
+    const qi0 = ex0.filter(r => r.moveId === '1191028').reduce((s, r) => s + (r.count ?? 0), 0)
+    expect(blade0).toBe(6)  // 3 × 触发2
+    expect(qi0).toBe(12)    // 6 × 触发2（大体型）
+    // 冰刃浪：充能2 → 无完整轮（floor(2/5)=0）
+    expect(ex0.filter(r => r.moveId === '1191029' || r.moveId === '1191030').reduce((s, r) => s + (r.count ?? 0), 0)).toBe(0)
+
+    // 影画2：横扫 0、追加鲨卷风=强特次数
+    const ex2: any[] = []
+    ellenMechanic.buildExecutions!({
+      cfg: {
+        ellenCinemaLevel: 2, ellenPotentialLevel: 6,
+        ellenDashQuickCount: 0, ellenDashChargedCount: 0,
+        ellenC1CritStacks: 0, ellenC2AvgCharge: 0, ellenStormSurgeStacks: 0, ellenC6PenCoverage: 0,
+        ellenAdditionalActive: false,
+      },
+      state: { exSpecialCount: 2, ultimateCount: 0, chainCountTotal: 0 },
+      executions: ex2,
+    } as any)
+    const sweep2 = ex2.filter(r => r.moveId === '1191011').reduce((s, r) => s + (r.count ?? 0), 0)
+    expect(sweep2).toBe(0)
+    const sharkExtra2 = ex2.filter(r => r.moveId === '1191012').reduce((s, r) => s + (r.count ?? 0), 0)
+    expect(sharkExtra2).toBe(2) // 影画2 追加鲨卷风 = 强特次数（配合通用 = 2×鲨卷风）
+    const blade2 = ex2.filter(r => r.moveId === '1191027').reduce((s, r) => s + (r.count ?? 0), 0)
+    expect(blade2).toBe(12) // 3 × 触发4（全鲨卷风）
+  })
+
+  it('霜锋剑气按敌方体型：小0/中3/大6 段', () => {
+    const run = (bodySize: string) => {
+      const ex: any[] = []
+      ellenMechanic.buildExecutions!({
+        cfg: {
+          ellenCinemaLevel: 0, ellenPotentialLevel: 6, bodySize,
+          ellenDashQuickCount: 0, ellenDashChargedCount: 0,
+          ellenC1CritStacks: 0, ellenC2AvgCharge: 0, ellenStormSurgeStacks: 0, ellenC6PenCoverage: 0,
+          ellenAdditionalActive: false,
+        },
+        state: { exSpecialCount: 1, ultimateCount: 0, chainCountTotal: 0 },
+        executions: ex,
+      } as any)
+      return ex.filter(r => r.moveId === '1191028').reduce((s, r) => s + (r.count ?? 0), 0)
+    }
+    expect(run('small')).toBe(0)
+    expect(run('medium')).toBe(3)  // 1 触发 × 3 剑气
+    expect(run('large')).toBe(6)
   })
 })
 
@@ -163,10 +279,23 @@ describe('艾莲完整计算链', () => {
     expect(cycleRes.c1CritRate).toBe(12)
     expect(cycleRes.stormSurgeIceDmg).toBe(30)
     expect(cycleRes.c6PenRatio).toBe(20)
+    expect(cycleRes.potentialCritDmg).toBeCloseTo(48)
+    expect(cycleRes.potentialIceResIgnore).toBeCloseTo(10)
     const panel = calc.panels.value[0] as any
     expect(panel.__ellenPanelApplied).toBe(true)
     expect(panel.critRate).toBeGreaterThanOrEqual(12)
     expect(panel.iceDmg).toBeGreaterThanOrEqual(30)
     expect(panel.penRatio).toBeGreaterThanOrEqual(20)
+    expect(panel.critDmg).toBeGreaterThanOrEqual(50 + 48)
+    expect(panel.enemyIceResReduction).toBeGreaterThanOrEqual(10)
+  })
+
+  it('潜能I无极冰带：暴伤与无视冰抗不叠加（潜能VI 有 +48% 暴伤 +10% 无视冰抗）', async () => {
+    await setup('1141', 6, 1)
+    const calc = useResourceCalc()
+    const panel = calc.panels.value[0] as any
+    // 基准暴伤 50 + 无极冰带增量（应远低于潜能VI的 98）
+    expect(panel.critDmg).toBeLessThan(98)
+    expect((panel.enemyIceResReduction ?? 0)).toBeLessThan(10 + 25 - 5)
   })
 })

@@ -19,6 +19,7 @@ export interface MechanicTeamMember {
   agentId: string
   agent: Agent | null
   cinemaLevel: number
+  potentialLevel: number
   wEngineId: string
   wEngineModLevel: number
 }
@@ -27,6 +28,7 @@ export interface AgentPanelInput {
   slot: number
   agent: Agent
   cinemaLevel: number
+  potentialLevel: number
   team: MechanicTeamMember[]
   /** 未合并局内 buff 的面板，供“初始属性”类转化读取 */
   outOfCombatPanel: Readonly<PanelValues>
@@ -49,6 +51,7 @@ export interface AgentCharConfigInput {
   agent: Agent
   skills: AgentSkills
   cinemaLevel: number
+  potentialLevel: number
   wEngineId: string
   wEngineModLevel: number
   team: MechanicTeamMember[]
@@ -87,6 +90,7 @@ export interface AgentTeamConfigInput {
   slot: number
   agent: Agent | null
   cinemaLevel: number
+  potentialLevel: number
   /** 全队 cfg（**可写**：写任意槽位的字段正是队伍级联动的目的） */
   characters: CharacterOperationConfig[]
   team: MechanicTeamMember[]
@@ -139,6 +143,7 @@ export interface AgentSkillTransformInput {
   charResult: CharacterResourceResult
   panel: PanelValues | null
   cinemaLevel: number
+  potentialLevel: number
   team: MechanicTeamMember[]
   dazeCoef: number
   stunExecs: StunSkillExecution[]
@@ -155,6 +160,7 @@ export interface AgentDamageResolutionInput {
   exec: SkillExecution
   team: MechanicTeamMember[]
   cinemaLevel: number
+  potentialLevel: number
 }
 
 export interface ReleaseModifierInput {

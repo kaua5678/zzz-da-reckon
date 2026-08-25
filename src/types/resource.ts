@@ -1648,6 +1648,8 @@ export interface CharacterOperationConfig {
   billyBasicHealPerSec?: number
   /** 总战斗时间（秒，默认 180；全战斗时间类来源使用，如星徽·比利决意缓慢回复 2 点/秒） */
   battleTime?: number
+  /** 敌方体型（影响体型相关招式倍率，如艾莲霜锋剑气 0/3/6 段） */
+  bodySize?: 'small' | 'medium' | 'large'
   /** 金身格挡/不动如山招架次数（队伍配置页 per-character，般岳嗔火来源） */
   blockCount?: number
   /** 双反次数（般岳专属：完美闪避+金身弹刀组合，+10嗔火/次，产冲霄） */

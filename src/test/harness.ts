@@ -26,6 +26,7 @@ const buildRecsText = readFileSync(new URL('../../public/static/build-recommenda
 export const TEST_BASE_CHAR = {
   wEngineId: '',
   wEngineModLevel: 1,
+  potentialLevel: 6,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
   parryCount: 6,
   blockCount: 0,

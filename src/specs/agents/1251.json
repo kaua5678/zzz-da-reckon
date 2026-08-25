@@ -5,7 +5,7 @@
   "agentIds": [
     "1251"
   ],
-  "status": "partially_implemented",
+  "status": "implemented_approximation",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
