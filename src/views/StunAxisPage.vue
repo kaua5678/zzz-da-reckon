@@ -200,6 +200,15 @@
           </span>
         </div>
         <div style="color:rgba(255,255,255,0.4);margin-top:2px">动作块上的「触X」标签 = 该招式在此段首窗触发的异常；带·紊乱 = 触发时替换了原状态。极性紊乱/异放的归因与基数都按触发时刻的当前状态结算。</div>
+        <div style="border-top:1px dashed rgba(255,255,255,0.1);margin-top:4px;padding-top:4px">
+          <span style="font-size:12px;font-weight:600">状态判定事件（异放/极性紊乱：元素与失衡易伤按触发时刻当前状态结算）</span>
+          <div v-for="row in stateJudgedRows" :key="row.key" style="font-size:12px;color:rgba(255,255,255,0.65)">
+            [{{ row.type }}] {{ row.agentName }} · {{ row.name }} → {{ entryBarLabel(row.element) }} ×{{ row.count }}（{{ fmt(row.totalDamage, 0) }} 伤害）
+          </div>
+          <div v-if="stateJudgedRows.length === 0" style="font-size:12px;color:rgba(255,255,255,0.35)">
+            当前配置没有状态判定类事件产出（异放需要命中异常目标；极性紊乱需要跨元素替换）。
+          </div>
+        </div>
       </div>
 
       <!-- 统计 -->
@@ -245,7 +254,7 @@ import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/core/stunAxis/inStunAnomaly'
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
 const message = useMessage()
-const { resourceResult, stunAxisResult: axisResult, stunPoolResult, stackTraversalResult: stack, matchedPlanName, effectiveStunAxes, autoPreset, autoActive, windowDuration, inStunAnomalyState, bossAnomalyState } = useResourceCalc()
+const { resourceResult, stunAxisResult: axisResult, stunPoolResult, stackTraversalResult: stack, matchedPlanName, effectiveStunAxes, autoPreset, autoActive, windowDuration, inStunAnomalyState, bossAnomalyState, damagePoolRows } = useResourceCalc()
 
 const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 // 通用自动轴：队伍匹配到预设失衡轴即自动选用（手动配置过轴时让路）
@@ -421,6 +430,21 @@ function formatBossStateChain(chain: BossChainSeg[], wind?: BossChainSeg[]): str
 function entryFirstWindow(ai: number): number {
   return (inStunAnomalyState.value?.windowEntryIdx ?? []).indexOf(ai)
 }
+/** 状态判定事件（v2.4 地基消费方）：异放/极性紊乱的元素归因与失衡易伤都按触发时刻当前状态结算 */
+const stateJudgedRows = computed(() => {
+  return damagePoolRows.value
+    .filter(r => r.type === '异放' || r.type === '极性紊乱')
+    .map(r => ({
+      key: String(r.id),
+      type: String(r.type),
+      agentName: String((r as { agentName?: string }).agentName ?? r.agentId ?? ''),
+      name: String(r.name ?? ''),
+      element: String(r.element ?? ''),
+      count: Number(r.count ?? 0),
+      totalDamage: Number(r.totalDamage ?? 0),
+    }))
+})
+
 /** 状态链行（仅展示与上一次不同的窗口；多轮重复段逐窗重演同一序列，不重复展示） */
 const chainRows = computed(() => {
   const boss = bossAnomalyState.value
