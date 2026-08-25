@@ -1,9 +1,9 @@
 {
   "id": 14161,
   "code_name": "Weapon_S_1611",
-  "name": "腥红渴望",
+  "name": "猩红渴望",
   "desc": "...",
-  "desc2": "",
+  "desc2": "装备后可提升[锋御]代理人的战斗能力",
   "desc3": "...",
   "rarity": 4,
   "icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/ItemIconWeapon/UnPacker/Weapon_S_1611.png",
@@ -14,7 +14,7 @@
     "name": "基础防御力",
     "name2": "基础防御力",
     "format": "{0:0.#}",
-    "value": 28
+    "value": 29
   },
   "rand_property": {
     "name": "防御力",
@@ -359,23 +359,23 @@
   "talents": {
     "1": {
       "name": "...",
-      "desc": "暴击率提升25%；装备者攻击命中敌人并触发锐爆后，获得1层<color=#FFFFFF>[强化]</color>：\n使自身造成的<color=#2EB6FF>电属性伤害</color>增加7%，持续20秒；最多叠加3层，重复触发时，刷新所有<color=#FFFFFF>[强化]</color>持续时间，每0.1秒最多触发1次；\n拥有3层该效果时，额外使自身造成的<color=#2EB6FF>电属性锐化伤害</color>增加12%。"
+      "desc": "装备者暴击率提升<color=#2BAD00>25%</color>；<color=#2EB6FF>电属性伤害</color>提升<color=#2BAD00>15%</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>或触发<color=#FFFFFF>[毁伤]</color>时，造成的<color=#2EB6FF>电属性锐化伤害</color>提升<color=#2BAD00>12%</color>，持续40秒，重复触发时刷新持续时间。"
     },
     "2": {
       "name": "...",
-      "desc": "暴击率提升28.7%；装备者攻击命中敌人并触发锐爆后，获得1层<color=#FFFFFF>[强化]</color>：\n使自身造成的<color=#2EB6FF>电属性伤害</color>增加8%，持续20秒；最多叠加3层，重复触发时，刷新所有<color=#FFFFFF>[强化]</color>持续时间，每0.1秒最多触发1次；\n拥有3层该效果时，额外使自身造成的<color=#2EB6FF>电属性锐化伤害</color>增加13.8%。"
+      "desc": "装备者暴击率提升<color=#2BAD00>27.5%</color>；<color=#2EB6FF>电属性伤害</color>提升<color=#2BAD00>17.5%</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>或触发<color=#FFFFFF>[毁伤]</color>时，造成的<color=#2EB6FF>电属性锐化伤害</color>提升<color=#2BAD00>14%</color>，持续40秒，重复触发时刷新持续时间。"
     },
     "3": {
       "name": "...",
-      "desc": "暴击率提升32.5%；装备者攻击命中敌人并触发锐爆后，获得1层<color=#FFFFFF>[强化]</color>：\n使自身造成的<color=#2EB6FF>电属性伤害</color>增加9%，持续20秒；最多叠加3层，重复触发时，刷新所有<color=#FFFFFF>[强化]</color>持续时间，每0.1秒最多触发1次；\n拥有3层该效果时，额外使自身造成的<color=#2EB6FF>电属性锐化伤害</color>增加15.6%。"
+      "desc": "装备者暴击率提升<color=#2BAD00>30%</color>；<color=#2EB6FF>电属性伤害</color>提升<color=#2BAD00>20%</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>或触发<color=#FFFFFF>[毁伤]</color>时，造成的<color=#2EB6FF>电属性锐化伤害</color>提升<color=#2BAD00>16%</color>，持续40秒，重复触发时刷新持续时间。"
     },
     "4": {
       "name": "...",
-      "desc": "暴击率提升36.2%；装备者攻击命中敌人并触发锐爆后，获得1层<color=#FFFFFF>[强化]</color>：\n使自身造成的<color=#2EB6FF>电属性伤害</color>增加10%，持续20秒；最多叠加3层，重复触发时，刷新所有<color=#FFFFFF>[强化]</color>持续时间，每0.1秒最多触发1次；\n拥有3层该效果时，额外使自身造成的<color=#2EB6FF>电属性锐化伤害</color>增加17.4%。"
+      "desc": "装备者暴击率提升<color=#2BAD00>32.5%</color>；<color=#2EB6FF>电属性伤害</color>提升<color=#2BAD00>22.5%</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>或触发<color=#FFFFFF>[毁伤]</color>时，造成的<color=#2EB6FF>电属性锐化伤害</color>提升<color=#2BAD00>18%</color>，持续40秒，重复触发时刷新持续时间。"
     },
     "5": {
       "name": "...",
-      "desc": "暴击率提升40%；装备者攻击命中敌人并触发锐爆后，获得1层<color=#FFFFFF>[强化]</color>：\n使自身造成的<color=#2EB6FF>电属性伤害</color>增加11%，持续20秒；最多叠加3层，重复触发时，刷新所有<color=#FFFFFF>[强化]</color>持续时间，每0.1秒最多触发1次；\n拥有3层该效果时，额外使自身造成的<color=#2EB6FF>电属性锐化伤害</color>增加19.2%。"
+      "desc": "装备者暴击率提升<color=#2BAD00>35%</color>；<color=#2EB6FF>电属性伤害</color>提升<color=#2BAD00>25%</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>或触发<color=#FFFFFF>[毁伤]</color>时，造成的<color=#2EB6FF>电属性锐化伤害</color>提升<color=#2BAD00>20%</color>，持续40秒，重复触发时刷新持续时间。"
     }
   }
 }
