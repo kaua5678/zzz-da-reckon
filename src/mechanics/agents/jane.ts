@@ -34,7 +34,7 @@ export function computeJaneMechanic(input: {
     atkFromMastery: Math.min(ATK_FROM_MASTERY_CAP, Math.max(0, mastery - MASTERY_ATK_THRESHOLD) * ATK_PER_MASTERY_OVER),
     frenzyActive: input.frenzyActive,
     biteSeconds: Math.max(0, input.frontlineSeconds),
-    note: '啮咬：攻击命中使敌人进入状态，持续10秒；强击对啮咬目标可暴击（基础20%+精通0.1%/点，暴伤50%），潜能觉醒满级额外+30%强击暴伤；狂热心流满进入狂热，物理异常积蓄效率+25%，精通>120每点+2攻击（上限600）。',
+    note: '啮咬：攻击命中使敌人进入状态，持续10秒；强击对啮咬目标可暴击（基础20%+精通0.1%/点，暴伤50%），潜能觉醒满级额外+30%强击暴伤；狂热物理积蓄效率与精通转攻、额外能力痛点、影画1/6 面板区见 resourceCalc/helpers 简专属分支（jane.passionCoverage 滑块默认90%）。',
   }
 }
 
@@ -48,6 +48,9 @@ function applyJanePanel({ panel }: AgentPanelInput): void {
   panel.assaultCritDmg = (panel.assaultCritDmg ?? 0) + ASSAULT_CRIT_DMG
   // 潜能觉醒只给简自身触发的强击吃，乱流不继承；由异常池按 janeAssaultCritDmgBonus 单独结算。
   panel.janeAssaultCritDmgBonus = source.assaultCritDmgBonus
+  // 注意：狂热物理积蓄/精通转攻/额外能力痛点/影画1/影画6 面板区统一在
+  // composables/resourceCalc/helpers.ts 的简专属分支实现（含 jane.passionCoverage 覆盖率滑块，
+  // 默认90%）。此处不得重复写入，否则双重加算。
 }
 
 function buildJaneResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
@@ -96,7 +99,7 @@ export const janeMechanic: AgentMechanicModule = {
   id: 'agent:jane',
   agentIds: [JANE_AGENT_ID],
   name: '简',
-  description: '啮咬/狂热/强击暴击：攻击施加啮咬10秒，强击对啮咬目标可暴击（基础20%+精通0.1%/点，暴伤50%）。',
+  description: '啮咬/狂热/强击暴击：攻击施加啮咬10秒，强击对啮咬目标可暴击（基础20%+精通0.1%/点，暴伤50%）；影画1/6 面板区。',
   applyPanel: applyJanePanel,
   buildResourceResult: buildJaneResourceResult,
   resourceSections: buildJaneResourceSections,

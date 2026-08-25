@@ -348,11 +348,17 @@ export interface BurniceMechanicSource {
 export interface YuzuhaMechanicSource {
   sweetnessInitial: number
   sweetnessFromChain: number
+  /** 影画6：招架成功额外甜度点 */
+  sweetnessFromParry: number
   sweetnessTotal: number
   sweetnessCap: number
   teamAtkBonus: number
   teamAtkCap: number
   teamDmgBonus: number
+  /** 影画6：蓄能强力炮弹发数（每0.4秒蓄能耗1甜度点） */
+  chargedCannonCount: number
+  /** 每次支援突击的炮弹枚数（按蓄能时长折算） */
+  chargedCannonsPerAssist: number
   note: string
 }
 
@@ -1262,6 +1268,12 @@ export interface CharacterOperationConfig {
   burniceDoubleSpraySeconds?: number
   /** 柏妮思命座等级（1命强化余烬伤害与积蓄） */
   burniceCinemaLevel?: number
+  /** 柚叶连携入场次数（其他角色连携技入场+1甜度点，滑块 yuzuha.chainEntryCount） */
+  yuzuhaChainEntryCount?: number
+  /** 柚叶蓄能时长秒数（影画6 蓄能炮弹，滑块 yuzuha.chargeSeconds） */
+  yuzuhaChargeSeconds?: number
+  /** 柚叶命座等级（影画6） */
+  yuzuhaCinemaLevel?: number
   /** 柏妮思搅拌式次数：0 表示自动按溢出燃点取上限 */
   burniceStirringCount?: number
   /** 柏妮思搅拌式（1171007 融合）单次动作时长（秒） */
