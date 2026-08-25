@@ -587,7 +587,7 @@ export interface InStunAnomalySummary {
   /** 展开后的每个窗口属于哪条轴条目（索引对齐窗口序）——捏轴页按条目标注触发事件用 */
   windowEntryIdx?: number[]
   /** 触发来源明细（动作带 moveId 时回填，id=抑制引用键）：捏轴页块级「这个招式触发了什么」可视化用 */
-  triggerSources?: Array<{ windowIndex: number; moveId: string; element: string; offsetSeconds: number; id: string }>
+  triggerSources?: Array<{ windowIndex: number; moveId: string; element: string; offsetSeconds: number; id: string; srcIndex?: number }>
   note: string
 }
 

@@ -505,7 +505,9 @@ function anomalyTagsFor(ai: number, aii: number): Array<{ text: string; cls: str
   }
   const suppressed = new Set(axis.suppressedTriggers ?? [])
   for (const t of st.triggerSources ?? []) {
-    if (t.windowIndex !== wi || t.moveId !== mid || !t.id || suppressed.has(t.id)) continue
+    // 按动作实例精确匹配：同一招式放多块时，触发标只落在真正触发的那一块上
+    if (t.windowIndex !== wi || !t.id || suppressed.has(t.id)) continue
+    if ((t.srcIndex ?? -1) !== aii) continue
     const replaced = (boss?.disorders ?? []).some(d => d.windowIndex === wi && Math.abs(d.time - t.offsetSeconds) < 1e-6)
     out.push({ text: `触${entryBarLabel(t.element)}${replaced ? '·紊' : ''}`, cls: replaced ? 'mw-l3' : 'mw-trigger' })
   }

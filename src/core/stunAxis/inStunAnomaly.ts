@@ -44,6 +44,8 @@ export interface InStunTrigger {
   offsetSeconds: number
   /** 触发来源招式（动作带 moveId 时回填） */
   moveId?: string
+  /** 触发来源动作索引（同 moveId 多块时区分具体是哪一块） */
+  srcIndex?: number
   /**
    * 稳定 id：`${windowIndex}:${基础元素}:${序数}`。轴条目 suppressedTriggers 引用该 id——
    * 被抑制的触发不生效且满槽保持（模拟施加者后台/CD 无法结算触发），可在编辑器恢复。
@@ -178,7 +180,7 @@ export function computeInStunAnomalyTimeline(input: {
         ordinalByEl.set(base, ordinal)
         const id = `${w}:${base}:${ordinal}`
         if (suppressed.has(id)) continue // 该候选被抑制：不清槽，积蓄保留到下一倍数
-        triggers.push({ windowIndex: w, element: ev.element, offsetSeconds: ev.time, moveId: ev.moveId, id })
+        triggers.push({ windowIndex: w, element: ev.element, offsetSeconds: ev.time, moveId: ev.moveId, id, srcIndex: ev.srcIndex })
         activeUntil.set(base, ev.time + (ANOMALY_DURATION[base] ?? 10))
         gauges.set(base, 0) // 保留的触发块清空满槽，下一波重新积蓄尝试
         proposedLevel.set(base, 0)
