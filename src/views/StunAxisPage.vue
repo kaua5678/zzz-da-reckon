@@ -182,10 +182,12 @@
           </span>
           <span v-if="inStunAnomalyState.elements.length === 0" style="color:rgba(255,255,255,0.35)">轴内动作未产生积蓄触发。</span>
         </div>
-        <div v-for="(chain, wi) in bossAnomalyState?.stateChainsPerWindow ?? []" :key="'w'+wi"
+        <div v-for="row in chainRows" :key="'w'+row.wi"
           style="color:rgba(255,255,255,0.55)">
-          第{{ wi + 1 }}次失衡：{{ chainChainText(wi) }}
+          第{{ row.wi + 1 }}次失衡：{{ row.text }}
         </div>
+        <div v-if="chainRows.length === 0 && (bossAnomalyState?.stateChainsPerWindow.length ?? 0) > 1"
+          style="color:rgba(255,255,255,0.4)">各次失衡状态链完全相同（多轮重复段逐窗重演同一序列），不重复展示。</div>
         <div v-for="(axis, ai) in axes" :key="'ev'+ai" style="color:rgba(255,255,255,0.65);display:flex;flex-wrap:wrap;gap:4px;align-items:center">
           <span v-if="entryEventLine(ai)" style="margin-right:4px">「{{ axis.name }}」{{ entryEventLine(ai) }}</span>
           <span v-for="chip in entryTriggerChips(ai)" :key="chip.id"
@@ -419,14 +421,19 @@ function formatBossStateChain(chain: BossChainSeg[], wind?: BossChainSeg[]): str
 function entryFirstWindow(ai: number): number {
   return (inStunAnomalyState.value?.windowEntryIdx ?? []).indexOf(ai)
 }
-/** 第 N 次失衡的状态链文本；与上一次完全相同则折叠标注（多轮重复段逐窗重演同一序列） */
-function chainChainText(wi: number): string {
+/** 状态链行（仅展示与上一次不同的窗口；多轮重复段逐窗重演同一序列，不重复展示） */
+const chainRows = computed(() => {
   const boss = bossAnomalyState.value
-  if (!boss) return ''
-  const cur = formatBossStateChain(boss.stateChainsPerWindow[wi] ?? [], boss.windOverlayPerWindow[wi])
-  const prev = wi > 0 ? formatBossStateChain(boss.stateChainsPerWindow[wi - 1] ?? [], boss.windOverlayPerWindow[wi - 1]) : null
-  return cur === prev ? `${cur}（与上次失衡相同）` : cur
-}
+  if (!boss) return [] as Array<{ wi: number; text: string }>
+  const out: Array<{ wi: number; text: string }> = []
+  let prev: string | null = null
+  boss.stateChainsPerWindow.forEach((chain, wi) => {
+    const text = formatBossStateChain(chain, boss.windOverlayPerWindow[wi])
+    if (text !== prev) out.push({ wi, text })
+    prev = text
+  })
+  return out
+})
 function moveNameOf(mid?: string): string {
   if (!mid) return ''
   for (const slot of [0, 1, 2]) {
