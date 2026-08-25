@@ -184,7 +184,7 @@
         </div>
         <div v-for="(chain, wi) in bossAnomalyState?.stateChainsPerWindow ?? []" :key="'w'+wi"
           style="color:rgba(255,255,255,0.55)">
-          窗{{ wi + 1 }}状态链：{{ formatBossStateChain(chain, bossAnomalyState?.windOverlayPerWindow[wi]) }}
+          第{{ wi + 1 }}次失衡：{{ chainChainText(wi) }}
         </div>
         <div v-for="(axis, ai) in axes" :key="'ev'+ai" style="color:rgba(255,255,255,0.65);display:flex;flex-wrap:wrap;gap:4px;align-items:center">
           <span v-if="entryEventLine(ai)" style="margin-right:4px">「{{ axis.name }}」{{ entryEventLine(ai) }}</span>
@@ -418,6 +418,14 @@ function formatBossStateChain(chain: BossChainSeg[], wind?: BossChainSeg[]): str
 /** 该条目展开后的首个窗口索引（编辑器展示单轮模式，事件取代表窗） */
 function entryFirstWindow(ai: number): number {
   return (inStunAnomalyState.value?.windowEntryIdx ?? []).indexOf(ai)
+}
+/** 第 N 次失衡的状态链文本；与上一次完全相同则折叠标注（多轮重复段逐窗重演同一序列） */
+function chainChainText(wi: number): string {
+  const boss = bossAnomalyState.value
+  if (!boss) return ''
+  const cur = formatBossStateChain(boss.stateChainsPerWindow[wi] ?? [], boss.windOverlayPerWindow[wi])
+  const prev = wi > 0 ? formatBossStateChain(boss.stateChainsPerWindow[wi - 1] ?? [], boss.windOverlayPerWindow[wi - 1]) : null
+  return cur === prev ? `${cur}（与上次失衡相同）` : cur
 }
 function moveNameOf(mid?: string): string {
   if (!mid) return ''

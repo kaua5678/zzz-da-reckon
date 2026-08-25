@@ -13,7 +13,7 @@ describe('computeInStunAnomalyTimeline（失衡内多属性积蓄槽）', () => 
     })
     expect(r.triggers).toHaveLength(1)
     expect(r.triggers[0]).toMatchObject({ windowIndex: 0, element: 'ether' })
-    expect(r.triggers[0].offsetSeconds).toBeCloseTo(4.5)
+    expect(r.triggers[0].offsetSeconds).toBeCloseTo(5.0) // 动作结束点（起点4 + 时长1）
     expect(r.coveragePerWindow[0].ether).toBeCloseTo(10 / 16)
     // v2.9 触发块清空满槽
     expect(r.gaugeSnapshots[0]?.pct.ether ?? 0).toBe(0)

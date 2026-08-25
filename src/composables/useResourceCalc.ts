@@ -1392,7 +1392,14 @@ function applyNormaHatChain(
             .filter(({ a }) => contribMap.has(a.moveId))
             .map(({ a, srcIndex }) => {
               const cm = contribMap.get(a.moveId)!
-              return { moveId: a.moveId, srcIndex, element: cm.element, perHitBuildUp: cm.perHit, count: Math.max(0, Math.floor(a.count || 1)), startTime: a.startTime ?? 0 }
+              // 动作时长：显式 duration（仪玄蓄力）优先，否则技能表 actionTime——
+              // 触发事件附着在动作结束点（用户口径），瞬发块才落在起点
+              const skills = catalogStore.getAgentSkills(configStore.team[a.slot]?.agentId ?? '')
+              const move = findMoveById(skills, a.moveId)
+              const duration = typeof (a as { duration?: number }).duration === 'number'
+                ? (a as { duration: number }).duration
+                : (move?.actionTime ?? 0)
+              return { moveId: a.moveId, srcIndex, element: cm.element, perHitBuildUp: cm.perHit, count: Math.max(0, Math.floor(a.count || 1)), startTime: a.startTime ?? 0, duration }
             })
           const entryStates = Object.entries(axis.entryBars ?? {})
             .map(([element, pct]) => {

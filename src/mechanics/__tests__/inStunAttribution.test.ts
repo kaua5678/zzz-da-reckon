@@ -112,11 +112,12 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
     const calc = useResourceCalc()
     const boss = calc.bossAnomalyState.value!
     expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['ether', 'electric'])
-    // 窗口独立重演：每窗 电@8s 替换以太（time=相对该窗起点）
-    expect(boss.disorders).toEqual([
-      { windowIndex: 0, time: 8, element: 'ether' },
-      { windowIndex: 1, time: 8, element: 'ether' },
+    // 窗口独立重演：每窗 电@其动作结束点(8+0.2=8.19s) 替换以太（time=相对该窗起点）
+    expect(boss.disorders.map(d => ({ w: d.windowIndex, el: d.element }))).toEqual([
+      { w: 0, el: 'ether' },
+      { w: 1, el: 'ether' },
     ])
+    for (const d of boss.disorders) expect(d.time).toBeCloseTo(8.19, 1)
     // 总次数守恒（事件侧收敛后的实际失衡次数为准）。
     // 代表窗取样（D=22s、n=3）：t≈3.7 落以太段、11 落电段[8,18)、18.3 落电过期后的空档
     // → 回退触发者自身元素（南宫羽=以太）→ 以太:电 = 2:1 → 6 次拆 4/2
@@ -194,8 +195,9 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
     const boss = calc.bossAnomalyState.value!
     // 两窗独立重演：每窗 开场火被以太@0 替换、电@8 再替换以太 → 火/以太 各 2 次
     expect(boss.disorders.map(d => d.element)).toEqual(['fire', 'ether', 'fire', 'ether'])
-    // 零长开场段被丢弃，可见链仍为 以太→电
-    expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['ether', 'electric'])
+    // 触发点=动作结束点（地雷撞#3 时长1.484 → 以太触发@1.237 首击过管），
+    // 边界火段 0~1.237 可见非零长；随后 以太→电
+    expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['fire', 'ether', 'electric'])
   })
 })
 
@@ -357,10 +359,11 @@ describe('轴条目级初始异常/多条异常条（v2.6→v2.8，随预设导�
     // 预填 90%=2970（每窗独立初始化）：地雷撞首击过管清槽、剩余五击再过管二次触发电？——
     // 实际序列：首击以太@0 触发清槽，余 5 击 3434≥3300 二次触发以太（同元素刷新）；
     // 强特 @8 过管替换以太。两窗按同序列独立重演。
-    expect(boss.disorders).toEqual([
-      { windowIndex: 0, time: 8, element: 'ether' },
-      { windowIndex: 1, time: 8, element: 'ether' },
-    ])
+    for (const d of boss.disorders) {
+      expect(d.element).toBe('ether')
+      expect(d.time).toBeCloseTo(8 + 0.2 * (2 / 18), 1)
+    }
+    expect(boss.disorders.length).toBe(2)
     expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['ether', 'electric'])
   })
 

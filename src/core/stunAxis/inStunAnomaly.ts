@@ -115,7 +115,8 @@ export function computeInStunAnomalyTimeline(input: {
       if (n <= 0 || act.perHitBuildUp <= 0) continue
       const dur = Math.max(0, act.duration ?? 0)
       for (let i = 0; i < n; i++) {
-        const t = dur > 0 ? (act.startTime ?? 0) + ((i + 0.5) / n) * dur : (act.startTime ?? 0)
+        // 命中按动作时长末对齐分布：积蓄在动作结束点才攒满——触发事件附着在动作末尾（用户口径）
+        const t = dur > 0 ? (act.startTime ?? 0) + dur * ((i + 1) / n) : (act.startTime ?? 0)
         slotEvents.push({ element: act.element, time: t, amount: act.perHitBuildUp, moveId: act.moveId, srcIndex: act.srcIndex ?? ai, actionIndex: ai })
       }
     }
