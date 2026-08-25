@@ -112,10 +112,9 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
     const calc = useResourceCalc()
     const boss = calc.bossAnomalyState.value!
     expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['ether', 'electric'])
-    // 窗口独立重演：每窗 电@其动作结束点(8+0.2=8.19s) 替换以太（time=相对该窗起点）
+    // 单次失衡表达：电在其动作结束点(8+0.2=8.19s) 替换以太（time=相对窗口起点）
     expect(boss.disorders.map(d => ({ w: d.windowIndex, el: d.element }))).toEqual([
       { w: 0, el: 'ether' },
-      { w: 1, el: 'ether' },
     ])
     for (const d of boss.disorders) expect(d.time).toBeCloseTo(8.19, 1)
     // 总次数守恒（事件侧收敛后的实际失衡次数为准）。
@@ -125,9 +124,11 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
       .anomalyEventExecutions ?? []).find(e => e.eventId === 'nangong_polar_disorder')!
     const polar = calc.damagePoolRows.value.filter(r => r.type === '极性紊乱' && r.agentId === '1511')
     expect(polar.reduce((s, r) => s + r.count, 0)).toBe(evPolar.count)
+    // 单窗加权 6 取样：以太段[0,8.2]命中 2、电段[8.2,18.2]命中 3、尾隙回退触发者以太
+    // → 以太 3（含回退）/ 电 3
     const byEl = new Map(polar.map(r => [r.element, r.count]))
-    expect(byEl.get('ether')).toBe(Math.round((evPolar.count / 3) * 2))
-    expect(byEl.get('electric')).toBe(evPolar.count - Math.round((evPolar.count / 3) * 2))
+    expect(byEl.get('ether')).toBe(Math.ceil(evPolar.count / 2))
+    expect(byEl.get('electric')).toBe(evPolar.count - Math.ceil(evPolar.count / 2))
   })
 
   it('异放同口径：无手动分配时按状态段取样归因', async () => {
@@ -150,7 +151,10 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
     const rel = calc.damagePoolRows.value.filter(r => r.type === '异放' && r.id.includes('nangong_vibrato_release'))
     expect(rel.reduce((s, r) => s + r.count, 0)).toBe(evRel.count)
     expect(rel.length).toBeGreaterThan(0)
-    for (const r of rel) expect(r.element).toBe('electric')
+    // 2 取样点分落 以太段[0,8.2)/电段[8.2,18.2) → 各一半
+    const byEl = new Map(rel.map(r => [r.element, r.count]))
+    expect(byEl.get('ether')).toBe(Math.floor(evRel.count / 2))
+    expect(byEl.get('electric')).toBe(evRel.count - Math.floor(evRel.count / 2))
   })
 
   it('手动 releaseShare 覆盖点时归因：回落权重路径且次数守恒', async () => {
@@ -193,16 +197,16 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
     }]
     const calc = useResourceCalc()
     const boss = calc.bossAnomalyState.value!
-    // 两窗独立重演：每窗 开场火被以太@0 替换、电@8 再替换以太 → 火/以太 各 2 次
-    expect(boss.disorders.map(d => d.element)).toEqual(['fire', 'ether', 'fire', 'ether'])
+    // 单次失衡表达：开场火在以太动作结束点被替换、电再替换以太 → 火/以太 各 1 次
+    expect(boss.disorders.map(d => d.element)).toEqual(['fire', 'ether'])
     // 触发点=动作结束点（地雷撞#3 时长1.484 → 以太触发@1.237 首击过管），
     // 边界火段 0~1.237 可见非零长；随后 以太→电
     expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['fire', 'ether', 'electric'])
   })
 })
 
-describe('逐失衡展开（count 展开）：窗口独立 + 多轮重演', () => {
-  it('单窗不足的积蓄不再幻影继承：两窗均无触发（跨窗继承已移除）', async () => {
+describe('逐失衡展开：单次失衡表达（v3.2 用户裁决）', () => {
+  it('单窗不足的积蓄不再幻影继承：代表窗内无触发', async () => {
     const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1371' }])
     config.enemy.stunCountLock = 2
     config.useStunAxis = true
@@ -214,11 +218,11 @@ describe('逐失衡展开（count 展开）：窗口独立 + 多轮重演', () =
     }]
     const calc = useResourceCalc()
     const st = calc.inStunAnomalyState.value!
-    expect(st.windows).toBe(2)
+    expect(st.windows).toBe(1)
     expect(st.elements.find(e => e.element === 'electric')?.triggerCount ?? 0).toBe(0)
   })
 
-  it('多轮重演：预填条让每窗都当窗触发 → triggerCount = 窗数', async () => {
+  it('预填条当窗触发；重复次数由失衡次数统计表达（模拟只做单代表窗）', async () => {
     const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1371' }])
     config.enemy.stunCountLock = 3
     config.useStunAxis = true
@@ -231,9 +235,8 @@ describe('逐失衡展开（count 展开）：窗口独立 + 多轮重演', () =
     }]
     const calc = useResourceCalc()
     const st = calc.inStunAnomalyState.value!
-    expect(st.windows).toBe(3)
-    // 每窗独立初始化（30% 预填 + 14 击过管）→ 每窗恰好一次，共 3 次
-    expect(st.elements.find(e => e.element === 'electric')?.triggerCount).toBe(3)
+    expect(st.windows).toBe(1)
+    expect(st.elements.find(e => e.element === 'electric')?.triggerCount).toBe(1)
   })
 })
 
@@ -359,11 +362,11 @@ describe('轴条目级初始异常/多条异常条（v2.6→v2.8，随预设导�
     // 预填 90%=2970（每窗独立初始化）：地雷撞首击过管清槽、剩余五击再过管二次触发电？——
     // 实际序列：首击以太@0 触发清槽，余 5 击 3434≥3300 二次触发以太（同元素刷新）；
     // 强特 @8 过管替换以太。两窗按同序列独立重演。
+    expect(boss.disorders.length).toBe(1)
     for (const d of boss.disorders) {
       expect(d.element).toBe('ether')
       expect(d.time).toBeCloseTo(8 + 0.2 * (2 / 18), 1)
     }
-    expect(boss.disorders.length).toBe(2)
     expect(boss.stateChainsPerWindow[0].map(s => s.element)).toEqual(['ether', 'electric'])
   })
 
@@ -394,13 +397,13 @@ describe('逐条目边界注入（v2.7 中间态口径）', () => {
     ]
     const calc = useResourceCalc()
     const boss = calc.bossAnomalyState.value!
-    expect(boss.stateChainsPerWindow.length).toBe(3)
+    // 单次失衡表达：每条目一个代表窗（count=2 的二段也只模拟一次，重复由失衡次数表达）
+    expect(boss.stateChainsPerWindow.length).toBe(2)
     // 段1 无触发无状态；段2 边界注入火（不记紊乱——是进窗状态声明而非窗内触发事件）
     expect(boss.disorders).toHaveLength(0)
     expect(boss.stateChainsPerWindow[0]).toEqual([])
-    // 每窗独立重演：二段两个窗口开局都按声明注入火（无跨窗继承；二段两击不足以触发，链只有火段）
+    // 二段代表窗开局按声明注入火（count=2 只模拟一次，重复由失衡次数表达；两击不足以触发，链只有火段）
     expect(boss.stateChainsPerWindow[1][0]).toMatchObject({ element: 'fire', start: 0 })
-    expect(boss.stateChainsPerWindow[2][0].element).toBe('fire')
   })
 
   it('极性紊乱基数用当前状态元素的明细均摊（fallback 全池均摊）', async () => {

@@ -127,9 +127,21 @@ export function computeInStunAnomalyTimeline(input: {
 
     let cursor = 0
     const coverage: Record<string, number> = {}
-    // 同一元素同一窗的触发序数（含被抑制的提案，保证 id 稳定）；被抑制后满槽封顶不再提案
+    // 同一元素同一窗的候选序数（含被抑制的提案，保证 id 稳定）。
+    // 分级提案（v3.1 用户口径：删除=这次是后台，不是永远哑火）：积蓄每跨过 k×第一管
+    // 生成一个候选事件；被抑制的候选不清槽、积蓄保留，攒到下一个倍数自然再提案；
+    // 保留的候选清空满槽（下一波重新积蓄）。
     const ordinalByEl = new Map<string, number>()
-    const saturated = new Set<string>()
+    const proposedLevel = new Map<string, number>()
+    const fullOf = (base: string) => {
+      const thresholds = BUILDUP_THRESHOLD_TABLE[base] ?? BUILDUP_THRESHOLD_TABLE.ice
+      return thresholds[0] * coeff
+    }
+    for (const st of win.entryStates ?? []) {
+      const base = getBaseElement(st.element)
+      const th = fullOf(base)
+      proposedLevel.set(base, th > 0 ? Math.floor(Math.max(0, st.gauge) / th) : 0)
+    }
 
     const snapshotIfActionDone = (ev: SlotEvent, triggeredHere: boolean) => {
       const done = (actionDone.get(ev.actionIndex) ?? 0) + 1
@@ -137,7 +149,7 @@ export function computeInStunAnomalyTimeline(input: {
       if (done !== actionTotals.get(ev.actionIndex)) return
       const pct: Record<string, number> = {}
       for (const [key, g] of gauges) {
-        const th = (BUILDUP_THRESHOLD_TABLE[key] ?? BUILDUP_THRESHOLD_TABLE.ice)[0] * coeff
+        const th = fullOf(key)
         pct[key] = th > 0 ? Math.min(100, Math.round((g / th) * 1000) / 10) : 0
       }
       if (triggeredHere) pct[getBaseElement(ev.element)] = 0
@@ -156,22 +168,24 @@ export function computeInStunAnomalyTimeline(input: {
       const g = (gauges.get(base) ?? 0) + ev.amount
       gauges.set(base, g)
 
-      const thresholds = BUILDUP_THRESHOLD_TABLE[base] ?? BUILDUP_THRESHOLD_TABLE.ice
-      const full = thresholds[0] * coeff
+      const th = fullOf(base)
+      let lvlPrev = proposedLevel.get(base) ?? 0
+      const lvlNew = th > 0 ? Math.floor(g / th) : lvlPrev
       let triggeredHere = false
-      if (g >= full && !saturated.has(base)) {
+      while (lvlPrev < lvlNew) {
+        lvlPrev += 1
         const ordinal = (ordinalByEl.get(base) ?? 0) + 1
         ordinalByEl.set(base, ordinal)
         const id = `${w}:${base}:${ordinal}`
-        if (suppressed.has(id)) {
-          saturated.add(base) // 已满槽且被抑制：保持满槽不触发，积蓄浪费
-        } else {
-          triggers.push({ windowIndex: w, element: ev.element, offsetSeconds: ev.time, moveId: ev.moveId, id })
-          activeUntil.set(base, ev.time + (ANOMALY_DURATION[base] ?? 10))
-          gauges.set(base, 0) // 触发块清空满槽，下一波重新积蓄尝试
-          triggeredHere = true
-        }
+        if (suppressed.has(id)) continue // 该候选被抑制：不清槽，积蓄保留到下一倍数
+        triggers.push({ windowIndex: w, element: ev.element, offsetSeconds: ev.time, moveId: ev.moveId, id })
+        activeUntil.set(base, ev.time + (ANOMALY_DURATION[base] ?? 10))
+        gauges.set(base, 0) // 保留的触发块清空满槽，下一波重新积蓄尝试
+        proposedLevel.set(base, 0)
+        triggeredHere = true
+        break // 清槽后剩余越级层级作废（积蓄从 0 重新计）
       }
+      if (!triggeredHere) proposedLevel.set(base, lvlPrev)
       // 动作末尾槽状态快照：触发事件附着在动作末尾——取触发结算后的槽（清空后）
       snapshotIfActionDone(ev, triggeredHere)
     }
@@ -242,6 +256,8 @@ export interface BossAnomalyStateResult {
   stunsTotal?: number
   /** 接线层注入（纯函数不填）：构建状态链用的窗口时长；消费端取样必须用同一值，禁止重算 */
   windowDuration?: number
+  /** 接线层注入（纯函数不填）：每个代表窗属于哪条轴条目（索引对齐窗口序）——事件次数按条目失衡数加权取样用 */
+  windowEntryIdx?: number[]
   note: string
 }
 

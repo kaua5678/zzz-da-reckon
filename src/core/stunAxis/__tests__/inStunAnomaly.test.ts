@@ -50,21 +50,32 @@ describe('computeInStunAnomalyTimeline（失衡内多属性积蓄槽）', () => 
     expect(r.triggers.filter(t => t.windowIndex === 1)).toHaveLength(1)
   })
 
-  it('抑制触发：满槽保持不触发且本窗不再提案（施加者后台/CD 场景），恢复后重新生效', () => {
+  it('抑制候选不清槽（用户口径：删除=这次是后台，不是永远哑火）', () => {
+    // 三段独立动作，各 +3200（第一管 3000）：L1/L2/L3 三次越级提案
     const mk = (suppressed: string[]) => computeInStunAnomalyTimeline({
       windows: [
-        { actions: [{ moveId: 'm1', element: 'electric', perHitBuildUp: 3200, count: 2, startTime: 0 }] },
+        {
+          actions: [
+            { moveId: 'm1', element: 'electric', perHitBuildUp: 3200, count: 1, startTime: 0 },
+            { moveId: 'm1', element: 'electric', perHitBuildUp: 3200, count: 1, startTime: 1 },
+            { moveId: 'm1', element: 'electric', perHitBuildUp: 3200, count: 1, startTime: 2 },
+          ],
+        },
       ],
       windowDuration: 16,
       suppressedTriggerIds: suppressed,
     })
     const off = mk([])
-    expect(off.triggers).toHaveLength(2)
+    expect(off.triggers.map(t => t.id)).toEqual(['0:electric:1', '0:electric:2', '0:electric:3'])
+    // 删除第 1 次（表达后台）：不清槽——第 2 次越级（2×管）照常提案并触发，之后清槽再攒第 3 次
     const on = mk(['0:electric:1'])
-    // 第一次提案被抑制：满槽保持、后续积蓄不再提案（无第二次）
-    expect(on.triggers).toHaveLength(0)
-    const snap = on.gaugeSnapshots.find(g => g.srcIndex === 0)!
-    expect(snap.pct.electric).toBe(100)
+    expect(on.triggers.map(t => t.id)).toEqual(['0:electric:2', '0:electric:3'])
+    // 首块末尾满槽保持 100%（后台未结算的直观展示）
+    expect(on.gaugeSnapshots.find(g => g.srcIndex === 0)?.pct.electric).toBe(100)
+    // 全部候选都删：满槽保持、永不触发
+    const all = mk(['0:electric:1', '0:electric:2', '0:electric:3'])
+    expect(all.triggers).toHaveLength(0)
+    expect(all.gaugeSnapshots.find(g => g.srcIndex === 2)?.pct.electric).toBe(100)
   })
 
   it('动作末尾积蓄槽快照：每块完成后的各元素槽百分比', () => {
@@ -198,7 +209,9 @@ describe('中间态注入（2026-08-24 用户口径：每次失衡都是中间�
     const r = computeInStunAnomalyTimeline({
       windows: [
         { actions: [{ element: 'ether', perHitBuildUp: 1600, count: 2, startTime: 0 }] },
-        { entryStates: [{ element: 'electric', gauge: 3100 }], actions: [{ element: 'electric', perHitBuildUp: 400, count: 1, startTime: 0 }] },
+        // 声明条未过管（2900<3000）：+400 跨越第一管触发。若声明条已过管（≥第一管）
+        // 视为「进窗时该异常已处于触发态」，不重复提案
+        { entryStates: [{ element: 'electric', gauge: 2900 }], actions: [{ element: 'electric', perHitBuildUp: 400, count: 1, startTime: 0 }] },
       ],
       windowDuration: 16,
     })

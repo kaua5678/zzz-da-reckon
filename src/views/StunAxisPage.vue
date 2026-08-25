@@ -178,7 +178,7 @@
         <div style="display:flex;flex-wrap:wrap;gap:4px">
           <span v-for="el in inStunAnomalyState.elements" :key="el.element"
             style="background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:3px">
-            {{ entryBarLabel(el.element) }} · 触发 {{ el.triggerCount }} 次 · 窗均覆盖 {{ (el.avgCoverage * 100).toFixed(1) }}%
+            {{ entryBarLabel(el.element) }} · 每窗均 {{ (el.triggerCount / Math.max(1, inStunAnomalyState.windows)).toFixed(1) }} 次 · 共 {{ el.triggerCount }} 次 · 窗均覆盖 {{ (el.avgCoverage * 100).toFixed(1) }}%
           </span>
           <span v-if="inStunAnomalyState.elements.length === 0" style="color:rgba(255,255,255,0.35)">轴内动作未产生积蓄触发。</span>
         </div>

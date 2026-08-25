@@ -1371,17 +1371,10 @@ function applyNormaHatChain(
         for (const c of prog.contributions ?? []) contribMap.set(c.moveId, { element: prog.element, perHit: c.perHitBuildUp })
       }
       if (contribMap.size > 0) {
-        // 逐失衡展开窗口（2026-08-24 单独立项收口）：allocateAxisWindows 把总失衡数按轴条目
-        // 顺序分配——条目 count=该动作模式重复的失衡窗数，受实际收敛失衡数钳制；小数失衡
-        // 取整窗模拟（残窗忽略）。积蓄余量/异常状态因此逐窗真实继承，不再代表窗近似。
+        // 单次失衡表达（v3.2 用户裁决）：每条生效轴条目模拟一个代表窗；该段打几次由
+        // 「失衡次数」统计表达，不再逐窗展开、也无跨窗继承（窗口外未建模）。
         const winAlloc = allocateAxisWindows(resolvedAxes, Math.round(stunCount))
-        // 用户口径（2026-08-24 纠正）：第一次失衡前也有非失衡积累期，**每次失衡都是中间态**。
-        // 轴条目的 entryAnomaly/entryBars = 敌方以什么状态、带着哪些元素的异常条进入该段失衡
-        // ——在该条目首个窗口边界注入；未填条目不注入。阈值系数对齐全局池
-        // （store/pool 两端字段命名互换，取乘积规避）
         const thresholdCoeff = (configStore.enemy.anomalyCoeff ?? 1) * (configStore.enemy.bossAnomalyCoeff ?? 1)
-        // 窗口独立模拟（v2.9 用户口径）：跨出窗口是非失衡期且未建模——每窗仅按条目声明的
-        // 初始状态/异常条初始化，无跨窗余量继承；多轮重复段每窗重演同一序列。
         const windows: InStunWindowInput[] = []
         const windowEntryIdx: number[] = []
         resolvedAxes.forEach((axis, ai) => {
@@ -1409,33 +1402,19 @@ function applyNormaHatChain(
               return { element, gauge: (p / 100) * firstPipe * thresholdCoeff }
             })
             .filter((x): x is { element: string; gauge: number } => x !== null)
-          for (let k = 0; k < wins; k++) {
-            windows.push({ actions, entryStates: entryStates.length > 0 ? entryStates : undefined })
-            windowEntryIdx.push(ai)
-          }
+          windows.push({ actions, entryStates: entryStates.length > 0 ? entryStates : undefined })
+          windowEntryIdx.push(ai)
         })
-        // 边界注入：声明了初始状态的条目，其每个窗口开局强制设状态；同时把条目级抑制 id
-        // （局部窗序）映射到全局窗口序
+        // 边界注入：声明了初始状态的条目在其代表窗开局强制设状态；
+        // 抑制 id 以条目序为键（`${ei}:${元素}:${序数}`），无需映射
         const boundaryStates: Array<{ windowIndex: number; element: string }> = []
         const suppressedGlobal: string[] = []
-        {
-          const firstWinByEntry = new Map<number, number>()
-          windows.forEach((_, wi) => {
-            const ei = windowEntryIdx[wi]
-            if (!firstWinByEntry.has(ei)) firstWinByEntry.set(ei, wi)
-          })
-          windows.forEach((_, wi) => {
-            const ei = windowEntryIdx[wi]
-            const axis = resolvedAxes[ei]
-            const el = bossEntryAnomalyElement(axis.entryAnomaly ?? 0)
-            if (el) boundaryStates.push({ windowIndex: wi, element: el })
-            const localK = wi - (firstWinByEntry.get(ei) ?? wi)
-            for (const sid of axis.suppressedTriggers ?? []) {
-              const [kStr, rest] = [sid.split(':')[0], sid.split(':').slice(1).join(':')]
-              if (Number(kStr) === localK) suppressedGlobal.push(`${wi}:${rest}`)
-            }
-          })
-        }
+        windows.forEach((_, wi) => {
+          const axis = resolvedAxes[windowEntryIdx[wi]]
+          const el = bossEntryAnomalyElement(axis.entryAnomaly ?? 0)
+          if (el) boundaryStates.push({ windowIndex: wi, element: el })
+          for (const sid of axis.suppressedTriggers ?? []) suppressedGlobal.push(sid)
+        })
         const tl = computeInStunAnomalyTimeline({ windows, windowDuration: computeWindowDuration(), coeff: thresholdCoeff, suppressedTriggerIds: suppressedGlobal })
         inStunWindowTriggersNext = windows.length > 0
           ? Math.round((tl.triggers.length / windows.length) * 10) / 10
@@ -1485,6 +1464,8 @@ function applyNormaHatChain(
           }),
           stunsTotal: Math.max(1, Math.round(stunCount)),
           windowDuration: bossWindowDur,
+          // 代表窗→条目映射：结算端事件次数按条目失衡数加权取样用
+          windowEntryIdx: windowEntryIdx,
         }
       }
     }
@@ -2352,7 +2333,12 @@ function applyNormaHatChain(
               if (!hasManualShare) {
                 const D = bossRel.windowDuration && bossRel.windowDuration > 0 ? bossRel.windowDuration : computeWindowDuration()
                 // 与极性紊乱同口径：总次数均分到各真实失衡窗，逐窗按该窗状态链取样
-                const winShares = distributeIntegerByWeight(totalRelease, Array(relWindows).fill(1))
+                const alloc = allocateAxisWindows(effectiveStunAxes.value, Math.round(stunPoolResult.value?.stunCount ?? 0))
+                const rIdx = bossRel.windowEntryIdx ?? bossRel.stateChainsPerWindow.map((_, i) => i)
+                const rWeights = rIdx.map(ei => alloc[ei] ?? 0)
+                const winShares = rWeights.some(w => w > 0)
+                  ? distributeIntegerByWeight(totalRelease, rWeights)
+                  : distributeIntegerByWeight(totalRelease, Array(relWindows).fill(1))
                 const merged = new Map<string, number>()
                 for (let w = 0; w < relWindows; w++) {
                   const chain = [...(bossRel.stateChainsPerWindow[w] ?? []), ...(bossRel.windOverlayPerWindow[w] ?? [])]
@@ -2472,7 +2458,13 @@ function applyNormaHatChain(
           if (perEvent > 0 && event.count > 0 && event.element === 'dominant' && boss && bossWindows > 0 && anySegment) {
             const D = boss.windowDuration && boss.windowDuration > 0 ? boss.windowDuration : computeWindowDuration()
             // 事件总次数均分到各真实失衡窗，逐窗按该窗状态链取样归因（展开后每窗链可能不同）
-            const winShares = distributeIntegerByWeight(Math.max(0, Math.floor(event.count)), Array(bossWindows).fill(1))
+            // 事件总次数按各条目的失衡数加权分配到代表窗，逐窗按状态链取样归因
+            const alloc = allocateAxisWindows(effectiveStunAxes.value, Math.round(stunPoolResult.value?.stunCount ?? 0))
+            const wIdx = boss.windowEntryIdx ?? boss.stateChainsPerWindow.map((_, i) => i)
+            const weights = wIdx.map(ei => alloc[ei] ?? 0)
+            const winShares = weights.some(w => w > 0)
+              ? distributeIntegerByWeight(Math.max(0, Math.floor(event.count)), weights)
+              : distributeIntegerByWeight(Math.max(0, Math.floor(event.count)), Array(bossWindows).fill(1))
             const merged = new Map<string, number>()
             for (let w = 0; w < bossWindows; w++) {
               const chain = [...(boss.stateChainsPerWindow[w] ?? []), ...(boss.windOverlayPerWindow[w] ?? [])]
