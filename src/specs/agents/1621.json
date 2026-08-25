@@ -180,16 +180,62 @@
   ],
   "verifications": [],
   "stateMachines": [],
+  "additionalAbility": {
+    "teamConditions": [
+      { "type": "specialty", "values": ["attack", "edgeguard"] }
+    ],
+    "note": "队内有强攻或锋御角色时触发：自身暴击伤害+10%且每级+2%，上限130%；任意队友命中使敌人失衡易伤+30%，击破时失衡时间+2秒；风/污染状态目标额外+10%风直伤。"
+  },
   "notes": [
     "数据源：nanoka.cc raw JSON（data/raw/nanoka_1621.json）与技能倍率表（data/raw/nanoka_1621_skills_lv12.json）；60级基础属性与全部技能倍率已录入 catalog。",
     "核心被动：每消耗30能量获得1点[风能]（Wind Energy），3为存量上限、不限制整局总消耗；默认获得多少消耗多少；已按 implemented_approximation 接入 resources，由机制模块 computeRoxyWindEnergy 执行。",
     "核心被动：初始防御超过1500时，每点防御额外+1.4攻击、+0.2冲击，攻击上限+1000、冲击上限+60；已按 spec attributeConversions 接入引擎（def→atk/impact），当前按局内防御近似初始防御。",
-    "核心被动：战斗中暴击率>=65%时自身异常积蓄效率+60%，非防护队友暴击伤害+32%、防护队友暴击率+16%，持续到战斗结束后30秒；队友 buff 未接入。",
-    "额外能力：队内有强攻或防护角色时，自身暴击伤害+10%且每级+2%，上限130%；任意队友命中使敌人失衡易伤+30%，击破时失衡时间+2秒；风/污染状态目标额外+10%风直伤。待确认后录入。",
+    "核心被动：战斗中暴击率>=65%时自身异常积蓄效率+60%，非锋御队友暴击伤害+32%、锋御队友暴击率+16%，持续到战斗结束后30秒；队友 buff 已按 implemented_approximation 接入 teamBuffs（全队+32%暴击伤害近似，锋御队友暴击率+16%暂未建模）。",
+    "额外能力：队内有强攻或锋御角色时，自身暴击伤害+10%且每级+2%，上限130%；任意队友命中使敌人失衡易伤+30%，击破时失衡时间+2秒；风/污染状态目标额外+10%风直伤。已按 implemented_approximation 接入 teamBuffs（失衡易伤+30%+失衡时长+2s，门控于 additionalAbilityActive）。",
     "技能数据注意：EX 特殊技·Riding the Wind 的持续大旋风按秒倍率（1621010）录入，能量消耗为固定20+每秒20；Wind Cannon/Eye of the Wind 的附加倍率也已按独立招式录入，使用时需确认按秒模型。",
     "动作时间已按倍率表 ether_purify 公式自动录入：一般招式=秽盾/100，闪避反击=秽盾/100-1.5，弹刀=秽盾/100-2.5，终结技=秽盾/100-5；无秽盾数据的追加段不填 actionTime。",
     "命座：nanoka 的命座文本基本为 PlaceHolder 占位，仅3/5命有通用技能等级+2；命座数据不可用，待用户提供正式文本。",
     "特殊逻辑已开始实现：风能/风炮/风眼资源（src/mechanics/agents/roxy.ts）；旋风锤引爆风眼生成小旋风，其余风眼被摧毁结算一次伤害；小旋风持续秒数默认5秒可调，轮转次数待用户确认。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [
+    {
+      "id": "roxy_core_team_crit_dmg",
+      "name": "洛克茜｜核心被动·暴击伤害",
+      "source": "核心被动",
+      "description": "战斗中暴击率>=65%时，非锋御队友暴击伤害+32%（全队+32%近似，锋御队友暴击率+16%暂未建模）。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "critDmg",
+          "value": 32,
+          "mode": "flat"
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "暴击率>=65%条件近似为常驻（符合实战配置）；锋御队友暴击率+16%暂未建模（当前无双锋御队伍）。"
+    },
+    {
+      "id": "roxy_extra_stun_vulnerability",
+      "name": "洛克茜｜额外能力·失衡易伤",
+      "source": "额外能力",
+      "description": "任意队友命中使敌人失衡易伤+30%，击破时失衡时间+2秒。需队伍有强攻或锋御角色。",
+      "target": "enemy",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "stunDmgMultiplierBonus",
+          "value": 30,
+          "mode": "flat"
+        },
+        {
+          "stat": "stunDurationBonusSeconds",
+          "value": 2,
+          "mode": "flat"
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "门控条件：队伍有强攻或锋御角色（additionalAbilityActive）。"
+    }
+  ]
 }

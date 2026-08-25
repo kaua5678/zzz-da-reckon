@@ -21,7 +21,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
-import { applyGoldSteps, baseGoldOf } from '@/composables/teamCompare'
+import { applyGoldSteps, baseGoldOf, applyAxisBinding } from '@/composables/teamCompare'
 
 type Calc = ReturnType<typeof import('@/composables/useResourceCalc').useResourceCalc>
 
@@ -49,6 +49,7 @@ function snapshotStore(configStore: ReturnType<typeof useConfigStore>) {
     enemy: JSON.parse(JSON.stringify(configStore.enemy)),
     appliedBoss: configStore.appliedBoss,
     stunAxes: JSON.parse(JSON.stringify(configStore.stunAxes)),
+    stunAxisPlans: JSON.parse(JSON.stringify(configStore.stunAxisPlans)),
     useStunAxis: configStore.useStunAxis,
     globalBuffs: JSON.parse(JSON.stringify(configStore.globalBuffs)),
     buffSelections: JSON.parse(JSON.stringify(configStore.teammateBuffSelections)),
@@ -60,6 +61,7 @@ function restoreStore(configStore: ReturnType<typeof useConfigStore>, snap: Retu
   configStore.setEnemy(snap.enemy)
   configStore.appliedBoss = snap.appliedBoss
   configStore.stunAxes.splice(0, configStore.stunAxes.length, ...(snap.stunAxes as never[]))
+  configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length, ...(snap.stunAxisPlans as never[]))
   configStore.useStunAxis = snap.useStunAxis
   configStore.globalBuffs.splice(0, configStore.globalBuffs.length, ...(snap.globalBuffs as never[]))
   const selections = configStore.teammateBuffSelections as Record<string, { enabled: boolean; coverage: number }>
@@ -119,9 +121,11 @@ export function computeBreakerCompare(
         configStore.setWEngineModLevel(slot, applied.wengineMods[slot])
         if (applied.wEngines[slot]) configStore.setWEngine(slot, applied.wEngines[slot])
       }
-      // 各自预设轴：不手动设轴，队伍满 3 人自动匹配 stunAxisPresets（selectAutoStunAxisPreset）
-      configStore.useStunAxis = false
-      configStore.stunAxes.splice(0, configStore.stunAxes.length)
+      // 各自预设轴：先恢复快照轴状态，再按 preset.stunAxisPresetId 绑定变体轴（适用 5火10大 等变体）
+      configStore.stunAxes.splice(0, configStore.stunAxes.length, ...(JSON.parse(JSON.stringify(snap.stunAxes)) as never[]))
+      configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length, ...(JSON.parse(JSON.stringify(snap.stunAxisPlans)) as never[]))
+      configStore.useStunAxis = snap.useStunAxis
+      applyAxisBinding(configStore, { stunAxes: snap.stunAxes, stunAxisPlans: snap.stunAxisPlans, useStunAxis: snap.useStunAxis }, preset)
       configStore.syncTeammateBuffsFromTeam()
       configStore.applyBossPreset({ id: boss.id }, phase, boss.monster, boss.defaults)
 

@@ -262,6 +262,7 @@ export function normalizeAxesForExport(axes: StunAxis[]): StunAxis[] {
     if (axis.entryAnomaly && axis.entryAnomaly > 0) clean.entryAnomaly = axis.entryAnomaly
     const bars = Object.entries(axis.entryBars ?? {}).filter(([, v]) => v > 0)
     if (bars.length > 0) clean.entryBars = Object.fromEntries(bars)
+    if (axis.suppressedTriggers && axis.suppressedTriggers.length > 0) clean.suppressedTriggers = [...axis.suppressedTriggers]
     return clean
   })
 }

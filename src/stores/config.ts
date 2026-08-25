@@ -10,6 +10,9 @@ import { computeOptimalSubStats, getTemplate, type OptimizeSubstatsInput, type T
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { calcPanel } from '@/core/panel'
 import { useCatalogStore } from './catalog'
+import { getAgentSpec } from '@/specs/registry'
+import { evalAdditionalAbility } from '@/specs/teamCondition'
+import type { MechanicTeamMember } from '@/mechanics/types'
 
 // ========== 类型定义 ==========
 
@@ -863,6 +866,25 @@ function parseCinemaRequirement(sourceLabel: string): number {
 
     const remielleAdditional = getRemielleAdditionalState()
 
+    // 构建 MechanicTeamMember[] 用于额外能力条件统一判定
+    const mechanicTeam: MechanicTeamMember[] = teamAgents.map(({ char, agent }) => ({
+      slot: char.slot,
+      agentId: char.agentId ?? '',
+      agent: agent ?? null,
+      cinemaLevel: char.cinemaLevel ?? 0,
+      wEngineId: char.wEngineId ?? '',
+      wEngineModLevel: char.wEngineModLevel ?? 1,
+    }))
+    // 预计算每个角色的额外能力是否激活（agentId → boolean）
+    const aaActiveMap = new Map<string, boolean>()
+    for (const mtm of mechanicTeam) {
+      if (!mtm.agent) continue
+      const aaSpec = getAgentSpec(mtm.agentId)?.additionalAbility
+      if (aaSpec) {
+        aaActiveMap.set(mtm.agentId, evalAdditionalAbility(mechanicTeam, mtm.slot, mtm.agent, aaSpec) === true)
+      }
+    }
+
     function resolveSpecialTeammateBuffEnabled(buffId: string, baseEnabled: boolean): boolean {
       if (buffId === '1581.additional_ability.atk_1_anomaly') return baseEnabled && remielleAdditional.active && remielleAdditional.tier === 1
       if (buffId === '1581.additional_ability.atk_2_anomaly') return baseEnabled && remielleAdditional.active && remielleAdditional.tier === 2
@@ -882,7 +904,12 @@ function parseCinemaRequirement(sourceLabel: string): number {
         const sourceLabel = buff.source?.zhCN ?? buff.sourceLabel?.zhCN ?? ''
         const requiredCinema = parseCinemaRequirement(sourceLabel)
         const baseShouldEnable = inTeam && cinemaLevel >= requiredCinema
-        const shouldEnable = resolveSpecialTeammateBuffEnabled(buff.id, baseShouldEnable)
+        let shouldEnable = resolveSpecialTeammateBuffEnabled(buff.id, baseShouldEnable)
+        // 通用额外能力门控：若 buff 来源为"额外能力"且来源角色额外能力未激活，则自动禁用
+        if (shouldEnable && buff.ownerId && sourceLabel === '额外能力') {
+          const aaActive = aaActiveMap.get(buff.ownerId)
+          if (aaActive === false) shouldEnable = false
+        }
 
         // 只在状态变化时更新，保留用户设置的覆盖率
         const current = teammateBuffSelections.value[buff.id]
