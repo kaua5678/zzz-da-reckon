@@ -191,6 +191,7 @@ export function applyTeamMechanics(params: {
   phase: AgentTeamPhase
   combatTime?: number
   exCounts?: number[]
+  ultimateCounts?: number[]
   stunCount?: number
   teamEnergyConsumed?: number
 }): void {
@@ -200,6 +201,7 @@ export function applyTeamMechanics(params: {
   const settings = resolveMechanicSettings(configStore)
   const combatTime = params.combatTime ?? 180
   const exCounts = params.exCounts ?? characters.map(() => 0)
+  const ultimateCounts = params.ultimateCounts ?? characters.map(() => 0)
   const stunCount = params.stunCount ?? 0
   const teamEnergyConsumed = params.teamEnergyConsumed ?? 0
 
@@ -216,6 +218,7 @@ export function applyTeamMechanics(params: {
       phase,
       combatTime,
       exCounts,
+      ultimateCounts,
       stunCount,
       teamEnergyConsumed,
     })

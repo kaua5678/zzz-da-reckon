@@ -97,6 +97,8 @@ export interface AgentTeamConfigInput {
   combatTime: number
   /** 各槽位强特次数（build 阶段全 0；converge/postRound 为对应轮次的收敛值） */
   exCounts: number[]
+  /** 各槽位终结技次数（build/converge 阶段全 0；postRound 为上一轮收敛值，与 exCounts 同序） */
+  ultimateCounts?: number[]
   /** 失衡次数（build 阶段 0） */
   stunCount: number
   /** 全队普通能量消耗（莱特影画4 用；build 阶段 0） */

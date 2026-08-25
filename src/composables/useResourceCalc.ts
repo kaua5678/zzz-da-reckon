@@ -1322,6 +1322,7 @@ function applyNormaHatChain(
     let lighterTeamEnergyNext = 0
     {
       const exByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.exSpecialCount ?? 0]))
+      const ultByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.ultimateCount ?? 0]))
       const exCounts = characters.map(c => Math.max(0, exByAgent.get(c.agentId) ?? 0))
       if (characters.some(c => c.agentId === '1161')) {
         lighterTeamEnergyNext = estimateTeamNormalEnergyConsumed(characters, exCounts)
@@ -1333,6 +1334,7 @@ function applyNormaHatChain(
         phase: 'postRound',
         combatTime: base.totalTime ?? 180,
         exCounts,
+        ultimateCounts: characters.map(c => Math.max(0, ultByAgent.get(c.agentId) ?? 0)),
         stunCount,
       })
     }
