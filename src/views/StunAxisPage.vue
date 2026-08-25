@@ -135,7 +135,7 @@
               class="sap-block"
               :style="blockStyle(act, aii === dragging?.aii)"
               @pointerdown.prevent="startDrag($event, ai, aii)">
-              <span class="sap-block-text">{{ act.label || moveLabel(act.moveId) }}×{{ act.count }}{{ act.promoteVariant ? '·' + act.promoteVariant : '' }}{{ act.sourceTag === 'gift' ? '·赠' : '' }}</span>
+              <span class="sap-block-text">{{ act.label || moveLabel(act.moveId) }}×{{ act.count }}{{ act.promoteVariant ? '·' + act.promoteVariant : '' }}{{ act.sourceTag === 'gift' ? '·赠' : '' }}<span v-if="actDuration(act) > 0" style="opacity:0.7"> {{ actDuration(act).toFixed(1) }}s</span></span>
               <span v-if="mingwangTag(ai, aii)" class="sap-mw" :class="mingwangTag(ai, aii)!.cls">{{ mingwangTag(ai, aii)!.text }}</span>
               <span v-if="ningshenTag(ai, aii)" class="sap-mw" :class="ningshenTag(ai, aii)!.cls">{{ ningshenTag(ai, aii)!.text }}</span>
               <span v-if="stunExTag(ai, aii)" class="sap-mw mw-trigger">{{ stunExTag(ai, aii)!.text }}</span>
@@ -171,7 +171,9 @@
       </div>
 
       <!-- 失衡内异常状态（逐窗积蓄模拟，从资源利用率页迁入）：说明 + 每元素摘要 + 逐窗状态链 + 逐条目事件 -->
-      <div v-if="inStunAnomalyState && useAxes" class="sap-section-title" style="margin-top:10px">
+      <n-collapse v-if="inStunAnomalyState && useAxes" style="margin-top:10px">
+        <n-collapse-item title="失衡内异常状态（状态链 / 触发标注 / 状态判定事件）" name="board">
+      <div v-if="inStunAnomalyState && useAxes" style="font-weight:600;margin-bottom:6px;font-size:12px">
         失衡内异常状态（窗口独立模拟：每次失衡都是中间态——跨出窗口是非失衡期且未建模，每窗按条目声明的初始状态/异常条初始化；满槽经触发块清空并触发，下一波重新积蓄；✕ 抑制=满槽保持不触发（施加者后台/CD 无法判断时用），恢复即重新生效）
       </div>
       <div v-if="inStunAnomalyState" style="font-size:12px;color:rgba(255,255,255,0.75);display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
@@ -200,7 +202,7 @@
           </span>
         </div>
         <div style="color:rgba(255,255,255,0.4);margin-top:2px">动作块上的「触X」标签 = 该招式在此段首窗触发的异常；带·紊乱 = 触发时替换了原状态。极性紊乱/异放的归因与基数都按触发时刻的当前状态结算。</div>
-        <div style="border-top:1px dashed rgba(255,255,255,0.1);margin-top:4px;padding-top:4px">
+        <div style="border-top:1px dashed rgba(255,255,255,0.1);margin-top:4px;padding-top:4px;max-height:180px;overflow:auto">
           <span style="font-size:12px;font-weight:600">状态判定事件（异放/极性紊乱：元素与失衡易伤按触发时刻当前状态结算）</span>
           <div v-for="row in stateJudgedRows" :key="row.key" style="font-size:12px;color:rgba(255,255,255,0.65)">
             [{{ row.type }}] {{ row.agentName }} · {{ row.name }} → {{ entryBarLabel(row.element) }} ×{{ row.count }}（{{ fmt(row.totalDamage, 0) }} 伤害）
@@ -210,6 +212,9 @@
           </div>
         </div>
       </div>
+
+        </n-collapse-item>
+      </n-collapse>
 
       <!-- 统计 -->
       <div v-if="axisResult && useAxes" class="sap-stats">
@@ -237,7 +242,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { NButton, NInput, NInputNumber, NSelect, NSwitch, useMessage } from 'naive-ui'
+import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwitch, useMessage } from 'naive-ui'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -737,6 +742,20 @@ const allMoves = computed(() => {
           ? `[怒]${combo.label}`
           : combo.label
         out.push({ slot: c.slot, moveId: comboId, label: comboLabel, actionTime, remaining: Math.max(0, available - consumed), key: `${c.slot}:${comboId}:combo` })
+      }
+    }
+    // 未单独建模招式（技能表有伤害倍率行、模块未生成执行行）：也进动作池供轴内直读，
+    // 放置后由结算按技能表倍率出直伤（吃易伤；不占时间预算、窗内不产失衡值）
+    const seenTbl = new Set(out.filter(m => m.slot === c.slot).map(m => m.moveId))
+    const tblSkills = catalogStore.getAgentSkills(configStore.team[c.slot]?.agentId ?? '')
+    for (const cat of tblSkills?.categories ?? []) {
+      if (!['special', 'assist', 'ultimate', 'chain'].includes(cat.id ?? '')) continue
+      for (const m of cat.moves ?? []) {
+        if (seenTbl.has(m.id)) continue
+        const dmg = (m.rows ?? []).find(r => r.kind === 'damageMultiplier')
+        if (!dmg || !dmg.values?.[0]) continue
+        seenTbl.add(m.id)
+        out.push({ slot: c.slot, moveId: m.id, label: `[表]${(m.name?.zhCN || m.id).slice(0, 8)}`, actionTime: m.actionTime ?? 0, remaining: 99, key: `${c.slot}:${m.id}:table` })
       }
     }
   }

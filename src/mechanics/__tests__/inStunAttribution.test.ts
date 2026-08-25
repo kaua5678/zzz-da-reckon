@@ -475,3 +475,33 @@ describe('南宫羽快支动作块（v2.9）', () => {
     expect(without.damagePoolRows.value.filter(r => r.moveId === '1511013').length).toBe(0)
   })
 })
+
+describe('轴内直读技能表（v3.5 通用兜底）', () => {
+  it('未建模招式放置后按技能表倍率出直伤并吃易伤；未放置无行', async () => {
+    const mk = async (place: boolean) => {
+      const { config } = await setupHarness([{ agentId: '1511' }, { agentId: '1371' }])
+      config.enemy.stunCountLock = 2
+      config.useStunAxis = true
+      config.stunAxes = [{
+        name: '直读轴',
+        count: 2,
+        actions: [
+          { slot: 0, moveId: '1511006', count: 4, startTime: 0 },
+          // 1511007 特殊技：有点沉重的爱意——南宫羽模块未生成执行行的招式（特殊技类，伤害倍率 167.1%）
+          ...(place ? [{ slot: 0, moveId: '1511007', count: 1, startTime: 6 }] : []),
+        ],
+        basicFillerSlot: 0,
+      }]
+      return useResourceCalc()
+    }
+    const withRow = await mk(true)
+    // 动作池收录（[表] 前缀 chip）
+    expect(withRow.resourceResult.value!.characters.find(c => c.agentId === '1511')!
+      .executions.some(e => e.moveId === '1511007')).toBe(false)
+    const rows = withRow.damagePoolRows.value.filter(r => r.moveId === '1511007')
+    expect(rows.length).toBeGreaterThan(0)
+    expect(rows[0].totalDamage).toBeGreaterThan(0)
+    const without = await mk(false)
+    expect(without.damagePoolRows.value.filter(r => r.moveId === '1511015').length).toBe(0)
+  })
+})

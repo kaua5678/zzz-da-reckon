@@ -2312,6 +2312,43 @@ function applyNormaHatChain(
         }
       }
 
+      // 轴内直读技能表（通用兜底）：动作池「[表]」块被放置但模块未生成执行行的招式——
+      // 按放置块数×窗口数出直伤（吃全额易伤）；不占时间预算、窗内不产失衡值（引擎既定口径）
+      if (isAxis) {
+        const backed = new Set(charResult.executions.map(e => e.moveId))
+        const tblAlloc = allocateAxisWindows(effectiveStunAxes.value, Math.round(stunPoolResult.value?.stunCount ?? 0))
+        const placedTable = new Map<string, number>()
+        effectiveStunAxes.value.forEach((axis, ai) => {
+          const wins = tblAlloc[ai] ?? 0
+          for (const act of axis.actions) {
+            if (act.slot !== slot) continue
+            const mid = act.moveId
+            if (backed.has(mid) || !/^\d+$/.test(mid)) continue
+            placedTable.set(mid, (placedTable.get(mid) ?? 0) + Math.max(0, Math.floor(act.count || 1)) * wins)
+          }
+        })
+        console.log('TBLX', slot, JSON.stringify([...placedTable]))
+        const tblSkills = catalogStore.getAgentSkills(configStore.team[slot]?.agentId ?? '')
+        for (const [mid, count] of placedTable) {
+          if (count <= 0) continue
+          const move = findMoveById(tblSkills, mid)
+          const dmgRow = (move?.rows ?? []).find((r: any) => r.kind === 'damageMultiplier')
+          const mult = Number(dmgRow?.values?.[0] ?? 0)
+          if (!move || !(mult > 0)) continue
+          pushDirect({
+            id: `direct-${slot}-${mid}-table`,
+            slot, agentId: charResult.agentId,
+            name: `${move.name?.zhCN || mid}（表）`,
+            element: move.damageElement ?? catalogStore.getAgent(charResult.agentId)?.damageElement ?? 'physical',
+            source: '轴内·技能表直读',
+            count, multiplier: mult,
+            note: '该招式未单独建模：按技能表倍率直读，吃失衡易伤；不占时间预算、窗内不产失衡值',
+            moveId: mid,
+            stunOverride: 1,
+          })
+        }
+      }
+
       for (const event of charResult.anomalyEventExecutions ?? []) {
         if (event.count <= 0) continue
         if (event.eventType === 'release') {
