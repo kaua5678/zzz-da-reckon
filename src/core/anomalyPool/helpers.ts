@@ -665,21 +665,25 @@ export function calcStunMultiplier(
   stunCapAlways: number,
   stunned: boolean | number,
 ): number {
-  // boolean: false → 1, true → 满乘区
-  // number: 覆盖率 0-1 → 1 + (满乘区 − 1) × coverage
+  // Always 通道（扳机35%/55%）在非失衡时也贡献：1 + alwaysBonus / 100
+  const alwaysClamped = stunCapAlways > 0 ? Math.min(stunBonusAlways, stunCapAlways) : stunBonusAlways
+  const alwaysMult = 1 + alwaysClamped / 100
+  // boolean: false → alwaysMult, true → 满乘区
+  // number: 覆盖率 0-1 → alwaysMult + (满乘区 − alwaysMult) × coverage
   if (typeof stunned === 'boolean') {
-    if (!stunned) return 1
+    if (!stunned) return alwaysMult
     let bonus = stunBonus + stunBonusAlways
     if (stunCapAlways > 0) bonus = Math.min(bonus, stunCapAlways)
     return Math.max(0, baseStunMultiplier + bonus / 100)
   }
   // number = coverage 0-1
   const cov = Math.max(0, Math.min(1, stunned))
-  if (cov <= 0) return 1
+  if (cov <= 0) return alwaysMult
   let bonus = stunBonus + stunBonusAlways
   if (stunCapAlways > 0) bonus = Math.min(bonus, stunCapAlways)
-  const fullMult = Math.max(0, baseStunMultiplier + bonus / 100)
-  return 1 + (fullMult - 1) * cov
+  const fullStunMult = Math.max(0, baseStunMultiplier + bonus / 100)
+  // Always 通道全时段生效；stunBonus 和 baseStunMultiplier 仅失衡窗口内
+  return alwaysMult + (fullStunMult - alwaysMult) * cov
 }
 
 /**

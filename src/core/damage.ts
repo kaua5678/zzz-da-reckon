@@ -9,6 +9,7 @@ import type {
   CalculatorConfig, AnomalyEffect, DisorderEffect, SkillDamageTarget,
 } from '@/types/catalog'
 import { calcPanel, type PanelResult } from './panel'
+import { calcStunMultiplier } from './anomalyPool/helpers'
 import { getSkillDmgBonus, getStunBuildUpBonus, getTargetedStat, getTargetedStatExtra, normalizeSkillDamageTarget } from './buff'
 import { fmt } from '@/utils/format'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
@@ -117,28 +118,6 @@ function calcResistanceMultiplier(
   const effectiveRes = baseResistance - resReduction - resIgnore
   const multiplier = 1 - effectiveRes / 100
   return { multiplier, effectiveRes }
-}
-
-/** 失衡伤害倍率 */
-function calcStunMultiplier(
-  baseStunMultiplier: number,
-  stunBonus: number,
-  stunBonusAlways: number,
-  stunCapAlways: number,
-  stunned: boolean | number | number,
-): number {
-  if (typeof stunned === 'boolean') {
-    if (!stunned) return 1
-    let bonus = stunBonus + stunBonusAlways
-    if (stunCapAlways > 0) bonus = Math.min(bonus, stunCapAlways)
-    return Math.max(0, baseStunMultiplier + bonus / 100)
-  }
-  const cov = Math.max(0, Math.min(1, stunned))
-  if (cov <= 0) return 1
-  let bonus = stunBonus + stunBonusAlways
-  if (stunCapAlways > 0) bonus = Math.min(bonus, stunCapAlways)
-  const fullMult = Math.max(0, baseStunMultiplier + bonus / 100)
-  return 1 + (fullMult - 1) * cov
 }
 
 /** 暴击乘区 */
