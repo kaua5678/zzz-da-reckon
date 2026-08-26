@@ -3525,29 +3525,29 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
             "开局3个特殊虚耀与垂虹载体动作已接入",
             "花羽轮舞额外喧响与自身全属性抗性无视字段已录入",
             "队友异常增伤+10%已写入队友Buff，并排除蕾米本人",
-            "特殊虚耀伤害已按垂虹耀变倍率×2.5独立乘区接入结果页"
+            "特殊虚耀伤害已按垂虹耀变倍率×2.5独立乘区接入结果页",
+            "特殊虚耀 ×2.5 独立乘区（用户口径：特殊虚耀基础区由蕾米自供偏低，补 250% 独立区）。"
           ],
           "pending": [
-            "Luminous Reflection状态未模拟，队友异常增伤按全程覆盖处理",
-            "特殊虚耀公式待实测校对"
+            "Luminous Reflection 状态未模拟（逐时序，队友异常增伤按全程覆盖近似）。"
           ]
         },
         {
           "cinema": 2,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
             "异化/折射系数+20%已写入队友Buff面板字段",
             "异常角色对Prismatic目标异常伤害无视15%防御已写入队友Buff",
-            "核心被动3异常+10%异化系数已补录"
+            "核心被动3异常+10%异化系数已补录",
+            "异化系数已乘到所有异常事件（基础区之一：燃烧DoT/强击/极性紊乱/异放/极性强击/乱流/耀变全吃）。"
           ],
           "pending": [
-            "Prismatic状态与8秒延长期未模拟，按静态覆盖率处理",
-            "异化/折射系数已在虚耀公式读取，普通异常伤害公式仍未读取"
+            "Prismatic 状态与 8 秒延长期未模拟（按静态覆盖率近似）。"
           ]
         },
         {
@@ -3562,15 +3562,13 @@
         },
         {
           "cinema": 4,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
             "特殊虚耀再装填数量进入事件与垂虹载体动作",
             "耀变倍率加成写入面板字段",
             "4命补充3个特殊虚曜点，特殊虚耀次数变为6次（6命为12次）"
           ],
-          "pending": [
-            "特殊虚耀与普通耀变公式待实测校对"
-          ]
+          "pending": []
         },
         {
           "cinema": 5,
@@ -3584,14 +3582,12 @@
         },
         {
           "cinema": 6,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
             "特殊虚耀/耀变等触发次数倍率写入面板和资源事件",
             "特殊虚耀次数翻倍；普通攻击惊鸿耀变次数翻倍"
           ],
-          "pending": [
-            "六命全部专属动作的最终伤害拆分仍需实测校对"
-          ]
+          "pending": []
         }
       ]
     },

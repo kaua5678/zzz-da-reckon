@@ -162,7 +162,9 @@
 ### 蕾米埃尔（1581）
 
 
-- **当前实现状态 [部分实现 2026-08-25]**（实现位置：`src/mechanics/agents/remielle.ts` 展示账本 + `composables/resourceCalc/helpers.ts` 垂虹/特殊虚耀引擎逻辑 + `useResourceCalc.ts` 收敛注入 + spec `1581.json`；拐力 teammate-buffs 7条；测试 `src/mechanics/__tests__/remielle.test.ts` 2 例）。异化系数=精通×0.02%、耀变倍率提升=精通×0.1% 已锁测试；耀变次数由异常池自动结算。状态由 not_described_not_implemented 修正。
+- **当前实现状态 [已实现·近似 2026-08-26]**（实现位置：`src/mechanics/agents/remielle.ts` 展示账本 + `composables/resourceCalc/helpers.ts` 垂虹/特殊虚耀引擎逻辑 + `useResourceCalc.ts` 收敛注入 + spec `1581.json`；拐力 teammate-buffs 7条；测试 `src/mechanics/__tests__/remielle.test.ts` 2 例）。异化系数=精通×0.02%、耀变倍率提升=精通×0.1% 已锁测试；耀变次数由异常池自动结算。状态由 not_described_not_implemented 修正。
+- **异化系数（用户口径 2026-08-26）**：基础区之一（与攻击/精通/增伤区平齐），乘到所有异常事件（燃烧DoT/强击瞬伤/极性紊乱/异放/极性强击/乱流/耀变全吃），通常加成 1.2-1.5；0 命即有，C2 加数值 20%。
+- **特殊虚耀（用户口径 2026-08-26）**：×2.5 独立乘区——特殊虚耀基础区由蕾米自供（偏低），补 250% 独立区；正常虚耀基础区由队友提供（偏高）。
 - 耀变次数不是用户设置项，由队友异常触发池自动结算：虚耀池 = 非蕾米槽位异常触发数；支援技按池数、终结技按 `floor(池数 / 3) × 3`、普攻按 `池数 × 6命倍率`。
 - 资源利用率页只保留“蕾米 Q 耀变分配”来选 Q 批次由哪名队友提供，不再提供“耀变触发次数”输入。
 
@@ -472,7 +474,8 @@
 
 > **当前实现状态 [已实现 2026-08]**（实现位置：`src/mechanics/agents/vivian.ts` + `src/composables/useResourceCalc.ts` 收敛注入 + spec `1331.json` teamBuffs/events；测试 `src/mechanics/__tests__/vivian.test.ts` 17 例）。含：资源循环、落羽双源计数、核心异放、预言 DoT、影画 1/2/4/6。`docs/AGENT_RECORDING_SOP.md` §3.8 为异放/跨角色计数/后台招式的录入规则。
 
-- **资源循环（飞羽→护羽→落羽生花）**：飞羽来源 = 进场2 + 淑女礼仪命中+1 + 强特+3（C6 额外+1）+ 连携+2 + 终结+5 + 支援突击+2；悬落消耗全部飞羽转护羽（1:1）；落羽生花消耗1护羽/次。C1 每消耗4护羽回1飞羽；C4 进场+5护羽。模块 `computeVivianCycle`（纯函数 + 单测）。
+- **资源循环（飞羽→护羽→落羽生花）**：飞羽来源 = 进场2 + 淑女礼仪命中+1 + **自身强特**+3（C6 额外+1）+ 连携+2 + 终结+5 + 支援突击+2（2026-08-26 修正：飞羽强特源由「全队强特」改「自身强特」，全队强特只作落羽生花源1）；悬落消耗全部飞羽转护羽（1:1）；落羽生花消耗1护羽/次。C1 每消耗4护羽回1飞羽；C4 进场+5护羽。模块 `computeVivianCycle`（纯函数 + 单测）。
+- **悬落（裙裾浮游·悬落 1331006，2026-08-26 补接）**：后台自动衔接 E/Q/支援突击/连携 后（次数 = 四者之和），`timeBucket=backstage` + actionTime=0 不占前台；直伤 160.5% 按倍率表回填。E（堇花悼亡 1331010）全部合轴：`estimateExSpecialTime` necessaryTime=0 + `timeBucket=backstage`。
 - **落羽生花双源触发**：源1 = 任意角色强化特殊技命中（同一招式至多一次）；源2 = 队友施加属性异常（0.5s CD，额外能力门控）。次数 = min(源1+源2, 护羽总量)；计数经 useResourceCalc 收敛注入（`vivianTeamExTotal` 全队强特 / `vivianAnomalyTriggerTotal` 全队异常触发，参照露西/莱卡恩模式）。落羽生花行 moveId `1331008`（440% 以太，actionTime=0 不占前台）。
 - **核心被动异放（跟随事件触发）**：落羽生花命中「处于异常状态」的目标触发；比例 = 每10点异常精通 6.15%/3.2%/8%/0.75%/1.08%/0.32%（以太/电/火/物/冰/风）；`releaseRatio` 框架（basis=anomalyProficiency，次数 × 命中异常占比，异常角色默认满覆盖）。**异放限定增益走 `releaseModifier`**（影画2 无视15%全抗只作用于异放结算，禁止面板级 enemyResReduction）。轴模式下异放按**事件计数器**拆「失衡内(stunned=1 全额易伤，stunBonusPct 50% 吃满 ×1.5)/轴外(stunned=0)」两段——占比 = 时间线轴内触发数 / 全局池触发数；源2 计数本身保持总量口径（用户裁决：非轴场景 = 总量 − 失衡内，不建逐事件状态机）。
 - **影画2**：以太异常积蓄效率 +25%（`etherAnomalyBuildUpEfficiency` 元素限定，2026-08-26 补接）；异放精通收益 ×130%（perTen 放大）+ 无视15%全抗（releaseModifier 异放限定，见核心被动异放行）。

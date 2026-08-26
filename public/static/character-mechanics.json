@@ -5376,27 +5376,27 @@
       "cinemaImplementation": [
         {
           "cinema": 1,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
             "自身特殊虚耀、花羽轮舞喧响、全属性抗性无视字段已录入",
             "队友异常增伤+10%已写入队友Buff并排除蕾米本人",
-            "特殊虚耀按垂虹耀变倍率×2.5独立乘区接入"
+            "特殊虚耀按垂虹耀变倍率×2.5独立乘区接入",
+            "特殊虚耀 ×2.5 独立乘区（用户口径：特殊虚耀基础区由蕾米自供偏低，补 250% 独立区）。"
           ],
           "pending": [
-            "Luminous Reflection状态未模拟",
-            "特殊虚耀公式待实测校对"
+            "Luminous Reflection 状态未模拟（逐时序，队友异常增伤按全程覆盖近似）。"
           ]
         },
         {
           "cinema": 2,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
             "异化/折射+20%与Prismatic减防15%已写入队友Buff",
-            "核心被动3异常+10%异化已补录"
+            "核心被动3异常+10%异化已补录",
+            "异化系数已乘到所有异常事件（基础区之一：燃烧DoT/强击/极性紊乱/异放/极性强击/乱流/耀变全吃）。"
           ],
           "pending": [
-            "异化/折射系数尚未被异常伤害公式完整读取",
-            "Prismatic与8秒延长期未按时间轴模拟"
+            "Prismatic 状态与 8 秒延长期未模拟（按静态覆盖率近似）。"
           ]
         },
         {
@@ -5409,15 +5409,13 @@
         },
         {
           "cinema": 4,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
             "耀变倍率+12%写入面板字段",
             "4命补充3个特殊虚曜点",
             "特殊虚耀再装填数量进入事件与垂虹载体动作"
           ],
-          "pending": [
-            "部分专属伤害仍依赖后续事件结算"
-          ]
+          "pending": []
         },
         {
           "cinema": 5,
@@ -5429,14 +5427,12 @@
         },
         {
           "cinema": 6,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
             "耀变与特殊虚耀触发次数倍率写入面板和资源事件",
             "特殊虚耀次数翻倍；普通攻击惊鸿耀变次数翻倍"
           ],
-          "pending": [
-            "六命全部专属动作的最终伤害拆分仍需继续核对"
-          ]
+          "pending": []
         }
       ]
     },
