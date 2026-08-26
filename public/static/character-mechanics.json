@@ -2654,12 +2654,13 @@
         },
         {
           "cinema": 6,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
-            "核心被动生命转暴击效果提升至原本125%"
+            "核心被动按初始最大生命值提高暴击率的效果提升至原本125%",
+            "最终裁决蓄力生命附伤提升至140%且蓄力时长不消耗（满蓄5秒×23%最大生命×1.4，flatDamageBonus 后台行）"
           ],
           "pending": [
-            "最终裁决蓄力生命附伤提升至140%且蓄力时长不消耗"
+            "蓄力时长逐秒时序按满蓄5秒近似"
           ]
         }
       ],

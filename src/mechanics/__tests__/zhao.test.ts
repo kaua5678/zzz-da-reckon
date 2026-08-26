@@ -5,6 +5,10 @@ import {
   ZHAO_C4_CRIT_DMG,
   ZHAO_C4_DECIBEL,
   ZHAO_C4_MOVE_IDS,
+  ZHAO_CHARGE_LIFE_RATIO,
+  ZHAO_CHARGE_MAX_SECONDS,
+  ZHAO_C6_CHARGE_MULTIPLIER,
+  ZHAO_VERDICT_MOVE_ID,
   zhaoMechanic,
 } from '@/mechanics/agents/zhao'
 
@@ -104,6 +108,50 @@ describe('照自身核心与影画机制', () => {
     } as any)
     for (const exec of target) expect(exec.critDmgBonus).toBe(ZHAO_C4_CRIT_DMG)
     for (const exec of other) expect(exec.critDmgBonus).toBe(0)
+  })
+})
+
+describe('照霜寒值循环与最终裁决蓄力生命附伤', () => {
+  it('霜寒值满开帷幕，后台生成最终裁决蓄力附伤（flatDamageBonus）', () => {
+    const mk = (cinemaLevel: number) => {
+      const executions: any[] = []
+      zhaoMechanic.buildExecutions!({
+        cfg: { zhaoCinemaLevel: cinemaLevel, panel: { hp: 30000 } },
+        state: { exSpecialCount: 2, ultimateCount: 1 },
+        teamFrontlineSeconds: 90,
+        executions,
+      } as any)
+      return executions
+    }
+    // 霜寒值 = 100 + 2×20 + 1×20 + 30×6 = 340 → 开帷幕 3 次
+    const c0 = mk(0)
+    expect(c0.length).toBe(1)
+    expect(c0[0].moveId).toBe(ZHAO_VERDICT_MOVE_ID)
+    expect(c0[0].count).toBe(3)
+    expect(c0[0].timeBucket).toBe('backstage')
+    expect(c0[0].flatDamageBonus).toBeCloseTo(30000 * ZHAO_CHARGE_MAX_SECONDS * ZHAO_CHARGE_LIFE_RATIO, 5)
+
+    // 影画6：×1.4
+    const c6 = mk(6)
+    expect(c6[0].flatDamageBonus).toBeCloseTo(
+      30000 * ZHAO_CHARGE_MAX_SECONDS * ZHAO_CHARGE_LIFE_RATIO * ZHAO_C6_CHARGE_MULTIPLIER, 5)
+  })
+
+  it('影画4暴伤仍作用于最终裁决行（蓄力附伤行）', () => {
+    const executions: any[] = [{ moveId: ZHAO_VERDICT_MOVE_ID, critDmgBonus: 0 }]
+    zhaoMechanic.buildExecutions!({
+      cfg: { zhaoCinemaLevel: 4, panel: { hp: 30000 } },
+      state: { exSpecialCount: 1, ultimateCount: 0 },
+      teamFrontlineSeconds: 0,
+      executions,
+    } as any)
+    zhaoMechanic.patchExecutions!({
+      cfg: { zhaoCinemaLevel: 4 },
+      state: {},
+      executions,
+    } as any)
+    const verdict = executions.find(e => e.moveId === ZHAO_VERDICT_MOVE_ID)!
+    expect(verdict.critDmgBonus).toBe(ZHAO_C4_CRIT_DMG)
   })
 })
 
