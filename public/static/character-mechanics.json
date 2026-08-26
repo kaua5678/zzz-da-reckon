@@ -1531,7 +1531,7 @@
           "codePaths": [
             "src/mechanics/agents/ellen.ts"
           ],
-          "note": "充能获取按原文拆分（剪击/强特/影画4），消耗折算为急冻修剪法段数；冰渊潜袭按真实moveId生成。"
+          "note": "平A池时间驱动：强特/影画4充能先结算免费burst，剩余时间按蓄力剪击填满（强特挤掉低DPS蓄力）；急冻修剪法只打第三段；影画4冻结读异常池。"
         }
       ],
       "mechanics": [
@@ -1590,7 +1590,7 @@
           "cinema": 1,
           "status": "implemented_approximation",
           "implemented": [
-            "冰渊潜袭快速剪击获取急冻充能提升至3点、蓄力剪击提升至6点；每消耗1点充能暴击率+2%按平均层数计入面板。"
+            "蓄力剪击获取急冻充能提升至6点（点按快速剪击不进主循环）；每消耗1点充能暴击率+2%按平均层数计入面板。"
           ],
           "pending": [
             "每层15秒独立结算持续时间按平均层数近似。"
@@ -1616,12 +1616,12 @@
         },
         {
           "cinema": 4,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
-            "队伍角色冻结/失衡时获得6点急冻充能，按连携次数近似计入充能获取。"
+            "队伍角色冻结/失衡时获得6点急冻充能并回复4点能量：充能+6/次、回能×4/次×CD率(默认不卡CD)，触发次数=冻结次数(读异常池ice触发数)+失衡次数；回能经applyTeamConfig converge幂等并入initialEnergyGift。"
           ],
           "pending": [
-            "[快蓄]状态与回复4点能量（10秒一次）未建模。"
+            "附带的[快蓄]状态未建模；能量10秒CD按可调调节率(ellen.c4CdRate)近似。"
           ]
         },
         {
@@ -1634,12 +1634,13 @@
         },
         {
           "cinema": 6,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
-            "发动强特/连携/快蓄后穿透率+20%按整局覆盖率计入面板。"
+            "发动强特/连携/快蓄后穿透率+20%按整局覆盖率计入面板。",
+            "盛宴3层后蓄力剪击伤害+250%（增伤区dmgBonus），按覆盖率(ellen.c6FeastCoverage)在patchExecutions定向挂在蓄力剪击1191009行。"
           ],
           "pending": [
-            "[盛宴]3层后蓄力剪击伤害+250%缺蓄力剪击独立moveId载体，未建模。"
+            "[盛宴]逐层时序（每3层强化一次蓄力剪击）按覆盖率近似。"
           ]
         }
       ],
@@ -1652,9 +1653,7 @@
           "暴伤按执行行级critDmgBonus定向挂在受益招式，不再全局加面板暴伤。",
           "冰渊潜袭、急冻修剪法按真实moveId轮转生成执行行，计入伤害与失衡/异常提取。"
         ],
-        "pendingParts": [
-          "潜能强化版对连携/终结/霜锋/冰刃浪的生效按catalog口径启用，未做潜能门控。"
-        ],
+        "pendingParts": [],
         "codePaths": [
           "src/mechanics/agents/ellen.ts"
         ],
@@ -1669,9 +1668,7 @@
           "同属性或同阵营（强化版另含击破）队友激活；风暴潮每层冰伤+3%按平均层数计入面板冰伤。",
           "10秒刷新与最多10层按平均层数近似。"
         ],
-        "pendingParts": [
-          "潜能极冰带每层暴伤与满层无视冰抗未建模（项目暂无潜能输入）。"
-        ],
+        "pendingParts": [],
         "codePaths": [
           "src/mechanics/agents/ellen.ts"
         ],
