@@ -1956,23 +1956,22 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
             "累计消耗4点护羽返1点飞羽按资源折算；预言下异常/紊乱增伤+16%沿用spec teamBuffs。"
           ],
           "pending": [
-            "[薇薇安的预言]作为敌方状态条件未建模。"
+            "[薇薇安的预言]作为敌方状态按满覆盖近似（异常角色默认满覆盖，不逐状态模拟）。"
           ]
         },
         {
           "cinema": 2,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
-            "以太异常积蓄效率+25%沿用computePanelPhases既有面板块。"
+            "以太异常积蓄效率+25%沿用面板块。",
+            "异放精通收益×130%（buildAnomalyEvents perTen 放大）与无视15%全属性抗性（releaseModifier 仅异放结算）。"
           ],
-          "pending": [
-            "异放精通收益×130%与无视15%全属性抗性属异常结算区，未建模。"
-          ]
+          "pending": []
         },
         {
           "cinema": 3,
@@ -2002,12 +2001,13 @@
         },
         {
           "cinema": 6,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
-            "以太伤害+40%计入面板etherDmg。"
+            "以太伤害+40%计入面板 etherDmg。",
+            "强特回飞羽+1 并入飞羽资源（computeVivianCycle）；悬落消耗护羽特殊异放比例×5（buildAnomalyEvents，最多5点护羽）。"
           ],
           "pending": [
-            "极限闪避/强特回飞羽仅入资源明细；悬落消耗护羽提高异放比例（最多5倍）属异常结算区，未建模。"
+            "极限闪避回飞羽（淑女礼仪舞步突进期间触发极限闪避额外+1飞羽）未单独建模，并入舞步命中计数近似。"
           ]
         }
       ]
