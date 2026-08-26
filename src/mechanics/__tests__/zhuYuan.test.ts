@@ -73,21 +73,13 @@ describe('朱鸢核心被动与影画（自身面板）', () => {
     stubFetch()
   })
 
-  it('强化霰弹增伤+40% 走 basic/dashAttack 定向；失衡部分按覆盖率滑块（默认0）', async () => {
+  it('核心被动强化霰弹增伤+40% 走 basic/dashAttack 定向', async () => {
     const { catalog, config } = await setup('1031', 0)
     const phases = computePanelPhases(0, config, catalog)!
     const inC = phases.inCombat as any
     const out = phases.outOfCombat as any
     expect(getTargetedStat(inC, 'skillDmgBonus', 'basic') - getTargetedStat(out, 'skillDmgBonus', 'basic')).toBeCloseTo(40, 5)
     expect(getTargetedStat(inC, 'skillDmgBonus', 'dashAttack') - getTargetedStat(out, 'skillDmgBonus', 'dashAttack')).toBeCloseTo(40, 5)
-    // 失衡覆盖率默认 0：无额外增伤
-    expect((inC.skillDmgBonus ?? 0) - (out.skillDmgBonus ?? 0)).toBeCloseTo(0, 5)
-
-    // 滑块调到 50%：失衡部分 +20
-    config.setMechanicSetting('zhuYuan.coreStunnedCoverage', 0.5)
-    const inHalf = computePanelPhases(0, config, catalog)!.inCombat as any
-    expect(getTargetedStat(inHalf, 'skillDmgBonus', 'basic') - getTargetedStat(out, 'skillDmgBonus', 'basic')).toBeCloseTo(60, 5)
-    config.setMechanicSetting('zhuYuan.coreStunnedCoverage', 0)
   })
 
   it('影画差分：2命以太增伤+50%、4命以太抗性无视+25%', async () => {
@@ -173,6 +165,21 @@ describe('朱鸢强化霰弹资源循环', () => {
     expect(etherTime).toBeLessThanOrEqual(20 + 0.5)
     // 非6命无余温行
     expect(executions.some(r => r.moveId === 'zhuyuan_c6_afterglow_bullets')).toBe(false)
+  })
+
+  it('核心被动失衡增伤+40%：per-row 挂在压制以太行（仪玄凝云术同款，非轴覆盖率）', () => {
+    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1, 'setting:zhuYuan.coreStunnedCoverage': 0.5 }
+    const executions: any[] = []
+    zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions } as any)
+    const etherRows = executions.filter(r => ['1241010', '1241011', '1241012'].includes(r.moveId))
+    // 覆盖率 50% → +20% 增伤挂在每段以太行
+    expect(etherRows.length).toBe(3)
+    expect(etherRows.every(r => r.dmgBonus === 20)).toBe(true)
+    // 覆盖率 0 → 无 dmgBonus
+    const cfg0: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1, 'setting:zhuYuan.coreStunnedCoverage': 0 }
+    const empty: any[] = []
+    zhuYuanMechanic.buildExecutions!({ cfg: cfg0, state: mkState(), executions: empty } as any)
+    expect(empty.filter(r => ['1241010', '1241011', '1241012'].includes(r.moveId)).every(r => (r.dmgBonus ?? 0) === 0)).toBe(true)
   })
 
   it('影画6 以太余温：floor(霰弹总量/12)次 ×4枚鹿弹执行行（附在压制以太之后）', () => {
