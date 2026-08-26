@@ -59,6 +59,25 @@ describe('伊芙琳（1321）燎索点与总量', () => {
     expect(c.garroteType2Count).toBe(2)
   })
 
+  it('影画2燎火返还：每25s白嫖一次绞勒式并计入燎索点（差分）', () => {
+    const c0 = cycle({ cinemaLevel: 0, garroteCount: 4, ultimateCount: 2, battleTime: 180 })
+    expect(c0.c2BonusGarrote).toBe(0)
+    expect(c0.garroteCount).toBe(4)
+    expect(c0.anchorPoints).toBe(6)
+    expect(c0.anchorChainCount).toBe(3)
+
+    // 1命无燎火返还
+    expect(cycle({ cinemaLevel: 1, garroteCount: 4, battleTime: 180 }).c2BonusGarrote).toBe(0)
+
+    const c2 = cycle({ cinemaLevel: 2, garroteCount: 4, ultimateCount: 2, battleTime: 180 })
+    expect(c2.c2BonusGarrote).toBe(7) // floor(180/25)
+    expect(c2.garroteCount).toBe(11) // 4 + 7
+    expect(c2.garroteType1Count).toBe(6)
+    expect(c2.garroteType2Count).toBe(5)
+    expect(c2.anchorPoints).toBe(13) // 11绞勒 + 2终结
+    expect(c2.anchorChainCount).toBe(6) // floor(13/2)
+  })
+
   it('核心被动暴击率按覆盖率折算，倍率×1.25需额外能力且暴击≥80%', () => {
     expect(cycle({ restraintCoverage: 0.5 }).coreCritRate).toBe(EVELYN_CORE_CRIT_RATE * 0.5)
     // baseCrit 60 + 核心25 = 85 ≥ 80 → 生效
@@ -83,6 +102,7 @@ describe('伊芙琳（1321）燎索点与总量', () => {
 describe('伊芙琳执行行与定向结算', () => {
   const cfgWith = (cinema: number, extra: Record<string, unknown> = {}) => ({
     panel: { critRate: 60, additionalAbilityActive: 1 },
+    battleTime: 0,
     evelynCinemaLevel: cinema,
     evelynGarroteCount: 4,
     evelynRestraintCoverage: 1,
@@ -138,6 +158,27 @@ describe('伊芙琳执行行与定向结算', () => {
       executions: [follow],
     } as any)
     expect(follow.dmgBonus).toBe(EVELYN_ADDITIONAL_DMG)
+  })
+
+  it('执行行差分：影画2额外生成绞勒式并多换月辉丝·绊', () => {
+    const mk = (cinema: number, battleTime: number) => {
+      const executions: any[] = []
+      evelynMechanic.buildExecutions!({
+        cfg: cfgWith(cinema, { battleTime }),
+        state: { exSpecialCount: 0, ultimateCount: 2, chainCountTotal: 0 },
+        executions,
+      } as any)
+      return executions
+    }
+    const garrote1 = (rows: any[]) => rows.find(r => r.moveId === EVELYN_GARROTE_1_MOVE_ID)?.count ?? 0
+    const garrote2 = (rows: any[]) => rows.find(r => r.moveId === EVELYN_GARROTE_2_MOVE_ID)?.count ?? 0
+    const chain = (rows: any[]) => rows.find(r => r.moveId === EVELYN_CHAIN_MOVE_ID)?.count ?? 0
+    const c0 = mk(0, 180)
+    const c2 = mk(2, 180)
+    // 额外7次绞勒式（I型+4、II型+3），燎索点 6→13 使月辉丝·绊 3→6
+    expect(garrote1(c2) - garrote1(c0)).toBe(4)
+    expect(garrote2(c2) - garrote2(c0)).toBe(3)
+    expect(chain(c2) - chain(c0)).toBe(3)
   })
 })
 

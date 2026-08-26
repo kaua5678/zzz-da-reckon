@@ -8,7 +8,8 @@
  * - 燎火/燎索点：绞勒式次数显式可调（燎火累积速率原文未给数值，不做臆造）；燎索点=绞勒式+终结技
  *   各+1，每满3点把下一次绞勒式替换为月辉丝·绊，终结技后的焰舞觉醒使消耗降为净2点，按此折算追加连携。
  * - 影画1：进场喧响+1500（180秒一次整局近似）；攻击禁锢敌人无视12%防御按覆盖率折算。
- * - 影画2：攻击力+15% 沿用 computePanelPhases 既有块；燎火返还/打断等级未建模。
+ * - 影画2：攻击力+15% 沿用 computePanelPhases 既有块；燎火返还（25s一次返还50%燎火）按
+ *   「额外绞勒式 floor(battleTime/25)」计入绞勒式与燎索点；打断等级提升（纯霸体）不建模。
  * - 影画4：连携/终结获得护盾时暴伤+40%，按持盾覆盖率折算。
  * - 影画6：弦影绝锋期间普攻/冲刺/特殊/强特命中追加月辉丝·弦追击（375%攻击力火伤，视为连携伤害），
  *   次数显式可调（每窗口上限16次）。
@@ -40,6 +41,7 @@ export const EVELYN_C1_DEF_IGNORE = 12
 export const EVELYN_C1_DECIBEL_GIFT = 1500
 export const EVELYN_C4_CRIT_DMG = 40
 export const EVELYN_C6_FOLLOWUP_MULTIPLIER = 375
+export const EVELYN_C2_EMBER_REFUND_INTERVAL = 25
 
 const CHAIN_ULT_TARGETS = new Set<string>([EVELYN_CHAIN_MOVE_ID, EVELYN_ULT_MOVE_ID])
 
@@ -48,6 +50,7 @@ export interface EvelynCycle {
   garroteCount: number
   garroteType1Count: number
   garroteType2Count: number
+  c2BonusGarrote: number
   anchorPoints: number
   anchorCost: number
   anchorChainCount: number
@@ -84,12 +87,18 @@ export function computeEvelynCycle(input: {
   c1DefIgnoreCoverage: number
   c4ShieldCoverage: number
   c6FollowUpCount: number
+  battleTime?: number
 }): EvelynCycle {
   const cinemaLevel = whole(input.cinemaLevel)
   const garroteCount = whole(input.garroteCount)
   const ultimateCount = whole(input.ultimateCount)
+  const battleTime = Math.max(0, Number.isFinite(input.battleTime) ? Number(input.battleTime) : 180)
+  // 影画2 燎火返还：发动绞勒式时返还所消耗的 50% 燎火（25s 一次）≈ 白嫖一次绞勒式。
+  // 额外绞勒式同样 +1 燎索点（计入 anchorPoints），进而多换月辉丝·绊。
+  const c2BonusGarrote = cinemaLevel >= 2 ? Math.floor(battleTime / EVELYN_C2_EMBER_REFUND_INTERVAL) : 0
+  const totalGarrote = garroteCount + c2BonusGarrote
   const coreCritRate = EVELYN_CORE_CRIT_RATE * clampRatio(input.restraintCoverage)
-  const anchorPoints = garroteCount + ultimateCount
+  const anchorPoints = totalGarrote + ultimateCount
   const anchorCost = ultimateCount > 0 ? 2 : 3
   const anchorChainCount = Math.floor(anchorPoints / anchorCost)
   const additionalActive = input.additionalActive
@@ -97,9 +106,10 @@ export function computeEvelynCycle(input: {
     && (input.baseCritRate + coreCritRate) >= EVELYN_CRIT_THRESHOLD
   return {
     cinemaLevel,
-    garroteCount,
-    garroteType1Count: Math.ceil(garroteCount / 2),
-    garroteType2Count: Math.floor(garroteCount / 2),
+    garroteCount: totalGarrote,
+    garroteType1Count: Math.ceil(totalGarrote / 2),
+    garroteType2Count: Math.floor(totalGarrote / 2),
+    c2BonusGarrote,
     anchorPoints,
     anchorCost,
     anchorChainCount,
@@ -110,7 +120,7 @@ export function computeEvelynCycle(input: {
     c1DefIgnore: cinemaLevel >= 1 ? EVELYN_C1_DEF_IGNORE * clampRatio(input.c1DefIgnoreCoverage) : 0,
     c4CritDmg: cinemaLevel >= 4 ? EVELYN_C4_CRIT_DMG * clampRatio(input.c4ShieldCoverage) : 0,
     c6FollowUpCount: cinemaLevel >= 6 ? whole(input.c6FollowUpCount) : 0,
-    note: '绞勒式次数显式可调；燎索点按绞勒式+终结技各+1折算追加连携；牵缠禁制/禁锢逐状态未建模。',
+    note: '绞勒式次数显式可调 + C2 燎火返还每25s白嫖一次；燎索点按绞勒式+终结技各+1折算追加连携；牵缠禁制/禁锢逐状态未建模。',
   }
 }
 
@@ -158,6 +168,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     c1DefIgnoreCoverage: Number(record.evelynC1DefIgnoreCoverage ?? 1),
     c4ShieldCoverage: Number(record.evelynC4ShieldCoverage ?? 1),
     c6FollowUpCount: Number(record.evelynC6FollowUpCount ?? 16),
+    battleTime: Number((cfg as unknown as Record<string, unknown>).battleTime ?? 180),
   })
 }
 
@@ -279,7 +290,8 @@ function buildEvelynResourceSections({ result }: AgentResourceSectionsInput) {
     title: '伊芙琳·燎火与月辉丝',
     summary: `绞勒式 ${cycle.garroteCount} 次 · 追加月辉丝·绊 ${cycle.anchorChainCount} 次`,
     rows: [
-      { label: '燎索点', value: `${cycle.anchorPoints} 点`, detail: `绞勒式+终结技各+1；每${cycle.anchorCost}点换1次月辉丝·绊` },
+      { label: '燎索点', value: `${cycle.anchorPoints} 点`, detail: `绞勒式(含C2返还)+终结技各+1；每${cycle.anchorCost}点换1次月辉丝·绊` },
+      { label: '影画2燎火返还', value: `+${cycle.c2BonusGarrote} 次`, detail: '每25s返还50%燎火=白嫖一次绞勒式（计入燎索点）' },
       { label: '牵缠禁制暴击', value: `+${cycle.coreCritRate}%`, detail: '核心被动按覆盖率折算' },
       { label: '连携/终结增伤', value: `+${cycle.additionalDmg}%`, detail: cycle.additionalActive ? '额外能力已激活' : '未激活（需击破/支援队友）' },
       { label: '倍率×1.25', value: cycle.multiplierActive ? '生效' : '未生效', detail: '暴击率≥80%时月辉丝·绊/弦音倍率提升' },

@@ -1891,22 +1891,23 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
             "进场喧响+1500（180秒一次整局近似）计入initialDecibelGift；攻击禁锢敌人无视12%防御按覆盖率折算enemyDefReduction。"
           ],
           "pending": [
-            "[禁锢]施加与束裂式扩散禁锢、10秒持续逐状态未建模。"
+            "[禁锢]施加与束裂式扩散禁锢（纯多目标/控制向，单目标无伤害增量）不建模。"
           ]
         },
         {
           "cinema": 2,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
-            "攻击力+15%沿用computePanelPhases既有面板块。"
+            "攻击力+15%沿用computePanelPhases既有面板块。",
+            "燎火返还：额外绞勒式 floor(battleTime/25)（180s≈7次）计入绞勒式与燎索点，进而多换月辉丝·绊。"
           ],
           "pending": [
-            "燎火返还（25秒一次）与月辉丝·绊打断等级提升未建模。"
+            "月辉丝·绊打断等级提升（纯霸体/防御向）不建模。"
           ]
         },
         {
