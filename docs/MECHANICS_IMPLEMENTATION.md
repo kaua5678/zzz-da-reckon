@@ -496,12 +496,15 @@
 ### 爱芮（aire / 1501）—— 异常精通与无视
 
 
+- **当前实现状态 [已实现·近似 2026-08-26]**（实现位置：`src/mechanics/agents/aire.ts` + spec `1501.json`；测试 `src/mechanics/__tests__/aire.test.ts`）。含：异常精通+90、影画1 以太积蓄抗性无视+异放暴击（releaseCrit）、影画2 无视防御、影画4 异放回能/喧响、影画6 进场喧响+强化直伤。影画6 全场应援逐层/应援能量转化为状态机不建模。
 - **核心口径**：按核心被动 Lv.7；异常精通 +90 计入面板（抬升异常/异放基底）。
-- **影画1**：普攻/特殊技/强特无视 10% 以太异常积蓄抗性计入面板 `enemyEtherAnomalyResReduction`。
+- **影画1**：普攻/特殊技/强特无视 10% 以太异常积蓄抗性计入面板 `enemyEtherAnomalyResReduction`；异放暴击走 `releaseCrit`（基础25%/25%，掌控>100每点+0.5%暴击率）。
 - **影画2**：攻击与异放无视 16% 防御计入面板 `enemyDefReduction`；妄想时刻内额外无视 8% 按覆盖率折算。
-- **影画6**：进场喧响 +1200 计入 `initialDecibelGift`（180秒一次整局近似）。
+- **影画4**：异放触发回 4 能量 +70 喧响（10秒一次），次数取 floor(t/10) CD 上限（异放次数≥floor(t/6)>floor(t/10)），并入 initialEnergyGift/initialDecibelGift。
+- **影画6**：进场喧响 +1200 计入 `initialDecibelGift`（180秒一次整局近似）；强化绝对音准/终结技以太伤害 +40% 按 moveId 加 dmgBonus（patchExecutions，妄想时刻不退出→强化绝对音准全覆盖）。
 - **额外能力**：击破/支援/同阵营/异常队友激活；侵蚀持续 +3 秒沿用 spec teamBuffs。
-- **核心被动异放已实装**（2026-08 审计核对：aire.ts buildAnomalyEvents）：绝对音准#3 命中异常目标触发，basis=异常掌控 perTen 27.5%/14.3%/35.7%/2.5%/3.6%/1.4%、失衡再+50%；影画1 异放暴击走 releaseCrit。基础者=主施加者面板、结算者=爱芮（dominant 同款）。~~原列未建模系档案过期~~。仍未建模：影画4 异放回能/喧响的 CD 折算细节、影画6 妄想时刻不退出/全场应援/应援能量转化。
+- **核心被动异放**（aire.ts buildAnomalyEvents）：绝对音准#3 命中异常目标触发，basis=异常掌控 perTen 27.5%/14.3%/35.7%/2.5%/3.6%/1.4%、失衡再+50%；基础者=主施加者面板、结算者=爱芮（dominant 同款）。
+- **未建模**：影画6 全场应援逐层与应援能量转化（3层溢出转2应援能量，场上资源状态机），全场应援次数按 floor(t/6) 近似；妄想时刻不退出按「强化绝对音准全覆盖」近似。
 - **模块**：`src/mechanics/agents/aire.ts`（替代旧 `aireProficiencyMechanic`）。
 
 ### 普罗米娅（promia / 1541）—— 掌控转精通与有罪推定

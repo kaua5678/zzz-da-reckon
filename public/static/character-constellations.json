@@ -3032,13 +3032,12 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
-            "普攻/特殊技/强特无视10%以太异常积蓄抗性计入面板enemyEtherAnomalyResReduction。"
+            "普攻/特殊技/强特无视10%以太异常积蓄抗性计入面板 enemyEtherAnomalyResReduction。",
+            "异放暴击（基础25%暴击率/25%暴伤，掌控>100每点+0.5%暴击率）走 releaseCrit（buildAnomalyEvents）。"
           ],
-          "pending": [
-            "异放暴击（基础25%、暴伤25%、掌控>100每点+0.5%暴击率）属异常结算区，未建模。"
-          ]
+          "pending": []
         },
         {
           "cinema": 2,
@@ -3060,11 +3059,11 @@
         },
         {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "异放触发回4能量+70喧响（10秒一次）依赖异放触发次数，未建模。"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "异放触发回4能量+70喧响（10秒一次），次数=floor(t/10)（异放次数≥floor(t/6)>floor(t/10) 取 CD 上限），并入 initialEnergyGift/initialDecibelGift。"
+          ],
+          "pending": []
         },
         {
           "cinema": 5,
@@ -3076,12 +3075,14 @@
         },
         {
           "cinema": 6,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
-            "进场喧响+1200计入initialDecibelGift（180秒一次整局近似）。"
+            "进场喧响+1200计入 initialDecibelGift（180秒一次整局近似）。",
+            "强化绝对音准/终结技以太伤害+40%按 moveId 加 dmgBonus（patchExecutions，妄想时刻不退出→强化绝对音准全覆盖）。"
           ],
           "pending": [
-            "妄想时刻不退出、强化绝对音准/终结技以太伤害+40%、全场应援与应援能量转化未建模。"
+            "全场应援逐层与应援能量转化（3层溢出转2应援能量）未建模，全场应援次数按 floor(t/6) 近似推导绝对音准次数。",
+            "妄想时刻不退出按「强化绝对音准全覆盖」近似（不逐时序模拟持续时间）。"
           ]
         }
       ]
