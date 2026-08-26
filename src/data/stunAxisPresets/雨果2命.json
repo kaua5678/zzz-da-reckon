@@ -1,0 +1,22 @@
+{
+  "id": "hugo-c2",
+  "name": "雨果 2命 双连携+Q+E（Q不结束失衡）",
+  "team": [
+    "1291",
+    "*",
+    "*"
+  ],
+  "note": "2连携吃增伤 → 终结技·渎神者决算（影画2 不结束失衡）→ 强特终结一击决算退失衡，一窗打 2 个决算（Q 前 E 后）。",
+  "axes": [
+    {
+      "name": "爆发轴",
+      "actions": [
+        { "slot": 0, "moveId": "1291015", "count": 1, "startTime": 0 },
+        { "slot": 0, "moveId": "1291015", "count": 1, "startTime": 2.383 },
+        { "slot": 0, "moveId": "1291018", "count": 1, "startTime": 4.766 },
+        { "slot": 0, "moveId": "1291_ultimate_verdict_bonus", "count": 1, "startTime": 6.949 },
+        { "slot": 0, "moveId": "1291_ex_verdict_final", "count": 1, "startTime": 6.949 }
+      ]
+    }
+  ]
+}

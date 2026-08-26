@@ -1,0 +1,20 @@
+{
+  "id": "hugo-c0-e",
+  "name": "雨果 0命 双连携+强特决算（E退失衡）",
+  "team": [
+    "1291",
+    "*",
+    "*"
+  ],
+  "note": "2连携吃增伤 → 强化特殊技·魂狩·惩戒终结一击决算退失衡（0命 E 决算结束失衡，剩余失衡时间按轴内块位置反推倍率）。",
+  "axes": [
+    {
+      "name": "爆发轴",
+      "actions": [
+        { "slot": 0, "moveId": "1291015", "count": 1, "startTime": 0 },
+        { "slot": 0, "moveId": "1291015", "count": 1, "startTime": 2.383 },
+        { "slot": 0, "moveId": "1291_ex_verdict_final", "count": 1, "startTime": 4.766 }
+      ]
+    }
+  ]
+}

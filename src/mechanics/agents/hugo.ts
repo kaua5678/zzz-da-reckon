@@ -40,6 +40,22 @@ export const HUGO_FULL_STUN_MOVES = new Set<string>([
   HUGO_EX_VERDICT_MOVE_ID,
   HUGO_ULT_VERDICT_BONUS_MOVE_ID,
 ])
+
+/**
+ * 轴模式「窗口终结」判定：强特终结一击(1291_ex_verdict_final) 永远结束失衡；
+ * 终结技本体(1291018) 仅 C0/C1 结束失衡（影画2「终结技决算不结束失衡」不截断窗口）。
+ */
+export function isHugoEndsWindowMove(moveId: string, cinemaLevel: number): boolean {
+  if (moveId === HUGO_EX_VERDICT_MOVE_ID) return true
+  if (moveId === HUGO_ULT_MOVE_ID) return cinemaLevel < 2
+  return false
+}
+
+/** 雨果决算块的动作时长兜底（合成行无倍率表条目时用模块常量） */
+export function hugoMoveActionTime(moveId: string, catalogActionTime: number): number {
+  if (moveId === HUGO_EX_VERDICT_MOVE_ID && catalogActionTime <= 0) return HUGO_EX_FINAL_ACTION_TIME
+  return catalogActionTime
+}
 export const HUGO_EX_FINAL_BASE_MULTIPLIER = 709.8
 export const HUGO_EX_FINAL_ACTION_TIME = 1.805
 export const HUGO_VERDICT_BASE_MULTIPLIER = 1000

@@ -1,5 +1,5 @@
 import { YESHUGUANG_FULL_STUN_MOVES } from '@/mechanics/agents/yeshuguang'
-import { HUGO_FULL_STUN_MOVES } from '@/mechanics/agents/hugo'
+import { HUGO_FULL_STUN_MOVES, HUGO_EX_VERDICT_MOVE_ID, HUGO_ULT_MOVE_ID, HUGO_EX_FINAL_ACTION_TIME, isHugoEndsWindowMove, hugoMoveActionTime } from '@/mechanics/agents/hugo'
 import { inferSkillDamageTarget } from '@/core/damage'
 import { estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
 import { computed } from 'vue'
@@ -637,6 +637,15 @@ function applyNormaHatChain(
           // 60/90 转大块是琉音好评赠送的终结技（白送，不耗目标喧响），只占窗口时间不扣喧响
           if (act.promoteVariant) decibelCost = 0
         }
+        // 雨果强特终结一击（合成行 1291_ex_verdict_final）无倍率表条目：动作时长用模块常量兜底，
+        // 保证窗口截断按「块结束时刻」而非「块起点」算剩余失衡时间。
+        if (actionTime <= 0 && act.moveId === HUGO_EX_VERDICT_MOVE_ID) actionTime = HUGO_EX_FINAL_ACTION_TIME
+        // 窗口终结（决算）：佩洛伊斯右分支 1551016；雨果强特终结一击(1291_ex_verdict_final) 永远结束失衡；
+        // 雨果终结技本体(1291018) 仅 C0/C1 结束失衡——影画2「终结技决算不结束失衡」不截断窗口（0命2命区分）。
+        const hugoCinema = configStore.team[act.slot]?.cinemaLevel ?? 0
+        const endsWindow = act.moveId === '1551016'
+          || act.moveId === HUGO_EX_VERDICT_MOVE_ID
+          || (act.moveId === HUGO_ULT_MOVE_ID && hugoCinema < 2)
         axisActions.push({
           slot: act.slot,
           moveId: act.moveId,
@@ -645,8 +654,8 @@ function applyNormaHatChain(
           energyCost,
           decibelCost,
           startTime: act.startTime ?? 0,
-          // 佩洛伊斯右分支·永陷幽囚 = 决算：做完时清空窗口剩余失衡时间（填充归零+窗口截断）
-          ...(act.moveId === '1551016' ? { endsStunWindow: true } : {}),
+          // 佩洛伊斯右分支·永陷幽囚 / 雨果决算 = 决算：做完时清空窗口剩余失衡时间（填充归零+窗口截断）
+          ...(endsWindow ? { endsStunWindow: true } : {}),
         })
       }
       return { actions: axisActions, count: axis.count, basicFillerSlot: axis.basicFillerSlot }
@@ -751,16 +760,43 @@ function applyNormaHatChain(
         if (wins <= 0) return
         let truncEnd = -1
         for (const act of axis.actions) {
-          if (act.moveId !== '1551016') continue
+          const cinema = configStore.team[act.slot]?.cinemaLevel ?? 0
+          // 佩洛伊斯右分支决算 + 雨果决算（强特终结永远 / 终结技仅 C0/C1）才截断窗口
+          const isEnds = act.moveId === '1551016' || isHugoEndsWindowMove(act.moveId, cinema)
+          if (!isEnds) continue
           const skills = catalogStore.getAgentSkills(configStore.team[act.slot]?.agentId ?? '')
           const move = findMoveById(skills, act.moveId)
-          const dur = typeof (act as { duration?: number }).duration === 'number'
+          let dur = typeof (act as { duration?: number }).duration === 'number'
             ? (act as { duration: number }).duration
             : (move?.actionTime ?? 0)
+          dur = hugoMoveActionTime(act.moveId, dur)
           truncEnd = Math.max(truncEnd, Math.max(0, act.startTime ?? 0) + dur)
         }
         if (truncEnd >= 0) verdictSecondsLost += Math.max(0, windowDur - truncEnd) * wins
       })
+    }
+    // 雨果轴模式剩余失衡时间：从「窗口终结决算块」结束时刻反推（强特终结永远、终结技仅 C0/C1），
+    // 覆盖滑块 hugo.remainingStunSeconds——轴模式用轴内真实位置，非轴回落滑块。
+    let hugoAxisRemainingStunSeconds: number | undefined
+    if (axisActive && configStore.team.some(c => c.agentId === '1291')) {
+      const windowDur = computeWindowDuration()
+      const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
+      let maxEnd = -1
+      resolvedAxes.forEach((axis, ai) => {
+        if ((winAlloc[ai] ?? 0) <= 0) return
+        for (const act of axis.actions) {
+          const cinema = configStore.team[act.slot]?.cinemaLevel ?? 0
+          if (!isHugoEndsWindowMove(act.moveId, cinema)) continue
+          const skills = catalogStore.getAgentSkills(configStore.team[act.slot]?.agentId ?? '')
+          const move = findMoveById(skills, act.moveId)
+          let dur = typeof (act as { duration?: number }).duration === 'number'
+            ? (act as { duration: number }).duration
+            : (move?.actionTime ?? 0)
+          dur = hugoMoveActionTime(act.moveId, dur)
+          maxEnd = Math.max(maxEnd, Math.max(0, act.startTime ?? 0) + dur)
+        }
+      })
+      if (maxEnd >= 0) hugoAxisRemainingStunSeconds = Math.max(0, Math.min(15, windowDur - maxEnd))
     }
     // 当前轮失衡覆盖率（供诺姆火力实验高爆/破甲按失衡时长拆分；与 computeStunCoverage 同口径，含决算截断）
     const provStunCoverage = computeStunCoverage({ stunCount }, verdictSecondsLost)
@@ -888,6 +924,10 @@ function applyNormaHatChain(
       }
       if (merged.agentId === '1251') {
         return { ...merged, qingyiStunCount: stunCount }
+      }
+      if (merged.agentId === '1291' && hugoAxisRemainingStunSeconds !== undefined) {
+        // 雨果轴模式：决算剩余失衡时间由轴内块位置反推（覆盖滑块）；非轴回落 buildCharConfig 的滑块值
+        return { ...merged, hugoRemainingStunSeconds: hugoAxisRemainingStunSeconds, hugoAxisActive: true }
       }
       if (merged.agentId === '1051') {
         const exOverride = axisActive && yidhariInStunEx > 0

@@ -15,6 +15,7 @@ import {
   computeHugoCycle,
   computeHugoVerdictMultiplier,
   hugoMechanic,
+  isHugoEndsWindowMove,
 } from '@/mechanics/agents/hugo'
 import { setupHarness } from '@/test/harness'
 
@@ -218,5 +219,52 @@ describe('雨果决算返还与易伤精度（非轴）', () => {
     expect(chain!.stunMult).toBeGreaterThan(1)
     expect(open).toBeTruthy()
     expect(open!.stunMult).toBe(1)
+  })
+})
+
+describe('雨果轴模式（决算可视化 + 0命2命区分）', () => {
+  it('isHugoEndsWindowMove：强特终结永远结束，终结技仅 C0/C1 结束', () => {
+    expect(isHugoEndsWindowMove('1291_ex_verdict_final', 0)).toBe(true)
+    expect(isHugoEndsWindowMove('1291_ex_verdict_final', 6)).toBe(true)
+    expect(isHugoEndsWindowMove('1291018', 0)).toBe(true)
+    expect(isHugoEndsWindowMove('1291018', 1)).toBe(true)
+    expect(isHugoEndsWindowMove('1291018', 2)).toBe(false) // C2 终结技不结束失衡
+    expect(isHugoEndsWindowMove('1291018', 6)).toBe(false)
+    expect(isHugoEndsWindowMove('1291015', 0)).toBe(false) // 连携不结束
+  })
+
+  it('轴模式：决算倍率由轴内块位置反推（覆盖滑块默认5s），C2 的 E 殿后倍率更低', async () => {
+    // 0命 E 殿后：2连携(各2.383s) + E终结(1.805s) → E 结束于 6.571s，窗口16s → 剩余≈9.43s
+    const c0 = await setup('1141', 0)
+    c0.config.useStunAxis = true
+    c0.config.stunAxes = [{ name: '轴1', actions: [
+      { slot: 0, moveId: '1291015', count: 1, startTime: 0 },
+      { slot: 0, moveId: '1291015', count: 1, startTime: 2.383 },
+      { slot: 0, moveId: '1291_ex_verdict_final', count: 1, startTime: 4.766 },
+    ] }]
+    const calc0 = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    const v0 = calc0.resourceResult.value!.characters.find(r => r.agentId === '1291')!
+      .executions.find(r => r.moveId === '1291_ex_verdict_final')
+    expect(v0).toBeTruthy()
+    // 轴反推剩余≈9.43s → 倍率≈2843%；滑块默认5s → 2400%。应明显更高。
+    expect(v0!.damageMultiplier!).toBeGreaterThan(HUGO_EX_FINAL_ACTION_TIME + computeHugoVerdictMultiplier(5) + 100)
+
+    // 2命 Q+E：Q(2.183s) 不结束，E 殿后于 6.949+1.805=8.754s → 剩余≈7.25s → 倍率≈2625%（低于 0命）
+    const c2 = await setup('1141', 2)
+    c2.config.useStunAxis = true
+    c2.config.stunAxes = [{ name: '轴1', actions: [
+      { slot: 0, moveId: '1291015', count: 1, startTime: 0 },
+      { slot: 0, moveId: '1291015', count: 1, startTime: 2.383 },
+      { slot: 0, moveId: '1291018', count: 1, startTime: 4.766 },
+      { slot: 0, moveId: '1291_ex_verdict_final', count: 1, startTime: 6.949 },
+    ] }]
+    const calc2 = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    const v2 = calc2.resourceResult.value!.characters.find(r => r.agentId === '1291')!
+      .executions.find(r => r.moveId === '1291_ex_verdict_final')
+    expect(v2).toBeTruthy()
+    // C2 的 E 殿后更晚 → 剩余更短 → 倍率低于 0命
+    expect(v2!.damageMultiplier!).toBeLessThan(v0!.damageMultiplier!)
   })
 })
