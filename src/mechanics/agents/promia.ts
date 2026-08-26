@@ -232,6 +232,8 @@ function buildPromiaAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
   const niying = Math.max(0, Math.min(99, Math.floor(Number(record.promiaNiyingCount ?? 0))))
   const attackFrost = Math.max(0, Math.floor(Number(record.promiaAttackFrostGain ?? 0)))
   const { count, specialCount, baseFrostGain, initial } = computePromiaVerdict({ cfg, state, battleTime: totalTime })
+  // 绝裁异放失衡内占比：绑定绝裁块（-1=自动按事件计数器）
+  const inStunRatio = setting(cfg, 'promia.releaseInStunRatio', -1)
 
   if (count <= 0) return
   const mult = PROMIA_EXECUTION_RELEASE_MULTIPLIER + (cinemaLevel >= 2 ? PROMIA_C2_RELEASE_BONUS : 0)
@@ -244,6 +246,7 @@ function buildPromiaAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
     count,
     formula: `releaseMultiplier=${mult}（固定倍率${cinemaLevel >= 2 ? '，C2=635+120' : ''}）`,
     fields: [`releaseMultiplier=${mult}`, `frostGain=${baseFrostGain}`, `attackFrost=${attackFrost}`, `niying=${niying}`, `casts=${count}`],
+    ...(inStunRatio >= 0 ? { releaseInStunRatio: inStunRatio } : {}),
     note: `回复端：初始${initial} + 寒蚀${baseFrostGain}/50（含攻击数据 ${attackFrost}、匿影×10×${niying}${cinemaLevel >= 4 ? `、影画4异放回寒蚀 ×5×${count}` : ''}${cinemaLevel >= 6 ? `、影画6特殊异放回寒蚀 ×5×${specialCount}` : ''}）→ ${count} 次；元素按目标当前异常分配。`,
   })
   if (cinemaLevel >= 6 && specialCount > 0) {
@@ -256,6 +259,7 @@ function buildPromiaAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
       count: specialCount,
       formula: `releaseMultiplier=${PROMIA_C6_SPECIAL_RELEASE_MULT}`,
       fields: [`releaseMultiplier=${PROMIA_C6_SPECIAL_RELEASE_MULT}`, `cd=${PROMIA_C6_SPECIAL_CD_SECONDS}s`, `casts=${specialCount}`],
+      ...(inStunRatio >= 0 ? { releaseInStunRatio: inStunRatio } : {}),
       note: `影画6：消耗霜刑异放额外触发特殊异放 200%（${PROMIA_C6_SPECIAL_CD_SECONDS}s CD，启动 ${PROMIA_C6_SPECIAL_STARTUP_SECONDS}s）→ ${specialCount} 次（min(绝裁异放 ${count}, CD 上限)）；元素随目标当前异常。`,
     })
   }
@@ -366,6 +370,16 @@ export const promiaMechanic: AgentMechanicModule = {
       max: 60,
       step: 1,
       suffix: '次',
+    },
+    {
+      id: 'promia.releaseInStunRatio',
+      label: '普罗米娅·绝裁异放失衡内占比',
+      description: '绝裁异放在失衡窗口内的占比（异放绑定绝裁块：绝裁在失衡内打、异放也在失衡内）。-1=自动按事件计数器（失衡内异常触发占比）。',
+      default: -1,
+      min: -1,
+      max: 1,
+      step: 0.05,
+      suffix: '%',
     },
   ],
 }

@@ -2253,7 +2253,11 @@ function applyNormaHatChain(
     ): Array<{ count: number; stunned: number; suffix: string; tag: string }> => {
       if (!isAxis || count <= 0) return [{ count, stunned: -1, suffix: '', tag: '' }]
       if (event.inStunBound) return [{ count, stunned: 1, suffix: '-in', tag: '失衡内·全额失衡易伤' }]
-      const frac = inWindowFraction(element)
+      // 手动覆盖失衡内占比（如普罗米娅绝裁异放）：releaseInStunRatio ≥ 0 时不用事件计数器
+      const manualRatio = event.releaseInStunRatio
+      const frac = manualRatio !== undefined && manualRatio >= 0
+        ? Math.max(0, Math.min(1, manualRatio))
+        : inWindowFraction(element)
       const countIn = Math.min(count, Math.round(count * frac))
       const segs: Array<{ count: number; stunned: number; suffix: string; tag: string }> = []
       if (countIn > 0) segs.push({ count: countIn, stunned: 1, suffix: '-in', tag: '失衡内·全额失衡易伤' })
