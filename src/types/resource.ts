@@ -579,10 +579,11 @@ export interface AnomalyEventExecution {
    */
   inStunBound?: boolean
   /**
-   * 手动覆盖「失衡内占比」（0-1；缺省 = 自动按事件计数器/时间线拆分）。
-   * 供「异放失衡内次数可手动指定」的角色（如普罗米娅绝裁异放绑绝裁块）用。
+   * 异放跟随载体招式（前台招式）的失衡内外：失衡内占比 = 载体块的轴内单位 / 载体总次数
+   * （不是占比期望，而是玩家捏轴能精确控制的绑定）。载体 moveId 由 carrierMoveId 指定。
+   * 结算区据此把 release 拆「失衡内(stunned=1)/轴外(stunned=0)」两段，总次数守恒。
    */
-  releaseInStunRatio?: number
+  followCarrierInStun?: boolean
 }
 
 /** 失衡内异常状态摘要（失衡内异常系统 v2，轴模式）：每元素触发次数与窗均覆盖 */

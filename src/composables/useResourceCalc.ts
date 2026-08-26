@@ -2250,13 +2250,13 @@ function applyNormaHatChain(
       event: AnomalyEventExecution,
       element: string,
       count: number,
+      carrierInAxisFraction?: number,
     ): Array<{ count: number; stunned: number; suffix: string; tag: string }> => {
       if (!isAxis || count <= 0) return [{ count, stunned: -1, suffix: '', tag: '' }]
       if (event.inStunBound) return [{ count, stunned: 1, suffix: '-in', tag: '失衡内·全额失衡易伤' }]
-      // 手动覆盖失衡内占比（如普罗米娅绝裁异放）：releaseInStunRatio ≥ 0 时不用事件计数器
-      const manualRatio = event.releaseInStunRatio
-      const frac = manualRatio !== undefined && manualRatio >= 0
-        ? Math.max(0, Math.min(1, manualRatio))
+      // 跟随载体招式（前台招式绑定，玩家捏轴可精确控制）：失衡内占比 = 载体块轴内单位 / 载体总数
+      const frac = event.followCarrierInStun && carrierInAxisFraction !== undefined
+        ? Math.max(0, Math.min(1, carrierInAxisFraction))
         : inWindowFraction(element)
       const countIn = Math.min(count, Math.round(count * frac))
       const segs: Array<{ count: number; stunned: number; suffix: string; tag: string }> = []
@@ -2500,6 +2500,14 @@ function applyNormaHatChain(
         if (event.count <= 0) continue
         if (event.eventType === 'release') {
           const triggerPanel = damagePanels.value[slot]
+          // 异放跟随载体招式（前台绑定，玩家捏轴可精确控制）：失衡内占比 = 载体块轴内单位 / 载体总数
+          const carrierInAxisFraction = event.followCarrierInStun && event.carrierMoveId
+            ? (() => {
+                const total = charResult.executions.find(e => e.moveId === event.carrierMoveId)?.count ?? 0
+                const inAxis = allocMap[`${slot}:${event.carrierMoveId}`]?.inAxisUnits ?? 0
+                return total > 0 ? Math.max(0, Math.min(1, inAxis / total)) : 0
+              })()
+            : undefined
           if (event.element === 'dominant') {
             // 异放元素 = 目标当前异常状态。Boss 异常状态轴点时归因（v2.2，与极性紊乱同口径）：
             // 轴模式下事件次数按代表窗内均匀取样时刻查当时状态分摊——链上元素无手动
@@ -2538,7 +2546,7 @@ function applyNormaHatChain(
                   const element = parts[i].element
                   const prog = anomalyPoolResult.value?.perElement.find(p => p.element === element)
                   const baseSlot = prog ? getMainApplierSlot(prog.contributions) : slot
-                  for (const seg of releaseStunSegments(event, element, count)) {
+                  for (const seg of releaseStunSegments(event, element, count, carrierInAxisFraction)) {
                     pushRelease({
                       id: `release-${slot}-${event.eventId}-${element}${seg.suffix}`,
                       slot,
@@ -2590,7 +2598,7 @@ function applyNormaHatChain(
               const element = effectiveWeights[i].element
               const prog = anomalyPoolResult.value?.perElement.find(p => p.element === element)
               const baseSlot = prog ? getMainApplierSlot(prog.contributions) : slot
-              for (const seg of releaseStunSegments(event, element, count)) {
+              for (const seg of releaseStunSegments(event, element, count, carrierInAxisFraction)) {
                 pushRelease({
                   id: `release-${slot}-${event.eventId}-${element}${seg.suffix}`,
                   slot,
@@ -2611,7 +2619,7 @@ function applyNormaHatChain(
             continue
           }
           const fixElement = event.element ?? 'wind'
-          for (const seg of releaseStunSegments(event, fixElement, event.count)) {
+          for (const seg of releaseStunSegments(event, fixElement, event.count, carrierInAxisFraction)) {
             if (seg.count <= 0) continue
             pushRelease({
               id: `release-${slot}-${event.eventId}${seg.suffix}`,
