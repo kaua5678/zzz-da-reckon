@@ -37,12 +37,6 @@ const C1_POLARITY_ASSAULT_SWORD_WILL = 35
 const TEAM_ASSAULT_SWORD_WILL = 10
 /** 紊乱每次回复剑意 */
 const DISORDER_SWORD_WILL = 30
-/** 一命：目标防御力 -20%（覆盖率 100%） */
-const C1_ENEMY_DEF_REDUCTION = 20
-/** 二命：全队强击伤害 +15%（异常增伤区） */
-const C2_ANOMALY_DMG_BONUS = 15
-/** 二命：结算畏缩的紊乱伤害 +15% */
-const C2_DISORDER_DMG_BONUS = 15
 /** 四命：攻击时无视目标 10% 物理伤害抗性 */
 const C4_PHYSICAL_RES_REDUCTION = 10
 /** 爱丽丝特殊开局喧响：额外 +1000（在通用 1000 基础上） */
@@ -102,16 +96,9 @@ function applyAlicePanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelIn
     panel.physicalAnomalyBuildUpEfficiency = (panel.physicalAnomalyBuildUpEfficiency ?? 0) + COWERING_BUILD_UP_EFFICIENCY
   }
 
-  // 一命：目标防御力 -20%，覆盖率 100%
-  if (cinemaLevel >= 1) {
-    panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + C1_ENEMY_DEF_REDUCTION
-  }
-
-  // 二命：全队强击伤害 +15%（异常增伤区）+ 畏缩紊乱伤害 +15%
-  if (cinemaLevel >= 2) {
-    panel.anomalyDmgBonus = (panel.anomalyDmgBonus ?? 0) + C2_ANOMALY_DMG_BONUS
-    panel.disorderDamageBonus = (panel.disorderDamageBonus ?? 0) + C2_DISORDER_DMG_BONUS
-  }
+  // 一命目标减防 / 二命全队强击+紊乱增伤 已由 spec teamBuffs（alice_c1_enemy_def_reduction /
+  // alice_c2_team_assault_damage）合并生效（enemy/team 目标，全队受益含爱丽丝自身），
+  // 此处不再重复施加，防双计（SOP §3.5）。
 
   // 四命：攻击时无视目标 10% 物理伤害抗性
   if (cinemaLevel >= 4) {

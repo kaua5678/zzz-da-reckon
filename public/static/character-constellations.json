@@ -2397,27 +2397,22 @@
       "cinemas": [
         {
           "cinema": 1,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
-            "触发强击目标防御-20%持续30s",
-            "触发极性强击回复25剑仪"
+            "触发强击目标防御-20%（30s）走 spec teamBuffs alice_c1_enemy_def_reduction（enemy 目标，全队减益）。",
+            "触发极性强击回复25剑仪（buildCharConfig alicePolarityAssaultSwordWill=35）。"
           ],
-          "pending": [
-            "强击减防未接入Buff引擎",
-            "极性强击/剑仪池未建模"
-          ]
+          "pending": []
         },
         {
           "cinema": 2,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
-            "全队强击伤害+15%",
-            "物理紊乱伤害+15%",
-            "终结技终结一击触发极性强击"
+            "全队强击+15% + 物理紊乱+15% 走 spec teamBuffs alice_c2_team_assault_damage（team 目标）。",
+            "终结技终结一击触发极性强击（buildCharConfig aliceCinema2UltSpark）；进场喧响+1000。"
           ],
           "pending": [
-            "极性强击未建模",
-            "强击增伤近似为全异常增伤"
+            "强击增伤走异常增伤区（anomalyDmgBonus），与全异常增伤同区加算（非独立乘区）。"
           ]
         },
         {
@@ -2430,14 +2425,12 @@
         },
         {
           "cinema": 4,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
-            "无视10%物理抗性",
-            "强化星仪序曲异常积蓄+25%"
+            "无视10%物理抗性接入面板 enemyPhysicalResReduction。"
           ],
           "pending": [
-            "物理抗性无视未接入",
-            "积蓄加成未建模"
+            "强化星仪序曲物理异常积蓄+25%未建模。"
           ]
         },
         {
@@ -2450,13 +2443,12 @@
         },
         {
           "cinema": 6,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
-            "决胜状态30s",
-            "3300%精通物理额外攻击×6次必暴"
+            "决胜状态额外攻击（3300%异常精通×必定暴击，只吃精通+暴伤）已接入伤害池（useResourceCalc alice-c6-decisive-extra-attack）。"
           ],
           "pending": [
-            "决胜状态/额外攻击事件均未建模"
+            "决胜状态逐时序（30s持续/1s CD/每轮6次上限）按每状态次数滑块近似（alice.cinema6PerStateCount 默认5）。"
           ]
         }
       ]

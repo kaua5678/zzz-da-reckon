@@ -5,7 +5,7 @@
   "agentIds": [
     "1401"
   ],
-  "status": "partially_implemented",
+  "status": "implemented_approximation",
   "attributeConversions": [
     {
       "id": "alice_mastery_to_proficiency",
@@ -171,7 +171,7 @@
   "stateMachines": [],
   "notes": [
     "畏缩状态本身无 DOT，只是持续时间内敌人失衡值 +7.5% 的 buff。",
-    "6 命附伤是否吃增伤/防御/抗性等乘区尚未确认。"
+    "6 命附伤已确认（用户口径 2026-08-26）：只吃异常精通+暴伤（必定暴击），不吃增伤/防御/抗性/易伤等乘区——结算 = 精通 × 3300% × (1+暴伤/100)。"
   ],
   "teamBuffs": [
     {
