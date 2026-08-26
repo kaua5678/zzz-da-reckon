@@ -31,10 +31,10 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentSkillTransformInput,
   AgentTeamConfigInput,
 } from '../types'
 
@@ -405,17 +405,28 @@ function patchEllenExecutions({ cfg, state, executions }: AgentResourceInput): v
   }
 }
 
-function applyEllenPanel({ charResult, panel }: AgentSkillTransformInput): void {
-  if (!panel) return
-  if ((panel as Record<string, unknown>).__ellenPanelApplied) return
-  ;(panel as Record<string, unknown>).__ellenPanelApplied = true
-  const cycle = charResult.specResources?.ellen_cycle as EllenCycle | undefined
-  if (!cycle) return
-  if (cycle.c1CritRate > 0) panel.critRate = (panel.critRate ?? 0) + cycle.c1CritRate
-  if (cycle.stormSurgeIceDmg > 0) panel.iceDmg = (panel.iceDmg ?? 0) + cycle.stormSurgeIceDmg
-  if (cycle.c6PenRatio > 0) panel.penRatio = (panel.penRatio ?? 0) + cycle.c6PenRatio
-  if (cycle.potentialCritDmg > 0) panel.critDmg = (panel.critDmg ?? 0) + cycle.potentialCritDmg
-  if (cycle.potentialIceResIgnore > 0) panel.enemyIceResReduction = (panel.enemyIceResReduction ?? 0) + cycle.potentialIceResIgnore
+function applyEllenPanel({ cinemaLevel, potentialLevel, panel, settings }: AgentPanelInput): void {
+  // 面板字段与 computeEllenCycle 同源（c1CritRate / stormSurgeIceDmg / c6PenRatio / potentialCritDmg / potentialIceResIgnore）。
+  const c1CritStacks = clamp(settings['ellen.c1CritStacks'] ?? 6, 0, ELLEN_C1_MAX_STACKS)
+  const stormSurgeStacks = clamp(settings['ellen.stormSurgeStacks'] ?? 10, 0, ELLEN_STORM_SURGE_MAX_STACKS)
+  const c6PenCoverage = clamp(settings['ellen.c6PenCoverage'] ?? 1, 0, 1)
+  const potentialLevelClamped = clamp(whole(potentialLevel), 1, 6)
+  const additionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  if (cinemaLevel >= 1) {
+    panel.critRate = (panel.critRate ?? 0) + c1CritStacks * ELLEN_C1_CRIT_RATE_PER_STACK
+  }
+  if (additionalActive) {
+    panel.iceDmg = (panel.iceDmg ?? 0) + stormSurgeStacks * ELLEN_STORM_SURGE_PER_STACK
+    panel.critDmg = (panel.critDmg ?? 0)
+      + stormSurgeStacks * ELLEN_POTENTIAL_CRIT_DMG_PER_STACK[potentialLevelClamped]
+    if (stormSurgeStacks >= ELLEN_STORM_SURGE_MAX_STACKS) {
+      panel.enemyIceResReduction = (panel.enemyIceResReduction ?? 0)
+        + ELLEN_POTENTIAL_ICE_RES_IGNORE[potentialLevelClamped]
+    }
+  }
+  if (cinemaLevel >= 6) {
+    panel.penRatio = (panel.penRatio ?? 0) + ELLEN_C6_PEN_RATIO * c6PenCoverage
+  }
 }
 
 function buildEllenResourceResult({ cfg, state }: AgentResourceResultInput) {
@@ -462,11 +473,11 @@ export const ellenMechanic: AgentMechanicModule = {
     { id: 'ellen.c6PenCoverage', label: '影画6穿透覆盖率', description: '穿透率+20%的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
     { id: 'ellen.c6FeastCoverage', label: '影画6盛宴覆盖率', description: '3层盛宴后蓄力剪击伤害+250%的覆盖率（每3层强化一次蓄力剪击）', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
   ],
+  applyPanel: applyEllenPanel,
   buildCharConfig: buildEllenCharConfig,
   applyTeamConfig: applyEllenTeamConfig,
   buildExecutions: buildEllenExecutions,
   patchExecutions: patchEllenExecutions,
-  transformSkillExecutions: applyEllenPanel,
   buildResourceResult: buildEllenResourceResult,
   resourceSections: buildEllenResourceSections,
 }

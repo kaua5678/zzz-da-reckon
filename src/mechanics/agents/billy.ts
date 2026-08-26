@@ -19,10 +19,10 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentSkillTransformInput,
 } from '../types'
 
 export const BILLY_ID = '1081'
@@ -143,13 +143,11 @@ function patchBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
   }
 }
 
-function applyBillyPanel({ charResult, panel }: AgentSkillTransformInput): void {
-  if (!panel) return
-  if ((panel as Record<string, unknown>).__billyPanelApplied) return
-  ;(panel as Record<string, unknown>).__billyPanelApplied = true
-  const cycle = charResult.specResources?.billy_cycle as BillyCycle | undefined
-  if (!cycle) return
-  if (cycle.c6Dmg > 0) panel.dmgBonus = (panel.dmgBonus ?? 0) + cycle.c6Dmg
+function applyBillyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
+  // 影画6：蹲姿…稳定据枪每层伤害+6%（满5层=30%）→ 面板增伤区（与 computeBillyCycle.c6Dmg 同源）。
+  if (cinemaLevel >= 6) {
+    panel.dmgBonus = (panel.dmgBonus ?? 0) + BILLY_C6_DMG_PER_STACK * BILLY_C6_MAX_STACKS
+  }
 }
 
 function buildBillyResourceResult({ cfg, state }: AgentResourceResultInput) {
@@ -184,9 +182,9 @@ export const billyMechanic: AgentMechanicModule = {
     { id: 'billy.coreCrouchCoverage', label: '蹲姿增伤覆盖率', description: '核心被动蹲姿射击伤害+50%的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
     { id: 'billy.c4ExCrit', label: '影画4强特暴击', description: '影画4强特暴击率随距离提升（上限32%）', default: 32, min: 0, max: 32, step: 1, suffix: '%' },
   ],
+  applyPanel: applyBillyPanel,
   buildCharConfig: buildBillyCharConfig,
   patchExecutions: patchBillyExecutions,
-  transformSkillExecutions: applyBillyPanel,
   buildResourceResult: buildBillyResourceResult,
   resourceSections: buildBillyResourceSections,
 }

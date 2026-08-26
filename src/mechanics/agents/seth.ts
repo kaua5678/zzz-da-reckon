@@ -18,10 +18,10 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentSkillTransformInput,
 } from '../types'
 
 export const SETH_ID = '1271'
@@ -121,20 +121,18 @@ function buildSethExecutions({ cfg, state, executions }: AgentResourceInput): vo
   })
 }
 
-function applySethPanel({ charResult, panel }: AgentSkillTransformInput): void {
-  if (!panel) return
-  if ((panel as Record<string, unknown>).__sethPanelApplied) return
-  ;(panel as Record<string, unknown>).__sethPanelApplied = true
-  const cycle = charResult.specResources?.seth_cycle as SethCycle | undefined
-  if (!cycle) return
-  if (cycle.shieldProficiency > 0) {
-    panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + cycle.shieldProficiency
+function applySethPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
+  // 面板字段与 computeSethCycle 同源（shieldProficiency / additionalResReduction / c2ElectricBuildup）。
+  const shieldCoverage = clampRatio(settings['seth.shieldCoverage'] ?? 1)
+  const additionalResCoverage = clampRatio(settings['seth.additionalResCoverage'] ?? 1)
+  const additionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + SETH_SHIELD_PROFICIENCY * shieldCoverage
+  if (additionalActive) {
+    panel.enemyAnomalyResReduction = (panel.enemyAnomalyResReduction ?? 0)
+      + SETH_ADDITIONAL_RES_REDUCTION * additionalResCoverage
   }
-  if (cycle.additionalResReduction > 0) {
-    panel.enemyAnomalyResReduction = (panel.enemyAnomalyResReduction ?? 0) + cycle.additionalResReduction
-  }
-  if (cycle.c2ElectricBuildup > 0) {
-    panel.electricAnomalyBuildUpEfficiency = (panel.electricAnomalyBuildUpEfficiency ?? 0) + cycle.c2ElectricBuildup
+  if (cinemaLevel >= 2) {
+    panel.electricAnomalyBuildUpEfficiency = (panel.electricAnomalyBuildUpEfficiency ?? 0) + SETH_C2_ELECTRIC_BUILDUP
   }
 }
 
@@ -169,9 +167,9 @@ export const sethMechanic: AgentMechanicModule = {
     { id: 'seth.additionalResCoverage', label: '积蓄减抗覆盖率', description: '额外能力全属性异常积蓄抗性-20%的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
     { id: 'seth.c6FinishCount', label: '影画6终结一击次数', description: '雷霆击感电终结一击命中次数（每次500%攻击力必暴）', default: 6, min: 0, max: 30, step: 1, suffix: '次' },
   ],
+  applyPanel: applySethPanel,
   buildCharConfig: buildSethCharConfig,
   buildExecutions: buildSethExecutions,
-  transformSkillExecutions: applySethPanel,
   buildResourceResult: buildSethResourceResult,
   resourceSections: buildSethResourceSections,
 }

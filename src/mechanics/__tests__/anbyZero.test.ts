@@ -125,10 +125,19 @@ describe('零号·安比完整计算链', () => {
     const calc = useResourceCalc()
     expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1381')!.specResources?.anby_zero_cycle).toBeTruthy()
     const panel = calc.panels.value[0] as any
-    expect(panel.__anbyZeroPanelApplied).toBe(true)
     expect(panel.critRate).toBeGreaterThanOrEqual(ANBY_ZERO_ADDITIONAL_CRIT_RATE + ANBY_ZERO_C2_CRIT_RATE)
     expect(panel.dmgBonus).toBeGreaterThanOrEqual(ANBY_ZERO_CORE_DMG)
     expect(panel.enemyElectricResReduction).toBeGreaterThanOrEqual(ANBY_ZERO_C4_RES_IGNORE)
+  })
+
+  it('覆盖率滑块→面板重算（防守卫冻结，SOP §3.5）', async () => {
+    const { catalog, config } = await setup('1141', 4)
+    const dmgOf = () => (computePanelPhases(0, config, catalog)!.inCombat as any).dmgBonus ?? 0
+    config.setMechanicSetting('anbyZero.silverStarCoverage', 1)
+    const on = dmgOf()
+    config.setMechanicSetting('anbyZero.silverStarCoverage', 0)
+    const off = dmgOf()
+    expect(on - off).toBeCloseTo(ANBY_ZERO_CORE_DMG, 1)
   })
 })
 

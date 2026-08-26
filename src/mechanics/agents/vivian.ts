@@ -22,10 +22,10 @@ import type {
   AgentCharConfigInput,
   AgentEventInput,
   AgentMechanicModule,
+  AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentSkillTransformInput,
   ReleaseModifierInput,
 } from '../types'
 import type { MechanicSetting } from '@/types/resource'
@@ -226,18 +226,15 @@ function patchVivianExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
 }
 
-function applyVivianPanel({ charResult, panel }: AgentSkillTransformInput): void {
-  if (!panel) return
-  if ((panel as Record<string, unknown>).__vivianPanelApplied) return
-  ;(panel as Record<string, unknown>).__vivianPanelApplied = true
-  const cycle = charResult.specResources?.vivian_cycle as VivianCycle | undefined
-  if (!cycle) return
-  if (cycle.c6EtherDmg > 0) panel.etherDmg = (panel.etherDmg ?? 0) + cycle.c6EtherDmg
+function applyVivianPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
+  // 面板字段与 computeVivianCycle 同源（c6EtherDmg / c4AtkBonus）。
+  const c4AtkCoverage = clampRatio(settings['vivian.c4AtkCoverage'] ?? 1)
+  if (cinemaLevel >= 6) panel.etherDmg = (panel.etherDmg ?? 0) + VIVIAN_C6_ETHER_DMG
   // 影画4：攻击力 +12% → 加算进局内百分比攻击乘区（atkPct），非独立乘算
-  if (cycle.c4AtkBonus > 0) panel.atkPct = (panel.atkPct ?? 0) + cycle.c4AtkBonus
+  if (cinemaLevel >= 4) panel.atkPct = (panel.atkPct ?? 0) + VIVIAN_C4_ATK_PCT * c4AtkCoverage
   // 影画2 异放精通收益 ×130%（buildAnomalyEvents perTen 放大）；无视15%全抗走 releaseModifier（仅异放结算）
-  if (cycle.cinemaLevel >= 2) {
-    ;(panel as Record<string, unknown>).vivianCinemaLevel = cycle.cinemaLevel
+  if (cinemaLevel >= 2) {
+    ;(panel as Record<string, unknown>).vivianCinemaLevel = cinemaLevel
   }
 }
 
@@ -373,10 +370,10 @@ export const vivianMechanic: AgentMechanicModule = {
     { id: 'vivian.dotCoverage', label: '预言 DoT 异常覆盖占比', description: '预言 DoT 命中异常目标期间的整局占比（异常角色默认满覆盖）', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
     { id: 'vivian.releaseCoverage', label: '异放命中异常目标占比', description: '落羽生花/悬落命中处于异常状态目标的整局占比（异常角色默认满覆盖）', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
   ],
+  applyPanel: applyVivianPanel,
   buildCharConfig: buildVivianCharConfig,
   buildExecutions: buildVivianExecutions,
   patchExecutions: patchVivianExecutions,
-  transformSkillExecutions: applyVivianPanel,
   buildResourceResult: buildVivianResourceResult,
   resourceSections: buildVivianResourceSections,
   buildAnomalyEvents: buildVivianAnomalyEvents,

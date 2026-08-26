@@ -91,9 +91,18 @@ describe('赛斯完整计算链', () => {
     const seth = calc.resourceResult.value!.characters.find(row => row.agentId === '1271')!
     expect(seth.specResources?.seth_cycle).toBeTruthy()
     const panel = calc.panels.value[0] as any
-    expect(panel.__sethPanelApplied).toBe(true)
     expect(panel.anomalyProficiency).toBeGreaterThanOrEqual(SETH_SHIELD_PROFICIENCY)
     expect(panel.enemyAnomalyResReduction).toBeGreaterThanOrEqual(SETH_ADDITIONAL_RES_REDUCTION)
     expect(panel.electricAnomalyBuildUpEfficiency).toBeGreaterThanOrEqual(SETH_C2_ELECTRIC_BUILDUP)
+  })
+
+  it('覆盖率滑块→面板重算（防守卫冻结，SOP §3.5）', async () => {
+    const { catalog, config } = await setup('1241', 2)
+    const profOf = () => (computePanelPhases(0, config, catalog)!.inCombat as any).anomalyProficiency ?? 0
+    config.setMechanicSetting('seth.shieldCoverage', 1)
+    const on = profOf()
+    config.setMechanicSetting('seth.shieldCoverage', 0)
+    const off = profOf()
+    expect(on - off).toBeCloseTo(SETH_SHIELD_PROFICIENCY, 1)
   })
 })

@@ -128,4 +128,12 @@ describe('比利完整计算链', () => {
     config.team[0].cinemaLevel = 5
     expect(computePanelPhases(0, config, catalog)!.inCombat.skillLevelBonus).toBe(4)
   })
+
+  it('影画6面板增伤：6命面板 dmgBonus +30（防守卫冻结，SOP §3.5）', async () => {
+    const c0 = await setup('1021', 0)
+    const dmg0 = (computePanelPhases(0, c0.config, c0.catalog)!.inCombat as any).dmgBonus ?? 0
+    const c6 = await setup('1021', 6)
+    const dmg6 = (computePanelPhases(0, c6.config, c6.catalog)!.inCombat as any).dmgBonus ?? 0
+    expect(dmg6 - dmg0).toBeCloseTo(BILLY_C6_DMG_PER_STACK * BILLY_C6_MAX_STACKS, 1)
+  })
 })

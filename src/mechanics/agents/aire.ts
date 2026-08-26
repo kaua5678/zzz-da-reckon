@@ -22,10 +22,10 @@ import type {
   AgentCharConfigInput,
   AgentEventInput,
   AgentMechanicModule,
+  AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentSkillTransformInput,
 } from '../types'
 
 export const AIRE_ID = '1501'
@@ -140,19 +140,17 @@ function cycleFromCfg(cfg: unknown): AireCycle {
   })
 }
 
-function applyAirePanel({ charResult, panel }: AgentSkillTransformInput): void {
-  if (!panel) return
-  if ((panel as Record<string, unknown>).__airePanelApplied) return
-  ;(panel as Record<string, unknown>).__airePanelApplied = true
-  const cycle = charResult.specResources?.aire_cycle as AireCycle | undefined
-  if (!cycle) return
-  panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + cycle.coreProficiency
-  if (cycle.c1EtherAnomalyResIgnore > 0) {
+function applyAirePanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
+  // 面板字段与 computeAireCycle 同源（coreProficiency / c1EtherAnomalyResIgnore / c2DefIgnore）。
+  const c2DelusionCoverage = clampRatio(settings['aire.c2DelusionCoverage'] ?? 1)
+  panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + AIRE_CORE_PROFICIENCY
+  if (cinemaLevel >= 1) {
     panel.enemyEtherAnomalyResReduction = (panel.enemyEtherAnomalyResReduction ?? 0)
-      + cycle.c1EtherAnomalyResIgnore
+      + AIRE_C1_ETHER_ANOMALY_RES_IGNORE
   }
-  if (cycle.c2DefIgnore > 0) {
-    panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + cycle.c2DefIgnore
+  if (cinemaLevel >= 2) {
+    panel.enemyDefReduction = (panel.enemyDefReduction ?? 0)
+      + AIRE_C2_DEF_IGNORE + AIRE_C2_DELUSION_DEF_IGNORE * c2DelusionCoverage
   }
 }
 
@@ -251,10 +249,10 @@ export const aireMechanic: AgentMechanicModule = {
     { id: 'aire.absolutePitchCount', label: '绝对音准#3次数覆盖', description: '第三段[普通攻击：绝对音准 #3]整局次数的手动覆盖；0=自动（应援能量/2+全场应援），>0 强制用该值', default: 0, min: 0, max: 200, step: 1 },
     { id: 'aire.cheerEnergyBonus', label: '应援能量额外', description: '应援能量总量额外补充（自动公式已含强特×3+连携×4+帷幕120/大招，此处补甜心四段等次要来源）', default: 0, min: 0, max: 400, step: 10 },
   ],
+  applyPanel: applyAirePanel,
   buildCharConfig: buildAireCharConfig,
   buildAnomalyEvents: buildAireAnomalyEvents,
   patchExecutions: patchAireExecutions,
-  transformSkillExecutions: applyAirePanel,
   buildResourceResult: buildAireResourceResult,
   resourceSections: buildAireResourceSections,
 }

@@ -25,6 +25,7 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
@@ -239,23 +240,24 @@ function buildAnbyZeroExecutions({ cfg, state, executions }: AgentResourceInput)
   })
 }
 
-function applyAnbyZeroPanel({ charResult, panel }: AgentSkillTransformInput): void {
-  if (!panel) return
-  ;(panel as Record<string, unknown>).__anbyZeroPanelApplied = true
-  const ids = (charResult.executions ?? []).map(e => e.moveId).join(',')
-  let patched = 0
-  const cycle = charResult.specResources?.anby_zero_cycle as AnbyZeroCycle | undefined
-  if (!cycle) return
-  if (cycle.critRateGain > 0) panel.critRate = (panel.critRate ?? 0) + cycle.critRateGain
-  if (cycle.coreDmgBonus > 0) panel.dmgBonus = (panel.dmgBonus ?? 0) + cycle.coreDmgBonus
-  if (cycle.c4ResIgnore > 0) {
-    panel.enemyElectricResReduction = (panel.enemyElectricResReduction ?? 0) + cycle.c4ResIgnore
+function applyAnbyZeroPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
+  // 面板字段与 computeAnbyZeroCycle 同源（critRateGain / coreDmgBonus / c4ResIgnore）。
+  // 全队追加攻击增伤与银星追攻暴伤为全队向/敌方目标向增益，由 spec teamBuffs 合并生效，不落自身面板。
+  const silverStarCoverage = clampRatio(settings['anbyZero.silverStarCoverage'] ?? 1)
+  const additionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  const critRateGain = (additionalActive ? ANBY_ZERO_ADDITIONAL_CRIT_RATE : 0)
+    + (cinemaLevel >= 2 ? ANBY_ZERO_C2_CRIT_RATE : 0)
+  if (critRateGain > 0) panel.critRate = (panel.critRate ?? 0) + critRateGain
+  panel.dmgBonus = (panel.dmgBonus ?? 0) + ANBY_ZERO_CORE_DMG * silverStarCoverage
+  if (cinemaLevel >= 4) {
+    panel.enemyElectricResReduction = (panel.enemyElectricResReduction ?? 0)
+      + ANBY_ZERO_C4_RES_IGNORE * silverStarCoverage
   }
-  // 全队追加攻击增伤（额外能力25%+潜能34-50%）与银星追攻暴伤（自身暴伤×35%）——
-  // 均为全队向/敌方目标向增益，已由 spec teamBuffs 经 collectInCombatTeamBuffs 全队合并生效，
-  // 不在此落自身面板（防双计，见 spec 1381 teamBuffs anby_zero_extra_team_followup / anby_zero_core_silverstar_crit）。
+}
+
+function markAnbyZeroChainTarget({ charResult }: AgentSkillTransformInput): void {
+  // 执行级（非面板）：核心被动 Lv7 零号·安比的连携技和终结技视为追加攻击伤害（供限定追击增伤命中）。
   for (const exec of charResult.executions ?? []) {
-    // 核心被动 Lv7：零号·安比的连携技和终结技视为追加攻击伤害（供限定追击增伤命中）
     const mid = String(exec.moveId)
     if (mid === '1381014' || mid === '1381015') {
       exec.skillDamageTarget = 'additionalAttack'
@@ -300,9 +302,10 @@ export const anbyZeroMechanic: AgentMechanicModule = {
     { id: 'anbyZero.cangguangCount', label: '苍光发动次数', description: '整局发动特殊技苍光的次数，每次消耗1层白雷触发1次白雷额外伤害', default: 6, min: 0, max: 40, step: 1, suffix: '次' },
     { id: 'anbyZero.silverStarCoverage', label: '银星覆盖率', description: '对银星标记敌人增伤与无视电抗的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
   ],
+  applyPanel: applyAnbyZeroPanel,
   buildCharConfig: buildAnbyZeroCharConfig,
   buildExecutions: buildAnbyZeroExecutions,
-  transformSkillExecutions: applyAnbyZeroPanel,
+  transformSkillExecutions: markAnbyZeroChainTarget,
   buildResourceResult: buildAnbyZeroResourceResult,
   resourceSections: buildAnbyZeroResourceSections,
 }

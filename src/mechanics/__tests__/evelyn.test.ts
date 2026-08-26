@@ -80,10 +80,10 @@ describe('伊芙琳（1321）燎索点与总量', () => {
 
   it('核心被动暴击率按覆盖率折算，倍率×1.25需额外能力且暴击≥80%', () => {
     expect(cycle({ restraintCoverage: 0.5 }).coreCritRate).toBe(EVELYN_CORE_CRIT_RATE * 0.5)
-    // baseCrit 60 + 核心25 = 85 ≥ 80 → 生效
-    expect(cycle({ baseCritRate: 60, restraintCoverage: 1 }).multiplierActive).toBe(true)
-    // baseCrit 40 + 核心25 = 65 < 80 → 未生效
-    expect(cycle({ baseCritRate: 40, restraintCoverage: 1 }).multiplierActive).toBe(false)
+    // baseCritRate 语义 = 已含核心被动暴击的总暴击率（applyPanel 已加 coreCritRate，不再叠加）
+    expect(cycle({ baseCritRate: 85, restraintCoverage: 1 }).multiplierActive).toBe(true)
+    // 总暴击率 65 < 80 → 未生效
+    expect(cycle({ baseCritRate: 65, restraintCoverage: 1 }).multiplierActive).toBe(false)
     // 额外能力未激活 → 未生效
     expect(cycle({ baseCritRate: 90, additionalActive: false }).multiplierActive).toBe(false)
   })
@@ -210,11 +210,20 @@ describe('伊芙琳完整计算链', () => {
     const evelyn = calc.resourceResult.value!.characters.find(row => row.agentId === '1321')!
     expect(Object.keys(evelyn.specResources ?? {})).toContain('evelyn_cycle')
     const panel = calc.panels.value[0] as any
-    expect(panel.__evelynPanelApplied).toBe(true)
     // C4：核心暴击+25、影画4暴伤+40、影画1减防+12（C4 已满）；无 C6 追击
     expect(panel.critRate).toBeGreaterThanOrEqual(EVELYN_CORE_CRIT_RATE)
     expect(panel.critDmg).toBeGreaterThanOrEqual(EVELYN_C4_CRIT_DMG)
     expect(panel.enemyDefReduction).toBeGreaterThanOrEqual(12)
+  })
+
+  it('覆盖率滑块→面板重算（防守卫冻结，SOP §3.5）', async () => {
+    const { catalog, config } = await setup('1141', 4)
+    const critOf = () => (computePanelPhases(0, config, catalog)!.inCombat as any).critRate ?? 0
+    config.setMechanicSetting('evelyn.restraintCoverage', 1)
+    const on = critOf()
+    config.setMechanicSetting('evelyn.restraintCoverage', 0)
+    const off = critOf()
+    expect(on - off).toBeCloseTo(EVELYN_CORE_CRIT_RATE, 1)
   })
 
   it('影画1进场喧响+1500写入角色配置，未解锁时为1000', async () => {

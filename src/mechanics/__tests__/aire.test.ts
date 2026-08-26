@@ -72,10 +72,19 @@ describe('爱芮完整计算链', () => {
     const calc = useResourceCalc()
     expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1501')!.specResources?.aire_cycle).toBeTruthy()
     const panel = calc.panels.value[0] as any
-    expect(panel.__airePanelApplied).toBe(true)
     expect(panel.anomalyProficiency).toBeGreaterThanOrEqual(AIRE_CORE_PROFICIENCY)
     expect(panel.enemyEtherAnomalyResReduction).toBeGreaterThanOrEqual(AIRE_C1_ETHER_ANOMALY_RES_IGNORE)
     expect(panel.enemyDefReduction).toBeGreaterThanOrEqual(AIRE_C2_DEF_IGNORE)
+  })
+
+  it('覆盖率滑块→面板重算（防守卫冻结，SOP §3.5）', async () => {
+    const { catalog, config } = await setup('1141', 2)
+    const defOf = () => (computePanelPhases(0, config, catalog)!.inCombat as any).enemyDefReduction ?? 0
+    config.setMechanicSetting('aire.c2DelusionCoverage', 1)
+    const on = defOf()
+    config.setMechanicSetting('aire.c2DelusionCoverage', 0)
+    const off = defOf()
+    expect(on - off).toBeCloseTo(AIRE_C2_DELUSION_DEF_IGNORE, 1)
   })
 
   it('影画6进场喧响+1200写入角色配置', async () => {

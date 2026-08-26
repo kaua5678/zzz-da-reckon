@@ -18,10 +18,10 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentSkillTransformInput,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 
@@ -103,7 +103,7 @@ export function computeEvelynCycle(input: {
   const anchorChainCount = Math.floor(anchorPoints / anchorCost)
   const additionalActive = input.additionalActive
   const multiplierActive = additionalActive
-    && (input.baseCritRate + coreCritRate) >= EVELYN_CRIT_THRESHOLD
+    && input.baseCritRate >= EVELYN_CRIT_THRESHOLD
   return {
     cinemaLevel,
     garroteCount: totalGarrote,
@@ -145,10 +145,11 @@ function buildEvelynCharConfig({ cinemaLevel, skills, cfg, panel, getRowValue }:
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + EVELYN_C1_DECIBEL_GIFT
   }
   // 额外能力×1.25：预缩倍率表值，patchExecutions 经 damageMultiplierOverride 精确结算。
+  // panel.critRate 已含 applyPanel 施加的核心被动暴击（EVELYN_CORE_CRIT_RATE × restraintCoverage），
+  // 故直接按总暴击率判定，不再重复 + coreCritRate。
   const additionalActive = record.evelynAdditionalActive === true
-  const coreCritRate = EVELYN_CORE_CRIT_RATE * Number(record.evelynRestraintCoverage)
   const multiplierActive = additionalActive
-    && ((panel.critRate ?? 0) + coreCritRate) >= EVELYN_CRIT_THRESHOLD
+    && (panel.critRate ?? 0) >= EVELYN_CRIT_THRESHOLD
   record.evelynMultiplierActive = multiplierActive
   if (multiplierActive) {
     record.evelynChainMultScaled = getRowValue(findMove(skills, EVELYN_CHAIN_MOVE_ID), 'damage') * EVELYN_MULTIPLIER
@@ -267,15 +268,18 @@ function patchEvelynExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
 }
 
-function applyEvelynPanel({ charResult, panel }: AgentSkillTransformInput): void {
-  if (!panel) return
-  if ((panel as Record<string, unknown>).__evelynPanelApplied) return
-  ;(panel as Record<string, unknown>).__evelynPanelApplied = true
-  const cycle = charResult.specResources?.evelyn_cycle as EvelynCycle | undefined
-  if (!cycle) return
-  if (cycle.coreCritRate > 0) panel.critRate = (panel.critRate ?? 0) + cycle.coreCritRate
-  if (cycle.c4CritDmg > 0) panel.critDmg = (panel.critDmg ?? 0) + cycle.c4CritDmg
-  if (cycle.c1DefIgnore > 0) panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + cycle.c1DefIgnore
+function applyEvelynPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
+  // 面板字段与 computeEvelynCycle 同源（coreCritRate / c4CritDmg / c1DefIgnore）。
+  const restraintCoverage = clampRatio(settings['evelyn.restraintCoverage'] ?? 1)
+  const c4ShieldCoverage = clampRatio(settings['evelyn.c4ShieldCoverage'] ?? 1)
+  const c1DefIgnoreCoverage = clampRatio(settings['evelyn.c1DefIgnoreCoverage'] ?? 1)
+  panel.critRate = (panel.critRate ?? 0) + EVELYN_CORE_CRIT_RATE * restraintCoverage
+  if (cinemaLevel >= 4) {
+    panel.critDmg = (panel.critDmg ?? 0) + EVELYN_C4_CRIT_DMG * c4ShieldCoverage
+  }
+  if (cinemaLevel >= 1) {
+    panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + EVELYN_C1_DEF_IGNORE * c1DefIgnoreCoverage
+  }
 }
 
 function buildEvelynResourceResult({ cfg, state }: AgentResourceResultInput) {
@@ -315,10 +319,10 @@ export const evelynMechanic: AgentMechanicModule = {
     { id: 'evelyn.c4ShieldCoverage', label: '影画4持盾覆盖率', description: '连携/终结护盾持有期间暴伤+40%的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
     { id: 'evelyn.c6FollowUpCount', label: '影画6追击次数', description: '弦影绝锋期间月辉丝·弦追击的实际触发次数（每窗口上限16次）', default: 16, min: 0, max: 48, step: 1, suffix: '次' },
   ],
+  applyPanel: applyEvelynPanel,
   buildCharConfig: buildEvelynCharConfig,
   buildExecutions: buildEvelynExecutions,
   patchExecutions: patchEvelynExecutions,
-  transformSkillExecutions: applyEvelynPanel,
   buildResourceResult: buildEvelynResourceResult,
   resourceSections: buildEvelynResourceSections,
 }

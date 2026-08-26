@@ -168,8 +168,17 @@ describe('薇薇安完整计算链', () => {
     // 先触发完整资源/失衡计算（transformSkillExecutions 在失衡/异常池提取时施加面板增益）
     expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1331')!.specResources?.vivian_cycle).toBeTruthy()
     const panel = calc.panels.value[0] as any
-    expect(panel.__vivianPanelApplied).toBe(true)
     expect(panel.etherDmg).toBeGreaterThanOrEqual(VIVIAN_C6_ETHER_DMG)
+  })
+
+  it('覆盖率滑块→面板重算（防守卫冻结，SOP §3.5）', async () => {
+    const { catalog, config } = await setup('1181', 6)
+    const atkOf = () => (computePanelPhases(0, config, catalog)!.inCombat as any).atkPct ?? 0
+    config.setMechanicSetting('vivian.c4AtkCoverage', 1)
+    const on = atkOf()
+    config.setMechanicSetting('vivian.c4AtkCoverage', 0)
+    const off = atkOf()
+    expect(on - off).toBeCloseTo(VIVIAN_C4_ATK_PCT, 1)
   })
 })
 

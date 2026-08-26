@@ -301,12 +301,21 @@ describe('艾莲完整计算链', () => {
     expect(cycleRes.potentialCritDmg).toBeCloseTo(48)
     expect(cycleRes.potentialIceResIgnore).toBeCloseTo(10)
     const panel = calc.panels.value[0] as any
-    expect(panel.__ellenPanelApplied).toBe(true)
     expect(panel.critRate).toBeGreaterThanOrEqual(12)
     expect(panel.iceDmg).toBeGreaterThanOrEqual(30)
     expect(panel.penRatio).toBeGreaterThanOrEqual(20)
     expect(panel.critDmg).toBeGreaterThanOrEqual(50 + 48)
     expect(panel.enemyIceResReduction).toBeGreaterThanOrEqual(10)
+  })
+
+  it('覆盖率滑块→面板重算（防守卫冻结，SOP §3.5）', async () => {
+    const { catalog, config } = await setup('1141', 6)
+    const penOf = () => (computePanelPhases(0, config, catalog)!.inCombat as any).penRatio ?? 0
+    config.setMechanicSetting('ellen.c6PenCoverage', 1)
+    const on = penOf()
+    config.setMechanicSetting('ellen.c6PenCoverage', 0)
+    const off = penOf()
+    expect(on - off).toBeCloseTo(20, 1) // ELLEN_C6_PEN_RATIO
   })
 
   it('潜能I无极冰带：暴伤与无视冰抗不叠加（潜能VI 有 +48% 暴伤 +10% 无视冰抗）', async () => {
