@@ -5,7 +5,7 @@
   "agentIds": [
     "1561"
   ],
-  "status": "partially_implemented",
+  "status": "implemented_approximation",
   "attributeConversions": [
     {
       "id": "velina_regen_to_dmg",

@@ -5059,15 +5059,14 @@
       "cinemaImplementation": [
         {
           "cinema": 1,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
             "广域气旋造成的失衡值额外提升20%，与额外能力广域失衡+30%相乘接入",
             "维琳娜触发乱流时无视目标20%全属性伤害抗性，已接入乱流结算区",
-            "全队造成风化/风属性异常伤害时无视20%风抗：已在风属性异放伤害池结算中接入"
+            "全队造成风化/风属性异常伤害时无视20%风抗：已在风属性异放伤害池结算中接入",
+            "全队风化伤害无视20%风抗：已通过 panel.enemyWindResReduction 生效，作用于风化本体伤害（1250%单次，已接入异常伤害池）与风异放。"
           ],
-          "pending": [
-            "普通风化DoT伤害模型尚未显示，因此风化DoT本体的20%风抗无视仍等待风化伤害池接入"
-          ]
+          "pending": []
         },
         {
           "cinema": 2,
@@ -5105,14 +5104,13 @@
         },
         {
           "cinema": 6,
-          "status": "partially_implemented",
+          "status": "implemented_approximation",
           "implemented": [
             "消耗2点风蚀提升乱流倍率后返还1点风蚀",
-            "维琳娜造成的风属性异常积蓄值提升20%，已接入维琳娜风属性积蓄贡献"
+            "维琳娜造成的风属性异常积蓄值提升20%，已接入维琳娜风属性积蓄贡献",
+            "再次施加风化按平均剩余时长增伤（每1s+2.5%，最多40%）已接入风化伤害池（useResourceCalc 异常伤害结算）。"
           ],
-          "pending": [
-            "再次施加风化时按剩余持续时间提升此次风化伤害：逻辑已记录，但普通风化DoT基础伤害池尚未接入，暂不计入最终伤害"
-          ]
+          "pending": []
         }
       ],
       "corePassive": {
