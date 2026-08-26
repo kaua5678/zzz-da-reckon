@@ -22,69 +22,48 @@ async function setup(mateId = '1411', cinemaLevel = 0) {
 }
 
 describe('派派（1281）动力循环', () => {
-  it('C0按旋转命中获得动力并封顶20层，C1按50%期望追加且封顶30层', () => {
-    const c0 = computePiperMomentum({
-      cinemaLevel: 0,
-      exSpecialCount: 4,
-      ultimateCount: 1,
-    })
-    expect(c0.baseGain).toBe(28)
-    expect(c0.c1ExpectedGain).toBe(0)
+  it('动力默认一直满：C0封顶20层、影画1封顶30层（不用管命中次数）', () => {
+    const c0 = computePiperMomentum({ cinemaLevel: 0 })
     expect(c0.cap).toBe(20)
     expect(c0.stacks).toBe(20)
 
-    const c1 = computePiperMomentum({
-      cinemaLevel: 1,
-      exSpecialCount: 3,
-      ultimateCount: 1,
-      specialHitCount: 4,
-    })
-    expect(c1.baseGain).toBe(23)
-    expect(c1.c1ExpectedGain).toBe(13.5)
+    const c1 = computePiperMomentum({ cinemaLevel: 1 })
     expect(c1.cap).toBe(30)
     expect(c1.stacks).toBe(30)
   })
 
-  it('动力层数只提升派派物理异常积蓄效率，C6将持续时间从12秒延长至16秒', () => {
+  it('动力满层只提升派派物理异常积蓄效率，C6将持续时间从12秒延长至16秒', () => {
     const panel = emptyPanel() as any
     piperMechanic.transformSkillExecutions!({
       panel,
       charResult: {
         specResources: {
-          piper_momentum: computePiperMomentum({
-            cinemaLevel: 6,
-            exSpecialCount: 2,
-            ultimateCount: 0,
-          }),
+          piper_momentum: computePiperMomentum({ cinemaLevel: 6 }),
         },
       },
     } as any)
-    expect(panel.physicalAnomalyBuildUpEfficiency).toBe(60)
-    expect(panel.piperMomentumStacks).toBe(15)
+    expect(panel.physicalAnomalyBuildUpEfficiency).toBe(120) // 30 层 × 4%
+    expect(panel.piperMomentumStacks).toBe(30) // 满层
     expect(panel.dmgBonus ?? 0).toBe(0)
 
-    const c0 = computePiperMomentum({ cinemaLevel: 0, exSpecialCount: 0, ultimateCount: 0 })
-    const c6 = computePiperMomentum({ cinemaLevel: 6, exSpecialCount: 0, ultimateCount: 0 })
+    const c0 = computePiperMomentum({ cinemaLevel: 0 })
+    const c6 = computePiperMomentum({ cinemaLevel: 6 })
     expect(c0.durationSeconds).toBe(12)
     expect(c6.durationSeconds).toBe(16)
   })
 })
 
 describe('派派影画机制', () => {
-  it('C2只给指定下砸招式增加10%加当前动力层数的物理增伤', () => {
+  it('C2只给指定下砸招式增加10%+满层动力的物理增伤（恒满）', () => {
     const target = [...PIPER_C2_MOVE_IDS].map(moveId => ({ moveId, dmgBonus: 0 }))
     const other = [{ moveId: '1281005', dmgBonus: 0 }, { moveId: '1281010', dmgBonus: 0 }]
     piperMechanic.patchExecutions!({
-      cfg: {
-        piperCinemaLevel: 2,
-        piperSpecialSpinHits: 0,
-        piperExHitsPerUse: 5,
-        piperUltHitsPerUse: 8,
-      },
+      cfg: { piperCinemaLevel: 2 },
       state: { exSpecialCount: 2, ultimateCount: 0 },
       executions: [...target, ...other],
     } as any)
-    for (const exec of target) expect(exec.dmgBonus).toBe(PIPER_C2_BASE_DMG + 15)
+    // 影画1+ 满层30 → 10 + 30 = 40%
+    for (const exec of target) expect(exec.dmgBonus).toBe(PIPER_C2_BASE_DMG + 30)
     for (const exec of other) expect(exec.dmgBonus).toBe(0)
   })
 
