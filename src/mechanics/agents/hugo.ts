@@ -108,12 +108,20 @@ export function computeHugoCycle(input: {
   ultimateVerdictRatio: number
   remainingStunSeconds: number
   echoCoverage: number
+  /** 轴模式覆盖：强特决算次数 = 轴内 1291_ex_verdict_final 块 × 窗口数（合法轴；非法轴不建模） */
+  exVerdictCountOverride?: number
+  /** 轴模式覆盖：终结技决算次数 = 轴内 1291018 块 × 窗口数 */
+  ultimateVerdictCountOverride?: number
 }): HugoCycle {
   const cinemaLevel = Math.max(0, Math.floor(input.cinemaLevel))
   const exSpecialCount = Math.max(0, Math.floor(input.exSpecialCount))
   const ultimateCount = Math.max(0, Math.floor(input.ultimateCount))
-  const exVerdictCount = Math.min(exSpecialCount, Math.round(exSpecialCount * clampRatio(input.exVerdictRatio)))
-  const ultimateVerdictCount = Math.min(ultimateCount, Math.round(ultimateCount * clampRatio(input.ultimateVerdictRatio)))
+  const exVerdictCount = input.exVerdictCountOverride !== undefined
+    ? Math.min(exSpecialCount, Math.max(0, Math.floor(input.exVerdictCountOverride)))
+    : Math.min(exSpecialCount, Math.round(exSpecialCount * clampRatio(input.exVerdictRatio)))
+  const ultimateVerdictCount = input.ultimateVerdictCountOverride !== undefined
+    ? Math.min(ultimateCount, Math.max(0, Math.floor(input.ultimateVerdictCountOverride)))
+    : Math.min(ultimateCount, Math.round(ultimateCount * clampRatio(input.ultimateVerdictRatio)))
   const exNormalCount = exSpecialCount - exVerdictCount
   return {
     cinemaLevel,
@@ -161,6 +169,12 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     ultimateVerdictRatio: Number(record.hugoUltimateVerdictRatio ?? 1),
     remainingStunSeconds: Number(record.hugoRemainingStunSeconds ?? 5),
     echoCoverage: Number(record.hugoEchoCoverage ?? 1),
+    exVerdictCountOverride: record.hugoAxisExVerdictCount !== undefined
+      ? Number(record.hugoAxisExVerdictCount)
+      : undefined,
+    ultimateVerdictCountOverride: record.hugoAxisUltVerdictCount !== undefined
+      ? Number(record.hugoAxisUltVerdictCount)
+      : undefined,
   })
 }
 

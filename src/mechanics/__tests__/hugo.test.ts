@@ -267,4 +267,23 @@ describe('雨果轴模式（决算可视化 + 0命2命区分）', () => {
     // C2 的 E 殿后更晚 → 剩余更短 → 倍率低于 0命
     expect(v2!.damageMultiplier!).toBeLessThan(v0!.damageMultiplier!)
   })
+
+  it('轴模式：决算次数由轴内块反推（3 窗 × 1 E 块 = 3 次 E 决算，不随滑块 exSpecialCount 膨胀）', async () => {
+    const { config } = await setup('1141', 0)
+    config.useStunAxis = true
+    config.enemy.stunCountLock = 3
+    config.stunAxes = [{ name: '轴1', actions: [
+      { slot: 0, moveId: '1291_ex_verdict_final', count: 1, startTime: 0 },
+    ] }]
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    const hugo = calc.resourceResult.value!.characters.find(r => r.agentId === '1291')!
+    const verdict = hugo.executions.find(r => r.moveId === '1291_ex_verdict_final')
+    expect(verdict).toBeTruthy()
+    expect(verdict!.count).toBe(3) // 3 窗 × 1 块
+    // 非决算强特（轴外）仍在，总强特 = 轴内决算 + 轴外非决算
+    const normal = hugo.executions.find(r => r.moveId === '1291_ex_normal_final')
+    expect(normal).toBeTruthy()
+    expect(normal!.count).toBe(Math.max(0, hugo.exSpecialCount - 3))
+  })
 })

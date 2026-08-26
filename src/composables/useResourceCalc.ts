@@ -775,17 +775,24 @@ function applyNormaHatChain(
         if (truncEnd >= 0) verdictSecondsLost += Math.max(0, windowDur - truncEnd) * wins
       })
     }
-    // 雨果轴模式剩余失衡时间：从「窗口终结决算块」结束时刻反推（强特终结永远、终结技仅 C0/C1），
-    // 覆盖滑块 hugo.remainingStunSeconds——轴模式用轴内真实位置，非轴回落滑块。
+    // 雨果轴模式剩余失衡时间 + 决算次数：从轴内块反推（合法轴：C2 = Q决算→E决算；E决算后再接 E 为非法轴，不建模）。
+    // 剩余失衡时间覆盖滑块 hugo.remainingStunSeconds；决算次数覆盖滑块 exVerdictRatio/ultimateVerdictRatio。
     let hugoAxisRemainingStunSeconds: number | undefined
+    let hugoAxisExVerdictCount: number | undefined
+    let hugoAxisUltVerdictCount: number | undefined
     if (axisActive && configStore.team.some(c => c.agentId === '1291')) {
       const windowDur = computeWindowDuration()
       const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
       let maxEnd = -1
+      let exVerdictBlocks = 0
+      let ultVerdictBlocks = 0
       resolvedAxes.forEach((axis, ai) => {
-        if ((winAlloc[ai] ?? 0) <= 0) return
+        const wins = winAlloc[ai] ?? 0
+        if (wins <= 0) return
         for (const act of axis.actions) {
           const cinema = configStore.team[act.slot]?.cinemaLevel ?? 0
+          if (act.moveId === HUGO_EX_VERDICT_MOVE_ID) exVerdictBlocks += (act.count ?? 1) * wins
+          if (act.moveId === HUGO_ULT_MOVE_ID) ultVerdictBlocks += (act.count ?? 1) * wins
           if (!isHugoEndsWindowMove(act.moveId, cinema)) continue
           const skills = catalogStore.getAgentSkills(configStore.team[act.slot]?.agentId ?? '')
           const move = findMoveById(skills, act.moveId)
@@ -797,6 +804,8 @@ function applyNormaHatChain(
         }
       })
       if (maxEnd >= 0) hugoAxisRemainingStunSeconds = Math.max(0, Math.min(15, windowDur - maxEnd))
+      hugoAxisExVerdictCount = exVerdictBlocks
+      hugoAxisUltVerdictCount = ultVerdictBlocks
     }
     // 当前轮失衡覆盖率（供诺姆火力实验高爆/破甲按失衡时长拆分；与 computeStunCoverage 同口径，含决算截断）
     const provStunCoverage = computeStunCoverage({ stunCount }, verdictSecondsLost)
@@ -926,8 +935,15 @@ function applyNormaHatChain(
         return { ...merged, qingyiStunCount: stunCount }
       }
       if (merged.agentId === '1291' && hugoAxisRemainingStunSeconds !== undefined) {
-        // 雨果轴模式：决算剩余失衡时间由轴内块位置反推（覆盖滑块）；非轴回落 buildCharConfig 的滑块值
-        return { ...merged, hugoRemainingStunSeconds: hugoAxisRemainingStunSeconds, hugoAxisActive: true }
+        // 雨果轴模式：决算剩余失衡时间 + 决算次数由轴内块反推（覆盖滑块）；非轴回落 buildCharConfig 的滑块值。
+        // 次数口径：轴内 1291_ex_verdict_final 块 = 强特决算、轴内 1291018 块 = 终结技决算（合法轴 C2=Q→E；E→E 非法不建模）。
+        return {
+          ...merged,
+          hugoRemainingStunSeconds: hugoAxisRemainingStunSeconds,
+          hugoAxisExVerdictCount: hugoAxisExVerdictCount ?? 0,
+          hugoAxisUltVerdictCount: hugoAxisUltVerdictCount ?? 0,
+          hugoAxisActive: true,
+        }
       }
       if (merged.agentId === '1051') {
         const exOverride = axisActive && yidhariInStunEx > 0
