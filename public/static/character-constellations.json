@@ -237,10 +237,10 @@
         },
         {
           "cinema": 4,
-          "status": "partially_implemented",
+          "status": "not_described_not_implemented",
           "implemented": [],
           "pending": [
-            "防御向效果（抗打断/受伤-18%/无敌）伤害计算器不建模"
+            "防御向（抗打断/受伤-18%/无敌）伤害计算器不建模"
           ]
         },
         {

@@ -81,6 +81,19 @@
   附加在特定招式上的事件不走此路——经既有 attachedEvents 跟随父动作判断是否在轴内。
 - 回归护栏：旧实现曾把尾巴失踪术事件错挂终结技 `1021012` 按其倍率产出行——现 `1021012` 只允许通用终结技一行且次数=终结技次数（nekomata.test.ts 断言）。
 
+### 「11号」（1041）
+
+
+- **当前实现状态 [已实现·近似 2026-08-26]**（实现位置：`src/mechanics/agents/soldier11.ts` + `src/composables/resourceCalc/helpers.ts` + spec `1041.json`；测试 `src/mechanics/__tests__/soldier11.test.ts` 8 例）。含：核心被动火力镇压 +70%、额外能力燎原（火伤+10%/失衡+22.5%）、潜能绝焰暴伤+48%、影画1回能/影画2叠层/影画6充能无视火抗、A45 快速循环。影画4（纵情燃烧）纯防御向不建模。此前 spec status 滞后为 partially_implemented，2026-08-26 对账收口。
+- 核心被动·热浪：普通攻击/冲刺攻击触发[火力镇压]时该招式伤害 +70%，按火力镇压 moveId 行（`1041002/1041004/1041006/1041008/1041024/1041025/1041026/1041013`）dmgBonus × 覆盖率滑块 `soldier11.fireSuppressCoverage`（patchExecutions，非轴默认满覆盖）。
+- 额外能力·燎原（spec additionalAbility：同属性/同阵营队友）：火属性伤害 +10%（无条件）+ 攻击失衡敌人额外 +22.5% × 覆盖率滑块 `soldier11.prairieFireStunCoverage`（computePanelPhases 1041 块）。
+- 潜能觉醒·绝焰：额外能力触发时自身暴伤 +48%（最高档，applyPanel 按 `panel.additionalAbilityActive` 门控；潜能逐档 16/24/32/40/48% 未逐档建模）。
+- 影画1 快速升温：接战能量不足 40 回复至 80（50s 最多一次）→ 整局口径 floor(battleTime/50)×40 注入 `initialEnergyGift`。
+- 影画2 高温汇聚：满层 36%（3%×12层）按覆盖率滑块 `soldier11.c2StackCoverage` 摊入 basic/dodge 类执行行。
+- 影画4 纵情燃烧：纯防御向（抗打断/受伤-18%/无敌），伤害计算器不建模。
+- 影画6 炽热心流：强特/连携/终结各得 8 层充能（上限8），火力镇压消耗 1 层无视 25% 火抗；按期望加权 `resIgnore = 25 × min(1, 充能来源×8 / 火力镇压次数)`（spec `soldier11_charge` 承载资源卡）。
+- A45 快速循环（用户口径 2026-08）：窗口招（强特/连携/终结）后必打快速 A4+A5（`1041008`/`1041025`，动作时间减半），核心被动/C2/C6 经 patchExecutions 咬合。
+
 ### 格莉丝（1181）
 
 

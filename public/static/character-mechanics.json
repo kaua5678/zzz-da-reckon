@@ -253,74 +253,77 @@
         {
           "id": "core_passive_1041",
           "name": "核心被动：热浪",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "「11号」在[普通攻击]或[冲刺攻击]中触发[火力镇压]时，招式造成的伤害提升70%。"
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "[普通攻击]/[冲刺攻击]触发[火力镇压]时该招式伤害 +70%，按火力镇压 moveId 行 dmgBonus × 覆盖率滑块 soldier11.fireSuppressCoverage（patchExecutions）。"
           ],
-          "codePaths": [],
+          "pendingParts": [
+            "火力镇压触发覆盖率非轴模式默认满覆盖；失衡轴内精确计算待接入。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/soldier11.ts"
+          ],
           "status": "implemented_approximation",
           "pending": [
-            "覆盖率默认满覆盖；失衡轴内精确计算待接入"
-          ],
-          "implemented": [
-            "火力镇压行（moveId 级）dmgBonus +70% × 覆盖率滑块 soldier11.fireSuppressCoverage"
+            "火力镇压触发覆盖率非轴模式默认满覆盖；失衡轴内精确计算待接入。"
           ]
         },
         {
           "id": "additional_ability_1041",
           "name": "额外能力：燎原",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "队伍中存在与自身属性或阵营相同的角色时触发： 「11号」造成的火属性伤害提升10%，攻击处于失衡状态下的敌人时，该增益效果额外提升22.5%。"
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "队伍存在同属性或同阵营角色时触发（spec additionalAbility.teamConditions）；火属性伤害 +10%（无条件）+ 攻击失衡敌人额外 +22.5% × 覆盖率滑块 soldier11.prairieFireStunCoverage（computePanelPhases 1041 块）。"
           ],
-          "codePaths": [],
+          "pendingParts": [
+            "失衡增伤非轴模式按覆盖率滑块（默认满覆盖）。"
+          ],
+          "codePaths": [
+            "src/composables/resourceCalc/helpers.ts"
+          ],
           "status": "implemented_approximation",
           "pending": [
-            "失衡增伤非轴模式按覆盖率滑块"
-          ],
-          "implemented": [
-            "火伤+10%（无条件部分）+ 失衡增伤22.5%×滑块（computePanelPhases 1041 块），spec additionalAbility 同属性/同阵营门控"
+            "失衡增伤非轴模式按覆盖率滑块（默认满覆盖）。"
           ]
         },
         {
           "id": "potential_1041",
-          "name": "潜能觉醒",
-          "implementation": "not_described_not_implemented",
-          "implementedParts": [],
-          "pendingParts": [
-            "潜能（炽焰行歌 II） 潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升16%。",
-            "潜能（炽焰行歌 III） 潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升24%。",
-            "潜能（炽焰行歌 IV） 潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升32%。",
-            "潜能（炽焰行歌 V） 潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升40%。",
-            "潜能（炽焰行歌 VI） 潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升48%。"
+          "name": "潜能觉醒：绝焰",
+          "implementation": "implemented_approximation",
+          "implementedParts": [
+            "额外能力·燎原触发时自身暴伤 +48%（潜能最高档，applyPanel 按 panel.additionalAbilityActive 门控）。"
           ],
-          "codePaths": [],
+          "pendingParts": [
+            "只取最高档（48%）；潜能等级逐档（16/24/32/40/48%）未逐档建模。"
+          ],
+          "codePaths": [
+            "src/mechanics/agents/soldier11.ts"
+          ],
           "status": "implemented_approximation",
           "pending": [
-            "失衡增伤非轴模式按覆盖率滑块"
-          ],
-          "implemented": [
-            "火伤+10%（无条件部分）+ 失衡增伤22.5%×滑块（computePanelPhases 1041 块），spec additionalAbility 同属性/同阵营门控"
+            "只取最高档（48%）；潜能等级逐档未建模。"
           ]
         }
       ],
       "cinemaImplementation": [
         {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "接战回能（不足40回复至80，50s/次）按整局口径注入 initialEnergyGift：floor(battleTime/50)×40"
+          ],
           "pending": [
-            "影画1 快速升温：成为接战状态下的当前操作角色时，若「11号」的能量不足40点，则立即回复至80点，50秒内最多触发一次。"
+            "不做50s时间轴模拟（整局总量口径）"
           ]
         },
         {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "满层36%（3%×12层）按覆盖率滑块 soldier11.c2StackCoverage 摊入 basic/dodge 类执行行（patchExecutions）"
+          ],
           "pending": [
-            "影画2 高温汇聚：触发[火力镇压]时，[普通攻击]、[冲刺攻击]、[闪避反击]造成的伤害提升3%，最多叠加12层，持续15秒，每层效果单独结算持续时间。"
+            "层数累积/逐层持续时间按满层近似"
           ]
         },
         {
@@ -336,7 +339,7 @@
           "status": "not_described_not_implemented",
           "implemented": [],
           "pending": [
-            "影画4 纵情燃烧：[普通攻击]第一、二、三段或[冲刺攻击]发动时，若触发[火力镇压]，则在招式发动期间抗打断等级提升，受到的伤害降低18%；[普通攻击]第四段发动时，若触发[火力镇压]，则在招式发动期间获得无敌效果。"
+            "防御向（抗打断/受伤-18%/无敌）伤害计算器不建模"
           ]
         },
         {
@@ -349,35 +352,45 @@
         },
         {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
+          "status": "implemented_approximation",
+          "implemented": [
+            "充能（强特/连携/终结×8层）由 spec soldier11_charge 承载；火力镇压无视25%火抗按期望加权 resIgnore（min(1, 充能来源×8/火力镇压次数)）"
+          ],
           "pending": [
-            "影画6 炽热心流：发动[强化特殊技]、[连携技]或[终结技]时，「11号」获得8层充能（上限8层）；触发[火力镇压]时，消耗1层充能，使当前招式无视目标25%火属性伤害抗性。"
+            "充能池上限/消耗时序按期望加权近似"
           ]
         }
       ],
       "corePassive": {
         "id": "core_passive_1041",
         "name": "核心被动：热浪",
-        "implementation": "not_described_not_implemented",
-        "implementedParts": [],
-        "pendingParts": [
-          "「11号」在[普通攻击]或[冲刺攻击]中触发[火力镇压]时，招式造成的伤害提升70%。"
+        "implementation": "implemented_approximation",
+        "implementedParts": [
+          "[普通攻击]/[冲刺攻击]触发[火力镇压]时该招式伤害 +70%，按火力镇压 moveId 行 dmgBonus × 覆盖率滑块 soldier11.fireSuppressCoverage（patchExecutions）。"
         ],
-        "codePaths": [],
-        "status": "not_described_not_implemented"
+        "pendingParts": [
+          "火力镇压触发覆盖率非轴模式默认满覆盖；失衡轴内精确计算待接入。"
+        ],
+        "codePaths": [
+          "src/mechanics/agents/soldier11.ts"
+        ],
+        "status": "implemented_approximation"
       },
       "additionalAbility": {
         "id": "additional_ability_1041",
         "name": "额外能力：燎原",
-        "trigger": "待人工核对触发条件",
-        "implementation": "not_described_not_implemented",
-        "implementedParts": [],
-        "pendingParts": [
-          "队伍中存在与自身属性或阵营相同的角色时触发： 「11号」造成的火属性伤害提升10%，攻击处于失衡状态下的敌人时，该增益效果额外提升22.5%。"
+        "trigger": "同属性或同阵营队友",
+        "implementation": "implemented_approximation",
+        "implementedParts": [
+          "队伍存在同属性或同阵营角色时触发；火属性伤害 +10%（无条件）+ 攻击失衡敌人额外 +22.5% × 覆盖率滑块（computePanelPhases 1041 块）。"
         ],
-        "codePaths": [],
-        "status": "not_described_not_implemented"
+        "pendingParts": [
+          "失衡增伤非轴模式按覆盖率滑块（默认满覆盖）。"
+        ],
+        "codePaths": [
+          "src/composables/resourceCalc/helpers.ts"
+        ],
+        "status": "implemented_approximation"
       }
     },
     "1051": {
