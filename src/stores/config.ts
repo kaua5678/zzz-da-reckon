@@ -106,6 +106,7 @@ function defaultDriveDisc(element: string): DriveDiscConfig {
 function defaultBasicAttackTimeWeight(agent?: Agent | null): number {
   if (!agent) return 1
   if (agent.id === '1581' || agent.teammateBuffId === '1581') return 0
+  if (agent.id === '1331' || agent.teammateBuffId === '1331') return 0 // 薇薇安：后台/合轴快切，基本不平A
   if (agent.specialty === 'support' || agent.specialty === 'defense') return 0
   return 1
 }
