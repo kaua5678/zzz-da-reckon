@@ -176,18 +176,21 @@ function buildPromiaResourceSections({ result }: AgentResourceSectionsInput) {
 /** 绝裁异放固定倍率（原文「固定结算635%倍率的对应属性异常伤害」）；C2 倍率提升120% = 加120个百分点（用户口供 2026-08-24：635→755） */
 export const PROMIA_EXECUTION_RELEASE_MULTIPLIER = 635
 export const PROMIA_C2_RELEASE_BONUS = 120
+/** 绝裁本体直伤 moveId（异放载体；用户口径 2026-08-26：绝裁是普通招式，必须打、失衡吃易伤） */
+export const PROMIA_VERDICT_MOVE_ID = '1541014'
+/** 坠霜 moveId（强特普通终结段：封喉霜径+坠霜） */
+export const PROMIA_ZHUISHUANG_MOVE_ID = '1541010'
 
 /**
- * 处刑式·绝裁终结一击异放（核心被动）：命中异常状态敌人触发，固定结算 635%（C2=755%）倍率
- * 的对应属性异常伤害，发动时消耗 1 点[霜刑]。
- * 次数完全由回复端驱动（用户口径：总量计算器不管单条持有上限，霜刑来多少打多少，
- * 实战约20次；A5+绝裁连发耗时极小不构成约束）：
- *   寒蚀收入 = 冻结/紊乱触发×5 + 乱流×5（池口径近似：totalTriggerCount×5）
- *            + 自身强特×10 + 队友异放×15（收敛注入 cfg.promiaTeammateReleaseCount）
- *   次数 = 进场2 + C1终结技1 + floor(寒蚀收入 / 50)
- * 结算语义与全角色一致：基础者=该元素异常主施加者、结算者=普罗米娅（dominant 分支自动）。
+ * 计算绝裁（霜刑异放）次数：回复端驱动（总量计算器不管单条持有上限，来多少打多少）。
+ *   寒蚀收入 = 冻结/紊乱/乱流触发×5（池口径 totalTriggerCount）+ 自身强特×10 + 队友异放×15
+ *            + 匿影×10 + 攻击数据 attackFrost + 影画4/6异放回寒蚀×5
+ *   次数 = 进场2 + C1终结技1 + floor(寒蚀收入 / 50)；C4/C6 回寒蚀反馈环收敛。
+ * 同时返回影画6 特殊异放次数（15s CD，启动 2s）。
  */
-function buildPromiaAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
+function computePromiaVerdict({ cfg, state, battleTime }: { cfg: AgentCharConfigInput['cfg']; state: { exSpecialCount?: number }; battleTime: number }): {
+  count: number; specialCount: number; baseFrostGain: number; initial: number
+} {
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = Math.max(0, Math.floor(Number(record.promiaCinemaLevel ?? 0)))
   const override = Math.max(0, Math.floor(setting(cfg, 'promia.releaseCountOverride', 0)))
@@ -199,14 +202,12 @@ function buildPromiaAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
   const baseFrostGain = triggerHits * 5 + exCasts * 10 + niying * 10 + teammateReleases * 15 + attackFrost
   const initial = 2 + (cinemaLevel >= 1 ? 1 : 0)
 
-  // 影画6 特殊异放 CD 上限（15s；第一次霜刑异放需启动时间，不可能 0s 触发）
   const specialCdCount = cinemaLevel >= 6
-    ? Math.max(0, Math.floor((totalTime - PROMIA_C6_SPECIAL_STARTUP_SECONDS) / PROMIA_C6_SPECIAL_CD_SECONDS) + 1)
+    ? Math.max(0, Math.floor((battleTime - PROMIA_C6_SPECIAL_STARTUP_SECONDS) / PROMIA_C6_SPECIAL_CD_SECONDS) + 1)
     : 0
 
   let count = override > 0 ? override : initial + Math.floor(baseFrostGain / 50)
   if (override <= 0 && cinemaLevel >= 4) {
-    // 影画4 异放回寒蚀 +5/异放 + 影画6 特殊异放回寒蚀 +5/特殊 → 霜刑反馈环（收敛；反馈量 = 5×count/50 = count/10，有界收缩）
     for (let i = 0; i < 12; i++) {
       const special = cinemaLevel >= 6 ? Math.min(count, specialCdCount) : 0
       const frostBonus = PROMIA_C4_RELEASE_FROST * count + (cinemaLevel >= 6 ? PROMIA_C4_RELEASE_FROST * special : 0)
@@ -216,6 +217,21 @@ function buildPromiaAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
     }
   }
   const specialCount = cinemaLevel >= 6 ? Math.min(count, specialCdCount) : 0
+  return { count, specialCount, baseFrostGain, initial }
+}
+
+/**
+ * 处刑式·绝裁终结一击异放（核心被动）：命中异常状态敌人触发，固定结算 635%（C2=755%）倍率
+ * 的对应属性异常伤害，发动时消耗 1 点[霜刑]。
+ * 结算语义与全角色一致：基础者=该元素异常主施加者、结算者=普罗米娅（dominant 分支自动）。
+ * 绝裁本体直伤（1541014）在 buildExecutions 单独生成（普通招式，失衡吃易伤）。
+ */
+function buildPromiaAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  const cinemaLevel = Math.max(0, Math.floor(Number(record.promiaCinemaLevel ?? 0)))
+  const niying = Math.max(0, Math.min(99, Math.floor(Number(record.promiaNiyingCount ?? 0))))
+  const attackFrost = Math.max(0, Math.floor(Number(record.promiaAttackFrostGain ?? 0)))
+  const { count, specialCount, baseFrostGain, initial } = computePromiaVerdict({ cfg, state, battleTime: totalTime })
 
   if (count <= 0) return
   const mult = PROMIA_EXECUTION_RELEASE_MULTIPLIER + (cinemaLevel >= 2 ? PROMIA_C2_RELEASE_BONUS : 0)
@@ -240,7 +256,7 @@ function buildPromiaAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
       count: specialCount,
       formula: `releaseMultiplier=${PROMIA_C6_SPECIAL_RELEASE_MULT}`,
       fields: [`releaseMultiplier=${PROMIA_C6_SPECIAL_RELEASE_MULT}`, `cd=${PROMIA_C6_SPECIAL_CD_SECONDS}s`, `casts=${specialCount}`],
-      note: `影画6：消耗霜刑异放额外触发特殊异放 200%（15s CD，启动 ${PROMIA_C6_SPECIAL_STARTUP_SECONDS}s）→ ${specialCount} 次（min(绝裁异放 ${count}, CD ${specialCdCount})）；元素随目标当前异常。`,
+      note: `影画6：消耗霜刑异放额外触发特殊异放 200%（${PROMIA_C6_SPECIAL_CD_SECONDS}s CD，启动 ${PROMIA_C6_SPECIAL_STARTUP_SECONDS}s）→ ${specialCount} 次（min(绝裁异放 ${count}, CD 上限)）；元素随目标当前异常。`,
     })
   }
 }
@@ -249,16 +265,42 @@ function buildPromiaAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
  * 攻击数据回复端（用户补充 2026-08-24）：她的不同攻击命中回复一定[寒蚀值]（倍率表 attack_data 行，
  * 引擎已收集为 totalSpecialResourceRecovery）——计入霜刑收入。
  */
-function buildPromiaExecutions({ cfg, executions }: AgentResourceInput): void {
+function buildPromiaExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const attackFrost = executions.reduce((s, e) => s + (e.totalSpecialResourceRecovery ?? 0), 0)
   ;(cfg as unknown as Record<string, unknown>).promiaAttackFrostGain = Math.max(0, Math.floor(attackFrost))
+  const record = cfg as unknown as Record<string, unknown>
+  const niying = Math.max(0, Math.min(99, Math.floor(Number(record.promiaNiyingCount ?? 0))))
+  const exCasts = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
+
+  // 强特 = 封喉霜径(起手，资源池已生成) + 坠霜(普通终结) / 重霜(匿影终结)。
+  // 坠霜 = 强特次数 − 匿影次数（匿影的强特终结是重霜，不是坠霜）
+  const zhuishuangCount = Math.max(0, exCasts - niying)
+  if (zhuishuangCount > 0) {
+    executions.push({
+      moveId: PROMIA_ZHUISHUANG_MOVE_ID,
+      moveName: '特殊技：处刑式·坠霜（强特终结）',
+      category: 'special',
+      element: 'ice',
+      count: zhuishuangCount,
+      actionTime: 1.116,
+      comboAlignRatio: 0,
+      totalTime: 1.116 * zhuishuangCount,
+      totalComboAlignTime: 0,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      decibelRecovery: 0,
+      totalDecibelRecovery: 0,
+      energyRecovery: 0,
+      totalEnergyRecovery: 0,
+    })
+  }
   // 匿影后解锁特殊技「处刑式·重霜」：每次匿影可接一次（真实 moveId，前台时间由引擎时间预算外层折算）
-  const niying = Math.max(0, Math.min(99, Math.floor(Number((cfg as unknown as Record<string, unknown>).promiaNiyingCount ?? 0))))
   if (niying > 0) {
     executions.push({
       moveId: '1541011',
       moveName: '特殊技：处刑式·重霜（匿影后接）',
       category: 'special',
+      element: 'ice',
       count: niying,
       actionTime: 2.35,
       comboAlignRatio: 0,
@@ -271,6 +313,27 @@ function buildPromiaExecutions({ cfg, executions }: AgentResourceInput): void {
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       skillTableNote: `处刑式·重霜 ×${niying}（匿影后解锁；#2 子段 24.2% 未单列）`,
+    })
+  }
+  // 绝裁本体直伤（异放载体）：普通招式，失衡吃易伤；次数 = 霜刑（绝裁异放）次数
+  const verdict = computePromiaVerdict({ cfg, state, battleTime: Number(record.battleTime ?? 180) })
+  if (verdict.count > 0) {
+    executions.push({
+      moveId: PROMIA_VERDICT_MOVE_ID,
+      moveName: '强化特殊技：处刑式·绝裁（异放载体）',
+      category: 'special',
+      element: 'ice',
+      count: verdict.count,
+      actionTime: 0.85,
+      comboAlignRatio: 0,
+      totalTime: 0.85 * verdict.count,
+      totalComboAlignTime: 0,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      decibelRecovery: 0,
+      totalDecibelRecovery: 0,
+      energyRecovery: 0,
+      totalEnergyRecovery: 0,
     })
   }
 }

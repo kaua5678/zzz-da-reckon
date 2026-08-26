@@ -5,6 +5,8 @@ import {
   PROMIA_C6_ALL_RES_IGNORE,
   PROMIA_C6_SPECIAL_RELEASE_MULT,
   PROMIA_EXECUTION_RELEASE_MULTIPLIER,
+  PROMIA_VERDICT_MOVE_ID,
+  PROMIA_ZHUISHUANG_MOVE_ID,
 } from '../agents/promia'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -59,6 +61,25 @@ describe('普罗米娅 处刑式·匿影（交互栏次数）', () => {
       expect(zhongshuang.count).toBe(5)
       expect(zhongshuang.totalTime).toBeCloseTo(2.35 * 5)
     }
+  })
+})
+
+describe('普罗米娅 强特终结/绝裁载体 直伤（2026-08-26 用户口径）', () => {
+  it('坠霜(1541010 767.7%) + 绝裁本体(1541014 1024.9%) 作为普通招式生成，倍率表精确回填', async () => {
+    const { config } = await setupHarness([{ agentId: '1541', cinemaLevel: 6 }, { agentId: '1181', cinemaLevel: 0 }])
+    for (const b of config.globalBuffs) b.enabled = false
+    const calc = useResourceCalc()
+    const promia = calc.resourceResult.value!.characters.find(c => c.agentId === '1541')!
+    const zhuishuang = promia.executions.find(e => e.moveId === PROMIA_ZHUISHUANG_MOVE_ID)
+    const verdict = promia.executions.find(e => e.moveId === PROMIA_VERDICT_MOVE_ID)
+    expect(zhuishuang).toBeTruthy()
+    expect(zhuishuang!.damageMultiplier).toBe(767.7)
+    expect(verdict).toBeTruthy()
+    expect(verdict!.damageMultiplier).toBe(1024.9)
+    // 绝裁次数 = 绝裁异放次数（异放载体）
+    const release = (promia.anomalyEventExecutions ?? []).find(e => e.eventId === 'promia_execution_release')
+    expect(verdict!.count).toBe(release?.count ?? 0)
+    expect(verdict!.count).toBeGreaterThan(0)
   })
 })
 
