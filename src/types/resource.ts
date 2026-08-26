@@ -1750,8 +1750,12 @@ export interface StunPoolResult {
   inAxisStunTotal: number
   /** Boss 失衡值上限 */
   bossStunValue: number
-  /** 失衡次数 = floor(有效总失衡值 / bossStunValue) */
+  /** 失衡次数 = floor(有效总失衡值 / bossStunValue)；含失衡值返还（第1次满额、之后按 (1-返还比例) 折算） */
   stunCount: number
+  /** 失衡值返还比例（0~0.25，雨果决算口径） */
+  stunRefundRatio: number
+  /** 实际返还的失衡值合计（除最后一次失衡外的每次各返还 refundStunRatio × bossStunValue） */
+  stunRefundValue: number
   /** 每次失衡的连携次数（首领默认3，可由用户配置） */
   chainCountPerStun: number
   /** 总连携次数 = 失衡次数 × 每次连携次数 */

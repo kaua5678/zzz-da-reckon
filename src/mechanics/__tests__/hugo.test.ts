@@ -187,3 +187,36 @@ describe('雨果完整计算链', () => {
     expect((computePanelPhases(0, config, catalog)!.inCombat as any).additionalAbilityActive).toBe(1)
   })
 })
+
+describe('雨果决算返还与易伤精度（非轴）', () => {
+  it('决算返还失衡值：剩余5秒返还25%使失衡次数高于剩余0秒', async () => {
+    const withRefund = await setup('1141', 0)
+    withRefund.config.setMechanicSetting('hugo.remainingStunSeconds', 5)
+    const calc5 = useResourceCalc()
+    expect(calc5.stunPoolResult.value?.stunRefundRatio).toBeCloseTo(0.25)
+    const stun5 = calc5.stunPoolResult.value?.stunCount ?? 0
+    expect(stun5).toBeGreaterThan(0)
+
+    const noRefund = await setup('1141', 0)
+    noRefund.config.setMechanicSetting('hugo.remainingStunSeconds', 0)
+    const calc0 = useResourceCalc()
+    expect(calc0.stunPoolResult.value?.stunRefundRatio).toBe(0)
+    const stun0 = calc0.stunPoolResult.value?.stunCount ?? 0
+    expect(stun0).toBeLessThan(stun5)
+  })
+
+  it('易伤只给连携+决算招式：决算行满易伤、强特起手无易伤', async () => {
+    await setup('1141', 0)
+    const calc = useResourceCalc()
+    const rows = calc.damagePoolRows.value
+    const verdict = rows.find(r => r.moveId === '1291_ex_verdict_final')
+    const chain = rows.find(r => r.moveId === '1291015')
+    const open = rows.find(r => r.moveId === '1291009')
+    expect(verdict).toBeTruthy()
+    expect(verdict!.stunMult).toBeGreaterThan(1)
+    expect(chain).toBeTruthy()
+    expect(chain!.stunMult).toBeGreaterThan(1)
+    expect(open).toBeTruthy()
+    expect(open!.stunMult).toBe(1)
+  })
+})

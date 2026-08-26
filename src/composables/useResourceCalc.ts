@@ -1,4 +1,5 @@
 import { YESHUGUANG_FULL_STUN_MOVES } from '@/mechanics/agents/yeshuguang'
+import { HUGO_FULL_STUN_MOVES } from '@/mechanics/agents/hugo'
 import { inferSkillDamageTarget } from '@/core/damage'
 import { estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
 import { computed } from 'vue'
@@ -472,6 +473,7 @@ function applyNormaHatChain(
     axisHug: { hug60: number; hug90: number } | null,
     axisMode: boolean,
     inAxisFractionProvider?: (stunCount: number, execs: StunSkillExecution[]) => Record<string, number>,
+    refundStunRatio = 0,
   ): { pool: StunPoolResult | null; hug60: number; promote: number; targetSlot: number; chainMoveId: string; ultimateMoveId: string } {
     const chainCountPerStun = configStore.team.reduce((sum, c) => sum + (c.chainCountPerStun ?? 0), 0)
     const runPool = (execs: StunSkillExecution[], inAxisFraction?: Record<string, number>) => calcStunPool({
@@ -479,6 +481,7 @@ function applyNormaHatChain(
       chainCountPerStun, enemyStunResistances: configStore.enemy.stunResistances ?? configStore.enemy.resistances ?? {},
       physicalFlinchCoverageRate: flinchRate,
       inAxisStunFractionByKey: inAxisFraction,
+      refundStunRatio,
     })
 
     let stunCount = 0
@@ -1275,14 +1278,23 @@ function applyNormaHatChain(
       }
     }
 
+    // 雨果决算失衡值返还：每次失衡结束返还 min(25%, 剩余秒×5%) × bossStunValue 进下一次失衡条。
+    // 返还只由「结束失衡」的决算产生（C2 的 Q 不结束不返还），恒为每窗 1 次；剩余秒非轴取滑块（轴模式待接轴反推）。
+    const hugoSlot = configStore.team.findIndex(c => c.agentId === '1291')
+    const hugoHasVerdict = configStore.getMechanicSetting('hugo.exVerdictRatio', 1) > 0
+      || configStore.getMechanicSetting('hugo.ultimateVerdictRatio', 1) > 0
+    const hugoRefundRatio = hugoSlot >= 0 && hugoHasVerdict
+      ? Math.min(0.25, Math.max(0, configStore.getMechanicSetting('hugo.remainingStunSeconds', 5)) * 0.05)
+      : 0
+
     // Round 0：无易伤 → 畏缩覆盖率初算
-    const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, inAxisFractionProvider)
+    const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, inAxisFractionProvider, hugoRefundRatio)
     const adj0 = applyLiuyinPromote(rr, sp0, catalogStore)
     const ap0 = calcAnomalyPoolInput(0, adj0 ? extractAnomalyExecsFrom(adj0) : baseAnomaly)
 
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
     const flinch1 = ap0?.coverage?.physicalCoverageRate ?? 0
-    const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, inAxisFractionProvider)
+    const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, inAxisFractionProvider, hugoRefundRatio)
     const adj1 = applyLiuyinPromote(rr, sp1, catalogStore)
     // 诺姆膛温换连携：帽子把戏触发上一位角色快速支援→替换为连携，连携归属上一位队友；C4 时诺姆+队友各 200 不可分享喧响。
     const adj2 = applyNormaHatChain(adj1 ?? rr, configStore, catalogStore)
@@ -2361,6 +2373,11 @@ function applyNormaHatChain(
         } else if (charResult.agentId === '1431' && YESHUGUANG_FULL_STUN_MOVES.has(exec.moveId)) {
           // 叶瞬光白毛：关键伤害一律满易伤（帷幕易伤），真失衡只送连携；上限 210%/300% 在 pushDirect 处理
           emitExecDirect(totalUnits, 1, '', ' · 明心境满易伤', exec.source)
+        } else if (!isAxis && charResult.agentId === '1291') {
+          // 雨果（非轴精确口径）：只有失衡赠送连携 + 决算招式吃满易伤，其余招式都在失衡外、无易伤。
+          // 轴模式走上方 axisSplit（按捏轴内/外拆分），不在此兜底。
+          const fullStun = HUGO_FULL_STUN_MOVES.has(exec.moveId)
+          emitExecDirect(totalUnits, fullStun ? 1 : 0, '', fullStun ? ' · 失衡内（连携/决算满易伤）' : ' · 失衡外（无易伤）', exec.source)
         } else {
           // 未进轴的槽位（如换的辅助、没捏进轴）按全局覆盖率单独算
           emitExecDirect(totalUnits, stunCoverage.value, '', '', exec.source)

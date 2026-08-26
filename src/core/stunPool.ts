@@ -73,6 +73,12 @@ export interface StunPoolInput {
    * 失衡窗口内打出的失衡值不累积下一次失衡条，因此从有效失衡值中扣除。
    */
   inAxisStunFractionByKey?: Record<string, number>
+  /**
+   * 失衡值返还比例（0~0.25，如雨果决算按剩余失衡时间每 1s 返 5%、上限 25%）。
+   * 每次失衡结束时返还 `返还比例 × bossStunValue` 的失衡值进入下一次失衡条——
+   * 等效于第 1 次失衡仍满额、之后每次失衡所需外部失衡值降为 `bossStunValue × (1 - 返还比例)`。
+   */
+  refundStunRatio?: number
 }
 
 /** 计算单次招式的实际失衡值
@@ -121,6 +127,7 @@ function calcPerHitStun(
 export function calcStunPool(input: StunPoolInput): StunPoolResult {
   const { executions, bossStunValue, chainCountPerStun, enemyStunResistance = 0, enemyStunResistances = {}, physicalFlinchCoverageRate = 0 } = input
   const inAxisFractions = input.inAxisStunFractionByKey ?? {}
+  const refundStunRatio = Math.max(0, Math.min(0.25, input.refundStunRatio ?? 0))
 
   const contributions: StunContribution[] = []
   const perSlotStun = [0, 0, 0]
@@ -159,10 +166,16 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
     inAxisStunTotal += inAxisStun
   }
 
-  // 失衡次数 = floor(有效总失衡值 / bossStunValue)；失衡窗口内打出的失衡值无效
+  // 失衡次数 = floor(有效总失衡值 / bossStunValue)；失衡窗口内打出的失衡值无效。
+  // 失衡值返还（雨果决算）：第 1 次失衡满额，之后每次失衡所需外部失衡值 = bossStunValue × (1 - 返还比例)。
+  const effectiveStunCost = bossStunValue * (1 - refundStunRatio)
   const stunCount = bossStunValue > 0
-    ? Math.floor(totalStunBuildUp / bossStunValue)
+    ? (totalStunBuildUp >= bossStunValue
+      ? 1 + Math.floor((totalStunBuildUp - bossStunValue) / effectiveStunCost)
+      : 0)
     : 0
+  // 实际被返还（用于展示）：除最后一次失衡外的每次失衡各返还 refundStunRatio × bossStunValue
+  const stunRefundValue = Math.max(0, stunCount - 1) * refundStunRatio * bossStunValue
 
   // 总连携次数
   const chainCountTotal = stunCount * chainCountPerStun
@@ -177,6 +190,8 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
     inAxisStunTotal,
     bossStunValue,
     stunCount,
+    stunRefundRatio: refundStunRatio,
+    stunRefundValue,
     chainCountPerStun,
     chainCountTotal,
     decibelBonus,

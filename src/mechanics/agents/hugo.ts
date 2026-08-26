@@ -24,6 +24,22 @@ export const HUGO_EX_OPEN_MOVE_ID = '1291009'
 export const HUGO_EX_FINAL_MOVE_ID = '1291010'
 export const HUGO_CHAIN_MOVE_ID = '1291015'
 export const HUGO_ULT_MOVE_ID = '1291018'
+// 合成执行行 id（buildExecutions 产出；真实 1291010 由倍率表拆为起手/终结，模块按决算与否拆分结算）
+export const HUGO_EX_VERDICT_MOVE_ID = '1291_ex_verdict_final'
+export const HUGO_EX_NORMAL_MOVE_ID = '1291_ex_normal_final'
+export const HUGO_C6_OUT_OF_STUN_VERDICT_MOVE_ID = '1291_c6_out_of_stun_verdict'
+export const HUGO_ULT_VERDICT_BONUS_MOVE_ID = '1291_ultimate_verdict_bonus'
+/**
+ * 非轴模式吃满易伤的招式：失衡赠送连携 + 决算招式（强特终结一击/终结技本体与决算追加倍率）。
+ * 其余（强特起手、普通攻击、失衡外强特终结、C6 轴外荆棘决算）在失衡外、不吃易伤。
+ * 用户口径 2026-08-26：雨果能吃到易伤的就是失衡赠送连携和决算招式。
+ */
+export const HUGO_FULL_STUN_MOVES = new Set<string>([
+  HUGO_CHAIN_MOVE_ID,
+  HUGO_ULT_MOVE_ID,
+  HUGO_EX_VERDICT_MOVE_ID,
+  HUGO_ULT_VERDICT_BONUS_MOVE_ID,
+])
 export const HUGO_EX_FINAL_BASE_MULTIPLIER = 709.8
 export const HUGO_EX_FINAL_ACTION_TIME = 1.805
 export const HUGO_VERDICT_BASE_MULTIPLIER = 1000
@@ -178,7 +194,7 @@ function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): vo
   const record = cfg as unknown as Record<string, unknown>
   const additionalActive = record.hugoAdditionalActive === true
   pushExecution(executions, {
-    moveId: '1291_ex_verdict_final',
+    moveId: HUGO_EX_VERDICT_MOVE_ID,
     moveName: '魂狩·惩戒·决算终结一击',
     category: 'special',
     count: cycle.exVerdictCount,
@@ -189,7 +205,7 @@ function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): vo
     additionalActive,
   })
   pushExecution(executions, {
-    moveId: '1291_ex_normal_final',
+    moveId: HUGO_EX_NORMAL_MOVE_ID,
     moveName: '魂狩·惩戒·终结一击',
     category: 'special',
     count: cycle.cinemaLevel >= 6 ? 0 : cycle.exNormalCount,
@@ -200,7 +216,7 @@ function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): vo
     additionalActive,
   })
   pushExecution(executions, {
-    moveId: '1291_c6_out_of_stun_verdict',
+    moveId: HUGO_C6_OUT_OF_STUN_VERDICT_MOVE_ID,
     moveName: '魂狩·惩戒·荆棘决算',
     category: 'special',
     count: cycle.c6OutOfStunVerdictCount,
@@ -211,7 +227,7 @@ function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): vo
     additionalActive,
   })
   pushExecution(executions, {
-    moveId: '1291_ultimate_verdict_bonus',
+    moveId: HUGO_ULT_VERDICT_BONUS_MOVE_ID,
     moveName: '渎神者·决算追加倍率',
     category: 'chain',
     count: cycle.ultimateVerdictCount,
