@@ -75,7 +75,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 - **合轴率** `comboAlignRatio`：动作时间内可与其他操作并行的比例，硬编码进 catalog 静态数据。
 - **失衡轴**：`src/data/stunAxisPresets/` 下的预设 JSON（`team` 按槽位匹配、`*` 通配、`chapter` 字段用于章鱼自动轴按伊德海莉命座选轴）。
 
-## 6. 文档（共 9 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（共 10 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -86,8 +86,9 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/GAME_TERM_TO_CODE_FIELD.md` | 中文游戏术语 → 计算器字段映射（AI 录入时查字段用） |
 | `docs/MECHANICS_IMPLEMENTATION.md` | 角色特殊机制档案：已实现机制角色口径（洛克茜/克拉蕾/柏妮思/雅/琉音/诺姆/青衣/般岳/卢西娅/星徽·比利等）与通用自动失衡轴 |
 | `docs/FEATURES_GUIDE.md` | **Boss 选择 + 队伍对比功能手册**：操作方式、数据管道命令、修改入口表、口径与验证命令（新功能必更新） |
+| `docs/UI_THEME_GUIDE.md` | **UI 主题系统指南**：明暗双主题三层颜色体系（--app-*/--wa-* 色阶）、切换机制、SVG 填坑、ZZZ 品牌色板、改 UI 前必读 |
 | `docs/implementation-status.md` | **自动生成**，60 角色覆盖矩阵（唯一权威进度，勿手改） |
 | `docs/mechanism-reference.md` | 游戏底层机制理论（啵啵獭 10 期：能量/喧响/击破/异常/紊乱/防御/秽盾/风），纯参考，不随代码维护 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建。
-> 文档数量以本表为准（9 份），新增文档需同步本表。
+> 文档数量以本表为准（10 份），新增文档需同步本表。

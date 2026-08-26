@@ -45,15 +45,33 @@
         </n-tabs>
       </div>
     </div>
+    <div class="header-right">
+      <n-tooltip trigger="hover">
+        <template #trigger>
+          <n-button quaternary circle size="small" class="theme-toggle" @click="themeStore.toggle()">
+            <template #icon>
+              <n-icon>
+                <SunnyOutline v-if="themeStore.mode === 'dark'" />
+                <MoonOutline v-else />
+              </n-icon>
+            </template>
+          </n-button>
+        </template>
+        {{ themeStore.mode === 'dark' ? '切换到明亮模式' : '切换到夜间模式' }}
+      </n-tooltip>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NTabs, NTabPane } from 'naive-ui'
+import { NButton, NIcon, NTabs, NTabPane, NTooltip } from 'naive-ui'
+import { MoonOutline, SunnyOutline } from '@vicons/ionicons5'
 import { useConfigStore } from '@/stores/config'
+import { useThemeStore } from '@/stores/theme'
 
 const configStore = useConfigStore()
+const themeStore = useThemeStore()
 
 const calculatorTabs = ['team', 'attribute', 'resource', 'result', 'resourceUtilization', 'stunAxis', 'teamCompare', 'breakerCompare', 'timeline']
 const developerTabs = ['debug', 'wengineFields', 'logic', 'mechanic', 'multiplierCoeff']
@@ -72,8 +90,8 @@ function onTabChange(tab: string) {
   gap: 16px;
   padding: 0 24px;
   height: 60px;
-  background: rgba(10, 10, 14, 0.72);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--app-header-bg);
+  border-bottom: 1px solid var(--wa-80);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -97,21 +115,32 @@ function onTabChange(tab: string) {
   align-items: center;
   padding: 4px 7px;
   border-radius: 7px;
-  background: linear-gradient(135deg, #4c8bf5, #7c5cf5);
-  color: #fff;
+  /* ZZZ S级金（#FFB500，游戏 S 抽卡金）：品牌锚点，亮暗两模式同值 */
+  background: linear-gradient(135deg, var(--app-accent-gold), var(--app-accent-gold-soft));
+  color: #241a03;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 2px;
   line-height: 1;
-  box-shadow: 0 2px 10px rgba(76, 139, 245, 0.35);
+  box-shadow: 0 2px 10px rgba(255, 181, 0, 0.35);
 }
 
 .brand-title {
   font-size: 17px;
   font-weight: 700;
-  color: #fff;
+  color: var(--app-text-solid);
   letter-spacing: 1px;
   white-space: nowrap;
+}
+
+.header-right {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.theme-toggle {
+  color: var(--wa-600);
 }
 
 .header-center {
@@ -137,7 +166,7 @@ function onTabChange(tab: string) {
 }
 
 .tab-section-label {
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--wa-420);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -146,14 +175,14 @@ function onTabChange(tab: string) {
   flex: 0 0 auto;
   width: 1px;
   height: 24px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--wa-120);
 }
 
 .header-tabs {
-  --n-tab-text-color: rgba(255, 255, 255, 0.6);
-  --n-tab-text-color-active: #fff;
-  --n-tab-text-color-hover: rgba(255, 255, 255, 0.85);
-  --n-tab-bar-color: #3b82f6;
+  --n-tab-text-color: var(--wa-600);
+  --n-tab-text-color-active: var(--app-text-solid);
+  --n-tab-text-color-hover: var(--wa-850);
+  --n-tab-bar-color: var(--app-primary);
   --n-tab-font-size: 14px;
   white-space: nowrap;
 }

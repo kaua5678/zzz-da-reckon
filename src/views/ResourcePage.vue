@@ -245,7 +245,7 @@ function buildRows(category: SkillCategory) {
   height: 48px;
   border-radius: 8px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--wa-50);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -266,7 +266,7 @@ function buildRows(category: SkillCategory) {
 .agent-meta-name {
   font-size: 15px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
   margin-right: 4px;
 }
 
@@ -277,37 +277,37 @@ function buildRows(category: SkillCategory) {
 }
 
 .skill-category {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--wa-20);
   border-radius: 8px;
   padding: 12px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--wa-40);
 }
 
 .category-title {
   font-size: 15px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--wa-850);
   margin-bottom: 10px;
 }
 
 .no-data {
   text-align: center;
   padding: 40px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--wa-300);
 }
 
 .formula-legend {
   margin-top: 24px;
   padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--app-inset);
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--wa-60);
 }
 
 .legend-title {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--wa-600);
   margin-bottom: 8px;
 }
 
@@ -316,15 +316,15 @@ function buildRows(category: SkillCategory) {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
   margin-bottom: 4px;
 }
 
 /* 覆盖 Naive UI 表格暗色主题 */
 :deep(.n-data-table) {
-  --n-merged-th-color: rgba(255, 255, 255, 0.06);
+  --n-merged-th-color: var(--wa-60);
   --n-merged-td-color: transparent;
-  --n-merged-td-color-hover: rgba(255, 255, 255, 0.04);
-  --n-border-color: rgba(255, 255, 255, 0.08);
+  --n-merged-td-color-hover: var(--wa-40);
+  --n-border-color: var(--wa-80);
 }
 </style>

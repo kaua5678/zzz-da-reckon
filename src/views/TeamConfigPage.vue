@@ -1262,7 +1262,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 
 .preset-label {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--wa-850);
   white-space: nowrap;
 }
 
@@ -1278,9 +1278,9 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
   flex-direction: column;
   gap: 6px;
   padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--wa-80);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--wa-30);
 }
 
 .gold-slot-name {
@@ -1292,12 +1292,12 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 .gold-slot-label {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--wa-700);
 }
 
 .gold-slot-agent {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
 }
 
 .gold-slot-fields {
@@ -1314,7 +1314,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 
 .gold-field-label {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   width: 28px;
   flex-shrink: 0;
 }
@@ -1332,7 +1332,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
   flex-direction: column;
   gap: 6px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--wa-80);
 }
 
 .gold-save-row {
@@ -1345,7 +1345,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 
 .gold-save-label {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--wa-700);
   white-space: nowrap;
 }
 
@@ -1372,7 +1372,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 .section-title {
   font-size: 13px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--wa-850);
   margin-bottom: 2px;
 }
 
@@ -1389,7 +1389,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 
 .field-label {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
 }
 
 .field-hint {
@@ -1399,7 +1399,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 }
 
 .wengine-stats {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--wa-30);
   border-radius: 6px;
   padding: 10px 12px;
   display: flex;
@@ -1413,7 +1413,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
   height: 48px;
   border-radius: 6px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--wa-50);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1436,8 +1436,8 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
   margin-top: 8px;
   padding: 8px;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--app-inset);
+  border: 1px solid var(--wa-80);
 }
 
 .dev-title {
@@ -1450,13 +1450,13 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 .dev-line {
   font-family: Consolas, monospace;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.58);
+  color: var(--wa-580);
   line-height: 1.5;
 }
 
 .wengine-effect-row {
   padding: 6px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--wa-60);
 }
 
 .effect-tags {
@@ -1476,7 +1476,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 .coverage-label,
 .coverage-value {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--wa-450);
 }
 
 .set-icons-row {
@@ -1501,7 +1501,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 
 .set-icon-label {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--wa-400);
 }
 
 .stat-row {
@@ -1511,18 +1511,18 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 }
 
 .stat-name {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--wa-600);
 }
 
 .stat-value {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
   font-weight: 500;
 }
 
 .effect-desc {
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--wa-60);
 }
 
 .effect-name {
@@ -1534,7 +1534,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 
 .effect-text {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   line-height: 1.5;
 }
 
@@ -1553,7 +1553,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 
 .sub-stat-name {
   flex: 1;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--wa-700);
   font-size: 12px;
 }
 
@@ -1574,14 +1574,14 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 }
 
 .panel-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--wa-100);
   border-radius: 2px;
 }
 
 .panel-empty {
   text-align: center;
   padding: 60px 20px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--wa-300);
   font-size: 13px;
 }
 
@@ -1599,13 +1599,13 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 .rec-block-title {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--wa-700);
   margin-bottom: 4px;
 }
 
 .rec-wengine-name {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
   font-weight: 500;
 }
 
@@ -1618,7 +1618,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 }
 
 .rec-set-name {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--wa-800);
 }
 
 .rec-mainstat-row {
@@ -1630,13 +1630,13 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 }
 
 .rec-mainstat-slot {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--wa-400);
   width: 32px;
   flex-shrink: 0;
 }
 
 .rec-mainstat-name {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--wa-800);
 }
 
 .rec-substat-row {
@@ -1662,12 +1662,12 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 }
 
 .rec-substat-name {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--wa-700);
 }
 
 .rec-strategy {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--wa-60);
 }
 </style>

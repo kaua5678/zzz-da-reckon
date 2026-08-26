@@ -183,29 +183,29 @@ function collectRows(engine: WEngine, scope?: 'self' | 'team'): FieldRow[] {
 </script>
 
 <style scoped>
-.wengine-field-page { color: rgba(255,255,255,.88); }
-.summary-text { color: rgba(255,255,255,.55); font-size: 13px; font-weight: 400; }
-.engine-card { background: rgba(255,255,255,.03); }
+.wengine-field-page { color: var(--wa-880); }
+.summary-text { color: var(--wa-550); font-size: 13px; font-weight: 400; }
+.engine-card { background: var(--wa-30); }
 .engine-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.engine-name { font-size: 16px; font-weight: 700; color: #fff; }
-.engine-id { margin-left: 8px; color: rgba(255,255,255,.38); font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-.section-box { min-height: 130px; padding: 12px; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; background: rgba(0,0,0,.18); }
-.section-title { margin-bottom: 8px; color: rgba(255,255,255,.7); font-size: 12px; font-weight: 700; }
+.engine-name { font-size: 16px; font-weight: 700; color: var(--app-text-solid); }
+.engine-id { margin-left: 8px; color: var(--wa-380); font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.section-box { min-height: 130px; padding: 12px; border: 1px solid var(--wa-80); border-radius: 10px; background: var(--app-inset); }
+.section-title { margin-bottom: 8px; color: var(--wa-700); font-size: 12px; font-weight: 700; }
 .field-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 13px; }
-.field-label, .requirement-line, .effect-desc { color: rgba(255,255,255,.62); }
-.field-value { color: #fff; font-weight: 700; }
+.field-label, .requirement-line, .effect-desc { color: var(--wa-620); }
+.field-value { color: var(--app-text-solid); font-weight: 700; }
 .requirement-line { margin-top: 8px; font-size: 12px; }
-.effect-name { margin-bottom: 6px; color: #fff; font-weight: 700; }
+.effect-name { margin-bottom: 6px; color: var(--app-text-solid); font-weight: 700; }
 .effect-desc { line-height: 1.6; white-space: pre-wrap; font-size: 13px; }
 .implemented-block { margin-top: 12px; }
-.field-table-wrap { overflow-x: auto; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; }
+.field-table-wrap { overflow-x: auto; border: 1px solid var(--wa-80); border-radius: 10px; }
 .field-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1080px; }
-.field-table th, .field-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.06); text-align: left; vertical-align: top; }
-.field-table th { color: rgba(255,255,255,.55); background: rgba(255,255,255,.04); font-weight: 600; }
+.field-table th, .field-table td { padding: 8px 10px; border-bottom: 1px solid var(--wa-60); text-align: left; vertical-align: top; }
+.field-table th { color: var(--wa-550); background: var(--wa-40); font-weight: 600; }
 .field-table tr:last-child td { border-bottom: none; }
-.stat-id { margin-top: 3px; color: rgba(255,255,255,.42); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.stat-id { margin-top: 3px; color: var(--wa-420); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 .zone-pill { display: inline-flex; padding: 2px 8px; border-radius: 999px; background: rgba(59,130,246,.16); color: #9cc1ff; }
 .value-cell { color: #d6f7a3; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-.note-cell { color: rgba(255,255,255,.64); line-height: 1.5; }
-.empty-state { padding: 16px; color: rgba(255,255,255,.46); text-align: center; border: 1px dashed rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.02); }
+.note-cell { color: var(--wa-640); line-height: 1.5; }
+.empty-state { padding: 16px; color: var(--wa-460); text-align: center; border: 1px dashed var(--wa-120); border-radius: 10px; background: var(--wa-20); }
 </style>

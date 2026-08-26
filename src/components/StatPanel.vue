@@ -101,7 +101,7 @@
             <span class="stat-value">+{{ formatPercent(row.value) }}</span>
           </div>
           <div class="stat-row empty-hint" v-if="totalDmgBonus === 0">
-            <span class="stat-label" style="color: rgba(255,255,255,0.3)">暂无增伤属性</span>
+            <span class="stat-label" style="color: var(--wa-300)">暂无增伤属性</span>
             <span class="stat-value"></span>
           </div>
         </div>
@@ -437,7 +437,7 @@
             <span class="stat-value debuff">+{{ formatPercent(panel.enemyDamageTakenBonus) }}</span>
           </div>
           <div class="stat-row empty-hint" v-if="!hasAnyEnemyDebuff">
-            <span class="stat-label" style="color: rgba(255,255,255,0.3)">暂无敌方减益</span>
+            <span class="stat-label" style="color: var(--wa-300)">暂无敌方减益</span>
             <span class="stat-value"></span>
           </div>
         </div>
@@ -826,7 +826,7 @@ function formatPercent(value: number, decimals = 1): string {
 }
 
 .stat-row:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--wa-30);
 }
 
 .stat-row.highlight-row {
@@ -839,12 +839,12 @@ function formatPercent(value: number, decimals = 1): string {
 }
 
 .stat-label {
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--wa-650);
   font-size: 12px;
 }
 
 .stat-value {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
   font-weight: 500;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -861,7 +861,7 @@ function formatPercent(value: number, decimals = 1): string {
 .stat-section-title {
   font-size: 11px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
   padding: 8px 8px 4px;
   margin-top: 2px;
   text-transform: uppercase;
@@ -883,7 +883,7 @@ function formatPercent(value: number, decimals = 1): string {
 .zone-label {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--wa-850);
 }
 
 .zone-value {
@@ -897,14 +897,14 @@ function formatPercent(value: number, decimals = 1): string {
 .formula-box {
   margin: 6px 4px 10px;
   padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--app-inset);
+  border: 1px solid var(--wa-80);
   border-radius: 6px;
 }
 
 .formula-title {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--wa-450);
   margin-bottom: 6px;
   font-weight: 600;
   text-transform: uppercase;
@@ -913,7 +913,7 @@ function formatPercent(value: number, decimals = 1): string {
 
 .formula-text {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--wa-650);
   line-height: 1.7;
   font-family: 'JetBrains Mono', Consolas, monospace;
   word-break: break-all;
@@ -924,7 +924,7 @@ function formatPercent(value: number, decimals = 1): string {
   font-weight: 600;
   margin-top: 4px;
   padding-top: 4px;
-  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  border-top: 1px dashed var(--wa-100);
 }
 
 .anomaly-type-grid {
@@ -936,26 +936,26 @@ function formatPercent(value: number, decimals = 1): string {
 .anomaly-type-card {
   padding: 6px 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--wa-30);
+  border: 1px solid var(--wa-60);
 }
 
 .anomaly-type-name {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.86);
+  color: var(--wa-860);
   margin-bottom: 3px;
 }
 
 .anomaly-type-desc {
   font-size: 11px;
   line-height: 1.45;
-  color: rgba(255, 255, 255, 0.48);
+  color: var(--wa-480);
 }
 
 .formula-note {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--wa-400);
   padding: 8px;
   font-style: italic;
   line-height: 1.5;
@@ -971,9 +971,9 @@ function formatPercent(value: number, decimals = 1): string {
 
 .formula-section {
   padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--app-inset);
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--wa-60);
 }
 
 .formula-section-title {
@@ -985,14 +985,14 @@ function formatPercent(value: number, decimals = 1): string {
 
 .formula-line {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--wa-700);
   line-height: 1.7;
   font-family: 'JetBrains Mono', Consolas, monospace;
 }
 
 .formula-sub {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--wa-450);
   line-height: 1.6;
   padding-left: 12px;
   margin-top: 2px;
@@ -1000,7 +1000,7 @@ function formatPercent(value: number, decimals = 1): string {
 
 .formula-source {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--wa-350);
   text-align: right;
   padding: 4px 8px;
   font-style: italic;
@@ -1012,17 +1012,17 @@ function formatPercent(value: number, decimals = 1): string {
 
 /* 覆盖 Naive UI collapse 样式 */
 :deep(.n-collapse) {
-  --n-item-text-color: rgba(255, 255, 255, 0.85);
-  --n-item-divider-color: rgba(255, 255, 255, 0.06);
+  --n-item-text-color: var(--wa-850);
+  --n-item-divider-color: var(--wa-60);
   background: transparent;
   border: none;
 }
 
 :deep(.n-collapse-item) {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--wa-20);
   border-radius: 6px;
   margin-bottom: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--wa-40);
 }
 
 :deep(.n-collapse-item__header) {

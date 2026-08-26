@@ -164,7 +164,7 @@ function ratioStyle(ratio: number | null | undefined): Record<string, string> {
   const d = Math.abs(ratio - 1)
   if (d <= 0.02) return {}
   const color = ratio > 1 ? '#7dd3fc' : '#fdba74'
-  const bg = d <= 0.05 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)'
+  const bg = d <= 0.05 ? 'var(--wa-60)' : 'var(--wa-120)'
   return { color, background: bg, borderRadius: '4px', padding: '0 4px', fontWeight: d > 0.05 ? '700' : '400' }
 }
 
@@ -329,17 +329,17 @@ const calibrationColumns: DataTableColumns<TimeCalibrationItem> = [
 .page-title {
   margin: 0;
   font-size: 20px;
-  color: #fff;
+  color: var(--app-text-solid);
 }
 
 .block {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--wa-30);
 }
 
 .notes {
   margin: 0;
   padding-left: 18px;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--wa-720);
   font-size: 13px;
   line-height: 1.9;
 }

@@ -448,13 +448,13 @@ const timeChartRows = computed(() => {
     key: 'comboAlign',
     name: '合轴',
     time: resultComboAlignTime.value,
-    color: 'rgba(255, 255, 255, 0.28)',
+    color: 'var(--wa-280)',
   })
   rows.push({
     key: 'backstage',
     name: '后台',
     time: props.result.timeAllocation.backstageTime,
-    color: 'rgba(255, 255, 255, 0.12)',
+    color: 'var(--wa-120)',
   })
 
   return rows
@@ -745,7 +745,7 @@ const anomalyEventExecutionsData = computed(() => {
 
 <style scoped>
 .resource-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--wa-30);
 }
 
 .card-header {
@@ -763,14 +763,14 @@ const anomalyEventExecutionsData = computed(() => {
 .exec-note {
   margin-top: 2px;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.36);
+  color: var(--wa-360);
   line-height: 1.35;
 }
 
 .exec-formula {
   font-family: Consolas, monospace;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.68);
+  color: var(--wa-680);
   line-height: 1.45;
 }
 
@@ -785,7 +785,7 @@ const anomalyEventExecutionsData = computed(() => {
 .section-title {
   font-size: 13px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--wa-700);
   margin-bottom: 8px;
   display: flex;
   align-items: center;
@@ -804,7 +804,7 @@ const anomalyEventExecutionsData = computed(() => {
   height: 28px;
   border-radius: 4px;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--app-inset);
   margin-bottom: 6px;
 }
 
@@ -813,7 +813,7 @@ const anomalyEventExecutionsData = computed(() => {
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
   white-space: nowrap;
   overflow: hidden;
   transition: width 0.3s;
@@ -828,8 +828,8 @@ const anomalyEventExecutionsData = computed(() => {
 }
 
 .time-seg.backstage {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.5);
+  background: var(--wa-100);
+  color: var(--wa-500);
 }
 
 .time-legend {
@@ -837,7 +837,7 @@ const anomalyEventExecutionsData = computed(() => {
   flex-wrap: wrap;
   gap: 8px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
 }
 
 .legend-item {
@@ -848,7 +848,7 @@ const anomalyEventExecutionsData = computed(() => {
 
 .legend-item.total {
   margin-left: auto;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--wa-700);
   font-weight: 600;
 }
 
@@ -861,7 +861,7 @@ const anomalyEventExecutionsData = computed(() => {
 
 .dot.necessary { background: #e06c75; }
 .dot.basic { background: #61afef; }
-.dot.backstage { background: rgba(255, 255, 255, 0.15); }
+.dot.backstage { background: var(--wa-150); }
 
 .action-time-list {
   display: flex;
@@ -870,7 +870,7 @@ const anomalyEventExecutionsData = computed(() => {
   margin-top: 8px;
   padding: 8px 10px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--wa-25);
 }
 
 .action-time-row {
@@ -882,7 +882,7 @@ const anomalyEventExecutionsData = computed(() => {
 }
 
 .action-time-head {
-  color: rgba(255, 255, 255, 0.32);
+  color: var(--wa-320);
   font-size: 11px;
 }
 
@@ -891,17 +891,17 @@ const anomalyEventExecutionsData = computed(() => {
 }
 
 .action-time-name {
-  color: rgba(255, 255, 255, 0.58);
+  color: var(--wa-580);
 }
 
 .action-time-value {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
   font-weight: 600;
   text-align: right;
 }
 
 .action-time-detail {
-  color: rgba(255, 255, 255, 0.32);
+  color: var(--wa-320);
   font-size: 11px;
 }
 
@@ -909,7 +909,7 @@ const anomalyEventExecutionsData = computed(() => {
   margin-top: 6px;
   font-size: 11px;
   line-height: 1.45;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--wa-350);
 }
 
 /* 能量/喧响明细 */
@@ -929,19 +929,19 @@ const anomalyEventExecutionsData = computed(() => {
 }
 
 .bd-label {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   min-width: 70px;
 }
 
 .bd-value {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
   font-weight: 600;
   min-width: 50px;
   text-align: right;
 }
 
 .bd-detail {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--wa-300);
   font-size: 11px;
   margin-left: auto;
 }
@@ -959,7 +959,7 @@ const anomalyEventExecutionsData = computed(() => {
 }
 
 .usage-detail {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--wa-400);
   font-weight: 400;
   font-size: 11px;
 }
@@ -979,6 +979,6 @@ const anomalyEventExecutionsData = computed(() => {
 
 .exec-name {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--wa-700);
 }
 </style>

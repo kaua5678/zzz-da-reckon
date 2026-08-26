@@ -239,8 +239,8 @@ function handleCardClick() {
 
 <style scoped>
 .character-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--wa-40);
+  border: 1px solid var(--wa-80);
   border-radius: 10px;
   padding: 14px;
   cursor: pointer;
@@ -251,8 +251,8 @@ function handleCardClick() {
 }
 
 .character-card:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--wa-70);
+  border-color: var(--wa-150);
 }
 
 .character-card.selected {
@@ -275,7 +275,7 @@ function handleCardClick() {
 
 .slot-label {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--wa-400);
   font-weight: 500;
 }
 
@@ -303,7 +303,7 @@ function handleCardClick() {
   height: 56px;
   border-radius: 8px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--wa-50);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -344,7 +344,7 @@ function handleCardClick() {
 
 .wengine-name {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   display: flex;
   align-items: center;
   margin-top: 2px;
@@ -361,6 +361,6 @@ function handleCardClick() {
 
 .empty-text {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--wa-300);
 }
 </style>

@@ -50,12 +50,12 @@
       <!-- 图表 -->
       <div v-if="enrichedCurves.some(c=>c.points.length>0)" class="chart-area">
         <svg :viewBox="viewBox" class="impact-svg">
-          <line v-for="(y,i) in yTicks" :key="'g'+i" :x1="padL" :y1="y" :x2="padL+plotW" :y2="y" stroke="rgba(255,255,255,0.06)" />
-          <text v-for="(y,i) in yTicks" :key="'yt'+i" :x="padL-6" :y="y+4" text-anchor="end" fill="rgba(255,255,255,0.35)" font-size="10">{{ fmt(yLabels[i],0) }}</text>
-          <text v-for="(x,i) in xTickPositions" :key="'xt'+i" :x="x" :y="padT+plotH+16" text-anchor="middle" fill="rgba(255,255,255,0.35)" font-size="10">{{ fmt(xTickLabels[i],1) }}</text>
+          <line v-for="(y,i) in yTicks" :key="'g'+i" :x1="padL" :y1="y" :x2="padL+plotW" :y2="y" class="chart-grid" />
+          <text v-for="(y,i) in yTicks" :key="'yt'+i" :x="padL-6" :y="y+4" text-anchor="end" class="chart-tick" font-size="10">{{ fmt(yLabels[i],0) }}</text>
+          <text v-for="(x,i) in xTickPositions" :key="'xt'+i" :x="x" :y="padT+plotH+16" text-anchor="middle" class="chart-tick" font-size="10">{{ fmt(xTickLabels[i],1) }}</text>
 
           <!-- 当前值参考竖线 -->
-          <line v-if="refLineX!==undefined" :x1="refLineX" :y1="padT" :x2="refLineX" :y2="padT+plotH" stroke="rgba(255,255,255,0.2)" stroke-dasharray="4,3" />
+          <line v-if="refLineX!==undefined" :x1="refLineX" :y1="padT" :x2="refLineX" :y2="padT+plotH" class="chart-refline" stroke-dasharray="4,3" />
 
           <!-- 堆叠面积（仅活动曲线第一条） -->
           <template v-for="stack in activeStackPaths" :key="stack.type">
@@ -73,9 +73,9 @@
 
           <!-- hover point + tooltip -->
           <g v-if="hoverIdx>=0 && hoverPt">
-            <circle :cx="hoverPt.cx" :cy="hoverPt.cy" r="4" fill="#fff" />
-            <rect :x="ttX-4" :y="ttY-4" :width="ttW+8" :height="ttH+8" rx="3" fill="rgba(0,0,0,0.9)" stroke="rgba(255,255,255,0.15)" />
-            <text v-for="(line,li) in hoverTips" :key="'ttl'+li" :x="ttX" :y="ttY+li*13" fill="#fff" font-size="10">{{ line }}</text>
+            <circle :cx="hoverPt.cx" :cy="hoverPt.cy" r="4" class="chart-hover-dot" />
+            <rect :x="ttX-4" :y="ttY-4" :width="ttW+8" :height="ttH+8" rx="3" class="chart-tooltip-box" />
+            <text v-for="(line,li) in hoverTips" :key="'ttl'+li" :x="ttX" :y="ttY+li*13" class="chart-tooltip-text" font-size="10">{{ line }}</text>
           </g>
         </svg>
 
@@ -492,27 +492,34 @@ function exportCSV() {
 <style scoped>
 .impact-chart-card { margin-top: 16px; }
 .impact-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.ctl-label { font-size: 12px; color: rgba(255,255,255,0.5); }
-.cur-val { font-size: 12px; color: rgba(255,255,255,0.45); margin-left: auto; }
-.opt-toggle { font-size: 11px; color: rgba(255,255,255,0.55); display: flex; align-items: center; gap: 3px; cursor: pointer; }
+.ctl-label { font-size: 12px; color: var(--wa-500); }
+.cur-val { font-size: 12px; color: var(--wa-450); margin-left: auto; }
+.opt-toggle { font-size: 11px; color: var(--wa-550); display: flex; align-items: center; gap: 3px; cursor: pointer; }
 .opt-toggle input { cursor: pointer; }
-.est-text { font-size: 11px; color: rgba(255,255,255,0.3); }
-.progress-bar { position: relative; height: 18px; background: rgba(255,255,255,0.04); border-radius: 3px; margin-bottom: 8px; overflow: hidden; }
+.est-text { font-size: 11px; color: var(--wa-300); }
+.progress-bar { position: relative; height: 18px; background: var(--wa-40); border-radius: 3px; margin-bottom: 8px; overflow: hidden; }
 .progress-fill { position: absolute; left: 0; top: 0; height: 100%; background: rgba(99,226,183,0.3); transition: width .2s; }
-.progress-text { position: relative; display: flex; align-items: center; justify-content: center; height: 100%; font-size: 10px; color: rgba(255,255,255,0.5); }
+.progress-text { position: relative; display: flex; align-items: center; justify-content: center; height: 100%; font-size: 10px; color: var(--wa-500); }
 .snapshot-bar { display: flex; gap: 6px; margin-bottom: 10px; }
-.snap-chip { font-size: 11px; padding: 2px 8px; border-radius: 3px; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.5); cursor: pointer; user-select: none; }
+.snap-chip { font-size: 11px; padding: 2px 8px; border-radius: 3px; background: var(--wa-40); color: var(--wa-500); cursor: pointer; user-select: none; }
 .snap-chip.active { background: rgba(99,226,183,0.15); color: #63e2b7; }
-.snap-del { color: rgba(255,255,255,0.3); margin-left: 4px; }
+.snap-del { color: var(--wa-300); margin-left: 4px; }
 .impact-error { font-size: 12px; color: #ef4444; margin-bottom: 8px; }
 .chart-area { width: 100%; overflow-x: auto; }
-.impact-svg { width: 100%; height: auto; background: rgba(255,255,255,0.015); border-radius: 4px; }
+.impact-svg { width: 100%; height: auto; background: var(--wa-15); border-radius: 4px; }
+/* SVG 网格/刻度/提示框颜色走主题变量（var() 在 presentation attribute 上不可靠，统一 class + CSS） */
+.chart-grid { stroke: var(--wa-60); }
+.chart-tick { fill: var(--wa-350); }
+.chart-refline { stroke: var(--wa-200); }
+.chart-hover-dot { fill: var(--app-text-solid); }
+.chart-tooltip-box { fill: var(--app-tooltip-bg); stroke: var(--wa-150); }
+.chart-tooltip-text { fill: var(--app-tooltip-text); }
 .chart-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .type-filter { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
-.tf-chip { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.35); cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 3px; }
-.tf-chip.on { background: rgba(99,226,183,0.1); color: rgba(255,255,255,0.7); }
+.tf-chip { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--wa-40); color: var(--wa-350); cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 3px; }
+.tf-chip.on { background: rgba(99,226,183,0.1); color: var(--wa-700); }
 .tf-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
-.tf-all { color: rgba(255,255,255,0.25); font-style: italic; }
-.lchip { font-size: 10px; color: rgba(255,255,255,0.55); border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; padding: 1px 6px; display: inline-flex; align-items: center; gap: 4px; }
+.tf-all { color: var(--wa-250); font-style: italic; }
+.lchip { font-size: 10px; color: var(--wa-550); border: 1px solid var(--wa-100); border-radius: 3px; padding: 1px 6px; display: inline-flex; align-items: center; gap: 4px; }
 .ldot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
 </style>

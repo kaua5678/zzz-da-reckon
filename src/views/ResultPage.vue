@@ -2,7 +2,7 @@
   <div class="result-page">
     <!-- 无队伍数据时的占位 -->
     <div v-if="!hasTeam" class="placeholder">
-      <n-icon size="64" color="rgba(255,255,255,0.15)">
+      <n-icon size="64" color="var(--wa-150)">
         <people-outline />
       </n-icon>
       <div class="placeholder-title">请先配置队伍</div>
@@ -1052,17 +1052,17 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 .placeholder-title {
   font-size: 24px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
 }
 
 .placeholder-desc {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--wa-300);
 }
 
 .global-config-card {
   margin-bottom: 16px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--wa-20);
 }
 
 .param-item {
@@ -1073,7 +1073,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 
 .param-label {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
 }
 
 .result-summary {
@@ -1098,13 +1098,13 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .pool-summary-card {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--wa-20);
 }
 
 .pool-title {
   font-size: 14px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--wa-800);
 }
 
 .pool-summary-body {
@@ -1122,23 +1122,23 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .pool-stat-label {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   min-width: 80px;
 }
 
 .pool-stat-value {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
   font-weight: 600;
 }
 
 .pool-stat-value.dim {
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--wa-450);
   font-weight: 400;
   font-size: 12px;
 }
 
 .pool-stat-detail {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--wa-300);
   font-size: 11px;
   margin-left: auto;
 }
@@ -1156,13 +1156,13 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 .pool-coverage-section {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--wa-60);
 }
 
 .pool-subtitle {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   margin-bottom: 4px;
 }
 
@@ -1172,13 +1172,13 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   gap: 6px;
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--wa-60);
 }
 
 .slot-chip {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--wa-400);
+  background: var(--wa-40);
   padding: 2px 8px;
   border-radius: 3px;
 }
@@ -1205,16 +1205,16 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 .event-table th,
 .event-table td {
   padding: 6px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--wa-60);
   vertical-align: top;
 }
 
 .event-table th {
   position: sticky;
   top: 0;
-  background: #15151a;
+  background: var(--app-tablehead-bg);
   text-align: left;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
   font-weight: 600;
 }
 
@@ -1228,19 +1228,19 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 .event-formula,
 .event-fields {
   font-family: Consolas, monospace;
-  color: rgba(255, 255, 255, 0.62);
+  color: var(--wa-620);
   line-height: 1.55;
 }
 
 .event-note {
   margin-top: 3px;
-  color: rgba(255, 255, 255, 0.36);
+  color: var(--wa-360);
 }
 
 
 .damage-pool-card {
   margin-bottom: 16px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--wa-30);
 }
 
 .damage-pool-header {
@@ -1269,14 +1269,14 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   align-items: center;
   padding: 8px 10px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.035);
-  color: rgba(255, 255, 255, 0.76);
+  background: var(--wa-35);
+  color: var(--wa-760);
   font-size: 12px;
 }
 
 .damage-pool-head {
-  background: rgba(255, 255, 255, 0.07);
-  color: rgba(255, 255, 255, 0.52);
+  background: var(--wa-70);
+  color: var(--wa-520);
   font-weight: 600;
 }
 
@@ -1286,7 +1286,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .damage-name {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
 }
 
 .damage-total {
@@ -1295,7 +1295,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .damage-note {
-  color: rgba(255, 255, 255, 0.52);
+  color: var(--wa-520);
   line-height: 1.45;
 }
 
@@ -1309,7 +1309,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   
 .damage-pool-card {
   margin-bottom: 16px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--wa-30);
 }
 
 .damage-pool-header {
@@ -1338,14 +1338,14 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   align-items: center;
   padding: 8px 10px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.035);
-  color: rgba(255, 255, 255, 0.76);
+  background: var(--wa-35);
+  color: var(--wa-760);
   font-size: 12px;
 }
 
 .damage-pool-head {
-  background: rgba(255, 255, 255, 0.07);
-  color: rgba(255, 255, 255, 0.52);
+  background: var(--wa-70);
+  color: var(--wa-520);
   font-weight: 600;
 }
 
@@ -1355,7 +1355,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .damage-name {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
 }
 
 .damage-total {
@@ -1364,7 +1364,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .damage-note {
-  color: rgba(255, 255, 255, 0.52);
+  color: var(--wa-520);
   line-height: 1.45;
 }
 
@@ -1397,7 +1397,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--wa-30);
   border-radius: 6px;
 }
 
@@ -1410,7 +1410,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 
 .combo-align-exec-name {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
   font-weight: 500;
 }
 
@@ -1430,11 +1430,11 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 .combo-align-summary {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--wa-60);
 }
 
 .damage-share-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--wa-30);
 }
 
 .damage-share-summary {
@@ -1445,8 +1445,8 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   padding: 8px 12px;
   margin-bottom: 10px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.62);
+  background: var(--wa-40);
+  color: var(--wa-620);
 }
 
 .damage-share-summary b {
@@ -1468,20 +1468,20 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   gap: 6px;
   padding: 4px 10px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.7);
+  background: var(--wa-40);
+  color: var(--wa-700);
   font-size: 12px;
 }
 
 .share-category-chip b {
-  color: #fff;
+  color: var(--app-text-solid);
 }
 
 .share-character {
   margin-top: 12px;
   padding: 10px 12px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--wa-25);
 }
 
 .share-character-head {
@@ -1489,7 +1489,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
   font-weight: 600;
 }
 
@@ -1499,12 +1499,12 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 
 .share-note {
   margin-top: 10px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--wa-450);
   font-size: 12px;
 }
 
 .team-overview-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--wa-30);
 }
 
 .team-overview-table {
@@ -1519,19 +1519,19 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   gap: 10px;
   padding: 8px 10px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
-  color: rgba(255, 255, 255, 0.82);
+  background: var(--wa-30);
+  color: var(--wa-820);
   font-size: 12px;
 }
 
 .team-overview-head {
-  background: rgba(255, 255, 255, 0.07);
-  color: rgba(255, 255, 255, 0.5);
+  background: var(--wa-70);
+  color: var(--wa-500);
   font-weight: 600;
 }
 
 .virtual-panel-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--wa-30);
 }
 
 .virtual-panel-block {
@@ -1540,7 +1540,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 
 .virtual-panel-title {
   margin-bottom: 8px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--wa-850);
   font-weight: 600;
 }
 
@@ -1556,14 +1556,14 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   gap: 8px;
   padding: 6px 8px;
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.03);
-  color: rgba(255, 255, 255, 0.78);
+  background: var(--wa-30);
+  color: var(--wa-780);
   font-size: 12px;
 }
 
 .virtual-panel-head {
-  background: rgba(255, 255, 255, 0.07);
-  color: rgba(255, 255, 255, 0.5);
+  background: var(--wa-70);
+  color: var(--wa-500);
   font-weight: 600;
 }
 

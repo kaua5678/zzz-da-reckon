@@ -7,7 +7,7 @@
 
       <div class="marginal-controls">
         <n-button size="small" type="primary" :loading="computing" @click="run">计算候选</n-button>
-        <span style="font-size:11px;color:rgba(255,255,255,0.4);margin-left:8px">对当前驱动盘主词条生成替换候选，估算替换后的伤害增量。</span>
+        <span style="font-size:11px;color:var(--wa-400);margin-left:8px">对当前驱动盘主词条生成替换候选，估算替换后的伤害增量。</span>
       </div>
 
       <div v-if="results.length > 0" class="marginal-table-wrap">
@@ -171,13 +171,13 @@ const marginalBySlot = computed(() => {
 .marginal-controls { margin-bottom: 10px; display: flex; align-items: center; }
 .marginal-table-wrap { max-height: 400px; overflow-y: auto; }
 .marginal-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.marginal-table th, .marginal-table td { padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: left; color: rgba(255,255,255,0.7); }
-.marginal-table th { color: rgba(255,255,255,0.5); font-weight: 600; }
+.marginal-table th, .marginal-table td { padding: 4px 8px; border-bottom: 1px solid var(--wa-60); text-align: left; color: var(--wa-700); }
+.marginal-table th { color: var(--wa-500); font-weight: 600; }
 .current-row td { color: #f0a020; font-weight: 600; }
-.marginal-sub { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); }
-.marginal-sub-title { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 8px; }
+.marginal-sub { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--wa-60); }
+.marginal-sub-title { font-size: 12px; color: var(--wa-500); margin-bottom: 8px; }
 .marginal-sub-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-.msr-name { font-size: 11px; color: rgba(255,255,255,0.7); min-width: 60px; }
-.msr-chip { font-size: 10px; color: rgba(255,255,255,0.45); background: rgba(255,255,255,0.04); padding: 1px 6px; border-radius: 3px; }
-.msr-none { font-size: 10px; color: rgba(255,255,255,0.25); }
+.msr-name { font-size: 11px; color: var(--wa-700); min-width: 60px; }
+.msr-chip { font-size: 10px; color: var(--wa-450); background: var(--wa-40); padding: 1px 6px; border-radius: 3px; }
+.msr-none { font-size: 10px; color: var(--wa-250); }
 </style>

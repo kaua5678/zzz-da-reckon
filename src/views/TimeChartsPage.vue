@@ -139,7 +139,7 @@
             :cx="pt.x" :cy="pt.y"
             :r="pt.isSwap ? 6 : 4"
             :fill="pt.color"
-            :stroke="hoverNode === i ? '#fff' : 'rgba(255,255,255,0.25)'"
+            :style="{ stroke: hoverNode === i ? 'var(--app-text-solid)' : 'var(--wa-250)' }"
             :stroke-width="hoverNode === i ? 2 : 1"
             class="trend-point"
           />
@@ -178,7 +178,7 @@
               :y="bossLaneY"
               :width="cellW + 0.5"
               :height="laneH"
-              :fill="selectedBossAppearances.has(n.nodeId) ? 'rgba(246,173,85,0.22)' : 'rgba(255,255,255,0.04)'"
+              :style="{ fill: selectedBossAppearances.has(n.nodeId) ? 'rgba(246,173,85,0.22)' : 'var(--wa-40)' }"
               :stroke="selectedBossAppearances.has(n.nodeId) ? '#f6ad55' : 'none'"
               stroke-width="1"
               class="lane-cell"
@@ -398,7 +398,7 @@
         />
         <!-- 版本分隔网格 + 版本号刻度（网格线在版本列左缘，刻度文字在列中心） -->
         <g v-for="t in ddXTicks" :key="`ddx${t.index}`">
-          <line :x1="ddX(t.index)" :y1="ddPadT" :x2="ddX(t.index)" :y2="ddPlotBottom" stroke="rgba(255,255,255,0.06)" />
+          <line :x1="ddX(t.index)" :y1="ddPadT" :x2="ddX(t.index)" :y2="ddPlotBottom" style="stroke: var(--wa-60)" />
           <text :x="ddTickCenterX(t.index)" :y="ddPlotBottom + 14" text-anchor="middle" class="dd-tick">{{ t.label }}</text>
         </g>
         <!-- y 刻度 -->
@@ -411,7 +411,7 @@
           :y1="ddY(1)"
           :x2="svgW - ddPadR"
           :y2="ddY(1)"
-          stroke="rgba(255,255,255,0.28)"
+          style="stroke: var(--wa-280)"
           stroke-dasharray="4 4"
         />
         <text :x="svgW - ddPadR - 2" :y="ddY(1) - 5" text-anchor="end" class="dd-baseline">100% 标准</text>
@@ -422,7 +422,7 @@
             :cx="ddCX(p.nodeIndex) + ddJitter(p.agentId)"
             :cy="ddY(p.value)"
             r="4"
-            :fill="ddColor(p.value)"
+            :style="{ fill: ddColor(p.value) }"
           >
             <title>{{ p.agentName }}（{{ p.nodeLabel }}{{ p.nodeNote ? '，' + p.nodeNote : '' }}）：{{ (p.value * 100).toFixed(1) }}%</title>
           </circle>
@@ -527,7 +527,7 @@
           <text :x="svgW - padR - 2" :y="yOf3(100) - 5" class="axis-label" text-anchor="end">100% 击杀线</text>
           <!-- X 轴版本刻度 -->
           <g v-for="t in chart3XTicks" :key="'c3x' + t.index">
-            <line :x1="chart3X(t.index)" :y1="padT" :x2="chart3X(t.index)" :y2="padT + plotH" stroke="rgba(255,255,255,0.06)" />
+            <line :x1="chart3X(t.index)" :y1="padT" :x2="chart3X(t.index)" :y2="padT + plotH" style="stroke: var(--wa-60)" />
             <text :x="chart3X(t.index)" :y="chart3SvgH - 8" class="axis-label x-label" text-anchor="middle">{{ t.label }}</text>
           </g>
           <!-- 点 -->
@@ -537,7 +537,7 @@
               :cy="p.y"
               r="4.5"
               :fill="p.color"
-              :stroke="chart3Hover === i ? '#fff' : 'rgba(255,255,255,0.25)'"
+              :style="{ stroke: chart3Hover === i ? 'var(--app-text-solid)' : 'var(--wa-250)' }"
               :stroke-width="chart3Hover === i ? 2 : 1"
               class="trend-point"
             >
@@ -650,7 +650,7 @@
           <text v-for="g in 4" :key="'gp' + g" :x="svgW - padR + 2" :y="simGoldY((simGoldMax / 4) * g) + 3" class="axis-label gold-axis-label">{{ Math.round((simGoldMax / 4) * g) }}</text>
           <!-- 点 -->
           <g v-for="(p, i) in simPts" :key="'fp' + i">
-            <circle :cx="p.x" :cy="p.y" r="3.5" :fill="p.color" :stroke="simHover === i ? '#fff' : 'rgba(255,255,255,0.25)'" :stroke-width="simHover === i ? 2 : 1" class="trend-point">
+            <circle :cx="p.x" :cy="p.y" r="3.5" :fill="p.color" :style="{ stroke: simHover === i ? 'var(--app-text-solid)' : 'var(--wa-250)' }" :stroke-width="simHover === i ? 2 : 1" class="trend-point">
               <title>{{ p.label }}：{{ fmt(p.hpRatio, 1) }}%（{{ p.totalGold }}金）</title>
             </circle>
           </g>
@@ -1194,7 +1194,7 @@ function ddJitter(agentId: string): number {
 function ddColor(v: number): string {
   if (v > 1.05) return '#7dd3fc'
   if (v < 0.95) return '#fdba74'
-  return 'rgba(255,255,255,0.55)'
+  return 'var(--wa-550)'
 }
 
 function ddNeedLabel(v: number): boolean {
@@ -1522,11 +1522,11 @@ function onSimMove(e: MouseEvent) {
 }
 .ctl-label {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
 }
 .ctl-check {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--wa-650);
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -1549,7 +1549,7 @@ function onSimMove(e: MouseEvent) {
 }
 .progress-text {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--wa-600);
   white-space: nowrap;
   max-width: 60%;
   overflow: hidden;
@@ -1557,7 +1557,7 @@ function onSimMove(e: MouseEvent) {
 }
 .chart-subtitle {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
 }
 .timeline-svg {
   width: 100%;
@@ -1568,11 +1568,11 @@ function onSimMove(e: MouseEvent) {
   position: relative;
 }
 .grid-line {
-  stroke: rgba(255, 255, 255, 0.08);
+  stroke: var(--wa-80);
   stroke-width: 1;
 }
 .axis-label {
-  fill: rgba(255, 255, 255, 0.45);
+  fill: var(--wa-450);
   font-size: 10px;
 }
 .x-label {
@@ -1580,7 +1580,7 @@ function onSimMove(e: MouseEvent) {
 }
 .trend-line {
   fill: none;
-  stroke: #4c8bf5;
+  stroke: var(--app-primary);
   stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -1594,7 +1594,7 @@ function onSimMove(e: MouseEvent) {
   stroke-dasharray: 3 3;
 }
 .lane-label {
-  fill: rgba(255, 255, 255, 0.5);
+  fill: var(--wa-500);
   font-size: 10px;
 }
 .lane-cell {
@@ -1609,15 +1609,15 @@ function onSimMove(e: MouseEvent) {
   pointer-events: none;
 }
 .hover-line {
-  stroke: rgba(255, 255, 255, 0.35);
+  stroke: var(--wa-350);
   stroke-width: 1;
   stroke-dasharray: 2 2;
 }
 .hover-card {
   position: absolute;
   z-index: 10;
-  background: rgba(24, 24, 32, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--app-tooltip-bg);
+  border: 1px solid var(--wa-140);
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 11.5px;
@@ -1631,7 +1631,7 @@ function onSimMove(e: MouseEvent) {
   color: #fff;
 }
 .hc-row {
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--wa-780);
   line-height: 1.5;
 }
 .hc-swap {
@@ -1647,7 +1647,7 @@ function onSimMove(e: MouseEvent) {
 }
 .swap-events-title {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
 }
 .swap-chip {
   font-size: 11px;
@@ -1669,16 +1669,16 @@ function onSimMove(e: MouseEvent) {
 .tl-table td {
   text-align: left;
   padding: 6px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--wa-60);
   white-space: nowrap;
 }
 .tl-table th {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   font-weight: 600;
   font-size: 11px;
 }
 .tl-table tr:hover td {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--wa-30);
 }
 .tl-table tr.swap-row td {
   background: rgba(246, 173, 85, 0.05);
@@ -1700,7 +1700,7 @@ function onSimMove(e: MouseEvent) {
   font-weight: 700;
 }
 .gold-cell {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--wa-700);
   max-width: 340px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1717,11 +1717,11 @@ function onSimMove(e: MouseEvent) {
   color: #ff8f5a;
 }
 .swap-kind.lateral {
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
   font-weight: 500;
 }
 .bench-note {
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--wa-450);
   font-size: 11px;
 }
 .boss-hit {
@@ -1746,10 +1746,10 @@ function onSimMove(e: MouseEvent) {
   stroke-width: 2.5px;
 }
 .hc-bench {
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
 }
 .no-change {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--wa-300);
 }
 .node-note {
   font-size: 10px;
@@ -1760,7 +1760,7 @@ function onSimMove(e: MouseEvent) {
   margin-left: 4px;
 }
 .empty-hint {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   font-size: 13px;
   line-height: 1.8;
   padding: 12px 4px;
@@ -1770,15 +1770,15 @@ function onSimMove(e: MouseEvent) {
   max-width: 100%;
 }
 .dd-tick {
-  fill: rgba(255, 255, 255, 0.45);
+  fill: var(--wa-450);
   font-size: 10px;
 }
 .dd-baseline {
-  fill: rgba(255, 255, 255, 0.6);
+  fill: var(--wa-600);
   font-size: 10px;
 }
 .dd-label {
-  fill: rgba(255, 255, 255, 0.82);
+  fill: var(--wa-820);
   font-size: 10px;
   paint-order: stroke;
   stroke: rgba(10, 10, 14, 0.85);
@@ -1786,7 +1786,7 @@ function onSimMove(e: MouseEvent) {
 }
 .dd-caption {
   margin-top: 6px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   font-size: 11.5px;
   line-height: 1.7;
 }
@@ -1807,13 +1807,13 @@ function onSimMove(e: MouseEvent) {
 }
 .sim-main-name {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--wa-850);
   padding: 3px 0 6px;
   white-space: nowrap;
 }
 .ctl-note {
   font-size: 10.5px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--wa-450);
   max-width: 220px;
   line-height: 1.5;
 }
@@ -1833,8 +1833,8 @@ function onSimMove(e: MouseEvent) {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.6);
+  background: var(--wa-80);
+  color: var(--wa-600);
   font-size: 10px;
   flex: 0 0 auto;
 }
@@ -1862,9 +1862,9 @@ function onSimMove(e: MouseEvent) {
   align-items: center;
   margin-top: 10px;
   padding: 8px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--wa-70);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--wa-20);
 }
 .boss-data-title {
   font-size: 12px;
@@ -1874,7 +1874,7 @@ function onSimMove(e: MouseEvent) {
 }
 .boss-data-item {
   font-size: 11.5px;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--wa-720);
   white-space: nowrap;
 }
 
@@ -1891,7 +1891,7 @@ function onSimMove(e: MouseEvent) {
 }
 .sim-line {
   fill: none;
-  stroke: #4c8bf5;
+  stroke: var(--app-primary);
   stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;

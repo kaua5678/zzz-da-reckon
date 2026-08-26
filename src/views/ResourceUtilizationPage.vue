@@ -157,11 +157,11 @@
             <div class="field-desc">修改后自动重算当前配装推荐。0=使用该档默认值（2词条→32、3词条→39、4词条→43）。</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:12px;color:rgba(255,255,255,0.6);min-width:70px">2 词条档</span>
+            <span style="font-size:12px;color:var(--wa-600);min-width:70px">2 词条档</span>
             <n-input-number :value="configStore.getMechanicSetting('optimizer.totalSteps2', 0)" size="tiny" :min="0" :max="60" :step="1" suffix="步" @update:value="v => configStore.setMechanicSetting('optimizer.totalSteps2', Math.round(v ?? 0))" />
-            <span style="font-size:12px;color:rgba(255,255,255,0.6);min-width:70px">3 词条档</span>
+            <span style="font-size:12px;color:var(--wa-600);min-width:70px">3 词条档</span>
             <n-input-number :value="configStore.getMechanicSetting('optimizer.totalSteps3', 0)" size="tiny" :min="0" :max="60" :step="1" suffix="步" @update:value="v => configStore.setMechanicSetting('optimizer.totalSteps3', Math.round(v ?? 0))" />
-            <span style="font-size:12px;color:rgba(255,255,255,0.6);min-width:70px">4 词条档</span>
+            <span style="font-size:12px;color:var(--wa-600);min-width:70px">4 词条档</span>
             <n-input-number :value="configStore.getMechanicSetting('optimizer.totalSteps4', 0)" size="tiny" :min="0" :max="60" :step="1" suffix="步" @update:value="v => configStore.setMechanicSetting('optimizer.totalSteps4', Math.round(v ?? 0))" />
           </div>
         </div>
@@ -198,16 +198,16 @@
 
       <n-card v-if="marginalGainsBySlot.length > 0" size="small" class="mechanic-card" :bordered="true">
         <template #header>全队边际收益（各词条再 +1 步的伤害期望增量）</template>
-        <div style="font-size:11px;color:rgba(255,255,255,0.45);padding:0 0 8px;line-height:1.5">
+        <div style="font-size:11px;color:var(--wa-450);padding:0 0 8px;line-height:1.5">
           量纲说明：数值是优化器内部 fast 评分的<b>相对量纲</b>（非真实伤害），含义 = 该词条再分配 1 步（如攻击 +3%、精通 +9）带来的期望伤害增量；蕾米等转模角色的攻击词条含全队拐力收益。<b>只用于比较词条优先级</b>：各词条边际接近 → 已接近最优；差距大 → 优先堆高的词条（直到单词条上限）。
         </div>
         <div v-for="mg in marginalGainsBySlot" :key="mg.slot" style="margin-bottom:6px">
-          <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:2px">{{ mg.name }}</div>
+          <div style="font-size:12px;color:var(--wa-700);margin-bottom:2px">{{ mg.name }}</div>
           <div style="display:flex;flex-wrap:wrap;gap:4px">
-            <span v-for="(gain, stat) in mg.sortedGains" :key="stat" style="font-size:11px;color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.04);padding:2px 6px;border-radius:3px">
+            <span v-for="(gain, stat) in mg.sortedGains" :key="stat" style="font-size:11px;color:var(--wa-550);background:var(--wa-40);padding:2px 6px;border-radius:3px">
               {{ statLabel(String(stat)) }} +{{ fmt(Number(gain), 1) }}/步
             </span>
-            <span v-if="Object.keys(mg.sortedGains).length === 0" style="font-size:11px;color:rgba(255,255,255,0.3)">（未计算）</span>
+            <span v-if="Object.keys(mg.sortedGains).length === 0" style="font-size:11px;color:var(--wa-300)">（未计算）</span>
           </div>
         </div>
       </n-card>
@@ -226,7 +226,7 @@
         </div>
         <div v-if="cinemaGains.length > 0" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
           <div v-for="g in cinemaGains" :key="g.slot">
-            <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:2px">{{ g.name }}</div>
+            <div style="font-size:12px;color:var(--wa-700);margin-bottom:2px">{{ g.name }}</div>
             <div style="display:flex;flex-wrap:wrap;gap:4px">
               <span
                 v-for="e in g.entries"
@@ -543,7 +543,7 @@ function entryBadgeStyle(e: { warn: 'ok' | 'execLevel' | 'unimplemented' }): Rec
   if (e.warn === 'execLevel') {
     return { fontSize: '11px', padding: '2px 6px', borderRadius: '3px', color: '#8ac6ff', background: 'rgba(80,150,255,0.10)', border: '1px solid rgba(80,150,255,0.3)' }
   }
-  return { fontSize: '11px', padding: '2px 6px', borderRadius: '3px', color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.04)' }
+  return { fontSize: '11px', padding: '2px 6px', borderRadius: '3px', color: 'var(--wa-600)', background: 'var(--wa-40)' }
 }
 
 async function computeCinemaGains() {
@@ -649,25 +649,25 @@ function setCap(slot: number, id: string, value: number | null) {
 .placeholder {
   padding: 80px 0;
   text-align: center;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
 }
 
 .placeholder-title {
   font-size: 18px;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--wa-820);
   margin-bottom: 8px;
 }
 
 .intro-card,
 .mechanic-card,
 .char-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--wa-30);
 }
 
 .intro-text,
 .field-desc,
 .empty-note {
-  color: rgba(255, 255, 255, 0.62);
+  color: var(--wa-620);
   font-size: 13px;
   line-height: 1.7;
 }
@@ -687,7 +687,7 @@ function setCap(slot: number, id: string, value: number | null) {
 }
 
 .field-title {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
   font-weight: 600;
   margin-bottom: 4px;
 }
@@ -700,8 +700,8 @@ function setCap(slot: number, id: string, value: number | null) {
   padding: 8px 10px;
   margin-bottom: 10px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.035);
-  color: rgba(255, 255, 255, 0.78);
+  background: var(--wa-35);
+  color: var(--wa-780);
   font-size: 13px;
 }
 
@@ -711,7 +711,7 @@ function setCap(slot: number, id: string, value: number | null) {
 
 .settlement-title {
   margin-bottom: 8px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--wa-850);
   font-weight: 600;
 }
 
@@ -729,7 +729,7 @@ function setCap(slot: number, id: string, value: number | null) {
   padding: 8px 10px;
   margin-bottom: 6px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--wa-35);
 }
 
 .settlement-copy {
@@ -752,7 +752,7 @@ function setCap(slot: number, id: string, value: number | null) {
   gap: 12px;
   padding: 8px 10px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--wa-35);
 }
 
 .util-table {
@@ -768,14 +768,14 @@ function setCap(slot: number, id: string, value: number | null) {
   align-items: center;
   padding: 8px 10px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.035);
-  color: rgba(255, 255, 255, 0.78);
+  background: var(--wa-35);
+  color: var(--wa-780);
   font-size: 12px;
 }
 
 .util-head {
-  background: rgba(255, 255, 255, 0.07);
-  color: rgba(255, 255, 255, 0.55);
+  background: var(--wa-70);
+  color: var(--wa-550);
   font-weight: 600;
 }
 
@@ -784,7 +784,7 @@ function setCap(slot: number, id: string, value: number | null) {
 }
 
 .name-cell {
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--wa-880);
 }
 
 .id-cell {

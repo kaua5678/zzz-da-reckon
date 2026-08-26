@@ -1,11 +1,152 @@
+/* ============================================================
+ * 主题变量（双主题）
+ * 夜间 = 默认（:root）；明亮 = html.light 覆盖（由 stores/theme.ts 切换，
+ * 挂载前的 class 预置在 index.html，防首屏闪烁）。
+ *
+ * --wa-<A×1000> 为「单色透明色阶」：夜间 = 白色 A 透明度，明亮 = 深墨同
+ * 透明度。组件里散落的 text/border/背景 透明色一律引用该色阶（由
+ * scripts codemod 从原 rgba(255,255,255,A) 统一迁移），新增样式请直接用
+ * var(--wa-xxx)，不要再写死白色透明色。
+ * ============================================================ */
 :root {
   color-scheme: dark;
-  --app-bg: #0f0f12;
-  --app-panel: rgba(255, 255, 255, 0.03);
-  --app-border: rgba(255, 255, 255, 0.08);
-  --app-text: rgba(255, 255, 255, 0.88);
-  --app-text-dim: rgba(255, 255, 255, 0.45);
-  --app-primary: #4c8bf5;
+  /* 夜间：slate-900 海军蓝（#0f172a），不是黑——蓝调肉眼可辨；surface 用 slate-800 提一层 */
+  --app-bg: #0f172a;
+  --app-panel: rgba(255, 255, 255, 0.035);
+  --app-border: rgba(148, 163, 184, 0.16);
+  --app-text: rgba(255, 255, 255, 0.9);
+  --app-text-dim: rgba(255, 255, 255, 0.48);
+  --app-text-solid: #ffffff;
+  --app-primary: #4493f8;
+  /* ZZZ S级金：品牌徽章 / 高亮点缀（亮暗同值，金色黑白通吃） */
+  --app-accent-gold: #ffb500;
+  --app-accent-gold-soft: #ffd75e;
+  --app-header-bg: rgba(15, 23, 42, 0.85);
+  --app-inset: rgba(2, 6, 23, 0.5);
+  --app-tablehead-bg: #1e293b;
+  --app-tooltip-bg: rgba(30, 41, 59, 0.96);
+  --app-tooltip-text: rgba(255, 255, 255, 0.92);
+  --scrollbar-thumb: rgba(148, 163, 184, 0.28);
+  --scrollbar-thumb-hover: rgba(148, 163, 184, 0.42);
+  --link-color: #6cb2ff;
+
+  --wa-15: rgba(255, 255, 255, 0.015);
+  --wa-20: rgba(255, 255, 255, 0.02);
+  --wa-25: rgba(255, 255, 255, 0.025);
+  --wa-30: rgba(255, 255, 255, 0.03);
+  --wa-35: rgba(255, 255, 255, 0.035);
+  --wa-40: rgba(255, 255, 255, 0.04);
+  --wa-50: rgba(255, 255, 255, 0.05);
+  --wa-60: rgba(255, 255, 255, 0.06);
+  --wa-70: rgba(255, 255, 255, 0.07);
+  --wa-80: rgba(255, 255, 255, 0.08);
+  --wa-100: rgba(255, 255, 255, 0.1);
+  --wa-120: rgba(255, 255, 255, 0.12);
+  --wa-140: rgba(255, 255, 255, 0.14);
+  --wa-150: rgba(255, 255, 255, 0.15);
+  --wa-200: rgba(255, 255, 255, 0.2);
+  --wa-250: rgba(255, 255, 255, 0.25);
+  --wa-280: rgba(255, 255, 255, 0.28);
+  --wa-300: rgba(255, 255, 255, 0.3);
+  --wa-320: rgba(255, 255, 255, 0.32);
+  --wa-350: rgba(255, 255, 255, 0.35);
+  --wa-360: rgba(255, 255, 255, 0.36);
+  --wa-380: rgba(255, 255, 255, 0.38);
+  --wa-400: rgba(255, 255, 255, 0.4);
+  --wa-420: rgba(255, 255, 255, 0.42);
+  --wa-450: rgba(255, 255, 255, 0.45);
+  --wa-460: rgba(255, 255, 255, 0.46);
+  --wa-480: rgba(255, 255, 255, 0.48);
+  --wa-500: rgba(255, 255, 255, 0.5);
+  --wa-520: rgba(255, 255, 255, 0.52);
+  --wa-550: rgba(255, 255, 255, 0.55);
+  --wa-580: rgba(255, 255, 255, 0.58);
+  --wa-600: rgba(255, 255, 255, 0.6);
+  --wa-620: rgba(255, 255, 255, 0.62);
+  --wa-640: rgba(255, 255, 255, 0.64);
+  --wa-650: rgba(255, 255, 255, 0.65);
+  --wa-680: rgba(255, 255, 255, 0.68);
+  --wa-700: rgba(255, 255, 255, 0.7);
+  --wa-720: rgba(255, 255, 255, 0.72);
+  --wa-750: rgba(255, 255, 255, 0.75);
+  --wa-760: rgba(255, 255, 255, 0.76);
+  --wa-780: rgba(255, 255, 255, 0.78);
+  --wa-800: rgba(255, 255, 255, 0.8);
+  --wa-820: rgba(255, 255, 255, 0.82);
+  --wa-850: rgba(255, 255, 255, 0.85);
+  --wa-860: rgba(255, 255, 255, 0.86);
+  --wa-880: rgba(255, 255, 255, 0.88);
+  --wa-900: rgba(255, 255, 255, 0.9);
+}
+
+html.light {
+  color-scheme: light;
+  /* 明亮：冷灰蓝画布（slate-100/200 之间 #edf1f7）+ 纯白卡片——蓝调一眼可辨，不是白底 */
+  --app-bg: #edf1f7;
+  --app-panel: #ffffff;
+  --app-border: rgba(51, 65, 85, 0.14);
+  --app-text: rgba(23, 26, 31, 0.9);
+  --app-text-dim: rgba(23, 26, 31, 0.5);
+  --app-text-solid: #1f2329;
+  --app-primary: #2f6ee0;
+  --app-accent-gold: #ffb500;
+  --app-accent-gold-soft: #ffd75e;
+  --app-header-bg: rgba(255, 255, 255, 0.85);
+  --app-inset: rgba(15, 23, 42, 0.06);
+  --app-tablehead-bg: #e3e8f0;
+  --app-tooltip-bg: rgba(255, 255, 255, 0.97);
+  --app-tooltip-text: rgba(23, 26, 31, 0.92);
+  --scrollbar-thumb: rgba(51, 65, 85, 0.22);
+  --scrollbar-thumb-hover: rgba(51, 65, 85, 0.34);
+  --link-color: #2f6ee0;
+
+  --wa-15: rgba(23, 26, 31, 0.015);
+  --wa-20: rgba(23, 26, 31, 0.02);
+  --wa-25: rgba(23, 26, 31, 0.025);
+  --wa-30: rgba(23, 26, 31, 0.03);
+  --wa-35: rgba(23, 26, 31, 0.035);
+  --wa-40: rgba(23, 26, 31, 0.04);
+  --wa-50: rgba(23, 26, 31, 0.05);
+  --wa-60: rgba(23, 26, 31, 0.06);
+  --wa-70: rgba(23, 26, 31, 0.07);
+  --wa-80: rgba(23, 26, 31, 0.08);
+  --wa-100: rgba(23, 26, 31, 0.1);
+  --wa-120: rgba(23, 26, 31, 0.12);
+  --wa-140: rgba(23, 26, 31, 0.14);
+  --wa-150: rgba(23, 26, 31, 0.15);
+  --wa-200: rgba(23, 26, 31, 0.2);
+  --wa-250: rgba(23, 26, 31, 0.25);
+  --wa-280: rgba(23, 26, 31, 0.28);
+  --wa-300: rgba(23, 26, 31, 0.3);
+  --wa-320: rgba(23, 26, 31, 0.32);
+  --wa-350: rgba(23, 26, 31, 0.35);
+  --wa-360: rgba(23, 26, 31, 0.36);
+  --wa-380: rgba(23, 26, 31, 0.38);
+  --wa-400: rgba(23, 26, 31, 0.4);
+  --wa-420: rgba(23, 26, 31, 0.42);
+  --wa-450: rgba(23, 26, 31, 0.45);
+  --wa-460: rgba(23, 26, 31, 0.46);
+  --wa-480: rgba(23, 26, 31, 0.48);
+  --wa-500: rgba(23, 26, 31, 0.5);
+  --wa-520: rgba(23, 26, 31, 0.52);
+  --wa-550: rgba(23, 26, 31, 0.55);
+  --wa-580: rgba(23, 26, 31, 0.58);
+  --wa-600: rgba(23, 26, 31, 0.6);
+  --wa-620: rgba(23, 26, 31, 0.62);
+  --wa-640: rgba(23, 26, 31, 0.64);
+  --wa-650: rgba(23, 26, 31, 0.65);
+  --wa-680: rgba(23, 26, 31, 0.68);
+  --wa-700: rgba(23, 26, 31, 0.7);
+  --wa-720: rgba(23, 26, 31, 0.72);
+  --wa-750: rgba(23, 26, 31, 0.75);
+  --wa-760: rgba(23, 26, 31, 0.76);
+  --wa-780: rgba(23, 26, 31, 0.78);
+  --wa-800: rgba(23, 26, 31, 0.8);
+  --wa-820: rgba(23, 26, 31, 0.82);
+  --wa-850: rgba(23, 26, 31, 0.85);
+  --wa-860: rgba(23, 26, 31, 0.86);
+  --wa-880: rgba(23, 26, 31, 0.88);
+  --wa-900: rgba(23, 26, 31, 0.9);
 }
 
 html,
@@ -21,6 +162,8 @@ body {
   font-family: "Inter", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* 主题切换的底色/文字平滑过渡（仅 body 层，卡片各自有过渡） */
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 * {
@@ -37,25 +180,30 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--scrollbar-thumb);
   border-radius: 6px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--scrollbar-thumb-hover);
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 ::selection {
-  background: rgba(76, 139, 245, 0.35);
+  background: rgba(68, 147, 248, 0.32);
   color: #fff;
 }
 
+html.light ::selection {
+  background: rgba(47, 110, 224, 0.16);
+  color: inherit;
+}
+
 a {
-  color: #6ba1f7;
+  color: var(--link-color);
   text-decoration: none;
 }
 
@@ -66,4 +214,9 @@ a:hover {
 /* 统一卡片过渡，避免生硬 */
 .n-card {
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* 明亮模式卡片：白卡 + 柔和阴影（纸面层次感）；夜间保持扁平描边 */
+html.light .n-card {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 3px 8px rgba(16, 24, 40, 0.07);
 }

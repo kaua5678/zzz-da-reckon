@@ -359,7 +359,7 @@ function statLabelOf(stat: string): string {
 .boss-empty {
   padding: 12px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--wa-600);
 }
 
 .boss-error {
@@ -375,7 +375,7 @@ function statLabelOf(stat: string): string {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--wa-750);
   margin-bottom: 8px;
 }
 
@@ -387,7 +387,7 @@ function statLabelOf(stat: string): string {
 
 .phase-note {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--wa-400);
 }
 
 .defense-grid {
@@ -403,7 +403,7 @@ function statLabelOf(stat: string): string {
 }
 
 .buff-card {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--wa-80);
   border-radius: 8px;
   padding: 8px 10px;
   display: flex;
@@ -454,7 +454,7 @@ function statLabelOf(stat: string): string {
 
 .all-group-label {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   margin-bottom: 4px;
 }
 
@@ -469,11 +469,11 @@ function statLabelOf(stat: string): string {
   align-items: center;
   gap: 5px;
   font-size: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--wa-100);
   border-radius: 10px;
   padding: 2px 8px;
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--wa-750);
 }
 
 .all-boss-chip:hover {
@@ -486,7 +486,7 @@ function statLabelOf(stat: string): string {
 
 .chip-no-view {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
 }
 
 .chip-dot {

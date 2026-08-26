@@ -122,36 +122,36 @@
     <n-card v-if="points.length > 0" size="small" :bordered="true" class="chart-card">
       <div class="chart-area">
         <svg :viewBox="viewBox" class="compare-svg">
-          <!-- 网格 + y 刻度 -->
-          <line v-for="(y, i) in yTicks" :key="'g' + i" :x1="padL" :y1="y" :x2="padL + plotW" :y2="y" stroke="rgba(255,255,255,0.06)" />
-          <text v-for="(y, i) in yTicks" :key="'yt' + i" :x="padL - 6" :y="y + 4" text-anchor="end" fill="rgba(255,255,255,0.35)" font-size="10">{{ fmt(yLabel(i), 0) }}%</text>
-          <line v-for="(x, i) in xTickPositions" :key="'xg' + i" :x1="x" :y1="padT" :x2="x" :y2="padT + plotH" stroke="rgba(255,255,255,0.05)" />
-          <text v-for="(x, i) in xTickPositions" :key="'xt' + i" :x="x" :y="padT + plotH + 16" text-anchor="middle" fill="rgba(255,255,255,0.35)" font-size="10">{{ fmt(xTickLabels[i], 1) }}</text>
+          <!-- 网格 + y 刻度（SVG 颜色统一 class + 主题变量，var() 在 presentation attribute 上不可靠） -->
+          <line v-for="(y, i) in yTicks" :key="'g' + i" :x1="padL" :y1="y" :x2="padL + plotW" :y2="y" class="chart-grid" />
+          <text v-for="(y, i) in yTicks" :key="'yt' + i" :x="padL - 6" :y="y + 4" text-anchor="end" class="chart-tick" font-size="10">{{ fmt(yLabel(i), 0) }}%</text>
+          <line v-for="(x, i) in xTickPositions" :key="'xg' + i" :x1="x" :y1="padT" :x2="x" :y2="padT + plotH" class="chart-grid-x" />
+          <text v-for="(x, i) in xTickPositions" :key="'xt' + i" :x="x" :y="padT + plotH + 16" text-anchor="middle" class="chart-tick" font-size="10">{{ fmt(xTickLabels[i], 1) }}</text>
 
           <!-- 击杀线 100% + 200% 参考线 -->
           <line :x1="padL" :y1="yOf(100)" :x2="padL + plotW" :y2="yOf(100)" stroke="#e88080" stroke-dasharray="6,4" opacity="0.8" />
           <text :x="padL + 4" :y="yOf(100) - 4" fill="#e88080" font-size="10">击杀线 100%</text>
-          <line v-if="yMax > 200" :x1="padL" :y1="yOf(200)" :x2="padL + plotW" :y2="yOf(200)" stroke="rgba(255,255,255,0.25)" stroke-dasharray="4,4" />
-          <text v-if="yMax > 200" :x="padL + 4" :y="yOf(200) - 4" fill="rgba(255,255,255,0.45)" font-size="10">200% 两倍血量</text>
+          <line v-if="yMax > 200" :x1="padL" :y1="yOf(200)" :x2="padL + plotW" :y2="yOf(200)" class="chart-refline" stroke-dasharray="4,4" />
+          <text v-if="yMax > 200" :x="padL + 4" :y="yOf(200) - 4" class="chart-refline-text" font-size="10">200% 两倍血量</text>
 
           <!-- 坐标轴标签 -->
-          <text :x="padL + plotW / 2" :y="padT + plotH + 34" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="11">操作难度（交互加权和）</text>
-          <text :x="14" :y="padT + plotH / 2" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="11" transform="rotate(-90 14 0)">伤害/血量 %</text>
+          <text :x="padL + plotW / 2" :y="padT + plotH + 34" text-anchor="middle" class="chart-axis-label" font-size="11">操作难度（交互加权和）</text>
+          <text :x="14" :y="padT + plotH / 2" text-anchor="middle" class="chart-axis-label" font-size="11" transform="rotate(-90 14 0)">伤害/血量 %</text>
 
           <!-- 散点 -->
           <g v-for="(pt, i) in chartPts" :key="i">
             <circle
               :cx="pt.cx" :cy="pt.cy" :r="pt.r" :fill="pt.color" opacity="0.75"
-              stroke="rgba(255,255,255,0.35)" stroke-width="0.5"
+              class="scatter-dot" stroke-width="0.5"
               @mouseenter="hoverIdx = i" @mouseleave="hoverIdx = -1"
             />
           </g>
 
           <!-- hover tooltip -->
           <g v-if="hoverIdx >= 0 && chartPts[hoverIdx]">
-            <circle :cx="chartPts[hoverIdx].cx" :cy="chartPts[hoverIdx].cy" r="5" fill="#fff" />
-            <rect :x="ttX - 4" :y="ttY - 4" :width="ttW + 8" :height="ttH + 8" rx="3" fill="rgba(0,0,0,0.92)" stroke="rgba(255,255,255,0.15)" />
-            <text v-for="(line, li) in hoverTips" :key="'tt' + li" :x="ttX" :y="ttY + li * 13" fill="#fff" font-size="10">{{ line }}</text>
+            <circle :cx="chartPts[hoverIdx].cx" :cy="chartPts[hoverIdx].cy" r="5" class="chart-hover-dot" />
+            <rect :x="ttX - 4" :y="ttY - 4" :width="ttW + 8" :height="ttH + 8" rx="3" class="chart-tooltip-box" />
+            <text v-for="(line, li) in hoverTips" :key="'tt' + li" :x="ttX" :y="ttY + li * 13" class="chart-tooltip-text" font-size="10">{{ line }}</text>
           </g>
         </svg>
 
@@ -542,18 +542,18 @@ const hoverTips = computed(() => {
 
 .ctl-label {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
 }
 
 .ctl-sep {
   margin: 0 4px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--wa-400);
 }
 
 .progress-bar {
   margin-top: 10px;
   height: 4px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--wa-80);
   border-radius: 2px;
   position: relative;
 }
@@ -570,13 +570,13 @@ const hoverTips = computed(() => {
   top: 8px;
   right: 0;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
 }
 
 .compare-note {
   margin-top: 10px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
 }
 
 .buff-note {
@@ -586,12 +586,12 @@ const hoverTips = computed(() => {
 .empty-hint {
   margin-top: 10px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--wa-600);
   line-height: 1.7;
 }
 
 .empty-hint code {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--wa-80);
   padding: 1px 5px;
   border-radius: 3px;
 }
@@ -604,9 +604,21 @@ const hoverTips = computed(() => {
 .compare-svg {
   width: 100%;
   height: auto;
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--wa-15);
   border-radius: 4px;
 }
+
+/* SVG 网格/刻度/提示框颜色走主题变量 */
+.chart-grid { stroke: var(--wa-60); }
+.chart-grid-x { stroke: var(--wa-50); }
+.chart-tick { fill: var(--wa-350); }
+.chart-refline { stroke: var(--wa-250); }
+.chart-refline-text { fill: var(--wa-450); }
+.chart-axis-label { fill: var(--wa-500); }
+.scatter-dot { stroke: var(--wa-350); }
+.chart-hover-dot { fill: var(--app-text-solid); }
+.chart-tooltip-box { fill: var(--app-tooltip-bg); stroke: var(--wa-150); }
+.chart-tooltip-text { fill: var(--app-tooltip-text); }
 
 .chart-legend {
   display: flex;
@@ -620,7 +632,7 @@ const hoverTips = computed(() => {
   align-items: center;
   gap: 5px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--wa-750);
   border: 1px solid;
   border-radius: 10px;
   padding: 1px 8px;
@@ -645,13 +657,13 @@ const hoverTips = computed(() => {
 .detail-table th,
 .detail-table td {
   padding: 4px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--wa-60);
   text-align: right;
   white-space: nowrap;
 }
 
 .detail-table th {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   font-weight: 600;
 }
 
@@ -665,7 +677,7 @@ const hoverTips = computed(() => {
 }
 
 .td-detail {
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
   font-size: 11px;
 }
 
@@ -680,7 +692,7 @@ const hoverTips = computed(() => {
 }
 
 .time-ok {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--wa-400);
   font-size: 11px;
 }
 

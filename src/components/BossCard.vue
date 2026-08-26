@@ -105,10 +105,10 @@ function statLabelOf(stat: string): string {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--wa-100);
   border-radius: 8px;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--wa-20);
   transition: border-color 0.2s;
 }
 
@@ -180,7 +180,7 @@ function statLabelOf(stat: string): string {
 
 .boss-neutral {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--wa-400);
 }
 
 .bc-stats {
@@ -188,7 +188,7 @@ function statLabelOf(stat: string): string {
   gap: 12px;
   flex-wrap: wrap;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
 }
 
 .layer-buffs {

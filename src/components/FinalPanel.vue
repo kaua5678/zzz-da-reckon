@@ -527,23 +527,23 @@ const panels = computed(() => {
 }
 .fp-hint {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--wa-450);
   margin-bottom: 10px;
   line-height: 1.6;
 }
 .fp-hint code {
   font-family: Consolas, monospace;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--wa-700);
 }
 .fp-summary {
   padding: 6px 10px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--wa-40);
+  border: 1px solid var(--wa-60);
 }
 .fp-summary-label {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--wa-450);
 }
 .fp-summary-value {
   font-size: 13px;
@@ -559,8 +559,8 @@ const panels = computed(() => {
 .fp-zone {
   padding: 8px 10px;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.24);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--app-inset);
+  border: 1px solid var(--wa-60);
 }
 .fp-zone-title {
   font-size: 11px;
@@ -576,7 +576,7 @@ const panels = computed(() => {
 }
 .fp-zone-line {
   font-size: 10.5px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   font-family: Consolas, monospace;
   line-height: 1.6;
 }
@@ -587,25 +587,25 @@ const panels = computed(() => {
 }
 .fp-table th, .fp-table td {
   padding: 5px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--wa-50);
   text-align: left;
 }
 .fp-table th {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   font-weight: 600;
   font-size: 10.5px;
 }
 .fp-stat-label {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--wa-750);
 }
 .fp-stat-id {
   font-family: Consolas, monospace;
   font-size: 9.5px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--wa-300);
 }
 .fp-num {
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--wa-650);
   white-space: nowrap;
 }
 .fp-in {
@@ -615,22 +615,22 @@ const panels = computed(() => {
   color: #6ee7b7;
 }
 .fp-delta-zero {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--wa-300);
 }
 .fp-empty {
   padding: 24px 0;
   text-align: center;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--wa-350);
 }
 .fp-hp-formula {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--wa-600);
   font-family: Consolas, monospace;
   margin-bottom: 6px;
   line-height: 1.7;
 }
 .fp-note-cell {
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
   font-size: 11px;
 }
 .fp-phase-in {
@@ -639,7 +639,7 @@ const panels = computed(() => {
 }
 .fp-empty-cell {
   text-align: center;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--wa-300);
   padding: 12px 0;
 }
 .zone-pill {

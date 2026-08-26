@@ -109,7 +109,7 @@ onMounted(async () => {
   justify-content: center;
   gap: 12px;
   padding: 80px 0;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   font-size: 14px;
 }
 

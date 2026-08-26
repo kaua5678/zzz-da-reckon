@@ -580,7 +580,7 @@ function hasCoverage(buff: TeammateBuff): boolean {
 
 .field-label {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
 }
 
 .buff-table-wrapper {
@@ -596,20 +596,20 @@ function hasCoverage(buff: TeammateBuff): boolean {
 .buff-table th {
   text-align: left;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--wa-600);
   padding: 8px 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--wa-80);
   font-size: 11px;
 }
 
 .buff-table td {
   padding: 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--wa-40);
   vertical-align: middle;
 }
 
 .buff-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--wa-20);
 }
 
 .col-center {
@@ -619,7 +619,7 @@ function hasCoverage(buff: TeammateBuff): boolean {
 .formula-note {
   font-size: 11px;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--wa-450);
   margin-top: -2px;
 }
 
@@ -636,13 +636,13 @@ function hasCoverage(buff: TeammateBuff): boolean {
 
 .target-muted {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--wa-350);
 }
 
 .empty-buffs {
   text-align: center;
   padding: 30px 0;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--wa-300);
   font-size: 13px;
 }
 
@@ -651,7 +651,7 @@ function hasCoverage(buff: TeammateBuff): boolean {
 .teammate-empty {
   text-align: center;
   padding: 30px 0;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--wa-300);
   font-size: 13px;
 }
 
@@ -670,8 +670,8 @@ function hasCoverage(buff: TeammateBuff): boolean {
 }
 
 .buff-item {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--wa-20);
+  border: 1px solid var(--wa-60);
   border-radius: 6px;
   padding: 8px 10px;
   transition: all 0.2s ease;
@@ -692,7 +692,7 @@ function hasCoverage(buff: TeammateBuff): boolean {
 .buff-item-name {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--wa-900);
   flex: 1;
 }
 
@@ -714,7 +714,7 @@ function hasCoverage(buff: TeammateBuff): boolean {
 
 .buff-item-desc {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--wa-400);
   line-height: 1.5;
   margin-top: 2px;
 }
@@ -725,19 +725,19 @@ function hasCoverage(buff: TeammateBuff): boolean {
   gap: 8px;
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--wa-50);
 }
 
 .coverage-label {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--wa-500);
   width: 40px;
   flex-shrink: 0;
 }
 
 .coverage-value {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--wa-700);
   width: 36px;
   text-align: right;
   flex-shrink: 0;

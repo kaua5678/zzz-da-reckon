@@ -303,12 +303,12 @@ function statusType(status: string): 'success' | 'warning' | 'info' | 'default' 
 .page-title {
   font-size: 18px;
   font-weight: 700;
-  color: #fff;
+  color: var(--app-text-solid);
 }
 
 .page-subtitle {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--wa-450);
   margin-top: 2px;
 }
 
@@ -317,8 +317,8 @@ function statusType(status: string): 'success' | 'warning' | 'info' | 'default' 
 }
 
 .mech-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--wa-30);
+  border: 1px solid var(--wa-80);
   border-radius: 8px;
   margin-bottom: 16px;
   overflow: hidden;
@@ -329,19 +329,19 @@ function statusType(status: string): 'success' | 'warning' | 'info' | 'default' 
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--wa-40);
+  border-bottom: 1px solid var(--wa-80);
 }
 
 .mech-name {
   font-size: 15px;
   font-weight: 700;
-  color: #fff;
+  color: var(--app-text-solid);
 }
 
 .mech-id {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--wa-400);
 }
 
 .mech-body {
@@ -367,16 +367,16 @@ function statusType(status: string): 'success' | 'warning' | 'info' | 'default' 
 
 .mech-table th,
 .mech-table td {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--wa-80);
   padding: 6px 8px;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--wa-750);
   vertical-align: top;
   text-align: left;
 }
 
 .mech-table th {
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.55);
+  background: var(--wa-50);
+  color: var(--wa-550);
   font-weight: 600;
 }
 
@@ -388,7 +388,7 @@ function statusType(status: string): 'success' | 'warning' | 'info' | 'default' 
 .note-list {
   margin: 0;
   padding-left: 18px;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--wa-720);
   font-size: 12px;
   line-height: 1.7;
 }
@@ -400,6 +400,6 @@ function statusType(status: string): 'success' | 'warning' | 'info' | 'default' 
 .empty-box {
   padding: 40px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--wa-400);
 }
 </style>

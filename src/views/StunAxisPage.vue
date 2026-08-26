@@ -176,24 +176,24 @@
       <div v-if="inStunAnomalyState && useAxes" style="font-weight:600;margin-bottom:6px;font-size:12px">
         失衡内异常状态（窗口独立模拟：每次失衡都是中间态——跨出窗口是非失衡期且未建模，每窗按条目声明的初始状态/异常条初始化；满槽经触发块清空并触发，下一波重新积蓄；✕ 抑制=满槽保持不触发（施加者后台/CD 无法判断时用），恢复即重新生效）
       </div>
-      <div v-if="inStunAnomalyState" style="font-size:12px;color:rgba(255,255,255,0.75);display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
+      <div v-if="inStunAnomalyState" style="font-size:12px;color:var(--wa-750);display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
         <div style="display:flex;flex-wrap:wrap;gap:4px">
           <span v-for="el in inStunAnomalyState.elements" :key="el.element"
-            style="background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:3px">
+            style="background:var(--wa-60);padding:2px 8px;border-radius:3px">
             {{ entryBarLabel(el.element) }} · 每窗均 {{ (el.triggerCount / Math.max(1, inStunAnomalyState.windows)).toFixed(1) }} 次 · 共 {{ el.triggerCount }} 次 · 窗均覆盖 {{ (el.avgCoverage * 100).toFixed(1) }}%
           </span>
-          <span v-if="inStunAnomalyState.elements.length === 0" style="color:rgba(255,255,255,0.35)">轴内动作未产生积蓄触发。</span>
+          <span v-if="inStunAnomalyState.elements.length === 0" style="color:var(--wa-350)">轴内动作未产生积蓄触发。</span>
         </div>
         <div v-for="row in chainRows" :key="'w'+row.wi"
-          style="color:rgba(255,255,255,0.55)">
+          style="color:var(--wa-550)">
           第{{ row.wi + 1 }}次失衡：{{ row.text }}
         </div>
         <div v-if="chainRows.length === 0 && (bossAnomalyState?.stateChainsPerWindow.length ?? 0) > 1"
-          style="color:rgba(255,255,255,0.4)">各次失衡状态链完全相同（多轮重复段逐窗重演同一序列），不重复展示。</div>
-        <div v-for="(axis, ai) in axes" :key="'ev'+ai" style="color:rgba(255,255,255,0.65);display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+          style="color:var(--wa-400)">各次失衡状态链完全相同（多轮重复段逐窗重演同一序列），不重复展示。</div>
+        <div v-for="(axis, ai) in axes" :key="'ev'+ai" style="color:var(--wa-650);display:flex;flex-wrap:wrap;gap:4px;align-items:center">
           <span v-if="entryEventLine(ai)" style="margin-right:4px">「{{ axis.name }}」{{ entryEventLine(ai) }}</span>
           <span v-for="chip in entryTriggerChips(ai)" :key="chip.id"
-            style="display:inline-flex;align-items:center;gap:2px;background:rgba(255,255,255,0.06);padding:1px 6px;border-radius:3px"
+            style="display:inline-flex;align-items:center;gap:2px;background:var(--wa-60);padding:1px 6px;border-radius:3px"
             :style="chip.suppressed ? 'opacity:0.45;text-decoration:line-through' : ''">
             {{ chip.label }}
             <n-button size="tiny" quaternary type="warning" @click="toggleTriggerSuppressed(axis, chip.id)">
@@ -201,13 +201,13 @@
             </n-button>
           </span>
         </div>
-        <div style="color:rgba(255,255,255,0.4);margin-top:2px">动作块上的「触X」标签 = 该招式在此段首窗触发的异常；带·紊乱 = 触发时替换了原状态。极性紊乱/异放的归因与基数都按触发时刻的当前状态结算。</div>
-        <div style="border-top:1px dashed rgba(255,255,255,0.1);margin-top:4px;padding-top:4px;max-height:180px;overflow:auto">
+        <div style="color:var(--wa-400);margin-top:2px">动作块上的「触X」标签 = 该招式在此段首窗触发的异常；带·紊乱 = 触发时替换了原状态。极性紊乱/异放的归因与基数都按触发时刻的当前状态结算。</div>
+        <div style="border-top:1px dashed var(--wa-100);margin-top:4px;padding-top:4px;max-height:180px;overflow:auto">
           <span style="font-size:12px;font-weight:600">状态判定事件（异放/极性紊乱：元素与失衡易伤按触发时刻当前状态结算）</span>
-          <div v-for="row in stateJudgedRows" :key="row.key" style="font-size:12px;color:rgba(255,255,255,0.65)">
+          <div v-for="row in stateJudgedRows" :key="row.key" style="font-size:12px;color:var(--wa-650)">
             [{{ row.type }}] {{ row.agentName }} · {{ row.name }} → {{ entryBarLabel(row.element) }} ×{{ row.count }}（{{ fmt(row.totalDamage, 0) }} 伤害）
           </div>
-          <div v-if="stateJudgedRows.length === 0" style="font-size:12px;color:rgba(255,255,255,0.35)">
+          <div v-if="stateJudgedRows.length === 0" style="font-size:12px;color:var(--wa-350)">
             当前配置没有状态判定类事件产出（异放需要命中异常目标；极性紊乱需要跨元素替换）。
           </div>
         </div>
@@ -227,7 +227,7 @@
         <div v-if="axisResult.globalWarnings.length" style="margin-top:6px">
           <div v-for="(w,i) in axisResult.globalWarnings" :key="i" class="sap-warn">{{ w }}</div>
         </div>
-        <div v-if="stack" style="margin-top:8px; border-top:1px dashed rgba(255,255,255,0.08); padding-top:6px">
+        <div v-if="stack" style="margin-top:8px; border-top:1px dashed var(--wa-80); padding-top:6px">
           <div class="sap-stat-row">
             <span>轴内闪能消耗 {{ stack.energyUsed }} / {{ stack.totalEnergy }}</span>
             <span>喧响消耗 {{ stack.decibelUsed }} / {{ stack.totalDecibel }}</span>
@@ -878,39 +878,39 @@ function axisStun(ai: number): number {
 
 <style scoped>
 .sap-root { width: 100%; min-height: 300px; padding: 16px 20px; }
-.placeholder { text-align: center; color: rgba(255,255,255,0.3); padding: 60px 0; }
+.placeholder { text-align: center; color: var(--wa-300); padding: 60px 0; }
 .sap-topbar { display: flex; align-items: center; margin-bottom: 14px; }
-.sap-top-label { font-size: 12px; color: rgba(255,255,255,0.55); margin-left: 6px; }
+.sap-top-label { font-size: 12px; color: var(--wa-550); margin-left: 6px; }
 .sap-plan-banner { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 6px 10px; background: rgba(99,226,183,0.07); border: 1px solid rgba(99,226,183,0.2); border-radius: 6px; }
 .sap-plan-label { font-size: 10px; color: #63e2b7; }
 .sap-plan-name { font-size: 12px; color: #63e2b7; font-weight: 600; }
-.sap-plan-note { font-size: 10px; color: rgba(255,255,255,0.45); }
+.sap-plan-note { font-size: 10px; color: var(--wa-450); }
 .sap-pool { margin-bottom: 16px; }
-.sap-section-title { font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
+.sap-section-title { font-size: 11px; color: var(--wa-400); margin-bottom: 4px; }
 .sap-presets { margin-bottom: 16px; padding: 10px; background: rgba(99,226,183,0.04); border: 1px solid rgba(99,226,183,0.12); border-radius: 6px; }
 .sap-preset-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
 .sap-preset-name { font-size: 12px; color: #63e2b7; }
-.sap-preset-note { font-size: 11px; color: rgba(255,255,255,0.5); }
+.sap-preset-note { font-size: 11px; color: var(--wa-500); }
 .sap-slot-row { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; flex-wrap: wrap; }
-.sap-slot-name { font-size: 10px; color: rgba(255,255,255,0.45); min-width: 44px; }
+.sap-slot-name { font-size: 10px; color: var(--wa-450); min-width: 44px; }
 .sap-chip { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: rgba(99,226,183,0.08); color: #63e2b7; cursor: pointer; }
-.sap-chip.dim { background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.25); }
+.sap-chip.dim { background: var(--wa-30); color: var(--wa-250); }
 .sap-axes { display: flex; flex-direction: column; gap: 14px; }
-.sap-axis { background: rgba(255,255,255,0.02); border-radius: 8px; padding: 10px; border: 1px solid rgba(255,255,255,0.05); }
+.sap-axis { background: var(--wa-20); border-radius: 8px; padding: 10px; border: 1px solid var(--wa-50); }
 .sap-axis-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-.sap-label { font-size: 10px; color: rgba(255,255,255,0.35); }
-.sap-stat { font-size: 11px; color: rgba(255,255,255,0.45); margin-left: auto; }
+.sap-label { font-size: 10px; color: var(--wa-350); }
+.sap-stat { font-size: 11px; color: var(--wa-450); margin-left: auto; }
 /* 时间轴 */
-.sap-timeline { position: relative; height: 106px; margin: 8px 0 12px; background: rgba(255,255,255,0.015); border-radius: 4px; user-select: none; touch-action: none; }
+.sap-timeline { position: relative; height: 106px; margin: 8px 0 12px; background: var(--wa-15); border-radius: 4px; user-select: none; touch-action: none; }
 .sap-ticks { position: absolute; top: 0; left: 0; right: 0; height: 14px; }
-.sap-tick { position: absolute; top: 0; height: 100%; border-left: 1px solid rgba(255,255,255,0.08); }
-.sap-tick-label { position: absolute; top: 0; left: 2px; font-size: 8px; color: rgba(255,255,255,0.25); }
+.sap-tick { position: absolute; top: 0; height: 100%; border-left: 1px solid var(--wa-80); }
+.sap-tick-label { position: absolute; top: 0; left: 2px; font-size: 8px; color: var(--wa-250); }
 .sap-window-bar { position: absolute; top: 14px; left: 0; right: 0; height: 9px; background: rgba(240,160,32,0.08); border-radius: 2px; }
 .sap-win-label { font-size: 8px; color: rgba(240,160,32,0.5); padding-left: 4px; }
-.sap-lane { position: absolute; left: 0; right: 0; height: 19px; background: rgba(255,255,255,0.02); border-radius: 2px; }
-.sap-lane-name { font-size: 8px; color: rgba(255,255,255,0.3); padding-left: 3px; }
+.sap-lane { position: absolute; left: 0; right: 0; height: 19px; background: var(--wa-20); border-radius: 2px; }
+.sap-lane-name { font-size: 8px; color: var(--wa-300); padding-left: 3px; }
 .sap-block { position: absolute; height: 15px; border-radius: 2px; display: flex; align-items: center; padding: 0 3px; cursor: grab; overflow: hidden; border: 1px solid transparent; }
-.sap-block-text { font-size: 8px; color: rgba(255,255,255,0.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.sap-block-text { font-size: 8px; color: var(--wa-750); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 /* 明王时间轴标注：flex 排在块名后（不重叠），块名省略号收缩 */
 .sap-block { display: flex; align-items: center; gap: 2px; }
 .sap-block-text { flex: 1; min-width: 0; }
@@ -923,16 +923,16 @@ function axisStun(ai: number): number {
 .sap-mw-window.mw-l2 { background: rgba(240,160,32,0.35); border: 1px solid rgba(240,160,32,0.6); color: #ffd591; }
 .sap-mw-window.mw-l3 { background: rgba(99,226,183,0.35); border: 1px solid rgba(99,226,183,0.6); color: #b7f5dd; }
 .sap-mw-window.mw-full { background: rgba(99,226,183,0.12); border: 1px dashed rgba(99,226,183,0.4); color: rgba(99,226,183,0.7); }
-.sap-mw-banner { margin: 6px 0 8px; padding: 5px 8px; font-size: 10px; color: rgba(255,255,255,0.6); background: rgba(99,226,183,0.05); border: 1px solid rgba(99,226,183,0.15); border-radius: 4px; }
+.sap-mw-banner { margin: 6px 0 8px; padding: 5px 8px; font-size: 10px; color: var(--wa-600); background: rgba(99,226,183,0.05); border: 1px solid rgba(99,226,183,0.15); border-radius: 4px; }
 /* 优先级栈 */
 .sap-stack { display: flex; flex-direction: column; gap: 3px; }
-.sap-stack-row { display: flex; align-items: center; gap: 6px; padding: 2px 4px; background: rgba(255,255,255,0.02); border-radius: 3px; flex-wrap: wrap; }
-.sap-prio { width: 22px; font-size: 11px; color: rgba(255,255,255,0.45); text-align: center; }
+.sap-stack-row { display: flex; align-items: center; gap: 6px; padding: 2px 4px; background: var(--wa-20); border-radius: 3px; flex-wrap: wrap; }
+.sap-prio { width: 22px; font-size: 11px; color: var(--wa-450); text-align: center; }
 .sap-prio.top { color: #63e2b7; font-weight: 600; }
-.sap-t { flex: 1; min-width: 130px; font-size: 11px; color: rgba(255,255,255,0.65); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.sap-t .sap-t-time { font-weight: 600; color: rgba(255,255,255,0.85); }
+.sap-t { flex: 1; min-width: 130px; font-size: 11px; color: var(--wa-650); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sap-t .sap-t-time { font-weight: 600; color: var(--wa-850); }
 .sap-ops { display: flex; gap: 2px; }
-.sap-stats { margin-top: 16px; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 6px; }
-.sap-stat-row { display: flex; gap: 14px; font-size: 12px; color: rgba(255,255,255,0.55); }
+.sap-stats { margin-top: 16px; padding: 10px; background: var(--wa-20); border-radius: 6px; }
+.sap-stat-row { display: flex; gap: 14px; font-size: 12px; color: var(--wa-550); }
 .sap-warn { font-size: 10px; color: #f0a020; }
 </style>

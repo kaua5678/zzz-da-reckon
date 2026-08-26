@@ -380,13 +380,13 @@ function reset(): void {
 .page-title {
   font-size: 16px;
   font-weight: 700;
-  color: #fff;
+  color: var(--app-text-solid);
 }
 
 .page-subtitle {
   margin-top: 2px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--wa-450);
 }
 
 .toolbar-row {
@@ -406,13 +406,13 @@ function reset(): void {
 .logic-table th,
 .logic-table td {
   padding: 8px 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--wa-80);
   vertical-align: top;
   text-align: left;
 }
 
 .logic-table th {
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -427,6 +427,6 @@ function reset(): void {
 }
 
 .muted {
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--wa-350);
 }
 </style>

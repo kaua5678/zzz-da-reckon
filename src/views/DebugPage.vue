@@ -491,13 +491,13 @@ const formulaSections = [
 .summary-card {
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--wa-40);
+  border: 1px solid var(--wa-60);
 }
 
 .summary-label {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--wa-450);
   margin-bottom: 4px;
 }
 
@@ -521,7 +521,7 @@ const formulaSections = [
 .debug-table th,
 .debug-table td {
   padding: 8px 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--wa-60);
   vertical-align: top;
 }
 
@@ -530,14 +530,14 @@ const formulaSections = [
   top: 0;
   z-index: 1;
   text-align: left;
-  background: #15151a;
-  color: rgba(255, 255, 255, 0.65);
+  background: var(--app-tablehead-bg);
+  color: var(--wa-650);
   font-weight: 600;
 }
 
 .stat-id {
   margin-top: 3px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--wa-350);
   font-family: Consolas, monospace;
   font-size: 11px;
 }
@@ -559,22 +559,22 @@ const formulaSections = [
 
 .note-cell {
   min-width: 220px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--wa-550);
   line-height: 1.5;
 }
 
 .empty-state {
   padding: 30px 0;
   text-align: center;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--wa-350);
 }
 
 .formula-card {
   min-height: 132px;
   padding: 12px;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.24);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--app-inset);
+  border: 1px solid var(--wa-60);
 }
 
 .formula-title {
@@ -592,18 +592,18 @@ const formulaSections = [
 
 .formula-main {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--wa-820);
 }
 
 .formula-line {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.52);
+  color: var(--wa-520);
 }
 
 .check-list {
   margin: 0;
   padding-left: 18px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--wa-700);
   line-height: 1.8;
   font-size: 12px;
 }
