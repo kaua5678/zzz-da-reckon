@@ -63,15 +63,18 @@ describe('普罗米娅 处刑式·匿影（交互栏次数）', () => {
 })
 
 describe('普罗米娅 影画4/6 异常结算区（2026-08-26）', () => {
-  it('影画6：特殊异放事件存在（200%，15s CD，启动2s → 180s 计 12 次）', async () => {
+  it('影画6：特殊异放事件存在（200%，15s CD 上限 12，且 ≤ 绝裁异放次数）', async () => {
     const { config } = await setupHarness([{ agentId: '1541', cinemaLevel: 6 }])
     const calc = useResourceCalc()
     const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1541')!
+    const main = (char.anomalyEventExecutions ?? []).find(e => e.eventId === 'promia_execution_release')
     const ev = (char.anomalyEventExecutions ?? []).find(e => e.eventId === 'promia_c6_special_release')
     expect(ev).toBeTruthy()
     expect(ev!.fields).toContain(`releaseMultiplier=${PROMIA_C6_SPECIAL_RELEASE_MULT}`)
-    // 启动 2s：floor((180-2)/15)+1 = 12
-    expect(ev!.count).toBe(12)
+    // 15s CD 上限 = floor((180-2)/15)+1 = 12；且特殊异放随绝裁异放触发，≤ 绝裁异放次数
+    expect(ev!.count).toBeGreaterThan(0)
+    expect(ev!.count).toBeLessThanOrEqual(12)
+    expect(ev!.count).toBeLessThanOrEqual(main?.count ?? 0)
   })
 
   it('影画6：自身异常/紊乱无视 15% 全抗进面板', async () => {
@@ -100,7 +103,11 @@ describe('普罗米娅 影画4/6 异常结算区（2026-08-26）', () => {
     const { config } = await setupHarness([{ agentId: '1541', cinemaLevel: 6 }])
     const calc = useResourceCalc()
     const promia = calc.resourceResult.value!.characters.find(c => c.agentId === '1541')!
-    // 喧响来自异放回能 → decibelSource 应含额外喧响
-    expect(promia.decibelSource).toBeTruthy()
+    const releaseTotal = (promia.anomalyEventExecutions ?? [])
+      .filter(e => e.eventType === 'release' && (e.eventId === 'promia_execution_release' || e.eventId === 'promia_c6_special_release'))
+      .reduce((s, e) => s + Math.floor(e.count), 0)
+    expect(releaseTotal).toBeGreaterThan(0)
+    // 异放回喧响 = releaseTotal × 100 经 extraSelfDecibelReward 流入 unshareableBonus（收敛线程一轮滞后，容差 200）
+    expect(promia.decibelSource.unshareableBonus).toBeGreaterThanOrEqual(releaseTotal * 100 - 200)
   })
 })

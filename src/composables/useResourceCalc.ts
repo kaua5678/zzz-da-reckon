@@ -1456,7 +1456,9 @@ function applyNormaHatChain(
     let promiaReleaseDecibelNext = 0
     if (characters.some(c => c.agentId === '1541')) {
       promiaTriggerHitsNext = ap1?.totalTriggerCount ?? 0
+      // 队友异放 = 除普罗米娅自身外的全队 release 事件（原文「队友触发异放」，自身异放回喧响另走 promiaReleaseDecibel）
       promiaTeammateReleasesNext = (rrShown?.characters ?? rr.characters)
+        .filter(ch => ch.agentId !== '1541')
         .flatMap(ch => ch.anomalyEventExecutions ?? [])
         .filter(e => e.eventType === 'release' && e.count > 0)
         .reduce((sum, e) => sum + Math.floor(e.count), 0)
