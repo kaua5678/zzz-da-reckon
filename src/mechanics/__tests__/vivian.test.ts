@@ -25,6 +25,7 @@ function cycle(overrides: Partial<Parameters<typeof computeVivianCycle>[0]> = {}
   return computeVivianCycle({
     cinemaLevel: 6,
     teamExSpecialCount: 6,
+    selfExSpecialCount: 6,
     teammateAnomalyCount: 6,
     battleTime: 180,
     danceHitCount: 0,
@@ -62,8 +63,8 @@ describe('薇薇安（1331）总量与折算', () => {
   })
 
   it('落羽生花次数受护羽总量约束', () => {
-    // 高需求低护羽：源1=30，飞羽=2+30×3=92（C0）→ 护羽92，不截断
-    const c = cycle({ cinemaLevel: 0, teamExSpecialCount: 30, teammateAnomalyCount: 0, chainCount: 0, ultimateCount: 0, assistCount: 0 })
+    // 高需求低护羽：源1=30（全队强特），飞羽=2+30×3=92（自身强特30，C0）→ 护羽92，不截断
+    const c = cycle({ cinemaLevel: 0, selfExSpecialCount: 30, teamExSpecialCount: 30, teammateAnomalyCount: 0, chainCount: 0, ultimateCount: 0, assistCount: 0 })
     expect(c.flyFeatherTotal).toBe(92)
     expect(c.followUpCount).toBe(30)
   })
@@ -99,7 +100,7 @@ describe('薇薇安执行行与定向结算', () => {
     const executions: any[] = []
     vivianMechanic.buildExecutions!({
       cfg: cfgWith(0),
-      state: { exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 },
+      state: { exSpecialCount: 6, ultimateCount: 1, chainCountTotal: 2 },
       executions,
     } as any)
     const follow = executions.find(r => r.moveId === VIVIAN_LUOYU_MOVE_ID)
@@ -114,12 +115,38 @@ describe('薇薇安执行行与定向结算', () => {
     const executions: any[] = []
     vivianMechanic.buildExecutions!({
       cfg: cfgWith(0, { vivianAdditionalActive: false }),
-      state: { exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 },
+      state: { exSpecialCount: 6, ultimateCount: 1, chainCountTotal: 2 },
       executions,
     } as any)
     const follow = executions.find(r => r.moveId === VIVIAN_LUOYU_MOVE_ID)
     expect(follow).toBeTruthy()
     expect(follow.count).toBeGreaterThan(0)
+  })
+
+  it('悬落后台自动衔接 E/Q/支援/连携：次数=四者之和，0s 后台不占前台', () => {
+    const executions: any[] = []
+    vivianMechanic.buildExecutions!({
+      cfg: cfgWith(0),
+      state: { exSpecialCount: 8, ultimateCount: 3, chainCountTotal: 1.7 },
+      executions,
+    } as any)
+    const xuanluo = executions.find(r => r.moveId === VIVIAN_XUANLUO_MOVE_ID)
+    expect(xuanluo).toBeTruthy()
+    // 悬落 = E 8 + Q 3 + 连携 floor(1.7)=1 + 支援 0 = 12
+    expect(xuanluo.count).toBe(12)
+    expect(xuanluo.actionTime).toBe(0)
+    expect(xuanluo.timeBucket).toBe('backstage')
+    expect(xuanluo.element).toBe('ether')
+  })
+
+  it('强化特殊技全部合轴：堇花悼亡 timeBucket=backstage，不占前台时间', () => {
+    const ex: any = { moveId: '1331010', timeBucket: 'necessary' }
+    vivianMechanic.patchExecutions!({
+      cfg: cfgWith(0),
+      state: { exSpecialCount: 8, ultimateCount: 3, chainCountTotal: 1.7 },
+      executions: [ex],
+    } as any)
+    expect(ex.timeBucket).toBe('backstage')
   })
 
   it('影画4使悬落/落羽生花必定暴击，其他招式不受影响', () => {
@@ -188,7 +215,7 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
   it('落羽生花异放事件：dominant 元素 + 精通比例 + 次数=追击次数', () => {
     const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 8, vivianAnomalyTriggerTotal: 0 }
     const events: any[] = []
-    vivianMechanic.buildAnomalyEvents!({ cfg, state: {} as any, events, totalTime: 180 })
+    vivianMechanic.buildAnomalyEvents!({ cfg, state: { exSpecialCount: 8 } as any, events, totalTime: 180 })
     const release = events.find(e => e.eventId === 'vivian_luoyu_release')
     expect(release).toBeTruthy()
     expect(release.eventType).toBe('release')
@@ -203,7 +230,7 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
     // 原文：落羽生花命中「处于异常状态」的目标才触发异放
     const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 10, vivianAnomalyTriggerTotal: 0, 'setting:vivian.releaseCoverage': 0.6 }
     const events: any[] = []
-    vivianMechanic.buildAnomalyEvents!({ cfg, state: {} as any, events, totalTime: 180 })
+    vivianMechanic.buildAnomalyEvents!({ cfg, state: { exSpecialCount: 10 } as any, events, totalTime: 180 })
     const release = events.find(e => e.eventId === 'vivian_luoyu_release')!
     expect(release.count).toBe(6) // 10 次 × 60% 命中异常目标
 
@@ -215,7 +242,7 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
   it('影画2：异放精通收益 ×130%（perTen 放大）', () => {
     const cfg: any = { vivianCinemaLevel: 2, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0 }
     const events: any[] = []
-    vivianMechanic.buildAnomalyEvents!({ cfg, state: {} as any, events, totalTime: 180 })
+    vivianMechanic.buildAnomalyEvents!({ cfg, state: { exSpecialCount: 4 } as any, events, totalTime: 180 })
     const release = events.find(e => e.eventId === 'vivian_luoyu_release')!
     expect(release.releaseRatio.perTenByElement.ether).toBeCloseTo(6.15 * 1.3, 5)
     expect(release.releaseRatio.perTenByElement.fire).toBeCloseTo(8 * 1.3, 5)
@@ -224,7 +251,7 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
   it('影画6：悬落特殊异放比例 ×5', () => {
     const cfg: any = { vivianCinemaLevel: 6, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0 }
     const events: any[] = []
-    vivianMechanic.buildAnomalyEvents!({ cfg, state: {} as any, events, totalTime: 180 })
+    vivianMechanic.buildAnomalyEvents!({ cfg, state: { exSpecialCount: 4 } as any, events, totalTime: 180 })
     const c6 = events.find(e => e.eventId === 'vivian_xuanluo_c6_release')
     expect(c6).toBeTruthy()
     expect(c6.releaseRatio.perTenByElement.ether).toBeCloseTo(6.15 * 1.3 * 5, 5)
@@ -233,7 +260,7 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
   it('预言 DoT：次数 = floor(战斗时长 × 覆盖率 / 0.55)，覆盖率可调', () => {
     const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0 }
     const events: any[] = []
-    vivianMechanic.buildAnomalyEvents!({ cfg, state: {} as any, events, totalTime: 180 })
+    vivianMechanic.buildAnomalyEvents!({ cfg, state: { exSpecialCount: 4 } as any, events, totalTime: 180 })
     const dot = events.find(e => e.eventId === 'vivian_prediction_dot')
     expect(dot).toBeTruthy()
     expect(dot.eventType).toBe('direct_damage')

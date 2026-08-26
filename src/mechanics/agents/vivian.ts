@@ -69,6 +69,8 @@ export interface VivianCycle {
   flyFeatherTotal: number
   /** C1：累计消耗4护羽回1飞羽 */
   c1FeatherRefund: number
+  /** 悬落次数（后台自动衔接 E/Q/支援突击/连携 后，不占前台） */
+  xuanluoCount: number
   additionalActive: boolean
   c4AtkCoverage: number
   c4AtkBonus: number
@@ -95,6 +97,8 @@ export function computeVivianCycle(input: {
   cinemaLevel: number
   /** 源1：全队强化特殊技命中次数（触发落羽生花，同一招式至多一次） */
   teamExSpecialCount: number
+  /** 薇薇安自身强化特殊技次数（悬落衔接源 + 飞羽强特源） */
+  selfExSpecialCount: number
   /** 源2：队友施加属性异常次数（0.5s 至多一次，受 CD 封顶） */
   teammateAnomalyCount: number
   /** 战斗时长（秒），用于 0.5s CD 封顶 */
@@ -117,10 +121,11 @@ export function computeVivianCycle(input: {
   // 飞羽获取（整局总量，原文各招式描述）：
   //   进场 +2（核心被动）、淑女礼仪·舞步命中 +1、强化特殊技 +3（C6 额外+1）、
   //   连携 +2、终结 +5、支援突击 +2
-  const exSpecial = Math.max(0, whole(input.teamExSpecialCount))
+  const selfEx = Math.max(0, whole(input.selfExSpecialCount))
+  const teamEx = Math.max(0, whole(input.teamExSpecialCount))
   const flyFeatherTotal = 2
     + Math.max(0, whole(input.danceHitCount))
-    + exSpecial * (cinemaLevel >= 6 ? 4 : 3)
+    + selfEx * (cinemaLevel >= 6 ? 4 : 3)
     + Math.max(0, whole(input.chainCount)) * 2
     + Math.max(0, whole(input.ultimateCount)) * 5
     + Math.max(0, whole(input.assistCount)) * 2
@@ -128,7 +133,7 @@ export function computeVivianCycle(input: {
   // 落羽生花触发源：
   //   源1 = 全队强特命中次数（每招至多一次，耗1护羽）
   //   源2 = 队友施加异常次数（0.5s 至多一次，耗1护羽；受 0.5s CD 封顶）
-  const source1 = exSpecial
+  const source1 = teamEx
   const source2 = input.additionalActive
     ? Math.min(
         Math.max(0, whole(input.teammateAnomalyCount)),
@@ -150,6 +155,11 @@ export function computeVivianCycle(input: {
   const c1FeatherRefund = cinemaLevel >= 1 ? Math.floor(luoyuCount / VIVIAN_C1_REFUND_PER_GUARD) : 0
   // C6：悬落消耗全部护羽的特殊异放增强倍数（最多5点→×5）
   const c6ReleaseMult = cinemaLevel >= 6 ? VIVIAN_C6_RELEASE_MAX_MULT : 1
+  // 悬落次数：后台自动衔接 E（自身强特）/Q（终结）/支援突击/连携 后，每招一次，不占前台
+  const xuanluoCount = selfEx
+    + Math.max(0, whole(input.ultimateCount))
+    + Math.max(0, whole(input.assistCount))
+    + Math.max(0, whole(input.chainCount))
 
   return {
     cinemaLevel,
@@ -157,12 +167,13 @@ export function computeVivianCycle(input: {
     guardFeatherAvailable,
     flyFeatherTotal,
     c1FeatherRefund,
+    xuanluoCount,
     additionalActive: input.additionalActive,
     c4AtkCoverage,
     c4AtkBonus: cinemaLevel >= 4 ? VIVIAN_C4_ATK_PCT * c4AtkCoverage : 0,
     c6EtherDmg: cinemaLevel >= 6 ? VIVIAN_C6_ETHER_DMG : 0,
     c6ReleaseMult,
-    note: '飞羽→护羽→落羽生花资源循环；落羽双源=全队强特命中+队友施加异常(0.5s CD)；C1 每4护羽回1飞羽；C6 悬落异放按护羽消耗×5。',
+    note: '飞羽→护羽→落羽生花资源循环；落羽双源=全队强特命中+队友施加异常(0.5s CD)；C1 每4护羽回1飞羽；C6 悬落异放按护羽消耗×5。悬落后台衔接 E/Q/支援/连携。',
   }
 }
 
@@ -184,6 +195,8 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     cinemaLevel: Number(record.vivianCinemaLevel ?? 0),
     // 源1：全队强特命中次数（useResourceCalc 收敛注入 vivianTeamExTotal，含薇薇安自己）
     teamExSpecialCount: Number(record.vivianTeamExTotal ?? state.exSpecialCount ?? 0),
+    // 自身强特次数（飞羽强特源 + 悬落衔接源）
+    selfExSpecialCount: Number(state.exSpecialCount ?? 0),
     // 源2：全队异常触发次数（useResourceCalc 收敛注入 vivianAnomalyTriggerTotal）
     teammateAnomalyCount: Number(record.vivianAnomalyTriggerTotal ?? 0),
     battleTime: Number(record.battleTime ?? 180),
@@ -217,10 +230,40 @@ function buildVivianExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalEnergyRecovery: 0,
     })
   }
+  // 悬落：后台自动衔接 E/Q/支援突击/连携 后，不占前台时间（timeBucket=backstage + 0s）
+  if (cycle.xuanluoCount > 0) {
+    executions.push({
+      moveId: VIVIAN_XUANLUO_MOVE_ID,
+      moveName: '普通攻击：裙裾浮游·悬落（E/Q/支援/连携后自动衔接）',
+      category: 'basic',
+      element: 'ether',
+      count: cycle.xuanluoCount,
+      actionTime: 0,
+      comboAlignRatio: 0,
+      totalTime: 0,
+      totalComboAlignTime: 0,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      decibelRecovery: 0,
+      totalDecibelRecovery: 0,
+      energyRecovery: 0,
+      totalEnergyRecovery: 0,
+      timeBucket: 'backstage',
+    })
+  }
+}
+
+/** 强化特殊技全部合轴：后台打完，不占必做前台时间（necessaryTime=0） */
+function vivianEstimateExSpecialTime(): { necessaryTime: number; comboAlignTime: number } {
+  return { necessaryTime: 0, comboAlignTime: 0 }
 }
 
 function patchVivianExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
+  // 强化特殊技全部合轴（后台打完，不占前台）：timeBucket=backstage
+  for (const exec of executions) {
+    if (exec.moveId === '1331010') exec.timeBucket = 'backstage'
+  }
   if (cycle.cinemaLevel < 4) return
   for (const exec of executions) {
     if (exec.moveId === VIVIAN_XUANLUO_MOVE_ID || exec.moveId === VIVIAN_LUOYU_MOVE_ID) {
@@ -257,6 +300,7 @@ function buildVivianResourceSections({ result }: AgentResourceSectionsInput) {
     rows: [
       { label: '飞羽获取', value: `${cycle.flyFeatherTotal} 点`, detail: '进场2 + 淑女礼仪命中 + 强特×3 + 连携×2 + 终结×5 + 支援突击×2（C6 强特额外+1）' },
       { label: '护羽可用', value: `${cycle.guardFeatherAvailable} 点`, detail: 'C4 进场5 + 悬落消耗全部飞羽转化（1:1）' },
+      { label: '悬落次数', value: `${cycle.xuanluoCount} 次`, detail: '后台自动衔接 E/Q/支援突击/连携 后，不占前台' },
       { label: '落羽生花次数', value: `${cycle.followUpCount} 次`, detail: `源1 全队强特命中 + 源2 队友施加异常（0.5s CD），受护羽总量约束` },
       { label: '影画1返还飞羽', value: `${cycle.c1FeatherRefund} 点`, detail: '每消耗4点护羽返1点飞羽（资源回复加强）' },
       { label: '影画4攻击力', value: `+${cycle.c4AtkBonus}%`, detail: '悬落/落羽生花必定暴击，攻击加算进 atkPct 乘区' },
@@ -379,6 +423,7 @@ export const vivianMechanic: AgentMechanicModule = {
   buildCharConfig: buildVivianCharConfig,
   buildExecutions: buildVivianExecutions,
   patchExecutions: patchVivianExecutions,
+  estimateExSpecialTime: vivianEstimateExSpecialTime,
   buildResourceResult: buildVivianResourceResult,
   resourceSections: buildVivianResourceSections,
   buildAnomalyEvents: buildVivianAnomalyEvents,
