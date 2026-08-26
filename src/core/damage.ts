@@ -476,6 +476,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
 function getElementAnomalyBuildUpEfficiency(panel: PanelValues, element: DamageElement | undefined): number {
   if (element === 'electric') return panel.electricAnomalyBuildUpEfficiency ?? 0
   if (element === 'physical') return panel.physicalAnomalyBuildUpEfficiency ?? 0
+  if (element === 'ether') return panel.etherAnomalyBuildUpEfficiency ?? 0
   return 0
 }
 

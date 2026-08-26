@@ -534,14 +534,6 @@ export function computePanelPhases(
       panel.atk = Math.round(panel.atk * (1 + 0.15))
     }
   }
-  if (agent.id === '1331') {
-    // 薇薇安影画2《暴风雨夜，暴风雨夜》：以太异常积蓄效率 +25%
-    //（异放精通收益 130% 与无视 15% 全属性抗性部分未建模，见 status pending）。
-    const cinema = char.cinemaLevel ?? 0
-    if (cinema >= 2) {
-      panel.etherAnomalyBuildUpEfficiency = (panel.etherAnomalyBuildUpEfficiency ?? 0) + 25
-    }
-  }
   if (agent.id === '1431') {
     // 叶瞬光核心被动·合道：进场常驻暴击 +30%、伤害 +25%（Lv.7）。
     // 影画1：合道额外伤害 +10%、无视防御 20%；影画2：飞光/斩妄 40% 减防走 moveId defIgnore。

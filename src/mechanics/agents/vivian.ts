@@ -14,7 +14,8 @@
  * 异常结算区（2026-08 接入，releaseRatio/releaseCrit 引擎框架，参照爱芮模板）：
  * - 核心被动异放：落羽生花命中异常目标额外结算属性异常伤害，比例为每10点异常精通
  *   6.15%/3.2%/8%/0.75%/1.08%/0.32%（以太/电/火/物理/冰/风）。
- * - 影画2：异放精通收益 ×130%（perTen 放大）+ 无视15%全属性抗性（releaseModifier 异放限定）。
+ * - 影画2：以太异常积蓄效率 +25%（etherAnomalyBuildUpEfficiency，元素限定）；异放精通收益 ×130%（perTen 放大）
+ *   + 无视15%全属性抗性（releaseModifier 异放限定）。
  * - 预言 DoT：悬落/落羽生花命中异常目标施加，每0.55秒 55% 攻击力以太伤害。
  * - 额外能力全队侵蚀/紊乱伤害+12%（spec teamBuffs 记录，引擎无侵蚀限定字段待近似）。
  */
@@ -50,6 +51,8 @@ export const VIVIAN_RELEASE_RATIO_PER_TEN: Record<string, number> = {
 export const VIVIAN_C2_RELEASE_MULT = 1.3
 /** 影画2：异放无视 15% 全属性伤害抗性 */
 export const VIVIAN_C2_RELEASE_RES_IGNORE = 15
+/** 影画2：以太异常积蓄效率 +25% */
+export const VIVIAN_C2_BUILDUP_EFF = 25
 /** 影画6：悬落消耗全部护羽的特殊异放，比例最多提高至 5 倍（5 点护羽） */
 export const VIVIAN_C6_RELEASE_MAX_MULT = 5
 /** 预言 DoT：每 0.55 秒 55% 攻击力以太伤害 */
@@ -235,6 +238,8 @@ function applyVivianPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
   // 影画2 异放精通收益 ×130%（buildAnomalyEvents perTen 放大）；无视15%全抗走 releaseModifier（仅异放结算）
   if (cinemaLevel >= 2) {
     ;(panel as Record<string, unknown>).vivianCinemaLevel = cinemaLevel
+    // 影画2：以太异常积蓄效率 +25%（薇薇安含物理积蓄，用元素限定字段避免污染物理积蓄）
+    panel.etherAnomalyBuildUpEfficiency = (panel.etherAnomalyBuildUpEfficiency ?? 0) + VIVIAN_C2_BUILDUP_EFF
   }
 }
 

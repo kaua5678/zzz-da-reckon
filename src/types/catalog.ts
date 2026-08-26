@@ -84,6 +84,7 @@ export interface PanelValues {
   anomalyBuildUpEfficiencyOnStunChainBonus: number
   electricAnomalyBuildUpEfficiency: number // 电属性异常积蓄效率提升，百分比
   physicalAnomalyBuildUpEfficiency: number // 物理属性异常积蓄效率提升，百分比
+  etherAnomalyBuildUpEfficiency: number // 以太属性异常积蓄效率提升，百分比
   // 异常伤害相关
   anomalyDmgBonus: number     // 异常伤害提升，百分比
   windAnomalyDmgBonus: number // 风化/风属性异常伤害提升，百分比

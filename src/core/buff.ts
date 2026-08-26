@@ -638,6 +638,7 @@ export function applyStat(panel: PanelValues, stat: StatId, value: number, mode:
     case 'anomalyBuildUpEfficiency': panel.anomalyBuildUpEfficiency += value; break
     case 'electricAnomalyBuildUpEfficiency': panel.electricAnomalyBuildUpEfficiency += value; break
     case 'physicalAnomalyBuildUpEfficiency': panel.physicalAnomalyBuildUpEfficiency += value; break
+    case 'etherAnomalyBuildUpEfficiency': panel.etherAnomalyBuildUpEfficiency += value; break
     // 异常伤害相关
     case 'anomalyDmgBonus': panel.anomalyDmgBonus += value; break
     case 'anomalyDamageBonus': panel.anomalyDmgBonus += value; break

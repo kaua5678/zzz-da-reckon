@@ -464,6 +464,7 @@ export function getElementAnomalyBuildUpEfficiency(panel: PanelValues, element: 
   const baseElement = getBaseElement(element)
   if (baseElement === 'electric') return panel.electricAnomalyBuildUpEfficiency ?? 0
   if (baseElement === 'physical') return panel.physicalAnomalyBuildUpEfficiency ?? 0
+  if (baseElement === 'ether') return panel.etherAnomalyBuildUpEfficiency ?? 0
   return 0
 }
 

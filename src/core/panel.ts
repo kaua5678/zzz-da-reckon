@@ -39,6 +39,7 @@ export function emptyPanel(): PanelValues {
     anomalyBuildUpEfficiency: 0,
     electricAnomalyBuildUpEfficiency: 0,
     physicalAnomalyBuildUpEfficiency: 0,
+    etherAnomalyBuildUpEfficiency: 0,
     // 异常伤害相关
     anomalyDmgBonus: 0,
     windAnomalyDmgBonus: 0,
