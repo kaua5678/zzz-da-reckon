@@ -188,6 +188,15 @@ describe('朱鸢强化霰弹资源循环', () => {
     expect(characters[0].zhuYuanStunCoverage).toBeCloseTo(3 * 16 / 180, 5)
   })
 
+  it('轴模式（捏轴）：失衡增伤按轴内压制以太占比', () => {
+    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1, zhuYuanStunCoverage: 0.5, zhuYuanAxisActive: true, zhuYuanAxisEther: 0 }
+    const executions: any[] = []
+    zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions } as any)
+    const etherRows = executions.filter(r => ['1241010', '1241011', '1241012'].includes(r.moveId))
+    // 轴内 0 → 无增伤（即使反推覆盖率 0.5 也不生效）
+    expect(etherRows.every(r => (r.dmgBonus ?? 0) === 0)).toBe(true)
+  })
+
   it('影画6 以太余温：floor(霰弹总量/12)次 ×4枚鹿弹执行行（附在压制以太之后）', () => {
     const cfg: any = { zhuyuanCinemaLevel: 6, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
     const executions: any[] = []

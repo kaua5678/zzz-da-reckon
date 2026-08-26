@@ -81,6 +81,8 @@ export interface HarumasaCycle {
   stunCoverage: number
   abnormalCoverage: number
   unionCoverage: number
+  axisActive: boolean
+  c6ResCoverage: number
   edgeAverageStacks: number
   edgeCritDmg: number
   surgeGain: number
@@ -114,6 +116,9 @@ export function computeHarumasaCycle(input: {
   stunCoverage: number
   abnormalCoverage: number
   edgeAverageStacks: number
+  axisActive?: boolean
+  axisSlash?: number
+  axisArrow?: number
 }): HarumasaCycle {
   const cinemaLevel = whole(input.cinemaLevel)
   const potentialLevel = Math.max(1, Math.min(6, whole(input.potentialLevel || 6)))
@@ -124,6 +129,9 @@ export function computeHarumasaCycle(input: {
   const stunCoverage = clampRatio(input.stunCoverage)
   const abnormalCoverage = clampRatio(input.abnormalCoverage)
   const unionCoverage = Math.min(1, stunCoverage + abnormalCoverage * (1 - stunCoverage))
+  const axisActive = input.axisActive === true
+  const axisSlash = Math.max(0, Math.floor(input.axisSlash ?? 0))
+  const axisArrow = Math.max(0, Math.floor(input.axisArrow ?? 0))
   const edgeAverageStacks = Math.min(HARUMASA_EDGE_MAX, Math.max(0, input.edgeAverageStacks))
   // 电壶 → 甲乙矢 → 电囚 → 飞弦·斩（每刀耗 2 电囚）
   const kettleTotal = HARUMASA_KETTLE_INITIAL
@@ -135,8 +143,15 @@ export function computeHarumasaCycle(input: {
     + HARUMASA_ADDITIONAL_PRISON
     + (cinemaLevel >= 4 ? HARUMASA_C4_ULT_PRISON : 0)
   const slashCount = Math.floor(prisonTotal / HARUMASA_PRISON_PER_SLASH)
-  // 逐雷只在失衡内触发（飞弦·斩命中失衡敌人）
-  const thunderCount = Math.min(slashCount, Math.round(slashCount * stunCoverage))
+  // 逐雷只在失衡内触发：轴模式按轴内飞弦·斩次数（捏轴精度），非轴按失衡覆盖率
+  const thunderCount = axisActive
+    ? Math.min(slashCount, axisSlash)
+    : Math.min(slashCount, Math.round(slashCount * stunCoverage))
+  // 影画6电抗覆盖率：轴模式按轴内甲乙矢占比，非轴按并集
+  const axisArrowRatio = arrowHitCount > 0 ? Math.min(1, axisArrow / arrowHitCount) : 0
+  const c6ResCoverage = axisActive
+    ? Math.min(1, axisArrowRatio + abnormalCoverage * (1 - axisArrowRatio))
+    : unionCoverage
   const surgeGain = cinemaLevel >= 2 ? 7 * (chainCount + ultimateCount) : 0
   const surgeBuffedSlashCount = Math.min(slashCount, surgeGain)
   return {
@@ -152,6 +167,8 @@ export function computeHarumasaCycle(input: {
     stunCoverage,
     abnormalCoverage,
     unionCoverage,
+    axisActive,
+    c6ResCoverage,
     edgeAverageStacks,
     edgeCritDmg: edgeAverageStacks * HARUMASA_EDGE_CRIT_DMG_PER_STACK,
     surgeGain,
@@ -159,7 +176,7 @@ export function computeHarumasaCycle(input: {
     surgeCoverage: slashCount > 0 ? surgeBuffedSlashCount / slashCount : 0,
     c4Decibel: cinemaLevel >= 4 ? slashCount * HARUMASA_C4_DECIBEL_PER_SLASH : 0,
     c6ExplosionCount: cinemaLevel >= 6 ? Math.floor(arrowHitCount / 12) : 0,
-    note: '电壶→甲乙矢→电囚→飞弦·斩资源循环；逐雷/额外能力增伤/影画6电抗按失衡+异常并集拆分；潜能觉醒攻击与飞弦/逐雷减抗已接入。',
+    note: '电壶→甲乙矢→电囚→飞弦·斩资源循环；逐雷/影画6电抗轴模式按轴内块（捏轴），非轴按并集覆盖率；潜能觉醒已接入。',
   }
 }
 
@@ -207,6 +224,9 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     stunCoverage: Number(record.harumasaStunCoverage ?? 0.5),
     abnormalCoverage: Number(record.harumasaAbnormalCoverage ?? 1),
     edgeAverageStacks: Number(record.harumasaEdgeAverageStacks ?? 6),
+    axisActive: record.harumasaAxisActive === true,
+    axisSlash: Number(record.harumasaAxisSlash ?? 0),
+    axisArrow: Number(record.harumasaAxisArrow ?? 0),
   })
 }
 
@@ -307,9 +327,9 @@ function patchHarumasaExecutions({ cfg, state, executions }: AgentResourceInput)
     if (potentialRes > 0 && POTENTIAL_RES_TARGETS.has(exec.moveId)) {
       exec.resIgnore = (exec.resIgnore ?? 0) + potentialRes
     }
-    // 影画6 电抗无视15%：甲乙矢命中失衡/异常后悠真无视（并集覆盖率）
-    if (cycle.cinemaLevel >= 6 && cycle.unionCoverage > 0) {
-      exec.resIgnore = (exec.resIgnore ?? 0) + HARUMASA_C6_ELECTRIC_RES_IGNORE * cycle.unionCoverage
+    // 影画6 电抗无视15%：甲乙矢命中失衡/异常后悠真无视（轴模式按轴内甲乙矢占比，非轴并集覆盖率）
+    if (cycle.cinemaLevel >= 6 && cycle.c6ResCoverage > 0) {
+      exec.resIgnore = (exec.resIgnore ?? 0) + HARUMASA_C6_ELECTRIC_RES_IGNORE * cycle.c6ResCoverage
     }
   }
 }

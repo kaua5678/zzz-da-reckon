@@ -1113,6 +1113,38 @@ function applyNormaHatChain(
         // 艾莲影画4 冻结次数：读上一轮异常池 ice 触发数（下一轮 cfg 生效，薇薇安同款反馈）
         return { ...merged, ellenFreezeCount: Math.max(0, Math.floor(prevEllenFreezeCount)) }
       }
+      if (merged.agentId === '1201') {
+        // 悠真：轴内飞弦·斩/甲乙矢次数（失衡轴块，捏轴精度，仪玄 yixuanAxisEx 同款）→ 模块分轴内/轴外
+        let harumasaAxisSlash = 0
+        let harumasaAxisArrow = 0
+        if (axisActive) {
+          const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
+          resolvedAxes.forEach((axis, ai) => {
+            const wins = winAlloc[ai] ?? 0
+            for (const act of axis.actions) {
+              if (act.slot !== cfg.slot) continue
+              if (act.moveId === '1201020' || act.moveId === '1201021' || act.moveId === '1201022') harumasaAxisSlash += act.count * wins
+              else if (act.moveId === '1201008') harumasaAxisArrow += act.count * wins
+            }
+          })
+        }
+        return { ...merged, harumasaAxisActive: axisActive, harumasaAxisSlash, harumasaAxisArrow }
+      }
+      if (merged.agentId === '1241') {
+        // 朱鸢：轴内压制以太次数（失衡轴块）→ 模块分轴内/轴外
+        let zhuYuanAxisEther = 0
+        if (axisActive) {
+          const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
+          resolvedAxes.forEach((axis, ai) => {
+            const wins = winAlloc[ai] ?? 0
+            for (const act of axis.actions) {
+              if (act.slot !== cfg.slot) continue
+              if (act.moveId === '1241010' || act.moveId === '1241011' || act.moveId === '1241012') zhuYuanAxisEther += act.count * wins
+            }
+          })
+        }
+        return { ...merged, zhuYuanAxisActive: axisActive, zhuYuanAxisEther }
+      }
       return merged
     })
     // 队伍级机制·converge 阶段：带上一轮收敛量（莱特按上一轮全队能量消耗重算喷发回能；

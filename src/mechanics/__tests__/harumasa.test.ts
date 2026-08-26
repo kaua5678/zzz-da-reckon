@@ -103,6 +103,16 @@ describe('悠真（1201）电壶→电囚→飞弦·斩资源循环', () => {
     expect(HARUMASA_POTENTIAL_RES_IGNORE[6]).toBe(15)
   })
 
+  it('轴模式（捏轴）：逐雷按轴内飞弦·斩、影画6电抗按轴内甲乙矢占比', () => {
+    const axis = cycle({ cinemaLevel: 6, axisActive: true, axisSlash: 5, axisArrow: 10, abnormalCoverage: 0 })
+    expect(axis.axisActive).toBe(true)
+    expect(axis.thunderCount).toBe(Math.min(axis.slashCount, 5))
+    expect(axis.c6ResCoverage).toBeCloseTo(10 / axis.arrowHitCount, 5)
+    // 非轴回退到并集覆盖率
+    const nonAxis = cycle({ cinemaLevel: 6, axisActive: false, stunCoverage: 0.3, abnormalCoverage: 0.5 })
+    expect(nonAxis.c6ResCoverage).toBeCloseTo(0.3 + 0.5 * 0.7, 5)
+  })
+
   it('失衡覆盖率由失衡次数反推（applyTeamConfig converge，轴内行直加同源）', () => {
     const characters: any[] = [{ slot: 0, agentId: '1201', harumasaStunCoverage: 0.5 }]
     harumasaMechanic.applyTeamConfig!({ slot: 0, characters, phase: 'converge', stunCount: 3, combatTime: 180 } as any)

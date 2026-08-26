@@ -115,13 +115,17 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
   const cinema = Math.max(0, Math.floor(Number((cfg as any).zhuyuanCinemaLevel ?? 0)))
   const shellsTotal = computeZhuYuanShellsTotal(cfg, state)
   // 核心被动失衡增伤 +40%：per-row 挂在压制以太行（仪玄凝云术同款），非轴按覆盖率近似（默认0），轴模式待接入
-  // 核心被动失衡增伤 +40%：per-row 挂在压制以太行（仪玄凝云术同款），失衡覆盖率由失衡次数反推
-  const stunCov = Math.max(0, Math.min(1, Number((cfg as any).zhuYuanStunCoverage ?? 0)))
-  const stunBonus = stunCov > 0 ? Math.round(ZHUYUAN_CORE_STUN_DMG * stunCov) : 0
   // 压制模式·请勿抵抗：1 枚霰弹 = 1 段以太强化霰弹（1241010/1241011/1241012 三段轮转），
   // 时间有界（超出平A池的霰弹浪费，时间紧可浪费）。物理不打（用户口径）。
   const maxByTime = Math.max(0, Math.floor((state.basicAttackTime ?? 0) / ZHUYUAN_SUPPRESS_ETHER_AVG_TIME))
   const bullets = Math.min(shellsTotal, maxByTime)
+  // 核心被动失衡增伤 +40%：per-row 挂在压制以太行（仪玄凝云术同款）；轴模式按轴内压制以太占比（捏轴），非轴按反推覆盖率
+  const axisActive = (cfg as any).zhuYuanAxisActive === true
+  const axisEther = Math.max(0, Math.floor(Number((cfg as any).zhuYuanAxisEther ?? 0)))
+  const effectiveStunCov = axisActive
+    ? (bullets > 0 ? Math.min(1, axisEther / bullets) : 0)
+    : Math.max(0, Math.min(1, Number((cfg as any).zhuYuanStunCoverage ?? 0)))
+  const stunBonus = effectiveStunCov > 0 ? Math.round(ZHUYUAN_CORE_STUN_DMG * effectiveStunCov) : 0
   const len = ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS.length
   for (let i = 0; i < len; i++) {
     const count = Math.floor((bullets + len - 1 - i) / len)
