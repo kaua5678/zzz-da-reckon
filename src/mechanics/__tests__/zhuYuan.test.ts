@@ -157,22 +157,36 @@ describe('朱鸢强化霰弹资源循环', () => {
     expect(shells.spendCounts.shells_suppression_spend).toBe(36 + 21)
   })
 
-  it('影画6 以太余温：floor(霰弹总量/12)次 ×4枚鹿弹执行行', () => {
+  it('压制模式以太强化霰弹：1枚=1段，三段轮转，时间有界', () => {
+    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    const executions: any[] = []
+    zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions } as any)
+    // mkState basicAttackTime=20 → 时间有界 maxByTime = floor(20/0.903)=22；霰弹总量36 → 打22枚
+    const etherRows = executions.filter(r => ['1241010', '1241011', '1241012'].includes(r.moveId))
+    expect(etherRows.length).toBe(3)
+    expect(etherRows.every(r => r.element === 'ether')).toBe(true)
+    expect(etherRows.reduce((s, r) => s + r.count, 0)).toBe(22)
+    // 三段轮转：1241010=8、1241011=7、1241012=7
+    expect(etherRows.find(r => r.moveId === '1241010')!.count).toBe(8)
+    // 时间有界：总时 ≈ 22 × 0.903 ≈ 19.9 ≤ 20
+    const etherTime = etherRows.reduce((s, r) => s + r.totalTime, 0)
+    expect(etherTime).toBeLessThanOrEqual(20 + 0.5)
+    // 非6命无余温行
+    expect(executions.some(r => r.moveId === 'zhuyuan_c6_afterglow_bullets')).toBe(false)
+  })
+
+  it('影画6 以太余温：floor(霰弹总量/12)次 ×4枚鹿弹执行行（附在压制以太之后）', () => {
     const cfg: any = { zhuyuanCinemaLevel: 6, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
     const executions: any[] = []
     zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions } as any)
-    expect(executions.length).toBe(1)
-    expect(executions[0].moveId).toBe('zhuyuan_c6_afterglow_bullets')
+    const afterglow = executions.find(r => r.moveId === 'zhuyuan_c6_afterglow_bullets')
+    expect(afterglow).toBeTruthy()
     // cinema6 含影画1 快速装填：总量 36+21=57 → floor(57/12)=4 次 ×4 枚
-    expect(executions[0].count).toBe(4 * 4)
-    expect(executions[0].damageMultiplier).toBe(220)
-    expect(executions[0].element).toBe('ether')
-
-    // 非6命不生成
-    const cfg0: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
-    const empty: any[] = []
-    zhuYuanMechanic.buildExecutions!({ cfg: cfg0, state: mkState(), executions: empty } as any)
-    expect(empty.length).toBe(0)
+    expect(afterglow!.count).toBe(4 * 4)
+    expect(afterglow!.damageMultiplier).toBe(220)
+    expect(afterglow!.element).toBe('ether')
+    // 压制以太行仍在
+    expect(executions.some(r => r.moveId === '1241010')).toBe(true)
   })
 
   it('resourceSections 输出以太余温卡', () => {

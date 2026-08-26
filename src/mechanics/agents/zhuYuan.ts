@@ -50,6 +50,16 @@ const ZHUYUAN_C6_EXTRA_BULLETS = 4
 const ZHUYUAN_C6_BULLET_RATIO = 220
 /** 影画6 余温强特耗能-30 → 按回能口径：每次余温等价回 30 能量（用户口径 2026-08） */
 const ZHUYUAN_C6_AFTERGLOW_ENERGY = 30
+/**
+ * 压制模式·请勿抵抗的以太强化霰弹（用户口径 2026-08：物理不打，只打以太子弹）：
+ * 3 段以太子弹轮转（1241010/1241011/1241012），每段消耗 1 枚强化霰弹。
+ * 1 枚霰弹 = 1 段以太子弹（就像艾莲 1 颗充能打 1 段平A），各段 DPS 相同。
+ */
+const ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS = ['1241010', '1241011', '1241012'] as const
+const ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES = [0.542, 0.542, 1.625] as const
+/** 压制以太单段均时 */
+const ZHUYUAN_SUPPRESS_ETHER_AVG_TIME =
+  (ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[0] + ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[1] + ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[2]) / 3
 
 function applyZhuYuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   if ((panel.additionalAbilityActive ?? 0) > 0) {
@@ -97,8 +107,34 @@ function computeZhuYuanShellsTotal(cfg: AgentResourceInput['cfg'], state: AgentR
 
 function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).zhuyuanCinemaLevel ?? 0)))
-  if (cinema < 6) return
   const shellsTotal = computeZhuYuanShellsTotal(cfg, state)
+  // 压制模式·请勿抵抗：1 枚霰弹 = 1 段以太强化霰弹（1241010/1241011/1241012 三段轮转），
+  // 时间有界（超出平A池的霰弹浪费，时间紧可浪费）。物理不打（用户口径）。
+  const maxByTime = Math.max(0, Math.floor((state.basicAttackTime ?? 0) / ZHUYUAN_SUPPRESS_ETHER_AVG_TIME))
+  const bullets = Math.min(shellsTotal, maxByTime)
+  const len = ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS.length
+  for (let i = 0; i < len; i++) {
+    const count = Math.floor((bullets + len - 1 - i) / len)
+    if (count <= 0) continue
+    executions.push({
+      moveId: ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS[i],
+      moveName: `普通攻击：请勿抵抗 #${i + 1}（以太强化霰弹）`,
+      category: 'basic',
+      element: 'ether',
+      count,
+      actionTime: ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[i],
+      comboAlignRatio: 0,
+      totalTime: count * ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[i],
+      totalComboAlignTime: 0,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      decibelRecovery: 0,
+      totalDecibelRecovery: 0,
+      energyRecovery: 0,
+      totalEnergyRecovery: 0,
+    })
+  }
+  if (cinema < 6) return
   const afterglowCount = Math.floor(shellsTotal / ZHUYUAN_C6_AFTERGLOW_COST)
   if (afterglowCount <= 0) return
   executions.push({
