@@ -1,4 +1,4 @@
-import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput } from '../types'
+import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import type { MechanicSetting } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
@@ -62,6 +62,8 @@ const ZHUYUAN_SUPPRESS_ETHER_AVG_TIME =
   (ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[0] + ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[1] + ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[2]) / 3
 /** 核心被动·特种弹药：消耗强化霰弹攻击命中失衡敌人额外 +40%（增伤区，仅压制以太行生效，仪玄凝云术同款 per-row） */
 const ZHUYUAN_CORE_STUN_DMG = 40
+/** 失衡窗口时长（默认 12s 失衡 + 4s，未含全队失衡延时加成）——用于从失衡次数反推失衡覆盖率 */
+const ZHUYUAN_STUN_WINDOW_SECONDS = 16
 
 function applyZhuYuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   if ((panel.additionalAbilityActive ?? 0) > 0) {
@@ -77,21 +79,23 @@ function applyZhuYuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   }
 }
 
-const settings: MechanicSetting[] = [
-  {
-    id: 'zhuYuan.coreStunnedCoverage',
-    label: '朱鸢核心被动失衡增伤覆盖率',
-    description: '核心被动：消耗强化霰弹攻击命中失衡敌人时增伤额外+40%（per-row 挂在压制以太行，仪玄凝云术同款）。轴模式待接入（轴内行直加/轴外0）；非轴模式默认 0，按需自调。',
-    default: 0,
-    min: 0,
-    max: 100,
-    step: 1,
-    suffix: '%',
-  },
-]
+const settings: MechanicSetting[] = []
 
 function buildZhuYuanCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): void {
-  cfg.zhuyuanCinemaLevel = cinemaLevel
+  const record = cfg as unknown as Record<string, unknown>
+  record.zhuyuanCinemaLevel = cinemaLevel
+  record.zhuYuanStunCoverage = 0 // 由 applyTeamConfig converge 从失衡次数反推，此处仅兜底
+}
+
+/** 失衡覆盖率由收敛后的失衡次数反推（轴内行直加同源：失衡窗口 = 失衡次数 × 窗口时长 / 战斗时间） */
+function applyZhuYuanTeamConfig({ slot, characters, phase, stunCount, combatTime }: AgentTeamConfigInput): void {
+  if (phase !== 'converge') return
+  const cfg = characters[slot]
+  if (!cfg) return
+  const record = cfg as unknown as Record<string, unknown>
+  const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))
+  const battle = Math.max(1, Number(combatTime) || 180)
+  record.zhuYuanStunCoverage = Math.min(1, resolvedStun * ZHUYUAN_STUN_WINDOW_SECONDS / battle)
 }
 
 function computeZhuYuanShellsTotal(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): number {
@@ -111,7 +115,8 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
   const cinema = Math.max(0, Math.floor(Number((cfg as any).zhuyuanCinemaLevel ?? 0)))
   const shellsTotal = computeZhuYuanShellsTotal(cfg, state)
   // 核心被动失衡增伤 +40%：per-row 挂在压制以太行（仪玄凝云术同款），非轴按覆盖率近似（默认0），轴模式待接入
-  const stunCov = Math.max(0, Math.min(1, Number((cfg as any)['setting:zhuYuan.coreStunnedCoverage'] ?? 0)))
+  // 核心被动失衡增伤 +40%：per-row 挂在压制以太行（仪玄凝云术同款），失衡覆盖率由失衡次数反推
+  const stunCov = Math.max(0, Math.min(1, Number((cfg as any).zhuYuanStunCoverage ?? 0)))
   const stunBonus = stunCov > 0 ? Math.round(ZHUYUAN_CORE_STUN_DMG * stunCov) : 0
   // 压制模式·请勿抵抗：1 枚霰弹 = 1 段以太强化霰弹（1241010/1241011/1241012 三段轮转），
   // 时间有界（超出平A池的霰弹浪费，时间紧可浪费）。物理不打（用户口径）。
@@ -215,9 +220,10 @@ export const zhuYuanMechanic: AgentMechanicModule = {
   id: 'agent:juhufu',
   agentIds: [ZHUYUAN_AGENT_ID],
   name: '朱鸢',
-  description: '额外能力暴击率+30%（门控）、核心被动强化霰弹增伤+40%（basic/dashAttack 定向近似，失衡部分走覆盖率滑块）、影画2/4 以太增伤与抗穿；强化霰弹资源循环（spec resource）+ 影画6 以太余温追加鹿弹（buildExecutions）。',
+  description: '额外能力暴击率+30%（门控）、核心被动强化霰弹增伤+40%（basic/dashAttack 定向近似，失衡部分按失衡次数反推覆盖率）、影画2/4 以太增伤与抗穿；强化霰弹资源循环（spec resource）+ 影画6 以太余温追加鹿弹（buildExecutions）。',
   applyPanel: applyZhuYuanPanel,
   buildCharConfig: buildZhuYuanCharConfig,
+  applyTeamConfig: applyZhuYuanTeamConfig,
   buildExecutions: buildZhuYuanExecutions,
   buildResourceResult: buildZhuYuanResourceResult,
   resourceSections: buildZhuYuanResourceSections,

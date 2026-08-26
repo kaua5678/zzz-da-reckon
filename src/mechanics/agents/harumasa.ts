@@ -22,6 +22,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentTeamConfigInput,
 } from '../types'
 
 export const HARUMASA_ID = '1201'
@@ -54,6 +55,8 @@ export const HARUMASA_C4_ULT_PRISON = 14 // 影画4 终结技满层 14
 /** 潜能觉醒·贯注（index 0 占位，1=I 无觉醒，2..6=II..VI） */
 export const HARUMASA_POTENTIAL_ATK_PCT = [0, 0, 4, 6, 8, 10, 12] as const
 export const HARUMASA_POTENTIAL_RES_IGNORE = [0, 0, 5, 7.5, 10, 12.5, 15] as const
+/** 失衡窗口时长（默认 12s 失衡 + 4s，未含全队失衡延时加成）——用于从失衡次数反推失衡覆盖率 */
+export const HARUMASA_STUN_WINDOW_SECONDS = 16
 
 const SLASH_SET = new Set<string>(HARUMASA_SLASH_MOVE_IDS)
 /** 潜能觉醒减抗目标（飞弦·斩 + 逐雷） */
@@ -175,10 +178,21 @@ function buildHarumasaCharConfig({ cinemaLevel, potentialLevel, cfg }: AgentChar
   record.harumasaCinemaLevel = cinemaLevel
   record.harumasaPotentialLevel = Math.max(1, Math.min(6, whole(potentialLevel ?? 6)))
   record.harumasaA5Count = whole(setting(cfg, 'harumasa.a5Count', 2))
-  record.harumasaStunCoverage = clampRatio(setting(cfg, 'harumasa.stunCoverage', 0.5))
+  record.harumasaStunCoverage = 0.5 // 由 applyTeamConfig converge 从失衡次数反推，此处仅兜底
   record.harumasaAbnormalCoverage = clampRatio(setting(cfg, 'harumasa.abnormalCoverage', 1))
   record.harumasaEdgeAverageStacks = Math.min(HARUMASA_EDGE_MAX,
     Math.max(0, setting(cfg, 'harumasa.edgeAverageStacks', 6)))
+}
+
+/** 失衡覆盖率由收敛后的失衡次数反推（轴内行直加同源：失衡窗口 = 失衡次数 × 窗口时长 / 战斗时间） */
+function applyHarumasaTeamConfig({ slot, characters, phase, stunCount, combatTime }: AgentTeamConfigInput): void {
+  if (phase !== 'converge') return
+  const cfg = characters[slot]
+  if (!cfg) return
+  const record = cfg as unknown as Record<string, unknown>
+  const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))
+  const battle = Math.max(1, Number(combatTime) || 180)
+  record.harumasaStunCoverage = Math.min(1, resolvedStun * HARUMASA_STUN_WINDOW_SECONDS / battle)
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): HarumasaCycle {
@@ -334,12 +348,12 @@ export const harumasaMechanic: AgentMechanicModule = {
   description: '电壶→甲乙矢→电囚→飞弦·斩资源循环、逐雷失衡触发、锋芒、额外能力失衡/异常并集增伤、潜能觉醒、影画1/2/4/6。',
   settings: [
     { id: 'harumasa.a5Count', label: '普通攻击第五段次数', description: '整局发动普通攻击第五段（穿云）的次数，每次 +2 电壶', default: 2, min: 0, max: 30, step: 1, suffix: '次' },
-    { id: 'harumasa.stunCoverage', label: '失衡覆盖率', description: '敌人处于失衡状态的时间占比（逐雷触发、额外能力失衡增伤、影画6电抗）', default: 0.5, min: 0, max: 1, step: 0.05, suffix: '%' },
-    { id: 'harumasa.abnormalCoverage', label: '异常状态覆盖率', description: '敌人处于属性异常状态的时间占比（非失衡时的额外能力增伤与影画6电抗）', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
+    { id: 'harumasa.abnormalCoverage', label: '异常状态覆盖率', description: '敌人处于属性异常状态的时间占比（非失衡时的额外能力增伤与影画6电抗）；失衡覆盖率由失衡次数自动反推', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
     { id: 'harumasa.edgeAverageStacks', label: '锋芒平均层数', description: '飞弦·斩、逐雷和终结技命中时的平均有效锋芒层数', default: 6, min: 0, max: 6, step: 0.5, suffix: '层' },
   ],
   applyPanel,
   buildCharConfig: buildHarumasaCharConfig,
+  applyTeamConfig: applyHarumasaTeamConfig,
   buildExecutions: buildHarumasaExecutions,
   patchExecutions: patchHarumasaExecutions,
   buildResourceResult: buildHarumasaResourceResult,

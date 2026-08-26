@@ -167,8 +167,8 @@ describe('朱鸢强化霰弹资源循环', () => {
     expect(executions.some(r => r.moveId === 'zhuyuan_c6_afterglow_bullets')).toBe(false)
   })
 
-  it('核心被动失衡增伤+40%：per-row 挂在压制以太行（仪玄凝云术同款，非轴覆盖率）', () => {
-    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1, 'setting:zhuYuan.coreStunnedCoverage': 0.5 }
+  it('核心被动失衡增伤+40%：per-row 挂在压制以太行（失衡覆盖率由失衡次数反推）', () => {
+    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1, zhuYuanStunCoverage: 0.5 }
     const executions: any[] = []
     zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions } as any)
     const etherRows = executions.filter(r => ['1241010', '1241011', '1241012'].includes(r.moveId))
@@ -176,10 +176,16 @@ describe('朱鸢强化霰弹资源循环', () => {
     expect(etherRows.length).toBe(3)
     expect(etherRows.every(r => r.dmgBonus === 20)).toBe(true)
     // 覆盖率 0 → 无 dmgBonus
-    const cfg0: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1, 'setting:zhuYuan.coreStunnedCoverage': 0 }
+    const cfg0: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1, zhuYuanStunCoverage: 0 }
     const empty: any[] = []
     zhuYuanMechanic.buildExecutions!({ cfg: cfg0, state: mkState(), executions: empty } as any)
     expect(empty.filter(r => ['1241010', '1241011', '1241012'].includes(r.moveId)).every(r => (r.dmgBonus ?? 0) === 0)).toBe(true)
+  })
+
+  it('失衡覆盖率由失衡次数反推（applyTeamConfig converge）', () => {
+    const characters: any[] = [{ slot: 0, agentId: '1241', zhuYuanStunCoverage: 0 }]
+    zhuYuanMechanic.applyTeamConfig!({ slot: 0, characters, phase: 'converge', stunCount: 3, combatTime: 180 } as any)
+    expect(characters[0].zhuYuanStunCoverage).toBeCloseTo(3 * 16 / 180, 5)
   })
 
   it('影画6 以太余温：floor(霰弹总量/12)次 ×4枚鹿弹执行行（附在压制以太之后）', () => {

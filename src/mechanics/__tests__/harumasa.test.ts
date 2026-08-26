@@ -102,6 +102,15 @@ describe('悠真（1201）电壶→电囚→飞弦·斩资源循环', () => {
     expect(HARUMASA_POTENTIAL_ATK_PCT[6]).toBe(12)
     expect(HARUMASA_POTENTIAL_RES_IGNORE[6]).toBe(15)
   })
+
+  it('失衡覆盖率由失衡次数反推（applyTeamConfig converge，轴内行直加同源）', () => {
+    const characters: any[] = [{ slot: 0, agentId: '1201', harumasaStunCoverage: 0.5 }]
+    harumasaMechanic.applyTeamConfig!({ slot: 0, characters, phase: 'converge', stunCount: 3, combatTime: 180 } as any)
+    expect(characters[0].harumasaStunCoverage).toBeCloseTo(3 * 16 / 180, 5)
+    // 非 converge 阶段不动作
+    harumasaMechanic.applyTeamConfig!({ slot: 0, characters, phase: 'build', stunCount: 3, combatTime: 180 } as any)
+    expect(characters[0].harumasaStunCoverage).toBeCloseTo(3 * 16 / 180, 5)
+  })
 })
 
 describe('悠真招式定向机制', () => {
