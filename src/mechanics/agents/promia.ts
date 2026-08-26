@@ -25,6 +25,7 @@ import type {
   AgentResourceInput,
   AgentResourceSectionsInput,
   AgentSkillTransformInput,
+  ReleaseModifierInput,
 } from '../types'
 
 export const PROMIA_ID = '1541'
@@ -34,6 +35,17 @@ export const PROMIA_TEAM_RELEASE_PER_MASTERY = 0.35
 export const PROMIA_C2_PROFICIENCY = 40
 export const PROMIA_ADDITIONAL_BUILDUP_EFF = 30
 export const PROMIA_GUILTY_DEF_IGNORE = 40
+export const PROMIA_C1_DEF_IGNORE = 20
+export const PROMIA_C6_ALL_RES_IGNORE = 15
+/** 影画4：触发异放回 5 寒蚀（0.5s CD；异放自身已受 CD 约束，按异放次数计） */
+export const PROMIA_C4_RELEASE_FROST = 5
+/** 核心被动：异放回 100 喧响（0.5s CD） */
+export const PROMIA_RELEASE_DECIBEL = 100
+/** 影画6：特殊异放 200%（15s CD） */
+export const PROMIA_C6_SPECIAL_RELEASE_MULT = 200
+export const PROMIA_C6_SPECIAL_CD_SECONDS = 15
+/** 影画6 特殊异放启动时间（第一次霜刑异放不可能 0s 就触发，取一个绝裁强特的起手时间） */
+export const PROMIA_C6_SPECIAL_STARTUP_SECONDS = 2
 
 export interface PromiaCycle {
   cinemaLevel: number
@@ -98,7 +110,7 @@ function cycleFromCfg(cfg: unknown): PromiaCycle {
   })
 }
 
-/** 面板层：异常掌控转精通（复现 attributeConversions）+ 影画2精通+40。 */
+/** 面板层：异常掌控转精通（复现 attributeConversions）+ 影画2精通+40 + 影画6自身异常/紊乱无视全抗。 */
 function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): void {
   const mastery = Math.max(0, outOfCombatPanel?.anomalyMastery ?? 0)
   const excess = Math.max(0, mastery - PROMIA_MASTERY_THRESHOLD)
@@ -106,9 +118,16 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
   if (cinemaLevel >= 2) {
     panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + PROMIA_C2_PROFICIENCY
   }
+  if (cinemaLevel >= 6) {
+    // 影画6：普罗米娅自身属性异常/紊乱伤害无视 15% 全属性抗性（挂面板 enemyResReduction，异放走 releaseModifier）
+    panel.enemyResReduction = (panel.enemyResReduction ?? 0) + PROMIA_C6_ALL_RES_IGNORE
+  }
+  // releaseModifier 用（异放限定减防需读普罗米娅命座与额外能力门控）
+  panel.promiaCinemaLevel = cinemaLevel
+  panel.promiaAdditionalActive = panel.additionalAbilityActive ?? 0
 }
 
-/** 提取层：额外能力冰异常积蓄效率+30% 与 有罪推定无视防御（需 additionalAbilityActive 门控）。 */
+/** 提取层：额外能力冰异常积蓄效率+30%（需 additionalAbilityActive 门控）。有罪推定无视防御已改走 releaseModifier（异放限定）。 */
 function applyPromiaBuildUp({ charResult, panel }: AgentSkillTransformInput): void {
   if (!panel) return
   if ((panel as Record<string, unknown>).__promiaBuildUpApplied) return
@@ -118,9 +137,18 @@ function applyPromiaBuildUp({ charResult, panel }: AgentSkillTransformInput): vo
   if (cycle.additionalBuildUpEff > 0) {
     panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + cycle.additionalBuildUpEff
   }
-  if (cycle.guiltyDefIgnore > 0) {
-    panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + cycle.guiltyDefIgnore
-  }
+}
+
+/** 异放限定减防（有罪推定 40% + 影画1 20%）：releaseModifier 只作用于异放结算，不作用于普通直伤/异常。 */
+function promiaReleaseModifier({ panels }: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string } {
+  const promia = panels.find(p => (p as Record<string, unknown>).promiaCinemaLevel !== undefined)
+  if (!promia) return { enemyResReduction: 0, note: '' }
+  const cinema = Number((promia as Record<string, unknown>).promiaCinemaLevel ?? 0)
+  const additionalActive = Number((promia as Record<string, unknown>).promiaAdditionalActive ?? 0)
+  const defIgnore = (additionalActive > 0 ? PROMIA_GUILTY_DEF_IGNORE : 0) + (cinema >= 1 ? PROMIA_C1_DEF_IGNORE : 0)
+  return defIgnore > 0
+    ? { enemyResReduction: 0, enemyDefReduction: defIgnore, note: `；有罪推定/C1：异放无视 ${defIgnore}% 防御（releaseModifier 异放限定）` }
+    : { enemyResReduction: 0, note: '' }
 }
 
 function buildPromiaResourceResult({ cfg }: AgentResourceResultInput) {
@@ -159,7 +187,7 @@ export const PROMIA_C2_RELEASE_BONUS = 120
  *   次数 = 进场2 + C1终结技1 + floor(寒蚀收入 / 50)
  * 结算语义与全角色一致：基础者=该元素异常主施加者、结算者=普罗米娅（dominant 分支自动）。
  */
-function buildPromiaAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
+function buildPromiaAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = Math.max(0, Math.floor(Number(record.promiaCinemaLevel ?? 0)))
   const override = Math.max(0, Math.floor(setting(cfg, 'promia.releaseCountOverride', 0)))
@@ -168,9 +196,27 @@ function buildPromiaAnomalyEvents({ cfg, state, events }: AgentEventInput): void
   const exCasts = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
   const attackFrost = Math.max(0, Math.floor(Number(record.promiaAttackFrostGain ?? 0)))
   const niying = Math.max(0, Math.min(99, Math.floor(Number(record.promiaNiyingCount ?? 0))))
-  const frostGain = triggerHits * 5 + exCasts * 10 + niying * 10 + teammateReleases * 15 + attackFrost
+  const baseFrostGain = triggerHits * 5 + exCasts * 10 + niying * 10 + teammateReleases * 15 + attackFrost
   const initial = 2 + (cinemaLevel >= 1 ? 1 : 0)
-  const count = override > 0 ? override : initial + Math.floor(frostGain / 50)
+
+  // 影画6 特殊异放 CD 上限（15s；第一次霜刑异放需启动时间，不可能 0s 触发）
+  const specialCdCount = cinemaLevel >= 6
+    ? Math.max(0, Math.floor((totalTime - PROMIA_C6_SPECIAL_STARTUP_SECONDS) / PROMIA_C6_SPECIAL_CD_SECONDS) + 1)
+    : 0
+
+  let count = override > 0 ? override : initial + Math.floor(baseFrostGain / 50)
+  if (override <= 0 && cinemaLevel >= 4) {
+    // 影画4 异放回寒蚀 +5/异放 + 影画6 特殊异放回寒蚀 +5/特殊 → 霜刑反馈环（收敛；反馈量 = 5×count/50 = count/10，有界收缩）
+    for (let i = 0; i < 12; i++) {
+      const special = cinemaLevel >= 6 ? Math.min(count, specialCdCount) : 0
+      const frostBonus = PROMIA_C4_RELEASE_FROST * count + (cinemaLevel >= 6 ? PROMIA_C4_RELEASE_FROST * special : 0)
+      const next = initial + Math.floor((baseFrostGain + frostBonus) / 50)
+      if (next === count) break
+      count = next
+    }
+  }
+  const specialCount = cinemaLevel >= 6 ? Math.min(count, specialCdCount) : 0
+
   if (count <= 0) return
   const mult = PROMIA_EXECUTION_RELEASE_MULTIPLIER + (cinemaLevel >= 2 ? PROMIA_C2_RELEASE_BONUS : 0)
   events.push({
@@ -181,9 +227,22 @@ function buildPromiaAnomalyEvents({ cfg, state, events }: AgentEventInput): void
     carrierMoveName: '强化特殊技：处刑式·绝裁（终结一击）',
     count,
     formula: `releaseMultiplier=${mult}（固定倍率${cinemaLevel >= 2 ? '，C2=635+120' : ''}）`,
-    fields: [`releaseMultiplier=${mult}`, `frostGain=${frostGain}`, `attackFrost=${attackFrost}`, `niying=${niying}`, `casts=${count}`],
-    note: `回复端：初始${initial} + 寒蚀${frostGain}/50（含攻击数据 ${attackFrost}、匿影×10×${niying}）→ ${count} 次（不受持有上限钳制）；元素按目标当前异常分配。`,
+    fields: [`releaseMultiplier=${mult}`, `frostGain=${baseFrostGain}`, `attackFrost=${attackFrost}`, `niying=${niying}`, `casts=${count}`],
+    note: `回复端：初始${initial} + 寒蚀${baseFrostGain}/50（含攻击数据 ${attackFrost}、匿影×10×${niying}${cinemaLevel >= 4 ? `、影画4异放回寒蚀 ×5×${count}` : ''}${cinemaLevel >= 6 ? `、影画6特殊异放回寒蚀 ×5×${specialCount}` : ''}）→ ${count} 次；元素按目标当前异常分配。`,
   })
+  if (cinemaLevel >= 6 && specialCount > 0) {
+    events.push({
+      eventId: 'promia_c6_special_release',
+      eventName: '影画6·特殊异放',
+      eventType: 'release',
+      element: 'dominant',
+      carrierMoveName: '处刑式·绝裁（霜刑异放）',
+      count: specialCount,
+      formula: `releaseMultiplier=${PROMIA_C6_SPECIAL_RELEASE_MULT}`,
+      fields: [`releaseMultiplier=${PROMIA_C6_SPECIAL_RELEASE_MULT}`, `cd=${PROMIA_C6_SPECIAL_CD_SECONDS}s`, `casts=${specialCount}`],
+      note: `影画6：消耗霜刑异放额外触发特殊异放 200%（15s CD，启动 ${PROMIA_C6_SPECIAL_STARTUP_SECONDS}s）→ ${specialCount} 次（min(绝裁异放 ${count}, CD ${specialCdCount})）；元素随目标当前异常。`,
+    })
+  }
 }
 
 /**
@@ -233,6 +292,7 @@ export const promiaMechanic: AgentMechanicModule = {
   buildAnomalyEvents: buildPromiaAnomalyEvents,
   buildResourceResult: buildPromiaResourceResult,
   resourceSections: buildPromiaResourceSections,
+  releaseModifier: promiaReleaseModifier,
   settings: [
     {
       id: 'promia.releaseCountOverride',

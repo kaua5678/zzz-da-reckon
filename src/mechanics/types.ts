@@ -228,8 +228,8 @@ export interface AgentMechanicModule {
   transformSkillExecutions?(input: AgentSkillTransformInput): void
   /** 直伤行元素/来源解析，返回 null 时走通用规则 */
   resolveExecutionDamage?(input: AgentDamageResolutionInput): { element: string; source?: string; note?: string } | null
-  /** 异放/乱流释放类伤害的减抗修正 */
-  releaseModifier?(input: ReleaseModifierInput): { enemyResReduction: number; note: string }
+  /** 异放/乱流释放类伤害的减抗/减防修正（异放限定，不作用于普通直伤） */
+  releaseModifier?(input: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string }
   /** 生成资源池卡片上的通用专属资源展示段 */
   resourceSections?(input: AgentResourceSectionsInput): SpecialResourceSection[]
   /** 声明可在资源利用率页调整的机制参数 */

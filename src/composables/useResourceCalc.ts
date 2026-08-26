@@ -715,7 +715,7 @@ function applyNormaHatChain(
     return out
   }
 
-  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0, prevPromiaTriggerHits = 0, prevPromiaTeammateReleases = 0, prevInStunWindowTriggers = 0, prevEllenFreezeCount = 0): {
+  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0, prevPromiaTriggerHits = 0, prevPromiaTeammateReleases = 0, prevInStunWindowTriggers = 0, prevEllenFreezeCount = 0, prevPromiaReleaseDecibel = 0): {
     resourceResult: TeamResourceResult
     stunPool: StunPoolResult | null
     anomalyPool: AnomalyPoolResult | null
@@ -739,6 +739,7 @@ function applyNormaHatChain(
     vivianAnomalyTriggers: number
     promiaTriggerHits: number
     promiaTeammateReleases: number
+    promiaReleaseDecibel: number
     inStunWindowTriggers: number
     inStunAnomalyState: InStunAnomalySummary | null
     bossAnomalyState: BossAnomalyStateResult | null
@@ -1143,11 +1144,13 @@ function applyNormaHatChain(
         return { ...merged, inStunWindowTriggers: Math.max(0, prevInStunWindowTriggers), nangongQuickAssistPlaced }
       }
       if (merged.agentId === '1541') {
-        // 普罗米娅·霜刑回复端（上一轮池结果）：触发命中数 + 队友异放次数
+        // 普罗米娅·霜刑回复端（上一轮池结果）：触发命中数 + 队友异放次数；
+        // 异放回喧响（上一轮绝裁/特殊异放次数 ×100）经 extraSelfDecibelReward 注入终结技次数
         return {
           ...merged,
           promiaTriggerHitCount: Math.max(0, Math.floor(prevPromiaTriggerHits)),
           promiaTeammateReleaseCount: Math.max(0, Math.floor(prevPromiaTeammateReleases)),
+          extraSelfDecibelReward: (merged.extraSelfDecibelReward ?? 0) + Math.max(0, Math.floor(prevPromiaReleaseDecibel)),
         }
       }
       if (merged.agentId === '1331') {
@@ -1450,12 +1453,19 @@ function applyNormaHatChain(
     // 普罗米娅·霜刑回复端（下一轮注入）：触发命中数 + 队友异放次数
     let promiaTriggerHitsNext = 0
     let promiaTeammateReleasesNext = 0
+    let promiaReleaseDecibelNext = 0
     if (characters.some(c => c.agentId === '1541')) {
       promiaTriggerHitsNext = ap1?.totalTriggerCount ?? 0
       promiaTeammateReleasesNext = (rrShown?.characters ?? rr.characters)
         .flatMap(ch => ch.anomalyEventExecutions ?? [])
         .filter(e => e.eventType === 'release' && e.count > 0)
         .reduce((sum, e) => sum + Math.floor(e.count), 0)
+      // 普罗米娅自身异放回喧响（绝裁异放 + 影画6特殊异放）各 +100（0.5s CD 但异放次数远低于上限，不钳制）
+      const promiaCh = (rrShown?.characters ?? rr.characters).find(c => c.agentId === '1541')
+      const promiaReleaseTotal = (promiaCh?.anomalyEventExecutions ?? [])
+        .filter(e => e.eventType === 'release' && e.count > 0 && (e.eventId === 'promia_execution_release' || e.eventId === 'promia_c6_special_release'))
+        .reduce((sum, e) => sum + Math.floor(e.count), 0)
+      promiaReleaseDecibelNext = promiaReleaseTotal * 100
       if (prevPromiaTriggerHits <= 0 && prevPromiaTeammateReleases <= 0) {
         for (const c of characters) {
           if (c.agentId === '1541') {
@@ -1624,6 +1634,7 @@ function applyNormaHatChain(
       energyBySlot,
       promiaTriggerHits: promiaTriggerHitsNext,
       promiaTeammateReleases: promiaTeammateReleasesNext,
+      promiaReleaseDecibel: promiaReleaseDecibelNext,
       inStunWindowTriggers: inStunWindowTriggersNext,
       inStunAnomalyState: inStunAnomalyStateNext,
       bossAnomalyState: bossAnomalyStateNext,
@@ -1664,6 +1675,7 @@ function applyNormaHatChain(
     let prevVivianAnomalyTriggers = 0
     let prevPromiaTriggerHits = 0
     let prevPromiaTeammateReleases = 0
+    let prevPromiaReleaseDecibel = 0
     let prevInStunWindowTriggers = 0
     let prevEllenFreezeCount = 0
     let prevAnomalyDecibelBonus: number[] = []
@@ -1685,7 +1697,7 @@ function applyNormaHatChain(
       outerRounds = k + 1
       // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
       const locked = lockedStunCount >= 0
-      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers, prevPromiaTriggerHits, prevPromiaTeammateReleases, prevInStunWindowTriggers, prevEllenFreezeCount)
+      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers, prevPromiaTriggerHits, prevPromiaTeammateReleases, prevInStunWindowTriggers, prevEllenFreezeCount, prevPromiaReleaseDecibel)
       const ait = out?.auricInkTriggerCount ?? 0
       const gr = out?.goodReview
       if (gr !== undefined && gr >= 0) prevGoodReview = gr
@@ -1743,6 +1755,7 @@ function applyNormaHatChain(
       prevVivianAnomalyTriggers = out?.vivianAnomalyTriggers ?? 0
       prevPromiaTriggerHits = out?.promiaTriggerHits ?? 0
       prevPromiaTeammateReleases = out?.promiaTeammateReleases ?? 0
+      prevPromiaReleaseDecibel = out?.promiaReleaseDecibel ?? 0
       prevInStunWindowTriggers = out?.inStunWindowTriggers ?? 0
       prevEllenFreezeCount = out?.ellenFreezeCount ?? 0
       prevUltSeq = ultSeq
@@ -2162,7 +2175,7 @@ function applyNormaHatChain(
         baseMultiplier: row.multiplier,
         element: element as any,
         enemyDefense: configStore.enemy.defense,
-        enemyDefReduction: 0,
+        enemyDefReduction: releaseMod.enemyDefReduction ?? 0,
         enemyDefFlatReduction: 0,
         enemyLevel: configStore.enemy.level,
         enemyResistance: enemyDamageRes[element] ?? 0,

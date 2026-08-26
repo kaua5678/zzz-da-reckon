@@ -3,12 +3,14 @@ import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   PROMIA_ADDITIONAL_BUILDUP_EFF,
+  PROMIA_C1_DEF_IGNORE,
   PROMIA_C2_PROFICIENCY,
   PROMIA_GUILTY_DEF_IGNORE,
   PROMIA_MASTERY_THRESHOLD,
   PROMIA_PROF_PER_MASTERY,
   PROMIA_TEAM_RELEASE_PER_MASTERY,
   computePromiaCycle,
+  promiaMechanic,
 } from '@/mechanics/agents/promia'
 import { setupHarness } from '@/test/harness'
 
@@ -73,15 +75,25 @@ describe('普罗米娅完整计算链', () => {
     expect(promia.specResources?.promia_cycle).toBeTruthy()
   })
 
-  it('面板增益进入最终面板（影画2精通/积蓄效率/有罪推定减防）', async () => {
+  it('面板增益进入最终面板（影画2精通/积蓄效率；有罪推定减防改走 releaseModifier）', async () => {
     await setup('1181', 2)
     const calc = useResourceCalc()
     expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1541')!.specResources?.promia_cycle).toBeTruthy()
     const panel = calc.panels.value[0] as any
     // 影画2精通+40（面板层 applyPanel）
     expect(panel.anomalyProficiency).toBeGreaterThanOrEqual(PROMIA_C2_PROFICIENCY)
-    // 额外能力积蓄效率+30 与有罪推定减防+40（提取层，需先触发完整计算）
+    // 额外能力积蓄效率+30（提取层，需先触发完整计算）
     expect(panel.anomalyBuildUpEfficiency).toBeGreaterThanOrEqual(PROMIA_ADDITIONAL_BUILDUP_EFF)
-    expect(panel.enemyDefReduction).toBeGreaterThanOrEqual(PROMIA_GUILTY_DEF_IGNORE)
+    // 有罪推定 40% 不再挂面板（改走 releaseModifier 异放限定），面板减防应低于 40
+    expect(panel.enemyDefReduction ?? 0).toBeLessThan(PROMIA_GUILTY_DEF_IGNORE)
+  })
+
+  it('releaseModifier：有罪推定 40% + 影画1 20% 只作用于异放结算（异放限定减防）', async () => {
+    await setup('1181', 1)
+    const calc = useResourceCalc()
+    const mod = promiaMechanic.releaseModifier!({ panels: calc.panels.value })
+    // 额外能力激活（格莉丝1181=异常）+ 影画1 → 40 + 20
+    expect(mod.enemyDefReduction).toBe(PROMIA_GUILTY_DEF_IGNORE + PROMIA_C1_DEF_IGNORE)
+    expect(mod.enemyResReduction).toBe(0)
   })
 })

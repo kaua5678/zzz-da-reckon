@@ -508,10 +508,11 @@
 
 
 - **核心口径**：按核心被动 Lv.7；初始异常掌控>150 时每超1点提升 1.5 异常精通计入面板（模块复现原 `attributeConversions`，此前因已有占位模块注册而实际未生效）；影画2 异常精通 +40。
-- **额外能力**：其他异常/支援队友激活；强化特殊技冰异常积蓄效率 +30% 计入 `anomalyBuildUpEfficiency`（30秒窗口按整局常驻近似，普罗米娅仅积蓄冰异常）；有罪推定全队异放无视40%防御按自身 `enemyDefReduction+40` 近似（沿用旧 guilty 模块口径）。
+- **额外能力**：其他异常/支援队友激活；强化特殊技冰异常积蓄效率 +30% 计入 `anomalyBuildUpEfficiency`（30秒窗口按整局常驻近似，普罗米娅仅积蓄冰异常）；有罪推定全队异放无视40%防御 + 影画1 额外20% 已改走 `releaseModifier`（异放限定减防，2026-08-26，不作用于普通直伤/异常）。
 - **绝裁异放已接**（2026-08-24 审计）：Type A 固定 635%，C2 加120个百分点 = 755%（用户口供）；次数完全由回复端驱动——初始霜刑2/C1后3 + floor(寒蚀收入/50)，寒蚀收入 = 触发命中×5 + 强特×10 + 队友异放×15（池计数收敛注入 cfg.promiaTriggerHitCount/promiaTeammateReleaseCount），不受持有上限钳制；滑块 promia.releaseCountOverride 覆盖。
 - **饮冰·全队异放增伤已接**：formula 型 teamBuff（sourceStat=anomalyMastery，clamp((x-150)×0.35)）→ 各队员面板 anomalyReleaseDmgBonus，异放结算区生效。
-- **仍 pending**（异常结算区/状态机）：寒蚀值逐时序账本（冻结/紊乱/乱流/强特/队友异放的分类计数与 0.5s CD 细节）、影画1 有罪推定额外无视20%防御、影画4 异放回寒蚀值、影画6 特殊异放200%与无视15%全抗。
+- **影画4/6 异常结算区已接（2026-08-26）**：①影画4 异放回寒蚀 +5 → 霜刑反馈环收敛（count = 初始 + floor((寒蚀 + 5×count + 5×特殊)/50) 迭代）；②影画6 特殊异放 200%（15s CD，启动 2s，次数 = min(绝裁异放, CD上限)）+ 自身属性异常/紊乱无视 15% 全抗（面板 `enemyResReduction`）；③异放回喧响——绝裁/特殊异放各 +100 喧响（0.5s CD 不钳制），经 `extraSelfDecibelReward` 收敛注入终结技次数。
+- **仍 pending**（逐时序/状态机）：寒蚀值逐时序账本（冻结/紊乱/乱流/强特/队友异放的分类计数与 0.5s CD 细节）仍按总量回复端近似，未逐事件模拟。
 - **模块**：`src/mechanics/agents/promia.ts`（替代旧 `prometheusGuiltyMechanic`）。
 
 ### 珂蕾妲（koleda / 1101）—— 爆破锤失衡与熔炉
