@@ -71,6 +71,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 - **Boss 预设**：`scripts/fetch-nanoka-bosses.mjs` + `scripts/import-nanoka-bosses.mjs` → `public/static/boss-presets.json`（危局强袭战 15 个 Boss × 各期血量/失衡/防御/异常系数/三张抗性表 + 怪物本体失衡倍率/失衡时间 + 用户确认收录的老防卫战 Boss 彷徨猎手），属性配置页 `BossSelectCard.vue` 一键填充。
 - **预设队伍对比**：`src/data/teamPresets/`（JSON，含加金顺序/交互清单/常驻配置）→ 队伍对比页散点图（x=操作难度=交互加权和，y=伤害/血量%，点=队伍×限定金）。批量计算管线在 `src/composables/teamCompare.ts`，金数口径：总限定金 = 限定 S 角色本体/音擎本体 + 影画/精炼步，常驻 S 角色（莱卡恩等）与常驻音擎不计；选择越界自动钳制到队伍档位范围；常驻角色命座/精炼走 `standardSteps`（不占限定金，改文件后重跑）。
 - **teammate-buffs.json**：全队拐力（核心被动/额外能力/命座拐），按 `source.zhCN` 里的"影画X"自动按命座门控。
+- **实战对比数据**：`node scripts/fetch-zzz-run-archive.mjs` 抓 zzz-run-archive（危局/防卫战玩家实战投稿，公开 JSON API）全量 approved 到 `data/raw/zzz-run-archive/`（`runs.json` 全量 + `bootstrap.json` 房间/Boss + `manifest.json` 元数据；幂等覆盖，`--dry-run`/`--limit`/`--max-targets`）。归档用 nanoka.cc id 与 catalog 同源；纯函数导入桥 `src/composables/runArchiveImport.ts`（`submissionToDeploy`/`matchBossPreset`）把一条投稿映射为「一键部署」配置（命座/音擎/精炼直通 + Boss 名→预设，配装缺口由计算器默认理想配装兜底）。仅危局强袭（Deadly Assault*）支持，UI 对比页属后续阶段。
 - **动作时间公式**（基于倍率表 `ether_purify` 行）：一般招式 `秽盾/100`、闪避反击 `-1.5`、轻重弹刀 `-2.5`、终结技 `-5`。
 - **合轴率** `comboAlignRatio`：动作时间内可与其他操作并行的比例，硬编码进 catalog 静态数据。
 - **失衡轴**：`src/data/stunAxisPresets/` 下的预设 JSON（`team` 按槽位匹配、`*` 通配、`chapter` 字段用于章鱼自动轴按伊德海莉命座选轴）。
