@@ -17,10 +17,11 @@
       "gainRules": [
         {
           "id": "zhendou_special_heartfire_gain",
-          "trigger": "发动特殊技：归烬·舍身",
-          "countSource": "exSpecialCount",
+          "trigger": "发动特殊技：归烬·舍身（蓄力）",
+          "countSource": "cfgField",
+          "countField": "zhendouChargeCount",
           "amountPerCount": 100,
-          "formula": "特殊技次数 × 100（原文：长按蓄力最多消耗10%最大生命值并回复100点炽心）",
+          "formula": "蓄力次数 × 100 —— 反推：max(0, ceil((3.3×战斗时长 − 招架×75 − 影画6×75) / 100))，炽心守恒维持熔锋全覆盖",
           "status": "implemented_approximation",
           "adjustable": {
             "id": "1441.zhendou_heartfire.zhendou_special_heartfire_gain.rate",

@@ -7,6 +7,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
+import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
@@ -17,7 +18,9 @@ import { specToMechanicModule } from '@/specs/mechanics'
  * 已接管：
  * - 贯穿力转模由引擎命破基底自动结算（atk×0.3 + hp×0.1 + sheerForceFlat，damage.ts RUPTURE_DAMAGE_PROFILE），
  *   不额外转模（般岳/星徽·比利同款：spec attributeConversion 已删除，防 hp×0.1 双计）。
- * - [炽心]/[残焰] 走 spec resource（归烬·舍身 +100 / 招架支援 +75 / 终结 +8 残焰 / 连携 +4 残焰）。
+ * - [炽心] 走 spec resource（归烬·舍身蓄力 +100/次、招架支援 +75/次、影画6 失衡 +75/次）；
+ *   蓄力次数 = 炽心守恒反推 max(0, ceil((3.3×t − 招架×75 − 影画6×75)/100))，维持熔锋全覆盖。
+ * - [残焰] 走 spec resource（终结 +8 / 连携 +4，影画6 失衡 +4）。
  * - 熔锋 buff（炽心≥75 → 暴击率+10%/火伤+20%）：applyPanel 恒常挂（uptime≈100%，用户口径）。
  *
  * 本轮补录（2026-08-27 用户口径）：
@@ -73,6 +76,34 @@ function buildZhendouCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): voi
   record.zhendouCinemaLevel = Math.max(0, Math.floor(Number(cinemaLevel ?? 0)))
 }
 
+/** 归烬·舍身（特殊技）两段：点按 #1 + 长按蓄力释放 #2（actionTime 来自 catalog） */
+const MOVE_GUIJIN_1 = '1441013'
+const MOVE_GUIJIN_2 = '1441014'
+const GUIJIN_1_TIME = 0.475
+const GUIJIN_2_TIME = 1.225
+/** 熔锋状态炽心消耗（点/秒） */
+const ZHENDOU_FURY_DRAIN_PER_SEC = 3.3
+
+export interface ZhendouChargeInput {
+  combatTime: number
+  parryCount: number
+  /** 影画6 是否提供失衡回炽心（每失衡 75） */
+  c6StunCount: number
+}
+
+/**
+ * 炽心守恒反推蓄力次数（归烬·舍身 100/次）：
+ * 消耗 = 3.3/s × 战斗时长（熔锋全覆盖）；来源 = 招架 75×parryCount + 影画6 75×stunCount。
+ * 缺口用蓄力次数补足：max(0, ceil((消耗 − 来源) / 100))。
+ */
+export function computeZhendouChargeCount(i: ZhendouChargeInput): number {
+  const consume = ZHENDOU_FURY_DRAIN_PER_SEC * Math.max(0, Number(i.combatTime) || 0)
+  const parryGain = 75 * Math.max(0, Math.floor(Number(i.parryCount) || 0))
+  const c6Gain = 75 * Math.max(0, Math.floor(Number(i.c6StunCount) || 0))
+  const need = consume - parryGain - c6Gain
+  return Math.max(0, Math.ceil(need / 100))
+}
+
 /** 耗血暴伤 +50%（炽风·胧切/支援突击）；影画6 支援突击火伤 +15% */
 function patchZhendouExecutions({ cfg, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
@@ -88,13 +119,47 @@ function patchZhendouExecutions({ cfg, executions }: AgentResourceInput): void {
   }
 }
 
-/** 影画6：converge 阶段写 cfg.zhendouC6StunFuryCount（sfc resource 用 countSource=cfgField 读） */
-function applyZhendouTeamConfig({ slot, cinemaLevel, characters, phase, stunCount }: AgentTeamConfigInput): void {
+/** converge 阶段：写 cfg.zhendouChargeCount（蓄力次数反推）+ cfg.zhendouC6StunFuryCount（影画6 失衡次数） */
+function applyZhendouTeamConfig({ slot, cinemaLevel, characters, phase, combatTime, stunCount }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
   const cfg = characters[slot]
   if (!cfg) return
   const record = cfg as unknown as Record<string, unknown>
+  record.zhendouChargeCount = computeZhendouChargeCount({
+    combatTime,
+    parryCount: cfg.parryCount ?? 0,
+    c6StunCount: cinemaLevel >= 6 ? Math.max(0, Math.floor(Number(stunCount) || 0)) : 0,
+  })
   record.zhendouC6StunFuryCount = cinemaLevel >= 6 ? Math.max(0, Math.floor(Number(stunCount) || 0)) : 0
+}
+
+/** 归烬·舍身（特殊技）前台执行行：蓄力攒炽心，占前台时间（掉伤害） */
+function buildZhendouExecutions({ cfg, executions }: AgentResourceInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  const chargeCount = Math.max(0, Math.floor(Number(record.zhendouChargeCount ?? 0)))
+  if (chargeCount <= 0) return
+  pushSpecial(executions, MOVE_GUIJIN_1, '特殊技：归烬 #1（点按）', chargeCount, GUIJIN_1_TIME)
+  pushSpecial(executions, MOVE_GUIJIN_2, '特殊技：归烬 #2（长按蓄力释放）', chargeCount, GUIJIN_2_TIME)
+}
+
+function pushSpecial(executions: SkillExecution[], moveId: string, moveName: string, count: number, actionTime: number): void {
+  executions.push({
+    moveId,
+    moveName,
+    category: 'special',
+    count,
+    actionTime,
+    comboAlignRatio: 0,
+    totalTime: count * actionTime,
+    totalComboAlignTime: 0,
+    energyConsume: 0,
+    totalEnergyConsume: 0,
+    decibelRecovery: 0,
+    totalDecibelRecovery: 0,
+    energyRecovery: 0,
+    totalEnergyRecovery: 0,
+    skillTableNote: `归烬·舍身 ×${count}（蓄力 ${count} 秒攒炽心，占前台时间）`,
+  })
 }
 
 function buildZhendouResourceResult({ cfg, state }: AgentResourceResultInput) {
@@ -128,6 +193,7 @@ export const zhendouMechanic: AgentMechanicModule = {
   applyPanel: applyZhendouPanel,
   buildCharConfig: buildZhendouCharConfig,
   applyTeamConfig: applyZhendouTeamConfig,
+  buildExecutions: buildZhendouExecutions,
   patchExecutions: patchZhendouExecutions,
   buildResourceResult: buildZhendouResourceResult,
   resourceSections: buildZhendouResourceSections,
