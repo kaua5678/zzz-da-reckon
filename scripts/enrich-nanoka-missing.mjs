@@ -34,12 +34,10 @@ for (const id of Object.keys(list)) {
   }
   const data = JSON.parse(readFileSync(fullPath, 'utf8'))
 
+  // ⚠️ 招式名权威来源 = skill.description[].param 的 moveId → entry.name，
+  //   因为 skill_list 是 nanoka 自有编号（与倍率表 moveId 错位），不能按 id 硬套
+  //   （希格莉德 1591 整招挂错事故）。description 优先，skill_list 只兜底。
   const nameMap = {}
-  for (const [moveId, info] of Object.entries(data.skill_list ?? {})) {
-    const zh = plain(info?.name)
-    if (zh) nameMap[moveId] = zh
-  }
-  // skill_list 只覆盖正式命名段；param 重复段用 skill.description 的名称兜底。
   for (const category of Object.values(data.skill ?? {})) {
     if (typeof category !== 'object' || !category) continue
     for (const entry of category.description ?? []) {
@@ -51,6 +49,10 @@ for (const id of Object.keys(list)) {
         }
       }
     }
+  }
+  for (const [moveId, info] of Object.entries(data.skill_list ?? {})) {
+    const zh = plain(info?.name)
+    if (zh && !(moveId in nameMap)) nameMap[moveId] = zh
   }
   const skillsEntry = catalog.agentSkills.find(s => s.agentId === id)
   if (skillsEntry) {

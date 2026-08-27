@@ -72,14 +72,13 @@
           ],
           "pending": []
         },
-        {
+                {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "影画6 充能电场：发动[强化特殊技]时，安比获得8层充能（上限8层）；[普通攻击]或[冲刺攻击]命中敌人时，消耗1层充能，使当前招式造成的伤害提升45%。",
-            "待人工核对后补实现，勿直接默认省略。"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "强特×8层充能，普攻/冲刺命中消耗，每层 +45% 伤害（specPanelBuffs anbyChargeMechanic 挂 panel.dmgBonus，上限 8 层）"
+          ],
+          "pending": []
         }
       ]
     },
@@ -875,21 +874,21 @@
         "en": "Lucy"
       },
       "cinemas": [
-        {
+                {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "回旋挥击命中全队回复 2 点能量（lucy.ts computeLucyCheer c1EnergyPerMember = 回旋总次数×2，applyLucyTeamEnergyFlags 门控）"
+          ],
+          "pending": []
         },
-        {
+                {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "连携技/终结技也触发加油（lucy.ts cheer += chain + ult，cinema>=2 门控）"
+          ],
+          "pending": []
         },
         {
           "cinema": 3,
@@ -901,13 +900,13 @@
             "若该角色3/5命存在额外非通用效果，需要另行补充"
           ]
         },
-        {
+                {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "加油暴伤 +10%（spec teamBuffs，按命座门控）"
+          ],
+          "pending": []
         },
         {
           "cinema": 5,
@@ -919,13 +918,13 @@
             "若该角色3/5命存在额外非通用效果，需要另行补充"
           ]
         },
-        {
+                {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "队友强特命中 → 小猪落地 300% 攻击力火伤 + 1 次回旋挥击（lucy.ts c6Bombs = 队友强特次数）"
+          ],
+          "pending": []
         }
       ]
     },
@@ -3085,21 +3084,21 @@
         "en": "Nangong Yu"
       },
       "cinemas": [
-        {
+                {
           "cinema": 1,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "全抗 -18%（面板 enemyResReduction）+ 重拍进场回满 100"
+          ],
+          "pending": []
         },
-        {
+                {
           "cinema": 2,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "颤音异放每层比例额外 +10%（25→35%/层）+ 连携重击极性紊乱路径（每失衡 +1 次）"
+          ],
+          "pending": []
         },
         {
           "cinema": 3,
@@ -3111,13 +3110,13 @@
             "若该角色3/5命存在额外非通用效果，需要另行补充"
           ]
         },
-        {
+                {
           "cinema": 4,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "精通 +40 + 地雷撞积蓄值 ×1.35（transformSkillExecutions）"
+          ],
+          "pending": []
         },
         {
           "cinema": 5,
@@ -3129,13 +3128,13 @@
             "若该角色3/5命存在额外非通用效果，需要另行补充"
           ]
         },
-        {
+                {
           "cinema": 6,
-          "status": "not_described_not_implemented",
-          "implemented": [],
-          "pending": [
-            "尚未提供该命座机制描述，当前不应默认视为已实现"
-          ]
+          "status": "implemented_approximation",
+          "implemented": [
+            "失衡值 +50%（面板）+ 颤音:改（非失衡期计数器，固定倍率 500%×(1+25%/层)）"
+          ],
+          "pending": []
         }
       ]
     },
@@ -3653,6 +3652,68 @@
           ],
           "pending": [
             "非轴模式破阵易伤按全局失衡覆盖率近似（轴模式经块时间门控精确）。"
+          ]
+        }
+      ]
+    },
+    "1611": {
+      "name": {
+        "zhCN": "克拉蕾",
+        "en": "Claret"
+      },
+      "cinemas": [
+        {
+          "cinema": 1,
+          "status": "implemented_approximation",
+          "implemented": [
+            "攻击触发锐化爆炸时残痕积累 +15%（claret.ts 残痕速率 ×1.15）+ 全队施加残痕时克拉蕾暴击率 +5%/层×最多3层（按满层 +15% 近似 critRateBonus）"
+          ],
+          "pending": []
+        },
+        {
+          "cinema": 2,
+          "status": "implemented_approximation",
+          "implemented": [
+            "全队毁伤回复 0.25 锐能（近似仅计克拉蕾自身毁伤次数）"
+          ],
+          "pending": [
+            "血华誓招式无视 35% 抗性未实现（待敌人抗性建模）"
+          ]
+        },
+        {
+          "cinema": 3,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 4,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "猩红铭刻状态下闪避保留普攻连击段数，无数值影响，不接入"
+          ]
+        },
+        {
+          "cinema": 5,
+          "status": "implemented_generic_skill_level",
+          "implemented": [
+            "通用技能等级提升通过 PanelValues.skillLevelBonus 与 skillLevelCoef 接入"
+          ],
+          "pending": [
+            "若该角色3/5命存在额外非通用效果，需要另行补充"
+          ]
+        },
+        {
+          "cinema": 6,
+          "status": "not_described_not_implemented",
+          "implemented": [],
+          "pending": [
+            "影画6 为 nanoka 未翻译占位文本（Claret_Talent_06_Desc_01），待正式文本"
           ]
         }
       ]
