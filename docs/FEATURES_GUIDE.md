@@ -235,7 +235,44 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 - **失衡值 / 失衡占比**：来自失衡池逐槽统计（`perSlotStun`）。**后台自动招式（莱卡恩围猎闪反/蓄力平A、橘福福虎威、露西、丽娜邦布、仪玄合轴等）的失衡贡献已计入**——这些行 daze 经倍率表回填进失衡池，分子分母都含。
 - 各队自动匹配各自预设轴；拐力 = 关掉该击破手 teammate-buffs 重算的总伤差值。实现 `composables/breakerCompare.ts` + `views/StunBreakerComparePage.vue`。
 
-## 7. 验证命令
+## 7. 实战对比（「实战对比」Tab）
+
+目标：把 zzz-run-archive 的玩家实战投稿一键部署进计算器，对比「计算器理论理想 vs 实战分数/击杀/用时」，定位建模精度缺口。
+
+### 7.1 数据管道
+
+```bash
+node scripts/fetch-zzz-run-archive.mjs      # 爬全量 → data/raw/zzz-run-archive/{bootstrap,runs,manifest}.json
+node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archive.json（只收危局 + rooms/seasons 索引）
+```
+
+- 前端 `RunArchivePage.vue` 懒加载 fetch `/static/run-archive.json`（不进首屏 bundle）。
+- 归档新 Boss / 期数 → 补 `scripts/import-nanoka-bosses.mjs` 的 `CATALOG_MONSTER_MAP` 后重跑（见 §1.2），再重跑 import-zzz-run-archive。
+
+### 7.2 用户操作
+
+1. 「实战对比」Tab → 期数 / Boss / 仅击杀筛选 → 列表点「部署」。
+2. 右侧：玩家实战（分数/用时/击杀/队伍/视频链）vs 计算器（总伤害 / 当期 Boss 血量 / 伤害血量% / 击杀判定）。
+3. 判定不一致给方向提示：预测击杀但实战未击杀 = 理想配装被高估（配装差 + 建模误差）；实战击杀但未达线 = 口径偏保守（漏拐/漏机制）。
+
+### 7.3 修改入口
+
+| 要改什么 | 改哪里 |
+| --- | --- |
+| 归档 → DeployConfig（命座/音擎/精炼/Boss 期相位） | `src/composables/runArchiveImport.ts`（`submissionToDeploy`/`matchBossPreset`/`matchBossPhase`） |
+| DeployConfig → store（队伍/交互基准/Boss/layer_buff） | `src/composables/runArchiveDeploy.ts`（`applyDeployConfig`/`resolveBossApply`/`applyBossLayerBuffs`） |
+| 页面 / 注册 | `src/views/RunArchivePage.vue` + `CalculatorView.vue` pageMap + `AppHeader.vue`（runArchive） |
+| 测试 | `src/composables/__tests__/runArchiveImport.test.ts` / `runArchiveDeploy.test.ts` |
+
+### 7.4 口径
+
+- 配装 = 计算器默认理想（推荐驱动盘 + 最优副词条 + 技能全满，作为理论**上界**）；不从视频提取真实配装。
+- 交互基准 = 角色专属默认（般岳/星徽·比利）> 通用基准（弹刀 6 / 闪反 10 / 快支 3 / 连携 1），与 teamTimeline 同源。
+- Boss = 期相位（分期数决定血量膨胀）+ 关卡固有 layer_buff 自动应用；当期可选牌（3 选 1）**不自动应用**（归档未记录玩家选择）。
+- 仅危局强袭（Deadly Assault*，含 Adversity），防卫战/歼灭排除。
+- 比对口径：伤害/血量%（击杀线 100%）vs 实战 score/bossKilled/time，**不做 score 精确映射**；差异 = 配装差 + 建模误差，靠理想配装上界夹逼隔离。
+
+## 8. 验证命令
 
 ```bash
 npm run typecheck      # 类型
