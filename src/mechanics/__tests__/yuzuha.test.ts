@@ -93,14 +93,14 @@ describe('柚叶（1411）甜度点与狸之愿', () => {
   })
 
   it('完整计算链：滑块值传导到资源账本', async () => {
-    const off = await setup(0)
+    await setup(0)
     const calcOff = useResourceCalc()
     const rowOff = calcOff.resourceResult.value!.characters.find(ch => ch.agentId === '1411')!
     expect(rowOff.yuzuhaMechanicSource).toBeTruthy()
     const before = rowOff.yuzuhaMechanicSource!.sweetnessFromChain
     const atkBonus = rowOff.yuzuhaMechanicSource!.teamAtkBonus
 
-    const on = await setup(3)
+    await setup(3)
     const calcOn = useResourceCalc()
     const rowOn = calcOn.resourceResult.value!.characters.find(ch => ch.agentId === '1411')!
     expect(rowOn.yuzuhaMechanicSource!.sweetnessFromChain).toBe(3)

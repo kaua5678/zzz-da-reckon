@@ -105,7 +105,7 @@ import { computePanel } from '@/composables/resourceCalc/helpers'
 import { SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget } from '@/core/buff'
 import { fmt, pct } from '@/utils/format'
 import { getStatMeta, isPctStat, phaseStatLabel } from '@/utils/statMeta'
-import type { BuffEffect, BuffGroup, PanelValues, StatMode, TeammateBuff } from '@/types/catalog'
+import type { BuffEffect, BuffGroup, PanelValues, TeammateBuff } from '@/types/catalog'
 
 interface DebugRow {
   id: string

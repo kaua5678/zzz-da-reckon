@@ -154,7 +154,7 @@ export const soldier11Mechanic: AgentMechanicModule = {
   buildCharConfig: buildSoldier11CharConfig,
   // A45 快速循环伤害行：窗口招（强特/连携/终结）后必打，动作时间减半占前台；
   // 倍率走倍率表（#4=火力镇压、#5=结算6段），核心被动/C6 经 patchExecutions 咬合
-  buildExecutions: ({ cfg, state, executions }: AgentResourceInput): void => {
+  buildExecutions: ({ cfg: _cfg, state, executions }: AgentResourceInput): void => {
     const windows = Math.max(0,
       Math.floor(state.exSpecialCount ?? 0)
       + Math.floor(state.chainCountTotal ?? 0)

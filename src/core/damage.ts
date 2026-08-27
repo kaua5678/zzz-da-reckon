@@ -6,9 +6,9 @@ import type {
   Agent, WEngine, DriveDiscSet, PanelValues,
   DamageResult, DamageBreakdownItem, SkillDamageResult,
   SkillMove, SkillCategory, AgentSkills, DamageElement,
-  CalculatorConfig, AnomalyEffect, DisorderEffect, SkillDamageTarget,
+  CalculatorConfig, SkillDamageTarget,
 } from '@/types/catalog'
-import { calcPanel, type PanelResult } from './panel'
+import { calcPanel } from './panel'
 import { calcStunMultiplier } from './anomalyPool/helpers'
 import { getSkillDmgBonus, getStunBuildUpBonus, getTargetedStat, getTargetedStatExtra, normalizeSkillDamageTarget } from './buff'
 import { fmt } from '@/utils/format'
@@ -256,14 +256,6 @@ function pickRemielleLevelValue(row: any, skillLevelBonus: number): number {
     return values[skillLevel >= 16 ? 2 : skillLevel >= 14 ? 1 : 0] ?? values[0] ?? 0
   }
   return values[0] ?? 0
-}
-
-function remielleSpecialVoidflareUseCount(panel: PanelValues): number {
-  const firstRound = panel.remielleCinema1SpecialVoidflareCount ?? 0
-  if (firstRound <= 0) return 0
-  const refillRound = panel.remielleCinema4SpecialVoidflareRefillCount ?? 0
-  const c6Multiplier = 1 + Math.max(0, panel.remielleCinema6SpecialVoidflareTriggerMultiplier ?? 0)
-  return (firstRound + Math.max(0, refillRound)) * c6Multiplier
 }
 
 /** 计算单次直伤 */

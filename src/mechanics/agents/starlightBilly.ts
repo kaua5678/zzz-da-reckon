@@ -77,13 +77,6 @@ const C2_DMG_MOVE_IDS = new Set<string>([MOVE.fullThrottle, MOVE.coolWheelie, MO
 // 影画6 贯穿增伤目标（骑士飞踢/最高马力星光）
 const C6_DMG_MOVE_IDS = new Set<string>([MOVE.ultimate, MOVE.fullThrottle])
 
-// 核心被动：动力压制暴伤（Lv.1-7 = 45/53/60/68/75/83/90，等级随动按满级处理）
-const CORE_CRIT_DMG = 90
-// 影画4：动力压制每次暴伤 +8%，至多 2 层
-const C4_CRIT_DMG_PER_STACK = 8
-const C4_CRIT_DMG_MAX_STACKS = 2
-// 影画1：18% 物理抗性无视
-const C1_RES_IGNORE = 18
 // 影画2：三招式 +50%
 const C2_DMG_BONUS = 50
 // 影画2 涡轮增压：孤轮特技暴伤 +50%
@@ -101,13 +94,8 @@ const RADIANT_DMG_PER_STACK = 100
 const EX_FLASH_COST = 60
 // 进场闪能（核心被动；影画1 额外 +60）
 const ENTRY_FLASH = 60
-// 决意：缓慢回复固定 2 点/秒 × 全战斗时间（用户确认）
-const DETERMINATION_REGEN_PER_SEC = 2
 // 决意：额外回复（文本数值，用户确认）
 const EX_EXTRA_DETERMINATION = 8 // 孤轮特技命中（按孤轮总次数）
-const CHAIN_EXTRA_DETERMINATION = 15 // 连携技发动
-const PARRY_EXTRA_DETERMINATION = 5 // 动力压制期间格挡
-const DODGE_EXTRA_DETERMINATION = 3 // 极限闪避
 // HP 池（用户确认：动力压制必须烧血才能打、不是无限释放）
 const HP_COST_PER_DRIVE = 16 // 动力压制消耗 %生命上限
 const HP_DISCOUNT_HALVED = 8 // 普攻第四段衔接：耗血减半（16%→8%）

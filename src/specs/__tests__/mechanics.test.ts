@@ -66,7 +66,7 @@ describe('spec mechanics interpreter', () => {
   })
 
   it('generates Nekomata resource spend executions from spec counts（2026-08-23 口供：单载体 1021019，30/40 档预算分配）', () => {
-    const spec = getAgentSpec('1021')!
+    getAgentSpec('1021')
     const cfg = {
       mechanicRowValues: {
         '1021019': 800,

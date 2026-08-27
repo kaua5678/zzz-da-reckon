@@ -75,7 +75,6 @@ export function computeRecommendedSubStats(
 
   if (hasDualCrit) {
     const critRateStep = subStep.critRate ?? 2.4
-    const critDmgStep = subStep.critDmg ?? 4.8
 
     // 需要多少步暴击率才能达到100%
     const critGap = Math.max(0, 100 - baseCritRate)
@@ -134,10 +133,6 @@ export function computeBaseCritRate(
   // 应用全局buff
   for (const buff of globalBuffs) {
     if (!buff.enabled) continue
-    const mode = buff.stat.endsWith('Pct') || buff.stat.endsWith('Rate') || buff.stat.endsWith('Dmg') ||
-      buff.stat.endsWith('Ratio') || buff.stat.endsWith('Mastery') || buff.stat.endsWith('Regen') ||
-      buff.stat.endsWith('Impact') || buff.stat.endsWith('Efficiency') || buff.stat.endsWith('Bonus')
-      ? 'pct' : 'flat'
     // 这里不完整applyStat，仅做估算
     if (buff.stat === 'critRate') {
       panel.critRate += buff.value

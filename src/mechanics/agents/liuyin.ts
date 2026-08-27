@@ -43,14 +43,9 @@ const CINEMA4_ENERGY_GIFT = 20
 // —— 影画4：好评如潮状态下攻击力 +500（默认满覆盖）——
 export const CINEMA4_GOOD_REVIEW_ATK = 500
 
-// —— 额外能力：上一位队友特性专属直伤 ——
-const ATTACK_DIRECT_RATIO = 320 // 强攻：320% 攻击力
-const RUPTURE_DIRECT_RATIO = 400 // 命破：400% 贯穿力
-
 // —— 影画6：余音额外物理伤害 ——
 export const CINEMA6_ECHO_RATIO = 480
 export const CINEMA6_ECHO_MAX = 12
-const CINEMA6_ECHO_SETTING_ID = 'liuyin.c6EchoMax'
 
 // —— 三个强特（石头→剪刀→布），耗能均 25，按 1→3 顺序连打，越靠后数值越高 ——
 const EX_SPECIAL_ENERGY = 25

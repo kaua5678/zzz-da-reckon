@@ -17,7 +17,6 @@ import type {
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
-import { fmt } from '@/utils/format'
 
 export const LUCY_ID = '1151'
 const MOVE_SPIN = '1151026' // 亲卫队小猪：回旋挥击！
@@ -170,7 +169,7 @@ export function computeLucyBoarCount(frontlineTime: number, cd: number): number 
   return Math.floor(t / c)
 }
 
-function buildCharConfig({ skills, cinemaLevel, team, cfg }: AgentCharConfigInput): void {
+function buildCharConfig({ skills, cinemaLevel, team: _team, cfg }: AgentCharConfigInput): void {
   const cinema = cinemaLevel ?? 0
   const record = cfg as unknown as Record<string, unknown>
   record.lucyCinemaLevel = cinema

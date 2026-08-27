@@ -184,7 +184,7 @@ function applyCorinTeamConfig({ slot, cinemaLevel, characters, phase, combatTime
   record.corinC4Triggers = triggers
 }
 
-function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): CorinCycle {
+function cycleFromInput({ cfg, state: _state }: Pick<AgentResourceInput, 'cfg' | 'state'>): CorinCycle {
   const record = cfg as unknown as Record<string, unknown>
   return computeCorinCycle({
     cinemaLevel: Number(record.corinCinemaLevel ?? 0),

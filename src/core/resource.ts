@@ -1,12 +1,9 @@
 import type {
   ResourceCalcConfig, CharacterOperationConfig,
   TeamResourceResult, CharacterResourceResult,
-  EnergySource, DecibelSource, TimeAllocation,
-  SkillExecution, IterationState, AnomalyEventExecution,
+  IterationState,
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
-import type { PanelValues } from '@/types/catalog'
-import { fmt } from '@/utils/format'
 import { getAgentMechanic } from '@/mechanics'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'

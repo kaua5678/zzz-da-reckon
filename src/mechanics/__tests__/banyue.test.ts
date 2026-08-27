@@ -739,7 +739,7 @@ describe('般岳自动轴 + 失衡窗口延时（用户口径）', () => {
   }
   it('队伍 [1471,1481,1451]：通用自动轴生效并选中般琉通用预设（好评溢出爆发轴）', async () => {
     await setupBanyueTeam(3)
-    const config = useConfigStore()
+    useConfigStore()
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 60))
     expect(calc.autoPreset.value).not.toBeNull()

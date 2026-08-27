@@ -41,11 +41,11 @@
  */
 import type { PanelValues } from '@/types/catalog'
 import type {
-  AnomalyPoolResult, AnomalyProgress, AnomalyContribution,
-  AnomalyCoverageResult, AnomalyEventRecord,
+  AnomalyProgress, AnomalyContribution,
+  AnomalyCoverageResult,
   DisorderDamageResult, DisorderDamageDetail,
   TurbulenceDamageResult, TurbulenceDamageDetail,
-  DisorderFormula, TurbulenceFormula, VelinaCorrosionSource,
+  DisorderFormula, TurbulenceFormula,
   StandardDotDamageResult, StandardDotDamageDetail,
   AliceCoweringDotResult,
 } from '@/types/resource'

@@ -4,7 +4,6 @@ import {
   PROMIA_C2_RELEASE_BONUS,
   PROMIA_C6_ALL_RES_IGNORE,
   PROMIA_C6_SPECIAL_RELEASE_MULT,
-  PROMIA_EXECUTION_RELEASE_MULTIPLIER,
   PROMIA_VERDICT_MOVE_ID,
   PROMIA_ZHUISHUANG_MOVE_ID,
 } from '../agents/promia'
@@ -14,7 +13,7 @@ import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 
 describe('普罗米娅（1541）绝裁异放', () => {
   it('C0：事件存在、倍率 635；次数由回复端驱动（>0 且不受持有上限钳制）', async () => {
-    const { config } = await setupHarness([{ agentId: '1541' }])
+    await setupHarness([{ agentId: '1541' }])
     const calc = useResourceCalc()
     const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1541')!
     const ev = (char.anomalyEventExecutions ?? []).find(e => e.eventId === 'promia_execution_release')
@@ -26,7 +25,7 @@ describe('普罗米娅（1541）绝裁异放', () => {
 
   it('C2 = 635+120 = 755（加百分点，用户口供）；次数覆盖滑块生效', async () => {
     expect(PROMIA_C2_RELEASE_BONUS).toBe(120)
-    const { config } = await setupHarness([{ agentId: '1541', cinemaLevel: 2 }])
+    await setupHarness([{ agentId: '1541', cinemaLevel: 2 }])
     const calc = useResourceCalc()
     const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1541')!
     const ev = (char.anomalyEventExecutions ?? []).find(e => e.eventId === 'promia_execution_release')
@@ -85,7 +84,7 @@ describe('普罗米娅 强特终结/绝裁载体 直伤（2026-08-26 用户口�
 
 describe('普罗米娅 影画4/6 异常结算区（2026-08-26）', () => {
   it('影画6：特殊异放事件存在（200%，15s CD 上限 12，且 ≤ 绝裁异放次数）', async () => {
-    const { config } = await setupHarness([{ agentId: '1541', cinemaLevel: 6 }])
+    await setupHarness([{ agentId: '1541', cinemaLevel: 6 }])
     const calc = useResourceCalc()
     const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1541')!
     const main = (char.anomalyEventExecutions ?? []).find(e => e.eventId === 'promia_execution_release')
@@ -105,12 +104,12 @@ describe('普罗米娅 影画4/6 异常结算区（2026-08-26）', () => {
   })
 
   it('影画4：异放回寒蚀 +5 → 霜刑反馈环使绝裁异放次数多于 0命', async () => {
-    const c0 = await setupHarness([{ agentId: '1541' }])
+    await setupHarness([{ agentId: '1541' }])
     const calc0 = useResourceCalc()
     const ev0 = (calc0.resourceResult.value!.characters.find(c => c.agentId === '1541')!.anomalyEventExecutions ?? [])
       .find(e => e.eventId === 'promia_execution_release')
 
-    const c4 = await setupHarness([{ agentId: '1541', cinemaLevel: 4 }])
+    await setupHarness([{ agentId: '1541', cinemaLevel: 4 }])
     const calc4 = useResourceCalc()
     const ev4 = (calc4.resourceResult.value!.characters.find(c => c.agentId === '1541')!.anomalyEventExecutions ?? [])
       .find(e => e.eventId === 'promia_execution_release')
@@ -121,7 +120,7 @@ describe('普罗米娅 影画4/6 异常结算区（2026-08-26）', () => {
   })
 
   it('异放回喧响：绝裁/特殊异放各 +100 计入终结技次数（extraSelfDecibelReward）', async () => {
-    const { config } = await setupHarness([{ agentId: '1541', cinemaLevel: 6 }])
+    await setupHarness([{ agentId: '1541', cinemaLevel: 6 }])
     const calc = useResourceCalc()
     const promia = calc.resourceResult.value!.characters.find(c => c.agentId === '1541')!
     const releaseTotal = (promia.anomalyEventExecutions ?? [])

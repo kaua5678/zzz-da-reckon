@@ -1,6 +1,5 @@
 import type {
   AgentMechanicModule,
-  AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentSkillTransformInput,
@@ -45,12 +44,6 @@ function makePanelBuffModule(
       return spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
     },
   }
-}
-
-function stackCount(resource: SpecResourceResult | undefined): number {
-  const total = Math.floor(resource?.total ?? 0)
-  const cap = resource?.maxValue
-  return cap == null ? total : Math.min(total, Math.floor(cap))
 }
 
 export const pulchraHuntStepMechanic = makePanelBuffModule(

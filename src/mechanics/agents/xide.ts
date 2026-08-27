@@ -2,7 +2,7 @@ import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentR
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
-import { computeSpecResources, type SpecResourceResult } from '@/specs/resources'
+import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 
 /**

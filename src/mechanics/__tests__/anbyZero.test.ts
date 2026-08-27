@@ -9,7 +9,6 @@ import {
   ANBY_ZERO_CORE_DMG,
   ANBY_ZERO_RAIJITU_MOVE_ID,
   ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID,
-  ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL,
   computeAnbyZeroCycle,
   anbyZeroMechanic,
 } from '@/mechanics/agents/anbyZero'

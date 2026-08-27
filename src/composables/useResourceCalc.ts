@@ -5,28 +5,18 @@ import { estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
 import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { calcPanel, emptyPanel } from '@/core/panel'
-import { applyTargetedStat } from '@/core/buff'
 import { calcDirectDamage, calcAnomalyDamage, resolveSpecialDamageProfile } from '@/core/damage'
-import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import {
   calcTeamResources,
-  findExSpecial,
   findUltimate,
   findChainAttack,
-  findDefensiveAssist,
-  findAssistFollowUp,
-  findDodgeCounter,
-  calcBasicAttackRegenPerSec,
-  findRemielleRainbowEnd,
-  findRemielleRadiantTurn,
   ULTIMATE_COST_DEFAULT,
 } from '@/core/resource'
 import { calcStunPool } from '@/core/stunPool'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { calcStunAxis } from '@/core/stunAxis'
 import type { InStunAnomalySummary } from '@/types/resource'
-import type { StunAxis, StunAxisResult } from '@/types/resource'
+import type { StunAxis } from '@/types/resource'
 import { calcStunAxisStack, allocateAxisWindows } from '@/core/stunAxisStack'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
@@ -34,10 +24,10 @@ import { calcAnomalyPool, calcSpecialActionBonus } from '@/core/anomalyPool'
 import { distributeIntegerByWeight, getMainApplierSlot, ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/helpers'
 import { computeBossAnomalyStateTimeline, computeInStunAnomalyTimeline, attributeCountByStateChain, bossEntryAnomalyElement, type BossAnomalyStateResult, type InStunWindowInput } from '@/core/stunAxis/inStunAnomaly'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
-import { getAgentMechanic, getRegisteredAgentMechanics, type MechanicTeamMember } from '@/mechanics'
+import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, computeLiuyinHugCounts, resolveUltimateTargetSlot, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
 import { computeLuciaHealPctPerUlt } from '@/mechanics/agents/luciaElowen'
-import { computeBanyueMingwangStacks, computeBanyueInteractionTopUp, C6_ATTACH_RATIO, C6_MINGWANG_EXTRA, MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
+import { computeBanyueMingwangStacks, computeBanyueInteractionTopUp, C6_ATTACH_RATIO, MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
 import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import { computeCorinStunBonusMoves, CORIN_ADDITIONAL_DMG } from '@/mechanics/agents/corin'
 import { SIGRID_LANCE_SEGMENT_IDS, SIGRID_INFECTION_DMG } from '@/mechanics/agents/sigrid'
@@ -50,12 +40,10 @@ import type {
   StunPoolResult,
   AnomalyPoolResult,
   SpecialActionBonusResult,
-  SkillExecution,
   AnomalyEventRecord,
   AnomalyEventExecution,
-  AnomalyProgress,
 } from '@/types/resource'
-import type { PanelValues, TeammateBuff, AgentSkills, SkillMove, Agent } from '@/types/catalog'
+import type { PanelValues } from '@/types/catalog'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { fmt } from '@/utils/format'
 import * as ResourceCalcHelpers from './resourceCalc/helpers'
@@ -1591,7 +1579,6 @@ function applyNormaHatChain(
     let vivianTeamExNext = 0
     let vivianAnomalyTriggersNext = 0
     if (characters.some(c => c.agentId === '1331')) {
-      const exByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.exSpecialCount ?? 0]))
       vivianTeamExNext = rr.characters.reduce((sum, ch) => sum + (ch.exSpecialCount ?? 0), 0)
       vivianAnomalyTriggersNext = (ap1?.perElement ?? []).reduce(
         (sum, prog) => sum + (prog.triggerCount ?? 0),
@@ -1793,7 +1780,6 @@ function applyNormaHatChain(
   /** 琉音好评转大收敛后的转大次数（60+90 抱拳之和），供伤害池/影画6/倍率表消费 */
   const liuyinPromoteCount = computed(() => calcOutput.value?.promote ?? 0)
   /** 琉音好评转大收敛后的 60 抱拳次数（被替换掉的连携数） */
-  const liuyinHug60Count = computed(() => calcOutput.value?.hug60 ?? 0)
 
   /** 生效轴：条件轴方案命中后的轴（无方案时回退手动 stunAxes），供下游栈遍历/易伤分配统一消费 */
   const effectiveStunAxes = computed<StunAxis[]>(() => calcOutput.value?.resolvedAxes ?? configStore.stunAxes)
@@ -3276,9 +3262,6 @@ function applyNormaHatChain(
           qCountBySlot[String(firstOtherSlot)] = qBatches * firstPerBatch
           qCountBySlot[String(secondOtherSlot)] = qBatches * secondPerBatch
         }
-        const qCount = qBatches * 3
-        const basicCount = voidflareTotal * c6LuminizeMultiplier
-
         const actionRows = [
           {
             id: 'remielle-luminize-assist',

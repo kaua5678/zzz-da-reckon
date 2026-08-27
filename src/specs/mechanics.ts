@@ -14,7 +14,7 @@ import type {
 } from '@/types/resource'
 import { applySpecAttributeConversions } from './runtime'
 import { computeSpecResources, type SpecResourceResult } from './resources'
-import type { AgentMechanicSpec, EventSpec, ResourceRuleSpec, ResourceSpec } from './types'
+import type { AgentMechanicSpec, EventSpec, ResourceRuleSpec } from './types'
 
 export interface SpecEventCounts {
   [key: string]: number | undefined

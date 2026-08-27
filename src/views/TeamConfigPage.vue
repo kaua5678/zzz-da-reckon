@@ -778,7 +778,7 @@ import { applyTargetedStat } from '@/core/buff'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { getImageUrl } from '@/utils/image'
 import { isPctStat, phaseStatLabel } from '@/utils/statMeta'
-import type { WEngine, WEngineAdvancedStat, PanelValues, TeammateBuff, CharacterBuildRecommendation, BuffEffect, BuffGroup } from '@/types/catalog'
+import type { WEngine, WEngineAdvancedStat, PanelValues, CharacterBuildRecommendation, BuffEffect, BuffGroup } from '@/types/catalog'
 import type { CharacterConfig } from '@/stores/config'
 
 const configStore = useConfigStore()

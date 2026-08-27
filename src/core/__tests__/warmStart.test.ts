@@ -41,7 +41,7 @@ function fingerprint(rr: ReturnType<typeof calcTeamResources>) {
 }
 
 async function capturedConfig(team: Array<{ agentId: string; wEngineId?: string }>): Promise<ResourceCalcConfig> {
-  const { config: store } = await setupHarness(team)
+  await setupHarness(team)
   const calc = useResourceCalc()
   const cfg = calc.resourceConfig.value!
   expect(cfg.characters.length).toBeGreaterThan(0)

@@ -701,22 +701,6 @@ const energyRegenPerSec = computed(() => {
   return (base * pctBonus + flatBonus) * efficiency
 })
 
-const energyFullTime = computed(() => {
-  const p = props.panel
-  if (energyRegenPerSec.value <= 0) return Infinity
-  return p.energyMax / energyRegenPerSec.value
-})
-
-const flashEnergyRegenPerSec = computed(() => {
-  const p = props.panel
-  if (!p.flashEnergyRegen) return 0
-  const base = p.flashEnergyRegen
-  const pctBonus = 1 + (p.flashEnergyRegenBonusPct ?? 0) / 100
-  const flatBonus = p.flashEnergyRegenBonusFlat ?? 0
-  const efficiency = 1 + (p.flashEnergyGainEfficiency ?? 0) / 100
-  return (base * pctBonus + flatBonus) * efficiency
-})
-
 function isOtherElementSpecificField(key: string): boolean {
   const sheerMatch = key.match(/^(physical|fire|ice|electric|ether|wind|lumiflux)SheerDmg(?:__\w+)?$/)
   if (sheerMatch) return !props.damageElement || sheerMatch[1] !== props.damageElement

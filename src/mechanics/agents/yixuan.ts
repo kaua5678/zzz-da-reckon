@@ -73,7 +73,6 @@ const CLOUD_MAX_SECONDS = 2 // 凝云术满蓄时长
 const CLOUD_CYCLE_COST = 60 // 凝云术链满状态（墨烬影消 20 + 凝云满蓄 40）
 const INK2_SECONDS = 0.2 // 墨痕化形 #2（完美格挡赠送）
 const INK2_CHAIN_SECONDS = 1.083 + 1.567 // #1+#3 = 2.65s
-const INK3_CHAIN_SECONDS = INK2_CHAIN_SECONDS + 0.966 // 3.616s
 const ASHEN_SECONDS = 0.3 // 墨烬影消动作时间
 const CORE_DMG_BONUS = 60 // 核心被动 Lv.7 招式限定增伤
 const STUN_EX_BONUS = 30 // 额外能力：凝云术/墨烬影消命中失衡敌人伤害+30%
@@ -94,9 +93,6 @@ const CORE_DMG_MOVE_IDS = new Set<string>([
   C2_PO_MOVE_ID, // 强化特殊技：符法千重-破（影画2·聚墨）
 ])
 
-// 失衡强特增伤目标（额外能力·玄墨暗涌）
-const STUN_EX_MOVE_IDS = new Set<string>([MOVE.cloud, MOVE.ashen])
-
 // 影画2 减抗目标（[终结技]或[强化特殊技]）：终/强特全部行 + 符法千重-破
 const C2_RES_IGNORE_MOVE_IDS = new Set<string>([
   '1371014', '1371020', // 终结技
@@ -112,7 +108,6 @@ const BACKSTAGE_STRIKE_MOVE = '1371006' // 普通攻击：霄云劲 #5
 const PERFECT_BLOCK_FLASH = 10 // 完美格挡（墨痕化形 #2 蓄力/上挑触发）回复闪能，0.5s 最多一次
 const DODGE_FLASH = 5 // 极限闪避回复闪能，1s 最多一次
 const TEAM_ULT_FLASH = 20 // 额外能力：队友终结技回 2 闪能/s×10s = 20/次
-const C1_LIGHTNING_INTERVAL = 6 // 影画1 落雷：队伍任意角色命中，6s 最多一次
 const C1_LIGHTNING_RATIO = 50 // 影画1 落雷 50% 贯穿力伤害
 const C1_LIGHTNING_MOVE_ID = '1371_c1_lightning' // 假 id（不进失衡/异常池）
 const C1_CRIT_DMG = 20 // 影画1 进场暴击率+10%（用户口径：改为等效爆伤+20%，防暴击溢出）
@@ -120,7 +115,6 @@ const C1_SHUFA_INITIAL = 120 // 影画1 进场 +120 术法值
 
 // 极限支援换场落雷（额外能力·玄墨暗涌，用户口径）：默认次数 = 队友正常弹刀次数求和（上限），主页可录入
 const EXTREME_ASSIST_LIGHTNING_RATIO = 225 // 225% 贯穿力伤害
-const EXTREME_ASSIST_FLASH = 5 // +5 闪能/次
 const EXTREME_ASSIST_MOVE_ID = '1371_extreme_assist_lightning' // 假 id（不进失衡/异常池）
 
 // 非轴模式（用户口径：弃用自动近似，默认 0；滑块保留供用户自行调节兜底）
@@ -140,7 +134,6 @@ const C4_STUN_EX_BONUS = 30
 
 // 影画6·动静相宜：
 const C6_GIFT_INTERVAL = 30 // [调息] 30s CD 最多获得一次（封顶 floor(战斗时间/30)）
-const C6_SHEER_DMG_BONUS = 20 // [凝神]状态下贯穿伤害+20%（buff 轴窗口内）
 const DEFAULT_C6_GIFT_ULT_COUNT = -1 // 调息赠送符法千重次数：-1 = 自动取大招次数（喧响大的次数），滑块可调
 
 // 术法值驱动的符法千重实际次数（用户口径，文本框可填）：
@@ -215,7 +208,7 @@ export function computeYixuanExChain(
 export function computeYixuanNingshenBonus(
   slot: number,
   axes: { actions: { slot: number; moveId: string; count: number; startTime?: number }[] }[],
-  cinemaLevel = 0,
+  _cinemaLevel = 0,
 ): Map<string, { critDmg: number; sheerDmg: number }> {
   const triggerIds = new Set<string>(['1371014', '1371020'])
   const actions = axes

@@ -55,7 +55,7 @@ describe('版本时间线数据不变量', () => {
   })
 
   it('S 级实装节点：收录的角色都存在且不在「目录错标 S 的四星」清单里（潘引壶为用户口径特例）', async () => {
-    const h = await boot()
+    await boot()
     const catalog = useCatalogStore()
     // 历史 catalog 导入错标：妮可/苍角/露西 曾被标 S（已由 scripts/fix-agent-rarity.mjs 修为 A）。
     // 保留排除清单作为防御：即使 rarity 回归错标，时间线也不收录四星（限定金口径依赖 isLimitedAgent 的 rarity 判断）。
@@ -150,7 +150,7 @@ describe('换人判定 classifySwapUplift（上位/平替单一事实源）', ()
 
 describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
   it('节点结构 / 成员实装 ≤ 节点 / 换人事件 / 现场恢复', async () => {
-    const h = await boot()
+    await boot()
     const config = useConfigStore()
     const calc = useResourceCalc()
     const originalTeam = JSON.stringify(config.team)

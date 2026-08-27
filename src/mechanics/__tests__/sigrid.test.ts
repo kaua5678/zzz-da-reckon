@@ -6,7 +6,6 @@ import { useConfigStore } from '@/stores/config'
 import {
   SIGRID_CHUQIANG_MOVE_IDS,
   SIGRID_LANCE_SEGMENT_IDS,
-  SIGRID_C6_LAST_HIT_RATIOS,
   sigridMechanic,
   splitLanceRotation,
   countBasicFinisherHits,

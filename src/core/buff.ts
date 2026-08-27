@@ -38,14 +38,6 @@ function targetedStatKey(stat: string, target?: string): string {
   return normalized === 'all' ? stat : `${stat}__${normalized}`
 }
 
-function skillDmgBonusKey(target?: string): string {
-  return targetedStatKey('skillDmgBonus', target)
-}
-
-function stunBuildUpBonusKey(target?: string): string {
-  return targetedStatKey('stunBuildUpBonus', target)
-}
-
 const TARGETABLE_STATS = new Set([
   'skillDmgBonus',
   'stunBuildUpBonus',

@@ -29,7 +29,6 @@ import type {
   AgentResourceSectionsInput,
   ReleaseModifierInput,
 } from '../types'
-import type { MechanicSetting } from '@/types/resource'
 
 export const VIVIAN_ID = '1331'
 export const VIVIAN_XUANLUO_MOVE_ID = '1331006'

@@ -15,7 +15,7 @@
 import type {
   Agent, WEngine, DriveDiscSet, PanelValues,
   DriveDiscConfig, TeammateBuff, BuffEffect,
-  StatId, StatRules,
+  StatRules,
 } from '@/types/catalog'
 import { calcPanel } from './panel'
 import type { SourcePanelsByOwner } from './buff'
@@ -276,11 +276,6 @@ function decomposeEffect(effect: BuffEffect): SetBonusDecomposition {
 
   // 其他属性（影响防御/抗性减益等）→ 暂不折算，记录为乘区
   // 如 enemyDefReduction、enemyResReduction 等间接影响伤害的属性
-  const indirectStats = new Set([
-    'enemyDefReduction', 'enemyDefFlatReduction',
-    'enemyResReduction', 'enemyAnomalyResReduction',
-    ...Array.from(MULTIPLIER_STATS),
-  ])
 
   return result
 }
@@ -481,7 +476,7 @@ interface AtkTransferConfig {
 function computeAtkTeamBenefit(
   remielleATK: number,
   baseATK: number,
-  atkPctVal: number,
+  _atkPctVal: number,
   stepTable: Record<string, number>,
   teammates: TeammateInfo[],
   transfer: AtkTransferConfig,
@@ -550,7 +545,6 @@ function greedyAllocate(
 
   for (let step = 0; step < totalSteps; step++) {
     let bestStat = ''
-    let bestScore = -Infinity
     let bestGain = 0
 
     const baseScore = computeExpectedScore(basePanel, allocation, setBonus, template, subStep)
@@ -573,7 +567,6 @@ function greedyAllocate(
 
       const gain = score - baseScore
       if (gain > bestGain) {
-        bestScore = score
         bestGain = gain
         bestStat = stat
       }

@@ -289,7 +289,6 @@ const useAxes = computed({
   },
 })
 const matchedPresets = computed(() => matchStunAxisPresets(configStore.team.map(c => c.agentId)))
-const stunTime = computed(() => configStore.enemy.stunTime ?? 12)
 // 失衡窗口时长 = stunTime + 连携窗口(4) + 全队失衡延时（琉音+2、般岳C1+2 等），与引擎同口径
 const maxDur = computed(() => windowDuration.value)
 const ticks = computed(() => { const t: number[] = []; for (let i = 0; i <= maxDur.value; i += 2) t.push(i); return t })
@@ -526,7 +525,6 @@ function anomalyTagsFor(ai: number, aii: number): Array<{ text: string; cls: str
   if (!st || wi < 0 || !axis) return []
   const mid = axis.actions[aii]?.moveId
   if (!mid) return []
-  const wd = maxDur.value
   const out: Array<{ text: string; cls: string }> = []
   if ((axis.entryAnomaly ?? 0) > 0 && aii === 0) {
     const el = BOSS_ENTRY_ANOMALY_OPTIONS.find(o => o.value === axis.entryAnomaly)?.element
@@ -863,16 +861,6 @@ function moveAction(ai: number, aii: number, dir: -1 | 1) {
 function agentName(s: number) {
   const c = configStore.team[s]; if (!c?.agentId) return `槽${s+1}`
   return catalogStore.getAgent(c.agentId)?.name?.zhCN?.slice(0, 5) || `槽${s+1}`
-}
-function axisStun(ai: number): number {
-  const contribs = stunPoolResult.value?.contributions ?? []; let total = 0
-  const axis = axes.value[ai]; if (!axis) return 0
-  for (const act of axis.actions) {
-    const hits = contribs.filter(c => c.moveId === act.moveId || (act.moveId === 'basic' && c.moveId === 'basic_attack'))
-    const perHit = hits.length > 0 ? hits.reduce((s, c) => s + c.totalStun, 0) / hits.reduce((s, c) => s + c.count, 0) : 0
-    total += perHit * act.count * axisTimes(ai)
-  }
-  return total
 }
 </script>
 

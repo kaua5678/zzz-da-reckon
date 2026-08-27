@@ -11,12 +11,9 @@
  */
 import type {
   ResourceCalcConfig, CharacterOperationConfig,
-  TeamResourceResult, CharacterResourceResult,
   EnergySource, CrossAgentEnergy, DecibelSource, TimeAllocation,
   SkillExecution, IterationState, AnomalyEventExecution,
 } from '@/types/resource'
-import type { PanelValues } from '@/types/catalog'
-import { fmt } from '@/utils/format'
 import { getAgentMechanic } from '@/mechanics'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueCycleFromCfg, readAxisExCounts } from '@/mechanics/agents/banyue'
@@ -494,7 +491,7 @@ export function calcDecibelSource(
 
 /** 计算单角色时间分配 */
 export function calcTimeAllocation(
-  cfg: CharacterOperationConfig,
+  _cfg: CharacterOperationConfig,
   state: IterationState,
   totalTime: number,
 ): TimeAllocation {

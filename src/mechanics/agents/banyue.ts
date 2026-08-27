@@ -468,7 +468,7 @@ function applyBanyuePanel({ panel, cinemaLevel, settings }: AgentPanelInput): vo
   }
 }
 
-function buildBanyueExecutions({ cfg, state, executions }: AgentResourceInput): void {
+function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = Math.max(0, Math.floor(Number(record.banyueCinemaLevel ?? 0)))
   const axisEx = readAxisExCounts(cfg)
@@ -650,7 +650,7 @@ function patchBanyueExecutions({ cfg, executions }: AgentResourceInput): void {
   }
 }
 
-function buildBanyueResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+function buildBanyueResourceResult({ cfg, state: _state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   return {
     banyueRageCycle: computeBanyueCycleFromCfg(cfg),
     // 轴模式自动补齐量（useResourceCalc 注入 cfg.banyueInteractionTopUp，保底语义）
@@ -814,7 +814,7 @@ export const banyueMechanic: AgentMechanicModule = {
   description: '嗔火→怒相循环（山威免费连段）、怒相增益、影画4/6 moveId 级增伤与倾山附伤。',
   applyPanel: applyBanyuePanel,
   buildCharConfig: buildBanyueCharConfig,
-  estimateExSpecialTime: ({ cfg, exSpecialCount, ultimateCount }) => {
+  estimateExSpecialTime: ({ cfg, exSpecialCount: _exSpecialCount, ultimateCount: _ultimateCount }) => {
     const record = cfg as unknown as Record<string, unknown>
     const axisEx = readAxisExCounts(cfg)
     const cycle = computeBanyueCycleFromCfg(cfg)

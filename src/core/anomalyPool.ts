@@ -1,15 +1,12 @@
-import type { PanelValues } from '@/types/catalog'
 import type {
   AnomalyPoolResult, AnomalyProgress, AnomalyContribution,
-  AnomalyCoverageResult, AnomalyEventRecord,
-  DisorderDamageResult, DisorderDamageDetail,
-  TurbulenceDamageResult, TurbulenceDamageDetail,
-  DisorderFormula, TurbulenceFormula, VelinaCorrosionSource,
+  AnomalyEventRecord,
+  DisorderDamageResult,
+  TurbulenceDamageResult,
+  VelinaCorrosionSource,
   StandardDotDamageResult,
   AliceCoweringDotResult,
 } from '@/types/resource'
-import { fmt } from '@/utils/format'
-import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
 import { simulateVelinaCorrosionState } from '@/mechanics/agents/velina'
 
 // ============ 喧响奖励常量 ============
@@ -17,7 +14,7 @@ import { simulateVelinaCorrosionState } from '@/mechanics/agents/velina'
 import * as AnomalyPoolHelpers from './anomalyPool/helpers'
 import type { AnomalyPoolInput, DamageCalcConfig } from './anomalyPool/helpers'
 export type { AnomalySkillExecution, AnomalyPoolInput, AliceCoweringConfig } from './anomalyPool/helpers'
-const { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, TURBULENCE_CD_SECONDS, getBaseElement, BUILDUP_CAP_TABLE, ANOMALY_DURATION, DISORDER_FORMULAS, TURBULENCE_FORMULAS, STANDARD_DOT_CONFIG, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyDecibelBonus, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcStandardDotDamage, calcAliceCoweringDot } = AnomalyPoolHelpers
+const { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, TURBULENCE_CD_SECONDS, getBaseElement, ANOMALY_DURATION, STANDARD_DOT_CONFIG, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyDecibelBonus, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcStandardDotDamage, calcAliceCoweringDot } = AnomalyPoolHelpers
 export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   const {
     executions,

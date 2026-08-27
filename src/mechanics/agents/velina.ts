@@ -12,7 +12,7 @@ import type {
   MechanicTeamMember,
   ReleaseModifierInput,
 } from '../types'
-import type { Agent, AgentSkills, PanelValues, SkillMove } from '@/types/catalog'
+import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
 import type {
   CharacterOperationConfig,
   IterationState,
@@ -47,12 +47,6 @@ function findMoveByEnglishName(skills: AgentSkills | undefined, englishName: str
   return null
 }
 
-function getRowValue(move: SkillMove | null | undefined, rowId: string): number {
-  if (!move) return 0
-  const row = move.rows.find(r => r.id === rowId)
-  return row?.values[0] ?? 0
-}
-
 function isAdditionalAbilityActive(team: MechanicTeamMember[], slot: number, agent: Agent): boolean {
   return team.some(member => {
     if (member.slot === slot || !member.agent) return false
@@ -60,7 +54,7 @@ function isAdditionalAbilityActive(team: MechanicTeamMember[], slot: number, age
   })
 }
 
-function velinaColorElement(team: MechanicTeamMember[], slot: number): string {
+function velinaColorElement(team: MechanicTeamMember[], _slot: number): string {
   return team
     .map(member => member.agent?.damageElement ?? '')
     .find(element => element && element !== 'wind') || 'wind'

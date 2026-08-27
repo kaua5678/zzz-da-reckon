@@ -91,7 +91,6 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeBreakerCompare, type BreakerBreakdown } from '@/composables/breakerCompare'
 import type { BossPreset } from '@/types/bossPreset'
-import type { TeamPreset } from '@/types/teamPreset'
 
 interface BossPresetFile {
   bosses: BossPreset[]

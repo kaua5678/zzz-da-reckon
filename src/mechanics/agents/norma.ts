@@ -34,7 +34,6 @@ const PEN_TO_ATK_PER_POINT = 1.25
 const PEN_TO_ATK_CAP = 1200
 
 // —— 嗯呢弹幕 ——
-const BARRAGE_DURATION_SECONDS = 32
 const BARRAGE_TEAM_DMG_BONUS = 20
 const TOWER_AUTO_SHOT_INTERVAL = 3 // 炮塔普通自动射击间隔（秒）
 const BOOSTED_SHOT_INTERVAL = 2 // 火力实验导弹舱期间强化自动射击间隔（秒）
@@ -53,8 +52,6 @@ const BARRAGE_MOVES = [...BARRAGE_BASE_MOVES, ...BARRAGE_EXTEND_MOVES]
 const TARGET_PRACTICE_MOVE = '1571013' // 炮塔自动攻击（打靶练习）
 const ARMOR_PIERCE_MOVE = '1571014' // 火力实验破甲弹头（未失衡）
 const HIGH_EXPLOSIVE_MOVE = '1571015' // 火力实验高爆弹头（失衡）
-const CHAIN_MOVE = '1571018' // 诺姆本人连携技（帽子把戏赠送的是上一位队友的连携，见 useResourceCalc.applyNormaHatChain，本模块不 push）
-const QUICK_ASSIST_MOVE = '1571020'
 
 // —— 技术鸿沟 ——
 const TECH_GAP_STUN_EASY_PER_STACK = 3
@@ -67,7 +64,6 @@ const C1_RES_REDUCTION = 15
 const C2_STUN_EASY_PER_STACK = 6
 const C2_ENERGY_PER_TRIGGER = 25 // 影画2：帽子把戏回 25 能量
 const C2_TRIGGER_INTERVAL = 20 // 影画2：20 秒冷却，按战斗时间触发
-const C4_CHAIN_DECIBEL_REWARD = 200
 const C6_MISSILE_COUNT_PER_STUN = 8 // 6秒 / 0.75秒 ≈ 8 发
 const C6_MISSILE_RATIO = 200
 const C6_MISSILE_COOLDOWN = 30
@@ -205,7 +201,7 @@ function computeNormaSource(input: NormaSourceInput): NormaMechanicSource {
   }
 }
 
-function applyNormaPanel({ slot, team, panel }: AgentPanelInput): void {
+function applyNormaPanel({ slot: _slot, team: _team, panel }: AgentPanelInput): void {
   // 核心被动：暴击>50% → 暴伤（每1% +1.7，cap 85）
   const critRate = panel.critRate ?? 0
   const over = Math.max(0, critRate - 50)
@@ -563,7 +559,7 @@ const settings: MechanicSetting[] = [
  * hatCount = floor(膛温/80)。C4 喧响 = hatCount × 200 × 2 由调用方按命座折算。
  */
 export function computeNormaHatToChainCount(
-  cfg: { normaCinemaLevel?: number; normaBattleTime?: number },
+  _cfg: { normaCinemaLevel?: number; normaBattleTime?: number },
   prev: { exSpecialCount: number; ultimateCount: number; frontlineTime: number; battleTime?: number },
   holdSeconds = 2,
 ): number {

@@ -61,10 +61,6 @@ export interface PromiaCycle {
   note: string
 }
 
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
-}
-
 function whole(value: number): number {
   return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }

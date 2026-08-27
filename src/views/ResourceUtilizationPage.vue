@@ -310,14 +310,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, ref } from 'vue'
 import ImpactChart from '@/components/ImpactChart.vue'
 import MarginalUtilityCard from '@/components/MarginalUtilityCard.vue'
 import { NButton, NCard, NInputNumber, NSelect } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { analyzeCinemaUplift, type CinemaUpliftRow } from '@/composables/cinemaUplift'
 import { fmt } from '@/utils/format'
 import { getAgentMechanic } from '@/mechanics'

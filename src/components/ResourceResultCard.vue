@@ -430,12 +430,6 @@ const actionOperationRows = computed<ActionOperationRow[]>(() => {
   return rows
 })
 
-const actionOperationTime = computed(() => {
-  return actionOperationRows.value
-    .filter(row => row.key !== 'basic')
-    .reduce((sum, row) => sum + row.operationTime, 0)
-})
-
 const timeChartRows = computed(() => {
   const rows = actionOperationRows.value.map(row => ({
     key: row.key,

@@ -1,5 +1,5 @@
 import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput } from '../types'
-import type { CharacterResourceResult, IterationState, MechanicSetting, SkillExecution } from '@/types/resource'
+import type { CharacterResourceResult, MechanicSetting, SkillExecution } from '@/types/resource'
 import type { LuciaMechanicSource } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
 import { fmt } from '@/utils/format'
@@ -37,7 +37,6 @@ const HEAL_RATE_PCT_BASE = 1 // 每秒回血 = 1% + 0.05%×终结技等级（爬
 const HEAL_RATE_PCT_PER_LEVEL = 0.05
 const DEFAULT_HEALING_COVERAGE = 0.5 // 队友不一定全程站在回血圈内
 const CURTAIN_CD_SECONDS = 15 // 4命触发 15s CD
-const C4_TEAM_DECIBEL_PER_TRIGGER = 100 // 4命每次开启/延长全队每人 +100 喧响
 
 export interface LuciaDreamPlan {
   dreamExSpecialCount: number

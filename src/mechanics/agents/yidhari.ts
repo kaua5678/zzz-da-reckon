@@ -7,7 +7,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
-import type { CharacterOperationConfig, CharacterResourceResult, IterationState, YidhariHpSource, YidhariLoopMove } from '@/types/resource'
+import type { CharacterResourceResult, IterationState, YidhariHpSource, YidhariLoopMove } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { fmt } from '@/utils/format'

@@ -102,11 +102,10 @@ import { getAgentMechanic } from '@/mechanics'
 import type { MechanicSetting } from '@/types/resource'
 import { computeOptimalSubStats, getTemplate } from '@/core/substatOptimizer'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
-import { calcPanel } from '@/core/panel'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
-const { teamTotalDamage, damagePoolRows, resourceResult, anomalyPoolResult } = useResourceCalc()
+const { teamTotalDamage, damagePoolRows, anomalyPoolResult } = useResourceCalc()
 
 const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 const optimizePerPoint = ref(false)

@@ -84,7 +84,7 @@ function buildSethCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput):
   record.sethAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
 }
 
-function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): SethCycle {
+function cycleFromInput({ cfg, state: _state }: Pick<AgentResourceInput, 'cfg' | 'state'>): SethCycle {
   const record = cfg as unknown as Record<string, unknown>
   return computeSethCycle({
     cinemaLevel: Number(record.sethCinemaLevel ?? 0),

@@ -8,8 +8,6 @@ import {
   TRIGGER_ADDITIONAL_MOVE_IDS,
   TRIGGER_C4_DAMAGE_MULTIPLIER,
   TRIGGER_C4_DAZE_MULTIPLIER,
-  TRIGGER_C6_DAMAGE_MULTIPLIER,
-  TRIGGER_C6_DMG_BONUS,
   TRIGGER_COORDINATED_MOVE_ID,
   TRIGGER_DUANLI_MOVE_ID,
   computeTriggerCycle,
@@ -256,7 +254,7 @@ describe('「扳机」执行计划与失衡池', () => {
 
 describe('「扳机」完整计算链', () => {
   it('协奏狙杀行进资源池并被倍率表回填，失衡池出现其失衡贡献', async () => {
-    const { catalog, config } = await setup('1081', 0)
+    await setup('1081', 0)
     const calc = useResourceCalc()
     const trigger = calc.resourceResult.value!.characters.find(row => row.agentId === '1361')!
     const coordinated = trigger.executions.find(row => row.moveId === TRIGGER_COORDINATED_MOVE_ID)

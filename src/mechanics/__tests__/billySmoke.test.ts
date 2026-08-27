@@ -8,7 +8,7 @@ const biliLiuAxisText = readFileSync(new URL('../../../src/data/stunAxisPresets/
 describe('星徽·比利全管线冒烟（1531）', () => {
   it('EX 链/决意/星辉/煊赫星辉在资源池中正常产出', async () => {
     // 队伍：星徽·比利(6命) + 青衣(击破，触发额外能力) + 赛斯(防护)
-    const { config } = await setupHarness([
+    await setupHarness([
       { agentId: '1531', cinemaLevel: 6 },
       { agentId: '1251' },
       { agentId: '1271' },
@@ -168,7 +168,7 @@ describe('星徽·比利全管线冒烟（1531）', () => {
   })
 
   it('章鱼+比利双主C弱队：比琉预设不匹配，章鱼体系通配接管（用户口径：不精细服务弱队组合）', async () => {
-    const { config } = await setupHarness([
+    await setupHarness([
       { agentId: '1051' },
       { agentId: '1531' },
       { agentId: '1481' },
@@ -181,7 +181,7 @@ describe('星徽·比利全管线冒烟（1531）', () => {
   })
 
   it('非命破队友与 0 命比利也能正常计算', async () => {
-    const { config } = await setupHarness([
+    await setupHarness([
       { agentId: '1531' },
       { agentId: '1251' },
       { agentId: '1271' },

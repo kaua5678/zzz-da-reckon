@@ -12,15 +12,11 @@
  *     → TeamResourceResult (结果)
  *     → calcStunPool / calcAnomalyPool (失衡池 + 积蓄池)
  */
-import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { calcPanel, emptyPanel } from '@/core/panel'
-import { applyTargetedStat } from '@/core/buff'
-import { calcDirectDamage, calcAnomalyDamage } from '@/core/damage'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import {
-  calcTeamResources,
   findExSpecial,
   findUltimate,
   findChainAttack,
@@ -32,22 +28,15 @@ import {
   findRemielleRadiantTurn,
   ULTIMATE_COST_DEFAULT,
 } from '@/core/resource'
-import { calcStunPool } from '@/core/stunPool'
 import type { StunSkillExecution } from '@/core/stunPool'
-import { calcAnomalyPool, calcSpecialActionBonus } from '@/core/anomalyPool'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
-import { getAgentMechanic, getRegisteredAgentMechanics, getRegisteredMechanicSettings, type AgentTeamPhase, type MechanicTeamMember } from '@/mechanics'
+import { getAgentMechanic, getRegisteredMechanicSettings, type AgentTeamPhase, type MechanicTeamMember } from '@/mechanics'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import type {
   CharacterOperationConfig,
-  ResourceCalcConfig,
   TeamResourceResult,
-  StunPoolResult,
-  AnomalyPoolResult,
-  SpecialActionBonusResult,
   SkillExecution,
-  AnomalyEventRecord,
   AnomalyProgress,
 } from '@/types/resource'
 import type { PanelValues, TeammateBuff, AgentSkills, SkillMove, Agent } from '@/types/catalog'
@@ -549,7 +538,6 @@ export function computePanelPhases(
     // 帷幕易伤 = min(最终易伤, 2.1 或 3.0)。最终易伤 = boss.stunVuln + bonus/100。
     // 用 always 通道 + cap：bonusAlways 把基础易伤抬到目标，cap 卡住上限。
     // 在 damage 池对白毛招 stunOverride=1 时生效；非白毛招仍按全局覆盖率。
-    const bossVuln = configStore.enemy.stunVuln ?? 1.5 // 倍率，如 1.5 = +50%
     const capMult = cinema >= 4 ? 3.0 : 2.1
     // always 加成（百分点）= (cap - 1)*100，再设 capAlways=同一值，使 fullMult = min(boss+bonus, 1+cap/100)
     // 期望 fullMult = min(bossVuln, capMult)。calcStunMultiplier: base + bonus/100，cap 限制 bonus。

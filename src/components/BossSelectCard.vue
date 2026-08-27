@@ -130,10 +130,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NSpace, NSelect, NButton, NTag, NCollapse, NCollapseItem } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
-import { fmt, compact } from '@/utils/format'
 import BossCard from './BossCard.vue'
 import type { BossPreset, BossPresetFile, BossPresetPhase, PhaseBossBrief, PhaseBuffEffect, PhaseView } from '@/types/bossPreset'
 
@@ -146,7 +145,6 @@ const phaseViews = ref<PhaseView[]>([])
 const selectedMajor = ref('')
 const selectedMinor = ref('')
 const selectedPhaseId = ref('')
-const iconFailed = reactive(new Set<string>())
 
 onMounted(async () => {
   try {

@@ -42,7 +42,7 @@ describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/�
   }
 
   it('膛温完整模型：进场+60 + 接战×1.5 + 弹幕×16/次 + 长按×8/s×次数 + 终结×30 → 帽子把戏 = floor(膛温/80)', async () => {
-    const { config } = await setup(0)
+    await setup(0)
     const calc = useResourceCalc()
     const norma = calc.resourceResult.value!.characters.find(c => c.agentId === '1571')!
     const src = norma.normaMechanicSource!
@@ -59,7 +59,7 @@ describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/�
   })
 
   it('嗯呢弹幕执行：点射×次数 + 破甲/高爆按失衡占比拆 + 延长行；炮塔全程 3s 间隔', async () => {
-    const { config } = await setup(0)
+    await setup(0)
     const calc = useResourceCalc()
     const norma = calc.resourceResult.value!.characters.find(c => c.agentId === '1571')!
     expect(norma.exSpecialCount).toBeGreaterThan(0)
@@ -74,7 +74,7 @@ describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/�
   })
 
   it('火力实验导弹舱：失衡+膛温换连携次数 × 8s（C1 12s），失衡内高爆/超出破甲', async () => {
-    const { config } = await setup(1)
+    await setup(1)
     const calc = useResourceCalc()
     const norma = calc.resourceResult.value!.characters.find(c => c.agentId === '1571')!
     const src = norma.normaMechanicSource!
@@ -196,7 +196,7 @@ describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/�
   })
 
   it('膛温接战按整局时间（帽子后场同速积蓄）：180×1.5=270，赠送连携 ≥4 次', async () => {
-    const { config } = await setup(0)
+    await setup(0)
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 50))
     const norma = calc.resourceResult.value!.characters.find(c => c.agentId === '1571')!

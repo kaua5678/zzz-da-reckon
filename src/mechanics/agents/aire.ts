@@ -176,9 +176,6 @@ function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInp
     pitchCount = Math.floor(cheerEnergy / 2) + cheerGain
   }
   if (pitchCount <= 0) return
-  const delusionCoverage = totalTime > 0
-    ? Math.min(1, (state.ultimateCount * AIRE_DELUSION_DURATION) / totalTime)
-    : 0
   events.push({
     eventId: 'aire_absolute_pitch_release',
     eventName: '绝对音准·异放',

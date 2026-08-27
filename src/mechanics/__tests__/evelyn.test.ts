@@ -10,7 +10,6 @@ import {
   EVELYN_CORE_CRIT_RATE,
   EVELYN_GARROTE_1_MOVE_ID,
   EVELYN_GARROTE_2_MOVE_ID,
-  EVELYN_MULTIPLIER,
   EVELYN_ULT_MOVE_ID,
   computeEvelynCycle,
   evelynMechanic,

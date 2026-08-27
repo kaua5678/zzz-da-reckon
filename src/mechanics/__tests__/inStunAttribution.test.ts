@@ -437,7 +437,7 @@ describe('逐条目边界注入（v2.7 中间态口径）', () => {
 
 describe('南宫羽快支动作块（v2.9）', () => {
   it('非轴模式：1511013 以 count 0 灰块存在（不进伤害/时间预算，零基线影响）', async () => {
-    const { config } = await setupHarness([{ agentId: '1511' }])
+    await setupHarness([{ agentId: '1511' }])
     const calc = useResourceCalc()
     const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1511')!
     const qa = char.executions.find(e => e.moveId === '1511013')

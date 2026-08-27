@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
-import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeYidhariHpSource, yidhariMechanic } from '@/mechanics/agents/yidhari'
 import { setupHarness } from '@/test/harness'
 

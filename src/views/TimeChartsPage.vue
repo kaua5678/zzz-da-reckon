@@ -700,7 +700,7 @@ import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 
-const configStore = useConfigStore()
+useConfigStore()
 const catalogStore = useCatalogStore()
 const calc = useResourceCalc()
 

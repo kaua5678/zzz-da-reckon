@@ -62,7 +62,7 @@ describe('actionTime 数据质量护栏', () => {
       '1031304': 0.36,   '1031305': 0.54,   // 妮可 特制以太榴弹 #1/#2：奖励 200/300
       '1301015': 0.27,   '1301016': 0.18,   // 奥菲丝 与火共舞 #1/#2：奖励 300/200
     }
-    for (const [aid, , m] of moves) {
+    for (const [, , m] of moves) {
       if (overrides[m.id] != null) {
         expect(m.actionTime, `${m.id} ${m.name?.zhCN}`).toBe(overrides[m.id])
       }

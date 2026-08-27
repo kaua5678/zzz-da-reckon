@@ -4,7 +4,7 @@
  * - 影画2 的 0.25 锐能/毁伤近似（C2）保持行为；
  * - C6 全管线伤害 > C0（对齐 allAgentsSweep 的命座有效性不变量，定位到本角色）。
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeClaretSharpResource } from '@/mechanics/agents/claret'

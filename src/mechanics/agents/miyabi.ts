@@ -1,5 +1,4 @@
 import type {
-  AgentAnomalyTransformInput,
   AgentCharConfigInput,
   AgentDamageResolutionInput,
   AgentMechanicModule,
@@ -10,7 +9,7 @@ import type {
   AgentSkillTransformInput,
   MechanicTeamMember,
 } from '../types'
-import type { Agent, AgentSkills, PanelValues, SkillMove } from '@/types/catalog'
+import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
 import type {
   CharacterOperationConfig,
   IterationState,
@@ -31,8 +30,6 @@ const MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE = 0
 const FROST_MOON_ACTION_TIME = 3.434
 /** 霜月架势三段消耗落霜 */
 const FROST_MOON_COST = 6
-/** 落霜上限 */
-const FROST_FALL_MAX = 6
 /** 冰焰积蓄效率 = 暴击率×100%，上限80% */
 const ICE_FLAME_BUILDUP_MAX = 80
 /** 额外能力：霜月伤害+60% */
@@ -41,9 +38,6 @@ const FROST_MOON_DMG_BONUS = 60
 const FROST_MOON_ICE_RES_IGNORE = 30
 /** 霜灼·破倍率（Lv.7 最高，毕业终局战斗） */
 const FROSTBURN_BREAK_MULTIPLIER = 1500
-/** C1：每消耗1落霜无视6%防御（最多6层=36%） */
-const C1_DEF_IGNORE_PER_STACK = 6
-const C1_DEF_IGNORE_MAX = 36
 /** C2：暴击率+15% */
 const C2_CRIT_RATE = 15
 /** C2：风花/闪避反击伤害+30% */
@@ -72,12 +66,6 @@ function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMov
     if (move) return move
   }
   return null
-}
-
-function getRowValue(move: SkillMove | null | undefined, rowId: string): number {
-  if (!move) return 0
-  const row = move.rows.find(r => r.id === rowId)
-  return row?.values[0] ?? 0
 }
 
 /** 额外能力：队伍中存在「支援」或同阵营或「异常」角色 */
@@ -149,7 +137,7 @@ function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelI
 
 // ============ buildCharConfig ============
 
-function buildMiyabiCharConfig({ skills, cfg, panel, cinemaLevel }: AgentCharConfigInput): void {
+function buildMiyabiCharConfig({ skills: _skills, cfg, panel, cinemaLevel }: AgentCharConfigInput): void {
   cfg.miyabiEnabled = true
   cfg.miyabiFrostMoonMoveId = FROST_MOON_MOVE_ID
   cfg.miyabiFrostMoonCount = FROST_MOON_COST
@@ -274,7 +262,7 @@ function transformMiyabiSkillExecutions(input: AgentSkillTransformInput): void {
     skills,
     charResult,
     panel,
-    cinemaLevel,
+    cinemaLevel: _cinemaLevel,
     team,
     dazeCoef,
     stunExecs,
@@ -282,7 +270,6 @@ function transformMiyabiSkillExecutions(input: AgentSkillTransformInput): void {
     getRowValue,
     normalizeResourceSkillType,
   } = input
-  const fallbackElement = agent?.damageElement
   const aa = agent ? isAdditionalAbilityActive(team, slot, agent) : false
   const iceResIgnore = aa ? FROST_MOON_ICE_RES_IGNORE : 0
 
@@ -297,7 +284,6 @@ function transformMiyabiSkillExecutions(input: AgentSkillTransformInput): void {
     const daze = getRowValue(foundMove, 'daze')
     const anomaly = getRowValue(foundMove, 'anomaly_buildup')
     const moveName = exec.moveName.replace(/（.*）/g, '').trim()
-    const isFrostMoon = foundMove.id === FROST_MOON_MOVE_ID
     // 雅的所有招式积蓄/失衡都归为烈霜（独立元素）
     const element = FROSTFIRE
 
@@ -343,7 +329,6 @@ if (anomaly > 0 && count > 0) {
     const specResources = charResult.specResources
     const frostFall = specResources?.['miyabi_frost_fall'] as { total?: number } | undefined
     if (frostFall?.total) {
-      const frostMoonCount = Math.max(0, Math.floor(frostFall.total / FROST_MOON_COST))
       // 读取紊乱次数（从 specResources 的 disorderCount gain 反推，或从state）
       // 用落霜资源中的紊乱获取量反推
       // 这里简化：只要有ap active和落霜，就给冰抗无视

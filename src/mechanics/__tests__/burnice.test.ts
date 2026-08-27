@@ -164,7 +164,7 @@ describe('柏妮思面板与执行计划', () => {
   })
 
   it('buildCharConfig 关闭通用强特提取并从倍率表回填四行数值', async () => {
-    const { catalog, config } = await setup()
+    const { catalog } = await setup()
     const skills = catalog.getAgentSkills('1171')
     const cfg: any = {}
     burniceMechanic.buildCharConfig!({ skills, cinemaLevel: 0, cfg } as any)

@@ -189,7 +189,7 @@ import { useLogicEditorStore } from '@/stores/logicEditor'
 import { logicEditorStateToSpecs } from '@/logicEditor/toSpec'
 import { STAT_META } from '@/utils/statMeta'
 import type { LogicObject, ObjectNature, RowFusionRule } from '@/logicEditor/types'
-import type { AgentSkills, SkillMove } from '@/types/catalog'
+import type { SkillMove } from '@/types/catalog'
 
 const catalogStore = useCatalogStore()
 const logicStore = useLogicEditorStore()

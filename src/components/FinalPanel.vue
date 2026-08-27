@@ -130,7 +130,6 @@ const HP_PCT_STATS = new Set(['hpPct', 'inCombatHpPct'])
 const HP_FLAT_STATS = new Set(['hpFlat', 'inCombatHpFlat'])
 
 interface FinalRow { stat: string; label: string; out: string; in: string; delta: number; deltaText: string }
-interface FinalGroup { title: string; name: string; rows: FinalRow[] }
 interface ZoneSummary { title: string; main: string; lines: string[] }
 interface HpSourceRow { key: string; source: string; item: string; stat: string; value: string; num: number; phase: 'in' | 'out' }
 

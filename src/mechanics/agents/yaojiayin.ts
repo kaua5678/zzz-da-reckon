@@ -28,7 +28,6 @@ import type {
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
-import { fmt } from '@/utils/format'
 
 export const YAOJIAYIN_ID = '1311'
 
@@ -146,11 +145,6 @@ function rowVal(move: SkillMove | null | undefined, rowId: string): number {
   const vals = row?.values ?? []
   if (!vals.length) return 0
   return Number(vals[11] ?? vals[vals.length - 1] ?? 0) || 0
-}
-
-function cfgNum(cfg: CharacterOperationConfig, key: string, fallback = 0): number {
-  const raw = Number((cfg as unknown as Record<string, unknown>)[key] ?? fallback)
-  return Number.isFinite(raw) ? raw : fallback
 }
 
 function pushExec(

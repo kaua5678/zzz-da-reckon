@@ -82,7 +82,7 @@ function isAdditionalAbilityActive(team: MechanicTeamMember[], slot: number): bo
 
 // ============ applyPanel ============
 
-function applyAlicePanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelInput): void {
+function applyAlicePanel({ slot, agent: _agent, cinemaLevel, team, panel }: AgentPanelInput): void {
   const aa = isAdditionalAbilityActive(team, slot)
   panel.aliceEnabled = 1
   panel.aliceAdditionalAbilityActive = aa ? 1 : 0
@@ -155,7 +155,7 @@ function findExSpecialSwordWill(skills: AgentSkills): number {
 
 function buildAliceCharConfig({
   slot,
-  agent,
+  agent: _agent,
   skills,
   cinemaLevel,
   team,

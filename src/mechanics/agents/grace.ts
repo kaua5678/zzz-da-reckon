@@ -32,10 +32,6 @@ import { specToMechanicModule } from '@/specs/mechanics'
  */
 
 const GRACE_AGENT_ID = '1181'
-const A1_MOVE_ID = '1181001'
-const A2_MOVE_ID = '1181002'
-const A3_MOVE_ID = '1181003'
-const A4_MOVE_ID = '1181004'
 /** 动作时间取 catalog（A1+A2+A3 = 1.183s ≈ 口供实测 1.1827；A4 = 1.134 ≈ 口供 1.1335） */
 const A1_TIME = 0.171
 const A2_TIME = 0.33
@@ -43,9 +39,7 @@ const A3_TIME = 0.682
 const A4_TIME = 1.134
 const SP_MOVE_ID = '1181005'
 const EX_MOVE_ID = '1181006'
-const SP_BUILDUP = 70.03
 const SP_TIME = 0.2
-const EX_BUILDUP = 143.34
 const EX_TIME = 0.342
 /** 强特附带[涡流集束手雷]（电能满层额外投掷）：1181020 表值 175.5，at=0 */
 const VORTEX_MOVE_ID = '1181020'
@@ -186,7 +180,7 @@ function graceRow(moveId: string, name: string, count: number, actionTime: numbe
 
 
 
-function buildGraceResourceSections(input: AgentResourceSectionsInput) {
+function buildGraceResourceSections(_input: AgentResourceSectionsInput) {
   return [] // 专属资源卡暂无（电能计划体现在执行行 note）
 }
 

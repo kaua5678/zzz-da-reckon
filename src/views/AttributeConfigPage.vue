@@ -257,7 +257,7 @@
                       </div>
                       <div class="buff-item-effects">
                         <span
-                          v-for="(effect, idx) in buff.effects"
+                          v-for="effect in buff.effects"
                           :key="effect.id"
                           class="effect-tag"
                         >
@@ -433,46 +433,6 @@ function getResistance(kind: 'damage' | 'stun' | 'anomaly', element: string): nu
   if (kind === 'stun') return enemy.stunResistances?.[element] ?? enemy.resistances?.[element] ?? 0
   return enemy.anomalyResistances?.[element] ?? enemy.resistances?.[element] ?? 0
 }
-
-// 常用属性列表（中文名映射）
-const COMMON_STATS: { value: string; label: string }[] = [
-  { value: 'atkFlat', label: '攻击力' },
-  { value: 'atkPct', label: '攻击力%' },
-  { value: 'defFlat', label: '防御力' },
-  { value: 'defPct', label: '防御力%' },
-  { value: 'hpFlat', label: '生命值' },
-  { value: 'hpPct', label: '生命值%' },
-  { value: 'critRate', label: '暴击率' },
-  { value: 'critDmg', label: '暴击伤害' },
-  { value: 'sharpCritDmg', label: '锐暴伤害' },
-  { value: 'impact', label: '击破特攻' },
-  { value: 'anomalyProficiency', label: '异常精通' },
-  { value: 'anomalyMastery', label: '异常掌控' },
-  { value: 'energyRegen', label: '能量回复' },
-  { value: 'penRatio', label: '穿透率' },
-  { value: 'penFlat', label: '穿透值' },
-  { value: 'dmgBonus', label: '伤害加成' },
-  { value: 'physicalDmg', label: '物理伤害加成' },
-  { value: 'fireDmg', label: '火属性伤害加成' },
-  { value: 'iceDmg', label: '冰属性伤害加成' },
-  { value: 'electricDmg', label: '电属性伤害加成' },
-  { value: 'etherDmg', label: '以太伤害加成' },
-  { value: 'windDmg', label: '风属性伤害加成' },
-  { value: 'lumifluxDmg', label: '辉光伤害加成' },
-  { value: 'enemyDefReduction', label: '敌方防御降低/无视防御（通用）' },
-  { value: 'enemyAnomalyDefReduction', label: '异常伤害防御降低/无视防御' },
-  { value: 'enemyElectricDefReduction', label: '电属性防御降低/无视防御' },
-  { value: 'enemyResReduction', label: '敌方抗性降低/无视抗性（全元素）' },
-  { value: 'enemyElectricResReduction', label: '电属性抗性降低/无视抗性' },
-  { value: 'enemyLumifluxResReduction', label: '辉光/耀变抗性降低/无视抗性' },
-  { value: 'enemyDamageTakenBonus', label: '敌方受到伤害加成' },
-  { value: 'stunDmgMultiplierBonus', label: '失衡伤害倍率加成' },
-  { value: 'anomalyReleaseDmgBonus', label: '异放伤害提升' },
-  { value: 'remielleRefringeCoefficient', label: '蕾米异化度' },
-  { value: 'remielleRefringeCoefficientBonusPct', label: '蕾米异化度提升' },
-  { value: 'remielleLuminizeMultiplierBonus', label: '蕾米被动耀变倍率提升' },
-  { value: 'remielleCinema4LuminizeMultiplierBonus', label: '蕾米4命耀变倍率提升' },
-]
 
 const statOptions = computed(() => getGlobalBuffStatOptions(catalogStore.statRules?.statDisplay as any))
 
