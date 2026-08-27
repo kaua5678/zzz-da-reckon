@@ -73,20 +73,7 @@
       />
     </n-card>
 
-    <!-- ⑥ 快速支援时间校准 -->
-    <n-card size="small" class="block" title="快速支援时间校准清单（actionTime 与喧响基准反推 t = 喧响值 ÷ 27.5 相对偏差 >15%）">
-      <n-data-table
-        size="small"
-        :columns="calibrationColumns"
-        :data="report.calibrations"
-        :pagination="{ pageSize: 50 }"
-        :bordered="true"
-        :single-line="false"
-        :max-height="420"
-      />
-    </n-card>
-
-    <!-- ⑦ 待确认口径 -->
+    <!-- ⑥ 待确认口径 -->
     <n-card size="small" class="block" title="待确认口径（按原表保留，不参与纵向聚合强约束）">
       <ul class="notes">
         <li>轻/重招架：标准常数采用数据校准值 95.511+130t / 95.178+130t（斜率固定 130，取主簇 47/53、48/54 条实录的隐含截距中位数；单角色推算的 92.4/89.1 偏低 ~3.4%，经确认改用全体平均）。连续招架 = 130t 不变。</li>
@@ -124,7 +111,6 @@ import {
   type AgentVerticalRow,
   type MoveDeviation,
   type MoveEval,
-  type TimeCalibrationItem,
 } from '@/composables/multiplierCoefficients'
 
 const catalogStore = useCatalogStore()
@@ -303,20 +289,6 @@ const deviationColumns: DataTableColumns<MoveDeviation> = [
   },
 ]
 
-// ============ ⑥ 时间校准清单 ============
-
-const calibrationColumns: DataTableColumns<TimeCalibrationItem> = [
-  { title: '角色', key: 'agentName', width: 140, render: (r) => `${r.agentName} (${r.agentId})` },
-  { title: '招式', key: 'moveName', minWidth: 200, render: (r) => `${r.moveName} (${r.moveId})` },
-  { title: 'actionTime', key: 'tAction', width: 100, render: (r) => r.tAction.toFixed(3) },
-  { title: '喧响反推 t', key: 'tDecibel', width: 100, render: (r) => r.tDecibel.toFixed(3) },
-    {
-      title: '相对偏差',
-      key: 'delta',
-      width: 100,
-      render: (r) => pct(Math.abs(r.tDecibel - r.tAction) / r.tAction, 0),
-    },
-  ]
 </script>
 
 <style scoped>

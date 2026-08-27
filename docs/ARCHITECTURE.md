@@ -67,7 +67,7 @@ useResourceCalc()                      编排层入口（composables/useResource
 | 改失衡轴 / 自动轴 / 预设 | `data/stunAxisPresets.ts` + `data/stunAxisPresets/*.json` | 同上（自动匹配 `selectAutoStunAxisPreset`） |
 | 改队伍预设 | `data/teamPresets/*.json`（目录自动加载） | 同上 |
 | **时间图表页（队伍随版本演变）** | `composables/teamTimeline.ts`（精确增量搜索 + 预算感知排名 + 逐金贪婪最优加金 + maxIter 收敛过滤 + 换人上位/平替判定 `classifySwapUplift` + Boss 排期标记 `composables/bossSchedule.ts`）+ `data/versionTimeline.ts`（版本节点/S级实装版本） | `views/TimeChartsPage.vue`；口径见 `FEATURES_GUIDE.md` §4 |
-| **倍率表系数演算记录（角色系数推导）** | `data/standardMultiplierTable.ts`（标准职业稀有度倍率表：1级A级基准式 + 等级×2/×1.5 引用 `core/skillLevel.ts` + 限定S×1.1/常驻S×1.05/命破伤害×0.8；常驻S名单单一来源在此）+ `composables/multiplierCoefficients.ts`（招式分类/期望值/纵向系数中位数/支援突击直伤锚点/招式特定偏差/喧响基准时间校准，纯函数页面测试同源） | `views/MultiplierCoeffPage.vue`；口径与待确认项见 `FEATURES_GUIDE.md` §5 |
+| **倍率表系数演算记录（角色系数推导）** | `data/standardMultiplierTable.ts`（标准职业稀有度倍率表：1级A级基准式 + 等级×2/×1.5 引用 `core/skillLevel.ts` + 限定S×1.1/常驻S×1.05/命破伤害×0.8；常驻S名单单一来源在此）+ `composables/multiplierCoefficients.ts`（招式分类/期望值/纵向系数中位数/支援突击直伤锚点/招式特定偏差，纯函数页面测试同源） | `views/MultiplierCoeffPage.vue`；口径与待确认项见 `FEATURES_GUIDE.md` §5 |
 | 改数据导入 / 校验 / 文档生成 | `scripts/`（validate-specs / docs:status / 各类 import） | 同上 |
 | 排查"某 buff / 命座没生效" | `AGENT_RECORDING_SOP.md` §3.5 根因表；页面「命座提升率」自检打标 | 按根因表定位字段消费端 |
 | 改音擎 / 驱动盘 / 敌人 / Boss | `public/static/catalog.json`（编译期快照，改数据走 scripts/ 导入脚本，勿手改） | scripts/ + catalogStore |

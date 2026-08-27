@@ -102,12 +102,6 @@ function renderRecord(r: CoefficientReport): string {
     }
   }
   lines.push('')
-  lines.push(`## 四、快速支援时间校准清单（喧响基准 27.5/s 反推 t，共 ${r.calibrations.length} 条）`)
-  lines.push('')
-  for (const c of r.calibrations) {
-    lines.push(`- ${c.agentName}(${c.agentId}) ${c.moveName}：actionTime=${c.tAction.toFixed(3)}s，喧响反推 t=${c.tDecibel.toFixed(3)}s`)
-  }
-  lines.push('')
   return lines.join('\n')
 }
 

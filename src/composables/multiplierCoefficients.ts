@@ -1,10 +1,9 @@
 /**
  * 倍率表系数演算引擎 —— 把每个角色实际录入的倍率表与「标准职业稀有度倍率表」
- * （@/data/standardMultiplierTable）对比，推导四类结果：
+ * （@/data/standardMultiplierTable）对比，推导三类结果：
  *   1. 角色纵向系数（每列跨招式中位数，如爱丽丝失衡 0.90、伊德海莉喧响 ~0.49）
  *   2. 版本直伤系数（支援突击伤害列比值——支援突击通常不随角色变化，作全队锚点）
  *   3. 招式特定偏差（单招式比值 vs 本角色该列基准：连携增强/大招削弱一类设计空间）
- *   4. 快速支援时间校准清单（actionTime 存疑时用喧响基准 27.5/s 反推有效 t）
  *
  * 纯函数：输入 catalog 原始数组、输出类型化报告，页面（MultiplierCoeffPage）与测试共用同一实现。
  * 聚合口径：纵向系数只取「干净类型」——排除强化特殊技（逐角色设计空间大）、轻/重招架
@@ -12,7 +11,6 @@
  */
 import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
 import {
-  DECIBEL_PER_SECOND,
   FIXED_RECORD_UNITS,
   FLASH_ENERGY_QUALITY,
   MOVE_FUSION_GROUPS,
@@ -35,9 +33,6 @@ const MIN_ACTION_TIME = 0.01
 
 /** 招式特定偏差判定阈值：偏离本角色列基准 ±5% 记一条 */
 const DEVIATION_THRESHOLD = 0.05
-
-/** 时间校准判定阈值：喧响反推 t 与 actionTime 相对偏差 >15% 记一条 */
-const CALIBRATION_THRESHOLD = 0.15
 
 /** 参与纵向系数聚合的招式类型白名单（其余为设计空间/待确认口径） */
 export function isCleanVerticalType(moveType: MoveType | 'other'): boolean {
@@ -429,35 +424,10 @@ function buildDeviations(moves: MoveEval[], vertical: AgentVerticalRow[]): MoveD
   return out
 }
 
-export interface TimeCalibrationItem {
-  agentId: string
-  agentName: string
-  moveId: string
-  moveName: string
-  tAction: number
-  /** 喧响反推的有效时间 = 喧响实际值 / 27.5 */
-  tDecibel: number
-}
-
-function buildCalibrations(moves: MoveEval[]): TimeCalibrationItem[] {
-  const out: TimeCalibrationItem[] = []
-  for (const m of moves) {
-    if (m.moveType !== 'quickAssist' || m.t == null || m.t <= MIN_ACTION_TIME) continue
-    const decibel = m.cells.find((c) => c.rowId === 'decibel_recovery')?.actual
-    if (decibel == null) continue
-    const tDecibel = decibel / DECIBEL_PER_SECOND
-    if (Math.abs(tDecibel - m.t) / m.t > CALIBRATION_THRESHOLD) {
-      out.push({ agentId: m.agentId, agentName: m.agentName, moveId: m.moveId, moveName: m.moveName, tAction: m.t, tDecibel })
-    }
-  }
-  return out
-}
-
 export interface CoefficientReport {
   vertical: AgentVerticalRow[]
   moves: MoveEval[]
   deviations: MoveDeviation[]
-  calibrations: TimeCalibrationItem[]
 }
 
 /** 演算总入口：catalog 原始数组 → 系数报告（纯函数） */
@@ -475,7 +445,6 @@ export function deriveCoefficientReport(agents: Agent[], agentSkillsList: AgentS
     vertical,
     moves,
     deviations: buildDeviations(moves, vertical),
-    calibrations: buildCalibrations(moves),
   }
 }
 

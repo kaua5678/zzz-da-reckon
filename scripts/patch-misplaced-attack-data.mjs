@@ -7,7 +7,7 @@
  * （nanoka raw 同构：sp_recovery=0、fever_recovery=0、attribute_infliction=0，见
  * data/raw/nanoka_missing/full/1461.json）。
  * 验证（磁陨轮舞 1461012，t=0.292s）：attack_data=[3.2084, 0.73, 8.03] →
- *   8.03/0.292 = 27.5/s 精确命中喧响基准（DECIBEL_PER_SECOND）、0.73/0.292 = 2.5/s 与
+ *   8.03/0.292 = 27.5/s 精确命中喧响基准、0.73/0.292 = 2.5/s 与
  *   霜蕊轮舞 #3/#4 已录正列的回能速率一致（2.5/s，席德自身调优，回能纵向系数 0.694）。
  * 修复：attack_data_1 → energy_recovery、attack_data_2 → decibel_recovery（覆盖 0），
  *   移除错位的 attack_data_1/2 行；attack_data_0（钢能/专属资源）保留。

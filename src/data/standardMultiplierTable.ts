@@ -228,9 +228,6 @@ export const RUPTURE_DAMAGE_COEF = 0.8
  */
 export const FLASH_ENERGY_QUALITY = 1.2
 
-/** 喧响回复基准（每秒）：快速支援等 actionTime 存疑招式用 t_db = 喧响实际值 / DECIBEL_PER_SECOND 校准 */
-export const DECIBEL_PER_SECOND = 27.5
-
 /**
  * 定点分类覆盖（moveId → 标准表招式类型）：catalog 的类别/命名无法表达的特殊归属。
  * - 1471029 般岳「支援突击：冲霄」：金身格挡后跟的招式，实为闪避反击公式（用户口径）；
