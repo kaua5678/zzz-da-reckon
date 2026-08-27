@@ -59,15 +59,16 @@
 
 ## 4. 已实现机制的角色
 
-### 安比（1011）—— 波动电压·强攻（部分实现）
+### 安比（1011）—— 波动电压·强攻
 
-- **当前实现状态 [部分实现 2026-08-27]**（实现位置：`src/mechanics/agents/specPanelBuffs.ts`（anbyChargeMechanic）+ `computePanelPhases` 1011 块 + spec `1011.json`；测试 `src/mechanics/__tests__/anbyCinema1.test.ts`）。已实现：影画1 快充模式（energyGainEfficiency +12%×覆盖率滑块）、影画6 充能电场（强特×8层，普攻/冲刺命中消耗，每层 +45% 伤害挂 panel.dmgBonus）。未实现（待用户核对口径后补）：核心被动波动电压（落雷/特殊技/强特失衡值 +64%）、额外能力并联电路（闪反回能 7.2/5s）、影画2 精准放电、影画4 电荷传导。命座对账：C1/C6 已 implemented_approximation，C2/C4 保持 not_described_not_implemented。
-- **核心被动·波动电压**：普通攻击第三段后发动落雷/特殊技/强化特殊技时招式失衡值 +32~64%（未接入）。
-- **额外能力·并联电路**：同属性/同阵营队友触发，闪避反击命中额外回 7.2 能量（5s 至多一次，未接入）。
-- **影画1 快充模式**：普攻第四段命中 → 能量获得效率 +12%（30s 刷新，覆盖率滑块 `anby.fastChargeCoverage` 默认 100%）。
-- **影画2 精准放电 / 影画4 电荷传导**：未实现（见状态行）。
-- **影画6 充能电场**：强特获得 8 层充能，普攻/冲刺命中消耗 1 层使当前招式伤害 +45%（anbyChargeMechanic 挂 panel.dmgBonus，上限 8 层）。
-- **模块**：`src/mechanics/agents/specPanelBuffs.ts`（anbyChargeMechanic）+ helpers 1011 块。
+- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/anby.ts` + spec `1011.json`；测试 `src/mechanics/__tests__/anby.test.ts` 4 例 + `anbyCinema1.test.ts`）。含：核心被动波动电压（强特/落雷 招式限定失衡 +64%）、额外能力并联电路（闪反回 7.2 能量/5s）、影画1 快充/影画2 精准放电/影画6 充能电场。近似点见下（落雷在 basic 聚合行、影画2 按失衡覆盖率、影画4 电荷传导纯函数待 calcCrossAgentEnergy）。
+- **核心被动·波动电压**：落雷(1011005)/特殊技(1011006)/强化特殊技(1011007) 失衡值 +64%（Lv.7，招式限定全覆盖）；落雷在 basic 聚合行内、特殊技不进循环 → 落地到强特 `1011007` + `basic_attack` 行。
+- **额外能力·并联电路**：同属性/同阵营（spec.additionalAbility）→ 闪反命中回 7.2 能量/5s；整局 = min(dodgeCounterCount, floor(t/5))×7.2（交互页闪反次数输入）。
+- **影画1 快充模式**：能量获得效率 +12% × 覆盖率（`anby.fastChargeCoverage` 默认 100%）。
+- **影画2 精准放电**：落雷（基础池）命中失衡敌伤害 +30%×覆盖；强特命中未失衡敌失衡 +10%×(1-覆盖)，滑块 `anby.c2StunCoverage` 默认 0.5。
+- **影画4 电荷传导**：连携/终结为后场电角色回 3+min(6,floor(能量效率/12)×2)；纯函数 `computeAnbyC4ChargeEnergy` 已导出，待 calcCrossAgentEnergy 接线。
+- **影画6 充能电场**：强特 +8 层充能，普攻/冲刺消耗，每层伤害 +45%（spec resource `anby_charge`，transformSkillExecutions 挂 panel.dmgBonus）。
+- **模块**：`src/mechanics/agents/anby.ts`（接管原 specPanelBuffs anbyChargeMechanic + helpers 1011 块）。
 
 ### 猫又（1021）
 
@@ -682,21 +683,24 @@
 - **未建模**：左分支无拘剑势、连携回 300 喧响、C6 拂晓晨星（官方未公布）。
 - **模块**：`src/mechanics/agents/specPanelBuffs.ts` + `useResourceCalc.ts`。
 
-### 波可娜（pulchra / 1351）—— 猎手本能·击破（部分实现）
+### 波可娜（pulchra / 1351）—— 猎手本能·击破
 
-- **当前实现状态 [部分实现 2026-08-27]**（实现位置：`src/mechanics/agents/specPanelBuffs.ts`（pulchra_hunt_step）+ spec `1351.json`）。已实现：猎步状态近似（强特/连携触发，6s 持续，失衡 +30%，spec resource `pulchra_hunt_step`）。未实现（待用户核对口径后补）：额外能力困迹（追加攻击增伤 +30%）、影画 1/2/4/6。命座对账：C1/C2/C4/C6 保持 not_described_not_implemented（pending 已描述原文）。
-- **核心被动·猎手本能**：强特/支援突击/连携/终结进入猎步（失衡 +15~30%，6s），重击命中触发上一位队友快速支援。
-- **额外能力·业务搭档**：强攻/命破/同阵营触发，噬爪·噩梦袭影等对困迹敌人追加攻击 +30%（未接入）。
-- **影画 1/2/4/6**：见 character-constellations.json pending（困迹暴击/猎步攻击/强特耗能/面具之下）。
-- **模块**：`src/mechanics/agents/specPanelBuffs.ts`（pulchra_hunt_step）。
+- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/pulchra.ts` + spec `1351.json` teamBuffs；测试 `src/mechanics/__tests__/pulchra.test.ts` 4 例）。含：核心被动猎步（失衡 +30% 恒常）、额外能力困迹（全队追加攻击 +30%，spec teamBuffs）、影画1 暴击/影画2 攻击/影画6 噬爪增伤。近似点见下（影画4 耗能-5 未建模、影画6 追加次数/范围未建模）。
+- **核心被动·猎手本能**：强特/支援突击/连携/终结进入猎步（失衡 +30%，6s 刷新）→ 恒常 applyPanel 挂 `stunBuildUpBonus`。
+- **额外能力·业务搭档[困迹]**：波可娜 5 招命中施加困迹(15s)，困迹下全队[追加攻击]伤害 +30%——困迹全覆盖（用户口径 2026-08-27），spec teamBuffs `pulchra_extra_trap_followup`（skillDmgBonus targetSkillType=additionalAttack）。
+- **影画1/2**：困迹敌人自身暴击 +10%（critRate 全覆盖）；猎步自身攻击 +10%（atk ×1.1）。
+- **影画4 狩猎乐趣**：强特·噬爪瞬步耗能 -5（引擎无干净通道，未建模）。
+- **影画6 面具之下**：噬爪·噩梦袭影(1351006/1351007) 伤害 +15%（patchExecutions）；追加次数/范围类未建模。
+- **模块**：`src/mechanics/agents/pulchra.ts`（接管原 specPanelBuffs pulchraHuntStepMechanic）。
 
-### 真斗（manato / 1441）—— 熔锋之势·命破（部分实现）
+### 真斗（manato / 1441）—— 熔锋之势·命破
 
-- **当前实现状态 [部分实现 2026-08-27]**（实现位置：`src/mechanics/agents/specPanelBuffs.ts`（zhendouHeartfireMechanic）+ spec `1441.json` 转模 + 命破通用公式）。已实现：贯穿力转模（命破通用 hp×0.1+atk×0.3，spec attributeConversion）、熔锋面板 buff（炽心≥75 → 暴击 +10%/火伤 +20%）。未实现（待用户核对口径后补）：炽心/熔锋逐时序状态机、残焰资源、影画 1/2/4/6。命座对账：C1/C2/C4/C6 保持 not_described_not_implemented（pending 已描述原文）。
-- **核心被动·熔锋之势**：火伤均为贯穿、hp→贯穿力（命破通用）；归烬·舍身/招架支援累积炽心，≥75 进入熔锋（普通攻击强化 + 可发动强化特殊技）。
-- **额外能力**：见 spec additionalAbility（炽心/熔锋状态机未接入）。
-- **影画 1/2/4/6**：见 character-constellations.json pending（生命损失转火伤/熔锋火抗/最大生命/残焰）。
-- **模块**：`src/mechanics/agents/specPanelBuffs.ts`（zhendouHeartfireMechanic）+ spec 转模。
+- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/zhendou.ts` + spec `1441.json` resource；测试 `src/mechanics/__tests__/zhendou.test.ts` 4 例）。含：贯穿力转模（命破基底自动）、炽心/残焰资源（归烬·舍身 +100 / 招架 +75）、熔锋 buff（暴击 +10%/火伤 +20% 恒常）、炽风·胧切/支援突击耗血暴伤 +50%、影画 1/2/4/6。近似点见下（熔锋 uptime≈100%、影画1 按覆盖率、影画6 反馈环/逐时序未建模）。
+- **核心被动·熔锋之势**：火伤均贯穿、hp→贯穿力（命破基底 atk×0.3+hp×0.1 自动，spec attributeConversion 已删防双计）；归烬·舍身(长按耗 10% 血) +100 炽心、招架支援·孤影岳峙 +75 → 炽心 ≥75 进熔锋（每秒耗 3.3，耗尽退出）。
+- **熔锋 buff**：暴击率 +10%、火伤 +20%（uptime≈100% 恒常）；炽风·胧切/支援突击连续斩击耗血时暴伤 +50%（招式限定，闪能回复 +100% 按未建模标注）。
+- **额外能力·复燃之心**：支援/击破触发，终结 +8 层残焰、连携 +4 层（60s 上限 20 层），生命<100% 时炽风·胧切/支援突击消耗残焰回 2% 血（spec resource）。
+- **影画**：C1 生命损失转火伤（每 1% +0.4% 上限 +20%，覆盖率滑块 `zhendou.c1LossCoverage` 默认 0.5）；C2 熔锋火抗 +8%；C4 最大生命 +8%（经 hp→贯穿力影响贯穿力）；C6 归烬失衡回炽心/残焰 + 支援突击火伤 +15%（反馈环/逐时序近似）。
+- **模块**：`src/mechanics/agents/zhendou.ts`（接管原 specPanelBuffs zhendouHeartfireMechanic）。
 
 ### 月城柳（tsukishiro_yanagi / 1221）—— 对空洞特别行动部第六课电异常
 

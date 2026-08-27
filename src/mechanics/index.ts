@@ -28,13 +28,15 @@ import { corinMechanic } from './agents/corin'
 import { billyMechanic } from './agents/billy'
 import { sethMechanic } from './agents/seth'
 import {
-  pulchraHuntStepMechanic,
+  // pulchraHuntStepMechanic/anbyChargeMechanic/zhendouHeartfireMechanic 已由
+  // agents/pulchra.ts / agents/anby.ts / agents/zhendou.ts 取代（2026-08-27 补录核心被动/额外能力/命座）
   // benGuardShieldMechanic 已由 agents/ben.ts 替代（全队暴击+防转攻+命座）
-  anbyChargeMechanic,
-	  zhendouHeartfireMechanic,
   peiluoProminenceMechanic,
   jufufuTigerRoarMechanic,
 } from './agents/specPanelBuffs'
+import { anbyMechanic } from './agents/anby'
+import { pulchraMechanic } from './agents/pulchra'
+import { zhendouMechanic } from './agents/zhendou'
 import { qingyiMechanic } from './agents/qingyi'
 import { luciaElowenMechanic } from './agents/luciaElowen'
 import { banyueMechanic } from './agents/banyue'
@@ -78,7 +80,7 @@ registerAgentMechanic(graceMechanic)
 registerAgentMechanic(nekomataMechanic)
 registerAgentMechanic(piperMechanic)
 registerAgentMechanic(hugoMechanic)
-registerAgentMechanic(pulchraHuntStepMechanic)
+registerAgentMechanic(pulchraMechanic)
 registerAgentMechanic(billyMechanic)
 // registerAgentMechanic(benGuardShieldMechanic) — replaced by benMechanic
 registerAgentMechanic(ellenMechanic)
@@ -95,12 +97,12 @@ registerAgentMechanic(orphieMechanic)
 registerAgentMechanic(zhuYuanMechanic)
 registerAgentMechanic(xideMechanic)
 registerAgentMechanic(koledaMechanic)
-registerAgentMechanic(anbyChargeMechanic)
+registerAgentMechanic(anbyMechanic)
 registerAgentMechanic(corinMechanic)
 registerAgentMechanic(miyabiMechanic)
 registerAgentMechanic(liuyinMechanic)
 registerAgentMechanic(normaMechanic)
-registerAgentMechanic(zhendouHeartfireMechanic)
+registerAgentMechanic(zhendouMechanic)
 registerAgentMechanic(antonMechanic)
 registerAgentMechanic(yeshuguangMechanic)
 registerAgentMechanic(lucyMechanic)

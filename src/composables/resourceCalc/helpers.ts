@@ -497,15 +497,6 @@ export function computePanelPhases(
       panel.enemyPhysicalResReduction = (panel.enemyPhysicalResReduction ?? 0) + 18 * c1Coverage
     }
   }
-  if (agent.id === '1011') {
-    // 安比影画1 快充模式：[普通攻击]第四段斩击命中敌人时能量获得效率 +12%（持续 30s），
-    // 按时段覆盖率折算（覆盖率滑块默认 100%）。
-    const cinema = char.cinemaLevel ?? 0
-    if (cinema >= 1) {
-      const coverage = configStore.getMechanicSetting('anby.fastChargeCoverage', 1)
-      panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + 12 * coverage
-    }
-  }
   if (agent.id === '1041') {
     // 「11号」额外能力·燎原（队伍存在同属性或同阵营角色）：
     // 火属性伤害 +10%；攻击失衡敌人额外 +22.5% × 覆盖率滑块（非轴模式默认满覆盖）。
