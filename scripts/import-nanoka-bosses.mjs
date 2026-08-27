@@ -167,12 +167,16 @@ const CATALOG_MONSTER_MAP = {
   '30009': 'boss.unknown_corruption_complex',
   '30021': 'boss.notorious_pompey',           // 庞培（试炼版）并入恶名版
   '300211': 'boss.notorious_pompey',
+  '300121': null,                             // 恶名·冥宁芙（普通）
   '30033': null,                              // 秽息司祭（普通）
   '30034': 'boss.miasma_fiend_named',
+  '30038': null,                              // 「亵渎者」（普通）
   '30042': null,                              // 魇缚者·叶释渊（普通）
   '30052': null,                              // 熔狱行赭（普通）
   '40000': null,                              // 太初梦魇·「始主」（普通）
-  '40003': null,                              // 改写·涤罪清道夫（危局异构·困难）
+  '40001': null,                              // 叛律孤歌·薇斯珀（普通）
+  '40002': null,                              // 猎血清道夫（普通）
+  '40003': null,                              // 复写体·猎血清道夫（危局异构·困难）
   '40005': 'boss.scorched_horizon_phaethon',
   '40006': null,                              // 基塔布鲁（普通）
   '40008': 'boss.girtablullu_stagnant_aberrant',

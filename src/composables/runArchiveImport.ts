@@ -53,11 +53,19 @@ export interface ArchiveRoom {
 }
 
 /** boss-presets.json 里匹配所需的最小子集（不必引完整资源类型）。 */
+export interface BossPhaseEntry {
+  /** 期相位 id（如 "69043" / "690431"；仅作阶段2 在 boss.phases 里定位的 key，不参与匹配判断） */
+  phaseId: string
+  /** 期开始时间（京时无时区，如 "2026-08-14 04:00:00"） */
+  begin?: string
+}
+
 export interface BossPresetEntry {
   id: string
   name?: string
   nameEn?: string
   aliases?: string[]
+  phases?: BossPhaseEntry[]
 }
 
 /** 单个部署槽位（0-based，与 configStore CharacterConfig.slot 对齐）。 */
@@ -74,6 +82,8 @@ export interface DeployTeamSlot {
 export interface BossMatch {
   presetId: string
   name: string
+  /** 期相位 id（按赛季开始日对齐）；null = 该 Boss 无覆盖该期的阶段数据（血量/buff 会偏） */
+  phaseId: string | null
 }
 
 export interface DeployConfig {
@@ -114,14 +124,36 @@ function presetNames(p: BossPresetEntry): string[] {
   return out
 }
 
+/** 京时 begin（"2026-08-14 04:00:00"）→ UTC 毫秒；解析失败返回 NaN。 */
+function phaseBeginUtc(begin: string | undefined): number {
+  if (!begin) return NaN
+  const iso = begin.includes('T') ? begin : begin.replace(' ', 'T')
+  return Date.parse(`${iso}+08:00`)
+}
+
 /**
- * 归档房间 → boss-presets 预设匹配。
- * 精确归一匹配优先；未命中时按最长别名包含匹配兜底（更具体的「基塔布鲁·滞变畸兽」胜过「基塔布鲁」）。
+ * 期相位匹配：在 Boss 的 phases 里按「赛季开始日」找对应期（纯日期对齐，phaseId 格式不作判断依据）。
+ * 规则：phase.begin（京时，游戏时区）转 UTC 后，取 begin_utc ≤ seasonStartUtc 的最近一期。
+ * 归档 season.start 是 UTC、boss-presets begin 是京时，两者差 8h；≤ 最近期对齐能同时纠正归档期号偏差（如归档 "690361" vs 相位 "69036"）。
  */
-export function matchBossPreset(
-  room: ArchiveRoom | undefined,
-  bossPresets: BossPresetEntry[],
-): BossMatch | null {
+export function matchBossPhase(
+  phases: BossPhaseEntry[] | undefined,
+  seasonStartUtc: string | undefined,
+): string | null {
+  if (!phases?.length) return null
+  const startMs = seasonStartUtc ? Date.parse(seasonStartUtc) : NaN
+  if (Number.isNaN(startMs)) return null
+  let best: { phaseId: string; beginMs: number } | null = null
+  for (const p of phases) {
+    const bMs = phaseBeginUtc(p.begin)
+    if (Number.isNaN(bMs)) continue
+    if (bMs <= startMs && (!best || bMs > best.beginMs)) best = { phaseId: p.phaseId, beginMs: bMs }
+  }
+  return best?.phaseId ?? null
+}
+
+/** 按名字匹配预设（精确优先、最长别名包含兜底），返回命中的 preset 或 null。 */
+function matchPresetByName(room: ArchiveRoom | undefined, bossPresets: BossPresetEntry[]): BossPresetEntry | null {
   if (!room) return null
   const candidates = [room.bossNameZh, room.primaryEnemyZh, room.bossName, room.primaryEnemy]
     .filter((s): s is string => typeof s === 'string' && s.trim() !== '')
@@ -131,9 +163,7 @@ export function matchBossPreset(
   // 1) 精确匹配
   for (const cand of candidates) {
     for (const p of bossPresets) {
-      if (presetNames(p).includes(cand)) {
-        return { presetId: p.id, name: [p.name, p.nameEn, p.id].find((s) => !!s) ?? p.id }
-      }
+      if (presetNames(p).includes(cand)) return p
     }
   }
   // 2) 包含匹配：取最长命中名（最具体）
@@ -147,10 +177,26 @@ export function matchBossPreset(
       }
     }
   }
-  if (best) {
-    return { presetId: best.p.id, name: [best.p.name, best.p.nameEn, best.p.id].find((s) => !!s) ?? best.p.id }
+  return best?.p ?? null
+}
+
+/**
+ * 归档房间 → boss-presets 预设匹配（含期相位）。
+ * 精确归一匹配优先；未命中时按最长别名包含匹配兜底（更具体的「基塔布鲁·滞变畸兽」胜过「基塔布鲁」）。
+ * @param seasonStartUtc 赛季开始时间（UTC ISO），用于期相位对齐；缺省则 phaseId 为 null。
+ */
+export function matchBossPreset(
+  room: ArchiveRoom | undefined,
+  bossPresets: BossPresetEntry[],
+  seasonStartUtc?: string,
+): BossMatch | null {
+  const p = matchPresetByName(room, bossPresets)
+  if (!p) return null
+  return {
+    presetId: p.id,
+    name: [p.name, p.nameEn, p.id].find((s) => !!s) ?? p.id,
+    phaseId: matchBossPhase(p.phases, seasonStartUtc),
   }
-  return null
 }
 
 /** 空槽默认值。 */
@@ -168,6 +214,7 @@ export function submissionToDeploy(
   run: ArchiveRun,
   room: ArchiveRoom | undefined,
   bossPresets: BossPresetEntry[],
+  seasonStartUtc?: string,
 ): DeployConfig {
   const warnings: string[] = []
   const mode = run.mode ?? ''
@@ -200,10 +247,12 @@ export function submissionToDeploy(
     if (!slots[i].agentId) warnings.push(`槽位 ${i + 1} 无角色`)
   }
 
-  const boss = matchBossPreset(room, bossPresets)
+  const boss = matchBossPreset(room, bossPresets, seasonStartUtc)
   if (supported && !boss) {
     const bossLabel = room?.bossNameZh || room?.bossName || room?.id || run.targetId || '(未知)'
     warnings.push(`无对应 Boss 预设（${bossLabel}），需手动选 Boss`)
+  } else if (supported && boss && !boss.phaseId) {
+    warnings.push(`Boss「${boss.name}」无覆盖该期的相位预设（血量/buff 随期数偏移），需手动选期数`)
   }
 
   return { supported, mode, team: [slots[0], slots[1], slots[2]], boss, warnings }
