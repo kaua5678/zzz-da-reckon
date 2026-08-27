@@ -27,9 +27,8 @@ import { specToMechanicModule } from '@/specs/mechanics'
  *   5s 至多一次。整局能量 = min(dodgeCounterCount, floor(combatTime/5)) × 7.2，converge 阶段并入 initialEnergyGift。
  * - 影画2·精准放电：落雷命中失衡敌伤害 +30%（× 失衡覆盖率）；强化特殊技命中未失衡敌失衡 +10%（× (1-覆盖率)）。
  *   覆盖率滑块 `anby.c2StunCoverage`（默认 0.5）。
- * - 影画4·电荷传导：连携/终结为后场电属性角色回 `3 + min(6, floor(自身能量获得效率/12)×2)` 能量。
- *   **接线点：calcCrossAgentEnergy**（跨角色回能单一事实源）——本模块只导出纯函数
- *   `computeAnbyC4ChargeEnergy`，队伍级能量结算待 calcCrossAgentEnergy 补字段（见 spec notes）。
+ * - 影画4·电荷传导：连携/终结为后场电属性角色回 `3 + min(6, floor(自身能量获得效率/12)×2)` 能量
+ *   （applyTeamConfig postRound 阶段直接写入后场电队友 initialEnergyGift，幂等）。
  */
 
 const ANBY_ID = '1011'
@@ -89,19 +88,41 @@ function buildAnbyCharConfig({ cfg, cinemaLevel, panel }: AgentCharConfigInput):
   record.anbyEnergyGainEfficiency = panel.energyGainEfficiency ?? 0
 }
 
-/** 并联电路回能：converge 阶段并入 initialEnergyGift（可琳 C4 同款幂等写） */
-function applyAnbyTeamConfig({ slot, characters, phase, combatTime }: AgentTeamConfigInput): void {
-  if (phase !== 'converge') return
+/** 并联电路（converge）+ 影画4 电荷传导（postRound）回能，幂等并入各槽初始能量礼物 */
+function applyAnbyTeamConfig({ slot, cinemaLevel, characters, team, phase, combatTime, stunCount, ultimateCounts }: AgentTeamConfigInput): void {
   const cfg = characters[slot]
   if (!cfg) return
   const record = cfg as unknown as Record<string, unknown>
-  const active = record.anbyAdditionalActive === true
-  const gift = active
-    ? computeAnbyParallelCircuitEnergy(cfg.dodgeCounterCount ?? 0, combatTime)
-    : 0
-  const prev = Math.max(0, Number(record.anbyParallelEnergyTotal ?? 0))
-  cfg.initialEnergyGift = Math.max(0, (cfg.initialEnergyGift ?? 0) - prev) + gift
-  record.anbyParallelEnergyTotal = gift
+
+  if (phase === 'converge') {
+    // 并联电路：闪反回 7.2 能量/5s（additionalAbility 门控）
+    const active = record.anbyAdditionalActive === true
+    const gift = active
+      ? computeAnbyParallelCircuitEnergy(cfg.dodgeCounterCount ?? 0, combatTime)
+      : 0
+    const prev = Math.max(0, Number(record.anbyParallelEnergyTotal ?? 0))
+    cfg.initialEnergyGift = Math.max(0, (cfg.initialEnergyGift ?? 0) - prev) + gift
+    record.anbyParallelEnergyTotal = gift
+  }
+
+  if (phase === 'postRound' && cinemaLevel >= 4) {
+    // 影画4 电荷传导：连携/终结为后场电角色回 3+min(6,floor(能量效率/12)×2) 能量
+    const chainTotal = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * stunCount
+    const ult = Math.max(0, Math.floor(Number(ultimateCounts?.[slot] ?? 0)))
+    const triggers = Math.max(0, Math.floor(chainTotal)) + ult
+    const perTrigger = computeAnbyC4ChargeEnergy(Number(record.anbyEnergyGainEfficiency ?? 0))
+    const energy = triggers * perTrigger
+    for (const mate of team) {
+      if (mate.slot === slot) continue
+      if (mate.agent?.damageElement !== 'electric') continue
+      const mateCfg = characters[mate.slot]
+      if (!mateCfg) continue
+      const mateRecord = mateCfg as unknown as Record<string, unknown>
+      const prevC4 = Math.max(0, Number(mateRecord.anbyC4EnergyTotal ?? 0))
+      mateCfg.initialEnergyGift = Math.max(0, (mateCfg.initialEnergyGift ?? 0) - prevC4) + energy
+      mateRecord.anbyC4EnergyTotal = energy
+    }
+  }
 }
 
 /** 波动电压（招式限定失衡+64%）+ 影画2（落雷增伤/强特失衡） */
@@ -157,7 +178,7 @@ export const anbyMechanic: AgentMechanicModule = {
   id: 'agent:1011',
   agentIds: [ANBY_ID],
   name: '安比·波动电压',
-  description: '核心被动波动电压（落雷/特殊技/强特 失衡+64% 招式限定）+ 额外能力并联电路（闪反回能）+ 影画1 快充/影画2 精准放电/影画6 充能；影画4 电荷传导纯函数（calcCrossAgentEnergy 接线点）。',
+  description: '核心被动波动电压（强特/落雷 失衡+64% 招式限定）+ 额外能力并联电路（闪反回能）+ 影画1 快充/影画2 精准放电/影画4 电荷传导（后场电角色回能）/影画6 充能。',
   settings: [
     {
       id: 'anby.fastChargeCoverage',

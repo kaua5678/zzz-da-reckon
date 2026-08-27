@@ -66,7 +66,7 @@
 - **额外能力·并联电路**：同属性/同阵营（spec.additionalAbility）→ 闪反命中回 7.2 能量/5s；整局 = min(dodgeCounterCount, floor(t/5))×7.2（交互页闪反次数输入）。
 - **影画1 快充模式**：能量获得效率 +12% × 覆盖率（`anby.fastChargeCoverage` 默认 100%）。
 - **影画2 精准放电**：落雷（基础池）命中失衡敌伤害 +30%×覆盖；强特命中未失衡敌失衡 +10%×(1-覆盖)，滑块 `anby.c2StunCoverage` 默认 0.5。
-- **影画4 电荷传导**：连携/终结为后场电角色回 3+min(6,floor(能量效率/12)×2)；纯函数 `computeAnbyC4ChargeEnergy` 已导出，待 calcCrossAgentEnergy 接线。
+- **影画4 电荷传导**：连携/终结为后场电角色回 3+min(6,floor(能量效率/12)×2) 能量（applyTeamConfig postRound 写入后场电队友 initialEnergyGift，幂等）。
 - **影画6 充能电场**：强特 +8 层充能，普攻/冲刺消耗，每层伤害 +45%（spec resource `anby_charge`，transformSkillExecutions 挂 panel.dmgBonus）。
 - **模块**：`src/mechanics/agents/anby.ts`（接管原 specPanelBuffs anbyChargeMechanic + helpers 1011 块）。
 
@@ -685,12 +685,13 @@
 
 ### 波可娜（pulchra / 1351）—— 猎手本能·击破
 
-- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/pulchra.ts` + spec `1351.json` teamBuffs；测试 `src/mechanics/__tests__/pulchra.test.ts` 4 例）。含：核心被动猎步（失衡 +30% 恒常）、额外能力困迹（全队追加攻击 +30%，spec teamBuffs）、影画1 暴击/影画2 攻击/影画6 噬爪增伤。近似点见下（影画4 耗能-5 未建模、影画6 追加次数/范围未建模）。
+- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/pulchra.ts` + spec `1351.json` teamBuffs；测试 `src/mechanics/__tests__/pulchra.test.ts` 7 例）。含：核心被动猎步（失衡 +30% 恒常）、核心循环噬爪·噩梦袭影（后台追加攻击特殊技）、额外能力困迹（全队追加攻击 +30%，C6 扩展全伤害）、影画 1/2/4/6。
 - **核心被动·猎手本能**：强特/支援突击/连携/终结进入猎步（失衡 +30%，6s 刷新）→ 恒常 applyPanel 挂 `stunBuildUpBonus`。
+- **核心循环·噬爪·噩梦袭影**：猎步进入次数 = 强特 + 支援突击(≈招架 parryCount) + 连携 + 终结；每次猎步打这个[后台追加攻击]特殊技——0 命 = 第一行(1351006)×5 + 终结一击(1351007)×1，6 命 = 第一行×7 + 终结一击×1（buildExecutions，timeBucket=backstage 不占前台，catalog 已打 additionalAttack tag）。
 - **额外能力·业务搭档[困迹]**：波可娜 5 招命中施加困迹(15s)，困迹下全队[追加攻击]伤害 +30%——困迹全覆盖（用户口径 2026-08-27），spec teamBuffs `pulchra_extra_trap_followup`（skillDmgBonus targetSkillType=additionalAttack）。
 - **影画1/2**：困迹敌人自身暴击 +10%（critRate 全覆盖）；猎步自身攻击 +10%（atk ×1.1）。
-- **影画4 狩猎乐趣**：强特·噬爪瞬步耗能 -5（引擎无干净通道，未建模）。
-- **影画6 面具之下**：噬爪·噩梦袭影(1351006/1351007) 伤害 +15%（patchExecutions）；追加次数/范围类未建模。
+- **影画4 狩猎乐趣**：强特·噬爪瞬步耗能 -5（buildCharConfig cfg.exSpecialEnergyConsume -5）。
+- **影画6 面具之下**：噬爪·噩梦袭影伤害 +15%（patchExecutions）+ 第一行次数 +2（5→7，buildExecutions）+ 困迹对追加攻击以外也生效（teamBuffs `pulchra_cinema_6_trap_all` 全伤害 +30%，base 条 C6 禁用）。
 - **模块**：`src/mechanics/agents/pulchra.ts`（接管原 specPanelBuffs pulchraHuntStepMechanic）。
 
 ### 真斗（manato / 1441）—— 熔锋之势·命破
@@ -699,7 +700,7 @@
 - **核心被动·熔锋之势**：火伤均贯穿、hp→贯穿力（命破基底 atk×0.3+hp×0.1 自动，spec attributeConversion 已删防双计）；归烬·舍身(长按耗 10% 血) +100 炽心、招架支援·孤影岳峙 +75 → 炽心 ≥75 进熔锋（每秒耗 3.3，耗尽退出）。
 - **熔锋 buff**：暴击率 +10%、火伤 +20%（uptime≈100% 恒常）；炽风·胧切/支援突击连续斩击耗血时暴伤 +50%（招式限定，闪能回复 +100% 按未建模标注）。
 - **额外能力·复燃之心**：支援/击破触发，终结 +8 层残焰、连携 +4 层（60s 上限 20 层），生命<100% 时炽风·胧切/支援突击消耗残焰回 2% 血（spec resource）。
-- **影画**：C1 生命损失转火伤（每 1% +0.4% 上限 +20%，覆盖率滑块 `zhendou.c1LossCoverage` 默认 0.5）；C2 熔锋火抗 +8%；C4 最大生命 +8%（经 hp→贯穿力影响贯穿力）；C6 归烬失衡回炽心/残焰 + 支援突击火伤 +15%（反馈环/逐时序近似）。
+- **影画**：C1 生命损失转火伤（每 1% +0.4% 上限 +20%，覆盖率滑块 `zhendou.c1LossCoverage` 默认 0.5）；C2 熔锋火抗 +8%；C4 最大生命 +8%（经 hp→贯穿力影响贯穿力）；C6 每次失衡归烬命中失衡敌回 75 炽心 + 4 残焰（20s CD 不管，spec resource cfgField=stunCount）+ 支援突击火伤 +15%（满层近似）。
 - **模块**：`src/mechanics/agents/zhendou.ts`（接管原 specPanelBuffs zhendouHeartfireMechanic）。
 
 ### 月城柳（tsukishiro_yanagi / 1221）—— 对空洞特别行动部第六课电异常

@@ -5,6 +5,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentTeamConfigInput,
 } from '../types'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
@@ -87,6 +88,15 @@ function patchZhendouExecutions({ cfg, executions }: AgentResourceInput): void {
   }
 }
 
+/** 影画6：converge 阶段写 cfg.zhendouC6StunFuryCount（sfc resource 用 countSource=cfgField 读） */
+function applyZhendouTeamConfig({ slot, cinemaLevel, characters, phase, stunCount }: AgentTeamConfigInput): void {
+  if (phase !== 'converge') return
+  const cfg = characters[slot]
+  if (!cfg) return
+  const record = cfg as unknown as Record<string, unknown>
+  record.zhendouC6StunFuryCount = cinemaLevel >= 6 ? Math.max(0, Math.floor(Number(stunCount) || 0)) : 0
+}
+
 function buildZhendouResourceResult({ cfg, state }: AgentResourceResultInput) {
   const spec = getAgentSpec(ZHENDOU_ID)
   return {
@@ -117,6 +127,7 @@ export const zhendouMechanic: AgentMechanicModule = {
   ],
   applyPanel: applyZhendouPanel,
   buildCharConfig: buildZhendouCharConfig,
+  applyTeamConfig: applyZhendouTeamConfig,
   patchExecutions: patchZhendouExecutions,
   buildResourceResult: buildZhendouResourceResult,
   resourceSections: buildZhendouResourceSections,

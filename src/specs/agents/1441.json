@@ -50,6 +50,15 @@
             "step": 0.05,
             "suffix": "%"
           }
+        },
+        {
+          "id": "zhendou_c6_heartfire_gain",
+          "trigger": "影画6：归烬命中失衡敌人回复75炽心（20s CD 不管，每次失衡一次）",
+          "countSource": "cfgField",
+          "countField": "zhendouC6StunFuryCount",
+          "amountPerCount": 75,
+          "formula": "失衡次数 × 75（模块按 cinema>=6 写 cfg.zhendouC6StunFuryCount = stunCount）",
+          "status": "implemented_approximation"
         }
       ],
       "spendRules": [],
@@ -101,6 +110,15 @@
             "step": 0.05,
             "suffix": "%"
           }
+        },
+        {
+          "id": "zhendou_c6_remnant_gain",
+          "trigger": "影画6：归烬命中失衡敌人获得4残焰（20s CD 不管，每次失衡一次）",
+          "countSource": "cfgField",
+          "countField": "zhendouC6StunFuryCount",
+          "amountPerCount": 4,
+          "formula": "失衡次数 × 4（模块按 cinema>=6 写 cfg.zhendouC6StunFuryCount = stunCount）",
+          "status": "implemented_approximation"
         }
       ],
       "spendRules": [

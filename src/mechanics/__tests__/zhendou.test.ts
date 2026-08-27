@@ -58,4 +58,18 @@ describe('真斗（1441）炽心资源与耗血暴伤', () => {
       expect((longqie.critDmgBonus ?? 0)).toBeGreaterThanOrEqual(50)
     }
   })
+
+  it('影画6：归烬命中失衡敌人回 75 炽心 + 4 残焰（每次失衡一次）', async () => {
+    await setupHarness([
+      { agentId: '1441', cinemaLevel: 6, parryCount: 6 },
+      { agentId: '1101' },
+      { agentId: '1271' },
+    ])
+    const calc = useResourceCalc()
+    const zhendou = calc.resourceResult.value!.characters.find(c => c.agentId === '1441')!
+    const hf = zhendou.specResources?.['zhendou_heartfire']
+    expect(hf.gains['zhendou_c6_heartfire_gain']).toBeGreaterThan(0)
+    const rf = zhendou.specResources?.['zhendou_remnant_flame']
+    expect(rf.gains['zhendou_c6_remnant_gain']).toBeGreaterThan(0)
+  })
 })

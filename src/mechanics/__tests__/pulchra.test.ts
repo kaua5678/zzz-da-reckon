@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePulchraHuntStepCount } from '../agents/pulchra'
+
+describe('波可娜（1351）猎步次数纯函数', () => {
+  it('猎步次数 = 强特 + 支援突击(招架) + 连携 + 终结', () => {
+    expect(computePulchraHuntStepCount({ exSpecialCount: 6, parryCount: 6, chainCountTotal: 2, ultimateCount: 3 })).toBe(17)
+  })
+})
 
 describe('波可娜（1351）困迹/影画 面板', () => {
   it('额外能力困迹：全队追加攻击增伤 +30（skillDmgBonus__additionalAttack）', async () => {
@@ -53,5 +60,41 @@ describe('波可娜（1351）猎步/影画6 执行', () => {
     if (nightmare) {
       expect((nightmare.dmgBonus ?? 0)).toBeGreaterThanOrEqual(15)
     }
+  })
+
+  it('核心循环：噬爪·噩梦袭影后台追加攻击 6命第一行次数 > 0命（7 vs 5）', async () => {
+    await setupHarness([
+      { agentId: '1351', cinemaLevel: 0, parryCount: 6 },
+      { agentId: '1301' },
+      { agentId: '1271' },
+    ])
+    const c0 = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1351')!
+    const first0 = c0.executions.find(e => e.moveId === '1351006')!
+    const second0 = c0.executions.find(e => e.moveId === '1351007')!
+    expect(first0).toBeTruthy()
+    expect(second0).toBeTruthy()
+    expect(first0.timeBucket).toBe('backstage')
+    expect(first0.count).toBeGreaterThan(0)
+
+    await setupHarness([
+      { agentId: '1351', cinemaLevel: 6, parryCount: 6 },
+      { agentId: '1301' },
+      { agentId: '1271' },
+    ])
+    const c6 = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1351')!
+    const first6 = c6.executions.find(e => e.moveId === '1351006')!
+    expect(first6.count).toBeGreaterThan(first0.count)
+  })
+
+  it('影画6：困迹增伤从追加攻击扩展为全伤害', async () => {
+    const { catalog, config } = await setupHarness([
+      { agentId: '1351', cinemaLevel: 6 },
+      { agentId: '1301' },
+      { agentId: '1271' },
+    ])
+    const p = computePanelPhases(2, config, catalog)!.inCombat as any
+    // C6：困迹 +30% 走 skillDmgBonus（all），base additionalAttack 条已禁用
+    expect((p['skillDmgBonus'] ?? 0)).toBe(30)
+    expect((p['skillDmgBonus__additionalAttack'] ?? 0)).toBe(0)
   })
 })
