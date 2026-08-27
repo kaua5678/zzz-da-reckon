@@ -1,89 +1,122 @@
 <template>
-  <div class="run-archive-page">
-    <div class="archive-column">
+  <div>
+    <div class="run-archive-page">
+      <div class="archive-column">
+        <n-card size="small" :bordered="true">
+          <template #header>
+            <div class="card-header">
+              <span>实战归档（危局强袭）</span>
+              <span v-if="file" class="muted">共 {{ file.totalRuns }} 条 · {{ file.generatedAt.slice(0, 10) }} 快照</span>
+            </div>
+          </template>
+
+          <div v-if="loading" class="muted">数据加载中…</div>
+          <n-alert v-else-if="error" type="error" title="加载失败">{{ error }}</n-alert>
+
+          <template v-else>
+            <n-space :size="8" style="margin-bottom: 10px" :wrap="true">
+              <n-select v-model:value="seasonId" :options="seasonOptions" size="small" style="width: 210px" placeholder="期数" />
+              <n-select v-model:value="bossKey" :options="bossOptions" size="small" style="width: 200px" placeholder="Boss（全部）" clearable />
+              <n-switch v-model:value="onlyKilled" size="small"><template #checked>仅看击杀</template><template #unchecked>全部</template></n-switch>
+            </n-space>
+
+            <n-data-table
+              :columns="columns"
+              :data="filteredRuns"
+              :pagination="{ pageSize: 20 }"
+              :row-key="(r: any) => r.id"
+              size="small"
+              :bordered="false"
+            />
+          </template>
+        </n-card>
+      </div>
+
+      <div class="compare-column">
+        <n-card size="small" :bordered="true">
+          <template #header><span>对比</span></template>
+
+          <div v-if="!selected" class="muted" style="padding: 20px 8px">
+            左侧点「部署」后，这里显示：玩家实战（分数/击杀/用时）vs 计算器理论理想（伤害 / 当期 Boss 血量），下方铺开资源池明细。
+          </div>
+
+          <template v-else>
+            <!-- 实战 -->
+            <div class="section">
+              <div class="section-title">玩家实战</div>
+              <div class="kv-grid">
+                <div class="kv"><span class="k">分数</span><span class="v big">{{ selected.score }}</span></div>
+                <div class="kv"><span class="k">用时</span><span class="v">{{ selected.timeSeconds }}s</span></div>
+                <div class="kv">
+                  <span class="k">结果</span>
+                  <n-tag :type="selected.bossKilled ? 'success' : 'warning'" size="small" :bordered="false">
+                    {{ selected.bossKilled ? '击杀' : '未击杀' }}
+                  </n-tag>
+                </div>
+                <div class="kv"><span class="k">投稿</span><span class="v">{{ selected.authorName }}</span></div>
+              </div>
+              <div class="team-line">{{ teamLine(selected) }}</div>
+              <a v-if="selected.videoUrl" :href="selected.videoUrl" target="_blank" rel="noreferrer" class="video-link">查看原视频 ↗</a>
+              <div class="deploy-warnings" v-if="lastWarnings.length">
+                <div v-for="w in lastWarnings" :key="w" class="warn">⚠ {{ w }}</div>
+              </div>
+            </div>
+
+            <n-divider />
+
+            <!-- 计算器 -->
+            <div class="section">
+              <div class="section-title">计算器（理论理想配装）</div>
+              <div class="kv-grid">
+                <div class="kv"><span class="k">总伤害</span><span class="v big">{{ fmt(totalDamage) }}</span></div>
+                <div class="kv"><span class="k">Boss 血量</span><span class="v">{{ fmt(enemyHp) }}</span></div>
+                <div class="kv"><span class="k">伤害/血量</span><span class="v big" :class="ratioClass">{{ hpRatio.toFixed(1) }}%</span></div>
+                <div class="kv">
+                  <span class="k">预计</span>
+                  <n-tag :type="predictedKill ? 'success' : 'warning'" size="small" :bordered="false">{{ predictedKill ? '预计击杀' : '预计未击杀' }}</n-tag>
+                </div>
+              </div>
+              <div class="verdict">{{ verdictText }}</div>
+            </div>
+          </template>
+        </n-card>
+
+        <div class="hint muted">
+          口径：配装 = 计算器默认理想（推荐驱动盘 + 最优副词条 + 技能全满）；交互 = 弹刀 6 / 闪反 10 / 快支 3 / 连携 1。
+          当期可选牌（3 选 1）不自动应用（归档未记录玩家选择）。差异 = 配装差 + 建模误差，需用理想配装作上界夹逼。
+        </div>
+      </div>
+    </div>
+
+    <!-- 资源池（部署后全宽铺开，用于定位「伤害偏了还是资源循环偏了」） -->
+    <div v-if="selected && resourceResult && resourceResult.characters.length" class="resource-pool-section">
       <n-card size="small" :bordered="true">
         <template #header>
           <div class="card-header">
-            <span>实战归档（危局强袭）</span>
-            <span v-if="file" class="muted">共 {{ file.totalRuns }} 条 · {{ file.generatedAt.slice(0, 10) }} 快照</span>
+            <span>资源池（理论理想循环）</span>
+            <span class="muted">
+              迭代 {{ resourceResult.iterations }} 次{{ resourceResult.converged ? '·已收敛' : '·未收敛' }}
+              · 失衡 {{ stunPoolResult?.stunCount ?? 0 }} 次
+              · 连携 {{ stunPoolResult?.chainCountTotal ?? 0 }} 次
+              · 喧响奖励 +{{ fmt(stunPoolResult?.decibelBonus ?? 0) }}
+            </span>
           </div>
         </template>
-
-        <div v-if="loading" class="muted">数据加载中…</div>
-        <n-alert v-else-if="error" type="error" title="加载失败">{{ error }}</n-alert>
-
-        <template v-else>
-          <n-space :size="8" style="margin-bottom: 10px" :wrap="true">
-            <n-select v-model:value="seasonId" :options="seasonOptions" size="small" style="width: 210px" placeholder="期数" />
-            <n-select v-model:value="bossKey" :options="bossOptions" size="small" style="width: 200px" placeholder="Boss（全部）" clearable />
-            <n-switch v-model:value="onlyKilled" size="small"><template #checked>仅看击杀</template><template #unchecked>全部</template></n-switch>
-          </n-space>
-
-          <n-data-table
-            :columns="columns"
-            :data="filteredRuns"
-            :pagination="{ pageSize: 20 }"
-            :row-key="(r: any) => r.id"
-            size="small"
-            :bordered="false"
+        <div class="resource-cards">
+          <ResourceResultCard
+            v-for="c in resourceResult.characters"
+            :key="c.slot"
+            :result="c"
+            :agent-name="agentNames[c.agentId] || c.agentName || c.agentId"
+            :specialty="getSpecialty(c.agentId)"
+            :stun-pool-result="stunPoolResult"
+            :anomaly-pool-result="anomalyPoolResult"
           />
-        </template>
-      </n-card>
-    </div>
-
-    <div class="compare-column">
-      <n-card size="small" :bordered="true">
-        <template #header><span>对比</span></template>
-
-        <div v-if="!selected" class="muted" style="padding: 20px 8px">
-          左侧点「部署」后，这里显示：玩家实战（分数/击杀/用时）vs 计算器理论理想（伤害 / 当期 Boss 血量）。
         </div>
-
-        <template v-else>
-          <!-- 实战 -->
-          <div class="section">
-            <div class="section-title">玩家实战</div>
-            <div class="kv-grid">
-              <div class="kv"><span class="k">分数</span><span class="v big">{{ selected.score }}</span></div>
-              <div class="kv"><span class="k">用时</span><span class="v">{{ selected.timeSeconds }}s</span></div>
-              <div class="kv">
-                <span class="k">结果</span>
-                <n-tag :type="selected.bossKilled ? 'success' : 'warning'" size="small" :bordered="false">
-                  {{ selected.bossKilled ? '击杀' : '未击杀' }}
-                </n-tag>
-              </div>
-              <div class="kv"><span class="k">投稿</span><span class="v">{{ selected.authorName }}</span></div>
-            </div>
-            <div class="team-line">{{ teamLine(selected) }}</div>
-            <a v-if="selected.videoUrl" :href="selected.videoUrl" target="_blank" rel="noreferrer" class="video-link">查看原视频 ↗</a>
-            <div class="deploy-warnings" v-if="lastWarnings.length">
-              <div v-for="w in lastWarnings" :key="w" class="warn">⚠ {{ w }}</div>
-            </div>
-          </div>
-
-          <n-divider />
-
-          <!-- 计算器 -->
-          <div class="section">
-            <div class="section-title">计算器（理论理想配装）</div>
-            <div class="kv-grid">
-              <div class="kv"><span class="k">总伤害</span><span class="v big">{{ fmt(totalDamage) }}</span></div>
-              <div class="kv"><span class="k">Boss 血量</span><span class="v">{{ fmt(enemyHp) }}</span></div>
-              <div class="kv"><span class="k">伤害/血量</span><span class="v big" :class="ratioClass">{{ hpRatio.toFixed(1) }}%</span></div>
-              <div class="kv">
-                <span class="k">预计</span>
-                <n-tag :type="predictedKill ? 'success' : 'warning'" size="small" :bordered="false">{{ predictedKill ? '预计击杀' : '预计未击杀' }}</n-tag>
-              </div>
-            </div>
-            <div class="verdict">{{ verdictText }}</div>
-          </div>
-        </template>
+        <div class="pool-hint muted">
+          能量/喧响/失衡/积蓄 + 招式执行计划：与实战视频里的出招数、终结技/强特次数对照，可区分「资源循环估算偏差」与「伤害倍率估算偏差」。
+        </div>
       </n-card>
-
-      <div class="hint muted">
-        口径：配装 = 计算器默认理想（推荐驱动盘 + 最优副词条 + 技能全满）；交互 = 弹刀 6 / 闪反 10 / 快支 3 / 连携 1。
-        当期可选牌（3 选 1）不自动应用（归档未记录玩家选择）。差异 = 配装差 + 建模误差，需用理想配装作上界夹逼。
-      </div>
     </div>
   </div>
 </template>
@@ -96,6 +129,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { submissionToDeploy, type ArchiveRun, type ArchiveRoom } from '@/composables/runArchiveImport'
 import { applyDeployConfig } from '@/composables/runArchiveDeploy'
+import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 
 interface ArchiveFile {
@@ -108,7 +142,7 @@ interface ArchiveFile {
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
-const calc = useResourceCalc()
+const { teamTotalDamage, resourceResult, stunPoolResult, anomalyPoolResult, agentNames } = useResourceCalc()
 
 const loading = ref(true)
 const error = ref('')
@@ -180,6 +214,10 @@ function agentName(id: string): string {
   return a?.name?.zhCN ?? a?.name?.en ?? id
 }
 
+function getSpecialty(id: string): string {
+  return catalogStore.getAgent(id)?.specialty ?? ''
+}
+
 function teamLine(run: ArchiveRun): string {
   return run.team
     .map((m) => `${agentName(m.agentId)} M${m.mindscape}`)
@@ -226,7 +264,7 @@ const columns = computed(() => [
   },
 ])
 
-const totalDamage = computed(() => calc.teamTotalDamage.value ?? 0)
+const totalDamage = computed(() => teamTotalDamage.value ?? 0)
 const enemyHp = computed(() => configStore.enemy.hp ?? 0)
 const hpRatio = computed(() => (enemyHp.value > 0 ? (totalDamage.value / enemyHp.value) * 100 : 0))
 const predictedKill = computed(() => totalDamage.value >= enemyHp.value)
@@ -254,7 +292,18 @@ function fmt(n: number): string {
 @media (max-width: 960px) {
   .run-archive-page { grid-template-columns: 1fr; }
 }
-.card-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.resource-pool-section {
+  margin-top: 16px;
+}
+.resource-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 1200px) {
+  .resource-cards { grid-template-columns: 1fr; }
+}
+.card-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .muted { color: var(--wa-500); font-size: 12px; }
 .section { margin-bottom: 8px; }
 .section-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--wa-800); }
@@ -272,4 +321,5 @@ function fmt(n: number): string {
 .warn { font-size: 11px; color: #e6b464; line-height: 1.6; }
 .verdict { margin-top: 10px; font-size: 13px; color: var(--wa-750); }
 .hint { margin-top: 10px; line-height: 1.7; }
+.pool-hint { margin-top: 12px; line-height: 1.7; }
 </style>

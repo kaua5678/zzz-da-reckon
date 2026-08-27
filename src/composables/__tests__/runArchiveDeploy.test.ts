@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
+import { useResourceCalc } from '@/composables/useResourceCalc'
 import { applyDeployConfig, applyBossLayerBuffs, resolveBossApply } from '@/composables/runArchiveDeploy'
 import type { DeployConfig } from '@/composables/runArchiveImport'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
@@ -81,6 +82,20 @@ describe('applyDeployConfig', () => {
     expect(config.team.map((s) => s.agentId)).toEqual(['1091', '1511', '1411'])
     // 空音擎不覆盖 → 走 applyTeamPreset 的专属音擎推荐（非空）
     expect(config.team.every((s) => s.wEngineId !== '')).toBe(true)
+  })
+})
+
+describe('部署 → 资源池结果', () => {
+  it('部署后产出资源池结果（三角色 + 总伤>0 + 失衡>0），供 UI 资源池卡片展示', async () => {
+    const { config, catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    applyDeployConfig(config, DEPLOY, presets, phaseViews)
+
+    const calc = useResourceCalc()
+    expect(calc.resourceResult.value).not.toBeNull()
+    expect(calc.resourceResult.value!.characters.length).toBe(3)
+    expect(calc.teamTotalDamage.value).toBeGreaterThan(0)
+    expect(calc.stunPoolResult.value?.stunCount ?? 0).toBeGreaterThan(0)
   })
 })
 
