@@ -160,7 +160,9 @@ export const useCatalogStore = defineStore('catalog', () => {
     loading.value = true
     error.value = null
     try {
-      const res = await fetch('/static/catalog.json', { cache: 'no-store' })
+      // 默认缓存：服务端（vite preview 发 no-cache + ETag）走 304 重验证，避免每次整包重下 1.48MB。
+      // 改动后 ETag/mtime 变化自然失效，无需 no-store 强刷。
+      const res = await fetch('/static/catalog.json')
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json() as Catalog
       catalog.value = data
@@ -183,7 +185,7 @@ export const useCatalogStore = defineStore('catalog', () => {
     teammateBuffsLoading.value = true
     teammateBuffsPromise = (async () => {
       try {
-        const res = await fetch('/static/teammate-buffs.json', { cache: 'no-store' })
+        const res = await fetch('/static/teammate-buffs.json')
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json() as TeammateBuffGroup[]
         teammateBuffGroups.value = mergeSpecTeamBuffs(data) // 合并 spec 人工录入的 teamBuffs（去重，spec 优先）
@@ -213,7 +215,7 @@ export const useCatalogStore = defineStore('catalog', () => {
     if (buildRecsLoaded.value) return buildRecommendations.value
     buildRecsLoading.value = true
     try {
-      const res = await fetch('/static/build-recommendations.json', { cache: 'no-store' })
+      const res = await fetch('/static/build-recommendations.json')
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json() as BuildRecommendations
       buildRecommendations.value = data
