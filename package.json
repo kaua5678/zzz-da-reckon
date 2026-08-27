@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "validate:data": "node scripts/validate-data.mjs",
+    "minify:static": "node scripts/minify-static.mjs",
     "validate:specs": "node scripts/validate-specs.mjs",
     "specs:import": "node scripts/import-specs.mjs",
     "specs:new": "node scripts/create-agent-spec.mjs",

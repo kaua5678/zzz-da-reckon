@@ -11,6 +11,7 @@
  * 幂等：无不一致时输出 unchanged 不写文件。改完跑 npm run validate:data + npm test。
  */
 import { readFileSync, existsSync, writeFileSync } from 'node:fs'
+import { writeJsonCompact } from './lib/jsonio.mjs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -34,6 +35,6 @@ for (const a of catalog.agents ?? []) {
 if (changed === 0) {
   console.log('unchanged：角色稀有度与 raw 数据一致')
 } else {
-  writeFileSync(catalogPath, JSON.stringify(catalog, null, 2))
+  writeJsonCompact(catalogPath, catalog)
   console.log(`wrote ${catalogPath}（修复 ${changed} 名角色）`)
 }

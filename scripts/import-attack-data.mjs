@@ -5,6 +5,7 @@
  * 用法：node scripts/import-attack-data.mjs 1251 [--write]
  */
 import { readFileSync, writeFileSync } from 'node:fs'
+import { writeJsonCompact } from './lib/jsonio.mjs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -59,7 +60,7 @@ if (matched === 0) {
 }
 
 if (process.argv.includes('--write')) {
-  writeFileSync(catalogPath, JSON.stringify(catalog, null, 2))
+  writeJsonCompact(catalogPath, catalog)
   console.log('已写回 catalog.json')
 } else {
   console.log('（dry-run，未写回；加 --write 落地）')

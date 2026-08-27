@@ -1,0 +1,19 @@
+# 编辑器统一约定（配合 .gitattributes 双保险）：LF + UTF-8 + 2 空格缩进。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{ts,vue,js,mjs,cjs,json,md,html,css,yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+[*.{png,jpg,jpeg,webp,gif,ico,woff,woff2}]
+trim_trailing_whitespace = false

@@ -16,6 +16,7 @@
  *     无法映射到面板的段（减伤/回能点数/防御力附伤等）保留在 description，不进 effects。
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { writeJsonCompact } from './lib/jsonio.mjs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -267,5 +268,5 @@ for (const id of ids) {
     console.log(`ADD  ${id} ${entry.name.zhCN} (${entry.rarity} ${entry.specialty})`)
   }
 }
-writeFileSync(catalogPath, JSON.stringify(catalog, null, 2))
+writeJsonCompact(catalogPath, catalog)
 console.log('written', catalogPath)

@@ -22,6 +22,7 @@
  * npm run gen:multiplier-record + 相关测试。
  */
 import { readFileSync, writeFileSync } from 'node:fs'
+import { writeJsonCompact } from './lib/jsonio.mjs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -97,5 +98,5 @@ if (changed === 0) {
   console.log('no changes')
   process.exit(0)
 }
-writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`)
+writeJsonCompact(catalogPath, catalog)
 console.log(`done, ${changed} move(s) patched`)

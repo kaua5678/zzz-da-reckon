@@ -4,6 +4,7 @@
  * Existing entries are left untouched so implemented data is never clobbered.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { writeJsonCompact } from './lib/jsonio.mjs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -205,6 +206,6 @@ for (const id of Object.keys(list)) {
   }
 }
 
-writeFileSync(mechanicsPath, JSON.stringify(mechanics, null, 2))
-writeFileSync(constellationsPath, JSON.stringify(constellations, null, 2))
+writeJsonCompact(mechanicsPath, mechanics)
+writeJsonCompact(constellationsPath, constellations)
 console.log(`synced ${synced} new agents into status files`)

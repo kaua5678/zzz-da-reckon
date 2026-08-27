@@ -32,6 +32,7 @@
  * 如 异构·焚昼余火 电/风 弱，按弱点处理）。
  */
 import { readFileSync, writeFileSync } from 'node:fs'
+import { writeJsonCompact } from './lib/jsonio.mjs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -463,5 +464,5 @@ const out = {
   bosses,
   phaseViews,
 }
-writeFileSync(outFile, JSON.stringify(out, null, 2))
+writeJsonCompact(outFile, out)
 console.log(`已生成 ${outFile}（${bosses.length} 个 Boss 预设，${phaseViews.length} 个期视图）`)

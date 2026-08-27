@@ -8,6 +8,7 @@
  *       node scripts/sync-attack-data.mjs --write # 写回
  */
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
+import { writeJsonCompact } from './lib/jsonio.mjs'
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -77,7 +78,7 @@ console.log(`需补 attack_data 行：${changed}`)
 for (const p of patched) console.log(`  + ${p}`)
 
 if (process.argv.includes('--write')) {
-  writeFileSync(catalogPath, JSON.stringify(catalog, null, 2))
+  writeJsonCompact(catalogPath, catalog)
   console.log('已写回 catalog.json')
 } else {
   console.log('（dry-run，未写回；加 --write 落地）')

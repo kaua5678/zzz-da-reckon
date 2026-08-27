@@ -4,6 +4,7 @@
  * - core passive / additional ability / cinema / potential text -> spec notes
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { writeJsonCompact } from './lib/jsonio.mjs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -148,5 +149,5 @@ for (const id of Object.keys(list)) {
   enriched++
 }
 
-writeFileSync(catalogPath, JSON.stringify(catalog, null, 2))
+writeJsonCompact(catalogPath, catalog)
 console.log(`enriched ${enriched} agents, move zhCN names updated`)

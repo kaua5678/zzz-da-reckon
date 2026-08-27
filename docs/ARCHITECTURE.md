@@ -82,6 +82,7 @@ useResourceCalc()                      编排层入口（composables/useResource
 - **executions**：buildExecutions 产生 → `enrichExecutionPlan` 回填（**覆盖 name/note**，匹配一律用 moveId）→ 失衡/异常/伤害池。
 - **teammate-buffs**：`public/static/teammate-buffs.json`（采集）+ spec `teamBuffs`（人工）→ `stores/catalog.ts` 合并（spec 优先按 id 去重）→ 面板。
 - **数值唯一事实源**：`public/static/catalog.json`。改数值 = 改爬取/导入脚本重跑，不是改 JSON 本身。
+- **生成产物不变量（2026-08-27，机器强制）**：`public/static/*.json` 必须紧凑写（无缩进），且 `catalog.json` 顶层键必须 == `src/types/catalog.ts` 的 `Catalog` 字段白名单（白名单单一事实源在 `scripts/lib/catalog-fields.mjs`，改字段两侧同步）。护栏在 `scripts/validate-data.mjs`，被 `check`/`verify` 覆盖；再膨胀/再引入 legacy 死键即红，修复入口 `npm run minify:static`（幂等，剔死键 + 紧凑写）。历史：import 脚本全部 `JSON.stringify(x, null, 2)` 回写使 catalog 膨胀到 ~5.2MB 且「读整份→改→写整份」循环永久携带 25 个无人消费的 legacy 字段。
 
 ## 5. 导航技巧（减少迷宫感的操作习惯）
 

@@ -28,44 +28,43 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, defineAsyncComponent, h, type AsyncComponentLoader, type Component } from 'vue'
 import { NSpin, NAlert } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import AppHeader from '@/components/AppHeader.vue'
+// 默认页保持 eager（首屏即时渲染）；其余 13 页懒加载按需拆 chunk，降低首包 JS（原全量打进 index ~1.6MB）。
 import TeamConfigPage from '@/views/TeamConfigPage.vue'
-import AttributeConfigPage from '@/views/AttributeConfigPage.vue'
-import ResourcePage from '@/views/ResourcePage.vue'
-import ResultPage from '@/views/ResultPage.vue'
-import DebugPage from '@/views/DebugPage.vue'
-import WEngineFieldPage from '@/views/WEngineFieldPage.vue'
-import ResourceUtilizationPage from '@/views/ResourceUtilizationPage.vue'
-import StunAxisPage from '@/views/StunAxisPage.vue'
-import LogicEditorPage from '@/views/LogicEditorPage.vue'
-import MechanicsTablePage from '@/views/MechanicsTablePage.vue'
-import TeamComparePage from '@/views/TeamComparePage.vue'
-import StunBreakerComparePage from '@/views/StunBreakerComparePage.vue'
-import TimeChartsPage from '@/views/TimeChartsPage.vue'
-import MultiplierCoeffPage from '@/views/MultiplierCoeffPage.vue'
 
 const catalogStore = useCatalogStore()
 const configStore = useConfigStore()
 
+/** 懒加载占位：快页面（<120ms）不闪 loading，慢页面显示小圈 */
+const PageLoading = {
+  render: () =>
+    h('div', { style: 'display:flex;align-items:center;justify-content:center;padding:40px;min-height:200px' }, [
+      h(NSpin, { size: 'small' }),
+    ]),
+}
+
+const lazyPage = (loader: AsyncComponentLoader<Component>) =>
+  defineAsyncComponent({ loader, loadingComponent: PageLoading, delay: 120 })
+
 const pageMap: Record<string, any> = {
   team: TeamConfigPage,
-  attribute: AttributeConfigPage,
-  resource: ResourcePage,
-  result: ResultPage,
-  resourceUtilization: ResourceUtilizationPage,
-  stunAxis: StunAxisPage,
-  teamCompare: TeamComparePage,
-  breakerCompare: StunBreakerComparePage,
-  timeline: TimeChartsPage,
-  debug: DebugPage,
-  wengineFields: WEngineFieldPage,
-  logic: LogicEditorPage,
-  mechanic: MechanicsTablePage,
-  multiplierCoeff: MultiplierCoeffPage,
+  attribute: lazyPage(() => import('@/views/AttributeConfigPage.vue')),
+  resource: lazyPage(() => import('@/views/ResourcePage.vue')),
+  result: lazyPage(() => import('@/views/ResultPage.vue')),
+  resourceUtilization: lazyPage(() => import('@/views/ResourceUtilizationPage.vue')),
+  stunAxis: lazyPage(() => import('@/views/StunAxisPage.vue')),
+  teamCompare: lazyPage(() => import('@/views/TeamComparePage.vue')),
+  breakerCompare: lazyPage(() => import('@/views/StunBreakerComparePage.vue')),
+  timeline: lazyPage(() => import('@/views/TimeChartsPage.vue')),
+  debug: lazyPage(() => import('@/views/DebugPage.vue')),
+  wengineFields: lazyPage(() => import('@/views/WEngineFieldPage.vue')),
+  logic: lazyPage(() => import('@/views/LogicEditorPage.vue')),
+  mechanic: lazyPage(() => import('@/views/MechanicsTablePage.vue')),
+  multiplierCoeff: lazyPage(() => import('@/views/MultiplierCoeffPage.vue')),
 }
 
 const currentPage = computed(() => pageMap[configStore.activeTab] ?? TeamConfigPage)

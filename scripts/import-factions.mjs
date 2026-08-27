@@ -6,6 +6,7 @@
  *       node scripts/import-factions.mjs --write # 写回 catalog.json
  */
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs'
+import { writeJsonCompact } from './lib/jsonio.mjs'
 import { resolve, dirname, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -85,7 +86,7 @@ console.log(`\n覆盖：${covered}/${catalog.agents.length} 个角色有 faction
 console.log(`缺失：${missing.length ? missing.join(', ') : '无'}`)
 console.log(`需变更：${changed} 个角色`)
 if (process.argv.includes('--write')) {
-  writeFileSync(catalogPath, JSON.stringify(catalog, null, 2))
+  writeJsonCompact(catalogPath, catalog)
   console.log('已写回 catalog.json')
 } else {
   console.log('（dry-run，未写回；加 --write 落地）')

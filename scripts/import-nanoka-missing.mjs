@@ -4,6 +4,7 @@
  * Existing aliases (e.g. nicole=1031) are skipped via teammate_nanoka_map.json.
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { writeJsonCompact } from './lib/jsonio.mjs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -185,6 +186,6 @@ for (const id of missing) {
   }
 }
 
-writeFileSync(catalogPath, JSON.stringify(catalog, null, 2))
+writeJsonCompact(catalogPath, catalog)
 console.log('added agents', addedAgents.length, addedAgents.join(','))
 console.log('added skills', addedSkills.length)

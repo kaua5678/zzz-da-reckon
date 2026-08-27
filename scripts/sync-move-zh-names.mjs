@@ -4,6 +4,7 @@
  * description 的 entry.name 才是该 param 段实际归属的招式名。
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { writeJsonCompact } from './lib/jsonio.mjs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -148,7 +149,7 @@ for (const agent of catalog.agentSkills ?? []) {
 }
 
 if (process.argv.includes('--write')) {
-  writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`, 'utf8')
+  writeJsonCompact(catalogPath, catalog)
 }
 
 if (previewAgentId) {

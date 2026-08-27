@@ -14,6 +14,7 @@
  * 幂等：无缺失时输出 unchanged 不写文件。改完跑 npm run check。
  */
 import { readFileSync, writeFileSync } from 'node:fs'
+import { writeJsonCompact } from './lib/jsonio.mjs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -83,6 +84,6 @@ if (!filled) {
 } else {
   recs.metadata = recs.metadata ?? {}
   recs.metadata.note = `${recs.metadata.note ?? ''}；缺失专武块由 scripts/sync-signature-wengine-recs.mjs 从 catalog ownerAgentId 补齐`.replace(/^；/, '')
-  writeFileSync(recsPath, `${JSON.stringify(recs, null, 2)}\n`)
+  writeJsonCompact(recsPath, recs)
   console.log(`写入 ${recsPath}：补 ${filled} 条`)
 }

@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { CATALOG_FIELDS } from './lib/catalog-fields.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 let failed = 0
@@ -21,6 +22,30 @@ function check(name, condition, detail = '') {
 }
 
 const catalog = load('public/static/catalog.json')
+
+// ===== 产物不变量（2026-08-27）：生成产物必须紧凑、catalog.json 只含 Catalog 类型字段 =====
+// 历史：import 脚本全部 JSON.stringify(x, null, 2) 回写，catalog.json 膨胀到 ~5.2MB（compact ~2.6MB），
+// 且「读整份→改→写整份」循环把无人消费的 legacy 字段永久携带。护栏强制后，再膨胀/再引入死键即红。
+// 修复入口：npm run minify:static
+{
+  const catalogKeys = Object.keys(catalog).sort()
+  const expectedKeys = [...CATALOG_FIELDS].sort()
+  const extra = catalogKeys.filter(k => !expectedKeys.includes(k))
+  const missing = expectedKeys.filter(k => !catalogKeys.includes(k))
+  check('catalog.json top-level keys match Catalog whitelist',
+    extra.length === 0 && missing.length === 0,
+    `extra: ${extra.join(', ') || 'none'}; missing: ${missing.join(', ') || 'none'} → npm run minify:static`)
+
+  for (const f of readdirSync(join(root, 'public', 'static'))) {
+    if (!f.endsWith('.json')) continue
+    const raw = readFileSync(join(root, 'public', 'static', f), 'utf8')
+    const compactBytes = Buffer.byteLength(JSON.stringify(JSON.parse(raw)))
+    check(`public/static/${f} is compact JSON`,
+      Buffer.byteLength(raw) - compactBytes <= 1,
+      `${Buffer.byteLength(raw)}B vs compact ${compactBytes}B → npm run minify:static`)
+  }
+}
+
 const agents = catalog.agents ?? []
 const ENGINE_POOLS = load('src/data/enginePools.json')
 const catalogWEngines = new Set((load('public/static/catalog.json').wEngines ?? []).map(w => String(w.id)))

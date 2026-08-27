@@ -507,15 +507,15 @@ export interface StatRules {
 
 // ============ Catalog 完整数据 ============
 
+// 顶层字段白名单单一事实源镜像：scripts/lib/catalog-fields.mjs（CATALOG_FIELDS）。
+// 消费方 = scripts/minify-static.mjs（剔除 legacy 死键）+ scripts/validate-data.mjs（机器护栏：
+// catalog.json 顶层键必须 == 本接口字段，且 public/static/*.json 必须紧凑写）。
+// 增删字段时两侧必须同步，否则 validate:data 红。
 export interface Catalog {
   agents: Agent[]
   agentSkills: AgentSkills[]
   wEngines: WEngine[]
   driveDiscSets: DriveDiscSet[]
-  anomalyEffects: AnomalyEffect[]
-  disorderEffects: DisorderEffect[]
-  teammateCombatBuffs: TeammateBuff[]
-  teammateCombatBuffGroups: TeammateBuffGroup[]
   bosses: Boss[]
   statRules: StatRules
 }
