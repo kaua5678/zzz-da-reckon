@@ -36,6 +36,11 @@ const ORPHIE_C4_ULTIMATE_DMG = 40
 /** 影画6 激光附加伤害的载体招式：蓄热充能、与火共舞#1/#2 */
 const ORPHIE_C6_LASER_MOVE_IDS = new Set(['1301011', '1301015', '1301016'])
 const ORPHIE_C6_LASER_RATIO = 250
+/** 影画4 蓄热充能（强化特殊技）伤害 +40% 的载体 moveId */
+const ORPHIE_C4_STORAGE_MOVE_ID = '1301011'
+const ORPHIE_C4_STORAGE_DMG = 40
+/** 影画2 每次追加攻击回 65 喧响（4s 至多一次） */
+const ORPHIE_C2_AA_DECIBEL = 65
 
 function applyOrphiePanel({ panel, cinemaLevel }: AgentPanelInput): void {
   panel.critRate = (panel.critRate ?? 0) + ORPHIE_CORE_CRIT_RATE
@@ -58,9 +63,28 @@ function buildOrphieCharConfig({ cfg, cinemaLevel, panel }: AgentCharConfigInput
   cfg.orphieAtk = Math.max(0, panel?.atk ?? 0)
 }
 
-function patchOrphieExecutions({ cfg, executions }: AgentResourceInput): void {
+function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).orphieCinemaLevel ?? 0)))
   const atk = Math.max(0, Number((cfg as any).orphieAtk ?? 0))
+  // 影画4：蓄热充能（1301011）伤害 +40%——moveId 级（此前标「无通道」已过期，patchExecutions 有 moveId 级）
+  if (cinema >= 4) {
+    for (const exec of executions) {
+      if (exec.moveId === ORPHIE_C4_STORAGE_MOVE_ID) {
+        exec.dmgBonus = (exec.dmgBonus ?? 0) + ORPHIE_C4_STORAGE_DMG
+      }
+    }
+  }
+  // 影画2：追加攻击回 65 喧响（4s 至多一次）——按 additionalAttack tag 计次数，4s CD 上限近似
+  if (cinema >= 2) {
+    let aaCount = 0
+    for (const exec of executions) {
+      if (exec.skillDamageTarget === 'additionalAttack') aaCount += Math.max(0, exec.count)
+    }
+    const combatTime = Math.max(0, Number((state as any)?.combatTime ?? (state as any)?.totalTime ?? 180))
+    const cdCap = Math.floor(combatTime / 4)
+    ;(cfg as any).extraSelfDecibelReward =
+      Number((cfg as any).extraSelfDecibelReward ?? 0) + ORPHIE_C2_AA_DECIBEL * Math.min(aaCount, cdCap)
+  }
   if (cinema < 6 || atk <= 0) return
   for (const exec of executions) {
     if (!exec.moveId || !ORPHIE_C6_LASER_MOVE_IDS.has(exec.moveId)) continue
