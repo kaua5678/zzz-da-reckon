@@ -101,7 +101,12 @@ describe('奥菲丝（1301）追加攻击 tag 与定向增伤', () => {
     config.team[0].cinemaLevel = 1
     config.syncTeammateBuffsFromTeam()
     const p1 = computePanelPhases(0, config, catalog)!.inCombat as any
-    expect(p1.enemyFireResReduction - p0.enemyFireResReduction).toBeCloseTo(15, 5)
+    // 影画1 火抗无视15% 已改 moveId 级 resIgnore（不再面板宽泛）
+    expect((p1.enemyFireResReduction ?? 0) - (p0.enemyFireResReduction ?? 0)).toBeCloseTo(0, 5)
+    const cfg1: any = { orphieCinemaLevel: 1 }
+    const exRes: any = { moveId: '1301008' }
+    orphieMechanic.patchExecutions!({ cfg: cfg1, state: {} as any, executions: [exRes], teamFrontlineSeconds: 0 } as any)
+    expect(exRes.resIgnore).toBe(15) // 招式限定精确（不是全火伤面板）
 
     config.team[0].cinemaLevel = 2
     config.syncTeammateBuffsFromTeam()

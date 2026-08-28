@@ -715,11 +715,11 @@
 
 ### 奥菲丝&「鬼火」（orphie_magusa / 1301）—— 新艾利都防卫军火强攻
 
-- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/orphie.ts` + spec `1301.json`；测试 `src/mechanics/__tests__/orphie.test.ts` 2 例 + `orphieSelf.test.ts` 9 例）。含：[准星聚焦]全队攻击 formula 拐（teammate-buffs 1301 组）、额外能力追加攻击无视 25% 防御（enemyDefReduction）、自身暴击 +25% 与追加攻击增伤 +85%（增伤区 `skillDmgBonus__additionalAttack`，引擎新增 SkillDamageTarget）、影画 1/2/4/6（影画6 蓄热充能/终结技激光附加 250% 攻击力火伤 `patchExecutions`）、蓄炎资源循环（spec resource `orphie_xuyan`，初始 100/上限 125）。近似点见下（自身 4 招无视 15% 火抗面板级；后台自动招式 v1 能量聚类；火刀衔接灼红旋涡操作未建模）。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口。
+- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/orphie.ts` + spec `1301.json`；测试 `src/mechanics/__tests__/orphie.test.ts` 2 例 + `orphieSelf.test.ts` 9 例）。含：[准星聚焦]全队攻击 formula 拐（teammate-buffs 1301 组）、额外能力追加攻击无视 25% 防御（enemyDefReduction）、自身暴击 +25% 与追加攻击增伤 +85%（增伤区 `skillDmgBonus__additionalAttack`，引擎新增 SkillDamageTarget）、影画 1/2/4/6（影画6 蓄热充能/终结技激光附加 250% 攻击力火伤 `patchExecutions`）、蓄炎资源循环（spec resource `orphie_xuyan`，初始 100/上限 125）。近似点见下（后台自动招式 v1 能量聚类；火刀衔接灼红旋涡操作未建模）。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口。
 - **核心（全队）**：[准星聚焦]全队攻击 = `clamp(floor((奥菲丝局外回能-1.6)/0.1)*20+280, 280, 700)`（formula，`atkFlat`）。
 - **额外能力**：队伍有[击破]或[支援] → 准星聚焦代理人追加攻击无视 25% 防御（`orphie.additional_def_ignore`，enemyDefReduction 近似，按 spec.additionalAbility 门控）。
 - **核心（自身）**：暴击率 +25%；[追加攻击]伤害 +85%——**增伤区**（`skillDmgBonus__additionalAttack`），不是独立乘区；引擎新增 SkillDamageTarget `additionalAttack`，catalog 对 13 个「视为追加攻击」招式打 `skillTags`（高压火枪全6段/小心脚下/灼红旋涡/蓄热充能/燥焰迸射/枪管过热/与火共舞#1~#2）。
-- **影画1**：准星聚焦代理人伤害 +20%；自身4招无视 15% 火抗（面板级近似）。
+- **影画1**：准星聚焦代理人伤害 +20%；自身4招（蚀光一闪/灼红旋涡/蓄热充能/燥焰迸射）无视 15% 火抗（`patchExecutions` moveId 级 `resIgnore`，2026-08-27 从面板近似改精确）。
 - **影画2**：终结技后自身攻击 +20%（满覆盖近似，面板乘法）+ 追加攻击回 65 喧响（4s CD 上限近似，`patchExecutions` 按 additionalAttack tag 计次注入 `extraSelfDecibelReward`）；**影画4**：终结技增伤 +40%（`skillDmgBonus__ultimate`）+ 蓄热充能 +40%（`patchExecutions` moveId 级 `dmgBonus`，2026-08-27 补）；**影画6**：蓄热充能/终结技激光附加 250% 攻击力火伤（`patchExecutions` moveId 限定挂 `flatDamageBonus`，不按激光时长建独立行，视为追加攻击——用户确认口径）。
 - **后台自动招式**（2026-08-27 补录，核心被动「后台时蚀光一闪，能量≥60 改放灼红旋涡」的近似）：`applyTeamConfig.build` 判主/副C（队友是否另有 `attack` 强攻）；蚀光一闪（1301008）+ 灼红旋涡（1301010，30 能量替换）后台行 `timeBucket=backstage`，带 `skillDamageTarget=additionalAttack`；默认出手次数 副C 30 / 主C 21（滑块 `orphie.backstageCastCount`，-1=自动）；能量分配 席德队 80% 前台小心脚下（`setting:orphie.frontEnergyRatio`，-1=自动）。`debt: 能量用 initialEnergyGift+平A回能×180 近似，未接迭代能量总账`。
 - **蓄炎资源循环**（spec resource `orphie_xuyan`）：初始100/上限125；获取=强特（小心脚下/灼红旋涡/蓄热充能 +20，带滑块）、枪管过热+20、与火共舞+20、蚀光一闪 20点/5秒按战斗时长折算（带利用率滑块）、影画6 火刀+10（cinema>=6 门控）；消耗=蓄热充能每次100点，自动算可发动次数。

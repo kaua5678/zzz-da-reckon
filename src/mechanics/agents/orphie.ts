@@ -17,8 +17,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
  *   tag 范围（原文列举，用户确认高压火枪全6段）：高压火枪#1~#6、小心脚下、灼红旋涡、
  *   蓄热充能、燥焰迸射、枪管过热、与火共舞#1/#2（catalog agentSkills skillTags 打标）。
  * - 影画1：自身招式（蚀光一闪/灼红旋涡/蓄热充能/燥焰迸射）无视15%火属性伤害抗性：
- *   引擎无 moveId 级抗性通道，按面板级 enemyFireResReduction+15 近似
- *   （作用范围略宽于原文4招）。
+ *   patchExecutions moveId 级 resIgnore（引擎已有该通道，精确到 4 招）。
  * - 影画2：终结技后自身攻击+20%（45秒）→ 按满覆盖近似，panel.atk ×= 1.2
  *   （velina 先例：applyPanel 阶段对面板攻击乘百分比）。
  * - 影画4：终结技伤害+40%（skillDmgBonus__ultimate）；蓄热充能+40% 无 moveId 级
@@ -31,7 +30,6 @@ import { specToMechanicModule } from '@/specs/mechanics'
 const ORPHIE_AGENT_ID = '1301'
 const ORPHIE_CORE_CRIT_RATE = 25
 const ORPHIE_CORE_ADDITIONAL_ATTACK_DMG = 85
-const ORPHIE_C1_FIRE_RES_IGNORE = 15
 const ORPHIE_C2_ATK_PCT = 20
 const ORPHIE_C4_ULTIMATE_DMG = 40
 /** 影画6 激光附加伤害的载体招式：蓄热充能、与火共舞#1/#2 */
@@ -47,6 +45,9 @@ const ORPHIE_SP_SHIGUANG = '1301008'
 const ORPHIE_EX_VORTEX = '1301010'
 const ORPHIE_EX_FOOT = '1301009'
 const ORPHIE_VORTEX_ENERGY = 30
+/** 影画1 自身 4 招（蚀光一闪/灼红旋涡/蓄热充能/燥焰迸射）无视 15% 火伤抗性——moveId 级 resIgnore（引擎已有该通道，不再是面板近似） */
+const ORPHIE_C1_RES_IGNORE = 15
+const ORPHIE_C1_RES_IGNORE_MOVE_IDS = new Set(['1301008', '1301010', '1301011', '1301022'])
 /** 后台出手次数默认值（5s 上限通常达不到；供滑块覆盖） */
 const ORPHIE_BACKSTAGE_MAIN = 21
 const ORPHIE_BACKSTAGE_SUB = 30
@@ -61,7 +62,7 @@ function applyOrphiePanel({ panel, cinemaLevel }: AgentPanelInput): void {
   panel['skillDmgBonus__additionalAttack'] = (panel['skillDmgBonus__additionalAttack'] ?? 0)
     + ORPHIE_CORE_ADDITIONAL_ATTACK_DMG
   if (cinemaLevel >= 1) {
-    panel.enemyFireResReduction = (panel.enemyFireResReduction ?? 0) + ORPHIE_C1_FIRE_RES_IGNORE
+    // 影画1 自身 4 招无视 15% 火伤抗性 → 移出面板，改 patchExecutions moveId 级 resIgnore（精确）
   }
   if (cinemaLevel >= 2) {
     panel.atk = Math.round((panel.atk ?? 0) * (1 + ORPHIE_C2_ATK_PCT / 100))
@@ -80,6 +81,14 @@ function buildOrphieCharConfig({ cfg, cinemaLevel, panel }: AgentCharConfigInput
 function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).orphieCinemaLevel ?? 0)))
   const atk = Math.max(0, Number((cfg as any).orphieAtk ?? 0))
+  // 影画1：自身 4 招无视 15% 火伤抗性——moveId 级 resIgnore（精确到招式，不再面板宽泛）
+  if (cinema >= 1) {
+    for (const exec of executions) {
+      if (exec.moveId && ORPHIE_C1_RES_IGNORE_MOVE_IDS.has(exec.moveId)) {
+        exec.resIgnore = (exec.resIgnore ?? 0) + ORPHIE_C1_RES_IGNORE
+      }
+    }
+  }
   // 影画4：蓄热充能（1301011）伤害 +40%——moveId 级（此前标「无通道」已过期，patchExecutions 有 moveId 级）
   if (cinema >= 4) {
     for (const exec of executions) {
