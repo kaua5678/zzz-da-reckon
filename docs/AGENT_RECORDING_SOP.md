@@ -62,18 +62,15 @@
 
 **iterate 与 buildExecutions 分离**：次数先收敛（多轮），执行计划从收敛态生成一次。模块在 buildExecutions 里算出的值只能经 **cfg 字段**留给下一轮 estimate 使用（般岳嗔火固定点、比利星光同款模式）。
 
-## 3. 常见坑（按踩坑频率）
+## 3. 常见坑（只留录入特有项；通用坑单一事实源在别处，不重复）
 
-1. **`import-specs.mjs` 整文件覆盖人工字段**（已修复：默认合并保留 notes/teamBuffs/verifications/status，`--force` 跳过）。
-   跑完任何 import/生成脚本后，**跑一次 vitest** 确认人工字段（尤其 teamBuffs）还在。
-2. **双轨数据源**：`teammate-buffs.json`（采集）与 spec `teamBuffs`（人工）。消费端已合并（spec 优先按 id 去重）。
-   新角色队友增益 → 录 spec `teamBuffs`（source 写「影画X」自动按命座门控），不要手改 teammate-buffs.json。
-3. **enrichExecutionPlan 回填覆盖**：moveName/note 会被倍率表 zhCN/回填文案替换；行匹配一律用 `moveId`。
-4. **自定义模块角色 spec 字段无消费者**：adjustable 滑块/attributeConversions 是死数据（般岳战栗是反例：应录 teamBuffs，它有消费者）。
-5. **命座提升率联动放大**：技能等级 → daze → 失衡次数变化 → 伤害暴涨假象（3 命技能+2 曾被放大成 +20%）。`computeCinemaGains` 固定失衡次数场景：**阈值调节会被失衡自激破坏**（阈值变小 → 失衡次数变多 → 连携/喧响变多 → 失衡总量暴涨，无稳定点），已改为 `enemy.stunCountLock` 直接锁定次数（`calcOutput` 按固定次数算一轮，不收敛）；手工对比命座时同样锁定。
-6. **失衡窗口时长**：引擎 `computeWindowDuration` = stunTime + 4 + 全队 `stunDurationBonusSeconds`（角色级延长），轴编辑器 `maxDur` 用导出的 `windowDuration`，不要硬编码。
-7. **测试环境**：fetch 需 stub 三个静态文件（catalog/teammate-buffs/build-recommendations），见 `src/mechanics/__tests__/banyue.test.ts` 顶部模板。
-8. **新角色配装推荐缺专武块**：`build-recommendations.json` 是初始爬取快照，新角色驱动盘/主词条有、专武块没有 → 配装面板不显示专武、「一键应用」不装专武。专武归属唯一事实源 = catalog `wEngines[].ownerAgentId`；录完新角色跑 `npm run sync:wengine-recs` 补齐（幂等，只补缺、不覆盖爬取值），护栏测试 `src/data/__tests__/buildRecWengine.test.ts`（无专武归属的角色快照也在该测试里，录入后必须更新）。
+1. **`import-specs.mjs` 整文件覆盖人工字段**（已修复：默认合并保留 notes/teamBuffs/verifications/status，`--force` 跳过）。跑完任何 import/生成脚本后，**跑一次 vitest** 确认人工字段（尤其 teamBuffs）还在。
+2. **双轨数据源**：`teammate-buffs.json`（采集）与 spec `teamBuffs`（人工），消费端已合并（spec 优先按 id 去重）。新角色队友增益 → 录 spec `teamBuffs`（source 写「影画X」自动按命座门控），不要手改 teammate-buffs.json。
+3. **命座提升率联动放大**：技能等级 → daze → 失衡次数 → 伤害暴涨假象。用 `enemy.stunCountLock` 锁定失衡次数（阈值调节会被失衡自激破坏：阈值变小 → 失衡次数变多 → 连携/喧响变多 → 无稳定点）；手工对比命座同样锁定。
+4. **失衡窗口时长**：`computeWindowDuration` = stunTime + 4 + 全队 `stunDurationBonusSeconds`；轴编辑器 `maxDur` 用导出的 `windowDuration`，不要硬编码。
+5. **新角色配装推荐缺专武块**：`build-recommendations.json` 是初始爬取快照，专武归属唯一事实源 = `wEngines[].ownerAgentId`；录完新角色跑 `npm run sync:wengine-recs` 补齐（幂等），护栏测试 `src/data/__tests__/buildRecWengine.test.ts`（无专武归属角色快照要更新）。
+
+> 已去重（同一条在别处已有权威来源，不在此重复）：`moveId` 匹配 → §0 铁律 3 + `ENGINE_PIPELINE_GUIDE.md` §4 坑4；模块角色 spec 死字段 → §0 铁律 4 + `AGENTS.md` §1 规则4；fetch stub → 下方 §7 测试卫生。
 
 ## 3.5 命座提升率丢失 / buff 丢失 · 根因与自查（星徽·比利 1531 录入实证）
 
