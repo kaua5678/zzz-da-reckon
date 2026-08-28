@@ -1,4 +1,4 @@
-import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput } from '../types'
+import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
@@ -41,6 +41,14 @@ const ORPHIE_C4_STORAGE_MOVE_ID = '1301011'
 const ORPHIE_C4_STORAGE_DMG = 40
 /** 影画2 每次追加攻击回 65 喧响（4s 至多一次） */
 const ORPHIE_C2_AA_DECIBEL = 65
+/** 后台自动招式 moveId：蚀光一闪（基础 SP）、灼红旋涡（30 能量替换 EX）、小心脚下（前台 EX） */
+const ORPHIE_SP_SHIGUANG = '1301008'
+const ORPHIE_EX_VORTEX = '1301010'
+const ORPHIE_EX_FOOT = '1301009'
+const ORPHIE_VORTEX_ENERGY = 30
+/** 后台出手次数默认值（5s 上限通常达不到；供滑块覆盖） */
+const ORPHIE_BACKSTAGE_MAIN = 21
+const ORPHIE_BACKSTAGE_SUB = 30
 
 function applyOrphiePanel({ panel, cinemaLevel }: AgentPanelInput): void {
   panel.critRate = (panel.critRate ?? 0) + ORPHIE_CORE_CRIT_RATE
@@ -95,6 +103,82 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
 }
 
+/** 主/副 C 判定 + 后台/前台能量分配默认值（build 阶段写 cfg，供 buildExecutions 读） */
+function applyOrphieTeamConfig(input: AgentTeamConfigInput): void {
+  if (input.phase !== 'build') return
+  const others = input.team.filter(t => t.slot !== input.slot)
+  const hasOtherAttack = others.some(t => t.agent?.specialty === 'attack')
+  const hasXide = others.some(t => t.agentId === '1461' || t.agent?.id === '1461')
+  const me = input.characters[input.slot]
+  ;(me as any).orphieIsMainC = !hasOtherAttack
+  ;(me as any).orphieAutoFrontRatio = hasXide ? 0.8 : 0 // 席德队 80% 前台小心脚下；通用副C 全后台
+}
+
+/** 后台自动招式：蚀光一闪（基础） + 灼红旋涡（能量替换）；席德队额外前台小心脚下 */
+function buildOrphieExecutions({ cfg, executions }: AgentResourceInput): void {
+  const n = Number((cfg as any)['setting:orphie.backstageCastCount'] ?? -1)
+  const isMainC = Boolean((cfg as any).orphieIsMainC)
+  const castCount = n >= 0 ? Math.max(0, Math.floor(n)) : (isMainC ? ORPHIE_BACKSTAGE_MAIN : ORPHIE_BACKSTAGE_SUB)
+  const rRaw = Number((cfg as any)['setting:orphie.frontEnergyRatio'] ?? -1)
+  const frontRatio = Math.max(0, Math.min(1, rRaw >= 0 ? rRaw : Number((cfg as any).orphieAutoFrontRatio ?? 0)))
+
+  // 能量近似：进场能量礼物 + 平A回能 × 180（debt: 未接迭代能量总账，v1 用种子近似）
+  const energy = Number((cfg as any).initialEnergyGift ?? 0) + Number((cfg as any).basicAttackRegenPerSec ?? 0) * 180
+  const frontCast = Math.floor(castCount * frontRatio)
+  const backCast = castCount - frontCast
+  const vortexCount = Math.min(backCast, Math.floor(energy / ORPHIE_VORTEX_ENERGY))
+  const shiguangCount = backCast - vortexCount
+
+  const push = (moveId: string, name: string, count: number) => {
+    if (count <= 0) return
+    executions.push({
+      moveId,
+      moveName: name,
+      category: 'special',
+      element: 'fire',
+      skillDamageTarget: 'additionalAttack', // 追击 tag（核心被动 +85% 定向）
+      count,
+      actionTime: 0,
+      comboAlignRatio: 0,
+      totalTime: 0,
+      totalComboAlignTime: 0,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      decibelRecovery: 0,
+      totalDecibelRecovery: 0,
+      energyRecovery: 0,
+      totalEnergyRecovery: 0,
+      timeBucket: 'backstage',
+      skillTableNote: name,
+    })
+  }
+  // 席德队：前台小心脚下（前台耗能给席德回钢能）
+  if (frontCast > 0) {
+    executions.push({
+      moveId: ORPHIE_EX_FOOT,
+      moveName: '强化特殊技：小心脚下（前台能量）',
+      category: 'special',
+      element: 'fire',
+      skillDamageTarget: 'additionalAttack',
+      count: frontCast,
+      actionTime: 0,
+      comboAlignRatio: 0,
+      totalTime: 0,
+      totalComboAlignTime: 0,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      decibelRecovery: 0,
+      totalDecibelRecovery: 0,
+      energyRecovery: 0,
+      totalEnergyRecovery: 0,
+      timeBucket: 'backstage',
+      skillTableNote: '强化特殊技：小心脚下（前台能量，追攻）',
+    })
+  }
+  push(ORPHIE_SP_SHIGUANG, '特殊技：蚀光一闪（后台自动）', shiguangCount)
+  push(ORPHIE_EX_VORTEX, '强化特殊技：灼红旋涡（后台自动·能量替换）', vortexCount)
+}
+
 /** 蓄炎资源：影画6 火刀次数写入 cfg（cinema>=6 才计），spec 解释器按 cfgField 读取 */
 function buildOrphieResourceResult({ cfg, state }: AgentResourceResultInput) {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).orphieCinemaLevel ?? 0)))
@@ -117,7 +201,30 @@ export const orphieMechanic: AgentMechanicModule = {
   description: '自身暴击率+25%、追加攻击增伤+85%（增伤区，按 additionalAttack tag 定向）、影画1/2/4自身部分；影画6 激光附加伤害在 patchExecutions（moveId 限定）；蓄炎资源循环走 spec resource。',
   applyPanel: applyOrphiePanel,
   buildCharConfig: buildOrphieCharConfig,
+  applyTeamConfig: applyOrphieTeamConfig,
+  buildExecutions: buildOrphieExecutions,
   patchExecutions: patchOrphieExecutions,
   buildResourceResult: buildOrphieResourceResult,
   resourceSections: buildOrphieResourceSections,
+  settings: [
+    {
+      id: 'orphie.backstageCastCount',
+      label: '奥菲丝·后台出手次数',
+      description: '蚀光一闪/灼红旋涡后台自动出手总次数（-1=自动：副C 30 / 主C 21）。5 秒是 CD 上限，通常打不满。',
+      default: -1,
+      min: -1,
+      max: 80,
+      step: 1,
+      suffix: '次',
+    },
+    {
+      id: 'orphie.frontEnergyRatio',
+      label: '奥菲丝·前台能量占比',
+      description: '前台打小心脚下的能量占比（-1=自动：席德队 0.8 / 其他副C 0）。前台耗能可给席德回钢能。',
+      default: -1,
+      min: 0,
+      max: 1,
+      step: 0.05,
+    },
+  ],
 }

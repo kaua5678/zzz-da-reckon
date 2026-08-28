@@ -192,3 +192,49 @@ describe('奥菲丝蓄炎资源循环（spec resource）', () => {
     expect(sections.some((s: any) => s.title?.includes('蓄炎'))).toBe(true)
   })
 })
+
+
+describe('奥菲丝后台自动招式（2026-08-27 口径补录）', () => {
+  function build(team: Array<{ agentId: string; specialty: string }>, cfgOver: Record<string, unknown> = {}) {
+    const cfg: any = {
+      slot: 0,
+      agentId: '1301',
+      initialEnergyGift: 0,
+      basicAttackRegenPerSec: 0,
+      'setting:orphie.backstageCastCount': -1,
+      'setting:orphie.frontEnergyRatio': -1,
+      ...cfgOver,
+    }
+    // 真实流：CharacterOperationConfig 同时是 applyTeamConfig.characters[slot] 与 buildExecutions.cfg
+    ;(orphieMechanic.applyTeamConfig as any)!({
+      phase: 'build', slot: 0, characters: [cfg],
+      team: team.map((t, i) => ({ slot: i, agentId: t.agentId, agent: { id: t.agentId, specialty: t.specialty } })),
+    })
+    const executions: any[] = []
+    orphieMechanic.buildExecutions!({ cfg, state: {}, executions } as any)
+    return executions
+  }
+
+  it('副C（队有他强攻）：后台 30 次 = 蚀光一闪 + 灼红旋涡（能量替换），带追击 tag + backstage 桶', () => {
+    const ex = build([{ agentId: '1301', specialty: 'attack' }, { agentId: '1011', specialty: 'attack' }], { initialEnergyGift: 60 })
+    const shiguang = ex.find(e => e.moveId === '1301008')
+    const vortex = ex.find(e => e.moveId === '1301010')
+    expect(shiguang).toBeTruthy()
+    expect(shiguang.timeBucket).toBe('backstage')
+    expect(shiguang.skillDamageTarget).toBe('additionalAttack')
+    expect(vortex).toBeTruthy()
+    expect(vortex.count).toBe(2) // 60/30 = 2
+    expect(shiguang.count + vortex.count).toBe(30) // 副C 30
+  })
+
+  it('主C（无他强攻）后台 21 次；席德队 80% 前台小心脚下', () => {
+    const mainC = build([{ agentId: '1301', specialty: 'attack' }, { agentId: '1211', specialty: 'support' }])
+    const total = mainC.filter(e => e.moveId === '1301008' || e.moveId === '1301010').reduce((s, e) => s + e.count, 0)
+    expect(total).toBe(21)
+
+    const xide = build([{ agentId: '1301', specialty: 'attack' }, { agentId: '1461', specialty: 'attack' }])
+    const foot = xide.find(e => e.moveId === '1301009')
+    expect(foot).toBeTruthy()
+    expect(foot.count).toBe(24) // 30 × 0.8
+  })
+})
