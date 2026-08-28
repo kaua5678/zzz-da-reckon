@@ -961,13 +961,16 @@ function parseCinemaRequirement(sourceLabel: string): number {
     enemy.value[key][element] = value
   }
 
-  /** 当前应用的 Boss 预设（仅内存态，用于 UI 高亮；不随 enemy 持久化） */
-  const appliedBoss = ref<{ presetId: string; phaseId: string; at: number } | null>(null)
+  /** 当前应用的 Boss 预设（仅内存态，用于 UI 高亮 + 计算器弹刀反推/喧响赠礼；不随 enemy 持久化） */
+  const appliedBoss = ref<{ presetId: string; phaseId: string; at: number; parryTotal?: number; parryNoFollowUpTotal?: number; parryDecibelOnlyTotal?: number; decibelGift?: { slot: number; amount: number } } | null>(null)
 
   /**
    * 一键应用 Boss 预设：填充血量/失衡值/防御/等级/危局异常系数/失衡易伤/失衡时间 + 三张抗性表
-   * + 默认值（战斗时间 180s/秽盾/能量盾）。
-   * 无敌时间/快支不动：无敌时间是招式机制只能手填；快支是角色侧与 Boss 无关。
+   * + 默认值（战斗时间 180s/秽盾/能量盾/无敌时间）。
+   * 无敌时间：preset.defaults.invincibleTime 有值即填（如 叶释渊 24s），缺省 0；
+   * 快支不动：快支是角色侧与 Boss 无关。
+   * 弹刀反推：defaults.parryTotal > 0（如 叶释渊 13）时自动勾选「保底4失衡」
+   * （guarantee.stun）——计算器据此按当前队伍反推击破位弹刀、主C 拿剩余（core/parrySplit.ts）。
    */
   function applyBossPreset(preset: { id: string }, phase: {
     phaseId: string
@@ -987,6 +990,11 @@ function parseCinemaRequirement(sourceLabel: string): number {
     shieldCount: number
     energyShield: number
     invincibleTime?: number
+    parryTotal?: number
+    parryNoFollowUpTotal?: number
+    parryDecibelOnlyTotal?: number
+    stunGiftRatio?: number
+    decibelGift?: { slot: number; amount: number }
   }) {
     setEnemy({
       hp: Math.round(phase.hp),
@@ -1003,8 +1011,19 @@ function parseCinemaRequirement(sourceLabel: string): number {
       damageResistances: { ...phase.damageResistances },
       stunResistances: { ...phase.stunResistances },
       anomalyResistances: { ...phase.anomalyResistances },
+      bossStunGift: Math.round((defaults.stunGiftRatio ?? 0) * phase.stunValue),
     })
-    appliedBoss.value = { presetId: preset.id, phaseId: phase.phaseId, at: Date.now() }
+    // 声明了默认弹刀总数（正常/不带支援突击/只喧响）的 Boss → 自动勾选「保底4失衡」（弹刀反推的开关；用户可手动取消）
+    if (((defaults.parryTotal ?? 0) + (defaults.parryNoFollowUpTotal ?? 0) + (defaults.parryDecibelOnlyTotal ?? 0)) > 0) setMechanicSetting('guarantee.stun', 1)
+    appliedBoss.value = {
+      presetId: preset.id,
+      phaseId: phase.phaseId,
+      at: Date.now(),
+      parryTotal: defaults.parryTotal,
+      parryNoFollowUpTotal: defaults.parryNoFollowUpTotal,
+      parryDecibelOnlyTotal: defaults.parryDecibelOnlyTotal,
+      decibelGift: defaults.decibelGift,
+    }
   }
 
   function clearBossPreset() {

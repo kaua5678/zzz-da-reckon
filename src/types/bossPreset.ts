@@ -45,12 +45,27 @@ export interface BossPresetMonster {
 export interface BossPresetDefaults {
   /** 战斗时间（危局强袭战固定 180s） */
   battleTime: number
-  /** 秽盾数量（如 名可名 1） */
+  /** 秽盾数量（如 名可名/叶释渊 1） */
   shieldCount: number
   /** 能量盾数量（默认 0） */
   energyShield: number
   /** Boss 无敌不可攻击时间（秒，如秽盾/转阶段动画；缺省 0，当前端数据不全时留空） */
   invincibleTime?: number
+  /** 默认弹刀总次数（主C/击破位按「保底4失衡反推 + 剩余给主C」运行时拆分，
+   *  见 src/core/parrySplit.ts 与 useResourceCalc 反推线程；应用时自动勾选「保底4失衡」）。
+   *  缺省 = 不反推（沿用角色侧交互默认值）。 */
+  parryTotal?: number
+  /** 不带支援突击的弹刀总次数（boss 机制强制下限，只有轻弹刀倍率行 + 喧响 215、无支援突击行；
+   *  全部归击破位，非用户可调。缺省 0 = 无该类型弹刀）。 */
+  parryNoFollowUpTotal?: number
+  /** 只给喧响的弹刀总次数（boss 机制强制，如 亵渎者 4 次小怪弹刀：轻弹刀打小怪、无 daze 无支援突击，
+   *  只有喧响 215 奖励；全部归击破位，非用户可调。缺省 0 = 无该类型弹刀）。 */
+  parryDecibelOnlyTotal?: number
+  /** 失衡赠礼比例（boss 白送失衡上限的比例，如 亵渎者 0.30 = 白送 30% 失衡上限的失衡值）。
+   *  应用时换算成 bossStunGift = 比例 × phase.stunValue，计入失衡池总失衡值。 */
+  stunGiftRatio?: number
+  /** 喧响赠礼（boss 机制赠送，如 未知复合侵蚀体 6000 喧响给 1 号位，叠加在角色进场喧响之上） */
+  decibelGift?: { slot: number; amount: number }
 }
 
 export interface BossPreset {

@@ -14,6 +14,8 @@ import {
 } from '@/core/resource'
 import { calcStunPool } from '@/core/stunPool'
 import type { StunSkillExecution } from '@/core/stunPool'
+import { computeParrySplit } from '@/core/parrySplit'
+import type { ParrySplitResult } from '@/core/parrySplit'
 import { calcStunAxis } from '@/core/stunAxis'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
@@ -470,6 +472,7 @@ function applyNormaHatChain(
       physicalFlinchCoverageRate: flinchRate,
       inAxisStunFractionByKey: inAxisFraction,
       refundStunRatio,
+      stunGift: configStore.enemy.bossStunGift ?? 0,
     })
 
     let stunCount = 0
@@ -703,7 +706,7 @@ function applyNormaHatChain(
     return out
   }
 
-  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevGraceC1Cycles = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0, prevPromiaTriggerHits = 0, prevPromiaTeammateReleases = 0, prevInStunWindowTriggers = 0, prevEllenFreezeCount = 0, prevPromiaReleaseDecibel = 0): {
+  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevParrySplit: ParrySplitResult | null = null, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevGraceC1Cycles = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0, prevPromiaTriggerHits = 0, prevPromiaTeammateReleases = 0, prevInStunWindowTriggers = 0, prevEllenFreezeCount = 0, prevPromiaReleaseDecibel = 0): {
     resourceResult: TeamResourceResult
     stunPool: StunPoolResult | null
     anomalyPool: AnomalyPoolResult | null
@@ -717,6 +720,7 @@ function applyNormaHatChain(
     energyBySlot: Record<number, number>
     auricInkTriggerCount: number
     banyueTopUp: BanyueInteractionTopUp
+    parrySplit: ParrySplitResult
     yixuanFuFaForJufufu: number
     teamUltimateForJufufu: number
     yeshuguangGiftUlt: number
@@ -802,6 +806,17 @@ function applyNormaHatChain(
     // 般岳轴模式自动补齐（保底语义，方案 A）：轴内怒相/终结技对嗔火/喧响有硬性需求，不足时抬双反（补嗔火）与弹刀（补喧响），
     // 有效次数 = 交互栏输入 + 补齐量（不写回 store，不覆盖用户输入）；计算轮间通过 prevBanyueTopUp 线程收敛。
     const banyueSlot = configStore.team.findIndex(c => c.agentId === '1471')
+    // Boss 预设弹刀反推（用户口径 2026-08）：appliedBoss 声明 parryTotal/parryNoFollowUpTotal（如 叶释渊 13 / 司祭 15）且
+    // 「保底4失衡」勾选时，击破位（队伍首个 stun 特性槽位）弹刀按保底失衡反推补齐、主C 拿剩余
+    // （纯函数 core/parrySplit.ts；本轮注入上一轮拆分，收敛判据含 parrySplitSeq）。
+    // 不带支援突击弹刀（parryNoFollowUpTotal）全部归击破位，非用户可调；只给喧响弹刀（parryDecibelOnlyTotal）同理。
+    const parryTotal = configStore.appliedBoss?.parryTotal ?? 0
+    const parryNoFollowUpTotal = configStore.appliedBoss?.parryNoFollowUpTotal ?? 0
+    const parryDecibelOnlyTotal = configStore.appliedBoss?.parryDecibelOnlyTotal ?? 0
+    const guaranteeStun = configStore.getMechanicSetting('guarantee.stun', 0) !== 0
+    const breakerSlot = configStore.team.findIndex(c => c?.agentId && catalogStore.getAgent(c.agentId)?.specialty === 'stun')
+    const parrySplitActive = (parryTotal + parryNoFollowUpTotal + parryDecibelOnlyTotal) > 0 && guaranteeStun && breakerSlot >= 0
+    const mainDpsSlot = breakerSlot === 0 ? -1 : 0
     // 保底开关（配装页「保底目标」勾选）：保底4嗔火 → 抬双反补嗔火；保底4喧响 → 抬弹刀补喧响。
     // 轴模式自动补齐（axisActive）之外，保底开关也可独立驱动（非轴亦生效）。
     const guaranteeFury = configStore.getMechanicSetting('guarantee.fury', 0) !== 0
@@ -917,6 +932,29 @@ function applyNormaHatChain(
         ...(chainOverride !== undefined ? { ...cfg, chainCountTotalOverride: chainOverride } : cfg),
         teamStunCoverage: provStunCoverage,
         axisActionCounts: axisActionCountsBySlot[cfg.slot],
+      }
+      // Boss 预设弹刀反推注入（上一轮拆分；首轮 prev 为空 → 击破位注入 ≥1 探针保证轻弹刀行存在，
+      // 供本轮失衡池读出每次弹刀失衡值，后续轮按真实拆分注入、不强制）
+      if (parrySplitActive) {
+        const prevSplit = prevParrySplit
+        if (cfg.slot === breakerSlot) {
+          const breakerInput = configStore.team[breakerSlot]?.parryCount ?? 0
+          if (prevSplit === null) {
+            merged.parryCount = Math.max(1, breakerInput)
+          } else if (mainDpsSlot < 0) {
+            // 击破位=主C（同位）：剩余并入同位 = 反推 + 剩余（输入未填时合计 = parryTotal）
+            merged.parryCount = breakerInput > 0
+              ? prevSplit.breakerParry
+              : prevSplit.breakerParry + prevSplit.mainDpsParry
+          } else {
+            merged.parryCount = Math.max(0, breakerInput + prevSplit.topUp)
+          }
+          // 不带支援突击弹刀 + 只给喧响弹刀全部归击破位（boss 强制、非用户可调）
+          merged.parryNoFollowUpCount = parryNoFollowUpTotal
+          merged.parryDecibelOnlyCount = parryDecibelOnlyTotal
+        } else if (cfg.slot === mainDpsSlot) {
+          merged.parryCount = prevSplit?.mainDpsParry ?? Math.max(0, parryTotal - (configStore.team[breakerSlot]?.parryCount ?? 0))
+        }
       }
       if (merged.agentId === '1571') {
         return { ...merged, normaStunCount: stunCount, normaStunCoverage: provStunCoverage, normaBattleTime: base.totalTime }
@@ -1219,8 +1257,9 @@ function applyNormaHatChain(
     for (const cfg of characters) {
       perSlotChainForBonus[cfg.slot] = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * stunCount
     }
-    // 弹刀补齐量计入喧响奖励（保底语义，不写回 store；与般岳 cfg 注入同一口径）
-    const parryForBonus = configStore.team.map((c, s) => (c.parryCount ?? 0) + (autoTopUp && s === banyueSlot ? prevBanyueTopUp.parry : 0))
+    // 弹刀喧响（215/次）用注入后的有效次数（含反推拆分 + 不带支援突击 + 只给喧响 + 般岳补齐；不写回 store）
+    const parryForBonus = [0, 0, 0]
+    for (const cfg of characters) parryForBonus[cfg.slot] = (cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0) + (cfg.parryDecibelOnlyCount ?? 0)
     const { perSlotBonus: specialBonusPerSlot } = calcSpecialActionBonus(
       parryForBonus,
       perSlotChainForBonus,
@@ -1347,6 +1386,44 @@ function applyNormaHatChain(
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
     const flinch1 = ap0?.coverage?.physicalCoverageRate ?? 0
     const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, inAxisFractionProvider, hugoRefundRatio)
+
+    // Boss 预设弹刀反推下一轮量（保底4失衡）：本轮失衡池（含注入的击破位弹刀）→ 非弹刀基数 → 缺口 → 补齐。
+    // 击破位弹刀行（轻弹刀 + 支援突击，count 随弹刀次数缩放）：行贡献剔出非弹刀基数（防 0↔T 振荡），
+    // 正常弹刀每次失衡 = 轻弹刀 + 支援突击；不带支援突击弹刀每次失衡 = 仅轻弹刀。无行 = 无招架失衡来源，不反推。
+    let parrySplitNext = prevParrySplit ?? { breakerParry: 0, mainDpsParry: 0, breakerNoFollowUp: 0, mainDpsNoFollowUp: 0, topUp: 0, reached: false, perParryDaze: 0, perNoFollowUpDaze: 0 }
+    if (parrySplitActive && sp1.pool) {
+      const breakerCfg = base.characters.find(c => c.slot === breakerSlot)
+      const breakerDefMoveId = breakerCfg?.defensiveAssistMoveId ?? ''
+      const breakerFollowUpMoveId = breakerCfg?.assistFollowUpMoveId ?? ''
+      const defRow = sp1.pool.contributions.find(c => c.slot === breakerSlot && c.moveId === breakerDefMoveId)
+      const fuRow = sp1.pool.contributions.find(c => c.slot === breakerSlot && c.moveId === breakerFollowUpMoveId)
+      // 每次弹刀失衡值：本轮有击破位弹刀行则实测；否则沿用上一轮实测值（击破位 0 弹刀时无行，
+      // 但失衡值/面板不变，沿用即可，防「反推归零 → 无行 → 无法再反推」卡死）
+      const hasRows = defRow && defRow.count > 0
+      const perNoFollowUpDaze = hasRows ? defRow!.effectiveStun / defRow!.count : (prevParrySplit?.perNoFollowUpDaze ?? 0)
+      const assistPerHit = (hasRows && fuRow && fuRow.count > 0) ? fuRow.effectiveStun / fuRow.count : (prevParrySplit ? prevParrySplit.perParryDaze - prevParrySplit.perNoFollowUpDaze : 0)
+      const perParryDaze = perNoFollowUpDaze + assistPerHit
+      const injectedParryDaze = (defRow?.effectiveStun ?? 0) + (fuRow?.effectiveStun ?? 0)
+      // 非弹刀基数：全队有效失衡 − 击破位弹刀行 + boss 白送失衡（stunGift 也减少缺口）
+      const nonParryStun = Math.max(0, sp1.pool.totalStunBuildUp - injectedParryDaze + (sp1.pool.stunGift ?? 0))
+      parrySplitNext = {
+        ...computeParrySplit({
+          targetStunCount: 4,
+          stunCount: sp1.pool.stunCount,
+          nonParryStun,
+          bossStunValue: configStore.enemy.stunValue,
+          stunRefundRatio: sp1.pool.stunRefundRatio,
+          perParryDaze,
+          perNoFollowUpDaze,
+          parryTotal,
+          parryNoFollowUpTotal,
+          breakerInput: configStore.team[breakerSlot]?.parryCount ?? 0,
+          mainDpsInput: configStore.team[mainDpsSlot >= 0 ? mainDpsSlot : breakerSlot]?.parryCount ?? 0,
+        }),
+        perParryDaze,
+        perNoFollowUpDaze,
+      }
+    }
     const adj1 = applyLiuyinPromote(rr, sp1, catalogStore)
     // 诺姆膛温换连携：帽子把戏触发上一位角色快速支援→替换为连携，连携归属上一位队友；C4 时诺姆+队友各 200 不可分享喧响。
     const adj2 = applyNormaHatChain(adj1 ?? rr, configStore, catalogStore)
@@ -1636,6 +1713,7 @@ function applyNormaHatChain(
       inStunAnomalyState: inStunAnomalyStateNext,
       bossAnomalyState: bossAnomalyStateNext,
       banyueTopUp: banyueTopUpNext,
+      parrySplit: parrySplitNext,
       yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
       teamUltimateForJufufu: teamUltimateForJufufuNext,
       yeshuguangGiftUlt: yeshuguangGiftUltNext,
@@ -1679,9 +1757,11 @@ function applyNormaHatChain(
     let prevEllenFreezeCount = 0
     let prevAnomalyDecibelBonus: number[] = []
     let prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }
+    let prevParrySplit: ParrySplitResult | null = null
     let prevUltSeq = ''
     let prevAnomalySeq = ''
     let prevTopUpSeq = ''
+    let prevParrySplitSeq = ''
     const seenStunCounts = new Set<number>()
     // 收敛诊断（三层不动点第 ③ 层）：原先耗尽 MAX_OUTER_ITER 就静默 return 末轮结果——
     // 失衡次数/异常喧响奖励可能停在错误值而无任何信号。这里记录落地方式，拼进结果供界面与测试断言。
@@ -1696,7 +1776,7 @@ function applyNormaHatChain(
       outerRounds = k + 1
       // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
       const locked = lockedStunCount >= 0
-      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevGraceC1Cycles, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers, prevPromiaTriggerHits, prevPromiaTeammateReleases, prevInStunWindowTriggers, prevEllenFreezeCount, prevPromiaReleaseDecibel)
+      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevParrySplit, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevGraceC1Cycles, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers, prevPromiaTriggerHits, prevPromiaTeammateReleases, prevInStunWindowTriggers, prevEllenFreezeCount, prevPromiaReleaseDecibel)
       const ait = out?.auricInkTriggerCount ?? 0
       const gr = out?.goodReview
       if (gr !== undefined && gr >= 0) prevGoodReview = gr
@@ -1730,7 +1810,8 @@ function applyNormaHatChain(
       const ultSeq = (out?.resourceResult?.characters ?? []).map(c => c.ultimateCount).join(',')
       const anomalySeq = (out?.anomalyPool?.perSlotBonus ?? []).map(v => Math.round(v)).join(',')
       const topUpSeq = `${out?.banyueTopUp?.parry},${out?.banyueTopUp?.dual}`
-      const feedbackStable = ultSeq === prevUltSeq && anomalySeq === prevAnomalySeq && topUpSeq === prevTopUpSeq
+      const parrySplitSeq = out?.parrySplit ? `${out.parrySplit.breakerParry},${out.parrySplit.mainDpsParry}` : ''
+      const feedbackStable = ultSeq === prevUltSeq && anomalySeq === prevAnomalySeq && topUpSeq === prevTopUpSeq && parrySplitSeq === prevParrySplitSeq
       if (lockedStunCount >= 0) {
         if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
       } else {
@@ -1744,6 +1825,7 @@ function applyNormaHatChain(
       prevAnomalyDecibelBonus = out?.anomalyPool?.perSlotBonus ?? []
       prevAuricInkFlash = ait
       prevBanyueTopUp = out?.banyueTopUp ?? prevBanyueTopUp
+      prevParrySplit = out?.parrySplit ?? prevParrySplit
       prevYixuanFuFaForJufufu = out?.yixuanFuFaForJufufu ?? 0
       prevTeamUltimateForJufufu = out?.teamUltimateForJufufu ?? 0
       prevYeshuguangGiftUlt = out?.yeshuguangGiftUlt ?? 0
@@ -1761,6 +1843,7 @@ function applyNormaHatChain(
       prevUltSeq = ultSeq
       prevAnomalySeq = anomalySeq
       prevTopUpSeq = topUpSeq
+      prevParrySplitSeq = parrySplitSeq
     }
     if (out?.resourceResult) {
       out = {
@@ -1962,10 +2045,33 @@ function applyNormaHatChain(
     return { slot, ...topUp }
   })
 
+  /** Boss 预设弹刀反推（保底4失衡，最终收敛值）：交互栏显示「击破位弹刀 +N / 主C 剩余」用 */
+  const parrySplitResult = computed<{ breakerSlot: number; topUp: number; breakerParry: number; mainDpsParry: number; breakerNoFollowUp: number; breakerDecibelOnly: number; parryTotal: number; parryNoFollowUpTotal: number } | null>(() => {
+    // 懒守卫：未应用带 parryTotal/parryNoFollowUpTotal/parryDecibelOnlyTotal 的 Boss、未勾选「保底4失衡」或队伍无击破位时不触发全量计算
+    const parryTotal = configStore.appliedBoss?.parryTotal ?? 0
+    const parryNoFollowUpTotal = configStore.appliedBoss?.parryNoFollowUpTotal ?? 0
+    const parryDecibelOnlyTotal = configStore.appliedBoss?.parryDecibelOnlyTotal ?? 0
+    if (parryTotal + parryNoFollowUpTotal + parryDecibelOnlyTotal <= 0) return null
+    if (configStore.getMechanicSetting('guarantee.stun', 0) === 0) return null
+    const breakerSlot = configStore.team.findIndex(c => c?.agentId && catalogStore.getAgent(c.agentId)?.specialty === 'stun')
+    if (breakerSlot < 0) return null
+    const split = calcOutput.value?.parrySplit
+    if (!split) return null
+    return { breakerSlot, topUp: split.topUp, breakerParry: split.breakerParry, mainDpsParry: split.mainDpsParry, breakerNoFollowUp: split.breakerNoFollowUp, breakerDecibelOnly: parryDecibelOnlyTotal, parryTotal, parryNoFollowUpTotal }
+  })
+
   /** 特殊动作喧响奖励 */
   const specialActionBonus = computed<SpecialActionBonusResult | null>(() => {
     const topUp = banyueInteractionTopUp.value
-    const perSlotParry = configStore.team.map((c, s) => (c.parryCount ?? 0) + (topUp && s === topUp.slot ? topUp.parry : 0))
+    const split = parrySplitResult.value
+    const perSlotParry = configStore.team.map((c, s) => {
+      let p = (c.parryCount ?? 0) + (topUp && s === topUp.slot ? topUp.parry : 0)
+      if (split) {
+        if (s === split.breakerSlot) p = split.breakerParry + split.breakerNoFollowUp + split.breakerDecibelOnly
+        else if (s === 0 && (c.parryCount ?? 0) <= 0) p = split.mainDpsParry
+      }
+      return p
+    })
     const perSlotDodgeCounter = configStore.team.map(c => c.dodgeCounterCount ?? 0)
     const perSlotQuickAssist = configStore.team.map(c => c.quickAssistCount ?? 0)
     const perSlotChain = [0, 0, 0]
@@ -3548,5 +3654,6 @@ const teamTotalDamage = computed(() =>
     autoActive,
     windowDuration,
     banyueInteractionTopUp,
+    parrySplitResult,
   }
 }

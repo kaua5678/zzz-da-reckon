@@ -13,8 +13,9 @@
    - **普通 · 危局强袭战**：当期 3 个 Boss，**同样可应用**（预设覆盖全部危局 Boss 共 15 个 + 老防卫战 Boss 彷徨猎手 1 个 = 16 个，用户确认收录）
    - **当期 Buff**：3 张可选牌 + 各 Boss 卡上的**关卡固有 buff**（layer_buff 解析）
 3. 应用 Boss 时除填充敌人配置外，**自动把该 Boss 当期关卡固有 buff（layer_buff 数值效果）写入全局 Buff 表**（id 前缀 `layer-buff:`，切 Boss 时先清旧）
-3. 一键填充字段：血量 / 失衡值 / 防御 / 等级 / 危局异常系数（`bossAnomalyCoeff`）/ 失衡易伤（`stunVuln`）/ 失衡时间（`stunTime`）/ 三张抗性表 / 战斗时间 180s / 秽盾触发次数 / 能量盾次数。
-   **不动的字段**：无敌时间（招式机制只能手填）、快支次数（角色侧）。
+3. 一键填充字段：血量 / 失衡值 / 防御 / 等级 / 危局异常系数（`bossAnomalyCoeff`）/ 失衡易伤（`stunVuln`）/ 失衡时间（`stunTime`）/ 三张抗性表 / 战斗时间 180s / 秽盾触发次数 / 能量盾次数 / 无敌时间（预设声明时，如 叶释渊 24s）/ 失衡赠礼（`bossStunGift`，预设 `stunGiftRatio` × 失衡上限，如 亵渎者 30%）。
+   **不动的字段**：快支次数（角色侧）。
+3.1. **Boss 预设弹刀反推**（声明了 `parryTotal` / `parryNoFollowUpTotal` / `parryDecibelOnlyTotal` 的 Boss）：应用时自动勾选「保底4失衡」，计算器按当前队伍反推——击破位（首个 stun 特性槽位）**正常弹刀** = 保底 4 次失衡所需（封顶 `parryTotal`），主C = `parryTotal − 击破位`（主C 已手填则不覆盖）；**不带支援突击的弹刀**（`parryNoFollowUpTotal`，只有轻弹刀倍率行 + 喧响 215、无支援突击行）与**只给喧响的弹刀**（`parryDecibelOnlyTotal`，轻弹刀打小怪无 daze 无支援突击，只有喧响 215）全部归击破位、非用户可调；**喧响赠礼**（`decibelGift`）叠加到指定槽位进场喧响。交互栏显示「→ N（含无突击 M / 只喧响 K / 保底反推 +K）」提示，取消勾选即回到手动输入。实现：`src/core/parrySplit.ts` 纯函数 + `useResourceCalc` 外层不动点线程（般岳轴自动补齐同款收敛）。
 4. 底部「全部 Boss」折叠：16 个 Boss 按「危局异构（困难）」「危局常规（普通）」两组分组，点 chip 跳转到该 Boss 最新危局期。
 5. 已应用 Boss 卡片高亮；「清除已选」撤销高亮（不影响已填数值）。
 6. 期数标注：`(测试服)` 期的 buff 是 (Test1)TBD 占位，等正式服重跑 import 自动更新。
@@ -35,7 +36,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 要改什么 | 改哪里 |
 | --- | --- |
 | 预设收录哪些 Boss | `CATALOG_MONSTER_MAP`（**危局 Boss**：困难异构 + 普通常规，共 15 个 + 用户确认收录的老防卫战 Boss 彷徨猎手 `30041`；`null` = 无 catalog 条目） |
-| 秽盾/能量盾/战斗时间默认值 | `BOSS_DEFAULTS`（**秽盾是触发次数不是血量**：破盾奖励 60 能量 × 次数，名可名 = 1；不要填 3000 那种血量值） |
+| 秽盾/能量盾/战斗时间/无敌时间/弹刀总数/喧响赠礼默认值 | `BOSS_DEFAULTS`（**秽盾是触发次数不是血量**：破盾奖励 60 能量 × 次数，名可名/叶释渊 = 1；不要填 3000 那种血量值。`invincibleTime` 无敌时间（秒）、`parryTotal` 正常弹刀下限、`parryNoFollowUpTotal` 不带支援突击弹刀下限、`parryDecibelOnlyTotal` 只给喧响弹刀下限（全归击破位）、`stunGiftRatio` 失衡赠礼比例（× 失衡上限）、`decibelGift` 喧响赠礼（叠加到指定槽位进场喧响）；口径见 §1.1） |
 | 失衡倍率/失衡时间公式 | `loadMonster()`：`(100+stun_damage_taken_ratio/100)/100`、`10000/destroy_recover_rate` |
 | 抗性映射 | `toCalcRes()`：怪物 `*_res` 万分比直接 /100（**游戏绝对值**：弱点 **-20** / 中性 0 / 抗性 +20~+40；引擎公式 `1 - res/100`） |
 | 关卡弱点并集/交集 | 危局期数取**跨期交集**（`caWeaknessIntersection`，测试服期数会带错弱点，如 690471 异构·焚昼余火多贴了"风"）；防卫战期数用当期标签 |
@@ -205,6 +206,29 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 - **分层不混排**：限定 S（分级主体）/ 赠送 S / 常驻 S / A 级基线（潘引壶按 A 级特例归此层）。A 级负边际 = 「没卡时的占位选择」与更好卡的机会差，不是抽卡投资标的，不参与分级。
 - **未出场计 0**：「兑现」= 实际上场产生的边际；从未出场的限定 S 累计 0、不分级（如纯辅助拐在顶分环境缺位本身就是信号）。
 - **匿名投稿无配对可能**（无名 = 各自成组）；房间轴只含有投稿的房间。
+- **效率前沿**（用户口径 2026-08-28 补充）：每房间「满档 65000 投稿里限定金数最低」的 run 记入 `PvRoom.frontierLowestGold`（金数 = 限定 S 本体 1 + 影画 + 专武精炼−1）——用**每期金数最低的顶分玩家**做校准标准（后面的玩家可能因操作问题没发挥角色完全实力，不算价值）；规划器的现实折扣 λ 由此对照。Chart 5 已并列为证据层。
+
+### 4.5 抽卡规划器口径（Chart 6，序贯决策优化）
+
+**问题类**：带可用性窗口的多期资本预算（Weingartner 1963 谱系；形式化引 Lorie–Savage 1955 / Weingartner 1963，复杂度引 Karp 1972 / G&J 1979）。**非** Temporal Knapsack（那是窗口内「占用」，我们是窗口内「可购买」、买入后永久持有）。内层每期 3-Boss 不重叠组队 = 三维匹配（经 3DM 归约 NP-难）；带协同的组队 NP-难见 Lappas–Liu–Terzi KDD'09。
+
+**用户口径（2026-08-28 拍板）**：
+- 起点预设全做：新号（全限定待抽）/ 成型号（常驻 S + A + 赠送免费可用，0 限定）/ 自选持有。
+- **贬值内生**：不设折现参数——老卡分数下降由每期 Boss 血量/抗性数据自然涌现（引擎逐期求值）。
+- **复刻不建模**：首 UP 窗口 = 唯一购买窗口（最优规划下复刻补抽要求「当时资源受限且复刻期无更强新卡」，两者都罕见）。
+- **操作分全满**（+5000/房）；分数 = 60000 × min(1, 伤害/当期Boss血量) + 5000，单房 65000（社区共识计分口径：伤害分按剩余生命值结算、击杀打满）。
+- **音擎 = 1 金但期望更便宜**（10000 vs 15000 菲林）；**每版本免费 25000 菲林**（`PLANNER_FILM_PER_VERSION`）。
+- 困难（Adversity）不做；音擎金步纳入购买阶梯（本体 15000 → 专武 10000 → 满配 6影画+4精炼）。
+
+**算法**：
+- 外层 beam search（`planPullStrategy`）：状态 = (持有集 × 银行)，每版本节点展开「买卡（窗口内下一档）/ 攒着（实物期权）」分支，同节点连买深度 ≤3；beam 去重键 = 持有集 + 银行（1000 菲林量化）+ **累计分**（score 必须进键——否则不同质量前缀被合并丢信息，曾致规划器永远不买卡）。选 beam 不选贪心的原因：niche 协同（卢西娅单拿弱配命破 C 强）破坏次模性，NWF'78 / Sviridenko'04 / K&G'05 的常数因子保证不适用；beam 保留多样性恰是对抗非次模结构的手段（无一般保证，Ow & Morton 1988）。
+- 内层每期不重叠组队（`pickPeriodAssignment`）：每 Boss 候选**分桶多样化截断**（按队伍首成员分桶再取 topM——纯分数序截断会让前 M 名全含同一主C，第 2 房起全员重叠、DFS 无解，曾实测 65500 封顶假象）+ DFS 精确解 9 人不重叠。
+- **价值归因 = VCG 反事实差分**（`computeCardValuesVcg`）：V(规划 | 卡可购) − V(规划 | 卡禁购)，禁用重规划非禁用。同一引擎同一算法对新号/成型号给同一张卡不同估值（持有集条件化——用户「比利 vs 维琳娜」例的形式化）；命座/专武档同理可定价。**VCG 反事实不等式**：禁用不可能让最优更好（value ≥ 0，测试钉住）。
+- 引擎 oracle（`pullPlannerEngine.ts`）：伤害→分数映射 + maxIter 收敛过滤 + 缓存 key = (phaseId × 持有集)；teamTimeline 轻量配装底座；快照/恢复同 Chart 1。**注意**：oracle 是同步的（beam 内不 yield——同 teamTimeline 贪婪区教训），全量规划数分钟，VCG 每卡重规划大量命中缓存。
+
+**学术引用锚点**（FEATURES §4.5 与代码头注释同源）：Weingartner 1963 多期资本预算；Nemhauser–Wolsey–Fisher 1978 / Sviridenko 2004 / Khuller–Moss–Naor 1999 / Krause–Guestrin 2005 次模贪心保证（本问题不适用，说明见上）；Lappas–Liu–Terzi 2009 team formation NP-难；Vickrey 1961 / Clarke 1971 / Groves 1973 边际外部性定价；Charnes–Cooper–Rhodes 1978 DEA（上限口径的方法论出处）；Dixit–Pindyck 1994 / McDonald–Siegel 1986 实物期权（攒菲林 = 持有看涨期权）；Ow & Morton 1988 beam search；Chand–Hsu–Sethi 2002 滚动时域。玩家侧 gacha MDP：Chen & Fang SIGMETRICS'23；保底等待时间 Markov 链：Hou et al. 2026（社区工具 Rettend/zzz-pull-planner 等的分位数把握度思路，v2 风险感知扩展用）。
+
+**已知偏差与边界**：真实 meta 偏差同 §4.2（青衣系 maxIter 排除、模型偏好 vs 真实 meta 排名差）；早期期数数据不全（47 期里 14 期只有 2 Boss、1 期 1 Boss，按实际房间计分）；赠送卡（佩洛伊斯）与 A 级特例（潘引壶）不入购买清单（免费人池）；λ 现实折扣 v1 = 1（纯理论上限口径，效率前沿做回测对照）。
 
 ### 4.3 修改入口
 
@@ -214,7 +238,8 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 搜索 / 加金 / 收敛过滤算法 | `src/composables/teamTimeline.ts`（`computeTeamTimeline` / `computeOptimalTeamAllocation` / `budgetAwareStateFor`） |
 | 每期新角色·强队强度（Chart 3） | `teamTimeline.ts`：`buildNewCharacterRows`（版本×新角色行，**排除 1.0 常驻 S**）/ `computeNewCharacterPoints`（**同角色多队**逐队配装+收敛过滤）/ `prefillStrongTeamsFromPresets`（口述预设优先 + 仓库 preset 补剩余）；**口述强队单一事实源 = `data/strongTeamPresets.ts`** |
 | 菲林经济模拟（Chart 4） | `teamTimeline.ts`：`computeFilmSimulation`（经济累积 + 主C优先买金 + 逐期 Boss/buff 求值）；**抽卡期望/汇率常量 = `data/filmEconomy.ts`**（角色金 93.75 抽 / 音擎金 62.5 抽 / 直充 10 菲林/元，萌百·游戏内调频详情） |
-| 抽卡价值 · 危局兑现（Chart 5） | `composables/pullValue.ts`：`computePullValue`（配对差分/累计/ROI/四分位分级，纯函数）+ `pvTierOf`（分层单一事实源）；口径见 §4.4 |
+| 抽卡价值 · 危局兑现（Chart 5） | `composables/pullValue.ts`：`computePullValue`（配对差分/累计/ROI/四分位分级/效率前沿，纯函数）+ `pvTierOf`（分层单一事实源）；口径见 §4.4 |
+| 抽卡规划器（Chart 6） | 纯逻辑核心 = `composables/pullPlanner.ts`（beam/不重叠匹配/购买阶梯/VCG，oracle 注入可单测）；引擎桥 = `composables/pullPlannerEngine.ts`（伤害→分数映射、期轴构造 `buildPlannerPeriods`、集成编排 `runPullPlanner`）；每版本菲林常量 = `data/filmEconomy.ts` `PLANNER_FILM_PER_VERSION`；口径与学术锚点见 §4.5 |
 | 图表 / 控制面板 / 明细表 | `src/views/TimeChartsPage.vue`（自绘 SVG，无图表库） |
 | 直伤系数散点数据 | `composables/multiplierCoefficients.ts` 的 `buildDirectDamageTimeline`（限定S × 首次UP节点 × 支援突击锚点比值；口径见 §5） |
 | 页面注册 | `CalculatorView.vue` pageMap + `AppHeader.vue`（`timeline` tab） |

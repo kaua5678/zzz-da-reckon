@@ -79,6 +79,8 @@ export interface StunPoolInput {
    * 等效于第 1 次失衡仍满额、之后每次失衡所需外部失衡值降为 `bossStunValue × (1 - 返还比例)`。
    */
   refundStunRatio?: number
+  /** Boss 白送的失衡值（如 亵渎者 30% 失衡上限，直接计入总失衡值、不做抗性/返还折算） */
+  stunGift?: number
 }
 
 /** 计算单次招式的实际失衡值
@@ -168,10 +170,12 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
 
   // 失衡次数 = floor(有效总失衡值 / bossStunValue)；失衡窗口内打出的失衡值无效。
   // 失衡值返还（雨果决算）：第 1 次失衡满额，之后每次失衡所需外部失衡值 = bossStunValue × (1 - 返还比例)。
+  // Boss 白送失衡（stunGift）：直接计入总失衡值（不做抗性/返还折算）。
+  const totalStunWithGift = totalStunBuildUp + Math.max(0, input.stunGift ?? 0)
   const effectiveStunCost = bossStunValue * (1 - refundStunRatio)
   const stunCount = bossStunValue > 0
-    ? (totalStunBuildUp >= bossStunValue
-      ? 1 + Math.floor((totalStunBuildUp - bossStunValue) / effectiveStunCost)
+    ? (totalStunWithGift >= bossStunValue
+      ? 1 + Math.floor((totalStunWithGift - bossStunValue) / effectiveStunCost)
       : 0)
     : 0
   // 实际被返还（用于展示）：除最后一次失衡外的每次失衡各返还 refundStunRatio × bossStunValue
@@ -192,6 +196,7 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
     stunCount,
     stunRefundRatio: refundStunRatio,
     stunRefundValue,
+    stunGift: Math.max(0, input.stunGift ?? 0),
     chainCountPerStun,
     chainCountTotal,
     decibelBonus,

@@ -146,6 +146,22 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
     不参与加回（其必要时间对次数非线性）。种子不变性回归：`seedInvariance.test.ts`。
     已知取舍：预算极紧时「小数次数按比例占时间」可产生轻微负命座提升（卢西娅C4 −1.2% 量级），
     旧整数动力学靠路径运气掩盖该权衡——彻底解法需按伤害评估加回候选，待定。
+18. **Boss 预设弹刀反推（2026-08）**：`boss-presets.json` 的 `defaults.parryTotal` / `parryNoFollowUpTotal` +
+    「保底4失衡」勾选时，`useResourceCalc` 外层不动点线程（`prevParrySplit`，般岳 `prevBanyueTopUp`
+    同款收敛）按当前队伍反推——击破位（首个 `specialty==='stun'` 槽位）**正常弹刀** = 保底 4 次失衡所需、
+    主C（槽位 0）= `parryTotal − 击破位`（主C 已手填不覆盖）；**不带支援突击弹刀**（只有轻弹刀倍率行 +
+    喧响 215、无支援突击行）全部归击破位、非用户可调（执行行：轻弹刀 count = parry + 无突击、支援突击
+    count = parry）。**口径坑**：①缺口必须按「非弹刀失衡基数」算（失衡池 total − 击破位弹刀行贡献，行
+    count 随弹刀缩放），否则补齐自身把缺口关掉会 0↔T 振荡；②无突击弹刀的失衡值先从缺口里扣掉再反推
+    正常弹刀；③击破位每次弹刀失衡 = 招架支援 + 支援突击两行 `effectiveStun/count` 之和（无突击 = 仅招架
+    支援）；④**首轮注入 ≥1 探针**保证轻弹刀行存在供测量，但探针的 215 喧响会经「喧响→终结技→连携」级联
+    污染本轮失衡（曾致反推归零后无行卡死）——**每次弹刀失衡值随线程携带**（`perParryDaze`，本轮无行沿用
+    上轮实测值）；⑤弹刀 215 喧响必须用注入后有效次数（`parryForBonus` 读 `characters[slot].parryCount +
+    parryNoFollowUpCount`，勿用 store 原值，曾漏算反推弹刀喧响）。纯函数 `core/parrySplit.ts` 单测 + 集成
+    `parrySplitInt.test.ts`（真数据叶释渊/司祭/未知复合侵蚀体）。**只给喧响的弹刀**（`parryDecibelOnlyTotal`，
+    轻弹刀打小怪无 daze）只计 215 喧响、不产任何行（不进 parryForBonus 之外的行生成）；**失衡赠礼**
+    `stunGiftRatio` 应用时换算 `bossStunGift = 比例 × stunValue`，`calcStunPool` 加 `stunGift` 直接计入
+    stunCount 推导（不计抗性/返还），反推的非弹刀基数也把它加进去（减少缺口）。
 
 ## 5. 验收命令
 

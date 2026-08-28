@@ -194,10 +194,33 @@ const catalogById = new Map(catalog.bosses.map(b => [b.id, b]))
  *   60 能量 + 闪能"的触发次数（resource/helpers.ts shieldBreakGift = shieldCount*60）。
  *   名可名有秽盾 → 填 1（不是血量值 3000）；其余 0
  * - energyShield（能量盾触发次数）：同上口径，暂无数据，默认 0
- * 无敌时间/快支不在此列：无敌时间是招式机制只能手填；快支是角色侧与 Boss 无关。
+ * - invincibleTime：Boss 无敌不可攻击时间（秒；招式机制决定的转阶段/入场动画，用户核对值）。
+ *   用于 DoT 有效时间扣减（effectiveTime = battleTime − invincibleTime）与时间预算提示。
+ * - parryTotal：默认弹刀总次数（主C/击破位按「保底4失衡反推 + 剩余给主C」运行时拆分，
+ *   见 src/core/parrySplit.ts + useResourceCalc 反推线程；应用 Boss 时自动勾选「保底4失衡」）。
+ *   口径：只记「正常弹刀」（轻弹刀 + 支援突击 + 喧响 215）；「不带支援突击的弹刀」
+ *   （只有轻弹刀倍率行 + 喧响 215、无支援突击行）用 parryNoFollowUpTotal 单独记、
+ *   全部归击破位（非用户可调）；「x弹刀」（两人同时弹、一人不耗时间）暂按 1 次正常弹刀计，
+ *   时间折扣未建模（debt: x弹刀时间语义，仅基塔布鲁 1 次）。
+ * - decibelGift：喧响赠礼（boss 机制赠送，叠加在角色进场喧响 initialDecibelGift 之上）。
+ * 快支不在此列：快支是角色侧与 Boss 无关。
  */
 const BOSS_DEFAULTS = {
-  '30034': { battleTime: 180, shieldCount: 1, energyShield: 0 }, // 秽息妖鬼·名可名（有秽盾，破一次）
+  '30009': { battleTime: 180, shieldCount: 0, energyShield: 0, decibelGift: { slot: 1, amount: 6000 } }, // 未知复合侵蚀体（送 6000 喧响给 1 号位）
+  '30021': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 7 },        // 恶名·庞培（无敌 7s）
+  '30033': { battleTime: 180, shieldCount: 1, energyShield: 0, invincibleTime: 4, parryNoFollowUpTotal: 15 }, // 秽息司祭（无敌 4s / 秽盾 1 / 无突击弹刀 15）
+  '30034': { battleTime: 180, shieldCount: 1, energyShield: 0, invincibleTime: 28 },       // 秽息妖鬼·名可名（无敌 28s / 秽盾 1）
+  '30038': { battleTime: 180, shieldCount: 1, energyShield: 0, invincibleTime: 29, parryNoFollowUpTotal: 2, parryDecibelOnlyTotal: 4, stunGiftRatio: 0.3 }, // 「亵渎者」（无敌 29s / 秽盾 1 / 无突击弹刀 2 / 只喧响弹刀 4 / 白送 30% 失衡上限）
+  '30041': { battleTime: 180, shieldCount: 1, energyShield: 0, invincibleTime: 2, parryTotal: 1 }, // 彷徨猎手（无敌 2s / 秽盾 1 / 正常弹刀 1）
+  '30042': { battleTime: 180, shieldCount: 1, energyShield: 0, invincibleTime: 24, parryTotal: 13 }, // 魇缚者·叶释渊（无敌 24s / 秽盾 1 / 弹刀 13）
+  '40000': { battleTime: 180, shieldCount: 2, energyShield: 0, invincibleTime: 6, parryTotal: 1, parryNoFollowUpTotal: 3 }, // 太初梦魇（无敌 6s / 秽盾 2 / 正常弹刀 1 / 无突击弹刀 3）
+  '40001': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 15, parryTotal: 2, parryNoFollowUpTotal: 7 }, // 薇斯珀（无敌 15s / 正常弹刀 2 / 无突击弹刀 7）
+  '40002': { battleTime: 180, shieldCount: 0, energyShield: 1, invincibleTime: 7, parryNoFollowUpTotal: 6 }, // 猎血清道夫（无敌 7s / 能量盾 1 / 无突击弹刀 3+3）
+  '40003': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 7, parryNoFollowUpTotal: 6 }, // 复写体·猎血清道夫（困难；无敌 7s / 无能量盾 / 无突击弹刀 6）
+  '40005': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 8, parryTotal: 2, parryNoFollowUpTotal: 4 }, // 焚昼余火·法厄同（无敌 4+4=8s 待确认 / 正常弹刀 2 / 无突击弹刀 4）
+  '40006': { battleTime: 180, shieldCount: 0, energyShield: 1, parryTotal: 1, parryNoFollowUpTotal: 2 }, // 基塔布鲁（能量盾 1 / 无突击弹刀 2 / x弹刀=1 次正常弹刀，时间折扣未建模）
+  '40008': { battleTime: 180, shieldCount: 0, energyShield: 2, parryTotal: 1, parryNoFollowUpTotal: 2 }, // 基塔布鲁·滞变畸兽（能量盾 2 / 正常弹刀 1 / 无突击弹刀 2）
+  '300121': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 24 },      // 恶名·冥宁芙（无敌 24s）
 }
 function bossDefaults(monsterId) {
   return { battleTime: 180, shieldCount: 0, energyShield: 0, ...(BOSS_DEFAULTS[monsterId] ?? {}) }

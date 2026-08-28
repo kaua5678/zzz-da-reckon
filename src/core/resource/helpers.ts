@@ -402,7 +402,7 @@ export function calcRawDecibelParts(
   const ultimateDecibel = ultimateCount * cfg.ultimateDecibelRecovery
   const chainDecibel = chainCountTotal * cfg.chainDecibelRecovery
   const dodgeCounterDecibel = cfg.dodgeCounterCount * cfg.dodgeCounterDecibelRecovery
-  const defensiveAssistDecibel = cfg.parryCount * cfg.defensiveAssistDecibelRecovery
+  const defensiveAssistDecibel = ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistDecibelRecovery
   const assistFollowUpDecibel = cfg.parryCount * cfg.assistFollowUpDecibelRecovery
   const remielleRainbowEndDecibel = remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndDecibelRecovery
   const skillRegen = basicDecibel + exSpecialDecibel + ultimateDecibel + chainDecibel
@@ -690,29 +690,30 @@ export function buildExecutions(
     })
   }
 
-  // 轻弹刀（Defensive Assist #1）
-  if (cfg.parryCount > 0 && cfg.defensiveAssistActionTime > 0) {
+  // 轻弹刀（Defensive Assist #1）：count = 正常弹刀 + 不带支援突击弹刀
+  const totalDefensiveAssist = (cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)
+  if (totalDefensiveAssist > 0 && cfg.defensiveAssistActionTime > 0) {
     const car = cfg.defensiveAssistComboAlignRatio
     executions.push({
       moveId: cfg.defensiveAssistMoveId,
       moveName: '轻弹刀（Defensive Assist #1）',
       category: 'assist',
-      count: cfg.parryCount,
+      count: totalDefensiveAssist,
       actionTime: cfg.defensiveAssistActionTime,
       comboAlignRatio: car,
-      totalTime: cfg.parryCount * cfg.defensiveAssistActionTime,
-      totalComboAlignTime: cfg.parryCount * cfg.defensiveAssistActionTime * car,
+      totalTime: totalDefensiveAssist * cfg.defensiveAssistActionTime,
+      totalComboAlignTime: totalDefensiveAssist * cfg.defensiveAssistActionTime * car,
       energyConsume: 0,
       totalEnergyConsume: 0,
       decibelRecovery: cfg.defensiveAssistDecibelRecovery,
-      totalDecibelRecovery: cfg.parryCount * cfg.defensiveAssistDecibelRecovery,
+      totalDecibelRecovery: totalDefensiveAssist * cfg.defensiveAssistDecibelRecovery,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       timeBucket: 'necessary',
     })
   }
 
-  // 支援突击（Assist Follow-Up）
+  // 支援突击（Assist Follow-Up）：只随正常弹刀（不带支援突击弹刀无此段）
   if (cfg.parryCount > 0 && cfg.assistFollowUpActionTime > 0) {
     const car = cfg.assistFollowUpComboAlignRatio
     executions.push({
@@ -940,7 +941,8 @@ export function iterate(
       + ultimateCount * cfg.ultimateActionTime
       + chainCount * cfg.chainActionTime
       + cfg.dodgeCounterCount * cfg.dodgeCounterActionTime
-      + cfg.parryCount * (cfg.defensiveAssistActionTime + cfg.assistFollowUpActionTime)
+      + (cfg.parryCount ?? 0) * cfg.assistFollowUpActionTime
+      + ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistActionTime
       + remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndActionTime
       // 时间预算收敛：执行计划中模块专属动作行（如雅霜月架势、叶瞬光飞光）占用前台但未计入
       // estimateExSpecialTime → Σ执行行时间超战斗时间；外层循环把超出部分折入必要时间，压缩平A池。
@@ -979,8 +981,8 @@ export function iterate(
       + ultimateCount * cfg.ultimateActionTime * cfg.ultimateComboAlignRatio
       + chainCount * cfg.chainActionTime * cfg.chainComboAlignRatio
       + cfg.dodgeCounterCount * cfg.dodgeCounterActionTime * cfg.dodgeCounterComboAlignRatio
-      + cfg.parryCount * (cfg.defensiveAssistActionTime * cfg.defensiveAssistComboAlignRatio
-          + cfg.assistFollowUpActionTime * cfg.assistFollowUpComboAlignRatio)
+      + (cfg.parryCount ?? 0) * cfg.assistFollowUpActionTime * cfg.assistFollowUpComboAlignRatio
+      + ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistActionTime * cfg.defensiveAssistComboAlignRatio
       + remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndActionTime * cfg.remielleRainbowEndComboAlignRatio
 
     newStates.push({

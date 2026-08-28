@@ -66,11 +66,12 @@ useResourceCalc()                      编排层入口（composables/useResource
 | Excel 导出（结果页按钮） | `utils/exportExcel.ts`（buildExportWorkbook 纯组装 / exportExcelFile 动态加载 xlsx + Blob 下载；sheet：操作表/资源表/伤害行明细/异常池） | 同上；测试 `utils/__tests__/exportExcel.test.ts` |
 | 改失衡轴 / 自动轴 / 预设 | `data/stunAxisPresets.ts` + `data/stunAxisPresets/*.json` | 同上（自动匹配 `selectAutoStunAxisPreset`） |
 | 改队伍预设 | `data/teamPresets/*.json`（目录自动加载） | 同上 |
-| **时间图表页（队伍随版本演变）** | `composables/teamTimeline.ts`（精确增量搜索 + 预算感知排名 + 逐金贪婪最优加金 + maxIter 收敛过滤 + 换人上位/平替判定 `classifySwapUplift` + Boss 排期标记 `composables/bossSchedule.ts`）+ `data/versionTimeline.ts`（版本节点/S级实装版本）；**Chart 5 抽卡价值 = `composables/pullValue.ts`**（实战归档配对差分 → 累计兑现/ROI/T0-T3 分级，纯函数零引擎） | `views/TimeChartsPage.vue`；口径见 `FEATURES_GUIDE.md` §4（Chart 5 算法口径 §4.4） |
+| **时间图表页（队伍随版本演变）** | `composables/teamTimeline.ts`（精确增量搜索 + 预算感知排名 + 逐金贪婪最优加金 + maxIter 收敛过滤 + 换人上位/平替判定 `classifySwapUplift` + Boss 排期标记 `composables/bossSchedule.ts`）+ `data/versionTimeline.ts`（版本节点/S级实装版本）；**Chart 5 抽卡价值 = `composables/pullValue.ts`**（实战归档配对差分 → 累计兑现/ROI/T0-T3 分级/效率前沿，纯函数零引擎）；**Chart 6 抽卡规划器 = `composables/pullPlanner.ts`**（beam search 序贯购买 + 3-Boss 不重叠匹配 + VCG 价值归因，纯逻辑 oracle 注入）+ `composables/pullPlannerEngine.ts`（引擎桥：伤害→分数映射/期轴/快照恢复） | `views/TimeChartsPage.vue`；口径见 `FEATURES_GUIDE.md` §4（Chart 5 算法口径 §4.4） |
 | **倍率表系数演算记录（角色系数推导）** | `data/standardMultiplierTable.ts`（标准职业稀有度倍率表：1级A级基准式 + 等级×2/×1.5 引用 `core/skillLevel.ts` + 限定S×1.1/常驻S×1.05/命破伤害×0.8；常驻S名单单一来源在此）+ `composables/multiplierCoefficients.ts`（招式分类/期望值/纵向系数中位数/支援突击直伤锚点/招式特定偏差，纯函数页面测试同源） | `views/MultiplierCoeffPage.vue`；口径与待确认项见 `FEATURES_GUIDE.md` §5 |
 | 改数据导入 / 校验 / 文档生成 | `scripts/`（validate-specs / docs:status / 各类 import） | 同上 |
 | 排查"某 buff / 命座没生效" | `AGENT_RECORDING_SOP.md` §3.5 根因表；页面「命座提升率」自检打标 | 按根因表定位字段消费端 |
 | 改音擎 / 驱动盘 / 敌人 / Boss | `public/static/catalog.json`（编译期快照，改数据走 scripts/ 导入脚本，勿手改） | scripts/ + catalogStore |
+| 改 Boss 预设默认值（无敌时间/秽盾/弹刀总数） | `scripts/import-nanoka-bosses.mjs` `BOSS_DEFAULTS`（重跑生成 `public/static/boss-presets.json`） | 弹刀「保底4失衡」反推运行时拆分：`core/parrySplit.ts`（纯函数）+ `useResourceCalc` 外层不动点线程 `prevParrySplit`（般岳 `prevBanyueTopUp` 同款收敛）；口径见 `ENGINE_PIPELINE_GUIDE.md` §4 坑 18 |
 
 ## 4. 数据流速查（谁写谁读，防"录了没消费"）
 

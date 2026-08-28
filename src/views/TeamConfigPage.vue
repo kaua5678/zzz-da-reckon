@@ -152,7 +152,7 @@
                       <n-grid cols="6" :x-gap="8">
                       <n-gi>
                         <div class="field">
-                          <span class="field-label">弹刀次数<span v-if="selectedChar.agentId === '1471' && banyueTopUpForSlot && banyueTopUpForSlot.parry > 0" class="field-hint">+{{ banyueTopUpForSlot.parry }}（轴自动）</span></span>
+                          <span class="field-label">弹刀次数<span v-if="selectedChar.agentId === '1471' && banyueTopUpForSlot && banyueTopUpForSlot.parry > 0" class="field-hint">+{{ banyueTopUpForSlot.parry }}（轴自动）</span><span v-if="parrySplitForSlot" class="field-hint">{{ parrySplitForSlot.label }}</span></span>
                           <n-input-number
                             :value="selectedChar.parryCount || interactionDefaults.parry"
                             :min="0"
@@ -967,10 +967,31 @@ function setGuarantee(kind: 'stun' | 'fury' | 'ultimate', v: boolean) {
   configStore.setMechanicSetting(`guarantee.${kind}`, v ? 1 : 0)
 }
 // 般岳轴模式自动补齐（保底语义）：弹刀/双反在交互栏输入之上补的量（懒计算，仅般岳选中时求值）
-const { banyueInteractionTopUp, autoPreset } = useResourceCalc()
+const { banyueInteractionTopUp, autoPreset, parrySplitResult } = useResourceCalc()
 const banyueTopUpForSlot = computed(() => {
   const t = banyueInteractionTopUp.value
   return t && t.slot === configStore.selectedSlot ? t : null
+})
+// Boss 预设弹刀反推（保底4失衡）：击破位显示「→ 有效次数（含无突击弹刀/保底反推）」、未手填的主C 显示「→ 剩余（Boss 默认）」
+const parrySplitForSlot = computed<{ label: string } | null>(() => {
+  const p = parrySplitResult.value
+  if (!p) return null
+  const slot = configStore.selectedSlot
+  const char = configStore.team[slot]
+  if (!char?.agentId) return null
+  if (slot === p.breakerSlot) {
+    const total = p.breakerParry + p.breakerNoFollowUp + p.breakerDecibelOnly
+    if (total <= 0) return null
+    const noFollowNote = p.breakerNoFollowUp > 0 ? `含无突击 ${p.breakerNoFollowUp}` : ''
+    const decibelOnlyNote = p.breakerDecibelOnly > 0 ? `只喧响 ${p.breakerDecibelOnly}` : ''
+    const topUpNote = p.topUp > 0 ? `保底反推 +${p.topUp}` : ''
+    const notes = [noFollowNote, decibelOnlyNote, topUpNote].filter(Boolean).join(' · ')
+    return { label: `→ ${total}${notes ? `（${notes}）` : ''}` }
+  }
+  if (slot === 0 && (char.parryCount ?? 0) <= 0 && p.mainDpsParry > 0) {
+    return { label: `→ ${p.mainDpsParry}（主C补齐）` }
+  }
+  return null
 })
 // 自动轴预设命中时，按预设 guarantee 自动勾选保底目标（只在预设声明时填，不自动清除用户手勾）
 watch(autoPreset, (p) => {

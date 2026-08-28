@@ -1150,8 +1150,12 @@ export interface CharacterOperationConfig {
   exSpecialComboAlignRatio: number
   /** 终结技合轴率 0-1 */
   ultimateComboAlignRatio: number
-  /** 弹刀次数（per-character） */
+  /** 弹刀次数（per-character；正常弹刀 = 轻弹刀 + 支援突击 + 喧响 215） */
   parryCount: number
+  /** 不带支援突击的弹刀次数（per-character；只有轻弹刀倍率行 + 喧响 215，无支援突击行；boss 机制强制，非用户可调） */
+  parryNoFollowUpCount: number
+  /** 只给喧响的弹刀次数（per-character；轻弹刀打小怪无 daze 无支援突击，只有喧响 215；boss 机制强制，非用户可调） */
+  parryDecibelOnlyCount: number
   /** 闪避反击次数（per-character） */
   dodgeCounterCount: number
   /** 快速支援次数（per-character） */
@@ -1762,6 +1766,8 @@ export interface StunPoolResult {
   stunRefundRatio: number
   /** 实际返还的失衡值合计（除最后一次失衡外的每次各返还 refundStunRatio × bossStunValue） */
   stunRefundValue: number
+  /** Boss 白送的失衡值（如 亵渎者 30% 失衡上限；计入 stunCount 推导，不参与抗性/返还折算） */
+  stunGift: number
   /** 每次失衡的连携次数（首领默认3，可由用户配置） */
   chainCountPerStun: number
   /** 总连携次数 = 失衡次数 × 每次连携次数 */

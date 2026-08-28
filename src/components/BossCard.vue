@@ -20,8 +20,8 @@
           <span>失衡 {{ fmt(brief.stunValue, 0) }}</span>
           <span>防 {{ brief.defense }} / Lv{{ brief.level }}</span>
           <span v-if="preset">倍率 {{ fmt(preset.monster.stunVuln, 2) }} / {{ fmt(preset.monster.stunTime, 1) }}s</span>
-          <span v-if="preset && (preset.defaults.shieldCount || preset.defaults.energyShield)">
-            秽盾 {{ preset.defaults.shieldCount }} / 能量盾 {{ preset.defaults.energyShield }}
+          <span v-if="preset && (preset.defaults.shieldCount || preset.defaults.energyShield || preset.defaults.invincibleTime || preset.defaults.parryTotal || preset.defaults.parryNoFollowUpTotal || preset.defaults.parryDecibelOnlyTotal)">
+            秽盾 {{ preset.defaults.shieldCount }} / 能量盾 {{ preset.defaults.energyShield }}<template v-if="preset.defaults.invincibleTime"> / 无敌 {{ preset.defaults.invincibleTime }}s</template><template v-if="preset.defaults.parryTotal"> / 弹刀 {{ preset.defaults.parryTotal }}</template><template v-if="preset.defaults.parryNoFollowUpTotal"> / 无突击 {{ preset.defaults.parryNoFollowUpTotal }}</template><template v-if="preset.defaults.parryDecibelOnlyTotal"> / 只喧响 {{ preset.defaults.parryDecibelOnlyTotal }}</template>
           </span>
         </div>
       </div>
