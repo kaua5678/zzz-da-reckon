@@ -11,23 +11,26 @@
 | `full` | 录角色 / 补机制 / 改引擎 / 排查 buff 没生效 | 本文件 §1 + `docs/ARCHITECTURE.md` §3 + 对应管线文档 | `docs/mechanism-reference.md` 纯参考可不读 |
 | `loop` | 跨多文件重构 / 批量迁移 / 数据管道改动 | `full` 全部 + 本文件 §4 长任务账本 | — |
 
-`full` / `loop` 档的阅读顺序（动手前至少扫完 1-2）：
+`full` / `loop` 档的**读法：步骤必读、参考按症状查**。参考文档里的具体案例（某角色某坑）换到新角色往往无法类比——不要通读整篇参考，命中哪条读哪条：
 
-1. `docs/ARCHITECTURE.md` —— **代码架构地图**：五层心智模型、一次计算生命周期、核心类型地图、**任务 → 文件决策树**、数据流速查（"拿到任务该读哪些文件"先看这）
-2. `docs/ENGINE_PIPELINE_GUIDE.md` —— 一轮计算的数据流、模块钩子调用顺序、常见坑（applyPanel 拿不到 settings、enrich 回填覆盖、moveId 匹配等）
-3. `docs/AGENT_RECORDING_SOP.md` —— 角色录入 SOP：spec 字段→消费者→生效测试清单、防死数据铁律、**命座提升率丢失根因表**
+| 何时 | 读哪个 |
+|---|---|
+| 开工前（必读） | 本文件 §1 + 下方录入步骤 + `AGENT_RECORDING_SOP.md` §6.10 完成清单 |
+| 拿到任务先查「改哪」 | `ARCHITECTURE.md` §3 决策树，只读命中那一行 |
+| 实现中卡住 / 数值不对 / 报错 | `ENGINE_PIPELINE_GUIDE.md` §4 坑表，按症状查对应条 |
+| 命座提升率异常 / 写测试 / 录拐力 | `AGENT_RECORDING_SOP.md` §3.5 根因表 / §5 模板 / §6 |
+| 录新角色前做模式匹配 | `MECHANIC_PATTERNS.md` §2，只读命中的 1 个维度（D1–D9） |
+| 中文术语→字段不确定 | `GAME_TERM_TO_CODE_FIELD.md` 对应章节 |
 
-辅助：`docs/GAME_TERM_TO_CODE_FIELD.md`（中文术语→字段）、`docs/MECHANIC_PATTERNS.md`（**机制模式目录：录新角色前先做模式匹配**）、`docs/MECHANICS_IMPLEMENTATION.md`（角色机制档案）、`README.md` §3（录入工作流）。
+### 录入角色 / 补机制：五步（仅此类任务）
 
-### 录入角色 / 补机制：先读原文 + 角色档案（仅此类任务）
+1. **读 nanoka 原文自主分析**（`data/raw/nanoka_missing/full/<id>.json`）：逻辑/资源/字段/数值原文都给了，只把「原文没数值 / 口径歧义 / 引擎缺通道」列清单一次问用户——`AGENT_RECORDING_SOP.md` §0.5。
+2. **检索角色档案段**（`grep -n "角色名\|agentId" docs/MECHANICS_IMPLEMENTATION.md`）：读该段已确认口径 + 未建模项。无状态行 = 段未核对，先核现状再补状态行。
+3. **模式匹配**：`MECHANIC_PATTERNS.md` §2 定位 1 个维度（D1–D9），按该维度既有做法实现，不造新乘区。
+4. **实现**：卡住/数值不对/报错才按症状查 `ENGINE_PIPELINE_GUIDE.md` §4、`AGENT_RECORDING_SOP.md` §3.5。
+5. **交付**：过 `AGENT_RECORDING_SOP.md` §6.10 完成清单 → `npm run verify` + `docs:status`；同步档案段与状态表。
 
-任务涉及「录入新角色 / 补机制 / 核对角色口径」时，按序做三件事：
-
-1. **读 nanoka 原文自主分析**（`data/raw/nanoka_missing/full/<id>.json`）：逻辑/资源/字段/数值都在原文里，能自主确定的直接实现，只把「原文没给数值/口径歧义/引擎缺通道」列成清单一次性问用户——见 `docs/AGENT_RECORDING_SOP.md` §0.5。
-2. **读角色档案段**（`grep -n "角色名\|agentId" docs/MECHANICS_IMPLEMENTATION.md`）：已确认口径 + 未建模项。无状态行的段 = 尚未核对，录入时先核对现状再补状态行。
-3. 改完机制同步更新档案段。
-
-其他任务（改引擎/排查/UI）不需读原文/档案。未收录的新角色以 spec notes + raw 数据为准，录入时新建档案段。
+其他任务（改引擎/排查/UI）不需读原文/档案。未收录的新角色以 spec notes + raw 数据为准。
 
 ## 1. 硬性规则
 
