@@ -38,6 +38,14 @@ const A1_TIME = 0.171
 const A2_TIME = 0.33
 const A3_TIME = 0.682
 const A4_TIME = 1.134
+/** A1-A4 每段能量回复（catalog energy_recovery，Lv.12；影画4 按段精确折算） */
+const A1_ENERGY = 0.615
+const A2_ENERGY = 1.189
+const A3_ENERGY = 2.454
+const A4_ENERGY = 4.081
+/** A 段顺序 = A1,A2,A3(连段) → A4，每轮换各一次 */
+const A_SEG_ENERGY = [A1_ENERGY, A2_ENERGY, A3_ENERGY, A4_ENERGY]
+const A_CYCLE_ENERGY = A_SEG_ENERGY.reduce((a, b) => a + b, 0) // 8.339
 const SP_MOVE_ID = '1181005'
 const EX_MOVE_ID = '1181006'
 const SP_TIME = 0.2
@@ -166,14 +174,15 @@ function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): v
   ;(cfg as unknown as Record<string, unknown>).graceC1Cycles =
     cinema >= 1 ? plan.cycles : 0
 
-  // 影画4 爆破电容：强特×6 充能 → 给 A1-A4 平A 回能 +20%（单独回能项，不套进招式）
-  // 充能覆盖的平A段数 = min(强特×6, 总平A段数 4×轮换)；总平A能量 = 平A回能每秒 × 平A池
+  // 影画4 爆破电容：强特×6 充能 → 给 A1-A4 平A 回能 +20%（单独回能项，按段精确）
+  // 充能顺序覆盖前 min(强特×6, 4×轮换) 段平A；每段回能取 catalog energy_recovery
   if (cinema >= 4 && plan.cycles > 0 && plan.exUsed > 0) {
     const totalBasicHits = 4 * plan.cycles
-    const boostedHits = Math.min(plan.exUsed * 6, totalBasicHits)
-    const coverage = totalBasicHits > 0 ? boostedHits / totalBasicHits : 0
-    const basicEnergy = Math.max(0, Number((cfg as unknown as Record<string, unknown>).basicAttackRegenPerSec ?? 0)) * basicPool
-    const c4Energy = (GRACE_C4_ENERGY_EFFICIENCY / 100) * basicEnergy * coverage
+    const boosted = Math.min(plan.exUsed * 6, totalBasicHits)
+    const fullCycles = Math.floor(boosted / 4)
+    const rem = boosted % 4
+    const boostedEnergy = fullCycles * A_CYCLE_ENERGY + A_SEG_ENERGY.slice(0, rem).reduce((a, b) => a + b, 0)
+    const c4Energy = (GRACE_C4_ENERGY_EFFICIENCY / 100) * boostedEnergy
     ;(cfg as unknown as Record<string, unknown>).graceC4Energy = c4Energy
     ;(cfg as unknown as Record<string, unknown>).initialEnergyGift =
       Number((cfg as unknown as Record<string, unknown>).initialEnergyGift ?? 0) + c4Energy
