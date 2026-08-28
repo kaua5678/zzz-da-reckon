@@ -27,6 +27,9 @@ const M1_GASH_RATE_MULT = 1.15
 /** 影画1：全队施加[残痕]时暴击率 +5%/层，最多 3 层（按满层近似） */
 const M1_CRIT_PER_STACK = 5
 const M1_CRIT_MAX_STACKS = 3
+/** 影画4：锻星第三段/血契共鸣/千锤百炼 伤害 +20% */
+const M4_DMG_BONUS = 20
+const M4_MOVE_IDS = new Set(['1611007', '1611020', '1611021'])
 
 function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
   if (!skills) return null
@@ -68,6 +71,8 @@ export function computeClaretSharpResource(input: {
   gashCoverage: number
   cinemaLevel: number
   sharpnessCost: number
+  chainCountTotal?: number
+  ultimateCount?: number
 }): ClaretSharpResourceSource {
   const teammateFrontlineSeconds = Math.max(0, input.teammateFrontlineSeconds)
   const gashRatePctPerSecond = GASH_PCT_PER_ACTIVE_SECOND * (input.cinemaLevel >= 1 ? M1_GASH_RATE_MULT : 1)
@@ -79,7 +84,11 @@ export function computeClaretSharpResource(input: {
   const gashStackGain = cleaveCount + bloodBurialCount
   const coverage = Math.max(0, Math.min(1, input.gashCoverage))
   const gashStackConsumed = Math.floor(Math.min(gashStacks, gashStackGain) * coverage)
-  const maimCount = gashStackConsumed
+  // 影画6：血契共鸣/千锤百炼重击命中不消耗残痕直接触发 1 次单体毁伤
+  const c6ExtraMaim = input.cinemaLevel >= 6
+    ? Math.max(0, Math.floor(Number(input.chainCountTotal ?? 0))) + Math.max(0, Math.floor(Number(input.ultimateCount ?? 0)))
+    : 0
+  const maimCount = gashStackConsumed + c6ExtraMaim
   const personalResourceGain = maimCount
   const personalResourcesConsumed = bloodBurialCount >= 1 ? personalResourceGain : 0
   const personalResourceDamageBonusPct = personalResourcesConsumed * PERSONAL_RESOURCE_DMG_BONUS_PER_POINT
@@ -135,6 +144,8 @@ function buildClaretResourceResult({ cfg, state, teamFrontlineSeconds }: AgentRe
       gashCoverage: cfg.claretGashCoverage ?? 1,
       cinemaLevel: cfg.claretCinemaLevel ?? 0,
       sharpnessCost: cfg.claretSharpnessCost ?? SHARPNESS_COST_PER_EX,
+      chainCountTotal: state.chainCountTotal ?? 0,
+      ultimateCount: state.ultimateCount ?? 0,
     }),
   }
 }
@@ -149,6 +160,8 @@ function buildClaretExecutions({ cfg, state, executions, teamFrontlineSeconds }:
     gashCoverage: cfg.claretGashCoverage ?? 1,
     cinemaLevel: cfg.claretCinemaLevel ?? 0,
     sharpnessCost: cfg.claretSharpnessCost ?? SHARPNESS_COST_PER_EX,
+    chainCountTotal: state.chainCountTotal ?? 0,
+    ultimateCount: state.ultimateCount ?? 0,
   })
   const bonusMultiplier = 1 + source.personalResourceDamageBonusPct / 100
   const maimFromCleave = Math.min(source.maimCount, Math.max(0, Math.floor(cfg.claretCleaveCount ?? 0)))
@@ -176,6 +189,16 @@ function buildClaretExecutions({ cfg, state, executions, teamFrontlineSeconds }:
     for (const exec of executions) {
       if (!exec.moveId || !String(exec.moveId).startsWith(CLARET_AGENT_ID)) continue
       exec.critRateBonus = (exec.critRateBonus ?? 0) + M1_CRIT_PER_STACK * M1_CRIT_MAX_STACKS
+    }
+  }
+}
+
+function patchClaretExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
+  const cinema = Math.max(0, Math.floor(cfg.claretCinemaLevel ?? 0))
+  if (cinema < 4) return
+  for (const exec of executions) {
+    if (exec.moveId && M4_MOVE_IDS.has(exec.moveId)) {
+      exec.dmgBonus = (exec.dmgBonus ?? 0) + M4_DMG_BONUS
     }
   }
 }
@@ -254,6 +277,7 @@ export const claretMechanic: AgentMechanicModule = {
   applyPanel: applyClaretPanel,
   buildCharConfig: buildClaretCharConfig,
   buildExecutions: buildClaretExecutions,
+  patchExecutions: patchClaretExecutions,
   buildResourceResult: buildClaretResourceResult,
   resourceSections: buildClaretResourceSections,
   settings,

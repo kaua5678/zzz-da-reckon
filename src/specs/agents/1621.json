@@ -5,7 +5,7 @@
   "agentIds": [
     "1621"
   ],
-  "status": "not_described_not_implemented",
+  "status": "implemented_approximation",
   "attributeConversions": [
     {
       "id": "roxy_def_to_atk",
@@ -194,7 +194,7 @@
     "额外能力：队内有强攻或锋御角色时，自身暴击伤害+10%且每级+2%，上限130%；任意队友命中使敌人失衡易伤+30%，击破时失衡时间+2秒；风/污染状态目标额外+10%风直伤。已按 implemented_approximation 接入 teamBuffs（失衡易伤+30%+失衡时长+2s，门控于 additionalAbilityActive）。",
     "技能数据注意：EX 特殊技·Riding the Wind 的持续大旋风按秒倍率（1621010）录入，能量消耗为固定20+每秒20；Wind Cannon/Eye of the Wind 的附加倍率也已按独立招式录入，使用时需确认按秒模型。",
     "动作时间已按倍率表 ether_purify 公式自动录入：一般招式=秽盾/100，闪避反击=秽盾/100-1.5，弹刀=秽盾/100-2.5，终结技=秽盾/100-5；无秽盾数据的追加段不填 actionTime。",
-    "命座：nanoka 的命座文本基本为 PlaceHolder 占位，仅3/5命有通用技能等级+2；命座数据不可用，待用户提供正式文本。",
+    "命座（v4 影画，data/raw/nanoka_1621_zh.json）：影画1 敬请安息命中全抗-15%(50s)+自身暴伤+40%；影画2 小心风寒失衡易伤+25%（流势/自旋机动向不建模）；影画4 招架回1/闪反回2能量+终结技伤害+20%；影画6 无视20%风抗+巨型风旋倍率×2.5（余响逐时序不建模）。已由 roxy.ts applyPanel/buildCharConfig/patchExecutions 接入。",
     "特殊逻辑已开始实现：风能/风炮/风眼资源（src/mechanics/agents/roxy.ts）；旋风锤引爆风眼生成小旋风，其余风眼被摧毁结算一次伤害；小旋风持续秒数默认5秒可调，轮转次数待用户确认。"
   ],
   "teamBuffs": [

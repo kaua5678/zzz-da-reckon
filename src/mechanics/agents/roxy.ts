@@ -22,6 +22,19 @@ const WIND_EYE_MOVE_ID = '1621021'
 const MINI_TORNADO_MOVE_ID = '1621006'
 const CYCLONE_HAMMER_MOVE_ID = '1621005'
 const DEFAULT_MINI_TORNADO_SECONDS = 5
+const ROXY_ULT_MOVE_ID = '1621014'
+/** 影画1：敬请安息命中 → 全抗-15%（50s）+ 自身暴伤+40% */
+export const ROXY_C1_CRIT_DMG = 40
+export const ROXY_C1_RES_REDUCTION = 15
+/** 影画2：小心风寒命中 → 失衡易伤+25%（流势/自旋为机动向不建模） */
+export const ROXY_C2_STUN_VULN = 25
+/** 影画4：招架回1/闪反回2 能量 + 终结技伤害+20% */
+export const ROXY_C4_PARRY_ENERGY = 1
+export const ROXY_C4_DODGE_ENERGY = 2
+export const ROXY_C4_ULT_DMG = 20
+/** 影画6：无视20%风抗 + 巨型风旋倍率×2.5（失衡+30%未单独接） */
+export const ROXY_C6_WIND_RES_REDUCTION = 20
+export const ROXY_C6_MEGA_TORNADO_MULT = 2.5
 
 function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
   if (!skills) return null
@@ -79,14 +92,20 @@ export function computeRoxyWindEnergy(input: {
   }
 }
 
-function buildRoxyCharConfig({ skills, cfg }: AgentCharConfigInput): void {
+function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput): void {
   cfg.skipGenericExSpecial = true
+  ;(cfg as unknown as Record<string, unknown>).roxyCinemaLevel = cinemaLevel ?? 0
   cfg.roxyWindCannonMoveId = findMoveById(skills, WIND_CANNON_MOVE_ID)?.id ?? ''
   cfg.roxyWindEyeMoveId = findMoveById(skills, WIND_EYE_MOVE_ID)?.id ?? ''
   cfg.roxyMiniTornadoMoveId = findMoveById(skills, MINI_TORNADO_MOVE_ID)?.id ?? ''
   cfg.roxyCycloneHammerMoveId = findMoveById(skills, CYCLONE_HAMMER_MOVE_ID)?.id ?? ''
   cfg.roxyCycloneHammerCount = Math.max(0, cfgSetting(cfg, 'roxy.cycloneHammerCount', 0))
   cfg.roxyMiniTornadoSeconds = Math.max(0, cfgSetting(cfg, 'roxy.miniTornadoSeconds', DEFAULT_MINI_TORNADO_SECONDS))
+  // 影画4：招架支援回1能量/次 + 闪避反击回2能量/次（招式内至多1次）
+  if ((cinemaLevel ?? 0) >= 4) {
+    const energy = (cfg.parryCount ?? 0) * ROXY_C4_PARRY_ENERGY + (cfg.dodgeCounterCount ?? 0) * ROXY_C4_DODGE_ENERGY
+    if (energy > 0) cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + energy
+  }
   cfg.mechanicRowValues = {
     '1621008': getRowValue(findMoveById(skills, '1621008'), 'damage'),
     '1621009': getRowValue(findMoveById(skills, WIND_CANNON_MOVE_ID), 'damage'),
@@ -95,9 +114,20 @@ function buildRoxyCharConfig({ skills, cfg }: AgentCharConfigInput): void {
   }
 }
 
-function applyRoxyPanel({ panel }: AgentPanelInput): void {
+function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   // 初始防御 >1500：每点 +1.4 攻击、+0.2 冲击（上限 1000/60），由 spec attributeConversions 驱动。
   applySpecAttributeConversions(panel, getAgentSpec(ROXY_AGENT_ID)?.attributeConversions ?? [])
+  const cinema = cinemaLevel ?? 0
+  if (cinema >= 1) {
+    panel.critDmg = (panel.critDmg ?? 0) + ROXY_C1_CRIT_DMG
+    panel.enemyResReduction = (panel.enemyResReduction ?? 0) + ROXY_C1_RES_REDUCTION
+  }
+  if (cinema >= 2) {
+    panel.stunDmgMultiplierBonus = (panel.stunDmgMultiplierBonus ?? 0) + ROXY_C2_STUN_VULN
+  }
+  if (cinema >= 6) {
+    panel.enemyWindResReduction = (panel.enemyWindResReduction ?? 0) + ROXY_C6_WIND_RES_REDUCTION
+  }
 }
 
 function buildRoxyResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
@@ -131,6 +161,21 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
     getRowValue: (moveId, rowId) => (rowId === 'damage' ? (cfg.mechanicRowValues?.[moveId] ?? 0) : 0),
   })
   executions.push(...generated)
+}
+
+function patchRoxyExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
+  const cinema = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).roxyCinemaLevel ?? 0)))
+  if (cinema < 4) return
+  for (const exec of executions) {
+    if (cinema >= 4 && exec.moveId === ROXY_ULT_MOVE_ID) {
+      exec.dmgBonus = (exec.dmgBonus ?? 0) + ROXY_C4_ULT_DMG
+    }
+    // 影画6：巨型风旋（风眼 #2 1621006）伤害倍率 ×2.5（失衡+30% 未单独接，倍率覆盖精确结算）
+    if (cinema >= 6 && exec.moveId === MINI_TORNADO_MOVE_ID) {
+      exec.damageMultiplier = (exec.damageMultiplier ?? 0) * ROXY_C6_MEGA_TORNADO_MULT
+      exec.damageMultiplierOverride = true
+    }
+  }
 }
 
 function buildRoxyResourceSections({ result }: AgentResourceSectionsInput) {
@@ -194,6 +239,7 @@ export const roxyMechanic: AgentMechanicModule = {
   applyPanel: applyRoxyPanel,
   buildCharConfig: buildRoxyCharConfig,
   buildExecutions: buildRoxyExecutions,
+  patchExecutions: patchRoxyExecutions,
   buildResourceResult: buildRoxyResourceResult,
   resourceSections: buildRoxyResourceSections,
   settings,
