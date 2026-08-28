@@ -63,6 +63,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
       baseBuildUp: exec.baseBuildUp,
       perHitBuildUp: perHit,
       totalBuildUp: total,
+      dmgBonus: exec.dmgBonus ?? 0,
     }
 
     if (!elementMap.has(exec.element)) {

@@ -906,6 +906,16 @@ export function buildAnomalyVirtualPanel(
   panel.penRatio = weighted('penRatio')
   panel.penFlat = weighted('penFlat')
 
+  // 招式限定增伤按积蓄占比加权进基础区增伤（通用逻辑 2026-08-27）：
+  // 一整条异常全由某 100% 增伤招式积攒 → 基础区含那 100%；否则按各招式积蓄占比加权吃一部分。
+  let moveDmgBonusWeighted = 0
+  for (const contrib of prog.contributions ?? []) {
+    const moveDmgBonus = contrib.dmgBonus ?? 0
+    if (moveDmgBonus === 0 || contrib.totalBuildUp <= 0) continue
+    moveDmgBonusWeighted += moveDmgBonus * (contrib.totalBuildUp / totalBuildUp)
+  }
+  panel.dmgBonus = (panel.dmgBonus ?? 0) + moveDmgBonusWeighted
+
   const virtual: AnomalyVirtualPanelRow = {
     slot: -1,
     name: '虚拟面板',
@@ -1547,6 +1557,7 @@ export function extractSkillExecutions(
           count: 1,
           baseBuildUp: anomalyPerSec * exec.totalTime * anomalyUtilizationRate,
           element: basicElement,
+          dmgBonus: exec.dmgBonus,
         })
       }
       continue
@@ -1591,6 +1602,7 @@ export function extractSkillExecutions(
           baseBuildUp: anomaly * anomalyUtilizationRate,
           element: foundElement,
           skillType: normalizeResourceSkillType(foundMove, exec.moveId),
+          dmgBonus: exec.dmgBonus,
         })
       }
     }

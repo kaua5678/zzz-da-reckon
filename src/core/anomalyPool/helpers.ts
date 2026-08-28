@@ -248,6 +248,9 @@ export interface AnomalySkillExecution {
   buildUpEfficiencyBonusPct?: number
   /** 招式类型（normalizeResourceSkillType 口径）：失衡内积蓄的连携限定加成按此判定 */
   skillType?: string
+  /** 本行招式限定增伤（%，进增伤区加算，从 SkillExecution.dmgBonus 携带）。
+   *  异常结算通过积蓄占比加权吃到该增伤（通用逻辑 2026-08-27）。 */
+  dmgBonus?: number
 }
 
 /**

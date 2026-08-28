@@ -157,3 +157,54 @@ describe('格莉丝全管线集成（harness）', () => {
     expect((withLina.anomalyDmgBonus ?? 0) - soloAnomaly).toBeCloseTo(36)
   })
 })
+
+describe('格莉丝影画 C1/C2/C4/C6（2026-08-27 用户口径补录）', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.stubGlobal('fetch', vi.fn(async (url: any) => {
+      const u = String(url)
+      if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
+      if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
+      if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
+      return { ok: false, json: async () => ({}) }
+    }))
+  })
+
+  it('C4 爆破电容：能量获得效率 +20（4 命以上）', async () => {
+    async function panelFor(cinemaLevel: number) {
+      const { config, catalog } = await setupHarness([{ agentId: '1181', cinemaLevel }, '', ''] as never)
+      return computePanelPhases(0, config, catalog)!.inCombat
+    }
+    const p0 = await panelFor(0)
+    const p4 = await panelFor(4)
+    expect((p4.energyGainEfficiency ?? 0) - (p0.energyGainEfficiency ?? 0)).toBeCloseTo(20)
+  })
+
+  it('C6 起爆扳机：SP 1→2 手雷 / EX 2→3 手雷 + 全场手雷增伤 +100（涡流亦含）', async () => {
+    await setupHarness([{ agentId: '1181', cinemaLevel: 6 }, '', ''] as never)
+    const calc = useResourceCalc()
+    const grace = calc.resourceResult.value!.characters.find(c => c.agentId === '1181')!
+
+    const sp = grace.executions.find(e => e.moveId === '1181005')
+    const ex = grace.executions.find(e => e.moveId === '1181006')
+    const vortex = grace.executions.find(e => e.moveId === '1181020')
+    if (sp && sp.count > 0) {
+      expect(sp.dmgBonus ?? 0).toBe(100)
+      expect(sp.damageMultiplier).toBeCloseTo(170, 2) // 85 × 2 手雷
+    }
+    if (ex && ex.count > 0) {
+      expect(ex.dmgBonus ?? 0).toBe(100)
+      expect(ex.damageMultiplier).toBeCloseTo(501.15, 2) // 334.1 × 1.5
+      expect(vortex).toBeTruthy()
+      expect(vortex!.dmgBonus ?? 0).toBe(100) // 涡流亦 +100% 增伤
+    }
+    // 异常结算吃到招式限定增伤（通用逻辑）：电元素基础区增伤按积蓄占比加权；
+    // 积蓄端：C6 额外手雷段数 SP ×2 / EX ×1.5（transformGraceExecutions 缩放 baseBuildUp）
+    const electric = calc.anomalyPoolResult.value?.perElement?.find(p => p.element === 'electric')
+    expect(electric).toBeTruthy()
+    const spContrib = electric!.contributions?.find(c => c.moveId === '1181005')
+    const exContrib = electric!.contributions?.find(c => c.moveId === '1181006')
+    if (spContrib) expect(spContrib.baseBuildUp).toBeCloseTo(140.06, 2)
+    if (exContrib) expect(exContrib.baseBuildUp).toBeCloseTo(215.01, 2)
+  })
+})

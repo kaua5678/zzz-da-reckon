@@ -50,6 +50,12 @@ export const PULSE_CAP = 25 // [脉冲]上限 25 层：多大都卡在 25，一�
 export const PULSE_PER_GRENADE = 8 // 8 层[脉冲] → 下次投掷手雷额外丢一枚脉冲手雷 + 异放事件
 export const GRACE_BUILDUP_BONUS_PCT = 130 // 电属性异常积蓄 +130%：加算进积蓄效率区（非独立乘区）
 export const GRACE_SPECIAL_MOVE_IDS = [SP_MOVE_ID, EX_MOVE_ID]
+/** 影画1 再充能弹膛：一次 A4 命中给全队回复 2 点能量（用户口径 2026-08-27） */
+export const GRACE_C1_TEAM_ENERGY_PER_CYCLE = 2
+/** 影画4 爆破电容：能量获得效率 +20%（6 层充能覆盖 A4/冲刺消耗段） */
+export const GRACE_C4_ENERGY_EFFICIENCY = 20
+/** 影画6 起爆扳机：手雷伤害 +100%（进增伤区加算），并额外 +1 手雷（SP 1→2 / EX 2→3） */
+export const GRACE_C6_GRENADE_DMG_BONUS = 100
 
 const spec = getAgentSpec(GRACE_AGENT_ID)!
 const base = specToMechanicModule(spec) // 垫层：catalog 派生 cfg 字段由它统一填充
@@ -80,6 +86,7 @@ function buildGraceCharConfig(input: AgentCharConfigInput): void {
   base.buildCharConfig?.(input)
   const record = input.cfg as unknown as Record<string, unknown>
   record.skipGenericExSpecial = true // 特殊技由本模块按轮换生成（普通档免费填充/强特按能量）
+  record.graceCinemaLevel = Math.max(0, Math.floor(Number(input.cinemaLevel ?? 0)))
 }
 
 /** 永续面板项：潜能电伤（C2-C6 = 10~30%）+ AA 感电强化层数 */
@@ -100,10 +107,16 @@ function applyGracePanel(input: AgentPanelInput): void {
     const stacks = Math.max(0, Math.min(2, Number(settings?.['grace.shockStacks'] ?? 2)))
     panel.anomalyDmgBonus = (panel.anomalyDmgBonus ?? 0) + 18 * stacks
   }
+  // 影画2 电致击穿（电伤抗+电积蓄抗 −8.5%）已由 spec teamBuffs `grace_c2_enemy_electric_debuff` 承载（满覆盖）
+  // 影画4 爆破电容：能量获得效率 +20%（6 层充能覆盖 A4/冲刺消耗段）
+  if (cinemaLevel >= 4) {
+    panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + GRACE_C4_ENERGY_EFFICIENCY
+  }
 }
 
 function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const basicPool = state.basicAttackTime ?? 0
+  const cinema = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).graceCinemaLevel ?? 0)))
   ;(cfg as unknown as Record<string, unknown>).graceBasicPoolPrev = basicPool // 留给下一轮 estimate（iterate/buildExecutions 分离惯例）
   const plan = planGraceRotation(basicPool, state.exSpecialCount ?? 0)
   const slots = plan.cycles * 2
@@ -111,12 +124,35 @@ function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): v
   // A1-A4 走通用 basic 池行（平A秒均），这里发两发电能强化特殊技（真实 id，enrich 回填伤害/积蓄，
   // 积蓄 ×2.3 由 transformSkillExecutions 只对这两行限定）
   if (plan.exUsed > 0) {
-    executions.push(graceRow(EX_MOVE_ID, '强化特殊技：超规工程清障（电能强化）', plan.exUsed, EX_TIME))
+    const exRow = graceRow(EX_MOVE_ID, '强化特殊技：超规工程清障（电能强化）', plan.exUsed, EX_TIME)
     // 电能满层时强特额外投掷一枚[涡流集束手雷]（1181020，表值 175.5）
-    executions.push(graceRow(VORTEX_MOVE_ID, '涡流集束手雷（电能满层·强特附带）', plan.exUsed, 0))
+    const vortexRow = graceRow(VORTEX_MOVE_ID, '涡流集束手雷（电能满层·强特附带）', plan.exUsed, 0)
+    if (cinema >= 6) {
+      // 影画6：强特 2 手雷 → 3 手雷（倍率 ×1.5），伤害 ×2（增伤 +100）
+      exRow.damageMultiplier = 501.15 // catalog 334.1 × (3/2)
+      exRow.damageMultiplierOverride = true
+      exRow.dmgBonus = GRACE_C6_GRENADE_DMG_BONUS
+      vortexRow.dmgBonus = GRACE_C6_GRENADE_DMG_BONUS
+    }
+    executions.push(exRow, vortexRow)
   }
   if (plan.normalUsed > 0) {
-    executions.push(graceRow(SP_MOVE_ID, '特殊技：工程清障（电能强化）', plan.normalUsed, SP_TIME))
+    const spRow = graceRow(SP_MOVE_ID, '特殊技：工程清障（电能强化）', plan.normalUsed, SP_TIME)
+    if (cinema >= 6) {
+      // 影画6：特殊技 1 手雷 → 2 手雷（倍率 ×2），伤害 ×2（增伤 +100）
+      spRow.damageMultiplier = 170 // catalog 85 × 2
+      spRow.damageMultiplierOverride = true
+      spRow.dmgBonus = GRACE_C6_GRENADE_DMG_BONUS
+    }
+    executions.push(spRow)
+  }
+
+  // 影画1 再充能弹膛：一次 A4（每轮换一格）给全队回复 2 能量
+  // （近似：全队回能折算入格莉丝自身能量总账，经 cfg 反馈回路进下一轮迭代收敛）
+  if (cinema >= 1 && plan.cycles > 0) {
+    ;(cfg as unknown as Record<string, unknown>).initialEnergyGift =
+      Number((cfg as unknown as Record<string, unknown>).initialEnergyGift ?? 0)
+      + GRACE_C1_TEAM_ENERGY_PER_CYCLE * plan.cycles
   }
 
   // [脉冲]：终结技 ×25 层、**上限 25**（用户口供：留 1 层，多大都卡在 25）→
@@ -131,11 +167,16 @@ function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): v
 
 /** 手雷附带异放事件（用户口供：脉冲手雷「还有附带异放事件」）：以脉冲手雷倍率 84.9 结算电异放 */
 /** 招式限定（引擎级，非近似）：只对特殊技/强特两行的异常行加行级积蓄效率 +130%，
- *  进积蓄效率区与其他来源加算（用户口供：文字明确只有这两招吃，一视同仁是马虎） */
-function transformGraceExecutions({ anomalyExecs }: { anomalyExecs: AnomalySkillExecution[] }): void {
+ *  进积蓄效率区与其他来源加算（用户口供：文字明确只有这两招吃，一视同仁是马虎）。
+ *  影画6：额外手雷段数——SP 1→2 手雷（baseBuildUp ×2）、EX 2→3 手雷（×1.5） */
+function transformGraceExecutions({ anomalyExecs, cinemaLevel }: { anomalyExecs: AnomalySkillExecution[]; cinemaLevel: number }): void {
   for (const exec of anomalyExecs) {
     if (exec.moveId === SP_MOVE_ID || exec.moveId === EX_MOVE_ID) {
       exec.buildUpEfficiencyBonusPct = (exec.buildUpEfficiencyBonusPct ?? 0) + GRACE_BUILDUP_BONUS_PCT
+      if (cinemaLevel >= 6) {
+        const ratio = exec.moveId === SP_MOVE_ID ? 2 : 1.5
+        exec.baseBuildUp *= ratio
+      }
     }
   }
 }

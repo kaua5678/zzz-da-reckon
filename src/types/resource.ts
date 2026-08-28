@@ -1805,6 +1805,8 @@ export interface AnomalyContribution {
   perHitBuildUp: number
   /** 总积蓄值 */
   totalBuildUp: number
+  /** 本行招式限定增伤（%，从 SkillExecution.dmgBonus 携带，进异常基础区增伤按积蓄占比加权） */
+  dmgBonus?: number
 }
 
 /** 队伍积蓄池结果 */
