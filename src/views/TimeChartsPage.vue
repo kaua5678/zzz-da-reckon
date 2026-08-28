@@ -683,6 +683,193 @@
         <span class="progress-text">{{ simProgress?.text ?? '' }}</span>
       </div>
     </n-card>
+
+    <!-- ============ Chart 5：抽卡价值 · 危局兑现（实战归档配对差分） ============ -->
+    <n-card size="small" :bordered="true">
+      <template #header>
+        抽卡价值 · 危局兑现
+        <span class="chart-subtitle">按抽取以来在危局实际兑现的分数总和给卡分级（同作者同房间「带卡 vs 不带卡」最佳分差的配对差分——玩家技术与当期环境被差分吸收；数据源 = 实战归档）</span>
+      </template>
+      <template #header-extra>
+        <div class="chart3-actions">
+          <n-select
+            v-model:value="pvTierFilter"
+            :options="pvTierFilterOptions"
+            size="small"
+            style="width: 130px"
+          />
+          <n-button size="small" type="primary" :loading="pvComputing" @click="runPullValue">
+            {{ pvResult ? '重算' : '计算' }}
+          </n-button>
+        </div>
+      </template>
+
+      <div v-if="pvError" class="empty-hint small-hint">⚠ {{ pvError }}</div>
+      <div v-else-if="!pvResult" class="empty-hint small-hint">
+        点「计算」加载实战归档并估计每张卡的危局兑现：横轴 = 归档覆盖的危局房间（期 × 关卡），
+        每行一张卡、气泡 = 当期边际兑现分（同作者带卡/不带卡最佳分差的中位数，未出场计 0），行末柱 = 累计兑现总和。
+        分级 T0~T3 = 限定池累计四分位（配对数 ≥ {{ PV_MIN_PAIRS }} 才参与，否则「样本不足」）。
+      </div>
+
+      <template v-else>
+        <!-- 窗口摘要 -->
+        <div class="pv-summary">
+          <span>观测窗口 {{ pvResult.window.firstDate }} ~ {{ pvResult.window.lastDate }}</span>
+          <span>{{ pvResult.window.seasonCount }} 个赛季 · {{ pvResult.rooms.length }} 个危局房间 · {{ compact(pvResult.window.runCount) }} 条投稿</span>
+          <span>单房间分数上限 65000（删失点：都打满 → 边际计 0）</span>
+        </div>
+
+        <!-- 时间轴气泡图：行 = 卡（按累计降序），列 = 房间 -->
+        <div class="timeline-wrap pv-plot">
+          <svg :viewBox="`0 0 ${svgW} ${pvSvgH}`" class="timeline-svg" @mousemove="onPvMove" @mouseleave="pvHover = ''">
+            <!-- Y 轴行标签（角色名 + 分级徽标） -->
+            <g v-for="row in pvRows" :key="row.agentId">
+              <rect
+                :x="0" :y="pvRowY(row.rowIndex) - pvRowH / 2"
+                :width="svgW" :height="pvRowH"
+                :class="{ 'pv-row-hover': pvHover === row.agentId }"
+                class="pv-row-bg"
+                @click="pvSelected = pvSelected === row.agentId ? '' : row.agentId"
+              >
+                <title>{{ pvRowTitle(row) }}</title>
+              </rect>
+              <text :x="pvLabelW - 6" :y="pvRowY(row.rowIndex) + 3.5" text-anchor="end" class="pv-row-label">
+                {{ row.label }}
+              </text>
+              <text v-if="row.gradeText" :x="pvLabelW + 2" :y="pvRowY(row.rowIndex) + 3.5" class="pv-grade" :class="'pv-' + row.card.grade">
+                {{ row.gradeText }}
+              </text>
+            </g>
+            <!-- X 轴房间刻度（抽稀） -->
+            <g v-for="t in pvXTicks" :key="'pvx' + t.index">
+              <text :x="pvX(t.index)" :y="pvSvgH - 6" text-anchor="middle" class="axis-label x-label">{{ t.label }}</text>
+            </g>
+            <!-- 实装边界竖线（选中卡） -->
+            <g v-if="pvSelectedCard && pvSelectedCard.firstRoomIndex >= 0 && pvSelectedCard.firstRoomIndex < pvResult.rooms.length">
+              <line
+                :x1="pvX(pvSelectedCard.firstRoomIndex)" :y1="pvPadT - 6"
+                :x2="pvX(pvSelectedCard.firstRoomIndex)" :y2="pvSvgH - pvXLabelH"
+                class="pv-release-line"
+              />
+              <text :x="pvX(pvSelectedCard.firstRoomIndex) + 3" :y="pvPadT - 10" class="pv-release-label">实装</text>
+            </g>
+            <!-- 气泡：边际兑现（红正绿负？——正=橙红高亮，负=蓝） -->
+            <g v-for="row in pvRows" :key="'b' + row.agentId">
+              <circle
+                v-for="(e, i) in row.card.roomEffects"
+                :key="row.agentId + i"
+                :cx="pvX(i)"
+                :cy="pvRowY(row.rowIndex)"
+                :r="pvBubbleR(e)"
+                :fill="pvBubbleFill(e)"
+                :stroke="pvHover === row.agentId || pvSelected === row.agentId ? 'var(--app-text-solid)' : 'var(--wa-160)'"
+                :stroke-width="pvHover === row.agentId || pvSelected === row.agentId ? 1.2 : 0.5"
+                class="pv-bubble"
+              >
+                <title>{{ pvBubbleTitle(row.card, e, i) }}</title>
+              </circle>
+            </g>
+            <!-- 行末累计柱 + 数值 -->
+            <g v-for="row in pvRows" :key="'c' + row.agentId">
+              <rect
+                :x="pvBarX" :y="pvBarY(row.card)"
+                :width="pvBarW(row.card)" :height="pvBarH"
+                :fill="pvBarFill(row.card)"
+                rx="2"
+                class="pv-bar"
+              >
+                <title>{{ pvRowTitle(row) }}</title>
+              </rect>
+              <text :x="pvBarX + pvBarW(row.card) + 4" :y="pvRowY(row.rowIndex) + 3.5" class="pv-bar-label">
+                {{ compact(row.card.cumulative) }}
+              </text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- 选中卡详情：逐房间边际曲线 -->
+        <div v-if="pvSelectedCard" class="pv-detail">
+          <div class="pv-detail-title">
+            {{ agentName(pvSelectedCard.agentId) }} · {{ pvTierLabel(pvSelectedCard.tier) }}
+            <template v-if="pvSelectedCard.releaseDate"> · 实装 {{ pvSelectedCard.releaseDate }}</template>
+            · 累计兑现 {{ fmt(pvSelectedCard.cumulative, 0) }} 分（{{ pvSelectedCard.observableRooms }} 期可观测 · 上场 {{ pvSelectedCard.roomsAppeared }} 期 · 顶分在场 {{ pvSelectedCard.frontierRooms }} 期）
+            · 场均 {{ fmt(pvSelectedCard.avgPerRoom, 0) }} · 近 3 期场均 {{ fmt(pvSelectedCard.recentAvg, 0) }}
+            · 每万菲林 {{ pvSelectedCard.roiPer10kFilm == null ? '—（赠送）' : fmt(pvSelectedCard.roiPer10kFilm, 0) }} 分
+            · {{ pvSelectedCard.totalPairs }} 个配对
+          </div>
+          <div class="pv-detail-bars">
+            <div v-for="(e, i) in pvSelectedCard.roomEffects" :key="i" class="pv-detail-bar" :class="{ 'pv-out': e.effect === 0 && !e.appeared }">
+              <div
+                class="pv-detail-bar-fill"
+                :style="{ height: pvDetailBarH(e) }"
+                :class="e.effect >= 0 ? 'pv-pos' : 'pv-neg'"
+              ></div>
+              <span class="pv-detail-bar-label">{{ pvResult.rooms[i]?.label }}</span>
+              <span class="pv-detail-bar-val">{{ e.effect === 0 && !e.appeared ? '—' : fmt(e.effect, 0) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 排名表 -->
+        <div class="table-wrap">
+          <table class="tl-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>卡</th>
+                <th>层</th>
+                <th>分级</th>
+                <th>累计兑现</th>
+                <th>场均</th>
+                <th>近3期场均</th>
+                <th>每万菲林</th>
+                <th>上场/可观测</th>
+                <th>顶分在场</th>
+                <th>配对数</th>
+                <th>实装</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(c, i) in pvTableRows"
+                :key="c.agentId"
+                :class="{ 'pv-sel-row': pvSelected === c.agentId }"
+                @click="pvSelected = pvSelected === c.agentId ? '' : c.agentId"
+              >
+                <td>{{ i + 1 }}</td>
+                <td><span class="dot" :style="{ background: colorOf(c.agentId) }"></span>{{ agentName(c.agentId) }}</td>
+                <td>{{ pvTierLabel(c.tier) }}</td>
+                <td>
+                  <span v-if="c.grade" class="pv-grade" :class="'pv-' + c.grade">{{ c.grade }}</span>
+                  <span v-else-if="c.totalPairs > 0" class="no-change">样本不足</span>
+                  <span v-else class="no-change">—</span>
+                </td>
+                <td :class="{ 'kill-line': c.cumulative > 0 }">{{ fmt(c.cumulative, 0) }}</td>
+                <td>{{ fmt(c.avgPerRoom, 0) }}</td>
+                <td :class="{ 'pv-neg-num': c.recentAvg < 0 }">{{ fmt(c.recentAvg, 0) }}</td>
+                <td>{{ c.roiPer10kFilm == null ? '—' : fmt(c.roiPer10kFilm, 0) }}</td>
+                <td>{{ c.roomsAppeared }}/{{ c.observableRooms }}</td>
+                <td>{{ c.frontierRooms }}</td>
+                <td>{{ c.totalPairs }}</td>
+                <td>{{ c.releaseDate ?? '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="dd-caption">
+          口径：边际 = 同房间同一玩家「带该卡最佳分 − 不带最佳分」跨玩家取中位数（作者/房间固定效应被差分吸收；估计 = 玩家选它上场时的 treatment-on-the-treated）；
+          未出场 / 无配对 / 实装前计 0；带不带都打满 65000 边际如实计 0（顶部饱和）。「累计兑现」= 实装以来 Σ 边际（无折现）；
+          分级 = 限定池（含赠送 S）累计四分位 T0~T3，配对 &lt; {{ PV_MIN_PAIRS }} = 样本不足。A 级基线（妮可/苍角等）是「没卡时的占位选择」，
+          负边际 = 与更好卡的机会差，不参与分级。观测窗口 = 归档覆盖的 23 个赛季（更早实装的卡只累计窗口内兑现）。
+        </div>
+      </template>
+
+      <div v-if="pvComputing" class="chart-progress">
+        <n-progress type="line" :percentage="100" :show-indicator="false" :height="6" status="success" processing />
+        <span class="progress-text">估计配对差分…</span>
+      </div>
+    </n-card>
   </div>
 </template>
 
@@ -695,6 +882,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamStrengthSeed, type TeamTimelineResult } from '@/composables/teamTimeline'
 import { buildNewCharacterRows, computeFilmSimulation, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
+import { computePullValue, MIN_PAIRS_FOR_GRADE, type PullValueInput, type PullValueResult, type PvCardRoomEffect, type PvCardTier, type PvCardValue } from '@/composables/pullValue'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
 import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
 import { fmt, compact } from '@/utils/format'
@@ -1500,6 +1688,155 @@ function onSimMove(e: MouseEvent) {
     simHover.value = -1
   }
 }
+
+// ========== Chart 5：抽卡价值 · 危局兑现（实战归档配对差分；纯展示层，零引擎求值） ==========
+const PV_MIN_PAIRS = MIN_PAIRS_FOR_GRADE
+const pvComputing = ref(false)
+const pvError = ref('')
+const pvResult = ref<PullValueResult | null>(null)
+const pvTierFilter = ref<'limited' | 'all'>('limited')
+const pvTierFilterOptions = [
+  { value: 'limited', label: '限定池（含赠送）' },
+  { value: 'all', label: '全部（含常驻/A级）' },
+]
+const pvSelected = ref('')
+const pvHover = ref('')
+
+/** 归档懒加载缓存（会话内一次） */
+let pvArchive: PullValueInput | null = null
+
+async function runPullValue() {
+  pvComputing.value = true
+  pvError.value = ''
+  try {
+    let archive: PullValueInput | null = pvArchive
+    if (!archive) {
+      const res = await fetch('/static/run-archive.json')
+      if (!res.ok) throw new Error(`归档加载失败（HTTP ${res.status}）——run-archive.json 不在 public/static 下`)
+      archive = (await res.json()) as PullValueInput
+      pvArchive = archive
+    }
+    pvResult.value = computePullValue(archive)
+  } catch (e) {
+    pvError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    pvComputing.value = false
+  }
+}
+
+const pvSelectedCard = computed(() => pvResult.value?.cards.find(c => c.agentId === pvSelected.value) ?? null)
+
+/** 图行/表行同源过滤：limited = 限定+赠送（分级主视图）；all = 全部层 */
+const pvFilteredCards = computed(() => {
+  const r = pvResult.value
+  if (!r) return []
+  if (pvTierFilter.value === 'limited') return r.cards.filter(c => c.tier === 'limited' || c.tier === 'freeGift')
+  return r.cards
+})
+/** 气泡图行 = 过滤后前 16 张（累计降序；行数上限防 SVG 过高） */
+const PV_MAX_ROWS = 16
+const pvRows = computed(() =>
+  pvFilteredCards.value.slice(0, PV_MAX_ROWS).map((card, rowIndex) => ({
+    card,
+    rowIndex,
+    agentId: card.agentId,
+    label: agentName(card.agentId),
+    gradeText: card.grade ?? (card.totalPairs > 0 ? '·' : ''),
+  })),
+)
+const pvTableRows = computed(() => pvFilteredCards.value)
+
+// ---- SVG 布局 ----
+const pvLabelW = 96
+const pvBarAreaW = 120
+const pvRowH = 22
+const pvPadT = 18
+const pvXLabelH = 26
+const pvSvgH = computed(() => pvPadT + pvRows.value.length * pvRowH + pvXLabelH)
+const pvPlotW = computed(() => svgW.value - pvLabelW - pvBarAreaW - 8)
+const pvBarX = computed(() => svgW.value - pvBarAreaW + 10)
+/** 房间列中心 x（列宽 = pvPlotW / 房间数） */
+function pvX(i: number): number {
+  const n = pvResult.value?.rooms.length ?? 1
+  const cw = pvPlotW.value / Math.max(1, n)
+  return pvLabelW + cw * i + cw / 2
+}
+function pvRowY(rowIndex: number): number {
+  return pvPadT + pvRowH * rowIndex + pvRowH / 2
+}
+const pvMaxAbsEffect = computed(() => {
+  let m = 1
+  for (const row of pvRows.value) for (const e of row.card.roomEffects) m = Math.max(m, Math.abs(e.effect))
+  return m
+})
+function pvBubbleR(e: { effect: number }): number {
+  if (e.effect === 0) return 1.6
+  return 2 + 5 * Math.sqrt(Math.abs(e.effect) / pvMaxAbsEffect.value)
+}
+function pvBubbleFill(e: { effect: number }): string {
+  if (e.effect > 0) return '#f6ad55'
+  if (e.effect < 0) return '#63b3ed'
+  return 'var(--wa-140)'
+}
+function pvBubbleTitle(card: PvCardValue, e: PvCardRoomEffect, i: number): string {
+  const room = pvResult.value?.rooms[i]
+  const roomLabel = room ? `${room.label}（${room.runCount} 投稿）` : e.roomKey
+  if (!e.appeared && e.effect === 0) return `${agentName(card.agentId)} · ${roomLabel}\n未出场/实装前（计 0）`
+  const pairNote = e.pairs > 0 ? `（${e.pairs} 配对中位数）` : '（无配对样本，计 0）'
+  return `${agentName(card.agentId)} · ${roomLabel}\n边际兑现 ${fmt(e.effect, 0)} 分${pairNote}${e.frontier ? '｜顶分在场' : ''}`
+}
+const pvXTicks = computed(() => {
+  const rooms = pvResult.value?.rooms ?? []
+  const step = Math.max(1, Math.ceil(rooms.length / 12))
+  const out: { index: number; label: string }[] = []
+  for (let i = 0; i < rooms.length; i += step) out.push({ index: i, label: rooms[i].date.slice(5) })
+  if (rooms.length > 1 && (rooms.length - 1) % step !== 0) {
+    out.push({ index: rooms.length - 1, label: rooms[rooms.length - 1].date.slice(5) })
+  }
+  return out
+})
+/** 行末累计柱（sqrt 尺度防一张大卡压扁全表） */
+const pvMaxCum = computed(() => Math.max(1, ...pvRows.value.map(r => Math.max(0, r.card.cumulative))))
+const pvBarMaxW = computed(() => pvBarAreaW - 44)
+function pvBarW(card: PvCardValue): number {
+  if (card.cumulative <= 0) return 0
+  return Math.sqrt(card.cumulative / pvMaxCum.value) * pvBarMaxW.value
+}
+const pvBarH = 10
+function pvBarY(card: PvCardValue): number {
+  const row = pvRows.value.find(r => r.card === card)
+  return row ? pvRowY(row.rowIndex) - pvBarH / 2 : 0
+}
+function pvBarFill(card: PvCardValue): string {
+  if (card.grade === 'T0') return '#ff8f5a'
+  if (card.grade === 'T1') return '#f6ad55'
+  if (card.grade === 'T2') return '#a3a3b8'
+  if (card.grade === 'T3') return '#5f6373'
+  return 'var(--wa-160)'
+}
+function pvRowTitle(row: { card: PvCardValue }): string {
+  const c = row.card
+  return [
+    `${agentName(c.agentId)}（${pvTierLabel(c.tier)}${c.releaseDate ? `，实装 ${c.releaseDate}` : ''}）`,
+    `累计兑现 ${fmt(c.cumulative, 0)} 分 · 场均 ${fmt(c.avgPerRoom, 0)} · 近3期 ${fmt(c.recentAvg, 0)}`,
+    `上场 ${c.roomsAppeared}/${c.observableRooms} 期 · 顶分在场 ${c.frontierRooms} 期 · ${c.totalPairs} 配对`,
+    `每万菲林 ${c.roiPer10kFilm == null ? '—（赠送）' : fmt(c.roiPer10kFilm, 0)} 分${c.grade ? ` · 分级 ${c.grade}` : ''}`,
+  ].join('\n')
+}
+function pvTierLabel(tier: PvCardTier): string {
+  return tier === 'limited' ? '限定' : tier === 'freeGift' ? '赠送' : tier === 'standard' ? '常驻' : 'A级'
+}
+/** 详情逐期柱高（% of max） */
+function pvDetailBarH(e: PvCardRoomEffect): string {
+  const pctv = (Math.abs(e.effect) / pvMaxAbsEffect.value) * 100
+  return `${Math.max(2, pctv)}%`
+}
+function onPvMove(e: MouseEvent) {
+  const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
+  const svgY = ((e.clientY - rect.top) / rect.height) * pvSvgH.value
+  const idx = Math.floor((svgY - pvPadT) / pvRowH)
+  pvHover.value = pvRows.value[idx]?.agentId ?? ''
+}
 </script>
 
 <style scoped>
@@ -1906,5 +2243,128 @@ function onSimMove(e: MouseEvent) {
 }
 .gold-axis-label {
   fill: rgba(246, 173, 85, 0.75);
+}
+
+/* ========== Chart 5：抽卡价值 · 危局兑现 ========== */
+.pv-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 11.5px;
+  color: var(--wa-600);
+  margin-bottom: 8px;
+}
+.pv-plot {
+  margin-bottom: 8px;
+}
+.pv-row-bg {
+  fill: transparent;
+  cursor: pointer;
+}
+.pv-row-hover {
+  fill: var(--wa-30);
+}
+.pv-row-label {
+  fill: var(--wa-750);
+  font-size: 10.5px;
+}
+.pv-grade {
+  font-size: 9px;
+  font-weight: 700;
+}
+.pv-T0 {
+  fill: #ff8f5a;
+}
+.pv-T1 {
+  fill: #f6ad55;
+}
+.pv-T2 {
+  fill: #a3a3b8;
+}
+.pv-T3 {
+  fill: #5f6373;
+}
+.pv-bubble {
+  cursor: pointer;
+}
+.pv-release-line {
+  stroke: var(--app-primary);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+.pv-release-label {
+  fill: var(--app-primary);
+  font-size: 9px;
+}
+.pv-bar-label {
+  fill: var(--wa-700);
+  font-size: 10px;
+}
+.pv-detail {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--wa-70);
+  border-radius: 8px;
+  background: var(--wa-20);
+}
+.pv-detail-title {
+  font-size: 12px;
+  color: var(--wa-780);
+  line-height: 1.8;
+  margin-bottom: 8px;
+}
+.pv-detail-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 90px;
+  overflow-x: auto;
+  padding-top: 2px;
+}
+.pv-detail-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  min-width: 34px;
+  height: 100%;
+}
+.pv-detail-bar-fill {
+  width: 12px;
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+}
+.pv-detail-bar-fill.pv-pos {
+  background: #f6ad55;
+}
+.pv-detail-bar-fill.pv-neg {
+  background: #63b3ed;
+}
+.pv-detail-bar-label {
+  font-size: 8.5px;
+  color: var(--wa-450);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  max-height: 46px;
+  overflow: hidden;
+}
+.pv-detail-bar-val {
+  font-size: 9px;
+  color: var(--wa-650);
+  white-space: nowrap;
+}
+.pv-out {
+  opacity: 0.45;
+}
+.pv-sel-row {
+  background: rgba(246, 173, 85, 0.08);
+}
+.pv-neg-num {
+  color: #63b3ed;
+}
+.pv-detail-bar.pv-out .pv-detail-bar-fill {
+  background: var(--wa-120);
 }
 </style>
