@@ -84,6 +84,16 @@ describe('苍角纯函数', () => {
     expect(executions[0].dmgBonus).toBe(SOUKAKU_C6_DMG_BONUS)
     expect(executions[1].dmgBonus).toBe(0)
   })
+
+  it('影画2 满层回能：1.2×触发次数注入 initialEnergyGift（默认5）；低命不注入', () => {
+    const cfg: any = { initialEnergyGift: 40, 'setting:soukaku.c2RefundCount': 5 }
+    soukakuMechanic.buildCharConfig!({ cinemaLevel: 2, cfg } as any)
+    expect(cfg.initialEnergyGift).toBeCloseTo(40 + 1.2 * 5)
+
+    const cfg0: any = { initialEnergyGift: 40, 'setting:soukaku.c2RefundCount': 5 }
+    soukakuMechanic.buildCharConfig!({ cinemaLevel: 1, cfg: cfg0 } as any)
+    expect(cfg0.initialEnergyGift).toBeCloseTo(40)
+  })
 })
 
 describe('苍角面板', () => {

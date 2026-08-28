@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { panYinhuMechanic } from '@/mechanics/agents/panYinhu'
 
 const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
 const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
@@ -103,5 +104,24 @@ describe('潘引壶额外能力·食铁纳金与影画1（[气绝]增伤门控�
     const pNegOff = computePanelPhases(1, neg.config, neg.catalog)!.inCombat as any
     expect((computePanelPhases(0, neg.config, neg.catalog)!.inCombat as any).additionalAbilityActive ?? 0).toBe(0)
     expect(pNeg.dmgBonus).toBeCloseTo(pNegOff.dmgBonus, 5)
+  })
+})
+
+describe('潘引壶影画2 破劲换能', () => {
+  it('每消耗6点破劲回4能量 = 4×floor(3×强特/6)，幂等注入 initialEnergyGift', () => {
+    const cfg: any = { panYinhuCinemaLevel: 2, initialEnergyGift: 40 }
+    panYinhuMechanic.buildExecutions!({ cfg, state: { exSpecialCount: 4 }, executions: [] } as any)
+    // 破劲消耗 = 3×4 = 12 → floor(12/6)=2 组 → 8 能量
+    expect(cfg.initialEnergyGift).toBe(48)
+    expect(cfg.panYinhuC2EnergyTotal).toBe(8)
+
+    // 幂等：重复调用不叠加（内层迭代收敛）
+    panYinhuMechanic.buildExecutions!({ cfg, state: { exSpecialCount: 4 }, executions: [] } as any)
+    expect(cfg.initialEnergyGift).toBe(48)
+
+    // 低命不注入
+    const cfg0: any = { panYinhuCinemaLevel: 1, initialEnergyGift: 40 }
+    panYinhuMechanic.buildExecutions!({ cfg: cfg0, state: { exSpecialCount: 4 }, executions: [] } as any)
+    expect(cfg0.initialEnergyGift).toBe(40)
   })
 })

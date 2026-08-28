@@ -107,9 +107,9 @@ export const caesarMechanic: AgentMechanicModule = {
   settings: [
     {
       id: 'caesar.c4SubstitutionCount',
-      label: '影画4支援点代替次数',
-      description: '能量<20 时消耗1点支援点数代替发动超强力盾击的实际次数（上限 = min(3×(连携+终结), floor(战斗时长/5))）；默认 0 = 不假定能量饥饿',
-      default: 0,
+      label: '影画4免费反击次数',
+      description: '格挡反击循环中能量不足时，消耗支援点数免费发动超强力盾击的次数（5s ICD）；默认 5 次，用户按实际对局调整',
+      default: 5,
       min: 0,
       max: 36,
       step: 1,

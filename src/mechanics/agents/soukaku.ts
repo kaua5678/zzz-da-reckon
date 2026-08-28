@@ -31,6 +31,7 @@ export const SOUKAKU_FROST_MOVE_IDS = new Set([
 ])
 
 export const SOUKAKU_C6_DMG_BONUS = 45
+export const SOUKAKU_C2_ENERGY_PER_TRIGGER = 1.2
 
 /**
  * 终结技邻位回能：三人下一位 30 / 上一位 10；两人另一位 30。
@@ -72,6 +73,13 @@ export function applySoukakuTeamEnergyFlags(characters: CharacterOperationConfig
 function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   record.soukakuCinemaLevel = cinemaLevel ?? 0
+  // 影画2 满层转回能：涡流满层后再获得涡流 → 回复 1.2 能量。逐帧概率/涡流状态机未建模，
+  // 按可调触发次数注入能量池（默认 5 次，用户按实际对局调整）。
+  if ((cinemaLevel ?? 0) >= 2) {
+    const count = Math.max(0, Math.floor(Number((cfg as any)['setting:soukaku.c2RefundCount'] ?? 5)))
+    record.soukakuC2RefundCount = count
+    cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + SOUKAKU_C2_ENERGY_PER_TRIGGER * count
+  }
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
@@ -95,7 +103,19 @@ export const soukakuMechanic: AgentMechanicModule = {
   id: 'agent:soukaku',
   agentIds: [SOUKAKU_ID],
   name: '苍角·刃旗助威',
-  description: '展旗攻击拐、额外冰伤、影画4减抗、影画6霜染增伤、终结邻位回能。',
+  description: '展旗攻击拐、额外冰伤、影画2满层回能、影画4减抗、影画6霜染增伤、终结邻位回能。',
+  settings: [
+    {
+      id: 'soukaku.c2RefundCount',
+      label: '影画2满层回能次数',
+      description: '涡流满层后再获得涡流 → 回复 1.2 能量的触发次数（逐帧概率/涡流状态机未建模，按次数近似）；默认 5 次',
+      default: 5,
+      min: 0,
+      max: 30,
+      step: 1,
+      suffix: '次',
+    },
+  ],
   buildCharConfig,
   patchExecutions,
 }

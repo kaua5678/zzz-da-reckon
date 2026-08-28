@@ -116,4 +116,16 @@ describe('千夏影画拐力（teammate-buffs 按命座门控）', () => {
     expect(withBuff - withoutBuff).toBeCloseTo(expected, 0)
     expect(expected).toBeGreaterThan(0)
   })
+
+  it('影画6 潜心创作：自身必暴 + 攻击×0.03% 暴伤（封顶105，覆盖率滑杆）；低命不生效', () => {
+    const panel: any = { atk: 3000, critRate: 10, critDmg: 50 }
+    qianxiaMechanic.applyPanel!({ cinemaLevel: 6, panel, settings: { 'qianxia.c6FocusCoverage': 1 } } as any)
+    expect(panel.critRate).toBeCloseTo(110) // 10 + 100
+    expect(panel.critDmg).toBeCloseTo(50 + Math.min(105, 3000 * 0.03)) // 50 + 90
+
+    const p0: any = { atk: 3000, critRate: 10, critDmg: 50 }
+    qianxiaMechanic.applyPanel!({ cinemaLevel: 5, panel: p0, settings: { 'qianxia.c6FocusCoverage': 1 } } as any)
+    expect(p0.critRate).toBeCloseTo(10)
+    expect(p0.critDmg).toBeCloseTo(50)
+  })
 })

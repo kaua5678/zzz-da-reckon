@@ -57,6 +57,7 @@ import { zhaoMechanic } from './agents/zhao'
 import { benMechanic } from './agents/ben'
 import { sigridMechanic } from './agents/sigrid'
 import { qianxiaMechanic } from './agents/qianxia'
+import { panYinhuMechanic } from './agents/panYinhu'
 import { triggerMechanic } from './agents/trigger'
 import { xixifuMechanic } from './agents/xixifu'
 import { yanagiMechanic } from './agents/yanagi'
@@ -90,6 +91,7 @@ registerAgentMechanic(harumasaMechanic)
 // sigridLanceMechanic 已由 agents/sigrid.ts 替代（出枪式/巡空枪势/影画，面板块在 computePanelPhases）
 registerAgentMechanic(sigridMechanic)
 registerAgentMechanic(qianxiaMechanic)
+registerAgentMechanic(panYinhuMechanic)
 registerAgentMechanic(triggerMechanic)
 registerAgentMechanic(xixifuMechanic)
 registerAgentMechanic(yanagiMechanic)

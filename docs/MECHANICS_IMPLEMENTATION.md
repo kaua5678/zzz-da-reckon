@@ -400,9 +400,10 @@
 
 ### 苍角（soukaku / 1131）—— 展旗攻击拐
 
-- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/soukaku.ts` + spec `1131.json`；测试 `src/mechanics/__tests__/soukaku.test.ts` 6 例）。含：展旗全队攻拐（初始攻×40% 顶 1000）、终结邻位回能 30/10（applyTeamEnergyFlags）、核心攻拐+同属性冰伤 20 门控、影画4 冰抗-10、影画6 霜染段 dmgBonus+45。本次补状态行。
+- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/soukaku.ts` + spec `1131.json`；测试 `src/mechanics/__tests__/soukaku.test.ts` 7 例）。含：展旗全队攻拐（初始攻×40% 顶 1000）、终结邻位回能 30/10（applyTeamEnergyFlags）、核心攻拐+同属性冰伤 20 门控、影画2 满层回能（触发次数滑杆）、影画4 冰抗-10、影画6 霜染段 dmgBonus+45。本次补状态行。
 - **核心**：展旗（默认耗涡流翻倍）→ 全队攻击 初始攻×40% 顶1000。
 - **额外能力**：同属性或同阵营 → 耗涡流展旗全队冰伤 +20%。
+- **影画2**：涡流满层后再获得涡流回复 1.2 能量，按触发次数滑杆 `soukaku.c2RefundCount`（默认5）注入 `initialEnergyGift`；15%概率叠涡流/1s ICD 逐帧未建模。
 - **影画4**：展旗命中冰抗 -10%。
 - **影画6**：霜染强化普攻/冲刺伤害 +45%。
 - **终结**：邻位回能 30/10。
@@ -433,12 +434,13 @@
 
 ### 千夏（qianxia / 1491）—— 妄想天使支援拐
 
-- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/qianxia.ts`（薄模块）+ spec `1491.json`；测试 `src/mechanics/__tests__/qianxia.test.ts` 4 例）。含：核心天使协律攻击拐（局外攻×30%，上限 1050）、额外能力帷幕失衡易伤 +30%、进场回能 15、影画 1 减防/影画 2 帷幕全队攻击/影画 4 终结后增伤。近似点见下（影画6 潜心创作/磨爪器/猫凝视触发伤害未建模）。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口。
+- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/qianxia.ts`（薄模块）+ spec `1491.json`；测试 `src/mechanics/__tests__/qianxia.test.ts` 5 例）。含：核心天使协律攻击拐（局外攻×30%，上限 1050）、额外能力帷幕失衡易伤 +30%、进场回能 15、影画 1 减防/影画 2 帷幕全队攻击/影画 4 终结后增伤、影画6 潜心创作自身必暴+暴伤（攻击×0.03%封顶105，覆盖率滑杆）。近似点见下（影画6 凝视代触发/全队凝视、磨爪器、猫凝视触发伤害未建模）。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口。
 - **核心**：天使协律角色攻击 += 千夏局外攻×30%（上限1050，teammate-buff derived 公式）。
 - **额外能力**：队伍有[强攻]或同阵营 → 帷幕内命中失衡易伤 +30%（buff_23620b7000 按 spec.additionalAbility 门控）；进场回能 15（initialEnergyGift，180s 一次整局近似）。
 - **影画1**：猫的凝视触发减防 7%×3；**影画2**：帷幕内全队攻击 +10%；**影画4**：终结技后全队增伤 +18%。
-- **未建模**：猫的凝视触发伤害（属触发代理人）、磨爪器、影画6 潜心创作。
-- **模块**：`src/mechanics/agents/qianxia.ts`（薄模块：进场回能门控）。
+- **影画6 潜心创作**：自身必暴（critRate+100×覆盖率）+ 暴伤 = min(105, 攻击×0.03)×覆盖率（applyPanel，`qianxia.c6FocusCoverage` 默认满覆盖）。
+- **未建模**：猫的凝视触发伤害（属触发代理人）、磨爪器、影画6 减伤/凝视代触发/全队凝视伤害+50%。
+- **模块**：`src/mechanics/agents/qianxia.ts`（薄模块：进场回能门控 + 影画6 自身必暴/暴伤）。
 
 ### 照（zhao / 1341）—— 坎卜斯黑枝冰防护拐
 
@@ -657,11 +659,12 @@
 
 ### 潘引壶（pan_yinhu / 1421）—— 云岿山物理防护
 
-- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：spec `1421.json` 声明式 + `teammate-buffs.json` 1421 组 + helpers 过滤链门控；测试 `src/mechanics/__tests__/panYinhu.test.ts` 2 例）。含：[通窍]贯穿力转模（初始攻×18%，上限 540，C6→24%/720）、额外能力气绝增伤、影画 1 气绝再 +10%、影画 6 通窍比例提升。近似点见下（影画2 破劲换能/气绝延长、影画4 治疗储粮未建模）。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口。
+- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/panYinhu.ts`（薄模块：影画2 破劲换能）+ spec `1421.json` 声明式 + `teammate-buffs.json` 1421 组 + helpers 过滤链门控；测试 `src/mechanics/__tests__/panYinhu.test.ts` 3 例）。含：[通窍]贯穿力转模（初始攻×18%，上限 540，C6→24%/720）、额外能力气绝增伤、影画 1 气绝再 +10%、影画 2 破劲换能（每消耗6点破劲回4能量）、影画 6 通窍比例提升。近似点见下（影画2 气绝延长、影画4 治疗储粮未建模）。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口。
 - **核心**：[通窍]贯穿力 += 潘引壶初始攻×18%（上限540，teammate-buff derived，`sheerForceFlat`）。
 - **额外能力**：队伍有[命破]或同阵营 → [气绝]敌人受伤 +20%（`pan_yinhu.additional_stupefaction_dmg` 按 spec.additionalAbility 门控）；**影画1** 气绝敌人再 +10%（同源门控）。
+- **影画2 破劲换能**：每消耗 6 点[破劲]回复 4 能量；破劲消耗 = 3×强特（贴山震脉靠获得3、断脉破穴手消耗1），回能 = 4×floor(3×强特/6) 幂等注入 `initialEnergyGift`（panYinhu.ts buildExecutions）。
 - **影画6**：[通窍]比例→24%、上限→720（buffModifiers ×4/3；引擎 derived 分支同步放大 cap）。
-- **未建模**：影画2 破劲换能/气绝延长、影画4 治疗与储粮、潘引壶自身破劲循环。
+- **未建模**：影画2 气绝时长 10→12s（无数值影响）、影画4 治疗与储粮、潘引壶自身破劲逐次消耗状态机（按强特×3 总量口径）。
 - **模块**：`src/specs/agents/1421.json`（声明式，无独立模块；helpers 过滤链门控气绝增伤）。
 
 ### 希希芙（xixifu / 1521）—— 新艾利都治安局电强攻
