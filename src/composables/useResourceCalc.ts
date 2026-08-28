@@ -703,7 +703,7 @@ function applyNormaHatChain(
     return out
   }
 
-  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0, prevPromiaTriggerHits = 0, prevPromiaTeammateReleases = 0, prevInStunWindowTriggers = 0, prevEllenFreezeCount = 0, prevPromiaReleaseDecibel = 0): {
+  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevGraceC1Cycles = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0, prevPromiaTriggerHits = 0, prevPromiaTeammateReleases = 0, prevInStunWindowTriggers = 0, prevEllenFreezeCount = 0, prevPromiaReleaseDecibel = 0): {
     resourceResult: TeamResourceResult
     stunPool: StunPoolResult | null
     anomalyPool: AnomalyPoolResult | null
@@ -723,6 +723,7 @@ function applyNormaHatChain(
     anbyZeroTeammateWl: number
     lucyTeammateEx: number
     lighterTeamEnergy: number
+    graceC1Cycles: number
     vivianTeamEx: number
     vivianAnomalyTriggers: number
     promiaTriggerHits: number
@@ -1159,6 +1160,10 @@ function applyNormaHatChain(
           lighterTeamEnergyConsumed: Math.max(0, prevLighterTeamEnergy || 0),
         }
       }
+      if (merged.agentId === '1181') {
+        // 格莉丝影画1 全队回能：上一轮收敛的轮换数（postRound 线程化），converge 阶段 applyTeamConfig 消费
+        return { ...merged, graceC1Cycles: Math.max(0, Math.floor(Number(prevGraceC1Cycles ?? 0))) }
+      }
       if (merged.agentId === '1191') {
         // 艾莲影画4 冻结次数：读上一轮异常池 ice 触发数（下一轮 cfg 生效，薇薇安同款反馈）
         return { ...merged, ellenFreezeCount: Math.max(0, Math.floor(prevEllenFreezeCount)) }
@@ -1416,6 +1421,7 @@ function applyNormaHatChain(
     // `lighterTeamEnergyNext` 仍需在编排层线程化（作为下一轮 converge 的输入），
     // 但计算与写入 cfg 的责任已经回到莱特模块自己的 applyTeamConfig。
     let lighterTeamEnergyNext = 0
+    let graceC1CyclesNext = 0
     {
       const exByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.exSpecialCount ?? 0]))
       const ultByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.ultimateCount ?? 0]))
@@ -1423,6 +1429,8 @@ function applyNormaHatChain(
       if (characters.some(c => c.agentId === '1161')) {
         lighterTeamEnergyNext = estimateTeamNormalEnergyConsumed(characters, exCounts)
       }
+      const graceCfg = characters.find(c => c.agentId === '1181')
+      if (graceCfg) graceC1CyclesNext = Math.max(0, Math.floor(Number((graceCfg as any).graceC1Cycles ?? 0)))
       applyTeamMechanics({
         characters,
         configStore,
@@ -1634,6 +1642,7 @@ function applyNormaHatChain(
       anbyZeroTeammateWl: anbyZeroTeammateWlNext,
       lucyTeammateEx: lucyTeammateExNext,
       lighterTeamEnergy: lighterTeamEnergyNext,
+      graceC1Cycles: graceC1CyclesNext,
       vivianTeamEx: vivianTeamExNext,
       vivianAnomalyTriggers: vivianAnomalyTriggersNext,
       ellenFreezeCount: ellenFreezeCountNext,
@@ -1660,6 +1669,7 @@ function applyNormaHatChain(
     let prevAnbyZeroTeammateWl = 0
     let prevLucyTeammateEx = 0
     let prevLighterTeamEnergy = 0
+    let prevGraceC1Cycles = 0
     let prevVivianTeamEx = 0
     let prevVivianAnomalyTriggers = 0
     let prevPromiaTriggerHits = 0
@@ -1686,7 +1696,7 @@ function applyNormaHatChain(
       outerRounds = k + 1
       // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
       const locked = lockedStunCount >= 0
-      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers, prevPromiaTriggerHits, prevPromiaTeammateReleases, prevInStunWindowTriggers, prevEllenFreezeCount, prevPromiaReleaseDecibel)
+      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevGraceC1Cycles, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers, prevPromiaTriggerHits, prevPromiaTeammateReleases, prevInStunWindowTriggers, prevEllenFreezeCount, prevPromiaReleaseDecibel)
       const ait = out?.auricInkTriggerCount ?? 0
       const gr = out?.goodReview
       if (gr !== undefined && gr >= 0) prevGoodReview = gr
@@ -1740,6 +1750,7 @@ function applyNormaHatChain(
       prevAnbyZeroTeammateWl = out?.anbyZeroTeammateWl ?? 0
       prevLucyTeammateEx = out?.lucyTeammateEx ?? 0
       prevLighterTeamEnergy = out?.lighterTeamEnergy ?? 0
+      prevGraceC1Cycles = out?.graceC1Cycles ?? 0
       prevVivianTeamEx = out?.vivianTeamEx ?? 0
       prevVivianAnomalyTriggers = out?.vivianAnomalyTriggers ?? 0
       prevPromiaTriggerHits = out?.promiaTriggerHits ?? 0

@@ -31,8 +31,8 @@
       "target": "team",
       "coverage": 1,
       "effects": [],
-      "status": "partially_implemented",
-      "note": "全队异放伤害公式暂未接成面板字段。"
+      "status": "implemented_approximation",
+      "note": "与 `promia_ice_team_release_dmg` 同效果（掌控>150 → 全队异放 +0.35%/点），已由该 formula 型 teamBuff 写入 anomalyReleaseDmgBonus；本条 effects 留空防双计。"
     },
     {
       "id": "promethea_extra_guilty_presumption",

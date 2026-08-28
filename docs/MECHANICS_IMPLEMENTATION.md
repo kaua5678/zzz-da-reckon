@@ -107,7 +107,7 @@
 
 ### 格莉丝（1181）
 
-- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/grace.ts` + `src/core/anomalyPool.ts` 行级 buildUpEfficiencyBonusPct + spec `1181.json`；测试 `src/mechanics/__tests__/grace.test.ts` 7 例）。含：常规循环落位（planGraceRotation）、电能满层积蓄 +130% 引擎级招式限定、强特附涡流集束手雷、脉冲兑换→脉冲手雷附异放事件、额外能力感电伤层数滑杆、潜能电伤逐命座永续。近似点：电能层数按平A秒均近似（每秒 1 层）。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口。
+- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/grace.ts` + `src/core/anomalyPool.ts` 行级 buildUpEfficiencyBonusPct + `src/composables/useResourceCalc.ts` 编排层 C1 轮换数线程化 + spec `1181.json`；测试 `src/mechanics/__tests__/grace.test.ts` 10 例）。含：常规循环落位（planGraceRotation）、电能满层积蓄 +130% 引擎级招式限定、强特附涡流集束手雷、脉冲兑换→脉冲手雷附异放事件、额外能力感电伤层数滑杆、潜能电伤逐命座永续、影画1 全队回能（postRound 线程化 graceC1Cycles → converge 写 initialEnergyGift，全队每人 +2/轮换）、影画2 电减抗、影画4 回能效率、影画6 手雷 +1/+2 与伤害 ×2。近似点：电能层数按平A秒均近似（每秒 1 层）。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口。
 - 常规循环（用户口供 2026-08-23）：[A1+A2+A3 连段 1.183s] → 特殊技 → [A4 1.134s] → 特殊技，循环往复
   （A1+A2+A3 = 0.171+0.33+0.682 ≈ 口供实测 1.1827s；A4 ≈ 1.1335s）。A 段就是平A → 走通用 basic 池行（秒均），
   模块只发两发电能强化特殊技，避免「必要时间=平A池」在内外层环形成 2-周期震荡。

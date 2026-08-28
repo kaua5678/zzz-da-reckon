@@ -121,16 +121,22 @@ function applyGracePanel(input: AgentPanelInput): void {
   // 在 buildExecutions 按「强特×6 充能 → min(充能, 平A段数)」折算成单独回能项，不走 panel.energyGainEfficiency。
 }
 
-/** 影画1 全队每人回能：converge 阶段读上一轮 buildExecutions 存的 graceC1Cycles，分发给三槽 */
-function applyGraceTeamConfig({ slot, phase, characters }: AgentTeamConfigInput): void {
+/** 影画1 全队每人回能：converge 阶段读编排层线程化的 graceC1Cycles（上一轮收敛的轮换数），分发给三槽。
+ *  为什么不是 buildExecutions 直接写：converge 在 iterate 能量结算前生效，buildExecutions 在之后；
+ *  graceC1Cycles 由编排层 postRound 从本轮收敛结果线程化到下一轮（莱特 C4 同阶段）。
+ *  幂等：先扣上一轮本模块写入量再写新值（合并 cfg 每轮从 base 重建，prev 通常为 0，可琳 C4 同款）。 */
+function applyGraceTeamConfig({ slot, phase, characters, cinemaLevel }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const cycles = Math.max(0, Math.floor(Number((characters[slot] as any)?.graceC1Cycles ?? 0)))
-  if (cycles <= 0) return
-  const energy = GRACE_C1_TEAM_ENERGY_PER_CYCLE * cycles
+  const cfg = characters[slot]
+  if (!cfg || (cinemaLevel ?? 0) < 1) return
+  const cycles = Math.max(0, Math.floor(Number((cfg as any).graceC1Cycles ?? 0)))
+  const gift = GRACE_C1_TEAM_ENERGY_PER_CYCLE * cycles
+  const prev = Math.max(0, Number((cfg as any).graceC1TeamEnergyTotal ?? 0))
   for (const c of characters) {
     if (!c) continue
-    c.initialEnergyGift = Number(c.initialEnergyGift ?? 0) + energy
+    ;(c as any).initialEnergyGift = Math.max(0, Number((c as any).initialEnergyGift ?? 0) - prev) + gift
   }
+  ;(cfg as any).graceC1TeamEnergyTotal = gift
 }
 
 function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): void {

@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { createPinia, setActivePinia } from 'pinia'
 import {
+  GRACE_C1_TEAM_ENERGY_PER_CYCLE,
   PULSE_CAP,
   PULSE_PER_GRENADE,
   PULSE_PER_ULT,
@@ -177,6 +178,24 @@ describe('格莉丝影画 C1/C2/C4/C6（2026-08-27 用户口径补录）', () =>
     }
     const p4 = await panelFor(4)
     expect(p4.energyGainEfficiency ?? 0).toBeCloseTo(0, 4) // 招式特定回能，不走 panel 满覆盖
+  })
+
+  it('C1 再充能弹膛：converge 阶段给全队每人各 +2/轮换 能量（energySource.initialGift 观察）', async () => {
+    async function gifts(cinemaLevel: number) {
+      await setupHarness([{ agentId: '1181', cinemaLevel }, { agentId: '1041' }, { agentId: '1101' }] as never)
+      const calc = useResourceCalc()
+      const out = calc.resourceResult.value!
+      return out.characters.map(c => c.energySource.initialGift ?? 0)
+    }
+    const g0 = await gifts(0)
+    const g1 = await gifts(1)
+    expect(g0[0]).toBe(g0[1])
+    expect(g0[0]).toBe(g0[2])
+    const delta = g1.map((v, i) => v - g0[i])
+    expect(delta[0]).toBeGreaterThan(0)
+    expect(delta[1]).toBe(delta[0]) // 全队三人同额（applyTeamConfig 分发给三槽，含本体）
+    expect(delta[2]).toBe(delta[0])
+    expect(delta[0] % GRACE_C1_TEAM_ENERGY_PER_CYCLE).toBe(0) // 每轮换每人 +2 的整数倍
   })
 
   it('C6 起爆扳机：SP 1→2 手雷 / EX 2→3 手雷 + 全场手雷增伤 +100（涡流亦含）', async () => {
