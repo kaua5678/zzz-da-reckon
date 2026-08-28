@@ -120,18 +120,18 @@ describe('奥菲丝（1301）追加攻击 tag 与定向增伤', () => {
 })
 
 describe('奥菲丝影画6 激光附加伤害（patchExecutions moveId 限定）', () => {
-  const mkExec = (moveId: string) => ({ moveId, skillTableNote: '' }) as any
+  const mkExec = (moveId: string) => ({ moveId, skillTableNote: '', actionTime: 1 }) as any
 
-  it('6命：蓄热充能/与火共舞行附加 250% 局内攻；其余招式与非6命不附加', () => {
+  it('6命：蓄热充能/与火共舞行附加 250% 局内攻（按动作时长/0.5 折算段数）；其余招式与非6命不附加', () => {
     const cfg: any = { orphieCinemaLevel: 6, orphieAtk: 3000 }
     const laser = mkExec('1301011')
     const ult1 = mkExec('1301015')
     const ult2 = mkExec('1301016')
     const other = mkExec('1301009')
     orphieMechanic.patchExecutions!({ cfg, state: {} as any, executions: [laser, ult1, ult2, other], teamFrontlineSeconds: 0 } as any)
-    expect(laser.flatDamageBonus).toBeCloseTo(3000 * 2.5, 5)
-    expect(ult1.flatDamageBonus).toBeCloseTo(3000 * 2.5, 5)
-    expect(ult2.flatDamageBonus).toBeCloseTo(3000 * 2.5, 5)
+    expect(laser.flatDamageBonus).toBeCloseTo(3000 * 2.5 * (1 / 0.5), 5) // 1s / 0.5 = 2 段
+    expect(ult1.flatDamageBonus).toBeCloseTo(3000 * 2.5 * (1 / 0.5), 5)
+    expect(ult2.flatDamageBonus).toBeCloseTo(3000 * 2.5 * (1 / 0.5), 5)
     expect(other.flatDamageBonus ?? 0).toBeCloseTo(0, 5)
     expect(laser.skillTableNote).toContain('影画6')
 
@@ -211,12 +211,13 @@ describe('奥菲丝后台自动招式（2026-08-27 口径补录）', () => {
       team: team.map((t, i) => ({ slot: i, agentId: t.agentId, agent: { id: t.agentId, specialty: t.specialty } })),
     })
     const executions: any[] = []
-    orphieMechanic.buildExecutions!({ cfg, state: {}, executions } as any)
+    const state: any = { backstageTime: 150, totalEnergy: Number(cfgOver.totalEnergy ?? 0), basicAttackTime: 8 }
+    orphieMechanic.buildExecutions!({ cfg, state, executions } as any)
     return executions
   }
 
   it('副C（队有他强攻）：后台 30 次 = 蚀光一闪 + 灼红旋涡（能量替换），带追击 tag + backstage 桶', () => {
-    const ex = build([{ agentId: '1301', specialty: 'attack' }, { agentId: '1011', specialty: 'attack' }], { initialEnergyGift: 60 })
+    const ex = build([{ agentId: '1301', specialty: 'attack' }, { agentId: '1011', specialty: 'attack' }], { totalEnergy: 60 })
     const shiguang = ex.find(e => e.moveId === '1301008')
     const vortex = ex.find(e => e.moveId === '1301010')
     expect(shiguang).toBeTruthy()

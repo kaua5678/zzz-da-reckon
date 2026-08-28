@@ -152,9 +152,9 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
   if (cinema < 6 || atk <= 0) return
   for (const exec of executions) {
     if (!exec.moveId || !ORPHIE_C6_LASER_MOVE_IDS.has(exec.moveId)) continue
-    // 影画6：激光命中追加 250% 攻击力火伤（0.5秒至多1次）——口径 [已确认]：不按激光
-    // 时长建独立行，按招式触发挂在蓄热充能/与火共舞行上；该伤害视为强化特殊技与追加攻击
-    exec.flatDamageBonus = (exec.flatDamageBonus ?? 0) + atk * ORPHIE_C6_LASER_RATIO / 100
+    // 影画6：激光命中追加 250% 攻击力火伤（0.5秒至多1次）——按招式动作时长折算段数（总秒数/0.5），
+    // 挂在蓄热充能/与火共舞行上；该伤害视为强化特殊技与追加攻击
+    exec.flatDamageBonus = (exec.flatDamageBonus ?? 0) + atk * ORPHIE_C6_LASER_RATIO / 100 * ((exec.actionTime ?? 0) / 0.5)
     exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画6 激光附加 +${ORPHIE_C6_LASER_RATIO}% 攻击力火伤（视为追加攻击）`
   }
 }
@@ -170,18 +170,21 @@ function applyOrphieTeamConfig(input: AgentTeamConfigInput): void {
   ;(me as any).orphieAutoFrontRatio = hasXide ? 0.8 : 0 // 席德队 80% 前台小心脚下；通用副C 全后台
 }
 
-/** 后台自动招式：蚀光一闪（基础） + 灼红旋涡（能量替换）；席德队额外前台小心脚下 */
-function buildOrphieExecutions({ cfg, executions }: AgentResourceInput): void {
+/** 后台自动招式：蚀光一闪（基础） + 灼红旋涡（能量替换）；席德队额外前台小心脚下；影画6 火刀衔接灼红旋涡 */
+function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const cinema = Math.max(0, Math.floor(Number((cfg as any).orphieCinemaLevel ?? 0)))
   const n = Number((cfg as any)['setting:orphie.backstageCastCount'] ?? -1)
   const isMainC = Boolean((cfg as any).orphieIsMainC)
   const castCount = n >= 0 ? Math.max(0, Math.floor(n)) : (isMainC ? ORPHIE_BACKSTAGE_MAIN : ORPHIE_BACKSTAGE_SUB)
+  // 实际后台出手受后台时间/5（CD 上限 5s）约束：通常达不到默认 30/21
+  const backstageCast = Math.min(castCount, Math.max(0, Math.floor(Number(state.backstageTime ?? 0) / 5)))
   const rRaw = Number((cfg as any)['setting:orphie.frontEnergyRatio'] ?? -1)
   const frontRatio = Math.max(0, Math.min(1, rRaw >= 0 ? rRaw : Number((cfg as any).orphieAutoFrontRatio ?? 0)))
 
-  // 能量近似：进场能量礼物 + 平A回能 × 180（debt: 未接迭代能量总账，v1 用种子近似）
-  const energy = Number((cfg as any).initialEnergyGift ?? 0) + Number((cfg as any).basicAttackRegenPerSec ?? 0) * 180
-  const frontCast = Math.floor(castCount * frontRatio)
-  const backCast = castCount - frontCast
+  // 回能副C：能量必须走迭代能量总账（state.totalEnergy），不再用种子近似
+  const energy = Math.max(0, Number((state as any).totalEnergy ?? 0))
+  const frontCast = Math.floor(backstageCast * frontRatio)
+  const backCast = backstageCast - frontCast
   const vortexCount = Math.min(backCast, Math.floor(energy / ORPHIE_VORTEX_ENERGY))
   const shiguangCount = backCast - vortexCount
 
@@ -233,6 +236,14 @@ function buildOrphieExecutions({ cfg, executions }: AgentResourceInput): void {
   }
   push(ORPHIE_SP_SHIGUANG, '特殊技：蚀光一闪（后台自动）', shiguangCount)
   push(ORPHIE_EX_VORTEX, '强化特殊技：灼红旋涡（后台自动·能量替换）', vortexCount)
+
+  // 影画6 火刀衔接灼红旋涡（前台）：高压火枪火刀（basicAttackTime/2 口径）后点按衔接，默认全操作
+  if (cinema >= 6) {
+    const linkRatio = Math.max(0, Math.min(1, Number((cfg as any)['setting:orphie.bladeLinkRatio'] ?? 1)))
+    const bladeHits = Math.max(0, Math.floor((state.basicAttackTime ?? 0) / 2))
+    const linkCount = Math.floor(bladeHits * linkRatio)
+    push(ORPHIE_EX_VORTEX, '强化特殊技：灼红旋涡（火刀衔接，前台）', linkCount)
+  }
 }
 
 /** 蓄炎资源：影画6 火刀次数写入 cfg（cinema>=6 才计），spec 解释器按 cfgField 读取 */
@@ -278,6 +289,15 @@ export const orphieMechanic: AgentMechanicModule = {
       label: '奥菲丝·前台能量占比',
       description: '前台打小心脚下的能量占比（-1=自动：席德队 0.8 / 其他副C 0）。前台耗能可给席德回钢能。',
       default: -1,
+      min: 0,
+      max: 1,
+      step: 0.05,
+    },
+    {
+      id: 'orphie.bladeLinkRatio',
+      label: '奥菲丝·影画6 火刀衔接率',
+      description: '高压火枪火刀后衔接灼红旋涡的比例（默认 1 = 每次火刀都衔接，全操作）。',
+      default: 1,
       min: 0,
       max: 1,
       step: 0.05,
