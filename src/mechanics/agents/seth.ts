@@ -23,6 +23,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
+import type { AgentSkills, SkillMove } from '@/types/catalog'
 
 export const SETH_ID = '1271'
 export const SETH_SHIELD_PROFICIENCY = 100
@@ -30,6 +31,7 @@ export const SETH_ADDITIONAL_RES_REDUCTION = 20
 export const SETH_C2_ELECTRIC_BUILDUP = 35
 export const SETH_C6_FINISH_MULT = 500
 export const SETH_C6_CRIT_DMG = 60
+export const SETH_C4_DEFENSIVE_DAZE_BONUS = 25
 
 export interface SethCycle {
   cinemaLevel: number
@@ -54,6 +56,15 @@ function whole(value: number): number {
   return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }
 
+function findMove(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
+  if (!skills || !moveId) return null
+  for (const category of skills.categories) {
+    const move = category.moves.find(item => item.id === moveId)
+    if (move) return move
+  }
+  return null
+}
+
 export function computeSethCycle(input: {
   cinemaLevel: number
   additionalActive: boolean
@@ -75,13 +86,18 @@ export function computeSethCycle(input: {
   }
 }
 
-function buildSethCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
+function buildSethCharConfig({ cinemaLevel, cfg, panel, skills, getRowValue }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   record.sethCinemaLevel = cinemaLevel
   record.sethShieldCoverage = clampRatio(setting(cfg, 'seth.shieldCoverage', 1))
   record.sethAdditionalResCoverage = clampRatio(setting(cfg, 'seth.additionalResCoverage', 1))
   record.sethC6FinishCount = whole(setting(cfg, 'seth.c6FinishCount', 6))
   record.sethAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  // 影画4 招架支援迅雷盾失衡值 +25%：预缩倍率表 daze 值，patchExecutions 经 dazeMultiplierOverride 精确结算。
+  if (cinemaLevel >= 4) {
+    const baseDaze = getRowValue(findMove(skills, cfg.defensiveAssistMoveId ?? ''), 'daze')
+    record.sethC4DefensiveDaze = baseDaze * (1 + SETH_C4_DEFENSIVE_DAZE_BONUS / 100)
+  }
 }
 
 function cycleFromInput({ cfg, state: _state }: Pick<AgentResourceInput, 'cfg' | 'state'>): SethCycle {
@@ -119,6 +135,20 @@ function buildSethExecutions({ cfg, state, executions }: AgentResourceInput): vo
     critRateBonus: 100,
     critDmgBonus: SETH_C6_CRIT_DMG,
   })
+}
+
+function patchSethExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  if ((Number(record.sethCinemaLevel ?? 0)) < 4) return
+  const scaled = Number(record.sethC4DefensiveDaze ?? 0)
+  if (scaled <= 0) return
+  const defMoveId = cfg.defensiveAssistMoveId
+  for (const exec of executions) {
+    if (exec.moveId === defMoveId) {
+      exec.dazeMultiplier = scaled
+      exec.dazeMultiplierOverride = true
+    }
+  }
 }
 
 function applySethPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
@@ -170,6 +200,7 @@ export const sethMechanic: AgentMechanicModule = {
   applyPanel: applySethPanel,
   buildCharConfig: buildSethCharConfig,
   buildExecutions: buildSethExecutions,
+  patchExecutions: patchSethExecutions,
   buildResourceResult: buildSethResourceResult,
   resourceSections: buildSethResourceSections,
 }

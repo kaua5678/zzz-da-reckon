@@ -4,6 +4,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   SETH_ADDITIONAL_RES_REDUCTION,
   SETH_C2_ELECTRIC_BUILDUP,
+  SETH_C4_DEFENSIVE_DAZE_BONUS,
   SETH_C6_CRIT_DMG,
   SETH_C6_FINISH_MULT,
   SETH_SHIELD_PROFICIENCY,
@@ -74,6 +75,43 @@ describe('赛斯执行行', () => {
       executions: execs0,
     } as any)
     expect(execs0.find(e => e.moveId === '1271_c6_finish_strike')).toBeUndefined()
+  })
+})
+
+describe('影画4 招架支援失衡+25%', () => {
+  const skills: any = { categories: [{ moves: [{ id: '1271016', rows: [{ id: 'daze', values: [371] }] }] }] }
+  const getRowValue = (move: any, rowId: string) =>
+    rowId === 'daze' ? (move?.rows?.find((r: any) => r.id === 'daze')?.values[0] ?? 0) : 0
+
+  it('buildCharConfig 预缩招架支援 daze ×1.25，供 patchExecutions 精确覆盖', () => {
+    const cfg: any = { defensiveAssistMoveId: '1271016' }
+    sethMechanic.buildCharConfig!({
+      cinemaLevel: 4, cfg, panel: {} as any, skills, getRowValue,
+    } as any)
+    expect(cfg.sethC4DefensiveDaze).toBeCloseTo(371 * (1 + SETH_C4_DEFENSIVE_DAZE_BONUS / 100), 2)
+  })
+
+  it('patchExecutions 只对招架支援行挂 dazeMultiplierOverride；低命座不挂', () => {
+    const execs: any[] = [
+      { moveId: '1271016', dazeMultiplier: undefined, dazeMultiplierOverride: undefined },
+      { moveId: '1271008', dazeMultiplier: undefined, dazeMultiplierOverride: undefined },
+    ]
+    sethMechanic.patchExecutions!({
+      cfg: { sethCinemaLevel: 4, sethC4DefensiveDaze: 371 * 1.25, defensiveAssistMoveId: '1271016' },
+      state: {} as any,
+      executions: execs,
+    } as any)
+    expect(execs[0].dazeMultiplier).toBeCloseTo(371 * 1.25, 2)
+    expect(execs[0].dazeMultiplierOverride).toBe(true)
+    expect(execs[1].dazeMultiplierOverride).toBeUndefined() // 强特行不吃
+
+    const execs0: any[] = [{ moveId: '1271016' }]
+    sethMechanic.patchExecutions!({
+      cfg: { sethCinemaLevel: 3, sethC4DefensiveDaze: 371 * 1.25, defensiveAssistMoveId: '1271016' },
+      state: {} as any,
+      executions: execs0,
+    } as any)
+    expect(execs0[0].dazeMultiplierOverride).toBeUndefined() // 低命座不挂
   })
 })
 
