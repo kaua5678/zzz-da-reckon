@@ -60,6 +60,25 @@ describe('凯撒模块', () => {
     expect(executions[1].dmgBonus).toBe(CAESAR_C6_DMG_BONUS)
     expect(executions[2].dmgBonus).toBe(0)
   })
+
+  it('影画4：支援点数代替超强力盾击（5s ICD 封顶 + 滑杆次数，默认 0）', () => {
+    const state: any = { chainCountTotal: 5, ultimateCount: 1 }
+    const cfg: any = { caesarCinemaLevel: 4, battleTime: 180, exSpecialActionTime: 1, 'setting:caesar.c4SubstitutionCount': 8 }
+    const executions: any[] = []
+    caesarMechanic.buildExecutions!({ cfg, state, executions } as any)
+    const extra = executions.find(e => e.moveId === '1071013' && (e.skillTableNote ?? '').includes('影画4'))
+    expect(extra).toBeTruthy()
+    expect(extra.count).toBe(8) // 支援点数=3×(5+1)=18, ICD cap=36 → max 18；滑杆 8
+    expect(extra.actionTime).toBe(0)
+
+    // 默认滑杆 0 → 不生成；低命座不生成
+    const executions0: any[] = []
+    caesarMechanic.buildExecutions!({ cfg: { caesarCinemaLevel: 4, battleTime: 180, exSpecialActionTime: 1 }, state, executions: executions0 } as any)
+    expect(executions0.some(e => (e.skillTableNote ?? '').includes('影画4'))).toBe(false)
+    const executionsLow: any[] = []
+    caesarMechanic.buildExecutions!({ cfg: { caesarCinemaLevel: 3, battleTime: 180, exSpecialActionTime: 1, 'setting:caesar.c4SubstitutionCount': 8 }, state, executions: executionsLow } as any)
+    expect(executionsLow.some(e => (e.skillTableNote ?? '').includes('影画4'))).toBe(false)
+  })
 })
 
 describe('凯撒面板', () => {

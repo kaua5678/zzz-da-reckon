@@ -36,6 +36,8 @@ export const CAESAR_C6_CRIT_RATE = 100 // 必定暴击
 export const CAESAR_C6_SELF_CRIT_RATE = 30
 export const CAESAR_C6_SELF_CRIT_DMG = 60
 export const CAESAR_C2_ENERGY_EFF = 10
+export const CAESAR_C4_SUPPORT_POINTS_PER_CHAIN_ULT = 3
+export const CAESAR_C4_SUBSTITUTE_ICD_SECONDS = 5
 
 function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
   const cinema = cinemaLevel ?? 0
@@ -50,6 +52,39 @@ function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
 
 function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   ;(cfg as unknown as Record<string, unknown>).caesarCinemaLevel = cinemaLevel ?? 0
+}
+
+function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const cinema = Math.max(0, Math.floor(Number((cfg as any).caesarCinemaLevel ?? 0)))
+  if (cinema < 4) return
+  // 影画4 阿瑞斯攻城锤：连携/终结各 +3 支援点数；能量<20 时消耗1点支援点代替发动超强力盾击（5s ICD）。
+  // 能量不足才触发（条件向），总量模型无法判「能量是否吃紧」→ 用可调次数滑杆表达实际代替次数，
+  // 上限 = min(支援点数, floor(战斗时长/5))，默认 0（凯撒为支援，默认不假定能量饥饿）。
+  const chainTotal = Math.max(0, Math.floor(Number(state.chainCountTotal ?? 0)))
+  const ultCount = Math.max(0, Math.floor(Number(state.ultimateCount ?? 0)))
+  const supportPoints = CAESAR_C4_SUPPORT_POINTS_PER_CHAIN_ULT * (chainTotal + ultCount)
+  const icdCap = Math.max(0, Math.floor(Number((cfg as any).battleTime ?? 180) / CAESAR_C4_SUBSTITUTE_ICD_SECONDS))
+  const maxExtra = Math.min(supportPoints, icdCap)
+  const slider = Math.max(0, Math.floor(Number((cfg as any)['setting:caesar.c4SubstitutionCount'] ?? 0)))
+  const extraEx = Math.min(maxExtra, slider)
+  if (extraEx <= 0) return
+  executions.push({
+    moveId: MOVE_SUPER_SHIELD,
+    moveName: '强化特殊技：超强力盾击（影画4 支援点数代替）',
+    category: 'special',
+    count: extraEx,
+    actionTime: 0,
+    comboAlignRatio: 0,
+    totalTime: 0,
+    totalComboAlignTime: 0,
+    energyConsume: 0,
+    totalEnergyConsume: 0,
+    decibelRecovery: 0,
+    totalDecibelRecovery: 0,
+    energyRecovery: 0,
+    totalEnergyRecovery: 0,
+    skillTableNote: '影画4 阿瑞斯攻城锤：能量<20 时消耗1点支援点数代替发动超强力盾击（5s ICD，支援点数=3×连携+终结）',
+  })
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
@@ -68,9 +103,22 @@ export const caesarMechanic: AgentMechanicModule = {
   id: 'agent:caesar',
   agentIds: [CAESAR_ID],
   name: '凯撒·荣光之盾',
-  description: '荣光之盾攻击拐、战意增伤、影画1减抗、影画2效率与攻击×1.5、影画6盾击暴击增伤。',
+  description: '荣光之盾攻击拐、战意增伤、影画1减抗、影画2效率与攻击×1.5、影画4支援点代替强特、影画6盾击暴击增伤。',
+  settings: [
+    {
+      id: 'caesar.c4SubstitutionCount',
+      label: '影画4支援点代替次数',
+      description: '能量<20 时消耗1点支援点数代替发动超强力盾击的实际次数（上限 = min(3×(连携+终结), floor(战斗时长/5))）；默认 0 = 不假定能量饥饿',
+      default: 0,
+      min: 0,
+      max: 36,
+      step: 1,
+      suffix: '次',
+    },
+  ],
   applyPanel,
   buildCharConfig,
+  buildExecutions,
   patchExecutions,
 }
 

@@ -129,7 +129,8 @@
         "aliceCinema6MaxTriggers",
         "aliceCinema6DamageRatio"
       ],
-      "status": "partially_implemented"
+      "status": "implemented_approximation",
+      "note": "实现位置：src/mechanics/agents/alice.ts（C6 每轮决胜状态附伤，aliceCinema6MaxTriggers/aliceCinema6DamageRatio 消费；3300% AP = 33×精通，用户确认口径 2026-08）。"
     },
     {
       "id": "alice_sword_will_spark",
