@@ -170,14 +170,13 @@ describe('格莉丝影画 C1/C2/C4/C6（2026-08-27 用户口径补录）', () =>
     }))
   })
 
-  it('C4 爆破电容：能量获得效率 +20（4 命以上）', async () => {
+  it('C4 爆破电容：不做面板满覆盖——能量获得效率面板保持 0（回能走单独项）', async () => {
     async function panelFor(cinemaLevel: number) {
       const { config, catalog } = await setupHarness([{ agentId: '1181', cinemaLevel }, '', ''] as never)
       return computePanelPhases(0, config, catalog)!.inCombat
     }
-    const p0 = await panelFor(0)
     const p4 = await panelFor(4)
-    expect((p4.energyGainEfficiency ?? 0) - (p0.energyGainEfficiency ?? 0)).toBeCloseTo(20)
+    expect(p4.energyGainEfficiency ?? 0).toBeCloseTo(0, 4) // 招式特定回能，不走 panel 满覆盖
   })
 
   it('C6 起爆扳机：SP 1→2 手雷 / EX 2→3 手雷 + 全场手雷增伤 +100（涡流亦含）', async () => {

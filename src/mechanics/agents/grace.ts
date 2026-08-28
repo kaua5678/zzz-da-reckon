@@ -4,6 +4,7 @@ import type {
   AgentPanelInput,
   AgentResourceInput,
   AgentResourceSectionsInput,
+  AgentTeamConfigInput,
 } from '../types'
 import type { AnomalyEventExecution, SkillExecution } from '@/types/resource'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
@@ -108,9 +109,19 @@ function applyGracePanel(input: AgentPanelInput): void {
     panel.anomalyDmgBonus = (panel.anomalyDmgBonus ?? 0) + 18 * stacks
   }
   // 影画2 电致击穿（电伤抗+电积蓄抗 −8.5%）已由 spec teamBuffs `grace_c2_enemy_electric_debuff` 承载（满覆盖）
-  // 影画4 爆破电容：能量获得效率 +20%（6 层充能覆盖 A4/冲刺消耗段）
-  if (cinemaLevel >= 4) {
-    panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + GRACE_C4_ENERGY_EFFICIENCY
+  // 影画4 爆破电容：能量获得效率 +20% 是招式特定（A1-A4 平A），非面板满覆盖——
+  // 在 buildExecutions 按「强特×6 充能 → min(充能, 平A段数)」折算成单独回能项，不走 panel.energyGainEfficiency。
+}
+
+/** 影画1 全队每人回能：converge 阶段读上一轮 buildExecutions 存的 graceC1Cycles，分发给三槽 */
+function applyGraceTeamConfig({ slot, phase, characters }: AgentTeamConfigInput): void {
+  if (phase !== 'converge') return
+  const cycles = Math.max(0, Math.floor(Number((characters[slot] as any)?.graceC1Cycles ?? 0)))
+  if (cycles <= 0) return
+  const energy = GRACE_C1_TEAM_ENERGY_PER_CYCLE * cycles
+  for (const c of characters) {
+    if (!c) continue
+    c.initialEnergyGift = Number(c.initialEnergyGift ?? 0) + energy
   }
 }
 
@@ -128,9 +139,11 @@ function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): v
     // 电能满层时强特额外投掷一枚[涡流集束手雷]（1181020，表值 175.5）
     const vortexRow = graceRow(VORTEX_MOVE_ID, '涡流集束手雷（电能满层·强特附带）', plan.exUsed, 0)
     if (cinema >= 6) {
-      // 影画6：强特 2 手雷 → 3 手雷（倍率 ×1.5），伤害 ×2（增伤 +100）
+      // 影画6：强特 2 手雷 → 3 手雷——额外手雷所有数据按段数 ×1.5（倍率/秽盾）；伤害另 ×2（增伤 +100）
       exRow.damageMultiplier = 501.15 // catalog 334.1 × (3/2)
       exRow.damageMultiplierOverride = true
+      exRow.dazeMultiplier = 301.95 // catalog 201.3 × 1.5
+      exRow.dazeMultiplierOverride = true
       exRow.dmgBonus = GRACE_C6_GRENADE_DMG_BONUS
       vortexRow.dmgBonus = GRACE_C6_GRENADE_DMG_BONUS
     }
@@ -139,20 +152,33 @@ function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): v
   if (plan.normalUsed > 0) {
     const spRow = graceRow(SP_MOVE_ID, '特殊技：工程清障（电能强化）', plan.normalUsed, SP_TIME)
     if (cinema >= 6) {
-      // 影画6：特殊技 1 手雷 → 2 手雷（倍率 ×2），伤害 ×2（增伤 +100）
+      // 影画6：特殊技 1 手雷 → 2 手雷——额外手雷所有数据 ×2；伤害另 ×2（增伤 +100）
       spRow.damageMultiplier = 170 // catalog 85 × 2
       spRow.damageMultiplierOverride = true
+      spRow.dazeMultiplier = 128.2 // catalog 64.1 × 2
+      spRow.dazeMultiplierOverride = true
       spRow.dmgBonus = GRACE_C6_GRENADE_DMG_BONUS
     }
     executions.push(spRow)
   }
 
-  // 影画1 再充能弹膛：一次 A4（每轮换一格）给全队回复 2 能量
-  // （近似：全队回能折算入格莉丝自身能量总账，经 cfg 反馈回路进下一轮迭代收敛）
-  if (cinema >= 1 && plan.cycles > 0) {
+  // 影画1 再充能弹膛：一次 A4（每轮换一格）给全队每人回 2 能量——存 cycles，由 applyGraceTeamConfig 分发给三槽
+  ;(cfg as unknown as Record<string, unknown>).graceC1Cycles =
+    cinema >= 1 ? plan.cycles : 0
+
+  // 影画4 爆破电容：强特×6 充能 → 给 A1-A4 平A 回能 +20%（单独回能项，不套进招式）
+  // 充能覆盖的平A段数 = min(强特×6, 总平A段数 4×轮换)；总平A能量 = 平A回能每秒 × 平A池
+  if (cinema >= 4 && plan.cycles > 0 && plan.exUsed > 0) {
+    const totalBasicHits = 4 * plan.cycles
+    const boostedHits = Math.min(plan.exUsed * 6, totalBasicHits)
+    const coverage = totalBasicHits > 0 ? boostedHits / totalBasicHits : 0
+    const basicEnergy = Math.max(0, Number((cfg as unknown as Record<string, unknown>).basicAttackRegenPerSec ?? 0)) * basicPool
+    const c4Energy = (GRACE_C4_ENERGY_EFFICIENCY / 100) * basicEnergy * coverage
+    ;(cfg as unknown as Record<string, unknown>).graceC4Energy = c4Energy
     ;(cfg as unknown as Record<string, unknown>).initialEnergyGift =
-      Number((cfg as unknown as Record<string, unknown>).initialEnergyGift ?? 0)
-      + GRACE_C1_TEAM_ENERGY_PER_CYCLE * plan.cycles
+      Number((cfg as unknown as Record<string, unknown>).initialEnergyGift ?? 0) + c4Energy
+  } else {
+    ;(cfg as unknown as Record<string, unknown>).graceC4Energy = 0
   }
 
   // [脉冲]：终结技 ×25 层、**上限 25**（用户口供：留 1 层，多大都卡在 25）→
@@ -231,6 +257,7 @@ export const graceMechanic: AgentMechanicModule = {
   name: '格莉丝',
   applyPanel: applyGracePanel,
   buildCharConfig: buildGraceCharConfig,
+  applyTeamConfig: applyGraceTeamConfig,
   buildExecutions: buildGraceExecutions,
   transformSkillExecutions: transformGraceExecutions,
   buildAnomalyEvents: buildGraceAnomalyEvents,
