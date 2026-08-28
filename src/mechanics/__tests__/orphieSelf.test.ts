@@ -238,3 +238,20 @@ describe('奥菲丝后台自动招式（2026-08-27 口径补录）', () => {
     expect(foot.count).toBe(24) // 30 × 0.8
   })
 })
+
+describe('奥菲丝倍率融合（2026-08-27）', () => {
+  it('蓄热充能打完自动接燥焰迸射；大招 #1+#2 合一追加 #2', () => {
+    const cfg: any = { orphieCinemaLevel: 6, orphieAtk: 1000 }
+    const executions: any[] = [
+      { moveId: '1301011', moveName: '蓄热充能', category: 'special', count: 3, actionTime: 1, comboAlignRatio: 0, totalTime: 3, totalComboAlignTime: 0, energyConsume: 0, totalEnergyConsume: 0, decibelRecovery: 0, totalDecibelRecovery: 0, energyRecovery: 0, totalEnergyRecovery: 0 },
+      { moveId: '1301015', moveName: '与火共舞 #1', category: 'chain', count: 2, actionTime: 2, comboAlignRatio: 0, totalTime: 4, totalComboAlignTime: 0, energyConsume: 0, totalEnergyConsume: 0, decibelRecovery: 0, totalDecibelRecovery: 0, energyRecovery: 0, totalEnergyRecovery: 0 },
+    ]
+    orphieMechanic.patchExecutions!({ cfg, state: {}, executions } as any)
+    const burst = executions.find(e => e.moveId === '1301022')
+    const ult2 = executions.find(e => e.moveId === '1301016')
+    expect(burst).toBeTruthy()
+    expect(burst.count).toBe(3) // 蓄热充能 3 次 → 燥焰迸射 3 次
+    expect(ult2).toBeTruthy()
+    expect(ult2.count).toBe(2) // 大招 #1 2 次 → #2 2 次（合一）
+  })
+})

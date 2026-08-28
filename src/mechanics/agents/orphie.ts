@@ -1,4 +1,5 @@
 import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
+import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
@@ -49,6 +50,11 @@ const ORPHIE_VORTEX_ENERGY = 30
 /** 后台出手次数默认值（5s 上限通常达不到；供滑块覆盖） */
 const ORPHIE_BACKSTAGE_MAIN = 21
 const ORPHIE_BACKSTAGE_SUB = 30
+/** 倍率融合 moveId：蓄热充能后接燥焰迸射；终结技 与火共舞 #1+#2 合一 */
+const ORPHIE_EX_STORAGE = '1301011'
+const ORPHIE_EX_BURST = '1301022'
+const ORPHIE_ULT_1 = '1301015'
+const ORPHIE_ULT_2 = '1301016'
 
 function applyOrphiePanel({ panel, cinemaLevel }: AgentPanelInput): void {
   panel.critRate = (panel.critRate ?? 0) + ORPHIE_CORE_CRIT_RATE
@@ -93,6 +99,56 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
     ;(cfg as any).extraSelfDecibelReward =
       Number((cfg as any).extraSelfDecibelReward ?? 0) + ORPHIE_C2_AA_DECIBEL * Math.min(aaCount, cdCap)
   }
+  // 倍率融合（2026-08-27）：蓄热充能(1301011) 打完全自动接燥焰迸射(1301022)；
+  // 终结技 与火共舞 #1(1301015)+#2(1301016) 合一计一次终结技
+  const fusionPush: SkillExecution[] = []
+  for (const exec of executions) {
+    if (exec.moveId === ORPHIE_EX_STORAGE) {
+      fusionPush.push({
+        moveId: ORPHIE_EX_BURST,
+        moveName: '强化特殊技：燥焰迸射（蓄热充能自动接）',
+        category: 'special',
+        element: 'fire',
+        skillDamageTarget: 'additionalAttack',
+        count: exec.count,
+        actionTime: 0,
+        comboAlignRatio: 0,
+        totalTime: 0,
+        totalComboAlignTime: 0,
+        energyConsume: 0,
+        totalEnergyConsume: 0,
+        decibelRecovery: 0,
+        totalDecibelRecovery: 0,
+        energyRecovery: 0,
+        totalEnergyRecovery: 0,
+        timeBucket: 'backstage',
+        skillTableNote: '强化特殊技：燥焰迸射（蓄热充能自动衔接，追攻）',
+      })
+    }
+    if (exec.moveId === ORPHIE_ULT_1) {
+      fusionPush.push({
+        moveId: ORPHIE_ULT_2,
+        moveName: '终结技：与火共舞 #2（#1+#2 合一）',
+        category: 'chain',
+        element: 'fire',
+        skillDamageTarget: 'additionalAttack',
+        count: exec.count,
+        actionTime: 0,
+        comboAlignRatio: 0,
+        totalTime: 0,
+        totalComboAlignTime: 0,
+        energyConsume: 0,
+        totalEnergyConsume: 0,
+        decibelRecovery: 0,
+        totalDecibelRecovery: 0,
+        energyRecovery: 0,
+        totalEnergyRecovery: 0,
+        timeBucket: 'backstage',
+        skillTableNote: '终结技：与火共舞 #2（#1+#2 合一计一次，追攻）',
+      })
+    }
+  }
+  executions.push(...fusionPush)
   if (cinema < 6 || atk <= 0) return
   for (const exec of executions) {
     if (!exec.moveId || !ORPHIE_C6_LASER_MOVE_IDS.has(exec.moveId)) continue

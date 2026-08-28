@@ -723,7 +723,8 @@
 - **影画2**：终结技后自身攻击 +20%（满覆盖近似，面板乘法）+ 追加攻击回 65 喧响（4s CD 上限近似，`patchExecutions` 按 additionalAttack tag 计次注入 `extraSelfDecibelReward`）；**影画4**：终结技增伤 +40%（`skillDmgBonus__ultimate`）+ 蓄热充能 +40%（`patchExecutions` moveId 级 `dmgBonus`，2026-08-27 补）；**影画6**：蓄热充能/终结技激光附加 250% 攻击力火伤（`patchExecutions` moveId 限定挂 `flatDamageBonus`，不按激光时长建独立行，视为追加攻击——用户确认口径）。
 - **后台自动招式**（2026-08-27 补录，核心被动「后台时蚀光一闪，能量≥60 改放灼红旋涡」的近似）：`applyTeamConfig.build` 判主/副C（队友是否另有 `attack` 强攻）；蚀光一闪（1301008）+ 灼红旋涡（1301010，30 能量替换）后台行 `timeBucket=backstage`，带 `skillDamageTarget=additionalAttack`；默认出手次数 副C 30 / 主C 21（滑块 `orphie.backstageCastCount`，-1=自动）；能量分配 席德队 80% 前台小心脚下（`setting:orphie.frontEnergyRatio`，-1=自动）。`debt: 能量用 initialEnergyGift+平A回能×180 近似，未接迭代能量总账`。
 - **蓄炎资源循环**（spec resource `orphie_xuyan`）：初始100/上限125；获取=强特（小心脚下/灼红旋涡/蓄热充能 +20，带滑块）、枪管过热+20、与火共舞+20、蚀光一闪 20点/5秒按战斗时长折算（带利用率滑块）、影画6 火刀+10（cinema>=6 门控）；消耗=蓄热充能每次100点，自动算可发动次数。
-- **未建模**：影画6 火刀「衔接灼红旋涡」（操作衍生，无时序）；倍率融合尚未接（与火共舞 #1+#2 合一、蓄热充能接燥焰迸射——口径已记 spec 1301 notes，待下轮）。
+- **倍率融合**（2026-08-27）：蓄热充能(1301011)打完全自动接燥焰迸射(1301022)；终结技与火共舞 #1(1301015)+#2(1301016) 合一计一次终结技（`patchExecutions` 追加合成行）。
+- **未建模**：影画6 火刀「衔接灼红旋涡」（操作衍生，无时序）。
 - **模块**：`src/mechanics/agents/orphie.ts`（自身机制 applyPanel）+ spec 声明式（helpers 过滤链门控额外能力）。
 
 ### 朱鸢（旧文件名 juhufu / agentId 1241）—— 新艾利都治安局以太击破
