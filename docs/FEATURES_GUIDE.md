@@ -29,7 +29,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 
 - 原始数据 → `data/raw/bosses/{summary.json, version.json, zh|en/<期数id>.json, monster/<怪物id>.json}`
 - 端点与结构见 `scripts/fetch-nanoka-bosses.mjs` 头注释（boss.json / zh|en/boss/<id>.json / zh/monster/<id>.json）
-- **期视图**（`phaseViews`，Boss 选择 UI 的数据源）：每期含 困难 Boss（`criticalAssault`，可应用）/ 普通 3 Boss（`defense`，只读）/ 当期 buff（`buffs`）
+- **期视图**（`phaseViews`，Boss 选择 UI 的数据源）：覆盖全部 47 期（1.4–3.2）；每期含 普通 3 Boss（`defense`，可应用）/ 当期 buff（`buffs`）；3.1–3.2 另含 困难 Boss（`criticalAssault`，可应用），1.4–3.0 无困难模式
 
 ### 1.3 修改入口（都在 `scripts/import-nanoka-bosses.mjs`）
 
@@ -316,7 +316,7 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 ### 7.4 口径
 
 - 配装 = 计算器默认理想（推荐驱动盘 + 最优副词条 + 技能全满，作为理论**上界**）；不从视频提取真实配装。
-- 交互基准 = 角色专属默认（般岳/星徽·比利）> 通用基准（弹刀 6 / 闪反 10 / 快支 3 / 连携 1），与 teamTimeline 同源。
+- 交互基准 = 不预设弹刀——弹刀由「保底4失衡（Boss 预设反推）+ 保底4喧响（喧响缺口÷215）」运行时反推；闪反/快支保留固定基准（闪反10 / 快支3）作为喧响基础供给；连携基准 1（轴模式由轴内连携块反推覆盖）。
 - Boss = 期相位血量（**危局总血量 = nanoka 单管血量 `mo.stats.hp` × 管数：普通 8.74 / 困难 15.8**；`mo.stats.hp` 已含 4 号血量成长曲线 70 级 × 版本系数）+ 关卡固有 layer_buff 自动应用；当期可选牌（3 选 1）**不自动应用**（归档未记录玩家选择）。
 - 仅危局强袭（Deadly Assault*，含 Adversity），防卫战/歼灭排除。
 - 比对口径：伤害/血量%（击杀线 100%）vs 实战 score/bossKilled/time，**不做 score 精确映射**；差异 = 配装差 + 建模误差，靠理想配装上界夹逼隔离。

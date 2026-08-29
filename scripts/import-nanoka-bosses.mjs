@@ -170,6 +170,8 @@ const CATALOG_MONSTER_MAP = {
   '30009': 'boss.unknown_corruption_complex',
   '30021': 'boss.notorious_pompey',           // 庞培（试炼版）并入恶名版
   '300211': 'boss.notorious_pompey',
+  '30024': null,                              // 牲鬼·布林格（普通，1.x）
+  '300082': null,                             // 自律强袭单位·「提丰·破坏者型」（普通，1.x）
   '300121': null,                             // 恶名·冥宁芙（普通）
   '30033': null,                              // 秽息司祭（普通）
   '30034': 'boss.miasma_fiend_named',
@@ -477,34 +479,35 @@ for (const zoneId of Object.keys(summary)) {
   let zh
   try { zh = load('zh', zoneId) } catch { continue }
   const caMode = (zh.modes ?? []).find(m => m.zone_type === 1002)
-  if (!caMode) continue // 只收含危局（困难）的期数
   const defMode = (zh.modes ?? []).find(m => m.zone_type === 1001)
   const info = summary[zoneId]
 
-  const caZones = Object.keys(caMode.zone ?? {}).map(k => ({ key: k, zone: caMode.zone[k] }))
+  const caZones = Object.keys(caMode?.zone ?? {}).map(k => ({ key: k, zone: caMode.zone[k] }))
   const caZone = caZones[0]
   const caRoom = caZone ? caZone.zone.layer_room?.[Object.keys(caZone.zone.layer_room ?? {})[0]] : null
   const criticalAssault = caRoom
     ? monsterBrief(undefined, { phaseId: zoneId, zoneKey: caZone.key, monster_level: caZone.zone.monster_level }, caRoom, 'critical_assault', caZone.zone.layer_buff)
     : null
 
+  const defZones = Object.keys(defMode?.zone ?? {}).map(k => ({ key: k, zone: defMode.zone[k] }))
   const defense = []
-  for (const k of Object.keys(defMode?.zone ?? {})) {
-    const zone = defMode.zone[k]
-    const room = zone.layer_room?.[Object.keys(zone.layer_room ?? {})[0]]
+  for (const z of defZones) {
+    const room = z.zone.layer_room?.[Object.keys(z.zone.layer_room ?? {})[0]]
     if (!room) continue
-    const brief = monsterBrief(undefined, { phaseId: zoneId, zoneKey: k, monster_level: zone.monster_level }, room, 'defense', zone.layer_buff)
-    if (brief) defense.push({ ...brief, stageName: zone.name ?? '', stageNum: zone.stage_num ?? 1 })
+    const brief = monsterBrief(undefined, { phaseId: zoneId, zoneKey: z.key, monster_level: z.zone.monster_level }, room, 'defense', z.zone.layer_buff)
+    if (brief) defense.push({ ...brief, stageName: z.zone.name ?? '', stageNum: z.zone.stage_num ?? 1 })
   }
 
-  // 当期危局 buff 牌（selectable_buff）
+  // 当期危局 buff 牌（selectable_buff）：困难 zone 优先，无困难（1.4–3.0）取首个普通 zone
+  const buffZone = caZone ?? defZones[0]
   const buffs = []
-  for (const b of Object.values(caZone?.zone.selectable_buff ?? {})) {
+  for (const b of Object.values(buffZone?.zone.selectable_buff ?? {})) {
     const parsed = buffParser.parsePhaseBuff(b.title ?? '', b.desc ?? '')
     buffs.push(parsed)
   }
 
-  const begin = info.live_begin ?? info.begin ?? ''
+  // 测试期期数（无 live_begin）空 begin；info.begin 是测试服占位日，混入会打乱时间轴
+  const begin = info.live_begin ?? ''
   phaseViews.push({
     phaseId: zoneId,
     version: versionOf(zoneId),

@@ -44,22 +44,23 @@
     </div>
 
     <template v-else>
-      <!-- 困难：危局强袭战 1 个 Boss -->
-      <div class="mode-title">
-        <n-tag type="warning" size="small" :bordered="false">困难</n-tag>
-        <span>危局强袭战 · {{ view.label }}</span>
-        <n-tag v-if="viewTestOnly" size="tiny" type="default" :bordered="false">测试服数据</n-tag>
-      </div>
-      <div class="ca-row">
-        <BossCard
-          v-if="caBoss"
-          :brief="caBoss"
-          :preset="caPreset"
-          :applied="isApplied(caBoss)"
-          @apply="applyBoss(caBoss)"
-        />
-        <div class="phase-note">一键填充：血量/失衡/防御/等级/危局异常系数/失衡倍率/失衡时间 + 三张抗性表 + 战斗时间/秽盾/能量盾/无敌时间；声明弹刀总数的 Boss 自动勾选「保底4失衡」（击破位弹刀反推、主C 拿剩余）</div>
-      </div>
+      <!-- 困难：危局强袭战 1 个 Boss（1.4–3.0 无困难模式 → 整块隐藏） -->
+      <template v-if="caBoss">
+        <div class="mode-title">
+          <n-tag type="warning" size="small" :bordered="false">困难</n-tag>
+          <span>危局强袭战 · {{ view.label }}</span>
+          <n-tag v-if="viewTestOnly" size="tiny" type="default" :bordered="false">测试服数据</n-tag>
+        </div>
+        <div class="ca-row">
+          <BossCard
+            :brief="caBoss"
+            :preset="caPreset"
+            :applied="isApplied(caBoss)"
+            @apply="applyBoss(caBoss)"
+          />
+          <div class="phase-note">一键填充：血量/失衡/防御/等级/危局异常系数/失衡倍率/失衡时间 + 三张抗性表 + 战斗时间/秽盾/能量盾/无敌时间；声明弹刀总数的 Boss 自动勾选「保底4失衡」（击破位弹刀反推、主C 拿剩余）</div>
+        </div>
+      </template>
 
       <!-- 普通：同样是危局强袭战，当期 3 个，可应用 -->
       <div class="mode-section">
