@@ -13,11 +13,17 @@ export interface BossPresetPhase {
   begin: string
   /** critical_assault = 危局强袭战(异构) / defense = 防卫战·试炼 */
   modeType: 'critical_assault' | 'defense'
+  /** 源怪物 id（nanoka monster id；合并预设用其区分试炼版/恶名版，如 30007 vs 300072） */
+  monsterId?: string
+  /** 源怪物名（合并预设的试炼版/恶名版区分显示用） */
+  monsterName?: string
   /** 关卡中文名 */
   stageName: string
   stageNum: number
   level: number
   hp: number
+  /** 血量版本系数（%）：mo.stats.hp / (1级基础血量 × 4号曲线 70级 247.95)；如 叶释渊 69025 = 180。无基础血量时为 null。 */
+  hpVersionCoeff?: number | null
   stunValue: number
   defense: number
   /** 异常条系数 = 1 + attribute_infliction/100（危局 = 1.1） */

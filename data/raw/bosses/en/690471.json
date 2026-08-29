@@ -951,27 +951,31 @@
       "zone_type": 1002,
       "zone": {
         "69047201": {
-          "name": "Integrated: Phaethon of the Scorched Horizon",
+          "name": "Integrated - Girtablullu",
           "stage_num": 1,
           "monster_level": 70,
           "layer_buff": {
-            "69014504": {
+            "69014204": {
               "title": "",
-              "desc": "·When Integrated Scorched Horizon becomes Impaired or is hit with a Shutdown, the whole squad's Sharp DMG <color=#FFAF2C>increases by 25%</color> for 60s.\n·When an Agent's attack hits a non-Stunned enemy, Daze inflicted <color=#FFAF2C>increases by 15%</color>. When Integrated Scorched Horizon is Stunned, the Stun DMG Multiplier <color=#FFAF2C>increases by 30%</color>."
+              "desc": "· Each time you successfully parry an attack from Girtablullu's summoned minions and trigger <color=#FFAF2C>Active Conversion</color>, you gain <color=#FFAF2C>500 Performance Points</color>; successfully triggering <Term:2000004></Term> against Girtablullu's attacks grants <color=#FFAF2C>1000 Performance Points</color>, up to 3 times; if you successfully <color=#FFAF2C>break the Corruptive Barrier within 25s</color> of Girtablullu <color=#FFAF2C>first activating</color> <Term:2000001></Term>, you gain <color=#FFAF2C>1500 Performance Points</color>. A maximum of 5,000 Performance Points can be obtained."
             },
-            "69014505": {
+            "69014602": {
               "title": "",
-              "desc": "· When Scorched Horizon is in <color=#FFFFFF>Gale Scorcher</color> state, Impairing them grants <color=#FFAF2C>1,250 Performance Points</color>. <color=#FFAF2C>Striking down Scorched Horizon when they're attacking in mid-air</color> grants <color=#FFAF2C>1,500 Performance Points</color>. Performing a <color=#FFAF2C>Shutdown</color> against Scorched Horizon's <Term:2000003></Term> grants <color=#FFAF2C>2,000 Performance Points</color>. Max 5,000 Performance Points."
+              "desc": ""
+            },
+            "69014711": {
+              "title": "",
+              "desc": "· When an Agent's attack hits a Boss, the Boss gains 1 point of [Disorder Value]; the same Agent can apply at most 1 point of [Disorder Value] every 1 seconds.\n· When the [Disorder Value] held by a Boss reaches 10 points, all [Disorder Value] is immediately removed and the Boss enters the [Disorder] state. During the [Disorder] state, the <color=#2BAD00>Attribute Anomaly DMG taken by the enemy is increased by 40%</color>, and the <color=#2BAD00>Sharp DMG taken is increased by 50%</color>, lasting 10 seconds. Re-entering the [Disorder] state refreshes the duration.\n· When an Agent successfully inflicts an Attribute Anomaly status on a Boss, all Agents in the whole squad gain the [Sublimation] effect: <color=#2BAD00>DMG dealt is increased by 15%</color>, and Anomaly Proficiency is <color=#2BAD00>increased by 20 points</color>; the [Sublimation] effect lasts 10 seconds, and repeated triggers refresh the duration."
             }
           },
           "layer_room": {
             "690472011": {
-              "monster_icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/IconBossGeneral/UnPacker/IconMonster_HoloMutant.png",
+              "monster_icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/IconBossGeneral/UnPacker/IconMonster_Girtablu_HC.png",
               "monster_list": {
-                "31437": {
-                  "id": 40011,
-                  "name": "Integrated: Scorched Horizon",
-                  "image": "UI/Sprite/A1DynamicLoad/BossCard/UnPacker/BossCardLv04/Monster_Mutant_HC.png",
+                "31662": {
+                  "id": 40009,
+                  "name": "Integrated - Girtablullu",
+                  "image": "UI/Sprite/A1DynamicLoad/BossCard/UnPacker/BossCardLv04/Monster_Girtablu_HC.png",
                   "element": {
                     "ice": 0,
                     "fire": 0,
@@ -981,18 +985,15 @@
                     "wind": 0
                   },
                   "stats": {
-                    "hp": 33703545.96,
+                    "hp": 35501952.105,
                     "attack": 3286.6909090909094,
                     "defence": 952.8000000000001,
-                    "stun": 17585.05,
+                    "stun": 18933.95,
                     "attribute_infliction": 10
                   }
                 }
               },
-              "monster_weakness": {
-                "203": "Electric",
-                "204": "Wind"
-              },
+              "monster_weakness": {},
               "waves_num": 1
             }
           },
@@ -1002,16 +1003,16 @@
           "b_rank_goal": 10000,
           "selectable_buff": {
             "69014701": {
-              "title": "TBD",
-              "desc": "· The Agent's <color=#98EFF0>Ice DMG</color> <color=#2BAD00>increases by 30%</color>, and Anomaly Proficiency <color=#2BAD00>increases by 50 points</color>.\n· When the Agent triggers <color=#FFFFFF>[Abloom]</color> on enemies afflicted with an Attribute Anomaly, the whole squad's Attribute Anomaly DMG <color=#2BAD00>increases by 30%</color>, and Buildup Rate <color=#2BAD00>increases by 15%</color> for 15s; repeated triggers reset the duration."
+              "title": "Lynn Lieh",
+              "desc": "· The Agent's <color=#98EFF0>Ice DMG</color> <color=#2BAD00>increases by 15%</color>, and Anomaly Proficiency <color=#2BAD00>increases by 60 points</color>.\n· When the Agent triggers <color=#FFFFFF>[Abloom]</color> or <color=#FFFFFF>[Disorder]</color> on an enemy, the whole squad's Attribute Anomaly DMG and Disorder DMG <color=#2BAD00>increase by 25%</color>, and Buildup Rate <color=#2BAD00>increases by 15%</color> for 15s; repeated triggers reset the duration."
             },
             "69014702": {
-              "title": "TBD",
-              "desc": "· Daze inflicted by Agents on enemies <color=#2BAD00>increases by 20%</color>, and <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increase by 30%</color>.\n· After an Agent renders an enemy Stunned, the Vulnerability multiplier of DMG taken by the enemy <color=#2BAD00>increases by 20%</color>, and Daze recovery Speed <color=#2BAD00>decreases by 20%</color>."
+              "title": "Break Guard",
+              "desc": "· Daze inflicted by Agents on enemies <color=#2BAD00>increases by 20%</color>.\n· Agents with the <color=#FFFFFF>[Attack]</color> specialty gain <color=#2BAD00>20%</color> increased ATK, and after using their <color=#FFFFFF>[Ultimate]</color>, their CRIT DMG <color=#2BAD00>increases by 50%</color> for 20s; repeated triggers reset the duration."
             },
             "69014703": {
-              "title": "TBD",
-              "desc": "· The Agent's Max HP <color=#2BAD00>increases by 20%</color>, and Sheer DMG <color=#2BAD00>increases by 25%</color>.\n· The Agent's <color=#FFFFFF>[Ultimate]</color> DMG <color=#2BAD00>increases by 40%</color>. When launching an <color=#FFFFFF>[Ultimate]</color>, CRIT DMG <color=#2BAD00>increases by 25%</color>, stacking up to 2 times and lasting 20s. Repeated triggers reset the duration."
+              "title": "Blade Edge",
+              "desc": "· Agent's DEF <color=#2BAD00>increases by 15%</color>, and Sharp DMG <color=#2BAD00>increases by 30%</color>.\n· <color=#FFFFFF>[Stun]</color> specialty Agents' <color=#FFFFFF>[EX Special Attack]</color> Daze <color=#2BAD00>increases by 20%</color>. After an Agent launches an <color=#FFFFFF>[EX Special Attack]</color>, <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increase by 40%</color> for 15s; repeated triggers reset the duration."
             }
           }
         }
@@ -1056,7 +1057,7 @@
                     "wind": 1
                   },
                   "stats": {
-                    "hp": 22691838.509999998,
+                    "hp": 23723285.715,
                     "attack": 2967.1515151515155,
                     "defence": 952.8000000000001,
                     "stun": 19540.25,
@@ -1077,16 +1078,16 @@
           "b_rank_goal": 6000,
           "selectable_buff": {
             "69014701": {
-              "title": "TBD",
-              "desc": "· The Agent's <color=#98EFF0>Ice DMG</color> <color=#2BAD00>increases by 30%</color>, and Anomaly Proficiency <color=#2BAD00>increases by 50 points</color>.\n· When the Agent triggers <color=#FFFFFF>[Abloom]</color> on enemies afflicted with an Attribute Anomaly, the whole squad's Attribute Anomaly DMG <color=#2BAD00>increases by 30%</color>, and Buildup Rate <color=#2BAD00>increases by 15%</color> for 15s; repeated triggers reset the duration."
+              "title": "Lynn Lieh",
+              "desc": "· The Agent's <color=#98EFF0>Ice DMG</color> <color=#2BAD00>increases by 15%</color>, and Anomaly Proficiency <color=#2BAD00>increases by 60 points</color>.\n· When the Agent triggers <color=#FFFFFF>[Abloom]</color> or <color=#FFFFFF>[Disorder]</color> on an enemy, the whole squad's Attribute Anomaly DMG and Disorder DMG <color=#2BAD00>increase by 25%</color>, and Buildup Rate <color=#2BAD00>increases by 15%</color> for 15s; repeated triggers reset the duration."
             },
             "69014702": {
-              "title": "TBD",
-              "desc": "· Daze inflicted by Agents on enemies <color=#2BAD00>increases by 20%</color>, and <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increase by 30%</color>.\n· After an Agent renders an enemy Stunned, the Vulnerability multiplier of DMG taken by the enemy <color=#2BAD00>increases by 20%</color>, and Daze recovery Speed <color=#2BAD00>decreases by 20%</color>."
+              "title": "Break Guard",
+              "desc": "· Daze inflicted by Agents on enemies <color=#2BAD00>increases by 20%</color>.\n· Agents with the <color=#FFFFFF>[Attack]</color> specialty gain <color=#2BAD00>20%</color> increased ATK, and after using their <color=#FFFFFF>[Ultimate]</color>, their CRIT DMG <color=#2BAD00>increases by 50%</color> for 20s; repeated triggers reset the duration."
             },
             "69014703": {
-              "title": "TBD",
-              "desc": "· The Agent's Max HP <color=#2BAD00>increases by 20%</color>, and Sheer DMG <color=#2BAD00>increases by 25%</color>.\n· The Agent's <color=#FFFFFF>[Ultimate]</color> DMG <color=#2BAD00>increases by 40%</color>. When launching an <color=#FFFFFF>[Ultimate]</color>, CRIT DMG <color=#2BAD00>increases by 25%</color>, stacking up to 2 times and lasting 20s. Repeated triggers reset the duration."
+              "title": "Blade Edge",
+              "desc": "· Agent's DEF <color=#2BAD00>increases by 15%</color>, and Sharp DMG <color=#2BAD00>increases by 30%</color>.\n· <color=#FFFFFF>[Stun]</color> specialty Agents' <color=#FFFFFF>[EX Special Attack]</color> Daze <color=#2BAD00>increases by 20%</color>. After an Agent launches an <color=#FFFFFF>[EX Special Attack]</color>, <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increase by 40%</color> for 15s; repeated triggers reset the duration."
             }
           }
         },
@@ -1097,11 +1098,11 @@
           "layer_buff": {
             "69014410": {
               "title": "",
-              "desc": "·After Infernal Revenant enters the [Inferno] state, each <Term:2000004><\\Term> triggered grants 1 stack of <color=#FFFFFF>[Flameout]</color>. Each stack of <color=#FFFFFF>[Flameout]</color> <color=#FFAF2C>reduces</color> DEF by <color=#FFAF2C>10%</color> and <color=#FFAF2C>increases</color> Stun DMG Multiplier by <color=#FFAF2C>10%</color>. Stacks up to 3 times, lasts 20s. Triggering <color=#FFFFFF>Defensive Assist</color> refreshes the duration."
+              "desc": "·After Infernal Revenant enters the [Meltdown] state, Attribute Anomaly DMG dealt to the Boss is reduced by 30%; each time <Term:2000004></Term> is triggered, the Boss gains 1 stack of <color=#FFFFFF>[Overheat]</color>; every 2 <color=#FFFFFF>[Defensive Assist]</color> triggers or every 2 <color=#FFAF2C>[Perfect Dodge]</color> triggers grant the Boss 1 stack of <color=#FFFFFF>[Overheat]</color>. Each stack of <color=#FFFFFF>[Overheat]</color> <color=#FFAF2C>increases Agents' CRIT DMG by 25%</color>. Stacks up to 3 times, lasts 20s. Triggering <color=#FFFFFF>Defensive Assist</color> refreshes the duration."
             },
             "69014411": {
               "title": "",
-              "desc": "· Successfully triggering <color=#FFAF2C>[Shutdown]</color> grants <color=#FFAF2C>2000 Performance Points</color>; <color=#FFAF2C>each Flint shattered</color> grants <color=#FFAF2C>1000 Performance Points, up to a maximum of 5000 Performance Points</color>."
+              "desc": "· Successfully triggering <color=#FFAF2C>[Shutdown]</color> grants <color=#FFAF2C>2000 Performance Points</color>; <color=#FFAF2C>each Flintstone shattered</color> grants <color=#FFAF2C>1000 Performance Points, up to a maximum of 5000 Performance Points</color>."
             }
           },
           "layer_room": {
@@ -1121,10 +1122,75 @@
                     "wind": 1
                   },
                   "stats": {
-                    "hp": 18440190.27,
+                    "hp": 19464645.285,
                     "attack": 3286.6909090909094,
                     "defence": 952.8000000000001,
-                    "stun": 22701,
+                    "stun": 20430.9,
+                    "attribute_infliction": 25
+                  }
+                }
+              },
+              "monster_weakness": {
+                "202": "Ice",
+                "204": "Wind"
+              },
+              "waves_num": 1
+            }
+          },
+          "goal_type": 2,
+          "s_rank_goal": 20000,
+          "a_rank_goal": 14000,
+          "b_rank_goal": 6000,
+          "selectable_buff": {
+            "69014701": {
+              "title": "Lynn Lieh",
+              "desc": "· The Agent's <color=#98EFF0>Ice DMG</color> <color=#2BAD00>increases by 15%</color>, and Anomaly Proficiency <color=#2BAD00>increases by 60 points</color>.\n· When the Agent triggers <color=#FFFFFF>[Abloom]</color> or <color=#FFFFFF>[Disorder]</color> on an enemy, the whole squad's Attribute Anomaly DMG and Disorder DMG <color=#2BAD00>increase by 25%</color>, and Buildup Rate <color=#2BAD00>increases by 15%</color> for 15s; repeated triggers reset the duration."
+            },
+            "69014702": {
+              "title": "Break Guard",
+              "desc": "· Daze inflicted by Agents on enemies <color=#2BAD00>increases by 20%</color>.\n· Agents with the <color=#FFFFFF>[Attack]</color> specialty gain <color=#2BAD00>20%</color> increased ATK, and after using their <color=#FFFFFF>[Ultimate]</color>, their CRIT DMG <color=#2BAD00>increases by 50%</color> for 20s; repeated triggers reset the duration."
+            },
+            "69014703": {
+              "title": "Blade Edge",
+              "desc": "· Agent's DEF <color=#2BAD00>increases by 15%</color>, and Sharp DMG <color=#2BAD00>increases by 30%</color>.\n· <color=#FFFFFF>[Stun]</color> specialty Agents' <color=#FFFFFF>[EX Special Attack]</color> Daze <color=#2BAD00>increases by 20%</color>. After an Agent launches an <color=#FFFFFF>[EX Special Attack]</color>, <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increase by 40%</color> for 15s; repeated triggers reset the duration."
+            }
+          }
+        },
+        "69047103": {
+          "name": "Kusarikku",
+          "stage_num": 3,
+          "monster_level": 70,
+          "layer_buff": {
+            "69014506": {
+              "title": "",
+              "desc": "·Attribute Anomaly DMG taken by Kusarikku is <color=#FFAF2C>reduced by 40%</color>.\n·When an Agent successfully uses [Defensive Assist] against Kusarikku's <Term:2000005></Term>, 1 stack of [Exposed] is applied to it. Each stack of [Exposed] <color=#FFAF2C>increases Laceration DMG taken by 20%</color>. [Exposed] can stack up to 3 times and lasts 60s; repeated triggers reset the duration."
+            },
+            "69014507": {
+              "title": "",
+              "desc": "·After Kusarikku activates [Corruptive Barrier], use <color=#FFFFFF>[Defensive Assist]</color> to counter Kusarikku's <Term:2000005></Term> and inflict Impaired on it to earn <color=#FFAF2C>1000 Performance Points</color>; successfully using <color=#FFFFFF>[Defensive Assist]</color> to respond to <Term:2000005></Term> earns <color=#FFAF2C>700 Performance Points</color>; performing a <color=#FFAF2C>[Shutdown]</color> against Kusarikku's <Term:2000003></Term> earns <color=#FFAF2C>2000 Performance Points</color>. A maximum of 5000 Performance Points can be earned."
+            }
+          },
+          "layer_room": {
+            "690471031": {
+              "monster_icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/IconBossGeneral/UnPacker/IconMonster_Larval.png",
+              "monster_list": {
+                "31711": {
+                  "id": 40010,
+                  "name": "Kusarikku",
+                  "image": "UI/Sprite/A1DynamicLoad/BossCard/UnPacker/BossCardLv04/Monster_Larval.png",
+                  "element": {
+                    "ice": -1,
+                    "fire": 1,
+                    "electric": 1,
+                    "ether": 0,
+                    "physical": 0,
+                    "wind": 0
+                  },
+                  "stats": {
+                    "hp": 22124404.935,
+                    "attack": 3286.6909090909094,
+                    "defence": 952.8000000000001,
+                    "stun": 18933.95,
                     "attribute_infliction": 10
                   }
                 }
@@ -1142,88 +1208,16 @@
           "b_rank_goal": 6000,
           "selectable_buff": {
             "69014701": {
-              "title": "TBD",
-              "desc": "· The Agent's <color=#98EFF0>Ice DMG</color> <color=#2BAD00>increases by 30%</color>, and Anomaly Proficiency <color=#2BAD00>increases by 50 points</color>.\n· When the Agent triggers <color=#FFFFFF>[Abloom]</color> on enemies afflicted with an Attribute Anomaly, the whole squad's Attribute Anomaly DMG <color=#2BAD00>increases by 30%</color>, and Buildup Rate <color=#2BAD00>increases by 15%</color> for 15s; repeated triggers reset the duration."
+              "title": "Lynn Lieh",
+              "desc": "· The Agent's <color=#98EFF0>Ice DMG</color> <color=#2BAD00>increases by 15%</color>, and Anomaly Proficiency <color=#2BAD00>increases by 60 points</color>.\n· When the Agent triggers <color=#FFFFFF>[Abloom]</color> or <color=#FFFFFF>[Disorder]</color> on an enemy, the whole squad's Attribute Anomaly DMG and Disorder DMG <color=#2BAD00>increase by 25%</color>, and Buildup Rate <color=#2BAD00>increases by 15%</color> for 15s; repeated triggers reset the duration."
             },
             "69014702": {
-              "title": "TBD",
-              "desc": "· Daze inflicted by Agents on enemies <color=#2BAD00>increases by 20%</color>, and <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increase by 30%</color>.\n· After an Agent renders an enemy Stunned, the Vulnerability multiplier of DMG taken by the enemy <color=#2BAD00>increases by 20%</color>, and Daze recovery Speed <color=#2BAD00>decreases by 20%</color>."
+              "title": "Break Guard",
+              "desc": "· Daze inflicted by Agents on enemies <color=#2BAD00>increases by 20%</color>.\n· Agents with the <color=#FFFFFF>[Attack]</color> specialty gain <color=#2BAD00>20%</color> increased ATK, and after using their <color=#FFFFFF>[Ultimate]</color>, their CRIT DMG <color=#2BAD00>increases by 50%</color> for 20s; repeated triggers reset the duration."
             },
             "69014703": {
-              "title": "TBD",
-              "desc": "· The Agent's Max HP <color=#2BAD00>increases by 20%</color>, and Sheer DMG <color=#2BAD00>increases by 25%</color>.\n· The Agent's <color=#FFFFFF>[Ultimate]</color> DMG <color=#2BAD00>increases by 40%</color>. When launching an <color=#FFFFFF>[Ultimate]</color>, CRIT DMG <color=#2BAD00>increases by 25%</color>, stacking up to 2 times and lasting 20s. Repeated triggers reset the duration."
-            }
-          }
-        },
-        "69047103": {
-          "name": "Miasma Priest",
-          "stage_num": 3,
-          "monster_level": 70,
-          "layer_buff": {
-            "69011302": {
-              "title": "",
-              "desc": "· When the Miasma Priest switches phase, their Anomaly Buildup RES increases by 10% and CRIT DMG taken increases by 30%. This effect can stack up to 2 times and is cleared when <Term:2000002>Miasmic Shield</Term> breaks."
-            },
-            "69011303": {
-              "title": "",
-              "desc": "· When an Agent successfully performs <color=#FFAF2C>3 Defensive Assists within 3 seconds</color>, earn <color=#FFAF2C>1,000 Performance Points</color>. A maximum of 5,000 Performance Points can be obtained."
-            },
-            "69012102": {
-              "title": "",
-              "desc": ""
-            },
-            "69013002": {
-              "title": "",
-              "desc": "· Suitable for Agents with <IconMap:Icon_AvatarClass_Rupture><color=#FFAF2C>Rupture</color> specialty."
-            }
-          },
-          "layer_room": {
-            "690471031": {
-              "monster_icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/IconBossGeneral/UnPacker/IconMonster_MentorMevorakh.png",
-              "monster_list": {
-                "31032": {
-                  "id": 30033,
-                  "name": "Miasma Priest",
-                  "image": "UI/Sprite/A1DynamicLoad/BossCard/UnPacker/BossCardLv04/Monster_MentorMevorakh.png",
-                  "element": {
-                    "ice": -1,
-                    "fire": 0,
-                    "electric": 0,
-                    "ether": 1,
-                    "physical": 0,
-                    "wind": 0
-                  },
-                  "stats": {
-                    "hp": 20908631.7,
-                    "attack": 2465.018181818182,
-                    "defence": 952.8000000000001,
-                    "stun": 16647.4,
-                    "attribute_infliction": 10
-                  }
-                }
-              },
-              "monster_weakness": {
-                "205": "Ether"
-              },
-              "waves_num": 1
-            }
-          },
-          "goal_type": 2,
-          "s_rank_goal": 20000,
-          "a_rank_goal": 14000,
-          "b_rank_goal": 6000,
-          "selectable_buff": {
-            "69014701": {
-              "title": "TBD",
-              "desc": "· The Agent's <color=#98EFF0>Ice DMG</color> <color=#2BAD00>increases by 30%</color>, and Anomaly Proficiency <color=#2BAD00>increases by 50 points</color>.\n· When the Agent triggers <color=#FFFFFF>[Abloom]</color> on enemies afflicted with an Attribute Anomaly, the whole squad's Attribute Anomaly DMG <color=#2BAD00>increases by 30%</color>, and Buildup Rate <color=#2BAD00>increases by 15%</color> for 15s; repeated triggers reset the duration."
-            },
-            "69014702": {
-              "title": "TBD",
-              "desc": "· Daze inflicted by Agents on enemies <color=#2BAD00>increases by 20%</color>, and <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increase by 30%</color>.\n· After an Agent renders an enemy Stunned, the Vulnerability multiplier of DMG taken by the enemy <color=#2BAD00>increases by 20%</color>, and Daze recovery Speed <color=#2BAD00>decreases by 20%</color>."
-            },
-            "69014703": {
-              "title": "TBD",
-              "desc": "· The Agent's Max HP <color=#2BAD00>increases by 20%</color>, and Sheer DMG <color=#2BAD00>increases by 25%</color>.\n· The Agent's <color=#FFFFFF>[Ultimate]</color> DMG <color=#2BAD00>increases by 40%</color>. When launching an <color=#FFFFFF>[Ultimate]</color>, CRIT DMG <color=#2BAD00>increases by 25%</color>, stacking up to 2 times and lasting 20s. Repeated triggers reset the duration."
+              "title": "Blade Edge",
+              "desc": "· Agent's DEF <color=#2BAD00>increases by 15%</color>, and Sharp DMG <color=#2BAD00>increases by 30%</color>.\n· <color=#FFFFFF>[Stun]</color> specialty Agents' <color=#FFFFFF>[EX Special Attack]</color> Daze <color=#2BAD00>increases by 20%</color>. After an Agent launches an <color=#FFFFFF>[EX Special Attack]</color>, <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increase by 40%</color> for 15s; repeated triggers reset the duration."
             }
           }
         }

@@ -957,11 +957,15 @@
           "layer_buff": {
             "69014504": {
               "title": "",
-              "desc": "·When Integrated Scorched Horizon becomes Impaired or is hit with a Shutdown, the whole squad's Sharp DMG <color=#FFAF2C>increases by 25%</color> for 60s.\n·When an Agent's attack hits a non-Stunned enemy, Daze inflicted <color=#FFAF2C>increases by 15%</color>. When Integrated Scorched Horizon is Stunned, the Stun DMG Multiplier <color=#FFAF2C>increases by 30%</color>."
+              "desc": "·When Integrated Scorched Horizon is Impaired or met with a Shutdown, the whole squad's <color=#FFAF2C>Sharp DMG increases by 40%</color>, lasting 60s; repeated triggers reset the duration. \n·When an Agent's attack hits a non-Stunned enemy, the Daze inflicted is <color=#FFAF2C>increased by 15%</color>. When Integrated Scorched Horizon is Stunned, the Stun DMG Multiplier is <color=#FFAF2C>increased by 20%</color>."
             },
             "69014505": {
               "title": "",
-              "desc": "· When Scorched Horizon is in <color=#FFFFFF>Gale Scorcher</color> state, Impairing them grants <color=#FFAF2C>1,250 Performance Points</color>. <color=#FFAF2C>Striking down Scorched Horizon when they're attacking in mid-air</color> grants <color=#FFAF2C>1,500 Performance Points</color>. Performing a <color=#FFAF2C>Shutdown</color> against Scorched Horizon's <Term:2000003></Term> grants <color=#FFAF2C>2,000 Performance Points</color>. Max 5,000 Performance Points."
+              "desc": "·While Integrated Scorched Horizon is in the <color=#FFFFFF>[Mist Veil]</color> state, use <color=#FFFFFF>[Defensive Assist]</color> to counter Integrated Scorched Horizon's attacks and Impair it to earn <color=#FFAF2C>1500 Performance Points</color>; <color=#FFAF2C>[Shutdown]</color> Integrated Scorched Horizon's <Term:2000003></Term> to earn <color=#FFAF2C>2000 Performance Points</color>. A maximum of 5000 Performance Points can be earned."
+            },
+            "69014508": {
+              "title": "",
+              "desc": ""
             }
           },
           "layer_room": {
@@ -981,7 +985,7 @@
                     "wind": 0
                   },
                   "stats": {
-                    "hp": 27180279,
+                    "hp": 22831434.36,
                     "attack": 3286.6909090909094,
                     "defence": 952.8000000000001,
                     "stun": 17585.05,
@@ -1000,17 +1004,17 @@
           "a_rank_goal": 20000,
           "b_rank_goal": 10000,
           "selectable_buff": {
-            "69014501": {
-              "title": "TBD",
-              "desc": "· The Agent's Sharp DMG <color=#2BAD00>increases by 25%</color>, and DEF <color=#2BAD00>increases by 20%</color>.\n· After the Agent launches an <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Ultimate]</color>, attacks that hit enemies ignore <color=#2BAD00>20%</color> of their <color=#2EB6FF>Electric RES</color> for 20s; repeated triggers reset the duration."
-            },
             "69014502": {
-              "title": "TBD",
-              "desc": "· If there are 2/3 Agents in the squad with <color=#FFFFFF>[Anomaly]</color> specialty, the whole squad's Anomaly Proficiency <color=#2BAD00>increases by 30/80</color> respectively, and Anomaly Buildup inflicted <color=#2BAD00>increases by 10%/30%</color> respectively.\n· After inflicting an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 25%</color> for 10s. Repeated triggers reset the duration."
+              "title": "Corrodeash",
+              "desc": "· When there are 2/3 Agents with the <color=#FFFFFF>[Anomaly]</color> specialty in your squad, the whole squad's Anomaly Proficiency increases by <color=#2BAD00>20/60 points</color> respectively, and Anomaly Buildup Rate increases by <color=#2BAD00>10%/20%</color> respectively.\n· When an Agent inflicts an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 10%</color> for 10s; repeated triggers reset the duration."
             },
             "69014503": {
-              "title": "TBD",
-              "desc": "· Agents with the <color=#FFFFFF>[Attack]</color> specialty's <color=#98EFF0>Ice DMG</color> is <color=#2BAD00>increased by 30%</color>, and CRIT DMG is <color=#2BAD00>increased by 50%</color>.\n· When an Agent attacks a Stunned enemy, that enemy's Stun DMG Multiplier is additionally <color=#2BAD00>increased by 30%</color> for 20s; repeated triggers reset the duration."
+              "title": "Sunfrost",
+              "desc": "· <color=#FFFFFF>[Attack]</color> specialty Agents' <color=#98EFF0>Ice DMG</color> <color=#2BAD00>increases by 20%</color>.\n· Agents' CRIT DMG <color=#2BAD00>increases by 30%</color>. When attacking a Stunned enemy, that enemy's Stun DMG Multiplier additionally <color=#2BAD00>increases by 20%</color> for 20s; repeated triggers reset the duration."
+            },
+            "69014603": {
+              "title": "Sharp Rift",
+              "desc": "· The Agent's PEN Ratio <color=#2BAD00>increases by 10%</color>. When attacks hit an enemy, ignore <color=#2BAD00>20%</color> of their <color=#2EB6FF>Electric RES</color> and <color=#2BAD00>20%</color> of their <color=#FF5521>Fire RES</color>.\n· After the Agent activates an <color=#FFFFFF>[EX Special Attack]</color>, Sharp DMG <color=#2BAD00>increases by 30%</color> and DEF <color=#2BAD00>increases by 15%</color> for 20s; repeated triggers reset the duration."
             }
           }
         }
@@ -1027,11 +1031,11 @@
           "layer_buff": {
             "69014506": {
               "title": "",
-              "desc": "·Anomaly DMG dealt to Kusarikku is reduced by 40%. Each time <color=#FFFFFF>[Defensive Assist]</color> is used to block one of Kusarikku's fissure skills, one stack of <color=#FFFFFF>[Exposed]</color> is applied to it. Each stack of <color=#FFFFFF>[Exposed]</color> increases the CRIT DMG Kusarikku takes by <color=#FFAF2C>20%</color>, stacking up to 3 times, lasting 60s. Repeated triggers reset the duration."
+              "desc": "·Attribute Anomaly DMG taken by Kusarikku is <color=#FFAF2C>reduced by 40%</color>.\n·When an Agent successfully uses [Defensive Assist] against Kusarikku's <Term:2000005></Term>, 1 stack of [Exposed] is applied to it. Each stack of [Exposed] <color=#FFAF2C>increases Laceration DMG taken by 20%</color>. [Exposed] can stack up to 3 times and lasts 60s; repeated triggers reset the duration."
             },
             "69014507": {
               "title": "",
-              "desc": "69014507_Description"
+              "desc": "·After Kusarikku activates [Corruptive Barrier], use <color=#FFFFFF>[Defensive Assist]</color> to counter Kusarikku's <Term:2000005></Term> and inflict Impaired on it to earn <color=#FFAF2C>1000 Performance Points</color>; successfully using <color=#FFFFFF>[Defensive Assist]</color> to respond to <Term:2000005></Term> earns <color=#FFAF2C>700 Performance Points</color>; performing a <color=#FFAF2C>[Shutdown]</color> against Kusarikku's <Term:2000003></Term> earns <color=#FFAF2C>2000 Performance Points</color>. A maximum of 5000 Performance Points can be earned."
             }
           },
           "layer_room": {
@@ -1051,7 +1055,7 @@
                     "wind": 0
                   },
                   "stats": {
-                    "hp": 18522757.62,
+                    "hp": 22124404.935,
                     "attack": 3286.6909090909094,
                     "defence": 952.8000000000001,
                     "stun": 18933.95,
@@ -1071,17 +1075,17 @@
           "a_rank_goal": 14000,
           "b_rank_goal": 6000,
           "selectable_buff": {
-            "69014501": {
-              "title": "TBD",
-              "desc": "· The Agent's Sharp DMG <color=#2BAD00>increases by 25%</color>, and DEF <color=#2BAD00>increases by 20%</color>.\n· After the Agent launches an <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Ultimate]</color>, attacks that hit enemies ignore <color=#2BAD00>20%</color> of their <color=#2EB6FF>Electric RES</color> for 20s; repeated triggers reset the duration."
-            },
             "69014502": {
-              "title": "TBD",
-              "desc": "· If there are 2/3 Agents in the squad with <color=#FFFFFF>[Anomaly]</color> specialty, the whole squad's Anomaly Proficiency <color=#2BAD00>increases by 30/80</color> respectively, and Anomaly Buildup inflicted <color=#2BAD00>increases by 10%/30%</color> respectively.\n· After inflicting an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 25%</color> for 10s. Repeated triggers reset the duration."
+              "title": "Corrodeash",
+              "desc": "· When there are 2/3 Agents with the <color=#FFFFFF>[Anomaly]</color> specialty in your squad, the whole squad's Anomaly Proficiency increases by <color=#2BAD00>20/60 points</color> respectively, and Anomaly Buildup Rate increases by <color=#2BAD00>10%/20%</color> respectively.\n· When an Agent inflicts an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 10%</color> for 10s; repeated triggers reset the duration."
             },
             "69014503": {
-              "title": "TBD",
-              "desc": "· Agents with the <color=#FFFFFF>[Attack]</color> specialty's <color=#98EFF0>Ice DMG</color> is <color=#2BAD00>increased by 30%</color>, and CRIT DMG is <color=#2BAD00>increased by 50%</color>.\n· When an Agent attacks a Stunned enemy, that enemy's Stun DMG Multiplier is additionally <color=#2BAD00>increased by 30%</color> for 20s; repeated triggers reset the duration."
+              "title": "Sunfrost",
+              "desc": "· <color=#FFFFFF>[Attack]</color> specialty Agents' <color=#98EFF0>Ice DMG</color> <color=#2BAD00>increases by 20%</color>.\n· Agents' CRIT DMG <color=#2BAD00>increases by 30%</color>. When attacking a Stunned enemy, that enemy's Stun DMG Multiplier additionally <color=#2BAD00>increases by 20%</color> for 20s; repeated triggers reset the duration."
+            },
+            "69014603": {
+              "title": "Sharp Rift",
+              "desc": "· The Agent's PEN Ratio <color=#2BAD00>increases by 10%</color>. When attacks hit an enemy, ignore <color=#2BAD00>20%</color> of their <color=#2EB6FF>Electric RES</color> and <color=#2BAD00>20%</color> of their <color=#FF5521>Fire RES</color>.\n· After the Agent activates an <color=#FFFFFF>[EX Special Attack]</color>, Sharp DMG <color=#2BAD00>increases by 30%</color> and DEF <color=#2BAD00>increases by 15%</color> for 20s; repeated triggers reset the duration."
             }
           }
         },
@@ -1096,7 +1100,7 @@
             },
             "69014405": {
               "title": "69014405_Title",
-              "desc": "· When an Agent inflicts an Attribute Anomaly on an enemy, the target enemy gains 1 stack of Blight Mark of the corresponding attribute, lasting 30s and stacking up to 2 times. Repeated triggers of same-attribute Blight Mark reset its duration.\n· Enemies with Blight Mark <color=#FFAF2C>take 8% more Attribute Anomaly DMG</color>, and <color=#FFAF2C>DMG taken by <Term:2000001></Term> increases by 8%</color>.\n· When inflicting Impaired or Shutdown on an enemy, <color=#FFAF2C>the whole squad's Anomaly Proficiency increases by 60 pts</color>, lasting 30s. Repeated triggers reset the duration."
+              "desc": "· When an Agent inflicts an Attribute Anomaly on an enemy, the target enemy gains 1 stack of Blight Mark of the corresponding attribute, lasting 30s and stacking up to 2 times. Repeated triggers of same-attribute Blight Mark reset its duration.\n· For every stack of Blight Mark inflicted, the enemies <color=#FFAF2C>take 8% more Attribute Anomaly DMG</color>, and <color=#FFAF2C>DMG taken by <Term:2000001></Term> increases by 8%</color>.\n· When inflicting Impaired or Shutdown on an enemy, <color=#FFAF2C>the whole squad's Anomaly Proficiency increases by 60 pts</color>, lasting 30s. Repeated triggers reset the duration."
             },
             "69014406": {
               "title": "69014406_Title",
@@ -1137,17 +1141,17 @@
           "a_rank_goal": 14000,
           "b_rank_goal": 6000,
           "selectable_buff": {
-            "69014501": {
-              "title": "TBD",
-              "desc": "· The Agent's Sharp DMG <color=#2BAD00>increases by 25%</color>, and DEF <color=#2BAD00>increases by 20%</color>.\n· After the Agent launches an <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Ultimate]</color>, attacks that hit enemies ignore <color=#2BAD00>20%</color> of their <color=#2EB6FF>Electric RES</color> for 20s; repeated triggers reset the duration."
-            },
             "69014502": {
-              "title": "TBD",
-              "desc": "· If there are 2/3 Agents in the squad with <color=#FFFFFF>[Anomaly]</color> specialty, the whole squad's Anomaly Proficiency <color=#2BAD00>increases by 30/80</color> respectively, and Anomaly Buildup inflicted <color=#2BAD00>increases by 10%/30%</color> respectively.\n· After inflicting an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 25%</color> for 10s. Repeated triggers reset the duration."
+              "title": "Corrodeash",
+              "desc": "· When there are 2/3 Agents with the <color=#FFFFFF>[Anomaly]</color> specialty in your squad, the whole squad's Anomaly Proficiency increases by <color=#2BAD00>20/60 points</color> respectively, and Anomaly Buildup Rate increases by <color=#2BAD00>10%/20%</color> respectively.\n· When an Agent inflicts an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 10%</color> for 10s; repeated triggers reset the duration."
             },
             "69014503": {
-              "title": "TBD",
-              "desc": "· Agents with the <color=#FFFFFF>[Attack]</color> specialty's <color=#98EFF0>Ice DMG</color> is <color=#2BAD00>increased by 30%</color>, and CRIT DMG is <color=#2BAD00>increased by 50%</color>.\n· When an Agent attacks a Stunned enemy, that enemy's Stun DMG Multiplier is additionally <color=#2BAD00>increased by 30%</color> for 20s; repeated triggers reset the duration."
+              "title": "Sunfrost",
+              "desc": "· <color=#FFFFFF>[Attack]</color> specialty Agents' <color=#98EFF0>Ice DMG</color> <color=#2BAD00>increases by 20%</color>.\n· Agents' CRIT DMG <color=#2BAD00>increases by 30%</color>. When attacking a Stunned enemy, that enemy's Stun DMG Multiplier additionally <color=#2BAD00>increases by 20%</color> for 20s; repeated triggers reset the duration."
+            },
+            "69014603": {
+              "title": "Sharp Rift",
+              "desc": "· The Agent's PEN Ratio <color=#2BAD00>increases by 10%</color>. When attacks hit an enemy, ignore <color=#2BAD00>20%</color> of their <color=#2EB6FF>Electric RES</color> and <color=#2BAD00>20%</color> of their <color=#FF5521>Fire RES</color>.\n· After the Agent activates an <color=#FFFFFF>[EX Special Attack]</color>, Sharp DMG <color=#2BAD00>increases by 30%</color> and DEF <color=#2BAD00>increases by 15%</color> for 20s; repeated triggers reset the duration."
             }
           }
         },
@@ -1190,7 +1194,7 @@
                     "wind": 1
                   },
                   "stats": {
-                    "hp": 25151998.41,
+                    "hp": 23612080.139999997,
                     "attack": 3286.6909090909094,
                     "defence": 952.8000000000001,
                     "stun": 14068.040000000003,
@@ -1211,17 +1215,17 @@
           "a_rank_goal": 14000,
           "b_rank_goal": 6000,
           "selectable_buff": {
-            "69014501": {
-              "title": "TBD",
-              "desc": "· The Agent's Sharp DMG <color=#2BAD00>increases by 25%</color>, and DEF <color=#2BAD00>increases by 20%</color>.\n· After the Agent launches an <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Ultimate]</color>, attacks that hit enemies ignore <color=#2BAD00>20%</color> of their <color=#2EB6FF>Electric RES</color> for 20s; repeated triggers reset the duration."
-            },
             "69014502": {
-              "title": "TBD",
-              "desc": "· If there are 2/3 Agents in the squad with <color=#FFFFFF>[Anomaly]</color> specialty, the whole squad's Anomaly Proficiency <color=#2BAD00>increases by 30/80</color> respectively, and Anomaly Buildup inflicted <color=#2BAD00>increases by 10%/30%</color> respectively.\n· After inflicting an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 25%</color> for 10s. Repeated triggers reset the duration."
+              "title": "Corrodeash",
+              "desc": "· When there are 2/3 Agents with the <color=#FFFFFF>[Anomaly]</color> specialty in your squad, the whole squad's Anomaly Proficiency increases by <color=#2BAD00>20/60 points</color> respectively, and Anomaly Buildup Rate increases by <color=#2BAD00>10%/20%</color> respectively.\n· When an Agent inflicts an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 10%</color> for 10s; repeated triggers reset the duration."
             },
             "69014503": {
-              "title": "TBD",
-              "desc": "· Agents with the <color=#FFFFFF>[Attack]</color> specialty's <color=#98EFF0>Ice DMG</color> is <color=#2BAD00>increased by 30%</color>, and CRIT DMG is <color=#2BAD00>increased by 50%</color>.\n· When an Agent attacks a Stunned enemy, that enemy's Stun DMG Multiplier is additionally <color=#2BAD00>increased by 30%</color> for 20s; repeated triggers reset the duration."
+              "title": "Sunfrost",
+              "desc": "· <color=#FFFFFF>[Attack]</color> specialty Agents' <color=#98EFF0>Ice DMG</color> <color=#2BAD00>increases by 20%</color>.\n· Agents' CRIT DMG <color=#2BAD00>increases by 30%</color>. When attacking a Stunned enemy, that enemy's Stun DMG Multiplier additionally <color=#2BAD00>increases by 20%</color> for 20s; repeated triggers reset the duration."
+            },
+            "69014603": {
+              "title": "Sharp Rift",
+              "desc": "· The Agent's PEN Ratio <color=#2BAD00>increases by 10%</color>. When attacks hit an enemy, ignore <color=#2BAD00>20%</color> of their <color=#2EB6FF>Electric RES</color> and <color=#2BAD00>20%</color> of their <color=#FF5521>Fire RES</color>.\n· After the Agent activates an <color=#FFFFFF>[EX Special Attack]</color>, Sharp DMG <color=#2BAD00>increases by 30%</color> and DEF <color=#2BAD00>increases by 15%</color> for 20s; repeated triggers reset the duration."
             }
           }
         }

@@ -66,6 +66,7 @@ const pageMap: Record<string, any> = {
   mechanic: lazyPage(() => import('@/views/MechanicsTablePage.vue')),
   multiplierCoeff: lazyPage(() => import('@/views/MultiplierCoeffPage.vue')),
   runArchive: lazyPage(() => import('@/views/RunArchivePage.vue')),
+  bossHp: lazyPage(() => import('@/views/BossHpInflationPage.vue')),
 }
 
 const currentPage = computed(() => pageMap[configStore.activeTab] ?? TeamConfigPage)

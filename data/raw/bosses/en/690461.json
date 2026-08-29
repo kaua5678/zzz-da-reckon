@@ -951,31 +951,31 @@
       "zone_type": 1002,
       "zone": {
         "69046201": {
-          "name": "Integrated - Girtablullu",
+          "name": "Integrated: Phaethon of the Scorched Horizon",
           "stage_num": 1,
           "monster_level": 70,
           "layer_buff": {
-            "69014203": {
+            "69014504": {
               "title": "",
-              "desc": "· When an Agent's attack hits a Boss, the Boss gains 1 point of Dissonance. The same Agent can apply at most 1 point of Dissonance every 1s.\n· When a Boss accumulates 10 points of Dissonance, all Dissonance points are immediately removed and the Boss enters the Dissonant state. While in the Dissonant state, enemies take <color=#2BAD00>40% bonus Attribute Anomaly DMG</color> for s. Re-entering the Dissonant state resets the duration.\n· When an Agent successfully inflicts an Attribute Anomaly on a Boss, all Agents on the squad gain the Transmutation effect: <color=#2BAD00>DMG dealt increases by 15%</color> and Anomaly Proficiency <color=#2BAD00>increases by 20 points</color>. The Transmutation effect lasts 10s, and repeated triggers reset the duration."
+              "desc": "·When Integrated Scorched Horizon is Impaired or met with a Shutdown, the whole squad's <color=#FFAF2C>Sharp DMG increases by 40%</color>, lasting 60s; repeated triggers reset the duration. \n·When an Agent's attack hits a non-Stunned enemy, the Daze inflicted is <color=#FFAF2C>increased by 15%</color>. When Integrated Scorched Horizon is Stunned, the Stun DMG Multiplier is <color=#FFAF2C>increased by 20%</color>."
             },
-            "69014204": {
+            "69014505": {
               "title": "",
-              "desc": "· Each time you successfully parry an attack from Girtablullu's summoned minions and trigger <color=#FFAF2C>Active Conversion</color>, you gain <color=#FFAF2C>500 Performance Points</color>; successfully triggering <Term:2000004></Term> against Girtablullu's attacks grants <color=#FFAF2C>1000 Performance Points</color>, up to 3 times; if you successfully <color=#FFAF2C>break the Corruptive Barrier within 25s</color> of Girtablullu <color=#FFAF2C>first activating</color> <Term:2000001></Term>, you gain <color=#FFAF2C>1500 Performance Points</color>. A maximum of 5,000 Performance Points can be obtained."
+              "desc": "·While Integrated Scorched Horizon is in the <color=#FFFFFF>[Mist Veil]</color> state, use <color=#FFFFFF>[Defensive Assist]</color> to counter Integrated Scorched Horizon's attacks and Impair it to earn <color=#FFAF2C>1500 Performance Points</color>; <color=#FFAF2C>[Shutdown]</color> Integrated Scorched Horizon's <Term:2000003></Term> to earn <color=#FFAF2C>2000 Performance Points</color>. A maximum of 5000 Performance Points can be earned."
             },
-            "69014602": {
+            "69014508": {
               "title": "",
               "desc": ""
             }
           },
           "layer_room": {
             "690462011": {
-              "monster_icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/IconBossGeneral/UnPacker/IconMonster_Girtablu_HC.png",
+              "monster_icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/IconBossGeneral/UnPacker/IconMonster_HoloMutant.png",
               "monster_list": {
-                "31662": {
-                  "id": 40009,
-                  "name": "Integrated - Girtablullu",
-                  "image": "UI/Sprite/A1DynamicLoad/BossCard/UnPacker/BossCardLv04/Monster_Girtablu_HC.png",
+                "31437": {
+                  "id": 40011,
+                  "name": "Integrated: Scorched Horizon",
+                  "image": "UI/Sprite/A1DynamicLoad/BossCard/UnPacker/BossCardLv04/Monster_Mutant_HC.png",
                   "element": {
                     "ice": 0,
                     "fire": 0,
@@ -985,15 +985,17 @@
                     "wind": 0
                   },
                   "stats": {
-                    "hp": 31900304.79,
+                    "hp": 26093067.84,
                     "attack": 3286.6909090909094,
                     "defence": 952.8000000000001,
-                    "stun": 18933.95,
+                    "stun": 17585.05,
                     "attribute_infliction": 10
                   }
                 }
               },
-              "monster_weakness": {},
+              "monster_weakness": {
+                "203": "Electric"
+              },
               "waves_num": 1
             }
           },
@@ -1003,16 +1005,16 @@
           "b_rank_goal": 10000,
           "selectable_buff": {
             "69014501": {
-              "title": "TBD",
+              "title": "Maximum Edge",
               "desc": "· The Agent's Sharp DMG <color=#2BAD00>increases by 25%</color>, and DEF <color=#2BAD00>increases by 20%</color>.\n· After the Agent launches an <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Ultimate]</color>, attacks that hit enemies ignore <color=#2BAD00>20%</color> of their <color=#2EB6FF>Electric RES</color> for 20s; repeated triggers reset the duration."
             },
             "69014502": {
-              "title": "TBD",
-              "desc": "· If there are 2/3 Agents in the squad with <color=#FFFFFF>[Anomaly]</color> specialty, the whole squad's Anomaly Proficiency <color=#2BAD00>increases by 30/80</color> respectively, and Anomaly Buildup inflicted <color=#2BAD00>increases by 10%/30%</color> respectively.\n· After inflicting an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 25%</color> for 10s. Repeated triggers reset the duration."
+              "title": "Corrodeash",
+              "desc": "· When there are 2/3 Agents with the <color=#FFFFFF>[Anomaly]</color> specialty in your squad, the whole squad's Anomaly Proficiency increases by <color=#2BAD00>20/60 points</color> respectively, and Anomaly Buildup Rate increases by <color=#2BAD00>10%/20%</color> respectively.\n· When an Agent inflicts an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 10%</color> for 10s; repeated triggers reset the duration."
             },
             "69014601": {
-              "title": "TBD",
-              "desc": "· Agents' <color=#FE437E>Ether DMG</color> and <color=#F0D12B>Physical DMG</color> <color=#2BAD00>increases by 25%</color>, and the Daze accumulation efficiency of Agents with the <color=#FFFFFF>[Stun]</color> specialty against enemies <color=#2BAD00>increases by 15%</color>.\n· After an Agent causes an enemy to become Stunned, the Vulnerability multiplier of DMG dealt to that enemy <color=#2BAD00>increases by 30%</color>, and their Daze recovery Speed <color=#2BAD00>decreases by 15%</color> for 20s. Repeated triggers reset the duration."
+              "title": "Crushing Peaks",
+              "desc": "· Agents' <color=#FE437E>Ether DMG</color> and <color=#F0D12B>Physical Attribute Damage</color> <color=#2BAD00>increases by 25%</color>, and the Daze inflicted by Agents with the <color=#FFFFFF>[Stun]</color> specialty <color=#2BAD00>increases by 20%</color>.\n· After an Agent inflicts the Stunned state on an enemy, the enemy's Stun DMG Multiplier <color=#2BAD00>increases by 40%</color>, and their Daze recovery Speed <color=#2BAD00>decreases by 15%</color> for 20s; repeated triggers reset the duration."
             }
           }
         }
@@ -1029,11 +1031,11 @@
           "layer_buff": {
             "69014506": {
               "title": "",
-              "desc": "·Anomaly DMG dealt to Kusarikku is reduced by 40%. Each time <color=#FFFFFF>[Defensive Assist]</color> is used to block one of Kusarikku's fissure skills, one stack of <color=#FFFFFF>[Exposed]</color> is applied to it. Each stack of <color=#FFFFFF>[Exposed]</color> increases the CRIT DMG Kusarikku takes by <color=#FFAF2C>20%</color>, stacking up to 3 times, lasting 60s. Repeated triggers reset the duration."
+              "desc": "·Attribute Anomaly DMG taken by Kusarikku is <color=#FFAF2C>reduced by 40%</color>.\n·When an Agent successfully uses [Defensive Assist] against Kusarikku's <Term:2000005></Term>, 1 stack of [Exposed] is applied to it. Each stack of [Exposed] <color=#FFAF2C>increases Laceration DMG taken by 20%</color>. [Exposed] can stack up to 3 times and lasts 60s; repeated triggers reset the duration."
             },
             "69014507": {
               "title": "",
-              "desc": "69014507_Description"
+              "desc": "·After Kusarikku activates [Corruptive Barrier], use <color=#FFFFFF>[Defensive Assist]</color> to counter Kusarikku's <Term:2000005></Term> and inflict Impaired on it to earn <color=#FFAF2C>1000 Performance Points</color>; successfully using <color=#FFFFFF>[Defensive Assist]</color> to respond to <Term:2000005></Term> earns <color=#FFAF2C>700 Performance Points</color>; performing a <color=#FFAF2C>[Shutdown]</color> against Kusarikku's <Term:2000003></Term> earns <color=#FFAF2C>2000 Performance Points</color>. A maximum of 5000 Performance Points can be earned."
             }
           },
           "layer_room": {
@@ -1053,7 +1055,7 @@
                     "wind": 0
                   },
                   "stats": {
-                    "hp": 18522757.62,
+                    "hp": 22124404.935,
                     "attack": 3286.6909090909094,
                     "defence": 952.8000000000001,
                     "stun": 18933.95,
@@ -1074,16 +1076,16 @@
           "b_rank_goal": 6000,
           "selectable_buff": {
             "69014501": {
-              "title": "TBD",
+              "title": "Maximum Edge",
               "desc": "· The Agent's Sharp DMG <color=#2BAD00>increases by 25%</color>, and DEF <color=#2BAD00>increases by 20%</color>.\n· After the Agent launches an <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Ultimate]</color>, attacks that hit enemies ignore <color=#2BAD00>20%</color> of their <color=#2EB6FF>Electric RES</color> for 20s; repeated triggers reset the duration."
             },
             "69014502": {
-              "title": "TBD",
-              "desc": "· If there are 2/3 Agents in the squad with <color=#FFFFFF>[Anomaly]</color> specialty, the whole squad's Anomaly Proficiency <color=#2BAD00>increases by 30/80</color> respectively, and Anomaly Buildup inflicted <color=#2BAD00>increases by 10%/30%</color> respectively.\n· After inflicting an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 25%</color> for 10s. Repeated triggers reset the duration."
+              "title": "Corrodeash",
+              "desc": "· When there are 2/3 Agents with the <color=#FFFFFF>[Anomaly]</color> specialty in your squad, the whole squad's Anomaly Proficiency increases by <color=#2BAD00>20/60 points</color> respectively, and Anomaly Buildup Rate increases by <color=#2BAD00>10%/20%</color> respectively.\n· When an Agent inflicts an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 10%</color> for 10s; repeated triggers reset the duration."
             },
             "69014601": {
-              "title": "TBD",
-              "desc": "· Agents' <color=#FE437E>Ether DMG</color> and <color=#F0D12B>Physical DMG</color> <color=#2BAD00>increases by 25%</color>, and the Daze accumulation efficiency of Agents with the <color=#FFFFFF>[Stun]</color> specialty against enemies <color=#2BAD00>increases by 15%</color>.\n· After an Agent causes an enemy to become Stunned, the Vulnerability multiplier of DMG dealt to that enemy <color=#2BAD00>increases by 30%</color>, and their Daze recovery Speed <color=#2BAD00>decreases by 15%</color> for 20s. Repeated triggers reset the duration."
+              "title": "Crushing Peaks",
+              "desc": "· Agents' <color=#FE437E>Ether DMG</color> and <color=#F0D12B>Physical Attribute Damage</color> <color=#2BAD00>increases by 25%</color>, and the Daze inflicted by Agents with the <color=#FFFFFF>[Stun]</color> specialty <color=#2BAD00>increases by 20%</color>.\n· After an Agent inflicts the Stunned state on an enemy, the enemy's Stun DMG Multiplier <color=#2BAD00>increases by 40%</color>, and their Daze recovery Speed <color=#2BAD00>decreases by 15%</color> for 20s; repeated triggers reset the duration."
             }
           }
         },
@@ -1147,16 +1149,16 @@
           "b_rank_goal": 6000,
           "selectable_buff": {
             "69014501": {
-              "title": "TBD",
+              "title": "Maximum Edge",
               "desc": "· The Agent's Sharp DMG <color=#2BAD00>increases by 25%</color>, and DEF <color=#2BAD00>increases by 20%</color>.\n· After the Agent launches an <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Ultimate]</color>, attacks that hit enemies ignore <color=#2BAD00>20%</color> of their <color=#2EB6FF>Electric RES</color> for 20s; repeated triggers reset the duration."
             },
             "69014502": {
-              "title": "TBD",
-              "desc": "· If there are 2/3 Agents in the squad with <color=#FFFFFF>[Anomaly]</color> specialty, the whole squad's Anomaly Proficiency <color=#2BAD00>increases by 30/80</color> respectively, and Anomaly Buildup inflicted <color=#2BAD00>increases by 10%/30%</color> respectively.\n· After inflicting an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 25%</color> for 10s. Repeated triggers reset the duration."
+              "title": "Corrodeash",
+              "desc": "· When there are 2/3 Agents with the <color=#FFFFFF>[Anomaly]</color> specialty in your squad, the whole squad's Anomaly Proficiency increases by <color=#2BAD00>20/60 points</color> respectively, and Anomaly Buildup Rate increases by <color=#2BAD00>10%/20%</color> respectively.\n· When an Agent inflicts an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 10%</color> for 10s; repeated triggers reset the duration."
             },
             "69014601": {
-              "title": "TBD",
-              "desc": "· Agents' <color=#FE437E>Ether DMG</color> and <color=#F0D12B>Physical DMG</color> <color=#2BAD00>increases by 25%</color>, and the Daze accumulation efficiency of Agents with the <color=#FFFFFF>[Stun]</color> specialty against enemies <color=#2BAD00>increases by 15%</color>.\n· After an Agent causes an enemy to become Stunned, the Vulnerability multiplier of DMG dealt to that enemy <color=#2BAD00>increases by 30%</color>, and their Daze recovery Speed <color=#2BAD00>decreases by 15%</color> for 20s. Repeated triggers reset the duration."
+              "title": "Crushing Peaks",
+              "desc": "· Agents' <color=#FE437E>Ether DMG</color> and <color=#F0D12B>Physical Attribute Damage</color> <color=#2BAD00>increases by 25%</color>, and the Daze inflicted by Agents with the <color=#FFFFFF>[Stun]</color> specialty <color=#2BAD00>increases by 20%</color>.\n· After an Agent inflicts the Stunned state on an enemy, the enemy's Stun DMG Multiplier <color=#2BAD00>increases by 40%</color>, and their Daze recovery Speed <color=#2BAD00>decreases by 15%</color> for 20s; repeated triggers reset the duration."
             }
           }
         },
@@ -1199,7 +1201,7 @@
                     "wind": 1
                   },
                   "stats": {
-                    "hp": 25151998.41,
+                    "hp": 23612080.139999997,
                     "attack": 3286.6909090909094,
                     "defence": 952.8000000000001,
                     "stun": 14068.040000000003,
@@ -1221,16 +1223,16 @@
           "b_rank_goal": 6000,
           "selectable_buff": {
             "69014501": {
-              "title": "TBD",
+              "title": "Maximum Edge",
               "desc": "· The Agent's Sharp DMG <color=#2BAD00>increases by 25%</color>, and DEF <color=#2BAD00>increases by 20%</color>.\n· After the Agent launches an <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Ultimate]</color>, attacks that hit enemies ignore <color=#2BAD00>20%</color> of their <color=#2EB6FF>Electric RES</color> for 20s; repeated triggers reset the duration."
             },
             "69014502": {
-              "title": "TBD",
-              "desc": "· If there are 2/3 Agents in the squad with <color=#FFFFFF>[Anomaly]</color> specialty, the whole squad's Anomaly Proficiency <color=#2BAD00>increases by 30/80</color> respectively, and Anomaly Buildup inflicted <color=#2BAD00>increases by 10%/30%</color> respectively.\n· After inflicting an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 25%</color> for 10s. Repeated triggers reset the duration."
+              "title": "Corrodeash",
+              "desc": "· When there are 2/3 Agents with the <color=#FFFFFF>[Anomaly]</color> specialty in your squad, the whole squad's Anomaly Proficiency increases by <color=#2BAD00>20/60 points</color> respectively, and Anomaly Buildup Rate increases by <color=#2BAD00>10%/20%</color> respectively.\n· When an Agent inflicts an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the enemy's DEF is <color=#2BAD00>reduced by 10%</color> for 10s; repeated triggers reset the duration."
             },
             "69014601": {
-              "title": "TBD",
-              "desc": "· Agents' <color=#FE437E>Ether DMG</color> and <color=#F0D12B>Physical DMG</color> <color=#2BAD00>increases by 25%</color>, and the Daze accumulation efficiency of Agents with the <color=#FFFFFF>[Stun]</color> specialty against enemies <color=#2BAD00>increases by 15%</color>.\n· After an Agent causes an enemy to become Stunned, the Vulnerability multiplier of DMG dealt to that enemy <color=#2BAD00>increases by 30%</color>, and their Daze recovery Speed <color=#2BAD00>decreases by 15%</color> for 20s. Repeated triggers reset the duration."
+              "title": "Crushing Peaks",
+              "desc": "· Agents' <color=#FE437E>Ether DMG</color> and <color=#F0D12B>Physical Attribute Damage</color> <color=#2BAD00>increases by 25%</color>, and the Daze inflicted by Agents with the <color=#FFFFFF>[Stun]</color> specialty <color=#2BAD00>increases by 20%</color>.\n· After an Agent inflicts the Stunned state on an enemy, the enemy's Stun DMG Multiplier <color=#2BAD00>increases by 40%</color>, and their Daze recovery Speed <color=#2BAD00>decreases by 15%</color> for 20s; repeated triggers reset the duration."
             }
           }
         }

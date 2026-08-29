@@ -26,6 +26,7 @@
           <n-tab-pane name="breakerCompare" tab="击破手对比" />
           <n-tab-pane name="timeline" tab="时间图表" />
           <n-tab-pane name="runArchive" tab="实战对比" />
+          <n-tab-pane name="bossHp" tab="血量膨胀" />
         </n-tabs>
       </div>
       <div class="tab-divider"></div>
@@ -74,7 +75,7 @@ import { useThemeStore } from '@/stores/theme'
 const configStore = useConfigStore()
 const themeStore = useThemeStore()
 
-const calculatorTabs = ['team', 'attribute', 'resource', 'result', 'resourceUtilization', 'stunAxis', 'teamCompare', 'breakerCompare', 'timeline', 'runArchive']
+const calculatorTabs = ['team', 'attribute', 'resource', 'result', 'resourceUtilization', 'stunAxis', 'teamCompare', 'breakerCompare', 'timeline', 'runArchive', 'bossHp']
 const developerTabs = ['debug', 'wengineFields', 'logic', 'mechanic', 'multiplierCoeff']
 const calculatorTabValue = computed(() => calculatorTabs.includes(configStore.activeTab) ? configStore.activeTab : '')
 const developerTabValue = computed(() => developerTabs.includes(configStore.activeTab) ? configStore.activeTab : '')

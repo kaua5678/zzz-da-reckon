@@ -1,6 +1,6 @@
 {
   "id": 30052,
-  "monster_id": 31631,
+  "monster_id": 31635,
   "monster_info": {
     "31631": {
       "id": 31631,
@@ -13,12 +13,12 @@
       ],
       "type": "Monster",
       "element": {
-        "ice": 1,
+        "ice": 0,
         "fire": 0,
         "electric": 0,
         "ether": 0,
-        "physical": -1,
-        "wind": 1
+        "physical": 0,
+        "wind": 0
       },
       "stats": {
         "hp": 20309,
@@ -506,12 +506,12 @@
       ],
       "type": "Monster",
       "element": {
-        "ice": 1,
+        "ice": 0,
         "fire": 0,
         "electric": 0,
         "ether": 0,
-        "physical": -1,
-        "wind": 1
+        "physical": 0,
+        "wind": 0
       },
       "stats": {
         "hp": 41317,
@@ -995,7 +995,8 @@
       "tag": [
         "Ether",
         "Large",
-        "Boss"
+        "Boss",
+        "RBLUp_Common"
       ],
       "type": "Monster",
       "element": {
@@ -1016,7 +1017,7 @@
         "crit_dmg_res": 0,
         "pen_rate": 0,
         "pen_delta": 0,
-        "stun": 9660,
+        "stun": 8694,
         "is_stun": true,
         "break_stun": 0,
         "auto_recover_rate": 0,
@@ -1033,30 +1034,30 @@
         "resist_break_level_probability": 0,
         "frozen_time_res": 7500,
         "fire_damage_res": 0,
-        "ice_damage_res": 0,
+        "ice_damage_res": -2000,
         "electric_damage_res": 0,
-        "wind_damage_res": 0,
+        "wind_damage_res": -2000,
         "ether_damage_res": 0,
-        "physical_damage_res": 0,
+        "physical_damage_res": 4000,
         "ice_buildup_curve": 30011,
         "fire_buildup_curve": 30002,
         "electric_buildup_curve": 30003,
         "physical_buildup_curve": 30004,
         "ether_buildup_curve": 30005,
         "wind_buildup_curve": 30006,
-        "ice_buildup_res": 0,
+        "ice_buildup_res": -2000,
         "fire_buildup_res": 0,
         "electric_buildup_res": 0,
-        "physical_buildup_res": 0,
+        "physical_buildup_res": 2000,
         "ether_buildup_res": 0,
-        "wind_buildup_res": 0,
-        "ice_stun_res": 0,
+        "wind_buildup_res": -2000,
+        "ice_stun_res": -2000,
         "fire_stun_res": 0,
         "electric_stun_res": 0,
         "ether_stun_res": 0,
-        "physical_stun_res": 0,
-        "wind_stun_res": 0,
-        "base_buildup_ratio": 3000
+        "physical_stun_res": 2000,
+        "wind_stun_res": -2000,
+        "base_buildup_ratio": 2500
       },
       "curves": {
         "hp": {
@@ -1485,12 +1486,12 @@
   "image_path": "UI/Sprite/A1DynamicLoad/BossCard/UnPacker/BossCardLv04/Monster_SymbioticEtherealSinner.png",
   "name": "熔狱行赭",
   "desc": "燃晶火湖中归来的以骸。\n曾是霸主庞培击败的一头死路屠夫，战败后落入燃晶火湖，身体不仅并未焚毁，反而被以太燃烧的副产物结晶包裹。\n在火焰中，它的外壳不断融化剥落，又附着上新的结晶，经历炼狱般的无尽折磨后，它拥有了铠甲般的躯体，并获得了在火焰中自由移动的能力。\n在仿佛被时间遗弃的漫长逡巡后，它终于侥幸发现火湖之底的空间裂隙，由此进入了神之迷宫——帕帕戈空洞。\n然而那不过是落入另一个炼狱。\n它似乎经历了一场惨败，自那以后，它被某种力量驱使，痴迷于攫取散落迷宫中的特殊以太。\n但它早已无法分辨，其中蕴含的是救赎，还是亵渎。\n\n「那个浑身着火的家伙每次经过气温都会蹭蹭蹭上涨，我要申请高温补贴！」",
-  "rarity": 3,
+  "rarity": 4,
   "group_id": 201,
   "group_desc": "以太异形",
   "card_obtain": "【未探明】击败1次以获得数据",
   "card_quote": "——《帕帕戈哨站观测日志》",
-  "card_skill_desc": "战斗中，熔狱行赭会使用武器对玩家展开强势的攻击，受到一定伤害后会进入「熔狱状态」，在「熔狱状态」下部分攻击会需要成功触发[连携招架]才能抵挡。熔狱行赭会召唤火雨对代理人造成持续伤害，每击碎一颗燧石可以获得「熔狱护盾」并且恢复能量，击碎三颗燧石则可以结束火雨。熔狱行赭在[贝果计划]玩法中将不再拥有属性弱点和抗性。",
+  "card_skill_desc": "战斗中，熔狱行赭会使用武器对玩家展开强势的攻击，受到一定伤害后会进入「熔狱状态」，在「熔狱状态」下部分攻击会需要成功触发[连携招架]才能抵挡。熔狱行赭会召唤火雨对代理人造成持续伤害，每击碎一颗燧石可以获得「熔狱护盾」并且恢复能量，击碎三颗燧石则可以结束火雨。\n熔狱行赭在[贝果计划]玩法中将不再拥有属性弱点和抗性。",
   "element_abnormal": {
     "10001": 600,
     "10002": 600,

@@ -76,12 +76,15 @@ function loadMonster(monsterId) {
   } catch {
     return null
   }
-  const mi = j.monster_info?.[Object.keys(j.monster_info ?? {})[0]]
+  // 按 monster_id 精确取本体变体（勿用首 key：multi-variant 怪物如 秽息司祭 首 key 是 MusicActivity 变体，血量/stun 全错）
+  const mi = j.monster_info?.[String(j.monster_id)] ?? j.monster_info?.[Object.keys(j.monster_info ?? {})[0]]
   if (!mi?.stats) return null
   const s = mi.stats
   const resOf = suffix => Object.fromEntries(ELEMENT_KEYS.map(el => [el, toCalcRes(s[`${el}${suffix}`] ?? 0)]))
   return {
     name: j.name,
+    /** 1 级基础血量（monster_info.stats.hp），用于反推版本系数 = mo.stats.hp / (baseHp × 247.95) */
+    baseHp: Number.isFinite(s.hp) ? s.hp : 0,
     /** 失衡伤害倍率 = (100 + stun_damage_taken_ratio/100)/100（5000→1.5，2500→1.25） */
     stunVuln: Number.isFinite(s.stun_damage_taken_ratio)
       ? Math.round(((100 + s.stun_damage_taken_ratio / 100) / 100) * 1000) / 1000
@@ -229,6 +232,29 @@ function bossDefaults(monsterId) {
 /** version.json 未收录的 3.2 期数兜底（690451/690461/690471） */
 const VERSION_FALLBACK = /^6904[567]/
 
+/**
+ * 危局总血量 = nanoka 原始单管血量（mo.stats.hp）× 管数（等效加强系数）。
+ * mo.stats.hp 已含「4 号血量成长曲线 70 级终值(×247.95) × 版本系数」：
+ *   复写体·猎血清道夫 690441 = 64248 × 247.95 × 2.95 ≈ 46,994,360（163.moe 记 3.1v3 困难系数 295%）。
+ * 管数 = 分数曲线「所需伤害」列总和 ÷ 10：
+ *   普通（29 管）87.4 / 10 = 8.74；困难（异构 24 管）158 / 10 = 15.8。
+ * 用户口径（2026-08 核实）：普通危局 8.74、困难危局 15.8；困难曾误记 12（测试期数据有误，已按 nanoka 网站总量反推修正）。
+ */
+const HP_BARS_BY_MODE = {
+  critical_assault: 15.8, // 困难危局（异构，24 管）
+  defense: 8.74,          // 普通危局（29 管）
+}
+
+/** 4 号血量成长曲线 70 级成长值（1 级 = 1 → 70 级 = 247.95）。版本系数 = mo.stats.hp / (baseHp × 247.95)。 */
+const HP_CURVE4_LV70 = 247.95
+
+/** 血量版本系数（%）：mo.stats.hp / (1 级基础血量 × 247.95)，round 到 1 位小数；无基础血量时 null。 */
+function hpVersionCoeffOf(monsterId, zoneHp) {
+  const baseHp = getMonster(monsterId)?.baseHp ?? 0
+  if (!baseHp || !zoneHp) return null
+  return Math.round((zoneHp / (baseHp * HP_CURVE4_LV70)) * 1000) / 10
+}
+
 /** 汇总所有期数详情里的怪物出现记录 */
 const monsterPhases = new Map() // monsterId -> { en, zh, phases[] }
 const caWeaknessSets = new Map() // monsterId -> 危局期数 weakness 标签列表（用于交集）
@@ -267,10 +293,16 @@ for (const zoneId of Object.keys(summary)) {
           label: [versionOf(zoneId), (begin || '').slice(0, 10)].filter(Boolean).join(' · '),
           begin,
           modeType,
+          /** 源怪物 id（合并预设用其区分试炼版/恶名版，如 30007 vs 300072；血量系数按各源怪物基础血量反推） */
+          monsterId: String(mo.id),
+          /** 源怪物名（合并预设的试炼版/恶名版区分显示用，如 死路屠夫 vs 恶名·死路屠夫） */
+          monsterName: mo.name ?? entry.name,
           stageName: zone.name ?? mo.name,
           stageNum: zone.stage_num ?? 1,
           level: zone.monster_level ?? 70,
-          hp: Math.round(mo.stats?.hp ?? 0),
+          hp: Math.round((mo.stats?.hp ?? 0) * HP_BARS_BY_MODE[modeType]),
+          /** 血量版本系数（%）：mo.stats.hp / (1级基础血量 × 4号曲线 70级 247.95)；如 叶释渊 69025 = 180 */
+          hpVersionCoeff: hpVersionCoeffOf(entry.id, mo.stats?.hp),
           stunValue: Math.round((mo.stats?.stun ?? 0) * 100) / 100,
           defense: Math.round(mo.stats?.defence ?? 953),
           bossAnomalyCoeff: 1 + (mo.stats?.attribute_infliction ?? 0) / 100,
@@ -430,7 +462,7 @@ function monsterBrief(monsterId, zone, room, modeType, layerBuffs) {
     name: mo.name,
     weakness: res.weakness,
     resistance: res.resistance,
-    hp: Math.round(mo.stats?.hp ?? 0),
+    hp: Math.round((mo.stats?.hp ?? 0) * HP_BARS_BY_MODE[modeType]),
     stunValue: Math.round((mo.stats?.stun ?? 0) * 100) / 100,
     defense: Math.round(mo.stats?.defence ?? 953),
     level: zone.monster_level ?? 70,
@@ -487,7 +519,7 @@ phaseViews.sort((a, b) => (b.begin || b.phaseId).localeCompare(a.begin || a.phas
 const out = {
   generatedAt: new Date().toISOString(),
   source: 'https://static.nanoka.cc boss API (scripts/fetch-nanoka-bosses.mjs)',
-  note: '元素抗性口径（游戏绝对值%）：弱点 -20 / 中性 0 / 抗性 +20~+40；bossAnomalyCoeff = 1 + attribute_infliction/100；buff 解析见 scripts/phase-buff-parser.mjs',
+  note: '元素抗性口径（游戏绝对值%）：弱点 -20 / 中性 0 / 抗性 +20~+40；bossAnomalyCoeff = 1 + attribute_infliction/100；hp = 危局总血量 = 单管血量(mo.stats.hp，已含 4 号曲线 70 级×版本系数) × 管数（普通 8.74 / 困难 15.8）；buff 解析见 scripts/phase-buff-parser.mjs',
   bosses,
   phaseViews,
 }

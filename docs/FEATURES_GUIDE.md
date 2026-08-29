@@ -317,9 +317,14 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 
 - 配装 = 计算器默认理想（推荐驱动盘 + 最优副词条 + 技能全满，作为理论**上界**）；不从视频提取真实配装。
 - 交互基准 = 角色专属默认（般岳/星徽·比利）> 通用基准（弹刀 6 / 闪反 10 / 快支 3 / 连携 1），与 teamTimeline 同源。
-- Boss = 期相位（分期数决定血量膨胀）+ 关卡固有 layer_buff 自动应用；当期可选牌（3 选 1）**不自动应用**（归档未记录玩家选择）。
+- Boss = 期相位血量（**危局总血量 = nanoka 单管血量 `mo.stats.hp` × 管数：普通 8.74 / 困难 15.8**；`mo.stats.hp` 已含 4 号血量成长曲线 70 级 × 版本系数）+ 关卡固有 layer_buff 自动应用；当期可选牌（3 选 1）**不自动应用**（归档未记录玩家选择）。
 - 仅危局强袭（Deadly Assault*，含 Adversity），防卫战/歼灭排除。
 - 比对口径：伤害/血量%（击杀线 100%）vs 实战 score/bossKilled/time，**不做 score 精确映射**；差异 = 配装差 + 建模误差，靠理想配装上界夹逼隔离。
+
+### 7.5 血量膨胀图（「血量膨胀」Tab）
+
+- 数据 = `public/static/boss-presets.json` 每期 `hpVersionCoeff`（版本系数 %，导入脚本按 `mo.stats.hp / (1级基础血量 × 247.95)` 反推）+ `monsterId`/`monsterName`（合并预设的试炼版/恶名版拆成独立折线，如 死路屠夫 vs 恶名·死路屠夫）。
+- 页面 = `src/views/BossHpInflationPage.vue`（自绘 SVG 折线，无图表库）：横轴 = 期数，纵轴 = 版本系数 %，每 Boss 一条线，点击图例显隐。
 
 ## 8. 验证命令
 
