@@ -276,7 +276,9 @@ for (const zoneId of Object.keys(summary)) {
           .flatMap(r => Object.values(r.monster_list ?? {}))
           .find(e => e.id === mo.id)
         const entry = monsterPhases.get(String(mo.id)) ?? { id: String(mo.id), name: mo.name, nameEn: moEn?.name ?? mo.name, phases: [] }
-        const begin = info.live_begin ?? info.begin ?? ''
+        // 测试期期数（无 live_begin）用空 begin：info.begin 是测试服发布日（如 3.2 三期的 2026-07-30 占位），
+        // 非正式上线日，混入会打乱时间轴（3.2 被排到 3.1 之前）。下游按 begin||phaseId 排序、空 begin 跳过匹配，均安全。
+        const begin = info.live_begin ?? ''
         const modeType = mode.zone_type === 1002 ? 'critical_assault' : 'defense'
         if (modeType === 'critical_assault') {
           const labels = Object.values(room.monster_weakness ?? {})

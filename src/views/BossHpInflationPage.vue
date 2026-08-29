@@ -143,7 +143,8 @@ const seasons = computed(() => {
       }
     }
   }
-  return [...m.values()].sort((a, b) => a.begin.localeCompare(b.begin))
+  // 按 phaseId 排序（单调递增 = 时间序）；begin 对测试期期数是占位日，不可靠
+  return [...m.values()].sort((a, b) => a.phaseId.localeCompare(b.phaseId))
 })
 
 const seasonIdxOf = computed(() => {
