@@ -8,9 +8,9 @@
 ## 0. 心智模型：五层 + 单向依赖
 
 ```
-数据层   public/static/*.json        唯一事实源（倍率/属性/buff/boss/音擎/驱动盘），只经 scripts/ 导入，不手改
+数据层   public/static/*.json        唯一事实源（倍率/属性/buff/boss/音擎/驱动盘），只经 scripts/ 导入，不手改（中间产物 data/raw/ 的目录约定见 data/raw/README.md）
 状态层   src/stores/                  configStore（队伍/敌人/设置/滑块，可变）· catalogStore（只读数据快照）
-编排层   src/composables/             useResourceCalc.ts（一次计算的总管线，页面与引擎之间的胶水）
+编排层   src/composables/             useResourceCalc.ts（一次计算的总管线，页面与引擎之间的胶水）+ resourceCalc/ 子模块（helpers/roundThreads/liuyinPromote/normaHatChain/damagePool）
 引擎层   src/core/                    纯函数引擎：resource（资源池）/ damage（伤害乘区）/ panel / stunPool / anomalyPool / buff
 录入层   src/specs/ + src/mechanics/  角色机制：声明式 spec（agents/*.json）+ TS 机制模块（agents/*.ts）
 展示层   src/views/ + src/components/ 页面与卡片（读编排层产物）
@@ -24,7 +24,7 @@
 ```
 useResourceCalc()                      编排层入口（composables/useResourceCalc.ts）
   resourceConfig: buildCharConfig ×3   每角色 cfg（面板 + 招式数据 + 机制模块注入）
-  calcOutput: runCalcRound             外层固定点：失衡次数 ↔ 资源池 ↔ 转大 ↔ 异常喧响奖励（收敛；`enemy.stunCountLock>=0` 时失衡次数固定不回填，其余反馈仍收敛，命座对比固定场景用）
+  calcOutput: runCalcRound             外层固定点：失衡次数 ↔ 资源池 ↔ 转大 ↔ 异常喧响奖励（收敛；跨轮反馈量集合在 resourceCalc/roundThreads.ts 的 CalcRoundThreads——新增反馈=加字段+初值+轮内读写，不动 runCalcRound 签名；`enemy.stunCountLock>=0` 时失衡次数固定不回填，其余反馈仍收敛，命座对比固定场景用）
     calcTeamResources                  core/resource.ts：iterate 多轮收敛（能量→强特→喧响→终结→时间）+ 时间预算收敛外层循环（测执行行前台时间，超出战斗时间的部分折入 necessaryTime 压缩平A池）；喧响含特殊动作/异常奖励注入（specialAction/anomalyDecibelBonusPerSlot，参与终结技次数推导）
       → buildExecutions                从收敛态生成执行计划（通用动作 + 模块专属 + patchExecutions 修正）
       → buildResourceResult            角色资源结果（specResources / 专属 cycle）
@@ -68,7 +68,7 @@ useResourceCalc()                      编排层入口（composables/useResource
 | 改队伍预设 | `data/teamPresets/*.json`（目录自动加载） | 同上 |
 | **时间图表页（队伍随版本演变）** | `composables/teamTimeline.ts`（精确增量搜索 + 预算感知排名 + 逐金贪婪最优加金 + maxIter 收敛过滤 + 换人上位/平替判定 `classifySwapUplift` + Boss 排期标记 `composables/bossSchedule.ts`）+ `data/versionTimeline.ts`（版本节点/S级实装版本）；**Chart 5 抽卡价值 = `composables/pullValue.ts`**（实战归档配对差分 → 累计兑现/ROI/T0-T3 分级/效率前沿，纯函数零引擎）；**Chart 6 抽卡规划器 = `composables/pullPlanner.ts`**（beam search 序贯购买 + 3-Boss 不重叠匹配 + VCG 价值归因，纯逻辑 oracle 注入）+ `composables/pullPlannerEngine.ts`（引擎桥：伤害→分数映射/期轴/快照恢复） | `views/TimeChartsPage.vue`；口径见 `FEATURES_GUIDE.md` §4（Chart 5 算法口径 §4.4） |
 | **倍率表系数演算记录（角色系数推导）** | `data/standardMultiplierTable.ts`（标准职业稀有度倍率表：1级A级基准式 + 等级×2/×1.5 引用 `core/skillLevel.ts` + 限定S×1.1/常驻S×1.05/命破伤害×0.8；常驻S名单单一来源在此）+ `composables/multiplierCoefficients.ts`（招式分类/期望值/纵向系数中位数/支援突击直伤锚点/招式特定偏差，纯函数页面测试同源） | `views/MultiplierCoeffPage.vue`；口径与待确认项见 `FEATURES_GUIDE.md` §5 |
-| 改数据导入 / 校验 / 文档生成 | `scripts/`（validate-specs / docs:status / 各类 import） | 同上 |
+| 改数据导入 / 校验 / 文档生成 | `scripts/`（validate-specs / docs:status / 各类 import） + `data/raw/README.md`（中间产物目录约定与消费链路表） | 同上 |
 | 排查"某 buff / 命座没生效" | `AGENT_RECORDING_SOP.md` §3.5 根因表；页面「命座提升率」自检打标 | 按根因表定位字段消费端 |
 | 改音擎 / 驱动盘 / 敌人 / Boss | `public/static/catalog.json`（编译期快照，改数据走 scripts/ 导入脚本，勿手改） | scripts/ + catalogStore |
 | 改 Boss 预设默认值（无敌时间/秽盾/弹刀总数） | `scripts/import-nanoka-bosses.mjs` `BOSS_DEFAULTS`（重跑生成 `public/static/boss-presets.json`） | 弹刀「保底4失衡」反推运行时拆分：`core/parrySplit.ts`（纯函数）+ `useResourceCalc` 外层不动点线程 `prevParrySplit`（般岳 `prevBanyueTopUp` 同款收敛）；口径见 `ENGINE_PIPELINE_GUIDE.md` §4 坑 18 |

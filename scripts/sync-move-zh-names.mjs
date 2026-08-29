@@ -82,6 +82,7 @@ function loadRawForAgent(agent) {
     const candidates = [
       resolve(fullDir, `${id}.json`),
       resolve(root, 'data/raw', `nanoka_${id}_zh.json`),
+      resolve(root, 'data/raw', 'audit', `${id}.json`),
     ]
     for (const path of candidates) {
       if (existsSync(path)) {

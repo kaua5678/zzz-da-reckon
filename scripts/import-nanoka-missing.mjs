@@ -14,8 +14,10 @@ const rawDir = resolve(root, 'data/raw/nanoka_missing')
 const specsDir = resolve(root, 'src/specs/agents')
 
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'))
-const mapPath = 'F:/trae_output/nanoka_scraper/characters/teammate_nanoka_map.json'
-const aliasMap = JSON.parse(readFileSync(mapPath, 'utf8'))
+// 别名表（nicole=1031 等）：原抓取器仓库外置文件，收编到 data/raw/nanoka_missing/ 下；
+// 缺失时按空表处理（60 角色已全部导入，该脚本仅用于补录未来新角色）
+const mapPath = resolve(rawDir, 'teammate_nanoka_map.json')
+const aliasMap = existsSync(mapPath) ? JSON.parse(readFileSync(mapPath, 'utf8')) : []
 const aliasedIds = new Set(aliasMap.map(x => x.nanoka_id))
 const existingIds = new Set(catalog.agents.map(a => a.id))
 

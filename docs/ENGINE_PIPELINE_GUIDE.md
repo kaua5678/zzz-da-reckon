@@ -74,7 +74,11 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
 | `src/core/resource.ts` | calcTeamResources：资源池主循环、findExSpecial 等招式选取 |
 | `src/core/resource/helpers.ts` | calcEnergySource（能量/闪能池）、buildExecutions（通用执行）、iterate |
 | `src/composables/resourceCalc/helpers.ts` | computePanelPhases（面板+applyPanel 调用点）、buildCharConfig（cfg 构建）、enrichExecutionPlan（回填）、extractSkillExecutions |
-| `src/composables/useResourceCalc.ts` | runCalcRound（外层不动点）、轴模式（banyueAxisEx/billyAxisEx 注入）、伤害池/直伤结算 |
+| `src/composables/resourceCalc/roundThreads.ts` | CalcRoundThreads：外层不动点跨轮反馈量集合（新增跨轮反馈 = 加字段 + 初值 + 轮内读写，不再动 runCalcRound 签名） |
+| `src/composables/resourceCalc/liuyinPromote.ts` | 琉音好评转大编排簇：buildPromoteParams / promoteFixpoint（内层不动点）/ applyLiuyinPromote（赠送终结技行） |
+| `src/composables/resourceCalc/normaHatChain.ts` | 诺姆膛温换连携（赠送连携行注入） |
+| `src/composables/resourceCalc/damagePool.ts` | buildDamagePoolRows：伤害池行构建（直伤/异放/乱流/紊乱/DoT + 轴内易伤拆分 + 角色专属直伤块），快照式入参纯函数 |
+| `src/composables/useResourceCalc.ts` | useResourceCalc 编排主体：resourceConfig 构建、runCalcRound（外层不动点，线程走 roundThreads）、轴模式注入、蕾米虚耀事件 |
 | `src/specs/mechanics.ts` | specToMechanicModule：spec → 模块的通用翻译（resources/events/settings） |
 | `src/specs/resources.ts` | computeSpecResources：资源解释器（gain/spend/countSource） |
 | `src/specs/runtime.ts` | applySpecAttributeConversions（属性转模） |

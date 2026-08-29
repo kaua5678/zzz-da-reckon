@@ -21,8 +21,8 @@ const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'))
 
 let changed = 0
 for (const a of catalog.agents ?? []) {
-  const rawPath = join(root, 'data', 'raw', `nanoka_${a.id}_zh.json`)
-  if (!existsSync(rawPath)) continue
+  const rawPath = [join(root, 'data', 'raw', `nanoka_${a.id}_zh.json`), join(root, 'data', 'raw', 'audit', `${a.id}.json`)].find(existsSync)
+  if (!rawPath) continue
   const raw = JSON.parse(readFileSync(rawPath, 'utf8'))
   const derived = raw.rarity >= 4 ? 'S' : 'A'
   if (derived !== a.rarity) {

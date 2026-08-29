@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Fetch missing nanoka characters (skills + stats) into data/raw/nanoka_missing/."""
+"""Fetch missing nanoka characters (skills + stats) into data/raw/nanoka_missing/.
+
+[RETIRED 2026-08] 依赖仓库外抓取器（F:/trae_output/nanoka_scraper，本机私有），离机即坏。
+产物已就位；未来补新角色优先走 fetch-nanoka-full-missing.mjs（纯 node、无外部依赖）。
+保留仅作历史参考，勿直接运行。"""
 import json
 import os
 import sys

@@ -1,18 +1,13 @@
-import { YESHUGUANG_FULL_STUN_MOVES } from '@/mechanics/agents/yeshuguang'
-import { HUGO_FULL_STUN_MOVES, HUGO_EX_VERDICT_MOVE_ID, HUGO_ULT_MOVE_ID, HUGO_EX_FINAL_ACTION_TIME, isHugoEndsWindowMove, hugoMoveActionTime } from '@/mechanics/agents/hugo'
+import { HUGO_EX_VERDICT_MOVE_ID, HUGO_ULT_MOVE_ID, HUGO_EX_FINAL_ACTION_TIME, isHugoEndsWindowMove, hugoMoveActionTime } from '@/mechanics/agents/hugo'
 import { inferSkillDamageTarget } from '@/core/damage'
 import { estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
 import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { calcDirectDamage, calcAnomalyDamage, resolveSpecialDamageProfile } from '@/core/damage'
 import {
   calcTeamResources,
-  findUltimate,
-  findChainAttack,
   ULTIMATE_COST_DEFAULT,
 } from '@/core/resource'
-import { calcStunPool } from '@/core/stunPool'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { computeParrySplit } from '@/core/parrySplit'
 import type { ParrySplitResult } from '@/core/parrySplit'
@@ -23,18 +18,21 @@ import { calcStunAxisStack, allocateAxisWindows } from '@/core/stunAxisStack'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
 import { calcAnomalyPool, calcSpecialActionBonus, PARRY_DECIBEL_BONUS } from '@/core/anomalyPool'
-import { distributeIntegerByWeight, getMainApplierSlot, ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/helpers'
-import { computeBossAnomalyStateTimeline, computeInStunAnomalyTimeline, attributeCountByStateChain, bossEntryAnomalyElement, type BossAnomalyStateResult, type InStunWindowInput } from '@/core/stunAxis/inStunAnomaly'
+import { getBaseElement, BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/helpers'
+import { computeBossAnomalyStateTimeline, computeInStunAnomalyTimeline, bossEntryAnomalyElement, type BossAnomalyStateResult, type InStunWindowInput } from '@/core/stunAxis/inStunAnomaly'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
-import { LIUYIN_EX_MOVE_IDS, computeLiuyinHugCounts, resolveUltimateTargetSlot, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
+import { applyLiuyinPromote, buildPromoteParams, promoteFixpoint } from './resourceCalc/liuyinPromote'
+import { applyNormaHatChain } from './resourceCalc/normaHatChain'
+import { initialCalcRoundThreads, threadsAfterNullRound, type CalcRoundThreads } from './resourceCalc/roundThreads'
+import { buildDamagePoolRows } from './resourceCalc/damagePool'
 import { computeLuciaHealPctPerUlt } from '@/mechanics/agents/luciaElowen'
-import { computeBanyueMingwangStacks, computeBanyueInteractionTopUp, C6_ATTACH_RATIO, MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
+import { computeBanyueMingwangStacks, computeBanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
-import { computeCorinStunBonusMoves, CORIN_ADDITIONAL_DMG } from '@/mechanics/agents/corin'
-import { SIGRID_LANCE_SEGMENT_IDS, SIGRID_INFECTION_DMG } from '@/mechanics/agents/sigrid'
+import { computeCorinStunBonusMoves } from '@/mechanics/agents/corin'
+import { SIGRID_LANCE_SEGMENT_IDS } from '@/mechanics/agents/sigrid'
 import { computeYixuanNingshenBonus } from '@/mechanics/agents/yixuan'
-import { computePeiluoKagerouBonus, PEILUO_KAGEROU_CRIT } from '@/mechanics/agents/specPanelBuffs'
+import { computePeiluoKagerouBonus } from '@/mechanics/agents/specPanelBuffs'
 import type {
   CharacterOperationConfig,
   ResourceCalcConfig,
@@ -43,16 +41,11 @@ import type {
   AnomalyPoolResult,
   SpecialActionBonusResult,
   AnomalyEventRecord,
-  AnomalyEventExecution,
 } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
-import { getSkillLevelCoef } from '@/core/skillLevel'
-import { fmt } from '@/utils/format'
 import * as ResourceCalcHelpers from './resourceCalc/helpers'
 import type { DamagePoolRow, AnomalyVirtualPanelBuild } from './resourceCalc/helpers'
 
-/** 琉音好评转大不动点迭代上限（好评≥90 开窗次数有界，正反馈单调收敛，8 轮兜底极端情况） */
-const MAX_PROMOTE_ITER = 8
 /**
  * 失衡次数 ↔ 资源池（连携=每失衡连携×失衡次数）↔ 失衡池 外不动点迭代上限。
  * 2026-08-24 实证（南宫羽C6+踉跄失衡延长+3s）：窗口延长加强「窗口↑→前台预算↓→失衡值↓→
@@ -61,63 +54,7 @@ const MAX_PROMOTE_ITER = 8
  */
 const MAX_OUTER_ITER = 20
 
-/**
- * 叠加琉音好评转大修正的资源池结果：
- * 60 转大 → 目标队友连携 -1、终结技 +1（替换）；90 转大 → 终结技 +1（白送）。
- * 倍率表 damage/daze/anomaly_buildup 由目标队友执行计划自然调用。
- * adj 来自 promoteFixpoint 的收敛结果（runCalcRound 的 R0/R1 内层不动点）。
- */
-function applyLiuyinPromote(
-  base: TeamResourceResult | null,
-  adj: { promote: number; hug60: number; targetSlot: number; chainMoveId: string; ultimateMoveId: string } | null,
-  catalogStore: ReturnType<typeof useCatalogStore>,
-): TeamResourceResult | null {
-  if (!base || !adj || adj.promote <= 0 || adj.targetSlot < 0) return base
-  const { targetSlot, ultimateMoveId, promote } = adj
-  return {
-    ...base,
-    characters: base.characters.map(char => {
-      if (char.slot !== targetSlot) return char
-      const skills = catalogStore.getAgentSkills(char.agentId)
-      const ultMoveDef = findMoveById(skills, ultimateMoveId)
-      const ultMult = ultMoveDef?.rows.find(r => r.id === 'damage')?.values[0] ?? 0
-      const ultBuildUp = ultMoveDef?.rows.find(r => r.id === 'anomaly_buildup')?.values[0] ?? 0
-      // 轴即最终次数：连携次数已从轴直接读出（N），60/90 转大只叠加赠送大招，不再「连携-1 大招+1」改写。
-      // 转大白送的终结技独立成行（source='gift'），不并入目标原始终结技行——否则赠送归因（击破手对比的 gift 列）会丢失。
-      return {
-        ...char,
-        ultimateCount: (char.ultimateCount ?? 0) + promote,
-        executions: [
-          ...char.executions,
-          {
-            moveId: ultimateMoveId,
-            moveName: '好评转大·队友终结技',
-            category: 'chain',
-            count: promote,
-            actionTime: 0,
-            source: 'gift',
-            comboAlignRatio: 0,
-            totalTime: 0,
-            totalComboAlignTime: 0,
-            energyConsume: 0,
-            totalEnergyConsume: 0,
-            decibelRecovery: 0,
-            totalDecibelRecovery: 0,
-            energyRecovery: 0,
-            totalEnergyRecovery: 0,
-            damageMultiplier: ultMult,
-            damageMultiplierOverride: ultMult > 0,
-            anomalyBuildUp: ultBuildUp,
-            totalAnomalyBuildUp: ultBuildUp * promote,
-            skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
-            skillDamageTarget: 'ultimate',
-          },
-        ],
-      }
-    }),
-  }
-}
-const { parseReleaseMultiplier, safeElement, elementLabel, buildMechanicTeamMembers, computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionElement, getWindInfectionCoverage, buildAnomalyVirtualPanel, buildAnomalySettlementEntries, getRemielleLevelValue, remielleSpecialVoidflareCount, calcVoidflareDamage, findMoveById, enrichExecutionPlan, buildCharConfig, extractSkillExecutions, applyTeamMechanics } = ResourceCalcHelpers
+const { computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, remielleSpecialVoidflareCount, findMoveById, enrichExecutionPlan, buildCharConfig, extractSkillExecutions, applyTeamMechanics, buildAnomalyVirtualPanel } = ResourceCalcHelpers
 export function useResourceCalc() {
   const configStore = useConfigStore()
   const catalogStore = useCatalogStore()
@@ -228,83 +165,6 @@ export function useResourceCalc() {
   // Round 0: 无易伤 → 畏缩覆盖率初算
   // Round 1: 有易伤 → 畏缩覆盖率修正 → 最终收敛
 
-  /**
- * 诺姆膛温换连携：帽子把戏触发上一位角色的快速支援→替换为连携技，连携归属上一位队友。
- * C4 时诺姆和对应代理人（上一位队友）各 +200 不可分享喧响（unshareableBonus，无伴随获取）。
- */
-function applyNormaHatChain(
-  base: TeamResourceResult | null,
-  configStore: ReturnType<typeof useConfigStore>,
-  catalogStore: ReturnType<typeof useCatalogStore>,
-): TeamResourceResult | null {
-  if (!base) return null
-  const normaIdx = configStore.team.findIndex(char => {
-    const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
-    return a?.id === '1571' || a?.teammateBuffId === '1571'
-  })
-  if (normaIdx < 0) return base
-  const normaResult = base.characters.find(c => c.slot === normaIdx)
-  const normaSrc = normaResult?.normaMechanicSource
-  if (!normaSrc) return base
-  const hatCount = Math.max(0, Math.floor(normaSrc.hatToChainCount))
-  if (hatCount <= 0) return base
-
-  // 上一位队友（环绕，排除自己）
-  const targetSetting = configStore.getMechanicSetting('liuyin.ultimateTargetSlot', -1)
-  const targetSlot = resolveUltimateTargetSlot(normaIdx, configStore.team.length, targetSetting)
-  // 帽子把戏替换的是「上一位队友的快速支援→该队友本人的连携技」（用户口径：赠送连携给上一位队友打，
-  // 不是诺姆替打自己的 1571018）——连携招式 id/倍率/时长全部取目标队友技能表。
-  // C4 喧响（诺姆+队友各 200×次数）已由资源池 calcDecibelSource 计入（buildResourceResult 回写
-  // cfg.normaHatToChainCount → 下一轮迭代注入 extraUnshareableDecibel，真实影响终结技次数），
-  // applyNormaHatChain 只做连携赠送，不再重复注入喧响。
-  // 赠送连携行需自带倍率表值（applyNormaHatChain 在 enrich 之后执行，不走 enrich 回填；
-  // 缺倍率则伤害池按 damageMultiplier≤0 跳过、失衡池无 baseDaze——带上后伤害/失衡才进池）
-  const targetAgentId = configStore.team[targetSlot]?.agentId ?? ''
-  const targetSkills = catalogStore.getAgentSkills(targetAgentId)
-  const chainInfo = targetSkills ? findChainAttack(targetSkills) : null
-  if (!chainInfo) return base
-  const giftedMove = findMoveById(targetSkills, chainInfo.moveId)
-  const giftedDamage = giftedMove?.rows?.find(r => r.id === 'damage')?.values?.[0] ?? 0
-  const giftedDaze = giftedMove?.rows?.find(r => r.id === 'daze')?.values?.[0] ?? 0
-  const giftedAnomaly = giftedMove?.rows?.find(r => r.id === 'anomaly_buildup')?.values?.[0] ?? 0
-
-  return {
-    ...base,
-    characters: base.characters.map(char => {
-      if (char.slot !== targetSlot) return char
-      // 上一位队友：连携次数 +hatCount、执行计划补其本人连携技执行（C4 喧响在资源池）
-      return {
-        ...char,
-        chainCountTotal: (char.chainCountTotal ?? 0) + hatCount,
-        executions: [...(char.executions ?? []), {
-          moveId: chainInfo.moveId,
-          moveName: `${giftedMove?.name?.zhCN || '连携技'}（诺姆膛温替换）`,
-          category: 'chain',
-          count: hatCount,
-          actionTime: chainInfo.actionTime,
-          comboAlignRatio: chainInfo.comboAlignRatio,
-          totalTime: hatCount * chainInfo.actionTime,
-          totalComboAlignTime: hatCount * chainInfo.actionTime * chainInfo.comboAlignRatio,
-          energyConsume: 0,
-          totalEnergyConsume: 0,
-          decibelRecovery: chainInfo.decibelRecovery,
-          totalDecibelRecovery: chainInfo.decibelRecovery * hatCount,
-          energyRecovery: 0,
-          totalEnergyRecovery: 0,
-          damageMultiplier: giftedDamage,
-          damageMultiplierOverride: giftedDamage > 0,
-          dazeMultiplier: giftedDaze,
-          dazeMultiplierOverride: giftedDaze > 0,
-          anomalyBuildUp: giftedAnomaly,
-          source: 'gift',
-          skillTableNote: '诺姆预热膛温≥80%帽子把戏：上一位队友的快速支援替换为其本人连携技（招式与倍率取该队友技能表）',
-          normaGiftChain: true,
-        }],
-      }
-    }),
-  }
-}
-
 /** 从某个资源池结果提取异常 execs（参数化） */
   function extractAnomalyExecsFrom(res: TeamResourceResult): AnomalySkillExecution[] {
     const execs: AnomalySkillExecution[] = []
@@ -371,147 +231,6 @@ function applyNormaHatChain(
       giftedTriggerSlot: alice?.slot,
       agentMechanics: getRegisteredAgentMechanics(),
     })
-  }
-
-  /** 琉音好评转大参数（从某轮资源池结果构建：目标队友、连携/终结技 moveId、好评总量、客诉抱拳数） */
-  interface LiuyinPromoteParams {
-    goodReviewTotal: number
-    hug60Setting: number
-    targetSlot: number
-    chainMoveId: string
-    ultimateMoveId: string
-    chainCountPerStun: number
-    ultDaze: number
-    ultElement: string
-  }
-  function buildPromoteParams(rr: TeamResourceResult): LiuyinPromoteParams | null {
-    const liuyinIdx = configStore.team.findIndex(char => {
-      const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return a?.id === '1481' || a?.teammateBuffId === '1481'
-    })
-    if (liuyinIdx < 0) return null
-    const liuyinSrc = rr.characters.find(c => c.slot === liuyinIdx)?.liuyinMechanicSource
-    if (!liuyinSrc) return null
-    const hug60Setting = configStore.getMechanicSetting('liuyin.hug60Count', -1)
-    const targetSetting = configStore.getMechanicSetting('liuyin.ultimateTargetSlot', -1)
-    const targetSlot = resolveUltimateTargetSlot(liuyinIdx, configStore.team.length, targetSetting)
-    const targetAgentId = configStore.team[targetSlot]?.agentId ?? ''
-    const targetChar = rr.characters.find(c => c.slot === targetSlot)
-    const targetSkills = targetAgentId ? catalogStore.getAgentSkills(targetAgentId) : undefined
-    const ult = targetSkills ? findUltimate(targetSkills) : null
-    const ultMove = ult?.moveId ? findMoveById(targetSkills, ult.moveId) : null
-    const ultDaze = ultMove?.rows.find(r => r.id === 'daze')?.values[0] ?? 0
-    const chain = targetSkills ? findChainAttack(targetSkills) : null
-    const ultElement = (targetAgentId && catalogStore.getAgent(targetAgentId)?.damageElement) || 'physical'
-    return {
-      goodReviewTotal: liuyinSrc.goodReviewTotal,
-      hug60Setting,
-      targetSlot,
-      chainMoveId: chain?.moveId ?? '',
-      ultimateMoveId: ult?.moveId ?? '',
-      chainCountPerStun: targetChar?.chainCountPerStun ?? 0,
-      ultDaze,
-      ultElement,
-    }
-  }
-
-  /**
-   * 转大不动点：抱拳命中→检查好评≥90 打开大招选择窗口→60 转大（有连携窗口：目标队友连携 -1、终结技 +1）
-   * 或 90 转大（无连携窗口：终结技 +1）。倍率表全走目标队友执行计划自然调用。
-   * 正反馈：转大终结技 daze 进失衡池 → 失衡次数变 → 60 抱拳默认按失衡次数 → 转大次数变；
-   * 好评≥90 开窗次数（floor(好评/90)）是硬上限，正反馈单调有界必收敛（MAX_PROMOTE_ITER 轮兜底）。
-   */
-  function adjustStunExecs(
-    execs: StunSkillExecution[],
-    p: LiuyinPromoteParams,
-    hug60: number,
-    promote: number,
-    subtractChain = true,
-  ): StunSkillExecution[] {
-    if (hug60 <= 0 && promote <= 0) return execs
-    const out: StunSkillExecution[] = []
-    let ultPushed = false
-    for (const e of execs) {
-      if (e.slot === p.targetSlot && e.moveId === p.ultimateMoveId) {
-        if (promote > 0) { out.push({ ...e, count: e.count + promote }); ultPushed = true }
-        else out.push(e)
-      } else if (e.slot === p.targetSlot && e.moveId === p.chainMoveId) {
-        // 无轴兜底：60转大消耗连携窗口 → 连携 daze 减 hug60；有轴：连携与60转大独立列出，不互相改写
-        if (subtractChain && hug60 > 0) out.push({ ...e, count: Math.max(0, e.count - hug60) })
-        else out.push(e)
-      } else out.push(e)
-    }
-    if (promote > 0 && !ultPushed && p.ultDaze > 0) {
-      out.push({
-        moveId: p.ultimateMoveId,
-        moveName: '好评转大·队友终结技',
-        slot: p.targetSlot,
-        count: promote,
-        baseDaze: p.ultDaze,
-        element: p.ultElement,
-        skillType: 'ultimate',
-      })
-    }
-    return out
-  }
-
-  /** 转大不动点：给定基础失衡 execs 与畏缩覆盖率，迭代（失衡次数 ↔ 好评转大次数）至收敛 */
-  function promoteFixpoint(
-    baseExecs: StunSkillExecution[],
-    flinchRate: number,
-    p: LiuyinPromoteParams | null,
-    axisHug: { hug60: number; hug90: number } | null,
-    axisMode: boolean,
-    inAxisFractionProvider?: (stunCount: number, execs: StunSkillExecution[]) => Record<string, number>,
-    refundStunRatio = 0,
-  ): { pool: StunPoolResult | null; hug60: number; promote: number; targetSlot: number; chainMoveId: string; ultimateMoveId: string } {
-    const chainCountPerStun = configStore.team.reduce((sum, c) => sum + (c.chainCountPerStun ?? 0), 0)
-    const runPool = (execs: StunSkillExecution[], inAxisFraction?: Record<string, number>) => calcStunPool({
-      executions: execs, panels: panels.value, bossStunValue: configStore.enemy.stunValue,
-      chainCountPerStun, enemyStunResistances: configStore.enemy.stunResistances ?? configStore.enemy.resistances ?? {},
-      physicalFlinchCoverageRate: flinchRate,
-      inAxisStunFractionByKey: inAxisFraction,
-      refundStunRatio,
-      stunGift: configStore.enemy.bossStunGift ?? 0,
-    })
-
-    let stunCount = 0
-    let hug60 = 0
-    let promote = 0
-    let pool: StunPoolResult | null = null
-    const seenStunCounts = new Set<number>()
-    for (let k = 0; k < MAX_PROMOTE_ITER; k++) {
-      // 有轴时：60/90 转大次数直接读轴（轴即最终次数，无连携↔大招改写），否则按好评/连携窗口推导
-      let hug90 = 0
-      if (p && axisMode) {
-        hug60 = axisHug?.hug60 ?? 0
-        hug90 = axisHug?.hug90 ?? 0
-      } else if (p) {
-        const chainExecCount = baseExecs.find(e => e.slot === p.targetSlot && e.moveId === p.chainMoveId)?.count ?? 0
-        const targetChainTotal = Math.min(p.chainCountPerStun * stunCount, chainExecCount)
-        const hug = computeLiuyinHugCounts(p.goodReviewTotal, stunCount, p.hug60Setting, targetChainTotal)
-        hug60 = hug.hug60
-        hug90 = hug.hug90
-      }
-      promote = hug60 + hug90
-      const execs = p && promote > 0 ? adjustStunExecs(baseExecs, p, hug60, promote, !axisMode) : baseExecs
-      const inAxisFraction = inAxisFractionProvider ? inAxisFractionProvider(stunCount, execs) : undefined
-      pool = runPool(execs, inAxisFraction)
-      const next = pool?.stunCount ?? 0
-      if (next === stunCount) break
-      // 离散 floor 可能产生 2-循环（如 5→4→5），检测到重复即停，保留最后计算结果
-      if (seenStunCounts.has(next)) break
-      seenStunCounts.add(stunCount)
-      stunCount = next
-    }
-    return {
-      pool,
-      hug60,
-      promote,
-      targetSlot: p?.targetSlot ?? -1,
-      chainMoveId: p?.chainMoveId ?? '',
-      ultimateMoveId: p?.ultimateMoveId ?? '',
-    }
   }
 
   /**
@@ -706,39 +425,35 @@ function applyNormaHatChain(
     return out
   }
 
-  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevParrySplit: ParrySplitResult | null = null, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevGraceC1Cycles = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0, prevPromiaTriggerHits = 0, prevPromiaTeammateReleases = 0, prevInStunWindowTriggers = 0, prevEllenFreezeCount = 0, prevPromiaReleaseDecibel = 0, prevDecibelParry = 0): {
-    resourceResult: TeamResourceResult
-    stunPool: StunPoolResult | null
-    anomalyPool: AnomalyPoolResult | null
-    adjustedResourceResult: TeamResourceResult | null
-    promote: number
-    hug60: number
-    stunCoverage: number
-    resolvedAxes: StunAxis[]
-    matchedPlanName: string | null
-    goodReview: number
-    energyBySlot: Record<number, number>
-    auricInkTriggerCount: number
-    banyueTopUp: BanyueInteractionTopUp
-    parrySplit: ParrySplitResult
-    yixuanFuFaForJufufu: number
-    teamUltimateForJufufu: number
-    yeshuguangGiftUlt: number
-    anbyZeroTeammateWl: number
-    lucyTeammateEx: number
-    lighterTeamEnergy: number
-    graceC1Cycles: number
-    vivianTeamEx: number
-    vivianAnomalyTriggers: number
-    promiaTriggerHits: number
-    promiaTeammateReleases: number
-    promiaReleaseDecibel: number
-    inStunWindowTriggers: number
-    inStunAnomalyState: InStunAnomalySummary | null
-    bossAnomalyState: BossAnomalyStateResult | null
-    ellenFreezeCount: number
-    decibelParry: number
-  } | null {
+  /**
+   * 单轮计算：给定失衡次数输入与上一轮收敛线程，重算资源池（连携 = 每失衡连携数 × 失衡次数）→
+   * 转大不动点 → 失衡池 → 易伤覆盖率 → 异常池。跨轮反馈量统一走 threads（见 roundThreads.ts，
+   * 含各线程的语义注释）；返回 threadsNext 供外层不动点传入下一轮。
+   */
+  function runCalcRound(stunCount: number, threads: CalcRoundThreads): CalcRoundResult | null {
+    const {
+      goodReview: prevGoodReview,
+      energyBySlot: prevEnergyBySlot,
+      auricInkFlash: prevAuricInkFlash,
+      anomalyDecibelBonus: prevAnomalyDecibelBonus,
+      banyueTopUp: prevBanyueTopUp,
+      parrySplit: prevParrySplit,
+      yixuanFuFaForJufufu: prevYixuanFuFaForJufufu,
+      teamUltimateForJufufu: prevTeamUltimateForJufufu,
+      yeshuguangGiftUlt: prevYeshuguangGiftUlt,
+      lucyTeammateEx: prevLucyTeammateEx,
+      lighterTeamEnergy: prevLighterTeamEnergy,
+      graceC1Cycles: prevGraceC1Cycles,
+      anbyZeroTeammateWl: prevAnbyZeroTeammateWl,
+      vivianTeamEx: prevVivianTeamEx,
+      vivianAnomalyTriggers: prevVivianAnomalyTriggers,
+      promiaTriggerHits: prevPromiaTriggerHits,
+      promiaTeammateReleases: prevPromiaTeammateReleases,
+      promiaReleaseDecibel: prevPromiaReleaseDecibel,
+      inStunWindowTriggers: prevInStunWindowTriggers,
+      ellenFreezeCount: prevEllenFreezeCount,
+      decibelParry: prevDecibelParry,
+    } = threads
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
     // 条件轴：按上一轮收敛出的好评/闪能（首轮缺省 → 条件方案未命中走兜底）解析生效轴
@@ -1344,7 +1059,7 @@ function applyNormaHatChain(
     }
     const baseStun = extractStunExecsFrom(rr)
     const baseAnomaly = extractAnomalyExecsFrom(rr)
-    const p = buildPromoteParams(rr)
+    const p = buildPromoteParams(configStore, catalogStore, rr)
     if (baseStun.length === 0) return null
     const goodReview = rr.characters.find(c => c.liuyinMechanicSource)?.liuyinMechanicSource?.goodReviewTotal ?? -1
     const energyBySlot: Record<number, number> = {}
@@ -1402,13 +1117,13 @@ function applyNormaHatChain(
       : 0
 
     // Round 0：无易伤 → 畏缩覆盖率初算
-    const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, inAxisFractionProvider, hugoRefundRatio)
+    const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, hugoRefundRatio)
     const adj0 = applyLiuyinPromote(rr, sp0, catalogStore)
     const ap0 = calcAnomalyPoolInput(0, adj0 ? extractAnomalyExecsFrom(adj0) : baseAnomaly)
 
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
     const flinch1 = ap0?.coverage?.physicalCoverageRate ?? 0
-    const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, inAxisFractionProvider, hugoRefundRatio)
+    const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, hugoRefundRatio)
 
     // Boss 预设弹刀反推下一轮量（保底4失衡）：本轮失衡池（含注入的击破位弹刀）→ 非弹刀基数 → 缺口 → 补齐。
     // 击破位弹刀行（轻弹刀 + 支援突击，count 随弹刀次数缩放）：行贡献剔出非弹刀基数（防 0↔T 振荡），
@@ -1722,33 +1437,54 @@ function applyNormaHatChain(
       anomalyPool: ap1,
       adjustedResourceResult: adj2,
       promote: sp1.promote,
-      auricInkTriggerCount: ap1?.perElement?.find(p => p.element === 'ether_ink')?.triggerCount ?? 0,
-      hug60: sp1.hug60,
       stunCoverage: cov1,
       resolvedAxes,
       matchedPlanName: planName,
-      goodReview,
-      energyBySlot,
-      promiaTriggerHits: promiaTriggerHitsNext,
-      promiaTeammateReleases: promiaTeammateReleasesNext,
-      promiaReleaseDecibel: promiaReleaseDecibelNext,
-      inStunWindowTriggers: inStunWindowTriggersNext,
+      banyueTopUp: banyueTopUpNext,
+      parrySplit: parrySplitNext,
       inStunAnomalyState: inStunAnomalyStateNext,
       bossAnomalyState: bossAnomalyStateNext,
-      banyueTopUp: banyueTopUpNext,
-      decibelParry: decibelParryNext,
-      parrySplit: parrySplitNext,
-      yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
-      teamUltimateForJufufu: teamUltimateForJufufuNext,
-      yeshuguangGiftUlt: yeshuguangGiftUltNext,
-      anbyZeroTeammateWl: anbyZeroTeammateWlNext,
-      lucyTeammateEx: lucyTeammateExNext,
-      lighterTeamEnergy: lighterTeamEnergyNext,
-      graceC1Cycles: graceC1CyclesNext,
-      vivianTeamEx: vivianTeamExNext,
-      vivianAnomalyTriggers: vivianAnomalyTriggersNext,
-      ellenFreezeCount: ellenFreezeCountNext,
+      threadsNext: {
+        goodReview,
+        energyBySlot,
+        auricInkFlash: ap1?.perElement?.find(p => p.element === 'ether_ink')?.triggerCount ?? 0,
+        anomalyDecibelBonus: [],
+        banyueTopUp: banyueTopUpNext,
+        parrySplit: parrySplitNext,
+        yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
+        teamUltimateForJufufu: teamUltimateForJufufuNext,
+        yeshuguangGiftUlt: yeshuguangGiftUltNext,
+        lucyTeammateEx: lucyTeammateExNext,
+        lighterTeamEnergy: lighterTeamEnergyNext,
+        graceC1Cycles: graceC1CyclesNext,
+        anbyZeroTeammateWl: anbyZeroTeammateWlNext,
+        vivianTeamEx: vivianTeamExNext,
+        vivianAnomalyTriggers: vivianAnomalyTriggersNext,
+        promiaTriggerHits: promiaTriggerHitsNext,
+        promiaTeammateReleases: promiaTeammateReleasesNext,
+        promiaReleaseDecibel: promiaReleaseDecibelNext,
+        inStunWindowTriggers: inStunWindowTriggersNext,
+        ellenFreezeCount: ellenFreezeCountNext,
+        decibelParry: decibelParryNext,
+      },
     }
+  }
+
+  /** 单轮计算输出：下游 computed 消费的计算结果（10 个字段）+ 下一轮收敛线程 */
+  interface CalcRoundResult {
+    resourceResult: TeamResourceResult
+    stunPool: StunPoolResult | null
+    anomalyPool: AnomalyPoolResult | null
+    adjustedResourceResult: TeamResourceResult | null
+    promote: number
+    stunCoverage: number
+    resolvedAxes: StunAxis[]
+    matchedPlanName: string | null
+    banyueTopUp: BanyueInteractionTopUp
+    parrySplit: ParrySplitResult
+    inStunAnomalyState: InStunAnomalySummary | null
+    bossAnomalyState: BossAnomalyStateResult | null
+    threadsNext: CalcRoundThreads
   }
 
   /**
@@ -1761,28 +1497,8 @@ function applyNormaHatChain(
     // 但异常喧响/终结技次数反馈仍收敛，避免与资源利用率页口径分裂
     const lockedStunCount = configStore.enemy.stunCountLock ?? -1
     let stunCount = lockedStunCount >= 0 ? lockedStunCount : 0
-    let out: ReturnType<typeof runCalcRound> = null
-    let prevGoodReview = -1
-    let prevEnergyBySlot: Record<number, number> = {}
-    let prevAuricInkFlash = 0
-    let prevYixuanFuFaForJufufu = 0
-    let prevTeamUltimateForJufufu = 0
-    let prevYeshuguangGiftUlt = 0
-    let prevAnbyZeroTeammateWl = 0
-    let prevLucyTeammateEx = 0
-    let prevLighterTeamEnergy = 0
-    let prevGraceC1Cycles = 0
-    let prevVivianTeamEx = 0
-    let prevVivianAnomalyTriggers = 0
-    let prevPromiaTriggerHits = 0
-    let prevPromiaTeammateReleases = 0
-    let prevPromiaReleaseDecibel = 0
-    let prevInStunWindowTriggers = 0
-    let prevEllenFreezeCount = 0
-    let prevAnomalyDecibelBonus: number[] = []
-    let prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }
-    let prevParrySplit: ParrySplitResult | null = null
-    let prevDecibelParry = 0
+    let out: CalcRoundResult | null = null
+    let threads = initialCalcRoundThreads()
     let prevUltSeq = ''
     let prevAnomalySeq = ''
     let prevTopUpSeq = ''
@@ -1802,12 +1518,14 @@ function applyNormaHatChain(
       outerRounds = k + 1
       // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
       const locked = lockedStunCount >= 0
-      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevParrySplit, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevGraceC1Cycles, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers, prevPromiaTriggerHits, prevPromiaTeammateReleases, prevInStunWindowTriggers, prevEllenFreezeCount, prevPromiaReleaseDecibel, prevDecibelParry)
-      const ait = out?.auricInkTriggerCount ?? 0
-      const gr = out?.goodReview
-      if (gr !== undefined && gr >= 0) prevGoodReview = gr
-      const eb = out?.energyBySlot
-      if (eb) prevEnergyBySlot = eb
+      out = runCalcRound(stunCount, threads)
+      // null 轮（如无失衡行队伍）：反馈线程按 threadsAfterNullRound 规则回退（持久组保留、其余重置）
+      if (!out) {
+        threads = threadsAfterNullRound(threads)
+        continue
+      }
+      const t = out.threadsNext
+      const ait = t.auricInkFlash
       const rawNext = out?.stunPool?.stunCount ?? 0
       // 净失衡缩放 + 时间可行性截断：非失衡占比缩放全来源净失衡，超出可容纳窗口数的残失衡按残差时间系数折成小数
       let next = rawNext
@@ -1837,38 +1555,22 @@ function applyNormaHatChain(
       const anomalySeq = (out?.anomalyPool?.perSlotBonus ?? []).map(v => Math.round(v)).join(',')
       const topUpSeq = `${out?.banyueTopUp?.parry},${out?.banyueTopUp?.dual}`
       const parrySplitSeq = out?.parrySplit ? `${out.parrySplit.breakerParry},${out.parrySplit.mainDpsParry}` : ''
-      const decibelParrySeq = `${out?.decibelParry ?? 0}`
+      const decibelParrySeq = `${t.decibelParry ?? 0}`
       const feedbackStable = ultSeq === prevUltSeq && anomalySeq === prevAnomalySeq && topUpSeq === prevTopUpSeq && parrySplitSeq === prevParrySplitSeq && decibelParrySeq === prevDecibelParrySeq
       if (lockedStunCount >= 0) {
         if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
       } else {
         // 失衡次数与玄墨异常触发次数双稳定才收敛（异常触发 → 回闪能 → 强特 → 积蓄 → 触发）
         // 小数失衡时代：浮点比较改 0.05 容差；2-循环去重键取 0.1 粒度
-        if (Math.abs(next - stunCount) < 0.05 && ait === prevAuricInkFlash && feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
+        if (Math.abs(next - stunCount) < 0.05 && ait === threads.auricInkFlash && feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
         if (seenStunCounts.has(Math.round(next * 10))) { outerExit = 'cycle'; break }
         seenStunCounts.add(Math.round(stunCount * 10))
         stunCount = next
       }
-      prevAnomalyDecibelBonus = out?.anomalyPool?.perSlotBonus ?? []
-      prevAuricInkFlash = ait
-      prevBanyueTopUp = out?.banyueTopUp ?? prevBanyueTopUp
-      prevParrySplit = out?.parrySplit ?? prevParrySplit
-      prevDecibelParry = out?.decibelParry ?? prevDecibelParry
+      // 线程推进：anomalyDecibelBonus 旧版从 out.anomalyPool 现取（threadsNext 内置空数组占位），
+      // 其余 = threadsNext（runCalcRound 已按 prev 兜底算好下一轮值）
+      threads = { ...t, anomalyDecibelBonus: out?.anomalyPool?.perSlotBonus ?? [] }
       prevDecibelParrySeq = decibelParrySeq
-      prevYixuanFuFaForJufufu = out?.yixuanFuFaForJufufu ?? 0
-      prevTeamUltimateForJufufu = out?.teamUltimateForJufufu ?? 0
-      prevYeshuguangGiftUlt = out?.yeshuguangGiftUlt ?? 0
-      prevAnbyZeroTeammateWl = out?.anbyZeroTeammateWl ?? 0
-      prevLucyTeammateEx = out?.lucyTeammateEx ?? 0
-      prevLighterTeamEnergy = out?.lighterTeamEnergy ?? 0
-      prevGraceC1Cycles = out?.graceC1Cycles ?? 0
-      prevVivianTeamEx = out?.vivianTeamEx ?? 0
-      prevVivianAnomalyTriggers = out?.vivianAnomalyTriggers ?? 0
-      prevPromiaTriggerHits = out?.promiaTriggerHits ?? 0
-      prevPromiaTeammateReleases = out?.promiaTeammateReleases ?? 0
-      prevPromiaReleaseDecibel = out?.promiaReleaseDecibel ?? 0
-      prevInStunWindowTriggers = out?.inStunWindowTriggers ?? 0
-      prevEllenFreezeCount = out?.ellenFreezeCount ?? 0
       prevUltSeq = ultSeq
       prevAnomalySeq = anomalySeq
       prevTopUpSeq = topUpSeq
@@ -2177,1372 +1879,32 @@ function applyNormaHatChain(
   })
 
   /** 伤害池：按角色/事件拆分直伤、异放、乱流（消费转大修正后的执行计划） */
-  const damagePoolRows = computed<DamagePoolRow[]>(() => {
-    if (!adjustedResourceResult.value || damagePanels.value.length === 0) return []
-    const rows: DamagePoolRow[] = []
-    const enemyDamageRes = configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}
-    const isAxis = (configStore.useStunAxis || autoActive.value) && stunAxisResult.value
-    const allocMap = axisAllocation.value
-    const attachedInAxis = attachedInAxisMap.value
-    // 轴内涉及的槽位（有轴内动作的槽位）；其余槽位（如换了辅助、没进轴）走全局覆盖率「单独算」
-    const axisSlots = new Set<number>()
-    for (const a of Object.values(allocMap)) axisSlots.add(a.slot)
-    // 记录已认领的轴内单位数，避免同 moveId 多行（如诺姆膛温换连携）重复认领
-    const claimedInAxis: Record<string, number> = {}
-
-    function agentName(agentId: string, slot: number) {
-      return agentNames.value[agentId] || catalogStore.getAgent(agentId)?.name?.zhCN || `槽${slot + 1}`
-    }
-    const infectionElement = getWindInfectionElement(configStore, catalogStore)
-    const windSlot = configStore.team.findIndex(c => {
-      const agent = c.agentId ? catalogStore.getAgent(c.agentId) : null
-      return agent?.damageElement === 'wind'
-    })
-
-    /** 把一个 (slot, moveId) 的总单位数切成轴内/轴外两段（轴外段无易伤） */
-    function axisSplitFor(slot: number, moveId: string, totalUnits: number): { inUnits: number; outUnits: number } {
-      if (!isAxis) return { inUnits: 0, outUnits: totalUnits }
-      const key = `${slot}:${moveId === 'basic_attack' ? 'basic' : moveId}`
-      const alloc = allocMap[key]
-      if (!alloc || alloc.inAxisUnits <= 0) return { inUnits: 0, outUnits: totalUnits }
-      const already = claimedInAxis[key] ?? 0
-      const remainingIn = Math.max(0, alloc.inAxisUnits - already)
-      const inUnits = Math.min(remainingIn, totalUnits)
-      claimedInAxis[key] = already + inUnits
-      return { inUnits, outUnits: totalUnits - inUnits }
-    }
-
-    /** 伴随事件易伤：非轴模式用全局覆盖率；轴模式跟随父动作是否完全落在窗口内（0/1） */
-    function axisStunFor(moveId: string): number {
-      if (!isAxis) return stunCoverage.value
-      return attachedInAxis[moveId] ?? 0
-    }
-
-    function pushDirect(row: {
-      id: string; slot: number; agentId: string; name: string; element: string; source: string; count: number; multiplier: number; note?: string; skillDamageTarget?: any; moveId?: string; critRateBonus?: number; critDmgBonus?: number; dmgBonus?: number; sheerDmgBonus?: number; flatDamageBonus?: number; resIgnore?: number; basisValueOverride?: number; basisLabelOverride?: string; stunOverride?: number; defIgnore?: number; penRatioBonus?: number; sourceTag?: 'gift' | 'stun' | 'self'
-    }) {
-      if (row.count <= 0 || row.multiplier <= 0) return
-      const basePanel = damagePanels.value[row.slot]
-      if (!basePanel) return
-      // 行级穿透率（如希格莉德影画2 出枪式/敛枪式 +24%）：浅克隆面板叠加 penRatio，其余字段不变
-      const panel = row.penRatioBonus
-        ? { ...basePanel, penRatio: (basePanel.penRatio ?? 0) + row.penRatioBonus }
-        : basePanel
-      const stunForThis = row.stunOverride !== undefined
-        ? row.stunOverride
-        : stunCoverage.value
-      // 叶瞬光帷幕易伤：满易伤时倍率 = min(boss.stunVuln, panel.yeshuguangStunCapMult ?? 2.1)
-      let stunBase = configStore.enemy.stunVuln
-      if (row.agentId === '1431' && (panel as any).yeshuguangStunCapMult && stunForThis > 0) {
-        stunBase = Math.min(stunBase, Number((panel as any).yeshuguangStunCapMult) || 2.1)
-      }
-      const stunMultVal = stunForThis > 0
-        ? 1 + (stunBase - 1) * stunForThis
-        : 1
-      const rowAgent = catalogStore.getAgent(row.agentId)
-      const result = calcDirectDamage({
-        panel,
-        skillMultiplier: row.multiplier,
-        damageElement: safeElement(row.element),
-        damageBasis: 'atk',
-        enemyDefense: configStore.enemy.defense,
-        enemyDefReduction: row.defIgnore ?? 0,
-        enemyDefFlatReduction: 0,
-        enemyLevel: configStore.enemy.level,
-        enemyResistance: enemyDamageRes[row.element] ?? 0,
-        enemyResReduction: (panel.enemyResReduction ?? 0) + (row.resIgnore ?? 0),
-        stunMultiplier: stunBase,
-        stunned: stunForThis,
-        critMode: 'expect',
-        count: row.count,
-        skillDamageTarget: row.skillDamageTarget,
-        critRateBonus: row.critRateBonus,
-        critDmgBonus: row.critDmgBonus,
-        dmgBonus: row.dmgBonus,
-        sheerDmgBonus: row.sheerDmgBonus,
-        flatDamageBonus: row.flatDamageBonus,
-        infectionElement,
-        basisValueOverride: row.basisValueOverride,
-        basisLabelOverride: row.basisLabelOverride,
-        specialDamageProfile: rowAgent ? resolveSpecialDamageProfile(rowAgent) : undefined,
-      })
-      rows.push({
-        id: row.id,
-        slot: row.slot,
-        agentId: row.agentId,
-        agentName: agentName(row.agentId, row.slot),
-        type: '直伤',
-        name: row.name,
-        element: row.element,
-        source: row.source,
-        count: row.count,
-        perDamage: row.count > 0 ? result.damage / row.count : 0,
-        totalDamage: result.damage,
-        note: row.note ?? '',
-        stunMult: stunMultVal,
-        moveId: row.moveId,
-        sourceTag: row.sourceTag,
-      })
-    }
-
-    function pushRelease(row: { id: string; slot: number; agentId: string; name: string; count: number; multiplier: number; source: string; note?: string; element?: string; panel?: PanelValues; settlementPanel?: PanelValues; releaseCrit?: AnomalyEventExecution['releaseCrit']; stunnedOverride?: number }) {
-      if (row.count <= 0 || row.multiplier <= 0) return
-      const basePanel = row.panel ?? damagePanels.value[row.slot]
-      const settlementPanel = row.settlementPanel ?? basePanel
-      if (!basePanel) return
-      const element = row.element ?? 'wind'
-      const releaseMod = getAgentMechanic(row.agentId)?.releaseModifier?.({ panels: damagePanels.value })
-        ?? { enemyResReduction: 0, note: '' }
-      // 异放专属暴击（如爱芮影画1）：掌控超过阈值后每点额外加暴击率
-      const critOverride = row.releaseCrit
-        ? {
-            rate: row.releaseCrit.ratePct
-              + Math.max(0, (settlementPanel?.anomalyMastery ?? 0) - (row.releaseCrit.masteryThreshold ?? 0))
-                * (row.releaseCrit.masteryPerPointRatePct ?? 0),
-            dmg: row.releaseCrit.dmgPct,
-            labelPrefix: '异放暴击',
-          }
-        : undefined
-      const result = calcAnomalyDamage({
-        panel: basePanel,
-        settlementPanel,
-        baseMultiplier: row.multiplier,
-        element: element as any,
-        enemyDefense: configStore.enemy.defense,
-        enemyDefReduction: releaseMod.enemyDefReduction ?? 0,
-        enemyDefFlatReduction: 0,
-        enemyLevel: configStore.enemy.level,
-        enemyResistance: enemyDamageRes[element] ?? 0,
-        enemyResReduction: (settlementPanel?.enemyResReduction ?? 0) + releaseMod.enemyResReduction,
-        stunned: row.stunnedOverride ?? stunCoverage.value,
-        stunMultiplier: configStore.enemy.stunVuln,
-        critMode: 'expect',
-        damageKind: 'release',
-        anomalyMultiplier: remielleAnomalyMultiplier.value,
-        anomalyCritOverride: critOverride,
-      })
-      rows.push({
-        id: row.id,
-        slot: row.slot,
-        agentId: row.agentId,
-        agentName: agentName(row.agentId, row.slot),
-        type: '异放',
-        name: row.name,
-        element,
-        source: row.source,
-        count: row.count,
-        perDamage: result.damage,
-        totalDamage: result.damage * row.count,
-        note: `${row.note ?? ''}${releaseMod.note}`,
-      })
-    }
-
-    /** 解析异放倍率：固定 releaseMultiplier（Type A）或「原异常单次倍率 × 比例」（Type B） */
-    function releaseMultiplierFor(event: AnomalyEventExecution, element: string, triggerPanel: PanelValues, stunCov: number): number {
-      if (event.releaseRatio) {
-        const rr = event.releaseRatio
-        const perTenPct = rr.perTenByElement[element] ?? 0
-        const stunMult = (rr.stunBonusPct ?? 0) > 0 ? 1 + ((rr.stunBonusPct ?? 0) / 100) * stunCov : 1
-        // 「相对于原属性异常伤害的比例」句式（南宫羽颤音异放）：倍率 = 原异常单次倍率 × 元素比例%
-        if (rr.basis === 'anomalyDamageRatio') return (ANOMALY_SINGLE_HIT_MULTIPLIER[element] ?? 0) * (perTenPct / 100) * stunMult
-        const basisValue = Number(triggerPanel[rr.basis] ?? 0)
-        return (ANOMALY_SINGLE_HIT_MULTIPLIER[element] ?? 0) * (basisValue / 10) * (perTenPct / 100) * stunMult
-      }
-      return parseReleaseMultiplier(event)
-    }
-
-    // 失衡内异常系统 v2：轴模式下 dominant 归因候选 = 时间线实际活跃元素（窗均覆盖为权重，
-    // 有触发但覆盖极小的元素给最小权重保底）；空数组 = 无时间线可用，回落全局覆盖率近似
-    const inStunAttributionCandidates = (): Array<{ element: string; autoRatio: number }> =>
-      (inStunAnomalyState.value?.elements ?? [])
-        .filter(e => e.avgCoverage > 0 || e.triggerCount > 0)
-        .map(e => ({ element: e.element, autoRatio: e.avgCoverage > 0 ? e.avgCoverage : 0.01 }))
-
-    /**
-     * 事件计数器（用户口径 2026-08-24「异放次数源」）：元素失衡内触发占比 =
-     * 时间线轴内触发数 / 全局池触发数（基础元素归并）。池无该元素数据 → 0（全部视为轴外）。
-     * 非轴场景不建逐事件状态机——轴外 = 总量 − 失衡内（用户裁决，平凡减法）。
-     */
-    const inWindowFraction = (element: string): number => {
-      const base = getBaseElement(element)
-      let total = 0
-      for (const p of anomalyPoolResult.value?.perElement ?? []) {
-        if (getBaseElement(p.element) === base) total += p.triggerCount ?? 0
-      }
-      if (total <= 0) return 0
-      const inside = inStunAnomalyState.value?.elements.find(e => e.element === base)?.triggerCount ?? 0
-      return Math.max(0, Math.min(1, inside / total))
-    }
-
-    /**
-     * 异放失衡易伤拆分：inStunBound 事件全额记失衡内；其余按事件计数器占比拆
-     * 「失衡内(stunned=1 全额易伤)/轴外(stunned=0 无易伤)」两段。非轴模式返回单段旧口径。
-     */
-    const releaseStunSegments = (
-      event: AnomalyEventExecution,
-      element: string,
-      count: number,
-      carrierInAxisFraction?: number,
-    ): Array<{ count: number; stunned: number; suffix: string; tag: string }> => {
-      if (!isAxis || count <= 0) return [{ count, stunned: -1, suffix: '', tag: '' }]
-      if (event.inStunBound) return [{ count, stunned: 1, suffix: '-in', tag: '失衡内·全额失衡易伤' }]
-      // 跟随载体招式（前台招式绑定，玩家捏轴可精确控制）：失衡内占比 = 载体块轴内单位 / 载体总数
-      const frac = event.followCarrierInStun && carrierInAxisFraction !== undefined
-        ? Math.max(0, Math.min(1, carrierInAxisFraction))
-        : inWindowFraction(element)
-      const countIn = Math.min(count, Math.round(count * frac))
-      const segs: Array<{ count: number; stunned: number; suffix: string; tag: string }> = []
-      if (countIn > 0) segs.push({ count: countIn, stunned: 1, suffix: '-in', tag: '失衡内·全额失衡易伤' })
-      if (count - countIn > 0) segs.push({ count: count - countIn, stunned: 0, suffix: '-out', tag: '轴外·无易伤' })
-      return segs
-    }
-
-    const seenDirectIds = new Map<string, number>()
-
-    /** 希希芙蚀骨轴内占比：失衡内回复的毒素占总毒素比例（蛇吻手动消耗 → 失衡内爆发，用户口径 2026-08）。
-     *  毒牙/终结/连携按轴内单位数折算；C2（连携/终结失衡命中）视为全轴内；平A吐信按非平A轴内占比近似。 */
-    const xixifuToxinInAxisFraction = (slot: number, cr: any): number => {
-      const toxin = cr.specResources?.['xixifu_toxin']
-      const total = Math.max(0, (toxin?.initialValue ?? 0) + (toxin?.totalGain ?? 0))
-      if (total <= 0) return 0
-      const g = (toxin?.gains ?? {}) as Record<string, number>
-      const totalEx = Math.max(1, cr.exSpecialCount ?? 0)
-      const totalUlt = Math.max(1, cr.ultimateCount ?? 0)
-      const totalChain = Math.max(1, cr.chainCountTotal ?? 0)
-      const inEx = (allocMap[`${slot}:1521008`]?.inAxisUnits ?? 0) + (allocMap[`${slot}:1521009`]?.inAxisUnits ?? 0)
-      const inUlt = allocMap[`${slot}:1521013`]?.inAxisUnits ?? 0
-      const inChain = allocMap[`${slot}:1521012`]?.inAxisUnits ?? 0
-      const duya = (g.toxin_duya_base ?? 0) + (g.toxin_duya_hold ?? 0)
-      const ult = g.toxin_ultimate ?? 0
-      const chain = g.toxin_chain ?? 0
-      const c2 = g.toxin_c2_stunned_chain_ultimate ?? 0
-      const basic = (g.toxin_tuxin_stage4 ?? 0) + (g.toxin_tuxin_stunned_bonus ?? 0)
-      const nonBasicTotal = duya + ult + chain + c2
-      const nonBasicIn = duya * (inEx / totalEx) + ult * (inUlt / totalUlt) + chain * (inChain / totalChain) + c2
-      const basicIn = basic * (nonBasicTotal > 0 ? nonBasicIn / nonBasicTotal : 0)
-      return Math.max(0, Math.min(1, (nonBasicIn + basicIn) / total))
-    }
-
-    for (const charResult of adjustedResourceResult.value.characters) {
-      const slot = charResult.slot
-      const agent = catalogStore.getAgent(charResult.agentId)
-      const skills = catalogStore.getAgentSkills(charResult.agentId)
-
-      for (const exec of charResult.executions) {
-        if ((exec.damageMultiplier ?? 0) <= 0) continue
-        // 秒均行（普通平A basic_attack 等）：count=0、totalTime=秒数、damageMultiplier=秒均倍率%。
-        // 伤害 = 秒均倍率 × 时间，按 1 次、总倍率结算（通用逻辑：所有角色平A都是秒均倍率算的）。
-        const isPerSecondRow = exec.count <= 0 && (exec.totalTime ?? 0) > 0
-        if (!isPerSecondRow && exec.count <= 0) continue
-        // 琉音三个强特（石头/剪刀/布）在非失衡轴模式下由下方专用块按“失衡次数”拆分易伤，跳过通用直伤。
-        if (charResult.agentId === '1481' && !isAxis && LIUYIN_EX_MOVE_IDS.has(exec.moveId)) continue
-        const move = findMoveById(skills, exec.moveId)
-        const mechanic = getAgentMechanic(charResult.agentId)
-        const burniceCinema = charResult.agentId === '1171' ? configStore.team[slot]?.cinemaLevel ?? 0 : 0
-        const critRateBonus = (burniceCinema >= 4 && (exec.category === 'special' || exec.category === 'assist') ? 30 : 0) + (exec.critRateBonus ?? 0)
-        const critDmgBonus = exec.critDmgBonus ?? 0
-        // 招式限定抗性无视：执行字段（模块 patchExecutions 写入，如仪玄影画2 终/强特 15% 以太减抗）+ 柏妮思 C6 特判
-        const resIgnore = (exec.resIgnore ?? 0) + (burniceCinema >= 6 && (exec.moveId === '1171012' || exec.moveId === '1171013') ? 25 : 0)
-        const resolved = mechanic?.resolveExecutionDamage?.({
-          slot,
-          agent: agent ?? null,
-          skills,
-          move,
-          exec,
-          team: buildMechanicTeamMembers(configStore, catalogStore),
-          cinemaLevel: configStore.team[slot]?.cinemaLevel ?? 0,
-          potentialLevel: configStore.team[slot]?.potentialLevel ?? 6,
-        })
-        const element = resolved?.element ?? move?.damageElement ?? agent?.damageElement ?? 'physical'
-        const execPanel = damagePanels.value[slot]
-        const execSkillLevelBonus = execPanel?.skillLevelBonus ?? 0
-        const execDamageCoef = execSkillLevelBonus > 0 ? getSkillLevelCoef(execSkillLevelBonus).damageCoef : 1
-        // 同 slot 同 moveId 多行（如诺姆膛温替换连携 vs 通用连携）id 加序号去重
-        const baseId = `direct-${slot}-${exec.moveId}`
-        const dup = seenDirectIds.get(baseId) ?? 0
-        seenDirectIds.set(baseId, dup + 1)
-        const rowId = dup > 0 ? `${baseId}-${dup}` : baseId
-        const unitMultiplier = (exec.damageMultiplier ?? 0) * execDamageCoef
-        const totalUnits = isPerSecondRow ? (exec.totalTime ?? 0) : exec.count
-        const baseNote = `${resolved?.note ?? exec.skillTableNote ?? ''}${isPerSecondRow ? '（平A：秒均倍率 × 时间）' : ''}${execSkillLevelBonus > 0 ? ` · 技能等级系数×${execDamageCoef.toFixed(4)}` : ''}`
-        const emitExecDirect = (units: number, stunOverride: number, idSuffix: string, extraNote: string, sourceTag?: 'gift' | 'stun' | 'self') => {
-          if (units <= 0 || unitMultiplier <= 0) return
-          // 般岳明王：6命满覆盖（applyPanel 全局 +39%）；非6命轴模式按时间轴扫描层数（8s 窗口，怒相二连触发）；
-          // 非6命非轴模式按覆盖率滑块近似（满层3×5%×覆盖率）
-          let mingwangDmgBonus = 0
-          const banyueCinema = configStore.team[slot]?.cinemaLevel ?? 0
-          if (charResult.agentId === '1471' && (execPanel?.additionalAbilityActive ?? 0) > 0 && banyueCinema < 6) {
-            if (isAxis) {
-              const stacks = banyueMingwangStacks.value.get(exec.moveId ?? '') ?? 0
-              if (stacks > 0) mingwangDmgBonus = stacks * MINGWANG_BASE_PER_STACK
-            } else {
-              const cov = Math.max(0, Math.min(1, configStore.getMechanicSetting('banyue.mingwangCoverage', 0.5)))
-              mingwangDmgBonus = MINGWANG_BASE_PER_STACK * 3 * cov
-            }
-          }
-          // 可琳额外能力扫除帮手：命中失衡敌人自身伤害+35%。
-          // 轴模式按 buff 轴扫描（轴内所有招式都在失衡窗口内，普攻段归并 basic_attack 聚合行键），
-          // 且只吃轴内段（stunOverride=0 的轴外段敌人未失衡，不符合「命中失衡敌人」条件）；
-          // 非轴模式按覆盖率滑块近似（默认 0.5，用户口径）
-          let corinStunBonus = 0
-          if (charResult.agentId === '1061' && (execPanel?.additionalAbilityActive ?? 0) > 0) {
-            if (isAxis) {
-              corinStunBonus = stunOverride > 0 ? (corinStunBonusMap.value.get(exec.moveId ?? '') ?? 0) : 0
-            } else {
-              const cov = Math.max(0, Math.min(1, configStore.getMechanicSetting('corin.additionalStunCoverage', 0.5)))
-              corinStunBonus = CORIN_ADDITIONAL_DMG * cov
-            }
-          }
-          // 希格莉德额外能力·天际联军：命中[浸染]敌人伤害+15% × 风化侵染覆盖率
-          // （用户口径 2026-02：直接读风化覆盖率；damagePanels 已盖章 windInfectionRate，无风角色=0）
-          let sigridInfectionBonus = 0
-          if (charResult.agentId === '1591' && (execPanel?.additionalAbilityActive ?? 0) > 0) {
-            const rate = Math.max(0, Math.min(1, Number(execPanel?.windInfectionRate ?? 0)))
-            sigridInfectionBonus = SIGRID_INFECTION_DMG * rate
-          }
-          // 仪玄凝神：6 命默认满覆盖（调息送大量符法千重，用户口径：暴伤+40% + 贯穿+20%，不走轴扫描），
-          // yixuan.c6NingshenCoverage 滑块可调；非 6 命轴模式按 buff 轴扫描（大招后 15s 窗口），非轴模式按滑块近似（仅暴伤）
-          const yixuanCinema = configStore.team[slot]?.cinemaLevel ?? 0
-          const yixuanNingshen = charResult.agentId === '1371' && (execPanel?.additionalAbilityActive ?? 0) > 0
-            ? (yixuanCinema >= 6
-              ? {
-                  critDmg: Math.round(40 * Math.max(0, Math.min(1, configStore.getMechanicSetting('yixuan.c6NingshenCoverage', 1)))),
-                  sheerDmg: Math.round(20 * Math.max(0, Math.min(1, configStore.getMechanicSetting('yixuan.c6NingshenCoverage', 1)))),
-                }
-              : isAxis
-                ? (yixuanNingshenMap.value.get(exec.moveId ?? '') ?? { critDmg: 0, sheerDmg: 0 })
-                : { critDmg: Math.round(40 * Math.max(0, Math.min(1, configStore.getMechanicSetting('yixuan.ningshenCoverage', 0.5)))), sheerDmg: 0 })
-            : { critDmg: 0, sheerDmg: 0 }
-          // 佩洛伊斯阳炎：轴模式按 buff 轴扫描（上分支后 21s 窗口，仅上分支/决算终结吃），非轴按覆盖率滑块（默认满）
-          const peiluoKagerouCoverage = Math.max(0, Math.min(1, configStore.getMechanicSetting('peiluo.kagerouCoverage', 1)))
-          // 非轴模式配对折算：上分支全吃；决算按 min(上分支,决算)/决算 的比例吃（无上分支铺垫的决算不吃）
-          const peiluoPairRatio = exec.moveId === '1551016' ? ((exec as any).peiluoKagerouPairRatio ?? 0) : 1
-          const peiluoKagerouCrit = charResult.agentId === '1551'
-            ? (isAxis
-              ? (peiluoKagerouMap.value.get(exec.moveId ?? '') ?? 0)
-              : PEILUO_KAGEROU_CRIT * peiluoKagerouCoverage * peiluoPairRatio)
-            : 0
-          pushDirect({
-            id: `${rowId}${idSuffix}`,
-            slot,
-            agentId: charResult.agentId,
-            name: exec.moveName,
-            element,
-            source: resolved?.source ?? exec.moveId,
-            count: isPerSecondRow ? 1 : units,
-            multiplier: unitMultiplier * (isPerSecondRow ? units : 1),
-            note: `${baseNote}${extraNote}${mingwangDmgBonus > 0 ? ` · 明王+${mingwangDmgBonus.toFixed(1)}%${isAxis ? '（轴内覆盖）' : '（覆盖率近似）'}` : ''}${corinStunBonus > 0 ? ` · 失衡增伤+${corinStunBonus.toFixed(1)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${sigridInfectionBonus > 0 ? ` · 浸染增伤+${sigridInfectionBonus.toFixed(1)}%（风化覆盖率×15%）` : ''}${yixuanNingshen.critDmg > 0 ? ` · 凝神暴伤+${yixuanNingshen.critDmg.toFixed(0)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${yixuanNingshen.sheerDmg > 0 ? ` · 凝神贯穿+${yixuanNingshen.sheerDmg.toFixed(0)}%` : ''}`,
-            moveId: exec.moveId,
-            critRateBonus,
-            critDmgBonus: critDmgBonus + yixuanNingshen.critDmg + peiluoKagerouCrit,
-            dmgBonus: (exec.dmgBonus ?? 0) + mingwangDmgBonus + corinStunBonus + sigridInfectionBonus,
-            sheerDmgBonus: (exec.sheerDmgBonus ?? 0) + yixuanNingshen.sheerDmg,
-            flatDamageBonus: exec.flatDamageBonus,
-            basisValueOverride: exec.basisValueOverride,
-            basisLabelOverride: exec.basisLabelOverride,
-            resIgnore,
-            defIgnore: exec.defIgnore ?? 0,
-            penRatioBonus: exec.penRatioBonus,
-            skillDamageTarget: exec.skillDamageTarget,
-            stunOverride,
-            sourceTag: sourceTag ?? exec.source,
-          })
-        }
-        if (isAxis && exec.normaGiftChain) {
-          // 诺姆膛温换连携（赠送连携招式=上一位队友本人的连携技，注入时带 normaGiftChain 标记）：
-          // 吃失衡易伤的次数 = 轴内实际执行的赠块数（':gift' 后缀 key，受窗口时间门控：占时间、超窗跳过）
-          // 或旧表达 norma-hat-chain 标记块；其余赠送在失衡外触发、不吃易伤。
-          let giftInUnits = 0
-          for (const [key, alloc] of Object.entries(allocMap)) {
-            if (key.endsWith(':norma-hat-chain') || key.endsWith(':gift')) giftInUnits += alloc.inAxisUnits
-          }
-          const inUnits = Math.min(totalUnits, Math.max(0, giftInUnits))
-          emitExecDirect(inUnits, 1, '', '', exec.source)
-          emitExecDirect(totalUnits - inUnits, 0, '-out', ' · 轴外（无失衡易伤）')
-        } else if (isAxis && exec.autoSplitByStun) {
-          // CD 驱动的后台自动行（通用机制，如猫又超凶爪印每秒 dot）：不按捏轴认领、无放置语义，
-          // 轴模式改按失衡时间占比拆「占比内吃满易伤 / 其余无易伤」（非轴模式本就走全局覆盖率）。
-          // 附加在特定招式上的事件不走此路——它们经 attachedEvents 跟随父动作判断是否在轴内。
-          const inUnits = Math.min(totalUnits, Math.round(totalUnits * Math.max(0, Math.min(1, stunCoverage.value))))
-          emitExecDirect(inUnits, 1, '', ' · 失衡内（CD自动行按占比）')
-          emitExecDirect(totalUnits - inUnits, 0, '-out', ' · 轴外（CD自动行按占比，无易伤）')
-        } else if (isAxis && axisSlots.has(slot) && (exec.moveId === '1521019' || exec.moveId === 'xixifu_shigu_special')) {
-          // 希希芙蚀骨：失衡内回复的毒素由蛇吻手动消耗 → 全部在失衡内爆发（吃满易伤），其余轴外无易伤
-          const frac = xixifuToxinInAxisFraction(slot, charResult)
-          const inUnits = Math.min(totalUnits, Math.round(totalUnits * frac))
-          emitExecDirect(inUnits, 1, '', ' · 失衡内毒素爆发')
-          emitExecDirect(totalUnits - inUnits, 0, '-out', ' · 轴外毒素（无失衡易伤）')
-        } else if (isAxis && axisSlots.has(slot)) {
-          // 捏轴：把总单位切成轴内（易伤=1）/轴外（易伤=0）两段
-          const split = axisSplitFor(slot, exec.moveId, totalUnits)
-          emitExecDirect(split.inUnits, 1, '', '', exec.source)
-          emitExecDirect(split.outUnits, 0, '-out', ' · 轴外（无失衡易伤）')
-        } else if (charResult.agentId === '1431' && YESHUGUANG_FULL_STUN_MOVES.has(exec.moveId)) {
-          // 叶瞬光白毛：关键伤害一律满易伤（帷幕易伤），真失衡只送连携；上限 210%/300% 在 pushDirect 处理
-          emitExecDirect(totalUnits, 1, '', ' · 明心境满易伤', exec.source)
-        } else if (!isAxis && charResult.agentId === '1291') {
-          // 雨果（非轴精确口径）：只有失衡赠送连携 + 决算招式吃满易伤，其余招式都在失衡外、无易伤。
-          // 轴模式走上方 axisSplit（按捏轴内/外拆分），不在此兜底。
-          const fullStun = HUGO_FULL_STUN_MOVES.has(exec.moveId)
-          emitExecDirect(totalUnits, fullStun ? 1 : 0, '', fullStun ? ' · 失衡内（连携/决算满易伤）' : ' · 失衡外（无易伤）', exec.source)
-        } else {
-          // 未进轴的槽位（如换的辅助、没捏进轴）按全局覆盖率单独算
-          emitExecDirect(totalUnits, stunCoverage.value, '', '', exec.source)
-        }
-      }
-
-      // 轴内直读技能表（通用兜底）：动作池「[表]」块被放置但模块未生成执行行的招式——
-      // 按放置块数×窗口数出直伤（吃全额易伤）；不占时间预算、窗内不产失衡值（引擎既定口径）
-      if (isAxis) {
-        const backed = new Set(charResult.executions.map(e => e.moveId))
-        const tblAlloc = allocateAxisWindows(effectiveStunAxes.value, Math.round(stunPoolResult.value?.stunCount ?? 0))
-        const placedTable = new Map<string, number>()
-        effectiveStunAxes.value.forEach((axis, ai) => {
-          const wins = tblAlloc[ai] ?? 0
-          for (const act of axis.actions) {
-            if (act.slot !== slot) continue
-            const mid = act.moveId
-            if (backed.has(mid) || !/^\d+$/.test(mid)) continue
-            placedTable.set(mid, (placedTable.get(mid) ?? 0) + Math.max(0, Math.floor(act.count || 1)) * wins)
-          }
-        })
-        console.log('TBLX', slot, JSON.stringify([...placedTable]))
-        const tblSkills = catalogStore.getAgentSkills(configStore.team[slot]?.agentId ?? '')
-        for (const [mid, count] of placedTable) {
-          if (count <= 0) continue
-          const move = findMoveById(tblSkills, mid)
-          const dmgRow = (move?.rows ?? []).find((r: any) => r.kind === 'damageMultiplier')
-          const mult = Number(dmgRow?.values?.[0] ?? 0)
-          if (!move || !(mult > 0)) continue
-          pushDirect({
-            id: `direct-${slot}-${mid}-table`,
-            slot, agentId: charResult.agentId,
-            name: `${move.name?.zhCN || mid}（表）`,
-            element: move.damageElement ?? catalogStore.getAgent(charResult.agentId)?.damageElement ?? 'physical',
-            source: '轴内·技能表直读',
-            count, multiplier: mult,
-            note: '该招式未单独建模：按技能表倍率直读，吃失衡易伤；不占时间预算、窗内不产失衡值',
-            moveId: mid,
-            stunOverride: 1,
-          })
-        }
-      }
-
-      for (const event of charResult.anomalyEventExecutions ?? []) {
-        if (event.count <= 0) continue
-        if (event.eventType === 'release') {
-          const triggerPanel = damagePanels.value[slot]
-          // 异放跟随载体招式（前台绑定，玩家捏轴可精确控制）：失衡内占比 = 载体块轴内单位 / 载体总数
-          const carrierInAxisFraction = event.followCarrierInStun && event.carrierMoveId
-            ? (() => {
-                const total = charResult.executions.find(e => e.moveId === event.carrierMoveId)?.count ?? 0
-                const inAxis = allocMap[`${slot}:${event.carrierMoveId}`]?.inAxisUnits ?? 0
-                return total > 0 ? Math.max(0, Math.min(1, inAxis / total)) : 0
-              })()
-            : undefined
-          if (event.element === 'dominant') {
-            // 异放元素 = 目标当前异常状态。Boss 异常状态轴点时归因（v2.2，与极性紊乱同口径）：
-            // 轴模式下事件次数按代表窗内均匀取样时刻查当时状态分摊——链上元素无手动
-            // releaseShare 覆盖才启用，手动分配/非轴模式回落下方覆盖率权重路径。
-            const totalRelease = Math.max(0, Math.floor(event.count))
-            const bossRel = isAxis ? bossAnomalyState.value : null
-            const relWindows = bossRel?.stateChainsPerWindow.length ?? 0
-            const relAnySegment = !!bossRel && (bossRel.stateChainsPerWindow.some(c => c.length > 0) || bossRel.windOverlayPerWindow.some(c => c.length > 0))
-            if (bossRel && relWindows > 0 && relAnySegment) {
-              const relNs = event.eventId.split('_')[0] ?? 'release'
-              const chainEls = [...new Set(
-                bossRel.stateChainsPerWindow.flat().concat(bossRel.windOverlayPerWindow.flat()).map(s => s.element),
-              )]
-              const hasManualShare = chainEls.some(el => configStore.getMechanicSetting(`${relNs}.releaseShare:${el}`, -1) >= 0)
-              if (!hasManualShare) {
-                const D = bossRel.windowDuration && bossRel.windowDuration > 0 ? bossRel.windowDuration : computeWindowDuration()
-                // 与极性紊乱同口径：总次数均分到各真实失衡窗，逐窗按该窗状态链取样
-                const alloc = allocateAxisWindows(effectiveStunAxes.value, Math.round(stunPoolResult.value?.stunCount ?? 0))
-                const rIdx = bossRel.windowEntryIdx ?? bossRel.stateChainsPerWindow.map((_, i) => i)
-                const rWeights = rIdx.map(ei => alloc[ei] ?? 0)
-                const winShares = rWeights.some(w => w > 0)
-                  ? distributeIntegerByWeight(totalRelease, rWeights)
-                  : distributeIntegerByWeight(totalRelease, Array(relWindows).fill(1))
-                const merged = new Map<string, number>()
-                for (let w = 0; w < relWindows; w++) {
-                  const chain = [...(bossRel.stateChainsPerWindow[w] ?? []), ...(bossRel.windOverlayPerWindow[w] ?? [])]
-                  for (const p of attributeCountByStateChain(winShares[w] ?? 0, chain, D, agent?.damageElement ?? 'physical')) {
-                    merged.set(p.element, (merged.get(p.element) ?? 0) + p.count)
-                  }
-                }
-                const parts = [...merged.entries()].map(([element, count]) => ({ element, count })).sort((a, b) => b.count - a.count)
-                const shares = distributeIntegerByWeight(totalRelease, parts.map(p => p.count))
-                for (let i = 0; i < parts.length; i++) {
-                  const count = shares[i] ?? 0
-                  if (count <= 0) continue
-                  const element = parts[i].element
-                  const prog = anomalyPoolResult.value?.perElement.find(p => p.element === element)
-                  const baseSlot = prog ? getMainApplierSlot(prog.contributions) : slot
-                  for (const seg of releaseStunSegments(event, element, count, carrierInAxisFraction)) {
-                    pushRelease({
-                      id: `release-${slot}-${event.eventId}-${element}${seg.suffix}`,
-                      slot,
-                      agentId: charResult.agentId,
-                      name: event.eventName,
-                      count: seg.count,
-                      multiplier: releaseMultiplierFor(event, element, triggerPanel, seg.stunned < 0 ? stunCoverage.value : seg.stunned),
-                      source: event.carrierMoveName || event.carrierMoveId || event.eventId,
-                      note: `${event.note ?? ''}；${element}·Boss异常状态轴·按触发时刻状态归因${seg.tag ? `；${seg.tag}` : ''}`,
-                      element,
-                      panel: damagePanels.value[baseSlot] ?? triggerPanel,
-                      settlementPanel: triggerPanel,
-                      releaseCrit: event.releaseCrit,
-                      stunnedOverride: seg.stunned < 0 ? undefined : seg.stunned,
-                    })
-                  }
-                }
-                continue
-              }
-            }
-            const axisCandidates = isAxis ? inStunAttributionCandidates() : []
-            let attributionLabel = '失衡内活跃元素归因'
-            let candidates = axisCandidates
-            if (candidates.length === 0) {
-              attributionLabel = '异常覆盖占比分配'
-              const coverageRates = anomalyPoolResult.value?.coverage?.perElementCoverageRate ?? {}
-              candidates = Object.entries(coverageRates)
-                .filter(([, rate]) => rate > 0)
-                .map(([element, rate]) => ({ element, autoRatio: rate }))
-              if (candidates.length === 0) candidates = [{ element: agent?.damageElement ?? 'physical', autoRatio: 1 }]
-            }
-            const settingNs = event.eventId.split('_')[0] ?? 'release'
-            const userWeights = candidates.map(({ element, autoRatio }) => ({
-              element,
-              weight: Math.max(0, configStore.getMechanicSetting(`${settingNs}.releaseShare:${element}`, autoRatio)),
-            }))
-            const totalWeight = userWeights.reduce((sum, item) => sum + item.weight, 0)
-            const effectiveWeights = totalWeight > 0
-              ? userWeights
-              : candidates.map(({ element, autoRatio }) => ({ element, weight: autoRatio }))
-            const effectiveTotal = effectiveWeights.reduce((sum, item) => sum + item.weight, 0) || 1
-            const counts = distributeIntegerByWeight(
-              totalRelease,
-              effectiveWeights.map(item => item.weight / effectiveTotal),
-            )
-            for (let i = 0; i < effectiveWeights.length; i++) {
-              const count = counts[i] ?? 0
-              if (count <= 0) continue
-              const element = effectiveWeights[i].element
-              const prog = anomalyPoolResult.value?.perElement.find(p => p.element === element)
-              const baseSlot = prog ? getMainApplierSlot(prog.contributions) : slot
-              for (const seg of releaseStunSegments(event, element, count, carrierInAxisFraction)) {
-                pushRelease({
-                  id: `release-${slot}-${event.eventId}-${element}${seg.suffix}`,
-                  slot,
-                  agentId: charResult.agentId,
-                  name: event.eventName,
-                  count: seg.count,
-                  multiplier: releaseMultiplierFor(event, element, triggerPanel, seg.stunned < 0 ? stunCoverage.value : seg.stunned),
-                  source: event.carrierMoveName || event.carrierMoveId || event.eventId,
-                  note: `${event.note ?? ''}；${element}·${attributionLabel}${seg.tag ? `；${seg.tag}` : ''}`,
-                  element,
-                  panel: damagePanels.value[baseSlot] ?? triggerPanel,
-                  settlementPanel: triggerPanel,
-                  releaseCrit: event.releaseCrit,
-                  stunnedOverride: seg.stunned < 0 ? undefined : seg.stunned,
-                })
-              }
-            }
-            continue
-          }
-          const fixElement = event.element ?? 'wind'
-          for (const seg of releaseStunSegments(event, fixElement, event.count, carrierInAxisFraction)) {
-            if (seg.count <= 0) continue
-            pushRelease({
-              id: `release-${slot}-${event.eventId}${seg.suffix}`,
-              slot: slot,
-              agentId: charResult.agentId,
-              name: event.eventName,
-              count: seg.count,
-              multiplier: releaseMultiplierFor(event, fixElement, triggerPanel, seg.stunned < 0 ? stunCoverage.value : seg.stunned),
-              source: event.carrierMoveName || event.carrierMoveId || event.eventId,
-              note: `${event.note ?? ''}${seg.tag ? `；${seg.tag}` : ''}`,
-              element: fixElement,
-              settlementPanel: triggerPanel,
-              releaseCrit: event.releaseCrit,
-              stunnedOverride: seg.stunned < 0 ? undefined : seg.stunned,
-            })
-          }
-        } else if (event.eventType === 'polar_disorder') {
-          // 极性紊乱 = 原本[紊乱]效果的25%伤害（池收敛后取紊乱均伤），不清除目标异常状态；
-          // C2 门控在模块侧。归因（用户口径 2026-08-24「看当前时间点是什么属性异常状态」）：
-          // 轴模式 dominant 走 Boss 异常状态轴——事件次数按代表窗内均匀取样时刻查当时状态链
-          // 分摊到元素（标准链优先、风化覆盖层补空档）；无状态轴数据时 dominant 回落覆盖率最高者。
-          const dd = anomalyPoolResult.value?.disorderDamage
-          const perEvent = (dd?.avgDamage ?? 0) * 0.25
-          const boss = isAxis ? bossAnomalyState.value : null
-          const bossWindows = boss?.stateChainsPerWindow.length ?? 0
-          const anySegment = !!boss && (boss.stateChainsPerWindow.some(c => c.length > 0) || boss.windOverlayPerWindow.some(c => c.length > 0))
-          let parts: Array<{ element: string; count: number }> = []
-          if (perEvent > 0 && event.count > 0 && event.element === 'dominant' && boss && bossWindows > 0 && anySegment) {
-            const D = boss.windowDuration && boss.windowDuration > 0 ? boss.windowDuration : computeWindowDuration()
-            // 事件总次数均分到各真实失衡窗，逐窗按该窗状态链取样归因（展开后每窗链可能不同）
-            // 事件总次数按各条目的失衡数加权分配到代表窗，逐窗按状态链取样归因
-            const alloc = allocateAxisWindows(effectiveStunAxes.value, Math.round(stunPoolResult.value?.stunCount ?? 0))
-            const wIdx = boss.windowEntryIdx ?? boss.stateChainsPerWindow.map((_, i) => i)
-            const weights = wIdx.map(ei => alloc[ei] ?? 0)
-            const winShares = weights.some(w => w > 0)
-              ? distributeIntegerByWeight(Math.max(0, Math.floor(event.count)), weights)
-              : distributeIntegerByWeight(Math.max(0, Math.floor(event.count)), Array(bossWindows).fill(1))
-            const merged = new Map<string, number>()
-            for (let w = 0; w < bossWindows; w++) {
-              const chain = [...(boss.stateChainsPerWindow[w] ?? []), ...(boss.windOverlayPerWindow[w] ?? [])]
-              for (const p of attributeCountByStateChain(winShares[w] ?? 0, chain, D, agent?.damageElement ?? 'ether')) {
-                merged.set(p.element, (merged.get(p.element) ?? 0) + p.count)
-              }
-            }
-            parts = [...merged.entries()].map(([element, count]) => ({ element, count })).sort((a, b) => b.count - a.count)
-            const shares = distributeIntegerByWeight(Math.max(0, Math.floor(event.count)), parts.map(p => p.count))
-            for (let i = 0; i < parts.length; i++) {
-              const shareCount = shares[i] ?? 0
-              if (shareCount <= 0) continue
-              // 极性基数用「现在的基础值」（用户口径）：当前状态元素的紊乱明细均摊；
-              // 池无该元素明细时回落全池均摊
-              const el = parts[i].element
-              const elDetails = (dd?.details ?? []).filter(d => getBaseElement(d.element) === getBaseElement(el))
-              const elEvents = elDetails.reduce((s, d) => s + (d.events ?? 0), 0)
-              const elDamage = elDetails.reduce((s, d) => s + (d.damage ?? 0), 0)
-              const perEventEl = elEvents > 0 ? (elDamage / elEvents) * 0.25 : perEvent
-              if (perEventEl <= 0) continue
-              rows.push({
-                id: `polar-${slot}-${event.eventId}-${el}`,
-                slot,
-                agentId: charResult.agentId,
-                agentName: agentName(charResult.agentId, slot),
-                type: '极性紊乱',
-                name: event.eventName,
-                element: safeElement(el),
-                source: event.carrierMoveName || event.carrierMoveId || event.eventId,
-                count: shareCount,
-                perDamage: perEventEl,
-                totalDamage: perEventEl * shareCount,
-                note: `${event.note ?? ''}；${el}·Boss异常状态轴·按触发时刻状态归因·基数=该元素紊乱均摊`,
-              })
-            }
-            continue
-          }
-          let polarElement = event.element
-          if (polarElement === 'dominant') {
-            const axisBest = [...(isAxis ? inStunAttributionCandidates() : [])]
-              .sort((a, b) => b.autoRatio - a.autoRatio)[0]?.element
-            if (axisBest) polarElement = axisBest
-            else {
-              const rates = anomalyPoolResult.value?.coverage?.perElementCoverageRate ?? {}
-              polarElement = Object.entries(rates).filter(([, r]) => r > 0).sort((a, b) => b[1] - a[1])[0]?.[0]
-                ?? agent?.damageElement ?? 'ether'
-            }
-          }
-          if (perEvent > 0 && event.count > 0) {
-            rows.push({
-              id: `polar-${slot}-${event.eventId}`,
-              slot,
-              agentId: charResult.agentId,
-              agentName: agentName(charResult.agentId, slot),
-              type: '极性紊乱',
-              name: event.eventName,
-              element: safeElement(polarElement),
-              source: event.carrierMoveName || event.carrierMoveId || event.eventId,
-              count: event.count,
-              perDamage: perEvent,
-              totalDamage: perEvent * event.count,
-              note: event.note ?? '',
-            })
-          }
-        } else if (event.eventType === 'direct_damage') {
-          // 直伤事件（如薇薇安预言 DoT、加农转子额外伤害）：倍率 = 攻击力 × damageMultiplier%。
-          // 缺 damageMultiplier 的事件（spec 事件走专用结算块）跳过，避免双计。
-          const mult = event.damageMultiplier ?? 0
-          if (mult > 0 && event.count > 0) {
-            pushDirect({
-              id: `direct-damage-${slot}-${event.eventId}`,
-              slot,
-              agentId: charResult.agentId,
-              name: event.eventName,
-              element: event.element ?? agent?.damageElement ?? 'physical',
-              source: event.carrierMoveName || event.carrierMoveId || event.eventId,
-              count: event.count,
-              multiplier: mult,
-              note: event.note ?? event.formula ?? '',
-            })
-          }
-        }
-      }
-
-      const burniceSrc = charResult.burniceMechanicSource
-      if (charResult.agentId === '1171' && burniceSrc) {
-        const burniceSkillCoef = (() => {
-          const bonus = damagePanels.value[slot]?.skillLevelBonus ?? 0
-          return bonus > 0 ? getSkillLevelCoef(bonus).damageCoef : 1
-        })()
-        if (burniceSrc.emberTotalTriggerCount > 0 && burniceSrc.emberDamageRatioWithMastery > 0) {
-          pushDirect({
-            id: 'burnice-ember',
-            slot,
-            agentId: charResult.agentId,
-            name: '柏妮思余烬（含搅拌式附带）',
-            element: 'fire',
-            source: `普通余烬 ${burniceSrc.emberTriggerCount} 次 + 搅拌式附带 ${burniceSrc.stirringFreeEmberCount} 次`,
-            count: burniceSrc.emberTotalTriggerCount,
-            multiplier: burniceSrc.emberDamageRatioWithMastery,
-            note: `${burniceSrc.emberDamageRatio}%攻击 × (1 + 精通加成)，基础积蓄60`,
-            critRateBonus: burniceSrc.cinema4CritRateBonus,
-            skillDamageTarget: 'assist',
-          })
-        }
-        if (burniceSrc.stirringCount > 0 && burniceSrc.stirringDamageRatio > 0) {
-          pushDirect({
-            id: 'burnice-stirring',
-            slot,
-            agentId: charResult.agentId,
-            name: '柏妮思搅拌式',
-            element: 'fire',
-            source: '溢出燃点消耗20点/次 · 支援攻击',
-            count: burniceSrc.stirringCount,
-            multiplier: burniceSrc.stirringDamageRatio * burniceSkillCoef,
-            note: `Mixed Flame Blend #1 × 0.5 + #2，分类为支援攻击${burniceSkillCoef !== 1 ? ` · 技能等级系数×${burniceSkillCoef.toFixed(4)}` : ''}`,
-            critRateBonus: burniceSrc.cinema4CritRateBonus,
-            skillDamageTarget: 'assist',
-          })
-        }
-        if (burniceSrc.tossingCount > 0 && burniceSrc.tossingDamageRatio > 0) {
-          pushDirect({
-            id: 'burnice-tossing',
-            slot,
-            agentId: charResult.agentId,
-            name: '柏妮思灼热抛接法',
-            element: 'fire',
-            source: '消耗1点流火 · EX Special Attack: Intense Heat Tossing Method',
-            count: burniceSrc.tossingCount,
-            multiplier: burniceSrc.tossingDamageRatio * burniceSkillCoef,
-            note: `强化特殊技，可吃4命暴击率+30%${burniceSkillCoef !== 1 ? ` · 技能等级系数×${burniceSkillCoef.toFixed(4)}` : ''}`,
-            critRateBonus: burniceSrc.cinema4CritRateBonus,
-            skillDamageTarget: 'exSpecial',
-          })
-        }
-        if (burniceSrc.cinema6SpecialEmberCount > 0 && burniceSrc.cinema6SpecialEmberDamageRatio > 0) {
-          pushDirect({
-            id: 'burnice-c6-special-ember',
-            slot,
-            agentId: charResult.agentId,
-            name: '柏妮思6命特殊余烬',
-            element: 'fire',
-            source: '双份命中触发 · 0.5s最多一次 · 不消耗燃点',
-            count: burniceSrc.cinema6SpecialEmberCount,
-            multiplier: burniceSrc.cinema6SpecialEmberDamageRatio,
-            note: `固定${burniceSrc.cinema6SpecialEmberBaseRatio}%攻击，不吃1命/精通加成，无视火抗${burniceSrc.cinema6FireResIgnore}%`,
-            critRateBonus: burniceSrc.cinema4CritRateBonus,
-            resIgnore: burniceSrc.cinema6FireResIgnore,
-            moveId: 'burnice-c6-special-ember',
-            stunOverride: axisStunFor('burnice-c6-special-ember'),
-            skillDamageTarget: 'assist',
-          })
-        }
-      }
-
-      // 琉音专属直伤（额外能力）：石头/剪刀/布重击命中时，按上一位队友特性追加伤害。
-      const liuyinSrc = charResult.liuyinMechanicSource
-      if (charResult.agentId === '1481' && liuyinSrc && liuyinSrc.extraAbilityActive && liuyinSrc.exHeavyCount > 0) {
-        const prevSlot = liuyinSrc.previousTeammateSlot
-        const prevPanel = damagePanels.value[prevSlot]
-        const prevAgent = prevSlot >= 0 ? (configStore.team[prevSlot]?.agentId ? catalogStore.getAgent(configStore.team[prevSlot].agentId) : null) : null
-        const isRupture = prevAgent?.specialty === 'rupture'
-        const basisValue = prevPanel ? (isRupture ? prevPanel.atk * 0.3 + prevPanel.hp * 0.1 : prevPanel.atk) : 0
-        const ratio = isRupture ? 400 : 320
-        const basisLabel = isRupture ? '上一位队友贯穿力' : '上一位队友攻击力'
-        if (basisValue > 0) {
-          pushDirect({
-            id: `liuyin-ex-direct-${prevSlot}`,
-            slot,
-            agentId: charResult.agentId,
-            name: '琉音额外能力·重击附加伤害',
-            element: 'physical',
-            source: `上一位队友（${prevAgent?.name?.zhCN ?? `槽${prevSlot + 1}`}）${isRupture ? '贯穿力' : '攻击力'} × ${ratio}%`,
-            count: liuyinSrc.exHeavyCount,
-            multiplier: ratio,
-            note: `额外能力专属直伤：${isRupture ? '命破队友 400% 贯穿力' : '强攻队友 320% 攻击力'}`,
-            skillDamageTarget: 'exSpecial',
-            basisValueOverride: basisValue,
-            basisLabelOverride: basisLabel,
-          })
-        }
-      }
-
-      // 琉音三个强特（石头→剪刀→布）按“失衡次数×25 能量留给失衡内第一个强特，剩余非失衡按 1→3 连打”拆分易伤。
-      // 非失衡轴模式下通用强特行已跳过，这里重放并拆失衡/非失衡；失衡轴模式仍走轴内易伤归属。
-      // 般岳影画6：600% 贯穿力火伤附伤是倾山的自动触发事件，次数 = 倾山次数（不可调，不产生资源利用率行）
-      if (charResult.agentId === '1471' && (configStore.team[slot]?.cinemaLevel ?? 0) >= 6) {
-        const qingShanExec = charResult.executions.find(e => e.moveId === '1471009')
-        const attachCount = Math.max(0, Math.floor(qingShanExec?.count ?? 0))
-        if (attachCount > 0) {
-          const panel = damagePanels.value[slot]
-          pushDirect({
-            id: 'banyue-c6-crush-attach',
-            slot,
-            agentId: charResult.agentId,
-            name: '影画6·摧岳附伤（倾山自动触发）',
-            element: 'fire',
-            source: '倾山自动触发',
-            count: attachCount,
-            multiplier: C6_ATTACH_RATIO,
-            note: `影画6：倾山命中时对周身造成 600% 贯穿力火伤；次数=倾山次数 ×${attachCount}（自动，不可调）`,
-            basisValueOverride: panel.atk * 0.3 + (panel.hp ?? 0) * 0.1 + (panel.sheerForceFlat ?? 0),
-            basisLabelOverride: '贯穿力（600%附伤）',
-            moveId: 'banyue_c6_crush_attach',
-            stunOverride: axisStunFor('banyue_c6_crush_attach'),
-          })
-        }
-      }
-
-      if (charResult.agentId === '1481' && liuyinSrc && !isAxis) {
-        const stunCount = stunPoolResult.value?.stunCount ?? 0
-        const exTotal = Math.max(0, Math.floor(liuyinSrc.exHeavyCount))
-        const exMult = new Map<string, number>()
-        for (const e of charResult.executions) {
-          if (LIUYIN_EX_MOVE_IDS.has(e.moveId) && (e.damageMultiplier ?? 0) > 0) exMult.set(e.moveId, e.damageMultiplier!)
-        }
-        const mult = (id: string) => exMult.get(id) ?? 0
-        const inStunCount = Math.min(stunCount, exTotal)
-        const nonStunCount = Math.max(0, exTotal - inStunCount)
-        // 非失衡按 1(石头)→2(剪刀)→3(布) 顺序连打
-        const nsRock = Math.floor((nonStunCount + 2) / 3)
-        const nsScissors = Math.floor((nonStunCount + 1) / 3)
-        const nsPaper = Math.floor(nonStunCount / 3)
-        const pushLiuyinEx = (moveId: string, name: string, count: number, stunOverride: number, tag: string) => {
-          if (count <= 0 || mult(moveId) <= 0) return
-          pushDirect({
-            id: `liuyin-ex-${moveId}-${tag}`,
-            slot,
-            agentId: charResult.agentId,
-            name,
-            element: 'physical',
-            source: tag === 'stun' ? '失衡内首个强特' : '非失衡 1→3 连打',
-            count,
-            multiplier: mult(moveId),
-            note: tag === 'stun' ? '失衡内释放，吃满失衡易伤' : '非失衡释放，无易伤',
-            skillDamageTarget: 'exSpecial',
-            stunOverride,
-          })
-        }
-        pushLiuyinEx('1481011', '强化特殊技：石头', inStunCount, 1, 'stun')
-        pushLiuyinEx('1481011', '强化特殊技：石头', nsRock, 0, 'nonstun')
-        pushLiuyinEx('1481012', '强化特殊技：剪刀', nsScissors, 0, 'nonstun')
-        pushLiuyinEx('1481013', '强化特殊技：布！', nsPaper, 0, 'nonstun')
-      }
-
-      // 琉音影画6·余音：独立直伤，轴模式同样生效（非失衡轴模式下与强特拆分无关，不能包在 !isAxis 内）
-      if (charResult.agentId === '1481' && liuyinSrc && liuyinSrc.cinemaLevel >= 6) {
-        const promoteCount = liuyinPromoteCount.value
-        const c6EchoMax = Math.max(0, Math.floor(configStore.getMechanicSetting('liuyin.c6EchoMax', CINEMA6_ECHO_MAX)))
-        if (promoteCount > 0 && c6EchoMax > 0) {
-          const echoCount = promoteCount * c6EchoMax
-          pushDirect({
-            id: 'liuyin-c6-echo',
-            slot,
-            agentId: charResult.agentId,
-            name: '琉音影画6·余音',
-            element: 'physical',
-            source: `转大 ${promoteCount} 次 × ${c6EchoMax} 次 × 480%`,
-            count: echoCount,
-            multiplier: CINEMA6_ECHO_RATIO,
-            note: `影画6余音：队友经核心被动以终结技入场后，其攻击命中时琉音追加 480% 攻击力物理伤害（视为强特）；每转大最多 ${c6EchoMax} 次（可在资源利用率页调整）。`,
-            skillDamageTarget: 'exSpecial',
-          })
-        }
-      }
-    }
-
-    const windChar = windSlot >= 0 ? configStore.team[windSlot] : null
-    const windAgentId = windChar?.agentId ?? ''
-    const windRate = anomalyPoolResult.value?.coverage?.windCoverageRate ?? 0
-
-    for (const event of anomalyPoolResult.value?.anomalyEvents ?? []) {
-      if (event.count <= 0 || windSlot < 0 || !windAgentId) continue
-      if (event.type === 'release' && event.id.includes('velina-corrosion')) {
-        pushRelease({
-          id: `pool-release-${event.id}`,
-          slot: windSlot,
-          agentId: windAgentId,
-          name: event.label,
-          count: event.count,
-          multiplier: parseReleaseMultiplier(event),
-          source: event.source,
-          note: event.note,
-        })
-      }
-    }
-
-    for (const detail of anomalyPoolResult.value?.turbulenceDamage?.details ?? []) {
-      const applierAgentId = configStore.team[detail.applierSlot]?.agentId ?? ''
-      rows.push({
-        id: `turbulence-${detail.element}-${detail.applierSlot}`,
-        slot: windSlot >= 0 ? windSlot : 0,
-        agentId: windAgentId,
-        agentName: windAgentId ? agentName(windAgentId, windSlot) : '风属性角色',
-        type: '乱流',
-        name: `${elementLabel(detail.element)}乱流`,
-        element: detail.element,
-        source: `${agentName(applierAgentId, detail.applierSlot)} 的${elementLabel(detail.element)}异常基础区`,
-        count: detail.count ?? 0,
-        perDamage: (detail.count ?? 0) > 0 ? detail.damage / (detail.count ?? 1) : detail.damage,
-        totalDamage: detail.damage,
-        note: `T=${detail.remainingTime}s，倍率=${detail.turbulenceMultiplier}%${detail.boostedCount ? `，其中${detail.boostedCount}次吃风蚀+150%倍率` : ''}`,
-      })
-    }
-
-    // ---- 紊乱伤害（入池，不再单独从 totalDamageWithDisorder 累加） ----
-    for (const detail of anomalyPoolResult.value?.disorderDamage?.details ?? []) {
-      if (detail.damage <= 0 || detail.events <= 0) continue
-      const triggerAgentId = configStore.team[detail.triggerSlot]?.agentId ?? ''
-      const applierAgentId = configStore.team[detail.applierSlot]?.agentId ?? ''
-      rows.push({
-        id: `disorder-${detail.element}-${detail.applierSlot}-${detail.triggerSlot}`,
-        slot: detail.triggerSlot,
-        agentId: triggerAgentId,
-        agentName: agentName(triggerAgentId, detail.triggerSlot),
-        type: '紊乱',
-        name: `紊乱（覆盖${elementLabel(detail.element)}）`,
-        element: detail.element,
-        source: `${agentName(applierAgentId, detail.applierSlot)} 的${elementLabel(detail.element)}异常被${agentName(triggerAgentId, detail.triggerSlot)}覆盖`,
-        count: detail.events,
-        perDamage: detail.perEventDamage,
-        totalDamage: detail.damage,
-        note: `T=${detail.remainingTime}s，倍率=${detail.disorderMultiplier}%，anomalyMass=${detail.anomalyMass}，settlement=${detail.settlementMultiplier}`,
-      })
-    }
-
-    const anomalyDamageSpecs: Record<string, {
-      label: string
-      perTick?: number
-      tickInterval?: number
-      baseTicks?: number
-      single?: number
-      baseFormula: string
-    }> = {
-      fire: { label: '灼烧', perTick: 50, tickInterval: 0.5, baseTicks: 20, baseFormula: '灼烧基础 50% × 20 tick（10秒/0.5秒）' },
-      electric: { label: '感电', perTick: 125, tickInterval: 1, baseTicks: 10, baseFormula: '感电基础 125% × 10 tick' },
-      ether: { label: '侵蚀', perTick: 62.5, tickInterval: 0.5, baseTicks: 20, baseFormula: '侵蚀基础 62.5% × 20 tick（10秒/0.5秒）' },
-      physical: { label: '强击', single: 713, baseFormula: '强击 713% 单次' },
-      ice: { label: '碎冰', single: 500, baseFormula: '碎冰 500% 单次（冻结次数=碎冰次数）' },
-      wind: { label: '风化', single: 1250, baseFormula: '风化 1250% 单次' },
-    }
-    // 风化窗口内的火/电/以太 DoT 与冰冻结类不生效，按 (1 - windRate) 折算；
-    // 强击、极性强击这类事件伤害仍可触发，因此保留 physical/physical_polar_assault/wind 全额次数。
-    const windBlockedAnomalyElements = new Set(['fire', 'electric', 'ether', 'ice'])
-    for (const prog of anomalyPoolResult.value?.perElement ?? []) {
-      const spec = anomalyDamageSpecs[prog.element]
-      if (!spec || prog.triggerCount <= 0) continue
-      const effectiveTriggerCount = windBlockedAnomalyElements.has(prog.element)
-        ? prog.triggerCount * (1 - windRate)
-        : prog.triggerCount
-      if (effectiveTriggerCount <= 0) continue
-      const build = buildAnomalyVirtualPanel(prog, damagePanels.value, configStore, catalogStore)
-      if (!build) continue
-
-      const durationBonus = getTeamAnomalyDurationBonus(configStore, catalogStore, prog.element)
-      let multiplier = spec.single ?? 0
-      let formula = spec.baseFormula
-      if (!spec.single && spec.perTick && spec.tickInterval && spec.baseTicks) {
-        const ticks = spec.baseTicks + (spec.tickInterval > 0 ? Math.round(durationBonus / spec.tickInterval) : 0)
-        multiplier = spec.perTick * ticks
-        formula = `${spec.perTick}% × ${ticks} tick${durationBonus > 0 ? `（含${durationBonus}秒延长）` : ''}`
-      }
-
-      // 维琳娜6命：对风化状态敌人再次施加风化，按平均剩余时长给风化事件增伤（每1s +2.5%，上限40%）
-      if (prog.element === 'wind') {
-        const windPanel = damagePanels.value[windSlot]
-        const velinaC6 = (windPanel as any)?.velinaCinema6 ?? 0
-        const windCount = prog.triggerCount
-        if (velinaC6 && windCount > 1) {
-          const avgRemaining = (30 * (windCount - 1) / windCount) / 2
-          const c6BonusPct = Math.min(40, 2.5 * avgRemaining)
-          multiplier *= (1 + c6BonusPct / 100)
-          formula += ` · 6命风化期望+${c6BonusPct.toFixed(1)}%（平均剩余${avgRemaining.toFixed(1)}s）`
-        }
-      }
-
-      // 按触发者分摊结算：每人用自己的面板独立结算
-      const settlementEntries = buildAnomalySettlementEntries(build, damagePanels.value, effectiveTriggerCount, configStore, catalogStore)
-
-      for (const entry of settlementEntries) {
-        if (entry.triggerCount <= 0) continue
-        const result = calcAnomalyDamage({
-          panel: build.panel,
-          settlementPanel: entry.panel,
-          baseMultiplier: multiplier,
-          element: prog.element as any,
-          enemyDefense: configStore.enemy.defense,
-          enemyDefReduction: 0,
-          enemyDefFlatReduction: 0,
-          enemyLevel: configStore.enemy.level,
-          enemyResistance: enemyDamageRes[prog.element] ?? 0,
-          enemyResReduction: entry.panel?.enemyResReduction ?? 0,
-          stunned: stunCoverage.value,
-          stunMultiplier: configStore.enemy.stunVuln,
-          critMode: 'expect',
-          damageKind: 'anomaly',
-          anomalyMultiplier: remielleAnomalyMultiplier.value,
-        })
-
-        const perDamage = result.damage
-        const totalDamage = perDamage * entry.triggerCount
-        const noteParts = [`${formula}`]
-        if (settlementEntries.length > 1) {
-          noteParts.push(`${entry.name}结算 · 积蓄占比${(entry.share*100).toFixed(0)}% · ${entry.triggerCount}次`)
-        }
-        rows.push({
-          id: `anomaly-damage-${prog.element}-${entry.slot}`,
-          slot: entry.slot,
-          agentId: configStore.team[entry.slot]?.agentId ?? '',
-          agentName: agentName(configStore.team[entry.slot]?.agentId ?? '', entry.slot),
-          type: spec.label as DamagePoolRow['type'],
-          name: settlementEntries.length > 1
-            ? `${spec.label}（${elementLabel(prog.element)}·${entry.name}结算）`
-            : `${spec.label}（${elementLabel(prog.element)}虚拟面板）`,
-          element: prog.element,
-          source: `属性异常${settlementEntries.length > 1 ? '按积蓄占比分摊' : '虚拟面板'}结算`,
-          count: entry.triggerCount,
-          perDamage,
-          totalDamage,
-          note: noteParts.join(' · '),
-        })
-      }
-    }
-
-    // ---- 柏妮思6命：双份火焰冲击命中灼烧敌人时，额外结算一次1800%灼烧伤害 ----
-    const burniceSlot = configStore.team.findIndex(char => {
-      const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return a?.id === '1171' || a?.teammateBuffId === '1171'
-    })
-    const burniceSrc = burniceSlot >= 0
-      ? adjustedResourceResult.value?.characters.find(c => c.slot === burniceSlot)?.burniceMechanicSource
-      : undefined
-    const fireProg = anomalyPoolResult.value?.perElement.find(prog => prog.element === 'fire')
-    if (windRate < 1 && burniceSrc && burniceSrc.cinema6BurnBurstCount > 0 && fireProg && fireProg.triggerCount > 0) {
-      const fireBuild = buildAnomalyVirtualPanel(fireProg, damagePanels.value, configStore, catalogStore)
-      if (fireBuild) {
-        const fireEffectiveCount = fireProg.triggerCount * (1 - windRate)
-        const settlementEntries = buildAnomalySettlementEntries(fireBuild, damagePanels.value, fireEffectiveCount, configStore, catalogStore)
-        const burnBurstStun = axisStunFor('burnice-c6-burn-burst')
-        for (const entry of settlementEntries) {
-          if (entry.triggerCount <= 0) continue
-          const burstCount = Math.min(burniceSrc.cinema6BurnBurstCount, entry.triggerCount)
-          if (burstCount <= 0) continue
-          const burstResult = calcAnomalyDamage({
-            panel: fireBuild.panel,
-            settlementPanel: entry.panel,
-            baseMultiplier: burniceSrc.cinema6BurnBurstDamageRatio,
-            element: 'fire' as any,
-            enemyDefense: configStore.enemy.defense,
-            enemyDefReduction: 0,
-            enemyDefFlatReduction: 0,
-            enemyLevel: configStore.enemy.level,
-            enemyResistance: enemyDamageRes.fire ?? 0,
-            enemyResReduction: (entry.panel?.enemyResReduction ?? 0) + burniceSrc.cinema6FireResIgnore,
-            stunned: burnBurstStun,
-            stunMultiplier: configStore.enemy.stunVuln,
-            critMode: 'expect',
-            damageKind: 'anomaly',
-            anomalyMultiplier: remielleAnomalyMultiplier.value,
-          })
-          rows.push({
-            id: `burnice-c6-burn-burst-${entry.slot}`,
-            slot: entry.slot,
-            agentId: configStore.team[entry.slot]?.agentId ?? '',
-            agentName: agentName(configStore.team[entry.slot]?.agentId ?? '', entry.slot),
-            type: '灼烧',
-            name: '柏妮思6命灼烧迸发',
-            element: 'fire',
-            source: '双份火焰冲击命中灼烧敌人 · 900%额外灼烧',
-            count: burstCount,
-            perDamage: burstResult.damage,
-            totalDamage: burstResult.damage * burstCount,
-            note: `${burniceSrc.cinema6BurnBurstDamageRatio}%（灼烧基础50% × 1800%），跟随双喷轴内易伤，无视火抗${burniceSrc.cinema6FireResIgnore}%，同一目标20秒最多一次`,
-            moveId: 'burnice-c6-burn-burst',
-          })
-        }
-      }
-    }
-
-    // ---- 极性强击伤害（赠送触发，不走虚拟面板） ----
-    const polarAssaultProg = anomalyPoolResult.value?.perElement.find(prog => prog.element === 'physical_polar_assault')
-    const polarAssaultSlot = configStore.team.findIndex(char => {
-      const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return a?.id === '1401' || a?.teammateBuffId === '1401'
-    })
-    if (polarAssaultProg && polarAssaultProg.triggerCount > 0 && polarAssaultSlot >= 0 && damagePanels.value[polarAssaultSlot]) {
-      const alicePanel = damagePanels.value[polarAssaultSlot]
-      // 轴模式：极性强击易伤跟随父动作 SW3(1401012) 的 inAxisRatio
-      const polarStunFor = axisStunFor('polar_assault')
-      const result = calcAnomalyDamage({
-        panel: alicePanel,
-        settlementPanel: alicePanel,
-        baseMultiplier: 713,
-        element: 'physical' as any,
-        enemyDefense: configStore.enemy.defense,
-        enemyDefReduction: 0,
-        enemyDefFlatReduction: 0,
-        enemyLevel: configStore.enemy.level,
-        enemyResistance: enemyDamageRes.physical ?? 0,
-        enemyResReduction: alicePanel?.enemyResReduction ?? 0,
-        stunned: polarStunFor,
-        stunMultiplier: configStore.enemy.stunVuln,
-        critMode: 'expect',
-        damageKind: 'anomaly',
-        anomalyMultiplier: remielleAnomalyMultiplier.value,
-      })
-      const perDamage = result.damage
-      rows.push({
-        id: 'polar-assault-damage',
-        slot: polarAssaultSlot,
-        agentId: configStore.team[polarAssaultSlot]?.agentId ?? '',
-        agentName: agentName(configStore.team[polarAssaultSlot]?.agentId ?? '', polarAssaultSlot),
-        type: '极性强击',
-        name: `极性强击（三蓄赠送）`,
-        element: 'physical_polar_assault',
-        source: `三蓄赠送触发 · 无视积蓄进度 · 爱丽丝面板`,
-        count: polarAssaultProg.triggerCount,
-        perDamage,
-        totalDamage: perDamage * polarAssaultProg.triggerCount,
-        note: `713% 单次 × 爱丽丝面板 · 赠送触发不耗异常条`,
-      })
-    }
-
-    const janeSlot = configStore.team.findIndex(char => {
-      const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return agent?.id === '1261' || agent?.teammateBuffId === '1261'
-    })
-    const janeCinema = configStore.team[janeSlot]?.cinemaLevel ?? 0
-    if (janeSlot >= 0 && janeCinema >= 6 && damagePanels.value[janeSlot]) {
-      const janePanel = damagePanels.value[janeSlot]
-      const physicalProg = anomalyPoolResult.value?.perElement.find(prog => prog.element === 'physical')
-      const assaultCritRate = Math.min(100, Math.max(0, janePanel.assaultCritRate ?? 0))
-      const critCount = (physicalProg?.triggerCount ?? 0) * (assaultCritRate / 100)
-      if (critCount > 0) {
-        const perDamage = (janePanel.anomalyProficiency ?? 0) * 16
-        rows.push({
-          id: 'jane-c6-assault-followup',
-          slot: janeSlot,
-          agentId: configStore.team[janeSlot]?.agentId ?? '',
-          agentName: agentName(configStore.team[janeSlot]?.agentId ?? '', janeSlot),
-          type: '简6命附伤',
-          name: '简6命强击暴击附伤',
-          element: 'physical',
-          source: '强击暴击后触发',
-          count: critCount,
-          perDamage,
-          totalDamage: perDamage * critCount,
-          note: `异常精通 ${fmt(janePanel.anomalyProficiency ?? 0)} × 1600%；按强击期望暴击次数 ${fmt(critCount, 2)} 次`,
-        })
-      }
-    }
-
-    // ---- 爱丽丝六命决胜状态额外攻击 ----
-    const aliceSlot = configStore.team.findIndex(char => {
-      const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return agent?.id === '1401' || agent?.teammateBuffId === '1401'
-    })
-    const aliceCinema = configStore.team[aliceSlot]?.cinemaLevel ?? 0
-    if (aliceSlot >= 0 && aliceCinema >= 6 && damagePanels.value[aliceSlot]) {
-      const alicePanel = damagePanels.value[aliceSlot]
-      const aliceResult = adjustedResourceResult.value?.characters.find(c => c.slot === aliceSlot)
-      const smSrc = aliceResult?.aliceSwordWillSource
-
-      if (smSrc && smSrc.sparkCount > 0) {
-        // 状态进入次数 = sparkCount + ultimateCount（每次星芒圆舞曲#3 或终结技进入/刷新决胜状态）
-        const ultimateCount = aliceResult.ultimateCount
-        const stateEntries = smSrc.sparkCount + ultimateCount
-
-        // 每状态额外攻击次数（默认5次；单轮最多6次，1秒CD）
-        const perStateCount = configStore.getMechanicSetting('alice.cinema6PerStateCount', 5)
-
-        // 总触发次数 = 状态进入次数 × 每次攻击次数
-        const totalTriggers = stateEntries * perStateCount
-
-        if (totalTriggers > 0) {
-          // 必定暴击：damage = anomalyProficiency × 33 × (1 + critDmg/100)
-          const proficiency = alicePanel.anomalyProficiency ?? 0
-          const critDmg = alicePanel.critDmg ?? 50
-          const perDamage = proficiency * 33 * (1 + critDmg / 100)
-
-          rows.push({
-            id: 'alice-c6-decisive-extra-attack',
-            slot: aliceSlot,
-            agentId: configStore.team[aliceSlot]?.agentId ?? '',
-            agentName: agentName(configStore.team[aliceSlot]?.agentId ?? '', aliceSlot),
-            type: '爱丽丝6命附伤',
-            name: '爱丽丝6命决胜状态额外攻击',
-            element: 'physical',
-            source: '三蓄/终结技进入决胜状态 → 全队攻击额外命中',
-            count: totalTriggers,
-            perDamage,
-            totalDamage: perDamage * totalTriggers,
-            note: `异常精通 ${fmt(proficiency)} × 3300% × 必定暴击(1+${fmt(critDmg)}%) → 单次 ${fmt(perDamage)} · 状态进入 ${stateEntries} 次 × 每次 ${perStateCount} 次 = ${totalTriggers} 次`,
-          })
-        }
-      }
-    }
-
-    // ---- 爱丽丝被动 DOT（异常池 aliceCoweringDot 入池；畏缩/任意异常状态期间每 0.95s 强击伤害 2.5%） ----
-    const coweringDot = anomalyPoolResult.value?.aliceCoweringDot
-    if (aliceSlot >= 0 && coweringDot && coweringDot.totalDotDamage > 0) {
-      rows.push({
-        id: 'alice-cowering-dot',
-        slot: aliceSlot,
-        agentId: configStore.team[aliceSlot]?.agentId ?? '',
-        agentName: agentName(configStore.team[aliceSlot]?.agentId ?? '', aliceSlot),
-        type: '畏缩 DOT',
-        name: '爱丽丝畏缩 DOT',
-        element: 'physical',
-        source: '畏缩状态 · 每 0.95s 强击伤害 2.5%',
-        count: coweringDot.totalTicks,
-        perDamage: coweringDot.dotDamagePerTick,
-        totalDamage: coweringDot.totalDotDamage,
-        note: `畏缩 DOT：每 ${coweringDot.dotInterval}s 造成强击伤害 ${coweringDot.dotRatio}% · ${fmt(coweringDot.totalTicks)} tick`,
-      })
-    }
-
-    const remielleSlot = configStore.team.findIndex(char => {
-      const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return agent?.id === '1581' || agent?.teammateBuffId === '1581'
-    })
-    if (remielleSlot >= 0 && damagePanels.value[remielleSlot] && remielleEntryPanels.value[remielleSlot]) {
-      const remiellePanel = damagePanels.value[remielleSlot]
-      const remielleEntryPanel = remielleEntryPanels.value[remielleSlot]
-      const remielleSkills = catalogStore.getAgentSkills(configStore.team[remielleSlot]?.agentId ?? '')
-      const otherSlots = [0, 1, 2].filter(slot => slot !== remielleSlot)
-      const perSlotAnomaly = anomalyPoolResult.value?.perSlotAnomalyTriggers ?? []
-      const voidflareBySlot = otherSlots
-        .map(slot => ({
-          slot,
-          count: Math.max(0, Math.floor(perSlotAnomaly[slot] ?? 0)),
-          element: catalogStore.getAgent(configStore.team[slot]?.agentId ?? '')?.damageElement ?? 'physical',
-          panel: damagePanels.value[slot],
-        }))
-        .filter(item => item.count > 0 && item.panel)
-      const voidflareTotal = voidflareBySlot.reduce((sum, item) => sum + item.count, 0)
-
-      if (voidflareTotal > 0 && remielleSkills) {
-        const skillLevelBonus = remiellePanel.skillLevelBonus ?? 0
-        const c1ResIgnore = (remiellePanel.remielleCinema1SpecialVoidflareCount ?? 0) > 0 ? 50 : 0
-        const c6LuminizeMultiplier = 1 + Math.max(0, remiellePanel.remielleCinema6LuminizeTriggerMultiplier ?? 0)
-        const qBatches = Math.floor(voidflareTotal / 3)
-        const firstOtherSlot = otherSlots[0]
-        const secondOtherSlot = otherSlots[1]
-        const firstPerBatch = otherSlots.length === 1
-          ? 3
-          : Math.max(0, Math.min(3, Math.floor(configStore.getTeamMechanicSetting(`remielle.q:${remielleSlot}`, 1))))
-        const secondPerBatch = Math.max(0, 3 - firstPerBatch)
-        const qCountBySlot: Record<string, number> = {}
-        if (otherSlots.length === 1) {
-          qCountBySlot[String(firstOtherSlot)] = qBatches * 3
-        } else {
-          qCountBySlot[String(firstOtherSlot)] = qBatches * firstPerBatch
-          qCountBySlot[String(secondOtherSlot)] = qBatches * secondPerBatch
-        }
-        const actionRows = [
-          {
-            id: 'remielle-luminize-assist',
-            name: '支援技花羽轮舞·耀变',
-            moveId: '1581015',
-            countsBySlot: Object.fromEntries(voidflareBySlot.map(item => [item.slot, item.count])),
-          },
-          {
-            id: 'remielle-luminize-ultimate',
-            name: '终结技缭乱终幕·耀变',
-            moveId: '1581016',
-            countsBySlot: qCountBySlot,
-          },
-          {
-            id: 'remielle-luminize-basic',
-            name: '普通攻击惊鸿·耀变',
-            moveId: '1581008',
-            countsBySlot: Object.fromEntries(voidflareBySlot.map(item => [item.slot, item.count * c6LuminizeMultiplier])),
-          },
-        ]
-
-        for (const action of actionRows) {
-          const move = findMoveById(remielleSkills, action.moveId)
-          const luminizeRow = move?.rows.find(row => row.kind === 'luminizeMultiplier' || row.id === 'luminize_multiplier')
-          const multiplier = getRemielleLevelValue(luminizeRow, skillLevelBonus)
-          if (multiplier <= 0) continue
-          const actionCount = Object.values(action.countsBySlot).reduce((a, b) => a + b, 0)
-          if (actionCount <= 0) continue
-
-          for (const item of voidflareBySlot) {
-            const count = action.countsBySlot[String(item.slot)] ?? 0
-            if (count <= 0 || !item.panel) continue
-            const result = calcVoidflareDamage({
-              sourcePanel: item.panel,
-              remiellePanel,
-              multiplier,
-              element: item.element,
-              enemyDefense: configStore.enemy.defense,
-              enemyResistances: enemyDamageRes,
-              stunMultiplier: configStore.enemy.stunVuln,
-              stunned: stunCoverage.value,
-              cinema1ResIgnore: c1ResIgnore,
-            })
-            rows.push({
-              id: `${action.id}-${item.slot}`,
-              slot: remielleSlot,
-              agentId: configStore.team[remielleSlot]?.agentId ?? '',
-              agentName: agentName(configStore.team[remielleSlot]?.agentId ?? '', remielleSlot),
-              type: '耀变',
-              name: action.name,
-              element: item.element,
-              source: `${agentName(configStore.team[item.slot]?.agentId ?? '', item.slot)} 的${elementLabel(item.element)}异常虚耀`,
-              count,
-              perDamage: result.damage,
-              totalDamage: result.damage * count,
-              note: `来源虚耀 ${count} 次 · ${result.formula}`,
-            })
-          }
-        }
-
-        const specialCount = remielleSpecialVoidflareCount(remiellePanel)
-        if (specialCount > 0) {
-          const rainbowMove = findMoveById(remielleSkills, '1581007')
-          const rainbowLuminizeRow = rainbowMove?.rows.find(row => row.kind === 'luminizeMultiplier' || row.id === 'luminize_multiplier')
-          const rainbowMultiplier = getRemielleLevelValue(rainbowLuminizeRow, skillLevelBonus)
-          const specialMultiplier = rainbowMultiplier * 2.5
-          if (specialMultiplier > 0) {
-            const result = calcVoidflareDamage({
-              sourcePanel: remielleEntryPanel,
-              remiellePanel: remielleEntryPanel,
-              multiplier: specialMultiplier,
-              element: 'lumiflux',
-              enemyDefense: configStore.enemy.defense,
-              enemyResistances: enemyDamageRes,
-              stunMultiplier: configStore.enemy.stunVuln,
-              stunned: stunCoverage.value,
-              cinema1ResIgnore: c1ResIgnore,
-            })
-            rows.push({
-              id: 'remielle-special-voidflare',
-              slot: remielleSlot,
-              agentId: configStore.team[remielleSlot]?.agentId ?? '',
-              agentName: agentName(configStore.team[remielleSlot]?.agentId ?? '', remielleSlot),
-              type: '特殊虚耀',
-              name: '普通攻击垂虹·特殊虚耀',
-              element: 'lumiflux',
-              source: '蕾米进场记录面板 × 2.5 特殊独立乘区',
-              count: specialCount,
-              perDamage: result.damage,
-              totalDamage: result.damage * specialCount,
-              note: `垂虹倍率 ${fmt(rainbowMultiplier)}% × 2.5 · ${result.formula}`,
-            })
-          }
-        }
-      }
-    }
-
-    return rows.filter(row => row.totalDamage > 0)
-  })
+  /** 伤害池行（构建逻辑在 resourceCalc/damagePool.ts，纯函数 + 快照入参） */
+  const damagePoolRows = computed<DamagePoolRow[]>(() => buildDamagePoolRows({
+    configStore,
+    catalogStore,
+    adjustedResourceResult: adjustedResourceResult.value,
+    damagePanels: damagePanels.value,
+    stunCoverage: stunCoverage.value,
+    axisAllocation: axisAllocation.value,
+    attachedInAxisMap: attachedInAxisMap.value,
+    anomalyPoolResult: anomalyPoolResult.value,
+    inStunAnomalyState: inStunAnomalyState.value,
+    bossAnomalyState: bossAnomalyState.value,
+    stunPoolResult: stunPoolResult.value,
+    effectiveStunAxes: effectiveStunAxes.value,
+    remielleEntryPanels: remielleEntryPanels.value,
+    remielleAnomalyMultiplier: remielleAnomalyMultiplier.value,
+    liuyinPromoteCount: liuyinPromoteCount.value,
+    agentNames: agentNames.value,
+    autoActive: autoActive.value,
+    stunAxisResult: stunAxisResult.value,
+    banyueMingwangStacks: banyueMingwangStacks.value,
+    yixuanNingshenMap: yixuanNingshenMap.value,
+    peiluoKagerouMap: peiluoKagerouMap.value,
+    corinStunBonusMap: corinStunBonusMap.value,
+    computeWindowDuration,
+  }))
 
   /** 蕾米虚耀池与耀变触发事件 */
   const remielleVoidflareEvents = computed<AnomalyEventRecord[]>(() => {
