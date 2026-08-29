@@ -56,11 +56,16 @@ describe('applyDeployConfig', () => {
     expect(config.team.map((s) => s.wEngineId)).toEqual(['14109', '14151', '14149'])
     expect(config.team.map((s) => s.wEngineModLevel)).toEqual([5, 5, 5])
 
-    // 交互基准：通用（弹刀 6 / 闪反 10 / 快支 3 / 连携 1）
-    expect(config.team.map((s) => s.parryCount)).toEqual([6, 6, 6])
+    // 交互基准（2026-08 修订）：弹刀不预设（保底4失衡/4喧响运行时反推），闪反/快支保留固定基准
+    expect(config.team.map((s) => s.parryCount)).toEqual([0, 0, 0])
     expect(config.team.map((s) => s.dodgeCounterCount)).toEqual([10, 10, 10])
     expect(config.team.map((s) => s.quickAssistCount)).toEqual([3, 3, 3])
     expect(config.team.map((s) => s.chainCountPerStun)).toEqual([1, 1, 1])
+    // 保底4喧响 + 自动轴开启（弹刀反推的两个驱动）
+    expect(config.getMechanicSetting('guarantee.ultimate', 0)).toBe(1)
+    expect(config.autoYidhariAxis).toBe(true)
+    expect(config.stunAxes.length).toBe(0)
+    expect(config.stunAxisPlans.length).toBe(0)
 
     // Boss：hp 等于 690431 期相位血量（分期数决定血量膨胀）
     const phase = presets.find((p) => p.id === '40008')?.phases.find((p) => p.phaseId === '690431')
@@ -96,6 +101,30 @@ describe('部署 → 资源池结果', () => {
     expect(calc.resourceResult.value!.characters.length).toBe(3)
     expect(calc.teamTotalDamage.value).toBeGreaterThan(0)
     expect(calc.stunPoolResult.value?.stunCount ?? 0).toBeGreaterThan(0)
+  }, 60000)
+})
+
+describe('保底4喧响 → 弹刀反推（通用）', () => {
+  it('喧响不足时反推只给喧响弹刀补齐到 ≥4 终结技，且稳定收敛', async () => {
+    const { config } = await setupHarness([
+      { agentId: '1201', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ])
+    for (const buff of config.globalBuffs) buff.enabled = false
+    config.enemy.battleTime = 120
+
+    // 基线：不勾保底4喧响 → 喧响不足以 4 终结技
+    const calcBase = useResourceCalc()
+    const baseUlt = calcBase.resourceResult.value!.characters.reduce((s, c) => s + (c.ultimateCount ?? 0), 0)
+    expect(baseUlt).toBeLessThan(4)
+
+    // 勾保底4喧响 → 反推只给喧响弹刀补齐，终结技 ≥ 4 且稳定收敛
+    config.setMechanicSetting('guarantee.ultimate', 1)
+    const calc = useResourceCalc()
+    const res = calc.resourceResult.value!
+    const ultSum = res.characters.reduce((s, c) => s + (c.ultimateCount ?? 0), 0)
+    expect(ultSum).toBeGreaterThanOrEqual(4)
+    expect(res.convergence?.outerExit).toBe('stable')
   })
 })
 

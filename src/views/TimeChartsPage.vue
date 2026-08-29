@@ -870,6 +870,152 @@
         <span class="progress-text">估计配对差分…</span>
       </div>
     </n-card>
+
+    <!-- ============ Chart 6：抽卡规划器（危局最优策略 + VCG 价值） ============ -->
+    <n-card size="small" :bordered="true">
+      <template #header>
+        抽卡规划器 · 危局最优策略
+        <span class="chart-subtitle">从起点节点、每版本 {{ PLANNER_FILM }}/菲林收入出发，beam search 规划限定卡抽取（本体/专武/满配阶梯，首 UP 窗口唯一），每期 3 Boss × 9 人不重叠组队最大化危局总分；卡价值 = VCG 反事实差分（禁用重规划的分数损失）</span>
+      </template>
+      <template #header-extra>
+        <div class="chart3-actions">
+          <n-select v-model:value="ppPreset" :options="ppPresetOptions" size="small" style="width: 170px" />
+          <n-select v-model:value="ppStartDate" :options="ppStartOptions" size="small" style="width: 130px" filterable />
+          <n-button size="small" type="primary" :loading="ppComputing" @click="runPlanner">
+            {{ ppResult ? '重新规划' : '规划' }}
+          </n-button>
+        </div>
+      </template>
+
+      <!-- 参数 -->
+      <div class="sim-controls">
+        <div class="ctl-field">
+          <span class="ctl-label">起点银行（菲林）</span>
+          <n-input-number v-model:value="ppInitialBank" :min="0" :max="500000" :step="5000" size="small" style="width: 120px" />
+        </div>
+        <div class="ctl-field">
+          <span class="ctl-label">每版本菲林（默认 25000）</span>
+          <n-input-number v-model:value="ppFilmPerVersion" :min="0" :max="100000" :step="1000" size="small" style="width: 120px" />
+        </div>
+        <div class="ctl-field">
+          <span class="ctl-label">beam 宽度</span>
+          <n-input-number v-model:value="ppBeamWidth" :min="1" :max="16" size="small" style="width: 80px" />
+        </div>
+        <div class="ctl-field">
+          <span class="ctl-label">规划期数上限（0=全部）</span>
+          <n-input-number v-model:value="ppMaxPeriods" :min="0" :max="47" size="small" style="width: 110px" />
+        </div>
+        <div class="ctl-field">
+          <label class="ctl-check">
+            <input v-model="ppWithVcg" type="checkbox" />
+            VCG 卡价值归因（每卡一次重规划，慢）
+          </label>
+        </div>
+        <div class="ctl-field ctl-hint">
+          <span class="ctl-label">口径：分数 = 60000×伤害/当期Boss血量 + 5000 操作分（全满）；单房上限 65000。
+            限定卡首 UP 窗口唯一可购（复刻不建模）；购买阶梯 = 本体 15000 → 专武 10000 → 满配。
+            贬值内生（每期 Boss 血量/抗性数据驱动，无折现参数）。
+            ⚠ 性能：默认参数（近起点 + beam 2 + 4 期）≈ 十秒级；调远起点/加大 beam/放开期数上限会进入分钟级——
+            规划是同步计算，期间页面无响应属正常，请勿连点。想要全角色兑现曲线请用「角色兑现」页（基底队方案，秒级）。</span>
+        </div>
+      </div>
+
+      <div v-if="ppComputing || ppProgress" class="chart-progress">
+        <n-progress type="line" :percentage="Math.round((ppProgress?.pct ?? 0) * 100)" :show-indicator="false" :height="6" />
+        <span class="progress-text">{{ ppProgress?.text ?? '' }}</span>
+      </div>
+
+      <template v-if="ppResult">
+        <!-- 结果摘要 -->
+        <div class="pv-summary">
+          <span>规划 {{ ppResult!.plan.steps.length }} 期 · 总分 {{ fmt(ppResult!.plan.totalScore, 0) }}（均值 {{ fmt(ppResult!.plan.totalScore / Math.max(1, ppResult!.plan.steps.length), 0) }}/期）</span>
+          <span>持有 {{ Object.keys(ppResult!.plan.holdings).filter(k => ppResult!.plan.holdings[k] > 0).length }} 张限定 · 累计花费 {{ compact(ppResult!.plan.totalSpent) }} 菲林 · 终态银行 {{ compact(ppResult!.plan.finalBank) }}</span>
+          <span v-if="ppResult!.stats">引擎求值 {{ ppResult!.stats.evaluations }} 次（缓存命中 {{ ppResult!.stats.cacheHits }}）· 耗时 {{ (ppResult!.stats.durationMs / 1000).toFixed(1) }}s</span>
+        </div>
+
+        <!-- 策略甘特：期数 × 购买/队伍 -->
+        <div class="timeline-wrap pp-plot">
+          <svg :viewBox="`0 0 ${svgW} ${ppSvgH}`" class="timeline-svg">
+            <!-- 期刻度 -->
+            <g v-for="t in ppXTicks" :key="'ppx' + t.index">
+              <line :x1="ppX(t.index)" :y1="ppPadT - 6" :x2="ppX(t.index)" :y2="ppSvgH - ppXLabelH" class="grid-line" />
+              <text :x="ppX(t.index)" :y="ppSvgH - 8" text-anchor="middle" class="axis-label x-label">{{ t.label }}</text>
+            </g>
+            <!-- 购买泳道 -->
+            <text :x="ppLabelW - 6" :y="ppPadT + 8" text-anchor="end" class="lane-label">购买</text>
+            <g v-for="(st, i) in ppResult.plan.steps" :key="'ppp' + i">
+              <rect
+                v-for="(p, j) in st.purchases"
+                :key="j"
+                :x="ppX(i) - 9"
+                :y="ppPadT - 6 + j * 14"
+                :width="18" :height="12" rx="3"
+                :fill="colorOf(p.agentId)"
+                class="pp-purchase"
+              >
+                <title>{{ st.periodLabel }}：{{ agentName(p.agentId) }} {{ ppTierLabel(p.tier) }}（−{{ p.cost }} 菲林）</title>
+              </rect>
+              <text v-if="st.purchases.length > 0" :x="ppX(i)" :y="ppPadT + 30" text-anchor="middle" class="pp-purchase-label">
+                {{ st.purchases.map(p => agentName(p.agentId)).join('/') }}
+              </text>
+            </g>
+            <!-- 分数折线（期总分 + 累计） -->
+            <text :x="ppLabelW - 6" :y="ppScoreY(0) + 4" text-anchor="end" class="lane-label">期分</text>
+            <polyline :points="ppScoreLine" class="pp-score-line" />
+            <g v-for="(pt, i) in ppScorePts" :key="'pps' + i">
+              <circle :cx="pt.x" :cy="pt.y" r="3" fill="var(--app-primary)" class="trend-point">
+                <title>{{ pt.label }}：{{ fmt(pt.score, 0) }} 分</title>
+              </circle>
+            </g>
+            <!-- 三队伍泳道（当期 3 Boss 的选队） -->
+            <template v-for="(lane, li) in ppTeamLanes" :key="'pptl' + li">
+              <text :x="ppLabelW - 6" :y="lane.y + 10" text-anchor="end" class="lane-label">房{{ li + 1 }}</text>
+              <g v-for="(cell, i) in lane.cells" :key="i">
+                <rect
+                  :x="ppX(i) - ppCellW / 2" :y="lane.y" :width="ppCellW - 1" :height="lane.h"
+                  :fill="cell.empty ? 'var(--wa-30)' : 'rgba(99, 179, 237, 0.13)'"
+                  class="lane-cell"
+                >
+                  <title>{{ cell.title }}</title>
+                </rect>
+                <text v-if="!cell.empty" :x="ppX(i)" :y="lane.y + lane.h / 2 + 3" text-anchor="middle" class="lane-text pp-team-text">
+                  {{ cell.text }}
+                </text>
+              </g>
+            </template>
+          </svg>
+        </div>
+
+        <!-- VCG 台账 -->
+        <div v-if="ppResult.values.length > 0" class="table-wrap pp-values">
+          <table class="tl-table">
+            <thead>
+              <tr>
+                <th>卡</th>
+                <th>VCG 价值（分）</th>
+                <th>禁用后总分</th>
+                <th>规划终态档位</th>
+                <th>折算（分/万菲林）</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="v in ppTopValues" :key="v.agentId" :class="{ 'pv-sel-row': v.value > 0 && v.tierInPlan > 0 }">
+                <td><span class="dot" :style="{ background: colorOf(v.agentId) }"></span>{{ agentName(v.agentId) }}</td>
+                <td :class="{ 'kill-line': v.value > 0 }">{{ fmt(v.value, 0) }}</td>
+                <td>{{ fmt(v.baselineTotal, 0) }}</td>
+                <td>{{ ppTierLabel(v.tierInPlan) }}</td>
+                <td>{{ v.value > 0 && v.tierInPlan > 0 ? fmt(v.value / (v.tierInPlan === 3 ? 17 : v.tierInPlan === 2 ? 2.5 : 1.5), 0) : '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
+      <div v-else class="empty-hint small-hint">
+        选起点预设与起始节点后点「规划」：beam search 在每版本节点展开「买卡 / 攒菲林」分支，
+        每期用真实引擎算 3 Boss × 9 人不重叠最优组队，全程最大化危局总分。勾选 VCG 出卡价值台账
+        （禁用该卡重规划的分数损失——卢西娅式「专拐被禁 → 被迫用潘引壶」的机会差会直接呈现）。
+      </div>
+    </n-card>
   </div>
 </template>
 
@@ -883,6 +1029,8 @@ import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamStreng
 import { buildNewCharacterRows, computeFilmSimulation, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
 import { computePullValue, MIN_PAIRS_FOR_GRADE, type PullValueInput, type PullValueResult, type PvCardRoomEffect, type PvCardTier, type PvCardValue } from '@/composables/pullValue'
+import { PLANNER_FILM_PER_VERSION } from '@/data/filmEconomy'
+import { runPullPlanner, type PlannerRunResult } from '@/composables/pullPlannerEngine'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
 import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
 import { fmt, compact } from '@/utils/format'
@@ -1837,6 +1985,129 @@ function onPvMove(e: MouseEvent) {
   const idx = Math.floor((svgY - pvPadT) / pvRowH)
   pvHover.value = pvRows.value[idx]?.agentId ?? ''
 }
+
+// ========== Chart 6：抽卡规划器（beam search 最优策略 + VCG 价值归因） ==========
+const PLANNER_FILM = PLANNER_FILM_PER_VERSION
+const ppPreset = ref<'fresh' | 'established' | 'custom'>('established')
+const ppPresetOptions = [
+  { value: 'established', label: '成型号（常驻S+A 免费，0 限定）' },
+  { value: 'fresh', label: '新号（全限定待抽）' },
+  { value: 'custom', label: '自选持有（暂同成型号）' },
+]
+const ppStartDate = ref('2026-07-08')
+/** 起点候选 = 版本节点日期（近 12 个） */
+const ppStartOptions = computed(() =>
+  VERSION_NODES.slice(-14).map(n => ({ value: n.date, label: `${n.label}（${n.date}）` })),
+)
+const ppInitialBank = ref(30000)
+const ppFilmPerVersion = ref(PLANNER_FILM_PER_VERSION)
+const ppBeamWidth = ref(2)
+const ppMaxPeriods = ref(1)
+const ppWithVcg = ref(false)
+const ppComputing = ref(false)
+const ppProgress = ref<{ pct: number; text: string } | null>(null)
+const ppResult = ref<PlannerRunResult | null>(null)
+
+async function runPlanner() {
+  const catalog = catalogStore
+  const boss = selectedBoss.value
+  if (!boss) {
+    ppProgress.value = { pct: 1, text: '先选 Boss（顶部）' }
+    setTimeout(() => { ppProgress.value = null }, 2500)
+    return
+  }
+  ppComputing.value = true
+  ppProgress.value = { pct: 0, text: '准备…' }
+  await nextTick()
+  try {
+    ppResult.value = await runPullPlanner({
+      calc,
+      allBosses: bossPresets.value,
+      boss,
+      periodViews: phaseViews.value,
+      allAgentIds: catalog.displayAgents.map(a => a.id),
+      preset: ppPreset.value,
+      startDate: ppStartDate.value,
+      maxPeriods: ppMaxPeriods.value || undefined,
+      initialBank: ppInitialBank.value,
+      filmPerVersion: ppFilmPerVersion.value,
+      beamWidth: ppBeamWidth.value,
+      assignmentTopM: 6,
+      withVcg: ppWithVcg.value,
+      onProgress: p => { ppProgress.value = p },
+    })
+  } catch (e) {
+    ppProgress.value = { pct: 1, text: `规划失败：${e instanceof Error ? e.message : String(e)}` }
+    setTimeout(() => { ppProgress.value = null }, 4000)
+  } finally {
+    ppComputing.value = false
+  }
+}
+
+// ---- Chart 6 SVG ----
+const ppLabelW = 60
+const ppPadT = 26
+const ppXLabelH = 26
+const ppPurchaseH = 44
+const ppScorePlotH = 90
+const ppLaneH = 20
+const ppSvgH = computed(() => {
+  const nLanes = 3
+  return ppPadT + ppPurchaseH + ppScorePlotH + nLanes * (ppLaneH + 6) + ppXLabelH
+})
+const ppStepCount = computed(() => ppResult.value?.plan.steps.length ?? 0)
+const ppPlotW = computed(() => svgW.value - ppLabelW - 16)
+const ppCellW = computed(() => ppPlotW.value / Math.max(1, ppStepCount.value))
+function ppX(i: number): number {
+  const n = Math.max(1, ppStepCount.value)
+  return ppLabelW + (i + 0.5) * (ppPlotW.value / n)
+}
+const ppXTicks = computed(() => {
+  const steps = ppResult.value?.plan.steps ?? []
+  const step = Math.max(1, Math.ceil(steps.length / 12))
+  const out: { index: number; label: string }[] = []
+  for (let i = 0; i < steps.length; i += step) out.push({ index: i, label: steps[i].date.slice(5) })
+  if (steps.length > 1 && (steps.length - 1) % step !== 0) {
+    out.push({ index: steps.length - 1, label: steps[steps.length - 1].date.slice(5) })
+  }
+  return out
+})
+const ppScoreMax = computed(() => Math.max(1, ...(ppResult.value?.plan.steps.map(s => s.assignment.totalScore) ?? [1])))
+function ppScoreY(v: number): number {
+  const top = ppPadT + ppPurchaseH
+  return top + ppScorePlotH - (v / ppScoreMax.value) * ppScorePlotH
+}
+const ppScorePts = computed(() =>
+  (ppResult.value?.plan.steps ?? []).map((s, i) => ({
+    x: ppX(i),
+    y: ppScoreY(s.assignment.totalScore),
+    score: s.assignment.totalScore,
+    label: s.periodLabel,
+  })),
+)
+const ppScoreLine = computed(() => ppScorePts.value.map(p => `${p.x},${p.y}`).join(' '))
+/** 三房间选队泳道 */
+const ppTeamLanes = computed(() => {
+  const steps = ppResult.value?.plan.steps ?? []
+  const top = ppPadT + ppPurchaseH + ppScorePlotH + 8
+  return [0, 1, 2].map(li => ({
+    y: top + li * (ppLaneH + 6),
+    h: ppLaneH,
+    cells: steps.map((s) => {
+      const pick = s.assignment.picks[li]
+      if (!pick || pick.team.every(m => !m)) return { empty: true, text: '', title: `${s.periodLabel} 房${li + 1}：无可用队` }
+      return {
+        empty: false,
+        text: pick.team.map(agentName).join('+'),
+        title: `${s.periodLabel} 房${li + 1}（${pick.bossRoom.bossName}）：${pick.team.map(agentName).join('+')} = ${fmt(pick.score, 0)} 分`,
+      }
+    }),
+  }))
+})
+const ppTopValues = computed(() => (ppResult.value?.values ?? []).slice(0, 20))
+function ppTierLabel(tier: number): string {
+  return tier === 3 ? '满配' : tier === 2 ? '本体+专武' : tier === 1 ? '本体' : '—'
+}
 </script>
 
 <style scoped>
@@ -2366,5 +2637,34 @@ function onPvMove(e: MouseEvent) {
 }
 .pv-detail-bar.pv-out .pv-detail-bar-fill {
   background: var(--wa-120);
+}
+
+/* ========== Chart 6：抽卡规划器 ========== */
+.pp-plot {
+  margin-bottom: 8px;
+}
+.pp-purchase {
+  stroke: rgba(15, 15, 18, 0.9);
+  stroke-width: 0.5;
+  cursor: default;
+}
+.pp-purchase-label {
+  fill: var(--wa-650);
+  font-size: 9px;
+}
+.pp-score-line {
+  fill: none;
+  stroke: var(--app-primary);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.pp-team-text {
+  fill: rgba(10, 10, 14, 0.85);
+  font-size: 8.5px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.pp-values {
+  margin-top: 10px;
 }
 </style>

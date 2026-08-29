@@ -468,6 +468,9 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
 
 // ============ 特殊动作喧响奖励计算（原有，保持不变） ============
 
+/** 弹刀（招架支援）单次喧响奖励（个人 215，队友伴随 50%；单一事实源，通用保底4喧响反推同引） */
+export const PARRY_DECIBEL_BONUS = 215
+
 /** 特殊动作喧响奖励计算
  *
  * 个人获得完整奖励，队友伴随获得50%：
@@ -492,13 +495,13 @@ export function calcSpecialActionBonus(
   const totalDodgeCounter = perSlotDodgeCounter.reduce((a, b) => a + b, 0)
   const totalQuickAssist = perSlotQuickAssist.reduce((a, b) => a + b, 0)
 
-  const parry = totalParry * 215
+  const parry = totalParry * PARRY_DECIBEL_BONUS
   const chain = totalChain * 10
   const dodgeCounter = totalDodgeCounter * 10
   const quickAssist = totalQuickAssist * 20
 
   const ownReward = (slot: number) =>
-    (perSlotParry[slot] ?? 0) * 215
+    (perSlotParry[slot] ?? 0) * PARRY_DECIBEL_BONUS
     + (perSlotChain[slot] ?? 0) * 10
     + (perSlotDodgeCounter[slot] ?? 0) * 10
     + (perSlotQuickAssist[slot] ?? 0) * 20

@@ -755,6 +755,7 @@ export function buildAnomalyEventExecutions(cfg: CharacterOperationConfig, state
       eventName: '加农转子额外伤害',
       eventType: 'direct_damage',
       count,
+      damageMultiplier: cannonRotorMultiplier,
       formula: `count = ceil(战斗时长 / ${cannonRotorCooldown})；damage = 攻击力 × ${cannonRotorMultiplier}% × 装备者直伤乘区`,
       fields: ['cannonRotorDamageMultiplier', 'cannonRotorCooldownSeconds', 'atk', 'crit/directDamageZones'],
       note: '按命中并暴击可稳定触发处理；次数受精修 CD 封顶，伤害应按装备者当前直伤乘区结算。',

@@ -604,3 +604,25 @@ describe('Remielle voidflare / luminize', () => {
     expect(result.luminizeMultiplierBonus).toBeCloseTo(17)
   })
 })
+
+describe('加农转子（音擎 14001）直伤事件', () => {
+  it('direct_damage 事件进入伤害池（type=直伤）', async () => {
+    await setupHarness([
+      { agentId: '1041', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, wEngineId: '14001', wEngineModLevel: 5 },
+      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ])
+    const calc = useResourceCalc()
+    // 事件确实被构建并带倍率
+    const events = calc.resourceResult.value!.characters.find(c => c.agentId === '1041')!.anomalyEventExecutions
+    const ev = events.find(e => e.eventId === 'cannon_rotor_crit_proc')
+    expect(ev?.eventType).toBe('direct_damage')
+    expect(ev?.damageMultiplier).toBe(200)
+    // 事件转成直伤行进池（曾遗漏：加农转子额外伤害从未结算）
+    const rows = calc.damagePoolRows.value.filter(r => r.name.includes('加农') && r.type === '直伤')
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(row.totalDamage).toBeGreaterThan(0)
+      expect(row.count).toBeGreaterThan(0)
+    }
+  })
+})

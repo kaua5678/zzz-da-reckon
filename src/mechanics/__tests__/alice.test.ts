@@ -60,3 +60,21 @@ describe('爱丽丝影画6决胜状态额外攻击', () => {
     expect(rows0.length).toBe(0)
   })
 })
+
+describe('爱丽丝畏缩 DOT', () => {
+  it('畏缩 DOT 进入伤害池（type=畏缩 DOT，element=physical）', async () => {
+    await setup(0)
+    const calc = useResourceCalc()
+    // 异常池已算出畏缩 DOT 总伤害
+    const dot = calc.anomalyPoolResult.value?.aliceCoweringDot
+    expect(dot?.totalDotDamage ?? 0).toBeGreaterThan(0)
+    // 曾遗漏：畏缩 DOT 只在 ResultPage 单独展示、未进 damagePoolRows（团队总伤害漏算）
+    const rows = calc.damagePoolRows.value.filter(r => r.type === '畏缩 DOT')
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(row.element).toBe('physical')
+      expect(row.totalDamage).toBeGreaterThan(0)
+      expect(row.count).toBeGreaterThan(0)
+    }
+  })
+})

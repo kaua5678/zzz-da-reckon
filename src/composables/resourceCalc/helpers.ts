@@ -52,7 +52,7 @@ export type DamagePoolRow = {
   slot: number
   agentId: string
   agentName: string
-  type: '直伤' | '异放' | '乱流' | '耀变' | '特殊虚耀' | '灼烧' | '感电' | '侵蚀' | '风化' | '强击' | '极性紊乱' | '极性强击' | '碎冰' | '简6命附伤' | '紊乱' | '爱丽丝6命附伤'
+  type: '直伤' | '异放' | '乱流' | '耀变' | '特殊虚耀' | '灼烧' | '感电' | '侵蚀' | '风化' | '强击' | '极性紊乱' | '极性强击' | '碎冰' | '简6命附伤' | '紊乱' | '爱丽丝6命附伤' | '畏缩 DOT'
   name: string
   element: string
   source: string

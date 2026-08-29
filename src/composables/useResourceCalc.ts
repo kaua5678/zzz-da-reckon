@@ -22,7 +22,7 @@ import type { StunAxis } from '@/types/resource'
 import { calcStunAxisStack, allocateAxisWindows } from '@/core/stunAxisStack'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
-import { calcAnomalyPool, calcSpecialActionBonus } from '@/core/anomalyPool'
+import { calcAnomalyPool, calcSpecialActionBonus, PARRY_DECIBEL_BONUS } from '@/core/anomalyPool'
 import { distributeIntegerByWeight, getMainApplierSlot, ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/helpers'
 import { computeBossAnomalyStateTimeline, computeInStunAnomalyTimeline, attributeCountByStateChain, bossEntryAnomalyElement, type BossAnomalyStateResult, type InStunWindowInput } from '@/core/stunAxis/inStunAnomaly'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
@@ -706,7 +706,7 @@ function applyNormaHatChain(
     return out
   }
 
-  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevParrySplit: ParrySplitResult | null = null, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevGraceC1Cycles = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0, prevPromiaTriggerHits = 0, prevPromiaTeammateReleases = 0, prevInStunWindowTriggers = 0, prevEllenFreezeCount = 0, prevPromiaReleaseDecibel = 0): {
+  function runCalcRound(stunCount: number, prevGoodReview: number, prevEnergyBySlot: Record<number, number>, prevAuricInkFlash = 0, prevAnomalyDecibelBonus: number[] = [], prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }, prevParrySplit: ParrySplitResult | null = null, prevYixuanFuFaForJufufu = 0, prevTeamUltimateForJufufu = 0, prevYeshuguangGiftUlt = 0, prevLucyTeammateEx = 0, prevLighterTeamEnergy = 0, prevGraceC1Cycles = 0, prevAnbyZeroTeammateWl = 0, prevVivianTeamEx = 0, prevVivianAnomalyTriggers = 0, prevPromiaTriggerHits = 0, prevPromiaTeammateReleases = 0, prevInStunWindowTriggers = 0, prevEllenFreezeCount = 0, prevPromiaReleaseDecibel = 0, prevDecibelParry = 0): {
     resourceResult: TeamResourceResult
     stunPool: StunPoolResult | null
     anomalyPool: AnomalyPoolResult | null
@@ -737,6 +737,7 @@ function applyNormaHatChain(
     inStunAnomalyState: InStunAnomalySummary | null
     bossAnomalyState: BossAnomalyStateResult | null
     ellenFreezeCount: number
+    decibelParry: number
   } | null {
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
@@ -823,6 +824,9 @@ function applyNormaHatChain(
     const guaranteeUltimate = configStore.getMechanicSetting('guarantee.ultimate', 0) !== 0
     const autoTopUp = (axisActive || guaranteeFury || guaranteeUltimate) && banyueSlot >= 0
       && configStore.getMechanicSetting('banyue.autoTopUpInteractions', 1) !== 0
+    // 通用保底4喧响：喧响缺口 → 弹刀（任意队伍；般岳走上面的 computeBanyueInteractionTopUp，此处排除避免双计）。
+    // 弹刀注入槽位 0（主C，弹刀喧响经伴随覆盖全队），轮间经 prevDecibelParry 线程收敛。
+    const decibelParryActive = guaranteeUltimate && banyueSlot < 0
 
     /** 轴内某槽位捏的块次数（moveId → 总次数 = 块数 × 窗口数；赠品连携块不计） */
     const computeBanyueAxisExFor = (slot: number): Record<string, number> => {
@@ -955,6 +959,12 @@ function applyNormaHatChain(
         } else if (cfg.slot === mainDpsSlot) {
           merged.parryCount = prevSplit?.mainDpsParry ?? Math.max(0, parryTotal - (configStore.team[breakerSlot]?.parryCount ?? 0))
         }
+      }
+      // 通用保底4喧响：注入槽位 0 的「只给喧响」弹刀补齐量（上一轮收敛值；首轮 0）。
+      // 走 parryDecibelOnlyCount 而非 parryCount：只计 215 喧响、不产轻弹刀/支援突击行、不贡献失衡值——
+      // 保底4失衡的弹刀（含失衡值）由上方 parrySplit 独立反推，二者职责分离，避免弹刀↔失衡池的反馈环振荡。
+      if (decibelParryActive && cfg.slot === 0) {
+        merged.parryDecibelOnlyCount = (merged.parryDecibelOnlyCount ?? 0) + prevDecibelParry
       }
       if (merged.agentId === '1571') {
         return { ...merged, normaStunCount: stunCount, normaStunCoverage: provStunCoverage, normaBattleTime: base.totalTime }
@@ -1305,7 +1315,9 @@ function applyNormaHatChain(
     if (autoTopUp) {
       const storeChar = configStore.team[banyueSlot]
       const ultNeed = axisUltimateNeed(resolvedAxes, stunCount, banyueSlot)
-      const decibelHave = rr.characters.reduce((s, c) => s + (c.decibelSource?.total ?? 0), 0)
+      // 喧响供给取般岳个人（终结技次数 = 个人喧响 / 终结技消耗，非全队总和；曾用全队总和导致
+      // 队友喧响把缺口抹平 → 保底4喧响不补齐、般岳卡在 9000 出头打不满 4 大）
+      const decibelHave = rr.characters.find(c => c.slot === banyueSlot)?.decibelSource?.total ?? 0
       banyueTopUpNext = computeBanyueInteractionTopUp({
         dodgeCount: storeChar?.dodgeCounterCount ?? 0,
         parryCount: storeChar?.parryCount ?? 0,
@@ -1318,6 +1330,17 @@ function applyNormaHatChain(
         ultimateCost: base.characters[banyueSlot]?.ultimateCost ?? ULTIMATE_COST_DEFAULT,
         decibelHave,
       })
+    }
+
+    // 通用保底4喧响：喧响缺口 → 弹刀（所有非般岳队伍）。目标 = 保底 4 次终结技（4×3000 喧响），
+    // 弹刀 = ceil(缺口 / 215)；与般岳同一口径，轮间经 prevDecibelParry 收敛。
+    // 单调不减（max 夹住上一轮）：215 是弹刀个人喧响奖励、实际每刀喧响含伴随/轻弹刀数据行更高，
+    // 直接重算会在「缺口÷215」与「0」之间振荡——单调夹住后收敛到首轮估计，稳定且确定。
+    let decibelParryNext = prevDecibelParry
+    if (decibelParryActive) {
+      const decibelHave = rr.characters.reduce((s, c) => s + (c.decibelSource?.total ?? 0), 0)
+      const decibelShort = Math.max(0, 4 * ULTIMATE_COST_DEFAULT - decibelHave)
+      decibelParryNext = Math.max(prevDecibelParry, Math.ceil(decibelShort / PARRY_DECIBEL_BONUS))
     }
     const baseStun = extractStunExecsFrom(rr)
     const baseAnomaly = extractAnomalyExecsFrom(rr)
@@ -1713,6 +1736,7 @@ function applyNormaHatChain(
       inStunAnomalyState: inStunAnomalyStateNext,
       bossAnomalyState: bossAnomalyStateNext,
       banyueTopUp: banyueTopUpNext,
+      decibelParry: decibelParryNext,
       parrySplit: parrySplitNext,
       yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
       teamUltimateForJufufu: teamUltimateForJufufuNext,
@@ -1758,10 +1782,12 @@ function applyNormaHatChain(
     let prevAnomalyDecibelBonus: number[] = []
     let prevBanyueTopUp: BanyueInteractionTopUp = { parry: 0, dual: 0 }
     let prevParrySplit: ParrySplitResult | null = null
+    let prevDecibelParry = 0
     let prevUltSeq = ''
     let prevAnomalySeq = ''
     let prevTopUpSeq = ''
     let prevParrySplitSeq = ''
+    let prevDecibelParrySeq = ''
     const seenStunCounts = new Set<number>()
     // 收敛诊断（三层不动点第 ③ 层）：原先耗尽 MAX_OUTER_ITER 就静默 return 末轮结果——
     // 失衡次数/异常喧响奖励可能停在错误值而无任何信号。这里记录落地方式，拼进结果供界面与测试断言。
@@ -1776,7 +1802,7 @@ function applyNormaHatChain(
       outerRounds = k + 1
       // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
       const locked = lockedStunCount >= 0
-      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevParrySplit, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevGraceC1Cycles, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers, prevPromiaTriggerHits, prevPromiaTeammateReleases, prevInStunWindowTriggers, prevEllenFreezeCount, prevPromiaReleaseDecibel)
+      out = runCalcRound(stunCount, prevGoodReview, prevEnergyBySlot, prevAuricInkFlash, prevAnomalyDecibelBonus, prevBanyueTopUp, prevParrySplit, prevYixuanFuFaForJufufu, prevTeamUltimateForJufufu, prevYeshuguangGiftUlt, prevLucyTeammateEx, prevLighterTeamEnergy, prevGraceC1Cycles, prevAnbyZeroTeammateWl, prevVivianTeamEx, prevVivianAnomalyTriggers, prevPromiaTriggerHits, prevPromiaTeammateReleases, prevInStunWindowTriggers, prevEllenFreezeCount, prevPromiaReleaseDecibel, prevDecibelParry)
       const ait = out?.auricInkTriggerCount ?? 0
       const gr = out?.goodReview
       if (gr !== undefined && gr >= 0) prevGoodReview = gr
@@ -1811,7 +1837,8 @@ function applyNormaHatChain(
       const anomalySeq = (out?.anomalyPool?.perSlotBonus ?? []).map(v => Math.round(v)).join(',')
       const topUpSeq = `${out?.banyueTopUp?.parry},${out?.banyueTopUp?.dual}`
       const parrySplitSeq = out?.parrySplit ? `${out.parrySplit.breakerParry},${out.parrySplit.mainDpsParry}` : ''
-      const feedbackStable = ultSeq === prevUltSeq && anomalySeq === prevAnomalySeq && topUpSeq === prevTopUpSeq && parrySplitSeq === prevParrySplitSeq
+      const decibelParrySeq = `${out?.decibelParry ?? 0}`
+      const feedbackStable = ultSeq === prevUltSeq && anomalySeq === prevAnomalySeq && topUpSeq === prevTopUpSeq && parrySplitSeq === prevParrySplitSeq && decibelParrySeq === prevDecibelParrySeq
       if (lockedStunCount >= 0) {
         if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
       } else {
@@ -1826,6 +1853,8 @@ function applyNormaHatChain(
       prevAuricInkFlash = ait
       prevBanyueTopUp = out?.banyueTopUp ?? prevBanyueTopUp
       prevParrySplit = out?.parrySplit ?? prevParrySplit
+      prevDecibelParry = out?.decibelParry ?? prevDecibelParry
+      prevDecibelParrySeq = decibelParrySeq
       prevYixuanFuFaForJufufu = out?.yixuanFuFaForJufufu ?? 0
       prevTeamUltimateForJufufu = out?.teamUltimateForJufufu ?? 0
       prevYeshuguangGiftUlt = out?.yeshuguangGiftUlt ?? 0
@@ -2824,6 +2853,23 @@ function applyNormaHatChain(
               note: event.note ?? '',
             })
           }
+        } else if (event.eventType === 'direct_damage') {
+          // 直伤事件（如薇薇安预言 DoT、加农转子额外伤害）：倍率 = 攻击力 × damageMultiplier%。
+          // 缺 damageMultiplier 的事件（spec 事件走专用结算块）跳过，避免双计。
+          const mult = event.damageMultiplier ?? 0
+          if (mult > 0 && event.count > 0) {
+            pushDirect({
+              id: `direct-damage-${slot}-${event.eventId}`,
+              slot,
+              agentId: charResult.agentId,
+              name: event.eventName,
+              element: event.element ?? agent?.damageElement ?? 'physical',
+              source: event.carrierMoveName || event.carrierMoveId || event.eventId,
+              count: event.count,
+              multiplier: mult,
+              note: event.note ?? event.formula ?? '',
+            })
+          }
         }
       }
 
@@ -3339,6 +3385,25 @@ function applyNormaHatChain(
           })
         }
       }
+    }
+
+    // ---- 爱丽丝被动 DOT（异常池 aliceCoweringDot 入池；畏缩/任意异常状态期间每 0.95s 强击伤害 2.5%） ----
+    const coweringDot = anomalyPoolResult.value?.aliceCoweringDot
+    if (aliceSlot >= 0 && coweringDot && coweringDot.totalDotDamage > 0) {
+      rows.push({
+        id: 'alice-cowering-dot',
+        slot: aliceSlot,
+        agentId: configStore.team[aliceSlot]?.agentId ?? '',
+        agentName: agentName(configStore.team[aliceSlot]?.agentId ?? '', aliceSlot),
+        type: '畏缩 DOT',
+        name: '爱丽丝畏缩 DOT',
+        element: 'physical',
+        source: '畏缩状态 · 每 0.95s 强击伤害 2.5%',
+        count: coweringDot.totalTicks,
+        perDamage: coweringDot.dotDamagePerTick,
+        totalDamage: coweringDot.totalDotDamage,
+        note: `畏缩 DOT：每 ${coweringDot.dotInterval}s 造成强击伤害 ${coweringDot.dotRatio}% · ${fmt(coweringDot.totalTicks)} tick`,
+      })
     }
 
     const remielleSlot = configStore.team.findIndex(char => {

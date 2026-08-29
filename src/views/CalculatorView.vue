@@ -66,6 +66,7 @@ const pageMap: Record<string, any> = {
   mechanic: lazyPage(() => import('@/views/MechanicsTablePage.vue')),
   multiplierCoeff: lazyPage(() => import('@/views/MultiplierCoeffPage.vue')),
   runArchive: lazyPage(() => import('@/views/RunArchivePage.vue')),
+  charIncrement: lazyPage(() => import('@/views/CharIncrementPage.vue')),
   bossHp: lazyPage(() => import('@/views/BossHpInflationPage.vue')),
 }
 

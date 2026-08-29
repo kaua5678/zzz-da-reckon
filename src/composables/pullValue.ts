@@ -56,7 +56,7 @@ export interface PvRun {
   mode: string
   score: number
   authorName?: string
-  team: ReadonlyArray<{ agentId: string }>
+  team: ReadonlyArray<{ agentId: string; mindscape?: number; phase?: number }>
 }
 
 export interface PvSeasonMeta {
@@ -95,6 +95,20 @@ export interface PvRoom {
   maxScore: number
   medianScore: number
   capCount: number
+  /** 效率前沿（用户口径 4）：该期限定金数最低的顶分 run（前 N 名按金数升序取首个满档；
+   *  null = 无队伍数据。「低金顶分」= 该期被 65000 打满的投稿里限定金最少的那次——
+   *  它代表「理论理想配装 + 玩家上限」在该期的可达边界，用于校准规划器的现实折扣 λ） */
+  frontierLowestGold: PvRoomFrontier | null
+}
+
+/** 效率前沿条目：低金顶分 run 的队伍与金数 */
+export interface PvRoomFrontier {
+  /** 顶分（= cap 才入前沿） */
+  score: number
+  /** 队伍限定金数（本体 1/金 + 影画/精炼各 1/金；非限定成员 0） */
+  gold: number
+  /** 队伍 agentId */
+  team: string[]
 }
 
 /** 一张卡在一个房间的兑现明细 */
@@ -247,6 +261,30 @@ export function computePullValue(input: PullValueInput): PullValueResult {
       effectByCard.set(c, { effect: median(deltas.slice().sort((a, b) => a - b)), pairs: deltas.length })
     }
 
+    // 效率前沿（用户口径 4）：满档（= cap）投稿里限定金数最低的 run。
+    // 金数 = 限定 S 本体 1 + 影画 mindscape + 专武精炼 (phase−1)；常驻/A 不计。
+    const limitedGoldOf = (r: PvRun): number => {
+      let gold = 0
+      for (const m of r.team) {
+        if (!AGENT_RELEASE_NODE[m.agentId]) continue
+        if (STANDARD_S_AGENT_IDS.has(m.agentId)) continue
+        gold += 1 + (m.mindscape ?? 0) + Math.max(0, (m.phase ?? 1) - 1)
+      }
+      return gold
+    }
+    let frontierLowestGold: PvRoomFrontier | null = null
+    for (const r of rs) {
+      if (r.score < SCORE_CAP) continue
+      const gold = limitedGoldOf(r)
+      if (!frontierLowestGold || gold < frontierLowestGold.gold) {
+        frontierLowestGold = {
+          score: r.score,
+          gold,
+          team: r.team.map(m => m.agentId).filter(Boolean),
+        }
+      }
+    }
+
     // 顶分在场：房间最高分队伍的成员（含并列）
     const appearedCards = new Set<string>()
     const frontierCards = new Set<string>()
@@ -272,6 +310,7 @@ export function computePullValue(input: PullValueInput): PullValueResult {
       maxScore,
       medianScore: median(scores),
       capCount: scores.filter(s => s >= SCORE_CAP).length,
+      frontierLowestGold,
       effectByCard,
       appearedCards,
       frontierCards,

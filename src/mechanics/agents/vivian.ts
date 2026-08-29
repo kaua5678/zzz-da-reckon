@@ -393,6 +393,7 @@ function buildVivianAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
       carrierMoveId: VIVIAN_LUOYU_MOVE_ID,
       carrierMoveName: '薇薇安的预言',
       count: dotTicks,
+      damageMultiplier: VIVIAN_PREDICTION_DOT_RATIO,
       formula: `每 ${VIVIAN_PREDICTION_DOT_INTERVAL}s 造成 ${VIVIAN_PREDICTION_DOT_RATIO}% 攻击力以太伤害；次数 = floor(战斗时长 × 异常覆盖占比 × 命中异常占比 / ${VIVIAN_PREDICTION_DOT_INTERVAL})`,
       fields: ['totalTime', 'vivian.dotCoverage', 'vivian.releaseCoverage', 'VIVIAN_PREDICTION_DOT_INTERVAL', 'VIVIAN_PREDICTION_DOT_RATIO'],
       note: `预言 DoT：悬落/落羽生花命中异常目标施加，目标脱离异常状态时结束；次数按异常覆盖时长近似（${(dotCoverage * 100).toFixed(0)}% × ${(hitAnomalyRatio * 100).toFixed(0)}% × ${totalTime}s）`,

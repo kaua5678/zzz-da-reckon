@@ -544,6 +544,11 @@ export interface AnomalyEventExecution {
   /** 说明 */
   note?: string
   /**
+   * 直伤事件（eventType='direct_damage'）的倍率（% 攻击力）。
+   * 伤害池据此把事件转成直伤行；缺省 = 未接线（如 spec 事件走专用结算块，不进此通用路径）。
+   */
+  damageMultiplier?: number
+  /**
    * 比例型异放（eventType='release' 且非固定 releaseMultiplier）。
    * 倍率 = 原异常单次/单跳倍率(element) × (触发者[basis]/10 × perTenByElement[element]%) × 失衡加成。
    * basis 取触发者面板的异常掌控或异常精通；basis='anomalyDamageRatio' 时倍率直接 =

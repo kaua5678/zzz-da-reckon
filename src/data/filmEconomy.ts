@@ -32,6 +32,8 @@ export const BATTLE_PASS_FILM = 2600
 export const PERIODS_PER_VERSION = 3
 /** 每版本免费菲林默认（≈ 1 金，用户口径「一版本给 1 金」；可编辑） */
 export const DEFAULT_FILM_PER_VERSION = CINEMA_GOLD_FILM
+/** 抽卡规划器默认每版本免费菲林（用户口径 2026-08-28：默认每版本发 25000 ≈ 1.67 金） */
+export const PLANNER_FILM_PER_VERSION = 25000
 /** 默认初始总限定金（全队 0 命 1 精带专武 = 6 金） */
 export const DEFAULT_INITIAL_GOLD = 6
 /** 默认消耗占比（每期菲林花多少抽卡；用户例「给 1 金用半金」= 0.5） */

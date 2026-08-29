@@ -26,6 +26,7 @@
           <n-tab-pane name="breakerCompare" tab="击破手对比" />
           <n-tab-pane name="timeline" tab="时间图表" />
           <n-tab-pane name="runArchive" tab="实战对比" />
+          <n-tab-pane name="charIncrement" tab="角色兑现" />
           <n-tab-pane name="bossHp" tab="血量膨胀" />
         </n-tabs>
       </div>

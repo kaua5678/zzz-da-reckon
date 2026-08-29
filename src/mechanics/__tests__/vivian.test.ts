@@ -281,4 +281,22 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
     const releases = rows.filter(r => r.type === '异放' && r.agentId === '1331')
     expect(releases.length).toBeGreaterThan(0)
   })
+
+  it('预言 DoT（direct_damage 事件）进入伤害池（type=直伤，element=ether）', async () => {
+    await setup('1181', 6)
+    const calc = useResourceCalc()
+    // 事件确实被构建
+    const events = calc.resourceResult.value!.characters.find(c => c.agentId === '1331')!.anomalyEventExecutions
+    const dotEvent = events.find(e => e.eventId === 'vivian_prediction_dot')
+    expect(dotEvent?.eventType).toBe('direct_damage')
+    expect(dotEvent?.damageMultiplier).toBeGreaterThan(0)
+    // 事件转成直伤行进池（曾遗漏：direct_damage 事件被构建却从未结算进伤害）
+    const rows = calc.damagePoolRows.value.filter(r => r.name.includes('预言') && r.type === '直伤')
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(row.element).toBe('ether')
+      expect(row.totalDamage).toBeGreaterThan(0)
+      expect(row.count).toBeGreaterThan(0)
+    }
+  })
 })

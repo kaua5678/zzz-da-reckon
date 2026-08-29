@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import {
   computePullValue,
   MIN_PAIRS_FOR_GRADE,
+  SCORE_CAP,
   pvReleaseDateOf,
   pvTierOf,
   type PullValueInput,
@@ -275,6 +276,21 @@ describe('pullValue · 真实归档冒烟（run-archive.json）', () => {
     const nico = res.cards.find(c => c.agentId === '1031')!
     expect(nico.tier).toBe('aRank')
     expect(nico.cumulative).toBeLessThan(0)
+  })
+
+  it('效率前沿：多数满档房间有低金顶分记录，且金数 ≥ 0、队伍 ≤ 3 人', () => {
+    const withFrontier = res.rooms.filter(r => r.frontierLowestGold != null)
+    expect(withFrontier.length).toBeGreaterThan(10)
+    for (const r of withFrontier) {
+      const f = r.frontierLowestGold!
+      expect(f.score).toBeGreaterThanOrEqual(SCORE_CAP)
+      expect(f.gold).toBeGreaterThanOrEqual(0)
+      expect(f.team.length).toBeLessThanOrEqual(3)
+    }
+    // 顶分饱和的房间必有前沿
+    for (const r of res.rooms) {
+      if (r.capCount > 0) expect(r.frontierLowestGold).not.toBeNull()
+    }
   })
 
   it('一致性与分级覆盖：累计 = Σ逐期；合格限定卡全有等级；从未出场的限定 S 兑现 0', () => {

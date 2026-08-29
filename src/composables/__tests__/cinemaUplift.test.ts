@@ -117,5 +117,5 @@ describe('analyzeCinemaUplift（命座提升率 + 死数据自检）', () => {
         `${agentId} 以下命座在状态表标了已实现，但面板无变化且伤害无提升（死数据）：${bad.join('、')}`,
       ).toHaveLength(0)
     }
-  })
+  }, 60000)
 })

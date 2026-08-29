@@ -186,7 +186,7 @@ export function computeBanyueInteractionTopUp(opts: {
   minRageCount?: number
   /** 终结技喧响消耗（默认 3000） */
   ultimateCost: number
-  /** 当前喧响供给（全队） */
+  /** 当前喧响供给（般岳个人；终结技次数 = 个人喧响 / 终结技消耗，非全队总和） */
   decibelHave: number
 }): BanyueInteractionTopUp {
   const rageGroups = (opts.axisEx['banyue-combo'] ?? 0) + (opts.axisEx['banyue-combo-didong'] ?? 0)
