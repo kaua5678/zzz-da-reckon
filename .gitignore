@@ -12,8 +12,9 @@ scripts/check.mjs
 .npm-cache/
 *.log
 
-# Agent loop-mode task ledger (working state, not project knowledge)
+# Agent loop-mode task ledgers (working state, not project knowledge)
 .claude/task-ledger.md
+.claude/ledgers/
 
 # OS / editor noise
 .DS_Store

@@ -61,7 +61,12 @@ function resolveEntity(list, token, what) {
   const bySub = list.filter(e => (e.name?.zhCN ?? '').includes(t) || (e.name?.en ?? '').toLowerCase().includes(t.toLowerCase()))
   if (bySub.length === 1) return bySub[0]
   if (bySub.length > 1) fail(`「${t}」歧义，命中 ${bySub.length} 个${what}：\n${bySub.map(e => `  - ${idName(e)}`).join('\n')}\n请用 id 或更长的名字再试。`)
-  fail(`未找到${what}「${t}」。`)
+  // 未命中时的下一步：给笔误场景的相近候选（共享≥2字、按重合度排序），别让 agent 空手退回去靠联想
+  const shared = (name) => new Set((name ?? '').split('').filter(ch => t.includes(ch))).size
+  const fuzzy = [...new Set(list.filter(e => shared(e.name?.zhCN) >= 2 || shared(e.name?.en) >= 2))]
+    .sort((a, b) => shared(b.name?.zhCN) + shared(b.name?.en) - shared(a.name?.zhCN) - shared(a.name?.en))
+    .slice(0, 8)
+  fail(`未找到${what}「${t}」。${fuzzy.length ? `相近候选：\n${fuzzy.map(e => `  - ${idName(e)}`).join('\n')}` : `可先列全表确认存在：见 docs/ENTITY_CARDS.md §0。`}`)
 }
 
 function fail(msg) {
