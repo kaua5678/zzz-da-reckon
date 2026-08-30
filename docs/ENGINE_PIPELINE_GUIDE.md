@@ -129,9 +129,10 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
     `useResourceCalc` 加 agentId 分支。历史上 5 条队伍级机制被编排层手工 import + 手工按序调用，
     其中莱特那条要在 3 个位置各调一次，漏一处就是静默错值。
 14. **能量口径分两个数**：`energySource.total`（展示明细合计，含队友联动 `crossAgent`）与
-    `derivedEnergy`（真正驱动 exSpecialCount 的收敛能量）。二者的差值是**已知口径差**：
-    iterate 内调 `calcEnergySource` 时 chainCountTotal 传 0（连携次数尚未收敛），因此连携驱动的
-    回能（莱卡恩影画2 等）只进展示、不参与次数推导。两个字段都在结果上，便于对账。
+    `derivedEnergy`（真正驱动 exSpecialCount 的收敛能量）。二者应当一致：iterate 与最终装配
+    用同一函数、同一入参（连携次数同口径）。历史版本 iterate 内调 `calcEnergySource` 时
+    chainCountTotal 传 0，时光切片（音擎 13002）连携触发的回能只进展示、不参与次数推导——
+    已修复对齐；两字段保留在结果上，差值 ≠ 0 即回归信号（`timeSliceChainEnergy.test.ts` 锁定）。
     跨角色回能只改 `calcCrossAgentEnergy` 一处（单一事实源）。
 15. **收敛状态要看三层**：`TeamResourceResult.convergence` 上报时间预算层（converged/轮数/
     正残差/负残差 idle）与失衡外层（`stable | cycle | maxIter`）。`cycle` = 离散 2-循环兜底，正常；

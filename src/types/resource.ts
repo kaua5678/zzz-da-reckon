@@ -936,10 +936,10 @@ export interface CharacterResourceResult {
   /**
    * 真正驱动 exSpecialCount 的收敛后总能量（= 收敛末轮 iterate 的 totalEnergy）。
    *
-   * 与 `energySource.total` 的差值是**已知口径差**，不是 bug：iterate 内 calcEnergySource
-   * 以 chainCountTotal=0 调用（连携次数此时尚未收敛），而最终装配用收敛后的连携次数，
-   * 因此连携驱动的回能（如莱卡恩影画2 lycaonC2Energy）只出现在展示明细里、不参与次数推导。
-   * 暴露本字段的目的：让这个差值可被测试/界面观测，而不是静默存在。
+   * 与 `energySource.total` 应当一致：iterate 与最终装配用同一函数、同一入参（连携次数
+   * 同口径）。历史版本 iterate 内 calcEnergySource 以 chainCountTotal=0 调用，时光切片
+   * 连携触发的回能只进展示明细、不参与次数推导，二者存在固定差值——已修复对齐。
+   * 保留双字段的目的：让口径分裂可被测试/界面观测（差值 ≠ 0 即回归信号）。
    */
   derivedEnergy: number
   /** 可用强特次数 = 总能量 ÷ 强特消耗 */
@@ -1339,8 +1339,6 @@ export interface CharacterOperationConfig {
   extraSelfDecibelReward: number
   /** 每次终结技额外获得的不可分享喧响（如橘福福额外能力对强攻/命破 300/次） */
   extraSelfDecibelPerUltimate?: number
-  /** 每秒基础时间额外获得的不可分享喧响（如伊德海莉烧血→喧响） */
-  extraSelfDecibelPerBasicSecond?: number
   /** 伊德海莉 4 命：生命值降低时喧响获得提升 10% */
   yidhariCinema4Enabled?: boolean
   /** 伊德海莉每降低 1% 生命值获得的喧响（含命座修正） */

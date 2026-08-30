@@ -837,10 +837,12 @@ export function iterate(
     const cfg = configs[i]
     const prev = prevStates[i]
 
-    // 能量。注意：此处 chainCountTotal 传 0（连携次数尚未收敛），因此连携驱动的回能
-    // （莱卡恩影画2 等）只在最终装配的展示明细里出现、不参与次数推导 —— 该口径差已由
-    // CharacterResourceResult.derivedEnergy 与 energySource.total 双字段暴露，见类型注释。
-    const energySrc = calcEnergySource(cfg, prev, configs, globalCfg.shieldCount, globalCfg.energyShieldCount, 0, globalCfg.totalTime)
+    // 能量。连携次数与展示口径一致（chainCountTotalOverride ?? chainCountPerStun × stunCount）：
+    // 时光切片（音擎 13002）连携触发的回能随此进循环、驱动强特次数。曾传 0 造成
+    // 「展示明细含连携回能、次数推导不含」的口径分裂（derivedEnergy < energySource.total），
+    // 见 CharacterResourceResult.derivedEnergy 注释。
+    const chainCountInput = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * (globalCfg.stunCount ?? 0)
+    const energySrc = calcEnergySource(cfg, prev, configs, globalCfg.shieldCount, globalCfg.energyShieldCount, chainCountInput, globalCfg.totalTime)
     // 队友联动回能（单一事实源，与最终装配同函数）
     const crossAgent = calcCrossAgentEnergy(i, configs, prevStates)
     const totalEnergy = energySrc.total + crossAgent.total
@@ -850,10 +852,8 @@ export function iterate(
     const exSpecialCount = resolveExSpecialCount(cfg, totalEnergy)
 
     // 喧响（先算独立可分享部分，效率在接收者获得时统一乘入）。
-    // 连携次数与展示口径一致（chainCountTotalOverride ?? chainCountPerStun × stunCount），
     // 连携数据行回复参与次数推导且被队友伴随，避免推导与展示差 1 次
-    const chainCountForDecibel = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * (globalCfg.stunCount ?? 0)
-    const rawDecibel = calcRawDecibelParts(cfg, prev, chainCountForDecibel, exSpecialCount, prev.ultimateCount, totalTime)
+    const rawDecibel = calcRawDecibelParts(cfg, prev, chainCountInput, exSpecialCount, prev.ultimateCount, totalTime)
     shareableDecibels.push(rawDecibel.shareableTotal)
   }
 
@@ -903,7 +903,6 @@ export function iterate(
     })()
     const extraSelfDecibel = (cfg.extraSelfDecibelReward ?? 0)
       + (cfg.extraSelfDecibelPerUltimate ?? 0) * prev.ultimateCount
-      + (cfg.extraSelfDecibelPerBasicSecond ?? 0) * prev.basicAttackTime
       + (cfg.luciaC4DecibelPerTrigger ?? 0) * curtainTriggers
       // 诺姆影画4·膛温换连携：诺姆+上一位队友各 +200 不可分享喧响（次数 = floor(膛温/80)，
       // buildResourceResult 上一轮写入 cfg.normaHatToChainCount；计入终结技次数）

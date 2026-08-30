@@ -640,15 +640,16 @@ export function useResourceCalc() {
     const axisActionCountsBySlot: Record<number, Record<string, number>> = {}
     for (const c of base.characters) axisActionCountsBySlot[c.slot] = computeBanyueAxisExFor(c.slot)
     const characters = base.characters.map(cfg => {
-      cfg.axisInSeconds = axisInSeconds
       // 轴模式：连携总次数完全由轴决定（未列连携块的槽位 = 0 次，轴即最终次数）
       const chainOverride = axisActive
         ? (axisChainTotal[cfg.slot] ?? 0)
         : undefined
-      // 全队通用注入（无 agent 分支）：失衡时间覆盖率 + 本槽位轴内捏块计数。
+      // 全队通用注入（无 agent 分支）：轴内时间 + 失衡时间覆盖率 + 本槽位轴内捏块计数。
       // 供需要「失衡内/外拆分」或「轴内精确次数」的模块自取（猫又 30/40 档穿刺用）；其余角色字段闲置。
+      // axisInSeconds 只写克隆不写 base cfg（base 是 computed 缓存对象，脏写会让其内容依赖调用顺序）。
       const merged = {
         ...(chainOverride !== undefined ? { ...cfg, chainCountTotalOverride: chainOverride } : cfg),
+        axisInSeconds,
         teamStunCoverage: provStunCoverage,
         axisActionCounts: axisActionCountsBySlot[cfg.slot],
       }
