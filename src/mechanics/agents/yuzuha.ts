@@ -4,6 +4,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentTeamConfigInput,
 } from '../types'
 import type { CharacterResourceResult, MechanicSetting, YuzuhaMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
@@ -12,50 +13,65 @@ const YUZUHA_AGENT_ID = '1411'
 const SWEETNESS_INITIAL = 3
 const SWEETNESS_CAP = 6
 const TEAM_ATK_RATIO = 0.4
-const TEAM_ATK_CAP = 600
+/** 满级（核心被动 lv7）口径：上限1200，初始攻击力3000打满；计算器一律按满级角色计算 */
+const TEAM_ATK_CAP = 1200
 const TEAM_DMG_BONUS = 15
-const CHARGED_CANNON_DMG_RATIO = 300
 /** 影画6：招架支援/狸之帐成功招架额外 +1 甜度点（次数≈parryCount） */
 const C6_SWEETNESS_PER_PARRY = 1
-/** 蓄能炮弹：每蓄能 0.4 秒消耗 1 点甜度点追加一枚 300% 攻击力物理炮弹，单次蓄能最长 0.8 秒 */
-const CHARGE_SECONDS_PER_CANNON = 0.4
-const CHARGE_SECONDS_MAX = 0.8
-export const YUZUHA_CHARGED_CANNON_MOVE_ID = '1411_charged_cannon'
+/** 硬糖射击（8秒CD后台追击）：其他角色攻击命中触发，重击命中耗1甜度点；影画2 CD-25% → 6秒 */
+export const YUZUHA_HARD_CANDY_MOVE_ID = '1411018'
+const HARD_CANDY_CD_SECONDS = 8
+const C2_HARD_CANDY_CD_CUT = 0.25
+/** 彩糖花火：甜蜜惊吓敌人每1秒一次（惊吓按满覆盖近似）；·极由硬糖射击/夹心硬糖射击重击触发（≈招架次数） */
+export const YUZUHA_FIREWORK_MOVE_ID = '1411020'
+export const YUZUHA_FIREWORK_EXTREME_MOVE_ID = '1411021'
+const FIREWORK_TICK_SECONDS = 1
+/** 终结技·队友回能：每次大招全队其他角色回复 7+1.5×终结技等级（满级12级=25）点能量；走 crossAgent.supportUltimateRegen 通道 */
+export const YUZUHA_ULT_TEAM_ENERGY = 25
 
 export function computeYuzuhaMechanic(input: {
   initialAtk: number
   chainEntryCount: number
-  chargedCannonCount: number
   cinemaLevel?: number
   parryCount?: number
-  chargeSeconds?: number
+  /** 有效战斗时间（秒）= battleTime - invincibleTime（后台追击不吃 boss 无敌时间） */
+  effectiveSeconds?: number
+  /** 十人十色转积蓄目标元素（队伍有异常队友时为其属性，否则缺省物理不转） */
+  transferElement?: string
 }): YuzuhaMechanicSource {
   const cinemaLevel = Math.max(0, Math.floor(input.cinemaLevel ?? 0))
   const parryCount = Math.max(0, Math.floor(input.parryCount ?? 0))
-  const sweetnessIncome = SWEETNESS_INITIAL
-    + Math.max(0, input.chainEntryCount)
-    + (cinemaLevel >= 6 ? parryCount * C6_SWEETNESS_PER_PARRY : 0)
-  const sweetnessTotal = Math.min(SWEETNESS_CAP, sweetnessIncome)
+  const effectiveSeconds = Math.max(0, input.effectiveSeconds ?? 0)
+  const sweetnessFromChain = Math.max(0, input.chainEntryCount)
+  const sweetnessFromParry = cinemaLevel >= 6 ? parryCount * C6_SWEETNESS_PER_PARRY : 0
+  const sweetnessTotal = Math.min(SWEETNESS_CAP, SWEETNESS_INITIAL + sweetnessFromChain + sweetnessFromParry)
+  // 硬糖射击吃整场终身预算：存量上限 6 只钳瞬时持有，不钳「花掉再进」的终身收入
+  const sweetnessBudget = SWEETNESS_INITIAL + sweetnessFromChain + sweetnessFromParry
   const teamAtkBonus = Math.min(TEAM_ATK_CAP, Math.max(0, input.initialAtk) * TEAM_ATK_RATIO)
-  // 蓄能炮弹（影画6 整条机制）：支援突击夹心硬糖射击时长按蓄能，每 0.4s 耗 1 甜度追加一枚；受甜度存量钳制。
-  // 硬糖射击（8秒CD追击）未建模，甜度预算全部计入蓄能炮弹。
-  const chargeSeconds = Math.min(CHARGE_SECONDS_MAX, Math.max(0, input.chargeSeconds ?? CHARGE_SECONDS_MAX))
-  const cannonsPerAssist = cinemaLevel >= 6 ? Math.floor(chargeSeconds / CHARGE_SECONDS_PER_CANNON) : 0
-  const chargedCannonCount = cannonsPerAssist > 0 && sweetnessTotal > 0
-    ? Math.min(cannonsPerAssist * parryCount, sweetnessTotal)
-    : Math.max(0, Math.floor(input.chargedCannonCount ?? 0))
+  const hardCandyCdSeconds = cinemaLevel >= 2
+    ? HARD_CANDY_CD_SECONDS * (1 - C2_HARD_CANDY_CD_CUT)
+    : HARD_CANDY_CD_SECONDS
+  const hardCandyCount = Math.min(Math.floor(effectiveSeconds / hardCandyCdSeconds), sweetnessBudget)
+  const fireworkTickCount = Math.floor(effectiveSeconds / FIREWORK_TICK_SECONDS)
+  const fireworkExtremeCount = hardCandyCount + parryCount
+  const transferElement = input.transferElement
   return {
     sweetnessInitial: SWEETNESS_INITIAL,
-    sweetnessFromChain: Math.max(0, input.chainEntryCount),
-    sweetnessFromParry: cinemaLevel >= 6 ? parryCount * C6_SWEETNESS_PER_PARRY : 0,
+    sweetnessFromChain,
+    sweetnessFromParry,
     sweetnessTotal,
     sweetnessCap: SWEETNESS_CAP,
+    sweetnessBudget,
     teamAtkBonus,
     teamAtkCap: TEAM_ATK_CAP,
     teamDmgBonus: TEAM_DMG_BONUS,
-    chargedCannonCount,
-    chargedCannonsPerAssist: cannonsPerAssist,
-    note: '甜度点：进场3点、上限6，其他角色连携入场+1（二命），六命招架成功额外+1；狸之愿：40%初始攻击力（上限600）并+15%伤害，持续40秒；蓄能强力炮弹每0.4秒消耗1甜度点，300%攻击力物理伤害。硬糖射击（8秒CD追击）未建模，甜度预算全部计入蓄能炮弹。',
+    effectiveSeconds,
+    hardCandyCount,
+    hardCandyCdSeconds,
+    fireworkTickCount,
+    fireworkExtremeCount,
+    transferElement,
+    note: '甜度点：进场3点、上限6，其他角色连携入场+1（二命），六命招架成功额外+1；甜度终身预算全部给硬糖射击（8秒CD后台追击，二命后6秒）。「影画6蓄能炮弹」作者拒绝实现（实时蓄能/自动闪避/逐发触发·极复杂度不成比例）。彩糖花火每1秒一次（惊吓满覆盖）；·极=硬糖射击+夹心硬糖重击触发；花火/·极积蓄经十人十色转入异常队友元素池（转积蓄，不吃自身伤害结算）。',
   }
 }
 
@@ -68,38 +84,47 @@ function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: numb
 function buildYuzuhaCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   // 滑块必须经 buildCharConfig 落到 cfg，buildResourceResult 阶段才读得到（applyPanel 早于 cfg 构建拿不到 settings）
   cfg.yuzuhaChainEntryCount = Math.max(0, Math.floor(cfgSetting(cfg, 'yuzuha.chainEntryCount', 0)))
-  cfg.yuzuhaChargeSeconds = Math.min(CHARGE_SECONDS_MAX, Math.max(0, cfgSetting(cfg, 'yuzuha.chargeSeconds', CHARGE_SECONDS_MAX)))
   cfg.yuzuhaCinemaLevel = cinemaLevel
+  // 终结技队友回能（calcCrossAgentEnergy 泛型通道，类型注释预留的「如柚叶25」）：满级12级 7+1.5×12
+  cfg.supportUltimateEnergyRegen = YUZUHA_ULT_TEAM_ENERGY
+}
+
+/** 队伍级联动：定位异常专精队友 → 十人十色转积蓄目标元素写入自身 cfg（buildExecutions 读） */
+function buildYuzuhaTeamConfig({ slot, characters, team }: AgentTeamConfigInput): void {
+  const mine = characters.find(c => c.slot === slot)
+  if (!mine) return
+  const target = team.find(m => m.slot !== slot && m.agent?.specialty === 'anomaly')
+  mine.yuzuhaTransferElement = target?.agent?.damageElement
+}
+
+function yuzuhaSourceFromCfg(cfg: AgentResourceInput['cfg']): YuzuhaMechanicSource {
+  const effectiveSeconds = Math.max(0, (cfg.battleTime ?? 180) - (cfg.invincibleTime ?? 0))
+  return computeYuzuhaMechanic({
+    initialAtk: cfg.panel.atk ?? 0,
+    chainEntryCount: cfg.yuzuhaChainEntryCount ?? 0,
+    cinemaLevel: cfg.yuzuhaCinemaLevel ?? 0,
+    parryCount: cfg.parryCount ?? 0,
+    effectiveSeconds,
+    transferElement: cfg.yuzuhaTransferElement,
+  })
 }
 
 function buildYuzuhaResourceResult({ cfg }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  return {
-    yuzuhaMechanicSource: computeYuzuhaMechanic({
-      initialAtk: cfg.panel.atk ?? 0,
-      chainEntryCount: cfg.yuzuhaChainEntryCount ?? 0,
-      chargedCannonCount: 0,
-      cinemaLevel: cfg.yuzuhaCinemaLevel ?? 0,
-      parryCount: cfg.parryCount ?? 0,
-      chargeSeconds: cfg.yuzuhaChargeSeconds ?? CHARGE_SECONDS_MAX,
-    }),
-  }
+  return { yuzuhaMechanicSource: yuzuhaSourceFromCfg(cfg) }
 }
 
-function buildYuzuhaExecutions({ cfg, executions }: AgentResourceInput): void {
-  const source = computeYuzuhaMechanic({
-    initialAtk: cfg.panel.atk ?? 0,
-    chainEntryCount: cfg.yuzuhaChainEntryCount ?? 0,
-    chargedCannonCount: 0,
-    cinemaLevel: cfg.yuzuhaCinemaLevel ?? 0,
-    parryCount: cfg.parryCount ?? 0,
-    chargeSeconds: cfg.yuzuhaChargeSeconds ?? CHARGE_SECONDS_MAX,
-  })
-  if (source.chargedCannonCount <= 0) return
+function pushBackstageRow(
+  executions: AgentResourceInput['executions'],
+  moveId: string,
+  moveName: string,
+  count: number,
+  element?: string,
+): void {
   executions.push({
-    moveId: YUZUHA_CHARGED_CANNON_MOVE_ID,
-    moveName: '蓄能强力炮弹（影画6）',
-    category: 'assist',
-    count: source.chargedCannonCount,
+    moveId,
+    moveName,
+    category: 'basic',
+    count,
     actionTime: 0,
     comboAlignRatio: 0,
     totalTime: 0,
@@ -110,10 +135,24 @@ function buildYuzuhaExecutions({ cfg, executions }: AgentResourceInput): void {
     totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
-    damageMultiplier: CHARGED_CANNON_DMG_RATIO,
-    damageMultiplierOverride: true,
+    ...(element ? { element } : {}),
     timeBucket: 'backstage',
   })
+}
+
+function buildYuzuhaExecutions({ cfg, executions }: AgentResourceInput): void {
+  const source = yuzuhaSourceFromCfg(cfg)
+  // 硬糖射击：真实 moveId（catalog 264%伤害/132%失衡/积蓄0），倍率由 enrich 从倍率表回填
+  if (source.hardCandyCount > 0) {
+    pushBackstageRow(executions, YUZUHA_HARD_CANDY_MOVE_ID, '硬糖射击（8秒CD后台追击）', source.hardCandyCount)
+  }
+  // 彩糖花火/·极：行级 element = 十人十色转换后属性（异常池按它分组积蓄，伤害仍走 catalog 物理行）
+  if (source.fireworkTickCount > 0) {
+    pushBackstageRow(executions, YUZUHA_FIREWORK_MOVE_ID, '彩糖花火（甜蜜惊吓每秒一次）', source.fireworkTickCount, source.transferElement)
+  }
+  if (source.fireworkExtremeCount > 0) {
+    pushBackstageRow(executions, YUZUHA_FIREWORK_EXTREME_MOVE_ID, '彩糖花火·极（硬糖/夹心硬糖重击触发）', source.fireworkExtremeCount, source.transferElement)
+  }
 }
 
 function buildYuzuhaResourceSections({ result }: AgentResourceSectionsInput) {
@@ -130,19 +169,39 @@ function buildYuzuhaResourceSections({ result }: AgentResourceSectionsInput) {
         ...(source.sweetnessFromParry > 0
           ? [{ label: '影画6·招架成功', value: `+${source.sweetnessFromParry}`, detail: '招架支援/狸之帐成功招架+1' }]
           : []),
-        { label: '蓄能炮弹', value: `${source.chargedCannonCount} 发 × ${CHARGED_CANNON_DMG_RATIO}%`, detail: `每次支援突击蓄能 ${source.chargedCannonsPerAssist} 枚（0.4s/枚耗1甜度），300%攻击力物理` },
+        {
+          label: '硬糖射击',
+          value: `${source.hardCandyCount} 次`,
+          detail: `有效战斗时间 ${fmt(source.effectiveSeconds)}s ÷ ${fmt(source.hardCandyCdSeconds)}s CD，受甜度终身预算 ${source.sweetnessBudget} 钳制；264%攻击力物理（倍率表回填）`,
+        },
+        { label: '终结技·队友回能', value: `${YUZUHA_ULT_TEAM_ENERGY}/次`, detail: '每次大招全队其他角色回复25能量（满级12级 7+1.5×12），走能量总览 crossAgent 口径并参与强特次数收敛' },
       ],
-      footer: '六命招架成功额外+1；硬糖射击（8秒CD追击）未建模，甜度预算全部计入蓄能炮弹。',
+      footer: '六命招架成功额外+1；影画6蓄能炮弹作者拒绝实现，甜度终身预算全部给硬糖射击。',
     },
     {
       id: 'yuzuha-liwang-wish',
       title: '柚叶狸之愿（全队）',
       summary: `攻击 +${fmt(source.teamAtkBonus)}（上限${source.teamAtkCap}）· 伤害 +${source.teamDmgBonus}%`,
       rows: [
-        { label: '攻击力加成', value: `+${fmt(source.teamAtkBonus)}`, detail: `40%初始攻击力` },
+        { label: '攻击力加成', value: `+${fmt(source.teamAtkBonus)}`, detail: '40%初始攻击力（满级lv7口径：上限1200/初始攻击力3000打满）' },
         { label: '伤害提升', value: `+${source.teamDmgBonus}%`, detail: '持续40秒，重复触发刷新' },
       ],
-      footer: source.note,
+      footer: '额外能力（异常/同阵营队友）：异常掌控超100每点+0.2%积蓄效率、+0.2%异常与紊乱伤害（各上限20%），见队友buff。',
+    },
+    {
+      id: 'yuzuha-firework-transfer',
+      title: '柚叶彩糖花火·转积蓄',
+      summary: `花火 ${source.fireworkTickCount} 次 · ·极 ${source.fireworkExtremeCount} 次${source.transferElement ? ` · 转入 ${source.transferElement}` : ''}`,
+      rows: [
+        { label: '彩糖花火', value: `${source.fireworkTickCount} 次`, detail: '甜蜜惊吓敌人每1秒一次（满覆盖近似），55%攻击力物理 + 17.66 积蓄' },
+        { label: '彩糖花火·极', value: `${source.fireworkExtremeCount} 次`, detail: '硬糖射击/夹心硬糖射击重击触发，616%攻击力物理 + 120 积蓄' },
+        {
+          label: '十人十色转积蓄',
+          value: source.transferElement ? `→ ${source.transferElement} 池` : '未转换（无异常队友）',
+          detail: '积蓄计入异常队友元素池（行级 element 覆盖）；积蓄不参与柚叶伤害结算（异常伤害由池主施加者面板结算）',
+        },
+      ],
+      footer: 'debt: 转积蓄贡献挂柚叶槽位，若其积蓄在目标元素池占比最大会成为施加者（与游戏「不参与结算」有出入）；实际异常角色积蓄远大于支援柚叶，按可接受近似。',
     },
   ]
 }
@@ -158,24 +217,15 @@ const settings: MechanicSetting[] = [
     step: 1,
     suffix: '次',
   },
-  {
-    id: 'yuzuha.chargeSeconds',
-    label: '柚叶蓄能时长（影画6）',
-    description: '支援突击夹心硬糖射击的长按蓄能时长；每0.4秒耗1甜度点追加一枚300%物理炮弹，最长0.8秒（2枚）。',
-    default: 0.8,
-    min: 0,
-    max: 0.8,
-    step: 0.4,
-    suffix: '秒',
-  },
 ]
 
 export const yuzuhaMechanic: AgentMechanicModule = {
   id: 'agent:yuzuha',
   agentIds: [YUZUHA_AGENT_ID],
   name: '柚叶',
-  description: '甜度点/狸之愿：进场3甜度点，连携入场+1；影画6蓄能炮弹逐发结算、招架成功+1甜度点。',
+  description: '甜度点/狸之愿：进场3甜度点，连携入场+1；硬糖射击8秒CD后台追击（甜度终身预算全给硬糖）；彩糖花火/·极逐秒后台行 + 十人十色转积蓄（异常队友元素池）。',
   buildCharConfig: buildYuzuhaCharConfig,
+  applyTeamConfig: buildYuzuhaTeamConfig,
   buildExecutions: buildYuzuhaExecutions,
   buildResourceResult: buildYuzuhaResourceResult,
   resourceSections: buildYuzuhaResourceSections,

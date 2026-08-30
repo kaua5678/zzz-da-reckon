@@ -34,6 +34,39 @@ extractSkillExecutions()         失衡池/异常积蓄池输入提取
 模块在 buildExecutions 里算出的值（如最高马力星光次数）只能经 **cfg 字段**留给下一轮
 estimate 使用（收敛即可，见般岳/星徽·比利模式）。
 
+**无敌时间口径（2026-08-30，`core/effectiveTime.ts`）**：boss 无敌（秽盾/转阶段）期间不可被攻击——
+dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 DoT 覆盖（anomalyPool effectiveTime）、
+平A池（`resource/helpers.ts` `totalTime − invTime − 必要`）、失衡轴有效时间、莱卡恩围猎后台预算、
+以及全部后台/CD 伤害通道（统一经 `effectiveBattleTime`/`effectiveBackstageTime`/`minusInvincibleTime`
+折算，cfg 字段 `invincibleTime` 在 resourceCalc/helpers cfg 构建点注入）。**能量/喧响类通道不扣**
+（口径见 resource/helpers.ts 平A池注释）；次要 CD 封顶（凯撒/希汐芙/诺姆/普罗米亚等，主源非时间）保持原值。
+
+**后台自动招式的相位延后（2026-08-30，`phaseDelayedCooldown` + `frontBlockSeconds`）**：拥有者本人被换上前台做
+必要动作（连携/强特/终结/交互）的时间插在他自己后台自动招式的 CD 循环里——前台期间 CD 照转但打不出来。
+延后期望由**前台块长 t** 决定（极限：无限细分 → 延后 → 0）：相位均匀假设下平均延后 D = p·t/2（p = 前台
+占比 F/W），**等效使用 CD c' = c + p·t/2**，次数 = 有效后台时间 / c'。块长 t = 前台时间 / 切上前台次数，
+切上次数 = **「切上前台频率」滑块**（`<agent>.frontSwitchRatio`，clamp 0~1，无下限——后台有大量
+纯跑 CD 的时间，拉到 0 = 一次切上做完全部前台，不会「一次都出不来」；默认：橘福福 0.7〔用户口径
+2026-08-31〕、奥菲丝 1.0〔实测：动作 30+ 次把块切到 ~2s、延后项极小，典型副C 21~24 次 ≈ 原 主C 21/
+副C 30 的中间数 25，次数天花板 = 后台时间/5s〕）× **前台动作次数**（`countFrontActions`：非平A前台行 count 之和，**接续动作融合**——支援突击
+必须接在弹刀后连着 → 传 `fusedMoveIds=[cfg.assistFollowUpMoveId]` 融合进弹刀块不单独计数；
+奥菲丝长按强特自动接的燥焰迸射/与火共舞#2 合一行已标 backstage 天然不计；平A是连续输出流不计）。
+已接入：橘福福虎威、奥菲丝后台（原 主C 21/副C 30 静态分档删除）、卢西娅追加攻击（CD 封顶从
+有效战斗时间/8 收紧为 有效后台时间/等效CD，支援位实测封顶 20 不挤压梦境瓶颈的默认 20 次；
+滑块 `lucia.frontSwitchRatio` 默认 1）、蕾米 Radiant Turn（暂无滑块声明，频率缺省 1，可经 cfg 覆盖）。
+约束：**合轴时间计入前台时间**（合轴时仍在做动作，
+做完才轮到自动攻击）；合轴率只改变动作重叠记账、不改前台时间总量 → 调合轴率不影响自动招式次数。
+不适用本修正：纯 DoT tick（薇薇安预言——敌人身上的 debuff，与施放者前后台无关）、
+永续全场型（猫又每秒爪印）、以及纯封顶用途的 CD 上限（耀嘉音 C2/C6、柏妮思 C6 等，主源是事件/资源，
+封顶偏松不产生误差）。扳机/触手/邦布/加农转子为队友·事件触发，本人前台时间不影响触发源，暂不接入。
+
+**新角色接入配方**（三步，全部现成工具，无需新口径）：
+1. `settings` 声明 `<agent>.frontSwitchRatio` 滑块（min 0 / max 1 / step 0.05，default 按实测反带）；
+2. 模块 buildExecutions 里：`const block = frontBlockSeconds(state.frontlineTime, countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }), 滑块值, CD秒数)`，
+   再 `const cd = phaseDelayedCooldown(CD秒数, state.frontlineTime, effectiveBattleTime(cfg), block)`；
+3. 次数 = `Math.floor(effectiveBackstageTime(state.backstageTime, cfg) / cd)`，与其他上限取 min。
+   需要账本/行一致的（资源 result 也引用次数）→ 把 cap 写 cfg 字段给 buildResourceResult 复用（卢西娅模式）。
+
 ## 2. 模块钩子速查（src/mechanics/types.ts）
 
 | 钩子 | 调用时机 | 能做什么 | 拿不到什么 |
@@ -86,7 +119,7 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
 
 ## 4. 常见坑（实测踩过）
 
-> **按症状查（不用通读）**：滑块改了面板/结果不变→1 · 强特次数不对/接管 EX 链→2 · 倍率/失衡/喧响全错→3 · 按 name/note 找不到执行行→4 · 附伤 daze/异常双计→5 · 专属动作不占时间→6 · 贯穿力疑似双计→7 · 招式命中类计数没源→8 · 轴内动作次数/时间不对→9 · 进场能量不对→10 · 指定招式增伤误放大→11 · 前台超时/账本虚增→12 · 队伍联动静默错值→13 · 界面能量与次数对不上→14 · 不收敛/数值抖动→15 · 两次算结果漂移→16 · 同输入落点漂移→17。
+> **按症状查（不用通读）**：滑块改了面板/结果不变→1 · 强特次数不对/接管 EX 链→2 · 倍率/失衡/喧响全错→3 · 按 name/note 找不到执行行→4 · 附伤 daze/异常双计→5 · 专属动作不占时间→6 · 贯穿力疑似双计→7 · 招式命中类计数没源→8 · 轴内动作次数/时间不对→9 · 进场能量不对→10 · 指定招式增伤误放大→11 · 前台超时/账本虚增→12 · 队伍联动静默错值→13 · 界面能量与次数对不上→14 · 不收敛/数值抖动→15 · 两次算结果漂移→16 · 同输入落点漂移→17 · 物化行打不满战斗时间（欠打）/轴需求超预算误报超时→19。
 
 1. **~~面板滑块拿不到 settings~~（已修，2026-08）**：`AgentPanelInput` 现在带 `settings`
    （已解析：用户值优先、回落 `setting.default`），applyPanel 直接 `input.settings['xxx'] ?? 默认值`。
@@ -167,6 +200,35 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
     轻弹刀打小怪无 daze）只计 215 喧响、不产任何行（不进 parryForBonus 之外的行生成）；**失衡赠礼**
     `stunGiftRatio` 应用时换算 `bossStunGift = 比例 × stunValue`，`calcStunPool` 加 `stunGift` 直接计入
     stunCount 推导（不计抗性/返还），反推的非弹刀基数也把它加进去（减少缺口）。
+19. **时间预算欠打回填 + 轴退化（2026-08-30）**：坑 12 的折叠循环是单向的（只折正 excess），
+    「estimate 高估 → basic 池被挤到 0 → 物化行打不满战斗时间」无人管——般岳队曾实测前台 172.8s
+    欠打 7.2s（账本高估 13s 把平A池挤光）。双向修法：
+    ①**欠打回填**：折叠循环首轮测得「团队 Σ(账本−物化必要行) 正差」写入 `config.timeBudgetRefund`
+    （团队级）→ `iterate` 的 `availableBasicTime` 加回该差额（按 timeWeight 分配，时间守恒）。
+    **冻结语义**：只测一次不再改写——refund 与次数收敛存在耦合（平A回能→次数→必要时间→idle，
+    伊德海莉烧血/艾莲等强依赖角色），逐轮跟随会抖到 maxTimeIter 耗尽假红（`timeBudgetConverged=false`
+    但 residual=0）；判据保持 excess-only（坑 12 原样），代价是 ±1s 量化残差。天然上限：idle_i ≤ E_i
+    → refund ≤ ΣE → basic 池 ≤ 预算，不会填超。②**轴退化**（用户口径 2026-08）：轴的资源需求
+    （轴内块/自动补齐交互 × 窗口数）超出战斗时间预算 = 轴不可操作（需 boss 秽盾等外界环境才打得成）
+    → `useResourceCalc.calcOutput` 检测轴模式前台行 > 预算+2s 时跑一次**非轴对照**，仅当对照可行
+    （般岳金身20/招架10 等配置本身超预算的场景与轴无关，弃轴无意义）才弃轴重算，`convergence.axisFallback=true`
+    上报（队伍对比页 timeDetail 追加「已退化为一般轴」）。自动补齐（`banyue.autoTopUpInteractions`）
+    的生效测试须落在补齐后仍可行的需求域，厚需求场景归退化用例管（banyue.test「轴退化」）。
+    ③**estimate/物化双算坑**：模块把「池守恒、不生成执行行」的动作块计入 estimateExSpecialTime 就是
+    账本虚高（般岳 banyue-combo 连段块 = 怒相免费连段的表达，时间已含在怒相内/外连段行）——estimate
+    与 buildExecutions 必须逐项对账（`computeBanyueCycleFromCfg` 输出 vs 物化行），差值恒定非零即双算或漏计。
+    ④**轴内合轴（2026-08-30 同日补）**：窗口内跨角色块并行（般岳强特时琉音抱拳）只计一次前台——
+    栈引擎 `calcStunAxisStack` 按执行块区间并集算 `overlapSeconds`（按块时长比例分摊到
+    `overlapByAction['slot:moveId']`，严格可加）；净占用口径 = Σ物化前台行 − 合轴分摊，
+    iterate 平A池吃进节省（`config.axisOverlapSeconds`）、折叠循环 excess 测量与
+    `TeamComparePage` 超时判定、`ConvergenceReport` 退化/降配判据（`frontlineTotalOf`）全链同口径。
+    同槽位顺序块不重叠（cursor 顺序排）；赠块 `:gift` 后缀 key 不匹配 → 不扣（保守方向）。
+    ⑤**非轴降配**：无轴态前台净占用仍超预算 = 手填交互（招架/金身/双反/闪反）总需求超预算，
+    与轴厚需求本质相同 → 二分缩放交互次数（`runCalcRound opts.interactionScale`，只缩 store 侧输入，
+    boss 强制弹刀 `parrySplit` 直读 store 不被缩、轴补齐在其后叠加）直到回到预算（6 轮精度 ~1.6%）；
+    scale→0 仍超 = 非交互必要时间本身超预算，如实保留报超时。`convergence.interactionScale` 上报
+    （`axisFallback` 与之可同真：轴退化后配置本身仍超）。**锁定失衡次数（`stunCountLock` ≥ 0，
+    命座对比/锁窗测试）一律不触发退化/降配**——锁定 = 用户明确意图，引擎不自动改结构。
 
 ## 5. 验收命令
 

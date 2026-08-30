@@ -8,6 +8,7 @@ import type { PanelValues } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources, type SpecResourceResult } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
+import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 
 function buildResourceResult(agentId: string) {
   return ({ cfg, state }: AgentResourceResultInput) => ({
@@ -408,6 +409,14 @@ const JUFUFU_MOVE = {
 
 export interface JufufuCycleInput {
   backstageTime: number
+  /** 本人前台时间（账本，含合轴）：插进虎威 CD 循环造成相位延后（可选，缺省 0 = 不修正） */
+  frontlineTime?: number
+  /** 有效战斗时间（扣无敌）；缺省 = 前台 + 后台 */
+  effectiveTotalTime?: number
+  /** 前台动作次数（非平A 前台行 count 之和）：决定前台块长 t = 前台时间/切上次数；缺省回退块长 ≈ CD */
+  frontActionCount?: number
+  /** 切上前台频率滑块（切上次数/前台动作次数，clamp 0.2~1，默认 1 = 每次切上只做一个动作） */
+  frontSwitchRatio?: number
   exSpecialCount: number
   ultimateCount: number
   /** 支援突击近似（招架次数） */
@@ -453,7 +462,21 @@ export function computeJufufuCycle(input: JufufuCycleInput): JufufuCycleResult {
   const c2Per = Math.max(0, Number(input.c2WeishiPerUlt) || 0)
   const teamUlt = Math.max(0, Math.floor(Number(input.teamUltimateCount ?? ult) || 0))
 
-  const huweiHits = Math.floor(backstage / JUFUFU_HUWEI_INTERVAL)
+  // 虎威 4s CD 被本人前台时间插进循环造成相位延后 → 等效使用 CD（core/effectiveTime.ts）；
+  // 前台块长 = 前台时间 / 切上次数（切上频率滑块 × 前台动作次数），动作次数缺省时回退块长 ≈ CD
+  const huweiBlock = frontBlockSeconds(
+    Number(input.frontlineTime) || 0,
+    input.frontActionCount,
+    input.frontSwitchRatio,
+    JUFUFU_HUWEI_INTERVAL,
+  )
+  const huweiInterval = phaseDelayedCooldown(
+    JUFUFU_HUWEI_INTERVAL,
+    input.frontlineTime,
+    input.effectiveTotalTime ?? backstage + Math.max(0, Number(input.frontlineTime) || 0),
+    huweiBlock,
+  )
+  const huweiHits = Math.floor(backstage / huweiInterval)
   const weishiGain = ex * 3 + ult * 6 + parry * 1 + (cinema >= 2 ? teamUlt * c2Per : 0)
   // 威势全部投入高速旋转（后台虎釜震煞后进入旋转；整局总量口径）
   const spinCount = weishiGain
@@ -553,7 +576,12 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
     const cinema = Math.max(0, Math.floor(Number(cfg.jufufuCinemaLevel ?? 0)))
     const dmg = ((cfg as any).jufufuMoveDmg ?? {}) as Record<string, number>
     const cycle = computeJufufuCycle({
-      backstageTime: state.backstageTime ?? 0,
+      // 后台时间含无敌秒（不属于任何人的前台）；虎威后台自动攻击按有效后台时间折算（core/effectiveTime.ts）
+      backstageTime: effectiveBackstageTime(state.backstageTime, cfg),
+      frontlineTime: state.frontlineTime ?? 0,
+      effectiveTotalTime: effectiveBattleTime(cfg),
+      frontActionCount: countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
+      frontSwitchRatio: Number((cfg as any)['setting:jufufu.frontSwitchRatio'] ?? 0.7),
       exSpecialCount: state.exSpecialCount ?? 0,
       ultimateCount: state.ultimateCount ?? 0,
       parryCount: cfg.parryCount ?? 0,
@@ -577,7 +605,7 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
       'basic',
       cycle.huweiHits,
       dmg[JUFUFU_MOVE.huwei] ?? 0,
-      { note: `虎威自动 ×${cycle.huweiHits}（后场 floor(t/4)，每次 +20 威风）` },
+      { note: `虎威自动 ×${cycle.huweiHits}（后场/等效CD，前台插队相位延后，每次 +20 威风）` },
     )
 
     // 虎釜震煞（后台连携，actionTime=0）
@@ -647,7 +675,9 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
   buildResourceResult: ({ cfg, state }) => {
     const cinema = Math.max(0, Math.floor(Number(cfg.jufufuCinemaLevel ?? 0)))
     const cycle: JufufuCycleResult = (cfg as any).jufufuCycle ?? computeJufufuCycle({
-      backstageTime: state.backstageTime ?? 0,
+      backstageTime: effectiveBackstageTime(state.backstageTime, cfg),
+      frontlineTime: state.frontlineTime ?? 0,
+      effectiveTotalTime: effectiveBattleTime(cfg),
       exSpecialCount: state.exSpecialCount ?? 0,
       ultimateCount: state.ultimateCount ?? 0,
       parryCount: cfg.parryCount ?? 0,
@@ -720,7 +750,7 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
     const awe = input.result.specResources?.['jufufu_awe']
     const weishi = input.result.specResources?.['jufufu_weishi']
     const rows = [
-      { label: '虎威次数', value: String(cycle?.huweiHits ?? 0), detail: '后场 floor(t/4)，每次 +20 威风' },
+      { label: '虎威次数', value: String(cycle?.huweiHits ?? 0), detail: '后场 / 相位延后等效CD（前台插队），每次 +20 威风' },
       { label: '威风总量', value: String(cycle?.aweTotal ?? awe?.total ?? 0), detail: `初始+虎威+强特/终结+旋转(+${cycle?.aweFromSpin ?? 0})` },
       { label: '虎釜震煞', value: String(cycle?.tigerChainCount ?? 0), detail: 'floor(威风/100)' },
       { label: '威势/旋转', value: `${cycle?.weishiGain ?? weishi?.total ?? 0} / ${cycle?.spinCount ?? 0}`, detail: '威势全投山君鼎戏·威势，每次 +25 威风' },
@@ -735,5 +765,16 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
       rows,
     }]
   },
+  settings: [
+    {
+      id: 'jufufu.frontSwitchRatio',
+      label: '橘福福·切上前台频率',
+      description: '切上前台次数 / 前台动作次数（2026-08-30 相位延后口径）。100% = 每次切上只做一个动作（前台块最碎、虎威延后最小）；0 = 一次切上做完全部前台（块长、延后最大——后台仍有大量纯跑 CD 的时间，不会一次都出不来）。块长 = 前台时间 / 切上次数，代入虎威 4s CD 的平均延后。默认 0.7（用户口径 2026-08-31）。',
+      default: 0.7,
+      min: 0,
+      max: 1,
+      step: 0.05,
+    },
+  ],
 }
 

@@ -3,6 +3,7 @@ import type { CharacterResourceResult, MechanicSetting, SkillExecution } from '@
 import type { LuciaMechanicSource } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
 import { fmt } from '@/utils/format'
+import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { getAgentSpec } from '@/specs/registry'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 
@@ -12,6 +13,8 @@ import { applySpecAttributeConversions } from '@/specs/runtime'
  * - 快支有单独输入，梦境值不依赖快支。
  * - 追加攻击默认 20 次；全局只需约 500 梦境值覆盖。队友命中触发、CD 8s 全球性（180s/8s≈22 次），
  *   不受失衡轴窗口限制——按 CD 全局消耗接近 500 梦境值不难（用户口径 2026-08，废除「轴模式按轴内时间折算」）。
+ *   次数同时受 CD 封顶 = floor(有效战斗时间/8)（有效战斗时间 = 战斗时间 − boss 无敌，core/effectiveTime.ts）：
+ *   无敌期间队友命中不了 boss、追击也不结算。
  * - 梦境值：开局白送 60；场地外 A5 +40；战斗中 E(+60)+A5(+40)；Q +100。
  * - 默认 Q=2 时：A5×3、E×2、Q×2 → 60+120+120+200=500。
  *   Q 不足就多打一组 E+A5；Q 多了就少打一组 E+A5。
@@ -32,6 +35,8 @@ const EX_DREAM_GAIN = 60
 const ULTIMATE_DREAM_GAIN = 100
 const ADDITIONAL_ATTACK_DREAM_COST = 25
 const DEFAULT_ADDITIONAL_ATTACK_COUNT = 20 // ≈ 500 梦境值 ÷ 25/次；CD 8s × 180s ≈ 22 次 > 20，梦境值才是瓶颈
+const ADDITIONAL_ATTACK_CD_SECONDS = 8 // 追加攻击触发 CD；次数封顶 = floor(有效后台时间/等效CD)
+const DEFAULT_FRONT_SWITCH_RATIO = 1 // 切上前台频率滑块默认（实测支援位 p≈0.09、全档封顶 20 不挤压默认次数）
 const HEAL_SECONDS = 8 // 星光汇聚之地持续 8 秒
 const HEAL_RATE_PCT_BASE = 1 // 每秒回血 = 1% + 0.05%×终结技等级（爬取公式 0.01+AvatarSkillLevel(3)*0.0005）
 const HEAL_RATE_PCT_PER_LEVEL = 0.05
@@ -167,10 +172,17 @@ function patchLuciaExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 function buildLuciaExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  // cap 依赖本轮 state/executions（相位延后修正），写入 cfg 供 buildResourceResult 同口径复用（防账本与行不一致）
+  const cap = additionalAttackCapOf(
+    cfg,
+    state,
+    countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
+  )
+  ;(cfg as unknown as Record<string, unknown>).luciaAdditionalAttackCap = cap
   const plan = computeLuciaDreamPlan(
     state.exSpecialCount,
     state.ultimateCount,
-    cfgNum(cfg, 'lucia.additionalAttackCount', DEFAULT_ADDITIONAL_ATTACK_COUNT),
+    cap,
   )
 
   const a5Time = cfg.luciaA5ActionTime ?? 1.887
@@ -256,7 +268,7 @@ function buildLuciaExecutions({ cfg, state, executions }: AgentResourceInput): v
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
-      skillTableNote: '追加攻击 1100%/200异常（默认20次，CD 8s 队友命中触发，不受失衡轴窗口限制）',
+      skillTableNote: '追加攻击 1100%/200异常（默认20次，CD 8s 队友命中触发，不受失衡轴窗口限制；次数按有效战斗时间/8 封顶，无敌期间不结算）',
     })
   }
 }
@@ -289,16 +301,21 @@ function computeLuciaSource(
     curtainTriggerCount,
     c4DecibelPerTrigger: c4PerTrigger,
     c4TeamDecibelPerChar: curtainTriggerCount * c4PerTrigger,
-    note: '追加攻击默认20次（CD 8s 全球性、队友命中触发，不受失衡轴窗口限制）；计划外强特合轴0秒；回血按终结技等级公式（12级12.8%/大）×覆盖滑块折算；4命帷幕触发次数含15s CD封顶。',
+    note: '追加攻击默认20次（CD 8s 全球性、队友命中触发，不受失衡轴窗口限制；按有效战斗时间/8 封顶，无敌期间不结算）；计划外强特合轴0秒；回血按终结技等级公式（12级12.8%/大）×覆盖滑块折算；4命帷幕触发次数含15s CD封顶。',
   }
 }
 
 function buildLuciaResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  const record = cfg as unknown as Record<string, unknown>
+  // cap 与 buildExecutions 同口径：优先读本轮缓存（含相位延后修正），未跑过 executions 时现算（count 缺省回退块长≈CD）
+  const cap = Number.isFinite(Number(record.luciaAdditionalAttackCap))
+    ? Math.max(0, Math.floor(Number(record.luciaAdditionalAttackCap)))
+    : additionalAttackCapOf(cfg, state)
   return {
     luciaMechanicSource: computeLuciaSource(
       cfg as unknown as Record<string, unknown>,
       state,
-      cfgNum(cfg, 'lucia.additionalAttackCount', DEFAULT_ADDITIONAL_ATTACK_COUNT),
+      cap,
       cfgNum(cfg, 'lucia.healingCoverage', DEFAULT_HEALING_COVERAGE),
     ),
   }
@@ -336,16 +353,54 @@ function cfgNum(cfg: AgentCharConfigInput['cfg'], key: string, fallback: number)
   return Number.isFinite(raw) ? raw : fallback
 }
 
+/**
+ * 追加攻击次数上限 = min(滑块/默认, CD 封顶)。
+ * CD 封顶（2026-08-30 相位延后口径，core/effectiveTime.ts）= floor(有效后台时间 / 等效CD)：
+ * 等效CD = 8s + 前台占比×前台块长/2——卢西娅本人被换上前台做动作（A5/强特/终结/合轴）时，
+ * 队友命中触发的追击同样会被她自己的前台块延后；无敌期间不结算。
+ * state 缺失（estimate/无收敛信息）时回退 有效战斗时间/CD 的旧口径。
+ */
+function additionalAttackCapOf(
+  cfg: AgentCharConfigInput['cfg'],
+  state?: { backstageTime?: number; frontlineTime?: number },
+  frontActionCount?: number,
+): number {
+  const slider = cfgNum(cfg, 'lucia.additionalAttackCount', DEFAULT_ADDITIONAL_ATTACK_COUNT)
+  const w = effectiveBattleTime(cfg)
+  if (!state || typeof state.backstageTime !== 'number') {
+    return Math.min(slider, Math.floor(w / ADDITIONAL_ATTACK_CD_SECONDS))
+  }
+  const f = Math.max(0, state.frontlineTime ?? 0)
+  const b = effectiveBackstageTime(state.backstageTime, cfg)
+  const block = frontBlockSeconds(
+    f,
+    frontActionCount,
+    cfgNum(cfg, 'lucia.frontSwitchRatio', DEFAULT_FRONT_SWITCH_RATIO),
+    ADDITIONAL_ATTACK_CD_SECONDS,
+  )
+  const cd = phaseDelayedCooldown(ADDITIONAL_ATTACK_CD_SECONDS, f, w, block)
+  return Math.min(slider, Math.floor(b / cd))
+}
+
 const settings: MechanicSetting[] = [
   {
     id: 'lucia.additionalAttackCount',
     label: '卢西娅·追加攻击次数',
-    description: '全局追加攻击（合唱）次数；默认 20 次（≈500 梦境值 ÷ 25/次，CD 8s 队友命中触发、不限失衡窗口）。',
+    description: '全局追加攻击（合唱）次数；默认 20 次（≈500 梦境值 ÷ 25/次，CD 8s 队友命中触发、不限失衡窗口；受相位延后 CD 封顶 = 有效后台时间/等效CD）。',
     default: DEFAULT_ADDITIONAL_ATTACK_COUNT,
     min: 0,
     max: 40,
     step: 1,
     suffix: '次',
+  },
+  {
+    id: 'lucia.frontSwitchRatio',
+    label: '卢西娅·切上前台频率',
+    description: '切上前台次数 / 前台动作次数（2026-08-31 相位延后口径）。100% = 每次切上只做一个动作；0 = 一次切上做完全部前台。实测支援位（0 交互）前台占比 ~9%，滑块 0.2~1.0 全档 CD 封顶均为 20 次、不挤压默认次数，默认 1.0。',
+    default: DEFAULT_FRONT_SWITCH_RATIO,
+    min: 0,
+    max: 1,
+    step: 0.05,
   },
   {
     id: 'lucia.healingCoverage',

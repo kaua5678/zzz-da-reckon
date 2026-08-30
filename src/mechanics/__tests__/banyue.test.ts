@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { computeBanyueRageCycle, computeBanyueMingwangStacks, computeBanyueMingwangBlocks, computeBanyueInteractionTopUp } from '@/mechanics/agents/banyue'
+import { isFrontlineExecution } from '@/types/resource'
 
 describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', () => {
   it('默认（闪反10/招架6/金身20，地动山摇连段0）：怒相 4 次，怒相外 9 组全打论道连段', () => {
@@ -469,7 +470,42 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
   })
 
   it('轴模式自动补齐（保底）：低交互次数下自动抬双反/弹刀，怒相次数达到轴内需求，交互栏输入不被覆盖', async () => {
-    // 每窗口厚需求：连段×4（2 次怒相/窗）+ 倾山 + 摧岳 + 终结技×2（撼天动地）；交互次数全部归 0 → 嗔火/喧响不足
+    // 每窗口厚需求：连段×2（1 次怒相/窗）+ 倾山 + 摧岳；交互次数全部归 0 → 嗔火不足。
+    // 锁 3 窗 → 轴内 6 连段块 → rageNeeded=3，无补齐只有 2 怒相 → 双反补 12（40s 金身链，补齐后仍可行）。
+    // （需求更大时补齐会把必要时间推超战斗预算 → 触发轴退化，见下方「轴退化」用例——用户口径：
+    //   不可操作的轴不硬撑，自动补齐的生效测试须落在补齐后的可行域内。）
+    await setupTeam([{ name: '轴1', actions: [
+      { slot: 0, moveId: 'banyue-combo', count: 2, startTime: 0 },
+      { slot: 0, moveId: '1471009', count: 1, startTime: 8 },
+      { slot: 0, moveId: '1471010', count: 1, startTime: 10 },
+    ] }], 3)
+    const config = useConfigStore()
+    config.setDodgeCounterCount(0, 0)
+    config.setParryCount(0, 0)
+    config.setBlockCount(0, 0)
+    config.setDualCounterCount(0, 0)
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 80))
+    const c0 = calc.resourceResult.value!.characters[0]
+    const cycle = c0.banyueRageCycle!
+    // 自动补齐非零（双反补嗔火），且不写回 store（保底语义：交互栏输入不变）
+    const topUp = calc.banyueInteractionTopUp.value
+    expect(topUp).not.toBeNull()
+    expect(topUp!.slot).toBe(0)
+    expect(topUp!.dual).toBeGreaterThan(0)
+    expect(config.team[0].parryCount).toBe(0)
+    expect(config.team[0].dualCounterCount).toBe(0)
+    // 怒相达到轴内需求（轴内连段块 ÷ 2 向上取整）；不补齐时低交互只有 2 次怒相
+    const rageNeeded = Math.ceil(cycle.axisInComboCount / 2)
+    expect(cycle.rageCount).toBeGreaterThanOrEqual(rageNeeded)
+    // 资源卡片出现「轴模式自动补齐」行（含补齐量）
+    const sections = getAgentMechanic('1471')?.resourceSections?.({ result: c0 }) ?? []
+    expect(JSON.stringify(sections)).toContain('轴模式自动补齐')
+  })
+
+  it('轴退化（用户口径 2026-08）：轴需求补齐后必要时间超战斗预算 → 自动弃轴退化一般轴，前台行回到预算内', async () => {
+    // 厚需求轴：每窗连段×4（2 怒相/窗）+ 终结技×2，交互全 0 → 自动补齐把金身链抬到超预算
+    // → 轴不可操作（需外界环境如 boss 秽盾才打得成）→ 引擎退化一般轴（轴块不注入、补齐全关）
     await setupTeam([{ name: '轴1', actions: [
       { slot: 0, moveId: 'banyue-combo', count: 4, startTime: 0 },
       { slot: 0, moveId: '1471009', count: 1, startTime: 8 },
@@ -483,20 +519,21 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     config.setDualCounterCount(0, 0)
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 80))
-    const c0 = calc.resourceResult.value!.characters[0]
-    const cycle = c0.banyueRageCycle!
-    // 自动补齐非零（双反补嗔火 / 弹刀补喧响），且不写回 store（保底语义：交互栏输入不变）
-    const topUp = calc.banyueInteractionTopUp.value
-    expect(topUp).not.toBeNull()
-    expect(topUp!.slot).toBe(0)
-    expect(config.team[0].parryCount).toBe(0)
-    expect(config.team[0].dualCounterCount).toBe(0)
-    // 怒相达到轴内需求（轴内连段块 ÷ 2 向上取整）；不补齐时低交互只有 2 次怒相
-    const rageNeeded = Math.ceil(cycle.axisInComboCount / 2)
-    expect(cycle.rageCount).toBeGreaterThanOrEqual(rageNeeded)
-    // 资源卡片出现「轴模式自动补齐」行（含补齐量）
-    const sections = getAgentMechanic('1471')?.resourceSections?.({ result: c0 }) ?? []
-    expect(JSON.stringify(sections)).toContain('轴模式自动补齐')
+    const rr = calc.resourceResult.value!
+    // 退化信号：轴定义仍解析（useStunAxis 开着）但本结果是无轴的一般循环
+    expect(rr.convergence.axisFallback).toBe(true)
+    expect(calc.stunPoolResult.value).not.toBeNull() // 一般循环下失衡池照常
+    // 前台行回到预算内（容差 2s = 合轴可覆盖的量化残差）
+    let front = 0
+    for (const ch of rr.characters) {
+      for (const e of ch.executions) {
+        if (isFrontlineExecution(e)) front += e.totalTime ?? 0
+      }
+    }
+    expect(front).toBeLessThanOrEqual(182)
+    // 自动补齐清零（退化 = 非轴模式，autoTopUp 关闭；补齐是把轴需求抬成交互行的通道）
+    const topUpAfter = calc.banyueInteractionTopUp.value
+    expect(!topUpAfter || (topUpAfter.parry === 0 && topUpAfter.dual === 0)).toBe(true)
   })
 
   it('非6命非轴模式：明王按覆盖率滑块进伤害池（默认0.5 → +7.5%，调1 → +15%）', async () => {

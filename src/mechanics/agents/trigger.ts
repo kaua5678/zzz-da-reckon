@@ -37,6 +37,7 @@ import type {
   AgentSkillTransformInput,
   AgentTeamConfigInput,
 } from '../types'
+import { minusInvincibleTime } from '@/core/effectiveTime'
 
 export const TRIGGER_AGENT_ID = '1361'
 export const TRIGGER_ADDITIONAL_MOVE_IDS = new Set(['1361008', '1361020', '1361022'])
@@ -245,7 +246,8 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
   const record = cfg as unknown as Record<string, unknown>
   return computeTriggerCycle({
     cinemaLevel: Number(record.triggerCinemaLevel ?? 0),
-    battleTime: Number(record.battleTime ?? 180),
+    // 协奏狙杀/冥狱 CD 折算按有效战斗时间（扣 boss 无敌，core/effectiveTime.ts）
+    battleTime: minusInvincibleTime(Number(record.battleTime ?? 180), cfg),
     normalCountOverride: Number(record.triggerNormalCountOverride ?? 0),
     hellCountOverride: Number(record.triggerHellCountOverride ?? 0),
     sniperHitCountOverride: Number(record.triggerSniperHitOverride ?? 0),

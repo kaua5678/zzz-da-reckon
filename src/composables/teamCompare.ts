@@ -788,7 +788,8 @@ export function applyAxisBinding(
 /**
  * 从引擎资源结果提取总动作时间（秒）= 所有角色所有**前台**执行行 totalTime 之和
  * （timeBucket='backstage' 的后台行不占共享时间轴，如莱卡恩围猎蓄力——isFrontlineExecution）。
- * 引擎折叠循环已把前台行对其账本收敛（Σ前台行 ≡ 账本 ≤ 战斗时间），仍超出 = 收敛残差/极端配置。
+ * **前台净占用口径**：减去轴内合轴节省（窗口内跨角色块并行只计一次前台，rr.axisOverlapByAction）。
+ * 引擎折叠循环已把前台净占用对其账本收敛（Σ前台净占用 ≡ 账本 ≤ 战斗时间），仍超出 = 收敛残差/极端配置。
  */
 function actionTimeTotal(
   calc: Calc,
@@ -798,20 +799,29 @@ function actionTimeTotal(
   const rr = calc.resourceResult.value
   let totalActionTime = 0
   if (rr) {
+    const overlap = rr.axisOverlapByAction ?? {}
     for (const char of rr.characters) {
       for (const exec of char.executions) {
-        if (isFrontlineExecution(exec)) totalActionTime += exec.totalTime ?? 0
+        if (!isFrontlineExecution(exec)) continue
+        totalActionTime += Math.max(0, (exec.totalTime ?? 0) - (overlap[`${char.slot}:${exec.moveId}`] ?? 0))
       }
     }
   }
   const available = battleTime - invincibleTime
   // 容差 1e-6：终局贪心会把预算用满到浮点边界（180.000000…），零容差会把「刚好打满」误报为超时
   const exceeded = totalActionTime > available + 1e-6
+  // 降配提示（引擎 axisFallback / interactionScale）：轴需求或手填交互超出时间预算时
+  // 引擎自动降配——弃轴退化一般轴 / 缩放交互次数（boss 强制弹刀不缩）。
+  const notes: string[] = []
+  if (rr?.convergence?.axisFallback) notes.push('轴需求超出时间预算，已退化为一般轴')
+  const scale = rr?.convergence?.interactionScale
+  if (scale !== undefined && scale < 1) notes.push(`交互次数已降配 ×${fmt(scale, 2)}`)
+  const fallbackNote = notes.length > 0 ? `｜${notes.join('；')}` : ''
   return {
     timeExceeded: exceeded,
     timeDetail: exceeded
-      ? `⚠ 超时：动作总时间 ${fmt(totalActionTime, 1)}s > 可用 ${fmt(available, 0)}s（战斗${fmt(battleTime, 0)}s − 无敌${fmt(invincibleTime, 0)}s）`
-      : `✓ 可行：动作总时间 ${fmt(totalActionTime, 1)}s ≤ 可用 ${fmt(available, 0)}s`,
+      ? `⚠ 超时：动作总时间 ${fmt(totalActionTime, 1)}s > 可用 ${fmt(available, 0)}s（战斗${fmt(battleTime, 0)}s − 无敌${fmt(invincibleTime, 0)}s）${fallbackNote}`
+      : `✓ 可行：动作总时间 ${fmt(totalActionTime, 1)}s ≤ 可用 ${fmt(available, 0)}s${fallbackNote}`,
   }
 }
 

@@ -10,6 +10,7 @@ import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions, specToMechanicModule } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
+import { effectiveBattleTime } from '@/core/effectiveTime'
 
 /**
  * 猫又（1021）战斗逻辑（用户口供 2026-08-23 两批）：
@@ -210,8 +211,9 @@ function buildNekoExecutions({ cfg, state, executions }: AgentResourceInput): vo
     getRowValue: (moveId, rowId) => rowId === 'damage' ? (cfg.mechanicRowValues?.[moveId] ?? 0) : 0,
   }))
 
-  // [超凶爪印]：肉球突袭永续 → 每秒自动一次 30% 攻击力物理（后台行，不占前台时间）
-  const battleTime = Math.max(0, (state.frontlineTime ?? 0) + (state.backstageTime ?? 0))
+  // [超凶爪印]：肉球突袭永续 → 每秒自动一次 30% 攻击力物理（后台行，不占前台时间）；
+  // 按有效战斗时间折算，无敌期间爪印不结算（core/effectiveTime.ts）
+  const battleTime = effectiveBattleTime(cfg)
   const clawHits = Math.floor(battleTime)
   if (clawHits > 0) {
     const claw: SkillExecution = {

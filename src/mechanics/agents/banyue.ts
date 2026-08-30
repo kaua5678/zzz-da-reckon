@@ -824,9 +824,11 @@ export const banyueMechanic: AgentMechanicModule = {
     const sequenceTime = rage * ((times.fenShen ?? 0) + (times.qingShan ?? 0) + (times.cuiYue ?? 0))
     let axisExTime = 0
     for (const [mid, cnt] of Object.entries(axisEx)) {
-      if (mid === 'banyue-combo') axisExTime += cnt * ((times.lunDao ?? 0) + (times.shiZiHouNu ?? 0))
-      else if (mid === 'banyue-combo-didong') axisExTime += cnt * ((times.diDong ?? 0) + (times.shanYaoNu ?? 0))
-      else axisExTime += cnt * (times[mid] ?? 0)
+      // 连段块（banyue-combo / banyue-combo-didong）是怒相免费连段的表达：buildExecutions 池守恒
+      // 不生成新行（时间已含在怒相内/外的论道+狮子吼·怒/地动+山摇·怒行，见 buildBanyueExecutions 注释），
+      // 这里再计时就是双算 → 曾把账本抬高了 捏块数×连段时长，挤掉平A池并虚报超时。
+      if (mid === 'banyue-combo' || mid === 'banyue-combo-didong') continue
+      axisExTime += cnt * (times[mid] ?? 0)
     }
     const exTime = (cycle.lunDaoRageCount + cycle.lunDaoOutCount) * (times.lunDao ?? 0)
       + (cycle.shiZiHouNuCount + cycle.shiZiHouNuOutCount) * (times.shiZiHouNu ?? 0)

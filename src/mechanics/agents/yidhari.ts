@@ -10,6 +10,7 @@ import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, IterationState, YidhariHpSource, YidhariLoopMove } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { getSkillLevelCoef } from '@/core/skillLevel'
+import { effectiveBattleTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
 
 const YIDHARI_AGENT_ID = '1051'
@@ -302,9 +303,10 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
       skillTableNote: `溯寒追碾 ${surgeCount} 次（0耗能触发重碾；非失衡触发溯寒回15闪能）`,
     })
   }
-  // 寒冰触手（额外能力·完形叙事）：需击破/支援触发，每 13.5s 一次，只有伤害（倍率随强特技能等级，吃3/5命）
+  // 寒冰触手（额外能力·完形叙事）：需击破/支援触发，每 13.5s 一次，只有伤害（倍率随强特技能等级，吃3/5命）；
+  // 按有效战斗时间折算，无敌期间不结算（core/effectiveTime.ts）
   const tentacleInterval = Math.max(1, Number((cfg as unknown as Record<string, unknown>).yidhariTentacleInterval ?? 13.5))
-  const tentacleCount = Math.max(0, Math.floor(((state.frontlineTime ?? 0) + (state.backstageTime ?? 0)) / tentacleInterval))
+  const tentacleCount = Math.max(0, Math.floor(effectiveBattleTime(cfg) / tentacleInterval))
   const additionalAbilityActive = (cfg.panel?.additionalAbilityActive ?? 0) > 0
   if (tentacleCount > 0 && additionalAbilityActive) {
     const skillBonus = cfg.panel?.skillLevelBonus ?? 0

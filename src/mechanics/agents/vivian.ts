@@ -29,6 +29,7 @@ import type {
   AgentResourceSectionsInput,
   ReleaseModifierInput,
 } from '../types'
+import { minusInvincibleTime } from '@/core/effectiveTime'
 
 export const VIVIAN_ID = '1331'
 export const VIVIAN_XUANLUO_MOVE_ID = '1331006'
@@ -198,7 +199,8 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     selfExSpecialCount: Number(state.exSpecialCount ?? 0),
     // 源2：全队异常触发次数（useResourceCalc 收敛注入 vivianAnomalyTriggerTotal）
     teammateAnomalyCount: Number(record.vivianAnomalyTriggerTotal ?? 0),
-    battleTime: Number(record.battleTime ?? 180),
+    // 落羽生花源2 的 0.5s CD 封顶按有效战斗时间（扣 boss 无敌，core/effectiveTime.ts）
+    battleTime: minusInvincibleTime(Number(record.battleTime ?? 180), cfg),
     danceHitCount: Number(record.vivianDanceHit ?? 0),
     chainCount: state.chainCountTotal ?? 0,
     ultimateCount: state.ultimateCount ?? 0,
@@ -382,8 +384,10 @@ function buildVivianAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
 
   // 预言 DoT：悬落/落羽生花命中异常目标施加，每 0.55 秒 55% 攻击力以太伤害。
   // 次数 = floor(战斗时长 × 异常覆盖占比 × 命中异常占比 / 0.55)；异常角色默认满覆盖。
+  // 战斗时长扣 boss 无敌（dot 不在无敌期间结算，core/effectiveTime.ts）。
   const dotCoverage = clampRatio(Number((cfg as unknown as Record<string, unknown>)['setting:vivian.dotCoverage'] ?? 1))
-  const dotTicks = Math.max(0, Math.floor((totalTime * dotCoverage * hitAnomalyRatio) / VIVIAN_PREDICTION_DOT_INTERVAL))
+  const dotEffectiveSeconds = minusInvincibleTime(totalTime, cfg)
+  const dotTicks = Math.max(0, Math.floor((dotEffectiveSeconds * dotCoverage * hitAnomalyRatio) / VIVIAN_PREDICTION_DOT_INTERVAL))
   if (dotTicks > 0) {
     events.push({
       eventId: 'vivian_prediction_dot',
@@ -396,7 +400,7 @@ function buildVivianAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
       damageMultiplier: VIVIAN_PREDICTION_DOT_RATIO,
       formula: `每 ${VIVIAN_PREDICTION_DOT_INTERVAL}s 造成 ${VIVIAN_PREDICTION_DOT_RATIO}% 攻击力以太伤害；次数 = floor(战斗时长 × 异常覆盖占比 × 命中异常占比 / ${VIVIAN_PREDICTION_DOT_INTERVAL})`,
       fields: ['totalTime', 'vivian.dotCoverage', 'vivian.releaseCoverage', 'VIVIAN_PREDICTION_DOT_INTERVAL', 'VIVIAN_PREDICTION_DOT_RATIO'],
-      note: `预言 DoT：悬落/落羽生花命中异常目标施加，目标脱离异常状态时结束；次数按异常覆盖时长近似（${(dotCoverage * 100).toFixed(0)}% × ${(hitAnomalyRatio * 100).toFixed(0)}% × ${totalTime}s）`,
+      note: `预言 DoT：悬落/落羽生花命中异常目标施加，目标脱离异常状态时结束；次数按异常覆盖时长近似（${(dotCoverage * 100).toFixed(0)}% × ${(hitAnomalyRatio * 100).toFixed(0)}% × ${dotEffectiveSeconds}s，已扣无敌）`,
     })
   }
 }

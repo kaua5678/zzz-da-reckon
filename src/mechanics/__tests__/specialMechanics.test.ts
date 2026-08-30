@@ -571,7 +571,7 @@ describe('Burnice ignition / ember', () => {
 
 describe('Yuzuha sweetness / Liwang Wish', () => {
   it('caps sweetness and team atk bonus', () => {
-    const result = computeYuzuhaMechanic({ initialAtk: 1500, chainEntryCount: 5, chargedCannonCount: 0 })
+    const result = computeYuzuhaMechanic({ initialAtk: 1500, chainEntryCount: 5 })
     expect(result.sweetnessTotal).toBe(6)
     expect(result.teamAtkBonus).toBe(600)
     expect(result.teamDmgBonus).toBe(15)

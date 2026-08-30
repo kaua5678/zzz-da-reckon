@@ -200,7 +200,12 @@ describe('奥菲丝蓄炎资源循环（spec resource）', () => {
 
 
 describe('奥菲丝后台自动招式（2026-08-27 口径补录）', () => {
-  function build(team: Array<{ agentId: string; specialty: string }>, cfgOver: Record<string, unknown> = {}) {
+  function build(
+    team: Array<{ agentId: string; specialty: string }>,
+    cfgOver: Record<string, unknown> = {},
+    stateOver: Record<string, unknown> = {},
+    presetExecutions: Array<Record<string, unknown>> = [],
+  ) {
     const cfg: any = {
       slot: 0,
       agentId: '1301',
@@ -215,8 +220,8 @@ describe('奥菲丝后台自动招式（2026-08-27 口径补录）', () => {
       phase: 'build', slot: 0, characters: [cfg],
       team: team.map((t, i) => ({ slot: i, agentId: t.agentId, agent: { id: t.agentId, specialty: t.specialty } })),
     })
-    const executions: any[] = []
-    const state: any = { backstageTime: 150, totalEnergy: Number(cfgOver.totalEnergy ?? 0), basicAttackTime: 8 }
+    const executions: any[] = [...presetExecutions]
+    const state: any = { backstageTime: 150, totalEnergy: Number(cfgOver.totalEnergy ?? 0), basicAttackTime: 8, ...stateOver }
     orphieMechanic.buildExecutions!({ cfg, state, executions } as any)
     return executions
   }
@@ -233,10 +238,55 @@ describe('奥菲丝后台自动招式（2026-08-27 口径补录）', () => {
     expect(shiguang.count + vortex.count).toBe(30) // 副C 30
   })
 
-  it('主C（无他强攻）后台 21 次；席德队 80% 前台小心脚下', () => {
+  it('2026-08-30 起不再分主/副C 档：次数 = 有效后台时间 / 相位延后等效 CD；席德队 80% 前台小心脚下', () => {
+    // 主C（无他强攻）：与副C 同口径——F=0 时 floor(150/5)=30，前台占比由等效 CD 接管
     const mainC = build([{ agentId: '1301', specialty: 'attack' }, { agentId: '1211', specialty: 'support' }])
     const total = mainC.filter(e => e.moveId === '1301008' || e.moveId === '1301010').reduce((s, e) => s + e.count, 0)
-    expect(total).toBe(21)
+    expect(total).toBe(30)
+
+    // 相位延后：本人前台 90s / 有效战斗 180s（p=0.5）→ 等效 CD 5×1.25=6.25 → floor(150/6.25)=24
+    const delayed = build(
+      [{ agentId: '1301', specialty: 'attack' }, { agentId: '1211', specialty: 'support' }],
+      {},
+      { frontlineTime: 90 },
+    )
+    const delayedTotal = delayed.filter(e => e.moveId === '1301008' || e.moveId === '1301010').reduce((s, e) => s + e.count, 0)
+    expect(delayedTotal).toBe(24)
+
+    // 前台块长由「切上前台频率 × 前台动作次数」决定：前台 90s、动作 15 次、100% → 块长 6s
+    // p = 0.5 → c' = 5 + 0.5×3 = 6.5 → floor(150/6.5) = 23；20% 滑块 → 切上 3 次 → 块长 30s
+    // → c' = 5 + 0.5×15 = 12.5 → floor(150/12.5) = 12
+    const withActions = build(
+      [{ agentId: '1301', specialty: 'attack' }, { agentId: '1211', specialty: 'support' }],
+      {},
+      { frontlineTime: 90 },
+      [{ moveId: 'x1', category: 'special', count: 15, totalTime: 90, timeBucket: 'necessary' }],
+    )
+    const withActionsTotal = withActions.filter(e => e.moveId === '1301008' || e.moveId === '1301010').reduce((s, e) => s + e.count, 0)
+    expect(withActionsTotal).toBe(23)
+    const rare = build(
+      [{ agentId: '1301', specialty: 'attack' }, { agentId: '1211', specialty: 'support' }],
+      { 'setting:orphie.frontSwitchRatio': 0.2 },
+      { frontlineTime: 90 },
+      [{ moveId: 'x1', category: 'special', count: 15, totalTime: 90, timeBucket: 'necessary' }],
+    )
+    const rareTotal = rare.filter(e => e.moveId === '1301008' || e.moveId === '1301010').reduce((s, e) => s + e.count, 0)
+    expect(rareTotal).toBe(12)
+
+    // 动作融合（2026-08-31）：支援突击必须接在弹刀后连着 → 融合进弹刀块不单独计数，弹刀本体照计
+    const fused = build(
+      [{ agentId: '1301', specialty: 'attack' }, { agentId: '1211', specialty: 'support' }],
+      { assistFollowUpMoveId: 'a1' },
+      { frontlineTime: 90 },
+      [
+        { moveId: 'p1', category: 'assist', count: 6, totalTime: 6, timeBucket: 'necessary' },
+        { moveId: 'a1', category: 'assist', count: 6, totalTime: 6, timeBucket: 'necessary' },
+        { moveId: 'x1', category: 'special', count: 9, totalTime: 81, timeBucket: 'necessary' },
+      ],
+    )
+    // 前台动作数 = 6(弹刀) + 9(强特) = 15（支援突击 6 次融合）→ 块长 90/15 = 6s → c' = 6.5 → 23
+    const fusedTotal = fused.filter(e => e.moveId === '1301008' || e.moveId === '1301010').reduce((s, e) => s + e.count, 0)
+    expect(fusedTotal).toBe(23)
 
     const xide = build([{ agentId: '1301', specialty: 'attack' }, { agentId: '1461', specialty: 'attack' }])
     const foot = xide.find(e => e.moveId === '1301009')

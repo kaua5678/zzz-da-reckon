@@ -10,6 +10,7 @@ import type {
 import type { AgentSkills, PanelValues, SkillMove } from '@/types/catalog'
 import type { BurniceMechanicSource, CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import { fmt } from '@/utils/format'
+import { minusInvincibleTime } from '@/core/effectiveTime'
 
 const BURNICE_AGENT_ID = '1171'
 const IGNITION_INITIAL = 100
@@ -310,7 +311,7 @@ function buildBurniceResourceResult({ cfg, state }: AgentResourceResultInput): P
   return {
     burniceMechanicSource: computeBurniceMechanic({
       exSpecialCount: state.exSpecialCount,
-      totalTime: state.frontlineTime + state.backstageTime,
+      totalTime: minusInvincibleTime(state.frontlineTime + state.backstageTime, cfg),
       atk: cfg.panel.atk ?? 0,
       anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
       cinemaLevel: cfg.burniceCinemaLevel ?? 0,
@@ -361,7 +362,7 @@ function pushEx(
 function buildBurniceExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const source = computeBurniceMechanic({
     exSpecialCount: state.exSpecialCount,
-    totalTime: state.frontlineTime + state.backstageTime,
+    totalTime: minusInvincibleTime(state.frontlineTime + state.backstageTime, cfg),
     atk: cfg.panel.atk ?? 0,
     anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
     cinemaLevel: cfg.burniceCinemaLevel ?? 0,
@@ -386,7 +387,7 @@ function buildBurniceExecutions({ cfg, state, executions }: AgentResourceInput):
 function buildBurniceAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
   const source = computeBurniceMechanic({
     exSpecialCount: state.exSpecialCount,
-    totalTime: state.frontlineTime + state.backstageTime,
+    totalTime: minusInvincibleTime(state.frontlineTime + state.backstageTime, cfg),
     atk: cfg.panel.atk ?? 0,
     anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
     cinemaLevel: cfg.burniceCinemaLevel ?? 0,

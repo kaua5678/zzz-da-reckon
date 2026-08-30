@@ -1436,6 +1436,7 @@ export function buildCharConfig(
     initialEnergyGift,
     initialDecibelGift: 1000 + (configStore.appliedBoss?.decibelGift?.slot === slot ? (configStore.appliedBoss?.decibelGift?.amount ?? 0) : 0),
     battleTime: configStore.enemy.battleTime ?? 180,
+    invincibleTime: configStore.enemy.invincibleTime ?? 0,
     bodySize: configStore.enemy.bodySize ?? 'large',
     extraSelfDecibelReward: (panel.remielleFlowerFeatherDanceDecibelPerUse ?? 0) * (panel.remielleFlowerFeatherDanceCount ?? 0),
     decibelShareRatio: 0.5,

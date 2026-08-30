@@ -23,6 +23,7 @@ import type {
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
+import { minusInvincibleTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
 
 export const RINA_ID = '1211'
@@ -172,8 +173,9 @@ function pushExec(
   } as SkillExecution)
 }
 
-function combatTimeOf(state: AgentResourceInput['state']): number {
-  return (state.frontlineTime ?? 0) + (state.backstageTime ?? 0)
+function combatTimeOf(state: AgentResourceInput['state'], cfg: AgentResourceInput['cfg']): number {
+  // 前台+后台 = 全战斗时间；邦布自动攻击按有效战斗时间折算，无敌期间不结算（core/effectiveTime.ts）
+  return minusInvincibleTime((state.frontlineTime ?? 0) + (state.backstageTime ?? 0), cfg)
 }
 
 function buildCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
@@ -193,7 +195,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     exSpecialCount: state.exSpecialCount ?? 0,
     chainCountTotal: state.chainCountTotal ?? 0,
     ultimateCount: state.ultimateCount ?? 0,
-    combatTime: combatTimeOf(state),
+    combatTime: combatTimeOf(state, cfg),
   })
   record.rinaBangboo = bangboo
 
@@ -241,7 +243,7 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
     exSpecialCount: ex,
     chainCountTotal: chain,
     ultimateCount: ult,
-    combatTime: combatTimeOf(state),
+    combatTime: combatTimeOf(state, cfg),
   })
   record.rinaBangboo = bangboo
   return {

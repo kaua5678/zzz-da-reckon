@@ -14,6 +14,7 @@ import type { ParrySplitResult } from '@/core/parrySplit'
 import { calcStunAxis } from '@/core/stunAxis'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
+import { isFrontlineExecution } from '@/types/resource'
 import { calcStunAxisStack, allocateAxisWindows } from '@/core/stunAxisStack'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
@@ -429,8 +430,11 @@ export function useResourceCalc() {
    * 单轮计算：给定失衡次数输入与上一轮收敛线程，重算资源池（连携 = 每失衡连携数 × 失衡次数）→
    * 转大不动点 → 失衡池 → 易伤覆盖率 → 异常池。跨轮反馈量统一走 threads（见 roundThreads.ts，
    * 含各线程的语义注释）；返回 threadsNext 供外层不动点传入下一轮。
+   * opts.forceNoAxis = 轴退化重算（轴资源需求超出时间预算 → 不可操作 → 退化为一般轴，见 calcOutput）。
+   * opts.interactionScale < 1 = 非轴降配：超预算时缩放用户交互次数（招架/金身/双反/闪反，round），
+   * 只缩放 store 侧输入——后续 boss 强制弹刀（parrySplit 直读 store）与轴补齐注入不被缩放。
    */
-  function runCalcRound(stunCount: number, threads: CalcRoundThreads): CalcRoundResult | null {
+  function runCalcRound(stunCount: number, threads: CalcRoundThreads, opts?: { forceNoAxis?: boolean; interactionScale?: number }): CalcRoundResult | null {
     const {
       goodReview: prevGoodReview,
       energyBySlot: prevEnergyBySlot,
@@ -458,7 +462,8 @@ export function useResourceCalc() {
     if (!base || !catalogStore.ready) return null
     // 条件轴：按上一轮收敛出的好评/闪能（首轮缺省 → 条件方案未命中走兜底）解析生效轴
     const { axes: resolvedAxes, planName } = resolveAxes(stunCount, prevGoodReview, prevEnergyBySlot)
-    const axisActive = (configStore.useStunAxis || autoActive.value) && resolvedAxes.length > 0
+    // forceNoAxis（轴退化）：跳过轴注入（轴块/连携覆盖/自动补齐全关），退回 chainCountPerStun 兜底的一般循环
+    const axisActive = !opts?.forceNoAxis && (configStore.useStunAxis || autoActive.value) && resolvedAxes.length > 0
     // 决算截断（佩洛伊斯右分支 1551016）：轴内决算做完时清空窗口剩余失衡时间 →
     // 有效失衡时长按截断结束时刻计，损失秒数从覆盖率里扣除（失衡时间/比例重算口径）。
     let verdictSecondsLost = 0
@@ -635,6 +640,20 @@ export function useResourceCalc() {
     const axisInSeconds = axisActive
       ? allocateAxisWindows(resolvedAxes, stunCount).reduce((a, b) => a + b, 0) * computeWindowDuration()
       : 0
+    // 轴内合轴检测（2026-08-30，用户口径）：窗口内跨角色块并行（如般岳强特时琉音抱拳）只计一次前台。
+    // 栈引擎按执行块区间并集算 overlap；前台净占用 = Σ物化前台行 − overlap，iterate 平A池吃进节省。
+    // 固定轴的执行只取决于窗口数 + 时间门控（资源不足照样执行只记警告）→ 无需能量/喧响输入。
+    let axisOverlapSeconds = 0
+    let axisOverlapByAction: Record<string, number> = {}
+    if (axisActive) {
+      const overlapStack = calcStunAxisStack({
+        axes: buildStackAxes(resolvedAxes),
+        stunCount,
+        windowDuration: computeWindowDuration(),
+      })
+      axisOverlapSeconds = overlapStack.overlapSeconds
+      axisOverlapByAction = overlapStack.overlapByAction
+    }
     // 把当前失衡次数/覆盖率/战斗时间传给角色配置（诺姆火力实验导弹舱、炮塔全程射击依赖）
     // 各槽位轴内捏块总次数（块数×窗口数）：通用注入用（般岳分支与下方 merged 均取同一来源）
     const axisActionCountsBySlot: Record<number, Record<string, number>> = {}
@@ -652,6 +671,15 @@ export function useResourceCalc() {
         axisInSeconds,
         teamStunCoverage: provStunCoverage,
         axisActionCounts: axisActionCountsBySlot[cfg.slot],
+      }
+      // 非轴降配（用户口径 2026-08-30）：超预算时缩放用户交互次数（round）。只缩 store 侧输入——
+      // 下方 boss 强制弹刀（parrySplit 直读 store 原值）与轴补齐注入在其后叠加，不被缩放。
+      const iscale = opts?.interactionScale ?? 1
+      if (iscale < 1) {
+        merged.parryCount = Math.round((merged.parryCount ?? 0) * iscale)
+        merged.blockCount = Math.round((merged.blockCount ?? 0) * iscale)
+        merged.dualCounterCount = Math.round((merged.dualCounterCount ?? 0) * iscale)
+        merged.dodgeCounterCount = Math.round((merged.dodgeCounterCount ?? 0) * iscale)
       }
       // Boss 预设弹刀反推注入（上一轮拆分；首轮 prev 为空 → 击破位注入 ≥1 探针保证轻弹刀行存在，
       // 供本轮失衡池读出每次弹刀失衡值，后续轮按真实拆分注入、不强制）
@@ -773,9 +801,10 @@ export function useResourceCalc() {
         const extremeAssists = (merged.teamUltimateFlashBonus ?? 0) > 0
           ? Math.min(assistInput >= 0 ? assistInput : assistCap, assistCap)
           : 0
-        // 影画1·追加落雷（用户口径）：按 CD 自动算次数——轴模式 floor(轴内时间/6)，非轴 floor(战斗时间/6)
+        // 影画1·追加落雷（用户口径）：按 CD 自动算次数——轴模式 floor(轴内时间/6)，
+        // 非轴 floor(有效战斗时间/6)（战斗时间扣 boss 无敌，落雷不在无敌期间结算）
         const yixuanCinema = Math.max(0, Math.floor(Number((merged as unknown as Record<string, unknown>).yixuanCinemaLevel ?? 0)))
-        const battleTime = merged.battleTime ?? 180
+        const battleTime = Math.max(0, (merged.battleTime ?? 180) - (configStore.enemy.invincibleTime ?? 0))
         const c1Lightnings = yixuanCinema >= 1
           ? Math.max(0, Math.floor((axisInSeconds > 0 ? axisInSeconds : battleTime) / 6))
           : 0
@@ -999,6 +1028,8 @@ export function useResourceCalc() {
       ...base,
       characters,
       stunCount,
+      axisOverlapSeconds,
+      axisOverlapByAction,
       specialActionDecibelBonusPerSlot: specialBonusPerSlot,
       anomalyDecibelBonusPerSlot: anomalyBonusPerSlot,
     }), catalogStore)
@@ -1439,8 +1470,9 @@ export function useResourceCalc() {
       adjustedResourceResult: adj2,
       promote: sp1.promote,
       stunCoverage: cov1,
-      resolvedAxes,
-      matchedPlanName: planName,
+      // 轴退化时生效轴 = 无（诚实反映：轴定义仍解析，但没有注入计算）
+      resolvedAxes: opts?.forceNoAxis ? [] : resolvedAxes,
+      matchedPlanName: opts?.forceNoAxis ? null : planName,
       banyueTopUp: banyueTopUpNext,
       parrySplit: parrySplitNext,
       inStunAnomalyState: inStunAnomalyStateNext,
@@ -1497,100 +1529,170 @@ export function useResourceCalc() {
     // 锁定失衡次数（命座对比固定场景）：stunCount 固定输入不回填（"操作够就能打 N 次失衡"口径），
     // 但异常喧响/终结技次数反馈仍收敛，避免与资源利用率页口径分裂
     const lockedStunCount = configStore.enemy.stunCountLock ?? -1
-    let stunCount = lockedStunCount >= 0 ? lockedStunCount : 0
-    let out: CalcRoundResult | null = null
-    let threads = initialCalcRoundThreads()
-    let prevUltSeq = ''
-    let prevAnomalySeq = ''
-    let prevTopUpSeq = ''
-    let prevParrySplitSeq = ''
-    let prevDecibelParrySeq = ''
-    const seenStunCounts = new Set<number>()
-    // 收敛诊断（三层不动点第 ③ 层）：原先耗尽 MAX_OUTER_ITER 就静默 return 末轮结果——
-    // 失衡次数/异常喧响奖励可能停在错误值而无任何信号。这里记录落地方式，拼进结果供界面与测试断言。
-    let outerRounds = 0
-    let outerConverged = false
-    let outerExit: 'stable' | 'cycle' | 'maxIter' = 'maxIter'
-    // 净失衡迭代（用户 Excel 口径）：覆盖率由上一轮失衡次数得出，非失衡占比缩放全来源净失衡，
-    // 时间预算把超出的残失衡折成小数——正反馈被全局负反馈对抗，收敛到静止
     const stunWindowDur = computeWindowDuration()
     const stunEffTime = Math.max(0, (configStore.enemy.battleTime ?? 180) - (configStore.enemy.invincibleTime ?? 0))
-    for (let k = 0; k < MAX_OUTER_ITER; k++) {
-      outerRounds = k + 1
-      // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
-      const locked = lockedStunCount >= 0
-      out = runCalcRound(stunCount, threads)
-      // null 轮（如无失衡行队伍）：反馈线程按 threadsAfterNullRound 规则回退（持久组保留、其余重置）
-      if (!out) {
-        threads = threadsAfterNullRound(threads)
-        continue
-      }
-      const t = out.threadsNext
-      const ait = t.auricInkFlash
-      const rawNext = out?.stunPool?.stunCount ?? 0
-      // 净失衡缩放 + 时间可行性截断：非失衡占比缩放全来源净失衡，超出可容纳窗口数的残失衡按残差时间系数折成小数
-      let next = rawNext
-      if (!locked && stunWindowDur > 0 && stunEffTime > 0) {
-        const coverage = Math.min(1, stunCount * stunWindowDur / stunEffTime)
-        next = rawNext * (1 - coverage)
-        const maxFull = Math.floor(stunEffTime / stunWindowDur)
-        if (next > maxFull) {
-          const residualFactor = stunEffTime / stunWindowDur - maxFull
-          const excess = next - maxFull
-          next = maxFull + Math.min(Math.max(0, excess), residualFactor)
+    /** 轴退化判据容差（秒）：收敛后仍留 ~2s 合轴可覆盖的量化残差（与 timeLedger 测试口径一致） */
+    const AXIS_FALLBACK_TOLERANCE_SEC = 2
+    /** Σ前台行净占用（扣轴内合轴节省；超预算检测与 teamCompare.actionTimeTotal 同口径） */
+    const frontlineTotalOf = (r: CalcRoundResult | null): number => {
+      if (!r?.resourceResult) return 0
+      const overlap = r.resourceResult.axisOverlapByAction ?? {}
+      let total = 0
+      for (const ch of r.resourceResult.characters) {
+        for (const exec of ch.executions) {
+          if (!isFrontlineExecution(exec)) continue
+          total += Math.max(0, (exec.totalTime ?? 0) - (overlap[`${ch.slot}:${exec.moveId}`] ?? 0))
         }
       }
-      // 非失衡时间充足性约束：失衡次数过高时，角色的必做动作（回能/强特/喧响）时间
-      // 会被挤到没有足够非失衡时间去执行，打法循环本身就不成立。
-      // 收敛到非失衡时间 ≥ 该轮实际必要时间（含链的保守上界，但安全）。
-      if (!locked && stunEffTime > 0 && stunWindowDur > 0) {
-        const totalNecessary = (out?.resourceResult?.characters ?? []).reduce(
-          (s, c) => s + (c.timeAllocation?.necessaryTime ?? 0), 0)
-        const nonStunTime = stunEffTime - next * stunWindowDur
-        if (nonStunTime < totalNecessary) {
-          next = Math.max(0, (stunEffTime - totalNecessary) / stunWindowDur)
-        }
-      }
-      // 终结技次数与异常喧响奖励序列稳定才收敛（异常奖励 → 终结技次数 → 执行计划/时间分配 → 异常触发次数）
-      const ultSeq = (out?.resourceResult?.characters ?? []).map(c => c.ultimateCount).join(',')
-      const anomalySeq = (out?.anomalyPool?.perSlotBonus ?? []).map(v => Math.round(v)).join(',')
-      const topUpSeq = `${out?.banyueTopUp?.parry},${out?.banyueTopUp?.dual}`
-      const parrySplitSeq = out?.parrySplit ? `${out.parrySplit.breakerParry},${out.parrySplit.mainDpsParry}` : ''
-      const decibelParrySeq = `${t.decibelParry ?? 0}`
-      const feedbackStable = ultSeq === prevUltSeq && anomalySeq === prevAnomalySeq && topUpSeq === prevTopUpSeq && parrySplitSeq === prevParrySplitSeq && decibelParrySeq === prevDecibelParrySeq
-      if (lockedStunCount >= 0) {
-        if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
-      } else {
-        // 失衡次数与玄墨异常触发次数双稳定才收敛（异常触发 → 回闪能 → 强特 → 积蓄 → 触发）
-        // 小数失衡时代：浮点比较改 0.05 容差；2-循环去重键取 0.1 粒度
-        if (Math.abs(next - stunCount) < 0.05 && ait === threads.auricInkFlash && feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
-        if (seenStunCounts.has(Math.round(next * 10))) { outerExit = 'cycle'; break }
-        seenStunCounts.add(Math.round(stunCount * 10))
-        stunCount = next
-      }
-      // 线程推进：anomalyDecibelBonus 旧版从 out.anomalyPool 现取（threadsNext 内置空数组占位），
-      // 其余 = threadsNext（runCalcRound 已按 prev 兜底算好下一轮值）
-      threads = { ...t, anomalyDecibelBonus: out?.anomalyPool?.perSlotBonus ?? [] }
-      prevDecibelParrySeq = decibelParrySeq
-      prevUltSeq = ultSeq
-      prevAnomalySeq = anomalySeq
-      prevTopUpSeq = topUpSeq
-      prevParrySplitSeq = parrySplitSeq
+      return total
     }
-    if (out?.resourceResult) {
-      out = {
-        ...out,
-        resourceResult: {
-          ...out.resourceResult,
-          convergence: {
-            ...out.resourceResult.convergence,
-            outerConverged,
-            outerRounds,
-            outerExit,
+    /**
+     * 跑完整外层不动点。forceNoAxis = 轴退化重算（用户口径 2026-08：轴的资源需求
+     * （喧响/嗔火/轴内块 × 窗口数）超出时间预算 → 必要时间 > 战斗时间 → 该轴不可操作
+     * （需 boss 秽盾等外界环境才打得成）→ 退化为一般轴（不注入轴块/连携覆盖/自动补齐）重算）。
+     */
+    function runOuterLoop(forceNoAxis: boolean, interactionScale?: number): { out: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter' } {
+      let stunCount = lockedStunCount >= 0 ? lockedStunCount : 0
+      let out: CalcRoundResult | null = null
+      let threads = initialCalcRoundThreads()
+      let prevUltSeq = ''
+      let prevAnomalySeq = ''
+      let prevTopUpSeq = ''
+      let prevParrySplitSeq = ''
+      let prevDecibelParrySeq = ''
+      const seenStunCounts = new Set<number>()
+      let outerRounds = 0
+      let outerConverged = false
+      let outerExit: 'stable' | 'cycle' | 'maxIter' = 'maxIter'
+      // 净失衡迭代（用户 Excel 口径）：覆盖率由上一轮失衡次数得出，非失衡占比缩放全来源净失衡，
+      // 时间预算把超出的残失衡折成小数——正反馈被全局负反馈对抗，收敛到静止
+      for (let k = 0; k < MAX_OUTER_ITER; k++) {
+        outerRounds = k + 1
+        // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
+        const locked = lockedStunCount >= 0
+        out = runCalcRound(stunCount, threads, { forceNoAxis, interactionScale })
+        // null 轮（如无失衡行队伍）：反馈线程按 threadsAfterNullRound 规则回退（持久组保留、其余重置）
+        if (!out) {
+          threads = threadsAfterNullRound(threads)
+          continue
+        }
+        const t = out.threadsNext
+        const ait = t.auricInkFlash
+        const rawNext = out?.stunPool?.stunCount ?? 0
+        // 净失衡缩放 + 时间可行性截断：非失衡占比缩放全来源净失衡，超出可容纳窗口数的残失衡按残差时间系数折成小数
+        let next = rawNext
+        if (!locked && stunWindowDur > 0 && stunEffTime > 0) {
+          const coverage = Math.min(1, stunCount * stunWindowDur / stunEffTime)
+          next = rawNext * (1 - coverage)
+          const maxFull = Math.floor(stunEffTime / stunWindowDur)
+          if (next > maxFull) {
+            const residualFactor = stunEffTime / stunWindowDur - maxFull
+            const excess = next - maxFull
+            next = maxFull + Math.min(Math.max(0, excess), residualFactor)
+          }
+        }
+        // 非失衡时间充足性约束：失衡次数过高时，角色的必做动作（回能/强特/喧响）时间
+        // 会被挤到没有足够非失衡时间去执行，打法循环本身就不成立。
+        // 收敛到非失衡时间 ≥ 该轮实际必要时间（含链的保守上界，但安全）。
+        if (!locked && stunEffTime > 0 && stunWindowDur > 0) {
+          const totalNecessary = (out?.resourceResult?.characters ?? []).reduce(
+            (s, c) => s + (c.timeAllocation?.necessaryTime ?? 0), 0)
+          const nonStunTime = stunEffTime - next * stunWindowDur
+          if (nonStunTime < totalNecessary) {
+            next = Math.max(0, (stunEffTime - totalNecessary) / stunWindowDur)
+          }
+        }
+        // 终结技次数与异常喧响奖励序列稳定才收敛（异常奖励 → 终结技次数 → 执行计划/时间分配 → 异常触发次数）
+        const ultSeq = (out?.resourceResult?.characters ?? []).map(c => c.ultimateCount).join(',')
+        const anomalySeq = (out?.anomalyPool?.perSlotBonus ?? []).map(v => Math.round(v)).join(',')
+        const topUpSeq = `${out?.banyueTopUp?.parry},${out?.banyueTopUp?.dual}`
+        const parrySplitSeq = out?.parrySplit ? `${out.parrySplit.breakerParry},${out.parrySplit.mainDpsParry}` : ''
+        const decibelParrySeq = `${t.decibelParry ?? 0}`
+        const feedbackStable = ultSeq === prevUltSeq && anomalySeq === prevAnomalySeq && topUpSeq === prevTopUpSeq && parrySplitSeq === prevParrySplitSeq && decibelParrySeq === prevDecibelParrySeq
+        if (lockedStunCount >= 0) {
+          if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
+        } else {
+          // 失衡次数与玄墨异常触发次数双稳定才收敛（异常触发 → 回闪能 → 强特 → 积蓄 → 触发）
+          // 小数失衡时代：浮点比较改 0.05 容差；2-循环去重键取 0.1 粒度
+          if (Math.abs(next - stunCount) < 0.05 && ait === threads.auricInkFlash && feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
+          if (seenStunCounts.has(Math.round(next * 10))) { outerExit = 'cycle'; break }
+          seenStunCounts.add(Math.round(stunCount * 10))
+          stunCount = next
+        }
+        // 线程推进：anomalyDecibelBonus 旧版从 out.anomalyPool 现取（threadsNext 内置空数组占位），
+        // 其余 = threadsNext（runCalcRound 已按 prev 兜底算好下一轮值）
+        threads = { ...t, anomalyDecibelBonus: out?.anomalyPool?.perSlotBonus ?? [] }
+        prevDecibelParrySeq = decibelParrySeq
+        prevUltSeq = ultSeq
+        prevAnomalySeq = anomalySeq
+        prevTopUpSeq = topUpSeq
+        prevParrySplitSeq = parrySplitSeq
+      }
+      return { out, outerRounds, outerConverged, outerExit }
+    }
+
+    let r = runOuterLoop(false)
+    // 轴退化检测（用户口径 2026-08）：轴的资源需求（轴内块/自动补齐交互 × 窗口数）超出战斗时间预算
+    // → 轴不可操作（需 boss 秽盾等外界环境才打得成）→ 退化为一般轴重算。
+    // 误伤护栏：般岳等角色「配置本身的交互行」（金身20/招架10 等）也会把必要时间推超预算
+    // （banyue.test 锁窗注释：2026-08-23 已知现状）——这与轴无关，弃轴解决不了。
+    // 故先跑一次非轴对照：仅当**非轴模式可行**（Σ前台净占用 ≤ 预算+容差）时才认定「轴需求是超时主因」并退化。
+    // 非轴也超 = 配置本身超预算 → 走下方**非轴降配**（二分缩放交互次数）。
+    let axisFallback = false
+    let interactionScale: number | undefined
+    const overBudget = (x: CalcRoundResult | null) =>
+      stunEffTime > 0 && x != null && frontlineTotalOf(x) > stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
+    let hadAxis = false
+    // 锁定失衡次数（命座对比/锁窗测试）= 用户明确意图「操作够就能打 N 次失衡」，同锁定不回填口径：
+    // 退化/降配会改变次数与交互结构，锁窗场景一律不触发（超时如实上报）。
+    if (lockedStunCount < 0) {
+      if (overBudget(r.out) && r.out?.resolvedAxes?.length) {
+        hadAxis = true
+        const noAxis = runOuterLoop(true)
+        if (!overBudget(noAxis.out)) axisFallback = true
+        r = noAxis // 可行与否都进入非轴态：不可行则走下方降配
+      }
+      // 非轴降配（用户口径 2026-08-30）：金身/招架这类手填交互与轴厚需求本质相同——超预算都要降配。
+      // 轴侧降配 = 退化（需求没了，补齐自动归零）；非轴侧 = 缩放用户交互次数直到净占用回到预算内。
+      // 二分找最大可行 scale（6 轮，精度 ~1.6%）；scale→0 仍超 = 非交互必要时间本身超预算，如实保留报超时。
+      if (overBudget(r.out) && !r.out?.resolvedAxes?.length) {
+        let lo = 0
+        let hi = 1
+        let best: { out: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter'; scale: number } | null = null
+        for (let i = 0; i < 6; i++) {
+          const mid = (lo + hi) / 2
+          const trial = runOuterLoop(true, mid)
+          if (overBudget(trial.out)) {
+            hi = mid
+          } else {
+            lo = mid
+            best = { ...trial, scale: mid }
+          }
+        }
+        if (best) {
+          r = best
+          axisFallback = hadAxis
+          interactionScale = best.scale
+        }
+      }
+    }
+    const { out: baseOut, outerRounds, outerConverged, outerExit } = r
+    const out = baseOut?.resourceResult
+      ? {
+          ...baseOut,
+          resourceResult: {
+            ...baseOut.resourceResult,
+            convergence: {
+              ...baseOut.resourceResult.convergence,
+              outerConverged,
+              outerRounds,
+              outerExit,
+              axisFallback,
+              interactionScale,
+            },
           },
-        },
-      }
-    }
+        }
+      : baseOut
     return out
   })
 

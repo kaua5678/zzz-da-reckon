@@ -84,6 +84,25 @@ describe('橘福福次数账本 computeJufufuCycle', () => {
     expect(c.tigerChainCount).toBe(Math.floor((100 + 300) / 100))
     expect(c.popcornHits).toBe(12 * JUFUFU_C6_POPCORN_PER_SPIN)
   })
+
+  it('虎威相位延后（2026-08-30）：块长 = 前台时间/(切上频率×前台动作次数)，滑块越低块越长、次数越少', () => {
+    const base = { exSpecialCount: 0, ultimateCount: 0, parryCount: 0, cinemaLevel: 0, aweInitial: 0, c2WeishiPerUlt: 0 }
+    // 无前台时间 → 旧口径 floor(100/4)=25
+    expect(computeJufufuCycle({ backstageTime: 100, frontlineTime: 0, ...base }).huweiHits).toBe(25)
+    // 前台 60s、动作 12 次、100% → 块长 5s；W=160, p=0.375 → c' = 4 + 0.375×2.5 = 4.9375 → 20 次
+    const full = computeJufufuCycle({
+      backstageTime: 100, frontlineTime: 60, effectiveTotalTime: 160, frontActionCount: 12, frontSwitchRatio: 1, ...base,
+    })
+    expect(full.huweiHits).toBe(Math.floor(100 / (4 + 0.375 * 2.5)))
+    // 20% → 切上 2.4 次 → 块长 25s → c' = 4 + 0.375×12.5 = 8.6875 → 11 次
+    const rare = computeJufufuCycle({
+      backstageTime: 100, frontlineTime: 60, effectiveTotalTime: 160, frontActionCount: 12, frontSwitchRatio: 0.2, ...base,
+    })
+    expect(rare.huweiHits).toBe(Math.floor(100 / (4 + 0.375 * 12.5)))
+    expect(rare.huweiHits).toBeLessThan(full.huweiHits)
+    // 动作次数缺省 → 回退块长 ≈ CD：c' = 4×1.1875 → floor(100/4.75) = 21
+    expect(computeJufufuCycle({ backstageTime: 100, frontlineTime: 60, effectiveTotalTime: 160, ...base }).huweiHits).toBe(21)
+  })
 })
 
 describe('橘福福影画1/2/4 面板', () => {

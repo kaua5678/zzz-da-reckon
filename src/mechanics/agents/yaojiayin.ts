@@ -28,6 +28,7 @@ import type {
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
+import { minusInvincibleTime } from '@/core/effectiveTime'
 
 export const YAOJIAYIN_ID = '1311'
 
@@ -188,8 +189,9 @@ function pushExec(
   } as SkillExecution)
 }
 
-function combatTimeOf(state: AgentResourceInput['state']): number {
-  return (state.frontlineTime ?? 0) + (state.backstageTime ?? 0)
+function combatTimeOf(state: AgentResourceInput['state'], cfg: AgentResourceInput['cfg']): number {
+  // 前台+后台 = 全战斗时间；震音/音簇/随想曲等 CD 折算按有效战斗时间，无敌期间不结算（core/effectiveTime.ts）
+  return minusInvincibleTime((state.frontlineTime ?? 0) + (state.backstageTime ?? 0), cfg)
 }
 
 /**
@@ -277,7 +279,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cinema = Math.max(0, Math.floor(Number(record.yaojiayinCinemaLevel ?? 0)))
   const additionalActive = Number(record.yaojiayinAdditionalActive ?? 0) > 0
-  const combatTime = combatTimeOf(state)
+  const combatTime = combatTimeOf(state, cfg)
   const entries = Math.max(0, Math.floor(Number(record.yaojiayinEntryCount ?? 0)))
   const totalEnergy = Math.max(0, Number(state.totalEnergy ?? 0))
   const result = computeYaojiayinTremolos({
@@ -355,7 +357,7 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
   const result = computeYaojiayinTremolos({
     totalEnergy: Math.max(0, Number(state.totalEnergy ?? 0)),
     entryCount: Math.max(0, Math.floor(Number(record.yaojiayinEntryCount ?? 0))),
-    combatTime: combatTimeOf(state as any),
+    combatTime: combatTimeOf(state as any, cfg),
     cinemaLevel: cinema,
     additionalActive,
   })

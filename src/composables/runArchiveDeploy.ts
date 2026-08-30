@@ -4,12 +4,13 @@
  * 口径（与 teamTimeline.applyTeamToStore 的交互基准同源）：
  * - 配装缺口 = 计算器默认理想配装：applyTeamPreset → 专属音擎推荐 + 推荐驱动盘 + 最优副词条 + 技能全满。
  * - 交互基准：不预设弹刀——弹刀由「保底4失衡（Boss 预设反推）+ 保底4喧响（喧响缺口÷215）」运行时反推；
- *   闪反/快支保留固定基准（闪反10 / 快支3）作为喧响基础供给；连携基准 1（轴模式由轴内连携块反推覆盖）。
+ *   闪反按职业基准（roleInteractionBaseline：支援/防护 0，其余 10）、快支固定 3 作为喧响基础供给；连携基准 1（轴模式由轴内连携块反推覆盖）。
  * - Boss：applyBossPreset 应用期相位血量/失衡/防御/三表抗性（分期数决定血量膨胀），并写关卡固有 layer_buff。
  * - 当期可选牌（3 选 1）不自动应用：归档未记录玩家选择，对比时由用户在属性配置页手动选。
  */
 import type { BossPreset, BossPresetMonster, BossPresetDefaults, BossPresetPhase, PhaseBossBrief, PhaseView } from '@/types/bossPreset'
-import { getInteractionDefaults, useConfigStore } from '@/stores/config'
+import { getInteractionDefaults, roleInteractionBaseline, useConfigStore } from '@/stores/config'
+import { useCatalogStore } from '@/stores/catalog'
 import type { BossMatch, DeployConfig } from '@/composables/runArchiveImport'
 
 export interface ResolvedBossApply {
@@ -69,8 +70,9 @@ export function applyDeployConfig(
 ): void {
   configStore.applyTeamPreset(deploy.team.map((s) => s.agentId) as [string, string, string])
 
-  // 交互基准（2026-08 修订）：不预设弹刀——弹刀由「保底4失衡（Boss 预设反推）+ 保底4喧响（喧响缺口÷215）」运行时反推；
-  // 闪反/快支保留固定基准（闪反10 / 快支3）作为喧响基础供给；连携基准 1（轴模式由轴内连携块反推覆盖）。
+  // 交互基准（2026-08-30 修订）：不预设弹刀——弹刀由「保底4失衡（Boss 预设反推）+ 保底4喧响（喧响缺口÷215）」运行时反推；
+  // 闪反按职业基准（roleInteractionBaseline：支援/防护 0 交互，其余 10；辅助不上场打闪反），
+  // 快支固定 3 作为喧响基础供给；连携基准 1（轴模式由轴内连携块反推覆盖）。
   for (let s = 0; s < 3; s++) {
     const slot = deploy.team[s]
     configStore.setCinemaLevel(s, slot.cinemaLevel)
@@ -79,8 +81,9 @@ export function applyDeployConfig(
 
     const defs = getInteractionDefaults(slot.agentId)
     const hasCustom = defs.parry > 0 || defs.dodge > 0 || defs.block > 0 || defs.dual > 0
+    const base = roleInteractionBaseline(useCatalogStore().getAgent(slot.agentId)?.specialty)
     configStore.setParryCount(s, hasCustom ? defs.parry : 0)
-    configStore.setDodgeCounterCount(s, hasCustom ? defs.dodge : 10)
+    configStore.setDodgeCounterCount(s, hasCustom ? defs.dodge : base.dodge)
     configStore.setBlockCount(s, hasCustom ? defs.block : 0)
     configStore.setDualCounterCount(s, hasCustom ? defs.dual : 0)
     configStore.setQuickAssistCount(s, 3)

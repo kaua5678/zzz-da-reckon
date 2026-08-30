@@ -3,6 +3,7 @@ import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
+import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 
 /**
  * 奥菲丝&「鬼火」（1301，火·强攻，新艾利都防卫军）—— 自身机制补录模块。
@@ -48,9 +49,8 @@ const ORPHIE_VORTEX_ENERGY = 30
 /** 影画1 自身 4 招（蚀光一闪/灼红旋涡/蓄热充能/燥焰迸射）无视 15% 火伤抗性——moveId 级 resIgnore（引擎已有该通道，不再是面板近似） */
 const ORPHIE_C1_RES_IGNORE = 15
 const ORPHIE_C1_RES_IGNORE_MOVE_IDS = new Set(['1301008', '1301010', '1301011', '1301022'])
-/** 后台出手次数默认值（5s 上限通常达不到；供滑块覆盖） */
-const ORPHIE_BACKSTAGE_MAIN = 21
-const ORPHIE_BACKSTAGE_SUB = 30
+/** 蚀光一闪后台自动 CD（秒）：次数 = 有效后台时间 / 相位延后等效 CD（core/effectiveTime.ts） */
+const ORPHIE_BACKSTAGE_CD_SECONDS = 5
 /** 倍率融合 moveId：蓄热充能后接燥焰迸射；终结技 与火共舞 #1+#2 合一 */
 const ORPHIE_EX_STORAGE = '1301011'
 const ORPHIE_EX_BURST = '1301022'
@@ -168,14 +168,12 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
 }
 
-/** 主/副 C 判定 + 后台/前台能量分配默认值（build 阶段写 cfg，供 buildExecutions 读） */
+/** 席德队前台能量分配默认值（build 阶段写 cfg，供 buildExecutions 读） */
 function applyOrphieTeamConfig(input: AgentTeamConfigInput): void {
   if (input.phase !== 'build') return
   const others = input.team.filter(t => t.slot !== input.slot)
-  const hasOtherAttack = others.some(t => t.agent?.specialty === 'attack')
   const hasXide = others.some(t => t.agentId === '1461' || t.agent?.id === '1461')
   const me = input.characters[input.slot]
-  ;(me as any).orphieIsMainC = !hasOtherAttack
   ;(me as any).orphieAutoFrontRatio = hasXide ? 0.8 : 0 // 席德队 80% 前台小心脚下；通用副C 全后台
 }
 
@@ -183,10 +181,18 @@ function applyOrphieTeamConfig(input: AgentTeamConfigInput): void {
 function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).orphieCinemaLevel ?? 0)))
   const n = Number((cfg as any)['setting:orphie.backstageCastCount'] ?? -1)
-  const isMainC = Boolean((cfg as any).orphieIsMainC)
-  const castCount = n >= 0 ? Math.max(0, Math.floor(n)) : (isMainC ? ORPHIE_BACKSTAGE_MAIN : ORPHIE_BACKSTAGE_SUB)
-  // 实际后台出手受后台时间/5（CD 上限 5s）约束：通常达不到默认 30/21
-  const backstageCast = Math.min(castCount, Math.max(0, Math.floor(Number(state.backstageTime ?? 0) / 5)))
+  // 次数 = 有效后台时间 / 相位延后等效 CD（2026-08-30 通用口径，core/effectiveTime.ts）：
+  // 原主C 21/副C 30 静态分档删除——本人前台时间占比由等效 CD 接管（主C 前台长 → 后台自动自然少）；
+  // 前台块长 = 前台时间 / 切上次数（切上前台频率滑块 × 非平A前台动作次数）；滑块为手动出手次数，仍受时间上限封顶。
+  const backstageEff = effectiveBackstageTime(state.backstageTime, cfg)
+  const block = frontBlockSeconds(
+    state.frontlineTime ?? 0,
+    countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
+    Number((cfg as any)['setting:orphie.frontSwitchRatio'] ?? 1),
+    ORPHIE_BACKSTAGE_CD_SECONDS,
+  )
+  const timeCap = Math.floor(backstageEff / phaseDelayedCooldown(ORPHIE_BACKSTAGE_CD_SECONDS, state.frontlineTime, effectiveBattleTime(cfg), block))
+  const backstageCast = n >= 0 ? Math.min(Math.max(0, Math.floor(n)), timeCap) : timeCap
   const rRaw = Number((cfg as any)['setting:orphie.frontEnergyRatio'] ?? -1)
   const frontRatio = Math.max(0, Math.min(1, rRaw >= 0 ? rRaw : Number((cfg as any).orphieAutoFrontRatio ?? 0)))
 
@@ -286,12 +292,21 @@ export const orphieMechanic: AgentMechanicModule = {
     {
       id: 'orphie.backstageCastCount',
       label: '奥菲丝·后台出手次数',
-      description: '蚀光一闪/灼红旋涡后台自动出手总次数（-1=自动：副C 30 / 主C 21）。5 秒是 CD 上限，通常打不满。',
+      description: '蚀光一闪/灼红旋涡后台自动出手总次数（-1=自动：有效后台时间 / 相位延后等效 CD，前台插队自动压次数）。',
       default: -1,
       min: -1,
       max: 80,
       step: 1,
       suffix: '次',
+    },
+    {
+      id: 'orphie.frontSwitchRatio',
+      label: '奥菲丝·切上前台频率',
+      description: '切上前台次数 / 前台动作次数（2026-08-30 相位延后口径）。100% = 每次切上只做一个动作；0 = 一次切上做完全部前台（后台仍有大量纯跑 CD 的时间，不会一次都出不来）。默认 1.0（实测中间档：奥菲丝动作 30+ 次把块切到 ~2s、延后项很小，典型副C 21~24 次 ≈ 原 主C 21/副C 30 的中间数 25；次数天花板 = 后台时间/5s，往下调滑块只会更少）。',
+      default: 1,
+      min: 0,
+      max: 1,
+      step: 0.05,
     },
     {
       id: 'orphie.frontEnergyRatio',

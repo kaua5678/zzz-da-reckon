@@ -8,9 +8,9 @@
     </div>
     <div class="header-center">
       <div class="tab-section">
-        <div class="tab-section-label">计算器</div>
+        <div class="tab-section-label">配置</div>
         <n-tabs
-          :value="calculatorTabValue"
+          :value="setupTabValue"
           type="line"
           size="large"
           class="header-tabs"
@@ -19,18 +19,50 @@
           <n-tab-pane name="team" tab="队伍配置" />
           <n-tab-pane name="attribute" tab="属性配置" />
           <n-tab-pane name="resource" tab="倍率表" />
+        </n-tabs>
+      </div>
+      <div class="tab-section">
+        <div class="tab-section-label">分析</div>
+        <n-tabs
+          :value="analyzeTabValue"
+          type="line"
+          size="large"
+          class="header-tabs"
+          @update:value="onTabChange"
+        >
           <n-tab-pane name="result" tab="资源池" />
           <n-tab-pane name="resourceUtilization" tab="资源利用率" />
           <n-tab-pane name="stunAxis" tab="失衡轴" />
+          <n-tab-pane name="timeline" tab="时间图表" />
+        </n-tabs>
+      </div>
+      <div class="tab-section">
+        <div class="tab-section-label">对比</div>
+        <n-tabs
+          :value="compareTabValue"
+          type="line"
+          size="large"
+          class="header-tabs"
+          @update:value="onTabChange"
+        >
           <n-tab-pane name="teamCompare" tab="队伍对比" />
           <n-tab-pane name="breakerCompare" tab="位置对比" />
-          <n-tab-pane name="timeline" tab="时间图表" />
           <n-tab-pane name="runArchive" tab="实战对比" />
+        </n-tabs>
+      </div>
+      <div class="tab-section">
+        <div class="tab-section-label">规划</div>
+        <n-tabs
+          :value="planTabValue"
+          type="line"
+          size="large"
+          class="header-tabs"
+          @update:value="onTabChange"
+        >
           <n-tab-pane name="charIncrement" tab="角色兑现" />
           <n-tab-pane name="bossHp" tab="血量膨胀" />
         </n-tabs>
       </div>
-      <div class="tab-divider"></div>
       <div class="tab-section dev-section">
         <div class="tab-section-label">开发</div>
         <n-tabs
@@ -76,10 +108,18 @@ import { useThemeStore } from '@/stores/theme'
 const configStore = useConfigStore()
 const themeStore = useThemeStore()
 
-const calculatorTabs = ['team', 'attribute', 'resource', 'result', 'resourceUtilization', 'stunAxis', 'teamCompare', 'breakerCompare', 'timeline', 'runArchive', 'bossHp']
+const setupTabs = ['team', 'attribute', 'resource']
+const analyzeTabs = ['result', 'resourceUtilization', 'stunAxis', 'timeline']
+const compareTabs = ['teamCompare', 'breakerCompare', 'runArchive']
+const planTabs = ['charIncrement', 'bossHp']
 const developerTabs = ['debug', 'wengineFields', 'logic', 'mechanic', 'multiplierCoeff']
-const calculatorTabValue = computed(() => calculatorTabs.includes(configStore.activeTab) ? configStore.activeTab : '')
-const developerTabValue = computed(() => developerTabs.includes(configStore.activeTab) ? configStore.activeTab : '')
+const sectionValue = (tabs: string[]) =>
+  computed(() => (tabs.includes(configStore.activeTab) ? configStore.activeTab : ''))
+const setupTabValue = sectionValue(setupTabs)
+const analyzeTabValue = sectionValue(analyzeTabs)
+const compareTabValue = sectionValue(compareTabs)
+const planTabValue = sectionValue(planTabs)
+const developerTabValue = sectionValue(developerTabs)
 
 function onTabChange(tab: string) {
   configStore.activeTab = tab
@@ -92,7 +132,7 @@ function onTabChange(tab: string) {
   align-items: center;
   gap: 16px;
   padding: 0 24px;
-  height: 60px;
+  min-height: 60px;
   background: var(--app-header-bg);
   border-bottom: 1px solid var(--wa-80);
   position: sticky;
@@ -152,7 +192,12 @@ function onTabChange(tab: string) {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* 支持换行的浏览器在溢出时退回起点对齐，避免 center + overflow 把左侧裁得滚不到 */
+  justify-content: safe center;
+  /* 空间不足时以「区块段」为单位换行，而不是横向裁切——保证首个 tab 始终可点 */
+  flex-wrap: wrap;
   gap: 18px;
+  row-gap: 4px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -174,7 +219,9 @@ function onTabChange(tab: string) {
   white-space: nowrap;
 }
 
-.tab-divider {
+/* 分隔线挂在各段 ::before 上，与段作为一个整体参与换行，避免孤儿竖线掉在行首 */
+.tab-section + .tab-section::before {
+  content: '';
   flex: 0 0 auto;
   width: 1px;
   height: 24px;
@@ -208,7 +255,7 @@ function onTabChange(tab: string) {
     display: none;
   }
 
-  .tab-divider {
+  .tab-section + .tab-section::before {
     display: none;
   }
 }

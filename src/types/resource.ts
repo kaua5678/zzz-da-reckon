@@ -344,7 +344,7 @@ export interface BurniceMechanicSource {
   note: string
 }
 
-/** 柚叶甜度点/狸之愿资源明细 */
+/** 柚叶甜度点/狸之愿/硬糖射击·彩糖花火资源明细 */
 export interface YuzuhaMechanicSource {
   sweetnessInitial: number
   sweetnessFromChain: number
@@ -352,13 +352,22 @@ export interface YuzuhaMechanicSource {
   sweetnessFromParry: number
   sweetnessTotal: number
   sweetnessCap: number
+  /** 整场甜度终身预算（进场+连携入场+影画6招架；存量上限6只钳瞬时持有，不钳终身收入） */
+  sweetnessBudget: number
   teamAtkBonus: number
   teamAtkCap: number
   teamDmgBonus: number
-  /** 影画6：蓄能强力炮弹发数（每0.4秒蓄能耗1甜度点） */
-  chargedCannonCount: number
-  /** 每次支援突击的炮弹枚数（按蓄能时长折算） */
-  chargedCannonsPerAssist: number
+  /** 有效战斗时间（秒）= battleTime - invincibleTime，后台追击类次数的時間基数 */
+  effectiveSeconds: number
+  /** 硬糖射击触发次数 = min(floor(有效时间/CD), 甜度终身预算)；影画2 CD 8→6秒 */
+  hardCandyCount: number
+  hardCandyCdSeconds: number
+  /** 彩糖花火 tick 数 = floor(有效时间)（惊吓满覆盖，1秒/次） */
+  fireworkTickCount: number
+  /** 彩糖花火·极次数 = 硬糖射击 + 夹心硬糖(≈招架数) 重击触发 */
+  fireworkExtremeCount: number
+  /** 十人十色转积蓄目标元素（队伍有异常专精队友时为其属性；无则缺省物理不转） */
+  transferElement?: string
   note: string
 }
 
@@ -1042,6 +1051,11 @@ export interface ConvergenceReport {
    */
   timeBudgetIdleSeconds: number
   /**
+   * 欠打回填总量（秒，团队级）：账本高估挤占的平A池经 timeBudgetRefund 回填的量。
+   * 0 = 账本与物化行自洽；偏大 = 某模块 estimate 高估（同 timeBudgetIdleSeconds 的诊断语义）。
+   */
+  timeBudgetRefundedSeconds?: number
+  /**
    * 失衡外层不动点（runCalcRound 环）是否真收敛。
    * 由编排层回填；`calcTeamResources` 单独调用时保持 false（它看不到外层）。
    */
@@ -1056,6 +1070,20 @@ export interface ConvergenceReport {
    * - `maxIter`：耗尽迭代上限（**可疑**：反馈量仍在变，结果可能停在错误值）。
    */
   outerExit?: 'stable' | 'cycle' | 'maxIter'
+  /**
+   * 轴退化（用户口径 2026-08）：轴的资源需求（轴内块/自动补齐交互 × 窗口数）超出战斗时间预算
+   * → 收敛后 Σ物化前台行仍 > 战斗时间 → 该轴不可操作（需 boss 秽盾等外界环境才打得成）
+   * → 编排层自动弃用轴注入（退化为一般轴）重算。true = 本结果是无轴的一般循环，
+   * 轴定义仍可从 UI 查看；false/undefined = 未触发退化（含本来就无轴）。
+   */
+  axisFallback?: boolean
+  /**
+   * 非轴降配（用户口径 2026-08-30）：无轴态前台净占用仍超预算时，用户交互次数
+   * （招架/金身/双反/闪反）按该比例缩放（round）直到回到预算内；boss 强制弹刀不缩放。
+   * undefined = 未降配；0 = 交互全砍仍超（如实保留超时结果）。与 axisFallback 可同时为 true
+   * （轴退化后配置本身仍超预算）。
+   */
+  interactionScale?: number
 }
 
 /** 队伍资源池计算结果 */
@@ -1072,6 +1100,15 @@ export interface TeamResourceResult {
   converged: boolean
   /** 三层不动点的收敛诊断（见 ConvergenceReport） */
   convergence: ConvergenceReport
+  /**
+   * 轴内合轴节省（秒，团队级）：失衡窗口内跨角色块并行（如般岳强特时琉音抱拳）只计一次前台，
+   * 节省 = 轴内块时长和 − 块区间并集（栈引擎 overlapSeconds）。**前台净占用口径**：
+   * Σ物化前台行 totalTime − 本值 = 时间轴净占用（iterate 平A池吃进、折叠循环/队伍对比超时判定按净占用）。
+   * 非轴模式 / 无并行块 = 0。
+   */
+  axisOverlapSeconds?: number
+  /** 合轴节省按块分摊（`${slot}:${moveId}` → 秒）：单角色行级扣减用，Σ 值 = axisOverlapSeconds */
+  axisOverlapByAction?: Record<string, number>
 }
 
 // ============ 计算输入 ============
@@ -1285,8 +1322,8 @@ export interface CharacterOperationConfig {
   burniceCinemaLevel?: number
   /** 柚叶连携入场次数（其他角色连携技入场+1甜度点，滑块 yuzuha.chainEntryCount） */
   yuzuhaChainEntryCount?: number
-  /** 柚叶蓄能时长秒数（影画6 蓄能炮弹，滑块 yuzuha.chargeSeconds） */
-  yuzuhaChargeSeconds?: number
+  /** 十人十色转积蓄目标元素（applyTeamConfig 定位异常专精队友写入，buildExecutions 行级 element 消费） */
+  yuzuhaTransferElement?: string
   /** 柚叶命座等级（影画6） */
   yuzuhaCinemaLevel?: number
   /** 柏妮思搅拌式次数：0 表示自动按溢出燃点取上限 */
@@ -1661,6 +1698,8 @@ export interface CharacterOperationConfig {
   billyBasicHealPerSec?: number
   /** 总战斗时间（秒，默认 180；全战斗时间类来源使用，如星徽·比利决意缓慢回复 2 点/秒） */
   battleTime?: number
+  /** boss 无敌时间（秒，缺省 0）。后台/CD 伤害通道按 core/effectiveTime.ts 扣减折算；能量/喧响通道不扣 */
+  invincibleTime?: number
   /** 敌方体型（影响体型相关招式倍率，如艾莲霜锋剑气 0/3/6 段） */
   bodySize?: 'small' | 'medium' | 'large'
   /** 金身格挡/不动如山招架次数（队伍配置页 per-character，般岳嗔火来源） */
@@ -1687,6 +1726,21 @@ export interface ResourceCalcConfig {
   maxIterations: number
   /** 时间预算收敛最大外层循环次数（缺省 8）：模块专属动作行超出战斗时间时折入必要前台重收敛 */
   maxTimeIterations?: number
+  /**
+   * 时间预算欠打回填（秒，团队级）：上一轮测得「各角色账本 − 物化前台行」的正差总和。
+   * 账本高估（estimate 高于物化行）时 basic 池会被挤到 0，物化行打不满战斗时间；
+   * 该差额回填进团队平A池（按 timeWeight 分配），让 Σ前台行 ≈ 预算。
+   * 由 calcTeamResources 时间预算折叠循环每轮重写；iterate 只读。
+   */
+  timeBudgetRefund?: number
+  /**
+   * 轴内合轴节省（秒，团队级，输入）：失衡窗口内跨角色块并行（般岳强特时琉音抱拳）只计一次前台。
+   * 由 useResourceCalc 用栈引擎算好传入（StackTraversalResult.overlapSeconds）；iterate 平A池吃进、
+   * 折叠循环 excess 测量与结果上报（TeamResourceResult.axisOverlapSeconds）共用同一值。
+   */
+  axisOverlapSeconds?: number
+  /** 合轴节省按块分摊（`${slot}:${moveId}` → 秒）：折叠循环按行扣减用 */
+  axisOverlapByAction?: Record<string, number>
   /** 迭代初值注入（测试/热启动用）：连续松弛下收敛态与初值无关，任意种子应得同解；长度不符时忽略 */
   initialStates?: IterationState[]
   /** 失衡次数输入（连携次数 = chainCountPerStun × stunCount）；由外部失衡池不动点收敛后回填 */

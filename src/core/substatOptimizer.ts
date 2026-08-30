@@ -151,6 +151,13 @@ const AGENT_TEMPLATES: Record<string, SubstatTemplate> = {
     anomalyRelevant: false,
     anomalyRatio: 0,
   },
+  // 命破（rupture）：暴击是乘区（贯穿伤害吃暴击/爆伤），生命是贯穿基底 atk×0.3+hp×0.1 的加法项 → 暴击→爆伤→生命
+  _default_rupture: {
+    stats: ['critRate', 'critDmg', 'hpPct'],
+    dmgBonusRelevant: true,
+    anomalyRelevant: false,
+    anomalyRatio: 0,
+  },
 
   // ===== 角色特例 =====
 
@@ -217,14 +224,6 @@ const AGENT_TEMPLATES: Record<string, SubstatTemplate> = {
     anomalyRatio: 0,
   },
 
-  // 伊德海莉（1051）：生命→贯穿力（局内，命破基底 hp×0.1 项）→ hpPct 优先
-  '1051': {
-    stats: ['hpPct', 'atkPct'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: false,
-    anomalyRatio: 0,
-  },
-
   // 月城柳（1221）：电异常/极性紊乱 → 精通+攻击
   '1221': {
     stats: ['anomalyProficiency', 'atkPct'],
@@ -249,6 +248,7 @@ export function getTemplate(agent: Agent): SubstatTemplate {
   if (spec === 'support') return AGENT_TEMPLATES._default_support
   if (spec === 'stun') return AGENT_TEMPLATES._default_stun
   if (spec === 'defense') return AGENT_TEMPLATES._default_defense
+  if (spec === 'rupture') return AGENT_TEMPLATES._default_rupture
   return AGENT_TEMPLATES._default_dps
 }
 
@@ -767,11 +767,14 @@ export interface OptimizeSubstatsOutput {
 /**
  * 快速默认副词条分配（用户口径 2026-08：最优队伍词条选择固定）。
  * 规则：按模板 stats 优先序依次填到上限（statCap），直到总预算耗尽。
- * 暴击不是「够了就停」——暴击边际效用普遍高、玩家都叠，所以与其它词条一样直接填满 statCap
- * （不做「填到 100%」的截断）。转模角色的转模源（如卢西娅 hpPct、洛克茜 defPct）在模板 stats 首位，天然吃满。
+ * 暴击特例——「百暴」：填到面板暴击 ≤100% 的最多步数（floor 防溢出，基础暴击越高暴击词条越少），
+ * 受 statCap 封顶；不是「够了就不堆」，而是「溢出浪费、不该堆过 100%」。
+ * 转模角色的转模源（如卢西娅 hpPct、洛克茜 defPct）在模板 stats 首位，天然吃满。
+ * @param baseCritRate 无副词条面板暴击率（用于「百暴」缺口）。
  */
 export function computeDefaultSubStats(
   template: SubstatTemplate,
+  baseCritRate: number,
   totalSteps: number,
   statCap: number,
 ): Record<string, number> {
@@ -780,7 +783,13 @@ export function computeDefaultSubStats(
   let remaining = Math.max(0, totalSteps)
   for (const stat of template.stats) {
     if (remaining <= 0) break
-    const steps = Math.min(remaining, statCap)
+    let target = statCap
+    if (stat === 'critRate') {
+      const step = SUBSTAT_POOL['critRate'] ?? 2.4
+      const stepsTo100 = Math.floor(Math.max(0, 100 - baseCritRate) / step)
+      target = Math.min(statCap, stepsTo100)
+    }
+    const steps = Math.min(remaining, target)
     allocation[stat] = steps
     remaining -= steps
   }
@@ -830,16 +839,20 @@ export function computeOptimalSubStats(input: OptimizeSubstatsInput): OptimizeSu
   // 1. 角色模板
   const template = getTemplate(input.agent)
 
-  // 快速默认路径：跳过基础面板 + 套装剪枝 + 贪心，按固定优先序直接填词条（热路径加速）。
+  // 2. 基础面板（无副词条）——默认路径也要它算「百暴缺口」（暴击填到 ≤100%）
+  const basePanel = computeNoSubstatPanel(input)
+
+  const statCap = input.statCap ?? 20
+  const totalSteps = input.totalSteps && input.totalSteps > 0
+    ? input.totalSteps
+    : getDefaultTotalSteps(template.stats.length)
+
+  // 快速默认路径：跳过套装剪枝 + 贪心，按固定优先序直接填词条（热路径加速）。
   if (input.useDefault) {
-    const statCap = input.statCap ?? 20
-    const totalSteps = input.totalSteps && input.totalSteps > 0
-      ? input.totalSteps
-      : getDefaultTotalSteps(template.stats.length)
     const currentFour = input.driveDiscConfig.fourPieceSetId
     const currentTwo = input.driveDiscConfig.twoPieceSetId
     return {
-      subStatAllocation: computeDefaultSubStats(template, totalSteps, statCap),
+      subStatAllocation: computeDefaultSubStats(template, basePanel.critRate, totalSteps, statCap),
       expectedDamage: 0,
       marginalGains: {},
       chosenSet: {
@@ -850,16 +863,8 @@ export function computeOptimalSubStats(input: OptimizeSubstatsInput): OptimizeSu
     }
   }
 
-  // 2. 基础面板（无副词条）
-  const basePanel = computeNoSubstatPanel(input)
-
   // 3. 副词条步长表
   const subStep = (input.statRules?.driveDisc?.sRankSubStatBaseStep ?? {}) as Record<string, number>
-
-  // 4. 总步数：用户覆盖 > 自动（按有效词条数）
-  const totalSteps = input.totalSteps && input.totalSteps > 0
-    ? input.totalSteps
-    : getDefaultTotalSteps(template.stats.length)
 
   // 5. 攻击拐力配置：从模板 teamAtkTransfer 读取（通用化，不再特判 agent.id）
   let atkTransfer: AtkTransferConfig | undefined
@@ -875,7 +880,6 @@ export function computeOptimalSubStats(input: OptimizeSubstatsInput): OptimizeSu
   // 6. 收集所有候选套装
   const allSetIds = Array.from(input.setsMap.keys())
 
-  const statCap = input.statCap ?? 20
   // 阈值优先级：模板 > 用户覆盖 > 全局默认 0.05
   const minGainRatio = template.minGainRatio ?? input.minGainRatio ?? 0.05
 

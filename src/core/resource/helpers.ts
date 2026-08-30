@@ -18,6 +18,7 @@ import { getAgentMechanic } from '@/mechanics'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueCycleFromCfg, readAxisExCounts } from '@/mechanics/agents/banyue'
 import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
+import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 
 // ============ 单角色能量计算 ============
 
@@ -645,8 +646,18 @@ export function buildExecutions(
   getAgentMechanic(cfg.agentId)?.buildExecutions?.({ cfg, state, executions, teamFrontlineSeconds })
 
   // 蕾米后台飞行状态：每5秒自动释放一次 Radiant Turn；合轴100%，不占前台时间。
+  // 后台时间含无敌秒（先扣）；CD 被蕾米本人前台时间插进循环造成相位延后 → 等效使用 CD（core/effectiveTime.ts）；
+  // 前台块长 = 前台时间 / 切上次数（切上前台频率 × 非平A前台动作次数；蕾米暂无滑块声明，频率缺省 1，
+  // 可经 cfg['setting:remielle.frontSwitchRatio'] 覆盖）。
   if (cfg.remielleEnabled && cfg.remielleRadiantTurnMoveId) {
-    const radiantTurnCount = Math.floor(Math.max(0, state.backstageTime) / 5)
+    const block = frontBlockSeconds(
+      state.frontlineTime ?? 0,
+      countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
+      Number((cfg as unknown as Record<string, unknown>)['setting:remielle.frontSwitchRatio'] ?? 1),
+      5,
+    )
+    const radiantInterval = phaseDelayedCooldown(5, state.frontlineTime, effectiveBattleTime(cfg), block)
+    const radiantTurnCount = Math.floor(effectiveBackstageTime(state.backstageTime, cfg) / radiantInterval)
     if (radiantTurnCount > 0) {
       executions.push({
         moveId: cfg.remielleRadiantTurnMoveId,
@@ -749,16 +760,16 @@ export function buildAnomalyEventExecutions(cfg: CharacterOperationConfig, state
   const cannonRotorMultiplier = cfg.cannonRotorDamageMultiplier ?? 0
   const cannonRotorCooldown = cfg.cannonRotorCooldownSeconds ?? 0
   if (cannonRotorMultiplier > 0 && cannonRotorCooldown > 0) {
-    const count = Math.ceil(totalTime / cannonRotorCooldown)
+    const count = Math.ceil(effectiveBattleTime({ battleTime: totalTime, invincibleTime: cfg.invincibleTime }) / cannonRotorCooldown)
     events.push({
       eventId: 'cannon_rotor_crit_proc',
       eventName: '加农转子额外伤害',
       eventType: 'direct_damage',
       count,
       damageMultiplier: cannonRotorMultiplier,
-      formula: `count = ceil(战斗时长 / ${cannonRotorCooldown})；damage = 攻击力 × ${cannonRotorMultiplier}% × 装备者直伤乘区`,
+      formula: `count = ceil(有效战斗时长 / ${cannonRotorCooldown})；damage = 攻击力 × ${cannonRotorMultiplier}% × 装备者直伤乘区`,
       fields: ['cannonRotorDamageMultiplier', 'cannonRotorCooldownSeconds', 'atk', 'crit/directDamageZones'],
-      note: '按命中并暴击可稳定触发处理；次数受精修 CD 封顶，伤害应按装备者当前直伤乘区结算。',
+      note: '按命中并暴击可稳定触发处理；次数受精修 CD 封顶（战斗时长扣 boss 无敌），伤害应按装备者当前直伤乘区结算。',
     })
   }
 
@@ -953,8 +964,13 @@ export function iterate(
   // 总必做动作前台时间
   const sumNecessary = totalNecessary.reduce((a, b) => a + b, 0)
   // 可分配平A时间 = 总时间 − 无敌时间 − 总必做动作前台时间（无敌时间不扣能量/喧响回能，但扣平A池）
+  // + 欠打回填（timeBudgetRefund，团队级）：账本高估（estimate 计了物化不存在的行 / 历史 excess 残留）
+  //   会把本池挤到 0、物化行打不满战斗时间；折叠循环测得差额后回填到这里，按 timeWeight 分配，时间守恒。
+  // + 轴内合轴节省（axisOverlapSeconds，团队级）：窗口内跨角色块并行只计一次前台，节省给平A池。
   const invTime = globalCfg.invincibleTime ?? 0
-  const availableBasicTime = Math.max(0, (totalTime - invTime) - sumNecessary)
+  const availableBasicTime = Math.max(0, (totalTime - invTime) - sumNecessary
+    + (globalCfg.timeBudgetRefund ?? 0)
+    + (globalCfg.axisOverlapSeconds ?? 0))
 
   // 按权重分配平A时间
   const totalWeight = configs.reduce((a, c) => a + c.timeWeight, 0)

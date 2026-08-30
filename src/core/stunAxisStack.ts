@@ -58,6 +58,16 @@ export interface StackTraversalResult {
   executed: Record<string, { slot: number; moveId: string; count: number }>
   /** 轴内执行总耗时（秒） */
   timeUsed: number
+  /**
+   * 合轴节省（秒）：窗口内各角色块区间并集长度与块时长和的差（跨槽位并行只计一次前台）。
+   * 时间预算消费口径：物化行全额 − 本值 = 前台净占用（iterate 平A池吃进节省）。
+   */
+  overlapSeconds: number
+  /**
+   * 合轴节省按块分摊（`${slot}:${moveId}` → 秒）：物化行按同一键扣减（行 count = 块次数、
+   * 行 totalTime 全额，扣后为净占用）。比例分摊严格可加，Σ 值 = overlapSeconds。
+   */
+  overlapByAction: Record<string, number>
   /** 消耗闪能 */
   energyUsed: number
   /** 全队可用闪能总量（提示资源是否充足） */
@@ -105,6 +115,8 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   const executed: Record<string, { slot: number; moveId: string; count: number }> = {}
   const skipped: StackTraversalResult['skipped'] = []
   let timeUsed = 0
+  let overlapSeconds = 0
+  const overlapByAction: Record<string, number> = {}
   let windowsUsed = 0
   let basicFillSeconds = 0
   const basicFillBySlot: Record<number, number> = {}
@@ -136,6 +148,11 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     const slotTime: Record<number, number> = {}
     // 各槽位时间线最晚结束时刻（max(startTime+actionTime)，仅执行成功的动作）——平A填充从这往后
     const slotMaxEnd: Record<number, number> = {}
+    // 合轴检测（2026-08-30）：窗口内各角色的块在时间轴上并行（如般岳强特时琉音抱拳），
+    // 前台净占用 = 各槽位块区间的【并集】而非块时长之和。每槽位顺序排块（cursor 累计，
+    // 显式 startTime 更晚则顺延到它），跨槽位区间重叠部分只计一次前台。
+    const windowIntervals: { key: string; t0: number; t1: number }[] = []
+    const slotCursor: Record<number, number> = {}
     let windowDidSomething = false
     let windowTimeSum = 0
     // 窗口终结（决算）：执行过 endsStunWindow 动作后，窗口剩余失衡时间被清空（截断结束时刻取最晚）
@@ -165,6 +182,13 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         // 时间线末尾：该槽位最晚结束时刻（startTime 负值=窗口外提前起手，按 0 起算）
         const end = Math.max(0, act.startTime ?? 0) + act.actionTime
         slotMaxEnd[act.slot] = Math.max(slotMaxEnd[act.slot] ?? 0, end)
+        // 合轴区间：该槽位顺序排块（cursor = 已排到的时刻），显式 startTime 更晚则顺延到它
+        if (act.actionTime > 0) {
+          const cursor = slotCursor[act.slot] ?? 0
+          const t0 = Math.max(cursor, Math.max(0, act.startTime ?? 0))
+          windowIntervals.push({ key: `${act.slot}:${act.moveId}`, t0, t1: t0 + act.actionTime })
+          slotCursor[act.slot] = t0 + act.actionTime
+        }
         windowTimeSum += act.actionTime
         windowDidSomething = true
         if (act.endsStunWindow) windowTruncEnd = Math.max(windowTruncEnd, end)
@@ -173,6 +197,33 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
 
     if (windowDidSomething) windowsUsed++
     timeUsed += windowTimeSum
+    // 合轴节省分摊：窗口总节省 = Σ块时长 − 区间并集（跨槽位并行只计一次前台）。
+    // 按块时长比例分摊到 `${slot}:${moveId}`（比例分摊严格可加 Σ=总节省；「独立贡献」口径
+    // 在多块完全重叠时不可加）。物化行按同一键扣减（行 count = 块次数，行 totalTime 全额）。
+    if (windowIntervals.length > 1) {
+      const sorted = [...windowIntervals].sort((a, b) => a.t0 - b.t0)
+      let unionLen = 0
+      let curT0 = sorted[0].t0
+      let curT1 = sorted[0].t1
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i].t0 > curT1) {
+          unionLen += curT1 - curT0
+          curT0 = sorted[i].t0
+          curT1 = sorted[i].t1
+        } else {
+          curT1 = Math.max(curT1, sorted[i].t1)
+        }
+      }
+      unionLen += curT1 - curT0
+      const windowOverlap = Math.max(0, windowTimeSum - unionLen)
+      if (windowOverlap > 1e-9) {
+        for (const iv of windowIntervals) {
+          const share = windowOverlap * ((iv.t1 - iv.t0) / windowTimeSum)
+          overlapSeconds += share
+          overlapByAction[iv.key] = (overlapByAction[iv.key] ?? 0) + share
+        }
+      }
+    }
     if (windowTruncEnd >= 0) {
       // 决算截断：窗口剩余失衡时间在决算做完时被清空。
       // - 可填充的平A为 0（填充本意 = 剩余时间 − 最后动作结束时刻，剩余已被清空）
@@ -192,6 +243,8 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   return {
     executed,
     timeUsed,
+    overlapSeconds,
+    overlapByAction,
     truncatedWindows,
     stunSecondsLost,
     energyUsed,

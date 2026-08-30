@@ -213,7 +213,8 @@ export function incrementForCard(period: IncPeriod, agentId: string): CardPeriod
 
 // ========== 引擎求值层（快照/部署/伤害→分数；基底队少 = 全量也秒级） ==========
 
-import { useConfigStore, getInteractionDefaults } from '@/stores/config'
+import { useConfigStore, getInteractionDefaults, roleInteractionBaseline } from '@/stores/config'
+import { useCatalogStore } from '@/stores/catalog'
 import { buildPlannerPeriods, plannerTestServerVersions } from '@/composables/pullPlannerEngine'
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 import type { BossPreset, PhaseView } from '@/types/bossPreset'
@@ -361,7 +362,8 @@ function teamKeyOf(team: BaseTeam): string {
 
 /**
  * 基底队轻量装配：setAgent 兜底（专属音擎优先/兜底套装/5号位主词条）+ 命座/精炼 +
- * 投稿音擎（有则用）+ 交互基准（角色专属默认 > 通用 弹刀6/闪反10/快支3/连携1）。
+ * 投稿音擎（有则用）+ 交互基准（角色专属默认 > 职业基准 roleInteractionBaseline：支援/防护 0 交互，
+ * 其余弹刀6/闪反10；快支3/连携1）。
  * 与 applyDeployConfig 的差别 = 跳过 applyTeamPreset 的推荐配装与融合贪心副词条
  * 优化器（逐队 3 槽 × 优化器迭代是慢机 40-80s 的主因；同 Chart 1 轻量档口径——
  * 所有候选队同向偏低，增量对比的相对结论不受影响）。并清掉上一队残留的 4/6 号主词条
@@ -386,10 +388,12 @@ function applyBaseTeamLite(
     if (m.weaponId) configStore.setWEngine(s, m.weaponId)
     const defs = getInteractionDefaults(m.agentId)
     const hasCustom = defs.parry > 0 || defs.dodge > 0 || defs.block > 0 || defs.dual > 0
-    configStore.setParryCount(s, hasCustom ? defs.parry : 6)
-    configStore.setDodgeCounterCount(s, hasCustom ? defs.dodge : 10)
-    configStore.setBlockCount(s, hasCustom ? defs.block : 0)
-    configStore.setDualCounterCount(s, hasCustom ? defs.dual : 0)
+    // 职业基准单一事实源（roleInteractionBaseline）：支援/防护 0 交互（辅助不上场打弹刀/闪反），其余弹刀6+闪反10
+    const base = roleInteractionBaseline(useCatalogStore().getAgent(m.agentId)?.specialty)
+    configStore.setParryCount(s, hasCustom ? defs.parry : base.parry)
+    configStore.setDodgeCounterCount(s, hasCustom ? defs.dodge : base.dodge)
+    configStore.setBlockCount(s, hasCustom ? defs.block : base.block)
+    configStore.setDualCounterCount(s, hasCustom ? defs.dual : base.dual)
     configStore.setQuickAssistCount(s, 3)
     configStore.setChainCountPerStun(s, 1)
   }

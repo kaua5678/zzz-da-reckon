@@ -119,12 +119,14 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // （雅霜月架势/叶瞬光飞光/柏妮思双喷/星徽比利EX链等）。本循环把每个角色执行行的
   // **前台时间**（timeBucket ≠ 'backstage'，见 isFrontlineExecution）对其**自家账本**
   // （necessaryTime + basicAttackTime）收敛：超出量折入 timeBudgetExcess → 压缩全队平A池
-  // → 平A回能减少 → 次数重收敛。三人账本合计恒 ≤ 战斗时间（iterate 的共享池钳制保证），
-  // 收敛后 Σ前台执行行 ≡ 账本 ≡ 共享时间轴的占用（构造性恒等式，游戏内 180s 必须打完）。
-  // （战斗时间 − 无敌时间）仍由 iterate 的共享平A池钳制消费：availableBasicTime = max(0, 预算 − Σ必要)。
+  // → 平A回能减少 → 次数重收敛。收敛后 Σ前台执行行 ≡ 账本 ≡ 共享时间轴的占用（构造性恒等式）。
+  // （战斗时间 − 无敌时间）由 iterate 的共享平A池钳制消费：availableBasicTime = max(0, 预算 − Σ必要 + refund)。
+  // 反向（账本高估：estimate 计了物化不存在的行，如连段块双算/历史 excess 残留）会把 basic 挤到 0
+  // → 物化行打不满战斗时间：团队正差经 timeBudgetRefund 回填平A池（仍按 timeWeight 分配，时间守恒）。
   const maxTimeIter = config.maxTimeIterations || 8
   // 重置上一轮调用残留的时间预算（cfg 可能被外层不动点复用）
   for (const cfg of configs) cfg.timeBudgetExcess = 0
+  config.timeBudgetRefund = 0
   let converged = false
   let iter = 0
   // 收敛诊断：三层不动点里第 ② 层（时间预算）原先耗尽上限就静默接受末轮结果，见 ConvergenceReport
@@ -132,6 +134,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   let timeBudgetConverged = false
   let timeBudgetResidualSeconds = 0
   let timeBudgetIdleSeconds = 0
+  let timeBudgetRefundedSeconds = 0
+  let refundFrozen = false
   for (let timePass = 0; timePass < maxTimeIter; timePass++) {
     timeBudgetPasses = timePass + 1
     for (iter = 0; iter < maxIter; iter++) {
@@ -156,9 +160,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
 
     // 测量每个角色执行计划的**前台**时间（后台行不占共享轴），对自家账本收敛：
     // 超出账本 = 该角色有未付费的前台行 → 折入必要时间压缩平A池（团队级，非单人预算）。
-    // 只折正超出（真溢出）：负值 = estimate 高估必要时间 / 有空闲前台，属正常，不动（否则 necessary 变负、basic 膨胀）。
+    // 只折正超出（真溢出）：负值 = estimate 高估必要时间 / 有空闲前台，不折回单角色
+    // （否则 necessary 变负），改为团队 refund 回填平A池（见下）。
     let maxExcess = 0
     let maxIdle = 0
+    let teamRefund = 0
     for (let i = 0; i < configs.length; i++) {
       const cfg = configs[i]
       const state = states[i]
@@ -167,21 +173,42 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         0,
       )
       const executions = buildExecutions(cfg, state, state.chainCountTotal, teammateFrontlineSeconds)
-      const rowTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
-      // 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget）
+      // 净占用口径：物化行全额 − 轴内合轴分摊（跨角色并行块只计一次前台；iterate 平A池吃进同一值）。
+      // 分摊按 `${slot}:${moveId}`（栈引擎比例分摊），行 count = 块次数、totalTime 全额。
+      const overlapByAction = config.axisOverlapByAction
+      const rowTime = executions.reduce(
+        (sum, e) => sum + Math.max(0, (e.totalTime ?? 0) - (overlapByAction?.[`${cfg.slot}:${e.moveId}`] ?? 0))
+          * (isFrontlineExecution(e) ? 1 : 0),
+        0,
+      )
+      // 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget + refund）
       const excess = rowTime - (state.necessaryTime + state.basicAttackTime)
       if (excess > 1e-6) {
         // 量化（floor 次数）导致残差 ~1s 属合轴可覆盖，不追求精确 0
         cfg.timeBudgetExcess = (cfg.timeBudgetExcess ?? 0) + excess
         if (excess > maxExcess) maxExcess = excess
-      } else if (-excess > maxIdle) {
-        // 负溢出按设计不折回（折回会让 necessaryTime 变负、平A池膨胀），但要上报：
-        // 持续偏大 = 某模块 estimateExSpecialTime 系统性高估，单侧钳制会掩盖这类建模错误
-        maxIdle = -excess
+      } else if (-excess > 1e-6) {
+        // 负溢出（该角色账本 > 物化行，idle_i = estimate 高估量，与 basicAttackTime 无关）：
+        // 单角色不折回（necessaryTime 变负、平A池膨胀），团队层面累计成 refund 回填平A池
+        // ——回填后 Σ前台行 = Σ物化必要行 + 平A池 ≈ 预算，时间打满。
+        teamRefund += -excess
+        if (-excess > maxIdle) maxIdle = -excess
       }
     }
     timeBudgetResidualSeconds = maxExcess
     timeBudgetIdleSeconds = maxIdle
+    // refund = Σ(该角色正 idle)：idle_i = 账本_i − 物化必要行_i。
+    // **冻结语义**：首轮测得的 idle 总和写入 timeBudgetRefund（第 2 轮起 iterate 吃进、次数重收敛），
+    // 之后**不再改写**——refund 与次数收敛存在耦合（平A回能→次数→必要时间→idle），逐轮跟随会
+    // 抖动到 8 轮耗尽（伊德海莉烧血/艾莲等强依赖角色的 idle 随次数跳变）；一次性修正 + 收敛判据
+    // 保持 excess-only（与旧行为同构），换 canceling 掉的精度是 ±1s 量化残差量级。
+    // 天然上限：idle_i ≤ E_i → refund ≤ ΣE → availableBasicTime ≤ 预算，不会填超战斗时间。
+    if (!refundFrozen) {
+      config.timeBudgetRefund = Math.max(0, teamRefund)
+      timeBudgetRefundedSeconds = config.timeBudgetRefund
+      refundFrozen = true
+      continue // 注入轮不判收敛：下一轮 iterate 吃进 refund 后再按 excess 判据停（否则 states 没吃到回填）
+    }
     if (maxExcess <= 1e-6) {
       timeBudgetConverged = true
       break
@@ -309,11 +336,14 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     characters,
     iterations: iter,
     converged,
+    axisOverlapSeconds: config.axisOverlapSeconds,
+    axisOverlapByAction: config.axisOverlapByAction,
     convergence: {
       timeBudgetConverged,
       timeBudgetPasses,
       timeBudgetResidualSeconds,
       timeBudgetIdleSeconds,
+      timeBudgetRefundedSeconds,
     },
   }
 }
