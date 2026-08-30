@@ -21,6 +21,7 @@ import { useConfigStore } from '@/stores/config'
 const catalogText = readFileSync(new URL('../../public/static/catalog.json', import.meta.url), 'utf8')
 const teammateBuffsText = readFileSync(new URL('../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
 const buildRecsText = readFileSync(new URL('../../public/static/build-recommendations.json', import.meta.url), 'utf8')
+const bossPresetsText = readFileSync(new URL('../../public/static/boss-presets.json', import.meta.url), 'utf8')
 
 /** 单槽位默认配置（对齐 billySmoke 模板；各测试按需覆盖） */
 export const TEST_BASE_CHAR = {
@@ -43,13 +44,14 @@ export interface HarnessTeamSlot {
   [key: string]: unknown
 }
 
-/** stub fetch 返回三个静态文件（catalog/teammate-buffs/build-recommendations） */
+/** stub fetch 返回四个静态文件（catalog/teammate-buffs/build-recommendations/boss-presets） */
 export function mockStaticFetch(): void {
   vi.stubGlobal('fetch', vi.fn(async (url: unknown) => {
     const u = String(url)
     if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
     if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(teammateBuffsText) }
     if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(buildRecsText) }
+    if (u.includes('/static/boss-presets.json')) return { ok: true, json: async () => JSON.parse(bossPresetsText) }
     return { ok: false, json: async () => ({}) }
   }))
 }

@@ -4,16 +4,12 @@
  * 这是不动点滞回（12/3 vs 12/4）被消除的直接判据，也是热启动安全性的前提。
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { createPinia, setActivePinia } from 'pinia'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { calcTeamResources } from '@/core/resource'
 import type { ResourceCalcConfig, IterationState } from '@/types/resource'
-
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const teammateBuffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
 
 const captured: ResourceCalcConfig[] = []
 vi.mock('@/core/resource', async () => {
@@ -28,11 +24,7 @@ vi.mock('@/core/resource', async () => {
 })
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-    if (String(url).includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (String(url).includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(teammateBuffsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
+  mockStaticFetch()
 })
 
 /** 高种子：模拟「从上次收敛态/任意邻域初值出发」的极端情形 */
@@ -62,7 +54,7 @@ function fingerprint(rr: ReturnType<typeof calcTeamResources>) {
 
 async function setupCapture(team: [string, string, string], engines: [string, string, string]) {
   captured.length = 0
-  setActivePinia(createPinia())
+  newPinia()
   const catalog = useCatalogStore()
   await catalog.load()
   await catalog.loadTeammateBuffs()

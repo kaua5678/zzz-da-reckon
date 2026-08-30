@@ -4,9 +4,8 @@
  *   ——由 resource.ts 折叠循环对其自家账本收敛保证（后台行如莱卡恩围猎蓄力不占共享轴）。
  * - 队伍对比页的超时校验只累计前台行：此前把后台行也求和，模块队普遍误报「超时」。
  */
-import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { createPinia, setActivePinia } from 'pinia'
+import { describe, expect, it, beforeEach } from 'vitest'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -14,16 +13,9 @@ import { computeTeamComparePoints } from '@/composables/teamCompare'
 import { isFrontlineExecution } from '@/types/resource'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const teammateBuffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-
 beforeEach(() => {
-  setActivePinia(createPinia())
-  vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-    if (String(url).includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (String(url).includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(teammateBuffsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
+  newPinia()
+  mockStaticFetch()
 })
 
 const res20 = { physical: 20, fire: 20, ice: 20, electric: 20, ether: 20, wind: 20 }

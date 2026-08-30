@@ -1,21 +1,13 @@
-import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { ULTIMATE_COST_DEFAULT } from '@/core/resource'
 
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const teammateBuffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-
 beforeEach(() => {
-  setActivePinia(createPinia())
-  vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-    if (String(url).includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (String(url).includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(teammateBuffsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
+  newPinia()
+  mockStaticFetch()
 })
 
 function teamChar(slot: number, agentId: string, cinemaLevel = 0, overrides: Record<string, unknown> = {}) {

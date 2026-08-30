@@ -6,22 +6,14 @@
  * 修复——resourceConfig 就绪门（teammateBuffsReady）+ 数据晚到自动重同步（config store watch）。
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const teammateBuffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-    if (String(url).includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (String(url).includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(teammateBuffsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
+  mockStaticFetch()
 })
 
 function setupTeam() {
@@ -42,7 +34,7 @@ function snapshot(calc: ReturnType<typeof useResourceCalc>) {
 
 describe('引擎确定性', () => {
   it('就绪门：teammate-buffs 未就绪时 resourceResult=null（不再产出半载错值），就绪后恢复', async () => {
-    setActivePinia(createPinia())
+    newPinia()
     const catalog = useCatalogStore()
     await catalog.load() // 只加载 catalog——teammate-buffs 仍在途
     const calc = setupTeam()
@@ -56,7 +48,7 @@ describe('引擎确定性', () => {
 
   it('双全新会话（各自完整加载）：同配置结果逐位一致', async () => {
     const run = async () => {
-      setActivePinia(createPinia())
+      newPinia()
       const catalog = useCatalogStore()
       await catalog.load()
       await catalog.loadTeammateBuffs()

@@ -50,13 +50,6 @@ export const GUARD_SYSTEM_FILES = [
  * `vi.stubGlobal('fetch'`）。新测试用 setupHarness；存量测试迁移一个删一行。
  */
 export const FETCH_STUB_ALLOWLIST = [
-  'src/composables/__tests__/decibelUltimateCount.test.ts',
-  'src/composables/__tests__/determinism.test.ts',
-  'src/composables/__tests__/excelAxisRepro.test.ts',
-  'src/composables/__tests__/positionCompareDebug.test.ts',
-  'src/composables/__tests__/seedInvariance.test.ts',
-  'src/composables/__tests__/teamCompare.test.ts',
-  'src/composables/__tests__/timeLedger.test.ts',
   'src/mechanics/__tests__/anbyCinema1.test.ts',
   'src/mechanics/__tests__/banyue-preset-int.test.ts',
   'src/mechanics/__tests__/banyue-timeoverflow.debug.test.ts',
