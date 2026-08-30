@@ -76,11 +76,12 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 - **合轴率** `comboAlignRatio`：动作时间内可与其他操作并行的比例，硬编码进 catalog 静态数据。
 - **失衡轴**：`src/data/stunAxisPresets/` 下的预设 JSON（`team` 按槽位匹配、`*` 通配、`chapter` 字段用于章鱼自动轴按伊德海莉命座选轴）。
 
-## 6. 文档（共 10 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（共 11 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
 | `docs/ARCHITECTURE.md` | **代码架构地图（AI 导航）**：五层心智模型、一次计算生命周期、核心类型地图、任务→文件决策树、数据流速查（动手前必读） |
+| `docs/ENTITY_CARDS.md` | **实体卡（AI 陈述性知识层）**：音擎/角色/驱动盘等实体的完整结构与权威指针表 + 事故登记；配套查证工具 `node scripts/resolve.mjs` 与引擎探针 `npm run probe:panel`（跨实体断言/派生数值必用） |
 | `docs/ENGINE_PIPELINE_GUIDE.md` | **引擎管线导读**：一轮计算的数据流、模块钩子调用顺序、常见坑（AI 录入排查用） |
 | `docs/AGENT_RECORDING_SOP.md` | **角色录入 SOP（AI 快速上手）**：spec 字段→消费者→生效测试清单、防死数据铁律、踩坑清单 |
 | `docs/MECHANIC_PATTERNS.md` | **机制模式目录**：游戏文本 → 计算逻辑的翻译词典——九个计算维度、确定性四级（L0 直读/L1 直译/L2 近似/L3 凹分拍板）、凹分思想提炼路径（录新角色先做模式匹配） |

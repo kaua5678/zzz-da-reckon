@@ -150,8 +150,9 @@ export function getInteractionDefaults(agentId: string): { parry: number; dodge:
   return AGENT_INTERACTION_DEFAULTS[agentId] ?? { parry: 0, dodge: 0, block: 0, dual: 0 }
 }
 
-/** 推荐主词条 prop name → catalog statId 映射（含中文别名） */
-const REC_MAIN_STAT_MAP: Record<string, string> = {
+/** 推荐主词条 prop name → catalog statId 映射（含中文别名）。
+ *  探针（panelProbe.test.ts）与配装推荐应用共用，导出防两处漂移。 */
+export const REC_MAIN_STAT_MAP: Record<string, string> = {
   'ATK': 'atkPct',
   'HP': 'hpPct',
   'DEF': 'defPct',

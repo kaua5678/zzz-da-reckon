@@ -7,7 +7,7 @@
 
 | 档 | 适用 | 必读 | 可跳过 |
 |---|---|---|---|
-| `fast` | 改 UI / 文案 / 单条测试 / 单文件小修 | 本文件 §1 + 目标文件头注释 | docs 全套（涉及页面时扫一眼对应 .vue 与 AppHeader） |
+| `fast` | 改 UI / 文案 / 单条测试 / 单文件小修 | 本文件 §1（含规则 15）+ 目标文件头注释 | docs 全套（涉及页面时扫一眼对应 .vue 与 AppHeader） |
 | `full` | 录角色 / 补机制 / 改引擎 / 排查 buff 没生效 | 本文件 §1 + `docs/ARCHITECTURE.md` §3 + 对应管线文档 | `docs/mechanism-reference.md` 纯参考可不读 |
 | `loop` | 跨多文件重构 / 批量迁移 / 数据管道改动 | `full` 全部 + 本文件 §4 长任务账本 | — |
 
@@ -21,6 +21,7 @@
 | 命座提升率异常 / 写测试 / 录拐力 | `AGENT_RECORDING_SOP.md` §3.5 根因表 / §5 模板 / §6 |
 | 录新角色前做模式匹配 | `MECHANIC_PATTERNS.md` §2，只读命中的 1 个维度（D1–D9） |
 | 中文术语→字段不确定 | `GAME_TERM_TO_CODE_FIELD.md` 对应章节 |
+| **要断言「X 的专武/归属/属性是 Y」或查实体结构** | `ENTITY_CARDS.md`（实体卡）+ 先跑 `node scripts/resolve.mjs` 查证 |
 
 ### 录入角色 / 补机制：五步（仅此类任务）
 
@@ -48,6 +49,7 @@
 12. **最小实现阶梯（只约束「写多少」，不约束「对不对」）**：写码前停在第一档能成立的——①这功能真要建吗（YAGNI）②仓库已能复用吗（规则 11 + 决策树）③语言/平台/已装依赖能覆盖吗（ES·TS 内置 → Vue/Naive UI/Pinia 自带 → 已装包）④一行能搞定吗 ⑤才写最小可用。阶梯缩短**解法**，永不缩短**读懂**与**验证**：规则 5/9/10/11 与领域档案（`docs/MECHANICS_IMPLEMENTATION.md` 的口径与未建模项）优先于本阶梯。有意简化且砍了真实角落（O(n²) 扫描 / naive 启发式 / 全局近似 / 暂未建模）时，就地写 `debt: <天花板>, <升级路径>` 注释，供 `grep -rn 'debt:' src scripts` 回收进账本 Open 段。
 13. **共享工作区显式路径提交**：只 `git add <改动文件>`，把 `-A`/`--all` 当禁区（会卷走并行会话 WIP，历史事故 ×2）；改共享文件后**写后即验**（`grep`/`git diff --stat` 确认落盘），不 `git checkout` 还原他人编辑中的文件。
 14. **生成产物与行尾由环境强制**：`public/static/*.json` 紧凑写、`catalog.json` 顶层键 == `Catalog` 字段由 `validate:data` 强制（红 → `npm run minify:static`）；行尾统一 LF 由 `.editorconfig`/`.gitattributes` 强制，python 改文本文件用 `newline=''` 防 CRLF 翻面 churn（历史事故 ×2）。
+15. **跨实体断言必须查证，派生数值必须问引擎**：凡要写「X 的专武/归属/属性/数值是 Y」（音擎↔角色、套装↔效果、id↔名字），先跑 `node scripts/resolve.mjs <类型> <名|id>`（`docs/ENTITY_CARDS.md` §0），输出引用一律用 `名字(id)` 绑定格式；歧义或未命中时工具 exit 1，**绝不凭名字联想静默选最像的**（游戏名词在训练分布里有强先验，名字联想断言能一路通过不报错——2026-08-30「心弦夜响→仪玄专武」事故 ×2 同日）。面板/暴击预算等**派生数值以引擎探针为权威**（`PROBE_AGENT=<id> npm run probe:panel`），禁止手工汇总 catalog JSON。
 
 ## 2. 常见任务入口（完整决策树见 docs/ARCHITECTURE.md §3）
 
@@ -74,6 +76,8 @@ npm run minify:static # 生成产物瘦身/剔 catalog 死键（幂等；validat
 `verify:recording` 是**机器判据**——防止"写了代码改了 spec 就声称完成"：对每个 `status ∈ implemented*` 的角色，检查①测试文件引用 agentId（无=FAIL）②有 expect 断言（无=WARN）③档案段有状态行（无=WARN）。录入角色后跑它确认无 FAIL；WARN（档案无状态行）按 SOP §6.10 第 3 项补状态行后消除。
 
 新测试一律用 `src/test/harness.ts`（`setupHarness` / `mockStaticFetch` / `setTeam`），禁止复制三文件 fetch stub；全局回归网 = `src/composables/__tests__/allAgentsSweep.test.ts`（60 角色 × 命座 0/6 不变量）。
+
+查证与探针（规则 15 的工具面，详见 `docs/ENTITY_CARDS.md` §0）：`node scripts/resolve.mjs <音擎|角色|专武|套装|boss|buff|spec|audit> <名|id>` 实体解析（歧义大声失败）；`PROBE_AGENT=<id> npm run probe:panel` 面板探针（副词条/音擎/命座/套装可经 `PROBE_SUBSTATS/ENGINE/MOD/CINEMA/FOUR/TWO` 覆盖，默认口径=专武精炼1·命座0·配装推荐主词条）。
 
 ## 4. 长任务账本（loop 档）
 
