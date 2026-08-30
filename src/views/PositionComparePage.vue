@@ -1,16 +1,20 @@
 <template>
-  <div class="breaker-compare">
-    <n-card title="击破手对比" class="compare-card">
+  <div class="position-compare">
+    <n-card title="位置对比" class="compare-card">
       <p class="intro">
-        本页用于回答「击破手这个位置选谁」：同一支队伍只换击破手（如诺姆 ↔ 琉音），
-        按各自的预设轴跑完整局计算，把总伤拆成四块对比——
-        ① 击破手自身直伤；② 送连携/赠送（诺姆膛温换连携、琉音好评转大等白送动作）；
-        ③ 拐力提升（差分重算：关掉该击破手的 teammate-buffs 后重算总伤，差值即拐力贡献，
-        含失衡易伤/增伤/减抗及其带来的失衡次数变化）；④ 其他（队友伤害等）。
-        每支队伍自动匹配各自的预设轴（如琉音队用琉音转大轴）；失衡能力不单拆，
-        效果已体现在失衡次数与总伤里。勾选多个预设队伍即可横向对比。
+        本页用于回答「某个位置选谁」：同一支队伍只换该位置的角色（如击破手 诺姆 ↔ 琉音、辅助 卢西娅 ↔ 丽娜），
+        按各自的预设轴跑完整局计算，横向对比该位置的贡献构成——
+        ① <b>主C</b>：自身总伤拆成 直伤 / 异放 / 紊乱 / 其他异常 四块，另给 失衡值/占比 与 积蓄量/占比；
+        ② <b>击破手 / 辅助</b>：总伤拆成 自身直伤 / 送连携·赠送 / 拐力(差分) / 其他 四块，另给 失衡值/占比。
+        每支队伍自动匹配各自的预设轴（如琉音队用琉音转大轴）；失衡能力不单拆，效果已体现在失衡次数与总伤里。
+        拐力提升 = 关掉该角色 teammate-buffs（失衡易伤/增伤/减抗等）重算的总伤差值（含拐力带来的失衡次数变化）。
+        勾选多个预设队伍即可横向对比。
       </p>
       <div class="controls">
+        <div class="control">
+          <span class="label">位置</span>
+          <n-select v-model:value="position" :options="positionOptions" size="small" style="width: 130px" />
+        </div>
         <div class="control">
           <span class="label">Boss</span>
           <n-select v-model:value="selectedBossId" :options="bossOptions" size="small" style="width: 200px" />
@@ -42,41 +46,66 @@
       </div>
     </n-card>
 
-    <n-card v-if="results.length > 0" class="result-card" title="总伤构成（击破手视角）">
+    <n-card v-if="results.length > 0" class="result-card" :title="`贡献构成（${positionLabel}视角）`">
       <n-table :bordered="true" size="small">
         <thead>
           <tr>
             <th>队伍</th>
-            <th>击破手</th>
+            <th>{{ positionLabel }}</th>
             <th>失衡次数</th>
             <th>失衡值</th>
             <th>失衡占比</th>
-            <th>总伤</th>
-            <th>击破手自身</th>
-            <th>送连携/赠送</th>
-            <th>拐力提升(差分)</th>
-            <th>其他</th>
+            <template v-if="isMain">
+              <th>积蓄量</th>
+              <th>积蓄占比</th>
+              <th>总伤</th>
+              <th>主C自身</th>
+              <th>直伤</th>
+              <th>异放</th>
+              <th>紊乱</th>
+              <th>其他异常</th>
+            </template>
+            <template v-else>
+              <th>总伤</th>
+              <th>自身</th>
+              <th>送连携/赠送</th>
+              <th>拐力提升(差分)</th>
+              <th>其他</th>
+            </template>
           </tr>
         </thead>
         <tbody>
           <tr v-for="r in results" :key="r.presetId">
             <td>{{ r.presetName }}</td>
-            <td>{{ r.breakerName }}</td>
+            <td>{{ r.agentName }}</td>
             <td>{{ r.stunCount }}</td>
-            <td class="num">{{ fmt(r.breakerDaze) }}</td>
+            <td class="num">{{ fmt(r.daze) }}</td>
             <td class="num">{{ r.dazeShare.toFixed(1) }}%</td>
-            <td class="num">{{ fmt(r.totalDamage) }}</td>
-            <td class="num">{{ fmt(r.selfDamage) }} <span class="pct">{{ pct(r.selfDamage, r.totalDamage) }}</span></td>
-            <td class="num">{{ fmt(r.giftDamage) }} <span class="pct">{{ pct(r.giftDamage, r.totalDamage) }}</span></td>
-            <td class="num">{{ fmt(r.buffContribution) }} <span class="pct">{{ pct(r.buffContribution, r.totalDamage) }}</span></td>
-            <td class="num">{{ fmt(r.otherDamage) }} <span class="pct">{{ pct(r.otherDamage, r.totalDamage) }}</span></td>
+            <template v-if="isMain">
+              <td class="num">{{ fmt(r.buildUp) }}</td>
+              <td class="num">{{ r.buildUpShare.toFixed(1) }}%</td>
+              <td class="num">{{ fmt(r.totalDamage) }}</td>
+              <td class="num">{{ fmt(r.selfDamage) }} <span class="pct">{{ pct(r.selfDamage, r.totalDamage) }}</span></td>
+              <td class="num">{{ fmt(r.directDamage) }} <span class="pct">{{ pct(r.directDamage, r.totalDamage) }}</span></td>
+              <td class="num">{{ fmt(r.releaseDamage) }} <span class="pct">{{ pct(r.releaseDamage, r.totalDamage) }}</span></td>
+              <td class="num">{{ fmt(r.disorderDamage) }} <span class="pct">{{ pct(r.disorderDamage, r.totalDamage) }}</span></td>
+              <td class="num">{{ fmt(r.anomalyOtherDamage) }} <span class="pct">{{ pct(r.anomalyOtherDamage, r.totalDamage) }}</span></td>
+            </template>
+            <template v-else>
+              <td class="num">{{ fmt(r.totalDamage) }}</td>
+              <td class="num">{{ fmt(r.selfDamage) }} <span class="pct">{{ pct(r.selfDamage, r.totalDamage) }}</span></td>
+              <td class="num">{{ fmt(r.giftDamage) }} <span class="pct">{{ pct(r.giftDamage, r.totalDamage) }}</span></td>
+              <td class="num">{{ fmt(r.buffContribution) }} <span class="pct">{{ pct(r.buffContribution, r.totalDamage) }}</span></td>
+              <td class="num">{{ fmt(r.otherDamage) }} <span class="pct">{{ pct(r.otherDamage, r.totalDamage) }}</span></td>
+            </template>
           </tr>
         </tbody>
       </n-table>
       <p class="hint">
         同款限定金数：所有参比队伍先按同一金档应用各自预设 goldSteps 再比较（公平换人边际）。
         失衡值/占比来自失衡池逐槽统计，后台自动招式（莱卡恩围猎闪反、橘福福虎威、露西、丽娜邦布、仪玄合轴等）的失衡贡献已计入。
-        拐力提升 = 关掉该击破手 teammate-buffs（失衡易伤/增伤/减抗等）重算的总伤差值（含拐力带来的失衡次数变化）。
+        积蓄量/占比按「异属性赠送归接收人」口径逐槽归因（与资源池页同口径）。
+        拐力提升 = 关掉该位置角色 teammate-buffs（失衡易伤/增伤/减抗等）重算的总伤差值（含拐力带来的失衡次数变化）。
         各自队伍自动匹配各自预设轴（琉音队用琉音转大轴等）。送连携 = source='gift' 行（诺姆膛温换连携/琉音好评转大等）。
       </p>
     </n-card>
@@ -89,7 +118,7 @@ import { NCard, NSelect, NButton, NTable, NInputNumber } from 'naive-ui'
 import { teamPresets, teamPresetGroupOptions } from '@/data/teamPresets'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computeBreakerCompare, type BreakerBreakdown } from '@/composables/breakerCompare'
+import { computePositionCompare, type ComparePosition, type PositionCompareRow } from '@/composables/positionCompare'
 import type { BossPreset } from '@/types/bossPreset'
 
 interface BossPresetFile {
@@ -102,10 +131,20 @@ const catalogStore = useCatalogStore()
 const selectedBossId = ref('')
 const selectedPhaseId = ref('')
 const selectedPresetIds = ref<string[]>([])
-const results = ref<BreakerBreakdown[]>([])
+const results = ref<PositionCompareRow[]>([])
 const computing = ref(false)
+/** 对比位置：主C / 击破手 / 辅助 */
+const position = ref<ComparePosition>('breaker')
 /** 同款限定金数：所有参比队伍按同一金档应用各自预设 goldSteps */
 const gold = ref(6)
+
+const positionOptions: { value: ComparePosition; label: string }[] = [
+  { value: 'main', label: '主C' },
+  { value: 'breaker', label: '击破手' },
+  { value: 'support', label: '辅助' },
+]
+const positionLabel = computed(() => positionOptions.find(p => p.value === position.value)?.label ?? '击破手')
+const isMain = computed(() => position.value === 'main')
 
 onMounted(async () => {
   try {
@@ -158,7 +197,7 @@ async function run() {
     await catalog.load()
     await catalog.loadTeammateBuffs()
     const calc = useResourceCalc()
-    results.value = computeBreakerCompare(calc, presets, boss, phase, { gold: gold.value })
+    results.value = computePositionCompare(calc, presets, boss, phase, { gold: gold.value, position: position.value })
   } finally {
     computing.value = false
   }
@@ -174,9 +213,9 @@ function pct(part: number, total: number): string {
 </script>
 
 <style scoped>
-.breaker-compare {
+.position-compare {
   padding: 16px;
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 .controls {

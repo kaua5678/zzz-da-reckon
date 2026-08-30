@@ -276,13 +276,17 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 测试（口径钉子） | `src/composables/__tests__/multiplierCoefficients.test.ts` |
 | 固化产物再生成 | `npm run gen:multiplier-record`（生成器 + 漂移检查在 `src/composables/__tests__/multiplierRecord.test.ts`，产物 `docs/multiplier-record.md`） |
 
-## 6. 击破手对比（「击破手对比」Tab）
+## 6. 位置对比（「位置对比」Tab）
 
-回答「击破手这个位置选谁」：同一支队伍只换击破手（如诺姆 ↔ 琉音），总伤拆成 自身直伤 / 送连携 / 拐力差分 / 其他 四块。
+回答「某个位置选谁」：同一支队伍只换该位置的角色（如击破手 诺姆 ↔ 琉音、辅助 卢西娅 ↔ 丽娜），按该位置跑完整局计算。
 
-- **同款限定金数**：所有参比队伍先按同一金档应用各自预设 `goldSteps`（控件「限定金」，缺省 6）再比较——公平看换击破手的边际收益。
+- **三个位置**（顶部「位置」切换，按 `specialty` 识别）：
+  - **主C** = `attack / anomaly / rupture`：自身总伤拆成 直伤 / 异放 / 紊乱 / 其他异常 四块（其余异常 = 灼烧/感电/侵蚀/风化/强击/碎冰/乱流/耀变/极性强击/极性紊乱/畏缩DOT 等），另给 失衡值/占比 与 积蓄量/占比。
+  - **击破手** = `stun`、**辅助** = `support / defense`：总伤拆成 自身直伤 / 送连携·赠送 / 拐力差分 / 其他 四块，另给 失衡值/占比。
+- **同款限定金数**：所有参比队伍先按同一金档应用各自预设 `goldSteps`（控件「限定金」，缺省 6）再比较——公平看换该位置的边际收益。
 - **失衡值 / 失衡占比**：来自失衡池逐槽统计（`perSlotStun`）。**后台自动招式（莱卡恩围猎闪反/蓄力平A、橘福福虎威、露西、丽娜邦布、仪玄合轴等）的失衡贡献已计入**——这些行 daze 经倍率表回填进失衡池，分子分母都含。
-- 各队自动匹配各自预设轴；拐力 = 关掉该击破手 teammate-buffs 重算的总伤差值。实现 `composables/breakerCompare.ts` + `views/StunBreakerComparePage.vue`。
+- **积蓄量 / 积蓄占比**：按「异属性赠送归接收人」口径逐槽归因（与资源池页 `teamOverview` 同口径）——赋彩/赠送等异属性贡献（贡献元素 ≠ 角色伤害元素）记在该元素同属性主贡献者槽，不记赠送者。
+- 各队自动匹配各自预设轴；拐力 = 关掉该位置角色 teammate-buffs 重算的总伤差值。实现 `composables/positionCompare.ts` + `views/PositionComparePage.vue`（旧名 `breakerCompare.ts` / `StunBreakerComparePage.vue`，路由 key 仍为 `breakerCompare`）。
 
 ## 7. 实战对比（「实战对比」Tab）
 

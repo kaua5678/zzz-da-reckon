@@ -23,7 +23,7 @@
           <n-tab-pane name="resourceUtilization" tab="资源利用率" />
           <n-tab-pane name="stunAxis" tab="失衡轴" />
           <n-tab-pane name="teamCompare" tab="队伍对比" />
-          <n-tab-pane name="breakerCompare" tab="击破手对比" />
+          <n-tab-pane name="breakerCompare" tab="位置对比" />
           <n-tab-pane name="timeline" tab="时间图表" />
           <n-tab-pane name="runArchive" tab="实战对比" />
           <n-tab-pane name="charIncrement" tab="角色兑现" />

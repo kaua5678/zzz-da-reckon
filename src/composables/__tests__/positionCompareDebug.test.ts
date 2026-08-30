@@ -4,7 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computeBreakerCompare } from '@/composables/breakerCompare'
+import { computePositionCompare } from '@/composables/positionCompare'
 import { teamPresets } from '@/data/teamPresets'
 const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
 const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
@@ -21,7 +21,7 @@ beforeEach(() => {
     return { ok: false, json: async () => ({}) }
   }))
 })
-describe('击破手对比（breakerCompare）', () => {
+describe('位置对比（positionCompare）击破手口径', () => {
   it('拐力差分：莱卡恩队关 buff 重算，buffContribution > 0 且占比合理（页面 run 需 await catalog/teammateBuffs）', async () => {
     // 页面修复后：run() 先 await catalog/teammateBuffs 再建 calc
     const catalog = useCatalogStore()
@@ -32,10 +32,10 @@ describe('击破手对比（breakerCompare）', () => {
     const boss = bossFile.bosses[0]
     const phase = boss.phases[0]
     const lycaon = teamPresets.find(p => p.id === 'yidhari-lycaon-lucia')!
-    const results = computeBreakerCompare(calc, [lycaon], boss, phase)
+    const results = computePositionCompare(calc, [lycaon], boss, phase)
     const r = results[0]
     expect(r).toBeTruthy()
-    expect(r.breakerName).toBe('莱卡恩')
+    expect(r.agentName).toBe('莱卡恩')
     expect(r.totalDamage).toBeGreaterThan(0)
     // 拐力差分（失衡易伤 35 + 冰抗/六元素增伤）应显著贡献（>5% 总伤）
     expect(r.buffContribution).toBeGreaterThan(r.totalDamage * 0.05)
@@ -52,10 +52,10 @@ describe('击破手对比（breakerCompare）', () => {
     const boss = bossFile.bosses[0]
     const phase = boss.phases[0]
     const liuyin = teamPresets.find(p => p.id === 'yidhari-liuyin-lucia')!
-    const results = computeBreakerCompare(calc, [liuyin], boss, phase)
+    const results = computePositionCompare(calc, [liuyin], boss, phase)
     const r = results[0]
     expect(r).toBeTruthy()
-    expect(r.breakerName).toBe('琉音')
+    expect(r.agentName).toBe('琉音')
     // 转大赠送队友终结技必须计入 gift 列
     expect(r.giftDamage).toBeGreaterThan(0)
   })
