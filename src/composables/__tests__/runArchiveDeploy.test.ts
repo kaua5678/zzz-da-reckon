@@ -104,6 +104,49 @@ describe('部署 → 资源池结果', () => {
   }, 60000)
 })
 
+describe('applyDeployConfig 确定性（跨队不泄漏命座门控队友 buff）', () => {
+  it('同一支队两次部署伤害一致（中间部署别队不残留 C1/C2 队友 buff）', async () => {
+    const { config, catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const boss = { presetId: '30033', name: '秽息司祭', phaseId: '690431' }
+    // 3 异常队（蕾米埃尔 1581 的 C1/C2 队友 buff 按命座门控，0 命应关闭）
+    const aria: DeployConfig = {
+      supported: true,
+      mode: 'Deadly Assault',
+      team: [
+        { slot: 0, agentId: '1501', cinemaLevel: 0, wEngineId: null, wEngineModLevel: 1 },
+        { slot: 1, agentId: '1561', cinemaLevel: 0, wEngineId: null, wEngineModLevel: 1 },
+        { slot: 2, agentId: '1581', cinemaLevel: 0, wEngineId: null, wEngineModLevel: 1 },
+      ],
+      boss,
+      warnings: [],
+    }
+    // 高命队（猫又 6 / 诺姆 2 / 丽娜 6）：残留命座会污染下一队
+    const neko: DeployConfig = {
+      supported: true,
+      mode: 'Deadly Assault',
+      team: [
+        { slot: 0, agentId: '1021', cinemaLevel: 6, wEngineId: null, wEngineModLevel: 4 },
+        { slot: 1, agentId: '1571', cinemaLevel: 2, wEngineId: null, wEngineModLevel: 1 },
+        { slot: 2, agentId: '1211', cinemaLevel: 6, wEngineId: null, wEngineModLevel: 5 },
+      ],
+      boss,
+      warnings: [],
+    }
+
+    applyDeployConfig(config, aria, presets, phaseViews)
+    const d1 = calc.teamTotalDamage.value
+    applyDeployConfig(config, neko, presets, phaseViews)
+    void calc.teamTotalDamage.value // 触发 neko 计算，留下残留命座
+    applyDeployConfig(config, aria, presets, phaseViews)
+    const d2 = calc.teamTotalDamage.value
+
+    // 相对误差 < 1e-6（bug 形态下 d2/d1 ≈ 1.317，蕾米埃尔 C1/C2 被错误开启）
+    expect(Math.abs(d2 - d1) / d1).toBeLessThan(1e-6)
+  }, 120000)
+})
+
 describe('保底4喧响 → 弹刀反推（通用）', () => {
   it('喧响不足时反推只给喧响弹刀补齐到 ≥4 终结技，且稳定收敛', async () => {
     const { config } = await setupHarness([

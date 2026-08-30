@@ -2,7 +2,7 @@
  * 抽卡规划器 · 引擎集成测试（真实引擎，teamTimeline 底座）：
  * - 期轴构造不变量（47 期、排序、房间 hp > 0）
  * - 卡清单构造（fresh/established/custom；常驻与赠送排除）
- * - 引擎 oracle 冒烟：候选分数 ∈ (5000, 65000]、限定未持有不可入队、缓存命中
+ * - 引擎 oracle 冒烟：候选分数 ∈ [0, 60000]、限定未持有不可入队、缓存命中
  * - runPullPlanner 集成：期数截短的成型号规划可跑通，总分 > 0，快照恢复
  * - 用户钉子①：卢西娅（1451）VCG——命破队专属拐，禁用后被迫用潘引壶替代，分数显著降
  *   （受收敛过滤与真实 meta 偏差影响，钉子按「价值 > 0 且排名靠前」宽松断言，详见 FEATURES_GUIDE §4.5 已知偏差）
@@ -16,7 +16,6 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import {
   DAMAGE_SCORE_CAP,
-  OPERATION_SCORE,
   buildPlannerCards,
   buildPlannerPeriods,
   createEngineOracle,
@@ -78,7 +77,7 @@ describe('pullPlannerEngine · 期轴与卡清单', () => {
 })
 
 describe('pullPlannerEngine · 引擎 oracle 冒烟', () => {
-  it('候选分数 ∈ (5000, 65000]；未持有限定不可入队；持有后可入队；缓存命中', async () => {
+  it('候选分数 ∈ [0, 60000]；未持有限定不可入队；持有后可入队；缓存命中', async () => {
     await boot()
     const catalog = useCatalogStore()
     const configStore = useConfigStore()
@@ -99,8 +98,8 @@ describe('pullPlannerEngine · 引擎 oracle 冒烟', () => {
     const noYixuan = engine.oracle.candidates(room, {})
     expect(noYixuan.length).toBeGreaterThan(0)
     for (const c of noYixuan) {
-      expect(c.score).toBeGreaterThan(OPERATION_SCORE)
-      expect(c.score).toBeLessThanOrEqual(DAMAGE_SCORE_CAP + OPERATION_SCORE)
+      expect(c.score).toBeGreaterThanOrEqual(0)
+      expect(c.score).toBeLessThanOrEqual(DAMAGE_SCORE_CAP)
       expect(c.team).not.toContain('1371') // 未持有限定不入队
     }
     const withYixuan = engine.oracle.candidates(room, { '1371': 1 })

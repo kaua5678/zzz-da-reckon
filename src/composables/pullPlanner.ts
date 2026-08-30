@@ -9,7 +9,7 @@
  * - 购买阶梯（每卡三档，音擎金更便宜是用户口径）：本体 15000 菲林（1 命座金）→
  *   专武 10000 菲林（1 音擎金）→ 满配 = 本体+专武+6 影画+4 精炼（11 金，v1 单步）。
  * - 每期结算 = 3 个危局 Boss × 不重叠 3 人队（角色跨房间不可复用，共 9 人约束）；
- *   分数 = 60000 × min(1, 伤害/HP) + 5000 操作分（全满口径）。
+ *   分数 = 60000 × min(1, 伤害/HP)（只算伤害分；操作分是附加分、已剔除）。
  * - 贬值内生：不设折现参数——老卡分数下降由每期 Boss 血量/抗性与 layer buff 数据自然涌现。
  *
  * 算法：beam search（无一般近似保证，Ow & Morton 1988；niche 协同破坏次模性，贪心的
@@ -60,7 +60,7 @@ export interface TeamOracle {
    */
   candidates(bossRoom: PlannerBossRoom, holdings: Record<string, number>): Array<{
     team: [string, string, string]
-    /** 理论分数（60000×伤害比 + 5000） */
+    /** 理论分数（60000×伤害比，只算伤害分） */
     score: number
   }>
 }

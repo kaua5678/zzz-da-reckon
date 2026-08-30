@@ -13,6 +13,8 @@
 | 某音擎完整解剖（归属/副属性/精炼效果） | `node scripts/resolve.mjs 音擎 心弦夜响` | 歧义=大声失败 exit 1 |
 | 某角色的专武是谁 | `node scripts/resolve.mjs 专武 仪玄` | 经 ownerAgentId 权威路径 |
 | 角色/套装/boss/队友buff/spec 摘要 | `node scripts/resolve.mjs 角色\|套装\|boss\|buff\|spec <名\|id>` | 同上 |
+| Boss 抗性表/当期 buff 机制/最新期数值档 | `node scripts/resolve.mjs boss 焚昼余火` | 双源合并展示（见 §5） |
+| 某角色倍率表全列 / 单招倍率行 | `node scripts/resolve.mjs 招式 1561 列表` / `… 招式 1371 1371008` | moveId 唯一权威（见 §6） |
 | 全量体检（专武一致性 + 混淆名对） | `node scripts/resolve.mjs audit` | 信息版；护栏测试在 buildRecWengine.test.ts |
 | **派生数值：面板/暴击预算** | `PROBE_AGENT=1371 npm run probe:panel` | 引擎为权威，勿手工加 JSON |
 
@@ -52,7 +54,40 @@
 - 套装：`driveDiscSets[]`，2件套=固定面板效果，4件套=条件触发（`coverage` 折算）。
   例：折枝剑歌(32700) 2pc=暴击伤害+16%；啄木鸟电音(31000) 2pc=暴击率+8。
 
-## 4. 权威指针表（同一个事实只信一处）
+## 4. Boss（**双数据源**，查证用 `resolve boss`）
+
+Boss 的事实分裂在两个文件里，**用途不同，别混**：
+
+| 源 | 文件 | 承载 | 谁消费 |
+|---|---|---|---|
+| 机制源 | `catalog.json → bosses[]` | `target`（防御/弱点 `weaknessElements`/抗性 `resistanceElements`/抗性覆盖）+ `encounters[]` 每期的 `enemyIntel` 机制文本、`playerBuffs`/`playerDebuffs`（当期 buff，带 `calculationStatus`） | 面板/伤害引擎 |
+| 数值档源 | `boss-presets.json` | `monster`（失衡倍率 `stunVuln`/失衡时间）、`defaults`（battleTime/秽盾/弹刀）、`phases[]`（各期 HP/失衡值/异常系数/评分线） | 属性配置页、失衡推导 |
+
+- 改 Boss 预设默认值 → `scripts/import-nanoka-bosses.mjs` 的 `BOSS_DEFAULTS` 重跑，不手改 JSON。
+- 当期 debuff 的 `calculationStatus: modeled` = 引擎已消费；`pending/skip` = 文本存在但没进计算。
+- 例（`resolve boss 焚昼余火`）：防御 953 · 弱点 冰/风 · 抗性 物理 · 3.0 P3 debuff「赴火」critDmg −25/层×5 [modeled]。
+
+## 5. 局内角色全配置（CharacterConfig，`stores/config.ts`）
+
+「一个角色上场」= 以下字段的**组合实体**，缺任何一项都算不完整（探针默认口径=前五项取推荐值）：
+
+- 身份：`agentId` + `cinemaLevel`（命座 0-6）+ `potentialLevel`（潜能 1-6，缺省 6）
+- 音擎：`wEngineId` + `wEngineModLevel`（精炼 1-5）——精炼效果阶梯见 §1 音擎卡 ④
+- 驱动盘：`driveDisc`（4+2 套装 + 4/5/6 主词条 + 副词条分配，见 §3）
+- 交互次数：`parryCount`/`dodgeCounterCount`/`blockCount`/`quickAssistCount`/`chainCountPerStun` + 角色专属交互字段（`yixuanInk2Count` 等十余个，字段注释在 `CharacterConfig` 定义处）
+- 派生：面板/暴击预算由引擎算（`probe:panel`，PROBE_SUBSTATS/ENGINE/MOD/CINEMA/FOUR/TWO 覆盖）。
+
+**注意**：`potentialLevel` 影响部分模块的档位取值（注释见 config.ts:24）；交互次数类字段是资源循环的输入（如般岳 `blockCount` 是嗔火来源），改它们=改资源池，不只是改面板。
+
+## 6. 倍率表（agentSkills，moveId 的唯一权威）
+
+- 结构：`catalog.json → agentSkills[]`（每角色一条）→ `categories[]`（basic/special/dodge/chain/assist 分段）→ `moves[]`（`id`=moveId、`rows[]`=damage/daze/energy_recovery/decibel_recovery/anomaly_buildup/ether_purify/attack_data_N）。
+- **moveId 编号分段非连续**（1561005 → 1561008 跳号），禁止从 agentId 推算编号，一律查表：
+  `node scripts/resolve.mjs 招式 <agentId> 列表` 全列 / `… <moveId|招式名>` 单条。
+- ⚠ nanoka `skill_list` 的自有 id **不是** moveId（希格莉德整招挂错的旧事故）；按招式名对齐（`AGENT_RECORDING_SOP.md` §0.5 陷阱）。
+- 附伤合成行用假 moveId（如 `1531_c6_radiant`）防 daze/anomaly 双计——假 id 不进失衡/异常池（ENGINE_PIPELINE §4 坑5）。
+
+## 7. 权威指针表（同一个事实只信一处）
 
 | 事实 | 唯一事实源 | 不要信 |
 |---|---|---|
@@ -60,10 +95,12 @@
 | 推荐配装（主词条/套装） | `build-recommendations.json`（sync 脚本生成） | 记忆里的「毕业配装」 |
 | 面板/派生数值 | 引擎（`calcPanel`，探针输出） | 手工汇总 JSON |
 | 倍率/属性/boss 数值 | `catalog.json` | 任何文档转述 |
+| 招式 moveId ↔ 倍率行 | `agentSkills`（`resolve 招式` 查表） | 从 agentId 推算编号、nanoka skill_list id |
+| Boss 当期机制/抗性 | `catalog bosses[]`（机制源）+ `boss-presets.json`（数值档） | 只看其中一个源 |
 | 中文术语→字段 | `GAME_TERM_TO_CODE_FIELD.md` | 训练数据里的字段名 |
 | 特化/属性中文 | `MECHANICS_IMPLEMENTATION.md` §0 | 记忆推断 |
 
-## 5. 事故登记（每次撞名/漏字段事故追加一行；模式同 ENGINE_PIPELINE 坑表）
+## 8. 事故登记（每次撞名/漏字段事故追加一行；模式同 ENGINE_PIPELINE 坑表）
 
 | 日期 | 事故 | 根因 | 防线 |
 |---|---|---|---|
@@ -71,7 +108,7 @@
 | 2026-08-30 | 音擎解剖漏读 `effect.selfBuff`（精炼暴击率 20），手工暴击预算错 | 只读 level60 两字段就下结论，不知道音擎是四部分结构 | 实体卡 §1 四部分表 + resolve 输出精炼阶梯 |
 | 2026-08-30 | 手算仪玄暴击 97%（漏 4件套条件暴击 +12，真实局内 69%） | 手工汇总替代引擎 | 探针 probe:panel |
 
-## 6. 文档定位与维护纪律
+## 9. 文档定位与维护纪律
 
 - 本文档挂在 `README.md` §6 文档表 + `AGENTS.md` §0 导航（fast 档也读 §0+§1 查证工具节）。
 - **实体结构变更时同步本文**（规则 8 知识单一事实源）；实体卡内容尽量「指指针」而不是抄数值，

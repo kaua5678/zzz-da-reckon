@@ -36,6 +36,8 @@ const readJson = (p) => JSON.parse(readFileSync(join(ROOT, p), 'utf8'))
 const catalog = readJson('public/static/catalog.json')
 const recs = readJson('public/static/build-recommendations.json')
 const teammateBuffs = readJson('public/static/teammate-buffs.json')
+const bossPresets = readJson('public/static/boss-presets.json')
+const presetsBosses = bossPresets.bosses ?? []
 
 const agents = catalog.agents ?? []
 const engines = catalog.wEngines ?? []
@@ -104,7 +106,7 @@ function showAgent(a) {
   line('专武', sig ? `${idName(sig)}（ownerAgentId 反查）` : '无（ownerAgentId 无指向，如 1551 佩洛伊斯=未录入）')
   if (a.level60) {
     const l = a.level60
-    line('基础面板(60)', `HP ${l.hpBase} · ATK ${l.atkBase} · DEF ${l.defBase} · 暴击 ${l.critRate}%/${l.critDmg}% · 冲击 ${l.impact} · 精通 ${l.anomalyProficiency} · 掌控 ${l.anomalyMastery}`)
+    line('基础面板(60)', `HP ${l.hpBase} · ATK ${l.atkBase} · DEF ${l.defBase} · 暴击 ${l.critRate}%/${l.critDmg}% · 冲击 ${l.impact} · 精通 ${l.anomalyProficiency} · 掌握 ${l.anomalyMastery}`)
   }
   if (rec?.wengine) line('配装推荐音擎', `${rec.wengine.name_zh}(${rec.wengine.catalog_wengine_id})`)
   if (rec?.main_stats) {
@@ -116,7 +118,12 @@ function showAgent(a) {
     const two = rec.drive_disc_sets.two_piece?.name_zh ?? ''
     if (four || two) line('推荐套装', `4件:${four} + 2件:${two}`)
   }
-  console.log('  暴击预算/面板等派生数值 → 引擎探针 npm run probe:panel -- --agent ' + a.id + '（勿手工加 JSON）')
+  const skills = catalog.agentSkills?.find(s => String(s.agentId) === String(a.id))
+  if (skills) {
+    const cats = skills.categories.map(cc => `${cc.id}×${cc.moves.length}`).join(' · ')
+    line('倍率表', `${cats}（招式查询: node scripts/resolve.mjs 招式 ${a.id} <moveId|招式名>）`)
+  }
+  console.log('  暴击预算/面板等派生数值 → 引擎探针 PROBE_AGENT=' + a.id + ' npm run probe:panel（勿手工加 JSON）')
 }
 
 function showSet(s) {
@@ -131,10 +138,70 @@ function showSet(s) {
   }
 }
 
+/** Boss 完整解剖：catalog（抗性/当期 buff）+ boss-presets（血量/失衡档）双源 */
 function showBoss(b) {
   console.log(`== Boss ${idName(b)} ==`)
-  line('别名', (b.aliases ?? []).map(zh).join(' / ') || '无')
-  line('遭遇期数', `${(b.encounters ?? []).length} 期（首期 ${(b.encounters ?? [])[0]?.phaseId ?? '?'}）`)
+  line('别名', (b.aliases ?? []).map(a => (typeof a === 'string' ? a : zh(a))).join(' / ') || '无')
+  const t = b.target ?? {}
+  line('防御/失衡倍率', `${t.defense ?? '?'} · 怪物失衡倍率 ${presetsBosses.find(p => p.catalogId === b.id)?.monster?.stunVuln ?? '?'}（boss-presets）`)
+  line('弱点元素', (t.weaknessElements ?? []).map(e => ATTR_LABELS[e] ?? e).join('/') || '无')
+  line('抗性元素', (t.resistanceElements ?? []).map(e => ATTR_LABELS[e] ?? e).join('/') || '无')
+  if (Object.keys(t.resistanceOverrides ?? {}).length) line('抗性覆盖', JSON.stringify(t.resistanceOverrides))
+
+  const encounters = [...(b.encounters ?? [])]
+  for (const e of encounters.slice(-3)) {
+    const app = (e.appearances ?? [])[0] ?? {}
+    console.log(`  -- 期 ${app.gameVersion ?? '?'} P${app.phaseNo ?? '?'}（${app.startDate ?? '?'} ~ ${app.endDate ?? '?'}，${app.modeId ?? '?'}）${e.hidden ? ' [hidden]' : ''}`)
+    if (e.enemyIntel) console.log(`     机制: ${zh(e.enemyIntel).slice(0, 150)}${zh(e.enemyIntel).length > 150 ? '…' : ''}`)
+    for (const pb of e.playerBuffs ?? []) {
+      const effs = (pb.effects ?? []).map(f => `${f.stat}${f.valuePerStack != null ? `±${f.valuePerStack}/层×${f.maxStacks}` : ` ${f.value ?? '?'}`}`).join(', ')
+      console.log(`     当期buff ${zh(pb.name)}: ${effs || '（效果见原文）'} [${pb.calculationStatus ?? '?'}]`)
+    }
+    for (const pd of e.playerDebuffs ?? []) {
+      const effs = (pd.effects ?? []).map(f => `${f.stat}${f.valuePerStack != null ? `±${f.valuePerStack}/层×${f.maxStacks}` : ` ${f.value ?? '?'}`}`).join(', ')
+      console.log(`     当期debuff ${zh(pd.name)}: ${effs || '（效果见原文）'} [${pd.calculationStatus ?? '?'}]`)
+    }
+    if (!e.enemyIntel && !(e.playerBuffs ?? []).length && !(e.playerDebuffs ?? []).length) console.log('     （无当期机制）')
+  }
+  if (encounters.length > 3) console.log(`  （共 ${encounters.length} 期，只列最近 3 期）`)
+  const pb = presetsBosses.find(p => p.catalogId === b.id)
+  if (pb?.phases?.length) {
+    const last = pb.phases[pb.phases.length - 1]
+    line('最新档(boss-presets)', `${last.label} · HP ${last.hp}（系数 ${last.hpVersionCoeff}）· 失衡值 ${last.stunValue} · 防御 ${last.defense} · 异常系数 ${last.bossAnomalyCoeff}`)
+    line('战斗预设', `battleTime ${pb.defaults?.battleTime}s · 秽盾 ${pb.defaults?.shieldCount} · 弹刀 ${pb.defaults?.parryTotal ?? '?'}（改默认值: scripts/import-nanoka-bosses.mjs BOSS_DEFAULTS）`)
+  }
+}
+
+/** 招式/倍率查询：agentSkills 倍率表是 moveId 唯一权威（编号分段非连续，禁止推算） */
+function showMove(agent, token) {
+  const skills = catalog.agentSkills?.find(s => String(s.agentId) === String(agent.id))
+  if (!skills) return fail(`角色 ${idName(agent)} 无倍率表（agentSkills）`)
+  const allMoves = skills.categories.flatMap(cc => cc.moves.map(m => ({ ...m, category: cc.id })))
+  const t = String(token ?? '').trim()
+  if (t === '' || t === '列表' || t === 'list') {
+    console.log(`== ${idName(agent)} 倍率表全列（${allMoves.length} 招）==`)
+    for (const m of allMoves) console.log(`  ${m.id}  ${zh(m.name)} [${m.category}]`)
+    return
+  }
+  let move = allMoves.find(m => m.id === t)
+  if (!move) {
+    const byName = allMoves.filter(m => zh(m.name) === t)
+    if (byName.length === 1) move = byName[0]
+    else {
+      const bySub = allMoves.filter(m => zh(m.name).includes(t) || (m.name?.en ?? '').toLowerCase().includes(t.toLowerCase()))
+      if (bySub.length === 1) move = bySub[0]
+      else if (bySub.length > 1) return fail(`招式「${t}」歧义，命中 ${bySub.length} 个：\n${bySub.map(m => `  - ${zh(m.name)}(${m.id})`).join('\n')}`)
+      else return fail(`角色 ${idName(agent)} 无招式「${t}」（可用: node scripts/resolve.mjs 招式 ${agent.id} 列全表）`)
+    }
+  }
+  console.log(`== 招式 ${zh(move.name)}(${move.id}) · ${idName(agent)} · ${move.category} ==`)
+  line('元素/类型', `${ATTR_LABELS[move.damageElement] ?? move.damageElement} · ${move.skillType} · actionTime ${move.actionTime ?? '?'}s`)
+  for (const r of move.rows ?? []) {
+    const vals = r.values ?? []
+    const v = vals.length === 1 ? vals[0] : `${vals[0]}…${vals[vals.length - 1]}（${vals.length}档）`
+    line(r.id, `${v}${r.damageBasis ? ` · basis ${r.damageBasis}` : ''}${r.damageElement ? ` · ${r.damageElement}` : ''}`)
+  }
+  console.log('  ⚠ nanoka skill_list 的 id 不是 moveId——匹配一律用本表 id（AGENT_RECORDING_SOP §0.5 陷阱）')
 }
 
 function showBuffGroup(g) {
@@ -192,11 +259,12 @@ try {
     showEngine(sig)
   } else if (cmd === '套装' || cmd === 'set') showSet(resolveEntity(sets, rest[0], '套装'))
   else if (cmd === 'boss') showBoss(resolveEntity(bosses, rest[0], 'Boss'))
+  else if (cmd === '招式' || cmd === 'move') showMove(resolveEntity(agents, rest[0], '角色'), rest[1] ?? '列表')
   else if (cmd === 'buff') showBuffGroup(resolveEntity(teammateBuffs, rest[0], 'buff 组'))
   else if (cmd === 'spec') showSpec(resolveEntity(agents, rest[0], '角色'))
   else if (cmd === 'audit') audit(rest[0])
   else {
-    console.log('用法: node scripts/resolve.mjs <音擎|角色|专武|套装|boss|buff|spec|audit> <名|id>')
+    console.log('用法: node scripts/resolve.mjs <音擎|角色|专武|套装|boss|招式|buff|spec|audit> <名|id> [参数]')
     console.log('详见 docs/ENTITY_CARDS.md；派生数值（面板/暴击预算）用 npm run probe:panel')
     process.exit(cmd ? 1 : 0)
   }

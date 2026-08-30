@@ -14,12 +14,11 @@
  *   卢西娅式故事由此精确呈现：禁她 → 命破房被迫退回潘引壶队，分差 = 她的抽取价值；
  *   比利式饱和同样：账号已有命破体系时，禁他不痛不痒。
  * - 账号分 = 一期 3 房（每期实际 Boss 数由期轴定）× 不重叠 3 人队（9 人约束）的最优 DFS。
- * - 分数 = 60000 × min(1, 引擎伤害/当期Boss血量) + 5000 操作分（全满），单房 65000。
+ * - 分数 = scoreForDamageRatio(引擎伤害/当期Boss血量)（伤害分 0~60000 分段线性；操作分是附加分、与强度无关，已剔除）。
  *
  * 引擎部分（快照/求值/赋值）在 computeIncrementPass（同文件尾部，vitest 里假 oracle 验证）。
  */
-import { AGENT_RELEASE_NODE } from '@/data/versionTimeline'
-import { STANDARD_S_AGENT_IDS } from '@/composables/teamCompare'
+import { runLimitedGold } from '@/composables/limitedGold'
 
 // ========== 队伍基底提取 ==========
 
@@ -52,18 +51,6 @@ export interface BaseTeam {
   gold: number
   /** 该构成在归档里的最高分（溯源展示用） */
   bestScore: number
-}
-
-/** 单个成员的限定金数（同 pullValue 效率前沿口径） */
-function memberGold(m: { agentId: string; mindscape?: number; phase?: number }): number {
-  if (!AGENT_RELEASE_NODE[m.agentId]) return 0 // 未收录（A 级）免费
-  if (STANDARD_S_AGENT_IDS.has(m.agentId)) return 0 // 常驻 S 免费
-  return 1 + (m.mindscape ?? 0) + Math.max(0, (m.phase ?? 1) - 1)
-}
-
-/** run 的限定金数 */
-function runGold(r: IncRun): number {
-  return r.team.reduce((s, m) => s + memberGold(m), 0)
 }
 
 /** 队伍构成键（去重用：成员 id 集合 + 各成员档位的签名） */
@@ -106,8 +93,8 @@ export function extractBaseTeams(
     const maxScore = Math.max(...bucketRuns.map(r => r.score))
     const strong = bucketRuns.filter(r => r.score >= maxScore * 0.9)
     if (strong.length === 0) continue
-    const minGold = Math.min(...strong.map(runGold))
-    const inWindow = strong.filter(r => runGold(r) <= minGold + goldWindow)
+    const minGold = Math.min(...strong.map((r) => runLimitedGold(r.team)))
+    const inWindow = strong.filter((r) => runLimitedGold(r.team) <= minGold + goldWindow)
     // 按构成去重，保留顶分 run
     const bestByTeam = new Map<string, IncRun>()
     for (const r of inWindow) {
@@ -124,7 +111,7 @@ export function extractBaseTeams(
           weaponId: m.weaponId ?? null,
           phase: m.phase ?? 1,
         })) as [BaseTeamMember, BaseTeamMember, BaseTeamMember],
-        gold: runGold(r),
+        gold: runLimitedGold(r.team),
         bestScore: r.score,
       }))
       .filter(t => t.members.length === 3 && t.members.every(m => m.agentId))
@@ -227,7 +214,8 @@ export function incrementForCard(period: IncPeriod, agentId: string): CardPeriod
 // ========== 引擎求值层（快照/部署/伤害→分数；基底队少 = 全量也秒级） ==========
 
 import { useConfigStore, getInteractionDefaults } from '@/stores/config'
-import { buildPlannerPeriods, plannerTestServerVersions, DAMAGE_SCORE_CAP, OPERATION_SCORE } from '@/composables/pullPlannerEngine'
+import { buildPlannerPeriods, plannerTestServerVersions } from '@/composables/pullPlannerEngine'
+import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 import type { BossPreset, PhaseView } from '@/types/bossPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
 import type { ArchiveRoom } from '@/composables/runArchiveImport'
@@ -325,7 +313,7 @@ export async function computeIncrementPass(opts: IncrementPassOptions): Promise<
         applyBaseTeamLite(configStore, team)
         const damage = opts.calc.teamTotalDamage.value
         const hp = task.room.hp > 0 ? task.room.hp : 1
-        scoreByKey.set(`${task.period.id}|${task.room.bossId}|${teamKeyOf(team)}`, DAMAGE_SCORE_CAP * Math.min(1, damage / hp) + OPERATION_SCORE)
+        scoreByKey.set(`${task.period.id}|${task.room.bossId}|${teamKeyOf(team)}`, scoreForDamageRatio(damage / hp))
         done++
         if (done % 4 === 0) {
           report(done / (totalTasks || 1), `基底求值 ${done}/${totalTasks} 队…`)

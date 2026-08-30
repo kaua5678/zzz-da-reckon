@@ -87,6 +87,12 @@ export function applyDeployConfig(
     configStore.setChainCountPerStun(s, 1)
   }
 
+  // 修复跨队泄漏：applyTeamPreset 在 setCinemaLevel 之前同步队友 buff，读到上一队残留命座，
+  // 会把命座门控的队友 buff（如蕾米埃尔 C1 队友异常增伤 / C2 异常防御无视）错误开启。
+  // 命座/精炼/音擎落定后重同步队友 buff（附：副词条优化器也读 enabledTeammateBuffs，
+  // 但优化器只影响副词条分配、不影响 buff 开关，这里重同步即可消除主差异）。
+  configStore.syncTeammateBuffsFromTeam()
+
   // 启用自动轴 + 保底4喧响（弹刀反推的两个驱动）；保底4失衡由 applyBossPreset 按 Boss 预设自动勾选。
   configStore.autoYidhariAxis = true
   configStore.stunAxes.splice(0)

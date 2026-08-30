@@ -29,7 +29,7 @@ function date(offsetDays: number): string {
 }
 
 /**
- * 假 oracle：队伍分数 = 60000×伤害比 + 5000。
+ * 假 oracle：队伍分数 = 60000×伤害比。
  * 伤害比 = min(1, 强度×1000/HP)：强度由「队伍内编号最小的卡」决定（编号小 = 强 = 模拟主C上限）；
  * HP 参与贬值内生测试。**每房间有独立偏移**（bossId 末位数字 ×500），
  * 保证 3 房不重叠约束下持有 ≥4 张卡时总有叶子可达。
@@ -46,7 +46,7 @@ function fakeOracle(): TeamOracle {
           for (let k = j + 1; k < held.length; k++) {
             const team = [held[i], held[j], held[k]] as [string, string, string]
             const ratio = Math.min(1, (1000 * (10 - Number(held[i].slice(1)))) / bossRoom.hp)
-            out.push({ team, score: 60000 * ratio + 5000 + roomOffset })
+            out.push({ team, score: 60000 * ratio + roomOffset })
           }
         }
       }

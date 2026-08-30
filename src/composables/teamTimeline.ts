@@ -27,7 +27,8 @@
  * - Boss 一次应用（applyBossPreset）；当期可选 buff 牌不参与（与「队伍对比」的「不使用」一致）。
  * - 计算现场快照/恢复，跑完不留痕（同 computeTeamComparePoints）。
  */
-import { getInteractionDefaults, useConfigStore } from '@/stores/config'
+import { getInteractionDefaults, roleInteractionBaseline, useConfigStore } from '@/stores/config'
+import { equalizeTimeWeights } from '@/composables/timeWeightBalancer'
 import { useCatalogStore } from '@/stores/catalog'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
 import { indexForDate } from '@/composables/bossSchedule'
@@ -359,16 +360,51 @@ function applyTeamToStore(
     configStore.setCinemaLevel(s, state.cinemas[s])
     configStore.setWEngineModLevel(s, state.wengineMods[s])
     if (state.wEngines[s]) configStore.setWEngine(s, state.wEngines[s])
-    // 交互基准：角色专属默认（般岳/星徽·比利等）> 通用基准（弹刀6 闪反10 快支3 连携1）
+    // 交互基准：角色专属默认（般岳/星徽·比利等）> 通用职业基准（支援/防护不交互，击破只弹刀，主C弹刀+闪反）
     const defs = getInteractionDefaults(team[s])
     const hasCustom = defs.parry > 0 || defs.dodge > 0 || defs.block > 0 || defs.dual > 0
-    configStore.setParryCount(s, hasCustom ? defs.parry : 6)
-    configStore.setDodgeCounterCount(s, hasCustom ? defs.dodge : 10)
-    configStore.setBlockCount(s, hasCustom ? defs.block : 0)
-    configStore.setDualCounterCount(s, hasCustom ? defs.dual : 0)
+    const base = hasCustom ? defs : roleInteractionBaseline(useCatalogStore().getAgent(team[s])?.specialty)
+    configStore.setParryCount(s, base.parry)
+    configStore.setDodgeCounterCount(s, base.dodge)
+    configStore.setBlockCount(s, base.block)
+    configStore.setDualCounterCount(s, base.dual)
     configStore.setQuickAssistCount(s, 3)
     configStore.setChainCountPerStun(s, 1)
   }
+}
+
+// ========== 平A时间权重·边际均衡（默认「均衡」而非 1:1） ==========
+
+/**
+ * 把 applyTeamToStore 设好的默认平A权重（0/1 等权）重均衡到「边际产出更高」的槽位。
+ *
+ * 用 set-read-restore（同 computeOptimalTeamAllocation 的「临时应用→读伤害→还原」模式）经
+ * `calc.teamTotalDamage` 做有限差分坐标上升（纯算法见 timeWeightBalancer.equalizeTimeWeights）。
+ * 支援/防护（weight=0）不参与转移；时间总权重守恒。
+ *
+ * 返回均衡后的权重向量（按槽位）与均衡后总伤。均衡后权重已写回 store，后续读 teamTotalDamage 同源。
+ */
+export function optimizeTeamTimeWeights(
+  calc: Calc,
+  configStore: ReturnType<typeof useConfigStore>,
+  opts: { step?: number; shiftStep?: number; maxIter?: number } = {},
+): { weights: number[]; damage: number; balanced: boolean } {
+  const initial = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0)))
+  const adjustableCount = initial.filter(w => w > 0).length
+  if (adjustableCount < 2) {
+    return { weights: initial, damage: calc.teamTotalDamage.value, balanced: false }
+  }
+  const evaluate = (w: number[]) => {
+    for (let s = 0; s < 3; s++) configStore.setBasicAttackTimeWeight(s, Math.max(0, w[s]))
+    return calc.teamTotalDamage.value
+  }
+  const r = equalizeTimeWeights(evaluate, initial, {
+    step: opts.step ?? 0.5,
+    shiftStep: opts.shiftStep ?? 1,
+    maxIter: opts.maxIter ?? 3,
+  })
+  for (let s = 0; s < 3; s++) configStore.setBasicAttackTimeWeight(s, r.weights[s])
+  return { weights: r.weights, damage: r.damage, balanced: true }
 }
 
 // ========== 最优加金分配（逐金贪婪） ==========
@@ -442,6 +478,8 @@ export function computeOptimalTeamAllocation(
   const base = baseGoldOfTeam(team, catalog)
   const state = baseStateFor(team, catalog)
   applyTeamToStore(configStore, team, state, autoBuild)
+  // 平A时间权重默认「均衡」：基础态先把等权重均衡到边际产出更高的槽位（后续贪婪在均衡权重上做）
+  optimizeTeamTimeWeights(calc, configStore)
   // 防御：基础态外层未收敛 → 整队不可信（正常流程已由 refDamage 收敛过滤挡掉）
   if (calc.resourceResult.value?.convergence?.outerExit === 'maxIter') {
     return {

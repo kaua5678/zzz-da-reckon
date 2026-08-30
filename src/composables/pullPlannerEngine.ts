@@ -2,15 +2,15 @@
  * 抽卡规划器的引擎 oracle 桥：把 pullPlanner 的 TeamOracle 接到真实伤害引擎
  * （teamTimeline 底座：applyTeamToStore / 预算感知配装 / maxIter 收敛过滤 / 现场快照恢复）。
  *
- * 伤害 → 分数映射（调研口径，FEATURES_GUIDE §4.5）：
- *   score = 60000 × min(1, teamDamage / bossHp) + 5000（操作分全满）
- * 单房上限 65000；一期 3 房（每期实际 Boss 数由期轴数据决定）。
+ * 伤害 → 分数映射（分段线性，FEATURES_GUIDE §4.5）：
+ *   score = scoreForDamageRatio(teamDamage / bossHp)（伤害分 0~60000，非线性——前段血值分多）
+ * 单房上限 60000；一期 3 房（每期实际 Boss 数由期轴数据决定）。
  *
  * 性能口径（对齐 Chart 1/4 实测）：每次伤害求值 ~30ms 是唯一大头。缓存 key =
  * (team × phaseId × 金数档 × buff 签名)——同队同 Boss 同期同档只算一次，
  * beam 的 VCG 重规划大量命中缓存。规划期内 Boss/buff 逐期应用（同 Chart 4）。
  */
-import { useConfigStore } from '@/stores/config'
+import { getInteractionDefaults, roleInteractionBaseline, useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { budgetAwareStateFor } from '@/composables/teamTimeline'
 import type { BossPreset, PhaseView } from '@/types/bossPreset'
@@ -19,9 +19,10 @@ import type { PlannerBossRoom, PlannerPeriod, TeamOracle } from '@/composables/p
 
 type Calc = ReturnType<typeof useResourceCalc>
 
-/** 危局计分常量（调研口径：伤害分 ≤60000 + 操作分 5000 = 单房 65000） */
-export const DAMAGE_SCORE_CAP = 60000
-export const OPERATION_SCORE = 5000
+import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
+
+/** 危局伤害分上限（分段线性曲线末点；操作分已剔除——附加分不影响强度） */
+export { DEADLY_ASSAULT_SCORE_CAP as DAMAGE_SCORE_CAP } from '@/core/deadlyAssaultScore'
 
 export interface EngineOracleOptions {
   calc: Calc
@@ -136,7 +137,7 @@ export function createEngineOracle(opts: EngineOracleOptions): {
       return null
     }
     const damage = opts.calc.teamTotalDamage.value
-    const score = DAMAGE_SCORE_CAP * Math.min(1, damage / hp) + OPERATION_SCORE
+    const score = scoreForDamageRatio(damage / hp)
     teamScoreCache.set(key, score)
     return score
   }
@@ -214,10 +215,14 @@ function applyTeamLite(
     configStore.setCinemaLevel(s, state.cinemas[s])
     configStore.setWEngineModLevel(s, state.wengineMods[s])
     if (state.wEngines[s]) configStore.setWEngine(s, state.wEngines[s])
-    configStore.setParryCount(s, 6)
-    configStore.setDodgeCounterCount(s, 10)
-    configStore.setBlockCount(s, 0)
-    configStore.setDualCounterCount(s, 0)
+    // 交互基准：同 teamTimeline.applyTeamToStore（支援/防护不交互，击破只弹刀，主C弹刀+闪反）
+    const defs = getInteractionDefaults(team[s])
+    const hasCustom = defs.parry > 0 || defs.dodge > 0 || defs.block > 0 || defs.dual > 0
+    const base = hasCustom ? defs : roleInteractionBaseline(useCatalogStore().getAgent(team[s])?.specialty)
+    configStore.setParryCount(s, base.parry)
+    configStore.setDodgeCounterCount(s, base.dodge)
+    configStore.setBlockCount(s, base.block)
+    configStore.setDualCounterCount(s, base.dual)
     configStore.setQuickAssistCount(s, 3)
     configStore.setChainCountPerStun(s, 1)
   }

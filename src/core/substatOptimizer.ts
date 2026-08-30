@@ -199,6 +199,32 @@ const AGENT_TEMPLATES: Record<string, SubstatTemplate> = {
     anomalyRatio: 0.9,
   },
 
+  // ===== 转模角色（辅助/击破/命破）：转模源在首位，默认吃满（局外转模与队伍/buff 无关，固定） =====
+
+  // 卢西娅（1451）：生命→全队攻击（局外）→ hpPct 优先
+  '1451': {
+    stats: ['hpPct', 'atkPct', 'defPct'],
+    dmgBonusRelevant: false,
+    anomalyRelevant: false,
+    anomalyRatio: 0,
+  },
+
+  // 洛克茜（1621）：防御→攻击/冲击力（局内）→ defPct 优先
+  '1621': {
+    stats: ['defPct', 'atkPct', 'critRate'],
+    dmgBonusRelevant: true,
+    anomalyRelevant: false,
+    anomalyRatio: 0,
+  },
+
+  // 伊德海莉（1051）：生命→贯穿力（局内，命破基底 hp×0.1 项）→ hpPct 优先
+  '1051': {
+    stats: ['hpPct', 'atkPct'],
+    dmgBonusRelevant: true,
+    anomalyRelevant: false,
+    anomalyRatio: 0,
+  },
+
   // 月城柳（1221）：电异常/极性紊乱 → 精通+攻击
   '1221': {
     stats: ['anomalyProficiency', 'atkPct'],
@@ -717,6 +743,9 @@ export interface OptimizeSubstatsInput {
   totalSteps?: number
   /** 贪心提前终止阈值。当最佳边际 < 初始最大边际 × minGainRatio 时停止。默认 0.05（5%）。 */
   minGainRatio?: number
+  /** 快速默认分配（跳过贪心 + 套装剪枝）。true 时按模板优先序直接填词条：
+   *  暴击→面板暴击 100%，其余词条→上限。用于实战对比等热路径加速。 */
+  useDefault?: boolean
 }
 
 /** 优化器输出 */
@@ -733,6 +762,29 @@ export interface OptimizeSubstatsOutput {
   }
   /** 各词条再加 1 步的边际伤害增量（贪心最后一步数据留底） */
   marginalGains: Record<string, number>
+}
+
+/**
+ * 快速默认副词条分配（用户口径 2026-08：最优队伍词条选择固定）。
+ * 规则：按模板 stats 优先序依次填到上限（statCap），直到总预算耗尽。
+ * 暴击不是「够了就停」——暴击边际效用普遍高、玩家都叠，所以与其它词条一样直接填满 statCap
+ * （不做「填到 100%」的截断）。转模角色的转模源（如卢西娅 hpPct、洛克茜 defPct）在模板 stats 首位，天然吃满。
+ */
+export function computeDefaultSubStats(
+  template: SubstatTemplate,
+  totalSteps: number,
+  statCap: number,
+): Record<string, number> {
+  const allocation: Record<string, number> = {}
+  for (const stat of template.stats) allocation[stat] = 0
+  let remaining = Math.max(0, totalSteps)
+  for (const stat of template.stats) {
+    if (remaining <= 0) break
+    const steps = Math.min(remaining, statCap)
+    allocation[stat] = steps
+    remaining -= steps
+  }
+  return allocation
 }
 
 /**
@@ -777,6 +829,26 @@ function computeNoSubstatPanel(input: OptimizeSubstatsInput): PanelValues {
 export function computeOptimalSubStats(input: OptimizeSubstatsInput): OptimizeSubstatsOutput {
   // 1. 角色模板
   const template = getTemplate(input.agent)
+
+  // 快速默认路径：跳过基础面板 + 套装剪枝 + 贪心，按固定优先序直接填词条（热路径加速）。
+  if (input.useDefault) {
+    const statCap = input.statCap ?? 20
+    const totalSteps = input.totalSteps && input.totalSteps > 0
+      ? input.totalSteps
+      : getDefaultTotalSteps(template.stats.length)
+    const currentFour = input.driveDiscConfig.fourPieceSetId
+    const currentTwo = input.driveDiscConfig.twoPieceSetId
+    return {
+      subStatAllocation: computeDefaultSubStats(template, totalSteps, statCap),
+      expectedDamage: 0,
+      marginalGains: {},
+      chosenSet: {
+        fourPieceId: currentFour,
+        twoPieceId: currentTwo,
+        decomposition: decomposeFourPlusTwo(currentFour, currentTwo, input.setsMap),
+      },
+    }
+  }
 
   // 2. 基础面板（无副词条）
   const basePanel = computeNoSubstatPanel(input)

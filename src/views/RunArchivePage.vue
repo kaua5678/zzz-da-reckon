@@ -18,6 +18,12 @@
               <n-select v-model:value="seasonId" :options="seasonOptions" size="small" style="width: 210px" placeholder="期数" />
               <n-select v-model:value="bossKey" :options="bossOptions" size="small" style="width: 200px" placeholder="Boss（全部）" clearable />
               <n-switch v-model:value="onlyKilled" size="small"><template #checked>仅看击杀</template><template #unchecked>全部</template></n-switch>
+              <n-switch v-model:value="lowGoldOnly" size="small"><template #checked>仅看低金顶分</template><template #unchecked>全部</template></n-switch>
+              <template v-if="lowGoldOnly">
+                <span class="muted">金数窗口</span>
+                <n-select v-model:value="goldWindow" :options="goldWindowOptions" size="small" style="width: 118px" />
+                <span class="muted">击杀顶分里限定金数最低的投稿（角色上限）</span>
+              </template>
             </n-space>
 
             <n-data-table
@@ -43,7 +49,7 @@
           <template v-else>
             <!-- 实战 -->
             <div class="section">
-              <div class="section-title">玩家实战</div>
+              <div class="section-title">玩家实战<span v-if="isAdversity" class="muted"> · 困难</span></div>
               <div class="kv-grid">
                 <div class="kv"><span class="k">分数</span><span class="v big">{{ selected.score }}</span></div>
                 <div class="kv"><span class="k">用时</span><span class="v">{{ selected.timeSeconds }}s</span></div>
@@ -66,11 +72,12 @@
 
             <!-- 计算器 -->
             <div class="section">
-              <div class="section-title">计算器（理论理想配装）</div>
+              <div class="section-title">计算器（理论理想配装）<span v-if="isAdversity" class="muted"> · 困难</span></div>
               <div class="kv-grid">
                 <div class="kv"><span class="k">总伤害</span><span class="v big">{{ fmt(totalDamage) }}</span></div>
                 <div class="kv"><span class="k">Boss 血量</span><span class="v">{{ fmt(enemyHp) }}</span></div>
                 <div class="kv"><span class="k">伤害/血量</span><span class="v big" :class="ratioClass">{{ hpRatio.toFixed(1) }}%</span></div>
+                <div class="kv"><span class="k">伤害分</span><span class="v big">{{ Math.round(predictedScore) }} / 60000</span></div>
                 <div class="kv">
                   <span class="k">预计</span>
                   <n-tag :type="predictedKill ? 'success' : 'warning'" size="small" :bordered="false">{{ predictedKill ? '预计击杀' : '预计未击杀' }}</n-tag>
@@ -83,7 +90,7 @@
 
         <div class="hint muted">
           口径：配装 = 计算器默认理想（推荐驱动盘 + 最优副词条 + 技能全满）；交互 = 轴模式自动推导（连携从轴读、弹刀按「保底4失衡 + 保底4喧响缺口÷215」反推，闪反10 / 快支3 为固定基准）。
-          当期可选牌（3 选 1）不自动应用（归档未记录玩家选择）。差异 = 配装差 + 建模误差，需用理想配装作上界夹逼。
+          当期可选牌（3 选 1）不自动应用（归档未记录玩家选择）。伤害分 = 分段线性伤害分（普通/困难两套曲线，操作分已剔除）；归档 65000 = 60000 伤害分 + 5000 操作分，击杀即伤害分 60000。差异 = 配装差 + 建模误差，需用理想配装作上界夹逼。
         </div>
       </div>
     </div>
@@ -129,6 +136,8 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { submissionToDeploy, type ArchiveRun, type ArchiveRoom } from '@/composables/runArchiveImport'
 import { applyDeployConfig } from '@/composables/runArchiveDeploy'
+import { runLimitedGold, lowGoldFrontier } from '@/composables/limitedGold'
+import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 
@@ -153,8 +162,19 @@ const phaseViews = ref<PhaseView[]>([])
 const seasonId = ref('')
 const bossKey = ref<string | null>(null)
 const onlyKilled = ref(false)
+const lowGoldOnly = ref(false)
+const goldWindow = ref(0)
 const selected = ref<ArchiveRun | null>(null)
 const lastWarnings = ref<string[]>([])
+
+/** 金数窗口（低金顶分：取最低金 + 该窗口内的投稿） */
+const goldWindowOptions = [
+  { label: '最低金', value: 0 },
+  { label: '最低金 +1', value: 1 },
+  { label: '最低金 +2', value: 2 },
+  { label: '最低金 +3', value: 3 },
+  { label: '最低金 +4', value: 4 },
+]
 
 onMounted(async () => {
   try {
@@ -198,15 +218,20 @@ const bossOptions = computed(() => {
 const filteredRuns = computed(() => {
   const f = file.value
   if (!f) return []
-  return f.runs
+  const base = f.runs
     .filter((r) => (seasonId.value ? r.seasonId === seasonId.value : true))
     .filter((r) => {
       if (!bossKey.value) return true
       return f.rooms[r.targetId]?.bossNameZh === bossKey.value
     })
     .filter((r) => (onlyKilled.value ? r.bossKilled : true))
-    .slice()
-    .sort((a, b) => b.score - a.score)
+  if (lowGoldOnly.value) {
+    // 低金顶分前沿：每房间击杀顶分里限定金数最低（+窗口）的一批，按金数升序（最少金在前）
+    return lowGoldFrontier(base, { killedOnly: true, goldWindow: goldWindow.value }).sort(
+      (a, b) => runLimitedGold(a.team) - runLimitedGold(b.team) || b.score - a.score,
+    )
+  }
+  return base.slice().sort((a, b) => b.score - a.score)
 })
 
 function agentName(id: string): string {
@@ -247,6 +272,7 @@ const columns = computed(() => [
     minWidth: 200,
     render: (r: ArchiveRun) => r.team.map((m) => `${agentName(m.agentId)}M${m.mindscape}`).join(' / '),
   },
+  { title: '金', key: 'gold', width: 50, render: (r: ArchiveRun) => String(runLimitedGold(r.team)) },
   { title: '分数', key: 'score', width: 70, render: (r: ArchiveRun) => String(r.score) },
   {
     title: '结果',
@@ -269,12 +295,19 @@ const enemyHp = computed(() => configStore.enemy.hp ?? 0)
 const hpRatio = computed(() => (enemyHp.value > 0 ? (totalDamage.value / enemyHp.value) * 100 : 0))
 const predictedKill = computed(() => totalDamage.value >= enemyHp.value)
 const ratioClass = computed(() => (hpRatio.value >= 100 ? 'green' : hpRatio.value >= 90 ? 'amber' : 'red'))
+/** 当前部署 run 是否困难（Adversity）；决定伤害分走普通/困难哪条分段曲线 */
+const isAdversity = computed(() => (selected.value?.mode ?? '').includes('Adversity'))
+const predictedScore = computed(() =>
+  scoreForDamageRatio(enemyHp.value > 0 ? totalDamage.value / enemyHp.value : 0, isAdversity.value ? 'critical_assault' : 'defense'),
+)
 const verdictText = computed(() => {
   if (!selected.value) return ''
   const actualKill = selected.value.bossKilled
-  if (predictedKill.value === actualKill) return '✓ 计算器击杀判定与实战一致'
-  if (predictedKill.value && !actualKill) return '：计算器预测击杀但实战未击杀 → 理想配装被高估（配装差 + 建模误差）'
-  return '：实战击杀但计算器未达击杀线 → 计算器口径偏保守（可能漏拐/漏机制）'
+  const ps = Math.round(predictedScore.value)
+  if (predictedKill.value && actualKill) return `✓ 击杀判定一致（计算器伤害分 ${ps} / 60000）`
+  if (!predictedKill.value && !actualKill) return '✓ 双方均未击杀'
+  if (predictedKill.value && !actualKill) return `：计算器预测击杀但实战未击杀（伤害分 ${ps} / 60000）→ 理想配装被高估（配装差 + 建模误差）`
+  return `：实战击杀但计算器未达击杀线（伤害分 ${ps} / 60000）→ 口径偏保守（漏拐/漏机制）`
 })
 
 function fmt(n: number): string {

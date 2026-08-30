@@ -34,6 +34,7 @@
  */
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
 import { STANDARD_S_AGENT_IDS } from '@/composables/teamCompare'
+import { runLimitedGold } from '@/composables/limitedGold'
 import { CINEMA_GOLD_FILM } from '@/data/filmEconomy'
 
 /** 危局单房间分数上限（删失点；归档实测 max = 65000） */
@@ -262,20 +263,11 @@ export function computePullValue(input: PullValueInput): PullValueResult {
     }
 
     // 效率前沿（用户口径 4）：满档（= cap）投稿里限定金数最低的 run。
-    // 金数 = 限定 S 本体 1 + 影画 mindscape + 专武精炼 (phase−1)；常驻/A 不计。
-    const limitedGoldOf = (r: PvRun): number => {
-      let gold = 0
-      for (const m of r.team) {
-        if (!AGENT_RELEASE_NODE[m.agentId]) continue
-        if (STANDARD_S_AGENT_IDS.has(m.agentId)) continue
-        gold += 1 + (m.mindscape ?? 0) + Math.max(0, (m.phase ?? 1) - 1)
-      }
-      return gold
-    }
+    // 金数口径单一事实源 = limitedGold.runLimitedGold（限定 S 本体 1 + 影画 + 专武精炼−1；常驻/A 不计）。
     let frontierLowestGold: PvRoomFrontier | null = null
     for (const r of rs) {
       if (r.score < SCORE_CAP) continue
-      const gold = limitedGoldOf(r)
+      const gold = runLimitedGold(r.team)
       if (!frontierLowestGold || gold < frontierLowestGold.gold) {
         frontierLowestGold = {
           score: r.score,

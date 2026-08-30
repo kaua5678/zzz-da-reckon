@@ -6,7 +6,7 @@ import { ref, computed, watch } from 'vue'
 import type {
   Agent, WEngine, DriveDiscConfig, SkillDamageTarget, CharacterBuildRecommendation,
 } from '@/types/catalog'
-import { computeOptimalSubStats, getTemplate, type OptimizeSubstatsInput, type TeammateInfo } from '@/core/substatOptimizer'
+import { computeOptimalSubStats, getTemplate, type OptimizeSubstatsOutput, type TeammateInfo } from '@/core/substatOptimizer'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { calcPanel } from '@/core/panel'
 import { useCatalogStore } from './catalog'
@@ -148,6 +148,16 @@ export const AGENT_INTERACTION_DEFAULTS: Record<string, { parry: number; dodge: 
 /** 读角色交互次数默认值（无条目 = 全 0） */
 export function getInteractionDefaults(agentId: string): { parry: number; dodge: number; block: number; dual: number } {
   return AGENT_INTERACTION_DEFAULTS[agentId] ?? { parry: 0, dodge: 0, block: 0, dual: 0 }
+}
+
+/**
+ * 通用交互基准（无角色专属默认时按职业；用户口径 2026-08-29）：
+ * - 支援/防护：0 交互——支援上战场 1 秒 = 浪费主C 1 秒输出，时间越少越好。
+ * - 其余（强攻/异常/击破）：弹刀 6 + 闪反 10（主C 弹刀回喧响、击破弹刀加速失衡，都有用）。
+ */
+export function roleInteractionBaseline(specialty: string | undefined): { parry: number; dodge: number; block: number; dual: number } {
+  if (specialty === 'support' || specialty === 'defense') return { parry: 0, dodge: 0, block: 0, dual: 0 }
+  return { parry: 6, dodge: 10, block: 0, dual: 0 }
 }
 
 /** 推荐主词条 prop name → catalog statId 映射（含中文别名）。
@@ -566,15 +576,6 @@ export const useConfigStore = defineStore('config', () => {
       const agent = catalogStore.getAgent(char.agentId)
       const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
       if (agent) {
-        const { enabledTeammateBuffs, sourcePanelsByOwner } = buildTeammateBuffSourceContext(team.value, {
-          teammateBuffGroups: catalogStore.teammateBuffGroups,
-          driveDiscSetsMap: catalogStore.driveDiscSetsMap,
-          statRules: catalogStore.statRules,
-          getAgent: (id) => catalogStore.getAgent(id),
-          getWEngine: (id) => catalogStore.getWEngine(id),
-          isTeammateBuffEnabled: (id) => isTeammateBuffEnabled(id),
-        })
-
         // 使用融合贪心优化器（替代旧的固定步数启发式）
         const statCap = getMechanicSetting('optimizer.substatCap', 20)
         // 按有效词条数取对应档的总步数设置：0=自动使用该档默认值
@@ -585,50 +586,80 @@ export const useConfigStore = defineStore('config', () => {
           : 'optimizer.totalSteps4'
         const totalSteps = getMechanicSetting(totalStepsKey, 0)
 
-        // 构建队友信息（用于拐力计算）
-        const teammates: TeammateInfo[] = []
-        for (let i = 0; i < team.value.length; i++) {
-          if (i === slot) continue
-          const otherChar = team.value[i]
-          if (!otherChar?.agentId) continue
-          const otherAgent = catalogStore.getAgent(otherChar.agentId)
-          if (!otherAgent) continue
-          const otherWEngine = otherChar.wEngineId ? catalogStore.getWEngine(otherChar.wEngineId) : undefined
-          try {
-            const otherPanel = calcPanel(otherAgent, otherWEngine, otherChar.driveDisc,
-              catalogStore.driveDiscSetsMap, enabledTeammateBuffs, catalogStore.statRules,
-              { cinemaLevel: otherChar.cinemaLevel ?? 0, wEngineModLevel: otherChar.wEngineModLevel ?? 1 })
-            const p = otherPanel.inCombat
-            const cr = Math.min(100, Math.max(0, p.critRate)) / 100
-            const directEst = p.atk * (1 + cr * (p.critDmg / 100)) * (1 + (p.dmgBonus ?? 0) / 100)
-            const anomalyEst = p.atk * ((p.anomalyProficiency ?? 0) / 100) * (1 + (p.dmgBonus ?? 0) / 100)
-            const isAnomaly = otherAgent.specialty === 'anomaly'
-            teammates.push({
-              agentId: otherChar.agentId,
-              atk: p.atk,
-              expectedDamage: isAnomaly ? anomalyEst : directEst,
-              anomalyRelevant: isAnomaly,
-            })
-          } catch { /* 面板计算失败时跳过该队友 */ }
+        // 快速默认路径（用户口径 2026-08：最优词条固定——暴击叠满、其余按序顶上限；跳过贪心 + 队友面板）。
+        // 辅助/防护/击破伤害影响小、不跑贪心（击破「不一定给」——默认不给，转模源在模板首位吃满即可）。
+        const isDpsSpecialty = agent.specialty === 'attack' || agent.specialty === 'anomaly' || agent.specialty === 'rupture'
+        const useDefault = getMechanicSetting('optimizer.useDefault', 1) === 1 || !isDpsSpecialty
+
+        let optResult: OptimizeSubstatsOutput
+        if (useDefault) {
+          optResult = computeOptimalSubStats({
+            agent,
+            wEngine,
+            driveDiscConfig: char.driveDisc,
+            setsMap: catalogStore.driveDiscSetsMap,
+            teammateBuffs: [],
+            statRules: catalogStore.statRules,
+            statCap,
+            totalSteps,
+            useDefault: true,
+            config: { cinemaLevel: char.cinemaLevel, wEngineModLevel: char.wEngineModLevel },
+          })
+        } else {
+          const { enabledTeammateBuffs, sourcePanelsByOwner } = buildTeammateBuffSourceContext(team.value, {
+            teammateBuffGroups: catalogStore.teammateBuffGroups,
+            driveDiscSetsMap: catalogStore.driveDiscSetsMap,
+            statRules: catalogStore.statRules,
+            getAgent: (id) => catalogStore.getAgent(id),
+            getWEngine: (id) => catalogStore.getWEngine(id),
+            isTeammateBuffEnabled: (id) => isTeammateBuffEnabled(id),
+          })
+
+          // 构建队友信息（用于拐力计算）
+          const teammates: TeammateInfo[] = []
+          for (let i = 0; i < team.value.length; i++) {
+            if (i === slot) continue
+            const otherChar = team.value[i]
+            if (!otherChar?.agentId) continue
+            const otherAgent = catalogStore.getAgent(otherChar.agentId)
+            if (!otherAgent) continue
+            const otherWEngine = otherChar.wEngineId ? catalogStore.getWEngine(otherChar.wEngineId) : undefined
+            try {
+              const otherPanel = calcPanel(otherAgent, otherWEngine, otherChar.driveDisc,
+                catalogStore.driveDiscSetsMap, enabledTeammateBuffs, catalogStore.statRules,
+                { cinemaLevel: otherChar.cinemaLevel ?? 0, wEngineModLevel: otherChar.wEngineModLevel ?? 1 })
+              const p = otherPanel.inCombat
+              const cr = Math.min(100, Math.max(0, p.critRate)) / 100
+              const directEst = p.atk * (1 + cr * (p.critDmg / 100)) * (1 + (p.dmgBonus ?? 0) / 100)
+              const anomalyEst = p.atk * ((p.anomalyProficiency ?? 0) / 100) * (1 + (p.dmgBonus ?? 0) / 100)
+              const isAnomaly = otherAgent.specialty === 'anomaly'
+              teammates.push({
+                agentId: otherChar.agentId,
+                atk: p.atk,
+                expectedDamage: isAnomaly ? anomalyEst : directEst,
+                anomalyRelevant: isAnomaly,
+              })
+            } catch { /* 面板计算失败时跳过该队友 */ }
+          }
+
+          optResult = computeOptimalSubStats({
+            agent,
+            wEngine,
+            driveDiscConfig: char.driveDisc,
+            setsMap: catalogStore.driveDiscSetsMap,
+            teammateBuffs: enabledTeammateBuffs,
+            statRules: catalogStore.statRules,
+            statCap,
+            totalSteps,
+            teammates: teammates.length > 0 ? teammates : undefined,
+            config: {
+              cinemaLevel: char.cinemaLevel,
+              wEngineModLevel: char.wEngineModLevel,
+              sourcePanelsByOwner,
+            },
+          })
         }
 
-        const optInput: OptimizeSubstatsInput = {
-          agent,
-          wEngine,
-          driveDiscConfig: char.driveDisc,
-          setsMap: catalogStore.driveDiscSetsMap,
-          teammateBuffs: enabledTeammateBuffs,
-          statRules: catalogStore.statRules,
-          statCap,
-          totalSteps,
-          teammates: teammates.length > 0 ? teammates : undefined,
-          config: {
-            cinemaLevel: char.cinemaLevel,
-            wEngineModLevel: char.wEngineModLevel,
-            sourcePanelsByOwner,
-          },
-        }
-        const optResult = computeOptimalSubStats(optInput)
         for (const [statId, count] of Object.entries(optResult.subStatAllocation)) {
           if (count > 0) char.driveDisc.subStatAllocation[statId] = Math.max(0, Math.min(54, count))
         }

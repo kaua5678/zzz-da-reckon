@@ -1,7 +1,7 @@
 /**
  * 角色分数增量（charIncrement）真实归档集成测试：
  * - computeIncrementPass 全量：秒级完成（≤60s 防回归——这是「不卡死」的验收线）、快照恢复
- * - 期/房间/基底队规模合理；账号分 ≤ 195000（3 房 × 65000 上限）
+ * - 期/房间/基底队规模合理；账号分 ≤ 180000（3 房 × 60000 伤害分上限，操作分已剔除）
  * - 卡增量语义：卢西娅（1451，命破专拐）累计 > 0 且「禁用后被替代队顶上」至少出现一次
  */
 import { readFileSync } from 'node:fs'
@@ -37,7 +37,7 @@ describe('charIncrement · 真实归档集成', () => {
       expect(p.rooms.length).toBeGreaterThan(0)
       expect(p.rooms.length).toBeLessThanOrEqual(3)
       const total = p.rooms.reduce((s, r) => s + Math.max(...r.scores.map(x => x.score)), 0)
-      expect(total).toBeLessThanOrEqual(3 * 65000 + 1e-6)
+      expect(total).toBeLessThanOrEqual(3 * 60000 + 1e-6)
     }
     // 时间升序
     for (let i = 1; i < res.periods.length; i++) {
