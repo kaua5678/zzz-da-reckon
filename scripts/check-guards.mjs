@@ -57,8 +57,6 @@ export const FETCH_STUB_ALLOWLIST = [
   'src/composables/__tests__/seedInvariance.test.ts',
   'src/composables/__tests__/teamCompare.test.ts',
   'src/composables/__tests__/timeLedger.test.ts',
-  'src/core/__tests__/cinemaSkillLevel.test.ts',
-  'src/core/__tests__/resourceConfigSettings.test.ts',
   'src/mechanics/__tests__/anbyCinema1.test.ts',
   'src/mechanics/__tests__/banyue-preset-int.test.ts',
   'src/mechanics/__tests__/banyue-timeoverflow.debug.test.ts',
@@ -88,7 +86,6 @@ export const FETCH_STUB_ALLOWLIST = [
   'src/mechanics/__tests__/yeshuguang.test.ts',
   'src/mechanics/__tests__/yixuanSmoke.test.ts',
   'src/mechanics/__tests__/zhuYuan.test.ts',
-  'src/utils/__tests__/exportExcel.test.ts',
 ]
 
 function walkTestFiles(root) {
