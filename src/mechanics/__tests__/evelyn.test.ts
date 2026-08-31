@@ -4,6 +4,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   EVELYN_ADDITIONAL_DMG,
   EVELYN_C1_DECIBEL_GIFT,
+  EVELYN_C1_DEF_IGNORE,
   EVELYN_C4_CRIT_DMG,
   EVELYN_C6_FOLLOWUP_MULTIPLIER,
   EVELYN_CHAIN_MOVE_ID,
@@ -237,5 +238,53 @@ describe('伊芙琳完整计算链', () => {
     const calcC0 = useResourceCalc()
     const cfgC0 = calcC0.resourceConfig.value!.characters.find(c => c.agentId === '1321')!
     expect(cfgC0.initialDecibelGift).toBe(1000)
+  })
+})
+
+describe('伊芙琳滑块生效差分（防守卫冻结，SOP §3.5：改滑块→结果确实变）', () => {
+  it.each([
+    // [setting id, 影画等级, 面板字段, 满值期望差分]
+    ['evelyn.c1DefIgnoreCoverage', 1, 'enemyDefReduction', EVELYN_C1_DEF_IGNORE],
+    ['evelyn.c4ShieldCoverage', 4, 'critDmg', EVELYN_C4_CRIT_DMG],
+  ] as const)('%s → 面板差分', async (id, cinema, field, delta) => {
+    const { catalog, config } = await setup('1141', cinema)
+    const read = () => (computePanelPhases(0, config, catalog)!.inCombat as any)[field] ?? 0
+    config.setMechanicSetting(id, 1)
+    const on = read()
+    config.setMechanicSetting(id, 0)
+    const off = read()
+    expect(on - off).toBeCloseTo(delta, 1)
+    expect(on).toBeGreaterThan(off)
+  })
+
+  it('evelyn.garroteCount → 绞勒式行次数差分（I/II 型两行合计，滑块直调绞勒式总次数）', async () => {
+    const { config } = await setup('1141', 0)
+    const garroteTotalOf = () => {
+      const calc = useResourceCalc()
+      const rows = calc.resourceResult.value!.characters[0].executions
+        .filter(e => e.moveId === EVELYN_GARROTE_1_MOVE_ID || e.moveId === EVELYN_GARROTE_2_MOVE_ID)
+      return rows.reduce((s, e) => s + (e.count ?? 0), 0)
+    }
+    config.setMechanicSetting('evelyn.garroteCount', 8)
+    const on = garroteTotalOf()
+    config.setMechanicSetting('evelyn.garroteCount', 4)
+    const off = garroteTotalOf()
+    expect(on - off).toBe(4)
+    expect(on).toBeGreaterThan(off)
+  })
+
+  it('evelyn.c6FollowUpCount → C6 月辉丝·弦追击行次数差分', async () => {
+    const { config } = await setup('1141', 6)
+    const followUpOf = () => {
+      const calc = useResourceCalc()
+      const row = calc.resourceResult.value!.characters[0].executions.find(e => e.moveId === '1321_c6_moonlight_followup')
+      return row?.count ?? 0
+    }
+    config.setMechanicSetting('evelyn.c6FollowUpCount', 10)
+    const on = followUpOf()
+    config.setMechanicSetting('evelyn.c6FollowUpCount', 2)
+    const off = followUpOf()
+    expect(on - off).toBe(8)
+    expect(on).toBeGreaterThan(off)
   })
 })
