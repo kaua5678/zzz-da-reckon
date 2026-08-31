@@ -132,3 +132,26 @@ describe('本全管线', () => {
     expect(panel.critRate - out.critRate).toBe(0)
   })
 })
+
+describe('本滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('ben.exParrySuccessRate → 招架/未招架强特段次数互补差分（buildExecutions）', () => {
+    const mk = (rate: number) => {
+      const executions: any[] = []
+      benMechanic.buildExecutions!({
+        cfg: { benCinemaLevel: 0, benExParrySuccessRate: rate, benExActionTimes: {} },
+        state: { exSpecialCount: 4 },
+        executions,
+      } as never)
+      const parry = BEN_EX_PARRY_MOVE_IDS.reduce((s, id) => s + (executions.find(e => e.moveId === id)?.count ?? 0), 0)
+      const normal = BEN_EX_NORMAL_MOVE_IDS.reduce((s, id) => s + (executions.find(e => e.moveId === id)?.count ?? 0), 0)
+      return { parry, normal }
+    }
+    // 每组 2 个 moveId × count：成功组 count=exSpecialCount×rate（每组合计 ×2）
+    const full = mk(1)
+    const half = mk(0.5)
+    const off = mk(0)
+    expect(full).toEqual({ parry: 4 * 2, normal: 0 })
+    expect(half).toEqual({ parry: 2 * 2, normal: 2 * 2 })
+    expect(off).toEqual({ parry: 0, normal: 4 * 2 })
+  })
+})

@@ -103,3 +103,19 @@ describe('真斗（1441）炽心资源与耗血暴伤', () => {
     expect(rf.gains['zhendou_c6_remnant_gain']).toBeGreaterThan(0)
   })
 })
+describe('甄朱滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('zhendou.c1LossCoverage → 影画1火伤差分（上限 20% × 覆盖率，applyZhendouPanel）', async () => {
+    const { config } = await setupHarness([{ agentId: '1441', cinemaLevel: 1 }, '', ''])
+    const read = () => {
+      const calc = useResourceCalc()
+      const p = calc.panels.value[0] as any
+      return p?.fireDmg ?? 0
+    }
+    config.setMechanicSetting('zhendou.c1LossCoverage', 1)
+    const on = read()
+    config.setMechanicSetting('zhendou.c1LossCoverage', 0)
+    const off = read()
+    expect(on - off).toBeCloseTo(20, 1)
+    expect(on).toBeGreaterThan(off)
+  })
+})

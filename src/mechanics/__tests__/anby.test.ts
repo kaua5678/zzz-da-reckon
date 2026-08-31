@@ -4,7 +4,10 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   computeAnbyParallelCircuitEnergy,
   computeAnbyC4ChargeEnergy,
+  ANBY_C2_EX_STUN,
+  ANBY_C2_LIGHTNING_DMG,
   ANBY_CORE_STUN_BONUS,
+  anbyMechanic,
 } from '../agents/anby'
 
 describe('安比（1011）并联电路/电荷传导 纯函数', () => {
@@ -61,5 +64,30 @@ describe('安比（1011）波动电压/影画2 招式限定（patchExecutions）
     const basic2 = c2.executions.find(e => e.moveId === 'basic_attack')
     // 默认覆盖率 0.5 → +15
     expect((basic2?.dmgBonus ?? 0)).toBeGreaterThan(0)
+  })
+})
+
+describe('安比滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('anby.c2StunCoverage → 影画2 落雷增伤/强特失衡互补差分（patchExecutions 直调）', () => {
+    const mk = (cov: number) => {
+      const executions: any[] = [
+        { moveId: 'basic_attack', dmgBonus: 0, stunBuildUpBonus: 0 },
+        { moveId: '1011007', dmgBonus: 0, stunBuildUpBonus: 0 },
+      ]
+      anbyMechanic.patchExecutions!({
+        cfg: { anbyCinemaLevel: 2, anbyC2StunCoverage: cov },
+        state: {},
+        executions,
+      } as never)
+      return {
+        basicDmg: executions[0].dmgBonus ?? 0,
+        exStun: (executions[1].stunBuildUpBonus ?? 0) - 64, // 波动电压 +64 恒定，扣除本底
+      }
+    }
+    const on = mk(1)
+    const off = mk(0)
+    // 落雷增伤随覆盖率 0→1：+0 → +30；强特失衡互补：+10 → +0
+    expect(on.basicDmg - off.basicDmg).toBeCloseTo(ANBY_C2_LIGHTNING_DMG, 1)
+    expect(off.exStun - on.exStun).toBeCloseTo(ANBY_C2_EX_STUN, 1)
   })
 })

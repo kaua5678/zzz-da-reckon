@@ -216,3 +216,21 @@ describe('橘福福额外能力门控（面板 additionalAbilityActive）', () =
     expect(p.additionalAbilityActive).toBe(1)
   })
 })
+
+describe('橘福福滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('jufufu.frontSwitchRatio → 虎威次数差分（切上频率越高块越短、虎威越多）', () => {
+    const base = { exSpecialCount: 0, ultimateCount: 0, parryCount: 0, cinemaLevel: 0, aweInitial: 0, c2WeishiPerUlt: 0 }
+    const dense = computeJufufuCycle({
+      backstageTime: 100, frontlineTime: 60, effectiveTotalTime: 160, frontActionCount: 12,
+      frontSwitchRatio: 1, ...base,
+    })
+    const rare = computeJufufuCycle({
+      backstageTime: 100, frontlineTime: 60, effectiveTotalTime: 160, frontActionCount: 12,
+      frontSwitchRatio: 0.2, ...base,
+    })
+    // 频率 1 → 块长 5s → 20 次；频率 0.2 → 块长 25s → 11 次
+    expect(dense.huweiHits).toBe(Math.floor(100 / (4 + 0.375 * 2.5)))
+    expect(rare.huweiHits).toBe(Math.floor(100 / (4 + 0.375 * 12.5)))
+    expect(dense.huweiHits).toBeGreaterThan(rare.huweiHits)
+  })
+})

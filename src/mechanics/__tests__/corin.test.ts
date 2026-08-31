@@ -302,3 +302,14 @@ describe('可琳额外能力 buff 轴（轴模式：轴内全招式+35%，般岳
     for (const row of outAxis) expect(row.note ?? '').not.toContain('失衡增伤')
   })
 })
+
+describe('可琳滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  const base = { cinemaLevel: 1, additionalActive: true, coreSawCoverage: 1, additionalStunCoverage: 1, c2ResCoverage: 1, c4EnergyTotal: 0, c6DetonationCount: 0, c6ChargeStacks: 0 }
+
+  it('corin.c1Coverage → 影画1增伤差分（+30% × 覆盖率）', () => {
+    const on = computeCorinCycle({ ...base, c1Coverage: 1 })
+    const off = computeCorinCycle({ ...base, c1Coverage: 0 })
+    expect(on.c1Dmg - off.c1Dmg).toBe(CORIN_C1_DMG)
+    expect(off.c1Dmg).toBe(0)
+  })
+})

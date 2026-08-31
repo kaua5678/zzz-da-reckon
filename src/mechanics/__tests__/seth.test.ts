@@ -144,3 +144,22 @@ describe('赛斯完整计算链', () => {
     expect(on - off).toBeCloseTo(SETH_SHIELD_PROFICIENCY, 1)
   })
 })
+
+describe('赛斯滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  const base = { cinemaLevel: 6, additionalActive: true, shieldCoverage: 1 }
+
+  it('seth.additionalResCoverage → 额外能力减抗差分（按覆盖率缩放）', () => {
+    const on = computeSethCycle({ ...base, additionalResCoverage: 1, c6FinishCount: 6 })
+    const half = computeSethCycle({ ...base, additionalResCoverage: 0.5, c6FinishCount: 6 })
+    const off = computeSethCycle({ ...base, additionalResCoverage: 0, c6FinishCount: 6 })
+    expect(on.additionalResReduction).toBe(SETH_ADDITIONAL_RES_REDUCTION)
+    expect(half.additionalResReduction).toBeCloseTo(SETH_ADDITIONAL_RES_REDUCTION * 0.5, 5)
+    expect(off.additionalResReduction).toBe(0)
+  })
+
+  it('seth.c6FinishCount → 影画6终结差分（次数入账本）', () => {
+    const on = computeSethCycle({ ...base, additionalResCoverage: 1, c6FinishCount: 6 })
+    const off = computeSethCycle({ ...base, additionalResCoverage: 1, c6FinishCount: 0 })
+    expect(on.c6FinishCount - off.c6FinishCount).toBe(6)
+  })
+})

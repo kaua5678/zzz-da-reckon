@@ -131,3 +131,22 @@ describe('普罗米娅 影画4/6 异常结算区（2026-08-26）', () => {
     expect(promia.decibelSource.unshareableBonus).toBeGreaterThanOrEqual(releaseTotal * 100 - 200)
   })
 })
+
+describe('普罗米娅滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('promia.releaseCountOverride → 绝裁次数差分（手动覆盖优先于寒蚀反推）', async () => {
+    const { config } = await setupHarness([{ agentId: '1541', cinemaLevel: 0 }, { agentId: '1181' }])
+    for (const b of config.globalBuffs) b.enabled = false
+    const verdictCountOf = () => {
+      const calc = useResourceCalc()
+      const promia = calc.resourceResult.value!.characters.find(c => c.agentId === '1541')!
+      return promia.executions.find(e => e.moveId === PROMIA_VERDICT_MOVE_ID)?.count ?? 0
+    }
+    config.setMechanicSetting('promia.releaseCountOverride', 7)
+    const on = verdictCountOf()
+    config.setMechanicSetting('promia.releaseCountOverride', 3)
+    const off = verdictCountOf()
+    expect(on).toBe(7)
+    expect(off).toBe(3)
+    expect(on).toBeGreaterThan(off)
+  })
+})

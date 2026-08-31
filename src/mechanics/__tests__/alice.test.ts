@@ -78,3 +78,21 @@ describe('爱丽丝畏缩 DOT', () => {
     }
   })
 })
+
+describe('爱丽丝滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('alice.cinema6PerStateCount → 6命决胜额外攻击次数差分（damagePool 决胜追击行）', async () => {
+    const { config } = await setupHarness([{ agentId: '1401', cinemaLevel: 6 }, { agentId: '1181' }])
+    const extraOf = () => {
+      const calc = useResourceCalc()
+      const row = calc.damagePoolRows.value.find(r => r.id === 'alice-c6-decisive-extra-attack')
+      return row?.count ?? 0
+    }
+    config.setMechanicSetting('alice.cinema6PerStateCount', 6)
+    const on = extraOf()
+    config.setMechanicSetting('alice.cinema6PerStateCount', 2)
+    const off = extraOf()
+    expect(on).toBeGreaterThan(0)
+    // 总次数 = 状态进入次数 × perStateCount：6/2 档位比值 3
+    expect(on / off).toBeCloseTo(3, 5)
+  })
+})

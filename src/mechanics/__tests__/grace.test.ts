@@ -208,3 +208,20 @@ describe('格莉丝影画 C1/C2/C4/C6（2026-08-27 用户口径补录）', () =>
     if (exContrib) expect(exContrib.baseBuildUp).toBeCloseTo(215.01, 2)
   })
 })
+
+describe('格莉丝滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('grace.shockStacks → 感电异常增伤差分（applyGracePanel settings 通道，+18%/层×≤2）', async () => {
+    const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1211' }, ''])
+    const read = () => {
+      const calc = useResourceCalc()
+      const p = calc.panels.value[0] as any
+      return p?.anomalyDmgBonus ?? 0
+    }
+    config.setMechanicSetting('grace.shockStacks', 2)
+    const on = read()
+    config.setMechanicSetting('grace.shockStacks', 0)
+    const off = read()
+    expect(on - off).toBeCloseTo(36, 1)
+    expect(on).toBeGreaterThan(off)
+  })
+})

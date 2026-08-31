@@ -189,3 +189,22 @@ describe('爱芮完整计算链', () => {
     expect(executions[2].dmgBonus).toBe(0)
   })
 })
+
+describe('艾莲儿滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('aire.cheerEnergyBonus → 绝对音准#3 次数差分（应援能量额外 → pitchCount）', async () => {
+    const { config } = await setupHarness([{ agentId: '1501', cinemaLevel: 0 }, { agentId: '1181' }])
+    const pitchOf = () => {
+      const calc = useResourceCalc()
+      const aire = calc.resourceResult.value!.characters.find(c => c.agentId === '1501')!
+      const evt = (aire.anomalyEventExecutions ?? []).find(e => e.eventId === 'aire_absolute_pitch_release')
+      return evt?.count ?? 0
+    }
+    config.setMechanicSetting('aire.cheerEnergyBonus', 200)
+    const on = pitchOf()
+    config.setMechanicSetting('aire.cheerEnergyBonus', 0)
+    const off = pitchOf()
+    // +200 应援能量 → +100 次绝对音准（每次耗 2）
+    expect(on - off).toBe(100)
+    expect(on).toBeGreaterThan(off)
+  })
+})

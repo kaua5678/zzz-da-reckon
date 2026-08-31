@@ -3,6 +3,8 @@ import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { soldier11Mechanic, patchSoldier11Executions } from '@/mechanics/agents/soldier11'
+import { setupHarness } from '@/test/harness'
+import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
@@ -135,5 +137,39 @@ describe('「11号」额外能力·燎原全管线：同属性队友门控', () 
     config.syncTeammateBuffsFromTeam()
     const baseline = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(p.fireDmg).toBe(baseline.fireDmg)
+  })
+})
+
+describe('「11号」滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('soldier11.c2StackCoverage → 影画2普攻/闪反增伤差分（patchExecutions +36×覆盖率）', () => {
+    const mk = (cov: number) => {
+      const executions: any[] = [{ moveId: '1041001', category: 'basic', dmgBonus: 0 }]
+      patchSoldier11Executions({
+        cfg: { soldier11CinemaLevel: 2, 'setting:soldier11.c2StackCoverage': cov },
+        state: {},
+        executions,
+      } as never)
+      return executions[0].dmgBonus ?? 0
+    }
+    expect(mk(1)).toBeCloseTo(36, 5)
+    expect(mk(0.5)).toBeCloseTo(18, 5)
+    expect(mk(0)).toBe(0)
+  })
+})
+
+describe('「11号」燎原火滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('soldier11.prairieFireStunCoverage → 攻击失衡敌人增伤差分（computePanelPhases 1041 分支）', async () => {
+    // 火队友（1171 柏妮思）激活燎原额外能力
+    const { catalog, config } = await setupHarness([{ agentId: '1041', cinemaLevel: 0 }, { agentId: '1171' }])
+    const read = () => {
+      const p = computePanelPhases(0, config, catalog)!.inCombat as any
+      return p.fireDmg ?? 0
+    }
+    config.setMechanicSetting('soldier11.prairieFireStunCoverage', 1)
+    const on = read()
+    config.setMechanicSetting('soldier11.prairieFireStunCoverage', 0)
+    const off = read()
+    expect(on - off).toBeCloseTo(22.5, 1)
+    expect(on).toBeGreaterThan(off)
   })
 })

@@ -116,27 +116,6 @@ export function findForbiddenTracked(trackedPaths) {
  * 若该任务收尾后此二行仍在且无测试，即真实缺口。
  */
 export const UNTESTED_SETTINGS_ALLOWLIST = [
-  "aire.ts::aire.cheerEnergyBonus",
-  "alice.ts::alice.cinema6PerStateCount",
-  "anby.ts::anby.c2StunCoverage",
-  "anbyZero.ts::anbyZero.cangguangCount",
-  "ben.ts::ben.exParrySuccessRate",
-  "billy.ts::billy.c4ExCrit",
-  "billy.ts::billy.coreCrouchCoverage",
-  "corin.ts::corin.c1Coverage",
-  "grace.ts::grace.shockStacks",
-  "lycaon.ts::lycaon.c1Coverage",
-  "nekomata.ts::nekomata.c4CritRateCoverage",
-  "orphie.ts::orphie.bladeLinkRatio",
-  "specPanelBuffs.ts::jufufu.frontSwitchRatio",
-  "promia.ts::promia.releaseCountOverride",
-  "seth.ts::seth.additionalResCoverage",
-  "seth.ts::seth.c6FinishCount",
-  "soldier11.ts::soldier11.c2StackCoverage",
-  "soldier11.ts::soldier11.prairieFireStunCoverage",
-  "velina.ts::velina.cinema2CorrosionRate",
-  "yaojiayin.ts::yaojiayin.ariaCoverage",
-  "zhendou.ts::zhendou.c1LossCoverage",
 ]
 
 /** 从 mechanics 模块源码抽 settings 块里的 id（字符串字面量 + 常量引用两种形态） */

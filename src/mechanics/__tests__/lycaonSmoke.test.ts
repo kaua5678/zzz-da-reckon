@@ -241,3 +241,28 @@ describe('莱卡恩命座与乘区（用户口径）', () => {
     expect(calc.teamTotalDamage.value).toBeGreaterThan(0)
   })
 })
+
+describe('莱卡恩滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('lycaon.c1Coverage → 影画1强化行差分（覆盖 1 有 +12% 强化行，覆盖 0 无）', async () => {
+    const read = () => {
+      const config = useConfigStore()
+      config.team[0] = { slot: 0, agentId: '1141', cinemaLevel: 1, ...baseConfig } as any
+      config.team[1] = { slot: 1, agentId: '1011', cinemaLevel: 0, ...baseConfig } as any
+      config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+      config.syncTeammateBuffsFromTeam()
+      config.enemy.stunCountLock = 4
+      const calc = useResourceCalc()
+      const lycaon = calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
+      // 强化行识别：C1 强特行带 stunBuildUpBonus 12/22（普通行 0）
+      const strongRows = lycaon.executions.filter(e => e.moveId === '1141015' && (e.stunBuildUpBonus ?? 0) > 0)
+      return strongRows.reduce((s, e) => s + (e.count ?? 0), 0)
+    }
+    const config = useConfigStore()
+    config.setMechanicSetting('lycaon.c1Coverage', 1)
+    const on = read()
+    config.setMechanicSetting('lycaon.c1Coverage', 0)
+    const off = read()
+    expect(on).toBeGreaterThan(0)
+    expect(off).toBe(0)
+  })
+})

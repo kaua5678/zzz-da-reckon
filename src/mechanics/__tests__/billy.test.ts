@@ -137,3 +137,23 @@ describe('比利完整计算链', () => {
     expect(dmg6 - dmg0).toBeCloseTo(BILLY_C6_DMG_PER_STACK * BILLY_C6_MAX_STACKS, 1)
   })
 })
+
+describe('比利滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  const base = { cinemaLevel: 4, additionalActive: true, chainCountTotal: 2, ultimateCount: 1 }
+
+  it('billy.coreCrouchCoverage → 蹲姿核心增伤差分（按覆盖率缩放）', () => {
+    const on = computeBillyCycle({ ...base, coreCrouchCoverage: 1, c4ExCrit: 32 })
+    const off = computeBillyCycle({ ...base, coreCrouchCoverage: 0, c4ExCrit: 32 })
+    expect(on.coreCrouchDmg).toBe(BILLY_CORE_CROUCH_DMG)
+    expect(off.coreCrouchDmg).toBe(0)
+  })
+
+  it('billy.c4ExCrit → 影画4强特暴击率差分（封顶上限内线性）', () => {
+    const on = computeBillyCycle({ ...base, coreCrouchCoverage: 1, c4ExCrit: 32 })
+    const half = computeBillyCycle({ ...base, coreCrouchCoverage: 1, c4ExCrit: 16 })
+    const off = computeBillyCycle({ ...base, coreCrouchCoverage: 1, c4ExCrit: 0 })
+    expect(on.c4ExCritRate).toBeCloseTo(Math.min(BILLY_C4_EX_CRIT_MAX, 32), 5)
+    expect(half.c4ExCritRate).toBeCloseTo(16, 5)
+    expect(off.c4ExCritRate).toBe(0)
+  })
+})

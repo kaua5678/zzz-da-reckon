@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { mockStaticFetch, newPinia } from '@/test/harness'
+import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
@@ -180,5 +180,23 @@ describe('耀嘉音面板接线', () => {
     const { catalog, config } = await setup(4, '1261')
     const mate = computePanelPhases(0, config, catalog)!.inCombat
     expect(mate.anomalyBuildUpEfficiency).toBeGreaterThan(0)
+  })
+})
+
+describe('耀嘉音滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('yaojiayin.ariaCoverage → 咏叹华彩全队增伤/暴伤差分（computePanelPhases 1311 分支）', async () => {
+    const { catalog, config } = await setupHarness([{ agentId: '1311', cinemaLevel: 0 }, { agentId: '1141' }, ''])
+    const read = () => {
+      const p = computePanelPhases(1, config, catalog)!.inCombat as any
+      return { dmg: p.dmgBonus ?? 0, crit: p.critDmg ?? 0 }
+    }
+    config.setMechanicSetting('yaojiayin.ariaCoverage', 1)
+    const on = read()
+    config.setMechanicSetting('yaojiayin.ariaCoverage', 0)
+    const off = read()
+    // 0命技能等级 12 → 伤害 +20、暴伤 +25（各 ×覆盖率）
+    expect(on.dmg - off.dmg).toBeCloseTo(20, 1)
+    expect(on.crit - off.crit).toBeCloseTo(25, 1)
+    expect(on.dmg).toBeGreaterThan(off.dmg)
   })
 })

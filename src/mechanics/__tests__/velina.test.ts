@@ -78,3 +78,16 @@ describe('维琳娜风化伤害与命座', () => {
     expect(d1).toBeGreaterThan(d0)
   })
 })
+
+describe('维琳娜滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('velina.cinema2CorrosionRate → 影画2风触侵蚀差分（c2WindGainExpected 随比率线性）', () => {
+    const base = { turbulence: 6, windTriggers: 9, cinema6: false } as const
+    const full = simulateVelinaCorrosionState(base.turbulence, base.windTriggers, true, base.cinema6, 1)
+    const half = simulateVelinaCorrosionState(base.turbulence, base.windTriggers, true, base.cinema6, 0.5)
+    const off = simulateVelinaCorrosionState(base.turbulence, base.windTriggers, true, base.cinema6, 0)
+    expect(full.c2WindGainExpected).toBeCloseTo(9, 5)
+    expect(half.c2WindGainExpected).toBeCloseTo(4.5, 5)
+    expect(off.c2WindGainExpected).toBe(0)
+    expect(full.c2WindGainExpected).toBeGreaterThan(off.c2WindGainExpected)
+  })
+})

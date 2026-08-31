@@ -295,3 +295,25 @@ describe('奥菲丝倍率融合（2026-08-27）', () => {
     expect(ult2.count).toBe(2) // 大招 #1 2 次 → #2 2 次（合一）
   })
 })
+
+describe('奥菲丝滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('orphie.bladeLinkRatio → 影画6火刀衔接灼红旋涡次数差分（buildExecutions）', () => {
+    const mk = (ratio: number) => {
+      const executions: any[] = []
+      orphieMechanic.buildExecutions!({
+        cfg: { orphieCinemaLevel: 6, 'setting:orphie.bladeLinkRatio': ratio },
+        state: { basicAttackTime: 60 },
+        executions,
+      } as never)
+      const rows = executions.filter(e => (e.skillTableNote ?? '').includes('火刀衔接') || (e.moveName ?? '').includes('火刀衔接'))
+      return rows.reduce((s, e) => s + (e.count ?? 0), 0)
+    }
+    const on = mk(1)
+    const half = mk(0.5)
+    const off = mk(0)
+    // 60s 平A → 30 次火刀；全衔接 30，半衔接 15，0 无行
+    expect(on).toBe(30)
+    expect(half).toBe(15)
+    expect(off).toBe(0)
+  })
+})

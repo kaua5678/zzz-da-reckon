@@ -170,3 +170,14 @@ describe('零号·安比全队追加攻击增伤（teamBuff 全队通道）', ()
     expect(p6p.dmgBonus__additionalAttack).toBeGreaterThanOrEqual(50)
   })
 })
+
+describe('零号安比滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  const base = { cinemaLevel: 0, potentialLevel: 6, exSpecialCount: 2, additionalActive: true, silverStarCoverage: 1 }
+
+  it('anbyZero.cangguangCount → 白雷总量差分（苍光次数直接入白雷池 → 雷缀次数）', () => {
+    const on = computeAnbyZeroCycle({ ...base, cangguangCount: 6 })
+    const off = computeAnbyZeroCycle({ ...base, cangguangCount: 0 })
+    expect(on.whiteLightningTotal - off.whiteLightningTotal).toBe(6)
+    expect(on.raijituCount).toBeGreaterThan(off.raijituCount)
+  })
+})

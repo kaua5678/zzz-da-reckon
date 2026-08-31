@@ -186,3 +186,20 @@ describe('永续面板项与猫步秀（2026-08-23 第二批口供）', () => {
     expect(inStun!.count).toBeLessThan(outStun!.count)
   })
 })
+
+describe('猫又滑块生效差分（防守卫冻结，SOP §3.5）', () => {
+  it('nekomata.c4CritRateCoverage → 影画4暴击率差分（applyNekoPanel settings 通道，+14×覆盖率）', async () => {
+    const { config } = await setupHarness([{ agentId: '1021', cinemaLevel: 4 }, '', ''])
+    const read = () => {
+      const calc = useResourceCalc()
+      const p = calc.panels.value[0] as any
+      return p?.critRateBonus ?? 0
+    }
+    config.setMechanicSetting('nekomata.c4CritRateCoverage', 1)
+    const on = read()
+    config.setMechanicSetting('nekomata.c4CritRateCoverage', 0)
+    const off = read()
+    expect(on - off).toBeCloseTo(14, 1)
+    expect(on).toBeGreaterThan(off)
+  })
+})
