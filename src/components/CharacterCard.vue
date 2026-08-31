@@ -325,7 +325,8 @@ function handleCardClick() {
 .char-name {
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  /* 原 #fff：明亮模式卡片是白底，白字不可见 */
+  color: var(--app-text-solid);
   line-height: 1.3;
   flex: 1;
 }

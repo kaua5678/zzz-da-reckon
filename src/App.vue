@@ -45,8 +45,12 @@ const sharedCommon: CommonOverrides = {
   borderRadius: '10px',
   borderRadiusSmall: '8px',
   fontSize: '13px',
+  // 必须与 global.css 的 --app-font-sans 逐字一致：n-global-style 会用这里的值覆盖 body 的
+  // font-family，两处分叉就会出现「Naive 组件一套字体、自定义组件另一套」。
+  // 原栈首位的 "Inter" 从未引入（零 @font-face / 零 CDN），已移除。
+  // 一致性由 check-tokens 的 font-stack-parity 判据机器校验（规则 11）。
   fontFamily:
-    '"Inter", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+    'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif',
 }
 
 /** 夜间专属：slate-900 海军蓝底 + 亮电蓝主色（与 global.css 的 app/wa 系列变量同口径） */

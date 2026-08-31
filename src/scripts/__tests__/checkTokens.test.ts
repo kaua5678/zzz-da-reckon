@@ -13,11 +13,13 @@ import {
   WA_REF_BASELINE,
   contrastRatio,
   countHardcodedColors,
+  extractAppFontFamily,
   extractDeclarationRegions,
   extractTemplateSource,
   findFontSizes,
   findVarRefs,
   flatten,
+  normalizeFontStack,
   parseColor,
   parseGlobalTokens,
   relativeLuminance,
@@ -182,6 +184,25 @@ html.light {
   })
 })
 
+describe('字体栈一致性（规则 11：global.css ↔ App.vue 单一事实源）', () => {
+  it('normalizeFontStack 抹平引号/折行/大小写，只比字体序列', () => {
+    const a = 'system-ui, -apple-system,\n  "Segoe UI", Roboto,\n  "PingFang SC", sans-serif'
+    const b = `system-ui, -apple-system, 'Segoe UI', Roboto, "PingFang SC", sans-serif`
+    expect(normalizeFontStack(a)).toBe(normalizeFontStack(b))
+    expect(normalizeFontStack(a)).toBe('system-ui, -apple-system, segoe ui, roboto, pingfang sc, sans-serif')
+  })
+
+  it('字体序列不同则判为分叉（不是只比长度）', () => {
+    expect(normalizeFontStack('Inter, sans-serif')).not.toBe(normalizeFontStack('system-ui, sans-serif'))
+  })
+
+  it('extractAppFontFamily 抽单引号/双引号两种写法', () => {
+    expect(extractAppFontFamily(`fontFamily:\n    'Inter, sans-serif',`)).toBe('Inter, sans-serif')
+    expect(extractAppFontFamily(`fontFamily: "Inter, sans-serif",`)).toBe('Inter, sans-serif')
+    expect(extractAppFontFamily('const a = 1')).toBeNull()
+  })
+})
+
 describe('scanVueFiles（口径：样式声明区 + 模板，排除脚本）', () => {
   it('脚本里的属性色板不计入硬编码', () => {
     const files = scanVueFiles(process.cwd(), FONT_SCALE)
@@ -199,11 +220,11 @@ describe('scanVueFiles（口径：样式声明区 + 模板，排除脚本）', (
 })
 
 describe('仓库级自洽（真实扫描）', () => {
-  it('六条判据全绿（tokens-defined / theme-parity / 硬编码棘轮 / 字号棘轮 / 对比度 / 别名棘轮）', () => {
+  it('七条判据全绿（tokens-defined / theme-parity / 硬编码棘轮 / 字号棘轮 / 对比度 / 别名棘轮 / 字体栈一致）', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(6)
+    expect(results).toHaveLength(7)
   })
 
   it('--wa-* 引用数不超过冻结基线（别名层推进方向）', () => {

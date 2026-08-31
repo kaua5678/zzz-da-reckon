@@ -110,6 +110,25 @@ export function findVarRefs(text) {
   return [...text.matchAll(/var\(\s*(--[\w-]+)/g)].map(m => m[1])
 }
 
+/**
+ * 归一化字体栈用于比对：抹掉引号、折行与大小写差异，只比字体序列本身。
+ * （global.css 里的值为了可读性折了行，App.vue 里是单行——直接字符串比会假红。）
+ */
+export function normalizeFontStack(input) {
+  return String(input)
+    .replace(/\s+/g, ' ')
+    .replace(/["']/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/,\s*$/, '')
+}
+
+/** 从 App.vue 源码抽 common.fontFamily 的字面值 */
+export function extractAppFontFamily(appSource) {
+  const m = appSource.match(/fontFamily\s*:\s*(['"])((?:[^\\]|\\.)*?)\1/)
+  return m ? m[2] : null
+}
+
 /** 字号声明值（px / rem / em），用于尺度判据 */
 export function findFontSizes(css) {
   return [...css.matchAll(/font-size\s*:\s*([\d.]+)(px|rem|em)/g)].map(m => ({
@@ -292,11 +311,11 @@ export const HARDCODED_BASELINE = {
   'src/components/AppHeader.vue': 3,
   'src/components/BossCard.vue': 8,
   'src/components/BossSelectCard.vue': 8,
-  'src/components/CharacterCard.vue': 5,
+  'src/components/CharacterCard.vue': 4,
   'src/components/FinalPanel.vue': 9,
   'src/components/ImpactChart.vue': 5,
   'src/components/MarginalUtilityCard.vue': 1,
-  'src/components/ResourceResultCard.vue': 8,
+  'src/components/ResourceResultCard.vue': 7,
   'src/components/StatPanel.vue': 11,
   'src/views/AttributeConfigPage.vue': 4,
   'src/views/BossHpInflationPage.vue': 1,
@@ -351,8 +370,8 @@ export const FONT_SIZE_BASELINE = {
  */
 export const WA_REF_BASELINE = 449
 
-/** var() 引用总数基线（2026-08-31 实测 494；修掉 3 处死引用/硬编码后 495）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 495
+/** var() 引用总数基线（2026-08-31 实测 494；修死引用与白底白字后 497）。只增不减，防把变量改回字面量 */
+export const VAR_TOTAL_BASELINE = 497
 
 // ---------------------------------------------------------------- 判据
 
@@ -532,6 +551,35 @@ export function runAllChecks(root = ROOT) {
     name: `alias ratchet (--wa-* 直接引用 ≤${WA_REF_BASELINE}，var() 总数 ≥${VAR_TOTAL_BASELINE}) 实到 wa=${waRefs} var=${varTotal}`,
     ok: aliasDetail.length === 0,
     detail: aliasDetail,
+  })
+
+  // ---- 7. font-stack-parity ----
+  // 字体栈在 global.css(--app-font-sans) 与 App.vue(common.fontFamily) 各有一份，CSS 与 JS
+  // 无法互相引用，只能靠机器校验兜住规则 11。Naive 的 n-global-style 会用 App.vue 的值覆盖
+  // body，两处分叉 = Naive 组件与自定义组件两套字体。
+  const fontStackDetail = []
+  const cssFont = darkTokens.get('--app-font-sans') ?? null
+  const cssFontLight = lightTokens.get('--app-font-sans') ?? null
+  try {
+    const appFont = extractAppFontFamily(readFileSync(join(root, 'src/App.vue'), 'utf8'))
+    if (cssFont === null) {
+      fontStackDetail.push(`  ✗ global.css 缺少 --app-font-sans → 在 :root 与 html.light 各补一份`)
+    }
+    if (cssFontLight !== null && cssFont !== null && normalizeFontStack(cssFont) !== normalizeFontStack(cssFontLight)) {
+      fontStackDetail.push(`  ✗ --app-font-sans 双主题不一致：:root 与 html.light 值不同`)
+    }
+    if (appFont === null) {
+      fontStackDetail.push(`  ✗ App.vue 未设置 common.fontFamily → Naive 会用内置字体覆盖 body`)
+    } else if (cssFont !== null && normalizeFontStack(appFont) !== normalizeFontStack(cssFont)) {
+      fontStackDetail.push(`  ✗ 字体栈分叉：App.vue 的 common.fontFamily 与 global.css 的 --app-font-sans 不一致`)
+      fontStackDetail.push(`      App.vue    : ${normalizeFontStack(appFont)}`)
+      fontStackDetail.push(`      global.css : ${normalizeFontStack(cssFont)}`)
+    }
+  } catch { /* App.vue 缺失由 build 负责报错 */ }
+  results.push({
+    name: `font-stack-parity (规则 11: 字体栈单一事实源 global.css ↔ App.vue)`,
+    ok: fontStackDetail.length === 0,
+    detail: fontDetail,
   })
 
   return { results, ok: results.every(r => r.ok), stats: { scanned, varTotal, waRefs, darkTokens, lightTokens } }

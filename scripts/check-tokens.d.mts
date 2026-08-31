@@ -12,6 +12,8 @@ export declare function extractTemplateSource(source: string): string
 export declare function extractDeclarationRegions(css: string): string[]
 export declare function countHardcodedColors(text: string): number
 export declare function findVarRefs(text: string): string[]
+export declare function normalizeFontStack(input: string): string
+export declare function extractAppFontFamily(appSource: string): string | null
 export declare function findFontSizes(css: string): { value: string; num: number; unit: string }[]
 
 // 令牌表

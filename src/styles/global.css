@@ -30,6 +30,15 @@
   --scrollbar-thumb-hover: rgba(148, 163, 184, 0.42);
   --link-color: #6cb2ff;
 
+  /* 字体栈：系统优先，CJK 兜底。原栈首位的 "Inter" 从未被引入（零 @font-face / 零 CDN），
+     实际一直落到 PingFang/雅黑——把不存在的字体写在首位只会误导后来人。
+     单一事实源：src/App.vue 的 common.fontFamily 必须与本值逐字一致
+     （Naive 的 n-global-style 会覆盖 body 的 font-family，两处不一致就会出现
+     「Naive 组件一套字体、自定义组件另一套」的撕裂）；一致性由 check-tokens 的
+     font-stack-parity 判据机器校验。 */
+  --app-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+
   --wa-15: rgba(255, 255, 255, 0.015);
   --wa-20: rgba(255, 255, 255, 0.02);
   --wa-25: rgba(255, 255, 255, 0.025);
@@ -100,6 +109,10 @@ html.light {
   --scrollbar-thumb-hover: rgba(51, 65, 85, 0.34);
   --link-color: #2f6ee0;
 
+  /* 与 :root 同值（字体栈与主题无关，双主题各一份只为满足 theme-parity 判据） */
+  --app-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+
   --wa-15: rgba(23, 26, 31, 0.015);
   --wa-20: rgba(23, 26, 31, 0.02);
   --wa-25: rgba(23, 26, 31, 0.025);
@@ -159,11 +172,19 @@ body {
   margin: 0;
   background: var(--app-bg);
   color: var(--app-text);
-  font-family: "Inter", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--app-font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* 主题切换的底色/文字平滑过渡（仅 body 层，卡片各自有过渡） */
   transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* 数据表格数字等宽对齐：tabular-nums 让 1/8/0 等宽，多列数字才能竖着对得齐。
+   本仓库大量 7~31 列的数据表（逻辑编辑器 28 列、位置对比 19 列、机制表 31 th）此前
+   只有 5 处零星设置，比例字体下数字列是参差的——纯实用性收益，不改字号不改行高。
+   一条规则覆盖所有表：n-data-table 与自定义 <table> 都渲染成 table 元素。 */
+table {
+  font-variant-numeric: tabular-nums;
 }
 
 * {
