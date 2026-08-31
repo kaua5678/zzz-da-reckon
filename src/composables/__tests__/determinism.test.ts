@@ -5,7 +5,7 @@
  * 同样时机敏感（数据晚到 = 整队漏 buff）。同配置两次全新计算曾给出 12/3,9/1 vs 12/4,8/1。
  * 修复——resourceConfig 就绪门（teammateBuffsReady）+ 数据晚到自动重同步（config store watch）。
  */
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, beforeEach } from 'vitest'
 import { nextTick } from 'vue'
 import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'

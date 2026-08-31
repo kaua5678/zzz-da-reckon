@@ -45,7 +45,7 @@ describe('奥菲丝（1301）追加攻击 tag 与定向增伤', () => {
     const skills = catalog.getAgentSkills('1301')
     expect(skills).toBeTruthy()
     const seen: string[] = []
-    for (const category of skills.categories) {
+    for (const category of skills!.categories) {
       for (const move of category.moves) {
         const tagged = (move.skillTags ?? []).includes('additionalAttack')
         expect(tagged, `${move.id} ${move.name?.zhCN}`).toBe(ADDITIONAL_MOVE_IDS.has(move.id))

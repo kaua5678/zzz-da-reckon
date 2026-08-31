@@ -15,7 +15,6 @@ import {
   graceRotationSeconds,
   planGraceRotation,
 } from '@/mechanics/agents/grace'
-import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { useConfigStore } from '@/stores/config'
