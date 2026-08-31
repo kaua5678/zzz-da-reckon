@@ -9,6 +9,8 @@ import {
   HUGO_C2_DEF_IGNORE,
   HUGO_C4_ICE_RES_IGNORE,
   HUGO_C6_DMG_BONUS,
+  HUGO_ECHO_CRIT_DMG,
+  HUGO_ECHO_CRIT_RATE,
   HUGO_EX_FINAL_ACTION_TIME,
   HUGO_EX_OPEN_MOVE_ID,
   HUGO_ULT_MOVE_ID,
@@ -285,5 +287,73 @@ describe('雨果轴模式（决算可视化 + 0命2命区分）', () => {
     const normal = hugo.executions.find(r => r.moveId === '1291_ex_normal_final')
     expect(normal).toBeTruthy()
     expect(normal!.count).toBe(Math.max(0, hugo.exSpecialCount - 3))
+  })
+})
+
+describe('雨果滑块生效差分（防守卫冻结，SOP §3.5：改滑块→结果确实变）', () => {
+  it('hugo.exVerdictRatio → 强特决算次数差分（min(强特数, round(强特数×比例))）', () => {
+    const base = { cinemaLevel: 0, exSpecialCount: 8, ultimateCount: 2, ultimateVerdictRatio: 1, remainingStunSeconds: 5, echoCoverage: 1 }
+    const full = computeHugoCycle({ ...base, exVerdictRatio: 1 })
+    const half = computeHugoCycle({ ...base, exVerdictRatio: 0.5 })
+    const off = computeHugoCycle({ ...base, exVerdictRatio: 0 })
+    expect(full.exVerdictCount).toBe(8)
+    expect(half.exVerdictCount).toBe(4)
+    expect(off.exVerdictCount).toBe(0)
+    expect(full.exNormalCount + full.exVerdictCount).toBe(8)
+  })
+
+  it('hugo.ultimateVerdictRatio → 终结技决算次数差分（并联动 C1 暴击暴伤行差分）', () => {
+    const base = { cinemaLevel: 1, exSpecialCount: 4, ultimateCount: 4, exVerdictRatio: 1, remainingStunSeconds: 5, echoCoverage: 1 }
+    const full = computeHugoCycle({ ...base, ultimateVerdictRatio: 1 })
+    const half = computeHugoCycle({ ...base, ultimateVerdictRatio: 0.5 })
+    expect(full.ultimateVerdictCount).toBe(4)
+    expect(half.ultimateVerdictCount).toBe(2)
+    // patchExecutions 联动：C1 终结技行暴击加成按决算比例缩放
+    const mk = (ratio: number) => {
+      const executions: any[] = [{ moveId: HUGO_ULT_MOVE_ID, dmgBonus: 0, critRateBonus: 0, critDmgBonus: 0 }]
+      hugoMechanic.patchExecutions!({
+        cfg: { hugoCinemaLevel: 1, hugoAdditionalActive: false, hugoExVerdictRatio: 1, hugoUltimateVerdictRatio: ratio, hugoRemainingStunSeconds: 5, hugoEchoCoverage: 1, hugoC4Coverage: 0 },
+        state: { exSpecialCount: 4, ultimateCount: 4 },
+        executions,
+      } as never)
+      return executions[0].critRateBonus ?? 0
+    }
+    expect(mk(1)).toBeCloseTo(HUGO_C1_CRIT_RATE, 5)
+    expect(mk(0.5)).toBeCloseTo(HUGO_C1_CRIT_RATE * 0.5, 5)
+    expect(mk(1)).toBeGreaterThan(mk(0.5))
+  })
+
+  it('hugo.echoCoverage → 深渊回响暴击/暴伤差分（applyHugoEchoPanel 消费 specResources.hugo_abyss_echo.echoCoverage）', () => {
+    const mk = (coverage: number) => {
+      const panel: any = { critRate: 0, critDmg: 0 }
+      hugoMechanic.transformSkillExecutions!({
+        charResult: { specResources: { hugo_abyss_echo: { echoCoverage: coverage } } },
+        panel,
+      } as never)
+      return panel
+    }
+    const on = mk(1)
+    const half = mk(0.5)
+    const off = mk(0)
+    expect(on.critRate).toBeCloseTo(HUGO_ECHO_CRIT_RATE, 5)
+    expect(on.critDmg).toBeCloseTo(HUGO_ECHO_CRIT_DMG, 5)
+    expect(half.critRate).toBeCloseTo(HUGO_ECHO_CRIT_RATE * 0.5, 5)
+    expect(off.critRate).toBe(0)
+    expect(on.critRate).toBeGreaterThan(off.critRate)
+  })
+
+  it('hugo.c4Coverage → C4 无视冰抗差分（patchExecutions resIgnore）', () => {
+    const mk = (coverage: number) => {
+      const executions: any[] = [{ moveId: HUGO_EX_OPEN_MOVE_ID, resIgnore: 0 }]
+      hugoMechanic.patchExecutions!({
+        cfg: { hugoCinemaLevel: 4, hugoAdditionalActive: false, hugoExVerdictRatio: 1, hugoUltimateVerdictRatio: 1, hugoRemainingStunSeconds: 5, hugoEchoCoverage: 1, hugoC4Coverage: coverage },
+        state: { exSpecialCount: 2, ultimateCount: 1 },
+        executions,
+      } as never)
+      return executions[0].resIgnore ?? 0
+    }
+    expect(mk(1)).toBeCloseTo(HUGO_C4_ICE_RES_IGNORE, 5)
+    expect(mk(0.5)).toBeCloseTo(HUGO_C4_ICE_RES_IGNORE * 0.5, 5)
+    expect(mk(0)).toBe(0)
   })
 })
