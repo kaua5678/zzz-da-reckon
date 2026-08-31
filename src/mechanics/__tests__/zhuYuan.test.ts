@@ -1,31 +1,16 @@
-import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { getTargetedStat } from '@/core/buff'
 import { zhuYuanMechanic } from '@/mechanics/agents/zhuYuan'
 
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
-
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
   parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
   quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
-}
-
-function stubFetch() {
-  vi.stubGlobal('fetch', vi.fn(async (url: unknown) => {
-    const value = String(url)
-    if (value.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (value.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-    if (value.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
 }
 
 async function setup(mateId = '1031', cinemaLevel = 0) {
@@ -44,8 +29,8 @@ async function setup(mateId = '1031', cinemaLevel = 0) {
 
 describe('朱鸢（1241）额外能力·武装协同门控', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
+    newPinia()
+    mockStaticFetch()
   })
 
   it('[支援]或同阵营（治安局）队友激活 → 暴击率+30%；命破队友不激活', async () => {
@@ -69,8 +54,8 @@ describe('朱鸢（1241）额外能力·武装协同门控', () => {
 
 describe('朱鸢核心被动与影画（自身面板）', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
+    newPinia()
+    mockStaticFetch()
   })
 
   it('核心被动强化霰弹增伤+40% 走 basic/dashAttack 定向', async () => {

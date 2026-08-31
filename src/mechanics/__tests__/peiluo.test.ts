@@ -1,13 +1,8 @@
-import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { peiluoProminenceMechanic } from '@/mechanics/agents/specPanelBuffs'
-
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
 
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
@@ -18,14 +13,8 @@ const baseConfig = {
 
 describe('佩洛伊斯（1551）影画1 黄昏旧章', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-      const u = String(url)
-      if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-      if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-      if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-      return { ok: false, json: async () => ({}) }
-    }))
+    newPinia()
+    mockStaticFetch()
   })
 
   it('命座差分：0命 → 1命，暴击率 +8', async () => {
@@ -106,14 +95,8 @@ describe('佩洛伊斯耀斑 buff（下分支开局必打，全程覆盖）', ()
 
 describe('佩洛伊斯额外能力：击破/支援队友门控暴伤 +40', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-      const u = String(url)
-      if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-      if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-      if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-      return { ok: false, json: async () => ({}) }
-    }))
+    newPinia()
+    mockStaticFetch()
   })
 
   it('安比（stun 击破）在队：暴伤 +40；换出后回落', async () => {
@@ -247,14 +230,8 @@ describe('佩洛伊斯特殊技：强袭训令（主页交互栏次数）', () =
 
 describe('佩洛伊斯影画4 焚昼孽火：失衡值 +10%（默认全覆盖）', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-      const u = String(url)
-      if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-      if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-      if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-      return { ok: false, json: async () => ({}) }
-    }))
+    newPinia()
+    mockStaticFetch()
   })
 
   it('命座差分：3命 → 4命，stunBuildUpBonus +10', async () => {

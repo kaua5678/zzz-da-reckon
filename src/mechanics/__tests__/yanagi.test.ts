@@ -1,30 +1,15 @@
-import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { yanagiMechanic } from '@/mechanics/agents/yanagi'
-
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
 
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
   parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
   quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
-}
-
-function stubFetch() {
-  vi.stubGlobal('fetch', vi.fn(async (url: unknown) => {
-    const value = String(url)
-    if (value.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (value.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-    if (value.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
 }
 
 async function setup(mateId = '1331', cinemaLevel = 0) {
@@ -43,8 +28,8 @@ async function setup(mateId = '1331', cinemaLevel = 0) {
 
 describe('月城柳（1221）核心被动[紊乱]倍率与影画4[识破]穿透', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
+    newPinia()
+    mockStaticFetch()
   })
 
   it('全队紊乱伤害倍率+250%（Lv.12）；影画4 识破穿透率+16%', async () => {
@@ -65,8 +50,8 @@ describe('月城柳（1221）核心被动[紊乱]倍率与影画4[识破]穿透'
 
 describe('月城柳额外能力·月相（电属性异常积蓄值+45%）', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
+    newPinia()
+    mockStaticFetch()
   })
 
   it('模块：按 additionalAbilityActive 门控施加', () => {
@@ -102,8 +87,8 @@ describe('月城柳额外能力·月相（电属性异常积蓄值+45%）', () =
 
 describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
+    newPinia()
+    mockStaticFetch()
   })
 
   it('核心被动电伤+20% 常驻；影画1 异常精通+80；影画2 突刺电积蓄+20；影画6 强特伤害+20', async () => {

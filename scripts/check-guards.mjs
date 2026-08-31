@@ -50,17 +50,6 @@ export const GUARD_SYSTEM_FILES = [
  * `vi.stubGlobal('fetch'`）。新测试用 setupHarness；存量测试迁移一个删一行。
  */
 export const FETCH_STUB_ALLOWLIST = [
-  'src/mechanics/__tests__/peiluo.test.ts',
-  'src/mechanics/__tests__/sigrid.test.ts',
-  'src/mechanics/__tests__/soldier11.test.ts',
-  'src/mechanics/__tests__/soukaku.test.ts',
-  'src/mechanics/__tests__/xide.test.ts',
-  'src/mechanics/__tests__/xixifu.test.ts',
-  'src/mechanics/__tests__/yanagi.test.ts',
-  'src/mechanics/__tests__/yaojiayin.test.ts',
-  'src/mechanics/__tests__/yeshuguang.test.ts',
-  'src/mechanics/__tests__/yixuanSmoke.test.ts',
-  'src/mechanics/__tests__/zhuYuan.test.ts',
 ]
 
 function walkTestFiles(root) {
