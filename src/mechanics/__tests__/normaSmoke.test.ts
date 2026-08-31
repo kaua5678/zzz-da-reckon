@@ -1,13 +1,8 @@
-import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
 
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
@@ -18,14 +13,8 @@ const baseConfig = {
 
 describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/命座（用户确认口径）', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-      const u = String(url)
-      if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-      if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-      if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-      return { ok: false, json: async () => ({}) }
-    }))
+    newPinia()
+    mockStaticFetch()
   })
 
   async function setup(cinemaLevel: number) {

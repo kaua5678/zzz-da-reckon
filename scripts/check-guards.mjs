@@ -50,13 +50,7 @@ export const GUARD_SYSTEM_FILES = [
  * `vi.stubGlobal('fetch'`）。新测试用 setupHarness；存量测试迁移一个删一行。
  */
 export const FETCH_STUB_ALLOWLIST = [
-  'src/mechanics/__tests__/normaSmoke.test.ts',
-  'src/mechanics/__tests__/orphie.test.ts',
-  'src/mechanics/__tests__/orphieSelf.test.ts',
-  'src/mechanics/__tests__/panYinhu.test.ts',
   'src/mechanics/__tests__/peiluo.test.ts',
-  'src/mechanics/__tests__/qianxia.test.ts',
-  'src/mechanics/__tests__/rina.test.ts',
   'src/mechanics/__tests__/sigrid.test.ts',
   'src/mechanics/__tests__/soldier11.test.ts',
   'src/mechanics/__tests__/soukaku.test.ts',

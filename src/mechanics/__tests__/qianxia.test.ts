@@ -1,30 +1,15 @@
-import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { qianxiaMechanic } from '@/mechanics/agents/qianxia'
-
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
 
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
   parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
   quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
-}
-
-function stubFetch() {
-  vi.stubGlobal('fetch', vi.fn(async (url: unknown) => {
-    const value = String(url)
-    if (value.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (value.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-    if (value.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
 }
 
 async function setup(mateId = '1081', cinemaLevel = 0) {
@@ -43,8 +28,8 @@ async function setup(mateId = '1081', cinemaLevel = 0) {
 
 describe('千夏（1491）额外能力·白日梦对位法门控', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
+    newPinia()
+    mockStaticFetch()
   })
 
   it('[强攻]队友在队：帷幕失衡易伤 +30% 生效；支援队友（不同阵营）：不生效', async () => {
@@ -74,8 +59,8 @@ describe('千夏（1491）额外能力·白日梦对位法门控', () => {
 
 describe('千夏影画拐力（teammate-buffs 按命座门控）', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
+    newPinia()
+    mockStaticFetch()
   })
 
   it('命座差分：1命减防 7%×3、2命攻击 +10%、4命全队增伤 +18%', async () => {

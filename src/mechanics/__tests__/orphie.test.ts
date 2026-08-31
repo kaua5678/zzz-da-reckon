@@ -1,29 +1,14 @@
-import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
-
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
 
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
   parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
   quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
-}
-
-function stubFetch() {
-  vi.stubGlobal('fetch', vi.fn(async (url: unknown) => {
-    const value = String(url)
-    if (value.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (value.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-    if (value.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
 }
 
 async function setup(mateId = '1621', cinemaLevel = 0) {
@@ -47,8 +32,8 @@ function focusAtkExpected(regen: number): number {
 
 describe('奥菲丝（1301）核心被动[准星聚焦]与影画1', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
+    newPinia()
+    mockStaticFetch()
   })
 
   it('全队攻击按奥菲丝局外回能取公式值；影画1 准星聚焦代理人伤害+20%', async () => {
@@ -77,8 +62,8 @@ describe('奥菲丝（1301）核心被动[准星聚焦]与影画1', () => {
 
 describe('奥菲丝额外能力·熔炉所铸（追加攻击无视25%防御门控）', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
+    newPinia()
+    mockStaticFetch()
   })
 
   it('[击破]或[支援]队友激活 → 防御无视25%；命破/强攻不激活', async () => {

@@ -1,6 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
@@ -8,25 +7,11 @@ import { inferSkillDamageTarget } from '@/core/damage'
 import { getTargetedStat } from '@/core/buff'
 import { orphieMechanic } from '@/mechanics/agents/orphie'
 
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
-
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
   parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
   quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
-}
-
-function stubFetch() {
-  vi.stubGlobal('fetch', vi.fn(async (url: unknown) => {
-    const value = String(url)
-    if (value.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (value.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-    if (value.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
 }
 
 async function setup(mateId = '1621', cinemaLevel = 0) {
@@ -50,15 +35,14 @@ const ADDITIONAL_MOVE_IDS = new Set([
 
 describe('奥菲丝（1301）追加攻击 tag 与定向增伤', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    stubFetch()
+    newPinia()
+    mockStaticFetch()
   })
 
   it('catalog 打标：13 个原文招式带 additionalAttack，其余招式不带', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
-    const skills = (catalog as any).agentSkills?.find?.((s: any) => s.agentId === '1301')
-      ?? JSON.parse(catalogText).agentSkills.find((s: any) => s.agentId === '1301')
+    const skills = catalog.getAgentSkills('1301')
     expect(skills).toBeTruthy()
     const seen: string[] = []
     for (const category of skills.categories) {
