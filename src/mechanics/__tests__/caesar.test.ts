@@ -1,6 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
@@ -12,25 +11,11 @@ import {
   caesarMechanic,
 } from '@/mechanics/agents/caesar'
 
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
-
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
   parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
   quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
-}
-
-function stubFetch() {
-  vi.stubGlobal('fetch', vi.fn(async (url: unknown) => {
-    const value = String(url)
-    if (value.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (value.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-    if (value.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
 }
 
 async function setup(cinemaLevel = 0, mateId = '1151') {
@@ -82,7 +67,7 @@ describe('凯撒模块', () => {
 })
 
 describe('凯撒面板', () => {
-  beforeEach(() => { setActivePinia(createPinia()); stubFetch() })
+  beforeEach(() => { newPinia(); mockStaticFetch() })
 
   it('核心攻+1000、额外伤害+25；有队友即触发额外能力', async () => {
     const { catalog, config } = await setup(0, '1151')

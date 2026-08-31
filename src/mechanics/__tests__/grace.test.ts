@@ -5,9 +5,8 @@
  * - 能量决定强特比例：强特数 ≤ 引擎按能量收敛次数，其余槽位填普通特殊技（免费）。
  * - AA 感电强化层数滑杆走面板 anomalyDmgBonus；潜能电伤 C2-C6 永续。
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import {
   GRACE_C1_TEAM_ENERGY_PER_CYCLE,
   PULSE_CAP,
@@ -23,10 +22,6 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 function useConfigStoreForPanel() { return useConfigStore() }
 function useCatalogStoreForPanel() { return useCatalogStore() }
-
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
 
 describe('planGraceRotation（轮换计划纯函数：每组 = [A1A2A3连段+A4]+2 特殊技槽）', () => {
   it('循环预算 = 连段1.183 + A4 1.134 + 2×强特0.342 = 3.001s；能量充足时全强特', () => {
@@ -53,14 +48,8 @@ describe('planGraceRotation（轮换计划纯函数：每组 = [A1A2A3连段+A4]
 
 describe('格莉丝全管线集成（harness）', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-      const u = String(url)
-      if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-      if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-      if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-      return { ok: false, json: async () => ({}) }
-    }))
+    newPinia()
+    mockStaticFetch()
   })
 
   it('循环落位：A 段走通用平A池行；特殊技/强特真实 id 行 + 强特附带涡流手雷 + 脉冲兑换脉冲手雷', async () => {
@@ -161,14 +150,8 @@ describe('格莉丝全管线集成（harness）', () => {
 
 describe('格莉丝影画 C1/C2/C4/C6（2026-08-27 用户口径补录）', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-      const u = String(url)
-      if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-      if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-      if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-      return { ok: false, json: async () => ({}) }
-    }))
+    newPinia()
+    mockStaticFetch()
   })
 
   it('C4 爆破电容：不做面板满覆盖——能量获得效率面板保持 0（回能走单独项）', async () => {

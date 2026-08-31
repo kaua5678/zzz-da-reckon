@@ -218,16 +218,12 @@ describe('computeBanyueInteractionTopUp（轴模式自动补齐，保底语义�
 })
 
 // ===== 集成：轴内捏地动/山摇·怒 → 反馈执行计划（先扣闪能，剩余自动补连段）=====
-import { readFileSync } from 'node:fs'
-import { createPinia, setActivePinia } from 'pinia'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getAgentMechanic } from '@/mechanics'
 
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: { 4: 'atkPct' as any, 5: 'fireDmg' as any, 6: 'critRate' as any }, subStatAllocation: {} },
@@ -240,26 +236,14 @@ const baseConfig = {
 // 泄漏的 pinia 运行 —— 任何用例调 setMechanicSetting 都会污染后续断言（覆盖率滑块修活后立刻暴露：
 // 一个用例把 rageGainCoverage 调成 0.5，后面「怒相增益 300」用例就读到 150）。
 beforeEach(() => {
-  setActivePinia(createPinia())
-  vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-    const u = String(url)
-    if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-    if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-    if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-    return { ok: false, json: async () => ({}) }
-  }))
+  newPinia()
+  mockStaticFetch()
 })
 
 describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-      const u = String(url)
-      if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-      if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-      if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-      return { ok: false, json: async () => ({}) }
-    }))
+    newPinia()
+    mockStaticFetch()
   })
 
   /**
