@@ -1415,7 +1415,9 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 
 .field-hint {
   margin-left: 4px;
-  color: var(--color-warning, #f0a020);
+  /* 原 var(--color-warning, #f0a020)：令牌从未定义，一直是 fallback 硬编码色生效。
+     先接 --app-accent-gold（语义最接近且亮暗都成立）；B2 引入 --c-warning 后再换成它。 */
+  color: var(--app-accent-gold);
   font-weight: 600;
 }
 

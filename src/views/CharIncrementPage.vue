@@ -399,7 +399,8 @@ const rankRows = computed(() => {
 }
 .tip-title {
   font-weight: 700;
-  color: #fff;
+  /* 原 #fff：明亮模式 tooltip 底是 rgba(255,255,255,0.97)，白字不可见 */
+  color: var(--app-text-solid);
   margin-bottom: 4px;
 }
 .tip-row {
@@ -439,7 +440,9 @@ const rankRows = computed(() => {
   font-size: 11px;
   position: sticky;
   top: 0;
-  background: var(--app-card-bg, var(--wa-20));
+  /* 原为 var(--app-card-bg, var(--wa-20))：--app-card-bg 从未定义，一直是 fallback 生效。
+     去掉死引用、保留原渲染（由 check-tokens 的 tokens-defined 判据抓出）。 */
+  background: var(--wa-20);
   z-index: 1;
 }
 .rank-table tr {

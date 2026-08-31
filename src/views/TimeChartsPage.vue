@@ -762,7 +762,7 @@
                 :cy="pvRowY(row.rowIndex)"
                 :r="pvBubbleR(e)"
                 :fill="pvBubbleFill(e)"
-                :stroke="pvHover === row.agentId || pvSelected === row.agentId ? 'var(--app-text-solid)' : 'var(--wa-160)'"
+                :stroke="pvHover === row.agentId || pvSelected === row.agentId ? 'var(--app-text-solid)' : 'var(--wa-150)'"
                 :stroke-width="pvHover === row.agentId || pvSelected === row.agentId ? 1.2 : 0.5"
                 class="pv-bubble"
               >
@@ -1960,7 +1960,8 @@ function pvBarFill(card: PvCardValue): string {
   if (card.grade === 'T1') return '#f6ad55'
   if (card.grade === 'T2') return '#a3a3b8'
   if (card.grade === 'T3') return '#5f6373'
-  return 'var(--wa-160)'
+  /* 原 --wa-160：该档位从未定义（色阶只有 150/200），描边静默失效 */
+  return 'var(--wa-150)'
 }
 function pvRowTitle(row: { card: PvCardValue }): string {
   const c = row.card
@@ -2236,7 +2237,8 @@ function ppTierLabel(tier: number): string {
 .hc-title {
   font-weight: 700;
   margin-bottom: 3px;
-  color: #fff;
+  /* 原 #fff：明亮模式 .hover-card 底是 rgba(255,255,255,0.97)，白字不可见 */
+  color: var(--app-text-solid);
 }
 .hc-row {
   color: var(--wa-780);

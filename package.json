@@ -21,10 +21,11 @@
     "sync:wengine-recs": "node scripts/sync-signature-wengine-recs.mjs",
     "verify:recording": "node scripts/verify-recording.mjs",
     "check-guards": "node scripts/check-guards.mjs",
+    "check-tokens": "node scripts/check-tokens.mjs",
     "gen:multiplier-record": "GEN_MULTIPLIER_RECORD=1 vitest run src/composables/__tests__/multiplierRecord.test.ts",
     "probe:panel": "vitest run src/core/__tests__/panelProbe.test.ts",
-    "check": "npm run check-guards && npm run validate:data && npm run validate:specs && npm test",
-    "verify": "npm run check-guards && npm run validate:data && npm run validate:specs && npm run verify:recording && npm test && npm run typecheck && npm run build"
+    "check": "npm run check-guards && npm run check-tokens && npm run validate:data && npm run validate:specs && npm test",
+    "verify": "npm run check-guards && npm run check-tokens && npm run validate:data && npm run validate:specs && npm run verify:recording && npm test && npm run typecheck && npm run build"
   },
   "dependencies": {
     "@vicons/ionicons5": "^0.13.0",
