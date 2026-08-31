@@ -4,10 +4,8 @@
  * - 失衡内只能打 40 档长按，失衡外一律 30 档；非轴按占比滑杆（-1=自动覆盖率），轴模式按捏块精确计。
  * - 回归护栏：旧实现把尾巴失踪术错挂终结技 1021012 按其倍率产出行——任何执行行不得再出现该载体。
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { createPinia, setActivePinia } from 'pinia'
-import { setupHarness } from '@/test/harness'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import {
@@ -17,10 +15,6 @@ import {
   NEKOMATA_CATSHOW_MOVE_IDS,
   planNekomataPierceCasts,
 } from '@/mechanics/agents/nekomata'
-
-const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
-const buffsText = readFileSync(new URL('../../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
-const recsText = readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8')
 
 describe('planNekomataPierceCasts（预算分配纯函数，门控不建模——用户口径）', () => {
   it('占比 0：全部 30 档；占比 1：全部 40 档', () => {
@@ -67,14 +61,8 @@ describe('攻击数据命中回呼噜（catalog attack_data_0）', () => {
 
 describe('猫又全管线集成（harness）', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    vi.stubGlobal('fetch', vi.fn(async (url: any) => {
-      const u = String(url)
-      if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
-      if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(buffsText) }
-      if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(recsText) }
-      return { ok: false, json: async () => ({}) }
-    }))
+    newPinia()
+    mockStaticFetch()
   })
 
   async function setupNeko() {
