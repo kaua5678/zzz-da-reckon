@@ -281,7 +281,9 @@ function handleCardClick() {
 
 .cinema-level {
   font-size: 11px;
-  color: rgba(255, 215, 0, 0.8);
+  /* strong 档：徽章落在角色卡的淡彩底（蓝12%/灰4%）上，普通档 3.9:1，
+     strong 在两侧主题的彩色底上都 >4.5（影画等级是关键信息，值得提档） */
+  color: var(--c-warning-strong);
   font-weight: 600;
 }
 

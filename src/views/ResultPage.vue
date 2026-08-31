@@ -136,7 +136,9 @@
           <n-button size="small" type="primary" secondary @click="showComboAlignModal = true">
             合轴率调节
           </n-button>
-          <n-button size="small" type="info" secondary @click="configStore.triggerRefresh" style="margin-left: 8px">
+          <!-- 原 type="info"：Naive 的 info 亮蓝在 secondary 底上白底只有 2.86:1（audit 抓出），
+               换 primary（品牌蓝）与同排「合轴率调节」一致且过 AA -->
+          <n-button size="small" type="primary" secondary @click="configStore.triggerRefresh" style="margin-left: 8px">
             刷新计算
           </n-button>
         </div>
@@ -1144,12 +1146,12 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .pool-stat.highlight .pool-stat-value {
-  color: #f0a020;
+  color: var(--c-warning);
   font-size: 14px;
 }
 
 .pool-stat.bonus .pool-stat-value {
-  color: #63e2b7;
+  color: var(--c-success);
   font-weight: 700;
 }
 

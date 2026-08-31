@@ -789,7 +789,7 @@ const anomalyEventExecutionsData = computed(() => {
 
 .section-total {
   font-size: 14px;
-  color: #63e2b7;
+  color: var(--c-success);
   font-weight: 700;
 }
 
@@ -812,6 +812,12 @@ const anomalyEventExecutionsData = computed(() => {
   white-space: nowrap;
   overflow: hidden;
   transition: width 0.3s;
+}
+
+/* 段内文字落在图表色块（One Dark 色板，亮暗通用）上：白字 + 半透明黑描边
+   保证任何底色上 ≥3:1（图表文字门槛）；无描边时亮色段（#61afef/#7fdbca）只有 ~2.4:1 */
+.time-seg > span {
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.85), 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 .time-seg.necessary {
@@ -949,7 +955,7 @@ const anomalyEventExecutionsData = computed(() => {
   border-radius: 4px;
   padding: 6px 10px;
   font-size: 12px;
-  color: #63e2b7;
+  color: var(--c-success);
   font-weight: 600;
 }
 

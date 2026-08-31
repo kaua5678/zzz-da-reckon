@@ -377,26 +377,26 @@ export const HARDCODED_BASELINE = {
   'src/components/AppHeader.vue': 3,
   'src/components/BossCard.vue': 8,
   'src/components/BossSelectCard.vue': 8,
-  'src/components/CharacterCard.vue': 4,
-  'src/components/FinalPanel.vue': 9,
+  'src/components/CharacterCard.vue': 3,
+  'src/components/FinalPanel.vue': 5,
   'src/components/ImpactChart.vue': 5,
   'src/components/MarginalUtilityCard.vue': 1,
   'src/components/ResourceResultCard.vue': 7,
-  'src/components/StatPanel.vue': 11,
+  'src/components/StatPanel.vue': 6,
   'src/views/AttributeConfigPage.vue': 4,
   'src/views/BossHpInflationPage.vue': 1,
   'src/views/CalculatorView.vue': 1,
   'src/views/CharIncrementPage.vue': 6,
-  'src/views/DebugPage.vue': 5,
+  'src/views/DebugPage.vue': 2,
   'src/views/LogicEditorPage.vue': 1,
   'src/views/MechanicsTablePage.vue': 1,
   'src/views/PositionComparePage.vue': 5,
   'src/views/ResourceUtilizationPage.vue': 3,
-  'src/views/ResultPage.vue': 14,
+  'src/views/ResultPage.vue': 12,
   'src/views/RunArchivePage.vue': 5,
   'src/views/StunAxisPage.vue': 29,
   'src/views/TeamComparePage.vue': 6,
-  'src/views/TeamConfigPage.vue': 4,
+  'src/views/TeamConfigPage.vue': 0,
   'src/views/TimeChartsPage.vue': 35,
   'src/views/WEngineFieldPage.vue': 3,
 }
@@ -435,8 +435,8 @@ export const FONT_SIZE_BASELINE = {
  */
 export const WA_REF_BASELINE = 447
 
-/** var() 引用总数基线（2026-08-31 实测 494；修死引用后 497；B3 顶栏令牌化后 502）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 502
+/** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524）。只增不减，防把变量改回字面量 */
+export const VAR_TOTAL_BASELINE = 524
 
 // ---------------------------------------------------------------- 判据
 

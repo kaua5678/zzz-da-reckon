@@ -835,11 +835,11 @@ function formatPercent(value: number, decimals = 1): string {
 }
 
 .stat-value.highlight {
-  color: #facc15;
+  color: var(--c-warning);
 }
 
 .stat-value.debuff {
-  color: #f87171;
+  color: var(--c-danger);
 }
 
 .stat-section-title {
@@ -873,7 +873,7 @@ function formatPercent(value: number, decimals = 1): string {
 .zone-value {
   font-size: 14px;
   font-weight: 700;
-  color: #facc15;
+  color: var(--c-warning);
   font-variant-numeric: tabular-nums;
 }
 
@@ -904,7 +904,7 @@ function formatPercent(value: number, decimals = 1): string {
 }
 
 .formula-text.result {
-  color: #facc15;
+  color: var(--c-warning);
   font-weight: 600;
   margin-top: 4px;
   padding-top: 4px;
@@ -963,7 +963,7 @@ function formatPercent(value: number, decimals = 1): string {
 .formula-section-title {
   font-size: 12px;
   font-weight: 700;
-  color: #facc15;
+  color: var(--c-warning);
   margin-bottom: 8px;
 }
 

@@ -697,7 +697,7 @@
                 <n-text depth="3" style="font-size: 11px; display: block">
                   攻击 {{ buildRec.wengine.atk }} · {{ buildRec.wengine.sub_stat }}
                 </n-text>
-                <n-text v-if="buildRec.wengine.catalog_wengine_id" depth="2" style="font-size: 11px; color: #52c41a">
+                <n-text v-if="buildRec.wengine.catalog_wengine_id" depth="2" style="font-size: 11px; color: var(--c-success)">
                   已匹配目录
                 </n-text>
                 <n-text v-else depth="3" style="font-size: 11px; color: #faad14">
@@ -1466,7 +1466,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 .dev-title {
   font-size: 12px;
   font-weight: 700;
-  color: #facc15;
+  color: var(--c-warning);
   margin-bottom: 4px;
 }
 
@@ -1551,7 +1551,7 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
 .effect-name {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(250, 204, 21, 0.9);
+  color: var(--c-warning);
   margin-bottom: 4px;
 }
 
@@ -1677,8 +1677,8 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: rgba(82, 196, 26, 0.15);
-  color: #52c41a;
+  background: var(--c-success-soft);
+  color: var(--c-success);
   font-size: 10px;
   font-weight: 600;
   flex-shrink: 0;

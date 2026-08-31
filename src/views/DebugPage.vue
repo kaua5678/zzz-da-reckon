@@ -504,7 +504,7 @@ const formulaSections = [
 .summary-value {
   font-size: 16px;
   font-weight: 700;
-  color: #facc15;
+  color: var(--c-warning);
 }
 
 .debug-table-wrap {
@@ -552,7 +552,7 @@ const formulaSections = [
 }
 
 .value-cell {
-  color: #facc15;
+  color: var(--c-warning);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -580,7 +580,7 @@ const formulaSections = [
 .formula-title {
   font-size: 13px;
   font-weight: 700;
-  color: #facc15;
+  color: var(--c-warning);
   margin-bottom: 8px;
 }
 

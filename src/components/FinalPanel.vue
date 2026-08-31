@@ -547,7 +547,7 @@ const panels = computed(() => {
 .fp-summary-value {
   font-size: 13px;
   font-weight: 700;
-  color: #facc15;
+  color: var(--c-warning);
   font-variant-numeric: tabular-nums;
 }
 .fp-zones {
@@ -569,7 +569,7 @@ const panels = computed(() => {
 }
 .fp-zone-main {
   font-size: 12px;
-  color: #facc15;
+  color: var(--c-warning);
   font-family: Consolas, monospace;
   margin-bottom: 4px;
 }
@@ -608,7 +608,7 @@ const panels = computed(() => {
   white-space: nowrap;
 }
 .fp-in {
-  color: #facc15;
+  color: var(--c-warning);
 }
 .fp-delta {
   color: #6ee7b7;
@@ -634,7 +634,7 @@ const panels = computed(() => {
 }
 .fp-phase-in {
   background: rgba(250, 204, 21, 0.16);
-  color: #facc15;
+  color: var(--c-warning);
 }
 .fp-empty-cell {
   text-align: center;
