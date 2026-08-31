@@ -4,6 +4,7 @@
  * - 各命座逐级抬高全管线伤害（C0 < C2 < C4 < C6），防「录了没生效」。
  */
 import { describe, expect, it } from 'vitest'
+import { miyabiMechanic } from '@/mechanics/agents/miyabi'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 
@@ -26,5 +27,53 @@ describe('星见雅命座生效（全管线）', () => {
     expect(d4).toBeGreaterThanOrEqual(d2)
     const d6 = await damageAt(6)
     expect(d6).toBeGreaterThan(d4)
+  })
+})
+
+describe('星见雅滑块生效差分（防守卫冻结，SOP §3.5：改滑块→结果确实变）', () => {
+  it('miyabi.iceFlameCoverage → 冰焰积蓄效率差分（transformSkillExecutions 消费 coverage）', async () => {
+    // coverage 由 buildCharConfig 写入 panel.miyabiIceFlameCoverage（显式非 1 值优先）；
+    // 消费在 transformMiyabiSkillExecutions：iceFlameBonus = min(30, critRate) × coverage
+    const efficiencyFor = (coverage: number, critRate = 20) => {
+      const panel: any = { miyabiIceFlameCoverage: coverage, critRate, anomalyBuildUpEfficiency: 0, miyabiHasWindTeammate: 0 }
+      miyabiMechanic.transformSkillExecutions!({ panel, stunExecs: [], anomalyExecs: [], charResult: { specResources: {}, executions: [] } } as never)
+      return panel.anomalyBuildUpEfficiency
+    }
+    const on = efficiencyFor(0.8)
+    const off = efficiencyFor(0.2)
+    // 0.8 → 20×0.8=16 +20（霜灼）；0.2 → 20×0.2=4 +20
+    expect(on).toBeCloseTo(20 * 0.8 + 20, 1)
+    expect(off).toBeCloseTo(20 * 0.2 + 20, 1)
+    expect(on - off).toBeCloseTo(20 * 0.6, 1)
+    // 面板链路原点：setting 键经 buildCharConfig 写入 panel.miyabiIceFlameCoverage
+    // （管线里 resolveMechanicSettings 把滑块值以 `setting:<id>` 键注入 cfg，此处模拟）
+    const cfgPanel: any = { miyabiHasWindTeammate: 0 }
+    miyabiMechanic.buildCharConfig!({
+      slot: 0, cinemaLevel: 0, cfg: { 'setting:miyabi.iceFlameCoverage': 0.8 } as never, panel: cfgPanel,
+      skills: { categories: [] } as never, team: [],
+    } as never)
+    expect(cfgPanel.miyabiIceFlameCoverage).toBeCloseTo(0.8, 5)
+  })
+
+  it('miyabi.frostburnBreakCount / frostburnBreakRate → 霜灼·破次数差分（buildExecutions）', async () => {
+    const { config } = await setupHarness([{ agentId: '1091', cinemaLevel: 0 }, '', ''])
+    const frostbreakCountOf = () => {
+      const calc = useResourceCalc()
+      const row = calc.resourceResult.value!.characters[0].executions.find(e => e.moveId === 'miyabi_frostburn_break')
+      return row?.count ?? 0
+    }
+    // 次数滑块显式覆盖：12 次
+    config.setMechanicSetting('miyabi.frostburnBreakCount', 12)
+    expect(frostbreakCountOf()).toBe(12)
+    config.setMechanicSetting('miyabi.frostburnBreakCount', 6)
+    expect(frostbreakCountOf()).toBe(6)
+    // 比率滑块：次数=0（自动）时按强特数×比率
+    config.setMechanicSetting('miyabi.frostburnBreakCount', 0)
+    config.setMechanicSetting('miyabi.frostburnBreakRate', 2)
+    const doubled = frostbreakCountOf()
+    config.setMechanicSetting('miyabi.frostburnBreakRate', 1)
+    const base = frostbreakCountOf()
+    expect(doubled).toBe(base * 2)
+    expect(base).toBeGreaterThan(0)
   })
 })

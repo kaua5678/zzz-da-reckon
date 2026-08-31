@@ -5,9 +5,11 @@ import {
   HARUMASA_ADDITIONAL_DMG,
   HARUMASA_ARROW_MOVE_ID,
   HARUMASA_C2_DMG_BONUS,
+  HARUMASA_EDGE_CRIT_DMG_PER_STACK,
   HARUMASA_C6_ELECTRIC_RES_IGNORE,
   HARUMASA_C6_EXPLOSION_MULTIPLIER,
   HARUMASA_CORE_CRIT_RATE,
+  HARUMASA_KETTLE_A5_GAIN,
   HARUMASA_POTENTIAL_ATK_PCT,
   HARUMASA_POTENTIAL_RES_IGNORE,
   HARUMASA_SLASH_MOVE_IDS,
@@ -239,5 +241,36 @@ describe('悠真完整计算链', () => {
     const harumasa = calc.resourceResult.value!.characters.find(row => row.agentId === '1201')!
     expect(HARUMASA_SLASH_MOVE_IDS.some(id => harumasa.executions.some(row => row.moveId === id))).toBe(true)
     expect(harumasa.executions.some(row => row.moveId === HARUMASA_ARROW_MOVE_ID)).toBe(true)
+  })
+})
+
+describe('悠真滑块生效差分（防守卫冻结，SOP §3.5：改滑块→结果确实变）', () => {
+  const base = {
+    cinemaLevel: 0, potentialLevel: 6, a5Count: 4, chainCount: 2, ultimateCount: 1,
+    exSpecialCount: 3, stunCoverage: 0, abnormalCoverage: 1, edgeAverageStacks: 3,
+  }
+
+  it('harumasa.a5Count → 电壶总量差分（A5 每段 +2 电壶 → 甲乙矢命中数）', () => {
+    const on = computeHarumasaCycle({ ...base, a5Count: 8 })
+    const off = computeHarumasaCycle({ ...base, a5Count: 2 })
+    expect(on.kettleTotal - off.kettleTotal).toBe(6 * HARUMASA_KETTLE_A5_GAIN)
+    expect(on.arrowHitCount).toBeGreaterThan(off.arrowHitCount)
+  })
+
+  it('harumasa.abnormalCoverage → 逐雷并集覆盖率差分（stun∪abnormal 补全）', () => {
+    const on = computeHarumasaCycle({ ...base, stunCoverage: 0.5, abnormalCoverage: 1 })
+    const off = computeHarumasaCycle({ ...base, stunCoverage: 0.5, abnormalCoverage: 0 })
+    expect(on.unionCoverage).toBeCloseTo(1, 5)
+    expect(off.unionCoverage).toBeCloseTo(0.5, 5)
+    expect(on.unionCoverage).toBeGreaterThan(off.unionCoverage)
+  })
+
+  it('harumasa.edgeAverageStacks → 锋芒暴伤差分（每层 +12%，封顶 6 层）', () => {
+    const on = computeHarumasaCycle({ ...base, edgeAverageStacks: 6 })
+    const half = computeHarumasaCycle({ ...base, edgeAverageStacks: 3 })
+    const off = computeHarumasaCycle({ ...base, edgeAverageStacks: 0 })
+    expect(on.edgeCritDmg).toBeCloseTo(6 * HARUMASA_EDGE_CRIT_DMG_PER_STACK, 5)
+    expect(half.edgeCritDmg).toBeCloseTo(3 * HARUMASA_EDGE_CRIT_DMG_PER_STACK, 5)
+    expect(off.edgeCritDmg).toBe(0)
   })
 })

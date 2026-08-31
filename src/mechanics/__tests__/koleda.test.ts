@@ -134,3 +134,35 @@ describe('珂蕾妲完整计算链', () => {
     expect(koleda.specResources?.koleda_cycle).toBeTruthy()
   })
 })
+
+describe('珂蕾妲滑块生效差分（防守卫冻结，SOP §3.5：改滑块→结果确实变）', () => {
+  const base = {
+    cinemaLevel: 6, additionalActive: true, chainStunCoverage: 1,
+    c1Coverage: 1, c4ChargeStacks: 2, exSpecialCount: 3, chainCount: 2, ultimateCount: 1,
+  }
+
+  it('koleda.chainStunCoverage → 额外能力连携增伤差分（按覆盖率缩放）', () => {
+    const on = computeKoledaCycle({ ...base, chainStunCoverage: 1 })
+    const half = computeKoledaCycle({ ...base, chainStunCoverage: 0.5 })
+    const off = computeKoledaCycle({ ...base, chainStunCoverage: 0 })
+    expect(on.additionalChainDmg).toBe(KOLEDA_ADDITIONAL_CHAIN_PER_STACK * KOLEDA_ADDITIONAL_CHAIN_MAX_STACKS)
+    expect(half.additionalChainDmg).toBeCloseTo(on.additionalChainDmg * 0.5, 5)
+    expect(off.additionalChainDmg).toBe(0)
+  })
+
+  it('koleda.c1Coverage → 影画1失衡值差分（+15 × 覆盖率）', () => {
+    const on = computeKoledaCycle({ ...base, c1Coverage: 1 })
+    const off = computeKoledaCycle({ ...base, c1Coverage: 0 })
+    expect(on.c1StunBonus - off.c1StunBonus).toBe(KOLEDA_C1_STUN)
+    expect(off.c1StunBonus).toBe(0)
+  })
+
+  it('koleda.c4ChargeStacks → 影画4增伤差分（每层 +18，封顶 2 层）', () => {
+    const on = computeKoledaCycle({ ...base, c4ChargeStacks: 2 })
+    const one = computeKoledaCycle({ ...base, c4ChargeStacks: 1 })
+    const off = computeKoledaCycle({ ...base, c4ChargeStacks: 0 })
+    expect(on.c4DmgBonus).toBe(2 * KOLEDA_C4_DMG_PER_CHARGE)
+    expect(one.c4DmgBonus).toBe(KOLEDA_C4_DMG_PER_CHARGE)
+    expect(off.c4DmgBonus).toBe(0)
+  })
+})

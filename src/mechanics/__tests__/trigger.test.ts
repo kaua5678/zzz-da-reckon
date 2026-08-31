@@ -5,6 +5,7 @@ import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import {
+  TRIGGER_RESOLVE_PER_HELL,
   TRIGGER_ADDITIONAL_MOVE_IDS,
   TRIGGER_C4_DAMAGE_MULTIPLIER,
   TRIGGER_C4_DAZE_MULTIPLIER,
@@ -266,5 +267,42 @@ describe('「扳机」完整计算链', () => {
 
     expect(calc.stunPoolResult.value!.contributions.some(row =>
       row.slot === 0 && row.moveId === TRIGGER_COORDINATED_MOVE_ID)).toBe(true)
+  })
+})
+
+describe('扳机滑块生效差分（防守卫冻结，SOP §3.5：改滑块→结果确实变）', () => {
+  const base = {
+    cinemaLevel: 0, battleTime: 180, normalCountOverride: 0, hellCountOverride: 0,
+    sniperHitCountOverride: 0, mateExCount: 10, mateUltimateCount: 5,
+    mateAssistCount: 4, ownExSpecialCount: 3, ownUltimateCount: 2,
+  }
+
+  it('trigger.normalCoordinatedCount → 协奏狙杀次数差分（手动覆盖 > 战斗时长反推）', () => {
+    // 手动覆盖生效：协奏狙杀付费次数 = 覆盖值，协奏总数随覆盖值线性变
+    const manual = computeTriggerCycle({ ...base, normalCountOverride: 10 })
+    const manual2 = computeTriggerCycle({ ...base, normalCountOverride: 20 })
+    expect(manual.normalPaidCount).toBe(10)
+    expect(manual2.normalPaidCount).toBe(20)
+    expect(manual2.coordinatedCount - manual.coordinatedCount).toBe(10)
+  })
+
+  it('trigger.hellCoordinatedCount → 冥狱次数差分（手动覆盖队友触发反推）', () => {
+    const off = computeTriggerCycle({ ...base, hellCountOverride: 0 })
+    // override=0 是「自动」哨兵：hellAuto 仍按队友反推；显式 >0 才覆盖
+    const on = computeTriggerCycle({ ...base, hellCountOverride: 7 })
+    expect(on.hellCount).toBe(7)
+    expect(on.hellCount).not.toBe(off.hellCount)
+    // 绝意请求随冥狱次数变（每次 +5）
+    expect(on.resolveRequested - off.resolveRequested).toBe((7 - off.hellCount) * TRIGGER_RESOLVE_PER_HELL)
+  })
+
+  it('trigger.sniperHitCount → 狙击命中数差分（手动命中数封顶绝意供给）', () => {
+    const auto = computeTriggerCycle({ ...base })
+    const manual = computeTriggerCycle({ ...base, sniperHitCountOverride: 3 })
+    expect(manual.sniperHitCount).toBe(3)
+    expect(manual.sniperAuto).toBe(false)
+    // 手动 3 发 × 25 绝意 < 自动请求 → 绝意消耗被压低
+    expect(manual.resolveSpent).toBeLessThan(auto.resolveSpent)
+    expect(manual.resolveSpent).toBe(3 * 25) // 0命每发 +25
   })
 })
