@@ -422,11 +422,23 @@ export function runAllChecks(root = ROOT) {
     detail: [...undefinedRefs].sort().map(s => `  ✗ 未定义令牌：${s} → 在 global.css 双主题各补一份，或改回已存在的令牌`),
   })
 
-  // ---- 2. theme-parity ----
-  const onlyDark = [...darkTokens.keys()].filter(k => !lightTokens.has(k))
-  const onlyLight = [...lightTokens.keys()].filter(k => !darkTokens.has(k))
+  // ---- 2. theme-parity（只约束「与主题相关」的令牌）----
+  // 判定标准：**值里含色值字面量**（#hex / rgb / rgba / hsl）的才算主题相关。
+  //   --space-4: 8px            → 无色值 → 免检（只写 :root 一份即可，靠继承生效）
+  //   --fg-2: var(--wa-750)     → 无色值 → 免检（它委托给已对称的 --wa-*）
+  //   --shadow-1: 0 1px 2px rgba(2,6,23,.4) → 含色值 → 必须双份（阴影确实随主题变）
+  //   --app-bg: #0f172a         → 含色值 → 必须双份
+  // 否则「键集完全相等」会把几十个尺度令牌逼着在 html.light 里抄一遍，纯噪音。
+  const isThemeDependent = (v) => /#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i.test(v)
+  const themeKeys = new Set(
+    [...darkTokens.keys(), ...lightTokens.keys()].filter(
+      k => isThemeDependent(darkTokens.get(k) ?? '') || isThemeDependent(lightTokens.get(k) ?? ''),
+    ),
+  )
+  const onlyDark = [...themeKeys].filter(k => !lightTokens.has(k))
+  const onlyLight = [...themeKeys].filter(k => !darkTokens.has(k))
   results.push({
-    name: `theme-parity (:root 与 html.light 令牌键集双向相等) ${darkTokens.size}/${lightTokens.size}`,
+    name: `theme-parity (含色值令牌双主题对称) ${themeKeys.size}/${themeKeys.size} 需对称，共 ${new Set([...darkTokens.keys(), ...lightTokens.keys()]).size} 个令牌`,
     ok: onlyDark.length === 0 && onlyLight.length === 0,
     detail: [
       ...onlyDark.map(k => `  ✗ 只定义在 :root：${k} → 明亮模式漏色，在 html.light 补一份`),

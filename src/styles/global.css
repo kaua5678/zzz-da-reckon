@@ -32,12 +32,114 @@
 
   /* 字体栈：系统优先，CJK 兜底。原栈首位的 "Inter" 从未被引入（零 @font-face / 零 CDN），
      实际一直落到 PingFang/雅黑——把不存在的字体写在首位只会误导后来人。
-     单一事实源：src/App.vue 的 common.fontFamily 必须与本值逐字一致
+     只此一份（与主题无关，明亮模式靠继承生效，不受 theme-parity 约束）。
+     跨文件单一事实源：src/App.vue 的 common.fontFamily 必须与本值逐字一致
      （Naive 的 n-global-style 会覆盖 body 的 font-family，两处不一致就会出现
-     「Naive 组件一套字体、自定义组件另一套」的撕裂）；一致性由 check-tokens 的
+     「Naive 组件一套字体、自定义组件另一套」的撕裂）；由 check-tokens 的
      font-stack-parity 判据机器校验。 */
   --app-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
     "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+
+  /* ---- v4 尺度令牌：全部从现有 4085 行 scoped CSS 的实测频次收敛而来 ----
+     只此一份（与主题无关）。判定「是否需双主题各一份」的规则见 check-tokens.mjs
+     的 theme-parity：值里含色值字面量的才要求对称。 */
+
+  /* 间距：取自现有 gap/padding 的高频值 4×25 6×37 8×37 10×12 12×19 16×9，
+     补 2（发丝间隙）与 20/28（区块留白）成栅格 */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 16px;
+  --space-8: 20px;
+  --space-9: 28px;
+
+  /* 圆角：现有 6px×26 与 8px×18 两套主力**分工**而非合并——
+     卡片 12、容器/输入 8、控件 6、chip 4、微标 3 */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* 字号：从 286 处声明收敛（12px 正文主力 86 处、11px 次要 81 处）。
+     归并规则：**半档一律向下取整**（11.5→11、10.5→10、9.5→9、8.5→8），整数离群值
+     向下归到最近档位（15→14、17→16、22→20），7 上抬到最小档 8。
+     向下取整是硬要求：字号变大会挤压一屏可见行数，违反「密度不降」。 */
+  --text-3xs: 8px;
+  --text-2xs: 9px;
+  --text-xs: 10px;
+  --text-sm: 11px;
+  --text-md: 12px;
+  --text-lg: 13px;
+  --text-xl: 14px;
+  --text-2xl: 16px;
+  --text-3xl: 18px;
+  --text-4xl: 20px;
+  --text-5xl: 24px;
+
+  /* 行高：现有 1.3 / 1.5 / 1.6 混用，收敛为三档 */
+  --leading-tight: 1.35;
+  --leading-normal: 1.55;
+  --leading-loose: 1.75;
+
+  /* 字重：现有 500 与 400 并存且视觉无差，统一归 400 */
+  --weight-normal: 400;
+  --weight-medium: 600;
+  --weight-bold: 700;
+
+  /* 动效：取自 global.css body 的 0.25s 与 .n-card 的 0.2s */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* 层级：现有散落 z-index:10，补出完整序列避免后续继续拍脑袋加数字 */
+  --z-sticky: 10;
+  --z-dropdown: 100;
+  --z-tooltip: 200;
+  --z-modal: 300;
+
+  /* ---- v4 主题相关令牌（必须在 html.light 各有一份，由 theme-parity 校验）---- */
+
+  /* 阴影：夜间用蓝黑投影（纯黑投影在深底上会"浮"，且 ZZZ 底色带蓝调） */
+  --shadow-1: 0 1px 2px rgba(2, 6, 23, 0.4);
+  --shadow-2: 0 2px 8px rgba(2, 6, 23, 0.45);
+  --shadow-3: 0 8px 24px rgba(2, 6, 23, 0.55);
+
+  /* 焦点环：对齐 --app-primary，键盘可达性的唯一视觉反馈 */
+  --ring-focus: 0 0 0 2px rgba(68, 147, 248, 0.45);
+
+  /* 语义色：归并散落的同义色（绿 #63e2b7×16 / 金橙 #f6ad55+#facc15+#fbbf24+#f0a020
+     / 红 #e88080+#f87171+#ef4444+#e06c75 / 蓝 #93c5fd+#63b3ed+#61afef）。
+     -soft 用于标签/行的低饱和底，-strong 用于 hover 与强调。
+     四色 vs --app-panel 对比度：10.23 / 8.62 / 5.93 / 9.10，均过 WCAG AA 4.5。 */
+  --c-success: #63e2b7;
+  --c-success-soft: rgba(99, 226, 183, 0.12);
+  --c-success-strong: #8af0cd;
+  --c-warning: #f6ad55;
+  --c-warning-soft: rgba(246, 173, 85, 0.12);
+  --c-warning-strong: #ffc887;
+  --c-danger: #f87171;
+  --c-danger-soft: rgba(248, 113, 113, 0.12);
+  --c-danger-strong: #ff9d9d;
+  --c-info: #93c5fd;
+  --c-info-soft: rgba(147, 197, 253, 0.12);
+  --c-info-strong: #b8dbff;
+
+  /* 图表色序 = ZZZ 属性色板（docs/UI_THEME_GUIDE §5，源自游戏内代表色）。
+     夜间直接用原色板：9 色 vs 深底对比度 5.18~11.78，全部远超 3.0 门槛。 */
+  --c-chart-1: #2EB6FF; /* 电 */
+  --c-chart-2: #3FE0E3; /* 冰 */
+  --c-chart-3: #FF5522; /* 火 */
+  --c-chart-4: #F0D12A; /* 物理 */
+  --c-chart-5: #FE427E; /* 以太 */
+  --c-chart-6: #BB7D33; /* 玄墨 */
+  --c-chart-7: #889EFF; /* 凛刃 */
+  --c-chart-8: #A4C0F4; /* 风 */
+  --c-chart-9: #FFA7DB; /* 流明 */
 
   --wa-15: rgba(255, 255, 255, 0.015);
   --wa-20: rgba(255, 255, 255, 0.02);
@@ -86,6 +188,18 @@
   --wa-860: rgba(255, 255, 255, 0.86);
   --wa-880: rgba(255, 255, 255, 0.88);
   --wa-900: rgba(255, 255, 255, 0.9);
+
+  /* ---- v4 语义别名层 ----
+     --wa-* 的 47 档是历史 codemod 的机械产物（原 rgba(255,255,255,α)），
+     人记不住「--wa-250 是描边还是悬浮底」——这正是同义色散落的同类病根。
+     新代码一律用别名，老代码不动；check-tokens 的 alias 棘轮保证 --wa-*
+     直接引用数只减不增。别名本身只此一份（值里无色值字面量，靠 --wa-* 跟随主题）。 */
+  --line: var(--wa-120);         /* 常规分隔线 */
+  --line-strong: var(--wa-250);  /* 悬浮/强调描边 */
+  --fill-hover: var(--wa-60);    /* 行/按钮 hover 底 */
+  --fill-active: var(--wa-100);  /* 选中底 */
+  --fg-2: var(--wa-750);         /* 次级文字 */
+  --fg-3: var(--wa-550);         /* 三级说明 */
 }
 
 html.light {
@@ -109,9 +223,46 @@ html.light {
   --scrollbar-thumb-hover: rgba(51, 65, 85, 0.34);
   --link-color: #2f6ee0;
 
-  /* 与 :root 同值（字体栈与主题无关，双主题各一份只为满足 theme-parity 判据） */
-  --app-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-    "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  /* ---- v4 主题相关令牌（与 :root 一一对应，由 theme-parity 校验）---- */
+
+  /* 阴影：明亮用中性冷灰（Tailwind/shadcn 亮色惯例，比纯黑投影更"透气"） */
+  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-2: 0 2px 6px rgba(16, 24, 40, 0.07);
+  --shadow-3: 0 8px 24px rgba(16, 24, 40, 0.12);
+
+  --ring-focus: 0 0 0 2px rgba(47, 110, 224, 0.35);
+
+  /* 语义色：明亮模式必须整体压深——原霓虹色（#63e2b7 等）在白底上对比度只有 1.x。
+     四色 vs 白卡对比度：5.31 / 5.02 / 4.83 / 6.70，均过 WCAG AA 4.5。 */
+  --c-success: #0f7a5a;
+  --c-success-soft: rgba(15, 122, 90, 0.1);
+  --c-success-strong: #0b5c44;
+  --c-warning: #b45309;
+  --c-warning-soft: rgba(180, 83, 9, 0.1);
+  --c-warning-strong: #8a3f06;
+  --c-danger: #dc2626;
+  --c-danger-soft: rgba(220, 38, 38, 0.1);
+  --c-danger-strong: #991b1b;
+  --c-info: #1d4ed8;
+  --c-info-soft: rgba(29, 78, 216, 0.1);
+  --c-info-strong: #1e3a8a;
+
+  /* 图表色序：ZZZ 属性色板原色是按深色游戏 UI 调的，**7/9 在白底上对比度不足 3.0**
+     （冰 #3FE0E3 只有 1.62、物理 #F0D12A 1.52、风 #A4C0F4 1.84）。
+     文档 §5 说的"明暗通吃"指的是**徽章底色**用法（不透明底 + 白字，算法不同），
+     不适用于"线条直接画在页面底色上"。
+     故明亮模式用**保饱和度压暗**的变体：固定色相、饱和度 ×1.25，降到对比度 ≥3.25
+     为止。相比直接乘系数压暗，HSL 调法不会把 #F0D12A 变成浑浊的 #A38E1D。
+     已知代价：电/凛刃/风 三支蓝在压暗后色相收敛，多系列图表在亮色下区分度下降。 */
+  --c-chart-1: #0095E6; /* 电   ← #2EB6FF */
+  --c-chart-2: #069FA1; /* 冰   ← #3FE0E3 */
+  --c-chart-3: #FF511D; /* 火   ← #FF5522 */
+  --c-chart-4: #A78D00; /* 物理 ← #F0D12A */
+  --c-chart-5: #FF4681; /* 以太 ← #FE427E */
+  --c-chart-6: #C97D22; /* 玄墨 ← #BB7D33 */
+  --c-chart-7: #6A86FF; /* 凛刃 ← #889EFF */
+  --c-chart-8: #4E8BFD; /* 风   ← #A4C0F4 */
+  --c-chart-9: #FF39AE; /* 流明 ← #FFA7DB */
 
   --wa-15: rgba(23, 26, 31, 0.015);
   --wa-20: rgba(23, 26, 31, 0.02);

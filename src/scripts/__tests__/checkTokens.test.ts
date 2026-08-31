@@ -182,6 +182,21 @@ html.light {
     const { root } = parseGlobalTokens(css)
     expect(resolveTokenColor(root, '--nope', null)).toBeNull()
   })
+
+  it('theme-parity 的判定口径：值含色值字面量的才算主题相关', () => {
+    // 与 check-tokens.mjs 内 isThemeDependent 同口径。这条测试的意义是防止有人
+    // 把判定改成「键集完全相等」，那样会把几十个尺度令牌逼着在 html.light 抄一遍。
+    const isThemeDependent = (v: string) => /#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i.test(v)
+    expect(isThemeDependent('--space-4: 8px'.split(': ')[1])).toBe(false)
+    expect(isThemeDependent('--text-md: 12px'.split(': ')[1])).toBe(false)
+    expect(isThemeDependent('--dur-base: 200ms'.split(': ')[1])).toBe(false)
+    expect(isThemeDependent('--fg-2: var(--wa-750)'.split(': ')[1])).toBe(false)
+    expect(isThemeDependent('--app-font-sans: system-ui, sans-serif'.split(': ')[1])).toBe(false)
+    // 含色值 → 必须双主题各一份
+    expect(isThemeDependent('0 1px 2px rgba(2, 6, 23, 0.4)')).toBe(true)
+    expect(isThemeDependent('#0f172a')).toBe(true)
+    expect(isThemeDependent('rgba(255, 255, 255, 0.02)')).toBe(true)
+  })
 })
 
 describe('字体栈一致性（规则 11：global.css ↔ App.vue 单一事实源）', () => {
