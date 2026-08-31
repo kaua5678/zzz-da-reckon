@@ -326,3 +326,64 @@ describe('艾莲完整计算链', () => {
     expect((panel.enemyIceResReduction ?? 0)).toBeLessThan(10 + 25 - 5)
   })
 })
+
+describe('艾莲滑块生效差分（防守卫冻结，SOP §3.5：改滑块→结果确实变）', () => {
+  it.each([
+    // [setting id, 影画等级, 面板字段, 满值期望差分]
+    ['ellen.c1CritStacks', 6, 'critRate', 6 * ELLEN_C1_CRIT_RATE_PER_STACK],
+    ['ellen.stormSurgeStacks', 6, 'iceDmg', 10 * ELLEN_STORM_SURGE_PER_STACK],
+  ] as const)('%s → 面板差分', async (id, cinema, field, delta) => {
+    const { catalog, config } = await setup('1141', cinema)
+    const read = () => (computePanelPhases(0, config, catalog)!.inCombat as any)[field] ?? 0
+    const maxSetting = ellenMechanic.settings!.find(s => s.id === id)!.max as number
+    config.setMechanicSetting(id, maxSetting)
+    const on = read()
+    config.setMechanicSetting(id, 0)
+    const off = read()
+    expect(on - off).toBeCloseTo(delta, 1)
+    expect(on).toBeGreaterThan(off)
+  })
+
+  it('ellen.c2AvgCharge → 强特行暴伤差分（patchExecutions 挂 EX 行）', async () => {
+    const { config } = await setup('1141', 2)
+    const exCritOf = () => {
+      const calc = useResourceCalc()
+      const ex = calc.resourceResult.value!.characters[0].executions.find(e => e.moveId === ELLEN_EX_MOVE_IDS[1])!
+      return ex.critDmgBonus ?? 0
+    }
+    config.setMechanicSetting('ellen.c2AvgCharge', 3)
+    const full = exCritOf()
+    config.setMechanicSetting('ellen.c2AvgCharge', 0)
+    const off = exCritOf()
+    expect(full - off).toBeCloseTo(ELLEN_C2_CRIT_DMG_MAX, 1)
+    expect(full).toBeGreaterThan(off)
+  })
+
+  it('ellen.c6FeastCoverage → 蓄力剪击行增伤差分（patchExecutions 挂 1191009）', async () => {
+    const feastOf = (coverage: number) => {
+      const executions: any[] = [{ moveId: ELLEN_DASH_MOVE_IDS[1], dmgBonus: 0, critDmgBonus: 0 }]
+      ellenMechanic.patchExecutions!({
+        cfg: { ellenCinemaLevel: 6, ellenPotentialLevel: 6, ellenC1CritStacks: 0, ellenC2AvgCharge: 0, ellenStormSurgeStacks: 0, ellenC6PenCoverage: 0, ellenC6FeastCoverage: coverage, ellenC4CdRate: 1, ellenFreezeCount: 0, ellenStunCount: 0, ellenAdditionalActive: false },
+        state: { basicAttackTime: 60, exSpecialCount: 2 },
+        executions,
+      } as never)
+      return executions[0].dmgBonus ?? 0
+    }
+    expect(feastOf(1)).toBeCloseTo(ELLEN_C6_FEAST_DMG, 1)
+    expect(feastOf(0)).toBe(0)
+    expect(feastOf(1)).toBeGreaterThan(feastOf(0))
+  })
+
+  it('ellen.c4CdRate → 影画4充能差分（applyTeamConfig 读 cfg.ellenC4CdRate，随覆盖率线性缩放）', () => {
+    const mk = (cdRate: number) => {
+      const c: any = { slot: 0, agentId: '1191', cinemaLevel: 4, initialEnergyGift: 40, ellenC4EnergyTotal: 0, ellenC4CdRate: cdRate, ellenFreezeCount: 0 }
+      ellenMechanic.applyTeamConfig!({ slot: 0, cinemaLevel: 4, characters: [c], phase: 'converge', stunCount: 3 } as never)
+      return c
+    }
+    const half = mk(0.5)
+    const full = mk(1)
+    expect(half.ellenC4EnergyTotal).toBe(3 * ELLEN_C4_ENERGY_PER_TRIGGER * 0.5)
+    expect(full.ellenC4EnergyTotal).toBeCloseTo(half.ellenC4EnergyTotal * 2, 5)
+    expect(full.initialEnergyGift).toBeCloseTo(40 + full.ellenC4EnergyTotal, 5)
+  })
+})
