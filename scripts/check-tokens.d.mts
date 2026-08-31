@@ -16,6 +16,11 @@ export declare function normalizeFontStack(input: string): string
 export declare function extractAppFontFamily(appSource: string): string | null
 export declare function findFontSizes(css: string): { value: string; num: number; unit: string }[]
 
+// App.vue themeOverrides 块解析（naive-token-reuse 判据的地基）
+export declare function extractBlock(source: string, name: string): string | null
+export declare function stripNestedBraces(block: string): string
+export declare function extractFlatPairs(block: string | null): Map<string, string>
+
 // 令牌表
 export declare function parseGlobalTokens(
   css: string,
@@ -33,6 +38,14 @@ export declare function resolveTokenColor(
   name: string,
   baseBg: Rgba | null,
 ): Rgba | null
+
+// 同值判定（naive-token-reuse：容忍 rgba 写法差异，色值按颜色比较）
+export declare function resolveTokenRaw(
+  tokens: Map<string, string>,
+  name: string,
+  fallback?: Map<string, string>,
+): string | null
+export declare function sameValue(a: string | null, b: string | null): boolean
 
 // 扫描
 export interface ScannedVue {
@@ -56,6 +69,11 @@ export declare const CONTRAST_TEXT_PAIRS: string[]
 export declare const CONTRAST_TEXT_MIN: number
 export declare const CONTRAST_CHART_PAIRS: string[]
 export declare const CONTRAST_CHART_MIN: number
+export interface ContrastExtraPair { label: string; fg: string; bg: string; min: number }
+export declare const CONTRAST_EXTRA_PAIRS: ContrastExtraPair[]
+
+// naive-token-reuse 判据（App.vue 表面色 ↔ global.css 令牌）
+export declare const NAIVE_TOKEN_MAP: ReadonlyArray<[string, string, string]>
 
 export interface TokenCheckResult {
   name: string

@@ -134,10 +134,14 @@ function onTabChange(tab: string) {
   padding: 0 24px;
   min-height: 60px;
   background: var(--app-header-bg);
-  border-bottom: 1px solid var(--wa-80);
+  /* 原 var(--wa-80)：顶栏描边与页面通用描边不是同一条线，接 --app-border。
+     再加一层 --shadow-1 —— 明亮模式顶栏是白、页面底是淡灰蓝，没有投影时
+     滚动内容会从顶栏下方"贴"过去，分不出层次。 */
+  border-bottom: 1px solid var(--app-border);
+  box-shadow: var(--shadow-1);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: var(--z-sticky);
   backdrop-filter: blur(10px);
 }
 
@@ -169,8 +173,8 @@ function onTabChange(tab: string) {
 }
 
 .brand-title {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
   color: var(--app-text-solid);
   letter-spacing: 1px;
   white-space: nowrap;
@@ -183,7 +187,13 @@ function onTabChange(tab: string) {
 }
 
 .theme-toggle {
-  color: var(--wa-600);
+  color: var(--fg-2);
+}
+
+/* 键盘可达性：顶栏是纯图标按钮密集区，原本 Tab 过去完全没有视觉反馈 */
+.theme-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
 .header-center {

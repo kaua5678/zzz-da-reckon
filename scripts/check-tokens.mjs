@@ -129,6 +129,72 @@ export function extractAppFontFamily(appSource) {
   return m ? m[2] : null
 }
 
+/**
+ * 按名字抽一个 `{ ... }` 块的内容（花括号配对，可嵌套）。
+ * 同时支持 `const <name> ...= {` 与 `<name>: {` 两种写法。
+ */
+export function extractBlock(source, name) {
+  const re = new RegExp(`(?:const\\s+${name}\\b[^=]*=\\s*\\{|\\b${name}\\s*:\\s*\\{)`)
+  const m = re.exec(source)
+  if (!m) return null
+  const open = source.indexOf('{', m.index)
+  let depth = 0
+  for (let i = open; i < source.length; i++) {
+    if (source[i] === '{') depth++
+    else if (source[i] === '}') { depth--; if (depth === 0) return source.slice(open + 1, i) }
+  }
+  return null
+}
+
+/** 去掉嵌套的 `{...}`，只留顶层内容（用于取顶层 key: value，不被子组件段干扰） */
+export function stripNestedBraces(block) {
+  let depth = 0
+  let out = ''
+  for (const ch of block) {
+    if (ch === '{') { depth++; continue }
+    if (ch === '}') { depth--; continue }
+    if (depth === 0) out += ch
+  }
+  return out
+}
+
+/** 抽顶层 `key: 'value'` 对（值用单引号，App.vue 的写法） */
+export function extractFlatPairs(block) {
+  if (block == null) return new Map()
+  const out = new Map()
+  for (const m of stripNestedBraces(block).matchAll(/(\w+)\s*:\s*'([^']*)'/g)) out.set(m[1], m[2])
+  return out
+}
+
+/**
+ * 跟随别名取最终原始值（--fill-hover → var(--wa-60) → rgba(...)），最多 8 层。
+ * fallback：别名层只定义在 :root，按主题块解析时会缺失，需要退回合并表继续跟链
+ * （链中间每一跳仍优先用主题自己的值，所以 --wa-60 会取到该主题的正确色）。
+ */
+export function resolveTokenRaw(tokens, name, fallback) {
+  let cur = name
+  for (let i = 0; i < 8; i++) {
+    const raw = tokens.has(cur) ? tokens.get(cur) : fallback?.get(cur)
+    if (raw == null) return null
+    const ref = raw.match(/var\(\s*(--[\w-]+)/)
+    if (!ref) return raw
+    cur = ref[1]
+  }
+  return null
+}
+
+/** 同值判定：能解析成颜色就比颜色（容忍 `rgba(1,2,3,.5)` 与 `rgba(1, 2, 3, 0.5)` 的写法差异），否则比归一化字符串 */
+export function sameValue(a, b) {
+  if (a == null || b == null) return false
+  const ca = parseColor(a)
+  const cb = parseColor(b)
+  if (ca && cb) {
+    const eq = (x, y) => Math.abs(x - y) < 0.005
+    return eq(ca.r, cb.r) && eq(ca.g, cb.g) && eq(ca.b, cb.b) && eq(ca.a, cb.a)
+  }
+  return String(a).replace(/\s+/g, ' ').trim() === String(b).replace(/\s+/g, ' ').trim()
+}
+
 /** 字号声明值（px / rem / em），用于尺度判据 */
 export function findFontSizes(css) {
   return [...css.matchAll(/font-size\s*:\s*([\d.]+)(px|rem|em)/g)].map(m => ({
@@ -346,12 +412,11 @@ export const HARDCODED_BASELINE = {
 export const FONT_SCALE = [8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24]
 
 /**
- * 离群字号基线（按文件，2026-08-31 实测冻结）。合计 21 处：
- * 10.5px×5  11.5px×5  9.5px×3  15px×3  8.5px×2  7px/17px/22px 各 1。
+ * 离群字号基线（按文件，2026-08-31 实测冻结；B3 清洗 AppHeader 17px→--text-3xl 后 21→20）。
+ * 10.5px×5  11.5px×5  9.5px×3  15px×3  8.5px×2  7px/22px 各 1。
  * 同棘轮语义：清洗一个文件就下调该行数字。
  */
 export const FONT_SIZE_BASELINE = {
-  'src/components/AppHeader.vue': 1,
   'src/components/BossCard.vue': 1,
   'src/components/FinalPanel.vue': 4,
   'src/views/CharIncrementPage.vue': 2,
@@ -362,18 +427,71 @@ export const FONT_SIZE_BASELINE = {
 }
 
 /**
- * --wa-* 直接引用总数基线（2026-08-31 实测 449）。
+ * --wa-* 直接引用总数基线（2026-08-31 实测 449；B3 顶栏换 --app-border/--fg-2 后 447）。
  * 为什么要有这条：--wa-* 的 47 档是历史 codemod 的机械产物（原 rgba(255,255,255,α)），
  * 人记不住 `--wa-250` 是描边还是悬浮底——这是「同义色散落」的同类病根。
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--text-2/--text-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 449
+export const WA_REF_BASELINE = 447
 
-/** var() 引用总数基线（2026-08-31 实测 494；修死引用与白底白字后 497）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 497
+/** var() 引用总数基线（2026-08-31 实测 494；修死引用后 497；B3 顶栏令牌化后 502）。只增不减，防把变量改回字面量 */
+export const VAR_TOTAL_BASELINE = 502
 
 // ---------------------------------------------------------------- 判据
+
+/**
+ * App.vue ↔ global.css 的取值对应表（判据 naive-token-reuse）。
+ * 为什么需要：Naive UI 的 themeOverrides 是 JS 侧的字面值，引用不了 CSS 变量，
+ * 于是每个表面色都在两个地方各写一遍。没有机器校验时两边必然漂移——
+ * 表现就是「Naive 组件一套灰、自定义组件另一套灰」，是本任务要治的核心病症。
+ *
+ * 格式：[主题块, 键（'Section.key' 表示组件段内的键）, global.css 令牌]
+ * 主题块取 darkCommon / lightCommon / darkOverrides / lightOverrides。
+ * 品牌色梯子（primaryColor*）不在此表：它们是为白字对比度专门调的，由 contrast 判据管。
+ */
+export const NAIVE_TOKEN_MAP = [
+  ['darkCommon', 'bodyColor', '--app-bg'],
+  ['darkCommon', 'cardColor', '--app-panel'],
+  ['darkCommon', 'inputColor', '--wa-60'],
+  ['darkCommon', 'inputColorDisabled', '--wa-30'],
+  ['darkCommon', 'dividerColor', '--app-border'],
+  ['darkCommon', 'borderColor', '--app-border'],
+  ['darkCommon', 'tableHeaderColor', '--app-tablehead-bg'],
+  ['darkCommon', 'tableColor', '--app-panel'],
+  ['darkCommon', 'tableColorHover', '--fill-hover'],
+  ['darkCommon', 'tableColorStriped', '--wa-15'],
+  ['darkCommon', 'tagColor', '--wa-60'],
+  ['darkCommon', 'textColorBase', '--app-text'],
+  ['darkCommon', 'textColorDisabled', '--wa-300'],
+  ['darkCommon', 'placeholderColor', '--fg-placeholder'],
+  ['darkCommon', 'scrollbarColor', '--scrollbar-thumb'],
+  ['darkCommon', 'scrollbarColorHover', '--scrollbar-thumb-hover'],
+
+  ['lightCommon', 'bodyColor', '--app-bg'],
+  ['lightCommon', 'cardColor', '--app-panel'],
+  ['lightCommon', 'inputColor', '--app-inset'],
+  ['lightCommon', 'inputColorDisabled', '--wa-30'],
+  ['lightCommon', 'dividerColor', '--app-border'],
+  ['lightCommon', 'borderColor', '--app-border'],
+  ['lightCommon', 'tableHeaderColor', '--app-tablehead-bg'],
+  ['lightCommon', 'tableColor', '--app-panel'],
+  ['lightCommon', 'tableColorHover', '--fill-hover'],
+  ['lightCommon', 'tableColorStriped', '--wa-15'],
+  ['lightCommon', 'tagColor', '--wa-60'],
+  ['lightCommon', 'textColorBase', '--app-text'],
+  ['lightCommon', 'textColorDisabled', '--wa-300'],
+  ['lightCommon', 'placeholderColor', '--fg-placeholder'],
+  ['lightCommon', 'scrollbarColor', '--scrollbar-thumb'],
+  ['lightCommon', 'scrollbarColorHover', '--scrollbar-thumb-hover'],
+
+  // Tooltip 是 common 里没有的表面色，只能组件级写——也最容易出现「Naive 提示与
+  // 自绘图表提示两张皮」，所以单独列出强制对齐
+  ['darkOverrides', 'Tooltip.color', '--app-tooltip-bg'],
+  ['darkOverrides', 'Tooltip.textColor', '--app-tooltip-text'],
+  ['lightOverrides', 'Tooltip.color', '--app-tooltip-bg'],
+  ['lightOverrides', 'Tooltip.textColor', '--app-tooltip-text'],
+]
 
 /** 需要断言对比度的前景/背景令牌对（背景统一落在 --app-panel，先压到 --app-bg 上） */
 export const CONTRAST_TEXT_PAIRS = [
@@ -390,6 +508,21 @@ export const CONTRAST_CHART_MIN = 3.0
 export const CONTRAST_CHART_PAIRS = [
   '--c-chart-1', '--c-chart-2', '--c-chart-3', '--c-chart-4',
   '--c-chart-5', '--c-chart-6', '--c-chart-7', '--c-chart-8',
+  '--c-chart-9', // 流明：B2 定义了 9 色，漏列就等于这一色从未被校验
+]
+
+/**
+ * 额外的「前景/背景对」断言（对应 App.vue 里显式写死的前景/背景覆盖）。
+ * 纪律：App.vue 每新增一对，这里必须同步加一行——覆盖数可以长，断言数必须跟着长。
+ * bg 若是半透明，会先压到 --app-bg 上再算。
+ */
+export const CONTRAST_EXTRA_PAIRS = [
+  // Naive Tooltip 与自绘 SVG tooltip（.hover-card / .bar-tip / .chart-tooltip-box）共用这套值，
+  // 任一侧在亮色模式下穿帮都会直接表现为「提示框里的字看不见」
+  { label: 'tooltip', fg: '--app-tooltip-text', bg: '--app-tooltip-bg', min: 4.5 },
+  // 占位符不承载实质信息，门槛放宽（WCAG 对 placeholder 也没有 4.5 的硬性要求）。
+  // 用语义别名而非固定档位：明暗两侧需要不同墨色才都能过 3:1。
+  { label: 'placeholder', fg: '--fg-placeholder', bg: '--app-panel', min: 3 },
 ]
 
 export function runAllChecks(root = ROOT) {
@@ -520,6 +653,17 @@ export function runAllChecks(root = ROOT) {
         contrastDetail.push(`  ✗ [${label}] ${name} vs --app-panel = ${ratio.toFixed(2)}:1 < ${CONTRAST_CHART_MIN}（图表色仅填充，门槛放宽）`)
       }
     }
+    // 额外对（App.vue 显式写死的前景/背景覆盖，见 CONTRAST_EXTRA_PAIRS）
+    for (const p of CONTRAST_EXTRA_PAIRS) {
+      if (!tokens.has(p.fg) || !tokens.has(p.bg)) continue
+      const bg = resolveTokenColor(tokens, p.bg, resolveTokenColor(tokens, '--app-bg', null) ?? bgSolid)
+      const fg = resolveTokenColor(tokens, p.fg, bg)
+      if (!bg || !fg) { contrastDetail.push(`  ✗ [${label}] 无法解析 ${p.fg} / ${p.bg}`); continue }
+      const ratio = contrastRatio(fg, bg)
+      if (ratio < p.min) {
+        contrastDetail.push(`  ✗ [${label}] ${p.label}：${p.fg} vs ${p.bg} = ${ratio.toFixed(2)}:1 < ${p.min} → 调整令牌或在 App.vue 里改用它色`)
+      }
+    }
   }
   checkPairs(darkTokens, 'dark')
   checkPairs(lightTokens, 'light')
@@ -592,6 +736,40 @@ export function runAllChecks(root = ROOT) {
     name: `font-stack-parity (规则 11: 字体栈单一事实源 global.css ↔ App.vue)`,
     ok: fontStackDetail.length === 0,
     detail: fontDetail,
+  })
+
+  // ---- 8. naive-token-reuse ----
+  // App.vue 的 themeOverrides 是 JS 字面值，引用不了 CSS 变量，每个表面色都得写两遍。
+  // 本判据锁死「两边必须同值」，防「Naive 组件一套灰、自定义组件另一套灰」。
+  const reuseDetail = []
+  let checked = 0
+  try {
+    const appSrc = readFileSync(join(root, 'src/App.vue'), 'utf8')
+    const themeOf = (block) => (block.startsWith('dark') ? darkTokens : lightTokens)
+    // 别名层只写在 :root（属于 darkTokens），解析明亮侧时需要这条合并表兜底
+    const combined = new Map([...darkTokens, ...lightTokens])
+    for (const [block, key, token] of NAIVE_TOKEN_MAP) {
+      const section = extractBlock(appSrc, block)
+      if (section === null) { reuseDetail.push(`  ✗ App.vue 找不到 ${block} 块`); continue }
+      let actual
+      if (key.includes('.')) {
+        const [comp, inner] = key.split('.')
+        actual = extractFlatPairs(extractBlock(section, comp)).get(inner)
+      } else {
+        actual = extractFlatPairs(section).get(key)
+      }
+      const expected = resolveTokenRaw(themeOf(block), token, combined)
+      if (actual === undefined) { reuseDetail.push(`  ✗ App.vue ${block}.${key} 未设置（期望 ${token}）`); continue }
+      if (expected === null) { reuseDetail.push(`  ✗ global.css 缺少令牌 ${token}（${block}.${key} 要引用它）`); continue }
+      if (!sameValue(actual, expected)) {
+        reuseDetail.push(`  ✗ ${block}.${key} 与 ${token} 漂移：App.vue="${actual}"  global.css="${expected}"`)
+      } else checked++
+    }
+  } catch { /* App.vue 缺失由 build 负责报错 */ }
+  results.push({
+    name: `naive-token-reuse (规则 11: App.vue 表面色必须取自 global.css 令牌) ${checked}/${NAIVE_TOKEN_MAP.length} 对齐`,
+    ok: reuseDetail.length === 0 && checked === NAIVE_TOKEN_MAP.length,
+    detail: reuseDetail,
   })
 
   return { results, ok: results.every(r => r.ok), stats: { scanned, varTotal, waRefs, darkTokens, lightTokens } }

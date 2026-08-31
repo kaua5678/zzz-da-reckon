@@ -7,14 +7,19 @@
  * ③ 仓库级 runAllChecks 全绿（在 vitest 里给出定位到文件的失败信息，不用等 CI）
  */
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import {
+  CONTRAST_EXTRA_PAIRS,
+  NAIVE_TOKEN_MAP,
   FONT_SCALE,
   HARDCODED_WHITELIST,
   WA_REF_BASELINE,
   contrastRatio,
   countHardcodedColors,
   extractAppFontFamily,
+  extractBlock,
   extractDeclarationRegions,
+  extractFlatPairs,
   extractTemplateSource,
   findFontSizes,
   findVarRefs,
@@ -24,7 +29,9 @@ import {
   parseGlobalTokens,
   relativeLuminance,
   resolveTokenColor,
+  resolveTokenRaw,
   runAllChecks,
+  sameValue,
   scanVueFiles,
   stripComments,
 } from '../../../scripts/check-tokens.mjs'
@@ -235,15 +242,122 @@ describe('scanVueFiles（口径：样式声明区 + 模板，排除脚本）', (
 })
 
 describe('仓库级自洽（真实扫描）', () => {
-  it('七条判据全绿（tokens-defined / theme-parity / 硬编码棘轮 / 字号棘轮 / 对比度 / 别名棘轮 / 字体栈一致）', () => {
+  it('八条判据全绿（tokens-defined / theme-parity / 硬编码棘轮 / 字号棘轮 / 对比度 / 别名棘轮 / 字体栈一致 / naive-token-reuse）', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(7)
+    expect(results).toHaveLength(8)
   })
 
   it('--wa-* 引用数不超过冻结基线（别名层推进方向）', () => {
     const { stats } = runAllChecks()
     expect(stats.waRefs).toBeLessThanOrEqual(WA_REF_BASELINE)
+  })
+})
+
+describe('extractBlock / stripNestedBraces / extractFlatPairs（App.vue 块解析）', () => {
+  const src = `const darkCommon = {
+  bodyColor: '#0f172a',
+  nested: { inner: 'x', deep: { y: 1 } },
+  tagColor: 'rgba(255, 255, 255, 0.06)',
+}
+const darkOverrides = {
+  Tooltip: {
+    color: 'rgba(30, 41, 59, 0.96)',
+    textColor: '#fff',
+  },
+}`
+
+  it('extractBlock 按名字取花括号内容（支持嵌套与 const/段内两种写法）', () => {
+    const block = extractBlock(src, 'darkCommon')
+    expect(block).toContain("bodyColor: '#0f172a'")
+    expect(block).toContain('nested: { inner')
+    const tooltip = extractBlock(src, 'Tooltip')
+    expect(tooltip).toContain("color: 'rgba(30, 41, 59, 0.96)'")
+  })
+
+  it('extractFlatPairs 只取顶层单引号键值对，嵌套段不干扰', () => {
+    const pairs = extractFlatPairs(extractBlock(src, 'darkCommon'))
+    expect(pairs.get('bodyColor')).toBe('#0f172a')
+    expect(pairs.get('tagColor')).toBe('rgba(255, 255, 255, 0.06)')
+    expect(pairs.has('nested')).toBe(false)
+    expect(pairs.has('inner')).toBe(false)
+  })
+
+  it('组件段内的键经 extractBlock+extractFlatPairs 两跳取出', () => {
+    const section = extractBlock(src, 'darkOverrides')!
+    const pairs = extractFlatPairs(extractBlock(section, 'Tooltip'))
+    expect(pairs.get('textColor')).toBe('#fff')
+  })
+
+  it('找不到块返回 null（不抛错）', () => {
+    expect(extractBlock(src, 'noSuchBlock')).toBeNull()
+  })
+})
+
+describe('resolveTokenRaw（跨层取最终原始值）', () => {
+  const tokens = new Map([
+    ['--fill-hover', 'var(--wa-60)'],
+    ['--wa-60', 'rgba(255, 255, 255, 0.06)'],
+  ])
+
+  it('跟别名链到原始色值（≤8 层）', () => {
+    expect(resolveTokenRaw(tokens, '--fill-hover')).toBe('rgba(255, 255, 255, 0.06)')
+  })
+
+  it('主表缺键时用 fallback 合并表继续跟（链中间仍优先主表值）', () => {
+    const fallback = new Map([['--wa-60', 'rgba(23, 26, 31, 0.06)']])
+    const lightish = new Map([['--fill-hover', 'var(--wa-60)']])
+    expect(resolveTokenRaw(lightish, '--fill-hover', fallback)).toBe('rgba(23, 26, 31, 0.06)')
+  })
+
+  it('链断裂或成环返回 null（不静默给错值）', () => {
+    expect(resolveTokenRaw(new Map([['--a', 'var(--missing)']]), '--a')).toBeNull()
+    const ring = new Map([['--a', 'var(--b)'], ['--b', 'var(--a)']])
+    expect(resolveTokenRaw(ring, '--a')).toBeNull()
+  })
+})
+
+describe('sameValue（容忍写法差异的同值判定）', () => {
+  it('rgba 写法差异（空格/小数 alpha）视为同值', () => {
+    expect(sameValue('rgba(1,2,3,.5)', 'rgba(1, 2, 3, 0.5)')).toBe(true)
+  })
+
+  it('非色值按归一化字符串比较', () => {
+    expect(sameValue('12px', '12px')).toBe(true)
+    expect(sameValue('12px', '13px')).toBe(false)
+  })
+
+  it('色值不同就不同（防假绿）', () => {
+    expect(sameValue('#ffffff', '#000000')).toBe(false)
+    expect(sameValue(null, '#fff')).toBe(false)
+  })
+})
+
+describe('naive-token-reuse 判据（App.vue ↔ global.css 表面色对齐）', () => {
+  it('映射表非空且每个条目三元组完整（主题块/键/令牌）', () => {
+    expect(NAIVE_TOKEN_MAP.length).toBeGreaterThanOrEqual(36)
+    for (const [block, key, token] of NAIVE_TOKEN_MAP) {
+      expect(['darkCommon', 'lightCommon', 'darkOverrides', 'lightOverrides']).toContain(block)
+      expect(key).toMatch(/^(\w+|\w+\.\w+)$/)
+      expect(token).toMatch(/^--/)
+    }
+  })
+
+  it('映射表引用的令牌全部真实存在于 global.css（否则判据自身就是死的）', () => {
+    const css = readFileSync(new URL('../../../src/styles/global.css', import.meta.url), 'utf8')
+    const defined = new Set([...css.matchAll(/(--[\w-]+)\s*:/g)].map(m => m[1]))
+    for (const [, , token] of NAIVE_TOKEN_MAP) {
+      expect(defined.has(token), `${token} 未在 global.css 定义`).toBe(true)
+    }
+  })
+
+  it('额外对比度对的令牌也真实存在', () => {
+    const css = readFileSync(new URL('../../../src/styles/global.css', import.meta.url), 'utf8')
+    const defined = new Set([...css.matchAll(/(--[\w-]+)\s*:/g)].map(m => m[1]))
+    for (const p of CONTRAST_EXTRA_PAIRS) {
+      expect(defined.has(p.fg), `${p.fg} 未定义`).toBe(true)
+      expect(defined.has(p.bg), `${p.bg} 未定义`).toBe(true)
+    }
   })
 })
