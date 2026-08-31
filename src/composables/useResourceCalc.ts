@@ -584,6 +584,8 @@ export function useResourceCalc() {
     // 有轴时：失衡送的连携次数从轴里连携块反推（chainCountPerStun 仅无轴兜底）。
     // 多条轴连携数可能不同（爆发轴 1 连携 / 末尾爆发轴 2 连携），须按各轴分配的窗口数加权求和，不能简单相加。
     const axisChainTotal: Record<number, number> = {}
+    /** 轴内终结技块总次数（× 窗口数，与 axisUltimateNeed 同口径）：通用注入 cfg.axisUltimateTotal 供模块消费（希希芙影画2 等） */
+    const axisUltimateTotal: Record<number, number> = {}
     if (axisActive) {
       const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
       resolvedAxes.forEach((axis, ai) => {
@@ -595,6 +597,9 @@ export function useResourceCalc() {
           const en = (findMoveById(skills, act.moveId)?.name?.en ?? '').toLowerCase()
           if (en.includes('chain attack') && !en.includes('ultimate')) {
             axisChainTotal[act.slot] = (axisChainTotal[act.slot] ?? 0) + act.count * wins
+          }
+          if (en.includes('ultimate') && !en.includes('chain attack')) {
+            axisUltimateTotal[act.slot] = (axisUltimateTotal[act.slot] ?? 0) + act.count * wins
           }
         }
       })
@@ -671,6 +676,7 @@ export function useResourceCalc() {
         axisInSeconds,
         teamStunCoverage: provStunCoverage,
         axisActionCounts: axisActionCountsBySlot[cfg.slot],
+        axisUltimateTotal: axisUltimateTotal[cfg.slot] ?? 0,
       }
       // 非轴降配（用户口径 2026-08-30）：超预算时缩放用户交互次数（round）。只缩 store 侧输入——
       // 下方 boss 强制弹刀（parrySplit 直读 store 原值）与轴补齐注入在其后叠加，不被缩放。

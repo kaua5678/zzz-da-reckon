@@ -207,6 +207,14 @@ describe('希希芙毒素资源循环、蚀骨与蛇吻', () => {
     expect(r0.specResources.xixifu_toxin.gains.toxin_c2_stunned_chain_ultimate).toBeCloseTo(3, 5)
   })
 
+  it('影画2 轴模式：axisUltimateTotal 精确反推，不吃 min(终结, 失衡) 折扣', () => {
+    // 轴内终结块 3 次（> 失衡 1）：非轴口径 min(3,1)=1，轴口径全额 3
+    const cfg: any = { xixifuCinemaLevel: 2, xixifuStunCount: 1, axisUltimateTotal: 3 }
+    const result: any = xixifuMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    // 连携 1 + 终结 3 = 4 次 × 3 = 12
+    expect(result.specResources.xixifu_toxin.gains.toxin_c2_stunned_chain_ultimate).toBeCloseTo(12, 5)
+  })
+
   it('影画4：觉悟计数器（强特2+连携1+终结1=4层）→ 特殊蚀骨 4（无失衡值假 id）', () => {
     const executions: any[] = []
     xixifuMechanic.buildExecutions!({ cfg: { xixifuCinemaLevel: 4, xixifuElectricCount: 1, xixifuAtk: 3000 }, state: mkState(), executions } as any)

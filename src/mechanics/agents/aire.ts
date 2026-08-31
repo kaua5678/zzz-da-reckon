@@ -8,7 +8,9 @@
  * - 影画2 梦幻节拍：攻击与异放无视16%防御计入面板 enemyDefReduction；
  *   妄想时刻内额外无视8%按覆盖率折算。
  * - 影画6 构造体之梦：进场喧响+1200计入 initialDecibelGift（180秒一次整局近似）。
- * - 额外能力合作舞台：击破/支援/同阵营/异常队友激活；侵蚀持续+3秒沿用 spec teamBuffs。
+ * - 额外能力合作舞台：击破/支援/同阵营/异常队友激活；侵蚀持续+3秒沿用 spec teamBuffs；
+ *   帷幕生应援能量 4个/次 × 全队帷幕次数（含队友开的帷幕——照/千夏/叶瞬光，
+ *   useResourceCalc 收敛注入 teamVeilCountTotal，2026-08-31 从「每大招120」改为按帷幕次数）。
  *
  * 明确未建模（状态机）：
  * - 影画6 妄想时刻不退出、全场应援/应援能量转化（场上资源状态机）。
@@ -26,6 +28,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentTeamConfigInput,
 } from '../types'
 
 export const AIRE_ID = '1501'
@@ -63,10 +66,11 @@ export const AIRE_C4_CD_SECONDS = 10
 /** 影画6 强化绝对音准/终结技以太伤害 +40% */
 export const AIRE_C6_ETHANOL_DMG_BONUS = 40
 export const AIRE_ULTIMATE_MOVE_ID = '1501016'
-/** 应援能量来源（总量近似）：强特 +3 / 连携 +4 / 甜心四段 +1 / 帷幕 4/s×30s=120 */
+/** 应援能量来源（总量近似）：强特 +3 / 连携 +4 / 甜心四段 +1 / 帷幕每次开 4 个（额外能力） */
 export const AIRE_CHEER_EX = 3
 export const AIRE_CHEER_CHAIN = 4
-export const AIRE_CHEER_VEIL_PER_ULT = 120
+/** 额外能力·合作舞台：每次以太帷幕开启生成 4 个应援能量（1s ICD 在帷幕持续 30s+ 下不约束） */
+export const AIRE_CHEER_PER_VEIL = 4
 /** 全场应援获取 CD（秒） */
 export const AIRE_CHEER_CD_SECONDS = 6
 
@@ -166,10 +170,11 @@ function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInp
   const manualCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount', 0)))
   let pitchCount = manualCount
   if (pitchCount <= 0) {
-    // 应援能量总量近似：强特 +3、连携 +4、帷幕 4/s×30s×终结技次数（额外能力门控）
+    // 应援能量总量近似：强特 +3、连携 +4、帷幕 4个/次×全队帷幕次数（含队友开的帷幕，useResourceCalc 收敛注入 teamVeilCountTotal）
+    const teamVeilCount = Math.max(0, Math.floor(Number(record.teamVeilCountTotal ?? 0) || 0))
     const cheerEnergy = state.exSpecialCount * AIRE_CHEER_EX
       + state.chainCountTotal * AIRE_CHEER_CHAIN
-      + (additionalActive ? AIRE_CHEER_VEIL_PER_ULT * state.ultimateCount : 0)
+      + (additionalActive ? AIRE_CHEER_PER_VEIL * teamVeilCount : 0)
       + Math.max(0, setting(cfg, 'aire.cheerEnergyBonus', 0))
     // 全场应援次数 = min(异常触发次数, floor(t/6))；异常队异常触发次数通常远超 CD 上限，取上限近似
     const cheerGain = Math.floor(totalTime / AIRE_CHEER_CD_SECONDS)
@@ -236,6 +241,27 @@ function buildAireResourceSections({ result }: AgentResourceSectionsInput) {
   }]
 }
 
+/** postRound：汇总全队以太帷幕次数 → 写 teamVeilCountTotal 到爱芮(1501)/叶瞬光(1431) 的 cfg
+ *（与叶瞬光模块同款幂等 hook——两个消费者模块各自挂一份，单人在队也生效）。
+ * 帷幕来源：照(1341) zhaoVeilCount + 爱芮/叶瞬光大招 + 千夏(1491) 强特次数。 */
+function applyAireTeamConfig({ characters, phase, exCounts, ultimateCounts }: AgentTeamConfigInput): void {
+  if (phase !== 'postRound') return
+  let veilTotal = 0
+  characters.forEach((mate, index) => {
+    const ex = Math.max(0, Math.floor(exCounts[index] ?? 0))
+    const ult = Math.max(0, Math.floor(ultimateCounts?.[index] ?? 0))
+    const record = mate as unknown as Record<string, unknown>
+    if (mate.agentId === '1341') veilTotal += Math.max(0, Math.floor(Number(record.zhaoVeilCount ?? 0) || 0))
+    else if (mate.agentId === '1501' || mate.agentId === '1431') veilTotal += ult
+    else if (mate.agentId === '1491') veilTotal += ex
+  })
+  for (const mate of characters) {
+    if (mate.agentId === '1501' || mate.agentId === '1431') {
+      ;(mate as unknown as Record<string, unknown>).teamVeilCountTotal = veilTotal
+    }
+  }
+}
+
 export const aireMechanic: AgentMechanicModule = {
   id: 'agent:aire',
   agentIds: [AIRE_ID],
@@ -244,10 +270,11 @@ export const aireMechanic: AgentMechanicModule = {
   settings: [
     { id: 'aire.c2DelusionCoverage', label: '妄想时刻覆盖率', description: '影画2妄想时刻内额外无视8%防御的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
     { id: 'aire.absolutePitchCount', label: '绝对音准#3次数覆盖', description: '第三段[普通攻击：绝对音准 #3]整局次数的手动覆盖；0=自动（应援能量/2+全场应援），>0 强制用该值', default: 0, min: 0, max: 200, step: 1 },
-    { id: 'aire.cheerEnergyBonus', label: '应援能量额外', description: '应援能量总量额外补充（自动公式已含强特×3+连携×4+帷幕120/大招，此处补甜心四段等次要来源）', default: 0, min: 0, max: 400, step: 10 },
+    { id: 'aire.cheerEnergyBonus', label: '应援能量额外', description: '应援能量总量额外补充（自动公式已含强特×3+连携×4+帷幕4个/次×全队帷幕次数，此处补甜心四段等次要来源）', default: 0, min: 0, max: 400, step: 10 },
   ],
   applyPanel: applyAirePanel,
   buildCharConfig: buildAireCharConfig,
+  applyTeamConfig: applyAireTeamConfig,
   buildAnomalyEvents: buildAireAnomalyEvents,
   patchExecutions: patchAireExecutions,
   buildResourceResult: buildAireResourceResult,

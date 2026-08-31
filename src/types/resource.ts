@@ -1656,10 +1656,12 @@ export interface CharacterOperationConfig {
   teamStunCoverage?: number
   /** 全队通用：轴内各 moveId 捏块总次数（块数×窗口数；轴模式由编排层注入，非轴为空对象） */
   axisActionCounts?: Record<string, number>
+  /** 全队通用：轴内终结技块总次数（× 窗口数；轴模式注入，非轴 0；希希芙影画2 等消费） */
+  axisUltimateTotal?: number
   /** 苍角终结技每次给本槽位的能量（邻位 30/10） */
   soukakuEnergyPerSoukakuUlt?: number
-  /** 叶瞬光：队友整局帷幕次数（也可 setting 滑块） */
-  yeshuguangTeamCurtainCount?: number
+  /** 全队通用：以太帷幕开启总次数（照 veilCount + 爱芮/叶瞬光/千夏开帷幕；爱芮应援能量与叶瞬光溯影惊鸿消费） */
+  teamVeilCountTotal?: number
   /** 仪玄·2连墨痕化形次数（主页交互栏；#1+#3，40闪能/次） */
   yixuanInk2Count?: number
   /** 仪玄·3连墨痕化形次数（主页交互栏；#1+#3+#4，60闪能/次） */

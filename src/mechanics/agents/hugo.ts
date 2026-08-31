@@ -5,7 +5,8 @@
  * - 暗渊回响按可调覆盖率折算暴击+12%、暴伤+25%；C6默认满覆盖。
  * - 其他击破队友为1/2名时，自身攻击力固定+300/+900。
  * - 决算按可调“触发时剩余失衡秒数”计算额外倍率：基础1000%，前5秒每秒+280%，
- *   5~15秒每秒+100%，总上限3400%。当前总量模型展示返还失衡比例但不回灌下一条失衡。
+ *   5~15秒每秒+100%，总上限3400%。失衡值返还（每窗 min(25%, 剩余秒×5%)×boss失衡条）
+ *   由 useResourceCalc 注入 hugoRefundRatio，经 calcStunPool 回灌下一条失衡条（本模块仅展示）。
  * - 强特倍率表拆为起手1291009与终结1291010；资源池只自动生成起手，本模块补齐终结一击。
  * - 普通敌人专属额外35%伤害与20能量不适用于当前首领口径，未建模。
  */
@@ -135,7 +136,7 @@ export function computeHugoCycle(input: {
     verdictMultiplier: computeHugoVerdictMultiplier(input.remainingStunSeconds),
     stunRefundRatio: Math.min(0.25, Math.max(0, input.remainingStunSeconds) * 0.05),
     echoCoverage: cinemaLevel >= 6 ? 1 : clampRatio(input.echoCoverage),
-    note: '决算按可调剩余失衡时间结算；失衡返还仅展示，不回灌失衡次数。',
+    note: '决算按可调剩余失衡时间结算；失衡值返还由 useResourceCalc 回灌下一条失衡条（calcStunPool 闭式解）。',
   }
 }
 
@@ -338,7 +339,7 @@ function buildHugoResourceSections({ result }: AgentResourceSectionsInput) {
       { label: '强特决算', value: `${cycle.exVerdictCount} 次`, detail: `强特总计 ${cycle.exSpecialCount} 次` },
       { label: '终结技决算', value: `${cycle.ultimateVerdictCount} 次`, detail: `终结技总计 ${cycle.ultimateCount} 次` },
       { label: '触发时剩余失衡', value: `${cycle.remainingStunSeconds}秒`, detail: `决算额外倍率 +${cycle.verdictMultiplier}%` },
-      { label: '失衡值返还', value: `${Math.round(cycle.stunRefundRatio * 100)}%`, detail: '展示原文上限；当前不回灌下一条失衡' },
+      { label: '失衡值返还', value: `${Math.round(cycle.stunRefundRatio * 100)}%`, detail: '由 useResourceCalc 回灌下一条失衡条（弹刀反推同源吃返还）' },
     ],
     footer: cycle.note,
   }]

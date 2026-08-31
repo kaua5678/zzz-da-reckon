@@ -19,6 +19,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentTeamConfigInput,
 } from '../types'
 
 export const ZHAO_ID = '1341'
@@ -172,6 +173,23 @@ function buildResourceResult({ cfg, state, teamFrontlineSeconds }: AgentResource
   return { specResources: { zhao_frost: cycle } }
 }
 
+/** postRound：本轮收敛的强特/终结次数 → 幂等写 zhaoVeilCount 进自身 cfg，
+ * 供叶瞬光（溯影惊鸿）/爱芮（合作舞台）在全队 cfg 上直接读照的开帷幕次数。 */
+function applyZhaoTeamConfig({ slot, characters, phase, exCounts, ultimateCounts }: AgentTeamConfigInput): void {
+  if (phase !== 'postRound') return
+  const own = characters.find(c => c.slot === slot)
+  if (!own) return
+  const exSpecialCount = Math.max(0, Math.floor(exCounts[characters.findIndex(c => c.slot === slot)] ?? 0))
+  const ultimateCount = Math.max(0, Math.floor(ultimateCounts?.[characters.findIndex(c => c.slot === slot)] ?? 0))
+  // 队友命中按战斗时间近似（队友前台秒数在 postRound 不可得；霜寒满 100 消耗时误差 ≤1 次）
+  const teammateAttackCount = Math.max(0, Math.floor(180 / ZHAO_TEAMMATE_FROST_INTERVAL))
+  const frostTotal = ZHAO_FROST_INITIAL
+    + exSpecialCount * ZHAO_EX_FROST_GAIN
+    + ultimateCount * ZHAO_ULT_FROST_GAIN
+    + teammateAttackCount * ZHAO_TEAMMATE_FROST_GAIN
+  ;(own as unknown as Record<string, unknown>).zhaoVeilCount = Math.floor(frostTotal / ZHAO_FROST_CAP)
+}
+
 function buildResourceSections({ result }: AgentResourceSectionsInput) {
   const cycle = result.specResources?.zhao_frost as ZhaoFrostCycle | undefined
   if (!cycle) return []
@@ -195,6 +213,7 @@ export const zhaoMechanic: AgentMechanicModule = {
   description: '初始生命转暴击、影画2自身增攻、影画4开帷幕喧响与指定招式暴伤、霜寒值循环开帷幕、最终裁决蓄力生命附伤（影画6×1.4）。',
   applyPanel,
   buildCharConfig,
+  applyTeamConfig: applyZhaoTeamConfig,
   buildExecutions: buildZhaoExecutions,
   patchExecutions,
   buildResourceResult,

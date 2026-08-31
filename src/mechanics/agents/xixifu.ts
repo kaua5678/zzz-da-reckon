@@ -75,7 +75,7 @@ function buildXixifuCharConfig({ cfg, cinemaLevel, team, panel }: AgentCharConfi
   cfg.xixifuElectricCount = Math.max(1, electric)
 }
 
-/** 影画2 失衡下连携/终结额外+3毒素：需要失衡次数门控，converge 阶段写入 cfg */
+/** 影画2 失衡下连携/终结额外+3毒素：需要失衡次数门控，converge 阶段写入 cfg；轴模式由 cfg.axisUltimateTotal 精确反推 */
 function applyXixifuTeamConfig({ characters, phase, stunCount }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
   for (const c of characters) {
@@ -90,11 +90,16 @@ function computeXixifuToxinTotal(cfg: AgentResourceInput['cfg'], state: AgentRes
   // 影画1：进场毒素 3→6（initialValueSource=cfgField，buildExecutions 先于
   // buildResourceResult 调用，此处写入保证两条路径一致）
   ;(cfg as any).xixifuInitialToxin = cinema >= 1 ? XIXIFU_TOXIN_INITIAL_C1 : XIXIFU_TOXIN_INITIAL
-  // 影画2：失衡下连携/终结命中额外+3毒素（资源回复端；连携默认全吃，终结 = min(终结次数, 失衡次数)）
+  // 影画2：失衡下连携/终结命中额外+3毒素（资源回复端）。
+  // 非轴：连携默认全吃（全在失衡内），终结 = min(终结次数, 失衡次数)。
+  // 轴模式（2026-08-31 接入）：连携/终结都由轴内块精确反推——轴内连携 override 进
+  // state.chainCountTotal、终结读 cfg.axisUltimateTotal（编排层按窗口数加权注入），
+  // 轴内块全在失衡窗口内，不吃 min(ult, stun) 折扣。
+  const axisUlt = Math.max(0, Math.floor(Number((cfg as any).axisUltimateTotal ?? 0) || 0))
   const chain = Math.max(0, Math.floor(state.chainCountTotal ?? 0))
-  const ult = Math.max(0, Math.floor(state.ultimateCount ?? 0))
+  const ult = axisUlt > 0 ? axisUlt : Math.max(0, Math.floor(state.ultimateCount ?? 0))
   const stun = Math.max(0, Math.floor(Number((cfg as any).xixifuStunCount ?? 0)))
-  const stunnedUlt = Math.min(ult, stun)
+  const stunnedUlt = axisUlt > 0 ? ult : Math.min(ult, stun)
   ;(cfg as any).xixifuC2Toxin = cinema >= 2 ? (chain + stunnedUlt) * 3 : 0
   const toxin = computeSpecResources(spec, cfg, state).get(XIXIFU_TOXIN_RESOURCE_ID)
   if (!toxin) return 0

@@ -126,13 +126,18 @@ describe('爱芮完整计算链', () => {
     expect(releases.every(r => r.totalDamage > 0)).toBe(true)
   })
 
-  it('异放次数自动推导 = 应援能量/2 + 全场应援(floor(t/6))', () => {
-    const cfg = { aireCinemaLevel: 0, aireAdditionalActive: true } as any
+  it('异放次数自动推导 = 应援能量/2 + 全场应援(floor(t/6))；帷幕按次数（4个/次×teamVeilCountTotal）', () => {
+    const cfg = { aireCinemaLevel: 0, aireAdditionalActive: true, teamVeilCountTotal: 3 } as any
     const state = { exSpecialCount: 4, chainCountTotal: 5, ultimateCount: 2 } as any
     const events: any[] = []
     aireMechanic.buildAnomalyEvents!({ cfg, state, events, totalTime: 180 })
-    // 应援能量 = 4×3 + 5×4 + 120×2 = 272；全场应援 = floor(180/6)=30 → 异放 = floor(272/2)+30 = 166
-    expect(events[0].count).toBe(166)
+    // 应援能量 = 4强特×3 + 5连携×4 + 3帷幕×4 = 44；全场应援 = floor(180/6)=30 → 异放 = floor(44/2)+30 = 52
+    expect(events[0].count).toBe(52)
+    // 生效断言：帷幕次数翻倍 → 应援能量 +3×4 → 异放 +6
+    const cfg2 = { aireCinemaLevel: 0, aireAdditionalActive: true, teamVeilCountTotal: 6 } as any
+    const events2: any[] = []
+    aireMechanic.buildAnomalyEvents!({ cfg: cfg2, state, events: events2, totalTime: 180 })
+    expect(events2[0].count).toBe(58)
   })
 
   it('影画1：异放事件带 releaseCrit（基础25/25，掌控>100每点+0.5）', () => {

@@ -3,7 +3,7 @@ import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
-import { qianxiaMechanic } from '@/mechanics/agents/qianxia'
+import { qianxiaMechanic, QIANXIA_GAZE_MARK_MOVE_IDS } from '@/mechanics/agents/qianxia'
 
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
@@ -112,5 +112,75 @@ describe('千夏影画拐力（teammate-buffs 按命座门控）', () => {
     qianxiaMechanic.applyPanel!({ cinemaLevel: 5, panel: p0, settings: { 'qianxia.c6FocusCoverage': 1 } } as any)
     expect(p0.critRate).toBeCloseTo(10)
     expect(p0.critDmg).toBeCloseTo(50)
+  })
+})
+
+describe('千夏猫的凝视触发与磨爪器（2026-08-31 建模）', () => {
+  const mkExec = (moveId: string, count: number): any => ({
+    moveId, moveName: moveId, category: 'special', count, actionTime: 1,
+    totalTime: count, comboAlignRatio: 0, totalComboAlignTime: 0,
+    energyConsume: 0, totalEnergyConsume: 0, decibelRecovery: 0, totalDecibelRecovery: 0,
+    energyRecovery: 0, totalEnergyRecovery: 0,
+  })
+
+  it('凝视触发次数 = min(标记供给, 触发者命中)；倍率按强攻/异常占比拆分', () => {
+    // 标记供给 10（强特 #1×10）、触发者命中 8 → 8 次；队内强攻1+异常1 → 各半
+    const executions = [mkExec('1491007', 10)]
+    const cfg: any = {
+      qianxiaCinemaLevel: 0, qianxiaAttackAgents: 1, qianxiaAnomalyAgents: 1,
+      qianxiaTriggerHits: 8, teamVeilCountTotal: 2, battleTime: 180,
+      panel: {},
+    }
+    qianxiaMechanic.buildExecutions!({ cfg, state: { ultimateCount: 1 } as any, executions })
+    const gazeRows = executions.filter(e => String(e.moveId).startsWith('1491_gaze'))
+    expect(gazeRows).toHaveLength(2)
+    expect(gazeRows[0].count).toBe(4) // 强攻 8×0.5
+    expect(gazeRows[0].damageMultiplier).toBe(150)
+    expect(gazeRows[1].count).toBe(4) // 异常 8×0.5
+    expect(gazeRows[1].damageMultiplier).toBe(240)
+    expect(gazeRows[1].critRateBonus).toBe(100)
+    expect(gazeRows[1].critDmgBonus).toBe(80)
+    expect(executions.every(e => e.timeBucket === 'backstage' || !String(e.moveId).startsWith('1491_'))).toBe(true)
+  })
+
+  it('影画2：触发倍率提升 350%/540%；影画6：凝视伤害 +50%；磨爪器→泡泡行', () => {
+    const executions = [mkExec('1491008', 6)]
+    const cfg: any = {
+      qianxiaCinemaLevel: 6, qianxiaAttackAgents: 1, qianxiaAnomalyAgents: 0,
+      qianxiaTriggerHits: 6, teamVeilCountTotal: 3, battleTime: 180,
+      panel: {},
+    }
+    qianxiaMechanic.buildExecutions!({ cfg, state: { ultimateCount: 2 } as any, executions })
+    const attack = executions.find(e => e.moveId === '1491_gaze_attack_trigger')!
+    expect(attack.damageMultiplier).toBe(350) // 150+200
+    expect(attack.dmgBonus).toBe(50) // 影画6
+    // 异常触发者 0 人 → 异常行不物化（count=0 过滤）
+    expect(executions.find(e => e.moveId === '1491_gaze_anomaly_trigger')).toBeUndefined()
+    // 磨爪器 = 帷幕3×2 + 异常CD(0, 无异常角色) + 180/10=18 + 大招2×6=12 → 36；泡泡 = min(36, 90)=36
+    const bubble = executions.find(e => e.moveId === '1491_bubble_auto_attack')!
+    expect(bubble.count).toBe(36)
+    expect(bubble.damageMultiplier).toBe(100)
+  })
+
+  it('标记招式常量覆盖普攻第四段与全部强特段（倍率表真实行）', () => {
+    expect([...QIANXIA_GAZE_MARK_MOVE_IDS].sort()).toEqual(
+      ['1491004', '1491007', '1491008', '1491018', '1491019'].sort(),
+    )
+  })
+
+  it('滑块 qianxia.gazeTriggerHits：手动触发者命中数确实改变凝视触发次数（0=自动按标记供给）', () => {
+    const mk = (settingHits: number) => {
+      const executions = [mkExec('1491007', 10)]
+      const cfg: any = {
+        qianxiaCinemaLevel: 0, qianxiaAttackAgents: 1, qianxiaAnomalyAgents: 0,
+        qianxiaTriggerHits: settingHits, teamVeilCountTotal: 0, battleTime: 180,
+        panel: {},
+      }
+      qianxiaMechanic.buildExecutions!({ cfg, state: { ultimateCount: 0 } as any, executions })
+      return executions.find(e => e.moveId === '1491_gaze_attack_trigger')!.count
+    }
+    expect(mk(0)).toBe(10) // 自动 = 标记供给 10
+    expect(mk(4)).toBe(4) // 手动 4 < 供给
+    expect(mk(20)).toBe(10) // 手动 20 > 供给 → min 封顶 10
   })
 })

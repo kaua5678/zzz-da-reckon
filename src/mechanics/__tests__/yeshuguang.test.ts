@@ -209,12 +209,26 @@ describe('叶瞬光 buildExecutions', () => {
 })
 
 describe('局外剑势', () => {
-  it('帷幕×3 需额外能力', () => {
+  it('帷幕×3 需额外能力（自动 teamVeilCountTotal 通道）', () => {
     const cfg: any = {
       yeshuguangSwordInitial: 6, yeshuguangAtk0PerSec: 0,
-      yeshuguangTeamCurtainCount: 2, yeshuguangAdditionalAbilityActive: 1, dodgeCounterCount: 0,
+      teamVeilCountTotal: 2, yeshuguangAdditionalAbilityActive: 1, dodgeCounterCount: 0,
     }
     expect(computeOutsideSwordGain(cfg, { basicAttackTime: 0, exSpecialCount: 0, chainCountTotal: 0 })).toBe(12)
+  })
+
+  it('手动滑块 >0 优先于自动注入；额外能力未激活时帷幕剑势为 0', () => {
+    const manual: any = {
+      yeshuguangSwordInitial: 0, yeshuguangAtk0PerSec: 0,
+      teamVeilCountTotal: 2, yeshuguangAdditionalAbilityActive: 1, dodgeCounterCount: 0,
+      'setting:yeshuguang.teamCurtainCount': 5,
+    }
+    expect(computeOutsideSwordGain(manual, { basicAttackTime: 0, exSpecialCount: 0, chainCountTotal: 0 })).toBe(15)
+    const noAa: any = {
+      yeshuguangSwordInitial: 0, yeshuguangAtk0PerSec: 0,
+      teamVeilCountTotal: 2, yeshuguangAdditionalAbilityActive: 0, dodgeCounterCount: 0,
+    }
+    expect(computeOutsideSwordGain(noAa, { basicAttackTime: 0, exSpecialCount: 0, chainCountTotal: 0 })).toBe(0)
   })
   it('定风波每次 +1 剑势（文本）', () => {
     const cfg: any = {
