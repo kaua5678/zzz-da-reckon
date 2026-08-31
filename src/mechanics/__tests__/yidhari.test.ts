@@ -112,3 +112,63 @@ describe('伊德海莉执行行', () => {
     expect(combos['yidhari-heavy-double'].energyCost).toBe(85)
   })
 })
+
+describe('伊德海莉滑块生效差分（防守卫冻结，SOP §3.5：改滑块→结果确实变）', () => {
+  it('yidhari.exHealMissingHpPct → 回血总量差分（回血 = 强特数×33%×已损失比例）', () => {
+    const state: any = { exSpecialCount: 4, basicAttackTime: 0 }
+    const cfg: any = { yidhariStunCount: 0, yidhariExPerStun: 2 }
+    const a = computeYidhariHpSource(cfg, state, false, 1)
+    const b = computeYidhariHpSource(cfg, state, false, 0.5)
+    // exHealPct = 4 × 33% × 比例：1 → 132，0.5 → 66；hpHealPct 差分 = 66
+    expect(a.hpHealPct - b.hpHealPct).toBeCloseTo(4 * 33 * 0.5, 1)
+    expect(a.hpHealPct).toBeGreaterThan(b.hpHealPct)
+    // 烧血喧响随回血同涨：hpBurnPct = 75 + hpHealPct
+    expect(a.hpBurnPct - b.hpBurnPct).toBeCloseTo(4 * 33 * 0.5, 1)
+  })
+
+  it('yidhari.hpBurnPctPerSecond → 逐秒烧血速率差分（hpBurnPctPerSecond 原样入账本）', () => {
+    const state: any = { exSpecialCount: 2, basicAttackTime: 0 }
+    const cfg: any = { yidhariStunCount: 0, yidhariExPerStun: 2 }
+    const a = computeYidhariHpSource(cfg, state, false, 0.75, 30)
+    const b = computeYidhariHpSource(cfg, state, false, 0.75, 15)
+    expect(a.hpBurnPctPerSecond).toBe(30)
+    expect(b.hpBurnPctPerSecond).toBe(15)
+    expect(a.hpBurnPctPerSecond).toBeGreaterThan(b.hpBurnPctPerSecond)
+  })
+
+  it('yidhari.exPerStun → 极寒重碾失衡内/外拆分差分', () => {
+    const state: any = { exSpecialCount: 6, basicAttackTime: 0 }
+    const cfg2: any = { yidhariStunCount: 2, yidhariExPerStun: 2 }
+    const cfg3: any = { yidhariStunCount: 2, yidhariExPerStun: 3 }
+    const s2 = computeYidhariHpSource(cfg2, state, false)
+    const s3 = computeYidhariHpSource(cfg3, state, false)
+    // 失衡内 = min(6, exPerStun×2)：2→4（外2），3→6（外0）
+    expect(s2.inStunExCount).toBe(4)
+    expect(s2.outStunExCount).toBe(2)
+    expect(s3.inStunExCount).toBe(6)
+    expect(s3.outStunExCount).toBe(0)
+  })
+
+  it('yidhari.tentacleInterval → 寒冰触手行次数差分（floor(战斗时间/间隔)）', () => {
+    const mk = (interval: number) => {
+      const executions: any[] = []
+      const cfg: any = {
+        panel: { additionalAbilityActive: 1, skillLevelBonus: 0 },
+        yidhariChargeSlam: null,
+        yidhariBasicFollow: null,
+        yidhariTentacleInterval: interval,
+        yidhariCinemaLevel: 0,
+        battleTime: 180,
+        invincibleTime: 0,
+      }
+      const state: any = { frontlineTime: 180, backstageTime: 0, exSpecialCount: 0, basicAttackTime: 0 }
+      yidhariMechanic.buildExecutions!({ cfg, state, executions } as any)
+      return executions.find((e: any) => e.moveId === '1051024')?.count ?? 0
+    }
+    const dense = mk(9)
+    const sparse = mk(18)
+    expect(dense).toBe(20) // 180/9
+    expect(sparse).toBe(10) // 180/18
+    expect(dense).toBeGreaterThan(sparse)
+  })
+})
