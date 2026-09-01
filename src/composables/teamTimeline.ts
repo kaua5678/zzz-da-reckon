@@ -29,6 +29,7 @@
  */
 import { getInteractionDefaults, roleInteractionBaseline, useConfigStore } from '@/stores/config'
 import { equalizeTimeWeights } from '@/composables/timeWeightBalancer'
+import { applyBossLayerBuffs } from '@/composables/runArchiveDeploy'
 import { useCatalogStore } from '@/stores/catalog'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
 import { indexForDate } from '@/composables/bossSchedule'
@@ -1063,33 +1064,18 @@ export interface FilmSimulationResult {
   stats: { nonConverged: number; durationMs: number }
 }
 
-/** 期视图里选定 Boss 的关卡固有 buff → 写入全局 Buff 表（先清旧 layer-buff:，同 BossSelectCard） */
+/** 期视图里选定 Boss 的关卡固有 buff → 写入全局 Buff 表（先清旧 layer-buff:，复用 runArchiveDeploy.applyBossLayerBuffs 唯一实现） */
 function applyPeriodLayerBuffs(
   configStore: ReturnType<typeof useConfigStore>,
   periodViews: PhaseView[],
   periodId: string,
   boss: BossPreset,
 ) {
-  for (let i = configStore.globalBuffs.length - 1; i >= 0; i--) {
-    if (String(configStore.globalBuffs[i].id).startsWith('layer-buff:')) configStore.globalBuffs.splice(i, 1)
-  }
+  // 无论 view/brief 是否存在都先清旧（applyBossLayerBuffs 内部清旧 + brief 为空只清不写）
   const view = periodViews.find(v => v.phaseId === periodId)
-  if (!view) return
-  const brief = ([view.criticalAssault, ...(view.defense ?? [])].filter(Boolean) as PhaseBossBrief[])
-    .find(b => b.presetId === boss.id)
-  if (!brief) return
-  for (const card of brief.bossBuffs ?? []) {
-    for (const e of card.effects) {
-      configStore.globalBuffs.push({
-        id: `layer-buff:${brief.monsterId}:${e.stat}:${e.value}`,
-        name: `关卡·${brief.name}`,
-        stat: e.stat,
-        value: e.value,
-        enabled: true,
-        targetSkillType: e.targetSkillType ?? ('all' as any),
-      })
-    }
-  }
+  const brief = view ? ([view.criticalAssault, ...(view.defense ?? [])].filter(Boolean) as PhaseBossBrief[])
+    .find(b => b.presetId === boss.id) ?? null : null
+  applyBossLayerBuffs(configStore, brief)
 }
 
 /** 下一个待购金步的成本（主C 优先顺序）：影画 = 命座金，音擎（本体/精炼）= 音擎金 */

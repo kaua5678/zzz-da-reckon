@@ -192,9 +192,6 @@ export const DEBT_REGISTRY = {
   'src/composables/pullPlannerEngine.ts:赠送卡窗口期自动获得': {
     since: '2026-08-29', due: '赠送卡窗口期（佩洛伊斯 1551）自动获得建模后，从免费名单移除',
   },
-  'src/composables/runArchiveDeploy.ts:与 BossSelectCard.applyBoss 内联逻辑重复': {
-    since: '2026-08-27', due: '提取共享的 layer-buff 写入函数，两处调用同一实现',
-  },
   'src/core/acquisitionValue.ts:复刻池/常驻池/音擎与角色共享预算的分配策略未建模': {
     since: '2026-08-31', due: 'order 元素带 pool 标签后按池各维护一套 (pity, guar)，复刻窗口进 cards 列表',
   },

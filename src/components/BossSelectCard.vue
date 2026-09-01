@@ -134,6 +134,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NSpace, NSelect, NButton, NTag, NCollapse, NCollapseItem } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
+import { applyBossLayerBuffs } from '@/composables/runArchiveDeploy'
 import BossCard from './BossCard.vue'
 import type { BossPreset, BossPresetFile, BossPresetPhase, PhaseBossBrief, PhaseBuffEffect, PhaseView } from '@/types/bossPreset'
 
@@ -273,23 +274,7 @@ function applyBoss(brief: PhaseBossBrief) {
   const phase = preset.phases.find(p => p.phaseId === v.phaseId && p.zoneKey === brief.zoneKey)
   if (!phase) return
   configStore.applyBossPreset({ id: preset.id }, phase, preset.monster, preset.defaults)
-
-  // 关卡固有 buff：先清旧（前缀 layer-buff:），再写当前 Boss 的
-  for (let i = configStore.globalBuffs.length - 1; i >= 0; i--) {
-    if (String(configStore.globalBuffs[i].id).startsWith('layer-buff:')) configStore.globalBuffs.splice(i, 1)
-  }
-  for (const card of brief.bossBuffs ?? []) {
-    for (const e of card.effects) {
-      configStore.globalBuffs.push({
-        id: `layer-buff:${brief.monsterId}:${e.stat}:${e.value}`,
-        name: `关卡·${brief.name}`,
-        stat: e.stat,
-        value: e.value,
-        enabled: true,
-        targetSkillType: e.targetSkillType ?? ('all' as any),
-      })
-    }
-  }
+  applyBossLayerBuffs(configStore, brief)
 }
 
 // ========== 全部 Boss 分组（折叠区） ==========

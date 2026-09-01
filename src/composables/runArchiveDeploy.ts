@@ -38,7 +38,7 @@ export function resolveBossApply(
   return { preset, phase, monster: preset.monster, defaults: preset.defaults, brief }
 }
 
-/** 写关卡固有 buff（layer_buff）：先清旧（前缀 layer-buff:），再写当前 Boss 的。debt: 与 BossSelectCard.applyBoss 内联逻辑重复，可未来提取合并。 */
+/** 写关卡固有 buff（layer_buff）——唯一事实源：先清旧（前缀 layer-buff:），再写当前 Boss 的。teamTimeline.applyPeriodLayerBuffs / BossSelectCard.applyBoss 同源调用（2026-09-01 销号债务）。 */
 export function applyBossLayerBuffs(
   configStore: ReturnType<typeof useConfigStore>,
   brief: PhaseBossBrief | null,
