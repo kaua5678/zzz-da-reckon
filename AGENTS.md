@@ -63,7 +63,7 @@
 | 改面板 / 转模 / 局外局内 | `src/composables/resourceCalc/helpers.ts`（computePanelPhases） |
 | 改失衡轴 / 自动轴 / 预设 | `src/data/stunAxisPresets.ts` + `src/data/stunAxisPresets/*.json` |
 | 排查 buff / 命座没生效 | `docs/AGENT_RECORDING_SOP.md` §3.5 根因表；页面「命座提升率」自检 |
-| **改抽卡价值 / 抽卡成本** | `src/core/gachaCost.ts`（保底状态定价，出率由 `data/filmEconomy` 反解）+ `src/core/acquisitionValue.ts`（概率口径的抽取价值：最优链 V* vs V* + CRN 配对 + 期望分/打穿率/CVaR 三读数）+ `src/composables/acquisitionValueEngine.ts`（接真引擎 oracle，记忆化后引擎成本与路径数无关）；跑 `npm run probe:pull-value` 出对比表 |
+| **改抽卡价值 / 抽卡成本** | **UI 实际用的是期望值口径**：`src/composables/pullValue.ts`（每万菲林兑现 ROI，单一事实源 = `data/filmEconomy.ts`）+ `src/composables/pullPlannerEngine.ts`（规划器，TIER_COSTS 常量价）；`src/core/gachaCost.ts` / `src/core/acquisitionValue.ts`（保底状态定价 / 概率口径抽取价值）是**引擎层未接线**——仅测试与校准用，改它们要同时确认没有消费者声称接 UI（2026-09-01 用户裁决：模拟抽卡运气不接产品，直接用期望值） |
 
 ## 3. 验收命令
 
@@ -76,7 +76,7 @@ npm run minify:static # 生成产物瘦身/剔 catalog 死键（幂等；validat
 npm run probe:calibration # 实战归档校准（真引擎批跑投稿，出误差分布/击杀混淆矩阵/分层偏差，写 .zc/calibration.json）
 ```
 
-**校准棘轮**（在 `npm test` 里，约 5 秒）：`runArchiveCalibration.test.ts` 用固定种子的 80 条归档样本重跑真引擎，MAE / 击杀准确率 / 区间命中率**只准变好**。改引擎口径导致它变红是预期行为——跑 `npm run probe:calibration` 看新数字，确认是有意变更后把 `.zc/calibration.json` 的 summary 抄进 `src/composables/__tests__/calibration-baseline.json`，并在提交说明写明原因。（口径提醒：归档是 approved 顶尖投稿，度量的是「默认口径 vs 顶尖实战」的差，不是引擎绝对准确度。）
+**校准只是诊断，不是判据**（用户裁决 2026-09-01）：`npm run probe:calibration` 按需跑，出误差分布/击杀混淆矩阵/分层偏差，**不进 CI、不设基线、不作拟合目标**——当前每支队伍的计算逻辑都还不准，把「距离归档分数」冻成判据会惩罚方向正确但单步之后暂时更远离实战的改动。用它找**低估**（上限低于真实发生过的成绩 = 可证伪的建模缺口，多半是机制没录完），不要用它调资源循环。
 
 `verify:recording` 是**机器判据**——防止"写了代码改了 spec 就声称完成"：对每个 `status ∈ implemented*` 的角色，检查①测试文件引用 agentId（无=FAIL）②有 expect 断言（无=WARN）③档案段有状态行（无=WARN）。录入角色后跑它确认无 FAIL；WARN（档案无状态行）按 SOP §6.10 第 3 项补状态行后消除。
 

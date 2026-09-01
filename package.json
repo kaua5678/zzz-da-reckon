@@ -25,8 +25,7 @@
     "check-tokens": "node scripts/check-tokens.mjs",
     "gen:multiplier-record": "GEN_MULTIPLIER_RECORD=1 vitest run src/composables/__tests__/multiplierRecord.test.ts",
     "probe:panel": "vitest run src/core/__tests__/panelProbe.test.ts",
-    "probe:pull-value": "PROBE_PULL_VALUE=1 vitest run src/core/__tests__/acquisitionValue.test.ts src/composables/__tests__/acquisitionValueEngine.test.ts",
-    "probe:pull-rank": "PROBE_RANK=1 vitest run src/composables/__tests__/acquisitionValueEngine.test.ts",
+    "probe:pull-value": "PROBE_PULL_VALUE=1 vitest run src/core/__tests__/acquisitionValue.test.ts",
     "probe:calibration": "PROBE_CALIB=1 vitest run src/composables/__tests__/runArchiveCalibration.test.ts",
     "check": "npm run check-guards && npm run check-tokens && npm run validate:data && npm run validate:specs && npm test",
     "verify": "npm run check-guards && npm run check-tokens && npm run validate:data && npm run validate:specs && npm run verify:recording && npm test && npm run typecheck && npm run build"

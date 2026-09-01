@@ -1,6 +1,11 @@
 /**
  * 抽取价值（acquisition value）：一张卡「该不该抽」的决策论答案。
  *
+ * ⚠ 引擎层未接线（2026-09-01 用户裁决：模拟抽卡运气不接产品，直接用期望值）：
+ * 本模块与 gachaCost.ts 仅供测试/校准/未来研究用，**没有 UI 消费者**——
+ * 产品实际用的是 pullValue.ts（期望值 ROI）+ pullPlannerEngine（TIER_COSTS 常量价）。
+ * 改它无需担心破坏 UI；但也不要声称它接进了任何用户可见功能。
+ *
  * ── 为什么重做（2026-08-31）────────────────────────────────────────────────
  * 现有 planner 的 VCG 反事实（composables/pullPlanner.ts#computeCardValuesVcg）结构是对的
  * ——价值 = 有它 vs 没它的整体策略差——但三样配料是错的：
