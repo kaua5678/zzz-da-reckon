@@ -76,8 +76,9 @@ describe('Boss 预设弹刀反推（叶释渊）', () => {
     expect(breakerRows.length).toBe(2)
     for (const row of breakerRows) expect(row.count).toBe(split!.breakerParry)
 
-    // 保底达成：失衡池原始次数 ≥ 4
-    expect(sp!.stunCount).toBeGreaterThanOrEqual(4)
+    // 时间守恒口径（用户 2026-09-01）后：窗口内的招式不再攒条，同样的弹刀上限（13）攒不满 4 次。
+    // 保底是「尽力而为，不虚标」——反推照旧顶到上限（下面那条断言），次数如实报 3 而不是硬凑 4。
+    expect(sp!.stunCount).toBeGreaterThanOrEqual(3)
 
     // 反推自洽：T = ceil((4×失衡条 − 非弹刀基数) / 每次弹刀失衡)，封顶 13 = 拆分出的击破位次数
     const perParryDaze = breakerRows.reduce((s, c) => s + c.perHitStun, 0)

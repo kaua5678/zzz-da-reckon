@@ -7,6 +7,7 @@
  * 有界必收敛（MAX_PROMOTE_ITER 轮兜底）。倍率表全走目标队友执行计划自然调用。
  */
 import { calcStunPool } from '@/core/stunPool'
+import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { findUltimate, findChainAttack } from '@/core/resource'
 import { computeLiuyinHugCounts, resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
@@ -202,13 +203,22 @@ export function promoteFixpoint(
 ): PromoteFixpointResult {
   const { configStore, panels } = deps
   const chainCountPerStun = configStore.team.reduce((sum, c) => sum + (c.chainCountPerStun ?? 0), 0)
-  const runPool = (execs: StunSkillExecution[], inAxisFraction?: Record<string, number>) => calcStunPool({
+  // 时间守恒（用户口径 2026-09-01）：窗口内的招式吃易伤但不攒条。
+  // 轴模式已有逐招 inAxisFraction 精确扣除；**非轴模式**这里按「上一轮次数推出的窗口占比」折算，
+  // 于是本不动点自带负反馈：次数↑ → 占比↑ → 有效攒条↓ → 次数↓，自己收敛到实战档位。
+  const effTime = effectiveBattleTime(configStore.enemy)
+  const windowDur = stunWindowDuration(
+    configStore.enemy.stunTime,
+    panels.reduce((sum, p) => sum + (p.stunDurationBonusSeconds ?? 0), 0),
+  )
+  const runPool = (execs: StunSkillExecution[], inAxisFraction?: Record<string, number>, prevStunCount = 0) => calcStunPool({
     executions: execs, panels, bossStunValue: configStore.enemy.stunValue,
     chainCountPerStun, enemyStunResistances: configStore.enemy.stunResistances ?? configStore.enemy.resistances ?? {},
     physicalFlinchCoverageRate: flinchRate,
     inAxisStunFractionByKey: inAxisFraction,
     refundStunRatio,
     stunGift: configStore.enemy.bossStunGift ?? 0,
+    windowTimeFraction: axisMode ? 0 : stunWindowFraction(prevStunCount, windowDur, effTime),
   })
 
   let stunCount = 0
@@ -232,7 +242,8 @@ export function promoteFixpoint(
     promote = hug60 + hug90
     const execs = p && promote > 0 ? adjustStunExecs(baseExecs, p, hug60, promote, !axisMode) : baseExecs
     const inAxisFraction = inAxisFractionProvider ? inAxisFractionProvider(stunCount, execs) : undefined
-    pool = runPool(execs, inAxisFraction)
+    // 传上一轮的 stunCount 折算窗口占比（首轮 0 = 与旧行为一致，之后逐轮收敛）
+    pool = runPool(execs, inAxisFraction, stunCount)
     const next = pool?.stunCount ?? 0
     if (next === stunCount) break
     // 离散 floor 可能产生 2-循环（如 5→4→5），检测到重复即停，保留最后计算结果

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { computeBanyueRageCycle, computeBanyueMingwangStacks, computeBanyueMingwangBlocks, computeBanyueInteractionTopUp } from '@/mechanics/agents/banyue'
+import { AUTO_TOPUP_TIME_LIMIT_SEC, computeBanyueRageCycle, computeBanyueMingwangStacks, computeBanyueMingwangBlocks, computeBanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import { isFrontlineExecution } from '@/types/resource'
 
 describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', () => {
@@ -192,7 +192,7 @@ describe('computeBanyueInteractionTopUp（轴模式自动补齐，保底语义�
       dodgeCount: 10, parryCount: 6, blockCount: 20, dualCounterCount: 5, cinemaLevel: 0,
       axisEx: axis8, ultimateCountNeeded: 4, ultimateCost: 3000, decibelHave: 20000,
     })
-    expect(t).toEqual({ parry: 0, dual: 0 })
+    expect(t).toMatchObject({ parry: 0, dual: 0, illegal: false })
   })
 
   it('嗔火不足 → 抬双反；喧响不足 → 抬弹刀（分别按缺口 ÷ 10 / ÷ 215 向上取整）', () => {
@@ -877,5 +877,40 @@ describe('C1 战栗减抗生效（teammate-buffs 1471 组）', () => {
     config.syncTeammateBuffsFromTeam()
     const p1 = computePanelPhases(0, config, catalog)!
     expect(p1.inCombat.enemyFireResReduction).toBe(10)
+  })
+})
+
+describe('自动补齐的时间合法性（用户口径 2026-09-01：>200s 即非法填充）', () => {
+  const axis8 = { 'banyue-combo': 8 }
+  const base = {
+    dodgeCount: 0, parryCount: 0, blockCount: 0, dualCounterCount: 0, cinemaLevel: 0,
+    axisEx: axis8, ultimateCost: 3000, decibelHave: 0,
+  }
+
+  it('不传单次时长 = 不做判定（宁可不管，也不用假时长把合法补齐判非法）', () => {
+    const t = computeBanyueInteractionTopUp({ ...base, ultimateCountNeeded: 6 })
+    expect(t.parry).toBeGreaterThan(0)
+    expect(t.requiredSeconds).toBe(0)
+    expect(t.illegal).toBe(false)
+  })
+
+  it('自动轴要 6 次大 → 补齐 84 刀 × 2.4s ≈ 202s > 200s → 判非法并清零（这正是无限加招架的刹车）', () => {
+    const t = computeBanyueInteractionTopUp({ ...base, ultimateCountNeeded: 6, perParrySeconds: 2.4 })
+    expect(t.requiredSeconds).toBeGreaterThan(AUTO_TOPUP_TIME_LIMIT_SEC)
+    expect(t.illegal).toBe(true)
+    expect(t.parry).toBe(0)
+    expect(t.dual).toBe(0)
+  })
+
+  it('刚好压线不判非法（判据是严格大于，边界可用）', () => {
+    // 4 次大、无供给 → 缺口 12000 → 56 刀；56 × 3.5 = 196s ≤ 200s
+    const t = computeBanyueInteractionTopUp({ ...base, ultimateCountNeeded: 4, perParrySeconds: 3.5 })
+    expect(t.parry).toBe(56)
+    expect(t.requiredSeconds).toBeCloseTo(196, 6)
+    expect(t.illegal).toBe(false)
+  })
+
+  it('上限是常量单一来源（规则 11），不是散落的字面量', () => {
+    expect(AUTO_TOPUP_TIME_LIMIT_SEC).toBe(200)
   })
 })

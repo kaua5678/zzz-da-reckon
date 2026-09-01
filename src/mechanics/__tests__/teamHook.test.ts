@@ -71,12 +71,14 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     expect(bySlot.get(2)!.energySource.crossAgent.soukakuUltEnergy).toBe(0)
   })
 
-  it('莱特影画4：后场喷发回能只给队友（28 = 4/次 × 7 次），莱特本人为 0', async () => {
+  // 时间守恒口径（用户 2026-09-01）后：失衡次数下降 → 窗口占用时间变少 → 后场时间变多 →
+  // 喷发次数 7 → 8（32 = 4/次 × 8 次）。变化来自「非失衡时间变多」这个正确方向，不是回归。
+  it('莱特影画4：后场喷发回能只给队友（32 = 4/次 × 8 次），莱特本人为 0', async () => {
     const out = await run([{ agentId: '1161', cinemaLevel: 4 }, { agentId: '1041' }, { agentId: '1101' }])
     const bySlot = new Map(out.characters.map(c => [c.slot, c]))
     expect(bySlot.get(0)!.energySource.crossAgent.lighterC4Energy).toBe(0)
-    expect(bySlot.get(1)!.energySource.crossAgent.lighterC4Energy).toBe(28)
-    expect(bySlot.get(2)!.energySource.crossAgent.lighterC4Energy).toBe(28)
+    expect(bySlot.get(1)!.energySource.crossAgent.lighterC4Energy).toBe(32)
+    expect(bySlot.get(2)!.energySource.crossAgent.lighterC4Energy).toBe(32)
   })
 
   it('莱特 0 命：不触发影画4 喷发回能（钩子按命座门控，不是无条件写）', async () => {

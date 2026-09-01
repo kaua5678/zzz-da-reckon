@@ -81,6 +81,19 @@ export interface StunPoolInput {
   refundStunRatio?: number
   /** Boss 白送的失衡值（如 亵渎者 30% 失衡上限，直接计入总失衡值、不做抗性/返还折算） */
   stunGift?: number
+  /**
+   * 非轴模式的窗口时间占比（0-1）＝ 失衡窗口总时长 / 有效战斗时间（即 stunCoverage）。
+   *
+   * 时间守恒（用户口径 2026-09-01）：**失衡窗口里的招式享受易伤，但不累计失衡值**。
+   * 轴模式靠逐招 inAxisStunFractionByKey 精确扣除；非轴模式此前**没有任何扣除**，
+   * 于是整段有效时间的动作全额攒条，算出的次数又把 N×窗口时长 加回时间轴却不倒扣——
+   * 实测般琉卢/星徽队因此得到 6 次失衡（窗口 108s，非失衡只剩 72s，却按 180s 攒条）。
+   *
+   * 折算后形成负反馈：次数↑ → 覆盖率↑ → 有效攒条量↓ → 次数↓，外层不动点自己收敛到
+   * 实战档位（带 01 击破的队伍 4-5 次），**不需要硬钳上限**。
+   * 与逐招 fraction 取较大者，避免轴模式双重折算。
+   */
+  windowTimeFraction?: number
 }
 
 /** 计算单次招式的实际失衡值
@@ -129,6 +142,7 @@ function calcPerHitStun(
 export function calcStunPool(input: StunPoolInput): StunPoolResult {
   const { executions, bossStunValue, chainCountPerStun, enemyStunResistance = 0, enemyStunResistances = {}, physicalFlinchCoverageRate = 0 } = input
   const inAxisFractions = input.inAxisStunFractionByKey ?? {}
+  const windowFraction = Math.max(0, Math.min(1, input.windowTimeFraction ?? 0))
   const refundStunRatio = Math.max(0, Math.min(0.25, input.refundStunRatio ?? 0))
 
   const contributions: StunContribution[] = []
@@ -145,7 +159,11 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
     const baseStunRes = enemyStunResistances[element] ?? enemyStunResistance
     const perHit = calcPerHitStun(exec.baseDaze, panel, baseStunRes, physicalFlinchCoverageRate, element, exec.skillType, exec.stunBuildUpBonus)
     const total = perHit * exec.count
-    const inAxisFraction = Math.max(0, Math.min(1, inAxisFractions[`${exec.slot}:${exec.moveId}`] ?? 0))
+    // 取较大者：轴模式逐招 fraction 已精确扣除，非轴模式退回全局窗口占比（不叠加，防双重折算）
+    const inAxisFraction = Math.max(
+      Math.max(0, Math.min(1, inAxisFractions[`${exec.slot}:${exec.moveId}`] ?? 0)),
+      windowFraction,
+    )
     const inAxisStun = total * inAxisFraction
     const effectiveStun = total - inAxisStun
 

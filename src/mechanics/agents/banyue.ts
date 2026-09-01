@@ -158,12 +158,31 @@ export interface BanyueRageCycle {
   diDongRecoveryCount: number
 }
 
+/**
+ * 自动补齐交互的时间上限（用户口径 2026-09-01）。
+ *
+ * 自动轴模式下失衡次数一多，轴就要求每个窗口一次终结技（3000 喧响/次），补齐逻辑于是
+ * **无上界地加招架**去填喧响缺口——parry = ceil(缺口 / 215) 本身没有任何天花板。
+ * 判据：把补齐交互的**原始动作时间**（未扣合轴）加总，超过 200 秒即判本次补齐**非法**——
+ * 战斗只有 180 秒，少量合轴（并行段）吸收不了 20 秒以上的净超出。
+ *
+ * 为什么是「非法」而不是「截断到上限」：补一半等于打一半的大招，轴的资源需求本来就是全有或全无；
+ * 截断会得到一个既打不出轴、又比不打轴更差的幻觉解。非法 → 由调用方按「轴不可操作」处理，
+ * 走既有的轴退化（ENGINE_PIPELINE_GUIDE §4 坑 19②）。
+ */
+// @fact engine:banyue/补齐时间上限 口径: 自动填充交互的原始动作时间（未扣合轴）>200s 判本次填充非法——次数清零并走轴退化，而不是截断成半套 | 据 用户@2026-09-01 | 验 src/mechanics/__tests__/banyue.test.ts | 锚 src/mechanics/agents/banyue.ts#AUTO_TOPUP_TIME_LIMIT_SEC | 信 确认
+export const AUTO_TOPUP_TIME_LIMIT_SEC = 200
+
 /** 轴模式自动补齐的交互次数（保底语义：在用户输入之上补多少，不覆盖输入） */
 export interface BanyueInteractionTopUp {
   /** 弹刀（普通弹刀 parry）补齐次数：补喧响（+215/次） */
   parry: number
   /** 双反补齐次数：补嗔火（+10/次） */
   dual: number
+  /** 本次补齐需要的原始动作时间（秒，未扣合轴）；调用方未提供单次时长时为 0 */
+  requiredSeconds: number
+  /** 补齐时间超过 AUTO_TOPUP_TIME_LIMIT_SEC → 本次补齐非法（次数已清零，轴应退化） */
+  illegal: boolean
 }
 
 /**
@@ -188,6 +207,10 @@ export function computeBanyueInteractionTopUp(opts: {
   ultimateCost: number
   /** 当前喧响供给（般岳个人；终结技次数 = 个人喧响 / 终结技消耗，非全队总和） */
   decibelHave: number
+  /** 单次补齐弹刀的原始动作时间（招架支援 + 支援突击，秒）；缺省 0 = 不做时间合法性判定 */
+  perParrySeconds?: number
+  /** 单次补齐双反的原始动作时间（秒）；cfg 暂未暴露该字段时留 0 */
+  perDualSeconds?: number
 }): BanyueInteractionTopUp {
   const rageGroups = (opts.axisEx['banyue-combo'] ?? 0) + (opts.axisEx['banyue-combo-didong'] ?? 0)
   const rageNeeded = Math.max(Math.ceil(rageGroups / 2), opts.minRageCount ?? 0) // 每组连段 2 块 = 一次怒相
@@ -208,7 +231,12 @@ export function computeBanyueInteractionTopUp(opts: {
   const dual = Math.ceil(furyShort / FURY_DUAL)
   const decibelShort = Math.max(0, opts.ultimateCountNeeded * (opts.ultimateCost || ULTIMATE_COST) - opts.decibelHave)
   const parry = Math.ceil(decibelShort / PARRY_DECIBEL)
-  return { parry, dual }
+  const requiredSeconds = parry * Math.max(0, opts.perParrySeconds ?? 0) + dual * Math.max(0, opts.perDualSeconds ?? 0)
+  // 时长未知（调用方没传）时 requiredSeconds = 0，天然不触发判定：
+  // 宁可不管，也不要用假时长把合法补齐判成非法
+  const illegal = requiredSeconds > AUTO_TOPUP_TIME_LIMIT_SEC
+  if (illegal) return { parry: 0, dual: 0, requiredSeconds, illegal }
+  return { parry, dual, requiredSeconds, illegal }
 }
 
 /** 嗔火→怒相 固定点收敛（用户口径） */

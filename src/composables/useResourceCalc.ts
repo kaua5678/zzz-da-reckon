@@ -1146,6 +1146,10 @@ export function useResourceCalc() {
         minRageCount: guaranteeFury ? 4 : 0,
         ultimateCost: base.characters[banyueSlot]?.ultimateCost ?? ULTIMATE_COST_DEFAULT,
         decibelHave,
+        // 单次补齐弹刀的原始动作时间 = 招架支援 + 支援突击（未扣合轴）：
+        // 用来判「这次补齐是不是根本打不出来」（>200s = 非法，见 banyue.ts#AUTO_TOPUP_TIME_LIMIT_SEC）
+        perParrySeconds: (base.characters[banyueSlot]?.defensiveAssistActionTime ?? 0)
+          + (base.characters[banyueSlot]?.assistFollowUpActionTime ?? 0),
       })
     }
 
@@ -1745,10 +1749,13 @@ export function useResourceCalc() {
     // 锁定失衡次数（命座对比/锁窗测试）= 用户明确意图「操作够就能打 N 次失衡」，同锁定不回填口径：
     // 退化/降配会改变次数与交互结构，锁窗场景一律不触发（超时如实上报）。
     if (lockedStunCount < 0) {
-      if (overBudget(r.out) && r.out?.resolvedAxes?.length) {
+      // 非法补齐（自动填充交互 > 200s，用户口径 2026-09-01）与超预算同等对待：
+      // 轴要的资源根本填不出来 ⇒ 轴不可操作 ⇒ 走同一条退化路径（补齐次数已在源头清零）
+      const topUpIllegal = (x: CalcRoundResult | null) => x?.banyueTopUp?.illegal === true
+      if ((overBudget(r.out) || topUpIllegal(r.out)) && r.out?.resolvedAxes?.length) {
         hadAxis = true
         const noAxis = runOuterLoop(true)
-        if (!overBudget(noAxis.out)) axisFallback = true
+        if (!overBudget(noAxis.out) && !topUpIllegal(noAxis.out)) axisFallback = true
         r = noAxis // 可行与否都进入非轴态：不可行则走下方降配
       }
       // 非轴降配（用户口径 2026-08-30）：金身/招架这类手填交互与轴厚需求本质相同——超预算都要降配。

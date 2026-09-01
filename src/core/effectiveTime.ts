@@ -19,6 +19,23 @@ export function effectiveBattleTime(cfg: TimeBasisCfg): number {
   return Math.max(0, (cfg.battleTime ?? 180) - (cfg.invincibleTime ?? 0))
 }
 
+// @fact engine:stun/时间守恒 口径: 失衡窗口内的招式吃易伤但不攒条 ⇒ 非轴模式按窗口时间占比折算攒条量，形成「次数↑→占比↑→攒条↓」的负反馈，由不动点自行收敛，不设硬上限 | 据 用户@2026-09-01 | 验 src/core/__tests__/stunPool.test.ts | 锚 src/core/effectiveTime.ts#stunWindowFraction | 信 确认
+
+/** 单次失衡窗口时长（秒）= boss 失衡时间 + 4 秒基础延长 + 全队失衡延时加成 */
+export function stunWindowDuration(stunTime: number | undefined, teamStunDurationBonus = 0): number {
+  return Math.max(0, (stunTime ?? 12) + 4 + Math.max(0, teamStunDurationBonus))
+}
+
+/**
+ * 失衡窗口占有效战斗时间的比例（0-1）。
+ * 它同时是易伤覆盖率与「攒条无效时间」的占比——同一段时间只能算一次：
+ * 窗口里打的招式吃易伤（覆盖率），但打出的失衡值不进下一条（攒条折算）。
+ */
+export function stunWindowFraction(stunCount: number, windowDuration: number, effectiveTime: number): number {
+  if (effectiveTime <= 0 || stunCount <= 0 || windowDuration <= 0) return 0
+  return Math.max(0, Math.min(1, (stunCount * windowDuration) / effectiveTime))
+}
+
 /** 有效后台时间（秒）= 后台时间 − boss 无敌时间（下限 0）。后台自动招式按 CD 折算用这个。 */
 export function effectiveBackstageTime(backstageTime: number | undefined, cfg: TimeBasisCfg): number {
   return minusInvincibleTime(backstageTime, cfg)

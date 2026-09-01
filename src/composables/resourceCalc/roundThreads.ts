@@ -73,7 +73,7 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
     energyBySlot: {},
     auricInkFlash: 0,
     anomalyDecibelBonus: [],
-    banyueTopUp: { parry: 0, dual: 0 },
+    banyueTopUp: { parry: 0, dual: 0, requiredSeconds: 0, illegal: false },
     parrySplit: null,
     yixuanFuFaForJufufu: 0,
     teamUltimateForJufufu: 0,
