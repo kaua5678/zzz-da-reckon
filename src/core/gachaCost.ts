@@ -35,7 +35,7 @@ export interface PoolSpec {
   meanPullsPerLimited: number
 }
 
-// @fact engine:gacha/池参数单一事实源 口径: 角色池/音擎池的期望抽数一律由 filmEconomy 的金价反解，本模块不另录出率常量 | 据 实测@2026-08-31 | 验 src/core/__tests__/gachaCost.test.ts | 锚 src/core/gachaCost.ts#CHAR_POOL | 信 确认
+// @fact engine:gacha/池参数单一事实源 口径: 角色池/音擎池的期望抽数一律由 filmEconomy 的金价反解，本模块不另录出率常量 | 据 实测@2026-09-01复核 | 验 src/core/__tests__/gachaCost.test.ts | 锚 src/core/gachaCost.ts#CHAR_POOL | 信 确认
 export const CHAR_POOL: PoolSpec = {
   hardPity: 90,
   upRate: 0.5,

@@ -257,8 +257,8 @@ function arrangements<T>(items: T[]): T[][] {
  * 而不抽她时预算自然流向更划算的卡）。这也正是「全局规划」该有的语义。
  * n ≤ 6 走全排列（≤720 条，MC 本身不碰引擎、只跑纯算术），更大走贪心插入。
  */
-// @fact engine:gacha/策略空间 口径: 抽卡策略空间必须含「跳过」动作——窗口靠前的弱卡会吃掉后面强卡的预算，只枚举排列会算出真实存在的负价值 | 据 实测@2026-08-31 | 验 src/core/__tests__/acquisitionValue.test.ts | 锚 src/core/acquisitionValue.ts#arrangements | 信 确认
-// @fact engine:gacha/目标依赖 口径: 「哪条决策链更好」依赖目标（期望分/打穿率/CVaR），同一份卡在不同目标下最优链不同，报价值必须同时报目标 | 据 实测@2026-08-31 | 验 src/core/__tests__/acquisitionValue.test.ts | 锚 src/core/acquisitionValue.ts#objectiveValue | 信 确认
+// @fact engine:gacha/策略空间 口径: 抽卡策略空间必须含「跳过」动作——窗口靠前的弱卡会吃掉后面强卡的预算，只枚举排列会算出真实存在的负价值 | 据 实测@2026-09-01复核 | 验 src/core/__tests__/acquisitionValue.test.ts | 锚 src/core/acquisitionValue.ts#arrangements | 信 确认
+// @fact engine:gacha/目标依赖 口径: 「哪条决策链更好」依赖目标（期望分/打穿率/CVaR），同一份卡在不同目标下最优链不同，报价值必须同时报目标 | 据 实测@2026-09-01复核 | 验 src/core/__tests__/acquisitionValue.test.ts | 锚 src/core/acquisitionValue.ts#objectiveValue | 信 确认
 
 /** 优化目标：刷分 / 打穿 / 保下限。三者的最优链**可以不同**——目标不说清就无所谓「更好」 */
 export type Objective = 'mean' | 'hitRate' | 'cvar'
@@ -361,7 +361,7 @@ export function runPathsAcquireProb(
   return got / n
 }
 
-// @fact engine:gacha/价值口径 口径: 抽取价值=同预算同随机数(CRN)下「序列含该卡 vs 不含」的期望效用差，效用三读数=期望分/打穿概率/CVaR；现实折扣 λ 由分布模型输出，不再当常数标定 | 据 用户@2026-08-31 | 验 src/core/__tests__/acquisitionValue.test.ts | 锚 src/core/acquisitionValue.ts#acquisitionValue | 信 确认
+// @fact engine:gacha/价值口径 口径: 抽取价值=同预算同随机数(CRN)下「序列含该卡 vs 不含」的期望效用差，效用三读数=期望分/打穿概率/CVaR；现实折扣 λ 由分布模型输出，不再当常数标定 | 据 用户@2026-09-01复核 | 验 src/core/__tests__/acquisitionValue.test.ts | 锚 src/core/acquisitionValue.ts#acquisitionValue | 信 确认
 
 export interface PolicyComparison {
   /** A 相对 B 的期望总分差（配对差的均值） */

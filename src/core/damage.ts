@@ -298,7 +298,7 @@ export interface DirectDamageInput {
   basisLabelOverride?: string
 }
 
-// @fact engine:damage/乘区顺序 口径: 乘区顺序=代码顺序（基底→技能倍率→固定附加→增伤→锐化→贯穿→防御→抗性→易伤→失衡→侵染→暴击/锐暴→次数），调换 breakdown.push 顺序即改口径 | 据 实测@2026-08-31 | 验 src/core/__tests__/damage.test.ts | 锚 src/core/damage.ts#calcDirectDamage | 信 确认
+// @fact engine:damage/乘区顺序 口径: 乘区顺序=代码顺序（基底→技能倍率→固定附加→增伤→锐化→贯穿→防御→抗性→易伤→失衡→侵染→暴击/锐暴→次数），调换 breakdown.push 顺序即改口径 | 据 实测@2026-09-01复核 | 验 src/core/__tests__/damage.test.ts | 锚 src/core/damage.ts#calcDirectDamage | 信 确认
 export function calcDirectDamage(input: DirectDamageInput): { damage: number; breakdown: DamageBreakdownItem[] } {
   const p = input.panel
   const breakdown: DamageBreakdownItem[] = []
