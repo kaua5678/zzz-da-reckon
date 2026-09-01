@@ -192,12 +192,6 @@ export const DEBT_REGISTRY = {
   'src/composables/pullPlannerEngine.ts:赠送卡窗口期自动获得': {
     since: '2026-08-29', due: '赠送卡窗口期（佩洛伊斯 1551）自动获得建模后，从免费名单移除',
   },
-  'src/core/acquisitionValue.ts:复刻池/常驻池/音擎与角色共享预算的分配策略未建模': {
-    since: '2026-08-31', due: 'order 元素带 pool 标签后按池各维护一套 (pity, guar)，复刻窗口进 cards 列表',
-  },
-  'src/core/gachaCost.ts:真实软保底爬坡': {
-    since: '2026-08-31', due: '拿到逐抽出率曲线后把恒定 hazard 换成分段函数（接口不变，均值已锁死在测试里）',
-  },
   'scripts/import-nanoka-bosses.mjs:x弹刀时间语义': {
     since: '2026-08-28', due: '基塔布鲁弹刀时间语义明确后建模（当前仅 1 Boss 1 次，影响面小）',
   },

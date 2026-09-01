@@ -63,7 +63,7 @@
 | 改面板 / 转模 / 局外局内 | `src/composables/resourceCalc/helpers.ts`（computePanelPhases） |
 | 改失衡轴 / 自动轴 / 预设 | `src/data/stunAxisPresets.ts` + `src/data/stunAxisPresets/*.json` |
 | 排查 buff / 命座没生效 | `docs/AGENT_RECORDING_SOP.md` §3.5 根因表；页面「命座提升率」自检 |
-| **改抽卡价值 / 抽卡成本** | **UI 实际用的是期望值口径**：`src/composables/pullValue.ts`（每万菲林兑现 ROI，单一事实源 = `data/filmEconomy.ts`）+ `src/composables/pullPlannerEngine.ts`（规划器，TIER_COSTS 常量价）；`src/core/gachaCost.ts` / `src/core/acquisitionValue.ts`（保底状态定价 / 概率口径抽取价值）是**引擎层未接线**——仅测试与校准用，改它们要同时确认没有消费者声称接 UI（2026-09-01 用户裁决：模拟抽卡运气不接产品，直接用期望值） |
+| **改抽卡价值 / 抽卡成本** | **只用期望值口径**（用户裁决 2026-09-01：宏观研究期望足够，模拟抽卡运气已删）：`src/composables/pullValue.ts`（每万菲林兑现 ROI，单一事实源 = `data/filmEconomy.ts`）+ `src/composables/pullPlannerEngine.ts`（规划器，TIER_COSTS 常量价）；gachaCost / acquisitionValue 引擎已整体删除，不要再引入抽卡随机模拟 |
 
 ## 3. 验收命令
 

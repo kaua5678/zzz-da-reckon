@@ -5,7 +5,7 @@
  * public/static/run-archive.json 有 5758 条 approved 危局投稿（队伍/命座/音擎/精炼/
  * 分数/是否击杀齐全），但此前只被用于「单条一键部署对比」（RunArchivePage）。
  * 没有全量误差度量 = 引擎的系统性偏差谁也说不清，只能靠个案争论。本模块提供
- * 抽样与统计的**纯函数层**，真引擎批跑在探针里（同 acquisitionValue 的分层做法）。
+ * 抽样与统计的**纯函数层**，真引擎批跑在探针里。
  *
  * ── 观测口径：实战分是**区间观测**，不是点观测 ─────────────────────────────
  * 归档总分 = 伤害分（≤60000）+ 操作分（≤5000），归档不拆分两者。所以：
@@ -29,8 +29,18 @@
  * **不进 CI、不设基线、不作拟合目标**。
  * 击杀判定（bossKilled）不受操作分影响，是最干净的二分类信号。
  */
-import { makeRng } from '@/core/acquisitionValue'
 import { DEADLY_ASSAULT_SCORE_CAP } from '@/core/deadlyAssaultScore'
+
+/** 确定性伪随机（mulberry32）：同种子同结果，供分层抽样洗牌用（原 acquisitionValue 迁入） */
+function makeRng(seed: number): () => number {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
 
 // @fact engine:calibration/配装前置 口径: 批跑归档前必须 catalog.loadBuildRecommendations()——applyTeamPreset 内的配装推荐在未加载时静默 no-op，全队裸装会伪造出巨幅「系统性低估」 | 据 实测@2026-08-31·复核@2026-09-01 | 验 src/composables/__tests__/runArchiveCalibration.test.ts | 锚 src/composables/runArchiveCalibration.ts#OPERATION_SCORE_MAX | 信 确认
 
