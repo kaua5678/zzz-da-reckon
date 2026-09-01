@@ -17,7 +17,6 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentSkillTransformInput,
 } from '../types'
 
 export const HUGO_ID = '1291'
@@ -140,12 +139,19 @@ export function computeHugoCycle(input: {
   }
 }
 
-function applyHugoPanel({ slot, team, panel }: AgentPanelInput): void {
+function applyHugoPanel({ slot, team, cinemaLevel, panel, settings }: AgentPanelInput): void {
   const stunTeammates = team.filter(member =>
     member.slot !== slot && member.agent?.specialty === 'stun').length
   const atkBonus = stunTeammates >= 2 ? 900 : stunTeammates === 1 ? 300 : 0
   panel.atk = (panel.atk ?? 0) + atkBonus
   panel.hugoStunTeammateAtkBonus = atkBonus
+  // 暗渊回响（核心被动）：决算后 6s 暴击+12%、暴伤+25% × 覆盖率（影画6 固定满覆盖）。
+  // 曾由 transformSkillExecutions 写面板（布尔守卫防累积，但有滑块冻结风险）——改静态
+  // applyPanel 从 settings 推导（2026-09-01 架构修复：面板静态，循环只算招式/资源）。
+  const echoCoverage = cinemaLevel >= 6 ? 1 : clampRatio(Number(settings?.['hugo.echoCoverage'] ?? 1))
+  panel.critRate = (panel.critRate ?? 0) + HUGO_ECHO_CRIT_RATE * echoCoverage
+  panel.critDmg = (panel.critDmg ?? 0) + HUGO_ECHO_CRIT_DMG * echoCoverage
+  panel.hugoEchoCoverage = echoCoverage
 }
 
 function buildHugoCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
@@ -312,17 +318,6 @@ function patchHugoExecutions({ cfg, state, executions }: AgentResourceInput): vo
   }
 }
 
-function applyHugoEchoPanel({ charResult, panel }: AgentSkillTransformInput): void {
-  if (!panel) return
-  const cycle = charResult.specResources?.hugo_abyss_echo as HugoCycle | undefined
-  if ((panel as Record<string, unknown>).__hugoEchoApplied) return
-  ;(panel as Record<string, unknown>).__hugoEchoApplied = true
-  const coverage = cycle?.echoCoverage ?? 0
-  panel.critRate = (panel.critRate ?? 0) + HUGO_ECHO_CRIT_RATE * coverage
-  panel.critDmg = (panel.critDmg ?? 0) + HUGO_ECHO_CRIT_DMG * coverage
-  panel.hugoEchoCoverage = coverage
-}
-
 function buildHugoResourceResult({ cfg, state }: AgentResourceResultInput) {
   return { specResources: { hugo_abyss_echo: cycleFromInput({ cfg, state }) } }
 }
@@ -361,7 +356,6 @@ export const hugoMechanic: AgentMechanicModule = {
   buildCharConfig: buildHugoCharConfig,
   buildExecutions: buildHugoExecutions,
   patchExecutions: patchHugoExecutions,
-  transformSkillExecutions: applyHugoEchoPanel,
   buildResourceResult: buildHugoResourceResult,
   resourceSections: buildHugoResourceSections,
 }

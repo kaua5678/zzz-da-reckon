@@ -188,6 +188,10 @@ function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInp
     element: 'dominant',
     carrierMoveId: AIRE_ABSOLUTE_PITCH_MOVE_ID,
     carrierMoveName: '普通攻击：绝对音准 #3',
+    // 异放随绝对音准#3（资源驱动特殊普攻）触发：失衡轴内占比 = 载体轴内单位/总次数。
+    // 特殊普攻不是 basic filler 兜底能打出的（filler 只打点倍率）——玩家把绝对音准#3
+    // 显式捏进窗内才吃易伤，不捏=轴外（2026-08 审计，用户口径「计数轴内消耗的资源」）
+    followCarrierInStun: true,
     count: pitchCount,
     formula: 'releaseMultiplier = 原异常单次倍率 × (异常掌控/10 × 初始比例%) × (失衡?1.5:1)',
     fields: ['anomalyMastery', 'AIRE_RELEASE_RATIO_PER_TEN', 'AIRE_RELEASE_STUN_BONUS_PCT'],

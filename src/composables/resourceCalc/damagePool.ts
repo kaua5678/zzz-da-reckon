@@ -14,10 +14,10 @@
 import { calcDirectDamage, calcAnomalyDamage, resolveSpecialDamageProfile } from '@/core/damage'
 import { attributeCountByStateChain } from '@/core/stunAxis/inStunAnomaly'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
-import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, getMainApplierSlot, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
+import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, getMainApplierSlot, distributeIntegerByWeight, calcStunMultiplier } from '@/core/anomalyPool/helpers'
 import { getAgentMechanic } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
-import { YESHUGUANG_FULL_STUN_MOVES } from '@/mechanics/agents/yeshuguang'
+import { YESHUGUANG_FULL_STUN_MOVES, veilStunMultiplier } from '@/mechanics/agents/yeshuguang'
 import { HUGO_FULL_STUN_MOVES } from '@/mechanics/agents/hugo'
 import { C6_ATTACH_RATIO, MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
 import { CORIN_ADDITIONAL_DMG } from '@/mechanics/agents/corin'
@@ -144,10 +144,16 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const stunForThis = row.stunOverride !== undefined
         ? row.stunOverride
         : stunCoverage
-      // 叶瞬光帷幕易伤：满易伤时倍率 = min(boss.stunVuln, panel.yeshuguangStunCapMult ?? 2.1)
+      // 叶瞬光帷幕易伤（口径见 yeshuguang.ts#veilStunMultiplier）：吃满「boss 基础失衡易伤 +
+      // 全部失衡易伤加成」再按影画封顶。calcDirectDamage 内部还会加一次 bonus/100，
+      // 所以这里把 bonus 反向扣掉，使最终落到 veilStunMultiplier 的值上。
       let stunBase = configStore.enemy.stunVuln
       if (row.agentId === '1431' && (panel as any).yeshuguangStunCapMult && stunForThis > 0) {
-        stunBase = Math.min(stunBase, Number((panel as any).yeshuguangStunCapMult) || 2.1)
+        const cap = Number((panel as any).yeshuguangStunCapMult) || 2.1
+        const rawBonus = (panel.stunDmgMultiplierBonus ?? 0) + (panel.stunDmgMultiplierBonusAlways ?? 0)
+        const capAlways = panel.stunDmgMultiplierBonusCapAlways ?? 0
+        const bonusPct = capAlways > 0 ? Math.min(rawBonus, capAlways) : rawBonus
+        stunBase = veilStunMultiplier(configStore.enemy.stunVuln, bonusPct, cap) - bonusPct / 100
       }
       const stunMultVal = stunForThis > 0
         ? 1 + (stunBase - 1) * stunForThis
@@ -195,6 +201,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         stunMult: stunMultVal,
         moveId: row.moveId,
         sourceTag: row.sourceTag,
+        multiplier: row.multiplier,
       })
     }
 
@@ -247,6 +254,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         perDamage: result.damage,
         totalDamage: result.damage * row.count,
         note: `${row.note ?? ''}${releaseMod.note}`,
+        multiplier: row.multiplier,
       })
     }
 
@@ -285,6 +293,43 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       if (total <= 0) return 0
       const inside = inStunAnomalyState?.elements.find(e => e.element === base)?.triggerCount ?? 0
       return Math.max(0, Math.min(1, inside / total))
+    }
+
+    /**
+     * 轴内非风异常触发占比（维琳娜风异放）：乱流 = 风化窗口内非风异常触发，
+     * 风异放随乱流触发 → 轴内占比 = 轴内非风触发 / 全局非风触发（风化覆盖率约掉）。
+     * 非轴回落全局覆盖率（现状口径）。
+     */
+    const nonWindInAxisFraction = (): number => {
+      if (!isAxis) return stunCoverage
+      const inNonWind = (inStunAnomalyState?.elements ?? [])
+        .filter(e => getBaseElement(e.element) !== 'wind')
+        .reduce((s, e) => s + (e.triggerCount ?? 0), 0)
+      let globalNonWind = 0
+      for (const p of anomalyPoolResult?.perElement ?? []) {
+        if (getBaseElement(p.element) !== 'wind') globalNonWind += p.triggerCount ?? 0
+      }
+      if (globalNonWind <= 0) return 0
+      return Math.max(0, Math.min(1, inNonWind / globalNonWind))
+    }
+
+    /**
+     * 终极技轴内占比（琉音6命余音/爱丽丝6命附伤等「终结技驱动附伤」）：指定槽位时只算该槽
+     * （爱丽丝状态进入=自身 SW3+终结），缺省全队（琉音转大=队友终结技入场）。非轴回落全局覆盖率。
+     */
+    const ultimateInAxisFraction = (slot?: number): number => {
+      if (!isAxis) return stunCoverage
+      let inAxis = 0
+      let total = 0
+      for (const ch of adjustedResourceResult?.characters ?? []) {
+        if (slot !== undefined && ch.slot !== slot) continue
+        for (const e of ch.executions ?? []) {
+          if (e.category !== 'chain' || !/终结技|ultimate/i.test(e.moveName ?? '')) continue
+          total += e.count ?? 0
+          inAxis += allocMap[`${ch.slot}:${e.moveId}`]?.inAxisUnits ?? 0
+        }
+      }
+      return total > 0 ? Math.max(0, Math.min(1, inAxis / total)) : stunCoverage
     }
 
     /**
@@ -547,8 +592,14 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           // 异放跟随载体招式（前台绑定，玩家捏轴可精确控制）：失衡内占比 = 载体块轴内单位 / 载体总数
           const carrierInAxisFraction = event.followCarrierInStun && event.carrierMoveId
             ? (() => {
-                const total = charResult.executions.find(e => e.moveId === event.carrierMoveId)?.count ?? 0
                 const inAxis = allocMap[`${slot}:${event.carrierMoveId}`]?.inAxisUnits ?? 0
+                // 载体总次数：执行行 count → 模块显式 carrierTotalCount（事件次数与载体不成 1:1 时，
+                // 如薇薇安落羽生花异放=落羽生花次数×命中异常占比，分母必须用落羽生花次数本身）
+                // → 事件次数兜底（柏妮思灼热抛接法/格莉丝脉冲手雷只生成异放事件、无执行行，
+                // 每次载体动作恰好触发一次异放）
+                const total = charResult.executions.find(e => e.moveId === event.carrierMoveId)?.count
+                  ?? event.carrierTotalCount
+                  ?? Math.max(0, Math.floor(event.count))
                 return total > 0 ? Math.max(0, Math.min(1, inAxis / total)) : 0
               })()
             : undefined
@@ -961,6 +1012,9 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
             source: `转大 ${promoteCount} 次 × ${c6EchoMax} 次 × 480%`,
             count: echoCount,
             multiplier: CINEMA6_ECHO_RATIO,
+            // 附伤随「队友以终结技入场」的转大触发 → 轴内易伤跟随全队终极技轴内占比（用户口径 2026-08：
+            // 6命附伤事件和动作绑定，理应该伴随计数并且吃易伤）；非轴回落全局覆盖率
+            stunOverride: isAxis ? ultimateInAxisFraction() : undefined,
             note: `影画6余音：队友经核心被动以终结技入场后，其攻击命中时琉音追加 480% 攻击力物理伤害（视为强特）；每转大最多 ${c6EchoMax} 次（可在资源利用率页调整）。`,
             skillDamageTarget: 'exSpecial',
           })
@@ -975,16 +1029,51 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     for (const event of anomalyPoolResult?.anomalyEvents ?? []) {
       if (event.count <= 0 || windSlot < 0 || !windAgentId) continue
       if (event.type === 'release' && event.id.includes('velina-corrosion')) {
-        pushRelease({
-          id: `pool-release-${event.id}`,
-          slot: windSlot,
-          agentId: windAgentId,
-          name: event.label,
-          count: event.count,
-          multiplier: parseReleaseMultiplier(event),
-          source: event.source,
-          note: event.note,
-        })
+        // 风异放（微域145%/广域255%）随乱流触发：失衡轴内按「轴内非风异常触发占比」拆
+        // in/out 两段（轴内异常触发→轴内乱流→轴内风异放，用户口径 2026-08）；非轴保持全局覆盖率
+        const total = Math.floor(event.count)
+        if (!isAxis) {
+          pushRelease({
+            id: `pool-release-${event.id}`,
+            slot: windSlot,
+            agentId: windAgentId,
+            name: event.label,
+            count: total,
+            multiplier: parseReleaseMultiplier(event),
+            source: event.source,
+            note: event.note,
+          })
+          continue
+        }
+        const frac = nonWindInAxisFraction()
+        const inCount = Math.min(total, Math.round(total * frac))
+        const outCount = total - inCount
+        if (inCount > 0) {
+          pushRelease({
+            id: `pool-release-${event.id}-in`,
+            slot: windSlot,
+            agentId: windAgentId,
+            name: event.label,
+            count: inCount,
+            multiplier: parseReleaseMultiplier(event),
+            source: event.source,
+            note: `${event.note}；失衡内·全额失衡易伤`,
+            stunnedOverride: 1,
+          })
+        }
+        if (outCount > 0) {
+          pushRelease({
+            id: `pool-release-${event.id}-out`,
+            slot: windSlot,
+            agentId: windAgentId,
+            name: event.label,
+            count: outCount,
+            multiplier: parseReleaseMultiplier(event),
+            source: event.source,
+            note: `${event.note}；轴外·无易伤`,
+            stunnedOverride: 0,
+          })
+        }
       }
     }
 
@@ -1002,6 +1091,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         count: detail.count ?? 0,
         perDamage: (detail.count ?? 0) > 0 ? detail.damage / (detail.count ?? 1) : detail.damage,
         totalDamage: detail.damage,
+        multiplier: detail.turbulenceMultiplier,
         note: `T=${detail.remainingTime}s，倍率=${detail.turbulenceMultiplier}%${detail.boostedCount ? `，其中${detail.boostedCount}次吃风蚀+150%倍率` : ''}`,
       })
     }
@@ -1023,6 +1113,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         count: detail.events,
         perDamage: detail.perEventDamage,
         totalDamage: detail.damage,
+        multiplier: detail.disorderMultiplier,
         note: `T=${detail.remainingTime}s，倍率=${detail.disorderMultiplier}%，anomalyMass=${detail.anomalyMass}，settlement=${detail.settlementMultiplier}`,
       })
     }
@@ -1120,6 +1211,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           count: entry.triggerCount,
           perDamage,
           totalDamage,
+          multiplier,
           note: noteParts.join(' · '),
         })
       }
@@ -1188,8 +1280,15 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     })
     if (polarAssaultProg && polarAssaultProg.triggerCount > 0 && polarAssaultSlot >= 0 && damagePanels[polarAssaultSlot]) {
       const alicePanel = damagePanels[polarAssaultSlot]
-      // 轴模式：极性强击易伤跟随父动作 SW3(1401012) 的 inAxisRatio
-      const polarStunFor = axisStunFor('polar_assault')
+      // 轴模式：极性强击易伤跟随父动作 SW3(1401012) 的轴内占比；影画2 终结技额外触发的
+      // 极性强击（c2UltSparkCount）跟随终结技轴内占比——按次数加权（2026-08 审计补接）
+      const sw3Frac = axisStunFor('polar_assault')
+      const aliceSm = adjustedResourceResult?.characters.find(c => c.slot === polarAssaultSlot)?.aliceSwordWillSource
+      const ultExtra = Math.max(0, Math.floor(aliceSm?.c2UltSparkCount ?? 0))
+      const sw3Count = Math.max(0, Math.floor(polarAssaultProg.triggerCount) - ultExtra)
+      const polarStunFor = polarAssaultProg.triggerCount > 0
+        ? (sw3Count * sw3Frac + ultExtra * ultimateInAxisFraction(polarAssaultSlot)) / polarAssaultProg.triggerCount
+        : stunCoverage
       const result = calcAnomalyDamage({
         panel: alicePanel,
         settlementPanel: alicePanel,
@@ -1220,7 +1319,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         count: polarAssaultProg.triggerCount,
         perDamage,
         totalDamage: perDamage * polarAssaultProg.triggerCount,
-        note: `713% 单次 × 爱丽丝面板 · 赠送触发不耗异常条`,
+        multiplier: 713,
+        note: `713% 单次 × 爱丽丝面板 · 赠送触发不耗异常条${isAxis ? ` · 易伤按触发源加权轴内占比 ${fmt(polarStunFor, 2)}（SW3 ${fmt(sw3Frac, 2)}${ultExtra > 0 ? ` ×${sw3Count} + 终结 ${fmt(ultimateInAxisFraction(polarAssaultSlot), 2)} ×${ultExtra}` : ''}）` : ''}`,
       })
     }
 
@@ -1235,7 +1335,17 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const assaultCritRate = Math.min(100, Math.max(0, janePanel.assaultCritRate ?? 0))
       const critCount = (physicalProg?.triggerCount ?? 0) * (assaultCritRate / 100)
       if (critCount > 0) {
-        const perDamage = (janePanel.anomalyProficiency ?? 0) * 16
+        // 附伤随强击暴击触发 → 轴内易伤跟随物理强击触发轴内占比（用户口径 2026-08：
+        // 6命附伤事件和动作绑定，理应该伴随计数并且吃易伤）；非轴回落全局覆盖率
+        const janeStun = isAxis ? inWindowFraction('physical') : stunCoverage
+        const janeStunMult = calcStunMultiplier(
+          configStore.enemy.stunVuln,
+          janePanel.stunDmgMultiplierBonus ?? 0,
+          janePanel.stunDmgMultiplierBonusAlways ?? 0,
+          janePanel.stunDmgMultiplierBonusCapAlways ?? 0,
+          janeStun,
+        )
+        const perDamage = (janePanel.anomalyProficiency ?? 0) * 16 * janeStunMult
         rows.push({
           id: 'jane-c6-assault-followup',
           slot: janeSlot,
@@ -1248,7 +1358,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           count: critCount,
           perDamage,
           totalDamage: perDamage * critCount,
-          note: `异常精通 ${fmt(janePanel.anomalyProficiency ?? 0)} × 1600%；按强击期望暴击次数 ${fmt(critCount, 2)} 次`,
+          note: `异常精通 ${fmt(janePanel.anomalyProficiency ?? 0)} × 1600%；按强击期望暴击次数 ${fmt(critCount, 2)} 次${isAxis ? ` · 易伤跟随物理强击轴内占比 ${fmt(janeStun, 2)}` : ''}`,
         })
       }
     }
@@ -1276,10 +1386,26 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         const totalTriggers = stateEntries * perStateCount
 
         if (totalTriggers > 0) {
+          // 附伤随决胜状态进入（SW3 1401012 / 终结技）触发 → 轴内易伤 = 状态进入的加权轴内占比
+          // （用户口径 2026-08：6命附伤事件和动作绑定，理应该伴随计数并且吃易伤）；非轴回落全局覆盖率
+          const sw3Frac = isAxis && smSrc.sparkCount > 0
+            ? Math.max(0, Math.min(1, (allocMap[`${aliceSlot}:1401012`]?.inAxisUnits ?? 0) / smSrc.sparkCount))
+            : stunCoverage
+          const ultFrac = ultimateInAxisFraction(aliceSlot)
+          const stateFrac = stateEntries > 0
+            ? (smSrc.sparkCount * sw3Frac + ultimateCount * ultFrac) / stateEntries
+            : stunCoverage
+          const stunMult = calcStunMultiplier(
+            configStore.enemy.stunVuln,
+            alicePanel.stunDmgMultiplierBonus ?? 0,
+            alicePanel.stunDmgMultiplierBonusAlways ?? 0,
+            alicePanel.stunDmgMultiplierBonusCapAlways ?? 0,
+            stateFrac,
+          )
           // 必定暴击：damage = anomalyProficiency × 33 × (1 + critDmg/100)
           const proficiency = alicePanel.anomalyProficiency ?? 0
           const critDmg = alicePanel.critDmg ?? 50
-          const perDamage = proficiency * 33 * (1 + critDmg / 100)
+          const perDamage = proficiency * 33 * (1 + critDmg / 100) * stunMult
 
           rows.push({
             id: 'alice-c6-decisive-extra-attack',
@@ -1293,7 +1419,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
             count: totalTriggers,
             perDamage,
             totalDamage: perDamage * totalTriggers,
-            note: `异常精通 ${fmt(proficiency)} × 3300% × 必定暴击(1+${fmt(critDmg)}%) → 单次 ${fmt(perDamage)} · 状态进入 ${stateEntries} 次 × 每次 ${perStateCount} 次 = ${totalTriggers} 次`,
+            note: `异常精通 ${fmt(proficiency)} × 3300% × 必定暴击(1+${fmt(critDmg)}%) → 单次 ${fmt(perDamage)} · 状态进入 ${stateEntries} 次 × 每次 ${perStateCount} 次 = ${totalTriggers} 次${isAxis ? ` · 易伤按状态进入加权轴内占比 ${fmt(stateFrac, 2)}（SW3 ${fmt(sw3Frac, 2)} / 终结 ${fmt(ultFrac, 2)}）` : ''}`,
           })
         }
       }

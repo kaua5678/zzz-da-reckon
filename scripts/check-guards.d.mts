@@ -32,6 +32,7 @@ export declare function scanSettingsCoverage(root?: string): {
 export interface DebtMarker { file: string; text: string }
 export interface DebtEntry { since: string; due: string }
 export declare const DEBT_REGISTRY: Record<string, DebtEntry>
+export declare const DEBT_SCAN_SELF_REFERENTIAL: string[]
 export declare function scanDebtMarkers(root?: string): DebtMarker[]
 export declare function matchDebtRegistry(markers: DebtMarker[]): { unregistered: DebtMarker[]; cleared: string[] }
 

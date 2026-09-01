@@ -24,7 +24,6 @@ import type {
   AgentEventInput,
   AgentResourceInput,
   AgentResourceSectionsInput,
-  AgentSkillTransformInput,
   ReleaseModifierInput,
 } from '../types'
 
@@ -106,7 +105,7 @@ function cycleFromCfg(cfg: unknown): PromiaCycle {
   })
 }
 
-/** 面板层：异常掌控转精通（复现 attributeConversions）+ 影画2精通+40 + 影画6自身异常/紊乱无视全抗。 */
+/** 面板层：异常掌控转精通（复现 attributeConversions）+ 影画2精通+40 + 影画6自身异常/紊乱无视全抗 + 额外能力冰积蓄效率。 */
 function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): void {
   const mastery = Math.max(0, outOfCombatPanel?.anomalyMastery ?? 0)
   const excess = Math.max(0, mastery - PROMIA_MASTERY_THRESHOLD)
@@ -121,15 +120,13 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
   // releaseModifier 用（异放限定减防需读普罗米娅命座与额外能力门控）
   panel.promiaCinemaLevel = cinemaLevel
   panel.promiaAdditionalActive = panel.additionalAbilityActive ?? 0
-}
-
-/** 提取层：额外能力冰异常积蓄效率+30%（需 additionalAbilityActive 门控）。有罪推定无视防御已改走 releaseModifier（异放限定）。 */
-function applyPromiaBuildUp({ charResult, panel }: AgentSkillTransformInput): void {
-  if (!panel) return
-  if ((panel as Record<string, unknown>).__promiaBuildUpApplied) return
-  ;(panel as Record<string, unknown>).__promiaBuildUpApplied = true
-  const cycle = charResult.specResources?.promia_cycle as PromiaCycle | undefined
-  if (!cycle) return
+  // 额外能力：冰异常积蓄效率 +30%（需 additionalAbilityActive 门控）——依赖全是静态
+  // （cinema/掌控/AA），改在 applyPanel 算；曾由 transformSkillExecutions 写面板（布尔守卫防累积）。
+  const cycle = computePromiaCycle({
+    cinemaLevel,
+    anomalyMastery: outOfCombatPanel?.anomalyMastery ?? 0,
+    additionalActive: (panel.additionalAbilityActive ?? 0) > 0,
+  })
   if (cycle.additionalBuildUpEff > 0) {
     panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + cycle.additionalBuildUpEff
   }
@@ -350,7 +347,6 @@ export const promiaMechanic: AgentMechanicModule = {
   description: '异常掌控转精通、影画2精通、额外能力冰异常积蓄效率；绝裁异放已接（霜刑上限钳制），全队异放增伤 0.35%/点未接面板。',
   applyPanel: applyPromiaPanel,
   buildCharConfig: buildPromiaCharConfig,
-  transformSkillExecutions: applyPromiaBuildUp,
   buildExecutions: buildPromiaExecutions,
   buildAnomalyEvents: buildPromiaAnomalyEvents,
   buildResourceResult: buildPromiaResourceResult,

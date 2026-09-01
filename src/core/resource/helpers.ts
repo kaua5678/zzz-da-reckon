@@ -942,7 +942,12 @@ export function iterate(
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]
     const exSpecialCount = resolveExSpecialCount(cfg, energies[i])
-    const ultimateCount = Math.floor(decibels[i] / cfg.ultimateCost)
+    // 时间轴喧响轨（轴模式注入 axisUltimateTrackBySlot）：窗口时序推演的实际可放大招数
+    //（进窗不够 3000 的窗大招被削减）；缺省回落总量口径 floor(喧响/消耗)
+    const trackedUltimate1 = globalCfg.axisUltimateTrackBySlot?.[cfg.slot]
+    const ultimateCount = typeof trackedUltimate1 === 'number' && trackedUltimate1 >= 0
+      ? trackedUltimate1
+      : Math.floor(decibels[i] / cfg.ultimateCost)
 
     // 连携次数 = 每次失衡连携次数 × 失衡次数（失衡次数由外部失衡池不动点收敛后传入 globalCfg.stunCount）
     // 失衡轴模式用 chainCountTotalOverride（各轴按窗口数加权后的最终连携次数）
@@ -978,7 +983,11 @@ export function iterate(
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]
     const exSpecialCount = resolveExSpecialCount(cfg, energies[i])
-    const ultimateCount = Math.floor(decibels[i] / cfg.ultimateCost)
+    // 时间轴喧响轨（与 Step4 同口径）：窗口时序推演的实际可放大招数
+    const trackedUltimate2 = globalCfg.axisUltimateTrackBySlot?.[cfg.slot]
+    const ultimateCount = typeof trackedUltimate2 === 'number' && trackedUltimate2 >= 0
+      ? trackedUltimate2
+      : Math.floor(decibels[i] / cfg.ultimateCost)
 
     const basicAttackTime = totalWeight > 0
       ? availableBasicTime * (cfg.timeWeight / totalWeight)

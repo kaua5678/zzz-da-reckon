@@ -5,7 +5,6 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentSkillTransformInput,
   AgentTeamConfigInput,
 } from '../types'
 import { getAgentSpec } from '@/specs/registry'
@@ -18,7 +17,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
  * 已接管（原先分散在 helpers.ts / specPanelBuffs）：
  * - 影画1 快充模式：普攻第四段命中 → 能量获得效率 +12%（30s 刷新，覆盖率滑块 `anby.fastChargeCoverage` 默认 100%）。
  * - 影画6 充能电场：强特 +8 层充能，普攻/冲刺命中消耗 1 层，当前招式伤害 +45%
- *   （spec resource `anby_charge`，transformSkillExecutions 读 resource.total>0 挂 panel.dmgBonus）。
+ *   （面板近似全伤害区；applyPanel 按 cinemaLevel≥6 门控，2026-09-01 起不再经 transform 写面板）。
  *
  * 本轮补录（2026-08-27 用户口径）：
  * - 核心被动·波动电压（Lv.7）：落雷(1011005)/特殊技(1011006)/强化特殊技(1011007) 失衡值 +64%
@@ -78,6 +77,13 @@ function applyAnbyPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void
   if (cinemaLevel >= 1) {
     const cov = clampRatio(settings['anby.fastChargeCoverage'] ?? 1)
     panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + ANBY_C1_ENERGY_EFF * cov
+  }
+  // 影画6 充能电场：充能（6命）存在即当前招式伤害 +45%（面板近似，全伤害区）。
+  // 曾由 transformSkillExecutions 按 anby_charge 资源 total>0 施加——资源 gainRule 无命座
+  // 门控导致 C0 也拿到 +45，且 transform 在收敛轮间对同一缓存面板 `+=` 累积成 720；
+  // 改静态 applyPanel 以 cinemaLevel 门控（2026-09-01 架构修复：面板静态，循环只算招式/资源）。
+  if (cinemaLevel >= 6) {
+    panel.dmgBonus = (panel.dmgBonus ?? 0) + 45
   }
 }
 
@@ -149,15 +155,6 @@ function patchAnbyExecutions({ cfg, executions }: AgentResourceInput): void {
   }
 }
 
-/** 影画6 充能电场：resource.anby_charge.total>0 时伤害 +45%（挂 panel.dmgBonus） */
-function transformAnbySkillExecutions({ charResult, panel }: AgentSkillTransformInput): void {
-  if (!panel) return
-  const res = (charResult.specResources ?? {})['anby_charge']
-  if ((res?.total ?? 0) > 0) {
-    panel.dmgBonus = (panel.dmgBonus ?? 0) + 45
-  }
-}
-
 function buildAnbyResourceResult({ cfg, state }: AgentResourceResultInput) {
   const spec = getAgentSpec(ANBY_ID)
   return {
@@ -203,7 +200,6 @@ export const anbyMechanic: AgentMechanicModule = {
   buildCharConfig: buildAnbyCharConfig,
   applyTeamConfig: applyAnbyTeamConfig,
   patchExecutions: patchAnbyExecutions,
-  transformSkillExecutions: transformAnbySkillExecutions,
   buildResourceResult: buildAnbyResourceResult,
   resourceSections: buildAnbyResourceSections,
 }

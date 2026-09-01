@@ -1,6 +1,6 @@
 {
   "id": "preset-1371-1481-*",
-  "name": "常规",
+  "name": "仪琉",
   "team": [
     "1371",
     "1481",
@@ -80,7 +80,8 @@
         {
           "slot": 0,
           "moveId": "1371014",
-          "count": 1
+          "count": 1,
+          "promoteVariant": "90"
         },
         {
           "slot": 0,

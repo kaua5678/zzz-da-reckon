@@ -8,6 +8,19 @@ import { miyabiMechanic } from '@/mechanics/agents/miyabi'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 
+describe('星见雅 transform 面板累积回归（2026-09-01：收敛轮间叠成 600 积蓄效率）', () => {
+  it('C6 面板 anomalyBuildUpEfficiency 为单次合理值（远小于累积的 600）', async () => {
+    const { config } = await setupHarness([{ agentId: '1091', cinemaLevel: 6 }, '', ''])
+    for (const buff of config.globalBuffs) buff.enabled = false
+    const calc = useResourceCalc()
+    void calc.damagePoolRows.value // 触发 calcOutput → transform 跑完
+    // 冰焰（min(上限, 暴击率)×覆盖率）+ 霜灼 20；曾因 transform 裸 `+=` 叠成 600
+    const eff = calc.panels.value?.[0]?.anomalyBuildUpEfficiency ?? 0
+    expect(eff).toBeLessThan(100)
+    expect(eff).toBeGreaterThan(0)
+  })
+})
+
 describe('星见雅命座生效（全管线）', () => {
   async function damageAt(cinemaLevel: number): Promise<number> {
     const { config } = await setupHarness([{ agentId: '1091', cinemaLevel }, '', ''])
@@ -31,12 +44,15 @@ describe('星见雅命座生效（全管线）', () => {
 })
 
 describe('星见雅滑块生效差分（防守卫冻结，SOP §3.5：改滑块→结果确实变）', () => {
-  it('miyabi.iceFlameCoverage → 冰焰积蓄效率差分（transformSkillExecutions 消费 coverage）', async () => {
-    // coverage 由 buildCharConfig 写入 panel.miyabiIceFlameCoverage（显式非 1 值优先）；
-    // 消费在 transformMiyabiSkillExecutions：iceFlameBonus = min(30, critRate) × coverage
+  it('miyabi.iceFlameCoverage → 冰焰积蓄效率差分（applyPanel 静态消费）', () => {
+    // coverage 由 applyPanel 从 settings 算（显式非 1 值优先，否则按队伍/命座自动默认）；
+    // 消费在 applyMiyabiPanel：iceFlameBonus = min(80, critRate) × coverage + 霜灼 20（无风队）
     const efficiencyFor = (coverage: number, critRate = 20) => {
-      const panel: any = { miyabiIceFlameCoverage: coverage, critRate, anomalyBuildUpEfficiency: 0, miyabiHasWindTeammate: 0 }
-      miyabiMechanic.transformSkillExecutions!({ panel, stunExecs: [], anomalyExecs: [], charResult: { specResources: {}, executions: [] } } as never)
+      const panel: any = { critRate, anomalyBuildUpEfficiency: 0, miyabiHasWindTeammate: 0 }
+      miyabiMechanic.applyPanel!({
+        slot: 0, agent: null, cinemaLevel: 0, team: [],
+        panel, settings: { 'miyabi.iceFlameCoverage': coverage },
+      } as never)
       return panel.anomalyBuildUpEfficiency
     }
     const on = efficiencyFor(0.8)
@@ -45,14 +61,13 @@ describe('星见雅滑块生效差分（防守卫冻结，SOP §3.5：改滑块�
     expect(on).toBeCloseTo(20 * 0.8 + 20, 1)
     expect(off).toBeCloseTo(20 * 0.2 + 20, 1)
     expect(on - off).toBeCloseTo(20 * 0.6, 1)
-    // 面板链路原点：setting 键经 buildCharConfig 写入 panel.miyabiIceFlameCoverage
-    // （管线里 resolveMechanicSettings 把滑块值以 `setting:<id>` 键注入 cfg，此处模拟）
-    const cfgPanel: any = { miyabiHasWindTeammate: 0 }
-    miyabiMechanic.buildCharConfig!({
-      slot: 0, cinemaLevel: 0, cfg: { 'setting:miyabi.iceFlameCoverage': 0.8 } as never, panel: cfgPanel,
-      skills: { categories: [] } as never, team: [],
+    // 面板链路原点：setting 经 resolveMechanicSettings → applyPanel 静态算 coverage
+    const p2: any = { critRate: 20, anomalyBuildUpEfficiency: 0, miyabiHasWindTeammate: 0 }
+    miyabiMechanic.applyPanel!({
+      slot: 0, agent: null, cinemaLevel: 0, team: [],
+      panel: p2, settings: { 'miyabi.iceFlameCoverage': 0.8 },
     } as never)
-    expect(cfgPanel.miyabiIceFlameCoverage).toBeCloseTo(0.8, 5)
+    expect(p2.miyabiIceFlameCoverage).toBeCloseTo(0.8, 5)
   })
 
   it('miyabi.frostburnBreakCount / frostburnBreakRate → 霜灼·破次数差分（buildExecutions）', async () => {

@@ -66,22 +66,33 @@ export function applyLiuyinPromote(
       const ultMoveDef = findMoveById(skills, ultimateMoveId)
       const ultMult = ultMoveDef?.rows.find(r => r.id === 'damage')?.values[0] ?? 0
       const ultBuildUp = ultMoveDef?.rows.find(r => r.id === 'anomaly_buildup')?.values[0] ?? 0
+      const ultActionTime = ultMoveDef?.actionTime ?? 0
+      // 转大的终结技是真实动作（目标队友打一次终结技），必须占用前台时间——曾写死 0
+      // 导致时间表/资源利用率页看不到转大耗时（用户 2026-09 般琉卢排查）。
+      // 时间从目标的平A池挤出（basicAttackTime 扣减），总前台占用守恒，
+      // 不额外撑破战斗预算（否则会误触轴退化判定，般岳等轴测试依赖该守恒）。
+      const promoteTime = ultActionTime * promote
+      const basicIdx = char.executions.findIndex(e => e.moveId === 'basic_attack')
+      const basicTime = basicIdx >= 0 ? (char.executions[basicIdx].totalTime ?? 0) : 0
+      const carve = Math.max(0, Math.min(basicTime, promoteTime))
       // 轴即最终次数：连携次数已从轴直接读出（N），60/90 转大只叠加赠送大招，不再「连携-1 大招+1」改写。
       // 转大白送的终结技独立成行（source='gift'），不并入目标原始终结技行——否则赠送归因（击破手对比的 gift 列）会丢失。
       return {
         ...char,
         ultimateCount: (char.ultimateCount ?? 0) + promote,
         executions: [
-          ...char.executions,
+          ...char.executions.map((e, i) => i === basicIdx
+            ? { ...e, totalTime: Math.max(0, (e.totalTime ?? 0) - carve) }
+            : e),
           {
             moveId: ultimateMoveId,
             moveName: '好评转大·队友终结技',
             category: 'chain',
             count: promote,
-            actionTime: 0,
+            actionTime: ultActionTime,
             source: 'gift',
             comboAlignRatio: 0,
-            totalTime: 0,
+            totalTime: promoteTime,
             totalComboAlignTime: 0,
             energyConsume: 0,
             totalEnergyConsume: 0,

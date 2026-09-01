@@ -851,6 +851,10 @@ export const banyueMechanic: AgentMechanicModule = {
   patchExecutions: patchBanyueExecutions,
   buildResourceResult: buildBanyueResourceResult,
   resourceSections: buildBanyueResourceSections,
+  // 伴随事件：影画6 摧岳附伤（banyue_c6_crush_attach）随倾山(1471009) 自动触发——轴内易伤占比
+  // 跟随倾山轴内单位（damagePool 消费 axisStunFor('banyue_c6_crush_attach')；2026-08 审计补注册，
+  // 此前未在 attachedEvents 登记 → 轴内附伤恒无易伤）
+  attachedEvents: { [MOVE.qingShan]: ['banyue_c6_crush_attach'] },
   // 失衡轴动作块：怒相连段（论道→狮子吼·怒 / 地动→山摇·怒）= 怒相技能，山威免费（4 山威/怒相 = 2 组），
   // 不耗闪能不回嗔火；怒相内 2 组连段可在两个块间自由分配（didong 块优先占山威配额），明王触发源两者皆认领
   combos: {

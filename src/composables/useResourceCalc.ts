@@ -12,6 +12,7 @@ import type { StunSkillExecution } from '@/core/stunPool'
 import { computeParrySplit } from '@/core/parrySplit'
 import type { ParrySplitResult } from '@/core/parrySplit'
 import { calcStunAxis } from '@/core/stunAxis'
+import { simulateDecibelTrack } from '@/core/resourceTrack'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
@@ -31,6 +32,7 @@ import { computeLuciaHealPctPerUlt } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueMingwangStacks, computeBanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import { computeCorinStunBonusMoves } from '@/mechanics/agents/corin'
+import { aliceSparkCountOf } from '@/mechanics/agents/alice'
 import { SIGRID_LANCE_SEGMENT_IDS } from '@/mechanics/agents/sigrid'
 import { computeYixuanNingshenBonus } from '@/mechanics/agents/yixuan'
 import { computePeiluoKagerouBonus } from '@/mechanics/agents/specPanelBuffs'
@@ -45,7 +47,7 @@ import type {
 } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import * as ResourceCalcHelpers from './resourceCalc/helpers'
-import type { DamagePoolRow, AnomalyVirtualPanelBuild } from './resourceCalc/helpers'
+import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } from './resourceCalc/helpers'
 
 /**
  * 失衡次数 ↔ 资源池（连携=每失衡连携×失衡次数）↔ 失衡池 外不动点迭代上限。
@@ -54,6 +56,49 @@ import type { DamagePoolRow, AnomalyVirtualPanelBuild } from './resourceCalc/hel
  * 收敛后结果不变，只多花极少数非收敛场景的轮次成本。
  */
 const MAX_OUTER_ITER = 20
+/** 保底4喧响的四舍五入阈值（喧响值）：缺口 ≤ 此值补弹刀够下一次大招，超过则放弃（实战打不出） */
+export const DECIBEL_ROUND_THRESHOLD = 1500
+
+/**
+ * 时间轴喧响轨推演（对轴模块，用户口径 2026-08-31）：
+ * 窗口时序按「有效时间均分给 N 次失衡」估位（每窗起点 = 轮转间隔 × 序号），
+ * 每槽用 simulateDecibelTrack 推演实际可放大招数（进窗不够 3000 削减）。
+ * regenBySlot = 上一轮收敛的每槽喧响产出（首轮 0 → 全部削减？不——首轮回落总量口径，
+ * 用 -1 标记未注入）；initialGift 读 cfg.initialDecibelGift（进场赠送）。
+ */
+function computeAxisUltimateTrack(
+  characters: { slot: number; agentId: string; initialDecibelGift?: number }[],
+  stunCount: number,
+  windowDuration: number,
+  effectiveTime: number,
+  regenBySlot: Record<number, number> | undefined,
+  prevStunCount?: number,
+): Record<number, number> {
+  const track: Record<number, number> = {}
+  if (!regenBySlot) return track // 首轮无收敛数据 → 不注入（回落总量口径）
+  // 失衡次数未收敛稳定前不启用轨：早期轮 stunCount 偏小（如轮2=1）→ 窗口估位失真 →
+  // 轨把大招砍光 → 外层提前判稳，stunCount 涨不回来（实测比琉队螺旋到 0）。
+  // 窗口数取「上一轮收敛且与本轮一致」的 stunCount；首轮后未稳定 → 回落总量口径。
+  if (typeof prevStunCount !== 'number' || prevStunCount !== stunCount) return track
+  const wins = Math.max(1, Math.floor(stunCount))
+  // 窗口间隔 = 有效时间 ÷ 失衡次数（含窗口本身；窗口起点均布）
+  const interval = effectiveTime / wins
+  const windows = Array.from({ length: wins }, (_, i) => ({
+    start: Math.min(effectiveTime - windowDuration, i * interval),
+    duration: windowDuration,
+  }))
+  for (const cfg of characters) {
+    const regen = Math.max(0, regenBySlot[cfg.slot] ?? 0)
+    // 回复总量口径 = 上一轮整局喧响产出 − 进场赠送（赠送走 initial，t=0 即有）
+    const initial = Math.min(3000, Math.max(0, cfg.initialDecibelGift ?? 0))
+    const result = simulateDecibelTrack(windows, Math.max(0, regen - initial), effectiveTime, initial)
+    // 双保险：轨值 ≤ 总量口径（floor(总喧响/3000)）——轨只削「时间不够攒」的虚高，
+    // 不引入新的产出螺旋（regen 单调见 threads 写入处）
+    const totalBasis = Math.floor((regen + initial) / 3000)
+    track[cfg.slot] = Math.min(result.ultimateCount, totalBasis)
+  }
+  return track
+}
 
 const { computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, remielleSpecialVoidflareCount, findMoveById, enrichExecutionPlan, buildCharConfig, extractSkillExecutions, applyTeamMechanics, buildAnomalyVirtualPanel } = ResourceCalcHelpers
 export function useResourceCalc() {
@@ -202,20 +247,23 @@ export function useResourceCalc() {
     return { hasWindChar: hasWind, windCharSlot: slot }
   })
 
-  /** 爱丽丝配置（复用） */
+  /** 爱丽丝配置（复用）：仅承载与 resourceResult 无关的畏缩结算配置。
+   *  极性强击赠送计数不在此读——aliceInfo 读 resourceResult（= calcOutput.value.resourceResult）
+   *  会在 calcOutput 自身求值内构成循环依赖（首算恒读空，曾致极性强击行整行缺失），
+   *  由 calcAnomalyPoolInput 的 aliceSparkOverride 注入本轮资源结果。 */
   const aliceInfo = computed(() => {
     const slot = configStore.team.findIndex(c => c.agentId && (catalogStore.getAgent(c.agentId)?.id === '1401' || catalogStore.getAgent(c.agentId)?.teammateBuffId === '1401'))
     if (slot < 0) return null
     const cfg = resourceConfig.value?.characters[slot]
     if (!cfg?.aliceEnabled) return null
-    const sparkCount = resourceResult.value?.characters.find(c => c.slot === slot)?.aliceSwordWillSource?.sparkCount ?? 0
-    return { slot, coweringConfig: { dotRatio: cfg.aliceCoweringDotRatio ?? 2.5, dotInterval: cfg.aliceCoweringDotInterval ?? 0.95, disorderBonusPerSec: cfg.aliceCoweringDisorderBonusPerSec ?? 18, disorderBonusMax: cfg.aliceCoweringDisorderBonusMax ?? 180, assaultBaseMultiplier: 853 }, sparkCount }
+    return { slot, coweringConfig: { dotRatio: cfg.aliceCoweringDotRatio ?? 2.5, dotInterval: cfg.aliceCoweringDotInterval ?? 0.95, disorderBonusPerSec: cfg.aliceCoweringDisorderBonusPerSec ?? 18, disorderBonusMax: cfg.aliceCoweringDisorderBonusMax ?? 180, assaultBaseMultiplier: 853 } }
   })
 
   /** 构建积蓄池（参数化 stunCoverage + 异常 execs） */
-  function calcAnomalyPoolInput(stunCov: number, execs: AnomalySkillExecution[]) {
+  function calcAnomalyPoolInput(stunCov: number, execs: AnomalySkillExecution[], aliceSparkOverride?: number) {
     if (execs.length === 0) return null
     const wind = windInfo.value; const alice = aliceInfo.value
+    const aliceSpark = aliceSparkOverride ?? 0
     return calcAnomalyPool({
       executions: execs, panels: panels.value,
       bossCoeff: configStore.enemy.anomalyCoeff, anomalyCoeff: configStore.enemy.bossAnomalyCoeff,
@@ -228,7 +276,7 @@ export function useResourceCalc() {
       velinaCinema2CorrosionRate: configStore.getMechanicSetting('velina.cinema2CorrosionRate', 2 / 3),
       globalAnomalyMultiplier: remielleAnomalyMultiplier.value,
       aliceCoweringConfig: alice?.coweringConfig,
-      giftedTriggerCounts: alice && alice.sparkCount > 0 ? { 'physical_polar_assault': alice.sparkCount } : undefined,
+      giftedTriggerCounts: alice && aliceSpark > 0 ? { 'physical_polar_assault': aliceSpark } : undefined,
       giftedTriggerSlot: alice?.slot,
       agentMechanics: getRegisteredAgentMechanics(),
     })
@@ -457,6 +505,8 @@ export function useResourceCalc() {
       inStunWindowTriggers: prevInStunWindowTriggers,
       ellenFreezeCount: prevEllenFreezeCount,
       decibelParry: prevDecibelParry,
+      decibelRegenBySlot: prevDecibelRegenBySlot,
+      trackStunCount: prevTrackStunCount,
     } = threads
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
@@ -1038,6 +1088,20 @@ export function useResourceCalc() {
       axisOverlapByAction,
       specialActionDecibelBonusPerSlot: specialBonusPerSlot,
       anomalyDecibelBonusPerSlot: anomalyBonusPerSlot,
+      // 时间轴喧响轨（对轴模块，用户口径 2026-08-31）：轴模式按窗口时序推演每槽实际可放大招数
+      //（180s 分失衡/非失衡段，喧响均匀回复 3000 上限，进窗够 3000 放大清空、不够削减该窗大招）。
+      // 非轴模式不注入（回落总量口径）。首轮窗口时序按失衡次数均分（有效时间/N）估位，
+      // 与轮内实际窗口节奏的偏差由外层不动点吸收（推演输入 = 上一轮收敛的喧响产出）。
+      ...(axisActive
+        ? { axisUltimateTrackBySlot: computeAxisUltimateTrack(
+            characters,
+            stunCount,
+            computeWindowDuration(),
+            Math.max(1, (base.totalTime ?? 180) - (configStore.enemy.invincibleTime ?? 0)),
+            prevDecibelRegenBySlot,
+            prevTrackStunCount,
+          ) }
+        : {}),
     }), catalogStore)
     // 橘福福：收敛仪玄符法千重类终结次数 + 全队终结总次数（供额外能力 +300 / 影画2 威势）
     let yixuanFuFaForJufufuNext = 0
@@ -1085,15 +1149,22 @@ export function useResourceCalc() {
       })
     }
 
-    // 通用保底4喧响：喧响缺口 → 弹刀（所有非般岳队伍）。目标 = 保底 4 次终结技（4×3000 喧响），
+    // 通用保底4喧响：喧响缺口 → 弹刀（所有非般岳队伍）。目标 = 主C（槽0）保底 4 次终结技（4×3000 喧响），
     // 弹刀 = ceil(缺口 / 215)；与般岳同一口径，轮间经 prevDecibelParry 收敛。
+    // 主C个人口径（用户 2026-08-31）：喧响只算主C自己的——队友喧响不能转移给主C开大，
+    // 全队总和会把缺口抹平导致漏补（般岳分支同款坑，见上方注释）。
+    // 四舍五入口径（用户 2026-08-31）：缺口 > 半次大招（1500）= 实战打不出下一次大 → 不补；
+    // 缺口 ≤ 1500 → 补少量弹刀够到下一次（拟合司祭 4 喧响大 / 叶释渊 3 喧响大的实战档位）。
     // 单调不减（max 夹住上一轮）：215 是弹刀个人喧响奖励、实际每刀喧响含伴随/轻弹刀数据行更高，
     // 直接重算会在「缺口÷215」与「0」之间振荡——单调夹住后收敛到首轮估计，稳定且确定。
     let decibelParryNext = prevDecibelParry
     if (decibelParryActive) {
-      const decibelHave = rr.characters.reduce((s, c) => s + (c.decibelSource?.total ?? 0), 0)
-      const decibelShort = Math.max(0, 4 * ULTIMATE_COST_DEFAULT - decibelHave)
-      decibelParryNext = Math.max(prevDecibelParry, Math.ceil(decibelShort / PARRY_DECIBEL_BONUS))
+      const mainDpsDecibel = rr.characters.find(c => c.slot === 0)?.decibelSource?.total ?? 0
+      const decibelShort = Math.max(0, 4 * ULTIMATE_COST_DEFAULT - mainDpsDecibel)
+      const roundable = decibelShort <= DECIBEL_ROUND_THRESHOLD
+      if (roundable) {
+        decibelParryNext = Math.max(prevDecibelParry, Math.ceil(decibelShort / PARRY_DECIBEL_BONUS))
+      }
     }
     const baseStun = extractStunExecsFrom(rr)
     const baseAnomaly = extractAnomalyExecsFrom(rr)
@@ -1157,7 +1228,9 @@ export function useResourceCalc() {
     // Round 0：无易伤 → 畏缩覆盖率初算
     const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, hugoRefundRatio)
     const adj0 = applyLiuyinPromote(rr, sp0, catalogStore)
-    const ap0 = calcAnomalyPoolInput(0, adj0 ? extractAnomalyExecsFrom(adj0) : baseAnomaly)
+    // 爱丽丝本轮剑意触发次数（极性强击赠送计数）：读本轮 rr 而非 aliceInfo（循环依赖，见 calcAnomalyPoolInput）
+    const aliceSparkThisRound = aliceSparkCountOf(rr)
+    const ap0 = calcAnomalyPoolInput(0, adj0 ? extractAnomalyExecsFrom(adj0) : baseAnomaly, aliceSparkThisRound)
 
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
     const flinch1 = ap0?.coverage?.physicalCoverageRate ?? 0
@@ -1204,8 +1277,12 @@ export function useResourceCalc() {
     // 诺姆膛温换连携：帽子把戏触发上一位角色快速支援→替换为连携，连携归属上一位队友；C4 时诺姆+队友各 200 不可分享喧响。
     const adj2 = applyNormaHatChain(adj1 ?? rr, configStore, catalogStore)
     // 展示层：resourceResult 也带上诺姆赠送连携（执行计划/次数在资源利用率页可见），
-    // 不动点/失衡池仍用原始 rr（baseStun），避免赠送连携失衡反作用于转大收敛
-    const rrShown = applyNormaHatChain(rr, configStore, catalogStore) ?? rr
+    // 不动点/失衡池仍用原始 rr（baseStun），避免赠送连携失衡反作用于转大收敛。
+    // 琉音好评转大同样并入展示层（转大=目标队友真实打一次终结技，时间表/资源页应能看见耗时——
+    // 曾只进 adjustedResourceResult（伤害池）导致时间表看不到转大耗时，用户 2026-09 般琉卢排查；
+    // 时间从目标平A池挤出，总前台守恒，不撑破预算）。
+    const rrShown0 = applyLiuyinPromote(rr, sp1, catalogStore) ?? rr
+    const rrShown = applyNormaHatChain(rrShown0, configStore, catalogStore) ?? rrShown0
 
     // 叶瞬光：琉音转大赠送的逐云次数（adj 后 gift 行）
     let yeshuguangGiftUltNext = 0
@@ -1247,7 +1324,7 @@ export function useResourceCalc() {
     }
 
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
-    const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly)
+    const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly, aliceSparkThisRound)
 
     // 露西 C6：队友强特合计 + 回旋预估（供下一轮 C1 回能）
     let lucyTeammateExNext = 0
@@ -1505,6 +1582,16 @@ export function useResourceCalc() {
         inStunWindowTriggers: inStunWindowTriggersNext,
         ellenFreezeCount: ellenFreezeCountNext,
         decibelParry: decibelParryNext,
+        // 轨推演输入（喧响产出）单调不减：轨削减大招 → 大招回响数据行减少 → 产出下滑
+        // → 下一轮轨更紧 → 恶性循环（实测可螺旋到 0）。取 max(上一轮, 本轮) 锁定基准。
+        decibelRegenBySlot: Object.fromEntries(
+          rr.characters.map(c => [c.slot, Math.max(
+            prevDecibelRegenBySlot?.[c.slot] ?? 0,
+            c.decibelSource?.total ?? 0,
+          )]),
+        ),
+        // 轨的失衡次数收敛线程：与本轮 stunCount 相等才启用轨（防早期轮窗口失真螺旋）
+        trackStunCount: sp1.pool?.stunCount ?? 0,
       },
     }
   }
@@ -1580,6 +1667,12 @@ export function useResourceCalc() {
         // null 轮（如无失衡行队伍）：反馈线程按 threadsAfterNullRound 规则回退（持久组保留、其余重置）
         if (!out) {
           threads = threadsAfterNullRound(threads)
+          // null 轮重置收敛序列判据：防止下一轮非 null 拿陈旧 prev* 误判 stable（防御性）
+          prevUltSeq = ''
+          prevAnomalySeq = ''
+          prevTopUpSeq = ''
+          prevParrySplitSeq = ''
+          prevDecibelParrySeq = ''
           continue
         }
         const t = out.threadsNext
@@ -1963,16 +2056,23 @@ export function useResourceCalc() {
     return out
   })
 
-  /** 伴随事件（父动作完全落在窗口内 → 子事件吃易伤）：child moveId → 0/1 */
+  /**
+   * 伴随事件（子事件易伤跟随父动作的轴内占比）：child moveId → 0-1。
+   * 占比 = Σ父动作栈执行轴内单位 / Σ父动作全局总单位（与直伤 axisSplitFor 同源，栈遍历口径）。
+   * 替代旧的「axisDetails 布尔 OR」：①父动作被 basicMoveIdsBySlot 改写为 'basic' 导致按原
+   * moveId 查不到（爱丽丝 SW3 极性强击轴内易伤整段丢失）；②多次出现一窗在内即全量易伤、
+   * 跨边界分数 inAxisRatio<1 反而归 0——布尔口径与直伤的分数期望模型不一致。
+   */
   const attachedInAxisMap = computed<Record<string, number>>(() => {
     const out: Record<string, number> = {}
-    if (!stunAxisResult.value) return out
-    const parentsInWindow: Record<string, boolean> = {}
-    for (const detail of stunAxisResult.value.axisDetails) {
-      for (const a of detail.actions) {
-        // actionKey = `${slot}:${moveId}`；moveId 可能是 'basic'（无伴随事件，跳过）
-        const moveId = a.actionKey.split(':').slice(1).join(':')
-        if (a.inAxisRatio === 1) parentsInWindow[moveId] = true
+    const alloc = axisAllocation.value
+    if (!alloc || Object.keys(alloc).length === 0) return out
+    const totalUnits: Record<string, number> = {}
+    for (const ch of adjustedResourceResult.value?.characters ?? []) {
+      for (const e of ch.executions ?? []) {
+        if (!e.moveId || (e.count ?? 0) <= 0) continue
+        const key = `${ch.slot}:${e.moveId}`
+        totalUnits[key] = (totalUnits[key] ?? 0) + e.count
       }
     }
     for (const char of configStore.team) {
@@ -1980,8 +2080,16 @@ export function useResourceCalc() {
       const mod = getAgentMechanic(char.agentId)
       if (!mod?.attachedEvents) continue
       for (const [parent, children] of Object.entries(mod.attachedEvents)) {
-        const inWindow = parentsInWindow[parent] ? 1 : 0
-        for (const child of children) out[child] = inWindow
+        let inAxis = 0
+        let total = 0
+        for (const [key, v] of Object.entries(alloc)) {
+          if (key.endsWith(`:${parent}`)) inAxis += v.inAxisUnits
+        }
+        for (const [key, t] of Object.entries(totalUnits)) {
+          if (key.endsWith(`:${parent}`)) total += t
+        }
+        const frac = total > 0 ? Math.max(0, Math.min(1, inAxis / total)) : 0
+        for (const child of children) out[child] = frac
       }
     }
     return out
@@ -2167,6 +2275,11 @@ const teamTotalDamage = computed(() =>
   damagePoolRows.value.reduce((sum, row) => sum + row.totalDamage, 0),
 )
 
+/** 伤害来源分解（诊断）：每角色 直伤/异常 × 总倍率/属性区——检查总伤害异常时定位是倍率错还是属性区错 */
+const damageSourceBreakdown = computed<DamageSourceBreakdown[]>(() =>
+  ResourceCalcHelpers.computeDamageSourceBreakdown(damagePoolRows.value),
+)
+
   return {
     resourceConfig,
     resourceResult,
@@ -2176,6 +2289,7 @@ const teamTotalDamage = computed(() =>
     anomalyPoolResult,
     specialActionBonus,
     damagePoolRows,
+    damageSourceBreakdown,
     remielleVoidflareEvents,
     anomalyDamageEvents,
     anomalyVirtualPanels,

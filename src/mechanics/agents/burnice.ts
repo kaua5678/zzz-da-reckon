@@ -410,6 +410,9 @@ function buildBurniceAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
     element: 'dominant',
     carrierMoveId: TOSSING_MOVE_ID,
     carrierMoveName: 'EX Special Attack: Intense Heat Tossing Method',
+    // 异放随灼热抛接法动作 1:1 触发：失衡轴内易伤占比跟随载体动作轴内单位（曾缺此标记，
+    // 回落到「元素触发事件计数器」口径——载体在窗内也整段拆到轴外，见 burnice 轴测试）
+    followCarrierInStun: true,
     count: source.releaseCount,
     formula: `releaseMultiplier = ${FLOWFIRE_RELEASE_MULTIPLIER}`,
     fields: ['flowFireCount', 'tossingCount', `releaseMultiplier=${FLOWFIRE_RELEASE_MULTIPLIER}`],

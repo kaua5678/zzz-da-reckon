@@ -7,6 +7,7 @@ import {
   computeYeshuguangCycle,
   yeshuguangMechanic,
   YESHUGUANG_FULL_STUN_MOVES,
+  veilStunMultiplier,
 } from '@/mechanics/agents/yeshuguang'
 
 const baseConfig = {
@@ -236,5 +237,31 @@ describe('局外剑势', () => {
       yeshuguangAdditionalAbilityActive: 0, dodgeCounterCount: 0,
     }
     expect(computeOutsideSwordGain(cfg, { basicAttackTime: 0, exSpecialCount: 3, chainCountTotal: 0 })).toBe(3)
+  })
+})
+
+describe('帷幕易伤封顶（用户 2026-09-01 裁决：吃满基础+易伤buff，再按影画封顶）', () => {
+  it('无易伤 buff 时 = boss 基础失衡易伤（帷幕不凭空造易伤）', () => {
+    expect(veilStunMultiplier(1.5, 0, 2.1)).toBe(1.5)
+  })
+
+  it('易伤 buff 累加进去，恰好到顶时取顶（1.5 + 60% = 2.1）', () => {
+    expect(veilStunMultiplier(1.5, 60, 2.1)).toBeCloseTo(2.1, 9)
+  })
+
+  it('超过上限被封顶——这正是修复前从未生效的那一刀（旧实现 min(1.5, 2.1) 恒等于 1.5）', () => {
+    expect(veilStunMultiplier(1.5, 100, 2.1)).toBe(2.1)
+  })
+
+  it('影画4 把顶抬到 300%：同样的 buff 下能吃到 2.5，旧实现里 C4 完全空转', () => {
+    expect(veilStunMultiplier(1.5, 100, 3.0)).toBeCloseTo(2.5, 9)
+    expect(veilStunMultiplier(1.5, 200, 3.0)).toBe(3.0)
+    // C4 相对 C0 必须有增量（空命座回归护栏）
+    expect(veilStunMultiplier(1.5, 100, 3.0)).toBeGreaterThan(veilStunMultiplier(1.5, 100, 2.1))
+  })
+
+  it('负值与越界不炸', () => {
+    expect(veilStunMultiplier(1.5, -50, 2.1)).toBe(1.5)
+    expect(veilStunMultiplier(-1, 0, 2.1)).toBe(0)
   })
 })

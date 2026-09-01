@@ -234,7 +234,11 @@ export interface AgentMechanicModule {
   resourceSections?(input: AgentResourceSectionsInput): SpecialResourceSection[]
   /** 声明可在资源利用率页调整的机制参数 */
   settings?: MechanicSetting[]
-  /** 伴随事件：父动作 moveId → 子事件 moveId 列表（父动作完全落在失衡窗口内时，子事件吃失衡易伤） */
+  /**
+   * 伴随事件：父动作 moveId → 子事件 moveId 列表。
+   * 失衡轴内子事件易伤跟随父动作的「轴内占比」（0-1 分数，栈执行轴内单位 / 全局总单位，
+   * 与直伤 axisSplitFor 同源）——全在窗 = 1、全在窗外 = 0、跨边界/部分在窗 = 期望占比。
+   */
   attachedEvents?: Record<string, string[]>
   /** 连段动作：comboId → 复合招式（特殊技+重碾打包成一个栈单位，能量按打包口径一次扣除） */
   combos?: Record<string, { label: string; energyCost: number; moves: { moveId: string; count: number }[] }>

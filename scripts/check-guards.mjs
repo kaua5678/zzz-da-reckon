@@ -19,6 +19,8 @@ import { execSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+// 语言层（事实语法/锚点解析）的单一实现在 zc.mjs，护栏只调用不复制（规则 11）
+import { auditAuthoredFacts } from './zc.mjs'
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 
@@ -98,7 +100,7 @@ export const CLAUDE_TRACKED_ALLOWLIST = ['.claude/settings.local.json']
 
 export function findForbiddenTracked(trackedPaths) {
   return trackedPaths.filter(p =>
-    (p === '.claude/task-ledger.md' || p.startsWith('.claude/ledgers/') || p.startsWith('.zcode/'))
+    (p === '.claude/task-ledger.md' || p.startsWith('.claude/ledgers/') || p.startsWith('.zcode/') || p.startsWith('.zc/'))
     || (p.startsWith('.claude/') && !CLAUDE_TRACKED_ALLOWLIST.includes(p)),
   )
 }
@@ -193,10 +195,24 @@ export const DEBT_REGISTRY = {
   'src/composables/runArchiveDeploy.ts:与 BossSelectCard.applyBoss 内联逻辑重复': {
     since: '2026-08-27', due: '提取共享的 layer-buff 写入函数，两处调用同一实现',
   },
+  'src/core/acquisitionValue.ts:复刻池/常驻池/音擎与角色共享预算的分配策略未建模': {
+    since: '2026-08-31', due: 'order 元素带 pool 标签后按池各维护一套 (pity, guar)，复刻窗口进 cards 列表',
+  },
+  'src/core/gachaCost.ts:真实软保底爬坡': {
+    since: '2026-08-31', due: '拿到逐抽出率曲线后把恒定 hazard 换成分段函数（接口不变，均值已锁死在测试里）',
+  },
   'scripts/import-nanoka-bosses.mjs:x弹刀时间语义': {
     since: '2026-08-28', due: '基塔布鲁弹刀时间语义明确后建模（当前仅 1 Boss 1 次，影响面小）',
   },
 }
+
+/**
+ * 自指豁免：标记扫描器自身必然包含被扫描模式的字面量（与 GUARD_SYSTEM_FILES 同一性质，
+ * 非债务）。scripts/zc.mjs 的事实抽取器把 'debt:' 列为 MARKERS 之一，头注释也统计它的
+ * 出现次数——若不豁免，装上 zc 当天就会凭空多出两条「未登记债务」。
+ */
+// @fact engine:guards/自指豁免 口径: 扫描器自身含被扫模式的字面量属自指、不计违规（fetch-stub 用 GUARD_SYSTEM_FILES，debt 用本清单，事实扫描用占位符跳过） | 据 实测@2026-08-31 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/check-guards.mjs#DEBT_SCAN_SELF_REFERENTIAL | 信 确认
+export const DEBT_SCAN_SELF_REFERENTIAL = ['scripts/zc.mjs']
 
 /** codebase 里实际的 debt: 标记 → [{ file, text }, ...]（text 为 'debt:' 后整段说明） */
 export function scanDebtMarkers(root = ROOT) {
@@ -209,7 +225,7 @@ export function scanDebtMarkers(root = ROOT) {
       if (statSync(p).isDirectory()) {
         if (n === 'node_modules' || n === 'dist' || n === '__tests__') continue
         rec(p)
-      } else if (/\.(ts|mjs|py)$/.test(n) && n !== 'check-guards.mjs') {
+      } else if (/\.(ts|mjs|py)$/.test(n) && n !== 'check-guards.mjs' && !DEBT_SCAN_SELF_REFERENTIAL.includes(rel)) {
         const src = readFileSync(p, 'utf8')
         for (const ln of src.split('\n')) {
           const m = ln.match(/debt:\s*(.+)/)
@@ -304,6 +320,25 @@ export function runAllChecks(root = ROOT) {
       ...unregistered.map(m => `  ✗ 未登记的 debt 标记：${m.file}: ${m.text.slice(0, 40)}… → 在 check-guards.mjs 的 DEBT_REGISTRY 登记一条（since=引入日期, due=到期动作）`),
       ...cleared.map(m => `  ✗ 已还清但未销号：${m} → 标记已不在代码里，从 DEBT_REGISTRY 删除该条`),
     ],
+  })
+
+  // ---- 判据 6：手写 @fact 的锚必须解析得到（语言层，规则 8/9 的机器面） ----
+  // 抽取自散文的事实不受约束（存量）；作者手写的 @fact 是新增承诺，必须能钉在代码上，
+  // 否则口径会悄悄过期——这正是文档腐烂的形态，只是换了个更短的载体。
+  const authored = auditAuthoredFacts(root)
+  results.push({
+    name: `@fact anchors (语言层: 手写口径必须有据 + 锚得住) ${authored.scanned.length - authored.violations.length}/${authored.scanned.length}`,
+    ok: authored.violations.length === 0,
+    detail: authored.violations.map(v => {
+      const how = {
+        'parse-failed': '语法不合法 → node scripts/zc.mjs lang 看语法',
+        'no-provenance': '缺「据」→ 补 | 据 用户@YYYY-MM-DD 或 实测@YYYY-MM-DD',
+        'anchor-missing': '缺「锚」→ 补 | 锚 <路径>#<符号>（口径实现在哪）',
+        'file-missing': '锚文件不存在 → 口径已过期，改锚或删事实',
+        'symbol-missing': '锚符号不存在 → 实现改名/删除了，复核口径后改锚',
+      }[v.problem] ?? v.problem
+      return `  ✗ ${v.file}:${v.line} ${how}`
+    }),
   })
 
   return { results, ok: results.every(r => r.ok) }

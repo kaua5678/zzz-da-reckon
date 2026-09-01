@@ -596,8 +596,15 @@ export interface AnomalyEventExecution {
    * 异放跟随载体招式（前台招式）的失衡内外：失衡内占比 = 载体块的轴内单位 / 载体总次数
    * （不是占比期望，而是玩家捏轴能精确控制的绑定）。载体 moveId 由 carrierMoveId 指定。
    * 结算区据此把 release 拆「失衡内(stunned=1)/轴外(stunned=0)」两段，总次数守恒。
+   * 载体总次数 = 执行行 count → carrierTotalCount → 事件次数（兜底，见 damagePool）。
    */
   followCarrierInStun?: boolean
+  /**
+   * 载体动作总次数（模块显式提供时优先于执行行/事件次数兜底）：
+   * 事件次数与载体次数不成 1:1 时用（如薇薇安落羽生花异放 = 落羽生花次数 × 命中异常占比，
+   * 事件次数已被占比稀释，轴内占比的分母必须用落羽生花次数本身）。
+   */
+  carrierTotalCount?: number
 }
 
 /** 失衡内异常状态摘要（失衡内异常系统 v2，轴模式）：每元素触发次数与窗均覆盖 */
@@ -1747,6 +1754,13 @@ export interface ResourceCalcConfig {
   initialStates?: IterationState[]
   /** 失衡次数输入（连携次数 = chainCountPerStun × stunCount）；由外部失衡池不动点收敛后回填 */
   stunCount?: number
+  /**
+   * 时间轴喧响轨（对轴模块，用户口径 2026-08-31）：窗口时序推演出的「实际可放大招数」
+   * 按 slot 给定（轴模式注入；缺省 = 不启用，按总量口径 floor(喧响/3000)）。
+   * 语义：180s 按失衡窗分段，喧响均匀回复（3000 上限、溢出浪费），进窗够 3000 放大清空、
+   * 不够削减该窗大招。iterate 用它替代 floor(decibels/cost) 的大招次数。
+   */
+  axisUltimateTrackBySlot?: Record<number, number>
   /** 特殊动作喧响奖励（弹刀/闪反/连携/快支，含伴随50%）按槽位注入；参与终结技次数推导 */
   specialActionDecibelBonusPerSlot?: number[]
   /** 异常/紊乱/乱流喧响奖励（含伴随50%）按槽位注入，由上一轮异常池结果回填；参与终结技次数推导 */

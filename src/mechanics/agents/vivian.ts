@@ -345,6 +345,12 @@ function buildVivianAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
     element: 'dominant',
     carrierMoveId: VIVIAN_LUOYU_MOVE_ID,
     carrierMoveName: '普通攻击：落羽生花',
+    // 异放随落羽生花（资源驱动特殊普攻，消耗护羽）触发：轴内占比 = 载体轴内单位/载体总次数。
+    // 载体总次数必须用落羽生花次数本身（carrierTotalCount）——事件次数 = 落羽生花×命中异常占比
+    // 已被占比稀释，作分母会缩小轴内占比。特殊普攻非 filler 兜底可打出：不捏轴=轴外
+    // （2026-08 审计，用户口径「计数轴内消耗了多少资源」）
+    followCarrierInStun: true,
+    carrierTotalCount: cycle.followUpCount,
     count: releaseCount,
     formula: 'releaseMultiplier = 原异常单次倍率 × (异常精通/10 × 比例%) × (失衡?1.5:1)',
     fields: ['anomalyProficiency', 'VIVIAN_RELEASE_RATIO_PER_TEN', 'followUpCount', 'vivian.releaseCoverage'],
@@ -370,6 +376,9 @@ function buildVivianAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
       element: 'dominant',
       carrierMoveId: VIVIAN_XUANLUO_MOVE_ID,
       carrierMoveName: '普通攻击：裙裾浮游·悬落',
+      // 同落羽生花异放：跟随载体（悬落，消耗护羽的特殊普攻），分母用落羽生花次数（护羽消耗载体）
+      followCarrierInStun: true,
+      carrierTotalCount: cycle.followUpCount,
       count: releaseCount,
       formula: 'releaseMultiplier = 原异常单次倍率 × (异常精通/10 × 比例% × c6ReleaseMult) × (失衡?1.5:1)',
       fields: ['anomalyProficiency', 'VIVIAN_RELEASE_RATIO_PER_TEN', 'c6ReleaseMult', 'followUpCount'],

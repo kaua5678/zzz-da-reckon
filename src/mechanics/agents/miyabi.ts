@@ -97,7 +97,7 @@ function getFrostFallResource(
 
 // ============ applyPanel ============
 
-function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelInput): void {
+function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel, settings }: AgentPanelInput): void {
   const aa = isAdditionalAbilityActive(team, slot, agent)
   const hasWind = hasWindTeammate(team, slot)
   panel.miyabiEnabled = 1
@@ -108,7 +108,13 @@ function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelI
   // 标记风队伍状态（用于霜灼buff覆盖率）
   panel.miyabiHasWindTeammate = hasWind ? 1 : 0
 
-  // 冰焰积蓄效率由 transformSkillExecutions 按覆盖率应用（冰焰与霜灼互斥，需要覆盖率折算）
+  // 面板级机制全部在 applyPanel 静态算（2026-09-01 架构修复：面板静态、循环只算招式/资源；
+  // 曾由 transformSkillExecutions 每轮写面板 → 收敛轮间累积成 anomalyBuildUpEfficiency 600）。
+  // 额外能力：紊乱触发霜月无视 30% 冰抗（面板近似；原 transform 判 frostFall 资源存在——
+  // 紊乱正常发生时落霜必存在，静态化以 AA 激活为准）
+  if (aa) {
+    panel.enemyIceResReduction = (panel.enemyIceResReduction ?? 0) + FROST_MOON_ICE_RES_IGNORE
+  }
 
   // 额外能力：霜月伤害+60%（限定基本攻击，通过 targetSkillType 机制）
   if (aa) {
@@ -133,6 +139,25 @@ function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelI
   if (cinemaLevel >= 6) {
     panel['skillDmgBonus__basic'] = (panel['skillDmgBonus__basic'] ?? 0) + C6_FROST_MOON_DMG
   }
+
+  // 冰焰积蓄效率：min(80, 暴击率) × 覆盖率（冰焰与霜灼互斥）。
+  // 覆盖率自动默认：有风队友或≥影画1（霜寒后保留冰焰）→ 100%；0命无风队 → 0%
+  // （蓄力斩打在霜寒上吃不到加成）；显式设为非 100% 的滑块值优先。
+  // 原 buildCharConfig 算 coverage + transform 施加——静态化后都在 applyPanel（C2 暴击已加）。
+  const coverageRaw = Number(settings?.['miyabi.iceFlameCoverage'])
+  const autoDefault = hasWind || cinemaLevel >= 1 ? 1 : MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE
+  const coverage = Number.isFinite(coverageRaw) && coverageRaw !== 1
+    ? Math.max(0, Math.min(1, coverageRaw))
+    : autoDefault
+  panel.miyabiIceFlameCoverage = coverage
+  const iceFlameBonus = Math.min(ICE_FLAME_BUILDUP_MAX, panel.critRate ?? 0) * coverage
+  if (iceFlameBonus > 0) {
+    panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + iceFlameBonus
+  }
+  // 霜灼状态全队积蓄效率 +20%（风队除外：风化状态不被覆盖，霜灼无法触发）
+  if (!hasWind) {
+    panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + 20
+  }
 }
 
 // ============ buildCharConfig ============
@@ -143,19 +168,8 @@ function buildMiyabiCharConfig({ skills: _skills, cfg, panel, cinemaLevel }: Age
   cfg.miyabiFrostMoonCount = FROST_MOON_COST
   cfg.miyabiFrostMoonActionTime = FROST_MOON_ACTION_TIME
   cfg.miyabiCinemaLevel = cinemaLevel
-  // 冰焰覆盖率（0-1）：冰焰与霜灼互斥。
-  // 影画1/风队上下文化默认（用户口径 2026-08）：有风队友（风化全程覆盖，雅不做霜寒）或
-  // ≥影画1（霜寒后保留冰焰）时，蓄力斩窗口也吃满暴击率折算的 80% 积蓄加成 → 默认 100%；
-  // 0命且无风队时，手法上总是打出霜寒后才够 6 豆，三段蓄力全打在[霜寒]上 → 全吃不到，默认 0。
-  // 显式设为非 1.0 的滑块值优先于自动默认。
-  const coverageRaw = Number((cfg as unknown as Record<string, unknown>)['setting:miyabi.iceFlameCoverage'])
-  const hasWind = panel.miyabiHasWindTeammate === 1
-  const autoDefault = hasWind || cinemaLevel >= 1 ? 1 : MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE
-  const coverage =
-    Number.isFinite(coverageRaw) && coverageRaw !== 1
-      ? Math.max(0, Math.min(1, coverageRaw))
-      : autoDefault
-  panel.miyabiIceFlameCoverage = coverage
+  // 冰焰覆盖率已由 applyPanel 静态算好（settings + 队伍/命座自动默认），buildCharConfig 只读
+  void panel
 }
 
 // ============ buildExecutions ============
@@ -258,20 +272,19 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
 function transformMiyabiSkillExecutions(input: AgentSkillTransformInput): void {
   const {
     slot,
-    agent,
+    agent: _agent,
     skills,
     charResult,
-    panel,
+    panel: _panel,
     cinemaLevel: _cinemaLevel,
-    team,
+    team: _team,
     dazeCoef,
     stunExecs,
     anomalyExecs,
     getRowValue,
     normalizeResourceSkillType,
   } = input
-  const aa = agent ? isAdditionalAbilityActive(team, slot, agent) : false
-  const iceResIgnore = aa ? FROST_MOON_ICE_RES_IGNORE : 0
+  // 本钩子只做 exec 构建（烈霜归并/锁定）；面板写入一律在 applyPanel（静态，2026-09-01 架构修复）
 
   // ---- 生成 stun/anomaly execs ----
   for (const exec of charResult.executions) {
@@ -318,44 +331,6 @@ if (anomaly > 0 && count > 0) {
 	  for (const exec of anomalyExecs) {
 	    if (exec.moveId === 'basic_attack') exec.element = FROSTFIRE
 	  }
-
-  // ---- C1：落霜无视防御 ----
-  // 已改为招式限定执行级字段（buildMiyabiExecutions：霜月#1/#2/#3 = 12/24/36），
-  // 不再走面板级堆叠（面板版会把减防泄漏到非霜月招式）。
-
-  // ---- 额外能力：紊乱触发霜月无视30%冰抗 ----
-  // 次数 = min(紊乱次数, 霜月攻击次数)，计入霜月招式
-  if (aa && panel) {
-    const specResources = charResult.specResources
-    const frostFall = specResources?.['miyabi_frost_fall'] as { total?: number } | undefined
-    if (frostFall?.total) {
-      // 读取紊乱次数（从 specResources 的 disorderCount gain 反推，或从state）
-      // 用落霜资源中的紊乱获取量反推
-      // 这里简化：只要有ap active和落霜，就给冰抗无视
-      panel.enemyIceResReduction = (panel.enemyIceResReduction ?? 0) + iceResIgnore
-    }
-  }
-
-  // ---- 冰焰积蓄效率：考虑冰焰与霜灼的互斥覆盖率 ----
-  // 冰焰（30s）与霜灼（20s，霜寒触发后）互斥。冰焰覆盖率 ≈ 1 - 霜灼覆盖率
-  // 覆盖率由 buildCharConfig 从用户设置读取并存于 panel.miyabiIceFlameCoverage
-  if (panel) {
-    const coverage = Math.max(0, Math.min(1, Number(panel.miyabiIceFlameCoverage ?? 0.5)))
-    const critRate = panel.critRate ?? 0
-    const iceFlameBonus = Math.min(ICE_FLAME_BUILDUP_MAX, critRate) * coverage
-    if (iceFlameBonus > 0) {
-      panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + iceFlameBonus
-    }
-  }
-
-  // ---- 霜灼状态全队积蓄效率+20% ----
-  // 队伍有风角色时覆盖率=0%（风化状态不被覆盖，霜灼无法触发）
-  if (panel) {
-    const hasWind = panel.miyabiHasWindTeammate ?? 0
-    if (!hasWind) {
-      panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + 20
-    }
-  }
 }
 
 // ============ resolveExecutionDamage ============

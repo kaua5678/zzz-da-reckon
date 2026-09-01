@@ -66,12 +66,80 @@ export type DamagePoolRow = {
   sourceTag?: 'gift' | 'stun' | 'self'
   /** 失衡易伤乘数（轴启用时按轴内位置分配，默认 1） */
   stunMult?: number
+  /** 单次倍率（%，直伤=招式倍率、异放=releaseMultiplier、紊乱=disorderMultiplier、
+   *  DoT=perTick×tick数 等；秒均行 count 已折算成总秒数 → count×multiplier = 该行总倍率）。
+   *  供「伤害来源分解」诊断：总倍率 = Σ(count×multiplier)，属性区 = 总伤害/(总倍率/100)。 */
+  multiplier?: number
 }
 
 export function parseReleaseMultiplier(event: { formula?: string; fields?: string[] }): number {
   const text = `${event.formula ?? ''} ${(event.fields ?? []).join(' ')}`
   const match = text.match(/releaseMultiplier\s*=\s*(\d+(?:\.\d+)?)/i)
   return match ? Number(match[1]) : 0
+}
+
+/** 伤害来源分解：某角色一类伤害（直伤/异常）的总伤害、总倍率与属性区（诊断用）。
+ *  总倍率 = Σ(count × multiplier)（%，有 multiplier 的行；无 multiplier 的固定/附伤行不计倍率）
+ *  属性区 = 有倍率行的伤害 / (总倍率/100) —— 每 100% 倍率对应的「属性区伤害」（atk×增伤×防御×
+ *  抗性×易伤×失衡×暴击×等级 等非倍率乘区乘积的加权期望）。总伤害 = 属性区 × 总倍率/100 + 无倍率行伤害。
+ *  用途：检查总伤害异常时，看是倍率（招式/事件次数×倍率）错还是属性区（面板/乘区）错。 */
+export interface DamageSourceFamily {
+  /** 总伤害（含无倍率行） */
+  damage: number
+  /** 总倍率 Σ(count × multiplier)（%） */
+  multiplier: number
+  /** 属性区 = 有倍率行伤害 / (总倍率/100)（0 表示无倍率行或倍率为 0） */
+  attrRegion: number
+  /** 无倍率行（固定/附伤）伤害合计 */
+  flatDamage: number
+  /** 有倍率行的行数 */
+  multiplierRows: number
+  /** 有倍率行的伤害合计（属性区反推的分子） */
+  multiplierDamage: number
+}
+export interface DamageSourceBreakdown {
+  slot: number
+  agentId: string
+  agentName: string
+  direct: DamageSourceFamily
+  anomaly: DamageSourceFamily
+}
+
+/** 直伤族类型（其余全归异常族） */
+const DIRECT_FAMILY_TYPES = new Set<string>(['直伤'])
+
+export function computeDamageSourceBreakdown(rows: DamagePoolRow[]): DamageSourceBreakdown[] {
+  const bySlot = new Map<number, DamageSourceBreakdown>()
+  const emptyFamily = (): DamageSourceFamily => ({ damage: 0, multiplier: 0, attrRegion: 0, flatDamage: 0, multiplierRows: 0, multiplierDamage: 0 })
+  const add = (fam: DamageSourceFamily, row: DamagePoolRow) => {
+    fam.damage += row.totalDamage
+    if (row.multiplier && row.multiplier > 0 && row.count > 0) {
+      fam.multiplier += row.count * row.multiplier
+      fam.multiplierRows += 1
+      fam.multiplierDamage += row.totalDamage
+    } else {
+      fam.flatDamage += row.totalDamage
+    }
+  }
+  for (const row of rows) {
+    let b = bySlot.get(row.slot)
+    if (!b) {
+      b = { slot: row.slot, agentId: row.agentId, agentName: row.agentName, direct: emptyFamily(), anomaly: emptyFamily() }
+      bySlot.set(row.slot, b)
+    }
+    add(DIRECT_FAMILY_TYPES.has(row.type) ? b.direct : b.anomaly, row)
+  }
+  const finish = (fam: DamageSourceFamily) => {
+    fam.attrRegion = fam.multiplier > 0 ? fam.multiplierDamage / (fam.multiplier / 100) : 0
+  }
+  const out: DamageSourceBreakdown[] = []
+  for (const b of bySlot.values()) {
+    finish(b.direct)
+    finish(b.anomaly)
+    out.push(b)
+  }
+  out.sort((a, b) => a.slot - b.slot)
+  return out
 }
 
 export function safeElement(element?: string): any {

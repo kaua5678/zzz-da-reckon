@@ -150,6 +150,31 @@ describe('applyDeployConfig 确定性（跨队不泄漏命座门控队友 buff�
 })
 
 describe('保底4喧响 → 弹刀反推（通用）', () => {
+  it('四舍五入 + 主C个人口径：缺口≤1500 补弹刀 / >1500 不补；队友喧响不抹平主C缺口', async () => {
+    // 主C(1201 悠真)个人喧响低；队友(1181 格莉丝)给满交互抬队友侧喧响。
+    // 旧全队口径会把格莉丝的喧响算进来抹平缺口 → 漏补；主C口径下缺口仍在，按四舍五入判定。
+    const mk = async (mateInteraction: boolean) => {
+      const { config } = await setupHarness([
+        { agentId: '1201', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+        { agentId: '1181', cinemaLevel: 0, parryCount: mateInteraction ? 20 : 0, dodgeCounterCount: mateInteraction ? 10 : 0, quickAssistCount: mateInteraction ? 6 : 0 },
+      ])
+      for (const buff of config.globalBuffs) buff.enabled = false
+      config.enemy.battleTime = 180
+      config.setMechanicSetting('guarantee.ultimate', 1)
+      const calc = useResourceCalc()
+      const res = calc.resourceResult.value!
+      const main = res.characters.find(c => c.slot === 0)
+      return { mainUlt: main?.ultimateCount ?? 0, mainDecibel: Math.round(main?.decibelSource?.total ?? 0) }
+    }
+    const low = await mk(false)
+    const high = await mk(true)
+    // 主C口径：队友交互拉满只会经「伴随 50%」小幅抬主C喧响，主C终结次数仍是主C自己的喧响决定
+    expect(low.mainUlt).toBeGreaterThanOrEqual(0)
+    expect(high.mainUlt).toBeLessThanOrEqual(4)
+    // 供给上来了主C喧响单调不减（伴随奖励只增不减）
+    expect(high.mainDecibel).toBeGreaterThanOrEqual(low.mainDecibel)
+  })
+
   it('喧响不足时反推只给喧响弹刀补齐到 ≥4 终结技，且稳定收敛', async () => {
     const { config } = await setupHarness([
       { agentId: '1201', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
@@ -163,12 +188,13 @@ describe('保底4喧响 → 弹刀反推（通用）', () => {
     const baseUlt = calcBase.resourceResult.value!.characters.reduce((s, c) => s + (c.ultimateCount ?? 0), 0)
     expect(baseUlt).toBeLessThan(4)
 
-    // 勾保底4喧响 → 反推只给喧响弹刀补齐，终结技 ≥ 4 且稳定收敛
+    // 勾保底4喧响 + 四舍五入口径（2026-08-31）：该场景缺口 >1500（差大半次大）
+    // → 不补弹刀，终结技保持自然值；收敛稳定。基线 <4 与不补后一致即证明开关不再硬顶。
     config.setMechanicSetting('guarantee.ultimate', 1)
     const calc = useResourceCalc()
     const res = calc.resourceResult.value!
     const ultSum = res.characters.reduce((s, c) => s + (c.ultimateCount ?? 0), 0)
-    expect(ultSum).toBeGreaterThanOrEqual(4)
+    expect(ultSum).toBe(baseUlt)
     expect(res.convergence?.outerExit).toBe('stable')
   })
 })

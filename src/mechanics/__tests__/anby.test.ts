@@ -91,3 +91,19 @@ describe('安比滑块生效差分（防守卫冻结，SOP §3.5）', () => {
     expect(off.exStun - on.exStun).toBeCloseTo(ANBY_C2_EX_STUN, 1)
   })
 })
+
+describe('安比充能电场面板（transform 累积回归，2026-09-01）', () => {
+  it('dmgBonus = 45 单次贡献（收敛轮间不累积成 720）', async () => {
+    const { config } = await setupHarness([
+      { agentId: '1011', cinemaLevel: 6, dodgeCounterCount: 6 },
+      { agentId: '1381' },
+      { agentId: '1211' },
+    ])
+    for (const buff of config.globalBuffs) buff.enabled = false // 剔除队伍 buff 干扰，只看充能贡献
+    const calc = useResourceCalc()
+    void calc.damagePoolRows.value // 触发 calcOutput → transform 跑完
+    // 曾因 transform 在收敛轮间对同一缓存面板对象 `+=`，充能 45 叠成 45×16=720；
+    // anby_charge 资源 C0 也生成（gainRule 无命座门控，既有口径）→ 这里断言单次贡献不翻倍
+    expect(calc.panels.value?.[0]?.dmgBonus ?? 0).toBe(45)
+  })
+})

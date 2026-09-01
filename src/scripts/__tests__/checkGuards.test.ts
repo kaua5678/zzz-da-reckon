@@ -8,6 +8,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
+  DEBT_REGISTRY,
   AGENT_BRANCH_BASELINE,
   detectFetchStub,
   fetchStubViolations,
@@ -85,22 +86,26 @@ describe('extractSettingIds（settings 块抽取）', () => {
 
 describe('matchDebtRegistry（注册表匹配：文件相同 + 关键词包含）', () => {
   it('未登记 / 已销号两侧都能判', () => {
-    // DEBT_REGISTRY 有 4 条真实条目；用真实扫描结果做基准
+    // 基准 = 真实 DEBT_REGISTRY：喂进去一条命中项 + 一条陌生项，
+    // 其余注册条目因为没有对应标记 → 全部落进 cleared。
+    // 条数由注册表大小推导（不写字面量：登记一条新债不该让这条测试变红——
+    // 2026-08-31 写死 3 时就被 gachaCost 的新登记撞红过一次）
     const { unregistered, cleared } = matchDebtRegistry([
       { file: 'src/composables/pullPlannerEngine.ts', text: '赠送卡窗口期自动获得，v1 不入购买清单' },
       { file: 'src/other.ts', text: '全新未登记的债' },
     ])
     expect(unregistered.map(m => m.file)).toEqual(['src/other.ts'])
-    // 其余 3 条注册条目没有对应标记 → 已还清未销号
-    expect(cleared).toHaveLength(3)
+    expect(cleared).toHaveLength(Object.keys(DEBT_REGISTRY).length - 1)
   })
 })
 
 describe('仓库级自洽（真实扫描）', () => {
-  it('五条判据全绿（fetch-stub 集合相等 / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / 滑块棘轮 / debt 注册表）', () => {
+  // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
+  it('六条判据全绿（fetch-stub 集合相等 / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / 工作区状态 / 滑块棘轮 / debt 注册表 / @fact 锚点）', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(5)
+    expect(results).toHaveLength(6)
+    expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
   })
 })

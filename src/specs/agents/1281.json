@@ -65,6 +65,7 @@
   "verifications": [],
   "stateMachines": [],
   "notes": [
+    "实现位置：动力两条通道都在 src/mechanics/agents/piper.ts（模块角色，本 spec 的 resources.gainRules.adjustable 两条对引擎是死数据，见 AGENTS 规则 4）。[2026-09-01 用户裁决] ①物理积蓄默认满覆盖（只有开局启动那段逐层，整局平均≈满；滑块 piper.momentumCoverage 可显式建模爬坡）；②影画2 增伤按满层（起手转满后保持住）；③终结技(1281014)只有 30% 倍率是下砸，按占比折算——增伤区加算故折算精确；④全队 18% 覆盖率接近 100%，保持 coverage=1，用户可在队友 buff 覆盖率里自调；⑤影画3/5 技能等级 +2/+4 已由通用规则建模（resourceCalc/helpers.ts#agentHasCinemaSkillLevelBuff 分支），模块不重复实现（piper.test.ts 有断言锁定）。",
     "来源：nanoka.cc 3.2.1（Piper）。",
     "基础属性与技能倍率由脚本自动导入；核心被动动力循环、额外能力全队增伤、影画1/2/4/6 已由 piper.ts 独立模块承载（见 note#6-#9）；专属资源 piper_momentum 已声明并被 specs/resources 消费。",
     "动作时间按「秽盾=时间×100+类型加成」推算（一般/100、闪反-1.5、弹刀-2.5、终结-5）；加成缺失时按积蓄/100 还原，招架支援#3 型按秽盾/100——2026-08 全库修正见 scripts/patch-move-action-time.mjs，个别歧义段仍待游戏内核对。",

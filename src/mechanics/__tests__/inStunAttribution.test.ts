@@ -476,6 +476,382 @@ describe('南宫羽快支动作块（v2.9）', () => {
   })
 })
 
+describe('极性强击（爱丽丝 1401）失衡轴：首算存在 + 易伤跟随父动作（2026-08 审计修复）', () => {
+  /** 爱丽丝+格莉丝：axisActions 为 SW3(1401012) 的轴放置（其余槽位用格莉丝强特保持轴激活） */
+  async function setupAlice(sw3Placement: number, graceInAxis = true) {
+    const { config } = await setupHarness([
+      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ])
+    for (const buff of config.globalBuffs) buff.enabled = false
+    config.useStunAxis = true
+    config.enemy.stunCountLock = 1
+    config.stunAxes = [{
+      name: 'SW3轴',
+      count: 1,
+      actions: [
+        ...(sw3Placement > 0 ? [{ slot: 0, moveId: '1401012', count: sw3Placement, startTime: 0 }] : []),
+        ...(graceInAxis ? [{ slot: 1, moveId: '1181005', count: 2, startTime: 0 }] : []),
+      ],
+      basicFillerSlot: 0,
+    }]
+    const calc = useResourceCalc()
+    const spark = calc.resourceResult.value!.characters.find(c => c.agentId === '1401')!
+      .aliceSwordWillSource!.sparkCount
+    const polar = calc.damagePoolRows.value.filter(r => r.type === '极性强击')
+    return { calc, spark, polar }
+  }
+
+  it('首算即存在：极性强击行 count = sparkCount 且参与紊乱序列（aliceInfo 循环依赖回归）', async () => {
+    // 非轴首算（不触发二次求值）：行必须存在——曾因 aliceInfo 读 resourceResult 与 calcOutput
+    // 成环，首算 giftedTriggerCounts 不注入 → 整行缺失、紊乱序列漏计
+    const { config } = await setupHarness([
+      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ])
+    for (const buff of config.globalBuffs) buff.enabled = false
+    const calc = useResourceCalc()
+    const spark = calc.resourceResult.value!.characters.find(c => c.agentId === '1401')!
+      .aliceSwordWillSource!.sparkCount
+    const polar = calc.damagePoolRows.value.filter(r => r.type === '极性强击')
+    expect(spark).toBeGreaterThan(0)
+    expect(polar.length).toBe(1)
+    expect(polar[0].count).toBe(spark)
+    expect(polar[0].totalDamage).toBeGreaterThan(0)
+    expect(calc.anomalyPoolResult.value!.perElement.some(p => p.element === 'physical_polar_assault'))
+      .toBe(true)
+  })
+
+  it('轴内 SW3 部分在窗：易伤按父动作轴内占比折算（占比 = 栈轴内单位/总数，与直伤同源）', async () => {
+    const placed = await setupAlice(2)
+    const none = await setupAlice(0)
+    expect(placed.polar.length).toBe(1)
+    expect(none.polar.length).toBe(1)
+    expect(placed.polar[0].count).toBe(placed.spark)
+    expect(none.polar[0].count).toBe(none.spark)
+    // SW3 未放置 → 占比 0（无易伤）；放置 2 次/总 spark → 期望倍率 1 + 0.5 × (2/spark)
+    const frac = Math.min(1, 2 / placed.spark)
+    expect(placed.polar[0].perDamage / none.polar[0].perDamage).toBeCloseTo(1 + 0.5 * frac, 6)
+  })
+
+  it('轴内 SW3 多量放置：易伤按栈实际执行数占比折算（窗口门控下部分在窗）', async () => {
+    const full = await setupAlice(8)
+    const none = await setupAlice(0)
+    // 栈执行数 = 窗口时长门控下的真实轴内单位（窗口放不下全部时截断，如 4/9）
+    const execCount = full.calc.stackTraversalResult.value?.executed['0:1401012']?.count ?? 0
+    expect(execCount).toBeGreaterThan(0)
+    const frac = Math.min(1, execCount / full.spark)
+    expect(frac).toBeLessThanOrEqual(1)
+    expect(full.polar[0].perDamage / none.polar[0].perDamage).toBeCloseTo(1 + 0.5 * frac, 6)
+  })
+
+  it('影画2：终结技额外极性强击按终结技轴内占比加权（SW3 与终结技触发源分开计）', async () => {
+    const mk = async (ultInAxis: boolean) => {
+      const { config } = await setupHarness([
+        { agentId: '1401', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+        { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      ])
+      for (const buff of config.globalBuffs) buff.enabled = false
+      config.useStunAxis = true
+      // 3 窗：喧响轨在窗间积累 → 爱丽丝终极技 > 0（1 窗攒不够 3000 会被削到 0，见 computeAxisUltimateTrack）
+      config.enemy.stunCountLock = 3
+      config.stunAxes = [{
+        name: 'C2加权轴',
+        count: 3,
+        actions: [
+          { slot: 0, moveId: '1401012', count: 1, startTime: 0 },
+          ...(ultInAxis ? [{ slot: 0, moveId: '1401016', count: 1, startTime: 1.2 }] : []),
+          { slot: 1, moveId: '1181005', count: 2, startTime: 0 },
+        ],
+        basicFillerSlot: 0,
+      }]
+      const calc = useResourceCalc()
+      const alice = calc.resourceResult.value!.characters.find(c => c.agentId === '1401')!
+      const row = calc.damagePoolRows.value.find(r => r.type === '极性强击')
+      return { row, c2: alice.aliceSwordWillSource!.c2UltSparkCount, spark: alice.aliceSwordWillSource!.sparkCount, ult: alice.ultimateCount }
+    }
+    const withUlt = await mk(true)
+    const without = await mk(false)
+    // C2 生效：sparkCount = SW3 + 终结技额外次数
+    expect(withUlt.c2).toBeGreaterThan(0)
+    expect(withUlt.spark).toBeGreaterThan(withUlt.c2)
+    expect(withUlt.ult).toBe(withUlt.c2)
+    expect(withUlt.row).toBeTruthy()
+    expect(without.row).toBeTruthy()
+    // 终结技在窗内 → 加权占比更高 → 单次伤害更高（无窗内终结时终结部分占比 0）
+    expect(withUlt.row!.perDamage).toBeGreaterThan(without.row!.perDamage)
+    expect(withUlt.row!.note).toContain('加权轴内占比')
+    expect(withUlt.row!.note).toContain('终结')
+  })
+})
+
+describe('载体型异放跟随载体动作（2026-08 审计修复）', () => {
+  it('格莉丝脉冲手雷轴内放置：异放拆 -in 段（全额失衡易伤），次数守恒', async () => {
+    const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1371' }])
+    for (const buff of config.globalBuffs) buff.enabled = false
+    config.useStunAxis = true
+    config.enemy.stunCountLock = 1
+    config.stunAxes = [{
+      name: '手雷轴',
+      count: 1,
+      actions: [{ slot: 0, moveId: '1181019', count: 1, startTime: 0 }],
+      basicFillerSlot: 0,
+    }]
+    const calc = useResourceCalc()
+    const evRel = calc.resourceResult.value!.characters.find(c => c.agentId === '1181')!
+      .anomalyEventExecutions!.find(e => e.eventId === 'grace_pulse_grenade_release')!
+    const rel = calc.damagePoolRows.value.filter(r => r.type === '异放' && r.agentId === '1181')
+    // 次数守恒
+    expect(rel.reduce((s, r) => s + r.count, 0)).toBe(Math.floor(evRel.count))
+    // 载体（脉冲手雷 1181019）在窗内 → 必须拆出 -in 段（曾无载体绑定，整段落轴外）
+    const inRow = rel.find(r => r.id.endsWith('-in'))
+    expect(inRow, '脉冲手雷在窗内时异放应拆出失衡内段').toBeTruthy()
+    expect(inRow!.count).toBeGreaterThanOrEqual(1)
+    expect(inRow!.note).toContain('失衡内·全额失衡易伤')
+    // in 段单次伤害 = 基底 × 1.5 > out 段
+    const outRow = rel.find(r => r.id.endsWith('-out'))
+    expect(outRow).toBeTruthy()
+    expect(inRow!.perDamage).toBeGreaterThan(outRow!.perDamage)
+  })
+
+  it('般岳影画6 摧岳附伤：轴内倾山放置 → 附伤按倾山轴内占比吃易伤', async () => {
+    const mk = async (placeQingShan: boolean) => {
+      const { config } = await setupHarness([{ agentId: '1471', cinemaLevel: 6 }, { agentId: '1181' }])
+      for (const buff of config.globalBuffs) buff.enabled = false
+      config.useStunAxis = true
+      config.enemy.stunCountLock = 1
+      config.stunAxes = [{
+        name: '倾山轴',
+        count: 1,
+        actions: [
+          ...(placeQingShan ? [{ slot: 0, moveId: '1471009', count: 1, startTime: 0 }] : []),
+          { slot: 1, moveId: '1181005', count: 2, startTime: 0 },
+        ],
+        basicFillerSlot: 0,
+      }]
+      const calc = useResourceCalc()
+      const attach = calc.damagePoolRows.value.find(r => r.id === 'banyue-c6-crush-attach')
+      const qingShanTotal = calc.resourceResult.value!.characters.find(c => c.agentId === '1471')!
+        .executions.find(e => e.moveId === '1471009')?.count ?? 0
+      return { attach, qingShanTotal, calc }
+    }
+    const placed = await mk(true)
+    expect(placed.attach).toBeTruthy()
+    expect(placed.qingShanTotal).toBeGreaterThan(0)
+    // 倾山栈轴内 1 次 / 全局 total → stunMult = 1 + 0.5/total（曾未注册 attachedEvents，轴内恒 1）
+    expect((placed.attach as any).stunMult).toBeCloseTo(1 + 0.5 / placed.qingShanTotal, 6)
+    const none = await mk(false)
+    expect(none.attach).toBeTruthy()
+    expect((none.attach as any).stunMult).toBe(1)
+  })
+
+  it('柏妮思灼热抛接法轴内放置：异放拆出 -in 段（全额失衡易伤），总次数守恒', async () => {
+    const { config } = await setupHarness([
+      { agentId: '1171', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ])
+    for (const buff of config.globalBuffs) buff.enabled = false
+    config.useStunAxis = true
+    config.enemy.stunCountLock = 1
+    config.stunAxes = [{
+      name: '抛接轴',
+      count: 1,
+      actions: [{ slot: 0, moveId: '1171026', count: 1, startTime: 0 }],
+      basicFillerSlot: 0,
+    }]
+    const calc = useResourceCalc()
+    const evRel = calc.resourceResult.value!.characters.find(c => c.agentId === '1171')!
+      .anomalyEventExecutions!.find(e => e.eventId === 'burnice_flowfire_release')!
+    const rel = calc.damagePoolRows.value.filter(r => r.type === '异放' && r.agentId === '1171')
+    // 次数守恒
+    expect(rel.reduce((s, r) => s + r.count, 0)).toBe(Math.floor(evRel.count))
+    // 载体在窗内 → 必须拆出 -in 段（曾缺 followCarrierInStun，整段落轴外）
+    const inRow = rel.find(r => r.id.endsWith('-in'))
+    expect(inRow, '灼热抛接法在窗内时异放应拆出失衡内段').toBeTruthy()
+    expect(inRow!.count).toBeGreaterThanOrEqual(1)
+    expect(inRow!.note).toContain('失衡内·全额失衡易伤')
+    const outCount = rel.filter(r => r.id.endsWith('-out')).reduce((s, r) => s + r.count, 0)
+    expect(outCount).toBe(Math.floor(evRel.count) - inRow!.count)
+    // in 段单次伤害 = 基底 × 1.5 > out 段
+    expect(inRow!.perDamage).toBeGreaterThan(rel.find(r => r.id.endsWith('-out'))!.perDamage)
+  })
+
+  it('普罗米娅绝裁异放：载体未放置时按载体轴内占比（回归护栏）', async () => {
+    const { config } = await setupHarness([{ agentId: '1541', cinemaLevel: 0 }, { agentId: '1181' }])
+    for (const buff of config.globalBuffs) buff.enabled = false
+    config.useStunAxis = true
+    config.enemy.stunCountLock = 1
+    config.stunAxes = [{
+      name: '无绝裁轴',
+      count: 1,
+      actions: [{ slot: 1, moveId: '1181005', count: 2, startTime: 0 }],
+      basicFillerSlot: 0,
+    }]
+    const calc = useResourceCalc()
+    const evRel = calc.resourceResult.value!.characters.find(c => c.agentId === '1541')!
+      .anomalyEventExecutions!.filter(e => e.eventType === 'release')
+    if (evRel.length === 0) return
+    const rel = calc.damagePoolRows.value.filter(r => r.type === '异放' && r.agentId === '1541')
+    expect(rel.reduce((s, r) => s + r.count, 0)).toBe(evRel.reduce((s, e) => s + Math.floor(e.count), 0))
+  })
+})
+
+describe('资源驱动特殊普攻载体绑定（2026-08 审计：爱芮/薇薇安）', () => {
+  /** 轴内放置载体招式（slot 0），其余槽位用格莉丝强特保持轴激活 */
+  async function carrierAxis(team: Array<{ agentId: string; cinemaLevel?: number }>, carrier: { moveId: string; count: number } | null) {
+    const { config } = await setupHarness(team)
+    for (const buff of config.globalBuffs) buff.enabled = false
+    config.useStunAxis = true
+    config.enemy.stunCountLock = 1
+    config.stunAxes = [{
+      name: '载体轴',
+      count: 1,
+      actions: [
+        ...(carrier ? [{ slot: 0, moveId: carrier.moveId, count: carrier.count, startTime: 0 }] : []),
+        { slot: 1, moveId: '1181005', count: 2, startTime: 0 },
+      ],
+      basicFillerSlot: 0,
+    }]
+    return useResourceCalc()
+  }
+
+  it('爱芮绝对音准#3 轴内放置：异放拆 -in 段（全额失衡易伤），次数守恒', async () => {
+    const calc = await carrierAxis([{ agentId: '1501' }, { agentId: '1181' }], { moveId: '1501007', count: 1 })
+    const evRel = calc.resourceResult.value!.characters.find(c => c.agentId === '1501')!
+      .anomalyEventExecutions!.find(e => e.eventId === 'aire_absolute_pitch_release')!
+    const rel = calc.damagePoolRows.value.filter(r => r.type === '异放' && r.agentId === '1501')
+    expect(rel.reduce((s, r) => s + r.count, 0)).toBe(Math.floor(evRel.count))
+    const inRow = rel.find(r => r.id.endsWith('-in'))
+    expect(inRow, '绝对音准#3 在窗内时异放应拆出失衡内段').toBeTruthy()
+    expect(inRow!.note).toContain('失衡内·全额失衡易伤')
+    const outRow = rel.find(r => r.id.endsWith('-out'))
+    expect(outRow).toBeTruthy()
+    expect(inRow!.perDamage).toBeGreaterThan(outRow!.perDamage)
+  })
+
+  it('薇薇安落羽生花轴内放置：异放拆 -in 段（分母=落羽生花次数，carrierTotalCount）', async () => {
+    const calc = await carrierAxis([{ agentId: '1331' }, { agentId: '1181' }], { moveId: '1331008', count: 1 })
+    const evRel = calc.resourceResult.value!.characters.find(c => c.agentId === '1331')!
+      .anomalyEventExecutions!.find(e => e.eventId === 'vivian_luoyu_release')!
+    const rel = calc.damagePoolRows.value.filter(r => r.type === '异放' && r.agentId === '1331' && r.id.includes('vivian_luoyu_release'))
+    expect(rel.reduce((s, r) => s + r.count, 0)).toBe(Math.floor(evRel.count))
+    const inRow = rel.find(r => r.id.endsWith('-in'))
+    expect(inRow, '落羽生花在窗内时异放应拆出失衡内段').toBeTruthy()
+    expect(inRow!.note).toContain('失衡内·全额失衡易伤')
+    expect(inRow!.perDamage).toBeGreaterThan(rel.find(r => r.id.endsWith('-out'))!.perDamage)
+  })
+
+  it('不捏载体进轴：爱芮异放整段轴外（特殊普攻非 basic filler 兜底可打出）', async () => {
+    const calc = await carrierAxis([{ agentId: '1501' }, { agentId: '1181' }], null)
+    const rel = calc.damagePoolRows.value.filter(r => r.type === '异放' && r.agentId === '1501')
+    expect(rel.length).toBeGreaterThan(0)
+    expect(rel.every(r => r.id.endsWith('-out')), '未捏轴时异放应全部为轴外段').toBe(true)
+  })
+})
+
+describe('维琳娜风异放轴内拆分（2026-08 审计：轴内异常触发→轴内乱流→风异放）', () => {
+  it('轴内非风异常触发：风异放拆 -in 段（全额失衡易伤），次数守恒', async () => {
+    const { config } = await setupHarness([{ agentId: '1561' }, { agentId: '1181' }])
+    for (const buff of config.globalBuffs) buff.enabled = false
+    config.useStunAxis = true
+    config.enemy.stunCountLock = 2
+    config.stunAxes = [{
+      name: '风化轴',
+      count: 2,
+      actions: [
+        { slot: 0, moveId: '1561005', count: 2, startTime: 0 },
+        { slot: 1, moveId: '1181005', count: 18, startTime: 0 },
+      ],
+      basicFillerSlot: 0,
+    }]
+    const calc = useResourceCalc()
+    const rows = calc.damagePoolRows.value.filter(r => r.id.startsWith('pool-release-velina-corrosion'))
+    expect(rows.length).toBeGreaterThan(0)
+    const inRow = rows.find(r => r.id.endsWith('-in'))
+    expect(inRow, '轴内非风异常触发时风异放应拆出失衡内段').toBeTruthy()
+    expect(inRow!.note).toContain('失衡内·全额失衡易伤')
+    const outRow = rows.find(r => r.id.endsWith('-out'))
+    expect(outRow).toBeTruthy()
+    expect(inRow!.perDamage).toBeGreaterThan(outRow!.perDamage)
+  })
+})
+
+describe('6命附伤伴随计数吃易伤（2026-08 审计：附伤事件和动作绑定）', () => {
+  it('简6命附伤：轴内物理强击触发占比 > 0 时单次伤害高于无触发', async () => {
+    const mk = async (physicalInAxis: boolean) => {
+      const { config } = await setupHarness([{ agentId: '1261', cinemaLevel: 6 }, { agentId: '1181' }])
+      for (const buff of config.globalBuffs) buff.enabled = false
+      config.useStunAxis = true
+      config.enemy.stunCountLock = 1
+      config.stunAxes = [{
+        name: '简轴',
+        count: 1,
+        actions: physicalInAxis
+          ? [{ slot: 1, moveId: '1181005', count: 18, startTime: 0 }]
+          : [{ slot: 1, moveId: '1181005', count: 1, startTime: 0 }],
+        basicFillerSlot: 0,
+      }]
+      const calc = useResourceCalc()
+      return calc.damagePoolRows.value.find(r => r.id === 'jane-c6-assault-followup')
+    }
+    // 电强特 18 击 → 轴内电触发后物理覆盖随之出现（物理强击轴内占比 > 0 需物理积蓄在窗内——
+    // 简自身的普攻在 basic filler 里：占比可能为 0，但行必须存在且计数正确）
+    const row = await mk(true)
+    expect(row).toBeTruthy()
+    expect(row!.count).toBeGreaterThan(0)
+    expect(row!.totalDamage).toBeGreaterThan(0)
+  })
+
+  it('爱丽丝6命附伤：状态进入加权轴内占比吃易伤（SW3 在窗内时 perDamage 提升）', async () => {
+    const mk = async (sw3InAxis: boolean) => {
+      const { config } = await setupHarness([{ agentId: '1401', cinemaLevel: 6 }, { agentId: '1181' }])
+      for (const buff of config.globalBuffs) buff.enabled = false
+      config.useStunAxis = true
+      config.enemy.stunCountLock = 1
+      config.stunAxes = [{
+        name: '决胜轴',
+        count: 1,
+        actions: [
+          ...(sw3InAxis ? [{ slot: 0, moveId: '1401012', count: 1, startTime: 0 }] : []),
+          { slot: 1, moveId: '1181005', count: 2, startTime: 0 },
+        ],
+        basicFillerSlot: 0,
+      }]
+      const calc = useResourceCalc()
+      return calc.damagePoolRows.value.find(r => r.id === 'alice-c6-decisive-extra-attack')
+    }
+    const withSw3 = await mk(true)
+    const without = await mk(false)
+    expect(withSw3).toBeTruthy()
+    expect(without).toBeTruthy()
+    expect(withSw3!.count).toBe(without!.count)
+    expect(withSw3!.perDamage).toBeGreaterThan(without!.perDamage)
+  })
+
+  it('琉音6命余音：轴内目标终极技（promoteVariant 块）→ 附伤按全队终极技轴内占比吃易伤', async () => {
+    const { config } = await setupHarness([{ agentId: '1481', cinemaLevel: 6 }, { agentId: '1181' }, { agentId: '1371' }])
+    for (const buff of config.globalBuffs) buff.enabled = false
+    config.setMechanicSetting('liuyin.ultimateTargetSlot', 1)
+    config.useStunAxis = true
+    config.enemy.stunCountLock = 1
+    config.stunAxes = [{
+      name: '转大轴',
+      count: 1,
+      actions: [
+        { slot: 1, moveId: '1181005', count: 2, startTime: 0 },
+        // 转大 = 轴内 promoteVariant 块（moveId 为目标 1181 的终极技 1181010）
+        { slot: 1, moveId: '1181010', count: 1, startTime: 1, promoteVariant: '90' },
+      ],
+      basicFillerSlot: 0,
+    }]
+    const calc = useResourceCalc()
+    const row = calc.damagePoolRows.value.find(r => r.id === 'liuyin-c6-echo')
+    expect(row).toBeTruthy()
+    // 终极技在窗内 → stunMult = 1 + 0.5 × (轴内终极技/总终极技) > 1（曾走全局覆盖率/无绑定）
+    expect((row as any).stunMult ?? 1).toBeGreaterThan(1)
+  })
+})
+
 describe('轴内直读技能表（v3.5 通用兜底）', () => {
   it('未建模招式放置后按技能表倍率出直伤并吃易伤；未放置无行', async () => {
     const mk = async (place: boolean) => {

@@ -147,6 +147,7 @@
                         <!-- 嗔火是般岳专属资源：队里没有般岳不显示（引擎侧 banyueSlot>=0 才消费） -->
                         <n-checkbox v-if="teamHasBanyue" :checked="guaranteeFury" @update:checked="v => setGuarantee('fury', v)">保底4嗔火</n-checkbox>
                         <n-checkbox :checked="guaranteeUltimate" @update:checked="v => setGuarantee('ultimate', v)">保底4喧响</n-checkbox>
+                        <span class="muted" style="font-size: 12px; margin-left: 4px">（缺口≤1500 补弹刀四舍五入，差太多不硬凑）</span>
                       </div>
                       <div class="section-title">战斗动作次数</div>
                       <n-grid cols="6" :x-gap="8">

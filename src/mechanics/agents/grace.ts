@@ -231,6 +231,11 @@ function buildGraceAnomalyEvents({ cfg, events }: { cfg: AgentResourceInput['cfg
     eventType: 'release',
     // 手雷本体是直伤；触发的异放按目标当前异常状态结算（基础者=该元素主施加者，dominant 分支）
     element: 'dominant',
+    // 异放随脉冲手雷(1181019) 1:1 触发：失衡轴内易伤占比跟随载体动作轴内单位（2026-08 审计补接，
+    // 与柏妮思灼热抛接法同构——此前无绑定回落事件计数器口径，载体在窗内也整段拆轴外）
+    carrierMoveId: PULSE_GRENADE_MOVE_ID,
+    carrierMoveName: '脉冲手雷（脉冲兑换·附带）',
+    followCarrierInStun: true,
     count,
     // 比例组 560/280/700/50/70/28 × DOT基准(62.5/125/50/713/500/1250) 收敛 ≈350% 固定倍率
     formula: 'releaseMultiplier=350（原属性异常比例×DOT基准收敛值）；命中异常目标触发',

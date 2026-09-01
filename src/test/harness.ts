@@ -81,6 +81,9 @@ export function setTeam(
       agentId: t ? t.agentId : '',
       cinemaLevel: t ? (t.cinemaLevel ?? 0) : 0,
       ...TEST_BASE_CHAR,
+      // driveDisc 深拷贝：TEST_BASE_CHAR 是模块级常量，浅展开会让三槽共享同一 driveDisc
+      //（mainStats/subStatAllocation 互相污染——曾让诊断/deploy 测试的配装推荐互相覆盖）
+      driveDisc: structuredClone(TEST_BASE_CHAR.driveDisc),
       ...(t ? t : {}),
     } as never
   }

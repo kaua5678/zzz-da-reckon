@@ -229,6 +229,16 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     scale→0 仍超 = 非交互必要时间本身超预算，如实保留报超时。`convergence.interactionScale` 上报
     （`axisFallback` 与之可同真：轴退化后配置本身仍超）。**锁定失衡次数（`stunCountLock` ≥ 0，
     命座对比/锁窗测试）一律不触发退化/降配**——锁定 = 用户明确意图，引擎不自动改结构。
+20. **transformSkillExecutions 里写 panel 字段会跨收敛轮累积（2026-09-01）**：`panels` computed 在
+    calcOutput 一次求值（外层不动点 20 轮）内**缓存同一对象**，`transformSkillExecutions` 每轮调用
+    → 裸 `panel.xxx = (panel.xxx ?? 0) + 贡献` 会把贡献 × 轮数叠加：派派物理积蓄效率 80%×20=1600%
+    （物理积蓄 28.9 万、校准反向高估 +18652）、安比充能 dmgBonus 45×16=720%、雅积蓄效率 600%。
+    **架构铁律（用户 2026-09-01「属性和倍率招式分开」）**：面板 = 静态（gear + 队友 buff + 模块
+    applyPanel，一次构建不再改），收敛循环只算招式/资源池。面板字段写入一律走 `applyPanel`
+    （依赖必须是 settings/cinema/team/AA 等静态量）；transform 只许改 exec/异常 exec。
+    已迁移：派派（积蓄效率）、安比（C6 充能 dmgBonus，兼修 C0 泄漏）、雅（冰抗无视/冰焰/霜灼积蓄）、
+    雨果（暗渊回响暴击暴伤，兼弃布尔守卫冻结坑）、普罗米娅（额外能力冰积蓄）。**新增面板写入走
+    applyPanel**；transform 里出现 `panel.xxx =` 即红灯信号。
 
 ## 5. 验收命令
 

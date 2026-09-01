@@ -418,6 +418,16 @@ function buildAliceResourceSections({ result }: AgentResourceSectionsInput): Spe
 
 // ============ 模块导出 ============
 
+/**
+ * 从资源结果提取爱丽丝剑意触发次数（极性强击赠送计数）。
+ * 供编排层（useResourceCalc）注入异常池——提取逻辑留在模块侧，
+ * 避免 useResourceCalc 新增 agentId 分支（规则 6 棘轮）。
+ */
+export function aliceSparkCountOf(rr: { characters: Array<{ agentId?: string; aliceSwordWillSource?: { sparkCount?: number } | null }> } | null | undefined): number {
+  if (!rr) return 0
+  return rr.characters.find(c => c.agentId === ALICE_AGENT_ID)?.aliceSwordWillSource?.sparkCount ?? 0
+}
+
 export const aliceMechanic: AgentMechanicModule = {
   id: 'agent:alice',
   agentIds: [ALICE_AGENT_ID],

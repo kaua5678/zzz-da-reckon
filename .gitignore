@@ -24,3 +24,6 @@ Thumbs.db
 
 # ZCode session plans (working state, not project knowledge)
 .zcode/
+
+# zc 车道租约与验证日志（工作状态，不是项目知识；check-guards 拒绝其被跟踪）
+.zc/

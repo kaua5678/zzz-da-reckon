@@ -323,12 +323,15 @@ describe('雨果滑块生效差分（防守卫冻结，SOP §3.5：改滑块→�
     expect(mk(1)).toBeGreaterThan(mk(0.5))
   })
 
-  it('hugo.echoCoverage → 深渊回响暴击/暴伤差分（applyHugoEchoPanel 消费 specResources.hugo_abyss_echo.echoCoverage）', () => {
+  it('hugo.echoCoverage → 深渊回响暴击/暴伤差分（applyPanel 静态消费滑块）', () => {
     const mk = (coverage: number) => {
       const panel: any = { critRate: 0, critDmg: 0 }
-      hugoMechanic.transformSkillExecutions!({
-        charResult: { specResources: { hugo_abyss_echo: { echoCoverage: coverage } } },
+      hugoMechanic.applyPanel!({
+        slot: 0,
+        team: [],
+        cinemaLevel: 0,
         panel,
+        settings: { 'hugo.echoCoverage': coverage },
       } as never)
       return panel
     }

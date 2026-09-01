@@ -569,6 +569,45 @@
         <div class="share-note">极性紊乱、极性强击等角色专属事件暂未建模；异放事件已按角色/事件在个人伤害占比中显示。</div>
       </n-card>
 
+      <!-- 伤害来源分解（诊断：总伤害异常时定位是倍率错还是属性区错） -->
+      <n-card v-if="damageSourceBreakdown.length > 0" size="small" class="damage-source-card" :bordered="true">
+        <template #header>
+          <div class="damage-pool-header">
+            <span>伤害来源分解</span>
+            <span class="damage-pool-total">总伤害 {{ fmt(damagePoolTotal, 0) }} ≈ 直伤倍率×属性区 + 异常倍率×属性区</span>
+          </div>
+        </template>
+        <div class="damage-source-table">
+          <div class="damage-pool-row damage-pool-head damage-source-row">
+            <span>角色</span>
+            <span>族</span>
+            <span>总伤害</span>
+            <span>总倍率(%)</span>
+            <span>属性区</span>
+            <span>无倍率行伤害</span>
+          </div>
+          <template v-for="b in damageSourceBreakdown" :key="b.slot">
+            <div v-if="b.direct.damage > 0 || b.direct.flatDamage > 0" class="damage-pool-row damage-source-row">
+              <span>{{ b.agentName }}</span>
+              <span class="damage-type">直伤</span>
+              <span class="damage-total">{{ fmt(b.direct.damage, 0) }}</span>
+              <span>{{ fmt(b.direct.multiplier, 0) }}</span>
+              <span>{{ fmt(b.direct.attrRegion, 0) }}</span>
+              <span>{{ fmt(b.direct.flatDamage, 0) }}</span>
+            </div>
+            <div v-if="b.anomaly.damage > 0 || b.anomaly.flatDamage > 0" class="damage-pool-row damage-source-row">
+              <span>{{ b.agentName }}</span>
+              <span class="damage-type">异常</span>
+              <span class="damage-total">{{ fmt(b.anomaly.damage, 0) }}</span>
+              <span>{{ fmt(b.anomaly.multiplier, 0) }}</span>
+              <span>{{ fmt(b.anomaly.attrRegion, 0) }}</span>
+              <span>{{ fmt(b.anomaly.flatDamage, 0) }}</span>
+            </div>
+          </template>
+        </div>
+        <div class="share-note">属性区 = 有倍率行的伤害 ÷ (总倍率/100)，即每 100% 倍率对应的面板×乘区伤害；无倍率行（固定/附伤公式）单列。检查总伤害时：总伤害 ≈ 总倍率/100 × 属性区 + 无倍率伤害。</div>
+      </n-card>
+
       <!-- 伤害池 -->
       <n-card v-if="damagePoolRows.length > 0" size="small" class="damage-pool-card" :bordered="true">
         <template #header>
@@ -705,6 +744,7 @@ const {
   anomalyPoolResult,
   specialActionBonus,
   damagePoolRows,
+  damageSourceBreakdown,
   remielleVoidflareEvents,
   anomalyDamageEvents,
   anomalyVirtualPanels,
@@ -1280,6 +1320,17 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   background: var(--wa-70);
   color: var(--wa-520);
   font-weight: 600;
+}
+
+/* 伤害来源分解行：复用 damage-pool-row 视觉，仅覆盖 6 列布局 */
+.damage-source-row {
+  grid-template-columns: 88px 58px 110px 120px 110px 130px;
+}
+
+.damage-source-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .damage-type {

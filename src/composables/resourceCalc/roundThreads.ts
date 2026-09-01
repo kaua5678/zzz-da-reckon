@@ -4,6 +4,11 @@
  * 历史形态：runCalcRound 挂 21 个 prev* 位置参数 + 19 个同名字段返回，每加一个跨轮反馈
  * （如薇薇安双源、普罗米娅触发命中）就要在签名/调用点/返回体三处同步加一行——漏一处即
  * 静默断链。结构体化后：新增反馈 = CalcRoundThreads 加一个字段 + 初值 + 轮内读写。
+ * ⚠ 收敛判据在 useResourceCalc.runOuterLoop 里**手写**（ultSeq/anomalySeq/topUpSeq/
+ * parrySplitSeq/decibelParrySeq/auricInkFlash 六项），不是对整份结构体自动比对——新增线程
+ * 字段若会独立震荡（如 lighterTeamEnergy / promia* 这类只影响伤害、不改变终结技/喧响序列
+ * 的反馈），记得同步加进收敛判据，否则会提前判 stable（2026-08 曾试图整份指纹比对，
+ * 校准 MAE 劣化 ~0.8% 后回退，见 runArchiveCalibration 棘轮）。
  *
  * 语义约定（与旧位置参数版逐字段等价）：
  * - 轮内持久（null 轮不清零）：goodReview / energyBySlot / banyueTopUp / parrySplit / decibelParry
@@ -56,6 +61,10 @@ export interface CalcRoundThreads {
   ellenFreezeCount: number
   /** 通用保底4喧响：弹刀补齐量（非般岳队伍） */
   decibelParry: number
+  /** 时间轴喧响轨：各槽上一轮收敛的喧响产出（slot → 点；首轮空对象 = 轨未启动） */
+  decibelRegenBySlot: Record<number, number>
+  /** 时间轴喧响轨：上一轮失衡次数（与本轮相等才启用轨——防早期轮窗口失真螺旋） */
+  trackStunCount?: number
 }
 
 export function initialCalcRoundThreads(): CalcRoundThreads {
@@ -81,6 +90,8 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
     inStunWindowTriggers: 0,
     ellenFreezeCount: 0,
     decibelParry: 0,
+    decibelRegenBySlot: {},
+    trackStunCount: undefined,
   }
 }
 

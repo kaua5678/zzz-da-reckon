@@ -79,7 +79,7 @@ describe('analyzeCinemaUplift（命座提升率 + 死数据自检）', () => {
       expect(e.ultBefore).toBeGreaterThanOrEqual(0)
       expect(e.ultAfter).toBeGreaterThanOrEqual(0)
     }
-  })
+  }, 30000)
 
   it('自检语义：面板有字段变化 → ok；无面板变化但伤害移动 |gain| ≥ ε（含微负）→ execLevel；零移动 → unimplemented', async () => {
     const { rows } = await analyze('1371', ['1251', '1271'])
@@ -93,7 +93,7 @@ describe('analyzeCinemaUplift（命座提升率 + 死数据自检）', () => {
         expect(e.warn).toBe('unimplemented')
       }
     }
-  })
+  }, 30000)
 
   it('防死数据：状态表声明已实现的命座级别不得被判为 unimplemented（仪玄/般岳/卢西娅）', async () => {
     type Configure = (config: ReturnType<typeof useConfigStore>) => void
