@@ -124,12 +124,14 @@ export interface PhaseBuffEffect {
   value: number
   /** 招式限定（basic/exSpecial/ultimate/chain…） */
   targetSkillType?: string
-  /** 条件：异常特性 2/3 名分档 / 特性限定 */
+  /** 条件：特性限定 / 特性人数分档 */
   cond?: {
-    /** [2名档, 3名档]；应用时按队伍实际异常人数选档 */
-    anomalyCount?: [number, number]
-    /** 强攻/异常/击破/命破…限定；队伍无该特性角色则该条不生效 */
+    /** 特性限定（二元）：队伍无该特性角色则该条不生效 */
     specialty?: string
+    /** 特性人数分档：队伍中 specialty 角色数达到 thresholds[0]/thresholds[1] 时分别取 values[0]/values[1]。
+     *  例 异常 2/3 名 → { specialty:'异常', thresholds:[2,3], values:[30,70] }；
+     *  强攻 1/2 名 → { specialty:'强攻', thresholds:[1,2], values:[20,40] }。 */
+    countTier?: { specialty: string; thresholds: [number, number]; values: [number, number] }
   }
   /** 原文段落（溯源） */
   note?: string

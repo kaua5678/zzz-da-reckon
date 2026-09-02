@@ -59,6 +59,8 @@ export interface CalcRoundThreads {
   inStunWindowTriggers: number
   /** 艾莲影画4 冻结次数（异常池 ice 触发数） */
   ellenFreezeCount: number
+  /** 全队以太帷幕开启总次数（照霜寒开帷幕 + 爱芮/叶瞬光终结技 + 千夏强特；叶瞬光溯影惊鸿/爱芮合作舞台/千夏磨爪器消费） */
+  teamVeilCountTotal: number
   /** 通用保底4喧响：弹刀补齐量（非般岳队伍） */
   decibelParry: number
   /** 时间轴喧响轨：各槽上一轮收敛的喧响产出（slot → 点；首轮空对象 = 轨未启动） */
@@ -89,6 +91,7 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
     promiaReleaseDecibel: 0,
     inStunWindowTriggers: 0,
     ellenFreezeCount: 0,
+    teamVeilCountTotal: 0,
     decibelParry: 0,
     decibelRegenBySlot: {},
     trackStunCount: undefined,

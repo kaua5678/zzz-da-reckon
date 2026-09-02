@@ -48,14 +48,17 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 - **口径（用户拍板）**：
   - 失衡易伤 → `stunDmgMultiplierBonus`（与击破角色 buff 同字段，直接加不折算）
   - **锐化伤害 → `sharpDmgBonus`（锋御独立乘区）；贯穿伤害 → `sheerDmgBonus`（命破贯穿增伤区）；锐暴 → `sharpCritDmg`**——三者别混
-  - 异常特性 2/3 名 → `cond.anomalyCount: [2名档, 3名档]`，应用时按队伍异常人数选档
-  - 强攻/异常等特性限定 → `cond.specialty`，队伍无该特性角色则该条不生效
+  - **元素伤害并列（`X属性伤害和Y属性伤害提升N%`、`X/Y`、顿号）→ 每个元素各出一个 `{el}Dmg`**；元素减抗（`无视其N%的X伤害抗性和Y伤害抗性`，含共享值/各自值）→ 每个元素各出 `enemy{El}ResReduction`
+  - 特性人数分档（异常 2/3 名、强攻 1 名/2 名）→ `cond.countTier: { specialty, thresholds:[低档人数, 高档人数], values:[低档值, 高档值] }`，应用时按队伍该特性实际人数选档（`resolveBuffEffect`；parser 产出中文特性，`resolveBuffEffect` 内 `SPECIALTY_ZH_EN` 映射到引擎英文 specialty）
+  - 强攻/异常等特性限定 → `cond.specialty`（中文，如「强攻」），队伍无该特性角色则该条不生效
+  - 字段补全（2026-09 重写）：`[紊乱]伤害`→`disorderDamageBonus`；`[异放]伤害`→`anomalyReleaseDmgBonus`；`[乱流]伤害`→`turbulenceDamageBonus`；`暴击率`→`critRate`；`喧响值获取效率`→`decibelGainEfficiency`；`能量/闪能获得效率`→`energyGainEfficiency`/`flashEnergyGainEfficiency`；`受到的伤害提升`→`enemyDamageTakenBonus`；`受到的暴击伤害提升`→`enemyCritDmgTakenBonus`；无条件`造成的伤害提升`→`dmgBonus`（`首领敌人/自身` 的 boss 自我增伤跳过）
+  - **叠层满覆盖**：`每层[X]/每有1层[X]/每拥有1层[X]/每持有1层[X]…提升Y%` 配 `最多叠加N层/最多累计N层/最多N层/至多可以叠加N层`（或隐式 `施加1层/N层`、`额外施加N层`、`拥有N层[X]时`）→ 按 `Y×N` 录入满叠值（如 彷徨猎手 动摇 7%×5=35%）；`最多叠加N层` 的 selectable buff 按「后，/时，」触发器拆：前段 flat、后段叠层
   - 其余条件效果（施放后持续 X 秒）→ 默认满覆盖，原文保留在 `note`
   - `(Test1)TBD` → `testOnly: true` 不参与推荐；`unparsed` = 未命中规则表的段落（UI 展示原文）
 - 规则表在 `RULES`（正则数组，先命中先得；段落内循环删匹配继续解析；按 `。\n;` 分句）
 - **两个数据源都走同一解析器**：`selectable_buff`（当期可选牌 3 张）与 `layer_buff`（当期关卡固有 buff，随 Boss 卡展示/应用）
-- 新 buff 文案类型解析不了时：加规则到 `RULES`，或把属性名加进 `RANKED_STAT_MAP`（分档）、`STAT_LABELS`（显示名）
-- 测试：`src/composables/__tests__/phaseBuffParser.test.ts`（7 条，覆盖分档/限定/多招式/测试服）
+- 新 buff 文案类型解析不了时：加规则到 `RULES`，或把属性名加进 `TIER_STAT_MAP`（分档）、`STAT_LABELS`（显示名）
+- 测试：`src/composables/__tests__/phaseBuffParser.test.ts`（15 条，覆盖分档/限定/多招式/多元素/紊乱异放/受暴伤/叠层满覆盖/测试服）
 
 ### 1.5 已知口径
 

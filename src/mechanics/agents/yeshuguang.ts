@@ -27,7 +27,6 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentTeamConfigInput,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, MechanicSetting, SkillExecution } from '@/types/resource'
@@ -628,27 +627,6 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
   }
 }
 
-/** postRound：汇总全队以太帷幕次数 → 写 teamVeilCountTotal 到爱芮(1501)/叶瞬光(1431) 的 cfg。
- * 帷幕来源：照(1341) zhaoVeilCount（照模块同阶段写入）+ 爱芮/叶瞬光大招（开启即帷幕）
- * + 千夏(1491) 强特次数（特别拍照技巧重击前开帷幕，1:1 近似）。下一轮 buildExecutions 生效。 */
-function applyYeshuguangTeamConfig({ characters, phase, exCounts, ultimateCounts }: AgentTeamConfigInput): void {
-  if (phase !== 'postRound') return
-  let veilTotal = 0
-  characters.forEach((mate, index) => {
-    const ex = Math.max(0, Math.floor(exCounts[index] ?? 0))
-    const ult = Math.max(0, Math.floor(ultimateCounts?.[index] ?? 0))
-    const record = mate as unknown as Record<string, unknown>
-    if (mate.agentId === '1341') veilTotal += Math.max(0, Math.floor(Number(record.zhaoVeilCount ?? 0) || 0))
-    else if (mate.agentId === '1501' || mate.agentId === '1431') veilTotal += ult
-    else if (mate.agentId === '1491') veilTotal += ex
-  })
-  for (const mate of characters) {
-    if (mate.agentId === '1501' || mate.agentId === '1431') {
-      ;(mate as unknown as Record<string, unknown>).teamVeilCountTotal = veilTotal
-    }
-  }
-}
-
 export const yeshuguangMechanic: AgentMechanicModule = {
   id: 'agent:yeshuguang',
   agentIds: [YESHUGUANG_ID],
@@ -656,7 +634,6 @@ export const yeshuguangMechanic: AgentMechanicModule = {
   description: '白毛明心境：打满/两条提速短轴；满易伤；C6 明灯愿强化与 1500% 收尾附伤。',
   settings: yeshuguangSettings,
   buildCharConfig,
-  applyTeamConfig: applyYeshuguangTeamConfig,
   buildExecutions,
   patchExecutions,
   estimateExSpecialTime,

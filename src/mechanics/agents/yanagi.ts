@@ -1,5 +1,6 @@
-import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput } from '../types'
+import type { AgentCharConfigInput, AgentEventInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
+import type { AnomalyEventExecution } from '@/types/resource'
 
 /**
  * 月城柳（1221，电·异常，对空洞特别行动部第六课）—— 核心被动/额外能力/影画面板区（薄模块）。
@@ -29,6 +30,10 @@ const YANAGI_C2_BUILDUP_BONUS = 20
 const YANAGI_C6_EX_SPECIAL_DMG = 20
 /** 强化特殊技·月华流转 突刺段（C2 长按追加突刺的载体 moveId） */
 const YANAGI_THRUST_MOVE_ID = '1221022'
+/** 极性紊乱倍率：C0 = 原紊乱 15%；C2 = 20% + 每额外突刺 15%（上限 2 次） */
+const YANAGI_POLAR_RATIO_C0 = 0.15
+const YANAGI_POLAR_RATIO_C2_BASE = 0.20
+const YANAGI_POLAR_RATIO_PER_THRUST = 0.15
 
 function findMove(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
   if (!skills) return null
@@ -109,12 +114,36 @@ function applyYanagiPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   }
 }
 
+/** 极性紊乱：每次月华流转下落攻击命中异常状态敌人触发 1 次（≈强特次数）；倍率随命座/突刺数变化。 */
+function buildYanagiAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  const cinema = Math.max(0, Math.floor(Number(record.yanagiCinemaLevel ?? 0)))
+  const count = Math.max(0, Math.floor(state.exSpecialCount))
+  if (count <= 0) return
+  // C0 = 15%；C2 = 20% + 每额外突刺 15%（默认 1 次额外突刺 = 35%；上限 2 次 = 50%）
+  const ratio = cinema >= 2
+    ? YANAGI_POLAR_RATIO_C2_BASE + YANAGI_POLAR_RATIO_PER_THRUST
+    : YANAGI_POLAR_RATIO_C0
+  events.push({
+    eventId: 'yanagi_polar_disorder',
+    eventName: '月城柳·极性紊乱',
+    eventType: 'polar_disorder',
+    element: 'dominant',
+    carrierMoveName: '强化特殊技：月华流转·下落攻击',
+    count,
+    polarDisorderRatio: ratio,
+    formula: `极性紊乱 = 原紊乱 × ${(ratio * 100).toFixed(0)}%（C2 每额外突刺 +15%，上限 2 次）`,
+    note: `下落攻击命中异常状态敌人触发（次数≈强特次数）；C0 ${(YANAGI_POLAR_RATIO_C0 * 100).toFixed(0)}%、C2 ${(YANAGI_POLAR_RATIO_C2_BASE * 100).toFixed(0)}%+${(YANAGI_POLAR_RATIO_PER_THRUST * 100).toFixed(0)}%（1 次额外突刺）。C6 上限 4 次/耗能减半未建模。`,
+  } as AnomalyEventExecution)
+}
+
 export const yanagiMechanic: AgentMechanicModule = {
   id: 'agent:tsukishiro_yanagi',
   agentIds: [YANAGI_AGENT_ID],
   name: '月城柳',
-  description: '核心被动电伤+20%、额外能力电异常积蓄+45%、影画1异常精通+80、影画2突刺积蓄+20%+追加突刺、影画6强特+20%；紊乱倍率/识破穿透在 teammate-buffs 1221 组。',
+  description: '核心被动电伤+20%、额外能力电异常积蓄+45%、影画1异常精通+80、影画2突刺积蓄+20%+追加突刺+极性紊乱、影画6强特+20%；紊乱倍率/识破穿透在 teammate-buffs 1221 组。',
   applyPanel: applyYanagiPanel,
   buildCharConfig: buildYanagiCharConfig,
   buildExecutions: buildYanagiExecutions,
+  buildAnomalyEvents: buildYanagiAnomalyEvents,
 }

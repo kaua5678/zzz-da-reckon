@@ -1,6 +1,7 @@
 import { HUGO_EX_VERDICT_MOVE_ID, HUGO_ULT_MOVE_ID, HUGO_EX_FINAL_ACTION_TIME, isHugoEndsWindowMove, hugoMoveActionTime } from '@/mechanics/agents/hugo'
 import { inferSkillDamageTarget } from '@/core/damage'
 import { estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
+import { computeTeamVeilCountTotal } from '@/mechanics/teamVeil'
 import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -504,6 +505,7 @@ export function useResourceCalc() {
       promiaReleaseDecibel: prevPromiaReleaseDecibel,
       inStunWindowTriggers: prevInStunWindowTriggers,
       ellenFreezeCount: prevEllenFreezeCount,
+      teamVeilCountTotal: prevTeamVeilCountTotal,
       decibelParry: prevDecibelParry,
       decibelRegenBySlot: prevDecibelRegenBySlot,
       trackStunCount: prevTrackStunCount,
@@ -727,6 +729,8 @@ export function useResourceCalc() {
         teamStunCoverage: provStunCoverage,
         axisActionCounts: axisActionCountsBySlot[cfg.slot],
         axisUltimateTotal: axisUltimateTotal[cfg.slot] ?? 0,
+        // 全队帷幕次数（上一轮收敛注入）：叶瞬光溯影惊鸿/爱芮合作舞台/千夏磨爪器在此轮 buildExecutions/buildAnomalyEvents 消费
+        teamVeilCountTotal: prevTeamVeilCountTotal,
       }
       // 非轴降配（用户口径 2026-08-30）：超预算时缩放用户交互次数（round）。只缩 store 侧输入——
       // 下方 boss 强制弹刀（parrySplit 直读 store 原值）与轴补齐注入在其后叠加，不被缩放。
@@ -1356,15 +1360,19 @@ export function useResourceCalc() {
     // 但计算与写入 cfg 的责任已经回到莱特模块自己的 applyTeamConfig。
     let lighterTeamEnergyNext = 0
     let graceC1CyclesNext = 0
+    let teamVeilCountTotalNext = 0
     {
       const exByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.exSpecialCount ?? 0]))
       const ultByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.ultimateCount ?? 0]))
       const exCounts = characters.map(c => Math.max(0, exByAgent.get(c.agentId) ?? 0))
+      const ultimateCounts = characters.map(c => Math.max(0, ultByAgent.get(c.agentId) ?? 0))
       if (characters.some(c => c.agentId === '1161')) {
         lighterTeamEnergyNext = estimateTeamNormalEnergyConsumed(characters, exCounts)
       }
       const graceCfg = characters.find(c => c.agentId === '1181')
       if (graceCfg) graceC1CyclesNext = Math.max(0, Math.floor(Number((graceCfg as any).graceC1Cycles ?? 0)))
+      // 全队帷幕次数（下一轮注入）：照霜寒开帷幕 + 爱芮/叶瞬光终结技 + 千夏强特，按本轮收敛次数算。
+      teamVeilCountTotalNext = computeTeamVeilCountTotal(characters, exCounts, ultimateCounts, base.totalTime ?? 180)
       applyTeamMechanics({
         characters,
         configStore,
@@ -1372,7 +1380,7 @@ export function useResourceCalc() {
         phase: 'postRound',
         combatTime: base.totalTime ?? 180,
         exCounts,
-        ultimateCounts: characters.map(c => Math.max(0, ultByAgent.get(c.agentId) ?? 0)),
+        ultimateCounts,
         stunCount,
       })
     }
@@ -1585,6 +1593,7 @@ export function useResourceCalc() {
         promiaReleaseDecibel: promiaReleaseDecibelNext,
         inStunWindowTriggers: inStunWindowTriggersNext,
         ellenFreezeCount: ellenFreezeCountNext,
+        teamVeilCountTotal: teamVeilCountTotalNext,
         decibelParry: decibelParryNext,
         // 轨推演输入（喧响产出）单调不减：轨削减大招 → 大招回响数据行减少 → 产出下滑
         // → 下一轮轨更紧 → 恶性循环（实测可螺旋到 0）。取 max(上一轮, 本轮) 锁定基准。

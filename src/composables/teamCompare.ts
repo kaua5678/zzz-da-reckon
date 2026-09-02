@@ -108,17 +108,17 @@ export interface TeamCompareOptions {
   autoEnginePool?: string[]
 }
 
-/** 效果是否对当前队伍生效（特性限定 / 异常人数分档）。导出供测试。 */
+/** 效果是否对当前队伍生效（特性限定 / 特性人数分档）。导出供测试。 */
 export function resolveBuffEffect(eff: PhaseBuffEffect, preset: TeamPreset): PhaseBuffEffect | null {
   if (!eff.cond) return eff
-  const { specialty, anomalyCount } = eff.cond
+  const { specialty, countTier } = eff.cond
   if (specialty) {
-    const has = preset.team.some(id => specialtyOf(id) === specialty)
+    const has = preset.team.some(id => specialtyOf(id) === specialtyEn(specialty))
     if (!has) return null
   }
-  if (anomalyCount) {
-    const anomalyCountInTeam = preset.team.filter(id => specialtyOf(id) === 'anomaly').length
-    const value = anomalyCountInTeam >= 3 ? anomalyCount[1] : anomalyCountInTeam >= 2 ? anomalyCount[0] : null
+  if (countTier) {
+    const n = preset.team.filter(id => specialtyOf(id) === specialtyEn(countTier.specialty)).length
+    const value = n >= countTier.thresholds[1] ? countTier.values[1] : n >= countTier.thresholds[0] ? countTier.values[0] : null
     if (value == null) return null
     return { ...eff, value }
   }
@@ -127,6 +127,14 @@ export function resolveBuffEffect(eff: PhaseBuffEffect, preset: TeamPreset): Pha
 
 function specialtyOf(agentId: string): string {
   return useCatalogStore().getAgent(agentId)?.specialty ?? ''
+}
+
+/** 特性中文（parser 产出的 cond.specialty）→ 引擎英文 specialty */
+const SPECIALTY_ZH_EN: Record<string, string> = {
+  强攻: 'attack', 异常: 'anomaly', 击破: 'stun', 命破: 'rupture', 支援: 'support', 防护: 'defense', 锋御: 'sharpen',
+}
+function specialtyEn(zh: string): string {
+  return SPECIALTY_ZH_EN[zh] ?? zh
 }
 const INTERACTION_LABELS: Record<string, string> = {
   parry: '弹刀',

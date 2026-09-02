@@ -726,7 +726,7 @@ describe('teamCompare 批量计算', () => {
     await catalog.load()
     await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     // 测试队：1561(异常) 1261(异常) 1411(支援) —— 2 名异常
-    const eff2: any = { stat: 'atkPct', value: 70, cond: { anomalyCount: [10, 70] } }
+    const eff2: any = { stat: 'atkPct', value: 70, cond: { countTier: { specialty: '异常', thresholds: [2, 3], values: [10, 70] } } }
     expect(resolveBuffEffect(eff2, TEST_PRESET)).toMatchObject({ stat: 'atkPct', value: 10 })
 
     // 3 名异常 → 满编档

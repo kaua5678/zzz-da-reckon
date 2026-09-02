@@ -737,7 +737,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           // 轴模式 dominant 走 Boss 异常状态轴——事件次数按代表窗内均匀取样时刻查当时状态链
           // 分摊到元素（标准链优先、风化覆盖层补空档）；无状态轴数据时 dominant 回落覆盖率最高者。
           const dd = anomalyPoolResult?.disorderDamage
-          const perEvent = (dd?.avgDamage ?? 0) * 0.25
+          const polarRatio = event.polarDisorderRatio ?? 0.25
+          const perEvent = (dd?.avgDamage ?? 0) * polarRatio
           const boss = isAxis ? bossAnomalyState : null
           const bossWindows = boss?.stateChainsPerWindow.length ?? 0
           const anySegment = !!boss && (boss.stateChainsPerWindow.some(c => c.length > 0) || boss.windOverlayPerWindow.some(c => c.length > 0))
@@ -770,7 +771,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
               const elDetails = (dd?.details ?? []).filter(d => getBaseElement(d.element) === getBaseElement(el))
               const elEvents = elDetails.reduce((s, d) => s + (d.events ?? 0), 0)
               const elDamage = elDetails.reduce((s, d) => s + (d.damage ?? 0), 0)
-              const perEventEl = elEvents > 0 ? (elDamage / elEvents) * 0.25 : perEvent
+              const perEventEl = elEvents > 0 ? (elDamage / elEvents) * polarRatio : perEvent
               if (perEventEl <= 0) continue
               rows.push({
                 id: `polar-${slot}-${event.eventId}-${el}`,

@@ -142,4 +142,31 @@ describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
     expect(extra).toBeTruthy()
     expect(extra!.damageMultiplier).toBeCloseTo(327.7, 3)
   })
+
+  it('极性紊乱事件：0命 15%、2命 35%（20%+1次额外突刺15%）', async () => {
+    const { setupHarness } = await import('@/test/harness')
+    const { useResourceCalc } = await import('@/composables/useResourceCalc')
+
+    await setupHarness([
+      { agentId: '1221', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ])
+    const calc0 = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    const y0 = calc0.resourceResult.value!.characters.find(c => c.agentId === '1221')!
+    const ev0 = y0.anomalyEventExecutions.find(e => e.eventId === 'yanagi_polar_disorder')
+    expect(ev0).toBeTruthy()
+    expect(ev0!.polarDisorderRatio).toBeCloseTo(0.15, 6)
+
+    await setupHarness([
+      { agentId: '1221', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ])
+    const calc2 = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    const y2 = calc2.resourceResult.value!.characters.find(c => c.agentId === '1221')!
+    const ev2 = y2.anomalyEventExecutions.find(e => e.eventId === 'yanagi_polar_disorder')
+    expect(ev2).toBeTruthy()
+    expect(ev2!.polarDisorderRatio).toBeCloseTo(0.35, 6)
+  })
 })

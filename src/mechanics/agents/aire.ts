@@ -28,7 +28,6 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentTeamConfigInput,
 } from '../types'
 
 export const AIRE_ID = '1501'
@@ -245,27 +244,6 @@ function buildAireResourceSections({ result }: AgentResourceSectionsInput) {
   }]
 }
 
-/** postRound：汇总全队以太帷幕次数 → 写 teamVeilCountTotal 到爱芮(1501)/叶瞬光(1431) 的 cfg
- *（与叶瞬光模块同款幂等 hook——两个消费者模块各自挂一份，单人在队也生效）。
- * 帷幕来源：照(1341) zhaoVeilCount + 爱芮/叶瞬光大招 + 千夏(1491) 强特次数。 */
-function applyAireTeamConfig({ characters, phase, exCounts, ultimateCounts }: AgentTeamConfigInput): void {
-  if (phase !== 'postRound') return
-  let veilTotal = 0
-  characters.forEach((mate, index) => {
-    const ex = Math.max(0, Math.floor(exCounts[index] ?? 0))
-    const ult = Math.max(0, Math.floor(ultimateCounts?.[index] ?? 0))
-    const record = mate as unknown as Record<string, unknown>
-    if (mate.agentId === '1341') veilTotal += Math.max(0, Math.floor(Number(record.zhaoVeilCount ?? 0) || 0))
-    else if (mate.agentId === '1501' || mate.agentId === '1431') veilTotal += ult
-    else if (mate.agentId === '1491') veilTotal += ex
-  })
-  for (const mate of characters) {
-    if (mate.agentId === '1501' || mate.agentId === '1431') {
-      ;(mate as unknown as Record<string, unknown>).teamVeilCountTotal = veilTotal
-    }
-  }
-}
-
 export const aireMechanic: AgentMechanicModule = {
   id: 'agent:aire',
   agentIds: [AIRE_ID],
@@ -278,7 +256,6 @@ export const aireMechanic: AgentMechanicModule = {
   ],
   applyPanel: applyAirePanel,
   buildCharConfig: buildAireCharConfig,
-  applyTeamConfig: applyAireTeamConfig,
   buildAnomalyEvents: buildAireAnomalyEvents,
   patchExecutions: patchAireExecutions,
   buildResourceResult: buildAireResourceResult,
