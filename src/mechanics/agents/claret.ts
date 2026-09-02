@@ -78,7 +78,6 @@ export function computeClaretSharpResource(input: {
   const gashRatePctPerSecond = GASH_PCT_PER_ACTIVE_SECOND * (input.cinemaLevel >= 1 ? M1_GASH_RATE_MULT : 1)
   const gashValuePct = teammateFrontlineSeconds * gashRatePctPerSecond
   const gashStacks = gashValuePct / GASH_PCT_PER_STACK
-  const exCount = Math.max(0, Math.floor(input.exSpecialCount))
   const cleaveCount = Math.max(0, Math.floor(input.cleaveSpecialCount))
   const bloodBurialCount = Math.max(0, Math.floor(input.bloodBurialCount))
   const gashStackGain = cleaveCount + bloodBurialCount
@@ -94,7 +93,9 @@ export function computeClaretSharpResource(input: {
   const personalResourceDamageBonusPct = personalResourcesConsumed * PERSONAL_RESOURCE_DMG_BONUS_PER_POINT
   const sharpnessGain = maimCount + (input.cinemaLevel >= 2 ? maimCount * C2_SHARPNESS_PER_MAIM : 0)
   const costPerUse = Math.max(0, input.sharpnessCost || SHARPNESS_COST_PER_EX)
-  const affordableExCount = Math.min(exCount, costPerUse > 0 ? Math.floor(sharpnessGain / costPerUse) : 0)
+  // 2026-09 成本类型化：锐能强特次数 = 锐能预算 ÷ 单价，不再与能量派生次数取 min
+  // （引擎已按 costType=resource 不推导能量、不扣能量；次数由本账本给出，模块自发行）。
+  const affordableExCount = costPerUse > 0 ? Math.floor(sharpnessGain / costPerUse) : 0
   const sharpnessSpend = affordableExCount * costPerUse
   const sharpnessRemaining = Math.max(0, sharpnessGain - sharpnessSpend)
 
@@ -110,6 +111,7 @@ export function computeClaretSharpResource(input: {
     personalResourcesConsumed,
     personalResourceDamageBonusPct,
     sharpnessGain,
+    affordableExCount,
     sharpnessSpend,
     sharpnessRemaining,
     note: '队友为当前操作角色时每秒积累3%残痕值（影画1起 ×1.15），1层=33.33%；斩金断铁/葬血强袭命中消耗1层触发毁伤；全队毁伤给1点个人资源，二命额外回复0.25锐能；葬血强袭消耗所有个人资源，每点使葬血强袭与毁伤伤害倍率+6.5%；秘血铸锋消耗60锐能。',
@@ -132,6 +134,12 @@ function buildClaretCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInpu
   cfg.claretCleaveCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.cleaveSpecialCount', 1)))
   cfg.claretBloodBurialCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.bloodBurialCount', 1)))
   cfg.claretGashCoverage = Math.max(0, Math.min(1, cfgSetting(cfg, 'claret.gashCoverage', 1)))
+  // 秘血铸锋（1611010）是锐能强特：通用引擎已按 costType=resource 不扣能量，强特行由本模块
+  // 按锐能账本发行（般岳/柏妮思同款接管口径），动作数据在此预存。
+  const exMove = findMoveById(skills, '1611010')
+  cfg.claretExActionTime = exMove?.actionTime ?? 0
+  cfg.claretExDecibelRecovery = getRowValue(exMove, 'decibel_recovery')
+  cfg.skipGenericExSpecial = true
 }
 
 function buildClaretResourceResult({ cfg, state, teamFrontlineSeconds }: AgentResourceResultInput): Partial<CharacterResourceResult> {
@@ -164,6 +172,29 @@ function buildClaretExecutions({ cfg, state, executions, teamFrontlineSeconds }:
     ultimateCount: state.ultimateCount ?? 0,
   })
   const bonusMultiplier = 1 + source.personalResourceDamageBonusPct / 100
+  // 秘血铸锋（强化特殊技）：锐能 60/发，次数 = floor(锐能预算 / 60)——锐能账本同轮给出。
+  // debt: 锐能强特喧响不进池——引擎喧响轨道按 iterate 的主强特计数推导（65.56/发），
+  // 资源型强特次数由模块账本给出且状态机外，需 threads 通道回传后补计；影响 ≈65.56×4≈260 喧响/局。
+  const exCount = Math.max(0, Math.floor(source.affordableExCount))
+  if (exCount > 0) {
+    executions.push({
+      moveId: '1611010',
+      moveName: '强化特殊技（EX Special）：秘血铸锋（锐能 60/发）',
+      category: 'special',
+      count: exCount,
+      actionTime: cfg.claretExActionTime ?? 0,
+      comboAlignRatio: 0,
+      totalTime: exCount * (cfg.claretExActionTime ?? 0),
+      totalComboAlignTime: 0,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      decibelRecovery: cfg.claretExDecibelRecovery ?? 0,
+      totalDecibelRecovery: exCount * (cfg.claretExDecibelRecovery ?? 0),
+      energyRecovery: 0,
+      totalEnergyRecovery: 0,
+      timeBucket: 'necessary',
+    })
+  }
   const maimFromCleave = Math.min(source.maimCount, Math.max(0, Math.floor(cfg.claretCleaveCount ?? 0)))
   const maimFromBurial = Math.max(0, source.maimCount - maimFromCleave)
   const spec = getAgentSpec(CLARET_AGENT_ID)

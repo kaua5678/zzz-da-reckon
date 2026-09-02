@@ -1,7 +1,7 @@
 import type {
   ResourceCalcConfig, CharacterOperationConfig,
   TeamResourceResult, CharacterResourceResult,
-  IterationState,
+  IterationState, ExSpecialCostType,
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics'
@@ -357,10 +357,12 @@ export const ULTIMATE_COST_DEFAULT = 3000
  *  在 special category 中找 "EX Special Attack" 的 move
  *  energyCost 从 move.energyCost 字段提取（如 {"Energy Cost": "60"}）
  *  多数角色只取第一个耗能的强特即可；复杂消耗（如柏妮思多种耗能）后续单独修改
+ *  2026-09 成本类型化：energyCost 键按语义分类（energy/resource/free）——
+ *  替代资源键（如克拉蕾 "Sharpness Cost"（锐能））不再被解析成能量消耗
  */
 export function findExSpecial(agentSkills: {
   categories: { id: string; moves: { id: string; name: { en?: string }; energyCost?: Record<string, string>; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}): { moveId: string; energyConsume: number; actionTime: number; decibelRecovery: number; energyCostRaw?: Record<string, string>; comboAlignRatio: number } | null {
+}): { moveId: string; energyConsume: number; costType: ExSpecialCostType; costAmount: number; resourceId?: string; actionTime: number; decibelRecovery: number; energyCostRaw?: Record<string, string>; comboAlignRatio: number } | null {
   const special = agentSkills.categories.find(c => c.id === 'special')
   if (!special) return null
 
@@ -375,27 +377,41 @@ export function findExSpecial(agentSkills: {
   )
   if (!fallbackMove) return null
 
-  // 从 energyCost 提取数值
-  let energyConsume = 0
+  // 成本类型化：键名含 energy → 能量（含闪能）；否则 → 替代资源；无键 → 免费
   const energyCostRaw = fallbackMove.energyCost
-  if (energyCostRaw) {
-    // 优先取 "Energy Cost" 键，其次取第一个能解析为数字的值
-    const keys = Object.keys(energyCostRaw)
-    // 优先匹配纯 "Energy Cost" 或 "Activation Energy Cost"（激活消耗）
+  const keys = energyCostRaw ? Object.keys(energyCostRaw) : []
+  const energyKey = keys.find(k => /energy/i.test(k))
+  let costType: ExSpecialCostType = 'energy'
+  let costAmount = 0
+  let resourceId: string | undefined
+  if (!energyCostRaw || keys.length === 0) {
+    costType = 'free'
+  } else if (energyKey) {
+    // 优先取 "Energy Cost" 等激活键，其次取第一个可解析为数字的能量键
     const priorityKeys = ['Energy Cost', 'Activation Energy Cost', 'Energy Cost to Use']
+    let parsed = 0
     for (const pk of priorityKeys) {
       if (energyCostRaw[pk]) {
         const num = parseFloat(energyCostRaw[pk])
-        if (!isNaN(num)) { energyConsume = num; break }
+        if (!isNaN(num)) { parsed = num; break }
       }
     }
-    // 如果优先键没匹配到，取第一个能解析为数字的
-    if (energyConsume === 0) {
-      for (const k of keys) {
+    if (parsed === 0) {
+      for (const k of [energyKey, ...keys]) {
         const num = parseFloat(energyCostRaw[k])
-        if (!isNaN(num) && num > 0) { energyConsume = num; break }
+        if (!isNaN(num) && num > 0) { parsed = num; break }
       }
     }
+    costAmount = parsed
+    if (energyKey.toLowerCase().includes('flash')) resourceId = 'flash'
+  } else {
+    costType = 'resource'
+    // 替代资源：取第一个可解析为数字的量（克拉蕾 Sharpness Cost 60 → 锐能 60）
+    for (const k of keys) {
+      const num = parseFloat(energyCostRaw[k])
+      if (!isNaN(num) && num > 0) { costAmount = num; break }
+    }
+    resourceId = keys[0]?.toLowerCase().includes('sharpness') ? 'sharpness' : keys[0]
   }
 
   // 从 rows 提取 decibel_recovery
@@ -408,7 +424,11 @@ export function findExSpecial(agentSkills: {
 
   return {
     moveId: fallbackMove.id,
-    energyConsume,
+    // 能量型照旧计费；替代资源/免费型不再冒充能量 60
+    energyConsume: costType === 'energy' ? costAmount : 0,
+    costType,
+    costAmount,
+    resourceId,
     actionTime: fallbackMove.actionTime ?? 0,
     decibelRecovery,
     energyCostRaw,

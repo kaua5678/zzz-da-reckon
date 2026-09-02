@@ -20,7 +20,13 @@ calcTeamResources()              资源池主循环（core/resource.ts calcTeamR
   │    │    └─ module.estimateExSpecialTime   强特链占用的必做前台时间（每轮调用）
   │    └─ 测执行行前台时间：excess = Σ执行行 totalTime − 战斗时间，只折正 excess 进 necessaryTime（压缩平A池）重收敛
   ├─ buildExecutions()           招式执行计划（从收敛后的 state 生成）
-  │    ├─ 通用动作（平A汇总/强特/终结/连携/闪反/弹刀/支援突击）
+  │    ├─ 通用动作（平A汇总/强特/终结/连携/闪反/弹刀/支援突击）；
+  │    │    强特成本类型化（2026-09，src/core/resource.ts findExSpecial）：energyCost 键含
+  │    │    energy 才算能量；替代资源键（如克拉蕾 "Sharpness Cost"＝锐能）→ costType=resource，
+  │    │    不扣能量、次数由模块资源账本给出（cfg.exSpecialResourcePaidCount 钩子/模块自发行行）；
+  │    │    无键 → free（免费强特）
+  │    ├─ 额外强特行（extraExPlans，注册表 src/data/exSpecialPlans.ts）：免费/窗口门控的
+  │    │    次要强特（千夏特别拍照技巧 40s/次），行值经 moveFusions 融合，喧响同口径进轨
   │    ├─ module.buildExecutions 模块专属动作（EX 链/附伤）
   │    └─ module.patchExecutions 对最终执行列表修正（moveId 级增伤/暴伤）
   └─ module.buildResourceResult  专属资源结果（specResources/billyChain 等）

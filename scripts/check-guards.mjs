@@ -195,6 +195,9 @@ export const DEBT_REGISTRY = {
   'scripts/import-nanoka-bosses.mjs:x弹刀时间语义': {
     since: '2026-08-28', due: '基塔布鲁弹刀时间语义明确后建模（当前仅 1 Boss 1 次，影响面小）',
   },
+  'src/mechanics/agents/claret.ts:锐能强特喧响不进池': {
+    since: '2026-09-02', due: '模块锐能账本次数经 threads 通道回传 iterate 后，补计 65.56/发的强特喧响（影响 ≈260 喧响/局）',
+  },
 }
 
 /**

@@ -45,6 +45,7 @@ import { fmt } from '@/utils/format'
 import { getRowFusionMultiplier } from '@/logicEditor/fusion'
 import { moveFusionByMoveId } from '@/data/moveFusions'
 import { SUSTAINED_EX_SPECS, sustainedDamageScale } from '@/data/sustainedEx'
+import { EXTRA_EX_PLANS } from '@/data/exSpecialPlans'
 
 /** 判断字符串是否为百分比型属性（决定 applyStat 用 pct 还是 flat） */
 
@@ -1479,6 +1480,9 @@ export function buildCharConfig(
     remielleRadiantTurnDazeBonusPct: remielleDazeBonusPct,
     exSpecialMoveId: exSpecial?.moveId ?? '',
     exSpecialEnergyConsume: exSpecial?.energyConsume ?? 0,
+    exSpecialCostType: exSpecial?.costType ?? (exSpecial?.energyConsume ? 'energy' : 'free'),
+    exSpecialCostAmount: exSpecial?.costAmount ?? 0,
+    exSpecialResourceId: exSpecial?.resourceId,
     exSpecialActionTime: exSpecial?.actionTime ?? 0,
     exSpecialDecibelRecovery: exSpecial?.decibelRecovery ?? 0,
     exSpecialComboAlignRatio: ov(exSpecial?.moveId ?? '', exSpecial?.comboAlignRatio ?? 0),
@@ -1583,6 +1587,25 @@ export function buildCharConfig(
       },
       finisher,
     }
+  }
+
+  // 额外强特计划（免费/窗口门控的次要强特，2026-09 用户裁决「引擎别太窄」）：
+  // 注册表 src/data/exSpecialPlans.ts；模块已接管强特（skipGenericExSpecial）时不叠加。
+  // 预存执行行数据（actionTime/喧响），次数由 core buildExecutions 按窗口与主强特次数发行。
+  const extraPlans = EXTRA_EX_PLANS[agent.id]
+  if (extraPlans && !cfg.skipGenericExSpecial) {
+    cfg.extraExPlans = extraPlans.map((e) => {
+      const move = findMoveById(skills as AgentSkills, e.moveId)
+      return {
+        moveId: e.moveId,
+        label: e.label,
+        count: e.count,
+        energyCost: e.energyCost ?? 0,
+        actionTime: move?.actionTime ?? 0,
+        decibelRecovery: getRowValue(move, 'decibel_recovery'),
+        note: e.note,
+      }
+    })
   }
 
   return cfg

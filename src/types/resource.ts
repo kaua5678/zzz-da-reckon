@@ -246,6 +246,8 @@ export interface ClaretSharpResourceSource {
   personalResourceDamageBonusPct: number
   /** 锐能获取 = 个人资源 + 二命毁伤额外 0.25/次 */
   sharpnessGain: number
+  /** 锐能可负担的秘血铸锋次数 = floor(锐能 / 60)（2026-09 成本类型化：不再与能量派生次数取 min） */
+  affordableExCount: number
   /** 锐能消耗（秘血铸锋 60/次，按强特次数折算） */
   sharpnessSpend: number
   sharpnessRemaining: number
@@ -588,6 +590,11 @@ export interface AnomalyEventExecution {
     /** 掌控超过阈值后，每点额外 +的暴击率（%） */
     masteryPerPointRatePct?: number
   }
+  /**
+   * 极性紊乱倍率（eventType='polar_disorder'）：本次极性紊乱 = 原本[紊乱]效果 × 该倍率。
+   * 缺省 0.25（南宫羽口径）；月城柳 = 0.15（C0）/ 0.20（C2，每额外突刺 +0.15，上限 2 次）。
+   */
+  polarDisorderRatio?: number
   /**
    * 次数全部发生在失衡窗口内（轴模式标记，如南宫羽颤音异放=进窗清除结算、次数=失衡数×覆盖）。
    * 结算区据此把全部次数记为「失衡内」（全额失衡易伤），不做轴内/轴外拆分；
@@ -1131,6 +1138,35 @@ export interface ResourceUtilizationRule {
 }
 
 /** 单个角色的操作配置 */
+/**
+ * 强特成本类型（findExSpecial 2026-09 按键语义分类，替代原「一切非空键都当能量」的窄口径）：
+ * - energy：能量/闪能键（键名含 energy）→ 按能量预算计费
+ * - resource：替代资源（如克拉蕾 "Sharpness Cost"（锐能））→ 引擎不扣能量，次数由模块资源账本给出
+ * - free：无成本键 → 免能（如千夏特别拍照技巧）
+ */
+export type ExSpecialCostType = 'energy' | 'resource' | 'free'
+
+/** 额外强特行（buildCharConfig 预存、buildExecutions 发行；注册表 src/data/exSpecialPlans.ts） */
+export interface ExtraExPlanRow {
+  moveId: string
+  label: string
+  count: {
+    /** 每 N 秒窗口 1 次（×maxPerWindow 封顶） */
+    windowSeconds: number
+    /** 每窗口次数上限（默认 1） */
+    maxPerWindow?: number
+    /** 不超过主强特次数（千夏：每次强特授予 40s [天使协律]，每次进入限 1 次拍照） */
+    capByExCount?: boolean
+  }
+  /** 每发能量成本（0 = 免费/替代资源强特，由模块账本记） */
+  energyCost: number
+  /** 单次动作时长（秒） */
+  actionTime: number
+  /** 单次喧响回复（倍率表行） */
+  decibelRecovery: number
+  note: string
+}
+
 export interface CharacterOperationConfig {
   /** 槽位 */
   slot: number
@@ -1170,6 +1206,16 @@ export interface CharacterOperationConfig {
    *  由机制模块经 applyTeamConfig converge 写入；resolveExSpecialCount 在付费次数外累加，
    *  通用执行行只对付费部分扣能量 */
   freeExSpecialCount?: number
+  /** 强特成本类型（catalog energyCost 键语义分类；见 ExSpecialCostType 注释） */
+  exSpecialCostType?: ExSpecialCostType
+  /** 强特成本数值（energy 型 = 每发能量；resource 型 = 每发资源点；free 型 = 0） */
+  exSpecialCostAmount?: number
+  /** 替代资源标识（如 'sharpness'；energy/free 型为空） */
+  exSpecialResourceId?: string
+  /** 替代资源型强特的应付次数：模块资源账本本轮 assembly 写入、下一轮 resolveExSpecialCount 读（不动点收敛，同般岳套路） */
+  exSpecialResourcePaidCount?: number
+  /** 额外强特行（免费/窗口门控的次要强特），注册表 src/data/exSpecialPlans.ts 预存于 buildCharConfig */
+  extraExPlans?: ExtraExPlanRow[]
   /** 失衡内异常系统 v2：上一轮时间线统计的每窗轴内异常触发次数（南宫羽颤音自动层数用） */
   inStunWindowTriggers?: number
   exSpecialEnergyConsume: number
@@ -1315,6 +1361,10 @@ export interface CharacterOperationConfig {
   claretBloodBurialMoveId?: string
   /** 克拉蕾葬血强袭的毁伤伤害倍率 move id */
   claretMaimBurialMoveId?: string
+  /** 克拉蕾秘血铸锋（锐能强特）单次动作时长（秒，倍率表） */
+  claretExActionTime?: number
+  /** 克拉蕾秘血铸锋（锐能强特）单次喧响回复（倍率表行） */
+  claretExDecibelRecovery?: number
   /** 克拉蕾葬血强袭基础伤害倍率（倍率表 1611014 damage 行） */
   claretBloodBurialDamageMultiplier?: number
   /** 克拉蕾葬血强袭的毁伤伤害倍率基础值（倍率表 1611015 damage 行） */

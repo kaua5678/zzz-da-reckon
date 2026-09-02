@@ -19,6 +19,7 @@ import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueCycleFromCfg, readAxisExCounts } from '@/mechanics/agents/banyue'
 import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
+import { resolveExtraExCount } from '@/data/exSpecialPlans'
 
 // ============ 单角色能量计算 ============
 
@@ -400,13 +401,21 @@ export function calcRawDecibelParts(
   // 招式回复：平A、强特、终结技数据行、连携、闪避反击、弹刀/支援突击。
   const basicDecibel = state.basicAttackTime * cfg.basicAttackDecibelPerSec
   const exSpecialDecibel = exSpecialCount * cfg.exSpecialDecibelRecovery
+  // 额外强特行（窗口门控的免费强特，2026-09）：与主强特同口径进喧响轨道（次数=窗口 × 单次喧响回复）。
+  const extraExDecibel = (cfg.extraExPlans ?? []).reduce((sum, plan) => {
+    const c = resolveExtraExCount(plan, {
+      battleSeconds: Math.max(0, cfg.battleTime ?? 0),
+      exCount: Math.max(0, Math.floor(state.exSpecialCount ?? 0)),
+    })
+    return sum + c * plan.decibelRecovery
+  }, 0)
   const ultimateDecibel = ultimateCount * cfg.ultimateDecibelRecovery
   const chainDecibel = chainCountTotal * cfg.chainDecibelRecovery
   const dodgeCounterDecibel = cfg.dodgeCounterCount * cfg.dodgeCounterDecibelRecovery
   const defensiveAssistDecibel = ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistDecibelRecovery
   const assistFollowUpDecibel = cfg.parryCount * cfg.assistFollowUpDecibelRecovery
   const remielleRainbowEndDecibel = remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndDecibelRecovery
-  const skillRegen = basicDecibel + exSpecialDecibel + ultimateDecibel + chainDecibel
+  const skillRegen = basicDecibel + exSpecialDecibel + extraExDecibel + ultimateDecibel + chainDecibel
     + dodgeCounterDecibel + defensiveAssistDecibel + assistFollowUpDecibel + remielleRainbowEndDecibel
 
   // 奖励回复：池内效果（时光切片）。弹刀/闪反/连携/快支的固定奖励与异常奖励由外部按槽位注入
@@ -705,6 +714,34 @@ export function buildExecutions(
     for (const f of sustainedEx.finisher) pushSeg(f.moveId, f.actionTime)
   }
 
+  // 额外强特行（免费/窗口门控，2026-09 用户裁决「引擎别太窄」）：注册表 src/data/exSpecialPlans.ts，
+  // buildCharConfig 预存进 cfg.extraExPlans；行值由 enrichExecutionPlan 按 moveId 回填
+  // （多段动作经 moveFusions 融合），能量成本 0（免费/替代资源由模块账本记）。
+  for (const plan of cfg.extraExPlans ?? []) {
+    const count = resolveExtraExCount(plan, {
+      battleSeconds: Math.max(0, cfg.battleTime ?? 0),
+      exCount: Math.max(0, Math.floor(state.exSpecialCount ?? 0)),
+    })
+    if (count <= 0) continue
+    executions.push({
+      moveId: plan.moveId,
+      moveName: plan.label,
+      category: 'special',
+      count,
+      actionTime: plan.actionTime,
+      comboAlignRatio: 0,
+      totalTime: count * plan.actionTime,
+      totalComboAlignTime: 0,
+      energyConsume: plan.energyCost,
+      totalEnergyConsume: count * plan.energyCost,
+      decibelRecovery: plan.decibelRecovery,
+      totalDecibelRecovery: count * plan.decibelRecovery,
+      energyRecovery: 0,
+      totalEnergyRecovery: 0,
+      timeBucket: 'necessary',
+    })
+  }
+
   // 蕾米后台飞行状态：每5秒自动释放一次 Radiant Turn；合轴100%，不占前台时间。
   // 后台时间含无敌秒（先扣）；CD 被蕾米本人前台时间插进循环造成相位延后 → 等效使用 CD（core/effectiveTime.ts）；
   // 前台块长 = 前台时间 / 切上次数（切上前台频率 × 非平A前台动作次数；蕾米暂无滑块声明，频率缺省 1，
@@ -862,6 +899,12 @@ export function buildAnomalyEventExecutions(cfg: CharacterOperationConfig, state
  * 剩下闪能打非失衡强特（每次 50 闪能，回 15，净耗 35 由 refund 循环收敛）。
  */
 function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy: number): number {
+  // 替代资源型强特（如克拉蕾锐能 60/发）：次数由模块资源账本给出（不动点，上一轮写入），
+  // 不由能量预算推导、不扣能量——2026-09 成本类型化（findExSpecial costType=resource）。
+  if (cfg.exSpecialCostType === 'resource') {
+    return Math.max(0, Math.floor(cfg.exSpecialResourcePaidCount ?? 0))
+      + Math.max(0, Math.floor(cfg.freeExSpecialCount ?? 0))
+  }
   if (cfg.exSpecialEnergyConsume <= 0) return 0
   if (cfg.agentId === '1471') {
     // 般岳：强特总次数由嗔火/怒相循环决定（怒相内山威免费 + 怒相外付费连段 + 地动滑块 + 轴内捏的普通强特），
