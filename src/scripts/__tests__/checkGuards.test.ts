@@ -91,7 +91,7 @@ describe('matchDebtRegistry（注册表匹配：文件相同 + 关键词包含�
     // 条数由注册表大小推导（不写字面量：登记一条新债不该让这条测试变红——
     // 2026-08-31 写死 3 时就被 gachaCost 的新登记撞红过一次）
     const { unregistered, cleared } = matchDebtRegistry([
-      { file: 'src/composables/pullPlannerEngine.ts', text: '赠送卡窗口期自动获得，v1 不入购买清单' },
+      { file: 'src/mechanics/agents/claret.ts', text: '锐能强特喧响不进池——需 threads 通道回传' },
       { file: 'src/other.ts', text: '全新未登记的债' },
     ])
     expect(unregistered.map(m => m.file)).toEqual(['src/other.ts'])

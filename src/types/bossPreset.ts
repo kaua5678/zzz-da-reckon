@@ -64,6 +64,10 @@ export interface BossPresetDefaults {
   /** 不带支援突击的弹刀总次数（boss 机制强制下限，只有轻弹刀倍率行 + 喧响 215、无支援突击行；
    *  全部归击破位，非用户可调。缺省 0 = 无该类型弹刀）。 */
   parryNoFollowUpTotal?: number
+  /** x弹刀总次数（两人同时招架同一攻击，如基塔布鲁 1 次；用户口径 2026-09-02）：
+   *  支援突击/喧响都算两人的（双方 parryCount 各 +x），前台时间只计一份
+   *  （非主弹窗位 x 行时间豁免 cfg.parryTimeFreeCount）。缺省 0 = 无。 */
+  xParryTotal?: number
   /** 只给喧响的弹刀总次数（boss 机制强制，如 亵渎者 4 次小怪弹刀：轻弹刀打小怪、无 daze 无支援突击，
    *  只有喧响 215 奖励；全部归击破位，非用户可调。缺省 0 = 无该类型弹刀）。 */
   parryDecibelOnlyTotal?: number

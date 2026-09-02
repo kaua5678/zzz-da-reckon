@@ -266,6 +266,29 @@ export function applyTeamMechanics(params: {
   const stunCount = params.stunCount ?? 0
   const teamEnergyConsumed = params.teamEnergyConsumed ?? 0
 
+  // 各槽位「异常积储主元素」（2026-09-02）：优先模块声明（雅模块把积蓄归并为 frostfire；
+  // 见 AgentMechanicModule.anomalyBuildupElement），否则按倍率表 anomaly_buildup 之和最大的
+  // move.damageElement。供跨角色转积蓄机制（柚叶十人十色）定位目标——agent.damageElement
+  // 常与招式级元素不一致（星见雅 agent=ice / 招式=烈霜），此前用 agent 级元素导致转进错池。
+  const anomalyBuildupElementBySlot: Record<number, string | undefined> = {}
+  for (const cfg of characters) {
+    const declared = getAgentMechanic(cfg.agentId)?.anomalyBuildupElement
+    if (declared) { anomalyBuildupElementBySlot[cfg.slot] = declared; continue }
+    const skills = catalogStore.getAgentSkills(cfg.agentId)
+    const sums = new Map<string, number>()
+    for (const cat of skills?.categories ?? []) {
+      for (const mv of cat.moves) {
+        const bu = mv.rows?.find(r => r.id === 'anomaly_buildup')?.values[0]
+        const el = mv.damageElement ?? ''
+        if (bu && bu > 0 && el) sums.set(el, (sums.get(el) ?? 0) + bu)
+      }
+    }
+    let best: string | undefined
+    let bestSum = 0
+    for (const [el, s] of sums) if (s > bestSum) { bestSum = s; best = el }
+    anomalyBuildupElementBySlot[cfg.slot] = best
+  }
+
   for (const cfg of [...characters].sort((a, b) => a.slot - b.slot)) {
     const hook = getAgentMechanic(cfg.agentId)?.applyTeamConfig
     if (!hook) continue
@@ -277,6 +300,7 @@ export function applyTeamMechanics(params: {
       characters,
       team,
       settings,
+      anomalyBuildupElementBySlot,
       phase,
       combatTime,
       exCounts,

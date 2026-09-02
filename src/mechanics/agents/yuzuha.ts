@@ -89,12 +89,18 @@ function buildYuzuhaCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void
   cfg.supportUltimateEnergyRegen = YUZUHA_ULT_TEAM_ENERGY
 }
 
-/** 队伍级联动：定位异常专精队友 → 十人十色转积蓄目标元素写入自身 cfg（buildExecutions 读） */
-function buildYuzuhaTeamConfig({ slot, characters, team }: AgentTeamConfigInput): void {
+/** 队伍级联动：定位异常专精队友 → 十人十色转积蓄目标元素写入自身 cfg（buildExecutions 读）。
+ * 元素取「队友招式的异常积储主元素」（anomalyBuildupElementBySlot，派发器按倍率表
+ * anomaly_buildup 之和最大的 move.damageElement 预计算），回退 agent.damageElement——
+ * agent 级元素可能与招式级不一致（星见雅 agent=ice 但招式=frostfire），此前用 agent 级
+ * 导致转积蓄打进元素名不匹配的空池（2026-09-02 修复，探针实证）。 */
+function buildYuzuhaTeamConfig({ slot, characters, team, anomalyBuildupElementBySlot }: AgentTeamConfigInput): void {
   const mine = characters.find(c => c.slot === slot)
   if (!mine) return
   const target = team.find(m => m.slot !== slot && m.agent?.specialty === 'anomaly')
-  mine.yuzuhaTransferElement = target?.agent?.damageElement
+  const targetSlot = target?.slot ?? -1
+  mine.yuzuhaTransferElement = anomalyBuildupElementBySlot?.[targetSlot]
+    ?? target?.agent?.damageElement
 }
 
 function yuzuhaSourceFromCfg(cfg: AgentResourceInput['cfg']): YuzuhaMechanicSource {
@@ -201,7 +207,7 @@ function buildYuzuhaResourceSections({ result }: AgentResourceSectionsInput) {
           detail: '积蓄计入异常队友元素池（行级 element 覆盖）；积蓄不参与柚叶伤害结算（异常伤害由池主施加者面板结算）',
         },
       ],
-      footer: 'debt: 转积蓄贡献挂柚叶槽位，若其积蓄在目标元素池占比最大会成为施加者（与游戏「不参与结算」有出入）；实际异常角色积蓄远大于支援柚叶，按可接受近似。',
+      footer: '十人十色转积蓄：积蓄进异常队友的元素池（2026-09-02 修复目标元素取招式级积储主元素，此前按 agent.damageElement 转进元素名不匹配的空池）；施加者判定按池内占比，柚叶单发 17.6 积蓄 vs 异常角色数百/发，占比恒小不成为施加者（条件已证伪，销债）。',
     },
   ]
 }

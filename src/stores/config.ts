@@ -994,7 +994,7 @@ function parseCinemaRequirement(sourceLabel: string): number {
   }
 
   /** 当前应用的 Boss 预设（仅内存态，用于 UI 高亮 + 计算器弹刀反推/喧响赠礼；不随 enemy 持久化） */
-  const appliedBoss = ref<{ presetId: string; phaseId: string; at: number; parryTotal?: number; parryNoFollowUpTotal?: number; parryDecibelOnlyTotal?: number; decibelGift?: { slot: number; amount: number } } | null>(null)
+  const appliedBoss = ref<{ presetId: string; phaseId: string; at: number; parryTotal?: number; parryNoFollowUpTotal?: number; parryDecibelOnlyTotal?: number; xParryTotal?: number; decibelGift?: { slot: number; amount: number } } | null>(null)
 
   /**
    * 一键应用 Boss 预设：填充血量/失衡值/防御/等级/危局异常系数/失衡易伤/失衡时间 + 三张抗性表
@@ -1025,6 +1025,7 @@ function parseCinemaRequirement(sourceLabel: string): number {
     parryTotal?: number
     parryNoFollowUpTotal?: number
     parryDecibelOnlyTotal?: number
+    xParryTotal?: number
     stunGiftRatio?: number
     decibelGift?: { slot: number; amount: number }
   }) {
@@ -1054,6 +1055,7 @@ function parseCinemaRequirement(sourceLabel: string): number {
       parryTotal: defaults.parryTotal,
       parryNoFollowUpTotal: defaults.parryNoFollowUpTotal,
       parryDecibelOnlyTotal: defaults.parryDecibelOnlyTotal,
+      xParryTotal: defaults.xParryTotal,
       decibelGift: defaults.decibelGift,
     }
   }

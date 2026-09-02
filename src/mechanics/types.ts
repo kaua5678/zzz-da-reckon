@@ -96,6 +96,10 @@ export interface AgentTeamConfigInput {
   team: MechanicTeamMember[]
   /** 已解析的机制滑块值（与 AgentPanelInput.settings 同源） */
   settings: Readonly<Record<string, number>>
+  /** 各槽位的「异常积储主元素」（该角色倍率表 anomaly_buildup 之和最大的 move.damageElement；
+   *  派发器预计算，供跨角色转积蓄类机制定位目标元素——agent.damageElement 可能与招式元素不一致，
+   *  如星见雅 agent=ice 而招式=frostfire） */
+  anomalyBuildupElementBySlot?: Record<number, string | undefined>
   phase: AgentTeamPhase
   /** 战斗时间（秒） */
   combatTime: number
@@ -228,6 +232,10 @@ export interface AgentMechanicModule {
   transformSkillExecutions?(input: AgentSkillTransformInput): void
   /** 直伤行元素/来源解析，返回 null 时走通用规则 */
   resolveExecutionDamage?(input: AgentDamageResolutionInput): { element: string; source?: string; note?: string } | null
+  /** 异常积储主元素（模块把招式积蓄归并为独立元素时声明，如星见雅 frostfire）；
+   *  供跨角色转积蓄机制（柚叶十人十色）定位目标——缺省时派发器按倍率表 anomaly_buildup
+   *  之和最大的 move.damageElement 兜底；agent.damageElement 可能与二者不一致（雅 agent=ice）。 */
+  anomalyBuildupElement?: string
   /** 异放/乱流释放类伤害的减抗/减防修正（异放限定，不作用于普通直伤） */
   releaseModifier?(input: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string }
   /** 生成资源池卡片上的通用专属资源展示段 */

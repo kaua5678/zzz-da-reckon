@@ -205,8 +205,9 @@ const catalogById = new Map(catalog.bosses.map(b => [b.id, b]))
  *   见 src/core/parrySplit.ts + useResourceCalc 反推线程；应用 Boss 时自动勾选「保底4失衡」）。
  *   口径：只记「正常弹刀」（轻弹刀 + 支援突击 + 喧响 215）；「不带支援突击的弹刀」
  *   （只有轻弹刀倍率行 + 喧响 215、无支援突击行）用 parryNoFollowUpTotal 单独记、
- *   全部归击破位（非用户可调）；「x弹刀」（两人同时弹、一人不耗时间）暂按 1 次正常弹刀计，
- *   时间折扣未建模（debt: x弹刀时间语义，仅基塔布鲁 1 次）。
+ *   全部归击破位（非用户可调）；「x弹刀」（两人同时招架同一攻击，基塔布鲁 1 次）——
+ *   xParryTotal 单独记：支援突击/喧响都算两人的（双方 parryCount 各 +x），前台时间只计
+ *   一份（非主弹窗位的 x 行时间豁免，cfg.parryTimeFreeCount），2026-09-02 用户口径。
  * - decibelGift：喧响赠礼（boss 机制赠送，叠加在角色进场喧响 initialDecibelGift 之上）。
  * 快支不在此列：快支是角色侧与 Boss 无关。
  */
@@ -223,8 +224,8 @@ const BOSS_DEFAULTS = {
   '40002': { battleTime: 180, shieldCount: 0, energyShield: 1, invincibleTime: 7, parryNoFollowUpTotal: 6 }, // 猎血清道夫（无敌 7s / 能量盾 1 / 无突击弹刀 3+3）
   '40003': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 7, parryNoFollowUpTotal: 6 }, // 复写体·猎血清道夫（困难；无敌 7s / 无能量盾 / 无突击弹刀 6）
   '40005': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 8, parryTotal: 2, parryNoFollowUpTotal: 4 }, // 焚昼余火·法厄同（无敌 4+4=8s 待确认 / 正常弹刀 2 / 无突击弹刀 4）
-  '40006': { battleTime: 180, shieldCount: 0, energyShield: 1, parryTotal: 1, parryNoFollowUpTotal: 2 }, // 基塔布鲁（能量盾 1 / 无突击弹刀 2 / x弹刀=1 次正常弹刀，时间折扣未建模）
-  '40008': { battleTime: 180, shieldCount: 0, energyShield: 2, parryTotal: 1, parryNoFollowUpTotal: 2 }, // 基塔布鲁·滞变畸兽（能量盾 2 / 正常弹刀 1 / 无突击弹刀 2）
+  '40006': { battleTime: 180, shieldCount: 0, energyShield: 1, parryTotal: 1, parryNoFollowUpTotal: 2, xParryTotal: 1 }, // 基塔布鲁（能量盾 1 / 无突击弹刀 2 / x弹刀 1：两人同时招架——支援突击/喧响算两人的、前台时间只计一份，2026-09-02 用户口径）
+  '40008': { battleTime: 180, shieldCount: 0, energyShield: 2, parryTotal: 1, parryNoFollowUpTotal: 2 }, // 基塔布鲁·滞变畸兽（能量盾 2 / 正常弹刀 1 / 无突击弹刀 2；x弹刀同族待核）
   '300121': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 24 },      // 恶名·冥宁芙（无敌 24s）
 }
 function bossDefaults(monsterId) {

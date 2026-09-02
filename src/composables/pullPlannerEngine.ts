@@ -300,7 +300,7 @@ export function buildPlannerCards(
     if (!date) continue
     if (STANDARD_S_AGENT_IDS.has(agentId)) continue // 常驻 S 非抽卡对象（免费）
     if (agentId === '1421') continue // 潘引壶 A 级特例（免费）
-    if (agentId === '1551') continue // 佩洛伊斯赠送（免费）——debt: 赠送卡窗口期自动获得，v1 不入购买清单
+    if (agentId === '1551') continue // 佩洛伊斯 3.0 上半赠送 S 级——永久免费（用户口径 2026-09-02：赠送即永续持有，不受窗口期限制，不进购买清单；freeMemberPool 已含她）
     let initialTier = 0
     if (preset === 'custom') initialTier = customHoldings[agentId] ?? 0
     out.push({ agentId, windowStart: date, ...(initialTier ? { initialTier: initialTier as never } : {}) })

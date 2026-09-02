@@ -764,6 +764,18 @@ export function useResourceCalc() {
           merged.parryCount = prevSplit?.mainDpsParry ?? Math.max(0, parryTotal - (configStore.team[breakerSlot]?.parryCount ?? 0))
         }
       }
+      // x弹刀（2026-09-02 用户口径，仅基塔布鲁 1 次）：两人同时招架同一攻击——
+      // 支援突击/喧响/失衡都算两人的（双方 parryCount 各 +xParryTotal），
+      // 前台时间只计一份：非主弹窗位（主C 槽）的 x 次弹刀行时间豁免（cfg.parryTimeFreeCount）。
+      const xParryTotal = configStore.appliedBoss?.xParryTotal ?? 0
+      if (xParryTotal > 0 && parrySplitActive && breakerSlot >= 0) {
+        if (cfg.slot === breakerSlot) {
+          merged.parryCount = (merged.parryCount ?? 0) + xParryTotal
+        } else if (cfg.slot === mainDpsSlot && mainDpsSlot >= 0 && mainDpsSlot !== breakerSlot) {
+          merged.parryCount = (merged.parryCount ?? 0) + xParryTotal
+          merged.parryTimeFreeCount = (merged.parryTimeFreeCount ?? 0) + xParryTotal
+        }
+      }
       // 通用保底4喧响：注入槽位 0 的「只给喧响」弹刀补齐量（上一轮收敛值；首轮 0）。
       // 走 parryDecibelOnlyCount 而非 parryCount：只计 215 喧响、不产轻弹刀/支援突击行、不贡献失衡值——
       // 保底4失衡的弹刀（含失衡值）由上方 parrySplit 独立反推，二者职责分离，避免弹刀↔失衡池的反馈环振荡。

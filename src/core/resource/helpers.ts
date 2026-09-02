@@ -802,6 +802,9 @@ export function buildExecutions(
   const totalDefensiveAssist = (cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)
   if (totalDefensiveAssist > 0 && cfg.defensiveAssistActionTime > 0) {
     const car = cfg.defensiveAssistComboAlignRatio
+    // x弹刀时间豁免（2026-09-02 用户口径）：非主弹窗位这 N 次弹刀行不占前台时间（喧响/失衡照计）
+    const freeN = Math.min(totalDefensiveAssist, Math.max(0, Math.floor(cfg.parryTimeFreeCount ?? 0)))
+    const charged = Math.max(0, totalDefensiveAssist - freeN)
     executions.push({
       moveId: cfg.defensiveAssistMoveId,
       moveName: '轻弹刀（Defensive Assist #1）',
@@ -809,8 +812,8 @@ export function buildExecutions(
       count: totalDefensiveAssist,
       actionTime: cfg.defensiveAssistActionTime,
       comboAlignRatio: car,
-      totalTime: totalDefensiveAssist * cfg.defensiveAssistActionTime,
-      totalComboAlignTime: totalDefensiveAssist * cfg.defensiveAssistActionTime * car,
+      totalTime: charged * cfg.defensiveAssistActionTime,
+      totalComboAlignTime: charged * cfg.defensiveAssistActionTime * car,
       energyConsume: 0,
       totalEnergyConsume: 0,
       decibelRecovery: cfg.defensiveAssistDecibelRecovery,
@@ -824,6 +827,8 @@ export function buildExecutions(
   // 支援突击（Assist Follow-Up）：只随正常弹刀（不带支援突击弹刀无此段）
   if (cfg.parryCount > 0 && cfg.assistFollowUpActionTime > 0) {
     const car = cfg.assistFollowUpComboAlignRatio
+    const freeN = Math.min(cfg.parryCount, Math.max(0, Math.floor(cfg.parryTimeFreeCount ?? 0)))
+    const charged = Math.max(0, cfg.parryCount - freeN)
     executions.push({
       moveId: cfg.assistFollowUpMoveId,
       moveName: '支援突击（Assist Follow-Up）',
@@ -831,8 +836,8 @@ export function buildExecutions(
       count: cfg.parryCount,
       actionTime: cfg.assistFollowUpActionTime,
       comboAlignRatio: car,
-      totalTime: cfg.parryCount * cfg.assistFollowUpActionTime,
-      totalComboAlignTime: cfg.parryCount * cfg.assistFollowUpActionTime * car,
+      totalTime: charged * cfg.assistFollowUpActionTime,
+      totalComboAlignTime: charged * cfg.assistFollowUpActionTime * car,
       energyConsume: 0,
       totalEnergyConsume: 0,
       decibelRecovery: cfg.assistFollowUpDecibelRecovery,

@@ -1206,6 +1206,10 @@ export interface CharacterOperationConfig {
    *  由机制模块经 applyTeamConfig converge 写入；resolveExSpecialCount 在付费次数外累加，
    *  通用执行行只对付费部分扣能量 */
   freeExSpecialCount?: number
+  /** x弹刀时间豁免次数（用户口径 2026-09-02：两人同时招架同一攻击，前台时间只计一份）——
+   *  本槽位的这 N 次轻弹刀/支援突击行 totalTime 记 0（喧响/失衡/伤害照计），
+   *  由 useResourceCalc 按 boss defaults.xParryTotal 注入（非主弹窗位）。 */
+  parryTimeFreeCount?: number
   /** 强特成本类型（catalog energyCost 键语义分类；见 ExSpecialCostType 注释） */
   exSpecialCostType?: ExSpecialCostType
   /** 强特成本数值（energy 型 = 每发能量；resource 型 = 每发资源点；free 型 = 0） */

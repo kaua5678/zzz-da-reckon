@@ -186,15 +186,6 @@ export function scanSettingsCoverage(root = ROOT) {
  * 格式：'<file>:<标记关键词>' -> { since: '引入日期', due: '到期动作' }
  */
 export const DEBT_REGISTRY = {
-  'src/mechanics/agents/yuzuha.ts:转积蓄贡献挂柚叶槽位': {
-    since: '2026-08-25', due: '若支援位柚叶积蓄占比成为异常池施加者判定异常，改为「不参与结算」精确口径',
-  },
-  'src/composables/pullPlannerEngine.ts:赠送卡窗口期自动获得': {
-    since: '2026-08-29', due: '赠送卡窗口期（佩洛伊斯 1551）自动获得建模后，从免费名单移除',
-  },
-  'scripts/import-nanoka-bosses.mjs:x弹刀时间语义': {
-    since: '2026-08-28', due: '基塔布鲁弹刀时间语义明确后建模（当前仅 1 Boss 1 次，影响面小）',
-  },
   'src/mechanics/agents/claret.ts:锐能强特喧响不进池': {
     since: '2026-09-02', due: '模块锐能账本次数经 threads 通道回传 iterate 后，补计 65.56/发的强特喧响（影响 ≈260 喧响/局）',
   },

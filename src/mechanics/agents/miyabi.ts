@@ -389,6 +389,7 @@ export const miyabiMechanic: AgentMechanicModule = {
   applyPanel: applyMiyabiPanel,
   buildCharConfig: buildMiyabiCharConfig,
   buildExecutions: buildMiyabiExecutions,
+  anomalyBuildupElement: FROSTFIRE,
   replaceSkillExecutionExtraction: true,
   transformSkillExecutions: transformMiyabiSkillExecutions,
   resolveExecutionDamage: resolveMiyabiExecutionDamage,
