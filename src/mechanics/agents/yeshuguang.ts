@@ -62,7 +62,7 @@ export const YESHUGUANG_FULL_STUN_MOVES = new Set<string>([
   '1431034', '1431035',
 ])
 
-// @fact agent:1431/帷幕易伤 口径: 帷幕基于开帷幕时的失衡易伤倍率，玩家先把易伤buff上满再开 ⇒ 取「boss基础失衡易伤 + 全部失衡易伤加成」，再按影画封顶（C0-3 = 2.1 / C4+ = 3.0） | 据 用户@2026-09-01 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#veilStunMultiplier | 信 确认
+// @fact agent:1431/帷幕易伤 口径: 帷幕基于开帷幕时的失衡易伤倍率，玩家先把易伤buff上满再开 ⇒ 取「boss基础失衡易伤 + 全部失衡易伤加成」，再按影画封顶（C0-3 = 2.1 / C4+ = 3.0） | 据 用户@2026-09-01·复核@2026-09-02 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#veilStunMultiplier | 信 确认
 
 /**
  * 帷幕易伤的最终失衡倍率。
@@ -252,8 +252,8 @@ export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangC
   }
 }
 
-// @fact agent:1431/载物 未建模: 载物只是青溟剑势的溢出暂存，而总量计算器天然不做上限截断，溢出本就不丢 ⇒ 建模它没有任何数值意义，不补 | 据 用户@2026-09-01 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
-// @fact agent:1431/连接段 决: 明心境连接段（斩流光等）不建执行行——总量计算器按资源算招式而非按连段顺序，寻常手法打的是耗资源的高效率招式，剩余时间自然归非明心境的剑势/喧响积攒 | 据 用户@2026-09-01 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
+// @fact agent:1431/载物 未建模: 载物只是青溟剑势的溢出暂存，而总量计算器天然不做上限截断，溢出本就不丢 ⇒ 建模它没有任何数值意义，不补 | 据 用户@2026-09-01·复核@2026-09-02 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
+// @fact agent:1431/连接段 决: 明心境连接段（斩流光等）不建执行行——总量计算器按资源算招式而非按连段顺序，寻常手法打的是耗资源的高效率招式，剩余时间自然归非明心境的剑势/喧响积攒 | 据 用户@2026-09-01·复核@2026-09-02 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
 export function computeOutsideSwordGain(cfg: CharacterOperationConfig, state: {
   basicAttackTime?: number
   exSpecialCount?: number
