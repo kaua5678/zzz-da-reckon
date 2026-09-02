@@ -87,4 +87,23 @@ describe('简（1261）啮咬/狂热/强击暴击', () => {
     expect(p.assaultCritRate).toBeGreaterThan(20)
     expect(p.janeAssaultCritDmgBonus).toBe(30)
   })
+
+  it('萨霍夫跳进入执行计划：狂热 1 次，影画1 额外 +1 次', async () => {
+    const { config } = await setup()
+    config.team[0].cinemaLevel = 0
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    const c0 = calc.resourceResult.value!.characters.find(ch => ch.agentId === '1261')!
+    const jump0 = c0.executions.find(e => e.moveId === '1261007')
+    expect(jump0).toBeTruthy()
+    expect(jump0!.count).toBe(1)
+    expect(jump0!.damageMultiplier).toBeCloseTo(602.2 + 965 + 323, 3)
+
+    config.team[0].cinemaLevel = 1
+    await new Promise(r => setTimeout(r, 50))
+    const c1 = calc.resourceResult.value!.characters.find(ch => ch.agentId === '1261')!
+    const jump1 = c1.executions.find(e => e.moveId === '1261007')
+    expect(jump1).toBeTruthy()
+    expect(jump1!.count).toBe(2)
+  })
 })

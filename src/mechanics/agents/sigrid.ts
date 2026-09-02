@@ -126,6 +126,17 @@ function applySigridPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
 
 function buildSigridCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
   cfg.sigridCinemaLevel = cinemaLevel
+  // 强化特殊技：默认满覆盖巡空枪势（核心被动覆盖滑块缺省 1，出枪式命中即刷新≈常驻）→
+  // 用巡空枪势状态的「碎玉」(1591012, 2096.1%)，而非非巡空枪势的「乱琼」(1591011, 877.7%)。
+  // 乱琼仅在前摇未进巡空枪势的首个 E 出现，口径忽略。二者同属[出枪式]，机会/影画2穿透自然成立。
+  const suiYu = skills?.categories?.find(c => c.id === 'special')?.moves?.find(m => m.id === '1591012')
+  if (suiYu) {
+    cfg.exSpecialMoveId = '1591012'
+    if (suiYu.actionTime) cfg.exSpecialActionTime = suiYu.actionTime
+    const ecRaw = suiYu.energyCost?.['Energy Cost']
+    const ec = ecRaw ? parseFloat(ecRaw) : NaN
+    if (Number.isFinite(ec) && ec > 0) cfg.exSpecialEnergyConsume = ec
+  }
   // 敛枪式最后一击的附加伤害按「局内最终攻击力 × 百分比」进基础区（flatDamageBonus），
   // 此 panel 为 computePanel 的局内权威面板（已含额外能力+840 与影画1 攻击25%）。
   cfg.sigridAtk = Math.max(0, panel?.atk ?? 0)

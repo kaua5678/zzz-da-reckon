@@ -260,7 +260,7 @@
 
 - **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/yeshuguang.ts` + spec `1431.json`；测试 `src/mechanics/__tests__/yeshuguang.test.ts` 13 例）。含：白毛明心境两套资源（局外剑势/青溟剑势）、飞光全局线性（总观止/6×满档倍率）、轴模式 full/short 与喧响逐云→斩妄收尾、帷幕易伤、影画 2/4/6（影画2 飞光/斩妄 defIgnore+40）。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口。
 - **无需失衡轴**：白毛关键伤害满易伤；真失衡只送连携。帷幕易伤 min(boss, 2.1)，影画4 min(..., 3.0)。
-- **两套资源**：局外剑势（attack_data_0 + 定风波+1 + 帷幕×3 + C1 进场6；照影耗6）≠ 明心境青溟剑势（进入固定6）。观止基础2，C2 每耗1剑势+1。额外能力·溯影惊鸿（需支援/防护）：队友开帷幕 +3 局外剑势/次——自动按全队帷幕次数（`teamVeilCountTotal` 收敛注入：照 veilCount + 爱芮/叶瞬光大招 + 千夏强特；滑块 `yeshuguang.teamCurtainCount` >0 手动覆盖，2026-08-31）。
+- **两套资源**：局外剑势（attack_data_0 + 定风波+1 + 帷幕×3 + C1 进场6；照影耗6）≠ 明心境青溟剑势（进入固定6）。观止基础2，C2 每耗1剑势+1。额外能力·溯影惊鸿（需支援/防护）：队友开帷幕 +3 局外剑势/次——自动按全队帷幕次数（`teamVeilCountTotal` 收敛注入：照霜寒开帷幕 `computeZhaoVeilCount` + 爱芮/叶瞬光大招 + 千夏强特；汇总函数 `computeTeamVeilCountTotal`（`src/mechanics/teamVeil.ts`）经 CalcRoundThreads 收敛线程注入，2026-09 修复 postRound 写克隆不生效；滑块 `yeshuguang.teamCurtainCount` >0 手动覆盖）。
 - **飞光**：全局线性 `总观止/6 × 满档倍率行`（表值=耗6观止），不拆 hit。
 - **轴**：full 打满灭极×2+扶摇；short_pair/short_mie 少打灭极省时间，观止仍按耗剑势算。
 - **收尾**：喧响逐云→斩妄；照影/转大→归尘。C6 明灯愿 floor/3 改斩妄 + 每轮1500%附伤。
@@ -396,7 +396,7 @@
 - **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/nicole.ts` + `public/static/teammate-buffs.json` 1031 组拐力 + spec `1031.json`；测试 `src/mechanics/__tests__/nicole.test.ts` 5 例）。含：核心减防 40（满覆盖）、额外能力以太伤 +25 门控、影画1 EX 段伤害+16%/积蓄×1.16、影画2 开局能量 floor(t/15)×5、影画6 满层暴击+15。本次补状态行。
 - **核心**：能量场/强化子弹命中 → 防御 -40%（teammate-buffs，默认满覆盖）。
 - **额外能力**：同属性或同阵营 → 核心减益期间以太伤 +25%（helpers 门控）。
-- **影画1**：强特伤害/积蓄 +16%（`patchExecutions` EX 段）。
+- **影画1**：强特伤害/积蓄 +16%（`patchExecutions` EX 段）；蓄力延长能量场——每蓄力 0.1s → 能量场持续 +0.15s，能量场(1031106)倍率行等比放大 `scale=1+1.5×蓄力秒/能量场基准秒`（`nicole.ts` buildCharConfig 算、patchExecutions 套）。
 - **影画2**：减益触发回 5 能 / 15s → `floor(t/15)×5` 并入开局能量。
 - **影画6**：暴击 +1.5%×10 默认满层。
 - **模块**：`src/mechanics/agents/nicole.ts`。
@@ -552,7 +552,7 @@
 - **影画2**：攻击与异放无视 16% 防御计入面板 `enemyDefReduction`；妄想时刻内额外无视 8% 按覆盖率折算。
 - **影画4**：异放触发回 4 能量 +70 喧响（10秒一次），次数取 floor(t/10) CD 上限（异放次数≥floor(t/6)>floor(t/10)），并入 initialEnergyGift/initialDecibelGift。
 - **影画6**：进场喧响 +1200 计入 `initialDecibelGift`（180秒一次整局近似）；强化绝对音准/终结技以太伤害 +40% 按 moveId 加 dmgBonus（patchExecutions，妄想时刻不退出→强化绝对音准全覆盖）。
-- **额外能力**：击破/支援/同阵营/异常队友激活；侵蚀持续 +3 秒沿用 spec teamBuffs；帷幕生应援能量 4个/次 × 全队帷幕次数（含队友开的帷幕——照 veilCount/千夏强特/叶瞬光与爱芮大招，useResourceCalc 收敛注入 `teamVeilCountTotal`，2026-08-31 从「每大招120」改为按帷幕次数），驱动绝对音准#3 自动次数（应援能量/2 + 全场应援 floor(t/6)）。
+- **额外能力**：击破/支援/同阵营/异常队友激活；侵蚀持续 +3 秒沿用 spec teamBuffs；帷幕生应援能量 4个/次 × 全队帷幕次数（含队友开的帷幕——照霜寒开帷幕/千夏强特/叶瞬光与爱芮大招，`computeTeamVeilCountTotal`（`src/mechanics/teamVeil.ts`）经 CalcRoundThreads 收敛注入 `teamVeilCountTotal`，2026-08-31 从「每大招120」改为按帷幕次数、2026-09 修复注入不生效），驱动绝对音准#3 自动次数（应援能量/2 + 全场应援 floor(t/6)）。
 - **核心被动异放**（aire.ts buildAnomalyEvents）：绝对音准#3 命中异常目标触发，basis=异常掌控 perTen 27.5%/14.3%/35.7%/2.5%/3.6%/1.4%、失衡再+50%；基础者=主施加者面板、结算者=爱芮（dominant 同款）。**失衡轴内（2026-08 审计补接）**：异放随绝对音准#3（资源驱动特殊普攻）触发 → `followCarrierInStun: true`，轴内占比 = 载体 `1501007` 轴内单位/总次数；特殊普攻非 basic filler 兜底可打出（filler 只打点倍率）——玩家显式把绝对音准#3 捏进窗内才吃易伤，不捏=轴外（用户口径「计数轴内消耗了多少资源」）。生效测试 `inStunAttribution.test.ts`「爱芮绝对音准#3 轴内放置」。
 - **未建模**：影画6 全场应援逐层与应援能量转化（3层溢出转2应援能量，场上资源状态机），全场应援次数按 floor(t/6) 近似；妄想时刻不退出按「强化绝对音准全覆盖」近似。
 - **模块**：`src/mechanics/agents/aire.ts`（替代旧 `aireProficiencyMechanic`）。

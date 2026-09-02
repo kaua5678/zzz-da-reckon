@@ -133,6 +133,17 @@ describe('珂蕾妲完整计算链', () => {
     const koleda = calc.resourceResult.value!.characters.find(row => row.agentId === '1101')!
     expect(koleda.specResources?.koleda_cycle).toBeTruthy()
   })
+
+  it('强化普攻（熔炉升温）进入执行计划：一段+二段融合 = 1133.3%', async () => {
+    await setup('1121', 0)
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    const koleda = calc.resourceResult.value!.characters.find(row => row.agentId === '1101')!
+    const enh = koleda.executions.find(e => e.moveId === '1101005')
+    expect(enh).toBeTruthy()
+    expect(enh!.count).toBeGreaterThan(0)
+    expect(enh!.damageMultiplier).toBeCloseTo(322.5 + 810.8, 3)
+  })
 })
 
 describe('珂蕾妲滑块生效差分（防守卫冻结，SOP §3.5：改滑块→结果确实变）', () => {

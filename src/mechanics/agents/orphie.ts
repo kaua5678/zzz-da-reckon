@@ -21,8 +21,8 @@ import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBl
  *   patchExecutions moveId 级 resIgnore（引擎已有该通道，精确到 4 招）。
  * - 影画2：终结技后自身攻击+20%（45秒）→ 按满覆盖近似，panel.atk ×= 1.2
  *   （velina 先例：applyPanel 阶段对面板攻击乘百分比）。
- * - 影画4：终结技伤害+40%（skillDmgBonus__ultimate）；蓄热充能+40% 无 moveId 级
- *   增伤通道，未建模（spec pending）。
+ * - 影画4：终结技伤害+40%（skillDmgBonus__ultimate）；蓄热充能+40%
+ *   （patchExecutions moveId 级 dmgBonus，1301011）。
  * - 影画6：蓄热充能/终结技激光命中追加 250% 攻击力火伤（0.5秒至多1次）。
  *   口径 [已确认]：不按激光时长建独立行——蓄热充能/终结技招式本身带 additionalAttack
  *   tag，激光附加伤害按招式触发挂到对应行（moveId 限定，flatDamageBonus，希格莉德先例）。

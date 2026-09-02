@@ -114,4 +114,32 @@ describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
     const p = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(p.skillDmgBonus__exSpecial ?? 0).toBe(0)
   })
+
+  it('影画2 追加突刺进入执行计划（0命无、2命有，倍率=突刺 327.7%）', async () => {
+    const { setupHarness } = await import('@/test/harness')
+    const { useResourceCalc } = await import('@/composables/useResourceCalc')
+    await setupHarness([
+      { agentId: '1221', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ])
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    const y0 = calc.resourceResult.value!.characters.find(c => c.agentId === '1221')!
+    // 0命：只有融合主段（突刺+下砸=1083.9%），无追加突刺段（327.7%）
+    expect(y0.executions.filter(e => e.moveId === '1221022').length).toBe(1)
+
+    await setupHarness([
+      { agentId: '1221', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ])
+    const calc2 = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    const y2 = calc2.resourceResult.value!.characters.find(c => c.agentId === '1221')!
+    const thrusts = y2.executions.filter(e => e.moveId === '1221022')
+    // 2命：融合主段(1083.9%) + 追加突刺段(327.7%)
+    expect(thrusts.length).toBe(2)
+    const extra = thrusts.find(e => (e.damageMultiplier ?? 0) < 400)
+    expect(extra).toBeTruthy()
+    expect(extra!.damageMultiplier).toBeCloseTo(327.7, 3)
+  })
 })

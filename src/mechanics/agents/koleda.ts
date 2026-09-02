@@ -2,8 +2,9 @@
  * 珂蕾妲（1101）—— 爆破锤失衡、熔炉升温与影画整局总量模型
  *
  * 原文来源：data/raw/nanoka_missing/full/1101.json，按核心被动 Lv.7。
- * - 核心被动爆破锤：强化特殊技（及消耗熔炉升温的强化普攻）失衡值+60%。普攻聚合行无法拆出
- *   强化普攻，故仅对强化特殊技行挂 stunBuildUpBonus+60，强化普攻部分如实留白。
+ * - 核心被动爆破锤：强化特殊技（及消耗熔炉升温的强化普攻）失衡值+60%。强化普攻伤害已由
+ *   buildExecutions 发射（融合组一段+二段 1101005+1101006），其失衡+60% 仍无法拆出（强化普攻行
+ *   与聚合平A行失衡不同源），仅对强化特殊技行挂 stunBuildUpBonus+60。
  * - 额外能力白祇管理学：同属性/同阵营/命破/锋御队友激活；目标失衡后连携技伤害+35%×2层，
  *   按覆盖率折算为连携行 dmgBonus。
  * - 影画1 锤击节奏：衔接特定普攻后快速发动特殊技/强化特殊技失衡值+15%，按覆盖率近似。
@@ -13,7 +14,7 @@
  *
  * 明确未建模：
  * - 影画2 动能回收：强化特殊技命中回60能量（45秒一次）无干净回能通道，未接入能量结算。
- * - 强化普攻（消耗熔炉升温）的失衡+60%与普攻聚合行无法拆分。
+ * - 强化普攻的失衡+60%（伤害已建模）；协同二段(1101007，有本替二段)与消耗层数额外火伤75%/150%。
  * - 熔炉升温/熔炉充能逐状态时序（仅保留资源展示口径）。
  * - 旧 koledaFurnaceMechanic 的无出处 +25% 增伤占位已随模块替换移除。
  */
@@ -110,6 +111,28 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
 
 function buildKoledaExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
+  // 强化普攻（消耗熔炉升温）：熔炉升温来源=强化特殊技/终结技，各一次；强化普攻=一段+二段（融合组）。
+  const enhancedBasicCount = whole(state.exSpecialCount) + whole(state.ultimateCount)
+  if (enhancedBasicCount > 0) {
+    executions.push({
+      moveId: '1101005',
+      moveName: '普通攻击：强化普攻（熔炉升温）',
+      category: 'basic',
+      element: 'fire',
+      count: enhancedBasicCount,
+      actionTime: 0,
+      comboAlignRatio: 0,
+      totalTime: 0,
+      totalComboAlignTime: 0,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      decibelRecovery: 0,
+      totalDecibelRecovery: 0,
+      energyRecovery: 0,
+      totalEnergyRecovery: 0,
+      timeBucket: 'basic',
+    })
+  }
   if (cycle.c6ExplosionCount <= 0) return
   executions.push({
     moveId: '1101_c6_saturation_explosion',

@@ -54,6 +54,32 @@ describe('妮可模块', () => {
     } as any)
     expect(cfg0.initialEnergyGift).toBe(40)
   })
+
+  it('影画1：蓄力延长能量场——倍率行等比放大（1.5×蓄力秒/能量场基准秒）', () => {
+    const skills = {
+      categories: [{
+        id: 'special',
+        moves: [
+          { id: '1031103', actionTime: 0.742, rows: [{ id: 'damage', values: [430.6] }] },
+          { id: '1031106', actionTime: 1.484, rows: [{ id: 'damage', values: [774.2] }, { id: 'daze', values: [300] }, { id: 'anomaly_buildup', values: [120] }] },
+        ],
+      }],
+    } as any
+    const cfg: any = { battleTime: 180, initialEnergyGift: 40 }
+    nicoleMechanic.buildCharConfig!({
+      slot: 1, agent: {} as any, skills, cinemaLevel: 1,
+      wEngineId: '', wEngineModLevel: 1, team: [], panel: {} as any, cfg, getRowValue: () => 0,
+    } as any)
+    const scale = 1 + 1.5 * 0.742 / 1.484 // ≈1.75
+    expect(cfg.nicoleC1EnergyFieldScale).toBeCloseTo(scale, 6)
+    expect(cfg.nicoleC1EnergyFieldDamage).toBeCloseTo(774.2 * scale, 4)
+
+    const executions: any[] = [{ moveId: '1031106', dmgBonus: 0, anomalyBuildUp: 120, count: 2, totalAnomalyBuildUp: 240, skillTableNote: '' }]
+    nicoleMechanic.patchExecutions!({ cfg, state: {} as any, executions } as any)
+    expect(executions[0].damageMultiplier).toBeCloseTo(774.2 * scale, 4)
+    expect(executions[0].damageMultiplierOverride).toBe(true)
+    expect(executions[0].anomalyBuildUp).toBeCloseTo(120 * scale * 1.16, 3) // 时长延长 + 积蓄+16%
+  })
 })
 
 describe('妮可面板', () => {

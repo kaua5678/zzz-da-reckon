@@ -645,6 +645,66 @@ export function buildExecutions(
   // 角色机制模块追加专属动作，如维琳娜风华/广域气旋。
   getAgentMechanic(cfg.agentId)?.buildExecutions?.({ cfg, state, executions, teamFrontlineSeconds })
 
+  // 通用「单次释放必打招 + 可持续招」强特（buildCharConfig 已 skipGenericExSpecial + 预存缩放倍率）。
+  const sustainedEx = (cfg as unknown as Record<string, unknown>).sustainedEx as
+    | {
+        opener: { moveId: string; actionTime: number }[]
+        sustain: { moveId: string; actionTime: number; damageMultiplier: number; dazeMultiplier: number; anomalyBuildUp: number }
+        finisher: { moveId: string; actionTime: number }[]
+      }
+    | undefined
+  if (sustainedEx) {
+    const count = Math.max(0, state.exSpecialCount)
+    const pushSeg = (moveId: string, actionTime: number) => {
+      if (count <= 0) return
+      executions.push({
+        moveId,
+        moveName: moveId,
+        category: 'special',
+        count,
+        actionTime,
+        comboAlignRatio: 0,
+        totalTime: count * actionTime,
+        totalComboAlignTime: 0,
+        energyConsume: 0,
+        totalEnergyConsume: 0,
+        decibelRecovery: 0,
+        totalDecibelRecovery: 0,
+        energyRecovery: 0,
+        totalEnergyRecovery: 0,
+        timeBucket: 'necessary',
+      })
+    }
+    for (const o of sustainedEx.opener) pushSeg(o.moveId, o.actionTime)
+    if (count > 0) {
+      const s = sustainedEx.sustain
+      executions.push({
+        moveId: s.moveId,
+        moveName: s.moveId,
+        category: 'special',
+        count,
+        actionTime: s.actionTime,
+        comboAlignRatio: 0,
+        totalTime: count * s.actionTime,
+        totalComboAlignTime: 0,
+        energyConsume: 0,
+        totalEnergyConsume: 0,
+        decibelRecovery: 0,
+        totalDecibelRecovery: 0,
+        energyRecovery: 0,
+        totalEnergyRecovery: 0,
+        damageMultiplier: s.damageMultiplier,
+        damageMultiplierOverride: true,
+        dazeMultiplier: s.dazeMultiplier,
+        dazeMultiplierOverride: true,
+        anomalyBuildUp: s.anomalyBuildUp,
+        anomalyBuildUpOverride: true,
+        timeBucket: 'necessary',
+      })
+    }
+    for (const f of sustainedEx.finisher) pushSeg(f.moveId, f.actionTime)
+  }
+
   // 蕾米后台飞行状态：每5秒自动释放一次 Radiant Turn；合轴100%，不占前台时间。
   // 后台时间含无敌秒（先扣）；CD 被蕾米本人前台时间插进循环造成相位延后 → 等效使用 CD（core/effectiveTime.ts）；
   // 前台块长 = 前台时间 / 切上次数（切上前台频率 × 非平A前台动作次数；蕾米暂无滑块声明，频率缺省 1，

@@ -1,4 +1,5 @@
-import type { AgentMechanicModule, AgentPanelInput } from '../types'
+import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput } from '../types'
+import type { AgentSkills, SkillMove } from '@/types/catalog'
 
 /**
  * 月城柳（1221，电·异常，对空洞特别行动部第六课）—— 核心被动/额外能力/影画面板区（薄模块）。
@@ -16,8 +17,8 @@ import type { AgentMechanicModule, AgentPanelInput } from '../types'
  * - 影画2 卓越适应性：强化特殊技快速突刺累积电属性异常积蓄值+20% → panel.electricAnomalyBuildUpEfficiency += 20。
  * - 影画6 非人之血：森罗万象状态期间强化特殊技伤害+20% → panel.skillDmgBonus__exSpecial += 20。
  *
- * 未建模（spec notes）：影画2 长按追加突刺耗能与[极性紊乱]倍率机制、影画6 极性紊乱上限4次/耗能减半、
- * [森罗万象]状态逐时序、[洞悉]受击无敌。
+ * 未建模（spec notes）：影画2 长按追加突刺耗能已补（本模块 buildExecutions，C2 额外一次突刺）；
+ * [极性紊乱]倍率机制、影画6 极性紊乱上限4次/耗能减半、[森罗万象]状态逐时序、[洞悉]受击无敌。
  */
 
 const YANAGI_AGENT_ID = '1221'
@@ -26,6 +27,63 @@ const YANAGI_CORE_ELECTRIC_DMG = 20
 const YANAGI_C1_PROFICIENCY = 80
 const YANAGI_C2_BUILDUP_BONUS = 20
 const YANAGI_C6_EX_SPECIAL_DMG = 20
+/** 强化特殊技·月华流转 突刺段（C2 长按追加突刺的载体 moveId） */
+const YANAGI_THRUST_MOVE_ID = '1221022'
+
+function findMove(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
+  if (!skills) return null
+  for (const cat of skills.categories) {
+    const m = cat.moves.find((x) => x.id === moveId)
+    if (m) return m
+  }
+  return null
+}
+
+function rowValue(move: SkillMove | null, rowId: string): number {
+  const row = move?.rows.find((r) => r.id === rowId)
+  return row?.values[0] ?? 0
+}
+
+function buildYanagiCharConfig({ cfg, cinemaLevel, skills }: AgentCharConfigInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  record.yanagiCinemaLevel = cinemaLevel ?? 0
+  const thrust = findMove(skills, YANAGI_THRUST_MOVE_ID)
+  record.yanagiThrustDamage = rowValue(thrust, 'damage')
+  record.yanagiThrustDaze = rowValue(thrust, 'daze')
+  record.yanagiThrustAnomaly = rowValue(thrust, 'anomaly_buildup')
+}
+
+/** 影画2：长按可额外消耗 10 能量再发动一次突刺（每次 EX 额外 1 段突刺，倍率与首段突刺一致） */
+function buildYanagiExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  const cinema = Math.max(0, Math.floor(Number(record.yanagiCinemaLevel ?? 0)))
+  if (cinema < 2) return
+  const count = Math.max(0, Math.floor(state.exSpecialCount))
+  if (count <= 0) return
+  executions.push({
+    moveId: YANAGI_THRUST_MOVE_ID,
+    moveName: '强化特殊技：月华流转·追加突刺（影画2）',
+    category: 'special',
+    count,
+    actionTime: 0,
+    comboAlignRatio: 0,
+    totalTime: 0,
+    totalComboAlignTime: 0,
+    energyConsume: 0,
+    totalEnergyConsume: 0,
+    decibelRecovery: 0,
+    totalDecibelRecovery: 0,
+    energyRecovery: 0,
+    totalEnergyRecovery: 0,
+    damageMultiplier: Number(record.yanagiThrustDamage ?? 0),
+    damageMultiplierOverride: true,
+    dazeMultiplier: Number(record.yanagiThrustDaze ?? 0),
+    dazeMultiplierOverride: true,
+    anomalyBuildUp: Number(record.yanagiThrustAnomaly ?? 0),
+    anomalyBuildUpOverride: true,
+    timeBucket: 'necessary',
+  })
+}
 
 function applyYanagiPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   if (!panel) return
@@ -55,6 +113,8 @@ export const yanagiMechanic: AgentMechanicModule = {
   id: 'agent:tsukishiro_yanagi',
   agentIds: [YANAGI_AGENT_ID],
   name: '月城柳',
-  description: '核心被动电伤+20%、额外能力电异常积蓄+45%、影画1异常精通+80、影画2突刺积蓄+20%、影画6强特+20%；紊乱倍率/识破穿透在 teammate-buffs 1221 组。',
+  description: '核心被动电伤+20%、额外能力电异常积蓄+45%、影画1异常精通+80、影画2突刺积蓄+20%+追加突刺、影画6强特+20%；紊乱倍率/识破穿透在 teammate-buffs 1221 组。',
   applyPanel: applyYanagiPanel,
+  buildCharConfig: buildYanagiCharConfig,
+  buildExecutions: buildYanagiExecutions,
 }

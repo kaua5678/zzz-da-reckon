@@ -273,6 +273,26 @@ describe('希格莉德全链：敛枪式三段行进入执行计划', () => {
     const frost = char.executions.find(e => e.moveId === '1591016')
     if (frost) expect(frost.penRatioBonus ?? 0).toBe(24)
   })
+
+  it('强特用巡空枪势状态的碎玉（1591012，2096.1%）而非非巡空枪势的乱琼（1591011）', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const config = useConfigStore()
+    config.team[0] = { slot: 0, agentId: '1591', cinemaLevel: 0, ...baseConfig } as any
+    config.team[1] = { slot: 1, agentId: '1211', cinemaLevel: 0, ...baseConfig } as any
+    config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+    config.syncTeammateBuffsFromTeam()
+    const { useResourceCalc } = await import('@/composables/useResourceCalc')
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1591')!
+    const ex = char.executions.find(e => e.moveId === '1591012')
+    expect(ex).toBeTruthy()
+    expect(ex!.damageMultiplier).toBeCloseTo(2096.1, 1)
+    // 乱琼不再作为主强特（它是未进巡空枪势的前摇形态）
+    expect(char.executions.some(e => e.moveId === '1591011')).toBe(false)
+  })
 })
 
 describe('希格莉德浸染增伤（读风化侵染覆盖率）', () => {

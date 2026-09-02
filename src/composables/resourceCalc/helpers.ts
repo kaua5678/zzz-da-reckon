@@ -43,6 +43,8 @@ import type { PanelValues, TeammateBuff, AgentSkills, SkillMove, Agent } from '@
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { fmt } from '@/utils/format'
 import { getRowFusionMultiplier } from '@/logicEditor/fusion'
+import { moveFusionByMoveId } from '@/data/moveFusions'
+import { SUSTAINED_EX_SPECS, sustainedDamageScale } from '@/data/sustainedEx'
 
 /** 判断字符串是否为百分比型属性（决定 applyStat 用 pct 还是 flat） */
 
@@ -759,6 +761,23 @@ export function getRowValue(move: SkillMove | null | undefined, rowId: string): 
   return (row?.values[0] ?? 0) * getRowFusionMultiplier(move.id, rowId)
 }
 
+/**
+ * 倍率融合（src/data/moveFusions.ts 单一事实源）：moveId 登记了融合组时，
+ * 该 row 值 = Σ 组内 term.moveId 的同行值 × term.count。
+ * 返回 null = 未登记（走原 getRowValue 单段值）；组内缺段时整组回退 null（保守，防半融合）。
+ */
+export function fusedRowValue(skills: AgentSkills | undefined, moveId: string, rowId: string): number | null {
+  const group = moveFusionByMoveId.get(moveId)
+  if (!group) return null
+  let sum = 0
+  for (const term of group.terms) {
+    const member = findMoveById(skills, term.moveId)
+    if (!member) return null
+    sum += getRowValue(member, rowId) * term.count
+  }
+  return sum
+}
+
 export const ELEMENT_DMG_KEYS: Record<string, string> = {
   physical: 'physicalDmg',
   fire: 'fireDmg',
@@ -1317,8 +1336,13 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
           if (move) {
             const specialResourceRecovery = getSpecialResourceRecovery(move)
             const healingAmount = getHealingAmount(move)
-            // exec.anomalyBuildUp 显式为 0 = 模块显式禁用异常积蓄（如莱卡恩围猎后台招式"仅伤害+失衡值"）
-            const bu = exec.anomalyBuildUp === 0 ? 0 : getRowValue(move, 'anomaly_buildup')
+            // exec.anomalyBuildUp 显式为 0 = 模块显式禁用异常积蓄（如莱卡恩围猎后台招式"仅伤害+失衡值"）；
+            // anomalyBuildUpOverride = 模块显式给定缩放后积蓄（持续段按时长等比），跳过回填。
+            const bu = exec.anomalyBuildUpOverride
+              ? (exec.anomalyBuildUp ?? 0)
+              : exec.anomalyBuildUp === 0
+                ? 0
+                : (fusedRowValue(skills, exec.moveId, 'anomaly_buildup') ?? getRowValue(move, 'anomaly_buildup'))
             // 同上：decibel/energy 显式 0 = 模块显式禁用回填（围猎后台闪反无喧响/能量）
             const tableDecibel = getRowValue(move, 'decibel_recovery')
             const decibelValue = exec.decibelRecovery === 0 ? 0 : (tableDecibel || exec.decibelRecovery)
@@ -1329,10 +1353,10 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
               moveName: move.name?.zhCN || move.name?.en || exec.moveName,
               damageMultiplier: exec.damageMultiplierOverride
                 ? exec.damageMultiplier
-                : getRowValue(move, 'damage'),
+                : (fusedRowValue(skills, exec.moveId, 'damage') ?? getRowValue(move, 'damage')),
               dazeMultiplier: exec.dazeMultiplierOverride
                 ? exec.dazeMultiplier
-                : getRowValue(move, 'daze'),
+                : (fusedRowValue(skills, exec.moveId, 'daze') ?? getRowValue(move, 'daze')),
               anomalyBuildUp: bu,
               totalAnomalyBuildUp: bu * Math.max(0, exec.count),
               energyRecovery: energyValue,
@@ -1535,6 +1559,32 @@ export function buildCharConfig(
     getRowValue,
   })
 
+  // 通用「单次释放必打招 + 可持续招」强特（src/data/sustainedEx.ts）：
+  // 模块已接管强特（skipGenericExSpecial）时不重复施加。
+  const sustainedSpec = SUSTAINED_EX_SPECS[agent.id]
+  if (sustainedSpec && !cfg.skipGenericExSpecial) {
+    cfg.skipGenericExSpecial = true
+    const susMove = findMoveById(skills as AgentSkills, sustainedSpec.sustain.moveId)
+    const scale = sustainedDamageScale(sustainedSpec, susMove)
+    const secs = sustainedSpec.sustain.maxSeconds
+    cfg.exSpecialEnergyConsume = sustainedSpec.fixedEnergy + sustainedSpec.sustain.energyPerSecond * secs
+    const opener = sustainedSpec.opener.map((t) => ({ moveId: t.moveId, actionTime: findMoveById(skills as AgentSkills, t.moveId)?.actionTime ?? 0 }))
+    const finisher = sustainedSpec.finisher.map((t) => ({ moveId: t.moveId, actionTime: findMoveById(skills as AgentSkills, t.moveId)?.actionTime ?? 0 }))
+    // 动作总时间（供 estimateExSpecialTime 时间预算）：起手 + 持续满蓄 + 收尾
+    cfg.exSpecialActionTime = opener.reduce((s, o) => s + o.actionTime, 0) + secs + finisher.reduce((s, f) => s + f.actionTime, 0)
+    ;(cfg as unknown as Record<string, unknown>).sustainedEx = {
+      opener,
+      sustain: {
+        moveId: sustainedSpec.sustain.moveId,
+        actionTime: secs,
+        damageMultiplier: getRowValue(susMove, 'damage') * scale,
+        dazeMultiplier: getRowValue(susMove, 'daze') * scale,
+        anomalyBuildUp: getRowValue(susMove, 'anomaly_buildup') * scale,
+      },
+      finisher,
+    }
+  }
+
   return cfg
 }
 
@@ -1641,12 +1691,12 @@ export function extractSkillExecutions(
     if (foundMove) {
       const count = exec.count
       // 模块可用 dazeMultiplierOverride 覆盖失衡倍率（如诺姆影画6 破甲弹头失衡值+30%），与 damageMultiplierOverride 同机制
-      const tableDaze = getRowValue(foundMove, 'daze')
+      const tableDaze = fusedRowValue(skills, exec.moveId, 'daze') ?? getRowValue(foundMove, 'daze')
       const daze = exec.dazeMultiplierOverride && (exec.dazeMultiplier ?? 0) > 0
         ? exec.dazeMultiplier!
         : tableDaze
       // 假 id/合成执行支持执行级异常积蓄覆盖（如仪玄符法千重-破 226.7，倍率行被隐藏）
-      const anomaly = exec.anomalyBuildUp ?? getRowValue(foundMove, 'anomaly_buildup')
+      const anomaly = exec.anomalyBuildUp ?? (fusedRowValue(skills, exec.moveId, 'anomaly_buildup') ?? getRowValue(foundMove, 'anomaly_buildup'))
       const moveName = exec.moveName.replace(/（.*）/g, '').trim()
       const radiantTurnDazeMult = foundMove.id === '1581010'
         ? 1 + ((panel?.remielleRadiantTurnDazeBonusPct ?? 0) / 100)

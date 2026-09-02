@@ -487,6 +487,8 @@ export interface SkillExecution {
   damageMultiplierOverride?: boolean
   /** 由机制模块直接覆盖失衡倍率（跳过倍率表回填；如诺姆 C6 破甲弹头失衡值+30%） */
   dazeMultiplierOverride?: boolean
+  /** 由机制模块直接覆盖异常积蓄（跳过倍率表回填；如持续段按时长等比缩放后的积蓄） */
+  anomalyBuildUpOverride?: boolean
   /** 本行招式专属暴击率加成（%），只加给该行（如青衣1命满电压醉花月云转、柏妮思4命） */
   critRateBonus?: number
   /** 本行招式专属暴击伤害加成（%），只加给该行（如青衣6命醉花月云转暴伤+100%） */

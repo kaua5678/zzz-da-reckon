@@ -73,10 +73,9 @@ npm run check-guards  # 机器护栏：fetch-stub 冻结（§3 harness 纪律）
 npm run verify:recording  # 录入完成判据：声称 implemented 的角色必须有测试引用 + expect 断言 + 档案状态行
 npm run docs:status   # 重新生成 docs/implementation-status.md（CI 会检查漂移，漏跑即红）
 npm run minify:static # 生成产物瘦身/剔 catalog 死键（幂等；validate:data 报产物膨胀时用它修）
-npm run probe:calibration # 实战归档校准（真引擎批跑投稿，出误差分布/击杀混淆矩阵/分层偏差，写 .zc/calibration.json）
 ```
 
-**校准只是诊断，不是判据**（用户裁决 2026-09-01）：`npm run probe:calibration` 按需跑，出误差分布/击杀混淆矩阵/分层偏差，**不进 CI、不设基线、不作拟合目标**——当前每支队伍的计算逻辑都还不准，把「距离归档分数」冻成判据会惩罚方向正确但单步之后暂时更远离实战的改动。用它找**低估**（上限低于真实发生过的成绩 = 可证伪的建模缺口，多半是机制没录完），不要用它调资源循环。
+**实战归档只做「单条部署对照」（RunArchivePage），不作误差判据**（用户裁决 2026-09）：归档是 approved 顶尖投稿（幸存者偏差、配装/操作/词条都未知），预测值与其差分不度量「真实性」，**不设低估/高估、不设基线、不据此拦或对冲任何录入改动**。录机制只按原文/口径录，不看这条改动会让预测分更接近还是更远离某条投稿。
 
 `verify:recording` 是**机器判据**——防止"写了代码改了 spec 就声称完成"：对每个 `status ∈ implemented*` 的角色，检查①测试文件引用 agentId（无=FAIL）②有 expect 断言（无=WARN）③档案段有状态行（无=WARN）。录入角色后跑它确认无 FAIL；WARN（档案无状态行）按 SOP §6.10 第 3 项补状态行后消除。
 

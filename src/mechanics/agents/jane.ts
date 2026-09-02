@@ -1,6 +1,8 @@
 import type {
+  AgentCharConfigInput,
   AgentMechanicModule,
   AgentPanelInput,
+  AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
@@ -8,6 +10,8 @@ import type { CharacterResourceResult, JaneMechanicSource, MechanicSetting } fro
 import { fmt } from '@/utils/format'
 
 const JANE_AGENT_ID = '1261'
+/** 普通攻击：萨霍夫跳（融合主段，见 src/data/moveFusions.ts JANE_SOMERSAULT） */
+const JANE_SOMERSAULT_MOVE_ID = '1261007'
 const ASSAULT_CRIT_BASE = 20
 const ASSAULT_CRIT_PER_MASTERY = 0.1
 const ASSAULT_CRIT_DMG = 50
@@ -94,12 +98,44 @@ const settings: MechanicSetting[] = [
   },
 ]
 
+/** 记录命座等级（萨霍夫跳次数用） */
+function buildJaneCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): void {
+  ;(cfg as unknown as Record<string, unknown>).janeCinemaLevel = cinemaLevel ?? 0
+}
+
+/** 萨霍夫跳：狂热进场 1 次 + 影画1 额外 1 次；数值同平A、仅额外回复狂热（融合组见 moveFusions）。 */
+function buildJaneExecutions({ cfg, executions }: AgentResourceInput): void {
+  const cinema = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).janeCinemaLevel ?? 0)))
+  const count = 1 + (cinema >= 1 ? 1 : 0)
+  if (count <= 0) return
+  executions.push({
+    moveId: JANE_SOMERSAULT_MOVE_ID,
+    moveName: '普通攻击：萨霍夫跳',
+    category: 'basic',
+    count,
+    actionTime: 0,
+    comboAlignRatio: 0,
+    // totalTime=0：萨霍夫跳时间已含在平A前台预算内，只补伤害（数值同平A、回复狂热）
+    totalTime: 0,
+    totalComboAlignTime: 0,
+    energyConsume: 0,
+    totalEnergyConsume: 0,
+    decibelRecovery: 0,
+    totalDecibelRecovery: 0,
+    energyRecovery: 0,
+    totalEnergyRecovery: 0,
+    timeBucket: 'basic',
+  })
+}
+
 export const janeMechanic: AgentMechanicModule = {
   id: 'agent:jane',
   agentIds: [JANE_AGENT_ID],
   name: '简',
-  description: '啮咬/狂热/强击暴击：攻击施加啮咬10秒，强击对啮咬目标可暴击（基础20%+精通0.1%/点，暴伤50%）；影画1/6 面板区。',
+  description: '啮咬/狂热/强击暴击：攻击施加啮咬10秒，强击对啮咬目标可暴击（基础20%+精通0.1%/点，暴伤50%）；萨霍夫跳（狂热1次+影画1+1次）；影画1/6 面板区。',
   applyPanel: applyJanePanel,
+  buildCharConfig: buildJaneCharConfig,
+  buildExecutions: buildJaneExecutions,
   buildResourceResult: buildJaneResourceResult,
   resourceSections: buildJaneResourceSections,
   settings,
