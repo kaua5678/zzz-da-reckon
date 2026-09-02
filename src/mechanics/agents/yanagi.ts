@@ -1,6 +1,6 @@
 import type { AgentCharConfigInput, AgentEventInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
-import type { AnomalyEventExecution } from '@/types/resource'
+import type { AnomalyEventExecution, MechanicSetting } from '@/types/resource'
 
 /**
  * 月城柳（1221，电·异常，对空洞特别行动部第六课）—— 核心被动/额外能力/影画面板区（薄模块）。
@@ -34,6 +34,19 @@ const YANAGI_THRUST_MOVE_ID = '1221022'
 const YANAGI_POLAR_RATIO_C0 = 0.15
 const YANAGI_POLAR_RATIO_C2_BASE = 0.20
 const YANAGI_POLAR_RATIO_PER_THRUST = 0.15
+/** 月华流转基础能量（突刺+下砸）；每次额外突刺 +10 能量（影画2 长按追加突刺） */
+const YANAGI_EX_BASE_ENERGY = 40
+/** 影画2 额外突刺能量 +10；影画6 前 4 次额外突刺能量减半 → +5 */
+const YANAGI_EXTRA_THRUST_ENERGY = 10
+const YANAGI_EXTRA_THRUST_ENERGY_C6 = 5
+/** 影画2 极性紊乱倍率额外提升触发上限 2 次；影画6 提升至 4 次 */
+const YANAGI_EXTRA_THRUST_MAX_C2 = 2
+const YANAGI_EXTRA_THRUST_MAX_C6 = 4
+
+function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
+  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
+  return Number.isFinite(value) ? value : fallback
+}
 
 function findMove(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
   if (!skills) return null
@@ -51,23 +64,34 @@ function rowValue(move: SkillMove | null, rowId: string): number {
 
 function buildYanagiCharConfig({ cfg, cinemaLevel, skills }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
-  record.yanagiCinemaLevel = cinemaLevel ?? 0
+  const cinema = cinemaLevel ?? 0
+  record.yanagiCinemaLevel = cinema
   const thrust = findMove(skills, YANAGI_THRUST_MOVE_ID)
   record.yanagiThrustDamage = rowValue(thrust, 'damage')
   record.yanagiThrustDaze = rowValue(thrust, 'daze')
   record.yanagiThrustAnomaly = rowValue(thrust, 'anomaly_buildup')
+  // 影画2 追加突刺次数（滑块可调；0 命恒 0）。上限：2 命 = 2 次、6 命 = 4 次；
+  // 能量：2 命每次 +10，6 命前 4 次能量减半（+5）。基础 40 = 突刺 + 下砸。
+  const maxThrusts = cinema >= 6 ? YANAGI_EXTRA_THRUST_MAX_C6 : YANAGI_EXTRA_THRUST_MAX_C2
+  const energyPerThrust = cinema >= 6 ? YANAGI_EXTRA_THRUST_ENERGY_C6 : YANAGI_EXTRA_THRUST_ENERGY
+  const extraThrusts = cinema >= 2
+    ? Math.max(0, Math.min(maxThrusts, Math.floor(setting(cfg, 'yanagi.extraThrustCount', 1))))
+    : 0
+  record.yanagiExtraThrustCount = extraThrusts
+  cfg.exSpecialEnergyConsume = YANAGI_EX_BASE_ENERGY + energyPerThrust * extraThrusts
 }
 
-/** 影画2：长按可额外消耗 10 能量再发动一次突刺（每次 EX 额外 1 段突刺，倍率与首段突刺一致） */
+/** 影画2：长按可额外消耗 10 能量再发动一次突刺（每次 EX 额外 N 段突刺，N=滑块，倍率与首段突刺一致） */
 function buildYanagiExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.yanagiCinemaLevel ?? 0)))
-  if (cinema < 2) return
-  const count = Math.max(0, Math.floor(state.exSpecialCount))
-  if (count <= 0) return
+  const extraThrusts = Math.max(0, Math.floor(Number(record.yanagiExtraThrustCount ?? 0)))
+  if (extraThrusts <= 0) return
+  const exCount = Math.max(0, Math.floor(state.exSpecialCount))
+  if (exCount <= 0) return
+  const count = exCount * extraThrusts
   executions.push({
     moveId: YANAGI_THRUST_MOVE_ID,
-    moveName: '强化特殊技：月华流转·追加突刺（影画2）',
+    moveName: `强化特殊技：月华流转·追加突刺×${extraThrusts}（影画2）`,
     category: 'special',
     count,
     actionTime: 0,
@@ -120,9 +144,11 @@ function buildYanagiAnomalyEvents({ cfg, state, events }: AgentEventInput): void
   const cinema = Math.max(0, Math.floor(Number(record.yanagiCinemaLevel ?? 0)))
   const count = Math.max(0, Math.floor(state.exSpecialCount))
   if (count <= 0) return
-  // C0 = 15%；C2 = 20% + 每额外突刺 15%（默认 1 次额外突刺 = 35%；上限 2 次 = 50%）
+  // C0 = 15%；C2 = 20% + 每额外突刺 15%（额外突刺次数读滑块，上限 2 次）
+  const extraThrusts = Math.max(0, Math.floor(Number(record.yanagiExtraThrustCount ?? 0)))
+  const maxThrusts = cinema >= 6 ? YANAGI_EXTRA_THRUST_MAX_C6 : YANAGI_EXTRA_THRUST_MAX_C2
   const ratio = cinema >= 2
-    ? YANAGI_POLAR_RATIO_C2_BASE + YANAGI_POLAR_RATIO_PER_THRUST
+    ? YANAGI_POLAR_RATIO_C2_BASE + YANAGI_POLAR_RATIO_PER_THRUST * Math.min(maxThrusts, extraThrusts)
     : YANAGI_POLAR_RATIO_C0
   events.push({
     eventId: 'yanagi_polar_disorder',
@@ -133,17 +159,38 @@ function buildYanagiAnomalyEvents({ cfg, state, events }: AgentEventInput): void
     count,
     polarDisorderRatio: ratio,
     formula: `极性紊乱 = 原紊乱 × ${(ratio * 100).toFixed(0)}%（C2 每额外突刺 +15%，上限 2 次）`,
-    note: `下落攻击命中异常状态敌人触发（次数≈强特次数）；C0 ${(YANAGI_POLAR_RATIO_C0 * 100).toFixed(0)}%、C2 ${(YANAGI_POLAR_RATIO_C2_BASE * 100).toFixed(0)}%+${(YANAGI_POLAR_RATIO_PER_THRUST * 100).toFixed(0)}%（1 次额外突刺）。C6 上限 4 次/耗能减半未建模。`,
+    note: `下落攻击命中异常状态敌人触发（次数≈强特次数）；C0 ${(YANAGI_POLAR_RATIO_C0 * 100).toFixed(0)}%、C2 ${(YANAGI_POLAR_RATIO_C2_BASE * 100).toFixed(0)}%+${(YANAGI_POLAR_RATIO_PER_THRUST * 100).toFixed(0)}%×额外突刺${extraThrusts}。C6 上限 4 次/耗能减半未建模。`,
   } as AnomalyEventExecution)
 }
+
+const settings: MechanicSetting[] = [
+  {
+    id: 'yanagi.extraThrustCount',
+    label: '月城柳·追加突刺次数',
+    description: '影画2：长按可额外消耗能量再发动突刺的次数（2命上限2、6命上限4），默认1（每个强特 = 突刺+下砸 + N 次追加突刺；2命能量 40+10×N，6命前4次减半 40+5×N）。',
+    default: 1,
+    min: 0,
+    max: 4,
+    step: 1,
+    suffix: '次',
+  },
+]
 
 export const yanagiMechanic: AgentMechanicModule = {
   id: 'agent:tsukishiro_yanagi',
   agentIds: [YANAGI_AGENT_ID],
   name: '月城柳',
-  description: '核心被动电伤+20%、额外能力电异常积蓄+45%、影画1异常精通+80、影画2突刺积蓄+20%+追加突刺+极性紊乱、影画6强特+20%；紊乱倍率/识破穿透在 teammate-buffs 1221 组。',
+  description: '核心被动电伤+20%、额外能力电异常积蓄+45%、影画1异常精通+80、影画2突刺积蓄+20%+追加突刺（滑块）+极性紊乱、影画6强特+20%；紊乱倍率/识破穿透在 teammate-buffs 1221 组。',
   applyPanel: applyYanagiPanel,
   buildCharConfig: buildYanagiCharConfig,
   buildExecutions: buildYanagiExecutions,
   buildAnomalyEvents: buildYanagiAnomalyEvents,
+  settings,
+  combos: {
+    'yanagi-moonlight-flow': {
+      label: '月华流转（突刺+下砸；追加突刺次数见滑块）',
+      energyCost: YANAGI_EX_BASE_ENERGY,
+      moves: [{ moveId: '1221022', count: 1 }, { moveId: '1221023', count: 1 }],
+    },
+  },
 }

@@ -143,6 +143,58 @@ describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
     expect(extra!.damageMultiplier).toBeCloseTo(327.7, 3)
   })
 
+  it('追加突刺次数滑块：改滑块 → 追加突刺行次数确实变（0/1/2）', async () => {
+    const { setupHarness } = await import('@/test/harness')
+    const { useResourceCalc } = await import('@/composables/useResourceCalc')
+
+    const r = await setupHarness([
+      { agentId: '1221', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ])
+    const calc = useResourceCalc()
+    const extraRow = () => calc.resourceResult.value!.characters.find(c => c.agentId === '1221')!
+      .executions.find(e => e.moveId === '1221022' && (e.damageMultiplier ?? 0) < 400)
+
+    r.config.setMechanicSetting('yanagi.extraThrustCount', 0)
+    await new Promise(r => setTimeout(r, 50))
+    expect(extraRow()).toBeFalsy() // 0 次 → 无追加突刺行
+
+    r.config.setMechanicSetting('yanagi.extraThrustCount', 2)
+    await new Promise(r => setTimeout(r, 50))
+    expect(extraRow()?.count).toBeGreaterThan(1) // 2 次 → 追加突刺行次数翻倍
+  })
+
+  it('突刺上限：2命钳 2 次、6命放 4 次（滑块同 4）', async () => {
+    const { setupHarness } = await import('@/test/harness')
+    const { useResourceCalc } = await import('@/composables/useResourceCalc')
+
+    // 2 命：滑块 4 → 钳到 2（额外突刺行 = 强特次数 × 2）
+    const r2 = await setupHarness([
+      { agentId: '1221', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ])
+    const calc2 = useResourceCalc()
+    r2.config.setMechanicSetting('yanagi.extraThrustCount', 4)
+    await new Promise(r => setTimeout(r, 50))
+    const ex2 = calc2.resourceResult.value!.characters.find(c => c.agentId === '1221')!.exSpecialCount
+    const row2 = calc2.resourceResult.value!.characters.find(c => c.agentId === '1221')!
+      .executions.find(e => e.moveId === '1221022' && (e.damageMultiplier ?? 0) < 400)
+    expect(row2!.count).toBeCloseTo(ex2 * 2, 6) // 2 命钳 2 次
+
+    // 6 命：滑块 4 → 4 次（额外突刺行 = 强特次数 × 4）
+    const r6 = await setupHarness([
+      { agentId: '1221', cinemaLevel: 6, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ])
+    const calc6 = useResourceCalc()
+    r6.config.setMechanicSetting('yanagi.extraThrustCount', 4)
+    await new Promise(r => setTimeout(r, 50))
+    const ex6 = calc6.resourceResult.value!.characters.find(c => c.agentId === '1221')!.exSpecialCount
+    const row6 = calc6.resourceResult.value!.characters.find(c => c.agentId === '1221')!
+      .executions.find(e => e.moveId === '1221022' && (e.damageMultiplier ?? 0) < 400)
+    expect(row6!.count).toBeCloseTo(ex6 * 4, 6) // 6 命放 4 次
+  })
+
   it('极性紊乱事件：0命 15%、2命 35%（20%+1次额外突刺15%）', async () => {
     const { setupHarness } = await import('@/test/harness')
     const { useResourceCalc } = await import('@/composables/useResourceCalc')
