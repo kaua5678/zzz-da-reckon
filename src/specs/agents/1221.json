@@ -19,7 +19,7 @@
     "影画1 知己知彼：属性异常施加叠[洞悉]（至多3层，15秒）；持[洞悉]时月城柳异常精通+80。影画2 卓越适应性：强化特殊技突刺积蓄+20%、长按追加突刺与[极性紊乱]倍率机制。影画4 掌棋者：月城柳造成属性异常伤害施加[识破]（15秒），识破下敌人受击时该次攻击穿透率+16%。影画6 非人之血：[森罗万象]延长30秒、强化特殊技伤害+20%、极性紊乱上限4次且耗能减半。影画3/5 技能等级+2。",
     "[已确认·继承草稿] 拐力数据在 teammate-buffs.json 1221 组：核心被动[紊乱]伤害倍率+250%（disorderBaseMultiplierBonus，Lv.12 值）、影画4 [识破]穿透率+16%（penRatio，按 cinemaLevel≥4 自动门控）。",
     "实现口径 [已确认]：① 紊乱倍率/识破穿透都是敌方 debuff 性质，全队受益，无需额外能力门控；② 额外能力「电属性异常积蓄值+45%」属月城柳自身面板，由 yanagi.ts applyPanel 施加 panel.electricAnomalyBuildUpEfficiency+=45，按 panel.additionalAbilityActive 门控（teamConditions：specialty anomaly / sameAttributeAsSelf；evalTeamConditions 天然排除自身，贴合原文「其他异常角色」）；③ 架势切换/8秒窗口与强化特殊技前置条件按静态面板满覆盖近似。",
-    "未建模项：影画2 长按追加突刺耗能与[极性紊乱]倍率机制（月城柳自身）、影画6 [森罗万象]逐时序/极性紊乱上限4次/耗能减半、[洞悉]受击无敌。已实现（2026-08-25 接线）：核心被动自身电伤+20%（panel.electricDmg）、影画1 异常精通+80（panel.anomalyProficiency）、影画2 突刺电积蓄+20%（panel.electricAnomalyBuildUpEfficiency）、影画6 强特+20%（panel.skillDmgBonus__exSpecial），均按整局覆盖近似。"
+    "未建模项：影画6 [森罗万象]延长30s/状态逐时序、[洞悉]受击无敌（防御向）、极性紊乱触发逐时序（次数≈强特次数近似）。已实现（2026-08-25 接线，2026-09-03 复核）：核心被动自身电伤+20%（panel.electricDmg）、影画1 异常精通+80（panel.anomalyProficiency）、影画2 突刺电积蓄+20%（panel.electricAnomalyBuildUpEfficiency）+长按追加突刺（耗能 40+10×N、6命前4次减半 40+5×N；buildExecutions + 滑块 yanagi.extraThrustCount）与[极性紊乱]（C0 15%、C2 20%+15%×额外突刺、上限 2/4 次；buildAnomalyEvents）、影画6 强特+20%（panel.skillDmgBonus__exSpecial），均按整局覆盖近似。"
   ],
   "teamBuffs": [],
   "additionalAbility": {

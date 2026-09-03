@@ -72,6 +72,54 @@ describe('「11号」（1041）patchExecutions：火力镇压增伤 / 影画2 / 
   })
 })
 
+describe('「11号」快速火刀动作块与层数结算', () => {
+  const fireKnifeInput = (state: Record<string, number>, cinema = 0) => ({
+    cfg: { battleTime: 180, soldier11CinemaLevel: cinema },
+    state: { exSpecialCount: 0, chainCountTotal: 0, ultimateCount: 0, basicAttackTime: 100, ...state } as any,
+    executions: [] as any[],
+  })
+
+  it('层数结算：5 个窗口招（2强特+2连携+1终结）→ 层数预算封顶 2 套；爆炸行 = 2×6 层', () => {
+    const input = fireKnifeInput({ exSpecialCount: 2, chainCountTotal: 2, ultimateCount: 1 })
+    soldier11Mechanic.buildExecutions!(input as any)
+    const rows = input.executions
+    expect(rows.filter(r => r.moveId === '1041008')).toHaveLength(1)
+    expect(rows.find(r => r.moveId === '1041008')!.count).toBe(2)
+    expect(rows.find(r => r.moveId === '1041025')!.count).toBe(2)
+    const boom = rows.find(r => r.moveId === '1041026')!
+    expect(boom.count).toBe(2 * 6)
+    expect(boom.actionTime).toBe(0)
+    expect(boom.totalTime).toBe(0)
+  })
+
+  it('层数预算：0 发强特 → 无快速火刀行；2 发强特（无连携终结）→ 2 套', () => {
+    const input = fireKnifeInput({ exSpecialCount: 0, chainCountTotal: 2, ultimateCount: 1 })
+    soldier11Mechanic.buildExecutions!(input as any)
+    expect(input.executions).toHaveLength(0)
+
+    const input2 = fireKnifeInput({ exSpecialCount: 2, chainCountTotal: 0, ultimateCount: 0 })
+    soldier11Mechanic.buildExecutions!(input2 as any)
+    expect(input2.executions.find(r => r.moveId === '1041008')!.count).toBe(2)
+    expect(input2.executions.find(r => r.moveId === '1041026')!.count).toBe(2 * 6)
+  })
+
+  it('爆炸行（1041026）在火力镇压集合内：核心被动 +70% 咬合', () => {
+    const rows: any[] = [{ moveId: '1041026', category: 'basic', count: 6 }]
+    patchSoldier11Executions(patchInput(0, rows) as any)
+    expect(rows[0].dmgBonus).toBe(70)
+  })
+
+  it('combos 注册快速火刀动作块（轴编辑器可用）：A4+A5+爆炸×6，能耗 = 强特 80', () => {
+    const combo = soldier11Mechanic.combos!['soldier11-fire-knife']
+    expect(combo.energyCost).toBe(80)
+    expect(combo.moves).toEqual([
+      { moveId: '1041008', count: 1 },
+      { moveId: '1041025', count: 1 },
+      { moveId: '1041026', count: 6 },
+    ])
+  })
+})
+
 describe('「11号」applyPanel / buildCharConfig', () => {
   it('潜能·绝焰（最高档）：额外能力触发时暴伤 +48%，未触发为 0', () => {
     const panelOn: any = { additionalAbilityActive: 1 }

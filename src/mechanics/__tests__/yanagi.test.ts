@@ -221,4 +221,32 @@ describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
     expect(ev2).toBeTruthy()
     expect(ev2!.polarDisorderRatio).toBeCloseTo(0.35, 6)
   })
+
+  it('极性紊乱耗能减半（影画6）：2命滑块3 → 钳2次 +20 能量；6命滑块3 → 3次 +15 能量', async () => {
+    const { setupHarness } = await import('@/test/harness')
+    const { useResourceCalc } = await import('@/composables/useResourceCalc')
+
+    const exEnergy = async (cinemaLevel: number) => {
+      const r = await setupHarness([
+        { agentId: '1221', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+        { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      ])
+      const calc = useResourceCalc()
+      r.config.setMechanicSetting('yanagi.extraThrustCount', 3)
+      await new Promise(res => setTimeout(res, 50))
+      const row = calc.resourceResult.value!.characters.find(c => c.agentId === '1221')!
+      // 强特主行（월华流转 突刺+下砸 融合行）带 energyConsume = 基础 40 + 每突刺能量 × 追加次数；
+      // 追加突刺行（同 moveId 1221022）energyConsume=0，以此区分。
+      const exRow = row.executions.find(e => e.moveId === '1221022' && (e.energyConsume ?? 0) > 0)
+      const perCast = (exRow as any)?.energyConsume
+      return { perCast, row }
+    }
+
+    const c2 = await exEnergy(2)
+    // 2命：滑块 3 → 钳到 2 → 40 + 10×2 = 60
+    expect(c2.perCast).toBeCloseTo(60, 6)
+    const c6 = await exEnergy(6)
+    // 6命：滑块 3 → 3 次、前4次减半 → 40 + 5×3 = 55
+    expect(c6.perCast).toBeCloseTo(55, 6)
+  })
 })

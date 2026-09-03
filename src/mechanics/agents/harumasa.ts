@@ -11,6 +11,9 @@
  * - 影画4：终结技对全场施加满层电囚 → 电囚直接 +14 层（资源总量回复）。
  * - 失衡/异常拆分（用户口径 2026-08-26）：逐雷只在失衡内触发（飞弦·斩×失衡覆盖率）；额外能力增伤+40%、
  *   影画6 甲乙矢命中失衡/异常后无视15%电抗，均按「失衡覆盖率 + 异常覆盖率×(1-失衡覆盖率)」并集折算。
+ *   2026-09-03 追加「失衡专属 buff 轴内直加」：轴模式下额外能力 +40% 的失衡独有部分
+ *   （40×(1−异常覆盖率)）经 damagePool 行级分段直加（轴内段 +、轴外段不 +，可琳扫除帮手同款通道），
+ *   非轴仍走并集近似。
  * - 潜能觉醒·贯注（potentialLevel II..VI）：局内攻击力提升 4/6/8/10/12%，飞弦·斩/逐雷无视 5/7.5/10/12.5/15% 电抗。
  * - C2 电掣按连携/终结各补满 7 层的总量近似，最多强化实际飞弦·斩次数；C6 每12次甲乙矢生成一次1500%电磁爆炸。
  * - 锋芒5秒、电囚10/20秒按可调覆盖率处理，不声称逐秒精确。
@@ -319,9 +322,18 @@ function patchHarumasaExecutions({ cfg, state, executions }: AgentResourceInput)
     if (SLASH_SET.has(exec.moveId) && cycle.surgeCoverage > 0) {
       exec.dmgBonus = (exec.dmgBonus ?? 0) + HARUMASA_C2_DMG_BONUS * cycle.surgeCoverage
     }
-    // 额外能力增伤：失衡/异常并集
+    // 额外能力增伤：失衡/异常并集。
+    // 轴模式「失衡专属 buff 轴内直加」（2026-09-03，可琳扫除帮手同款通道）：公共异常部分
+    // （40×异常覆盖率）摊入全部行；失衡独有部分（40×(1−异常覆盖率)）经 exec.harumasaStunOnly
+    // 由 damagePool 按段直加（轴内段 +、轴外段不 +）。非轴并集口径不变。
     if (additionalActive && cycle.unionCoverage > 0) {
-      exec.dmgBonus = (exec.dmgBonus ?? 0) + HARUMASA_ADDITIONAL_DMG * cycle.unionCoverage
+      if (cycle.axisActive) {
+        const abnormalPart = HARUMASA_ADDITIONAL_DMG * cycle.abnormalCoverage
+        if (abnormalPart > 0) exec.dmgBonus = (exec.dmgBonus ?? 0) + abnormalPart
+        ;(exec as unknown as Record<string, unknown>).harumasaStunOnly = HARUMASA_ADDITIONAL_DMG * (1 - cycle.abnormalCoverage)
+      } else {
+        exec.dmgBonus = (exec.dmgBonus ?? 0) + HARUMASA_ADDITIONAL_DMG * cycle.unionCoverage
+      }
     }
     // 潜能觉醒减抗：飞弦·斩/逐雷 限定招式
     if (potentialRes > 0 && POTENTIAL_RES_TARGETS.has(exec.moveId)) {

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { mockStaticFetch, newPinia } from '@/test/harness'
+import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
+import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { panYinhuMechanic } from '@/mechanics/agents/panYinhu'
 
@@ -89,6 +90,61 @@ describe('潘引壶额外能力·食铁纳金与影画1（[气绝]增伤门控�
     const pNegOff = computePanelPhases(1, neg.config, neg.catalog)!.inCombat as any
     expect((computePanelPhases(0, neg.config, neg.catalog)!.inCombat as any).additionalAbilityActive ?? 0).toBe(0)
     expect(pNeg.dmgBonus).toBeCloseTo(pNegOff.dmgBonus, 5)
+  })
+})
+
+describe('潘引壶 EX 自动连段：断脉破穴手×3', () => {
+  it('每发强特（贴山震脉靠）后自动释放 3 段断脉破穴手（后台追攻行，不占前台）', () => {
+    const cfg: any = { panYinhuCinemaLevel: 0, initialEnergyGift: 40 }
+    const executions: any[] = []
+    panYinhuMechanic.buildExecutions!({ cfg, state: { exSpecialCount: 3 }, executions } as any)
+    const chains = executions.filter(e => ['1421007', '1421008', '1421009'].includes(e.moveId))
+    expect(chains).toHaveLength(3)
+    // 每段各 1 次/EX → 3 发 EX = count 3；后台行不占前台
+    expect(chains.map(e => e.count)).toEqual([3, 3, 3])
+    for (const e of chains) {
+      expect(e.moveId).toMatch(/^142100[789]$/)
+      expect(e.category).toBe('special')
+      expect(e.timeBucket).toBe('backstage')
+      expect(e.actionTime).toBe(0)
+      expect(e.totalTime).toBe(0)
+    }
+    // 0 发 EX 不生成连段行
+    const empty: any[] = []
+    panYinhuMechanic.buildExecutions!({ cfg, state: { exSpecialCount: 0 }, executions: empty } as any)
+    expect(empty.filter(e => ['1421007', '1421008', '1421009'].includes(e.moveId))).toHaveLength(0)
+  })
+
+  it('连段行不受影画等级门控（C0 也生成）；与影画2 破劲换能互不干扰', () => {
+    const cfg: any = { panYinhuCinemaLevel: 6, initialEnergyGift: 40 }
+    const executions: any[] = []
+    panYinhuMechanic.buildExecutions!({ cfg, state: { exSpecialCount: 4 }, executions } as any)
+    expect(executions.filter(e => ['1421007', '1421008', '1421009'].includes(e.moveId))).toHaveLength(3)
+    // 破劲换能照旧：3×4=12 → 2 组 → +8 能量
+    expect(cfg.initialEnergyGift).toBe(48)
+  })
+})
+
+describe('潘引壶 全链集成：断脉破穴手进入执行计划', () => {
+  it('resourceResult 含 3 段连段行，倍率表回填 195.2% 且不占前台', async () => {
+    const { config } = await setupHarness([
+      { agentId: '1421', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1441', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      '',
+    ])
+    for (const buff of config.globalBuffs) buff.enabled = false
+    const calc = useResourceCalc()
+    const row = calc.resourceResult.value!.characters.find(ch => ch.agentId === '1421')!
+    const chains = row.executions.filter(e => ['1421007', '1421008', '1421009'].includes(e.moveId))
+    expect(chains).toHaveLength(3)
+    for (const e of chains) {
+      expect(e.count).toBeGreaterThan(0)
+      expect(e.damageMultiplier).toBeCloseTo(195.2, 1)
+      expect(e.dazeMultiplier).toBeCloseTo(62.6, 1)
+      expect((e as any).skillTableResolved).toBe(true)
+      expect(e.timeBucket).toBe('backstage')
+      expect(e.totalTime).toBe(0)
+    }
   })
 })
 

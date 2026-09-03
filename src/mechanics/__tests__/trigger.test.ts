@@ -215,6 +215,12 @@ describe('「扳机」执行计划与失衡池', () => {
     expect(duanli.count).toBe(2)
     expect(duanli.damageMultiplier).toBe(TRIGGER_C4_DAMAGE_MULTIPLIER)
     expect(duanli.dazeMultiplier).toBe(TRIGGER_C4_DAZE_MULTIPLIER)
+
+    // CD 驱动后台自动行（协奏/冥狱/断离）均标 autoSplitByStun：轴模式按失衡时间占比拆
+    // 「占比内吃满易伤 / 其余无易伤」（2026-09-03 用户口径：总量与失衡内易伤量由 CD 直接算）
+    for (const row of executions) {
+      if (row.timeBucket === 'backstage') expect(row.autoSplitByStun).toBe(true)
+    }
   })
 
   it('影画4断离的120%冲击力注入失衡池且不吃额外能力加成', () => {

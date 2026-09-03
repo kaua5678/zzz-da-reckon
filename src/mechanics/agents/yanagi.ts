@@ -18,8 +18,10 @@ import type { AnomalyEventExecution, MechanicSetting } from '@/types/resource'
  * - 影画2 卓越适应性：强化特殊技快速突刺累积电属性异常积蓄值+20% → panel.electricAnomalyBuildUpEfficiency += 20。
  * - 影画6 非人之血：森罗万象状态期间强化特殊技伤害+20% → panel.skillDmgBonus__exSpecial += 20。
  *
- * 未建模（spec notes）：影画2 长按追加突刺耗能已补（本模块 buildExecutions，C2 额外一次突刺）；
- * [极性紊乱]倍率机制、影画6 极性紊乱上限4次/耗能减半、[森罗万象]状态逐时序、[洞悉]受击无敌。
+ * 未建模（spec notes）：[洞悉]受击无敌（防御向）、[森罗万象]状态逐时序（按强特高频近似常驻）。
+ * 注意：影画2 长按追加突刺（含耗能）/极性紊乱倍率、影画6 极性紊乱上限4次/耗能减半均已建模
+ * （见下方 buildCharConfig/buildExecutions/buildYanagiAnomalyEvents 与滑块 yanagi.extraThrustCount）；
+ * 档案/星座 pending 如有「未建模」字样为过期文案，勿再补做。
  */
 
 const YANAGI_AGENT_ID = '1221'
@@ -159,7 +161,7 @@ function buildYanagiAnomalyEvents({ cfg, state, events }: AgentEventInput): void
     count,
     polarDisorderRatio: ratio,
     formula: `极性紊乱 = 原紊乱 × ${(ratio * 100).toFixed(0)}%（C2 每额外突刺 +15%，上限 2 次）`,
-    note: `下落攻击命中异常状态敌人触发（次数≈强特次数）；C0 ${(YANAGI_POLAR_RATIO_C0 * 100).toFixed(0)}%、C2 ${(YANAGI_POLAR_RATIO_C2_BASE * 100).toFixed(0)}%+${(YANAGI_POLAR_RATIO_PER_THRUST * 100).toFixed(0)}%×额外突刺${extraThrusts}。C6 上限 4 次/耗能减半未建模。`,
+    note: `下落攻击命中异常状态敌人触发（次数≈强特次数）；C0 ${(YANAGI_POLAR_RATIO_C0 * 100).toFixed(0)}%、C2 ${(YANAGI_POLAR_RATIO_C2_BASE * 100).toFixed(0)}%+${(YANAGI_POLAR_RATIO_PER_THRUST * 100).toFixed(0)}%×额外突刺${extraThrusts}（上限 ${maxThrusts} 次：2命 2、6命 4）。`,
   } as AnomalyEventExecution)
 }
 

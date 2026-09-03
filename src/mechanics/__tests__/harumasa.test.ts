@@ -120,6 +120,41 @@ describe('悠真（1201）电壶→电囚→飞弦·斩资源循环', () => {
     harumasaMechanic.applyTeamConfig!({ slot: 0, characters, phase: 'build', stunCount: 3, combatTime: 180 } as any)
     expect(characters[0].harumasaStunCoverage).toBeCloseTo(3 * 16 / 180, 5)
   })
+
+  it('轴模式额外能力 +40%：公共异常部分全部行，失衡独有部分行级直加标记（可琳同款通道）', () => {
+    const cfg: any = {
+      harumasaCinemaLevel: 0, harumasaPotentialLevel: 6, harumasaStunCoverage: 0.5, harumasaAbnormalCoverage: 0.2,
+      harumasaAxisActive: true, harumasaAxisSlash: 5, harumasaAxisArrow: 10,
+      'setting:harumasa.a5Count': 2, 'setting:harumasa.edgeAverageStacks': 6,
+      panel: { additionalAbilityActive: 1 },
+    }
+    const executions: any[] = [{ moveId: '1201020', category: 'special' }, { moveId: '1201008', category: 'basic' }]
+    harumasaMechanic.patchExecutions!({ cfg, state: { exSpecialCount: 1, chainCountTotal: 1, ultimateCount: 1 }, executions } as any)
+    // 公共异常部分 = 40 × 0.2 = 8 摊入全部行
+    expect(executions[0].dmgBonus).toBeCloseTo(8, 5)
+    expect(executions[1].dmgBonus).toBeCloseTo(8, 5)
+    // 失衡独有部分 = 40 × 0.8 = 32 留给 damagePool 按段直加
+    expect(executions[0].harumasaStunOnly).toBeCloseTo(32, 5)
+
+    // 非轴：并集口径（0.5 + 0.2×0.5 = 0.6 → +24），无行级标记
+    const cfgOff: any = { ...cfg, harumasaAxisActive: false }
+    const rows2: any[] = [{ moveId: '1201020', category: 'special' }]
+    harumasaMechanic.patchExecutions!({ cfg: cfgOff, state: { exSpecialCount: 1, chainCountTotal: 1, ultimateCount: 1 }, executions: rows2 } as any)
+    expect(rows2[0].dmgBonus).toBeCloseTo(24, 5)
+    expect(rows2[0].harumasaStunOnly).toBeUndefined()
+  })
+
+  it('未激活额外能力：轴模式不标记、不增伤', () => {
+    const cfg: any = {
+      harumasaCinemaLevel: 0, harumasaPotentialLevel: 6, harumasaStunCoverage: 0.5, harumasaAbnormalCoverage: 0.2,
+      harumasaAxisActive: true, 'setting:harumasa.a5Count': 2, 'setting:harumasa.edgeAverageStacks': 6,
+      panel: { additionalAbilityActive: 0 },
+    }
+    const executions: any[] = [{ moveId: '1201020', category: 'special' }]
+    harumasaMechanic.patchExecutions!({ cfg, state: { exSpecialCount: 1, chainCountTotal: 1, ultimateCount: 1 }, executions } as any)
+    expect(executions[0].dmgBonus ?? 0).toBe(0)
+    expect(executions[0].harumasaStunOnly).toBeUndefined()
+  })
 })
 
 describe('悠真招式定向机制', () => {
@@ -241,6 +276,28 @@ describe('悠真完整计算链', () => {
     const harumasa = calc.resourceResult.value!.characters.find(row => row.agentId === '1201')!
     expect(HARUMASA_SLASH_MOVE_IDS.some(id => harumasa.executions.some(row => row.moveId === id))).toBe(true)
     expect(harumasa.executions.some(row => row.moveId === HARUMASA_ARROW_MOVE_ID)).toBe(true)
+  })
+
+  it('轴模式失衡专属 buff 行级直加：轴内段 note 标注、轴外段不标注', async () => {
+    const { config } = await setup('1141', 0)
+    config.useStunAxis = true
+    config.stunAxes = [{
+      name: '悠真轴内直加',
+      count: 2,
+      // 轴内只放 飞弦·斩第一段（一次）——它在窗口内吃易伤 + 失衡专属增伤
+      actions: [{ slot: 0, moveId: '1201020', count: 1 }],
+      basicFillerSlot: 0,
+    }]
+    // 异常覆盖率 20% → 失衡独有部分 = 40 × 0.8 = 32（可琳同款分段通道）
+    config.setMechanicSetting('harumasa.abnormalCoverage', 0.2)
+    const calc = useResourceCalc()
+    const rows = calc.damagePoolRows.value.filter(r => r.agentId === '1201' && r.moveId === '1201020')
+    expect(rows.length).toBeGreaterThan(0)
+    const inRow = rows.find(r => !(r.note ?? '').includes('轴外'))
+    const outRow = rows.find(r => (r.note ?? '').includes('轴外'))
+    expect(inRow, '轴内段必须存在').toBeTruthy()
+    expect(inRow!.note).toContain('失衡增伤+32.0%（轴内直加）')
+    if (outRow) expect(outRow.note).not.toContain('轴内直加')
   })
 })
 

@@ -1,6 +1,6 @@
 /* 「11号」（1041）机制模块。
  *
- * 口径（非轴模式：覆盖率滑块默认满覆盖；轴模式精确计算待后续接入）：
+ * 口径（非轴模式：覆盖率滑块默认满覆盖；轴模式经捏轴精确）：
  * - 核心被动：[普通攻击]/[冲刺攻击]触发[火力镇压]时伤害 +70%
  *   → patchExecutions 按火力镇压 moveId 行挂 dmgBonus × 覆盖率滑块 soldier11.fireSuppressCoverage。
  * - 额外能力·燎原（spec.additionalAbility：队伍存在同属性或同阵营角色）：
@@ -14,6 +14,15 @@
  * - 影画6 炽热心流：强特/连携/终结获得 8 层充能（上限 8），火力镇压消耗 1 层无视 25% 火抗
  *   → 期望加权：生效比例 = min(1, 充能来源次数×8 / 火力镇压总次数)，resIgnore 按比例折算。
  *   （充能资源卡仍由 spec soldier11_charge 承载展示。）
+ *
+ * - 快速火刀循环（2026-09-03 用户口径，原文「必定触发[火力镇压]」状态）：
+ *   强特（盛燃烈火 1041011）发动后普攻/冲刺必定触发[火力镇压]，最多 30 秒或触发 8 次（=火刀层数 8）；
+ *   用户标准连招：获取层数招（强特 → 8 层）→ A4 快速取消（1041008，1 层）→ A5 快速火刀
+ *   （1041025，1 层）→ 强化A5 结算爆炸（1041026，消耗剩余 6 层，每层 166.4% 火伤）。
+ *   层数结算：每发强特的 8 层恰好支持 1 套快速火刀（1+1+6），套数 ≤ 强特次数（层数预算封顶）；
+ *   爆炸行吃核心被动 +70%/影画2/C6（1041026 在火力镇压 moveId 集合内）。轴内块 = combos
+ *   `soldier11-fire-knife`（轴编辑器可捏，展开行落在失衡窗口内吃易伤 = 失衡内层数结算）。
+ *   格挡反击（火力充能/迸发受击）额外 +3 层（上限 8）为防御向触发，不建模块（伤害层数按每强特 8 层计）。
  *
  * 本模块替代原 specPanelBuffs.soldier11ChargeMechanic（工厂模块只有面板 buff，
  * 无法承载 moveId 级增伤与 cfg 写入），spec 资源仍经 computeSpecResources 消费。
@@ -45,8 +54,17 @@ const C1_REFILL_AMOUNT = 40 // 影画1：能量不足 40 回复至 80 ≈ +40/�
 const C1_INTERVAL_SECONDS = 50 // 影画1：50s 最多触发一次
 const POTENTIAL_CRIT_DMG = 48 // 潜能觉醒·绝焰最高档：暴伤 +48%（额外能力门控）
 
+/** 火刀层数（必定触发[火力镇压]次数）：每发强特 +8（原文「最多持续30秒或触发8次」） */
+export const SOLDIER11_BLADE_LAYERS_PER_EX = 8
+/** 爆炸层数 = 8 − A4(1层) − A5(1层) = 6（强化A5 消耗「当前所有剩余触发次数」，每层各打一发 #7） */
+export const SOLDIER11_EXPLOSION_LAYERS = SOLDIER11_BLADE_LAYERS_PER_EX - 1 - 1
+/** 强化A5 每层爆炸命中（1041026：166.4% 火伤，无失衡/积蓄/喧响/时长） */
+export const SOLDIER11_EXPLOSION_MOVE_ID = '1041026'
+/** 强化特殊技·盛燃烈火 能量成本（catalog 1041011 energyCost） */
+export const SOLDIER11_EX_ENERGY = 80
+
 // A45 快速循环（用户口径 2026-08）：窗口招（强特/连携/终结）后必打快速 A4+A5，
-// 动作时间各为原段一半（快速取消）；必要时间含此循环，剩余平A池 = 火力镇压均值填充。
+// 动作时间各为原段一半（快速取消）；层数结算（2026-09-03）：每发强特 8 层 = 1 套（A4 1 + A5 1 + 爆炸 6）。
 const A4_MOVE_ID = '1041008'
 const A4_QUICK_TIME = 1.828 * 0.5
 const A5_MOVE_ID = '1041025'
@@ -136,10 +154,12 @@ export const soldier11Mechanic: AgentMechanicModule = {
     },
   ],
   estimateExSpecialTime: ({ cfg, exSpecialCount, ultimateCount }) => {
-    // A45 循环计入必要时间（窗口数 = 强特+终结+连携；受平A池约束由折叠循环收敛）
+    // A45 循环计入必要时间（窗口数 = 强特+终结+连携；受平A池约束由折叠循环收敛；
+    // 2026-09-03 层数结算：套数 ≤ 强特次数，每发强特 8 层 = 1 套快速火刀）
     const chainOverride = cfg.chainCountTotalOverride
     const chain = chainOverride ?? 0
-    const cycles = Math.max(0, Math.floor(exSpecialCount) + Math.floor(ultimateCount) + Math.floor(chain))
+    const windows = Math.max(0, Math.floor(exSpecialCount) + Math.floor(ultimateCount) + Math.floor(chain))
+    const cycles = Math.min(windows, Math.max(0, Math.floor(exSpecialCount)))
     const loopTime = cycles * CYCLE_TIME
     const base = exSpecialCount * (cfg.exSpecialActionTime ?? 0)
     const comboBase = exSpecialCount * (cfg.exSpecialActionTime ?? 0) * (cfg.exSpecialComboAlignRatio ?? 0)
@@ -153,14 +173,17 @@ export const soldier11Mechanic: AgentMechanicModule = {
   },
   buildCharConfig: buildSoldier11CharConfig,
   // A45 快速循环伤害行：窗口招（强特/连携/终结）后必打，动作时间减半占前台；
-  // 倍率走倍率表（#4=火力镇压、#5=结算6段），核心被动/C6 经 patchExecutions 咬合
+  // 倍率走倍率表（#4=火力镇压、#5=结算6段），核心被动/C6 经 patchExecutions 咬合。
+  // 2026-09-03 层数结算：每发强特 8 层火刀 = 1 套（A4 1层 + A5 1层 + 爆炸 6 层），套数 ≤ 强特次数。
   buildExecutions: ({ cfg: _cfg, state, executions }: AgentResourceInput): void => {
+    const exTotal = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
     const windows = Math.max(0,
       Math.floor(state.exSpecialCount ?? 0)
       + Math.floor(state.chainCountTotal ?? 0)
       + Math.floor(state.ultimateCount ?? 0))
     const basicPool = state.basicAttackTime ?? 0
-    const cycles = Math.min(windows, CYCLE_TIME > 0 ? Math.floor(basicPool / CYCLE_TIME) : 0)
+    // 层数结算封顶：每发强特的 8 层恰好支持 1 套（1+1+6），无层数预算的窗口不跑快速火刀
+    const cycles = Math.min(windows, exTotal, CYCLE_TIME > 0 ? Math.floor(basicPool / CYCLE_TIME) : 0)
     if (cycles <= 0) return
     executions.push({
       moveId: A4_MOVE_ID, moveName: '火力镇压A4（快速取消）', category: 'basic',
@@ -170,9 +193,17 @@ export const soldier11Mechanic: AgentMechanicModule = {
       energyRecovery: 0, totalEnergyRecovery: 0,
     })
     executions.push({
-      moveId: A5_MOVE_ID, moveName: '火力镇压A5（结算6段）', category: 'basic',
+      moveId: A5_MOVE_ID, moveName: '火力镇压A5（快速火刀）', category: 'basic',
       count: cycles, actionTime: A5_QUICK_TIME, comboAlignRatio: 0,
       totalTime: A5_QUICK_TIME * cycles, totalComboAlignTime: 0,
+      energyConsume: 0, totalEnergyConsume: 0, decibelRecovery: 0, totalDecibelRecovery: 0,
+      energyRecovery: 0, totalEnergyRecovery: 0,
+    })
+    // 强化A5 爆炸：消耗每套剩余 6 层，每层一发 1041026（166.4%/层，t=0 含在 A5 内，无失衡/积蓄/喧响）
+    executions.push({
+      moveId: SOLDIER11_EXPLOSION_MOVE_ID, moveName: '火力镇压#7：强化A5 每层爆炸', category: 'basic',
+      count: cycles * SOLDIER11_EXPLOSION_LAYERS, actionTime: 0, comboAlignRatio: 0,
+      totalTime: 0, totalComboAlignTime: 0,
       energyConsume: 0, totalEnergyConsume: 0, decibelRecovery: 0, totalDecibelRecovery: 0,
       energyRecovery: 0, totalEnergyRecovery: 0,
     })
@@ -185,4 +216,17 @@ export const soldier11Mechanic: AgentMechanicModule = {
     }
   },
   resourceSections: (input: AgentResourceSectionsInput) => specBase.resourceSections?.(input) ?? [],
+  /** 快速火刀动作块（轴编辑器可用）：A4 快速取消 → A5 快速火刀 → 6 层爆炸；
+   *  展开行落在失衡窗口内吃易伤（轴内层数结算）。强特本体行由通用执行计划承载。 */
+  combos: {
+    'soldier11-fire-knife': {
+      label: '快速火刀（A4快速取消 + A5快速火刀 + 6层爆炸）',
+      energyCost: SOLDIER11_EX_ENERGY,
+      moves: [
+        { moveId: A4_MOVE_ID, count: 1 },
+        { moveId: A5_MOVE_ID, count: 1 },
+        { moveId: SOLDIER11_EXPLOSION_MOVE_ID, count: SOLDIER11_EXPLOSION_LAYERS },
+      ],
+    },
+  },
 }

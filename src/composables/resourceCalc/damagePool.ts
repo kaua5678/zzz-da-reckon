@@ -458,6 +458,14 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
             const rate = Math.max(0, Math.min(1, Number(execPanel?.windInfectionRate ?? 0)))
             sigridInfectionBonus = SIGRID_INFECTION_DMG * rate
           }
+          // 悠真额外能力（失衡/异常并集 +40%）：轴模式「失衡专属 buff 轴内直加」（2026-09-03，
+          // 可琳扫除帮手同款分段通道）——patchHarumasaExecutions 已把公共异常部分（40×异常覆盖率）
+          // 摊入全部行，这里只补失衡独有部分 40×(1−异常覆盖)，且仅轴内段（stunOverride>0，敌人失衡）加；
+          // 轴外段敌人未失衡、只吃异常部分。非轴走 patch 并集口径（不加此处）。
+          let harumasaStunOnlyBonus = 0
+          if (charResult.agentId === '1201' && isAxis && (exec as any).harumasaStunOnly !== undefined) {
+            harumasaStunOnlyBonus = stunOverride > 0 ? Math.max(0, Number((exec as any).harumasaStunOnly)) : 0
+          }
           // 仪玄凝神：6 命默认满覆盖（调息送大量符法千重，用户口径：暴伤+40% + 贯穿+20%，不走轴扫描），
           // yixuan.c6NingshenCoverage 滑块可调；非 6 命轴模式按 buff 轴扫描（大招后 15s 窗口），非轴模式按滑块近似（仅暴伤）
           const yixuanCinema = configStore.team[slot]?.cinemaLevel ?? 0
@@ -489,11 +497,11 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
             source: resolved?.source ?? exec.moveId,
             count: isPerSecondRow ? 1 : units,
             multiplier: unitMultiplier * (isPerSecondRow ? units : 1),
-            note: `${baseNote}${extraNote}${mingwangDmgBonus > 0 ? ` · 明王+${mingwangDmgBonus.toFixed(1)}%${isAxis ? '（轴内覆盖）' : '（覆盖率近似）'}` : ''}${corinStunBonus > 0 ? ` · 失衡增伤+${corinStunBonus.toFixed(1)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${sigridInfectionBonus > 0 ? ` · 浸染增伤+${sigridInfectionBonus.toFixed(1)}%（风化覆盖率×15%）` : ''}${yixuanNingshen.critDmg > 0 ? ` · 凝神暴伤+${yixuanNingshen.critDmg.toFixed(0)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${yixuanNingshen.sheerDmg > 0 ? ` · 凝神贯穿+${yixuanNingshen.sheerDmg.toFixed(0)}%` : ''}`,
+            note: `${baseNote}${extraNote}${mingwangDmgBonus > 0 ? ` · 明王+${mingwangDmgBonus.toFixed(1)}%${isAxis ? '（轴内覆盖）' : '（覆盖率近似）'}` : ''}${corinStunBonus > 0 ? ` · 失衡增伤+${corinStunBonus.toFixed(1)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${harumasaStunOnlyBonus > 0 ? ` · 失衡增伤+${harumasaStunOnlyBonus.toFixed(1)}%（轴内直加）` : ''}${sigridInfectionBonus > 0 ? ` · 浸染增伤+${sigridInfectionBonus.toFixed(1)}%（风化覆盖率×15%）` : ''}${yixuanNingshen.critDmg > 0 ? ` · 凝神暴伤+${yixuanNingshen.critDmg.toFixed(0)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${yixuanNingshen.sheerDmg > 0 ? ` · 凝神贯穿+${yixuanNingshen.sheerDmg.toFixed(0)}%` : ''}`,
             moveId: exec.moveId,
             critRateBonus,
             critDmgBonus: critDmgBonus + yixuanNingshen.critDmg + peiluoKagerouCrit,
-            dmgBonus: (exec.dmgBonus ?? 0) + mingwangDmgBonus + corinStunBonus + sigridInfectionBonus,
+            dmgBonus: (exec.dmgBonus ?? 0) + mingwangDmgBonus + corinStunBonus + sigridInfectionBonus + harumasaStunOnlyBonus,
             sheerDmgBonus: (exec.sheerDmgBonus ?? 0) + yixuanNingshen.sheerDmg,
             flatDamageBonus: exec.flatDamageBonus,
             basisValueOverride: exec.basisValueOverride,

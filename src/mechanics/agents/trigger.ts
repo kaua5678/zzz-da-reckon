@@ -26,6 +26,9 @@
  *   始终交错、不构成约束，故不对补弹数做封顶。0.2秒触发CD与总量无关，不建模。
  *
  * 可调项：狙击命中 / 协奏狙杀次数 / 冥狱次数，均 0=自动（CD·来源·需求反推）。
+ * - 轴内易伤（2026-09-03 用户口径：自动后台攻击有 CD，好算招式总量与失衡内易伤招式量）：
+ *   协奏/冥狱/断离/破甲凶弹均为 CD 驱动后台自动行（autoSplitByStun，猫又同款通用机制）——
+ *   不按捏轴认领，轴模式按失衡时间占比拆「占比内吃满易伤 / 其余无易伤」，非轴按全局覆盖率。
  */
 import type {
   AgentCharConfigInput,
@@ -291,6 +294,9 @@ function pushSyntheticExecution(executions: AgentResourceInput['executions'], in
     ...(input.dazeMultiplier != null
       ? { dazeMultiplier: input.dazeMultiplier, dazeMultiplierOverride: true }
       : {}),
+    // 断离/破甲凶弹由协奏/狙击命中触发（CD 驱动后台自动行）：轴模式按失衡时间占比拆
+    // （autoSplitByStun，与协奏/冥狱载体行同口径——2026-09-03 用户口径：CD 好算总量与失衡内易伤量）。
+    autoSplitByStun: true,
   })
 }
 
@@ -317,6 +323,10 @@ function pushTableExecution(executions: AgentResourceInput['executions'], input:
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     timeBucket: 'backstage',
+    // 2026-09-03（用户口径：自动后台攻击有 CD，好算总量与失衡内易伤量）：CD 驱动后台自动行，
+    // 不按捏轴认领/无放置语义——轴模式按失衡时间占比拆「占比内吃满易伤 / 其余无易伤」
+    // （猫又超凶爪印同款 autoSplitByStun 通用机制），非轴按全局覆盖率。
+    autoSplitByStun: true,
   })
 }
 
