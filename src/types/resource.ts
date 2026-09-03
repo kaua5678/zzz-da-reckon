@@ -1249,6 +1249,8 @@ export interface CharacterOperationConfig {
   chainCountPerStun: number
   /** 连携总次数覆盖（失衡轴模式：按各轴分配的窗口数加权求和后的最终次数，缺省走 chainCountPerStun × 失衡次数） */
   chainCountTotalOverride?: number
+  /** 强制连携追加次数（队伍级联动写入，如柚叶影画2：重击命中非失衡敌强制触发连携，20s CD） */
+  chainCountTotalExtra?: number
   /** 强特合轴率 0-1 */
   exSpecialComboAlignRatio: number
   /** 终结技合轴率 0-1 */

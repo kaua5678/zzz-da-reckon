@@ -30,6 +30,8 @@ const FIREWORK_TICK_SECONDS = 1
 export const YUZUHA_ULT_TEAM_ENERGY = 25
 /** 影画1 进场回能：30 点（勘域模式 180s 一次 → 每局一次） */
 export const YUZUHA_C1_ENTER_ENERGY = 30
+/** 影画2 强制连携 CD：20 秒最多一次（重击命中非失衡敌） */
+export const YUZUHA_C2_CHAIN_CD = 20
 
 export function computeYuzuhaMechanic(input: {
   initialAtk: number
@@ -93,20 +95,37 @@ function buildYuzuhaCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void
   if ((cinemaLevel ?? 0) >= 1) {
     cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + YUZUHA_C1_ENTER_ENERGY
   }
+  // 影画2 强制连携：每次强制连携也有角色入场 → 甜度点 +1/次（与全队 chainCountTotalExtra 同源近似）
+  if ((cinemaLevel ?? 0) >= 2) {
+    const effective = Math.max(0, (cfg.battleTime ?? 180) - (cfg.invincibleTime ?? 0))
+    cfg.yuzuhaChainEntryCount += Math.floor(effective / YUZUHA_C2_CHAIN_CD)
+  }
 }
 
-/** 队伍级联动：定位异常专精队友 → 十人十色转积蓄目标元素写入自身 cfg（buildExecutions 读）。
+/** 队伍级联动：①异常专精队友 → 十人十色转积蓄目标元素写入自身 cfg（buildExecutions 读）；
  * 元素取「队友招式的异常积储主元素」（anomalyBuildupElementBySlot，派发器按倍率表
  * anomaly_buildup 之和最大的 move.damageElement 预计算），回退 agent.damageElement——
  * agent 级元素可能与招式级不一致（星见雅 agent=ice 但招式=frostfire），此前用 agent 级
- * 导致转积蓄打进元素名不匹配的空池（2026-09-02 修复，探针实证）。 */
-function buildYuzuhaTeamConfig({ slot, characters, team, anomalyBuildupElementBySlot }: AgentTeamConfigInput): void {
+ * 导致转积蓄打进元素名不匹配的空池（2026-09-02 修复，探针实证）。
+ * ②影画2 强制连携（2026-09-03 用户口径）：重击命中非失衡敌强制触发[连携技]（20s 最多一次）
+ * → 全队连携计数 +floor(有效战斗时间/20)，写各槽位 cfg.chainCountTotalExtra。 */
+function buildYuzuhaTeamConfig({ slot, characters, team, anomalyBuildupElementBySlot, cinemaLevel, combatTime }: AgentTeamConfigInput): void {
   const mine = characters.find(c => c.slot === slot)
   if (!mine) return
   const target = team.find(m => m.slot !== slot && m.agent?.specialty === 'anomaly')
   const targetSlot = target?.slot ?? -1
   mine.yuzuhaTransferElement = anomalyBuildupElementBySlot?.[targetSlot]
     ?? target?.agent?.damageElement
+  // 影画2 强制连携：全队生效（强制连携=正常连携技，阵营全员入场）
+  if ((cinemaLevel ?? 0) >= 2) {
+    const effective = Math.max(0, combatTime - (mine.invincibleTime ?? 0))
+    const forced = Math.floor(effective / YUZUHA_C2_CHAIN_CD)
+    if (forced > 0) {
+      for (const char of characters) {
+        char.chainCountTotalExtra = forced
+      }
+    }
+  }
 }
 
 function yuzuhaSourceFromCfg(cfg: AgentResourceInput['cfg']): YuzuhaMechanicSource {

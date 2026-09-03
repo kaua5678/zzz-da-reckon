@@ -7,6 +7,7 @@ import {
   YUZUHA_FIREWORK_MOVE_ID,
   YUZUHA_HARD_CANDY_MOVE_ID,
   YUZUHA_C1_ENTER_ENERGY,
+  YUZUHA_C2_CHAIN_CD,
   computeYuzuhaMechanic,
   yuzuhaMechanic,
 } from '@/mechanics/agents/yuzuha'
@@ -65,6 +66,23 @@ describe('柚叶（1411）甜度点与狸之愿', () => {
     const cfg0: any = { initialEnergyGift: 10 }
     yuzuhaMechanic.buildCharConfig!({ cinemaLevel: 0, cfg: cfg0 } as any)
     expect(cfg0.initialEnergyGift).toBe(10)
+  })
+
+  it('影画2 强制连携：甜度点 +floor(有效战斗/20)；全队 chainCountTotalExtra 同源写入（C0 不写）', () => {
+    const cfg: any = { 'setting:yuzuha.chainEntryCount': 4, battleTime: 180, invincibleTime: 0 }
+    yuzuhaMechanic.buildCharConfig!({ cinemaLevel: 2, cfg } as any)
+    // 滑块 4 + 强制连携 9（180/20）
+    expect(cfg.yuzuhaChainEntryCount).toBe(4 + Math.floor(180 / YUZUHA_C2_CHAIN_CD))
+
+    const chars: any[] = [{ slot: 0, invincibleTime: 0 }, { slot: 1, invincibleTime: 0 }, { slot: 2, invincibleTime: 0 }]
+    yuzuhaMechanic.applyTeamConfig!({
+      slot: 0, cinemaLevel: 2, characters: chars, team: [], anomalyBuildupElementBySlot: {}, combatTime: 180,
+    } as any)
+    for (const c of chars) expect(c.chainCountTotalExtra).toBe(Math.floor(180 / YUZUHA_C2_CHAIN_CD))
+
+    const c0: any[] = [{ slot: 0 }, { slot: 1 }]
+    yuzuhaMechanic.applyTeamConfig!({ slot: 0, cinemaLevel: 0, characters: c0, team: [], combatTime: 180 } as any)
+    expect(c0[0].chainCountTotalExtra).toBeUndefined()
   })
 
   it('终结技队友回能：buildCharConfig 置 supportUltimateEnergyRegen=25，经 calcCrossAgentEnergy 按大招次数给其他角色（不给自身）', () => {

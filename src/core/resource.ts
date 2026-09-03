@@ -105,7 +105,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       : 0,
     exSpecialCount: 0,
     ultimateCount: 0,
-    chainCountTotal: cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * (config.stunCount ?? 0),
+    chainCountTotal: (cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * (config.stunCount ?? 0)) + (cfg.chainCountTotalExtra ?? 0),
     totalEnergy: 0,
     totalDecibel: cfg.initialDecibelGift + (cfg.extraSelfDecibelReward ?? 0),
     necessaryTime: 0,

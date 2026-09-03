@@ -14,7 +14,7 @@
 import { calcDirectDamage, calcAnomalyDamage, resolveSpecialDamageProfile } from '@/core/damage'
 import { attributeCountByStateChain } from '@/core/stunAxis/inStunAnomaly'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
-import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, getMainApplierSlot, distributeIntegerByWeight, calcStunMultiplier } from '@/core/anomalyPool/helpers'
+import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, getMainApplierSlot, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
 import { getAgentMechanic } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
 import { YESHUGUANG_FULL_STUN_MOVES, veilStunMultiplier } from '@/mechanics/agents/yeshuguang'
@@ -1345,16 +1345,28 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const critCount = (physicalProg?.triggerCount ?? 0) * (assaultCritRate / 100)
       if (critCount > 0) {
         // 附伤随强击暴击触发 → 轴内易伤跟随物理强击触发轴内占比（用户口径 2026-08：
-        // 6命附伤事件和动作绑定，理应该伴随计数并且吃易伤）；非轴回落全局覆盖率
+        // 6命附伤事件和动作绑定，理应该伴随计数并且吃易伤）；非轴回落全局覆盖率。
+        // 乘区口径（用户 2026-09-03）：附伤占攻击区(异常精通)×倍率区(1600%)两个基础区，
+        // 其余增伤/防御/抗性/易伤/暴击乘区全吃（爱丽丝 6 命附伤同款）→ 走 calcDirectDamage 标准管线
         const janeStun = isAxis ? inWindowFraction('physical') : stunCoverage
-        const janeStunMult = calcStunMultiplier(
-          configStore.enemy.stunVuln,
-          janePanel.stunDmgMultiplierBonus ?? 0,
-          janePanel.stunDmgMultiplierBonusAlways ?? 0,
-          janePanel.stunDmgMultiplierBonusCapAlways ?? 0,
-          janeStun,
-        )
-        const perDamage = (janePanel.anomalyProficiency ?? 0) * 16 * janeStunMult
+        const result = calcDirectDamage({
+          panel: janePanel,
+          skillMultiplier: 1600,
+          damageElement: 'physical',
+          damageBasis: 'atk',
+          enemyDefense: configStore.enemy.defense,
+          enemyDefReduction: 0,
+          enemyDefFlatReduction: 0,
+          enemyLevel: configStore.enemy.level,
+          enemyResistance: enemyDamageRes['physical'] ?? 0,
+          enemyResReduction: janePanel.enemyResReduction ?? 0,
+          stunMultiplier: configStore.enemy.stunVuln,
+          stunned: janeStun,
+          critMode: 'expect',
+          count: critCount,
+          basisValueOverride: janePanel.anomalyProficiency ?? 0,
+          basisLabelOverride: '异常精通',
+        })
         rows.push({
           id: 'jane-c6-assault-followup',
           slot: janeSlot,
@@ -1365,9 +1377,9 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           element: 'physical',
           source: '强击暴击后触发',
           count: critCount,
-          perDamage,
-          totalDamage: perDamage * critCount,
-          note: `异常精通 ${fmt(janePanel.anomalyProficiency ?? 0)} × 1600%；按强击期望暴击次数 ${fmt(critCount, 2)} 次${isAxis ? ` · 易伤跟随物理强击轴内占比 ${fmt(janeStun, 2)}` : ''}`,
+          perDamage: critCount > 0 ? result.damage / critCount : 0,
+          totalDamage: result.damage,
+          note: `异常精通 ${fmt(janePanel.anomalyProficiency ?? 0)} × 1600% 标准直伤管线（增伤/防御/抗性/易伤/暴击全吃）；按强击期望暴击次数 ${fmt(critCount, 2)} 次${isAxis ? ` · 易伤跟随物理强击轴内占比 ${fmt(janeStun, 2)}` : ''}`,
         })
       }
     }
@@ -1404,17 +1416,28 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           const stateFrac = stateEntries > 0
             ? (smSrc.sparkCount * sw3Frac + ultimateCount * ultFrac) / stateEntries
             : stunCoverage
-          const stunMult = calcStunMultiplier(
-            configStore.enemy.stunVuln,
-            alicePanel.stunDmgMultiplierBonus ?? 0,
-            alicePanel.stunDmgMultiplierBonusAlways ?? 0,
-            alicePanel.stunDmgMultiplierBonusCapAlways ?? 0,
-            stateFrac,
-          )
-          // 必定暴击：damage = anomalyProficiency × 33 × (1 + critDmg/100)
+          // 乘区口径（用户 2026-09-03）：附伤占攻击区(异常精通)×倍率区(3300%)两个基础区，
+          // 其余增伤/防御/抗性/易伤/暴击乘区全吃（同简 6 命附伤）→ 走 calcDirectDamage 标准管线；
+          // 攻击本体必定暴击（原文：额外攻击必定暴击）→ critMode='crit'
           const proficiency = alicePanel.anomalyProficiency ?? 0
-          const critDmg = alicePanel.critDmg ?? 50
-          const perDamage = proficiency * 33 * (1 + critDmg / 100) * stunMult
+          const result = calcDirectDamage({
+            panel: alicePanel,
+            skillMultiplier: 3300,
+            damageElement: 'physical',
+            damageBasis: 'atk',
+            enemyDefense: configStore.enemy.defense,
+            enemyDefReduction: 0,
+            enemyDefFlatReduction: 0,
+            enemyLevel: configStore.enemy.level,
+            enemyResistance: enemyDamageRes['physical'] ?? 0,
+            enemyResReduction: alicePanel.enemyResReduction ?? 0,
+            stunMultiplier: configStore.enemy.stunVuln,
+            stunned: stateFrac,
+            critMode: 'crit',
+            count: totalTriggers,
+            basisValueOverride: proficiency,
+            basisLabelOverride: '异常精通',
+          })
 
           rows.push({
             id: 'alice-c6-decisive-extra-attack',
@@ -1426,9 +1449,9 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
             element: 'physical',
             source: '三蓄/终结技进入决胜状态 → 全队攻击额外命中',
             count: totalTriggers,
-            perDamage,
-            totalDamage: perDamage * totalTriggers,
-            note: `异常精通 ${fmt(proficiency)} × 3300% × 必定暴击(1+${fmt(critDmg)}%) → 单次 ${fmt(perDamage)} · 状态进入 ${stateEntries} 次 × 每次 ${perStateCount} 次 = ${totalTriggers} 次${isAxis ? ` · 易伤按状态进入加权轴内占比 ${fmt(stateFrac, 2)}（SW3 ${fmt(sw3Frac, 2)} / 终结 ${fmt(ultFrac, 2)}）` : ''}`,
+            perDamage: totalTriggers > 0 ? result.damage / totalTriggers : 0,
+            totalDamage: result.damage,
+            note: `异常精通 ${fmt(proficiency)} × 3300% 标准直伤管线（增伤/防御/抗性/易伤全吃）× 必定暴击 → 单次 ${fmt(totalTriggers > 0 ? result.damage / totalTriggers : 0)} · 状态进入 ${stateEntries} 次 × 每次 ${perStateCount} 次 = ${totalTriggers} 次${isAxis ? ` · 易伤按状态进入加权轴内占比 ${fmt(stateFrac, 2)}（SW3 ${fmt(sw3Frac, 2)} / 终结 ${fmt(ultFrac, 2)}）` : ''}`,
           })
         }
       }

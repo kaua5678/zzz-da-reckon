@@ -106,4 +106,28 @@ describe('简（1261）啮咬/狂热/强击暴击', () => {
     expect(jump1).toBeTruthy()
     expect(jump1!.count).toBe(2)
   })
+
+  it('影画6 附伤走标准直伤管线：吃抗性/易伤（用户 2026-09-03 乘区口径：攻击区×倍率区打底，其余乘区全吃）', async () => {
+    const { config } = await setup()
+    config.team[0].cinemaLevel = 6
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    const row = calc.damagePoolRows.value.find(r => r.id === 'jane-c6-assault-followup')
+    expect(row).toBeTruthy()
+    expect(row!.perDamage).toBeGreaterThan(0)
+    const base = row!.perDamage
+    // 物理抗性 0 → 40：perDamage 应显著下降（旧实现只吃易伤，不吃抗性——此断言锁定新口径）
+    config.setEnemy({ damageResistances: { physical: 40 } as any })
+    await new Promise(r => setTimeout(r, 50))
+    const withRes = calc.damagePoolRows.value.find(r => r.id === 'jane-c6-assault-followup')
+    expect(withRes!.perDamage).toBeLessThan(base)
+    // 敌方受伤 +20%（易伤）：perDamage 应抬升
+    config.setEnemy({ damageResistances: { physical: 0 } as any })
+    const taken = config.globalBuffs.find(b => b.id === 'b3')!
+    taken.enabled = true
+    taken.value = 20
+    await new Promise(r => setTimeout(r, 50))
+    const withTaken = calc.damagePoolRows.value.find(r => r.id === 'jane-c6-assault-followup')
+    expect(withTaken!.perDamage).toBeGreaterThan(base)
+  })
 })
