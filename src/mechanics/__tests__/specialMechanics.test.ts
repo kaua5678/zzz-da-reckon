@@ -23,40 +23,41 @@ import {
 } from '@/mechanics/agents/specPanelBuffs'
 import { computeBillyChain, computeBillyHpModel, starlightBillyMechanic } from '@/mechanics/agents/starlightBilly'
 
-describe('Roxy wind energy / wind eye', () => {
-  it('gains 1 wind energy per 30 energy spent and triggers wind cannons', () => {
+describe('Roxy wind energy / wind eye（v12 + 手法）', () => {
+  it('手法：每轮强特 3 风能（自旋 2.5s）→ 敬请安息消耗 3 → 恕不远送 1 次巨旋风（1s）', () => {
     const result = computeRoxyWindEnergy({
       exSpecialCount: 4,
-      exSpecialEnergyConsume: 20,
+      spinSeconds: 2.5,
     })
-    expect(result.energySpentTotal).toBe(80)
+    expect(result.windEnergyGain).toBe(12)
+    expect(result.windEnergyConsumed).toBe(12)
+    expect(result.windEyeGenerated).toBe(12)
+    expect(result.sendOffCount).toBe(4)
+    expect(result.megaTornadoCount).toBe(4)
+    expect(result.miniTornadoCount).toBe(0)
+  })
+
+  it('终结技 +1 风能（结余 1 不超存量上限 3）', () => {
+    const result = computeRoxyWindEnergy({
+      exSpecialCount: 2,
+      ultimateCount: 2,
+      spinSeconds: 2.5,
+    })
+    expect(result.windEnergyGain).toBe(8)
+    expect(result.windEnergyConsumed).toBe(6)
+    expect(result.sendOffCount).toBe(2)
+  })
+
+  it('兜底：单轮风能不足 3 → 小旋风（1s/个）', () => {
+    const result = computeRoxyWindEnergy({
+      exSpecialCount: 2,
+      spinSeconds: 1,
+    })
     expect(result.windEnergyGain).toBe(2)
-    expect(result.windCannonCount).toBe(2)
-    expect(result.windEyeGenerated).toBe(2)
-  })
-
-  it('does not cap total wind energy at 3 and auto-destroys all eyes with cyclone hammer', () => {
-    const result = computeRoxyWindEnergy({
-      exSpecialCount: 10,
-      exSpecialEnergyConsume: 20,
-      miniTornadoSeconds: 5,
-    })
-    expect(result.windEnergyGain).toBe(6)
-    expect(result.windCannonCount).toBe(6)
-    expect(result.windEyeDestroyedByCyclone).toBe(6)
-    expect(result.windEyeDestroyedOther).toBe(0)
-    expect(result.miniTornadoDamageSeconds).toBe(30)
-  })
-
-  it('respects a manual cyclone hammer count', () => {
-    const result = computeRoxyWindEnergy({
-      exSpecialCount: 4,
-      exSpecialEnergyConsume: 20,
-      cycloneHammerCount: 1,
-    })
-    expect(result.windEyeDestroyedByCyclone).toBe(1)
-    expect(result.windEyeDestroyedOther).toBe(1)
-    expect(result.miniTornadoDamageSeconds).toBe(5)
+    expect(result.windEnergyConsumed).toBe(2)
+    expect(result.sendOffCount).toBe(0)
+    expect(result.miniTornadoCount).toBe(2)
+    expect(result.miniTornadoSeconds).toBe(2)
   })
 })
 
@@ -305,10 +306,10 @@ describe('Claret gash / sharpness resource（v12 口径 2026-09-03）', () => {
     ultimateCount: 0,
   }
 
-  it('残痕值 = 表值 × 积蓄效率（核心 50%）→ 满 100 = 1 层（上限 3），毁伤 = min(层数, 需求)', () => {
-    // 234.96 × 1.5 = 352.44 → 3 层；需求 = 1 + 3 = 4 → 消耗 3 → 毁伤 3（cleave 1 + burial 2）
-    const result = computeClaretSharpResource(base)
-    expect(result.gashValuePct).toBeCloseTo(352.44, 2)
+  it('残痕值 = 表值 × 积蓄效率（核心 50%）→ 每 600 点 = 1 层（上限 3），毁伤 = min(层数, 需求)', () => {
+    // (1200 平A + 234.96 EX) × 1.5 = 2152.44 → 3 层；需求 = 1 + 3 = 4 → 消耗 3 → 毁伤 3（cleave 1 + burial 2）
+    const result = computeClaretSharpResource({ ...base, basicGashPerSec: 20, basicAttackTime: 60 })
+    expect(result.gashValuePct).toBeCloseTo(2152.44, 2)
     expect(result.gashStacks).toBe(3)
     expect(result.gashStackConsumed).toBe(3)
     expect(result.maimCount).toBe(3)
@@ -328,8 +329,9 @@ describe('Claret gash / sharpness resource（v12 口径 2026-09-03）', () => {
   })
 
   it('残痕覆盖率 50%：消耗层数按比例折算', () => {
-    const result = computeClaretSharpResource({ ...base, gashCoverage: 0.5 })
-    expect(result.gashStackConsumed).toBe(1.5)
+    const result = computeClaretSharpResource({ ...base, basicGashPerSec: 20, basicAttackTime: 30, gashCoverage: 0.5 })
+    // (600+234.96)×1.5=1252.44 → 2 层 × 0.5 = 1 层消耗
+    expect(result.gashStackConsumed).toBe(1)
     expect(result.maimCount).toBe(1)
   })
 

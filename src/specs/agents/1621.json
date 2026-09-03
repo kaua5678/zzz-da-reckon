@@ -6,34 +6,7 @@
     "1621"
   ],
   "status": "implemented_approximation",
-  "attributeConversions": [
-    {
-      "id": "roxy_def_to_atk",
-      "name": "初始防御→攻击",
-      "sourceStat": "def",
-      "sourcePanelPhase": "inCombat",
-      "threshold": 1500,
-      "stepSize": 1,
-      "targetStat": "atk",
-      "valuePerStep": 1.4,
-      "cap": 1000,
-      "status": "implemented_approximation",
-      "note": "初始防御超过1500时，每点额外+1.4攻击，最多+1000。"
-    },
-    {
-      "id": "roxy_def_to_impact",
-      "name": "初始防御→冲击",
-      "sourceStat": "def",
-      "sourcePanelPhase": "inCombat",
-      "threshold": 1500,
-      "stepSize": 1,
-      "targetStat": "impact",
-      "valuePerStep": 0.2,
-      "cap": 60,
-      "status": "implemented_approximation",
-      "note": "初始防御超过1500时，每点额外+0.2冲击，最多+60。"
-    }
-  ],
+  "attributeConversions": [],
   "resources": [
     {
       "id": "roxy_wind_energy",
@@ -129,113 +102,89 @@
   "rowFusions": [],
   "events": [
     {
-      "id": "roxy_wind_cannon_base",
-      "name": "风炮·起风倍率 30%",
-      "trigger": "风炮",
+      "id": "roxy_per_energy_extra",
+      "name": "敬请安息·每风能额外段",
+      "trigger": "敬请安息消耗风能",
       "eventType": "direct_damage",
       "executionKind": "execution",
-      "countField": "roxyWindCannonCount",
-      "carrierMoveId": "1621008",
-      "carrierMoveName": "风炮（起风倍率 30%）",
-      "multiplierRatio": 0.3,
-      "status": "implemented_approximation",
-      "note": "风炮伤害 = 起风倍率 × 0.3 + 风炮爆炸倍率。"
-    },
-    {
-      "id": "roxy_wind_cannon_blast",
-      "name": "风炮·爆炸倍率",
-      "trigger": "风炮",
-      "eventType": "direct_damage",
-      "executionKind": "execution",
-      "countField": "roxyWindCannonCount",
-      "carrierMoveId": "1621009",
-      "carrierMoveName": "风炮·爆炸",
-      "status": "implemented_approximation",
-      "note": "风炮额外爆炸倍率。"
-    },
-    {
-      "id": "roxy_wind_eye_destroy",
-      "name": "风眼毁坏伤害",
-      "trigger": "风眼被摧毁",
-      "eventType": "direct_damage",
-      "executionKind": "execution",
-      "countField": "roxyWindEyeGenerated",
+      "countField": "roxyPerEnergyExtraCount",
       "carrierMoveId": "1621021",
-      "carrierMoveName": "风眼毁坏",
+      "carrierMoveName": "额外爆炸伤害倍率（每风能 1 段，52.5%）",
       "status": "implemented_approximation",
-      "note": "次数由机制模块按风眼数计算。"
+      "note": "v12：每消耗 1 点[风能]额外造成一次风属性伤害。"
+    },
+    {
+      "id": "roxy_eye_burst",
+      "name": "风眼爆鸣",
+      "trigger": "风眼被引爆",
+      "eventType": "direct_damage",
+      "executionKind": "execution",
+      "countField": "roxyEyeBurstCount",
+      "carrierMoveId": "1621022",
+      "carrierMoveName": "风眼·爆鸣伤害倍率（104.9%）",
+      "status": "implemented_approximation",
+      "note": "v12：任意方式引爆时爆鸣一次；30s 自爆/超限最早引爆，全部风眼结算。"
+    },
+    {
+      "id": "roxy_send_off",
+      "name": "恕不远送",
+      "trigger": "敬请安息后场上+自身≥3 自动发动",
+      "eventType": "direct_damage",
+      "executionKind": "execution",
+      "countField": "roxySendOffCount",
+      "carrierMoveId": "1621005",
+      "carrierMoveName": "特殊技：恕不远送（500.8%）",
+      "status": "implemented_approximation",
+      "note": "v12：引爆至多 3 个风眼；3 个同命中→巨旋风，不足 3→小旋风。"
     },
     {
       "id": "roxy_mini_tornado",
-      "name": "小旋风秒伤",
-      "trigger": "旋风锤引爆风眼",
+      "name": "微型风旋",
+      "trigger": "恕不远送引爆不足 3 个",
       "eventType": "direct_damage",
       "executionKind": "execution",
-      "countField": "roxyMiniTornadoDamageSeconds",
-      "carrierMoveId": "1621006",
-      "carrierMoveName": "旋风锤·小旋风（秒伤）",
+      "countField": "roxyMiniTornadoSeconds",
+      "carrierMoveId": "1621019",
+      "carrierMoveName": "微型风旋（每秒 104.9%，1s/个）",
       "status": "implemented_approximation",
-      "note": "按引爆风眼数 × 持续秒数计算，由机制模块执行。"
+      "note": "v12：持续 1 秒（旧 5s 口径废除）。"
+    },
+    {
+      "id": "roxy_mega_tornado",
+      "name": "巨型风旋",
+      "trigger": "恕不远送 3 个风眼同命中",
+      "eventType": "direct_damage",
+      "executionKind": "execution",
+      "countField": "roxyMegaTornadoCount",
+      "carrierMoveId": "1621020",
+      "carrierMoveName": "巨型风旋（每秒 417.4%，1s）",
+      "status": "implemented_approximation",
+      "note": "v12：持续 1 秒；影画6 ×250%（patchExecutions），失衡+20% 未单接。"
     }
   ],
   "verifications": [],
   "stateMachines": [],
   "additionalAbility": {
     "teamConditions": [
-      { "type": "specialty", "values": ["attack", "edgeguard"] }
+      {
+        "type": "specialty",
+        "values": [
+          "attack",
+          "edgeguard"
+        ]
+      }
     ],
     "note": "队内有强攻或锋御角色时触发：自身暴击伤害+10%且每级+2%，上限130%；任意队友命中使敌人失衡易伤+30%，击破时失衡时间+2秒；风/污染状态目标额外+10%风直伤。"
   },
   "notes": [
-    "数据源：nanoka.cc raw JSON（data/raw/nanoka_1621.json）与技能倍率表（data/raw/nanoka_1621_skills_lv12.json）；60级基础属性与全部技能倍率已录入 catalog。",
-    "核心被动：每消耗30能量获得1点[风能]（Wind Energy），3为存量上限、不限制整局总消耗；默认获得多少消耗多少；已按 implemented_approximation 接入 resources，由机制模块 computeRoxyWindEnergy 执行。",
-    "核心被动：初始防御超过1500时，每点防御额外+1.4攻击、+0.2冲击，攻击上限+1000、冲击上限+60；已按 spec attributeConversions 接入引擎（def→atk/impact），当前按局内防御近似初始防御。",
-    "核心被动：战斗中暴击率>=65%时自身异常积蓄效率+60%，非锋御队友暴击伤害+32%、锋御队友暴击率+16%，持续到战斗结束后30秒；队友 buff 已按 implemented_approximation 接入 teamBuffs（全队+32%暴击伤害近似，锋御队友暴击率+16%暂未建模）。",
-    "额外能力：队内有强攻或锋御角色时，自身暴击伤害+10%且每级+2%，上限130%；任意队友命中使敌人失衡易伤+30%，击破时失衡时间+2秒；风/污染状态目标额外+10%风直伤。已按 implemented_approximation 接入 teamBuffs（失衡易伤+30%+失衡时长+2s，门控于 additionalAbilityActive）。",
-    "技能数据注意：EX 特殊技·Riding the Wind 的持续大旋风按秒倍率（1621010）录入，能量消耗为固定20+每秒20；Wind Cannon/Eye of the Wind 的附加倍率也已按独立招式录入，使用时需确认按秒模型。",
-    "动作时间已按倍率表 ether_purify 公式自动录入：一般招式=秽盾/100，闪避反击=秽盾/100-1.5，弹刀=秽盾/100-2.5，终结技=秽盾/100-5；无秽盾数据的追加段不填 actionTime。",
-    "命座（v4 影画，data/raw/nanoka_1621_zh.json）：影画1 敬请安息命中全抗-15%(50s)+自身暴伤+40%；影画2 小心风寒失衡易伤+25%（流势/自旋机动向不建模）；影画4 招架回1/闪反回2能量+终结技伤害+20%；影画6 无视20%风抗+巨型风旋倍率×2.5（余响逐时序不建模）。已由 roxy.ts applyPanel/buildCharConfig/patchExecutions 接入。",
-    "特殊逻辑已开始实现：风能/风炮/风眼资源（src/mechanics/agents/roxy.ts）；旋风锤引爆风眼生成小旋风，其余风眼被摧毁结算一次伤害；小旋风持续秒数默认5秒可调，轮转次数待用户确认。"
+    "v12 全量重录（2026-09-03，nanoka 3.2.12+18601660）：raw full/1621.json + nanoka_1621_skills_lv12.json 已刷新；catalog 1621 已按 v12 重建（scripts/import-nanoka-v12.mjs：id 全重排——旧 1621005=旋风锤(546.9%) 现为恕不远送(500.8%) 等，旧 id 与新语义不可混用）。",
+    "核心被动·热夜初拥（Lv.7 原文）：每消耗 25 点能量获得 1 点[风能]（上限 3 点）；初始能量自动回复>1.2 时每超过 0.01 攻击+5（上限 960）、冲击+0.4（上限 76.8）——v12 转模（旧版 def→atk/impact 口径已废除），由 roxy.ts applyPanel 按面板 energyRegen 实现；恕不远送命中[风化]→[浸染]还原、队友[浸染]/[净化]增益：依赖风化队伍，未建模。",
+    "额外能力·辉金心脏（强攻/命破/锋御队友）：自身伤害+8%+1.2%/级（Lv.7=15.2%，面板 dmgBonus；门控未接，无条件施加 note）；攻击命中→失衡易伤倍率+30%（至失衡结束，满覆盖近似）+失衡时长+2s（未接）；敌方[风化]时风/浸染直伤+8%（未接，依赖风化覆盖）；进场回40能量（勘域180s一次，buildCharConfig）；风化延长20s（无数值）；强特后异常积蓄效率+30%（50s，未接）。",
+    "资源循环（v12）：小心风寒（1621007，10 能量启动 +30/s 自旋 1621008）→ 敬请安息（1621023）消耗全部风能（每 1 点=额外 1621021 + 1 风眼，上限 9、30s 自爆）→ 风眼爆鸣 1621022 + 恕不远送 1621005（场上+自身≥3 自动；引爆至多 3：3 个同命中→巨旋风 1621020（1s），不足→小旋风 1621019（1s/个））；终结技（1621012）+1 点风能。",
+    "影画：C1 敬请安息命中全抗-15%（50s）+自身暴伤+40%；C2 小心风寒失衡易伤+30%（v12：旧 25%→30%）+流势/自旋维持（机动向不建模）；C4 招架+1/闪反+2 能量（buildCharConfig）+终结技伤害+20%（失衡+10% 未单接）；C6 无视15%风抗（v12：旧 20%→15%）+巨旋风×250%（失衡+20% 未单接）+[余响]每3s额外2次巨旋风（逐时序，pending）。",
+    "小心风寒/自旋能量成本：v12 为 10 能量启动 + 30/s 自旋（旧口径 20 能量单发）；skipGenericExSpecial=true，EX 行由模块发行（自旋秒数滑块 roxy.spinSeconds 默认 2）。",
+    "实现位置：src/mechanics/agents/roxy.ts（v12：风能账本/风眼/恕不远送/巨·小旋风/自旋/转模/命座面板）。",
+    "未建模项：风化相关（浸染还原/队友增益/风化直伤+8%）、余响逐时序、影画4 终结失衡+10%、影画6 巨旋风失衡+20%、流势自旋维持（机动向）。"
   ],
-  "teamBuffs": [
-    {
-      "id": "roxy_core_team_crit_dmg",
-      "name": "洛克茜｜核心被动·暴击伤害",
-      "source": "核心被动",
-      "description": "战斗中暴击率>=65%时，非锋御队友暴击伤害+32%（全队+32%近似，锋御队友暴击率+16%暂未建模）。",
-      "target": "team",
-      "coverage": 1,
-      "effects": [
-        {
-          "stat": "critDmg",
-          "value": 32,
-          "mode": "flat"
-        }
-      ],
-      "status": "implemented_approximation",
-      "note": "暴击率>=65%条件近似为常驻（符合实战配置）；锋御队友暴击率+16%暂未建模（当前无双锋御队伍）。"
-    },
-    {
-      "id": "roxy_extra_stun_vulnerability",
-      "name": "洛克茜｜额外能力·失衡易伤",
-      "source": "额外能力",
-      "description": "任意队友命中使敌人失衡易伤+30%，击破时失衡时间+2秒。需队伍有强攻或锋御角色。",
-      "target": "enemy",
-      "coverage": 1,
-      "effects": [
-        {
-          "stat": "stunDmgMultiplierBonus",
-          "value": 30,
-          "mode": "flat"
-        },
-        {
-          "stat": "stunDurationBonusSeconds",
-          "value": 2,
-          "mode": "flat"
-        }
-      ],
-      "status": "implemented_approximation",
-      "note": "门控条件：队伍有强攻或锋御角色（additionalAbilityActive）。"
-    }
-  ]
+  "teamBuffs": []
 }

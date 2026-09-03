@@ -204,21 +204,25 @@ export interface AliceSwordWillSource {
 export interface RoxyWindEnergySource {
   /** 强特消耗能量合计（当前按强特次数 × 单次耗能） */
   energySpentTotal: number
-  /** 风能总量 = floor(总耗能 / 30)；3 只是存量上限，不限制整局总消耗 */
+  /** 风能总量 = floor(总耗能 / 25) + 终结技次数（核心被动 Lv.7：每 25 能量 +1）；3 为存量上限 */
   windEnergyGain: number
   windEnergyCap: number
-  /** 风炮触发次数 = min(风能, 强特次数) */
-  windCannonCount: number
-  /** 风炮消耗风能后生成的风眼数 */
+  /** 敬请安息消耗风能 = min(总获得, 强特次数 × 3)（存量上限 3/发） */
+  windEnergyConsumed: number
+  /** 敬请安息每消耗 1 点风能生成的风眼数（上限 9，30s 自动引爆） */
   windEyeGenerated: number
-  /** 旋风锤引爆的风眼数 */
-  windEyeDestroyedByCyclone: number
-  /** 其余被摧毁的风眼数 */
-  windEyeDestroyedOther: number
-  /** 小旋风持续秒数（默认 5，待确认） */
+  /** 被引爆的风眼数（全部，爆鸣结算） */
+  windEyeDestroyed: number
+  /** 恕不远送次数 = floor(消耗/3)（每次引爆至多 3 个风眼） */
+  sendOffCount: number
+  /** 巨型风旋次数（3 个风眼同命中 → 1s） */
+  megaTornadoCount: number
+  /** 小旋风个数（不足 3 的余数） */
+  miniTornadoCount: number
+  /** 小旋风总秒数 = miniTornadoCount × 1s（v12 持续 1 秒） */
   miniTornadoSeconds: number
-  /** 小旋风按秒结算总次数 = 旋风锤引爆数 × 持续秒数 */
-  miniTornadoDamageSeconds: number
+  /** 自旋秒数（滑块，30 能量/s） */
+  spinSeconds: number
   note: string
 }
 
