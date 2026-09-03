@@ -39,15 +39,15 @@ describe('teamPresets 预设队伍库', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('带琉音的预设都有对应的诺姆复制版（琉音→诺姆，其余成员不变）', () => {
+  it('带琉音的预设都有对应的诺姆复制版（琉音→诺姆，其余成员不变；auto- 复刻预设除外）', () => {
     const key = (team: string[]) => [...team].sort().join('|')
     const byReplacedTeam = new Map(
       teamPresets
-        .filter(p => p.team.includes(NORMA))
+        .filter(p => p.team.includes(NORMA) && !p.id.startsWith('auto-'))
         .map(p => [key(p.team.map(id => (id === NORMA ? LIUYIN : id))), p]),
     )
     // 般琉卢带 2 个难度变体（普通轴 / 5嗔火10大）展开成 2 条 → 琉音队共 5 条
-    const liuyinPresets = teamPresets.filter(p => p.team.includes(LIUYIN))
+    const liuyinPresets = teamPresets.filter(p => p.team.includes(LIUYIN) && !p.id.startsWith('auto-'))
     expect(liuyinPresets.length).toBe(5)
     for (const liuyinPreset of liuyinPresets) {
       const normaTwin = byReplacedTeam.get(key(liuyinPreset.team))
@@ -115,12 +115,14 @@ describe('预设分组（两级下拉：分类 → 队伍）', () => {
         const preset = teamPresets.find(p => p.id === c.value)!
         expect(preset, `选项 ${c.value} 无对应预设`).toBeTruthy()
         expect(c.label).toBe(preset.name)
-        expect(g.label, `${preset.id} 归组与 preset.group 不一致`).toBe(preset.group)
+        expect(g.label, `${preset.id} 归组与 preset.group/subgroup 合成不一致`).toBe([preset.group, preset.subgroup].filter(Boolean).join(' · '))
       }
     }
   })
 
-  it('当前分类快照 = 命破队（新增分类时有意更新此断言）', () => {
-    expect([...new Set(teamPresets.map(p => p.group))]).toEqual(['命破队'])
+  it('当前分类快照（新增分类时有意更新此断言；auto- 为自动收录预设按主C职业归类）', () => {
+    expect([...new Set(teamPresets.map(p => p.group))].sort()).toEqual(
+      ['命破队', '强攻队', '支援队', '击破队', '异常队'].sort(),
+    )
   })
 })

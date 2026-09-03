@@ -254,13 +254,19 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       cfg.luciaCurtainTriggerCount = curtainTriggers
     }
 
-    const energySrc = calcEnergySource(cfg, state, configs, config.shieldCount, config.energyShieldCount, chainCountTotal, config.totalTime)
-    // 队友联动回能：与 iterate 同一函数（calcCrossAgentEnergy），保证展示明细与次数推导同口径。
-    // 曾只补回 supportUltimateRegen，其余 5 项在界面上不可见（见 CrossAgentEnergy 注释）。
-    const crossAgent = calcCrossAgentEnergy(i, configs, states)
-    energySrc.crossAgent = crossAgent
-    energySrc.supportUltimateRegen = crossAgent.supportUltimateRegen
-    energySrc.total += crossAgent.total
+    // 能量源 = iterate 驱动次数的快照（2026-09-03：展示与驱动同源，Δ 恒 0——
+    // 曾各算各的：iterate 用上轮态、装配重算当前态，雅/莱卡恩 Δ=+55.5）。
+    // 快照缺失（历史状态/热启动）才回退重算 + 跨角色回补。
+    const energySrc = state.energySource
+      ? { ...state.energySource }
+      : calcEnergySource(cfg, state, configs, config.shieldCount, config.energyShieldCount, chainCountTotal, config.totalTime)
+    if (!state.energySource) {
+      const crossAgent = calcCrossAgentEnergy(i, configs, states)
+      energySrc.crossAgent = crossAgent
+      energySrc.supportUltimateRegen = crossAgent.supportUltimateRegen
+      energySrc.total += crossAgent.total
+    }
+
 
     // 喧响伴随
     let teammateShare = 0

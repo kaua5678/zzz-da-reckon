@@ -1843,6 +1843,9 @@ export interface IterationState {
   chainCountTotal: number
   /** 总能量 */
   totalEnergy: number
+  /** 驱动本次迭代次数的能量源快照（2026-09-03：展示与驱动同源——装配直接复用，
+   *  杜绝「iterate 用上轮态 vs 装配用当前态」的 Δ 分裂；缺省 = 重新计算） */
+  energySource?: EnergySource
   /** 总喧响（含开局赠送） */
   totalDecibel: number
   /** 必做动作前台时间（未扣除合轴） */

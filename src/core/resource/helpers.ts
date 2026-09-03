@@ -903,7 +903,7 @@ export function buildAnomalyEventExecutions(cfg: CharacterOperationConfig, state
  * 伊德海莉：失衡内强特由失衡轴连段反推（yidhariInStunExCount），
  * 剩下闪能打非失衡强特（每次 50 闪能，回 15，净耗 35 由 refund 循环收敛）。
  */
-function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy: number): number {
+export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy: number): number {
   // 替代资源型强特（如克拉蕾锐能 60/发）：次数由模块资源账本给出（不动点，上一轮写入），
   // 不由能量预算推导、不扣能量——2026-09 成本类型化（findExSpecial costType=resource）。
   if (cfg.exSpecialCostType === 'resource') {
@@ -949,6 +949,7 @@ export function iterate(
 
   // Step 1: 计算每个角色的能量和喧响（基于上一轮的时间分配）
   const energies: number[] = []
+  const energySnapshots: EnergySource[] = []
   const decibels: number[] = []
   const shareableDecibels: number[] = []
 
@@ -966,6 +967,14 @@ export function iterate(
     const crossAgent = calcCrossAgentEnergy(i, configs, prevStates)
     const totalEnergy = energySrc.total + crossAgent.total
     energies.push(totalEnergy)
+    // 快照（2026-09-03）：驱动次数的能量源原样存进 state——装配展示复用同一对象，
+    // 杜绝「展示重算（当前态）≠ 驱动（上轮态）Δ≠0」的分裂（实测雅/莱卡恩 Δ=+55.5）。
+    energySnapshots.push({
+      ...energySrc,
+      crossAgent,
+      supportUltimateRegen: crossAgent.supportUltimateRegen,
+      total: totalEnergy,
+    })
 
     // 强特次数 = 总能量 ÷ 强特消耗（伊德海莉失衡内由轴连段反推，剩余打非失衡强特）
     const exSpecialCount = resolveExSpecialCount(cfg, totalEnergy)
@@ -1124,6 +1133,7 @@ export function iterate(
       ultimateCount,
       chainCountTotal: chainCount,
       totalEnergy: energies[i],
+      energySource: energySnapshots[i],
       totalDecibel: decibels[i],
       necessaryTime: necessary,
       frontlineTime,

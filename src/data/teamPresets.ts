@@ -112,14 +112,15 @@ export interface TeamPresetOptionGroup {
 }
 
 /**
- * 分组下拉选项（两级：分类 → 队伍）。三个消费点（首页预设下拉/保存弹窗、队伍对比页、
- * 击破对比页）共用，避免各自 teamPresets.map(...) 重复平铺。组名按 localeCompare 排序、
- * 「未分组」恒排最后，组内沿用 teamPresets 的名称序。
+ * 分组下拉选项（两级：分类 → 队伍；分类名 = 一级分类 + 二级分类合成
+ * 「一级 · 二级」——2026-09-03 用户「太多了需要二级分类」）。
+ * 三个消费点（首页预设下拉/保存弹窗、队伍对比页、击破对比页）共用。组名按
+ * localeCompare 排序、「未分组」恒排最后，组内沿用 teamPresets 的名称序。
  */
 export const teamPresetGroupOptions: Array<SelectOption | SelectGroupOption> = (() => {
   const groups = new Map<string, TeamPresetOption[]>()
   for (const p of teamPresets) {
-    const label = p.group?.trim() || UNGROUPED_LABEL
+    const label = [p.group?.trim() || UNGROUPED_LABEL, p.subgroup?.trim()].filter(Boolean).join(' · ')
     if (!groups.has(label)) groups.set(label, [])
     groups.get(label)!.push({ value: p.id, label: p.name })
   }

@@ -122,9 +122,10 @@ describe('仪玄 spec 机制（1371）', () => {
     // 队友进窗攒不足 3000（青衣 2813/赛斯 2866）→ 大招全削减 [0, 0]（原总量口径 [2, 2]）；
     // 玄墨暗涌队友终结回闪能 80→0 → 总账 800→684、当量 13→11。
     expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([2, 2])
-    expect(yixuan.energySource.total).toBeCloseTo(812.01, 1)
+    // 2026-09-03 展示=驱动同源（iterate 快照）：原 Δ=1.49（展示 812.01 / 驱动 810.52）已归零。
+    expect(yixuan.energySource.total).toBeCloseTo(810.52, 1)
     expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(80)
-    expect(yixuan.derivedEnergy).toBeCloseTo(810.52, 1)
+    expect(yixuan.derivedEnergy).toBeCloseTo(yixuan.energySource.total, 4)
     const chain = yixuan.yixuanExChain!
     // 手填口径锁结构（轨 2026-08-31：income 随队友大招削减回落，cloudOut/flashSpent 为收敛值不锁数）
     expect(chain.ink1).toBe(3)
