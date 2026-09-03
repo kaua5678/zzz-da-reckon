@@ -88,6 +88,7 @@
               <!-- 当期 Buff 快捷选择（归档未记录玩家选择；点选写入全局 Buff 表参与计算） -->
               <div v-if="deployPhaseView && deployPhaseView.buffs.length > 0" class="period-buff-row">
                 <span class="pb-label">当期 Buff</span>
+                <n-button size="tiny" :loading="buffPicking" @click="autoPickPeriodBuff">自动（最高伤）</n-button>
                 <n-button size="tiny" :type="selectedBuffTitle === 'none' ? 'primary' : 'default'" @click="pickPeriodBuff(null)">不用</n-button>
                 <n-button
                   v-for="b in deployPhaseView.buffs"
@@ -303,6 +304,37 @@ function pickPeriodBuff(card: PhaseBuffCard | null) {
   const applied = applyPeriodBuff(configStore, phaseId, card)
   selectedBuffTitle.value = card && applied ? card.title : 'none'
   configStore.triggerRefresh?.()
+}
+
+/** 自动选择：评估「不用」+ 每张可用牌的总伤害，应用最高者（含基准；测试牌/无效果牌剔除） */
+const buffPicking = ref(false)
+async function autoPickPeriodBuff() {
+  const view = deployPhaseView.value
+  if (!view || buffPicking.value) return
+  const candidates = (view.buffs ?? []).filter(b => !b.testOnly && (b.effects ?? []).some(e => e.stat))
+  if (candidates.length === 0) return
+  buffPicking.value = true
+  try {
+    const results: { title: string; damage: number }[] = []
+    // 基准：不用
+    applyPeriodBuff(configStore, view.phaseId, null)
+    configStore.triggerRefresh?.()
+    await new Promise(r => setTimeout(r, 40))
+    results.push({ title: 'none', damage: teamTotalDamage.value })
+    for (const b of candidates) {
+      applyPeriodBuff(configStore, view.phaseId, b)
+      configStore.triggerRefresh?.()
+      await new Promise(r => setTimeout(r, 40))
+      results.push({ title: b.title, damage: teamTotalDamage.value })
+    }
+    const best = results.reduce((a, b2) => (b2.damage > a.damage ? b2 : a))
+    const bestCard = candidates.find(c => c.title === best.title) ?? null
+    applyPeriodBuff(configStore, view.phaseId, bestCard)
+    selectedBuffTitle.value = bestCard ? bestCard.title : 'none'
+    configStore.triggerRefresh?.()
+  } finally {
+    buffPicking.value = false
+  }
 }
 
 const columns = computed(() => [
