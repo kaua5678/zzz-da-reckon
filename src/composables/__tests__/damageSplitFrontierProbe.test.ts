@@ -50,6 +50,8 @@ describe('探针：前沿直伤/异常伤拆分', () => {
     interface TeamSplit {
       run: ArchiveRun
       ratio: number
+      hp: number
+      damage: number
       gold: number
       team: string
       anomalyChars: string
@@ -88,6 +90,8 @@ describe('探针：前沿直伤/异常伤拆分', () => {
       rows.push({
         run,
         ratio: hp > 0 ? damage / hp : 0,
+        hp,
+        damage,
         gold: runLimitedGold(run.team),
         team: run.team.map(m => `${nameOf(m.agentId)}M${m.mindscape}`).join('/'),
         anomalyChars: run.team.map(m => m.agentId).filter(id => catalog.getAgent(id)?.specialty === 'anomaly').map(id => nameOf(id)).join('+') || '（无异常）',
@@ -97,8 +101,13 @@ describe('探针：前沿直伤/异常伤拆分', () => {
     }
     const elapsed = (Date.now() - t0) / 1000
     rows.sort((a, b) => a.ratio - b.ratio)
+    // 用户口径（2026-09-02）：速杀 60s = 模型 180s 基本循环折算——fn 对照用 总伤×3 vs HP；
+    // 后台不占前场、冰紊乱倍率正常（碎冰承载），时间不再深究。
+    const fnOld = rows.filter(r => !(r.damage >= r.hp && r.hp > 0) && r.run.bossKilled).length
+    const fn3 = rows.filter(r => !(r.damage * 3 >= r.hp && r.hp > 0) && r.run.bossKilled).length
     console.log('\n=== 前沿直伤/异常拆分（比率最差 ' + topN + ' 队）===')
     console.log('批跑', frontier.length, '队 ·', elapsed.toFixed(1), 's')
+    console.log(`fn（原判据 总伤≥HP）${fnOld} 队 | fn（×3 判据 总伤×3≥HP，用户口径）${fn3} 队`)
     for (const r of rows.slice(0, topN)) {
       console.log(`\n${(r.ratio * 100).toFixed(0)}% 金${r.gold} [${r.anomalyChars}] 主C=${r.primary} | ${r.team}`)
       for (const s of r.perSlot) {
@@ -108,11 +117,11 @@ describe('探针：前沿直伤/异常伤拆分', () => {
       }
     }
 
-    // 分组聚合：主C直伤量 + 队直伤占比 + 主C平A时间（按队内异常角色）
-    console.log('\n=== 按队内异常角色分组（平均比率 / 平均主C直伤 / 平均队直伤占比 / 主C平A秒数）===')
-    const groups = new Map<string, { n: number; ratioSum: number; primaryDirect: number; directShareSum: number; primaryBasicTime: number }>()
+    // 分组聚合：主C直伤量 + 队直伤占比 + 主C平A时间 + ×3 fn 计数（按队内异常角色）
+    console.log('\n=== 按队内异常角色分组（平均比率 / 平均主C直伤 / 平均队直伤占比 / 主C平A秒数 / ×3 fn 队数）===')
+    const groups = new Map<string, { n: number; ratioSum: number; primaryDirect: number; directShareSum: number; primaryBasicTime: number; fn3: number }>()
     for (const r of rows) {
-      const g = groups.get(r.anomalyChars) ?? { n: 0, ratioSum: 0, primaryDirect: 0, directShareSum: 0, primaryBasicTime: 0 }
+      const g = groups.get(r.anomalyChars) ?? { n: 0, ratioSum: 0, primaryDirect: 0, directShareSum: 0, primaryBasicTime: 0, fn3: 0 }
       g.n++
       g.ratioSum += r.ratio
       const p = r.perSlot.find(s => nameOf(s.agentId) === r.primary || s.agentId === r.run.primaryAgentId)
@@ -121,10 +130,11 @@ describe('探针：前沿直伤/异常伤拆分', () => {
       const teamTotal = r.perSlot.reduce((s, x) => s + x.direct + x.anomaly, 0)
       const teamDirect = r.perSlot.reduce((s, x) => s + x.direct, 0)
       g.directShareSum += teamTotal > 0 ? teamDirect / teamTotal : 0
+      if (r.damage * 3 < r.hp) g.fn3++
       groups.set(r.anomalyChars, g)
     }
     const gs = [...groups.entries()].sort((a, b) => a[1].ratioSum / a[1].n - b[1].ratioSum / b[1].n)
-    console.log('异常角色组        队数 平均比率 平均主C直伤 平均队直伤占比 主C平A秒')
+    console.log('异常角色组        队数 平均比率 平均主C直伤 平均队直伤占比 主C平A秒 ×3fn')
     for (const [key, g] of gs) {
       console.log(
         (key || '（无异常队）').padEnd(16),
@@ -133,6 +143,7 @@ describe('探针：前沿直伤/异常伤拆分', () => {
         (g.primaryDirect / g.n / 1e6).toFixed(1).padStart(9) + 'M',
         (g.directShareSum / g.n * 100).toFixed(0).padStart(11) + '%',
         (g.primaryBasicTime / g.n).toFixed(1).padStart(9),
+        String(g.fn3).padStart(5),
       )
     }
 
