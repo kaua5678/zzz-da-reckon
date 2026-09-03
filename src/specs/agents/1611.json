@@ -22,7 +22,7 @@
           "amountPerCount": 1,
           "coverage": 1,
           "status": "implemented_approximation",
-          "note": "队友为当前操作角色时每秒积累3%残痕值，1层=33.33%；全局资源计算不关心单次满值，按队友前台时间 × 3% 计算总残痕值。",
+          "note": "v12：部分锐化伤害命中积累残痕值（= 招式 anomaly_buildup 表值），满 100 = 1 层（上限 3，溢出浪费）；积蓄效率 = 1 + 核心 50%（Lv.7）+ 影画2 20%。平A聚合（秒均×时间）+ 秘血铸锋 234.96% 由 dept 模块 compute 聚合。",
           "adjustable": {
             "id": "1611.claret_gash.gash_gain_from_sharp_dmg.rate",
             "label": "克拉蕾·残痕·锐化伤害命中",
@@ -53,27 +53,17 @@
       "id": "claret_sharpness",
       "name": "锐能",
       "nature": "resource",
-      "initialValue": 0,
+      "initialValue": 60,
       "maxValue": null,
       "gainRules": [
         {
-          "id": "personal_resource_from_maim",
-          "trigger": "全队触发毁伤",
-          "countSource": "exSpecialCount",
-          "amountPerCount": 1,
+          "id": "sharpness_entry_gain",
+          "trigger": "进入战场",
+          "countSource": "none",
+          "amountPerCount": 60,
           "coverage": 1,
           "status": "implemented_approximation",
-          "note": "每次毁伤 +1 个人资源；二命额外 +0.25 锐能/次，由机制模块按命座执行。",
-          "adjustable": {
-            "id": "1611.claret_sharpness.personal_resource_from_maim.rate",
-            "label": "克拉蕾·锐能·全队触发毁伤",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "v12 原文：进入战场时即可回复60锐能，在勘域模式中此效果180秒内最多触发一次 → 每局一次（180s 战斗上限内不重置）。这是锐能唯一来源（旧「毁伤回锐能」口径已废除）。"
         }
       ],
       "spendRules": [
@@ -81,7 +71,7 @@
           "id": "sharpness_spend_blood_forge",
           "trigger": "强化特殊技：秘血铸锋",
           "cost": 60,
-          "result": "消耗锐能释放强化特殊技",
+          "result": "消耗锐能释放强化特殊技（v12 原文「锐能消耗：60点」）",
           "status": "implemented_approximation"
         }
       ],
@@ -93,6 +83,30 @@
   "rowFusions": [],
   "events": [
     {
+      "id": "claret_cleave_a",
+      "name": "斩金断铁·上挑",
+      "trigger": "发动斩金断铁",
+      "eventType": "direct_damage",
+      "executionKind": "execution",
+      "countField": "claretCleaveCount",
+      "carrierMoveId": "1611011",
+      "carrierMoveName": "特殊技：血华誓·斩金断铁",
+      "status": "implemented_approximation",
+      "note": "v12：上挑 153.6%（表值回填）。"
+    },
+    {
+      "id": "claret_cleave_b",
+      "name": "斩金断铁·横斩",
+      "trigger": "发动斩金断铁",
+      "eventType": "direct_damage",
+      "executionKind": "execution",
+      "countField": "claretCleaveCount",
+      "carrierMoveId": "1611012",
+      "carrierMoveName": "特殊技：血华誓·斩金断铁",
+      "status": "implemented_approximation",
+      "note": "v12：横斩 175.7%（表值回填）；横斩命中[残痕]敌人触发[毁伤]。"
+    },
+    {
       "id": "claret_blood_burial",
       "name": "葬血强袭",
       "trigger": "发动葬血强袭",
@@ -100,49 +114,35 @@
       "executionKind": "execution",
       "countField": "claretBloodBurialCount",
       "carrierMoveId": "1611014",
-      "carrierMoveName": "强化特殊技：葬血强袭",
+      "carrierMoveName": "特殊技：血华誓·葬血强袭",
       "status": "implemented_approximation",
-      "note": "发动时消耗所有个人资源，每点使倍率 +6.5%；倍率由机制模块动态覆盖。"
+      "note": "v12：3 段横斩合计 626.3%（表值回填）；每段命中残痕敌人触发一次[毁伤]（至多 3 次/施放）。"
     },
     {
-      "id": "claret_maim_cleave",
-      "name": "毁伤（斩金断铁）",
-      "trigger": "斩金断铁消耗残痕",
+      "id": "claret_maim",
+      "name": "毁伤",
+      "trigger": "斩金断铁/葬血强袭/影画6 触发毁伤",
       "eventType": "direct_damage",
       "executionKind": "execution",
-      "countField": "claretMaimFromCleave",
+      "countField": "claretMaimCount",
       "carrierMoveId": "1611013",
-      "carrierMoveName": "毁伤（斩金断铁）",
+      "carrierMoveName": "毁伤（1611013，v12 = 1625.6%）",
       "status": "implemented_approximation",
-      "note": "斩金断铁命中残痕敌人触发的毁伤伤害倍率。"
-    },
-    {
-      "id": "claret_maim_burial",
-      "name": "毁伤伤害倍率（葬血强袭）",
-      "trigger": "葬血强袭消耗残痕",
-      "eventType": "direct_damage",
-      "executionKind": "execution",
-      "countField": "claretMaimFromBurial",
-      "carrierMoveId": "1611015",
-      "carrierMoveName": "毁伤伤害倍率（葬血强袭）",
-      "status": "implemented_approximation",
-      "note": "葬血强袭触发的毁伤伤害倍率，受个人资源每点 +6.5% 加成。"
+      "note": "消耗 1 层[残痕]触发；影画2 倍率 ×130%（模块 override）。由 claret.ts 按 min(残痕层数, 需求)×覆盖率 + 影画6 直接毁伤计数。"
     }
   ],
   "verifications": [],
   "stateMachines": [],
   "notes": [
-    "数据源：nanoka.cc raw JSON（data/raw/nanoka_1611.json）与技能倍率表（data/raw/nanoka_1611_skills_lv12.json）；60级基础属性与全部技能倍率已录入 catalog。",
-    "核心被动：技能伤害全部为锐化伤害（Sharp DMG），以防御力为伤害基数；锐暴基础伤害固定120%，克拉蕾核心突破额外+30%，出伤按150%锐暴伤害替代暴击伤害；暴击率超过100%的部分额外进行锐暴判定。catalog 的伤害行 damageBasis 已按 def 录入。",
-    "核心被动：队友为当前操作角色时每秒为敌人积累3%残痕值，1层残痕=33.33%；斩金断铁/葬血强袭命中[残痕]状态消耗1层触发[毁伤]追加伤害，全队触发[毁伤]时自身获得1点个人资源；已按 implemented_approximation 接入 resources。",
-    "进入[猩红铭刻]状态后血华誓招式暴击率+35%、伤害+25%；额外能力需队内有击破或锋御角色；触发毁伤后进入[锋芒毕露]：穿透率+20%、失衡值+10%，首次切换至击破/锋御队友时复制给该队友（已加 teammate buff，默认1名队友满覆盖）。",
-    "倍率表说明：强化特殊技·秘血铸锋为 1611010；强化特殊技·葬血强袭为 1611014（伤害1711.2%/失衡838%）；1611015 为毁伤伤害倍率（1232%），已在 catalog 改名。",
-    "葬血强袭逻辑：发动时消耗所有[个人资源]，每消耗1点使葬血强袭与毁伤伤害倍率伤害提升6.5%，发动期间无敌；已由机制模块在 buildExecutions 中按倍率覆盖实现。",
-    "基础面板：60级暴击率19.4%（核心突破提供14.4%），暴击伤害基础0%，锐暴伤害150%（基础120%+核心30%）；能量字段按 ep_max=120/ep_recover=1.2 录入，实际是否为\"锐度\"消耗体系需确认。",
-    "终结技已录入：moveId 1611021（nanoka 内部名 Claret_Skill_ExQTE_02_Title），倍率 4841.5%，catalog 展示名使用 Ultimate: Forged in Fire。",
-    "动作时间已按倍率表 ether_purify 公式自动录入：一般招式=秽盾/100，闪避反击=秽盾/100-1.5，弹刀=秽盾/100-2.5，终结技=秽盾/100-5；无秽盾数据的追加段不填 actionTime。",
-    "命座（v4 影画，data/raw/nanoka_1611_zh.json）：影画4 锻星第三段/血契共鸣/千锤百炼伤害+20%（patchExecutions）；影画6 血契共鸣/千锤百炼重击不消耗残痕直接触发单体毁伤（computeClaretSharpResource c6ExtraMaim）。影画1/2 为 v3.2.1 旧口径（残痕×1.15+暴击15% / 0.25锐能），待 v4 全量对账后更新。",
-    "特殊逻辑已开始实现：残痕按队友前台时间×3%积累（1层=33.33%）、毁伤触发、个人资源与锐能（src/mechanics/agents/claret.ts）；锋芒毕露自身面板与队友拐已接入，斩金断铁次数默认1次可调，残痕覆盖率默认100%可调。"
+    "数据源：nanoka 3.2.12+18601660（v12）zh character/1611.json（data/raw/nanoka_missing/full/1611.json）+ 技能倍率表（data/raw/nanoka_1611_skills_lv12.json，2026-09-03 由 nanoka_scraper 重新生成）；catalog 1611 行已按 v12 重建（删 1611015/1611017、增 1611029/1611030，全表数值 v12）。",
+    "核心被动·苍白血宴（v12）：伤害均为锐化伤害（def 基底，引擎 SHARPEN_DAMAGE_PROFILE；锐暴伤害 150% 走 level60.sharpCritDmg）；部分锐化伤害命中积累残痕值（= 招式 anomaly_buildup 表值 /100），残痕值满 →[残痕]（最多 3 层）；斩金断铁/葬血强袭命中[残痕]敌人消耗 1 层触发[毁伤]；每 1% 初始暴击伤害 → 初始暴击率 +0.35%（未建模，初始暴伤≈0 无影响）。",
+    "核心被动（Lv.7）状态增益：处于[猩红铭刻]或发动[血契共鸣]/[千锤百炼]/[无垢熔锋]期间，暴击率 +30%、残痕积蓄效率 +50%（状态高频维持按满覆盖近似）；[猩红铭刻]后场不减时长、连携 +2s、锻星/伏钺极限闪避剩余伤害 +15%（机动/闪避向，未建模）。",
+    "额外能力·血裔传承（击破/其他锋御/同属性）：全队触发[浸染]时克拉蕾回 300 喧响（20s CD）——浸染事件通道未接入（仅风队受益，未建模）；克拉蕾或队友触发[毁伤]时全队[锋御]进入[残锋]：锐暴伤害 +25%（40s 刷新，按自身面板近似）。",
+    "锐能（v12）：进入战场 +60（勘域 180s 一次 → 每局一次）；秘血铸锋（强化特殊技 1611010，1249.6%）消耗 60 → 每局 1 发。旧口径「毁伤回个人资源→锐能 / +0.25/次」已废除（v12 文本确认，用户 2026-09-03 口径）。",
+    "残痕积累口径（模块推断，表值佐证）：每命中积累 = anomaly_buildup 表值（平A聚合秒均×时间 + 秘血铸锋 234.96%）；满 100 = 1 层，上限 3（溢出浪费）；积蓄效率 = 1 + 50%（核心）+ 20%（影画2）。原「队友前台 3%/s」为旧版近似，已废除。",
+    "影画1：猩红铭刻最大持续 +3s（时长无独立数值）+ 状态期间攻击命中无视 16% 电抗（enemyElectricResReduction，满覆盖近似）。影画2：锐暴命中时残痕积蓄效率 +20%（并入积蓄效率）+ 毁伤伤害倍率 ×130%（执行行 multiplierOverride）。影画3/5 技能等级+2。",
+    "影画4：锻星第三段（1611007 连续斩击 + 1611029 下砸）/血契共鸣（1611020）/千锤百炼（1611021）伤害 +20%（patchExecutions dmgBonus）；第三段延长为机动向不建模。影画6：血契共鸣/千锤百炼重击命中不消耗[残痕]直接触发 1 次单体毁伤（连携+终结次数）。",
+    "实现位置：src/mechanics/agents/claret.ts（v12 模块：锐能账本/残痕值聚合/毁伤计数/面板与命座）；catalog 1611 行 damageBasis=def（锐化伤害）。"
   ],
   "teamBuffs": []
 }

@@ -789,7 +789,7 @@
       "description": [
         {
           "name": "特殊技：恕不远送",
-          "desc": "<color=#ffffff>[强化特殊技：敬请安息]</color>结束后，若场上至少存在3个<color=#ffffff><Term:1000040></Term></color>时自动发动：\n丢出锤子对场上敌人造成<color=#A6C5FD>风属性伤害</color>；\n被该招式命中的<color=#ffffff><Term:1000040></Term></color>会被引爆，至多引爆3个<color=#ffffff><Term:1000040></Term></color>，根据命中风眼的数量生成微型气旋，造成<color=#A6C5FD>风属性伤害</color>；\n若一次引爆3个<color=#ffffff><Term:1000040></Term></color>，则改为生成巨型气旋，造成<color=#A6C5FD>风属性伤害</color>；\n招式发动期间拥有无敌效果。",
+          "desc": "<color=#FFFFFF>[强化特殊技：敬请安息]</color>发动后，若场上<Term:1000040></Term>和自身<Term:1000039></Term>共计至少3个时自动发动：\n丢出锤子对场上敌人造成<color=#A6C5FD>风属性伤害</color>；\n被该招式命中的<color=#FFFFFF>[风眼]</color>会被引爆，至多引爆3个<color=#FFFFFF>[风眼]</color>，根据命中风眼的数量生成微型风旋，造成<color=#A6C5FD>风属性伤害</color>；\n若一次引爆3个<color=#FFFFFF>[风眼]</color>，则改为生成巨型风旋，造成<color=#A6C5FD>风属性伤害</color>；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
@@ -804,12 +804,12 @@
         },
         {
           "name": "强化特殊技：敬请安息",
-          "desc": "<color=#ffffff>[强化特殊技：小心风寒]</color>结束自动发动：\n消耗全部<color=#ffffff><Term:1000039></Term></color>向前方发射风炮，造成<color=#A6C5FD>风属性伤害</color>；\n每消耗1点<color=#ffffff><Term:1000039></Term></color>，在攻击后额外造成一次<color=#A6C5FD>风属性伤害</color>，并在原地生成1个<color=#ffffff><Term:1000040></Term></color>；\n招式发动期间对敌人触发[风化]时将触发队伍中上一位角色的<color=#FFFFFF>[快速支援]</color>；\n招式发动期间拥有无敌效果。",
+          "desc": "<color=#FFFFFF>[强化特殊技：小心风寒]</color>结束自动发动：\n消耗全部<Term:1000039></Term>向前方发射风炮，造成<color=#A6C5FD>风属性伤害</color>；\n每消耗1点<color=#FFFFFF>[风能]</color>，在攻击后额外造成一次<color=#A6C5FD>风属性伤害</color>，并在原地生成1个<Term:1000040></Term>；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
           "name": "风眼",
-          "desc": "<color=#ffffff>[强化特殊技：敬请安息]</color>消耗<color=#ffffff><Term:1000039></Term></color>后生成，持续30秒；\n<color=#ffffff><Term:1000040></Term></color>最多同时存在9个，超出上限后最早生成的<color=#ffffff><Term:1000040></Term></color>会自动引爆；\n被<color=#ffffff>[特殊技：恕不远送]</color>或<color=#ffffff>[终结技：葬夜安魂曲]</color>命中时将其引爆，若同时命中数量不足3个，每个<color=#ffffff><Term:1000040></Term></color>位置上都会生成1阵微型风旋，追踪敌人并造成<color=#A6C5FD>风属性伤害</color>，持续1秒；\n若同时命中3个，则会生成1阵巨型风旋作为替代，造成<color=#A6C5FD>风属性伤害</color>，持续1秒。\n通过任意方式引爆时，<color=#ffffff><Term:1000040></Term></color>会发出爆鸣对周围敌人造成一次<color=#A6C5FD>风属性伤害</color>。",
+          "desc": "<color=#FFFFFF>[强化特殊技：敬请安息]</color>消耗<Term:1000039></Term>后生成，持续30秒后自动引爆；\n<Term:1000040></Term>最多同时存在9个，超出上限后最早生成的<color=#FFFFFF>[风眼]</color>会自动引爆；\n被<color=#FFFFFF>[特殊技：恕不远送]</color>命中时将其引爆，若同时命中数量不足3个，每个<color=#FFFFFF>[风眼]</color>位置上都会生成1阵微型风旋，追踪敌人并造成<color=#A6C5FD>风属性伤害</color>，持续1秒；\n若同时命中3个，则会生成1阵巨型风旋作为替代，造成<color=#A6C5FD>风属性伤害</color>，持续1秒。\n通过任意方式引爆时，<color=#FFFFFF>[风眼]</color>会发出爆鸣对周围敌人造成一次<color=#A6C5FD>风属性伤害</color>。",
           "potential": []
         },
         {
@@ -878,18 +878,18 @@
               "desc": "{Skill:1621005, Prop:1001}",
               "param": {
                 "1621005": {
-                  "main": 66660,
-                  "growth": 6060,
+                  "main": 25000,
+                  "growth": 2280,
                   "format": "%",
-                  "damage_percentage": 66660,
-                  "damage_percentage_growth": 6060,
-                  "stun_ratio": 14110,
-                  "stun_ratio_growth": 650,
+                  "damage_percentage": 25000,
+                  "damage_percentage_growth": 2280,
+                  "stun_ratio": 7060,
+                  "stun_ratio_growth": 330,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 12819,
+                  "attribute_infliction": 6409,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -904,18 +904,18 @@
               "desc": "{Skill:1621005, Prop:1002}",
               "param": {
                 "1621005": {
-                  "main": 14110,
-                  "growth": 650,
+                  "main": 7060,
+                  "growth": 330,
                   "format": "%",
-                  "damage_percentage": 66660,
-                  "damage_percentage_growth": 6060,
-                  "stun_ratio": 14110,
-                  "stun_ratio_growth": 650,
+                  "damage_percentage": 25000,
+                  "damage_percentage_growth": 2280,
+                  "stun_ratio": 7060,
+                  "stun_ratio_growth": 330,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 12819,
+                  "attribute_infliction": 6409,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -936,11 +936,11 @@
               "desc": "{Skill:1621007, Prop:1001}",
               "param": {
                 "1621007": {
-                  "main": 2730,
-                  "growth": 250,
+                  "main": 1370,
+                  "growth": 130,
                   "format": "%",
-                  "damage_percentage": 2730,
-                  "damage_percentage_growth": 250,
+                  "damage_percentage": 1370,
+                  "damage_percentage_growth": 130,
                   "stun_ratio": 1160,
                   "stun_ratio_growth": 60,
                   "sp_recovery": 0,
@@ -965,8 +965,8 @@
                   "main": 1160,
                   "growth": 60,
                   "format": "%",
-                  "damage_percentage": 2730,
-                  "damage_percentage_growth": 250,
+                  "damage_percentage": 1370,
+                  "damage_percentage_growth": 130,
                   "stun_ratio": 1160,
                   "stun_ratio_growth": 60,
                   "sp_recovery": 0,
@@ -993,18 +993,18 @@
               "desc": "{Skill:1621008, Prop:1001}",
               "param": {
                 "1621008": {
-                  "main": 117900,
-                  "growth": 10720,
+                  "main": 130400,
+                  "growth": 11860,
                   "format": "%",
-                  "damage_percentage": 117900,
-                  "damage_percentage_growth": 10720,
+                  "damage_percentage": 130400,
+                  "damage_percentage_growth": 11860,
                   "stun_ratio": 46300,
                   "stun_ratio_growth": 2110,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 843425,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 59179,
+                  "attribute_infliction": 61583,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -1022,15 +1022,15 @@
                   "main": 46300,
                   "growth": 2110,
                   "format": "%",
-                  "damage_percentage": 117900,
-                  "damage_percentage_growth": 10720,
+                  "damage_percentage": 130400,
+                  "damage_percentage_growth": 11860,
                   "stun_ratio": 46300,
                   "stun_ratio_growth": 2110,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 843425,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 59179,
+                  "attribute_infliction": 61583,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -1056,11 +1056,11 @@
               "desc": "{Skill:1621023, Prop:1001}",
               "param": {
                 "1621023": {
-                  "main": 6370,
-                  "growth": 580,
+                  "main": 3190,
+                  "growth": 290,
                   "format": "%",
-                  "damage_percentage": 6370,
-                  "damage_percentage_growth": 580,
+                  "damage_percentage": 3190,
+                  "damage_percentage_growth": 290,
                   "stun_ratio": 2700,
                   "stun_ratio_growth": 130,
                   "sp_recovery": 0,
@@ -1085,8 +1085,8 @@
                   "main": 2700,
                   "growth": 130,
                   "format": "%",
-                  "damage_percentage": 6370,
-                  "damage_percentage_growth": 580,
+                  "damage_percentage": 3190,
+                  "damage_percentage_growth": 290,
                   "stun_ratio": 2700,
                   "stun_ratio_growth": 130,
                   "sp_recovery": 0,
@@ -1108,11 +1108,11 @@
               "desc": "{Skill:1621021, Prop:1001}",
               "param": {
                 "1621021": {
-                  "main": 5210,
-                  "growth": 480,
+                  "main": 2610,
+                  "growth": 240,
                   "format": "%",
-                  "damage_percentage": 5210,
-                  "damage_percentage_growth": 480,
+                  "damage_percentage": 2610,
+                  "damage_percentage_growth": 240,
                   "stun_ratio": 0,
                   "stun_ratio_growth": 0,
                   "sp_recovery": 0,
@@ -1166,11 +1166,11 @@
               "desc": "{Skill:1621019, Prop:1001}",
               "param": {
                 "1621019": {
-                  "main": 7820,
-                  "growth": 720,
+                  "main": 5210,
+                  "growth": 480,
                   "format": "%",
-                  "damage_percentage": 7820,
-                  "damage_percentage_growth": 720,
+                  "damage_percentage": 5210,
+                  "damage_percentage_growth": 480,
                   "stun_ratio": 1770,
                   "stun_ratio_growth": 90,
                   "sp_recovery": 0,
@@ -1195,8 +1195,8 @@
                   "main": 1770,
                   "growth": 90,
                   "format": "%",
-                  "damage_percentage": 7820,
-                  "damage_percentage_growth": 720,
+                  "damage_percentage": 5210,
+                  "damage_percentage_growth": 480,
                   "stun_ratio": 1770,
                   "stun_ratio_growth": 90,
                   "sp_recovery": 0,
@@ -1218,11 +1218,11 @@
               "desc": "{Skill:1621020, Prop:1001}",
               "param": {
                 "1621020": {
-                  "main": 31250,
-                  "growth": 2850,
+                  "main": 20840,
+                  "growth": 1900,
                   "format": "%",
-                  "damage_percentage": 31250,
-                  "damage_percentage_growth": 2850,
+                  "damage_percentage": 20840,
+                  "damage_percentage_growth": 1900,
                   "stun_ratio": 7060,
                   "stun_ratio_growth": 330,
                   "sp_recovery": 0,
@@ -1247,8 +1247,8 @@
                   "main": 7060,
                   "growth": 330,
                   "format": "%",
-                  "damage_percentage": 31250,
-                  "damage_percentage_growth": 2850,
+                  "damage_percentage": 20840,
+                  "damage_percentage_growth": 1900,
                   "stun_ratio": 7060,
                   "stun_ratio_growth": 330,
                   "sp_recovery": 0,
@@ -1327,7 +1327,7 @@
         },
         {
           "name": "终结技：葬夜安魂曲",
-          "desc": "喧响等级达到[极]时，点按 <IconMap:Icon_UltimateReady> 发动：\n对前方大范围敌人发动强力打击，造成大量<color=#A6C5FD>风属性伤害</color>；\n招式发动后，回复1点<color=#ffffff><Term:1000039></Term></color>；\n招式发动期间拥有无敌效果。",
+          "desc": "喧响等级达到[极]时，点按 <IconMap:Icon_UltimateReady> 发动：\n对前方大范围敌人发动强力打击，造成大量<color=#A6C5FD>风属性伤害</color>；\n招式发动后，获得1点<Term:1000039></Term>；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
@@ -1500,7 +1500,7 @@
       "description": [
         {
           "name": "支援技：还要加班？",
-          "desc": "招架支援后切人自动发动：\n对前方敌人发动打击，造成<color=#A6C5FD>风属性伤害</color>;\n招式发动期间拥有无敌效果。",
+          "desc": "发动<color=#FFFFFF>[招架支援]</color>后，再次点按 <IconMap:Icon_Switch> 发动：\n洛克茜留在前场，对前方敌人发动打击，造成<color=#A6C5FD>风属性伤害</color>；\n招式发动时视为发动<color=#FFFFFF>[普通攻击]</color>；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
@@ -1510,12 +1510,12 @@
         },
         {
           "name": "招架支援：为您分忧",
-          "desc": "前场角色即将被攻击时，点按 <IconMap:Icon_Switch> 发动：\n对前方敌人发动打击，造成<color=#A6C5FD>风属性伤害</color>；\n具有较为优秀的招架性能，承受高强度攻击时<color=#FFFFFF>[支援点数]</color>的消耗量降低；\n招式发动期间拥有无敌效果。",
+          "desc": "前场角色即将被攻击时，点按 <IconMap:Icon_Switch> 发动：\n招架敌人的攻击，累积大量失衡值；\n具有较为优秀的招架性能，承受高强度攻击时<color=#FFFFFF>[支援点数]</color>的消耗量降低；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
           "name": "支援突击：午夜守则",
-          "desc": "发动<color=#ffffff>[招架支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n向前方进行打击，造成<color=#A6C5FD>风属性伤害</color>。",
+          "desc": "发动<color=#ffffff>[招架支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n向前方进行打击，造成<color=#A6C5FD>风属性伤害</color>。\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
@@ -1526,11 +1526,11 @@
               "desc": "{Skill:1621018, Prop:1001}",
               "param": {
                 "1621018": {
-                  "main": 7800,
-                  "growth": 710,
+                  "main": 3900,
+                  "growth": 360,
                   "format": "%",
-                  "damage_percentage": 7800,
-                  "damage_percentage_growth": 710,
+                  "damage_percentage": 3900,
+                  "damage_percentage_growth": 360,
                   "stun_ratio": 6600,
                   "stun_ratio_growth": 300,
                   "sp_recovery": 0,
@@ -1555,8 +1555,8 @@
                   "main": 6600,
                   "growth": 300,
                   "format": "%",
-                  "damage_percentage": 7800,
-                  "damage_percentage_growth": 710,
+                  "damage_percentage": 3900,
+                  "damage_percentage_growth": 360,
                   "stun_ratio": 6600,
                   "stun_ratio_growth": 300,
                   "sp_recovery": 0,
@@ -1731,8 +1731,8 @@
                   "format": "%",
                   "damage_percentage": 61160,
                   "damage_percentage_growth": 5560,
-                  "stun_ratio": 38990,
-                  "stun_ratio_growth": 1780,
+                  "stun_ratio": 45870,
+                  "stun_ratio_growth": 2090,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 1440725,
@@ -1752,13 +1752,13 @@
               "desc": "{Skill:1621017, Prop:1002}",
               "param": {
                 "1621017": {
-                  "main": 38990,
-                  "growth": 1780,
+                  "main": 45870,
+                  "growth": 2090,
                   "format": "%",
                   "damage_percentage": 61160,
                   "damage_percentage_growth": 5560,
-                  "stun_ratio": 38990,
-                  "stun_ratio_growth": 1780,
+                  "stun_ratio": 45870,
+                  "stun_ratio_growth": 2090,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 1440725,
@@ -1878,14 +1878,14 @@
     },
     "1621004": {
       "name": "强化特殊技：敬请安息",
-      "desc": "<IconMap:Icon_SpecialReady>（强化特殊技：小心风寒后自动衔接）",
+      "desc": "<IconMap:Icon_SpecialReady>（强化特殊技：小心风寒后自动发动）",
       "element_type": 204,
       "hit_type": 102,
       "potential": []
     },
     "1621005": {
       "name": "特殊技：恕不远送",
-      "desc": "<IconMap:Icon_SpecialReady>（风眼大于3时）（强化特殊技：敬请安息后自动衔接）",
+      "desc": "<IconMap:Icon_SpecialReady>（风眼和风能总计不少于3时）（强化特殊技：敬请安息后自动发动）",
       "element_type": 204,
       "hit_type": 102,
       "potential": []
@@ -1957,8 +1957,8 @@
           "额外能力：辉金心脏"
         ],
         "desc": [
-          "每消耗25点能量，获得1点<color=#ffffff>[风能]</color>，<color=#ffffff>[风能]</color>上限为3点。\n洛克茜的初始<color=#ffffff>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>480</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>40</color>点；\n<color=#ffffff>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果中的敌人后，会触发<color=#FFFFFF>[净化]</color>，<color=#FFFFFF>[浸染]</color>效果会还原为<color=#FFFFFF>[风化]</color>效果；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>、<color=#FFFFFF>[净化]</color>或对处于<color=#FFFFFF>[风化]</color>中的敌人再次施加<color=#FFFFFF>[风化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色被浸染或净化属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>20%</color>，使<color=#FFFFFF>[锋御]</color>角色的被净化属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>10%</color>，每个属性增益效果分别持续50秒，重复触发时刷新持续时间。",
-          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n全队角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒；\n敌人处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果时，敌人受到的<color=#A6C5FD>风属性直接伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升<color=#2BAD00>30</color>%，持续50秒，重复触发时刷新持续时间。"
+          "每消耗25点能量，获得1点<Term:1000039></Term>，<color=#FFFFFF>[风能]</color>上限为3点；\n洛克茜的初始<color=#FFFFFF>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>480</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>40</color>点；\n<color=#FFFFFF>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>状态中的敌人后，会触发<Term:1000038></Term>，<color=#FFFFFF>[浸染]</color>状态被还原；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>或<color=#FFFFFF>[净化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色浸染或被净化的属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>22%</color>，使<color=#FFFFFF>[锋御]</color>角色的浸染或被净化的属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>10%</color>，每个属性增益效果分别持续50秒，重复触发时刷新持续时间；\n对处于<color=#FFFFFF>[风化]</color>状态下的敌人再次施加<color=#FFFFFF>[风化]</color>时，全队角色同样可以获得被覆盖掉的<color=#FFFFFF>[风化]</color>状态下<color=#FFFFFF>[浸染]</color>属性及风属性对应职业的增益效果。",
+          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n队伍中角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒，失衡持续时间提升效果与同类效果不可叠加；\n敌人处于队伍中角色造成的<color=#FFFFFF>[风化]</color>状态下时，敌人受到的<color=#A6C5FD>风属性直接攻击伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升30%，持续50秒，重复触发时刷新持续时间。"
         ],
         "extra_property": {},
         "potential": []
@@ -1971,8 +1971,8 @@
           "额外能力：辉金心脏"
         ],
         "desc": [
-          "每消耗25点能量，获得1点<color=#ffffff>[风能]</color>，<color=#ffffff>[风能]</color>上限为3点。\n洛克茜的初始<color=#ffffff>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>560</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>46</color>点；\n<color=#ffffff>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果中的敌人后，会触发<color=#FFFFFF>[净化]</color>，<color=#FFFFFF>[浸染]</color>效果会还原为<color=#FFFFFF>[风化]</color>效果；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>、<color=#FFFFFF>[净化]</color>或对处于<color=#FFFFFF>[风化]</color>中的敌人再次施加<color=#FFFFFF>[风化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色被浸染或净化属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>23</color>%，使<color=#FFFFFF>[锋御]</color>角色的被净化属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>11.5</color>%，每个属性增益效果分别持续50秒，重复触发时刷新持续时间。",
-          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n全队角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒；\n敌人处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果时，敌人受到的<color=#A6C5FD>风属性直接伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升<color=#2BAD00>30</color>%，持续50秒，重复触发时刷新持续时间。"
+          "每消耗25点能量，获得1点<Term:1000039></Term>，<color=#FFFFFF>[风能]</color>上限为3点；\n洛克茜的初始<color=#FFFFFF>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>560</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>46</color>点；\n<color=#FFFFFF>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>状态中的敌人后，会触发<Term:1000038></Term>，<color=#FFFFFF>[浸染]</color>状态被还原；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>或<color=#FFFFFF>[净化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色浸染或被净化的属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>25%</color>，使<color=#FFFFFF>[锋御]</color>角色的浸染或被净化的属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>11.5%</color>，每个属性增益效果分别持续50秒，重复触发时刷新持续时间；\n对处于<color=#FFFFFF>[风化]</color>状态下的敌人再次施加<color=#FFFFFF>[风化]</color>时，全队角色同样可以获得被覆盖掉的<color=#FFFFFF>[风化]</color>状态下<color=#FFFFFF>[浸染]</color>属性及风属性对应职业的增益效果。",
+          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n队伍中角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒，失衡持续时间提升效果与同类效果不可叠加；\n敌人处于队伍中角色造成的<color=#FFFFFF>[风化]</color>状态下时，敌人受到的<color=#A6C5FD>风属性直接攻击伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升30%，持续50秒，重复触发时刷新持续时间。"
         ],
         "extra_property": {},
         "potential": []
@@ -1985,8 +1985,8 @@
           "额外能力：辉金心脏"
         ],
         "desc": [
-          "每消耗25点能量，获得1点<color=#ffffff>[风能]</color>，<color=#ffffff>[风能]</color>上限为3点。\n洛克茜的初始<color=#ffffff>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>640</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>52</color>点；\n<color=#ffffff>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果中的敌人后，会触发<color=#FFFFFF>[净化]</color>，<color=#FFFFFF>[浸染]</color>效果会还原为<color=#FFFFFF>[风化]</color>效果；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>、<color=#FFFFFF>[净化]</color>或对处于<color=#FFFFFF>[风化]</color>中的敌人再次施加<color=#FFFFFF>[风化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色被浸染或净化属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>26</color>%，使<color=#FFFFFF>[锋御]</color>角色的被净化属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>13</color>%，每个属性增益效果分别持续50秒，重复触发时刷新持续时间。",
-          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n全队角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒；\n敌人处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果时，敌人受到的<color=#A6C5FD>风属性直接伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升<color=#2BAD00>30</color>%，持续50秒，重复触发时刷新持续时间。"
+          "每消耗25点能量，获得1点<Term:1000039></Term>，<color=#FFFFFF>[风能]</color>上限为3点；\n洛克茜的初始<color=#FFFFFF>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>640</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>52</color>点；\n<color=#FFFFFF>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>状态中的敌人后，会触发<Term:1000038></Term>，<color=#FFFFFF>[浸染]</color>状态被还原；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>或<color=#FFFFFF>[净化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色浸染或被净化的属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>28%</color>，使<color=#FFFFFF>[锋御]</color>角色的浸染或被净化的属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>13%</color>，每个属性增益效果分别持续50秒，重复触发时刷新持续时间；\n对处于<color=#FFFFFF>[风化]</color>状态下的敌人再次施加<color=#FFFFFF>[风化]</color>时，全队角色同样可以获得被覆盖掉的<color=#FFFFFF>[风化]</color>状态下<color=#FFFFFF>[浸染]</color>属性及风属性对应职业的增益效果。",
+          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n队伍中角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒，失衡持续时间提升效果与同类效果不可叠加；\n敌人处于队伍中角色造成的<color=#FFFFFF>[风化]</color>状态下时，敌人受到的<color=#A6C5FD>风属性直接攻击伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升30%，持续50秒，重复触发时刷新持续时间。"
         ],
         "extra_property": {},
         "potential": []
@@ -1999,8 +1999,8 @@
           "额外能力：辉金心脏"
         ],
         "desc": [
-          "每消耗25点能量，获得1点<color=#ffffff>[风能]</color>，<color=#ffffff>[风能]</color>上限为3点。\n洛克茜的初始<color=#ffffff>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>720</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>58</color>点；\n<color=#ffffff>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果中的敌人后，会触发<color=#FFFFFF>[净化]</color>，<color=#FFFFFF>[浸染]</color>效果会还原为<color=#FFFFFF>[风化]</color>效果；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>、<color=#FFFFFF>[净化]</color>或对处于<color=#FFFFFF>[风化]</color>中的敌人再次施加<color=#FFFFFF>[风化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色被浸染或净化属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>29</color>%，使<color=#FFFFFF>[锋御]</color>角色的被净化属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>14.5</color>%，每个属性增益效果分别持续50秒，重复触发时刷新持续时间。",
-          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n全队角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒；\n敌人处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果时，敌人受到的<color=#A6C5FD>风属性直接伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升<color=#2BAD00>30</color>%，持续50秒，重复触发时刷新持续时间。"
+          "每消耗25点能量，获得1点<Term:1000039></Term>，<color=#FFFFFF>[风能]</color>上限为3点；\n洛克茜的初始<color=#FFFFFF>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>720</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>58</color>点；\n<color=#FFFFFF>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>状态中的敌人后，会触发<Term:1000038></Term>，<color=#FFFFFF>[浸染]</color>状态被还原；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>或<color=#FFFFFF>[净化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色浸染或被净化的属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>31%</color>，使<color=#FFFFFF>[锋御]</color>角色的浸染或被净化的属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>14.5%</color>，每个属性增益效果分别持续50秒，重复触发时刷新持续时间；\n对处于<color=#FFFFFF>[风化]</color>状态下的敌人再次施加<color=#FFFFFF>[风化]</color>时，全队角色同样可以获得被覆盖掉的<color=#FFFFFF>[风化]</color>状态下<color=#FFFFFF>[浸染]</color>属性及风属性对应职业的增益效果。",
+          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n队伍中角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒，失衡持续时间提升效果与同类效果不可叠加；\n敌人处于队伍中角色造成的<color=#FFFFFF>[风化]</color>状态下时，敌人受到的<color=#A6C5FD>风属性直接攻击伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升30%，持续50秒，重复触发时刷新持续时间。"
         ],
         "extra_property": {},
         "potential": []
@@ -2013,8 +2013,8 @@
           "额外能力：辉金心脏"
         ],
         "desc": [
-          "每消耗25点能量，获得1点<color=#ffffff>[风能]</color>，<color=#ffffff>[风能]</color>上限为3点。\n洛克茜的初始<color=#ffffff>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>800</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>64</color>点；\n<color=#ffffff>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果中的敌人后，会触发<color=#FFFFFF>[净化]</color>，<color=#FFFFFF>[浸染]</color>效果会还原为<color=#FFFFFF>[风化]</color>效果；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>、<color=#FFFFFF>[净化]</color>或对处于<color=#FFFFFF>[风化]</color>中的敌人再次施加<color=#FFFFFF>[风化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色被浸染或净化属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>32</color>%，使<color=#FFFFFF>[锋御]</color>角色的被净化属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>16</color>%，每个属性增益效果分别持续50秒，重复触发时刷新持续时间。",
-          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n全队角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒；\n敌人处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果时，敌人受到的<color=#A6C5FD>风属性直接伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升<color=#2BAD00>30</color>%，持续50秒，重复触发时刷新持续时间。"
+          "每消耗25点能量，获得1点<Term:1000039></Term>，<color=#FFFFFF>[风能]</color>上限为3点；\n洛克茜的初始<color=#FFFFFF>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>800</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>64</color>点；\n<color=#FFFFFF>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>状态中的敌人后，会触发<Term:1000038></Term>，<color=#FFFFFF>[浸染]</color>状态被还原；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>或<color=#FFFFFF>[净化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色浸染或被净化的属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>34%</color>，使<color=#FFFFFF>[锋御]</color>角色的浸染或被净化的属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>16%</color>，每个属性增益效果分别持续50秒，重复触发时刷新持续时间；\n对处于<color=#FFFFFF>[风化]</color>状态下的敌人再次施加<color=#FFFFFF>[风化]</color>时，全队角色同样可以获得被覆盖掉的<color=#FFFFFF>[风化]</color>状态下<color=#FFFFFF>[浸染]</color>属性及风属性对应职业的增益效果。",
+          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n队伍中角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒，失衡持续时间提升效果与同类效果不可叠加；\n敌人处于队伍中角色造成的<color=#FFFFFF>[风化]</color>状态下时，敌人受到的<color=#A6C5FD>风属性直接攻击伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升30%，持续50秒，重复触发时刷新持续时间。"
         ],
         "extra_property": {},
         "potential": []
@@ -2027,8 +2027,8 @@
           "额外能力：辉金心脏"
         ],
         "desc": [
-          "每消耗25点能量，获得1点<color=#ffffff>[风能]</color>，<color=#ffffff>[风能]</color>上限为3点。\n洛克茜的初始<color=#ffffff>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>880</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>70</color>点；\n<color=#ffffff>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果中的敌人后，会触发<color=#FFFFFF>[净化]</color>，<color=#FFFFFF>[浸染]</color>效果会还原为<color=#FFFFFF>[风化]</color>效果；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>、<color=#FFFFFF>[净化]</color>或对处于<color=#FFFFFF>[风化]</color>中的敌人再次施加<color=#FFFFFF>[风化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色被浸染或净化属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>35</color>%，使<color=#FFFFFF>[锋御]</color>角色的被净化属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>17.5</color>%，每个属性增益效果分别持续50秒，重复触发时刷新持续时间。",
-          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n全队角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒；\n敌人处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果时，敌人受到的<color=#A6C5FD>风属性直接伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升<color=#2BAD00>30</color>%，持续50秒，重复触发时刷新持续时间。"
+          "每消耗25点能量，获得1点<Term:1000039></Term>，<color=#FFFFFF>[风能]</color>上限为3点；\n洛克茜的初始<color=#FFFFFF>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>880</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>70</color>点；\n<color=#FFFFFF>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>状态中的敌人后，会触发<Term:1000038></Term>，<color=#FFFFFF>[浸染]</color>状态被还原；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>或<color=#FFFFFF>[净化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色浸染或被净化的属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>37%</color>，使<color=#FFFFFF>[锋御]</color>角色的浸染或被净化的属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>17.5%</color>，每个属性增益效果分别持续50秒，重复触发时刷新持续时间；\n对处于<color=#FFFFFF>[风化]</color>状态下的敌人再次施加<color=#FFFFFF>[风化]</color>时，全队角色同样可以获得被覆盖掉的<color=#FFFFFF>[风化]</color>状态下<color=#FFFFFF>[浸染]</color>属性及风属性对应职业的增益效果。",
+          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n队伍中角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒，失衡持续时间提升效果与同类效果不可叠加；\n敌人处于队伍中角色造成的<color=#FFFFFF>[风化]</color>状态下时，敌人受到的<color=#A6C5FD>风属性直接攻击伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升30%，持续50秒，重复触发时刷新持续时间。"
         ],
         "extra_property": {},
         "potential": []
@@ -2041,8 +2041,8 @@
           "额外能力：辉金心脏"
         ],
         "desc": [
-          "每消耗25点能量，获得1点<color=#ffffff>[风能]</color>，<color=#ffffff>[风能]</color>上限为3点。\n洛克茜的初始<color=#ffffff>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>960</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>76.8</color>点；\n<color=#ffffff>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果中的敌人后，会触发<color=#FFFFFF>[净化]</color>，<color=#FFFFFF>[浸染]</color>效果会还原为<color=#FFFFFF>[风化]</color>效果；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>、<color=#FFFFFF>[净化]</color>或对处于<color=#FFFFFF>[风化]</color>中的敌人再次施加<color=#FFFFFF>[风化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色被浸染或净化属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>40</color>%，使<color=#FFFFFF>[锋御]</color>角色的被净化属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>20</color>%，每个属性增益效果分别持续50秒，重复触发时刷新持续时间。",
-          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n全队角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒；\n敌人处于<color=#FFFFFF>[风化]</color>或<color=#FFFFFF>[浸染]</color>效果时，敌人受到的<color=#A6C5FD>风属性直接伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升<color=#2BAD00>30</color>%，持续50秒，重复触发时刷新持续时间。"
+          "每消耗25点能量，获得1点<Term:1000039></Term>，<color=#FFFFFF>[风能]</color>上限为3点；\n洛克茜的初始<color=#FFFFFF>能量自动回复</color>大于1.2时，超过部分每超过0.01，攻击力提升5点，最多提升<color=#2BAD00>960</color>点，冲击力提升0.4点，最多提升<color=#2BAD00>76.8</color>点；\n<color=#FFFFFF>[特殊技：恕不远送]</color>命中处于<color=#FFFFFF>[风化]</color>状态中的敌人后，会触发<Term:1000038></Term>，<color=#FFFFFF>[浸染]</color>状态被还原；\n队伍中任意队友触发<color=#FFFFFF>[浸染]</color>或<color=#FFFFFF>[净化]</color>时，洛克茜每拥有1%暴击率，全队非<color=#FFFFFF>[锋御]</color>角色浸染或被净化的属性及风属性的暴击伤害提升0.4%，最多<color=#2BAD00>40%</color>，使<color=#FFFFFF>[锋御]</color>角色的浸染或被净化的属性及风属性的锐暴伤害提升0.2%，最多<color=#2BAD00>20%</color>，每个属性增益效果分别持续50秒，重复触发时刷新持续时间；\n对处于<color=#FFFFFF>[风化]</color>状态下的敌人再次施加<color=#FFFFFF>[风化]</color>时，全队角色同样可以获得被覆盖掉的<color=#FFFFFF>[风化]</color>状态下<color=#FFFFFF>[浸染]</color>属性及风属性对应职业的增益效果。",
+          "队伍中存在<color=#FFFFFF>[强攻]</color>角色或<color=#FFFFFF>[命破]</color>角色或<color=#FFFFFF>[锋御]</color>角色时触发：\n洛克茜造成的伤害提升8%，该效果随角色等级提升，每级增加1.2%，最多提升80%；\n队伍中角色攻击命中敌人时，使其失衡易伤倍率提升30%，失衡结束时移除该效果，敌人进入失衡状态时，使其失衡时间延长2秒，失衡持续时间提升效果与同类效果不可叠加；\n敌人处于队伍中角色造成的<color=#FFFFFF>[风化]</color>状态下时，敌人受到的<color=#A6C5FD>风属性直接攻击伤害</color>和触发[浸染]属性的直接攻击伤害额外提升8%；\n进入战场时，自身回复40点能量，在勘域模式中此效果180秒内最多触发一次；\n全队角色施加的<color=#FFFFFF>[风化]</color>效果延长20秒；\n释放<color=#ffffff>[强化特殊技]</color>时，自身异常积蓄效率提升30%，持续50秒，重复触发时刷新持续时间。"
         ],
         "extra_property": {},
         "potential": []
@@ -2080,38 +2080,38 @@
   "talent": {
     "1": {
       "level": 1,
-      "name": "...",
-      "desc": "<color=#ffffff>[强化特殊技：敬请安息]</color>命中时，使敌方全属性伤害抗性降低15%，持续50秒；自身暴击伤害提升40%。",
+      "name": "全能执事",
+      "desc": "<color=#ffffff>[强化特殊技：敬请安息]</color>命中时，使敌方全属性伤害抗性降低15%，持续50秒，重复触发时刷新持续时间；自身暴击伤害提升40%。",
       "desc2": "..."
     },
     "2": {
       "level": 2,
-      "name": "...",
-      "desc": "<color=#ffffff>[强化特殊技：小心风寒]</color>造成的失衡值提升5%；每引爆1个<color=#ffffff>[风眼]</color>，获得一层<color=#ffffff>[流势]</color>效果，至多获得3层；在<color=#ffffff>[强化特殊技：小心风寒]</color>期间进入<color=#ffffff>[自旋]</color>状态下换人时，洛克茜将消耗所有<color=#ffffff>[流势]</color>，每消耗1层可以维持<color=#ffffff>[自旋]</color>状态0.2秒，期间不消耗能量，至多维持0.6秒；<color=#ffffff>[强化特殊技：小心风寒]</color>命中敌人时，使敌人失衡易伤倍率提升25%，持续到目标从失衡状态恢复时。",
+      "name": "下班神话",
+      "desc": "<color=#ffffff>[强化特殊技：小心风寒]</color>造成的失衡值提升5%；每引爆1个<color=#ffffff>[风眼]</color>，获得一层<color=#ffffff>[流势]</color>效果，至多获得3层；在<color=#ffffff>[强化特殊技：小心风寒]</color>期间进入<color=#ffffff>[自旋]</color>状态下换人时，洛克茜将消耗所有<color=#ffffff>[流势]</color>，每消耗1层可以维持<color=#ffffff>[自旋]</color>状态0.2秒，期间不消耗能量，至多维持0.6秒；<color=#ffffff>[强化特殊技：小心风寒]</color>命中敌人时，使敌人失衡易伤倍率提升30%，持续到目标从失衡状态恢复时。",
       "desc2": "..."
     },
     "3": {
       "level": 3,
-      "name": "...",
+      "name": "失眠奇谭",
       "desc": "<color=#FFFFFF>[普通攻击]</color>、<color=#FFFFFF>[闪避]</color>、<color=#FFFFFF>[支援技]</color>、<color=#FFFFFF>[特殊技]</color>、<color=#FFFFFF>[连携技]</color> 技能等级+2",
       "desc2": "..."
     },
     "4": {
       "level": 4,
-      "name": "...",
-      "desc": "发动<color=#ffffff>[招架支援]</color>时，洛克茜回复1点能量，招式内至多回复1次；<color=#ffffff>[闪避反击：礼尚往来]</color>命中敌人时，回复2点能量，招式内至多回复1次；<color=#ffffff>[终结技：葬夜安魂曲]</color>造成的伤害提升20%，失衡值提升10%。",
+      "name": "R.I.P.",
+      "desc": "发动<color=#ffffff>[招架支援]</color>成功招架敌人攻击时，洛克茜回复1点能量，招式内至多回复1次；<color=#ffffff>[闪避反击：礼尚往来]</color>命中敌人时，回复2点能量，招式内至多回复1次；<color=#ffffff>[终结技：葬夜安魂曲]</color>造成的伤害提升20%，失衡值提升10%。",
       "desc2": "..."
     },
     "5": {
       "level": 5,
-      "name": "...",
+      "name": "第二次心跳",
       "desc": "<color=#FFFFFF>[普通攻击]</color>、<color=#FFFFFF>[闪避]</color>、<color=#FFFFFF>[支援技]</color>、<color=#FFFFFF>[特殊技]</color>、<color=#FFFFFF>[连携技]</color> 技能等级+2",
       "desc2": "..."
     },
     "6": {
       "level": 6,
-      "name": "...",
-      "desc": "自身造成的伤害无视目标20%<color=#A6C5FD>风属性伤害抗性</color>；<color=#ffffff>[特殊技：恕不远送]</color>引爆<color=#ffffff>[风眼]</color>生成巨型风旋时，主目标会被赋予<color=#ffffff>[余响]</color>效果，每间隔3秒在目标位置生成一次巨型风旋，共额外生成2次巨型风旋，重复触发时额外生成次数叠加。；巨型风旋造成的伤害倍率变为原本的250%，造成的失衡提升30%。",
+      "name": "永远与自动发条人偶",
+      "desc": "自身攻击造成的伤害无视目标15%<color=#A6C5FD>风属性伤害抗性</color>；<color=#ffffff>[特殊技：恕不远送]</color>引爆<color=#ffffff>[风眼]</color>生成巨型风旋时，主目标会被赋予<color=#ffffff>[余响]</color>效果，每间隔3秒在目标位置生成一次巨型风旋，共额外生成2次巨型风旋，重复触发时额外生成次数叠加且刷新<color=#ffffff>[余响]</color>的持续时间；巨型风旋造成的伤害提升至原本的250%，造成的失衡提升20%。",
       "desc2": "..."
     }
   },
@@ -2127,29 +2127,28 @@
     "alt_build": [
       {
         "suit_list": [
-          31600,
-          33400
+          33200,
+          31600
         ],
         "part_sub_list": [
-          20103,
-          12102
+          20103
         ]
       },
       {
         "suit_list": [
           31600,
+          33400,
           31000
         ],
         "part_sub_list": [
-          32303,
-          12102
+          23103,
+          32303
         ]
       },
       {
         "suit_list": [],
         "part_sub_list": [
-          30502,
-          12102
+          30502
         ]
       }
     ],
@@ -2166,16 +2165,16 @@
       "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconSpRecover.png"
     },
     "part6": {
+      "prop": 23103,
+      "name": "穿透率",
+      "format": "{0:0.#%}",
+      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconPenRatio.png"
+    },
+    "part_sub": {
       "prop": 32303,
       "name": "风属性伤害加成",
       "format": "{0:0.#%}",
       "icon": "UI/Sprite/A1DynamicLoad/IconGeneralBuff/Packer/IconWind.png"
-    },
-    "part_sub": {
-      "prop": 12102,
-      "name": "攻击力",
-      "format": "{0:0.#%}",
-      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png"
     }
   },
   "strategy": {},

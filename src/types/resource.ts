@@ -222,33 +222,31 @@ export interface RoxyWindEnergySource {
   note: string
 }
 
-/** 克拉蕾残痕/锐能资源明细 */
+/** 克拉蕾残痕/锐能资源明细（v12 口径 2026-09-03） */
 export interface ClaretSharpResourceSource {
-  /** 队友前台时间（秒）：队友为当前操作角色时每秒积累 3% 残痕值 */
-  teammateFrontlineSeconds: number
-  /** 影画1：残痕积累速率倍率（≥1命时 1.15，否则 1） */
-  gashBuildupRateMultiplier: number
-  /** 总残痕值（%）= 队友前台时间 × 3% × 速率倍率 */
+  /** 残痕值来源（%）：平A聚合（秒均残痕值×平A时间）+ 秘血铸锋单发（234.96%）；锐化伤害命中积累 */
   gashValuePct: number
-  /** 残痕层数 = 残痕值 / 33.33 */
+  /** 残痕积蓄效率倍率 = 1 + 核心被动 50%（Lv7，猩红铭刻期间近似常驻）+ 影画2 20%（锐暴命中近似常驻） */
+  gashBuildupMultiplier: number
+  /** 残痕层数 = floor(残痕值 / 100)，上限 3 层（溢出浪费） */
   gashStacks: number
-  /** 血华誓招式命中次数（斩金断铁 + 葬血强袭） */
-  gashStackGain: number
-  /** 命中残痕状态消耗的层数 = min(残痕层数, 血华誓命中次数) × 残痕覆盖率 */
+  /** 血华誓毁伤需求次数（斩金断铁×1 + 葬血强袭×3 + 影画6 连携/终结各1） */
+  maimDemand: number
+  /** 命中残痕状态消耗的层数 = min(残痕层数, 需求) × 残痕覆盖率 */
   gashStackConsumed: number
-  /** 触发毁伤次数 = 消耗残痕层数 */
+  /** 触发毁伤次数 = 消耗残痕层数 + 影画6 不消耗残痕的单体毁伤 */
   maimCount: number
-  /** 全队毁伤给克拉蕾的个人资源 */
-  personalResourceGain: number
-  /** 葬血强袭发动时消耗的个人资源（全部） */
-  personalResourcesConsumed: number
-  /** 个人资源伤害加成（%）= 消耗个人资源 × 6.5% */
-  personalResourceDamageBonusPct: number
-  /** 锐能获取 = 个人资源 + 二命毁伤额外 0.25/次 */
+  /** 斩金断铁触发的毁伤数 */
+  maimFromCleave: number
+  /** 葬血强袭触发的毁伤数 */
+  maimFromBurial: number
+  /** 影画6 连携/终结重击直接触发的单体毁伤数（不消耗残痕） */
+  maimFromC6: number
+  /** 锐能初始 60（进场，勘域 180s 一次）——v12 口径：锐能只此来源 */
   sharpnessGain: number
-  /** 锐能可负担的秘血铸锋次数 = floor(锐能 / 60)（2026-09 成本类型化：不再与能量派生次数取 min） */
+  /** 锐能可负担的秘血铸锋次数 = floor(锐能 / 60) */
   affordableExCount: number
-  /** 锐能消耗（秘血铸锋 60/次，按强特次数折算） */
+  /** 锐能消耗（秘血铸锋 60/次） */
   sharpnessSpend: number
   sharpnessRemaining: number
   note: string

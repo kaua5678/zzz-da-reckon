@@ -61,11 +61,11 @@ describe('克拉蕾秘血铸锋（锐能强特：成本类型化 + 模块自发�
     const affordable = Math.max(0, Math.floor((source?.sharpnessGain ?? 0) / 60))
     // 锐能账本：消费 = 应付次数 × 单价（无「行存在却零消费」的分裂）
     expect(source?.sharpnessSpend).toBe(affordable * 60)
-    // 行数与账本一致（当前默认口径 gain≈2.5 → 0 次不发行；旧引擎曾按能量 60/发发行且锐能零消耗）
+    // 行数与账本一致（v12 口径：锐能进场 60 → 1 发；旧引擎曾按能量 60/发发行且锐能零消耗）
     if (affordable > 0) {
       expect(ex).toBeTruthy()
       expect(ex?.count).toBe(affordable)
-      expect(ex?.damageMultiplier).toBeCloseTo(1193.7, 3)
+      expect(ex?.damageMultiplier).toBeCloseTo(1249.6, 3)
     } else {
       expect(ex).toBeUndefined()
     }

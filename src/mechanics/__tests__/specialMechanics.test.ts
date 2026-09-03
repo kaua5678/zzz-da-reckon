@@ -291,70 +291,54 @@ describe('spec resource panel buffs', () => {
   })
 })
 
-describe('Claret gash / sharpness resource', () => {
-  it('consumes gash stacks and converts maim into personal resources', () => {
-    const result = computeClaretSharpResource({
-      teammateFrontlineSeconds: 100,
-      exSpecialCount: 2,
-      cleaveSpecialCount: 1,
-      bloodBurialCount: 1,
-      gashCoverage: 1,
-      cinemaLevel: 0,
-      sharpnessCost: 60,
-    })
-    expect(result.gashValuePct).toBeCloseTo(300)
-    expect(result.gashStacks).toBeCloseTo(9)
-    expect(result.gashStackConsumed).toBe(2)
-    expect(result.maimCount).toBe(2)
-    expect(result.personalResourceGain).toBe(2)
-    expect(result.personalResourcesConsumed).toBe(2)
-    expect(result.personalResourceDamageBonusPct).toBe(13)
-    expect(result.sharpnessGain).toBe(2)
-    expect(result.sharpnessSpend).toBe(0)
-    expect(result.sharpnessRemaining).toBe(2)
+describe('Claret gash / sharpness resource（v12 口径 2026-09-03）', () => {
+  const base = {
+    basicGashPerSec: 0,
+    basicAttackTime: 0,
+    exGashValue: 234.96,
+    exCount: 1,
+    cleaveSpecialCount: 1,
+    bloodBurialCount: 1,
+    gashCoverage: 1,
+    cinemaLevel: 0,
+    chainCountTotal: 0,
+    ultimateCount: 0,
+  }
+
+  it('残痕值 = 表值 × 积蓄效率（核心 50%）→ 满 100 = 1 层（上限 3），毁伤 = min(层数, 需求)', () => {
+    // 234.96 × 1.5 = 352.44 → 3 层；需求 = 1 + 3 = 4 → 消耗 3 → 毁伤 3（cleave 1 + burial 2）
+    const result = computeClaretSharpResource(base)
+    expect(result.gashValuePct).toBeCloseTo(352.44, 2)
+    expect(result.gashStacks).toBe(3)
+    expect(result.gashStackConsumed).toBe(3)
+    expect(result.maimCount).toBe(3)
+    expect(result.maimFromCleave).toBe(1)
+    expect(result.maimFromBurial).toBe(2)
+    // 锐能：进场 60 / 秘血铸锋 60 → 1 发、结余 0（旧「毁伤回锐能」口径已废除）
+    expect(result.sharpnessGain).toBe(60)
+    expect(result.affordableExCount).toBe(1)
+    expect(result.sharpnessSpend).toBe(60)
+    expect(result.sharpnessRemaining).toBe(0)
   })
 
-  it('adds M2 sharpness recovery per maim', () => {
-    const result = computeClaretSharpResource({
-      teammateFrontlineSeconds: 100,
-      exSpecialCount: 2,
-      cleaveSpecialCount: 1,
-      bloodBurialCount: 1,
-      gashCoverage: 1,
-      cinemaLevel: 2,
-      sharpnessCost: 60,
-    })
-    expect(result.sharpnessGain).toBe(2.5)
-    expect(result.sharpnessRemaining).toBe(2.5)
+  it('影画2：积蓄效率 +20%（1.5→1.7）且不改变锐能（60 恒定）', () => {
+    const result = computeClaretSharpResource({ ...base, cinemaLevel: 2 })
+    expect(result.gashBuildupMultiplier).toBeCloseTo(1.7, 5)
+    expect(result.sharpnessGain).toBe(60)
   })
 
-  it('scales consumed stacks by gash coverage', () => {
-    const result = computeClaretSharpResource({
-      teammateFrontlineSeconds: 100,
-      exSpecialCount: 2,
-      cleaveSpecialCount: 1,
-      bloodBurialCount: 1,
-      gashCoverage: 0.5,
-      cinemaLevel: 0,
-      sharpnessCost: 60,
-    })
-    expect(result.gashStackConsumed).toBe(1)
+  it('残痕覆盖率 50%：消耗层数按比例折算', () => {
+    const result = computeClaretSharpResource({ ...base, gashCoverage: 0.5 })
+    expect(result.gashStackConsumed).toBe(1.5)
     expect(result.maimCount).toBe(1)
   })
 
-  it('treats one gash stack as 33.33% gash value from teammate frontline time', () => {
-    const result = computeClaretSharpResource({
-      teammateFrontlineSeconds: 12,
-      exSpecialCount: 5,
-      cleaveSpecialCount: 1,
-      bloodBurialCount: 1,
-      gashCoverage: 1,
-      cinemaLevel: 0,
-      sharpnessCost: 60,
-    })
-    expect(result.gashValuePct).toBeCloseTo(36, 1)
-    expect(result.gashStacks).toBeCloseTo(1.08, 1)
-    expect(result.gashStackConsumed).toBe(1)
+  it('残痕值不足需求时：层数即消耗（不虚构毁伤）', () => {
+    // 平A 聚合 40% × 1.5 = 60% → 0 层 → 无毁伤
+    const result = computeClaretSharpResource({ ...base, basicGashPerSec: 4, basicAttackTime: 10, exGashValue: 0, exCount: 0 })
+    expect(result.gashValuePct).toBeCloseTo(60, 1)
+    expect(result.gashStacks).toBe(0)
+    expect(result.maimCount).toBe(0)
   })
 })
 

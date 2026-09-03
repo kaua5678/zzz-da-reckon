@@ -185,11 +185,7 @@ export function scanSettingsCoverage(root = ROOT) {
  * 标记从代码里删除（债还清）必须同步销号，否则下面对不上即红。
  * 格式：'<file>:<标记关键词>' -> { since: '引入日期', due: '到期动作' }
  */
-export const DEBT_REGISTRY = {
-  'src/mechanics/agents/claret.ts:锐能强特喧响不进池': {
-    since: '2026-09-02', due: '模块锐能账本次数经 threads 通道回传 iterate 后，补计 65.56/发的强特喧响（影响 ≈260 喧响/局）',
-  },
-}
+export const DEBT_REGISTRY = {}
 
 /**
  * 自指豁免：标记扫描器自身必然包含被扫描模式的字面量（与 GUARD_SYSTEM_FILES 同一性质，

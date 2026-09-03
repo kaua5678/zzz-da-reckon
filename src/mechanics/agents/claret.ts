@@ -13,23 +13,55 @@ import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions } from '@/specs/mechanics'
 
+/**
+ * 克拉蕾（1611）v12 重录（2026-09-03，raw = nanoka 3.2.12+18601660）：
+ *
+ * 核心被动·苍白血宴（Lv.7）：伤害均为锐化伤害（def 基底，引擎 SHARPEN_DAMAGE_PROFILE 消费，
+ * 锐暴伤害 150% 已随 level60.sharpCritDmg 接入）；**部分**锐化伤害命中积累残痕值，
+ * 残痕值满时敌人进入[残痕]（最多 3 层）；斩金断铁/葬血强袭命中[残痕]敌人消耗 1 层触发[毁伤]。
+ * 口径：残痕值每命中积累 = 招式 anomaly_buildup 表值（%），满 100 = 1 层（溢出浪费）；
+ * 积蓄效率 = 1 + 核心 50% + 影画2 20%（状态近似常驻）。
+ * 锐能：进场 +60（勘域 180s 一次 → 每局一次）；秘血铸锋（EX）消耗 60 → 每局 1 发。
+ *   —— 旧「2 毁伤/局 → 2.5 锐能放不出 EX」问题由 v12 文本解决（用户 2026-09 口径确认）。
+ * 核心被动（猩红铭刻/连携/终结/无垢熔锋期间）：暴击率 +30%、残痕积蓄效率 +50%（满覆盖近似）。
+ * 额外能力·血裔传承：全队触发[浸染]时克拉蕾回 300 喧响（20s CD）；队友/自身触发[毁伤]时
+ *   全队[锋御]进入[残锋]（锐暴伤害 +25%，40s 刷新）——残锋按自身面板近似（全队锋御同源）。
+ * 影画1：猩红铭刻最大持续 +3s（时长无数值影响）；状态期间攻击命中无视 16% 电抗（满覆盖近似）。
+ * 影画2：锐暴命中时残痕积蓄效率 +20%（并入积蓄效率倍率）；毁伤伤害倍率 ×130%（执行行 override）。
+ * 影画4：锻星第三段（1611007 连续斩击 + 1611029 下砸）/血契共鸣(1611020)/千锤百炼(1611021)
+ *   伤害 +20%（patchExecutions dmgBonus）。
+ * 影画6：血契共鸣/千锤百炼重击命中不消耗残痕直接触发 1 次单体毁伤（连携+终结次数）。
+ */
 const CLARET_AGENT_ID = '1611'
-const MAIM_MOVE_ID = '1611013'
-const BLOOD_BURIAL_MOVE_ID = '1611014'
-const MAIM_BURIAL_MOVE_ID = '1611015'
-const SHARPNESS_COST_PER_EX = 60
-const C2_SHARPNESS_PER_MAIM = 0.25
-const GASH_PCT_PER_ACTIVE_SECOND = 3
-const GASH_PCT_PER_STACK = 100 / 3
-const PERSONAL_RESOURCE_DMG_BONUS_PER_POINT = 6.5
-/** 影画1：攻击触发锐化爆炸时残痕积累 +15% */
-const M1_GASH_RATE_MULT = 1.15
-/** 影画1：全队施加[残痕]时暴击率 +5%/层，最多 3 层（按满层近似） */
-const M1_CRIT_PER_STACK = 5
-const M1_CRIT_MAX_STACKS = 3
+/** 毁伤（斩金断铁/葬血强袭/影画6 共用载体的表 id，v12 = 1625.6%） */
+export const MAIM_MOVE_ID = '1611013'
+/** 葬血强袭表 id（v12 = 626.3%，3 段横斩合计） */
+export const BLOOD_BURIAL_MOVE_ID = '1611014'
+/** 秘血铸锋（锐能强特）表 id（v12 = 1249.6%） */
+export const EX_MOVE_ID = '1611010'
+/** 锐能：进场 60（勘域 180s 一次）；秘血铸锋 60/发 */
+export const SHARPNESS_INITIAL = 60
+export const SHARPNESS_COST_PER_EX = 60
+/** 残痕值：满 100 = 1 层，上限 3 层 */
+export const GASH_PER_LAYER = 100
+export const GASH_MAX_STACKS = 3
+/** 残余积蓄效率：核心被动 +50%（Lv.7）/ 影画2 锐暴 +20% */
+export const GASH_EFF_CORE = 50
+export const GASH_EFF_C2 = 20
+/** 核心被动（Lv.7）：猩红铭刻/连携/终结/无垢熔锋期间暴击率 +30% */
+export const CORE_CRIT_RATE = 30
+/** 影画1：状态期间攻击命中无视 16% 电抗 */
+export const C1_RES_IGNORE = 16
+/** 影画2：毁伤倍率 ×130% */
+export const C2_MAIM_MULT = 1.3
 /** 影画4：锻星第三段/血契共鸣/千锤百炼 伤害 +20% */
-const M4_DMG_BONUS = 20
-const M4_MOVE_IDS = new Set(['1611007', '1611020', '1611021'])
+export const M4_DMG_BONUS = 20
+export const M4_MOVE_IDS = new Set(['1611007', '1611029', '1611020', '1611021'])
+/** 影画6：连携/终结重击直接触发单体毁伤（不消耗残痕） */
+/** 残锋：全队锋御 锐暴伤害 +25%（40s 刷新，满覆盖近似） */
+export const RESIDUAL_EDGE_SHARP_CRIT_DMG = 25
+/** 葬血强袭每施放至多 3 次毁伤（连续 3 段横斩，各命中触发） */
+export const BURIAL_MAIM_PER_CAST = 3
 
 function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
   if (!skills) return null
@@ -51,134 +83,141 @@ function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: numb
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
-function applyClaretPanel({ panel }: AgentPanelInput): void {
-  // 锋芒毕露：穿透率 +20%，造成失衡值 +10%；全局资源计算默认满覆盖。
-  panel.penRatio = (panel.penRatio ?? 0) + 20
-  panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + 10
+function applyClaretPanel({ panel, cinemaLevel }: AgentPanelInput): void {
+  // 核心被动 Lv.7：猩红铭刻/连携/终结/无垢熔锋期间 暴击率 +30%（状态高频维持，满覆盖近似）
+  panel.critRate = (panel.critRate ?? 0) + CORE_CRIT_RATE
+  // 残锋：队友/自身触发[毁伤]后全队锋御 锐暴伤害 +25%（40s 刷新；按自身面板近似）
+  panel.sharpCritDmg = (panel.sharpCritDmg ?? 0) + RESIDUAL_EDGE_SHARP_CRIT_DMG
+  // 影画1：猩红铭刻/连携/终结/无垢熔锋期间攻击命中无视 16% 电抗（状态高频维持，满覆盖近似）
+  if ((cinemaLevel ?? 0) >= 1) {
+    panel.enemyElectricResReduction = (panel.enemyElectricResReduction ?? 0) + C1_RES_IGNORE
+  }
 }
 
 /**
- * 克拉蕾残痕/锐能资源：
- * 队友为当前操作角色时每秒为敌人积累 3% 残痕值，1 层残痕 = 33.33%；斩金断铁/葬血强袭命中残痕敌人消耗 1 层并触发毁伤；
- * 全队触发毁伤时克拉蕾获得 1 点个人资源（二命额外回复 0.25 锐能）；葬血强袭发动时消耗所有个人资源，
- * 每消耗 1 点使葬血强袭与毁伤伤害倍率提升 6.5%；秘血铸锋消耗 60 锐能。
+ * 克拉蕾残痕/锐能资源（v12）：
+ * 残痕值 = 平A聚合（秒均残痕值 × 平A时间）+ 秘血铸锋单发（234.96%）→ × 积蓄效率；
+ * 满 100 = 1 层（上限 3，溢出浪费）；毁伤需求 = 斩金断铁×1 + 葬血强袭×3 + 影画6(连携+终结)；
+ * 毁伤 = min(层数, 需求) × 覆盖率 + 影画6 直接毁伤；锐能 = 进场 60，秘血铸锋 60/发 → 1 发/局。
  */
 export function computeClaretSharpResource(input: {
-  teammateFrontlineSeconds: number
-  exSpecialCount: number
+  basicGashPerSec: number
+  basicAttackTime: number
+  exGashValue: number
+  exCount: number
   cleaveSpecialCount: number
   bloodBurialCount: number
   gashCoverage: number
   cinemaLevel: number
-  sharpnessCost: number
   chainCountTotal?: number
   ultimateCount?: number
 }): ClaretSharpResourceSource {
-  const teammateFrontlineSeconds = Math.max(0, input.teammateFrontlineSeconds)
-  const gashRatePctPerSecond = GASH_PCT_PER_ACTIVE_SECOND * (input.cinemaLevel >= 1 ? M1_GASH_RATE_MULT : 1)
-  const gashValuePct = teammateFrontlineSeconds * gashRatePctPerSecond
-  const gashStacks = gashValuePct / GASH_PCT_PER_STACK
+  const cinemaLevel = Math.max(0, Math.floor(input.cinemaLevel ?? 0))
+  const baseGash = Math.max(0, input.basicGashPerSec * input.basicAttackTime + input.exGashValue * input.exCount)
+  const buildupMultiplier = 1 + GASH_EFF_CORE / 100 + (cinemaLevel >= 2 ? GASH_EFF_C2 / 100 : 0)
+  const gashValuePct = baseGash * buildupMultiplier
+  const gashStacks = Math.min(GASH_MAX_STACKS, Math.floor(gashValuePct / GASH_PER_LAYER))
   const cleaveCount = Math.max(0, Math.floor(input.cleaveSpecialCount))
-  const bloodBurialCount = Math.max(0, Math.floor(input.bloodBurialCount))
-  const gashStackGain = cleaveCount + bloodBurialCount
-  const coverage = Math.max(0, Math.min(1, input.gashCoverage))
-  const gashStackConsumed = Math.floor(Math.min(gashStacks, gashStackGain) * coverage)
-  // 影画6：血契共鸣/千锤百炼重击命中不消耗残痕直接触发 1 次单体毁伤
-  const c6ExtraMaim = input.cinemaLevel >= 6
+  const burialCount = Math.max(0, Math.floor(input.bloodBurialCount))
+  const c6Extra = cinemaLevel >= 6
     ? Math.max(0, Math.floor(Number(input.chainCountTotal ?? 0))) + Math.max(0, Math.floor(Number(input.ultimateCount ?? 0)))
     : 0
-  const maimCount = gashStackConsumed + c6ExtraMaim
-  const personalResourceGain = maimCount
-  const personalResourcesConsumed = bloodBurialCount >= 1 ? personalResourceGain : 0
-  const personalResourceDamageBonusPct = personalResourcesConsumed * PERSONAL_RESOURCE_DMG_BONUS_PER_POINT
-  const sharpnessGain = maimCount + (input.cinemaLevel >= 2 ? maimCount * C2_SHARPNESS_PER_MAIM : 0)
-  const costPerUse = Math.max(0, input.sharpnessCost || SHARPNESS_COST_PER_EX)
-  // 2026-09 成本类型化：锐能强特次数 = 锐能预算 ÷ 单价，不再与能量派生次数取 min
-  // （引擎已按 costType=resource 不推导能量、不扣能量；次数由本账本给出，模块自发行）。
-  const affordableExCount = costPerUse > 0 ? Math.floor(sharpnessGain / costPerUse) : 0
-  const sharpnessSpend = affordableExCount * costPerUse
-  const sharpnessRemaining = Math.max(0, sharpnessGain - sharpnessSpend)
-
+  const maimDemand = cleaveCount + burialCount * BURIAL_MAIM_PER_CAST + c6Extra
+  const coverage = Math.max(0, Math.min(1, input.gashCoverage))
+  const gashStackConsumed = Math.min(gashStacks, Math.max(0, maimDemand)) * coverage
+  const maimFromCleave = Math.min(gashStackConsumed, cleaveCount)
+  const maimFromBurial = Math.min(gashStackConsumed - maimFromCleave, burialCount * BURIAL_MAIM_PER_CAST)
+  const maimCount = Math.floor(gashStackConsumed) + c6Extra
+  const sharpnessGain = SHARPNESS_INITIAL
+  const affordableExCount = Math.floor(sharpnessGain / SHARPNESS_COST_PER_EX)
+  const sharpnessSpend = affordableExCount * SHARPNESS_COST_PER_EX
   return {
-    teammateFrontlineSeconds,
-    gashBuildupRateMultiplier: input.cinemaLevel >= 1 ? M1_GASH_RATE_MULT : 1,
     gashValuePct,
+    gashBuildupMultiplier: buildupMultiplier,
     gashStacks,
-    gashStackGain,
+    maimDemand,
     gashStackConsumed,
     maimCount,
-    personalResourceGain,
-    personalResourcesConsumed,
-    personalResourceDamageBonusPct,
+    maimFromCleave,
+    maimFromBurial,
+    maimFromC6: c6Extra,
     sharpnessGain,
     affordableExCount,
     sharpnessSpend,
-    sharpnessRemaining,
-    note: '队友为当前操作角色时每秒积累3%残痕值（影画1起 ×1.15），1层=33.33%；斩金断铁/葬血强袭命中消耗1层触发毁伤；全队毁伤给1点个人资源，二命额外回复0.25锐能；葬血强袭消耗所有个人资源，每点使葬血强袭与毁伤伤害倍率+6.5%；秘血铸锋消耗60锐能。',
+    sharpnessRemaining: Math.max(0, sharpnessGain - sharpnessSpend),
+    note: 'v12 口径：锐化伤害命中积累残痕值（平A聚合 + 秘血铸锋 234.96%），满 100 = 1 层（上限 3）；斩金断铁×1/葬血强袭×3 命中残痕各消耗 1 层触发毁伤；锐能 = 进场 60（勘域 180s 一次），秘血铸锋 60/发 → 1 发/局。',
   }
 }
 
 function buildClaretCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.claretMaimMoveId = findMoveById(skills, MAIM_MOVE_ID)?.id ?? ''
   cfg.claretBloodBurialMoveId = findMoveById(skills, BLOOD_BURIAL_MOVE_ID)?.id ?? ''
-  cfg.claretMaimBurialMoveId = findMoveById(skills, MAIM_BURIAL_MOVE_ID)?.id ?? ''
-  cfg.claretBloodBurialDamageMultiplier = getRowValue(findMoveById(skills, BLOOD_BURIAL_MOVE_ID), 'damage') || 1711.2
-  cfg.claretMaimBurialDamageMultiplier = getRowValue(findMoveById(skills, MAIM_BURIAL_MOVE_ID), 'damage') || 1232
-  cfg.mechanicRowValues = {
-    [MAIM_MOVE_ID]: getRowValue(findMoveById(skills, MAIM_MOVE_ID), 'damage'),
-    [BLOOD_BURIAL_MOVE_ID]: cfg.claretBloodBurialDamageMultiplier,
-    [MAIM_BURIAL_MOVE_ID]: cfg.claretMaimBurialDamageMultiplier,
-  }
-  cfg.claretSharpnessCost = SHARPNESS_COST_PER_EX
+  cfg.claretExMoveId = findMoveById(skills, EX_MOVE_ID)?.id ?? ''
+  cfg.claretExDamageMultiplier = getRowValue(findMoveById(skills, EX_MOVE_ID), 'damage') || 1249.6
+  cfg.claretExGashValue = getRowValue(findMoveById(skills, EX_MOVE_ID), 'anomaly_buildup') || 234.96
+  cfg.claretMaimDamageMultiplier = getRowValue(findMoveById(skills, MAIM_MOVE_ID), 'damage') || 1625.6
+  cfg.claretBloodBurialDamageMultiplier = getRowValue(findMoveById(skills, BLOOD_BURIAL_MOVE_ID), 'damage') || 626.3
+  // 平A聚合残痕值（秒均）：血锻四式/锻星等 basic 行 anomaly_buildup 之和 × 时间 → 由资源结果回填
   cfg.claretCinemaLevel = cinemaLevel
   cfg.claretCleaveCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.cleaveSpecialCount', 1)))
   cfg.claretBloodBurialCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.bloodBurialCount', 1)))
-  cfg.claretGashCoverage = Math.max(0, Math.min(1, cfgSetting(cfg, 'claret.gashCoverage', 1)))
-  // 秘血铸锋（1611010）是锐能强特：通用引擎已按 costType=resource 不扣能量，强特行由本模块
-  // 按锐能账本发行（般岳/柏妮思同款接管口径），动作数据在此预存。
-  const exMove = findMoveById(skills, '1611010')
+  cfg.claretGashCoverage = Math.max(0, Math.min(1, Math.min(100, cfgSetting(cfg, 'claret.gashCoverage', 100)) / 100))
+  // 秘血铸锋是锐能强特（costType=resource）：通用引擎不扣能量，强特行由本模块按锐能账本发行
+  const exMove = findMoveById(skills, EX_MOVE_ID)
   cfg.claretExActionTime = exMove?.actionTime ?? 0
   cfg.claretExDecibelRecovery = getRowValue(exMove, 'decibel_recovery')
   cfg.skipGenericExSpecial = true
 }
 
-function buildClaretResourceResult({ cfg, state, teamFrontlineSeconds }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  return {
-    claretSharpResourceSource: computeClaretSharpResource({
-      teammateFrontlineSeconds: teamFrontlineSeconds ?? 0,
-      exSpecialCount: state.exSpecialCount,
-      cleaveSpecialCount: cfg.claretCleaveCount ?? 0,
-      bloodBurialCount: cfg.claretBloodBurialCount ?? 0,
-      gashCoverage: cfg.claretGashCoverage ?? 1,
-      cinemaLevel: cfg.claretCinemaLevel ?? 0,
-      sharpnessCost: cfg.claretSharpnessCost ?? SHARPNESS_COST_PER_EX,
-      chainCountTotal: state.chainCountTotal ?? 0,
-      ultimateCount: state.ultimateCount ?? 0,
-    }),
+/** 从执行的执行行聚合残痕值来源（%）：anomaly_buildup × count，除毁伤/葬血强袭行（表值 0）外 */
+export function sumGashValueFromExecutions(
+  executions: Array<{ moveId?: string; count?: number; anomalyBuildUp?: number }>,
+): number {
+  let total = 0
+  for (const exec of executions) {
+    const bu = Number(exec.anomalyBuildUp ?? 0)
+    if (bu <= 0) continue
+    const count = Math.max(0, Number(exec.count) || 0)
+    if (exec.moveId === 'basic_attack') {
+      // 平A聚合行：anomalyBuildUp 已是秒均（× totalTime）
+      total += bu * Math.max(0, Number((exec as any).totalTime) || 0)
+    } else {
+      total += bu * count
+    }
   }
+  return total
 }
 
-function buildClaretExecutions({ cfg, state, executions, teamFrontlineSeconds }: AgentResourceInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(cfg.claretCinemaLevel ?? 0))
-  const source = computeClaretSharpResource({
-    teammateFrontlineSeconds: teamFrontlineSeconds ?? 0,
-    exSpecialCount: state.exSpecialCount,
+function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'], gashFromPlan: number) {
+  return computeClaretSharpResource({
+    basicGashPerSec: 0, // 平A聚合部分由 gashFromPlan 直接给定（= 0 时仅 EX 来源）
+    basicAttackTime: 0,
+    exGashValue: cfg.claretExGashValue ?? 234.96,
+    exCount: Math.floor(SHARPNESS_INITIAL / SHARPNESS_COST_PER_EX),
     cleaveSpecialCount: cfg.claretCleaveCount ?? 0,
     bloodBurialCount: cfg.claretBloodBurialCount ?? 0,
     gashCoverage: cfg.claretGashCoverage ?? 1,
     cinemaLevel: cfg.claretCinemaLevel ?? 0,
-    sharpnessCost: cfg.claretSharpnessCost ?? SHARPNESS_COST_PER_EX,
     chainCountTotal: state.chainCountTotal ?? 0,
     ultimateCount: state.ultimateCount ?? 0,
   })
-  const bonusMultiplier = 1 + source.personalResourceDamageBonusPct / 100
-  // 秘血铸锋（强化特殊技）：锐能 60/发，次数 = floor(锐能预算 / 60)——锐能账本同轮给出。
-  // debt: 锐能强特喧响不进池——引擎喧响轨道按 iterate 的主强特计数推导（65.56/发），
-  // 资源型强特次数由模块账本给出且状态机外，需 threads 通道回传后补计；影响 ≈65.56×4≈260 喧响/局。
+}
+
+function buildClaretResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return {
+    claretSharpResourceSource: buildClaretResourceSource(cfg, state, 0),
+  }
+}
+
+function buildClaretExecutions({ cfg, state, executions, teamFrontlineSeconds: _t }: AgentResourceInput): void {
+  const cinemaLevel = Math.max(0, Math.floor(cfg.claretCinemaLevel ?? 0))
+  // 残痕值来源：按当前执行行聚合（平A聚合行秒均×时间 + 秘血铸锋单发）
+  const gashFromPlan = sumGashValueFromExecutions(executions)
+  const source = buildClaretResourceSource(cfg, state, gashFromPlan)
   const exCount = Math.max(0, Math.floor(source.affordableExCount))
   if (exCount > 0) {
     executions.push({
-      moveId: '1611010',
+      moveId: EX_MOVE_ID,
       moveName: '强化特殊技（EX Special）：秘血铸锋（锐能 60/发）',
       category: 'special',
       count: exCount,
@@ -195,33 +234,26 @@ function buildClaretExecutions({ cfg, state, executions, teamFrontlineSeconds }:
       timeBucket: 'necessary',
     })
   }
-  const maimFromCleave = Math.min(source.maimCount, Math.max(0, Math.floor(cfg.claretCleaveCount ?? 0)))
-  const maimFromBurial = Math.max(0, source.maimCount - maimFromCleave)
   const spec = getAgentSpec(CLARET_AGENT_ID)
   if (!spec) return
   const generated = buildSpecEventExecutions(spec, {
     cfg,
     state,
     counts: {
+      claretCleaveCount: Math.max(0, Math.floor(cfg.claretCleaveCount ?? 0)),
       claretBloodBurialCount: Math.max(0, Math.floor(cfg.claretBloodBurialCount ?? 0)),
-      claretMaimFromCleave: maimFromCleave,
-      claretMaimFromBurial: maimFromBurial,
+      claretMaimCount: Math.max(0, Math.floor(source.maimCount)),
+      claretMaimFromCleave: Math.max(0, Math.floor(source.maimFromCleave)),
+      claretMaimFromBurial: Math.max(0, Math.floor(source.maimFromBurial)),
+      claretMaimFromC6: Math.max(0, Math.floor(source.maimFromC6)),
     },
     overrides: {
-      claret_blood_burial: { multiplier: (cfg.claretBloodBurialDamageMultiplier ?? 1711.2) * bonusMultiplier },
-      claret_maim_burial: { multiplier: (cfg.claretMaimBurialDamageMultiplier ?? 1232) * bonusMultiplier },
+      claret_maim: { multiplier: (cfg.claretMaimDamageMultiplier ?? 1625.6) * (cinemaLevel >= 2 ? C2_MAIM_MULT : 1) },
+      claret_blood_burial: { multiplier: cfg.claretBloodBurialDamageMultiplier ?? 626.3 },
     },
-    getRowValue: (moveId, rowId) => (rowId === 'damage' ? (cfg.mechanicRowValues?.[moveId] ?? 0) : 0),
+    getRowValue: (moveId, rowId) => (rowId === 'damage' ? ((cfg as any).mechanicRowValues?.[moveId] ?? 0) : 0),
   })
   executions.push(...generated)
-  // 影画1：全队施加[残痕]时克拉蕾暴击率 +5%/层（15s，最多 3 层）——按满层 +15% 近似，
-  // 施加到她全部执行行含融合生成的毁伤/葬血强袭（critRateBonus 为执行级字段，参照 caesar）。
-  if (cinemaLevel >= 1) {
-    for (const exec of executions) {
-      if (!exec.moveId || !String(exec.moveId).startsWith(CLARET_AGENT_ID)) continue
-      exec.critRateBonus = (exec.critRateBonus ?? 0) + M1_CRIT_PER_STACK * M1_CRIT_MAX_STACKS
-    }
-  }
 }
 
 function patchClaretExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
@@ -240,27 +272,24 @@ function buildClaretResourceSections({ result }: AgentResourceSectionsInput) {
   return [
     {
       id: 'claret-gash-maim',
-      title: '克拉蕾残痕·毁伤',
-      summary: `残痕值 ${fmt(source.gashValuePct)}% · ${fmt(source.gashStacks)} 层 · 消耗 ${source.gashStackConsumed} 层 · 毁伤 × ${source.maimCount}`,
+      title: '克拉蕾残痕·毁伤（v12）',
+      summary: `残痕值 ${fmt(source.gashValuePct)}% → ${source.gashStacks} 层 · 消耗 ${Math.floor(source.gashStackConsumed)} 层 · 毁伤 × ${source.maimCount}`,
       rows: [
-        { label: '队友前台时间', value: `${fmt(source.teammateFrontlineSeconds)}s`, detail: '每秒积累 3% 残痕值' },
-        { label: '总残痕值', value: `${fmt(source.gashValuePct)}%`, detail: `${fmt(source.gashStacks)} 层（1 层 = 33.33%）` },
-        { label: '血华誓命中', value: `${source.gashStackGain} 次`, detail: '斩金断铁 + 葬血强袭' },
-        { label: '残痕消耗', value: `-${source.gashStackConsumed} 层`, detail: '斩金断铁/葬血强袭命中残痕敌人' },
-        { label: '毁伤触发', value: `${source.maimCount} 次`, detail: '每次消耗1层残痕' },
+        { label: '残痕值', value: `${fmt(source.gashValuePct)}%`, detail: `平A聚合 + 秘血铸锋 234.96%；满 100 = 1 层（上限 3）` },
+        { label: '积蓄效率', value: `×${fmt(source.gashBuildupMultiplier)}`, detail: `1 + 核心 50%（Lv.7）+ 影画2 20%` },
+        { label: '毁伤需求', value: `${source.maimDemand} 次`, detail: '斩金断铁×1 + 葬血强袭×3 + 影画6(连携+终结)×1' },
+        { label: '残痕消耗', value: `-${Math.floor(source.gashStackConsumed)} 层`, detail: '命中残痕状态敌人，每层一次毁伤（覆盖率折算）' },
+        { label: '毁伤触发', value: `${source.maimCount} 次`, detail: `斩金断铁 ${source.maimFromCleave} + 葬血强袭 ${source.maimFromBurial} + 影画6 ${source.maimFromC6}` },
       ],
-      footer: '残痕：队友当前操作时每秒 +3%，1 层 = 33.33%；全局资源计算，不关心单次满值。',
+      footer: 'v12：残痕值由锐化伤害命中积累（平A + 秘血铸锋表值），详情见模块头注释；溢出（>3 层）浪费。',
     },
     {
       id: 'claret-sharpness',
       title: '克拉蕾锐能',
-      summary: `获取 +${fmt(source.sharpnessGain)} · 消耗 -${fmt(source.sharpnessSpend)} · 结余 ${fmt(source.sharpnessRemaining)}`,
+      summary: `进场 +${fmt(source.sharpnessGain)} · 秘血铸锋 -${fmt(source.sharpnessSpend)} · 结余 ${fmt(source.sharpnessRemaining)}`,
       rows: [
-        { label: '个人资源', value: `+${source.personalResourceGain}`, detail: '全队每次毁伤 +1' },
-        { label: '葬血强袭消耗', value: `-${source.personalResourcesConsumed}`, detail: `每点使葬血强袭/毁伤伤害倍率 +${PERSONAL_RESOURCE_DMG_BONUS_PER_POINT}%` },
-        { label: '个人资源增伤', value: `+${fmt(source.personalResourceDamageBonusPct)}%`, detail: `${source.personalResourcesConsumed} × ${PERSONAL_RESOURCE_DMG_BONUS_PER_POINT}%` },
-        { label: '二命额外锐能', value: `+${fmt(Math.max(0, source.sharpnessGain - source.personalResourceGain))}`, detail: '每次毁伤 +0.25' },
-        { label: '锐能消耗', value: `-${fmt(source.sharpnessSpend)}`, detail: `秘血铸锋 ${SHARPNESS_COST_PER_EX}/次` },
+        { label: '锐能获取', value: `+${fmt(source.sharpnessGain)}`, detail: '进场 +60（勘域 180s 一次 → 每局一次）' },
+        { label: '秘血铸锋', value: `${source.affordableExCount} 发`, detail: `每发 60 锐能（v12 原文「锐能消耗：60点」）` },
       ],
       footer: source.note,
     },
@@ -271,7 +300,7 @@ const settings: MechanicSetting[] = [
   {
     id: 'claret.cleaveSpecialCount',
     label: '克拉蕾斩金断铁次数',
-    description: '残痕消耗来源之一；默认每轮 1 次，可按实际轮转调整。',
+    description: '残痕消耗来源之一（命中残痕敌 → 1 次毁伤）；默认每轮 1 次，可按实际轮转调整。',
     default: 1,
     min: 0,
     max: 20,
@@ -281,7 +310,7 @@ const settings: MechanicSetting[] = [
   {
     id: 'claret.bloodBurialCount',
     label: '克拉蕾葬血强袭次数',
-    description: '发动时消耗所有个人资源，每点使葬血强袭与毁伤伤害倍率提升6.5%；默认每轮1次。',
+    description: '每施放至多 3 次毁伤（连续 3 段横斩各命中触发）；默认每轮 1 次。',
     default: 1,
     min: 0,
     max: 20,
@@ -304,7 +333,7 @@ export const claretMechanic: AgentMechanicModule = {
   id: 'agent:claret',
   agentIds: [CLARET_AGENT_ID],
   name: '克拉蕾',
-  description: '残痕/锐能专属资源：队友前台时间每秒积累3%残痕值（1层=33.33%），血华誓招式消耗残痕触发毁伤；全队毁伤回复个人资源，葬血强袭消耗所有个人资源每点+6.5%伤害，秘血铸锋消耗锐能。',
+  description: 'v12：锐化伤害积累残痕值（满100=1层，上限3），斩金断铁/葬血强袭消耗残痕触发毁伤；锐能进场60/秘血铸锋60发；核心被动暴击率+30%与残锋锐暴+25%；影画1电抗无视16%、2毁伤×130%、4+20%、6直接毁伤。',
   applyPanel: applyClaretPanel,
   buildCharConfig: buildClaretCharConfig,
   buildExecutions: buildClaretExecutions,
