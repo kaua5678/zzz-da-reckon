@@ -146,7 +146,7 @@
                         <!-- 嗔火是般岳专属资源：队里没有般岳不显示（引擎侧 banyueSlot>=0 才消费） -->
                         <n-checkbox v-if="teamHasBanyue" :checked="guaranteeFury" @update:checked="v => setGuarantee('fury', v)">保底4嗔火</n-checkbox>
                         <n-checkbox :checked="guaranteeUltimate" @update:checked="v => setGuarantee('ultimate', v)">保底4喧响</n-checkbox>
-                        <span class="muted" style="font-size: 12px; margin-left: 4px">（缺口≤1500 补弹刀四舍五入，差太多不硬凑）</span>
+                        <span class="muted" style="font-size: 12px; margin-left: 4px">{{ guaranteeUltimateHint }}</span>
                       </div>
                       <div class="section-title">战斗动作次数</div>
                       <n-grid cols="6" :x-gap="8">
@@ -771,6 +771,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useStatLabel } from '@/composables/useStatLabel'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanel } from '@/composables/resourceCalc/helpers'
+import { ULTIMATE_COST_DEFAULT } from '@/core/resource'
 import CharacterCard from '@/components/CharacterCard.vue'
 import StatPanel from '@/components/StatPanel.vue'
 import { calcPanel } from '@/core/panel'
@@ -972,11 +973,21 @@ const teamHasBanyue = computed(() => configStore.team.some(c => c?.agentId === '
 const guaranteeStun = computed(() => configStore.getMechanicSetting('guarantee.stun', 0) !== 0)
 const guaranteeFury = computed(() => configStore.getMechanicSetting('guarantee.fury', 0) !== 0)
 const guaranteeUltimate = computed(() => configStore.getMechanicSetting('guarantee.ultimate', 0) !== 0)
+/** 保底4喧响·诚实显示（用户 2026-09-03）：四舍五入要露出来——「缺口 X → ⌈X/215⌉=N 次（X/215≈Y 取整）」 */
+const guaranteeUltimateHint = computed(() => {
+  if (!guaranteeUltimate.value) return '（未启用保底4喧响）'
+  const mainDpsDecibel = resourceResult.value?.characters.find(c => c.slot === 0)?.decibelSource?.total ?? 0
+  const short = Math.max(0, 4 * ULTIMATE_COST_DEFAULT - mainDpsDecibel)
+  if (short > 1500) return `（喧响缺口 ${Math.round(short)} > 1500，实战打不出下一次大 → 不硬凑）`
+  const raw = short / 215
+  const n = Math.ceil(raw)
+  return `（保底4喧响：缺口 ${Math.round(short)} 喧响 → 补弹刀 ⌈${short}÷215⌉ = ${n} 次，${raw.toFixed(2)} 次四舍五入取整）`
+})
 function setGuarantee(kind: 'stun' | 'fury' | 'ultimate', v: boolean) {
   configStore.setMechanicSetting(`guarantee.${kind}`, v ? 1 : 0)
 }
 // 般岳轴模式自动补齐（保底语义）：弹刀/双反在交互栏输入之上补的量（懒计算，仅般岳选中时求值）
-const { banyueInteractionTopUp, autoPreset, parrySplitResult } = useResourceCalc()
+const { banyueInteractionTopUp, autoPreset, parrySplitResult, resourceResult } = useResourceCalc()
 const banyueTopUpForSlot = computed(() => {
   const t = banyueInteractionTopUp.value
   return t && t.slot === configStore.selectedSlot ? t : null
