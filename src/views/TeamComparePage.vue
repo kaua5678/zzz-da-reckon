@@ -221,7 +221,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine } from '@/composables/teamCompare'
-import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter } from '@/data/teamPresets'
+import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
@@ -335,10 +335,9 @@ const selectedPresetIds = ref<string[]>([])
 /** 两级下拉：一级分类（如 命破队）→ 二级队伍 */
 // 三级筛选（2026-09-03 用户：一级下拉装 99+ 条太多——先选职业、再选属性、后出队伍）
 // 默认选中第一个职业+属性（用户 2026-09-03：打开即有队伍可选——此前全空像「没下拉框」）
-const presetGroupSel = ref<string | null>(presetGroupLabels[0] ?? null)
-const presetSubSel = ref<string | null>(
-  presetGroupSel.value ? (presetSubgroupLabelsFor(presetGroupSel.value)[0] ?? null) : null,
-)
+const firstFilter = firstNonEmptyFilter()
+const presetGroupSel = ref<string | null>(firstFilter.group)
+const presetSubSel = ref<string | null>(firstFilter.subgroup)
 const presetGroupOptionsC = presetGroupLabels.map(l => ({ label: l, value: l }))
 const presetSubOptions = computed(() =>
   (presetGroupSel.value ? presetSubgroupLabelsFor(presetGroupSel.value) : []).map(l => ({ label: l, value: l })),

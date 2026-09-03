@@ -131,7 +131,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NSelect, NButton, NTable, NInputNumber } from 'naive-ui'
-import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter } from '@/data/teamPresets'
+import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePositionCompare, type ComparePosition, type PositionCompareRow } from '@/composables/positionCompare'
@@ -184,10 +184,9 @@ const selectedPhase = computed(() =>
 )
 /** 两级下拉：一级分类（如 命破队）→ 二级队伍 */
 // 默认选中第一个职业+属性（用户 2026-09-03：打开即有队伍可选——此前全空像「没下拉框」）
-const presetGroupSel = ref<string | null>(presetGroupLabels[0] ?? null)
-const presetSubSel = ref<string | null>(
-  presetGroupSel.value ? (presetSubgroupLabelsFor(presetGroupSel.value)[0] ?? null) : null,
-)
+const firstFilter = firstNonEmptyFilter()
+const presetGroupSel = ref<string | null>(firstFilter.group)
+const presetSubSel = ref<string | null>(firstFilter.subgroup)
 const presetGroupOptionsC = presetGroupLabels.map(l => ({ label: l, value: l }))
 const presetSubOptions = computed(() =>
   (presetGroupSel.value ? presetSubgroupLabelsFor(presetGroupSel.value) : []).map(l => ({ label: l, value: l })),

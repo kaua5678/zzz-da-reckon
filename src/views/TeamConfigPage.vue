@@ -819,13 +819,14 @@ const catalogStore = useCatalogStore()
 const { statLabel, formatStatValue } = useStatLabel()
 
 // ========== 预设队伍（下拉，与「队伍对比」页共用 src/data/teamPresets/） ==========
-import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter } from '@/data/teamPresets'
+import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { buildGoldStepsFromConfig, teamGoldOf } from '@/composables/teamCompare'
 const presetSelectValue = ref<string | null>(null)
 /** 三级筛选（2026-09-03 用户：一级下拉装 99+ 条太多；cascader 弹层选项被裁剪 → 改三联动，
  *  与队伍/击破对比页同款交互；选项一律显示正式队伍名）。 */
-const cfgPresetGroupSel = ref<string | null>(presetGroupLabels[0] ?? null)
-const cfgPresetSubSel = ref<string | null>(cfgPresetGroupSel.value ? (presetSubgroupLabelsFor(cfgPresetGroupSel.value)[0] ?? null) : null)
+const firstFilter = firstNonEmptyFilter()
+const cfgPresetGroupSel = ref<string | null>(firstFilter.group)
+const cfgPresetSubSel = ref<string | null>(firstFilter.subgroup)
 const cfgPresetGroupOptions = presetGroupLabels.map(l => ({ label: l, value: l }))
 const cfgPresetSubOptions = computed(() =>
   (cfgPresetGroupSel.value ? presetSubgroupLabelsFor(cfgPresetGroupSel.value) : []).map(l => ({ label: l, value: l })),

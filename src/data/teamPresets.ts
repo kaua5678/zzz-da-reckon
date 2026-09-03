@@ -172,3 +172,19 @@ export const teamPresetCascadeOptions: PresetCascadeNode[] = presetGroupLabels.m
     children: presetsForFilter(group, sub).map(p => ({ label: p.name, value: p.id })),
   })),
 }))
+
+/** 默认筛选：第一个「真的有队伍」的（职业, 属性）——避免初始落到空组显示异常（2026-09-03） */
+export function firstNonEmptyFilter(): { group: string; subgroup: string } {
+  // 优先含手编预设（非 auto）的组合——初始默认别落在全是 auto 队伍的组（用户 2026-09-03）
+  for (const g of presetGroupLabels) {
+    for (const sub of presetSubgroupLabelsFor(g)) {
+      if (presetsForFilter(g, sub).some(p => !p.id.startsWith('auto-'))) return { group: g, subgroup: sub }
+    }
+  }
+  for (const g of presetGroupLabels) {
+    for (const sub of presetSubgroupLabelsFor(g)) {
+      if (presetsForFilter(g, sub).length > 0) return { group: g, subgroup: sub }
+    }
+  }
+  return { group: presetGroupLabels[0] ?? '未分组', subgroup: PRESET_UNGROUPED_SUB }
+}
