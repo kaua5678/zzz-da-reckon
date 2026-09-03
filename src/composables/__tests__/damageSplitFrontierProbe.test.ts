@@ -105,6 +105,15 @@ describe('探针：前沿直伤/异常伤拆分', () => {
     // 后台不占前场、冰紊乱倍率正常（碎冰承载），时间不再深究。
     const fnOld = rows.filter(r => !(r.damage >= r.hp && r.hp > 0) && r.run.bossKilled).length
     const fn3 = rows.filter(r => !(r.damage * 3 >= r.hp && r.hp > 0) && r.run.bossKilled).length
+    console.log(`\n=== ×3fn 队清单（按比率升序，前 60）——按异常构成分层 ===`)
+    const fn3Rows = rows.filter(r => !(r.damage * 3 >= r.hp && r.hp > 0) && r.run.bossKilled)
+    const byAnomaly = new Map<string, number>()
+    for (const r of fn3Rows) {
+      const key = r.anomalyChars
+      console.log(`  ${(r.damage / r.hp * 100).toFixed(0).padStart(3)}% [${key}] ${r.team}`)
+      byAnomaly.set(key, (byAnomaly.get(key) ?? 0) + 1)
+    }
+    console.log('构成统计:', JSON.stringify([...byAnomaly.entries()].sort((a, b) => b[1] - a[1])))
     console.log('\n=== 前沿直伤/异常拆分（比率最差 ' + topN + ' 队）===')
     console.log('批跑', frontier.length, '队 ·', elapsed.toFixed(1), 's')
     console.log(`fn（原判据 总伤≥HP）${fnOld} 队 | fn（×3 判据 总伤×3≥HP，用户口径）${fn3} 队`)
