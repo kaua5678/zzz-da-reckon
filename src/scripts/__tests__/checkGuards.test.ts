@@ -86,16 +86,20 @@ describe('extractSettingIds（settings 块抽取）', () => {
 
 describe('matchDebtRegistry（注册表匹配：文件相同 + 关键词包含）', () => {
   it('未登记 / 已销号两侧都能判', () => {
-    // 基准 = 真实 DEBT_REGISTRY：喂进去一条命中项 + 一条陌生项，
-    // 其余注册条目因为没有对应标记 → 全部落进 cleared。
-    // 条数由注册表大小推导（不写字面量：登记一条新债不该让这条测试变红——
-    // 2026-08-31 写死 3 时就被 gachaCost 的新登记撞红过一次）
-    const { unregistered, cleared } = matchDebtRegistry([
-      { file: 'src/mechanics/agents/claret.ts', text: '锐能强特喧响不进池——需 threads 通道回传' },
+    // 基准 = 真实 DEBT_REGISTRY：为每条注册条目生成命中标记 + 一条陌生项。
+    // 断言与注册表内容解耦（不写字面量）：注册表增删/清空都不该让这条测试变红——
+    // 2026-08-31 写死 3 时就被 gachaCost 的新登记撞红过一次；2026-09-03 注册表清空
+    // 时「喂一条命中项 + 一条陌生项」的旧写法把命中项误判成未登记。
+    const markers = [
+      ...Object.keys(DEBT_REGISTRY).map((k) => {
+        const i = k.indexOf(':')
+        return { file: k.slice(0, i), text: k.slice(i + 1) }
+      }),
       { file: 'src/other.ts', text: '全新未登记的债' },
-    ])
+    ]
+    const { unregistered, cleared } = matchDebtRegistry(markers)
     expect(unregistered.map(m => m.file)).toEqual(['src/other.ts'])
-    expect(cleared).toHaveLength(Object.keys(DEBT_REGISTRY).length - 1)
+    expect(cleared).toHaveLength(0)
   })
 })
 

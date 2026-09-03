@@ -78,7 +78,9 @@ function actionTime(skill) {
   if (/Dodge Counter/.test(name)) t -= 1.5
   else if (/Defensive Assist/.test(name)) t -= 2.5
   else if (/Ultimate/.test(name)) t -= 5
-  return t > 0 ? Math.round(t * 1000) / 1000 : (ether > 0 ? 0.001 : 0)
+  // 加成部分（2.5/1.5/5s）超出醚华折算时回退为 ether/100——全库口径（actionTimeSanity 护栏）：
+  // 招架支援无积蓄醚华（ethᵉr ≤ 加成）→ 时间 = ether/100；禁止钳位哨兵 0.001
+  return t > 0 ? Math.round(t * 1000) / 1000 : (ether > 0 ? Math.round(ether / 100 * 1000) / 1000 : 0)
 }
 function moveRow(rowId, kind, value, extra = {}) {
   return { id: rowId, label: { zhCN: rowId, en: rowId }, kind, values: [Math.round(value * 1000) / 1000], ...extra }
