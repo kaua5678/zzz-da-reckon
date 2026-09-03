@@ -76,7 +76,7 @@
               <div class="kv-grid">
                 <div class="kv"><span class="k">总伤害</span><span class="v big">{{ fmt(totalDamage) }}</span></div>
                 <div class="kv"><span class="k">Boss 血量</span><span class="v">{{ fmt(enemyHp) }}</span></div>
-                <div class="kv"><span class="k">伤害/血量</span><span class="v big" :class="ratioClass">{{ hpRatio.toFixed(1) }}%</span></div>
+                <div class="kv"><span class="k">伤害/血量</span><span class="v big" :class="ratioClass">{{ hpRatio.toFixed(1) }}%<template v-if="hpRatio > 100"> <span class="muted" style="font-size:12px">≈{{ killTimeText }}s 击杀</span></template></span></div>
                 <div class="kv"><span class="k">伤害分</span><span class="v big">{{ Math.round(predictedScore) }} / 60000</span></div>
                 <div class="kv">
                   <span class="k">预计</span>
@@ -84,6 +84,24 @@
                 </div>
               </div>
               <div class="verdict">{{ verdictText }}</div>
+
+              <!-- 当期 Buff 快捷选择（归档未记录玩家选择；点选写入全局 Buff 表参与计算） -->
+              <div v-if="deployPhaseView && deployPhaseView.buffs.length > 0" class="period-buff-row">
+                <span class="pb-label">当期 Buff</span>
+                <n-button size="tiny" :type="selectedBuffTitle === 'none' ? 'primary' : 'default'" @click="pickPeriodBuff(null)">不用</n-button>
+                <n-button
+                  v-for="b in deployPhaseView.buffs"
+                  :key="b.title"
+                  size="tiny"
+                  :type="selectedBuffTitle === b.title ? 'primary' : 'default'"
+                  :disabled="b.testOnly"
+                  :title="(b.effects ?? []).map(e => `${e.stat} +${e.value}`).join('；') || (b.unparsed ?? []).join('；')"
+                  @click="pickPeriodBuff(b)"
+                >
+                  {{ b.title || '(未命名)' }}{{ b.testOnly ? '（测试）' : '' }}
+                </n-button>
+              </div>
+              <div v-else-if="deployPhaseView" class="period-buff-row muted">当期 Buff：无可选牌（未解析/测试服占位）</div>
             </div>
           </template>
         </n-card>
@@ -135,11 +153,12 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { submissionToDeploy, type ArchiveRun, type ArchiveRoom } from '@/composables/runArchiveImport'
-import { applyDeployConfig } from '@/composables/runArchiveDeploy'
+import { applyDeployConfig, applyPeriodBuff } from '@/composables/runArchiveDeploy'
+import type { DeployConfig } from '@/composables/runArchiveImport'
 import { runLimitedGold, lowGoldFrontier } from '@/composables/limitedGold'
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
-import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
+import type { BossPreset, BossPresetFile, PhaseView, PhaseBuffCard } from '@/types/bossPreset'
 
 interface ArchiveFile {
   totalRuns: number
@@ -257,6 +276,33 @@ function onDeploy(run: ArchiveRun) {
   applyDeployConfig(configStore, deploy, presets.value, phaseViews.value)
   selected.value = run
   lastWarnings.value = deploy.warnings
+  lastDeploy.value = deploy
+  // 换部署时清掉上一期的当期 buff 选择（过期选择不跨 Boss 生效）
+  if (selectedBuffTitle.value !== 'none' && deployPhaseView.value?.buffs.some(b => b.title === selectedBuffTitle.value) !== true) {
+    pickPeriodBuff(null)
+  }
+}
+
+// ========== 当期 Buff 快捷选择 ==========
+/** 最近一次部署（用于取部署 Boss 的期相位 → 当期 buff 牌） */
+const lastDeploy = ref<DeployConfig | null>(null)
+const deployPhaseView = computed(() =>
+  lastDeploy.value?.boss ? phaseViews.value.find(v => v.phaseId === lastDeploy.value!.boss!.phaseId) ?? null : null,
+)
+/** 当前选中牌标题：'none' = 不用；牌名 = 手动选中的那张 */
+const selectedBuffTitle = ref<string>('none')
+/** 击杀时间（秒）：伤害/血量 > 100% 时 = 战斗时长 × 100/hpRatio（2 倍伤害 → 90s 击杀，按 180s 基准） */
+const killTimeText = computed(() => {
+  const ratio = hpRatio.value
+  if (ratio <= 100) return ''
+  const battle = configStore.enemy.battleTime ?? 180
+  return Math.round(battle * 100 / ratio)
+})
+function pickPeriodBuff(card: PhaseBuffCard | null) {
+  const phaseId = deployPhaseView.value?.phaseId ?? ''
+  const applied = applyPeriodBuff(configStore, phaseId, card)
+  selectedBuffTitle.value = card && applied ? card.title : 'none'
+  configStore.triggerRefresh?.()
 }
 
 const columns = computed(() => [
@@ -321,6 +367,20 @@ function fmt(n: number): string {
   grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr);
   gap: 14px;
   align-items: start;
+}
+.period-buff-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line-strong);
+}
+.period-buff-row .pb-label {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-right: 2px;
 }
 @media (max-width: 960px) {
   .run-archive-page { grid-template-columns: 1fr; }

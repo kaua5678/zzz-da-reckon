@@ -8,7 +8,7 @@
  * - Boss：applyBossPreset 应用期相位血量/失衡/防御/三表抗性（分期数决定血量膨胀），并写关卡固有 layer_buff。
  * - 当期可选牌（3 选 1）不自动应用：归档未记录玩家选择，对比时由用户在属性配置页手动选。
  */
-import type { BossPreset, BossPresetMonster, BossPresetDefaults, BossPresetPhase, PhaseBossBrief, PhaseView } from '@/types/bossPreset'
+import type { BossPreset, BossPresetMonster, BossPresetDefaults, BossPresetPhase, PhaseBossBrief, PhaseBuffCard, PhaseView } from '@/types/bossPreset'
 import { getInteractionDefaults, roleInteractionBaseline, useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossMatch, DeployConfig } from '@/composables/runArchiveImport'
@@ -59,6 +59,36 @@ export function applyBossLayerBuffs(
       })
     }
   }
+}
+
+/**
+ * 写当期可选 buff 牌（危局 3 选 1，period-buff: 前缀；先清旧）——实战对比部署页的
+ * 快捷按钮用（归档未记录玩家选择，手动点选后写进全局 Buff 表参与计算，与 layer_buff 通道同源）。
+ * 传 null 清除当前选择（回到「不用」口径）。返回是否已应用（effects 非空且非测试牌）。
+ */
+export function applyPeriodBuff(
+  configStore: ReturnType<typeof useConfigStore>,
+  phaseId: string,
+  card: PhaseBuffCard | null,
+): boolean {
+  for (let i = configStore.globalBuffs.length - 1; i >= 0; i--) {
+    if (String(configStore.globalBuffs[i].id).startsWith('period-buff:')) configStore.globalBuffs.splice(i, 1)
+  }
+  if (!card || card.testOnly) return false
+  let written = 0
+  for (const e of card.effects ?? []) {
+    if (!e.stat) continue
+    configStore.globalBuffs.push({
+      id: `period-buff:${phaseId}:${e.stat}:${e.value}`,
+      name: `当期·${card.title || '(未命名)'}`,
+      stat: e.stat,
+      value: e.value,
+      enabled: true,
+      targetSkillType: (e.targetSkillType ?? 'all') as never,
+    })
+    written++
+  }
+  return written > 0
 }
 
 /** 一键部署：队伍（命座/音擎/精炼/交互基准） + Boss（期相位 + layer_buff）。 */

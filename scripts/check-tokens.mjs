@@ -435,8 +435,8 @@ export const FONT_SIZE_BASELINE = {
  */
 export const WA_REF_BASELINE = 447
 
-/** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 524
+/** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1）。只增不减，防把变量改回字面量 */
+export const VAR_TOTAL_BASELINE = 525
 
 // ---------------------------------------------------------------- 判据
 

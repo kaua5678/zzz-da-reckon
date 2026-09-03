@@ -184,7 +184,7 @@
               </td>
               <td class="td-buff">{{ p.buffTitle || '—' }}</td>
               <td>{{ compact(p.damage) }}</td>
-              <td :class="{ kill: p.hpRatio >= 100 }">{{ fmt(p.hpRatio, 1) }}%</td>
+              <td :class="{ kill: p.hpRatio >= 100 }">{{ fmt(p.hpRatio, 1) }}%<template v-if="p.hpRatio > 100"><div class="kill-time">≈{{ killSeconds(p.hpRatio) }}s 击杀</div></template></td>
               <td>{{ fmt(p.difficulty, 1) }}</td>
               <td class="td-detail">{{ p.difficultyDetail }}</td>
               <td>{{ p.cinemas.join('/') }}</td>
@@ -210,7 +210,7 @@ import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
 
-useConfigStore()
+const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
 const calc = useResourceCalc()
 
@@ -510,12 +510,19 @@ const hoverTips = computed(() => {
   if (!p) return []
   return [
     `${p.presetName} · ${p.goldLabel}${p.standardGoldLabel ? ' · ' + p.standardGoldLabel : ''}`,
-    `伤害 ${compact(p.damage)}（${fmt(p.hpRatio, 1)}%）${p.buffTitle ? ' · ' + p.buffTitle : ''}`,
+    `伤害 ${compact(p.damage)}（${fmt(p.hpRatio, 1)}%）${p.buffTitle ? ' · ' + p.buffTitle : ''}${p.hpRatio > 100 ? ` · ≈${killSeconds(p.hpRatio)}s 击杀` : ''}`,
     `难度 ${fmt(p.difficulty, 1)} · ${p.difficultyDetail}`,
     `影画 ${p.cinemas.join('/')} · 精炼 ${p.wengineMods.join('/')}`,
     p.timeExceeded ? `⚠ ${p.timeDetail}` : `✓ ${p.timeDetail}`,
   ]
 })
+
+/** 击杀时间（秒）：伤害/血量 > 100% 时 = 战斗时长 × 100/hpRatio（2 倍伤害 → 90s，按 180s 基准） */
+function killSeconds(hpRatio: number): number {
+  if (hpRatio <= 100) return 0
+  const battle = configStore.enemy.battleTime ?? 180
+  return Math.round(battle * 100 / hpRatio)
+}
 
 </script>
 
@@ -689,6 +696,13 @@ const hoverTips = computed(() => {
 .kill {
   color: #63e2b7;
   font-weight: 700;
+}
+.kill-time {
+  color: inherit;
+  font-weight: 400;
+  font-size: 11px;
+  opacity: 0.85;
+  line-height: 1.3;
 }
 
 .time-ok {
