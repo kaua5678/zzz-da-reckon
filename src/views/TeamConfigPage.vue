@@ -3,15 +3,14 @@
     <!-- 预设队伍（下拉，数据源 src/data/teamPresets/，与「队伍对比」页共用） -->
     <div class="preset-row">
       <span class="preset-label">预设队伍</span>
-      <n-select
-        :value="presetSelectValue"
-        :options="presetTeamOptions"
+      <n-cascader
+        :value="presetCascadeValue"
+        :options="teamPresetCascadeOptions"
         size="small"
         clearable
-        filterable
         style="width: 280px"
-        placeholder="选择预设队伍（换人 + 自动配装）"
-        @update:value="onPresetSelect"
+        placeholder="选择预设（职业 → 属性 → 队伍；换人 + 自动配装）"
+        @update:value="onPresetCascade"
       />
       <n-button size="small" type="primary" secondary @click="openGoldDialog">
         预设金数
@@ -642,12 +641,12 @@
           <div class="gold-save-row">
             <n-space align="center" :size="8">
               <span class="gold-save-label">保存到预设</span>
-              <n-select
-                v-model:value="saveTargetPresetId"
-                :options="presetTeamOptions"
+              <n-cascader
+                v-model:value="saveTargetPath"
+                :options="teamPresetCascadeOptions"
                 size="small"
                 style="width: 240px"
-                placeholder="选择目标预设文件"
+                placeholder="选择目标预设文件（职业 → 属性 → 队伍）"
               />
             </n-space>
             <n-space>
@@ -787,13 +786,21 @@ const catalogStore = useCatalogStore()
 const { statLabel, formatStatValue } = useStatLabel()
 
 // ========== 预设队伍（下拉，与「队伍对比」页共用 src/data/teamPresets/） ==========
-import { teamPresets, teamPresetGroupOptions } from '@/data/teamPresets'
+import { teamPresets, teamPresetCascadeOptions } from '@/data/teamPresets'
 import { buildGoldStepsFromConfig, teamGoldOf } from '@/composables/teamCompare'
 const presetSelectValue = ref<string | null>(null)
-/** 两级下拉：一级分类（如 命破队）→ 二级队伍 */
-const presetTeamOptions = teamPresetGroupOptions
+/** 三级筛选（2026-09-03 用户：一级下拉装 99+ 条太多——cascader 职业 → 属性 → 队伍）。
+ *  顶部触发式 + 金数弹窗保存目标共用；值为路径数组，末位 = 队伍 id。 */
+const presetCascadeValue = ref<string[] | null>(null)
+/** 金数弹窗保存目标：cascader 路径（末位 = 预设 id） */
+const saveTargetPath = ref<string[] | null>(null)
+watch(saveTargetPath, path => { saveTargetPresetId.value = path && path.length ? String(path[path.length - 1]) : null })
 /** 最近一次应用的预设 id（「预设金数」弹窗保存到预设文件时默认目标） */
 const lastAppliedPresetId = ref<string | null>(null)
+function onPresetCascade(path: (string | number)[] | null) {
+  const id = Array.isArray(path) ? String(path[path.length - 1] ?? '') : null
+  onPresetSelect(id)
+}
 function onPresetSelect(id: string | number | null) {
   const preset = teamPresets.find(t => t.id === id)
   if (preset) {
@@ -810,6 +817,7 @@ function onPresetSelect(id: string | number | null) {
     }
   }
   presetSelectValue.value = null // 复位：下拉只做触发，不保持选中态
+  presetCascadeValue.value = null
 }
 
 // ========== 预设金数（设置当前队伍各槽位影画/精炼，金数口径见 teamCompare.ts） ==========

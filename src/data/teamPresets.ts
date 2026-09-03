@@ -131,3 +131,44 @@ export const teamPresetGroupOptions: Array<SelectOption | SelectGroupOption> = (
     .map(([label, children]) => ({ type: 'group' as const, label, key: label, children }))
 })()
 
+
+// ========== 三级筛选（2026-09-03 用户：一级下拉装 99+ 条太多——先选职业、再选属性、后出队伍） ==========
+
+/** 一级：职业（group；「未分组」恒最后） */
+export const presetGroupLabels: string[] = [...new Set(teamPresets.map(p => p.group?.trim() || UNGROUPED_LABEL))]
+  .sort((a, b) => a === UNGROUPED_LABEL ? 1 : b === UNGROUPED_LABEL ? -1 : a.localeCompare(b))
+
+/** 二级：该职业下的属性（subgroup；缺省归「未分属性」） */
+export const PRESET_UNGROUPED_SUB = '未分属性'
+export function presetSubgroupLabelsFor(group: string): string[] {
+  const subs = [...new Set(
+    teamPresets
+      .filter(p => (p.group?.trim() || UNGROUPED_LABEL) === group)
+      .map(p => p.subgroup?.trim() || PRESET_UNGROUPED_SUB),
+  )]
+  return subs.sort((a, b) => a === PRESET_UNGROUPED_SUB ? 1 : b === PRESET_UNGROUPED_SUB ? -1 : a.localeCompare(b))
+}
+
+/** 三级：该（职业, 属性）下的预设队伍 */
+export function presetsForFilter(group: string, subgroup: string): TeamPreset[] {
+  return teamPresets.filter(p =>
+    (p.group?.trim() || UNGROUPED_LABEL) === group
+    && (p.subgroup?.trim() || PRESET_UNGROUPED_SUB) === subgroup,
+  )
+}
+
+/** n-cascader 树（职业 → 属性 → 队伍；无二级时降为两级），供触发式选择（TeamConfigPage） */
+export interface PresetCascadeNode {
+  label: string
+  value: string
+  children?: PresetCascadeNode[]
+}
+export const teamPresetCascadeOptions: PresetCascadeNode[] = presetGroupLabels.map(group => ({
+  label: group,
+  value: group,
+  children: presetSubgroupLabelsFor(group).map(sub => ({
+    label: sub,
+    value: `${group}::${sub}`,
+    children: presetsForFilter(group, sub).map(p => ({ label: p.name, value: p.id })),
+  })),
+}))

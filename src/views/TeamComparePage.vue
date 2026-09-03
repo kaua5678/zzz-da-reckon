@@ -28,12 +28,28 @@
         <div class="ctl-field">
           <span class="ctl-label">预设队伍</span>
           <n-select
+            v-model:value="presetGroupSel"
+            :options="presetGroupOptionsC"
+            size="small"
+            style="width: 100px"
+            placeholder="职业"
+            title="一级分类：先选职业（命破/异常/强攻/击破/支援…），再选属性，最后出队伍"
+          />
+          <n-select
+            v-model:value="presetSubSel"
+            :options="presetSubOptions"
+            size="small"
+            style="width: 100px"
+            placeholder="属性"
+            title="二级分类：该职业下的属性/体系（如 强攻队·电）"
+          />
+          <n-select
             v-model:value="selectedPresetIds"
-            :options="presetOptions"
+            :options="presetFilteredOptions"
             size="small"
             multiple
             filterable
-            style="width: 300px"
+            style="width: 220px"
             placeholder="选择队伍（可多选）"
           />
           <n-select
@@ -205,7 +221,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine } from '@/composables/teamCompare'
-import { teamPresets, teamPresetGroupOptions } from '@/data/teamPresets'
+import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
@@ -317,7 +333,22 @@ watch([currentPhaseView], () => {
 // ========== 预设队伍 ==========
 const selectedPresetIds = ref<string[]>([])
 /** 两级下拉：一级分类（如 命破队）→ 二级队伍 */
-const presetOptions = teamPresetGroupOptions
+// 三级筛选（2026-09-03 用户：一级下拉装 99+ 条太多——先选职业、再选属性、后出队伍）
+const presetGroupSel = ref<string | null>(null)
+const presetSubSel = ref<string | null>(null)
+const presetGroupOptionsC = presetGroupLabels.map(l => ({ label: l, value: l }))
+const presetSubOptions = computed(() =>
+  (presetGroupSel.value ? presetSubgroupLabelsFor(presetGroupSel.value) : []).map(l => ({ label: l, value: l })),
+)
+const presetFilteredOptions = computed(() =>
+  presetGroupSel.value && presetSubSel.value
+    ? presetsForFilter(presetGroupSel.value, presetSubSel.value).map(t => ({ value: t.id, label: t.name }))
+    : [],
+)
+watch([presetGroupSel, presetSubSel], () => {
+  // 换筛选即清空已选（避免选中的队伍不在当前筛选内）
+  if (presetGroupSel.value && presetSubSel.value) selectedPresetIds.value = []
+})
 const selectedPresets = computed<TeamPreset[]>(() =>
   teamPresets.filter(t => selectedPresetIds.value.includes(t.id)),
 )

@@ -25,7 +25,23 @@
         </div>
         <div class="control">
           <span class="label">预设队伍（各自自动轴）</span>
-          <n-select v-model:value="selectedPresetIds" :options="presetOptions" multiple size="small" style="width: 320px" />
+          <n-select
+            v-model:value="presetGroupSel"
+            :options="presetGroupOptionsC"
+            size="small"
+            style="width: 100px"
+            placeholder="职业"
+            title="一级分类：先选职业，再选属性，最后出队伍（2026-09-03 三级筛选）"
+          />
+          <n-select
+            v-model:value="presetSubSel"
+            :options="presetSubOptions"
+            size="small"
+            style="width: 100px"
+            placeholder="属性"
+            title="二级分类：该职业下的属性/体系"
+          />
+          <n-select v-model:value="selectedPresetIds" :options="presetFilteredOptions" multiple size="small" filterable style="width: 220px" />
           <n-select
             v-model:value="quickPickMainC"
             :options="mainCQuickOptions"
@@ -115,7 +131,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NSelect, NButton, NTable, NInputNumber } from 'naive-ui'
-import { teamPresets, teamPresetGroupOptions } from '@/data/teamPresets'
+import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter } from '@/data/teamPresets'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePositionCompare, type ComparePosition, type PositionCompareRow } from '@/composables/positionCompare'
@@ -167,7 +183,20 @@ const selectedPhase = computed(() =>
   ?? selectedBoss.value?.phases[0] ?? null,
 )
 /** 两级下拉：一级分类（如 命破队）→ 二级队伍 */
-const presetOptions = teamPresetGroupOptions
+const presetGroupSel = ref<string | null>(null)
+const presetSubSel = ref<string | null>(null)
+const presetGroupOptionsC = presetGroupLabels.map(l => ({ label: l, value: l }))
+const presetSubOptions = computed(() =>
+  (presetGroupSel.value ? presetSubgroupLabelsFor(presetGroupSel.value) : []).map(l => ({ label: l, value: l })),
+)
+const presetFilteredOptions = computed(() =>
+  presetGroupSel.value && presetSubSel.value
+    ? presetsForFilter(presetGroupSel.value, presetSubSel.value).map(t => ({ value: t.id, label: t.name }))
+    : [],
+)
+watch([presetGroupSel, presetSubSel], () => {
+  if (presetGroupSel.value && presetSubSel.value) selectedPresetIds.value = []
+})
 const canRun = computed(() => selectedPresetIds.value.length >= 1 && selectedBoss.value && selectedPhase.value)
 /** 按主C快选 */
 const quickPickMainC = ref<string | null>(null)
