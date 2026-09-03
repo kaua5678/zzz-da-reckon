@@ -76,12 +76,17 @@ const presets = [...byTeam.values()].sort((a, b) => String(a.team[0].agentId).lo
     id: `auto-${kebab(r.team.map(m => m.agentId).join('-'))}`,
     group: SPEC_GROUP[spec] ?? '强攻队',
     subgroup: ELEMENT_LABEL[el] ?? el,
-    name: r.team.map(m => nameOf(m.agentId)).join('+') + '（自动·低金）',
-    note: `自动收录自实战顶分：${r.id}｜${r.score} 分 ${r.timeSeconds}s｜实战配装：${configText}｜金数 ${gold}（最低金+窗口收录，用户 2026-09-03）。默认 01 基线（goldSteps 空）；命中数据有出入可在此修订。`,
+    // 命名只带人物组成（用户 2026-09-03：自动无有效信息、低金可改金数，都不入名）
+    name: r.team.map(m => nameOf(m.agentId)).join('+'),
+    note: `自动收录自实战顶分：${r.id}｜${r.score} 分 ${r.timeSeconds}s｜实战配装：${configText}｜金数 ${gold}（最低金+窗口收录，用户 2026-09-03）。默认 01 基线（goldSteps 空）；交互为 parry8/dodge4 取整档；命中数据有出入可在此修订。`,
     team: r.team.map(m => m.agentId),
     wEngines: r.team.map(m => (m.weaponId && wEngineIds.has(String(m.weaponId))) ? String(m.weaponId) : ''),
     goldSteps: [],
-    interactions: [],
+    // 交互取整档（用户 2026-09-03：交互为资源/失衡次数服务，无需实战值，四舍五入整数档足够）
+    interactions: [
+      { type: 'parry', count: 8 },
+      { type: 'dodge', count: 4 },
+    ],
   }
 })
 
