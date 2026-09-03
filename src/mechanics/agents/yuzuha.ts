@@ -28,6 +28,8 @@ export const YUZUHA_FIREWORK_EXTREME_MOVE_ID = '1411021'
 const FIREWORK_TICK_SECONDS = 1
 /** 终结技·队友回能：每次大招全队其他角色回复 7+1.5×终结技等级（满级12级=25）点能量；走 crossAgent.supportUltimateRegen 通道 */
 export const YUZUHA_ULT_TEAM_ENERGY = 25
+/** 影画1 进场回能：30 点（勘域模式 180s 一次 → 每局一次） */
+export const YUZUHA_C1_ENTER_ENERGY = 30
 
 export function computeYuzuhaMechanic(input: {
   initialAtk: number
@@ -87,6 +89,10 @@ function buildYuzuhaCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void
   cfg.yuzuhaCinemaLevel = cinemaLevel
   // 终结技队友回能（calcCrossAgentEnergy 泛型通道，类型注释预留的「如柚叶25」）：满级12级 7+1.5×12
   cfg.supportUltimateEnergyRegen = YUZUHA_ULT_TEAM_ENERGY
+  // 影画1 进场回 30 能量（勘域模式 180s 一次 → 每局一次，克拉蕾锐能/佩洛伊斯喧响同款口径）
+  if ((cinemaLevel ?? 0) >= 1) {
+    cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + YUZUHA_C1_ENTER_ENERGY
+  }
 }
 
 /** 队伍级联动：定位异常专精队友 → 十人十色转积蓄目标元素写入自身 cfg（buildExecutions 读）。

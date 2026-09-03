@@ -6,6 +6,7 @@ import {
   YUZUHA_FIREWORK_EXTREME_MOVE_ID,
   YUZUHA_FIREWORK_MOVE_ID,
   YUZUHA_HARD_CANDY_MOVE_ID,
+  YUZUHA_C1_ENTER_ENERGY,
   computeYuzuhaMechanic,
   yuzuhaMechanic,
 } from '@/mechanics/agents/yuzuha'
@@ -55,6 +56,15 @@ describe('柚叶（1411）甜度点与狸之愿', () => {
     const cfg: any = { 'setting:yuzuha.chainEntryCount': 4 }
     yuzuhaMechanic.buildCharConfig!({ cfg } as any)
     expect(cfg.yuzuhaChainEntryCount).toBe(4)
+  })
+
+  it('影画1 进场回30能量并入 initialEnergyGift（勘域180s一次→每局一次；低命座不注入）', () => {
+    const cfg: any = { initialEnergyGift: 10 }
+    yuzuhaMechanic.buildCharConfig!({ cinemaLevel: 1, cfg } as any)
+    expect(cfg.initialEnergyGift).toBe(10 + YUZUHA_C1_ENTER_ENERGY)
+    const cfg0: any = { initialEnergyGift: 10 }
+    yuzuhaMechanic.buildCharConfig!({ cinemaLevel: 0, cfg: cfg0 } as any)
+    expect(cfg0.initialEnergyGift).toBe(10)
   })
 
   it('终结技队友回能：buildCharConfig 置 supportUltimateEnergyRegen=25，经 calcCrossAgentEnergy 按大招次数给其他角色（不给自身）', () => {

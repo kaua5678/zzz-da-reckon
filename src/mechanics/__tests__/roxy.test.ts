@@ -16,6 +16,10 @@ import {
   ROXY_C4_ULT_DMG,
   ROXY_C6_WIND_RES_REDUCTION,
   ROXY_C6_MEGA_TORNADO_MULT,
+  ROXY_C6_ECHO_BURSTS,
+  ROXY_C2_EX_CHILL_DAZE_BONUS,
+  ROXY_C4_ULT_DAZE_BONUS,
+  ROXY_C6_MEGA_DAZE_BONUS,
   ENERGY_PER_WIND_ENERGY,
   computeRoxyWindEnergy,
   roxyMechanic,
@@ -54,6 +58,31 @@ describe('洛克茜（1621）v4 影画', () => {
     expect(execs[1].damageMultiplier).toBeCloseTo(100 * ROXY_C6_MEGA_TORNADO_MULT)
     expect(execs[1].damageMultiplierOverride).toBe(true)
     expect(execs[2].dmgBonus).toBe(0)
+  })
+
+  it('影画2/4/6 失衡值：小心风寒+5%、终结+10%、巨旋风+20%（dazeMultiplierOverride，仅对应行）', () => {
+    const execs: any[] = [
+      { moveId: '1621007', dazeMultiplier: 100 }, // 小心风寒
+      { moveId: '1621012', dazeMultiplier: 80 }, // 终结
+      { moveId: '1621020', dazeMultiplier: 110 }, // 巨旋风
+      { moveId: '1621005', dazeMultiplier: 50 }, // 恕不远送（对照行）
+    ]
+    roxyMechanic.patchExecutions!({
+      cfg: { roxyCinemaLevel: 6, roxyExChillDaze: 105, roxyUltDaze: 88, roxyMegaDaze: 132 },
+      state: {} as any,
+      executions: execs,
+    } as any)
+    expect(execs[0].dazeMultiplier).toBeCloseTo(100 * (1 + ROXY_C2_EX_CHILL_DAZE_BONUS / 100))
+    expect(execs[0].dazeMultiplierOverride).toBe(true)
+    expect(execs[1].dazeMultiplier).toBeCloseTo(80 * (1 + ROXY_C4_ULT_DAZE_BONUS / 100))
+    expect(execs[1].dazeMultiplierOverride).toBe(true)
+    expect(execs[2].dazeMultiplier).toBeCloseTo(110 * (1 + ROXY_C6_MEGA_DAZE_BONUS / 100))
+    expect(execs[2].dazeMultiplierOverride).toBe(true)
+    expect(execs[3].dazeMultiplierOverride).toBeUndefined() // 无关行不挂
+    // 低命座：全不挂
+    const low: any[] = [{ moveId: '1621007', dazeMultiplier: 100 }, { moveId: '1621012', dazeMultiplier: 80 }, { moveId: '1621020', dazeMultiplier: 110 }]
+    roxyMechanic.patchExecutions!({ cfg: { roxyCinemaLevel: 1, roxyExChillDaze: 105, roxyUltDaze: 88, roxyMegaDaze: 132 }, state: {} as any, executions: low } as any)
+    for (const exec of low) expect(exec.dazeMultiplierOverride).toBeUndefined()
   })
 
   it('C6 全管线伤害 > C0（命座有效性）', async () => {
@@ -97,5 +126,12 @@ describe('洛克茜风能模型（v12 + 手法）', () => {
     expect(r.sendOffCount).toBe(0)
     expect(r.miniTornadoCount).toBe(1)
     expect(r.miniTornadoSeconds).toBe(1)
+  })
+
+  it('影画6 余响：每次恕不远送额外 +2 次巨型风旋（3× 引爆数）', () => {
+    const r0 = computeRoxyWindEnergy({ exSpecialCount: 2, ultimateCount: 0, spinSeconds: 2.5, cinemaLevel: 0 })
+    expect(r0.megaTornadoCount).toBe(2)
+    const r6 = computeRoxyWindEnergy({ exSpecialCount: 2, ultimateCount: 0, spinSeconds: 2.5, cinemaLevel: 6 })
+    expect(r6.megaTornadoCount).toBe(2 + 2 * ROXY_C6_ECHO_BURSTS)
   })
 })

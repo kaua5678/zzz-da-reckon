@@ -53,15 +53,19 @@ const ROXY_ULT_MOVE_ID = '1621012'
 /** 影画1：敬请安息命中 → 全抗-15%（50s）+ 自身暴伤+40% */
 export const ROXY_C1_CRIT_DMG = 40
 export const ROXY_C1_RES_REDUCTION = 15
-/** 影画2：小心风寒命中 → 失衡易伤+30%（v12：旧 25% → 30%） */
+/** 影画2：小心风寒命中 → 失衡易伤+30%（v12：旧 25% → 30%）+ 小心风寒失衡值+5% */
 export const ROXY_C2_STUN_VULN = 30
-/** 影画4：招架回1/闪反回2 能量 + 终结技伤害+20% */
+export const ROXY_C2_EX_CHILL_DAZE_BONUS = 5
+/** 影画4：招架回1/闪反回2 能量 + 终结技伤害+20%（失衡值+10%） */
 export const ROXY_C4_PARRY_ENERGY = 1
 export const ROXY_C4_DODGE_ENERGY = 2
 export const ROXY_C4_ULT_DMG = 20
-/** 影画6：无视 15% 风抗（v12：旧 20% → 15%）+ 巨旋风倍率 ×250% */
+export const ROXY_C4_ULT_DAZE_BONUS = 10
+/** 影画6：无视 15% 风抗（v12：旧 20% → 15%）+ 巨旋风倍率 ×250%（失衡值+20%）+ 余响 2 次/引爆 */
 export const ROXY_C6_WIND_RES_REDUCTION = 15
 export const ROXY_C6_MEGA_TORNADO_MULT = 2.5
+export const ROXY_C6_MEGA_DAZE_BONUS = 20
+export const ROXY_C6_ECHO_BURSTS = 2
 /** 额外能力：自身伤害 +8%+1.2%/级（Lv.7 = 15.2%）；进场回 40 能量 */
 export const ROXY_AA_DMG_BONUS_LV7 = 8 + 1.2 * 6
 export const ROXY_AA_ENTER_ENERGY = 40
@@ -103,9 +107,11 @@ export function computeRoxyWindEnergy(input: {
   exSpecialEnergyConsume?: number
   ultimateCount?: number
   spinSeconds?: number
+  cinemaLevel?: number
 }): RoxyWindEnergySource {
   const exCount = Math.max(0, Math.floor(input.exSpecialCount))
   const spinSeconds = Math.max(0, Number(input.spinSeconds ?? 2.5))
+  const cinema = Math.max(0, Math.floor(Number(input.cinemaLevel ?? 0)))
   // 每轮自旋耗能 = 自旋秒 × 30/s（+ 10 启动）；风能 = 每 25 能量 +1，手法按 3 点/轮攒满
   const energySpentTotal = exCount * (10 + spinSeconds * 30)
   const windEnergyGain = exCount * Math.floor((spinSeconds * 30 + 10) / ENERGY_PER_WIND_ENERGY)
@@ -114,7 +120,9 @@ export function computeRoxyWindEnergy(input: {
   const windEnergyConsumed = Math.min(windEnergyGain, exCount * WIND_ENERGY_MAX)
   const windEyeGenerated = windEnergyConsumed * WIND_EYE_PER_ENERGY
   const sendOffCount = Math.floor(windEnergyConsumed / SEND_OFF_BURST_MAX)
-  const megaTornadoCount = sendOffCount
+  // 影画6 余响：每次恕不远送给主目标加[余响]，每 3 秒生成 1 次巨旋风、共 2 次（重复触发叠加）
+  // → 总量近似 = 每次引爆额外 2 次（引爆间隔 > 6s 时逐次完整；叠加刷新按 2×引爆计）
+  const megaTornadoCount = sendOffCount + (cinema >= 6 ? sendOffCount * ROXY_C6_ECHO_BURSTS : 0)
   const miniTornadoCount = Math.max(0, windEnergyConsumed - sendOffCount * SEND_OFF_BURST_MAX)
 
   return {
@@ -162,6 +170,16 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
   }
   // 额外能力·辉金心脏：进场回 40 能量（勘域 180s 一次 → 每局一次；门控未接，note）
   cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + ROXY_AA_ENTER_ENERGY
+  // 影画失衡值（v12 原文「失衡值提升」）：预缩倍率表 daze 值，patchRoxyExecutions 经 dazeMultiplierOverride 精确结算
+  if ((cinemaLevel ?? 0) >= 2) {
+    record.roxyExChillDaze = getRowValue(findMoveById(skills, EX_CHILL_MOVE_ID), 'daze') * (1 + ROXY_C2_EX_CHILL_DAZE_BONUS / 100)
+  }
+  if ((cinemaLevel ?? 0) >= 4) {
+    record.roxyUltDaze = getRowValue(findMoveById(skills, ROXY_ULT_MOVE_ID), 'daze') * (1 + ROXY_C4_ULT_DAZE_BONUS / 100)
+  }
+  if ((cinemaLevel ?? 0) >= 6) {
+    record.roxyMegaDaze = getRowValue(findMoveById(skills, MEGA_TORNADO_MOVE_ID), 'daze') * (1 + ROXY_C6_MEGA_DAZE_BONUS / 100)
+  }
 }
 
 function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
@@ -194,6 +212,7 @@ function buildRoxyResourceResult({ cfg, state }: AgentResourceResultInput): Part
       exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
       ultimateCount: state.ultimateCount,
       spinSeconds: Number(record.roxySpinSeconds ?? 0),
+      cinemaLevel: Number(record.roxyCinemaLevel ?? 0),
     }),
   }
 }
@@ -205,6 +224,7 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
     exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
     ultimateCount: state.ultimateCount,
     spinSeconds: Number(record.roxySpinSeconds ?? 0),
+    cinemaLevel: Number(record.roxyCinemaLevel ?? 0),
   })
   const exCount = Math.max(0, Math.floor(state.exSpecialCount))
   if (exCount > 0) {
@@ -260,16 +280,35 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
 }
 
 function patchRoxyExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).roxyCinemaLevel ?? 0)))
-  if (cinema < 4) return
+  const record = cfg as unknown as Record<string, unknown>
+  const cinema = Math.max(0, Math.floor(Number(record.roxyCinemaLevel ?? 0)))
   for (const exec of executions) {
+    // 影画2：小心风寒（1621007）失衡值 +5%
+    if (cinema >= 2 && exec.moveId === EX_CHILL_MOVE_ID) {
+      const d = Number(record.roxyExChillDaze ?? 0)
+      if (d > 0) {
+        exec.dazeMultiplier = d
+        exec.dazeMultiplierOverride = true
+      }
+    }
     if (cinema >= 4 && exec.moveId === ROXY_ULT_MOVE_ID) {
       exec.dmgBonus = (exec.dmgBonus ?? 0) + ROXY_C4_ULT_DMG
+      // 影画4：终结技（1621012）失衡值 +10%
+      const d = Number(record.roxyUltDaze ?? 0)
+      if (d > 0) {
+        exec.dazeMultiplier = d
+        exec.dazeMultiplierOverride = true
+      }
     }
-    // 影画6：巨型风旋（1621020）倍率 ×250%（失衡+20% 未单接）
+    // 影画6：巨型风旋（1621020）倍率 ×250%（含余响生成行，共用 moveId）失衡值 +20%
     if (cinema >= 6 && exec.moveId === MEGA_TORNADO_MOVE_ID) {
       exec.damageMultiplier = (exec.damageMultiplier ?? 0) * ROXY_C6_MEGA_TORNADO_MULT
       exec.damageMultiplierOverride = true
+      const d = Number(record.roxyMegaDaze ?? 0)
+      if (d > 0) {
+        exec.dazeMultiplier = d
+        exec.dazeMultiplierOverride = true
+      }
     }
   }
 }
