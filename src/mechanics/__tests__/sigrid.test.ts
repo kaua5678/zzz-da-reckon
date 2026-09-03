@@ -268,6 +268,10 @@ describe('希格莉德全链：敛枪式三段行进入执行计划', () => {
     for (const r of lanceRows) {
       expect(r.count).toBeGreaterThanOrEqual(2) // 破阵 2 套（轮转另计）
       expect(r.penRatioBonus ?? 0).toBe(24) // 2命：敛枪式行吃穿透率
+      // 时间结构（2026-09-03）：敛枪式是前台真实动作——总时间 = count × actionTime（旧 totalTime=0
+      // 的「防正反馈发散」补丁已废除：机会来源现为 basicAttackTime → 敛枪式耗时间→平A池压缩→收敛）
+      expect(r.totalTime ?? 0).toBeGreaterThan(0)
+      expect(r.totalTime).toBeCloseTo((r.count ?? 0) * (r.actionTime ?? 0), 5)
     }
     // 出枪式行（如终结技霜天 1591016）也吃穿透率
     const frost = char.executions.find(e => e.moveId === '1591016')

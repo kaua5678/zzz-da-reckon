@@ -263,9 +263,12 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
       dmgBonus: SIGRID_DILI_DMG,
       actionTime: meta.actionTime,
       comboAlignRatio: 0,
-      // totalTime=0：敛枪式时间已含在操作循环的前台预算内，不进时间预算收敛
-      // （若按真实时长计入，机会获取→执行行时间→前台时间→更多机会 正反馈发散，sweep 实测 3200 亿秒）
-      totalTime: 0,
+      // 时间记真实时长（count × actionTime）：敛枪式是前台真实动作，t=0 会显示「无时间」。
+      // 收敛性（2026-09-03 论证，取代 2026-02「正反馈发散 3200 亿秒」旧注释）：
+      // 机会来源 = 出枪式命中数 = f(basicAttackTime)（patchSigridExecutions），
+      // 敛枪式时间计入必要时间 → 平A池压缩 → 出枪式命中/机会减少 → 敛枪式减少 → 负反馈收敛；
+      // 折叠循环沿「±1s 量化残差」口径（resource.ts）收敛，无发散路径。
+      totalTime: count * meta.actionTime,
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
