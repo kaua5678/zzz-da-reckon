@@ -277,7 +277,8 @@ export const useConfigStore = defineStore('config', () => {
   const mechanicSettings = ref<Record<string, number>>({})
   // 按角色槽位/机制命名的可调参数，例如蕾米 Q 虚耀分配
   const teamMechanicSettings = ref<Record<string, number>>({})
-  // 每个角色异常积蓄利用率：用于模拟辅助卡99%被吞、正常角色不浪费
+  // 每个角色异常积蓄利用率（0-1）：默认 1（应用率已由执行次数体现，支援/防护同样按实际招式积蓄——
+  // 旧「支援/防护 0.1」启发式会把丽娜等电异常支援的总积蓄 ÷10，与实际应用量不符；用户可经滑块微调）
   const anomalyUtilizationRates = ref<Record<number, number>>({})
   // 每个元素/槽位的结算占比覆盖：key = `${element}:${slot}`，值为0-1
   const anomalySettlementShares = ref<Record<string, number>>({})
@@ -815,9 +816,7 @@ export const useConfigStore = defineStore('config', () => {
     if (typeof override === 'number' && Number.isFinite(override)) {
       return Math.max(0, Math.min(1, override))
     }
-    const char = team.value[slot]
-    const agent = char?.agentId ? catalogStore.getAgent(char.agentId) : null
-    return agent?.specialty === 'support' || agent?.specialty === 'defense' ? 0.1 : 1
+    return 1
   }
 
   function setAnomalyUtilizationRate(slot: number, rate: number) {

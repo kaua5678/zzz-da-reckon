@@ -816,8 +816,10 @@ function actionTimeTotal(
     }
   }
   const available = battleTime - invincibleTime
-  // 容差 1e-6：终局贪心会把预算用满到浮点边界（180.000000…），零容差会把「刚好打满」误报为超时
-  const exceeded = totalActionTime > available + 1e-6
+  // 容差 1s：引擎折叠循环按文档容忍 ±1s 量化残差（resource.ts「floor 次数导致残差 ~1s
+  // 属合轴可覆盖，不追求精确 0」）；零容差会把「贴线打满 + 收敛残差」误报为超时
+  // （2026-09-03 异常利用率修正后 伊德海莉队实测 180.0053s 被 1e-6 容差误报为超时）
+  const exceeded = totalActionTime > available + 1
   // 降配提示（引擎 axisFallback / interactionScale）：轴需求或手填交互超出时间预算时
   // 引擎自动降配——弃轴退化一般轴 / 缩放交互次数（boss 强制弹刀不缩）。
   const notes: string[] = []

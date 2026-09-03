@@ -110,6 +110,10 @@ describe('仪玄 spec 机制（1371）', () => {
     //   历史对照：旧发散模型曾达 14（连携 daze 白送），13→14 的修复被净失衡正确替代。
     //   队友终结次数（2026-08-23 重推导）：赛斯喧响在净失衡模型下少跨一档（3→2 次）→
     //   队友终结闪能 120→80、总账 840→800，当量仍为 13。
+    // 2026-09-03 再基线（异常积蓄利用率默认修正：支援/防护 0.1→1.0——赛斯为防护，
+    //   其电积蓄不再 ×0.1 → 异常触发/喧响抬升 → 平A池回能 0.45→12.01）：
+    //   总账 800.45→812.01、derivedEnergy 806.5→810.52，当量 13 不变
+    //   （口径历史/根因见 stores/config.ts getAnomalyUtilizationRate 注释）。
     // 时间轴喧响轨（2026-08-31，收敛门控版）：轨仅在 stunCount 收敛稳定后启用——
     // 本队 stunCount 在大招数稳定前已收敛（轮序早于轨），轨未介入 → 保持总量口径 13。
     // （比琉队等「stunCount 先稳定」的队伍轨才削减——见 resourceTrack/billySmoke）
@@ -118,9 +122,9 @@ describe('仪玄 spec 机制（1371）', () => {
     // 队友进窗攒不足 3000（青衣 2813/赛斯 2866）→ 大招全削减 [0, 0]（原总量口径 [2, 2]）；
     // 玄墨暗涌队友终结回闪能 80→0 → 总账 800→684、当量 13→11。
     expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([2, 2])
-    expect(yixuan.energySource.total).toBeCloseTo(800.45, 1)
+    expect(yixuan.energySource.total).toBeCloseTo(812.01, 1)
     expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(80)
-    expect(yixuan.derivedEnergy).toBeCloseTo(806.5, 1)
+    expect(yixuan.derivedEnergy).toBeCloseTo(810.52, 1)
     const chain = yixuan.yixuanExChain!
     // 手填口径锁结构（轨 2026-08-31：income 随队友大招削减回落，cloudOut/flashSpent 为收敛值不锁数）
     expect(chain.ink1).toBe(3)
