@@ -673,7 +673,7 @@ export const starlightBillyMechanic: AgentMechanicModule = {
   buildAnomalyEvents: input => specBase.buildAnomalyEvents?.(input),
   combos: {
     'billy-ex-chain': {
-      label: '动力压制链（动力压制→孤轮特技→摇曳步伐）',
+      label: '动力压制链',
       energyCost: EX_FLASH_COST, // 只有摇曳步伐付费（动力压制/孤轮免费衔接）
       moves: [
         { moveId: MOVE.driveSuppression, count: 1 },

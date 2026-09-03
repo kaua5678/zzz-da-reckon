@@ -887,12 +887,12 @@ export const banyueMechanic: AgentMechanicModule = {
   // 不耗闪能不回嗔火；怒相内 2 组连段可在两个块间自由分配（didong 块优先占山威配额），明王触发源两者皆认领
   combos: {
     'banyue-combo': {
-      label: '怒相连段（论道→狮子吼·怒）',
+      label: '怒相连段·论道',
       energyCost: COMBO_COST,
       moves: [{ moveId: MOVE.lunDao, count: 1 }, { moveId: MOVE.shiZiHouNu, count: 1 }],
     },
     'banyue-combo-didong': {
-      label: '怒相连段（地动→山摇·怒）',
+      label: '怒相连段·地动',
       energyCost: COMBO_COST,
       moves: [{ moveId: MOVE.diDong, count: 1 }, { moveId: MOVE.shanYaoNu, count: 1 }],
     },

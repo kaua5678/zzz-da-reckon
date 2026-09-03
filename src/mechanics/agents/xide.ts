@@ -311,7 +311,7 @@ export const xideMechanic: AgentMechanicModule = {
   // 轴内动作块：崩坠 = 重戮 + 一式 + 二式三连（中间自动衔接，连着一块放；钢能 120/影画1 100 由资源循环扣，轴栈不扣闪能）
   combos: {
     'xide-bengzhui': {
-      label: '崩坠（重戮+一式+二式三连）',
+      label: '崩坠三连（重戮+一+二式）',
       energyCost: 0,
       moves: [
         { moveId: XIDE_ZHONGLU_MOVE_ID, count: 1 },

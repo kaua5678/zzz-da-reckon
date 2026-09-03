@@ -190,7 +190,7 @@ export const yanagiMechanic: AgentMechanicModule = {
   settings,
   combos: {
     'yanagi-moonlight-flow': {
-      label: '月华流转（突刺+下砸；追加突刺次数见滑块）',
+      label: '月华流转',
       energyCost: YANAGI_EX_BASE_ENERGY,
       moves: [{ moveId: '1221022', count: 1 }, { moveId: '1221023', count: 1 }],
     },

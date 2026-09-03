@@ -220,7 +220,7 @@ export const soldier11Mechanic: AgentMechanicModule = {
    *  展开行落在失衡窗口内吃易伤（轴内层数结算）。强特本体行由通用执行计划承载。 */
   combos: {
     'soldier11-fire-knife': {
-      label: '快速火刀（A4快速取消 + A5快速火刀 + 6层爆炸）',
+      label: '快速火刀（A4+A5+爆炸×6）',
       energyCost: SOLDIER11_EX_ENERGY,
       moves: [
         { moveId: A4_MOVE_ID, count: 1 },

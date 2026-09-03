@@ -376,12 +376,12 @@ export const yidhariMechanic: AgentMechanicModule = {
   resourceSections: buildYidhariResourceSections,
   combos: {
     'yidhari-heavy-single': {
-      label: '连段·单次（溯寒+极寒重碾）',
+      label: '单次碾（溯寒+极寒重碾）',
       energyCost: 60, // 0命；1命时栈遍历按 50 覆盖
       moves: [{ moveId: '1051011', count: 1 }, { moveId: '1051012', count: 1 }],
     },
     'yidhari-heavy-double': {
-      label: '连段·双次（溯寒+极寒重碾×2）',
+      label: '双次碾（溯寒+极寒重碾×2）',
       energyCost: 85, // 50 + 35（C1 连续重碾）
       moves: [{ moveId: '1051011', count: 1 }, { moveId: '1051012', count: 2 }],
     },
