@@ -181,6 +181,33 @@ export function countBasicFinisherHits(basicTime: number, cycle: { moveId: strin
 }
 
 /**
+ * 平A段循环的**每段命中次数**（行级物化用，2026-09-03）。
+ * 模型与 countBasicFinisherHits 同构（事件时刻 = 段起点 + k × 循环时长，#4 结果与其完全一致，
+ * 保证「机会 = 出枪式#4 命中」与「凛冽枪尖 #4 段行次数」自洽）：
+ * hits_i = T ≥ prefix_i ? 1 + floor((T − prefix_i) / cycleTime) : 0。
+ * 压枪开：只打 #3/#4（1.765s/循环）；关：打 #1-#4（2.983s/循环）。
+ */
+export function countBasicSegments(
+  basicTime: number,
+  cycle: { moveId: string; actionTime: number }[],
+  pressCancel: boolean,
+): Record<string, number> {
+  const segs = pressCancel
+    ? cycle.filter(s => s.moveId === '1591004' || s.moveId === '1591005')
+    : cycle
+  const out: Record<string, number> = {}
+  if (segs.length === 0 || basicTime <= 0) return out
+  const cycleTime = segs.reduce((sum, s) => sum + s.actionTime, 0)
+  if (cycleTime <= 0) return out
+  let prefix = 0
+  for (const seg of segs) {
+    out[seg.moveId] = basicTime >= prefix - 1e-9 ? 1 + Math.floor((basicTime - prefix) / cycleTime) : 0
+    prefix += seg.actionTime
+  }
+  return out
+}
+
+/**
  * applyTeamConfig · converge：记录上一轮收敛的失衡次数。
  * 破阵口径（用户 2026-02）：每次失衡送一套敛枪式三段（免费，不耗机会）→ 触发次数 = 失衡次数。
  */
@@ -243,6 +270,36 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   const atk = Math.max(0, Number(record.sigridAtk ?? 0))
   const overflowCov = clamp01(cfgSetting(cfg, 'sigrid.c1OverflowCoverage', 1))
 
+  // 出枪式（凛冽枪尖 #1-4）行级物化（用户口径 2026-09-03）：真实分段行 + 真实时间——
+  // 平A汇总行只保留时间载体（patchSigridExecutions 归零伤害/失衡/积蓄），伤害由分段行承载；
+  // 压枪开 = 只打 #3/#4（1.765s/循环），关 = 打 #1-#4（2.983s/循环）。
+  const basicCycle = (record.sigridBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
+  if (basicCycle.length > 0) {
+    const pressCancel = cfgSetting(cfg, 'sigrid.pressCancel', 0) >= 0.5
+    const segCounts = countBasicSegments(Math.max(0, Number((state as any).basicAttackTime ?? 0)), basicCycle, pressCancel)
+    for (const seg of basicCycle) {
+      const n = segCounts[seg.moveId] ?? 0
+      if (n <= 0) continue
+      executions.push({
+        moveId: seg.moveId,
+        moveName: `普通攻击：凛冽枪尖 #${seg.moveId.slice(-1)}`,
+        category: 'basic',
+        element: 'ice',
+        count: n,
+        actionTime: seg.actionTime,
+        comboAlignRatio: 0,
+        totalTime: n * seg.actionTime,
+        totalComboAlignTime: 0,
+        energyConsume: 0,
+        totalEnergyConsume: 0,
+        decibelRecovery: 0,
+        totalDecibelRecovery: 0,
+        energyRecovery: 0,
+        totalEnergyRecovery: 0,
+      })
+    }
+  }
+
   for (let i = 0; i < 3; i++) {
     const count = rotation[i] + pozhenSets
     if (count <= 0) continue
@@ -300,6 +357,16 @@ function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
 
   for (const exec of executions) {
     if (!exec.moveId) continue
+    // 平A汇总行降级为时间载体：出枪式（凛冽枪尖 #1-4）已行级物化（buildSigridExecutions），
+    // 基准段秒均聚合不再叠加伤害（防双重记账；时间与回能行为保留）
+    if (exec.moveId === 'basic_attack') {
+      exec.damageMultiplier = 0
+      exec.damageMultiplierOverride = true
+      exec.dazeMultiplier = 0
+      exec.dazeMultiplierOverride = true
+      exec.anomalyBuildUp = 0
+      continue
+    }
     // 影画2：出枪式 + 敛枪式三段 穿透率 +24%（moveId 限定，用户口径）
     if (cinema >= 2 && (SIGRID_CHUQIANG_MOVE_IDS.has(exec.moveId) || SIGRID_LANCE_SEGMENT_IDS.includes(exec.moveId))) {
       exec.penRatioBonus = (exec.penRatioBonus ?? 0) + CINEMA2_PEN_RATIO

@@ -8,6 +8,7 @@ import {
   sigridMechanic,
   splitLanceRotation,
   countBasicFinisherHits,
+  countBasicSegments,
 } from '@/mechanics/agents/sigrid'
 
 const baseConfig = {
@@ -153,6 +154,21 @@ describe('希格莉德 buildExecutions：敛枪式三段轮转 + 破阵 + 影画
     expect(splitLanceRotation(7)).toEqual([3, 2, 2])
   })
 
+  it('countBasicSegments：段循环计数（压机关=全循环 2.983s / 开=#3#4 1.765s），#4 与机会计数自洽', () => {
+    const cycle = [
+      { moveId: '1591001', actionTime: 0.44 },
+      { moveId: '1591002', actionTime: 0.778 },
+      { moveId: '1591004', actionTime: 0.507 },
+      { moveId: '1591005', actionTime: 1.258 },
+    ]
+    expect(countBasicSegments(40, cycle, false)).toEqual({ '1591001': 14, '1591002': 14, '1591004': 14, '1591005': 13 })
+    expect(countBasicSegments(40, cycle, true)).toEqual({ '1591004': 23, '1591005': 23 })
+    // #4 次数与机会源（countBasicFinisherHits）完全一致 → 行级伤害与机会经济自洽
+    expect(countBasicFinisherHits(40, cycle, false)).toBe(13)
+    expect(countBasicFinisherHits(40, cycle, true)).toBe(23)
+    expect(countBasicSegments(0, cycle, false)).toEqual({})
+  })
+
   it('破阵（用户口径：每次失衡送一套三段，免费）：stunCount=2 → 三段各 +2 次', () => {
     const execs = build({ sigridStunCount: 2, sigridCinemaLevel: 0, sigridAtk: 2000 })
     expect(execs.map(e => e.moveId)).toEqual(['1591007', '1591008', '1591022'])
@@ -296,6 +312,42 @@ describe('希格莉德全链：敛枪式三段行进入执行计划', () => {
     expect(ex!.damageMultiplier).toBeCloseTo(2096.1, 1)
     // 乱琼不再作为主强特（它是未进巡空枪势的前摇形态）
     expect(char.executions.some(e => e.moveId === '1591011')).toBe(false)
+  })
+
+  it('出枪式行级物化：凛冽枪尖 #1-4 行带真实时间；平A汇总伤害归零；压枪开只打 #3/#4', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const config = useConfigStore()
+    config.team[0] = { slot: 0, agentId: '1591', cinemaLevel: 0, ...baseConfig } as any
+    config.team[1] = { slot: 1, agentId: '1141', cinemaLevel: 0, ...baseConfig } as any
+    config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+    config.syncTeammateBuffsFromTeam()
+    const { useResourceCalc } = await import('@/composables/useResourceCalc')
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1591')!
+    const basics = char.executions.filter(e => ['1591001', '1591002', '1591004', '1591005'].includes(e.moveId ?? ''))
+    expect(basics.length).toBeGreaterThan(0) // 出枪式行已物化（默认压枪关 → #1-4）
+    for (const b of basics) {
+      expect(b.totalTime ?? 0).toBeGreaterThan(0)
+      expect(b.totalTime).toBeCloseTo((b.count ?? 0) * (b.actionTime ?? 0), 5)
+      expect((b.damageMultiplier ?? 0)).toBeGreaterThan(0) // 伤害由分段行承载
+    }
+    // 平A汇总行降级为时间载体（伤害/失衡/积蓄归零，防双重记账）
+    const agg = char.executions.find(e => e.moveId === 'basic_attack')
+    expect(agg).toBeTruthy()
+    expect(agg!.damageMultiplier ?? 0).toBe(0)
+    expect(agg!.dazeMultiplier ?? 0).toBe(0)
+    // 压枪开：只打 #3/#4 → #1/#2 不再物化
+    config.setMechanicSetting('sigrid.pressCancel', 1)
+    await new Promise(r => setTimeout(r, 50))
+    const char2 = calc.resourceResult.value!.characters.find(c => c.agentId === '1591')!
+    expect(char2.executions.some(e => e.moveId === '1591001' || e.moveId === '1591002')).toBe(false)
+    const basics2 = char2.executions.filter(e => ['1591001', '1591002', '1591004', '1591005'].includes(e.moveId ?? ''))
+    for (const b of basics2) {
+      expect(b.moveId === '1591004' || b.moveId === '1591005').toBe(true) // 压枪只出 #3/#4
+    }
   })
 })
 
