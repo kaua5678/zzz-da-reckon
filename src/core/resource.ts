@@ -184,7 +184,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       // 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget + refund）
       const excess = rowTime - (state.necessaryTime + state.basicAttackTime)
       if (excess > 1e-6) {
-        // 量化（floor 次数）导致残差 ~1s 属合轴可覆盖，不追求精确 0
+        // 量化（floor 次数）导致残差 ~1s 属合轴可覆盖，不追求精确 0。
+        // `+=` 累加（2026-09-03 实测三语义对比）：`=` 对正反馈队（猫又/伊德海莉——模块行随
+        // 平A池增长）欠补偿 → 溢出 186s；峰值 `max()` 同样溢出；累加虽使单调队（希格莉德
+        // 敛枪式/凛冽枪尖）必要时间带历史残差，但这是全队模块行（雅/叶瞬光/柏妮思）的既有
+        // 口径（必要 = 估计 + 折叠残差），且收敛健康（timeBudgetConverged、无溢出）。
         cfg.timeBudgetExcess = (cfg.timeBudgetExcess ?? 0) + excess
         if (excess > maxExcess) maxExcess = excess
       } else if (-excess > 1e-6) {
