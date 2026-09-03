@@ -22,7 +22,7 @@
           "amountPerCount": 1,
           "coverage": 1,
           "status": "implemented_approximation",
-          "note": "v12：部分锐化伤害命中积累残痕值（= 招式 anomaly_buildup 表值），满 100 = 1 层（上限 3，溢出浪费）；积蓄效率 = 1 + 核心 50%（Lv.7）+ 影画2 20%。平A聚合（秒均×时间）+ 秘血铸锋 234.96% 由 dept 模块 compute 聚合。",
+          "note": "v12：部分锐化伤害命中积累残痕值（= 招式 anomaly_buildup 表值），每 600 点 = 1 层（用户口径 2026-09-03：残痕600点造成一次毁伤；上限 3 层，溢出浪费）；积蓄效率 = 1 + 核心 50%（Lv.7）+ 影画2 20%。平A聚合（秒均×时间）+ 秘血铸锋 234.96% 由 dept 模块 compute 聚合。",
           "adjustable": {
             "id": "1611.claret_gash.gash_gain_from_sharp_dmg.rate",
             "label": "克拉蕾·残痕·锐化伤害命中",

@@ -36,35 +36,42 @@ describe('克拉蕾锐能（v12：进场 60 → 秘血铸锋 1 发/局）', () =
     expect(r.sharpnessRemaining).toBe(0)
   })
 
-  it('残痕值 = (平A聚合 + 秘血铸锋 234.96%) × 积蓄效率；满 100 = 1 层（上限 3）', () => {
-    // 仅 EX：234.96 × 1.5（核心 50%） = 352.44 → 3 层
+  it('残痕值 = (平A聚合 + 秘血铸锋 234.96%) × 积蓄效率；每 600 点 = 1 层（上限 3）', () => {
+    // 仅 EX：234.96 × 1.5 = 352.44 → 0 层（用户口径：600 点一次毁伤）
     const r = computeClaretSharpResource({ ...base, cinemaLevel: 0 })
     expect(r.gashBuildupMultiplier).toBeCloseTo(1.5, 5)
     expect(r.gashValuePct).toBeCloseTo(234.96 * 1.5, 5)
-    expect(r.gashStacks).toBe(3) // floor(3.5244) 上限 3
+    expect(r.gashStacks).toBe(0)
+    // 平A 1200 + EX 234.96 → 1434.96 × 1.5 = 2152.44 → 3 层（上限）
+    const full = computeClaretSharpResource({ ...base, basicGashPerSec: 20, basicAttackTime: 60 })
+    expect(full.gashValuePct).toBeCloseTo((1200 + 234.96) * 1.5, 2)
+    expect(full.gashStacks).toBe(3)
     // 影画2：积蓄效率 +20% → 1.7
     const r2 = computeClaretSharpResource({ ...base, cinemaLevel: 2 })
     expect(r2.gashBuildupMultiplier).toBeCloseTo(1.7, 5)
   })
 
   it('毁伤：min(层数, 需求) 拆分到斩金断铁/葬血强袭；影画6 直接毁伤不消耗残痕', () => {
-    // 层数 3（上面）：需求 = 斩金断铁1 + 葬血强袭3 = 4 → 消耗 3 → 毁伤 3（cleave 1 + burial 2）
-    const r = computeClaretSharpResource({ ...base, cinemaLevel: 0 })
+    // 层数 3（平A 1200 + EX → 2152 × 1.5）：需求 = 斩金断铁1 + 葬血强袭3 = 4 → 消耗 3 → 毁伤 3（cleave 1 + burial 2）
+    const full = { ...base, basicGashPerSec: 20, basicAttackTime: 60 }
+    const r = computeClaretSharpResource(full)
     expect(r.maimDemand).toBe(4)
     expect(r.gashStackConsumed).toBe(3)
     expect(r.maimFromCleave).toBe(1)
     expect(r.maimFromBurial).toBe(2)
     expect(r.maimCount).toBe(3)
     // C6：连携/终结各 +1 直接毁伤（不占残痕层数）
-    const r6 = computeClaretSharpResource({ ...base, cinemaLevel: 6, chainCountTotal: 2, ultimateCount: 1 })
+    const r6 = computeClaretSharpResource({ ...full, cinemaLevel: 6, chainCountTotal: 2, ultimateCount: 1 })
     expect(r6.maimFromC6).toBe(3)
     expect(r6.maimCount).toBe(6) // 消耗 3 + C6 3
   })
 
   it('残痕覆盖率 50%：消耗层数按比例折算', () => {
-    const r = computeClaretSharpResource({ ...base, cinemaLevel: 0, gashCoverage: 0.5 })
-    expect(r.gashStackConsumed).toBe(1.5)
-    expect(r.maimCount).toBe(1) // floor(1.5)
+    const full = { ...base, basicGashPerSec: 20, basicAttackTime: 30 }
+    const r = computeClaretSharpResource({ ...full, cinemaLevel: 0, gashCoverage: 0.5 })
+    // (600+234.96)×1.5=1252.44 → 2 层 × 0.5 = 1 层消耗
+    expect(r.gashStackConsumed).toBe(1)
+    expect(r.maimCount).toBe(1)
   })
 })
 
