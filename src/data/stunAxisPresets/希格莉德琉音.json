@@ -1,0 +1,77 @@
+{
+  "id": "sigrid-liuyin",
+  "name": "非6马-琉",
+  "team": [
+    "1591",
+    "1481",
+    "*"
+  ],
+  "note": "",
+  "axes": [
+    {
+      "name": "非6马-琉",
+      "actions": [
+        {
+          "slot": 0,
+          "moveId": "1591016",
+          "count": 1,
+          "promoteVariant": "60"
+        },
+        {
+          "slot": 0,
+          "moveId": "1591007",
+          "count": 1,
+          "startTime": 2.4
+        },
+        {
+          "slot": 0,
+          "moveId": "1591015",
+          "count": 1,
+          "startTime": 3.2
+        },
+        {
+          "slot": 0,
+          "moveId": "sigrid-pozhen",
+          "count": 1,
+          "startTime": 4.5
+        },
+        {
+          "slot": 0,
+          "moveId": "1591012",
+          "count": 1,
+          "startTime": 8.4
+        },
+        {
+          "slot": 0,
+          "moveId": "1591008",
+          "count": 1,
+          "startTime": 9.3
+        },
+        {
+          "slot": 0,
+          "moveId": "1591016",
+          "count": 1,
+          "startTime": 10.6
+        },
+        {
+          "slot": 0,
+          "moveId": "1591022",
+          "count": 1,
+          "startTime": 13
+        },
+        {
+          "slot": 0,
+          "moveId": "1591012",
+          "count": 1,
+          "startTime": 14.8
+        },
+        {
+          "slot": 0,
+          "moveId": "1591007",
+          "count": 1,
+          "startTime": 15.7
+        }
+      ]
+    }
+  ]
+}

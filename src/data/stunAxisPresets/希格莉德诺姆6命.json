@@ -1,0 +1,76 @@
+{
+  "id": "sigrid-c6-norma",
+  "name": "6马诺姆",
+  "team": [
+    "1591",
+    "1571",
+    "*"
+  ],
+  "note": "",
+  "axes": [
+    {
+      "name": "6马诺姆",
+      "actions": [
+        {
+          "slot": 0,
+          "moveId": "1591015",
+          "count": 1
+        },
+        {
+          "slot": 0,
+          "moveId": "sigrid-pozhen",
+          "count": 1,
+          "startTime": 1.3
+        },
+        {
+          "slot": 0,
+          "moveId": "1591015",
+          "count": 1,
+          "startTime": 5.2
+        },
+        {
+          "slot": 0,
+          "moveId": "sigrid-pozhen",
+          "count": 1,
+          "startTime": 6.5
+        },
+        {
+          "slot": 0,
+          "moveId": "1591016",
+          "count": 1,
+          "startTime": 10.4
+        },
+        {
+          "slot": 0,
+          "moveId": "1591007",
+          "count": 1,
+          "startTime": 12.8
+        },
+        {
+          "slot": 0,
+          "moveId": "1591012",
+          "count": 1,
+          "startTime": 13.6
+        },
+        {
+          "slot": 0,
+          "moveId": "1591008",
+          "count": 1,
+          "startTime": 14.5
+        },
+        {
+          "slot": 0,
+          "moveId": "1591015",
+          "count": 1,
+          "startTime": 15.8
+        },
+        {
+          "slot": 0,
+          "moveId": "sigrid-pozhen",
+          "count": 1,
+          "startTime": 17.1
+        }
+      ]
+    }
+  ]
+}
