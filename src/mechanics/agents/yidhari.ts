@@ -143,6 +143,9 @@ function buildYidhariCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInp
   cfg.yidhariExPerStun = exPerStun
   cfg.yidhariTentacleInterval = tentacleInterval
   cfg.yidhariRefundPerOutStunEx = OUT_STUN_REFUND
+  // refund 反馈（每发回 15）是自指方程：迭代期强特次数按实数参与收敛（唯一不动点），
+  // 终局才 floor 一次（calcTeamResources 重推 ≤3 轮）——见 resolveExSpecialCount 1051 分支
+  cfg.yidhariContinuousEx = true
 }
 
 export function computeYidhariHpSource(

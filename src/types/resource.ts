@@ -1469,6 +1469,10 @@ export interface CharacterOperationConfig {
   yidhariTentacleInterval?: number
   /** 伊德海莉非失衡（溯寒后）极寒重碾每次回闪能（默认15） */
   yidhariRefundPerOutStunEx?: number
+  /** 伊德海莉强特次数迭代期实数化（refund 反馈解析求解后，必要时间按连续不动点参与收敛，终局才 floor） */
+  yidhariContinuousEx?: boolean
+  /** 伊德海莉终局整数重推标记（收敛后临时置位，重推 ≤3 轮让时间账本与整数次数自洽；迭代期勿置位） */
+  yidhariFinalizeEx?: boolean
   /** 伊德海莉失衡内极寒重碾次数（失衡轴连段反推：单次1 + 双次2；缺省走 yidhariExPerStun × 失衡数） */
   yidhariInStunExCount?: number
   /** 伊德海莉失衡内强特消耗的闪能（单次×50 + 双次×85；缺省 = 次数 × exSpecialEnergyConsume） */

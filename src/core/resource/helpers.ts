@@ -240,14 +240,6 @@ export function calcEnergySource(
   // 比利影画1·闪亮登场：冲刺/闪反原始命中次数合并后按5秒ICD封顶，由模块预计算总额。
   const billyC1Energy = n(cfg.billyC1Energy)
 
-  // 伊德海莉：非失衡（溯寒后）极寒重碾每次回闪能；失衡内 = 轴连段反推（有轴）或 每次失衡次数 × 失衡次数，剩余为非失衡
-  const yidhariRefundPer = cfg.yidhariRefundPerOutStunEx !== undefined ? n(cfg.yidhariRefundPerOutStunEx) : 0
-  const yidhariInStun = cfg.agentId === '1051' && cfg.yidhariInStunExCount !== undefined
-    ? n(cfg.yidhariInStunExCount)
-    : Math.min(n(state.exSpecialCount), n(cfg.yidhariExPerStun ?? 2) * n(cfg.yidhariStunCount ?? 0))
-  const yidhariOutStun = Math.max(0, n(state.exSpecialCount) - yidhariInStun)
-  const yidhariRefund = cfg.agentId === '1051' ? yidhariOutStun * yidhariRefundPer : 0
-
   // 般岳：怒相内山威强特回闪能（4 山威/怒相 × 10/个，影画2 额外 +5/个）——嗔火循环固定点给出怒相次数与回闪总额
   const banyueSwayRefund = cfg.agentId === '1471'
     ? Math.max(0, computeBanyueCycleFromCfg(cfg).flashIncome - 420) // flashIncome − 进场/秒回 420 = 山威回闪能
@@ -261,17 +253,45 @@ export function calcEnergySource(
   const shieldBreakGift = shieldCount * 60
   const energyShieldBreakGift = cfg.isFlashUser ? 0 : energyShieldCount * 30
 
-  const total = preEfficiencyAuto + gainEfficiencyBonus
+  // 不含伊德海莉 refund 的固定源能量 E0（唯一来源：加一项固定源就补进这里，防两处漂移）
+  const e0 = preEfficiencyAuto + gainEfficiencyBonus
     + basicAttackRegen + supportUltimateRegen + timeSliceEnergy + zhenyuanEnergy
     + hatTrickEnergy
     + qingyiC4Energy
     + lycaonC2Energy
     + billyC1Energy
-    + yidhariRefund
     + banyueSwayRefund
     + yixuanFlashBonus
     + antonC1EnergyGift
     + initialGift + shieldBreakGift + energyShieldBreakGift
+
+  // 伊德海莉：非失衡（溯寒后）极寒重碾每次回闪能；失衡内 = 轴连段反推（有轴）或 每次失衡次数 × 失衡次数，剩余为非失衡。
+  // 自指反馈解析求解（2026-09-04 修复 19/20 双稳态）：refund 不回读上一轮整数强特次数
+  // （floor 在迭代中途截断反馈 → 同一输入多个不动点，种子相关）。对 50·O = E0 − inStunCost + 15·O
+  // 解析求解 O* = (E0 − inStunCost)/35；迭代期用实数 O*（强特次数同实数化 → 唯一不动点），
+  // 终局整数重推（yidhariFinalizeEx）才 floor——floor 只发生一次，不在收敛中途截断资源循环。
+  const yidhariRefundPer = cfg.yidhariRefundPerOutStunEx !== undefined ? n(cfg.yidhariRefundPerOutStunEx) : 0
+  const yidhariRefund = (() => {
+    if (cfg.agentId !== '1051' || yidhariRefundPer <= 0) return 0
+    const consume = n(cfg.exSpecialEnergyConsume)
+    if (consume <= yidhariRefundPer) return 0
+    const finalize = cfg.yidhariFinalizeEx === true
+    const quant = (o: number) => (finalize ? Math.floor(o) : o)
+    if (cfg.yidhariInStunExCount !== undefined) {
+      // 轴模式：失衡内次数固定（轴连段反推），refund 只作用于失衡外强特
+      const inStun = n(cfg.yidhariInStunExCount)
+      const inStunCost = n(cfg.yidhariInStunEnergyCost ?? inStun * consume)
+      const outStar = Math.max(0, (e0 - inStunCost) / (consume - yidhariRefundPer))
+      return quant(outStar) * yidhariRefundPer
+    }
+    // 非轴：失衡内 = min(ex, cap)；ex ≤ cap 无 refund，ex > cap 的溢出部分每发回 refundPer
+    const cap = n(cfg.yidhariExPerStun ?? 2) * n(cfg.yidhariStunCount ?? 0)
+    if (e0 / consume <= cap) return 0
+    const outStar = Math.max(0, (e0 - cap * consume) / (consume - yidhariRefundPer))
+    return quant(outStar) * yidhariRefundPer
+  })()
+
+  const total = e0 + yidhariRefund
 
   return {
     autoRegen,
@@ -973,6 +993,26 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
       + c.diDongOutCount + c.shanYaoNuOutCount
       + axisNormal
   }
+  if (cfg.agentId === '1051' && cfg.yidhariContinuousEx && (cfg.yidhariRefundPerOutStunEx ?? 0) > 0) {
+    // debt: 全局实数化收敛重构（正反馈模块统一连续通道 + 逐模块重校准）——本分支是 1051 的 targeted
+    // 修复（解析不动点 + 阻尼实数迭代 + 终局整数重推）；全局「实数化松弛、终局才 floor」会重排所有
+    // 带时间/资源循环模块的均衡（sigrid 出枪式消失前例），需专项按模块重校准。
+    // @fact yidhari:refund不动点 口径: 极寒重碾非失衡每发回15闪能属自指反馈——迭代期强特次数实数化（refund解析求解+必要时间信道阻尼）唯一连续不动点，floor只在终局整数重推发生一次（不在迭代中途截断资源循环）；曾致19/20双稳态（种子相关，parry4/dodge10、parry8/dodge2复现），勿改回「迭代期回读整数次数+floor」 | 据 用户@2026-09-04 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts | 锚 src/core/resource/helpers.ts#resolveExSpecialCount | 信 确认
+    // 伊德海莉 refund 反馈连续松弛（2026-09-04 修复 19/20 双稳态，用户口径「floor 应该最后算」）：
+    // 迭代期强特次数以实数参与收敛（refund 已解析求解，见 calcEnergySource），唯一不动点；
+    // 终局整数重推（calcTeamResources）冻结非失衡整数次数后重推，floor 只发生一次。
+    const consume = cfg.exSpecialEnergyConsume
+    const finalize = cfg.yidhariFinalizeEx === true
+    if (cfg.yidhariInStunExCount !== undefined) {
+      const inStun = cfg.yidhariInStunExCount
+      const inStunCost = cfg.yidhariInStunEnergyCost ?? inStun * consume
+      const remaining = totalEnergy - inStunCost
+      const outStun = remaining > 0 ? remaining / consume : 0
+      return inStun + (finalize ? Math.floor(outStun) : outStun)
+    }
+    const paid = totalEnergy / consume
+    return finalize ? Math.floor(paid) : paid
+  }
   if (cfg.agentId === '1051' && cfg.yidhariInStunExCount !== undefined) {
     const inStun = cfg.yidhariInStunExCount
     const inStunCost = cfg.yidhariInStunEnergyCost ?? inStun * cfg.exSpecialEnergyConsume
@@ -1029,8 +1069,14 @@ export function iterate(
     const exSpecialCount = resolveExSpecialCount(cfg, totalEnergy)
 
     // 喧响（先算独立可分享部分，效率在接收者获得时统一乘入）。
-    // 连携数据行回复参与次数推导且被队友伴随，避免推导与展示差 1 次
-    const rawDecibel = calcRawDecibelParts(cfg, prev, chainCountInput, exSpecialCount, prev.ultimateCount, totalTime)
+    // 连携数据行回复参与次数推导且被队友伴随，避免推导与展示差 1 次。
+    // 伊德海莉实数迭代期：喧响按 floor 后的整数次数算——若按实数，喧响→终结技阈值的
+    // 4↔5 翻转会把实数次数拽成 2-循环（20.23↔20.35，必要时间随大翻跳）；floor 只影响
+    // 迭代期喧响信道，终局整数重推后二者一致。
+    const decibelExCount = cfg.agentId === '1051' && cfg.yidhariContinuousEx
+      ? Math.floor(exSpecialCount)
+      : exSpecialCount
+    const rawDecibel = calcRawDecibelParts(cfg, prev, chainCountInput, decibelExCount, prev.ultimateCount, totalTime)
     shareableDecibels.push(rawDecibel.shareableTotal)
   }
 
@@ -1117,12 +1163,29 @@ export function iterate(
       ? trackedUltimate1
       : Math.floor(decibels[i] / cfg.ultimateCost)
 
+    // 伊德海莉实数迭代期：必要时间用实数终结技期望（decibels/消耗）——整数 ult 在喧响阈值处
+    // 4↔5 翻转会把实数强特次数拽成 2-循环（必要时间跳变 → 平A时间/回能/喧响同步跳变）；
+    // 状态里 ult 仍是整数（终局一致），只有时间信道用实数参与收敛。轴内喧响轨（tracked）保持整数。
+    const yidhariRealUlt = cfg.agentId === '1051' && cfg.yidhariContinuousEx === true
+      && cfg.yidhariFinalizeEx !== true
+      && !(typeof trackedUltimate1 === 'number' && trackedUltimate1 >= 0)
+    const ultForTime = yidhariRealUlt ? decibels[i] / cfg.ultimateCost : ultimateCount
+
+    // 时间信道阻尼（迭代期）：她的实数次数经「必要时间→共享平A池→队友回能→队友整数次数」
+    // 与队友耦合，队友整数次数在阈值处翻转会把她的次数拽成 2-循环（如 19.54↔19.71，队友 6↔7）。
+    // 必要时间按 (prev+new)/2 松弛：不动点不变（不动点处 prev==new），2-循环振幅每迭代减半，
+    // 两个种子收敛到同一中点 → 终局 floor 唯一。终局重推（finalize）不阻尼（直接按整数账本重算）。
+    const exForTime = cfg.agentId === '1051' && cfg.yidhariContinuousEx === true
+      && cfg.yidhariFinalizeEx !== true
+      ? (prevStates[i].exSpecialCount + exSpecialCount) / 2
+      : exSpecialCount
+
     // 连携次数 = 每次失衡连携次数 × 失衡次数（失衡次数由外部失衡池不动点收敛后传入 globalCfg.stunCount）
     // 失衡轴模式用 chainCountTotalOverride（各轴按窗口数加权后的最终连携次数）
     const chainCount = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * (globalCfg.stunCount ?? 0)
 
-    const necessary = exSpecialNecessaryTime(cfg, exSpecialCount, ultimateCount)
-      + ultimateCount * cfg.ultimateActionTime
+    const necessary = exSpecialNecessaryTime(cfg, exForTime, ultForTime)
+      + ultForTime * cfg.ultimateActionTime
       + chainCount * cfg.chainActionTime
       + cfg.dodgeCounterCount * cfg.dodgeCounterActionTime
       + (cfg.parryCount ?? 0) * cfg.assistFollowUpActionTime
@@ -1135,15 +1198,15 @@ export function iterate(
 
     // 合轴时间 = 各招式合轴部分之和（展示/非操作回能通道用全额）
     const comboAlignGeneric =
-      ultimateCount * cfg.ultimateActionTime * cfg.ultimateComboAlignRatio
+      ultForTime * cfg.ultimateActionTime * cfg.ultimateComboAlignRatio
       + chainCount * cfg.chainActionTime * cfg.chainComboAlignRatio
       + cfg.dodgeCounterCount * cfg.dodgeCounterActionTime * cfg.dodgeCounterComboAlignRatio
       + (cfg.parryCount ?? 0) * cfg.assistFollowUpActionTime * cfg.assistFollowUpComboAlignRatio
       + ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistActionTime * cfg.defensiveAssistComboAlignRatio
       + remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndActionTime * cfg.remielleRainbowEndComboAlignRatio
-    comboAlignTimes.push(exSpecialComboAlignTime(cfg, exSpecialCount, ultimateCount) + comboAlignGeneric)
+    comboAlignTimes.push(exSpecialComboAlignTime(cfg, exForTime, ultForTime) + comboAlignGeneric)
     // 预算抵扣部分：通用项全额可抵扣（necessary 按全额计），强特项按 GROSS/NET 约定
-    comboAlignCredits.push(exSpecialComboAlignCredit(cfg, exSpecialCount, ultimateCount) + comboAlignGeneric)
+    comboAlignCredits.push(exSpecialComboAlignCredit(cfg, exForTime, ultForTime) + comboAlignGeneric)
   }
 
   // 总必做动作前台时间
@@ -1202,9 +1265,16 @@ export function iterate(
     const frontlineTime = necessary + basicAttackTime
     const backstageTime = Math.max(0, totalTime - frontlineTime)
 
+    // 伊德海莉迭代期状态写入阻尼值（与必要时间信道同源）：原始实数次数经共享平A池与队友整数
+    // 次数耦合会 2-循环（19.54↔19.71），状态与时间信道统一按 (prev+new)/2 松弛——不动点不变，
+    // 2-循环振幅每迭代减半，两个种子收敛到同一中点，终局 floor 唯一。终局重推（finalize）写整数。
+    const storedEx = cfg.agentId === '1051' && cfg.yidhariContinuousEx === true && cfg.yidhariFinalizeEx !== true
+      ? (prevStates[i].exSpecialCount + exSpecialCount) / 2
+      : exSpecialCount
+
     newStates.push({
       basicAttackTime,
-      exSpecialCount,
+      exSpecialCount: storedEx,
       ultimateCount,
       chainCountTotal: chainCount,
       totalEnergy: energies[i],

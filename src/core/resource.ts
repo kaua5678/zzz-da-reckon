@@ -85,7 +85,10 @@ export function getWarmStartStats(): { stored: number; seeded: number } {
 
 export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResult {
   const totalTime = config.totalTime
-  const maxIter = config.maxIterations || 20
+  // 伊德海莉连续松弛（0.5 阻尼）收敛比整数动力学慢：她的队内层迭代上限提到 100
+  // （阻尼残差减半每轮，且判稳用严格相等——浮点不动点约需 40+ 轮；只影响含她的队，其余队维持 20 历史口径）。
+  const yidhariContinuousPresent = config.characters.some(c => c.agentId === '1051' && c.yidhariContinuousEx === true)
+  const maxIter = Math.max(config.maxIterations || 20, yidhariContinuousPresent ? 100 : 0)
   const configs = config.characters
 
   // 热启动：无显式种子时查缓存，命中则从上次收敛态出发（逐位透明，见块注释）
@@ -142,7 +145,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     for (iter = 0; iter < maxIter; iter++) {
       const newStates = iterate(configs, states, config)
 
-      // 检查收敛：强特次数和大招次数是否稳定
+      // 检查收敛：强特次数和大招次数是否稳定。伊德海莉连续松弛（阻尼实数次数）同样按
+      // 严格相等判稳——阻尼映射收敛到浮点不动点后逐位复现（热启动透明的前提）；ε 判据会留下
+      // ~1e-12 残差，热启动会话与冷启动会话不再逐位一致（determinism.test 的失败机制）。
       let changed = false
       for (let i = 0; i < states.length; i++) {
         if (newStates[i].exSpecialCount !== states[i].exSpecialCount ||
@@ -222,6 +227,43 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
 
   // 失衡次数由外部失衡池不动点收敛后传入（连携次数 = chainCountPerStun × stunCount，见 iterate）
   const inputStunCount = config.stunCount ?? 0
+
+  // 伊德海莉终局整数重推（targeted 连续松弛收尾，2026-09-04）：迭代期她的强特次数以实数参与收敛
+  // （refund 反馈解析求解 → 唯一不动点，消除 19/20 双稳态），终局 floor 一次 + 整数态重推 ≤12 轮
+  // 到全状态逐位稳定，让时间预算/能量/喧响账本与整数次数自洽（只作用于 1051，不动其他模块的收敛语义）。
+  const yidhariFinalizeIdx = configs.findIndex(c => c.agentId === '1051' && c.yidhariContinuousEx)
+  if (yidhariFinalizeIdx >= 0) {
+    const yCfg = configs[yidhariFinalizeIdx]
+    yCfg.yidhariFinalizeEx = true
+    let finalizeStable = false
+    for (let finalizePass = 0; finalizePass < 12; finalizePass++) {
+      const prev = states
+      states = iterate(configs, states, config)
+      // 终局重推要求全状态逐位稳定：她的次数已是整数，队友（如莱卡恩实数次数）在整数池下
+      // 是整数输入的确定性函数——逐位相等才是 determinism.test（伤害逐位一致）的判据；
+      // 只比次数会用 ε 外的平A时间残差破坏逐位一致。
+      let stable = true
+      for (let i = 0; i < states.length; i++) {
+        const a = states[i], b = prev[i]
+        if (a.exSpecialCount !== b.exSpecialCount || a.ultimateCount !== b.ultimateCount ||
+            a.basicAttackTime !== b.basicAttackTime || a.necessaryTime !== b.necessaryTime ||
+            a.frontlineTime !== b.frontlineTime || a.backstageTime !== b.backstageTime ||
+            a.comboAlignTime !== b.comboAlignTime || a.comboAlignCredit !== b.comboAlignCredit ||
+            a.totalEnergy !== b.totalEnergy || a.totalDecibel !== b.totalDecibel) {
+          stable = false
+          break
+        }
+      }
+      if (stable) {
+        finalizeStable = true
+        break
+      }
+    }
+    yCfg.yidhariFinalizeEx = false
+    // 实数迭代期的 2-循环（次数↔喧响↔终结技阈值）被终局整数重推吸收：重推稳定的整数态
+    // 就是终局不动点，收敛标志按重推结果报（重推 ≤3 轮未稳 = 不谎报收敛）。
+    if (finalizeStable) converged = true
+  }
 
   // 热启动回写：本轮末态（无论是否完全收敛，同配置下次都从它出发）
   if (!config.initialStates) storeWarmStart(warmExactKey, states)

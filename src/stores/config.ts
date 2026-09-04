@@ -165,6 +165,24 @@ export function roleInteractionBaseline(specialty: string | undefined): { parry:
   return { parry: 6, dodge: 10, block: 0, dual: 0 }
 }
 
+/**
+ * 正反馈 refund 模块不吃通用交互基准（用户口径 2026-09-04「接线」）：伊德海莉是蓄力→极寒重碾
+ * 循环 carry，弹刀/闪反归击破位，给她通用弹刀6/闪反10 会失真。refund 反馈本身已由
+ * resolveExSpecialCount 连续松弛修复（种子无关），此排除是玩法口径而非确定性补丁。
+ */
+const NO_GENERIC_INTERACTION_AGENTS: ReadonlySet<string> = new Set(['1051'])
+
+/**
+ * 手动队默认交互（单一事实源，setAgent 预填用）：
+ * 角色专属默认（getInteractionDefaults）> 正反馈排除（0）> 职业基准（roleInteractionBaseline）。
+ */
+export function interactionBaselineFor(agentId: string, specialty?: string): { parry: number; dodge: number; block: number; dual: number } {
+  if (NO_GENERIC_INTERACTION_AGENTS.has(agentId)) return { parry: 0, dodge: 0, block: 0, dual: 0 }
+  const defs = getInteractionDefaults(agentId)
+  const hasCustom = defs.parry > 0 || defs.dodge > 0 || defs.block > 0 || defs.dual > 0
+  return hasCustom ? defs : roleInteractionBaseline(specialty)
+}
+
 /** 推荐主词条 prop name → catalog statId 映射（含中文别名）。
  *  探针（panelProbe.test.ts）与配装推荐应用共用，导出防两处漂移。 */
 export const REC_MAIN_STAT_MAP: Record<string, string> = {
@@ -368,6 +386,14 @@ export const useConfigStore = defineStore('config', () => {
 
     const agent = catalogStore.getAgent(agentId)
     if (agent) {
+      // 手动队默认会打（用户口径 2026-09-04「接线」）：换人即按 角色专属默认 > 正反馈排除 > 职业基准
+      // 预填交互次数（相当于帮用户填好，用户可改）；预设显式 interactions 在 setAgent 之后应用会覆盖本预填。
+      const base = interactionBaselineFor(agentId, agent.specialty)
+      char.parryCount = base.parry
+      char.dodgeCounterCount = base.dodge
+      char.blockCount = base.block
+      char.dualCounterCount = base.dual
+
       // 自动推荐音擎：优先该角色的专属音擎（ownerAgentId），其次同职业第一个 S 级，最后任意 S 级
       const wEngines = catalogStore.displayWEngines
       const exclusive = wEngines.find(w => w.ownerAgentId === agentId)

@@ -191,6 +191,13 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     不参与加回（其必要时间对次数非线性）。种子不变性回归：`seedInvariance.test.ts`。
     已知取舍：预算极紧时「小数次数按比例占时间」可产生轻微负命座提升（卢西娅C4 −1.2% 量级），
     旧整数动力学靠路径运气掩盖该权衡——彻底解法需按伤害评估加回候选，待定。
+     **targeted 例外（2026-09-04）**：伊德海莉 refund 反馈（非失衡每发回15闪能 = 自指方程）走
+     `resolveExSpecialCount` 1051 分支的专属连续松弛：refund 解析求解（`calcEnergySource`，不回读
+     上一轮整数次数）+ 迭代期实数次数（必要时间信道阻尼破 2-循环）+ 终局整数重推（`calcTeamResources`
+     floor 一次后重推 ≤12 轮到全状态逐位稳定）。只作用于 1051，其余模块不动。护栏：
+     `yidhariInteractionGrid.test.ts`（交互网格 × 零/高种子）。全局「实数化松弛、终局才 floor」
+     仍为 debt（重排所有带时间/资源循环模块的均衡，sigrid 出枪式消失前例），见 check-guards
+     DEBT_REGISTRY。
 18. **Boss 预设弹刀反推（2026-08）**：`boss-presets.json` 的 `defaults.parryTotal` / `parryNoFollowUpTotal` +
     「保底4失衡」勾选时，`useResourceCalc` 外层不动点线程（`prevParrySplit`，般岳 `prevBanyueTopUp`
     同款收敛）按当前队伍反推——击破位（首个 `specialty==='stun'` 槽位）**正常弹刀** = 保底 4 次失衡所需、

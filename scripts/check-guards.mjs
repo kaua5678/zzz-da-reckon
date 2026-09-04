@@ -185,7 +185,12 @@ export function scanSettingsCoverage(root = ROOT) {
  * 标记从代码里删除（债还清）必须同步销号，否则下面对不上即红。
  * 格式：'<file>:<标记关键词>' -> { since: '引入日期', due: '到期动作' }
  */
-export const DEBT_REGISTRY = {}
+export const DEBT_REGISTRY = {
+  // 2026-09-04：全局实数化收敛重构（正反馈模块统一连续通道 + 逐模块重校准）。伊德海莉
+  // refund 双稳态已 targeted 修复（calcEnergySource 解析不动点 + iterate 阻尼实数 + 终局整数
+  // 重推），全局松弛会重排所有带时间/资源循环模块的均衡（sigrid 出枪式消失前例）。
+  'src/core/resource/helpers.ts:全局实数化收敛重构': { since: '2026-09-04', due: '专项立项：正反馈模块统一连续通道 + 逐模块重校准（sigrid/般岳等带时间/资源循环模块均衡重排风险，前例 bdcf52f 锚点漂移 8 处）' },
+}
 
 /**
  * 自指豁免：标记扫描器自身必然包含被扫描模式的字面量（与 GUARD_SYSTEM_FILES 同一性质，
