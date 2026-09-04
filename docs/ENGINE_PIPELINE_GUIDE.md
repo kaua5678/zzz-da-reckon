@@ -259,7 +259,9 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     生效测试 `src/composables/__tests__/comboAlignBudget.test.ts`（8 例：池扩大/overflow 净额/
     GROSS-NET/max 不叠加/硬顶/端到端/回归守卫）。
     **消费方**：`overflowSeconds` 已并入 TeamComparePage 操作难度横轴（`computeDifficulty` 加
-    overflow 参数，1 秒 = 1 难度点线性；只厚轴队 >0，用户口径 2026-09-04）。
+    overflow 参数，默认 1 秒 = 1 难度点；只厚轴队 >0，用户口径 2026-09-04）。难度是主观量——
+    交互权重与溢出权重都只是默认值，用户在对比页「难度权重」弹层自填覆盖（localStorage 持久化，
+    优先级 条目weight > 用户覆盖 > INTERACTION_WEIGHTS 默认表）。
 
 ## 5. 验收命令
 

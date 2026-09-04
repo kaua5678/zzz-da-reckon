@@ -333,7 +333,7 @@ describe('teamCompare 金数/难度口径', () => {
     expect(detail).not.toContain('banyueGoldenParry')
   })
 
-  it('合轴溢出并入难度：1 秒 = 1 难度点（线性），缺省 0 不改变原口径', () => {
+  it('合轴溢出并入难度：默认 1 秒 = 1 难度点（线性），缺省 0 不改变原口径', () => {
     // 无溢出（多数队）：与旧口径逐位一致
     const base = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 0)
     expect(base.difficulty).toBeCloseTo(22.1, 2)
@@ -345,6 +345,19 @@ describe('teamCompare 金数/难度口径', () => {
     // 生效性：改溢出值 → 难度确实变（+5s 差 = 难度差 5）
     const more = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 17.3)
     expect(more.difficulty - withOverflow.difficulty).toBeCloseTo(5, 2)
+  })
+
+  it('难度权重用户覆盖：溢出权重与交互权重均可调（主观量，默认值可改）', () => {
+    // 溢出权重 2：12.3s × 2 = 24.6 → 22.1 + 24.6 = 46.7
+    const ow2 = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 12.3, { overflow: 2 })
+    expect(ow2.difficulty).toBeCloseTo(22.1 + 24.6, 2)
+    expect(ow2.detail).toContain('合轴溢出12.3s×2')
+    // 交互权重覆盖：弹刀 1.0→2.0（8×2=16，比默认多 8）
+    const parry2 = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 0, { interaction: { parry: 2 } })
+    expect(parry2.difficulty).toBeCloseTo(22.1 + 8, 2)
+    // 条目自带 weight 优先于用户覆盖（banyueGoldenParry 条目 weight 1.5，覆盖成 5 也不该生效）
+    const itemWins = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 0, { interaction: { banyueGoldenParry: 5 } })
+    expect(itemWins.difficulty).toBeCloseTo(22.1, 2)
   })
 
   it('interactions：tauntCancel 映射到 setTauntCancelCount（般岳后摇取消），weight 0 不计难度', async () => {
@@ -380,6 +393,28 @@ describe('teamCompare 金数/难度口径', () => {
     expect(difficulty).toBeCloseTo(8, 2)
     expect(detail).not.toContain('嘲讽')
     spy.mockRestore()
+  })
+
+  it('难度权重弹层接线：options.difficultyWeights 经 computeTeamComparePoints 落到 point.difficulty', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const config = useConfigStore()
+    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
+    config.team[1] = { ...config.team[0], slot: 1 }
+    config.team[2] = { ...config.team[0], slot: 2 }
+    const calc = useResourceCalc()
+    const preset: TeamPreset = {
+      id: 'wiring', name: '接线队', team: TEST_PRESET.team, goldSteps: [],
+      interactions: [{ type: 'parry', count: 8 }],
+    }
+    const opts = { presets: [preset], goldLevels: [0], boss: FAKE_BOSS, phase: FAKE_PHASE }
+    // 默认权重：弹刀 8×1.0 = 8
+    const def = computeTeamComparePoints(calc, opts)
+    expect(def[0].difficulty).toBeCloseTo(8, 2)
+    // 用户覆盖弹刀权重 2.5 → 8×2.5 = 20（证明弹层填的值真的透传到难度轴）
+    const over = computeTeamComparePoints(calc, { ...opts, difficultyWeights: { interaction: { parry: 2.5 } } })
+    expect(over[0].difficulty).toBeCloseTo(20, 2)
   })
 })
 

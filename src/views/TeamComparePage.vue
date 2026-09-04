@@ -104,6 +104,24 @@
             placeholder="自动推荐"
           />
         </div>
+        <div class="ctl-field" title="操作难度是主观量：这里只是默认权重（交互 次数×权重 求和 + 合轴溢出秒×溢出权重），按你的手感改，浏览器本地持久化；预设条目自带 weight 仍最优先">
+          <n-popover trigger="click" placement="bottom-end" :style="{ width: '300px' }">
+            <template #trigger>
+              <n-button size="small" quaternary>难度权重</n-button>
+            </template>
+            <div class="diff-weight-pop">
+              <div class="diff-weight-row">
+                <span class="diff-weight-label">合轴溢出（难度点/秒）</span>
+                <n-input-number v-model:value="diffWeights.overflow" size="tiny" :min="0" :max="20" :step="0.5" style="width: 84px" />
+              </div>
+              <div v-for="row in diffWeightRows" :key="row.type" class="diff-weight-row">
+                <span class="diff-weight-label">{{ row.label }}</span>
+                <n-input-number v-model:value="diffWeights.interaction[row.type]" size="tiny" :min="0" :max="20" :step="0.1" style="width: 84px" />
+              </div>
+              <n-button size="tiny" style="margin-top: 6px" @click="resetDiffWeights">恢复默认权重</n-button>
+            </div>
+          </n-popover>
+        </div>
         <n-button type="primary" size="small" :loading="computing" @click="runCompare">计算</n-button>
       </div>
 
@@ -114,7 +132,7 @@
       </div>
 
       <div v-if="!computing && points.length > 0" class="compare-note">
-        共 {{ points.length }} 个点 · 纵轴 = 伤害/血量%（100% 击杀线）· 横轴 = 操作难度（交互加权和 + 合轴溢出秒）· 点半径 = 限定金
+        共 {{ points.length }} 个点 · 纵轴 = 伤害/血量%（100% 击杀线）· 横轴 = 操作难度（交互加权和 + 合轴溢出秒，权重可在「难度权重」调）· 点半径 = 限定金
       </div>
 
       <div v-if="teamPresets.length === 0" class="empty-hint">
@@ -216,15 +234,16 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { NCard, NSelect, NInputNumber, NButton, NCheckbox } from 'naive-ui'
+import { NCard, NSelect, NInputNumber, NButton, NCheckbox, NPopover } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine } from '@/composables/teamCompare'
+import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS } from '@/composables/teamCompare'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
+import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -398,6 +417,39 @@ const autoEnginePool = ref<string[]>(loadAutoEnginePool())
 watch(autoEnginePool, v => {
   try { localStorage.setItem(AUTO_ENGINE_POOL_KEY, JSON.stringify(v)) } catch { /* 忽略 */ }
 }, { deep: true })
+
+// ========== 难度权重（主观量，用户自填；INTERACTION_WEIGHTS 与 1秒=1点只是默认值） ==========
+const DIFF_WEIGHTS_KEY = 'zzz-compare-difficulty-weights'
+interface DiffWeightsState { overflow: number; interaction: Record<string, number> }
+const DEFAULT_DIFF_WEIGHTS: DiffWeightsState = {
+  overflow: 1,
+  interaction: { ...INTERACTION_WEIGHTS },
+}
+function loadDiffWeights(): DiffWeightsState {
+  const base: DiffWeightsState = { overflow: 1, interaction: { ...INTERACTION_WEIGHTS } }
+  try {
+    const raw = localStorage.getItem(DIFF_WEIGHTS_KEY)
+    if (raw) {
+      const obj = JSON.parse(raw)
+      if (typeof obj?.overflow === 'number' && Number.isFinite(obj.overflow) && obj.overflow >= 0) base.overflow = obj.overflow
+      if (obj?.interaction && typeof obj.interaction === 'object') {
+        for (const [k, v] of Object.entries(obj.interaction)) {
+          if (typeof v === 'number' && Number.isFinite(v) && v >= 0) base.interaction[k] = v
+        }
+      }
+    }
+  } catch { /* 损坏回落默认 */ }
+  return base
+}
+const diffWeights = ref<DiffWeightsState>(loadDiffWeights())
+watch(diffWeights, v => {
+  try { localStorage.setItem(DIFF_WEIGHTS_KEY, JSON.stringify(v)) } catch { /* 忽略 */ }
+}, { deep: true })
+const diffWeightRows = computed(() =>
+  Object.keys(INTERACTION_WEIGHTS).map(t => ({ type: t, label: INTERACTION_LABELS[t] ?? t })))
+function resetDiffWeights() {
+  diffWeights.value = { overflow: DEFAULT_DIFF_WEIGHTS.overflow, interaction: { ...INTERACTION_WEIGHTS } }
+}
 const enginePoolOptions = computed(() =>
   (catalogStore.displayWEngines ?? [])
     .map(w => ({
@@ -444,6 +496,7 @@ async function runCompare() {
       autoEnginePool: autoEnginePool.value,
       buffs: buffChoice.value === 'none' ? [] : buffs,
       manualBuffTitle: buffChoice.value === '' || buffChoice.value === 'none' ? undefined : buffChoice.value,
+      difficultyWeights: { overflow: diffWeights.value.overflow, interaction: diffWeights.value.interaction },
     }))
   }
   points.value = all
@@ -617,6 +670,22 @@ function killSeconds(hpRatio: number): number {
   margin-top: 10px;
   font-size: 12px;
   color: var(--wa-500);
+}
+
+.diff-weight-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.diff-weight-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.diff-weight-label {
+  font-size: 12px;
+  color: var(--fg-2);
 }
 
 .buff-note {

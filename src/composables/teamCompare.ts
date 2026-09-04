@@ -106,6 +106,18 @@ export interface TeamCompareOptions {
    * 如实计入总限定金（有金就是金）。
    */
   autoEnginePool?: string[]
+  /**
+   * 难度权重覆盖（主观量，用户在对比页「难度权重」弹层自填，localStorage 持久化）：
+   * interaction = 交互类型 → 权重（未覆盖类型用 INTERACTION_WEIGHTS 默认）；
+   * overflow = 合轴溢出权重（难度点/秒，默认 1）。条目自带 weight 仍优先于本覆盖。
+   */
+  difficultyWeights?: DifficultyWeights
+}
+
+/** 难度权重覆盖（见 TeamCompareOptions.difficultyWeights） */
+export interface DifficultyWeights {
+  interaction?: Record<string, number>
+  overflow?: number
 }
 
 /** 效果是否对当前队伍生效（特性限定 / 特性人数分档）。导出供测试。 */
@@ -136,7 +148,8 @@ const SPECIALTY_ZH_EN: Record<string, string> = {
 function specialtyEn(zh: string): string {
   return SPECIALTY_ZH_EN[zh] ?? zh
 }
-const INTERACTION_LABELS: Record<string, string> = {
+// @fact engine:操作难度/权重可调 口径: 难度权重是主观量——INTERACTION_WEIGHTS 与溢出 1秒=1点都只是默认值，用户在对比页「难度权重」弹层自填覆盖（localStorage 持久化）；优先级 条目weight > 用户覆盖 > 默认表 | 据 用户@2026-09-04 | 验 src/composables/__tests__/teamCompare.test.ts::难度权重用户覆盖 | 锚 src/composables/teamCompare.ts#computeDifficulty | 信 确认
+export const INTERACTION_LABELS: Record<string, string> = {
   parry: '弹刀',
   dodge: '闪避',
   quickAssist: '快支',
@@ -162,30 +175,32 @@ function completeInteractionList(interactions: InteractionItem[], team: (string 
 }
 
 /**
- * 交互清单 → 难度 = Σ(count × weight) + 合轴溢出秒数（1:1），附明细文案（含 0 值条目，标注 ×0 供照抄字段）。
+ * 交互清单 → 难度 = Σ(count × weight) + 合轴溢出秒 × 溢出权重，附明细文案（含 0 值条目，标注 ×0 供照抄字段）。
+ * 权重优先级：条目自带 weight > 用户覆盖 weights.interaction > INTERACTION_WEIGHTS 默认表（未知类型 1）。
  * overflowSeconds（引擎输出）= 合轴抵扣后必做前台净占用仍超战斗时间的秒数：只有厚轴队 >0，
- * 代表实战须硬合轴才打得成的操作压力（用户口径 2026-09-04：1 秒溢出 = 1 难度点，线性并入横轴）。
+ * 代表实战须硬合轴才打得成的操作压力；默认 1 秒 = 1 难度点（weights.overflow 可调，用户口径 2026-09-04）。
  */
-// @fact engine:操作难度/合轴溢出 口径: 难度 = Σ(交互count×weight) + overflowSeconds（1秒=1难度点线性并入）；只厚轴队>0，不硬截断如实反映操作压力 | 据 用户@2026-09-04 | 验 src/composables/__tests__/teamCompare.test.ts::合轴溢出并入难度 | 锚 src/composables/teamCompare.ts#computeDifficulty | 信 确认
 export function computeDifficulty(
   interactions: InteractionItem[],
   team: (string | null | undefined)[] = [],
   overflowSeconds = 0,
+  weights: DifficultyWeights = {},
 ): { difficulty: number; detail: string } {
   const items = completeInteractionList(interactions, team)
   let total = 0
   const parts: string[] = []
   for (const it of items) {
-    const weight = it.weight ?? INTERACTION_WEIGHTS[it.type] ?? 1
+    const weight = it.weight ?? weights.interaction?.[it.type] ?? INTERACTION_WEIGHTS[it.type] ?? 1
     total += it.count * weight
     if (weight <= 0) continue // 配置类交互（如嘲讽取消，weight 0）不进难度明细
     const label = it.label ?? INTERACTION_LABELS[it.type] ?? it.type
     parts.push(`${label}${it.count}×${weight}`)
   }
-  // 合轴溢出：1 秒 = 1 难度点（不硬截断，如实反映厚轴队的操作压力）
+  // 合轴溢出：默认 1 秒 = 1 难度点（用户可在难度权重弹层调整；不硬截断，如实反映厚轴队操作压力）
   if (overflowSeconds > 0) {
-    total += overflowSeconds
-    parts.push(`合轴溢出${Math.round(overflowSeconds * 10) / 10}s×1`)
+    const ow = weights.overflow ?? 1
+    total += overflowSeconds * ow
+    parts.push(`合轴溢出${Math.round(overflowSeconds * 10) / 10}s×${ow}`)
   }
   return { difficulty: Math.round(total * 100) / 100, detail: parts.join(' + ') || '无交互' }
 }
@@ -911,9 +926,10 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
         const invTime = configStore.enemy.invincibleTime ?? 0
         const battleTime = configStore.enemy.battleTime ?? 180
         const { timeExceeded, timeDetail } = actionTimeTotal(calc, invTime, battleTime)
-        // 合轴溢出（引擎输出）并入操作难度：1 秒 = 1 难度点（用户口径 2026-09-04）
+        // 合轴溢出（引擎输出）并入操作难度：默认 1 秒 = 1 难度点，权重可被用户覆盖（难度权重弹层）
         const { difficulty, detail } = computeDifficulty(
-          preset.interactions, preset.team, calc.resourceResult.value?.overflowSeconds ?? 0)
+          preset.interactions, preset.team, calc.resourceResult.value?.overflowSeconds ?? 0,
+          options.difficultyWeights)
         const std = preset.standardSteps ?? []
         let cinemas: [number, number, number]
         let wengineMods: [number, number, number]
