@@ -114,7 +114,7 @@
       </div>
 
       <div v-if="!computing && points.length > 0" class="compare-note">
-        共 {{ points.length }} 个点 · 纵轴 = 伤害/血量%（100% 击杀线）· 横轴 = 操作难度（交互加权和）· 点半径 = 限定金
+        共 {{ points.length }} 个点 · 纵轴 = 伤害/血量%（100% 击杀线）· 横轴 = 操作难度（交互加权和 + 合轴溢出秒）· 点半径 = 限定金
       </div>
 
       <div v-if="teamPresets.length === 0" class="empty-hint">
@@ -151,7 +151,7 @@
           <text v-if="yMax > 200" :x="padL + 4" :y="yOf(200) - 4" class="chart-refline-text" font-size="10">200% 两倍血量</text>
 
           <!-- 坐标轴标签 -->
-          <text :x="padL + plotW / 2" :y="padT + plotH + 34" text-anchor="middle" class="chart-axis-label" font-size="11">操作难度（交互加权和）</text>
+          <text :x="padL + plotW / 2" :y="padT + plotH + 34" text-anchor="middle" class="chart-axis-label" font-size="11">操作难度（交互+合轴溢出）</text>
           <text :x="14" :y="padT + plotH / 2" text-anchor="middle" class="chart-axis-label" font-size="11" transform="rotate(-90 14 0)">伤害/血量 %</text>
 
           <!-- 散点 -->

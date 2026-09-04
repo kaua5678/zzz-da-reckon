@@ -333,6 +333,20 @@ describe('teamCompare 金数/难度口径', () => {
     expect(detail).not.toContain('banyueGoldenParry')
   })
 
+  it('合轴溢出并入难度：1 秒 = 1 难度点（线性），缺省 0 不改变原口径', () => {
+    // 无溢出（多数队）：与旧口径逐位一致
+    const base = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 0)
+    expect(base.difficulty).toBeCloseTo(22.1, 2)
+    expect(base.detail).not.toContain('合轴溢出')
+    // 溢出 12.3s：难度 +12.3，明细追加「合轴溢出12.3s×1」
+    const withOverflow = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 12.3)
+    expect(withOverflow.difficulty).toBeCloseTo(22.1 + 12.3, 2)
+    expect(withOverflow.detail).toContain('合轴溢出12.3s×1')
+    // 生效性：改溢出值 → 难度确实变（+5s 差 = 难度差 5）
+    const more = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 17.3)
+    expect(more.difficulty - withOverflow.difficulty).toBeCloseTo(5, 2)
+  })
+
   it('interactions：tauntCancel 映射到 setTauntCancelCount（般岳后摇取消），weight 0 不计难度', async () => {
     const catalog = useCatalogStore()
     await catalog.load()

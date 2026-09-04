@@ -161,10 +161,16 @@ function completeInteractionList(interactions: InteractionItem[], team: (string 
   return out
 }
 
-/** 交互清单 → 难度 = Σ(count × weight)，附明细文案（含 0 值条目，标注 ×0 供照抄字段） */
+/**
+ * 交互清单 → 难度 = Σ(count × weight) + 合轴溢出秒数（1:1），附明细文案（含 0 值条目，标注 ×0 供照抄字段）。
+ * overflowSeconds（引擎输出）= 合轴抵扣后必做前台净占用仍超战斗时间的秒数：只有厚轴队 >0，
+ * 代表实战须硬合轴才打得成的操作压力（用户口径 2026-09-04：1 秒溢出 = 1 难度点，线性并入横轴）。
+ */
+// @fact engine:操作难度/合轴溢出 口径: 难度 = Σ(交互count×weight) + overflowSeconds（1秒=1难度点线性并入）；只厚轴队>0，不硬截断如实反映操作压力 | 据 用户@2026-09-04 | 验 src/composables/__tests__/teamCompare.test.ts::合轴溢出并入难度 | 锚 src/composables/teamCompare.ts#computeDifficulty | 信 确认
 export function computeDifficulty(
   interactions: InteractionItem[],
   team: (string | null | undefined)[] = [],
+  overflowSeconds = 0,
 ): { difficulty: number; detail: string } {
   const items = completeInteractionList(interactions, team)
   let total = 0
@@ -175,6 +181,11 @@ export function computeDifficulty(
     if (weight <= 0) continue // 配置类交互（如嘲讽取消，weight 0）不进难度明细
     const label = it.label ?? INTERACTION_LABELS[it.type] ?? it.type
     parts.push(`${label}${it.count}×${weight}`)
+  }
+  // 合轴溢出：1 秒 = 1 难度点（不硬截断，如实反映厚轴队的操作压力）
+  if (overflowSeconds > 0) {
+    total += overflowSeconds
+    parts.push(`合轴溢出${Math.round(overflowSeconds * 10) / 10}s×1`)
   }
   return { difficulty: Math.round(total * 100) / 100, detail: parts.join(' + ') || '无交互' }
 }
@@ -900,7 +911,9 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
         const invTime = configStore.enemy.invincibleTime ?? 0
         const battleTime = configStore.enemy.battleTime ?? 180
         const { timeExceeded, timeDetail } = actionTimeTotal(calc, invTime, battleTime)
-        const { difficulty, detail } = computeDifficulty(preset.interactions, preset.team)
+        // 合轴溢出（引擎输出）并入操作难度：1 秒 = 1 难度点（用户口径 2026-09-04）
+        const { difficulty, detail } = computeDifficulty(
+          preset.interactions, preset.team, calc.resourceResult.value?.overflowSeconds ?? 0)
         const std = preset.standardSteps ?? []
         let cinemas: [number, number, number]
         let wengineMods: [number, number, number]

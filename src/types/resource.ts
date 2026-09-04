@@ -1135,7 +1135,8 @@ export interface TeamResourceResult {
   axisOverlapByAction?: Record<string, number>
   /**
    * 合轴溢出（秒）：合轴抵扣后的必做前台净占用（Σ(necessary − 抵扣)，轴模式抵扣与栈引擎
-   * 节省取 max）超出「战斗时间 − 无敌」的量，写进操作难度（不硬截断）。
+   * 节省取 max）超出「战斗时间 − 无敌」的量（不硬截断）。已并入 TeamComparePage 操作难度横轴
+   * （1 秒 = 1 难度点，用户口径 2026-09-04）。
    */
   overflowSeconds?: number
 }
