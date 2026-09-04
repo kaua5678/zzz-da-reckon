@@ -439,6 +439,8 @@ export const luciaElowenMechanic: AgentMechanicModule = {
       // 计划内强特接 A5，A5 也占用前台时间；计划外强特合轴 0 秒
       necessaryTime: plan.dreamExSpecialCount * exTime + plan.a5Count * a5Time,
       comboAlignTime: plan.excessExSpecialCount * exTime,
+      // NET 约定：计划外强特已从 necessaryTime 剔除（合轴 0 秒），不再抵扣团队预算
+      comboAlignIncludedInNecessary: false,
     }
   },
   buildExecutions: buildLuciaExecutions,

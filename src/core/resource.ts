@@ -112,6 +112,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     frontlineTime: totalTime * (cfg.timeWeight / totalWeight) / Math.max(1, totalWeight) * totalWeight,
     backstageTime: 0,
     comboAlignTime: 0,
+    comboAlignCredit: 0,
   }))
 
   // 时间预算收敛（外层）+ 资源收敛（内层）：
@@ -348,6 +349,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     converged,
     axisOverlapSeconds: config.axisOverlapSeconds,
     axisOverlapByAction: config.axisOverlapByAction,
+    overflowSeconds: config.overflowSeconds,
     convergence: {
       timeBudgetConverged,
       timeBudgetPasses,

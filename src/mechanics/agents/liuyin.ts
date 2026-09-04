@@ -76,9 +76,11 @@ export function resolveUltimateTargetSlot(ownSlot: number, teamLength: number, s
  * 抱拳（消耗客诉的送客长按）命中后检查好评是否 ≥90，达到才能打开大招选择窗口。
  * - 60 转大：目标队友有连携窗口（可连携的敌人）时，只消耗 60 好评把这次连携升级为终结技（连携 -1、终结 +1）。
  * - 90 转大：没有连携窗口时，直接消耗 90 好评打出终结技（终结 +1）。
- * 每次转大消耗一次开窗机会（floor(好评总量/90) 为硬上限），60 次数默认按失衡次数、可调。
+ * 每次转大消耗一次开窗机会（floor(好评总量/90) 为硬上限）。
+ * 60 转大默认 = 连携次数（每次连携 1 次，连携本身保留），上限每次失衡 2 次（用户口径 2026-09），可调。
  * 返回的 hug60 即"被替换掉的连携数"，也是影画6 余音的触发次数来源之一。
  */
+// @fact agent:1481/60转大上限 口径: 60 转大默认=连携次数(每次连携1次、连携保留)，上限每次失衡 2 次，liuyin.hug60Count 可调总转大数 | 据 用户@2026-09 | 验 src/mechanics/__tests__/liuyin.test.ts | 锚 src/mechanics/agents/liuyin.ts#computeLiuyinHugCounts | 信 确认
 export function computeLiuyinHugCounts(
   goodReviewTotal: number,
   stunCount: number,
@@ -86,14 +88,17 @@ export function computeLiuyinHugCounts(
   targetChainCountTotal = Number.POSITIVE_INFINITY,
 ) {
   const windows = Math.floor(Math.max(0, goodReviewTotal) / HUG90_COST)
-  // 60 转大：消耗失衡赠送的连携窗口（有轴时由轴内连携块决定，可 2 次/失衡；无轴兜底 = 每失衡 1 次）
+  // 60 转大：默认每次连携 1 次（连携本身保留），上限每次失衡 2 次（用户口径 2026-09）。
+  // 消耗失衡赠送的连携窗口（有轴时由轴内连携块决定；无轴兜底 = 每失衡 1 次）。
   const auto60 = Number.isFinite(targetChainCountTotal)
     ? Math.max(0, Math.floor(targetChainCountTotal))
     : Math.max(0, Math.floor(stunCount))
+  const max60 = 2 * Math.max(0, Math.floor(stunCount))
   const hug60 = Math.min(
     hug60Setting >= 0 ? Math.floor(hug60Setting) : auto60,
     windows,
     Math.max(0, Math.floor(targetChainCountTotal)),
+    max60,
   )
   const hug90 = Math.max(0, windows - hug60)
   const remainingGoodReview = Math.max(
@@ -128,7 +133,8 @@ function resolvePreviousTeammateSlot(ownSlot: number, teamLength: number, settin
 interface LiuyinSourceInput {
   exSpecialCount: number
   ultimateCount: number
-  frontlineTime: number
+  /** 接战时长（秒）= 整场战斗时长，不是琉音自己的前线时间（2026-09 用户口径） */
+  combatTime: number
   cinemaLevel: number
   extraAbilityActive: boolean
   previousTeammateSlot: number
@@ -139,9 +145,9 @@ export function computeLiuyinSource(input: LiuyinSourceInput): LiuyinMechanicSou
   const c1Mult = cinemaLevel >= 1 ? GOOD_REVIEW_C1_MULT : 1
   const perSec = GOOD_REVIEW_PER_SEC * c1Mult
   const perEx = GOOD_REVIEW_PER_EX * c1Mult
-  const frontlineGain = Math.max(0, input.frontlineTime) * perSec
+  const combatGain = Math.max(0, input.combatTime) * perSec
   const exGain = Math.max(0, Math.floor(input.exSpecialCount)) * perEx
-  const gainTotal = frontlineGain + exGain
+  const gainTotal = combatGain + exGain
   const total = GOOD_REVIEW_INITIAL + gainTotal
 
   // 等效总量规则（用户确认）：
@@ -167,7 +173,7 @@ export function computeLiuyinSource(input: LiuyinSourceInput): LiuyinMechanicSou
     previousTeammateSlot: input.previousTeammateSlot,
     cinemaLevel,
     note:
-      '好评：进场60，接战每秒0.6、强特重击7.5（1命×1.16），整局口径不按120上限截断；' +
+      '好评：进场60，接战(整场战斗时长)每秒0.6、强特重击7.5（1命×1.16），整局口径不按120上限截断；' +
       '等效规则：转大次数=floor(好评/90)，抱拳次数=转大次数+琉音终结技次数（终结技送客诉→抱拳不转大）。',
   }
 }
@@ -232,7 +238,7 @@ function buildLiuyinExecutions({ cfg, state, executions }: AgentResourceInput): 
   const source = computeLiuyinSource({
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
-    frontlineTime: state.frontlineTime,
+    combatTime: cfg.battleTime ?? 180,
     cinemaLevel: cfg.liuyinCinemaLevel ?? 0,
     extraAbilityActive: cfg.liuyinExtraAbilityActive ?? false,
     previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
@@ -332,7 +338,7 @@ function buildLiuyinResourceResult({ cfg, state }: AgentResourceResultInput): Pa
     liuyinMechanicSource: computeLiuyinSource({
       exSpecialCount: state.exSpecialCount,
       ultimateCount: state.ultimateCount,
-      frontlineTime: state.frontlineTime,
+      combatTime: cfg.battleTime ?? 180,
       cinemaLevel: cfg.liuyinCinemaLevel ?? 0,
       extraAbilityActive: cfg.liuyinExtraAbilityActive ?? false,
       previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,

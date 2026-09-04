@@ -12,8 +12,9 @@
 import type {
   ResourceCalcConfig, CharacterOperationConfig,
   EnergySource, CrossAgentEnergy, DecibelSource, TimeAllocation,
-  SkillExecution, IterationState, AnomalyEventExecution,
+  SkillExecution, IterationState, AnomalyEventExecution, TeamResourceResult,
 } from '@/types/resource'
+import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueCycleFromCfg, readAxisExCounts } from '@/mechanics/agents/banyue'
@@ -330,6 +331,17 @@ function exSpecialComboAlignTime(cfg: CharacterOperationConfig, exSpecialCount: 
   return exSpecialCount * cfg.exSpecialActionTime * cfg.exSpecialComboAlignRatio
 }
 
+/**
+ * 强化特殊技合轴的**预算抵扣**部分：只有含在 necessaryTime 内的合轴（GROSS 约定，缺省）
+ * 才能抵扣团队时间预算；NET 约定模块（照/卢西娅：合轴动作已从 necessaryTime 剔除、
+ * 物化行不占前台）返回 0，防止同一重叠双重抵扣。通用公式路径全额可抵扣。
+ */
+function exSpecialComboAlignCredit(cfg: CharacterOperationConfig, exSpecialCount: number, ultimateCount: number): number {
+  const estimate = getAgentMechanic(cfg.agentId)?.estimateExSpecialTime?.({ cfg, exSpecialCount, ultimateCount })
+  if (estimate) return estimate.comboAlignIncludedInNecessary === false ? 0 : estimate.comboAlignTime
+  return exSpecialCount * cfg.exSpecialActionTime * cfg.exSpecialComboAlignRatio
+}
+
 export function cappedCooldownTriggers(rawCount: number, totalTime: number, cooldownSeconds: number): number {
   const raw = Math.max(0, Math.floor(rawCount))
   if (raw <= 0) return 0
@@ -521,9 +533,46 @@ export function calcTimeAllocation(
     frontlineTime,
     backstageTime,
     comboAlignTime,
+    comboAlignCredit: state.comboAlignCredit,
     basicAttackTime: state.basicAttackTime,
     necessaryTime,
   }
+}
+
+/**
+ * 队伍前台净占用（秒，单一事实源）：Σ物化前台行 − 合轴抵扣。
+ * 抵扣 = 每槽 max(招式合轴抵扣 comboAlignCredit, 轴内合轴节省 axisOverlapByAction)——
+ * 同一物理并行（轴模式=栈引擎实际区间、非轴=合轴率均值）的两种模型，不叠加。
+ * 与 iterate 平A池的 relief 同口径：超时判定（轴退化/降配/队伍对比）必须用本函数，
+ * 否则合轴抵扣放宽后的平A池会被误判超时（2026-09-04 合轴口径）。
+ */
+export function netFrontlineOccupation(rr: TeamResourceResult): number {
+  const overlap = rr.axisOverlapByAction ?? {}
+  const overlapBySlot: Record<number, number> = {}
+  for (const [key, sec] of Object.entries(overlap)) {
+    const slot = Number(key.slice(0, key.indexOf(':')))
+    if (Number.isFinite(slot)) overlapBySlot[slot] = (overlapBySlot[slot] ?? 0) + sec
+  }
+  let total = 0
+  let totalCredit = 0
+  let totalRowNet = 0
+  for (const ch of rr.characters) {
+    let rowNet = 0
+    for (const exec of ch.executions) {
+      if (!isFrontlineExecution(exec)) continue
+      rowNet += Math.max(0, (exec.totalTime ?? 0) - (overlap[`${ch.slot}:${exec.moveId}`] ?? 0))
+    }
+    // 合轴抵扣只再扣超出轴内节省的增量（max 口径，防双重扣减）
+    const extraCredit = Math.max(0, (ch.timeAllocation.comboAlignCredit ?? 0) - (overlapBySlot[ch.slot] ?? 0))
+    total += Math.max(0, rowNet - extraCredit)
+    totalCredit += ch.timeAllocation.comboAlignCredit ?? 0
+    totalRowNet += rowNet
+  }
+  // 兜底：只有团队级 axisOverlapSeconds、无按块分摊（老注入路径/测试）→ 团队级 max 口径
+  if (Object.keys(overlap).length === 0 && (rr.axisOverlapSeconds ?? 0) > 0) {
+    return Math.max(0, totalRowNet - Math.max(totalCredit, rr.axisOverlapSeconds ?? 0))
+  }
+  return total
 }
 
 // ============ 招式执行计划 ============
@@ -1053,9 +1102,11 @@ export function iterate(
     decibels.push(totalDecibel)
   }
 
-  // Step 4: 计算必做动作前台时间和单角色前台时间
-  // 先算总必做动作前台时间，再分配平A时间
+  // Step 4: 计算必做动作前台时间、合轴抵扣与单角色前台时间
+  // 先算总必做动作前台时间与每角色合轴（全额 + 可抵扣部分），再分配平A时间
   const totalNecessary: number[] = []
+  const comboAlignTimes: number[] = []
+  const comboAlignCredits: number[] = []
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]
     const exSpecialCount = resolveExSpecialCount(cfg, energies[i])
@@ -1081,18 +1132,49 @@ export function iterate(
       // estimateExSpecialTime → Σ执行行时间超战斗时间；外层循环把超出部分折入必要时间，压缩平A池。
       + (cfg.timeBudgetExcess ?? 0)
     totalNecessary.push(necessary)
+
+    // 合轴时间 = 各招式合轴部分之和（展示/非操作回能通道用全额）
+    const comboAlignGeneric =
+      ultimateCount * cfg.ultimateActionTime * cfg.ultimateComboAlignRatio
+      + chainCount * cfg.chainActionTime * cfg.chainComboAlignRatio
+      + cfg.dodgeCounterCount * cfg.dodgeCounterActionTime * cfg.dodgeCounterComboAlignRatio
+      + (cfg.parryCount ?? 0) * cfg.assistFollowUpActionTime * cfg.assistFollowUpComboAlignRatio
+      + ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistActionTime * cfg.defensiveAssistComboAlignRatio
+      + remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndActionTime * cfg.remielleRainbowEndComboAlignRatio
+    comboAlignTimes.push(exSpecialComboAlignTime(cfg, exSpecialCount, ultimateCount) + comboAlignGeneric)
+    // 预算抵扣部分：通用项全额可抵扣（necessary 按全额计），强特项按 GROSS/NET 约定
+    comboAlignCredits.push(exSpecialComboAlignCredit(cfg, exSpecialCount, ultimateCount) + comboAlignGeneric)
   }
 
   // 总必做动作前台时间
   const sumNecessary = totalNecessary.reduce((a, b) => a + b, 0)
-  // 可分配平A时间 = 总时间 − 无敌时间 − 总必做动作前台时间（无敌时间不扣能量/喧响回能，但扣平A池）
-  // + 欠打回填（timeBudgetRefund，团队级）：账本高估（estimate 计了物化不存在的行 / 历史 excess 残留）
-  //   会把本池挤到 0、物化行打不满战斗时间；折叠循环测得差额后回填到这里，按 timeWeight 分配，时间守恒。
-  // + 轴内合轴节省（axisOverlapSeconds，团队级）：窗口内跨角色块并行只计一次前台，节省给平A池。
+  // 合轴抵扣（团队级）：必做动作的合轴段与其他角色的动作并行，不占共享时间预算——
+  // Σnecessary 允许 > 战斗时间（Σ>180），只要合轴抵扣后的净占用装得下。
+  // 轴模式下栈引擎节省（axisOverlapByAction）与招式合轴率是同一物理并行的两种模型，
+  // 按槽位取 max 不叠加（防同时设置时超扣；缺省合轴率全 0，退化为原口径）。
+  // @fact engine:合轴预算抵扣 口径: 必做动作合轴段与其他角色动作并行、抵扣团队时间预算（Σnecessary 允许>战斗时间）；轴模式与栈引擎节省按槽取 max 不叠加；只抵扣含在 necessary 内的部分（GROSS 缺省，NET 模块照/卢西娅不重复抵） | 据 用户@2026-09-04 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#netFrontlineOccupation | 信 确认
+  // @fact engine:单角色前线上限 口径: 单角色前台（必要+平A）≤ 战斗总时间——合轴抵扣放宽团队预算不放宽单人物理时间轴；截断份额留池不重分配 | 据 用户@2026-09-04 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
+  const overlapBySlot: number[] = configs.map(() => 0)
+  let hasByAction = false
+  for (const [key, sec] of Object.entries(globalCfg.axisOverlapByAction ?? {})) {
+    const slot = Number(key.slice(0, key.indexOf(':')))
+    const idx = configs.findIndex(c => c.slot === slot)
+    if (idx >= 0 && Number.isFinite(sec)) {
+      overlapBySlot[idx] += sec
+      hasByAction = true
+    }
+  }
+  const axisOverlapTotal = globalCfg.axisOverlapSeconds ?? 0
+  const reliefSeconds = hasByAction
+    ? comboAlignCredits.reduce((sum, credit, i) => sum + Math.max(credit, overlapBySlot[i]), 0)
+    : Math.max(comboAlignCredits.reduce((a, b) => a + b, 0), axisOverlapTotal)
+  // 可分配平A时间 = 总时间 − 无敌时间 − 必做净占用（合轴抵扣后）+ 欠打回填（timeBudgetRefund，团队级）。
+  // 无敌时间不扣能量/喧响回能，但扣平A池。
   const invTime = globalCfg.invincibleTime ?? 0
-  const availableBasicTime = Math.max(0, (totalTime - invTime) - sumNecessary
-    + (globalCfg.timeBudgetRefund ?? 0)
-    + (globalCfg.axisOverlapSeconds ?? 0))
+  const budget = totalTime - invTime
+  globalCfg.overflowSeconds = Math.max(0, sumNecessary - reliefSeconds - budget)
+  const availableBasicTime = Math.max(0, budget - sumNecessary + reliefSeconds
+    + (globalCfg.timeBudgetRefund ?? 0))
 
   // 按权重分配平A时间
   const totalWeight = configs.reduce((a, c) => a + c.timeWeight, 0)
@@ -1106,26 +1188,19 @@ export function iterate(
       ? trackedUltimate2
       : Math.floor(decibels[i] / cfg.ultimateCost)
 
-    const basicAttackTime = totalWeight > 0
-      ? availableBasicTime * (cfg.timeWeight / totalWeight)
-      : 0
+    const necessary = totalNecessary[i]
+    // 单角色前台硬顶：合轴抵扣放宽的是团队预算，单个角色自身时间轴仍受战斗总时长约束
+    // （前台 = 必要 + 平A ≤ totalTime）；截断的份额留在池里，不重分配给其他角色。
+    const basicAttackTime = Math.min(
+      totalWeight > 0 ? availableBasicTime * (cfg.timeWeight / totalWeight) : 0,
+      Math.max(0, totalTime - necessary))
 
     // 连携次数（与第一个循环保持一致）：每次失衡连携次数 × 失衡次数
     // 失衡轴模式用 chainCountTotalOverride（各轴按窗口数加权后的最终连携次数）
     const chainCount = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * (globalCfg.stunCount ?? 0)
 
-    const necessary = totalNecessary[i]
     const frontlineTime = necessary + basicAttackTime
     const backstageTime = Math.max(0, totalTime - frontlineTime)
-    // 合轴时间 = 各招式合轴部分之和
-    const comboAlignTime =
-      exSpecialComboAlignTime(cfg, exSpecialCount, ultimateCount)
-      + ultimateCount * cfg.ultimateActionTime * cfg.ultimateComboAlignRatio
-      + chainCount * cfg.chainActionTime * cfg.chainComboAlignRatio
-      + cfg.dodgeCounterCount * cfg.dodgeCounterActionTime * cfg.dodgeCounterComboAlignRatio
-      + (cfg.parryCount ?? 0) * cfg.assistFollowUpActionTime * cfg.assistFollowUpComboAlignRatio
-      + ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistActionTime * cfg.defensiveAssistComboAlignRatio
-      + remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndActionTime * cfg.remielleRainbowEndComboAlignRatio
 
     newStates.push({
       basicAttackTime,
@@ -1138,7 +1213,8 @@ export function iterate(
       necessaryTime: necessary,
       frontlineTime,
       backstageTime,
-      comboAlignTime,
+      comboAlignTime: comboAlignTimes[i],
+      comboAlignCredit: comboAlignCredits[i],
     })
   }
 

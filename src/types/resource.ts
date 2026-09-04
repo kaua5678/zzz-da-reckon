@@ -15,6 +15,12 @@ export interface TimeAllocation {
   backstageTime: number
   /** 合轴时间（前台中的非操作时间，触发"非操作中角色"回能加成） */
   comboAlignTime: number
+  /**
+   * 合轴抵扣时间：comboAlignTime 中**含在 necessaryTime 内**、可与其他角色动作并行
+   * 的部分——团队时间预算与超时判定只抵扣该值（NET 约定模块的合轴已剔除出
+   * necessaryTime，不再重复抵扣；GROSS 约定与通用招式 = comboAlignTime）。
+   */
+  comboAlignCredit?: number
   /** 平A时间（可自由分配的战场时间） */
   basicAttackTime: number
   /** 必做动作前台时间（强特+大招+连携+特殊招式的 actionTime 之和，未扣除合轴） */
@@ -1127,6 +1133,11 @@ export interface TeamResourceResult {
   axisOverlapSeconds?: number
   /** 合轴节省按块分摊（`${slot}:${moveId}` → 秒）：单角色行级扣减用，Σ 值 = axisOverlapSeconds */
   axisOverlapByAction?: Record<string, number>
+  /**
+   * 合轴溢出（秒）：合轴抵扣后的必做前台净占用（Σ(necessary − 抵扣)，轴模式抵扣与栈引擎
+   * 节省取 max）超出「战斗时间 − 无敌」的量，写进操作难度（不硬截断）。
+   */
+  overflowSeconds?: number
 }
 
 // ============ 计算输入 ============
@@ -1810,6 +1821,11 @@ export interface ResourceCalcConfig {
   axisOverlapSeconds?: number
   /** 合轴节省按块分摊（`${slot}:${moveId}` → 秒）：折叠循环按行扣减用 */
   axisOverlapByAction?: Record<string, number>
+  /**
+   * 合轴溢出（秒，输出）：合轴抵扣后的必做前台净占用超出「战斗时间 − 无敌」的量
+   * （iterate 每轮写入；轴模式抵扣与栈引擎节省取 max，不叠加）。
+   */
+  overflowSeconds?: number
   /** 迭代初值注入（测试/热启动用）：连续松弛下收敛态与初值无关，任意种子应得同解；长度不符时忽略 */
   initialStates?: IterationState[]
   /** 失衡次数输入（连携次数 = chainCountPerStun × stunCount）；由外部失衡池不动点收敛后回填 */
@@ -1856,6 +1872,8 @@ export interface IterationState {
   backstageTime: number
   /** 合轴时间 */
   comboAlignTime: number
+  /** 合轴抵扣时间（comboAlignTime 中含在 necessaryTime 内、计入团队时间预算抵扣的部分；缺省 = 0） */
+  comboAlignCredit?: number
 }
 
 // ============ 失衡池 ============

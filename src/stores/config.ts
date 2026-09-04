@@ -103,6 +103,7 @@ function defaultDriveDisc(element: string): DriveDiscConfig {
   }
 }
 
+// @fact engine:平A权重阶梯 口径: 不设职业统一阶梯（强攻/异常/击破默认同为1）——用户裁决「不同情况不同权重，不能一概而论」，抬权重归角色级滑块/预设 | 据 用户@2026-09-04 | 锚 src/stores/config.ts#defaultBasicAttackTimeWeight | 信 确认
 function defaultBasicAttackTimeWeight(agent?: Agent | null): number {
   if (!agent) return 1
   if (agent.id === '1581' || agent.teammateBuffId === '1581') return 0
@@ -151,13 +152,12 @@ export function getInteractionDefaults(agentId: string): { parry: number; dodge:
 }
 
 /**
- * 通用交互基准（无角色专属默认时按职业；用户口径 2026-08-29）：
- * - 支援/防护：0 交互——支援上战场 1 秒 = 浪费主C 1 秒输出，时间越少越好。
- * - 其余（强攻/异常/击破）：弹刀 6 + 闪反 10（主C 弹刀回喧响、击破弹刀加速失衡，都有用）。
+ * 通用交互基准（无角色专属默认时按职业；用户口径 2026-09 修订）：
+ * - 弹刀不预设（= 喧响四舍五入反推：保底4喧响缺口 ≤1500 才补弹刀÷215，实战打不出不硬凑）。
+ * - 闪反默认 0（不硬凑闪反，前台时间留给主C 循环）。
  */
-export function roleInteractionBaseline(specialty: string | undefined): { parry: number; dodge: number; block: number; dual: number } {
-  if (specialty === 'support' || specialty === 'defense') return { parry: 0, dodge: 0, block: 0, dual: 0 }
-  return { parry: 6, dodge: 10, block: 0, dual: 0 }
+export function roleInteractionBaseline(_specialty: string | undefined): { parry: number; dodge: number; block: number; dual: number } {
+  return { parry: 0, dodge: 0, block: 0, dual: 0 }
 }
 
 /** 推荐主词条 prop name → catalog statId 映射（含中文别名）。

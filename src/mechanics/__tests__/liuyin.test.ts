@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { computeLiuyinSource, computeLiuyinHugCounts } from '@/mechanics/agents/liuyin'
 
 describe('琉音好评/等效规则（用户确认）', () => {
-  it('好评 = 60 + 0.6×前线秒 + 7.5×强特数（无命座）', () => {
+  it('好评 = 60 + 0.6×接战秒 + 7.5×强特数（无命座）', () => {
     const s = computeLiuyinSource({
       exSpecialCount: 10,
       ultimateCount: 3,
-      frontlineTime: 100,
+      combatTime: 100,
       cinemaLevel: 0,
       extraAbilityActive: true,
       previousTeammateSlot: 1,
@@ -21,7 +21,7 @@ describe('琉音好评/等效规则（用户确认）', () => {
     const s = computeLiuyinSource({
       exSpecialCount: 10,
       ultimateCount: 0,
-      frontlineTime: 100,
+      combatTime: 100,
       cinemaLevel: 1,
       extraAbilityActive: true,
       previousTeammateSlot: 1,
@@ -35,7 +35,7 @@ describe('琉音好评/等效规则（用户确认）', () => {
     const s = computeLiuyinSource({
       exSpecialCount: 10,
       ultimateCount: 4,
-      frontlineTime: 120,
+      combatTime: 120,
       cinemaLevel: 0,
       extraAbilityActive: true,
       previousTeammateSlot: 1,
@@ -66,5 +66,10 @@ describe('琉音好评/等效规则（用户确认）', () => {
     const h4 = computeLiuyinHugCounts(450, 2, -1, 3)
     expect(h4.hug60).toBe(3)
     expect(h4.hug90).toBe(2)
+
+    // 上限：每次失衡最多 2 次 60 转大（用户口径 2026-09）——连携 10、失衡 2 → 60 转大被 2×2 封顶到 4
+    const h5 = computeLiuyinHugCounts(450, 2, -1, 10)
+    expect(h5.hug60).toBe(4)
+    expect(h5.hug90).toBe(1)
   })
 })

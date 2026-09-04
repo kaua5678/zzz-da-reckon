@@ -16,7 +16,7 @@ import { calcStunAxis } from '@/core/stunAxis'
 import { simulateDecibelTrack } from '@/core/resourceTrack'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
-import { isFrontlineExecution } from '@/types/resource'
+import { netFrontlineOccupation } from '@/core/resource/helpers'
 import { calcStunAxisStack, allocateAxisWindows } from '@/core/stunAxisStack'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
@@ -1651,18 +1651,11 @@ export function useResourceCalc() {
     const stunEffTime = Math.max(0, (configStore.enemy.battleTime ?? 180) - (configStore.enemy.invincibleTime ?? 0))
     /** 轴退化判据容差（秒）：收敛后仍留 ~2s 合轴可覆盖的量化残差（与 timeLedger 测试口径一致） */
     const AXIS_FALLBACK_TOLERANCE_SEC = 2
-    /** Σ前台行净占用（扣轴内合轴节省；超预算检测与 teamCompare.actionTimeTotal 同口径） */
+    /** Σ前台行净占用（扣轴内合轴节省 + 招式合轴抵扣，max 不叠加；与 iterate 平A池、
+     *  teamCompare.actionTimeTotal 同口径，单一事实源 netFrontlineOccupation） */
     const frontlineTotalOf = (r: CalcRoundResult | null): number => {
       if (!r?.resourceResult) return 0
-      const overlap = r.resourceResult.axisOverlapByAction ?? {}
-      let total = 0
-      for (const ch of r.resourceResult.characters) {
-        for (const exec of ch.executions) {
-          if (!isFrontlineExecution(exec)) continue
-          total += Math.max(0, (exec.totalTime ?? 0) - (overlap[`${ch.slot}:${exec.moveId}`] ?? 0))
-        }
-      }
-      return total
+      return netFrontlineOccupation(r.resourceResult)
     }
     /**
      * 跑完整外层不动点。forceNoAxis = 轴退化重算（用户口径 2026-08：轴的资源需求

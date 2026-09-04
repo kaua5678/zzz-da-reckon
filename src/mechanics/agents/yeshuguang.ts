@@ -111,13 +111,22 @@ function cfgNum(cfg: CharacterOperationConfig, key: string, fallback: number): n
   return Number.isFinite(raw) ? raw : fallback
 }
 
+/** 自动选轴的超支阈值（秒）：timeBudgetExcess 超过此值才退化，避免量化残差（~1s）误触降轴 */
+// @fact agent:1431/自动选轴 口径: 明心境轴默认自动(-1)，时间预算超支(timeBudgetExcess>5s)时逐级退化 full→short_pair→short_mie，换轴时清零旧轴超支残差 | 据 用户@2026-09 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#cfgAxis | 信 确认
+const AUTO_AXIS_DEGRADE_THRESHOLD = 5
+
 function cfgAxis(cfg: CharacterOperationConfig): YeshuguangFormAxis {
-  const raw = String((cfg as unknown as Record<string, unknown>)[`setting:yeshuguang.formAxis`] ?? 'full')
+  const record = cfg as unknown as Record<string, unknown>
+  const raw = String(record[`setting:yeshuguang.formAxis`] ?? 'auto')
   if (raw === 'short_pair' || raw === 'short_mie' || raw === 'full') return raw
-  // 兼容数值滑块：0 full / 1 short_pair / 2 short_mie
+  // 兼容数值滑块：0 full / 1 short_pair / 2 short_mie / -1 auto
   const n = Number(raw)
   if (n === 1) return 'short_pair'
   if (n === 2) return 'short_mie'
+  if (n === 0) return 'full'
+  // auto：时间不够时按超支信号逐级退化（estimateExSpecialTime 写 yeshuguangAutoAxis）
+  const auto = record.yeshuguangAutoAxis
+  if (auto === 'short_pair' || auto === 'short_mie') return auto
   return 'full'
 }
 
@@ -343,6 +352,10 @@ function buildCharConfig({ skills, cinemaLevel, panel, cfg }: AgentCharConfigInp
   const cinema = cinemaLevel ?? 0
   const record = cfg as unknown as Record<string, unknown>
   record.yeshuguangCinemaLevel = cinema
+  // 自动选轴：初始打满（full），estimateExSpecialTime 按超支信号逐级退化。
+  if (record.yeshuguangAutoAxis !== 'short_pair' && record.yeshuguangAutoAxis !== 'short_mie') {
+    record.yeshuguangAutoAxis = 'full'
+  }
 
   cfg.yeshuguangSwordInitial = cinema >= 1 ? 6 : 0
   if (cinema >= 4) {
@@ -454,8 +467,25 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   }
 }
 
-function estimateExSpecialTime({ cfg, ultimateCount }: AgentExSpecialTimeInput): AgentExSpecialTimeEstimate | null {
+function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount }: AgentExSpecialTimeInput): AgentExSpecialTimeEstimate | null {
   const record = cfg as unknown as Record<string, unknown>
+  // 自动选轴：时间预算超支（timeBudgetExcess 超过阈值）时逐级退化 full→short_pair→short_mie，
+  // 并把旧轴的超支残差清零——否则换轴后 necessary 仍被旧轴残差虚高、平A池照样被挤 0。
+  const rawAxis = String(record[`setting:yeshuguang.formAxis`] ?? 'auto')
+  const isAuto = rawAxis !== 'full' && rawAxis !== 'short_pair' && rawAxis !== 'short_mie'
+    && Number(rawAxis) !== 0 && Number(rawAxis) !== 1 && Number(rawAxis) !== 2
+  if (isAuto) {
+    const excess = Number(cfg.timeBudgetExcess ?? 0)
+    if (excess > AUTO_AXIS_DEGRADE_THRESHOLD) {
+      const cur = record.yeshuguangAutoAxis ?? 'full'
+      if (cur === 'full') record.yeshuguangAutoAxis = 'short_pair'
+      else if (cur === 'short_pair') record.yeshuguangAutoAxis = 'short_mie'
+      // 换轴后旧轴的折叠残差不适用新轴，清零让 necessary 从新轴重估；同时失效旧轴缓存的 cycle
+      cfg.timeBudgetExcess = 0
+      record.yeshuguangCycle = undefined
+    }
+  }
+
   const times = (record.yeshuguangMoveTimes ?? {}) as Record<string, number>
   const cycle = (record.yeshuguangCycle as YeshuguangCycleResult | undefined)
     ?? resolveCycle(cfg, { ultimateCount })
@@ -470,7 +500,11 @@ function estimateExSpecialTime({ cfg, ultimateCount }: AgentExSpecialTimeInput):
     )
   const feiguangTime = cycle.feiguangFullCasts * (times[MOVE.feiguang] ?? 0)
   const zhao = cycle.zhaoyingForms * (times[MOVE.entryAssist] ?? 0)
-  return { necessaryTime: melee + feiguangTime + zhao, comboAlignTime: 0 }
+  // 定风波（通用强化特殊技）前台时间：estimateExSpecialTime 覆盖了 exSpecialNecessaryTime 的通用公式，
+  // 必须把 exSpecialCount × exSpecialActionTime 也计入，否则定风波时间丢失、经 timeBudgetExcess 折叠造成
+  // 必要时间虚高（曾致叶瞬光 necessary≈151s > rowTime≈113s，平A池被挤到 0）。
+  const genericExTime = Math.max(0, Math.floor(exSpecialCount ?? 0)) * (cfg.exSpecialActionTime ?? 0)
+  return { necessaryTime: melee + feiguangTime + zhao + genericExTime, comboAlignTime: 0 }
 }
 
 function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
@@ -586,10 +620,10 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
 export const yeshuguangSettings: MechanicSetting[] = [
   {
     id: 'yeshuguang.formAxis',
-    label: '叶瞬光·明心境轴（0打满/1灭极短轴/2仅灭短轴）',
-    description: '打满最赚但耗时；短轴亏灭极段、飞光次数：灭极短轴 0–1命4/2命+10，仅灭短轴 0–1命5/2命+12。',
+    label: '叶瞬光·明心境轴（-1自动/0打满/1灭极短轴/2仅灭短轴）',
+    description: '自动：时间预算超支时逐级退化打满→灭极→仅灭（当前超支信号被虚高，自动会过度退化到仅灭，暂保持打满为默认）；打满最赚但耗时，短轴亏灭极段、飞光次数：灭极短轴 0–1命4/2命+10，仅灭短轴 0–1命5/2命+12。',
     default: 0,
-    min: 0,
+    min: -1,
     max: 2,
     step: 1,
   },

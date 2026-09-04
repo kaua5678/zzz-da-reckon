@@ -652,7 +652,8 @@
     <n-modal v-model:show="showComboAlignModal" preset="card" title="合轴率调节" style="width: 900px; max-width: 95vw;">
       <div class="combo-align-modal-body">
         <n-text depth="3" style="font-size: 12px; display: block; margin-bottom: 12px">
-          合轴率表示该招式动作时间中可与其他操作并行的比例。合轴时间内角色处于"非操作中"状态，触发非操作回能加成。
+          合轴率表示该招式动作时间中可与其他操作并行的比例。合轴时间内角色处于"非操作中"状态，触发非操作回能加成；
+          合轴段不占三人共享时间轴 → 该部分时间回流平A池（全队必做动作因此可超出战斗总时长）。
           查看各招式的总时间和执行次数后，输入合适的合轴率（0-100%）。
         </n-text>
 
@@ -799,10 +800,12 @@ const totalQuickAssistCount = computed(() =>
 )
 
 // 全队时间分配汇总：动作层面的时间加和，与扣除合轴后的多人前台视角并列展示
+// 抵扣口径 = comboAlignCredit（含在 necessary 内的合轴，与引擎时间预算/超时判定同源；
+// NET 约定模块如照的合轴已从 necessary 剔除，不再重复扣减）
 const teamTimeSummary = computed(() => {
   const chars = resourceResult.value?.characters ?? []
   const actionFrontline = chars.reduce((sum, c) => sum + c.timeAllocation.necessaryTime, 0)
-  const comboAlignDeduction = chars.reduce((sum, c) => sum + c.timeAllocation.comboAlignTime, 0)
+  const comboAlignDeduction = chars.reduce((sum, c) => sum + (c.timeAllocation.comboAlignCredit ?? 0), 0)
   const requiredFrontline = Math.max(0, actionFrontline - comboAlignDeduction)
   const totalTime = resourceResult.value?.totalTime ?? configStore.effectiveTime
 
@@ -814,7 +817,7 @@ const teamTimeSummary = computed(() => {
     perSlot: chars.map(c => ({
       slot: c.slot,
       name: agentNames.value[c.agentId] || c.agentName || `槽${c.slot}`,
-      requiredFrontline: Math.max(0, c.timeAllocation.necessaryTime - c.timeAllocation.comboAlignTime),
+      requiredFrontline: Math.max(0, c.timeAllocation.necessaryTime - (c.timeAllocation.comboAlignCredit ?? 0)),
     })),
   }
 })

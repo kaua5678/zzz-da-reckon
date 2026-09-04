@@ -35,7 +35,7 @@ import {
 import type { useResourceCalc } from '@/composables/useResourceCalc'
 import ENGINE_POOLS_SRC from '@/data/enginePools.json'
 const ENGINE_POOLS = ENGINE_POOLS_SRC as Record<string, string[]>
-import { isFrontlineExecution } from '@/types/resource'
+import { netFrontlineOccupation } from '@/core/resource/helpers'
 
 type Calc = ReturnType<typeof useResourceCalc>
 
@@ -794,10 +794,9 @@ export function applyAxisBinding(
 }
 
 /**
- * 从引擎资源结果提取总动作时间（秒）= 所有角色所有**前台**执行行 totalTime 之和
- * （timeBucket='backstage' 的后台行不占共享时间轴，如莱卡恩围猎蓄力——isFrontlineExecution）。
- * **前台净占用口径**：减去轴内合轴节省（窗口内跨角色块并行只计一次前台，rr.axisOverlapByAction）。
- * 引擎折叠循环已把前台净占用对其账本收敛（Σ前台净占用 ≡ 账本 ≤ 战斗时间），仍超出 = 收敛残差/极端配置。
+ * 从引擎资源结果提取总动作时间（秒）= 前台净占用（单一事实源 netFrontlineOccupation：
+ * Σ物化前台行 − 轴内合轴节省 − 招式合轴抵扣；后台行如莱卡恩围猎蓄力不占共享时间轴）。
+ * 引擎折叠循环已把前台净占用对其账本收敛（Σ前台净占用 ≡ 账本 ≤ 战斗时间 + 合轴抵扣），仍超出 = 收敛残差/极端配置。
  */
 function actionTimeTotal(
   calc: Calc,
@@ -805,16 +804,7 @@ function actionTimeTotal(
   battleTime: number,
 ): { timeExceeded: boolean; timeDetail: string } {
   const rr = calc.resourceResult.value
-  let totalActionTime = 0
-  if (rr) {
-    const overlap = rr.axisOverlapByAction ?? {}
-    for (const char of rr.characters) {
-      for (const exec of char.executions) {
-        if (!isFrontlineExecution(exec)) continue
-        totalActionTime += Math.max(0, (exec.totalTime ?? 0) - (overlap[`${char.slot}:${exec.moveId}`] ?? 0))
-      }
-    }
-  }
+  const totalActionTime = rr ? netFrontlineOccupation(rr) : 0
   const available = battleTime - invincibleTime
   // 容差 1s：引擎折叠循环按文档容忍 ±1s 量化残差（resource.ts「floor 次数导致残差 ~1s
   // 属合轴可覆盖，不追求精确 0」）；零容差会把「贴线打满 + 收敛残差」误报为超时

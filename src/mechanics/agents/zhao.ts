@@ -14,6 +14,8 @@
  */
 import type {
   AgentCharConfigInput,
+  AgentExSpecialTimeEstimate,
+  AgentExSpecialTimeInput,
   AgentMechanicModule,
   AgentPanelInput,
   AgentResourceInput,
@@ -81,6 +83,20 @@ function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   record.zhaoCinemaLevel = cinemaLevel ?? 0
   if ((cinemaLevel ?? 0) >= 4) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + ZHAO_C4_DECIBEL
+  }
+  // 照不战场（用户口径）：Q（终结技·兔兔连斩）打一半可快速支援取消，另一半进合轴，
+  // 前台时间只按一半计；E（流霜冻土）前台时间见 estimateExSpecialTime（全合轴=0）。
+  cfg.ultimateActionTime = (cfg.ultimateActionTime ?? 0) / 2
+}
+
+/** 照的 E（流霜冻土）完全合轴，不占前台时间；后台蓄力最终裁决走 timeBucket=backstage，也不算前台。 */
+// @fact agent:1341/EQ合轴 口径: 照不战场，就 E+Q；E(流霜冻土)全合轴不占前台，Q(终结技·兔兔连斩)打一半能快速支援取消→前台时间减半；后台蓄力最终裁决走 timeBucket=backstage 不算前台 | 据 用户@2026-09 | 验 src/mechanics/__tests__/zhao.test.ts | 锚 src/mechanics/agents/zhao.ts#estimateExSpecialTime | 信 确认
+function estimateExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput): AgentExSpecialTimeEstimate {
+  return {
+    necessaryTime: 0,
+    comboAlignTime: Math.max(0, Math.floor(exSpecialCount ?? 0)) * (cfg.exSpecialActionTime ?? 0),
+    // NET 约定：E 已从 necessaryTime 剔除（不占前台），合轴不再抵扣团队预算（防双重记账）
+    comboAlignIncludedInNecessary: false,
   }
 }
 
@@ -206,6 +222,7 @@ export const zhaoMechanic: AgentMechanicModule = {
   description: '初始生命转暴击、影画2自身增攻、影画4开帷幕喧响与指定招式暴伤、霜寒值循环开帷幕、最终裁决蓄力生命附伤（影画6×1.4）。',
   applyPanel,
   buildCharConfig,
+  estimateExSpecialTime,
   buildExecutions: buildZhaoExecutions,
   patchExecutions,
   buildResourceResult,

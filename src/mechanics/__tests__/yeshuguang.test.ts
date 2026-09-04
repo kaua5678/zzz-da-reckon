@@ -207,6 +207,36 @@ describe('叶瞬光 buildExecutions', () => {
     expect(attach.damageMultiplier).toBe(1500)
     expect(YESHUGUANG_FULL_STUN_MOVES.has('1431_c6_finisher_attach')).toBe(true)
   })
+
+  it('estimateExSpecialTime 计入定风波（通用强特）前台时间，不被覆盖丢弃', () => {
+    const cfg: any = {
+      yeshuguangCinemaLevel: 0, yeshuguangSwordInitial: 0, yeshuguangGiftUltCount: 0,
+      yeshuguangMoveDmg: baseDmg, yeshuguangMoveTimes: baseTimes,
+      yeshuguangAtk0PerSec: 0, battleTime: 180, dodgeCounterCount: 0,
+      exSpecialActionTime: 2.833, // 定风波(1431016)
+      'setting:yeshuguang.formAxis': 0,
+    }
+    const est = yeshuguangMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 8, ultimateCount: 1 } as any)!
+    // 形态内必要时间（灭/极/扶摇/收尾 + 飞光 + 照影）
+    const formOnly = 1 * (2 * 1.5 + 2 * 1.4 + 1 * 0.325 + 2.533) + (2 / 6) * 1.967 + 0
+    // 必须再计入 8 次定风波 × 2.833s，否则定风波时间丢失、经 timeBudgetExcess 折叠造成必要时间虚高
+    expect(est.necessaryTime).toBeCloseTo(formOnly + 8 * 2.833, 6)
+  })
+
+  it('自动选轴：超支时逐级退化并清零旧轴超支残差', () => {
+    const cfg: any = {
+      yeshuguangCinemaLevel: 0, yeshuguangSwordInitial: 0, yeshuguangGiftUltCount: 0,
+      yeshuguangMoveDmg: baseDmg, yeshuguangMoveTimes: baseTimes,
+      yeshuguangAtk0PerSec: 0, battleTime: 180, dodgeCounterCount: 0,
+      exSpecialActionTime: 2.833,
+      'setting:yeshuguang.formAxis': -1, // 自动
+      yeshuguangAutoAxis: 'full',
+      timeBudgetExcess: 20, // 超过阈值 5 → 退化
+    }
+    yeshuguangMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 8, ultimateCount: 1 } as any)!
+    expect(cfg.yeshuguangAutoAxis).toBe('short_pair') // 退化一级
+    expect(cfg.timeBudgetExcess).toBe(0) // 旧轴残差清零
+  })
 })
 
 describe('局外剑势', () => {

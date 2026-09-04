@@ -98,6 +98,16 @@ describe('照自身核心与影画机制', () => {
     expect(cfg4.initialDecibelGift).toBe(1000 + ZHAO_C4_DECIBEL)
   })
 
+  it('E/Q 不占前台：E 全合轴（necessary=0），Q 前台时间减半（用户口径）', () => {
+    const cfg = { exSpecialActionTime: 3.1, ultimateActionTime: 2.0 } as any
+    zhaoMechanic.buildCharConfig!({ cinemaLevel: 0, cfg } as any)
+    expect(cfg.ultimateActionTime).toBeCloseTo(1.0, 6) // 打一半取消
+
+    const est = zhaoMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 2, ultimateCount: 1 } as any)!
+    expect(est.necessaryTime).toBe(0) // E 全合轴不占前台
+    expect(est.comboAlignTime).toBeCloseTo(2 * 3.1, 6)
+  })
+
   it('影画4只为最终裁决、连携和终结技增加40%暴伤', () => {
     const target = [...ZHAO_C4_MOVE_IDS].map(moveId => ({ moveId, critDmgBonus: 0 }))
     const other = [{ moveId: '1341001', critDmgBonus: 0 }, { moveId: '1341010', critDmgBonus: 0 }]

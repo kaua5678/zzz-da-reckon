@@ -124,6 +124,13 @@ export interface AgentExSpecialTimeEstimate {
   necessaryTime: number
   /** 强化特殊技的合轴时间（秒） */
   comboAlignTime: number
+  /**
+   * comboAlignTime 是否已含在 necessaryTime 内（GROSS 约定，缺省 = true，如 11号：
+   * necessary 按全额 actionTime 计，合轴部分是其中的重叠段）。
+   * false = NET 约定（如照/卢西娅：合轴动作已从 necessaryTime 剔除、不占前台）——
+   * 团队时间预算只抵扣含在 necessary 内的合轴（防双重记账）。
+   */
+  comboAlignIncludedInNecessary?: boolean
 }
 
 export interface AgentEventInput {
