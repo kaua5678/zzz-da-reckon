@@ -83,7 +83,7 @@ npm run minify:static # 生成产物瘦身/剔 catalog 死键（幂等；validat
 
 **拿到任务先跑 `node scripts/zc.mjs brief "<任务一句话>"`**：它检索既有结构化表格（AGENTS §1 硬性规则 / §2 与 ARCHITECTURE §3 决策树 / ENGINE_PIPELINE_GUIDE §4 坑表 / AGENT_RECORDING_SOP §3.5 根因表）+ 任务里提到的 agentId 的既有口径与覆盖测试，**每条带「文件:行」出处**，一页顶替扫 650KB 散文。命不中会直说「决策树没命中 → 自己读 ARCHITECTURE §3」，不编答案；命不中且你做完了，就往决策树补一行。
 
-**开局/收工走 `zc`（agent 专属入口，v0；带 `--` 参数一律用 node 直调，npm run 会吞掉 flag）**：`node scripts/zc.mjs status` 一条命令给全开局考古（分支/未推送/工作区改动/**疑似并行会话在改的文件**/债务/待办/最近验证记录）；动手前 `node scripts/zc.mjs claim <文件…>` 占道（规则 13 的机器面，冲突大声失败）；收工 `node scripts/zc.mjs done --verifier <命令> --coverage <范围>` 把规则 9 的声明落进 `.zc/journal.jsonl`（否则它只活在聊天里，下一个 agent 继承不到）；查口径 `node scripts/zc.mjs facts agent:<id>`、查质量缺口 `--gaps`、打印事实语法 `node scripts/zc.mjs lang`（语法唯一定义在 `scripts/zc.mjs` 的解析器里，不另写文档）。
+**开局/收工走 `zc`（agent 专属入口，v0；带 `--` 参数一律用 node 直调，npm run 会吞掉 flag）**：`node scripts/zc.mjs status` 一条命令给全开局考古（分支/未推送/工作区改动/**疑似并行会话在改的文件**/债务/待办/最近验证记录）；动手前 `node scripts/zc.mjs claim <文件…>` 占道（规则 13 的机器面，冲突大声失败；**并自动带出该文件上钉死的口径/决策树行/头注释职责声明**，要看单文件完整上下文另用 `node scripts/zc.mjs ctx <文件路径>`）；收工 `node scripts/zc.mjs done --verifier <命令> --coverage <范围>` 把规则 9 的声明落进 `.zc/journal.jsonl`（否则它只活在聊天里，下一个 agent 继承不到）；查口径 `node scripts/zc.mjs facts agent:<id>`、查质量缺口 `--gaps`、打印事实语法 `node scripts/zc.mjs lang`（语法唯一定义在 `scripts/zc.mjs` 的解析器里，不另写文档）。
 
 **定了新口径就写成一行 `@fact` 钉在实现旁边**（不要再写成段落散文）：`@fact <主体> <种类>: <内容> | 据 <谁定的@日期> | 验 <测试> | 锚 <路径>#<符号> | 信 <确认/高/中/低>`。机器判据（`check-guards` 判据 6）：手写事实必须有「据」且「锚」解析得到，**断锚即红**（锚符号被改名/删除 = 口径已过期）；锚文件在「据」之后被改过的口径进 `node scripts/zc.mjs drift` 复核队列（只报不红——红了会逼人改日期作弊）。既有 spec notes/模块注释里的散文口径是存量，`zc facts` 会自动抽取（当前 630 条 / 结构化率 10%），不必回头迁移。
 

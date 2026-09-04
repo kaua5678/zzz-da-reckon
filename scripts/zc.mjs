@@ -27,6 +27,7 @@
 //   node scripts/zc.mjs lanes                     当前所有租约
 //   node scripts/zc.mjs facts <主体|--all|--unparsed|--unverified>      口径索引查询
 //   node scripts/zc.mjs done --verifier <命令> --coverage <范围> [--note …]  规则 9 落盘
+//   node scripts/zc.mjs ctx <文件路径> [--json]    摸文件前反查：决策树行 + 钉在文件上的口径 + 头注释职责
 //   node scripts/zc.mjs lang                      打印事实语法（唯一权威）
 // 状态目录 .zc/（已 gitignore，与 .claude/ledgers 同性质：工作状态，不是项目知识）。
 // 逃生口：租约冲突可用 --force 覆盖（会在 journal 留痕，供事后追责，不静默）。
@@ -545,7 +546,7 @@ async function verbStatus(root = ROOT) {
   }, next)
 }
 
-function verbClaim(args) {
+async function verbClaim(args, root = ROOT) {
   const paths = args.positional
   if (paths.length === 0) return envelope('claim', false, {}, 'zc claim <路径…> [--as 车道] [--ttl 分钟]')
   const lane = currentLane(args.as)
@@ -558,7 +559,10 @@ function verbClaim(args) {
   const next = applyClaim(leases, paths, lane, ttlMs)
   writeLeases(next)
   if (conflicts.length > 0) appendJournal({ kind: 'force-claim', lane, paths, over: conflicts.map(c => c.holder.lane) })
-  return envelope('claim', true, { lane, paths, ttlMinutes: ttlMs / 60000, forced: conflicts.length > 0 }, '改完记得 zc done --verifier <命令> --coverage <范围>')
+  // 机制①：占道即自动带出该文件的上下文（钉死的口径/决策树行/职责声明）——agent 不用再记得单独跑 ctx
+  const { buildWhere } = await import(pathToFileURL(join(root, 'scripts/zc-where.mjs')).href)
+  const context = paths.map(p => buildWhere(p, { root })).filter(w => w.resolved)
+  return envelope('claim', true, { lane, paths, ttlMinutes: ttlMs / 60000, forced: conflicts.length > 0, context }, '改完记得 zc done --verifier <命令> --coverage <范围>')
 }
 
 function verbRelease(args) {
@@ -632,6 +636,23 @@ async function verbBrief(args, root = ROOT) {
   return envelope('brief', true, { ...brief, entityFacts, verify }, next)
 }
 
+/**
+ * 文件上下文反查（zc brief 的镜像：brief 是 任务→上下文，ctx 是 文件→上下文）。
+ * 机制①（path-scoped 自动注入）的检索半边——把「摸文件前该知道的钉死口径」压成一页，
+ * 每条带出处。目标解析不到就大声失败（规则 15：不猜路径）。
+ */
+async function verbCtx(args, root = ROOT) {
+  const target = args.positional[0]
+  if (!target) return envelope('ctx', false, {}, 'node scripts/zc.mjs ctx <文件路径>  # 摸文件前反查：决策树行 + 钉在文件上的口径 + 头注释职责')
+  const { buildWhere } = await import(pathToFileURL(join(root, 'scripts/zc-where.mjs')).href)
+  const w = buildWhere(target, { root })
+  if (!w.resolved) return envelope('ctx', false, { target }, '文件不存在：' + target + '（规则 15：不猜路径）。给完整相对路径，或先用 ls 确认')
+  const next = (w.counts.facts > 0 || w.counts.sourced > 0)
+    ? '摸之前读完上面钉死的口径；改完 zc done --verifier <命令> --coverage <范围>'
+    : '这个文件暂无钉死口径；改完 zc done --verifier <命令> --coverage <范围>'
+  return envelope('ctx', true, { ...w }, next)
+}
+
 function verbDrift(root = ROOT) {
   const { scanned, violations } = auditAuthoredFacts(root)
   const queue = driftQueue(root)
@@ -670,6 +691,29 @@ export function parseArgs(argv) {
     else out[key] = true
   }
   return out
+}
+
+/** ctx / claim 共用的「文件上下文」排版（一处定义，避免两个动词的输出漂移） */
+function whereHumanize(w) {
+  const lines = []
+  lines.push('文件：' + w.target + (w.resolved && w.resolved !== w.target ? '（解析为 ' + w.resolved + '）' : ''))
+  if (w.header) {
+    lines.push('【职责声明】(头注释)')
+    for (const l of String(w.header).split('\n')) lines.push('  ' + l)
+  }
+  if (w.facts?.length) {
+    lines.push('【钉在此文件的口径】(手写 @fact 锚指向这里) ' + w.facts.length + ' 条')
+    for (const f of w.facts) lines.push('  ' + f.fact + '\n      « ' + f.at)
+  }
+  if (w.tree?.length) {
+    lines.push('【决策树：哪些任务会改到这里】' + w.tree.length + ' 行')
+    for (const t of w.tree) lines.push('  · ' + t.task + '\n      → ' + (t.edit || t.read) + '\n      « ' + t.at)
+  }
+  if (w.sourced?.length) {
+    lines.push('【本文件自己吐的口径】(notes/注释抽取) ' + w.sourced.length + ' 条')
+    for (const f of w.sourced) lines.push('  ' + f.fact + '\n      « ' + f.at)
+  }
+  return lines
 }
 
 function humanize(res) {
@@ -720,6 +764,11 @@ function humanize(res) {
     }
     lines.push('')
     lines.push('【收工验收】' + (d.verify ?? []).join(' && ') + '  然后 zc done --verifier … --coverage …')
+  } else if (res.verb === 'ctx') {
+    lines.push(...whereHumanize(d))
+  } else if (res.verb === 'claim') {
+    lines.push('已认领 ' + (d.paths?.length ?? 0) + ' 个文件（车道 ' + String(d.lane ?? '').slice(0, 12) + '，TTL ' + d.ttlMinutes + ' 分）')
+    for (const w of d.context ?? []) { lines.push(''); lines.push(...whereHumanize(w)) }
   } else if (res.verb === 'drift') {
     lines.push('手写事实 ' + d.authored + ' 条 · 断锚/缺据 ' + (d.violations?.length ?? 0) + ' 条 · 待复核 ' + (d.reviewQueue?.length ?? 0) + ' 条')
     for (const v of d.violations ?? []) lines.push('✗ ' + v.problem + ' @ ' + v.file + ':' + v.line + ' :: ' + v.raw.slice(0, 90))
@@ -740,15 +789,16 @@ export async function main(argv) {
   let res
   switch (verb) {
     case 'status': res = await verbStatus(); break
-    case 'claim': res = verbClaim(args); break
+    case 'claim': res = await verbClaim(args); break
     case 'release': res = verbRelease(args); break
     case 'lanes': res = verbLanes(); break
     case 'facts': res = verbFacts(args); break
     case 'done': res = verbDone(args); break
     case 'drift': res = verbDrift(); break
     case 'brief': res = await verbBrief(args); break
+    case 'ctx': res = await verbCtx(args); break
     case 'lang': res = envelope('lang', true, { grammar: grammar() }, null); break
-    default: res = envelope(verb, false, {}, '未知动词。可用：status / brief / claim / release / lanes / facts / drift / done / lang')
+    default: res = envelope(verb, false, {}, '未知动词。可用：status / brief / ctx / claim / release / lanes / facts / drift / done / lang')
   }
   if (args.json) console.log(JSON.stringify(res, null, 2))
   else if (verb === 'lang') console.log(res.data.grammar)
