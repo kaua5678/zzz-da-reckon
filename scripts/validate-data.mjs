@@ -228,5 +228,17 @@ const orphanConstellations = [...constellationChars].filter(id => !agents.some(a
 check('status tables have no orphan ids (absent from catalog)', orphanMechanics.length === 0 && orphanConstellations.length === 0,
   `orphan mechanics: ${orphanMechanics.join(', ')}; orphan constellations: ${orphanConstellations.join(', ')}`)
 
+// 单一事实源（规则 8/11）：核心被动/额外能力只记在 mechanics[]，禁止顶层重复字段
+// （历史上顶层 corePassive/additionalAbility 是 sync 占位、从不回填 → 与 mechanics[] 漂移、
+// 且被 generate-implementation-status 漏读；2026-09-04 归一，此护栏防回归）。
+// @fact engine:mechanics单一事实源 口径: 角色核心被动/额外能力只记在 character-mechanics.json 的 mechanics[]，禁止顶层 corePassive/additionalAbility 重复字段（顶层占位从不回填会漂移且被状态表漏读）| 据 用户@2026-09-04 | 锚 scripts/validate-data.mjs#dupTopLevel | 信 确认
+const mechData = load('public/static/character-mechanics.json').characters ?? {}
+const dupTopLevel = Object.entries(mechData)
+  .filter(([, c]) => c && (c.corePassive != null || c.additionalAbility != null))
+  .map(([id]) => id)
+check('character-mechanics has no top-level corePassive/additionalAbility (single source = mechanics[])',
+  dupTopLevel.length === 0,
+  `顶层重复字段（应并入 mechanics[] 后删除）: ${dupTopLevel.join(', ')}`)
+
 console.log(failed === 0 ? `\n${checks} data checks passed` : `\n${failed} data check(s) failed`)
 process.exit(failed === 0 ? 0 : 1)

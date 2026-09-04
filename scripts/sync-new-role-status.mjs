@@ -51,7 +51,7 @@ for (const id of Object.keys(list)) {
           '待人工核对后补实现，勿直接默认省略。',
         ],
       }))
-    for (const cinema of cinemas) {
+    for (const cinema of talentEntries) {
       const talent = data.talent?.[String(cinema.cinema)]
       if (isGenericSkillLevelCinema(talent?.desc)) {
         cinema.status = 'implemented_generic_skill_level'
@@ -59,7 +59,7 @@ for (const id of Object.keys(list)) {
         cinema.pending = []
       }
     }
-    constellations.characters[id] = { name, cinemas }
+    constellations.characters[id] = { name, cinemas: talentEntries }
   }
 
   if (!mechanics.characters[id]) {
@@ -130,34 +130,14 @@ for (const id of Object.keys(list)) {
         cinema.pending = []
       }
     }
+    // 单一事实源：核心被动/额外能力的录入占位已在 mechanicsList（core_passive_<id> /
+    // additional_ability_<id>）承载，不再另写顶层 corePassive/additionalAbility 重复字段
+    // （历史上顶层占位从不回填，与 mechanics[] 漂移且被状态表漏读——2026-09-04 归一）。
     mechanics.characters[id] = {
       name,
       specialResources: [],
       mechanics: mechanicsList,
       cinemaImplementation,
-      corePassive: coreDesc
-        ? {
-            id: `core_passive_${id}`,
-            name: coreName,
-            status: 'not_described_not_implemented',
-            implementation: 'not_described_not_implemented',
-            implementedParts: [],
-            pendingParts: [coreDesc],
-            codePaths: [],
-          }
-        : null,
-      additionalAbility: extraDesc
-        ? {
-            id: `additional_ability_${id}`,
-            name: extraName,
-            trigger: '待人工核对触发条件',
-            status: 'not_described_not_implemented',
-            implementation: 'not_described_not_implemented',
-            implementedParts: [],
-            pendingParts: [extraDesc],
-            codePaths: [],
-          }
-        : null,
     }
     synced++
   }
@@ -172,12 +152,6 @@ for (const id of Object.keys(list)) {
     if (!item.status) item.status = item.implementation ?? 'not_described_not_implemented'
     if (!item.implementation) item.implementation = item.status
     if (!item.pending) item.pending = item.pendingParts ?? []
-  }
-  for (const key of ['corePassive', 'additionalAbility']) {
-    const item = entry[key]
-    if (!item) continue
-    if (!item.status) item.status = item.implementation ?? 'not_described_not_implemented'
-    if (!item.implementation) item.implementation = item.status
   }
 }
 
