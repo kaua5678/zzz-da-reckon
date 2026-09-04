@@ -190,4 +190,17 @@ describe('stunAxisPresets', () => {
       expect(selectAutoStunAxisPreset(['1051', '', '1451'], { 0: 0 })).toBeNull()
     })
   })
+
+  it('真实预设：希格莉德+诺姆 plans 按命座门控（6命→破阵轴，非6→平A轴）', () => {
+    const p = stunAxisPresets.find(x => x.id === 'sigrid-norma')
+    expect(p?.plans).toHaveLength(2)
+    const st = (cinema: number) => ({ stunCount: 4, goodReview: 0, cinemaBySlot: { 0: cinema } })
+    const c6 = resolveStunAxisPlan(p!.plans!, st(6))
+    const c5 = resolveStunAxisPlan(p!.plans!, st(5))
+    // 6命：命中破阵轴（含 sigrid-pozhen 块）；非6命：兜底平A轴（含 basicFillerSlot）
+    expect(c6?.plan.name).toBe('6命破阵轴')
+    expect(c6?.axes[0].actions.some(a => a.moveId === 'sigrid-pozhen')).toBe(true)
+    expect(c5?.plan.name).toBe('非6命轴')
+    expect(c5?.axes[0].basicFillerSlot).toBe(0)
+  })
 })
