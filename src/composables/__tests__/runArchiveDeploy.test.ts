@@ -56,9 +56,10 @@ describe('applyDeployConfig', () => {
     expect(config.team.map((s) => s.wEngineId)).toEqual(['14109', '14151', '14149'])
     expect(config.team.map((s) => s.wEngineModLevel)).toEqual([5, 5, 5])
 
-    // 交互基准（2026-09 修订）：弹刀不预设（保底4失衡/4喧响运行时反推）、闪反默认 0；快支固定 3
+    // 交互基准（2026-09-04 回调）：弹刀走喧响反推不预设（deploy 路径默认 0）、闪反按职业基准
+    // （支援/防护 0，其余 10）；快支固定 3、连携基准 1。DEPLOY 队 = 异常/击破/支援 → dodge [10,10,0]
     expect(config.team.map((s) => s.parryCount)).toEqual([0, 0, 0])
-    expect(config.team.map((s) => s.dodgeCounterCount)).toEqual([0, 0, 0])
+    expect(config.team.map((s) => s.dodgeCounterCount)).toEqual([10, 10, 0])
     expect(config.team.map((s) => s.quickAssistCount)).toEqual([3, 3, 3])
     expect(config.team.map((s) => s.chainCountPerStun)).toEqual([1, 1, 1])
     // 保底4喧响 + 自动轴开启（弹刀反推的两个驱动）

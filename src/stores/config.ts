@@ -152,12 +152,17 @@ export function getInteractionDefaults(agentId: string): { parry: number; dodge:
 }
 
 /**
- * 通用交互基准（无角色专属默认时按职业；用户口径 2026-09 修订）：
- * - 弹刀不预设（= 喧响四舍五入反推：保底4喧响缺口 ≤1500 才补弹刀÷215，实战打不出不硬凑）。
- * - 闪反默认 0（不硬凑闪反，前台时间留给主C 循环）。
+ * 通用交互基准（无角色专属默认时按职业；用户口径 2026-09-04 回调）：
+ * - 支援/防护：0 交互——支援上战场 1 秒 = 浪费主C 1 秒输出，其后台时间不是发呆（主C 在打）。
+ * - 其余（强攻/异常/击破）：弹刀 6 + 闪反 10（闪反在动作时间内给 2× 伤害+失衡；弹刀靠后续
+ *   支援突击 + 喧响/失衡纯赚）。基准是「默认大家会打」，不是硬凑——时间紧的队（如叶瞬光
+ *   白毛优先）由非轴降配 interactionScale 按必要时间挤占缩放（useResourceCalc 738-742）。
+ * 之前一度全默认 0 导致「谁都不打、留时间发呆」，是过度矫正（叶瞬光个案不该推广到全队池）。
  */
-export function roleInteractionBaseline(_specialty: string | undefined): { parry: number; dodge: number; block: number; dual: number } {
-  return { parry: 0, dodge: 0, block: 0, dual: 0 }
+// @fact engine:交互基准 口径: 非支援/防护默认弹刀6/闪反10（闪反动作时间内2×伤害失衡、弹刀喧响失衡纯赚），支援/防护0；基准可被必要时间挤占（超预算时 interactionScale 缩放），不硬凑 | 据 用户@2026-09-04 | 验 src/stores/__tests__/roleInteractionBaseline.test.ts | 锚 src/stores/config.ts#roleInteractionBaseline | 信 确认
+export function roleInteractionBaseline(specialty: string | undefined): { parry: number; dodge: number; block: number; dual: number } {
+  if (specialty === 'support' || specialty === 'defense') return { parry: 0, dodge: 0, block: 0, dual: 0 }
+  return { parry: 6, dodge: 10, block: 0, dual: 0 }
 }
 
 /** 推荐主词条 prop name → catalog statId 映射（含中文别名）。
