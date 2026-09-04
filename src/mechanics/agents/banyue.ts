@@ -170,7 +170,7 @@ export interface BanyueRageCycle {
  * 截断会得到一个既打不出轴、又比不打轴更差的幻觉解。非法 → 由调用方按「轴不可操作」处理，
  * 走既有的轴退化（ENGINE_PIPELINE_GUIDE §4 坑 19②）。
  */
-// @fact engine:banyue/补齐时间上限 口径: 自动填充交互的原始动作时间（未扣合轴）>200s 判本次填充非法——次数清零并走轴退化，而不是截断成半套 | 据 用户@2026-09-01 | 验 src/mechanics/__tests__/banyue.test.ts | 锚 src/mechanics/agents/banyue.ts#AUTO_TOPUP_TIME_LIMIT_SEC | 信 确认
+// @fact engine:banyue/补齐时间上限 口径: 自动填充交互的原始动作时间（未扣合轴）>200s 判本次填充非法——次数清零并走轴退化，而不是截断成半套 | 据 用户@2026-09-01·复核@2026-09-04 | 验 src/mechanics/__tests__/banyue.test.ts | 锚 src/mechanics/agents/banyue.ts#AUTO_TOPUP_TIME_LIMIT_SEC | 信 确认
 export const AUTO_TOPUP_TIME_LIMIT_SEC = 200
 
 /** 轴模式自动补齐的交互次数（保底语义：在用户输入之上补多少，不覆盖输入） */

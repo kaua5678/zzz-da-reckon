@@ -58,7 +58,7 @@ export const CONFIDENCE = ['确认', '高', '中', '低']
  * 四个槽位里「主体 + 种类 + 内容」必填，「据（谁定的·哪天）」「验（哪条测试证明它活着）」
  * 强烈建议填 —— 缺「验」的口径就是防死数据铁律要抓的死数据。
  */
-// @fact engine:zc/语法单一定义 决: 事实语法只在解析器里定义一次，不写第二份 markdown；zc lang 打印的就是它自己 | 据 用户@2026-08-31·复核@2026-09-01 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/zc.mjs#grammar | 信 确认
+// @fact engine:zc/语法单一定义 决: 事实语法只在解析器里定义一次，不写第二份 markdown；zc lang 打印的就是它自己 | 据 用户@2026-08-31·复核@2026-09-04 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/zc.mjs#grammar | 信 确认
 export function parseFactLine(line) {
   if (typeof line !== 'string') return null
   const m = line.trim().match(/^@fact\s+(\S+)\s+(\S+?)\s*:\s*([\s\S]+)$/)
@@ -667,7 +667,7 @@ function appendJournal(entry) {
   appendFileSync(JOURNAL_FILE, JSON.stringify({ at: new Date().toISOString(), ...entry }) + '\n')
 }
 
-// @fact engine:zc/收工落盘 决: 规则 9 的 verifier+coverage 必须经 zc done 进 .zc/journal.jsonl，只写在聊天里等于没写（全仓 'verifier' 曾只出现 2 次） | 据 实测@2026-08-31·复核@2026-09-01 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/zc.mjs#verbDone | 信 确认
+// @fact engine:zc/收工落盘 决: 规则 9 的 verifier+coverage 必须经 zc done 进 .zc/journal.jsonl，只写在聊天里等于没写（全仓 'verifier' 曾只出现 2 次） | 据 实测@2026-08-31·复核@2026-09-04 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/zc.mjs#verbDone | 信 确认
 function verbDone(args) {
   if (!args.verifier || !args.coverage) {
     return envelope('done', false, {}, 'zc done --verifier "<证明它生效的命令/测试>" --coverage "<影响到哪些角色/页面/文件>"（规则 9）')
