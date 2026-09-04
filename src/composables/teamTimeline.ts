@@ -38,6 +38,7 @@ import { teamPresets } from '@/data/teamPresets'
 import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
 import type { Agent } from '@/types/catalog'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
+import type { TeamPreset } from '@/types/teamPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
 
 type Calc = ReturnType<typeof useResourceCalc>
@@ -990,6 +991,167 @@ export function prefillStrongTeamsFromPresets(): Record<string, [string, string,
     }
   }
   return out
+}
+
+// ========== Chart 7：同槽位角色对比（预设队伍中「其余两槽相同、所选槽位 A/B 两队」的成对对比） ==========
+//
+// 用户口径（2026-09-04）：预设队伍里大量队伍主C与支援相同、只有击破位不同（如 仪玄+卢西娅
+// 下 琉音 vs 诺姆）。横轴 = 卡池时间轴（主C实装节点），一个主C对应 A/B 两支队伍，
+// 把 A 队各点连成一条线、B 队各点连成一条线，两条线孰高孰低即该主C下哪个角色更强。
+// 配装/金数口径与 Chart 3 相同（预算感知确定性分配，optimalGold=true 时逐金贪婪），
+// 交互为角色默认基准——两支队伍只有所选槽位角色不同，差距即该角色的净贡献。
+
+/** 对比槽位：0=主C、1=击破、2=支援 */
+export type SlotCompareSlot = 0 | 1 | 2
+
+/** 一对同槽位对比队伍：两队的非对比槽完全相同，对比槽恰好分别为 A/B */
+export interface SlotComparePair {
+  /** 横轴锚点（主C）；对比槽 = 0（主C）时锚点取槽位 1（击破） */
+  main: string
+  /** 未被对比的另一队友（对比槽 = 1 时为支援） */
+  support: string
+  teamA: [string, string, string]
+  teamB: [string, string, string]
+}
+
+/**
+ * 从预设队伍中找「同槽位 A/B 对比」配对（纯函数）：
+ * 两支队伍的其余两槽完全相同、所选槽位恰好一支 = agentA、一支 = agentB。
+ * 相同队伍三元组去重（手编预设与 auto 预设可能重复）。agentA === agentB 或不足一对 → 空。
+ */
+export function findSlotComparePairs(
+  presets: TeamPreset[],
+  slot: SlotCompareSlot,
+  agentA: string,
+  agentB: string,
+): SlotComparePair[] {
+  if (agentA === agentB) return []
+  const groups = new Map<string, TeamPreset[]>()
+  for (const p of presets) {
+    const team = p.team
+    if (team.length !== 3 || new Set(team).size !== 3) continue
+    if (team[slot] !== agentA && team[slot] !== agentB) continue
+    const key = team.map((t, i) => (i === slot ? '*' : t)).join(',')
+    const list = groups.get(key) ?? []
+    list.push(p)
+    groups.set(key, list)
+  }
+  const pairs: SlotComparePair[] = []
+  const seen = new Set<string>()
+  for (const list of groups.values()) {
+    const a = list.find(p => p.team[slot] === agentA)
+    const b = list.find(p => p.team[slot] === agentB)
+    if (!a || !b) continue
+    const key = [...a.team, ...b.team].join(',')
+    if (seen.has(key)) continue
+    seen.add(key)
+    const anchorSlot = slot === 0 ? 1 : 0
+    const supportSlot = slot === 2 ? 1 : 2
+    pairs.push({
+      main: a.team[anchorSlot],
+      support: a.team[supportSlot],
+      teamA: a.team as [string, string, string],
+      teamB: b.team as [string, string, string],
+    })
+  }
+  return pairs
+}
+
+/** 一组对比的求值结果（A/B 两队同 Boss、同金数口径） */
+export interface SlotComparePoint {
+  mainId: string
+  mainName: string
+  supportId: string
+  /** 主C实装节点（横轴锚点） */
+  nodeId: string
+  nodeLabel: string
+  teamA: [string, string, string]
+  teamB: [string, string, string]
+  damageA: number
+  damageB: number
+  hpRatioA: number
+  hpRatioB: number
+  totalGoldA: number
+  totalGoldB: number
+  goldLabelA: string
+  goldLabelB: string
+}
+
+export interface SlotCompareOptions {
+  slot: SlotCompareSlot
+  agentA: string
+  agentB: string
+  boss: BossPreset
+  phase: BossPresetPhase
+  budget: number
+  /** 自动配装（推荐驱动盘 + 词条优化器）；缺省 false = 轻量速算 */
+  autoBuild?: boolean
+  /** 最优加金（逐金贪婪）；缺省 false = 主C优先确定性分配（与 Chart 3 同口径） */
+  optimalGold?: boolean
+  onProgress?: (p: { pct: number; text: string }) => void
+}
+
+/**
+ * 计算 Chart 7 各组对比点：对每对队伍按所选金数配装求 A/B 两队的伤害
+ * （口径与 computeNewCharacterPoints 一致：轻量档 budgetAwareStateFor 零额外求值，
+ * optimalGold 档逐金贪婪；任一队基础态未收敛 → 整组跳过），
+ * 现场快照/恢复；结果按（主C实装节点, 支援）稳定排序供页面连折线。
+ */
+export async function computeSlotComparePoints(calc: Calc, opts: SlotCompareOptions): Promise<SlotComparePoint[]> {
+  const configStore = useConfigStore()
+  const catalog = useCatalogStore()
+  const snap = snapshotStore(configStore)
+  const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
+  try {
+    configStore.applyBossPreset({ id: opts.boss.id }, opts.phase, opts.boss.monster, opts.boss.defaults)
+    const pairs = findSlotComparePairs(teamPresets, opts.slot, opts.agentA, opts.agentB)
+      .filter(p => releaseNodeOf(p.main) != null && catalog.getAgent(p.main))
+    const evalOne = (team: [string, string, string]): { damage: number; totalGold: number; goldLabel: string } | null => {
+      if (opts.optimalGold) {
+        const alloc = computeOptimalTeamAllocation(calc, configStore, team, opts.budget, opts.autoBuild === true)
+        if (!Number.isFinite(alloc.damage)) return null
+        return { damage: alloc.damage, totalGold: alloc.totalGold, goldLabel: alloc.label }
+      }
+      const budgetAware = budgetAwareStateFor(team, opts.budget, catalog)
+      applyTeamToStore(configStore, team, budgetAware.state, opts.autoBuild === true)
+      const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
+      if (conv === 'maxIter') return null
+      return { damage: calc.teamTotalDamage.value, totalGold: budgetAware.totalGold, goldLabel: budgetAware.label }
+    }
+    const points: SlotComparePoint[] = []
+    for (let i = 0; i < pairs.length; i++) {
+      const pair = pairs[i]
+      const resA = evalOne(pair.teamA)
+      const resB = evalOne(pair.teamB)
+      if (!resA || !resB) continue
+      const main = catalog.getAgent(pair.main)
+      const nodeId = releaseNodeOf(pair.main)!
+      points.push({
+        mainId: pair.main,
+        mainName: main?.name.zhCN ?? pair.main,
+        supportId: pair.support,
+        nodeId,
+        nodeLabel: VERSION_NODES[nodeIndexOf(nodeId)]?.label ?? nodeId,
+        teamA: pair.teamA,
+        teamB: pair.teamB,
+        damageA: resA.damage,
+        damageB: resB.damage,
+        hpRatioA: opts.phase.hp > 0 ? Math.round((resA.damage / opts.phase.hp) * 10000) / 100 : 0,
+        hpRatioB: opts.phase.hp > 0 ? Math.round((resB.damage / opts.phase.hp) * 10000) / 100 : 0,
+        totalGoldA: resA.totalGold,
+        totalGoldB: resB.totalGold,
+        goldLabelA: resA.goldLabel,
+        goldLabelB: resB.goldLabel,
+      })
+      report((i + 1) / pairs.length, `同槽位对比 ${i + 1}/${pairs.length}（${main?.name.zhCN ?? pair.main}）…`)
+      if (i % 2 === 0) await yieldNow()
+    }
+    points.sort((a, b) => nodeIndexOf(a.nodeId) - nodeIndexOf(b.nodeId) || a.supportId.localeCompare(b.supportId))
+    report(1, `完成：${points.length} 组对比`)
+    return points
+  } finally {
+    restoreStore(configStore, snap)
+  }
 }
 
 // ========== Chart 4：菲林经济模拟（选定 Boss + 主C，逐期菲林投放 → 加金 → 当期 Boss 强度） ==========

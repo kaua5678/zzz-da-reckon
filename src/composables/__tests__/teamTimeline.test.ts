@@ -22,7 +22,9 @@ import {
   computeFilmSimulation,
   computeNewCharacterPoints,
   computeOptimalTeamAllocation,
+  computeSlotComparePoints,
   computeTeamTimeline,
+  findSlotComparePairs,
   nextGoldCandidates,
   prefillStrongTeamsFromPresets,
 } from '@/composables/teamTimeline'
@@ -454,6 +456,64 @@ describe('Chart 3：每期新角色强队（buildNewCharacterRows / suggest / co
     expect(rowChars.has('1241')).toBe(true) // 朱鸢（1.0 下半）
     expect(rowChars.has('1421')).toBe(true) // 潘引壶（A 级特例）
   })
+})
+
+// ========== Chart 7：同槽位角色对比（findSlotComparePairs / computeSlotComparePoints） ==========
+
+describe('Chart 7：同槽位角色对比（预设中其余两槽相同、所选槽位 A/B 两队）', () => {
+  it('配对：琉音 vs 诺姆 击破位 = 主C+支援相同的成对预设（含仪玄/般岳/希格莉德等），同 (主C,支援) 去重、其余两槽恒定', () => {
+    const pairs = findSlotComparePairs(teamPresets, 1, '1481', '1571')
+    expect(pairs.length).toBeGreaterThanOrEqual(5)
+    const mains = new Set(pairs.map(p => p.main))
+    for (const id of ['1371', '1471', '1591', '1051', '1531']) {
+      expect(mains.has(id), `缺主C ${id}`).toBe(true)
+    }
+    const keys = pairs.map(p => `${p.main},${p.support}`)
+    expect(new Set(keys).size).toBe(keys.length) // 手编/auto 重复队伍去重
+    for (const p of pairs) {
+      expect(p.teamA[1]).toBe('1481')
+      expect(p.teamB[1]).toBe('1571')
+      expect(p.teamA[0]).toBe(p.teamB[0])
+      expect(p.teamA[2]).toBe(p.teamB[2])
+      expect(p.main).toBe(p.teamA[0])
+      expect(p.support).toBe(p.teamA[2])
+    }
+  })
+
+  it('配对边界：A==B 返回空；击破角色不占主C/支援槽 → 无配对', () => {
+    expect(findSlotComparePairs(teamPresets, 1, '1481', '1481')).toEqual([])
+    expect(findSlotComparePairs(teamPresets, 0, '1481', '1571')).toEqual([])
+    expect(findSlotComparePairs(teamPresets, 2, '1481', '1571')).toEqual([])
+  })
+
+  it('computeSlotComparePoints：轻量档每组出 A/B 两伤、按主C实装节点有序、现场恢复', async () => {
+    await boot()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const originalTeam = JSON.stringify(config.team)
+    const points = await computeSlotComparePoints(calc, {
+      slot: 1,
+      agentA: '1481',
+      agentB: '1571',
+      boss: firstBoss as BossPreset,
+      phase: firstPhase,
+      budget: 6,
+    })
+    expect(points.length).toBeGreaterThan(0)
+    for (const p of points) {
+      expect(p.hpRatioA).toBeGreaterThan(0)
+      expect(p.hpRatioB).toBeGreaterThan(0)
+      expect(p.goldLabelA).toContain('金')
+      expect(p.goldLabelB).toContain('金')
+      expect(releaseNodeOf(p.mainId)).not.toBeNull()
+      expect(p.teamA[1]).toBe('1481')
+      expect(p.teamB[1]).toBe('1571')
+    }
+    for (let i = 1; i < points.length; i++) {
+      expect(nodeIndexOf(points[i].nodeId)).toBeGreaterThanOrEqual(nodeIndexOf(points[i - 1].nodeId))
+    }
+    expect(JSON.stringify(config.team)).toBe(originalTeam)
+  }, 120000)
 })
 
 // ========== Chart 4：菲林经济模拟 ==========

@@ -580,6 +580,146 @@
       </div>
     </n-card>
 
+    <!-- ============ Chart 7：同槽位角色对比（预设中其余两槽相同、所选槽位 A/B 两队） ============ -->
+    <n-card size="small" :bordered="true">
+      <template #header>
+        同槽位角色对比
+        <span class="chart-subtitle">
+          横轴 = 主C实装节点；每组 = 预设中「其余两槽相同、{{ scSlotLabel }}位恰好一队
+          {{ agentName(scAgentA) }}、一队 {{ agentName(scAgentB) }}」的两支队伍；
+          {{ agentName(scAgentA) }} 队连成蓝线、{{ agentName(scAgentB) }} 队连成橙线，孰高孰低即该主C下谁更强。
+          纵轴 = 伤害自动刻度（贴合数据范围，不看 Boss 血量/击杀线）；Boss 可单独切换（默认跟随顶部），
+          不同 Boss 的弱点/抗性对不同角色克制不同。预算/配装口径同顶部各图
+        </span>
+      </template>
+      <template #header-extra>
+        <div class="chart3-actions">
+          <n-select v-model:value="scSlot" :options="scSlotOptions" size="small" style="width: 92px" />
+          <n-select v-model:value="scAgentA" :options="allAgentOptions" size="small" filterable style="width: 140px" />
+          <n-select v-model:value="scAgentB" :options="allAgentOptions" size="small" filterable style="width: 140px" />
+          <n-select
+            v-model:value="scBossId"
+            :options="bossOptions"
+            size="small"
+            filterable
+            style="width: 170px"
+            placeholder="Boss（默认跟随顶部）"
+            @update:value="scBossTouched = true"
+          />
+          <n-button size="small" type="primary" :loading="scComputing" @click="runSlotCompare">
+            {{ scPoints.length > 0 ? '重新对比' : '对比' }}
+          </n-button>
+        </div>
+      </template>
+
+      <!-- 进度条 -->
+      <div v-if="scComputing || scProgress" class="chart-progress">
+        <n-progress
+          type="line"
+          :percentage="Math.round((scProgress?.pct ?? 0) * 100)"
+          :show-indicator="false"
+          :height="6"
+        />
+        <span class="progress-text">{{ scProgress?.text ?? '' }}</span>
+      </div>
+
+      <!-- 双折线 SVG -->
+      <div v-if="scPoints.length > 0" class="timeline-wrap chart3-plot">
+        <div class="sc-legend">
+          <span class="sc-legend-item"><span class="sc-dot" :style="{ background: SC_COLOR_A }"></span>{{ agentName(scAgentA) }} 队</span>
+          <span class="sc-legend-item"><span class="sc-dot" :style="{ background: SC_COLOR_B }"></span>{{ agentName(scAgentB) }} 队</span>
+          <span class="sc-legend-item">Boss：{{ scBossName }}</span>
+        </div>
+        <svg
+          :viewBox="`0 0 ${svgW} ${scSvgH}`"
+          class="timeline-svg"
+          @mousemove="onScMove"
+          @mouseleave="scHover = -1"
+        >
+          <g v-for="(y, i) in scYGrid" :key="'scg' + i">
+            <line :x1="padL" :x2="svgW - padR" :y1="y" :y2="y" class="grid-line" />
+            <text :x="padL - 8" :y="y + 3" class="axis-label" text-anchor="end">{{ scYLabel(i) }}</text>
+          </g>
+          <!-- X 轴版本刻度 -->
+          <g v-for="t in chart3XTicks" :key="'scx' + t.index">
+            <line :x1="chart3X(t.index)" :y1="padT" :x2="chart3X(t.index)" :y2="padT + plotH" style="stroke: var(--fill-hover)" />
+            <text :x="chart3X(t.index)" :y="scSvgH - 8" class="axis-label x-label" text-anchor="middle">{{ t.label }}</text>
+          </g>
+          <!-- 两条对比折线 -->
+          <polyline :points="scLineA" class="sc-line sc-line-a" />
+          <polyline :points="scLineB" class="sc-line sc-line-b" />
+          <!-- 点 -->
+          <g v-for="(p, i) in scPts" :key="'scp' + i">
+            <circle
+              :cx="p.x" :cy="p.yA" r="4" :fill="SC_COLOR_A"
+              :style="{ stroke: scHover === i ? 'var(--app-text-solid)' : 'var(--line-strong)' }"
+              :stroke-width="scHover === i ? 2 : 1"
+              class="trend-point"
+            >
+              <title>{{ p.mainName }}：{{ p.teamA.map(agentName).join('+') }}（{{ fmt(p.hpRatioA, 1) }}%）</title>
+            </circle>
+            <circle
+              :cx="p.x" :cy="p.yB" r="4" :fill="SC_COLOR_B"
+              :style="{ stroke: scHover === i ? 'var(--app-text-solid)' : 'var(--line-strong)' }"
+              :stroke-width="scHover === i ? 2 : 1"
+              class="trend-point"
+            >
+              <title>{{ p.mainName }}：{{ p.teamB.map(agentName).join('+') }}（{{ fmt(p.hpRatioB, 1) }}%）</title>
+            </circle>
+          </g>
+          <line
+            v-if="scHover >= 0"
+            :x1="scPts[scHover].x" :y1="padT"
+            :x2="scPts[scHover].x" :y2="padT + plotH"
+            class="hover-line"
+          />
+        </svg>
+
+        <!-- 悬浮卡片 -->
+        <div
+          v-if="scHover >= 0 && scHoverInfo"
+          class="hover-card"
+          :style="{ left: scCardX + 'px', top: scCardY + 'px' }"
+        >
+          <div class="hc-title">{{ scHoverInfo.nodeLabel }} · {{ scHoverInfo.mainName }} + {{ scHoverInfo.supportName }}</div>
+          <div class="hc-row">蓝 {{ scHoverInfo.teamANames.join(' + ') }}：{{ compact(scHoverInfo.damageA) }}</div>
+          <div class="hc-row">橙 {{ scHoverInfo.teamBNames.join(' + ') }}：{{ compact(scHoverInfo.damageB) }}</div>
+          <div class="hc-row" :class="scHoverInfo.diff > 0 ? 'sc-diff-a' : scHoverInfo.diff < 0 ? 'sc-diff-b' : ''">{{ scHoverInfo.diffText }}</div>
+        </div>
+      </div>
+      <div v-else class="empty-hint small-hint">
+        选对比槽位与两名角色后点「对比」：预设中「其余两槽相同、该槽位恰好一队 A 一队 B」的队伍
+        按主C实装节点各连一条线，可直读哪个角色在哪个主C下更强（例：击破位对比琉音 vs 诺姆）。
+        换右上角 Boss 看不同克制环境下的胜负变化。
+      </div>
+
+      <!-- 汇总表：每组 A/B 强度与胜负，直接回答「哪些队伍 A > B」 -->
+      <div v-if="scPoints.length > 0" class="table-wrap sc-table">
+        <table class="tl-table">
+          <thead>
+            <tr>
+              <th>主C</th>
+              <th>支援</th>
+              <th>{{ agentName(scAgentA) }} 队伤害</th>
+              <th>{{ agentName(scAgentB) }} 队伤害</th>
+              <th>相对差值</th>
+              <th>结论</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(r, i) in scTableRows" :key="i">
+              <td><span class="dot" :style="{ background: colorOf(r.mainId) }"></span>{{ agentName(r.mainId) }}</td>
+              <td>{{ agentName(r.supportId) }}</td>
+              <td>{{ compact(r.damageA) }}</td>
+              <td>{{ compact(r.damageB) }}</td>
+              <td :class="r.diff > 0 ? 'sc-diff-a' : r.diff < 0 ? 'sc-diff-b' : ''">{{ r.diff > 0 ? '+' : '' }}{{ fmt(r.diff, 1) }}%</td>
+              <td :class="r.winner === 'A' ? 'sc-diff-a' : r.winner === 'B' ? 'sc-diff-b' : ''">{{ r.conclusion }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </n-card>
+
     <!-- ============ Chart 4：菲林经济模拟（队伍强度随菲林投入） ============ -->
     <n-card size="small" :bordered="true">
       <template #header>
@@ -1027,6 +1167,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamStrengthSeed, type TeamTimelineResult } from '@/composables/teamTimeline'
 import { buildNewCharacterRows, computeFilmSimulation, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
+import { computeSlotComparePoints, type SlotComparePoint, type SlotCompareSlot } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
 import { computePullValue, MIN_PAIRS_FOR_GRADE, type PullValueInput, type PullValueResult, type PvCardRoomEffect, type PvCardTier, type PvCardValue } from '@/composables/pullValue'
 import { PLANNER_FILM_PER_VERSION } from '@/data/filmEconomy'
@@ -1691,6 +1832,196 @@ function onChart3Move(e: MouseEvent) {
     chart3Hover.value = -1
   }
 }
+
+// ========== Chart 7：同槽位角色对比（预设中其余两槽相同、所选槽位 A/B 两队） ==========
+const SC_COLOR_A = 'var(--c-info)'
+const SC_COLOR_B = 'var(--c-warning)'
+const scSlot = ref<SlotCompareSlot>(1)
+const scSlotOptions: Array<{ value: SlotCompareSlot; label: string }> = [
+  { value: 0, label: '主C槽' },
+  { value: 1, label: '击破槽' },
+  { value: 2, label: '支援槽' },
+]
+const scAgentA = ref('1481') // 琉音（用户口径示例的对比对象之一）
+const scAgentB = ref('1571') // 诺姆·霍洛维尔
+const scComputing = ref(false)
+const scProgress = ref<{ pct: number; text: string } | null>(null)
+const scPoints = ref<SlotComparePoint[]>([])
+const scSlotLabel = computed(() => scSlotOptions.find(o => o.value === scSlot.value)?.label ?? '')
+
+// ---- 卡片内 Boss 选择（默认跟随顶部；手动改过后不再跟随） ----
+const scBossId = ref('')
+const scBossTouched = ref(false)
+watch(selectedBossId, v => {
+  if (!scBossTouched.value && v) scBossId.value = v
+})
+const scBoss = computed(() => bossPresets.value.find(b => b.id === scBossId.value) ?? null)
+/** 与顶部 selectedPhase 同口径：取该 Boss 最新危局期，否则最新期 */
+const scPhase = computed(() => {
+  const b = scBoss.value
+  if (!b) return null
+  const sorted = [...b.phases].filter(p => p.begin).sort((x, y) => y.begin.localeCompare(x.begin))
+  return sorted.find(p => p.modeType === 'critical_assault') ?? sorted[0] ?? b.phases[0] ?? null
+})
+const scBossName = computed(() => scBoss.value?.name ?? '—')
+
+async function runSlotCompare() {
+  const boss = scBoss.value
+  const phase = scPhase.value
+  if (!boss || !phase) {
+    scProgress.value = { pct: 1, text: '先选 Boss（卡片右上角，默认跟随顶部）' }
+    setTimeout(() => { scProgress.value = null }, 2500)
+    return
+  }
+  if (scAgentA.value === scAgentB.value) {
+    scProgress.value = { pct: 1, text: '两名对比角色不能相同' }
+    setTimeout(() => { scProgress.value = null }, 2500)
+    return
+  }
+  scComputing.value = true
+  scProgress.value = { pct: 0, text: '准备…' }
+  await nextTick()
+  try {
+    scPoints.value = await computeSlotComparePoints(calc, {
+      slot: scSlot.value,
+      agentA: scAgentA.value,
+      agentB: scAgentB.value,
+      boss,
+      phase,
+      budget: budget.value ?? 6,
+      autoBuild: autoBuild.value,
+      optimalGold: optimalGold.value,
+      onProgress: p => { scProgress.value = p },
+    })
+  } finally {
+    scComputing.value = false
+    scProgress.value = null
+  }
+}
+
+// ---- Chart 7 SVG（双折线：A 蓝 / B 橙，横轴 = 主C实装节点；纵轴 = 伤害自动刻度） ----
+const scSvgH = padT + plotH + 30
+/** 纵轴贴合 A/B 两队伤害的数据范围（±8% 边距），不看 Boss 血量/击杀线，只看相对强弱 */
+const scYRange = computed(() => {
+  const vals = scPoints.value.flatMap(p => [p.damageA, p.damageB])
+  if (vals.length === 0) return { min: 0, max: 1 }
+  let min = Math.min(...vals)
+  let max = Math.max(...vals)
+  if (max - min < 1e-9) {
+    min -= 1
+    max += 1
+  }
+  const pad = (max - min) * 0.08
+  return { min: min - pad, max: max + pad }
+})
+/** 优美刻度步长（1/2/5×10^n，画 4~5 条网格线） */
+const scYStep = computed(() => {
+  const raw = (scYRange.value.max - scYRange.value.min) / 4
+  if (raw <= 0) return 1
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)))
+  const m = raw / pow
+  const nice = m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10
+  return nice * pow
+})
+function scY(v: number): number {
+  const { min, max } = scYRange.value
+  return padT + plotH - ((v - min) / (max - min)) * plotH
+}
+const scYGrid = computed(() => {
+  const { max } = scYRange.value
+  const step = scYStep.value
+  const start = Math.ceil(scYRange.value.min / step) * step
+  const out: number[] = []
+  for (let v = start; v <= max + 1e-9; v += step) out.push(scY(v))
+  return out
+})
+function scYLabel(i: number): string {
+  const step = scYStep.value
+  const start = Math.ceil(scYRange.value.min / step) * step
+  return compact(start + i * step)
+}
+/** 同主C多个支援组合 → 同节点横向错开（与 Chart 3 同款） */
+const scPts = computed(() => {
+  const perNode = new Map<string, number>()
+  for (const p of scPoints.value) perNode.set(p.nodeId, (perNode.get(p.nodeId) ?? 0) + 1)
+  const seen = new Map<string, number>()
+  return scPoints.value.map(p => {
+    const idx = nodeIndexOf(p.nodeId)
+    const total = perNode.get(p.nodeId) ?? 1
+    const k = seen.get(p.nodeId) ?? 0
+    seen.set(p.nodeId, k + 1)
+    const offset = (k - (total - 1) / 2) * 14
+    return {
+      x: chart3X(idx) + offset,
+      yA: scY(p.damageA),
+      yB: scY(p.damageB),
+      ...p,
+    }
+  })
+})
+const scLineA = computed(() => scPts.value.map(p => `${p.x},${p.yA}`).join(' '))
+const scLineB = computed(() => scPts.value.map(p => `${p.x},${p.yB}`).join(' '))
+const scHover = ref(-1)
+const scHoverInfo = computed(() => {
+  const p = scPoints.value[scHover.value]
+  if (!p) return null
+  const diff = p.damageB > 0 ? Math.round(((p.damageA - p.damageB) / p.damageB) * 1000) / 10 : 0
+  return {
+    nodeLabel: p.nodeLabel,
+    mainName: p.mainName,
+    supportName: agentName(p.supportId),
+    teamANames: p.teamA.map(agentName),
+    teamBNames: p.teamB.map(agentName),
+    damageA: p.damageA,
+    damageB: p.damageB,
+    diff,
+    diffText: diff > 0
+      ? `${agentName(scAgentA.value)} 高 ${fmt(diff, 1)}%`
+      : diff < 0
+        ? `${agentName(scAgentB.value)} 高 ${fmt(-diff, 1)}%`
+        : '两队持平',
+  }
+})
+const scCardX = ref(0)
+const scCardY = ref(0)
+function onScMove(e: MouseEvent) {
+  const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
+  const scale = svgW.value / rect.width
+  const svgX = (e.clientX - rect.left) * scale
+  let best = -1
+  let bestDist = Infinity
+  scPts.value.forEach((p, i) => {
+    const d = Math.abs(p.x - svgX)
+    if (d < bestDist) {
+      bestDist = d
+      best = i
+    }
+  })
+  if (best >= 0 && bestDist < (plotW.value / Math.max(1, VERSION_NODES.length)) * 2) {
+    scHover.value = best
+    scCardX.value = Math.min(rect.width - 260, e.clientX - rect.left + 12)
+    scCardY.value = e.clientY - rect.top + 8
+  } else {
+    scHover.value = -1
+  }
+}
+/** 相对差值 = (A−B)/B × 100（伤害口径，不受 Boss 血量影响） */
+const scTableRows = computed(() =>
+  scPoints.value.map(p => {
+    const diff = p.damageB > 0 ? Math.round(((p.damageA - p.damageB) / p.damageB) * 1000) / 10 : 0
+    const winner = diff > 0 ? 'A' as const : diff < 0 ? 'B' as const : 'tie' as const
+    return {
+      ...p,
+      diff,
+      winner,
+      conclusion: winner === 'A'
+        ? `${agentName(scAgentA.value)} 更强`
+        : winner === 'B'
+          ? `${agentName(scAgentB.value)} 更强`
+          : '持平',
+    }
+  }),
+)
 
 // ========== Chart 4：菲林经济模拟（队伍强度随菲林投入；主C固定，队友按金数换最优） ==========
 const simInitialGold = ref(6)
@@ -2669,4 +3000,49 @@ function ppTierLabel(tier: number): string {
 .pp-values {
   margin-top: 10px;
 }
+
+/* ========== Chart 7：同槽位角色对比 ========== */
+.sc-legend {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--fg-3);
+  margin-bottom: 4px;
+}
+.sc-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.sc-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.sc-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.sc-line-a {
+  stroke: var(--c-info);
+}
+.sc-line-b {
+  stroke: var(--c-warning);
+}
+.sc-table {
+  margin-top: 10px;
+}
+.sc-diff-a {
+  color: var(--c-info);
+  font-weight: 700;
+}
+.sc-diff-b {
+  color: var(--c-warning);
+  font-weight: 700;
+}
+
 </style>
