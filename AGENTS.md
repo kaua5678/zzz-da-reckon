@@ -7,7 +7,7 @@
 
 | 档 | 适用 | 必读 | 可跳过 |
 |---|---|---|---|
-| `fast` | 改 UI / 文案 / 单条测试 / 单文件小修 | 本文件 §1（含规则 15）+ 目标文件头注释 | docs 全套（涉及页面时扫一眼对应 .vue 与 AppHeader） |
+| `fast` | 改 UI / 文案 / 单条测试 / 单文件小修 | 本文件 §1（含规则 15/16）+ 目标文件头注释 | docs 全套（涉及页面时扫一眼对应 .vue 与 AppHeader） |
 | `full` | 录角色 / 补机制 / 改引擎 / 排查 buff 没生效 | 本文件 §1 + `docs/ARCHITECTURE.md` §3 + 对应管线文档 | `docs/mechanism-reference.md` 纯参考可不读 |
 | `loop` | 跨多文件重构 / 批量迁移 / 数据管道改动 | `full` 全部 + 本文件 §4 长任务账本 | — |
 
@@ -21,6 +21,7 @@
 | 命座提升率异常 / 写测试 / 录拐力 | `AGENT_RECORDING_SOP.md` §3.5 根因表 / §5 模板 / §6 |
 | 录新角色前做模式匹配 | `MECHANIC_PATTERNS.md` §2，只读命中的 1 个维度（D1–D9） |
 | 中文术语→字段不确定 | `GAME_TERM_TO_CODE_FIELD.md` 对应章节 |
+| **碰时间/账本/物化行/超时判定/留白** | `ENGINE_PIPELINE_GUIDE.md` §4 开头**「时间系统三本账」表** + 坑 19 **「否决记录」**（先查这行，别急着重新发明） |
 | **要断言「X 的专武/归属/属性是 Y」或查实体结构** | `ENTITY_CARDS.md`（实体卡）+ 先跑 `node scripts/resolve.mjs` 查证 |
 
 ### 录入角色 / 补机制：五步（仅此类任务）
@@ -50,6 +51,11 @@
 13. **共享工作区显式路径提交**：只 `git add <改动文件>`，把 `-A`/`--all` 当禁区（会卷走并行会话 WIP，历史事故 ×2）；`.claude/ledgers/`、`.zcode/` 已 gitignore 且 `check-guards` 拒绝其被跟踪——但**源码级 WIP 仍靠本条文字规则**（git 事后无法区分谁改的）；改共享文件后**写后即验**（`grep`/`git diff --stat` 确认落盘），不 `git checkout` 还原他人编辑中的文件。
 14. **生成产物与行尾由环境强制**：`public/static/*.json` 紧凑写、`catalog.json` 顶层键 == `Catalog` 字段由 `validate:data` 强制（红 → `npm run minify:static`）；行尾统一 LF 由 `.editorconfig`/`.gitattributes` 强制，python 改文本文件用 `newline=''` 防 CRLF 翻面 churn（历史事故 ×2）。
 15. **跨实体断言必须查证，派生数值必须问引擎**：凡要写「X 的专武/归属/属性/数值是 Y」（音擎↔角色、套装↔效果、id↔名字），先跑 `node scripts/resolve.mjs <类型> <名|id>`（`docs/ENTITY_CARDS.md` §0），输出引用一律用 `名字(id)` 绑定格式；歧义或未命中时工具 exit 1，**绝不凭名字联想静默选最像的**（游戏名词在训练分布里有强先验，名字联想断言能一路通过不报错——2026-08-30「心弦夜响→仪玄专武」事故 ×2 同日）。面板/暴击预算等**派生数值以引擎探针为权威**（`PROBE_AGENT=<id> npm run probe:panel`），禁止手工汇总 catalog JSON。
+
+16. **口径必须挂在活代码上，主体必须带限定词，否决必须留痕**（三件事都是防"文档骗 agent"）：
+    ① 写「X 是 Y」前先 `grep -rn "X(" src`——零调用点 = **死口径**，挂着「用户确认」的注释比没注释更危险（实测 `shortAxisFeiguangCount` 全仓零引用却标着「用户确认 4/10/5/12」，白绕一轮）。
+    ② `@fact` 主体带限定词：写 `1431/局外连接段` 而不是 `1431/连接段`——无限定词的主体会被按名字联想套用（实测把「局外连接段归平A池」读成「明心境连接段不建行」，并把错误归因直接发给了用户）。
+    ③ **试过又放弃的方案必须写进 `ENGINE_PIPELINE_GUIDE.md` §4 对应坑条目的「否决记录」**（一句话 + 实测数字）。最有价值的知识常常是"别这么改"，而它此前只活在代码注释里、docs 零命中（`=`/`max()` 折叠 → 溢出 186s 就是例子）。
 
 ## 2. 常见任务入口（完整决策树见 docs/ARCHITECTURE.md §3）
 

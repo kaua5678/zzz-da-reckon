@@ -171,6 +171,10 @@ export interface YeshuguangCycleResult {
 }
 
 /**
+ * **未接线**（2026-09-05 核对）：全仓零调用点，真实飞光一律走 `总观止 ÷ 6` 线性
+ * （见 computeYeshuguangCycle）。下面的 4/10/5/12 是历史口径，留着会误导（AGENTS 规则 16：
+ * 挂着「用户确认」的死口径比没注释更危险）——要么接线要么删除，别再当依据引用。
+ *
  * 短轴飞光次数（用户确认）：
  * short_pair：0–1 命 4 / 2 命+ 10
  * short_mie：0–1 命 5 / 2 命+ 12
@@ -267,7 +271,7 @@ export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangC
 }
 
 // @fact agent:1431/载物 未建模: 载物只是青溟剑势的溢出暂存，而总量计算器天然不做上限截断，溢出本就不丢 ⇒ 建模它没有任何数值意义，不补 | 据 用户@2026-09-01·复核@2026-09-04 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
-// @fact agent:1431/连接段 决: 明心境连接段（斩流光等）不建执行行——总量计算器按资源算招式而非按连段顺序，寻常手法打的是耗资源的高效率招式，剩余时间自然归非明心境的剑势/喧响积攒 | 据 用户@2026-09-01·复核@2026-09-04 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
+// @fact agent:1431/局外连接段 决: **局外**（非明心境）连接段不建执行行——它的占用时间就是平A池（basicAttackTime，按 atk0PerSec 攒青溟剑势）；明心境内的连接段（斩流光灭/极/扶摇）**照常建行**。总量计算器按资源算招式而非按连段顺序 | 据 用户@2026-09-01·复核@2026-09-05（主体加限定词：曾被读成"明心境连接段不建行"并输出错误归因） | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
 export function computeOutsideSwordGain(cfg: CharacterOperationConfig, state: {
   basicAttackTime?: number
   exSpecialCount?: number

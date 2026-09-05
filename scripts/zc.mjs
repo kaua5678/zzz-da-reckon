@@ -421,6 +421,59 @@ export function driftQueue(root = ROOT) {
 
 // ═════════════════════════════════════════════════════════ L3 动作层（润滑设施）
 
+/**
+ * 死口径扫描（AGENTS 规则 16）：`src/mechanics/agents/*.ts` 里**导出的函数**，紧邻注释块声称
+ * 口径（含「用户确认 / 已确认 / 口径」），但除自身定义文件外**全仓零引用**。
+ *
+ * 为什么要机器看：挂着「用户确认」的死口径会骗到下一个 agent，并让它把错误归因直接发给用户
+ * （实测 `shortAxisFeiguangCount` 标着「用户确认 4/10/5/12」而全仓零调用，白绕一轮排查）。
+ * 只报不红——`zc status` 是 agent 体检面，不是 CI 判据（红了会逼人给函数瞎加引用骗扫描器）。
+ * 已标「未接线 / 待接线 / 已废弃」的豁免：那是诚实处置，不是待修的谎。
+ */
+export function scanDeadClaims(root = ROOT) {
+  const dir = join(root, 'src', 'mechanics', 'agents')
+  if (!existsSync(dir)) return []
+  const texts = new Map()
+  const collect = (d) => {
+    if (!existsSync(d)) return
+    for (const n of readdirSync(d)) {
+      const p = join(d, n)
+      if (statSync(p).isDirectory()) { if (n !== 'node_modules' && n !== 'dist') collect(p) }
+      else if (/\.(ts|mjs)$/.test(n)) texts.set(p, readFileSync(p, 'utf8'))
+    }
+  }
+  collect(join(root, 'src'))
+  collect(join(root, 'scripts'))
+  const CLAIM = /用户确认|已确认|口径/
+  const EXEMPT = /未接线|待接线|已废弃|deprecated/i
+  const hits = []
+  for (const [path, text] of texts) {
+    if (!path.startsWith(dir)) continue
+    const lines = text.split('\n')
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(/^export (?:async )?function (\w+)/)
+      if (!m) continue
+      const name = m[1]
+      let doc = ''
+      for (let j = i - 1; j >= Math.max(0, i - 12); j--) {
+        const l = lines[j].trim()
+        if (/^(\/\/|\/\*|\*|\*\/)/.test(l)) doc = l + ' ' + doc
+        else if (l === '') continue
+        else break
+      }
+      if (!CLAIM.test(doc) || EXEMPT.test(doc)) continue
+      const re = new RegExp(`\\b${name}\\b`)
+      let refs = 0
+      for (const [other, otherText] of texts) {
+        if (other === path) continue
+        if (re.test(otherText)) { refs = 1; break }
+      }
+      if (!refs) hits.push({ name, file: relative(root, path).split(sep).join('/') })
+    }
+  }
+  return hits
+}
+
 export function readLeases() {
   if (!existsSync(LEASES_FILE)) return []
   try { return JSON.parse(readFileSync(LEASES_FILE, 'utf8')) } catch { return [] }
@@ -536,6 +589,7 @@ async function verbStatus(root = ROOT) {
   }
   const authored = auditAuthoredFacts(root)
   const drift = driftQueue(root)
+  const deadClaims = scanDeadClaims(root)
   const journal = allJournal.slice(-3)
   const next = foreign.length > 0
     ? 'zc lanes  # 有 ' + foreign.length + ' 个文件疑似并行会话在改：先确认归属再动手（规则 13）'
@@ -543,6 +597,7 @@ async function verbStatus(root = ROOT) {
   return envelope('status', true, {
     branch, ahead: Number(ahead), changed: changed.length, changedPaths: paths, leases, foreignWip: foreign, debt, backlog, journal,
     facts: { authored: authored.scanned.length, broken: authored.violations.length, reviewQueue: drift.length },
+    deadClaims,
   }, next)
 }
 
@@ -724,6 +779,7 @@ function humanize(res) {
     lines.push('租约 ' + (d.leases?.length ?? 0) + ' 条' + (d.leases?.length ? '：' + d.leases.map(l => l.path + '←' + l.lane.slice(0, 12)).join(', ') : ''))
     if (d.foreignWip?.length) lines.push('⚠ 疑似并行会话在改（无租约 + 45 分钟内改过）：' + d.foreignWip.join(', '))
     if (d.debt) lines.push('债务 ' + d.debt.registered + ' 条已登记' + (d.debt.unregistered ? ' / ✗ ' + d.debt.unregistered + ' 条未登记' : ''))
+    if (d.deadClaims?.length) lines.push('⚠ 死口径（注释声称口径但全仓零引用，规则 16）：' + d.deadClaims.map(h => `${h.name}@${h.file}`).join(', '))
     if (d.facts) lines.push('手写事实 ' + d.facts.authored + ' 条' + (d.facts.broken ? ' / ✗ 断锚 ' + d.facts.broken : '') + (d.facts.reviewQueue ? ' / ⟳ 待复核 ' + d.facts.reviewQueue : ''))
     for (const b of d.backlog ?? []) lines.push('待办 ' + b.dim + '：已实现 ' + b.done + ' / 未描述 ' + b.undescribed + ' / 待办条目 ' + b.pending)
     for (const j of d.journal ?? []) lines.push('最近验证 [' + (j.at ?? '').slice(0, 16) + '] ' + (j.verifier ?? j.kind) + ' → ' + (j.coverage ?? ''))
