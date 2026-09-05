@@ -63,35 +63,72 @@ async function measure(team: string[]): Promise<RatchetEntry> {
   }
 }
 
-describe('时间留白棘轮（存量冻结、只拦变差）', () => {
+/**
+ * 拆成两条，因为它们的**失效语义完全不同**（混在一条里会诱导出错误处置）：
+ * - `绝对不变量`：不需要基线、任何时候都该成立，**永不因重生成基线而失效**。
+ * - `相对棘轮`：与基线比，会因**别人的**数据/面板改动而红（实测：并行会话改驱动盘 catalog
+ *   → 猫又/琉音两队留白 0.8→2.3s）。这时最省事的"变绿"是重生成基线，而那会把别人的数值
+ *   漂移悄悄吸收进你的提交 —— 所以失败信息要求先做 A/B 归因，并提供显式跳过开关
+ *   （`SKIP_TIME_RATCHET=1`）：赶时间的人应该跳过它，而不是改基线。
+ */
+describe('时间系统不变量与留白棘轮', () => {
   const presets = teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3)
+  /** 绝对地板（秒）：当前最差单队留白 15.7s / 最大超预算 14.4s，各留一倍余量。
+   *  收紧它 = 承认真有改善，应与基线一起评审；放宽它需要理由。 */
+  const ABSOLUTE_SLACK_FLOOR = 30
+  const ABSOLUTE_OVER_FLOOR = 16
 
-  it('每队留白/超预算不超过基线；新预设必须显式认领', async () => {
-    const measured: Record<string, RatchetEntry> = {}
+  // 一次扫描喂两条断言（否则 125 队要跑两遍，全量时间翻倍）
+  let cache: Record<string, RatchetEntry> | null = null
+  async function measureAll() {
+    if (cache) return cache
+    const out: Record<string, RatchetEntry> = {}
+    for (const p of presets) out[p.id] = await measure(p.team)
+    cache = out
+    return out
+  }
+
+  it('绝对不变量：不发呆、不超预算、不掉进 0 失衡盆、外层不耗尽（无需基线）', async () => {
+    const bad: string[] = []
+    const m = await measureAll()
+    for (const p of presets) {
+      const e = m[p.id]
+      if (e.stun <= 0) bad.push(`${p.id} stunCount=${e.stun}（掉进 0 失衡吸引盆）`)
+      if (e.outerExit === 'maxIter') bad.push(`${p.id} outerExit=maxIter（外层不动点耗尽上限）`)
+      if (e.slack > ABSOLUTE_SLACK_FLOOR) bad.push(`${p.id} 留白 ${e.slack}s > 地板 ${ABSOLUTE_SLACK_FLOOR}s`)
+      if (e.over > ABSOLUTE_OVER_FLOOR) bad.push(`${p.id} 超预算 ${e.over}s > 地板 ${ABSOLUTE_OVER_FLOOR}s`)
+    }
+    expect(bad, `绝对不变量被破 —— 与基线无关，必须修，不能靠重生成基线绕过：\n${bad.join('\n')}`).toEqual([])
+  }, 600_000)
+
+  it.runIf(process.env.SKIP_TIME_RATCHET !== '1')(
+    '相对棘轮：每队留白/超预算不超过基线（存量冻结、只拦变差）', async () => {
+    const measured = await measureAll()
     const regressions: string[] = []
     const missing: string[] = []
-    const basins: string[] = []
     for (const p of presets) {
       const key = p.id
-      const m = await measure(p.team)
-      measured[key] = m
-      // 吸引盆护栏：失衡归零 / 外层耗尽迭代上限 = 收敛动力学被改坏（零例外，基线 124 队全过）
-      if (m.stun <= 0) basins.push(`${key} stunCount=${m.stun}（掉进 0 失衡吸引盆）`)
-      if (m.outerExit === 'maxIter') basins.push(`${key} outerExit=maxIter（外层不动点耗尽上限）`)
+      const e = measured[key]
       const b = baseline[key]
-      if (!b) { missing.push(`${key} 留白=${m.slack}s 超预算=${m.over}s`); continue }
-      if (m.slack > b.slack + TOLERANCE) regressions.push(`${key} 留白 ${b.slack}s → ${m.slack}s`)
-      if (m.over > b.over + TOLERANCE) regressions.push(`${key} 超预算 ${b.over}s → ${m.over}s`)
+      if (!b) { missing.push(`${key} 留白=${e.slack}s 超预算=${e.over}s`); continue }
+      if (e.slack > b.slack + TOLERANCE) regressions.push(`${key} 留白 ${b.slack}s → ${e.slack}s`)
+      if (e.over > b.over + TOLERANCE) regressions.push(`${key} 超预算 ${b.over}s → ${e.over}s`)
     }
     if (process.env.TIME_RATCHET_UPDATE === '1') {
-      const header = { _note: '时间留白棘轮基线（秒）。重生成：TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts', _tolerance: TOLERANCE }
+      const header = { _note: '时间留白棘轮基线（秒）。重生成：TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts —— 重生成前必须先 A/B 归因（见测试头注释）', _tolerance: TOLERANCE }
       const sorted = Object.fromEntries(Object.entries(measured).sort((a, b) => a[0].localeCompare(b[0])))
       writeFileSync(BASELINE_FILE, JSON.stringify({ ...header, ...sorted }, null, 1) + '\n', 'utf8')
-      console.log(`基线已重生成：${Object.keys(sorted).length} 队，留白合计 ${Object.values(measured).reduce((a, m) => a + m.slack, 0).toFixed(0)}s`)
+      console.log(`基线已重生成：${Object.keys(sorted).length} 队，留白合计 ${Object.values(measured).reduce((a, x) => a + x.slack, 0).toFixed(0)}s`)
       return
     }
-    expect(basins, `吸引盆护栏（改收敛动力学的改动必须先过这条）:\n${basins.join('\n')}`).toEqual([])
     expect(missing, `新预设缺基线条目（跑 TIME_RATCHET_UPDATE=1 认领）:\n${missing.join('\n')}`).toEqual([])
-    expect(regressions, `时间留白变差（若为有意改动，重生成基线并在提交说明里写清）:\n${regressions.join('\n')}`).toEqual([])
+    expect(regressions, [
+      '时间留白变差。**先归因，别急着重生成基线**：',
+      '  1) `git stash` 你的改动后重跑本文件 —— 仍红 = 不是你的改动（多半是别人的 catalog/',
+      '     面板数据改动，应交给那条改动去认领基线）；变绿 = 是你的改动。',
+      '  2) 确属你的有意改动才重生成，并在提交说明里写清每队 delta。',
+      '  3) 赶时间用 SKIP_TIME_RATCHET=1 跳过本条（绝对不变量那条仍会跑），**不要改基线**。',
+      ...regressions.map(r => '  · ' + r),
+    ].join('\n')).toEqual([])
   }, 600_000)
 })
