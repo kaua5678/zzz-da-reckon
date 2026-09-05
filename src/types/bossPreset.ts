@@ -92,6 +92,10 @@ export interface BossPreset {
   iconSource: string | null
   /** 是否危局强袭战异构 Boss */
   isCriticalAssault: boolean
+  /** 敌方体型（手动维护：scripts/import-nanoka-bosses.mjs BOSS_BODY_SIZES，2026-09-05 用户手录；
+   *  未录入时选中该 boss 默认中型（用户口径 2026-09-05）。TeamCompare 选中时自动写入敌方体型，
+   *  艾莲霜锋剑气/苍角风团等体型相关招式经 cfg.bodySize 消费） */
+  bodySize?: 'small' | 'medium' | 'large'
   /** 怪物本体固有属性（失衡倍率/失衡时间） */
   monster: BossPresetMonster
   /** 应用时加载的默认值（战斗时间/秽盾/能量盾） */

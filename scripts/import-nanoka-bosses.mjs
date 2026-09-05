@@ -25,6 +25,7 @@
  *                   元素抗性（%）：弱点 0 / 中性 20 / 抗性 40
  *       weakness / resistance  弱点/抗性元素中文标签
  *       goals     s/a/b 评分目标
+ *     bodySize    敌方体型 small/medium/large（手动维护，见 BOSS_BODY_SIZES；未录入时无此字段）
  *   }
  *
  * 抗性口径：以 element 字段（1=弱点 -1=抗性 0=中性）为主，
@@ -232,6 +233,38 @@ function bossDefaults(monsterId) {
   return { battleTime: 180, shieldCount: 0, energyShield: 0, ...(BOSS_DEFAULTS[monsterId] ?? {}) }
 }
 
+/**
+ * Boss 敌方体型（small/medium/large，手动维护）——影响体型相关招式倍率（艾莲霜锋剑气 / 苍角风团
+ * 小0/中3/大6 段）。2026-09-05 用户逐个手录；未录入的 boss 选中时默认中型（TeamComparePage）。
+ * TeamCompare 选中 boss 时自动写入敌方体型（TeamComparePage watcher），艾莲/苍角经 cfg.bodySize 消费。
+ */
+const BOSS_BODY_SIZES = {
+  '30007': 'large',  // 恶名·死路屠夫
+  '30009': 'large',  // 未知复合侵蚀体
+  '30021': 'large',  // 恶名·庞培
+  '30024': 'large',  // 牲鬼·布林格
+  '30033': 'large',  // 秽息司祭
+  '30034': 'small',  // 秽息妖鬼·名可名
+  '30038': 'medium', // 「亵渎者」
+  '30041': 'medium', // 彷徨猎手
+  '30042': 'small',  // 魇缚者·叶释渊
+  '30052': 'large',  // 熔狱行赭
+  '40000': 'small',  // 太初梦魇·「始主」
+  '40001': 'small',  // 叛律孤歌·薇斯珀
+  '40002': 'medium', // 猎血清道夫
+  '40003': 'large',  // 复写体·猎血清道夫
+  '40005': 'large',  // 焚昼余火·法厄同（异变能量体）
+  '40006': 'large',  // 基塔布鲁
+  '40008': 'large',  // 基塔布鲁·滞变畸兽
+  '40009': 'large',  // 异构·基塔布鲁
+  '40010': 'large',  // 库萨里库
+  '40011': 'large',  // 异构·焚昼余火
+  '300082': 'large', // 自律强袭单位·「提丰·破坏者型」
+  '300121': 'medium', // 恶名·冥宁芙
+}
+
+// @fact data:bossBodySize 口径: 22个TeamCompare可选boss的敌方体型为用户手录(2026-09-05)，覆盖表 BOSS_BODY_SIZES 随导入产物落 boss-presets.json 的 bodySize 字段；TeamCompare 选中 boss 自动写入敌方体型(未录 boss 默认中型)，艾莲霜锋剑气/苍角风团经 cfg.bodySize 消费 | 据 用户@2026-09-05 | 验 src/composables/__tests__/bossPresetsData.test.ts | 锚 scripts/import-nanoka-bosses.mjs#BOSS_BODY_SIZES | 信 确认
+
 /** version.json 未收录的 3.2 期数兜底（690451/690461/690471） */
 const VERSION_FALLBACK = /^6904[567]/
 
@@ -392,6 +425,8 @@ for (const [monsterId, catalogId] of Object.entries(CATALOG_MONSTER_MAP)) {
         : { stunVuln: 1.5, stunTime: 12, name: entry.name },
       /** 应用时随预设加载的默认值（手动维护，见 BOSS_DEFAULTS） */
       defaults: bossDefaults(monsterId),
+      /** 敌方体型（手动维护，见 BOSS_BODY_SIZES；未录入时缺省） */
+      ...(BOSS_BODY_SIZES[entry.id] ? { bodySize: BOSS_BODY_SIZES[entry.id] } : {}),
       phases: [],
     }
     presets.set(key, preset)

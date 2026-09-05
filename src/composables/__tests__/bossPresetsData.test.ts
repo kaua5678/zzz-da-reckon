@@ -52,3 +52,29 @@ describe('boss-presets 期视图数据不变量', () => {
     expect(caVersions.sort()).toEqual(['3.1', '3.2'])
   })
 })
+
+describe('boss 敌方体型（BOSS_BODY_SIZES 手录 2026-09-05，TeamCompare 选中时写入敌方配置）', () => {
+  const LEGAL = ['small', 'medium', 'large'] as const
+
+  it('全部 22 个预设都有合法 bodySize（新增 boss 未录体型即红，逼显式认领）', () => {
+    for (const b of presets.bosses) {
+      expect(LEGAL, `${b.id} ${b.name} bodySize 合法`).toContain(b.bodySize)
+    }
+    expect(presets.bosses.length).toBe(22)
+  })
+
+  it('抽检用户手录值（小型：名可名/叶释渊/始主/薇斯珀；中型：亵渎者/彷徨猎手/血清道夫/冥宁芙）', () => {
+    const sizeOf = (id: string) => presets.bosses.find(b => b.id === id)?.bodySize
+    expect(sizeOf('30034')).toBe('small') // 秽息妖鬼·名可名
+    expect(sizeOf('30042')).toBe('small') // 魇缚者·叶释渊
+    expect(sizeOf('40000')).toBe('small') // 太初梦魇·「始主」
+    expect(sizeOf('40001')).toBe('small') // 叛律孤歌·薇斯珀
+    expect(sizeOf('30038')).toBe('medium') // 「亵渎者」
+    expect(sizeOf('30041')).toBe('medium') // 彷徨猎手
+    expect(sizeOf('40002')).toBe('medium') // 猎血清道夫
+    expect(sizeOf('300121')).toBe('medium') // 恶名·冥宁芙
+    expect(sizeOf('30007')).toBe('large') // 恶名·死路屠夫
+    expect(sizeOf('40006')).toBe('large') // 基塔布鲁
+    expect(sizeOf('300082')).toBe('large') // 提丰·破坏者型
+  })
+})
