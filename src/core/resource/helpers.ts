@@ -1336,21 +1336,33 @@ export function iterate(
   // 各槽「想打」的必要前台（estimate + 折叠残差，扣掉合轴抵扣后的净占用）总和超过预算时，
   // 按**同一比例**压到装得下——不是逐槽拿队友的未封顶需求去算余量（那样两个厚槽会互相压成 0，
   // 实测把叶瞬光/琉音/诺姆队的失衡行全缩成 0 直接让 calcOutput 返回 null）。
-  // 被压掉的部分不折进账本挤平A池，而是在装配阶段按各自的账本截断执行计划
-  // （truncateExecutionsToFrontline；实战 180s 到点结算，不管这套连段打没打完）。
+  // 被压掉的部分**不再折进账本挤平A池**：账本按可行比例封顶（cappedNecessary），
+  // 装配阶段再把超出账本的执行行按时间线截断（truncateExecutionsToFrontline）。
   // 旧行为：超出量一路折进 necessaryTime → 账本虚高 → 平A池被挤成 0 → 物化行反而打不满
   // （实测朱鸢队留白 93.7s、叶瞬光队 18~58s），虚高账本还会误触发模块的结构退化。
   const netNecessary = totalNecessary.map((n, i) => Math.max(0, n - (comboAlignCredits[i] ?? 0)))
   const sumNetNecessary = netNecessary.reduce((a, b) => a + b, 0)
-  const feasibleScale = sumNetNecessary > budget && sumNetNecessary > 0
+  // **轴模式不封顶**（`axisUltimateTrackBySlot` 只在 axisActive 时注入 = 轴态信号）：轴是用户
+  // 指定的打法，超预算的正确处置是「轴退化/降配」显式报"这套轴在 180s 里不可操作"并弃轴重算，
+  // 不能被静默截断（实测吞掉后 banyue.test「轴退化」判据不再触发）。非轴模式 = 自由循环，
+  // 超预算就是"到点结算"，该截断 + 回灌平A。
+  const axisMode = !!globalCfg.axisUltimateTrackBySlot
+  const rawScale = !axisMode && sumNetNecessary > budget && sumNetNecessary > 0
     ? budget / sumNetNecessary
     : 1
-  // 可行比例：>1 说明全队想打的必要动作装得下；<1 说明装不下，装配阶段按它截断执行计划。
-  // 注意**不回灌平A池**（早期版本用 capped necessary 参与池分配，改了收敛动力学，
-  // 实测破 seedInvariance——星徽·比利队落点随种子在 23/24 次之间跳）。
+  const feasibleScale = rawScale
+  // debt: 全局实数化收敛重构——本封顶让未实数化整数队的落点可随初值差 ±1 次强特（实测
+  //       琉音 24/23），落点判据因此从逐位相等退到「游戏等价」档（seedInvariance.test.ts 第二档）；
+  //       升级路径 = 次数实数化后把该档升回逐位。
+  // 封顶后的必要前台：净占用按可行比例缩回预算（合轴抵扣部分原样保留，它不占预算）。
+  // 这个 capped 值**同时**用于平A池计算与 state.necessaryTime ⇒ 省下来的必要时间变成队友
+  // 能打的平A填充，而不是"账本说满了、动作没打满"的假满（实测：不回灌留白 393s，回灌 275s）。
+  const cappedNecessary = netNecessary.map((x, i) =>
+    x * feasibleScale + (comboAlignCredits[i] ?? 0))
+  const sumNecessaryCapped = cappedNecessary.reduce((a, b) => a + b, 0)
   globalCfg.timeFeasibleScale = feasibleScale
   globalCfg.overflowSeconds = Math.max(0, sumNecessary - reliefSeconds - budget)
-  const availableBasicTime = Math.max(0, budget - sumNecessary + reliefSeconds
+  const availableBasicTime = Math.max(0, budget - sumNecessaryCapped + reliefSeconds
     + (globalCfg.timeBudgetRefund ?? 0))
 
   // 按权重分配平A时间
@@ -1391,7 +1403,7 @@ export function iterate(
       ? trackedUltimate2
       : Math.floor(decibels[i] / cfg.ultimateCost)
 
-    const necessary = totalNecessary[i]
+    const necessary = cappedNecessary[i]
     // 单角色前台硬顶：合轴抵扣放宽的是团队预算，单个角色自身时间轴仍受战斗总时长约束
     // （前台 = 必要 + 平A ≤ totalTime）。水填结果即该槽平A时间——贴顶截断的份额已在
     // 上面的轮次按剩余权重回流给还有余量的队友（不蒸发）。

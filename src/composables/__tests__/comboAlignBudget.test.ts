@@ -55,6 +55,9 @@ const sumBasics = (states: IterationState[]) =>
   states.reduce((a, s) => a + s.basicAttackTime, 0)
 const sumNecessary = (states: IterationState[]) =>
   states.reduce((a, s) => a + s.necessaryTime, 0)
+/** 净占用（扣合轴抵扣）——可行性封顶约束的是这个量，毛值允许 >180 */
+const sumNecessaryNet = (states: IterationState[]) =>
+  states.reduce((a, s) => a + Math.max(0, s.necessaryTime - (s.comboAlignCredit ?? 0)), 0)
 
 describe('合轴率抵扣团队时间预算', () => {
   it('Σnecessary>180 可行：合轴抵扣后净占用装得下 → 平A池扩大、overflow 归零', async () => {
@@ -67,15 +70,19 @@ describe('合轴率抵扣团队时间预算', () => {
 
     const cold = deepCopy(cfg)
     const s0 = iterate(cold.characters, zeroStates(cold), cold)
-    // 无合轴抵扣：必做超预算 → 池挤光 + overflow 记全额超出
-    expect(sumNecessary(s0)).toBeGreaterThan(cold.totalTime)
+    // 无合轴抵扣：想打的必做动作超预算 ⇒ **账本被可行性封顶到预算**（2026-09-05 新口径，
+    // 不再虚高到 180 以上），池被挤光，压力记在 overflowSeconds（= 想打却装不下的量）。
+    // 封顶的是**净占用**（合轴抵扣不占预算，原样保留），所以毛值可以 >180
+    expect(sumNecessaryNet(s0)).toBeLessThanOrEqual(cold.totalTime + 1e-6)
+    expect(sumNecessaryNet(s0)).toBeGreaterThan(cold.totalTime - 1)
     expect(sumBasics(s0)).toBeCloseTo(0, 6)
     expect(cold.overflowSeconds).toBeGreaterThan(0)
 
     const warm = deepCopy(cfg)
     for (const c of warm.characters) c.chainComboAlignRatio = 1
     const s1 = iterate(warm.characters, zeroStates(warm), warm)
-    // 全额合轴抵扣：Σnecessary 仍 >180（账本不缩），但净占用装得下 → 池打开、overflow 归零
+    // 全额合轴抵扣：合轴段不占预算 ⇒ 封顶后 Σnecessary 仍 >180（净占用压到预算 + 抵扣保留），
+    // 池因此打开、overflow 归零——这正是合轴放宽的意义，封顶不吞它
     expect(sumNecessary(s1)).toBeGreaterThan(warm.totalTime)
     expect(sumBasics(s1)).toBeGreaterThan(sumBasics(s0) + 10)
     expect(warm.overflowSeconds).toBe(0)
@@ -222,10 +229,12 @@ describe('端到端（折叠循环 + 超时判定同口径）', () => {
 
     const base = deepCopy(cfg)
     const rr0 = calcTeamResources(base)
-    // 超时压力口径（2026-09-05）：overflowSeconds = **被时间线截断掉的秒数**，不是账本超预算量。
-    // 无合轴抵扣时虚高账本先把平A池挤成 0，物化行反而没超 ⇒ 这里断言真实压力源（账本净占用）。
-    expect(rr0.characters.reduce((a, c) => a + c.timeAllocation.necessaryTime, 0))
-      .toBeGreaterThan(rr0.totalTime)
+    // 无合轴抵扣：账本被可行性封顶到预算（不再虚高），平A池被挤光 ⇒ 压力体现在 overflowSeconds
+    // （= 想打却装不下、被截断的秒数），而不是"账本 > 180"这种虚高可观测。
+    const necNet0 = rr0.characters.reduce(
+      (a, c) => a + Math.max(0, c.timeAllocation.necessaryTime - (c.timeAllocation.comboAlignCredit ?? 0)), 0)
+    expect(necNet0).toBeLessThanOrEqual(rr0.totalTime + 1e-6)
+    expect(rr0.overflowSeconds ?? 0).toBeGreaterThan(0)
     expect(rr0.characters.reduce((a, c) => a + c.timeAllocation.basicAttackTime, 0))
       .toBeLessThan(1e-6)
 

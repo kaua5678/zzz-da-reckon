@@ -254,35 +254,35 @@
   "over": 0
  },
  "auto-1431-1341-1031": {
-  "slack": 18,
+  "slack": 5.6,
   "over": 0
  },
  "auto-1431-1341-1311": {
-  "slack": 25.2,
+  "slack": 17.7,
   "over": 0
  },
  "auto-1431-1341-1491": {
-  "slack": 10.4,
+  "slack": 5.7,
   "over": 0
  },
  "auto-1431-1481-1311": {
   "slack": 0,
-  "over": 1.5
+  "over": 0.2
  },
  "auto-1431-1481-1341": {
-  "slack": 1.1,
+  "slack": 0.5,
   "over": 0
  },
  "auto-1431-1481-1491": {
-  "slack": 2.3,
-  "over": 0
+  "slack": 0,
+  "over": 1.9
  },
  "auto-1431-1491-1311": {
-  "slack": 21.1,
+  "slack": 11.7,
   "over": 0
  },
  "auto-1431-1491-1341": {
-  "slack": 10.4,
+  "slack": 5.7,
   "over": 0
  },
  "auto-1461-1311-1521": {
@@ -307,7 +307,7 @@
  },
  "auto-1471-1571-1451": {
   "slack": 0,
-  "over": 51.6
+  "over": 13.2
  },
  "auto-1501-1511-1311": {
   "slack": 0,
@@ -342,7 +342,7 @@
   "over": 0
  },
  "auto-1531-1451-1481": {
-  "slack": 27.2,
+  "slack": 9.8,
   "over": 0
  },
  "auto-1531-1481-1451": {
@@ -350,7 +350,7 @@
   "over": 0
  },
  "auto-1531-1571-1451": {
-  "slack": 2.2,
+  "slack": 0.8,
   "over": 0
  },
  "auto-1541-1331-1581": {
@@ -398,8 +398,8 @@
   "over": 0
  },
  "banyue-jufufu-lucia": {
-  "slack": 0,
-  "over": 0.2
+  "slack": 1.4,
+  "over": 0
  },
  "banyue-liuyin-lucia__normal": {
   "slack": 0,
@@ -411,22 +411,22 @@
  },
  "banyue-norma-lucia": {
   "slack": 0,
-  "over": 51.6
+  "over": 13.2
  },
  "banyue-qingyi-lucia": {
-  "slack": 0,
-  "over": 0.2
+  "slack": 1.5,
+  "over": 0
  },
  "banyue-roxy-lucia": {
-  "slack": 0,
+  "slack": 1.5,
   "over": 0
  },
  "banyue-trigger-lucia": {
-  "slack": 0,
+  "slack": 1.2,
   "over": 0
  },
  "billy-jufufu-lucia": {
-  "slack": 2.5,
+  "slack": 9.9,
   "over": 0
  },
  "billy-liuyin-lucia": {
@@ -434,19 +434,19 @@
   "over": 0
  },
  "billy-norma-lucia": {
-  "slack": 2.2,
+  "slack": 0.8,
   "over": 0
  },
  "billy-qingyi-lucia": {
-  "slack": 12.5,
+  "slack": 15.7,
   "over": 0
  },
  "billy-roxy-lucia": {
-  "slack": 1.8,
+  "slack": 9.9,
   "over": 0
  },
  "billy-trigger-lucia": {
-  "slack": 42.4,
+  "slack": 7.8,
   "over": 0
  },
  "yidhari-jufufu-lucia": {

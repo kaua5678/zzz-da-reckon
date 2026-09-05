@@ -77,6 +77,8 @@ export interface QianxiaGazeCycle {
   anomalyTriggerRatio: number
   /** 磨爪器总获取（帷幕/异常/每10s/大招） */
   scratcherTotal: number
+  /** 本轮**实际消费**的全队帷幕数（收敛线程注入值）：磨爪器按它算，测试/UI 据此核对滞后 */
+  teamVeilCount: number
   /** 泡泡后场自动攻击次数（消耗磨爪器） */
   bubbleAttackCount: number
   attackMultiplier: number
@@ -124,6 +126,7 @@ export function computeQianxiaGazeCycle(input: {
     attackTriggerRatio,
     anomalyTriggerRatio,
     scratcherTotal,
+    teamVeilCount: input.teamVeilCount,
     bubbleAttackCount,
     attackMultiplier: QIANXIA_GAZE_ATTACK_MULTIPLIER + (cinemaLevel >= 2 ? QIANXIA_C2_GAZE_ATTACK_BONUS : 0),
     anomalyMultiplier: QIANXIA_GAZE_ANOMALY_MULTIPLIER + (cinemaLevel >= 2 ? QIANXIA_C2_GAZE_ANOMALY_BONUS : 0),
