@@ -8,6 +8,13 @@ import {
   applySoukakuTeamEnergyFlags,
   assignSoukakuUltNeighborEnergy,
   SOUKAKU_C6_DMG_BONUS,
+  SOUKAKU_CHOP_SLAM_ACTION_TIME,
+  SOUKAKU_FAN_ACTION_TIME,
+  SOUKAKU_FROST_BASIC3_ACTION_TIME,
+  SOUKAKU_FROST_DASH_ACTION_TIME,
+  SOUKAKU_SLAM_ACTION_TIME,
+  SOUKAKU_SWING_ENERGY,
+  SOUKAKU_WIND_BALL_ACTION_TIME,
   soukakuMechanic,
 } from '@/mechanics/agents/soukaku'
 
@@ -78,6 +85,96 @@ describe('苍角纯函数', () => {
     const cfg0: any = { initialEnergyGift: 40, 'setting:soukaku.c2RefundCount': 5 }
     soukakuMechanic.buildCharConfig!({ cinemaLevel: 1, cfg: cfg0 } as any)
     expect(cfg0.initialEnergyGift).toBeCloseTo(40)
+  })
+
+  it('强特能量成本 = 30能量×击数：默认2击=60；1击=30（自我能量循环供给侧）', () => {
+    const cfg2: any = {}
+    soukakuMechanic.buildCharConfig!({ cinemaLevel: 0, cfg: cfg2 } as any)
+    expect(cfg2.exSpecialEnergyConsume).toBe(SOUKAKU_SWING_ENERGY * 2)
+
+    const cfg1: any = { 'setting:soukaku.exPressCount': 1 }
+    soukakuMechanic.buildCharConfig!({ cinemaLevel: 0, cfg: cfg1 } as any)
+    expect(cfg1.exSpecialEnergyConsume).toBe(SOUKAKU_SWING_ENERGY)
+  })
+})
+
+describe('强特自循环：扇风（扇子+风团体型段数）+ 下砸 + 霜染冲刺/合轴#3', () => {
+  const run = ({ exCount = 3, swings, chop, bodySize }: { exCount?: number; swings?: number; chop?: number; bodySize?: string }) => {
+    const cfg: any = {}
+    if (swings !== undefined) cfg['setting:soukaku.exPressCount'] = swings
+    if (chop !== undefined) cfg['setting:soukaku.chopSlam'] = chop
+    if (bodySize !== undefined) cfg.bodySize = bodySize
+    const executions: any[] = []
+    soukakuMechanic.buildExecutions!({ cfg, state: { exSpecialCount: exCount }, executions } as any)
+    return executions
+  }
+  const rowOf = (executions: any[], moveId: string) => executions.filter(r => r.moveId === moveId)
+
+  it('默认口径（2击/劈斩关/大体型）：第2击扇子 + 风团12段 + 下砸(集合啦#1) + 霜染冲刺 + 全合轴#3 各×强特次数', () => {
+    const rows = run({ exCount: 3, bodySize: 'large' })
+    const fan2 = rowOf(rows, '1131011')
+    expect(fan2).toHaveLength(1) // 首击扇子由通用强特行发行，模块只补第2击
+    expect(fan2[0].count).toBe(3)
+    expect(fan2[0].actionTime).toBe(SOUKAKU_FAN_ACTION_TIME)
+    const balls = rowOf(rows, '1131010')
+    expect(balls[0].count).toBe(3 * 2 * 6)
+    expect(balls[0].totalTime).toBeCloseTo(3 * 2 * SOUKAKU_WIND_BALL_ACTION_TIME) // 体型段数不额外耗时
+    const slam = rowOf(rows, '1131012')
+    expect(slam).toHaveLength(1)
+    expect(slam[0].count).toBe(3)
+    expect(slam[0].actionTime).toBe(SOUKAKU_SLAM_ACTION_TIME)
+    const dash = rowOf(rows, '1131016')
+    expect(dash[0].count).toBe(3)
+    expect(dash[0].actionTime).toBe(SOUKAKU_FROST_DASH_ACTION_TIME)
+    const basic3 = rowOf(rows, '1131006')
+    expect(basic3[0].count).toBe(3)
+    expect(basic3[0].actionTime).toBe(SOUKAKU_FROST_BASIC3_ACTION_TIME)
+    expect(basic3[0].comboAlignRatio).toBe(1) // 全合轴
+    expect(basic3[0].totalComboAlignTime).toBeCloseTo(3 * SOUKAKU_FROST_BASIC3_ACTION_TIME)
+  })
+
+  it('劈斩开：下砸换成快速展旗·集合啦#2（更快），不再发行集合啦#1', () => {
+    const rows = run({ exCount: 3, chop: 1, bodySize: 'large' })
+    expect(rowOf(rows, '1131012')).toHaveLength(0)
+    const chopSlam = rowOf(rows, '1131013')
+    expect(chopSlam).toHaveLength(1)
+    expect(chopSlam[0].actionTime).toBe(SOUKAKU_CHOP_SLAM_ACTION_TIME)
+    expect(chopSlam[0].actionTime).toBeLessThan(SOUKAKU_SLAM_ACTION_TIME)
+  })
+
+  it('风团按敌方体型：小0（风团行不发，其余轮次招式照发）/中3/大6（同艾莲剑气）', () => {
+    const small = run({ bodySize: 'small' })
+    expect(rowOf(small, '1131010')).toHaveLength(0)
+    expect(rowOf(small, '1131012')).toHaveLength(1)
+    expect(rowOf(small, '1131016')).toHaveLength(1)
+    expect(rowOf(small, '1131006')).toHaveLength(1)
+    expect(rowOf(run({ bodySize: 'medium' }), '1131010')[0].count).toBe(3 * 2 * 3)
+    expect(rowOf(run({ bodySize: 'large' }), '1131010')[0].count).toBe(3 * 2 * 6)
+  })
+
+  it('击数滑块：1击=不发第2击扇子、风团减半；能量账本恒 0（耗能走主强特 30×击数）', () => {
+    const rows = run({ swings: 1, bodySize: 'large' })
+    expect(rowOf(rows, '1131011')).toHaveLength(0)
+    expect(rowOf(rows, '1131010')[0].count).toBe(3 * 1 * 6)
+    for (const row of [...rowOf(rows, '1131011'), ...rowOf(rows, '1131010')]) {
+      expect(row.totalEnergyConsume).toBe(0)
+      expect(row.totalDecibelRecovery).toBe(0)
+    }
+  })
+
+  it('下砸/霜染冲刺/合轴#3 的回能喧响走倍率表回填（非 0 占位，0=显式禁用引擎口径）', () => {
+    const rows = run({ bodySize: 'large' })
+    const slam = rowOf(rows, '1131012')[0]
+    expect(slam.decibelRecovery).toBe(1) // → enrich 回填集合啦#1 表值 68.7775
+    expect(slam.energyRecovery).toBe(0) // 集合啦#1 表值本身为 0
+    for (const row of [rowOf(rows, '1131016')[0], rowOf(rows, '1131006')[0]]) {
+      expect(row.decibelRecovery).toBe(1) // → 回填表值喧响
+      expect(row.energyRecovery).toBe(1) // → 回填表值回能（自我能量循环供给侧）
+    }
+  })
+
+  it('强特次数为0时不发任何自循环行', () => {
+    expect(run({ exCount: 0, bodySize: 'large' })).toHaveLength(0)
   })
 })
 
