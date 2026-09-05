@@ -214,7 +214,7 @@ const catalogById = new Map(catalog.bosses.map(b => [b.id, b]))
  */
 const BOSS_DEFAULTS = {
   '30009': { battleTime: 180, shieldCount: 0, energyShield: 0, decibelGift: { slot: 1, amount: 6000 } }, // 未知复合侵蚀体（送 6000 喧响给 1 号位）
-  '30021': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 7 },        // 恶名·庞培（无敌 7s）
+  '30021': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 7, parryTotal: 8 }, // 恶名·庞培（无敌 7s / 正常弹刀 8——据归档 72db6dc3 实战低金仪玄琉音卢西娅 179s 弹刀 8 达 4 失衡）
   '30033': { battleTime: 180, shieldCount: 1, energyShield: 0, invincibleTime: 4, parryNoFollowUpTotal: 15 }, // 秽息司祭（无敌 4s / 秽盾 1 / 无突击弹刀 15）
   '30034': { battleTime: 180, shieldCount: 1, energyShield: 0, invincibleTime: 28 },       // 秽息妖鬼·名可名（无敌 28s / 秽盾 1）
   '30038': { battleTime: 180, shieldCount: 1, energyShield: 0, invincibleTime: 29, parryNoFollowUpTotal: 2, parryDecibelOnlyTotal: 4, stunGiftRatio: 0.3 }, // 「亵渎者」（无敌 29s / 秽盾 1 / 无突击弹刀 2 / 只喧响弹刀 4 / 白送 30% 失衡上限）

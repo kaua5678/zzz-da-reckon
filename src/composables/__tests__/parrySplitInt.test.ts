@@ -131,7 +131,7 @@ describe('Boss 预设弹刀反推（叶释渊）', () => {
     expect(split!.mainDpsParry).toBe(8)
   })
 
-  it('队伍无击破位（stun 特性）→ 不反推', async () => {
+  it('队伍无击破位（stun 特性）→ 回落主C（槽位 0）承担弹刀（2026-09-07，归档 72db6dc3 口径）', async () => {
     const { config } = await setupHarness([
       { agentId: '1081', parryCount: 0 },
       { agentId: '1451', parryCount: 0 },
@@ -141,7 +141,14 @@ describe('Boss 预设弹刀反推（叶释渊）', () => {
     config.applyBossPreset({ id: preset.id }, phase as never, monster as never, defaults as never)
 
     const calc = useResourceCalc()
-    expect(calc.parrySplitResult.value).toBeNull()
+    // 无击破位不再熄火：拆分回落槽位 0（主C）。本队裸失衡已足 4 次 → 反推 T=0（正确：
+    // 不需要弹刀就不补）；拆分对象本身必须存在且字段自洽。
+    const split = calc.parrySplitResult.value
+    expect(split).not.toBeNull()
+    expect(split!.breakerSlot).toBe(0)
+    expect(split!.breakerParry).toBeGreaterThanOrEqual(0)
+    expect(split!.breakerParry).toBeLessThanOrEqual(split!.parryTotal)
+    expect(split!.mainDpsParry).toBeLessThanOrEqual(split!.parryTotal)
   })
 })
 

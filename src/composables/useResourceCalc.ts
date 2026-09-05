@@ -588,7 +588,12 @@ export function useResourceCalc() {
     const parryDecibelOnlyTotal = configStore.appliedBoss?.parryDecibelOnlyTotal ?? 0
     const guaranteeStun = configStore.getMechanicSetting('guarantee.stun', 0) !== 0
     const breakerSlot = configStore.team.findIndex(c => c?.agentId && catalogStore.getAgent(c.agentId)?.specialty === 'stun')
-    const parrySplitActive = (parryTotal + parryNoFollowUpTotal + parryDecibelOnlyTotal) > 0 && guaranteeStun && breakerSlot >= 0
+    // 无击破位队伍（如 仪玄/琉音/卢西娅：强攻/强攻/支援）：实战弹刀全由主C（槽位 0）承担
+    // （归档 72db6dc3 弹刀 8 即此口径）——保底4失衡反推照常，但「剩余给主C」没有第二个角色可分，
+    // 有效次数 = max(输入, 反推 T) 封顶 parryTotal（同位语义，2026-09-07）。
+    const noBreakerFallback = breakerSlot < 0
+    const effectiveBreakerSlot = breakerSlot >= 0 ? breakerSlot : 0
+    const parrySplitActive = (parryTotal + parryNoFollowUpTotal + parryDecibelOnlyTotal) > 0 && guaranteeStun && (breakerSlot >= 0 || configStore.team.length > 0)
     const mainDpsSlot = breakerSlot === 0 ? -1 : 0
     // 保底开关（配装页「保底目标」勾选）：保底4嗔火 → 抬双反补嗔火；保底4喧响 → 抬弹刀补喧响。
     // 轴模式自动补齐（axisActive）之外，保底开关也可独立驱动（非轴亦生效）。
@@ -745,10 +750,13 @@ export function useResourceCalc() {
       // 供本轮失衡池读出每次弹刀失衡值，后续轮按真实拆分注入、不强制）
       if (parrySplitActive) {
         const prevSplit = prevParrySplit
-        if (cfg.slot === breakerSlot) {
-          const breakerInput = configStore.team[breakerSlot]?.parryCount ?? 0
+        if (cfg.slot === effectiveBreakerSlot) {
+          const breakerInput = configStore.team[effectiveBreakerSlot]?.parryCount ?? 0
           if (prevSplit === null) {
             merged.parryCount = Math.max(1, breakerInput)
+          } else if (noBreakerFallback) {
+            // 无击破位：主C 承担弹刀 = max(输入, 反推 T)——不拿 parryTotal 剩余（没有第二个角色分）
+            merged.parryCount = Math.max(0, breakerInput + prevSplit.topUp)
           } else if (mainDpsSlot < 0) {
             // 击破位=主C（同位）：剩余并入同位 = 反推 + 剩余（输入未填时合计 = parryTotal）
             merged.parryCount = breakerInput > 0
@@ -760,18 +768,18 @@ export function useResourceCalc() {
           // 不带支援突击弹刀 + 只给喧响弹刀全部归击破位（boss 强制、非用户可调）
           merged.parryNoFollowUpCount = parryNoFollowUpTotal
           merged.parryDecibelOnlyCount = parryDecibelOnlyTotal
-        } else if (cfg.slot === mainDpsSlot) {
-          merged.parryCount = prevSplit?.mainDpsParry ?? Math.max(0, parryTotal - (configStore.team[breakerSlot]?.parryCount ?? 0))
+        } else if (cfg.slot === mainDpsSlot && !noBreakerFallback) {
+          merged.parryCount = prevSplit?.mainDpsParry ?? Math.max(0, parryTotal - (configStore.team[effectiveBreakerSlot]?.parryCount ?? 0))
         }
       }
       // x弹刀（2026-09-02 用户口径，仅基塔布鲁 1 次）：两人同时招架同一攻击——
       // 支援突击/喧响/失衡都算两人的（双方 parryCount 各 +xParryTotal），
       // 前台时间只计一份：非主弹窗位（主C 槽）的 x 次弹刀行时间豁免（cfg.parryTimeFreeCount）。
       const xParryTotal = configStore.appliedBoss?.xParryTotal ?? 0
-      if (xParryTotal > 0 && parrySplitActive && breakerSlot >= 0) {
-        if (cfg.slot === breakerSlot) {
+      if (xParryTotal > 0 && parrySplitActive && (breakerSlot >= 0 || noBreakerFallback)) {
+        if (cfg.slot === effectiveBreakerSlot) {
           merged.parryCount = (merged.parryCount ?? 0) + xParryTotal
-        } else if (cfg.slot === mainDpsSlot && mainDpsSlot >= 0 && mainDpsSlot !== breakerSlot) {
+        } else if (!noBreakerFallback && cfg.slot === mainDpsSlot && mainDpsSlot >= 0 && mainDpsSlot !== breakerSlot) {
           merged.parryCount = (merged.parryCount ?? 0) + xParryTotal
           merged.parryTimeFreeCount = (merged.parryTimeFreeCount ?? 0) + xParryTotal
         }
@@ -1261,11 +1269,11 @@ export function useResourceCalc() {
     // 正常弹刀每次失衡 = 轻弹刀 + 支援突击；不带支援突击弹刀每次失衡 = 仅轻弹刀。无行 = 无招架失衡来源，不反推。
     let parrySplitNext = prevParrySplit ?? { breakerParry: 0, mainDpsParry: 0, breakerNoFollowUp: 0, mainDpsNoFollowUp: 0, topUp: 0, reached: false, perParryDaze: 0, perNoFollowUpDaze: 0 }
     if (parrySplitActive && sp1.pool) {
-      const breakerCfg = base.characters.find(c => c.slot === breakerSlot)
+      const breakerCfg = base.characters.find(c => c.slot === effectiveBreakerSlot)
       const breakerDefMoveId = breakerCfg?.defensiveAssistMoveId ?? ''
       const breakerFollowUpMoveId = breakerCfg?.assistFollowUpMoveId ?? ''
-      const defRow = sp1.pool.contributions.find(c => c.slot === breakerSlot && c.moveId === breakerDefMoveId)
-      const fuRow = sp1.pool.contributions.find(c => c.slot === breakerSlot && c.moveId === breakerFollowUpMoveId)
+      const defRow = sp1.pool.contributions.find(c => c.slot === effectiveBreakerSlot && c.moveId === breakerDefMoveId)
+      const fuRow = sp1.pool.contributions.find(c => c.slot === effectiveBreakerSlot && c.moveId === breakerFollowUpMoveId)
       // 每次弹刀失衡值：本轮有击破位弹刀行则实测；否则沿用上一轮实测值（击破位 0 弹刀时无行，
       // 但失衡值/面板不变，沿用即可，防「反推归零 → 无行 → 无法再反推」卡死）
       const hasRows = defRow && defRow.count > 0
@@ -1286,8 +1294,10 @@ export function useResourceCalc() {
           perNoFollowUpDaze,
           parryTotal,
           parryNoFollowUpTotal,
-          breakerInput: configStore.team[breakerSlot]?.parryCount ?? 0,
-          mainDpsInput: configStore.team[mainDpsSlot >= 0 ? mainDpsSlot : breakerSlot]?.parryCount ?? 0,
+          breakerInput: configStore.team[effectiveBreakerSlot]?.parryCount ?? 0,
+          mainDpsInput: noBreakerFallback
+            ? (configStore.team[effectiveBreakerSlot]?.parryCount ?? 0)
+            : (configStore.team[mainDpsSlot >= 0 ? mainDpsSlot : breakerSlot]?.parryCount ?? 0),
         }),
         perParryDaze,
         perNoFollowUpDaze,
@@ -2008,10 +2018,12 @@ export function useResourceCalc() {
     if (parryTotal + parryNoFollowUpTotal + parryDecibelOnlyTotal <= 0) return null
     if (configStore.getMechanicSetting('guarantee.stun', 0) === 0) return null
     const breakerSlot = configStore.team.findIndex(c => c?.agentId && catalogStore.getAgent(c.agentId)?.specialty === 'stun')
-    if (breakerSlot < 0) return null
+    // 无击破位队伍：弹刀由主C（槽位 0）承担（noBreakerFallback，见 runCalcRound 同款回落）
+    if (breakerSlot < 0 && configStore.team.length === 0) return null
     const split = calcOutput.value?.parrySplit
     if (!split) return null
-    return { breakerSlot, topUp: split.topUp, breakerParry: split.breakerParry, mainDpsParry: split.mainDpsParry, breakerNoFollowUp: split.breakerNoFollowUp, breakerDecibelOnly: parryDecibelOnlyTotal, parryTotal, parryNoFollowUpTotal }
+    const effectiveBreakerSlot = breakerSlot >= 0 ? breakerSlot : 0
+    return { breakerSlot: effectiveBreakerSlot, topUp: split.topUp, breakerParry: split.breakerParry, mainDpsParry: split.mainDpsParry, breakerNoFollowUp: split.breakerNoFollowUp, breakerDecibelOnly: parryDecibelOnlyTotal, parryTotal, parryNoFollowUpTotal }
   })
 
   /** 特殊动作喧响奖励 */
