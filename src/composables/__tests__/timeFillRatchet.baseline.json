@@ -2,25 +2,25 @@
  "_note": "时间留白棘轮基线（秒）。重生成：TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts —— 重生成前必须先 A/B 归因（见测试头注释）",
  "_tolerance": 1,
  "auto-1021-1481-1031": {
-  "slack": 3.9,
+  "slack": 0,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
  "auto-1021-1481-1211": {
-  "slack": 2.3,
+  "slack": 1.6,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
  "auto-1021-1481-1311": {
-  "slack": 2.3,
+  "slack": 1.6,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
  "auto-1021-1481-1341": {
-  "slack": 2.3,
+  "slack": 1.6,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -152,7 +152,7 @@
   "outerExit": "stable"
  },
  "auto-1191-1481-1311": {
-  "slack": 9.1,
+  "slack": 2.3,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -178,7 +178,7 @@
  "auto-1201-1481-1311": {
   "slack": 0,
   "over": 0,
-  "stun": 2,
+  "stun": 3,
   "outerExit": "stable"
  },
  "auto-1201-1481-1491": {
@@ -399,13 +399,13 @@
  },
  "auto-1431-1481-1311": {
   "slack": 0,
-  "over": 1.8,
+  "over": 0.8,
   "stun": 2,
   "outerExit": "cycle"
  },
  "auto-1431-1481-1341": {
   "slack": 0,
-  "over": 1.5,
+  "over": 1.6,
   "stun": 2,
   "outerExit": "cycle"
  },
@@ -512,7 +512,7 @@
   "outerExit": "cycle"
  },
  "auto-1531-1451-1481": {
-  "slack": 0.8,
+  "slack": 0,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -603,14 +603,14 @@
  },
  "banyue-liuyin-lucia__normal": {
   "slack": 0,
-  "over": 0,
-  "stun": 3,
+  "over": 1.4,
+  "stun": 2,
   "outerExit": "cycle"
  },
  "banyue-liuyin-lucia__wrath5-ult10": {
   "slack": 0,
-  "over": 0,
-  "stun": 3,
+  "over": 1.4,
+  "stun": 2,
   "outerExit": "cycle"
  },
  "banyue-norma-lucia": {

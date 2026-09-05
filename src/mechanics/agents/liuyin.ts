@@ -1,5 +1,6 @@
 import type {
   AgentCharConfigInput,
+  AgentExSpecialTimeInput,
   AgentMechanicModule,
   AgentPanelInput,
   AgentResourceInput,
@@ -234,6 +235,42 @@ function buildLiuyinCharConfig({ slot, cinemaLevel, team, skills, cfg, panel, ge
   if (cinemaLevel >= 4) cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + CINEMA4_ENERGY_GIFT
 }
 
+/**
+ * 必做前台时间估计（2026-09-06 补，sigrid/青衣同款）：三个强特（石头→剪刀→布）按 1→3 轮转
+ * 各带真实 actionTime，送客（客诉抱拳）= 转大次数 + 琉音终结技次数——通用公式「次数×单段」
+ * 只按石头 0.617s 计，缺口（剪刀/布/送客 ≈15s）全靠折叠 `+=` 残差兜底 → 积分器风卷进
+ * timeBudgetExcess（1591 系修复时实测琉音 pass0 excess 15.1s 的原产地）。强化A（猜拳把戏
+ * #1-4）从平A池 carve，不进必要时间（与 buildExecutions 同口径）。
+ * 配套（同一轮）：折叠环收敛判据从 1e-6 放宽到量化残差容差——精确估时把 excess 压到 ~5e-4s
+ * 量级，1e-6 判据 8 轮耗尽 → timeBudgetConverged=false 而 allAgentsSweep 硬断言恒 true。
+ */
+// @fact agent:1481/强特计划估时 口径: 琉音必要时间 = 三强特（石头0.617/剪刀0.867/布1.383 × 轮转次数）+ 送客（转大次数+终结技次数 × farewellActionTime），由 estimateExSpecialTime 计账——通用公式只按单段计会漏 剪刀/布/送客 ≈15s，折叠积分器把漏差风卷成必要时间虚高（1591/1481 队 pass0 excess 15.1s 的来源）；强化A（猜拳把戏）从平A池 carve 不进必要时间 | 据 实测@2026-09-06 + sigrid 同款修复 | 验 src/mechanics/__tests__/liuyin.test.ts#强特计划估时 | 锚 src/mechanics/agents/liuyin.ts#liuyinExSpecialTime | 信 高
+function liuyinExSpecialTime({ cfg, exSpecialCount, ultimateCount }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
+  // 轴模式回落：轴模式经 chainCountTotalOverride 注入窗口加权的最终连携次数（engine 口径），
+  // 轴内 60/90 转大次数由轴预设 promoteVariant 块决定、不随好评推导——通用公式 + 折叠残差是
+  // 轴态的既有口径（钩子只对非轴生效；轴模式诚实收费会把比利轴队的量化均衡推开 4.1s，实测
+  // 2026-09-06）
+  if (cfg.chainCountTotalOverride !== undefined) {
+    return { necessaryTime: Math.max(0, exSpecialCount) * (cfg.exSpecialActionTime ?? 0), comboAlignTime: 0 }
+  }
+  const exTotal = Math.max(0, Math.floor(exSpecialCount))
+  // 与 buildLiuyinExecutions 同一轮转拆分（1→3 顺序连打，越靠后数值越高）
+  const counts = [Math.floor((exTotal + 2) / 3), Math.floor((exTotal + 1) / 3), Math.floor(exTotal / 3)]
+  let exTime = 0
+  for (let k = 0; k < EX_MOVES.length; k++) exTime += counts[k] * EX_MOVES[k].actionTime
+  // 送客（客诉抱拳）：与 buildLiuyinExecutions 同一求解（computeLiuyinSource）
+  const source = computeLiuyinSource({
+    exSpecialCount: exTotal,
+    ultimateCount: Math.max(0, Math.floor(ultimateCount)),
+    combatTime: cfg.battleTime ?? 180,
+    cinemaLevel: cfg.liuyinCinemaLevel ?? 0,
+    extraAbilityActive: cfg.liuyinExtraAbilityActive ?? false,
+    previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
+  })
+  const farewellTime = Math.max(0, Math.floor(source.farewellCount)) * (cfg.liuyinFarewellActionTime ?? 0)
+  return { necessaryTime: exTime + farewellTime, comboAlignTime: 0 }
+}
+
 function buildLiuyinExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const source = computeLiuyinSource({
     exSpecialCount: state.exSpecialCount,
@@ -436,6 +473,7 @@ export const liuyinMechanic: AgentMechanicModule = {
   description: '好评/客诉资源、暴击转冲击、额外能力强特暴伤、4命进场能量、按上一位队友特性的专属直伤。',
   applyPanel: applyLiuyinPanel,
   buildCharConfig: buildLiuyinCharConfig,
+  estimateExSpecialTime: liuyinExSpecialTime,
   buildExecutions: buildLiuyinExecutions,
   buildResourceResult: buildLiuyinResourceResult,
   resourceSections: buildLiuyinResourceSections,

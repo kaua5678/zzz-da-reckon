@@ -19,7 +19,7 @@ import { getAgentMechanic } from '@/mechanics'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueCycleFromCfg, readAxisExCounts } from '@/mechanics/agents/banyue'
 import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
-import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
+import { computeLiuyinHugCounts, computeLiuyinSource, resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { resolveExtraExCount } from '@/data/exSpecialPlans'
 
@@ -1273,6 +1273,47 @@ export function iterate(
   const totalNecessary: number[] = []
   const comboAlignTimes: number[] = []
   const comboAlignCredits: number[] = []
+  // ===== 琉音好评转大赠链时间信道（2026-09-06 补账，诺姆膛温赠链同款）=====
+  // applyLiuyinPromote 装配后给「上一位队友」追加 promote 个终结技行（时间 = 目标 ult actionTime），
+  // 旧实现靠 post-hoc carve 目标 basic_attack 聚合行守恒——目标平A时间住在分段行里时（希格莉德
+  // 枪尖/般岳焚身/琉音猜拳）聚合行被抠剩 ~0、carve 落空 → 守恒破、净占用 +7.2s（实测
+  // auto-1591-1481-1311）。引擎侧按同一求解预留必要时间：赠行时间进目标槽必要（GROSS），
+  // 平A池随之收缩，守恒成立且不再依赖 post-hoc carve。**轴模式除外**：轴内 60/90 转大次数由
+  // 轴预设 promoteVariant 块决定（useResourceCalc 层，iterate 拿不到），保留旧 carve 路径。
+  const liuyinGiftAxisActive = !!globalCfg.axisUltimateTrackBySlot
+  const liuyinGiftSlot = liuyinGiftAxisActive ? -1 : configs.findIndex(c => c.agentId === '1481')
+  let liuyinGiftTargetIdx = -1
+  let liuyinGiftTime = 0
+  if (liuyinGiftSlot >= 0) {
+    const lCfg = configs[liuyinGiftSlot]
+    const lState = prevStates[liuyinGiftSlot]
+    const src = computeLiuyinSource({
+      exSpecialCount: lState.exSpecialCount,
+      ultimateCount: lState.ultimateCount,
+      combatTime: lCfg.battleTime ?? totalTime,
+      cinemaLevel: lCfg.liuyinCinemaLevel ?? 0,
+      extraAbilityActive: lCfg.liuyinExtraAbilityActive ?? false,
+      previousTeammateSlot: lCfg.liuyinPreviousTeammateSlot ?? 0,
+    })
+    const setting = Number((lCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
+    const targetIdx = resolveUltimateTargetSlot(liuyinGiftSlot, configs.length, setting)
+    const stunCount = globalCfg.stunCount ?? 0
+    const targetChainTotal = Math.min(
+      (configs[targetIdx].chainCountPerStun ?? 0) * stunCount,
+      configs[targetIdx].chainCountTotalOverride ?? (configs[targetIdx].chainCountPerStun ?? 0) * stunCount,
+    )
+    const hug = computeLiuyinHugCounts(
+      src.goodReviewTotal,
+      stunCount,
+      Math.floor(Number((lCfg as unknown as Record<string, unknown>)['setting:liuyin.hug60Count'] ?? -1)),
+      targetChainTotal,
+    )
+    const promote = hug.hug60 + hug.hug90
+    if (promote > 0) {
+      liuyinGiftTargetIdx = targetIdx
+      liuyinGiftTime = promote * (configs[targetIdx].ultimateActionTime ?? 0)
+    }
+  }
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]
     const exSpecialCount = resolveExSpecialCount(cfg, energies[i])
@@ -1314,6 +1355,9 @@ export function iterate(
       // 诺姆膛温换连携赠链时间（目标槽）：装配后 applyNormaHatChain 追加的赠链行占前台，
       // 引擎必要时间必须预留（同连携 GROSS 全额口径），否则净占用顶出预算
       + (i === normaGiftTargetIdx ? normaGiftChainTime : 0)
+      // 琉音好评转大赠链时间（目标槽，非轴）：装配后 applyLiuyinPromote 追加的赠大行占前台，
+      // 引擎预留（GROSS 全额口径），平A池随之收缩守恒——不再依赖 post-hoc carve
+      + (i === liuyinGiftTargetIdx ? liuyinGiftTime : 0)
       // 时间预算收敛：执行计划中模块专属动作行（如雅霜月架势、叶瞬光飞光）占用前台但未计入
       // estimateExSpecialTime → Σ执行行时间超战斗时间；外层循环把超出部分折入必要时间，压缩平A池。
       + (cfg.timeBudgetExcess ?? 0)

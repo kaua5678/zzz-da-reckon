@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeLiuyinSource, computeLiuyinHugCounts } from '@/mechanics/agents/liuyin'
+import { computeLiuyinSource, computeLiuyinHugCounts, liuyinMechanic } from '@/mechanics/agents/liuyin'
 
 describe('琉音好评/等效规则（用户确认）', () => {
   it('好评 = 60 + 0.6×接战秒 + 7.5×强特数（无命座）', () => {
@@ -71,5 +71,41 @@ describe('琉音好评/等效规则（用户确认）', () => {
     const h5 = computeLiuyinHugCounts(450, 2, -1, 10)
     expect(h5.hug60).toBe(4)
     expect(h5.hug90).toBe(1)
+  })
+})
+
+describe('琉音强特计划估时（2026-09-06 补）', () => {
+  it('必要时间 = 三强特轮转 × 各自时长 + 送客（转大+终结技）× 送客时长；轴模式回落通用公式', () => {
+    const cfg = {
+      agentId: '1481',
+      exSpecialActionTime: 0.617,
+      exSpecialComboAlignRatio: 0,
+      battleTime: 180,
+      liuyinCinemaLevel: 0,
+      liuyinExtraAbilityActive: false,
+      liuyinPreviousTeammateSlot: 0,
+      liuyinFarewellActionTime: 1.6,
+    } as any
+    // ex 20 → 轮转 (7,7,6)；好评 = 60 + 180×0.6 + 20×7.5 = 318 → 开窗 3；送客 = 3 + 2 = 5
+    const est = liuyinMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 20, ultimateCount: 2 })!
+    const exTime = 7 * 0.617 + 7 * 0.867 + 6 * 1.383
+    expect(est.necessaryTime).toBeCloseTo(exTime + 5 * 1.6, 9)
+    // 与物化同口径：buildExecutions 的 石头/剪刀/布/送客 行时间总和 == 估时
+    const executions: any[] = []
+    liuyinMechanic.buildExecutions!({
+      cfg,
+      state: { exSpecialCount: 20, ultimateCount: 2, basicAttackTime: 0 },
+      executions,
+    } as any)
+    const rows = executions.filter((e: any) => ['1481011', '1481012', '1481013', '1481009'].includes(e.moveId))
+    const rowTime = rows.reduce((a: number, e: any) => a + (e.totalTime ?? 0), 0)
+    expect(rowTime).toBeCloseTo(est.necessaryTime, 9)
+    // 轴模式（chainCountTotalOverride 注入）回落通用公式 = exSpecialCount × 单段
+    const axisEst = liuyinMechanic.estimateExSpecialTime!({
+      cfg: { ...cfg, chainCountTotalOverride: 4.2 },
+      exSpecialCount: 20,
+      ultimateCount: 2,
+    })!
+    expect(axisEst.necessaryTime).toBeCloseTo(20 * 0.617, 9)
   })
 })

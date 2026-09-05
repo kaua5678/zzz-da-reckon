@@ -8,6 +8,7 @@ import { getAgentMechanic } from '@/mechanics'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
 import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
+import { computeLiuyinHugCounts, computeLiuyinSource } from '@/mechanics/agents/liuyin'
 
 /**
  * 诺姆膛温换连携（C4）赠链时间信道（与 iterate Step4 同口径）：hatCount 次赠链由
@@ -32,6 +33,47 @@ function normaGiftChainInfo(
   const setting = Number((nCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
   const targetIdx = resolveUltimateTargetSlot(normaSlot, configs.length, setting)
   return { targetIdx, time: hatCount * (configs[targetIdx]?.chainActionTime ?? 0) }
+}
+
+/**
+ * 琉音好评转大赠链时间（非轴，与 iterate Step4 同口径）：promote 个赠大 = 目标槽 promote ×
+ * ultimateActionTime——装配后 applyLiuyinPromote 追加的行时间必须在此预留（守恒破 +7.2s 前例），
+ * 折叠环/欠打试探的行测量同口径计入，否则预留被读成 idle → refund 双击。
+ */
+function liuyinGiftChainInfo(
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+  liuyinSlot: number,
+  totalTime: number,
+  stunCount: number,
+): { targetIdx: number; time: number } {
+  const lCfg = configs[liuyinSlot]
+  if (!lCfg) return { targetIdx: -1, time: 0 }
+  const lState = states[liuyinSlot]
+  const src = computeLiuyinSource({
+    exSpecialCount: lState.exSpecialCount,
+    ultimateCount: lState.ultimateCount,
+    combatTime: lCfg.battleTime ?? totalTime,
+    cinemaLevel: lCfg.liuyinCinemaLevel ?? 0,
+    extraAbilityActive: lCfg.liuyinExtraAbilityActive ?? false,
+    previousTeammateSlot: lCfg.liuyinPreviousTeammateSlot ?? 0,
+  })
+  const setting = Number((lCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
+  const targetIdx = resolveUltimateTargetSlot(liuyinSlot, configs.length, setting)
+  const tCfg = configs[targetIdx]
+  const targetChainTotal = Math.min(
+    (tCfg?.chainCountPerStun ?? 0) * stunCount,
+    tCfg?.chainCountTotalOverride ?? (tCfg?.chainCountPerStun ?? 0) * stunCount,
+  )
+  const hug = computeLiuyinHugCounts(
+    src.goodReviewTotal,
+    stunCount,
+    Math.floor(Number((lCfg as unknown as Record<string, unknown>)['setting:liuyin.hug60Count'] ?? -1)),
+    targetChainTotal,
+  )
+  const promote = hug.hug60 + hug.hug90
+  if (promote <= 0) return { targetIdx: -1, time: 0 }
+  return { targetIdx, time: promote * (configs[targetIdx]?.ultimateActionTime ?? 0) }
 }
 
 // ============ 单角色能量计算 ============
@@ -219,6 +261,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // idle → pass0 refund 双击（与最高马力星光行同病）。
     const giftNormaSlot = configs.findIndex(c => c.agentId === '1571')
     const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, states, giftNormaSlot, totalTime) : { targetIdx: -1, time: 0 }
+    // 琉音好评转大赠链行同理（非轴）：装配后 applyLiuyinPromote 追加，行测量计入其时间
+    const giftLiuyinSlot = !config.axisUltimateTrackBySlot && configs.some(c => c.agentId === '1481') ? configs.findIndex(c => c.agentId === '1481') : -1
+    const giftLiuyin = giftLiuyinSlot >= 0
+      ? liuyinGiftChainInfo(configs, states, giftLiuyinSlot, totalTime, config.stunCount ?? 0)
+      : { targetIdx: -1, time: 0 }
     for (let i = 0; i < configs.length; i++) {
       const cfg = configs[i]
       const state = states[i]
@@ -235,6 +282,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
           * (isFrontlineExecution(e) ? 1 : 0),
         0,
       ) + (i === gift.targetIdx ? gift.time : 0)
+        + (i === giftLiuyin.targetIdx ? giftLiuyin.time : 0)
       // 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget + refund）
       const excess = rowTime - (state.necessaryTime + state.basicAttackTime)
       // 真实时间压力（模块退化判据的权威信号，见 CharacterOperationConfig.timePressureSeconds）：
@@ -277,7 +325,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       refundFrozen = true
       continue // 注入轮不判收敛：下一轮 iterate 吃进 refund 后再按 excess 判据停（否则 states 没吃到回填）
     }
-    if (maxExcess <= 1e-6) {
+    // 收敛判据：excess 是**秒**——精确估时（琉音/sigrid 钩子）把残差压到 ~5e-4s 浮点噪声量级，
+    // 1e-6 判据 8 轮耗尽 → timeBudgetConverged=false 而 allAgentsSweep 硬断言恒 true（2026-09-06
+    // 实测否决）。1e-3（1 毫秒）容差远小于任何量化残差（坑12 口径 ±1~2s），不改变折叠动力学，
+    // 只让「已收敛到浮点噪声」的队如实报收敛。
+    if (maxExcess <= 1e-3) {
       timeBudgetConverged = true
       break
     }
@@ -347,6 +399,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       }
       let total = 0
       const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, st, giftNormaSlot, totalTime) : { targetIdx: -1, time: 0 }
+      const giftLiu = !config.axisUltimateTrackBySlot && configs.some(c => c.agentId === '1481')
+        ? liuyinGiftChainInfo(configs, st, configs.findIndex(c => c.agentId === '1481'), totalTime, config.stunCount ?? 0)
+        : { targetIdx: -1, time: 0 }
       for (let i = 0; i < configs.length; i++) {
         const cfg = configs[i]
         const state = st[i]
@@ -357,6 +412,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
             - (overlap[`${cfg.slot}:${e.moveId}`] ?? 0))
             * (isFrontlineExecution(e) ? 1 : 0),
           0) + (i === gift.targetIdx ? gift.time : 0)
+            + (i === giftLiu.targetIdx ? giftLiu.time : 0)
         const extraCredit = Math.max(0, (state.comboAlignCredit ?? 0) - overlapBySlot[i])
         total += Math.max(0, rowNet - extraCredit)
       }
@@ -601,6 +657,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 比利终局旗标复位：cfg 对象被外层不动点/热启动复用，下轮调用必须回到实数迭代期
   for (const cfg of configs) if (cfg.agentId === '1531') cfg.billyFinalizeChain = false
 
+  // 终局预留量（供 applyLiuyinPromote 判定跳过 post-hoc carve；与 iterate Step4 同一求解）
+  const liuyinGiftTimeTotal = !config.axisUltimateTrackBySlot && configs.some(c => c.agentId === '1481')
+    ? liuyinGiftChainInfo(configs, states, configs.findIndex(c => c.agentId === '1481'), totalTime, inputStunCount).time
+    : 0
+
   return {
     totalTime,
     stunCount: inputStunCount,
@@ -610,6 +671,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     axisOverlapSeconds: config.axisOverlapSeconds,
     axisOverlapByAction: config.axisOverlapByAction,
     overflowSeconds: config.overflowSeconds,
+    // 琉音好评转大赠链时间已由引擎预留（非轴）→ applyLiuyinPromote 不再 post-hoc carve 守恒
+    liuyinGiftTimeReserved: liuyinGiftTimeTotal > 0 ? liuyinGiftTimeTotal : undefined,
     convergence: {
       timeBudgetConverged,
       timeBudgetPasses,

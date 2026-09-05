@@ -73,9 +73,15 @@ export function applyLiuyinPromote(
       // 时间从目标的平A池挤出（basicAttackTime 扣减），总前台占用守恒，
       // 不额外撑破战斗预算（否则会误触轴退化判定，般岳等轴测试依赖该守恒）。
       const promoteTime = ultActionTime * promote
-      const basicIdx = char.executions.findIndex(e => e.moveId === 'basic_attack')
+      // 2026-09-06：非轴模式下赠链时间已由引擎预留（iterate 必要时间计入 promote × 目标终结技时长、
+      // 平A池随之收缩——守恒在引擎侧成立，见 TeamResourceResult.liuyinGiftTimeReserved）。
+      // 旧 post-hoc carve 只抠 basic_attack 聚合行，目标平A时间住在分段行里时（希格莉德枪尖/
+      // 般岳焚身/琉音猜拳）聚合行被抠剩 ~0 → 守恒破、净占用 +7.2s（实测 auto-1591-1481-1311）。
+      // 轴模式无预留（轴内 60/90 转大次数由轴预设决定），保留旧 carve 路径。
+      const reserved = (base as { liuyinGiftTimeReserved?: number }).liuyinGiftTimeReserved ?? 0
+      const basicIdx = reserved > 0 ? -1 : char.executions.findIndex(e => e.moveId === 'basic_attack')
       const basicTime = basicIdx >= 0 ? (char.executions[basicIdx].totalTime ?? 0) : 0
-      const carve = Math.max(0, Math.min(basicTime, promoteTime))
+      const carve = reserved > 0 ? 0 : Math.max(0, Math.min(basicTime, promoteTime))
       // 轴即最终次数：连携次数已从轴直接读出（N），60/90 转大只叠加赠送大招，不再「连携-1 大招+1」改写。
       // 转大白送的终结技独立成行（source='gift'），不并入目标原始终结技行——否则赠送归因（击破手对比的 gift 列）会丢失。
       return {

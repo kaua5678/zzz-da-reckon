@@ -1152,6 +1152,13 @@ export interface TeamResourceResult {
    * （1 秒 = 1 难度点，用户口径 2026-09-04；截断口径 2026-09-05）。
    */
   overflowSeconds?: number
+  /**
+   * 琉音好评转大赠链时间预留量（非轴模式，秒）：iterate 已把 promote × 目标终结技时长计入
+   * 必要时间（守恒由引擎成立）→ applyLiuyinPromote 见到本字段即**跳过 post-hoc carve**
+   * （旧 carve 只抠 basic_attack 聚合行，目标平A时间在分段行里时会落空 → 守恒破 +7.2s）。
+   * 轴模式无预留（轴内 60/90 转大次数由轴预设决定），字段缺省。
+   */
+  liuyinGiftTimeReserved?: number
 }
 
 // ============ 计算输入 ============
