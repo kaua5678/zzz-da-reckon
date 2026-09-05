@@ -44,13 +44,15 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
       .toBeLessThanOrEqual(t.budget + t.refund + 1e-6)
   })
 
-  it('朱鸢队：留白被归因到「账本虚高」，不是「池没分完」', async () => {
-    const t = await summaryOf(['1241', '1031', '1311'])
-    expect(t.slack).toBeGreaterThan(30)
+  it('留白被归因到「账本虚高」，不是「池没分完」', async () => {
+    // 希格莉德/琉音/苍角：当前最大留白队（朱鸢 2026-09-05 修掉重复计费后已归零，见
+    // zhuYuan.test.ts「压制以太弹不重复占用平A池」）
+    const t = await summaryOf(['1591', '1481', '1311'])
+    expect(t.slack).toBeGreaterThan(10)
     // 池确实被分完（平A分配 ≈ 可分配池）→ 留白不来自未分配的秒数
     expect(t.basicTotal).toBeGreaterThan(t.remainingFrontlinePool - 1)
     // 留白几乎全部 = 账本必要时间高于物化必要行
-    expect(t.ledgerInflation).toBeGreaterThan(30)
+    expect(t.ledgerInflation).toBeGreaterThan(10)
     expect(slackHint(t, fmt)).toContain('账本虚高')
   })
 

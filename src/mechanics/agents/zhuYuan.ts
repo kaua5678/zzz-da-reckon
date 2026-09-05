@@ -55,7 +55,7 @@ const ZHUYUAN_C6_AFTERGLOW_ENERGY = 30
  * 3 段以太子弹轮转（1241010/1241011/1241012），每段消耗 1 枚强化霰弹。
  * 1 枚霰弹 = 1 段以太子弹（就像艾莲 1 颗充能打 1 段平A），各段 DPS 相同。
  */
-const ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS = ['1241010', '1241011', '1241012'] as const
+export const ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS = ['1241010', '1241011', '1241012'] as const
 const ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES = [0.542, 0.542, 1.625] as const
 /** 压制以太单段均时 */
 const ZHUYUAN_SUPPRESS_ETHER_AVG_TIME =
@@ -111,6 +111,7 @@ function computeZhuYuanShellsTotal(cfg: AgentResourceInput['cfg'], state: AgentR
   return Math.max(0, Math.floor(shells.initialValue + shells.totalGain))
 }
 
+// @fact agent:1241/压制以太弹时间 口径: 1 枚霰弹 = 1 段平A（用户 2026-08-26 口径），所以以太弹行占的**就是平A池那份时间**，必须从通用 basic_attack 聚合行里挤出（琉音转大 carve 同款），不能在它之外另占一份；挤出后剩余时间仍归通用平A（总前台占用守恒） | 据 用户@2026-08-26·2026-09-05 复核（此前未挤出→同一段时间计两次） | 验 src/mechanics/__tests__/zhuYuan.test.ts#压制以太弹的时间占用 | 锚 src/mechanics/agents/zhuYuan.ts#buildZhuYuanExecutions | 信 确认
 function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).zhuyuanCinemaLevel ?? 0)))
   const shellsTotal = computeZhuYuanShellsTotal(cfg, state)
@@ -126,6 +127,12 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
     ? (bullets > 0 ? Math.min(1, axisEther / bullets) : 0)
     : Math.max(0, Math.min(1, Number((cfg as any).zhuYuanStunCoverage ?? 0)))
   const stunBonus = effectiveStunCov > 0 ? Math.round(ZHUYUAN_CORE_STUN_DMG * effectiveStunCov) : 0
+  // 压制以太弹占的**就是平A池那份时间**（用户口径：1 枚霰弹 = 1 段平A，超出平A池的霰弹浪费），
+  // 所以必须从通用 `basic_attack` 聚合行里把这段时间**挤出**，而不是在它之外另占一份。
+  // 不挤出的后果（实测 1241/1031/1311）：同一段 47.24s 被计两次（聚合行 47.24 + 以太弹 46.60），
+  // 折叠循环照例把虚增的 59s 折进 necessaryTime → 账本 132.76 vs 真行 73.70 → 平A池被挤光 →
+  // 留白 30.1s（全预设库最大单队）。carve 后剩余时间仍归通用平A（霰弹打完继续平A，时间守恒）。
+  let etherTime = 0
   const len = ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS.length
   for (let i = 0; i < len; i++) {
     const count = Math.floor((bullets + len - 1 - i) / len)
@@ -148,6 +155,24 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
       totalEnergyRecovery: 0,
       ...(stunBonus > 0 ? { dmgBonus: stunBonus } : {}),
     })
+    etherTime += count * ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[i]
+  }
+  // 挤出被以太弹占用的平A时间（琉音转大 carve 同款：从目标平A池扣，总前台占用守恒）
+  if (etherTime > 0) {
+    const basicIdx = executions.findIndex(e => e.moveId === 'basic_attack')
+    if (basicIdx >= 0) {
+      const basicTime = executions[basicIdx].totalTime ?? 0
+      const carve = Math.max(0, Math.min(basicTime, etherTime))
+      executions[basicIdx] = {
+        ...executions[basicIdx],
+        totalTime: basicTime - carve,
+        // 平A聚合行 count=0（按时间汇总），故只缩时间；派生量按同比例缩
+        totalDecibelRecovery: (executions[basicIdx].totalDecibelRecovery ?? 0)
+          * (basicTime > 0 ? (basicTime - carve) / basicTime : 0),
+        totalEnergyRecovery: (executions[basicIdx].totalEnergyRecovery ?? 0)
+          * (basicTime > 0 ? (basicTime - carve) / basicTime : 0),
+      }
+    }
   }
   if (cinema < 6) return
   const afterglowCount = Math.floor(shellsTotal / ZHUYUAN_C6_AFTERGLOW_COST)

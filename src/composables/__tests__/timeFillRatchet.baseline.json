@@ -212,9 +212,9 @@
   "outerExit": "stable"
  },
  "auto-1241-1031-1311": {
-  "slack": 30.1,
+  "slack": 0,
   "over": 0,
-  "stun": 1,
+  "stun": 2,
   "outerExit": "stable"
  },
  "auto-1261-1331-1411": {

@@ -4,7 +4,10 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { getTargetedStat } from '@/core/buff'
-import { zhuYuanMechanic } from '@/mechanics/agents/zhuYuan'
+import { zhuYuanMechanic, ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS } from '@/mechanics/agents/zhuYuan'
+import { setupHarness } from '@/test/harness'
+import { useResourceCalc } from '@/composables/useResourceCalc'
+import { buildTeamTimeSummary } from '@/composables/teamTimeSummary'
 
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
@@ -216,5 +219,32 @@ describe('朱鸢强化霰弹资源循环', () => {
     const cfg0: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
     zhuYuanMechanic.buildResourceResult!({ cfg: cfg0, state: mkState() } as any)
     expect(cfg0.initialEnergyGift ?? 0).toBe(0)
+  })
+})
+
+describe('压制以太弹的时间占用（2026-09-05 重复计费修复）', () => {
+  it('以太弹从平A聚合行里挤出时间：同一段时间不被计两次，账本与物化行自洽', async () => {
+    const { config } = await setupHarness(['', '', ''])
+    for (let i = 0; i < 3; i++) config.setAgent(i, ['1241', '1031', '1311'][i])
+    const calc = useResourceCalc()
+    const rr = calc.resourceResult.value!
+    const zy = rr.characters.find(c => c.agentId === '1241')!
+
+    const basicRow = zy.executions.find(e => e.moveId === 'basic_attack')
+    const etherRows = zy.executions.filter(e => ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS.includes(e.moveId as never))
+    expect(etherRows.length, '压制模式以太弹行没生成').toBeGreaterThan(0)
+    const etherTime = etherRows.reduce((a, e) => a + (e.totalTime ?? 0), 0)
+    const basicTime = basicRow?.totalTime ?? 0
+    // ① 时间守恒：平A聚合行 + 以太弹 ≤ 分给她的平A池（弹就是她的平A，不是额外时间）
+    expect(basicTime + etherTime)
+      .toBeLessThanOrEqual(zy.timeAllocation.basicAttackTime + 1e-6)
+    // ② 账本与物化行自洽（重复计费时这里虚高 59s：账本 132.76 vs 真行 73.70）
+    const t = buildTeamTimeSummary({
+      rr, battleTime: rr.totalTime, invincibleTime: config.enemy.invincibleTime ?? 0,
+      nameOf: (_a, slot) => `槽${slot}`,
+    })
+    expect(t.ledgerInflation).toBeLessThanOrEqual(2)
+    // ③ 该队时间打满（修复前留白 30.1s = 全预设库最大单队）
+    expect(Math.abs(t.slack)).toBeLessThanOrEqual(1)
   })
 })

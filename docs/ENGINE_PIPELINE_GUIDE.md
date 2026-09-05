@@ -268,9 +268,17 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     （般岳金身20/招架10 等配置本身超预算的场景与轴无关，弃轴无意义）才弃轴重算，`convergence.axisFallback=true`
     上报（队伍对比页 timeDetail 追加「已退化为一般轴」）。自动补齐（`banyue.autoTopUpInteractions`）
     的生效测试须落在补齐后仍可行的需求域，厚需求场景归退化用例管（banyue.test「轴退化」）。
-    ③**estimate/物化双算坑**：模块把「池守恒、不生成执行行」的动作块计入 estimateExSpecialTime 就是
-    账本虚高（般岳 banyue-combo 连段块 = 怒相免费连段的表达，时间已含在怒相内/外连段行）——estimate
-    与 buildExecutions 必须逐项对账（`computeBanyueCycleFromCfg` 输出 vs 物化行），差值恒定非零即双算或漏计。
+    ③**estimate/物化双算坑（两个方向都会虚高）**：
+    - *estimate 侧多算*：模块把「池守恒、不生成执行行」的动作块计入 estimateExSpecialTime（般岳
+      banyue-combo 连段块 = 怒相免费连段的表达，时间已含在怒相内/外连段行）——estimate 与
+      buildExecutions 必须逐项对账（`computeBanyueCycleFromCfg` 输出 vs 物化行），差值恒定非零即双算。
+    - *物化侧多算*（2026-09-05 朱鸢案，更隐蔽）：模块 push 的行**占的是平A池那份时间**（1 枚霰弹
+      = 1 段平A），却没从通用 `basic_attack` 聚合行里挤出来 ⇒ 同一段时间被计两次（实测聚合行
+      47.24s + 以太弹 46.60s）。折叠循环照单全收折进 `necessaryTime`（虚高 59s）→ 平A池被挤光 →
+      该队留白 30.1s 是全预设库最大单队，而 `timeBudgetConverged` 一路报 true。
+      **凡模块生成 `category: 'basic'` 或时间来源于 `state.basicAttackTime` 的行，必须 carve 聚合行**
+      （琉音转大 `liuyinPromote` 是正面样板）；判据 = `Σ前台行 ≤ 账本(necessary+basic)` 恒成立，
+      `teamTimeSummary.ledgerInflation` 就是这条的逐队读数（>2s 即双算，棘轮逐队钉）。
     ④**轴内合轴（2026-08-30 同日补）**：窗口内跨角色块并行（般岳强特时琉音抱拳）只计一次前台——
     栈引擎 `calcStunAxisStack` 按执行块区间并集算 `overlapSeconds`（按块时长比例分摊到
     `overlapByAction['slot:moveId']`，严格可加）；净占用口径 = Σ物化前台行 − 合轴分摊，

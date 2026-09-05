@@ -35,14 +35,15 @@ async function summary(team: string[]) {
 
 describe('末轮欠打回填', () => {
   it('① 明显欠打的队被回填：refund>0 且留白显著收小', async () => {
-    // 朱鸢/妮可/苍角：修复前 refund=0、留白 93.7s（1241 槽账本必要 138.3s vs 物化必要行 44.6s）
-    const t = await summary(['1241', '1031', '1311'])
-    expect(t.refund).toBeGreaterThan(50)
-    expect(t.slack).toBeLessThan(40)
-    // 希格莉德/莱卡恩/妮可：修复前留白 66s → 回填后打满
-    const s2 = await summary(['1591', '1161', '1311'])
-    expect(s2.refund).toBeGreaterThan(10)
-    expect(s2.slack).toBeLessThanOrEqual(UNDERFILL_PROBE_THRESHOLD_SECONDS)
+    // 希格莉德/莱卡恩/妮可：修复前 refund=0、留白 66s → 回填后打满
+    //（朱鸢/妮可/苍角曾是本机制的旗舰样例：留白 93.7→30.1s；2026-09-05 查清她剩下的 30.1s
+    //  不是欠打而是**压制以太弹与平A聚合行重复计费**，修掉后留白归零，见 zhuYuan.test.ts）
+    const t = await summary(['1591', '1161', '1311'])
+    expect(t.refund).toBeGreaterThan(10)
+    expect(t.slack).toBeLessThanOrEqual(UNDERFILL_PROBE_THRESHOLD_SECONDS)
+    // 星徽·比利/琉音/卢西娅：整数结构模块队，回填把留白收进门槛
+    const s2 = await summary(['1531', '1481', '1451'])
+    expect(s2.slack).toBeLessThanOrEqual(UNDERFILL_PROBE_THRESHOLD_SECONDS + 5)
   })
 
   it('② 回填不制造超预算（硬不变量：物化净占用 ≤ 预算 + 容差）', async () => {
