@@ -1,5 +1,6 @@
 import type {
   AgentCharConfigInput,
+  AgentExSpecialTimeInput,
   AgentMechanicModule,
   AgentPanelInput,
   AgentResourceInput,
@@ -238,11 +239,17 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
     | undefined) ?? []
   if (segments.length !== 3) return
 
-  // 机会 spend 次数：复用 spec 解释器的资源账本（含可调滑块）
+  // 机会 spend 次数：复用 spec 解释器的资源账本（含可调滑块）。
+  // 机会命中直算进 cfg 拷贝（2026-09-06 消字段滞后）：原读 cfg.sigridChuqiangHits（上一轮
+  // patch 写入）让敛枪式行与估时差一整个轮次演化（≈40s lance）→ 折叠 `+=` 风卷虚增账本。
   let rotationCasts = 0
   const spec = getAgentSpec(SIGRID_AGENT_ID)
   if (spec) {
-    for (const [, entry] of computeSpecResources(spec, cfg, state)) {
+    const detCfg = {
+      ...cfg,
+      sigridChuqiangHits: sigridChuqiangFromState(state, cfg),
+    } as AgentCharConfigInput['cfg']
+    for (const [, entry] of computeSpecResources(spec, detCfg, state)) {
       const spendCounts = (entry as { spendCounts?: Record<string, number> })?.spendCounts
       if (spendCounts?.sigrid_lance_spend != null) {
         rotationCasts = Math.max(0, Math.floor(spendCounts.sigrid_lance_spend))
@@ -358,6 +365,87 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
 }
 
+/**
+ * 机会来源（出枪式命中合计）从 state 直算——与 patchSigridExecutions 的行计数同口径：
+ * Σ出枪式招式次数（强特/连携/终结/闪反/支援突击）+ 凛冽枪尖#4 行计数 + 按段循环计数的 #4 命中。
+ * 注意：patch 的行循环会数到 #4 段行、再加一次 countBasicFinisherHits——即 #4 命中按 **2 倍**
+ * 计入（段行物化 2026-09-03 后遗留的双计，见 task-ledger Open「待用户裁决」）；本函数保持同一
+ * 口径，估时与物化才不分裂。buildExecutions/estimateExSpecialTime 用它替代 cfgField 滞后信道
+ * （机会 ∝ 平A时间 = 负反馈环，字段滞后一轮让估时与行差一整个轮次演化 ≈ 40s lance，折叠
+ * `+=` 积分器把差值全吸进必要时间 → 1591 系「账本虚高 33s / 留白 9~19s」的原产地）。
+ */
+// @fact agent:1591/敛枪式估时 口径: 敛枪式三段行时间（机会 spend + 破阵套数 × 真实 actionTime）由 estimateExSpecialTime 计入必要时间——机会命中从 state 直算（与 patch 行计数同口径，含 #4 双计现状），估时与 buildExecutions 共用同一 spec 资源账本，不再经 cfgField 轮间滞后（滞后让估时与行差一轮演化 ≈40s lance，折叠积分器风卷成账本虚高）；出枪式段占平A池时间不进必要时间 | 据 实测@2026-09-06（1591 系 9s 留白队→0.3s、超预算队归零）+ 青衣 1571 前例 | 验 src/mechanics/__tests__/sigrid.test.ts#估时钩子 | 锚 src/mechanics/agents/sigrid.ts#sigridExSpecialTime | 信 高
+export function sigridChuqiangFromState(
+  state: { exSpecialCount: number; ultimateCount: number; chainCountTotal: number; basicAttackTime: number },
+  cfg: AgentCharConfigInput['cfg'],
+): number {
+  const record = cfg as unknown as Record<string, unknown>
+  const basicCycle = (record.sigridBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
+  const pressCancel = clamp01(cfgSetting(cfg, 'sigrid.pressCancel', 0)) > 0
+  const finisherHits = countBasicFinisherHits(Math.max(0, state.basicAttackTime ?? 0), basicCycle, pressCancel)
+  return Math.max(0, state.exSpecialCount ?? 0) // 碎玉（出枪式）
+    + Math.max(0, state.ultimateCount ?? 0) // 霜天
+    + Math.max(0, state.chainCountTotal ?? 0) // 冰凌卷地
+    + Math.max(0, cfg.dodgeCounterCount ?? 0) // 回马枪
+    + Math.max(0, cfg.parryCount ?? 0) // 支援突击：冰饕
+    + 2 * finisherHits // #4 段行 + 显式 #4 计数（patch 同口径双计，待裁决）
+}
+
+/**
+ * 必做前台时间估计（2026-09-06 补，青衣 1571 同款）：通用公式「次数×单段」只计碎玉，
+ * 敛枪式三段行（真实时长 count × actionTime，队内最高 ~58s）此前全靠折叠循环 `+=` 残差
+ * 兜底——积分器 windup 是 1591 系「行超账本 +1.08s / 留白 9s / 部分队 cycle」的来源。
+ * 这里与 buildSigridExecutions 共用同一求解器：机会 spend 走同一 spec 资源账本（机会命中
+ * 由 sigridChuqiangFromState 直算，无字段滞后），破阵套数同口径，三段时长从 cfg 预存的
+ * sigridLanceSegments 取。出枪式段（凛冽枪尖 #1-4）占的是平A池时间、不进必要时间。
+ */
+function sigridExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
+  const record = cfg as unknown as Record<string, unknown>
+  const segments = (record.sigridLanceSegments as
+    | { moveId: string; actionTime: number }[]
+    | undefined) ?? []
+  const exTime = Math.max(0, exSpecialCount) * (cfg.exSpecialActionTime ?? 0)
+  if (segments.length !== 3) return { necessaryTime: exTime, comboAlignTime: exTime * (cfg.exSpecialComboAlignRatio ?? 0) }
+
+  // 机会 spend：与 buildSigridExecutions 同一 spec 账本（机会命中直算进 cfg 拷贝，无轮间滞后）
+  let rotationCasts = 0
+  const spec = getAgentSpec(SIGRID_AGENT_ID)
+  if (spec && state) {
+    const detCfg = {
+      ...cfg,
+      sigridChuqiangHits: sigridChuqiangFromState(state, cfg),
+    } as AgentCharConfigInput['cfg']
+    for (const [, entry] of computeSpecResources(spec, detCfg, state)) {
+      const spendCounts = (entry as { spendCounts?: Record<string, number> })?.spendCounts
+      if (spendCounts?.sigrid_lance_spend != null) {
+        rotationCasts = Math.max(0, Math.floor(spendCounts.sigrid_lance_spend))
+        break
+      }
+    }
+  }
+  // 破阵套数（与 buildSigridExecutions 同口径）
+  const cinema = Math.max(0, Math.floor(Number(record.sigridCinemaLevel ?? 0)))
+  const axisActive = record.sigridAxisActive === true
+  let pozhenSets: number
+  if (axisActive) {
+    pozhenSets = Math.max(0, Math.floor(Number(record.sigridAxisPozhenSets ?? 0)))
+  } else if (cinema >= 6) {
+    const chainTotal = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * Number(record.sigridStunCount ?? 0)
+    pozhenSets = Math.max(0, Math.floor(chainTotal))
+  } else {
+    pozhenSets = Math.max(0, Math.floor(Number(record.sigridStunCount ?? 0)))
+  }
+  const rotation = splitLanceRotation(rotationCasts)
+  let lanceTime = 0
+  for (let i = 0; i < 3; i++) {
+    lanceTime += (rotation[i] + pozhenSets) * (segments[i]?.actionTime ?? 0)
+  }
+  return {
+    necessaryTime: exTime + lanceTime,
+    comboAlignTime: exTime * (cfg.exSpecialComboAlignRatio ?? 0),
+  }
+}
+
 function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).sigridCinemaLevel ?? 0)))
   // 机会来源（原文：任意[出枪式]命中获得1次机会）：统计出枪式招式次数 + 凛冽枪尖#4 近似，
@@ -445,6 +533,7 @@ export const sigridMechanic: AgentMechanicModule = {
   applyPanel: applySigridPanel,
   applyTeamConfig: applySigridTeamConfig,
   buildCharConfig: buildSigridCharConfig,
+  estimateExSpecialTime: sigridExSpecialTime,
   buildExecutions: buildSigridExecutions,
   patchExecutions: patchSigridExecutions,
   // spec 资源（敛枪式发动机会）与资源卡沿用 spec 解释器

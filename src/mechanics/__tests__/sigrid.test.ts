@@ -249,6 +249,50 @@ describe('希格莉德 buildExecutions：敛枪式三段轮转 + 破阵 + 影画
     expect(executions.length).toBe(3)
     for (const e of executions) expect(e.count).toBeGreaterThanOrEqual(2)
   })
+
+  it('估时钩子（2026-09-06 补）：敛枪式时间按机会直算进必要时间，与物化共用同一求解器', () => {
+    const cfg = {
+      agentId: '1591',
+      exSpecialActionTime: 0.93, // 碎玉
+      exSpecialComboAlignRatio: 0,
+      sigridLanceSegments: [
+        { moveId: '1591007', actionTime: 0.78 },
+        { moveId: '1591008', actionTime: 1.3 },
+        { moveId: '1591022', actionTime: 1.78 },
+      ],
+      sigridBasicCycle: [
+        { moveId: '1591001', actionTime: 0.507 },
+        { moveId: '1591002', actionTime: 0.507 },
+        { moveId: '1591004', actionTime: 0.507 },
+        { moveId: '1591005', actionTime: 1.258 },
+      ],
+      sigridStunCount: 2,
+      sigridCinemaLevel: 0,
+      dodgeCounterCount: 0,
+      parryCount: 0,
+      exSpecialEnergyConsume: 25,
+      battleTime: 180,
+    } as any
+    const state = { exSpecialCount: 6, ultimateCount: 2, chainCountTotal: 3, basicAttackTime: 5 } as any
+    const est = sigridMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 6, ultimateCount: 2, state })!
+    // 机会 = 6(碎玉) + 2(霜天) + 3(冰凌卷地) + 2×#4 命中（5s 完整循环 2 次，patch 同口径双计）
+    //   = 15 → spend 15 → 轮转 (5,5,5) + 破阵 2 → 每段 7
+    const lance = 7 * 0.78 + 7 * 1.3 + 7 * 1.78
+    expect(est.necessaryTime).toBeCloseTo(6 * 0.93 + lance, 9)
+    // 物化侧同口径：buildExecutions 三段行 totalTime == 估时 lance
+    const executions: any[] = []
+    sigridMechanic.buildExecutions!({ cfg, state, executions } as any)
+    const lanceRows = executions.filter((e: any) => ['1591007', '1591008', '1591022'].includes(e.moveId))
+    const rowLance = lanceRows.reduce((a: number, e: any) => a + (e.totalTime ?? 0), 0)
+    expect(rowLance).toBeCloseTo(lance, 9)
+    // 机会直算（无字段滞后）：basicAttackTime 变化 → 估时立即跟随（旧实现读上一轮 patch 写入的
+    // cfg.sigridChuqiangHits，估时冻结一整个折叠轮 → 积分器风卷）
+    const estMore = sigridMechanic.estimateExSpecialTime!({
+      cfg, exSpecialCount: 6, ultimateCount: 2,
+      state: { ...state, basicAttackTime: 10 },
+    })!
+    expect(estMore.necessaryTime).toBeGreaterThan(est.necessaryTime)
+  })
 })
 
 describe('希格莉德 buildCharConfig', () => {

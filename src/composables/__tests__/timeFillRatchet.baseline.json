@@ -566,34 +566,34 @@
   "outerExit": "stable"
  },
  "auto-1591-1161-1211": {
-  "slack": 0,
-  "over": 0.4,
+  "slack": 0.7,
+  "over": 0,
   "stun": 2,
   "outerExit": "cycle"
  },
  "auto-1591-1161-1311": {
-  "slack": 0,
-  "over": 2,
+  "slack": 2.2,
+  "over": 0,
   "stun": 3,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1591-1481-1211": {
-  "slack": 3.6,
+  "slack": 1.5,
   "over": 0,
   "stun": 3,
   "outerExit": "cycle"
  },
  "auto-1591-1481-1311": {
-  "slack": 1.7,
+  "slack": 3.8,
   "over": 0,
   "stun": 3,
   "outerExit": "cycle"
  },
  "auto-1591-1571-1211": {
-  "slack": 9,
+  "slack": 0.3,
   "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
+  "stun": 4,
+  "outerExit": "cycle"
  },
  "banyue-jufufu-lucia": {
   "slack": 1.4,

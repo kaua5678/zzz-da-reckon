@@ -35,10 +35,12 @@ async function summary(team: string[]) {
 
 describe('末轮欠打回填', () => {
   it('① 明显欠打的队被回填：refund>0 且留白显著收小', async () => {
-    // 希格莉德/莱卡恩/妮可：修复前 refund=0、留白 66s → 回填后打满
-    //（朱鸢/妮可/苍角曾是本机制的旗舰样例：留白 93.7→30.1s；2026-09-05 查清她剩下的 30.1s
-    //  不是欠打而是**压制以太弹与平A聚合行重复计费**，修掉后留白归零，见 zhuYuan.test.ts）
-    const t = await summary(['1591', '1161', '1311'])
+    // 叶瞬光/派派/妮可：refund 54.4s → 回填把留白收进 8.2s。
+    //（希格莉德/莱卡恩/妮可曾是样例：修复前 refund=0、留白 66s → 回填后打满；2026-09-06
+    //  希格莉德补了敛枪式估时钩子后 refund 25.7→2.0、留白收进门槛内，样例退役——
+    //  见 sigrid.test.ts「估时钩子」。朱鸢/妮可/苍角更早退役：留白 93.7→30.1s 查清是
+    //  压制以太弹与平A聚合行重复计费，修掉后归零，见 zhuYuan.test.ts）
+    const t = await summary(['1431', '1341', '1311'])
     expect(t.refund).toBeGreaterThan(10)
     expect(t.slack).toBeLessThanOrEqual(UNDERFILL_PROBE_THRESHOLD_SECONDS)
     // 星徽·比利/琉音/卢西娅：整数结构模块队，回填把留白收进门槛
