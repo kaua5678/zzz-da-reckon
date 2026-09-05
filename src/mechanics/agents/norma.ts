@@ -565,11 +565,14 @@ export function computeNormaHatToChainCount(
 ): number {
   // battleTime 缺省兜底：旧调用无 battleTime 时按整局 180s 计（帽子整局积蓄口径）
   const battleTime = Math.max(0, prev.battleTime ?? 180)
+  const exCount = Math.max(0, Math.floor(prev.exSpecialCount))
   const heatTotal = HEAT_INITIAL
     + battleTime * HEAT_PER_SEC
-    + Math.max(0, Math.floor(prev.exSpecialCount)) * HEAT_PER_EX
+    + exCount * HEAT_PER_EX
     + Math.max(0, Math.floor(prev.ultimateCount)) * HEAT_PER_ULTIMATE
-    + Math.max(0, Math.min(2, holdSeconds)) * HEAT_PER_HOLD_SEC
+    // 长按按「每次弹幕都长按 holdSeconds」计（与 computeNormaSource 同口径；曾漏乘 exCount
+    // → 迭代期喧响信道与最终行差 1 条赠链，2026-09-06 对齐）
+    + exCount * Math.max(0, Math.min(2, holdSeconds)) * HEAT_PER_HOLD_SEC
   return Math.floor(heatTotal / HEAT_HAT_THRESHOLD)
 }
 

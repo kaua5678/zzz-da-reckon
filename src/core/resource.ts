@@ -7,6 +7,32 @@ import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
+import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
+
+/**
+ * 诺姆膛温换连携（C4）赠链时间信道（与 iterate Step4 同口径）：hatCount 次赠链由
+ * applyNormaHatChain 在装配后追加到「上一位队友」的执行计划，其时间已由 iterate 计入
+ * 该槽必要时间——折叠环/欠打试探的行测量必须同样计入，否则预留被读成 idle → refund 双击。
+ */
+function normaGiftChainInfo(
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+  normaSlot: number,
+  totalTime: number,
+): { targetIdx: number; time: number } {
+  const nCfg = configs[normaSlot]
+  if (!nCfg) return { targetIdx: -1, time: 0 }
+  const hatCount = computeNormaHatToChainCount(nCfg, {
+    exSpecialCount: states[normaSlot].exSpecialCount,
+    ultimateCount: states[normaSlot].ultimateCount,
+    frontlineTime: states[normaSlot].frontlineTime,
+    battleTime: nCfg.normaBattleTime ?? totalTime,
+  }, Number((nCfg as unknown as Record<string, unknown>)['setting:norma.holdSeconds'] ?? 2))
+  if (hatCount <= 0) return { targetIdx: -1, time: 0 }
+  const setting = Number((nCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
+  const targetIdx = resolveUltimateTargetSlot(normaSlot, configs.length, setting)
+  return { targetIdx, time: hatCount * (configs[targetIdx]?.chainActionTime ?? 0) }
+}
 
 // ============ 单角色能量计算 ============
 
@@ -188,6 +214,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     let maxExcess = 0
     let maxIdle = 0
     let teamRefund = 0
+    // 诺姆膛温换连携赠链行在装配后被 applyNormaHatChain 追加、不在 buildExecutions 产物里——
+    // 行测量必须计入其时间（iterate 必要时间已按同一口径预留），否则折叠环会把预留读成
+    // idle → pass0 refund 双击（与最高马力星光行同病）。
+    const giftNormaSlot = configs.findIndex(c => c.agentId === '1571')
+    const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, states, giftNormaSlot, totalTime) : { targetIdx: -1, time: 0 }
     for (let i = 0; i < configs.length; i++) {
       const cfg = configs[i]
       const state = states[i]
@@ -203,7 +234,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         (sum, e) => sum + Math.max(0, (e.totalTime ?? 0) - (overlapByAction?.[`${cfg.slot}:${e.moveId}`] ?? 0))
           * (isFrontlineExecution(e) ? 1 : 0),
         0,
-      )
+      ) + (i === gift.targetIdx ? gift.time : 0)
       // 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget + refund）
       const excess = rowTime - (state.necessaryTime + state.basicAttackTime)
       // 真实时间压力（模块退化判据的权威信号，见 CharacterOperationConfig.timePressureSeconds）：
@@ -252,6 +283,39 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     }
   }
 
+  // ===== 星徽·比利终局整数重推（链数实数化收尾，2026-09-06，1051 yidhariFinalizeEx 同骨架）=====
+  // 迭代期她的动力压制链数与最高马力星光以实数参与收敛（HP 池 ∝ 普攻回血 ∝ 平A时间 = 正反馈
+  // 连续通道；消滞后后估时与物化共用同一求解器），终局 floor 一次 + 整数态重推 ≤12 轮到全状态
+  // 逐位稳定，让时间预算/能量/喧响账本与整数链数自洽（只作用于 1531 非轴模式，轴模式恒整数）。
+  // 旗标在最终装配后才复位：欠打回填试探与最终装配都必须按**整数物化行**测可行性/出账，
+  // 否则「floor 后 +1 链（≈10s）」的时长会被当成余量放行（1s 容差兜不住一整链）。
+  const billyFinalizeConfigs = configs.filter(c => c.agentId === '1531' && Number((c as unknown as Record<string, unknown>).billyAxisActive ?? 0) !== 1)
+  if (billyFinalizeConfigs.length > 0) {
+    for (const bCfg of billyFinalizeConfigs) bCfg.billyFinalizeChain = true
+    let finalizeStable = false
+    for (let finalizePass = 0; finalizePass < 12; finalizePass++) {
+      const prev = states
+      states = iterate(configs, states, config)
+      let stable = true
+      for (let i = 0; i < states.length; i++) {
+        const a = states[i], b = prev[i]
+        if (a.exSpecialCount !== b.exSpecialCount || a.ultimateCount !== b.ultimateCount ||
+            a.basicAttackTime !== b.basicAttackTime || a.necessaryTime !== b.necessaryTime ||
+            a.frontlineTime !== b.frontlineTime || a.backstageTime !== b.backstageTime ||
+            a.comboAlignTime !== b.comboAlignTime || a.comboAlignCredit !== b.comboAlignCredit ||
+            a.totalEnergy !== b.totalEnergy || a.totalDecibel !== b.totalDecibel) {
+          stable = false
+          break
+        }
+      }
+      if (stable) {
+        finalizeStable = true
+        break
+      }
+    }
+    if (finalizeStable) converged = true
+  }
+
   // ===== 末轮欠打回填（可行性门控，2026-09-05）=====
   // 上面折叠循环的 refund **冻结在 pass0**，而 pass0 恒测到**正** excess（此时平A池按权重满额发放
   // → 模块专属行爆量 → 行时间超账本）→ refund 被冻成 0；此后 excess 转负（账本 > 物化行 = 时间
@@ -267,6 +331,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   //       次数对应的秒数；升级路径见 check-guards DEBT_REGISTRY 同名词条。
   {
     const budgetSeconds = totalTime - (config.invincibleTime ?? 0)
+    const giftNormaSlot = configs.findIndex(c => c.agentId === '1571')
     /**
      * Σ物化前台**净**占用：扣轴内合轴分摊 + 每槽超出该分摊的招式合轴抵扣（max 不叠加）——
      * 与超时判定单一事实源 `netFrontlineOccupation` **完全同口径**，否则试探门控放行、
@@ -281,6 +346,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         if (idx >= 0 && Number.isFinite(sec)) overlapBySlot[idx] += sec
       }
       let total = 0
+      const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, st, giftNormaSlot, totalTime) : { targetIdx: -1, time: 0 }
       for (let i = 0; i < configs.length; i++) {
         const cfg = configs[i]
         const state = st[i]
@@ -290,7 +356,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
           (sum, e) => sum + Math.max(0, (e.totalTime ?? 0)
             - (overlap[`${cfg.slot}:${e.moveId}`] ?? 0))
             * (isFrontlineExecution(e) ? 1 : 0),
-          0)
+          0) + (i === gift.targetIdx ? gift.time : 0)
         const extraCredit = Math.max(0, (state.comboAlignCredit ?? 0) - overlapBySlot[i])
         total += Math.max(0, rowNet - extraCredit)
       }
@@ -531,6 +597,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 截断后 Σ物化净占用恒 ≤ 预算，所以"账本超预算"（iterate 那份中间值）与"物化超预算"
   // 都不再是溢出——只有真被砍掉的时间才是。消费方：TeamComparePage 操作难度横轴（1秒=1难度点）。
   config.overflowSeconds = timeTruncatedSeconds
+
+  // 比利终局旗标复位：cfg 对象被外层不动点/热启动复用，下轮调用必须回到实数迭代期
+  for (const cfg of configs) if (cfg.agentId === '1531') cfg.billyFinalizeChain = false
 
   return {
     totalTime,

@@ -19,6 +19,7 @@ import { getAgentMechanic } from '@/mechanics'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueCycleFromCfg, readAxisExCounts } from '@/mechanics/agents/banyue'
 import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
+import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { resolveExtraExCount } from '@/data/exSpecialPlans'
 
@@ -338,15 +339,15 @@ export function remielleSpecialVoidflareUseCount(cfg: CharacterOperationConfig):
 }
 
 /** 强化特殊技（及模块专属必做动作）前台时间：优先走角色机制模块覆盖（如卢西娅计划内E+A5），否则按通用公式 */
-function exSpecialNecessaryTime(cfg: CharacterOperationConfig, exSpecialCount: number, ultimateCount: number): number {
-  const estimate = getAgentMechanic(cfg.agentId)?.estimateExSpecialTime?.({ cfg, exSpecialCount, ultimateCount })
+function exSpecialNecessaryTime(cfg: CharacterOperationConfig, exSpecialCount: number, ultimateCount: number, prevState?: IterationState): number {
+  const estimate = getAgentMechanic(cfg.agentId)?.estimateExSpecialTime?.({ cfg, exSpecialCount, ultimateCount, state: prevState })
   if (estimate) return estimate.necessaryTime
   return exSpecialCount * cfg.exSpecialActionTime
 }
 
 /** 强化特殊技（及模块专属必做动作）合轴时间：优先走角色机制模块覆盖，否则按通用公式 */
-function exSpecialComboAlignTime(cfg: CharacterOperationConfig, exSpecialCount: number, ultimateCount: number): number {
-  const estimate = getAgentMechanic(cfg.agentId)?.estimateExSpecialTime?.({ cfg, exSpecialCount, ultimateCount })
+function exSpecialComboAlignTime(cfg: CharacterOperationConfig, exSpecialCount: number, ultimateCount: number, prevState?: IterationState): number {
+  const estimate = getAgentMechanic(cfg.agentId)?.estimateExSpecialTime?.({ cfg, exSpecialCount, ultimateCount, state: prevState })
   if (estimate) return estimate.comboAlignTime
   return exSpecialCount * cfg.exSpecialActionTime * cfg.exSpecialComboAlignRatio
 }
@@ -356,8 +357,8 @@ function exSpecialComboAlignTime(cfg: CharacterOperationConfig, exSpecialCount: 
  * 才能抵扣团队时间预算；NET 约定模块（照/卢西娅：合轴动作已从 necessaryTime 剔除、
  * 物化行不占前台）返回 0，防止同一重叠双重抵扣。通用公式路径全额可抵扣。
  */
-function exSpecialComboAlignCredit(cfg: CharacterOperationConfig, exSpecialCount: number, ultimateCount: number): number {
-  const estimate = getAgentMechanic(cfg.agentId)?.estimateExSpecialTime?.({ cfg, exSpecialCount, ultimateCount })
+function exSpecialComboAlignCredit(cfg: CharacterOperationConfig, exSpecialCount: number, ultimateCount: number, prevState?: IterationState): number {
+  const estimate = getAgentMechanic(cfg.agentId)?.estimateExSpecialTime?.({ cfg, exSpecialCount, ultimateCount, state: prevState })
   if (estimate) return estimate.comboAlignIncludedInNecessary === false ? 0 : estimate.comboAlignTime
   return exSpecialCount * cfg.exSpecialActionTime * cfg.exSpecialComboAlignRatio
 }
@@ -1247,6 +1248,28 @@ export function iterate(
 
   // Step 4: 计算必做动作前台时间、合轴抵扣与单角色前台时间
   // 先算总必做动作前台时间与每角色合轴（全额 + 可抵扣部分），再分配平A时间
+  // 诺姆膛温换连携（C4）时间信道（2026-09-06 补账）：帽子把戏把「上一位队友」的快速支援替换为
+  // 其本人连携技 hatCount 次——喧响侧已在 Step 3 extraSelfDecibel 计入，**时间侧此前漏账**：
+  // 赠链行由 applyNormaHatChain 在装配后追加、引擎必要时间没预留，实数化把时间线塞满后
+  // 它把净占用顶出预算（实测 billy/norma 队 +14.2s）。按同一 cfg 通道把 hatCount × 目标连携
+  // 时长加进目标槽必要时间（GROSS 全额，合轴比随目标连携行口径）。
+  const normaGiftSlot = configs.findIndex(c => c.agentId === '1571')
+  let normaGiftTargetIdx = -1
+  let normaGiftChainTime = 0
+  if (normaGiftSlot >= 0) {
+    const nCfg = configs[normaGiftSlot]
+    const hatCount = computeNormaHatToChainCount(nCfg, {
+      exSpecialCount: prevStates[normaGiftSlot].exSpecialCount,
+      ultimateCount: prevStates[normaGiftSlot].ultimateCount,
+      frontlineTime: prevStates[normaGiftSlot].frontlineTime,
+      battleTime: nCfg.normaBattleTime ?? totalTime,
+    }, Number((nCfg as unknown as Record<string, unknown>)['setting:norma.holdSeconds'] ?? 2))
+    if (hatCount > 0) {
+      const setting = Number((nCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
+      normaGiftTargetIdx = resolveUltimateTargetSlot(normaGiftSlot, configs.length, setting)
+      normaGiftChainTime = hatCount * (configs[normaGiftTargetIdx].chainActionTime ?? 0)
+    }
+  }
   const totalNecessary: number[] = []
   const comboAlignTimes: number[] = []
   const comboAlignCredits: number[] = []
@@ -1281,19 +1304,25 @@ export function iterate(
     // 失衡轴模式用 chainCountTotalOverride（各轴按窗口数加权后的最终连携次数）
     const chainCount = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * (globalCfg.stunCount ?? 0)
 
-    const necessary = exSpecialNecessaryTime(cfg, exForTime, ultForTime)
+    const necessary = exSpecialNecessaryTime(cfg, exForTime, ultForTime, prevStates[i])
       + ultForTime * cfg.ultimateActionTime
       + chainCount * cfg.chainActionTime
       + cfg.dodgeCounterCount * cfg.dodgeCounterActionTime
       + (cfg.parryCount ?? 0) * cfg.assistFollowUpActionTime
       + ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistActionTime
       + remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndActionTime
+      // 诺姆膛温换连携赠链时间（目标槽）：装配后 applyNormaHatChain 追加的赠链行占前台，
+      // 引擎必要时间必须预留（同连携 GROSS 全额口径），否则净占用顶出预算
+      + (i === normaGiftTargetIdx ? normaGiftChainTime : 0)
       // 时间预算收敛：执行计划中模块专属动作行（如雅霜月架势、叶瞬光飞光）占用前台但未计入
       // estimateExSpecialTime → Σ执行行时间超战斗时间；外层循环把超出部分折入必要时间，压缩平A池。
       + (cfg.timeBudgetExcess ?? 0)
     totalNecessary.push(necessary)
 
     // 合轴时间 = 各招式合轴部分之和（展示/非操作回能通道用全额）
+    const giftComboAlign = i === normaGiftTargetIdx
+      ? normaGiftChainTime * cfg.chainComboAlignRatio
+      : 0
     const comboAlignGeneric =
       ultForTime * cfg.ultimateActionTime * cfg.ultimateComboAlignRatio
       + chainCount * cfg.chainActionTime * cfg.chainComboAlignRatio
@@ -1301,9 +1330,10 @@ export function iterate(
       + (cfg.parryCount ?? 0) * cfg.assistFollowUpActionTime * cfg.assistFollowUpComboAlignRatio
       + ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistActionTime * cfg.defensiveAssistComboAlignRatio
       + remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndActionTime * cfg.remielleRainbowEndComboAlignRatio
-    comboAlignTimes.push(exSpecialComboAlignTime(cfg, exForTime, ultForTime) + comboAlignGeneric)
+      + giftComboAlign
+    comboAlignTimes.push(exSpecialComboAlignTime(cfg, exForTime, ultForTime, prevStates[i]) + comboAlignGeneric)
     // 预算抵扣部分：通用项全额可抵扣（necessary 按全额计），强特项按 GROSS/NET 约定
-    comboAlignCredits.push(exSpecialComboAlignCredit(cfg, exForTime, ultForTime) + comboAlignGeneric)
+    comboAlignCredits.push(exSpecialComboAlignCredit(cfg, exForTime, ultForTime, prevStates[i]) + comboAlignGeneric)
   }
 
   // 总必做动作前台时间
@@ -1352,8 +1382,8 @@ export function iterate(
     : 1
   const feasibleScale = rawScale
   // debt: 全局实数化收敛重构——本封顶让未实数化整数队的落点可随初值差 ±1 次强特（实测
-  //       琉音 24/23），落点判据因此从逐位相等退到「游戏等价」档（seedInvariance.test.ts 第二档）；
-  //       升级路径 = 次数实数化后把该档升回逐位。
+  //       琉音 24/23）。2026-09-06 比利链数实数化后 seedInvariance 第二档已升回逐位、原样例
+  //       移除；琉音等整数结构模块仍在，升级路径 = 其余正反馈模块逐个实数化后销号本条。
   // 封顶后的必要前台：净占用按可行比例缩回预算（合轴抵扣部分原样保留，它不占预算）。
   // 这个 capped 值**同时**用于平A池计算与 state.necessaryTime ⇒ 省下来的必要时间变成队友
   // 能打的平A填充，而不是"账本说满了、动作没打满"的假满（实测：不回灌留白 393s，回灌 275s）。

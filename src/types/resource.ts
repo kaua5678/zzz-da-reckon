@@ -1799,6 +1799,10 @@ export interface CharacterOperationConfig {
   billyAxisEx?: Record<string, number>
   /** 星徽·比利是否失衡轴模式（useResourceCalc 注入） */
   billyAxisActive?: boolean
+  /** 星徽·比利终局整数重推旗标（calcTeamResources 置位：迭代期实数链数 → 终局 floor；最终装配后复位） */
+  billyFinalizeChain?: boolean
+  /** 星徽·比利链数实数化 opt-in（buildCharConfig 恒置位；外部直调不带 → 整数口径保持历史行为） */
+  billyContinuousChain?: boolean
   /** 希格莉德轴内破阵连段套数（useResourceCalc 注入：破阵块 + C6 时诺姆赠送连携触发的破阵，经窗口时间门控） */
   sigridAxisPozhenSets?: number
   /** 希格莉德是否失衡轴模式（useResourceCalc 注入） */

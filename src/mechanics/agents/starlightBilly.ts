@@ -7,6 +7,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { BillyChain, CharacterResourceResult, MechanicSetting } from '@/types/resource'
+import type { CharacterOperationConfig, IterationState } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
@@ -96,6 +97,8 @@ const EX_FLASH_COST = 60
 const ENTRY_FLASH = 60
 // 决意：额外回复（文本数值，用户确认）
 const EX_EXTRA_DETERMINATION = 8 // 孤轮特技命中（按孤轮总次数）
+// 最高马力星光消耗（= spec spendRules「billy_max_power_spend」cost：核心被动文本「≥100 点消耗 100 点发动」）
+const FULL_THROTTLE_DETERMINATION_COST = 100
 // HP 池（用户确认：动力压制必须烧血才能打、不是无限释放）
 const HP_COST_PER_DRIVE = 16 // 动力压制消耗 %生命上限
 const HP_DISCOUNT_HALVED = 8 // 普攻第四段衔接：耗血减半（16%→8%）
@@ -168,7 +171,15 @@ export function computeBillyChain(
  * HP 池收敛（用户确认）：动力压制必须烧血才能打、不是无限释放，回血总量决定释放次数。
  * 链数 chain（= 动力压制数 = 孤轮数）≤ floor((75 + 回血总量)/平均耗血)；
  * 摇曳链受同一预算约束（≤ chain）；失衡轴模式轴内动力压制按捏轴执行不裁剪，轴外补足剩余预算。
+ *
+ * 实数化（2026-09-06，1051/1431 targeted 骨架）：`quantize=false` 时链数以**实数**返回
+ * （回血总量 ∝ 平A时间 = 连续信道，`floor` 一次翻转就是一条整链 ≈ 10s，正是
+ * 「平A↑→回血↑→链+1→必要时间↑→平A↓」环增益 >1 的原产地）。迭代期实数、终局才 floor
+ * （calcTeamResources 的 `billyFinalizeChain` 终局整数重推，同 1051 yidhariFinalizeEx）。
+ * 摇曳/抓地次数保持整数（付费强特次数是闪能池的整数推导量，链预算只裁剪摇曳链）。
+ * quantize=true 与原 8 轮循环逐位等价（先按整数预算裁摇曳 → 预算重算 → max(轴内, floor(预算))）。
  */
+// @fact agent:1531/链数实数化 口径: 动力压制链数与最高马力星光在迭代期以**实数**参与收敛（HP 池 ∝ 普攻回血 ∝ 平A时间 = 正反馈连续信道，floor 一次翻转 = 一条整链 ≈10s 是环增益>1 原产地）——估时钩子收 `state` 直推当轮 basicAttackTime（与 buildExecutions 共用同一求解器，消掉「读上一轮 record.billyChainCount」的无意稳定器滞后），终局 `billyFinalizeChain` 整数重推 floor 一次；轴模式恒整数（捏轴是用户意图，重推与行时间物化均跳过轴）；最高马力星光 3.1s 行时间必须物化到行本身（否则账本>行 idle 被回填成 refund 双击，实测超预算 16s） | 据 实测@2026-09-06 + 1051/1431 targeted 前例 | 验 src/mechanics/__tests__/billySmoke.test.ts#星徽·比利链数实数化 | 锚 src/mechanics/agents/starlightBilly.ts#computeBillyHpModel | 信 高
 export function computeBillyHpModel(
   paidEx: number,
   rocking: number,
@@ -176,30 +187,26 @@ export function computeBillyHpModel(
   axisDriveSuppression = 0,
   discountRatio = 0,
   basicHealPct = 0,
+  quantize = true,
 ): { chain: number; hpCostPct: number; healPct: number; hpFloorPct: number } {
   const ratio = Math.max(0, Math.min(1, Number.isFinite(discountRatio) ? discountRatio : DEFAULT_HP_DISCOUNT_RATIO))
   const avgCost = HP_COST_PER_DRIVE - (HP_COST_PER_DRIVE - HP_DISCOUNT_HALVED) * ratio
   let r = Math.max(0, Math.floor(rocking))
   let k = Math.max(0, Math.floor(traction))
-  let chain = Math.max(0, Math.floor(axisDriveSuppression))
-  for (let iter = 0; iter < 8; iter++) {
-    const healPct = k * HEAL_TRACTION + r * HEAL_ROCKING + basicHealPct
-    // 初始可耗 75%（100 − 25 下限）+ 回血总量，除以平均单次耗血
-    const budget = Math.floor(((100 - HP_FLOOR_LIMIT) + healPct) / avgCost)
-    const nextR = Math.min(r, budget) // 摇曳链也是链，受同一预算约束
-    if (nextR !== r) {
-      // 摇曳链超预算时减少，多出的闪能转抓地
-      r = nextR
-      k = Math.max(0, Math.floor(paidEx) - r)
-    }
-    const nextChain = chain >= Math.floor(axisDriveSuppression)
-      ? Math.max(chain, budget) // 轴模式：轴内不裁剪，预算不足仅展示
-      : Math.max(chain, budget)
-    if (nextChain === chain) break
-    chain = nextChain
+  const chain0 = Math.max(0, Math.floor(axisDriveSuppression))
+  // 初始可耗 75%（100 − 25 下限）+ 回血总量，除以平均单次耗血
+  const budget0 = ((100 - HP_FLOOR_LIMIT) + k * HEAL_TRACTION + r * HEAL_ROCKING + basicHealPct) / avgCost
+  const nextR = Math.min(r, Math.floor(budget0)) // 摇曳链也是链，受同一预算约束（次数必须整数）
+  if (nextR !== r) {
+    // 摇曳链超预算时减少，多出的闪能转抓地
+    r = nextR
+    k = Math.max(0, Math.floor(paidEx) - r)
   }
-  const hpCostPct = avgCost * chain
   const healPct = k * HEAL_TRACTION + r * HEAL_ROCKING + basicHealPct
+  const budget = ((100 - HP_FLOOR_LIMIT) + healPct) / avgCost
+  // 轴模式：轴内不裁剪，预算不足仅展示（chain0 = 轴内捏轴数，max 保底）
+  const chain = Math.max(chain0, quantize ? Math.floor(budget) : budget)
+  const hpCostPct = avgCost * chain
   const hpFloorPct = Math.max(0, Math.min(100, 100 - hpCostPct + healPct))
   return { chain, hpCostPct, healPct, hpFloorPct }
 }
@@ -246,6 +253,9 @@ function buildBillyCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput
   cfg.skipGenericExSpecial = true
   cfg.exSpecialCountFloor = true
   cfg.exSpecialEnergyConsume = EX_FLASH_COST
+  // 链数实数化 opt-in（1051 yidhariContinuousEx 同款）：完整管线经本函数构建时恒置位；
+  // 外部直调模块（单元测试/面板探针）不带此旗标 → 走整数口径，保持历史行为。
+  cfg.billyContinuousChain = true
 
   const record = cfg as unknown as Record<string, unknown>
   record.billyCinemaLevel = cinemaLevel
@@ -308,29 +318,103 @@ function buildBillyCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput
   cfg.exSpecialDecibelRecovery = avgDecibel
 }
 
-function billyExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
+function billyExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
   const record = cfg as unknown as Record<string, unknown>
   const times = (record.billyMoveTimes ?? {}) as Record<string, number>
   const axisActive = Number(record.billyAxisActive ?? 0) === 1
+  const quantize = axisActive || record.billyFinalizeChain === true || record.billyContinuousChain !== true
   const chain = computeBillyChain(
     exSpecialCount,
     cfgNum(cfg, '1531.rockingRatio', DEFAULT_ROCKING_RATIO),
-    Number(record.billyFullThrottleCount ?? 0),
+    0, // fullThrottle 由决意求解器按当前状态推导（见下），终局前不读上一轮写入值
     readAxisEx(cfg),
     axisActive,
     cfg.dodgeCounterCount ?? 0,
   )
-  // 动力压制链数用上一轮 HP 收敛值（初始 0，不动点收敛）
-  const chainFinal = axisActive
-    ? chain.chain
-    : Number(record.billyChainCount ?? 0)
-  // 必做前台时间：动力压制+孤轮（链）+ 摇曳/抓地 + 银河横行（尾焰全旋+衔接孤轮）+ 最高马力星光（3.1s/次，上一轮收敛值）
+  // ===== 消滞后 + 实数化（2026-09-06，1051 targeted 骨架）=====
+  // 旧实现读上一轮 buildExecutions 写入的 record.billyChainCount / billyFullThrottleCount——
+  // 那个滞后是「无意的稳定器」：链数 ∝ HP 池 ∝ 回血 ∝ 平A时间 是正反馈环，整数 floor
+  // 一次翻转就是一条整链（≈10s），滞后把环冻结一整个外层轮，代价是估时与物化各算各的
+  // （1531 系三队全 outerExit=cycle、留白 14.3s 的来源）。现在与 buildExecutions 共用同一
+  // 求解器：从当轮 state.basicAttackTime 直接推导链数（迭代期实数、终局 billyFinalizeChain
+  // 才 floor），同一份秒数不再被「平A」和「动作」各花一次，且环增益回到 <1。
+  let chainFinal = chain.chain
+  let fullThrottle = Number(record.billyFullThrottleCount ?? 0)
+  if (!axisActive) {
+    const healPerSec = Number(record.billyBasicHealPerSec ?? 0)
+    const basicHealPct = Math.max(0, state?.basicAttackTime ?? 0) * healPerSec
+    const hp = computeBillyHpModel(
+      exSpecialCount,
+      chain.rocking,
+      chain.traction,
+      0,
+      cfgNum(cfg, '1531.driveSuppressionHpDiscountRatio', DEFAULT_HP_DISCOUNT_RATIO),
+      basicHealPct,
+      quantize,
+    )
+    chainFinal = hp.chain
+    fullThrottle = billyFullThrottleFromState(chain, chainFinal, state, cfg, quantize)
+  }
+  // 必做前台时间：动力压制+孤轮（链）+ 摇曳/抓地 + 银河横行（尾焰全旋+衔接孤轮）+ 最高马力星光（3.1s/次）
   const exTime = chainFinal * ((times[MOVE.driveSuppression] ?? 0) + (times[MOVE.coolWheelie] ?? 0))
     + chain.rocking * (times[MOVE.rockingFootwork] ?? 0)
     + chain.traction * (times[MOVE.tractionWheels] ?? 0)
     + chain.galaxy * (times[MOVE.afterfireSpin] ?? 0)
-  const fullThrottleTime = chain.fullThrottle * (times[MOVE.fullThrottle] ?? 0)
+  const fullThrottleTime = fullThrottle * (times[MOVE.fullThrottle] ?? 0)
   return { necessaryTime: exTime + fullThrottleTime, comboAlignTime: 0 }
+}
+
+/** 决意求解器（estimate 与 buildExecutions 共用）：按当前链结构 + state 推导决意总量 → 最高马力星光次数。
+ *  迭代期实数（total/100，语义 = 最后 0.6 次的决意也已打到，同 1431「最后一轮只打 0.4 轮」）；
+ *  终局 quantize=true 时 floor（与 spec spendRules billy_max_power_spend 同口径）。 */
+function billyFullThrottleFromState(
+  chain: BillyChain,
+  chainFinal: number,
+  state: IterationState | undefined,
+  cfg: AgentCharConfigInput['cfg'],
+  quantize: boolean,
+): number {
+  const st: IterationState = state ?? {
+    basicAttackTime: 0,
+    exSpecialCount: chain.paidEx,
+    ultimateCount: 0,
+    chainCountTotal: 0,
+    totalEnergy: 0,
+    totalDecibel: 0,
+    necessaryTime: 0,
+    frontlineTime: 0,
+    backstageTime: 0,
+    comboAlignTime: 0,
+    comboAlignCredit: 0,
+  }
+  // 与 buildExecutions 同一求解器：链结构 → 招式命中决意（含平A秒均）→ 孤轮额外 +8 → spec 资源求和
+  const detChain = { ...chain, chain: chainFinal, galaxy: Math.min(chain.galaxy, chainFinal) }
+  const atkDet = computeAttackDataDetermination(
+    detChain,
+    {
+      chainCountTotal: st.chainCountTotal,
+      ultimateCount: st.ultimateCount,
+      dodgeCounterCount: cfg.dodgeCounterCount ?? 0,
+      basicAttackTime: st.basicAttackTime,
+    },
+    cfg,
+    cfg.parryCount ?? 0,
+    cfg.quickAssistCount ?? 0,
+  )
+  const detCfg = {
+    ...cfg,
+    billyAttackDataDetermination: atkDet,
+    billyExExtraDetermination: chainFinal * EX_EXTRA_DETERMINATION,
+  } as CharacterOperationConfig
+  const resources = computeSpecResources(getAgentSpec(AGENT_ID)!, detCfg, st)
+  const det = resources.get('billy_determination')
+  const spend = det?.spendCounts?.['billy_max_power_spend'] ?? 0
+  const total = det?.total ?? 0
+  // 100 = spec spendRules「billy_max_power_spend」cost（核心被动文本「≥100 点消耗 100 点发动」）。
+  // spendCounts 即 floor(total/100)，终局直接用；迭代期实数 = total/100。
+  return quantize
+    ? Math.max(0, Math.floor(spend))
+    : Math.max(0, total / FULL_THROTTLE_DETERMINATION_COST)
 }
 
 function pushChainExec(
@@ -410,6 +494,9 @@ function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
   const decibel = (record.billyMoveDecibel ?? {}) as Record<string, number>
   const axisActive = Number(record.billyAxisActive ?? 0) === 1
   const axisEx = readAxisEx(cfg)
+  // 迭代期实数 / 终局整数（与 estimateExSpecialTime 同旗标同求解器：calcTeamResources 的
+  // billyFinalizeChain 终局重推置 true；轴模式恒整数——捏轴次数是用户意图）
+  const quantize = axisActive || record.billyFinalizeChain === true || record.billyContinuousChain !== true
 
   // EX 链结构（摇曳/抓地由闪能池定；动力压制链由 HP 池收敛）
   let chain = computeBillyChain(
@@ -428,6 +515,7 @@ function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
     axisActive ? chain.chain : 0,
     hpDiscountRatio,
     computeBasicHealPct(state, cfg),
+    quantize,
   )
   const galaxyFinal = axisActive ? 0 : Math.min(chain.galaxy, hp.chain)
   chain = {
@@ -451,9 +539,25 @@ function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
   record.billyCoolWheelieCount = chain.chain // 星辉/煊赫星辉的孤轮来源（含免费衔接的孤轮）
   specBase.buildExecutions?.({ cfg, state, executions })
   const resources = computeSpecResources(getAgentSpec(AGENT_ID)!, cfg, state)
-  const fullThrottle = Math.max(0, Math.floor(resources.get('billy_determination')?.spendCounts['billy_max_power_spend'] ?? 0))
+  // 终局整数 = spec spendCounts（floor(total/100)）；迭代期实数 = total/100（同 estimate 求解器）
+  const fullThrottle = quantize
+    ? Math.max(0, Math.floor(resources.get('billy_determination')?.spendCounts['billy_max_power_spend'] ?? 0))
+    : Math.max(0, (resources.get('billy_determination')?.total ?? 0) / FULL_THROTTLE_DETERMINATION_COST)
   record.billyFullThrottleCount = fullThrottle
   chain = { ...chain, fullThrottle }
+  // ===== 最高马力星光时间物化（坑19③ 的对称侧，2026-09-06）=====
+  // 3.1s 原本只进估时（necessaryTime）、事件行 actionTime=0（坑6 设计）→「账本 > 行」的
+  // 系统性 idle 在消滞后后被 pass0 回填测成 refund 双击（实测 auto-1531-1571-1451 超预算 16s：
+  // refund 26.5s → Σ账本 = 预算 + refund）。行时间 = 物化行本身，次数/伤害/决意字段不动。
+  // 迭代期用实数次数物化（折叠环只量时间，终局整数纪律由 billyFinalizeChain 保证）。
+  // **轴模式除外**：轴内捏轴时间由栈引擎窗口时间轴计账，估时仍走 record.billyFullThrottleCount
+  // 滞后口径（旧行为），行时间物化会把轴顶出预算触发轴退化（实测比琉通用轴 axisMode 丢失）。
+  const fullThrottleRow = executions.find(e => e.moveId === MOVE.fullThrottle)
+  if (fullThrottleRow && !axisActive) {
+    fullThrottleRow.actionTime = times[MOVE.fullThrottle] ?? 0
+    fullThrottleRow.count = chain.fullThrottle
+    fullThrottleRow.totalTime = chain.fullThrottle * (times[MOVE.fullThrottle] ?? 0)
+  }
 
   // 主循环执行：动力压制 → 孤轮特技（免费衔接），摇曳/抓地为付费强特，尾焰全旋为银河横行
   pushChainExec(executions, MOVE.driveSuppression, '特殊技：动力压制', chain.chain, times, dmg, decibel, 0,

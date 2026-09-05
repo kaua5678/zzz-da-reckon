@@ -518,7 +518,7 @@
   "outerExit": "stable"
  },
  "auto-1531-1481-1451": {
-  "slack": 2.7,
+  "slack": 3.7,
   "over": 0,
   "stun": 3,
   "outerExit": "cycle"
@@ -644,7 +644,7 @@
   "outerExit": "stable"
  },
  "billy-liuyin-lucia": {
-  "slack": 2.8,
+  "slack": 3.7,
   "over": 0,
   "stun": 3,
   "outerExit": "cycle"

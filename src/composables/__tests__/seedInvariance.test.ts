@@ -77,16 +77,12 @@ async function setupCapture(team: [string, string, string], engines: [string, st
 /**
  * 落点判据分两档（用户口径 2026-09-05「以游戏逻辑为主，检测也该改」）：
  *
- * - **逐位相等**：只留给**已完成实数化松弛**的角色（伊德海莉 targeted 前例）。对它们逐位是
- *   可达标准，放松等于放弃已有成果——所以这条不降档。
- * - **游戏等价**：未实数化的整数结构模块队（星徽·比利/琉音），从荒谬初值（EX=50、能量 9999）
- *   出发可以落到相邻整数组合（实测 24 次 vs 23 次、平A差 1.6s、喧响差 1.1%）。实战里
- *   "这一轮多打一次强特"本来就是手法差异，不是 bug；**逐位相等从来不是游戏性质，而是实数化
- *   收敛的副产品**。判据因此改成"同一套打法"档：次数差 ≤1、平A差 ≤2s、喧响差 ≤2%，
- *   并且两种落点都必须**可行**（净占用 ≤ 预算）且**不发呆**（留白 ≤ 界）——
- *   后两条才是玩家会看见的东西。
- *
- * 实数化专项完成后，本文件的第二档应升回逐位（debt 标记在 core/resource/helpers.ts）。
+ * - **逐位相等**：只留给**已完成实数化松弛**的角色（伊德海莉 targeted 前例 + 2026-09-06 起
+ *   星徽·比利链数实数化）。对它们逐位是可达标准，放松等于放弃已有成果——所以这条不降档。
+ * - **游戏等价**（已无用例，保留档位说明）：未实数化的整数结构模块队从荒谬初值出发可以落到
+ *   相邻整数组合（"这一轮多打一次强特"本来就是手法差异，不是 bug）；**逐位相等从来不是游戏
+ *   性质，而是实数化收敛的副产品**。原比利/琉音样例 2026-09-06 升回逐位后，本档暂无驻场
+ *   用例——再有新的整数结构模块队回归到此档。
  */
 describe('连续松弛·落点不变性', () => {
   it('伊德海莉+莱卡恩+卢西娅（已实数化）：零种子 vs 高种子 → 逐位同一收敛态', async () => {
@@ -99,29 +95,19 @@ describe('连续松弛·落点不变性', () => {
     expect(cold.converged).toBe(true)
   })
 
-  it('星徽·比利+琉音+卢西娅（整数结构模块队）：落点游戏等价 + 两种初值都可行不发呆', async () => {
+  it('星徽·比利+琉音+卢西娅（比利链数已实数化）：零种子 vs 高种子 → 逐位同一收敛态', async () => {
     const cfg = await setupCapture(['1531', '1481', '1451'], ['13019', '', '14145'])
     const cold = calcTeamResources(JSON.parse(JSON.stringify(cfg)))!
     const hot = calcTeamResources({ ...JSON.parse(JSON.stringify(cfg)), initialStates: inflatedSeed(cfg) })!
+    // 2026-09-06 比利链数实数化（1051 骨架）：本队升回逐位档——次数/平A/喧响全部逐位相等
+    const fc = fingerprint(cold), fh = fingerprint(hot)
+    expect(fh).toEqual(fc)
+    // 两种初值都必须过硬不变量：净占用不超战斗时间（超了就是"声称打了 190s"）。
+    // 留白不在这里断言——那是 timeFillRatchet 逐队钉的（125 队各有基线）。
     const budget = cfg.totalTime - (cfg.invincibleTime ?? 0)
-
-    // ① 同一套打法：次数差 ≤1、平A差 ≤2s、喧响差 ≤2%
-    for (let i = 0; i < 3; i++) {
-      const a = cold.characters[i], b = hot.characters[i]
-      expect(Math.abs(a.exSpecialCount - b.exSpecialCount), `槽${i} 强特次数`).toBeLessThanOrEqual(1)
-      expect(Math.abs(a.ultimateCount - b.ultimateCount), `槽${i} 终结次数`).toBeLessThanOrEqual(1)
-      expect(Math.abs(a.timeAllocation.basicAttackTime - b.timeAllocation.basicAttackTime), `槽${i} 平A`)
-        .toBeLessThanOrEqual(2)
-      const da = a.decibelSource?.total ?? 0, db = b.decibelSource?.total ?? 0
-      expect(Math.abs(db - da) / Math.max(1, da), `槽${i} 喧响相对差`).toBeLessThanOrEqual(0.02)
-    }
-    // ② 两种落点都必须过硬不变量：净占用不超战斗时间（超了就是"声称打了 190s"）。
-    //    留白**不在这里断言**——那是 timeFillRatchet 逐队钉的（125 队各有基线），
-    //    在此重复只会逼我拍一个更松的假数字。
-    for (const [tag, rr] of [['cold', cold], ['hot', hot]] as const) {
-      const used = netFrontlineOccupation(rr)
-      expect(used, `${tag} 净占用 ${used.toFixed(1)} > 预算 ${budget}`).toBeLessThanOrEqual(budget + 1)
-      expect(rr.converged, `${tag} 未收敛`).toBe(true)
-    }
+    const used = netFrontlineOccupation(cold)
+    expect(used).toBeLessThanOrEqual(budget + 1)
+    expect(cold.converged).toBe(true)
+    expect(hot.converged).toBe(true)
   })
 })

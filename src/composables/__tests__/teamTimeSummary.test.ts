@@ -45,10 +45,12 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
   })
 
   it('留白被归因到「账本虚高」，不是「池没分完」', async () => {
-    // 星徽·比利/青衣/卢西娅：当前最大留白队。前两个样例（朱鸢 30.1s、希格莉德 20.6s）都因
-    // 2026-09-05 修掉「模块行重复占用平A池」而归零 —— 见 zhuYuan.test.ts / sigrid carve 注释。
-    const t = await summaryOf(['1531', '1251', '1451'])
-    expect(t.slack).toBeGreaterThan(10)
+    // 叶瞬光/派派/妮可（auto-1431-1341-1031）：当前最大「账本虚高」归因队（slack 8.8、
+    // 池 100% 分完、ledgerInflation 24.2）。历史样例（朱鸢 30.1s、希格莉德 20.6s）都因
+    // 2026-09-05 修掉「模块行重复占用平A池」而归零，星徽·比利 2026-09-06 实数化后也打满
+    // （slack 0.1）——全库最大留白从 93.7s 一路收到 <10s，阈值随引擎现状下调。
+    const t = await summaryOf(['1431', '1341', '1031'])
+    expect(t.slack).toBeGreaterThan(5)
     // 池确实被分完（平A分配 ≈ 可分配池）→ 留白不来自未分配的秒数
     expect(t.basicTotal).toBeGreaterThan(t.remainingFrontlinePool - 1)
     // 留白几乎全部 = 账本必要时间高于物化必要行

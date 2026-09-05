@@ -117,6 +117,12 @@ export interface AgentExSpecialTimeInput {
   cfg: CharacterOperationConfig
   exSpecialCount: number
   ultimateCount: number
+  /**
+   * 上一轮收敛状态（引擎 iterate 传入，外部直调可省略）：模块用它消除「读上一轮
+   * buildExecutions 写入 cfg 的结构量」的滞后——星徽·比利链数/最高马力星光即按
+   * state.basicAttackTime 当前轮直推（估时与物化共用同一求解器，同一份时间只花一次）。
+   */
+  state?: IterationState
 }
 
 export interface AgentExSpecialTimeEstimate {

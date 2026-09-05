@@ -221,6 +221,15 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
      `yidhariInteractionGrid.test.ts`（交互网格 × 零/高种子）。全局「实数化松弛、终局才 floor」
      仍为 debt（重排所有带时间/资源循环模块的均衡，sigrid 出枪式消失前例），见 check-guards
      DEBT_REGISTRY。
+     **targeted 例外 ②（2026-09-06）**：星徽·比利动力压制链数（HP 池 ∝ 普攻回血 ∝ 平A时间 =
+     正反馈连续信道）走同骨架：`computeBillyHpModel(quantize=false)` 迭代期实数链 + 消滞后
+     （`AgentExSpecialTimeInput.state` 传入当轮 basicAttackTime，估时与物化共用同一求解器，
+     不再回读 `record.billyChainCount`）+ 终局 floor（`billyFinalizeChain` 重推 ≤12 轮，
+     轴模式恒整数跳过重推——轴内捏轴是用户意图）。护栏：`billySmoke.test.ts` 实数化三例 +
+     `seedInvariance.test.ts` 第二档升回逐位。配套必修的口子：① 最高马力星光 3.1s 行时间物化
+     （坑19③ 对称侧，否则账本>行 idle 被回填成 refund 双击）；② 诺姆膛温赠链时间信道补账
+     （iterate 必要时间预留 + 折叠/探针行测量同口径），并修 `computeNormaHatToChainCount`
+     长按项漏乘 exCount（迭代期喧响信道与最终行差 1 条赠链）。
 18. **Boss 预设弹刀反推（2026-08）**：`boss-presets.json` 的 `defaults.parryTotal` / `parryNoFollowUpTotal` +
     「保底4失衡」勾选时，`useResourceCalc` 外层不动点线程（`prevParrySplit`，般岳 `prevBanyueTopUp`
     同款收敛）按当前队伍反推——击破位（首个 `specialty==='stun'` 槽位）**正常弹刀** = 保底 4 次失衡所需、
@@ -314,6 +323,10 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     - 截断**从装配尾部整行丢** → 模块行（叶瞬光架势段、琉音抱拳）恰好排最后又正是伤害与失衡的主要载体，删光后**失衡池空、`calcOutput` 返回 null**。
     - 截断**等比缩 count** → 产出「强化特殊技 ×2.78 次」这种不存在的动作，红 11 条（次数必须整数，见坑 22）。
     - 给叶瞬光「打短轴压时间」→ **压不住**：轮数由资源驱动，每轮变便宜反而多打几轮（full 6 轮 121.5s → short_mie 9 轮 206.9s）；缩交互同样无效（弹刀 6→0 省出的 31s 被平A池原样吃回，净占用纹丝不动）。省下的时间不会消失，它会变成能量、变成次数、变回动作。
+    - 比利实数化后**最高马力星光行仍不带时间**（只进估时）→ 「账本 > 行」的系统性 idle 被 pass0 回填测成 **refund 双击**：auto-1531-1571-1451 refund 26.5s → Σ账本 = 预算 + refund、超预算 16s。行时间必须物化到行本身（坑19③ 的对称侧：账本有的秒数行必须也有）。
+    - 最高马力星光行时间物化**套用轴模式** → 比琉通用轴被顶出预算触发**轴退化**（axisMode 丢失、两用例红）。轴内捏轴时间由栈引擎窗口时间轴计账，物化只对非轴模式生效。
+    - 比利终局整数重推**套用轴模式** → 空转且扰动轴外层循环：重推的 iterate 副作用（cfg 写回/overflowSeconds）把比琉轴留白 2.7→**8s**。轴模式链数恒整数，无实数可 floor，重推块跳过轴模式。
+    - 诺姆膛温赠链时间预留按 **prev 轮** hatCount（iterate 滞后）→ 5↔6 两循环（预留 11.9s vs 最终行 14.3s，超预算 2.4s 阴魂不散）；根因是 `computeNormaHatToChainCount` 长按项**漏乘 exCount**（迭代期喧响信道与 computeNormaSource 差 1 条赠链）——修纯函数对齐本体 + 赠链时间进必要时间与折叠/探针测量同口径后归零。
 20. **transformSkillExecutions 里写 panel 字段会跨收敛轮累积（2026-09-01）**：`panels` computed 在
     calcOutput 一次求值（外层不动点 20 轮）内**缓存同一对象**，`transformSkillExecutions` 每轮调用
     → 裸 `panel.xxx = (panel.xxx ?? 0) + 贡献` 会把贡献 × 轮数叠加：派派物理积蓄效率 80%×20=1600%

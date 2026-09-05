@@ -2,8 +2,95 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { computeBillyHpModel, starlightBillyMechanic } from '@/mechanics/agents/starlightBilly'
+import type { CharacterOperationConfig, IterationState } from '@/types/resource'
 
 const biliLiuAxisText = readFileSync(new URL('../../../src/data/stunAxisPresets/比琉通用.json', import.meta.url), 'utf8')
+
+/** 估时钩子最小 state（外部直调路径，引擎 iterate 会传真实 prev 状态） */
+function stubState(basicAttackTime: number): IterationState {
+  return {
+    basicAttackTime,
+    exSpecialCount: 8,
+    ultimateCount: 2,
+    chainCountTotal: 3,
+    totalEnergy: 480,
+    totalDecibel: 6000,
+    necessaryTime: 0,
+    frontlineTime: 100,
+    backstageTime: 80,
+    comboAlignTime: 0,
+    comboAlignCredit: 0,
+  }
+}
+
+describe('星徽·比利链数实数化（1051/1431 targeted 骨架，2026-09-06）', () => {
+  it('HP 链模型：迭代期实数（quantize=false）不 floor，终局（quantize=true）floor 与原循环等价', () => {
+    // 预算 = (75 + 8×30 + 0×15 + 回血)/16 = (75+240+0.5)/16 = 19.719 → 实数 19.719 / 整数 19
+    const real = computeBillyHpModel(8, 0, 8, 0, 0, 0.5, false)
+    expect(real.chain).toBeCloseTo((75 + 240 + 0.5) / 16, 9)
+    const quant = computeBillyHpModel(8, 0, 8, 0, 0, 0.5, true)
+    expect(quant.chain).toBe(19)
+    // 摇曳/抓地次数保持整数（付费强特是闪能池整数推导量），摇曳超预算时裁剪、多余闪能转抓地
+    const trimmed = computeBillyHpModel(8, 0, 8, 0, 0, 0, true)
+    expect(trimmed.chain).toBe(19)
+    expect(trimmed.healPct).toBeCloseTo(8 * 30 + 0 * 15, 9)
+    // 轴模式：轴内捏轴数不被预算裁剪（chain0 保底），预算不足仅展示
+    const axis = computeBillyHpModel(8, 0, 8, 25, 0, 0, true)
+    expect(axis.chain).toBe(25)
+  })
+
+  it('估时钩子消滞后：链数/最高马力星光按当轮 state.basicAttackTime 直推（不回读上一轮写入量），终局旗标 floor', () => {
+    const cfg = {
+      agentId: '1531',
+      exSpecialEnergyConsume: 60,
+      billyMoveTimes: { '1531006': 0.2, '1531008': 1.57, '1531009': 2.1, '1531010': 3.1, '1531011': 2.1, '1531014': 2.0 },
+      'setting:1531.rockingRatio': 0,
+      'setting:1531.driveSuppressionHpDiscountRatio': 0,
+      billyBasicHealPerSec: 0.05,
+      billyContinuousChain: true,
+      billyAttackData0: {},
+      dodgeCounterCount: 0,
+      parryCount: 0,
+      quickAssistCount: 0,
+      battleTime: 180,
+      blockCount: 0,
+    } as unknown as CharacterOperationConfig
+    const low = starlightBillyMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 8, ultimateCount: 2, state: stubState(10) })!
+    const high = starlightBillyMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 8, ultimateCount: 2, state: stubState(40) })!
+    // 平A时间 ↑ → 回血 ↑ → 实数链 ↑ → 必要时间 ↑（滞后版本两个值相等——读的是上一轮 record）
+    expect(high.necessaryTime).toBeGreaterThan(low.necessaryTime)
+    // 实数链连续：差值 ≈ 30s 平A × 回血秒均 0.05% / 16% 单链耗血 × 单链时长（≈0.094 链 × 1.77s）
+    const chainDelta = (high.necessaryTime - low.necessaryTime) / 1.77
+    expect(chainDelta).toBeGreaterThan(0)
+    expect(chainDelta).toBeLessThan(0.5) // 远小于一整条链（一次 floor 翻转 = +1 链）
+    // 终局旗标：floor 回整数链
+    const finalized = starlightBillyMechanic.estimateExSpecialTime!({
+      cfg: { ...cfg, billyFinalizeChain: true } as never,
+      exSpecialCount: 8,
+      ultimateCount: 2,
+      state: stubState(20),
+    })!
+    const hp = computeBillyHpModel(8, 0, 8, 0, 0, 20 * 0.05, true)
+    // 决意 = 180×2（接战）+ 孤轮额外 8×链 + 连携 15×3（atk0 命中按空表 0）→ floor(/100) 条星光
+    const ft = Math.floor((180 * 2 + hp.chain * 8 + 3 * 15) / 100)
+    expect(finalized.necessaryTime).toBeCloseTo(hp.chain * 1.77 + 8 * 2.1 + ft * 3.1, 6)
+  })
+
+  it('最高马力星光行时间物化：事件行 totalTime = 次数 × 3.1s（账本与行同口径，不再只有估时计入）', async () => {
+    await setupHarness([
+      { agentId: '1531', cinemaLevel: 6 },
+      { agentId: '1251' },
+      { agentId: '1271' },
+    ])
+    const calc = useResourceCalc()
+    const billy = calc.resourceResult.value!.characters.find(c => c.agentId === '1531')!
+    const row = billy.executions.find(e => e.moveId === '1531010')!
+    expect(row).toBeTruthy()
+    expect(row.actionTime).toBeGreaterThan(0)
+    expect(row.totalTime).toBeCloseTo((row.count as number) * (row.actionTime as number), 9)
+  })
+})
 
 describe('星徽·比利全管线冒烟（1531）', () => {
   it('EX 链/决意/星辉/煊赫星辉在资源池中正常产出', async () => {
