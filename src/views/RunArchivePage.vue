@@ -66,6 +66,15 @@
               <div class="deploy-warnings" v-if="lastWarnings.length">
                 <div v-for="w in lastWarnings" :key="w" class="warn">⚠ {{ w }}</div>
               </div>
+              <div v-if="modelingGapHints.length" class="modeling-gaps">
+                <div class="muted" style="margin-bottom: 4px">建模缺口（理论值未含以下贡献，偏低属预期）：</div>
+                <div v-for="(g, i) in modelingGapHints" :key="i" class="gap muted">
+                  <n-tag size="tiny" :bordered="false" :type="g.kind === 'system' ? 'warning' : 'info'">
+                    {{ g.kind === 'cinema' ? '命座' : g.kind === 'mechanic' ? '机制' : '系统' }}
+                  </n-tag>
+                  <span>{{ g.agentName }} · {{ g.text }}</span>
+                </div>
+              </div>
             </div>
 
             <n-divider />
@@ -160,6 +169,12 @@ import { runLimitedGold, lowGoldFrontier } from '@/composables/limitedGold'
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import type { BossPreset, BossPresetFile, PhaseView, PhaseBuffCard } from '@/types/bossPreset'
+import {
+  BANGBOO_GAP_HINT,
+  collectCinemaGaps,
+  collectMechanicGaps,
+  type ModelingGapHint,
+} from '@/utils/modelingGaps'
 
 interface ArchiveFile {
   totalRuns: number
@@ -186,6 +201,35 @@ const lowGoldOnly = ref(false)
 const goldWindow = ref(0)
 const selected = ref<ArchiveRun | null>(null)
 const lastWarnings = ref<string[]>([])
+
+// ========== 建模缺口提示（信息展示，不做拦截——归档不作误差判据的用户裁决不变） ==========
+const modelingLedgers = ref<{ constellations?: Record<string, object>; mechanics?: Record<string, object> } | null>(null)
+const modelingLedgersLoaded = ref(false)
+
+async function ensureModelingLedgers(): Promise<void> {
+  if (modelingLedgersLoaded.value) return
+  modelingLedgersLoaded.value = true
+  try {
+    const [cin, mec] = await Promise.all([
+      fetch('/static/character-constellations.json').then(r => (r.ok ? r.json() : {}) as any),
+      fetch('/static/character-mechanics.json').then(r => (r.ok ? r.json() : {}) as any),
+    ])
+    modelingLedgers.value = { constellations: cin?.characters ?? {}, mechanics: mec?.characters ?? {} }
+  } catch {
+    modelingLedgers.value = null
+  }
+}
+
+const modelingGapHints = computed<ModelingGapHint[]>(() => {
+  if (!lastDeploy.value) return []
+  const agentIds = lastDeploy.value.team.map(t => t.agentId).filter(Boolean)
+  if (!agentIds.length) return []
+  return [
+    BANGBOO_GAP_HINT,
+    ...collectCinemaGaps(modelingLedgers.value?.constellations as never, agentIds),
+    ...collectMechanicGaps(modelingLedgers.value?.mechanics as never, agentIds),
+  ]
+})
 
 /** 金数窗口（低金顶分：取最低金 + 该窗口内的投稿） */
 const goldWindowOptions = [
@@ -272,6 +316,7 @@ function teamLine(run: ArchiveRun): string {
 function onDeploy(run: ArchiveRun) {
   const f = file.value
   if (!f) return
+  void ensureModelingLedgers()
   const room = f.rooms[run.targetId]
   const deploy = submissionToDeploy(run, room, presets.value, room?.seasonStart)
   applyDeployConfig(configStore, deploy, presets.value, phaseViews.value)
@@ -444,6 +489,8 @@ function fmt(n: number): string {
 .video-link { font-size: 12px; color: #63b3ed; text-decoration: none; }
 .deploy-warnings { margin-top: 8px; }
 .warn { font-size: 11px; color: #e6b464; line-height: 1.6; }
+.modeling-gaps { margin-top: 8px; font-size: 12px; line-height: 1.7; }
+.modeling-gaps .gap { display: flex; align-items: center; gap: 6px; }
 .verdict { margin-top: 10px; font-size: 13px; color: var(--wa-750); }
 .hint { margin-top: 10px; line-height: 1.7; }
 .pool-hint { margin-top: 12px; line-height: 1.7; }

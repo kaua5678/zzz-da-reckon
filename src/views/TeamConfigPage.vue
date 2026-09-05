@@ -811,6 +811,7 @@ import { applyTargetedStat } from '@/core/buff'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { getImageUrl } from '@/utils/image'
 import { isPctStat, phaseStatLabel } from '@/utils/statMeta'
+import { discSetGapLabel } from '@/utils/modelingGaps'
 import type { WEngine, WEngineAdvancedStat, PanelValues, CharacterBuildRecommendation, BuffEffect, BuffGroup } from '@/types/catalog'
 import type { CharacterConfig } from '@/stores/config'
 
@@ -1218,7 +1219,8 @@ const wengineOptions = computed(() =>
 
 const setOptions = computed(() =>
   catalogStore.displayDriveDiscSets.map(s => ({
-    label: s.name.zhCN ?? s.name.en ?? s.id,
+    // 未建模角标（2pc/4pc 只有文本无数值效果，选了也是白板）
+    label: (s.name.zhCN ?? s.name.en ?? s.id) + discSetGapLabel(s),
     value: s.id,
   })),
 )
