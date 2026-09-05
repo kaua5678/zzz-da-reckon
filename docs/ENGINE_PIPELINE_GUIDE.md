@@ -277,7 +277,9 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
       47.24s + 以太弹 46.60s）。折叠循环照单全收折进 `necessaryTime`（虚高 59s）→ 平A池被挤光 →
       该队留白 30.1s 是全预设库最大单队，而 `timeBudgetConverged` 一路报 true。
       **凡模块生成 `category: 'basic'` 或时间来源于 `state.basicAttackTime` 的行，必须 carve 聚合行**
-      （琉音转大 `liuyinPromote` 是正面样板）；判据 = `Σ前台行 ≤ 账本(necessary+basic)` 恒成立，
+      （琉音转大 `liuyinPromote` 是正面样板；已按此修掉 朱鸢 1241 压制以太弹 30.1s、
+      希格莉德 1591 出枪式段 20.6s —— 后者注意 **只缩时间、保留回能**，因为分段行不带
+      `energyRecovery`，按比例一起缩会凭空丢掉她的能量）。判据 = `Σ前台行 ≤ 账本(necessary+basic)` 恒成立，
       `teamTimeSummary.ledgerInflation` 就是这条的逐队读数（>2s 即双算，棘轮逐队钉）。
     ④**轴内合轴（2026-08-30 同日补）**：窗口内跨角色块并行（般岳强特时琉音抱拳）只计一次前台——
     栈引擎 `calcStunAxisStack` 按执行块区间并集算 `overlapSeconds`（按块时长比例分摊到

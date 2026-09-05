@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { mockStaticFetch, newPinia } from '@/test/harness'
+import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
+import { useResourceCalc } from '@/composables/useResourceCalc'
+import { buildTeamTimeSummary } from '@/composables/teamTimeSummary'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import {
@@ -387,5 +389,36 @@ describe('希格莉德浸染增伤（读风化侵染覆盖率）', () => {
     await new Promise(r => setTimeout(r, 50))
     rows = calc.damagePoolRows.value.filter(r => r.slot === 0 && r.agentId === '1591')
     expect(rows.every(r => !(r.note ?? '').includes('浸染增伤'))).toBe(true)
+  })
+})
+
+describe('出枪式段的时间占用（2026-09-05 重复计费修复）', () => {
+  // 凛冽枪尖 #1-#4（sigridBasicCycle，由平A时间推段数）——按 moveId 匹配（规则 3）
+  const SEGMENT_IDS = new Set(['1591001', '1591002', '1591004', '1591005'])
+  it('段行从平A聚合行挤出时间：同一段时间不计两次，且平A回能不被误删', async () => {
+    const { config } = await setupHarness(['', '', ''])
+    for (let i = 0; i < 3; i++) config.setAgent(i, ['1591', '1481', '1311'][i])
+    const calc = useResourceCalc()
+    const rr = calc.resourceResult.value!
+    const sg = rr.characters.find(c => c.agentId === '1591')!
+    const pool = sg.timeAllocation.basicAttackTime
+    const basicRow = sg.executions.find(e => e.moveId === 'basic_attack')
+    const segRows = sg.executions.filter(e => SEGMENT_IDS.has(e.moveId))
+    expect(segRows.length, '出枪式分段行没生成').toBeGreaterThan(0)
+    const segTime = segRows.reduce((a, e) => a + (e.totalTime ?? 0), 0)
+    // ① carve 真的生效：聚合行被挤到 max(0, 池 − 段行)，不再与段行并列占两份
+    //（修复前实测 1591/1481/1311：池 8.68s 被计成 聚合行 8.68 + 段行 7.63）
+    expect(basicRow?.totalTime ?? 0).toBeCloseTo(Math.max(0, pool - segTime), 6)
+    // ② 总占用不再翻倍（段行是事件计数，末轮可超出不到一个循环 2.983s，属既有近似）
+    expect((basicRow?.totalTime ?? 0) + segTime).toBeLessThanOrEqual(pool + 2.983 + 1e-6)
+    // ③ 回能仍按整段平A时间计（分段行不带 energyRecovery，按比例一起缩会凭空丢她的能量）
+    expect(basicRow?.totalEnergyRecovery ?? 0)
+      .toBeGreaterThan((basicRow?.totalTime ?? 0) * 0.5)
+    // ③ 该队留白收小（修复前 20.6s = 当时全库最大单队）
+    const t = buildTeamTimeSummary({
+      rr, battleTime: rr.totalTime, invincibleTime: config.enemy.invincibleTime ?? 0,
+      nameOf: (_a, slot) => `槽${slot}`,
+    })
+    expect(t.slack).toBeLessThanOrEqual(5)
   })
 })

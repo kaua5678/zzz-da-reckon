@@ -187,6 +187,7 @@ export function countBasicFinisherHits(basicTime: number, cycle: { moveId: strin
  * hits_i = T ≥ prefix_i ? 1 + floor((T − prefix_i) / cycleTime) : 0。
  * 压枪开：只打 #3/#4（1.765s/循环）；关：打 #1-#4（2.983s/循环）。
  */
+// @fact agent:1591/出枪式段时间 口径: 凛冽枪尖 #1-#4 分段行由 `countBasicSegments(basicAttackTime,…)` 推出 ⇒ 占的就是平A池那份时间，必须从通用 basic_attack 聚合行挤出等量时间（只缩时间、保留回能：回能源于整段平A时长而分段行不带 energyRecovery）；伤害侧本就已归零聚合行防双算，时间侧 2026-09-05 才补上 | 据 用户@2026-09-03（段行行级物化）·2026-09-05（时间 carve） | 验 src/mechanics/__tests__/sigrid.test.ts#出枪式段的时间占用 | 锚 src/mechanics/agents/sigrid.ts#countBasicSegments | 信 确认
 export function countBasicSegments(
   basicTime: number,
   cycle: { moveId: string; actionTime: number }[],
@@ -274,12 +275,14 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   // 平A汇总行只保留时间载体（patchSigridExecutions 归零伤害/失衡/积蓄），伤害由分段行承载；
   // 压枪开 = 只打 #3/#4（1.765s/循环），关 = 打 #1-#4（2.983s/循环）。
   const basicCycle = (record.sigridBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
+  let segTime = 0
   if (basicCycle.length > 0) {
     const pressCancel = cfgSetting(cfg, 'sigrid.pressCancel', 0) >= 0.5
     const segCounts = countBasicSegments(Math.max(0, Number((state as any).basicAttackTime ?? 0)), basicCycle, pressCancel)
     for (const seg of basicCycle) {
       const n = segCounts[seg.moveId] ?? 0
       if (n <= 0) continue
+      segTime += n * seg.actionTime
       executions.push({
         moveId: seg.moveId,
         moveName: `普通攻击：凛冽枪尖 #${seg.moveId.slice(-1)}`,
@@ -297,6 +300,23 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
         energyRecovery: 0,
         totalEnergyRecovery: 0,
       })
+    }
+    // ===== 出枪式段不再重复占用平A池（2026-09-05，朱鸢同款修复）=====
+    // 分段行由 `countBasicSegments(basicAttackTime, …)` 推出 ⇒ 它们占的**就是平A池那份时间**。
+    // 伤害侧早已防双算（patchSigridExecutions 把聚合行 damage/daze/anomaly 归零），但时间侧
+    // 漏了：聚合行 totalTime 仍 = basicAttackTime，与分段行相加变成两份（实测 1591/1481/1311
+    // 池 8.68s 被计成 8.68 + 7.63）→ 折叠把虚增折进 necessaryTime → 平A池被挤 → 该队留白 20.6s。
+    // 只缩**时间**、保留**回能**：平A回能源于整段平A时长，而分段行不带回能（energyRecovery: 0），
+    // 按比例一起缩会凭空丢掉她的能量。
+    if (segTime > 0) {
+      const basicIdx = executions.findIndex(e => e.moveId === 'basic_attack')
+      if (basicIdx >= 0) {
+        const basicTime = executions[basicIdx].totalTime ?? 0
+        executions[basicIdx] = {
+          ...executions[basicIdx],
+          totalTime: Math.max(0, basicTime - Math.min(basicTime, segTime)),
+        }
+      }
     }
   }
 
