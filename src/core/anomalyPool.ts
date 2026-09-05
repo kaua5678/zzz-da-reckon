@@ -14,7 +14,7 @@ import { simulateVelinaCorrosionState } from '@/mechanics/agents/velina'
 import * as AnomalyPoolHelpers from './anomalyPool/helpers'
 import type { AnomalyPoolInput, DamageCalcConfig } from './anomalyPool/helpers'
 export type { AnomalySkillExecution, AnomalyPoolInput, AliceCoweringConfig } from './anomalyPool/helpers'
-const { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, TURBULENCE_CD_SECONDS, getBaseElement, ANOMALY_DURATION, STANDARD_DOT_CONFIG, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyDecibelBonus, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcStandardDotDamage, calcAliceCoweringDot } = AnomalyPoolHelpers
+const { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, TURBULENCE_CD_SECONDS, resolveStatElement, ANOMALY_DURATION, STANDARD_DOT_CONFIG, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyDecibelBonus, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcStandardDotDamage, calcAliceCoweringDot } = AnomalyPoolHelpers
 export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   const {
     executions,
@@ -47,8 +47,8 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     if (!exec.element) continue
 
     const panel = panels[exec.slot] ?? panels[0]
-    // 按基础元素取抗性（变种元素与基础元素共享抗性）
-    const elementRes = enemyAnomalyResistances[getBaseElement(exec.element)] ?? 0
+    // 按属性口径元素取抗性（变种与基础共享抗性；frostfire 经 resolveStatElement 按冰）
+    const elementRes = enemyAnomalyResistances[resolveStatElement(exec.element) ?? ''] ?? 0
     const onStunEff = ((panel.anomalyBuildUpEfficiencyOnStunBonus ?? 0)
       + (exec.skillType === 'chain' ? (panel.anomalyBuildUpEfficiencyOnStunChainBonus ?? 0) : 0)) * stunnedRatio
     const perHit = calcPerHitBuildUp(exec.baseBuildUp, panel, elementRes, exec.element, (exec.buildUpEfficiencyBonusPct ?? 0) + onStunEff)

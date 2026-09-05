@@ -9,13 +9,13 @@ import type {
   CalculatorConfig, SkillDamageTarget,
 } from '@/types/catalog'
 import { calcPanel } from './panel'
-import { calcStunMultiplier } from './anomalyPool/helpers'
+import { calcStunMultiplier, resolveStatElement } from './anomalyPool/helpers'
 import { getSkillDmgBonus, getStunBuildUpBonus, getTargetedStat, getTargetedStatExtra, normalizeSkillDamageTarget } from './buff'
 import { fmt } from '@/utils/format'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
 import { getSkillLevelCoef } from './skillLevel'
 
-/** 获取元素伤害加成 */
+/** 获取元素伤害加成（属性数值口径经 resolveStatElement：frostfire 按冰） */
 function getElementDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
   if (!element) return 0
   const map: Record<string, string> = {
@@ -27,27 +27,27 @@ function getElementDmgBonus(panel: PanelValues, element: DamageElement | undefin
     wind: 'windDmg',
     lumiflux: 'lumifluxDmg',
   }
-  const stat = map[element]
+  const stat = map[resolveStatElement(element) ?? '']
   return stat ? getTargetedStat(panel, stat, targetSkillType) : 0
 }
 
 function getElementEnemyResReduction(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
-  const stat = enemyDebuffElementStatId('res', element)
+  const stat = enemyDebuffElementStatId('res', resolveStatElement(element))
   return stat ? getTargetedStat(panel, stat, targetSkillType) : 0
 }
 
 function getElementEnemyDefReduction(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
-  const stat = enemyDebuffElementStatId('def', element)
+  const stat = enemyDebuffElementStatId('def', resolveStatElement(element))
   return stat ? getTargetedStat(panel, stat, targetSkillType) : 0
 }
 
 function getElementEnemyStunResReduction(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
-  const stat = enemyDebuffElementStatId('stunRes', element)
+  const stat = enemyDebuffElementStatId('stunRes', resolveStatElement(element))
   return stat ? getTargetedStat(panel, stat, targetSkillType) : 0
 }
 
 function getElementEnemyAnomalyResReduction(panel: PanelValues, element: DamageElement | undefined): number {
-  const stat = enemyDebuffElementStatId('anomalyRes', element)
+  const stat = enemyDebuffElementStatId('anomalyRes', resolveStatElement(element))
   return stat ? panel[stat] ?? 0 : 0
 }
 

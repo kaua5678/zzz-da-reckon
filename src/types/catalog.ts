@@ -200,7 +200,15 @@ export interface EffectCoverage {
 }
 
 export interface EffectRequirement {
-  outOfCombatStat?: string
+  /**
+   * 局外面板属性门槛。结构化 {stat, min}（如 {stat:'def',min:1000}、{stat:'anomalyMastery',min:115}、
+   * {stat:'critRate',min:50}）；兼容旧字符串格式 "stat=def min=1000"（历史数据曾是字符串正则口径）。
+   */
+  outOfCombatStat?: string | { stat: string; min: number }
+  /** 特化限定：装备者 specialty 匹配才生效（如山大王 4pc 团队效果=击破） */
+  specialty?: Specialty
+  /** 属性限定：装备者 attribute 匹配才生效（如拂晓行纪 4pc 暴伤=以太） */
+  attribute?: string
 }
 
 export interface BuffEffect {
@@ -245,6 +253,8 @@ export interface BuffGroup {
   appliesToOutOfCombatPanel?: boolean
   condition?: string
   hidden?: boolean
+  /** 组级生效门槛（驱动盘 teamBuff 的装备者特化限定等），对该组全部 effect 生效 */
+  requirement?: EffectRequirement
 }
 
 // ============ 队友 Buff ============

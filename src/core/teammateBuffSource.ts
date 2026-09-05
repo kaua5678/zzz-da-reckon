@@ -72,7 +72,10 @@ export function buildTeammateBuffSourceContext(
     })
   }
 
-  const enabledTeammateBuffs: TeammateBuff[] = collectInCombatTeamBuffs(team, deps)
+  const enabledTeammateBuffs: TeammateBuff[] = collectInCombatTeamBuffs(team, {
+    ...deps,
+    wearerPanels: sourcePanelsByOwner,
+  })
 
   return { enabledTeammateBuffs, sourcePanelsByOwner }
 }

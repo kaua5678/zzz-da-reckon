@@ -17,6 +17,7 @@
 import type { PanelValues } from '@/types/catalog'
 import { getStunBuildUpBonus, getTargetedStat } from './buff'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
+import { resolveStatElement } from './anomalyPool/helpers'
 import type {
   StunPoolResult, StunContribution,
 } from '@/types/resource'
@@ -27,7 +28,7 @@ export const CHAIN_DECIBEL_BONUS = 10   // 连携一次奖励
 
 
 function getElementEnemyStunResReduction(panel: PanelValues, element: string, skillType?: string): number {
-  const stat = enemyDebuffElementStatId('stunRes', element)
+  const stat = enemyDebuffElementStatId('stunRes', resolveStatElement(element))
   return stat ? getTargetedStat(panel, stat, skillType) : 0
 }
 

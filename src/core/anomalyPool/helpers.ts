@@ -558,12 +558,25 @@ export function round(value: number, decimals = 2): number {
 }
 
 /**
+ * 属性数值口径的元素解析（用户口径 2026-09-05）：雅的烈霜(frostfire)在一切【元素→数值】查找里
+ * 按冰族读——冰伤/敌方冰抗/冰减抗/冰积蓄效率等全同冰（此前 frostfire 在 damage.ts 的增伤表与
+ * ELEMENT_FIELD_PREFIX 里缺位，冰伤冰抗全部落空）。烈霜的特别之处只在异常身份：独立积蓄槽、
+ * 可与冰互相紊乱（而非同种覆盖）——身份判断（覆盖/紊乱/持续时间/阈值）继续用 getBaseElement /
+ * 精确元素 key，不经过本映射。与 VARIANT_ELEMENT_TO_BASE 的区别：后者是"继承基础元素公式"的
+ * 变种登记表（会把身份语义一并带过去），frostfire 有独立的持续时间/紊乱公式，不进那张表。
+ */
+export function resolveStatElement(element?: string): string | undefined {
+  if (!element) return element
+  const base = getBaseElement(element)
+  return base === 'frostfire' ? 'ice' : base
+}
+
+/**
  * 获取元素伤害加成对应的 PanelValues 字段名
- * frostfire（烈霜）是冰属性变体，使用 iceDmg
  */
 export function getElementDmgKey(element: string): string {
-  const baseElement = getBaseElement(element)
-  switch (baseElement) {
+  const statElement = resolveStatElement(element)
+  switch (statElement) {
     case 'physical':  return 'physicalDmg'
     case 'fire':      return 'fireDmg'
     case 'ice':       return 'iceDmg'
@@ -571,8 +584,7 @@ export function getElementDmgKey(element: string): string {
     case 'ether':     return 'etherDmg'
     case 'wind':      return 'windDmg'
     case 'lumiflux':  return 'lumifluxDmg'
-    case 'frostfire': return 'iceDmg'  // 烈霜是冰属性变体，使用冰属性增伤
-    default:          return baseElement + 'Dmg'
+    default:          return (statElement ?? '') + 'Dmg'
   }
 }
 
@@ -583,20 +595,21 @@ export function getElementDmgBonus(panel: PanelValues, element: string): number 
 }
 
 export function getElementEnemyResReduction(panel: PanelValues, element: string): number {
-  const baseElement = getBaseElement(element)
-  const stat = enemyDebuffElementStatId('res', baseElement)
+  const statElement = resolveStatElement(element)
+  const stat = enemyDebuffElementStatId('res', statElement)
   return stat ? panel[stat] ?? 0 : 0
 }
 
 export function getElementEnemyDefReduction(panel: PanelValues, element: string): number {
-  const baseElement = getBaseElement(element)
-  const stat = enemyDebuffElementStatId('def', baseElement)
+  const statElement = resolveStatElement(element)
+  const stat = enemyDebuffElementStatId('def', statElement)
   return stat ? panel[stat] ?? 0 : 0
 }
 
+/** 积蓄抗性：frostfire 经 resolveStatElement 按冰族读（用户口径 2026-09-05） */
 export function getElementEnemyAnomalyResReduction(panel: PanelValues, element: string): number {
-  const baseElement = getBaseElement(element)
-  const stat = enemyDebuffElementStatId('anomalyRes', baseElement)
+  const statElement = resolveStatElement(element)
+  const stat = enemyDebuffElementStatId('anomalyRes', statElement)
   return stat ? panel[stat] ?? 0 : 0
 }
 

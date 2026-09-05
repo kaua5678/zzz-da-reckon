@@ -47,12 +47,33 @@
 
 ## 3. 驱动盘（DriveDisc）
 
-- 主词条：4/5/6 号位，池与 S 级满值在 `statRules.driveDisc.mainStatPools / sRankMaxMainStat`
+- 主词条：1/2/3 号位固定主词条（S级+15：HP 2200 / ATK 316 / DEF 184）**全员无条件建模**；
+  4/5/6 号位用户选择，池与 S 级满值在 `statRules.driveDisc.mainStatPools / sRankMaxMainStat`
   （如 critRate 主词条=24，critDmg=48，anomalyProficiency=92）。
 - 副词条：步长表 `statRules.driveDisc.sRankSubStatBaseStep`（critRate 2.4 / critDmg 4.8 /
   hpPct 3 / atkPct 3 / anomalyProficiency 9 / penFlat 9）。分配上限与总步数口径见 `substatOptimizer`。
-- 套装：`driveDiscSets[]`，2件套=固定面板效果，4件套=条件触发（`coverage` 折算）。
+- 套装：`driveDiscSets[]`，2件套=固定面板效果，4件套 selfBuff=装备者效果、teamBuff=全队效果
+  （消费端 `buff.ts collectDriveDiscBuffs` + `inCombatBuffs.ts`；生效测试 `discSetEffects.test.ts`）。
   例：折枝剑歌(32700) 2pc=暴击伤害+16%；啄木鸟电音(31000) 2pc=暴击率+8。
+- 套装 requirement 门槛（`EffectRequirement`，2026-09 起消费）：
+  `outOfCombatStat:{stat,min}`（selfBuff 侧粗算口径=基础值+主词条+副词条步数，teamBuff 侧用装备者源面板精确值）、
+  `specialty`/`attribute`（装备者特化/属性）。生效中：棘刺玫瑰 def≥1000/1800、折枝剑歌 掌控≥115、
+  山大王 4pc 二段 critRate≥50 + 击破限定、月光骑士颂=支援、雪兔=防护、拂晓行纪/谶羽之誓=属性限定。
+- stat 模板：`enemy{attribute}AnomalyResReduction` 按装备者属性替换（首字母大写落 stat 名，自由蓝调 4pc）。
+  自由蓝调 4pc 挂在敌人 8s、全队同属性积蓄受益 → 录在 `fourPiece.teamBuff`（includeOwner=装备者同吃），
+  teamBuff 通道按【装备者】属性解析模板。**注意**：官方口径含装备者的全队效果（摇摆爵士 4pc）只录
+  teamBuff 一份，selfBuff+teamBuff 并录会导致装备者双计。
+- **烈霜(frostfire) 属性口径**（用户口径 2026-09-05）：一切【元素→数值】查找（冰伤/敌方冰抗/
+  冰减抗/积蓄抗性等）经 `resolveStatElement` 按冰读；异常身份（独立积蓄槽、可与冰互相紊乱而非同种
+  覆盖、独立持续时间/紊乱公式）仍用精确元素/getBaseElement，frostfire 不进 VARIANT_ELEMENT_TO_BASE。
+- **招式类型定向两路径同源**（@fact 招式类型/两路径同源）：伤害行 `skillDamageTarget`（enrichExecutionPlan
+  按 `inferSkillDamageTarget` 回填）与失衡/异常 exec 的 `skillType`（`normalizeResourceSkillType`，招式
+  timeType/tags/名称优先于 raw skillType——冲刺招式 catalog 可能误标 'dodge'）产出同口径，定向键
+  `X__<target>` 在标准行生效（音擎/队友 buff/驱动盘的招式限定 buff 通用）。
+- **4pc 含 2pc**：count≥2 分支使 4 件套同时吃到 2pc 效果（同套不叠加，与游戏一致）。
+- 条件恒开约定：condition/durationSeconds 文本不消费，按 coverage=1 全程生效（如炎狱 28% 暴击、极地冻结段）；
+  驱动盘效果无 coverage 滑块入口（effectCoverageMap 只收音擎与队友 buff）。
+- 未建模（无计算通道，非遗漏）：灵魂摇滚 4pc（受击减伤）、原始朋克 2pc（护盾量）。
 
 ## 4. Boss（**双数据源**，查证用 `resolve boss`）
 

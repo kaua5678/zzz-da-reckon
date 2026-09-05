@@ -15,6 +15,7 @@
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { calcPanel, emptyPanel } from '@/core/panel'
+import { inferSkillDamageTarget } from '@/core/damage'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import {
   findExSpecial,
@@ -1343,6 +1344,7 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
             patch = {
               actionCode: exec.moveId,
               skillTableResolved: true,
+              skillDamageTarget: 'basic',
               anomalyBuildUp: bu,
               totalAnomalyBuildUp: bu * Math.max(0, exec.totalTime),
             }
@@ -1352,6 +1354,7 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
             patch = {
               actionCode: exec.moveId,
               ...rows,
+              skillDamageTarget: 'basic',
               anomalyBuildUp: bu,
               totalAnomalyBuildUp: bu * Math.max(0, exec.totalTime),
             }
@@ -1359,6 +1362,9 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
         } else {
           const move = findMoveById(skills, exec.moveId)
           if (move) {
+            // 招式类型定向（伤害路径按此读 X__<target> 定向键，如驱动盘/音擎的普攻/冲刺限定增伤）
+            const foundCategory = skills?.categories?.find(cat => (cat.moves ?? []).some(m => String(m.id) === String(exec.moveId)))
+            const skillDamageTarget = foundCategory ? inferSkillDamageTarget(foundCategory, move) : undefined
             const specialResourceRecovery = getSpecialResourceRecovery(move)
             const healingAmount = getHealingAmount(move)
             // exec.anomalyBuildUp 显式为 0 = 模块显式禁用异常积蓄（如莱卡恩围猎后台招式"仅伤害+失衡值"）；
@@ -1393,6 +1399,7 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
               healingAmount,
               totalHealingAmount: healingAmount * Math.max(0, exec.count),
               skillTableResolved: true,
+              skillDamageTarget,
               skillTableNote: '已从倍率表 rows 回填 damage/daze/energy_recovery/decibel_recovery/anomaly_buildup。',
             }
           } else {
@@ -1413,10 +1420,19 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
 
 export function normalizeResourceSkillType(move: SkillMove | null, execMoveId: string): string {
   if (execMoveId === 'basic_attack') return 'basic'
+  // 优先按招式自身信号分类（与伤害路径 inferSkillDamageTarget 同口径——@fact 招式类型/两路径同源 |
+  // 据 用户 2026-09-05「字段对应，招式限定要注意」 | 验 discSetEffects.test.ts | 锚 helpers.ts#normalizeResourceSkillType | 信 高）：
+  // 实测冲刺招式 catalog skillType 可能误标 'dodge'（如苍角 1131016），名称/tags 先判可纠正。
+  if (move?.timeType === 'dodgeCounter') return 'dodgeCounter'
+  if (move?.skillTags?.includes('dashAttack')) return 'dashAttack'
+  if (move?.skillTags?.includes('additionalAttack')) return 'additionalAttack'
+  const name = `${move?.name?.en ?? ''} ${move?.name?.zhCN ?? ''}`.toLowerCase()
+  if (name.includes('dash attack') || name.includes('冲刺攻击')) return 'dashAttack'
   const raw = move?.skillType ?? ''
   if (raw === 'dodge') return 'dodgeCounter'
   if (raw === 'special') return move?.energyCost ? 'exSpecial' : 'special'
-  if (raw === 'basic' || raw === 'ultimate' || raw === 'chain' || raw === 'assist') return raw
+  if (raw === 'basic' || raw === 'ultimate' || raw === 'chain' || raw === 'assist'
+    || raw === 'dashAttack' || raw === 'additionalAttack') return raw
   return 'all'
 }
 

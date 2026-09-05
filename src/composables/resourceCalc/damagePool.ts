@@ -14,7 +14,7 @@
 import { calcDirectDamage, calcAnomalyDamage, resolveSpecialDamageProfile } from '@/core/damage'
 import { attributeCountByStateChain } from '@/core/stunAxis/inStunAnomaly'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
-import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, getMainApplierSlot, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
+import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, resolveStatElement, getMainApplierSlot, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
 import { getAgentMechanic } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
 import { YESHUGUANG_FULL_STUN_MOVES, veilStunMultiplier } from '@/mechanics/agents/yeshuguang'
@@ -168,7 +168,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         enemyDefReduction: row.defIgnore ?? 0,
         enemyDefFlatReduction: 0,
         enemyLevel: configStore.enemy.level,
-        enemyResistance: enemyDamageRes[row.element] ?? 0,
+        enemyResistance: enemyDamageRes[resolveStatElement(row.element) ?? ''] ?? 0,
         enemyResReduction: (panel.enemyResReduction ?? 0) + (row.resIgnore ?? 0),
         stunMultiplier: stunBase,
         stunned: stunForThis,
@@ -232,7 +232,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         enemyDefReduction: releaseMod.enemyDefReduction ?? 0,
         enemyDefFlatReduction: 0,
         enemyLevel: configStore.enemy.level,
-        enemyResistance: enemyDamageRes[element] ?? 0,
+        enemyResistance: enemyDamageRes[resolveStatElement(element) ?? ''] ?? 0,
         enemyResReduction: (settlementPanel?.enemyResReduction ?? 0) + releaseMod.enemyResReduction,
         stunned: row.stunnedOverride ?? stunCoverage,
         stunMultiplier: configStore.enemy.stunVuln,
@@ -1191,7 +1191,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           enemyDefReduction: 0,
           enemyDefFlatReduction: 0,
           enemyLevel: configStore.enemy.level,
-          enemyResistance: enemyDamageRes[prog.element] ?? 0,
+          enemyResistance: enemyDamageRes[resolveStatElement(prog.element) ?? ''] ?? 0,
           enemyResReduction: entry.panel?.enemyResReduction ?? 0,
           stunned: stunCoverage,
           stunMultiplier: configStore.enemy.stunVuln,

@@ -12,8 +12,10 @@
  */
 import type {
   Agent, WEngine, DriveDiscSet, DriveDiscConfig, TeammateBuff, TeammateBuffGroup,
+  EffectRequirement, PanelValues, StatId,
 } from '@/types/catalog'
-import { applyWEngineModLevel } from './buff'
+import { applyWEngineModLevel, parseStatRequirement, resolveAttributeTemplateStat } from './buff'
+import type { SourcePanelsByOwner } from './buff'
 
 export interface InCombatTeamBuff extends TeammateBuff {
   includeOwner: boolean
@@ -25,6 +27,8 @@ export interface InCombatBuffSourceDeps {
   getAgent(id: string): Agent | undefined
   getWEngine(id: string): WEngine | undefined
   isTeammateBuffEnabled(id: string): boolean
+  /** 各成员源面板（outOfCombat），供驱动盘 teamBuff 的装备者属性门槛判断（如山大王暴击率≥50%） */
+  wearerPanels?: SourcePanelsByOwner
 }
 
 export interface InCombatBuffTeamMember {
@@ -37,6 +41,26 @@ export interface InCombatBuffTeamMember {
 
 function ownerAliases(agent: Agent): string[] {
   return [agent.id, agent.teammateBuffId].filter((x): x is string => !!x)
+}
+
+/**
+ * 驱动盘 teamBuff 门槛：装备者特化/属性 + 局外面板属性（区别于 selfBuff 侧的粗算口径——
+ * 这里装备者源面板已算好，用精确值；面板缺失时门槛按不满足处理）。
+ */
+function discTeamRequirementMet(
+  req: EffectRequirement | undefined,
+  agent: Agent,
+  wearerPanel: PanelValues | undefined,
+): boolean {
+  if (!req) return true
+  if (req.specialty && agent.specialty !== req.specialty) return false
+  if (req.attribute && agent.attribute !== req.attribute) return false
+  const statReq = parseStatRequirement(req.outOfCombatStat)
+  if (statReq) {
+    const value = wearerPanel ? (wearerPanel[statReq.stat as StatId] ?? 0) : undefined
+    if (value == null || value < statReq.min) return false
+  }
+  return true
 }
 
 export function collectInCombatTeamBuffs(
@@ -123,28 +147,39 @@ export function collectInCombatTeamBuffs(
       }
     }
 
-    // 驱动盘 4 件套团队效果：装备者自身收集不含 teamBuff，需要包含装备者
+    // 驱动盘 4 件套团队效果：装备者自身收集不含 teamBuff，需要包含装备者。
+    // 装备者不满足门槛（特化/属性/局外面板）时整组不传播。
     if (char.driveDisc?.fourPieceSetId) {
       const set = deps.driveDiscSetsMap.get(char.driveDisc.fourPieceSetId)
       const group = set?.fourPiece?.teamBuff
-      if (set && group?.effects?.length) {
-        buffs.push({
-          id: `drivedisc-team-${set.id}`,
-          source: { zhCN: '驱动盘' },
-          description: group.description ?? set.fourPiece?.effectText,
-          scope: group.scope,
-          effects: group.effects.filter(e => e && e.stat),
-          buffModifiers: group.buffModifiers ?? [],
-          sourceType: 'teammate',
-          sourceCategory: 'driveDisc',
-          sourceKind: 'team',
-          sourceLabel: { zhCN: `驱动盘团队效果（${set.name?.zhCN ?? set.id}）` },
-          ownerId: agent.id,
-          ownerName: agent.name,
-          teammateId: agent.teammateBuffId ?? agent.id,
-          teammateName: agent.name,
-          includeOwner: true,
-        } as InCombatTeamBuff)
+      const wearerPanel = aliases.map(a => deps.wearerPanels?.[a]?.outOfCombat).find(p => p != null)
+      if (set && group?.effects?.length && discTeamRequirementMet(group.requirement, agent, wearerPanel)) {
+        const effects = group.effects
+          .filter(e => e && e.stat && discTeamRequirementMet(e.requirement, agent, wearerPanel))
+          // {attribute} 模板按【装备者】属性落键（自由蓝调 4pc：挂在敌人身上 8s，
+          // 全队同属性积蓄都吃到——苍角装备时队友的冰系积蓄同样受益），不能按受益者属性解析
+          .map(e => (e.stat as string).includes('{attribute}')
+            ? { ...e, stat: resolveAttributeTemplateStat(e.stat as string, agent.attribute) }
+            : e)
+        if (effects.length) {
+          buffs.push({
+            id: `drivedisc-team-${set.id}`,
+            source: { zhCN: '驱动盘' },
+            description: group.description ?? set.fourPiece?.effectText,
+            scope: group.scope,
+            effects,
+            buffModifiers: group.buffModifiers ?? [],
+            sourceType: 'teammate',
+            sourceCategory: 'driveDisc',
+            sourceKind: 'team',
+            sourceLabel: { zhCN: `驱动盘团队效果（${set.name?.zhCN ?? set.id}）` },
+            ownerId: agent.id,
+            ownerName: agent.name,
+            teammateId: agent.teammateBuffId ?? agent.id,
+            teammateName: agent.name,
+            includeOwner: true,
+          } as InCombatTeamBuff)
+        }
       }
     }
   }

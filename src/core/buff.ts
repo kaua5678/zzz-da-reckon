@@ -4,7 +4,7 @@
  */
 import type {
   Agent, WEngine, DriveDiscSet, BuffEffect, BuffGroup,
-  PanelValues, StatId, TeammateBuff, DriveDiscConfig, SkillDamageTarget, BuffScope
+  PanelValues, StatId, TeammateBuff, DriveDiscConfig, SkillDamageTarget, BuffScope, EffectRequirement, StatRules
 } from '@/types/catalog'
 import { GENERATED_ENEMY_DEBUFF_STAT_IDS, LEGACY_ENEMY_DEBUFF_STAT_IDS, normalizeEnemyDebuffStatAlias } from '@/utils/enemyDebuffStats'
 
@@ -360,11 +360,67 @@ function collectWEngineBuffs(
   return { outOfCombat: out, inCombat }
 }
 
-/** 收集驱动盘套装 buff */
+/**
+ * 收集驱动盘套装 buff
+ *
+ * requirement 门槛（@fact 驱动盘/requirement 三种判据 | 据 本任务 2026-09-05 | 验 discSetEffects.test.ts | 锚 src/core/buff.ts#collectDriveDiscBuffs | 信 高）：
+ *   - outOfCombatStat：局外面板属性 ≥ min（粗算口径：基础值 + 主词条，不含副词条）——棘刺玫瑰 def 1000/1800、折枝剑歌 anomalyMastery 115
+ *   - specialty / attribute：装备者特化 / 属性匹配——拂晓生花 4pc 强攻限定、拂晓行纪 4pc 以太限定
+ * stat 模板：`enemy{attribute}AnomalyResReduction` 的 {attribute} 按装备者属性替换（自由蓝调 4pc）。
+ */
+function parseOutOfCombatStatRequirement(raw: unknown): { stat: string; min: number } | null {
+  if (raw && typeof raw === 'object') {
+    const rec = raw as { stat?: unknown; min?: unknown }
+    if (typeof rec.stat === 'string' && typeof rec.min === 'number') return { stat: rec.stat, min: rec.min }
+    return null
+  }
+  if (typeof raw === 'string') {
+    const match = raw.match(/stat=(\w+).*min=(\d+)/)
+    if (match) return { stat: match[1], min: Number(match[2]) }
+  }
+  return null
+}
+
+/** 结构化属性门槛解析（teamBuff 通道复用；导出仅为 inCombatBuffs 门槛判断） */
+export const parseStatRequirement = parseOutOfCombatStatRequirement
+
+export interface DiscSetRequirementContext {
+  agent: Agent
+  /** 粗算局外面板属性（套装门槛判据），键为 statId */
+  roughStats: Record<string, number>
+}
+
+function discRequirementMet(req: EffectRequirement | undefined, ctx: DiscSetRequirementContext): boolean {
+  if (!req) return true
+  if (req.specialty && ctx.agent.specialty !== req.specialty) return false
+  if (req.attribute && ctx.agent.attribute !== req.attribute) return false
+  const statReq = parseOutOfCombatStatRequirement(req.outOfCombatStat)
+  if (statReq && (ctx.roughStats[statReq.stat] ?? 0) < statReq.min) return false
+  return true
+}
+
+function discEffectPassesRequirement(effect: BuffEffect, ctx: DiscSetRequirementContext): boolean {
+  return discRequirementMet(effect.requirement, ctx)
+}
+
+/** {attribute} 模板按装备者属性落成具体 stat（自由蓝调 4pc：对应属性异常积蓄抗性降低）。
+ * 属性 id 是小写（ether/fire/…），敌方减益 stat 名里属性段首字母大写（enemyEther…）。 */
+function resolveDiscStatTemplate(effect: BuffEffect, ctx: DiscSetRequirementContext): BuffEffect {
+  const stat = effect.stat as string
+  if (!stat.includes('{attribute}')) return effect
+  return { ...effect, stat: resolveAttributeTemplateStat(stat, ctx.agent.attribute) as StatId }
+}
+
+/** 属性模板解析（导出给 teamBuff 通道：自由蓝调挂在敌人 8s，全队同属性积蓄都吃，按装备者属性落键） */
+export function resolveAttributeTemplateStat(stat: string, attribute: string): string {
+  const capitalized = attribute.charAt(0).toUpperCase() + attribute.slice(1)
+  return stat.replace('{attribute}', capitalized)
+}
+
 function collectDriveDiscBuffs(
   config: DriveDiscConfig,
   setsMap: Map<string, DriveDiscSet>,
-  panelDef: number
+  ctx: DiscSetRequirementContext,
 ): CollectedBuffs {
   const out: BuffEffect[] = []
   const inCombat: BuffEffect[] = []
@@ -382,23 +438,19 @@ function collectDriveDiscBuffs(
     // 2件套效果（count>=2 时生效）
     if (count >= 2 && set.twoPiece?.effects) {
       for (const e of set.twoPiece.effects) {
-        out.push(e)
+        if (!discEffectPassesRequirement(e, ctx)) continue
+        out.push(resolveDiscStatTemplate(e, ctx))
       }
     }
 
     // 4件套效果
     if (count >= 4 && set.fourPiece?.selfBuff) {
-      for (let e of set.fourPiece.selfBuff.effects ?? []) {
-        // 检查条件要求
-        if (e.requirement?.outOfCombatStat) {
-          const match = String(e.requirement.outOfCombatStat).match(/stat=(\w+).*min=(\d+)/)
-          if (match) {
-            const stat = match[1]
-            const min = Number(match[2])
-            if (stat === 'def' && panelDef < min) continue
-          }
-        }
-        if (set.fourPiece.selfBuff.scope === 'outOfCombat') out.push(e)
+      const group = set.fourPiece.selfBuff
+      if (!discRequirementMet(group.requirement, ctx)) continue
+      for (let e of group.effects ?? []) {
+        if (!discEffectPassesRequirement(e, ctx)) continue
+        e = resolveDiscStatTemplate(e, ctx)
+        if (group.scope === 'outOfCombat') out.push(e)
         else inCombat.push(e)
       }
     }
@@ -476,7 +528,7 @@ export function collectAllBuffs(
   driveDiscConfig: DriveDiscConfig,
   setsMap: Map<string, DriveDiscSet>,
   teammateBuffs: TeammateBuff[],
-  config: { cinemaLevel: number; wEngineModLevel: number; sourcePanelsByOwner?: SourcePanelsByOwner }
+  config: { cinemaLevel: number; wEngineModLevel: number; sourcePanelsByOwner?: SourcePanelsByOwner; statRules?: StatRules | null }
 ): CollectedBuffs {
   const matchSpecialty = wEngine ? wEngine.specialty === agent.specialty : false
   const agentBuffs = collectAgentBuffs(agent, config.cinemaLevel)
@@ -484,19 +536,30 @@ export function collectAllBuffs(
     ? collectWEngineBuffs(wEngine, config.wEngineModLevel, matchSpecialty)
     : { outOfCombat: [] as BuffEffect[], inCombat: [] as BuffEffect[] }
 
-  // 粗略计算防御力用于套装条件判断
-  let roughDef = agent.level60.defBase
+  // 粗算局外面板属性，供套装 requirement 门槛判断。口径：基础值 + 固定主词条 + 主词条满值 +
+  // 副词条步数（不含局内 buff；常量取 statRules.driveDisc，缺省回落到 S 级满值字面量）。
+  // ——棘刺玫瑰 def≥1000/1800 需要副词条才可能到二档，粗算必须含副词条。
+  const discStatRules = config.statRules
   const discConfig = driveDiscConfig
-  if (discConfig.mainStats) {
-    // 4、5、6号位主词条可能有防御
-    for (const slot of [4, 5, 6] as const) {
-      const stat = discConfig.mainStats[slot]
-      if (stat === 'defPct') roughDef *= 1.48
-      if (stat === 'defFlat') roughDef += 184
-    }
+  const maxMain = discStatRules?.driveDisc?.sRankMaxMainStat ?? {}
+  const subStep = discStatRules?.driveDisc?.sRankSubStatBaseStep ?? {}
+  const defPctMainCount = ([4, 5, 6] as const).filter(s => discConfig.mainStats?.[s] === 'defPct').length
+  const defPctSubSteps = discConfig.subStatAllocation?.defPct ?? 0
+  const defFlatSubSteps = discConfig.subStatAllocation?.defFlat ?? 0
+  const roughDef = agent.level60.defBase
+    * (1 + (maxMain.defPct ?? 48) / 100 * defPctMainCount + (subStep.defPct ?? 4.8) / 100 * defPctSubSteps)
+    + (maxMain.defFlat ?? 184) // 3号位固定主词条（%作用于白值，固定值后加——与面板累加器同口径）
+    + (subStep.defFlat ?? 15) * defFlatSubSteps
+  const hasAmMain = discConfig.mainStats?.[6] === 'anomalyMastery'
+  const roughStats: Record<string, number> = {
+    def: roughDef,
+    anomalyMastery: agent.level60.anomalyMastery + (hasAmMain ? maxMain.anomalyMastery ?? 30 : 0),
+    critRate: (agent.level60.critRate ?? 5)
+      + (discConfig.mainStats?.[4] === 'critRate' ? maxMain.critRate ?? 24 : 0)
+      + (subStep.critRate ?? 2.4) * (discConfig.subStatAllocation?.critRate ?? 0),
   }
 
-  const discBuffs = collectDriveDiscBuffs(driveDiscConfig, setsMap, roughDef)
+  const discBuffs = collectDriveDiscBuffs(driveDiscConfig, setsMap, { agent, roughStats })
   const teamBuffs = collectTeammateBuffs(teammateBuffs, config.sourcePanelsByOwner, agent)
 
   return mergeBuffs(mergeBuffs(mergeBuffs(agentBuffs, wEngineBuffs), discBuffs), teamBuffs)
