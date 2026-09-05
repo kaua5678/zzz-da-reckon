@@ -16,6 +16,7 @@ import { getElementEnemyAnomalyResReduction, resolveStatElement, getElementDmgKe
 import { normalizeResourceSkillType } from '@/composables/resourceCalc/helpers'
 import { calcDirectDamage } from '@/core/damage'
 import { setupHarness } from '@/test/harness'
+import { computePanel } from '@/composables/resourceCalc/helpers'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 
@@ -177,6 +178,17 @@ describe('招式类型定向接线（字段对应）', () => {
     const frost = calcDirectDamage({ ...baseInput, damageElement: 'frostfire' as any, critMode: 'crit', panel: { ...p, iceCritDmg: 30 } }).damage
     const frostNone = calcDirectDamage({ ...baseInput, damageElement: 'frostfire' as any, critMode: 'crit' }).damage
     expect(frost).toBeCloseTo(frostNone * 1.2, 6)
+  })
+
+  it('条件效果覆盖率滑块：炎狱 4pc 50% → critRate +14（28 的一半），面板页与资源管线同源', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''])
+    config.setAgent(0, '1131')
+    config.team[0].driveDisc.fourPieceSetId = '32200'
+    const full = computePanel(0, config, catalog)!
+    expect(full.critRate).toBeGreaterThan(0)
+    config.setDiscEffectCoverage('effect_inferno_metal_4pc_crit_rate', 50)
+    const half = computePanel(0, config, catalog)!
+    expect(full.critRate - half.critRate).toBeCloseTo(14, 6)
   })
 
   it('标准 exec 行携带 skillDamageTarget；极地重金属 4pc 普攻/冲刺限定增伤在伤害行生效', async () => {

@@ -491,6 +491,27 @@
                         <span class="set-icon-label">2件套</span>
                       </div>
                     </div>
+
+                    <!-- 条件效果覆盖率（C 类精化：条件/叠层类效果的 uptime 折算） -->
+                    <div v-if="discCoverageEffects.length" class="disc-coverage-section">
+                      <div class="field-label" style="margin-top: 6px">条件效果覆盖率（默认 100% 恒开）</div>
+                      <div v-for="e in discCoverageEffects" :key="e.id" class="disc-coverage-row" :title="e.condition || ''">
+                        <n-tag size="tiny" :bordered="false">{{ e.scope }}</n-tag>
+                        <span class="coverage-label">
+                          {{ e.stat }} +{{ e.valuePerStack ?? e.value }}{{ e.maxStacks ? `×${e.maxStacks}层` : '' }}
+                        </span>
+                        <n-slider
+                          :value="configStore.getDiscEffectCoverage(e.id)"
+                          :min="0"
+                          :max="100"
+                          :step="5"
+                          size="small"
+                          style="flex: 1"
+                          @update:value="v => configStore.setDiscEffectCoverage(e.id, v)"
+                        />
+                        <span class="coverage-value">{{ configStore.getDiscEffectCoverage(e.id) }}%</span>
+                      </div>
+                    </div>
                   </div>
 
                   <!-- 主词条配置 -->
@@ -1225,6 +1246,34 @@ const setOptions = computed(() =>
   })),
 )
 
+/** 当前角色 4pc/2pc 套装的条件/叠层效果清单（C 类精化：每条一个覆盖率滑块） */
+const discCoverageEffects = computed(() => {
+  const dd = selectedChar.value?.driveDisc
+  if (!dd) return []
+  const setIds = [...new Set([dd.fourPieceSetId, dd.twoPieceSetId].filter(Boolean))]
+  const out: Array<{ id: string; scope: string; stat: string; value?: number; valuePerStack?: number; maxStacks?: number; condition?: string }> = []
+  const seen = new Set<string>()
+  for (const setId of setIds) {
+    const set = catalogStore.driveDiscSetsMap.get(setId)
+    if (!set) continue
+    const groups: Array<[string, any]> = []
+    if (setId === dd.fourPieceSetId) {
+      groups.push(['4件·自身', set.fourPiece?.selfBuff], ['4件·全队', set.fourPiece?.teamBuff])
+    }
+    if (setId === dd.twoPieceSetId) groups.push(['2件', set.twoPiece])
+    for (const [scope, g] of groups) {
+      for (const e of (g?.effects ?? []) as any[]) {
+        if (!e?.id || seen.has(e.id)) continue
+        // 只给条件/叠层类效果出滑块（无条件文本的常驻效果不折算 uptime）
+        if (!e.condition && !e.maxStacks) continue
+        seen.add(e.id)
+        out.push({ id: e.id, scope, stat: e.stat, value: e.value, valuePerStack: e.valuePerStack, maxStacks: e.maxStacks, condition: e.condition })
+      }
+    }
+  }
+  return out
+})
+
 function onSelectAgent(id: string | null) {
   if (id) {
     configStore.setAgent(configStore.selectedSlot, id)
@@ -1563,6 +1612,8 @@ const buildRec = computed<CharacterBuildRecommendation | undefined>(() => {
   margin-bottom: 4px;
 }
 
+.disc-coverage-section { margin-top: 8px; }
+.disc-coverage-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .wengine-coverage {
   display: flex;
   align-items: center;

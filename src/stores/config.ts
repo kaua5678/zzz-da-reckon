@@ -294,6 +294,15 @@ export const useConfigStore = defineStore('config', () => {
   // 音擎效果覆盖率（effectId -> 0-100）；默认未设置时按100%覆盖
   const wEngineEffectCoverages = ref<Record<string, number>>({})
 
+  // 驱动盘套装效果覆盖率（effectId -> 0-100）：条件类 4pc/2pc 效果的 uptime 折算，与音擎覆盖率同模式
+  const discEffectCoverages = ref<Record<string, number>>({})
+  function setDiscEffectCoverage(effectId: string, coverage: number) {
+    discEffectCoverages.value[effectId] = Math.max(0, Math.min(100, coverage))
+  }
+  function getDiscEffectCoverage(effectId: string): number {
+    return discEffectCoverages.value[effectId] ?? 100
+  }
+
   // 资源利用率（slot:actionId -> { rate, cap }），用于把资源池上限折算为实际释放次数
   const resourceUtilization = ref<Record<string, ResourceUtilizationOverride>>({})
   // 机制模块通用可调参数：settingId -> 数值
@@ -1169,6 +1178,7 @@ function parseCinemaRequirement(sourceLabel: string): number {
     globalBuffs,
     teammateBuffSelections,
     wEngineEffectCoverages,
+    discEffectCoverages,
     resourceUtilization,
     mechanicSettings,
     teamMechanicSettings,
@@ -1229,6 +1239,8 @@ function parseCinemaRequirement(sourceLabel: string): number {
     setWEngineEffectCoverage,
     getWEngineEffectCoverage,
     getWEngineEffectCoverageMap,
+    setDiscEffectCoverage,
+    getDiscEffectCoverage,
     getResourceUtilization,
     setResourceUtilization,
     resetResourceUtilization,

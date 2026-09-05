@@ -40,7 +40,7 @@ import type {
   SkillExecution,
   AnomalyProgress,
 } from '@/types/resource'
-import type { PanelValues, TeammateBuff, AgentSkills, SkillMove, Agent } from '@/types/catalog'
+import type { PanelValues, TeammateBuff, AgentSkills, SkillMove, Agent, DriveDiscConfig } from '@/types/catalog'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { fmt } from '@/utils/format'
 import { getRowFusionMultiplier } from '@/logicEditor/fusion'
@@ -498,6 +498,7 @@ export function computePanelPhases(
     const coverage = configStore.getTeammateBuffCoverage(buff.id) / 100
     for (const effect of buff.effects ?? []) effectCoverageMap.set(effect.id, coverage)
   }
+  mergeDiscEffectCoverages(effectCoverageMap, configStore, catalogStore, char.driveDisc)
 
   // 计算面板
   const result = calcPanel(
@@ -769,7 +770,11 @@ export function computeRemielleEntryPanel(
     {
       cinemaLevel: char.cinemaLevel ?? 0,
       wEngineModLevel: char.wEngineModLevel ?? 1,
-      effectCoverageMap: configStore.getWEngineEffectCoverageMap(),
+      effectCoverageMap: (() => {
+        const map = configStore.getWEngineEffectCoverageMap()
+        mergeDiscEffectCoverages(map, configStore, catalogStore, char.driveDisc)
+        return map
+      })(),
     },
   )
   const panel = { ...result.inCombat }
@@ -1417,6 +1422,32 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
 }
 
 /** 从技能数据提取资源池所需的招式信息，构建单个角色的操作配置 */
+
+/**
+ * 驱动盘套装效果覆盖率并入 effectCoverageMap（C 类条件精化 2026-09-05）：
+ * 条件类 4pc/2pc 效果的 uptime 由用户滑块折算（configStore.getDiscEffectCoverage，默认 100%），
+ * 两处调用：buildCharConfig（资源/伤害管线）+ computePanelPhases（面板页）。
+ * 无覆盖率记录的效果也写入（100%）→ 统一走 applyEffect 的 coverage 覆盖。
+ */
+function mergeDiscEffectCoverages(
+  map: Map<string, number>,
+  configStore: ReturnType<typeof useConfigStore>,
+  catalogStore: ReturnType<typeof useCatalogStore>,
+  driveDisc: DriveDiscConfig,
+): void {
+  const setIds = [...new Set([driveDisc.fourPieceSetId, driveDisc.twoPieceSetId].filter(Boolean))]
+  for (const setId of setIds) {
+    const set = catalogStore.driveDiscSetsMap.get(setId)
+    if (!set) continue
+    const groups = [set.fourPiece?.selfBuff, set.fourPiece?.teamBuff, set.twoPiece]
+    for (const g of groups) {
+      for (const e of (g?.effects ?? []) as Array<{ id?: string }>) {
+        if (!e?.id) continue
+        map.set(e.id, configStore.getDiscEffectCoverage(e.id) / 100)
+      }
+    }
+  }
+}
 
 export function normalizeResourceSkillType(move: SkillMove | null, execMoveId: string): string {
   if (execMoveId === 'basic_attack') return 'basic'
