@@ -369,12 +369,14 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
  * 机会来源（出枪式命中合计）从 state 直算——与 patchSigridExecutions 的行计数同口径：
  * Σ出枪式招式次数（强特/连携/终结/闪反/支援突击）+ 凛冽枪尖#4 行计数 + 按段循环计数的 #4 命中。
  * 注意：patch 的行循环会数到 #4 段行、再加一次 countBasicFinisherHits——即 #4 命中按 **2 倍**
- * 计入（段行物化 2026-09-03 后遗留的双计，见 task-ledger Open「待用户裁决」）；本函数保持同一
- * 口径，估时与物化才不分裂。buildExecutions/estimateExSpecialTime 用它替代 cfgField 滞后信道
+ * 计入（段行物化 2026-09-03 后遗留的双计）。**用户裁决（2026-09-06）保留现状**：「任意出枪式
+ * 命中 = 1 次机会，但这个可以说命中多次才打一次，所以不是说全都要打」——机会按命中 1:1 没错，
+ * 但 hit→cast 不是 1:1（段数状态机未建模），双计保留为现状近似、不修代码；本函数保持同一口径，
+ * 估时与物化才不分裂。buildExecutions/estimateExSpecialTime 用它替代 cfgField 滞后信道
  * （机会 ∝ 平A时间 = 负反馈环，字段滞后一轮让估时与行差一整个轮次演化 ≈ 40s lance，折叠
  * `+=` 积分器把差值全吸进必要时间 → 1591 系「账本虚高 33s / 留白 9~19s」的原产地）。
  */
-// @fact agent:1591/敛枪式估时 口径: 敛枪式三段行时间（机会 spend + 破阵套数 × 真实 actionTime）由 estimateExSpecialTime 计入必要时间——机会命中从 state 直算（与 patch 行计数同口径，含 #4 双计现状），估时与 buildExecutions 共用同一 spec 资源账本，不再经 cfgField 轮间滞后（滞后让估时与行差一轮演化 ≈40s lance，折叠积分器风卷成账本虚高）；出枪式段占平A池时间不进必要时间 | 据 实测@2026-09-06（1591 系 9s 留白队→0.3s、超预算队归零）+ 青衣 1571 前例 | 验 src/mechanics/__tests__/sigrid.test.ts#估时钩子 | 锚 src/mechanics/agents/sigrid.ts#sigridExSpecialTime | 信 高
+// @fact agent:1591/敛枪式估时 口径: 敛枪式三段行时间（机会 spend + 破阵套数 × 真实 actionTime）由 estimateExSpecialTime 计入必要时间——机会命中从 state 直算（与 patch 行计数同口径，含 #4 双计；用户裁决 2026-09-06 保留：1命中=1机会没错但命中多次才打一次、不全会打，双计作现状近似），估时与 buildExecutions 共用同一 spec 资源账本，不再经 cfgField 轮间滞后（滞后让估时与行差一轮演化 ≈40s lance，折叠积分器风卷成账本虚高）；出枪式段占平A池时间不进必要时间 | 据 实测@2026-09-06 + 用户@2026-09-06 + 青衣 1571 前例 | 验 src/mechanics/__tests__/sigrid.test.ts#估时钩子 | 锚 src/mechanics/agents/sigrid.ts#sigridExSpecialTime | 信 高
 export function sigridChuqiangFromState(
   state: { exSpecialCount: number; ultimateCount: number; chainCountTotal: number; basicAttackTime: number },
   cfg: AgentCharConfigInput['cfg'],
@@ -388,7 +390,7 @@ export function sigridChuqiangFromState(
     + Math.max(0, state.chainCountTotal ?? 0) // 冰凌卷地
     + Math.max(0, cfg.dodgeCounterCount ?? 0) // 回马枪
     + Math.max(0, cfg.parryCount ?? 0) // 支援突击：冰饕
-    + 2 * finisherHits // #4 段行 + 显式 #4 计数（patch 同口径双计，待裁决）
+    + 2 * finisherHits // #4 段行 + 显式 #4 计数（patch 同口径双计；用户裁决 2026-09-06 保留现状近似）
 }
 
 /**
