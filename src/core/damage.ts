@@ -120,10 +120,18 @@ function calcResistanceMultiplier(
   return { multiplier, effectiveRes }
 }
 
+/** 元素暴击伤害加成（属性数值口径经 resolveStatElement：frostfire 按冰读 iceCritDmg）。
+ * 消费端=焰心桂冠等音擎的 XCritDmg 团队效果（此前全仓无读取端，纯死数据）。 */
+function getElementCritDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: SkillDamageTarget): number {
+  if (!element) return 0
+  return getTargetedStat(panel, `${resolveStatElement(element)}CritDmg`, targetSkillType)
+}
+
 /** 暴击乘区 */
-function calcCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCrit', targetSkillType?: SkillDamageTarget): { multiplier: number; label: string } {
+function calcCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCrit', targetSkillType?: SkillDamageTarget, element?: DamageElement): { multiplier: number; label: string } {
   const enemyCritBonus = panel.enemyCritDmgTakenBonus ?? 0
-  const critDmg = getTargetedStat(panel, 'critDmg', targetSkillType) + enemyCritBonus
+  const critDmg = getTargetedStat(panel, 'critDmg', targetSkillType)
+    + getElementCritDmgBonus(panel, element, targetSkillType) + enemyCritBonus
   const critRateRaw = getTargetedStat(panel, 'critRate', targetSkillType)
   switch (mode) {
     case 'crit':
@@ -175,12 +183,12 @@ function calcPenetrationPower(panel: PanelValues): number {
 
 function getElementSheerDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
   if (!element) return 0
-  return getTargetedStat(panel, `${element}SheerDmg`, targetSkillType)
+  return getTargetedStat(panel, `${resolveStatElement(element)}SheerDmg`, targetSkillType)
 }
 
 function getElementSharpDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
   if (!element) return 0
-  return getTargetedStat(panel, `${element}SharpDmg`, targetSkillType)
+  return getTargetedStat(panel, `${resolveStatElement(element)}SharpDmg`, targetSkillType)
 }
 
 export type SpecialDamageProfileKind = 'normal' | 'rupture' | 'edgeguard'
@@ -449,7 +457,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
     : p
   const critResult = profile.critModel === 'sharp'
     ? calcSharpCritMultiplier(critPanel, input.critMode, input.skillDamageTarget)
-    : calcCritMultiplier(critPanel, input.critMode, input.skillDamageTarget)
+    : calcCritMultiplier(critPanel, input.critMode, input.skillDamageTarget, input.damageElement)
   const afterCrit = afterInfection * critResult.multiplier
   breakdown.push({
     label: profile.critModel === 'sharp' ? '锐暴乘区' : '暴击乘区', formula: critResult.label,

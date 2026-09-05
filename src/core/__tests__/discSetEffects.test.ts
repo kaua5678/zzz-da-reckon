@@ -149,6 +149,36 @@ describe('招式类型定向接线（字段对应）', () => {
     expect(withRes).toBeLessThan(withIce)
   })
 
+  it('元素暴伤族接入暴击乘区（焰心桂冠 iceCritDmg/fireCritDmg 此前纯死数据）', () => {
+    const p = emptyPanel()
+    p.atk = 1000
+    p.critRate = 100
+    const baseInput = {
+      panel: p,
+      skillMultiplier: 100,
+      damageBasis: 'atk',
+      enemyDefense: 1000,
+      enemyDefReduction: 0,
+      enemyDefFlatReduction: 0,
+      enemyLevel: 70,
+      enemyResistance: 0,
+      enemyResReduction: 0,
+      stunMultiplier: 1,
+      stunned: false,
+      count: 1,
+    }
+    const noBuff = calcDirectDamage({ ...baseInput, damageElement: 'fire', critMode: 'crit' }).damage
+    const withBuff = calcDirectDamage({ ...baseInput, damageElement: 'fire', critMode: 'crit', panel: { ...p, fireCritDmg: 30 } }).damage
+    expect(withBuff).toBeCloseTo(noBuff * 1.2, 6)
+    // 其它元素行不吃火元素暴伤
+    const otherEl = calcDirectDamage({ ...baseInput, damageElement: 'electric', critMode: 'crit', panel: { ...p, fireCritDmg: 30 } }).damage
+    expect(otherEl).toBe(noBuff)
+    // 烈霜行按冰读 iceCritDmg
+    const frost = calcDirectDamage({ ...baseInput, damageElement: 'frostfire' as any, critMode: 'crit', panel: { ...p, iceCritDmg: 30 } }).damage
+    const frostNone = calcDirectDamage({ ...baseInput, damageElement: 'frostfire' as any, critMode: 'crit' }).damage
+    expect(frost).toBeCloseTo(frostNone * 1.2, 6)
+  })
+
   it('标准 exec 行携带 skillDamageTarget；极地重金属 4pc 普攻/冲刺限定增伤在伤害行生效', async () => {
     const run = async (fourPieceSetId: string, twoPieceSetId: string) => {
       await setupHarness(['', '', ''])
