@@ -187,13 +187,22 @@ export function shortAxisFeiguangCount(axis: YeshuguangFormAxis, cinemaLevel: nu
 }
 
 // @fact agent:1431/短轴资源 口径: 三档轴（打满/灭极/仅灭）**每轮都消耗满 6 点青溟剑势**——归尘触发条件是「青溟剑势耗尽」、飞光是「持续消耗直至耗尽」，所以短轴只省段数与时间，不省资源也不省观止（C2+ 观止/轮 = 2+6 = 8 三档相同）；旧实现按 6/3/2 递减，与它自己的注释「剩余资源压进观止→飞光」相反 | 据 用户@2026-09-05 + nanoka 1431 招式原文 | 验 src/mechanics/__tests__/yeshuguang.test.ts#三档轴每轮资源消耗相同 | 锚 src/mechanics/agents/yeshuguang.ts#computeYeshuguangCycle | 信 确认
+// @fact agent:1431/轮数实数化 口径: 明心境轮数（喧响进轮/转大赠轮/照影轮）与定风波时间一律以**实数**参与收敛，不再模块内 floor —— 局外剑势 ∝ 平A时间，`floor(剑势/6)` 一次翻转就是一整轮（full 轴 ≈10.9s），是「平A→剑势→轮数→必要时间→平A」环增益 >1 的原产地；实数化语义 = 最后一轮只打 0.4 轮、段数/观止/飞光/收尾同比例兑现（实战 180s 到点）。手动滑块 zhaoyingCount 仍取整（用户显式指定的次数，非资源推导量） | 据 用户@2026-09-05「实数化确实很好…做吧」 | 验 src/mechanics/__tests__/yeshuguang.test.ts#轮数实数化 | 锚 src/mechanics/agents/yeshuguang.ts#computeYeshuguangCycle | 信 确认
 export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangCycleResult {
   const cinema = Math.max(0, Math.floor(input.cinemaLevel || 0))
   const axis = input.formAxis ?? 'full'
-  let decibelForms = Math.max(0, Math.floor(input.ultimateCount || 0))
-  let giftForms = Math.max(0, Math.floor(input.giftUltCount || 0))
+  // ===== 轮数实数化（2026-09-05 用户裁决「做吧」）=====
+  // 引擎本来就有连续松弛骨架（坑17：迭代期次数以实数参与 + 终局 floor + 预算内加回；1051 的
+  // `ultForTime` 是同款 targeted 前例），但这里三处 `Math.floor` 又把它离散化回去 —— 其中
+  // `autoZhao = floor(局外剑势/6)` 直接挂在平A时间上（剑势 ∝ 平A），正是
+  // 「平A↑→剑势↑→轮数+1整轮→必要时间↑→平A↓」环增益 >1 的来源：一次 floor 翻转就是一整轮
+  // （full 轴 ≈10.9s），阻尼/封顶都只是在重排吸引盆。
+  // 实数化后是"最后一轮只打 0.4 轮"——实战语义本来就是 180s 到点、这一轮的段数与伤害都只兑现
+  // 0.4。手动滑块（zhaoSetting）仍是整数：那是用户显式指定的次数，不是资源推导量。
+  let decibelForms = Math.max(0, input.ultimateCount || 0)
+  let giftForms = Math.max(0, input.giftUltCount || 0)
   const outside = Math.max(0, Number(input.outsideSwordGain) || 0)
-  const autoZhao = Math.floor(outside / ZHAOYING_COST)
+  const autoZhao = outside / ZHAOYING_COST
   const zhaoSetting = Math.floor(input.zhaoyingCountSetting)
   let zhaoyingForms = Math.max(0, zhaoSetting >= 0 ? Math.min(zhaoSetting, autoZhao) : autoZhao)
   let totalForms = decibelForms + giftForms + zhaoyingForms
@@ -517,7 +526,9 @@ function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount }: AgentExSp
   // 定风波（通用强化特殊技）前台时间：estimateExSpecialTime 覆盖了 exSpecialNecessaryTime 的通用公式，
   // 必须把 exSpecialCount × exSpecialActionTime 也计入，否则定风波时间丢失、经 timeBudgetExcess 折叠造成
   // 必要时间虚高（曾致叶瞬光 necessary≈151s > rowTime≈113s，平A池被挤到 0）。
-  const genericExTime = Math.max(0, Math.floor(exSpecialCount ?? 0)) * (cfg.exSpecialActionTime ?? 0)
+  // 定风波时间同样实数化（同 1051 `ultForTime` 的理由：整数在阈值处翻转会把实数次数拽成
+  // 2-循环，必要时间随之跳变 → 平A池/回能/喧响同步跳）
+  const genericExTime = Math.max(0, exSpecialCount ?? 0) * (cfg.exSpecialActionTime ?? 0)
   return { necessaryTime: melee + feiguangTime + zhao + genericExTime, comboAlignTime: 0 }
 }
 

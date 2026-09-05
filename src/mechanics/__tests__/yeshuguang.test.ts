@@ -288,6 +288,24 @@ describe('叶瞬光 buildExecutions', () => {
   })
 })
 
+  it('轮数实数化：资源推导量以实数参与，最后一轮可以只打 0.4 轮', () => {
+    const base = { giftUltCount: 0, zhaoyingCountSetting: -1, cinemaLevel: 0, battleTime: 180, formAxis: 'full' } as const
+    // 喧响进轮 2.4 → 不再 floor 成 2
+    const ult = computeYeshuguangCycle({ ...base, ultimateCount: 2.4, outsideSwordGain: 0 })
+    expect(ult.totalForms).toBeCloseTo(2.4, 9)
+    // 局外剑势 14 ÷ 6 = 2.333 轮照影（旧实现 floor 成 2，一次翻转跳一整轮）
+    const zhao = computeYeshuguangCycle({ ...base, ultimateCount: 0, outsideSwordGain: 14 })
+    expect(zhao.totalForms).toBeCloseTo(14 / 6, 9)
+    // 段数/观止/飞光随实数轮数等比兑现（= 那一轮只打了一半，伤害也只兑现一半）
+    const full = computeYeshuguangCycle({ ...base, ultimateCount: 2, outsideSwordGain: 0 })
+    expect(ult.miePerForm * ult.totalForms).toBeCloseTo(2 * 2.4, 9)
+    // 观止→飞光当量随轮数线性：2.4 轮 = 2 轮的 1.2 倍
+    expect(ult.feiguangFullCasts).toBeCloseTo(full.feiguangFullCasts * 1.2, 9)
+    // 手动滑块是用户显式指定的次数，保持取整不被实数化污染
+    const manual = computeYeshuguangCycle({ ...base, ultimateCount: 0, outsideSwordGain: 14, zhaoyingCountSetting: 1 })
+    expect(manual.totalForms).toBe(1)
+  })
+
 describe('局外剑势', () => {
   it('帷幕×3 需额外能力（自动 teamVeilCountTotal 通道）', () => {
     const cfg: any = {
