@@ -12,7 +12,7 @@ import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
 
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 import * as ResourceCalcHelpers from './resource/helpers'
-const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy } = ResourceCalcHelpers
+const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline } = ResourceCalcHelpers
 
 // ============ 热启动缓存 ============
 /**
@@ -83,6 +83,18 @@ export function getWarmStartStats(): { stored: number; seeded: number } {
   return { ...warmStartStats }
 }
 
+/**
+ * 时间预算容差（秒）：量化（floor 次数）导致的残差属合轴可覆盖，不追求精确 0（坑12/19 既有口径）。
+ * 单一事实源——欠打回填的可行性门控与队伍对比的超时判定共用（teamCompare.actionTimeTotal）。
+ */
+export const TIME_BUDGET_TOLERANCE_SECONDS = 1
+
+/**
+ * 欠打回填的启动门槛（秒）：低于此量不试探，避免为量化残差扰动外层不动点。
+ * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛 10s（≤5s 会把近均衡队推进 stunCount=0 吸引盆）；宁可留白不制造超预算 | 据 用户@2026-09-05「全部动手」+实测 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS | 信 确认
+ */
+export const UNDERFILL_PROBE_THRESHOLD_SECONDS = 10
+
 export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResult {
   const totalTime = config.totalTime
   // 伊德海莉连续松弛（0.5 阻尼）收敛比整数动力学慢：她的队内层迭代上限提到 100
@@ -140,6 +152,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   let timeBudgetIdleSeconds = 0
   let timeBudgetRefundedSeconds = 0
   let refundFrozen = false
+  /**
+   * 热启动种子：默认末态；欠打回填触发时改存**试探前**末态（保持冷/热逐位一致，见回填块注释）。
+   * @fact engine:热启动逐位透明 口径: 回填触发时热启动缓存存试探前末态——存回填后末态会让下次调用从「已回填」出发、不再测到 pass0 的正 excess，折出不同账本 → 冷热落点分叉（实测 1241/1191 队由一致变不一致） | 据 实测@2026-09-05 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#warmSeedStates | 信 确认
+   */
+  let warmSeedStates: IterationState[] = states
   for (let timePass = 0; timePass < maxTimeIter; timePass++) {
     timeBudgetPasses = timePass + 1
     for (iter = 0; iter < maxIter; iter++) {
@@ -189,6 +206,16 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       )
       // 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget + refund）
       const excess = rowTime - (state.necessaryTime + state.basicAttackTime)
+      // 真实时间压力（模块退化判据的权威信号，见 CharacterOperationConfig.timePressureSeconds）：
+      // 本槽物化行 − 队友账本净占用后剩下的可用前台。用**当轮实测行**而不是累加的折叠残差，
+      // 否则 pass0 的虚高会把「其实装得下」的队误判成超支（叶瞬光自动轴退化即为此被关掉过）。
+      const teammatesLedgerNet = configs.reduce(
+        (sum, _, j) => (j === i ? sum
+          : sum + Math.max(0, states[j].necessaryTime - (states[j].comboAlignCredit ?? 0) + states[j].basicAttackTime)),
+        0)
+      const availableFrontline = Math.max(0, (totalTime - (config.invincibleTime ?? 0)) - teammatesLedgerNet)
+      cfg.timeAvailableFrontlineSeconds = availableFrontline
+      cfg.timePressureSeconds = rowTime - availableFrontline
       if (excess > 1e-6) {
         // 量化（floor 次数）导致残差 ~1s 属合轴可覆盖，不追求精确 0。
         // `+=` 累加（2026-09-03 实测三语义对比）：`=` 对正反馈队（猫又/伊德海莉——模块行随
@@ -222,6 +249,112 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     if (maxExcess <= 1e-6) {
       timeBudgetConverged = true
       break
+    }
+  }
+
+  // ===== 末轮欠打回填（可行性门控，2026-09-05）=====
+  // 上面折叠循环的 refund **冻结在 pass0**，而 pass0 恒测到**正** excess（此时平A池按权重满额发放
+  // → 模块专属行爆量 → 行时间超账本）→ refund 被冻成 0；此后 excess 转负（账本 > 物化行 = 时间
+  // 没打满）就再也拿不到回填。实测 96/125 预设 refund=0、41 队留白 >1s（最大 93.7s = 朱鸢/妮可/苍角
+  // 的 1241 槽：账本必要 138.3s vs 物化必要行 44.6s），而 timeBudgetConverged 仍报 true——
+  // 「收敛健康」掩盖了「动作只打了 86s」。
+  // 修法：折叠循环退出后重测一次欠打量，**折半试探**注入 refund 并重收敛；只有「物化净占用更接近
+  // 预算、且不越过预算」才接受，否则回滚该次注入。必须是可行性门控而不是逐轮跟随——
+  // refund→平A→回能→次数→物化行 是放大环（naive 逐轮跟随实测：留白 1544s→267s 的同时
+  // 超预算队从 8 推到 20，破坏 netFrontlineOccupation ≤ 预算 这条被轴退化/降配/队伍对比消费的
+  // 硬不变量）。门控保证本步**绝不比现状差**：要么把留白收小，要么原样不动。
+  // debt: 全局实数化收敛重构——本步仍是「一次内层收敛」粒度的离散修正，天花板 = ±1 次强特/终结
+  //       次数对应的秒数；升级路径见 check-guards DEBT_REGISTRY 同名词条。
+  {
+    const budgetSeconds = totalTime - (config.invincibleTime ?? 0)
+    /**
+     * Σ物化前台**净**占用：扣轴内合轴分摊 + 每槽超出该分摊的招式合轴抵扣（max 不叠加）——
+     * 与超时判定单一事实源 `netFrontlineOccupation` **完全同口径**，否则试探门控放行、
+     * 装配后仍超预算（实测差出 164s）。
+     */
+    const frontlineRowsOf = (st: IterationState[]): number => {
+      const overlap = config.axisOverlapByAction ?? {}
+      const overlapBySlot: number[] = configs.map(() => 0)
+      for (const [key, sec] of Object.entries(overlap)) {
+        const slot = Number(key.slice(0, key.indexOf(':')))
+        const idx = configs.findIndex(c => c.slot === slot)
+        if (idx >= 0 && Number.isFinite(sec)) overlapBySlot[idx] += sec
+      }
+      let total = 0
+      for (let i = 0; i < configs.length; i++) {
+        const cfg = configs[i]
+        const state = st[i]
+        const teammateFrontline = configs.reduce(
+          (sum, _, j) => (j === i ? sum : sum + st[j].frontlineTime), 0)
+        const rowNet = buildExecutions(cfg, state, state.chainCountTotal, teammateFrontline).reduce(
+          (sum, e) => sum + Math.max(0, (e.totalTime ?? 0)
+            - (overlap[`${cfg.slot}:${e.moveId}`] ?? 0))
+            * (isFrontlineExecution(e) ? 1 : 0),
+          0)
+        const extraCredit = Math.max(0, (state.comboAlignCredit ?? 0) - overlapBySlot[i])
+        total += Math.max(0, rowNet - extraCredit)
+      }
+      return total
+    }
+    /** 内层次数收敛（与折叠循环同一判据：强特/终结次数严格相等）；stable=false = 耗尽上限 */
+    const convergeCounts = (from: IterationState[]) => {
+      let st = from
+      for (let k = 0; k < maxIter; k++) {
+        const next = iterate(configs, st, config)
+        let changed = false
+        for (let i = 0; i < st.length; i++) {
+          if (next[i].exSpecialCount !== st[i].exSpecialCount
+            || next[i].ultimateCount !== st[i].ultimateCount) { changed = true; break }
+        }
+        st = next
+        if (!changed) return { states: st, stable: true }
+      }
+      return { states: st, stable: false }
+    }
+    const statesPreProbe = states
+    let rowsFilled = frontlineRowsOf(states)
+    let underfill = budgetSeconds - rowsFilled
+    // 门槛 10s：±1~2s 的量化残差属既有口径（坑12「不追求精确 0」），为它扰动外层均衡不划算——
+    // 实测门槛降到 5s 以下时，对 2.2s 欠打的队做回填会把外层不动点推进 stunCount=0 的吸引盆
+    // （失衡 116k→9.5k，runArchiveDeploy 雅/南宫/柚叶队崩、anomalyUtilization 丽娜积蓄偏 0.3%）。
+    // 门槛扫描（留白合计/改善/变差）：1s=335/41/2(+2队崩) 5s=353/31/2(+2队崩) 10s=391/23/2 20s=421/20/2。
+    if (underfill > UNDERFILL_PROBE_THRESHOLD_SECONDS) {
+      let probe = underfill
+      for (let attempt = 0; attempt < 4 && probe > 0.5; attempt++) {
+        const savedRefund: number = config.timeBudgetRefund ?? 0
+        // 试探轮跑 iterate 会触发模块钩子的**写回**（叶瞬光自动选轴在 estimateExSpecialTime 里
+        // 按 timeBudgetExcess 退化并改 record.yeshuguangAutoAxis；般岳补齐同款通道）——被拒的
+        // 试探必须连 cfg 一起回滚，否则结构选择被副作用永久改写（实测 1431 队留白 2.6→11.3s、
+        // 伤害 −13%，就是退化后的轴留在了 cfg 上）。
+        const savedCfg = configs.map(c => ({ ...c }))
+        // overflowSeconds 是 iterate 的副作用输出（编排层拿它判「非轴降配」缩交互次数）：
+        // 试探轮会写下自己的溢出值，被拒后若不回滚，编排层会按一个不存在的溢出把交互缩光
+        // → 失衡归零（实测 runArchiveDeploy 雅/南宫/柚叶队 stunCount 螺旋到 0）。
+        const savedOverflow = config.overflowSeconds ?? 0
+        config.timeBudgetRefund = savedRefund + probe
+        const trial = convergeCounts(states)
+        const trialRows = frontlineRowsOf(trial.states)
+        // 留 1× 容差余量：本步之后还有伊德海莉终局整数重推（实测 +1.3s）与外层不动点再平衡，
+        // 试探测得的行数不是最终装配的行数。margin 扫描（棘轮回归队数）：0=1 队 1=1 队 2=3 队。
+        const fitsBudget = trialRows <= budgetSeconds - TIME_BUDGET_TOLERANCE_SECONDS
+        if (trial.stable && fitsBudget && trialRows > rowsFilled) {
+          states = trial.states
+          rowsFilled = trialRows
+          timeBudgetRefundedSeconds = config.timeBudgetRefund ?? 0
+          underfill = budgetSeconds - trialRows
+          if (underfill <= TIME_BUDGET_TOLERANCE_SECONDS) break
+        } else {
+          config.timeBudgetRefund = savedRefund // 回滚：宁可留白，不制造超预算
+          config.overflowSeconds = savedOverflow
+          configs.forEach((c, i) => Object.assign(c, savedCfg[i]))
+          probe /= 2
+        }
+      }
+      timeBudgetIdleSeconds = Math.max(0, underfill)
+      // 热启动逐位透明：缓存**试探前**的末态。回填后的末态作种子会让折叠循环 pass0 从
+      // 「已回填」出发（不再测到那个巨大的正 excess）→ 折出不同的账本 → 冷/热落点分叉
+      // （实测 1241/1191 队由冷热一致变不一致）。存试探前末态则每次调用都重走同一条路径。
+      warmSeedStates = statesPreProbe
     }
   }
 
@@ -266,7 +399,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   }
 
   // 热启动回写：本轮末态（无论是否完全收敛，同配置下次都从它出发）
-  if (!config.initialStates) storeWarmStart(warmExactKey, states)
+  if (!config.initialStates) storeWarmStart(warmExactKey, warmSeedStates)
 
   // 收敛后按最终状态折算跨角色联动：卢西娅4命帷幕触发次数（含伊德海莉大招开帷幕）、回血按卢西娅大招次数
   const luciaSlot = configs.findIndex(c => c.agentId === '1451')
@@ -283,6 +416,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     : 0
 
   // 构建最终结果
+  /** 时间线截断总量（装配阶段砍掉的秒数）：= 资源允许但时间装不下的部分，上报为 overflowSeconds */
+  let timeTruncatedSeconds = 0
   const characters: CharacterResourceResult[] = configs.map((cfg, i) => {
     const state = states[i]
     const chainCountTotal = state.chainCountTotal
@@ -342,10 +477,19 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       + normaC4Decibel,
       config.specialActionDecibelBonusPerSlot?.[i] ?? 0,
       config.anomalyDecibelBonusPerSlot?.[i] ?? 0)
-    const executions = buildExecutions(cfg, state, chainCountTotal, teammateFrontlineSeconds)
+    const builtExecutions = buildExecutions(cfg, state, chainCountTotal, teammateFrontlineSeconds)
+    // ===== 时间线截断（通用资源循环规则，2026-09-05 用户口径）=====
+    // 本槽物化行超出账本（必要 + 平A）的部分按时间线尾部截断：平A行是填充项永远保留，
+    // 招式行从后往前整行丢、边界行等比缩（伤害/失衡/积蓄/回能线性缩）。iterate 已把必要时间
+    // 封顶到「预算 − 队友占用」，所以这里的上限就是账本本身。语义 = 实战 180s 到点结算，
+    // 资源攒多了也兑现不出来——旧实现没有这层，只能靠虚高账本挤平A池，结果两头都不准。
+    const truncated = truncateExecutionsToFrontline(
+      builtExecutions, state.necessaryTime + state.basicAttackTime)
+    const executions = truncated.executions
+    timeTruncatedSeconds += truncated.cutSeconds
     // 显示口径统一：前台时间 = **前台**执行行 ΣtotalTime（后台行不占共享轴，如莱卡恩围猎蓄力；
     // 含合轴，机制改写行/倍率表行都在内），后台 = 总时间 - 前台。
-    // 折叠循环已把前台行对其账本收敛，故 Σ前台行 ≈ 账本 ≤ 战斗时间。
+    // 折叠循环把前台行对其账本收敛 + 本步截断 ⇒ Σ前台行 ≤ 账本 ≤ 战斗时间。
     const execFrontlineTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
     const timeAlloc = {
       ...calcTimeAllocation(cfg, state, totalTime),
@@ -383,6 +527,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     }
   })
 
+  // 溢出 = **被时间线截断掉的秒数**（装配阶段实测）：为了塞进战斗时间砍掉了多少动作。
+  // 截断后 Σ物化净占用恒 ≤ 预算，所以"账本超预算"（iterate 那份中间值）与"物化超预算"
+  // 都不再是溢出——只有真被砍掉的时间才是。消费方：TeamComparePage 操作难度横轴（1秒=1难度点）。
+  config.overflowSeconds = timeTruncatedSeconds
+
   return {
     totalTime,
     stunCount: inputStunCount,
@@ -398,6 +547,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       timeBudgetResidualSeconds,
       timeBudgetIdleSeconds,
       timeBudgetRefundedSeconds,
+      timeTruncatedSeconds,
     },
   }
 }

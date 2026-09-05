@@ -1,0 +1,504 @@
+{
+ "_note": "时间留白棘轮基线（秒）。重生成：TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts",
+ "_tolerance": 1,
+ "auto-1021-1481-1031": {
+  "slack": 3.9,
+  "over": 0
+ },
+ "auto-1021-1481-1211": {
+  "slack": 0.8,
+  "over": 0
+ },
+ "auto-1021-1481-1311": {
+  "slack": 0.8,
+  "over": 0
+ },
+ "auto-1021-1481-1341": {
+  "slack": 2.3,
+  "over": 0
+ },
+ "auto-1021-1571-1491": {
+  "slack": 0,
+  "over": 10.1
+ },
+ "auto-1041-1161-1311": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1041-1361-1311": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1041-1571-1031": {
+  "slack": 0,
+  "over": 12.2
+ },
+ "auto-1041-1571-1151": {
+  "slack": 0,
+  "over": 12.2
+ },
+ "auto-1041-1571-1311": {
+  "slack": 0,
+  "over": 12.2
+ },
+ "auto-1041-1571-1341": {
+  "slack": 0,
+  "over": 12.2
+ },
+ "auto-1051-1141-1451": {
+  "slack": 0.5,
+  "over": 0
+ },
+ "auto-1051-1481-1451": {
+  "slack": 2.6,
+  "over": 0
+ },
+ "auto-1091-1031-1511": {
+  "slack": 3.4,
+  "over": 0
+ },
+ "auto-1091-1221-1581": {
+  "slack": 3.4,
+  "over": 0
+ },
+ "auto-1091-1511-1031": {
+  "slack": 3.4,
+  "over": 0
+ },
+ "auto-1091-1511-1211": {
+  "slack": 6.9,
+  "over": 0
+ },
+ "auto-1091-1511-1311": {
+  "slack": 3.4,
+  "over": 0
+ },
+ "auto-1091-1511-1411": {
+  "slack": 3.4,
+  "over": 0
+ },
+ "auto-1171-1561-1411": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1181-1511-1411": {
+  "slack": 7.4,
+  "over": 0
+ },
+ "auto-1181-1561-1411": {
+  "slack": 8.2,
+  "over": 0
+ },
+ "auto-1181-1561-1581": {
+  "slack": 7,
+  "over": 0
+ },
+ "auto-1191-1161-1311": {
+  "slack": 7.8,
+  "over": 0
+ },
+ "auto-1191-1361-1311": {
+  "slack": 7.2,
+  "over": 0
+ },
+ "auto-1191-1481-1311": {
+  "slack": 9.1,
+  "over": 0
+ },
+ "auto-1201-1361-1211": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1201-1361-1311": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1201-1481-1211": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1201-1481-1311": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1201-1481-1491": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1201-1571-1311": {
+  "slack": 0,
+  "over": 10
+ },
+ "auto-1221-1511-1211": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1221-1511-1411": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1221-1561-1411": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1241-1031-1311": {
+  "slack": 30.1,
+  "over": 0
+ },
+ "auto-1261-1331-1411": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1261-1331-1581": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1261-1411-1561": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1261-1561-1411": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1261-1561-1581": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1261-1581-1561": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1311-1521-1361": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1321-1161-1311": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1321-1481-1311": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1321-1481-1491": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1321-1571-1311": {
+  "slack": 0,
+  "over": 12.9
+ },
+ "auto-1331-1561-1411": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1371-1251-1451": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1371-1481-1451": {
+  "slack": 0.8,
+  "over": 0
+ },
+ "auto-1371-1571-1451": {
+  "slack": 0,
+  "over": 12.4
+ },
+ "auto-1381-1211-1311": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1381-1361-1301": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1381-1361-1311": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1381-1361-1411": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1381-1481-1311": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1401-1031-1411": {
+  "slack": 3,
+  "over": 0
+ },
+ "auto-1401-1261-1411": {
+  "slack": 4,
+  "over": 0
+ },
+ "auto-1401-1361-1411": {
+  "slack": 4,
+  "over": 0
+ },
+ "auto-1401-1411-1031": {
+  "slack": 3,
+  "over": 0
+ },
+ "auto-1401-1511-1411": {
+  "slack": 4,
+  "over": 0
+ },
+ "auto-1411-1171-1561": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1411-1541-1561": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1431-1341-1031": {
+  "slack": 18,
+  "over": 0
+ },
+ "auto-1431-1341-1311": {
+  "slack": 25.2,
+  "over": 0
+ },
+ "auto-1431-1341-1491": {
+  "slack": 10.4,
+  "over": 0
+ },
+ "auto-1431-1481-1311": {
+  "slack": 0,
+  "over": 1.5
+ },
+ "auto-1431-1481-1341": {
+  "slack": 1.1,
+  "over": 0
+ },
+ "auto-1431-1481-1491": {
+  "slack": 2.3,
+  "over": 0
+ },
+ "auto-1431-1491-1311": {
+  "slack": 21.1,
+  "over": 0
+ },
+ "auto-1431-1491-1341": {
+  "slack": 10.4,
+  "over": 0
+ },
+ "auto-1461-1311-1521": {
+  "slack": 6.9,
+  "over": 0
+ },
+ "auto-1461-1361-1521": {
+  "slack": 3.5,
+  "over": 0
+ },
+ "auto-1461-1521-1031": {
+  "slack": 0,
+  "over": 0.8
+ },
+ "auto-1461-1521-1311": {
+  "slack": 6.9,
+  "over": 0
+ },
+ "auto-1461-1521-1361": {
+  "slack": 3.5,
+  "over": 0
+ },
+ "auto-1471-1571-1451": {
+  "slack": 0,
+  "over": 51.6
+ },
+ "auto-1501-1511-1311": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1501-1511-1411": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1501-1561-1411": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1511-1561-1411": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1521-1251-1311": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1521-1361-1311": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1521-1461-1311": {
+  "slack": 6.9,
+  "over": 0
+ },
+ "auto-1521-1481-1311": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1531-1451-1481": {
+  "slack": 27.2,
+  "over": 0
+ },
+ "auto-1531-1481-1451": {
+  "slack": 3.7,
+  "over": 0
+ },
+ "auto-1531-1571-1451": {
+  "slack": 2.2,
+  "over": 0
+ },
+ "auto-1541-1331-1581": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1541-1511-1411": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1541-1561-1411": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1561-1171-1411": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1581-1261-1561": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1581-1501-1561": {
+  "slack": 0,
+  "over": 0
+ },
+ "auto-1591-1161-1211": {
+  "slack": 2.7,
+  "over": 0
+ },
+ "auto-1591-1161-1311": {
+  "slack": 0,
+  "over": 0.7
+ },
+ "auto-1591-1481-1211": {
+  "slack": 13.8,
+  "over": 0
+ },
+ "auto-1591-1481-1311": {
+  "slack": 20.6,
+  "over": 0
+ },
+ "auto-1591-1571-1211": {
+  "slack": 3.2,
+  "over": 0
+ },
+ "banyue-jufufu-lucia": {
+  "slack": 0,
+  "over": 0.2
+ },
+ "banyue-liuyin-lucia__normal": {
+  "slack": 0,
+  "over": 0
+ },
+ "banyue-liuyin-lucia__wrath5-ult10": {
+  "slack": 0,
+  "over": 0
+ },
+ "banyue-norma-lucia": {
+  "slack": 0,
+  "over": 51.6
+ },
+ "banyue-qingyi-lucia": {
+  "slack": 0,
+  "over": 0.2
+ },
+ "banyue-roxy-lucia": {
+  "slack": 0,
+  "over": 0
+ },
+ "banyue-trigger-lucia": {
+  "slack": 0,
+  "over": 0
+ },
+ "billy-jufufu-lucia": {
+  "slack": 2.5,
+  "over": 0
+ },
+ "billy-liuyin-lucia": {
+  "slack": 3.7,
+  "over": 0
+ },
+ "billy-norma-lucia": {
+  "slack": 2.2,
+  "over": 0
+ },
+ "billy-qingyi-lucia": {
+  "slack": 12.5,
+  "over": 0
+ },
+ "billy-roxy-lucia": {
+  "slack": 1.8,
+  "over": 0
+ },
+ "billy-trigger-lucia": {
+  "slack": 42.4,
+  "over": 0
+ },
+ "yidhari-jufufu-lucia": {
+  "slack": 1.4,
+  "over": 0
+ },
+ "yidhari-liuyin-lucia": {
+  "slack": 2.6,
+  "over": 0
+ },
+ "yidhari-lycaon-lucia": {
+  "slack": 0.5,
+  "over": 0
+ },
+ "yidhari-norma-lucia": {
+  "slack": 0,
+  "over": 14.4
+ },
+ "yidhari-qingyi-lucia": {
+  "slack": 1.2,
+  "over": 0
+ },
+ "yidhari-roxy-lucia": {
+  "slack": 0.9,
+  "over": 0
+ },
+ "yidhari-trigger-lucia": {
+  "slack": 0.8,
+  "over": 0
+ },
+ "yixuan-jufufu-lucia": {
+  "slack": 0,
+  "over": 0
+ },
+ "yixuan-liuyin-lucia": {
+  "slack": 0.8,
+  "over": 0
+ },
+ "yixuan-norma-lucia": {
+  "slack": 0,
+  "over": 12.4
+ },
+ "yixuan-qingyi-lucia": {
+  "slack": 0,
+  "over": 0
+ },
+ "yixuan-roxy-lucia": {
+  "slack": 0,
+  "over": 0
+ },
+ "yixuan-trigger-lucia": {
+  "slack": 0,
+  "over": 0
+ }
+}

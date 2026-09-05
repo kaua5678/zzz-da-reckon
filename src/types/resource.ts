@@ -535,6 +535,11 @@ export interface SkillExecution {
    *  前台判定见 isFrontlineExecution：未打标按前台处理（保守，不漏计）。
    *  Σ前台行时间 ≡ 该角色账本（necessaryTime+basicAttackTime）由折叠循环强制收敛（resource.ts）。 */
   timeBucket?: 'necessary' | 'basic' | 'backstage'
+  /**
+   * 时间线截断比例（1 = 未截断）：本行按「可用前台」等比缩到 ratio（count 与所有 total* 同比例，
+   * 伤害/失衡/积蓄/回能随之线性缩）。见 truncateExecutionsToFrontline。
+   */
+  truncatedRatio?: number
 }
 
 /** 行是否占用三人共享前台时间轴（后台行不进超时校验与账本折叠；未打标默认前台） */
@@ -1080,6 +1085,12 @@ export interface ConvergenceReport {
    */
   timeBudgetRefundedSeconds?: number
   /**
+   * 时间线截断总量（秒）：装配阶段按「本槽可用前台」砍掉的执行行时间（含被等比缩的边界行）。
+   * >0 = 资源允许的动作量装不进战斗时间，多余资源没兑现成动作（实战 180s 结算口径）。
+   * 与 overflowSeconds 同值口径，单独上报便于与"账本超预算"区分。
+   */
+  timeTruncatedSeconds?: number
+  /**
    * 失衡外层不动点（runCalcRound 环）是否真收敛。
    * 由编排层回填；`calcTeamResources` 单独调用时保持 false（它看不到外层）。
    */
@@ -1134,9 +1145,11 @@ export interface TeamResourceResult {
   /** 合轴节省按块分摊（`${slot}:${moveId}` → 秒）：单角色行级扣减用，Σ 值 = axisOverlapSeconds */
   axisOverlapByAction?: Record<string, number>
   /**
-   * 合轴溢出（秒）：合轴抵扣后的必做前台净占用（Σ(necessary − 抵扣)，轴模式抵扣与栈引擎
-   * 节省取 max）超出「战斗时间 − 无敌」的量（不硬截断）。已并入 TeamComparePage 操作难度横轴
-   * （1 秒 = 1 难度点，用户口径 2026-09-04）。
+   * 时间线溢出＝**被截断掉的秒数**（合轴抵扣后，轴模式抵扣与栈引擎节省取 max）：资源允许的
+   * 动作量超出「战斗时间 − 无敌」的部分。装配阶段按可用前台截断执行计划（实战 180s 直接结算，
+   * 不管这一轮/这套连段打没打完 ⇒ 截断后净占用恒 ≤ 预算，见 truncateExecutionsToFrontline），
+   * 本字段就是"为了塞进 180s 砍掉了多少"。已并入 TeamComparePage 操作难度横轴
+   * （1 秒 = 1 难度点，用户口径 2026-09-04；截断口径 2026-09-05）。
    */
   overflowSeconds?: number
 }
@@ -1500,6 +1513,21 @@ export interface CharacterOperationConfig {
   timeWeight: number
   /** 时间预算收敛：执行计划前台时间超出战斗时间的部分（秒），折入必要前台时间以压缩平A池（引擎时间收敛外层循环写入） */
   timeBudgetExcess?: number
+  /**
+   * 真实时间压力（秒，引擎折叠循环每轮写入，模块只读）：
+   * `本槽物化前台净占用 − max(0, 预算 − 队友账本净占用)` —— 即"队友占完之后，本槽真正可用的
+   * 前台时间还剩多少"，正数 = **本槽的动作真的装不下**。
+   * 与 `timeBudgetExcess` 的区别：后者是**累加的折叠残差**（pass0 平A池满额发放时会灌进一个
+   * 后续再也不会出现的巨大值，且只增不减），拿它当退化判据会误判——叶瞬光自动选轴曾因此
+   * 被人为关掉（`yeshuguang.formAxis` default 0 打满，描述写着「超支信号被虚高，自动会过度退化」）。
+   * 需要「时间不够就压结构」的模块（退化短轴/砍交互）一律读本字段，不要读 timeBudgetExcess。
+   */
+  timePressureSeconds?: number
+  /**
+   * 本槽可用前台时间（秒，与 `timePressureSeconds` 同源）：`预算 − 队友账本净占用`。
+   * 模块按它封顶自己的动作量（叶瞬光按它砍明心境轮数），比"超了多少"更好用。
+   */
+  timeAvailableFrontlineSeconds?: number
   /** 嘲讽取消次数（般岳专属：失衡外强特连段末尾后摇的嘲讽取消，每次取消一次后摇；缺省 0） */
   tauntCancelCount?: number
   /** 资源利用率覆盖：actionId/eventId -> 释放率/上限 */
@@ -1826,6 +1854,11 @@ export interface ResourceCalcConfig {
   axisOverlapSeconds?: number
   /** 合轴节省按块分摊（`${slot}:${moveId}` → 秒）：折叠循环按行扣减用 */
   axisOverlapByAction?: Record<string, number>
+  /**
+   * 全队必要前台的可行比例（引擎 iterate 每轮写入，装配阶段消费）：
+   * `预算 ÷ Σ必要净占用`，<1 = 想打的必做动作装不进战斗时间 ⇒ 执行计划按时间线截断。
+   */
+  timeFeasibleScale?: number
   /**
    * 合轴溢出（秒，输出）：合轴抵扣后的必做前台净占用超出「战斗时间 − 无敌」的量
    * （iterate 每轮写入；轴模式抵扣与栈引擎节省取 max，不叠加）。

@@ -190,6 +190,9 @@ export const DEBT_REGISTRY = {
   // refund 双稳态已 targeted 修复（calcEnergySource 解析不动点 + iterate 阻尼实数 + 终局整数
   // 重推），全局松弛会重排所有带时间/资源循环模块的均衡（sigrid 出枪式消失前例）。
   'src/core/resource/helpers.ts:全局实数化收敛重构': { since: '2026-09-04', due: '专项立项：正反馈模块统一连续通道 + 逐模块重校准（sigrid/般岳等带时间/资源循环模块均衡重排风险，前例 bdcf52f 锚点漂移 8 处）' },
+  // 2026-09-05：末轮欠打回填（可行性门控）把 refund 从「pass0 冻结成 0」救回来，但仍是
+  // 「一次内层收敛」粒度的离散试探——同一天花板的第二个标记点，随上面那条专项落地一并销号。
+  'src/core/resource.ts:全局实数化收敛重构': { since: '2026-09-05', due: '随 helpers.ts 同名词条一并销号（实数化收敛后折半试探不再需要）' },
 }
 
 /**

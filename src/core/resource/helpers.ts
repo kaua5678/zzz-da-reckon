@@ -595,6 +595,103 @@ export function netFrontlineOccupation(rr: TeamResourceResult): number {
   return total
 }
 
+// @fact engine:时间线截断 口径: 资源允许的动作量超过可用前台时按时间线截断（实战 180s 到点结算，不管这套连段打没打完），次数必须整数（floor+小数降序加回装包）、平A填充行先占位不参与截断、砍到0次的行整行消失；overflowSeconds 语义=被截断的秒数 | 据 用户@2026-09-05 | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/helpers.ts#truncateExecutionsToFrontline | 信 确认
+/**
+ * 按可用前台时间**截断**执行计划（通用资源循环规则，2026-09-05 用户口径）。
+ *
+ * 规则：资源允许的动作量 > 本槽可用前台 ⇒ 在时间线处截断，多余资源不兑现成动作——
+ * 实战 180s 到点直接结算，不管你这一轮明心境/这套连段打没打完。旧实现没有这一层：
+ * 装不下时只能靠折叠循环把超出量折进 `necessaryTime`（账本虚高）→ 平A池被挤成 0 →
+ * 物化行反而打不满（实测朱鸢队留白 93.7s、叶瞬光队 18~58s），既不准也解释不了。
+ *
+ * **整数装包截断**（复用坑17 的终局口径，不是等比缩小数）：次数必须是整数——等比缩会产出
+ * 「强化特殊技 ×2.78 次」这种不存在的动作（实测红 11 条：12.27/2.78/5.76/31.97 次）。
+ * 做法：① 每行按可用比例 floor 次数；② 剩余时间按**小数部分降序**逐个加回 1 次，
+ * 直到装不下为止。装配顺序不代表实战出招顺序，所以不按尾部整行丢（实测会把排在最后的
+ * 模块行——叶瞬光架势段、琉音抱拳——连伤害带失衡整类删光，直接让 calcOutput 返回 null）。
+ * 平A行是填充项（占剩余时间），不参与截断；后台行不占前台，自然也不参与。
+ *
+ * @returns 截断后的行 + 被砍掉的秒数（= 该槽真实的时间压力，供 overflowSeconds/操作难度消费）
+ */
+export function truncateExecutionsToFrontline(
+  executions: SkillExecution[],
+  availableSeconds: number,
+): { executions: SkillExecution[]; cutSeconds: number } {
+  /** 可截断行：占前台且不是平A填充行 */
+  const isTruncatable = (e: SkillExecution) => isFrontlineExecution(e) && e.moveId !== 'basic_attack'
+  let used = 0
+  let basicTime = 0
+  for (const e of executions) {
+    if (!isFrontlineExecution(e)) continue
+    if (e.moveId === 'basic_attack') basicTime += e.totalTime ?? 0
+    else used += e.totalTime ?? 0
+  }
+  // 平A是填充项先占位：招式行能用的只剩「可用前台 − 平A」
+  const room = Math.max(0, availableSeconds - basicTime)
+  if (used <= room + 1e-9) return { executions, cutSeconds: 0 }
+
+  // 每行的「单位时长」：totalTime / count（count=1 但 totalTime 是聚合量的行，如飞光当量，
+  // 也能正确处理）；count=0 的行（纯时间聚合）按整行一个单位处理。
+  const units = executions.filter(isTruncatable).map(e => {
+    const t = e.totalTime ?? 0
+    const perUnit = e.count > 0 ? t / e.count : t
+    return { e, count: e.count, perUnit, frac: 0 }
+  })
+  let remaining = room
+  // ① 按比例 floor
+  const scale = room > 0 ? room / used : 0
+  for (const u of units) {
+    const target = u.count * scale
+    const keep = u.count > 0 ? Math.floor(target) : (target >= 0.5 ? 1 : 0)
+    u.frac = u.count > 0 ? target - keep : 0
+    u.count = keep
+    remaining -= keep * u.perUnit
+  }
+  // ② 剩余时间按小数部分降序加回整次（装不下就停）
+  const order = units.map((_u, i) => i).sort((a, b) => units[b].frac - units[a].frac)
+  let cursor = 0
+  while (cursor < order.length) {
+    const u = units[order[cursor]]
+    if (u.count < u.e.count && u.perUnit <= remaining + 1e-9) {
+      u.count += 1
+      remaining -= u.perUnit
+      cursor = 0
+    } else {
+      cursor += 1
+    }
+  }
+
+  const idx = new Map<SkillExecution, number>()
+  let k = 0
+  for (const e of executions) if (isTruncatable(e)) idx.set(e, k++)
+  const req = (v: number | undefined, r: number) => (typeof v === 'number' ? v * r : 0)
+  const opt = (v: number | undefined, r: number) => (typeof v === 'number' ? v * r : v)
+  const out = executions.map(e => {
+    if (!isTruncatable(e)) return e
+    const u = units[idx.get(e)!]
+    if (u.count === u.e.count) return e
+    const ratio = u.e.count > 0 ? u.count / u.e.count : 0
+    if (u.count === 0) return null // 整行不再发生
+    return {
+      ...e,
+      count: u.count,
+      totalTime: u.count * u.perUnit,
+      totalComboAlignTime: req(e.totalComboAlignTime, ratio),
+      totalEnergyConsume: req(e.totalEnergyConsume, ratio),
+      totalDecibelRecovery: req(e.totalDecibelRecovery, ratio),
+      totalEnergyRecovery: req(e.totalEnergyRecovery, ratio),
+      totalAnomalyBuildUp: opt(e.totalAnomalyBuildUp, ratio),
+      totalSpecialResourceRecovery: opt(e.totalSpecialResourceRecovery, ratio),
+      totalHealingAmount: opt(e.totalHealingAmount, ratio),
+      truncatedRatio: ratio,
+    }
+  }).filter((e): e is SkillExecution => e !== null)
+  let kept = 0
+  for (const e of out) if (isTruncatable(e)) kept += e.totalTime ?? 0
+  return { executions: out, cutSeconds: Math.max(0, used - kept) }
+}
+
+
 // ============ 招式执行计划 ============
 
 /** 构建招式执行记录 */
@@ -1216,7 +1313,7 @@ export function iterate(
   // 轴模式下栈引擎节省（axisOverlapByAction）与招式合轴率是同一物理并行的两种模型，
   // 按槽位取 max 不叠加（防同时设置时超扣；缺省合轴率全 0，退化为原口径）。
   // @fact engine:合轴预算抵扣 口径: 必做动作合轴段与其他角色动作并行、抵扣团队时间预算（Σnecessary 允许>战斗时间）；轴模式与栈引擎节省按槽取 max 不叠加；只抵扣含在 necessary 内的部分（GROSS 缺省，NET 模块照/卢西娅不重复抵） | 据 用户@2026-09-04 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#netFrontlineOccupation | 信 确认
-  // @fact engine:单角色前线上限 口径: 单角色前台（必要+平A）≤ 战斗总时间——合轴抵扣放宽团队预算不放宽单人物理时间轴；截断份额留池不重分配 | 据 用户@2026-09-04 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
+  // @fact engine:单角色前线上限 口径: 单角色前台（必要+平A）≤ 战斗总时间——合轴抵扣放宽团队预算不放宽单人物理时间轴；贴顶截断的份额按剩余权重水填回流给还有余量的队友，不留池蒸发 | 据 用户@2026-09-05（改 09-04「留池不重分配」） | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
   const overlapBySlot: number[] = configs.map(() => 0)
   let hasByAction = false
   for (const [key, sec] of Object.entries(globalCfg.axisOverlapByAction ?? {})) {
@@ -1235,12 +1332,55 @@ export function iterate(
   // 无敌时间不扣能量/喧响回能，但扣平A池。
   const invTime = globalCfg.invincibleTime ?? 0
   const budget = totalTime - invTime
+  // ===== 必要前台的可行性封顶（2026-09-05 用户口径：装不下就在时间线处截断，别回退成留白）=====
+  // 各槽「想打」的必要前台（estimate + 折叠残差，扣掉合轴抵扣后的净占用）总和超过预算时，
+  // 按**同一比例**压到装得下——不是逐槽拿队友的未封顶需求去算余量（那样两个厚槽会互相压成 0，
+  // 实测把叶瞬光/琉音/诺姆队的失衡行全缩成 0 直接让 calcOutput 返回 null）。
+  // 被压掉的部分不折进账本挤平A池，而是在装配阶段按各自的账本截断执行计划
+  // （truncateExecutionsToFrontline；实战 180s 到点结算，不管这套连段打没打完）。
+  // 旧行为：超出量一路折进 necessaryTime → 账本虚高 → 平A池被挤成 0 → 物化行反而打不满
+  // （实测朱鸢队留白 93.7s、叶瞬光队 18~58s），虚高账本还会误触发模块的结构退化。
+  const netNecessary = totalNecessary.map((n, i) => Math.max(0, n - (comboAlignCredits[i] ?? 0)))
+  const sumNetNecessary = netNecessary.reduce((a, b) => a + b, 0)
+  const feasibleScale = sumNetNecessary > budget && sumNetNecessary > 0
+    ? budget / sumNetNecessary
+    : 1
+  // 可行比例：>1 说明全队想打的必要动作装得下；<1 说明装不下，装配阶段按它截断执行计划。
+  // 注意**不回灌平A池**（早期版本用 capped necessary 参与池分配，改了收敛动力学，
+  // 实测破 seedInvariance——星徽·比利队落点随种子在 23/24 次之间跳）。
+  globalCfg.timeFeasibleScale = feasibleScale
   globalCfg.overflowSeconds = Math.max(0, sumNecessary - reliefSeconds - budget)
   const availableBasicTime = Math.max(0, budget - sumNecessary + reliefSeconds
     + (globalCfg.timeBudgetRefund ?? 0))
 
   // 按权重分配平A时间
   const totalWeight = configs.reduce((a, c) => a + c.timeWeight, 0)
+  // 截断份额回流队友（2026-09-05 用户裁决，替代 09-04 的「留池蒸发」口径）：单人前台
+  // （必要 + 平A）≤ 战斗总时长是物理上限，某槽按权重分到的份额超出他的剩余物理时间时，
+  // 旧做法是把超出量直接丢在池里蒸发——合轴抵扣放宽团队预算后尤其浪费（池打开了，
+  // 却因单人贴顶而没人接）。改为水填法（water-filling）：每轮把池按**剩余权重**分给
+  // 还有余量的槽，贴顶的槽退出，至多 configs.length 轮必然收敛（每轮至少一个槽退出）。
+  const basicAlloc = new Array<number>(configs.length).fill(0)
+  if (totalWeight > 0 && availableBasicTime > 0) {
+    let pool = availableBasicTime
+    for (let round = 0; round < configs.length && pool > 1e-9; round++) {
+      const open: Array<{ idx: number; headroom: number; w: number }> = []
+      for (let i = 0; i < configs.length; i++) {
+        const headroom = Math.max(0, totalTime - totalNecessary[i]) - basicAlloc[i]
+        if (configs[i].timeWeight > 0 && headroom > 1e-9) open.push({ idx: i, headroom, w: configs[i].timeWeight })
+      }
+      if (open.length === 0) break
+      const wSum = open.reduce((a, o) => a + o.w, 0)
+      let used = 0
+      for (const o of open) {
+        const give = Math.min(o.headroom, pool * (o.w / wSum))
+        basicAlloc[o.idx] += give
+        used += give
+      }
+      pool -= used
+      if (used <= 1e-9) break
+    }
+  }
 
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]
@@ -1253,10 +1393,9 @@ export function iterate(
 
     const necessary = totalNecessary[i]
     // 单角色前台硬顶：合轴抵扣放宽的是团队预算，单个角色自身时间轴仍受战斗总时长约束
-    // （前台 = 必要 + 平A ≤ totalTime）；截断的份额留在池里，不重分配给其他角色。
-    const basicAttackTime = Math.min(
-      totalWeight > 0 ? availableBasicTime * (cfg.timeWeight / totalWeight) : 0,
-      Math.max(0, totalTime - necessary))
+    // （前台 = 必要 + 平A ≤ totalTime）。水填结果即该槽平A时间——贴顶截断的份额已在
+    // 上面的轮次按剩余权重回流给还有余量的队友（不蒸发）。
+    const basicAttackTime = basicAlloc[i]
 
     // 连携次数（与第一个循环保持一致）：每次失衡连携次数 × 失衡次数
     // 失衡轴模式用 chainCountTotalOverride（各轴按窗口数加权后的最终连携次数）

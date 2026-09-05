@@ -152,35 +152,64 @@
         <!-- Tab 1: 资源/动作池 -->
         <n-tab-pane name="pool" tab="资源/动作池">
           <div class="pool-summary-row">
-        <!-- 时间分配汇总 -->
+        <!-- 时间分配汇总：账本（引擎收费口径）与物化（真打出去的动作行）并列，留白可归因 -->
         <n-card size="small" class="pool-summary-card" :bordered="true">
           <template #header>
             <span class="pool-title">时间分配汇总</span>
           </template>
           <div class="pool-summary-body">
             <div class="pool-stat">
-              <span class="pool-stat-label">动作前台合计</span>
-              <span class="pool-stat-value">{{ fmt(teamTimeSummary.actionFrontline, 1) }}s</span>
-              <span class="pool-stat-detail">三角色必做动作加和</span>
+              <span class="pool-stat-label">时间预算</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.budget, 1) }}s</span>
+              <span class="pool-stat-detail">战斗 {{ fmt(teamTimeSummary.battleTime, 0) }}s − 无敌 {{ fmt(teamTimeSummary.invincibleTime, 0) }}s</span>
+            </div>
+
+            <div class="pool-subtitle">账本口径 · 引擎按此分配平A池</div>
+            <div class="pool-stat">
+              <span class="pool-stat-label">必要前台</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.requiredFrontline, 1) }}s</span>
+              <span class="pool-stat-detail">动作前台 {{ fmt(teamTimeSummary.actionFrontline, 1) }}s − 合轴抵扣 {{ fmt(teamTimeSummary.comboAlignDeduction, 1) }}s</span>
             </div>
             <div class="pool-stat">
-              <span class="pool-stat-label">合轴扣除</span>
-              <span class="pool-stat-value">-{{ fmt(teamTimeSummary.comboAlignDeduction, 1) }}s</span>
-              <span class="pool-stat-detail">仅展示扣除</span>
+              <span class="pool-stat-label">平A分配</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.basicTotal, 1) }}s</span>
+              <span class="pool-stat-detail">可分配池 {{ fmt(teamTimeSummary.remainingFrontlinePool, 1) }}s · 已分 {{ poolFillText }}</span>
             </div>
+
+            <div class="pool-subtitle">物化口径 · 与角色卡时间条同源</div>
             <div class="pool-stat highlight">
-              <span class="pool-stat-label">必要前台时间</span>
-              <span class="pool-stat-value">{{ fmt(teamTimeSummary.requiredFrontline, 1) }}s</span>
-              <span class="pool-stat-detail">动作前台 - 合轴</span>
+              <span class="pool-stat-label">前台净占用</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.rowsNet, 1) }}s</span>
+              <span class="pool-stat-detail">真正打出去的动作（必要行 + 平A行）</span>
             </div>
-            <div class="pool-stat bonus">
-              <span class="pool-stat-label">剩余前台池</span>
-              <span class="pool-stat-value">{{ fmt(teamTimeSummary.remainingFrontlinePool, 1) }}s</span>
-              <span class="pool-stat-detail">用于平A等可分配动作</span>
+            <div class="pool-stat" :class="teamTimeSummary.slack > 5 ? 'danger' : 'bonus'">
+              <span class="pool-stat-label">时间留白</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.slack, 1) }}s</span>
+              <span class="pool-stat-detail">{{ slackHint }}</span>
+            </div>
+            <div v-if="teamTimeSummary.ledgerInflation > 1" class="pool-stat danger">
+              <span class="pool-stat-label">其中账本虚高</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.ledgerInflation, 1) }}s</span>
+              <span class="pool-stat-detail">必要时间估高（estimate + 折叠残差），无对应动作行</span>
+            </div>
+            <div v-if="teamTimeSummary.basicShrink > 1" class="pool-stat">
+              <span class="pool-stat-label">其中平A行缩水</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.basicShrink, 1) }}s</span>
+              <span class="pool-stat-detail">平A时间被模块改写成专属行/挤给转大赠送行（时间守恒）</span>
+            </div>
+            <div v-if="teamTimeSummary.overflow > 1" class="pool-stat danger">
+              <span class="pool-stat-label">超预算</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.overflow, 1) }}s</span>
+              <span class="pool-stat-detail">合轴抵扣后净占用仍超预算（轴/交互太厚）</span>
+            </div>
+            <div v-if="!teamTimeSummary.timeBudgetConverged" class="pool-stat danger">
+              <span class="pool-stat-label">时间预算未收敛</span>
+              <span class="pool-stat-value">{{ teamTimeSummary.timeBudgetPasses }} 轮耗尽</span>
+              <span class="pool-stat-detail">残差仍在变，结果可能停在错误值</span>
             </div>
             <div class="pool-per-slot">
               <span v-for="item in teamTimeSummary.perSlot" :key="item.slot" class="slot-chip">
-                {{ item.name }}: {{ fmt(item.requiredFrontline, 1) }}s
+                {{ item.name }}: 账本 {{ fmt(item.requiredFrontline, 1) }} / 物化 {{ fmt(item.necRows, 1) }} / 平A {{ fmt(item.basic, 1) }}s
               </span>
             </div>
           </div>
@@ -735,6 +764,7 @@ import { fmt } from '@/utils/format'
 import { exportExcelFile } from '@/utils/exportExcel'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import FinalPanel from '@/components/FinalPanel.vue'
+import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf } from '@/composables/teamTimeSummary'
 import type { CharacterResourceResult, AnomalyEventRecord } from '@/types/resource'
 
 const configStore = useConfigStore()
@@ -799,28 +829,17 @@ const totalQuickAssistCount = computed(() =>
   configStore.team.reduce((sum, c) => sum + (c.quickAssistCount ?? 0), 0),
 )
 
-// 全队时间分配汇总：动作层面的时间加和，与扣除合轴后的多人前台视角并列展示
-// 抵扣口径 = comboAlignCredit（含在 necessary 内的合轴，与引擎时间预算/超时判定同源；
-// NET 约定模块如照的合轴已从 necessary 剔除，不再重复扣减）
-const teamTimeSummary = computed(() => {
-  const chars = resourceResult.value?.characters ?? []
-  const actionFrontline = chars.reduce((sum, c) => sum + c.timeAllocation.necessaryTime, 0)
-  const comboAlignDeduction = chars.reduce((sum, c) => sum + (c.timeAllocation.comboAlignCredit ?? 0), 0)
-  const requiredFrontline = Math.max(0, actionFrontline - comboAlignDeduction)
-  const totalTime = resourceResult.value?.totalTime ?? configStore.effectiveTime
+// 全队时间分配汇总：账本口径（引擎收费）与物化口径（真打出去的动作行）并列 + 留白归因。
+// 计算在 composables/teamTimeSummary.ts（纯函数 + 生效测试），本文件只渲染。
+const teamTimeSummary = computed(() => buildTeamTimeSummary({
+  rr: resourceResult.value,
+  battleTime: resourceResult.value?.totalTime ?? configStore.enemy.battleTime ?? 180,
+  invincibleTime: configStore.enemy.invincibleTime ?? 0,
+  nameOf: (agentId, slot) => agentNames.value[agentId] || `槽${slot}`,
+}))
 
-  return {
-    actionFrontline,
-    comboAlignDeduction,
-    requiredFrontline,
-    remainingFrontlinePool: Math.max(0, totalTime - requiredFrontline),
-    perSlot: chars.map(c => ({
-      slot: c.slot,
-      name: agentNames.value[c.agentId] || c.agentName || `槽${c.slot}`,
-      requiredFrontline: Math.max(0, c.timeAllocation.necessaryTime - (c.timeAllocation.comboAlignCredit ?? 0)),
-    })),
-  }
-})
+const poolFillText = computed(() => poolFillTextOf(teamTimeSummary.value))
+const slackHint = computed(() => slackHintOf(teamTimeSummary.value, fmt))
 
 // 获取角色特性
 function getSpecialty(agentId: string): string {
@@ -1195,6 +1214,14 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 
 .pool-stat.bonus .pool-stat-value {
   color: var(--c-success);
+  font-weight: 700;
+}
+
+/* 时间留白/账本虚高/超预算/未收敛：留白类告警用 danger（与 .highlight 的 warning 区分
+   ——warning = 引擎关键量，danger = 口径异常需要人看） */
+.pool-stat.danger .pool-stat-value {
+  color: var(--c-danger);
+  font-size: 14px;
   font-weight: 700;
 }
 

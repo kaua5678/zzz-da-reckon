@@ -57,7 +57,10 @@ useResourceCalc()                      编排层入口（composables/useResource
 | **加一个可调滑块（覆盖率/次数近似）** | `src/mechanics/types.ts` 的 `MechanicSetting`；面板阶段读法见 `AgentPanelInput.settings` | 模块 `settings: [...]` 声明 → 面板阶段 `input.settings['<id>']`、cfg 阶段 `configStore.getMechanicSetting`。**必须补一条「滑块改了面板/结果确实变」的生效测试**（般岳 rageGainCoverage 曾静默失效） |
 | 改伤害公式 / 乘区 | `core/damage.ts`（乘区顺序 = 代码顺序：基础→增伤→锐化→贯穿→防御→抗性→易伤→失衡→暴击） | core/damage.ts；执行级字段在 `types/resource.ts` SkillExecution |
 | 改资源池（能量/闪能/时间/连携/转大） | `core/resource.ts`（主循环）→ `core/resource/helpers.ts`（calcEnergySource/iterate） | 同上 + `types/resource.ts`；**跨角色回能只改 `calcCrossAgentEnergy`**（单一事实源，iterate 与最终装配共用） |
-| 改合轴率/时间预算抵扣/超时判定 | `core/resource/helpers.ts` 的 `iterate`（抵扣+池+单角色≤180 cap）与 `netFrontlineOccupation`（超时判定单一事实源） | 口径见 `ENGINE_PIPELINE_GUIDE.md` §4 坑 21；生效测试 `comboAlignBudget.test.ts`；NET 模块必标 `comboAlignIncludedInNecessary: false` |
+| 改合轴率/时间预算抵扣/超时判定 | `core/resource/helpers.ts` 的 `iterate`（抵扣+池+单角色≤180 cap+截断份额水填回流）与 `netFrontlineOccupation`（超时判定单一事实源） | 口径见 `ENGINE_PIPELINE_GUIDE.md` §4 坑 21；生效测试 `comboAlignBudget.test.ts`；NET 模块必标 `comboAlignIncludedInNecessary: false` |
+| **排查「时间分配吃不满 180s」/ 改欠打回填** | `core/resource.ts` 折叠循环之后的**末轮欠打回填**块（`UNDERFILL_PROBE_THRESHOLD_SECONDS`）→ `iterate` 的 `availableBasicTime` | 口径见 §4 坑 19①（三条纪律：门槛 10s / 可行性优先于留白 / 热启动存试探前末态）；生效测试 `underfillRefund.test.ts`；**全库留白由 `timeFillRatchet.test.ts` 棘轮钉住**（`TIME_RATCHET_UPDATE=1` 重生成基线） |
+| **改「时间线截断」/ 出现小数次数 / 招式行消失** | `core/resource/helpers.ts` 的 `truncateExecutionsToFrontline`（装配阶段，整数装包） | 口径见 §4 坑 22；生效测试 `timeTruncation.test.ts`；模块侧读 `cfg.timePressureSeconds`，**不要读 `timeBudgetExcess`** |
+| **改结果页「时间分配汇总」卡** | `composables/teamTimeSummary.ts`（纯函数：账本口径 vs 物化口径 + 留白归因） | 页面只渲染；生效测试 `teamTimeSummary.test.ts`（恒等式 + 归因 + 无敌缩预算） |
 | 排查「界面能量总额和次数不对应」 | `types/resource.ts` 的 `CrossAgentEnergy` / `derivedEnergy` 注释 | 看 `energySource.total`（展示，含 crossAgent）vs `derivedEnergy`（驱动次数）；两口律试已对齐（iterate 连携次数同口径，`timeSliceChainEnergy.test.ts` 锁定），差值 ≠ 0 即回归 |
 | 排查「算出来没收敛 / 数值抖动」 | `types/resource.ts` 的 `ConvergenceReport`；结果页计算状态条 | `convergence.timeBudgetConverged` / `outerExit`（`cycle` 正常、`maxIter` 可疑）；全角色断言在 `allAgentsSweep` |
 | 改失衡 / 异常 / 紊乱 | `core/stunPool/`、`core/anomalyPool/` | 同上 |

@@ -65,33 +65,55 @@ describe('叶瞬光 computeYeshuguangCycle', () => {
     expect(c.feiguangFullCasts).toBeCloseTo(8 / 6)
   })
 
-  it('短轴灭极：耗剑势3；0命观止2→飞光2/6；2命观止5→飞光5/6', () => {
+  // 用户口径 2026-09-05：短轴**只省时间不省资源**——归尘的触发条件是「青溟剑势耗尽」、
+  // 飞光是「持续消耗直至耗尽」，所以一轮不管走哪档轴，6 点青溟剑势都得打光；
+  // 省下的灭/极段不是省下的资源，是换成更快的飞光把同一批剑势花掉。
+  it('短轴灭极：仍打满 6 点剑势（只省段数不省资源）；0命观止2→飞光2/6；2命观止8→飞光8/6', () => {
     const c0 = computeYeshuguangCycle({
       ultimateCount: 1, giftUltCount: 0, zhaoyingCountSetting: 0,
       outsideSwordGain: 0, cinemaLevel: 0, battleTime: 180, formAxis: 'short_pair',
     })
     expect(c0.miePerForm).toBe(1)
     expect(c0.jiPerForm).toBe(1)
-    expect(c0.swordSpentPerForm).toBe(3)
+    expect(c0.swordSpentPerForm).toBe(6)
     expect(c0.guanzhiPerForm).toBe(2)
     expect(c0.feiguangFullCasts).toBeCloseTo(2 / 6)
     const c2 = computeYeshuguangCycle({
       ultimateCount: 1, giftUltCount: 0, zhaoyingCountSetting: 0,
       outsideSwordGain: 0, cinemaLevel: 2, battleTime: 180, formAxis: 'short_pair',
     })
-    expect(c2.guanzhiPerForm).toBe(5)
-    expect(c2.feiguangFullCasts).toBeCloseTo(5 / 6)
+    expect(c2.guanzhiPerForm).toBe(8)
+    expect(c2.feiguangFullCasts).toBeCloseTo(8 / 6)
   })
 
-  it('短轴仅灭：耗剑势2，观止线性飞光', () => {
+  it('短轴仅灭：同样打满 6 点剑势，观止线性飞光', () => {
     const c = computeYeshuguangCycle({
       ultimateCount: 1, giftUltCount: 0, zhaoyingCountSetting: 0,
       outsideSwordGain: 0, cinemaLevel: 0, battleTime: 180, formAxis: 'short_mie',
     })
     expect(c.miePerForm).toBe(1)
     expect(c.jiPerForm).toBe(0)
-    expect(c.swordSpentPerForm).toBe(2)
+    expect(c.swordSpentPerForm).toBe(6)
     expect(c.feiguangFullCasts).toBeCloseTo(2 / 6)
+  })
+
+  it('三档轴每轮资源消耗相同（短轴只省时间，不省剑势不省观止）', () => {
+    for (const cinema of [0, 2, 6]) {
+      const per = (axis: 'full' | 'short_pair' | 'short_mie') => computeYeshuguangCycle({
+        ultimateCount: 1, giftUltCount: 0, zhaoyingCountSetting: 0,
+        outsideSwordGain: 0, cinemaLevel: cinema, battleTime: 180, formAxis: axis,
+      })
+      const full = per('full')
+      expect(per('short_pair').swordSpentPerForm).toBe(full.swordSpentPerForm)
+      expect(per('short_mie').swordSpentPerForm).toBe(full.swordSpentPerForm)
+      expect(per('short_pair').guanzhiPerForm).toBe(full.guanzhiPerForm)
+      expect(per('short_mie').guanzhiPerForm).toBe(full.guanzhiPerForm)
+      // 但段数（=时间）确实逐级变少
+      expect(full.miePerForm + full.jiPerForm + full.fuyaoPerForm)
+        .toBeGreaterThan(per('short_pair').miePerForm + per('short_pair').jiPerForm + per('short_pair').fuyaoPerForm)
+      expect(per('short_pair').miePerForm + per('short_pair').jiPerForm + per('short_pair').fuyaoPerForm)
+        .toBeGreaterThan(per('short_mie').miePerForm + per('short_mie').jiPerForm + per('short_mie').fuyaoPerForm)
+    }
   })
 
   it('C6 明灯愿：进场2+每轮1，floor/3 归尘改斩妄；附伤=轮次', () => {
@@ -223,19 +245,46 @@ describe('叶瞬光 buildExecutions', () => {
     expect(est.necessaryTime).toBeCloseTo(formOnly + 8 * 2.833, 6)
   })
 
-  it('自动选轴：超支时逐级退化并清零旧轴超支残差', () => {
-    const cfg: any = {
-      yeshuguangCinemaLevel: 0, yeshuguangSwordInitial: 0, yeshuguangGiftUltCount: 0,
-      yeshuguangMoveDmg: baseDmg, yeshuguangMoveTimes: baseTimes,
-      yeshuguangAtk0PerSec: 0, battleTime: 180, dodgeCounterCount: 0,
-      exSpecialActionTime: 2.833,
-      'setting:yeshuguang.formAxis': -1, // 自动
-      yeshuguangAutoAxis: 'full',
-      timeBudgetExcess: 20, // 超过阈值 5 → 退化
-    }
+  /** 自动选轴的输入样板（默认 auto，起始打满） */
+  const autoCfg = (over: Record<string, unknown> = {}): any => ({
+    yeshuguangCinemaLevel: 0, yeshuguangSwordInitial: 0, yeshuguangGiftUltCount: 0,
+    yeshuguangMoveDmg: baseDmg, yeshuguangMoveTimes: baseTimes,
+    yeshuguangAtk0PerSec: 0, battleTime: 180, dodgeCounterCount: 0,
+    exSpecialActionTime: 2.833,
+    'setting:yeshuguang.formAxis': -1, // 自动
+    yeshuguangAutoAxis: 'full',
+    ...over,
+  })
+
+  it('自动选轴：真实时间压力超阈值时逐级退化并清零旧轴折叠残差', () => {
+    const cfg = autoCfg({ timePressureSeconds: 20, timeBudgetExcess: 30 })
     yeshuguangMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 8, ultimateCount: 1 } as any)!
     expect(cfg.yeshuguangAutoAxis).toBe('short_pair') // 退化一级
     expect(cfg.timeBudgetExcess).toBe(0) // 旧轴残差清零
+    // 压力持续 → 再退一级；到底后不再退（short_mie 之后归外层 interactionScale 缩交互）
+    cfg.timePressureSeconds = 20
+    yeshuguangMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 8, ultimateCount: 1 } as any)!
+    expect(cfg.yeshuguangAutoAxis).toBe('short_mie')
+    cfg.timePressureSeconds = 20
+    yeshuguangMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 8, ultimateCount: 1 } as any)!
+    expect(cfg.yeshuguangAutoAxis).toBe('short_mie')
+  })
+
+  it('回归守卫：虚高的折叠残差不得驱动结构退化（auto 曾被此关掉）', () => {
+    // 折叠残差 30s（pass0 平A池满额发放灌进来的、后续再也不会出现的值），
+    // 但真实时间压力 = 0（队友占完后她自己的动作装得下）→ 必须保持打满，不退化。
+    const cfg = autoCfg({ timeBudgetExcess: 30, timePressureSeconds: 0 })
+    yeshuguangMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 8, ultimateCount: 1 } as any)!
+    expect(cfg.yeshuguangAutoAxis).toBe('full')
+    expect(cfg.timeBudgetExcess).toBe(30) // 残差不被误清
+  })
+
+  it('手动指定轴时自动退化完全不介入', () => {
+    for (const manual of [0, 1, 2, 'full', 'short_mie']) {
+      const cfg = autoCfg({ 'setting:yeshuguang.formAxis': manual, timePressureSeconds: 999 })
+      yeshuguangMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 8, ultimateCount: 1 } as any)!
+      expect(cfg.yeshuguangAutoAxis, `手动=${manual}`).toBe('full') // 未被自动改写
+    }
   })
 })
 

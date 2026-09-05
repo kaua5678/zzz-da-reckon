@@ -4,7 +4,7 @@
  *   合轴抵扣后净占用装得下 → 平A池扩大、overflowSeconds 按合轴后净额；
  * - GROSS/NET 约定：抵扣只计含在 necessaryTime 内的合轴（照/卢西娅 NET 已剔除 → credit=0
  *   不重复抵扣；11号 GROSS 含在 necessary 内 → credit=comboAlignTime 可抵扣）；
- * - 单角色前台硬顶：前台（必要+平A）≤ 战斗总时间，截断份额留池不重分配；
+ * - 单角色前台硬顶：前台（必要+平A）≤ 战斗总时间，截断份额水填回流给还有余量的队友（2026-09-05 改）；
  * - 超时判定同口径：netFrontlineOccupation = Σ前台行 − 每槽 max(招式抵扣, 轴内节省)（不叠加）。
  *
  * 口径缺省安全：合轴率默认全 0（catalog 仅 1401012 平A段非零、不在 necessary 通道），
@@ -84,7 +84,7 @@ describe('合轴率抵扣团队时间预算', () => {
     expect(relief).toBeGreaterThan(0)
   })
 
-  it('单角色前台硬顶：平A份额超「总时间−必要」时截断到 180，留池不重分配', async () => {
+  it('单角色前台硬顶：平A份额超「总时间−必要」时截断到 180；无队友可接时留在池里', async () => {
     const cfg = await capturedConfig(['1061', '1011', '1151'])
     cfg.characters[0].chainCountTotalOverride = 20
     cfg.characters[1].chainCountTotalOverride = 40
@@ -100,9 +100,36 @@ describe('合轴率抵扣团队时间预算', () => {
     expect(s[0].frontlineTime).toBeLessThanOrEqual(cfg.totalTime + 1e-6)
     expect(s[0].frontlineTime).toBeGreaterThanOrEqual(cfg.totalTime - 1e-6)
     expect(s[0].basicAttackTime).toBeCloseTo(cfg.totalTime - s[0].necessaryTime, 6)
-    // 权重 0 的角色不接池（截断的份额留池，不重分配）
+    // 权重 0 的角色不接池（没有有余量的队友 → 截断的份额留在池里）
     expect(s[1].basicAttackTime).toBe(0)
     expect(s[2].basicAttackTime).toBe(0)
+  })
+
+  it('截断份额回流（2026-09-05 改口径）：贴顶槽吃不下的秒数按剩余权重水填给有余量的队友', async () => {
+    const cfg = await capturedConfig(['1061', '1011', '1151'])
+    cfg.characters[0].chainCountTotalOverride = 20
+    cfg.characters[1].chainCountTotalOverride = 40
+    cfg.characters[2].chainCountTotalOverride = 40
+    for (const c of cfg.characters) c.chainComboAlignRatio = 1
+    // 槽0 权重压倒性（9/1/0）：它的 naive 份额远超「180 − 必要时间」→ 必然贴顶被截断
+    cfg.characters[0].timeWeight = 9
+    cfg.characters[1].timeWeight = 1
+    cfg.characters[2].timeWeight = 0
+
+    const s = iterate(cfg.characters, zeroStates(cfg), cfg)
+    const pool = Math.max(0, cfg.totalTime - (cfg.invincibleTime ?? 0)
+      - s.reduce((a, st) => a + Math.max(0, st.necessaryTime - (st.comboAlignCredit ?? 0)), 0))
+    // ① 单人硬顶不破：任何槽前台 ≤ 战斗总时间
+    for (const st of s) expect(st.frontlineTime).toBeLessThanOrEqual(cfg.totalTime + 1e-6)
+    // ② 槽0 确实被截断（贴 180 硬顶），且它吃不下的份额没有蒸发
+    expect(s[0].frontlineTime).toBeGreaterThanOrEqual(cfg.totalTime - 1e-6)
+    expect(s[1].basicAttackTime).toBeGreaterThan(0)
+    // ③ 池被分完：Σ平A ≈ pool（旧口径下这里会少一截——截断量直接留在池里消失）
+    expect(s.reduce((a, st) => a + st.basicAttackTime, 0)).toBeCloseTo(pool, 6)
+    // ④ 不凭空造时间：任何槽都不会拿到超过自身物理余量的平A
+    for (const st of s) {
+      expect(st.basicAttackTime).toBeLessThanOrEqual(Math.max(0, cfg.totalTime - st.necessaryTime) + 1e-6)
+    }
   })
 })
 
@@ -186,7 +213,7 @@ describe('netFrontlineOccupation（超时判定单一事实源）', () => {
 })
 
 describe('端到端（折叠循环 + 超时判定同口径）', () => {
-  it('合轴抵扣队：物化行净占用 ≤ 预算（不误报超时），对照无抵扣队 overflow>0 且池=0', async () => {
+  it('合轴抵扣队：物化行净占用 ≤ 预算（不误报超时），对照无抵扣队账本超预算且池=0', async () => {
     const cfg = await capturedConfig(['1061', '1011', '1151'])
     for (const c of cfg.characters) {
       c.chainCountTotalOverride = 30
@@ -195,16 +222,20 @@ describe('端到端（折叠循环 + 超时判定同口径）', () => {
 
     const base = deepCopy(cfg)
     const rr0 = calcTeamResources(base)
-    expect(rr0.overflowSeconds ?? 0).toBeGreaterThan(0)
+    // 超时压力口径（2026-09-05）：overflowSeconds = **被时间线截断掉的秒数**，不是账本超预算量。
+    // 无合轴抵扣时虚高账本先把平A池挤成 0，物化行反而没超 ⇒ 这里断言真实压力源（账本净占用）。
+    expect(rr0.characters.reduce((a, c) => a + c.timeAllocation.necessaryTime, 0))
+      .toBeGreaterThan(rr0.totalTime)
     expect(rr0.characters.reduce((a, c) => a + c.timeAllocation.basicAttackTime, 0))
       .toBeLessThan(1e-6)
 
     const aligned = deepCopy(cfg)
     for (const c of aligned.characters) c.chainComboAlignRatio = 1
     const rr1 = calcTeamResources(aligned)
-    // 合轴抵扣后 overflow 大降（净额口径）；折叠循环残差（物化行 vs 账本 ~秒级）如实保留
-    expect(rr1.overflowSeconds ?? 0).toBeLessThan(rr0.overflowSeconds ?? 0)
-    expect(rr1.overflowSeconds ?? 0).toBeLessThan(15)
+    // 合轴抵扣把池打开（这才是抵扣的真实效果）；截断量口径下两队都不需要砍行 ⇒ 不再断言
+    // 「overflow 大降」（旧口径是账本超预算量，2026-09-05 改为被截断的秒数）。
+    expect(rr1.characters.reduce((a, c) => a + c.timeAllocation.basicAttackTime, 0))
+      .toBeGreaterThan(rr0.characters.reduce((a, c) => a + c.timeAllocation.basicAttackTime, 0))
     // 净占用（超时判定口径）不超预算+容差：合轴放宽不会被误报超时
     expect(netFrontlineOccupation(rr1)).toBeLessThanOrEqual(aligned.totalTime + 2)
     const basics1 = rr1.characters.reduce((a, c) => a + c.timeAllocation.basicAttackTime, 0)
