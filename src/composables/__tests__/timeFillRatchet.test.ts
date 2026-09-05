@@ -1,5 +1,16 @@
 /**
- * 时间留白棘轮护栏（AGENT 规则 9/12：把「吃不满战斗时间」从裸奔变成机器判据）。
+ * 时间留白棘轮 + **吸引盆护栏**（AGENT 规则 9/12：把「吃不满战斗时间」与「失衡归零」从裸奔变成机器判据）。
+ *
+ * 吸引盆护栏为什么必须在这里：本引擎是 `平A时间→回能→次数→必要时间→可分配时间→平A时间`
+ * 的耦合离散系统，**任何**对收敛动力学的改动（折叠语义、回填、封顶、松弛）都可能把某支队伍
+ * 从"能失衡"推进 `stunCount=0` 的吸引盆——实测 2026-09-05 一次会话里连撞 5 次（欠打回填门槛
+ * 降到 5s、折叠阻尼松弛、pass0 保留旧语义…全都让 `runArchiveDeploy` 那支队失衡 116k→9.5k）。
+ * 当时没有任何测试会因此变红，只有人肉跑全量才发现；而基线是 **124 队 stunCount 全 >0、
+ * outerExit 无 maxIter**，所以这条断言零例外、零额外耗时（复用同一次扫描）。
+ *
+ * **覆盖边界（别高估它）**：本护栏只扫预设库。实测把回填门槛降到 1s 会让部署样本
+ * （星见雅/南宫羽/柚叶 对基塔布鲁 690431 期）失衡 116k→0，而**这条断言不红**——那支队不在
+ * 预设库里，抓到它的是 `runArchiveDeploy.test.ts`。改收敛动力学后仍要跑全量，不要只信这里。
  *
  * 背景：`convergence.timeBudgetIdleSeconds` 与「预算 − 物化前台净占用」的留白此前**零测试引用**，
  * 而 `timeBudgetConverged=true` / `residual=0` 会让「账本虚高 93.7s、动作只打 86s」看起来完全健康。
@@ -24,7 +35,7 @@ const BASELINE_FILE = new URL('./timeFillRatchet.baseline.json', import.meta.url
 /** 容差：量化（floor 次数）残差 ~1s 属引擎既有口径（坑12/19），不追求精确 0 */
 const TOLERANCE = 1.0
 
-interface RatchetEntry { slack: number; over: number }
+interface RatchetEntry { slack: number; over: number; stun: number; outerExit: string }
 
 type RatchetBaseline = Record<string, RatchetEntry>
 
@@ -47,6 +58,8 @@ async function measure(team: string[]): Promise<RatchetEntry> {
   return {
     slack: Math.round(Math.max(0, t.slack) * 10) / 10,
     over: Math.round(Math.max(0, -t.slack) * 10) / 10,
+    stun: calc.stunPoolResult.value?.stunCount ?? 0,
+    outerExit: rr!.convergence?.outerExit ?? '—',
   }
 }
 
@@ -57,10 +70,14 @@ describe('时间留白棘轮（存量冻结、只拦变差）', () => {
     const measured: Record<string, RatchetEntry> = {}
     const regressions: string[] = []
     const missing: string[] = []
+    const basins: string[] = []
     for (const p of presets) {
       const key = p.id
       const m = await measure(p.team)
       measured[key] = m
+      // 吸引盆护栏：失衡归零 / 外层耗尽迭代上限 = 收敛动力学被改坏（零例外，基线 124 队全过）
+      if (m.stun <= 0) basins.push(`${key} stunCount=${m.stun}（掉进 0 失衡吸引盆）`)
+      if (m.outerExit === 'maxIter') basins.push(`${key} outerExit=maxIter（外层不动点耗尽上限）`)
       const b = baseline[key]
       if (!b) { missing.push(`${key} 留白=${m.slack}s 超预算=${m.over}s`); continue }
       if (m.slack > b.slack + TOLERANCE) regressions.push(`${key} 留白 ${b.slack}s → ${m.slack}s`)
@@ -73,6 +90,7 @@ describe('时间留白棘轮（存量冻结、只拦变差）', () => {
       console.log(`基线已重生成：${Object.keys(sorted).length} 队，留白合计 ${Object.values(measured).reduce((a, m) => a + m.slack, 0).toFixed(0)}s`)
       return
     }
+    expect(basins, `吸引盆护栏（改收敛动力学的改动必须先过这条）:\n${basins.join('\n')}`).toEqual([])
     expect(missing, `新预设缺基线条目（跑 TIME_RATCHET_UPDATE=1 认领）:\n${missing.join('\n')}`).toEqual([])
     expect(regressions, `时间留白变差（若为有意改动，重生成基线并在提交说明里写清）:\n${regressions.join('\n')}`).toEqual([])
   }, 600_000)
