@@ -114,7 +114,7 @@
           <template #header>
             迭代 {{ resourceResult.iterations }} 次
             {{ resourceResult.converged ? '已收敛' : '未收敛（已达最大迭代次数）' }}
-            · 失衡次数: {{ stunPoolResult?.stunCount ?? resourceResult.stunCount }}
+            · 失衡次数: {{ stunPoolResult ? stunPoolResult.stunCount : '（失衡池未产出）' }}
           </template>
           <div v-if="!convergenceOk" style="font-size:12px;line-height:1.6">
             <div v-if="!resourceResult.convergence.timeBudgetConverged">

@@ -68,7 +68,13 @@ describe('热启动缓存', () => {
     expect(getWarmStartStats().seeded).toBe(1)
     expect(fingerprint(hot)).toEqual(fingerprint(cold))
     expect(hot.iterations).toBeLessThanOrEqual(cold.iterations)
-    expect(hot.iterations).toBeLessThan(20)
+    // 界按 1051 的**正确职业口径**重标定（2026-09-07）：harness 交互默认改走
+    // interactionBaselineFor 后，她按 NO_GENERIC_INTERACTION_AGENTS 拿 0 弹刀/0 闪反
+    // （旧 TEST_BASE_CHAR 硬发 6/10 与她「蓄力→极寒重碾 carry、弹刀闪反归击破位」的口径失真）。
+    // 去掉那 16 次交互后能量/喧响输入变少，内层合法地多跑几轮：实测 41（上限 100、
+    // converged=true、冷热指纹逐位一致、上一行仍锁热启动不多于冷启动）。
+    // 本断言的意图是「远不到 1051 抬起来的 100 轮上限」，不是「<20」这个旧输入标定值。
+    expect(hot.iterations).toBeLessThan(60)
   })
 
   it('精确键口径：改输入后首次不误命中，其自身第二次调用才命中；容量内旧条目仍可轮转回hit', async () => {

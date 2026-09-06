@@ -259,7 +259,7 @@ expect(pN.enemyPhysicalResReduction - p0.enemyPhysicalResReduction).toBe(18)
 
 ## 7. 测试卫生（面板断言）
 
-1. **用公共 harness，不要复制 stub**：`src/test/harness.ts` 提供 `mockStaticFetch()`（stub catalog/teammate-buffs/build-recommendations 三静态文件）、`setupHarness(team)`（pinia + 加载 + 队伍装配 + syncTeammateBuffsFromTeam）、`setTeam(config, team)` 自由组合；模板见 `src/mechanics/__tests__/billySmoke.test.ts`（已迁移）
+1. **用公共 harness，不要复制 stub**：`src/test/harness.ts` 提供 `mockStaticFetch()`（stub catalog/teammate-buffs/build-recommendations 三静态文件）、`setupHarness(team, opts?)`（pinia + 加载 + 队伍装配 + syncTeammateBuffsFromTeam）、`setTeam(config, team)` 自由组合。**两个默认值必须知道**：① 默认**不应用配装推荐** → 角色穿的是 `setAgent` 兜底盘（34200 棘刺玫瑰 = 2件套防御+16%），主C也穿防御套，拿它算伤害再外推实战会整体偏低且不报错（2026-09-07 实测同一部署 16.9% vs 56.3%）——要接近部署口径传 `{ recommendedBuild: true }`；② 交互次数走单一事实源 `interactionBaselineFor`（支援/防护 0、其余 弹刀6/闪反10、角色专属优先），槽位显式传入的值优先；模板见 `src/mechanics/__tests__/billySmoke.test.ts`（已迁移）
 2. **关掉默认全局危局** `globalBuffs`（默认常带 `dmgBonus +15`，会污染绝对值）
 3. 优先 **差分**：`inCombat - outOfCombat`、`cinema N - cinema 0`
 4. 队友自带 buff 时不要 `expect(etherDmg).toBe(0)` 这类绝对值；用「相对局外增量」

@@ -48,7 +48,8 @@ describe('resolveBossApply', () => {
 
 describe('applyDeployConfig', () => {
   it('写队伍（命座/音擎/精炼）+ Boss 期相位（hp）+ 交互基准', async () => {
-    const { config } = await setupHarness(['', '', ''])
+    const { config, catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
     applyDeployConfig(config, DEPLOY, presets, phaseViews)
 
     expect(config.team.map((s) => s.agentId)).toEqual(['1091', '1511', '1411'])
@@ -75,7 +76,8 @@ describe('applyDeployConfig', () => {
   })
 
   it('空音擎槽位 → 保留自动推荐（不覆盖 wEngineId）', async () => {
-    const { config } = await setupHarness(['', '', ''])
+    const { config, catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
     const deploy: DeployConfig = {
       ...DEPLOY,
       team: [

@@ -44,6 +44,9 @@ async function boot() {
     { agentId: '1311' },
     { agentId: '1071' },
   ])
+  // computeTeamTimeline → applyTeamToStore → applyTeamPreset：推荐配装没加载会静默留在
+  // 兜底防御套上（config.ts 的护栏现在会直接抛），故 boot 必须加载
+  await h.catalog.loadBuildRecommendations()
   return h
 }
 

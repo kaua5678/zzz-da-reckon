@@ -1126,8 +1126,13 @@ export interface ConvergenceReport {
 export interface TeamResourceResult {
   /** 总时间（秒，默认180） */
   totalTime: number
-  /** 失衡次数 = 总失衡值 ÷ boss失衡值 */
-  stunCount: number
+  /**
+   * **计划/输入**失衡次数（= 外层不动点喂进本轮资源环的那个值），**不是**失衡池算出的答案。
+   * 真答案在 `StunPoolResult.stunCount`（= floor(有效总失衡值 ÷ boss失衡值)）。
+   * 旧名 `stunCount` 且注释写着池子的公式，读错账本零报错——2026-09-07 实测同一低金归档部署
+   * 本字段 1.27 vs 池真值 4.00，据此得出的"引擎失衡偏低"结论整条作废。
+   */
+  plannedStunCount: number
   /** 3个角色的资源结果 */
   characters: CharacterResourceResult[]
   /** 迭代次数（内层 iterate） */

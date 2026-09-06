@@ -664,7 +664,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
 
   return {
     totalTime,
-    stunCount: inputStunCount,
+    plannedStunCount: inputStunCount,
     characters,
     iterations: iter,
     converged,
