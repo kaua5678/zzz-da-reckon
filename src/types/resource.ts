@@ -466,9 +466,10 @@ export interface SkillExecution {
   /** 总能量消耗 */
   totalEnergyConsume: number
   /** 喧响回复（每次） */
-  decibelRecovery: number
+  /** 未提供时由 enrichExecutionPlan 按倍率表回填（显式 0 = 模块禁用回填） */
+  decibelRecovery?: number
   /** 总喧响回复 */
-  totalDecibelRecovery: number
+  totalDecibelRecovery?: number
   /** 能量回复（每次，部分招式可能回能） */
   energyRecovery: number
   /** 总能量回复 */
@@ -1802,6 +1803,8 @@ export interface CharacterOperationConfig {
   yixuanBackstageComboCount?: number
   /** 仪玄·墨影凝云合轴自动填充（反推至保底4失衡，由 useResourceCalc 线程收敛注入；手动输入 >0 时优先） */
   yixuanBackstageAutoCount?: number
+  /** 仪玄·后台合轴行喧响收入合计（模块按 N 结算，进喧响账本通用加项） */
+  yixuanBackstageDecibel?: number
   /** 失衡轴内总时间（秒）= Σ窗口数 × 窗口时长（useResourceCalc 轴模式注入；CD 自动动作如仪玄C1落雷/卢西娅追击按此折算次数） */
   axisInSeconds?: number
   /** 星徽·比利失衡轴内捏的动作次数（useResourceCalc 注入，moveId → 总次数，组合块已展开） */

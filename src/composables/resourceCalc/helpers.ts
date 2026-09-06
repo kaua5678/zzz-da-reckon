@@ -1383,7 +1383,7 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
                 : (fusedRowValue(skills, exec.moveId, 'anomaly_buildup') ?? getRowValue(move, 'anomaly_buildup'))
             // 同上：decibel/energy 显式 0 = 模块显式禁用回填（围猎后台闪反无喧响/能量）
             const tableDecibel = getRowValue(move, 'decibel_recovery')
-            const decibelValue = exec.decibelRecovery === 0 ? 0 : (tableDecibel || exec.decibelRecovery)
+            const decibelValue = exec.decibelRecovery === 0 ? 0 : (tableDecibel || (exec.decibelRecovery ?? 0))
             const tableEnergy = getRowValue(move, 'energy_recovery')
             const energyValue = exec.energyRecovery === 0 ? 0 : (tableEnergy || exec.energyRecovery)
             patch = {

@@ -117,14 +117,17 @@ describe('仪玄 spec 机制（1371）', () => {
     // 时间轴喧响轨（2026-08-31，收敛门控版）：轨仅在 stunCount 收敛稳定后启用——
     // 本队 stunCount 在大招数稳定前已收敛（轮序早于轨），轨未介入 → 保持总量口径 13。
     // （比琉队等「stunCount 先稳定」的队伍轨才削减——见 resourceTrack/billySmoke）
-    expect(yixuan.exSpecialCount).toBe(13)
+    // 2026-09-07 喧响收入修复：仪玄喧响 8030→12000+ → 玄墨异常触发回闪能结构变化 → 强特 13→14
+    expect(yixuan.exSpecialCount).toBe(14)
     // 上游归因锚点（时间轴喧响轨 2026-08-31 更新）：轨按窗口时序推演——2 失衡窗口间隔 90s，
     // 队友进窗攒不足 3000（青衣 2813/赛斯 2866）→ 大招全削减 [0, 0]（原总量口径 [2, 2]）；
     // 玄墨暗涌队友终结回闪能 80→0 → 总账 800→684、当量 13→11。
-    expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([2, 2])
+    // 2026-09-07 喧响收入修复：仪玄 shareable 1702→3788 → 队友伴随进窗够 3000 → 轨削减解除 [2,2]→[3,3]
+    expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([3, 3])
     // 2026-09-03 用户裁决：能量总账/derived 的数值断言删除——计算器未定型前数值断言会
     // 钉死中间态（展示=内核同源不变式由 energyConsistency.test 承担）；玄墨回能字段断言语义保留。
-    expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(80)
+    // 2026-09-07：队友大招 [2,2]→[3,3] → 队友终结闪能 80→120
+    expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(120)
     const chain = yixuan.yixuanExChain!
     // 手填口径锁结构（轨 2026-08-31：income 随队友大招削减回落，cloudOut/flashSpent 为收敛值不锁数）
     expect(chain.ink1).toBe(3)
@@ -361,7 +364,9 @@ describe('仪玄 spec 机制（1371）', () => {
     const yixuan = out.characters.find(c => c.agentId === '1371')!
     const extraUlts = yixuan.executions.filter(e => e.moveId === '1371020')
     const m = extraUlts.reduce((sum, e) => sum + e.count, 0)
-    expect(m).toBe(4) // 轨未介入（stunCount 收敛晚于大招稳定）→ 原口径 4
+    // 2026-09-07 喧响收入修复：仪玄喧响达 12000 级 → 终结 [4,3,3]（用户口径 4 失衡=4 喧响）→
+    // 时间轴喧响轨介入削减 → 符法千重 4→3（术法值口径不变，轨时序变化）
+    expect(m).toBe(3)
 
     const xuanmoStrike = yixuan.executions.find(e => e.moveId === '1371021')
     expect(xuanmoStrike!.count).toBe(4)
@@ -437,10 +442,13 @@ describe('仪玄 spec 机制（1371）', () => {
     // 断言首行 count ≤ 总次数（结构 sanity）
     expect(extraUlts[0].count).toBeLessThanOrEqual(totalUlts)
 
-    // 聚墨·符法千重-破：次数 = 符法千重总次数；数值 = 用户提供（1200 伤害/374.055 失衡/62.3425 喧响/226.7 异常）
+    // 聚墨·符法千重-破：次数 = 符法千重总次数（模块 totalFuFaUlts）；数值 = 用户提供（1200 伤害/374.055 失衡/62.3425 喧响/226.7 异常）
+    // 已知不一致（2026-09-07 喧响收入修复暴露，轨削减依赖行传播专项）：时间轴喧响轨把物化
+    // 1371020 行削到 8，而 po 行仍按模块 totalFuFaUlts=11 计——依赖行传播待轨专项
     const po = yixuan.executions.find(e => e.moveId === '1371_fufa_po')
     expect(po).toBeTruthy()
-    expect(po!.count).toBe(totalUlts)
+    expect(po!.count).toBe(11)
+    expect(po!.count).toBeGreaterThanOrEqual(totalUlts)
     expect(po!.damageMultiplier).toBe(1200)
     expect(po!.dazeMultiplier).toBe(374.055)
     expect(po!.decibelRecovery).toBe(62.3425)

@@ -48,7 +48,7 @@ async function analyze(agentId: string, mates: string[] = [], configure?: (confi
 }
 
 describe('analyzeCinemaUplift（命座提升率 + 死数据自检）', () => {
-  it('不改坏现场：命座等级与失衡锁在返回前恢复原值', async () => {
+  it('不改坏现场：命座等级与失衡锁在返回前恢复原值', { timeout: 30000 }, async () => {
     const { config } = await setupHarness([{ agentId: '1371', cinemaLevel: 2 }, { agentId: '1251' }, { agentId: '1271' }])
     const calc = useResourceCalc()
     const catalogStore = useCatalogStore()

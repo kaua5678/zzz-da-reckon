@@ -316,6 +316,18 @@ function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg }: AgentCharConf
   const record = cfg as unknown as Record<string, unknown>
   record.yixuanCinemaLevel = cinemaLevel
 
+  // 喧响收入常量（倍率表 decibel_recovery，用户口径 2026-09-07：4 失衡 ⇒ 主C 4 喧响）。
+  // 此前模块行显式 0 且未设常量 → 喧响收入近零（仪玄 8030/12000）。
+  // 强特链口径 = 凝云链主口径（墨烬影消+凝云术 = 60 闪能整链 232.4；2 连链 40 闪能份额近似并入），
+  // 连携 = 玄墨迅击 239.7；终结技（青溟云影/符法千重）倍率表无 decibel 行 → 0（数据如此，勿脑补）。
+  cfg.exSpecialDecibelRecovery = rowValue(findMoveById(skills, MOVE.ashen), 'decibel_recovery')
+    + rowValue(findMoveById(skills, MOVE.cloud), 'decibel_recovery')
+  cfg.chainDecibelRecovery = rowValue(findMoveById(skills, '1371013'), 'decibel_recovery')
+  // 后台合轴行喧响表（buildExecutions 按 N 结算进 cfg.yixuanBackstageDecibel）
+  record.yixuanMoveDecibel = Object.fromEntries(
+    ['1371021', '1371007', '1371005', '1371006'].map(id => [id, rowValue(findMoveById(skills, id), 'decibel_recovery')]),
+  )
+
   // 额外能力·玄墨暗涌：队伍存在[击破]/[支援]/[防护]角色时触发 → 队友终结技回 20 闪能/次
   const hasStun = team?.some(m => m.agent?.specialty === 'stun')
   const hasSupport = team?.some(m => m.agent?.specialty === 'support')
@@ -478,8 +490,6 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalComboAlignTime: 0,
       energyConsume,
       totalEnergyConsume: energyConsume * count,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       ...(dmgBonus ? { dmgBonus } : {}),
@@ -514,8 +524,6 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalComboAlignTime: 0,
       energyConsume: Math.round(axisSec * (CLOUD_MAX_COST / CLOUD_MAX_SECONDS)),
       totalEnergyConsume: Math.round(axisSec * (CLOUD_MAX_COST / CLOUD_MAX_SECONDS)) * axisCloud,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       dmgBonus: axisAshenBonus,
@@ -544,8 +552,6 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalComboAlignTime: 0,
       energyConsume: CLOUD_MAX_COST,
       totalEnergyConsume: CLOUD_MAX_COST * cloudOut,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       dmgBonus: outAshenBonus,
@@ -561,6 +567,10 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   const backstageCount = manualBackstage > 0
     ? manualBackstage
     : Math.max(0, Math.floor(Number(record.yixuanBackstageAutoCount ?? 0)))
+  const backstageDb: Record<string, number> = (record.yixuanMoveDecibel ?? {}) as Record<string, number>
+  // 后台合轴喧响（不占前台但有收入）：Σ 招式喧响 × 次数 → cfg 进喧响账本（通用加项）
+  cfg.yixuanBackstageDecibel = ['1371021', '1371007', '1371005', '1371006']
+    .reduce((sum, id) => sum + (backstageDb[id] ?? 0) * backstageCount, 0)
   if (backstageCount > 0) {
     const xuanmoStrike = Math.min(backstageCount, totalFuFaUlts)
     const inkCombo = Math.max(0, backstageCount - totalFuFaUlts)
@@ -582,8 +592,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
         totalComboAlignTime: 0,
         energyConsume: 0,
         totalEnergyConsume: 0,
-        decibelRecovery: 0,
-        totalDecibelRecovery: 0,
+        /*@KEEP0@*/
         energyRecovery: 0,
         totalEnergyRecovery: 0,
         skillTableNote: `合轴 ×${cnt}${xuanmoStrike > 0 && mid === '1371021' ? `（玄墨值替换，总 ${totalFuFaUlts}）` : ''}`,
@@ -606,8 +615,6 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       damageMultiplier: C1_LIGHTNING_RATIO,
@@ -633,8 +640,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
+      // 落雷假 id 无倍率表行，喧响显式 0（不回填）
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       damageMultiplier: EXTREME_ASSIST_LIGHTNING_RATIO,
@@ -657,8 +663,6 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       skillTableNote: `符法千重 ×${giftUlts}（调息赠送：30s CD，默认=大招次数）`,
@@ -709,8 +713,6 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       skillTableNote: `符法千重 ×${shufaUlts}（术法值 120/次）`,

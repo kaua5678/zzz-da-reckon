@@ -393,7 +393,7 @@ export function applyExecutionUtilization(cfg: CharacterOperationConfig, exec: S
     totalTime: exec.totalTime * scale,
     totalComboAlignTime: exec.totalComboAlignTime * scale,
     totalEnergyConsume: exec.totalEnergyConsume * scale,
-    totalDecibelRecovery: exec.totalDecibelRecovery * scale,
+    totalDecibelRecovery: (exec.totalDecibelRecovery ?? 0) * scale,
     totalEnergyRecovery: exec.totalEnergyRecovery * scale,
     totalSpecialResourceRecovery: exec.totalSpecialResourceRecovery !== undefined ? exec.totalSpecialResourceRecovery * scale : undefined,
     totalHealingAmount: exec.totalHealingAmount !== undefined ? exec.totalHealingAmount * scale : undefined,
@@ -450,6 +450,7 @@ export function calcRawDecibelParts(
   const remielleRainbowEndDecibel = remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndDecibelRecovery
   const skillRegen = basicDecibel + exSpecialDecibel + extraExDecibel + ultimateDecibel + chainDecibel
     + dodgeCounterDecibel + defensiveAssistDecibel + assistFollowUpDecibel + remielleRainbowEndDecibel
+    + (cfg.yixuanBackstageDecibel ?? 0)
 
   // 奖励回复：池内效果（时光切片）。弹刀/闪反/连携/快支的固定奖励与异常奖励由外部按槽位注入
   // （specialActionDecibelBonusPerSlot / anomalyDecibelBonusPerSlot），避免与展示层双算。
