@@ -1281,8 +1281,21 @@ export function useResourceCalc() {
       const assistPerHit = (hasRows && fuRow && fuRow.count > 0) ? fuRow.effectiveStun / fuRow.count : (prevParrySplit ? prevParrySplit.perParryDaze - prevParrySplit.perNoFollowUpDaze : 0)
       const perParryDaze = perNoFollowUpDaze + assistPerHit
       const injectedParryDaze = (defRow?.effectiveStun ?? 0) + (fuRow?.effectiveStun ?? 0)
-      // 非弹刀基数：全队有效失衡 − 击破位弹刀行 + boss 白送失衡（stunGift 也减少缺口）
-      const nonParryStun = Math.max(0, sp1.pool.totalStunBuildUp - injectedParryDaze + (sp1.pool.stunGift ?? 0))
+      // 非弹刀基数 = 全队有效失衡 − **全部弹刀行**（击破位 + 主C 各自注入的弹刀）+ boss 白送失衡。
+      // 2026-09-07 修：旧实现只扣击破位行——主C 拿「剩余」弹刀后其行留在基数里，把反推 T 喂成 0
+      // → 弹刀永远不再给击破位（实测 琉音 击破位 0 弹刀、8 次全落主C），且「队友弹刀→落雷→闪能」
+      // 信道（assistCap = Σ队友弹刀）随之归零 → 仪玄闪能缺口、强特次数保守。T 只依赖无弹刀基数，
+      // 与注入量无关 → 轮间单调收敛不振荡（坑18 判据成立）。
+      const mainDpsDistinct = !noBreakerFallback && mainDpsSlot >= 0 && mainDpsSlot !== breakerSlot
+      const mainDpsCfg = mainDpsDistinct ? base.characters.find(c => c.slot === mainDpsSlot) : undefined
+      const mainDpsDefRow = mainDpsDistinct
+        ? sp1.pool.contributions.find(c => c.slot === mainDpsSlot && c.moveId === (mainDpsCfg?.defensiveAssistMoveId ?? ''))
+        : undefined
+      const mainDpsFuRow = mainDpsDistinct
+        ? sp1.pool.contributions.find(c => c.slot === mainDpsSlot && c.moveId === (mainDpsCfg?.assistFollowUpMoveId ?? ''))
+        : undefined
+      const injectedMainDpsParryDaze = (mainDpsDefRow?.effectiveStun ?? 0) + (mainDpsFuRow?.effectiveStun ?? 0)
+      const nonParryStun = Math.max(0, sp1.pool.totalStunBuildUp - injectedParryDaze - injectedMainDpsParryDaze + (sp1.pool.stunGift ?? 0))
       parrySplitNext = {
         ...computeParrySplit({
           targetStunCount: 4,
