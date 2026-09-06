@@ -208,6 +208,8 @@ export function calcEnergySource(
     + averageAutoRate * demaraCoverageSeconds * demaraEfficiency
 
   // 资源轴动作回复：目前按技能数据给出的秒均平A回能计算，暂不叠加自动回复公式的获得效率。
+  // debt: 能量收入行级化——同喧响的聚合近似（basicAttackRegenPerSec/各通道常量而非行值），
+  // 模块已校准常量故误差较小，但专属链角色同构风险。升级路径：随喧响行级化同一次账本重构迁移。
   const basicAttackRegen = state.basicAttackTime * cfg.basicAttackRegenPerSec
 
   // 辅助大招回复由上层根据其他角色最终终结技次数补入。
@@ -448,6 +450,10 @@ export function calcRawDecibelParts(
   const defensiveAssistDecibel = ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistDecibelRecovery
   const assistFollowUpDecibel = cfg.parryCount * cfg.assistFollowUpDecibelRecovery
   const remielleRainbowEndDecibel = remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndDecibelRecovery
+  // debt: 喧响收入行级化——本函数用「次数×常量」聚合通道，不读倍率行 decibel_recovery（行值仅展示，
+  // 伤害/失衡/异常同为倍率列却逐行进账——架构不对称）。专属链角色系统性低估：仪玄实测行级 5628
+  // vs 聚合 1702（修复前），约 50 个模块存在 decibelRecovery:0 硬编码。升级路径：喧响账本改行级
+  // 求和（Σ decibelRecovery×count，与 damagePool 同构；显式 0/假 id 行自动为 0），全库喧响→终结再基线。
   const skillRegen = basicDecibel + exSpecialDecibel + extraExDecibel + ultimateDecibel + chainDecibel
     + dodgeCounterDecibel + defensiveAssistDecibel + assistFollowUpDecibel + remielleRainbowEndDecibel
     + (cfg.yixuanBackstageDecibel ?? 0)
