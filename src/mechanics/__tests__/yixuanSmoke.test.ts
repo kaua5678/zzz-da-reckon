@@ -316,6 +316,35 @@ describe('仪玄 spec 机制（1371）', () => {
     expect(lightning!.damageMultiplier).toBe(50)
   })
 
+  it('合轴自动填充：手动输入 ≤0 时吃 yixuanBackstageAutoCount（反推线程），手动仍优先（用户口径 2026-09-07）', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const config = useConfigStore()
+    config.setMechanicSetting('guarantee.stun', 1) // 保底4失衡开启 → 自动填充反推
+    // 手动 = 0 → 自动接管（反推缺口 = 4×bossStunValue − 非合轴失衡，供给上限钳制）
+    config.team[0] = teamChar(0, '1371')
+    config.team[1] = teamChar(1, '1251')
+    config.team[2] = teamChar(2, '1271')
+    const calc = useResourceCalc()
+    const out = calc.resourceResult.value!
+    const yixuan = out.characters.find(c => c.agentId === '1371')!
+    const pairs = yixuan.executions
+      .filter(e => ['1371021', '1371005'].includes(e.moveId))
+      .reduce((sum, e) => sum + e.count, 0)
+    expect(pairs).toBeGreaterThan(0)
+    // 供给上限：合轴对数 ≤ floor(战斗时间 / 3s 最短节奏) = 60
+    expect(pairs).toBeLessThanOrEqual(60)
+    // 手动优先：填 3 → 恰好 3 对（不走自动）
+    config.team[0] = teamChar(0, '1371', 0, { yixuanBackstageComboCount: 3 })
+    const out2 = calc.resourceResult.value!
+    const yx2 = out2.characters.find(c => c.agentId === '1371')!
+    const pairs2 = yx2.executions
+      .filter(e => ['1371021', '1371005'].includes(e.moveId))
+      .reduce((sum, e) => sum + e.count, 0)
+    expect(pairs2).toBe(3)
+  })
+
   it('墨影凝云合轴：N > 玄墨值时超出部分打墨影凝云+A5（用户口径）', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
