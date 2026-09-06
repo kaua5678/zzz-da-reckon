@@ -111,6 +111,7 @@ export interface AgentTeamConfigInput {
   stunCount: number
   /** 全队普通能量消耗（莱特影画4 用；build 阶段 0） */
   teamEnergyConsumed: number
+
 }
 
 export interface AgentExSpecialTimeInput {
@@ -220,6 +221,25 @@ export interface AgentMechanicModule {
    * 模块必须按 `input.phase` 决定在哪个阶段动手（阶段语义见 AgentTeamPhase）。
    */
   applyTeamConfig?(input: AgentTeamConfigInput): void
+  /**
+   * 后台合轴自动填充声明（用户口径 2026-09-07：合轴可自动填充、不占前台不计难度，反推至保底4失衡）。
+   * 声明式（编排层通用执行，无 agentId 分支）：编排层按 deficit=保底目标×bossStunValue−非合轴失衡
+   * 反推次数，封顶 floor(可用后台时间/minPeriodSeconds)，写回 cfgField；手动字段 >0 时模块优先用手动。
+   */
+  backstageAutoFill?: {
+    /** 合轴招式行 moveIds（编排层据此实测每对有效失衡） */
+    moveIds: string[]
+    /** 每对基础失衡（catalog 倍率和；首轮探测用，次轮起实测） */
+    perPairBase: number
+    /** 自动次数写回的 cfg 字段名 */
+    cfgField: string
+    /** 手动输入字段名（>0 优先于自动） */
+    manualField: string
+    /** 一对合轴的最短节奏（秒）——供给上限分母 */
+    minPeriodSeconds: number
+    /** 跟随招式与主招式的失衡值比（每对 = 主招式实测 × (1+ratio)；主招式须为后台独占行，防基础轮转行污染实测） */
+    followUpDazeRatio?: number
+  }
   /** 向招式执行计划追加专属动作 */
   buildExecutions?(input: AgentResourceInput): void
   /**

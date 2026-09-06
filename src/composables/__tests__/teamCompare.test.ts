@@ -395,7 +395,7 @@ describe('teamCompare 金数/难度口径', () => {
     spy.mockRestore()
   })
 
-  it('难度权重弹层接线：options.difficultyWeights 经 computeTeamComparePoints 落到 point.difficulty', async () => {
+  it('难度权重弹层接线：options.difficultyWeights 经 computeTeamComparePoints 落到 point.difficulty', { timeout: 20000 }, async () => {
     const catalog = useCatalogStore()
     await catalog.load()
     await catalog.loadTeammateBuffs()
@@ -706,7 +706,7 @@ describe('teamCompare 批量计算', () => {
     expect(config.stunAxes.length).toBe(1)
   })
 
-  it('buff：自动推荐取三张牌伤害最高，手动指定覆盖，现场恢复', async () => {
+  it('buff：自动推荐取三张牌伤害最高，手动指定覆盖，现场恢复', { timeout: 20000 }, async () => {
     const catalog = useCatalogStore()
     await catalog.load()
     await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null

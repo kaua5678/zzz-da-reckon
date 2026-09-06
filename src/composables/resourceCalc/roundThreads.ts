@@ -31,6 +31,8 @@ export interface CalcRoundThreads {
   banyueTopUp: BanyueInteractionTopUp
   /** Boss 预设弹刀反推拆分（保底4失衡） */
   parrySplit: ParrySplitResult | null
+  /** 后台合轴自动填充（agentId → 自动对数）：由模块 backstageAutoFill 声明驱动，编排层通用反推 */
+  backstageAuto: Record<string, number> | null
   /** 仪玄符法千重类终结次数（橘福福额外能力 +300 喧响） */
   yixuanFuFaForJufufu: number
   /** 全队终结总次数（橘福福影画2 威势） */
@@ -77,6 +79,7 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
     anomalyDecibelBonus: [],
     banyueTopUp: { parry: 0, dual: 0, requiredSeconds: 0, illegal: false },
     parrySplit: null,
+    backstageAuto: null,
     yixuanFuFaForJufufu: 0,
     teamUltimateForJufufu: 0,
     yeshuguangGiftUlt: 0,
@@ -109,6 +112,7 @@ export function threadsAfterNullRound(prev: CalcRoundThreads): CalcRoundThreads 
     energyBySlot: prev.energyBySlot,
     banyueTopUp: prev.banyueTopUp,
     parrySplit: prev.parrySplit,
+    backstageAuto: prev.backstageAuto,
     decibelParry: prev.decibelParry,
   }
 }

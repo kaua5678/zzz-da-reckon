@@ -746,6 +746,11 @@ export function useResourceCalc() {
         merged.dualCounterCount = Math.round((merged.dualCounterCount ?? 0) * iscale)
         merged.dodgeCounterCount = Math.round((merged.dodgeCounterCount ?? 0) * iscale)
       }
+      // 后台合轴自动填充（模块 backstageAutoFill 声明驱动，上一轮反推值；手动字段 >0 时模块优先用手动）
+      {
+        const decl = getAgentMechanic(cfg.agentId)?.backstageAutoFill
+        if (decl) (merged as any)[decl.cfgField] = threads.backstageAuto?.[cfg.agentId] ?? 0
+      }
       // Boss 预设弹刀反推注入（上一轮拆分；首轮 prev 为空 → 击破位注入 ≥1 探针保证轻弹刀行存在，
       // 供本轮失衡池读出每次弹刀失衡值，后续轮按真实拆分注入、不强制）
       if (parrySplitActive) {
@@ -1268,6 +1273,7 @@ export function useResourceCalc() {
     // 击破位弹刀行（轻弹刀 + 支援突击，count 随弹刀次数缩放）：行贡献剔出非弹刀基数（防 0↔T 振荡），
     // 正常弹刀每次失衡 = 轻弹刀 + 支援突击；不带支援突击弹刀每次失衡 = 仅轻弹刀。无行 = 无招架失衡来源，不反推。
     let parrySplitNext = prevParrySplit ?? { breakerParry: 0, mainDpsParry: 0, breakerNoFollowUp: 0, mainDpsNoFollowUp: 0, topUp: 0, reached: false, perParryDaze: 0, perNoFollowUpDaze: 0 }
+    let backstageAutoNext: Record<string, number> = threads.backstageAuto ?? {}
     if (parrySplitActive && sp1.pool) {
       const breakerCfg = base.characters.find(c => c.slot === effectiveBreakerSlot)
       const breakerDefMoveId = breakerCfg?.defensiveAssistMoveId ?? ''
@@ -1316,6 +1322,37 @@ export function useResourceCalc() {
         perNoFollowUpDaze,
       }
     }
+
+    // 后台合轴自动填充反推（模块 backstageAutoFill 声明驱动，通用执行零 agentId 分支；
+    // 用户口径 2026-09-07：合轴可自动填充、不占前台不计难度，反推至保底4失衡）：
+    // 缺口 = targetStunCount×bossStunValue −（总失衡 − 本轮已注入合轴行）；每对有效失衡优先实测
+    //（声明 moveIds 的池行），首轮回落 perPairBase；供给上限 = floor(非该角色战斗时间 / minPeriodSeconds)。
+    {
+      const backstageNext: Record<string, number> = {}
+      for (const cfg of base.characters) {
+        const decl = getAgentMechanic(cfg.agentId)?.backstageAutoFill
+        if (!decl) continue
+        const manual = Math.max(0, Math.floor(Number((cfg as any)[decl.manualField] ?? 0)))
+        if (manual > 0) { backstageNext[cfg.agentId] = manual; continue }
+        const ownRows = (sp1.pool?.contributions ?? []).filter(r => decl.moveIds.includes(String(r.moveId)) && r.slot === cfg.slot)
+        const ownDaze = ownRows.reduce((sum, r) => sum + r.effectiveStun, 0)
+        const pairRows = ownRows.filter(r => decl.moveIds.slice(0, 2).includes(String(r.moveId)))
+        const pairCount = pairRows.reduce((sum, r) => sum + (r.count ?? 0), 0)
+        const perPair = pairCount > 0 ? ownDaze / pairCount : decl.perPairBase
+        const pool = sp1.pool
+        const deficit = pool
+          ? Math.max(0, 4 * pool.bossStunValue - (pool.totalStunBuildUp - ownDaze))
+          : 0
+        const ownField = rr.characters.find(c => c.slot === cfg.slot)
+        const ownFieldTime = (ownField?.timeAllocation?.necessaryTime ?? 0) + (ownField?.timeAllocation?.basicAttackTime ?? 0)
+        const supplyCap = Math.max(0, Math.floor(Math.max(0, (base.totalTime ?? 180) - ownFieldTime) / decl.minPeriodSeconds))
+        // ×1.2 冗余：池的净失衡缩放 + 一轮滞后会吃掉部分注入（实测 18 对只涨 3.85×），
+        // 保底语义 = 至少打满，允许轻微过冲
+        backstageNext[cfg.agentId] = Math.min(supplyCap, Math.ceil((deficit / Math.max(1, perPair)) * 1.2))
+      }
+      backstageAutoNext = backstageNext
+    }
+
     const adj1 = applyLiuyinPromote(rr, sp1, catalogStore)
     // 诺姆膛温换连携：帽子把戏触发上一位角色快速支援→替换为连携，连携归属上一位队友；C4 时诺姆+队友各 200 不可分享喧响。
     const adj2 = applyNormaHatChain(adj1 ?? rr, configStore, catalogStore)
@@ -1614,6 +1651,7 @@ export function useResourceCalc() {
         anomalyDecibelBonus: [],
         banyueTopUp: banyueTopUpNext,
         parrySplit: parrySplitNext,
+        backstageAuto: backstageAutoNext,
         yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
         teamUltimateForJufufu: teamUltimateForJufufuNext,
         yeshuguangGiftUlt: yeshuguangGiftUltNext,
@@ -1693,6 +1731,8 @@ export function useResourceCalc() {
       let prevAnomalySeq = ''
       let prevTopUpSeq = ''
       let prevParrySplitSeq = ''
+      let prevBackstageSeq = ''
+      let prevBuildUpFracSeq = ''
       let prevDecibelParrySeq = ''
       const seenStunCounts = new Set<number>()
       let outerRounds = 0
@@ -1747,8 +1787,12 @@ export function useResourceCalc() {
         const anomalySeq = (out?.anomalyPool?.perSlotBonus ?? []).map(v => Math.round(v)).join(',')
         const topUpSeq = `${out?.banyueTopUp?.parry},${out?.banyueTopUp?.dual}`
         const parrySplitSeq = out?.parrySplit ? `${out.parrySplit.breakerParry},${out.parrySplit.mainDpsParry}` : ''
+        const backstageSeq = JSON.stringify(out?.threadsNext?.backstageAuto ?? {})
+        // 失衡分数序列：合轴自动填充反推以 buildUp 分数收敛（floor 后 stunCount 在 3.0-3.99 区间
+        // 恒为 3，仅按 stunCount 判稳会让 N 没爬完就提前 stable——用户口径：保底4要打满）
+        const buildUpFracSeq = out?.stunPool ? (out.stunPool.totalStunBuildUp / out.stunPool.bossStunValue).toFixed(2) : ''
         const decibelParrySeq = `${t.decibelParry ?? 0}`
-        const feedbackStable = ultSeq === prevUltSeq && anomalySeq === prevAnomalySeq && topUpSeq === prevTopUpSeq && parrySplitSeq === prevParrySplitSeq && decibelParrySeq === prevDecibelParrySeq
+        const feedbackStable = ultSeq === prevUltSeq && anomalySeq === prevAnomalySeq && topUpSeq === prevTopUpSeq && parrySplitSeq === prevParrySplitSeq && decibelParrySeq === prevDecibelParrySeq && backstageSeq === prevBackstageSeq && buildUpFracSeq === prevBuildUpFracSeq
         if (lockedStunCount >= 0) {
           if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
         } else {
@@ -1767,6 +1811,8 @@ export function useResourceCalc() {
         prevAnomalySeq = anomalySeq
         prevTopUpSeq = topUpSeq
         prevParrySplitSeq = parrySplitSeq
+        prevBackstageSeq = backstageSeq
+        prevBuildUpFracSeq = buildUpFracSeq
       }
       return { out, outerRounds, outerConverged, outerExit }
     }

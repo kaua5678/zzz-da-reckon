@@ -17,6 +17,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { calcPanel, emptyPanel } from '@/core/panel'
 import { inferSkillDamageTarget } from '@/core/damage'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
+import type { StunSkillExecution } from '@/core/stunPool'
 import {
   findExSpecial,
   findUltimate,
@@ -29,7 +30,7 @@ import {
   findRemielleRadiantTurn,
   ULTIMATE_COST_DEFAULT,
 } from '@/core/resource'
-import type { StunSkillExecution } from '@/core/stunPool'
+
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentMechanic, getRegisteredMechanicSettings, type AgentTeamPhase, type MechanicTeamMember } from '@/mechanics'
 import { getAgentSpec } from '@/specs/registry'
@@ -266,6 +267,7 @@ export function applyTeamMechanics(params: {
   const ultimateCounts = params.ultimateCounts ?? characters.map(() => 0)
   const stunCount = params.stunCount ?? 0
   const teamEnergyConsumed = params.teamEnergyConsumed ?? 0
+
 
   // 各槽位「异常积储主元素」（2026-09-02）：优先模块声明（雅模块把积蓄归并为 frostfire；
   // 见 AgentMechanicModule.anomalyBuildupElement），否则按倍率表 anomaly_buildup 之和最大的

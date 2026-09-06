@@ -555,7 +555,12 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
 
   // 墨影凝云合轴（用户口径）：合轴次数 N；玄墨值 M 把合轴招式替换为玄墨极阵+青溟震击
   // （N ≤ M 全打玄墨极阵+青溟震击；N > M 超出部分打墨影凝云+A5）；全部 actionTime=0 不占战场时间
-  const backstageCount = Math.max(0, Math.floor(Number(record.yixuanBackstageComboCount ?? 0)))
+  // 合轴次数：手动输入 >0 优先；否则吃自动填充（useResourceCalc 反推至保底4失衡，
+  // 用户口径 2026-09-07：合轴可自动填充、不占前台不计难度）
+  const manualBackstage = Math.max(0, Math.floor(Number(record.yixuanBackstageComboCount ?? 0)))
+  const backstageCount = manualBackstage > 0
+    ? manualBackstage
+    : Math.max(0, Math.floor(Number(record.yixuanBackstageAutoCount ?? 0)))
   if (backstageCount > 0) {
     const xuanmoStrike = Math.min(backstageCount, totalFuFaUlts)
     const inkCombo = Math.max(0, backstageCount - totalFuFaUlts)
@@ -845,6 +850,20 @@ export const yixuanMechanic: AgentMechanicModule = {
   patchExecutions: patchYixuanExecutions,
   buildResourceResult: buildYixuanResourceResult,
   resourceSections: buildYixuanResourceSections,
+  // 墨影凝云合轴自动填充（用户口径 2026-09-07）：合轴可自动填充、不占前台不计难度，反推至
+  // 保底4失衡。声明式（编排层通用执行，无 agentId 分支）：moveIds=合轴招式行（实测每对失衡），
+  // perPairBase=每对基础失衡（玄墨极阵440.8+青溟震击160.2；超出玄墨值的墨影凝云版 600.4 近似同值），
+  // cfgField=自动次数写回字段（消费端：buildExecutions 手动输入 ≤0 时取它），manualField=手动输入字段。
+  backstageAutoFill: {
+    // 主招式行（后台独占，基础轮转的青溟震击/霄云劲行不混入实测）
+    moveIds: ['1371021', '1371005'],
+    // 每对基础失衡（玄墨极阵 440.8 + 青溟震击 160.2；墨影凝云版 440.8+159.6 近似同值）
+    perPairBase: 601,
+    cfgField: 'yixuanBackstageAutoCount',
+    manualField: 'yixuanBackstageComboCount',
+    // 一对合轴的最短节奏（秒）——供给上限分母 [猜测·待校准]
+    minPeriodSeconds: 3,
+  },
   buildAnomalyEvents: input => specBase.buildAnomalyEvents?.(input),
   settings,
 }
