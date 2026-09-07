@@ -71,7 +71,7 @@
   "slack": 0.5,
   "over": 0,
   "stun": 5,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1051-1481-1451": {
   "slack": 2.6,
@@ -149,7 +149,7 @@
   "slack": 7.2,
   "over": 0,
   "stun": 3,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1191-1481-1311": {
   "slack": 2.3,
@@ -292,11 +292,11 @@
  "auto-1371-1251-1451": {
   "slack": 0,
   "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
+  "stun": 4,
+  "outerExit": "cycle"
  },
  "auto-1371-1481-1451": {
-  "slack": 0.8,
+  "slack": 0.2,
   "over": 0,
   "stun": 4,
   "outerExit": "cycle"
@@ -515,7 +515,7 @@
   "slack": 0,
   "over": 0,
   "stun": 2,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1531-1481-1451": {
   "slack": 3.7,
@@ -566,32 +566,32 @@
   "outerExit": "stable"
  },
  "auto-1591-1161-1211": {
-  "slack": 0.7,
+  "slack": 0.4,
   "over": 0,
   "stun": 2,
-  "outerExit": "cycle"
+  "outerExit": "stable"
  },
  "auto-1591-1161-1311": {
-  "slack": 2.2,
+  "slack": 2.5,
   "over": 0,
   "stun": 3,
-  "outerExit": "cycle"
+  "outerExit": "stable"
  },
  "auto-1591-1481-1211": {
-  "slack": 1.5,
-  "over": 0,
+  "slack": 0,
+  "over": 0.1,
   "stun": 3,
   "outerExit": "cycle"
  },
  "auto-1591-1481-1311": {
-  "slack": 3.8,
+  "slack": 0,
   "over": 0,
   "stun": 3,
   "outerExit": "cycle"
  },
  "auto-1591-1571-1211": {
-  "slack": 0.3,
-  "over": 0,
+  "slack": 0,
+  "over": 1.6,
   "stun": 4,
   "outerExit": "cycle"
  },
@@ -677,7 +677,7 @@
   "slack": 1.4,
   "over": 0,
   "stun": 4,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "yidhari-liuyin-lucia": {
   "slack": 2.6,
@@ -689,7 +689,7 @@
   "slack": 0.5,
   "over": 0,
   "stun": 5,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "yidhari-norma-lucia": {
   "slack": 2.2,
@@ -710,7 +710,7 @@
   "outerExit": "stable"
  },
  "yidhari-trigger-lucia": {
-  "slack": 0.8,
+  "slack": 1,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
@@ -718,11 +718,11 @@
  "yixuan-jufufu-lucia": {
   "slack": 0,
   "over": 0,
-  "stun": 4,
+  "stun": 5,
   "outerExit": "stable"
  },
  "yixuan-liuyin-lucia": {
-  "slack": 0.8,
+  "slack": 0.2,
   "over": 0,
   "stun": 4,
   "outerExit": "cycle"
@@ -736,13 +736,13 @@
  "yixuan-qingyi-lucia": {
   "slack": 0,
   "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
+  "stun": 4,
+  "outerExit": "cycle"
  },
  "yixuan-roxy-lucia": {
   "slack": 0,
   "over": 0,
-  "stun": 7,
+  "stun": 8,
   "outerExit": "stable"
  },
  "yixuan-trigger-lucia": {
