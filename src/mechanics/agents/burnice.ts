@@ -350,8 +350,6 @@ function pushEx(
     totalComboAlignTime: 0,
     energyConsume,
     totalEnergyConsume: count * energyConsume,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     damageMultiplier: multiplier,

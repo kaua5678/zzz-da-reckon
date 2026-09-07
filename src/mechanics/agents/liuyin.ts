@@ -298,8 +298,6 @@ function buildLiuyinExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalComboAlignTime: 0,
       energyConsume: EX_SPECIAL_ENERGY,
       totalEnergyConsume: counts[k] * EX_SPECIAL_ENERGY,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       skillDamageTarget: 'exSpecial',

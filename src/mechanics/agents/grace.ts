@@ -257,8 +257,6 @@ function graceRow(moveId: string, name: string, count: number, actionTime: numbe
     totalComboAlignTime: 0,
     energyConsume: 0,
     totalEnergyConsume: 0,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     skillTableNote: `消耗全部电能（8层）→ 电属性异常积蓄 +130%（积蓄效率区加算）`,

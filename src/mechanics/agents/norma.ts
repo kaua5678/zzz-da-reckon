@@ -336,8 +336,6 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       damageMultiplier: useDmgMult ? baseDmg * c6DmgMult : undefined,

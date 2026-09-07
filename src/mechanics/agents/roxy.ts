@@ -234,7 +234,6 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
       count: exCount, actionTime: 0, comboAlignRatio: 0,
       totalTime: 0, totalComboAlignTime: 0,
       energyConsume: 10, totalEnergyConsume: exCount * 10,
-      decibelRecovery: 0, totalDecibelRecovery: 0,
       energyRecovery: 0, totalEnergyRecovery: 0,
       timeBucket: 'necessary',
     })
@@ -257,7 +256,6 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
       count: exCount, actionTime: 0, comboAlignRatio: 0,
       totalTime: 0, totalComboAlignTime: 0,
       energyConsume: 0, totalEnergyConsume: 0,
-      decibelRecovery: 0, totalDecibelRecovery: 0,
       energyRecovery: 0, totalEnergyRecovery: 0,
       timeBucket: 'necessary',
     })

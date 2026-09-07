@@ -154,8 +154,6 @@ function pushSpecial(executions: SkillExecution[], moveId: string, moveName: str
     totalComboAlignTime: 0,
     energyConsume: 0,
     totalEnergyConsume: 0,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     skillTableNote: `归烬·舍身 ×${count}（蓄力 ${count} 秒攒炽心，占前台时间）`,

@@ -195,8 +195,6 @@ function pushEvelynExecution(executions: AgentResourceInput['executions'], input
     totalComboAlignTime: 0,
     energyConsume: 0,
     totalEnergyConsume: 0,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     ...(input.damageMultiplier == null

@@ -537,8 +537,6 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
       totalComboAlignTime: 0,
       energyConsume,
       totalEnergyConsume: energyConsume * count,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       damageMultiplier: dmg[moveId] ?? 0,
@@ -661,8 +659,6 @@ function patchBanyueExecutions({ cfg, executions }: AgentResourceInput): void {
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       // 不设 damageMultiplierOverride：enrichExecutionPlan 按 moveId 1471029 从倍率表回填

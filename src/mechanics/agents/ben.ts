@@ -123,8 +123,6 @@ function pushExPart(
     totalComboAlignTime: 0,
     energyConsume: BEN_EX_PART_ENERGY,
     totalEnergyConsume: count * BEN_EX_PART_ENERGY,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     skillTableNote: `${label} ×${count}；每段耗能 ${BEN_EX_PART_ENERGY}`,
