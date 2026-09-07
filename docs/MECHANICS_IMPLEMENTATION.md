@@ -695,3 +695,14 @@
 - **作者拒绝实现：影画6蓄能炮弹**（2026-08-30 用户决断）：实时蓄能/受击自动闪避/逐发触发·极复杂度不成比例；甜度终身预算全部让给硬糖射击。C6 保留：招架+1甜度、紊乱倍率 buff（teammate-buffs）。
 - **影画1 进场回能（2026-09-03 补录）**：进场 +30 能量（勘域模式 180s 一次 → 每局一次，克拉蕾锐能/佩洛伊斯喧响同款口径），`buildYuzuhaCharConfig` 幂等并入 `initialEnergyGift`。
 - **未建模**：C6 炮弹命中触发·极（随拒绝一并搁置）、强制连携的逐命中条件（重击是否命中非失衡敌按 20s CD 顶格近似：全队 `chainCountTotalExtra` + floor(有效战斗时间/20)，甜度点 +1/次同源）。转积蓄施加者判定条件已证伪（2026-09-02 探针：柚叶单发 17.6 积蓄 vs 异常角色数百/发，占比恒小不翻转），债务销号。
+
+### 蕾米埃尔（remielle / 1581）—— 虚曜·耀变·异化（异常结算区全局乘子）
+
+
+- **当前实现状态 [已实现·近似 2026-09-07 账本校对]**（实现位置：`src/composables/resourceCalc/damagePool.ts` 耀变/特殊虚耀伤害行 + `src/composables/resourceCalc/helpers.ts`（calcVoidflareDamage/computeRemielleEntryPanel/resolveRemielleDazeBonus）+ `src/core/anomalyPool/helpers.ts`（globalAnomalyMultiplier 异化区）+ `src/composables/useResourceCalc.ts`（remielleAnomalyMultiplier/remielleEntryPanels/虚耀事件账本）+ catalog combatBuffs（核心被动公式 精通×0.02/×0.2 与命座字段）+ teammate-buffs 组 1581（转攻/积蓄/C1/C2 七条）+ `src/mechanics/agents/remielle.ts`（资源卡展示层）；测试 `src/mechanics/__tests__/remielle.test.ts`）。含：虚曜池/耀变结算、异化全局乘子、额外能力三档转攻/飞行失衡/幻色积蓄、影画 1-6。
+- **异化系数（2026-09-07 账本「蕾米埃尔.xlsx」+ audit/1581.json 原文 + nanoka 3.2.1/3.3.0 四源校对）**：= 异常精通×0.02% + C2 加算 20 + 3异常加算 10（同区加算，账本 P10 公式一致）。引擎口径 `remielleAnomalyMultiplier = 1 + (refringeCoefficient + BonusPct)/100` → `globalAnomalyMultiplier` 乘入**全部**异常结算路径（紊乱/乱流/标准DoT/畏缩——用户 2026-08-26 口径②「异化是基础区之一，乘到所有异常事件」）。**C2+20 单写者** = catalog 影画2自身buff；teammate-buffs 条 `remielle_c2_team_refringe_coefficient_bonus_pct` 以 effect 级 excludeTargetAgentIds 排除她本人（修复前双通道双计：3异常队 C2 面板 BonusPct=50，正确 30；差分测试固化 10→30）。
+- **耀变倍率提升** = 异常精通×0.2%（原文「根据自身异常精通的0.2%提升此伤害倍率」，账本 Q10=1+精通×0.2%、catalog corePassive 公式 x*0.2 同文；旧模块展示层/spec 引文 0.1% 为录入转写错误，2026-09-07 修正——伤害管线一直走 catalog 公式，无数值影响）；C4 耀变倍率 +12% 独立相乘。
+- **耀变结算（damagePool 虚耀行）**：虚曜池 = Σ floor(非蕾米槽位异常触发次数)；Q 按 3 个一批（滑块 `remielle.q:<slot>` 分配 1/2 号队友 0-3/3-0）；载体行 = 花羽轮舞（全池）/缭乱终幕（Q 批）/惊鸿（全池×C6 翻倍）。每虚耀伤害 = **触发队友面板**（攻/精通/增伤/穿透/抗性）× 蕾米修正（异化/异常增伤/减防/耀变倍率/C4/C1 无视 50% 抗性）；子弹倍率 垂虹160/惊鸿320/花羽轮舞320/缭乱终幕336（Lv12；C3/C5 阶梯 170/340/357 等；与账本 G23-G26×Q10×H21 一致）。特殊虚耀 = 开局 3（C1）+3（C4 补）再 ×2（C6），垂虹倍率 ×2.5 独立乘区（用户 2026-08-26 口径①），全吃进场记录面板（computeRemielleEntryPanel，不吃队友战内拐）。
+- **额外能力·芳菲之邀**（队伍存在其他异常或同阵营角色时触发）：1/2/3 异常档 = 全队攻击 + 蕾米初始攻击力×6%/12%/40%（上限 1600，teammate-buffs derived，账本 E29 同式）；飞行姿态失衡值 +6%/12%/35%（resolveRemielleDazeBonus，仅 Radiant Turn 后台行吃，账本 F29/N20 同式）；全队攻击幻色目标异常积蓄效率 +15%（账本 C30/J11 同式）。
+- **未建模**：Prismatic 8 秒延长期时间轴（静态覆盖率近似）、Luminous Reflection 逐时序（C1 队友异常增伤 +10% 按全程覆盖）；damage.ts 直伤管线另含逐招耀变行（自身面板、无异化区）——**不进** damagePoolRows/队伍总伤害（teamTotalDamage=Σ damagePoolRows，2026-09-07 探针验证），仅作单人招式分解视图行，口径差异如实记录；游戏内实测伤害校对待做（账本为 Excel 模型值，非实测）。
+- **模块**：`src/mechanics/agents/remielle.ts`（展示层；伤害/资源主体在上述管线文件中）。

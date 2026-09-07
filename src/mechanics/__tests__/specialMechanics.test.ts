@@ -587,7 +587,9 @@ describe('Remielle voidflare / luminize', () => {
   it('derives refringe coefficient and luminize multiplier from proficiency', () => {
     const result = computeRemielleMechanic({ anomalyProficiency: 170 })
     expect(result.refringeCoefficient).toBeCloseTo(3.4)
-    expect(result.luminizeMultiplierBonus).toBeCloseTo(17)
+    // 耀变倍率提升=异常精通×0.2%（原文/账本蕾米埃尔.xlsx/catalog corePassive 公式四源一致；
+    // 旧断言 17 固化了 0.1% 转写错误口径，2026-09-07 校对修正为 34）
+    expect(result.luminizeMultiplierBonus).toBeCloseTo(34)
   })
 })
 
