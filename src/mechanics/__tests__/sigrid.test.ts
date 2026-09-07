@@ -9,6 +9,7 @@ import {
   SIGRID_LANCE_SEGMENT_IDS,
   sigridMechanic,
   splitLanceRotation,
+  sigridChuqiangFromState,
   countBasicFinisherHits,
   countBasicSegments,
 } from '@/mechanics/agents/sigrid'
@@ -120,6 +121,34 @@ describe('希格莉德 patchExecutions：影画2 穿透率（catalog 真实 id�
     expect(basic2.penRatioBonus ?? 0).toBe(0)
   })
 
+  it('一次出枪式命中只记一次机会（#4 双计已删，用户改判 2026-09-07）', () => {
+    const cycle = [
+      { moveId: '1591001', actionTime: 0.44 },
+      { moveId: '1591002', actionTime: 0.778 },
+      { moveId: '1591004', actionTime: 0.507 },
+      { moveId: '1591005', actionTime: 1.258 },
+    ]
+    const cfg: any = { sigridCinemaLevel: 0, sigridAtk: 0, sigridBasicCycle: cycle }
+    const state: any = { exSpecialCount: 6, ultimateCount: 2, chainCountTotal: 3, basicAttackTime: 5 }
+    // 5s 平A → 完整循环 2.983s ×1 + 尾 2.017 ≥ 前三段 1.725 → #4 命中 2 次
+    expect(countBasicFinisherHits(5, cycle, false)).toBe(2)
+    // 直算：6+2+3+2 = 13（#4 只算 2 次，不是 4 次）
+    expect(sigridChuqiangFromState(state, cfg)).toBe(13)
+    // patch 同口径：执行行里已有 #4 段行（count=2）时，行循环必须跳过它，
+    // 否则段行 + countBasicFinisherHits 各数一次 → 15（旧双计）
+    const rows = [
+      { moveId: '1591012', count: 6 }, // 碎玉
+      { moveId: '1591016', count: 2 }, // 霜天
+      { moveId: '1591015', count: 3 }, // 冰凌卷地
+      { moveId: '1591005', count: 2 }, // 凛冽枪尖 #4 段行（平A池物化，不独立计机会）
+      { moveId: '1591001', count: 2 },
+    ]
+    sigridMechanic.patchExecutions!({ cfg, state, executions: rows } as any)
+    expect(cfg.sigridChuqiangHits).toBe(13)
+    // 两条信道必须同值（估时与物化不分裂）
+    expect(cfg.sigridChuqiangHits).toBe(sigridChuqiangFromState(state, cfg))
+  })
+
   it('0命：无任何执行级修正', () => {
     const cfg: any = { sigridCinemaLevel: 0, sigridAtk: 1000 }
     const lance = exec('1591007')
@@ -185,16 +214,19 @@ describe('希格莉德 buildExecutions：敛枪式三段轮转 + 破阵 + 影画
     expect(execs.find(e => e.moveId === '1591022')!.flatDamageBonus).toBeCloseTo(2000 * 1.0, 5)
   })
 
-  it('影画1溢出挂在第三段（最后一击），覆盖率滑块生效', () => {
+  it('影画1溢出：默认不计算（100%利用率下储存位不溢出），滑块调高才生效', () => {
+    // 缺省 = 0：机会上限 1 且引擎按「立刻打光」建模 ⇒ 原文「溢出时」不成立 ⇒ 不挂附伤
     const execs = build({ sigridStunCount: 1, chainCountPerStun: 1, sigridCinemaLevel: 6, sigridAtk: 2000 })
-    // 三段 = 影画6 100% + 影画1 溢出 100%×默认覆盖1 = 4000；一段/二段只有影画6 部分
-    expect(execs.find(e => e.moveId === '1591022')!.flatDamageBonus).toBeCloseTo(2000 * 2.0, 5)
+    expect(execs.find(e => e.moveId === '1591022')!.flatDamageBonus).toBeCloseTo(2000 * 1.0, 5) // 只有影画6
+    const c1only = build({ sigridStunCount: 1, sigridCinemaLevel: 1, sigridAtk: 2000 })
+    expect(c1only.find(e => e.moveId === '1591022')!.flatDamageBonus ?? 0).toBe(0)
+    // 显式调高（模拟攒着不打导致溢出）才生效，且只挂第三段
     const half = build({ sigridStunCount: 1, chainCountPerStun: 1, sigridCinemaLevel: 6, sigridAtk: 2000, 'setting:sigrid.c1OverflowCoverage': 0.5 })
     expect(half.find(e => e.moveId === '1591022')!.flatDamageBonus).toBeCloseTo(2000 * 1.5, 5)
-    // 5命（<6命）：只有影画1 溢出部分
-    const c1only = build({ sigridStunCount: 1, sigridCinemaLevel: 1, sigridAtk: 2000 })
-    expect(c1only.find(e => e.moveId === '1591022')!.flatDamageBonus).toBeCloseTo(2000 * 1.0, 5)
-    expect(c1only.find(e => e.moveId === '1591007')!.flatDamageBonus ?? 0).toBe(0)
+    expect(half.find(e => e.moveId === '1591007')!.flatDamageBonus).toBeCloseTo(2000 * 0.8, 5)
+    const full = build({ sigridStunCount: 1, chainCountPerStun: 1, sigridCinemaLevel: 1, sigridAtk: 2000, 'setting:sigrid.c1OverflowCoverage': 1 })
+    expect(full.find(e => e.moveId === '1591022')!.flatDamageBonus).toBeCloseTo(2000 * 1.0, 5)
+    expect(full.find(e => e.moveId === '1591007')!.flatDamageBonus ?? 0).toBe(0)
   })
 
 
@@ -205,17 +237,87 @@ describe('希格莉德 buildExecutions：敛枪式三段轮转 + 破阵 + 影画
   })
 
   it('破阵口径：非轴 C6 = 连携总次数；非轴非 C6 = 失衡次数', () => {
-    // C6：chainCountPerStun 2 × 失衡 3 = 6 套
-    const c6 = build({ sigridStunCount: 3, chainCountPerStun: 2, sigridCinemaLevel: 6, sigridAtk: 0 })
-    expect(c6.map(e => e.count)).toEqual([6, 6, 6])
-    // 非 C6：失衡 3 次 = 3 套（连携再多也不加）
+    // 非 C6：失衡 3 次 = 3 套（连携再多也不加），且 C0 无影画1自指反馈 → 干净金标
     const c0 = build({ sigridStunCount: 3, chainCountPerStun: 2, sigridCinemaLevel: 0, sigridAtk: 0 })
     expect(c0.map(e => e.count)).toEqual([3, 3, 3])
+    // C6：破阵套数 = 连携总次数（2/失衡 × 3 失衡 = 6 套）。影画1「第三段送机会」把轮转再放大，
+    // 绝对次数 = 破阵套数 + 定点解出的轮转，故与 C0 差分来锁「套数源 = 连携而非失衡」：
+    // C0 每段 3（=失衡3），C6 每段必然 > 6（=连携6 套）——若误用失衡次数只会是 3+轮转。
+    const c6 = build({ sigridStunCount: 3, chainCountPerStun: 2, sigridCinemaLevel: 6, sigridAtk: 0 })
+    expect(c6.map(e => e.count)).toEqual([9, 9, 8]) // 破阵 6 套 + 影画1 自指轮转 (3,3,2)
+    expect(c6[0].count - c0[0].count).toBe(6)       // 差分恰等于连携总次数
   })
 
   it('破阵口径：轴模式用注入的轴内套数（含诺姆赠送），覆盖非轴口径', () => {
     const axis = build({ sigridStunCount: 3, chainCountPerStun: 2, sigridCinemaLevel: 6, sigridAtk: 0, sigridAxisActive: true, sigridAxisPozhenSets: 4 })
-    expect(axis.map(e => e.count)).toEqual([4, 4, 4])
+    const nonAxis = build({ sigridStunCount: 3, chainCountPerStun: 2, sigridCinemaLevel: 6, sigridAtk: 0 })
+    // 轴内注入 4 套 ≠ 非轴公式 6 套（2×3）→ 两者次数必须不同，且轴那侧更小
+    expect(axis.map(e => e.count)).toEqual([6, 6, 5]) // 破阵 4 套 + 影画1 自指轮转 (2,2,1)
+    expect(axis[0].count).toBeLessThan(nonAxis[0].count)
+    // 轴模式不打影画6 时长折扣（破阵块时间由轴引擎按窗口计账，折两次=双算）
+    for (const e of axis) expect(e.totalTime).toBeCloseTo(e.count * (e.actionTime ?? 0), 9)
+  })
+
+  it('影画1「发动第三段时获得巡空枪势和一次机会」：自指反馈抬高轮转，且定点收敛不发散', () => {
+    const state: any = { exSpecialCount: 6, ultimateCount: 2, chainCountTotal: 3, basicAttackTime: 5 }
+    const cfg: any = {
+      sigridLanceSegments: SEGMENTS,
+      sigridBasicCycle: [
+        { moveId: '1591001', actionTime: 0.507 }, { moveId: '1591002', actionTime: 0.507 },
+        { moveId: '1591004', actionTime: 0.507 }, { moveId: '1591005', actionTime: 1.258 },
+      ],
+      sigridStunCount: 0, sigridAtk: 0,
+    }
+    const casts = (cinema: number) => {
+      const executions: any[] = []
+      sigridMechanic.buildExecutions!({ cfg: { ...cfg, sigridCinemaLevel: cinema }, state, executions } as any)
+      return executions.filter(e => SIGRID_LANCE_SEGMENT_IDS.includes(e.moveId)).reduce((a, e) => a + e.count, 0)
+    }
+    const c0 = casts(0)
+    const c1 = casts(1)
+    // 基础命中 6+2+3+2(#4)=13 → C0 轮转 13 发；C1 每发第三段再送 1 次机会 ⇒ 严格更多
+    expect(c0).toBe(13)
+    expect(c1).toBeGreaterThan(c0)
+    // 自指增益比 1/3 ⇒ 上界 1.5×基础（O = H + O/3），发散（2026-02 的 3200 亿秒）必须不可能
+    expect(c1).toBeLessThanOrEqual(Math.ceil(c0 * 1.5) + 1)
+    // 估时与物化同口径
+    const est = sigridMechanic.estimateExSpecialTime!({ cfg: { ...cfg, sigridCinemaLevel: 1 }, exSpecialCount: 6, ultimateCount: 2, state })!
+    const executions: any[] = []
+    sigridMechanic.buildExecutions!({ cfg: { ...cfg, sigridCinemaLevel: 1 }, state, executions } as any)
+    const rowLance = executions
+      .filter(e => SIGRID_LANCE_SEGMENT_IDS.includes(e.moveId))
+      .reduce((a, e) => a + (e.totalTime ?? 0), 0)
+    expect(est.necessaryTime - 6 * (cfg.exSpecialActionTime ?? 0)).toBeCloseTo(rowLance, 9)
+  })
+
+  it('影画6 破阵「更快发动」：破阵套数时长 ×0.75，轮转部分不折（死口径 2026-09-07 落地）', () => {
+    const state: any = { exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0, basicAttackTime: 0 }
+    const run = (cinema: number, extra: Record<string, unknown> = {}) => {
+      const executions: any[] = []
+      sigridMechanic.buildExecutions!({
+        cfg: {
+          sigridLanceSegments: SEGMENTS, sigridAtk: 0, sigridCinemaLevel: cinema,
+          sigridStunCount: 2, chainCountPerStun: 1, ...extra,
+        } as any,
+        state, executions,
+      } as any)
+      return executions.filter(e => SIGRID_LANCE_SEGMENT_IDS.includes(e.moveId))
+    }
+    /** 由 count 反解轮转（count = rotation + 破阵套数），再按折扣式重算应有时间 */
+    const expectedTime = (rows: any[], pozhen: number, factor: number) =>
+      rows.reduce((a, e) => a + (e.count - pozhen + pozhen * factor) * e.actionTime, 0)
+
+    // C0/C5（<6命）：无折扣 ⇒ 时间 = count × actionTime
+    const c0 = run(0)
+    expect(c0.reduce((a, e) => a + e.totalTime, 0)).toBeCloseTo(expectedTime(c0, 2, 1), 9)
+    // 非轴 C6：破阵 2 套打 0.75 折，轮转部分原价
+    const c6 = run(6)
+    expect(c6.reduce((a, e) => a + e.totalTime, 0)).toBeCloseTo(expectedTime(c6, 2, 0.75), 9)
+    // 折扣必须真的咬合（不咬合 = 死口径复发）：与不折扣口径相比严格更小
+    expect(c6.reduce((a, e) => a + e.totalTime, 0)).toBeLessThan(expectedTime(c6, 2, 1) - 1e-6)
+    // 轴模式不折扣：破阵块时间由轴引擎按窗口计账，这里再折一次 = 双算
+    const axis = run(6, { sigridAxisActive: true, sigridAxisPozhenSets: 2 })
+    expect(axis.reduce((a, e) => a + e.totalTime, 0)).toBeCloseTo(expectedTime(axis, 2, 1), 9)
   })
 
   it('countBasicFinisherHits：段循环计数 + 压枪取消 a1/a2', () => {
@@ -275,9 +377,9 @@ describe('希格莉德 buildExecutions：敛枪式三段轮转 + 破阵 + 影画
     } as any
     const state = { exSpecialCount: 6, ultimateCount: 2, chainCountTotal: 3, basicAttackTime: 5 } as any
     const est = sigridMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 6, ultimateCount: 2, state })!
-    // 机会 = 6(碎玉) + 2(霜天) + 3(冰凌卷地) + 2×#4 命中（5s 完整循环 2 次，patch 同口径双计）
-    //   = 15 → spend 15 → 轮转 (5,5,5) + 破阵 2 → 每段 7
-    const lance = 7 * 0.78 + 7 * 1.3 + 7 * 1.78
+    // 机会 = 6(碎玉) + 2(霜天) + 3(冰凌卷地) + 2(#4 命中，5s 完整循环 2 次；一次命中只记一次)
+    //   = 13 → spend 13 → 轮转 (5,4,4) + 破阵 2 → 每段 (7,6,6)
+    const lance = 7 * 0.78 + 6 * 1.3 + 6 * 1.78
     expect(est.necessaryTime).toBeCloseTo(6 * 0.93 + lance, 9)
     // 物化侧同口径：buildExecutions 三段行 totalTime == 估时 lance
     const executions: any[] = []

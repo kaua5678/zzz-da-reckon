@@ -37,6 +37,7 @@ import {
   scanAuthoredFacts,
   auditAuthoredFacts,
   driftQueue,
+  scanStructureEntropy,
   recentlyOwnedPaths,
 } from '../../../scripts/zc.mjs'
 
@@ -225,6 +226,12 @@ describe('L3 CLI 契约（统一信封 / 参数）', () => {
     expect(a.json).toBe(true)
   })
 
+  it('done 的新增依赖/未处理异常走 --deps/--risk（规则 9 之外的两个交付字段）', () => {
+    const a = parseArgs(['--verifier', 'v', '--coverage', 'c', '--deps', 'xlsx@0.20.2', '--risk', '大文件导出可能 OOM'])
+    expect(a.deps).toBe('xlsx@0.20.2')
+    expect(a.risk).toBe('大文件导出可能 OOM')
+  })
+
   it('porcelain 解析出状态与路径（带引号的中文路径也要吃下）', () => {
     expect(parsePorcelain(' M src/a.ts\n?? "src/数据.json"')).toEqual([
       { status: 'M', path: 'src/a.ts' },
@@ -248,6 +255,18 @@ describe('仓库级：索引真的建得起来', () => {
   it('主体 → 测试覆盖：柚叶(1411) 至少被 yuzuha.test.ts 引用（verify:recording 同源判据）', () => {
     expect(testsForSubject('agent:1411').some(p => p.includes('yuzuha.test.ts'))).toBe(true)
     expect(testsForSubject('engine:decibel')).toEqual([])
+  })
+
+  it('结构熵体检：只量体温不治病（超阈值文件降序列出、本地分支只报不红）', () => {
+    const e = scanStructureEntropy()
+    expect(e.maxFileLines).toBe(1500)
+    expect(e.overThreshold.length).toBeGreaterThan(0)
+    expect(e.overThreshold[0].lines).toBeGreaterThan(1500)
+    for (let i = 1; i < e.overThreshold.length; i++) {
+      expect(e.overThreshold[i].lines).toBeLessThanOrEqual(e.overThreshold[i - 1].lines)
+    }
+    expect(e.branches.length).toBeGreaterThanOrEqual(1)
+    expect(e.branches).toContain('master')
   })
 })
 describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会悄悄过期」的机器答案）', () => {

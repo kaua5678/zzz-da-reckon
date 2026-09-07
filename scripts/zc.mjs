@@ -26,7 +26,7 @@
 //   node scripts/zc.mjs release <路径…|--all>     释放租约
 //   node scripts/zc.mjs lanes                     当前所有租约
 //   node scripts/zc.mjs facts <主体|--all|--unparsed|--unverified>      口径索引查询
-//   node scripts/zc.mjs done --verifier <命令> --coverage <范围> [--note …]  规则 9 落盘
+//   node scripts/zc.mjs done --verifier <命令> --coverage <范围> [--deps <新增依赖> --risk <可能崩点> --note …]  规则 9 落盘
 //   node scripts/zc.mjs ctx <文件路径> [--json]    摸文件前反查：决策树行 + 钉在文件上的口径 + 头注释职责
 //   node scripts/zc.mjs lang                      打印事实语法（唯一权威）
 // 状态目录 .zc/（已 gitignore，与 .claude/ledgers 同性质：工作状态，不是项目知识）。
@@ -474,6 +474,40 @@ export function scanDeadClaims(root = ROOT) {
   return hits
 }
 
+// @fact engine:zc/结构熵体检 决: zc status 只量体温不治病——自家代码最大文件行数 >1500（阈值取「降本增效体系」红线）与本地分支残留只报不红，红灯由人评估 | 据 用户@2026-09-07 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/zc.mjs#scanStructureEntropy | 信 确认
+/**
+ * 结构熵体检（外部「降本增效体系」4 指标里挑 2 个最便宜的落进 zc status）：
+ *   A 最大文件行数：自家代码里 >1500 行的文件（屎山起点温度计，量体温不治病，不自动拆）
+ *   D 本地分支残留：列出全部本地分支（未合并 / 已合并未删的一眼可见）
+ * 只报不红：zc status 是 agent 体检面，不是 CI 判据——对齐 scanDeadClaims / driftQueue 的同一
+ * 哲学（红了会逼人给文件灌水或删分支作弊，反而毁掉温度计）。口径：只统计自家代码，排除
+ * node_modules / dist / __tests__ / 数据 JSON。
+ */
+export function scanStructureEntropy(root = ROOT) {
+  const MAX_FILE_LINES = 1500
+  const over = []
+  const rec = (dir) => {
+    if (!existsSync(dir)) return
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name)
+      if (statSync(p).isDirectory()) {
+        if (['node_modules', 'dist', '.git', '__tests__', '__mocks__'].includes(name)) continue
+        rec(p); continue
+      }
+      if (!/\.(ts|vue|mjs)$/.test(name)) continue
+      const lines = readFileSync(p, 'utf8').split('\n').length
+      if (lines > MAX_FILE_LINES) over.push({ file: relative(root, p).split(sep).join('/'), lines })
+    }
+  }
+  rec(join(root, 'src'))
+  rec(join(root, 'scripts'))
+  over.sort((a, b) => b.lines - a.lines)
+  // 不写 `--format=%(refname:short)`：execSync 走 /bin/sh，`%(...)` 会被 shell 当语法报错（实测）。
+  // 用 `--no-color` 的默认输出，剥掉当前分支的 `* ` 前缀即可。
+  const branches = git('branch --no-color', root).split('\n').map(l => l.replace(/^\*\s*/, '').trim()).filter(Boolean)
+  return { maxFileLines: MAX_FILE_LINES, overThreshold: over, branches }
+}
+
 export function readLeases() {
   if (!existsSync(LEASES_FILE)) return []
   try { return JSON.parse(readFileSync(LEASES_FILE, 'utf8')) } catch { return [] }
@@ -590,6 +624,7 @@ async function verbStatus(root = ROOT) {
   const authored = auditAuthoredFacts(root)
   const drift = driftQueue(root)
   const deadClaims = scanDeadClaims(root)
+  const entropy = scanStructureEntropy(root)
   const journal = allJournal.slice(-3)
   const next = foreign.length > 0
     ? 'zc lanes  # 有 ' + foreign.length + ' 个文件疑似并行会话在改：先确认归属再动手（规则 13）'
@@ -598,6 +633,7 @@ async function verbStatus(root = ROOT) {
     branch, ahead: Number(ahead), changed: changed.length, changedPaths: paths, leases, foreignWip: foreign, debt, backlog, journal,
     facts: { authored: authored.scanned.length, broken: authored.violations.length, reviewQueue: drift.length },
     deadClaims,
+    entropy: { maxFileLines: entropy.maxFileLines, overCount: entropy.overThreshold.length, top: entropy.overThreshold.slice(0, 5), branchCount: entropy.branches.length, branches: entropy.branches },
   }, next)
 }
 
@@ -725,12 +761,12 @@ function appendJournal(entry) {
 // @fact engine:zc/收工落盘 决: 规则 9 的 verifier+coverage 必须经 zc done 进 .zc/journal.jsonl，只写在聊天里等于没写（全仓 'verifier' 曾只出现 2 次） | 据 实测@2026-08-31·复核@2026-09-04 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/zc.mjs#verbDone | 信 确认
 function verbDone(args) {
   if (!args.verifier || !args.coverage) {
-    return envelope('done', false, {}, 'zc done --verifier "<证明它生效的命令/测试>" --coverage "<影响到哪些角色/页面/文件>"（规则 9）')
+    return envelope('done', false, {}, 'zc done --verifier "<证明它生效的命令/测试>" --coverage "<影响到哪些角色/页面/文件>" [--deps <新增依赖> --risk <可能崩点>]（规则 9）')
   }
   const lane = currentLane(args.as)
   const changed = parsePorcelain(git('status --porcelain')).map(c => c.path)
-  appendJournal({ kind: 'done', lane, verifier: args.verifier, coverage: args.coverage, note: args.note ?? null, changed })
-  return envelope('done', true, { lane, verifier: args.verifier, coverage: args.coverage, changed: changed.length }, '已落盘 .zc/journal.jsonl（下一个 agent 用 zc status 就能看到）')
+  appendJournal({ kind: 'done', lane, verifier: args.verifier, coverage: args.coverage, deps: args.deps ?? null, risk: args.risk ?? null, note: args.note ?? null, changed })
+  return envelope('done', true, { lane, verifier: args.verifier, coverage: args.coverage, deps: args.deps ?? null, risk: args.risk ?? null, changed: changed.length }, '已落盘 .zc/journal.jsonl（下一个 agent 用 zc status 就能看到）')
 }
 
 // ─────────────────────────────────────────────────────────────────── CLI 装配
@@ -742,7 +778,7 @@ export function parseArgs(argv) {
     if (!a.startsWith('--')) { out.positional.push(a); continue }
     const key = a.slice(2)
     const nextArg = argv[i + 1]
-    if (['as', 'ttl', 'verifier', 'coverage', 'note'].includes(key)) { out[key] = nextArg; i++ }
+    if (['as', 'ttl', 'verifier', 'coverage', 'note', 'deps', 'risk'].includes(key)) { out[key] = nextArg; i++ }
     else out[key] = true
   }
   return out
@@ -780,6 +816,11 @@ function humanize(res) {
     if (d.foreignWip?.length) lines.push('⚠ 疑似并行会话在改（无租约 + 45 分钟内改过）：' + d.foreignWip.join(', '))
     if (d.debt) lines.push('债务 ' + d.debt.registered + ' 条已登记' + (d.debt.unregistered ? ' / ✗ ' + d.debt.unregistered + ' 条未登记' : ''))
     if (d.deadClaims?.length) lines.push('⚠ 死口径（注释声称口径但全仓零引用，规则 16）：' + d.deadClaims.map(h => `${h.name}@${h.file}`).join(', '))
+    if (d.entropy) {
+      const top = d.entropy.top?.[0]
+      lines.push('结构熵 最大文件 ' + (top ? top.file + ' ' + top.lines + ' 行' : '无') + ' · 超 ' + d.entropy.maxFileLines + ' 行 ×' + d.entropy.overCount + ' · 本地分支 ' + d.entropy.branchCount)
+      if (d.entropy.overCount) lines.push('  超标：' + d.entropy.top.map(f => f.file + ' ' + f.lines).join(' / '))
+    }
     if (d.facts) lines.push('手写事实 ' + d.facts.authored + ' 条' + (d.facts.broken ? ' / ✗ 断锚 ' + d.facts.broken : '') + (d.facts.reviewQueue ? ' / ⟳ 待复核 ' + d.facts.reviewQueue : ''))
     for (const b of d.backlog ?? []) lines.push('待办 ' + b.dim + '：已实现 ' + b.done + ' / 未描述 ' + b.undescribed + ' / 待办条目 ' + b.pending)
     for (const j of d.journal ?? []) lines.push('最近验证 [' + (j.at ?? '').slice(0, 16) + '] ' + (j.verifier ?? j.kind) + ' → ' + (j.coverage ?? ''))

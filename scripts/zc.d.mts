@@ -109,6 +109,12 @@ export declare function recentlyOwnedPaths(
   now?: number,
   windowMs?: number,
 ): string[]
+export interface StructureEntropy {
+  maxFileLines: number
+  overThreshold: { file: string; lines: number }[]
+  branches: string[]
+}
+export declare function scanStructureEntropy(root?: string): StructureEntropy
 export interface Envelope<T = Record<string, unknown>> { ok: boolean; verb: string; data: T; next: string | null }
 export declare function envelope<T>(verb: string, ok: boolean, data: T, next?: string | null): Envelope<T>
 export declare function parsePorcelain(text: string): { status: string; path: string }[]
