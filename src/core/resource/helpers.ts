@@ -624,7 +624,7 @@ export function netFrontlineOccupation(rr: TeamResourceResult): number {
   return total
 }
 
-// @fact engine:时间线截断 口径: 资源允许的动作量超过可用前台时按时间线截断（实战 180s 到点结算，不管这套连段打没打完），次数必须整数（floor+小数降序加回装包）、平A填充行先占位不参与截断、砍到0次的行整行消失；overflowSeconds 语义=被截断的秒数 | 据 用户@2026-09-05 | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/helpers.ts#truncateExecutionsToFrontline | 信 确认
+// @fact engine:时间线截断 口径: 资源允许的动作量超过可用前台时按时间线截断（实战 180s 到点结算，不管这套连段打没打完），次数必须整数（floor+小数降序加回装包）、平A填充行先占位不参与截断、砍到0次的行整行消失；overflowSeconds 语义=被截断的秒数 | 据 用户@2026-09-05·复核@2026-09-08 | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/helpers.ts#truncateExecutionsToFrontline | 信 确认
 /**
  * 按可用前台时间**截断**执行计划（通用资源循环规则，2026-09-05 用户口径）。
  *
@@ -1123,7 +1123,7 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
     // debt: 全局实数化收敛重构（正反馈模块统一连续通道 + 逐模块重校准）——本分支是 1051 的 targeted
     // 修复（解析不动点 + 阻尼实数迭代 + 终局整数重推）；全局「实数化松弛、终局才 floor」会重排所有
     // 带时间/资源循环模块的均衡（sigrid 出枪式消失前例），需专项按模块重校准。
-    // @fact yidhari:refund不动点 口径: 极寒重碾非失衡每发回15闪能属自指反馈——迭代期强特次数实数化（refund解析求解+必要时间信道阻尼）唯一连续不动点，floor只在终局整数重推发生一次（不在迭代中途截断资源循环）；曾致19/20双稳态（种子相关，parry4/dodge10、parry8/dodge2复现），勿改回「迭代期回读整数次数+floor」 | 据 用户@2026-09-04 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts | 锚 src/core/resource/helpers.ts#resolveExSpecialCount | 信 确认
+    // @fact yidhari:refund不动点 口径: 极寒重碾非失衡每发回15闪能属自指反馈——迭代期强特次数实数化（refund解析求解+必要时间信道阻尼）唯一连续不动点，floor只在终局整数重推发生一次（不在迭代中途截断资源循环）；曾致19/20双稳态（种子相关，parry4/dodge10、parry8/dodge2复现），勿改回「迭代期回读整数次数+floor」 | 据 用户@2026-09-04·复核@2026-09-08 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts | 锚 src/core/resource/helpers.ts#resolveExSpecialCount | 信 确认
     // 伊德海莉 refund 反馈连续松弛（2026-09-04 修复 19/20 双稳态，用户口径「floor 应该最后算」）：
     // 迭代期强特次数以实数参与收敛（refund 已解析求解，见 calcEnergySource），唯一不动点；
     // 终局整数重推（calcTeamResources）冻结非失衡整数次数后重推，floor 只发生一次。
@@ -1417,8 +1417,8 @@ export function iterate(
   // Σnecessary 允许 > 战斗时间（Σ>180），只要合轴抵扣后的净占用装得下。
   // 轴模式下栈引擎节省（axisOverlapByAction）与招式合轴率是同一物理并行的两种模型，
   // 按槽位取 max 不叠加（防同时设置时超扣；缺省合轴率全 0，退化为原口径）。
-  // @fact engine:合轴预算抵扣 口径: 必做动作合轴段与其他角色动作并行、抵扣团队时间预算（Σnecessary 允许>战斗时间）；轴模式与栈引擎节省按槽取 max 不叠加；只抵扣含在 necessary 内的部分（GROSS 缺省，NET 模块照/卢西娅不重复抵） | 据 用户@2026-09-04 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#netFrontlineOccupation | 信 确认
-  // @fact engine:单角色前线上限 口径: 单角色前台（必要+平A）≤ 战斗总时间——合轴抵扣放宽团队预算不放宽单人物理时间轴；贴顶截断的份额按剩余权重水填回流给还有余量的队友，不留池蒸发 | 据 用户@2026-09-05（改 09-04「留池不重分配」） | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
+  // @fact engine:合轴预算抵扣 口径: 必做动作合轴段与其他角色动作并行、抵扣团队时间预算（Σnecessary 允许>战斗时间）；轴模式与栈引擎节省按槽取 max 不叠加；只抵扣含在 necessary 内的部分（GROSS 缺省，NET 模块照/卢西娅不重复抵） | 据 用户@2026-09-04·复核@2026-09-08 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#netFrontlineOccupation | 信 确认
+  // @fact engine:单角色前线上限 口径: 单角色前台（必要+平A）≤ 战斗总时间——合轴抵扣放宽团队预算不放宽单人物理时间轴；贴顶截断的份额按剩余权重水填回流给还有余量的队友，不留池蒸发 | 据 用户@2026-09-05（改 09-04「留池不重分配」）·复核@2026-09-08 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
   const overlapBySlot: number[] = configs.map(() => 0)
   let hasByAction = false
   for (const [key, sec] of Object.entries(globalCfg.axisOverlapByAction ?? {})) {

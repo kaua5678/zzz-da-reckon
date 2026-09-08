@@ -159,7 +159,7 @@ export const TIME_BUDGET_TOLERANCE_SECONDS = 1
 
 /**
  * 欠打回填的启动门槛（秒）：低于此量不试探，避免为量化残差扰动外层不动点。
- * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛 10s（≤5s 会把近均衡队推进 stunCount=0 吸引盆）；宁可留白不制造超预算 | 据 用户@2026-09-05「全部动手」+实测 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS | 信 确认
+ * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛 10s（≤5s 会把近均衡队推进 stunCount=0 吸引盆）；宁可留白不制造超预算 | 据 用户@2026-09-05「全部动手」+实测·复核@2026-09-08 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS | 信 确认
  */
 export const UNDERFILL_PROBE_THRESHOLD_SECONDS = 10
 
@@ -225,11 +225,15 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   let refundFrozen = false
   /**
    * 热启动种子：默认末态；欠打回填触发时改存**试探前**末态（保持冷/热逐位一致，见回填块注释）。
-   * @fact engine:热启动逐位透明 口径: 回填触发时热启动缓存存试探前末态——存回填后末态会让下次调用从「已回填」出发、不再测到 pass0 的正 excess，折出不同账本 → 冷热落点分叉（实测 1241/1191 队由一致变不一致） | 据 实测@2026-09-05 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#warmSeedStates | 信 确认
+   * @fact engine:热启动逐位透明 口径: 回填触发时热启动缓存存试探前末态——存回填后末态会让下次调用从「已回填」出发、不再测到 pass0 的正 excess，折出不同账本 → 冷热落点分叉（实测 1241/1191 队由一致变不一致） | 据 实测@2026-09-05·复核@2026-09-08 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#warmSeedStates | 信 确认
    */
   let warmSeedStates: IterationState[] = states
   for (let timePass = 0; timePass < maxTimeIter; timePass++) {
     timeBudgetPasses = timePass + 1
+    // @fact engine:收敛环停点规范化 口径: 注入种子（热启动/显式 initialStates）的收敛轨迹若属非正常收敛（跑满上限或全状态签名精确重复=入极限环），该停点含瞬态相位成分 → 弃用并从默认零种子**规范重跑**；重跑仍入环则取环内 JSON 字典序最小成员为规范停点（相位无关，冷/热进同一环成员集合相同）。正常收敛照旧接受（不动点唯一性 = 2026-09-04 连续松弛教义）。结果 = f(默认种子, 迭代映射)，与注入种子彻底解耦 | 据 喧响行级化专项实测@2026-09-08 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts + src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
+    // 否决记录（环停点侧，都有实测数字）：环均值阻尼（对环成员取均值）实测被吸回同一环、
+    // 桥接不了「冷种子收敛不动点 vs 热种子入环」的共存吸引子 → 否决；0.5 阻尼单独用也吸收不了
+    // 整数阶梯跳变（丽娜 ex 行随能量阈值 6↔7 跳变，账本阶跃 ~180 喧响经队伍分享闭环）→ 否决。
     // 精确周期环检测 + 规范重跑（2026-09-08）：内层判稳只看强特/终结次数严格相等，但喧响
     // 账本行级化后「喧响→能量→次数→必要时间→平A池→阶梯行数→喧响」反馈环带整数阶梯项
     // （实测振荡器：丽娜 ex 行+子行随能量阈值 6↔7 整数量子跳变，账本阶跃 ~180 喧响经队伍
