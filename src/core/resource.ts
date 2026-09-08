@@ -163,6 +163,7 @@ export const TIME_BUDGET_TOLERANCE_SECONDS = 1
  */
 export const UNDERFILL_PROBE_THRESHOLD_SECONDS = 10
 
+
 export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResult {
   const totalTime = config.totalTime
   // 伊德海莉连续松弛（0.5 阻尼）收敛比整数动力学慢：她的队内层迭代上限提到 100
@@ -180,9 +181,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   const injectedStates = config.initialStates && config.initialStates.length === configs.length
     ? config.initialStates
     : warmSeed?.states
-  let states: IterationState[] = injectedStates
-    ? injectedStates.map(s => ({ ...s }))
-    : configs.map(cfg => ({
+  // 默认零种子快照：规范重跑用（种子注入的轨迹若未正常收敛 = 停点含瞬态相位成分，弃掉重跑冷轨迹）
+  const defaultSeedStates: IterationState[] = configs.map(cfg => ({
     basicAttackTime: totalWeight > 0
       ? totalTime * (cfg.timeWeight / totalWeight)
       : 0,
@@ -197,6 +197,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     comboAlignTime: 0,
     comboAlignCredit: 0,
   }))
+  let states: IterationState[] = injectedStates
+    ? injectedStates.map(s => ({ ...s }))
+    : defaultSeedStates.map(s => ({ ...s }))
 
   // 时间预算收敛（外层）+ 资源收敛（内层）：
   // 模块 buildExecutions 会物化出占用前台、但未计入 estimateExSpecialTime 的动作行
@@ -227,27 +230,67 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   let warmSeedStates: IterationState[] = states
   for (let timePass = 0; timePass < maxTimeIter; timePass++) {
     timeBudgetPasses = timePass + 1
-    for (iter = 0; iter < maxIter; iter++) {
-      const newStates = iterate(configs, states, config)
-
-      // 检查收敛：强特次数和大招次数是否稳定。伊德海莉连续松弛（阻尼实数次数）同样按
-      // 严格相等判稳——阻尼映射收敛到浮点不动点后逐位复现（热启动透明的前提）；ε 判据会留下
-      // ~1e-12 残差，热启动会话与冷启动会话不再逐位一致（determinism.test 的失败机制）。
-      let changed = false
-      for (let i = 0; i < states.length; i++) {
-        if (newStates[i].exSpecialCount !== states[i].exSpecialCount ||
-            newStates[i].ultimateCount !== states[i].ultimateCount) {
-          changed = true
-          break
+    // 精确周期环检测 + 规范重跑（2026-09-08）：内层判稳只看强特/终结次数严格相等，但喧响
+    // 账本行级化后「喧响→能量→次数→必要时间→平A池→阶梯行数→喧响」反馈环带整数阶梯项
+    // （实测振荡器：丽娜 ex 行+子行随能量阈值 6↔7 整数量子跳变，账本阶跃 ~180 喧响经队伍
+    // 分享闭环），0.5 阻尼吸收不了 → 全状态精确 2-循环、甚至「冷种子收敛到不动点、热种子入环」
+    // 的多吸引子共存（yidhariInteractionGrid parry=4/dodge=2 格实测；环均值阻尼亦实测被吸回
+    // 同一环——均值桥接不了共存吸引子，否决）。停点必须与种子无关，规则三层：
+    // ① 逐轮记录全状态签名，签名精确重复 = 进入极限环 → 取环内 JSON 字典序最小成员为规范停点
+    //    （相位无关：冷/热从不同瞬态段进入同一个环，成员集合相同，规范选择必然相同）；
+    // ② 注入种子（显式 initialStates / 热启动缓存）的轨迹若非正常收敛（跑满上限或入环）= 停点
+    //    含瞬态相位成分 → 弃用并**规范重跑**：从默认零种子重启，逐位复刻冷启动轨迹；重跑仍入环
+    //    则按①取字典序规范——重跑结果是（默认种子, 迭代映射）的纯函数，与注入种子彻底解耦；
+    // ③ 正常收敛（次数严格相等判稳）的轨迹直接接受——不动点唯一性由既有连续松弛教义保证
+    //    （2026-09-04），冷/热正常收敛落点逐位一致是 determinism.test 的既有约定。
+    // 下游（折叠残差累计/欠打回填/终局整数重推/装配）全部是停点的确定性函数；pass>0 的起点
+    // 冷热已同，其上限停点亦同，冷热逐位一致由归纳保持。
+    const runInnerLoop = (from: IterationState[]): { end: IterationState[]; clean: boolean } => {
+      const cycleSigs = new Map<string, number>()
+      const cycleSnapshots: IterationState[][] = []
+      let cur = from
+      for (iter = 0; iter < maxIter; iter++) {
+        const newStates = iterate(configs, cur, config)
+        // 检查收敛：强特次数和大招次数是否稳定。伊德海莉连续松弛（阻尼实数次数）同样按
+        // 严格相等判稳——阻尼映射收敛到浮点不动点后逐位复现（热启动透明的前提）；ε 判据会留下
+        // ~1e-12 残差，热启动会话与冷启动会话不再逐位一致（determinism.test 的失败机制）。
+        let changed = false
+        for (let i = 0; i < cur.length; i++) {
+          if (newStates[i].exSpecialCount !== cur[i].exSpecialCount ||
+              newStates[i].ultimateCount !== cur[i].ultimateCount) {
+            changed = true
+            break
+          }
         }
-      }
 
-      states = newStates
-      if (!changed) {
-        converged = true
-        break
+        cur = newStates
+        if (!changed) return { end: cur, clean: true }
+        // 环检测：签名 = 全状态 JSON（含 energySource 快照——iterate 消费的一切）；快照/恢复用
+        // structuredClone 而非 JSON roundtrip——JSON 会把 NaN 物化成 null 写回状态（毒路径）
+        const sig = JSON.stringify(cur)
+        const firstSeen = cycleSigs.get(sig)
+        if (firstSeen !== undefined) {
+          const members = cycleSnapshots.slice(firstSeen)
+          let canonical = members[0]
+          let canonicalSig = JSON.stringify(canonical)
+          for (const m of members) {
+            const ms = JSON.stringify(m)
+            if (ms < canonicalSig) { canonical = m; canonicalSig = ms }
+          }
+          return { end: structuredClone(canonical), clean: false }
+        }
+        cycleSigs.set(sig, cycleSnapshots.length)
+        cycleSnapshots.push(structuredClone(cur))
       }
+      return { end: cur, clean: false } // 跑满上限：停点=上限处瞬态（起点确定则停点确定）
     }
+    let inner = runInnerLoop(states)
+    if (!inner.clean && timePass === 0 && injectedStates) {
+      // ② 规范重跑：种子轨迹的停点含瞬态相位，弃用，从默认零种子复刻冷启动
+      inner = runInnerLoop(defaultSeedStates.map(s => ({ ...s })))
+    }
+    states = inner.end
+    if (inner.clean) converged = true
 
     // 测量每个角色执行计划的**前台**时间（后台行不占共享轴），对自家账本收敛：
     // 超出账本 = 该角色有未付费的前台行 → 折入必要时间压缩平A池（团队级，非单人预算）。
@@ -574,7 +617,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       if (j === i) continue
       const otherCfg = configs[j]
       const otherChainCountTotal = states[j].chainCountTotal
-      const otherShareable = calcRawDecibelParts(otherCfg, states[j], otherChainCountTotal, states[j].exSpecialCount, states[j].ultimateCount, totalTime).shareableTotal
+      // 行级喧响 Σ：j 视角的队友前台秒（Σ k≠j，与装配层 buildExecutions 传参同语义）
+      const otherTeamFrontline = configs.reduce((sum, _, k) => (k === j ? sum : sum + states[k].frontlineTime), 0)
+      const otherShareable = calcRawDecibelParts(otherCfg, states[j], otherChainCountTotal, states[j].exSpecialCount, states[j].ultimateCount, totalTime, otherTeamFrontline).shareableTotal
       teammateShare += otherShareable * otherCfg.decibelShareRatio
     }
 
@@ -598,7 +643,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       // 诺姆影画4·膛温换连携：诺姆+上一位队友各 +200 不可分享喧响（计入终结技次数）
       + normaC4Decibel,
       config.specialActionDecibelBonusPerSlot?.[i] ?? 0,
-      config.anomalyDecibelBonusPerSlot?.[i] ?? 0)
+      config.anomalyDecibelBonusPerSlot?.[i] ?? 0,
+      teammateFrontlineSeconds)
     const builtExecutions = buildExecutions(cfg, state, chainCountTotal, teammateFrontlineSeconds)
     // ===== 时间线截断（通用资源循环规则，2026-09-05 用户口径）=====
     // 本槽物化行超出账本（必要 + 平A）的部分按时间线尾部截断：平A行是填充项永远保留，

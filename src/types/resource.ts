@@ -500,6 +500,8 @@ export interface SkillExecution {
   dazeMultiplierOverride?: boolean
   /** 由机制模块直接覆盖异常积蓄（跳过倍率表回填；如持续段按时长等比缩放后的积蓄） */
   anomalyBuildUpOverride?: boolean
+  /** 由机制模块直接覆盖喧响回复（跳过倍率表回填；如洛克茜自旋——表值为每秒口径，行值 = 每秒 × 持续秒数） */
+  decibelRecoveryOverride?: boolean
   /** 本行招式专属暴击率加成（%），只加给该行（如青衣1命满电压醉花月云转、柏妮思4命） */
   critRateBonus?: number
   /** 本行招式专属暴击伤害加成（%），只加给该行（如青衣6命醉花月云转暴伤+100%） */
@@ -1267,6 +1269,13 @@ export interface CharacterOperationConfig {
   exSpecialActionTime: number
   /** 强特单次喧响回复 */
   exSpecialDecibelRecovery: number
+  /**
+   * 倍率表 decibel_recovery 按 moveId 预存表（buildCharConfig 从 catalog 全量提取，含行级融合乘子）。
+   * 键存在 = 招式在倍率表中找到；值 = getRowValue(move,'decibel_recovery')（无行为 0）。
+   * 喧响收入行级化（Σ 切换）后，calcRawDecibelParts 按此表复刻 enrichExecutionPlan 回填语义
+   * （显式 0 = 模块禁用、缺省 = 表值、decibelRecoveryOverride = 模块覆盖），保证记账层 == 展示层。
+   */
+  decibelRecoveryByMoveId?: Record<string, number>
   /** 终结技 move id */
   ultimateMoveId: string
   /** 终结技消耗喧响（全游戏统一3000，仅1个角色2000暂不纳入） */

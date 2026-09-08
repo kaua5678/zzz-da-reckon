@@ -425,6 +425,30 @@ export function timeSliceTriggerCounts(
   return { dodgeCounter, exSpecial, assist, chain, total: dodgeCounter + exSpecial + assist + chain }
 }
 
+/**
+ * 行级喧响收入——与 enrichExecutionPlan 的 decibel 分支逐分支同语义（记账层 == 展示层）：
+ * - basic_attack 行：时间通道原值（enrich 不回填其 decibel，模块可改写 total，如伊德海莉蓄力置 0）；
+ * - moveId 在 cfg.decibelRecoveryByMoveId（倍率表预存，键存在 = 表中找到）：
+ *   decibelRecoveryOverride = 模块口径换算行值（洛克茜自旋每秒×秒数）；显式 0 = 模块禁用；
+ *   缺省 = 表值 || 行值 || 0；总收入 = 单次值 × max(0,count)（利用率缩放已在 count 里）；
+ * - 假 id / 表中未找到：行 total 原值（enrich 同分支不 patch decibel）。
+ * - 非有限值防线：畸形/不完整配置（测试合成 cfg 缺字段等）可让行值成 NaN——账本绝不带 NaN
+ *   （NaN 会毒化次数迭代并被环检测的 JSON 签名物化成 null，实测合成队 ex/ult 全 null）。
+ */
+const finiteOr0 = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+
+function rowDecibelTotal(cfg: CharacterOperationConfig, row: SkillExecution): number {
+  if (row.moveId === 'basic_attack') return finiteOr0(row.totalDecibelRecovery)
+  const table = cfg.decibelRecoveryByMoveId
+  if (!table || !Object.prototype.hasOwnProperty.call(table, row.moveId)) return finiteOr0(row.totalDecibelRecovery)
+  const perCount = row.decibelRecoveryOverride
+    ? finiteOr0(row.decibelRecovery)
+    : row.decibelRecovery === 0
+      ? 0
+      : (finiteOr0(table[row.moveId]) || finiteOr0(row.decibelRecovery) || 0)
+  return finiteOr0(perCount * Math.max(0, finiteOr0(row.count)))
+}
+
 export function calcRawDecibelParts(
   cfg: CharacterOperationConfig,
   state: IterationState,
@@ -432,31 +456,26 @@ export function calcRawDecibelParts(
   exSpecialCount = state.exSpecialCount,
   ultimateCount = state.ultimateCount,
   totalTime = 180,
+  teamFrontlineSeconds = 0,
 ): { skillRegen: number; bonusRegen: number; timeSliceDecibel: number; shareableTotal: number } {
-  // 招式回复：平A、强特、终结技数据行、连携、闪避反击、弹刀/支援突击。
-  const basicDecibel = state.basicAttackTime * cfg.basicAttackDecibelPerSec
-  const exSpecialDecibel = exSpecialCount * cfg.exSpecialDecibelRecovery
-  // 额外强特行（窗口门控的免费强特，2026-09）：与主强特同口径进喧响轨道（次数=窗口 × 单次喧响回复）。
-  const extraExDecibel = (cfg.extraExPlans ?? []).reduce((sum, plan) => {
-    const c = resolveExtraExCount(plan, {
-      battleSeconds: Math.max(0, cfg.battleTime ?? 0),
-      exCount: Math.max(0, Math.floor(state.exSpecialCount ?? 0)),
-    })
-    return sum + c * plan.decibelRecovery
-  }, 0)
-  const ultimateDecibel = ultimateCount * cfg.ultimateDecibelRecovery
-  const chainDecibel = chainCountTotal * cfg.chainDecibelRecovery
-  const dodgeCounterDecibel = cfg.dodgeCounterCount * cfg.dodgeCounterDecibelRecovery
-  const defensiveAssistDecibel = ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistDecibelRecovery
-  const assistFollowUpDecibel = cfg.parryCount * cfg.assistFollowUpDecibelRecovery
-  const remielleRainbowEndDecibel = remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndDecibelRecovery
-  // debt: 喧响收入行级化——本函数用「次数×常量」聚合通道，不读倍率行 decibel_recovery（行值仅展示，
-  // 伤害/失衡/异常同为倍率列却逐行进账——架构不对称）。专属链角色系统性低估：仪玄实测行级 5628
-  // vs 聚合 1702（修复前），约 50 个模块存在 decibelRecovery:0 硬编码。升级路径：喧响账本改行级
-  // 求和（Σ decibelRecovery×count，与 damagePool 同构；显式 0/假 id 行自动为 0），全库喧响→终结再基线。
-  const skillRegen = basicDecibel + exSpecialDecibel + extraExDecibel + ultimateDecibel + chainDecibel
-    + dodgeCounterDecibel + defensiveAssistDecibel + assistFollowUpDecibel + remielleRainbowEndDecibel
-    + (cfg.yixuanBackstageDecibel ?? 0)
+  // @fact engine:喧响收入行级Σ 口径: skillRegen = Σ buildExecutions 行的行级喧响收入（rowDecibelTotal，与伤害/失衡/异常「倍率列逐行进账」同构）。旧「次数×常量」聚合通道删除：聚合行与 buildExecutions 常量同源故恒等，差异全部来自模块行（债务清偿——专属链角色曾系统性低估，仪玄行级 5628 vs 聚合 1702；yixuanBackstageDecibel 聚合项曾把 4 招全加而合轴语义是二选一替换对，行级即修复）。迭代期用本次调用的 exSpecialCount/ultimateCount 覆盖进 rowState（伊德海莉 decibel 通道 floor 口径、实数松弛口径均不变）；teamFrontlineSeconds 语义 == 装配层（Σ 队友前台秒）。已知残差：时间线截断（truncateExecutionsToFrontline）只作用于展示行，账本按截断前行计——超账本行在实战 180s 结算语义下本就兑现不出，与旧聚合通道口径一致 | 据 债务审计 5761e02 + 引擎探针@2026-09-08 | 验 src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource/helpers.ts#rowDecibelTotal | 信 确认
+  const rowState: IterationState = (exSpecialCount !== state.exSpecialCount || ultimateCount !== state.ultimateCount)
+    ? { ...state, exSpecialCount, ultimateCount }
+    : state
+  // 相位隔离（2026-09-08）：buildExecutions 不是纯函数——模块钩子按「iterate/物化分离惯例」在
+  // 物化调用点写相位延迟状态（格莉丝 graceBasicPoolPrev 留给下一轮 estimate、卢西娅
+  // luciaAdditionalAttackCap 留给 buildResourceResult、仪玄 yixuanBackstageDecibel 等）。
+  // 本函数每轮每角色额外调用（迭代 Step1 + 装配队友分享 n×(n−1) 次），若不隔离会在错误相位
+  // 覆写这些字段（实测格莉丝队 nt −7.14s → 平A池 +5.12s → 轴 frontTotal 180.55→190.66 →
+  // 误触轴回退，inStunAttribution 全队红）。快照浅拷贝 + 调用后恢复：喧响通道对 cfg 只读。
+  const cfgRecord = cfg as unknown as Record<string, unknown>
+  const cfgSnapshot = { ...cfgRecord }
+  const rows = buildExecutions(cfg, rowState, chainCountTotal, teamFrontlineSeconds)
+  for (const k of Object.keys(cfgRecord)) {
+    if (!Object.prototype.hasOwnProperty.call(cfgSnapshot, k)) delete cfgRecord[k]
+  }
+  Object.assign(cfgRecord, cfgSnapshot)
+  const skillRegen = rows.reduce((sum, row) => sum + rowDecibelTotal(cfg, row), 0)
 
   // 奖励回复：池内效果（时光切片）。弹刀/闪反/连携/快支的固定奖励与异常奖励由外部按槽位注入
   // （specialActionDecibelBonusPerSlot / anomalyDecibelBonusPerSlot），避免与展示层双算。
@@ -488,9 +507,11 @@ export function calcDecibelSource(
   specialActionBonus = 0,
   /** 异常/紊乱/乱流奖励（含伴随50%），由全局配置按槽位注入（上一轮异常池结果） */
   anomalyBonus = 0,
+  /** Σ 队友前台秒（行级喧响 buildExecutions 需要，与装配层同语义：不含自己） */
+  teamFrontlineSeconds = 0,
 ): DecibelSource {
   const efficiency = decibelEfficiencyMultiplier(cfg)
-  const raw = calcRawDecibelParts(cfg, state, chainCountTotal, state.exSpecialCount, state.ultimateCount, totalTime)
+  const raw = calcRawDecibelParts(cfg, state, chainCountTotal, state.exSpecialCount, state.ultimateCount, totalTime, teamFrontlineSeconds)
 
   // 喧响获得效率完整作用于所有获得来源：开局、招式、奖励、队友伴随。
   const initialGift = cfg.initialDecibelGift * efficiency
@@ -1181,7 +1202,10 @@ export function iterate(
     const decibelExCount = cfg.agentId === '1051' && cfg.yidhariContinuousEx
       ? Math.floor(exSpecialCount)
       : exSpecialCount
-    const rawDecibel = calcRawDecibelParts(cfg, prev, chainCountInput, decibelExCount, prev.ultimateCount, totalTime)
+    // 行级喧响 Σ 需要队友前台秒（与装配层 teammateFrontlineSeconds 同语义：Σ 其他人，迭代期取上一轮值，
+    // 收敛后与终局装配一致）
+    const decibelTeamFrontline = prevStates.reduce((sum, st, k) => (k === i ? sum : sum + (st.frontlineTime ?? 0)), 0)
+    const rawDecibel = calcRawDecibelParts(cfg, prev, chainCountInput, decibelExCount, prev.ultimateCount, totalTime, decibelTeamFrontline)
     shareableDecibels.push(rawDecibel.shareableTotal)
   }
 

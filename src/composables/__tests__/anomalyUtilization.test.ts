@@ -54,6 +54,9 @@ describe('异常积蓄利用率默认值（支援/防护不再 ÷10）', () => {
     const ap2: any = (calc as any).anomalyPoolResult?.value
     const electric2 = ap2?.perElement.find((p: any) => p.element === 'electric')
     const after = electric2.contributions.filter((c: any) => c.slot === 0).reduce((s: number, c: any) => s + c.totalBuildUp, 0)
-    expect(after).toBeCloseTo(before * 0.5, 1)
+    // 2026-09-08 喧响账本行级化：利用率缩放（applyExecutionUtilization 缩 count/totalDecibel）
+    // 现在会反馈进行级账本 → 次数动力学随滑块微移，「精确减半」是旧聚合账本无视利用率的副产物
+    // （实测偏差 0.27%）。改为相对容差 1%：滑块方向与量级语义不变。
+    expect(Math.abs(after - before * 0.5) / (before * 0.5)).toBeLessThan(0.01)
   })
 })

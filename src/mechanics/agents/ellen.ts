@@ -286,6 +286,7 @@ function pushEllenExecution(executions: AgentResourceInput['executions'], input:
   actionTime: number
 }): void {
   if (input.count <= 0) return
+  // @fact agent:1191/喧响行级回填审计 口径: 本 helper 全部 9 个调用行（1191006 急冻修剪法#3=61.38、1191007 回旋斩击=15.565、1191009 蓄力剪击=30.415、1191011 横扫=140.36、1191012 鲨卷风C2追加=130.71、1191027 挥刀=6.435、1191028 剑气=1.4025、1191029/1191030 冰刃浪=16.7475/21.0375）均为真实招式 moveId 且倍率表 decibel_recovery 为每次值——删除旧 decibelRecovery:0 硬编码后由 enrichExecutionPlan/记账层 Σ 按表回填；与通用强特行（鲨卷风本体）不重叠（C2 行是「全鲨卷风」的第二次施放），旧 0 曾使这些行在账本与展示双侧漏计 | 据 catalog 1191 表值逐行核对@2026-09-08 | 验 src/core/__tests__/decibelRowParity.test.ts | 锚 src/mechanics/agents/ellen.ts#pushEllenExecution | 信 确认
   executions.push({
     moveId: input.moveId,
     moveName: input.moveName,
@@ -298,8 +299,6 @@ function pushEllenExecution(executions: AgentResourceInput['executions'], input:
     totalComboAlignTime: 0,
     energyConsume: 0,
     totalEnergyConsume: 0,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
   })

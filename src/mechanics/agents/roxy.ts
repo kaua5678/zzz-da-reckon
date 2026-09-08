@@ -156,6 +156,9 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
   record.roxySendOffMoveId = findMoveById(skills, SEND_OFF_MOVE_ID)?.id ?? ''
   record.roxySpinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds', 2))
   record.roxySpinSecondDamage = getRowValue(findMoveById(skills, SPIN_SECOND_MOVE_ID), 'damage')
+  // 自旋喧响表值（1621008 decibel_recovery，每秒口径——与同行 damage 已录的「每秒 × spinSeconds」口径一致；
+  // 行值经 decibelRecoveryOverride 跳过表值回填，见 buildRoxyExecutions）
+  record.roxySpinSecondDecibel = getRowValue(findMoveById(skills, SPIN_SECOND_MOVE_ID), 'decibel_recovery')
   cfg.mechanicRowValues = {
     [PER_ENERGY_EXTRA_MOVE_ID]: getRowValue(findMoveById(skills, PER_ENERGY_EXTRA_MOVE_ID), 'damage'),
     [EYE_BURST_MOVE_ID]: getRowValue(findMoveById(skills, EYE_BURST_MOVE_ID), 'damage'),
@@ -238,13 +241,17 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
       timeBucket: 'necessary',
     })
     const spinMoveMult = Number((cfg as unknown as Record<string, unknown>).roxySpinSecondDamage ?? 0)
+    const spinDecibelPerSec = Number(record.roxySpinSecondDecibel ?? 0)
     if (source.spinSeconds > 0) {
+      // @fact agent:1621/自旋喧响每秒口径 口径: 自旋(1621008)倍率表 damage=2608.6 与 decibel_recovery=84.343 同为「每秒」值——damage 侧已按 每秒×spinSeconds 录入并被 roxy 测试锁定，喧响同构：行值=84.343×spinSeconds/次、总=×exCount；表值直填会把持续段少算 spinSeconds 倍，故 decibelRecoveryOverride 跳过 enrich 表值覆盖 | 据 catalog 1621008 行值+damage 侧已录口径@2026-09-08 | 验 src/core/__tests__/decibelRowParity.test.ts | 锚 src/mechanics/agents/roxy.ts#SPIN_SECOND_MOVE_ID | 信 高
       executions.push({
         moveId: SPIN_SECOND_MOVE_ID, moveName: '自旋（每秒，耗能 30/s）', category: 'special',
         count: exCount, actionTime: 0, comboAlignRatio: 0,
         totalTime: 0, totalComboAlignTime: 0,
         energyConsume: 0, totalEnergyConsume: 0,
-        decibelRecovery: 0, totalDecibelRecovery: 0,
+        decibelRecovery: spinDecibelPerSec * source.spinSeconds,
+        totalDecibelRecovery: exCount * spinDecibelPerSec * source.spinSeconds,
+        decibelRecoveryOverride: true,
         energyRecovery: 0, totalEnergyRecovery: 0,
         timeBucket: 'backstage',
         damageMultiplier: spinMoveMult * source.spinSeconds,

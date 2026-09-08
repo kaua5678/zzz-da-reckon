@@ -172,9 +172,12 @@ describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/�
     const rows = calc.damagePoolRows.value
     // 无琉音：promoteVariant 块被跳过（艾莲终结技只来自她自己的轴外次数，不因转大块增加）。
     // 轴外次数口径：特殊动作/异常奖励已计入喧响推导（弹刀10×215+闪反+伴随 ≈ 3000+）→ 3 次
+    // 2026-09-08 喧响账本行级化（Σ buildExecutions 行，债务清偿）：艾莲模块行的真实倍率表
+    // 喧响进账本（旧聚合通道漏计，pushEllenExecution 的 decibelRecovery:0 硬编码已删）→
+    // 喧响跨档 → 终结 3→4（A/B 归因：临时回退旧聚合账本可复现 3，已验证）
     const ultRow = rows.find(r => r.moveId === '1191017')
     const ellen = calc.resourceResult.value!.characters.find(c => c.agentId === '1191')!
-    expect(ultRow?.count ?? 0).toBe(3)
+    expect(ultRow?.count ?? 0).toBe(4)
     expect(ultRow?.count ?? 0).toBe(ellen.ultimateCount)
     // 展示层（resourceResult）可见诺姆赠送连携：上一位队友 slot 2（安比）的 executions 含其本人
     // 连携技 1011010（电磁引擎，带 normaGiftChain 标记）

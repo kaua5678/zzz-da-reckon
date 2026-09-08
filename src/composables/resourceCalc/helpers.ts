@@ -1381,9 +1381,13 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
               : exec.anomalyBuildUp === 0
                 ? 0
                 : (fusedRowValue(skills, exec.moveId, 'anomaly_buildup') ?? getRowValue(move, 'anomaly_buildup'))
-            // 同上：decibel/energy 显式 0 = 模块显式禁用回填（围猎后台闪反无喧响/能量）
+            // 同上：decibel/energy 显式 0 = 模块显式禁用回填（围猎后台闪反无喧响/能量）；
+            // decibelRecoveryOverride = 模块显式给定口径换算后的行值（如洛克茜自旋：表值为每秒，
+            // 行值 = 每秒 × spinSeconds），跳过表值覆盖——与 damage/anomaly override 同构。
             const tableDecibel = getRowValue(move, 'decibel_recovery')
-            const decibelValue = exec.decibelRecovery === 0 ? 0 : (tableDecibel || (exec.decibelRecovery ?? 0))
+            const decibelValue = exec.decibelRecoveryOverride
+              ? (exec.decibelRecovery ?? 0)
+              : exec.decibelRecovery === 0 ? 0 : (tableDecibel || (exec.decibelRecovery ?? 0))
             const tableEnergy = getRowValue(move, 'energy_recovery')
             const energyValue = exec.energyRecovery === 0 ? 0 : (tableEnergy || exec.energyRecovery)
             patch = {
@@ -1506,6 +1510,16 @@ export function buildCharConfig(
   const remielleRainbowEnd = findRemielleRainbowEnd(skills as AgentSkills)
   const remielleRadiantTurn = findRemielleRadiantTurn(skills as AgentSkills)
 
+  // 倍率表 decibel_recovery 全量预存（喧响收入行级化 Σ 切换的前置）：核心层 calcRawDecibelParts
+  // 无 catalog 访问权，按此表复刻 enrichExecutionPlan 回填语义（getRowValue 含行级融合乘子，
+  // 与展示层同一函数同一时刻取值，杜绝记账/展示两套表值）。
+  const decibelRecoveryByMoveId: Record<string, number> = {}
+  for (const cat of (skills as AgentSkills | undefined)?.categories ?? []) {
+    for (const m of cat.moves ?? []) {
+      decibelRecoveryByMoveId[String(m.id)] = getRowValue(m, 'decibel_recovery')
+    }
+  }
+
   // 合轴率覆盖：优先使用用户在结果页设置的值，否则用倍率表默认值
   const ov = (moveId: string, defaultRatio: number) =>
     configStore.getComboAlignOverride(slot, moveId, defaultRatio)
@@ -1558,6 +1572,7 @@ export function buildCharConfig(
     exSpecialResourceId: exSpecial?.resourceId,
     exSpecialActionTime: exSpecial?.actionTime ?? 0,
     exSpecialDecibelRecovery: exSpecial?.decibelRecovery ?? 0,
+    decibelRecoveryByMoveId,
     exSpecialComboAlignRatio: ov(exSpecial?.moveId ?? '', exSpecial?.comboAlignRatio ?? 0),
     ultimateMoveId: ultimate?.moveId ?? '',
     ultimateCost: ULTIMATE_COST_DEFAULT,
