@@ -1365,7 +1365,10 @@ export function useResourceCalc() {
     // 曾只进 adjustedResourceResult（伤害池）导致时间表看不到转大耗时，用户 2026-09 般琉卢排查；
     // 时间从目标平A池挤出，总前台守恒，不撑破预算）。
     const rrShown0 = applyLiuyinPromote(rr, sp1, catalogStore) ?? rr
-    const rrShown = applyNormaHatChain(rrShown0, configStore, catalogStore) ?? rrShown0
+    // 展示口径归一：赠送行（诺姆赠链 / 琉音赠大，含轴模式 post-hoc carve 路径）在装配后追加，
+    // 引擎 timeAllocation 看不到 → 按**最终行**重算前台/后台（单一展示口径，见 normalizeDisplayTime）
+    const rrShown = ResourceCalcHelpers.normalizeDisplayTime(
+      applyNormaHatChain(rrShown0, configStore, catalogStore) ?? rrShown0)
 
     // 叶瞬光：琉音转大赠送的逐云次数（adj 后 gift 行）
     let yeshuguangGiftUltNext = 0

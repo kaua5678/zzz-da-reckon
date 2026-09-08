@@ -41,6 +41,7 @@ import type {
   SkillExecution,
   AnomalyProgress,
 } from '@/types/resource'
+import { isFrontlineExecution } from '@/types/resource'
 import type { PanelValues, TeammateBuff, AgentSkills, SkillMove, Agent, DriveDiscConfig } from '@/types/catalog'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { fmt } from '@/utils/format'
@@ -1334,6 +1335,35 @@ export function averageBasicRows(
     healingAmount: getHealingAmount(move) / at,
     skillTableResolved: true,
     skillTableNote: '平A按基准段（默认#3）秒均 × 平A时间计算（只打该段）。',
+  }
+}
+
+/**
+ * 展示口径归一（2026-09-08 用户实测「诺姆入队后主C时间 = 180s + 诺姆连携秒数」后收口）：
+ * 资源卡的「时间分配」按**最终执行行**计算——前台 = Σ前台行 `totalTime`（含装配后追加的赠送行：
+ * 诺姆赠链 `normaGiftChain` / 琉音赠大 `source==='gift'`），后台 = 战斗时间 − 前台。
+ *
+ * 为什么必须在这里统一：赠送行由 `applyNormaHatChain` / `applyLiuyinPromote` 在引擎返回**之后**追加，
+ * 引擎的 `timeAllocation` 看不到它们；而赠送时间的**预留**分散在 iterate 必要时间 / 折叠环行测量 /
+ * 截断上限三处，各自口径略不同（轴模式琉音赠大走的是 post-hoc carve、预留为 0）——于是展示层
+ * 若也各自回扣就会再次漂移（实测轴模式资源卡总计 = 180 + 赠送秒数）。此处以**最终行**为唯一口径重算，
+ * 新增赠送机制无需再改展示逻辑。
+ */
+export function normalizeDisplayTime(rr: TeamResourceResult): TeamResourceResult {
+  return {
+    ...rr,
+    characters: rr.characters.map(c => {
+      const front = (c.executions ?? []).reduce(
+        (s, e) => s + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
+      return {
+        ...c,
+        timeAllocation: {
+          ...c.timeAllocation,
+          frontlineTime: front,
+          backstageTime: Math.max(0, rr.totalTime - front),
+        },
+      }
+    }),
   }
 }
 

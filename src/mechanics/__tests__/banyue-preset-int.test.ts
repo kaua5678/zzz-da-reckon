@@ -33,9 +33,11 @@ describe('般琉通用预设（集成）：连段块认领自动行，池守恒'
     // 论道只有「山威行」+「怒相外论道连段行」——无「轴内·连段块」行（轴内单段论道被认领，池守恒）
     expect(lunDaoRows.some(e => e.skillTableNote?.includes('轴内'))).toBe(false)
     const totalLunDao = lunDaoRows.reduce((s, e) => s + e.count, 0)
-    // 池守恒：执行计划里的论道总数 = 怒相内(rage×2) + 怒相外自动连段，不被轴内连段块翻倍
+    // 池守恒：执行计划里的论道总数 ≤ 怒相内(rage×2) + 怒相外自动连段——判据本体是「不被轴内连段块翻倍」；
+    // 恒等不成立是因为**时间线截断**（坑 22）会砍掉装不下的行，而琉音好评转大赠大占目标槽账本
+    // （与 `giftMoveTimeLedger.test.ts` 同口径）后可用时间更紧（2026-09-08 实测 17→12 行）。
     expect(cycle).toBeTruthy()
-    expect(totalLunDao).toBe((cycle!.lunDaoRageCount ?? 0) + (cycle!.lunDaoOutCount ?? 0))
+    expect(totalLunDao).toBeLessThanOrEqual((cycle!.lunDaoRageCount ?? 0) + (cycle!.lunDaoOutCount ?? 0))
     expect(totalLunDao).toBeGreaterThanOrEqual(2)
   })
 })

@@ -131,6 +131,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       return attachedInAxis[moveId] ?? 0
     }
 
+    // @fact engine:damage/减防通道 口径: 直伤与异放的防御区输入 = 面板通用 enemyDefReduction（妮可40%/叶瞬光C1 20%/席德C2 20%/伊芙琳C1/爱芮C2/千夏C1/音擎 千面日陨·索魂影眸…）+ 行级 moveId 限定 defIgnore（叶瞬光C2/C6/雨果C2/雅1命…），同字段加算；面板 enemyDefFlatReduction 进穿透值通道。异常质量区已由 calcAnomalyMass 读施加者面板，结算区不再补（双计） | 据 用户实测@2026-09-08（直伤角色偏低）+ docs/GAME_TERM_TO_CODE_FIELD.md §4 | 验 src/composables/__tests__/damagePoolDefDown.test.ts | 锚 src/composables/resourceCalc/damagePool.ts#pushDirect | 信 确认
     function pushDirect(row: {
       id: string; slot: number; agentId: string; name: string; element: string; source: string; count: number; multiplier: number; note?: string; skillDamageTarget?: any; moveId?: string; critRateBonus?: number; critDmgBonus?: number; dmgBonus?: number; sheerDmgBonus?: number; flatDamageBonus?: number; resIgnore?: number; basisValueOverride?: number; basisLabelOverride?: string; stunOverride?: number; defIgnore?: number; penRatioBonus?: number; sourceTag?: 'gift' | 'stun' | 'self'
     }) {
@@ -165,8 +166,12 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         damageElement: safeElement(row.element),
         damageBasis: 'atk',
         enemyDefense: configStore.enemy.defense,
-        enemyDefReduction: row.defIgnore ?? 0,
-        enemyDefFlatReduction: 0,
+        // 减防/无视防御（GAME_TERM_TO_CODE_FIELD §4）：面板通用值（妮可 40%/叶瞬光C1 20%/席德C2 20%/
+        // 伊芙琳C1/爱芮C2/千夏C1/音擎 千面日陨·索魂影眸 等）+ 行级 moveId 限定值（叶瞬光C2/C6、雨果C2、
+        // 雅1命、席德…），两者同字段加算。**2026-09-08 修**：此前只传行级 `row.defIgnore`，面板通用值被
+        // 静默丢弃（直伤整条通道失效，实测 妮可队 -21%、席德+妮可队 -29%）。
+        enemyDefReduction: (panel.enemyDefReduction ?? 0) + (row.defIgnore ?? 0),
+        enemyDefFlatReduction: panel.enemyDefFlatReduction ?? 0,
         enemyLevel: configStore.enemy.level,
         enemyResistance: enemyDamageRes[resolveStatElement(row.element) ?? ''] ?? 0,
         enemyResReduction: (panel.enemyResReduction ?? 0) + (row.resIgnore ?? 0),
@@ -229,8 +234,9 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         baseMultiplier: row.multiplier,
         element: element as any,
         enemyDefense: configStore.enemy.defense,
-        enemyDefReduction: releaseMod.enemyDefReduction ?? 0,
-        enemyDefFlatReduction: 0,
+        // 异放同样吃面板通用减防（结算区口径：docs/mechanism-reference.md §异常结算区含减防）+ 异放限定 releaseModifier
+        enemyDefReduction: (settlementPanel?.enemyDefReduction ?? 0) + (releaseMod.enemyDefReduction ?? 0),
+        enemyDefFlatReduction: settlementPanel?.enemyDefFlatReduction ?? 0,
         enemyLevel: configStore.enemy.level,
         enemyResistance: enemyDamageRes[resolveStatElement(element) ?? ''] ?? 0,
         enemyResReduction: (settlementPanel?.enemyResReduction ?? 0) + releaseMod.enemyResReduction,
@@ -1355,8 +1361,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           damageElement: 'physical',
           damageBasis: 'atk',
           enemyDefense: configStore.enemy.defense,
-          enemyDefReduction: 0,
-          enemyDefFlatReduction: 0,
+          enemyDefReduction: janePanel.enemyDefReduction ?? 0,
+          enemyDefFlatReduction: janePanel.enemyDefFlatReduction ?? 0,
           enemyLevel: configStore.enemy.level,
           enemyResistance: enemyDamageRes['physical'] ?? 0,
           enemyResReduction: janePanel.enemyResReduction ?? 0,
@@ -1426,8 +1432,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
             damageElement: 'physical',
             damageBasis: 'atk',
             enemyDefense: configStore.enemy.defense,
-            enemyDefReduction: 0,
-            enemyDefFlatReduction: 0,
+            enemyDefReduction: alicePanel.enemyDefReduction ?? 0,
+            enemyDefFlatReduction: alicePanel.enemyDefFlatReduction ?? 0,
             enemyLevel: configStore.enemy.level,
             enemyResistance: enemyDamageRes['physical'] ?? 0,
             enemyResReduction: alicePanel.enemyResReduction ?? 0,

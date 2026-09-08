@@ -3,12 +3,13 @@
  *
  * 模型：一个角色（队伍×命座）挂一条「富裕轴」优先级栈，引擎对每次失衡窗口走栈：
  * 1. 从栈顶（最高优先级）往下取动作，逐个检查资源：
- *    - 闪能（强特）→ 不够就跳过这个动作（不是整轮失败）；
- *    - 喧响（终结技/开帷幕）→ 不够就跳过；
+ *    - 闪能（强特）→ **超出总量的动作直接去掉**（用户口径 2026-09-08：通用规则，耗资源的招式
+ *      都从总量里拿，不许凭空创造；四舍五入开关在**总量侧**补缺口，见下）；
+ *    - 喧响（终结技/开帷幕）→ 同口径**去掉**（总回复只够 3 次大招时，轴里捏的第 4 次打不出来 → 扣除）；
  *    - 时间 → 累计动作时长，超过失衡窗口就停（后面的动作整段舍弃）。
  * 2. 循环到资源耗尽或窗口填满。
  *
- * 效果：资源全够 = 爆发轴（栈顶到底全打）；能量/喧响不够 = 中低优先级动作被跳过 = 经济轴自然分化。
+ * 效果：资源全够 = 爆发轴（栈顶到底全打）；资源不够 = 低优先级动作被跳过 = 经济轴自然分化。
  * 本模块只做「哪些动作被执行」的纯函数决策，不碰面板/倍率/伤害。
  */
 
@@ -167,15 +168,24 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
           skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'time' })
           continue
         }
-        // 资源：固定轴，不足也计入，但记警告（不自动变轴）
-        if (act.energyCost > 0) {
-          energyUsed += act.energyCost
-          if (energyUsed > totalEnergy) skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'energy' })
+        // 资源门控（**通用口径**，用户 2026-09-08）：轴从**总量**里挑招式——任何耗资源的动作，
+        // 超出该槽位总量就**去掉**（不执行、不计入），不许凭空创造。喧响实测语义：总回复 9000 →
+        // 只够 3 次大招，轴里捏了 4 次 → 第 4 次打不出来（窗口里攒不出 3000），必须扣掉；
+        // 轴里本来就只捏 3 次则不受影响。闪能（强特）同口径。
+        // 例外：四舍五入开关（保底4喧响 `guarantee.ultimate`）**已经在总量侧**把缺口补上
+        //（补弹刀 → decibelSource.total 变高，见 useResourceCalc 的 decibelParryNext），
+        // 所以这里不需要「允许超支」——开关打开时总量本身就略微提升了。
+        // 本文件头注释一直写的也是「不够就跳过」，此前实现与之不符。
+        if (act.decibelCost > 0 && decibelUsed + act.decibelCost > totalDecibel + 1e-9) {
+          skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'decibel' })
+          continue
         }
-        if (act.decibelCost > 0) {
-          decibelUsed += act.decibelCost
-          if (decibelUsed > totalDecibel) skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'decibel' })
+        if (act.energyCost > 0 && energyUsed + act.energyCost > totalEnergy + 1e-9) {
+          skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'energy' })
+          continue
         }
+        if (act.energyCost > 0) energyUsed += act.energyCost
+        if (act.decibelCost > 0) decibelUsed += act.decibelCost
         // 执行
         bump(act.slot, act.moveId, 1)
         slotTime[act.slot] = used + act.actionTime

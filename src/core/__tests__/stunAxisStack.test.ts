@@ -45,30 +45,31 @@ describe('calcStunAxisStack', () => {
     expect(r.windowsUsed).toBe(3)
   })
 
-  it('low energy warns but still executes EX (固定轴：资源不足只提示，不自动变轴)', () => {
+  it('闪能不足 → 超出总量的强特被**去掉**（用户口径 2026-09-08：通用规则，耗资源招式从总量里拿）', () => {
     const r = calcStunAxisStack({
       axes: [{ actions: stack }],
       stunCount: 3,
       windowDuration: 16,
-      energyBySlot: { 0: 180 },
+      energyBySlot: { 0: 180 }, // 只够 3 次强特（60/次；轴里 6 次）
       decibelBySlot: { 0: 18000 },
     })
-    expect(r.executed['0:1051012'].count).toBe(6)
-    expect(r.skipped.some(s => s.moveId === '1051012' && s.reason === 'energy')).toBe(true)
-    expect(r.energyUsed).toBe(360)
+    expect(r.executed['0:1051012'].count).toBe(3)
+    expect(r.skipped.filter(s => s.moveId === '1051012' && s.reason === 'energy')).toHaveLength(3)
+    expect(r.energyUsed).toBe(180)
   })
 
-  it('insufficient decibel warns but still executes ultimate (喧响不够 → 只提示不跳过)', () => {
+  it('喧响不足 → 超出总量的终结技被**去掉**（用户口径 2026-09-08：轴从总量里挑招式）', () => {
     const r = calcStunAxisStack({
       axes: [{ actions: stack }],
       stunCount: 3,
       windowDuration: 16,
       energyBySlot: { 0: 360 },
-      decibelBySlot: { 0: 3000 },
+      decibelBySlot: { 0: 3000 }, // 只够 1 次大招（轴里 6 次）
     })
-    expect(r.executed['0:1051016']?.count ?? 0).toBe(6)
-    expect(r.skipped.some(s => s.moveId === '1051016' && s.reason === 'decibel')).toBe(true)
-    expect(r.decibelUsed).toBe(18000)
+    // 只执行得起的 1 次；其余 5 次跳过（旧口径「只提示不跳过」会把 6 次全计入 → 实测 4 次大招被算成 4 次）
+    expect(r.executed['0:1051016']?.count ?? 0).toBe(1)
+    expect(r.skipped.filter(s => s.moveId === '1051016' && s.reason === 'decibel')).toHaveLength(5)
+    expect(r.decibelUsed).toBe(3000)
   })
 
   it('short window stops at overflow (超窗口停，后面动作舍弃)', () => {

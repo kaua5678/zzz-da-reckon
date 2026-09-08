@@ -1104,7 +1104,8 @@ export interface ConvergenceReport {
    * 失衡外层的退出方式：
    * - `stable`：反馈量全稳定（真收敛）；
    * - `cycle`：检测到离散 2-循环（如失衡次数 5→4→5）后主动停 —— 离散场景的正确兜底，不是失败，
-   *   但结果取的是循环中的一支，需与真收敛区分；
+   *   但结果取的是循环中的一支，需与真收敛区分（**只指外层**：`stunPoolResult.stunCount` 自
+   *   2026-09-08 起由非轴连续不动点闭式给出，与迭代入口/热启动历史无关，见 ENGINE_PIPELINE_GUIDE 坑 25）；
    * - `maxIter`：耗尽迭代上限（**可疑**：反馈量仍在变，结果可能停在错误值）。
    */
   outerExit?: 'stable' | 'cycle' | 'maxIter'

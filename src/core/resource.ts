@@ -585,6 +585,27 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     : 0
 
   // 构建最终结果
+  /**
+   * 赠送行时间（诺姆膛温赠链 / 琉音好评转大赠大）：由 `applyNormaHatChain` / `applyLiuyinPromote`
+   * 在装配**之后**追加到目标槽执行计划，不在 `buildExecutions` 产物里；其时间已由 iterate 计入
+   * 目标槽必要时间（GROSS 全额，见 helpers.ts Step4 两处预留）。**截断上限与前台展示必须同口径计入**，
+   * 否则：① 其它行按「含赠送时间的账本」截断、再叠加赠送行 → 物化行超账本（守恒破）；
+   * ② 资源卡「总计」= 战斗时间 + 赠送秒数（用户实测 2026-09-08：诺姆入队后主C 180s + 诺姆连携秒数）。
+   * 轴模式不预留（轴内赠块由轴引擎计账，见 helpers.ts `liuyinGiftAxisActive`），故同样不在此计入。
+   */
+  const giftNormaIdxFinal = configs.findIndex(c => c.agentId === '1571')
+  const normaGiftFinal = giftNormaIdxFinal >= 0
+    ? normaGiftChainInfo(configs, states, giftNormaIdxFinal, totalTime)
+    : { targetIdx: -1, time: 0 }
+  const giftLiuyinIdxFinal = !config.axisUltimateTrackBySlot && configs.some(c => c.agentId === '1481')
+    ? configs.findIndex(c => c.agentId === '1481')
+    : -1
+  const liuyinGiftFinal = giftLiuyinIdxFinal >= 0
+    ? liuyinGiftChainInfo(configs, states, giftLiuyinIdxFinal, totalTime, config.stunCount ?? 0)
+    : { targetIdx: -1, time: 0 }
+  const giftTimeOfSlot = (idx: number): number =>
+    (idx === normaGiftFinal.targetIdx ? normaGiftFinal.time : 0)
+    + (idx === liuyinGiftFinal.targetIdx ? liuyinGiftFinal.time : 0)
   /** 时间线截断总量（装配阶段砍掉的秒数）：= 资源允许但时间装不下的部分，上报为 overflowSeconds */
   let timeTruncatedSeconds = 0
   const characters: CharacterResourceResult[] = configs.map((cfg, i) => {
@@ -650,19 +671,24 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       config.anomalyDecibelBonusPerSlot?.[i] ?? 0,
       teammateFrontlineSeconds)
     const builtExecutions = buildExecutions(cfg, state, chainCountTotal, teammateFrontlineSeconds)
+    // 本槽赠送行时间（诺姆赠链 / 琉音赠大）：账本已含（necessary 预留），但行不在 builtExecutions 里
+    // ——截断上限先扣掉它，装配后再追加的赠送行才与账本守恒（见上方 giftTimeOfSlot 注释）。
+    const giftTimeThisSlot = giftTimeOfSlot(i)
     // ===== 时间线截断（通用资源循环规则，2026-09-05 用户口径）=====
     // 本槽物化行超出账本（必要 + 平A）的部分按时间线尾部截断：平A行是填充项永远保留，
     // 招式行从后往前整行丢、边界行等比缩（伤害/失衡/积蓄/回能线性缩）。iterate 已把必要时间
     // 封顶到「预算 − 队友占用」，所以这里的上限就是账本本身。语义 = 实战 180s 到点结算，
     // 资源攒多了也兑现不出来——旧实现没有这层，只能靠虚高账本挤平A池，结果两头都不准。
     const truncated = truncateExecutionsToFrontline(
-      builtExecutions, state.necessaryTime + state.basicAttackTime)
+      builtExecutions, Math.max(0, state.necessaryTime + state.basicAttackTime - giftTimeThisSlot))
     const executions = truncated.executions
     timeTruncatedSeconds += truncated.cutSeconds
     // 显示口径统一：前台时间 = **前台**执行行 ΣtotalTime（后台行不占共享轴，如莱卡恩围猎蓄力；
     // 含合轴，机制改写行/倍率表行都在内），后台 = 总时间 - 前台。
-    // 折叠循环把前台行对其账本收敛 + 本步截断 ⇒ Σ前台行 ≤ 账本 ≤ 战斗时间。
+    // 装配后追加的赠送行（诺姆赠链/琉音赠大）不在 Σ行里——展示层由 `normalizeDisplayTime`
+    // 在编排层按最终行统一重算（单一口径，新增赠送机制不必各自回扣）。
     const execFrontlineTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
+      + giftTimeThisSlot
     const timeAlloc = {
       ...calcTimeAllocation(cfg, state, totalTime),
       frontlineTime: execFrontlineTime,
@@ -708,9 +734,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   for (const cfg of configs) if (cfg.agentId === '1531') cfg.billyFinalizeChain = false
 
   // 终局预留量（供 applyLiuyinPromote 判定跳过 post-hoc carve；与 iterate Step4 同一求解）
-  const liuyinGiftTimeTotal = !config.axisUltimateTrackBySlot && configs.some(c => c.agentId === '1481')
-    ? liuyinGiftChainInfo(configs, states, configs.findIndex(c => c.agentId === '1481'), totalTime, inputStunCount).time
-    : 0
+  // ——与上方 giftTimeOfSlot 同源（同一 helper、同一轴模式条件），不重算。
+  const liuyinGiftTimeTotal = liuyinGiftFinal.time
 
   return {
     totalTime,

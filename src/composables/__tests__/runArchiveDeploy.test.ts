@@ -107,6 +107,40 @@ describe('部署 → 资源池结果', () => {
   }, 60000)
 })
 
+describe('部署 → 失衡次数路径无关（2026-09-08 修复：显示 0 次）', () => {
+  it('同一队重复部署（中间部署别队）失衡次数一致且 ≥3', async () => {
+    // 根因：非轴失衡不动点 N ↦ floor(G(1−xN)) 是阶梯函数，在两条阶梯间来回跳（雅/南宫/柚叶队
+    // 实测 0↔6）；旧实现保留循环里的任意一支 → 冷启动 4 次、热启动（缓存命中）0 次。
+    // 现口径 = 连续不动点闭式解，次数与部署历史无关。
+    const { config, catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+
+    const neko: DeployConfig = {
+      supported: true,
+      mode: 'Deadly Assault',
+      team: [
+        { slot: 0, agentId: '1021', cinemaLevel: 6, wEngineId: null, wEngineModLevel: 4 },
+        { slot: 1, agentId: '1571', cinemaLevel: 2, wEngineId: null, wEngineModLevel: 1 },
+        { slot: 2, agentId: '1211', cinemaLevel: 6, wEngineId: null, wEngineModLevel: 5 },
+      ],
+      boss: { presetId: '40008', name: '基塔布鲁·滞变畸兽', phaseId: '690431' },
+      warnings: [],
+    }
+
+    applyDeployConfig(config, DEPLOY, presets, phaseViews)
+    const first = calc.stunPoolResult.value!.stunCount
+    expect(first, `首次部署失衡次数 ${first}`).toBeGreaterThanOrEqual(3)
+
+    applyDeployConfig(config, neko, presets, phaseViews)
+    void calc.teamTotalDamage.value // 触发别队计算，写入热启动缓存
+    applyDeployConfig(config, DEPLOY, presets, phaseViews)
+    const second = calc.stunPoolResult.value!.stunCount
+
+    expect(second, `重复部署失衡次数 ${second}（首次 ${first}）`).toBe(first)
+  }, 180000)
+})
+
 describe('applyDeployConfig 确定性（跨队不泄漏命座门控队友 buff）', () => {
   it('同一支队两次部署伤害一致（中间部署别队不残留 C1/C2 队友 buff）', async () => {
     const { config, catalog } = await setupHarness(['', '', ''])

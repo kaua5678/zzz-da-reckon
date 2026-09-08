@@ -198,6 +198,7 @@ function adjustStunExecs(
 }
 
 /** 转大不动点：给定基础失衡 execs 与畏缩覆盖率，迭代（失衡次数 ↔ 好评转大次数）至收敛 */
+// @fact engine:非轴失衡不动点 口径: 非轴窗口占比 x=窗口时长/有效时间是连续量，计数映射 N ↦ floor(G(1−xN)/阈值) 是单调递减阶梯函数、在相邻两阶之间来回跳（实测 0↔6、2↔4）——口径 = 解连续不动点闭式 N*=(g+gf−r)/((1−r)+g·x)（g=毛失衡/阈值、gf=Boss白送/阈值、r=雨果返还），floor(N*) 即次数，与迭代入口/热启动历史无关 | 据 用户实测@2026-09-08（实战对比部署 雅/南宫/柚叶 vs 基塔布鲁·滞变畸兽 显示 0 次；同配置冷启动 4/热启动 0）+ 时间守恒不动点自洽 | 验 src/composables/resourceCalc/__tests__/liuyinPromote.test.ts + src/composables/__tests__/runArchiveDeploy.test.ts | 锚 src/composables/resourceCalc/liuyinPromote.ts#promoteFixpoint | 信 确认
 export function promoteFixpoint(
   baseExecs: StunSkillExecution[],
   flinchRate: number,
@@ -233,6 +234,7 @@ export function promoteFixpoint(
   let promote = 0
   let pool: StunPoolResult | null = null
   const seenStunCounts = new Set<number>()
+  const bossStunValue = configStore.enemy.stunValue
   for (let k = 0; k < MAX_PROMOTE_ITER; k++) {
     // 有轴时：60/90 转大次数直接读轴（轴即最终次数，无连携↔大招改写），否则按好评/连携窗口推导
     let hug90 = 0
@@ -253,10 +255,27 @@ export function promoteFixpoint(
     pool = runPool(execs, inAxisFraction, stunCount)
     const next = pool?.stunCount ?? 0
     if (next === stunCount) break
-    // 离散 floor 可能产生 2-循环（如 5→4→5），检测到重复即停，保留最后计算结果
-    if (seenStunCounts.has(next)) break
-    seenStunCounts.add(stunCount)
-    stunCount = next
+    if (axisMode) {
+      // 轴模式：窗口占比由轴内逐招 fraction 折算（离散量），保持整数迭代 + 2-循环环检测
+      if (seenStunCounts.has(next)) break
+      seenStunCounts.add(stunCount)
+      stunCount = next
+      continue
+    }
+    // 非轴模式：窗口占比是连续量 x = 窗口时长/有效时间，计数映射 N ↦ floor(E(N)/阈值) 是单调递减
+    // 阶梯函数——它在相邻两条阶梯间来回跳（实测 0↔6、2↔4），旧实现「检测到重复即停、保留最后池」
+    // 返回循环里的任意一支：2026-09-08 用户实测实战对比部署 雅/南宫/柚叶 vs 基塔布鲁·滞变畸兽
+    // 显示「失衡 0 次」，同一配置冷启动 4 次、热启动（缓存命中）0 次。
+    // 改解连续不动点闭式（阶梯函数的连续极限，floor 后与池的 floor 口径一致）：
+    //   E(N) = (毛失衡 + Boss白送) × (1 − xN)，N = E/阈值（雨果返还 r 段：N = (E/阈值 − r)/(1 − r)）
+    //   ⇒ N* = (g + gf − r) / ((1 − r) + g·x)，g = 毛失衡/阈值、gf = 白送/阈值。
+    // 收缩快（一次迭代即到连续不动点附近），次数不再依赖迭代入口/热启动历史。
+    const g = (pool?.grossStunBuildUp ?? 0) / Math.max(1e-9, bossStunValue)
+    const gf = (pool?.stunGift ?? 0) / Math.max(1e-9, bossStunValue)
+    const x = windowDur / Math.max(1e-9, effTime)
+    const fixed = (g + gf - refundStunRatio) / ((1 - refundStunRatio) + g * x)
+    if (!Number.isFinite(fixed) || Math.abs(fixed - stunCount) < 1e-6) break
+    stunCount = Math.max(0, fixed)
   }
   return {
     pool,
