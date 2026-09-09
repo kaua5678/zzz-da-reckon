@@ -425,8 +425,14 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
         非轴队 `liuyinGiftTimeReserved + normaGiftTimeReserved` == 装配赠行 Σ，**库级全绿**；
         ② `giftMoveTimeLedger.test.ts` 诺姆/琉音两侧逐位相等 + `core/__tests__/giftRows.test.ts` 锁契约。
         → **「core 推导计数 vs 失衡池不动点计数」两套计数库级无差异**，不再是搬行的障碍；
-        剩下的「让 `materialize` 直接产出行」是纯架构整理（须一并搬：截断顺序 / carve 位置 /
-        展示用 `chainCountTotal`），收益是结构而非数值——**未做，等排期**。
+        剩下的「让 `materialize` 直接产出行」经探针实测**不是纯搬运**（2026-09-10）：
+        ① 池的行提取 `extractSkillExecutions` 逐行遍历 `rr.executions` 且不筛 `source==='gift'`
+        ——赠行进引擎后池会与 `adjustStunExecs` 的 `count + promote` **双计失衡**；
+        ② 赠行进引擎就会走 enrich，**凭空补上生产侧刻意留空的字段**（实测同 moveId 对照：琉音赠行
+        `daze` 由缺席变 398.9、诺姆赠行 `skillDamageTarget` 由缺席变 `chain`，后者还会吃上定向增伤）；
+        ③ 截断顺序 / carve 位置 / 展示用 `chainCountTotal` 三处须一并搬。
+        → 属**口径改造 + 行为改变**，须先裁决，**未做**；当前已达成的是「行**契约**单一 + 时间口径
+        单源 + 库级机器判据」。
       **A/B 归因（同工作区、仅切门槛 10s↔1s 的隔离对拍，2026-09-08 终测）**：留白合计 **192.6→148.4s**
       （净收 44.2s），**16 队改善、0 队变差**——最大 auto-1181-1511-1411 7.4→1.1s、auto-1401-1511-1411
       8→2s；放回 1051 后再收 auto-1051-1481-1451 3.0→1.3、yidhari-trigger-lucia 2.3→0.2 等 5 队

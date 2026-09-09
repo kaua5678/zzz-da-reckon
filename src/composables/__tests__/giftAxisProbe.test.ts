@@ -76,6 +76,13 @@ describe.runIf(active)('探针：琉音赠大跨层对账', () => {
         lines.push(`      行：${rows.map(e => `${e.moveId}×${e.count}@${f(e.totalTime)}${e.source ? `[${e.source}]` : ''}`).join(' | ')}`)
         if (giftRows.length) {
           lines.push(`      gift 行：${giftRows.map(e => `${e.moveId}×${e.count}@${f(e.totalTime)}（单次 ${f(e.actionTime)}）`).join(' | ')}`)
+          // 对照组：同 moveId 的**自身**行（经 enrich 回填）——用于判断赠行若改由 enrich 回填是否同值
+          for (const g of giftRows) {
+            const twin = (c.executions ?? []).find(e => e !== g && e.moveId === g.moveId)
+            if (!twin) { lines.push(`      ↳ ${g.moveId} 无同 moveId 对照行`); continue }
+            const pick = (e: typeof g) => `dmg=${e.damageMultiplier ?? '—'}${e.damageMultiplierOverride ? '(ov)' : ''} daze=${e.dazeMultiplier ?? '—'}${e.dazeMultiplierOverride ? '(ov)' : ''} anom=${e.anomalyBuildUp ?? '—'}${e.anomalyBuildUpOverride ? '(ov)' : ''} db=${e.decibelRecovery ?? '—'}${e.decibelRecoveryOverride ? '(ov)' : ''} tgt=${e.skillDamageTarget ?? '—'}`
+            lines.push(`      ↳ 同 moveId 对照：gift[${pick(g)}] vs 自身[${pick(twin)}]`)
+          }
         }
         const ov = Object.entries(stack?.overlapByAction ?? {}).filter(([k]) => k.startsWith(`${c.slot}:`))
         if (ov.length) lines.push(`      轴合轴扣减：${ov.map(([k, v]) => `${k}=${f(v)}`).join(' | ')}`)
