@@ -1902,6 +1902,12 @@ export interface ResourceCalcConfig {
    */
   axisLiuyinPromote?: { targetSlot: number; count: number }
   /**
+   * 编排层队长（`configStore.team.length`，含空槽）：**赠行物化口径**解析「上一位队友」用。
+   * 引擎只收到已配置角色（`configs.length`），退化配置（单角色扫描）下两者不同——账本/试探口径
+   * 仍用 `configs.length`（不改基线），只有行口径对齐编排层，见 `core/resource.ts#giftRowTargetSlot`。
+   */
+  teamSize?: number
+  /**
    * 全队必要前台的可行比例（引擎 iterate 每轮写入，装配阶段消费）：
    * `预算 ÷ Σ必要净占用`，<1 = 想打的必做动作装不进战斗时间 ⇒ 执行计划按时间线截断。
    */

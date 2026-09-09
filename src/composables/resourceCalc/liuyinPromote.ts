@@ -59,8 +59,20 @@ export function applyLiuyinPromote(
   adj: { promote: number; hug60: number; targetSlot: number; chainMoveId: string; ultimateMoveId: string } | null,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): TeamResourceResult | null {
-  if (!base || !adj || adj.promote <= 0 || adj.targetSlot < 0) return base
-  const { targetSlot, ultimateMoveId, promote } = adj
+  if (!base) return base
+  // 引擎占位行（阶段1 ②）以**池口径**为准：转大次数为 0 时撤掉占位行（引擎推导在退化配置下会多算）
+  const promote = adj && adj.targetSlot >= 0 ? adj.promote : 0
+  if (promote <= 0 || !adj) {
+    if (!base.characters.some(c => (c.executions ?? []).some(e => e.source === 'gift' && !e.normaGiftChain))) return base
+    return {
+      ...base,
+      characters: base.characters.map(c => ({
+        ...c,
+        executions: (c.executions ?? []).filter(e => !(e.source === 'gift' && !e.normaGiftChain)),
+      })),
+    }
+  }
+  const { targetSlot, ultimateMoveId } = adj
   return {
     ...base,
     characters: base.characters.map(char => {
@@ -92,15 +104,33 @@ export function applyLiuyinPromote(
       const carve = reserved > 0 ? 0 : Math.max(0, Math.min(basicTime, promoteTime))
       // 轴即最终次数：连携次数已从轴直接读出（N），60/90 转大只叠加赠送大招，不再「连携-1 大招+1」改写。
       // 转大白送的终结技独立成行（source='gift'），不并入目标原始终结技行——否则赠送归因（击破手对比的 gift 列）会丢失。
+      // 阶段1 ②（2026-09-10）：**行由引擎物化**（存在/行序），本函数补倍率 + carve，并把
+      // 计数/时长**以池为准**写回（引擎推导在退化配置下会与池不同）；找不到行时兜底追加。
+      const giftIdx = char.executions.findIndex(e => e.source === 'gift' && e.moveId === ultimateMoveId)
+      const patched = char.executions.map((e, i) => {
+        if (i === basicIdx) return { ...e, totalTime: Math.max(0, (e.totalTime ?? 0) - carve) }
+        if (i !== giftIdx) return e
+        return {
+          ...e,
+          count: promote,
+          actionTime: ultActionTime,
+          totalTime: promoteTime,
+          totalComboAlignTime: promoteTime * (e.comboAlignRatio ?? 0),
+          moveName: '好评转大·队友终结技',
+          damageMultiplier: ultMult,
+          damageMultiplierOverride: ultMult > 0,
+          anomalyBuildUp: ultBuildUp,
+          totalAnomalyBuildUp: ultBuildUp * promote,
+          skillDamageTarget: 'ultimate',
+          skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
+        }
+      })
       return {
         ...char,
         ultimateCount: (char.ultimateCount ?? 0) + promote,
-        executions: [
-          ...char.executions.map((e, i) => i === basicIdx
-            ? { ...e, totalTime: Math.max(0, (e.totalTime ?? 0) - carve) }
-            : e),
-          // 赠行产物契约统一在 core（`core/resource/giftRows.ts#buildGiftRow`）
-          buildGiftRow({
+        executions: giftIdx >= 0
+          ? patched
+          : [...patched, buildGiftRow({
             moveId: ultimateMoveId,
             moveName: '好评转大·队友终结技',
             count: promote,
@@ -109,8 +139,7 @@ export function applyLiuyinPromote(
             anomalyBuildUp: ultBuildUp,
             skillDamageTarget: 'ultimate',
             skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
-          }),
-        ],
+          })],
       }
     }),
   }

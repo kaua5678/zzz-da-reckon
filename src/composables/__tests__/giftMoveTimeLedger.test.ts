@@ -108,4 +108,46 @@ describe('赠送招式时间账（诺姆赠链 / 琉音赠大）', () => {
       expect(r.normaReserved, `${id}：账本预留 ${r.normaReserved} ≠ 装配赠行 ${gift}`).toBeCloseTo(gift, 6)
     }
   }, 180000)
+
+  /**
+   * 赠行由**引擎**物化（阶段1 ②，2026-09-10）后的两条保真判据。
+   * 搬行时实测出三条分歧（池行提取不筛 gift / enrich 补空字段 / 目标槽推导），这里把
+   * 后两条钉住——它们是「行为保真」的机器面，不是风格问题。
+   */
+  it('退化配置不产赠行：单角色扫描下「上一位队友」是空槽 → 行口径按编排层队长解析', async () => {
+    for (const solo of ['1481', '1571']) {
+      const { catalog } = await setupHarness(['', '', ''])
+      await catalog.loadBuildRecommendations()
+      const config = useConfigStore()
+      config.setAgent(0, solo)
+      const rr = useResourceCalc().resourceResult.value!
+      const gifts = rr.characters.flatMap(c => (c.executions ?? [])
+        .filter(e => e.source === 'gift' || e.normaGiftChain))
+      expect(gifts, `${solo} 单角色不应物化赠行（否则 front 顶到 180，实测 golden 8 条 delta）`).toEqual([])
+    }
+  }, 180000)
+
+  it('enrich 跳过赠行：琉音赠行不带 daze、诺姆赠行不带 skillDamageTarget（保真）', async () => {
+    const giftRowsOf = async (id: string, pick: (e: { source?: string; normaGiftChain?: boolean }) => boolean) => {
+      const { catalog } = await setupHarness(['', '', ''])
+      await catalog.loadBuildRecommendations()
+      const config = useConfigStore()
+      const preset = teamPresets.find(p => p.id === id)!
+      for (let i = 0; i < 3; i++) config.setAgent(i, preset.team[i])
+      config.applyTeamPreset(preset.team as [string, string, string])
+      const rr = useResourceCalc().resourceResult.value!
+      return rr.characters.flatMap(c => (c.executions ?? []).filter(e => pick(e)))
+    }
+    const liuyinGift = await giftRowsOf('auto-1591-1481-1311', e => e.source === 'gift')
+    expect(liuyinGift.length).toBeGreaterThan(0)
+    for (const g of liuyinGift) {
+      expect('dazeMultiplier' in g, '琉音赠行的 daze 由失衡池侧单独结算，行上刻意留空').toBe(false)
+    }
+
+    const normaGift = await giftRowsOf('auto-1021-1571-1491', e => e.normaGiftChain === true)
+    expect(normaGift.length).toBeGreaterThan(0)
+    for (const g of normaGift) {
+      expect('skillDamageTarget' in g, '诺姆赠连携行刻意不写定向键（写了会吃连携定向增伤）').toBe(false)
+    }
+  }, 180000)
 })

@@ -31,7 +31,17 @@ export function applyNormaHatChain(
   const normaSrc = normaResult?.normaMechanicSource
   if (!normaSrc) return base
   const hatCount = Math.max(0, Math.floor(normaSrc.hatToChainCount))
-  if (hatCount <= 0) return base
+  // 引擎占位行（阶段1 ②）以**池口径**为准：hatCount = 0 时撤掉占位行（同 applyLiuyinPromote）
+  if (hatCount <= 0) {
+    if (!base.characters.some(c => (c.executions ?? []).some(e => e.normaGiftChain))) return base
+    return {
+      ...base,
+      characters: base.characters.map(c => ({
+        ...c,
+        executions: (c.executions ?? []).filter(e => !e.normaGiftChain),
+      })),
+    }
+  }
 
   // 上一位队友（环绕，排除自己）
   const targetSetting = configStore.getMechanicSetting('liuyin.ultimateTargetSlot', -1)
@@ -62,13 +72,30 @@ export function applyNormaHatChain(
     characters: base.characters.map(char => {
       if (char.slot !== targetSlot) return char
       // 上一位队友：连携次数 +hatCount、执行计划补其本人连携技执行（C4 喧响在资源池）
-      return {
-        ...char,
-        chainCountTotal: (char.chainCountTotal ?? 0) + hatCount,
-        // 赠行产物契约统一在 core（`core/resource/giftRows.ts#buildGiftRow`）
-        executions: [...(char.executions ?? []), buildGiftRow({
+      //
+      // 阶段1 ②（2026-09-10）：**行由引擎物化**（存在/行序），本函数补倍率 + 连携计数，并把
+      // 计数/时长**以池为准**写回；找不到行时兜底追加。
+      const giftIdx = (char.executions ?? []).findIndex(e => e.normaGiftChain || e.source === 'gift')
+      const giftPatch = {
+        count: hatCount,
+        actionTime: chainInfo.actionTime,
+        totalTime: hatCount * chainInfo.actionTime,
+        totalComboAlignTime: hatCount * chainInfo.actionTime * chainInfo.comboAlignRatio,
+        moveName: `${giftedMove?.name?.zhCN || '连携技'}（诺姆膛温替换）`,
+        decibelRecovery: chainInfo.decibelRecovery,
+        totalDecibelRecovery: chainInfo.decibelRecovery * hatCount,
+        damageMultiplier: giftedDamage,
+        damageMultiplierOverride: giftedDamage > 0,
+        dazeMultiplier: giftedDaze,
+        dazeMultiplierOverride: giftedDaze > 0,
+        anomalyBuildUp: giftedAnomaly,
+        totalAnomalyBuildUp: giftedAnomaly * hatCount,
+      }
+      const executions = giftIdx >= 0
+        ? (char.executions ?? []).map((e, i) => (i === giftIdx ? { ...e, ...giftPatch } : e))
+        : [...(char.executions ?? []), buildGiftRow({
           moveId: chainInfo.moveId,
-          moveName: `${giftedMove?.name?.zhCN || '连携技'}（诺姆膛温替换）`,
+          moveName: giftPatch.moveName,
           count: hatCount,
           actionTime: chainInfo.actionTime,
           comboAlignRatio: chainInfo.comboAlignRatio,
@@ -78,7 +105,11 @@ export function applyNormaHatChain(
           anomalyBuildUp: giftedAnomaly,
           skillTableNote: '诺姆预热膛温≥80%帽子把戏：上一位队友的快速支援替换为其本人连携技（招式与倍率取该队友技能表）',
           normaGiftChain: true,
-        })],
+        })]
+      return {
+        ...char,
+        chainCountTotal: (char.chainCountTotal ?? 0) + hatCount,
+        executions,
       }
     }),
   }

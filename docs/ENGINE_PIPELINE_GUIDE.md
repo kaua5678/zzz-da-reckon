@@ -437,8 +437,15 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
         拿到已配置角色，单角色扫描时 = 1 → 目标 = 自己），编排层用 `configStore.team.length`（= 3，
         含空槽 → 目标 = 上一个空槽 → 不产行）。实测把行搬进引擎后 `agent:1481:c0/c6` 留白
         5.4/7.2→0、`agent:1571:c0/c6` 14.6/16.2→2/0（front 全部顶到 180）：引擎凭空物化出编排层
-        永远会撤掉的赠行。对齐它要改 `resolveUltimateTargetSlot` 的队长语义，而那会**连带改账本基线**
-        （扫描里那 5.4s 留白本身就是这个不一致的产物）。→ **搬行三条分歧全部实测**，均已回滚。
+        永远会撤掉的赠行。
+        · **收口（同日晚，已落地）**：三条各自给出保真解——①池侧读「装配前 rr」时 `skipGift`
+        （`extractSkillExecutions` 新增 opts）；②enrich 对 `source==='gift'` / `normaGiftChain` 行
+        **直接返回不补**（保住「琉音赠行无 daze、诺姆赠行无 skillDamageTarget」两条刻意留空）；
+        ③新增 `ResourceCalcConfig.teamSize`（编排层队长）**只用于行口径**解析目标槽
+        （`giftRowTargetSlot`），账本/试探口径仍用 `configs.length`（不动基线）。
+        编排层两函数退化为「补倍率 + carve + 把池的计数/时长写回」，池口径为 0 时**撤掉占位行**。
+        验收：`timeGolden` 127 预设 + 60 角色×命座 0/6 **0 delta**、`timeLedgerInvariants` /
+        `timeFillRatchet` / `giftMoveTimeLedger`（含两条保真判据）同绿、`npm run verify` EXIT=0。
       **A/B 归因（同工作区、仅切门槛 10s↔1s 的隔离对拍，2026-09-08 终测）**：留白合计 **192.6→148.4s**
       （净收 44.2s），**16 队改善、0 队变差**——最大 auto-1181-1511-1411 7.4→1.1s、auto-1401-1511-1411
       8→2s；放回 1051 后再收 auto-1051-1481-1451 3.0→1.3、yidhari-trigger-lucia 2.3→0.2 等 5 队

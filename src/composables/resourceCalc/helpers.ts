@@ -1373,6 +1373,9 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
     characters: result.characters.map(char => {
       const skills = catalogStore.getAgentSkills(char.agentId)
       const executions = char.executions.map(exec => {
+        // 赠行由引擎物化、倍率由编排层在 enrich 之后补：enrich 必须跳过，否则会补上生产侧
+        // 刻意留空的字段（实测：琉音赠行凭空多 daze、诺姆赠行凭空多 skillDamageTarget）。
+        if (exec.source === 'gift' || exec.normaGiftChain) return exec
         let patch: Partial<SkillExecution> = {}
         if (exec.moveId === 'basic_attack') {
           if (exec.damageMultiplierOverride || exec.dazeMultiplierOverride) {
@@ -1767,6 +1770,7 @@ export function extractSkillExecutions(
   catalogStore: ReturnType<typeof useCatalogStore>,
   panel: PanelValues | null,
   configStore: ReturnType<typeof useConfigStore>,
+  opts?: { skipGift?: boolean },
 ): { stunExecs: StunSkillExecution[]; anomalyExecs: AnomalySkillExecution[] } {
   if (!skills || !resourceResult) return { stunExecs: [], anomalyExecs: [] }
 
@@ -1793,6 +1797,9 @@ export function extractSkillExecutions(
   // 然后从倍率表查找对应的 move，提取 daze 和 anomaly_buildup
   for (const exec of charResult.executions) {
     if (exec.count <= 0 && exec.totalTime <= 0) continue
+    // 赠行自 2026-09-10 起由引擎物化 → 会出现在 rr 里；池侧的赠送口径仍单独结算
+    // （adjustStunExecs 加 count+promote、连携经 chainCountTotal），故读「装配前 rr」时跳过赠行。
+    if (opts?.skipGift && (exec.source === 'gift' || exec.normaGiftChain)) continue
 
     // 在倍率表中查找对应的 move
     let foundMove: SkillMove | null = null

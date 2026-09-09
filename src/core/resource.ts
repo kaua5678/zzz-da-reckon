@@ -21,19 +21,19 @@ function normaGiftChainInfo(
   states: IterationState[],
   normaSlot: number,
   totalTime: number,
-): { targetIdx: number; time: number } {
+): { targetIdx: number; time: number; count: number } {
   const nCfg = configs[normaSlot]
-  if (!nCfg) return { targetIdx: -1, time: 0 }
+  if (!nCfg) return { targetIdx: -1, time: 0, count: 0 }
   const hatCount = computeNormaHatToChainCount(nCfg, {
     exSpecialCount: states[normaSlot].exSpecialCount,
     ultimateCount: states[normaSlot].ultimateCount,
     frontlineTime: states[normaSlot].frontlineTime,
     battleTime: nCfg.normaBattleTime ?? totalTime,
   }, Number((nCfg as unknown as Record<string, unknown>)['setting:norma.holdSeconds'] ?? 2))
-  if (hatCount <= 0) return { targetIdx: -1, time: 0 }
+  if (hatCount <= 0) return { targetIdx: -1, time: 0, count: 0 }
   const setting = Number((nCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
   const targetIdx = resolveUltimateTargetSlot(normaSlot, configs.length, setting)
-  return { targetIdx, time: hatCount * (configs[targetIdx]?.chainActionTime ?? 0) }
+  return { targetIdx, time: hatCount * (configs[targetIdx]?.chainActionTime ?? 0), count: hatCount }
 }
 
 /**
@@ -47,9 +47,9 @@ function liuyinGiftChainInfo(
   liuyinSlot: number,
   totalTime: number,
   stunCount: number,
-): { targetIdx: number; time: number } {
+): { targetIdx: number; time: number; count: number } {
   const lCfg = configs[liuyinSlot]
-  if (!lCfg) return { targetIdx: -1, time: 0 }
+  if (!lCfg) return { targetIdx: -1, time: 0, count: 0 }
   const lState = states[liuyinSlot]
   const src = computeLiuyinSource({
     exSpecialCount: lState.exSpecialCount,
@@ -73,8 +73,8 @@ function liuyinGiftChainInfo(
     targetChainTotal,
   )
   const promote = hug.hug60 + hug.hug90
-  if (promote <= 0) return { targetIdx: -1, time: 0 }
-  return { targetIdx, time: promote * (configs[targetIdx]?.ultimateActionTime ?? 0) }
+  if (promote <= 0) return { targetIdx: -1, time: 0, count: 0 }
+  return { targetIdx, time: promote * (configs[targetIdx]?.ultimateActionTime ?? 0), count: promote }
 }
 
 /**
@@ -95,20 +95,61 @@ function liuyinGiftTime(
   stunCount: number,
   axisPromote: { targetSlot: number; count: number } | undefined,
   axisMode: boolean,
-): { targetIdx: number; time: number } {
+): { targetIdx: number; time: number; count: number } {
   const liuyinSlot = configs.findIndex(c => c.agentId === '1481')
-  if (liuyinSlot < 0) return { targetIdx: -1, time: 0 }
+  if (liuyinSlot < 0) return { targetIdx: -1, time: 0, count: 0 }
   if (!axisMode) return liuyinGiftChainInfo(configs, states, liuyinSlot, totalTime, stunCount)
-  if (!axisPromote || axisPromote.count <= 0) return { targetIdx: -1, time: 0 }
+  if (!axisPromote || axisPromote.count <= 0) return { targetIdx: -1, time: 0, count: 0 }
   const tCfg = configs[axisPromote.targetSlot]
-  if (!tCfg) return { targetIdx: -1, time: 0 }
-  return { targetIdx: axisPromote.targetSlot, time: axisPromote.count * (tCfg.ultimateActionTime ?? 0) }
+  if (!tCfg) return { targetIdx: -1, time: 0, count: 0 }
+  return {
+    targetIdx: axisPromote.targetSlot,
+    time: axisPromote.count * (tCfg.ultimateActionTime ?? 0),
+    count: axisPromote.count,
+  }
+}
+
+/**
+ * 赠行目标槽（**行口径**，2026-09-10）：`resolveUltimateTargetSlot` 的「上一位队友」依赖队长，
+ * 引擎只拿到已配置角色（`configs.length`），编排层用 `configStore.team.length`（含空槽）——
+ * 退化配置（单角色扫描）下两者不同：引擎会物化出编排层永远撤掉的赠行（实测 front 顶到 180）。
+ * 故**行口径**用编排层注入的 `config.teamSize`，账本/试探口径维持 `configs.length`（不改基线）。
+ */
+function giftRowTargetSlot(slot: number, teamSize: number | undefined, configs: CharacterOperationConfig[], setting: number): number {
+  const target = resolveUltimateTargetSlot(slot, teamSize ?? configs.length, setting)
+  return configs[target] ? target : -1
+}
+
+/** 行口径的诺姆赠链（含次数）：目标槽按 `teamSize` 解析，配置缺失即不产行 */
+function normaGiftRowSpec(
+  configs: CharacterOperationConfig[], states: IterationState[], normaSlot: number, totalTime: number, teamSize: number | undefined,
+): { targetIdx: number; count: number } {
+  const info = normaGiftChainInfo(configs, states, normaSlot, totalTime)
+  if (info.count <= 0) return { targetIdx: -1, count: 0 }
+  const nCfg = configs[normaSlot]
+  const setting = Number((nCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
+  const target = giftRowTargetSlot(normaSlot, teamSize, configs, setting)
+  return target < 0 ? { targetIdx: -1, count: 0 } : { targetIdx: target, count: info.count }
+}
+
+/** 行口径的琉音赠大（含次数）：轴模式用轴预设计数，非轴用通用公式；目标槽按 `teamSize` 解析 */
+function liuyinGiftRowSpec(
+  configs: CharacterOperationConfig[], states: IterationState[], totalTime: number, stunCount: number,
+  axisPromote: { targetSlot: number; count: number } | undefined, axisMode: boolean, teamSize: number | undefined,
+): { targetIdx: number; count: number } {
+  const info = liuyinGiftTime(configs, states, totalTime, stunCount, axisPromote, axisMode)
+  if (info.count <= 0) return { targetIdx: -1, count: 0 }
+  const liuyinSlot = configs.findIndex(c => c.agentId === '1481')
+  const setting = Number((configs[liuyinSlot] as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
+  const target = giftRowTargetSlot(liuyinSlot, teamSize, configs, setting)
+  return target < 0 ? { targetIdx: -1, count: 0 } : { targetIdx: target, count: info.count }
 }
 
 // ============ 单角色能量计算 ============
 
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 import * as ResourceCalcHelpers from './resource/helpers'
+import { buildGiftRow } from './resource/giftRows'
 const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, materializeRows, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline } = ResourceCalcHelpers
 
 /**
@@ -727,6 +768,15 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   const giftTimeOfSlot = (idx: number): number =>
     (idx === normaGiftFinal.targetIdx ? normaGiftFinal.time : 0)
     + (idx === liuyinGiftFinal.targetIdx ? liuyinGiftFinal.time : 0)
+  // 赠行**物化口径**（阶段1 ②，2026-09-10）：行由引擎产出（存在/次数单一事实源），倍率由编排层补。
+  // 目标槽按 `config.teamSize`（编排层队长）解析——与账本口径 `configs.length` 解耦，见 giftRowTargetSlot。
+  const normaGiftRow = giftNormaIdxFinal >= 0
+    ? normaGiftRowSpec(configs, states, giftNormaIdxFinal, totalTime, config.teamSize)
+    : { targetIdx: -1, count: 0 }
+  const liuyinGiftRow = liuyinGiftRowSpec(
+    configs, states, totalTime, config.stunCount ?? 0,
+    config.axisLiuyinPromote, !!config.axisUltimateTrackBySlot, config.teamSize,
+  )
   /** 时间线截断总量（装配阶段砍掉的秒数）：= 资源允许但时间装不下的部分，上报为 overflowSeconds */
   let timeTruncatedSeconds = 0
   const characters: CharacterResourceResult[] = configs.map((cfg, i) => {
@@ -807,14 +857,37 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 资源攒多了也兑现不出来——旧实现没有这层，只能靠虚高账本挤平A池，结果两头都不准。
     const truncated = truncateExecutionsToFrontline(
       builtExecutions, Math.max(0, state.necessaryTime + state.basicAttackTime - giftTimeThisSlot))
-    const executions = truncated.executions
+    // 赠行由**引擎**物化（阶段1 ②）：仍追加在截断之后（永不被截），截断上限仍先扣赠行时间
+    const giftRowsHere: SkillExecution[] = []
+    if (i === liuyinGiftRow.targetIdx && liuyinGiftRow.count > 0) {
+      giftRowsHere.push(buildGiftRow({
+        moveId: cfg.ultimateMoveId,
+        moveName: '好评转大·队友终结技',
+        count: liuyinGiftRow.count,
+        actionTime: cfg.ultimateActionTime ?? 0,
+        skillDamageTarget: 'ultimate',
+        skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
+      }))
+    }
+    if (i === normaGiftRow.targetIdx && normaGiftRow.count > 0) {
+      giftRowsHere.push(buildGiftRow({
+        moveId: cfg.chainMoveId,
+        moveName: '诺姆膛温替换·队友连携技',
+        count: normaGiftRow.count,
+        actionTime: cfg.chainActionTime ?? 0,
+        comboAlignRatio: cfg.chainComboAlignRatio ?? 0,
+        skillTableNote: '诺姆预热膛温≥80%帽子把戏：上一位队友的快速支援替换为其本人连携技（招式与倍率取该队友技能表）',
+        normaGiftChain: true,
+      }))
+    }
+    const executions = giftRowsHere.length > 0 ? [...truncated.executions, ...giftRowsHere] : truncated.executions
     timeTruncatedSeconds += truncated.cutSeconds
     // 显示口径统一：前台时间 = **前台**执行行 ΣtotalTime（后台行不占共享轴，如莱卡恩围猎蓄力；
     // 含合轴，机制改写行/倍率表行都在内），后台 = 总时间 - 前台。
     // 装配后追加的赠送行（诺姆赠链/琉音赠大）不在 Σ行里——展示层由 `normalizeDisplayTime`
     // 在编排层按最终行统一重算（单一口径，新增赠送机制不必各自回扣）。
+    // 赠行已在 `executions` 里（上方物化），故这里不再加 giftTimeThisSlot（否则双计）
     const execFrontlineTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
-      + giftTimeThisSlot
     const timeAlloc = {
       ...calcTimeAllocation(cfg, state, totalTime),
       frontlineTime: execFrontlineTime,

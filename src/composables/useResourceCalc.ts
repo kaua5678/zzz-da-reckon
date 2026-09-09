@@ -213,27 +213,27 @@ export function useResourceCalc() {
   // Round 0: 无易伤 → 畏缩覆盖率初算
   // Round 1: 有易伤 → 畏缩覆盖率修正 → 最终收敛
 
-/** 从某个资源池结果提取异常 execs（参数化） */
-  function extractAnomalyExecsFrom(res: TeamResourceResult): AnomalySkillExecution[] {
+/** 从某个资源池结果提取异常 execs（参数化）；`skipGift` = 只取「装配前」口径（赠行单独结算） */
+  function extractAnomalyExecsFrom(res: TeamResourceResult, skipGift = false): AnomalySkillExecution[] {
     const execs: AnomalySkillExecution[] = []
     for (let i = 0; i < 3; i++) {
       const char = configStore.team[i]
       if (!char?.agentId) continue
       const skills = catalogStore.getAgentSkills(char.agentId)
-      const { anomalyExecs } = extractSkillExecutions(i, char.agentId, skills ?? undefined, res, catalogStore, panels.value[i] ?? null, configStore)
+      const { anomalyExecs } = extractSkillExecutions(i, char.agentId, skills ?? undefined, res, catalogStore, panels.value[i] ?? null, configStore, { skipGift })
       execs.push(...anomalyExecs)
     }
     return execs
   }
 
-  /** 从某个资源池结果提取失衡 execs（参数化） */
-  function extractStunExecsFrom(res: TeamResourceResult): StunSkillExecution[] {
+  /** 从某个资源池结果提取失衡 execs（参数化）；`skipGift` 同上 */
+  function extractStunExecsFrom(res: TeamResourceResult, skipGift = false): StunSkillExecution[] {
     const execs: StunSkillExecution[] = []
     for (let i = 0; i < 3; i++) {
       const char = configStore.team[i]
       if (!char?.agentId) continue
       const skills = catalogStore.getAgentSkills(char.agentId)
-      const { stunExecs } = extractSkillExecutions(i, char.agentId, skills ?? undefined, res, catalogStore, panels.value[i] ?? null, configStore)
+      const { stunExecs } = extractSkillExecutions(i, char.agentId, skills ?? undefined, res, catalogStore, panels.value[i] ?? null, configStore, { skipGift })
       execs.push(...stunExecs)
     }
     return execs
@@ -1136,6 +1136,7 @@ export function useResourceCalc() {
       axisOverlapSeconds,
       axisOverlapByAction,
       ...(axisLiuyinPromote ? { axisLiuyinPromote } : {}),
+      teamSize: configStore.team.length,
       specialActionDecibelBonusPerSlot: specialBonusPerSlot,
       anomalyDecibelBonusPerSlot: anomalyBonusPerSlot,
       // 时间轴喧响轨（对轴模块，用户口径 2026-08-31）：轴模式按窗口时序推演每槽实际可放大招数
@@ -1220,8 +1221,9 @@ export function useResourceCalc() {
         decibelParryNext = Math.max(prevDecibelParry, Math.ceil(decibelShort / PARRY_DECIBEL_BONUS))
       }
     }
-    const baseStun = extractStunExecsFrom(rr)
-    const baseAnomaly = extractAnomalyExecsFrom(rr)
+    // 赠行由引擎物化 → rr 里已有赠行；池侧赠送口径单独结算，故基准提取跳过赠行（防双计）
+    const baseStun = extractStunExecsFrom(rr, true)
+    const baseAnomaly = extractAnomalyExecsFrom(rr, true)
     const p = buildPromoteParams(configStore, catalogStore, rr)
     if (baseStun.length === 0) return null
     const goodReview = rr.characters.find(c => c.liuyinMechanicSource)?.liuyinMechanicSource?.goodReviewTotal ?? -1
