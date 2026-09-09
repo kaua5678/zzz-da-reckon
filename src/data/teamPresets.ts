@@ -141,7 +141,7 @@ export const teamPresetGroupOptions: Array<SelectOption | SelectGroupOption> = (
 
 // ========== 三级筛选（2026-09-03 用户：一级下拉装 99+ 条太多——先选职业、再选属性、后出队伍） ==========
 
-// @fact preset:队伍分类口径 口径: 一级分类=队伍「输出核心」职业队名（强攻/命破/异常/锋御队），二级=该核心属性中文名；输出核心=槽位0（0=主C），槽位0 是击破/支援/防护等辅助位时退到队内第一个输出位；整队无输出位不收录。击破队/支援队/防护队不作为一级分类 | 据 用户 2026-09-08「击破队和支援队没必要分…他们是辅助，怎么能作为一个命名呢」+「自动按主C属性分」+ 复核「南宫羽队暂归异常队没啥问题」 | 验 src/data/__tests__/teamPresets.test.ts | 锚 scripts/lib/presetCategories.mjs#classifyPreset | 信 确认
+// @fact preset:队伍分类口径 口径: 一级分类=队伍「输出核心」职业队名（强攻/命破/异常/锋御队），二级=该核心属性中文名；输出核心=槽位0（0=主C），槽位0 是击破/支援/防护等辅助位时退到队内第一个输出位；整队无输出位不收录。击破队/支援队/防护队不作为一级分类 | 据 用户 2026-09-08「击破队和支援队没必要分…他们是辅助，怎么能作为一个命名呢」+「自动按主C属性分」+ 复核「南宫羽队暂归异常队没啥问题」·复核@2026-09-09（删 edgeguard 别名键后 锋御队=sharpen 映射未变） | 验 src/data/__tests__/teamPresets.test.ts | 锚 scripts/lib/presetCategories.mjs#classifyPreset | 信 确认
 /** 一级：职业（group；「未分组」恒最后） */
 export const presetGroupLabels: string[] = [...new Set(teamPresets.map(p => p.group?.trim() || UNGROUPED_LABEL))]
   .sort((a, b) => a === UNGROUPED_LABEL ? 1 : b === UNGROUPED_LABEL ? -1 : a.localeCompare(b))
