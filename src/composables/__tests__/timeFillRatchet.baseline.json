@@ -673,6 +673,18 @@
   "stun": 3,
   "outerExit": "stable"
  },
+ "claret-koleda-rina": {
+  "slack": 0,
+  "over": 0,
+  "stun": 3,
+  "outerExit": "stable"
+ },
+ "claret-roxy-rina": {
+  "slack": 0,
+  "over": 0,
+  "stun": 5,
+  "outerExit": "cycle"
+ },
  "yidhari-jufufu-lucia": {
   "slack": 0.1,
   "over": 0,

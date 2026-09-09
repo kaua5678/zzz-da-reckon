@@ -1,0 +1,44 @@
+{
+  "id": "claret-roxy-rina",
+  "group": "锋御队",
+  "subgroup": "电",
+  "name": "克拉蕾+洛克茜+丽娜",
+  "note": "用户口述录入 2026-09-08（锋御队第二条：主C 克拉蕾=电·锋御，击破位 洛克茜（3.2 新击破），支援位 丽娜）。\n- 金数口径：克拉蕾(1611)/洛克茜(1621) 都是限定 S + 限定专武 → 本体+专武各 2 金；丽娜(1211) 常驻 S + 啜泣摇篮(14121) 常驻音擎不计 → 基础限定金 = 4 金。\n- 加金顺序：先两名限定角色各 1 命（对齐「细步只到全21」惯例），后 2 命/精炼2，再 612121 → 616161 → 656565 三大档；丽娜命座要试写进 standardSteps（不占金）。\n- 克拉蕾/洛克茜 为 3.2 测试服数据（见 data/versionTimeline.ts），实装后需回来校核原文。\n- 交互取整档（parry8/dodge4，与自动预设同口径）；洛克茜的浸染/风化联动按覆盖率折算，轴待捏好补 stunAxisPresetId。",
+  "team": [
+    "1611",
+    "1621",
+    "1211"
+  ],
+  "wEngines": [
+    "14161",
+    "14162",
+    "14121"
+  ],
+  "goldSteps": [
+    { "label": "克拉蕾 1命", "slot": 0, "kind": "cinema", "value": 1 },
+    { "label": "洛克茜 1命", "slot": 1, "kind": "cinema", "value": 1 },
+    { "label": "克拉蕾 2命", "slot": 0, "kind": "cinema", "value": 2 },
+    { "label": "洛克茜 2命", "slot": 1, "kind": "cinema", "value": 2 },
+    { "label": "克拉蕾 专武精炼2", "slot": 0, "kind": "wengine", "value": 2 },
+    { "label": "洛克茜 专武精炼2", "slot": 1, "kind": "wengine", "value": 2 },
+    { "label": "克拉蕾 3命", "slot": 0, "kind": "cinema", "value": 3 },
+    { "label": "洛克茜 3命", "slot": 1, "kind": "cinema", "value": 3 },
+    { "label": "克拉蕾 4命", "slot": 0, "kind": "cinema", "value": 4 },
+    { "label": "洛克茜 4命", "slot": 1, "kind": "cinema", "value": 4 },
+    { "label": "克拉蕾 5命", "slot": 0, "kind": "cinema", "value": 5 },
+    { "label": "洛克茜 5命", "slot": 1, "kind": "cinema", "value": 5 },
+    { "label": "克拉蕾 6命", "slot": 0, "kind": "cinema", "value": 6 },
+    { "label": "洛克茜 6命", "slot": 1, "kind": "cinema", "value": 6 },
+    { "label": "克拉蕾 专武精炼3", "slot": 0, "kind": "wengine", "value": 3 },
+    { "label": "洛克茜 专武精炼3", "slot": 1, "kind": "wengine", "value": 3 },
+    { "label": "克拉蕾 专武精炼4", "slot": 0, "kind": "wengine", "value": 4 },
+    { "label": "洛克茜 专武精炼4", "slot": 1, "kind": "wengine", "value": 4 },
+    { "label": "克拉蕾 专武精炼5", "slot": 0, "kind": "wengine", "value": 5 },
+    { "label": "洛克茜 专武精炼5", "slot": 1, "kind": "wengine", "value": 5 }
+  ],
+  "standardSteps": [],
+  "interactions": [
+    { "type": "parry", "count": 8 },
+    { "type": "dodge", "count": 4 }
+  ]
+}

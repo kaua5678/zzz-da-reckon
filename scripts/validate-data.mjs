@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { CATALOG_FIELDS } from './lib/catalog-fields.mjs'
+import { classifyPreset } from './lib/presetCategories.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 let failed = 0
@@ -47,6 +48,8 @@ const catalog = load('public/static/catalog.json')
 }
 
 const agents = catalog.agents ?? []
+const agentById = new Map(agents.map(a => [String(a.id), a]))
+const agentOf = id => agentById.get(String(id))
 const ENGINE_POOLS = load('src/data/enginePools.json')
 const catalogWEngines = new Set((load('public/static/catalog.json').wEngines ?? []).map(w => String(w.id)))
 const skills = catalog.agentSkills ?? []
@@ -180,6 +183,16 @@ for (const f of dataJsonFiles) {
   if (rel.startsWith('teamPresets/')) {
     check(`${rel}: has id + team array`, typeof data.id === 'string' && Array.isArray(data.team) && data.team.length > 0)
     check(`${rel}: team members are strings`, (data.team ?? []).every(t => typeof t === 'string'))
+    // 分类口径护栏（用户 2026-09-08）：一级=输出核心职业队名、二级=该核心属性，
+    // 单源在 scripts/lib/presetCategories.mjs。漏填 subgroup 会让预设掉进「未分属性」
+    // （选「命破队·火」看不见般岳其余配队就是这么来的）；把击破/支援写成 group 也在此拦。
+    if (!data.disabled) {
+      const verdict = classifyPreset((data.team ?? []).map(String), agentOf)
+      check(`${rel}: group/subgroup 符合分类口径`,
+        !!verdict && data.group === verdict.group && data.subgroup === verdict.subgroup,
+        verdict ? `实际 ${data.group}/${data.subgroup ?? '（缺）'}，应为 ${verdict.group}/${verdict.subgroup}（跑 node scripts/sync-preset-categories.mjs）`
+                : `${data.group}/${data.subgroup ?? '（缺）'}——队内无输出位（击破/支援/防护不构成队伍分类）`)
+    }
     // autoEngine 声明校验：poolRef 必须在命名池有定义；池内音擎 id 必须在 catalog 存在（防手滑 typo）
     const ae = data.autoEngine
     if (ae) {

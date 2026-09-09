@@ -9,6 +9,13 @@
  *   "id": "miyabi-yanagi-soukaku",
  *   "name": "雅柳苍（示例）",
  *   "group": "命破队",                       // 一级分类（下拉两级：分类 → 队伍），缺省归「未分组」
+ *   "subgroup": "火",                        // 二级分类 = 输出核心（主C）的属性，缺省归「未分属性」
+ *                                            //   ↑ 别偷懒：漏填就掉进兜底桶，选「命破队·火」时
+ *                                            //   该队直接消失（般岳队曾因此只剩 1 条可见）。
+ *                                            //   口径单源 scripts/lib/presetCategories.mjs，
+ *                                            //   回填/校验：node scripts/sync-preset-categories.mjs
+ *                                            //   （一级只允许输出定位：强攻/命破/异常/锋御队——
+ *                                            //    击破/支援是辅助位，2026-09-08 用户裁决删除该分类）
  *   "note": "加金顺序：雅 1 命 → 专武精炼 1 → 柳 2 命 …",
  *   "team": ["1081", "1071", "1041"],       // 槽位约定：0=主C、1=击破、2=辅助
  *   "wEngines": ["14121", "", ""],          // 缺省 '' = 自动推荐
@@ -134,6 +141,7 @@ export const teamPresetGroupOptions: Array<SelectOption | SelectGroupOption> = (
 
 // ========== 三级筛选（2026-09-03 用户：一级下拉装 99+ 条太多——先选职业、再选属性、后出队伍） ==========
 
+// @fact preset:队伍分类口径 口径: 一级分类=队伍「输出核心」职业队名（强攻/命破/异常/锋御队），二级=该核心属性中文名；输出核心=槽位0（0=主C），槽位0 是击破/支援/防护等辅助位时退到队内第一个输出位；整队无输出位不收录。击破队/支援队/防护队不作为一级分类 | 据 用户 2026-09-08「击破队和支援队没必要分…他们是辅助，怎么能作为一个命名呢」+「自动按主C属性分」+ 复核「南宫羽队暂归异常队没啥问题」 | 验 src/data/__tests__/teamPresets.test.ts | 锚 scripts/lib/presetCategories.mjs#classifyPreset | 信 确认
 /** 一级：职业（group；「未分组」恒最后） */
 export const presetGroupLabels: string[] = [...new Set(teamPresets.map(p => p.group?.trim() || UNGROUPED_LABEL))]
   .sort((a, b) => a === UNGROUPED_LABEL ? 1 : b === UNGROUPED_LABEL ? -1 : a.localeCompare(b))

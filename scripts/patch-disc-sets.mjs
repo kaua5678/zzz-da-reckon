@@ -17,6 +17,11 @@
 //   32700 折枝剑歌    4pc 暴伤+30 补「异常掌控≥115」门槛（原恒给，对低掌控暴击 C 高估）
 //   34000 拂晓行纪    4pc 暴伤+30 补「以太属性」门槛
 //   34100 谶羽之誓    4pc 补流明属性 +15% 属性异常伤害（原只录了 AP+50）
+// 2026-09-08 追加（用户：「部分靠前的驱动盘的4件套没给属性滑块，是不是属性都没做」）：
+//   审计=数值效果都已接线（面板差分实测），但条目缺 condition/coverage → 面板页
+//   「条件效果覆盖率」只认 effect.condition/maxStacks，常驻段与触发段整块不出现，
+//   看着像没做。逐套装把官方文本的触发条件落到条目上（coverage 一律 default:1，
+//   默认数值不变，只把 uptime 折算口子交给用户）。见文件末尾 markConditional 段。
 // 消费端：requirement/模板解析在 src/core/buff.ts collectDriveDiscBuffs；teamBuff 门槛在
 // src/core/inCombatBuffs.ts discTeamRequirementMet。生效测试：src/core/__tests__/discSetEffects.test.ts
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -186,6 +191,54 @@ function skillTargets(...types) {
     condition: '装备者为流明属性', durationSeconds: 15,
   })
   s.fourPiece.selfBuff.effects = effects
+}
+
+// ---- 2026-09-08（用户：「部分靠前的驱动盘的4件套没给属性滑块，我认为可能是属性都没做」）----
+// 审计结论：这些套装的数值效果**都已接线**（逐套装跑面板差分实测，见
+// src/utils/__tests__/discEffectRows.test.ts），看不到是因为面板页的覆盖率行只认
+// effect.condition / effect.maxStacks（src/views/TeamConfigPage.vue 旧 discCoverageEffects），
+// 于是常驻段/门槛段整块不出现。这里把官方文本里的触发条件如实落到条目上：
+// coverage 一律 default:1 → **默认数值一分不变**，只是把 uptime 折算的口子交给用户。
+const COV1 = { default: 1, min: 0, max: 1, step: 0.1 }
+/** 给指定套装匹配到的效果补 condition + coverage（幂等：同值跳过）。 */
+function markConditional(id, matcher, condition) {
+  const s = set(id)
+  const effs = [s.fourPiece?.selfBuff?.effects, s.fourPiece?.teamBuff?.effects]
+    .filter(Boolean).flat()
+  for (const e of effs) {
+    if (!matcher(e)) continue
+    if (e.condition === condition && e.coverage) continue
+    e.condition = condition
+    e.coverage = e.coverage ?? { ...COV1 }
+  }
+}
+// 33800 囚徒手记：异放段（异常精通+48）/ 冻结段（异常伤+紊乱各+16），都是触发限时 30s
+markConditional(33800, e => e.stat === 'anomalyProficiency', '装备者触发异放（持续30秒）')
+markConditional(33800, e => e.stat === 'anomalyDmgBonus' || e.stat === 'disorderDamageBonus', '装备者触发冻结（持续30秒）')
+// 33500 沧浪行歌：两段都挂在以太帷幕上（组级条件此前只在文本里，没落到效果上）
+markConditional(33500, () => true, '处于/刚离开以太帷幕（第一段15秒；第二段另需强攻角色开/延帷幕30秒）')
+// 33100 云岿如我：叠满 3 层才有的贯穿增伤段
+markConditional(33100, e => e.stat === 'sheerDmgBonus', '叠满3层后（持续15秒）')
+// 33200 山大王：击破位发动强特/连携后全队暴伤，15s 窗口（第二段另带暴击率≥50 门槛）
+markConditional(33200, () => true, '击破位装备者发动强化特殊技/连携技后（持续15秒）')
+// 33400 月光骑士颂：支援位发动强特/终结后全队增伤，25s 窗口
+markConditional(33400, () => true, '支援位装备者发动强化特殊技/终结技后（持续25秒）')
+// 31300 自由蓝调：强特命中挂敌 8s 的属性异常积蓄减抗
+markConditional(31300, () => true, '强化特殊技命中敌人（持续8秒）')
+// 33900 呼啸沙龙：风化后的增伤段（有 coverage 缺条件文本）
+markConditional(33900, e => e.stat === 'dmgBonus', '触发风化效果后（持续40秒）')
+// 34000 拂晓行纪：强特/终结后的攻击段（组级条件落到条目）
+markConditional(34000, e => e.stat === 'atkPct', '发动强化特殊技/终结技后（持续30秒）')
+// 34100 谶羽之誓：进场/切人后 15s（后台恒持）
+markConditional(34100, e => e.stat === 'anomalyProficiency', '进入战场或切换为场上角色后（持续15秒；后台恒持）')
+
+// ---- 2pc 效果 id 去重（覆盖率按效果 id 存：config.discEffectCoverages /
+// mergeDiscEffectCoverages，10 个套装的 2pc 共用 wiki 快照带来的通用 id「effect-1」，
+// 一旦给 2pc 挂覆盖率滑块就会互相串改；先改成每套唯一再谈可见性）----
+for (const s of catalog.driveDiscSets) {
+  for (const e of s.twoPiece?.effects ?? []) {
+    if (!e.id || e.id === 'effect-1') e.id = `effect_${s.id}_2pc`
+  }
 }
 
 writeFileSync(path, JSON.stringify(catalog))

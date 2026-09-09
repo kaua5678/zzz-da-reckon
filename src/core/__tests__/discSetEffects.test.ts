@@ -191,6 +191,22 @@ describe('招式类型定向接线（字段对应）', () => {
     expect(full.critRate - half.critRate).toBeCloseTo(14, 6)
   })
 
+  // 2026-09-08：这批效果此前「页面上没有滑块」被用户读成「属性没做」——补 condition 后
+  // 滑块出现，此测试钉住新暴露的滑块确实接线（改滑块 → 面板变）。
+  it('囚徒手记 4pc 覆盖率滑块（新补 condition 段）：异放段 50% → 异常精通 +24', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''])
+    config.setAgent(0, '1541') // 普罗米娅（冰异常）
+    config.team[0].driveDisc.fourPieceSetId = '33800'
+    config.team[0].driveDisc.twoPieceSetId = ''
+    const full = computePanel(0, config, catalog)!
+    config.setDiscEffectCoverage('effect_b4b0ddbf11', 50)
+    const half = computePanel(0, config, catalog)!
+    config.team[0].driveDisc.fourPieceSetId = ''
+    const none = computePanel(0, config, catalog)!
+    expect(full.anomalyProficiency - none.anomalyProficiency, '默认满覆盖拿满 +48').toBe(48)
+    expect(full.anomalyProficiency - half.anomalyProficiency, '50% 覆盖率折算一半').toBeCloseTo(24, 6)
+  })
+
   it('标准 exec 行携带 skillDamageTarget；极地重金属 4pc 普攻/冲刺限定增伤在伤害行生效', async () => {
     const run = async (fourPieceSetId: string, twoPieceSetId: string) => {
       await setupHarness(['', '', ''])
@@ -339,6 +355,19 @@ describe('teamBuff 装备者门槛', () => {
     expect(support.target.inCombat.dmgBonus - support.baseline.target.inCombat.dmgBonus).toBe(18)
     const attack = teammatePanels('1521', disc({ fourPieceSetId: '33400' }))
     expect(attack.target.inCombat.dmgBonus - attack.baseline.target.inCombat.dmgBonus).toBe(0)
+  })
+
+  // 面板页把全队段也挂上了覆盖率滑块（2026-09-08），此测试钉住 teamBuff 通道同样按效果 id 折算
+  it('山大王 4pc 全队段覆盖率 50% → 队友暴伤 +7.5（teamBuff 通道的滑块确实接线）', async () => {
+    const { catalog, config } = await setupHarness([
+      { agentId: '1481', driveDisc: { fourPieceSetId: '33200', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} } } as never,
+      { agentId: '1241' } as never,
+      '',
+    ])
+    const full = computePanel(1, config, catalog)!
+    config.setDiscEffectCoverage('effect_e044f6f6b8', 50)
+    const half = computePanel(1, config, catalog)!
+    expect(full.critDmg - half.critDmg, '全队暴伤 15% 段按 50% 覆盖率折算').toBeCloseTo(7.5, 5)
   })
 
   it('雪兔梦游仙境 4pc：防护位传播全队伤害+18%（6%×3 层），强攻位不传播', () => {

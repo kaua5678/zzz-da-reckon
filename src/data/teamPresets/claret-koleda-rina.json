@@ -1,0 +1,34 @@
+{
+  "id": "claret-koleda-rina",
+  "group": "锋御队",
+  "subgroup": "电",
+  "name": "克拉蕾+珂蕾妲+丽娜",
+  "note": "用户口述录入 2026-09-08（一级分类「锋御队」首条；主C 克拉蕾=电·锋御，击破位 珂蕾妲，支援位 丽娜）。\n- 金数口径：珂蕾妲(1101)/丽娜(1211) 是常驻 S、燃狱齿轮(14110)/啜泣摇篮(14121) 是常驻音擎，都不占限定金 → 基础限定金 = 克拉蕾本体+专武 = 2 金；加金步只排克拉蕾 影画/精炼，珂蕾妲·丽娜 的命座要试就写进 standardSteps（常驻配置，不占金）。\n- 克拉蕾(1611)/洛克茜(1621) 为 3.2 测试服数据（见 data/versionTimeline.ts），实装后原文有改动需回来校核。\n- 交互取整档（parry8/dodge4，与自动预设同口径），锋御「毁伤/残锋」轴待捏好后补 stunAxisPresetId。",
+  "team": [
+    "1611",
+    "1101",
+    "1211"
+  ],
+  "wEngines": [
+    "14161",
+    "14110",
+    "14121"
+  ],
+  "goldSteps": [
+    { "label": "克拉蕾 1命", "slot": 0, "kind": "cinema", "value": 1 },
+    { "label": "克拉蕾 2命", "slot": 0, "kind": "cinema", "value": 2 },
+    { "label": "克拉蕾 专武精炼2", "slot": 0, "kind": "wengine", "value": 2 },
+    { "label": "克拉蕾 3命", "slot": 0, "kind": "cinema", "value": 3 },
+    { "label": "克拉蕾 4命", "slot": 0, "kind": "cinema", "value": 4 },
+    { "label": "克拉蕾 5命", "slot": 0, "kind": "cinema", "value": 5 },
+    { "label": "克拉蕾 6命", "slot": 0, "kind": "cinema", "value": 6 },
+    { "label": "克拉蕾 专武精炼3", "slot": 0, "kind": "wengine", "value": 3 },
+    { "label": "克拉蕾 专武精炼4", "slot": 0, "kind": "wengine", "value": 4 },
+    { "label": "克拉蕾 专武精炼5", "slot": 0, "kind": "wengine", "value": 5 }
+  ],
+  "standardSteps": [],
+  "interactions": [
+    { "type": "parry", "count": 8 },
+    { "type": "dodge", "count": 4 }
+  ]
+}

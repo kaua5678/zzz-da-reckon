@@ -541,6 +541,35 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     **仍待收口**：编排层 `axisUltimateTotal` / `axisActionCounts`（按「块数 × 窗口数」独立算、不看资源，
     供希希芙 C2 / 猫又穿刺档位消费）——同一物理量的第二份实现，见 §4「同一物理量的多处实现」表。
 
+30. **「属性没做」的三种真身：静默失效通道（2026-09-08 用户三条观察逐条查证）**：
+    用户报了三个「看着像没实现」的现象，实测**效果全都接了线**，缺的是三处静默通道与可见性——
+    记在这里，下次别急着往引擎里加乘区：
+    - **① 角色特化标错 → 整条音擎效果为 0**：朱鸢 1241 的 catalog `specialty=stun`，原文
+      （`data/raw/nanoka_missing/full/1241.json` weapon_type=强攻）与其专武 14124 的
+      `requirement.specialty=attack` 都是强攻。`collectAllBuffs` 用「音擎 specialty === 角色 specialty」
+      当**总开关**（`collectWEngineBuffs` 首行 return），于是她装专武时暴击率+15%、平A/冲刺充能增伤
+      整块丢掉，且**不报错、数字自洽**。修复入口 `scripts/fix-agent-specialty.mjs`（幂等，读原文对齐）；
+      护栏 `catalogData.test.ts`「角色特化 == 专武特化 == 音擎 requirement」（全库 55 把带 requirement
+      的音擎，修前只有朱鸢这一条红）。自查动作：录完/改完角色跑一次「装专武 vs 不装音擎」面板差分，
+      差值 0 就是这门对不上。
+    - **② 套装覆盖率只并本槽位 → 全队段滑块是死控件**：4pc 全队段（山大王/月光骑士颂/雪兔/摇摆爵士…）
+      由**装备者供给、全队受益**，覆盖率属于「效果」不属于「受益者」；旧 `mergeDiscEffectCoverages`
+      只并当前角色自己盘上的效果 id → 队友面板拿不到装备者的滑块值（实测差值 +0）。
+      现 `mergeTeamDiscEffectCoverages` 并**全队三人**盘（口径钉在函数头 @fact）。
+    - **③ 面板页只列条件类效果 → 常驻/门槛/未建模段整块隐身**：旧 `discCoverageEffects` 过滤
+      `!condition && !maxStacks`，于是棘刺玫瑰（常驻增伤 + 防御门槛暴伤）、沧浪行歌（组级条件没落到条目）、
+      灵魂摇滚（4pc 减伤确实未建模）都表现为「一行都没有」，用户合理推断成「属性都没做」。
+      现由 `src/utils/discEffectRows.ts`（纯函数，页面与测试同源）把 2pc/4pc **全部**效果列成行，
+      三类状态如实标：可折算 → 给滑块；门槛（属性/职业/局外属性）→ 标「门槛自动判定」不给滑块
+      （再挂 uptime 会双重打折）；有文本没效果 → 标「未建模」。配套把触发型效果的条件元数据
+      （`condition` + `coverage{default:1}`）补进 catalog（`patch-disc-sets.mjs`，**默认数值一分不变**），
+      并修掉 10 个套装 2pc 共用通用 id「effect-1」的隐患（覆盖率按 id 存，共用即串改）。
+    护栏：`utils/__tests__/discEffectRows.test.ts`（每套单穿 4 件必出行）+
+    `core/__tests__/discSetEffects.test.ts`（新暴露滑块 50% → 面板正好折半，含 teamBuff 通道）。
+    **否决记录**：给门槛类效果也挂覆盖率滑块 → 与引擎自动判定叠两次打折 → 否决；
+    把 subgroup（二级属性）在运行时从 catalog 反推 → 预设库是同步模块、catalog 异步加载，
+    且会在三处页面各写一遍推导 → 否决，改为「数据里写死 + `validate:data` 按单源口径重算护栏」。
+
 ## 5. 验收命令
 
 ```bash

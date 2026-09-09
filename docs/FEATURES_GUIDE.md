@@ -69,7 +69,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 ## 2. 预设队伍（首页下拉 + 队伍对比页共用）
 
 - **数据源唯一**：`src/data/teamPresets/*.json`（`import.meta.glob` 自动加载，`disabled: true` 跳过）。
-- **两级下拉**：一级分类（`group` 字段，如「命破队」）→ 二级队伍；分组选项统一由 `teamPresetGroupOptions` 导出，首页/保存弹窗/队伍对比页/击破对比页共用。新预设必须填 `group`（缺省落「未分组」，有测试锁住不出现）；槽位约定 0=主C、1=击破、2=辅助。
+- **三级筛选**（一级职业 → 二级属性 → 队伍）：**一级 `group` = 队伍输出核心的职业队名，只允许强攻队/命破队/异常队/锋御队**——击破/支援/防护是辅助位，2026-09-08 用户裁决「他们是辅助，怎么能作为一个命名呢」，两个分类已从菜单删除（输出核心 = 槽位 0，槽位 0 是辅助位则退到队内第一个输出位；整队无输出位不收录）。**二级 `subgroup` = 该输出核心的属性**（漏填会掉进「未分属性」，选「命破队·火」就看不见般岳其余配队——已锁死不许缺）。口径单源 `scripts/lib/presetCategories.mjs`，回填/校验 `scripts/sync-preset-categories.mjs` + `validate:data`；分组选项统一由 `teamPresetGroupOptions` 导出，首页/保存弹窗/队伍对比页/位置对比页共用。槽位约定 0=主C、1=击破、2=辅助。
 - **首页（队伍配置）**：预设队伍是下拉选项（换人 + 自动配装，`applyTeamPreset` 只取 `team` 字段，金数/交互不应用）；队伍多了不拥挤。
   - 下拉旁「预设金数」按钮：弹窗设置当前队伍各槽位影画/精炼（0-6 / 1-5），含加金档位快捷按钮（0命1精 / 212121 / 612121 / 616161 / 656565）与实时「总限定金」显示；应用走 `setCinemaLevel`/`setWEngineModLevel`，只改当前队伍配置，不改预设文件（队伍对比页仍走 `goldSteps`）。总金数口径与对比页一致（`teamCompare.ts` 的 `teamGoldOf`：限定 S 角色/音擎本体各 1 金 + 影画/精炼每级 1 金，常驻不计）。
   - 弹窗内「保存到预设文件」：选择目标预设（默认最近应用的预设）→ 把当前命座/精炼按口径重写为 `goldSteps`（限定角色/音擎步进）+ `standardSteps`（常驻/A 级步进）→ 下载 `<id>.json`（同时复制到剪贴板），手动替换 `src/data/teamPresets/<id>.json` 后刷新生效（浏览器无法直接写项目文件）。阵容与所选预设不一致时有警告；步骤生成逻辑在 `teamCompare.ts` 的 `buildGoldStepsFromConfig`（有单测）。

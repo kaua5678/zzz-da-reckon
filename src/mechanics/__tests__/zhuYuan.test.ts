@@ -248,3 +248,26 @@ describe('压制以太弹的时间占用（2026-09-05 重复计费修复）', ()
     expect(Math.abs(t.slack)).toBeLessThanOrEqual(1)
   })
 })
+
+// 特化错标的后果与护栏见 src/mechanics/agents/zhuYuan.ts 头注释 @fact；
+// 修复入口 node scripts/fix-agent-specialty.mjs，专武↔角色特化一致性由 catalogData.test.ts 钉。
+describe('朱鸢特化口径（catalog specialty 与专武门槛同源）', () => {
+  beforeEach(() => {
+    newPinia()
+    mockStaticFetch()
+  })
+
+  it('特化=强攻（attack），装专武 14124 时音擎效果才生效', async () => {
+    const { catalog, config } = await setup('1031', 0)
+    expect(catalog.getAgent('1241')?.specialty).toBe('attack')
+    config.team[0].wEngineId = '14124'
+    const withSig = computePanelPhases(0, config, catalog)!
+    config.team[0].wEngineId = ''
+    const bare = computePanelPhases(0, config, catalog)!
+    // 专武暴击率 +15%（精炼1档）叠在额外能力之上；不装音擎时不该有这一块
+    expect(withSig.inCombat.critRate - bare.inCombat.critRate).toBeCloseTo(15, 5)
+    // 平A/冲刺充能增伤段（35% 精炼1）同样只在装专武时出现
+    expect(getTargetedStat(withSig.inCombat, 'skillDmgBonus', 'basic')
+      - getTargetedStat(bare.inCombat, 'skillDmgBonus', 'basic')).toBeCloseTo(35, 5)
+  })
+})

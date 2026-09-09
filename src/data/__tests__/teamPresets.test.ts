@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { teamPresets, teamPresetGroupOptions, UNGROUPED_LABEL } from '@/data/teamPresets'
+import { classifyPreset } from '../../../scripts/lib/presetCategories.mjs'
+import { teamPresets, teamPresetGroupOptions, UNGROUPED_LABEL, PRESET_UNGROUPED_SUB, presetSubgroupLabelsFor, presetsForFilter } from '@/data/teamPresets'
 
 const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
 const catalog = JSON.parse(catalogText) as {
@@ -120,9 +121,76 @@ describe('预设分组（两级下拉：分类 → 队伍）', () => {
     }
   })
 
-  it('当前分类快照（新增分类时有意更新此断言；auto- 为自动收录预设按主C职业归类）', () => {
+  // 用户裁决 2026-09-08：一级分类只允许「输出定位」的队名；击破/支援/防护是辅助位，
+  // 「他们是辅助，怎么能作为一个命名呢」→ 这两个分类从菜单里删除（口径单源
+  // scripts/lib/presetCategories.mjs，validate:data 逐条重算护栏）。
+  it('一级分类只含输出定位队名（击破队/支援队/防护队 不许出现）', () => {
     expect([...new Set(teamPresets.map(p => p.group))].sort()).toEqual(
-      ['命破队', '强攻队', '支援队', '击破队', '异常队'].sort(),
+      ['命破队', '强攻队', '锋御队', '异常队'].sort(),
     )
+    for (const p of teamPresets) {
+      expect(['击破队', '支援队', '防护队'], `${p.id} 用了辅助位当一级分类`).not.toContain(p.group)
+    }
+  })
+
+  // 二级=主C属性（用户「自动按主C属性分」）。手编预设漏填 subgroup 曾让「命破·火」
+  // 只出 1 条自动队，般岳其余配队全掉进「未分属性」。
+  it('每条预设都有二级分类，不落「未分属性」兜底桶', () => {
+    for (const p of teamPresets)
+      expect(p.subgroup?.trim(), `${presetDesc(p)} 缺二级分类 subgroup`).toBeTruthy()
+    for (const group of new Set(teamPresets.map(p => p.group?.trim() ?? '')))
+      expect(presetSubgroupLabelsFor(group), `${group} 不该出现「未分属性」`).not.toContain(PRESET_UNGROUPED_SUB)
+  })
+
+  it('筛选按主C归类：选「命破队·火」出般岳全部预设配队（含手编，不只是自动收录那条）', () => {
+    const fire = presetsForFilter('命破队', '火')
+    const banyue = teamPresets.filter(p => p.team[0] === '1471')
+    expect(banyue.length, '般岳预设不该少于 6 条').toBeGreaterThanOrEqual(6)
+    expect(fire.map(p => p.id).sort(), '般岳系（火主C）应全部落在 命破队·火')
+      .toEqual(expect.arrayContaining(banyue.map(p => p.id).sort()))
+    // 反向：别的属性组里不该混进般岳队
+    for (const sub of presetSubgroupLabelsFor('命破队').filter(s => s !== '火'))
+      expect(presetsForFilter('命破队', sub).some(p => p.team[0] === '1471'), `般岳队漏进 命破队·${sub}`).toBe(false)
+  })
+
+  it('锋御队已收录（克拉蕾主C 两条：击破位 珂蕾妲 / 洛克茜，支援位 丽娜）', () => {
+    const fengyu = teamPresets.filter(p => p.group === '锋御队')
+    expect(fengyu.map(p => p.id).sort()).toEqual(['claret-koleda-rina', 'claret-roxy-rina'])
+    for (const p of fengyu) {
+      expect(p.team[0], '锋御队主C 必须是克拉蕾').toBe('1611')
+      expect(p.team[2], '第三位固定丽娜').toBe('1211')
+      expect(p.subgroup, '克拉蕾=电 → 二级按主C属性').toBe('电')
+    }
+    expect(fengyu.map(p => p.team[1]).sort()).toEqual(['1101', '1621'])
+  })
+
+  it('辅助位带队的自动预设按队内输出位归类（旧版会塞进「支援队/击破队」）', () => {
+    // 耀嘉音(支援)+希希芙(强攻)+扳机 → 强攻队·电；南宫羽(击破)+维琳娜(异常)+柚叶 → 异常队·风
+    expect(pick('auto-1311-1521-1361')).toMatchObject({ group: '强攻队', subgroup: '电' })
+    expect(pick('auto-1511-1561-1411')).toMatchObject({ group: '异常队', subgroup: '风' })
+    expect(pick('auto-1411-1171-1561')).toMatchObject({ group: '异常队', subgroup: '火' })
+    // 朱鸢特化修正（原文=强攻）后，她的自动收录队落强攻队·以太，不再是「击破队」
+    expect(pick('auto-1241-1031-1311')).toMatchObject({ group: '强攻队', subgroup: '以太' })
+    // 流明属性预设不再写原始英文键
+    expect(pick('auto-1581-1261-1561').subgroup).toBe('流明')
+  })
+
+  // 分类口径单源 = scripts/lib/presetCategories.mjs（validate:data 用它护栏，这里再跑一遍）
+  it('每条预设的 group/subgroup 都等于按分类口径重算的结果（含输出核心判定）', () => {
+    for (const p of teamPresets) {
+      const verdict = classifyPreset(p.team as string[], agentOf)
+      expect(verdict, `${presetDesc(p)} 队内无输出位，不该作为预设存在`).toBeTruthy()
+      expect([p.group, p.subgroup], `${presetDesc(p)} 分类与口径不符（跑 node scripts/sync-preset-categories.mjs）`)
+        .toEqual([verdict!.group, verdict!.subgroup])
+    }
   })
 })
+
+const presetDesc = (p: { id: string; name: string }) => `${p.id}（${p.name}）`
+const pick = (id: string) => {
+  const p = teamPresets.find(x => x.id === id)
+  if (!p) throw new Error(`预设 ${id} 不存在（被删了？分类断言要同步）`)
+  return p
+}
+const agentById = new Map<string, any>(catalog.agents.map((a: any) => [String(a.id), a]))
+const agentOf = (id: string) => agentById.get(String(id))

@@ -78,4 +78,26 @@ describe('catalog data invariants', () => {
     }
     expect(wmap.get('13016')?.effect?.selfBuff?.effects ?? []).toEqual([]) // 减伤/秽息未建模
   })
+
+  // 角色特化 == 自己专武的特化（专武 requirement 按职业门控，collectWEngineBuffs 更以
+  // 「音擎 specialty === 角色 specialty」为总开关）。朱鸢曾被错标成击破 → 她装专武 14124
+  // 时整条音擎效果被静默丢弃（用户 2026-09-08 抓到）。修复入口 scripts/fix-agent-specialty.mjs。
+  it("keeps every agent's specialty consistent with its signature weapon", () => {
+    const cat = loadCatalog()
+    const byId = new Map((cat.agents as any[]).map((a: any) => [String(a.id), a]))
+    const VALID = ['attack', 'stun', 'anomaly', 'support', 'defense', 'rupture', 'edgeguard', 'sharpen']
+    const bad: string[] = []
+    for (const w of cat.wEngines as any[]) {
+      const owner = String(w.ownerAgentId ?? '')
+      if (!owner || !byId.has(owner)) continue
+      const agent = byId.get(owner)
+      if (!VALID.includes(agent.specialty)) bad.push(`${agent.id} ${agent.name?.zhCN} 特化「${agent.specialty}」不在枚举内`)
+      else if (w.specialty && agent.specialty !== w.specialty)
+        bad.push(`角色 ${agent.id} ${agent.name?.zhCN} 特化=${agent.specialty}，其专武 ${w.id} ${w.name?.zhCN} 特化=${w.specialty}`)
+      const req = w.effect?.requirement?.specialty
+      if (req && agent.specialty !== req)
+        bad.push(`角色 ${agent.id} ${agent.name?.zhCN} 特化=${agent.specialty}，其专武 ${w.id} 效果门槛 requirement=${req}`)
+    }
+    expect(bad, '特化错标会静默关掉音擎效果（见 core/buff.ts#collectAllBuffs matchSpecialty）').toEqual([])
+  })
 })

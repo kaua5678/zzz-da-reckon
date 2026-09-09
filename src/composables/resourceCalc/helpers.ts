@@ -501,7 +501,7 @@ export function computePanelPhases(
     const coverage = configStore.getTeammateBuffCoverage(buff.id) / 100
     for (const effect of buff.effects ?? []) effectCoverageMap.set(effect.id, coverage)
   }
-  mergeDiscEffectCoverages(effectCoverageMap, configStore, catalogStore, char.driveDisc)
+  mergeTeamDiscEffectCoverages(effectCoverageMap, configStore, catalogStore, teamDiscs(configStore))
 
   // 计算面板
   const result = calcPanel(
@@ -775,7 +775,7 @@ export function computeRemielleEntryPanel(
       wEngineModLevel: char.wEngineModLevel ?? 1,
       effectCoverageMap: (() => {
         const map = configStore.getWEngineEffectCoverageMap()
-        mergeDiscEffectCoverages(map, configStore, catalogStore, char.driveDisc)
+        mergeTeamDiscEffectCoverages(map, configStore, catalogStore, teamDiscs(configStore))
         return map
       })(),
     },
@@ -1459,19 +1459,31 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
 
 /** 从技能数据提取资源池所需的招式信息，构建单个角色的操作配置 */
 
+/** 全队各槽位的驱动盘配置（覆盖率并入用；空槽为 undefined 由 merge 侧跳过）。 */
+function teamDiscs(configStore: ReturnType<typeof useConfigStore>): Array<DriveDiscConfig | undefined> {
+  return (configStore.team ?? []).map(c => (c as { driveDisc?: DriveDiscConfig } | undefined)?.driveDisc)
+}
+
 /**
  * 驱动盘套装效果覆盖率并入 effectCoverageMap（C 类条件精化 2026-09-05）：
  * 条件类 4pc/2pc 效果的 uptime 由用户滑块折算（configStore.getDiscEffectCoverage，默认 100%），
  * 两处调用：buildCharConfig（资源/伤害管线）+ computePanelPhases（面板页）。
  * 无覆盖率记录的效果也写入（100%）→ 统一走 applyEffect 的 coverage 覆盖。
+ *
+ * @fact disc:覆盖率并入范围 口径: 必须并**全队三人**盘上的效果 id，不能只并本槽位的——4pc 全队段（teamBuff）由装备者供给、全队受益，覆盖率属于「效果」而非属于「受益者」；只并本槽位时装备者自己的山大王/月光骑士颂全队段滑块对队友面板是死控件（实测差值 +0） | 据 用户 2026-09-08「4件套没给属性滑块，是不是属性都没做」引发的可见性修复 | 验 src/core/__tests__/discSetEffects.test.ts | 锚 src/composables/resourceCalc/helpers.ts#mergeTeamDiscEffectCoverages | 信 确认
+ * @param slotDiscs 全队各槽位的驱动盘配置（含空槽，自动跳过）
  */
-function mergeDiscEffectCoverages(
+function mergeTeamDiscEffectCoverages(
   map: Map<string, number>,
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
-  driveDisc: DriveDiscConfig,
+  slotDiscs: Array<DriveDiscConfig | undefined>,
 ): void {
-  const setIds = [...new Set([driveDisc.fourPieceSetId, driveDisc.twoPieceSetId].filter(Boolean))]
+  const setIds = new Set<string>()
+  for (const disc of slotDiscs) {
+    if (!disc) continue
+    for (const id of [disc.fourPieceSetId, disc.twoPieceSetId]) if (id) setIds.add(id)
+  }
   for (const setId of setIds) {
     const set = catalogStore.driveDiscSetsMap.get(setId)
     if (!set) continue

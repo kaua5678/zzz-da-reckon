@@ -83,6 +83,7 @@
 | 作用域错误 | 提升率偏高（buff 作用到不该作用的招式/角色） | 旧 `billyStarGlowMechanic` 把星辉挂**全局 dmgBonus**（文本只作用 6 个目标招式） | 每录一个 buff 问三问：谁受益（自身/全队/敌人）？哪些招式（moveId 集合）？哪个乘区？ |
 | 乘区位置错误 | 提升率数值不对（非零但错） | C6"贯穿伤害+18%"最初挂通用增伤区，应为**贯穿增伤乘区**（`sheerDmgBonus`，引擎后补执行级通道） | 乘区查表：通用 `dmgBonus` / 元素 / `skillDmgBonus*` / 贯穿 `sheerDmgBonus` / 暴伤 `critDmgBonus` / 抗性 `enemyXxxResReduction` / 基础区 `flatDamageBonus` |
 | 计数源错误 | 次数类 buff 量不对 | 孤轮+8 决意只按付费强特计（**免费衔接的孤轮漏算**，后改按孤轮总次数）；格挡按招架近似（应为 `blockCount` 交互次数） | buff 次数由什么驱动：闪能 / HP / 交互次数 / 命中次数？按真实来源计数，**不要拿邻近计数近似** |
+| 角色特化标错（catalog vs 原文） | **装专武整条音擎效果静默为 0**（不是数值偏小），覆盖率/命座都正常只有音擎那块空 | 朱鸢 1241：catalog 记 `stun`，nanoka 原文 `weapon_type=强攻`、专武 14124 也写 `requirement=attack`；`collectAllBuffs` 以「音擎 specialty === 角色 specialty」为总开关 → 她装专武的 暴击率+15%/平A充能增伤 全被丢掉（2026-09-08 用户抓到） | `node scripts/fix-agent-specialty.mjs` 按原文对齐 catalog；不变量护栏 `catalogData.test.ts`「角色特化 == 其专武特化/requirement」；新角色录入后跑一次「装专武 vs 不装音擎」的面板差分，差值为 0 就是这门对不上 |
 | 条件门控缺失 | 不满足条件也生效 | 星辉未挂 `panel.additionalAbilityActive` 时无条件增伤 | 文本"队伍存在X时" → 声明式 `teamConditions` + 门控；"自身攻击" → 面板/执行级而非全队 |
 | 无回归断言 | 改引擎后悄悄丢 | — | 每个命座效果补**命座差分测试**（见 §5），而非只断言"开着时字段=某值" |
 | 命座切换不刷新资源配置 | 执行级命座效果（buildExecutions/patchExecutions 读 `record.<agent>CinemaLevel`）全部 +0%，面板级效果（applyPanel）却正常 | 仪玄 2/4/6 命 +0%：`setCinemaLevel` 不触发 `refreshTrigger` → `resourceConfig`（buildCharConfig 产物）缓存不失效 → 模块命座字段永远是旧值 | 模块级命座效果必须验证「setCinemaLevel 切换后生效」；`setCinemaLevel` 需 `refreshTrigger++`（该 setter 已修复，新角色照此） |

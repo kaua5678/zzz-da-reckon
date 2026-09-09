@@ -5,9 +5,16 @@
  * - 金数 = 限定 S 本体 1 + 影画 + 精炼(phase−1)；常驻 S（STANDARD_S_AGENT_IDS）与
  *   AGENT_RELEASE_NODE 无条目（四星/A 级）不计——与 src/composables/limitedGold.ts 同口径。
  * - 前沿 = 每 room（seasonId|targetId）顶分击杀 run 的最低金 + 2 窗口（lowGoldFrontier 同逻辑）。
- * - 生成条目：group = 主C 职业（命破/异常/强攻/击破/支援/防护/锋御队），
- *   subgroup = 主C 元素；goldSteps = []（默认 01 基线——用户「默认配置全 01」；
- *   实战命座/精炼记入 note 出处）；interactions = []（难度 0，自动队供参考）。
+ * - 生成条目：group/subgroup 走 `scripts/lib/presetCategories.mjs` 单源判定——
+ *   一级 = 队伍**输出核心**职业（强攻/命破/异常/锋御队），二级 = 该核心属性。
+ *   输出核心 = 槽位 0（本库约定 0=主C）；槽位 0 是击破/支援/防护等辅助位时，
+ *   退到队内第一个输出定位成员；整队无输出位 → 跳过不收录（用户 2026-09-08：
+ *   「击破队和支援队没必要分…他们是辅助，怎么能作为一个命名呢」。旧版把 team[0]
+ *   职业直接当队名，于是 耀嘉音/柚叶 带队的实战队塞出了「支援队」这类假分类）。
+ *   goldSteps = []（默认 01 基线——用户「默认配置全 01」；
+ *   实战命座/精炼记入 note 出处）；interactions = parry8/dodge4（难度 0，自动队供参考）。
+ * - 同一口径的回填/校验：`node scripts/sync-preset-categories.mjs`（手编预设 subgroup
+ *   漏填曾让「命破队·火」只出 1 条，般岳其余配队掉进「未分属性」看不见）。
  * - 常驻 S 名单与发布节点：↓ 两处键级常量与 TS 侧同源（改动需同步）：
  *   src/composables/teamCompare.ts STANDARD_S_AGENT_IDS、src/data/versionTimeline.ts AGENT_RELEASE_NODE。
  *
@@ -16,6 +23,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { classifyPreset } from './lib/presetCategories.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const archive = JSON.parse(readFileSync(join(root, 'public/static/run-archive.json'), 'utf8'))
@@ -35,8 +43,7 @@ const teamGold = (team) => team.reduce((s, m) => s + memberGold(m), 0)
 const agentById = new Map(catalog.agents.map(a => [String(a.id), a]))
 const wEngineIds = new Set(catalog.wEngines.map(w => String(w.id)))
 const nameOf = (id) => agentById.get(String(id))?.name?.zhCN ?? id
-const ELEMENT_LABEL = { physical: '物理', fire: '火', ice: '冰', electric: '电', ether: '以太', wind: '风', frostfire: '烈霜' }
-const SPEC_GROUP = { rupture: '命破队', anomaly: '异常队', attack: '强攻队', stun: '击破队', support: '支援队', defense: '防护队', sharpen: '锋御队' }
+const agentOf = (id) => agentById.get(String(id))
 
 // 前沿：每 room 顶分击杀 run → 最低金 + 2 窗口
 const byRoom = new Map()
@@ -66,16 +73,16 @@ for (const r of frontier) {
 }
 
 const kebab = (s) => s.replace(/[^a-z0-9]+/gi, '-').toLowerCase().replace(/^-|-$/g, '')
-const presets = [...byTeam.values()].sort((a, b) => String(a.team[0].agentId).localeCompare(String(b.team[0].agentId))).map(r => {
-  const main = agentById.get(String(r.team[0].agentId))
-  const spec = main?.specialty ?? 'attack'
-  const el = main?.damageElement ?? 'physical'
+const presets = [...byTeam.values()].sort((a, b) => String(a.team[0].agentId).localeCompare(String(b.team[0].agentId))).flatMap(r => {
+  // 一级/二级分类 = 队伍输出核心（槽位 0 是辅助位则退到队内输出位）的职业/属性
+  const verdict = classifyPreset(r.team.map(m => String(m.agentId)), agentOf)
+  if (!verdict) return [] // 整队无输出位：击破/支援不构成队伍分类，跳过
   const gold = teamGold(r.team)
   const configText = r.team.map(m => `${nameOf(m.agentId)} M${m.mindscape ?? 0}·精${m.phase ?? 1}·${m.weaponId ?? '-'}`).join(' / ')
   return {
     id: `auto-${kebab(r.team.map(m => m.agentId).join('-'))}`,
-    group: SPEC_GROUP[spec] ?? '强攻队',
-    subgroup: ELEMENT_LABEL[el] ?? el,
+    group: verdict.group,
+    subgroup: verdict.subgroup,
     // 命名只带人物组成（用户 2026-09-03：自动无有效信息、低金可改金数，都不入名）
     name: r.team.map(m => nameOf(m.agentId)).join('+'),
     note: `自动收录自实战顶分：${r.id}｜${r.score} 分 ${r.timeSeconds}s｜实战配装：${configText}｜金数 ${gold}（最低金+窗口收录，用户 2026-09-03）。默认 01 基线（goldSteps 空）；交互为 parry8/dodge4 取整档；命中数据有出入可在此修订。`,

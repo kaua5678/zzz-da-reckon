@@ -492,24 +492,33 @@
                       </div>
                     </div>
 
-                    <!-- 条件效果覆盖率（C 类精化：条件/叠层类效果的 uptime 折算） -->
-                    <div v-if="discCoverageEffects.length" class="disc-coverage-section">
-                      <div class="field-label" style="margin-top: 6px">条件效果覆盖率（默认 100% 恒开）</div>
-                      <div v-for="e in discCoverageEffects" :key="e.id" class="disc-coverage-row" :title="e.condition || ''">
-                        <n-tag size="tiny" :bordered="false">{{ e.scope }}</n-tag>
+                    <!-- 套装效果清单（2026-09-08）：2pc/4pc 全部效果一律列出行——
+                         触发/叠层类给覆盖率滑块，门槛类标「自动判定」，无效果的标「未建模」。
+                         此前只出条件类，常驻/门槛套装看着像「属性没做」。 -->
+                    <div v-if="discEffectRows.length" class="disc-coverage-section">
+                      <div class="field-label" style="margin-top: 6px">套装效果（条件/叠层类可折算覆盖率）</div>
+                      <div v-for="r in discEffectRows" :key="r.key" class="disc-coverage-row" :title="r.condition || r.gateText || ''">
+                        <n-tag size="tiny" :bordered="false">{{ r.scope }}</n-tag>
                         <span class="coverage-label">
-                          {{ e.stat }} +{{ e.valuePerStack ?? e.value }}{{ e.maxStacks ? `×${e.maxStacks}层` : '' }}
+                          {{ r.label }} {{ r.valueText }}
                         </span>
                         <n-slider
-                          :value="configStore.getDiscEffectCoverage(e.id)"
+                          v-if="r.adjustable"
+                          :value="configStore.getDiscEffectCoverage(r.key)"
                           :min="0"
                           :max="100"
                           :step="5"
                           size="small"
                           style="flex: 1"
-                          @update:value="v => configStore.setDiscEffectCoverage(e.id, v)"
+                          @update:value="v => configStore.setDiscEffectCoverage(r.key, v)"
                         />
-                        <span class="coverage-value">{{ configStore.getDiscEffectCoverage(e.id) }}%</span>
+                        <span v-else style="flex: 1" />
+                        <span class="coverage-value">
+                          <template v-if="r.unmodeled">未建模</template>
+                          <template v-else-if="r.gateText">门槛自动判定</template>
+                          <template v-else-if="r.adjustable">{{ configStore.getDiscEffectCoverage(r.key) }}%</template>
+                          <template v-else>恒开</template>
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -833,6 +842,7 @@ import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { getImageUrl } from '@/utils/image'
 import { isPctStat, phaseStatLabel } from '@/utils/statMeta'
 import { discSetGapLabel } from '@/utils/modelingGaps'
+import { buildDiscEffectRows } from '@/utils/discEffectRows'
 import type { WEngine, WEngineAdvancedStat, PanelValues, CharacterBuildRecommendation, BuffEffect, BuffGroup } from '@/types/catalog'
 import type { CharacterConfig } from '@/stores/config'
 
@@ -1193,31 +1203,35 @@ const currentPanel = computed<PanelValues | null>(() => {
   return panel
 })
 
+// 特化/属性中文名（本页单一来源：角色下拉标签 + 套装效果门槛标签共用）
+const SPECIALTY_LABEL: Record<string, string> = {
+  attack: '强攻',
+  stun: '击破',
+  anomaly: '异常',
+  support: '支援',
+  defense: '防护',
+  rupture: '命破',
+  edgeguard: '锋御',
+  sharpen: '锋御',
+}
+const ATTRIBUTE_LABEL: Record<string, string> = {
+  physical: '物理',
+  fire: '火',
+  ice: '冰',
+  electric: '电',
+  ether: '以太',
+  wind: '风',
+  lumiflux: '流明',
+  frostfire: '烈霜',
+  frost: '霜',
+  honed_edge: '利刃',
+  xuanmo: '玄墨',
+}
+
 // 可选角色列表（过滤掉已选的）
 const availableAgentOptions = computed(() => {
   const used = configStore.usedAgentIds
   const currentId = selectedChar.value?.agentId
-  const SPECIALTY_LABEL: Record<string, string> = {
-    attack: '强攻',
-    stun: '击破',
-    anomaly: '异常',
-    support: '支援',
-    defense: '防护',
-    rupture: '命破',
-    edgeguard: '锋御',
-    sharpen: '锋御',
-  }
-  const ATTRIBUTE_LABEL: Record<string, string> = {
-    physical: '物理',
-    fire: '火',
-    ice: '冰',
-    electric: '电',
-    ether: '以太',
-    wind: '风',
-    frost: '霜',
-    honed_edge: '利刃',
-    xuanmo: '玄墨',
-  }
   return catalogStore.displayAgents
     .filter(a => !used.includes(a.id) || a.id === currentId)
     .map(a => {
@@ -1246,32 +1260,17 @@ const setOptions = computed(() =>
   })),
 )
 
-/** 当前角色 4pc/2pc 套装的条件/叠层效果清单（C 类精化：每条一个覆盖率滑块） */
-const discCoverageEffects = computed(() => {
+/** 当前角色 2pc/4pc 效果清单（常驻/门槛/触发分类如实标出，触发类一条一个覆盖率滑块） */
+const discEffectRows = computed(() => {
   const dd = selectedChar.value?.driveDisc
   if (!dd) return []
-  const setIds = [...new Set([dd.fourPieceSetId, dd.twoPieceSetId].filter(Boolean))]
-  const out: Array<{ id: string; scope: string; stat: string; value?: number; valuePerStack?: number; maxStacks?: number; condition?: string }> = []
-  const seen = new Set<string>()
-  for (const setId of setIds) {
-    const set = catalogStore.driveDiscSetsMap.get(setId)
-    if (!set) continue
-    const groups: Array<[string, any]> = []
-    if (setId === dd.fourPieceSetId) {
-      groups.push(['4件·自身', set.fourPiece?.selfBuff], ['4件·全队', set.fourPiece?.teamBuff])
-    }
-    if (setId === dd.twoPieceSetId) groups.push(['2件', set.twoPiece])
-    for (const [scope, g] of groups) {
-      for (const e of (g?.effects ?? []) as any[]) {
-        if (!e?.id || seen.has(e.id)) continue
-        // 只给条件/叠层类效果出滑块（无条件文本的常驻效果不折算 uptime）
-        if (!e.condition && !e.maxStacks) continue
-        seen.add(e.id)
-        out.push({ id: e.id, scope, stat: e.stat, value: e.value, valuePerStack: e.valuePerStack, maxStacks: e.maxStacks, condition: e.condition })
-      }
-    }
-  }
-  return out
+  const four = dd.fourPieceSetId ? catalogStore.driveDiscSetsMap.get(dd.fourPieceSetId) : undefined
+  const two = dd.twoPieceSetId ? catalogStore.driveDiscSetsMap.get(dd.twoPieceSetId) : undefined
+  return buildDiscEffectRows(four as never, two as never, {
+    specialty: code => SPECIALTY_LABEL[code] ?? code,
+    attribute: code => ATTRIBUTE_LABEL[code] ?? code,
+    stat: code => statLabel(code),
+  })
 })
 
 function onSelectAgent(id: string | null) {
