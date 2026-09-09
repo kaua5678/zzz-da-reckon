@@ -14,7 +14,7 @@
 | `bosses/{zh,en}/<id>.json`、`bosses/monster/`、`bosses/{summary,version}.json` | Boss 数据（属性/阶段/版本，中英双语） | fetch-nanoka-bosses.mjs | import-nanoka-bosses → boss-presets.json |
 | `zzz-run-archive/*.json` | 危局通关档案快照（分页 API） | fetch-zzz-run-archive.mjs | import-zzz-run-archive → run-archive.json |
 | `gachabase/<id>.json` | 第二数据源交叉校验快照（倍率/回能双源确认） | fetch-gachabase-agent.mjs | 只写不读（对账证据留存） |
-| `nanoka_wengine_<id>_{zh,en}.json` | 音擎数据（根目录） | import-nanoka-wengine.mjs（缺则现场抓；`--force` 按正式服重爬） | import-nanoka-wengine.mjs → catalog.wEngines |
+| `nanoka_wengine_<id>_{zh,en}.json` | 音擎数据（根目录） | import-nanoka-wengine.mjs（缺则现场抓；`--force` 按正式服重爬） | import-nanoka-wengine.mjs → catalog.wEngines（**只收 A/S 级**；B 级 2026-09-09 按用户裁决移除，raw 保留，见 scripts/patch-drop-b-wengines.mjs） |
 | `nanoka_character.json` / `nanoka_equipment.json` / `nanoka_weapon.json` | nanoka 正式服索引快照：角色 en 名 / 驱动盘套装 zh+en 名与 2pc·4pc 文本 / 音擎 en 名·atk·sub·icon | sync-build-recommendations.mjs（缺则现场抓） | sync-build-recommendations → build-recommendations.json；patch-disc-sets（套装名对齐） |
 | `nanoka_<id>.json` / `nanoka_<id>_skills_lv12.json` / `noun_3.2.3.json` | 特殊口径留存：`nanoka_1611/1621.json` 是**早期英文/预发布快照**（1621 的 talent 还是 `PlaceHolder`，**勿当数据源**）；`*_skills_lv12.json` = 12 级倍率专项抓取；`noun_3.2.3.json` = 名词表 | 手工抓取 | 仅 spec notes 作出处引用（见 src/specs/agents/1611.json 等）；**正式服全量看 `nanoka_missing/full/<id>.json`** |
 | `_archive/scratch/` | 历史会话遗留的无引用草稿（2026-08 清点归档，13 个文件） | — | 无（勿恢复） |

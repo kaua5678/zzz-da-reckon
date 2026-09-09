@@ -57,11 +57,11 @@ describe('catalog data invariants', () => {
     expect(withWeapon.atk).toBe(noWeapon.atk)
   })
 
-  it('covers the nanoka weapons that were previously missing (燃狱齿轮/朔月裁霜/骁骑礼赞等 16 把)', () => {
+  it('covers the nanoka weapons that were previously missing (燃狱齿轮/朔月裁霜/骁骑礼赞等 14 把)', () => {
     const cat = loadCatalog()
     const wmap = new Map((cat.wEngines as any[]).map((w: any) => [w.id, w]))
-    // 之前缺失的 16 把全部入库
-    for (const id of ['12011', '12015', '13005', '13010', '13011', '13016', '13017', '13018', '13020', '13021', '13112', '13127', '13135', '14003', '14154', '14159']) {
+    // 之前缺失的 A/S 级全部入库（B 级 2026-09-09 按用户裁决移除，见 scripts/patch-drop-b-wengines.mjs）
+    for (const id of ['13005', '13010', '13011', '13016', '13017', '13018', '13020', '13021', '13112', '13127', '13135', '14003', '14154', '14159']) {
       expect(wmap.has(id), `missing wEngine ${id}`).toBe(true)
     }
     // 关键 60 级面板口径

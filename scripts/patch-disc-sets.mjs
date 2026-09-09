@@ -243,11 +243,17 @@ for (const s of catalog.driveDiscSets) {
 
 // ---- 套装名对齐 nanoka 正式服 equipment.json（2026-09-09 录入 1611/1621 时发现）----
 // 34200 catalog 写作「棘刺玫瑰」，正式服原文是「荆棘玫瑰」（错字）；33700 原文名带尾空格。
+// 4pc 文案同样按原文对齐（只改「去掉颜色/标点/空白后与原文不一致」的条目，避免整库标点 churn）：
+//   32800 该效果全队唯一 → 同名被动效果之间不可叠加；31900 和 → 或；32300 触发[侵蚀]效果的额外伤害
+//   → 触发[侵蚀]伤害；31400 进入接战状态或换入前场 → 成为接战状态下的当前操作角色。
 // 数据源 data/raw/nanoka_equipment.json 由 scripts/sync-build-recommendations.mjs 抓取；缺则跳过。
 const eqPath = join(root, 'data', 'raw', 'nanoka_equipment.json')
 if (existsSync(eqPath)) {
   const eq = JSON.parse(readFileSync(eqPath, 'utf8'))
+  const stripColor = s => String(s ?? '').replace(/<color[^>]*>/g, '').replace(/<\/color>/g, '').trim()
+  const norm = s => stripColor(s).replace(/\s+/g, '').replace(/[。，、；]/g, '')
   let renamed = 0
+  let realigned = 0
   for (const s of catalog.driveDiscSets) {
     const zh = eq[String(s.id)]?.zh?.name?.trim()
     if (zh && s.name?.zhCN !== zh) {
@@ -255,10 +261,17 @@ if (existsSync(eqPath)) {
       s.name.zhCN = zh
       renamed++
     }
+    const rawDesc4 = stripColor(eq[String(s.id)]?.zh?.desc4)
+    const cur = s.fourPiece?.effectText?.zhCN
+    if (rawDesc4 && cur && norm(cur) !== norm(rawDesc4)) {
+      console.log(`  4pc 文案对齐 ${s.id} ${s.name?.zhCN}`)
+      s.fourPiece.effectText.zhCN = rawDesc4
+      realigned++
+    }
   }
-  console.log(`套装名对齐 nanoka：${renamed} 条`)
+  console.log(`套装名对齐 nanoka：${renamed} 条 · 4pc 文案对齐：${realigned} 条`)
 } else {
-  console.log('跳过套装名对齐：缺 data/raw/nanoka_equipment.json（跑 scripts/sync-build-recommendations.mjs 生成）')
+  console.log('跳过套装名/文案对齐：缺 data/raw/nanoka_equipment.json（跑 scripts/sync-build-recommendations.mjs 生成）')
 }
 
 writeFileSync(path, JSON.stringify(catalog))

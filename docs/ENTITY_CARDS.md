@@ -34,6 +34,7 @@
 - **专武归属唯一事实源 = `ownerAgentId`**（59 把已录；无指向 = 非专武，如仿制星徽引擎）。
   `build-recommendations.json` 的推荐音擎是快照，两者一致性由 `buildRecWengine.test.ts` 护栏锁定。
 - `requirement.specialty` 是装备门槛（音擎被动只对同特化角色生效）——resolve 输出会显示。
+- **catalog 只收 A/S 级音擎**（81 把）：B 级 8 条（月相/残响/电磁暴/灰烬系，含 3.2 新增 12016）2026-09-09 按用户裁决移除（「B 级没人用」），raw 存档保留；恢复/复核见 `scripts/patch-drop-b-wengines.mjs`。
 - 特例：星徽引擎(13004)/仿制星徽引擎(13108) 互为子串——`resolve 音擎 星徽` 会歧义失败，这是故意的。
 
 ## 2. 角色（Agent，`catalog.json → agents[]`）
