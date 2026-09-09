@@ -30,6 +30,9 @@ async function cardTotals(presetId: string) {
   const rr = calc.resourceResult.value!
   return {
     totalTime: rr.totalTime,
+    /** 引擎账本侧预留的琉音赠大时间（轴模式按口径为 0，见 ENGINE_PIPELINE_GUIDE 坑19①） */
+    reserved: rr.liuyinGiftTimeReserved ?? 0,
+    axis: calc.stackTraversalResult.value != null,
     slots: rr.characters.map(c => {
       const rows = (c.executions ?? []).filter(e => (e.totalTime ?? 0) > 0)
       const sumFront = rows.reduce((s, e) => s + (e.totalTime ?? 0), 0)
@@ -75,5 +78,21 @@ describe('赠送招式时间账（诺姆赠链 / 琉音赠大）', () => {
     expect(main.gift, '主C 有琉音赠大行').toBeGreaterThan(0)
     expect(main.cardTotal).toBeCloseTo(r.totalTime, 6)
     expect(main.sumFront).toBeLessThanOrEqual(main.ledger + 1e-6)
+  }, 180000)
+
+  /**
+   * 单一口径不变量（2026-09-10，时间系统重构·阶段1）：**账本侧预留 == 装配侧赠行**。
+   * 这是「试探/折叠/装配同一套行测量」在赠行上的机器判据——两边各算一次就会漂
+   * （轴模式正是漂了才需要 `probeExcludedTeam` 排除，见 ENGINE_PIPELINE_GUIDE 坑19①）。
+   * 轴模式按口径不预留（`reserved=0`，赠行时间由轴窗口/carve 承担），故只断言非轴队。
+   */
+  it('账本预留 == 装配赠行时间（非轴琉音队，逐位相等）', async () => {
+    for (const id of ['auto-1021-1481-1311', 'auto-1201-1481-1311', 'auto-1321-1481-1311', 'auto-1431-1481-1311']) {
+      const r = await cardTotals(id)
+      if (r.axis) continue // 轴模式不预留，见口径
+      const gift = r.slots.reduce((s, x) => s + x.gift, 0)
+      expect(gift, `${id} 有赠行`).toBeGreaterThan(0)
+      expect(r.reserved, `${id}：账本预留 ${r.reserved} ≠ 装配赠行 ${gift}`).toBeCloseTo(gift, 6)
+    }
   }, 180000)
 })
