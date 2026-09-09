@@ -292,7 +292,8 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
       10s=391/23/2 20s=421/20/2）在 09-08 引擎（1051/1531 实数化、轴栈资源门控、sigrid 估时钩子、
       琉音三件套）上复核 1s 门槛：ratchet 绝对不变量（stun>0/outerExit≠maxIter）/runArchiveDeploy
       （116k 样本）/allAgentsSweep（C6>C0 等）/yidhariInteractionGrid 全绿，旧盆不复现。
-      **排除队：只剩 1591 一族**（2026-09-08 门槛 1s 落地时逐族定位，同日收窄）——1591 希格莉德：
+      **排除队：2026-09-10 起为空**（1591 一族解除，见下「撤 1591 收口」；1051/1531 于 09-08 放回）。
+      **历史（2026-09-08 门槛 1s 落地时逐族定位，同日从三族收窄到一族）**——1591 希格莉德：
       试探的行测量口径（`buildExecutions` + 赠送行）**看不见装配期追加的行**（实测其队最终 s0 行比
       试探测得的多 ~1.9s），于是会接受「按自己的测量合规、按最终装配却超账本」的注入 → 破跨路径
       「行≤账本」（auto-1591-1481 队超 0.07~1.13s）。**试过并否决**：试探接受前加「逐槽原始行≤账本」
@@ -312,7 +313,8 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
       **看不见 ③④ 的行本身与 carve、⑤的重建、⑦的轴块** → 于是会出现「试探自测合规、装配后超账本」
       （1591 队实测超 0.07~1.13s；多出的正是 `source:'gift'` 的赠连携行 + carve 的净效应）。
       **阶段1 的靶子** = 把这 7 处收进**一个** `materialize(state, cfg) → rows[]`（纯函数、放 core/），
-      试探/折叠/装配/UI 全调它；完成判据 = `timeGolden`（阶段0 脚手架）delta 逐条可解释 + 撤 `probeExcludedTeam`。
+      试探/折叠/装配/UI 全调它；完成判据 = `timeGolden`（阶段0 脚手架）delta 逐条可解释 + 撤 `probeExcludedTeam`
+      （后半已于 2026-09-10 达成，但成因是病根被能量侧改动带走而非 7 处收进单一入口——见下「撤 1591 收口」）。
       **阶段1 第一刀实测（2026-09-08）**：已建单一入口 `materializeRows`（`core/resource/helpers.ts`，
       行物化 + 相位快照/恢复；`rowDecibelTotal` 改走它，**golden 0 delta**）。但把**试探测量**也切过去
       → **golden 18 条 delta（最大 `agent:1431:c6` 伤害 +22.9%、`auto-1431-1341-1031` −2.8%）**：
@@ -382,6 +384,19 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
         数值重排**（涉及轴栈窗口分摊与引擎账本的关系），超出「阶段1 单一行模型」的验收口径
         （golden 0 delta 或逐条可解释 + 护栏同绿）——**须用户裁决**后再动。当前 `probeExcludedTeam`
         保持原样（仅 1591 一族），1s 门槛不变。
+      · **撤 1591 收口（2026-09-10，能量收入行级 Σ 切换 07481b8/a337c02 之后重测 → 排除直接删除）**：
+        重测发现**病根已被能量侧改动带走**——该族试探现在**进入但全部被 `fits` 门拒绝**：
+        探针实测 `auto-1591-1481-1311` `underfill=1.563` → attempt0 `trialRows=181.35 > 预算−容差 179`
+        （fits=false）→ 回滚「宁可留白不制造超预算」；`auto-1591-1481-1211` `underfill=2.418` →
+        attempt0 `trialRows=181.35` 同拒。故开关该排除**全链逐位零差异**：`timeGolden`（127 预设 +
+        60 角色×命座 0/6）**全 0 delta**、`timeLedgerInvariants`/`timeFillRatchet`/`underfillRefund`
+        同绿、`npm run verify` **EXIT=0**（含 allAgentsSweep / runArchiveDeploy / typecheck / build）。
+        → 删除 `probeExcludedTeam`（现**无任何排除队**），不再需要为它做数值重排。
+        **诚实边界**：这只解除挂账，**不等于单一行模型完成**——测量口径缺口仍在（轴模式赠大时间不进
+        `frontlineRowsOf`；轴模式 promote 次数由轴预设决定，`liuyinGiftChainInfo` 回落通用公式会算错
+        次数），只是不再被排除掩盖：真出现越账时由 `timeLedgerInvariants` 立刻红。真收口仍是
+        「把轴 promote 计数线程化进 core」（= 半修 C/D 的完整版，涉及落点，须先量 delta 再裁决）。
+        对账探针：`PROBE_GIFT_TEAM=<预设id> npx vitest run src/composables/__tests__/giftAxisProbe.test.ts`。
       **A/B 归因（同工作区、仅切门槛 10s↔1s 的隔离对拍，2026-09-08 终测）**：留白合计 **192.6→148.4s**
       （净收 44.2s），**16 队改善、0 队变差**——最大 auto-1181-1511-1411 7.4→1.1s、auto-1401-1511-1411
       8→2s；放回 1051 后再收 auto-1051-1481-1451 3.0→1.3、yidhari-trigger-lucia 2.3→0.2 等 5 队
@@ -473,8 +488,8 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
       「只存规范种子」修好后，**1051/1531 两族的排除随之撤销**（当初排除的直接原因是热启动注入
       收敛末态导致冷/热分叉，根因已修）——实测放回后 seedInvariance / warmStart /
       yidhariInteractionGrid / timeLedgerInvariants 全绿，yidhari 系 5 队留白再收 6.9s。
-      现仅 1591 一族排除，原因是试探的行测量口径缺口（见本节上一条），升级路径 = 试探与装配
-      共用同一套行测量后删除 probeExcludedTeam。
+      **排除队已于 2026-09-10 全部解除**（1591 一族删除，见本节上一条「撤 1591 收口」）——但那是
+      「病根被别的改动带走」，不是「试探与装配共用同一套行测量」做到了；该升级路径仍待做。
 
 
     - **剩余 over 队归因定案（2026-09-06 对账）**：banyue-liuyin 1.4s 与 1431-1481 1.5~1.9s 的 over **不是估时缺口**——般岳估时与物化逐项相等、转大预留与实际赠行逐队相等；真相 = 厚需求降配的**移动靶残差**（预设交互超预算 → 外层 interactionScale 逐轮缩放，折叠环 8 轮收敛不完 → `timeBudgetConverged=false` + 2~28s 残差 + 装配截断 39s）。属坑19② 降配 + 坑22 截断的既有量化口径（interactionScale 精度 ~1.6%），修它不是改估时而是改降配精度/判稳口径——待定，不再立项为估时类。

@@ -184,7 +184,7 @@ export const TIME_BUDGET_TOLERANCE_SECONDS = 1
  * 复核：1s 门槛下 ratchet 绝对不变量（stun>0/outerExit≠maxIter）/runArchiveDeploy（116k 样本）/
  * allAgentsSweep（C6>C0 等不变量）/yidhariInteractionGrid 全绿，旧盆不复现（实测数字见
  * underfillRefund.test.ts 与 docs 坑19① 否决记录）。
- * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛=1s 量化容差（平A权重队自由时间按权重全分配，留白只剩 ≤2s 量化/试探粒度地板；欠打 ≤1s 不试探；09-05「≤5s 推近均衡队入 stunCount=0 盆」在 09-08 引擎复核不复现；**1591 一族排除**——试探的行测量口径看不见装配期追加行，会破跨路径「行≤账本」恒等（1051/1531 已随热启动规范种子修复放回））；宁可留白不制造超预算 | 据 用户@2026-09-08「平A权重与留白不应并存，剩余自由时间按权重全部分配」+09-05「全部动手」·复核@2026-09-08 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS | 信 确认
+ * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛=1s 量化容差（平A权重队自由时间按权重全分配，留白只剩 ≤2s 量化/试探粒度地板；欠打 ≤1s 不试探；09-05「≤5s 推近均衡队入 stunCount=0 盆」在 09-08 引擎复核不复现；**无排除队**——1591 一族 2026-09-10 解除（该族试探现进入即被 fits 门拒，开关零差异），1051/1531 已随热启动规范种子修复放回）；宁可留白不制造超预算 | 据 用户@2026-09-08「平A权重与留白不应并存，剩余自由时间按权重全部分配」+09-05「全部动手」·复核@2026-09-08·复核@2026-09-10（能量行级 Σ 后全链零差异） | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS | 信 确认
  */
 export const UNDERFILL_PROBE_THRESHOLD_SECONDS = TIME_BUDGET_TOLERANCE_SECONDS
 
@@ -196,17 +196,24 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   const yidhariContinuousPresent = config.characters.some(c => c.agentId === '1051' && c.yidhariContinuousEx === true)
   const maxIter = Math.max(config.maxIterations || 20, yidhariContinuousPresent ? 100 : 0)
   const configs = config.characters
-  // 欠打试探排除队（2026-09-08 立，同日从三族收窄到一族）：
-  //  · **1591 希格莉德**（唯一排除）：试探的物化行测量口径（`buildExecutions` + 赠送行）**看不到装配期
-  //    追加的行**（实测她的队最终 s0 行比试探测得的多 ~1.9s——连携 1591016 在装配期还有一条小数次数
-  //    行），于是试探会接受「按它自己的测量合规、按最终装配却超自家账本」的注入 → 破跨路径恒等式
-  //    `timeLedgerInvariants`「行≤账本」（实测 auto-1591-1481 队超 0.07~1.13s）。已试并否决的替代方案：
-  //    试探接受前加「逐槽原始行 ≤ 账本」判据 → 该判据用的是同一份测量，照样看不见缺的那一行 → 无效。
-  //    升级路径 = 让试探与装配共用同一套行测量（把装配期追加行纳入 frontlineRowsOf）。
+  // 欠打试探排除队（2026-09-08 立 → **2026-09-10 解除，现无任何排除队**）：
+  //  · **1591 希格莉德**（当时唯一排除）：试探的物化行测量口径（`buildExecutions` + 赠送行近似）
+  //    **看不到装配期追加的行**（最终 s0 行比试探测得的多 ~1.9s——装配期还追加小数次数连携行），
+  //    于是曾接受「按它自己的测量合规、按最终装配却超自家账本」的注入 → 破跨路径恒等式
+  //    `timeLedgerInvariants`「行≤账本」（实测 auto-1591-1481 队超 0.07~1.13s）。已试并否决的
+  //    替代方案：试探接受前加「逐槽原始行 ≤ 账本」判据 → 用的是同一份测量，照样看不见缺的那行。
+  //    **解除依据（2026-09-10 实测，能量收入行级 Σ 切换 07481b8/a337c02 之后重测）**：该族试探
+  //    现在**进入但全部被拒**——探针实测 auto-1591-1481-1311 `underfill=1.563` → attempt0
+  //    `trialRows=181.35 > 预算−容差 179`（fits=false）→ 回滚「宁可留白不制造超预算」；开关该
+  //    排除在**全链逐位零差异**（`timeGolden` 127 预设 + 60 角色×命座 0/6 全 0 delta、
+  //    `timeLedgerInvariants`/`timeFillRatchet`/`underfillRefund` 同绿、`npm run verify` EXIT=0）。
+  //    **测量口径缺口本身仍在**（轴模式赠大时间不进 `frontlineRowsOf`，且轴模式 promote 次数由轴
+  //    预设决定、`liuyinGiftChainInfo` 回落通用公式会算错），只是不再被排除掩盖——现由
+  //    `timeLedgerInvariants` 兜住：一旦某队真的因此越账，护栏立刻红。真收口 = 把轴 promote 计数
+  //    线程化进 core（半修 C/D 路线，见 docs/ENGINE_PIPELINE_GUIDE.md §4 坑19①）。
   //  · 1051 伊德海莉 / 1531 星徽·比利：**2026-09-08 已放回**——它们当初被排除是因为热启动缓存注入
   //    收敛末态导致冷/热落点分叉（0.009s / 0.0015s），而「缓存只存规范种子」修好后同配置计算逐位
   //    稳定，两族试探全绿（seedInvariance / warmStart / yidhariInteractionGrid / timeLedgerInvariants）。
-  const probeExcludedTeam = configs.some(c => c.agentId === '1591')
 
   // 热启动：无显式种子时查缓存，命中则从上次收敛态出发（逐位透明，见块注释）
   const warmExactKey = config.initialStates ? '' : warmStartExactKey(config)
@@ -567,9 +574,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 09-08 引擎（1051/1531 实数化、轴栈资源门控、sigrid 估时钩子、琉音三件套）上 1s 门槛复核：
     // ratchet 绝对不变量/runArchiveDeploy/allAgentsSweep/yidhariInteractionGrid 全绿，旧盆不复现
     // （实测数字见 underfillRefund.test.ts 与 docs 坑19① 否决记录）。
-    // **排除队（2026-09-08）**：现仅 1591 一族（试探的行测量看不见装配期追加行 → 会破「行≤账本」；
-    // 见 probeExcludedTeam 注释）；1051/1531 已随热启动规范种子修复放回。
-    if (underfill > UNDERFILL_PROBE_THRESHOLD_SECONDS && !probeExcludedTeam) {
+    // **无排除队（2026-09-10 起）**：1591 一族原排除已于本日解除（见 `calcTeamResources` 顶部
+    // 注释的实测依据）；1051/1531 于 2026-09-08 随热启动规范种子修复放回。
+    if (underfill > UNDERFILL_PROBE_THRESHOLD_SECONDS) {
       let probe = underfill
       for (let attempt = 0; attempt < 4 && probe > 0.5; attempt++) {
         const savedRefund: number = config.timeBudgetRefund ?? 0
