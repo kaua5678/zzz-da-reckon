@@ -27,13 +27,18 @@ describe.runIf(active)('探针：琉音赠大跨层对账', () => {
     const lines: string[] = []
     lines.push(`env PROBE_INCLUDE_1591=${String(process.env.PROBE_INCLUDE_1591)} PROBE_GIFT_TEAM=${String(process.env.PROBE_GIFT_TEAM)}`)
     for (const id of ids) {
-      const preset = teamPresets.find(p => p.id === id)
-      if (!preset) { lines.push(`### ${id}  ← 预设未命中`); continue }
+      const soloId = id.startsWith('solo:') ? id.slice(5) : ''
+      const preset = soloId ? null : teamPresets.find(p => p.id === id)
+      if (!soloId && !preset) { lines.push(`### ${id}  ← 预设未命中`); continue }
       const { catalog } = await setupHarness(['', '', ''])
       await catalog.loadBuildRecommendations()
       const config = useConfigStore()
-      for (let i = 0; i < 3; i++) config.setAgent(i, preset.team[i])
-      config.applyTeamPreset(preset.team as [string, string, string])
+      if (soloId) {
+        config.setAgent(0, soloId)
+      } else {
+        for (let i = 0; i < 3; i++) config.setAgent(i, preset!.team[i])
+        config.applyTeamPreset(preset!.team as [string, string, string])
+      }
       const calc = useResourceCalc()
       const rr = calc.resourceResult.value
       if (!rr) { lines.push(`### ${id}  ← 无结果`); continue }
@@ -44,8 +49,8 @@ describe.runIf(active)('探针：琉音赠大跨层对账', () => {
         invincibleTime: config.enemy.invincibleTime ?? 0,
         nameOf: (_a, slot) => `槽${slot}`,
       })
-      lines.push(`\n================ ${id}（${preset.name}）`)
-      lines.push(`队伍 ${preset.team.join('/')} · 失衡 ${sp?.stunCount ?? 0} 次 · 窗口 ${f(calc.windowDuration.value)}s · 战斗 ${rr.totalTime}s`)
+      lines.push(`\n================ ${id}${preset ? `（${preset.name}）` : ''}`)
+      lines.push(`队伍 ${(preset ? preset.team : [soloId]).join('/')} · 失衡 ${sp?.stunCount ?? 0} 次 · 窗口 ${f(calc.windowDuration.value)}s · 战斗 ${rr.totalTime}s`)
       lines.push(`留白 ${f(summary.slack)}s · 超预算 ${f(Math.max(0, -summary.slack))}s · outerExit=${rr.convergence?.outerExit ?? '—'} · tbConv=${rr.convergence?.timeBudgetConverged}`)
       lines.push(`liuyinGiftTimeReserved=${rr.liuyinGiftTimeReserved ?? 0}（引擎账本侧预留；轴模式=0 表示未预留）`)
       const axisPromote = calc.resourceConfig.value?.axisLiuyinPromote
