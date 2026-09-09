@@ -1353,7 +1353,7 @@ export function iterate(
   // auto-1591-1481-1311）。引擎侧按同一求解预留必要时间：赠行时间进目标槽必要（GROSS），
   // 平A池随之收缩，守恒成立且不再依赖 post-hoc carve。**轴模式除外**：轴内 60/90 转大次数由
   // 轴预设 promoteVariant 块决定（useResourceCalc 层，iterate 拿不到），保留旧 carve 路径。
-  const liuyinGiftAxisActive = !!globalCfg.axisUltimateTrackBySlot
+  const liuyinGiftAxisActive = !!globalCfg.axisMode
   const liuyinGiftSlot = liuyinGiftAxisActive ? -1 : configs.findIndex(c => c.agentId === '1481')
   let liuyinGiftTargetIdx = -1
   let liuyinGiftTime = 0
@@ -1390,19 +1390,17 @@ export function iterate(
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]
     const exSpecialCount = resolveExSpecialCount(cfg, energies[i])
-    // 时间轴喧响轨（轴模式注入 axisUltimateTrackBySlot）：窗口时序推演的实际可放大招数
-    //（进窗不够 3000 的窗大招被削减）；缺省回落总量口径 floor(喧响/消耗)
-    const trackedUltimate1 = globalCfg.axisUltimateTrackBySlot?.[cfg.slot]
-    const ultimateCount = typeof trackedUltimate1 === 'number' && trackedUltimate1 >= 0
-      ? trackedUltimate1
-      : Math.floor(decibels[i] / cfg.ultimateCost)
+    // 大招次数 = **槽位喧响总量**（用户 2026-09-10 裁决 A「总量为准」）：来源 = 自攒 + 赠送，
+    // 消耗由总量决定而非个数。旧「时间轴推演反推次数」（每窗至多 1 次）已停用——它与轴栈
+    // 「按总量执行（同窗可多次）」两套口径混用，见 docs 坑32。
+    const ultimateCount = Math.floor(decibels[i] / cfg.ultimateCost)
 
     // 伊德海莉实数迭代期：必要时间用实数终结技期望（decibels/消耗）——整数 ult 在喧响阈值处
     // 4↔5 翻转会把实数强特次数拽成 2-循环（必要时间跳变 → 平A时间/回能/喧响同步跳变）；
-    // 状态里 ult 仍是整数（终局一致），只有时间信道用实数参与收敛。轴内喧响轨（tracked）保持整数。
+    // 状态里 ult 仍是整数（终局一致），只有时间信道用实数参与收敛。
+    // （旧「轴内喧响轨保持整数」的例外已随裁决 A 取消——轨不再反推次数。）
     const yidhariRealUlt = cfg.agentId === '1051' && cfg.yidhariContinuousEx === true
       && cfg.yidhariFinalizeEx !== true
-      && !(typeof trackedUltimate1 === 'number' && trackedUltimate1 >= 0)
     const ultForTime = yidhariRealUlt ? decibels[i] / cfg.ultimateCost : ultimateCount
 
     // 时间信道阻尼（迭代期）：她的实数次数经「必要时间→共享平A池→队友回能→队友整数次数」
@@ -1489,11 +1487,11 @@ export function iterate(
   // （实测朱鸢队留白 93.7s、叶瞬光队 18~58s），虚高账本还会误触发模块的结构退化。
   const netNecessary = totalNecessary.map((n, i) => Math.max(0, n - (comboAlignCredits[i] ?? 0)))
   const sumNetNecessary = netNecessary.reduce((a, b) => a + b, 0)
-  // **轴模式不封顶**（`axisUltimateTrackBySlot` 只在 axisActive 时注入 = 轴态信号）：轴是用户
+  // **轴模式不封顶**（`axisMode` = 编排层轴态信号）：轴是用户
   // 指定的打法，超预算的正确处置是「轴退化/降配」显式报"这套轴在 180s 里不可操作"并弃轴重算，
   // 不能被静默截断（实测吞掉后 banyue.test「轴退化」判据不再触发）。非轴模式 = 自由循环，
   // 超预算就是"到点结算"，该截断 + 回灌平A。
-  const axisMode = !!globalCfg.axisUltimateTrackBySlot
+  const axisMode = !!globalCfg.axisMode
   const rawScale = !axisMode && sumNetNecessary > budget && sumNetNecessary > 0
     ? budget / sumNetNecessary
     : 1
@@ -1544,11 +1542,8 @@ export function iterate(
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]
     const exSpecialCount = resolveExSpecialCount(cfg, energies[i])
-    // 时间轴喧响轨（与 Step4 同口径）：窗口时序推演的实际可放大招数
-    const trackedUltimate2 = globalCfg.axisUltimateTrackBySlot?.[cfg.slot]
-    const ultimateCount = typeof trackedUltimate2 === 'number' && trackedUltimate2 >= 0
-      ? trackedUltimate2
-      : Math.floor(decibels[i] / cfg.ultimateCost)
+    // 与 Step4 同口径：大招次数 = 槽位喧响总量（裁决 A）
+    const ultimateCount = Math.floor(decibels[i] / cfg.ultimateCost)
 
     const necessary = cappedNecessary[i]
     // 单角色前台硬顶：合轴抵扣放宽的是团队预算，单个角色自身时间轴仍受战斗总时长约束

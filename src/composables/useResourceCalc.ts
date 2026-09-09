@@ -13,7 +13,6 @@ import type { StunSkillExecution } from '@/core/stunPool'
 import { computeParrySplit } from '@/core/parrySplit'
 import type { ParrySplitResult } from '@/core/parrySplit'
 import { calcStunAxis } from '@/core/stunAxis'
-import { simulateDecibelTrack } from '@/core/resourceTrack'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
 import { netFrontlineOccupation } from '@/core/resource/helpers'
@@ -60,47 +59,6 @@ import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } f
 const MAX_OUTER_ITER = 20
 /** 保底4喧响的四舍五入阈值（喧响值）：缺口 ≤ 此值补弹刀够下一次大招，超过则放弃（实战打不出） */
 export const DECIBEL_ROUND_THRESHOLD = 1500
-
-/**
- * 时间轴喧响轨推演（对轴模块，用户口径 2026-08-31）：
- * 窗口时序按「有效时间均分给 N 次失衡」估位（每窗起点 = 轮转间隔 × 序号），
- * 每槽用 simulateDecibelTrack 推演实际可放大招数（进窗不够 3000 削减）。
- * regenBySlot = 上一轮收敛的每槽喧响产出（首轮 0 → 全部削减？不——首轮回落总量口径，
- * 用 -1 标记未注入）；initialGift 读 cfg.initialDecibelGift（进场赠送）。
- */
-function computeAxisUltimateTrack(
-  characters: { slot: number; agentId: string; initialDecibelGift?: number }[],
-  stunCount: number,
-  windowDuration: number,
-  effectiveTime: number,
-  regenBySlot: Record<number, number> | undefined,
-  prevStunCount?: number,
-): Record<number, number> {
-  const track: Record<number, number> = {}
-  if (!regenBySlot) return track // 首轮无收敛数据 → 不注入（回落总量口径）
-  // 失衡次数未收敛稳定前不启用轨：早期轮 stunCount 偏小（如轮2=1）→ 窗口估位失真 →
-  // 轨把大招砍光 → 外层提前判稳，stunCount 涨不回来（实测比琉队螺旋到 0）。
-  // 窗口数取「上一轮收敛且与本轮一致」的 stunCount；首轮后未稳定 → 回落总量口径。
-  if (typeof prevStunCount !== 'number' || prevStunCount !== stunCount) return track
-  const wins = Math.max(1, Math.floor(stunCount))
-  // 窗口间隔 = 有效时间 ÷ 失衡次数（含窗口本身；窗口起点均布）
-  const interval = effectiveTime / wins
-  const windows = Array.from({ length: wins }, (_, i) => ({
-    start: Math.min(effectiveTime - windowDuration, i * interval),
-    duration: windowDuration,
-  }))
-  for (const cfg of characters) {
-    const regen = Math.max(0, regenBySlot[cfg.slot] ?? 0)
-    // 回复总量口径 = 上一轮整局喧响产出 − 进场赠送（赠送走 initial，t=0 即有）
-    const initial = Math.min(3000, Math.max(0, cfg.initialDecibelGift ?? 0))
-    const result = simulateDecibelTrack(windows, Math.max(0, regen - initial), effectiveTime, initial)
-    // 双保险：轨值 ≤ 总量口径（floor(总喧响/3000)）——轨只削「时间不够攒」的虚高，
-    // 不引入新的产出螺旋（regen 单调见 threads 写入处）
-    const totalBasis = Math.floor((regen + initial) / 3000)
-    track[cfg.slot] = Math.min(result.ultimateCount, totalBasis)
-  }
-  return track
-}
 
 const { computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, remielleSpecialVoidflareCount, findMoveById, enrichExecutionPlan, buildCharConfig, extractSkillExecutions, applyTeamMechanics, buildAnomalyVirtualPanel } = ResourceCalcHelpers
 export function useResourceCalc() {
@@ -509,7 +467,6 @@ export function useResourceCalc() {
       teamVeilCountTotal: prevTeamVeilCountTotal,
       decibelParry: prevDecibelParry,
       decibelRegenBySlot: prevDecibelRegenBySlot,
-      trackStunCount: prevTrackStunCount,
     } = threads
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
@@ -1143,16 +1100,8 @@ export function useResourceCalc() {
       //（180s 分失衡/非失衡段，喧响均匀回复 3000 上限，进窗够 3000 放大清空、不够削减该窗大招）。
       // 非轴模式不注入（回落总量口径）。首轮窗口时序按失衡次数均分（有效时间/N）估位，
       // 与轮内实际窗口节奏的偏差由外层不动点吸收（推演输入 = 上一轮收敛的喧响产出）。
-      ...(axisActive
-        ? { axisUltimateTrackBySlot: computeAxisUltimateTrack(
-            characters,
-            stunCount,
-            computeWindowDuration(),
-            Math.max(1, (base.totalTime ?? 180) - (configStore.enemy.invincibleTime ?? 0)),
-            prevDecibelRegenBySlot,
-            prevTrackStunCount,
-          ) }
-        : {}),
+      // 轴态信号（裁决 A 后不再注入次数；大招次数由引擎按槽位喧响总量推导）
+      ...(axisActive ? { axisMode: true } : {}),
     }), catalogStore)
     // 橘福福：收敛仪玄符法千重类终结次数 + 全队终结总次数（供额外能力 +300 / 影画2 威势）
     let yixuanFuFaForJufufuNext = 0

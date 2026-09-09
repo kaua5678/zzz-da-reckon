@@ -446,7 +446,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 琉音赠大：**只作测量口径统一**（2026-09-10 实测：轴模式也在此预留会让 4 队留白变差
     // +0.27~2.70s——预留挤平A池而赠行不等量补回，见 docs 坑19①；故 iterate 侧维持旧口径「轴模式不预留」，
     // 只有 `frontlineRowsOf` 试探测量与 `giftTimeOfSlot` 装配侧按轴预设计数统一）
-    const giftLiuyin = !config.axisUltimateTrackBySlot && configs.some(c => c.agentId === '1481')
+    const giftLiuyin = !config.axisMode && configs.some(c => c.agentId === '1481')
       ? liuyinGiftChainInfo(configs, st, configs.findIndex(c => c.agentId === '1481'), totalTime, config.stunCount ?? 0)
       : { targetIdx: -1, time: 0 }
     for (let i = 0; i < configs.length; i++) {
@@ -595,7 +595,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       // 琉音赠大：轴模式用轴预设计数（`config.axisLiuyinPromote`），非轴用通用公式（跨层统一入口）
       const giftLiu = liuyinGiftTime(
         configs, st, totalTime, config.stunCount ?? 0,
-        config.axisLiuyinPromote, !!config.axisUltimateTrackBySlot,
+        config.axisLiuyinPromote, !!config.axisMode,
       )
       for (let i = 0; i < configs.length; i++) {
         const cfg = configs[i]
@@ -762,7 +762,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     : { targetIdx: -1, time: 0 }
   // 琉音赠大（装配侧：截断上限 + 前台展示）：轴模式维持旧口径「不预留/不计入」（2026-09-10 实测：
   // 改用轴预设计数会让落点大改——stun 4→6、dmg ±5.8%/+32.5%，属数值重排，须裁决；见 docs 坑19①）
-  const liuyinGiftFinal = !config.axisUltimateTrackBySlot && configs.some(c => c.agentId === '1481')
+  const liuyinGiftFinal = !config.axisMode && configs.some(c => c.agentId === '1481')
     ? liuyinGiftChainInfo(configs, states, configs.findIndex(c => c.agentId === '1481'), totalTime, config.stunCount ?? 0)
     : { targetIdx: -1, time: 0 }
   const giftTimeOfSlot = (idx: number): number =>
@@ -775,7 +775,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     : { targetIdx: -1, count: 0 }
   const liuyinGiftRow = liuyinGiftRowSpec(
     configs, states, totalTime, config.stunCount ?? 0,
-    config.axisLiuyinPromote, !!config.axisUltimateTrackBySlot, config.teamSize,
+    config.axisLiuyinPromote, !!config.axisMode, config.teamSize,
   )
   /** 时间线截断总量（装配阶段砍掉的秒数）：= 资源允许但时间装不下的部分，上报为 overflowSeconds */
   let timeTruncatedSeconds = 0

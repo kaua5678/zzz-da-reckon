@@ -1927,7 +1927,12 @@ export interface ResourceCalcConfig {
    * 语义：180s 按失衡窗分段，喧响均匀回复（3000 上限、溢出浪费），进窗够 3000 放大清空、
    * 不够削减该窗大招。iterate 用它替代 floor(decibels/cost) 的大招次数。
    */
-  axisUltimateTrackBySlot?: Record<number, number>
+  /**
+   * 轴模式信号（编排层注入）：**口径**已改为「大招次数 = 槽位喧响总量 `floor(decibel/消耗)`」
+   * （用户 2026-09-10 裁决 A「总量为准」，来源 = 自攒 + 赠送；窗口时序不再反推次数）。
+   * 本字段只作**轴态判定**（赠行预留/行口径、必要前台封顶豁免等），不再携带次数。
+   */
+  axisMode?: boolean
   /** 特殊动作喧响奖励（弹刀/闪反/连携/快支，含伴随50%）按槽位注入；参与终结技次数推导 */
   specialActionDecibelBonusPerSlot?: number[]
   /** 异常/紊乱/乱流喧响奖励（含伴随50%）按槽位注入，由上一轮异常池结果回填；参与终结技次数推导 */
