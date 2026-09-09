@@ -1890,6 +1890,12 @@ export interface ResourceCalcConfig {
   /** 合轴节省按块分摊（`${slot}:${moveId}` → 秒）：折叠循环按行扣减用 */
   axisOverlapByAction?: Record<string, number>
   /**
+   * 轴模式琉音赠大计数（编排层注入，`useResourceCalc` 按轴预设 promoteVariant 块 × 窗口数加权）：
+   * 轴内 60/90 转大次数**由轴预设决定**，core 的 `liuyinGiftChainInfo` 通用公式（好评/连携窗口推导）
+   * 会算出另一个数——跨层口径统一入口，见 `core/resource.ts#liuyinGiftTime`。
+   */
+  axisLiuyinPromote?: { targetSlot: number; count: number }
+  /**
    * 全队必要前台的可行比例（引擎 iterate 每轮写入，装配阶段消费）：
    * `预算 ÷ Σ必要净占用`，<1 = 想打的必做动作装不进战斗时间 ⇒ 执行计划按时间线截断。
    */

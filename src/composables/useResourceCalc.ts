@@ -26,6 +26,7 @@ import { computeBossAnomalyStateTimeline, computeInStunAnomalyTimeline, bossEntr
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { applyLiuyinPromote, buildPromoteParams, promoteFixpoint } from './resourceCalc/liuyinPromote'
+import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import { applyNormaHatChain } from './resourceCalc/normaHatChain'
 import { initialCalcRoundThreads, threadsAfterNullRound, type CalcRoundThreads } from './resourceCalc/roundThreads'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
@@ -675,6 +676,25 @@ export function useResourceCalc() {
       })
       if (h60 > 0 || h90 > 0) axisHug = { hug60: h60, hug90: h90 }
     }
+    // 轴模式琉音赠大计数（跨层口径统一，2026-09-10）：轴内 60/90 转大次数由轴预设决定，
+    // core 的通用公式（好评/连携窗口推导）会算出另一个数 → 按窗口加权后注入，
+    // 使试探测量/账本预留与轴栈窗口口径同源（见 core/resource.ts#liuyinGiftTime）。
+    let axisLiuyinPromote: { targetSlot: number; count: number } | undefined
+    if (axisActive && axisHug) {
+      const liuyinIdx = configStore.team.findIndex(char => {
+        const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
+        return a?.id === '1481' || a?.teammateBuffId === '1481'
+      })
+      if (liuyinIdx >= 0) {
+        axisLiuyinPromote = {
+          targetSlot: resolveUltimateTargetSlot(
+            liuyinIdx, configStore.team.length,
+            configStore.getMechanicSetting('liuyin.ultimateTargetSlot', -1),
+          ),
+          count: axisHug.hug60 + axisHug.hug90,
+        }
+      }
+    }
     // 伊德海莉失衡内强特：从轴里连段块反推（单次=1重碾/50闪能，双次=2重碾/85闪能），
     // 剩下的闪能在非失衡打 50 闪能强特（回15闪能）。无轴时走资源池 yidhariExPerStun 兜底。
     let yidhariInStunEx = 0
@@ -1115,6 +1135,7 @@ export function useResourceCalc() {
       stunCount,
       axisOverlapSeconds,
       axisOverlapByAction,
+      ...(axisLiuyinPromote ? { axisLiuyinPromote } : {}),
       specialActionDecibelBonusPerSlot: specialBonusPerSlot,
       anomalyDecibelBonusPerSlot: anomalyBonusPerSlot,
       // 时间轴喧响轨（对轴模块，用户口径 2026-08-31）：轴模式按窗口时序推演每槽实际可放大招数

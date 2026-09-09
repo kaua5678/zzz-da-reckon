@@ -77,6 +77,34 @@ function liuyinGiftChainInfo(
   return { targetIdx, time: promote * (configs[targetIdx]?.ultimateActionTime ?? 0) }
 }
 
+/**
+ * 琉音赠大时间**跨层统一入口**（2026-09-10）：轴模式与「轴栈窗口口径」对齐——
+ * 轴内 60/90 转大次数由轴预设 promoteVariant 块决定（编排层按窗口数加权后经
+ * `config.axisLiuyinPromote` 注入），通用公式 `liuyinGiftChainInfo`（好评/连携窗口推导）
+ * 在轴模式会算出另一个数（旧代码干脆跳过测量 → 试探看不见赠行）。非轴模式仍走通用公式。
+ *
+ * **调用范围（实测校准，别顺手扩大）**：目前只有 `frontlineRowsOf`（试探测量）用它；
+ * `iterate` 预留与装配侧 `giftTimeOfSlot` **仍维持「轴模式不计入」**——2026-09-10 分别开关实测：
+ * 预留侧 4 队留白变差（+0.27~2.70s），装配侧落点大改（stun 4→6、dmg ±5.8%/+32.5%），
+ * 两者都属数值重排须裁决（见 docs/ENGINE_PIPELINE_GUIDE.md §4 坑19①）。
+ */
+function liuyinGiftTime(
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+  totalTime: number,
+  stunCount: number,
+  axisPromote: { targetSlot: number; count: number } | undefined,
+  axisMode: boolean,
+): { targetIdx: number; time: number } {
+  const liuyinSlot = configs.findIndex(c => c.agentId === '1481')
+  if (liuyinSlot < 0) return { targetIdx: -1, time: 0 }
+  if (!axisMode) return liuyinGiftChainInfo(configs, states, liuyinSlot, totalTime, stunCount)
+  if (!axisPromote || axisPromote.count <= 0) return { targetIdx: -1, time: 0 }
+  const tCfg = configs[axisPromote.targetSlot]
+  if (!tCfg) return { targetIdx: -1, time: 0 }
+  return { targetIdx: axisPromote.targetSlot, time: axisPromote.count * (tCfg.ultimateActionTime ?? 0) }
+}
+
 // ============ 单角色能量计算 ============
 
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
@@ -374,9 +402,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     const giftNormaSlot = configs.findIndex(c => c.agentId === '1571')
     const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, st, giftNormaSlot, totalTime) : { targetIdx: -1, time: 0 }
     // 琉音好评转大赠链行同理（非轴）：装配后 applyLiuyinPromote 追加，行测量计入其时间
-    const giftLiuyinSlot = !config.axisUltimateTrackBySlot && configs.some(c => c.agentId === '1481') ? configs.findIndex(c => c.agentId === '1481') : -1
-    const giftLiuyin = giftLiuyinSlot >= 0
-      ? liuyinGiftChainInfo(configs, st, giftLiuyinSlot, totalTime, config.stunCount ?? 0)
+    // 琉音赠大：**只作测量口径统一**（2026-09-10 实测：轴模式也在此预留会让 4 队留白变差
+    // +0.27~2.70s——预留挤平A池而赠行不等量补回，见 docs 坑19①；故 iterate 侧维持旧口径「轴模式不预留」，
+    // 只有 `frontlineRowsOf` 试探测量与 `giftTimeOfSlot` 装配侧按轴预设计数统一）
+    const giftLiuyin = !config.axisUltimateTrackBySlot && configs.some(c => c.agentId === '1481')
+      ? liuyinGiftChainInfo(configs, st, configs.findIndex(c => c.agentId === '1481'), totalTime, config.stunCount ?? 0)
       : { targetIdx: -1, time: 0 }
     for (let i = 0; i < configs.length; i++) {
       const cfg = configs[i]
@@ -521,9 +551,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       }
       let total = 0
       const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, st, giftNormaSlot, totalTime) : { targetIdx: -1, time: 0 }
-      const giftLiu = !config.axisUltimateTrackBySlot && configs.some(c => c.agentId === '1481')
-        ? liuyinGiftChainInfo(configs, st, configs.findIndex(c => c.agentId === '1481'), totalTime, config.stunCount ?? 0)
-        : { targetIdx: -1, time: 0 }
+      // 琉音赠大：轴模式用轴预设计数（`config.axisLiuyinPromote`），非轴用通用公式（跨层统一入口）
+      const giftLiu = liuyinGiftTime(
+        configs, st, totalTime, config.stunCount ?? 0,
+        config.axisLiuyinPromote, !!config.axisUltimateTrackBySlot,
+      )
       for (let i = 0; i < configs.length; i++) {
         const cfg = configs[i]
         const state = st[i]
@@ -687,11 +719,10 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   const normaGiftFinal = giftNormaIdxFinal >= 0
     ? normaGiftChainInfo(configs, states, giftNormaIdxFinal, totalTime)
     : { targetIdx: -1, time: 0 }
-  const giftLiuyinIdxFinal = !config.axisUltimateTrackBySlot && configs.some(c => c.agentId === '1481')
-    ? configs.findIndex(c => c.agentId === '1481')
-    : -1
-  const liuyinGiftFinal = giftLiuyinIdxFinal >= 0
-    ? liuyinGiftChainInfo(configs, states, giftLiuyinIdxFinal, totalTime, config.stunCount ?? 0)
+  // 琉音赠大（装配侧：截断上限 + 前台展示）：轴模式维持旧口径「不预留/不计入」（2026-09-10 实测：
+  // 改用轴预设计数会让落点大改——stun 4→6、dmg ±5.8%/+32.5%，属数值重排，须裁决；见 docs 坑19①）
+  const liuyinGiftFinal = !config.axisUltimateTrackBySlot && configs.some(c => c.agentId === '1481')
+    ? liuyinGiftChainInfo(configs, states, configs.findIndex(c => c.agentId === '1481'), totalTime, config.stunCount ?? 0)
     : { targetIdx: -1, time: 0 }
   const giftTimeOfSlot = (idx: number): number =>
     (idx === normaGiftFinal.targetIdx ? normaGiftFinal.time : 0)
