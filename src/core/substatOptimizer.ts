@@ -18,6 +18,7 @@ import type {
   StatRules,
 } from '@/types/catalog'
 import { calcPanel } from './panel'
+import { sharpCritMultiplier } from './damage'
 import type { SourcePanelsByOwner } from './buff'
 
 // ============ 副词条步长表 ============
@@ -96,6 +97,9 @@ export interface SubstatTemplate {
   /** 角色级贪心提前终止阈值。undefined=用全局默认 0.01。
    *  蕾米=0.15：攻击残余边际 < 初始最大×15% 时停止，只堆拐力收益期几步。 */
   minGainRatio?: number
+  /** 暴击率封顶（默认 100）。锋御=200：100% 以上每 1% 是一次「额外锐暴判定」的概率，
+   *  锐暴乘算（见 core/damage.ts sharpCritMultiplier，用户口径 2026-09-09）。 */
+  critRateCap?: number
 }
 
 /**
@@ -157,6 +161,17 @@ const AGENT_TEMPLATES: Record<string, SubstatTemplate> = {
     dmgBonusRelevant: true,
     anomalyRelevant: false,
     anomalyRatio: 0,
+  },
+  // 锋御（sharpen）：伤害走引擎 SHARPEN_DAMAGE_PROFILE（basisFormula=def、calcBasisValue=panel.def）
+  // → defPct 是**伤害词条**而不是生存词条，不能落 _default_dps 吃 atkPct。首个实例克拉蕾（1611，
+  // 锐化伤害/残痕/毁伤全 def 基底）此前落 _default_dps → 自动副词条给攻击力不给防御力（2026-09-09 用户抓到）。
+  // 顺序按邦布精灵推荐：暴击率 → 防御力 → 暴击伤害；暴击率封顶 200（锐暴 100% 以上可额外判定，乘算）。
+  _default_sharpen: {
+    stats: ['critRate', 'defPct', 'critDmg'],
+    dmgBonusRelevant: true,
+    anomalyRelevant: false,
+    anomalyRatio: 0,
+    critRateCap: 200,
   },
 
   // ===== 角色特例 =====
@@ -247,6 +262,8 @@ export function getTemplate(agent: Agent): SubstatTemplate {
   if (spec === 'anomaly') return AGENT_TEMPLATES._default_anomaly
   if (spec === 'support') return AGENT_TEMPLATES._default_support
   if (spec === 'stun') return AGENT_TEMPLATES._default_stun
+  // 锋御与 damage.ts resolveSpecialDamageProfile 同口径（锐化伤害 def 基底）
+  if (spec === 'sharpen') return AGENT_TEMPLATES._default_sharpen
   if (spec === 'defense') return AGENT_TEMPLATES._default_defense
   if (spec === 'rupture') return AGENT_TEMPLATES._default_rupture
   return AGENT_TEMPLATES._default_dps
@@ -446,9 +463,11 @@ function computeExpectedScore(
   // --- 直伤期望（攻击全权重） ---
   let scoreDirect = 0
   if (template.anomalyRatio < 1) {
-    const crCap = Math.min(100, Math.max(0, p.critRate)) / 100
     const cd = p.critDmg
-    const critMult = 1 + crCap * (cd / 100)
+    // 锋御：锐暴 200% 封顶 + 额外锐暴乘算（critRateCap>100 即锋御模板）
+    const critMult = (template.critRateCap ?? 100) > 100
+      ? sharpCritMultiplier(p.critRate, p.sharpCritDmg ?? 0)
+      : 1 + (Math.min(100, Math.max(0, p.critRate)) / 100) * (cd / 100)
     const dmgMult = 1 + totalDmgBonus / 100
     scoreDirect = p.atk * critMult * dmgMult
   }
@@ -786,8 +805,10 @@ export function computeDefaultSubStats(
     let target = statCap
     if (stat === 'critRate') {
       const step = SUBSTAT_POOL['critRate'] ?? 2.4
-      const stepsTo100 = Math.floor(Math.max(0, 100 - baseCritRate) / step)
-      target = Math.min(statCap, stepsTo100)
+      // 锋御锐暴封顶 200%（template.critRateCap），其余角色 100%
+      const cap = template.critRateCap ?? 100
+      const stepsToCap = Math.floor(Math.max(0, cap - baseCritRate) / step)
+      target = Math.min(statCap, stepsToCap)
     }
     const steps = Math.min(remaining, target)
     allocation[stat] = steps

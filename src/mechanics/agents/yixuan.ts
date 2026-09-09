@@ -323,10 +323,6 @@ function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg }: AgentCharConf
   cfg.exSpecialDecibelRecovery = rowValue(findMoveById(skills, MOVE.ashen), 'decibel_recovery')
     + rowValue(findMoveById(skills, MOVE.cloud), 'decibel_recovery')
   cfg.chainDecibelRecovery = rowValue(findMoveById(skills, '1371013'), 'decibel_recovery')
-  // 后台合轴行喧响表（buildExecutions 按 N 结算进 cfg.yixuanBackstageDecibel）
-  record.yixuanMoveDecibel = Object.fromEntries(
-    ['1371021', '1371007', '1371005', '1371006'].map(id => [id, rowValue(findMoveById(skills, id), 'decibel_recovery')]),
-  )
 
   // 额外能力·玄墨暗涌：队伍存在[击破]/[支援]/[防护]角色时触发 → 队友终结技回 20 闪能/次
   const hasStun = team?.some(m => m.agent?.specialty === 'stun')
@@ -567,10 +563,9 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   const backstageCount = manualBackstage > 0
     ? manualBackstage
     : Math.max(0, Math.floor(Number(record.yixuanBackstageAutoCount ?? 0)))
-  const backstageDb: Record<string, number> = (record.yixuanMoveDecibel ?? {}) as Record<string, number>
-  // 后台合轴喧响（不占前台但有收入）：Σ 招式喧响 × 次数 → cfg 进喧响账本（通用加项）
-  cfg.yixuanBackstageDecibel = ['1371021', '1371007', '1371005', '1371006']
-    .reduce((sum, id) => sum + (backstageDb[id] ?? 0) * backstageCount, 0)
+  // 后台合轴行的喧响由**行级通道**进账（rowDecibelTotal 按 cfg.decibelRecoveryByMoveId 查表，
+  // 即下面 push 的四行自带收入）。旧的聚合加项 cfg.yixuanBackstageDecibel 已随喧响行级化删除
+  // （@fact engine:喧响收入行级Σ）——阶段1 第二刀 2026-09-09 清掉这段遗留回写（全仓零消费者）。
   if (backstageCount > 0) {
     const xuanmoStrike = Math.min(backstageCount, totalFuFaUlts)
     const inkCombo = Math.max(0, backstageCount - totalFuFaUlts)

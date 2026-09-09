@@ -2,11 +2,14 @@
  * 末轮欠打回填（core/resource.ts 折叠循环之后的可行性门控试探）生效测试。
  *
  * 钉住四件事：
- * ① 回填真的生效（此前 refund 冻结在 pass0 → 96/125 预设 refund=0、41 队留白 >1s、最大 93.7s，
- *    而 timeBudgetConverged 仍报 true）；
+ * ① 有平A权重的队伍，自由时间 >1s（量化容差）必被回填——refund→平A池→按 timeWeight 水填分配，
+ *    留白收进量化/试探粒度地板（用户 2026-09-08：平A权重与留白不应并存，剩余自由时间按权重全部分配；
+ *    2026-09-08 诊断：10s 门槛下 56 队留白 0.5~9s；隔离对拍（同工作区切门槛）留白 194.3→157.0s、
+ *    11 队改善 0 队变差）；
  * ② **绝不制造超预算**——netFrontlineOccupation ≤ 预算 是被轴退化/降配/队伍对比消费的硬不变量，
  *    naive 逐轮跟随实测把它从 8 队破到 20 队，故门控必须是可行性而不是轮数；
- * ③ 门槛以下不扰动（近均衡队被扰动会掉进 stunCount=0 吸引盆：runArchiveDeploy 前例）；
+ * ③ 欠打 ≤1s（量化地板，坑12「不追求精确 0」）不扰动：正注入会被预算−容差门控整体拒绝，
+ *    试探只会把外层推进吸引盆（09-05 runArchiveDeploy 前例）；
  * ④ 被拒试探不留副作用（冷/热启动逐位一致）。
  */
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -34,18 +37,18 @@ async function summary(team: string[]) {
 }
 
 describe('末轮欠打回填', () => {
-  it('① 明显欠打的队被回填：refund>0 且留白显著收小', async () => {
-    // 叶瞬光/派派/妮可：refund 54.4s → 回填把留白收进 8.2s。
-    //（希格莉德/莱卡恩/妮可曾是样例：修复前 refund=0、留白 66s → 回填后打满；2026-09-06
-    //  希格莉德补了敛枪式估时钩子后 refund 25.7→2.0、留白收进门槛内，样例退役——
-    //  见 sigrid.test.ts「估时钩子」。朱鸢/妮可/苍角更早退役：留白 93.7→30.1s 查清是
-    //  压制以太弹与平A聚合行重复计费，修掉后归零，见 zhuYuan.test.ts）
-    const t = await summary(['1431', '1341', '1311'])
-    expect(t.refund).toBeGreaterThan(10)
-    expect(t.slack).toBeLessThanOrEqual(UNDERFILL_PROBE_THRESHOLD_SECONDS)
-    // 星徽·比利/琉音/卢西娅：整数结构模块队，回填把留白收进门槛
-    const s2 = await summary(['1531', '1481', '1451'])
-    expect(s2.slack).toBeLessThanOrEqual(UNDERFILL_PROBE_THRESHOLD_SECONDS + 5)
+  it('① 自由时间 >1s 的队列试探回填：refund>0，留白收进量化/试探粒度地板', async () => {
+    // 1181/1511/1411：留白 7.4s（10s 门槛下从不试探、refund=0）→ 09-08 门槛降为 1s（=量化容差）
+    // 后被试探：实测 refund 5.6s、留白收进 1.1s（≤ 2×容差 = 折半试探的粒度地板）。
+    const t = await summary(['1181', '1511', '1411'])
+    expect(t.refund).toBeGreaterThan(0)
+    expect(t.slack).toBeLessThanOrEqual(2 * TIME_BUDGET_TOLERANCE_SECONDS)
+    // 1191/1481/1451… 取 1191/1481/1311：旧门槛（10s）时代的大欠打样例——refund>0 在两个
+    // 门槛下都必须成立（欠打 8.9s 的放大环使填充不可行是既有物理，门控只保证「可行部分全分」）。
+    const s2 = await summary(['1191', '1481', '1311'])
+    expect(s2.refund).toBeGreaterThan(0)
+    // 1431 系单权重 [1,0,0] 队（叶瞬光账本必要贴单人物理顶）：refund 会流入平A池但物化行
+    // 吃不下的部分仍留白（棘轮逐队钉），不在本测试断言具体值。
   })
 
   it('② 回填不制造超预算（硬不变量：物化净占用 ≤ 预算 + 容差）', async () => {
@@ -67,8 +70,9 @@ describe('末轮欠打回填', () => {
     }
   })
 
-  it('③ 门槛以下的近均衡队不被扰动（refund 保持 0）', async () => {
-    // 莱卡恩/诺姆/苍角类：基线就打满（留白 ≤1s），试探只会把外层推进错误吸引盆
+  it('③ 欠打 ≤1s（量化地板）的队不被扰动（refund 保持 0）', async () => {
+    // 1041/1161/1311 类：基线就打满（留白 ≤1s）。正注入必被「预算−容差」门控整体拒绝（可行填充
+    // 的上限就是 1s 容差），试探零收益还会扰动外层不动点（09-05 失衡 116k→9.5k 吸引盆前例）。
     const t = await summary(['1041', '1161', '1311'])
     expect(t.slack).toBeLessThanOrEqual(UNDERFILL_PROBE_THRESHOLD_SECONDS)
     expect(t.refund).toBe(0)

@@ -1211,7 +1211,6 @@ const SPECIALTY_LABEL: Record<string, string> = {
   support: '支援',
   defense: '防护',
   rupture: '命破',
-  edgeguard: '锋御',
   sharpen: '锋御',
 }
 const ATTRIBUTE_LABEL: Record<string, string> = {

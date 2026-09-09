@@ -16,6 +16,12 @@ import type { SkillMove } from '@/types/catalog'
 
 export interface SustainedExTerm {
   moveId: string
+  /**
+   * 该段是否占玩家前台时间（缺省 true）。false = 自动攻击/能力场段：倍率·失衡·积蓄·喧响
+   * 照算，但角色不站场（妮可 能量场 1031106；用户 2026-09-11「只有炮击算时间，
+   * 能力场是自动攻击，不算时间」）。口径与 moveFusions 的 `MoveFusionTerm.countsTime` 同族。
+   */
+  countsTime?: boolean
 }
 
 export interface SustainedExSpec {
@@ -71,7 +77,9 @@ export const SUSTAINED_EX_SPECS: Record<string, SustainedExSpec> = {
     label: '妮可·强化特殊技·夹心糖衣炮弹',
     opener: [],
     sustain: { moveId: '1031103', energyPerSecond: 20, maxSeconds: 0.7418 },
-    finisher: [{ moveId: '1031104' }, { moveId: '1031105' }, { moveId: '1031106' }],
+    // 1031104 + 1031105 = nanoka「炮击伤害倍率」的两段（占时间）；1031106 =「能量场伤害倍率」，
+    // 持续牵引的自动攻击段——倍率照算，不占前台时间（用户 2026-09-11）。
+    finisher: [{ moveId: '1031104' }, { moveId: '1031105' }, { moveId: '1031106', countsTime: false }],
     fixedEnergy: 60,
   },
 }

@@ -14,8 +14,9 @@
 | `bosses/{zh,en}/<id>.json`、`bosses/monster/`、`bosses/{summary,version}.json` | Boss 数据（属性/阶段/版本，中英双语） | fetch-nanoka-bosses.mjs | import-nanoka-bosses → boss-presets.json |
 | `zzz-run-archive/*.json` | 危局通关档案快照（分页 API） | fetch-zzz-run-archive.mjs | import-zzz-run-archive → run-archive.json |
 | `gachabase/<id>.json` | 第二数据源交叉校验快照（倍率/回能双源确认） | fetch-gachabase-agent.mjs | 只写不读（对账证据留存） |
-| `nanoka_wengine_<id>_{zh,en}.json` | 音擎数据（根目录） | import-nanoka-wengine.mjs（缺则现场抓取） | import-nanoka-wengine.mjs → catalog.wEngines |
-| `nanoka_<id>.json` / `nanoka_<id>_skills_lv12.json` / `noun_3.2.3.json` | 特殊口径留存：1611/1621（克拉蕾/仪蝶）正式服数据、12 级倍率专项抓取、名词表 | 手工抓取 | 仅 spec notes 作出处引用（见 src/specs/agents/1611.json 等） |
+| `nanoka_wengine_<id>_{zh,en}.json` | 音擎数据（根目录） | import-nanoka-wengine.mjs（缺则现场抓；`--force` 按正式服重爬） | import-nanoka-wengine.mjs → catalog.wEngines |
+| `nanoka_character.json` / `nanoka_equipment.json` / `nanoka_weapon.json` | nanoka 正式服索引快照：角色 en 名 / 驱动盘套装 zh+en 名与 2pc·4pc 文本 / 音擎 en 名·atk·sub·icon | sync-build-recommendations.mjs（缺则现场抓） | sync-build-recommendations → build-recommendations.json；patch-disc-sets（套装名对齐） |
+| `nanoka_<id>.json` / `nanoka_<id>_skills_lv12.json` / `noun_3.2.3.json` | 特殊口径留存：`nanoka_1611/1621.json` 是**早期英文/预发布快照**（1621 的 talent 还是 `PlaceHolder`，**勿当数据源**）；`*_skills_lv12.json` = 12 级倍率专项抓取；`noun_3.2.3.json` = 名词表 | 手工抓取 | 仅 spec notes 作出处引用（见 src/specs/agents/1611.json 等）；**正式服全量看 `nanoka_missing/full/<id>.json`** |
 | `_archive/scratch/` | 历史会话遗留的无引用草稿（2026-08 清点归档，13 个文件） | — | 无（勿恢复） |
 
 ## 关键链路（谁生成最终产物）
@@ -36,6 +37,11 @@ zzz-run-archive/              ──import-zzz-run-archive───────�
 
 - 1611/1621 的 audit 副本是**测试服**抓取（含 `(Test1)` 字样），catalog 沿用了当时的测试数据；
   正式服数据在根目录 `nanoka_<id>.json` 与 `nanoka_missing/full/<id>.json`，未重导（重导需人工核对倍率口径）。
+  **2026-09-09 正式服上线后已复核**（`node scripts/fetch-nanoka-full-missing.mjs 1611 1621 --force`，
+  版本取 `manifest.zzz.live` = 3.2）：full 存档与正式服逐字段一致；技能倍率/被动/影画数值与 v12 相同
+  （仅 1611 强化特殊技正式名「血华誓·铸锋秘术」、`stats.tags` 阵营 Camp12→Camp16），故 catalog 行无需重导；
+  两把专武 raw 同步按正式服重抓（14161 锐化伤害 12%→20% 的测试服叠层口径作废，改 10%→16%；
+  14162 正式名「绯月银棺」）。
 - `fetch-nanoka-missing.py` 已退役（依赖本机外部抓取器 `F:/trae_output/nanoka_scraper`）；补新角色走
   `fetch-nanoka-full-missing.mjs`（纯 node）。`import-nanoka-missing.mjs` 的别名表收编为本仓库
   `nanoka_missing/teammate_nanoka_map.json`（当前 60 角色已全量导入，别名表缺失按空表处理）。

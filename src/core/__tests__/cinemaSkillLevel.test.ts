@@ -172,4 +172,20 @@ describe('cinema skill level damage', () => {
     // getWEngine 对旧 id 兼容（legacyIds 兜底）
     expect(catalog.getWEngine('zzz_wiki_1611')?.id).toBe('14145')
   })
+
+  it('一键应用：克拉蕾（1611，锋御）自动副词条给防御力而不是攻击力', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    config.team[0] = { slot: 0, agentId: '1611', cinemaLevel: 0, ...baseConfig } as any
+    config.team[1] = { slot: 1, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+    config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+    config.applyBuildRecommendationForSlot(0)
+    const alloc = config.team[0].driveDisc.subStatAllocation
+    // 锐化伤害 def 基底（引擎 SHARPEN_DAMAGE_PROFILE）→ defPct 必须进自动分配，atkPct 不进
+    expect(alloc.defPct ?? 0).toBeGreaterThan(0)
+    expect(alloc.atkPct ?? 0).toBe(0)
+  })
 })

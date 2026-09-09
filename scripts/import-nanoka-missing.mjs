@@ -31,7 +31,7 @@ const ELEMENT_MAP = {
 }
 const SPECIALTY_MAP = {
   Attack: 'attack', Stun: 'stun', Anomaly: 'anomaly', Support: 'support',
-  Defense: 'defense', Rupture: 'rupture', Sharpen: 'sharpen', Edgeguard: 'edgeguard',
+  Defense: 'defense', Rupture: 'rupture', Sharpen: 'sharpen',
 }
 const CATEGORY_MAP = {
   basic: 'basic', dodge: 'dodge', special: 'special', chain: 'chain', assist: 'assist',

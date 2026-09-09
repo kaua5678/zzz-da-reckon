@@ -163,4 +163,69 @@ describe('w-engine buff application', () => {
     expect(withBuff.inCombat.skillDmgBonus__chain).toBe(20)
     expect(withBuff.inCombat.skillDmgBonus__ultimate).toBe(40)
   })
+
+  it('applies 14161 猩红渴望正式服数值（暴击率 / 电属性伤害 / 电属性锐化伤害）', () => {
+    const cat = loadCatalog() as any
+    const claret = cat.agents.find((a: any) => a.id === '1611')
+    const wEngine = cat.wEngines.find((w: any) => w.id === '14161')
+    const disc = {
+      fourPieceSetId: '',
+      twoPieceSetId: '',
+      mainStats: { 4: 'critRate', 5: 'electricDmg', 6: 'defPct' },
+      subStatAllocation: {},
+    }
+    const setsMap = new Map()
+    const none = calcPanel(claret, undefined, disc, setsMap, [], cat.statRules, { cinemaLevel: 0, wEngineModLevel: 1 }).inCombat
+    const r1 = calcPanel(claret, wEngine, disc, setsMap, [], cat.statRules, { cinemaLevel: 0, wEngineModLevel: 1 }).inCombat
+    const r5 = calcPanel(claret, wEngine, disc, setsMap, [], cat.statRules, { cinemaLevel: 0, wEngineModLevel: 5 }).inCombat
+    // 正式服 3.2：R1 = 25% / 15% / 10%（旧测试服叠层口径 12%→20% 已废）
+    expect(r1.critRate - none.critRate).toBeCloseTo(25, 6)
+    expect(r1.electricDmg - none.electricDmg).toBeCloseTo(15, 6)
+    // 电属性锐化增伤不在 panel 初始字段里（只在有来源时经 applyEffect 的 default 分支落键）
+    expect((r1.electricSharpDmg ?? 0) - (none.electricSharpDmg ?? 0)).toBeCloseTo(10, 6)
+    // R5 = 35% / 25% / 16%
+    expect(r5.critRate - none.critRate).toBeCloseTo(35, 6)
+    expect(r5.electricDmg - none.electricDmg).toBeCloseTo(25, 6)
+    expect((r5.electricSharpDmg ?? 0) - (none.electricSharpDmg ?? 0)).toBeCloseTo(16, 6)
+  })
+
+  it('applies 14162 绯月银棺正式服数值（暴击率 / 风抗无视 / 失衡值 + 全队增伤）', () => {
+    const cat = loadCatalog() as any
+    const roxy = cat.agents.find((a: any) => a.id === '1621')
+    const jane = cat.agents.find((a: any) => a.id === '1261')
+    const wEngine = cat.wEngines.find((w: any) => w.id === '14162')
+    const disc = {
+      fourPieceSetId: '',
+      twoPieceSetId: '',
+      mainStats: { 4: 'critRate', 5: 'penRatio', 6: 'energyRegen' },
+      subStatAllocation: {},
+    }
+    const setsMap = new Map()
+    const none = calcPanel(roxy, undefined, disc, setsMap, [], cat.statRules, { cinemaLevel: 0, wEngineModLevel: 1 }).inCombat
+    const r1 = calcPanel(roxy, wEngine, disc, setsMap, [], cat.statRules, { cinemaLevel: 0, wEngineModLevel: 1 }).inCombat
+    expect(r1.critRate - none.critRate).toBeCloseTo(24, 6)
+    expect(r1.enemyWindResReduction - none.enemyWindResReduction).toBeCloseTo(15, 6)
+    expect(r1.stunBuildUpBonus - none.stunBuildUpBonus).toBeCloseTo(16, 6)
+
+    // 全队段：队友 +32%（R5），装备者自身不吃（collect 端排除装备者，防双计）
+    const team = [
+      { agentId: '1621', wEngineId: '14162', driveDisc: disc, cinemaLevel: 0, wEngineModLevel: 5 },
+      { agentId: '1261', wEngineId: '', driveDisc: disc, cinemaLevel: 0, wEngineModLevel: 1 },
+    ]
+    const ctx = buildTeammateBuffSourceContext(team, {
+      teammateBuffGroups: [],
+      driveDiscSetsMap: setsMap,
+      statRules: cat.statRules,
+      getAgent: (id: string) => cat.agents.find((a: any) => a.id === id || a.teammateBuffId === id),
+      getWEngine: (id: string) => cat.wEngines.find((w: any) => w.id === id),
+      isTeammateBuffEnabled: () => false,
+    })
+    const janeNone = calcPanel(jane, undefined, disc, setsMap, [], cat.statRules, { cinemaLevel: 0, wEngineModLevel: 1 }).inCombat
+    const janeTeam = calcPanel(jane, undefined, disc, setsMap, ctx.enabledTeammateBuffs, cat.statRules, {
+      cinemaLevel: 0,
+      wEngineModLevel: 1,
+      sourcePanelsByOwner: ctx.sourcePanelsByOwner,
+    }).inCombat
+    expect(janeTeam.dmgBonus - janeNone.dmgBonus).toBeCloseTo(32, 6)
+  })
 })

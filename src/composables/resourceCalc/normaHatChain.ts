@@ -9,7 +9,7 @@ import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import type { TeamResourceResult } from '@/types/resource'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-import { findMoveById } from './helpers'
+import { findMoveById, fusedRowValue } from './helpers'
 
 /**
  * 诺姆膛温换连携：帽子把戏触发上一位角色的快速支援→替换为连携技，连携归属上一位队友。
@@ -47,9 +47,14 @@ export function applyNormaHatChain(
   const chainInfo = targetSkills ? findChainAttack(targetSkills) : null
   if (!chainInfo) return base
   const giftedMove = findMoveById(targetSkills, chainInfo.moveId)
-  const giftedDamage = giftedMove?.rows?.find(r => r.id === 'damage')?.values?.[0] ?? 0
-  const giftedDaze = giftedMove?.rows?.find(r => r.id === 'daze')?.values?.[0] ?? 0
-  const giftedAnomaly = giftedMove?.rows?.find(r => r.id === 'anomaly_buildup')?.values?.[0] ?? 0
+  // 赠送的是「一次完整连携」：多段招式（登记融合组，如雅 春临 #1~#3）必须取整段倍率，
+  // 否则赠送行只算了第一段（377.6% vs 1258.3%）——与倍率侧同一口径（用户 2026-09-11）。
+  const fusedOf = (rowId: string) =>
+    fusedRowValue(targetSkills, chainInfo.moveId, rowId)
+    ?? giftedMove?.rows?.find(r => r.id === rowId)?.values?.[0] ?? 0
+  const giftedDamage = fusedOf('damage')
+  const giftedDaze = fusedOf('daze')
+  const giftedAnomaly = fusedOf('anomaly_buildup')
 
   return {
     ...base,

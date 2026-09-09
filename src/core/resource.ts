@@ -1,7 +1,7 @@
 import type {
   ResourceCalcConfig, CharacterOperationConfig,
   TeamResourceResult, CharacterResourceResult,
-  IterationState, ExSpecialCostType,
+  IterationState, ExSpecialCostType, SkillExecution,
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics'
@@ -9,6 +9,7 @@ import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
 import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import { computeLiuyinHugCounts, computeLiuyinSource } from '@/mechanics/agents/liuyin'
+import { moveFusionByMoveId } from '@/data/moveFusions'
 
 /**
  * 诺姆膛温换连携（C4）赠链时间信道（与 iterate Step4 同口径）：hatCount 次赠链由
@@ -80,7 +81,25 @@ function liuyinGiftChainInfo(
 
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 import * as ResourceCalcHelpers from './resource/helpers'
-const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline } = ResourceCalcHelpers
+const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, materializeRows, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline } = ResourceCalcHelpers
+
+/**
+ * 物化 + **相位写入**（阶段1 第二刀，2026-09-09）：产行钩子对 cfg 只读，相位状态由引擎在此按
+ * **同一个 state** 补写。与旧口径「写在 buildExecutions 里」逐位等价（同一调用点、同一 state、
+ * 同一值），但产行函数变纯——`materializeRows` 不再需要为这些字段兜底快照/恢复。
+ * 注意：`materializeRows` 内部**不**调本包装（那条路径会快照/恢复，写入本就该被丢弃）。
+ */
+function buildExecutionsWithPhase(
+  cfg: CharacterOperationConfig,
+  state: IterationState,
+  chainCountTotal: number,
+  teamFrontlineSeconds: number,
+  moduleInputRows?: SkillExecution[],
+): SkillExecution[] {
+  const rows = buildExecutions(cfg, state, chainCountTotal, teamFrontlineSeconds, moduleInputRows)
+  getAgentMechanic(cfg.agentId)?.materializePhaseState?.({ cfg, state, executions: rows, teamFrontlineSeconds })
+  return rows
+}
 
 // ============ 热启动缓存 ============
 /**
@@ -158,10 +177,16 @@ export function getWarmStartStats(): { stored: number; seeded: number } {
 export const TIME_BUDGET_TOLERANCE_SECONDS = 1
 
 /**
- * 欠打回填的启动门槛（秒）：低于此量不试探，避免为量化残差扰动外层不动点。
- * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛 10s（≤5s 会把近均衡队推进 stunCount=0 吸引盆）；宁可留白不制造超预算 | 据 用户@2026-09-05「全部动手」+实测·复核@2026-09-08 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS | 信 确认
+ * 欠打回填的启动门槛（秒）：平A权重队的剩余自由时间必须按权重全部分配（用户口径 2026-09-08），
+ * 故门槛 = 量化容差：欠打 >1s 必试探回填（refund→平A池→按 timeWeight 水填分配）；≤1s 属量化
+ * 地板（坑12「不追求精确 0」，合轴可覆盖），不试探。09-05「≤5s 会把近均衡队推进 stunCount=0
+ * 吸引盆」的风险已在 09-08 引擎（1051/1531 实数化、轴栈资源门控、sigrid 估时钩子、琉音三件套）
+ * 复核：1s 门槛下 ratchet 绝对不变量（stun>0/outerExit≠maxIter）/runArchiveDeploy（116k 样本）/
+ * allAgentsSweep（C6>C0 等不变量）/yidhariInteractionGrid 全绿，旧盆不复现（实测数字见
+ * underfillRefund.test.ts 与 docs 坑19① 否决记录）。
+ * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛=1s 量化容差（平A权重队自由时间按权重全分配，留白只剩 ≤2s 量化/试探粒度地板；欠打 ≤1s 不试探；09-05「≤5s 推近均衡队入 stunCount=0 盆」在 09-08 引擎复核不复现；**1591 一族排除**——试探的行测量口径看不见装配期追加行，会破跨路径「行≤账本」恒等（1051/1531 已随热启动规范种子修复放回））；宁可留白不制造超预算 | 据 用户@2026-09-08「平A权重与留白不应并存，剩余自由时间按权重全部分配」+09-05「全部动手」·复核@2026-09-08 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS | 信 确认
  */
-export const UNDERFILL_PROBE_THRESHOLD_SECONDS = 10
+export const UNDERFILL_PROBE_THRESHOLD_SECONDS = TIME_BUDGET_TOLERANCE_SECONDS
 
 
 export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResult {
@@ -171,6 +196,17 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   const yidhariContinuousPresent = config.characters.some(c => c.agentId === '1051' && c.yidhariContinuousEx === true)
   const maxIter = Math.max(config.maxIterations || 20, yidhariContinuousPresent ? 100 : 0)
   const configs = config.characters
+  // 欠打试探排除队（2026-09-08 立，同日从三族收窄到一族）：
+  //  · **1591 希格莉德**（唯一排除）：试探的物化行测量口径（`buildExecutions` + 赠送行）**看不到装配期
+  //    追加的行**（实测她的队最终 s0 行比试探测得的多 ~1.9s——连携 1591016 在装配期还有一条小数次数
+  //    行），于是试探会接受「按它自己的测量合规、按最终装配却超自家账本」的注入 → 破跨路径恒等式
+  //    `timeLedgerInvariants`「行≤账本」（实测 auto-1591-1481 队超 0.07~1.13s）。已试并否决的替代方案：
+  //    试探接受前加「逐槽原始行 ≤ 账本」判据 → 该判据用的是同一份测量，照样看不见缺的那一行 → 无效。
+  //    升级路径 = 让试探与装配共用同一套行测量（把装配期追加行纳入 frontlineRowsOf）。
+  //  · 1051 伊德海莉 / 1531 星徽·比利：**2026-09-08 已放回**——它们当初被排除是因为热启动缓存注入
+  //    收敛末态导致冷/热落点分叉（0.009s / 0.0015s），而「缓存只存规范种子」修好后同配置计算逐位
+  //    稳定，两族试探全绿（seedInvariance / warmStart / yidhariInteractionGrid / timeLedgerInvariants）。
+  const probeExcludedTeam = configs.some(c => c.agentId === '1591')
 
   // 热启动：无显式种子时查缓存，命中则从上次收敛态出发（逐位透明，见块注释）
   const warmExactKey = config.initialStates ? '' : warmStartExactKey(config)
@@ -224,11 +260,65 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   let timeBudgetRefundedSeconds = 0
   let refundFrozen = false
   /**
-   * 热启动种子：默认末态；欠打回填触发时改存**试探前**末态（保持冷/热逐位一致，见回填块注释）。
-   * @fact engine:热启动逐位透明 口径: 回填触发时热启动缓存存试探前末态——存回填后末态会让下次调用从「已回填」出发、不再测到 pass0 的正 excess，折出不同账本 → 冷热落点分叉（实测 1241/1191 队由一致变不一致） | 据 实测@2026-09-05·复核@2026-09-08 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#warmSeedStates | 信 确认
+   * 热启动种子 = **规范种子**（本轮 `states` 的初值：默认零种子或注入种子本身），**不是收敛末态**。
+   * 为什么不能存末态（2026-09-08 修，用户实测「同一队算两次结果不一样」）：折叠 pass0 的 refund
+   * 冻结（`teamRefund`）与内层落点都随初值变——非实数化队的落点本就随初值漂移（seedInvariance
+   * 的「游戏等价」档），存末态等于把本轮落点带进下一轮：同配置第二次计算换结果（实测 1431 系
+   * 4 队冷/热 slack 9.20 vs 4.86、7.57 vs 1.03、3.06 vs 6.26、0.68 vs 0.45，且门槛 10s 同样复现
+   * ——与欠打回填门槛无关）。缓存机制（精确键 / LRU / 命中计数）保留，但注入种子必须与冷算同源。
+   * 真正的加速要等实数化专项（落点唯一）之后才可能。
+   * @fact engine:热启动逐位透明 口径: 热启动缓存只存**规范种子**（本轮 states 初值），不存收敛末态/试探前末态——折叠 pass0 的 refund 冻结与内层落点随初值变，存末态会让同配置第二次计算换结果（实测 1431 系 4 队冷热 slack 9.20 vs 4.86 等）；改前「存试探前末态」只解决了「从已回填态出发」那一种分叉 | 据 用户实测@2026-09-08「同一队算两次结果不一样」·复核@2026-09-08 | 验 src/core/__tests__/warmStart.test.ts | 锚 src/core/resource.ts#warmSeedStates | 信 确认
    */
-  let warmSeedStates: IterationState[] = states
-  for (let timePass = 0; timePass < maxTimeIter; timePass++) {
+  const warmSeedStates: IterationState[] = states
+  /**
+   * 内层次数收敛 + 停点规范化（环检测 + 字典序规范停点）。
+   * 提升到函数级（2026-09-08 重构）：折叠循环与「② 规范重跑」共用。
+   */
+  const runInnerLoop = (from: IterationState[]): { end: IterationState[]; clean: boolean } => {
+    const cycleSigs = new Map<string, number>()
+    const cycleSnapshots: IterationState[][] = []
+    let cur = from
+    for (iter = 0; iter < maxIter; iter++) {
+      const newStates = iterate(configs, cur, config)
+      // 检查收敛：强特次数和大招次数是否稳定。伊德海莉连续松弛（阻尼实数次数）同样按
+      // 严格相等判稳——阻尼映射收敛到浮点不动点后逐位复现（热启动透明的前提）；ε 判据会留下
+      // ~1e-12 残差，热启动会话与冷启动会话不再逐位一致（determinism.test 的失败机制）。
+      let changed = false
+      for (let i = 0; i < cur.length; i++) {
+        if (newStates[i].exSpecialCount !== cur[i].exSpecialCount ||
+            newStates[i].ultimateCount !== cur[i].ultimateCount) {
+          changed = true
+          break
+        }
+      }
+
+      cur = newStates
+      if (!changed) return { end: cur, clean: true }
+      // 环检测：签名 = 全状态 JSON（含 energySource 快照——iterate 消费的一切）；快照/恢复用
+      // structuredClone 而非 JSON roundtrip——JSON 会把 NaN 物化成 null 写回状态（毒路径）
+      const sig = JSON.stringify(cur)
+      const firstSeen = cycleSigs.get(sig)
+      if (firstSeen !== undefined) {
+        const members = cycleSnapshots.slice(firstSeen)
+        let canonical = members[0]
+        let canonicalSig = JSON.stringify(canonical)
+        for (const m of members) {
+          const ms = JSON.stringify(m)
+          if (ms < canonicalSig) { canonical = m; canonicalSig = ms }
+        }
+        return { end: structuredClone(canonical), clean: false }
+      }
+      cycleSigs.set(sig, cycleSnapshots.length)
+      cycleSnapshots.push(structuredClone(cur))
+    }
+    return { end: cur, clean: false } // 跑满上限：停点=上限处瞬态（起点确定则停点确定）
+  }
+  /** 时间预算折叠循环（内层次数收敛 + 停点规范化 + 折叠 excess/refund 冻结）；写函数级诊断量 */
+  const runFoldLoop = (from: IterationState[]): IterationState[] => {
+    let st = from
+    // 每次折叠管线运行（含规范重放）独立冻结 refund
+    refundFrozen = false
+    for (let timePass = 0; timePass < maxTimeIter; timePass++) {
     timeBudgetPasses = timePass + 1
     // @fact engine:收敛环停点规范化 口径: 注入种子（热启动/显式 initialStates）的收敛轨迹若属非正常收敛（跑满上限或全状态签名精确重复=入极限环），该停点含瞬态相位成分 → 弃用并从默认零种子**规范重跑**；重跑仍入环则取环内 JSON 字典序最小成员为规范停点（相位无关，冷/热进同一环成员集合相同）。正常收敛照旧接受（不动点唯一性 = 2026-09-04 连续松弛教义）。结果 = f(默认种子, 迭代映射)，与注入种子彻底解耦 | 据 喧响行级化专项实测@2026-09-08 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts + src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
     // 否决记录（环停点侧，都有实测数字）：环均值阻尼（对环成员取均值）实测被吸回同一环、
@@ -249,51 +339,12 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     //    （2026-09-04），冷/热正常收敛落点逐位一致是 determinism.test 的既有约定。
     // 下游（折叠残差累计/欠打回填/终局整数重推/装配）全部是停点的确定性函数；pass>0 的起点
     // 冷热已同，其上限停点亦同，冷热逐位一致由归纳保持。
-    const runInnerLoop = (from: IterationState[]): { end: IterationState[]; clean: boolean } => {
-      const cycleSigs = new Map<string, number>()
-      const cycleSnapshots: IterationState[][] = []
-      let cur = from
-      for (iter = 0; iter < maxIter; iter++) {
-        const newStates = iterate(configs, cur, config)
-        // 检查收敛：强特次数和大招次数是否稳定。伊德海莉连续松弛（阻尼实数次数）同样按
-        // 严格相等判稳——阻尼映射收敛到浮点不动点后逐位复现（热启动透明的前提）；ε 判据会留下
-        // ~1e-12 残差，热启动会话与冷启动会话不再逐位一致（determinism.test 的失败机制）。
-        let changed = false
-        for (let i = 0; i < cur.length; i++) {
-          if (newStates[i].exSpecialCount !== cur[i].exSpecialCount ||
-              newStates[i].ultimateCount !== cur[i].ultimateCount) {
-            changed = true
-            break
-          }
-        }
-
-        cur = newStates
-        if (!changed) return { end: cur, clean: true }
-        // 环检测：签名 = 全状态 JSON（含 energySource 快照——iterate 消费的一切）；快照/恢复用
-        // structuredClone 而非 JSON roundtrip——JSON 会把 NaN 物化成 null 写回状态（毒路径）
-        const sig = JSON.stringify(cur)
-        const firstSeen = cycleSigs.get(sig)
-        if (firstSeen !== undefined) {
-          const members = cycleSnapshots.slice(firstSeen)
-          let canonical = members[0]
-          let canonicalSig = JSON.stringify(canonical)
-          for (const m of members) {
-            const ms = JSON.stringify(m)
-            if (ms < canonicalSig) { canonical = m; canonicalSig = ms }
-          }
-          return { end: structuredClone(canonical), clean: false }
-        }
-        cycleSigs.set(sig, cycleSnapshots.length)
-        cycleSnapshots.push(structuredClone(cur))
-      }
-      return { end: cur, clean: false } // 跑满上限：停点=上限处瞬态（起点确定则停点确定）
-    }
-    let inner = runInnerLoop(states)
+    let inner = runInnerLoop(st)
     if (!inner.clean && timePass === 0 && injectedStates) {
       // ② 规范重跑：种子轨迹的停点含瞬态相位，弃用，从默认零种子复刻冷启动
       inner = runInnerLoop(defaultSeedStates.map(s => ({ ...s })))
     }
-    states = inner.end
+    st = inner.end
     if (inner.clean) converged = true
 
     // 测量每个角色执行计划的**前台**时间（后台行不占共享轴），对自家账本收敛：
@@ -307,20 +358,20 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 行测量必须计入其时间（iterate 必要时间已按同一口径预留），否则折叠环会把预留读成
     // idle → pass0 refund 双击（与最高马力星光行同病）。
     const giftNormaSlot = configs.findIndex(c => c.agentId === '1571')
-    const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, states, giftNormaSlot, totalTime) : { targetIdx: -1, time: 0 }
+    const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, st, giftNormaSlot, totalTime) : { targetIdx: -1, time: 0 }
     // 琉音好评转大赠链行同理（非轴）：装配后 applyLiuyinPromote 追加，行测量计入其时间
     const giftLiuyinSlot = !config.axisUltimateTrackBySlot && configs.some(c => c.agentId === '1481') ? configs.findIndex(c => c.agentId === '1481') : -1
     const giftLiuyin = giftLiuyinSlot >= 0
-      ? liuyinGiftChainInfo(configs, states, giftLiuyinSlot, totalTime, config.stunCount ?? 0)
+      ? liuyinGiftChainInfo(configs, st, giftLiuyinSlot, totalTime, config.stunCount ?? 0)
       : { targetIdx: -1, time: 0 }
     for (let i = 0; i < configs.length; i++) {
       const cfg = configs[i]
-      const state = states[i]
+      const state = st[i]
       const teammateFrontlineSeconds = configs.reduce(
-        (sum, _, j) => (j === i ? sum : sum + states[j].frontlineTime),
+        (sum, _, j) => (j === i ? sum : sum + st[j].frontlineTime),
         0,
       )
-      const executions = buildExecutions(cfg, state, state.chainCountTotal, teammateFrontlineSeconds)
+      const executions = buildExecutionsWithPhase(cfg, state, state.chainCountTotal, teammateFrontlineSeconds)
       // 净占用口径：物化行全额 − 轴内合轴分摊（跨角色并行块只计一次前台；iterate 平A池吃进同一值）。
       // 分摊按 `${slot}:${moveId}`（栈引擎比例分摊），行 count = 块次数、totalTime 全额。
       const overlapByAction = config.axisOverlapByAction
@@ -337,7 +388,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       // 否则 pass0 的虚高会把「其实装得下」的队误判成超支（叶瞬光自动轴退化即为此被关掉过）。
       const teammatesLedgerNet = configs.reduce(
         (sum, _, j) => (j === i ? sum
-          : sum + Math.max(0, states[j].necessaryTime - (states[j].comboAlignCredit ?? 0) + states[j].basicAttackTime)),
+          : sum + Math.max(0, st[j].necessaryTime - (st[j].comboAlignCredit ?? 0) + st[j].basicAttackTime)),
         0)
       const availableFrontline = Math.max(0, (totalTime - (config.invincibleTime ?? 0)) - teammatesLedgerNet)
       cfg.timeAvailableFrontlineSeconds = availableFrontline
@@ -380,6 +431,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       timeBudgetConverged = true
       break
     }
+    }
+    return st
   }
 
   // ===== 星徽·比利终局整数重推（链数实数化收尾，2026-09-06，1051 yidhariFinalizeEx 同骨架）=====
@@ -388,32 +441,40 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 逐位稳定，让时间预算/能量/喧响账本与整数链数自洽（只作用于 1531 非轴模式，轴模式恒整数）。
   // 旗标在最终装配后才复位：欠打回填试探与最终装配都必须按**整数物化行**测可行性/出账，
   // 否则「floor 后 +1 链（≈10s）」的时长会被当成余量放行（1s 容差兜不住一整链）。
-  const billyFinalizeConfigs = configs.filter(c => c.agentId === '1531' && Number((c as unknown as Record<string, unknown>).billyAxisActive ?? 0) !== 1)
-  if (billyFinalizeConfigs.length > 0) {
-    for (const bCfg of billyFinalizeConfigs) bCfg.billyFinalizeChain = true
-    let finalizeStable = false
-    for (let finalizePass = 0; finalizePass < 12; finalizePass++) {
-      const prev = states
-      states = iterate(configs, states, config)
-      let stable = true
-      for (let i = 0; i < states.length; i++) {
-        const a = states[i], b = prev[i]
-        if (a.exSpecialCount !== b.exSpecialCount || a.ultimateCount !== b.ultimateCount ||
-            a.basicAttackTime !== b.basicAttackTime || a.necessaryTime !== b.necessaryTime ||
-            a.frontlineTime !== b.frontlineTime || a.backstageTime !== b.backstageTime ||
-            a.comboAlignTime !== b.comboAlignTime || a.comboAlignCredit !== b.comboAlignCredit ||
-            a.totalEnergy !== b.totalEnergy || a.totalDecibel !== b.totalDecibel) {
-          stable = false
+  const runBillyFinalize = (from: IterationState[]): IterationState[] => {
+    let st = from
+    const billyFinalizeConfigs = configs.filter(c => c.agentId === '1531' && Number((c as unknown as Record<string, unknown>).billyAxisActive ?? 0) !== 1)
+    if (billyFinalizeConfigs.length > 0) {
+      for (const bCfg of billyFinalizeConfigs) bCfg.billyFinalizeChain = true
+      let finalizeStable = false
+      for (let finalizePass = 0; finalizePass < 12; finalizePass++) {
+        const prev = st
+        st = iterate(configs, st, config)
+        let stable = true
+        for (let i = 0; i < st.length; i++) {
+          const a = st[i], b = prev[i]
+          if (a.exSpecialCount !== b.exSpecialCount || a.ultimateCount !== b.ultimateCount ||
+              a.basicAttackTime !== b.basicAttackTime || a.necessaryTime !== b.necessaryTime ||
+              a.frontlineTime !== b.frontlineTime || a.backstageTime !== b.backstageTime ||
+              a.comboAlignTime !== b.comboAlignTime || a.comboAlignCredit !== b.comboAlignCredit ||
+              a.totalEnergy !== b.totalEnergy || a.totalDecibel !== b.totalDecibel) {
+            stable = false
+            break
+          }
+        }
+        if (stable) {
+          finalizeStable = true
           break
         }
       }
-      if (stable) {
-        finalizeStable = true
-        break
-      }
+      if (finalizeStable) converged = true
     }
-    if (finalizeStable) converged = true
+    return st
   }
+
+  // 正常轨迹：折叠 + 比利重推
+  states = runFoldLoop(states)
+  states = runBillyFinalize(states)
 
   // ===== 末轮欠打回填（可行性门控，2026-09-05）=====
   // 上面折叠循环的 refund **冻结在 pass0**，而 pass0 恒测到**正** excess（此时平A池按权重满额发放
@@ -454,7 +515,17 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         const state = st[i]
         const teammateFrontline = configs.reduce(
           (sum, _, j) => (j === i ? sum : sum + st[j].frontlineTime), 0)
-        const rowNet = buildExecutions(cfg, state, state.chainCountTotal, teammateFrontline).reduce(
+        // 试探测量切 `materializeRows`（阶段1 第二刀收口，2026-09-09）：相位写入已拆到
+        // `materializePhaseState`（引擎侧显式补写），产行钩子对 cfg 只读——试探测量由此与装配同源
+        // （同一 `buildExecutions`）且不再污染相位。**实测否决记录（同日早间）**：当时 3 处相位写入
+        // 仍在钩子里，切换后 golden 多 9 条 delta（全在 1431，c0 留白 57.9→65.4s）——顺序必须是
+        // 「先拆相位写入、再切测量」，否则测出的是相位污染而不是测量口径差异。
+        const probeRows = materializeRows(cfg, state, state.chainCountTotal, teammateFrontline)
+        // 相位写入照旧补写（与折叠/装配同口径）：产行钩子已只读，写入由引擎显式声明。
+        // 不补写 = 下一轮 estimate 读到上一次物化的陈旧值（实测 golden 10 条 delta：1431 c0 留白
+        // 57.9→65.4s、1181:c6 ex −1.29）。
+        getAgentMechanic(cfg.agentId)?.materializePhaseState?.({ cfg, state, executions: probeRows, teamFrontlineSeconds: teammateFrontline })
+        const rowNet = probeRows.reduce(
           (sum, e) => sum + Math.max(0, (e.totalTime ?? 0)
             - (overlap[`${cfg.slot}:${e.moveId}`] ?? 0))
             * (isFrontlineExecution(e) ? 1 : 0),
@@ -466,8 +537,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       return total
     }
     /** 内层次数收敛（与折叠循环同一判据：强特/终结次数严格相等）；stable=false = 耗尽上限 */
-    const convergeCounts = (from: IterationState[]) => {
-      let st = from
+    const convergeCounts = (from: IterationState[]) => {      let st = from
       for (let k = 0; k < maxIter; k++) {
         const next = iterate(configs, st, config)
         let changed = false
@@ -480,14 +550,18 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       }
       return { states: st, stable: false }
     }
-    const statesPreProbe = states
     let rowsFilled = frontlineRowsOf(states)
     let underfill = budgetSeconds - rowsFilled
-    // 门槛 10s：±1~2s 的量化残差属既有口径（坑12「不追求精确 0」），为它扰动外层均衡不划算——
-    // 实测门槛降到 5s 以下时，对 2.2s 欠打的队做回填会把外层不动点推进 stunCount=0 的吸引盆
-    // （失衡 116k→9.5k，runArchiveDeploy 雅/南宫/柚叶队崩、anomalyUtilization 丽娜积蓄偏 0.3%）。
-    // 门槛扫描（留白合计/改善/变差）：1s=335/41/2(+2队崩) 5s=353/31/2(+2队崩) 10s=391/23/2 20s=421/20/2。
-    if (underfill > UNDERFILL_PROBE_THRESHOLD_SECONDS) {
+    // 门槛 = 1s（量化容差，2026-09-08 用户口径「平A权重与留白不应并存，剩余自由时间按权重
+    // 全部分配」）：欠打 >1s 一律试探回填；≤1s 属量化地板（坑12「不追求精确 0」，合轴可覆盖），
+    // 不试探。历史：09-05 门槛 10s（当时扫描 1s=335/41/2(+2队崩) 5s=353/31/2 10s=391/23/2 20s=421/20/2，
+    // 「+2 队崩」= 近均衡队被推进 stunCount=0 吸引盆：失衡 116k→9.5k，runArchiveDeploy 雅/南宫/柚叶队崩）；
+    // 09-08 引擎（1051/1531 实数化、轴栈资源门控、sigrid 估时钩子、琉音三件套）上 1s 门槛复核：
+    // ratchet 绝对不变量/runArchiveDeploy/allAgentsSweep/yidhariInteractionGrid 全绿，旧盆不复现
+    // （实测数字见 underfillRefund.test.ts 与 docs 坑19① 否决记录）。
+    // **排除队（2026-09-08）**：现仅 1591 一族（试探的行测量看不见装配期追加行 → 会破「行≤账本」；
+    // 见 probeExcludedTeam 注释）；1051/1531 已随热启动规范种子修复放回。
+    if (underfill > UNDERFILL_PROBE_THRESHOLD_SECONDS && !probeExcludedTeam) {
       let probe = underfill
       for (let attempt = 0; attempt < 4 && probe > 0.5; attempt++) {
         const savedRefund: number = config.timeBudgetRefund ?? 0
@@ -520,10 +594,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         }
       }
       timeBudgetIdleSeconds = Math.max(0, underfill)
-      // 热启动逐位透明：缓存**试探前**的末态。回填后的末态作种子会让折叠循环 pass0 从
-      // 「已回填」出发（不再测到那个巨大的正 excess）→ 折出不同的账本 → 冷/热落点分叉
-      // （实测 1241/1191 队由冷热一致变不一致）。存试探前末态则每次调用都重走同一条路径。
-      warmSeedStates = statesPreProbe
+      // 热启动缓存**不存**试探前末态（2026-09-08 修）：折叠 pass0 的 refund 冻结与内层落点随初值变，
+      // 存末态会让同配置第二次计算换结果（1431 系 4 队冷/热 9.20 vs 4.86 等）。缓存存的是本轮的
+      // **规范种子**（见 warmSeedStates 声明处 @fact）——牺牲加速，换「同配置连续计算不许变」。
     }
   }
 
@@ -670,7 +743,10 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       config.specialActionDecibelBonusPerSlot?.[i] ?? 0,
       config.anomalyDecibelBonusPerSlot?.[i] ?? 0,
       teammateFrontlineSeconds)
-    const builtExecutions = buildExecutions(cfg, state, chainCountTotal, teammateFrontlineSeconds)
+    // 物化钩子派发前的引擎行快照：供 buildResourceResult 复现钩子当时看到的行基准
+    // （阶段1 第二刀——卢西娅 cap 等派生量不再经 cfg 回写传递）
+    const preModuleExecutions: SkillExecution[] = []
+    const builtExecutions = buildExecutionsWithPhase(cfg, state, chainCountTotal, teammateFrontlineSeconds, preModuleExecutions)
     // 本槽赠送行时间（诺姆赠链 / 琉音赠大）：账本已含（necessary 预留），但行不在 builtExecutions 里
     // ——截断上限先扣掉它，装配后再追加的赠送行才与账本守恒（见上方 giftTimeOfSlot 注释）。
     const giftTimeThisSlot = giftTimeOfSlot(i)
@@ -699,6 +775,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       cfg,
       state,
       teamFrontlineSeconds: teammateFrontlineSeconds,
+      preModuleExecutions,
     }) ?? {}
 
     return {
@@ -825,13 +902,9 @@ export function findExSpecial(agentSkills: {
     resourceId = keys[0]?.toLowerCase().includes('sharpness') ? 'sharpness' : keys[0]
   }
 
-  // 从 rows 提取 decibel_recovery
-  let decibelRecovery = 0
-  for (const row of fallbackMove.rows) {
-    if (row.id === 'decibel_recovery') {
-      decibelRecovery = row.values[0] || 0
-    }
-  }
+  // 多段强特（登记融合组，如雅·飞雪斩击 = #1+#2）：时间与喧响按一次动作取整段；
+  // **耗能不动**——nanoka 把耗能写在前缀项上，一次动作只计一次（坑 31）。
+  const { actionTime: exActionTime, decibelRecovery: exDecibel } = channelMetricsOf(agentSkills, fallbackMove)
 
   return {
     moveId: fallbackMove.id,
@@ -840,8 +913,8 @@ export function findExSpecial(agentSkills: {
     costType,
     costAmount,
     resourceId,
-    actionTime: fallbackMove.actionTime ?? 0,
-    decibelRecovery,
+    actionTime: exActionTime,
+    decibelRecovery: exDecibel,
     energyCostRaw,
     comboAlignRatio: fallbackMove.comboAlignRatio ?? 0,
   }
@@ -863,24 +936,94 @@ export function findUltimate(agentSkills: {
   })
   if (!ultMove) return null
 
-  let decibelRecovery = 0
-  for (const row of ultMove.rows) {
-    if (row.id === 'decibel_recovery') {
-      decibelRecovery = row.values[0] || 0
-    }
-  }
+  // 多段终结技（登记组，如妮可 特制以太榴弹 = 炮击 + 能量场）：倍率/喧响取整段，
+  // 时间只取站场段（能量场是自动攻击）。
+  const { actionTime: ultActionTime, decibelRecovery: ultDecibel } = channelMetricsOf(agentSkills, ultMove)
 
   return {
     moveId: ultMove.id,
-    actionTime: ultMove.actionTime ?? 0,
-    decibelRecovery,
+    actionTime: ultActionTime,
+    decibelRecovery: ultDecibel,
     comboAlignRatio: ultMove.comboAlignRatio ?? 0,
+  }
+}
+
+/**
+ * 融合组「一次动作」的整段量（前台时长 + 喧响）。moveId 登记了融合组
+ * （`data/moveFusions.ts` 单一事实源）时：
+ *   - actionTime = Σ (countsTime !== false 的段) actionTime × term.count——
+ *     能力场/自动攻击段（妮可 1031303/1031305）打伤害但角色不站场，时间按 0 计；
+ *   - decibelRecovery = Σ **全部**段 decibel_recovery × term.count（能量场照样回喧响）。
+ * 未登记或组内缺段 → null（回头段原值，保守防半融合）。
+ *
+ * 为什么必须走登记组而不是「同 category 里的 #N 段全加」：catalog 的多段行既可能是
+ * 一次动作的分段（星见雅春临 #1~#3），也可能是两个独立动作（叶瞬光 1431 连携两段
+ * 3.3s/2.5s、喧响 218.9 已在全体基线内）——启发式求和会把后者顶成 5.8s 的假时长。
+ *
+ * @fact engine:fusedGroupMetrics/一次动作整段量 口径: 登记融合组的「一次动作」在倍率·失衡·积蓄·喧响上 Σ 全部段、在前台时间上只 Σ countsTime≠false 的段（能力场/自动攻击段不站场）；未登记段仍取本段值 | 据 用户@2026-09-11「倍率表必须融合，因为连携本身就是打3段」+「时间通道只回头段那也不行，必须改」+「只有炮击算时间，能力场是自动攻击，不算时间」 | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/core/resource.ts#fusedGroupMetrics | 信 确认
+ */
+export function fusedGroupMetrics(
+  agentSkills: {
+    categories: {
+      moves: { id: string; actionTime?: number | null; rows?: { id: string; values: number[] }[] }[]
+    }[]
+  },
+  moveId: string,
+): { actionTime: number; decibelRecovery: number } | null {
+  const group = moveFusionByMoveId.get(moveId)
+  if (!group) return null
+  const segments = new Map<string, { actionTime?: number | null; rows?: { id: string; values: number[] }[] }>()
+  for (const cat of agentSkills.categories) {
+    for (const m of cat.moves ?? []) segments.set(String(m.id), m)
+  }
+  let actionTime = 0
+  let decibelRecovery = 0
+  for (const term of group.terms) {
+    const seg = segments.get(term.moveId)
+    if (!seg) return null
+    if (term.countsTime !== false) actionTime += (seg.actionTime ?? 0) * term.count
+    const row = seg.rows?.find(r => r.id === 'decibel_recovery')
+    decibelRecovery += (row?.values[0] || 0) * term.count
+  }
+  return { actionTime, decibelRecovery }
+}
+
+/** 只要时长的那一侧（能力场段按 0 计）——留给只需要 actionTime 的调用方。 */
+export function fusedGroupActionTime(
+  agentSkills: { categories: { moves: { id: string; actionTime?: number | null; rows?: { id: string; values: number[] }[] }[] }[] },
+  moveId: string,
+): number | null {
+  return fusedGroupMetrics(agentSkills, moveId)?.actionTime ?? null
+}
+
+/**
+ * 各族 `find*` 的统一出口：一条通道（强特/终结/连携/闪反/招架/支援突击…）取到的
+ * 「一次动作」前台时长与喧响。登记了融合组 → 整段量；否则 → 本段量。
+ * **时间不是「招式段」的单元，是「一次动作」的单元**——只回头段会把一次动作
+ * 的其余段整段漏掉（坑 31：雅连携显示 0.515s，实际一次打三段 1.717s）。
+ */
+function channelMetricsOf(
+  agentSkills: {
+    categories: {
+      moves: { id: string; actionTime?: number | null; rows?: { id: string; values: number[] }[] }[]
+    }[]
+  },
+  move: { id: string; actionTime?: number | null; rows?: { id: string; values: number[] }[] },
+): { actionTime: number; decibelRecovery: number } {
+  const fused = fusedGroupMetrics(agentSkills, move.id)
+  if (fused) return fused
+  return {
+    actionTime: move.actionTime ?? 0,
+    decibelRecovery: move.rows?.find(r => r.id === 'decibel_recovery')?.values[0] || 0,
   }
 }
 
 /** 从倍率表数据提取连携技信息
  *  在 chain category 中找 "Chain Attack" 的 move（区别于 "Ultimate"）
+ *  多段连携（登记融合组）取**一次动作**的整段量：倍率/喧响 Σ 全部段、时间 Σ 站场段。
+ *  结果页同屏显示「1258.3% / 单次 0.515s」两套口径即为该错配（坑 31）。
  */
+// @fact engine:findChainAttack/多段连携 口径: 登记融合组的连携「一次动作」时长 = Σ 站场段 actionTime（星见雅春临 0.515+0.515+0.687=1.717s；妮可 0.25+0.25=0.5s，能量场段不计时），喧响 = Σ 全部段（雅 230.15、妮可 217.25，全体基线 168~278）；未登记连携仍取头段 | 据 nanoka full/1091.json + full/1031.json param.desc + 用户@2026-09-11 | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/core/resource.ts#findChainAttack | 信 确认
 export function findChainAttack(agentSkills: {
   categories: { id: string; moves: { id: string; name: { en?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
 }): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
@@ -893,16 +1036,11 @@ export function findChainAttack(agentSkills: {
   })
   if (!chainMove) return null
 
-  let decibelRecovery = 0
-  for (const row of chainMove.rows) {
-    if (row.id === 'decibel_recovery') {
-      decibelRecovery = row.values[0] || 0
-    }
-  }
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, chainMove)
 
   return {
     moveId: chainMove.id,
-    actionTime: chainMove.actionTime ?? 0,
+    actionTime,
     decibelRecovery,
     comboAlignRatio: chainMove.comboAlignRatio ?? 0,
   }
@@ -925,16 +1063,12 @@ export function findDodgeCounter(agentSkills: {
   })
   if (!move) return null
 
-  let decibelRecovery = 0
-  for (const row of move.rows) {
-    if (row.id === 'decibel_recovery') {
-      decibelRecovery = row.values[0] || 0
-    }
-  }
+  // 一次动作可能被 catalog 拆成多段（登记融合组）：前台时间与喧响都走融合口径（坑 31）。
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
 
   return {
     moveId: move.id,
-    actionTime: move.actionTime ?? 0,
+    actionTime,
     decibelRecovery,
     comboAlignRatio: move.comboAlignRatio ?? 0,
   }
@@ -952,16 +1086,12 @@ export function findDefensiveAssist(agentSkills: {
   })
   if (!move) return null
 
-  let decibelRecovery = 0
-  for (const row of move.rows) {
-    if (row.id === 'decibel_recovery') {
-      decibelRecovery = row.values[0] || 0
-    }
-  }
+  // 一次动作可能被 catalog 拆成多段（登记融合组）：时间与喧响走融合口径（坑 31）。
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
 
   return {
     moveId: move.id,
-    actionTime: move.actionTime ?? 0,
+    actionTime,
     decibelRecovery,
     comboAlignRatio: move.comboAlignRatio ?? 0,
   }
@@ -982,16 +1112,12 @@ export function findAssistFollowUp(agentSkills: {
   })
   if (!move) return null
 
-  let decibelRecovery = 0
-  for (const row of move.rows) {
-    if (row.id === 'decibel_recovery') {
-      decibelRecovery = row.values[0] || 0
-    }
-  }
+  // 一次动作可能被 catalog 拆成多段（登记融合组）：时间与喧响走融合口径（坑 31）。
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
 
   return {
     moveId: move.id,
-    actionTime: move.actionTime ?? 0,
+    actionTime,
     decibelRecovery,
     comboAlignRatio: move.comboAlignRatio ?? 0,
   }
@@ -1012,16 +1138,12 @@ export function findRemielleRainbowEnd(agentSkills: {
   })
   if (!move) return null
 
-  let decibelRecovery = 0
-  for (const row of move.rows) {
-    if (row.id === 'decibel_recovery') {
-      decibelRecovery = row.values[0] || 0
-    }
-  }
+  // 一次动作可能被 catalog 拆成多段（登记融合组）：时间与喧响走融合口径（坑 31）。
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
 
   return {
     moveId: move.id,
-    actionTime: move.actionTime ?? 0,
+    actionTime,
     decibelRecovery,
     comboAlignRatio: move.comboAlignRatio ?? 0,
   }
@@ -1041,16 +1163,12 @@ export function findRemielleRadiantTurn(agentSkills: {
   })
   if (!move) return null
 
-  let decibelRecovery = 0
-  for (const row of move.rows) {
-    if (row.id === 'decibel_recovery') {
-      decibelRecovery = row.values[0] || 0
-    }
-  }
+  // 一次动作可能被 catalog 拆成多段（登记融合组）：时间与喧响走融合口径（坑 31）。
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
 
   return {
     moveId: move.id,
-    actionTime: move.actionTime ?? 0,
+    actionTime,
     decibelRecovery,
     comboAlignRatio: move.comboAlignRatio ?? 0,
   }

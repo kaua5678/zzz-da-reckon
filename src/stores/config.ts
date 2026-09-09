@@ -1127,7 +1127,7 @@ function parseCinemaRequirement(sourceLabel: string): number {
    *  批量模式：defer 掉 setAgent 内的同步/推荐（各跑一遍融合贪心优化器很重），
    *  换完三人后统一 sync + 推荐一次，与手动逐个换的总计算量一致。 */
   function applyTeamPreset(agentIds: [string, string, string]) {
-    // 配装推荐没加载就套预设 = **静默留在 setAgent 兜底盘上**（34200 棘刺玫瑰，2件套防御+16%），
+    // 配装推荐没加载就套预设 = **静默留在 setAgent 兜底盘上**（34200 荆棘玫瑰，2件套防御+16%），
     // 主C穿防御套还能跑完、数字还自洽——2026-09-07 探针就这么算了一整轮归档伤害才被发现。
     // 这里必须炸：调用方（预设按钮/部署/teamTimeline）都在启动流程之后，正常路径不可能没加载。
     if (!catalogStore.buildRecsLoaded) {

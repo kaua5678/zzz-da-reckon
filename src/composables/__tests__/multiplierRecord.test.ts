@@ -38,7 +38,6 @@ const SPECIALTY_LABELS: Record<string, string> = {
   support: '支援',
   defense: '防护',
   rupture: '命破',
-  edgeguard: '戍卫',
   sharpen: '锐化',
 }
 

@@ -273,7 +273,7 @@ describe('驱动盘 2pc 补录', () => {
 })
 
 describe('requirement 门槛', () => {
-  it('棘刺玫瑰 4pc：防御<1000 零档，双防主词条+副词条过 1800 双档', () => {
+  it('荆棘玫瑰 4pc：防御<1000 零档，双防主词条+副词条过 1800 双档', () => {
     // 凯撒 defBase=754：无防主词条 → 粗算 def=754 <1000 → 两档都不给
     const none = panelFor('1071', disc({ fourPieceSetId: '34200' })).inCombat
     const baseNone = panelFor('1071', EMPTY).inCombat

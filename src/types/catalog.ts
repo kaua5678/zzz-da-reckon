@@ -10,7 +10,7 @@ export interface LocalizedString {
 }
 
 export type Rarity = 'S' | 'A' | 'B'
-export type Specialty = 'attack' | 'stun' | 'anomaly' | 'support' | 'defense' | 'rupture' | 'edgeguard' | 'sharpen'
+export type Specialty = 'attack' | 'stun' | 'anomaly' | 'support' | 'defense' | 'rupture' | 'sharpen'
 export type Attribute = string
 export type DamageElement = 'physical' | 'fire' | 'ice' | 'electric' | 'ether' | 'wind' | 'lumiflux'
 export type StatId = string

@@ -40,16 +40,18 @@
       <n-collapse-item title="暴击乘区" name="crit">
         <div class="stat-grid">
           <div class="zone-summary">
-            <span class="zone-label">期望暴击乘数</span>
+            <span class="zone-label">{{ isSharp ? '期望锐暴乘数' : '期望暴击乘数' }}</span>
             <span class="zone-value">{{ formatNumber(critMultiplier, 3) }}</span>
           </div>
           <div class="formula-box">
             <div class="formula-title">计算公式（期望）</div>
             <div class="formula-text">
-              1 + 暴击率 × 暴击伤害
+              {{ isSharp ? '锐暴 200% 封顶：100% 以上每 1% 是一次额外锐暴判定（乘算）' : '1 + 暴击率 × 暴击伤害' }}
             </div>
             <div class="formula-text">
-              = 1 + {{ formatPercent(panel.critRate) }} × {{ formatPercent(panel.critDmg) }}
+              = {{ isSharp
+                ? `${formatPercent(panel.sharpCritDmg ?? 0)} 锐暴伤害 · 暴击率 ${formatPercent(panel.critRate)}`
+                : `1 + ${formatPercent(panel.critRate)} × ${formatPercent(panel.critDmg)}` }}
             </div>
             <div class="formula-text result">
               = {{ formatNumber(critMultiplier, 3) }}
@@ -500,6 +502,7 @@ import { ref, computed } from 'vue'
 import { NCollapse, NCollapseItem } from 'naive-ui'
 import type { DamageElement, PanelValues } from '@/types/catalog'
 import { getStatMeta, isPctStat } from '@/utils/statMeta'
+import { sharpCritMultiplier } from '@/core/damage'
 
 const props = defineProps<{
   panel: PanelValues
@@ -532,8 +535,11 @@ const baseTenStatRows = computed(() => {
 })
 
 // ========== 暴击乘区 ==========
+/** 锋御（锐暴）走 sharpCritMultiplier：200% 封顶 + 额外锐暴乘算；其余角色 100% 封顶的普通暴击 */
+const isSharp = computed(() => (props.panel.sharpCritDmg ?? 0) > 0)
 const critMultiplier = computed(() => {
   const p = props.panel
+  if (isSharp.value) return sharpCritMultiplier(p.critRate ?? 0, p.sharpCritDmg ?? 0)
   const rate = Math.min(100, Math.max(0, p.critRate)) / 100
   const dmg = p.critDmg / 100
   return 1 + rate * dmg

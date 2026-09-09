@@ -24,7 +24,7 @@
 //   默认数值不变，只把 uptime 折算口子交给用户）。见文件末尾 markConditional 段。
 // 消费端：requirement/模板解析在 src/core/buff.ts collectDriveDiscBuffs；teamBuff 门槛在
 // src/core/inCombatBuffs.ts discTeamRequirementMet。生效测试：src/core/__tests__/discSetEffects.test.ts
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -239,6 +239,26 @@ for (const s of catalog.driveDiscSets) {
   for (const e of s.twoPiece?.effects ?? []) {
     if (!e.id || e.id === 'effect-1') e.id = `effect_${s.id}_2pc`
   }
+}
+
+// ---- 套装名对齐 nanoka 正式服 equipment.json（2026-09-09 录入 1611/1621 时发现）----
+// 34200 catalog 写作「棘刺玫瑰」，正式服原文是「荆棘玫瑰」（错字）；33700 原文名带尾空格。
+// 数据源 data/raw/nanoka_equipment.json 由 scripts/sync-build-recommendations.mjs 抓取；缺则跳过。
+const eqPath = join(root, 'data', 'raw', 'nanoka_equipment.json')
+if (existsSync(eqPath)) {
+  const eq = JSON.parse(readFileSync(eqPath, 'utf8'))
+  let renamed = 0
+  for (const s of catalog.driveDiscSets) {
+    const zh = eq[String(s.id)]?.zh?.name?.trim()
+    if (zh && s.name?.zhCN !== zh) {
+      console.log(`  套装名对齐 ${s.id}: ${s.name?.zhCN} → ${zh}`)
+      s.name.zhCN = zh
+      renamed++
+    }
+  }
+  console.log(`套装名对齐 nanoka：${renamed} 条`)
+} else {
+  console.log('跳过套装名对齐：缺 data/raw/nanoka_equipment.json（跑 scripts/sync-build-recommendations.mjs 生成）')
 }
 
 writeFileSync(path, JSON.stringify(catalog))

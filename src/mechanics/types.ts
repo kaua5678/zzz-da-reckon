@@ -152,6 +152,15 @@ export interface AgentResourceResultInput {
   state: IterationState
   /** 其他队友前台时间合计（秒），供队友触发类机制使用 */
   teamFrontlineSeconds?: number
+  /**
+   * **物化钩子派发前**引擎已产出的执行行（= `buildExecutions` 钩子当时看到的同一批行）。
+   *
+   * 存在的理由（阶段1 第二刀 2026-09-09）：钩子里的派生量若在装配期（`buildResourceResult`）还要用，
+   * 旧做法是写回 cfg 缓存——那让物化钩子对 cfg 有副作用，试探测量与装配在同一 state 下拿到不同行
+   * （卢西娅 `luciaAdditionalAttackCap` 即此）。改成把行基准显式传进来，钩子两处各自用同一纯函数重算，
+   * cfg 保持只读。注意基准是**钩子派发前**的行（不含钩子自己 push 的行），与旧写回时的口径逐位一致。
+   */
+  preModuleExecutions?: SkillExecution[]
 }
 
 export interface AgentSkillTransformInput {
@@ -242,6 +251,18 @@ export interface AgentMechanicModule {
   }
   /** 向招式执行计划追加专属动作 */
   buildExecutions?(input: AgentResourceInput): void
+  /**
+   * **物化相位写入**（阶段1 第二刀，2026-09-09）：模块产行后由**引擎**在物化调用点显式落相位状态
+   * （如格莉丝「本轮平A池留给下一轮 estimate」、叶瞬光 cycle 缓存）。
+   *
+   * 为什么单列一个钩子：这类写入的语义是「记住本次物化用的 state」，属于**引擎调用点**的副作用，
+   * 不是产行的一部分。写在 `buildExecutions` 里会让产行函数对 cfg 有副作用——`materializeRows`
+   * 只能靠快照/恢复兜底，且「同一 (cfg, state) 在不同调用点得到不同行」。拆出来之后产行函数对
+   * cfg 只读，引擎在每个物化调用点按同一 state 补写，数值逐位不变（golden 0 delta）。
+   * 引擎只在**非试探隔离**的物化路径调用它（`materializeRows` 内部不调，因为那条路径本来就
+   * 快照/恢复、写入会被丢弃）。
+   */
+  materializePhaseState?(input: AgentResourceInput): void
   /**
    * 招式执行计划完全构建后（通用+模块追加均就绪）的修正钩子：
    * 模块可对最终执行列表按 moveId/招式标签补专属字段（增伤/暴击/固定附加伤害等）。

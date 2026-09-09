@@ -1414,7 +1414,10 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
             // 同上：decibel/energy 显式 0 = 模块显式禁用回填（围猎后台闪反无喧响/能量）；
             // decibelRecoveryOverride = 模块显式给定口径换算后的行值（如洛克茜自旋：表值为每秒，
             // 行值 = 每秒 × spinSeconds），跳过表值覆盖——与 damage/anomaly override 同构。
-            const tableDecibel = getRowValue(move, 'decibel_recovery')
+            // 登记融合组的主段行：喧响取「一次动作」的整段和（与 damage/daze/anomaly 同一函数
+            // 同一口径）；只回头段会把雅一次连携的 230.15 记成 69.05（坑 31）。
+            const tableDecibel = fusedRowValue(skills, exec.moveId, 'decibel_recovery')
+              ?? getRowValue(move, 'decibel_recovery')
             const decibelValue = exec.decibelRecoveryOverride
               ? (exec.decibelRecovery ?? 0)
               : exec.decibelRecovery === 0 ? 0 : (tableDecibel || (exec.decibelRecovery ?? 0))
@@ -1558,7 +1561,10 @@ export function buildCharConfig(
   const decibelRecoveryByMoveId: Record<string, number> = {}
   for (const cat of (skills as AgentSkills | undefined)?.categories ?? []) {
     for (const m of cat.moves ?? []) {
-      decibelRecoveryByMoveId[String(m.id)] = getRowValue(m, 'decibel_recovery')
+      // 登记融合组的主段：喧响取「一次动作」的整段和（一次连携把各段的 fever_recovery 全打了，
+      // 只回头段会把雅 230.15 记成 69.05）。兄弟段不单独成行（moveFusions 入表前提），无六计风险。
+      decibelRecoveryByMoveId[String(m.id)]
+        = fusedRowValue(skills as AgentSkills, String(m.id), 'decibel_recovery') ?? getRowValue(m, 'decibel_recovery')
     }
   }
 
@@ -1702,8 +1708,11 @@ export function buildCharConfig(
     const scale = sustainedDamageScale(sustainedSpec, susMove)
     const secs = sustainedSpec.sustain.maxSeconds
     cfg.exSpecialEnergyConsume = sustainedSpec.fixedEnergy + sustainedSpec.sustain.energyPerSecond * secs
-    const opener = sustainedSpec.opener.map((t) => ({ moveId: t.moveId, actionTime: findMoveById(skills as AgentSkills, t.moveId)?.actionTime ?? 0 }))
-    const finisher = sustainedSpec.finisher.map((t) => ({ moveId: t.moveId, actionTime: findMoveById(skills as AgentSkills, t.moveId)?.actionTime ?? 0 }))
+    // 自动攻击/能力场段（countsTime:false）行时长记 0：倍率照发、角色不站场。
+    const segSeconds = (t: { moveId: string; countsTime?: boolean }) =>
+      t.countsTime === false ? 0 : findMoveById(skills as AgentSkills, t.moveId)?.actionTime ?? 0
+    const opener = sustainedSpec.opener.map((t) => ({ moveId: t.moveId, actionTime: segSeconds(t) }))
+    const finisher = sustainedSpec.finisher.map((t) => ({ moveId: t.moveId, actionTime: segSeconds(t) }))
     // 动作总时间（供 estimateExSpecialTime 时间预算）：起手 + 持续满蓄 + 收尾
     cfg.exSpecialActionTime = opener.reduce((s, o) => s + o.actionTime, 0) + secs + finisher.reduce((s, f) => s + f.actionTime, 0)
     ;(cfg as unknown as Record<string, unknown>).sustainedEx = {

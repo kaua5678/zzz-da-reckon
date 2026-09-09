@@ -422,7 +422,7 @@ const formulaSections = [
       'basis：非命破 atk；命破贯穿力 = 局内 atk × 0.3 + 局内 hp × 0.1 + sheerForceFlat',
       'damageMultiplier 只读取倍率表直伤行；luminizeMultiplier 已单独派生为耀变直伤展示行',
       '命破角色防御区固定为 1；贯穿增伤 = penDmgBonus + sheerDmgBonus + 对应元素贯穿增伤，是独立额外乘区',
-      'crit = 1 + min(critRate, 100%) × critDmg（期望）',
+      'crit = 1 + min(critRate, 100%) × critDmg（期望）；锋御锐暴 200% 封顶、100% 以上额外判定乘算（core/damage.ts sharpCritMultiplier）',
     ],
   },
   {

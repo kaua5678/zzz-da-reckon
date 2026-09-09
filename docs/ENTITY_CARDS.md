@@ -52,12 +52,17 @@
   （如 critRate 主词条=24，critDmg=48，anomalyProficiency=92）。
 - 副词条：步长表 `statRules.driveDisc.sRankSubStatBaseStep`（critRate 2.4 / critDmg 4.8 /
   hpPct 3 / atkPct 3 / anomalyProficiency 9 / penFlat 9）。分配上限与总步数口径见 `substatOptimizer`。
+- **自动副词条模板**（`substatOptimizer.ts` `AGENT_TEMPLATES` + `getTemplate`）：先按 agentId 命中，
+  未命中按 `specialty` 兜底——锋御（sharpen）→ 暴击率/防御力/暴击伤害、`critRateCap: 200`（锐暴可额外判定，见 `core/damage.ts sharpCritMultiplier`）；伤害走
+  `SHARPEN_DAMAGE_PROFILE`，def 基底）、命破 → 暴击率/暴击伤害/生命、异常 → 精通/攻击、
+  辅助 → 攻击/生命/防御、击破/强攻 → 暴击率/暴击伤害/攻击。**新增特化必须在 `getTemplate` 里显式分支**，
+  否则静默落 `_default_dps` 吃 atkPct（2026-09-09 克拉蕾 1611 实测：自动副词条给攻击不给防御）。
 - 套装：`driveDiscSets[]`，2件套=固定面板效果，4件套 selfBuff=装备者效果、teamBuff=全队效果
   （消费端 `buff.ts collectDriveDiscBuffs` + `inCombatBuffs.ts`；生效测试 `discSetEffects.test.ts`）。
   例：折枝剑歌(32700) 2pc=暴击伤害+16%；啄木鸟电音(31000) 2pc=暴击率+8。
 - 套装 requirement 门槛（`EffectRequirement`，2026-09 起消费）：
   `outOfCombatStat:{stat,min}`（selfBuff 侧粗算口径=基础值+主词条+副词条步数，teamBuff 侧用装备者源面板精确值）、
-  `specialty`/`attribute`（装备者特化/属性）。生效中：棘刺玫瑰 def≥1000/1800、折枝剑歌 掌控≥115、
+  `specialty`/`attribute`（装备者特化/属性）。生效中：荆棘玫瑰 def≥1000/1800、折枝剑歌 掌控≥115、
   山大王 4pc 二段 critRate≥50 + 击破限定、月光骑士颂=支援、雪兔=防护、拂晓行纪/谶羽之誓=属性限定。
 - stat 模板：`enemy{attribute}AnomalyResReduction` 按装备者属性替换（首字母大写落 stat 名，自由蓝调 4pc）。
   自由蓝调 4pc 挂在敌人 8s、全队同属性积蓄受益 → 录在 `fourPiece.teamBuff`（includeOwner=装备者同吃），

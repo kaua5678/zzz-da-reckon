@@ -85,7 +85,7 @@ describe('catalog data invariants', () => {
   it("keeps every agent's specialty consistent with its signature weapon", () => {
     const cat = loadCatalog()
     const byId = new Map((cat.agents as any[]).map((a: any) => [String(a.id), a]))
-    const VALID = ['attack', 'stun', 'anomaly', 'support', 'defense', 'rupture', 'edgeguard', 'sharpen']
+    const VALID = ['attack', 'stun', 'anomaly', 'support', 'defense', 'rupture', 'sharpen']
     const bad: string[] = []
     for (const w of cat.wEngines as any[]) {
       const owner = String(w.ownerAgentId ?? '')

@@ -147,23 +147,41 @@ function calcCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCr
   }
 }
 
+/**
+ * 锋御锐暴乘区期望值（用户口径 2026-09-09）。
+ *
+ * 普通暴击 100% 封顶；锋御的**锐暴封顶 200%**——100% 以上每多 1% 是一次「额外锐暴判定」的概率，
+ * 每次锐暴都是**乘算**：锐暴伤害 150% → 爆一次 ×2.5、爆两次 ×2.5² = 6.25。
+ *   期望 = r ≤ 100 时 1 + r·d；r > 100 时 (1+d) × (1 + p·d)，p = min(1, (r-100)/100)。
+ * 实测锚：r=150、d=1.5 → 0.5×2.5 + 0.5×6.25 = 4.375（= 2.5×1.75）。
+ */
+export function sharpCritMultiplier(critRateRaw: number, sharpCritDmgPct: number): number {
+  const d = sharpCritDmgPct / 100
+  const r = Math.max(0, critRateRaw)
+  if (r <= 100) return 1 + (r / 100) * d
+  const p = Math.min(1, (r - 100) / 100)
+  return (1 + d) * (1 + p * d)
+}
+
 function calcSharpCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCrit', targetSkillType?: SkillDamageTarget): { multiplier: number; label: string } {
   const sharpCritDmg = getTargetedStat(panel, 'sharpCritDmg', targetSkillType) + (panel.enemyCritDmgTakenBonus ?? 0)
   const critRateRaw = getTargetedStat(panel, 'critRate', targetSkillType)
-  const baseCritRate = Math.min(100, critRateRaw) / 100
-  const overflowRate = Math.min(100, Math.max(0, critRateRaw - 100)) / 100
+  const d = sharpCritDmg / 100
+  const overflowRate = Math.min(1, Math.max(0, critRateRaw - 100) / 100)
+  const overflowLabel = overflowRate > 0 ? ` + 额外锐暴判定${fmt(overflowRate * 100)}%` : ''
 
   switch (mode) {
     case 'crit': {
-      const mult = 1 + sharpCritDmg / 100 + overflowRate * (sharpCritDmg / 100)
-      return { multiplier: mult, label: `锐暴 (锐暴伤害${fmt(sharpCritDmg)}%${overflowRate > 0 ? ` + 溢出锐爆${fmt(overflowRate * 100)}%` : ''})` }
+      // 假设首次锐暴必中；溢出段按概率做第二次锐暴（乘算，不是加算）
+      const mult = (1 + d) * (1 + overflowRate * d)
+      return { multiplier: mult, label: `锐暴 (锐暴伤害${fmt(sharpCritDmg)}%${overflowLabel} 乘算)` }
     }
     case 'nonCrit':
       return { multiplier: 1, label: '不暴击' }
     case 'expect':
     default: {
-      const mult = 1 + baseCritRate * (sharpCritDmg / 100) + overflowRate * (sharpCritDmg / 100)
-      return { multiplier: mult, label: `期望 (暴击率${fmt(Math.min(100, critRateRaw))}% × 锐暴${fmt(sharpCritDmg)}%${overflowRate > 0 ? ` + 溢出锐爆${fmt(overflowRate * 100)}% × 锐暴${fmt(sharpCritDmg)}%` : ''})` }
+      const mult = sharpCritMultiplier(critRateRaw, sharpCritDmg)
+      return { multiplier: mult, label: `期望 (暴击率${fmt(critRateRaw)}% 锐暴${fmt(sharpCritDmg)}%${overflowLabel})` }
     }
   }
 }
@@ -191,7 +209,7 @@ function getElementSharpDmgBonus(panel: PanelValues, element: DamageElement | un
   return getTargetedStat(panel, `${resolveStatElement(element)}SharpDmg`, targetSkillType)
 }
 
-export type SpecialDamageProfileKind = 'normal' | 'rupture' | 'edgeguard'
+export type SpecialDamageProfileKind = 'normal' | 'rupture' | 'sharpen'
 
 /** 特殊职业直伤接口：用于把命破、锐化等职业接入同一条直伤公式链路 */
 export interface SpecialDamageProfile {
@@ -236,7 +254,7 @@ const RUPTURE_DAMAGE_PROFILE: SpecialDamageProfile = {
 }
 
 const SHARPEN_DAMAGE_PROFILE: SpecialDamageProfile = {
-  kind: 'edgeguard',
+  kind: 'sharpen',
   label: '锋御伤害',
   basisLabel: '防御力区',
   basisFormula: () => 'def',
@@ -247,7 +265,7 @@ const SHARPEN_DAMAGE_PROFILE: SpecialDamageProfile = {
 
 export function resolveSpecialDamageProfile(agent: Agent): SpecialDamageProfile {
   if (agent.specialty === 'rupture') return RUPTURE_DAMAGE_PROFILE
-  if (['edgeguard', 'sharpen', '锋御'].includes(agent.specialty as string)) return SHARPEN_DAMAGE_PROFILE
+  if (['sharpen', '锋御'].includes(agent.specialty as string)) return SHARPEN_DAMAGE_PROFILE
   return NORMAL_DAMAGE_PROFILE
 }
 

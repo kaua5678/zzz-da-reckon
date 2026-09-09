@@ -172,13 +172,15 @@ function patchLuciaExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 function buildLuciaExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  // cap 依赖本轮 state/executions（相位延后修正），写入 cfg 供 buildResourceResult 同口径复用（防账本与行不一致）
+  // cap 依赖本轮 state + 物化钩子当时已产出的引擎行（相位延后修正）。**不回写 cfg**（阶段1 第二刀
+  // 2026-09-09）：旧口径写 cfg.luciaAdditionalAttackCap 供 buildResourceResult 复用，使物化钩子对
+  // cfg 有副作用（试探/装配同 state 不同相位拿到不同行）；现在两处各自用同一纯函数 + 同一行基准重算
+  // （buildResourceResult 经 AgentResourceResultInput.preModuleExecutions 拿到同一批行）。
   const cap = additionalAttackCapOf(
     cfg,
     state,
     countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
   )
-  ;(cfg as unknown as Record<string, unknown>).luciaAdditionalAttackCap = cap
   const plan = computeLuciaDreamPlan(
     state.exSpecialCount,
     state.ultimateCount,
@@ -299,12 +301,16 @@ function computeLuciaSource(
   }
 }
 
-function buildLuciaResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  const record = cfg as unknown as Record<string, unknown>
-  // cap 与 buildExecutions 同口径：优先读本轮缓存（含相位延后修正），未跑过 executions 时现算（count 缺省回退块长≈CD）
-  const cap = Number.isFinite(Number(record.luciaAdditionalAttackCap))
-    ? Math.max(0, Math.floor(Number(record.luciaAdditionalAttackCap)))
-    : additionalAttackCapOf(cfg, state)
+function buildLuciaResourceResult({ cfg, state, preModuleExecutions }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  // cap 与 buildExecutions 同口径：同一纯函数 + **同一行基准**（物化钩子派发前的引擎行）。
+  // 缺 preModuleExecutions（外部直调）时退化为无前台动作计数口径（frontBlockSeconds 取 CD 回退值）。
+  const cap = additionalAttackCapOf(
+    cfg,
+    state,
+    preModuleExecutions
+      ? countFrontActions(preModuleExecutions, { fusedMoveIds: [cfg.assistFollowUpMoveId] })
+      : undefined,
+  )
   return {
     luciaMechanicSource: computeLuciaSource(
       cfg as unknown as Record<string, unknown>,

@@ -81,8 +81,9 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
 | `applyPanel` | 面板计算时（最早） | 面板字段（critDmg/抗性无视/转模）；覆盖率滑块直接读 `input.settings` | cfg、state（轮次数） |
 | `applyTeamConfig` | 全队 cfg 就绪后（三阶段，见下） | **写全队 cfg**：跨槽位联动（邻位回能/后场全队增益/入场次数汇总） | state（用 input 里的 exCounts/stunCount） |
 | `buildCharConfig` | 面板之后、资源池之前 | cfg 字段、initialEnergyGift、skipGenericExSpecial、预存倍率表 | state（轮次数） |
-| `estimateExSpecialTime` | iterate 每轮 | 强特链/专属动作的必做前台时间 | state（可用 cfg 字段存上轮值） |
-| `buildExecutions` | 收敛后一次 | push 专属执行（EX 链/附伤/事件执行） | — |
+| `estimateExSpecialTime` | iterate 每轮 | 强特链/专属动作的必做前台时间 | 全队 state（拿到的是本槽 prevState） |
+| `buildExecutions` | 收敛后一次 | push 专属执行（EX 链/附伤/事件执行）；**对 cfg 只读** | — |
+| `materializePhaseState` | 引擎物化调用点（紧随 buildExecutions） | **写相位状态**：把「本次物化用的 state」记进 cfg 供下一轮 estimate / 装配读（grace 平A池、1431 cycle） | — |
 | `patchExecutions` | buildExecutions 末尾 | 按 moveId 补 dmgBonus/critDmgBonus | — |
 | `buildResourceResult` | buildExecutions 之后 | specResources/专属展示数据 | — |
 | `buildAnomalyEvents` | 异常事件计划构建时 | push 专属异常事件 | — |
@@ -128,7 +129,7 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
 
 > **先对齐 §4 开头「时间系统三本账」表**（碰时间/账本/物化行/超时判定都先看它），再按症状查。
 > **要改时间/收敛/截断逻辑前，先读坑 19 的「否决记录」**——九条已量过的死路都在那里。
-> **按症状查（不用通读）**：滑块改了面板/结果不变→1 · 强特次数不对/接管 EX 链→2 · 倍率/失衡/喧响全错→3 · 按 name/note 找不到执行行→4 · 附伤 daze/异常双计→5 · 专属动作不占时间→6 · 贯穿力疑似双计→7 · 招式命中类计数没源→8 · 轴内动作次数/时间不对→9 · 进场能量不对→10 · 指定招式增伤误放大→11 · 前台超时/账本虚增→12 · 队伍联动静默错值→13 · 界面能量与次数对不上→14 · 不收敛/数值抖动→15 · 两次算结果漂移→16 · 同输入落点漂移→17 · 物化行打不满战斗时间（欠打）/轴需求超预算误报超时→19 · 「汇总卡说快满了、角色条却空一截」（账本口径 vs 物化口径不同源）→19① + `composables/teamTimeSummary.ts`。 · 出现小数次数 / 招式行凭空消失 / 失衡池被清空致结果为 null →22（时间线截断）。 · **失衡次数显示 0 / 同一队冷热启动给出不同次数**→25（非轴失衡不动点的阶梯 2-循环）。 · **直伤比同类异常角色偏低 / 减防·无视防御不生效**→26（面板通用 enemyDefReduction 未进直伤通道）。 · **资源卡「总计」= 180s + 赠送秒数 / 赠送队超预算**→28（赠送行未回扣截断上限与前台展示）。 · **轴里捏的招式超过资源总量还被算进去**→29（轴栈资源门控应为「去掉」）。
+> **按症状查（不用通读）**：滑块改了面板/结果不变→1 · 强特次数不对/接管 EX 链→2 · 倍率/失衡/喧响全错→3 · 按 name/note 找不到执行行→4 · 附伤 daze/异常双计→5 · 专属动作不占时间→6 · 贯穿力疑似双计→7 · 招式命中类计数没源→8 · 轴内动作次数/时间不对→9 · 进场能量不对→10 · 指定招式增伤误放大→11 · 前台超时/账本虚增→12 · 队伍联动静默错值→13 · 界面能量与次数对不上→14 · 不收敛/数值抖动→15 · 两次算结果漂移→16 · 同输入落点漂移→17 · 物化行打不满战斗时间（欠打）/轴需求超预算误报超时→19 · 「汇总卡说快满了、角色条却空一截」（账本口径 vs 物化口径不同源）→19① + `composables/teamTimeSummary.ts`。 · 出现小数次数 / 招式行凭空消失 / 失衡池被清空致结果为 null →22（时间线截断）。 · **失衡次数显示 0 / 同一队冷热启动给出不同次数·同一队算两次留白不一样**→25（非轴失衡不动点的阶梯 2-循环 / 热启动缓存注入收敛末态）。 · **直伤比同类异常角色偏低 / 减防·无视防御不生效**→26（面板通用 enemyDefReduction 未进直伤通道）。 · **资源卡「总计」= 180s + 赠送秒数 / 赠送队超预算**→28（赠送行未回扣截断上限与前台展示）。 · **轴里捏的招式超过资源总量还被算进去**→29（轴栈资源门控应为「去掉」）。 · **连携技/招式「单次」时长比同族小一个量级（雅连携显示 0.515s 一类）/ 一次连携的倍率是全段而喧响-时间只是头段** →31（多段招式三侧口径不一致，含自动攻击段特例）。
 
 
 ### ⏱ 时间系统三本账（读坑 12 / 19 / 21 / 22 前先对齐这张表）
@@ -166,7 +167,9 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
 | **喧响收入** | 行级 Σ `rowDecibelTotal` / 旧聚合通道（已删） | 行级 Σ（`@fact engine:喧响收入行级Σ`） | ✅ 已收口 |
 | **能量** | `energySource.total` / `derivedEnergy` | 同一函数同一入参（坑 14） | ✅ 已收口 |
 | **伤害乘区** | `calcDirectDamage` / `calcAnomalyDamage` | 各自单源；**输入**（减防等）曾漏传 | ✅ 已收口（坑 26） |
+| **暴击/锐暴乘区** | `core/damage.ts`（权威）/ `substatOptimizer` 贪心评分 / `FinalPanel`·`StatPanel` 展示 | **`core/damage.ts` `sharpCritMultiplier`**（锋御 200% 封顶、100% 以上额外锐暴**乘算**；优化器与 UI 一律调它，不得各自实现） | ✅ 已收口（2026-09-09 克拉蕾锐暴口径） |
 | **倍率/失衡/积蓄行值** | 倍率表 / `enrichExecutionPlan` 回填 / 模块 override | 倍率表 + `*Override` 标记 | ✅ 单一 |
+| **多段招式「一次动作」时长/喧响** | catalog 段行 / `find*` 头段 / `moveFusions` 登记组 / 赠送回填（诺姆·琉音） | `moveFusions` 登记组 → `fusedGroupMetrics`+`channelMetricsOf`（自动攻击段 `countsTime:false` 不占时间） | ✅ 全通道已收口（坑 31，未登记组属数据录入侧） |
 
 模块侧唯一合法的「时间不够」信号是 `cfg.timePressureSeconds` / `cfg.timeAvailableFrontlineSeconds`
 （折叠循环每轮实测写入）；**不要读累加的 `cfg.timeBudgetExcess`** 做结构决策——它 pass0 会被平A池
@@ -281,9 +284,110 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     **连 cfg 一起回滚**（试探轮跑 `iterate` 会触发模块写回：叶瞬光自动选轴在
     `estimateExSpecialTime` 里按 `timeBudgetExcess` 退化并改 `record.yeshuguangAutoAxis`，
     只回滚 refund 会把退化后的轴留在 cfg 上 → 该队留白反增 7.8s、伤害 −13%）。三条纪律：
-    - **门槛 10s**：±1~2s 量化残差属坑 12 既有口径，为它扰动外层均衡不划算——门槛降到 ≤5s 时，
-      对 2.2s 欠打的队做回填会把外层不动点推进 `stunCount=0` 吸引盆（失衡 116k→9.5k，
-      `runArchiveDeploy` 雅/南宫/柚叶队崩、`anomalyUtilization` 丽娜积蓄偏 0.3%）。
+    - **门槛 = 1s（量化容差，2026-09-08 改）**：用户口径「平A权重与留白不应并存，剩余自由时间按权重
+      全部分配」——欠打 >1s 一律试探回填（refund→平A池→按 timeWeight 水填），≤1s 属量化地板
+      （坑12「不追求精确 0」，合轴可覆盖）不试探。旧 10s 门槛（09-05 定：≤5s 会把近均衡队
+      推进 `stunCount=0` 吸引盆——失衡 116k→9.5k，`runArchiveDeploy` 雅/南宫/柚叶队崩、
+      `anomalyUtilization` 丽娜积蓄偏 0.3%；门槛扫描 1s=335/41/2(+2队崩) 5s=353/31/2
+      10s=391/23/2 20s=421/20/2）在 09-08 引擎（1051/1531 实数化、轴栈资源门控、sigrid 估时钩子、
+      琉音三件套）上复核 1s 门槛：ratchet 绝对不变量（stun>0/outerExit≠maxIter）/runArchiveDeploy
+      （116k 样本）/allAgentsSweep（C6>C0 等）/yidhariInteractionGrid 全绿，旧盆不复现。
+      **排除队：只剩 1591 一族**（2026-09-08 门槛 1s 落地时逐族定位，同日收窄）——1591 希格莉德：
+      试探的行测量口径（`buildExecutions` + 赠送行）**看不见装配期追加的行**（实测其队最终 s0 行比
+      试探测得的多 ~1.9s），于是会接受「按自己的测量合规、按最终装配却超账本」的注入 → 破跨路径
+      「行≤账本」（auto-1591-1481 队超 0.07~1.13s）。**试过并否决**：试探接受前加「逐槽原始行≤账本」
+      判据——用的是同一份测量，照样看不见缺的那行 → 无效；升级路径 = 让试探与装配共用同一套行测量。
+      **1051/1531 已放回**（同日）：它们当初被排除只因热启动缓存注入收敛末态导致冷/热落点分叉
+      （0.009s / 0.0015s），而「缓存只存规范种子」修好后同配置计算逐位稳定，两族试探全绿。
+      **时间行生产者地图（2026-09-08 阶段1 调查结论，自顶向下重构的靶子）**：同一条时间轴上
+      「谁在建行」有 **7 处**，而试探只看得见其中 1 处 + 两处赠时的**近似**——
+      ① `core/resource/helpers.ts#buildExecutions`（13 个 push 点 + 模块钩子 `getAgentMechanic(...).buildExecutions`）；
+      ② 各角色模块 `mechanics/agents/*.ts` 的 `buildExecutions` 钩子；
+      ③ `composables/resourceCalc/normaHatChain.ts:67`（诺姆膛温换连携赠行，**装配期**）；
+      ④ `composables/resourceCalc/liuyinPromote.ts:97/184/188/193`（琉音好评转大赠行 + 连携次数改写 + **carve 自平A行**，**装配期**）；
+      ⑤ `enrichExecutionPlan`（倍率表回填，会**重建行对象**——`source` 等标记在此丢失）；
+      ⑥ `truncateExecutionsToFrontline`（装配截断）；
+      ⑦ 轴栈 `core/stunAxisStack.ts`（轴模式时间线自持块）。
+      试探的 `frontlineRowsOf` = ① + ③④的**赠时近似**（`normaGiftChainInfo`/`liuyinGiftChainInfo`），
+      **看不见 ③④ 的行本身与 carve、⑤的重建、⑦的轴块** → 于是会出现「试探自测合规、装配后超账本」
+      （1591 队实测超 0.07~1.13s；多出的正是 `source:'gift'` 的赠连携行 + carve 的净效应）。
+      **阶段1 的靶子** = 把这 7 处收进**一个** `materialize(state, cfg) → rows[]`（纯函数、放 core/），
+      试探/折叠/装配/UI 全调它；完成判据 = `timeGolden`（阶段0 脚手架）delta 逐条可解释 + 撤 `probeExcludedTeam`。
+      **阶段1 第一刀实测（2026-09-08）**：已建单一入口 `materializeRows`（`core/resource/helpers.ts`，
+      行物化 + 相位快照/恢复；`rowDecibelTotal` 改走它，**golden 0 delta**）。但把**试探测量**也切过去
+      → **golden 18 条 delta（最大 `agent:1431:c6` 伤害 +22.9%、`auto-1431-1341-1031` −2.8%）**：
+      `buildExecutions` 的相位写入是**载荷性**的，而全仓只有 `rowDecibelTotal` 一处做了快照/恢复。
+      载荷写入共 **3 处**，都在模块物化钩子里：`grace.ts:145 buildGraceExecutions.graceBasicPoolPrev`
+      （注释明写「留给下一轮 estimate」）、`luciaElowen.ts:181 buildLuciaExecutions.luciaAdditionalAttackCap`
+      （留给 buildResourceResult）、`yixuan.ts:572 buildYixuanExecutions.yixuanBackstageDecibel`。
+      **阶段1 第二刀实测（2026-09-09，全部 0 delta 收口）**：
+      · 卢西娅 cap → 移到 `buildResourceResult`，用同一纯函数 + 新增输入
+        `AgentResourceResultInput.preModuleExecutions`（物化钩子派发**前**的行基准，引擎在
+        `buildExecutions` 里快照一份）重算；
+      · 仪玄 `yixuanBackstageDecibel` → **全仓零消费者**（喧响行级化后遗留的死回写），连同零读的
+        `yixuanMoveDecibel` 预存与 `types/resource.ts` 字段一并删除；
+      · 格莉丝 5 字段（`graceBasicPoolPrev`/`graceC1Cycles`/`graceC4Energy`/`gracePulseGrenadeCount`
+        /`initialEnergyGift`）+ 叶瞬光 2 字段（`yeshuguangCycle`/`yeshuguangOutsideSword`）→ 全部
+        拆到新钩子 **`materializePhaseState`**：产行钩子对 cfg 只读，相位状态由**引擎**在物化调用点
+        按**同一 state** 显式补写（`core/resource.ts#buildExecutionsWithPhase`，356/523/744 三处）。
+      · 然后**试探测量切 `materializeRows`**（523）——与装配同源、不再污染相位，golden **0 delta**。
+      **否决记录（都量过数字，勿重走）**：
+      · 「estimate 改读 prevState 现算」替代格莉丝相位缓存 → golden 15 条 delta（1181 c0 留白
+        23.5→0s、c6 失衡 1→2）+ `underfillRefund` 1 红 + `inStunAttribution` 4 红（[1511,1181] 轴队
+        `axisFallback` false→true）。根因：旧值是**最后一次物化调用**写的（含装配相位），estimate 读
+        prevState 是另一相位的解——折叠环未收敛时两者不同解，不是等价改写。同理 1431 cycle 改读
+        prevState 破 `warmStart`（1431 系二次调用逐位一致）并把 `auto-1431-1341-1031` 留白推到 9s。
+      · 「先切试探测量、再拆相位写入」→ 顺序反了：切换时相位写入仍在钩子里，golden 多 18/9 条 delta
+        （全在 1431/1181），测到的是相位污染而不是测量口径差异。
+      · 「试探测量切 `materializeRows` 但**不补**相位写入」→ golden 10 条 delta（1431 c0 留白
+        57.9→65.4s、1181:c6 ex −1.29）——下一轮 estimate 读到上一次物化的陈旧值。补写即 0 delta。
+      · 全仓「模块钩子写 cfg」实测 **73 处**（探针口径 = 钩子调用前后 cfg 顶层键 diff，覆盖 127 预设
+        + 60 角色×命座 0/6）；判据不是「有几处写入」，而是「有没有跨相位的读者」——本轮把跨相位的那
+        7 处拆净后，探针切换 0 delta 即证明其余写入都是同调用内消费者。
+      验收 = golden 0 delta + 全库不变量（`warmStart` / `inStunAttribution` / `underfillRefund` /
+      `timeFillRatchet`）同绿。
+      **撤 1591 排除的实测（2026-09-09，拆成两半各自量过，单独任何一半都是回归）**：
+      · 复现：临时关掉 `probeExcludedTeam` → `timeLedgerInvariants` 破 2 条（`auto-1591-1481-1211`
+        槽0 物化行 88.88 > 账本 88.81；`auto-1591-1481-1311` 98.68 > 97.54）。
+      · 根因（探针实测）：装配期 `applyLiuyinPromote` 追加的 `source:'gift'` 行（本队 3.146s）在
+        **轴模式**下既无引擎预留（`liuyinGiftTimeReserved` 空），旧 carve 又抠不到——它只认
+        `basic_attack` 聚合行，而 1591 的平A池时间住在 8 条分段行里、聚合行 `totalTime=0` → carve 恒 0；
+        同时试探测量侧 `liuyinGiftChainInfo` 在轴模式直接跳过（实测 `giftLiu=0`）→ 试探按「看不见赠行」
+        的量注入 refund。
+      · 半修 A（carve 不够时按前台 basic 分段行等比分摊）：`timeLedgerInvariants` 转绿，但两队留白
+        反而变差（`auto-1591-1481-1211` 6.03→7.39s、`auto-1591-1481-1311` 2.51→5.21s）——账本没预留、
+        行又被抠走 = 凭空多出留白。
+      · 半修 B（只关排除、不动 carve）：两队 `over` 0→0.044 / 1.863s（超预算）——试探测量看不见赠行
+        → 多注入 refund。
+      · 结论：两半必须与「试探测量看见装配期追加行」**一起**落地（阶段1 单一行模型）；单独落任何一半
+        都是回归。两次实验均已回滚，未改数值。
+      · **半修 C（2026-09-09 第三轮，最接近正解但仍否决）**：把轴模式转大次数从轴层线程化进资源层
+        （`ResourceCalcConfig.axisPromote = axisHug`，`iterate` 据此在轴模式也预留、`liuyinGiftChainInfo`
+        轴模式不再跳过测量）。实测：**`timeLedgerInvariants` 在 `probeExcludedTeam=false` 下转绿**
+        （预留与装配赠行逐位相等：`reserved === giftTime`，如 1591 队 2.5237s），但
+        `timeFillRatchet` 报 **4 队留白变差**（`yidhari-liuyin-lucia`/`auto-1051-1481-1451`
+        1.3→3.1s、`auto-1591-1481-1211` 1.0→4.2s、`auto-1591-1481-1311` 0.7→4.1s），而同一队在
+        **预设配装**下留白反而改善（golden：1591 队 6.03→4.07s）——预留改变了不动点落点，方向随配装
+        翻转。按棘轮纪律「先归因、别重生成基线」→ 回滚，未改数值。**下轮起点**：落点为何翻转（预留的
+        `promote×终结技时长` 是否与轴栈已分摊的赠大时间重复计量）——这一条没查清之前不要再落任何
+        撤 1591 的改动。
+      · **半修 D/E（2026-09-09 第四轮）**：只改**试探测量**（D：轴模式也让 `frontlineRowsOf` 看见
+        赠行；E：再收窄成「只补 carve 抠不掉的余量」并在账本里同额补记 necessary）——1591 队不再
+        越账，但 `timeFillRatchet` 仍报同一批 **axis+琉音** 队留白变差（`yidhari-liuyin-lucia` /
+        `auto-1051-1481-1451` 1.3→2.7s、`billy-liuyin-lucia` / `auto-1531-1481-1451` 3.4→4.5s）。
+        说明测量侧一动就会改试探注入量 → 改落点，而**轴栈本身已把赠大动作时长计入窗口**
+        （`stunAxisStack.ts`：`windowTimeSum += act.actionTime`、`fillSec = windowDuration − 末动作结束`），
+        所以「测量、账本、carve」三者的口径必须在**同一层**统一，不是任一处补丁能收口的。
+      · **结论（2026-09-09，五种候选 A/B/C/D/E 全部实测否决）**：撤 1591 需要一次**跨层口径统一 +
+        数值重排**（涉及轴栈窗口分摊与引擎账本的关系），超出「阶段1 单一行模型」的验收口径
+        （golden 0 delta 或逐条可解释 + 护栏同绿）——**须用户裁决**后再动。当前 `probeExcludedTeam`
+        保持原样（仅 1591 一族），1s 门槛不变。
+      **A/B 归因（同工作区、仅切门槛 10s↔1s 的隔离对拍，2026-09-08 终测）**：留白合计 **192.6→148.4s**
+      （净收 44.2s），**16 队改善、0 队变差**——最大 auto-1181-1511-1411 7.4→1.1s、auto-1401-1511-1411
+      8→2s；放回 1051 后再收 auto-1051-1481-1451 3.0→1.3、yidhari-trigger-lucia 2.3→0.2 等 5 队
+      （唯一「变差」条 yidhari-jufufu-lucia 是 slack 0.1→0 / over 0→0.1 的等价交换）。**别拿 HEAD 基线
+      直接比**——本工作区并行会话的改动自己就把留白推到 192.6s（9 队 +8.2s），那笔账归它、不归门槛
+      改动；棘轮基线已按当前引擎态重生成（148.4s）。
     - **可行性优先于留白**：refund→平A→回能→次数→物化行 是放大环，naive 逐轮跟随实测把留白
       1544s→267s 的同时把超预算队从 8 推到 20，破坏 `netFrontlineOccupation ≤ 预算` 这条被
       轴退化/降配/队伍对比消费的硬不变量。宁可留白，不制造超预算。
@@ -353,6 +457,25 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     - **连携/破阵改读「实际失衡次数」（用户裁决 A，2026-09-07 两次尝试均未落地，已回退）**：病灶是量纲混用——`chainCountPerStun × stunCount` 这个公式全仓有 **14 个消费点**（`core/resource.ts` 3、`core/resource/helpers.ts` 5、`useResourceCalc.ts` 5、`liuyinPromote.ts` 1），而 `config.stunCount` 是**净失衡**（池答案 ×(1−窗口覆盖) 再经时间充足性钳制，属**失衡值域**的折算量），连携/破阵/赠链却是「发生在失衡上的**事件**」。实测 125 队：91 队两值差 >0.5，**14 队连携执行行完全归零**，而 `stunPool.ts:204` 仍按池的次数算 `chainCountTotal`、`:207` 按它发连携喧响奖励、`ResultPage:242`/`RunArchivePage:135` 显示池的次数 → **同一个 `resourceResult` 自相矛盾**（UI 说连携 6 次、计划里 0 行）。希格莉德受害最重：连携技·冰凌卷地是[砥砺]（敛枪式+20%）与破阵的唯一来源。
       **第二次已把 14 个消费点全部改齐**（新增 `config.eventStunCount` = 上一轮池的原始答案；热启动种子命中时按当前 config 重算该输入量；外层 cycle/maxIter 退出后迭代补轮至「池次数 == 用上次数」自洽）。**症状确实修好了**：1591/1481/1211 她连携行 0.00 → 2.00、伤害/血量 30.5% → 48.9%，6 队里 5 队自洽。**但仍回退**，因为 8 条测试变红，其中 **corin / lycaon 两条是锁定失衡次数（`stunCountLock=3/4`）的测试——按 A 的设计锁定路径必须完全免疫**（`lockedStunCount ≥ 0` 时 `eventStunCount = lockedStunCount`）。插桩实测：`applyCorinTeamConfig` converge 被调 3 次，第一次收到 `stunCount=3`（正确），**后两次收到 2**。即 hole 不在消费点串线，而在**锁定/重算路径**（外层还有 `runOuterLoop(true)` 轴退化与 `runOuterLoop(true, mid)` 降配试探两条独立调用，各自维护自己的 `eventStunCount`，锁定时是否都取 `lockedStunCount` 未逐一核）。**下次做先立这条不变量并加测试：`stunCountLock ≥ 0` 的队，A 前后所有输出必须逐位相同**；打通它再谈改基线，不要绕过这 8 条红直接 `TIME_RATCHET_UPDATE=1`。
 
+    - **欠打试探「规范试探输入」（2026-09-08 首测，未落地 → 改用 1051 队排除）**：1s 门槛后 1051
+      连续松弛队被试探触发，`seedInvariance` 逐位档破（inflated vs 零种子 basic 差 0.009s）——
+      根因是试探的 `convergeCounts` 停点随种子轨迹变 + 试探**接受**持久化 cfg 写回（模块钩子
+      写回 / `overflowSeconds` / `timeFeasibleScale`）→ 跨外层轮污染。首测方案「注入种子路径
+      重跑默认零种子取规范停点做试探输入」实测**无效**：`runInnerLoop(defaultSeed)` 只重跑内层，
+      缺折叠残差累加，其停点 underfill ≤1s 不触发试探 → 1051 队退回未试探旧值（hot 结果 = 旧
+      非试探值 7/3+27.50s，与冷 6/2+30.04s 仍分叉）。要真正规范须整条折叠+比利管线重放
+      （`runFoldLoop` 提取 + pristine cfg 快照），属「全局实数化收敛重构」debt 范围，**本次不落地**
+      → 改为 **1051 连续松弛队整体排除试探**（`yidhariContinuousPresent` 门控），其留白归专属
+      终局整数重推 + 量化地板（实测 auto-1051-1481-1451 3.0s / yidhari-roxy-lucia 0.9s，均 ≤ 棘轮
+      地板，无 UI 可见回归）；seedInvariance / determinism / yidhariInteractionGrid 全绿。
+      升级路径 = 实数化专项做管线级规范重放后恢复 1051 队试探。
+      **最终裁决（同日，两轮）**：① 不做管线级重放（成本高、未过验证）→ 先改三族排除；② 热启动
+      「只存规范种子」修好后，**1051/1531 两族的排除随之撤销**（当初排除的直接原因是热启动注入
+      收敛末态导致冷/热分叉，根因已修）——实测放回后 seedInvariance / warmStart /
+      yidhariInteractionGrid / timeLedgerInvariants 全绿，yidhari 系 5 队留白再收 6.9s。
+      现仅 1591 一族排除，原因是试探的行测量口径缺口（见本节上一条），升级路径 = 试探与装配
+      共用同一套行测量后删除 probeExcludedTeam。
+
 
     - **剩余 over 队归因定案（2026-09-06 对账）**：banyue-liuyin 1.4s 与 1431-1481 1.5~1.9s 的 over **不是估时缺口**——般岳估时与物化逐项相等、转大预留与实际赠行逐队相等；真相 = 厚需求降配的**移动靶残差**（预设交互超预算 → 外层 interactionScale 逐轮缩放，折叠环 8 轮收敛不完 → `timeBudgetConverged=false` + 2~28s 残差 + 装配截断 39s）。属坑19② 降配 + 坑22 截断的既有量化口径（interactionScale 精度 ~1.6%），修它不是改估时而是改降配精度/判稳口径——待定，不再立项为估时类。
     - **1591「机会→敛枪式套数」targeted 实数化 + 终局整数重推（2026-09-07 实测否决）**：删 #4 双计（用户改判，一次出枪式命中只记一次机会）后 `auto-1591-1571-1211` slack +0.3 → **over 1.63s**，且 `refund 1.62 ≡ over −1.63` 逐位相等 = 上面那条 **refund 存量双花**（五队 `interactionScale` 全空，**不是**移动靶类）。按 1051/1531 骨架开第三个引擎侧块（`splitLanceRotation` 连续延拓 + 迭代期实数套数 + `sigridFinalizeLance` 终局 floor 重推 ≤12 轮）实测：**目标队纹丝不动**（slack −1.63 / tbConv=false / passes=8 / refund=1.62 全同），因为 refund 是折叠环 pass0 冻的存量，重推在它**之前**跑、改不到它；代价却先付了两笔——① 两支 1481 队（轴模式被 finalize 过滤器跳过、迭代期仍是实数）**漏出小数次数**（`敛枪式 12.232961…+11.232961…+11.232961…`，坑22 明令禁止的不存在的动作）；② `auto-1591-1161-1211` tbConv 由 true 退回 false、passes 3→8。**结论：1591 的 over 不在「套数 floor」这一层，在 refund 存量生命周期那一层**，而后者已量过（上上条：账本闸零收益 / 单做会把 1431-1341-1311 推进 `stunCount=0` 盆）。要真修必须与「比利消滞后 + 单槽时间闸」联合求解（= DEBT_REGISTRY「全局实数化收敛重构」专项），**不要在 1591 上局部再试**。已落地的只有双计删除（保真度修正，与时间落点无关）；`timeFillRatchet` 那 1.63s **仍红、待用户裁决**（重生成基线 or 回退双计），不要擅自 `TIME_RATCHET_UPDATE=1`。
@@ -414,11 +537,13 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     不再是「次数×常量」聚合，而是 `Σ buildExecutions` 行的 `rowDecibelTotal`（记账层==展示层，与
     伤害/失衡/异常「倍率列逐行进账」同构；口径 `@fact engine:喧响收入行级Σ`，验 `decibelRowParity.test.ts`）。
     能量侧同构迁移尚未做（`@debt 能量收入行级化`）。切换时三个坑**必须一起处理，缺一即红**：
-    ① **相位隔离**——`buildExecutions` **不是纯函数**：模块钩子在物化调用点写相位延迟状态
-      （格莉丝 `graceBasicPoolPrev` / 卢西娅 `luciaAdditionalAttackCap` / 仪玄 `yixuanBackstageDecibel`）。
-      喧响通道每轮每角色额外调用它（迭代 Step1 + 装配分享 `n×(n−1)` 次），不隔离就在错误相位覆写：
-      实测格莉丝队 nt −7.14s → 轴 `frontTotal` 180.55→190.66 **误触轴回退**、`inStunAttribution` 4 条红。
-      修法 = cfg 浅拷贝快照 + 调用后恢复（喧响通道对 cfg 只读）。
+    ① **相位隔离**——`buildExecutions` 里仍有多模块写 cfg 缓存字段（同调用内消费者）。
+      2026-09-08 点名的 3 处 + 2026-09-09 实测追加的 4 处（格莉丝 C1/C4/脉冲/initialEnergyGift、
+      叶瞬光 cycle）**已全部拆到 `materializePhaseState`**（引擎在物化调用点按同一 state 显式补写，
+      见坑19①第二刀）；卢西娅 cap 改走 `preModuleExecutions` 行基准、仪玄死回写已删。
+      喧响通道每轮每角色额外调用物化（迭代 Step1 + 装配分享 `n×(n−1)` 次），不隔离就在错误相位
+      覆写：实测格莉丝队 nt −7.14s → 轴 `frontTotal` 180.55→190.66 **误触轴回退**、
+      `inStunAttribution` 4 条红。修法 = cfg 浅拷贝快照 + 调用后恢复（喧响通道对 cfg 只读）。
     ② **整数阶梯振荡器**——行级化把「喧响→能量→次数→必要时间→平A池→阶梯行数→喧响」闭成反馈环，
       环带整数阶梯项（丽娜 ex 行+子行随能量阈值 6↔7 量子跳变，账本阶跃 ~180 喧响经队伍分享放大），
       0.5 阻尼吸收不了 → 全状态精确 2-循环，甚至「冷种子收敛不动点 / 热种子入环」多吸引子共存
@@ -469,6 +594,14 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     `windowTimeFraction`（2026-09-01 时间守恒口径）是**同一物理量的两次折算**——外层 stunCount
     因此低于池计数（实测雅/南宫/柚叶：池 3 次失衡/9 连携 vs 账本每角色连携 1.395）。两处是否
     收敛到一处（去掉外层折算 = 全库连携/喧响/伤害抬升）需用户口径裁决，本次只修显示路径。
+    **同族第二例：热启动缓存注入收敛末态 → 同一队算两次留白不同（2026-09-08 修）**。症状与坑 25
+    同源（冷/热落点分叉），机制不同：折叠 pass0 的 refund 冻结（`teamRefund`）与内层落点都随初值变，
+    而**非实数化队的落点本就随初值漂移**（`seedInvariance` 的「游戏等价」档）——旧实现把「试探前末态」
+    写进热启动缓存，等于把本轮落点带进下一轮。实测 1431（叶瞬光）系 4 队：同配置第二次计算
+    slack 9.20 vs 4.86 / 7.57 vs 1.03 / 3.06 vs 6.26 / 0.68 vs 0.45（门槛 10s 同样复现，与欠打
+    回填门槛无关；用户可见症状 = 改滑块再改回来数值变了）。**修法**：缓存只存**规范种子**（本轮
+    `states` 初值），牺牲加速换「同配置连续计算不许变」；护栏 = `warmStart.test.ts` 新增 1431 系
+    逐位用例 + 全库冷/热对拍 0/127 不一致。真正的加速要等实数化专项（落点唯一）之后。
 
 26. **减防/无视防御在直伤上整条通道静默失效（2026-09-08 用户实测「直伤角色伤害偏低」）**：
     `damagePool.pushDirect` 只把行级 `row.defIgnore`（moveId 限定：叶瞬光 C2/C6、雨果 C2、雅 1 命…）
@@ -557,7 +690,7 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
       只并当前角色自己盘上的效果 id → 队友面板拿不到装备者的滑块值（实测差值 +0）。
       现 `mergeTeamDiscEffectCoverages` 并**全队三人**盘（口径钉在函数头 @fact）。
     - **③ 面板页只列条件类效果 → 常驻/门槛/未建模段整块隐身**：旧 `discCoverageEffects` 过滤
-      `!condition && !maxStacks`，于是棘刺玫瑰（常驻增伤 + 防御门槛暴伤）、沧浪行歌（组级条件没落到条目）、
+      `!condition && !maxStacks`，于是荆棘玫瑰（常驻增伤 + 防御门槛暴伤）、沧浪行歌（组级条件没落到条目）、
       灵魂摇滚（4pc 减伤确实未建模）都表现为「一行都没有」，用户合理推断成「属性都没做」。
       现由 `src/utils/discEffectRows.ts`（纯函数，页面与测试同源）把 2pc/4pc **全部**效果列成行，
       三类状态如实标：可折算 → 给滑块；门槛（属性/职业/局外属性）→ 标「门槛自动判定」不给滑块
@@ -569,6 +702,62 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     **否决记录**：给门槛类效果也挂覆盖率滑块 → 与引擎自动判定叠两次打折 → 否决；
     把 subgroup（二级属性）在运行时从 catalog 反推 → 预设库是同步模块、catalog 异步加载，
     且会在三处页面各写一遍推导 → 否决，改为「数据里写死 + `validate:data` 按单源口径重算护栏」。
+
+ 31. **多段招式「一次动作」只回头段：时间 / 喧响 / 赠送回填三侧同错（2026-09-11 用户报「连携技时间显示 0.5s」，并裁决「倍率表必须融合，因为连携本身就是打3段」「时间不是以招式为单元的吗，怎么会如此偷懒」）**：
+     catalog 把一次玩家动作拆成 `#1/#2/#3` 时，倍率侧早已按 `data/moveFusions.ts` 登记组求和
+     （`fusedRowValue`），但 `core/resource.ts` 的一族 `find*` 全部 `move.actionTime ?? 0` ——
+     **只回头段**。于是结果页同屏出现「春临 1258.3% / 单次 0.515s」两套口径（坑 3）：0.515 是
+     #1 一段，一次连携真正的前台时间 = 0.515+0.515+0.687 = **1.717s**（同族基线：连携单次
+     1.2~3.5s，头段只占三成——量级一眼不对就是这一族）。
+     **现口径（一处登记、多处消费）**：`core/resource.ts#fusedGroupMetrics` 给出融合组「一次动作」
+     的整段量，`channelMetricsOf` 是**全部** `find*` 的唯一出口（连携/强特/终结/闪反/招架/支援突击/
+     蕾米两段）；喧响同口径——`decibelRecoveryByMoveId` 表与 `enrichExecutionPlan` 的 decibel 分支
+     都走 `fusedRowValue(..., 'decibel_recovery')`，账本行级 Σ 与展示层同值（`decibelRowParity`
+     不破）；赠送回填不再取头段（`normaHatChain` 赠链行、`liuyinPromote` 转大行的倍率/失衡/积蓄/
+     时长全取融合值）。
+     **自动攻击段特例 `countsTime: false`**（`MoveFusionTerm` / `SustainedExTerm`）：「打是全打，
+     但不站场」——妮可三处能量场（连携 1031303、终结 1031305、强特 1031106）倍率·失衡·积蓄·喧响
+     照算、前台时间记 0：她一次连携 = 0.25+0.25 = **0.5s（只算炮击）**，一次强特少占 1.484s。
+     影响（登记组头段 → 整段）：雅连携 0.515→1.717s、喧响 69.05→230.1475；雅飞雪 0.387→0.967s；
+     希希芙毒牙 0.565→1.883s；珂蕾妲熔炉 1.45→2.816s；月城柳月华 0.667→1.334s；千夏泡泡糖
+     0.733→1.649s；可琳[舍] 0.658→1.316s；真斗断獠 2.083→4.183s；妮可连携 0.25→0.5s
+     （倍率 210.4→987.6%、喧响 43.45→217.25）、终结倍率 1293.6→3040.2%。
+     护栏：`moveFusion.test.ts`「时间通道」+「全通道一次动作口径」（含**双计护栏**——遍历登记组
+     逐角色部署，断言兄弟段永不出现在执行计划里；这是允许组级求和的硬前提）。
+     **否决记录**（都量过数字）：① 「同 category 带 `#N` 后缀的段全加」启发式 → 叶瞬光 1431
+     连携两段是**两个独立动作**（头段 3.3s、喧响 218.9 已在全体基线内），启发式顶成 5.8s 假时长；
+     伊德海莉 1051 由模块自写 `cfg.chainActionTime`，blanket 求和覆盖模块口径 → 只认登记组。
+     ② 只把 `cfg.chainDecibelRecovery` 改成融合值 → 被 `decibelRecoveryByMoveId` 按 moveId
+     覆盖回 69.05（实测），改表与改 enrich 才是有效闸口。③ 妮可强特不登记融合组——`sustainedEx`
+     已把 1031103/104/105/106 各自成行，再登记即四段双计 → 只标 `countsTime: false`。
+     **38 组候选的收口审计（2026-09-11 逐条对到引擎实况，结论：表已完整）**：登记 18 组，
+     其余 20 组的处置各有实测依据，**不要"顺手"补登记**——
+     - **模块接管段**（登记即双计）：莱卡恩 1141（`lycaon.ts` 推 1141016 点按 / 1141017 长按，
+       长按一次 = #1 505.4% + #3 1075% = 1580.4%）、雨果 1291（`hugo.ts` 推合成行
+       `1291_ex_normal_final` 709.8% / `1291_ex_verdict_final` 3552.7%）。护栏：`moveFusion.test.ts`
+       「模块接管段不入表」。
+     - **变体 ≠ 分段**（同一角色不同招式，不是一次动作被拆）：叶瞬光「连携技：斩邪祟」(1431024)
+       vs「连携技：明心境·掣惊雷」(1431026)、伊德海莉「踱寒践约」(1051015) vs「[以太帷幕·涌泉]中」
+       (1051025，模块接管)、橘福福「虎釜崩」(1391012) vs「虎釜震煞」(1391013)——nanoka 里各自
+       只有 `{Skill:单个}`，**没有求和式**，故 head-only 正确（引擎只建第一个变体，是否补第二变体
+       属建模决策、不是融合问题）。
+     - **平A/basic 组**（不物化或兄弟也物化）：妮可狡兔连打/为所欲为（6 变体共头 1031001…）、
+       艾莲霜锋（1191027 与 1191028 **都成行**→登记即双计）、照凛冽裁决、真斗炽风斩、爱芮绝对音准
+       ——平A 走 `averageBasicRows` 汇总，登记对引擎无益。
+     - **不物化的特殊技/快支段**：妮可特殊技糖衣炮弹、冲刺攻击两变体——引擎不发行这些行。
+     护栏（全预设库）：遍历 127 条预设断言「登记组的兄弟段永不作为执行行出现」，新登记组先过它。
+     **两条例外要认得**：① **终结技秽盾加成可能被拆到多段**——照·兔兔连斩两段共享 500 加成、
+     拆成 400+100 → #1 = 积蓄 146.66/100 = 1.4666s、#2 = 36.7/100 = 0.367s（catalog 旧值
+     0.467 / null，旧公式对两段都减满 500 才出这个坑；用户口径 2026-09-11「奖励分成两半，
+     用秒均积蓄=100 来算」）。定点修正走 `scripts/patch-move-action-time.mjs`，整段 1.8336s，
+     再由 `zhao.ts` 按「Q 打一半被快速支援取消」取半（前台 0.9168s/次）——**遇到某段时长
+     null / 推不出先怀疑这条**。连带影响：照队留白 8.8→4.1s（auto-1431-1341-1311 3.1→7.7s），
+     `timeFillRatchet` 基线已按 `TIME_RATCHET_UPDATE=1` 重生成、`teamTimeSummary` 样例阈值
+     8.8→4.1 同步下调（该样例只验「归因到账本虚高」而非留白绝对量）、`docs/multiplier-record.md`
+     按 `npm run gen:multiplier-record` 重生成——**这三处是这条口径改动的既定配套，不是新回归**。② **后台自动连携不是"未建模的变体"**：橘福福「虎釜震煞」
+     (1391013, actionTime 0) 由 `specPanelBuffs.ts` 威风账本发射（默认配置实测 21 次/局、
+     0 前台时间），前台「虎釜崩」只吃失衡赠送/诺姆赠送——用户 2026-09-11「她就靠后台自动
+     连携打数据」，账上已有；叶瞬光两个连携（斩邪祟 / 明心境·掣惊雷）收益相当，只算一个即可。
 
 ## 5. 验收命令
 

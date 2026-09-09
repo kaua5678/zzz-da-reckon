@@ -37,7 +37,7 @@ describe('驱动盘效果行可见性（buildDiscEffectRows）', () => {
     expect(un.find(r => r.scope === '4件')!.valueText).toBe('未建模')
   })
 
-  it('棘刺玫瑰 4pc：常驻增伤段列出行（恒开不给滑块），防御门槛段标自动判定', () => {
+  it('荆棘玫瑰 4pc：常驻增伤段列出行（恒开不给滑块），防御门槛段标自动判定', () => {
     const rows = buildDiscEffectRows(setById.get('34200'), undefined)
     const dmg = rows.find(r => r.stat === 'dmgBonus')!
     expect(dmg.label, '属性名应走中文标签，不再是 dmgBonus 原始 id').not.toBe('dmgBonus')

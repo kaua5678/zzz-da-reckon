@@ -22,8 +22,14 @@ export interface MoveFusionTerm {
   moveId: string
   /** 次数权重（如毒牙 #1 ×3） */
   count: number
+  /**
+   * 该段是否占**玩家前台时间**（缺省 true）。标 false = 自动攻击/能力场段：
+   * 倍率·失衡·积蓄·喧响照算（一次动作确实全打了），但角色不站场，
+   * 时间通道按 0 计。妮可的能量场三例（用户口径 2026-09-11「只有炮击算时间，
+   * 能力场是自动攻击，不算时间」）。
+   */
+  countsTime?: boolean
 }
-
 export interface MoveFusionGroup {
   /** 引擎会选中的「主段」moveId（findExSpecial/findChainAttack 取到的那段），也作查表键 */
   moveId: string
@@ -213,12 +219,73 @@ export const QIANXIA_EX_PHOTOGRAPHY: MoveFusionGroup = {
   note: 'full/1491.json「伤害倍率（协同）」={{Skill:1491008}+{Skill:1491019}}；未接线的协同段登记，待模块发射行后自动生效。',
 }
 
+/**
+ * 妮可·连携技·高价以太爆弹＝ 炮击#1 + 炮击#2 + 能量场#3。
+ * 能量场（1031303）是自动攻击：倍率/喧响照算，**不占前台时间**（countsTime:false）。
+ */
+export const NICOLE_CHAIN: MoveFusionGroup = {
+  moveId: '1031301',
+  agentId: '1031',
+  label: '妮可·连携技·高价以太爆弹（炮击两段 + 能量场）',
+  terms: [
+    { moveId: '1031301', count: 1 },
+    { moveId: '1031302', count: 1 },
+    { moveId: '1031303', count: 1, countsTime: false },
+  ],
+  note: 'full/1031.json chain「炮击伤害倍率」={{Skill:1031301}+{Skill:1031302}}、「能量场伤害倍率」={Skill:1031303}；一次连携三段全打，能量场不占时间（用户 2026-09-11）。',
+}
+
+/** 妮可·终结技·特制以太榴弹＝ 炮击#1 + 能量场#2（能量场不占前台时间） */
+export const NICOLE_ULTIMATE: MoveFusionGroup = {
+  moveId: '1031304',
+  agentId: '1031',
+  label: '妮可·终结技·特制以太榴弹（炮击 + 能量场）',
+  terms: [
+    { moveId: '1031304', count: 1 },
+    { moveId: '1031305', count: 1, countsTime: false },
+  ],
+  note: 'full/1031.json chain「炮击伤害倍率」={Skill:1031304}、「能量场伤害倍率」={Skill:1031305}；能量场是自动攻击，倍率/失衡照算不占时间（用户 2026-09-11）。',
+}
+
+/** 妮可·闪避反击·牵制炮击＝ #1 + #2（两段都是炮击，均占时间） */
+export const NICOLE_DODGE: MoveFusionGroup = {
+  moveId: '1031205',
+  agentId: '1031',
+  label: '妮可·闪避反击·牵制炮击',
+  terms: [
+    { moveId: '1031205', count: 1 },
+    { moveId: '1031206', count: 1 },
+  ],
+  note: 'full/1031.json dodge「闪避反击：牵制炮击 伤害倍率」={{Skill:1031205}+{Skill:1031206}}。',
+}
+
+/** 妮可·快速支援·救急炮击＝ #1 + #2（两段都是炮击，均占时间） */
+export const NICOLE_QUICK_ASSIST: MoveFusionGroup = {
+  moveId: '1031401',
+  agentId: '1031',
+  label: '妮可·快速支援·救急炮击',
+  terms: [
+    { moveId: '1031401', count: 1 },
+    { moveId: '1031402', count: 1 },
+  ],
+  note: 'full/1031.json assist「快速支援：救急炮击 伤害倍率」={{Skill:1031401}+{Skill:1031402}}。',
+}
+
+/** 妮可·强特（夹心糖衣炮弹）走 sustainedEx 注册表（四段各自成行），此处**不登记融合组**——
+ *  登记会与已物化的兄弟段行双计；其能量场 1031106 的不占时间在 data/sustainedEx.ts 标记。 */
+
+// @fact engine:autoField/能量场不占前台时间 口径: 自动攻击/能力场段（妮可 1031303 连携能量场、1031305 终结能量场、1031106 强特能量场）倍率·失衡·积蓄·喧响照算，时间通道按 0 计——一次招式「打是全打，站场不算」 | 据 用户@2026-09-11「只有炮击算时间，能力场是自动攻击，不算时间」+ nanoka full/1031.json 炮击/能量场分行 | 验 src/composables/__tests__/moveFusion.test.ts#倍率融合：时间通道（连携技「单次时长」） | 锚 src/data/moveFusions.ts#NICOLE_CHAIN | 信 确认
+
 export const MOVE_FUSION_GROUPS: MoveFusionGroup[] = [
   MIYABI_EX_SLASH,
   MIYABI_EX_FOLLOWUP,
   MIYABI_CHAIN,
   CORIN_DODGE,
   CORIN_QUICK_ASSIST,
+  NICOLE_CHAIN,
+  NICOLE_ULTIMATE,
+  NICOLE_DODGE,
+  NICOLE_QUICK_ASSIST,
   XIXIFU_VENOM_FANG,
   KOLEDA_BOILING_FURNACE,
   KOLEDA_ENHANCED_BASIC,

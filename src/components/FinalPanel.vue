@@ -94,6 +94,7 @@ import { NCard, NCollapse, NCollapseItem, NGi, NGrid, NTabPane, NTabs } from 'na
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { sharpCritMultiplier } from '@/core/damage'
 import { isPctStat } from '@/utils/statMeta'
 import { fmt, pct } from '@/utils/format'
 import type { BuffEffect, BuffGroup, PanelValues } from '@/types/catalog'
@@ -304,7 +305,7 @@ const panels = computed(() => {
     const elementSheerKey = ELEMENT_SHEER_KEYS[element] ?? ''
     const elementSharpKey = ELEMENT_SHARP_KEYS[element] ?? ''
     const isRupture = agent?.specialty === 'rupture'
-    const isSharpen = agent?.specialty === 'edgeguard' || agent?.specialty === 'sharpen'
+    const isSharpen = agent?.specialty === 'sharpen'
     const penPower = pIn.atk * 0.3 + pIn.hp * 0.1 + (pIn.sheerForceFlat ?? 0)
 
     const skillTargeted = targetedRows(pIn, 'skillDmgBonus', t => t)
@@ -427,8 +428,12 @@ const panels = computed(() => {
     const elementDmg = pIn[elementDmgKey] ?? 0
     const skillDmg = pIn.skillDmgBonus ?? 0
     const dmgTotal = (pIn.dmgBonus ?? 0) + elementDmg + skillDmg
-    const critRate = Math.min(100, pIn.critRate ?? 0)
-    const critMult = 1 + critRate / 100 * (pIn.critDmg ?? 0) / 100
+    const critRateRaw = pIn.critRate ?? 0
+    const critRate = Math.min(100, critRateRaw)
+    // 锋御：锐暴 200% 封顶 + 额外锐暴乘算（用户口径 2026-09-09）
+    const critMult = isSharpen
+      ? sharpCritMultiplier(critRateRaw, pIn.sharpCritDmg ?? 0)
+      : 1 + critRate / 100 * (pIn.critDmg ?? 0) / 100
     const sharpTotal = (pIn.sharpDmgBonus ?? 0) + (elementSharpKey ? (pIn[elementSharpKey] ?? 0) : 0)
     const penDmgTotal = (pIn.penDmgBonus ?? 0) + (pIn.sheerDmgBonus ?? 0) + (elementSheerKey ? (pIn[elementSheerKey] ?? 0) : 0)
     const resTotal = (pIn.enemyResReduction ?? 0) + (pIn[elementResKey] ?? 0)
@@ -464,11 +469,17 @@ const panels = computed(() => {
         main: `1 + ${pct(penDmgTotal)} = ${fmt(1 + penDmgTotal / 100, 4)}`,
         lines: [`贯穿增伤 ${pct(pIn.penDmgBonus ?? 0)} + 贯穿伤害 ${pct(pIn.sheerDmgBonus ?? 0)}${elementSheerKey ? ` + 元素贯穿 ${pct(pIn[elementSheerKey] ?? 0)}` : ''}`, '仅命破（贯穿力基底）角色生效'],
       },
-      {
-        title: '暴击乘区（期望）',
-        main: `1 + ${pct(critRate)} × ${pct(pIn.critDmg ?? 0)} = ${fmt(critMult, 4)}`,
-        lines: ['暴击率按 100% 封顶；锐暴/强击暴击走各自字段'],
-      },
+      isSharpen
+        ? {
+            title: '锐暴乘区（期望）',
+            main: `锐暴伤害 ${pct(pIn.sharpCritDmg ?? 0)} · 暴击率 ${pct(critRateRaw)} → ${fmt(critMult, 4)}`,
+            lines: ['锐暴 200% 封顶：100% 以上每 1% 是一次额外锐暴判定，锐暴乘算（爆两次 = 平方）'],
+          }
+        : {
+            title: '暴击乘区（期望）',
+            main: `1 + ${pct(critRate)} × ${pct(pIn.critDmg ?? 0)} = ${fmt(critMult, 4)}`,
+            lines: ['暴击率按 100% 封顶；锐暴/强击暴击走各自字段'],
+          },
       {
         title: '抗性削减 / 易伤 / 失衡',
         main: `全 ${pct(pIn.enemyResReduction ?? 0)} + ${element} ${pct(pIn[elementResKey] ?? 0)} = ${pct(resTotal)}`,

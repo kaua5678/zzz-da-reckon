@@ -18,7 +18,6 @@ export const SPECIALTY_GROUP = {
   rupture: '命破队',
   anomaly: '异常队',
   sharpen: '锋御队',
-  edgeguard: '锋御队',
 }
 
 /** 辅助定位（击破/支援/防护）：可以进队，但不能作为队伍的一级分类名 */

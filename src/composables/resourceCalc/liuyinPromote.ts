@@ -9,13 +9,13 @@
 import { calcStunPool } from '@/core/stunPool'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import type { StunSkillExecution } from '@/core/stunPool'
-import { findUltimate, findChainAttack } from '@/core/resource'
+import { findUltimate, findChainAttack, fusedGroupActionTime } from '@/core/resource'
 import { computeLiuyinHugCounts, resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import type { TeamResourceResult, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-import { findMoveById } from './helpers'
+import { findMoveById, fusedRowValue } from './helpers'
 
 /** 琉音好评转大不动点迭代上限（好评≥90 开窗次数有界，正反馈单调收敛，8 轮兜底极端情况） */
 export const MAX_PROMOTE_ITER = 8
@@ -66,9 +66,15 @@ export function applyLiuyinPromote(
       if (char.slot !== targetSlot) return char
       const skills = catalogStore.getAgentSkills(char.agentId)
       const ultMoveDef = findMoveById(skills, ultimateMoveId)
-      const ultMult = ultMoveDef?.rows.find(r => r.id === 'damage')?.values[0] ?? 0
-      const ultBuildUp = ultMoveDef?.rows.find(r => r.id === 'anomaly_buildup')?.values[0] ?? 0
-      const ultActionTime = ultMoveDef?.actionTime ?? 0
+      // 转大送出的是「一次完整终结技」：多段终结技（登记融合组，如照·兔兔连斩 #1+#2、
+      // 妮可 特制以太榴弹 炮击+能量场）必须取整段倍率与站场时长，只取主段=赠送了半招。
+      const fusedOf = (rowId: string) =>
+        fusedRowValue(skills, ultimateMoveId, rowId)
+        ?? ultMoveDef?.rows.find(r => r.id === rowId)?.values[0] ?? 0
+      const ultMult = fusedOf('damage')
+      const ultBuildUp = fusedOf('anomaly_buildup')
+      const ultActionTime = (skills ? fusedGroupActionTime(skills, ultimateMoveId) : null)
+        ?? ultMoveDef?.actionTime ?? 0
       // 转大的终结技是真实动作（目标队友打一次终结技），必须占用前台时间——曾写死 0
       // 导致时间表/资源利用率页看不到转大耗时（用户 2026-09 般琉卢排查）。
       // 时间从目标的平A池挤出（basicAttackTime 扣减），总前台占用守恒，

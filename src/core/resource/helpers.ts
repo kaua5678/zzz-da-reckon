@@ -462,19 +462,13 @@ export function calcRawDecibelParts(
   const rowState: IterationState = (exSpecialCount !== state.exSpecialCount || ultimateCount !== state.ultimateCount)
     ? { ...state, exSpecialCount, ultimateCount }
     : state
-  // 相位隔离（2026-09-08）：buildExecutions 不是纯函数——模块钩子按「iterate/物化分离惯例」在
-  // 物化调用点写相位延迟状态（格莉丝 graceBasicPoolPrev 留给下一轮 estimate、卢西娅
-  // luciaAdditionalAttackCap 留给 buildResourceResult、仪玄 yixuanBackstageDecibel 等）。
-  // 本函数每轮每角色额外调用（迭代 Step1 + 装配队友分享 n×(n−1) 次），若不隔离会在错误相位
-  // 覆写这些字段（实测格莉丝队 nt −7.14s → 平A池 +5.12s → 轴 frontTotal 180.55→190.66 →
-  // 误触轴回退，inStunAttribution 全队红）。快照浅拷贝 + 调用后恢复：喧响通道对 cfg 只读。
-  const cfgRecord = cfg as unknown as Record<string, unknown>
-  const cfgSnapshot = { ...cfgRecord }
-  const rows = buildExecutions(cfg, rowState, chainCountTotal, teamFrontlineSeconds)
-  for (const k of Object.keys(cfgRecord)) {
-    if (!Object.prototype.hasOwnProperty.call(cfgSnapshot, k)) delete cfgRecord[k]
-  }
-  Object.assign(cfgRecord, cfgSnapshot)
+  // 相位隔离（2026-09-08，2026-09-09 收口）：buildExecutions 里仍有多模块写 cfg 缓存字段，本通道
+  // 每轮每角色额外调用它（迭代 Step1 + 装配队友分享 n×(n−1) 次），不隔离就会在错误相位覆写。
+  // **跨相位写入已全部拆出**（阶段1 第二刀：格莉丝 5 字段 / 叶瞬光 cycle → `materializePhaseState`
+  // 引擎侧显式补写；卢西娅 cap 走 `preModuleExecutions` 行基准；仪玄死回写已删）——本快照现在
+  // 只兜住「同调用内消费者」的缓存字段。实测格莉丝队 nt −7.14s → 平A池 +5.12s → 轴 frontTotal
+  // 180.55→190.66 → 误触轴回退（inStunAttribution 全队红）就是缺这层隔离的样子。
+  const rows = materializeRows(cfg, rowState, chainCountTotal, teamFrontlineSeconds)
   const skillRegen = rows.reduce((sum, row) => sum + rowDecibelTotal(cfg, row), 0)
 
   // 奖励回复：池内效果（时光切片）。弹刀/闪反/连携/快支的固定奖励与异常奖励由外部按槽位注入
@@ -723,12 +717,42 @@ export function truncateExecutionsToFrontline(
 
 // ============ 招式执行计划 ============
 
-/** 构建招式执行记录 */
+/**
+ * 行物化的**唯一入口**（自顶向下重构·阶段1，2026-09-08）。
+ *
+ * 为什么必须有它：`buildExecutions` 里仍有多模块写 cfg 缓存字段（同调用内消费者）。**跨相位**的
+ * 相位写入已全部拆到 `materializePhaseState`（引擎侧显式补写，2026-09-09 阶段1 第二刀）——
+ * 本函数的快照/恢复只兜住剩下的「同调用内」缓存，试探测量（`materializeRows`）因此与装配行同源。
+ * 历史：相位写入留在钩子里时「同一 (cfg, state) 在不同调用点/不同相位得到不同行」，正是
+ * 「试探测量 ≠ 装配行」的一类根因（实测 1591 队 s0：同一 state 下通用段行 count 10 vs 装配 11，少算 3.08s）。
+ *
+ * 纪律：调用前快照 cfg 顶层、调用后恢复——**任何**调用点都不再污染相位；对「只读 cfg」的通道
+ * 无影响。后续阶段（赠行收进物化、统一残差、单调求解）一律以本函数为唯一扩展点。
+ */
+export function materializeRows(
+  cfg: CharacterOperationConfig,
+  state: IterationState,
+  chainCountTotal: number,
+  teamFrontlineSeconds = 0,
+): SkillExecution[] {
+  const cfgRecord = cfg as unknown as Record<string, unknown>
+  const cfgSnapshot = { ...cfgRecord }
+  const rows = buildExecutions(cfg, state, chainCountTotal, teamFrontlineSeconds)
+  for (const k of Object.keys(cfgRecord)) {
+    if (!Object.prototype.hasOwnProperty.call(cfgSnapshot, k)) delete cfgRecord[k]
+  }
+  Object.assign(cfgRecord, cfgSnapshot)
+  return rows
+}
+
+/** 构建招式执行记录。`moduleInputRows`（可选出参）：接收**物化钩子派发前**的引擎行快照——
+ *  供 buildResourceResult 复现钩子当时看到的行基准（阶段1 第二刀，见 AgentResourceResultInput）。 */
 export function buildExecutions(
   cfg: CharacterOperationConfig,
   state: IterationState,
   chainCountTotal: number,
   teamFrontlineSeconds = 0,
+  moduleInputRows?: SkillExecution[],
 ): SkillExecution[] {
   const executions: SkillExecution[] = []
 
@@ -847,6 +871,10 @@ export function buildExecutions(
   }
 
   // 角色机制模块追加专属动作，如维琳娜风华/广域气旋。
+  if (moduleInputRows) {
+    moduleInputRows.length = 0
+    moduleInputRows.push(...executions)
+  }
   getAgentMechanic(cfg.agentId)?.buildExecutions?.({ cfg, state, executions, teamFrontlineSeconds })
 
   // 通用「单次释放必打招 + 可持续招」强特（buildCharConfig 已 skipGenericExSpecial + 预存缩放倍率）。

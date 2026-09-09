@@ -44,7 +44,7 @@ const engines = catalog.wEngines ?? []
 const sets = catalog.driveDiscSets ?? []
 const bosses = catalog.bosses ?? []
 
-const SPEC_LABELS = { attack: '强攻', stun: '击破', anomaly: '异常', support: '支援', defense: '防护', rupture: '命破', edgeguard: '戍卫', sharpen: '锐化' }
+const SPEC_LABELS = { attack: '强攻', stun: '击破', anomaly: '异常', support: '支援', defense: '防护', rupture: '命破', sharpen: '锋御' }
 const ATTR_LABELS = { physical: '物理', fire: '火', ice: '冰', electric: '电', ether: '以太', wind: '风', lumiflux: '辉光' }
 
 const zh = (o) => o?.zhCN ?? o?.en ?? '?'

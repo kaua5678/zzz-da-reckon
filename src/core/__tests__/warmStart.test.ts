@@ -1,7 +1,9 @@
 /**
  * 热启动缓存（2026-08 复活）生效测试：
- * - 逐位透明：同配置二次调用命中缓存，指纹与冷算完全一致、迭代轮数不增（块注释所述
- *   「从上一收敛末态出发 = 落在不动点上」的直接验证）；
+ * - 逐位透明：同配置二次调用命中缓存，指纹与冷算完全一致、迭代轮数不增。**注意口径（2026-09-08 修）**：
+ *   缓存存的是**规范种子**（本轮 states 初值），不是收敛末态——折叠 pass0 的 refund 冻结与内层落点
+ *   随初值变（非实数化队落点本就漂移），存末态会让同配置第二次计算换结果（1431 系实测 slack
+ *   9.20 vs 4.86 等）。加速是未来实数化专项的事，当下先保「同配置连续计算不许变」。
  * - 精确键口径：剔除写回/草稿字段后不同输入不误命中；LRU 容量内可轮转复 hit；
  * - 显式 initialStates（测试种子）优先于缓存，不触发查缓存——次数与冷算一致
  *   （小数位允许随初值微移，见 core/resource.ts 热启动块注释的度量记录）。
@@ -110,5 +112,18 @@ describe('热启动缓存', () => {
     expect(explicit.converged).toBe(true)
     expect(explicit.characters.map(c => `${c.exSpecialCount}/${c.ultimateCount}`))
       .toEqual(cold.characters.map(c => `${c.exSpecialCount}/${c.ultimateCount}`))
+  })
+
+  it('1431 系（落点随初值漂移的非实数化队）：同配置二次调用逐位一致', async () => {
+    // 2026-09-08 修（用户实测「同一队算两次结果不一样」）：缓存曾存「试探前末态」→ 折叠 pass0 的
+    // refund 冻结与内层落点随初值变，注入收敛态等于把本轮落点带进下一轮 → 冷/热分叉
+    // （实测该系 4 队 slack 9.20 vs 4.86、7.57 vs 1.03、3.06 vs 6.26、0.68 vs 0.45）。
+    // 修法：缓存只存规范种子（本轮 states 初值）。本用例是这条不变量的机器判据——
+    // 叶瞬光无实数化，逐位一致只能靠「注入种子与冷算同源」，不能靠落点唯一。
+    const cfg = await capturedConfig([{ agentId: '1431' }, { agentId: '1341' }, { agentId: '1031' }])
+    const cold = calcTeamResources(deepCopy(cfg))
+    const hot = calcTeamResources(deepCopy(cfg))
+    expect(fingerprint(hot)).toEqual(fingerprint(cold))
+    expect(hot.converged).toBe(true)
   })
 })

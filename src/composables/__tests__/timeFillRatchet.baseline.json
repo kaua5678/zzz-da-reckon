@@ -2,9 +2,9 @@
  "_note": "时间留白棘轮基线（秒）。重生成：TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts —— 重生成前必须先 A/B 归因（见测试头注释）",
  "_tolerance": 1,
  "auto-1021-1481-1031": {
-  "slack": 0,
+  "slack": 1.6,
   "over": 0,
-  "stun": 2,
+  "stun": 3,
   "outerExit": "stable"
  },
  "auto-1021-1481-1211": {
@@ -74,46 +74,46 @@
   "outerExit": "cycle"
  },
  "auto-1051-1481-1451": {
-  "slack": 3,
+  "slack": 1.3,
   "over": 0,
   "stun": 3,
   "outerExit": "cycle"
  },
  "auto-1091-1031-1511": {
-  "slack": 3.4,
+  "slack": 1.7,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "auto-1091-1221-1581": {
-  "slack": 3.4,
+  "slack": 1.7,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
  "auto-1091-1511-1031": {
-  "slack": 3.4,
+  "slack": 1.7,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "auto-1091-1511-1211": {
-  "slack": 6.9,
+  "slack": 1.7,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "auto-1091-1511-1311": {
-  "slack": 3.4,
+  "slack": 1.7,
   "over": 0,
-  "stun": 3,
+  "stun": 2,
   "outerExit": "stable"
  },
  "auto-1091-1511-1411": {
   "slack": 3.4,
   "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
+  "stun": 2,
+  "outerExit": "cycle"
  },
  "auto-1171-1561-1411": {
   "slack": 0,
@@ -122,19 +122,19 @@
   "outerExit": "cycle"
  },
  "auto-1181-1511-1411": {
-  "slack": 7.4,
+  "slack": 1.1,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "auto-1181-1561-1411": {
-  "slack": 7.7,
+  "slack": 2,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
  "auto-1181-1561-1581": {
-  "slack": 7,
+  "slack": 1.4,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -185,7 +185,7 @@
   "slack": 0,
   "over": 0,
   "stun": 3,
-  "outerExit": "cycle"
+  "outerExit": "stable"
  },
  "auto-1201-1571-1311": {
   "slack": 0,
@@ -203,7 +203,7 @@
   "slack": 0,
   "over": 0,
   "stun": 3,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1221-1561-1411": {
   "slack": 0,
@@ -214,7 +214,7 @@
  "auto-1241-1031-1311": {
   "slack": 0,
   "over": 0,
-  "stun": 1,
+  "stun": 2,
   "outerExit": "cycle"
  },
  "auto-1261-1331-1411": {
@@ -338,7 +338,7 @@
   "outerExit": "stable"
  },
  "auto-1401-1031-1411": {
-  "slack": 3,
+  "slack": 8,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -350,19 +350,19 @@
   "outerExit": "stable"
  },
  "auto-1401-1361-1411": {
-  "slack": 4,
+  "slack": 2,
   "over": 0,
   "stun": 3,
-  "outerExit": "cycle"
+  "outerExit": "stable"
  },
  "auto-1401-1411-1031": {
-  "slack": 3,
+  "slack": 8,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
  "auto-1401-1511-1411": {
-  "slack": 8,
+  "slack": 2,
   "over": 0,
   "stun": 3,
   "outerExit": "cycle"
@@ -380,19 +380,19 @@
   "outerExit": "stable"
  },
  "auto-1431-1341-1031": {
-  "slack": 5.8,
+  "slack": 3.5,
   "over": 0,
   "stun": 1,
   "outerExit": "cycle"
  },
  "auto-1431-1341-1311": {
-  "slack": 3.1,
+  "slack": 7.7,
   "over": 0,
   "stun": 1,
   "outerExit": "cycle"
  },
  "auto-1431-1341-1491": {
-  "slack": 1.1,
+  "slack": 3,
   "over": 0,
   "stun": 1,
   "outerExit": "cycle"
@@ -410,37 +410,37 @@
   "outerExit": "cycle"
  },
  "auto-1431-1481-1491": {
-  "slack": 1.2,
+  "slack": 1.8,
   "over": 0,
   "stun": 2,
   "outerExit": "cycle"
  },
  "auto-1431-1491-1311": {
-  "slack": 7.5,
+  "slack": 7.6,
   "over": 0,
   "stun": 1,
   "outerExit": "cycle"
  },
  "auto-1431-1491-1341": {
-  "slack": 1.1,
+  "slack": 3,
   "over": 0,
   "stun": 1,
   "outerExit": "cycle"
  },
  "auto-1461-1311-1521": {
-  "slack": 6.9,
+  "slack": 3.5,
   "over": 0,
   "stun": 3,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1461-1361-1521": {
-  "slack": 3.5,
+  "slack": 1.4,
   "over": 0,
   "stun": 4,
   "outerExit": "stable"
  },
  "auto-1461-1521-1031": {
-  "slack": 4.3,
+  "slack": 1.1,
   "over": 0,
   "stun": 4,
   "outerExit": "stable"
@@ -452,9 +452,9 @@
   "outerExit": "stable"
  },
  "auto-1461-1521-1361": {
-  "slack": 0.9,
+  "slack": 1.4,
   "over": 0,
-  "stun": 6,
+  "stun": 4,
   "outerExit": "stable"
  },
  "auto-1471-1571-1451": {
@@ -489,27 +489,27 @@
  },
  "auto-1521-1251-1311": {
   "slack": 0,
-  "over": 0.1,
-  "stun": 7,
-  "outerExit": "cycle"
+  "over": 0,
+  "stun": 6,
+  "outerExit": "stable"
  },
  "auto-1521-1361-1311": {
   "slack": 0,
   "over": 0,
-  "stun": 7,
+  "stun": 6,
   "outerExit": "stable"
  },
  "auto-1521-1461-1311": {
-  "slack": 6.9,
+  "slack": 3.5,
   "over": 0,
-  "stun": 5,
+  "stun": 4,
   "outerExit": "stable"
  },
  "auto-1521-1481-1311": {
   "slack": 0,
   "over": 0,
-  "stun": 6,
-  "outerExit": "cycle"
+  "stun": 5,
+  "outerExit": "stable"
  },
  "auto-1531-1451-1481": {
   "slack": 0,
@@ -686,13 +686,13 @@
   "outerExit": "cycle"
  },
  "yidhari-jufufu-lucia": {
-  "slack": 0.1,
-  "over": 0,
+  "slack": 0,
+  "over": 0.1,
   "stun": 4,
   "outerExit": "stable"
  },
  "yidhari-liuyin-lucia": {
-  "slack": 3,
+  "slack": 1.3,
   "over": 0,
   "stun": 3,
   "outerExit": "cycle"
@@ -704,7 +704,7 @@
   "outerExit": "cycle"
  },
  "yidhari-norma-lucia": {
-  "slack": 2,
+  "slack": 0.7,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
@@ -722,7 +722,7 @@
   "outerExit": "cycle"
  },
  "yidhari-trigger-lucia": {
-  "slack": 2.3,
+  "slack": 0.2,
   "over": 0,
   "stun": 4,
   "outerExit": "cycle"

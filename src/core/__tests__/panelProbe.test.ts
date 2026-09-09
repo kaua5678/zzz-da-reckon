@@ -18,6 +18,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { Agent, WEngine, DriveDiscConfig, DriveDiscSet, StatRules } from '@/types/catalog'
 import { calcPanel } from '@/core/panel'
+import { getTemplate } from '@/core/substatOptimizer'
 import { REC_MAIN_STAT_MAP } from '@/stores/config'
 
 const catalog = JSON.parse(
@@ -92,10 +93,12 @@ describe('引擎探针：面板事实源', () => {
 
     const crit = result.inCombat.critRate ?? 0
     const step = catalog.statRules.driveDisc.sRankSubStatBaseStep.critRate
-    if (crit < 100) {
-      console.log(`  百暴缺口: ${(100 - crit).toFixed(1)}% ≈ 还需 ${Math.ceil((100 - crit) / step)} 条 critRate 副词条（步长 ${step}）`)
+    // 封顶按角色模板：锋御 200%（锐暴额外判定），其余 100%
+    const critCap = getTemplate(agent).critRateCap ?? 100
+    if (crit < critCap) {
+      console.log(`  ${critCap === 100 ? '百暴' : `封顶${critCap}%`}缺口: ${(critCap - crit).toFixed(1)}% ≈ 还需 ${Math.ceil((critCap - crit) / step)} 条 critRate 副词条（步长 ${step}）`)
     } else {
-      console.log(`  暴击已溢出 ${crit.toFixed(1)}%（inCombat 口径，超 100 部分无效）`)
+      console.log(`  暴击已到封顶 ${critCap}%（inCombat 口径${critCap > 100 ? '，超 100 部分走额外锐暴判定' : '，超出部分无效'}）`)
     }
 
     // 最小有效性断言：探针输出必须是非空有限面板

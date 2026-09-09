@@ -64,4 +64,19 @@ describe('computeDefaultSubStats · 快速默认词条分配', () => {
     expect(getTemplate(mockAgent('9991', 'support')).stats[0]).toBe('atkPct')
     expect(getTemplate(mockAgent('9992', 'stun')).stats[0]).toBe('critRate')
   })
+
+  it('锋御默认模板：防御力进词条、攻击力不进，暴击封顶 200%', () => {
+    const claret = getTemplate(mockAgent('1611', 'sharpen'))
+    expect(claret.stats).toEqual(['critRate', 'defPct', 'critDmg'])
+    expect(claret.stats).not.toContain('atkPct')
+    expect(claret.critRateCap).toBe(200)
+    // 自动分配：暴击按 200% 封顶吃满 statCap，剩余给防御力
+    // （用户 2026-09-09 报「自动副词条给的是攻击不是防御」）
+    const alloc = computeDefaultSubStats(claret, 76.4, 39, 20)
+    expect(alloc.critRate).toBe(20)
+    expect(alloc.defPct).toBe(19)
+    expect(alloc.atkPct ?? 0).toBe(0)
+    // 普通角色仍按 100% 封顶
+    expect(getTemplate(mockAgent('9992', 'stun')).critRateCap ?? 100).toBe(100)
+  })
 })

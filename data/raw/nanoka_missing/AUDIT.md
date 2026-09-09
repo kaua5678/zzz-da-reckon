@@ -2,6 +2,63 @@
 
 > 由 `scripts/audit-nanoka-missing.mjs` 生成，检查项 6282 条。
 
-## 未发现不一致
+## 发现的不一致
 
-全部 catalog 数值与本地 nanoka raw 一致。
+- 1011: move 1011015 actionTime expected 0.001, got 1.166
+- 1021: move 1021019 actionTime expected 0.067, got 1.5666
+- 1021: move 1021016 actionTime expected 0.001, got 1.166
+- 1041: move 1041022 actionTime expected 0.001, got 1.166
+- 1051: move 1051007 actionTime expected 2.583, got 1.2917
+- 1051: move 1051010 energyCost expected {}, got {"Energy Cost":"60"}
+- 1051: move 1051012 energyCost expected {}, got {"Energy Cost":"60"}
+- 1051: move 1051020 actionTime expected 0.001, got 1.166
+- 1061: move 1061015 actionTime expected 0.001, got 0.6581
+- 1061: move 1061016 actionTime expected 0.001, got 0.6581
+- 1061: move 1061023 actionTime expected 0.001, got 1.166
+- 1091: move 1091024 actionTime expected 0.001, got 1.166
+- 1101: move 1101504 actionTime expected 0.001, got 1.166
+- 1111: move 1111022 actionTime expected 0.001, got 1.166
+- 1121: move 1121019 actionTime expected 0.001, got 0.833
+- 1191: move 1191021 actionTime expected 0.001, got 1.166
+- 1201: move 1201018 actionTime expected 0.001, got 0.833
+- 1271: move 1271018 actionTime expected 0.001, got 1.166
+- 1281: move 1281018 actionTime expected 0.001, got 1.166
+- 1291: move 1291013 actionTime expected 0.001, got 1.1333
+- 1291: move 1291014 actionTime expected 0.001, got 1.483
+- 1291: move 1291022 actionTime expected 0.001, got 1.166
+- 1321: move 1321020 actionTime expected 0.001, got 1.166
+- 1331: move 1331018 actionTime expected 0.001, got 1.166
+- 1371: move 1371009 energyCost expected {}, got {"Flash Energy Cost":"40"}
+- 1371: move 1371025 energyCost expected {}, got {"Flash Energy Cost":"20"}
+- 1371: move 1371022 energyCost expected {}, got {"Flash Energy Cost":"40"}
+- 1371: move 1371026 energyCost expected {}, got {"Flash Energy Cost":"20"}
+- 1371: move 1371018 actionTime expected 0.001, got 1.166
+- 1381: move 1381019 actionTime expected 0.001, got 1.166
+- 1391: move 1391018 actionTime expected 0.001, got 1.166
+- 1431: move 1431027 actionTime expected 0.001, got 2.75
+- 1431: move 1431032 actionTime expected 0.001, got 1.666
+- 1441: move 1441009 row flash_energy_recovery expected 1.163, got 2.326
+- 1441: move 1441010 row flash_energy_recovery expected 2.621, got 5.242
+- 1441: move 1441011 row flash_energy_recovery expected 4.247, got 8.494
+- 1441: move 1441012 row flash_energy_recovery expected 6.523, got 13.046
+- 1441: move 1441015 energyCost expected {}, got {"Flash Energy Cost":"80"}
+- 1441: move 1441023 actionTime expected 0.001, got 1.166
+- 1441: move 1441024 row flash_energy_recovery expected 4.688, got 9.376
+- 1441: move 1441025 row flash_energy_recovery expected 7.863, got 15.726
+- 1471: move 1471013 energyCost expected {}, got {"Flash Energy Cost":"20"}
+- 1471: move 1471012 energyCost expected {}, got {"Flash Energy Cost":"20"}
+- 1471: move 1471015 energyCost expected {}, got {"Flash Energy Cost":"20"}
+- 1471: move 1471014 energyCost expected {}, got {"Flash Energy Cost":"20"}
+- 1471: move 1471017 energyCost expected {}, got {"Flash Energy Cost":"40"}
+- 1471: move 1471016 energyCost expected {}, got {"Flash Energy Cost":"40"}
+- 1471: move 1471025 actionTime expected 0.001, got 1.166
+- 1501: move 1501020 actionTime expected 0.001, got 1.166
+- 1531: move 1531013 actionTime expected 0.001, got 0.8836
+- 1531: move 1531020 actionTime expected 0.001, got 1.166
+- 1541: move 1541022 actionTime expected 0.001, got 1.166
+- 1551: move 1551015 actionTime expected 0.933, got 2.4329
+- 1551: move 1551014 actionTime expected 0.001, got 1.1503
+- 1551: move 1551013 actionTime expected 1.566, got 3.0663
+- 1551: move 1551016 actionTime expected 0.784, got 2.2836
+- 1551: move 1551020 actionTime expected 0.001, got 1.166
+- 1591: move 1591020 actionTime expected 0.001, got 1.166

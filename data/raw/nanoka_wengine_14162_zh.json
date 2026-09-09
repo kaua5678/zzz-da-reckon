@@ -1,10 +1,10 @@
 {
   "id": 14162,
   "code_name": "Weapon_S_1621",
-  "name": "...",
-  "desc": "...",
+  "name": "绯月银棺",
+  "desc": "每逢午夜，弗林特的宅邸常有棺材怪人四处游荡，那是永夜的眷属，还是死月的仆从？——或许，那只是加班的助手残存的小小怨念吧。",
   "desc2": "装备后可提升[击破]代理人的战斗能力",
-  "desc3": "...",
+  "desc3": "绯月升起，长夜不眠。",
   "rarity": 4,
   "icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/ItemIconWeapon/UnPacker/Weapon_S_1621.png",
   "weapon_type": {
@@ -358,24 +358,24 @@
   "materials": "10:12000,101011:4|10:28000,101021:12|10:60000,101021:20|10:100000,101031:10|10:200000,101031:20",
   "talents": {
     "1": {
-      "name": "...",
-      "desc": "装备者暴击率提升<color=#2BAD00>24%</color>；造成的伤害无视目标<color=#2BAD00>15%</color><color=#A6C5FD>风属性伤害抗性</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>造成<color=#A6C5FD>风属性</color>伤害时，造成的失衡值提升<color=#2BAD00>16%</color>，全队其他角色造成的伤害提升<color=#2BAD00>20%</color>，持续50秒，重复触发时刷新持续时间，伤害提升效果全队唯一。"
+      "name": "永夜辗眠",
+      "desc": "装备者暴击率提升<color=#2BAD00>24%</color>；造成的伤害无视目标<color=#2BAD00>15%</color><color=#A6C5FD>风属性伤害抗性</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>造成<color=#A6C5FD>风属性伤害</color>时，造成的失衡值提升<color=#2BAD00>16%</color>，全队其他角色造成的伤害提升<color=#2BAD00>20%</color>，持续50秒，重复触发时刷新持续时间，伤害提升效果全队唯一。"
     },
     "2": {
-      "name": "...",
-      "desc": "装备者暴击率提升<color=#2BAD00>26%</color>；造成的伤害无视目标<color=#2BAD00>17.3%</color><color=#A6C5FD>风属性伤害抗性</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>造成<color=#A6C5FD>风属性</color>伤害时，造成的失衡值提升<color=#2BAD00>18.4%</color>，全队其他角色造成的伤害提升<color=#2BAD00>23%</color>，持续50秒，重复触发时刷新持续时间，伤害提升效果全队唯一。"
+      "name": "永夜辗眠",
+      "desc": "装备者暴击率提升<color=#2BAD00>26%</color>；造成的伤害无视目标<color=#2BAD00>17.3%</color><color=#A6C5FD>风属性伤害抗性</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>造成<color=#A6C5FD>风属性伤害</color>时，造成的失衡值提升<color=#2BAD00>18.4%</color>，全队其他角色造成的伤害提升<color=#2BAD00>23%</color>，持续50秒，重复触发时刷新持续时间，伤害提升效果全队唯一。"
     },
     "3": {
-      "name": "...",
-      "desc": "装备者暴击率提升<color=#2BAD00>28%</color>；造成的伤害无视目标<color=#2BAD00>19.5%</color><color=#A6C5FD>风属性伤害抗性</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>造成<color=#A6C5FD>风属性</color>伤害时，造成的失衡值提升<color=#2BAD00>20.8%</color>，全队其他角色造成的伤害提升<color=#2BAD00>26%</color>，持续50秒，重复触发时刷新持续时间，伤害提升效果全队唯一。"
+      "name": "永夜辗眠",
+      "desc": "装备者暴击率提升<color=#2BAD00>28%</color>；造成的伤害无视目标<color=#2BAD00>19.5%</color><color=#A6C5FD>风属性伤害抗性</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>造成<color=#A6C5FD>风属性伤害</color>时，造成的失衡值提升<color=#2BAD00>20.8%</color>，全队其他角色造成的伤害提升<color=#2BAD00>26%</color>，持续50秒，重复触发时刷新持续时间，伤害提升效果全队唯一。"
     },
     "4": {
-      "name": "...",
-      "desc": "装备者暴击率提升<color=#2BAD00>30%</color>；造成的伤害无视目标<color=#2BAD00>21.8%</color><color=#A6C5FD>风属性伤害抗性</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>造成<color=#A6C5FD>风属性</color>伤害时，造成的失衡值提升<color=#2BAD00>23.2%</color>，全队其他角色造成的伤害提升<color=#2BAD00>29%</color>，持续50秒，重复触发时刷新持续时间，伤害提升效果全队唯一。"
+      "name": "永夜辗眠",
+      "desc": "装备者暴击率提升<color=#2BAD00>30%</color>；造成的伤害无视目标<color=#2BAD00>21.8%</color><color=#A6C5FD>风属性伤害抗性</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>造成<color=#A6C5FD>风属性伤害</color>时，造成的失衡值提升<color=#2BAD00>23.2%</color>，全队其他角色造成的伤害提升<color=#2BAD00>29%</color>，持续50秒，重复触发时刷新持续时间，伤害提升效果全队唯一。"
     },
     "5": {
-      "name": "...",
-      "desc": "装备者暴击率提升<color=#2BAD00>32%</color>；造成的伤害无视目标<color=#2BAD00>24%</color><color=#A6C5FD>风属性伤害抗性</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>造成<color=#A6C5FD>风属性</color>伤害时，造成的失衡值提升<color=#2BAD00>25.6%</color>，全队其他角色造成的伤害提升<color=#2BAD00>32%</color>，持续50秒，重复触发时刷新持续时间，伤害提升效果全队唯一。"
+      "name": "永夜辗眠",
+      "desc": "装备者暴击率提升<color=#2BAD00>32%</color>；造成的伤害无视目标<color=#2BAD00>24%</color><color=#A6C5FD>风属性伤害抗性</color>；装备者发动<color=#FFFFFF>[强化特殊技]</color>造成<color=#A6C5FD>风属性伤害</color>时，造成的失衡值提升<color=#2BAD00>25.6%</color>，全队其他角色造成的伤害提升<color=#2BAD00>32%</color>，持续50秒，重复触发时刷新持续时间，伤害提升效果全队唯一。"
     }
   }
 }

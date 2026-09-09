@@ -128,7 +128,7 @@ const summary = computed(() => ({
 }))
 
 function localized(obj: any): string { if (!obj) return ''; if (typeof obj === 'string') return obj; return obj.zhCN ?? obj.en ?? '' }
-function specialtyLabel(specialty: string): string { return ({ attack: '强攻', stun: '击破', anomaly: '异常', support: '支援', defense: '防护', rupture: '命破', edgeguard: '戍卫', sharpen: '锐化' } as Record<string, string>)[specialty] ?? specialty }
+function specialtyLabel(specialty: string): string { return ({ attack: '强攻', stun: '击破', anomaly: '异常', support: '支援', defense: '防护', rupture: '命破', sharpen: '锋御' } as Record<string, string>)[specialty] ?? specialty }
 function statLabel(stat: string): string {
   const mode = stat === 'impact' ? 'impactPct' : stat
   return phaseStatLabel(mode, 'outOfCombat')

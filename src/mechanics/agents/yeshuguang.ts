@@ -413,8 +413,8 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const dmg = (record.yeshuguangMoveDmg ?? {}) as Record<string, number>
   const times = (record.yeshuguangMoveTimes ?? {}) as Record<string, number>
   const cycle = resolveCycle(cfg, state)
-  record.yeshuguangCycle = cycle
-  record.yeshuguangOutsideSword = cycle.outsideSword
+  // cycle 的相位写入（供下一轮 estimate 复用）已拆到 materializePhaseState——本钩子对 cfg 只读
+  // （阶段1 第二刀 2026-09-09）。
 
   if (cycle.totalForms <= 0) return
 
@@ -692,6 +692,13 @@ export const yeshuguangMechanic: AgentMechanicModule = {
   settings: yeshuguangSettings,
   buildCharConfig,
   buildExecutions,
+  /** 相位写入（引擎在物化调用点补写）：本次物化的明心境 cycle 缓存，供下一轮 estimate 复用 */
+  materializePhaseState: ({ cfg, state }) => {
+    const record = cfg as unknown as Record<string, unknown>
+    const cycle = resolveCycle(cfg, state)
+    record.yeshuguangCycle = cycle
+    record.yeshuguangOutsideSword = cycle.outsideSword
+  },
   patchExecutions,
   estimateExSpecialTime,
   buildResourceResult,

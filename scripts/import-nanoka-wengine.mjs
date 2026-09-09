@@ -2,9 +2,10 @@
 /**
  * 从 nanoka 导入音擎到 catalog.json（幂等：已存在则更新）。
  *
- * 用法：node scripts/import-nanoka-wengine.mjs <id> [<id>...]   （不带参数 = 补录全部缺失）
+ * 用法：node scripts/import-nanoka-wengine.mjs <id> [<id>...] [--force]   （不带参数 = 补录全部缺失）
+ *   --force：data/raw 存档已存在也重抓（重爬正式服数据用）
  *
- * 数据来源：
+ * 数据来源（版本取 manifest.zzz.live = 正式服；带 hash 的构建是测试服/预发布）：
  *   https://static.nanoka.cc/zzz/<版本>/zh/weapon/<id>.json（+ en）→ data/raw/nanoka_wengine_<id>_{zh,en}.json
  *
  * 通用推导（nanoka 只有 1 级基础词条 base_property / rand_property 与被动文本 talents）：
@@ -17,6 +18,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { writeJsonCompact } from './lib/jsonio.mjs'
+import { fetchJson } from './lib/http.mjs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -24,14 +26,17 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const rawDir = resolve(root, 'data/raw')
 const catalogPath = resolve(root, 'public/static/catalog.json')
 const STATIC = 'https://static.nanoka.cc'
+/** --force：raw 存档已存在也重抓（重爬正式服数据用；默认跳过 = 幂等） */
+const force = process.argv.includes('--force')
 
 const RARITY_MAP = { 2: 'B', 3: 'A', 4: 'S' }
 const SPECIALTY_MAP = {
   强攻: 'attack', 击破: 'stun', 异常: 'anomaly', 支援: 'support',
-  防护: 'defense', 命破: 'rupture', 锋御: 'sharpen', 狙隐: 'edgeguard',
+  防护: 'defense', 命破: 'rupture', 锋御: 'sharpen',
 }
-/** base_property.value → 60 级主词条数值（×≈14.86 同构；24/28 = 锋御防御主词条） */
-const BASE_TO_ATK = { 24: 356, 28: 416, 32: 475, 40: 594, 42: 624, 46: 684, 48: 713, 50: 743 }
+/** base_property.value → 60 级主词条数值（×≈14.86 同构；24/28/29 = 锋御基础防御力主词条，baseStat='def'）
+ *  29 由正式服 14161 猩红渴望反推（nanoka weapon.json atk=431；29×14.86≈431） */
+const BASE_TO_ATK = { 24: 356, 28: 416, 29: 431, 32: 475, 40: 594, 42: 624, 46: 684, 48: 713, 50: 743 }
 /** rand_property 词条名 → catalog advancedStat.stat（词条类型一致） */
 const RAND_STAT = {
   冲击力: 'impact', 攻击力: 'atkPct', 防御力: 'defPct', 生命值: 'hpPct',
@@ -161,6 +166,23 @@ const MANUAL_EFFECTS = {
     ],
     desc: '装备者的普通攻击和强化特殊技的重击命中敌人时获得1层兵锋，暴击伤害提升32%/36.8%/41.6%/46.4%/51.2%，持续25秒，最多叠加2层（默认满2层）；拥有2层兵锋时获得彻骨：造成的伤害无视目标20%/23%/26%/29%/32%冰属性伤害抗性。',
   },
+  '14161': { // 猩红渴望（克拉蕾专武）：正式服 3.2 数值（旧测试服为 12%→20% 叠层口径，已废）
+    effects: [
+      fixed('nanoka_14161_crit', 'critRate', 25, 35),
+      fixed('nanoka_14161_electric', 'electricDmg', 15, 25),
+      fixed('nanoka_14161_sharp', 'electricSharpDmg', 10, 16),
+    ],
+    desc: '装备者暴击率提升25%/27.5%/30%/32.5%/35%；电属性伤害提升15%/17.5%/20%/22.5%/25%；装备者发动[强化特殊技]或触发[毁伤]时，造成的电属性锐化伤害提升10%/11.5%/13%/14.5%/16%，持续40秒，重复触发时刷新持续时间（默认满覆盖）。',
+  },
+  '14162': { // 绯月银棺（洛克茜专武）：正式服 3.2 数值（旧测试服口径已废）
+    effects: [
+      fixed('nanoka_14162_crit', 'critRate', 24, 32),
+      fixed('nanoka_14162_windRes', 'enemyWindResReduction', 15, 24),
+      fixed('nanoka_14162_stun', 'stunBuildUpBonus', 16, 25.6),
+    ],
+    teamEffects: [fixed('nanoka_14162_team_dmg', 'dmgBonus', 20, 32)],
+    desc: '装备者暴击率提升24%/26%/28%/30%/32%；造成的伤害无视目标15%/17.3%/19.5%/21.8%/24%风属性伤害抗性；装备者发动[强化特殊技]造成风属性伤害时，造成的失衡值提升16%/18.4%/20.8%/23.2%/25.6%，全队其他角色造成的伤害提升20%/23%/26%/29%/32%，持续50秒，重复触发时刷新持续时间，伤害提升效果全队唯一（默认满覆盖）。',
+  },
 }
 
 /** 60 级面板推导 */
@@ -179,22 +201,23 @@ function buildLevel60(zh) {
   }
 }
 
+/** 正式服版本（manifest.zzz.live）；带 hash 的 available 构建是测试服/预发布，名字可能是占位 "..." */
+let resolvedVersion = ''
 async function latestZzzVersion() {
-  const res = await fetch(`${STATIC}/manifest.json`)
-  const m = await res.json()
-  return m.zzz?.latest
+  if (resolvedVersion) return resolvedVersion
+  const m = await fetchJson(`${STATIC}/manifest.json`, { timeoutMs: 20000 })
+  resolvedVersion = m.zzz?.live ?? m.zzz?.latest
+  return resolvedVersion
 }
 
 async function fetchRaw(id, lang, retries = 4) {
   const target = resolve(rawDir, `nanoka_wengine_${id}_${lang}.json`)
-  if (existsSync(target)) return JSON.parse(readFileSync(target, 'utf8'))
+  if (existsSync(target) && !force) return JSON.parse(readFileSync(target, 'utf8'))
   const ver = await latestZzzVersion()
   const url = `${STATIC}/zzz/${ver}/${lang}/weapon/${id}.json`
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(30000) })
-      if (!res.ok) throw new Error(`${lang} HTTP ${res.status}`)
-      const data = await res.json()
+      const data = await fetchJson(url, { retries: 0 })
       writeFileSync(target, JSON.stringify(data, null, 2))
       console.log(`OK  data/raw/nanoka_wengine_${id}_${lang}.json (${ver})`)
       return data
@@ -229,9 +252,11 @@ function buildEntry(id, zh, en) {
         effects: manual.effects,
         appliesToOutOfCombatPanel: false,
       },
-      teamBuff: null,
+      teamBuff: manual.teamEffects?.length
+        ? { scope: 'inCombat', effects: manual.teamEffects, appliesToOutOfCombatPanel: false }
+        : null,
     },
-    sources: [`https://static.nanoka.cc/zzz/3.2.3+18244196/zh/weapon/${id}.json`],
+    sources: [`${STATIC}/zzz/${resolvedVersion}/zh/weapon/${id}.json`],
     verification: {
       level60Stats: 'nanoka-base-derived',
       effectText: 'nanoka-source-checked',
@@ -243,7 +268,7 @@ function buildEntry(id, zh, en) {
 
 // ========== 主流程 ==========
 const ALL_MISSING = ['12011', '12015', '13005', '13010', '13011', '13016', '13017', '13018', '13020', '13021', '13112', '13127', '13135', '14003', '14154', '14159']
-let ids = process.argv.slice(2)
+let ids = process.argv.slice(2).filter(a => !a.startsWith('--'))
 if (ids.length === 0) {
   // 无参数：对比 catalog 自动补录 nanoka 有但 catalog 缺的（含上述清单）
   const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'))
@@ -256,6 +281,7 @@ if (ids.length === 0) {
   console.log('自动补录缺失:', ids.join(', '))
 }
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'))
+await latestZzzVersion() // 解析正式服版本（sources 出处用；raw 已存在时 fetchRaw 不会自己解析）
 for (const id of ids) {
   const [zh, en] = await Promise.all([fetchRaw(id, 'zh'), fetchRaw(id, 'en')])
   const entry = buildEntry(id, zh, en)

@@ -175,7 +175,6 @@ const SPECIALTY_LABEL: Record<string, string> = {
   support: '支援',
   defense: '防护',
   rupture: '命破',
-  edgeguard: '锋御',
   sharpen: '锋御',
 }
 
@@ -192,7 +191,6 @@ const specialtyTagColor = computed(() => {
     support: { color: '#2563eb', textColor: '#fff' },
     defense: { color: '#047857', textColor: '#fff' },
     rupture: { color: '#db2777', textColor: '#fff' },
-    edgeguard: { color: '#0f766e', textColor: '#fff' },
     sharpen: { color: '#0f766e', textColor: '#fff' },
   }
   const s = agent.value?.specialty ?? ''

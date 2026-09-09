@@ -139,12 +139,42 @@ function applyGraceTeamConfig({ slot, phase, characters, cinemaLevel }: AgentTea
   ;(cfg as any).graceC1TeamEnergyTotal = gift
 }
 
-function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): void {
+/** 相位量（纯函数，产行与相位写入共用同一求解器，避免两处口径分叉）。 */
+function gracePhaseValues(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): {
+  basicPool: number; cycles: number; c4Energy: number; c4Applies: boolean; pulseGrenades: number
+} {
+  const record = cfg as unknown as Record<string, unknown>
   const basicPool = state.basicAttackTime ?? 0
-  const cinema = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).graceCinemaLevel ?? 0)))
-  ;(cfg as unknown as Record<string, unknown>).graceBasicPoolPrev = basicPool // 留给下一轮 estimate（iterate/buildExecutions 分离惯例）
+  const cinema = Math.max(0, Math.floor(Number(record.graceCinemaLevel ?? 0)))
   const plan = planGraceRotation(basicPool, state.exSpecialCount ?? 0)
   const slots = plan.cycles * 2
+  // 影画4 爆破电容：强特×6 充能 → 给 A1-A4 平A 回能 +20%（单独回能项，按段精确）
+  const c4Applies = cinema >= 4 && plan.cycles > 0 && plan.exUsed > 0
+  let c4Energy = 0
+  if (c4Applies) {
+    const totalBasicHits = 4 * plan.cycles
+    const boosted = Math.min(plan.exUsed * 6, totalBasicHits)
+    const fullCycles = Math.floor(boosted / 4)
+    const rem = boosted % 4
+    const boostedEnergy = fullCycles * A_CYCLE_ENERGY + A_SEG_ENERGY.slice(0, rem).reduce((a, b) => a + b, 0)
+    c4Energy = (GRACE_C4_ENERGY_EFFICIENCY / 100) * boostedEnergy
+  }
+  // [脉冲]：终结技 ×25 层、**上限 25**（用户口供：留 1 层，多大都卡在 25）→
+  // 一次大招恒 3 次兑换（floor(25/8)=3），每 8 层兑换一枚[脉冲手雷]（1181019）
+  const pulseTotal = Math.max(0, Math.floor(state.ultimateCount ?? 0)) * PULSE_PER_ULT
+  const pulseGrenades = Math.min(Math.floor(Math.min(pulseTotal, PULSE_CAP) / PULSE_PER_GRENADE), Math.max(0, slots))
+  return { basicPool, cycles: plan.cycles, c4Energy, c4Applies, pulseGrenades }
+}
+
+function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  const basicPool = state.basicAttackTime ?? 0
+  const cinema = Math.max(0, Math.floor(Number(record.graceCinemaLevel ?? 0)))
+  // 全部 cfg 写入（平A池/C1 轮数/C4 回能/脉冲手雷/initialEnergyGift）已拆到 materializePhaseState
+  // ——本钩子对 cfg 只读（阶段1 第二刀 2026-09-09：写在产行钩子里会让 materializeRows 必须靠
+  // 快照/恢复兜底，且试探测量与装配的相位会互相污染）。
+  const plan = planGraceRotation(basicPool, state.exSpecialCount ?? 0)
+  const phase = gracePhaseValues(cfg, state)
 
   // A1-A4 走通用 basic 池行（平A秒均），这里发两发电能强化特殊技（真实 id，enrich 回填伤害/积蓄，
   // 积蓄 ×2.3 由 transformSkillExecutions 只对这两行限定）
@@ -176,33 +206,10 @@ function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): v
     executions.push(spRow)
   }
 
-  // 影画1 再充能弹膛：一次 A4（每轮换一格）给全队每人回 2 能量——存 cycles，由 applyGraceTeamConfig 分发给三槽
-  ;(cfg as unknown as Record<string, unknown>).graceC1Cycles =
-    cinema >= 1 ? plan.cycles : 0
-
-  // 影画4 爆破电容：强特×6 充能 → 给 A1-A4 平A 回能 +20%（单独回能项，按段精确）
-  // 充能顺序覆盖前 min(强特×6, 4×轮换) 段平A；每段回能取 catalog energy_recovery
-  if (cinema >= 4 && plan.cycles > 0 && plan.exUsed > 0) {
-    const totalBasicHits = 4 * plan.cycles
-    const boosted = Math.min(plan.exUsed * 6, totalBasicHits)
-    const fullCycles = Math.floor(boosted / 4)
-    const rem = boosted % 4
-    const boostedEnergy = fullCycles * A_CYCLE_ENERGY + A_SEG_ENERGY.slice(0, rem).reduce((a, b) => a + b, 0)
-    const c4Energy = (GRACE_C4_ENERGY_EFFICIENCY / 100) * boostedEnergy
-    ;(cfg as unknown as Record<string, unknown>).graceC4Energy = c4Energy
-    ;(cfg as unknown as Record<string, unknown>).initialEnergyGift =
-      Number((cfg as unknown as Record<string, unknown>).initialEnergyGift ?? 0) + c4Energy
-  } else {
-    ;(cfg as unknown as Record<string, unknown>).graceC4Energy = 0
-  }
-
-  // [脉冲]：终结技 ×25 层、**上限 25**（用户口供：留 1 层，多大都卡在 25）→
-  // 一次大招恒 3 次兑换（floor(25/8)=3），每 8 层兑换一枚[脉冲手雷]（1181019）
-  const pulseTotal = Math.max(0, Math.floor(state.ultimateCount ?? 0)) * PULSE_PER_ULT
-  const pulseGrenades = Math.min(Math.floor(Math.min(pulseTotal, PULSE_CAP) / PULSE_PER_GRENADE), Math.max(0, slots))
-  ;(cfg as unknown as Record<string, unknown>).gracePulseGrenadeCount = pulseGrenades
-  if (pulseGrenades > 0) {
-    executions.push(graceRow(PULSE_GRENADE_MOVE_ID, '脉冲手雷（脉冲兑换·附带）', pulseGrenades, 0))
+  // 影画1 再充能弹膛 / 影画4 爆破电容 / [脉冲]手雷的相位写入见 materializePhaseState
+  // （本钩子只产行：plan.exUsed/normalUsed 与 phase.pulseGrenades 决定行数）。
+  if (phase.pulseGrenades > 0) {
+    executions.push(graceRow(PULSE_GRENADE_MOVE_ID, '脉冲手雷（脉冲兑换·附带）', phase.pulseGrenades, 0))
   }
 }
 
@@ -277,6 +284,21 @@ export const graceMechanic: AgentMechanicModule = {
   buildCharConfig: buildGraceCharConfig,
   applyTeamConfig: applyGraceTeamConfig,
   buildExecutions: buildGraceExecutions,
+  /** 相位写入（引擎在物化调用点补写）：平A池/C1 轮数/C4 回能/脉冲手雷/初始回能礼包 */
+  materializePhaseState: ({ cfg, state }) => {
+    const record = cfg as unknown as Record<string, unknown>
+    const v = gracePhaseValues(cfg, state)
+    const cinema = Math.max(0, Math.floor(Number(record.graceCinemaLevel ?? 0)))
+    record.graceBasicPoolPrev = v.basicPool
+    // 影画1 再充能弹膛：一次 A4（每轮换一格）给全队每人回 2 能量——存 cycles，由 applyGraceTeamConfig 分发
+    record.graceC1Cycles = cinema >= 1 ? v.cycles : 0
+    // 影画4 爆破电容：强特×6 充能 → 给 A1-A4 平A 回能 +20%（单独回能项，按段精确）
+    record.graceC4Energy = v.c4Applies ? v.c4Energy : 0
+    if (v.c4Applies) {
+      record.initialEnergyGift = Number(record.initialEnergyGift ?? 0) + v.c4Energy
+    }
+    record.gracePulseGrenadeCount = v.pulseGrenades
+  },
   transformSkillExecutions: transformGraceExecutions,
   buildAnomalyEvents: buildGraceAnomalyEvents,
   estimateExSpecialTime: ({ cfg, exSpecialCount }) => {

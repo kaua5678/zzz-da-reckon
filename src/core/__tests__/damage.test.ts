@@ -4,6 +4,7 @@ import {
   calcAnomalyBuildUp,
   calcAnomalyDamage,
   calcDirectDamage,
+  sharpCritMultiplier,
   type SpecialDamageProfile,
 } from '@/core/damage'
 
@@ -111,7 +112,7 @@ describe('calcDirectDamage', () => {
     expect(other.damage).toBeCloseTo(1000)
   })
 
-  it('applies sharp damage bonus multiplier for sharpen edgeguard profile', () => {
+  it('applies sharp damage bonus multiplier for sharpen profile', () => {
     const panel = emptyPanel()
     panel.def = 1000
     panel.critRate = 0
@@ -119,7 +120,7 @@ describe('calcDirectDamage', () => {
     panel.electricSharpDmg = 12
 
     const sharpenProfile: SpecialDamageProfile = {
-      kind: 'edgeguard',
+      kind: 'sharpen',
       label: '锋御测试',
       basisLabel: '防御力区',
       basisFormula: () => 'def',
@@ -157,6 +158,58 @@ describe('calcDirectDamage', () => {
     // no infection → afterInfection = 1270
     // no crit → afterCrit = 1270
     expect(result.damage).toBeCloseTo(1270)
+  })
+})
+
+describe('sharpCritMultiplier · 锋御锐暴（200% 封顶 + 额外锐暴乘算）', () => {
+  it('100% 以内：与普通暴击同式 1 + r×d', () => {
+    expect(sharpCritMultiplier(0, 150)).toBeCloseTo(1)
+    expect(sharpCritMultiplier(50, 150)).toBeCloseTo(1.75)
+    expect(sharpCritMultiplier(100, 150)).toBeCloseTo(2.5)
+  })
+
+  it('100% 以上：保证一次锐暴后再按溢出率做第二次（乘算，不是加算）', () => {
+    // 用户口径：锐暴伤害 150% → 爆一次 ×2.5、爆两次 ×6.25；150% 暴击率 = 0.5 概率爆两次
+    expect(sharpCritMultiplier(150, 150)).toBeCloseTo(0.5 * 2.5 + 0.5 * 6.25) // 4.375
+    expect(sharpCritMultiplier(150, 150)).toBeCloseTo(2.5 * 1.75)
+    expect(sharpCritMultiplier(200, 150)).toBeCloseTo(6.25)
+    // 200% 以上按封顶处理（不再叠第三次）
+    expect(sharpCritMultiplier(260, 150)).toBeCloseTo(6.25)
+  })
+
+  it('走直伤管线：critMode=expect 用同一乘区值', () => {
+    const panel = emptyPanel()
+    panel.def = 1000
+    panel.critRate = 150
+    panel.sharpCritDmg = 150
+    const profile: SpecialDamageProfile = {
+      kind: 'sharpen',
+      label: '锋御测试',
+      basisLabel: '防御力区',
+      basisFormula: () => 'def',
+      calcBasisValue: (p: any) => p.def,
+      usesSharpDmgBonus: true,
+      critModel: 'sharp',
+    }
+    const result = calcDirectDamage({
+      panel,
+      skillMultiplier: 100,
+      damageElement: 'electric',
+      damageBasis: 'def',
+      enemyDefense: 0,
+      enemyDefReduction: 0,
+      enemyDefFlatReduction: 0,
+      enemyLevel: 60,
+      enemyResistance: 0,
+      enemyResReduction: 0,
+      stunMultiplier: 1,
+      stunned: false,
+      critMode: 'expect',
+      count: 1,
+      specialDamageProfile: profile,
+    })
+    // basis 1000 × 倍率 1.0 = 1000，暴击乘区 4.375
+    expect(result.damage).toBeCloseTo(4375)
   })
 })
 

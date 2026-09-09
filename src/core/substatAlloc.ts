@@ -1,4 +1,8 @@
 /**
+ * ⚠️ 已废弃（无调用点，2026-09-09 复核）：实际分配走 `core/substatOptimizer.ts`
+ * `computeOptimalSubStats`（含 `critRateCap`：锋御锐暴 200% 封顶，见 `core/damage.ts sharpCritMultiplier`）。
+ * 本文件的固定步数启发式（100% 暴击封顶）已过期，勿引用；保留仅作历史。
+ *
  * 副词条分配算法
  *
  * 规则：

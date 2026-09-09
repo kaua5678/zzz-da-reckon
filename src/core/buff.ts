@@ -371,7 +371,7 @@ function collectWEngineBuffs(
  * 收集驱动盘套装 buff
  *
  * requirement 门槛（@fact 驱动盘/requirement 三种判据 | 据 本任务 2026-09-05 | 验 discSetEffects.test.ts | 锚 src/core/buff.ts#collectDriveDiscBuffs | 信 高）：
- *   - outOfCombatStat：局外面板属性 ≥ min（粗算口径：基础值 + 主词条，不含副词条）——棘刺玫瑰 def 1000/1800、折枝剑歌 anomalyMastery 115
+ *   - outOfCombatStat：局外面板属性 ≥ min（粗算口径：基础值 + 主词条，不含副词条）——荆棘玫瑰 def 1000/1800、折枝剑歌 anomalyMastery 115
  *   - specialty / attribute：装备者特化 / 属性匹配——拂晓生花 4pc 强攻限定、拂晓行纪 4pc 以太限定
  * stat 模板：`enemy{attribute}AnomalyResReduction` 的 {attribute} 按装备者属性替换（自由蓝调 4pc）。
  */
@@ -545,7 +545,7 @@ export function collectAllBuffs(
 
   // 粗算局外面板属性，供套装 requirement 门槛判断。口径：基础值 + 固定主词条 + 主词条满值 +
   // 副词条步数（不含局内 buff；常量取 statRules.driveDisc，缺省回落到 S 级满值字面量）。
-  // ——棘刺玫瑰 def≥1000/1800 需要副词条才可能到二档，粗算必须含副词条。
+  // ——荆棘玫瑰 def≥1000/1800 需要副词条才可能到二档，粗算必须含副词条。
   const discStatRules = config.statRules
   const discConfig = driveDiscConfig
   const maxMain = discStatRules?.driveDisc?.sRankMaxMainStat ?? {}

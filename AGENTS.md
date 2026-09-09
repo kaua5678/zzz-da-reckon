@@ -11,6 +11,8 @@
 | `full` | 录角色 / 补机制 / 改引擎 / 排查 buff 没生效 | 本文件 §1 + `docs/ARCHITECTURE.md` §3 + 对应管线文档 | `docs/mechanism-reference.md` 纯参考可不读 |
 | `loop` | 跨多文件重构 / 批量迁移 / 数据管道改动 | `full` 全部 + 本文件 §4 长任务账本 | — |
 
+要不要开**外部闭环**（goal / 完成模式 / optimal 重档）不是凭感觉——按本节末「自主开环分级」表判（粗对齐：fast 不开、full 的排查类上完成模式、loop 至少建 goal）。
+
 `full` / `loop` 档的**读法：步骤必读、参考按症状查**。参考文档里的具体案例（某角色某坑）换到新角色往往无法类比——不要通读整篇参考，命中哪条读哪条：
 
 | 何时 | 读哪个 |
@@ -33,6 +35,19 @@
 5. **交付**：过 `AGENT_RECORDING_SOP.md` §6.10 完成清单 → `npm run verify` + `docs:status`；同步档案段与状态表。
 
 其他任务（改引擎/排查/UI）不需读原文/档案。未收录的新角色以 spec notes + raw 数据为准。
+
+### 自主开环分级（要不要开外部闭环：按表判，不许凭感觉）
+
+惰性启发式总会把活判成「简单、不用开环」——所以开环是**规则判断不是 vibe 判断**。分档如下；**agent 自主发起、自主跑到验证，冻结合同与终验/审计放行留真人**（`delivery_feedback` 要求真人逐字帧、判分器只许收紧不许放松——这是设计，不是疏漏）：
+
+| 触发条件 | 开什么 | 闭合方式 |
+|---|---|---|
+| `fast` 档 / 一条 `zc done --verifier` 就能交代 | **不开外部环**，走仓库轻闭环（`zc claim` → 改 → `npm run check` → `zc done`） | verifier 绿即闭 |
+| `loop` 档，或跨多轮但完成判据说得清 | `create_goal`（轻档，agent 可自主推断长任务，无需用户点名） | goal 判据达成 → complete |
+| **排查数值/机制错误**，需「预测 → 盘上实测 → 对账」（伤害偏低、失衡次数错这类） | `super_task_completion_mode`（purpose + assertions + measure）；需逐动作对账时上重档：`optimal_declare` 声明预测 → `probe_record` 实跑 → `optimal_converge` 对账 | 实测与预测吻合才闭合；discrepancy 即回炉，不就地改预测 |
+| 跨会话、需审计/信誉留痕的大项目 | 重档 + 审计（`audit_dispatch`/`audit_record`，redteam 组逐动作 pass 才落账） | **真人确认**后终验；agent 不得自行宣布验收 |
+
+配套约定：**harness 的 autoStart / writeGate 保持关闭**（本仓库高频小修为主，写闸的价值已被 `zc claim` + `check-guards` + 规则 13 覆盖）；开了重档**不豁免**本仓库验收链——`npm run verify` + `zc done` 仍是交付口径，重档只加「预测先行 + 逐动作对账」，不替代轻闭环。
 
 ## 1. 硬性规则
 

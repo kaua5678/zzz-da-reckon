@@ -57,11 +57,12 @@
 | `applyPanel` | computePanelPhases（面板层） | 转模、面板 buff、额外能力门控（`panel.additionalAbilityActive`） | `computePanelPhases` 面板字段断言 |
 | `buildCharConfig` | 配置层 | 预存倍率/时间表到 cfg（`record.<key>`）、跳过通用强特 | cfg 字段断言 |
 | `estimateExSpecialTime` | iterate 每轮 | 强特链必做前台时间（资源收敛用） | 收敛次数断言 |
-| `buildExecutions` | 执行计划 | 专属动作行（连段/循环/附伤载体） | damagePoolRows 断言 |
+| `buildExecutions` | 执行计划 | 专属动作行（连段/循环/附伤载体）；**对 cfg 只读** | damagePoolRows 断言 |
+| `materializePhaseState` | 引擎物化调用点 | 相位状态写入（本次物化的 state → cfg，供下一轮 estimate/装配读） | 下一轮 estimate 的收敛值断言 |
 | `patchExecutions` | 执行计划修正 | moveId 级增伤/暴伤、行替换 | 行字段断言 |
 | `buildResourceResult` | 资源结果 | 专属 cycle/资源卡数据 | resourceResult 断言 |
 
-**iterate 与 buildExecutions 分离**：次数先收敛（多轮），执行计划从收敛态生成一次。模块在 buildExecutions 里算出的值只能经 **cfg 字段**留给下一轮 estimate 使用（般岳嗔火固定点、比利星光同款模式）。
+**iterate 与 buildExecutions 分离**：次数先收敛（多轮），执行计划从收敛态生成一次。模块在 `buildExecutions` 里算出的值要留给下一轮 estimate 用时，**写进 `materializePhaseState`**（引擎在每个物化调用点按同一 state 补写；阶段1 第二刀 2026-09-09 立——写在 `buildExecutions` 里会让产行函数对 cfg 有副作用、`materializeRows` 只能靠快照/恢复兜底，且试探测量与装配互相污染相位）。般岳嗔火固定点、比利星光同款模式沿用旧 cfg 字段写法。
 
 ## 3. 常见坑（只留录入特有项；通用坑单一事实源在别处，不重复）
 
@@ -261,7 +262,7 @@ expect(pN.enemyPhysicalResReduction - p0.enemyPhysicalResReduction).toBe(18)
 
 ## 7. 测试卫生（面板断言）
 
-1. **用公共 harness，不要复制 stub**：`src/test/harness.ts` 提供 `mockStaticFetch()`（stub catalog/teammate-buffs/build-recommendations 三静态文件）、`setupHarness(team, opts?)`（pinia + 加载 + 队伍装配 + syncTeammateBuffsFromTeam）、`setTeam(config, team)` 自由组合。**两个默认值必须知道**：① 默认**不应用配装推荐** → 角色穿的是 `setAgent` 兜底盘（34200 棘刺玫瑰 = 2件套防御+16%），主C也穿防御套，拿它算伤害再外推实战会整体偏低且不报错（2026-09-07 实测同一部署 16.9% vs 56.3%）——要接近部署口径传 `{ recommendedBuild: true }`；② 交互次数走单一事实源 `interactionBaselineFor`（支援/防护 0、其余 弹刀6/闪反10、角色专属优先），槽位显式传入的值优先；模板见 `src/mechanics/__tests__/billySmoke.test.ts`（已迁移）
+1. **用公共 harness，不要复制 stub**：`src/test/harness.ts` 提供 `mockStaticFetch()`（stub catalog/teammate-buffs/build-recommendations 三静态文件）、`setupHarness(team, opts?)`（pinia + 加载 + 队伍装配 + syncTeammateBuffsFromTeam）、`setTeam(config, team)` 自由组合。**两个默认值必须知道**：① 默认**不应用配装推荐** → 角色穿的是 `setAgent` 兜底盘（34200 荆棘玫瑰 = 2件套防御+16%），主C也穿防御套，拿它算伤害再外推实战会整体偏低且不报错（2026-09-07 实测同一部署 16.9% vs 56.3%）——要接近部署口径传 `{ recommendedBuild: true }`；② 交互次数走单一事实源 `interactionBaselineFor`（支援/防护 0、其余 弹刀6/闪反10、角色专属优先），槽位显式传入的值优先；模板见 `src/mechanics/__tests__/billySmoke.test.ts`（已迁移）
 2. **关掉默认全局危局** `globalBuffs`（默认常带 `dmgBonus +15`，会污染绝对值）
 3. 优先 **差分**：`inCombat - outOfCombat`、`cinema N - cinema 0`
 4. 队友自带 buff 时不要 `expect(etherDmg).toBe(0)` 这类绝对值；用「相对局外增量」

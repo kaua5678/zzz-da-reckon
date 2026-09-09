@@ -35,7 +35,7 @@ const WEAPON_TYPE_TO_CODE = {
   '命破': 'rupture', Rupture: 'rupture',
   '锋御': 'sharpen', Sharpen: 'sharpen',
   '锐化': 'sharpen',
-  Armorer: 'sharpen', Edgeguard: 'edgeguard',
+  Armorer: 'sharpen',
 }
 
 /** 原文来源优先级：full（中文全量）> audit（中文快照）> 顶层抓取（可能英文） */
