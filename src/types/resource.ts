@@ -1167,6 +1167,12 @@ export interface TeamResourceResult {
    * 轴模式无预留（轴内 60/90 转大次数由轴预设决定），字段缺省。
    */
   liuyinGiftTimeReserved?: number
+  /**
+   * 诺姆膛温换连携赠链时间预留量（秒）：与 `liuyinGiftTimeReserved` 对称——iterate 必要时间与
+   * 装配截断上限都按同一 `normaGiftChainInfo` 计入（单一事实源），本字段只**对外暴露该值**
+   * 供机器判据核对「账本预留 == 装配赠行」（`giftMoveTimeLedger.test.ts`）。
+   */
+  normaGiftTimeReserved?: number
 }
 
 // ============ 计算输入 ============

@@ -877,6 +877,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     overflowSeconds: config.overflowSeconds,
     // 琉音好评转大赠链时间已由引擎预留（非轴）→ applyLiuyinPromote 不再 post-hoc carve 守恒
     liuyinGiftTimeReserved: liuyinGiftTimeTotal > 0 ? liuyinGiftTimeTotal : undefined,
+    // 诺姆膛温换连携赠链时间（对称暴露，供「账本预留 == 装配赠行」机器判据核对）
+    normaGiftTimeReserved: normaGiftFinal.time > 0 ? normaGiftFinal.time : undefined,
     convergence: {
       timeBudgetConverged,
       timeBudgetPasses,

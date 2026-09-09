@@ -32,12 +32,15 @@ async function cardTotals(presetId: string) {
     totalTime: rr.totalTime,
     /** 引擎账本侧预留的琉音赠大时间（轴模式按口径为 0，见 ENGINE_PIPELINE_GUIDE 坑19①） */
     reserved: rr.liuyinGiftTimeReserved ?? 0,
+    /** 诺姆赠链预留时间（对称字段，2026-09-10 加） */
+    normaReserved: rr.normaGiftTimeReserved ?? 0,
     axis: calc.stackTraversalResult.value != null,
     slots: rr.characters.map(c => {
       const rows = (c.executions ?? []).filter(e => (e.totalTime ?? 0) > 0)
       const sumFront = rows.reduce((s, e) => s + (e.totalTime ?? 0), 0)
       const gift = rows.filter(e => e.normaGiftChain || e.source === 'gift')
         .reduce((s, e) => s + (e.totalTime ?? 0), 0)
+      const normaGift = rows.filter(e => e.normaGiftChain).reduce((s, e) => s + (e.totalTime ?? 0), 0)
       return {
         agentId: c.agentId,
         cardTotal: sumFront + (c.timeAllocation.backstageTime ?? 0),
@@ -45,6 +48,7 @@ async function cardTotals(presetId: string) {
         backstage: c.timeAllocation.backstageTime ?? 0,
         sumFront,
         gift,
+        normaGift,
         ledger: (c.timeAllocation.necessaryTime ?? 0) + (c.timeAllocation.basicAttackTime ?? 0),
       }
     }),
@@ -93,6 +97,15 @@ describe('赠送招式时间账（诺姆赠链 / 琉音赠大）', () => {
       const gift = r.slots.reduce((s, x) => s + x.gift, 0)
       expect(gift, `${id} 有赠行`).toBeGreaterThan(0)
       expect(r.reserved, `${id}：账本预留 ${r.reserved} ≠ 装配赠行 ${gift}`).toBeCloseTo(gift, 6)
+    }
+  }, 180000)
+
+  it('诺姆赠链：账本预留 == 装配赠行时间（对称判据）', async () => {
+    for (const id of ['auto-1021-1571-1491', 'auto-1591-1571-1211']) {
+      const r = await cardTotals(id)
+      const gift = r.slots.reduce((s, x) => s + x.normaGift, 0)
+      expect(gift, `${id} 有诺姆赠行`).toBeGreaterThan(0)
+      expect(r.normaReserved, `${id}：账本预留 ${r.normaReserved} ≠ 装配赠行 ${gift}`).toBeCloseTo(gift, 6)
     }
   }, 180000)
 })

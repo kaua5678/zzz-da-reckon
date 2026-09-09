@@ -16,6 +16,7 @@ import type { PanelValues } from '@/types/catalog'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { findMoveById, fusedRowValue } from './helpers'
+import { buildGiftRow } from '@/core/resource/giftRows'
 
 /** 琉音好评转大不动点迭代上限（好评≥90 开窗次数有界，正反馈单调收敛，8 轮兜底极端情况） */
 export const MAX_PROMOTE_ITER = 8
@@ -98,29 +99,17 @@ export function applyLiuyinPromote(
           ...char.executions.map((e, i) => i === basicIdx
             ? { ...e, totalTime: Math.max(0, (e.totalTime ?? 0) - carve) }
             : e),
-          {
+          // 赠行产物契约统一在 core（`core/resource/giftRows.ts#buildGiftRow`）
+          buildGiftRow({
             moveId: ultimateMoveId,
             moveName: '好评转大·队友终结技',
-            category: 'chain',
             count: promote,
             actionTime: ultActionTime,
-            source: 'gift',
-            comboAlignRatio: 0,
-            totalTime: promoteTime,
-            totalComboAlignTime: 0,
-            energyConsume: 0,
-            totalEnergyConsume: 0,
-            decibelRecovery: 0,
-            totalDecibelRecovery: 0,
-            energyRecovery: 0,
-            totalEnergyRecovery: 0,
             damageMultiplier: ultMult,
-            damageMultiplierOverride: ultMult > 0,
             anomalyBuildUp: ultBuildUp,
-            totalAnomalyBuildUp: ultBuildUp * promote,
-            skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
             skillDamageTarget: 'ultimate',
-          },
+            skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
+          }),
         ],
       }
     }),

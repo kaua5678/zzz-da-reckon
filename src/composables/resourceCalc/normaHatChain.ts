@@ -10,6 +10,7 @@ import type { TeamResourceResult } from '@/types/resource'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { findMoveById, fusedRowValue } from './helpers'
+import { buildGiftRow } from '@/core/resource/giftRows'
 
 /**
  * 诺姆膛温换连携：帽子把戏触发上一位角色的快速支援→替换为连携技，连携归属上一位队友。
@@ -64,30 +65,20 @@ export function applyNormaHatChain(
       return {
         ...char,
         chainCountTotal: (char.chainCountTotal ?? 0) + hatCount,
-        executions: [...(char.executions ?? []), {
+        // 赠行产物契约统一在 core（`core/resource/giftRows.ts#buildGiftRow`）
+        executions: [...(char.executions ?? []), buildGiftRow({
           moveId: chainInfo.moveId,
           moveName: `${giftedMove?.name?.zhCN || '连携技'}（诺姆膛温替换）`,
-          category: 'chain',
           count: hatCount,
           actionTime: chainInfo.actionTime,
           comboAlignRatio: chainInfo.comboAlignRatio,
-          totalTime: hatCount * chainInfo.actionTime,
-          totalComboAlignTime: hatCount * chainInfo.actionTime * chainInfo.comboAlignRatio,
-          energyConsume: 0,
-          totalEnergyConsume: 0,
           decibelRecovery: chainInfo.decibelRecovery,
-          totalDecibelRecovery: chainInfo.decibelRecovery * hatCount,
-          energyRecovery: 0,
-          totalEnergyRecovery: 0,
           damageMultiplier: giftedDamage,
-          damageMultiplierOverride: giftedDamage > 0,
           dazeMultiplier: giftedDaze,
-          dazeMultiplierOverride: giftedDaze > 0,
           anomalyBuildUp: giftedAnomaly,
-          source: 'gift',
           skillTableNote: '诺姆预热膛温≥80%帽子把戏：上一位队友的快速支援替换为其本人连携技（招式与倍率取该队友技能表）',
           normaGiftChain: true,
-        }],
+        })],
       }
     }),
   }

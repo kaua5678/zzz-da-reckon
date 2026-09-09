@@ -54,6 +54,18 @@ describe('时间账跨路径不变量（全预设库）', () => {
           bad.push(`${p.id} 槽${c.slot}(${c.agentId})：物化行 ${rows.toFixed(2)} > 账本 ${ledger.toFixed(2)}（超 ${(rows - ledger).toFixed(2)}）`)
         }
       }
+      // ④ 赠行单一口径（2026-09-10，阶段1 ②）：账本侧预留 == 装配侧赠行时间。
+      // 两边各推一次计数就会漂（轴模式正是漂了才需要 probeExcludedTeam 排除，见坑19①）；
+      // 轴模式按口径不预留（赠行时间由轴窗口/carve 承担），故只查非轴队。
+      // 复用本扫描，零额外计算。
+      if (calc.stackTraversalResult.value == null) {
+        const giftSum = rr.characters.reduce((s, c) => s + (c.executions ?? [])
+          .reduce((t, e) => t + ((e.source === 'gift' || e.normaGiftChain) ? (e.totalTime ?? 0) : 0), 0), 0)
+        const reserved = (rr.liuyinGiftTimeReserved ?? 0) + (rr.normaGiftTimeReserved ?? 0)
+        if (giftSum > 0 && Math.abs(giftSum - reserved) > TOL) {
+          bad.push(`${p.id}：赠行单一口径破 —— 账本预留 ${reserved.toFixed(3)} ≠ 装配赠行 ${giftSum.toFixed(3)}`)
+        }
+      }
     }
 
     expect(bad, `时间账跨路径不变量被破（${bad.length}/${presets.length} 队）：\n${bad.join('\n')}`).toEqual([])
