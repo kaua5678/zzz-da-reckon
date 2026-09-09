@@ -21,6 +21,7 @@ function normaGiftChainInfo(
   states: IterationState[],
   normaSlot: number,
   totalTime: number,
+  teamSize?: number,
 ): { targetIdx: number; time: number; count: number } {
   const nCfg = configs[normaSlot]
   if (!nCfg) return { targetIdx: -1, time: 0, count: 0 }
@@ -32,7 +33,7 @@ function normaGiftChainInfo(
   }, Number((nCfg as unknown as Record<string, unknown>)['setting:norma.holdSeconds'] ?? 2))
   if (hatCount <= 0) return { targetIdx: -1, time: 0, count: 0 }
   const setting = Number((nCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
-  const targetIdx = resolveUltimateTargetSlot(normaSlot, configs.length, setting)
+  const targetIdx = resolveUltimateTargetSlot(normaSlot, teamSize ?? configs.length, setting)
   return { targetIdx, time: hatCount * (configs[targetIdx]?.chainActionTime ?? 0), count: hatCount }
 }
 
@@ -47,6 +48,7 @@ function liuyinGiftChainInfo(
   liuyinSlot: number,
   totalTime: number,
   stunCount: number,
+  teamSize?: number,
 ): { targetIdx: number; time: number; count: number } {
   const lCfg = configs[liuyinSlot]
   if (!lCfg) return { targetIdx: -1, time: 0, count: 0 }
@@ -60,7 +62,7 @@ function liuyinGiftChainInfo(
     previousTeammateSlot: lCfg.liuyinPreviousTeammateSlot ?? 0,
   })
   const setting = Number((lCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
-  const targetIdx = resolveUltimateTargetSlot(liuyinSlot, configs.length, setting)
+  const targetIdx = resolveUltimateTargetSlot(liuyinSlot, teamSize ?? configs.length, setting)
   const tCfg = configs[targetIdx]
   const targetChainTotal = Math.min(
     (tCfg?.chainCountPerStun ?? 0) * stunCount,
@@ -95,10 +97,11 @@ function liuyinGiftTime(
   stunCount: number,
   axisPromote: { targetSlot: number; count: number } | undefined,
   axisMode: boolean,
+  teamSize?: number,
 ): { targetIdx: number; time: number; count: number } {
   const liuyinSlot = configs.findIndex(c => c.agentId === '1481')
   if (liuyinSlot < 0) return { targetIdx: -1, time: 0, count: 0 }
-  if (!axisMode) return liuyinGiftChainInfo(configs, states, liuyinSlot, totalTime, stunCount)
+  if (!axisMode) return liuyinGiftChainInfo(configs, states, liuyinSlot, totalTime, stunCount, teamSize)
   if (!axisPromote || axisPromote.count <= 0) return { targetIdx: -1, time: 0, count: 0 }
   const tCfg = configs[axisPromote.targetSlot]
   if (!tCfg) return { targetIdx: -1, time: 0, count: 0 }
@@ -110,26 +113,18 @@ function liuyinGiftTime(
 }
 
 /**
- * 赠行目标槽（**行口径**，2026-09-10）：`resolveUltimateTargetSlot` 的「上一位队友」依赖队长，
- * 引擎只拿到已配置角色（`configs.length`），编排层用 `configStore.team.length`（含空槽）——
- * 退化配置（单角色扫描）下两者不同：引擎会物化出编排层永远撤掉的赠行（实测 front 顶到 180）。
- * 故**行口径**用编排层注入的 `config.teamSize`，账本/试探口径维持 `configs.length`（不改基线）。
+ * 队长口径统一（2026-09-10，用户裁决 #2「基线不拦开发、以长期利益为主」）：
+ * `resolveUltimateTargetSlot` 的「上一位队友」依赖队长——引擎只拿到已配置角色
+ * （`configs.length`），编排层用 `configStore.team.length`（含空槽）。两套口径会让引擎在
+ * 退化配置（单角色扫描）下物化出编排层永远撤掉的赠行（实测 front 顶到 180、8 条 golden delta）。
+ * 现**统一按编排层注入的 `config.teamSize`**（缺省回落 `configs.length`，兼容单测直接调 core）。
+ * 账本/试探/行/展示四处同源，不再分家。
  */
-function giftRowTargetSlot(slot: number, teamSize: number | undefined, configs: CharacterOperationConfig[], setting: number): number {
-  const target = resolveUltimateTargetSlot(slot, teamSize ?? configs.length, setting)
-  return configs[target] ? target : -1
-}
-
-/** 行口径的诺姆赠链（含次数）：目标槽按 `teamSize` 解析，配置缺失即不产行 */
 function normaGiftRowSpec(
   configs: CharacterOperationConfig[], states: IterationState[], normaSlot: number, totalTime: number, teamSize: number | undefined,
 ): { targetIdx: number; count: number } {
-  const info = normaGiftChainInfo(configs, states, normaSlot, totalTime)
-  if (info.count <= 0) return { targetIdx: -1, count: 0 }
-  const nCfg = configs[normaSlot]
-  const setting = Number((nCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
-  const target = giftRowTargetSlot(normaSlot, teamSize, configs, setting)
-  return target < 0 ? { targetIdx: -1, count: 0 } : { targetIdx: target, count: info.count }
+  const info = normaGiftChainInfo(configs, states, normaSlot, totalTime, teamSize)
+  return info.count <= 0 || !configs[info.targetIdx] ? { targetIdx: -1, count: 0 } : { targetIdx: info.targetIdx, count: info.count }
 }
 
 /** 行口径的琉音赠大（含次数）：轴模式用轴预设计数，非轴用通用公式；目标槽按 `teamSize` 解析 */
@@ -137,12 +132,8 @@ function liuyinGiftRowSpec(
   configs: CharacterOperationConfig[], states: IterationState[], totalTime: number, stunCount: number,
   axisPromote: { targetSlot: number; count: number } | undefined, axisMode: boolean, teamSize: number | undefined,
 ): { targetIdx: number; count: number } {
-  const info = liuyinGiftTime(configs, states, totalTime, stunCount, axisPromote, axisMode)
-  if (info.count <= 0) return { targetIdx: -1, count: 0 }
-  const liuyinSlot = configs.findIndex(c => c.agentId === '1481')
-  const setting = Number((configs[liuyinSlot] as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
-  const target = giftRowTargetSlot(liuyinSlot, teamSize, configs, setting)
-  return target < 0 ? { targetIdx: -1, count: 0 } : { targetIdx: target, count: info.count }
+  const info = liuyinGiftTime(configs, states, totalTime, stunCount, axisPromote, axisMode, teamSize)
+  return info.count <= 0 || !configs[info.targetIdx] ? { targetIdx: -1, count: 0 } : { targetIdx: info.targetIdx, count: info.count }
 }
 
 // ============ 单角色能量计算 ============
@@ -441,13 +432,13 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 行测量必须计入其时间（iterate 必要时间已按同一口径预留），否则折叠环会把预留读成
     // idle → pass0 refund 双击（与最高马力星光行同病）。
     const giftNormaSlot = configs.findIndex(c => c.agentId === '1571')
-    const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, st, giftNormaSlot, totalTime) : { targetIdx: -1, time: 0 }
+    const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, st, giftNormaSlot, totalTime, config.teamSize) : { targetIdx: -1, time: 0 }
     // 琉音好评转大赠链行同理（非轴）：装配后 applyLiuyinPromote 追加，行测量计入其时间
     // 琉音赠大：**只作测量口径统一**（2026-09-10 实测：轴模式也在此预留会让 4 队留白变差
     // +0.27~2.70s——预留挤平A池而赠行不等量补回，见 docs 坑19①；故 iterate 侧维持旧口径「轴模式不预留」，
     // 只有 `frontlineRowsOf` 试探测量与 `giftTimeOfSlot` 装配侧按轴预设计数统一）
     const giftLiuyin = !config.axisMode && configs.some(c => c.agentId === '1481')
-      ? liuyinGiftChainInfo(configs, st, configs.findIndex(c => c.agentId === '1481'), totalTime, config.stunCount ?? 0)
+      ? liuyinGiftChainInfo(configs, st, configs.findIndex(c => c.agentId === '1481'), totalTime, config.stunCount ?? 0, config.teamSize)
       : { targetIdx: -1, time: 0 }
     for (let i = 0; i < configs.length; i++) {
       const cfg = configs[i]
@@ -591,7 +582,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         if (idx >= 0 && Number.isFinite(sec)) overlapBySlot[idx] += sec
       }
       let total = 0
-      const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, st, giftNormaSlot, totalTime) : { targetIdx: -1, time: 0 }
+      const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, st, giftNormaSlot, totalTime, config.teamSize) : { targetIdx: -1, time: 0 }
       // 琉音赠大：轴模式用轴预设计数（`config.axisLiuyinPromote`），非轴用通用公式（跨层统一入口）
       const giftLiu = liuyinGiftTime(
         configs, st, totalTime, config.stunCount ?? 0,
@@ -758,12 +749,12 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
    */
   const giftNormaIdxFinal = configs.findIndex(c => c.agentId === '1571')
   const normaGiftFinal = giftNormaIdxFinal >= 0
-    ? normaGiftChainInfo(configs, states, giftNormaIdxFinal, totalTime)
+    ? normaGiftChainInfo(configs, states, giftNormaIdxFinal, totalTime, config.teamSize)
     : { targetIdx: -1, time: 0 }
   // 琉音赠大（装配侧：截断上限 + 前台展示）：轴模式维持旧口径「不预留/不计入」（2026-09-10 实测：
   // 改用轴预设计数会让落点大改——stun 4→6、dmg ±5.8%/+32.5%，属数值重排，须裁决；见 docs 坑19①）
   const liuyinGiftFinal = !config.axisMode && configs.some(c => c.agentId === '1481')
-    ? liuyinGiftChainInfo(configs, states, configs.findIndex(c => c.agentId === '1481'), totalTime, config.stunCount ?? 0)
+    ? liuyinGiftChainInfo(configs, states, configs.findIndex(c => c.agentId === '1481'), totalTime, config.stunCount ?? 0, config.teamSize)
     : { targetIdx: -1, time: 0 }
   const giftTimeOfSlot = (idx: number): number =>
     (idx === normaGiftFinal.targetIdx ? normaGiftFinal.time : 0)

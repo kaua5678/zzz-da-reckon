@@ -722,7 +722,7 @@
   "outerExit": "stable"
  },
  "yidhari-trigger-lucia": {
-  "slack": 3.9,
+  "slack": 3.8,
   "over": 0,
   "stun": 4,
   "outerExit": "stable"
