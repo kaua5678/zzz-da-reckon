@@ -210,6 +210,13 @@ export function calcEnergySource(
   // 资源轴动作回复：目前按技能数据给出的秒均平A回能计算，暂不叠加自动回复公式的获得效率。
   // debt: 能量收入行级化——同喧响的聚合近似（basicAttackRegenPerSec/各通道常量而非行值），
   // 模块已校准常量故误差较小，但专属链角色同构风险。升级路径：随喧响行级化同一次账本重构迁移。
+  // 第一段已完成（2026-09-09 债务清账，喧响 5761e02 同构）：energyRecovery 类型可选化三态
+  // （undefined=交倍率表回填 / 显式 0=模块禁用回填），enrich 能量分支补 fusedRowValue 融合组优先；
+  // core 通用行 8 处 + 模块 24 处真债务硬零已删（运行时探针全角色审计定位，复跑验证归零）。
+  // 保留的 12 行显式 0 是衍生行口径——回能留在平A聚合行防双计：sigrid 平A分段×4、
+  // liuyin 猜拳强化A×4、nangong 地雷×2（以上从平A池只扣时间不扣回能）、jane 萨霍夫跳、alice 星仪序曲伴生行。
+  // 余下第二段 Σ 切换：calcEnergySource 聚合改 rowEnergyTotal 行级求和（rowDecibelTotal 同构，
+  // 相位隔离/环检测/NaN 免疫三件套复用）；裁决点：demara 面板效率口径、伊德海莉 refund 预计算行走保留通道。
   const basicAttackRegen = state.basicAttackTime * cfg.basicAttackRegenPerSec
 
   // 辅助大招回复由上层根据其他角色最终终结技次数补入。
@@ -396,7 +403,7 @@ export function applyExecutionUtilization(cfg: CharacterOperationConfig, exec: S
     totalComboAlignTime: exec.totalComboAlignTime * scale,
     totalEnergyConsume: exec.totalEnergyConsume * scale,
     totalDecibelRecovery: (exec.totalDecibelRecovery ?? 0) * scale,
-    totalEnergyRecovery: exec.totalEnergyRecovery * scale,
+    totalEnergyRecovery: (exec.totalEnergyRecovery ?? 0) * scale,
     totalSpecialResourceRecovery: exec.totalSpecialResourceRecovery !== undefined ? exec.totalSpecialResourceRecovery * scale : undefined,
     totalHealingAmount: exec.totalHealingAmount !== undefined ? exec.totalHealingAmount * scale : undefined,
   }
@@ -794,8 +801,6 @@ export function buildExecutions(
       totalEnergyConsume: 0,
       decibelRecovery: cfg.remielleRainbowEndDecibelRecovery,
       totalDecibelRecovery: remielleRainbowEndCount * cfg.remielleRainbowEndDecibelRecovery,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
       timeBucket: 'necessary',
     })
   }
@@ -819,8 +824,6 @@ export function buildExecutions(
       totalEnergyConsume: paidEx * cfg.exSpecialEnergyConsume,
       decibelRecovery: cfg.exSpecialDecibelRecovery,
       totalDecibelRecovery: state.exSpecialCount * cfg.exSpecialDecibelRecovery,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
       timeBucket: 'necessary',
     })
   }
@@ -841,8 +844,6 @@ export function buildExecutions(
       totalEnergyConsume: 0,
       decibelRecovery: cfg.ultimateDecibelRecovery,
       totalDecibelRecovery: state.ultimateCount * cfg.ultimateDecibelRecovery,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
       timeBucket: 'necessary',
     })
   }
@@ -863,8 +864,6 @@ export function buildExecutions(
       totalEnergyConsume: 0,
       decibelRecovery: cfg.chainDecibelRecovery,
       totalDecibelRecovery: chainCountTotal * cfg.chainDecibelRecovery,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
       source: 'stun',
       timeBucket: 'necessary',
     })
@@ -992,8 +991,6 @@ export function buildExecutions(
         totalEnergyConsume: 0,
       decibelRecovery: cfg.remielleRadiantTurnDecibelRecovery ?? 0,
       totalDecibelRecovery: radiantTurnCount * (cfg.remielleRadiantTurnDecibelRecovery ?? 0),
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
       timeBucket: 'backstage',
     })
     }
@@ -1015,8 +1012,6 @@ export function buildExecutions(
       totalEnergyConsume: 0,
       decibelRecovery: cfg.dodgeCounterDecibelRecovery,
       totalDecibelRecovery: cfg.dodgeCounterCount * cfg.dodgeCounterDecibelRecovery,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
       timeBucket: 'necessary',
     })
   }
@@ -1041,8 +1036,6 @@ export function buildExecutions(
       totalEnergyConsume: 0,
       decibelRecovery: cfg.defensiveAssistDecibelRecovery,
       totalDecibelRecovery: totalDefensiveAssist * cfg.defensiveAssistDecibelRecovery,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
       timeBucket: 'necessary',
     })
   }
@@ -1065,8 +1058,6 @@ export function buildExecutions(
       totalEnergyConsume: 0,
       decibelRecovery: cfg.assistFollowUpDecibelRecovery,
       totalDecibelRecovery: cfg.parryCount * cfg.assistFollowUpDecibelRecovery,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
       timeBucket: 'necessary',
     })
   }

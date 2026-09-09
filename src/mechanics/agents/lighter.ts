@@ -327,8 +327,6 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
         totalComboAlignTime: 0,
         energyConsume: 0,
         totalEnergyConsume: 0,
-        energyRecovery: 0,
-        totalEnergyRecovery: 0,
         damageMultiplier: 0,
         damageMultiplierOverride: false,
         element: 'fire',

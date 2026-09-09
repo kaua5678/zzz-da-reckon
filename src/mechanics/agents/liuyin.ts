@@ -321,8 +321,6 @@ function buildLiuyinExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalEnergyConsume: 0,
       decibelRecovery: cfg.liuyinFarewellDecibel ?? 0,
       totalDecibelRecovery: farewellCount * (cfg.liuyinFarewellDecibel ?? 0),
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
       damageMultiplier: cfg.liuyinFarewellDamage ?? 0,
       damageMultiplierOverride: (cfg.liuyinFarewellDamage ?? 0) > 0,
       skillDamageTarget: 'exSpecial',

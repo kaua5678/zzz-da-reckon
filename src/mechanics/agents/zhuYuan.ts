@@ -152,8 +152,6 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
       ...(stunBonus > 0 ? { dmgBonus: stunBonus } : {}),
     })
     etherTime += count * ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[i]

@@ -285,8 +285,6 @@ function buildPromiaExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
     })
   }
   // 匿影后解锁特殊技「处刑式·重霜」：每次匿影可接一次（真实 moveId，前台时间由引擎时间预算外层折算）
@@ -325,8 +323,6 @@ function buildPromiaExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
     })
   }
 }

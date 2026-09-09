@@ -198,8 +198,6 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
     totalComboAlignTime: frostMoonCount * (actionTime - FROST_MOON_3_LOCK_SECONDS),
     energyConsume: 0,
     totalEnergyConsume: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
     ...(m1DefShred ? { defIgnore: 36 } : {}),
   })
 

@@ -299,8 +299,6 @@ function pushEllenExecution(executions: AgentResourceInput['executions'], input:
     totalComboAlignTime: 0,
     energyConsume: 0,
     totalEnergyConsume: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
   })
 }
 

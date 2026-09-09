@@ -169,7 +169,7 @@ describe('强特自循环：扇风（扇子+风团体型段数）+ 下砸 + 霜�
     expect(slam.energyRecovery).toBe(0) // 集合啦#1 表值本身为 0
     for (const row of [rowOf(rows, '1131016')[0], rowOf(rows, '1131006')[0]]) {
       expect(row.decibelRecovery).toBe(1) // → 回填表值喧响
-      expect(row.energyRecovery).toBe(1) // → 回填表值回能（自我能量循环供给侧）
+      expect(row.energyRecovery).toBeUndefined() // undefined=交 enrich 按倍率表回填（自我能量循环供给侧；2026-09-09 能量三态）
     }
   })
 

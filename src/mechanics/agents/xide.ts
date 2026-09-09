@@ -213,8 +213,6 @@ function buildXideExecutions({ cfg, state, executions }: AgentResourceInput): vo
     totalComboAlignTime: 0,
     energyConsume: 0,
     totalEnergyConsume: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
     timeBucket: 'necessary',
     ...extra,
   })

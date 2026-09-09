@@ -126,8 +126,6 @@ export function buildSpecEventExecutions(
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
       damageMultiplier: multiplier,
       damageMultiplierOverride: usesOverride,
       skillTableNote: `事件 ${event.id} 调用倍率表 ${moveId}.${rowId}${ratio !== 1 ? ` × ${ratio}` : ''}`,

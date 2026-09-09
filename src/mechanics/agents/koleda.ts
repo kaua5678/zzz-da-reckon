@@ -126,8 +126,6 @@ function buildKoledaExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
       timeBucket: 'basic',
     })
   }

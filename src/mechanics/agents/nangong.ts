@@ -171,8 +171,6 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
     totalComboAlignTime: 0,
     energyConsume: 0,
     totalEnergyConsume: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
     skillTableNote: quickAssistPlaced > 0
       ? `快速支援重击 ×${quickAssistPlaced}（捏轴放置：极性紊乱载体，命中异常+失衡敌消耗舞力全开；窗内伤害吃易伤）`
       : '快速支援重击（极性紊乱载体）；捏轴放置后按块数结算（×0 灰块）',

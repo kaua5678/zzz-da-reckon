@@ -321,8 +321,6 @@ function pushEx(
     totalEnergyConsume: energy * count,
     decibelRecovery: decibel,
     totalDecibelRecovery: decibel * count,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
     ...(stunBuildUpBonus > 0 ? { stunBuildUpBonus } : {}),
     ...(stunBuildUpBonus > 0 ? { skillTableNote: `影画1强化：失衡值提升 +${stunBuildUpBonus}%（乘区加算）` } : {}),
   })

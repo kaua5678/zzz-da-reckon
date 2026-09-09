@@ -254,8 +254,6 @@ function pushHarumasaExecution(executions: AgentResourceInput['executions'], inp
     totalComboAlignTime: 0,
     energyConsume: 0,
     totalEnergyConsume: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
     ...(input.damageMultiplier == null
       ? {}
       : { damageMultiplier: input.damageMultiplier, damageMultiplierOverride: true }),

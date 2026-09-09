@@ -158,8 +158,6 @@ function buildZhaoExecutions(input: AgentResourceInput): void {
     totalComboAlignTime: 0,
     energyConsume: 0,
     totalEnergyConsume: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
     flatDamageBonus: cycle.chargeLifePerHit,
     timeBucket: 'backstage',
   })

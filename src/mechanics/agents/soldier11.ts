@@ -190,14 +190,12 @@ export const soldier11Mechanic: AgentMechanicModule = {
       count: cycles, actionTime: A4_QUICK_TIME, comboAlignRatio: 0,
       totalTime: A4_QUICK_TIME * cycles, totalComboAlignTime: 0,
       energyConsume: 0, totalEnergyConsume: 0,
-      energyRecovery: 0, totalEnergyRecovery: 0,
     })
     executions.push({
       moveId: A5_MOVE_ID, moveName: '火力镇压A5（快速火刀）', category: 'basic',
       count: cycles, actionTime: A5_QUICK_TIME, comboAlignRatio: 0,
       totalTime: A5_QUICK_TIME * cycles, totalComboAlignTime: 0,
       energyConsume: 0, totalEnergyConsume: 0,
-      energyRecovery: 0, totalEnergyRecovery: 0,
     })
     // 强化A5 爆炸：消耗每套剩余 6 层，每层一发 1041026（166.4%/层，t=0 含在 A5 内，无失衡/积蓄/喧响）
     executions.push({

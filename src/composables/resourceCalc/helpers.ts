@@ -1412,17 +1412,19 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
                 ? 0
                 : (fusedRowValue(skills, exec.moveId, 'anomaly_buildup') ?? getRowValue(move, 'anomaly_buildup'))
             // 同上：decibel/energy 显式 0 = 模块显式禁用回填（围猎后台闪反无喧响/能量）；
+            // 未提供（undefined）= 交倍率表回填——能量与喧响同构三态（2026-09-09 能量债务审计）。
             // decibelRecoveryOverride = 模块显式给定口径换算后的行值（如洛克茜自旋：表值为每秒，
             // 行值 = 每秒 × spinSeconds），跳过表值覆盖——与 damage/anomaly override 同构。
-            // 登记融合组的主段行：喧响取「一次动作」的整段和（与 damage/daze/anomaly 同一函数
+            // 登记融合组的主段行：喧响/能量取「一次动作」的整段和（与 damage/daze/anomaly 同一函数
             // 同一口径）；只回头段会把雅一次连携的 230.15 记成 69.05（坑 31）。
             const tableDecibel = fusedRowValue(skills, exec.moveId, 'decibel_recovery')
               ?? getRowValue(move, 'decibel_recovery')
             const decibelValue = exec.decibelRecoveryOverride
               ? (exec.decibelRecovery ?? 0)
               : exec.decibelRecovery === 0 ? 0 : (tableDecibel || (exec.decibelRecovery ?? 0))
-            const tableEnergy = getRowValue(move, 'energy_recovery')
-            const energyValue = exec.energyRecovery === 0 ? 0 : (tableEnergy || exec.energyRecovery)
+            const tableEnergy = fusedRowValue(skills, exec.moveId, 'energy_recovery')
+              ?? getRowValue(move, 'energy_recovery')
+            const energyValue = exec.energyRecovery === 0 ? 0 : (tableEnergy || (exec.energyRecovery ?? 0))
             patch = {
               actionCode: move.id,
               moveName: move.name?.zhCN || move.name?.en || exec.moveName,

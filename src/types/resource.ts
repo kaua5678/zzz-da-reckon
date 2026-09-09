@@ -465,15 +465,14 @@ export interface SkillExecution {
   energyConsume: number
   /** 总能量消耗 */
   totalEnergyConsume: number
-  /** 喧响回复（每次） */
-  /** 未提供时由 enrichExecutionPlan 按倍率表回填（显式 0 = 模块禁用回填） */
+  /** 喧响回复（每次）；未提供时由 enrichExecutionPlan 按倍率表回填（显式 0 = 模块禁用回填） */
   decibelRecovery?: number
   /** 总喧响回复 */
   totalDecibelRecovery?: number
-  /** 能量回复（每次，部分招式可能回能） */
-  energyRecovery: number
+  /** 能量回复（每次）；未提供时由 enrichExecutionPlan 按倍率表回填（显式 0 = 模块禁用回填，与喧响同构三态） */
+  energyRecovery?: number
   /** 总能量回复 */
-  totalEnergyRecovery: number
+  totalEnergyRecovery?: number
   /** 伤害倍率（从倍率表 damage 行输出，百分比） */
   damageMultiplier?: number
   /** 失衡倍率（从倍率表 daze 行输出） */

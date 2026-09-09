@@ -222,7 +222,6 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
     totalEnergyConsume: 0,
     decibelRecovery: RECOVERY_BACKFILL_PLACEHOLDER,
     totalDecibelRecovery: 0,
-    energyRecovery: RECOVERY_BACKFILL_PLACEHOLDER,
     totalEnergyRecovery: 0,
     timeBucket: 'necessary',
   })
@@ -241,7 +240,6 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
     totalEnergyConsume: 0,
     decibelRecovery: RECOVERY_BACKFILL_PLACEHOLDER,
     totalDecibelRecovery: 0,
-    energyRecovery: RECOVERY_BACKFILL_PLACEHOLDER,
     totalEnergyRecovery: 0,
     timeBucket: 'necessary',
   })
