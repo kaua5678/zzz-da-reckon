@@ -38,7 +38,7 @@ const SPECIALTY_LABELS: Record<string, string> = {
   support: '支援',
   defense: '防护',
   rupture: '命破',
-  sharpen: '锐化',
+  sharpen: '锋御',
 }
 
 function pct(v: number | null | undefined): string {
