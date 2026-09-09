@@ -60,6 +60,8 @@ describe.runIf(active)('探针：琉音赠大跨层对账', () => {
       lines.push(`试探/账本侧轴赠大计数=${axisPromote ? `${axisPromote.count}@槽${axisPromote.targetSlot}` : '—'} · 装配侧赠行=${giftRowsAll.map(g => `槽${g.slot}:${g.moveId}×${g.count}@${f(g.time)}`).join(' | ') || '无'}`)
 
       lines.push(`--- 轴栈（core/stunAxisStack）`)
+      const axes = calc.effectiveStunAxes.value ?? []
+      lines.push(`  轴预设：${axes.length ? axes.map(a => `${a.name}[${a.actions.map(x => `${x.slot}:${x.moveId}×${x.count}${x.promoteVariant ? `(${x.promoteVariant})` : ''}${x.startTime ? `@${x.startTime}` : ''}`).join(' ')}]`).join(' || ') : '（无）'}`)
       if (!stack) lines.push(`  （无轴：stackTraversalResult=null）`)
       else {
         lines.push(`  timeUsed=${f(stack.timeUsed)}（窗口内动作时长和，含 promoteVariant 赠大块） overlap=${f(stack.overlapSeconds)} windowsUsed=${stack.windowsUsed}`)
@@ -69,8 +71,24 @@ describe.runIf(active)('探针：琉音赠大跨层对账', () => {
         const ovKeys = Object.entries(stack.overlapByAction).map(([k, v]) => `${k}=${f(v)}`)
         if (ovKeys.length) lines.push(`  overlapByAction=${ovKeys.join(' | ')}`)
         if (stack.skipped.length) lines.push(`  skipped=${stack.skipped.map(s => `${s.slot}:${s.moveId}(${s.reason})`).join(' | ')}`)
+        // 资源模型对账（用户 2026-09-10 裁决 #3）：轴栈「实际执行集合」vs 引擎「推导次数」
+        const bySlot = new Map<number, Record<string, number>>()
+        for (const v of Object.values(stack.executed)) {
+          const m = bySlot.get(v.slot) ?? {}
+          m[v.moveId] = (m[v.moveId] ?? 0) + v.count
+          bySlot.set(v.slot, m)
+        }
+        for (const c of rr.characters) {
+          const ex = bySlot.get(c.slot) ?? {}
+          lines.push(`  ↳ 槽${c.slot} 引擎次数 ex=${f(c.exSpecialCount, 3)} ult=${f(c.ultimateCount, 3)} chain=${f(c.chainCountTotal, 3)} | 槽位资源 闪能=${f(c.energySource?.total, 1)} 喧响=${f(c.decibelSource?.total, 1)} | 轴栈 executed=${Object.entries(ex).map(([k, v]) => `${k}×${v}`).join(' ') || '—'}`)
+        }
       }
 
+      const bd = calc.damageSourceBreakdown.value as unknown as { rows?: { label?: string; value?: number }[] } | null
+      if (bd?.rows?.length) {
+        const top = [...bd.rows].filter(r => (r.value ?? 0) > 0).sort((a, b) => (b.value ?? 0) - (a.value ?? 0)).slice(0, 8)
+        lines.push(`--- 伤害来源 top8：${top.map(r => `${r.label ?? '?'}=${Math.round(r.value ?? 0)}`).join(' | ')}`)
+      }
       lines.push(`--- 逐槽：账本 vs 物化行`)
       for (const c of rr.characters) {
         const rows = (c.executions ?? []).filter(e => isFrontlineExecution(e) && (e.totalTime ?? 0) > 0)

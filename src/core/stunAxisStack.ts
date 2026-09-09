@@ -128,6 +128,11 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
 
   const totalEnergy = Object.values(energyBySlot).reduce((a, b) => a + (b > 0 ? b : 0), 0)
   const totalDecibel = Object.values(decibelBySlot).reduce((a, b) => a + (b > 0 ? b : 0), 0)
+  // 每槽位剩余资源（门控用）。**口径（用户 2026-09-10 裁决 #3）**：预设动作只能「从本槽位总量拿取」，
+  // 不得跨槽挪用队伍总量、也不得反填总量——旧实现用 `decibelUsed/energyUsed` 累加对**队伍总量**
+  // 比较，等于让 A 槽的大招花掉 B 槽的喧响（与引擎「每槽按自身产出推导次数」两套逻辑混合）。
+  const energyLeft: Record<number, number> = { ...energyBySlot }
+  const decibelLeft: Record<number, number> = { ...decibelBySlot }
 
   const bump = (slot: number, moveId: string, count: number) => {
     const key = `${slot}:${moveId}`
@@ -176,16 +181,22 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         //（补弹刀 → decibelSource.total 变高，见 useResourceCalc 的 decibelParryNext），
         // 所以这里不需要「允许超支」——开关打开时总量本身就略微提升了。
         // 本文件头注释一直写的也是「不够就跳过」，此前实现与之不符。
-        if (act.decibelCost > 0 && decibelUsed + act.decibelCost > totalDecibel + 1e-9) {
+        if (act.decibelCost > 0 && (decibelLeft[act.slot] ?? 0) + 1e-9 < act.decibelCost) {
           skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'decibel' })
           continue
         }
-        if (act.energyCost > 0 && energyUsed + act.energyCost > totalEnergy + 1e-9) {
+        if (act.energyCost > 0 && (energyLeft[act.slot] ?? 0) + 1e-9 < act.energyCost) {
           skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'energy' })
           continue
         }
-        if (act.energyCost > 0) energyUsed += act.energyCost
-        if (act.decibelCost > 0) decibelUsed += act.decibelCost
+        if (act.energyCost > 0) {
+          energyLeft[act.slot] = (energyLeft[act.slot] ?? 0) - act.energyCost
+          energyUsed += act.energyCost
+        }
+        if (act.decibelCost > 0) {
+          decibelLeft[act.slot] = (decibelLeft[act.slot] ?? 0) - act.decibelCost
+          decibelUsed += act.decibelCost
+        }
         // 执行
         bump(act.slot, act.moveId, 1)
         slotTime[act.slot] = used + act.actionTime
