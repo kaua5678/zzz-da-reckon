@@ -85,9 +85,9 @@
           <span class="bd-detail">含德玛拉 {{ fmt(result.energySource.demaraCoverageSeconds, 1) }}s / {{ fmt(result.energySource.demaraCoverageRate * 100, 1) }}%</span>
         </div>
         <div class="breakdown-row">
-          <span class="bd-label">平A回复</span>
-          <span class="bd-value">{{ fmt(result.energySource.basicAttackRegen) }}</span>
-          <span class="bd-detail">平A时间 × 秒均回能</span>
+          <span class="bd-label">招式回复</span>
+          <span class="bd-value">{{ fmt(result.energySource.skillRegen) }}</span>
+          <span class="bd-detail">Σ 执行行行级回能（记账 == 展示）</span>
         </div>
         <div v-if="result.energySource.timeSliceEnergy > 0" class="breakdown-row">
           <span class="bd-label">时光切片</span>

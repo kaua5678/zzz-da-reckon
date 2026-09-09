@@ -280,13 +280,20 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     let cur = from
     for (iter = 0; iter < maxIter; iter++) {
       const newStates = iterate(configs, cur, config)
-      // 检查收敛：强特次数和大招次数是否稳定。伊德海莉连续松弛（阻尼实数次数）同样按
+      // 检查收敛：强特次数、大招次数与**平A时间**是否稳定。伊德海莉连续松弛（阻尼实数次数）同样按
       // 严格相等判稳——阻尼映射收敛到浮点不动点后逐位复现（热启动透明的前提）；ε 判据会留下
       // ~1e-12 残差，热启动会话与冷启动会话不再逐位一致（determinism.test 的失败机制）。
+      // bat 必须进判稳（2026-09-09，能量行级 Σ 暴露）：折叠边界的路径里预算收紧会让 bat 跳变而
+      // 次数暂时不动（实测雅 C2：input bat≈127 → output bat=50.1、ex 恒 22 → 旧判稳提前 clean，
+      // 停点的 energySource 快照仍是压缩前 bat 算的 585.8，终局行重放只有 307.5——驱动≠终局态的
+      // 伪不动点，把 C2 撑在高吸引子、C4 落自洽低吸引子 → 命座伤害非单调）。bat 是预算与次数的
+      // 确定性函数（次数+预算不变 ⇒ bat 逐位不变），进判稳只多跑折叠边界后的诚实重收敛，不引入浮点残差。
+      // @fact engine:判稳含平A时间 口径: 内环次数收敛判稳 = 强特/终结次数 + basicAttackTime 严格相等（bat 是预算与次数的确定性函数；折叠边界 bat 跳变而次数暂不动时旧判稳提前 clean，停点带「驱动快照 ≠ 终局态行重放」伪不动点——实测雅 C2 快照 585.8 vs 重放 307.5、命座伤害 C4<C2 非单调） | 据 实测@2026-09-09 能量行级Σ专项 | 验 src/mechanics/__tests__/miyabiCinema.test.ts | 锚 src/core/resource.ts#runInnerLoop | 信 确认
       let changed = false
       for (let i = 0; i < cur.length; i++) {
         if (newStates[i].exSpecialCount !== cur[i].exSpecialCount ||
-            newStates[i].ultimateCount !== cur[i].ultimateCount) {
+            newStates[i].ultimateCount !== cur[i].ultimateCount ||
+            newStates[i].basicAttackTime !== cur[i].basicAttackTime) {
           changed = true
           break
         }
@@ -536,14 +543,15 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       }
       return total
     }
-    /** 内层次数收敛（与折叠循环同一判据：强特/终结次数严格相等）；stable=false = 耗尽上限 */
+    /** 内层次数收敛（与折叠循环同一判据：强特/终结次数 + 平A时间严格相等，见 runInnerLoop 注释）；stable=false = 耗尽上限 */
     const convergeCounts = (from: IterationState[]) => {      let st = from
       for (let k = 0; k < maxIter; k++) {
         const next = iterate(configs, st, config)
         let changed = false
         for (let i = 0; i < st.length; i++) {
           if (next[i].exSpecialCount !== st[i].exSpecialCount
-            || next[i].ultimateCount !== st[i].ultimateCount) { changed = true; break }
+            || next[i].ultimateCount !== st[i].ultimateCount
+            || next[i].basicAttackTime !== st[i].basicAttackTime) { changed = true; break }
         }
         st = next
         if (!changed) return { states: st, stable: true }
@@ -634,7 +642,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         break
       }
     }
-    yCfg.yidhariFinalizeEx = false
+    // 旗标复位移到装配之后（2026-09-09，与 billyFinalizeChain 同款）：装配行必须仍按终局语义
+    // floor（yidhari 蓄力 cycles 迭代期实数松弛后，装配期靠本旗标取整数行），复位只服务于
+    // 「cfg 被外层不动点/热启动复用，下轮调用回到实数迭代期」。
     // 实数迭代期的 2-循环（次数↔喧响↔终结技阈值）被终局整数重推吸收：重推稳定的整数态
     // 就是终局不动点，收敛标志按重推结果报（重推 ≤3 轮未稳 = 不谎报收敛）。
     if (finalizeStable) converged = true
@@ -695,12 +705,18 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       cfg.luciaCurtainTriggerCount = curtainTriggers
     }
 
+    // Σ 队友前台秒（行级能量/喧响与装配 buildExecutions 同语义：不含自己）
+    const teammateFrontlineSeconds = configs.reduce(
+      (sum, _, j) => (j === i ? sum : sum + states[j].frontlineTime),
+      0,
+    )
+
     // 能量源 = iterate 驱动次数的快照（2026-09-03：展示与驱动同源，Δ 恒 0——
     // 曾各算各的：iterate 用上轮态、装配重算当前态，雅/莱卡恩 Δ=+55.5）。
     // 快照缺失（历史状态/热启动）才回退重算 + 跨角色回补。
     const energySrc = state.energySource
       ? { ...state.energySource }
-      : calcEnergySource(cfg, state, configs, config.shieldCount, config.energyShieldCount, chainCountTotal, config.totalTime)
+      : calcEnergySource(cfg, state, configs, config.shieldCount, config.energyShieldCount, chainCountTotal, config.totalTime, teammateFrontlineSeconds)
     if (!state.energySource) {
       const crossAgent = calcCrossAgentEnergy(i, configs, states)
       energySrc.crossAgent = crossAgent
@@ -721,10 +737,6 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       teammateShare += otherShareable * otherCfg.decibelShareRatio
     }
 
-    const teammateFrontlineSeconds = configs.reduce(
-      (sum, _, j) => (j === i ? sum : sum + states[j].frontlineTime),
-      0,
-    )
     // 诺姆影画4·膛温换连携喧响：次数 = floor(膛温/80)，直接调模块纯函数（不依赖 buildResourceResult 写入，
     // 避免把 buildResourceResult 提前改变 billy 等角色的 cfg 时序）
     const normaC4Decibel = (cfg.normaCinemaLevel ?? 0) >= 4 && cfg.agentId === '1571'
@@ -807,8 +819,10 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 都不再是溢出——只有真被砍掉的时间才是。消费方：TeamComparePage 操作难度横轴（1秒=1难度点）。
   config.overflowSeconds = timeTruncatedSeconds
 
-  // 比利终局旗标复位：cfg 对象被外层不动点/热启动复用，下轮调用必须回到实数迭代期
+  // 比利/伊德海莉终局旗标复位：cfg 对象被外层不动点/热启动复用，下轮调用必须回到实数迭代期
+  // （伊德海莉复位必须在装配之后：装配行按 finalizeEx=true floor 蓄力 cycles，见 buildYidhariExecutions）
   for (const cfg of configs) if (cfg.agentId === '1531') cfg.billyFinalizeChain = false
+  for (const cfg of configs) if (cfg.agentId === '1051') cfg.yidhariFinalizeEx = false
 
   // 终局预留量（供 applyLiuyinPromote 判定跳过 post-hoc carve；与 iterate Step4 同一求解）
   // ——与上方 giftTimeOfSlot 同源（同一 helper、同一轴模式条件），不重算。

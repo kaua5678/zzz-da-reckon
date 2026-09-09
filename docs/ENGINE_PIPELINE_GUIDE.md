@@ -536,7 +536,8 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
 23. **喧响账本改行级 Σ 的三个耦合坑（2026-09-08，`4a0d9b2`）**：`calcRawDecibelParts.skillRegen`
     不再是「次数×常量」聚合，而是 `Σ buildExecutions` 行的 `rowDecibelTotal`（记账层==展示层，与
     伤害/失衡/异常「倍率列逐行进账」同构；口径 `@fact engine:喧响收入行级Σ`，验 `decibelRowParity.test.ts`）。
-    能量侧同构迁移尚未做（`@debt 能量收入行级化`）。切换时三个坑**必须一起处理，缺一即红**：
+    能量侧同构迁移已完成（2026-09-09 两段式：债务清账 `07481b8` + Σ 切换，口径
+    `@fact engine:能量收入行级Σ`，验 `energyRowParity.test.ts`；债务条目已销号）。切换时三个坑**必须一起处理，缺一即红**：
     ① **相位隔离**——`buildExecutions` 里仍有多模块写 cfg 缓存字段（同调用内消费者）。
       2026-09-08 点名的 3 处 + 2026-09-09 实测追加的 4 处（格莉丝 C1/C4/脉冲/initialEnergyGift、
       叶瞬光 cycle）**已全部拆到 `materializePhaseState`**（引擎在物化调用点按同一 state 显式补写，

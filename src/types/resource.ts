@@ -74,8 +74,8 @@ export interface EnergySource {
   demaraCoverageSeconds: number
   /** 德玛拉电池II型覆盖率：覆盖秒数 / 战斗时间 */
   demaraCoverageRate: number
-  /** 战场平A回复：平A时间 × 秒均回能 */
-  basicAttackRegen: number
+  /** 招式回复（Σ 执行行的行级能量收入：rowEnergyTotal——平A聚合行载体 + 表值回填行 + 模块预计算行；记账 == 展示，DecibelSource.skillRegen 同构） */
+  skillRegen: number
   /** 时光切片触发回能：按闪反/强特/支援/连携触发次数结算 */
   timeSliceEnergy: number
   /** 真元奇枢受伤/回血触发回能：当前需资源轴提供触发次数，默认0 */
@@ -1276,6 +1276,13 @@ export interface CharacterOperationConfig {
    * （显式 0 = 模块禁用、缺省 = 表值、decibelRecoveryOverride = 模块覆盖），保证记账层 == 展示层。
    */
   decibelRecoveryByMoveId?: Record<string, number>
+  /**
+   * 倍率表 energy_recovery 按 moveId 预存表（与 decibelRecoveryByMoveId 同源同循环，含行级融合乘子）。
+   * 键存在 = 招式在倍率表中找到；值 = fusedRowValue ?? getRowValue(move,'energy_recovery')（无行为 0）。
+   * 能量收入行级化（Σ 切换）后，calcEnergySource 按此表复刻 enrichExecutionPlan 能量分支回填语义
+   * （显式 0 = 模块禁用、缺省 = 表值 || 行值），保证记账层 == 展示层。
+   */
+  energyRecoveryByMoveId?: Record<string, number>
   /** 终结技 move id */
   ultimateMoveId: string
   /** 终结技消耗喧响（全游戏统一3000，仅1个角色2000暂不纳入） */

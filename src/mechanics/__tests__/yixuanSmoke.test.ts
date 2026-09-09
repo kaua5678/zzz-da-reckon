@@ -126,12 +126,16 @@ describe('仪玄 spec 机制（1371）', () => {
     // 玄墨暗涌队友终结回闪能 80→0 → 总账 800→684、当量 13→11。
     // 2026-09-07 喧响收入修复：仪玄 shareable 1702→3788 → 队友伴随进窗够 3000 → 轨削减解除 [2,2]→[3,3]
     // 2026-09-08 行级账本：青衣喧响回落（行级真相），进窗不足 3000 → 轨削减青衣 [3,3]→[2,3]
-    expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([2, 3])
+    // 2026-09-09 能量收入行级 Σ：青衣模块预计算行（1251004/08/09，第一段审计 MODULE_VALUE，
+    // 旧聚合通道从不计行值）首次进账本 → 青衣强特↑ → 其行级喧响收入↑ → 队友进窗回到 3000
+    // 之上 → 轨削减解除 [2,3]→[3,3]
+    expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([3, 3])
     // 2026-09-03 用户裁决：能量总账/derived 的数值断言删除——计算器未定型前数值断言会
     // 钉死中间态（展示=内核同源不变式由 energyConsistency.test 承担）；玄墨回能字段断言语义保留。
     // 2026-09-07：队友大招 [2,2]→[3,3] → 队友终结闪能 80→120
     // 2026-09-08 行级账本：队友大招 [3,3]→[2,3] → 队友终结闪能 120→100（5×20）
-    expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(100)
+    // 2026-09-09 能量行级 Σ：队友大招 [2,3]→[3,3] → 队友终结闪能 100→120（6×20）
+    expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(120)
     const chain = yixuan.yixuanExChain!
     // 手填口径锁结构（轨 2026-08-31：income 随队友大招削减回落，cloudOut/flashSpent 为收敛值不锁数）
     expect(chain.ink1).toBe(3)
@@ -454,10 +458,14 @@ describe('仪玄 spec 机制（1371）', () => {
     // 1371020 行削到 8，而 po 行仍按模块 totalFuFaUlts=11 计——依赖行传播待轨专项
     // 2026-09-08 喧响账本行级化 + 环规范化停点：6命队 totalFuFaUlts 11→8（行级账本下
     // 大招/术法值收敛到新停点），轨削减不再介入 → po 与物化 1371020 行同值，旧不一致消失
+    // 2026-09-09 能量收入行级 Σ：术法值增益（闪能驱动）随账本微升 → shufaUlts 5→6 →
+    // 物化 1371020 总次数 8→9；po 行仍按模块相位 totalFuFaUlts=8——「轨/相位对物化行的
+    // 调整不回传 po」相位分裂再现（2026-09-07 同族，依赖行传播待轨专项），锁当前差值=1，
+    // 轨专项落地时连同本差值一起重裁。
     const po = yixuan.executions.find(e => e.moveId === '1371_fufa_po')
     expect(po).toBeTruthy()
     expect(po!.count).toBe(8)
-    expect(po!.count).toBeGreaterThanOrEqual(totalUlts)
+    expect(totalUlts - po!.count).toBe(1)
     expect(po!.damageMultiplier).toBe(1200)
     expect(po!.dazeMultiplier).toBe(374.055)
     expect(po!.decibelRecovery).toBe(62.3425)

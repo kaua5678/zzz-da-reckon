@@ -267,16 +267,19 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     return config
   }
 
-  it('无轴：默认能量全打怒相外论道连段（论道+狮吼怒各 9），无地动/山摇·怒行', async () => {
+  it('无轴：怒相内山威连段 8 + 怒相外自动连段 7（能量行级Σ后时间预算收窄），无地动/山摇·怒行', async () => {
     await setupTeam(null)
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 50))
     const rows = calc.damagePoolRows.value
-    // enrichExecutionPlan 会用倍率表名/note 覆盖来源标注 → 按 moveId + count 匹配（怒相外论道连段 = 9 组自动打满）
-    const lunDaoOut = rows.find(r => r.moveId === '1471015' && r.count === 9)
-    const shiZiHouNuOut = rows.find(r => r.moveId === '1471016' && r.count === 9)
-    expect(lunDaoOut).toBeDefined()
-    expect(shiZiHouNuOut).toBeDefined()
+    // 2026-09-09 能量收入行级 Σ（债务清偿级联）：琉音送客长按（1481009）表值回能进账本
+    // （skillRegen 0→41.0）→ 琉音强特 12→14 占走团队前台时间 → 般岳怒相外自动连段的
+    // 时间预算收窄：外 9→7 组；怒相内山威（8）与般岳自身闪能总账（620）不变。
+    // enrichExecutionPlan 会用倍率表名/note 覆盖来源标注 → 按 moveId 匹配（模块 push 序：山威内在前、怒相外在后）
+    const lunDao = rows.filter(r => r.moveId === '1471015').map(r => r.count)
+    const shiZiHouNu = rows.filter(r => r.moveId === '1471016').map(r => r.count)
+    expect(lunDao).toEqual([8, 7])
+    expect(shiZiHouNu).toEqual([8, 7])
     // 默认地动山摇连段 = 0 → 无地动/山摇·怒行
     expect(rows.some(r => r.moveId === '1471013' || r.moveId === '1471017')).toBe(false)
   })

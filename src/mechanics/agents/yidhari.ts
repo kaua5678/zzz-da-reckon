@@ -210,10 +210,18 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
   const cycleTime = chargeCycleTime(cfg as unknown as Record<string, unknown>)
 
   // 蓄力循环：把平A时间折算成 下砸(1051007) + 平A(1051003×1.3) 两个显式招式
+  // 迭代期 cycles 实数化（2026-09-09，能量收入行级 Σ 的耦合坑）：Σ 把 slam/follow 行值计入
+  // 账本后，「cycles→闪能→强特次数→必要时间→平A池→cycles」闭成反馈环，floor 整数阶梯在
+  // 循环边界（bat ≈ k×cycleTime）吸收不了 → 全状态精确 2-循环（实测 parry4/dodge10 格
+  // bat 26.79↔26.99、cycles 6↔7，同坑②丽娜振荡器家族）。按「实数松弛、终局才 floor」教义
+  // （yidhariContinuousEx 同款）：迭代期实数参与收敛，终局重推与装配（yidhariFinalizeEx=true，
+  // 复位已移到装配后）floor 一次——行 count 终局仍整数。
+  const relaxCycles = cfg.yidhariContinuousEx === true && cfg.yidhariFinalizeEx !== true
   const basicExec = executions.find(e => e.moveId === 'basic_attack')
   let cycles = 0
   if (basicExec && cycleTime > 0) {
-    cycles = Math.floor(Math.max(0, basicExec.totalTime) / cycleTime)
+    const rawCycles = Math.max(0, basicExec.totalTime) / cycleTime
+    cycles = relaxCycles ? rawCycles : Math.floor(rawCycles)
     // 蓄力时间保留为 basic_attack 行（烧血时间，无伤害/闪能/失衡/积蓄），让时间分配可见
     basicExec.totalTime = cycles * CHARGE_SECONDS
     basicExec.totalDecibelRecovery = 0

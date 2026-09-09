@@ -174,6 +174,8 @@ export function calcEnergySource(
   energyShieldCount: number,
   chainCountTotal = 0,
   totalTime = 180,
+  /** Σ 队友前台秒（行级能量 buildExecutions 需要，与装配层同语义：不含自己） */
+  teamFrontlineSeconds = 0,
 ): EnergySource {
   const p = cfg.panel
   const n = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : 0
@@ -207,17 +209,15 @@ export function calcEnergySource(
   const gainEfficiencyBonus = preEfficiencyAuto * normalGainEfficiency
     + averageAutoRate * demaraCoverageSeconds * demaraEfficiency
 
-  // 资源轴动作回复：目前按技能数据给出的秒均平A回能计算，暂不叠加自动回复公式的获得效率。
-  // debt: 能量收入行级化——同喧响的聚合近似（basicAttackRegenPerSec/各通道常量而非行值），
-  // 模块已校准常量故误差较小，但专属链角色同构风险。升级路径：随喧响行级化同一次账本重构迁移。
-  // 第一段已完成（2026-09-09 债务清账，喧响 5761e02 同构）：energyRecovery 类型可选化三态
-  // （undefined=交倍率表回填 / 显式 0=模块禁用回填），enrich 能量分支补 fusedRowValue 融合组优先；
-  // core 通用行 8 处 + 模块 24 处真债务硬零已删（运行时探针全角色审计定位，复跑验证归零）。
-  // 保留的 12 行显式 0 是衍生行口径——回能留在平A聚合行防双计：sigrid 平A分段×4、
-  // liuyin 猜拳强化A×4、nangong 地雷×2（以上从平A池只扣时间不扣回能）、jane 萨霍夫跳、alice 星仪序曲伴生行。
-  // 余下第二段 Σ 切换：calcEnergySource 聚合改 rowEnergyTotal 行级求和（rowDecibelTotal 同构，
-  // 相位隔离/环检测/NaN 免疫三件套复用）；裁决点：demara 面板效率口径、伊德海莉 refund 预计算行走保留通道。
-  const basicAttackRegen = state.basicAttackTime * cfg.basicAttackRegenPerSec
+  // 招式回复（行级 Σ，记账层 == 展示层，calcRawDecibelParts.skillRegen 同构，2026-09-09 债务清偿）。
+  // 旧「平A时间 × 秒均回能」聚合通道删除：平A聚合行 totalEnergyRecovery 本就是同一常量的载体
+  // （core buildExecutions：state.basicAttackTime × basicAttackRegenPerSec），恒等部分不变；差异全部
+  // 来自模块行与表值回填行——专属链角色行级能量曾系统性漏计（第一段清账后 89 行回填 + 模块预计算行，
+  // 如伊德海莉蓄力循环把平A载体置 0、由 slam/follow 行承载闪能，旧聚合按全额平A时间计 = 口径分裂）。
+  // 相位隔离复用 materializeRows（cfg 快照 + 恢复，喧响通道同款）；行值语义见 rowEnergyTotal。
+  // @fact engine:能量收入行级Σ 口径: skillRegen = Σ buildExecutions 行的行级能量收入（rowEnergyTotal，与喧响收入行级Σ 同构；记账层==展示层）。teamFrontlineSeconds 语义 == 装配层（Σ 队友前台秒）。已知残差：时间线截断（truncateExecutionsToFrontline）只作用于展示行，账本按截断前行计——与旧聚合通道及喧响 Σ 口径一致 | 据 债务审计 07481b8 + 引擎探针@2026-09-09 | 验 src/core/__tests__/energyRowParity.test.ts | 锚 src/core/resource/helpers.ts#rowEnergyTotal | 信 确认
+  const skillRegen = materializeRows(cfg, state, chainCountTotal, teamFrontlineSeconds)
+    .reduce((sum, row) => sum + rowEnergyTotal(cfg, row), 0)
 
   // 辅助大招回复由上层根据其他角色最终终结技次数补入。
   let supportUltimateRegen = 0
@@ -265,7 +265,7 @@ export function calcEnergySource(
 
   // 不含伊德海莉 refund 的固定源能量 E0（唯一来源：加一项固定源就补进这里，防两处漂移）
   const e0 = preEfficiencyAuto + gainEfficiencyBonus
-    + basicAttackRegen + supportUltimateRegen + timeSliceEnergy + zhenyuanEnergy
+    + skillRegen + supportUltimateRegen + timeSliceEnergy + zhenyuanEnergy
     + hatTrickEnergy
     + qingyiC4Energy
     + lycaonC2Energy
@@ -312,7 +312,7 @@ export function calcEnergySource(
     gainEfficiencyBonus,
     demaraCoverageSeconds,
     demaraCoverageRate,
-    basicAttackRegen,
+    skillRegen,
     timeSliceEnergy,
     zhenyuanEnergy,
     hatTrickEnergy,
@@ -453,6 +453,29 @@ function rowDecibelTotal(cfg: CharacterOperationConfig, row: SkillExecution): nu
     : row.decibelRecovery === 0
       ? 0
       : (finiteOr0(table[row.moveId]) || finiteOr0(row.decibelRecovery) || 0)
+  return finiteOr0(perCount * Math.max(0, finiteOr0(row.count)))
+}
+
+/**
+ * 行级能量收入——与 enrichExecutionPlan 的 energy 分支逐分支同语义（记账层 == 展示层，rowDecibelTotal 同构）：
+ * - basic_attack 行：时间通道原值（state.basicAttackTime × basicAttackRegenPerSec 的载体，enrich 不回填
+ *   其 energy，模块可改写 total——伊德海莉蓄力置 0、朱鸢以太弹 carve 按比例缩）；
+ * - moveId 在 cfg.energyRecoveryByMoveId（倍率表预存，键存在 = 表中找到）：
+ *   显式 0 = 模块禁用（衍生行口径保留：回能留在平A聚合行防双计——sigrid 平A分段/liuyin 猜拳/
+ *   nangong 地雷/jane 萨霍夫跳/alice 星仪序曲）；缺省 = 表值 || 行值 || 0（模块预计算行——
+ *   伊德海莉蓄力循环 slam/follow 闪能——表值 0 落行值）；总收入 = 单次值 × max(0,count)
+ *   （利用率缩放已在 count 里）；能量侧暂无口径冲突行（债务审计 MODULE_VALUE_DIFF=0），
+ *   不设 override 通道——将来出现洛克茜自旋式每秒口径再按 decibelRecoveryOverride 同构补。
+ * - 假 id / 表中未找到：行 total 原值（enrich 同分支不 patch energy）。
+ * - 非有限值防线：同 rowDecibelTotal（NaN 会毒化次数迭代并被环检测的 JSON 签名物化成 null）。
+ */
+function rowEnergyTotal(cfg: CharacterOperationConfig, row: SkillExecution): number {
+  if (row.moveId === 'basic_attack') return finiteOr0(row.totalEnergyRecovery)
+  const table = cfg.energyRecoveryByMoveId
+  if (!table || !Object.prototype.hasOwnProperty.call(table, row.moveId)) return finiteOr0(row.totalEnergyRecovery)
+  const perCount = row.energyRecovery === 0
+    ? 0
+    : (finiteOr0(table[row.moveId]) || finiteOr0(row.energyRecovery) || 0)
   return finiteOr0(perCount * Math.max(0, finiteOr0(row.count)))
 }
 
@@ -1196,7 +1219,10 @@ export function iterate(
     // 「展示明细含连携回能、次数推导不含」的口径分裂（derivedEnergy < energySource.total），
     // 见 CharacterResourceResult.derivedEnergy 注释。
     const chainCountInput = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * (globalCfg.stunCount ?? 0)
-    const energySrc = calcEnergySource(cfg, prev, configs, globalCfg.shieldCount, globalCfg.energyShieldCount, chainCountInput, globalCfg.totalTime)
+    // 行级能量/喧响 Σ 需要队友前台秒（与装配层 teammateFrontlineSeconds 同语义：Σ 其他人，迭代期取上一轮值，
+    // 收敛后与终局装配一致）
+    const teamFrontline = prevStates.reduce((sum, st, k) => (k === i ? sum : sum + (st.frontlineTime ?? 0)), 0)
+    const energySrc = calcEnergySource(cfg, prev, configs, globalCfg.shieldCount, globalCfg.energyShieldCount, chainCountInput, globalCfg.totalTime, teamFrontline)
     // 队友联动回能（单一事实源，与最终装配同函数）
     const crossAgent = calcCrossAgentEnergy(i, configs, prevStates)
     const totalEnergy = energySrc.total + crossAgent.total
@@ -1221,10 +1247,7 @@ export function iterate(
     const decibelExCount = cfg.agentId === '1051' && cfg.yidhariContinuousEx
       ? Math.floor(exSpecialCount)
       : exSpecialCount
-    // 行级喧响 Σ 需要队友前台秒（与装配层 teammateFrontlineSeconds 同语义：Σ 其他人，迭代期取上一轮值，
-    // 收敛后与终局装配一致）
-    const decibelTeamFrontline = prevStates.reduce((sum, st, k) => (k === i ? sum : sum + (st.frontlineTime ?? 0)), 0)
-    const rawDecibel = calcRawDecibelParts(cfg, prev, chainCountInput, decibelExCount, prev.ultimateCount, totalTime, decibelTeamFrontline)
+    const rawDecibel = calcRawDecibelParts(cfg, prev, chainCountInput, decibelExCount, prev.ultimateCount, totalTime, teamFrontline)
     shareableDecibels.push(rawDecibel.shareableTotal)
   }
 

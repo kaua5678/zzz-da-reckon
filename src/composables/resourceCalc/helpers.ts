@@ -1557,16 +1557,19 @@ export function buildCharConfig(
   const remielleRainbowEnd = findRemielleRainbowEnd(skills as AgentSkills)
   const remielleRadiantTurn = findRemielleRadiantTurn(skills as AgentSkills)
 
-  // 倍率表 decibel_recovery 全量预存（喧响收入行级化 Σ 切换的前置）：核心层 calcRawDecibelParts
-  // 无 catalog 访问权，按此表复刻 enrichExecutionPlan 回填语义（getRowValue 含行级融合乘子，
-  // 与展示层同一函数同一时刻取值，杜绝记账/展示两套表值）。
+  // 倍率表 decibel_recovery / energy_recovery 全量预存（喧响+能量收入行级化 Σ 切换的前置）：
+  // 核心层 calcRawDecibelParts / calcEnergySource 无 catalog 访问权，按此表复刻 enrichExecutionPlan
+  // 回填语义（getRowValue 含行级融合乘子，与展示层同一函数同一时刻取值，杜绝记账/展示两套表值）。
   const decibelRecoveryByMoveId: Record<string, number> = {}
+  const energyRecoveryByMoveId: Record<string, number> = {}
   for (const cat of (skills as AgentSkills | undefined)?.categories ?? []) {
     for (const m of cat.moves ?? []) {
       // 登记融合组的主段：喧响取「一次动作」的整段和（一次连携把各段的 fever_recovery 全打了，
       // 只回头段会把雅 230.15 记成 69.05）。兄弟段不单独成行（moveFusions 入表前提），无六计风险。
       decibelRecoveryByMoveId[String(m.id)]
         = fusedRowValue(skills as AgentSkills, String(m.id), 'decibel_recovery') ?? getRowValue(m, 'decibel_recovery')
+      energyRecoveryByMoveId[String(m.id)]
+        = fusedRowValue(skills as AgentSkills, String(m.id), 'energy_recovery') ?? getRowValue(m, 'energy_recovery')
     }
   }
 
@@ -1623,6 +1626,7 @@ export function buildCharConfig(
     exSpecialActionTime: exSpecial?.actionTime ?? 0,
     exSpecialDecibelRecovery: exSpecial?.decibelRecovery ?? 0,
     decibelRecoveryByMoveId,
+    energyRecoveryByMoveId,
     exSpecialComboAlignRatio: ov(exSpecial?.moveId ?? '', exSpecial?.comboAlignRatio ?? 0),
     ultimateMoveId: ultimate?.moveId ?? '',
     ultimateCost: ULTIMATE_COST_DEFAULT,
