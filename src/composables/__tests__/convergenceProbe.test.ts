@@ -174,6 +174,28 @@ describe.runIf(teamIds.length > 0)('探针：单队收敛报告口径', () => {
         const rs = byCall.get(k)!
         lines.push(`    ↳ #${k} 残差轨迹=[${rs.map(r => f(Number(r.maxExcess))).join(' → ')}] 判据停滞计数=[${rs.map(r => r.stagnant).join(',')}] conv=${rs[rs.length - 1]?.conv}`)
       }
+      // 逐槽账本明细（只打「被接受那次」= 报告读数所属调用的末轮三槽）
+      const gs = globalThis as unknown as { __foldSlots?: Record<string, number | string>[] }
+      const slots = (gs.__foldSlots ?? []).filter(s => Number(s.call) === traceMark - 1)
+      if (slots.length > 0) {
+        const last = slots.slice(-3)
+        lines.push(`    ↳ 逐槽（末轮）：${last.map(s => `槽${s.slot}(${s.agent}) 行=${f(Number(s.rows), 2)} 账本=${f(Number(s.nec) + Number(s.basic), 2)}(nec ${f(Number(s.nec), 2)}+basic ${f(Number(s.basic), 2)}) 差=${f(Number(s.excess), 2)}`).join(' | ')}`)
+      }
+      // 逐行明细（env PROBE_CONV_ROWS=1；只打缺口最大的槽 = 留白来源）
+      if (process.env.PROBE_CONV_ROWS === '1') {
+        const rrRows = calc.resourceResult.value
+        const worst = (rrRows?.characters ?? []).map(ch => ({
+          ch,
+          gap: (ch.executions ?? []).reduce((s, e) => s + Math.max(0, e.totalTime ?? 0) * (isFrontlineExecution(e) ? 1 : 0), 0)
+            - (ch.timeAllocation.necessaryTime + ch.timeAllocation.basicAttackTime),
+        })).sort((a, b) => a.gap - b.gap)[0]
+        if (worst?.ch) {
+          lines.push(`    ↳ 行明细 槽${worst.ch.slot}(${worst.ch.agentId}) ex=${worst.ch.exSpecialCount} ult=${worst.ch.ultimateCount} 账本nec=${f(worst.ch.timeAllocation.necessaryTime, 2)} basic=${f(worst.ch.timeAllocation.basicAttackTime, 2)}`)
+          for (const e of worst.ch.executions ?? []) {
+            lines.push(`       ${e.moveId} ×${f(e.count, 2)} 单次${f(e.actionTime, 3)} 计${f(e.totalTime, 2)} ${isFrontlineExecution(e) ? '前台' : '后台'}${e.source ? ` src=${e.source}` : ''}`)
+          }
+        }
+      }
     }
 
     const snapshot = (id: string, tag: string) => {
