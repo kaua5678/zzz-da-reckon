@@ -453,3 +453,106 @@ describe.runIf(process.env.PROBE_CONV_BALANCE_VALUE === '1')('探针：边际均
     console.log(lines.join('\n'))
   }, 900_000)
 })
+
+/**
+ * 分配规则证伪闸门（2026-09-10，用户口径）：击破位拿「刚好打满失衡次数」的量，其余全给主C。
+ * 做法：固定主C 权重=1、支援=0，**只扫击破位权重**，看 失衡次数 / 总伤 / 两槽平A时间 怎么变。
+ * 若「超过打满次数的击破位时间」确实一分不值（伤害不再上升），用户规则与伤害曲面同构。
+ *   PROBE_CONV_GRID=auto-1521-1361-1311,auto-1501-1511-1311 npx vitest run …convergenceProbe
+ */
+describe.runIf(!!process.env.PROBE_CONV_GRID)('探针：击破位时间扫描（分配规则闸门）', () => {
+  it('逐队扫击破位权重', async () => {
+    const ids = (process.env.PROBE_CONV_GRID ?? '').split(',').map(s => s.trim()).filter(Boolean)
+    const lines: string[] = []
+    for (const id of ids) {
+      const p = teamPresets.find(x => x.id === id)
+      if (!p) { lines.push(`### ${id} ← 预设未命中`); continue }
+      const { catalog } = await setupHarness(['', '', ''])
+      await catalog.loadBuildRecommendations()
+      const config = useConfigStore()
+      const calc = useResourceCalc()
+      lines.push(`\n---- ${id}（${p.name}）`)
+      for (const w1 of [0, 0.5, 1, 2, 4, 8]) {
+        for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+        config.applyTeamPreset(p.team as [string, string, string])
+        const base = [0, 1, 2].map(s => Number(config.team[s]?.basicAttackTimeWeight ?? 0))
+        for (const [s, w] of [[0, base[0] || 1], [1, w1], [2, 0]] as const) {
+          const slot = config.team[s] as { basicAttackTimeWeight?: number } | undefined
+          if (slot) slot.basicAttackTimeWeight = w
+        }
+        const rr = calc.resourceResult.value
+        const t = rr ? buildTeamTimeSummary({ rr, battleTime: rr.totalTime, invincibleTime: config.enemy.invincibleTime ?? 0, nameOf: (_a, s) => `槽${s}` }) : null
+        const stun = calc.stunPoolResult.value?.stunCount ?? 0
+        const dmg = calc.teamTotalDamage.value
+        const bat = (rr?.characters ?? []).map(c => c.timeAllocation.basicAttackTime)
+        lines.push(`  击破位权重=${w1} → 失衡 ${stun} 次 · 总伤 ${(dmg / 1e6).toFixed(1)}M · 留白 ${(t?.slack ?? 0).toFixed(2)}s · 平A 主C ${(bat[0] ?? 0).toFixed(1)}s / 击破 ${(bat[1] ?? 0).toFixed(1)}s / 支援 ${(bat[2] ?? 0).toFixed(1)}s`)
+      }
+    }
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'))
+  }, 900_000)
+})
+
+/**
+ * 静态分配规则的全库度量（2026-09-10，用户口径）：**伤害特化（强攻/异常/命破）拿平A池，其余为 0**。
+ * 依据：实测击破位平A=0 时失衡次数与给它时间时**相同**（`PROBE_CONV_GRID`：5=5、3=3）——
+ * 失衡值来自必做动作的 daze，不靠平A池；而现行默认给击破位 1（50/50）实测单队 −23.9%。
+ * 该规则是静态的（零运行时成本），故作为「烘预设」的合法替代候选（不是烘均衡值，而是烘规则）。
+ *   PROBE_CONV_RULE=1 npx vitest run src/composables/__tests__/convergenceProbe.test.ts
+ */
+describe.runIf(process.env.PROBE_CONV_RULE === '1')('探针：静态规则「只有伤害特化拿平A池」', () => {
+  it('逐队 默认 vs 规则', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const presets = teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3)
+    const damageSpecialty = new Set(['attack', 'anomaly'])
+    const isCarry = (id: string) => {
+      const sp = catalog.getAgent(id)?.specialty ?? ''
+      // 命破（rupture）也吃平A池；支援/防护/击破不吃
+      return damageSpecialty.has(sp) || sp === 'rupture'
+    }
+    const apply = (team: string[]) => {
+      for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
+      config.applyTeamPreset(team as [string, string, string])
+    }
+    let sumBase = 0
+    let sumRule = 0
+    let better = 0
+    let worse = 0
+    let stunChanged = 0
+    const rows: { id: string; base: number; rule: number; stunA: number; stunB: number }[] = []
+    for (const p of presets) {
+      apply(p.team as string[])
+      const dmgA = calc.teamTotalDamage.value
+      const stunA = calc.stunPoolResult.value?.stunCount ?? 0
+      const ruleWeights = p.team.map(id => (isCarry(id) ? 1 : 0))
+      for (let i = 0; i < 3; i++) {
+        const slot = config.team[i] as { basicAttackTimeWeight?: number } | undefined
+        if (slot) slot.basicAttackTimeWeight = ruleWeights[i]
+      }
+      const dmgB = calc.teamTotalDamage.value
+      const stunB = calc.stunPoolResult.value?.stunCount ?? 0
+      sumBase += dmgA
+      sumRule += dmgB
+      if (dmgB > dmgA + 1) better++
+      else if (dmgB < dmgA - 1) worse++
+      if (stunB !== stunA) stunChanged++
+      rows.push({ id: p.id, base: dmgA, rule: dmgB, stunA, stunB })
+    }
+    const byDelta = [...rows].sort((x, y) => (y.rule - y.base) - (x.rule - x.base))
+    const lines = [
+      `预设数 ${rows.length}`,
+      `团队总伤合计：默认 ${(sumBase / 1e6).toFixed(0)}M → 规则「只有伤害特化拿池」 ${(sumRule / 1e6).toFixed(0)}M（${((sumRule / Math.max(1, sumBase) - 1) * 100).toFixed(2)}%）`,
+      `提升 ${better} 队 · 变差 ${worse} 队 · 失衡次数发生变化的队数 ${stunChanged}`,
+      '增益 top8：',
+      ...byDelta.slice(0, 8).map(r => `  ${r.id} ${(r.base / 1e6).toFixed(1)}M → ${(r.rule / 1e6).toFixed(1)}M（${((r.rule / Math.max(1, r.base) - 1) * 100).toFixed(1)}%）失衡 ${r.stunA}→${r.stunB}`),
+      '损失 top5：',
+      ...[...rows].sort((x, y) => (x.rule - x.base) - (y.rule - y.base)).slice(0, 5)
+        .map(r => `  ${r.id} ${(r.base / 1e6).toFixed(1)}M → ${(r.rule / 1e6).toFixed(1)}M（${((r.rule / Math.max(1, r.base) - 1) * 100).toFixed(1)}%）失衡 ${r.stunA}→${r.stunB}`),
+    ]
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'))
+  }, 900_000)
+})
