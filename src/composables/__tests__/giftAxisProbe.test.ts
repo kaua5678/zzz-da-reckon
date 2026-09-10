@@ -51,7 +51,7 @@ describe.runIf(active)('探针：琉音赠大跨层对账', () => {
       })
       lines.push(`\n================ ${id}${preset ? `（${preset.name}）` : ''}`)
       lines.push(`队伍 ${(preset ? preset.team : [soloId]).join('/')} · 失衡 ${sp?.stunCount ?? 0} 次 · 窗口 ${f(calc.windowDuration.value)}s · 战斗 ${rr.totalTime}s`)
-      lines.push(`留白 ${f(summary.slack)}s · 超预算 ${f(Math.max(0, -summary.slack))}s · outerExit=${rr.convergence?.outerExit ?? '—'} · tbConv=${rr.convergence?.timeBudgetConverged}`)
+      lines.push(`留白 ${f(summary.slack)}s · 超预算 ${f(Math.max(0, -summary.slack))}s · outerExit=${rr.convergence?.outerExit ?? '—'} · tbConv=${rr.convergence?.timeBudgetConverged} · axisFallback=${rr.convergence?.axisFallback ?? '—'} · 轴栈非空=${calc.stackTraversalResult.value != null}`)
       lines.push(`liuyinGiftTimeReserved=${rr.liuyinGiftTimeReserved ?? 0}（引擎账本侧预留；轴模式=0 表示未预留）`)
       const axisPromote = calc.resourceConfig.value?.axisLiuyinPromote
       const giftRowsAll = rr.characters.flatMap(c => (c.executions ?? [])
@@ -59,6 +59,7 @@ describe.runIf(active)('探针：琉音赠大跨层对账', () => {
         .map(e => ({ slot: c.slot, moveId: e.moveId, count: e.count, time: e.totalTime ?? 0 })))
       lines.push(`试探/账本侧轴赠大计数=${axisPromote ? `${axisPromote.count}@槽${axisPromote.targetSlot}` : '—'} · 装配侧赠行=${giftRowsAll.map(g => `槽${g.slot}:${g.moveId}×${g.count}@${f(g.time)}`).join(' | ') || '无'}`)
 
+      lines.push(`轴态：autoActive=${calc.autoActive.value} autoPreset=${calc.autoPreset.value?.name ?? '—'} 手动轴=${config.useStunAxis} 方案名=${calc.matchedPlanName.value ?? '—'}`)
       lines.push(`--- 轴栈（core/stunAxisStack）`)
       const axes = calc.effectiveStunAxes.value ?? []
       lines.push(`  轴预设：${axes.length ? axes.map(a => `${a.name}[${a.actions.map(x => `${x.slot}:${x.moveId}×${x.count}${x.promoteVariant ? `(${x.promoteVariant})` : ''}${x.startTime ? `@${x.startTime}` : ''}`).join(' ')}]`).join(' || ') : '（无）'}`)

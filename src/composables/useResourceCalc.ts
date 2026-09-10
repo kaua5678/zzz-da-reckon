@@ -693,10 +693,40 @@ export function useResourceCalc() {
       axisOverlapSeconds = overlapStack.overlapSeconds
       axisOverlapByAction = overlapStack.overlapByAction
     }
+    // 轴内**实际执行**集合（资源门控后）= `axisActionCounts` / `axisUltimateTotal` 的**唯一来源**
+    // （用户 2026-09-10 裁决「同一物理量只能有一份实现」）。资源用**上一轮**收敛值（与其它线程
+    // 同款滞后注入）；首轮为空 = 门控放行全部，等价旧的「块数 × 窗口数」口径。
+    let axisExecutedStack: ReturnType<typeof calcStunAxisStack> | null = null
+    if (axisActive) {
+      axisExecutedStack = calcStunAxisStack({
+        axes: buildStackAxes(resolvedAxes),
+        stunCount,
+        windowDuration: computeWindowDuration(),
+        energyBySlot: prevEnergyBySlot ?? {},
+        decibelBySlot: prevDecibelRegenBySlot ?? {},
+      })
+      // 终结技总次数（供希希芙影画2 等）：按实际执行集合重算（含赠送块，与旧口径一致）
+      for (const k of Object.keys(axisUltimateTotal)) delete axisUltimateTotal[Number(k)]
+      const ultMoveOfSlot = new Map<number, string>()
+      for (const c of base.characters) ultMoveOfSlot.set(c.slot, c.ultimateMoveId ?? '')
+      for (const v of Object.values(axisExecutedStack.executed)) {
+        if (ultMoveOfSlot.get(v.slot) === v.moveId) {
+          axisUltimateTotal[v.slot] = (axisUltimateTotal[v.slot] ?? 0) + v.count
+        }
+      }
+    }
     // 把当前失衡次数/覆盖率/战斗时间传给角色配置（诺姆火力实验导弹舱、炮塔全程射击依赖）
-    // 各槽位轴内捏块总次数（块数×窗口数）：通用注入用（般岳分支与下方 merged 均取同一来源）
+    // 各槽位轴内捏块总次数：优先取栈的实际执行集合（般岳分支与下方 merged 均取同一来源）
     const axisActionCountsBySlot: Record<number, Record<string, number>> = {}
-    for (const c of base.characters) axisActionCountsBySlot[c.slot] = computeBanyueAxisExFor(c.slot)
+    if (axisExecutedStack) {
+      for (const c of base.characters) axisActionCountsBySlot[c.slot] = {}
+      for (const v of Object.values(axisExecutedStack.executed)) {
+        const m = axisActionCountsBySlot[v.slot] ?? (axisActionCountsBySlot[v.slot] = {})
+        m[v.moveId] = (m[v.moveId] ?? 0) + v.count
+      }
+    } else {
+      for (const c of base.characters) axisActionCountsBySlot[c.slot] = computeBanyueAxisExFor(c.slot)
+    }
     const characters = base.characters.map(cfg => {
       // 轴模式：连携总次数完全由轴决定（未列连携块的槽位 = 0 次，轴即最终次数）
       const chainOverride = axisActive
@@ -814,7 +844,7 @@ export function useResourceCalc() {
       }
       if (merged.agentId === '1471') {
         // 般岳：轴内捏的强特/连段块 → 次数反馈给模块（先扣闪能，剩余自动补连段）；轴模式地动滑块归 0
-        const banyueAxisEx = computeBanyueAxisExFor(cfg.slot)
+        const banyueAxisEx = axisActionCountsBySlot[cfg.slot] ?? {}
         // 轴模式自动补齐（保底）：在用户输入之上补弹刀/双反，确保轴内怒相/终结技资源足够；
         // 只注入本轮 cfg（不写回 store），模块嗔火循环/执行计划用有效次数，资源卡片可展示补齐量
         const topUp = autoTopUp && cfg.slot === banyueSlot ? prevBanyueTopUp : { parry: 0, dual: 0 }
@@ -1141,7 +1171,7 @@ export function useResourceCalc() {
         blockCount: storeChar?.blockCount ?? 0,
         dualCounterCount: storeChar?.dualCounterCount ?? 0,
         cinemaLevel: storeChar?.cinemaLevel ?? 0,
-        axisEx: computeBanyueAxisExFor(banyueSlot),
+        axisEx: axisActionCountsBySlot[banyueSlot] ?? {},
         ultimateCountNeeded: Math.max(ultNeed, guaranteeUltimate ? 4 : 0),
         minRageCount: guaranteeFury ? 4 : 0,
         ultimateCost: base.characters[banyueSlot]?.ultimateCost ?? ULTIMATE_COST_DEFAULT,
