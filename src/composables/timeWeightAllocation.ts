@@ -93,10 +93,18 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     } else if (w.note) {
       notes.push(w.note)
     }
-    // ② 弹刀阶梯：±step 坐标上升，接受条件 = 伤害上升 **且** 仍可行；最多 3 轮（成本上界）
+    // ② 弹刀阶梯：±step 坐标上升，接受条件 = 伤害上升 **且** 仍可行 **且** 不低于 boss 预设的强制次数；
+    // 最多 3 轮（成本上界）。允许**减少**交互（用户口径：「计算器里弹刀是自我选择的语境，可以根据收益抉择。
+    // 允许减少交互，因为有时候主c的平a比队友弹刀好用」），但**下限 = boss 预设强制完成的次数**
+    // （用户口径：「不能降低到boss预设的最低次数，因为boss预设的次数是强制完成的」）。
+    // 与 `core/parrySplit.ts` 同源：`parryTotal` = 正常弹刀总次数（叶释渊 13 等），由 boss 预设声明；
+    // `parryNoFollowUpTotal` 是另一类（无支援突击）且 split 已强制归击破位，不并进本下限。
     let best = calc.teamTotalDamage.value
     const STEP = 2
     const MAX_ROUNDS = 3
+    const minParryTotal = Math.max(0, Number(configStore.appliedBoss?.parryTotal ?? 0))
+    const totalParries = () => [0, 1, 2].reduce((acc, i) => acc + Math.max(0, Number(configStore.team[i]?.parryCount ?? 0)), 0)
+    let floorBlocked = false
     for (let round = 0; round < MAX_ROUNDS; round++) {
       let improved = false
       for (let slot = 0; slot < 3; slot++) {
@@ -104,6 +112,7 @@ export const jointLeverStrategy: TimeWeightStrategy = {
           const cur = Math.max(0, Number(configStore.team[slot]?.parryCount ?? 0))
           const next = Math.max(0, Math.min(99, cur + dir))
           if (next === cur) continue
+          if (dir < 0 && totalParries() + dir < minParryTotal) { floorBlocked = true; continue } // 强制次数下限
           configStore.setParryCount(slot, next)
           const dmg = calc.teamTotalDamage.value
           if (!feasible() || dmg <= best + 1e-6) {
@@ -115,6 +124,9 @@ export const jointLeverStrategy: TimeWeightStrategy = {
         }
       }
       if (!improved) break
+    }
+    if (floorBlocked) {
+      notes.push(`弹刀下调被挡在 boss 预设强制次数（parryTotal=${minParryTotal}）`)
     }
     const parryAfter = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.parryCount ?? 0)))
     const parryMoved = parryAfter.some((v, i) => v !== parryBefore[i])

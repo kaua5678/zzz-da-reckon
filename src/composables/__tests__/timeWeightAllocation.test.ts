@@ -146,6 +146,38 @@ describe('平A池权重·分配策略', () => {
     expect(r.note ?? '').toContain('已超时')
   })
 
+  it('⑧ 弹刀下限 = boss 预设强制次数（parryTotal），搜索不得下调到它以下', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const p = teamPresets.find(x => x.id === 'auto-1521-1361-1311')!
+    for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+    config.applyTeamPreset(p.team as [string, string, string])
+    // 合成一个 boss 预设：13 次正常弹刀（同叶释渊 defaults.parryTotal）
+    config.applyBossPreset(
+      { id: 'test-boss' },
+      {
+        phaseId: 'p1', hp: 1e6, stunValue: 15000, defense: 0, level: 60,
+        bossAnomalyCoeff: 1, damageResistances: {}, stunResistances: {}, anomalyResistances: {},
+      },
+      { stunVuln: 1, stunTime: 16 },
+      { battleTime: 180, shieldCount: 0, energyShield: 0, parryTotal: 13 },
+    )
+    expect(config.appliedBoss?.parryTotal).toBe(13)
+    // 输入刻意**高于**强制次数（主C 8 + 击破 8 = 16 > 13）→ 搜索可以下调，但不得低于 13。
+    // 注：低于下限的部分由 `core/parrySplit.ts` 负责补齐（单一事实源），本策略只承诺「不下调越过它」。
+    config.setParryCount(0, 8)
+    config.setParryCount(1, 8)
+    config.setParryCount(2, 0)
+    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    const total = [0, 1, 2].reduce((a, s) => a + config.team[s]!.parryCount, 0)
+    expect(total, '搜索不得把弹刀总数压到 boss 预设强制次数以下').toBeGreaterThanOrEqual(13)
+    if (total < 16) {
+      expect(r.note ?? '', '下调到下限时须如实说明是 boss 预设强制次数挡住的').toContain('强制次数')
+    }
+  })
+
   it('注册表契约：默认策略在表内、id 唯一（扩展点）', () => {
     expect(TIME_WEIGHT_STRATEGIES.length).toBeGreaterThan(0)
     expect(getTimeWeightStrategy(DEFAULT_TIME_WEIGHT_STRATEGY_ID).id).toBe(DEFAULT_TIME_WEIGHT_STRATEGY_ID)

@@ -730,6 +730,14 @@ describe.runIf(process.env.PROBE_CONV_JOINT === '1')('探针：联合杠杆策�
     for (const p of presets) {
       for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
       config.applyTeamPreset(p.team as [string, string, string])
+      // 可选：模拟「已应用 boss 预设」的强制弹刀托底（PROBE_CONV_BOSS_PARRY=13 = 叶释渊那种量级），
+      // 只置 appliedBoss（不动敌人面板），以隔离「弹刀下限」对收益的影响。
+      const bossParry = Number(process.env.PROBE_CONV_BOSS_PARRY ?? 0)
+      if (bossParry > 0) {
+        config.appliedBoss = { presetId: 'probe', phaseId: 'p', at: Date.now(), parryTotal: bossParry }
+      } else {
+        config.appliedBoss = null
+      }
       const dmgA = calc.teamTotalDamage.value
       const stunA = calc.stunPoolResult.value?.stunCount ?? 0
       const parryA = [0, 1, 2].map(s => config.team[s]!.parryCount).join('/')
