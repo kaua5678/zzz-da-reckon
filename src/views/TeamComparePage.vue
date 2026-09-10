@@ -311,6 +311,8 @@
         只列<b>「多了一次」量级</b>的跃迁（Δ ≥ 1）：多放一次大招/强特/连携、多一次失衡/紊乱/乱流，
         以及角色专属次数（如克拉蕾·毁伤触发、希希芙·蛇影层数来源）。引擎次数常带小数（覆盖率折算、外层不动点），
         +0.1 这类微调不列——鼠标放到曲线点上，tooltip 里能看到该档的<b>全部</b>增量。
+        括号里的「终结技系 Δ」是<b>同档同类伤害行一起变了多少，不是因果</b>（伤害同时受权重/易伤/覆盖率影响）；
+        「伤害归因」列才是这一档总 Δ 的精确拆分（Σ 分组 ≡ 该档伤害）。
       </div>
       <div class="detail-table-wrap">
         <table class="detail-table">
@@ -387,7 +389,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS } from '@/composables/teamCompare'
-import { attributeDmgChanges, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
+import { attributeDmgChanges, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
@@ -808,6 +810,15 @@ function cntDelta(c: KeyCountChange): string {
 function cntRange(c: KeyCountChange): string {
   return `${c.label} ${cntNum(c.from)}→${cntNum(c.to)}`
 }
+/**
+ * 关键变化文案（同档同类来源对照）：`大招 7→8（终结技系 Δ +78.00万）`。
+ * **不是因果声明**——只是这一档里同类伤害行一起变了多少（见 linkCountToDmg 头注释）。
+ */
+function cntRangeWithDmg(c: KeyCountChange, dmgChanges: { label: string; delta: number }[]): string {
+  const link = linkCountToDmg(c.label, dmgChanges)
+  return `${cntRange(c)}${link ? `（${link.label} Δ ${signedDmg(link.delta)}）` : ''}`
+}
+
 /** 伤害增量带符号：`+683.00万` / `−12.00万` */
 function signedDmg(v: number): string {
   return `${v >= 0 ? '+' : '−'}${compact(Math.abs(v))}`
@@ -836,7 +847,7 @@ const curveJumpRows = computed(() =>
       dmg: j.dmg,
       ratio: j.ratio,
       opened: j.opened,
-      text: j.changes.map(cntRange).join('、'),
+      text: j.changes.map(c => cntRangeWithDmg(c, j.dmgChanges)).join('、'),
       attr: attributeDmgChanges(j.dmgChanges),
     })),
   ),
@@ -878,7 +889,7 @@ const curveHoverTips = computed(() => {
       : '本档无伤害变化（全关起点）',
     band,
     major.length > 0
-      ? `跃迁：${major.map(cntRange).join('、')}${minor > 0 ? `（另有 ${minor} 项小数级微调）` : ''}`
+      ? `跃迁：${major.map(c => cntRangeWithDmg(c, point.dmgChanges)).join('、')}${minor > 0 ? `（另有 ${minor} 项小数级微调）` : ''}`
       : (minor > 0 ? `仅小数级微调 ${point.changes.map(cntRange).join('、')}` : '本档无次数变化'),
     s.flat ? '四目标均无增益 ⇒ 无优化空间' : `累计录取 ${s.opened.map(goalLabel).join(' → ')}`,
   ]

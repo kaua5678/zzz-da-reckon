@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
-  attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource, diffKeyCounts, majorChanges,
+  attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource, diffKeyCounts, linkCountToDmg, majorChanges,
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
 import type { LadderResult } from '@/composables/difficultyLadder'
@@ -155,6 +155,21 @@ describe('伤害归因（这一档 +N 伤害是谁贡献的）', () => {
     expect(d[0]!.delta).toBe(60)
     expect(d[2]!.delta).toBe(-30)
     expect(d.some(c => c.label === '普通攻击')).toBe(false) // 1e-9 噪声
+  })
+
+  it('次数 ↔ 同类来源对照：按前缀/类型聚合同类伤害 Δ；无对应类别返回 null', () => {
+    const dmg = diffDmgBySource(
+      { '终结技：爬行恐惧': 10, '连携技：团伙作案': 5, '普通攻击（平A汇总）': 100, '乱流': 0 },
+      { '终结技：爬行恐惧': 18.6, '连携技：团伙作案': 5.2, '普通攻击（平A汇总）': 95, '乱流': 3 },
+    )
+    expect(linkCountToDmg('大招', dmg)).toMatchObject({ label: '终结技系' })
+    expect(linkCountToDmg('大招', dmg)!.delta).toBeCloseTo(8.6, 6)
+    expect(linkCountToDmg('连携', dmg)!.delta).toBeCloseTo(0.2, 6)
+    expect(linkCountToDmg('乱流', dmg)!.delta).toBeCloseTo(3, 6)
+    // 「被挤掉」的平A也照样进对照（它是同类伤害行的净变化，不做因果声明）
+    expect(linkCountToDmg('强特', dmg)).toBeNull()   // 没有强化特殊技行
+    expect(linkCountToDmg('失衡', dmg)).toBeNull()   // 失衡没有对应伤害行（它是易伤窗口）
+    expect(linkCountToDmg('克拉蕾·毁伤触发', dmg)).toBeNull() // 角色专属项不猜
   })
 
   it('摘要：正贡献取 top、被挤掉取**最负的**在前，且三段合计 ≡ 总 Δ（不漏账）', () => {

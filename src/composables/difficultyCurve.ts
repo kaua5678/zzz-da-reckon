@@ -144,6 +144,35 @@ export function diffDmgBySource(
   return out.sort((a, b) => b.delta - a.delta)
 }
 
+/**
+ * 次数 ↔ 伤害来源的**同类对照表**（`大招` 那一档看终结技系伤害变化了多少）。
+ *
+ * ⚠️ 这是**同档同类来源 Δ，不是因果声明**：一处次数跃迁与同类伤害行在同一档一起变，
+ * 但伤害同时受权重/易伤/覆盖率影响。所以展示端一律写成「终结技系 Δ +x」而不是「因为大招+1 所以 +x」。
+ * 匹配口径沿用仓库既有约定（`ResourceResultCard#ACTION_ROW_DEFS` 也是按这些招式名前缀分类）。
+ */
+const COUNT_DMG_CATEGORY: { count: string; label: string; match: (src: string) => boolean }[] = [
+  { count: '大招', label: '终结技系', match: s => s.includes('终结技') },
+  { count: '强特', label: '强化特殊技系', match: s => s.includes('强化特殊技') },
+  { count: '连携', label: '连携技系', match: s => s.includes('连携技') },
+  { count: '紊乱', label: '紊乱', match: s => s === '紊乱' || s === '极性紊乱' },
+  { count: '乱流', label: '乱流', match: s => s === '乱流' },
+]
+
+export interface CountDmgLink {
+  /** 同类来源的展示名（如 `终结技系`） */
+  label: string
+  delta: number
+}
+
+/** 给一处次数跃迁找**同档同类来源**的伤害 Δ；没有对应类别（失衡/异常触发/角色专属）返回 null */
+export function linkCountToDmg(countLabel: string, dmgChanges: DmgSourceChange[]): CountDmgLink | null {
+  const def = COUNT_DMG_CATEGORY.find(d => d.count === countLabel)
+  if (!def) return null
+  const delta = dmgChanges.filter(c => def.match(c.label)).reduce((s, c) => s + c.delta, 0)
+  return Math.abs(delta) > 1e-6 ? { label: def.label, delta } : null
+}
+
 export interface DmgAttribution {
   /** 正贡献 top N（按 Δ 降序） */
   top: DmgSourceChange[]

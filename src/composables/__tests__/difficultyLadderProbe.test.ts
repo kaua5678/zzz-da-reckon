@@ -19,7 +19,7 @@ import { describe, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
-import { attributeDmgChanges, buildCurveChart, computeDifficultyCurves, type CurveDatum } from '@/composables/difficultyCurve'
+import { attributeDmgChanges, buildCurveChart, computeDifficultyCurves, linkCountToDmg, type CurveDatum } from '@/composables/difficultyCurve'
 import { summarizeLadder } from '@/composables/difficultyLadder'
 import type { BossPreset, BossPresetFile, BossPresetPhase } from '@/types/bossPreset'
 
@@ -72,12 +72,15 @@ function signedM(v: number): string {
   return `${v >= 0 ? '+' : ''}${(v / 1e6).toFixed(2)}M`
 }
 
-/** 把曲线点上的跃迁压成一行：`难度3: 大招 2→3、紊乱 1→2` */
-function describeCountChanges(points: { cost: number; changes: { label: string; from: number; to: number }[] }[]): string {
+/** 把曲线点上的跃迁压成一行：`难度3: 大招 2→3（终结技系 +0.78M）、紊乱 1→2` */
+function describeCountChanges(points: CurveDatum[]): string {
   const steps = points
     .slice(1)
     .filter(p => p.changes.length > 0)
-    .map(p => `难度${p.cost}: ${p.changes.map(c => `${c.label} ${c.from}→${c.to}`).join('、')}`)
+    .map(p => `难度${p.cost}: ${p.changes.map(c => {
+      const link = linkCountToDmg(c.label, p.dmgChanges)
+      return `${c.label} ${c.from}→${c.to}${link ? `（${link.label} ${signedM(link.delta)}）` : ''}`
+    }).join('、')}`)
   return steps.length > 0 ? steps.join(' | ') : '(无关键次数跃迁)'
 }
 
