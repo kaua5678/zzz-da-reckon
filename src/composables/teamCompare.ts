@@ -656,7 +656,7 @@ export function computeOptimalGoldAllocations(
 
 // ========== 现场快照 / 恢复 ==========
 
-interface StoreSnapshot {
+export interface StoreSnapshot {
   team: CharacterConfig[]
   enemy: EnemyConfig
   appliedBoss: ReturnType<typeof useConfigStore>['appliedBoss']
@@ -666,7 +666,7 @@ interface StoreSnapshot {
   globalBuffs: unknown[]
 }
 
-function snapshotStore(configStore: ReturnType<typeof useConfigStore>): StoreSnapshot {
+export function snapshotStore(configStore: ReturnType<typeof useConfigStore>): StoreSnapshot {
   return {
     team: JSON.parse(JSON.stringify(configStore.team)),
     enemy: JSON.parse(JSON.stringify(configStore.enemy)),
@@ -678,7 +678,7 @@ function snapshotStore(configStore: ReturnType<typeof useConfigStore>): StoreSna
   }
 }
 
-function restoreStore(configStore: ReturnType<typeof useConfigStore>, snap: StoreSnapshot) {
+export function restoreStore(configStore: ReturnType<typeof useConfigStore>, snap: StoreSnapshot) {
   configStore.team.splice(0, configStore.team.length, ...snap.team)
   configStore.setEnemy(snap.enemy)
   configStore.appliedBoss = snap.appliedBoss
@@ -731,8 +731,12 @@ function pickBestBuff(
   return best
 }
 
-/** 换人 + 音擎 + 驱动盘 + 连携/平A 权重 + 交互参数（队伍级，每 preset 一次） */
-function applyTeamToStore(configStore: ReturnType<typeof useConfigStore>, preset: TeamPreset) {
+/**
+ * 换人 + 音擎 + 驱动盘 + 连携/平A 权重 + 交互参数（队伍级，每 preset 一次）。
+ * **难度曲线的「全关」基线也用它**（`difficultyCurve.ts`）：曲线必须与散点同口径
+ * （预设声明的静态权重/交互，而不是 `setAgent` 的 agent 默认值），见该文件头。
+ */
+export function applyTeamToStore(configStore: ReturnType<typeof useConfigStore>, preset: TeamPreset) {
   for (let slot = 0; slot < 3; slot++) {
     configStore.setAgent(slot, preset.team[slot])
     if (preset.wEngines?.[slot]) configStore.setWEngine(slot, preset.wEngines[slot])

@@ -3,6 +3,13 @@
     <!-- 控制面板 -->
     <n-card size="small" :bordered="true">
       <div class="compare-controls">
+        <div class="ctl-field" title="散点 = 各队在各金数档的一个点；难度曲线 = 每队自己的贪心优化路径（x 是累积难度代价，各队不对齐是特性，看形状不看同一 x）">
+          <span class="ctl-label">图型</span>
+          <n-radio-group v-model:value="chartMode" size="small">
+            <n-radio-button value="scatter">散点</n-radio-button>
+            <n-radio-button value="curve">难度曲线</n-radio-button>
+          </n-radio-group>
+        </div>
         <div class="ctl-field">
           <span class="ctl-label">期数</span>
           <n-select
@@ -62,6 +69,8 @@
             clearable
           />
         </div>
+        <!-- 以下旋钮只服务散点（曲线口径固定为「预设基础档 + 当前 Boss」，见 difficultyCurve.ts 文件头） -->
+        <template v-if="chartMode === 'scatter'">
         <div class="ctl-field">
           <span class="ctl-label">限定金</span>
           <n-input-number v-model:value="goldMin" size="small" :min="0" :max="20" style="width: 70px" />
@@ -122,7 +131,11 @@
             </div>
           </n-popover>
         </div>
-        <n-button type="primary" size="small" :loading="computing" @click="runCompare">计算</n-button>
+        </template>
+        <n-button type="primary" size="small" :loading="computing" @click="chartMode === 'scatter' ? runCompare() : runCurves()">
+          {{ chartMode === 'scatter' ? '计算' : '计算曲线' }}
+        </n-button>
+        <n-button v-if="chartMode === 'curve' && computing" size="small" @click="curveAbort = true">中止</n-button>
       </div>
 
       <!-- 进度 -->
@@ -131,8 +144,13 @@
         <span class="progress-text">{{ progress.text }}</span>
       </div>
 
-      <div v-if="!computing && points.length > 0" class="compare-note">
+      <div v-if="!computing && chartMode === 'scatter' && points.length > 0" class="compare-note">
         共 {{ points.length }} 个点 · 纵轴 = 伤害/血量%（100% 击杀线）· 横轴 = 操作难度（交互加权和 + 合轴溢出秒，权重可在「难度权重」调）· 点半径 = 限定金
+      </div>
+
+      <div v-if="!computing && chartMode === 'curve'" class="compare-note">
+        已选 {{ selectedPresets.length }} 队 · 每队要跑 ~10 次全量伤害（约 3~4 秒/队 ⇒ 预计 ≈{{ fmt(selectedPresets.length * 3.4 / 60, 1) }} 分钟）——
+        曲线模式建议只选几支队做「难易强度」对比，跑起来可点「中止」保留已算部分。
       </div>
 
       <div v-if="teamPresets.length === 0" class="empty-hint">
@@ -153,7 +171,7 @@
     </n-card>
 
     <!-- 散点图 -->
-    <n-card v-if="points.length > 0" size="small" :bordered="true" class="chart-card">
+    <n-card v-if="chartMode === 'scatter' && points.length > 0" size="small" :bordered="true" class="chart-card">
       <div class="chart-area">
         <svg :viewBox="viewBox" class="compare-svg">
           <!-- 网格 + y 刻度（SVG 颜色统一 class + 主题变量，var() 在 presentation attribute 上不可靠） -->
@@ -199,7 +217,7 @@
     </n-card>
 
     <!-- 明细表 -->
-    <n-card v-if="points.length > 0" size="small" :bordered="true" class="detail-card">
+    <n-card v-if="chartMode === 'scatter' && points.length > 0" size="small" :bordered="true" class="detail-card">
       <template #header>明细（{{ points.length }} 点）</template>
       <div class="detail-table-wrap">
         <table class="detail-table">
@@ -229,16 +247,101 @@
         </table>
       </div>
     </n-card>
+
+    <!-- 难度曲线：每队自己的贪心提升路径（x 是累积难度代价，各队不对齐是特性） -->
+    <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="chart-card">
+      <template #header>难度曲线（{{ curveData.series.length }} 队 · 每队自己的 x）</template>
+      <div class="compare-note curve-note">
+        口径：预设基础档（0命1精 + 预设权重/交互/音擎/驱动盘）+ 当前期数 Boss + 静态权重（不跑自动分配）；
+        <b>不含 buff、不加金、不自动下位</b>（曲线要的是跨队同口径的形状，故起点 ≠ 散点页的点）。
+        x = 该队累积难度代价（G1 权重均衡 1 · G2 弹刀/联合 3 · G3 保底 2 · G4 取整 0，占位代价），y = 伤害/血量%。
+        <b>各队 x 不对齐是特性</b>：比形状（起点 / 斜率 / 天花板 / 提升倍数），不比同一 x 的大小；
+        每档只录取有实际增益的目标，负收益目标被丢弃并在下表如实列出。每队约 3~4 秒。
+      </div>
+      <div class="chart-area">
+        <svg :viewBox="viewBox" class="compare-svg">
+          <line v-for="(v, i) in curveYTicks" :key="'cyg' + i" :x1="padL" :y1="curveYOf(v)" :x2="padL + plotW" :y2="curveYOf(v)" class="chart-grid" />
+          <text v-for="(v, i) in curveYTicks" :key="'cyt' + i" :x="padL - 6" :y="curveYOf(v) + 4" text-anchor="end" class="chart-tick" font-size="10">{{ v }}%</text>
+          <line v-for="(t, i) in curveXTicks" :key="'cxg' + i" :x1="t.x" :y1="padT" :x2="t.x" :y2="padT + plotH" class="chart-grid-x" />
+          <text v-for="(t, i) in curveXTicks" :key="'cxt' + i" :x="t.x" :y="padT + plotH + 16" text-anchor="middle" class="chart-tick" font-size="10">{{ t.label }}</text>
+
+          <line :x1="padL" :y1="curveYOf(100)" :x2="padL + plotW" :y2="curveYOf(100)" stroke="#e88080" stroke-dasharray="6,4" opacity="0.8" />
+          <text :x="padL + 4" :y="curveYOf(100) - 4" fill="#e88080" font-size="10">击杀线 100%</text>
+
+          <text :x="padL + plotW / 2" :y="padT + plotH + 34" text-anchor="middle" class="chart-axis-label" font-size="11">累积难度代价（每队自己的优化路径）</text>
+          <text :x="14" :y="padT + plotH / 2" text-anchor="middle" class="chart-axis-label" font-size="11" transform="rotate(-90 14 0)">伤害/血量 %</text>
+
+          <g v-for="(s, si) in curveSeriesPx" :key="'cs' + si">
+            <polyline
+              v-if="s.pts.length > 1"
+              :points="s.pts.map(p => `${p.cx},${p.cy}`).join(' ')"
+              fill="none" :stroke="s.color" stroke-width="2" opacity="0.9"
+            />
+            <circle
+              v-for="(p, pi) in s.pts" :key="'cp' + si + '-' + pi"
+              :cx="p.cx" :cy="p.cy" :r="3.5" :fill="s.color" opacity="0.9"
+              class="scatter-dot" stroke-width="0.5"
+              @mouseenter="curveHover = { si, pi }" @mouseleave="curveHover = null"
+            />
+          </g>
+
+          <g v-if="curveHoverPt">
+            <rect :x="curveTtX" :y="curveTtY" :width="curveTtW + 8" :height="curveTtH + 8" rx="3" class="chart-tooltip-box" />
+            <text v-for="(line, li) in curveHoverTips" :key="'ctt' + li" :x="curveTtX + 4" :y="curveTtY + 13 + li * 13" class="chart-tooltip-text" font-size="10">{{ line }}</text>
+          </g>
+        </svg>
+
+        <div class="chart-legend">
+          <span v-for="s in curveData.series" :key="s.presetId" class="lchip" :style="{ borderColor: colorOf(s.presetId) }">
+            <span class="ldot" :style="{ background: colorOf(s.presetId) }"></span>{{ s.name }}（{{ fmt(s.gainX, 2) }}× · +{{ fmt(s.gainPct, 1) }}%）
+          </span>
+        </div>
+      </div>
+    </n-card>
+
+    <!-- 曲线摘要表：难易强度对比看这几列 -->
+    <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="detail-card">
+      <template #header>曲线摘要（{{ curveData.series.length }} 队）</template>
+      <div class="detail-table-wrap">
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>队伍</th><th>全关</th><th>终点</th><th>提升</th><th>倍数</th>
+              <th>总代价</th><th>斜率</th><th>录取顺序</th><th>丢弃目标</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="s in curveData.series" :key="s.presetId" :class="{ 'curve-flat': s.flat }">
+              <td class="td-team" :style="{ color: colorOf(s.presetId) }">{{ s.name }}</td>
+              <td>{{ compact(s.base) }}</td>
+              <td>{{ compact(s.final) }}</td>
+              <td :class="{ kill: s.gainPct > 0 }">+{{ fmt(s.gainPct, 1) }}%</td>
+              <td>{{ fmt(s.gainX, 2) }}×</td>
+              <td>{{ fmt(s.totalCost, 0) }} 点</td>
+              <td>{{ fmt(s.slope, 1) }}%/点</td>
+              <td class="td-detail">
+                {{ s.flat ? '无优化空间（四目标均无增益）' : s.opened.map(goalLabel).join(' → ') }}
+              </td>
+              <td class="td-detail">
+                {{ s.dropped.length === 0 ? '—' : s.dropped.map(d => `${goalLabel(d.id)}（${compact(d.gain)}）`).join('、') }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </n-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { NCard, NSelect, NInputNumber, NButton, NCheckbox, NPopover } from 'naive-ui'
+import { NCard, NSelect, NInputNumber, NButton, NCheckbox, NPopover, NRadioGroup, NRadioButton } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS } from '@/composables/teamCompare'
+import { computeDifficultyCurves, buildCurveChart, type DifficultyCurveRow } from '@/composables/difficultyCurve'
+import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
@@ -473,6 +576,12 @@ const enginePoolOptions = computed(() =>
 const computing = ref(false)
 const progress = ref<{ pct: number; text: string } | null>(null)
 const points = ref<TeamComparePoint[]>([])
+/** 图型：散点（各队各金档一个点）/ 难度曲线（每队自己的贪心提升路径） */
+const chartMode = ref<'scatter' | 'curve'>('scatter')
+/** 曲线结果（原始阶梯，画图与摘要都从它派生） */
+const curveRows = ref<DifficultyCurveRow[]>([])
+/** 曲线模式的中止标志（粒度 = 一队：单队阶梯是原子的；已算部分保留） */
+const curveAbort = ref(false)
 
 function goldLevels(): number[] {
   const levels: number[] = []
@@ -512,6 +621,33 @@ async function runCompare() {
   }
   points.value = all
   progress.value = { pct: 1, text: `完成：${all.length} 个点` }
+  computing.value = false
+}
+
+/**
+ * 难度曲线：逐队爬自己的贪心阶梯（每队要跑 ~10 次全量伤害，约 3~4 秒）。
+ * 口径与散点的差异见 `composables/difficultyCurve.ts` 文件头（不含 buff/加金/自动下位）。
+ */
+async function runCurves() {
+  const presets = selectedPresets.value
+  const boss = selectedBoss.value
+  const phase = selectedPhase.value
+  if (presets.length === 0 || !boss || !phase) return
+  computing.value = true
+  curveAbort.value = false
+  progress.value = { pct: 0, text: '' }
+  const all: DifficultyCurveRow[] = []
+  for (let i = 0; i < presets.length; i++) {
+    // 中止粒度 = 一队（单队阶梯是原子的）；已算部分照样出图
+    if (curveAbort.value) break
+    const p = presets[i]
+    progress.value = { pct: i / presets.length, text: `爬阶梯 ${p.name}（${i + 1}/${presets.length}，每队约 3~4 秒）...` }
+    await new Promise(r => setTimeout(r, 0))
+    all.push(...computeDifficultyCurves(calc, { presets: [p], boss, phase }))
+  }
+  curveRows.value = all
+  progress.value = { pct: 1, text: curveAbort.value ? `已中止：保留已算的 ${all.length} 条曲线` : `完成：${all.length} 条曲线` }
+  curveAbort.value = false
   computing.value = false
 }
 
@@ -593,6 +729,65 @@ const legendPresets = computed(() => {
       maxGold: Math.max(...ps.map(p => p.goldCount)),
     }
   })
+})
+
+// ========== 难度曲线图表（x = 累积难度代价，y = 伤害/血量%） ==========
+const curveData = computed(() =>
+  curveRows.value.length > 0 ? buildCurveChart(curveRows.value, selectedPhase.value?.hp ?? 1) : null,
+)
+function curveXOf(v: number): number {
+  return padL + (v / Math.max(1, curveData.value?.costMax ?? 1)) * plotW.value
+}
+function curveYOf(v: number): number {
+  return padT + plotH - (v / Math.max(1, curveData.value?.ratioMax ?? 100)) * plotH
+}
+const curveYTicks = computed(() => {
+  const max = curveData.value?.ratioMax ?? 100
+  const step = max <= 100 ? 20 : max <= 200 ? 50 : 100
+  const out: number[] = []
+  for (let v = 0; v <= max; v += step) out.push(v)
+  return out
+})
+const curveXTicks = computed(() => (curveData.value?.costTicks ?? [0]).map(c => ({ x: curveXOf(c), label: c })))
+const curveSeriesPx = computed(() =>
+  (curveData.value?.series ?? []).map(s => ({
+    ...s,
+    color: colorOf(s.presetId),
+    pts: s.points.map(p => ({ ...p, cx: curveXOf(p.cost), cy: curveYOf(p.ratio) })),
+  })),
+)
+/** 目标 id → 可读标签（tooltip 与摘要表共用）；null = 全关起点 */
+function goalLabel(id: string | null): string {
+  if (id === null) return '全关起点'
+  return DIFFICULTY_GOALS.find(g => g.id === id)?.label ?? id
+}
+const curveHover = ref<{ si: number; pi: number } | null>(null)
+const curveHoverPt = computed(() => {
+  const h = curveHover.value
+  if (!h) return null
+  const s = curveSeriesPx.value[h.si]
+  const point = s?.pts[h.pi]
+  return s && point ? { series: s, point } : null
+})
+const curveTtW = 230
+const curveTtH = 70
+const curveTtX = computed(() =>
+  curveHoverPt.value ? Math.min(curveHoverPt.value.point.cx + 10, svgW.value - curveTtW - 20) : 0,
+)
+const curveTtY = computed(() =>
+  curveHoverPt.value ? Math.max(0, Math.min(curveHoverPt.value.point.cy - 20, padT + plotH - curveTtH - 10)) : 0,
+)
+const curveHoverTips = computed(() => {
+  const p = curveHoverPt.value
+  if (!p) return []
+  const { series: s, point } = p
+  const band = point.opened === null ? '全关起点（静态权重、无保底、投影 off）' : `本档新开：${goalLabel(point.opened)}`
+  return [
+    s.name,
+    `难度 ${fmt(point.cost, 0)} 点 · 伤害 ${compact(point.dmg)}（${fmt(point.ratio, 1)}%）`,
+    band,
+    s.flat ? '四目标均无增益 ⇒ 无优化空间' : `累计录取 ${s.opened.map(goalLabel).join(' → ')}`,
+  ]
 })
 
 // hover tooltip
@@ -831,5 +1026,16 @@ function killSeconds(hpRatio: number): number {
 
 .time-warn {
   background: rgba(255, 80, 80, 0.06);
+}
+
+/* 难度曲线口径说明（长文案，行高放宽） */
+.curve-note {
+  margin: 0 0 8px;
+  line-height: 1.7;
+}
+
+/* 平台队（四目标均无增益）：弱化整行，提示"没有可优化的空间" */
+.curve-flat {
+  opacity: 0.6;
 }
 </style>

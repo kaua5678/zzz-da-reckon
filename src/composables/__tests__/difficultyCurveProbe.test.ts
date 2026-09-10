@@ -19,7 +19,6 @@
  */
 import { describe, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
 import { teamPresets } from '@/data/teamPresets'

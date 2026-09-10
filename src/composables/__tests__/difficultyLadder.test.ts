@@ -10,7 +10,6 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
 import {

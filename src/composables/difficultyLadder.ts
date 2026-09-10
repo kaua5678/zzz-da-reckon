@@ -15,6 +15,9 @@
  * G3 保底（要打满才生效）=2、G4 取整（只是计算口径，玩家不改操作）=0。
  * 后续可换成「交互增量」或用户自填权重（同对比页「难度权重」弹层先例）。
  *
+ * **展示层 `difficultyCurve.ts` 用 `opts.base` 换掉「全关」基线**（预设静态权重/交互，
+ * 与散点页同口径）——本模块自己不依赖 `teamCompare`，保持纯策略。
+ *
  * 判据测试：`__tests__/difficultyLadder.test.ts`（单调性 / 负收益被丢弃 / 目标契约）。
  */
 import { useConfigStore } from '@/stores/config'
@@ -59,10 +62,22 @@ export const DIFFICULTY_GOALS: DifficultyGoal[] = [
   },
 ]
 
-/** 清掉所有目标并回到静态权重（"全关"档） */
-export function resetDifficultyGoals(ctx: LadderCtx, team: [string, string, string]): number {
+/**
+ * 关掉全部"优化目标"旋钮（保底 / 计数投影），不清队伍。
+ * 展示层（`difficultyCurve.ts`）自定义「全关」基线时复用它，保证"全关"的语义单源。
+ */
+export function clearDifficultyLevers(ctx: LadderCtx) {
   for (const k of GUARANTEE_KEYS) ctx.config.setMechanicSetting(k, 0)
   ctx.config.setMechanicSetting('time.stunPlanProjection', 0)
+}
+
+/**
+ * 缺省「全关」基线：套预设队伍基础档（`applyTeamPreset` = 0命1精 + 配装推荐）+ 关优化目标。
+ * **注意它不套预设声明的静态权重/交互**（`setAgent` 只给 agent 默认值）——散点页口径由
+ * `teamCompare#applyTeamToStore` 定义，展示层经 `opts.base` 传入（见 difficultyCurve.ts）。
+ */
+export function resetDifficultyGoals(ctx: LadderCtx, team: [string, string, string]): number {
+  clearDifficultyLevers(ctx)
   for (let i = 0; i < 3; i++) ctx.config.setAgent(i, team[i])
   ctx.config.applyTeamPreset(team)
   return ctx.calc.teamTotalDamage.value
@@ -103,6 +118,25 @@ export interface LadderResult {
   dropped: { id: string; gain: number }[]
 }
 
+export interface LadderOpts {
+  goals?: DifficultyGoal[]
+  /** 绝对门槛（伤害） */
+  minGain?: number
+  /**
+   * **相对门槛**（占全关伤害的比例，缺省 1e-4 = 0.01%）。
+   * 为什么需要：实测有目标在特定队是 **Δ=0 的平台**（如 `auto-1041-1571-1031` 四个目标全 0.0M）——
+   * 只判 `gain > 0` 会把它们全录进来 ⇒ 曲线出现"难度涨了、伤害不涨"的平台段，对"难易强度"比较有害。
+   * 故录取条件 = `gain > max(minGain, base × minGainRatio)`（**严格正**且超过噪声量级）。
+   */
+  minGainRatio?: number
+  /**
+   * **自定义「全关」基线**（缺省 = `resetDifficultyGoals` = 预设基础档）。
+   * 展示层（`difficultyCurve.ts`）传入以对齐散点页口径 = `applyTeamToStore`（预设静态权重/交互）
+   * + `clearDifficultyLevers`。返回基线伤害。
+   */
+  base?: (ctx: LadderCtx, team: [string, string, string]) => number
+}
+
 /**
  * 从「全关」出发贪心爬阶梯：每步试开每个未录取目标，取 **Δ伤害 / 代价** 最高者；
  * **Δ<0 的目标不录取**（单调性保证）。代价为 0 的目标按 Δ 直接比较（除零保护）。
@@ -110,23 +144,12 @@ export interface LadderResult {
 export function climbDifficultyLadder(
   ctx: LadderCtx,
   team: [string, string, string],
-  opts: {
-    goals?: DifficultyGoal[]
-    /** 绝对门槛（伤害） */
-    minGain?: number
-    /**
-     * **相对门槛**（占全关伤害的比例，缺省 1e-4 = 0.01%）。
-     * 为什么需要：实测有目标在特定队是 **Δ=0 的平台**（如 `auto-1041-1571-1031` 四个目标全 0.0M）——
-     * 只判 `gain > 0` 会把它们全录进来 ⇒ 曲线出现"难度涨了、伤害不涨"的平台段，对"难易强度"比较有害。
-     * 故录取条件 = `gain > max(minGain, base × minGainRatio)`（**严格正**且超过噪声量级）。
-     */
-    minGainRatio?: number
-  } = {},
+  opts: LadderOpts = {},
 ): LadderResult {
   const goals = opts.goals ?? DIFFICULTY_GOALS
   const minGain = opts.minGain ?? 0
   const minGainRatio = opts.minGainRatio ?? 1e-4
-  const base = resetDifficultyGoals(ctx, team)
+  const base = opts.base ? opts.base(ctx, team) : resetDifficultyGoals(ctx, team)
   const acceptAt = Math.max(minGain, base * minGainRatio)
   let dmg = base
   let x = 0
