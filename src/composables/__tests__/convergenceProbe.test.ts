@@ -141,8 +141,7 @@ describe.runIf(active)('探针：收敛体检（阶段2 立项度量）', () => 
  * 外加「装配后逐槽 行净占用 vs 账本」重算——用来判定报告里的 residual/idle/refund
  * 各自出自哪条管线（折叠环 vs 比利重推 vs 欠打回填试探 vs 编排层降配探测）。
  */
-describe.runIf(teamIds.length > 0)('探针：单队收敛报告口径', () => {
-  it('冷/热/换队回来 三读数 + 装配后逐槽重算', async () => {
+describe.runIf(teamIds.length > 0)('探针：单队收敛报告口径', () => {  it('冷/热/换队回来 三读数 + 装配后逐槽重算', async () => {
     const { catalog } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
@@ -233,6 +232,19 @@ describe.runIf(teamIds.length > 0)('探针：单队收敛报告口径', () => {
       if (!p) { lines.push(`### ${id} ← 预设未命中`); continue }
       apply(p.team as string[])
       snapshot(id, '冷跑（本进程首次）')
+      // 平A池权重扫描（env PROBE_CONV_WEIGHTS="3,2,1;0,2,1;…"）：证伪闸门——把池子从厚槽转给
+      // 队友后留白是否下降。不降 = 该队本来就填不满 180s（留白是正确的），「按容量分配」无余量可赚。
+      const patterns = (process.env.PROBE_CONV_WEIGHTS ?? '').split(';').map(s => s.trim()).filter(Boolean)
+      for (const pat of patterns) {
+        const w = pat.split(',').map(s => Number(s.trim()))
+        if (w.length !== p.team.length || w.some(n => !Number.isFinite(n))) continue
+        apply(p.team as string[])
+        for (let i = 0; i < w.length; i++) {
+          const slot = config.team[i] as { slot: number; agentId: string; basicAttackTimeWeight?: number } | undefined
+          if (slot) slot.basicAttackTimeWeight = w[i]
+        }
+        snapshot(id, `权重 ${pat}`)
+      }
       apply(p.team as string[])
       snapshot(id, '同队热跑（紧接第二次）')
       const other = teamPresets.find(x => x.id !== id && Array.isArray(x.team) && x.team.length === 3)
@@ -242,6 +254,66 @@ describe.runIf(teamIds.length > 0)('探针：单队收敛报告口径', () => {
         snapshot(id, `换队回来（先跑 ${other.id}）`)
       }
     }
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'))
+  }, 900_000)
+})
+
+/**
+ * 平A池分配的杠杆度量（2026-09-10，阶段4 尾巴）：留白到底是「求解器补丁」问题还是「池分配」问题？
+ * 逐个预设比较 默认权重 vs 把某个槽的 `basicAttackTimeWeight` 置 0 后的留白——纯测量、不改引擎。
+ *   PROBE_CONV_WEIGHTS_SWEEP=1 npx vitest run src/composables/__tests__/convergenceProbe.test.ts
+ */
+describe.runIf(process.env.PROBE_CONV_WEIGHTS_SWEEP === '1')('探针：平A池权重的留白杠杆', () => {
+  it('逐队 默认 vs 单槽置零 的留白对照', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const presets = teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3)
+    const f = (n: number) => n.toFixed(2)
+    const slackOf = (id: string) => {
+      const rr = calc.resourceResult.value
+      if (!rr) return null
+      const t = buildTeamTimeSummary({
+        rr, battleTime: rr.totalTime,
+        invincibleTime: config.enemy.invincibleTime ?? 0,
+        nameOf: (_a, slot) => `槽${slot}`,
+      })
+      return { slack: t.slack, rr, id, dmg: calc.teamTotalDamage.value }
+    }
+    const rows: { id: string; base: number; best: number; bestLabel: string; over: number; baseDmg: number; bestDmg: number }[] = []
+    for (const p of presets) {
+      for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+      config.applyTeamPreset(p.team as [string, string, string])
+      const base = slackOf(p.id)
+      if (!base) continue
+      let best = base.slack
+      let bestLabel = '默认'
+      let bestOver = Math.max(0, -base.slack)
+      let bestDmg = base.dmg
+      for (let zero = 0; zero < 3; zero++) {
+        for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+        config.applyTeamPreset(p.team as [string, string, string])
+        const slot = config.team[zero] as { basicAttackTimeWeight?: number } | undefined
+        if (slot) slot.basicAttackTimeWeight = 0
+        const got = slackOf(p.id)
+        if (!got) continue
+        if (got.slack < best) { best = got.slack; bestLabel = `槽${zero}权重0`; bestDmg = got.dmg }
+        bestOver = Math.max(bestOver, Math.max(0, -got.slack))
+      }
+      rows.push({ id: p.id, base: base.slack, best, bestLabel, over: bestOver, baseDmg: base.dmg, bestDmg })
+    }
+    const sumBase = rows.reduce((a, r) => a + Math.max(0, r.base), 0)
+    const sumBest = rows.reduce((a, r) => a + Math.max(0, r.best), 0)
+    const improved = rows.filter(r => r.base > r.best + 0.05).sort((a, b) => (a.best - a.base) - (b.best - b.base))
+    const lines = [
+      `预设数 ${rows.length}`,
+      `留白合计：默认 ${f(sumBase)}s → 逐队「单槽权重置零」最优 ${f(sumBest)}s（差 ${f(sumBase - sumBest)}s）`,
+      `可改善队数 ${improved.length}`,
+      '改善 top15：',
+      ...improved.slice(0, 15).map(r => `  ${r.id} 留白 ${f(r.base)} → ${f(r.best)}（${r.bestLabel}，${f(r.best - r.base)}s）伤害 ${(r.baseDmg / 1e6).toFixed(1)}M → ${(r.bestDmg / 1e6).toFixed(1)}M（${((r.bestDmg / Math.max(1, r.baseDmg) - 1) * 100).toFixed(1)}%）超预算上界 ${f(r.over)}`),
+    ]
     // eslint-disable-next-line no-console
     console.log(lines.join('\n'))
   }, 900_000)
