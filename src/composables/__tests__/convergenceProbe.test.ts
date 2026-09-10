@@ -33,6 +33,7 @@ describe.runIf(active)('探针：收敛体检（阶段2 立项度量）', () => 
     let sumSlack = 0
     let sumOver = 0
     const worst: { id: string; slack: number; over: number; passes: number; exit: string; conv: boolean }[] = []
+    const notConverged: { id: string; passes: number; residual: number; idle: number; refund: number; exit: string; slack: number }[] = []
 
     for (const p of presets) {
       for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
@@ -44,7 +45,8 @@ describe.runIf(active)('探针：收敛体检（阶段2 立项度量）', () => 
       outerExit[exit] = (outerExit[exit] ?? 0) + 1
       const passes = conv?.timeBudgetPasses ?? 0
       passesHist[passes] = (passesHist[passes] ?? 0) + 1
-      if (conv?.timeBudgetConverged === false) tbConvFalse++
+      const tbConvFalseThis = conv?.timeBudgetConverged === false
+      if (tbConvFalseThis) tbConvFalse++
       if ((conv?.timeBudgetRefundedSeconds ?? 0) > 0) refundTeams++
       if ((conv?.timeBudgetResidualSeconds ?? 0) > 1) residualTeams++
       const t = buildTeamTimeSummary({
@@ -54,6 +56,13 @@ describe.runIf(active)('探针：收敛体检（阶段2 立项度量）', () => 
       })
       sumSlack += Math.max(0, t.slack)
       sumOver += Math.max(0, -t.slack)
+      if (tbConvFalseThis) {
+        notConverged.push({
+          id: p.id, passes, residual: conv?.timeBudgetResidualSeconds ?? 0,
+          idle: conv?.timeBudgetIdleSeconds ?? 0, refund: conv?.timeBudgetRefundedSeconds ?? 0,
+          exit, slack: t.slack,
+        })
+      }
       worst.push({ id: p.id, slack: t.slack, over: Math.max(0, -t.slack), passes, exit, conv: conv?.timeBudgetConverged !== false })
     }
 
@@ -68,6 +77,9 @@ describe.runIf(active)('探针：收敛体检（阶段2 立项度量）', () => 
       `折叠轮数分布：${Object.entries(passesHist).sort((a, b) => Number(a[0]) - Number(b[0])).map(([k, v]) => `${k}轮=${v}`).join(' ')}`,
       '最差 10 队：',
       ...worst.slice(0, 10).map(w => `  ${w.id} slack=${w.slack.toFixed(2)} over=${w.over.toFixed(2)} passes=${w.passes} exit=${w.exit} tbConv=${w.conv}`),
+      `不收敛队（${notConverged.length}）：`,
+      ...notConverged.sort((a, b) => b.residual - a.residual)
+        .map(n => `  ${n.id} passes=${n.passes} residual=${n.residual.toFixed(3)} idle=${n.idle.toFixed(2)} refund=${n.refund.toFixed(2)} slack=${n.slack.toFixed(2)} exit=${n.exit}`),
     ]
     // eslint-disable-next-line no-console
     console.log(lines.join('\n'))
