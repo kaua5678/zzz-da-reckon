@@ -20,6 +20,7 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
 import { buildTeamTimeSummary } from '@/composables/teamTimeSummary'
+import { optimizeTeamTimeWeights } from '@/composables/teamTimeline'
 import { isFrontlineExecution } from '@/types/resource'
 
 const active = process.env.PROBE_CONV_SCAN === '1'
@@ -43,9 +44,13 @@ describe.runIf(active)('探针：收敛体检（阶段2 立项度量）', () => 
     const worst: { id: string; slack: number; over: number; passes: number; exit: string; conv: boolean }[] = []
     const notConverged: { id: string; passes: number; residual: number; idle: number; refund: number; exit: string; slack: number }[] = []
 
+    // 平A池权重：默认（静态 0/1）vs 边际均衡（仓库自带 `optimizeTeamTimeWeights`，见 docs 坑35）
+    const balance = process.env.PROBE_CONV_BALANCE === '1'
+
     for (const p of presets) {
       for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
       config.applyTeamPreset(p.team as [string, string, string])
+      if (balance) optimizeTeamTimeWeights(calc, config, { maxIter: 2 })
       const rr = calc.resourceResult.value
       if (!rr) continue
       const conv = rr.convergence
@@ -121,7 +126,7 @@ describe.runIf(active)('探针：收敛体检（阶段2 立项度量）', () => 
       `timeBudgetConverged=false：${tbConvFalse} 队`,
       `refund>0（欠打回填命中）：${refundTeams} 队`,
       `残差 >1s：${residualTeams} 队`,
-      `留白合计 ${sumSlack.toFixed(1)}s · 超预算合计 ${sumOver.toFixed(1)}s`,
+      `留白合计 ${sumSlack.toFixed(1)}s · 超预算合计 ${sumOver.toFixed(1)}s · 权重模式=${balance ? '边际均衡（optimizeTeamTimeWeights maxIter=2）' : '默认静态'}`,
       `折叠轮数分布：${Object.entries(passesHist).sort((a, b) => Number(a[0]) - Number(b[0])).map(([k, v]) => `${k}轮=${v}`).join(' ')}`,
       '最差 10 队：',
       ...worst.slice(0, 10).map(w => `  ${w.id} slack=${w.slack.toFixed(2)} over=${w.over.toFixed(2)} passes=${w.passes} exit=${w.exit} tbConv=${w.conv}`),
