@@ -222,7 +222,7 @@ function adjustStunExecs(
 }
 
 /** 转大不动点：给定基础失衡 execs 与畏缩覆盖率，迭代（失衡次数 ↔ 好评转大次数）至收敛 */
-// @fact engine:非轴失衡不动点 口径: 非轴窗口占比 x=窗口时长/有效时间是连续量，计数映射 N ↦ floor(G(1−xN)/阈值) 是单调递减阶梯函数、在相邻两阶之间来回跳（实测 0↔6、2↔4）——口径 = 解连续不动点闭式 N*=(g+gf−r)/((1−r)+g·x)（g=毛失衡/阈值、gf=Boss白送/阈值、r=雨果返还），floor(N*) 即次数，与迭代入口/热启动历史无关 | 据 用户实测@2026-09-08（实战对比部署 雅/南宫/柚叶 vs 基塔布鲁·滞变畸兽 显示 0 次；同配置冷启动 4/热启动 0）+ 时间守恒不动点自洽 | 验 src/composables/resourceCalc/__tests__/liuyinPromote.test.ts + src/composables/__tests__/runArchiveDeploy.test.ts | 锚 src/composables/resourceCalc/liuyinPromote.ts#promoteFixpoint | 信 确认
+// @fact engine:失衡次数不动点 口径: **轴/非轴统一**走连续闭式 N*=(g+gf−r)/((1−r)+g·x)（g=毛失衡/阈值、gf=Boss白送/阈值、r=雨果返还、x=N×窗长/有效时间），floor(N*) 即次数——时间域语义：窗口占用 N×窗长，剩余时间才攒条，故「打满 N 次后剩余时间不够一次」自然收敛于 N。**两种模式都必须传时间占比**（旧实现轴模式传 0，只信逐招 fraction：实测 auto-1521-1481-1311 窗口占时间 90% 只扣 4.8% 攒条 → 9 次，而轴栈只填满 3 窗）| 据 用户@2026-09-10「顺序不对：应先攒够再开窗，剩余时间不足则收敛于此」·前身口径 用户@2026-09-08 | 据 用户实测@2026-09-08（实战对比部署 雅/南宫/柚叶 vs 基塔布鲁·滞变畸兽 显示 0 次；同配置冷启动 4/热启动 0）+ 时间守恒不动点自洽 | 验 src/composables/resourceCalc/__tests__/liuyinPromote.test.ts + src/composables/__tests__/runArchiveDeploy.test.ts | 锚 src/composables/resourceCalc/liuyinPromote.ts#promoteFixpoint | 信 确认
 export function promoteFixpoint(
   baseExecs: StunSkillExecution[],
   flinchRate: number,
@@ -250,7 +250,10 @@ export function promoteFixpoint(
     inAxisStunFractionByKey: inAxisFraction,
     refundStunRatio,
     stunGift: configStore.enemy.bossStunGift ?? 0,
-    windowTimeFraction: axisMode ? 0 : stunWindowFraction(prevStunCount, windowDur, effTime),
+    // **两种模式都传时间占比**（用户 2026-09-10 裁决：失衡次数必须满足时间约束）——
+    // 旧实现轴模式传 0（「逐招 fraction 已精确扣除」），实测 auto-1521-1481-1311 窗口占时间 90%
+    // 却只扣掉 4.8% 攒条 → 次数 9，而轴栈实际只填满 3 窗（时序不自洽）。
+    windowTimeFraction: stunWindowFraction(prevStunCount, windowDur, effTime),
   })
 
   let stunCount = 0
@@ -279,13 +282,13 @@ export function promoteFixpoint(
     pool = runPool(execs, inAxisFraction, stunCount)
     const next = pool?.stunCount ?? 0
     if (next === stunCount) break
-    if (axisMode) {
-      // 轴模式：窗口占比由轴内逐招 fraction 折算（离散量），保持整数迭代 + 2-循环环检测
-      if (seenStunCounts.has(next)) break
-      seenStunCounts.add(stunCount)
-      stunCount = next
-      continue
-    }
+    // **两种模式统一走连续闭式求根**（用户 2026-09-10 裁决「顺序：边打边攒 → 攒够开窗 → 剩多久」）：
+    // 轴模式原先走「整数迭代 + 2-循环环检测」，其窗口占比只来自轴内逐招 fraction，与「N 次窗口占用
+    // N×窗长」的时间账不自洽（实测该队 9 次 vs 轴栈只填满 3 窗）。闭式解在**时间域**上成立：
+    // 窗外可用时间 = 有效时间 − N×窗长，攒条量按此折算 → N 天然收敛于「打满 N 次后剩余时间不够一次」。
+    // 环检测保留为兜底（闭式不收敛时的保护）。
+    if (seenStunCounts.has(next)) break
+    seenStunCounts.add(stunCount)
     // 非轴模式：窗口占比是连续量 x = 窗口时长/有效时间，计数映射 N ↦ floor(E(N)/阈值) 是单调递减
     // 阶梯函数——它在相邻两条阶梯间来回跳（实测 0↔6、2↔4），旧实现「检测到重复即停、保留最后池」
     // 返回循环里的任意一支：2026-09-08 用户实测实战对比部署 雅/南宫/柚叶 vs 基塔布鲁·滞变畸兽

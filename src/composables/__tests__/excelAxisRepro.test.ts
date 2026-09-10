@@ -70,7 +70,12 @@ describe('Excel 轴复现：资源计算产出', () => {
     // 时间桶恒等式（2026-08）：前台模块行对自家账本折叠后，平A池收缩 → 喧响回收减少，
     // 终结技从 3 掉到 2（此前 3 是未入账模块行白占时间轴的虚高）
     expect(billy.ultimateCount).toBeGreaterThanOrEqual(2)
-    expect(calc.stunPoolResult.value!.stunCount).toBeGreaterThanOrEqual(3)
+    // 失衡次数下限 = **结构锁**（防口径回归），不是与 Excel 的对拍值：
+    // 2026-09-10 用户裁决「失衡次数必须满足时间约束」（窗口占掉的时间不许再攒条）后，
+    // 本队由 3 → 2；而 Excel 实操表是 **4**。差额根因 = 引擎这队前台只打出 ~154s/180s
+    // （轮换覆盖不足，在册债务「轮换动作覆盖实数化」），攒条总量比真人操作少约 1.7 倍。
+    // 若要收这个差额，应去补动作覆盖，**不要**回头放宽时间约束口径。
+    expect(calc.stunPoolResult.value!.stunCount).toBeGreaterThanOrEqual(2)
     expect(calc.teamTotalDamage.value).toBeGreaterThan(0)
   })
 
