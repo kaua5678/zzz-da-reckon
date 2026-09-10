@@ -70,22 +70,80 @@ describe('平A池权重·分配策略', () => {
       .toBeGreaterThan(bat0Before)
   })
 
-  it('⑤ 失衡次数是硬约束：均衡解掉次数时回滚权重并如实上报', async () => {
+  it('⑤ 失衡次数不是约束（是分配的结果）：均衡照常应用，次数变化如实上报不拦截', async () => {
     const { catalog } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
     const calc = useResourceCalc()
-    // auto-1591-1481-1311：实测均衡解会把失衡 4→3 换 +10.1% 伤害（PROBE_CONV_BALANCE_STUN）
+    // auto-1591-1481-1311：实测均衡解会把失衡 4→3 同时 +10.1% 伤害。
+    // 用户口径 2026-09-10 修正：「最终目的是总伤提高，失衡四舍五入不一定让总伤提高」→
+    // 次数**不是约束**（曾按硬约束回滚，已撤销）；次数变化只做如实上报。
     const p = teamPresets.find(x => x.id === 'auto-1591-1481-1311')!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     const stunBefore = calc.stunPoolResult.value!.stunCount
-    const weightsBefore = [0, 1, 2].map(s => config.team[s]!.basicAttackTimeWeight)
+    const dmgBefore = calc.teamTotalDamage.value
+    const r = applyTimeWeightAllocation({ calc, configStore: config }, 'marginal-equalize')
+    expect(r.applied).toBe(true)
+    expect(r.damage).toBeGreaterThanOrEqual(dmgBefore - 1e-6)
+    const stunAfter = calc.stunPoolResult.value!.stunCount
+    if (stunAfter !== stunBefore) {
+      // 若该队均衡确实改了次数：必须在 note 里如实上报（不静默、不拦截）
+      expect(r.note ?? '').toContain('次数是分配的结果')
+    }
+  })
+
+  it('⑥ 联合策略：弹刀也是伤害杠杆（按总伤爬，且会主动减少低效交互）', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    // auto-1521-1361-1311：实测弹刀 12→0 时总伤 83.5M→92.2M（PROBE_STUN_LEVER）——
+    // 低效交互（吃必要前台时间）应被搜索**减掉**，这是「弹刀是杠杆」的下半句。
+    const p = teamPresets.find(x => x.id === 'auto-1521-1361-1311')!
+    for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+    config.applyTeamPreset(p.team as [string, string, string])
+    const dmgBefore = calc.teamTotalDamage.value
+    const parryBefore = [0, 1, 2].map(s => config.team[s]!.parryCount)
+    expect(calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0, '该队基线应可行').toBeLessThanOrEqual(1e-6)
     const r = applyTimeWeightAllocation({ calc, configStore: config })
-    expect(calc.stunPoolResult.value!.stunCount).toBe(stunBefore)
-    expect([0, 1, 2].map(s => config.team[s]!.basicAttackTimeWeight)).toEqual(weightsBefore)
+    expect(r.strategyId).toBe('joint-levers')
+    expect(r.applied).toBe(true)
+    expect(r.damage).toBeGreaterThanOrEqual(dmgBefore - 1e-6)
+    expect(calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0).toBeLessThanOrEqual(1e-6)
+    const parryAfter = [0, 1, 2].map(s => config.team[s]!.parryCount)
+    expect(parryAfter.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(parryBefore.reduce((a, b) => a + b, 0))
+  })
+
+  it('⑥b 已经超时的配置（如 1591 轴队）拒绝自动分配并说明原因', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const p = teamPresets.find(x => x.id === 'auto-1591-1481-1311')!
+    for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+    config.applyTeamPreset(p.team as [string, string, string])
+    const truncated = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
+    expect(truncated, '该队列为「基线本身就超时」的样本').toBeGreaterThan(0)
+    const r = applyTimeWeightAllocation({ calc, configStore: config })
     expect(r.applied).toBe(false)
-    expect(r.note).toContain('失衡次数优先')
+    expect(r.note ?? '').toContain('已超时')
+  })
+
+  it('⑦ 用户约束「弹刀多了也不能超过总时间」：越界配置被硬门挡住（不会无限加）', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const p = teamPresets.find(x => x.id === 'auto-1591-1481-1311')!
+    for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+    config.applyTeamPreset(p.team as [string, string, string])
+    config.setParryCount(0, 99)
+    const overflow = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
+    expect(overflow, '弹刀 99 次应当装不下（装配截断 > 0），这正是硬门要挡的越界态').toBeGreaterThan(0)
+    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    expect(r.applied).toBe(false)
+    expect(r.note ?? '').toContain('已超时')
   })
 
   it('注册表契约：默认策略在表内、id 唯一（扩展点）', () => {

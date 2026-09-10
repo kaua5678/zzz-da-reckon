@@ -649,3 +649,115 @@ describe.runIf(process.env.PROBE_CONV_BALANCE_STUN === '1')('探针：均衡是�
     console.log(lines.join('\n'))
   }, 900_000)
 })
+
+/**
+ * 打失衡的**手段效率**对照（2026-09-10，用户口径）：「此处打失衡的手段必须换成更高效的方式，比如弹刀」
+ * ——同队三种手段各扫一遍，比「每单位失衡的伤害代价」：
+ *   A. 给击破位平A池时间（低性能击破位=低效，实测掉次数又掉伤害）
+ *   B. 提高弹刀次数（per-slot 交互输入，不吃平A池）
+ *   C. 提高主C 的平A池（主C 自身招式行就是主要攒条源）
+ *   PROBE_STUN_LEVER=auto-1521-1361-1311 npx vitest run …convergenceProbe
+ */
+describe.runIf(!!process.env.PROBE_STUN_LEVER)('探针：打失衡的手段效率', () => {
+  it('逐队 击破位平A vs 弹刀 vs 主C 平A', async () => {
+    const ids = (process.env.PROBE_STUN_LEVER ?? '').split(',').map(s => s.trim()).filter(Boolean)
+    const lines: string[] = []
+    for (const id of ids) {
+      const p = teamPresets.find(x => x.id === id)
+      if (!p) continue
+      const { catalog } = await setupHarness(['', '', ''])
+      await catalog.loadBuildRecommendations()
+      const config = useConfigStore()
+      const calc = useResourceCalc()
+      const base = [0, 1, 2].map(s => Number(p.team[s] ? 1 : 0))
+      const read = () => {
+        const rr = calc.resourceResult.value
+        return {
+          stun: calc.stunPoolResult.value?.stunCount ?? 0,
+          dmg: calc.teamTotalDamage.value,
+          bat: (rr?.characters ?? []).map(c => c.timeAllocation.basicAttackTime.toFixed(1)).join('/'),
+        }
+      }
+      const apply = (mut: (cfg: ReturnType<typeof useConfigStore>) => void) => {
+        for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+        config.applyTeamPreset(p.team as [string, string, string])
+        void base
+        mut(config)
+      }
+      lines.push(`\n---- ${id}（${p.name}）`)
+      const cases: [string, (cfg: ReturnType<typeof useConfigStore>) => void][] = [
+        ['基线（预设权重/交互）', () => {}],
+        ['A 击破位权重 2', cfg => cfg.setBasicAttackTimeWeight(1, 2)],
+        ['A 击破位权重 8', cfg => cfg.setBasicAttackTimeWeight(1, 8)],
+        ['B 弹刀 0', cfg => cfg.setParryCount(0, 0)],
+        ['B 弹刀 4', cfg => cfg.setParryCount(0, 4)],
+        ['B 弹刀 8', cfg => cfg.setParryCount(0, 8)],
+        ['B 弹刀 12', cfg => cfg.setParryCount(0, 12)],
+        ['C 主C 权重 2', cfg => cfg.setBasicAttackTimeWeight(0, 2)],
+      ]
+      for (const [tag, mut] of cases) {
+        apply(mut)
+        const r = read()
+        lines.push(`  ${tag}：失衡 ${r.stun} 次 · 总伤 ${(r.dmg / 1e6).toFixed(1)}M · 平A 主C/击破/支援 ${r.bat}s`)
+      }
+    }
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'))
+  }, 900_000)
+})
+
+/**
+ * 联合策略（多杠杆）的全库价值度量（2026-09-10）：默认 vs 联合（平A 权重 + 弹刀，带「不发生截断」硬门）。
+ *   PROBE_CONV_JOINT=1 npx vitest run …convergenceProbe
+ */
+describe.runIf(process.env.PROBE_CONV_JOINT === '1')('探针：联合杠杆策略的全库价值', () => {
+  it('逐队 默认 vs 联合', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const presets = teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3)
+    const { applyTimeWeightAllocation } = await import('@/composables/timeWeightAllocation')
+    let sumBase = 0
+    let sumJoint = 0
+    let improved = 0
+    let same = 0
+    let refused = 0
+    let parryChanged = 0
+    let stunChanged = 0
+    let infeasibleAfter = 0
+    const rows: { id: string; base: number; joint: number; note: string }[] = []
+    for (const p of presets) {
+      for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+      config.applyTeamPreset(p.team as [string, string, string])
+      const dmgA = calc.teamTotalDamage.value
+      const stunA = calc.stunPoolResult.value?.stunCount ?? 0
+      const parryA = [0, 1, 2].map(s => config.team[s]!.parryCount).join('/')
+      const r = applyTimeWeightAllocation({ calc, configStore: config })
+      const dmgB = calc.teamTotalDamage.value
+      const stunB = calc.stunPoolResult.value?.stunCount ?? 0
+      const parryB = [0, 1, 2].map(s => config.team[s]!.parryCount).join('/')
+      const trunc = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
+      if (trunc > 1e-6) infeasibleAfter++
+      sumBase += dmgA
+      sumJoint += dmgB
+      if (dmgB > dmgA + 1) improved++
+      else same++
+      if (!r.applied) refused++
+      if (parryA !== parryB) parryChanged++
+      if (stunA !== stunB) stunChanged++
+      rows.push({ id: p.id, base: dmgA, joint: dmgB, note: `${parryA}→${parryB} 失衡 ${stunA}→${stunB}${r.applied ? '' : ' 未应用'}${trunc > 1e-6 ? ` 截断 ${trunc.toFixed(2)}` : ''}` })
+    }
+    const byGain = [...rows].sort((x, y) => (y.joint - y.base) - (x.joint - x.base))
+    // eslint-disable-next-line no-console
+    console.log([
+      `预设数 ${rows.length}`,
+      `团队总伤合计：默认 ${(sumBase / 1e6).toFixed(0)}M → 联合 ${(sumJoint / 1e6).toFixed(0)}M（${((sumJoint / Math.max(1, sumBase) - 1) * 100).toFixed(2)}%）`,
+      `提升 ${improved} 队 · 无变化 ${same} 队 · 拒绝（基线已超时）${refused} 队 · 弹刀被改动 ${parryChanged} 队 · 失衡次数变化 ${stunChanged} 队 · 结束时仍截断 ${infeasibleAfter} 队`,
+      '增益 top10：',
+      ...byGain.slice(0, 10).map(r => `  ${r.id} ${(r.base / 1e6).toFixed(1)}M → ${(r.joint / 1e6).toFixed(1)}M（${((r.joint / Math.max(1, r.base) - 1) * 100).toFixed(1)}%）${r.note}`),
+      '损失 top5：',
+      ...[...rows].sort((x, y) => (x.joint - x.base) - (y.joint - y.base)).slice(0, 5).map(r => `  ${r.id} ${(r.base / 1e6).toFixed(1)}M → ${(r.joint / 1e6).toFixed(1)}M（${((r.joint / Math.max(1, r.base) - 1) * 100).toFixed(1)}%）${r.note}`),
+    ].join('\n'))
+  }, 1_800_000)
+})

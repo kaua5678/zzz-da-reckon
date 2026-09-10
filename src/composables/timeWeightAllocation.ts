@@ -46,15 +46,110 @@ export interface TimeWeightStrategy {
 }
 
 /**
- * 策略①：边际均衡（当前唯一实现）。
+ * 策略⓪：**多杠杆联合搜索**（用户口径 2026-09-10：「总体而言是为了总伤最大化」+「弹刀这类交互
+ * 也是伤害杠杆」+「弹刀多了也不能超过总时间，否则他可能无限制的加了」）。
+ *
+ * 搜索空间：① 平A 时间权重（委托边际均衡）；② **弹刀次数**（per-slot 交互杠杆，±阶梯坐标上升）。
+ * 目标函数：团队总伤。**硬可行性门**：`overflowSeconds ≤ 0`（= 装配期没有发生时间线截断，
+ * 即前台净占用 ≤ 预算）——**没有这道门，弹刀会无限加**：弹刀的 daze/喧响/闪能奖励照算，
+ * 而超出的时间会被装配截断（坑22），模型于是「白拿奖励」，优化器会一路加到上限。
+ * 这也是用户原话「弹刀多了也不能超过总时间」的机器面。
+ *
+ * 代价：≈ 边际均衡（~3 次求值）+ 弹刀阶梯（3 槽 × 2 方向 × ≤3 轮）≈ 15~20 次求值（~1.5s），
+ * 因此只在这个**默认关**的开关后面跑。交互搜索的其它候选（闪避/快支、合轴）同题扩展。
+ */
+export const jointLeverStrategy: TimeWeightStrategy = {
+  id: 'joint-levers',
+  label: '多杠杆联合（平A 权重 + 弹刀）',
+  description: '按团队总伤联合搜索平A 权重与弹刀次数；硬门 = 不发生时间线截断（不超总时间）',
+  allocate(ctx) {
+    const { calc, configStore } = ctx
+    const weightsBefore = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0)))
+    const parryBefore = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.parryCount ?? 0)))
+    const stunBefore = calc.stunPoolResult.value?.stunCount ?? 0
+    const damageBefore = calc.teamTotalDamage.value
+    /**
+     * 硬可行性门：装配期没发生截断（= 前台净占用 ≤ 预算）。
+     * **必须读结果自带的** `convergence.timeTruncatedSeconds`，不能读 `rr.overflowSeconds`——
+     * 后者是 cfg 上的副作用字段（`calcTeamResources` 每次调用都写），而一次预设求值会跑十几次调用
+     * （见 docs 坑33「尾巴专项」），读数会翻面（实测：门槛读 0 而终态 0.906s）。
+     */
+    const feasible = () => {
+      const rr = calc.resourceResult.value
+      return !!rr && (rr.convergence?.timeTruncatedSeconds ?? 0) <= 1e-6
+    }
+    if (!feasible()) {
+      return {
+        strategyId: jointLeverStrategy.id, weights: weightsBefore, damage: damageBefore, applied: false,
+        note: '当前配置本身已超时（前台净占用 > 预算，装配发生截断）→ 先修配置再自动分配',
+      }
+    }
+    const notes: string[] = []
+    // ① 平A 权重（委托边际均衡；它自己不含可行性门，故候选若越界即回滚）
+    const w = marginalEqualizeStrategy.allocate(ctx)
+    if (!feasible()) {
+      for (let s = 0; s < 3; s++) configStore.setBasicAttackTimeWeight(s, weightsBefore[s])
+      notes.push('平A 权重均衡解越界（超时间），已回滚')
+    } else if (w.note) {
+      notes.push(w.note)
+    }
+    // ② 弹刀阶梯：±step 坐标上升，接受条件 = 伤害上升 **且** 仍可行；最多 3 轮（成本上界）
+    let best = calc.teamTotalDamage.value
+    const STEP = 2
+    const MAX_ROUNDS = 3
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      let improved = false
+      for (let slot = 0; slot < 3; slot++) {
+        for (const dir of [STEP, -STEP] as const) {
+          const cur = Math.max(0, Number(configStore.team[slot]?.parryCount ?? 0))
+          const next = Math.max(0, Math.min(99, cur + dir))
+          if (next === cur) continue
+          configStore.setParryCount(slot, next)
+          const dmg = calc.teamTotalDamage.value
+          if (!feasible() || dmg <= best + 1e-6) {
+            configStore.setParryCount(slot, cur) // 回滚：越界或没变好
+          } else {
+            best = dmg
+            improved = true
+          }
+        }
+      }
+      if (!improved) break
+    }
+    const parryAfter = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.parryCount ?? 0)))
+    const parryMoved = parryAfter.some((v, i) => v !== parryBefore[i])
+    if (parryMoved) {
+      notes.push(`弹刀 ${parryBefore.join('/')}→${parryAfter.join('/')}（受「不发生截断」硬门约束）`)
+    }
+    const stunAfter = calc.stunPoolResult.value?.stunCount ?? 0
+    if (stunAfter !== stunBefore) {
+      notes.push(`失衡 ${stunBefore}→${stunAfter} 次（次数是分配的结果，未拦截）`)
+    }
+    const moved = parryMoved || w.applied
+    return {
+      strategyId: jointLeverStrategy.id,
+      weights: [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0))),
+      damage: calc.teamTotalDamage.value,
+      applied: moved,
+      note: notes.length > 0 ? notes.join('；') : undefined,
+    }
+  },
+}
+
+/**
+ * 策略①：边际均衡（联合策略的①号子步，也可单独用）。
  * 用 `teamTimeline#optimizeTeamTimeWeights`（set-read-restore 经 `teamTotalDamage` 做有限差分坐标上升，
  * 纯算法见 `timeWeightBalancer#equalizeTimeWeights`）。支援/防护（权重 0）不参与转移，时间总权重守恒。
  *
- * **硬约束：失衡次数不许被伤害优化改掉**（用户口径 2026-09-10「失衡次数只是第一个决策，其次还有很多
- * 分配逻辑，不过总体而言是为了总伤最大化」→ 次数是**先定的约束**，伤害是目标）。
- * 实测该约束会咬：127 预设里 **4 队**的均衡解会掉次数（`yidhari-trigger-lucia` 3→2 +7.2%、
- * `auto-1591-1481-1311` 4→3 +10.1%、`auto-1201-1361-1211` 4→3、`auto-1201-1361-1311` 4→3），
- * 处置 = **回滚权重并在 note 里如实上报这笔交易**（不静默接受，也不静默丢弃）。
+ * **目标函数 = 团队总伤；失衡次数不是约束，而是分配的结果**（用户口径 2026-09-10，两轮修正后定稿）：
+ * ①「失衡次数只是第一个决策…总体而言是为了**总伤最大化**」；
+ * ②「给击破更多权重，结果导致总失衡次数下降，总伤害肯定也下降了。这是因为**扳机的战场性能比希希芙低很多**，
+ *   所以这队的玩法是不论失衡有没有四舍五入，**都不该给扳机分配平A时间**。这又把第一条逻辑打回去了…
+ *   我们最终目的是为了总伤提高，**失衡四舍五入不一定让总伤提高**，所以此处**打失衡的手段必须换成更高效的
+ *   方式，比如弹刀**。」
+ * → 曾经把次数做成硬约束（均衡解掉次数就回滚）**已按此撤销**：那会把「低性能击破位不该拿平A」这个正确
+ *   结论反过来锁死。次数变化改为**如实上报**（`note`），供人裁决，不做拦截。
+ * 关联：`docs/ENGINE_PIPELINE_GUIDE.md` 坑35（含「打失衡手段效率」的实测表）。
  */
 export const marginalEqualizeStrategy: TimeWeightStrategy = {
   id: 'marginal-equalize',
@@ -63,38 +158,35 @@ export const marginalEqualizeStrategy: TimeWeightStrategy = {
   allocate({ calc, configStore }) {
     const before = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0)))
     const stunBefore = calc.stunPoolResult.value?.stunCount ?? 0
-    const damageBefore = calc.teamTotalDamage.value
     const r = optimizeTeamTimeWeights(calc, configStore, { maxIter: 2 })
     const stunAfter = calc.stunPoolResult.value?.stunCount ?? 0
-    if (r.balanced && stunAfter < stunBefore) {
-      // 约束回滚：失衡次数先于伤害决定（用户口径）
-      for (let s = 0; s < 3; s++) configStore.setBasicAttackTimeWeight(s, before[s])
-      return {
-        strategyId: 'marginal-equalize',
-        weights: before,
-        damage: calc.teamTotalDamage.value,
-        applied: false,
-        note: `失衡次数优先：均衡解会把失衡 ${stunBefore}→${stunAfter} 次（换来 ${(((r.damage / Math.max(1, damageBefore)) - 1) * 100).toFixed(1)}% 伤害），已回滚权重`,
-      }
-    }
     const moved = r.weights.some((w, i) => Math.abs(w - before[i]) > 1e-9)
+    const notes: string[] = []
+    if (!r.balanced) notes.push('可调槽位 <2（只有一个槽位权重 >0），跳过')
+    else if (!moved) notes.push('已是均衡解，权重未变')
+    if (r.balanced && stunAfter !== stunBefore) {
+      // 如实上报（不拦截）：次数是分配的结果；要更多失衡应换更高效的手段（弹刀），不是给低性能击破位平A
+      notes.push(`均衡后失衡 ${stunBefore}→${stunAfter} 次（次数是分配的结果，未拦截；需更多失衡请提高弹刀等交互）`)
+    }
     return {
       strategyId: 'marginal-equalize',
       weights: r.weights,
       damage: r.damage,
       applied: r.balanced && moved,
-      note: r.balanced ? undefined : '可调槽位 <2（只有一个槽位权重 >0），跳过',
+      note: notes.length > 0 ? notes.join('；') : undefined,
     }
   },
 }
 
 /** 策略注册表（扩展点：`energy-driven` / `team-combo-align` 等新策略往这里加，调用点不动） */
-export const TIME_WEIGHT_STRATEGIES: TimeWeightStrategy[] = [marginalEqualizeStrategy]
+export const TIME_WEIGHT_STRATEGIES: TimeWeightStrategy[] = [jointLeverStrategy, marginalEqualizeStrategy]
 
-export const DEFAULT_TIME_WEIGHT_STRATEGY_ID = marginalEqualizeStrategy.id
+export const DEFAULT_TIME_WEIGHT_STRATEGY_ID = jointLeverStrategy.id
 
 export function getTimeWeightStrategy(id: string = DEFAULT_TIME_WEIGHT_STRATEGY_ID): TimeWeightStrategy {
-  return TIME_WEIGHT_STRATEGIES.find(s => s.id === id) ?? marginalEqualizeStrategy
+  return TIME_WEIGHT_STRATEGIES.find(s => s.id === id)
+    ?? TIME_WEIGHT_STRATEGIES.find(s => s.id === DEFAULT_TIME_WEIGHT_STRATEGY_ID)
+    ?? jointLeverStrategy
 }
 
 /** 应用一个分配策略（默认=边际均衡） */
