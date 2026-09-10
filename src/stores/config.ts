@@ -333,19 +333,20 @@ export const useConfigStore = defineStore('config', () => {
   // 章鱼自动轴（队伍含伊德海莉 1051 时按 章×有琉 自动开失衡轴并选预设；手动配置过轴时让路）
   const autoYidhariAxis = ref(true)
   /**
-   * 平A池权重·自动分配（默认 **关**，用户口径 2026-09-10）。
+   * 平A池权重·**深度联合搜索**开关（默认 **关**；用户 2026-09-10 裁决「默认快一些的B，做个开关，
+   * 如果开了就是更慢的C」）。
    *
-   * 关闭 = 用静态默认权重（强攻/异常/击破=1、支援/防护=0）或用户手填值——这是当前全部基线与既有数值的口径。
-   * 打开 = 由 `composables/timeWeightAllocation.ts` 的策略按**团队总伤**自动分配（默认策略=**多杠杆联合**：
-   * 平A 时间权重 + **弹刀次数**；硬门 = 不发生时间线截断，即前台净占用 ≤ 预算——用户口径
-   * 「弹刀多了也不能超过总时间，否则他可能无限制的加了」）。
-   * 实测代价：边际均衡 ≈ 3 倍求值（均值 239.5ms/队），联合搜索再加弹刀阶梯（≈15~20 次求值 ~1.5s），
-   * 故做成显式开关默认关。以后要加的「能量不够就多A / 队友时间可合轴」等逻辑在策略注册表里扩展，
-   * 本开关与 UI 不动。
+   * **关（默认）= 边际均衡（B）**：`composables/timeWeightAllocation.ts` 的
+   * `marginalEqualizeStrategy` 按团队总伤在槽位间转移平A时间（一次 ≈ 3 倍求值），主路径默认就走它。
+   * **开 = 多杠杆联合（C，更慢）**：`jointLeverStrategy` = 均衡 + **弹刀次数**阶梯（≈15~20 次求值 ~1.5s）；
+   * 硬门 = 不发生时间线截断（前台净占用 ≤ 预算）——用户口径「弹刀多了也不能超过总时间，
+   * 否则他可能无限制的加了」。
+   * 两者都是坐标上升（只接受总伤上升的候选）⇒ 逐队总伤单调不劣；时间账/失衡次数的挪动如实上报。
+   * 以后要加的「能量不够就多A / 队友时间可合轴」等逻辑在策略注册表里扩展，本开关与 UI 不动。
    */
-  const autoAllocateBasicTime = ref(false)
-  function setAutoAllocateBasicTime(v: boolean) {
-    autoAllocateBasicTime.value = !!v
+  const deepTimeWeightSearch = ref(false)
+  function setDeepTimeWeightSearch(v: boolean) {
+    deepTimeWeightSearch.value = !!v
   }
 
   // 融合贪心边际收益（按槽位存储，用于 UI 展示）
@@ -1275,8 +1276,8 @@ function parseCinemaRequirement(sourceLabel: string): number {
     stunAxisPlans,
     useStunAxis,
     autoYidhariAxis,
-    autoAllocateBasicTime,
-    setAutoAllocateBasicTime,
+    deepTimeWeightSearch,
+    setDeepTimeWeightSearch,
     getTeamMechanicSetting,
     setTeamMechanicSetting,
     getAnomalyUtilizationRate,

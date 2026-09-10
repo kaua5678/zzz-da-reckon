@@ -381,19 +381,20 @@
                       <n-gi>
                         <div class="field">
                           <span class="field-label">
-                            平A权重/弹刀自动分配
-                            <n-tooltip trigger="hover" style="max-width: 320px">
+                            深度联合搜索（慢）
+                            <n-tooltip trigger="hover" style="max-width: 340px">
                               <template #trigger><span class="field-hint">?</span></template>
-                              默认关。开启后按**团队总伤**自动分配：平A 时间权重 + 弹刀次数（当前策略=多杠杆联合）。
+                              默认关 = 边际均衡（快）：按**团队总伤**自动分配平A 时间权重（≈3 倍求值）。
+                              开启 = 多杠杆联合（慢）：在此基础上再搜**弹刀次数**（≈15~20 次求值 ~1.5s）。
                               硬门=不发生时间线截断（前台净占用不超过总时间），越界候选一律回滚，所以弹刀不会无限加。
-                              关闭时用静态默认权重/手填交互。实测代价：边际均衡 ≈3 倍求值，联合搜索再加弹刀阶梯（~1.5s）；
+                              两者都是坐标上升（只接受总伤上升）⇒ 逐队总伤不会变差；失衡次数/时间账的挪动如实上报。
                               队伍变更时触发，手改的权重/弹刀会在下次触发时被覆盖。
                             </n-tooltip>
                           </span>
                           <n-switch
-                            :value="configStore.autoAllocateBasicTime"
+                            :value="configStore.deepTimeWeightSearch"
                             size="small"
-                            @update:value="v => configStore.setAutoAllocateBasicTime(!!v)"
+                            @update:value="v => configStore.setDeepTimeWeightSearch(!!v)"
                           />
                         </div>
                       </n-gi>

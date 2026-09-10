@@ -1,14 +1,18 @@
 /**
  * 平A池权重·分配策略的生效测试（2026-09-10）。
  *
- * 判据（对应用户口径「不分配足够的平A，总量也不够」+ 开关默认关）：
- *  ① 开关默认关 → 权重保持静态默认，策略不自动跑；
+ * 判据（对应用户口径「不分配足够的平A，总量也不够」+ 「默认快一些的B，做个开关，如果开了就是更慢的C」）：
+ *  ① 默认 = **边际均衡（B）**（`DEFAULT_TIME_WEIGHT_STRATEGY_ID`），深度开关 `deepTimeWeightSearch` 默认关；
+ *     深度开关 → **多杠杆联合（C）** 的映射由 `timeWeightStrategyIdForDeepSearch` 单一提供；
  *  ② 触发签名**不含权重本身**（否则策略写回权重会自触发成死循环）——策略新增逻辑时这条最容易踩；
- *  ③ 应用策略后：权重确实被改动，且**团队总伤不降**（均衡器是坐标上升，单调不劣）；
+ *  ③ 走默认（不点名策略）时：权重确实被改动、`strategyId` = B、**团队总伤不降**（坐标上升单调不劣）；
  *  ④ 主C（槽0）的平A池时间**增加**——即「能量不够就多A」这条约束在当前策略下确实被喂饱
  *     （实测 auto-1521-1361-1311：平A 31.8→65.7s、强特 16→18 次、伤害 +23.9%）。
+ *  ⑥~⑧ 测的是 **C 的杠杆**（可行性优先/弹刀阶梯/相对门/能量驱动/角点解/弹刀下限）→ 必须显式点名
+ *     `DEEP_TIME_WEIGHT_STRATEGY_ID`（默认已不是 C）。
  */
 import { describe, it, expect, vi } from 'vitest'
+import { effectScope, nextTick } from 'vue'
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -16,8 +20,11 @@ import { teamPresets } from '@/data/teamPresets'
 import {
   TIME_WEIGHT_STRATEGIES,
   DEFAULT_TIME_WEIGHT_STRATEGY_ID,
+  DEEP_TIME_WEIGHT_STRATEGY_ID,
   applyTimeWeightAllocation,
   timeWeightAllocationSignature,
+  timeWeightStrategyIdForDeepSearch,
+  useTimeWeightAutoAllocation,
   getTimeWeightStrategy,
 } from '@/composables/timeWeightAllocation'
 
@@ -28,20 +35,26 @@ const PRESET_ID = 'auto-1521-1361-1311'
 vi.setConfig({ testTimeout: 30_000 })
 
 describe('平A池权重·分配策略', () => {
-  it('① 开关默认关：静态默认权重不受影响', async () => {
+  it('① 默认策略 = 边际均衡（B）；深度开关默认关，且「只读结果」不触发任何分配', async () => {
     const { catalog } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
-    expect(config.autoAllocateBasicTime).toBe(false)
+    // 默认策略 = B（更快的那个）；C 只在深度开关后面
+    expect(DEFAULT_TIME_WEIGHT_STRATEGY_ID).toBe('marginal-equalize')
+    expect(DEEP_TIME_WEIGHT_STRATEGY_ID).toBe('joint-levers')
+    expect(timeWeightStrategyIdForDeepSearch(false)).toBe(DEFAULT_TIME_WEIGHT_STRATEGY_ID)
+    expect(timeWeightStrategyIdForDeepSearch(true)).toBe(DEEP_TIME_WEIGHT_STRATEGY_ID)
+    expect(config.deepTimeWeightSearch).toBe(false)
     const p = teamPresets.find(x => x.id === PRESET_ID)!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     const before = [0, 1, 2].map(s => config.team[s]!.basicAttackTimeWeight)
-    // 只读一次结果（不调用任何策略）→ 权重必须原样
+    // 只读一次结果（不调用任何策略、也不挂 `useTimeWeightAutoAllocation`）→ 权重必须原样：
+    // 分配求解刻意放在「计算外侧」显式调用（策略要读伤害做有限差分，进 computed 会递归）。
     const calc = useResourceCalc()
     void calc.teamTotalDamage.value
     expect([0, 1, 2].map(s => config.team[s]!.basicAttackTimeWeight)).toEqual(before)
-    expect(config.autoAllocateBasicTime).toBe(false)
+    expect(config.deepTimeWeightSearch).toBe(false)
   })
 
   it('② 触发签名排除权重本身（否则策略写回权重会自触发）', async () => {
@@ -66,6 +79,7 @@ describe('平A池权重·分配策略', () => {
     config.applyTeamPreset(p.team as [string, string, string])
     const dmgBefore = calc.teamTotalDamage.value
     const bat0Before = calc.resourceResult.value!.characters[0]!.timeAllocation.basicAttackTime
+    // **不点名策略 = 走默认（B 边际均衡）**（用户 2026-09-10：「默认快一些的B」）
     const r = applyTimeWeightAllocation({ calc, configStore: config })
     expect(r.strategyId).toBe(DEFAULT_TIME_WEIGHT_STRATEGY_ID)
     expect(r.applied).toBe(true)
@@ -110,7 +124,7 @@ describe('平A池权重·分配策略', () => {
     const dmgBefore = calc.teamTotalDamage.value
     const parryBefore = [0, 1, 2].map(s => config.team[s]!.parryCount)
     expect(calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0, '该队基线应可行').toBeLessThanOrEqual(1e-6)
-    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    const r = applyTimeWeightAllocation({ calc, configStore: config }, DEEP_TIME_WEIGHT_STRATEGY_ID)
     expect(r.strategyId).toBe('joint-levers')
     expect(r.applied).toBe(true)
     expect(r.damage).toBeGreaterThanOrEqual(dmgBefore - 1e-6)
@@ -130,7 +144,7 @@ describe('平A池权重·分配策略', () => {
     const truncated = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
     expect(truncated, '该队列为「基线本身就超时」的样本').toBeGreaterThan(0)
     const dmgBefore = calc.teamTotalDamage.value
-    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    const r = applyTimeWeightAllocation({ calc, configStore: config }, DEEP_TIME_WEIGHT_STRATEGY_ID)
     // 相对门：允许优化，但**不得新增截断**（原来的「截断必须为 0 否则拒绝」已按用户口径删除）
     const after = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
     expect(after).toBeLessThanOrEqual(truncated + 1e-6)
@@ -150,7 +164,7 @@ describe('平A池权重·分配策略', () => {
     const truncated = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
     expect(truncated).toBeGreaterThan(0)
     const dmgBefore = calc.teamTotalDamage.value
-    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    const r = applyTimeWeightAllocation({ calc, configStore: config }, DEEP_TIME_WEIGHT_STRATEGY_ID)
     const after = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
     const dmgAfter = calc.teamTotalDamage.value
     // 硬不变量：截断不升、总伤不降
@@ -175,7 +189,7 @@ describe('平A池权重·分配策略', () => {
     config.applyTeamPreset(p.team as [string, string, string])
     const exBase = calc.resourceResult.value!.characters[0]!.exSpecialCount
     const dmgBase = calc.teamTotalDamage.value
-    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    const r = applyTimeWeightAllocation({ calc, configStore: config }, DEEP_TIME_WEIGHT_STRATEGY_ID)
     const exAfter = calc.resourceResult.value!.characters[0]!.exSpecialCount
     const dmgAfter = calc.teamTotalDamage.value
     // 判据：主C exSpecialCount 不降 + 总伤不降（ex 提升可能来自均衡/弹刀杠杆，能量杠杆只在
@@ -198,7 +212,7 @@ describe('平A池权重·分配策略', () => {
     config.applyTeamPreset(p.team as [string, string, string])
     const stunBase = calc.stunPoolResult.value!.stunCount
     const dmgBase = calc.teamTotalDamage.value
-    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    const r = applyTimeWeightAllocation({ calc, configStore: config }, DEEP_TIME_WEIGHT_STRATEGY_ID)
     // 判据（用户口径「失衡次数先定、总伤为目标」）：失衡不降 + 总伤不降
     expect(calc.stunPoolResult.value!.stunCount).toBeGreaterThanOrEqual(stunBase)
     expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(dmgBase - 1e-6)
@@ -222,7 +236,7 @@ describe('平A池权重·分配策略', () => {
     const exA = chars()[0]!.exSpecialCount
     const exB = chars()[1]!.exSpecialCount
     const dmgBase = calc.teamTotalDamage.value
-    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    const r = applyTimeWeightAllocation({ calc, configStore: config }, DEEP_TIME_WEIGHT_STRATEGY_ID)
     const exA2 = chars()[0]!.exSpecialCount
     const exB2 = chars()[1]!.exSpecialCount
     // 判据（逐核心）：两个主C 的强特次数都不许低于策略入口
@@ -283,7 +297,7 @@ describe('平A池权重·分配策略', () => {
     config.setParryCount(0, 8)
     config.setParryCount(1, 8)
     config.setParryCount(2, 0)
-    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    const r = applyTimeWeightAllocation({ calc, configStore: config }, DEEP_TIME_WEIGHT_STRATEGY_ID)
     const total = [0, 1, 2].reduce((a, s) => a + config.team[s]!.parryCount, 0)
     expect(total, '搜索不得把弹刀总数压到 boss 预设强制次数以下').toBeGreaterThanOrEqual(13)
     if (total < 16) {
@@ -291,9 +305,41 @@ describe('平A池权重·分配策略', () => {
     }
   })
 
-  it('注册表契约：默认策略在表内、id 唯一（扩展点）', () => {
+  it('⑨ 开关→策略映射在真实入口生效：默认 B，深度开关打开即 C；watcher 跑完即稳定（不自激）', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const p = teamPresets.find(x => x.id === PRESET_ID)!
+    for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+    config.applyTeamPreset(p.team as [string, string, string])
+    const scope = effectScope()
+    let api: ReturnType<typeof useTimeWeightAutoAllocation> | undefined
+    scope.run(() => { api = useTimeWeightAutoAllocation() })
+    await nextTick()
+    // 默认（开关关）= B 边际均衡
+    expect(api!.applyNow().strategyId).toBe('marginal-equalize')
+    // watcher 真的在跑默认策略：改一个签名内输入（命座）→ post-flush 后权重落定
+    config.setCinemaLevel(0, 1)
+    await nextTick()
+    await nextTick()
+    const weights = () => [0, 1, 2].map(s => config.team[s]!.basicAttackTimeWeight)
+    const settled = weights()
+    // **防自激**（实测踩坑）：策略写回的权重/弹刀不变更「原始值签名」⇒ 再等若干 tick 必须零变化；
+    // 若源写成数组（引用恒不等）则会 `Maximum recursive updates exceeded`，这条就是那个 bug 的护栏。
+    await nextTick()
+    await nextTick()
+    expect(weights(), '跑完即稳定：策略自身写回不得再次触发 watcher').toEqual(settled)
+    // 打开深度开关 → 同一入口升级为 C（更慢的联合搜索）；watcher 也会以同一映射重跑
+    config.setDeepTimeWeightSearch(true)
+    await nextTick()
+    expect(api!.applyNow().strategyId).toBe('joint-levers')
+    scope.stop()
+  })
+
+  it('注册表契约：默认策略在表内、深度策略在表内、id 唯一（扩展点）', () => {
     expect(TIME_WEIGHT_STRATEGIES.length).toBeGreaterThan(0)
     expect(getTimeWeightStrategy(DEFAULT_TIME_WEIGHT_STRATEGY_ID).id).toBe(DEFAULT_TIME_WEIGHT_STRATEGY_ID)
+    expect(getTimeWeightStrategy(DEEP_TIME_WEIGHT_STRATEGY_ID).id).toBe(DEEP_TIME_WEIGHT_STRATEGY_ID)
     expect(new Set(TIME_WEIGHT_STRATEGIES.map(s => s.id)).size).toBe(TIME_WEIGHT_STRATEGIES.length)
     // 未知 id 回落默认策略（不抛错：UI 开关不会因为策略改名而炸）
     expect(getTimeWeightStrategy('not-a-strategy').id).toBe(DEFAULT_TIME_WEIGHT_STRATEGY_ID)

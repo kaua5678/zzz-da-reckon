@@ -75,7 +75,8 @@ export interface TimeWeightStrategy {
  * 这也是用户原话「弹刀多了也不能超过总时间」的机器面。
  *
  * 代价：≈ 边际均衡（~3 次求值）+ 弹刀阶梯（3 槽 × 2 方向 × ≤3 轮）≈ 15~20 次求值（~1.5s），
- * 因此只在这个**默认关**的开关后面跑。交互搜索的其它候选（闪避/快支、合轴）同题扩展。
+ * 因此只挂在**深度开关**（`configStore.deepTimeWeightSearch`，默认关）后面跑；默认主路径是较快的
+ * 边际均衡（B）。交互搜索的其它候选（闪避/快支、合轴）同题扩展。
  */
 export const jointLeverStrategy: TimeWeightStrategy = {
   id: 'joint-levers',
@@ -378,12 +379,24 @@ export const marginalEqualizeStrategy: TimeWeightStrategy = {
 /** 策略注册表（扩展点：`energy-driven` / `team-combo-align` 等新策略往这里加，调用点不动） */
 export const TIME_WEIGHT_STRATEGIES: TimeWeightStrategy[] = [jointLeverStrategy, marginalEqualizeStrategy]
 
-export const DEFAULT_TIME_WEIGHT_STRATEGY_ID = jointLeverStrategy.id
+/**
+ * 主路径**默认**策略 = 边际均衡（B）：用户 2026-09-10 裁决「默认快一些的B，做个开关，如果开了就是更慢的C」。
+ * 它一次 ≈ 3 倍求值，是默认路径能接受的上限；实测全库 +2.86% 总伤、0 队变差（坐标上升单调）。
+ */
+export const DEFAULT_TIME_WEIGHT_STRATEGY_ID = marginalEqualizeStrategy.id
+
+/** **深度开关**（`configStore.deepTimeWeightSearch`）打开时升级到的策略 = 多杠杆联合（C，更慢）。 */
+export const DEEP_TIME_WEIGHT_STRATEGY_ID = jointLeverStrategy.id
+
+/** 深度开关 → 策略 id（默认 B；开启 = C）。UI 开关与调用点只认这一个映射，策略改名不用碰调用点。 */
+export function timeWeightStrategyIdForDeepSearch(deep: boolean): string {
+  return deep ? DEEP_TIME_WEIGHT_STRATEGY_ID : DEFAULT_TIME_WEIGHT_STRATEGY_ID
+}
 
 export function getTimeWeightStrategy(id: string = DEFAULT_TIME_WEIGHT_STRATEGY_ID): TimeWeightStrategy {
   return TIME_WEIGHT_STRATEGIES.find(s => s.id === id)
     ?? TIME_WEIGHT_STRATEGIES.find(s => s.id === DEFAULT_TIME_WEIGHT_STRATEGY_ID)
-    ?? jointLeverStrategy
+    ?? marginalEqualizeStrategy
 }
 
 /** 应用一个分配策略（默认=边际均衡） */
@@ -397,6 +410,10 @@ export function applyTimeWeightAllocation(
 /**
  * 触发签名：只含「应当重新分配」的输入（队伍成员/命座/音擎/驱动盘/交互次数…），
  * **刻意排除 `basicAttackTimeWeight` 本身**——否则策略写回权重会自触发成死循环。
+ *
+ * ⚠ **字符串里 delete 了权重，但依赖仍被追踪**：`{...c}` 展开会读到全部字段（含权重）→ 在 watch 源里调用它
+ * 会让「写权重」也算依赖变化。所以调用点的源必须是**原始值**且不能被自身写回改写判据——见
+ * `useTimeWeightAutoAllocation` 的防自触发两条（2026-09-10 实测 `Maximum recursive updates exceeded`）。
  */
 export function timeWeightAllocationSignature(configStore: ConfigStore): string {
   return JSON.stringify(configStore.team.map(c => {
@@ -407,32 +424,51 @@ export function timeWeightAllocationSignature(configStore: ConfigStore): string 
 }
 
 /**
- * 开关接线：`configStore.autoAllocateBasicTime` 打开时，队伍签名变化后自动跑一次策略。
+ * 开关接线：**默认主路径**就在队伍签名变化后跑一次**边际均衡（B）**；`configStore.deepTimeWeightSearch`
+ * 打开时同一触发点升级为**多杠杆联合（C，更慢）**（用户 2026-09-10 裁决：默认快一些的 B、开关给更慢的 C）。
  *
  * 为什么放在 composable 而不是引擎里：策略要**读伤害**（`teamTotalDamage`）才能做有限差分，
  * 而它自己又写权重 → 放进响应式计算会递归。这里是「计算外侧」的一次显式求解，与金数分配路径
  * （`teamTimeline` 的 `allocateGoldByGreedy`）同款做法。
  *
- * 性能与安全：只在开关打开时干活（关闭时零成本——`useResourceCalc()` 只建惰性 computed）；
- * 重入保护避免抖动（上一次未算完就跳过本轮，不排队）。
+ * **两个防自触发的关键点（2026-09-10 实测踩坑，改这里前先读）**：
+ *  ① **watch 源必须是原始值**（下面的签名**字符串**）。曾写成 `[deep, signature] as const` 返回**数组**——
+ *     数组每次求值都是新引用 ⇒ Vue 的 `hasChanged` 恒真 ⇒ 回调每次都触发；策略跑起来写权重/弹刀又改了
+ *     源依赖（`timeWeightAllocationSignature` 的 `{...c}` 展开**会**追踪含权重在内的全部字段，虽然字符串
+ *     里把权重 delete 了，值不变但**依赖被追踪**）⇒ **回调→写→回调** 自激成死循环，实测报
+ *     `Maximum recursive updates exceeded`（原先开关默认关、回调开头早退，把这个坑盖住了；改「默认跑 B」
+ *     才暴露）。字符串比较下「自己写回的值不进签名」= 不会自触发。
+ *  ② `settledSignature`：记下**每次跑完**的签名。策略自身写回（弹刀/其它交互是签名的一部分）会排一个
+ *     post-flush 任务；任务醒来时若签名与跑完时一致 → 说明无新输入 → **跳过**（否则每次队伍变更要多付一次
+ *     联合搜索 ~1.5s）。真正的新输入（换人/改配装/改交互）签名必然不同 → 照常跑。
+ *
+ * 成本与安全：**只在触发点跑**（不是每次求值都跑）；重入保护避免抖动（上一次未算完就跳过本轮，不排队）。
+ * 默认 B ≈ 3 倍求值（~0.2s/队），深度开关 C ≈ 15~20 次求值（~1.5s/队）。
+ * 手改的权重/弹刀会在下次签名变化时被覆盖（一直是这个约定，UI tooltip 已如实写）。
  */
 export function useTimeWeightAutoAllocation(): { applyNow: () => TimeWeightAllocationResult } {
   const configStore = useConfigStore()
   const calc = useResourceCalc()
   let running = false
+  /** 上次跑完时的触发签名（策略自己写回的不算新输入，见上文②） */
+  let settledSignature = ''
+  /** 源必须是**原始值**（见上文①）：返回数组会因引用不等而每次求值都判定「变了」 */
+  const signature = () => `${configStore.deepTimeWeightSearch}|${timeWeightAllocationSignature(configStore)}`
+  const apply = () => applyTimeWeightAllocation(
+    { calc, configStore },
+    timeWeightStrategyIdForDeepSearch(configStore.deepTimeWeightSearch),
+  )
   const run = () => {
-    if (!configStore.autoAllocateBasicTime || running) return
+    if (running) return
+    if (signature() === settledSignature) return
     running = true
     try {
-      applyTimeWeightAllocation({ calc, configStore })
+      apply()
+      settledSignature = signature()
     } finally {
       running = false
     }
   }
-  watch(
-    () => [configStore.autoAllocateBasicTime, timeWeightAllocationSignature(configStore)] as const,
-    () => run(),
-    { flush: 'post' },
-  )
-  return { applyNow: () => applyTimeWeightAllocation({ calc, configStore }) }
+  watch(signature, () => run(), { flush: 'post' })
+  return { applyNow: () => apply() }
 }
