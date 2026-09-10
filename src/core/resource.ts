@@ -516,8 +516,10 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 停滞判据（阶段2，用户 2026-09-10 口径「平A→资源→次数 的正反馈是模型本身，不能去掉」）：
     // 折叠环在**量化地板**处会停在恒定残差上——实测叶瞬光队 pass7 起 maxExcess 恒 0.092~0.093s
     // 持续 20+ 轮（累加器仍在增长，残差不动）。这不是「没收敛」，而是已到不动点（残差 = 量化粒度）。
-    // 判据：连续 3 轮无改善（改善 ≤ 1e-3）即判收敛；取代「残差 ≤ 1e-3」这个对离散系统过严的门槛。
-    if (maxExcess < (bestExcess as number) - 1e-3) {
+    // 判据：连续 3 轮无改善（改善 ≤ 1e-2 = 10 毫秒，量化噪声量级）即判收敛；
+    // 取代「残差 ≤ 1e-3」这个对离散系统过严的门槛。阈值取 1e-2 的依据：比利系每轮只改善
+    // ~0.002s（比利终局整数重推的量化残差），1e-3 会让停滞计数不断重置、差一两轮跑满上限。
+    if (maxExcess < (bestExcess as number) - 1e-2) {
       bestExcess = maxExcess
       stagnantPasses = 0
     } else {
