@@ -1083,19 +1083,21 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     `teamTimeline.ts:484`（`allocateGoldByGreedy` 基础态）。**主计算路径 + `timeGolden`/`timeFillRatchet`
     两份基线全部使用静态默认权重**（`stores/config.ts#defaultBasicAttackTimeWeight`：强攻/异常/击破=1、
     支援/防护=0，用户 2026-09-04 裁决「不设职业统一阶梯」）。
-    **落地形态（2026-09-10，用户两轮裁决：先「做个开关吧，这个算的太慢了，默认关」，后
-    「默认快一些的B，做个开关，如果开了就是更慢的C」）**：
-    · **默认（`configStore.deepTimeWeightSearch=false`）= 边际均衡（B，`marginal-equalize`）**——
-      队伍签名变化时跑一次（`CalculatorView` 内 `useTimeWeightAutoAllocation`），
-      一次 ≈ **3 倍求值**（实测均值 239.5ms/队、p90 494ms、最坏 1301ms；对照一次全队求值 78.6ms）；
-    · **深度开关打开 = 多杠杆联合（C，`joint-levers`）**：均衡 + 弹刀次数阶梯（≈15~20 次求值 ~1.5s）；
-    · 策略映射单一来源 = `timeWeightStrategyIdForDeepSearch(deep)`（UI/调用点不硬编码 id）；
+    **落地形态（2026-09-10，用户三轮裁决：先「做个开关吧，这个算的太慢了，默认关」，后
+    「默认快一些的B，做个开关，如果开了就是更慢的C」，再补「全关」档以支撑难度曲线）**：
+    · **三态** `configStore.timeWeightStrategy`：
+      **`'static'`** = **不跑策略**（静态默认权重/手填值；难度曲线「全关」档的落点，也把手填自由度还回来）/
+      **`'balanced'`（默认）** = 边际均衡（B，`marginal-equalize`，一次 ≈ **3 倍求值**：实测均值 239.5ms/队、
+      p90 494ms、最坏 1301ms，对照一次全队求值 78.6ms）/ **`'joint'`** = 多杠杆联合（C，`joint-levers`）：
+      均衡 + 弹刀次数阶梯（≈15~20 次求值 ~1.5s）；
+    · 队伍签名/档位变化时跑一次（`CalculatorView` 内 `useTimeWeightAutoAllocation`）；
+    · 策略映射单一来源 = `timeWeightStrategyIdForMode(mode)`（`'static'` → `null` = 不跑；UI/调用点不硬编码 id）；
     · 触发签名**刻意排除权重本身**（`timeWeightAllocationSignature`）——否则策略写回权重会自触发成死循环，
       该约束有测试（`__tests__/timeWeightAllocation.test.ts` ②）；
-    · 必须先有生成规则的痕迹：UI 开关在 TeamConfigPage「平A时间权重」旁（标签「深度联合搜索（慢）」），
-      tooltip 写明「默认=边际均衡（快）、开=联合（慢）、会覆盖手改」。
+    · 必须先有生成规则的痕迹：UI 在 TeamConfigPage「平A时间权重」旁（标签「权重分配策略」三态下拉），
+      tooltip 写明「静态=不自动分配、均衡=快、联合=慢、切回静态不还原已写回的值」。
     · **引擎与两份基线（`timeGolden`/`timeFillRatchet`）保持静态权重口径**：策略是「计算外侧」的显式求解，
-      只在 UI 触发点跑，不进引擎/不进基线——所以本默认值切换**零 delta**，基线仍是引擎回归的参照面。
+      只在 UI 触发点跑，不进引擎/不进基线——所以档位切换**零 delta**，基线仍是引擎回归的参照面。
     **扩展点（用户 2026-09-10：「这个自动计算以后还要加逻辑，比如能量不够就多a，甚至总时间可以把队友的
     时间都合轴」）**：新逻辑各自实现一个 `TimeWeightStrategy` 注册进表即可，UI 开关与 watcher 调用点不动。
     **价值实测（127 预设，默认 vs 边际均衡）**：团队总伤合计 **8103M → 8335M（+2.86%）**、

@@ -2,8 +2,8 @@
  * 平A池权重·分配策略的生效测试（2026-09-10）。
  *
  * 判据（对应用户口径「不分配足够的平A，总量也不够」+ 「默认快一些的B，做个开关，如果开了就是更慢的C」）：
- *  ① 默认 = **边际均衡（B）**（`DEFAULT_TIME_WEIGHT_STRATEGY_ID`），深度开关 `deepTimeWeightSearch` 默认关；
- *     深度开关 → **多杠杆联合（C）** 的映射由 `timeWeightStrategyIdForDeepSearch` 单一提供；
+ *  ① **三态** `timeWeightStrategy`：`'balanced'`（默认，= 边际均衡 B）/ `'joint'`（= 多杠杆联合 C）/
+ *     `'static'`（**不跑策略**，静态默认权重或手填值）——映射单源 `timeWeightStrategyIdForMode`；
  *  ② 触发签名**不含权重本身**（否则策略写回权重会自触发成死循环）——策略新增逻辑时这条最容易踩；
  *  ③ 走默认（不点名策略）时：权重确实被改动、`strategyId` = B、**团队总伤不降**（坐标上升单调不劣）；
  *  ④ 主C（槽0）的平A池时间**增加**——即「能量不够就多A」这条约束在当前策略下确实被喂饱
@@ -23,7 +23,7 @@ import {
   DEEP_TIME_WEIGHT_STRATEGY_ID,
   applyTimeWeightAllocation,
   timeWeightAllocationSignature,
-  timeWeightStrategyIdForDeepSearch,
+  timeWeightStrategyIdForMode,
   useTimeWeightAutoAllocation,
   getTimeWeightStrategy,
 } from '@/composables/timeWeightAllocation'
@@ -35,16 +35,17 @@ const PRESET_ID = 'auto-1521-1361-1311'
 vi.setConfig({ testTimeout: 30_000 })
 
 describe('平A池权重·分配策略', () => {
-  it('① 默认策略 = 边际均衡（B）；深度开关默认关，且「只读结果」不触发任何分配', async () => {
+  it('① 三态默认 = 均衡（B）；static 映射为「不跑」；只读结果不触发任何分配', async () => {
     const { catalog } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
-    // 默认策略 = B（更快的那个）；C 只在深度开关后面
+    // 三态映射单源：default = B；joint = C；static = **不跑**（返回 null）
     expect(DEFAULT_TIME_WEIGHT_STRATEGY_ID).toBe('marginal-equalize')
     expect(DEEP_TIME_WEIGHT_STRATEGY_ID).toBe('joint-levers')
-    expect(timeWeightStrategyIdForDeepSearch(false)).toBe(DEFAULT_TIME_WEIGHT_STRATEGY_ID)
-    expect(timeWeightStrategyIdForDeepSearch(true)).toBe(DEEP_TIME_WEIGHT_STRATEGY_ID)
-    expect(config.deepTimeWeightSearch).toBe(false)
+    expect(timeWeightStrategyIdForMode('balanced')).toBe(DEFAULT_TIME_WEIGHT_STRATEGY_ID)
+    expect(timeWeightStrategyIdForMode('joint')).toBe(DEEP_TIME_WEIGHT_STRATEGY_ID)
+    expect(timeWeightStrategyIdForMode('static')).toBeNull()
+    expect(config.timeWeightStrategy).toBe('balanced')
     const p = teamPresets.find(x => x.id === PRESET_ID)!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
@@ -54,7 +55,7 @@ describe('平A池权重·分配策略', () => {
     const calc = useResourceCalc()
     void calc.teamTotalDamage.value
     expect([0, 1, 2].map(s => config.team[s]!.basicAttackTimeWeight)).toEqual(before)
-    expect(config.deepTimeWeightSearch).toBe(false)
+    expect(config.timeWeightStrategy).toBe('balanced')
   })
 
   it('② 触发签名排除权重本身（否则策略写回权重会自触发）', async () => {
@@ -305,7 +306,7 @@ describe('平A池权重·分配策略', () => {
     }
   })
 
-  it('⑨ 开关→策略映射在真实入口生效：默认 B，深度开关打开即 C；watcher 跑完即稳定（不自激）', async () => {
+  it('⑨ 三态在真实入口生效：默认 B → joint 即 C → static 不跑；watcher 跑完即稳定（不自激）', async () => {
     const { catalog } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
@@ -316,8 +317,8 @@ describe('平A池权重·分配策略', () => {
     let api: ReturnType<typeof useTimeWeightAutoAllocation> | undefined
     scope.run(() => { api = useTimeWeightAutoAllocation() })
     await nextTick()
-    // 默认（开关关）= B 边际均衡
-    expect(api!.applyNow().strategyId).toBe('marginal-equalize')
+    // 默认档 = B 边际均衡
+    expect(api!.applyNow()!.strategyId).toBe('marginal-equalize')
     // watcher 真的在跑默认策略：改一个签名内输入（命座）→ post-flush 后权重落定
     config.setCinemaLevel(0, 1)
     await nextTick()
@@ -329,10 +330,19 @@ describe('平A池权重·分配策略', () => {
     await nextTick()
     await nextTick()
     expect(weights(), '跑完即稳定：策略自身写回不得再次触发 watcher').toEqual(settled)
-    // 打开深度开关 → 同一入口升级为 C（更慢的联合搜索）；watcher 也会以同一映射重跑
-    config.setDeepTimeWeightSearch(true)
+    // 切到 'joint' → 同一入口升级为 C（更慢的联合搜索）；watcher 以同一映射重跑
+    config.setTimeWeightStrategy('joint')
     await nextTick()
-    expect(api!.applyNow().strategyId).toBe('joint-levers')
+    expect(api!.applyNow()!.strategyId).toBe('joint-levers')
+    // 切到 'static' → **不跑策略**：applyNow 返回 null，且换输入后权重必须原样（watcher 不动手）
+    config.setTimeWeightStrategy('static')
+    await nextTick()
+    expect(api!.applyNow(), "static 档不跑策略").toBeNull()
+    const staticWeights = weights()
+    config.setCinemaLevel(0, 0)
+    await nextTick()
+    await nextTick()
+    expect(weights(), 'static 档下 watcher 不得改写权重').toEqual(staticWeights)
     scope.stop()
   })
 

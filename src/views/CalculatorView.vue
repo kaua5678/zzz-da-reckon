@@ -40,9 +40,9 @@ import TeamConfigPage from '@/views/TeamConfigPage.vue'
 const catalogStore = useCatalogStore()
 const configStore = useConfigStore()
 
-// 平A池权重·分配策略：默认就跑**边际均衡（B，≈3 倍求值）**；`deepTimeWeightSearch` 开关打开时
-// 升级为**多杠杆联合（C，更慢）**——用户裁决「默认快一些的B，做个开关，如果开了就是更慢的C」。
-// 必须在「计算外侧」——策略要读伤害做有限差分，放进响应式计算会递归（见 timeWeightAllocation.ts）。
+// 平A池权重·分配策略**三态**（用户裁决）：'static' 不跑（静态/手填权重）/ 'balanced' 默认＝边际均衡（B，
+// ≈3 倍求值）/ 'joint' ＝多杠杆联合（C，更慢）。必须在「计算外侧」——策略要读伤害做有限差分，
+// 放进响应式计算会递归（见 timeWeightAllocation.ts）。
 useTimeWeightAutoAllocation()
 
 /** 懒加载占位：快页面（<120ms）不闪 loading，慢页面显示小圈 */

@@ -6,9 +6,10 @@
  * 强特 16→18 次、单队伤害 +23.9%；而主计算路径用的是**静态默认权重**（强攻/异常/击破=1、支援/防护=0），
  * 127 预设里 **56 队的主C 被分少**，仅靠重新分配时间全库可拿 **+2.86%** 团队总伤。
  *
- * 为什么是**开关且默认关**（用户 2026-09-10 裁决）：「这个算的太慢了」——边际均衡一次 ≈ 3 倍求值
- * （实测均值 239.5ms/队、p90 494ms、最坏 1301ms，对照一次全队求值 78.6ms）。开与不开都是合法口径：
- * 关 = 静态默认/用户手填权重（当前基线与全部既有数值）；开 = 按策略重新分配。
+ * **三态（用户 2026-09-10 裁决：「默认快一些的B，做个开关，如果开了就是更慢的C」；难度曲线又需要"全关"落点）**：
+ * `configStore.timeWeightStrategy` = `'static'`（**不跑策略**：静态默认权重/手填值）/ `'balanced'`
+ * （**默认**＝边际均衡 B，一次 ≈ 3 倍求值：实测均值 239.5ms/队、p90 494ms、最坏 1301ms，对照一次全队求值
+ * 78.6ms；坐标上升 ⇒ 逐队总伤单调不劣）/ `'joint'`（**更慢的 C**＝均衡 + 弹刀阶梯 ≈15~20 次求值 ~1.5s）。
  *
  * **扩展点（用户 2026-09-10：「这个自动计算以后还要加逻辑，比如能量不够就多a，甚至总时间可以把队友的
  * 时间都合轴」）**：新逻辑各自实现一个 `TimeWeightStrategy` 注册进 `TIME_WEIGHT_STRATEGIES` 即可，
@@ -20,6 +21,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { optimizeTeamTimeWeights } from '@/composables/teamTimeline'
 import { isCarrySpecialty } from '../../scripts/lib/presetCategories.mjs'
+import type { TimeWeightMode } from '@/types/resource'
 
 /**
  * 队伍输出核心槽（升序）。口径单源 = `scripts/lib/presetCategories.mjs#isCarrySpecialty`
@@ -75,8 +77,8 @@ export interface TimeWeightStrategy {
  * 这也是用户原话「弹刀多了也不能超过总时间」的机器面。
  *
  * 代价：≈ 边际均衡（~3 次求值）+ 弹刀阶梯（3 槽 × 2 方向 × ≤3 轮）≈ 15~20 次求值（~1.5s），
- * 因此只挂在**深度开关**（`configStore.deepTimeWeightSearch`，默认关）后面跑；默认主路径是较快的
- * 边际均衡（B）。交互搜索的其它候选（闪避/快支、合轴）同题扩展。
+ * 因此只挂在三态的 `'joint'` 档后面跑（默认档是较快的 **B 边际均衡**）。交互搜索的其它候选
+ * （闪避/快支、合轴）同题扩展。
  */
 export const jointLeverStrategy: TimeWeightStrategy = {
   id: 'joint-levers',
@@ -385,12 +387,18 @@ export const TIME_WEIGHT_STRATEGIES: TimeWeightStrategy[] = [jointLeverStrategy,
  */
 export const DEFAULT_TIME_WEIGHT_STRATEGY_ID = marginalEqualizeStrategy.id
 
-/** **深度开关**（`configStore.deepTimeWeightSearch`）打开时升级到的策略 = 多杠杆联合（C，更慢）。 */
+/** 三态里 `'joint'` 档用的策略 = 多杠杆联合（C，更慢）。 */
 export const DEEP_TIME_WEIGHT_STRATEGY_ID = jointLeverStrategy.id
 
-/** 深度开关 → 策略 id（默认 B；开启 = C）。UI 开关与调用点只认这一个映射，策略改名不用碰调用点。 */
-export function timeWeightStrategyIdForDeepSearch(deep: boolean): string {
-  return deep ? DEEP_TIME_WEIGHT_STRATEGY_ID : DEFAULT_TIME_WEIGHT_STRATEGY_ID
+/**
+ * **三态模式 → 策略 id**（单一映射，UI/调用点只认它）：
+ * · `'static'`   → `null`（**不跑策略**：静态默认权重/手填值——难度曲线「全关」档的落点）
+ * · `'balanced'` → 边际均衡（B，默认）
+ * · `'joint'`    → 多杠杆联合（C，更慢）
+ */
+export function timeWeightStrategyIdForMode(mode: TimeWeightMode): string | null {
+  if (mode === 'static') return null
+  return mode === 'joint' ? DEEP_TIME_WEIGHT_STRATEGY_ID : DEFAULT_TIME_WEIGHT_STRATEGY_ID
 }
 
 export function getTimeWeightStrategy(id: string = DEFAULT_TIME_WEIGHT_STRATEGY_ID): TimeWeightStrategy {
@@ -424,15 +432,15 @@ export function timeWeightAllocationSignature(configStore: ConfigStore): string 
 }
 
 /**
- * 开关接线：**默认主路径**就在队伍签名变化后跑一次**边际均衡（B）**；`configStore.deepTimeWeightSearch`
- * 打开时同一触发点升级为**多杠杆联合（C，更慢）**（用户 2026-09-10 裁决：默认快一些的 B、开关给更慢的 C）。
+ * 开关接线：按 `configStore.timeWeightStrategy` **三态**跑（用户 2026-09-10 裁决）——
+ * `'static'` 不跑（静态/手填权重）；`'balanced'`（默认）跑**边际均衡 B**；`'joint'` 升级为**多杠杆联合 C**。
  *
  * 为什么放在 composable 而不是引擎里：策略要**读伤害**（`teamTotalDamage`）才能做有限差分，
  * 而它自己又写权重 → 放进响应式计算会递归。这里是「计算外侧」的一次显式求解，与金数分配路径
  * （`teamTimeline` 的 `allocateGoldByGreedy`）同款做法。
  *
  * **两个防自触发的关键点（2026-09-10 实测踩坑，改这里前先读）**：
- *  ① **watch 源必须是原始值**（下面的签名**字符串**）。曾写成 `[deep, signature] as const` 返回**数组**——
+ *  ① **watch 源必须是原始值**（下面的签名**字符串**）。曾写成 `[mode, signature] as const` 返回**数组**——
  *     数组每次求值都是新引用 ⇒ Vue 的 `hasChanged` 恒真 ⇒ 回调每次都触发；策略跑起来写权重/弹刀又改了
  *     源依赖（`timeWeightAllocationSignature` 的 `{...c}` 展开**会**追踪含权重在内的全部字段，虽然字符串
  *     里把权重 delete 了，值不变但**依赖被追踪**）⇒ **回调→写→回调** 自激成死循环，实测报
@@ -440,26 +448,27 @@ export function timeWeightAllocationSignature(configStore: ConfigStore): string 
  *     才暴露）。字符串比较下「自己写回的值不进签名」= 不会自触发。
  *  ② `settledSignature`：记下**每次跑完**的签名。策略自身写回（弹刀/其它交互是签名的一部分）会排一个
  *     post-flush 任务；任务醒来时若签名与跑完时一致 → 说明无新输入 → **跳过**（否则每次队伍变更要多付一次
- *     联合搜索 ~1.5s）。真正的新输入（换人/改配装/改交互）签名必然不同 → 照常跑。
+ *     联合搜索 ~1.5s）。真正的新输入（换人/改配装/改交互/改态）签名必然不同 → 照常跑。
  *
  * 成本与安全：**只在触发点跑**（不是每次求值都跑）；重入保护避免抖动（上一次未算完就跳过本轮，不排队）。
- * 默认 B ≈ 3 倍求值（~0.2s/队），深度开关 C ≈ 15~20 次求值（~1.5s/队）。
- * 手改的权重/弹刀会在下次签名变化时被覆盖（一直是这个约定，UI tooltip 已如实写）。
+ * B ≈ 3 倍求值（~0.2s/队），C ≈ 15~20 次求值（~1.5s/队）。切到 `'static'` **不还原**已写回的值
+ * （B 只承诺权重，用户 2026-09-10 裁决）；要干净静态值请重新套预设。
  */
-export function useTimeWeightAutoAllocation(): { applyNow: () => TimeWeightAllocationResult } {
+export function useTimeWeightAutoAllocation(): { applyNow: () => TimeWeightAllocationResult | null } {
   const configStore = useConfigStore()
   const calc = useResourceCalc()
   let running = false
   /** 上次跑完时的触发签名（策略自己写回的不算新输入，见上文②） */
   let settledSignature = ''
   /** 源必须是**原始值**（见上文①）：返回数组会因引用不等而每次求值都判定「变了」 */
-  const signature = () => `${configStore.deepTimeWeightSearch}|${timeWeightAllocationSignature(configStore)}`
-  const apply = () => applyTimeWeightAllocation(
-    { calc, configStore },
-    timeWeightStrategyIdForDeepSearch(configStore.deepTimeWeightSearch),
-  )
+  const signature = () => `${configStore.timeWeightStrategy}|${timeWeightAllocationSignature(configStore)}`
+  const apply = () => {
+    const id = timeWeightStrategyIdForMode(configStore.timeWeightStrategy)
+    return id === null ? null : applyTimeWeightAllocation({ calc, configStore }, id)
+  }
   const run = () => {
     if (running) return
+    if (configStore.timeWeightStrategy === 'static') return
     if (signature() === settledSignature) return
     running = true
     try {
@@ -470,5 +479,5 @@ export function useTimeWeightAutoAllocation(): { applyNow: () => TimeWeightAlloc
     }
   }
   watch(signature, () => run(), { flush: 'post' })
-  return { applyNow: () => apply() }
+  return { applyNow: apply }
 }

@@ -1960,6 +1960,14 @@ export interface ResourceCalcConfig {
 
 /** 单次迭代中各角色的中间状态 */
 /**
+ * 平A池权重·分配策略**三态**（用户 2026-09-10 裁决：默认 B、开关给出更慢的 C；再补一档"全关"）。
+ *  · `'static'`   = 不自动分配（静态默认权重 / 手填值）——难度曲线「全关」档的落点，也把手填自由度还回来
+ *  · `'balanced'` = 边际均衡（B，≈3 倍求值）——**默认**
+ *  · `'joint'`    = 多杠杆联合（C，更慢，均衡 + 弹刀阶梯 ≈15~20 次求值）
+ */
+export type TimeWeightMode = 'static' | 'balanced' | 'joint'
+
+/**
  * 失衡计划值（外层不动点实数）→ **计数** 的投影方式（见 `ResourceCalcConfig.stunPlanProjection`）。
  * `'off'` = 现行口径（实数直接当次数用）；其余把「离散动作的次数」投影成整数，时间账保持实数。
  */

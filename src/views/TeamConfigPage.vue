@@ -381,20 +381,23 @@
                       <n-gi>
                         <div class="field">
                           <span class="field-label">
-                            深度联合搜索（慢）
-                            <n-tooltip trigger="hover" style="max-width: 340px">
+                            权重分配策略
+                            <n-tooltip trigger="hover" style="max-width: 360px">
                               <template #trigger><span class="field-hint">?</span></template>
-                              默认关 = 边际均衡（快）：按**团队总伤**自动分配平A 时间权重（≈3 倍求值）。
-                              开启 = 多杠杆联合（慢）：在此基础上再搜**弹刀次数**（≈15~20 次求值 ~1.5s）。
-                              硬门=不发生时间线截断（前台净占用不超过总时间），越界候选一律回滚，所以弹刀不会无限加。
-                              两者都是坐标上升（只接受总伤上升）⇒ 逐队总伤不会变差；失衡次数/时间账的挪动如实上报。
-                              队伍变更时触发，手改的权重/弹刀会在下次触发时被覆盖。
+                              **静态** = 不自动分配，用静态默认权重（强攻/异常/击破=1、支援/防护=0）或手填值。
+                              **均衡（快，默认）** = 按**团队总伤**在槽位间转移平A 时间（≈3 倍求值）。
+                              **联合（慢）** = 均衡 + 再搜**弹刀次数**（≈15~20 次求值 ~1.5s），硬门=不发生时间线截断
+                              （前台净占用不超过总时间），越界候选一律回滚，所以弹刀不会无限加。
+                              后两档都是坐标上升（只接受总伤上升）⇒ 逐队总伤不会变差；失衡次数/时间账的挪动如实上报。
+                              队伍变更/切换档位时触发；**切回静态不会还原已写回的值**（要干净静态值就重新套一次预设）。
                             </n-tooltip>
                           </span>
-                          <n-switch
-                            :value="configStore.deepTimeWeightSearch"
+                          <n-select
+                            :value="configStore.timeWeightStrategy"
                             size="small"
-                            @update:value="v => configStore.setDeepTimeWeightSearch(!!v)"
+                            style="width: 108px"
+                            :options="timeWeightModeOptions"
+                            @update:value="v => configStore.setTimeWeightStrategy(v)"
                           />
                         </div>
                       </n-gi>
@@ -846,7 +849,7 @@
 import { ref, computed, watch } from 'vue'
 import {
   NCard, NSpace, NGrid, NGi, NSelect, NSlider, NInputNumber, NText,
-  NRadioGroup, NRadioButton, NTag, NButton, NModal, NCollapse, NCollapseItem, NCheckbox, NSwitch, NTooltip, useMessage,
+  NRadioGroup, NRadioButton, NTag, NButton, NModal, NCollapse, NCollapseItem, NCheckbox, NTooltip, useMessage,
 } from 'naive-ui'
 import { useConfigStore, getInteractionDefaults } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -874,6 +877,13 @@ const { statLabel, formatStatValue } = useStatLabel()
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { buildGoldStepsFromConfig, teamGoldOf } from '@/composables/teamCompare'
 const presetSelectValue = ref<string | null>(null)
+
+/** 权重分配策略三态选项（默认 balanced；用户 2026-09-10 裁决，见 stores/config.ts#timeWeightStrategy） */
+const timeWeightModeOptions = [
+  { label: '静态', value: 'static' },
+  { label: '均衡（快）', value: 'balanced' },
+  { label: '联合（慢）', value: 'joint' },
+]
 /** 三级筛选（2026-09-03 用户：一级下拉装 99+ 条太多；cascader 弹层选项被裁剪 → 改三联动，
  *  与队伍/击破对比页同款交互；选项一律显示正式队伍名）。 */
 const firstFilter = firstNonEmptyFilter()
