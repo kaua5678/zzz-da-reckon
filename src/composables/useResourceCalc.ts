@@ -467,6 +467,7 @@ export function useResourceCalc() {
       teamVeilCountTotal: prevTeamVeilCountTotal,
       decibelParry: prevDecibelParry,
       decibelRegenBySlot: prevDecibelRegenBySlot,
+      prevPoolStunCount,
     } = threads
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
@@ -505,9 +506,15 @@ export function useResourceCalc() {
     let hugoAxisRemainingStunSeconds: number | undefined
     let hugoAxisExVerdictCount: number | undefined
     let hugoAxisUltVerdictCount: number | undefined
+    // @fact engine:轴内块数落地 口径: 雨果轴内决算次数 = 轴内决算块数 × **上一轮失衡池整数次数**（prevPoolStunCount 线程，与池/轴栈同源）；外层不动点的连续小数计划次数只作收敛输入，不得用于轴内块数（曾致 0.82 窗被 Math.floor 归零、轴栈说 5 池只落地 1，坑36） | 据 用户@2026-09-10「失衡易伤为什么静默不算」查证 + 引擎日志实测 0.824 | 验 src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/composables/useResourceCalc.ts#hugoAxisExVerdictCount | 信 确认
     if (axisActive && configStore.team.some(c => c.agentId === '1291')) {
       const windowDur = computeWindowDuration()
-      const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
+      // 坑36（2026-09-10 修复）：轴内块数落地必须与失衡池**同源**——外层不动点的计划次数是连续小数
+      // （实测 0.824），池同轮算整数（floor）；对小数块数 Math.floor 后决算次数静默 0/1（轴栈 executed
+      // 说 5、资源池只落地 1）。改读上一轮失衡池的整数次数（与其它线程同款滞后注入；首轮无池 → 0，
+      // 收敛期稳定后与最终池一致；锁定次数路径池 = 锁定值不受影响）。
+      const axisStunCount = prevPoolStunCount ?? 0
+      const winAlloc = allocateAxisWindows(resolvedAxes, axisStunCount)
       let maxEnd = -1
       let exVerdictBlocks = 0
       let ultVerdictBlocks = 0
@@ -1692,6 +1699,8 @@ export function useResourceCalc() {
         ),
         // 轨的失衡次数收敛线程：与本轮 stunCount 相等才启用轨（防早期轮窗口失真螺旋）
         trackStunCount: sp1.pool?.stunCount ?? 0,
+        // 上一轮失衡池整数次数：轴内块数落地（雨果决算 坑36）与池同源的滞后注入
+        prevPoolStunCount: sp1.pool?.stunCount ?? 0,
       },
     }
   }

@@ -202,6 +202,9 @@ export const DEBT_REGISTRY = {
   // 2026-09-07：横向动作覆盖缺斤少两（用户实测口径）——物化执行行少于实战动作序列，竖向字段
   // 已行级而横向无逐角色锚点。修复 = 实数化专项逐角色收口（弹刀反推/合轴自动填充同族手法）。
   'src/composables/useResourceCalc.ts:轮换动作覆盖实数化': { since: '2026-09-07', due: '实数化专项逐角色收口（1481/1371 前例），以归档对拍定每角色动作锚点' },
+  // 2026-09-10（账本 Open #6：spec JSON 的 debt: 标记纳入扫描）：柚叶转积蓄的贡献行挂柚叶槽位，
+  // 若其积蓄在目标异常池占比最大会被误判为施加者——实际异常角色积蓄远大于支援柚叶，属已接受近似。
+  'src/specs/agents/1411.json:贡献挂柚叶槽位': { since: '2026-09-10', due: '施加者判定按「除柚叶外最大贡献者」收口时销号；无专项计划则维持近似（已在 note 明示可接受）' },
 }
 
 /**
@@ -229,6 +232,15 @@ export function scanDebtMarkers(root = ROOT) {
           const m = ln.match(/debt:\s*(.+)/)
           if (!m) continue
           markers.push({ file: rel, text: m[1].trim() })
+        }
+      } else if (/\.json$/.test(n) && rel.startsWith('src/specs/agents/')) {
+        // 2026-09-10（账本 Open #6）：spec JSON 的 notes 里也写 debt: 标记，此前扫描不覆盖
+        // → 既不计数也不登记（1411.json 那条债静默至今）。spec 是单行 JSON，逐行扫描即可。
+        const src = readFileSync(p, 'utf8')
+        for (const ln of src.split('\n')) {
+          const m = ln.match(/debt:\s*(.+)/)
+          if (!m) continue
+          markers.push({ file: rel, text: m[1].trim().slice(0, 200) })
         }
       }
     }

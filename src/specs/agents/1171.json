@@ -20,17 +20,7 @@
           "trigger": "消耗能量值",
           "amountPerCount": 1.4,
           "status": "implemented_approximation",
-          "note": "每消耗1点能量累积1.4点燃点；进入战场时立刻累积100点；100只是单次存量上限，整局获得与消耗不设总上限。",
-          "adjustable": {
-            "id": "1171.burnice_ignition.ignition_from_energy.rate",
-            "label": "柏妮思·燃点·消耗能量值",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "每消耗1点能量累积1.4点燃点；进入战场时立刻累积100点；100只是单次存量上限，整局获得与消耗不设总上限。"
         },
         {
           "id": "ignition_from_ultimate",
@@ -38,17 +28,7 @@
           "countSource": "ultimateCount",
           "amountPerCount": 50,
           "status": "implemented_approximation",
-          "note": "终结技：纵享盛焰发动时回复50点燃点。",
-          "adjustable": {
-            "id": "1171.burnice_ignition.ignition_from_ultimate.rate",
-            "label": "柏妮思·燃点·终结技",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "终结技：纵享盛焰发动时回复50点燃点。"
         }
       ],
       "spendRules": [
@@ -92,34 +72,14 @@
           "trigger": "队友触发余烬",
           "amountPerCount": 1,
           "status": "implemented_approximation",
-          "note": "队友触发普通余烬时增加1点流火计数。",
-          "adjustable": {
-            "id": "1171.burnice_flow_fire.flow_count_ember.rate",
-            "label": "柏妮思·流火·队友触发余烬",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "队友触发普通余烬时增加1点流火计数。"
         },
         {
           "id": "flow_count_stirring",
           "trigger": "搅拌式附带余烬命中",
           "amountPerCount": 2,
           "status": "implemented_approximation",
-          "note": "普通攻击：炽焰搅拌式触发的余烬命中时增加2点流火计数。",
-          "adjustable": {
-            "id": "1171.burnice_flow_fire.flow_count_stirring.rate",
-            "label": "柏妮思·流火·搅拌式附带余烬命中",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "普通攻击：炽焰搅拌式触发的余烬命中时增加2点流火计数。"
         }
       ],
       "spendRules": [

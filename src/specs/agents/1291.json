@@ -21,17 +21,7 @@
           "countSource": "chainCountTotal",
           "amountPerCount": 1,
           "formula": "连携次数 × 1",
-          "status": "implemented_approximation",
-          "adjustable": {
-            "id": "1291.hugo_abyss_echo.hugo_chain_echo_gain.rate",
-            "label": "雨果·暗渊回响·连携技：命运戏法命中",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "status": "implemented_approximation"
         },
         {
           "id": "hugo_stun_echo_gain",
@@ -39,17 +29,7 @@
           "countSource": "ultimateCount",
           "amountPerCount": 1,
           "formula": "终结技次数 × 1（失衡/射击触发近似）",
-          "status": "implemented_approximation",
-          "adjustable": {
-            "id": "1291.hugo_abyss_echo.hugo_stun_echo_gain.rate",
-            "label": "雨果·暗渊回响·攻击使敌人失衡或6命射击命中",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "status": "implemented_approximation"
         }
       ],
       "spendRules": [],

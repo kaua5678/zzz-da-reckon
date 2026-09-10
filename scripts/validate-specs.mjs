@@ -170,9 +170,32 @@ for (const file of files) {
         `自定义模块角色的 attributeConversions 不会被 spec 解释器消费（死数据）。机制须在模块实现并在 note 写「实现位置：<模块/函数>」，或删除该条目（防双计，参见般岳 hp→贯穿力 修复）。`
       )
     }
+    // adjustable 滑块：判据必须落在**真正挂载 adjustable 的对象**上——历史上只查了 res.adjustable（资源组），
+    // 而滑块全挂在 rule（gainRules/feedbackGainRules/spendRules）上 ⇒ 0 条 WARN，55 条死声明静默至今
+    // （2026-09-10 用户「还有多少静默不算的」查证：60 个角色全有自定义模块 ⇒ specToMechanicModule 从不注册
+    //  ⇒ 任何 adjustable 都无消费者）。
+    // **2026-09-10 同日修正判据**：模块调用 `computeSpecResources`/`buildSpecEventExecutions`（spec 资源
+    // 解释器）时，adjustable 是**活的**——解释器按 `setting:<id>` 读 cfg 应用倍率，且 adjustable.default
+    // 常携带真实口径（如希希芙失衡命中占比 0.5，删掉即 5→10 数值回归）。只有「模块存在但不调用解释器」
+    // 的角色（1171/1181/1261/1281/1291/1411/1511/1581，共 16 条）才是真死声明，已删除。
+    // 仍只 WARN 不 FAIL（与文件头注释一致：无可靠静态证据不打断）。
     for (const res of spec.resources ?? []) {
-      if (res.adjustable && !(typeof res.note === 'string' && res.note.includes('实现位置：'))) {
-        console.log(`  WARN ${label}: adjustable 资源 ${res.id} 在自定义模块角色 spec 无消费者（AGENTS 规则 4）——机制必须在模块实现；仅作记录请在 note 写「实现位置：」`)
+      const moduleCallsInterpreter = spec.agentIds.some(id =>
+        /computeSpecResources|buildSpecEventExecutions/.test(moduleSourceByAgent.get(id) ?? ''))
+      if (moduleCallsInterpreter) continue
+      const sliders = [
+        ...(res.adjustable ? [{ path: String(res.id), adjustable: res.adjustable, note: res.note }] : []),
+        ...['gainRules', 'feedbackGainRules', 'spendRules'].flatMap(key =>
+          (res[key] ?? [])
+            .filter(rule => rule?.adjustable)
+            .map(rule => ({ path: `${res.id}.${rule.id ?? rule.moveId ?? '?'}`, adjustable: rule.adjustable, note: rule.note ?? res.note }))
+        ),
+      ]
+      for (const slider of sliders) {
+        const noteMarked = typeof slider.note === 'string' && slider.note.includes('实现位置：')
+        if (!noteMarked) {
+          console.log(`  WARN ${label}: adjustable 滑块 ${slider.adjustable?.id ?? slider.path}（路径 ${slider.path}）在自定义模块角色 spec 无消费者（AGENTS 规则 4）——机制必须在模块实现；仅作记录请在 note 写「实现位置：」`)
+        }
       }
     }
   }

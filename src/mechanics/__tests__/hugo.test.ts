@@ -270,7 +270,7 @@ describe('雨果轴模式（决算可视化 + 0命2命区分）', () => {
     expect(v2!.damageMultiplier!).toBeLessThan(v0!.damageMultiplier!)
   })
 
-  it('轴模式：决算次数由轴内块反推（3 窗 × 1 E 块 = 3 次 E 决算，不随滑块 exSpecialCount 膨胀）', async () => {
+  it('轴模式：决算次数由轴内块反推（与池/轴栈同源，不随滑块 exSpecialCount 膨胀）', async () => {
     const { config } = await setup('1141', 0)
     config.useStunAxis = true
     config.enemy.stunCountLock = 3
@@ -282,11 +282,16 @@ describe('雨果轴模式（决算可视化 + 0命2命区分）', () => {
     const hugo = calc.resourceResult.value!.characters.find(r => r.agentId === '1291')!
     const verdict = hugo.executions.find(r => r.moveId === '1291_ex_verdict_final')
     expect(verdict).toBeTruthy()
-    expect(verdict!.count).toBe(3) // 3 窗 × 1 块
+    // 坑36 修复（2026-09-10）：锁定 3 是**计划输入**，失衡池/轴栈（同源）算出 4 窗 → 决算 4 次。
+    // 旧断言 3 = floor(锁定计划值)，恰与轴栈 executed 不一致（同一缺陷的影子）；与池同源后 = 栈计数。
+    const stackVerdict = (calc.stackTraversalResult.value as { executed?: Record<string, { count: number }> } | null)
+      ?.executed?.['0:1291_ex_verdict_final']?.count
+    expect(stackVerdict).toBe(4)
+    expect(verdict!.count).toBe(stackVerdict) // 4 窗 × 1 块
     // 非决算强特（轴外）仍在，总强特 = 轴内决算 + 轴外非决算
     const normal = hugo.executions.find(r => r.moveId === '1291_ex_normal_final')
     expect(normal).toBeTruthy()
-    expect(normal!.count).toBe(Math.max(0, hugo.exSpecialCount - 3))
+    expect(normal!.count).toBe(Math.max(0, hugo.exSpecialCount - verdict!.count))
   })
 })
 

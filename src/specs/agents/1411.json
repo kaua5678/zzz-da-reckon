@@ -20,17 +20,7 @@
           "trigger": "其他角色通过连携技入场",
           "amount": 1,
           "status": "implemented_approximation",
-          "note": "进入战场时立即获得3点，最多6点；二命起其他角色连携入场+1，六命招架成功额外+1。",
-          "adjustable": {
-            "id": "1411.yuzuha_sweetness.sweetness_from_chain_entry.rate",
-            "label": "柚叶·甜度点·其他角色通过连携技入场",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "进入战场时立即获得3点，最多6点；二命起其他角色连携入场+1，六命招架成功额外+1。"
         }
       ],
       "spendRules": [

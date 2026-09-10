@@ -313,12 +313,14 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
     expect(violations.map(v => v.file + ':' + v.line + ' ' + v.problem)).toEqual([])
   })
 
+  // driftQueue 逐锚跑 git log：全量并行负载下实测超 5s 默认超时（2026-09-10 verify 偶发
+  // "Test timed out in 5000ms"，改动前基线亦偶发）——隔离跑 2.8s，负载下余量取 60s。
   it('复核队列条目结构完整（锚文件在「据」之后动过才进队，同日改动不进）', () => {
     for (const row of driftQueue()) {
       expect(row).toMatchObject({ subject: expect.any(String), anchor: expect.any(String), since: expect.any(String) })
       expect(Date.parse(row.touchedAt)).toBeGreaterThan(Date.parse(row.since))
     }
-  })
+  }, 60000)
 })
 
 describe('漂移队列：复核时间戳可让口径出队，但不改写原始裁决日期', () => {
@@ -329,5 +331,5 @@ describe('漂移队列：复核时间戳可让口径出队，但不改写原始�
     for (const row of driftQueue()) {
       expect(Date.parse(row.touchedAt)).toBeGreaterThan(Date.parse(row.since))
     }
-  })
+  }, 60000)
 })

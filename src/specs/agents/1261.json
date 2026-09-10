@@ -20,17 +20,7 @@
           "trigger": "简攻击命中敌人",
           "amount": 1,
           "status": "implemented_approximation",
-          "note": "使敌人陷入[啮咬]状态，持续10秒。",
-          "adjustable": {
-            "id": "1261.jane_bite.bite_on_hit.rate",
-            "label": "简·啮咬·简攻击命中敌人",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "使敌人陷入[啮咬]状态，持续10秒。"
         }
       ],
       "spendRules": [],
@@ -50,17 +40,7 @@
           "trigger": "触发强击等条件进入狂热",
           "amount": 1,
           "status": "implemented_approximation",
-          "note": "狂热状态下物理异常积蓄效率与伤害提升（详见命座1/6）；萨霍夫跳可用次数+1。",
-          "adjustable": {
-            "id": "1261.jane_frenzy.frenzy_from_assault.rate",
-            "label": "简·狂热·触发强击等条件进入狂热",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "狂热状态下物理异常积蓄效率与伤害提升（详见命座1/6）；萨霍夫跳可用次数+1。"
         }
       ],
       "spendRules": [],

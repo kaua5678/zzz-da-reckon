@@ -83,6 +83,13 @@ describe('submissionToDeploy 队伍映射', () => {
     expect(cfg.boss?.phaseId).toBe('690431')
   })
 
+  it('带邦布的投稿：部署警告里逐条告警（账本 Open #6：bangbooId 不再静默丢弃）', () => {
+    const cfg = submissionToDeploy(REAL_RUN, ROOM_GIRTA, BOSS_PRESETS, SEASON_69043)
+    expect(cfg.warnings.some(w => w.includes('带邦布') && w.includes('54010'))).toBe(true)
+    const noBangboo = submissionToDeploy({ ...REAL_RUN, bangbooId: undefined }, ROOM_GIRTA, BOSS_PRESETS, SEASON_69043)
+    expect(noBangboo.warnings.some(w => w.includes('带邦布'))).toBe(false)
+  })
+
   it('乱序 team（slot 3/1/2）按槽位排序落地', () => {
     const run: ArchiveRun = {
       ...REAL_RUN,

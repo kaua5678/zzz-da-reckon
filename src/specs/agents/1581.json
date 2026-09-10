@@ -20,17 +20,7 @@
           "trigger": "队友触发属性异常反应",
           "amount": 1,
           "status": "implemented_approximation",
-          "note": "最多储存最新生成的3个虚曜。",
-          "adjustable": {
-            "id": "1581.remielle_voidflare.voidflare_from_teammate_reaction.rate",
-            "label": "蕾米埃尔·虚曜·队友触发属性异常反应",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "最多储存最新生成的3个虚曜。"
         }
       ],
       "spendRules": [

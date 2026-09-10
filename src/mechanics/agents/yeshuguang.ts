@@ -170,22 +170,6 @@ export interface YeshuguangCycleResult {
   c6AttachCount: number
 }
 
-/**
- * **未接线**（2026-09-05 核对）：全仓零调用点，真实飞光一律走 `总观止 ÷ 6` 线性
- * （见 computeYeshuguangCycle）。下面的 4/10/5/12 是历史口径，留着会误导（AGENTS 规则 16：
- * 挂着「用户确认」的死口径比没注释更危险）——要么接线要么删除，别再当依据引用。
- *
- * 短轴飞光次数（用户确认）：
- * short_pair：0–1 命 4 / 2 命+ 10
- * short_mie：0–1 命 5 / 2 命+ 12
- */
-export function shortAxisFeiguangCount(axis: YeshuguangFormAxis, cinemaLevel: number): number {
-  const c2 = cinemaLevel >= 2
-  if (axis === 'short_pair') return c2 ? 10 : 4
-  if (axis === 'short_mie') return c2 ? 12 : 5
-  return 1
-}
-
 // @fact agent:1431/短轴资源 口径: 三档轴（打满/灭极/仅灭）**每轮都消耗满 6 点青溟剑势**——归尘触发条件是「青溟剑势耗尽」、飞光是「持续消耗直至耗尽」，所以短轴只省段数与时间，不省资源也不省观止（C2+ 观止/轮 = 2+6 = 8 三档相同）；旧实现按 6/3/2 递减，与它自己的注释「剩余资源压进观止→飞光」相反 | 据 用户@2026-09-05 + nanoka 1431 招式原文·复核@2026-09-08 | 验 src/mechanics/__tests__/yeshuguang.test.ts#三档轴每轮资源消耗相同 | 锚 src/mechanics/agents/yeshuguang.ts#computeYeshuguangCycle | 信 确认
 // @fact agent:1431/轮数实数化 口径: 明心境轮数（喧响进轮/转大赠轮/照影轮）与定风波时间一律以**实数**参与收敛，不再模块内 floor —— 局外剑势 ∝ 平A时间，`floor(剑势/6)` 一次翻转就是一整轮（full 轴 ≈10.9s），是「平A→剑势→轮数→必要时间→平A」环增益 >1 的原产地；实数化语义 = 最后一轮只打 0.4 轮、段数/观止/飞光/收尾同比例兑现（实战 180s 到点）。手动滑块 zhaoyingCount 仍取整（用户显式指定的次数，非资源推导量） | 据 用户@2026-09-05「实数化确实很好…做吧」·复核@2026-09-08 | 验 src/mechanics/__tests__/yeshuguang.test.ts#轮数实数化 | 锚 src/mechanics/agents/yeshuguang.ts#computeYeshuguangCycle | 信 确认
 export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangCycleResult {

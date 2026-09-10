@@ -247,6 +247,12 @@ export function submissionToDeploy(
     if (!slots[i].agentId) warnings.push(`槽位 ${i + 1} 无角色`)
   }
 
+  // 2026-09-10（账本 Open #6）：bangbooId 此前解析后即丢弃、不告警——该投稿实际带邦布
+  // 输出/增益，计算器无邦布位，部署对比时理论值系统性偏低，必须逐条告警（与建模缺口清单同向）。
+  if (typeof run.bangbooId === 'string' && run.bangbooId.trim() !== '') {
+    warnings.push(`该投稿带邦布（${run.bangbooId.trim()}）：计算器无邦布位，理论值系统性偏低`)
+  }
+
   const boss = matchBossPreset(room, bossPresets, seasonStartUtc)
   if (supported && !boss) {
     const bossLabel = room?.bossNameZh || room?.bossName || room?.id || run.targetId || '(未知)'

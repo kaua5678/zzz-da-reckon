@@ -21,17 +21,7 @@
           "countSource": "basicTime",
           "amountPerCount": 1,
           "formula": "普攻/冲刺命中次数 ≈ 普攻时间秒数 × 1",
-          "status": "implemented_approximation",
-          "adjustable": {
-            "id": "1181.grace_electric_charge.grace_basic_charge_gain.rate",
-            "label": "格莉丝·电能·普通攻击或冲刺攻击命中并造成物理伤害",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "status": "implemented_approximation"
         }
       ],
       "spendRules": [

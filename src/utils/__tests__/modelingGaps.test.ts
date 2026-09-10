@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import {
   collectCinemaGaps,
   collectMechanicGaps,
@@ -62,22 +63,68 @@ describe('部署建模缺口清单', () => {
     },
   }
 
-  it('只列真缺口（not_described/pending），近似实现不列', () => {
+  it('pending 非空即列（2026-09-10 口径：implemented 带遗留待办也现形，status 只定措辞）', () => {
     const hints = collectCinemaGaps(constellations as never, ['1551', '1071'])
-    expect(hints).toHaveLength(1)
-    expect(hints[0]).toMatchObject({ kind: 'cinema', agentName: '佩洛伊斯' })
-    expect(hints[0].text).toContain('C6')
+    expect(hints).toHaveLength(2)
+    const c2 = hints.find(h => h.text.startsWith('C2'))
+    const c6 = hints.find(h => h.text.startsWith('C6'))
+    expect(c2).toMatchObject({ kind: 'cinema', agentName: '佩洛伊斯' })
+    expect(c2!.text).toContain('已实现·遗留待办')
+    expect(c2!.text).toContain('覆盖率近似')
+    expect(c6!.text).toContain('未接入计算')
+    expect(c6!.text).toContain('影画效果未揭示')
   })
 
-  it('机制 pending 列出，implemented 不列', () => {
+  it('implemented 且无 pending → 不列', () => {
+    const hints = collectCinemaGaps(constellations as never, ['1071'])
+    expect(hints).toEqual([])
+  })
+
+  it('机制 pending 列出，implemented 无 pending 不列', () => {
     const hints = collectMechanicGaps(mechanics as never, ['1551'])
     expect(hints).toHaveLength(1)
     expect(hints[0].kind).toBe('mechanic')
     expect(hints[0].text).toContain('潜能觉醒')
+    expect(hints[0].text).toContain('未接入计算')
   })
 
   it('账本缺失/角色不在账本 → 空清单不抛错', () => {
     expect(collectCinemaGaps(undefined, ['1551'])).toEqual([])
     expect(collectMechanicGaps({}, ['9999'])).toEqual([])
+  })
+
+  it('真实账本数据驱动：带 pending 的条目全部现形（判据：143 条存量不再静默）', () => {
+    const cin = JSON.parse(
+      readFileSync(new URL('../../../public/static/character-constellations.json', import.meta.url), 'utf8'),
+    )
+    const mec = JSON.parse(
+      readFileSync(new URL('../../../public/static/character-mechanics.json', import.meta.url), 'utf8'),
+    )
+    const agentIds = Object.keys(cin.characters)
+    const cinemaHints = collectCinemaGaps(cin.characters as never, agentIds)
+    const mechanicHints = collectMechanicGaps(mec.characters as never, agentIds)
+    // 判据 A：任何带 pending 的命座/机制条目都出现在清单里
+    for (const ch of Object.values(cin.characters) as any[]) {
+      for (const c of ch.cinemas ?? []) {
+        if ((c.pending ?? []).length > 0) {
+          expect(cinemaHints.some(h => h.text.startsWith(`C${c.cinema}`))).toBe(true)
+        }
+      }
+    }
+    for (const ch of Object.values(mec.characters) as any[]) {
+      for (const m of ch.mechanics ?? []) {
+        if ((m.pending ?? []).length > 0) {
+          const name = typeof m.name === 'string' ? m.name : m.name?.zhCN ?? ''
+          expect(mechanicHints.some(h => h.text.includes(name))).toBe(true)
+        }
+      }
+    }
+    // 判据 B：无 pending 的 implemented 不列（status 只定措辞，不决定出现与否）
+    for (const h of cinemaHints) {
+      expect(h.text).toMatch(/未接入计算|已实现·遗留待办/)
+    }
+    // 判据 C：存量规模（2026-09-10 实测：命座 104 + 机制 42 + 未描述 6+1）
+    expect(cinemaHints.length).toBeGreaterThanOrEqual(104)
+    expect(mechanicHints.length).toBeGreaterThanOrEqual(41)
   })
 })

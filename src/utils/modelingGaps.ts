@@ -72,7 +72,16 @@ interface MechanicLedgerEntry {
 const isRealGapStatus = (status?: string) =>
   /not_described_not_implemented|^pending$|not_implemented/i.test(status ?? '')
 
-/** 命座账本 → 未接线命座提示（只列 not_described/pending 类真缺口；implemented_approximation 的注记不列） */
+/**
+ * 缺口判定（2026-09-10 账本 Open #3）：**pending[] 非空即列**——implemented/近似实现但带遗留待办的
+ * 条目（存量 104 命座 + 41 机制）也现形；status 只用于措辞分组。真无 pending 的 implemented 不列。
+ */
+const gapLabelOf = (status: string | undefined, pending: string[]): string =>
+  isRealGapStatus(status)
+    ? `未接入计算：${pending.join('；') || '效果未描述'}`
+    : `已实现·遗留待办：${pending.join('；') || '细节未描述'}`
+
+/** 命座账本 → 未接线命座提示（pending 非空即列；status 只定措辞） */
 export function collectCinemaGaps(
   ledger: Record<string, CinemaLedgerEntry> | undefined,
   agentIds: string[],
@@ -83,11 +92,12 @@ export function collectCinemaGaps(
     if (!ch) continue
     const agentName = ch.name?.zhCN ?? ch.name?.en ?? id
     for (const c of ch.cinemas ?? []) {
-      if (!isRealGapStatus(c.status)) continue
+      const pending = c.pending ?? []
+      if (!isRealGapStatus(c.status) && pending.length === 0) continue
       hints.push({
         kind: 'cinema',
         agentName,
-        text: `C${c.cinema ?? '?'} 未接入计算：${(c.pending ?? []).join('；') || '效果未描述'}`,
+        text: `C${c.cinema ?? '?'} ${gapLabelOf(c.status, pending)}`,
       })
     }
   }
@@ -105,12 +115,13 @@ export function collectMechanicGaps(
     if (!ch) continue
     const agentName = ch.name?.zhCN ?? ch.name?.en ?? id
     for (const m of ch.mechanics ?? []) {
-      if (!isRealGapStatus(m.implementation)) continue
+      const pending = m.pending ?? []
+      if (!isRealGapStatus(m.implementation) && pending.length === 0) continue
       const name = typeof m.name === 'string' ? m.name : m.name?.zhCN ?? ''
       hints.push({
         kind: 'mechanic',
         agentName,
-        text: `${name || '机制'} 未接入计算：${(m.pending ?? []).join('；') || '效果未描述'}`,
+        text: `${name || '机制'} ${gapLabelOf(m.implementation, pending)}`,
       })
     }
   }

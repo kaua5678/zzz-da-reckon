@@ -132,6 +132,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     }
 
     // @fact engine:damage/减防通道 口径: 直伤与异放的防御区输入 = 面板通用 enemyDefReduction（妮可40%/叶瞬光C1 20%/席德C2 20%/伊芙琳C1/爱芮C2/千夏C1/音擎 千面日陨·索魂影眸…）+ 行级 moveId 限定 defIgnore（叶瞬光C2/C6/雨果C2/雅1命…），同字段加算；面板 enemyDefFlatReduction 进穿透值通道。异常质量区已由 calcAnomalyMass 读施加者面板，结算区不再补（双计） | 据 用户实测@2026-09-08（直伤角色偏低）+ docs/GAME_TERM_TO_CODE_FIELD.md §4 | 验 src/composables/__tests__/damagePoolDefDown.test.ts | 锚 src/composables/resourceCalc/damagePool.ts#pushDirect | 信 确认
+    // @fact engine:damage/非轴失衡易伤 口径: 非轴模式（含 autoActive 未命中预设时的部署态）直伤行 stunned = 行级 stunOverride ?? 全局失衡覆盖率 stunCoverage（= min(1, 失衡次数×单窗/有效时长)，雨果决算截断另扣），生效倍率 = 1 + (Boss失衡易伤−1 + 面板失衡易伤加成/100) × 覆盖率；轴模式改为「轴内=1 / 轴外=0」分段，未进轴槽位回落覆盖率 | 据 探针实测@2026-09-10（部署态 1011/1141/1031 非轴 ×1.1923、雨果/琉音/莱特部署态加权信用 0.1966）+ docs/ENGINE_PIPELINE_GUIDE.md 坑37 | 验 src/composables/__tests__/nonAxisStunVulnProbe.test.ts + src/composables/__tests__/archiveStunVulnProbe.test.ts | 锚 src/composables/resourceCalc/damagePool.ts#pushDirect | 信 确认
     function pushDirect(row: {
       id: string; slot: number; agentId: string; name: string; element: string; source: string; count: number; multiplier: number; note?: string; skillDamageTarget?: any; moveId?: string; critRateBonus?: number; critDmgBonus?: number; dmgBonus?: number; sheerDmgBonus?: number; flatDamageBonus?: number; resIgnore?: number; basisValueOverride?: number; basisLabelOverride?: string; stunOverride?: number; defIgnore?: number; penRatioBonus?: number; sourceTag?: 'gift' | 'stun' | 'self'
     }) {

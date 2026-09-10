@@ -67,13 +67,25 @@
                 <div v-for="w in lastWarnings" :key="w" class="warn">⚠ {{ w }}</div>
               </div>
               <div v-if="modelingGapHints.length" class="modeling-gaps">
-                <div class="muted" style="margin-bottom: 4px">建模缺口（理论值未含以下贡献，偏低属预期）：</div>
-                <div v-for="(g, i) in modelingGapHints" :key="i" class="gap muted">
-                  <n-tag size="tiny" :bordered="false" :type="g.kind === 'system' ? 'warning' : 'info'">
-                    {{ g.kind === 'cinema' ? '命座' : g.kind === 'mechanic' ? '机制' : '系统' }}
-                  </n-tag>
-                  <span>{{ g.agentName }} · {{ g.text }}</span>
+                <div class="muted" style="margin-bottom: 4px">
+                  建模缺口（理论值未含以下贡献，偏低属预期；共 {{ modelingGapHints.length }} 条）：
                 </div>
+                <template v-for="(g, i) in modelingGapHints" :key="i">
+                  <div v-if="showAllGaps || i < GAPS_COLLAPSE_AT" class="gap muted">
+                    <n-tag size="tiny" :bordered="false" :type="g.kind === 'system' ? 'warning' : 'info'">
+                      {{ g.kind === 'cinema' ? '命座' : g.kind === 'mechanic' ? '机制' : '系统' }}
+                    </n-tag>
+                    <span>{{ g.agentName }} · {{ g.text }}</span>
+                  </div>
+                </template>
+                <a
+                  v-if="modelingGapHints.length > GAPS_COLLAPSE_AT"
+                  class="gap-toggle"
+                  href="javascript:void(0)"
+                  @click="showAllGaps = !showAllGaps"
+                >
+                  {{ showAllGaps ? '收起' : `展开其余 ${modelingGapHints.length - GAPS_COLLAPSE_AT} 条` }}
+                </a>
               </div>
             </div>
 
@@ -205,6 +217,9 @@ const lastWarnings = ref<string[]>([])
 // ========== 建模缺口提示（信息展示，不做拦截——归档不作误差判据的用户裁决不变） ==========
 const modelingLedgers = ref<{ constellations?: Record<string, object>; mechanics?: Record<string, object> } | null>(null)
 const modelingLedgersLoaded = ref(false)
+/** 缺口清单折叠（账本 Open #3：pending 非空即列后可达 100+ 条，默认只展开前若干条） */
+const GAPS_COLLAPSE_AT = 8
+const showAllGaps = ref(false)
 
 async function ensureModelingLedgers(): Promise<void> {
   if (modelingLedgersLoaded.value) return
@@ -491,6 +506,7 @@ function fmt(n: number): string {
 .warn { font-size: 11px; color: #e6b464; line-height: 1.6; }
 .modeling-gaps { margin-top: 8px; font-size: 12px; line-height: 1.7; }
 .modeling-gaps .gap { display: flex; align-items: center; gap: 6px; }
+.modeling-gaps .gap-toggle { display: inline-block; margin-top: 4px; font-size: 12px; color: var(--link-color); text-decoration: none; }
 .verdict { margin-top: 10px; font-size: 13px; color: var(--wa-750); }
 .hint { margin-top: 10px; line-height: 1.7; }
 .pool-hint { margin-top: 12px; line-height: 1.7; }

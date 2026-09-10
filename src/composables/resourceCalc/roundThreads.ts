@@ -69,6 +69,8 @@ export interface CalcRoundThreads {
   decibelRegenBySlot: Record<number, number>
   /** 时间轴喧响轨：上一轮失衡次数（与本轮相等才启用轨——防早期轮窗口失真螺旋） */
   trackStunCount?: number
+  /** 上一轮失衡池整数次数（坑36：轴内块数落地与池同源——0 命轴决算次数 = 轴认领块 × 池窗口数） */
+  prevPoolStunCount?: number
 }
 
 export function initialCalcRoundThreads(): CalcRoundThreads {
@@ -98,6 +100,7 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
     decibelParry: 0,
     decibelRegenBySlot: {},
     trackStunCount: undefined,
+    prevPoolStunCount: undefined,
   }
 }
 

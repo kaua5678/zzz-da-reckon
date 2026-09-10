@@ -20,17 +20,7 @@
           "trigger": "接战状态每秒回复",
           "amountPerCount": 3.8,
           "status": "implemented_approximation",
-          "note": "接战每秒3.8点；队友使敌人进入异常状态额外12点，每6秒最多一次。",
-          "adjustable": {
-            "id": "1511.nangong_beat.beat_regen_per_second.rate",
-            "label": "南宫羽·重拍·接战状态每秒回复",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "接战每秒3.8点；队友使敌人进入异常状态额外12点，每6秒最多一次。"
         },
         {
           "id": "beat_from_anomaly",
@@ -38,17 +28,7 @@
           "amount": 12,
           "coverage": 1,
           "status": "implemented_approximation",
-          "note": "每6秒最多触发一次。",
-          "adjustable": {
-            "id": "1511.nangong_beat.beat_from_anomaly.rate",
-            "label": "南宫羽·重拍·队伍任意角色使敌人进入属性异常状态",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "每6秒最多触发一次。"
         }
       ],
       "spendRules": [],
@@ -69,17 +49,7 @@
           "trigger": "失衡状态下异放/紊乱/进入异常",
           "amount": 1,
           "status": "implemented_approximation",
-          "note": "同一敌人最多4层；清除时按属性比例结算异放，每层额外+25%。",
-          "adjustable": {
-            "id": "1511.nangong_vibrato.vibrato_on_stunned_anomaly.rate",
-            "label": "南宫羽·颤音·失衡状态下异放/紊乱/进入异常",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "同一敌人最多4层；清除时按属性比例结算异放，每层额外+25%。"
         }
       ],
       "spendRules": [

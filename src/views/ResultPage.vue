@@ -15,9 +15,6 @@
         <template #header>
           <span>资源池全局参数</span>
         </template>
-        <template #header-extra>
-          <n-button size="small" secondary @click="handleExportExcel">导出 Excel</n-button>
-        </template>
         <n-grid :cols="6" :x-gap="12" responsive="screen">
           <n-gi>
             <div class="param-item">
@@ -653,6 +650,7 @@
             <span>属性/来源</span>
             <span>次数</span>
             <span>单次</span>
+            <span>失衡易伤</span>
             <span>总伤</span>
             <span>说明</span>
           </div>
@@ -663,8 +661,23 @@
             <span>{{ elementLabel(row.element) }} · {{ row.source }}</span>
             <span>{{ fmt(row.count, 2) }}</span>
             <span>{{ fmt(row.perDamage, 0) }}</span>
+            <span
+              class="damage-stun-vuln"
+              :class="stunVulnClassOf(row)"
+              :title="stunVulnTitleOf(row)"
+            >{{ appliedVulnOf(row) }}</span>
             <span class="damage-total">{{ fmt(row.totalDamage, 0) }}</span>
             <span class="damage-note">{{ row.note || '-' }}</span>
+          </div>
+          <div class="damage-pool-row damage-pool-footer">
+            <span class="damage-pool-footer-label">加权有效易伤</span>
+            <span class="damage-pool-footer-value">
+              {{ stunVulnSummary.weightedVuln.toFixed(3) }}
+              <span class="damage-pool-footer-sub">
+                （信用 +{{ stunVulnSummary.weightedCredit.toFixed(3) }} / 满额 +{{ stunVulnSummary.fullCredit.toFixed(2) }}
+                = {{ (stunVulnSummary.coverageRate * 100).toFixed(1) }}%）
+              </span>
+            </span>
           </div>
         </div>
       </n-card>
@@ -761,11 +774,13 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { fmt } from '@/utils/format'
-import { exportExcelFile } from '@/utils/exportExcel'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import FinalPanel from '@/components/FinalPanel.vue'
 import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf } from '@/composables/teamTimeSummary'
+import { computeStunVulnSummary, rowAppliedStunMult } from '@/composables/stunVulnSummary'
+import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
 import type { CharacterResourceResult, AnomalyEventRecord } from '@/types/resource'
+import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -780,6 +795,7 @@ const {
   anomalyDamageEvents,
   anomalyVirtualPanels,
   agentNames,
+  panels,
 } = useResourceCalc()
 
 // 是否有队伍数据
@@ -799,24 +815,6 @@ const convergenceOk = computed(() => {
     && c.timeBudgetConverged
     && (c.outerExit === undefined || c.outerExit !== 'maxIter')
 })
-
-/** 导出 Excel：操作表（配置快照）/ 资源表 / 伤害行明细 / 异常池；文件名带队伍名 */
-async function handleExportExcel() {
-  const teamName = configStore.team
-    .filter(c => c.agentId)
-    .map(c => agentNames.value[c.agentId] ?? c.agentId)
-    .join('-')
-  await exportExcelFile({
-    team: configStore.team,
-    enemy: configStore.enemy,
-    agentNameOf: (agentId, slot) => agentNames.value[agentId] ?? catalogStore.getAgent(agentId)?.name?.zhCN ?? `槽${slot + 1}`,
-    wEngineNameOf: id => (id ? catalogStore.getWEngine(id)?.name?.zhCN ?? id : ''),
-    resourceResult: resourceResult.value,
-    damagePoolRows: damagePoolRows.value,
-    stunPoolResult: stunPoolResult.value,
-    anomalyPoolResult: anomalyPoolResult.value,
-  }, teamName || 'zzz-calculator')
-}
 
 // 全队弹刀/闪避反击总次数（per-character 求和）
 const totalParryCount = computed(() =>
@@ -866,6 +864,52 @@ function elementLabel(element: string): string {
 const damagePoolTotal = computed(() =>
   damagePoolRows.value.reduce((sum, row) => sum + row.totalDamage, 0),
 )
+
+// ===== 失衡易伤可见化（账本 Open #2）=====
+// 行级 stunMult = Boss 失衡易伤分量；生效易伤 = calcStunMultiplier(vuln, 面板加成, frac)。
+// 面板加成取槽 0（主C 惯例，与逐招矩阵探针同口径）；异常行无 stunMult → 显示 '—'、按 1 计。
+const stunVulnPanelOf = () => {
+  const p0 = panels.value[0]
+  return {
+    vuln: configStore.enemy.stunVuln ?? 0,
+    bonus: p0?.stunDmgMultiplierBonus ?? 0,
+    always: p0?.stunDmgMultiplierBonusAlways ?? 0,
+    cap: p0?.stunDmgMultiplierBonusCapAlways ?? 0,
+  }
+}
+function appliedVulnOf(row: DamagePoolRow): string {
+  if (row.stunMult === undefined) return '—'
+  const { vuln, bonus, always, cap } = stunVulnPanelOf()
+  return rowAppliedStunMult(row.stunMult, vuln, bonus, always, cap).toFixed(3)
+}
+function stunVulnClassOf(row: DamagePoolRow): string {
+  if (row.stunMult === undefined) return 'stun-vuln-na'
+  const { vuln, bonus, always, cap } = stunVulnPanelOf()
+  const m = rowAppliedStunMult(row.stunMult, vuln, bonus, always, cap)
+  const full = calcStunMultiplier(vuln, bonus, always, cap, true)
+  if (m >= full - 1e-6) return 'stun-vuln-full'
+  if (m <= 1 + 1e-6) return 'stun-vuln-zero'
+  return 'stun-vuln-partial'
+}
+function stunVulnTitleOf(row: DamagePoolRow): string {
+  if (row.stunMult === undefined) return '异常行：易伤已在结算内部，不逐行暴露'
+  const vuln = configStore.enemy.stunVuln ?? 0
+  const frac = vuln > 1 + 1e-9
+    ? Math.max(0, Math.min(1, (row.stunMult - 1) / (vuln - 1)))
+    : (row.stunMult >= 1 ? 1 : 0)
+  return `轴内覆盖 ${(frac * 100).toFixed(0)}% → 生效易伤 ×${appliedVulnOf(row)}`
+}
+const stunVulnSummary = computed(() => {
+  const { vuln, bonus, always, cap } = stunVulnPanelOf()
+  const full = calcStunMultiplier(vuln, bonus, always, cap, true)
+  return computeStunVulnSummary(
+    damagePoolRows.value.map(row => ({
+      totalDamage: row.totalDamage,
+      appliedStunMult: rowAppliedStunMult(row.stunMult, vuln, bonus, always, cap),
+    })),
+    full,
+  )
+})
 
 // 紊乱伤害已纳入 damagePoolRows，无需额外加算
 const totalDamageWithDisorder = computed(() => damagePoolTotal.value)
@@ -1336,7 +1380,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 
 .damage-pool-row {
   display: grid;
-  grid-template-columns: 88px 58px minmax(140px, 1fr) minmax(180px, 1.2fr) 64px 92px 104px minmax(180px, 1.2fr);
+  grid-template-columns: 88px 58px minmax(140px, 1fr) minmax(180px, 1.2fr) 64px 92px 72px 104px minmax(180px, 1.2fr);
   gap: 8px;
   align-items: center;
   padding: 8px 10px;
@@ -1382,6 +1426,45 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   line-height: 1.45;
 }
 
+/* 失衡易伤列（账本 Open #2）：生效易伤三档着色 + 汇总行（只用语义别名，护栏：零新增硬编码色/--wa-* 直引） */
+.damage-stun-vuln {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.stun-vuln-full {
+  color: var(--c-success);
+}
+.stun-vuln-partial {
+  color: var(--c-warning);
+}
+.stun-vuln-zero {
+  color: var(--app-text-dim);
+}
+.stun-vuln-na {
+  color: var(--fg-placeholder);
+}
+.damage-pool-footer {
+  background: var(--app-tablehead-bg);
+  color: var(--app-text);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.damage-pool-footer-label {
+  color: var(--app-text-dim);
+}
+.damage-pool-footer-value {
+  color: var(--app-accent-gold);
+  font-size: 13px;
+}
+.damage-pool-footer-sub {
+  color: var(--app-text-dim);
+  font-size: 11px;
+  font-weight: 400;
+}
+
 .card-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1416,7 +1499,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 
 .damage-pool-row {
   display: grid;
-  grid-template-columns: 88px 58px minmax(140px, 1fr) minmax(180px, 1.2fr) 64px 92px 104px minmax(180px, 1.2fr);
+  grid-template-columns: 88px 58px minmax(140px, 1fr) minmax(180px, 1.2fr) 64px 92px 72px 104px minmax(180px, 1.2fr);
   gap: 8px;
   align-items: center;
   padding: 8px 10px;

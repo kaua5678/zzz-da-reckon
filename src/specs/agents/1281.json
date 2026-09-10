@@ -21,17 +21,7 @@
           "countSource": "exSpecialCount",
           "amountPerCount": 5,
           "formula": "强特次数 × 5（旋转斩击命中次数近似）",
-          "status": "implemented_approximation",
-          "adjustable": {
-            "id": "1281.piper_momentum.piper_ex_momentum_gain.rate",
-            "label": "派派·动力·强化特殊技：引擎转中旋转斩击命中",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "status": "implemented_approximation"
         },
         {
           "id": "piper_ult_momentum_gain",
@@ -39,17 +29,7 @@
           "countSource": "ultimateCount",
           "amountPerCount": 8,
           "formula": "终结技次数 × 8（旋转斩击命中次数近似）",
-          "status": "implemented_approximation",
-          "adjustable": {
-            "id": "1281.piper_momentum.piper_ult_momentum_gain.rate",
-            "label": "派派·动力·终结技中旋转斩击命中",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "status": "implemented_approximation"
         }
       ],
       "spendRules": [],

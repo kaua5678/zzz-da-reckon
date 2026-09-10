@@ -129,7 +129,7 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
 
 > **先对齐 §4 开头「时间系统三本账」表**（碰时间/账本/物化行/超时判定都先看它），再按症状查。
 > **要改时间/收敛/截断逻辑前，先读坑 19 的「否决记录」**——九条已量过的死路都在那里。
-> **按症状查（不用通读）**：滑块改了面板/结果不变→1 · 强特次数不对/接管 EX 链→2 · 倍率/失衡/喧响全错→3 · 按 name/note 找不到执行行→4 · 附伤 daze/异常双计→5 · 专属动作不占时间→6 · 贯穿力疑似双计→7 · 招式命中类计数没源→8 · 轴内动作次数/时间不对→9 · 进场能量不对→10 · 指定招式增伤误放大→11 · 前台超时/账本虚增→12 · 队伍联动静默错值→13 · 界面能量与次数对不上→14 · 不收敛/数值抖动→15 · 两次算结果漂移→16 · 同输入落点漂移→17 · 物化行打不满战斗时间（欠打）/轴需求超预算误报超时→19 · 「汇总卡说快满了、角色条却空一截」（账本口径 vs 物化口径不同源）→19① + `composables/teamTimeSummary.ts`。 · 出现小数次数 / 招式行凭空消失 / 失衡池被清空致结果为 null →22（时间线截断）。 · **失衡次数显示 0 / 同一队冷热启动给出不同次数·同一队算两次留白不一样**→25（非轴失衡不动点的阶梯 2-循环 / 热启动缓存注入收敛末态）。 · **直伤比同类异常角色偏低 / 减防·无视防御不生效**→26（面板通用 enemyDefReduction 未进直伤通道）。 · **资源卡「总计」= 180s + 赠送秒数 / 赠送队超预算**→28（赠送行未回扣截断上限与前台展示）。 · **轴里捏的招式超过资源总量还被算进去**→29（轴栈资源门控应为「去掉」）。 · **连携技/招式「单次」时长比同族小一个量级（雅连携显示 0.515s 一类）/ 一次连携的倍率是全段而喧响-时间只是头段** →31（多段招式三侧口径不一致，含自动攻击段特例）。 · **自动轴下令牌招式行凭空消失（雨果决算 1291_ex_verdict_final 整行不见）/ 轴栈说 N 块而资源池 0 行** →36（轴内块数取连续失衡次数小数后被 `Math.floor` 归零）。 · **实战对比部署算出的伤害远低于实战 / 感觉失衡易伤没算** →37（失衡易伤接了但只兑现约两成：未进轴槽位走覆盖率、主C未认领招式=0；结果页无该列故不可见）。 · **想知道「还有多少静默不算的」/ 哪些缺口界面永远不提示** →38（待办 153 条中 143 条 UI 不可见 + 55 条死滑块 + 零散静默，逐条带复算命令）。
+> **按症状查（不用通读）**：滑块改了面板/结果不变→1 · 强特次数不对/接管 EX 链→2 · 倍率/失衡/喧响全错→3 · 按 name/note 找不到执行行→4 · 附伤 daze/异常双计→5 · 专属动作不占时间→6 · 贯穿力疑似双计→7 · 招式命中类计数没源→8 · 轴内动作次数/时间不对→9 · 进场能量不对→10 · 指定招式增伤误放大→11 · 前台超时/账本虚增→12 · 队伍联动静默错值→13 · 界面能量与次数对不上→14 · 不收敛/数值抖动→15 · 两次算结果漂移→16 · 同输入落点漂移→17 · 物化行打不满战斗时间（欠打）/轴需求超预算误报超时→19 · 「汇总卡说快满了、角色条却空一截」（账本口径 vs 物化口径不同源）→19① + `composables/teamTimeSummary.ts`。 · 出现小数次数 / 招式行凭空消失 / 失衡池被清空致结果为 null →22（时间线截断）。 · **失衡次数显示 0 / 同一队冷热启动给出不同次数·同一队算两次留白不一样**→25（非轴失衡不动点的阶梯 2-循环 / 热启动缓存注入收敛末态）。 · **直伤比同类异常角色偏低 / 减防·无视防御不生效**→26（面板通用 enemyDefReduction 未进直伤通道）。 · **资源卡「总计」= 180s + 赠送秒数 / 赠送队超预算**→28（赠送行未回扣截断上限与前台展示）。 · **轴里捏的招式超过资源总量还被算进去**→29（轴栈资源门控应为「去掉」）。 · **连携技/招式「单次」时长比同族小一个量级（雅连携显示 0.515s 一类）/ 一次连携的倍率是全段而喧响-时间只是头段** →31（多段招式三侧口径不一致，含自动攻击段特例）。 · **自动轴下令牌招式行凭空消失（雨果决算 1291_ex_verdict_final 整行不见）/ 轴栈说 N 块而资源池 0 行** →36（轴内块数取连续失衡次数小数后被 `Math.floor` 归零；2026-09-10 已修复：轴内块数与池同源取整数，判据见 `hugoVerdictLanding.test.ts`）。 · **实战对比部署算出的伤害远低于实战 / 感觉失衡易伤没算** →37（失衡易伤接了但只兑现约两成：未进轴槽位走覆盖率、主C未认领招式=0；结果页伤害池已有「失衡易伤」列 + 加权汇总行，见 `composables/stunVulnSummary.ts`）。 · **想知道「还有多少静默不算的」/ 哪些缺口界面永远不提示** →38（待办清单已按 pending 非空现形 + 52 条死滑块/basis/死函数已清，逐条带复算命令）。
 
 
 ### ⏱ 时间系统三本账（读坑 12 / 19 / 21 / 22 前先对齐这张表）
@@ -1150,24 +1150,37 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     实战归档不作误差判据），所以只有用户能定这个口径。**在那之前：不要再为「降低留白」动折叠环**
     （已试 9 种，全负）。
 
-36. **轴内块数取「连续失衡次数」→ 小数被截断 → 整行静默消失（2026-09-10 用户「失衡易伤为什么静默不算」查证，未修·待口径）**：
-    症状 = 实战对比部署（自动轴）里 **雨果的决算行整行不见**：轴栈 `executed` 明明有
-    `s0·1291015×8 + s0·1291_ex_verdict_final×4`，资源池执行行却只有 `1291_ex_normal_final×9`、
-    **没有 `1291_ex_verdict_final`**；把 `autoYidhariAxis` 关掉立刻变成 `1291_ex_verdict_final×9
-    + 1291_ultimate_verdict_bonus×2`。探针：`PROBE_ARCHIVE_STUN=1 npx vitest run
-    src/composables/__tests__/archiveStunVulnProbe.test.ts`（只读部署最差 run，不改任何输入）。
+36. **轴内块数取「连续失衡次数」→ 小数被截断 → 整行静默消失（2026-09-10 查证 → 同日修复）**：
+    症状 = 实战对比部署（自动轴）里 **雨果的决算行整行不见/次数缩水**：轴栈 `executed` 明明有
+    `s0·1291015×10 + s0·1291_ex_verdict_final×5`，资源池执行行却只落地 `×1`（最坏时
+    `count <= 0` 短路 → 整行不发射）；把 `autoYidhariAxis` 关掉立刻变成 `1291_ex_verdict_final×9
+    + 1291_ultimate_verdict_bonus×2`。探针：`PROBE_HUGO_MATRIX=1 npx vitest run
+    src/composables/__tests__/hugoStunVulnMatrixProbe.test.ts`（案例 B/C 复现 + 案例 D 吃一部分）。
     **根因（引擎日志实测）**：同一轮里存在**两份失衡次数**——轴分配用的 `stunCount` 是外层不动点线程里的
     **连续值 0.824**，而失衡池在同一轮算出 **4**：
     `[round-return] 本轮输入 stunCount=0.8239426908104948 池=4 axisActive=true hugoExVerdict=0.8239426908104948`。
     于是轴内块数 = `动作 count × wins(0.824)` = 0.824，而 `hugo.ts#computeHugoCycle` 对轴注入次数做
-    `Math.floor` → **0** → `pushExecution` 的 `count <= 0` 短路 → 决算行根本不发射（同时轴里那 4 个决算块
-    认领不到任何伤害行，易伤空转）。代价量级：决算 = 709.8%（基础）+ 决算追加（remaining 11.43s →
+    `Math.floor` → **0/1** → 决算行缩水/不发射（同时轴里那 4 个决算块认领不到伤害行，易伤空转）。
+    代价量级：决算 = 709.8%（基础）+ 决算追加（remaining 11.43s →
     1000 + 5×280 + 6.43×100 = 3043%）= **3752.8%/次**，本该替代 709.8% 的普通终结一击且吃满失衡易伤。
     **为什么一直没人看见**：外层不动点报 `converged=true / outerExit=stable / outerRounds=4`，但这个量
     **不在收敛判据里**（`convergence` 只报时间预算层），所以「轴用 0.82 窗、池说 4 窗」可以稳态共存。
-    **修复方向（须用户定口径后动，勿擅自改）**：轴分配改用与池同源的**整数**失衡次数（`floor/round` 在
-    同一处定），或至少让 `hugoAxisExVerdictCount` 与池口径同源；另一条更保守的兜底是注入侧不用裸 `Math.floor`。
-    **注意**：并行会话的「失衡次数硬约束」(`timeWeightAllocation.ts`) 正落在这条上，收口时一并处理。
+    **修复（2026-09-10 落地）**：轴内块数改读与池**同源**的整数失衡次数——新增收敛线程
+    `prevPoolStunCount`（`resourceCalc/roundThreads.ts`，= 上一轮失衡池 `stunCount`，与其它
+    prev* 线程同款滞后注入），`useResourceCalc.ts` 雨果块（`hugoAxisExVerdictCount`/
+    `hugoAxisUltVerdictCount`）的 `allocateAxisWindows` 入参从「本轮计划小数」换成它；首轮无池 → 0，
+    收敛期稳定后与最终池一致；锁定次数路径池 = 锁定值，不受影响。锁定场景下**旧断言 3 也修正为 4**：
+    池/轴栈（同源）实测算出 4 窗，旧值 3 恰是 floor(锁定计划值) 的影子，与栈不一致。
+    实测 delta：0 命轴决算 ×1→**×5**（与栈 executed 一致）、2 命轴决算 ×1→×5、决算追加 ×1→×3
+    （= `min(终结技资源总量 3, 轴块 5)`，模块既有封顶，语义正确）；`timeGolden` /
+    `timeFillRatchet` / `runArchiveDeploy` **零 delta**（基线未动，无需重生成）。
+    **verifier**：`src/composables/__tests__/hugoVerdictLanding.test.ts`（先红后绿，栈/池/行三源一致）
+    + `src/mechanics/__tests__/hugo.test.ts` 锁定路径断言。
+    **否决记录**：①注入侧改 `Math.round`/上限夹取（止血）——小数计划值 round 后仍与池不同源，
+    且掩盖「小数次数」这一更大病灶（坑22），不做；②读**本轮**池——池在 cfg 之后才算出（`sp1`
+    在 `promoteFixpoint`，字符 cfg 在它之前构造），同轮读不到，只能滞后一轮；③把所有轴分配
+    （连携/转大/合轴等）一并换池整数——超出本坑范围，且轴内连携小数（`1291015×2.36`）属
+    「小数次数」系统问题，随时间系统重构账本的实数化专项收口，不在此局部动。
 
 37. **部署态「失衡易伤」只兑现两成：未进轴槽位回落覆盖率 + 未认领招式=0（2026-09-10 实测，口径待裁决）**：
     症状 = 用户报「实战对比页计算伤害比实战低很多，失衡易伤静默不算」。**它接了，但信用极低**——
@@ -1181,25 +1194,35 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     stunCoverage`；轴模式按 `axisSplitFor` 拆「轴内=1 / 轴外=0」，未进轴槽位回落覆盖率
     （`useResourceCalc.ts#computeStunCoverage`：`min(1, 失衡次数 × 单窗 ÷ 有效时长)`，决算截断另扣）。
     **待裁决**：自动轴只认领极少数动作（雨果预设仅 3 块）时，「主C 未认领招式=0」是否该回落覆盖率？
-    改了会全库数值变动，属产品级口径。**读法提示**：结果页伤害池**没有**失衡易伤列（唯一出口曾是 Excel
-    导出，已于本次删除），所以这条在界面上完全不可见——这正是用户「静默」体感的来源。
+    改了会全库数值变动，属产品级口径。**读法提示（2026-09-10 已可见化）**：结果页伤害池新增
+    「失衡易伤」列（行级生效易伤，雨果队满额 2.100 / 零 1.000 / 跨窗部分中间值，三档着色）+ 表尾
+    「加权有效易伤」汇总行（= Σ(伤害×生效易伤)/Σ伤害 − 1 = 加权信用，满额参照 +1.10；异常行按 1
+    计、信用偏保守）。纯函数 `composables/stunVulnSummary.ts` + 快照测试
+    `stunVulnSummary.test.ts`（雨果 0 命轴 0.6860 / 覆盖率 0.6237 冻结）。
 
-38. **「静默不算」清单：哪些缺口在界面上永远不出现（2026-09-10 快照 + 复算命令）**：
+38. **「静默不算」清单：哪些缺口在界面上永远不出现（2026-09-10 快照 + 复算命令；多数条目同日已修）**：
     用户问「还有多少静默不算的」。**数字是快照会漂移，命令不会**——每条都给出复算命令，别照抄数字。
-    · **① 已声明但 UI 不显示**：账本共 **153 条待办**（命座 108 / 机制 45），而部署页清单
-    （`utils/modelingGaps.ts#isRealGapStatus`）只按 `status` 过滤 ⇒ 命座只有 6 条、机制 1 条会列出，
-    **143 条（99 命座 + 44 机制）挂在 `implemented_approximation` 上，永远不出现**。复算：
-    `node -e "const fs=require('fs');for(const [f,k,s] of [['character-constellations','cinemas','status'],['character-mechanics','mechanics','implementation']]){const j=JSON.parse(fs.readFileSync('public/static/'+f+'.json','utf8'));let t=0,h=0;for(const e of Object.values(j.characters))for(const i of e[k]||[]){const p=(i.pending||[]).length;if(p){t+=p;if(!/not_described_not_implemented|pending|not_implemented/i.test(i[s]||''))h+=p}}console.log(f,k,'pending',t,'UI不显示',h)}"`
-    · **② 声明了但引擎零消费**：**55 条 spec `adjustable` 滑块**（60 个角色全有自定义模块 ⇒
-    `specToMechanicModule` 从不注册 ⇒ 任何 `adjustable` 都无消费者）+ teammate-buffs **`basis` 4 条**
-    （`src/core/buff.ts` 零命中；同义通道是 stat id `outOfCombatAtkPct`/`outOfCombatHpPct` ⇒ 那 4 条按通用
-    `atkPct`/`hpPct` 算，**声明基准被静默忽略**）。复算：`node scripts/validate-specs.mjs | grep -c WARN`
-    （修判据前恒为 0——判据写成 `res.adjustable`，而滑块全挂在 `rule.adjustable`
-    （gainRules/feedbackGainRules/spendRules）上 ⇒ 55 条死声明静默至今；2026-09-10 已改为按 rule 遍历，
-    现输出 52 条 WARN、仍不 FAIL）。
-    · **③ 零散静默**：`shortAxisFeiguangCount` 零调用（AGENTS 规则 16① 的案例，至今未修）；归档
-    `bangbooId` 解析后被丢弃且不告警；逐招耀变行不进队伍总伤（口径不同源）；`zc drift` 27 条待复核口径；
-    spec JSON 里的 `debt:` 不计数不登记（`check-guards` 只扫 `.ts/.mjs/.py`）。
+    · **① 已声明但 UI 不显示 → 已修（2026-09-10）**：部署页缺口清单（`utils/modelingGaps.ts`）判据
+    从「只按 status 过滤」改为「**pending[] 非空即列**」（status 只定措辞：未接入计算/已实现·遗留待办），
+    存量 104 命座 + 41 机制带 pending 的条目全部现形（原仅 6+1 可见），列表超 8 条自动折叠可展开；
+    数据驱动断言见 `modelingGaps.test.ts`（真实账本逐条对账，pending 非空必在清单里）。复算：
+    `node -e "const fs=require('fs');for(const [f,k] of [['character-constellations','cinemas'],['character-mechanics','mechanics']]){const j=JSON.parse(fs.readFileSync('public/static/'+f+'.json','utf8'));let t=0,h=0;for(const e of Object.values(j.characters))for(const i of e[k]||[]){const p=(i.pending||[]).length;if(p)t+=p}console.log(f,'pending',t)}"`
+    · **② 声明了但引擎零消费 → 已清（2026-09-10）**：**16 条 spec `adjustable` 真死滑块已删除**
+    （8 角色：1171/1181/1261/1281/1291/1411/1511/1581——模块存在但不调用 spec 资源解释器，
+    `specToMechanicModule` 从不注册 ⇒ 零消费者，只在设置页当摆设）；**另 36 条经查是误报**：
+    模块调用 `computeSpecResources`/`buildSpecEventExecutions` 时 adjustable **是活的**
+    （解释器按 `setting:<id>` 应用倍率，且 `adjustable.default` 常携带真实口径——希希芙失衡命中占比
+    0.5 就编码在 default 里，删掉即 5→10 数值回归），判据已改为「模块不调解释器才 WARN」
+    （validate-specs.mjs，2026-09-10 同日修正，误报全部撤销）；`sync-spec-adjustables.mjs` 加护栏只给
+    spec-only 角色（现仅 1551 佩洛伊斯）挂滑块，防重跑复活真死滑块；teammate-buffs **`basis` 4 条**
+    （千夏 C2/照核心/照C2/露西核心，`src/core/buff.ts` 零命中，原文均为「提升 X%」普通面板 buff，
+    `basis` 是错误标注）已删除，零数值变化。复算：`node scripts/validate-specs.mjs | grep -c WARN` → **0**。
+    · **③ 零散静默 → 部分已清（2026-09-10）**：`shortAxisFeiguangCount` 死函数**已删**（4/10/5/12 历史
+    口径，被「三档轴每轮消耗满 6 点青溟剑势」口径取代，文件注释原本就自标「未接线」）；归档
+    `bangbooId` 解析后**现在告警**（`submissionToDeploy` 推一条「该投稿带邦布：计算器无邦布位」到部署
+    警告，页面已渲染）；spec JSON 里的 `debt:` **已纳入 check-guards 扫描并登记**（1411 柚叶转积蓄
+    施加者近似，5/5）；剩余：逐招耀变行不进队伍总伤（口径不同源，已在 MECHANICS_IMPLEMENTATION.md
+    如实记录，不做误差判据）、`zc drift` 28 条待复核口径。
     · **④ 量级已登记的偏低主因**（不是本次新发现）：倍率融合缺段（`data/moveFusions.ts` 头注释自称
     「低估主因之一，最低金+3 前沿 80% fn 定位到此」）、最低金+3 前沿低估最重组仅 32%/39%
     （`damageSplitFrontierProbe` 头注释）、面板 316 ATK（曾全库 −12~16%，已修）、邦布无位、动作覆盖
