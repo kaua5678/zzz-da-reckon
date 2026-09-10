@@ -326,6 +326,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   let timeBudgetIdleSeconds = 0
   let timeBudgetRefundedSeconds = 0
   let refundFrozen = false
+  /** 折叠环停滞判据（跨轮）：历史最小 maxExcess 与连续无改善轮数 */
+  let bestExcess: number | undefined
+  let stagnantPasses: number | undefined
   /**
    * 热启动种子 = **规范种子**（本轮 `states` 的初值：默认零种子或注入种子本身），**不是收敛末态**。
    * 为什么不能存末态（2026-09-08 修，用户实测「同一队算两次结果不一样」）：折叠 pass0 的 refund
@@ -428,6 +431,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     let maxExcess = 0
     let maxIdle = 0
     let teamRefund = 0
+    /** 停滞判据用：历史最小残差 + 连续无改善轮数（阶段2，见下方收敛判据注释） */
+    if (typeof bestExcess === 'undefined') bestExcess = Infinity
+    if (typeof stagnantPasses === 'undefined') stagnantPasses = 0
     // 诺姆膛温换连携赠链行在装配后被 applyNormaHatChain 追加、不在 buildExecutions 产物里——
     // 行测量必须计入其时间（iterate 必要时间已按同一口径预留），否则折叠环会把预留读成
     // idle → pass0 refund 双击（与最高马力星光行同病）。
@@ -506,6 +512,20 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     if (maxExcess <= 1e-3) {
       timeBudgetConverged = true
       break
+    }
+    // 停滞判据（阶段2，用户 2026-09-10 口径「平A→资源→次数 的正反馈是模型本身，不能去掉」）：
+    // 折叠环在**量化地板**处会停在恒定残差上——实测叶瞬光队 pass7 起 maxExcess 恒 0.092~0.093s
+    // 持续 20+ 轮（累加器仍在增长，残差不动）。这不是「没收敛」，而是已到不动点（残差 = 量化粒度）。
+    // 判据：连续 3 轮无改善（改善 ≤ 1e-3）即判收敛；取代「残差 ≤ 1e-3」这个对离散系统过严的门槛。
+    if (maxExcess < (bestExcess as number) - 1e-3) {
+      bestExcess = maxExcess
+      stagnantPasses = 0
+    } else {
+      stagnantPasses = (stagnantPasses as number) + 1
+      if ((stagnantPasses as number) >= 3) {
+        timeBudgetConverged = true
+        break
+      }
     }
     }
     return st
