@@ -22,6 +22,16 @@ import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
 import { computeLiuyinHugCounts, computeLiuyinSource, resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { resolveExtraExCount } from '@/data/exSpecialPlans'
+import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
+
+/**
+ * 计数通道用的失衡次数（C7 投影；`globalCfg.stunPlanProjection='off'` 时**恒等** ⇒ 0 delta）。
+ * 只替换「把计划值当次数乘」的地方（连携/喧响/能量）；时间账与不动点迭代继续读实数 `globalCfg.stunCount`。
+ * 见 `core/stunPlanProjection.ts`。
+ */
+function countStunOf(globalCfg: ResourceCalcConfig): number {
+  return projectStunPlanForCounts(globalCfg.stunCount ?? 0, globalCfg.stunPlanProjection ?? 'off')
+}
 
 // ============ 单角色能量计算 ============
 
@@ -1218,7 +1228,7 @@ export function iterate(
     // 时光切片（音擎 13002）连携触发的回能随此进循环、驱动强特次数。曾传 0 造成
     // 「展示明细含连携回能、次数推导不含」的口径分裂（derivedEnergy < energySource.total），
     // 见 CharacterResourceResult.derivedEnergy 注释。
-    const chainCountInput = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * (globalCfg.stunCount ?? 0)
+    const chainCountInput = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * countStunOf(globalCfg)
     // 行级能量/喧响 Σ 需要队友前台秒（与装配层 teammateFrontlineSeconds 同语义：Σ 其他人，迭代期取上一轮值，
     // 收敛后与终局装配一致）
     const teamFrontline = prevStates.reduce((sum, st, k) => (k === i ? sum : sum + (st.frontlineTime ?? 0)), 0)
@@ -1414,7 +1424,7 @@ export function iterate(
 
     // 连携次数 = 每次失衡连携次数 × 失衡次数（失衡次数由外部失衡池不动点收敛后传入 globalCfg.stunCount）
     // 失衡轴模式用 chainCountTotalOverride（各轴按窗口数加权后的最终连携次数）
-    const chainCount = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * (globalCfg.stunCount ?? 0)
+    const chainCount = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * countStunOf(globalCfg)
 
     const necessary = exSpecialNecessaryTime(cfg, exForTime, ultForTime, prevStates[i])
       + ultForTime * cfg.ultimateActionTime
@@ -1553,7 +1563,7 @@ export function iterate(
 
     // 连携次数（与第一个循环保持一致）：每次失衡连携次数 × 失衡次数
     // 失衡轴模式用 chainCountTotalOverride（各轴按窗口数加权后的最终连携次数）
-    const chainCount = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * (globalCfg.stunCount ?? 0)
+    const chainCount = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * countStunOf(globalCfg)
 
     const frontlineTime = necessary + basicAttackTime
     const backstageTime = Math.max(0, totalTime - frontlineTime)

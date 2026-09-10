@@ -12,6 +12,7 @@ import {
 import type { StunSkillExecution } from '@/core/stunPool'
 import { computeParrySplit } from '@/core/parrySplit'
 import type { ParrySplitResult } from '@/core/parrySplit'
+import { projectStunPlanForCounts, stunPlanProjectionFromCode } from '@/core/stunPlanProjection'
 import { calcStunAxis } from '@/core/stunAxis'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
@@ -131,6 +132,8 @@ export function useResourceCalc() {
       shieldCount: configStore.enemy.shieldCount,
       energyShieldCount: configStore.enemy.energyShield,
       maxIterations: 20,
+      // 失衡计划值 → 计数的投影方式（C7 实验开关，默认 off = 现行口径；见 core/stunPlanProjection.ts）
+      stunPlanProjection: stunPlanProjectionFromCode(configStore.getMechanicSetting('time.stunPlanProjection', 0)),
       characters,
     }
   })
@@ -471,6 +474,12 @@ export function useResourceCalc() {
     } = threads
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
+    /**
+     * **计数通道**用的失衡次数（C7 实验，见 `core/stunPlanProjection.ts`）。
+     * `stunPlanProjection='off'` 时恒等于 `stunCount`（现行口径 0 delta）；打开则把计划值投影成整数，
+     * **只影响把它当次数乘的地方**（连携/喧响/能量）。时间账与不动点迭代继续用实数的 `stunCount`。
+     */
+    const countStun = projectStunPlanForCounts(stunCount, base.stunPlanProjection ?? 'off')
     // 条件轴：按上一轮收敛出的好评/闪能（首轮缺省 → 条件方案未命中走兜底）解析生效轴
     const { axes: resolvedAxes, planName } = resolveAxes(stunCount, prevGoodReview, prevEnergyBySlot)
     // forceNoAxis（轴退化）：跳过轴注入（轴块/连携覆盖/自动补齐全关），退回 chainCountPerStun 兜底的一般循环
@@ -843,7 +852,7 @@ export function useResourceCalc() {
         // 影画2：下分支开局固定一次 → 回 1500 喧响（上限不建模）；
         // 决算（右分支）次数：滑块 >=0 用滑块，缺省 -1 = 一次失衡一次决算。
         const cinema = configStore.team[merged.slot]?.cinemaLevel ?? 0
-        const chainTotal = merged.chainCountTotalOverride ?? (merged.chainCountPerStun ?? 0) * stunCount
+        const chainTotal = merged.chainCountTotalOverride ?? (merged.chainCountPerStun ?? 0) * countStun
         return {
           ...merged,
           extraSelfDecibelReward: (merged.extraSelfDecibelReward ?? 0) + chainTotal * 300 + (cinema >= 2 ? 1500 : 0),
@@ -983,7 +992,7 @@ export function useResourceCalc() {
         const teamChainTotal = axisActive
           ? Object.values(axisChainTotal).reduce((a, b) => a + b, 0) - (axisChainTotal[cfg.slot] ?? 0)
           : configStore.team.reduce((sum, c, ci) =>
-              ci !== cfg.slot && c?.agentId ? sum + (c.chainCountPerStun ?? 0) * stunCount : sum, 0)
+              ci !== cfg.slot && c?.agentId ? sum + (c.chainCountPerStun ?? 0) * countStun : sum, 0)
         const c2Per = merged.lycaonC2EnergyPerTrigger ?? 0
         return {
           ...merged,
@@ -1115,7 +1124,7 @@ export function useResourceCalc() {
     // 输入只有用户配置的次数与连携数（= chainCountTotalOverride ?? chainCountPerStun × stunCount），无 ultimateCount 反馈环
     const perSlotChainForBonus = [0, 0, 0]
     for (const cfg of characters) {
-      perSlotChainForBonus[cfg.slot] = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * stunCount
+      perSlotChainForBonus[cfg.slot] = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * countStun
     }
     // 弹刀喧响（215/次）用注入后的有效次数（含反推拆分 + 不带支援突击 + 只给喧响 + 般岳补齐；不写回 store）
     const parryForBonus = [0, 0, 0]

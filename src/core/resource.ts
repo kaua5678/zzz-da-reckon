@@ -10,6 +10,7 @@ import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
 import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import { computeLiuyinHugCounts, computeLiuyinSource } from '@/mechanics/agents/liuyin'
 import { moveFusionByMoveId } from '@/data/moveFusions'
+import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 
 /**
  * 诺姆膛温换连携（C4）赠链时间信道（与 iterate Step4 同口径）：hatCount 次赠链由
@@ -300,13 +301,16 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     ? config.initialStates
     : warmSeed?.states
   // 默认零种子快照：规范重跑用（种子注入的轨迹若未正常收敛 = 停点含瞬态相位成分，弃掉重跑冷轨迹）
+  // **计数通道**：`stunPlanProjection` 打开时把失衡计划值投影成整数再乘进连携数（默认 off = 现状，
+  // 见 `core/stunPlanProjection.ts`）；时间账（窗口/覆盖率/`stunSeconds`）继续用实数 `config.stunCount`。
+  const countStunPlan = projectStunPlanForCounts(config.stunCount ?? 0, config.stunPlanProjection ?? 'off')
   const defaultSeedStates: IterationState[] = configs.map(cfg => ({
     basicAttackTime: totalWeight > 0
       ? totalTime * (cfg.timeWeight / totalWeight)
       : 0,
     exSpecialCount: 0,
     ultimateCount: 0,
-    chainCountTotal: (cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * (config.stunCount ?? 0)) + (cfg.chainCountTotalExtra ?? 0),
+    chainCountTotal: (cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * countStunPlan) + (cfg.chainCountTotalExtra ?? 0),
     totalEnergy: 0,
     totalDecibel: cfg.initialDecibelGift + (cfg.extraSelfDecibelReward ?? 0),
     necessaryTime: 0,

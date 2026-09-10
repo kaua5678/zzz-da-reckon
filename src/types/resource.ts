@@ -1870,6 +1870,19 @@ export interface CharacterOperationConfig {
 export interface ResourceCalcConfig {
   /** 总时间（秒，默认180） */
   totalTime: number
+  /**
+   * **失衡计划值 → 计数**的投影方式（默认 `'off'` = 保持实数，即现行口径）。
+   *
+   * 背景（2026-09-10 实测，探针 `PROBE_COUNT_FRAC=1`）：外层不动点为让时间账「装得下」把失衡次数
+   * 做成实数（非失衡占比缩放 / 超窗口残失衡按残差系数 / 非失衡时间不足时反解），再乘进连携次数
+   * ⇒ 终局 **23.5% 的计数槽非整数、其中 91% 是连携**。用户口径：**离散动作的次数应当整数化**，
+   * 时间缺口用合轴率/预算宽容，而不是折半次。
+   *
+   * **语义边界**：只影响「把计划值当次数用」的地方（连携/喧响/能量等计数通道）；
+   * 时间账（失衡窗口分配、覆盖率、`stunSeconds`）与不动点迭代**仍用实数**——那里实数才是对的。
+   * 实验开关（`configStore` 机制参数 `time.stunPlanProjection`，0=off/1=floor/2=round/3=ceil）。
+   */
+  stunPlanProjection?: StunPlanProjection
   /** boss 无敌时间（秒，扣减平A可分配池） */
   invincibleTime?: number
   /** boss 失衡值 */
@@ -1946,6 +1959,12 @@ export interface ResourceCalcConfig {
 // ============ 迭代中间状态 ============
 
 /** 单次迭代中各角色的中间状态 */
+/**
+ * 失衡计划值（外层不动点实数）→ **计数** 的投影方式（见 `ResourceCalcConfig.stunPlanProjection`）。
+ * `'off'` = 现行口径（实数直接当次数用）；其余把「离散动作的次数」投影成整数，时间账保持实数。
+ */
+export type StunPlanProjection = 'off' | 'floor' | 'round' | 'ceil'
+
 export interface IterationState {
   /** 平A时间 */
   basicAttackTime: number
