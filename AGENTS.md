@@ -103,6 +103,17 @@ npm run docs:status   # 重新生成 docs/implementation-status.md（CI 会检�
 npm run minify:static # 生成产物瘦身/剔 catalog 死键（幂等；validate:data 报产物膨胀时用它修）
 ```
 
+**UI 改动必须实机点通一次（不再接受「没做」）**：`npm run build` 后用 `scripts/ui-check.mjs` 走一遍
+（`python3 -m http.server 8099 --directory dist` 起静态服务 + headless Chromium 经 CDP 点页签/控件/按钮），
+它读回 DOM 体检（polyline/标注重叠/表格溢出/JS 错误）并截图，**零 JS 错误 + 无重叠 + 无溢出 = PASS（退出码 0）**：
+
+```bash
+node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --click 计算曲线 --wait-for polyline
+```
+
+（无 root 环境缺 `libnspr4/libnss3` 时，按脚本文件头的「用户态 `apt-get download` + `dpkg-deb -x` 解包」补齐，
+脚本会自动探测 `~/.local/chrome-deps`。）
+
 **实战归档只做「单条部署对照」（RunArchivePage），不作误差判据**（用户裁决 2026-09）：归档是 approved 顶尖投稿（幸存者偏差、配装/操作/词条都未知），预测值与其差分不度量「真实性」，**不设低估/高估、不设基线、不据此拦或对冲任何录入改动**。录机制只按原文/口径录，不看这条改动会让预测分更接近还是更远离某条投稿。
 
 `verify:recording` 是**机器判据**——防止"写了代码改了 spec 就声称完成"：对每个 `status ∈ implemented*` 的角色，检查①测试文件引用 agentId（无=FAIL）②有 expect 断言（无=WARN）③档案段有状态行（无=WARN）。录入角色后跑它确认无 FAIL；WARN（档案无状态行）按 SOP §6.10 第 3 项补状态行后消除。
