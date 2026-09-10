@@ -86,22 +86,24 @@ describe('computeParrySplit（Boss 弹刀反推拆分）', () => {
     expect(r.topUp).toBe(0)
   })
 
-  it('不带支援突击弹刀：全部归击破位，其失衡值先从缺口扣掉', () => {
-    // 司祭型：15 无突击（每次 400）、0 正常；非弹刀 40000 → 缺口 16000 − 15×400 = 10000 → 正常弹刀 0
+  it('不带支援突击弹刀：**对半分**（用户口径 2026-09-10，奇数时击破位多 1）', () => {
+    // 司祭型：15 无突击（每次 400）、0 正常；非弹刀 40000 → 缺口 16000 − 8×400（击破位那半）= 12800
     const r = base({ parryTotal: 0, parryNoFollowUpTotal: 15, perNoFollowUpDaze: 400, nonParryStun: 40000 })
-    expect(r.breakerNoFollowUp).toBe(15)
-    expect(r.mainDpsNoFollowUp).toBe(0)
-    // 无突击 daze 15×400=6000 已覆盖，剩余缺口 10000 > 0 但正常弹刀池为 0 → 正常补 0
+    expect(r.breakerNoFollowUp).toBe(8)
+    expect(r.mainDpsNoFollowUp).toBe(7)
+    expect(r.breakerNoFollowUp + r.mainDpsNoFollowUp).toBe(15)
+    // 正常弹刀池为 0 → 补 0
     expect(r.breakerParry).toBe(0)
     expect(r.mainDpsParry).toBe(0)
   })
 
-  it('无突击弹刀 daze 覆盖部分缺口 → 正常弹刀反推量减少', () => {
-    // 需要 56000；非弹刀 48000；无突击 10×400=4000 → 剩余缺口 4000 → 正常补 4 次
+  it('对半分后只有击破位那半的 daze 抵缺口 → 正常弹刀反推量相应增加', () => {
+    // 需要 56000；非弹刀 48000；无突击对半分 10 → 击破位 5×400=2000 → 剩余缺口 6000 → 正常补 6 次
     const r = base({ parryTotal: 13, parryNoFollowUpTotal: 10, perNoFollowUpDaze: 400, nonParryStun: 48000 })
-    expect(r.breakerNoFollowUp).toBe(10)
-    expect(r.breakerParry).toBe(4)
-    expect(r.mainDpsParry).toBe(9)
+    expect(r.breakerNoFollowUp).toBe(5)
+    expect(r.mainDpsNoFollowUp).toBe(5)
+    expect(r.breakerParry).toBe(6)
+    expect(r.mainDpsParry).toBe(7)
   })
 
   it('T 只依赖非弹刀基数（与当前注入量无关）→ 轮间单调收敛不振荡', () => {

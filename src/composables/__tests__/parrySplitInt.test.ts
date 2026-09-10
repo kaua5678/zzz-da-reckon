@@ -159,7 +159,7 @@ describe('Boss 预设不带支援突击弹刀 + 喧响赠礼', () => {
     return { preset, phase: preset.phases[0], monster: preset.monster, defaults: preset.defaults }
   }
 
-  it('秽息司祭（15 无突击弹刀）→ 全部归击破位：轻弹刀行 count=15、无支援突击行', async () => {
+  it('秽息司祭（15 无突击弹刀）→ **对半分** 8/7：两槽各有轻弹刀行、无支援突击行', async () => {
     const { config } = await setupHarness([...STANDARD_TEAM])
     const { preset, phase, monster, defaults } = bossById('30033')
     expect(defaults.parryNoFollowUpTotal).toBe(15)
@@ -168,21 +168,22 @@ describe('Boss 预设不带支援突击弹刀 + 喧响赠礼', () => {
     const calc = useResourceCalc()
     const split = calc.parrySplitResult.value
     expect(split).not.toBeNull()
-    expect(split!.breakerNoFollowUp).toBe(15)
+    expect(split!.breakerNoFollowUp).toBe(8) // 对半分，奇数归击破位（用户口径 2026-09-10）
+    expect(split!.mainDpsNoFollowUp).toBe(7)
     expect(split!.breakerParry).toBe(0) // 无正常弹刀池
 
-    // 击破位（槽位 1）失衡池：只有轻弹刀行（count=15）、无支援突击行
+    // 击破位（槽位 1）失衡池：只有轻弹刀行（count=8 = 对半分中击破位那半）、无支援突击行
     const sp = calc.stunPoolResult.value!
     const defRow = sp.contributions.find(c => c.slot === 1 && c.moveName.includes('招架'))
     const fuRow = sp.contributions.find(c => c.slot === 1 && c.moveName.includes('支援突击'))
     expect(defRow).toBeTruthy()
-    expect(defRow!.count).toBe(15)
+    expect(defRow!.count).toBe(8)
     expect(fuRow).toBeUndefined()
 
-    // 喧响：15 × 215 = 3225 计入特殊动作喧响（击破位 perSlotParry = 15）
+    // 喧响：击破位那半 8 次计入特殊动作喧响（perSlotParry = 8；主C 另 7 次计入自己槽位）
     const bonus = calc.specialActionBonus.value
     expect(bonus).not.toBeNull()
-    expect(bonus!.perSlotParry[1]).toBe(15)
+    expect(bonus!.perSlotParry[1]).toBe(8)
   })
 
   it('未知复合侵蚀体 → 6000 喧响赠礼给 1 号位（叠加在进场喧响之上）', async () => {
@@ -216,20 +217,22 @@ describe('Boss 预设不带支援突击弹刀 + 喧响赠礼', () => {
     const calc = useResourceCalc()
     const split = calc.parrySplitResult.value
     expect(split).not.toBeNull()
-    expect(split!.breakerNoFollowUp).toBe(2)
+    expect(split!.breakerNoFollowUp).toBe(1) // 总数 2 → 对半分 1/1（用户口径 2026-09-10）
+    expect(split!.mainDpsNoFollowUp).toBe(1)
     expect(split!.breakerDecibelOnly).toBe(4)
 
-    // 击破位失衡池：只有无突击弹刀的轻弹刀行（count=2）、无支援突击行；只给喧响弹刀不打 boss → 无行
+    // 击破位失衡池：只有无突击弹刀的轻弹刀行（count=1 = 对半分中击破位那半）、无支援突击行；
+    // 只给喧响弹刀不打 boss → 无行
     const sp = calc.stunPoolResult.value!
     const defRow = sp.contributions.find(c => c.slot === 1 && c.moveName.includes('招架'))
     const fuRow = sp.contributions.find(c => c.slot === 1 && c.moveName.includes('支援突击'))
     expect(defRow).toBeTruthy()
-    expect(defRow!.count).toBe(2) // 2 次无突击弹刀（4 次只喧响弹刀无 daze → 不计行）
+    expect(defRow!.count).toBe(1) // 2 次无突击弹刀对半分 → 击破位 1 次（4 次只喧响弹刀无 daze → 不计行）
     expect(fuRow).toBeUndefined()
 
-    // 喧响：击破位 perSlotParry = 2 无突击 + 4 只喧响 = 6
+    // 喧响：击破位 perSlotParry = 1 无突击（对半分） + 4 只喧响 = 5
     const bonus = calc.specialActionBonus.value
-    expect(bonus!.perSlotParry[1]).toBe(6)
+    expect(bonus!.perSlotParry[1]).toBe(5)
 
     // 白送失衡值计入失衡池：总失衡 ≥ bossStunGift
     expect(sp.totalStunBuildUp).toBeGreaterThan(0)

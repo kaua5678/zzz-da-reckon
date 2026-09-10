@@ -5,7 +5,9 @@
  * 两类弹刀：
  * - 正常弹刀（parryTotal）：轻弹刀 + 支援突击 + 喧响 215，按保底4失衡反推拆分击破/主C；
  * - 不带支援突击的弹刀（parryNoFollowUpTotal）：只有轻弹刀倍率行 + 喧响 215、无支援突击行，
- *   boss 机制强制、非用户可调 → **全部归击破位**，其失衡值先从缺口里扣掉。
+ *   boss 机制强制、非用户可调 → **对半分**（用户口径 2026-09-10：「不带支援突击的弹刀**必须对半分**，
+ *   「强制归击破位」是错的——那是把「补失衡」误解成「只有击破弹刀」；删掉」，奇数时击破位多 1）。
+ *   其失衡值先从缺口里扣（击破位承担的那一半）。
  *
  * 反推口径（防振荡）：
  * - 非弹刀失衡基数 = 全队有效失衡值 − 击破位弹刀行贡献（轻弹刀 + 支援突击，行 count 随弹刀次数缩放）；
@@ -48,9 +50,9 @@ export interface ParrySplitResult {
   breakerParry: number
   /** 主C 正常弹刀：用户已填 >0 用用户值；否则 = max(0, parryTotal − breakerParry) */
   mainDpsParry: number
-  /** 击破位不带支援突击弹刀 = parryNoFollowUpTotal（全部归击破位） */
+  /** 击破位不带支援突击弹刀 = 对半分中的击破位一半（奇数时多 1） */
   breakerNoFollowUp: number
-  /** 主C 不带支援突击弹刀（恒 0） */
+  /** 主C 不带支援突击弹刀 = 对半分中的主C 一半 */
   mainDpsNoFollowUp: number
   /** 击破位正常弹刀反推补齐量（≥0，已按 parryTotal 封顶） */
   topUp: number
@@ -78,8 +80,9 @@ export function computeParrySplit(input: ParrySplitInput): ParrySplitResult {
   const costPerExtra = bossStun > 0 ? bossStun * (1 - refund) : 0
   const neededStun = bossStun > 0 ? bossStun + (target - 1) * costPerExtra : 0
 
-  // 不带支援突击弹刀全部归击破位（boss 强制、非用户可调），其失衡值先扣掉
-  const noFollowUpDazeTotal = noFollowUpTotal * noFollowDaze
+  // 不带支援突击弹刀对半分后，**击破位那一半**的失衡值先从缺口里扣（用户口径 2026-09-10）
+  const noFollowUpBreakerHalf = noFollowUpTotal - Math.floor(noFollowUpTotal / 2)
+  const noFollowUpDazeTotal = noFollowUpBreakerHalf * noFollowDaze
   const remainingGap = Math.max(0, neededStun - Math.max(0, input.nonParryStun) - noFollowUpDazeTotal)
   const neededParries = daze > 0 ? Math.ceil(remainingGap / daze) : 0
 
@@ -90,11 +93,15 @@ export function computeParrySplit(input: ParrySplitInput): ParrySplitResult {
   // 主C：用户已填（>0）不覆盖；否则拿剩余（parryTotal − 击破位）
   const mainDpsParry = mainDpsInput > 0 ? mainDpsInput : Math.max(0, parryTotal - breakerParry)
 
+  // 不带支援突击弹刀：**对半分**（用户口径 2026-09-10；奇数时击破位多 1，因为失衡值只由击破位那半贡献）
+  const mainDpsNoFollowUp = Math.floor(noFollowUpTotal / 2)
+  const breakerNoFollowUp = noFollowUpTotal - mainDpsNoFollowUp
+
   return {
     breakerParry,
     mainDpsParry,
-    breakerNoFollowUp: noFollowUpTotal,
-    mainDpsNoFollowUp: 0,
+    breakerNoFollowUp,
+    mainDpsNoFollowUp,
     topUp,
     reached: input.stunCount >= target,
     perParryDaze: daze,

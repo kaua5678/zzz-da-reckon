@@ -540,7 +540,8 @@ export function useResourceCalc() {
     // Boss 预设弹刀反推（用户口径 2026-08）：appliedBoss 声明 parryTotal/parryNoFollowUpTotal（如 叶释渊 13 / 司祭 15）且
     // 「保底4失衡」勾选时，击破位（队伍首个 stun 特性槽位）弹刀按保底失衡反推补齐、主C 拿剩余
     // （纯函数 core/parrySplit.ts；本轮注入上一轮拆分，收敛判据含 parrySplitSeq）。
-    // 不带支援突击弹刀（parryNoFollowUpTotal）全部归击破位，非用户可调；只给喧响弹刀（parryDecibelOnlyTotal）同理。
+    // 不带支援突击弹刀（parryNoFollowUpTotal）**对半分**（用户口径 2026-09-10：「必须对半分；强制归击破位是错的，
+    // 那是把补失衡误解成只有击破弹刀，删掉」）；只给喧响弹刀（parryDecibelOnlyTotal）走保底4喧响通道。
     const parryTotal = configStore.appliedBoss?.parryTotal ?? 0
     const parryNoFollowUpTotal = configStore.appliedBoss?.parryNoFollowUpTotal ?? 0
     const parryDecibelOnlyTotal = configStore.appliedBoss?.parryDecibelOnlyTotal ?? 0
@@ -777,11 +778,16 @@ export function useResourceCalc() {
           } else {
             merged.parryCount = Math.max(0, breakerInput + prevSplit.topUp)
           }
-          // 不带支援突击弹刀 + 只给喧响弹刀全部归击破位（boss 强制、非用户可调）
-          merged.parryNoFollowUpCount = parryNoFollowUpTotal
+          // 不带支援突击弹刀：对半分（击破位拿自己那半）；只给喧响弹刀仍在击破位槽位合并
+          merged.parryNoFollowUpCount = prevSplit?.breakerNoFollowUp ?? (parryNoFollowUpTotal - Math.floor(parryNoFollowUpTotal / 2))
           merged.parryDecibelOnlyCount = parryDecibelOnlyTotal
         } else if (cfg.slot === mainDpsSlot && !noBreakerFallback) {
           merged.parryCount = prevSplit?.mainDpsParry ?? Math.max(0, parryTotal - (configStore.team[effectiveBreakerSlot]?.parryCount ?? 0))
+          // 不带支援突击弹刀的另一半归主C（对半分，用户口径 2026-09-10）
+          merged.parryNoFollowUpCount = prevSplit?.mainDpsNoFollowUp ?? Math.floor(parryNoFollowUpTotal / 2)
+        } else if (cfg.slot === mainDpsSlot && noBreakerFallback) {
+          // 无击破位队伍：实战弹刀全由主C 承担（含不带支援突击的那类）
+          merged.parryNoFollowUpCount = parryNoFollowUpTotal
         }
       }
       // x弹刀（2026-09-02 用户口径，仅基塔布鲁 1 次）：两人同时招架同一攻击——
@@ -2077,7 +2083,7 @@ export function useResourceCalc() {
   })
 
   /** Boss 预设弹刀反推（保底4失衡，最终收敛值）：交互栏显示「击破位弹刀 +N / 主C 剩余」用 */
-  const parrySplitResult = computed<{ breakerSlot: number; topUp: number; breakerParry: number; mainDpsParry: number; breakerNoFollowUp: number; breakerDecibelOnly: number; parryTotal: number; parryNoFollowUpTotal: number } | null>(() => {
+  const parrySplitResult = computed<{ breakerSlot: number; topUp: number; breakerParry: number; mainDpsParry: number; breakerNoFollowUp: number; mainDpsNoFollowUp: number; breakerDecibelOnly: number; parryTotal: number; parryNoFollowUpTotal: number } | null>(() => {
     // 懒守卫：未应用带 parryTotal/parryNoFollowUpTotal/parryDecibelOnlyTotal 的 Boss、未勾选「保底4失衡」或队伍无击破位时不触发全量计算
     const parryTotal = configStore.appliedBoss?.parryTotal ?? 0
     const parryNoFollowUpTotal = configStore.appliedBoss?.parryNoFollowUpTotal ?? 0
@@ -2090,7 +2096,7 @@ export function useResourceCalc() {
     const split = calcOutput.value?.parrySplit
     if (!split) return null
     const effectiveBreakerSlot = breakerSlot >= 0 ? breakerSlot : 0
-    return { breakerSlot: effectiveBreakerSlot, topUp: split.topUp, breakerParry: split.breakerParry, mainDpsParry: split.mainDpsParry, breakerNoFollowUp: split.breakerNoFollowUp, breakerDecibelOnly: parryDecibelOnlyTotal, parryTotal, parryNoFollowUpTotal }
+    return { breakerSlot: effectiveBreakerSlot, topUp: split.topUp, breakerParry: split.breakerParry, mainDpsParry: split.mainDpsParry, breakerNoFollowUp: split.breakerNoFollowUp, mainDpsNoFollowUp: split.mainDpsNoFollowUp, breakerDecibelOnly: parryDecibelOnlyTotal, parryTotal, parryNoFollowUpTotal }
   })
 
   /** 特殊动作喧响奖励 */
@@ -2101,7 +2107,8 @@ export function useResourceCalc() {
       let p = (c.parryCount ?? 0) + (topUp && s === topUp.slot ? topUp.parry : 0)
       if (split) {
         if (s === split.breakerSlot) p = split.breakerParry + split.breakerNoFollowUp + split.breakerDecibelOnly
-        else if (s === 0 && (c.parryCount ?? 0) <= 0) p = split.mainDpsParry
+        // 主C：正常弹刀剩余 + **不带支援突击弹刀的对半分那一半**（用户口径 2026-09-10）
+        else if (s === 0 && (c.parryCount ?? 0) <= 0) p = split.mainDpsParry + split.mainDpsNoFollowUp
       }
       return p
     })

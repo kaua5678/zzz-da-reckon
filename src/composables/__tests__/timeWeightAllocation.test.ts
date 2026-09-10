@@ -8,7 +8,7 @@
  *  ④ 主C（槽0）的平A池时间**增加**——即「能量不够就多A」这条约束在当前策略下确实被喂饱
  *     （实测 auto-1521-1361-1311：平A 31.8→65.7s、强特 16→18 次、伤害 +23.9%）。
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -22,6 +22,10 @@ import {
 } from '@/composables/timeWeightAllocation'
 
 const PRESET_ID = 'auto-1521-1361-1311'
+
+// 本文件每个用例都要跑「联合策略」（≈15~20 次完整引擎求值，单跑 1~5s）；全量并行下会撞 vitest 默认
+// 5000ms 上限（2026-09-10 实测 5557/5799ms 假红）→ 文件级显式超时。
+vi.setConfig({ testTimeout: 30_000 })
 
 describe('平A池权重·分配策略', () => {
   it('① 开关默认关：静态默认权重不受影响', async () => {
