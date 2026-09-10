@@ -727,6 +727,11 @@ describe.runIf(process.env.PROBE_CONV_JOINT === '1')('探针：联合杠杆策�
     let parryChanged = 0
     let stunChanged = 0
     let infeasibleAfter = 0
+    const truncatedAfter: string[] = []
+    const truncatedBefore: string[] = []
+    let energyFed = 0
+    let energyRolledBack = 0
+    let cornerMoved = 0
     const rows: { id: string; base: number; joint: number; note: string }[] = []
     for (const p of presets) {
       for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
@@ -741,15 +746,24 @@ describe.runIf(process.env.PROBE_CONV_JOINT === '1')('探针：联合杠杆策�
       }
       const dmgA = calc.teamTotalDamage.value
       const truncBefore = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
-      if (truncBefore > 1e-6) baselineTruncated++
+      if (truncBefore > 1e-6) {
+        baselineTruncated++
+        truncatedBefore.push(`${p.id}(${truncBefore.toFixed(1)}s)`)
+      }
       const stunA = calc.stunPoolResult.value?.stunCount ?? 0
       const parryA = [0, 1, 2].map(s => config.team[s]!.parryCount).join('/')
       const r = applyTimeWeightAllocation({ calc, configStore: config })
       const dmgB = calc.teamTotalDamage.value
+      if ((r.note ?? '').includes('能量驱动')) energyFed++
+      if ((r.note ?? '').includes('权重已还原')) energyRolledBack++
+      if ((r.note ?? '').includes('角点解：')) cornerMoved++
       const stunB = calc.stunPoolResult.value?.stunCount ?? 0
       const parryB = [0, 1, 2].map(s => config.team[s]!.parryCount).join('/')
       const trunc = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
-      if (trunc > 1e-6) infeasibleAfter++
+      if (trunc > 1e-6) {
+        infeasibleAfter++
+        truncatedAfter.push(`${p.id}(${trunc.toFixed(1)}s)`)
+      }
       sumBase += dmgA
       sumJoint += dmgB
       if (dmgB > dmgA + 1) improved++
@@ -765,6 +779,9 @@ describe.runIf(process.env.PROBE_CONV_JOINT === '1')('探针：联合杠杆策�
       `预设数 ${rows.length}`,
       `团队总伤合计：默认 ${(sumBase / 1e6).toFixed(0)}M → 联合 ${(sumJoint / 1e6).toFixed(0)}M（${((sumJoint / Math.max(1, sumBase) - 1) * 100).toFixed(2)}%）`,
       `提升 ${improved} 队 · 无变化 ${noChange} 队 · 基线本身已超时的队 ${baselineTruncated}（相对门：允许优化但不许更差）· 弹刀被改动 ${parryChanged} 队 · 失衡次数变化 ${stunChanged} 队 · 结束时仍截断 ${infeasibleAfter} 队`,
+      `  能量驱动（A2）：喂能 ${energyFed} 队 · 守卫还原基线 ${energyRolledBack} 队 · 角点解（A3）出手 ${cornerMoved} 队`,
+      `  基线超时清单（${truncatedBefore.length}）：${truncatedBefore.join(' ')}`,
+      `  结束后仍截断清单（${truncatedAfter.length}）：${truncatedAfter.join(' ')}`,
       '增益 top10：',
       ...byGain.slice(0, 10).map(r => `  ${r.id} ${(r.base / 1e6).toFixed(1)}M → ${(r.joint / 1e6).toFixed(1)}M（${((r.joint / Math.max(1, r.base) - 1) * 100).toFixed(1)}%）${r.note}`),
       '损失 top5：',

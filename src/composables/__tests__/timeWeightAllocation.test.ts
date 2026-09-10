@@ -129,11 +129,115 @@ describe('平A池权重·分配策略', () => {
     config.applyTeamPreset(p.team as [string, string, string])
     const truncated = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
     expect(truncated, '该队列为「基线本身就超时」的样本').toBeGreaterThan(0)
+    const dmgBefore = calc.teamTotalDamage.value
     const r = applyTimeWeightAllocation({ calc, configStore: config })
     // 相对门：允许优化，但**不得新增截断**（原来的「截断必须为 0 否则拒绝」已按用户口径删除）
     const after = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
     expect(after).toBeLessThanOrEqual(truncated + 1e-6)
     expect(r.note ?? '').toContain('相对门')
+    // 可行性优先（A1）：总伤不得低于基线
+    expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(dmgBefore - 1e-6)
+  })
+
+  it('⑥c 可行性优先（A1）：基线超时队先拉回可行——截断只降不升、总伤不降；拉回即 0，拉不回如实上报', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const p = teamPresets.find(x => x.id === 'auto-1591-1481-1311')!
+    for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+    config.applyTeamPreset(p.team as [string, string, string])
+    const truncated = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
+    expect(truncated).toBeGreaterThan(0)
+    const dmgBefore = calc.teamTotalDamage.value
+    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    const after = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
+    const dmgAfter = calc.teamTotalDamage.value
+    // 硬不变量：截断不升、总伤不降
+    expect(after).toBeLessThanOrEqual(truncated + 1e-6)
+    expect(dmgAfter).toBeGreaterThanOrEqual(dmgBefore - 1e-6)
+    // 状态如实上报：拉回可行 → 断言归零；拉不回 → 断言「拉不回来」说明
+    if (after <= 1e-6) {
+      expect(r.note ?? '').toContain('已拉回可行')
+    } else {
+      expect(r.note ?? '').toContain('拉不回来')
+    }
+  })
+
+  it('⑥d 能量驱动（A2）：主C 强特次数不降 + 总伤不降（多A 喂能或整体还原基线）', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    // auto-1521-1361-1311：实测主C 平A 池 31.8→65.7s、强特 16→18 次（用户点名「能量不够就多A」的样本）
+    const p = teamPresets.find(x => x.id === 'auto-1521-1361-1311')!
+    for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+    config.applyTeamPreset(p.team as [string, string, string])
+    const exBase = calc.resourceResult.value!.characters[0]!.exSpecialCount
+    const dmgBase = calc.teamTotalDamage.value
+    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    const exAfter = calc.resourceResult.value!.characters[0]!.exSpecialCount
+    const dmgAfter = calc.teamTotalDamage.value
+    // 判据：主C exSpecialCount 不降 + 总伤不降（ex 提升可能来自均衡/弹刀杠杆，能量杠杆只在
+    // 均衡后仍能量紧张时出手；守卫兜底整体还原基线）
+    expect(exAfter).toBeGreaterThanOrEqual(exBase)
+    expect(dmgAfter).toBeGreaterThanOrEqual(dmgBase - 1e-6)
+    // 能量杠杆真的出手过 → 次数必须实打实上升（不接受「名义喂能」）
+    if ((r.note ?? '').includes('能量驱动')) {
+      expect(exAfter).toBeGreaterThan(exBase)
+    }
+  })
+
+  it('⑥e 角点解（A3）：非主C 平A 只留「打满失衡」的最小够用，主C 享剩余（失衡不降 + 总伤不降）', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const p = teamPresets.find(x => x.id === 'auto-1521-1361-1311')!
+    for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+    config.applyTeamPreset(p.team as [string, string, string])
+    const stunBase = calc.stunPoolResult.value!.stunCount
+    const dmgBase = calc.teamTotalDamage.value
+    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    // 判据（用户口径「失衡次数先定、总伤为目标」）：失衡不降 + 总伤不降
+    expect(calc.stunPoolResult.value!.stunCount).toBeGreaterThanOrEqual(stunBase)
+    expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(dmgBase - 1e-6)
+    // 角点解出手过 → note 如实上报权重转移
+    if ((r.note ?? '').includes('角点解')) {
+      expect(r.note).toContain('失衡')
+      expect(r.note).toContain('主C 享剩余时间')
+    }
+  })
+
+  it('⑥f 双主C（A4）：两个输出核心都算主C——逐核心强特不降 + 总伤不降，角点解不压输出槽', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    // 柏妮思(异常)+维琳娜(异常)+柚叶(支援)：双异常核心队（预设库 28 支双 C 队同款结构）
+    const p = teamPresets.find(x => x.id === 'auto-1171-1561-1411')!
+    for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+    config.applyTeamPreset(p.team as [string, string, string])
+    const chars = () => calc.resourceResult.value!.characters
+    const exA = chars()[0]!.exSpecialCount
+    const exB = chars()[1]!.exSpecialCount
+    const dmgBase = calc.teamTotalDamage.value
+    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    const exA2 = chars()[0]!.exSpecialCount
+    const exB2 = chars()[1]!.exSpecialCount
+    // 判据（逐核心）：两个主C 的强特次数都不许低于策略入口
+    expect(exA2, '主C#1（柏妮思）强特次数不降').toBeGreaterThanOrEqual(exA)
+    expect(exB2, '主C#2（维琳娜）强特次数不降（A4 前该槽被角点解当辅助压过）').toBeGreaterThanOrEqual(exB)
+    expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(dmgBase - 1e-6)
+    // 角点解若出手，被压的只能是柚叶（支援位 slot3）——输出槽权重不降
+    const m = (r.note ?? '').match(/角点解：非主C 权重 ([\d./]+)→([\d./]+)/)
+    if (m) {
+      const [, b, a] = m
+      const bw = b.split('/').map(Number)
+      const aw = a.split('/').map(Number)
+      expect(aw[0]).toBeGreaterThanOrEqual(bw[0] - 1e-9)
+      expect(aw[1]).toBeGreaterThanOrEqual(bw[1] - 1e-9)
+    }
   })
 
   it('⑦ 用户约束「弹刀多了也不能超过总时间」：越界配置被硬门挡住（不会无限加）', async () => {

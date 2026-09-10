@@ -16,8 +16,27 @@
  */
 import { watch } from 'vue'
 import { useConfigStore } from '@/stores/config'
+import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { optimizeTeamTimeWeights } from '@/composables/teamTimeline'
+import { isCarrySpecialty } from '../../scripts/lib/presetCategories.mjs'
+
+/**
+ * 队伍输出核心槽（升序）。口径单源 = `scripts/lib/presetCategories.mjs#isCarrySpecialty`
+ * （强攻/命破/异常/锋御=输出定位；击破/支援/防护=辅助）。首元素即 `resolveCarryAgent` 的
+ * 「第一核心」（槽0=主C、槽0 辅助位退队内第一输出位）。
+ * **双主C 队（异常双 C 等 ≥2 输出位）全部算主C**（账本 A4，用户「有些队伍不是一个主c」）：
+ * 能量杠杆逐 carry 喂能、角点解只压非输出槽（第二个 carry 也是输出，压到最小够用 = 卖伤害）。
+ * 整队无输出位（理论不收录）→ 回落 [0]（旧「槽0=主C」约定，行为不变）。
+ */
+// @fact engine:分配策略/主C判定 口径: 策略层「主C」= 队内**全部输出定位槽**（升序；单源 isCarrySpecialty，强攻/命破/异常/锋御），首元素=分类口径第一核心；能量喂能与 ex 守卫**逐核心**执行、角点解只压非输出槽；双主C 队核心间份额由均衡器按伤害边际协调（坐标上升=1D，A4）；整队无输出位回落 [0] | 据 用户@2026-09-10「有些队伍不是一个主c」+ 预设库分类同口径 用户@2026-09-08 | 验 src/composables/__tests__/timeWeightAllocation.test.ts#⑥f | 锚 src/composables/timeWeightAllocation.ts#carrySlotsOf | 信 确认
+function carrySlotsOf(configStore: ConfigStore, catalogStore: ReturnType<typeof useCatalogStore>): number[] {
+  const slots = [0, 1, 2].filter(s => {
+    const id = String(configStore.team[s]?.agentId ?? '')
+    return !!id && isCarrySpecialty(String(catalogStore.getAgent(id)?.specialty ?? ''))
+  })
+  return slots.length > 0 ? slots : [0]
+}
 
 type Calc = ReturnType<typeof useResourceCalc>
 type ConfigStore = ReturnType<typeof useConfigStore>
@@ -66,7 +85,20 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     const { calc, configStore } = ctx
     const weightsBefore = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0)))
     const parryBefore = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.parryCount ?? 0)))
+    const interactionBefore = [0, 1, 2].map(s => ({
+      parryCount: Number(configStore.team[s]?.parryCount ?? 0),
+      blockCount: Number(configStore.team[s]?.blockCount ?? 0),
+      dualCounterCount: Number(configStore.team[s]?.dualCounterCount ?? 0),
+      dodgeCounterCount: Number(configStore.team[s]?.dodgeCounterCount ?? 0),
+    }))
     const stunBefore = calc.stunPoolResult.value?.stunCount ?? 0
+    // 主C 判定走单源（carrySlotsOf）；**双主C 队逐槽都是主C**（A4，用户「有些队伍不是一个主c」）。
+    // exStart = **策略入口**各核心强特次数（③ 喂能地板与守卫比较基准——曾在 ③ 起点抓取，
+    // starved 恒 false，A4 一并修正）。
+    const catalogStore = useCatalogStore()
+    const carries = carrySlotsOf(configStore, catalogStore)
+    const exOf = (s: number) => calc.resourceResult.value?.characters?.[s]?.exSpecialCount ?? 0
+    const exStart = carries.map(c => exOf(c))
     /**
      * 可行性门 = **相对门：不许把「装不下」变得更差**（用户口径 2026-09-10：「39队直接拒绝那就删除防护，
      * 这总是在开发的时候拦截」）——原来是「截断必须为 0 否则拒绝」，于是**基线本身就超时的 39 队全被拒**，
@@ -80,9 +112,64 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     const notes: string[] = []
     const truncation = () => calc.resourceResult.value?.convergence?.timeTruncatedSeconds ?? 0
     const baselineTruncation = truncation()
-    const feasible = () => truncation() <= baselineTruncation + 1e-6
+    const baselineDamage = calc.teamTotalDamage.value
+    // 搜索常量（阶段 -1 与 ② 共用；必须声明在 -1 之前，防 TDZ）
+    const STEP = 2
+    const MAX_ROUNDS = 3
+    const minParryTotal = Math.max(0, Number(configStore.appliedBoss?.parryTotal ?? 0))
+    const totalParries = () => [0, 1, 2].reduce((acc, i) => acc + Math.max(0, Number(configStore.team[i]?.parryCount ?? 0)), 0)
+    let floorBlocked = false
+    /** 可行性门槛（相对门参考值）：可行性优先阶段找到的最小截断；未超时基线 = 0 */
+    let feasibleFloor = baselineTruncation
+    const feasible = () => truncation() <= feasibleFloor + 1e-6
     if (baselineTruncation > 1e-6) {
-      notes.push(`基线本身已超时（装配截断 ${baselineTruncation.toFixed(2)}s）→ 走相对门：只保证不更差`)
+      notes.push(`基线本身已超时（装配截断 ${baselineTruncation.toFixed(2)}s）→ 先试拉回可行，保底走相对门（不更差）`)
+    }
+    // 阶段 -1：**可行性优先**（账本 A1，2026-09-10）——基线已超时的队先尝试把配置拉回可行，
+    // 再谈总伤最大化。杠杆 = **减**交互（弹刀/金身/双反/闪反，与引擎非轴降配同族；加交互只会
+    // 加剧截断，故只试减向）；接受条件 = 「截断减少 **且** 总伤不低于基线」（判据「→0 且总伤不降」），
+    // 截断归零立即退出；拉不回来的队保底走相对门（后续 ①/② 用 feasibleFloor = 原截断，不更差）。
+    // 原理：超时队的招式行会被时间线截断（坑22），交互行的时间是真占用、回报被截断吃掉大半，
+    // 减掉低边际交互既能缩小截断又往往不亏伤害。
+    if (baselineTruncation > 1e-6) {
+      const FEAS_LEVERS = [
+        { key: 'parry', get: (s: number) => Number(configStore.team[s]?.parryCount ?? 0), set: (s: number, v: number) => configStore.setParryCount(s, v) },
+        { key: 'block', get: (s: number) => Number(configStore.team[s]?.blockCount ?? 0), set: (s: number, v: number) => configStore.setBlockCount(s, v) },
+        { key: 'dual', get: (s: number) => Number(configStore.team[s]?.dualCounterCount ?? 0), set: (s: number, v: number) => configStore.setDualCounterCount(s, v) },
+        { key: 'dodge', get: (s: number) => Number(configStore.team[s]?.dodgeCounterCount ?? 0), set: (s: number, v: number) => configStore.setDodgeCounterCount(s, v) },
+      ] as const
+      let bestTrunc = baselineTruncation
+      let bestDmg = baselineDamage
+      for (let round = 0; round < 2 && bestTrunc > 1e-6; round++) {
+        let improved = false
+        for (let slot = 0; slot < 3; slot++) {
+          for (const lever of FEAS_LEVERS) {
+            const cur = Math.max(0, lever.get(slot))
+            const next = Math.max(0, cur - STEP)
+            if (next === cur) continue
+            // 弹刀减向不越过 boss 预设强制次数（与常规搜索同源下限）
+            if (lever.key === 'parry' && totalParries() - STEP < minParryTotal) { floorBlocked = true; continue }
+            lever.set(slot, next)
+            const t = truncation()
+            const d = calc.teamTotalDamage.value
+            if (t < bestTrunc - 1e-6 && d >= baselineDamage - 1e-6) {
+              bestTrunc = t
+              bestDmg = d
+              improved = true
+            } else {
+              lever.set(slot, cur)
+            }
+          }
+        }
+        if (!improved) break
+      }
+      feasibleFloor = bestTrunc
+      if (bestTrunc < baselineTruncation - 1e-6) {
+        notes.push(`可行性优先：截断 ${baselineTruncation.toFixed(2)}→${bestTrunc.toFixed(2)}s（总伤 ${(bestDmg / 1e6).toFixed(2)}M ≥ 基线 ${(baselineDamage / 1e6).toFixed(2)}M）`)
+        if (bestTrunc <= 1e-6) notes.push('已拉回可行：装配不再截断')
+      } else {
+        notes.push(`拉不回来：必要行本身超预算（截断 ${bestTrunc.toFixed(2)}s 是硬约束），保持相对门`)
+      }
     }
     // ① 平A 权重（委托边际均衡；它自己不含可行性门，故候选若越界即回滚）
     const w = marginalEqualizeStrategy.allocate(ctx)
@@ -98,12 +185,8 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     // （用户口径：「不能降低到boss预设的最低次数，因为boss预设的次数是强制完成的」）。
     // 与 `core/parrySplit.ts` 同源：`parryTotal` = 正常弹刀总次数（叶释渊 13 等），由 boss 预设声明；
     // `parryNoFollowUpTotal` 是另一类（无支援突击）且 split 已强制归击破位，不并进本下限。
+    // （STEP/MAX_ROUNDS/minParryTotal/totalParries/floorBlocked 已在上方阶段 -1 前声明）
     let best = calc.teamTotalDamage.value
-    const STEP = 2
-    const MAX_ROUNDS = 3
-    const minParryTotal = Math.max(0, Number(configStore.appliedBoss?.parryTotal ?? 0))
-    const totalParries = () => [0, 1, 2].reduce((acc, i) => acc + Math.max(0, Number(configStore.team[i]?.parryCount ?? 0)), 0)
-    let floorBlocked = false
     for (let round = 0; round < MAX_ROUNDS; round++) {
       let improved = false
       for (let slot = 0; slot < 3; slot++) {
@@ -127,6 +210,104 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     if (floorBlocked) {
       notes.push(`弹刀下调被挡在 boss 预设强制次数（parryTotal=${minParryTotal}）`)
     }
+    // ③ 能量驱动（账本 A2 + A4）：平A 权重是主C 能量的主要来源（basicAttackTime × 秒均回能 →
+    // 强特次数 = floor(总能量/耗能)）。①② 后若某主C 被挤掉次数（能量紧张），把**非输出槽**的权重
+    // 转给他多A；接受 = 该主C exSpecialCount 上升 **且** 总伤不低于地板 **且** 仍可行
+    // （判据「主C exSpecialCount 不降 + 总伤不降」）。地板：被挤的队 = 策略入口总伤；
+    // 未挤的队 = 当前最优（不许用伤害换次数）。**双主C 逐核心分别喂**，且绝不从另一个主C 抽权重
+    // （那是 ① 均衡器的职责——按伤害边际在核心间分配，A4「双主C 间分配」由此覆盖，逐槽坐标上升=1D）。
+    let energyMoved = false
+    const energyLog: string[] = []
+    // ③④ 起点快照（权重与逐核心次数）：守卫回滚目标 = ①② 末态（不是策略入口，见下）
+    const weightsMid = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0)))
+    const exMid = carries.map(c => exOf(c))
+    carries.forEach((carry, ci) => {
+      const exBaseC = exStart[ci]
+      const exNowC = exOf(carry)
+      const starved = exNowC < exBaseC - 1e-9 // ①② 挤掉了这个核心的次数 → 允许喂能（地板=入口总伤）
+      let exBest = exNowC
+      let dmgBest = calc.teamTotalDamage.value
+      for (let round = 0; round < 2; round++) {
+        let improved = false
+        for (let from = 0; from < 3; from++) {
+          if (carries.includes(from)) continue // 能量只从非输出槽来，饿不到另一个主C
+          const wFrom = Math.max(0, Number(configStore.team[from]?.basicAttackTimeWeight ?? 0))
+          if (wFrom <= 0) continue // 已无可转移的权重
+          const wMain = Math.max(0, Number(configStore.team[carry]?.basicAttackTimeWeight ?? 0))
+          configStore.setBasicAttackTimeWeight(carry, wMain + 1)
+          configStore.setBasicAttackTimeWeight(from, wFrom - 1)
+          const ex = exOf(carry)
+          const d = calc.teamTotalDamage.value
+          // 接受：ex 实打实上升 + 可行 + 伤害地板（被挤：入口总伤 / 未挤：当前最优）。
+          // 被挤时允许**部分恢复**步进（ex 只要上升、终局由兜底守卫把关）——旧版要求单步跳回
+          // 入口值，+1 步进跨不过去 → 17 队全回滚丢 ①② 收益（实测 +9.27% 掉到 +7.08%，已修正）
+          const exOk = starved ? ex > exBest - 1e-9 : (ex > exBest - 1e-9 && ex >= exBaseC - 1e-9)
+          const dmgOk = starved ? d >= baselineDamage - 1e-6 : d >= dmgBest - 1e-6
+          if (exOk && dmgOk && feasible()) {
+            exBest = ex
+            dmgBest = Math.max(dmgBest, d)
+            improved = true
+            energyMoved = true
+          } else {
+            configStore.setBasicAttackTimeWeight(carry, wMain)
+            configStore.setBasicAttackTimeWeight(from, wFrom)
+          }
+        }
+        if (!improved) break
+      }
+      if (exBest > exNowC) energyLog.push(`槽${carry + 1} ${exNowC}→${exBest} 次`)
+    })
+    const weightsAfter = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0)))
+    if (energyMoved) {
+      notes.push(`能量驱动：主C 强特 ${energyLog.join('、')}（多A 喂能，权重 ${weightsBefore.join('/')}→${weightsAfter.join('/')}）`)
+    }
+    // ④ 角点解（账本 A3 + A4）：**非输出核心槽**的平A 池只保留「打满失衡目标」的最小够用量——
+    // 逐槽 1D 阈值下降（每次 −1 权重），接受 = 失衡次数不降（次数是硬约束）+ 伤害不低过当前最优
+    // （不许用伤害换角点）+ 仍可行；降到底/次数掉/伤害掉即停在最小够用点。省下的池自动归各主C。
+    // 双主C 队（A4）：**两个输出位都受保护不被压**——第二个 carry 也是主C，压到最小够用 = 卖伤害；
+    // 核心之间的分配由 ① 的逐槽坐标上升（1D）按伤害边际决定。
+    // 坑35 实测已证「击破位 0 会让个别队失衡 4→3」⇒ 不能硬编码 0，必须是阈值搜索；
+    // `auto-1401-1511-1411` 给击破位权重反而 +8.4% 的反例由「伤害 ≥ 当前最优」接受门兜住。
+    const stunOf = () => calc.stunPoolResult.value?.stunCount ?? 0
+    const stunBase = stunOf()
+    const cornerBefore = weightsAfter
+    let cornerMoved = false
+    let cornerDmg = calc.teamTotalDamage.value // ④ 前的搜索最优：角点解**不许用伤害换角点**
+    for (const s of [0, 1, 2].filter(x => !carries.includes(x))) {
+      for (let round = 0; round < 4; round++) {
+        const w = Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0))
+        if (w <= 0) break
+        configStore.setBasicAttackTimeWeight(s, Math.max(0, w - 1))
+        const d = calc.teamTotalDamage.value
+        const ok = stunOf() >= stunBase - 1e-9
+          && d >= cornerDmg - 1e-6
+          && feasible()
+        if (!ok) {
+          configStore.setBasicAttackTimeWeight(s, w) // 回滚到最小够用
+          break
+        }
+        cornerDmg = Math.max(cornerDmg, d)
+        cornerMoved = true
+      }
+    }
+    if (cornerMoved) {
+      const cornerAfter = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0)))
+      notes.push(`角点解：非主C 权重 ${cornerBefore.join('/')}→${cornerAfter.join('/')}（失衡 ${stunOf()} 次不降，主C 享剩余时间）`)
+    }
+    // 守卫 v2（判据：③④ 不许把任何核心弄坏）：③/④ 的每一步都以「该核心 ex 上升」为接受条件，
+    // 若末态仍有核心低于 ①② 末态（理论不该发生，防御性兜住），**只回滚权重到 ①② 末态**、
+    // 保住 ①② 与阶段 -1 的收益。⚠ 不做「对照策略入口全量回滚」的严格版——实测（2026-09-10）
+    // 严格版咬 17 队：均衡器 ① 本会挪次数（同 ⑤ 的「次数是分配的结果，如实上报不拦截」先例），
+    // 全量回滚连 A1 拉回可行的成果一起抵消（结束时仍截断 9→12 队、总伤 +9.27%→+7.08%）。
+    // 判据「主C ex 不降」因此按**逐杠杆**解释：③④ 恒不降；① 的核心间挪动允许 + note 如实上报。
+    let rolledBack = false
+    const starvedNow = carries.map((c, i) => ({ c, now: exOf(c), mid: exMid[i] }))
+      .filter(x => x.now < x.mid - 1e-9)
+    if (starvedNow.length > 0) {
+      rolledBack = true
+      for (let s = 0; s < 3; s++) configStore.setBasicAttackTimeWeight(s, weightsMid[s])
+      notes.push(`③④ 步弄坏主C 强特（${starvedNow.map(x => `槽${x.c + 1}：${x.mid}→${x.now}`).join('、')}），权重已还原 ①② 末态`)
+    }
     const parryAfter = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.parryCount ?? 0)))
     const parryMoved = parryAfter.some((v, i) => v !== parryBefore[i])
     if (parryMoved) {
@@ -136,7 +317,12 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     if (stunAfter !== stunBefore) {
       notes.push(`失衡 ${stunBefore}→${stunAfter} 次（次数是分配的结果，未拦截）`)
     }
-    const moved = parryMoved || w.applied
+    // applied 覆盖全部杠杆：权重、弹刀、可行性优先阶段动的其它交互（金身/双反/闪反）
+    const interactionMoved = ['parryCount', 'blockCount', 'dualCounterCount', 'dodgeCounterCount']
+      .some(k => [0, 1, 2].some(s => Number((configStore.team[s] as Record<string, unknown>)[k] ?? 0)
+        !== Number((interactionBefore[s] as Record<string, unknown>)[k] ?? 0)))
+    // rolledBack（v2 守卫）只回滚权重：弹刀/其它交互的改动仍在 → moved 不算权重类
+    const moved = parryMoved || interactionMoved || (!rolledBack && (w.applied || energyMoved || cornerMoved))
     return {
       strategyId: jointLeverStrategy.id,
       weights: [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0))),
