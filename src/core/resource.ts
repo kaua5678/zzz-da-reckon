@@ -248,6 +248,21 @@ export const TIME_BUDGET_TOLERANCE_SECONDS = 1
  */
 export const UNDERFILL_PROBE_THRESHOLD_SECONDS = TIME_BUDGET_TOLERANCE_SECONDS
 
+/**
+ * 折叠环轮数上限（算力护栏；`ResourceCalcConfig.maxTimeIterations` 可覆写）。
+ *
+ * 历史值 **8**。2026-09-10 尾巴专项实测：判据 `maxExcess ≤ 1e-3` 对**慢收缩队**要 10~25 轮才达得到，
+ * 8 轮的上限因此成了「`timeBudgetConverged=false`」的**唯一来源**（3 队尾巴逐队实测残差轨迹：
+ * `billy-roxy-lucia` `3.637→…→0.417`（ρ≈0.70/轮，需 ≈25 轮）、`auto-1591-1161-1211`
+ * `0.173→…→0.003` 与 `auto-1591-1481-1311` `0.150→…→0.002`（ρ≈0.5/轮，各差 1~2 轮）；
+ * 停滞判据在这些队上**永不触发**——每轮改善 0.17s ≫ 阈值 1e-2，不是停在量化地板）。
+ * 取 32 = 实测需求（≈25）留一倍余量；代价只落在本来就要跑满的队（127 预设里 8 轮顶格 6 队，
+ * 其余 121 队 ≤5 轮），且停滞判据仍在，真发散队照旧 3 轮停。
+ *
+ * @fact engine:折叠环上限 口径: 折叠环轮数上限缺省 32（`TIME_FOLD_MAX_PASSES`，`maxTimeIterations` 可覆写）；判据 `maxExcess ≤ 1e-3` **不放宽**——8 轮上限曾是 tbConv=false 的唯一来源（3 队尾巴全部在几何收敛，21 轮内可达标）。实测 3→0 队、留白 189.3s/超预算 2.2s 不变、棘轮零变差、golden 15 条 delta/5 队（billy 逐槽 nec ±0.35s 守恒再分配 + 1591 系 ≤3ms） | 据 用户裁决@2026-09-10「重排就重排，以长期利益为主」 | 验 src/composables/__tests__/convergenceProbe.test.ts + src/composables/__tests__/timeGolden.test.ts | 锚 src/core/resource.ts#TIME_FOLD_MAX_PASSES | 信 确认
+ */
+export const TIME_FOLD_MAX_PASSES = 32
+
 
 export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResult {
   const totalTime = config.totalTime
@@ -313,7 +328,12 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // （战斗时间 − 无敌时间）由 iterate 的共享平A池钳制消费：availableBasicTime = max(0, 预算 − Σ必要 + refund)。
   // 反向（账本高估：estimate 计了物化不存在的行，如连段块双算/历史 excess 残留）会把 basic 挤到 0
   // → 物化行打不满战斗时间：团队正差经 timeBudgetRefund 回填平A池（仍按 timeWeight 分配，时间守恒）。
-  const maxTimeIter = config.maxTimeIterations || 8
+  // 折叠环轮数上限 = 算力护栏（默认值见 TIME_FOLD_MAX_PASSES）。
+  // 2026-09-10 尾巴专项实测：**8 轮上限曾是唯一的「非收敛」来源**——判据是 `maxExcess ≤ 1e-3`，
+  // 而慢收缩队的残差按几何比 ρ≈0.5~0.70/轮衰减（billy-roxy-lucia 3.637→0.417 七轮、
+  // auto-1591 系 0.173→0.003 七轮），到判据要 10~25 轮，8 轮先把它们砍在残差 0.4s / 3 毫秒上。
+  // 上限只对「本来就要跑满」的队收费（实测 127 预设：8 轮顶格 6 队，其余 121 队 ≤5 轮）。
+  const maxTimeIter = config.maxTimeIterations || TIME_FOLD_MAX_PASSES
   // 重置上一轮调用残留的时间预算（cfg 可能被外层不动点复用）
   for (const cfg of configs) cfg.timeBudgetExcess = 0
   config.timeBudgetRefund = 0
