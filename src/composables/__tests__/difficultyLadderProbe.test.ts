@@ -19,7 +19,7 @@ import { describe, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
-import { buildCurveChart, computeDifficultyCurves } from '@/composables/difficultyCurve'
+import { attributeDmgChanges, buildCurveChart, computeDifficultyCurves, type CurveDatum } from '@/composables/difficultyCurve'
 import { summarizeLadder } from '@/composables/difficultyLadder'
 import type { BossPreset, BossPresetFile, BossPresetPhase } from '@/types/bossPreset'
 
@@ -49,6 +49,27 @@ function latestBossPhase(): { boss: BossPreset; phase: BossPresetPhase } {
   }
   pairs.sort((a, b) => (b.phase.begin || b.phase.phaseId).localeCompare(a.phase.begin || a.phase.phaseId))
   return pairs[0]!
+}
+
+/** 伤害归因：`难度3: 总 +6.83M ← 凝云术 +5.3M ｜挤掉 幽闪花葬 -0.6M ｜其余 -1.4M` */
+function describeDmgChanges(points: CurveDatum[]): string {
+  const steps = points.slice(1).map(p => {
+    const a = attributeDmgChanges(p.dmgChanges)
+    const pos = a.top.map(c => `${c.label} ${signedM(c.delta)}`)
+    const neg = a.squeezed.map(c => `${c.label} ${signedM(c.delta)}`)
+    const parts = [
+      `难度${p.cost}: 总 ${signedM(a.totalDelta)}`,
+      `← ${pos.join('、') || '(无正贡献)'}`,
+      ...(neg.length > 0 ? [`｜挤掉 ${neg.join('、')}`] : []),
+      `｜其余 ${signedM(a.restDelta)}`,
+    ]
+    return parts.join(' ')
+  })
+  return steps.length > 0 ? steps.join(' | ') : '(无)'
+}
+
+function signedM(v: number): string {
+  return `${v >= 0 ? '+' : ''}${(v / 1e6).toFixed(2)}M`
 }
 
 /** 把曲线点上的跃迁压成一行：`难度3: 大招 2→3、紊乱 1→2` */
@@ -84,6 +105,7 @@ describe.runIf(active)('探针：逐目标贪心阶梯（每队自己的难度�
         `  点 ${r.points.map(pt => `(${pt.x},${(pt.dmg / 1e6).toFixed(1)})`).join(' ')}`,
         // 关键次数跃迁（用户口径：难度上升到关键变化要标注）——按「这一档相对上一档变多了什么」列
         `  关键变化 ${describeCountChanges(buildCurveChart([row!], phase.hp).series[0]!.points)}`,
+        `  伤害归因 ${describeDmgChanges(buildCurveChart([row!], phase.hp).series[0]!.points)}`,
         // 全关档的全部关键次数快照（诊断「某角色的专属项为什么没被采到」）
         ...(DUMP_COUNTS
           ? [`  全关快照 ${Object.entries(r.points[0]?.counts ?? {}).map(([k, v]) => `${k}=${String(v)}`).join('、')}`]

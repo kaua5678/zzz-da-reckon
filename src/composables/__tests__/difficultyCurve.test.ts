@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
-  buildCurveChart, computeDifficultyCurves, diffKeyCounts, majorChanges,
+  attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource, diffKeyCounts, majorChanges,
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
 import type { LadderResult } from '@/composables/difficultyLadder'
@@ -145,6 +145,33 @@ describe('关键次数差分（用户口径：难度上升到关键变化要标�
   })
 })
 
+describe('伤害归因（这一档 +N 伤害是谁贡献的）', () => {
+  it('差分：新增/消失的来源都要算账；浮点噪声丢弃；按 Δ 降序', () => {
+    const d = diffDmgBySource(
+      { '终结技：A': 100, '乱流': 50, '普通攻击': 30 },
+      { '终结技：A': 160, '乱流': 20, '连携技：B': 40, '普通攻击': 30 + 1e-9 },
+    )
+    expect(d.map(c => c.label)).toEqual(['终结技：A', '连携技：B', '乱流']) // 降序：+60 / +40 / −30
+    expect(d[0]!.delta).toBe(60)
+    expect(d[2]!.delta).toBe(-30)
+    expect(d.some(c => c.label === '普通攻击')).toBe(false) // 1e-9 噪声
+  })
+
+  it('摘要：正贡献取 top、被挤掉取**最负的**在前，且三段合计 ≡ 总 Δ（不漏账）', () => {
+    const changes = diffDmgBySource(
+      { a: 100, b: 100, c: 100, d: 100 },
+      { a: 180, b: 60, c: 99, d: 140 }, // +80 / −40 / −1 / +40
+    )
+    const attr = attributeDmgChanges(changes, 2, 1)
+    expect(attr.totalDelta).toBeCloseTo(79, 6)
+    expect(attr.top.map(c => c.label)).toEqual(['a', 'd'])      // 正贡献降序
+    expect(attr.squeezed.map(c => c.label)).toEqual(['b'])      // 最负的（−40），不是 −1
+    expect(attr.squeezed[0]!.delta).toBe(-40)
+    const sum = [...attr.top, ...attr.squeezed].reduce((s, c) => s + c.delta, 0) + attr.restDelta
+    expect(sum).toBeCloseTo(attr.totalDelta, 6)                 // 其余 = −1，账对得上
+  })
+})
+
 // ========== 集成：真跑一队（含现场恢复） ==========
 
 const res20 = { physical: 20, fire: 20, ice: 20, electric: 20, ether: 20, wind: 20 }
@@ -224,6 +251,18 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
     for (const j of buildCurveChart(rows, FAKE_PHASE.hp).series[0]!.jumps) {
       expect(j.changes.length).toBeGreaterThan(0)
       for (const c of j.changes) expect(c.major).toBe(true)
+    }
+
+    // 伤害归因：分组求和 ≡ 该档伤害（`teamTotalDamage` 就是伤害池求和 ⇒ 归因精确，不是启发式）
+    for (const p of ladder.points) {
+      const sumBySource = Object.values(p.dmgBySource ?? {}).reduce((s, v) => s + v, 0)
+      expect(p.dmgBySource, '每档都要有伤害来源分组').toBeTruthy()
+      expect(sumBySource).toBeCloseTo(p.dmg, 6)
+    }
+    // 每档的归因 Δ 之和 ≡ 该档伤害增量
+    for (let i = 1; i < chartPts.length; i++) {
+      const attr = attributeDmgChanges(chartPts[i]!.dmgChanges)
+      expect(attr.totalDelta).toBeCloseTo(ladder.points[i]!.dmg - ladder.points[i - 1]!.dmg, 6)
     }
 
     // 现场恢复（曲线模式会临时改机制开关与权重策略，必须还原）

@@ -20,9 +20,14 @@
  * 队伍级 7 项来自引擎字段，角色专属项来自模块自己的 `resourceSections` 展示行（`<数> 次`）——
  * **不在这里硬编码角色**，新增角色只要模块有那行就自动被标注。
  *
+ * **伤害归因**：同一份快照里还采「伤害按来源分组」（直伤行用招式名、异常行用行 `type`），
+ * 相邻档差分 → 「这一档 +N 伤害是谁贡献的，又被谁挤掉了」。**Σ 分组 ≡ 该档总伤害**
+ * （`teamTotalDamage` 就是 `damagePoolRows` 求和）⇒ 归因是精确账，不是启发式；判据测试按这条不变量钉住。
+ *
  * `buildCurveChart` 是纯函数（不碰 store / 引擎），判据测试在同名单测文件里。
  *
  * @fact engine:难度曲线/x轴 口径: x = 每队自己的累积难度代价（G1 权重均衡 1 / G2 弹刀·联合 3 / G3 保底 2 / G4 取整 0，占位代价），**各队 x 不对齐是特性**——只比形状（起点/斜率/天花板/倍数），不比同一 x | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::单调不减 | 锚 src/composables/difficultyCurve.ts#buildCurveChart | 信 确认
+ * @fact engine:难度曲线/伤害归因 口径: 每档伤害按来源分组（直伤行 = 招式名、异常行 = 行 `type`，同名跨槽位合并），Σ 分组 ≡ 该档总伤害 ⇒ 归因精确；相邻档差分 = 正贡献 top + 被挤掉（最负在前）+ 其余，三段合计 ≡ 总 Δ | 据 实测@2026-09-10 | 验 difficultyCurve.test.ts::伤害归因 | 锚 src/composables/difficultyCurve.ts#attributeDmgChanges | 信 确认
  * @fact engine:难度曲线/关键次数标注 口径: 图上标注与「关键变化」面板只显示 Δ≥1 的次数跃迁（「多了一次」），Δ<1 的小数级微调只进 tooltip；关键次数 = 队伍级 7 项（大招/强特/连携/失衡/异常触发/紊乱/乱流，取自引擎结果字段）+ 角色专属「N 次」行（模块 `resourceSections` 自报，零角色硬编码） | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::只认「变多」 | 锚 src/composables/difficultyCurve.ts#diffKeyCounts | 信 确认
  * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
  */
@@ -30,7 +35,7 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
-  type DifficultyGoal, type LadderResult,
+  type DifficultyGoal, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
 import { applyAxisBinding, applyTeamToStore, restoreStore, snapshotStore } from '@/composables/teamCompare'
 import { getAgentMechanic } from '@/mechanics'
@@ -80,7 +85,7 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
       const ladder = climbDifficultyLadder({ config: configStore, calc }, preset.team as [string, string, string], {
         goals: options.goals,
         minGainRatio: options.minGainRatio,
-        capture: ctx => captureKeyCounts(ctx.calc),
+        capture: ctx => captureLadderSnapshot(ctx.calc),
         base: (ctx, team) => {
           clearDifficultyLevers(ctx)
           applyTeamToStore(ctx.config, preset)
@@ -97,6 +102,75 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
     restoreStore(configStore, snap)
   }
   return rows
+}
+
+// ========== 伤害归因：这一档 +N 伤害是谁贡献的（同一份快照里采） ==========
+
+/**
+ * 伤害按来源分组：**键 = 直伤行的招式名 / 异常行（非直伤）的 `type`**，
+ * 值 = 该来源的伤害合计。Σ 值 == 该档总伤害（`teamTotalDamage` 就是 `damagePoolRows` 求和，
+ * 所以归因是**精确**的、不是启发式）——判据测试按这条不变量钉住。
+ *
+ * 口径说明：同名招式跨槽位合并（同一招在两槽各打一次 = 一个来源），异常行按类型分
+ * （乱流/紊乱/异放/灼烧/…），不再按角色拆——难度曲线关心的是「这一档买了什么伤害」。
+ */
+export function captureDmgBySource(calc: Calc): Record<string, number> {
+  const rows = calc.damagePoolRows.value ?? []
+  const out: Record<string, number> = {}
+  for (const r of rows) {
+    const key = r.type === '直伤' ? (r.name || r.source || '直伤') : r.type
+    out[key] = (out[key] ?? 0) + (r.totalDamage || 0)
+  }
+  return out
+}
+
+export interface DmgSourceChange {
+  label: string
+  delta: number
+}
+
+/** 相邻两档的伤害来源差分（按 Δ 降序：正贡献在前，被挤掉的负贡献在后） */
+export function diffDmgBySource(
+  prev: Record<string, number> | undefined,
+  next: Record<string, number> | undefined,
+): DmgSourceChange[] {
+  if (!prev || !next) return []
+  const keys = new Set([...Object.keys(prev), ...Object.keys(next)])
+  const out: DmgSourceChange[] = []
+  for (const label of keys) {
+    const delta = (next[label] ?? 0) - (prev[label] ?? 0)
+    if (Math.abs(delta) > 1e-6) out.push({ label, delta })
+  }
+  return out.sort((a, b) => b.delta - a.delta)
+}
+
+export interface DmgAttribution {
+  /** 正贡献 top N（按 Δ 降序） */
+  top: DmgSourceChange[]
+  /** 被挤掉最狠的 top M（**最负的在前**；`dmgChanges` 自身是 Δ 降序，负贡献那一头是反的） */
+  squeezed: DmgSourceChange[]
+  /** 没被 top / squeezed 列出的其余来源 Δ 合计（含符号；用来把账对齐到 totalDelta） */
+  restDelta: number
+  /** 本档总 Δ（≡ Σ 全部 dmgChanges） */
+  totalDelta: number
+}
+
+/**
+ * 把差分压成可展示的归因摘要（页面与探针共用，避免各自写一套取数逻辑）。
+ * `restDelta` 保证「top + squeezed + rest ≡ totalDelta」，展示端不会漏账。
+ */
+export function attributeDmgChanges(changes: DmgSourceChange[], topN = 3, squeezeN = 2): DmgAttribution {
+  const totalDelta = changes.reduce((s, c) => s + c.delta, 0)
+  const top = changes.filter(c => c.delta > 0).slice(0, topN)
+  const squeezed = changes.filter(c => c.delta < 0).slice(-squeezeN).reverse()
+  const shown = new Set([...top, ...squeezed].map(c => c.label))
+  const restDelta = changes.reduce((s, c) => (shown.has(c.label) ? s : s + c.delta), 0)
+  return { top, squeezed, restDelta, totalDelta }
+}
+
+/** 一档快照（构成 = 关键次数 + 伤害来源），交给 `climbDifficultyLadder#opts.capture` */
+export function captureLadderSnapshot(calc: Calc): LadderSnapshot {
+  return { counts: captureKeyCounts(calc), dmgBySource: captureDmgBySource(calc) }
 }
 
 // ========== 关键次数：采集 + 差分（用户 2026-09-10 口径：难度上升到关键变化要标注） ==========
@@ -211,6 +285,11 @@ export interface CurveDatum {
   opened: string | null
   /** 相对上一档**变多**的关键次数（空 = 这一档没有次数跃迁） */
   changes: KeyCountChange[]
+  /**
+   * 相对上一档的**伤害归因**（按 Δ 降序，正贡献在前、被挤掉的在后）；
+   * Σ `delta` ≡ 本档伤害 − 上一档伤害（伤害池按来源分组求和 == 总伤害，故精确）。
+   */
+  dmgChanges: DmgSourceChange[]
 }
 
 export interface CurveSeries {
@@ -254,6 +333,7 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       ratio: (p.dmg / safeHp) * 100,
       opened: p.opened,
       changes: diffKeyCounts(r.ladder.points[i - 1]?.counts, p.counts),
+      dmgChanges: diffDmgBySource(r.ladder.points[i - 1]?.dmgBySource, p.dmgBySource),
     }))
     return {
       presetId: r.presetId,

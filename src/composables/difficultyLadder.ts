@@ -113,6 +113,17 @@ export interface LadderPoint {
    * 相邻档做差就是「难度上升带来的次数跃迁」，展示层据此标注（见 `difficultyCurve.ts#diffKeyCounts`）。
    */
   counts?: Record<string, number>
+  /**
+   * 这一档的**伤害按来源分组**（键 = 招式名 / 异常类型；Σ 值 == 本档 `dmg`）。
+   * 相邻档做差就是「这一档 +N 伤害是谁贡献的」（见 `difficultyCurve.ts#diffDmgBySource`）。
+   */
+  dmgBySource?: Record<string, number>
+}
+
+/** 一档的快照：展示层要什么就采什么（`climbDifficultyLadder#opts.capture` 的返回） */
+export interface LadderSnapshot {
+  counts: Record<string, number>
+  dmgBySource: Record<string, number>
 }
 export interface LadderResult {
   base: number
@@ -141,10 +152,11 @@ export interface LadderOpts {
    */
   base?: (ctx: LadderCtx, team: [string, string, string]) => number
   /**
-   * **每档采一次「关键次数」快照**（缺省不采 = 零开销）。在伤害已被最终计算后调用，
-   * 所以读到的就是这个落点的资源结果。展示层用它做「大招多一次 / 紊乱多一次」这类标注。
+   * **每档采一次快照**（缺省不采 = 零开销）。在伤害已被最终计算后调用，
+   * 所以读到的就是这个落点的资源结果（`damagePoolRows` 此刻已算好，读它不额外求值）。
+   * 展示层用它做「大招多一次 / 紊乱多一次」标注与「这一档伤害是谁贡献的」归因。
    */
-  capture?: (ctx: LadderCtx) => Record<string, number>
+  capture?: (ctx: LadderCtx) => LadderSnapshot
 }
 
 /**
@@ -166,7 +178,11 @@ export function climbDifficultyLadder(
   const opened: string[] = []
   const dropped: { id: string; gain: number }[] = []
   const capture = opts.capture
-  const points: LadderPoint[] = [{ x: 0, dmg: base, opened: null, counts: capture?.(ctx) }]
+  const snap = (): Pick<LadderPoint, 'counts' | 'dmgBySource'> => {
+    const s = capture?.(ctx)
+    return s ? { counts: s.counts, dmgBySource: s.dmgBySource } : {}
+  }
+  const points: LadderPoint[] = [{ x: 0, dmg: base, opened: null, ...snap() }]
   const remaining = new Set(goals)
 
   while (remaining.size > 0) {
@@ -193,8 +209,8 @@ export function climbDifficultyLadder(
     x += best.goal.cost
     opened.push(best.goal.id)
     remaining.delete(best.goal)
-    // 伤害落定后再采快照：这一档的 counts 与这一档的 dmg 同源
-    points.push({ x, dmg, opened: best.goal.id, counts: capture?.(ctx) })
+    // 伤害落定后再采快照：这一档的 counts / dmgBySource 与这一档的 dmg 同源
+    points.push({ x, dmg, opened: best.goal.id, ...snap() })
   }
   return { base, final: dmg, points, opened, dropped }
 }

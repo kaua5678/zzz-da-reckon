@@ -315,7 +315,7 @@
       <div class="detail-table-wrap">
         <table class="detail-table">
           <thead>
-            <tr><th>队伍</th><th>难度</th><th>本档新开</th><th>关键变化</th><th>伤害</th></tr>
+            <tr><th>队伍</th><th>难度</th><th>本档新开</th><th>关键变化</th><th>伤害</th><th>伤害归因（本档 Δ）</th></tr>
           </thead>
           <tbody>
             <tr v-for="r in curveJumpRows" :key="r.key">
@@ -323,10 +323,20 @@
               <td>+{{ fmt(r.cost, 0) }} 点</td>
               <td class="td-detail">{{ r.opened === null ? '全关起点' : goalLabel(r.opened) }}</td>
               <td class="td-detail">{{ r.text }}</td>
-              <td>{{ compact(r.dmg) }}<span class="td-standard">（{{ fmt(r.ratio, 1) }}%）</span></td>
+              <td>
+                {{ compact(r.dmg) }}
+                <div class="td-standard">{{ signedDmg(r.attr.totalDelta) }}（{{ fmt(r.ratio, 1) }}%）</div>
+              </td>
+              <td class="td-detail">
+                {{ r.attr.top.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、') || '（无正贡献）' }}
+                <div v-if="r.attr.squeezed.length > 0" class="curve-neg">
+                  挤掉：{{ r.attr.squeezed.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、') }}
+                </div>
+                <div v-if="Math.abs(r.attr.restDelta) > 1" class="td-standard">其余 {{ signedDmg(r.attr.restDelta) }}</div>
+              </td>
             </tr>
             <tr v-if="curveJumpRows.length === 0">
-              <td colspan="5" class="td-detail">
+              <td colspan="6" class="td-detail">
                 本次曲线没有「多一次」量级的跃迁：要么该队已饱和，要么爬升只带来小数级微调
                 （鼠标停在曲线点上可看每档明细）。
               </td>
@@ -377,7 +387,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS } from '@/composables/teamCompare'
-import { computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
+import { attributeDmgChanges, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
@@ -798,6 +808,10 @@ function cntDelta(c: KeyCountChange): string {
 function cntRange(c: KeyCountChange): string {
   return `${c.label} ${cntNum(c.from)}→${cntNum(c.to)}`
 }
+/** 伤害增量带符号：`+683.00万` / `−12.00万` */
+function signedDmg(v: number): string {
+  return `${v >= 0 ? '+' : '−'}${compact(Math.abs(v))}`
+}
 const curveSeriesPx = computed(() =>
   (curveData.value?.series ?? []).map(s => ({
     ...s,
@@ -823,6 +837,7 @@ const curveJumpRows = computed(() =>
       ratio: j.ratio,
       opened: j.opened,
       text: j.changes.map(cntRange).join('、'),
+      attr: attributeDmgChanges(j.dmgChanges),
     })),
   ),
 )
@@ -839,8 +854,8 @@ const curveHoverPt = computed(() => {
   const point = s?.pts[h.pi]
   return s && point ? { series: s, point } : null
 })
-const curveTtW = 240
-const curveTtH = 84
+const curveTtW = 260
+const curveTtH = 97
 const curveTtX = computed(() =>
   curveHoverPt.value ? Math.min(curveHoverPt.value.point.cx + 10, svgW.value - curveTtW - 20) : 0,
 )
@@ -854,9 +869,13 @@ const curveHoverTips = computed(() => {
   const band = point.opened === null ? '全关起点（静态权重、无保底、投影 off）' : `本档新开：${goalLabel(point.opened)}`
   const major = majorChanges(point.changes)
   const minor = point.changes.length - major.length
+  const attr = point.dmgChanges.length > 0 ? attributeDmgChanges(point.dmgChanges, 3, 1) : null
   return [
     s.name,
     `难度 ${fmt(point.cost, 0)} 点 · 伤害 ${compact(point.dmg)}（${fmt(point.ratio, 1)}%）`,
+    attr
+      ? `本档 Δ ${signedDmg(attr.totalDelta)} ← ${attr.top.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、') || '（无正贡献）'}${attr.squeezed.length > 0 ? `｜挤掉 ${attr.squeezed.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、')}` : ''}`
+      : '本档无伤害变化（全关起点）',
     band,
     major.length > 0
       ? `跃迁：${major.map(cntRange).join('、')}${minor > 0 ? `（另有 ${minor} 项小数级微调）` : ''}`
@@ -1009,6 +1028,12 @@ function killSeconds(hpRatio: number): number {
 .chart-hover-dot { fill: var(--app-text-solid); }
 .chart-tooltip-box { fill: var(--app-tooltip-bg); stroke: var(--wa-150); }
 .chart-tooltip-text { fill: var(--app-tooltip-text); }
+
+/* 伤害归因里的「被挤掉」行（负贡献）：用语义 danger 令牌，别加字面色值（令牌棘轮） */
+.curve-neg {
+  color: var(--c-danger);
+  font-size: 11px;
+}
 
 /* 关键次数跃迁的图上标注（比刻度亮一档，压过网格线；currentColor 免引 --wa-* 棘轮） */
 .curve-jump-label {
