@@ -323,3 +323,133 @@ describe.runIf(process.env.PROBE_CONV_WEIGHTS_SWEEP === '1')('探针：平A池�
     console.log(lines.join('\n'))
   }, 900_000)
 })
+
+/**
+ * 边际均衡的**成本**与**主C能量约束**实测（2026-09-10）：
+ * ① 逐队计时 `optimizeTeamTimeWeights`（对照：不均衡时一次全队求值 ≈ 0.17s，见全库扫描 21.5s/127 队）；
+ * ② 对照三态下**主C（槽0）**的能量/强特次数——验证「主C 失衡期能量需求必须靠平A池时间」这条约束
+ *    在引擎里是否成立（若成立，则「把槽0权重压 0 降留白」就是在饿死主C的爆发能量）。
+ *   PROBE_CONV_BALANCE_COST=1 npx vitest run src/composables/__tests__/convergenceProbe.test.ts
+ */
+describe.runIf(process.env.PROBE_CONV_BALANCE_COST === '1')('探针：边际均衡成本 + 主C能量约束', () => {
+  it('逐队计时 + 三态对照（默认 / 均衡 / 槽0权重0）', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const presets = teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3)
+    const f = (n: number | undefined, d = 1) => (n ?? 0).toFixed(d)
+    const apply = (team: string[]) => {
+      for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
+      config.applyTeamPreset(team as [string, string, string])
+    }
+    const snap = () => {
+      const rr = calc.resourceResult.value
+      const c0 = rr?.characters?.[0]
+      return {
+        dmg: calc.teamTotalDamage.value,
+        ex0: c0?.exSpecialCount ?? 0,
+        basic0: c0?.timeAllocation?.basicAttackTime ?? 0,
+        dmg0: c0?.timeAllocation?.necessaryTime ?? 0,
+      }
+    }
+    const costs: number[] = []
+    let sumEvalCost = 0
+    let baseCostSum = 0
+    const detail: string[] = []
+    for (const p of presets) {
+      apply(p.team as string[])
+      const t0 = Date.now()
+      void calc.resourceResult.value
+      const baseMs = Date.now() - t0
+      baseCostSum += baseMs
+      const a = snap()
+      const t1 = Date.now()
+      optimizeTeamTimeWeights(calc, config, { maxIter: 2 })
+      const balMs = Date.now() - t1
+      costs.push(balMs)
+      sumEvalCost += balMs
+      const b = snap()
+      apply(p.team as string[])
+      const slot0 = config.team[0] as { basicAttackTimeWeight?: number } | undefined
+      if (slot0) slot0.basicAttackTimeWeight = 0
+      const c = snap()
+      if (p.id.startsWith('auto-1191') || p.id.startsWith('auto-1401') || p.id === 'billy-liuyin-lucia' || p.id === 'auto-1181-1511-1411') {
+        detail.push(`  ${p.id} 默认 dmg=${(a.dmg / 1e6).toFixed(1)}M ex0=${f(a.ex0)} bat0=${f(a.basic0)}s 留白→ 均衡 dmg=${(b.dmg / 1e6).toFixed(1)}M ex0=${f(b.ex0)}（${balMs}ms）→ 槽0权重0 dmg=${(c.dmg / 1e6).toFixed(1)}M ex0=${f(c.ex0)} bat0=${f(c.basic0)}s`)
+      }
+    }
+    costs.sort((x, y) => x - y)
+    const lines = [
+      `预设数 ${presets.length}`,
+      `一次全队求值（不均衡）平均 ${f(baseCostSum / presets.length)}ms —— 作为「一次 evaluate」的成本基准`,
+      `边际均衡（maxIter=2）每队：均值 ${f(sumEvalCost / presets.length)}ms · 中位 ${costs[Math.floor(costs.length / 2)]}ms · p90 ${costs[Math.floor(costs.length * 0.9)]}ms · 最大 ${costs[costs.length - 1]}ms`,
+      `→ 折算 evaluate 次数 ≈ ${f((sumEvalCost / presets.length) / Math.max(0.01, baseCostSum / presets.length))} 次/队（均衡器是坐标上升：每轮每槽 ~2 次有限差分）`,
+      '主C（槽0）三态对照：',
+      ...detail,
+    ]
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'))
+  }, 900_000)
+})
+
+/**
+ * 边际均衡的**价值**度量（2026-09-10）：默认权重（强攻/异常/击破=1、支援/防护=0）是否给主C 分够了平A？
+ * 逐队对照 默认 vs 边际均衡：团队总伤 / 主C 平A池时间 / 主C 强特次数 / 留白 / 超预算。
+ *   PROBE_CONV_BALANCE_VALUE=1 npx vitest run src/composables/__tests__/convergenceProbe.test.ts
+ */
+describe.runIf(process.env.PROBE_CONV_BALANCE_VALUE === '1')('探针：边际均衡的价值（主C 平A/能量）', () => {
+  it('逐队 默认 vs 均衡', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const presets = teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3)
+    const f = (n: number | undefined, d = 1) => (n ?? 0).toFixed(d)
+    const apply = (team: string[]) => {
+      for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
+      config.applyTeamPreset(team as [string, string, string])
+    }
+    const snap = () => {
+      const rr = calc.resourceResult.value
+      const t = rr ? buildTeamTimeSummary({ rr, battleTime: rr.totalTime, invincibleTime: config.enemy.invincibleTime ?? 0, nameOf: (_a, s) => `槽${s}` }) : null
+      return {
+        dmg: calc.teamTotalDamage.value,
+        ex0: rr?.characters?.[0]?.exSpecialCount ?? 0,
+        bat0: rr?.characters?.[0]?.timeAllocation?.basicAttackTime ?? 0,
+        slack: t?.slack ?? 0,
+        w: [0, 1, 2].map(s => Number(config.team[s]?.basicAttackTimeWeight ?? 0)),
+      }
+    }
+    let sumBase = 0
+    let sumBal = 0
+    let improved = 0
+    let unchanged = 0
+    let moreBasic = 0
+    const rows: { id: string; base: number; bal: number; ex0a: number; ex0b: number; bat0a: number; bat0b: number }[] = []
+    for (const p of presets) {
+      apply(p.team as string[])
+      const a = snap()
+      optimizeTeamTimeWeights(calc, config, { maxIter: 2 })
+      const b = snap()
+      sumBase += a.dmg
+      sumBal += b.dmg
+      if (b.dmg > a.dmg + 1) improved++
+      else unchanged++
+      if (b.bat0 > a.bat0 + 0.05) moreBasic++
+      rows.push({ id: p.id, base: a.dmg, bal: b.dmg, ex0a: a.ex0, ex0b: b.ex0, bat0a: a.bat0, bat0b: b.bat0 })
+    }
+    const byGain = [...rows].sort((x, y) => (y.bal - y.base) - (x.bal - x.base))
+    const lines = [
+      `预设数 ${rows.length}`,
+      `团队总伤合计：默认 ${(sumBase / 1e6).toFixed(0)}M → 均衡 ${(sumBal / 1e6).toFixed(0)}M（${((sumBal / Math.max(1, sumBase) - 1) * 100).toFixed(2)}%）`,
+      `伤害提升队数 ${improved} · 无变化 ${unchanged} · 均衡后主C 平A池增加的队数 ${moreBasic}`,
+      '增益 top10：',
+      ...byGain.slice(0, 10).map(r => `  ${r.id} ${(r.base / 1e6).toFixed(1)}M → ${(r.bal / 1e6).toFixed(1)}M（${((r.bal / Math.max(1, r.base) - 1) * 100).toFixed(1)}%）主C 平A ${f(r.bat0a)}→${f(r.bat0b)}s 强特 ${f(r.ex0a)}→${f(r.ex0b)}`),
+      '主C 平A 被削减最多的 5 队（均衡判定「给队友更值」）：',
+      ...[...rows].sort((x, y) => (x.bat0b - x.bat0a) - (y.bat0b - y.bat0a)).slice(0, 5)
+        .map(r => `  ${r.id} 平A ${f(r.bat0a)}→${f(r.bat0b)}s 强特 ${f(r.ex0a)}→${f(r.ex0b)} 伤害 ${((r.bal / Math.max(1, r.base) - 1) * 100).toFixed(1)}%`),
+    ]
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'))
+  }, 900_000)
+})

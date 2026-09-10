@@ -378,6 +378,23 @@
                           />
                         </div>
                       </n-gi>
+                      <n-gi>
+                        <div class="field">
+                          <span class="field-label">
+                            平A权重自动分配
+                            <n-tooltip trigger="hover" style="max-width: 320px">
+                              <template #trigger><span class="field-hint">?</span></template>
+                              默认关。开启后按策略重分配全队平A时间（当前策略=边际均衡：按团队总伤转移权重，保住主C 的能量需求）。
+                              关闭时用静态默认权重/手填值。一次重算约 3 倍耗时（~240ms），队伍变更时触发；手改权重会在下次触发时被覆盖。
+                            </n-tooltip>
+                          </span>
+                          <n-switch
+                            :value="configStore.autoAllocateBasicTime"
+                            size="small"
+                            @update:value="v => configStore.setAutoAllocateBasicTime(!!v)"
+                          />
+                        </div>
+                      </n-gi>
                     </n-grid>
                     </n-collapse-item>
                   </n-collapse>
@@ -826,7 +843,7 @@
 import { ref, computed, watch } from 'vue'
 import {
   NCard, NSpace, NGrid, NGi, NSelect, NSlider, NInputNumber, NText,
-  NRadioGroup, NRadioButton, NTag, NButton, NModal, NCollapse, NCollapseItem, NCheckbox, useMessage,
+  NRadioGroup, NRadioButton, NTag, NButton, NModal, NCollapse, NCollapseItem, NCheckbox, NSwitch, NTooltip, useMessage,
 } from 'naive-ui'
 import { useConfigStore, getInteractionDefaults } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'

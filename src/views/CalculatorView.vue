@@ -32,12 +32,17 @@ import { computed, onMounted, defineAsyncComponent, h, type AsyncComponentLoader
 import { NSpin, NAlert } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
+import { useTimeWeightAutoAllocation } from '@/composables/timeWeightAllocation'
 import AppHeader from '@/components/AppHeader.vue'
 // 默认页保持 eager（首屏即时渲染）；其余 13 页懒加载按需拆 chunk，降低首包 JS（原全量打进 index ~1.6MB）。
 import TeamConfigPage from '@/views/TeamConfigPage.vue'
 
 const catalogStore = useCatalogStore()
 const configStore = useConfigStore()
+
+// 平A池权重·自动分配（开关默认关）：打开后队伍签名变化即跑一次分配策略。
+// 必须在「计算外侧」——策略要读伤害做有限差分，放进响应式计算会递归（见 timeWeightAllocation.ts）。
+useTimeWeightAutoAllocation()
 
 /** 懒加载占位：快页面（<120ms）不闪 loading，慢页面显示小圈 */
 const PageLoading = {
