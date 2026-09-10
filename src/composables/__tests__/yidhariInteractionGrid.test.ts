@@ -79,6 +79,8 @@ async function baseConfig(): Promise<ResourceCalcConfig> {
 }
 
 describe('伊德海莉 refund 双稳态护栏（交互网格 × 种子）', () => {
+  // 显式超时：本用例跑 5×6 网格 × 冷/热 = 60 次完整 calcTeamResources（单跑 ~1.6s），
+  // 全量并行下会被 CPU 竞争拖到 5s 以上而撞 vitest 默认 5000ms 上限（2026-09-10 实测 5535ms 假红）。
   it('parry×dodge 网格：零种子 vs 高种子 逐位一致、收敛、整数次数', async () => {
     const base = await baseConfig()
     for (let parry = 0; parry <= 8; parry += 2) {
@@ -93,5 +95,5 @@ describe('伊德海莉 refund 双稳态护栏（交互网格 × 种子）', () =
         expect(Number.isInteger(cold.characters[0].exSpecialCount), `parry=${parry} dodge=${dodge} 终局次数应为整数`).toBe(true)
       }
     }
-  })
+  }, 30_000)
 })

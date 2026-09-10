@@ -556,3 +556,96 @@ describe.runIf(process.env.PROBE_CONV_RULE === '1')('探针：静态规则「只
     console.log(lines.join('\n'))
   }, 900_000)
 })
+
+/**
+ * 平A daze 是否随平A池时间缩放（2026-09-10，用户提问「平a的失衡没有回填吗？」）：
+ * 同一队三种权重配置（默认 / 全 0 = 完全没有平A池 / 全给击破位），比 失衡次数 + 毛攒条 +
+ * `basic_attack` 行自身的 totalStun。若毛攒条与 basic_attack 贡献**不随池时间变**，则平A daze 未按时间回填。
+ *   PROBE_STUN_SCALE=auto-1521-1361-1311 npx vitest run …convergenceProbe
+ */
+describe.runIf(!!process.env.PROBE_STUN_SCALE)('探针：平A daze 是否随平A池缩放', () => {
+  it('逐队三配置对照', async () => {
+    const ids = (process.env.PROBE_STUN_SCALE ?? '').split(',').map(s => s.trim()).filter(Boolean)
+    const lines: string[] = []
+    type SP = {
+      stunCount: number; grossStunBuildUp: number; totalStunBuildUp: number
+      contributions?: { slot: number; moveId: string; count: number; totalStun: number }[]
+    }
+    for (const id of ids) {
+      const p = teamPresets.find(x => x.id === id)
+      if (!p) continue
+      const { catalog } = await setupHarness(['', '', ''])
+      await catalog.loadBuildRecommendations()
+      const config = useConfigStore()
+      const calc = useResourceCalc()
+      lines.push(`\n---- ${id}（${p.name}）`)
+      for (const [tag, ws] of [['默认权重', null], ['全 0（无平A池）', [0, 0, 0]], ['全给击破位', [0, 1, 0]]] as const) {
+        for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+        config.applyTeamPreset(p.team as [string, string, string])
+        if (ws) {
+          for (let i = 0; i < 3; i++) {
+            const slot = config.team[i] as { basicAttackTimeWeight?: number } | undefined
+            if (slot) slot.basicAttackTimeWeight = ws[i]
+          }
+        }
+        const rr = calc.resourceResult.value
+        const sp = calc.stunPoolResult.value as unknown as SP | null
+        const bat = (rr?.characters ?? []).map(c => c.timeAllocation.basicAttackTime).map(v => v.toFixed(1)).join('/')
+        const basicContrib = (sp?.contributions ?? []).filter(c => c.moveId === 'basic_attack')
+        lines.push(`  ${tag}：失衡 ${sp?.stunCount ?? 0} 次 · 毛攒条 ${(sp?.grossStunBuildUp ?? 0).toFixed(0)} · 有效 ${(sp?.totalStunBuildUp ?? 0).toFixed(0)} · 平A池 ${bat}s · basic_attack 行 ${basicContrib.map(c => `槽${c.slot}×${c.count.toFixed(2)} 总${c.totalStun.toFixed(0)}`).join(' | ') || '无'}`)
+      }
+    }
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'))
+  }, 900_000)
+})
+
+/**
+ * 边际均衡会不会**拿失衡次数换伤害**（2026-09-10，用户口径：「失衡次数只是第一个决策」→ 应是约束）。
+ * 逐队比 均衡前后 的失衡次数；掉次数的队要列出来（当前 `optimizeTeamTimeWeights` 只最大化伤害，无约束）。
+ *   PROBE_CONV_BALANCE_STUN=1 npx vitest run …convergenceProbe
+ */
+describe.runIf(process.env.PROBE_CONV_BALANCE_STUN === '1')('探针：均衡是否改变了失衡次数', () => {
+  it('逐队 均衡前后 失衡次数对照', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const presets = teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3)
+    const apply = (team: string[]) => {
+      for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
+      config.applyTeamPreset(team as [string, string, string])
+    }
+    const changed: string[] = []
+    let same = 0
+    let up = 0
+    let down = 0
+    let sumBase = 0
+    let sumBal = 0
+    for (const p of presets) {
+      apply(p.team as string[])
+      const stunA = calc.stunPoolResult.value?.stunCount ?? 0
+      const dmgA = calc.teamTotalDamage.value
+      optimizeTeamTimeWeights(calc, config, { maxIter: 2 })
+      const stunB = calc.stunPoolResult.value?.stunCount ?? 0
+      const dmgB = calc.teamTotalDamage.value
+      sumBase += dmgA
+      sumBal += dmgB
+      if (stunB === stunA) same++
+      else if (stunB > stunA) up++
+      else down++
+      if (stunB !== stunA) {
+        changed.push(`  ${p.id} 失衡 ${stunA}→${stunB} · 伤害 ${(dmgA / 1e6).toFixed(1)}M→${(dmgB / 1e6).toFixed(1)}M（${((dmgB / Math.max(1, dmgA) - 1) * 100).toFixed(1)}%）`)
+      }
+    }
+    const lines = [
+      `预设数 ${presets.length}`,
+      `失衡次数：不变 ${same} 队 · 上升 ${up} 队 · **下降 ${down} 队**`,
+      `伤害合计 ${(sumBase / 1e6).toFixed(0)}M → ${(sumBal / 1e6).toFixed(0)}M`,
+      '失衡次数发生变化的队：',
+      ...changed,
+    ]
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'))
+  }, 900_000)
+})

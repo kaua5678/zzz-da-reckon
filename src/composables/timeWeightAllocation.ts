@@ -49,6 +49,12 @@ export interface TimeWeightStrategy {
  * 策略①：边际均衡（当前唯一实现）。
  * 用 `teamTimeline#optimizeTeamTimeWeights`（set-read-restore 经 `teamTotalDamage` 做有限差分坐标上升，
  * 纯算法见 `timeWeightBalancer#equalizeTimeWeights`）。支援/防护（权重 0）不参与转移，时间总权重守恒。
+ *
+ * **硬约束：失衡次数不许被伤害优化改掉**（用户口径 2026-09-10「失衡次数只是第一个决策，其次还有很多
+ * 分配逻辑，不过总体而言是为了总伤最大化」→ 次数是**先定的约束**，伤害是目标）。
+ * 实测该约束会咬：127 预设里 **4 队**的均衡解会掉次数（`yidhari-trigger-lucia` 3→2 +7.2%、
+ * `auto-1591-1481-1311` 4→3 +10.1%、`auto-1201-1361-1211` 4→3、`auto-1201-1361-1311` 4→3），
+ * 处置 = **回滚权重并在 note 里如实上报这笔交易**（不静默接受，也不静默丢弃）。
  */
 export const marginalEqualizeStrategy: TimeWeightStrategy = {
   id: 'marginal-equalize',
@@ -56,7 +62,21 @@ export const marginalEqualizeStrategy: TimeWeightStrategy = {
   description: '按团队总伤的边际产出在槽位间转移平A时间（保住主C 的能量需求；一次 ≈ 3 倍求值）',
   allocate({ calc, configStore }) {
     const before = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0)))
+    const stunBefore = calc.stunPoolResult.value?.stunCount ?? 0
+    const damageBefore = calc.teamTotalDamage.value
     const r = optimizeTeamTimeWeights(calc, configStore, { maxIter: 2 })
+    const stunAfter = calc.stunPoolResult.value?.stunCount ?? 0
+    if (r.balanced && stunAfter < stunBefore) {
+      // 约束回滚：失衡次数先于伤害决定（用户口径）
+      for (let s = 0; s < 3; s++) configStore.setBasicAttackTimeWeight(s, before[s])
+      return {
+        strategyId: 'marginal-equalize',
+        weights: before,
+        damage: calc.teamTotalDamage.value,
+        applied: false,
+        note: `失衡次数优先：均衡解会把失衡 ${stunBefore}→${stunAfter} 次（换来 ${(((r.damage / Math.max(1, damageBefore)) - 1) * 100).toFixed(1)}% 伤害），已回滚权重`,
+      }
+    }
     const moved = r.weights.some((w, i) => Math.abs(w - before[i]) > 1e-9)
     return {
       strategyId: 'marginal-equalize',

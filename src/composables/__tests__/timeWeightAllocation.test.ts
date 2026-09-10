@@ -70,6 +70,24 @@ describe('平A池权重·分配策略', () => {
       .toBeGreaterThan(bat0Before)
   })
 
+  it('⑤ 失衡次数是硬约束：均衡解掉次数时回滚权重并如实上报', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    // auto-1591-1481-1311：实测均衡解会把失衡 4→3 换 +10.1% 伤害（PROBE_CONV_BALANCE_STUN）
+    const p = teamPresets.find(x => x.id === 'auto-1591-1481-1311')!
+    for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+    config.applyTeamPreset(p.team as [string, string, string])
+    const stunBefore = calc.stunPoolResult.value!.stunCount
+    const weightsBefore = [0, 1, 2].map(s => config.team[s]!.basicAttackTimeWeight)
+    const r = applyTimeWeightAllocation({ calc, configStore: config })
+    expect(calc.stunPoolResult.value!.stunCount).toBe(stunBefore)
+    expect([0, 1, 2].map(s => config.team[s]!.basicAttackTimeWeight)).toEqual(weightsBefore)
+    expect(r.applied).toBe(false)
+    expect(r.note).toContain('失衡次数优先')
+  })
+
   it('注册表契约：默认策略在表内、id 唯一（扩展点）', () => {
     expect(TIME_WEIGHT_STRATEGIES.length).toBeGreaterThan(0)
     expect(getTimeWeightStrategy(DEFAULT_TIME_WEIGHT_STRATEGY_ID).id).toBe(DEFAULT_TIME_WEIGHT_STRATEGY_ID)
