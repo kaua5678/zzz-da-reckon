@@ -67,24 +67,23 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     const weightsBefore = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0)))
     const parryBefore = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.parryCount ?? 0)))
     const stunBefore = calc.stunPoolResult.value?.stunCount ?? 0
-    const damageBefore = calc.teamTotalDamage.value
     /**
-     * 硬可行性门：装配期没发生截断（= 前台净占用 ≤ 预算）。
+     * 可行性门 = **相对门：不许把「装不下」变得更差**（用户口径 2026-09-10：「39队直接拒绝那就删除防护，
+     * 这总是在开发的时候拦截」）——原来是「截断必须为 0 否则拒绝」，于是**基线本身就超时的 39 队全被拒**，
+     * 开发时看不到任何结果。改成相对判据：候选的截断量 ≤ 基线截断量。
+     * · 基线不超时的队 → 等价于原来的「截断必须为 0」（防「弹刀无限加」的保护仍在）；
+     * · 基线已超时的队（含轴模式队）→ 允许搜索，只要**不新增**截断（越界候选照旧回滚）。
      * **必须读结果自带的** `convergence.timeTruncatedSeconds`，不能读 `rr.overflowSeconds`——
-     * 后者是 cfg 上的副作用字段（`calcTeamResources` 每次调用都写），而一次预设求值会跑十几次调用
-     * （见 docs 坑33「尾巴专项」），读数会翻面（实测：门槛读 0 而终态 0.906s）。
+     * 后者是 cfg 上的副作用字段（`calcTeamResources` 每次调用都写），一次预设求值跑十几次调用
+     * （docs 坑33「尾巴专项」），读数会翻面（实测：门槛读 0 而终态 0.906s）。
      */
-    const feasible = () => {
-      const rr = calc.resourceResult.value
-      return !!rr && (rr.convergence?.timeTruncatedSeconds ?? 0) <= 1e-6
-    }
-    if (!feasible()) {
-      return {
-        strategyId: jointLeverStrategy.id, weights: weightsBefore, damage: damageBefore, applied: false,
-        note: '当前配置本身已超时（前台净占用 > 预算，装配发生截断）→ 先修配置再自动分配',
-      }
-    }
     const notes: string[] = []
+    const truncation = () => calc.resourceResult.value?.convergence?.timeTruncatedSeconds ?? 0
+    const baselineTruncation = truncation()
+    const feasible = () => truncation() <= baselineTruncation + 1e-6
+    if (baselineTruncation > 1e-6) {
+      notes.push(`基线本身已超时（装配截断 ${baselineTruncation.toFixed(2)}s）→ 走相对门：只保证不更差`)
+    }
     // ① 平A 权重（委托边际均衡；它自己不含可行性门，故候选若越界即回滚）
     const w = marginalEqualizeStrategy.allocate(ctx)
     if (!feasible()) {

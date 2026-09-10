@@ -115,7 +115,7 @@ describe('平A池权重·分配策略', () => {
     expect(parryAfter.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(parryBefore.reduce((a, b) => a + b, 0))
   })
 
-  it('⑥b 已经超时的配置（如 1591 轴队）拒绝自动分配并说明原因', async () => {
+  it('⑥b 基线已超时的队也照常优化（相对门：只保证不更差，不再拒绝）', async () => {
     const { catalog } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
@@ -126,8 +126,10 @@ describe('平A池权重·分配策略', () => {
     const truncated = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
     expect(truncated, '该队列为「基线本身就超时」的样本').toBeGreaterThan(0)
     const r = applyTimeWeightAllocation({ calc, configStore: config })
-    expect(r.applied).toBe(false)
-    expect(r.note ?? '').toContain('已超时')
+    // 相对门：允许优化，但**不得新增截断**（原来的「截断必须为 0 否则拒绝」已按用户口径删除）
+    const after = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
+    expect(after).toBeLessThanOrEqual(truncated + 1e-6)
+    expect(r.note ?? '').toContain('相对门')
   })
 
   it('⑦ 用户约束「弹刀多了也不能超过总时间」：越界配置被硬门挡住（不会无限加）', async () => {
@@ -140,10 +142,13 @@ describe('平A池权重·分配策略', () => {
     config.applyTeamPreset(p.team as [string, string, string])
     config.setParryCount(0, 99)
     const overflow = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
-    expect(overflow, '弹刀 99 次应当装不下（装配截断 > 0），这正是硬门要挡的越界态').toBeGreaterThan(0)
-    const r = applyTimeWeightAllocation({ calc, configStore: config })
-    expect(r.applied).toBe(false)
-    expect(r.note ?? '').toContain('已超时')
+    expect(overflow, '弹刀 99 次应当装不下（装配截断 > 0）——搜索不得在此基础上再增加弹刀').toBeGreaterThan(0)
+    const before = [0, 1, 2].map(s => config.team[s]!.parryCount)
+    applyTimeWeightAllocation({ calc, configStore: config })
+    const after = [0, 1, 2].map(s => config.team[s]!.parryCount)
+    const truncAfter = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
+    expect(truncAfter, '相对门：截断不得变差').toBeLessThanOrEqual(overflow + 1e-6)
+    expect(after.reduce((a, b) => a + b, 0), '不得靠加弹刀换伤害').toBeLessThanOrEqual(before.reduce((a, b) => a + b, 0))
   })
 
   it('⑧ 弹刀下限 = boss 预设强制次数（parryTotal），搜索不得下调到它以下', async () => {

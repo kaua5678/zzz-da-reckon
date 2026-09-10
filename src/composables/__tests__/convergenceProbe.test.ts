@@ -722,7 +722,8 @@ describe.runIf(process.env.PROBE_CONV_JOINT === '1')('探针：联合杠杆策�
     let sumJoint = 0
     let improved = 0
     let same = 0
-    let refused = 0
+    let noChange = 0
+    let baselineTruncated = 0
     let parryChanged = 0
     let stunChanged = 0
     let infeasibleAfter = 0
@@ -739,6 +740,8 @@ describe.runIf(process.env.PROBE_CONV_JOINT === '1')('探针：联合杠杆策�
         config.appliedBoss = null
       }
       const dmgA = calc.teamTotalDamage.value
+      const truncBefore = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
+      if (truncBefore > 1e-6) baselineTruncated++
       const stunA = calc.stunPoolResult.value?.stunCount ?? 0
       const parryA = [0, 1, 2].map(s => config.team[s]!.parryCount).join('/')
       const r = applyTimeWeightAllocation({ calc, configStore: config })
@@ -751,7 +754,7 @@ describe.runIf(process.env.PROBE_CONV_JOINT === '1')('探针：联合杠杆策�
       sumJoint += dmgB
       if (dmgB > dmgA + 1) improved++
       else same++
-      if (!r.applied) refused++
+      if (!r.applied) noChange++
       if (parryA !== parryB) parryChanged++
       if (stunA !== stunB) stunChanged++
       rows.push({ id: p.id, base: dmgA, joint: dmgB, note: `${parryA}→${parryB} 失衡 ${stunA}→${stunB}${r.applied ? '' : ' 未应用'}${trunc > 1e-6 ? ` 截断 ${trunc.toFixed(2)}` : ''}` })
@@ -761,11 +764,50 @@ describe.runIf(process.env.PROBE_CONV_JOINT === '1')('探针：联合杠杆策�
     console.log([
       `预设数 ${rows.length}`,
       `团队总伤合计：默认 ${(sumBase / 1e6).toFixed(0)}M → 联合 ${(sumJoint / 1e6).toFixed(0)}M（${((sumJoint / Math.max(1, sumBase) - 1) * 100).toFixed(2)}%）`,
-      `提升 ${improved} 队 · 无变化 ${same} 队 · 拒绝（基线已超时）${refused} 队 · 弹刀被改动 ${parryChanged} 队 · 失衡次数变化 ${stunChanged} 队 · 结束时仍截断 ${infeasibleAfter} 队`,
+      `提升 ${improved} 队 · 无变化 ${noChange} 队 · 基线本身已超时的队 ${baselineTruncated}（相对门：允许优化但不许更差）· 弹刀被改动 ${parryChanged} 队 · 失衡次数变化 ${stunChanged} 队 · 结束时仍截断 ${infeasibleAfter} 队`,
       '增益 top10：',
       ...byGain.slice(0, 10).map(r => `  ${r.id} ${(r.base / 1e6).toFixed(1)}M → ${(r.joint / 1e6).toFixed(1)}M（${((r.joint / Math.max(1, r.base) - 1) * 100).toFixed(1)}%）${r.note}`),
       '损失 top5：',
       ...[...rows].sort((x, y) => (x.joint - x.base) - (y.joint - y.base)).slice(0, 5).map(r => `  ${r.id} ${(r.base / 1e6).toFixed(1)}M → ${(r.joint / 1e6).toFixed(1)}M（${((r.joint / Math.max(1, r.base) - 1) * 100).toFixed(1)}%）${r.note}`),
     ].join('\n'))
   }, 1_800_000)
+})
+
+/**
+ * 一次弹刀在引擎里的账（2026-09-10，用户提问「引擎把一次弹刀怎么算的？」）：
+ * 逐槽打印 轻弹刀/支援突击 的 cfg 参数（动作时间、免费次数、喧响回报）与**物化行**（count/时间/喧响），
+ * 外加每次弹刀的净时间成本与回报，供人工核对「弹刀+支援突击是否亏」。
+ *   PROBE_PARRY_ACCOUNT=auto-1521-1361-1311 npx vitest run …convergenceProbe
+ */
+describe.runIf(!!process.env.PROBE_PARRY_ACCOUNT)('探针：一次弹刀的账', () => {
+  it('逐队逐槽打表', async () => {
+    const ids = (process.env.PROBE_PARRY_ACCOUNT ?? '').split(',').map(s => s.trim()).filter(Boolean)
+    const lines: string[] = []
+    for (const id of ids) {
+      const p = teamPresets.find(x => x.id === id)
+      if (!p) continue
+      const { catalog } = await setupHarness(['', '', ''])
+      await catalog.loadBuildRecommendations()
+      const config = useConfigStore()
+      const calc = useResourceCalc()
+      for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+      config.applyTeamPreset(p.team as [string, string, string])
+      const cfg = calc.resourceConfig.value
+      const rr = calc.resourceResult.value
+      lines.push(`\n---- ${id}（${p.name}）`)
+      for (const c of cfg?.characters ?? []) {
+        const row = (mid: string) => (rr?.characters ?? []).find(ch => ch.slot === c.slot)?.executions.find(e => e.moveId === mid)
+        lines.push(`  槽${c.slot}(${c.agentId}) 弹刀=${c.parryCount} 无突击弹刀=${c.parryNoFollowUpCount ?? 0} 时间豁免=${c.parryTimeFreeCount ?? 0}`)
+        lines.push(`    轻弹刀：单次 ${c.defensiveAssistActionTime.toFixed(3)}s · 喧响/次 ${c.defensiveAssistDecibelRecovery} · 合轴率 ${c.defensiveAssistComboAlignRatio}`)
+        lines.push(`    支援突击：单次 ${c.assistFollowUpActionTime.toFixed(3)}s · 喧响/次 ${c.assistFollowUpDecibelRecovery} · 合轴率 ${c.assistFollowUpComboAlignRatio}`)
+        const da = row(c.defensiveAssistMoveId)
+        const fu = row(c.assistFollowUpMoveId)
+        lines.push(`    物化行 轻弹刀：×${da?.count ?? 0} 计时间 ${(da?.totalTime ?? 0).toFixed(2)}s 喧响 ${(da?.totalDecibelRecovery ?? 0).toFixed(0)} | 支援突击：×${fu?.count ?? 0} 计时间 ${(fu?.totalTime ?? 0).toFixed(2)}s 喧响 ${(fu?.totalDecibelRecovery ?? 0).toFixed(0)}`)
+        const charged = Math.max(0, c.parryCount - Math.floor(c.parryTimeFreeCount ?? 0))
+        lines.push(`    ⇒ 每 1 次弹刀（计费制）：时间 ${((c.defensiveAssistActionTime + c.assistFollowUpActionTime)).toFixed(3)}s × 计费次数 ${charged}/${c.parryCount} · 喧响 ${(c.defensiveAssistDecibelRecovery + c.assistFollowUpDecibelRecovery).toFixed(0)}`)
+      }
+    }
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'))
+  }, 900_000)
 })
