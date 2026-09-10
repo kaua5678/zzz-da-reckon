@@ -283,6 +283,11 @@
               class="scatter-dot" stroke-width="0.5"
               @mouseenter="curveHover = { si, pi }" @mouseleave="curveHover = null"
             />
+            <!-- 关键次数跃迁标注（「多了一次」量级）：加一圈 + 点上方文字 -->
+            <g v-for="(j, ji) in s.jumpPts" :key="'cj' + si + '-' + ji">
+              <circle :cx="j.cx" :cy="j.cy" r="6.5" fill="none" :stroke="s.color" stroke-width="1.2" opacity="0.85" />
+              <text :x="j.cx" :y="j.cy - 11" text-anchor="middle" class="curve-jump-label" font-size="9">{{ j.text }}</text>
+            </g>
           </g>
 
           <g v-if="curveHoverPt">
@@ -296,6 +301,38 @@
             <span class="ldot" :style="{ background: colorOf(s.presetId) }"></span>{{ s.name }}（{{ fmt(s.gainX, 2) }}× · +{{ fmt(s.gainPct, 1) }}%）
           </span>
         </div>
+      </div>
+    </n-card>
+
+    <!-- 关键变化板块：难度爬升时「多了一次什么」（用户 2026-09-10 口径） -->
+    <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="detail-card">
+      <template #header>关键变化（{{ curveJumpRows.length }} 处跃迁）</template>
+      <div class="compare-note">
+        只列<b>「多了一次」量级</b>的跃迁（Δ ≥ 1）：多放一次大招/强特/连携、多一次失衡/紊乱/乱流，
+        以及角色专属次数（如克拉蕾·毁伤触发、希希芙·蛇影层数来源）。引擎次数常带小数（覆盖率折算、外层不动点），
+        +0.1 这类微调不列——鼠标放到曲线点上，tooltip 里能看到该档的<b>全部</b>增量。
+      </div>
+      <div class="detail-table-wrap">
+        <table class="detail-table">
+          <thead>
+            <tr><th>队伍</th><th>难度</th><th>本档新开</th><th>关键变化</th><th>伤害</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in curveJumpRows" :key="r.key">
+              <td class="td-team" :style="{ color: r.color }">{{ r.team }}</td>
+              <td>+{{ fmt(r.cost, 0) }} 点</td>
+              <td class="td-detail">{{ r.opened === null ? '全关起点' : goalLabel(r.opened) }}</td>
+              <td class="td-detail">{{ r.text }}</td>
+              <td>{{ compact(r.dmg) }}<span class="td-standard">（{{ fmt(r.ratio, 1) }}%）</span></td>
+            </tr>
+            <tr v-if="curveJumpRows.length === 0">
+              <td colspan="5" class="td-detail">
+                本次曲线没有「多一次」量级的跃迁：要么该队已饱和，要么爬升只带来小数级微调
+                （鼠标停在曲线点上可看每档明细）。
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </n-card>
 
@@ -340,7 +377,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS } from '@/composables/teamCompare'
-import { computeDifficultyCurves, buildCurveChart, type DifficultyCurveRow } from '@/composables/difficultyCurve'
+import { computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
@@ -749,12 +786,45 @@ const curveYTicks = computed(() => {
   return out
 })
 const curveXTicks = computed(() => (curveData.value?.costTicks ?? [0]).map(c => ({ x: curveXOf(c), label: c })))
+/** 次数显示：整数直接写，小数保留 1 位（引擎次数常带小数，见 difficultyCurve.ts） */
+function cntNum(v: number): string {
+  return Number.isInteger(v) ? String(v) : fmt(v, 1)
+}
+/** 图上标注用短文案：`大招+1` */
+function cntDelta(c: KeyCountChange): string {
+  return `${c.label}+${cntNum(c.delta)}`
+}
+/** 面板/tooltip 用完整文案：`大招 7→8` */
+function cntRange(c: KeyCountChange): string {
+  return `${c.label} ${cntNum(c.from)}→${cntNum(c.to)}`
+}
 const curveSeriesPx = computed(() =>
   (curveData.value?.series ?? []).map(s => ({
     ...s,
     color: colorOf(s.presetId),
     pts: s.points.map(p => ({ ...p, cx: curveXOf(p.cost), cy: curveYOf(p.ratio) })),
+    jumpPts: s.jumps.map(j => ({
+      ...j,
+      cx: curveXOf(j.cost),
+      cy: curveYOf(j.ratio),
+      text: j.changes.map(cntDelta).join('·'),
+    })),
   })),
+)
+/** 关键变化面板的行（跨队铺平；数据源 = 各队已过滤过 major 的 `jumps`） */
+const curveJumpRows = computed(() =>
+  curveSeriesPx.value.flatMap((s, si) =>
+    s.jumpPts.map((j, ji) => ({
+      key: `${s.presetId}-${si}-${ji}`,
+      team: s.name,
+      color: s.color,
+      cost: j.cost,
+      dmg: j.dmg,
+      ratio: j.ratio,
+      opened: j.opened,
+      text: j.changes.map(cntRange).join('、'),
+    })),
+  ),
 )
 /** 目标 id → 可读标签（tooltip 与摘要表共用）；null = 全关起点 */
 function goalLabel(id: string | null): string {
@@ -769,8 +839,8 @@ const curveHoverPt = computed(() => {
   const point = s?.pts[h.pi]
   return s && point ? { series: s, point } : null
 })
-const curveTtW = 230
-const curveTtH = 70
+const curveTtW = 240
+const curveTtH = 84
 const curveTtX = computed(() =>
   curveHoverPt.value ? Math.min(curveHoverPt.value.point.cx + 10, svgW.value - curveTtW - 20) : 0,
 )
@@ -782,10 +852,15 @@ const curveHoverTips = computed(() => {
   if (!p) return []
   const { series: s, point } = p
   const band = point.opened === null ? '全关起点（静态权重、无保底、投影 off）' : `本档新开：${goalLabel(point.opened)}`
+  const major = majorChanges(point.changes)
+  const minor = point.changes.length - major.length
   return [
     s.name,
     `难度 ${fmt(point.cost, 0)} 点 · 伤害 ${compact(point.dmg)}（${fmt(point.ratio, 1)}%）`,
     band,
+    major.length > 0
+      ? `跃迁：${major.map(cntRange).join('、')}${minor > 0 ? `（另有 ${minor} 项小数级微调）` : ''}`
+      : (minor > 0 ? `仅小数级微调 ${point.changes.map(cntRange).join('、')}` : '本档无次数变化'),
     s.flat ? '四目标均无增益 ⇒ 无优化空间' : `累计录取 ${s.opened.map(goalLabel).join(' → ')}`,
   ]
 })
@@ -934,6 +1009,12 @@ function killSeconds(hpRatio: number): number {
 .chart-hover-dot { fill: var(--app-text-solid); }
 .chart-tooltip-box { fill: var(--app-tooltip-bg); stroke: var(--wa-150); }
 .chart-tooltip-text { fill: var(--app-tooltip-text); }
+
+/* 关键次数跃迁的图上标注（比刻度亮一档，压过网格线；currentColor 免引 --wa-* 棘轮） */
+.curve-jump-label {
+  fill: currentColor;
+  font-weight: 600;
+}
 
 .chart-legend {
   display: flex;

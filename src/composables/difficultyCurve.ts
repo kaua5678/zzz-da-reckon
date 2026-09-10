@@ -14,9 +14,16 @@
  *  · **不含 buff、不加金、不自动下位**（v1 有意简化：曲线要的是跨队同口径的形状，
  *    这三项都会让不同队站在不同起点上）⇒ 曲线起点 ≠ 散点页某个点，页面已注明。
  *
+ * **关键次数标注**（用户 2026-09-10 口径：「难度上升到关键变化后可以标注，比如大招多了一次，
+ * 毁伤多一次，异常角色就紊乱多一次乱流多一次」）：阶梯每档采一次 `captureKeyCounts` 快照，
+ * 相邻档差分后**只标注 Δ≥1 的跃迁**（引擎次数常带小数，+0.1 的微调不算"多一次"，只进 tooltip）；
+ * 队伍级 7 项来自引擎字段，角色专属项来自模块自己的 `resourceSections` 展示行（`<数> 次`）——
+ * **不在这里硬编码角色**，新增角色只要模块有那行就自动被标注。
+ *
  * `buildCurveChart` 是纯函数（不碰 store / 引擎），判据测试在同名单测文件里。
  *
  * @fact engine:难度曲线/x轴 口径: x = 每队自己的累积难度代价（G1 权重均衡 1 / G2 弹刀·联合 3 / G3 保底 2 / G4 取整 0，占位代价），**各队 x 不对齐是特性**——只比形状（起点/斜率/天花板/倍数），不比同一 x | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::单调不减 | 锚 src/composables/difficultyCurve.ts#buildCurveChart | 信 确认
+ * @fact engine:难度曲线/关键次数标注 口径: 图上标注与「关键变化」面板只显示 Δ≥1 的次数跃迁（「多了一次」），Δ<1 的小数级微调只进 tooltip；关键次数 = 队伍级 7 项（大招/强特/连携/失衡/异常触发/紊乱/乱流，取自引擎结果字段）+ 角色专属「N 次」行（模块 `resourceSections` 自报，零角色硬编码） | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::只认「变多」 | 锚 src/composables/difficultyCurve.ts#diffKeyCounts | 信 确认
  * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
  */
 import { useConfigStore } from '@/stores/config'
@@ -26,7 +33,9 @@ import {
   type DifficultyGoal, type LadderResult,
 } from '@/composables/difficultyLadder'
 import { applyAxisBinding, applyTeamToStore, restoreStore, snapshotStore } from '@/composables/teamCompare'
+import { getAgentMechanic } from '@/mechanics'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
+import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
 import type { TeamPreset } from '@/types/teamPreset'
 
 type Calc = ReturnType<typeof useResourceCalc>
@@ -71,6 +80,7 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
       const ladder = climbDifficultyLadder({ config: configStore, calc }, preset.team as [string, string, string], {
         goals: options.goals,
         minGainRatio: options.minGainRatio,
+        capture: ctx => captureKeyCounts(ctx.calc),
         base: (ctx, team) => {
           clearDifficultyLevers(ctx)
           applyTeamToStore(ctx.config, preset)
@@ -89,6 +99,106 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
   return rows
 }
 
+// ========== 关键次数：采集 + 差分（用户 2026-09-10 口径：难度上升到关键变化要标注） ==========
+
+/**
+ * 队伍级「关键次数」7 项（单一来源 = 引擎结果字段，不在这里复制口径）。
+ * 玩家看得懂的跃迁就是这些：多放一次大招 / 多打一次强特 / 多一次失衡连携 /
+ * 异常角色多一次紊乱、多一次乱流。
+ */
+const TEAM_KEY_COUNTS: { label: string; pick: (i: KeyCountInput) => number }[] = [
+  { label: '大招', pick: i => sumBy(i.characters, c => c.ultimateCount) },
+  { label: '强特', pick: i => sumBy(i.characters, c => c.exSpecialCount) },
+  { label: '连携', pick: i => sumBy(i.characters, c => c.chainCountTotal) },
+  { label: '失衡', pick: i => i.stun?.stunCount ?? 0 },
+  { label: '异常触发', pick: i => i.anomaly?.totalTriggerCount ?? 0 },
+  { label: '紊乱', pick: i => i.anomaly?.disorderCount ?? 0 },
+  { label: '乱流', pick: i => sumBy(i.anomaly?.perSlotTurbulenceTriggers ?? [], n => n) },
+]
+
+interface KeyCountInput {
+  characters: CharacterResourceResult[]
+  stun: StunPoolResult | null
+  anomaly: AnomalyPoolResult | null
+}
+
+function sumBy<T>(arr: T[], pick: (t: T) => number): number {
+  let s = 0
+  for (const t of arr) s += pick(t) || 0
+  return s
+}
+
+/** 角色专属「N 次」行：`毁伤触发 3 次` 这类由模块自报的展示行（唯一来源 = 模块 resourceSections） */
+const AGENT_COUNT_ROW = /^(-?\d+(?:\.\d+)?)\s*次$/
+
+/**
+ * 采一档「关键次数」快照。键 = **可读标签**（`大招` / `克拉蕾·毁伤触发`），值 = 次数。
+ *
+ * 角色专属项**不在这里硬编码角色**：模块自己的 `resourceSections` 展示行里，
+ * 凡是 `value` 形如 `<数> 次` 的行就是模块自报的次数口径（毁伤触发/剑意/嗔火…），
+ * 直接拿来当关键次数——新增角色只要模块有这行就自动被标注。
+ */
+export function captureKeyCounts(calc: Calc): Record<string, number> {
+  const input: KeyCountInput = {
+    characters: calc.resourceResult.value?.characters ?? [],
+    stun: calc.stunPoolResult.value ?? null,
+    anomaly: calc.anomalyPoolResult.value ?? null,
+  }
+  const out: Record<string, number> = {}
+  for (const def of TEAM_KEY_COUNTS) out[def.label] = def.pick(input)
+  const names = calc.agentNames.value
+  for (const c of input.characters) {
+    const sections = getAgentMechanic(c.agentId)?.resourceSections?.({ result: c, anomalyPoolResult: input.anomaly }) ?? []
+    // 展示名优先取 catalog 中文名（引擎结果里的 agentName 是 id，见 core/resource.ts「名称由上层填充」）
+    const who = names[c.agentId] || c.agentName || c.agentId
+    for (const s of sections) {
+      for (const row of s.rows) {
+        const m = AGENT_COUNT_ROW.exec((row.value ?? '').trim())
+        if (m) out[`${who}·${row.label}`] = Number(m[1])
+      }
+    }
+  }
+  return out
+}
+
+export interface KeyCountChange {
+  /** 可读标签（= 快照键） */
+  label: string
+  from: number
+  to: number
+  delta: number
+  /**
+   * **「多了一次」** = `delta ≥ 1`：玩家确实多拿到一次离散动作/事件（大招/强特/失衡/紊乱…）。
+   * 引擎的次数常带小数（覆盖率折算/外层不动点），+0.09 这种微调**不算**关键变化 ⇒
+   * 图上的标注与「关键变化」面板只显示 `major`，原始 from→to 仍在 tooltip / 数据里。
+   */
+  major: boolean
+}
+
+/**
+ * 相邻两档做差，**只标注「变多」的项**（用户口径：「难度上升到关键变化后可以标注，比如大招多了一次」）。
+ * 变少 / 缺席不标注（避免把抖动当成果）；阈值 1e-6 防浮点噪声。
+ */
+export function diffKeyCounts(
+  prev: Record<string, number> | undefined,
+  next: Record<string, number> | undefined,
+): KeyCountChange[] {
+  if (!prev || !next) return []
+  const out: KeyCountChange[] = []
+  for (const [label, to] of Object.entries(next)) {
+    const from = prev[label]
+    if (from === undefined) continue
+    const delta = to - from
+    if (delta > 1e-6) out.push({ label, from, to, delta, major: delta >= 1 - 1e-6 })
+  }
+  return out
+}
+
+/** 只留「多了一次」量级的跃迁（图标注 / 关键变化面板用） */
+export function majorChanges(changes: KeyCountChange[]): KeyCountChange[] {
+  return changes.filter(c => c.major)
+}
+
 // ========== 图表数据（纯函数） ==========
 
 export interface CurveDatum {
@@ -99,6 +209,8 @@ export interface CurveDatum {
   ratio: number
   /** 这一档新录取的目标 id（null = 全关起点） */
   opened: string | null
+  /** 相对上一档**变多**的关键次数（空 = 这一档没有次数跃迁） */
+  changes: KeyCountChange[]
 }
 
 export interface CurveSeries {
@@ -117,6 +229,11 @@ export interface CurveSeries {
   dropped: { id: string; gain: number }[]
   /** 一个目标都没录取（曲线是单点）：没有可优化的空间 */
   flat: boolean
+  /**
+   * **关键次数跃迁档**（只含 `major` = 「多了一次」的档）：图上标注与「关键变化」面板的唯一数据源。
+   * 空数组 = 这条曲线爬升过程中没有出现「多放一次大招 / 多一次紊乱」这类台阶。
+   */
+  jumps: CurveDatum[]
 }
 
 export interface CurveChartData {
@@ -131,15 +248,20 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
   const safeHp = hp > 0 ? hp : 1
   const series: CurveSeries[] = rows.map(r => {
     const s = summarizeLadder(r.ladder)
+    const points: CurveDatum[] = r.ladder.points.map((p, i) => ({
+      cost: p.x,
+      dmg: p.dmg,
+      ratio: (p.dmg / safeHp) * 100,
+      opened: p.opened,
+      changes: diffKeyCounts(r.ladder.points[i - 1]?.counts, p.counts),
+    }))
     return {
       presetId: r.presetId,
       name: r.name,
-      points: r.ladder.points.map(p => ({
-        cost: p.x,
-        dmg: p.dmg,
-        ratio: (p.dmg / safeHp) * 100,
-        opened: p.opened,
-      })),
+      points,
+      jumps: points
+        .filter(p => p.changes.some(c => c.major))
+        .map(p => ({ ...p, changes: majorChanges(p.changes) })),
       base: s.base,
       final: s.final,
       gainX: r.ladder.base > 0 ? r.ladder.final / r.ladder.base : 1,

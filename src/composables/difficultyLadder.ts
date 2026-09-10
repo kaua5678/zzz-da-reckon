@@ -108,6 +108,11 @@ export interface LadderPoint {
   dmg: number
   /** 这一档新录取的目标（null = 全关起点） */
   opened: string | null
+  /**
+   * 这一档的「关键次数」快照（仅当 `opts.capture` 给了才在；键 = **可读标签**，如 `大招` / `克拉蕾·毁伤触发`）。
+   * 相邻档做差就是「难度上升带来的次数跃迁」，展示层据此标注（见 `difficultyCurve.ts#diffKeyCounts`）。
+   */
+  counts?: Record<string, number>
 }
 export interface LadderResult {
   base: number
@@ -135,6 +140,11 @@ export interface LadderOpts {
    * + `clearDifficultyLevers`。返回基线伤害。
    */
   base?: (ctx: LadderCtx, team: [string, string, string]) => number
+  /**
+   * **每档采一次「关键次数」快照**（缺省不采 = 零开销）。在伤害已被最终计算后调用，
+   * 所以读到的就是这个落点的资源结果。展示层用它做「大招多一次 / 紊乱多一次」这类标注。
+   */
+  capture?: (ctx: LadderCtx) => Record<string, number>
 }
 
 /**
@@ -155,7 +165,8 @@ export function climbDifficultyLadder(
   let x = 0
   const opened: string[] = []
   const dropped: { id: string; gain: number }[] = []
-  const points: LadderPoint[] = [{ x: 0, dmg: base, opened: null }]
+  const capture = opts.capture
+  const points: LadderPoint[] = [{ x: 0, dmg: base, opened: null, counts: capture?.(ctx) }]
   const remaining = new Set(goals)
 
   while (remaining.size > 0) {
@@ -182,7 +193,8 @@ export function climbDifficultyLadder(
     x += best.goal.cost
     opened.push(best.goal.id)
     remaining.delete(best.goal)
-    points.push({ x, dmg, opened: best.goal.id })
+    // 伤害落定后再采快照：这一档的 counts 与这一档的 dmg 同源
+    points.push({ x, dmg, opened: best.goal.id, counts: capture?.(ctx) })
   }
   return { base, final: dmg, points, opened, dropped }
 }

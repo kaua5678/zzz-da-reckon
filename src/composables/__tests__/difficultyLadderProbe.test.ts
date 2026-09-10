@@ -19,13 +19,14 @@ import { describe, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
-import { computeDifficultyCurves } from '@/composables/difficultyCurve'
+import { buildCurveChart, computeDifficultyCurves } from '@/composables/difficultyCurve'
 import { summarizeLadder } from '@/composables/difficultyLadder'
 import type { BossPreset, BossPresetFile, BossPresetPhase } from '@/types/bossPreset'
 
 const active = process.env.PROBE_DIFF_LADDER === '1'
 const TEAM_IDS = (process.env.PROBE_DIFF_TEAMS ?? '').split(',').map(s => s.trim()).filter(Boolean)
 const ALL = process.env.PROBE_DIFF_ALL === '1'
+const DUMP_COUNTS = process.env.PROBE_DIFF_COUNTS_DUMP === '1'
 
 const SAMPLE = [
   'auto-1521-1361-1311', 'auto-1311-1521-1361', 'auto-1521-1481-1311', 'auto-1461-1521-1031',
@@ -50,6 +51,15 @@ function latestBossPhase(): { boss: BossPreset; phase: BossPresetPhase } {
   return pairs[0]!
 }
 
+/** 把曲线点上的跃迁压成一行：`难度3: 大招 2→3、紊乱 1→2` */
+function describeCountChanges(points: { cost: number; changes: { label: string; from: number; to: number }[] }[]): string {
+  const steps = points
+    .slice(1)
+    .filter(p => p.changes.length > 0)
+    .map(p => `难度${p.cost}: ${p.changes.map(c => `${c.label} ${c.from}→${c.to}`).join('、')}`)
+  return steps.length > 0 ? steps.join(' | ') : '(无关键次数跃迁)'
+}
+
 describe.runIf(active)('探针：逐目标贪心阶梯（每队自己的难度曲线）', () => {
   it('扫描并打印每队曲线', async () => {
     const { catalog } = await setupHarness(['', '', ''])
@@ -72,6 +82,12 @@ describe.runIf(active)('探针：逐目标贪心阶梯（每队自己的难度�
         + ` · ${(s.final / s.base).toFixed(2)}× · 难度 ${s.totalCost} 点 · 斜率 ${s.slope.toFixed(1)}%/点`,
         `  录取 ${r.opened.join('→') || '(无优化空间)'}${r.dropped.length ? ` · 丢弃 ${r.dropped.map(d => `${d.id}(${(d.gain / 1e6).toFixed(1)}M)`).join(',')}` : ''}`,
         `  点 ${r.points.map(pt => `(${pt.x},${(pt.dmg / 1e6).toFixed(1)})`).join(' ')}`,
+        // 关键次数跃迁（用户口径：难度上升到关键变化要标注）——按「这一档相对上一档变多了什么」列
+        `  关键变化 ${describeCountChanges(buildCurveChart([row!], phase.hp).series[0]!.points)}`,
+        // 全关档的全部关键次数快照（诊断「某角色的专属项为什么没被采到」）
+        ...(DUMP_COUNTS
+          ? [`  全关快照 ${Object.entries(r.points[0]?.counts ?? {}).map(([k, v]) => `${k}=${String(v)}`).join('、')}`]
+          : []),
       ].join('\n'))
     }
 

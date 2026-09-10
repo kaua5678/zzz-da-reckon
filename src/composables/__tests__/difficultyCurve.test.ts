@@ -7,7 +7,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { buildCurveChart, computeDifficultyCurves, type DifficultyCurveRow } from '@/composables/difficultyCurve'
+import {
+  buildCurveChart, computeDifficultyCurves, diffKeyCounts, majorChanges,
+  type DifficultyCurveRow,
+} from '@/composables/difficultyCurve'
 import type { LadderResult } from '@/composables/difficultyLadder'
 import { teamPresets } from '@/data/teamPresets'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
@@ -20,11 +23,18 @@ beforeEach(() => {
 // ========== 合成阶梯（纯函数判据用，不跑引擎） ==========
 
 /** 把 [累积代价, 伤害] 点列包成 LadderResult；opened 逐点对应（首点是全关起点） */
-function mkLadder(points: [number, number][], opened: string[] = [], dropped: LadderResult['dropped'] = []): LadderResult {
+function mkLadder(
+  points: [number, number][],
+  opened: string[] = [],
+  dropped: LadderResult['dropped'] = [],
+  counts: Record<string, number>[] = [],
+): LadderResult {
   return {
     base: points[0]![1],
     final: points[points.length - 1]![1],
-    points: points.map(([x, dmg], i) => ({ x, dmg, opened: i === 0 ? null : (opened[i - 1] ?? null) })),
+    points: points.map(([x, dmg], i) => ({
+      x, dmg, opened: i === 0 ? null : (opened[i - 1] ?? null), counts: counts[i],
+    })),
     opened,
     dropped,
   }
@@ -92,6 +102,49 @@ describe('buildCurveChart（纯函数）', () => {
   })
 })
 
+describe('关键次数差分（用户口径：难度上升到关键变化要标注）', () => {
+  it('只认「变多」；变少 / 缺席 / 浮点噪声不标注；<1 的跃迁算变化但不算 major', () => {
+    const changes = diffKeyCounts(
+      { 大招: 7, 强特: 19.16, 连携: 8.9, 紊乱: 4, 乱流: 0, 失衡: 2 },
+      { 大招: 8, 强特: 20.16, 连携: 9.0, 紊乱: 3, 乱流: 1, 失衡: 2.0000001, 新项: 5 },
+    )
+    const byLabel = Object.fromEntries(changes.map(c => [c.label, c]))
+    expect(byLabel['大招']).toMatchObject({ from: 7, to: 8, delta: 1, major: true })
+    expect(byLabel['强特']).toMatchObject({ major: true })          // +1.0：整数台阶
+    expect(byLabel['连携']!.major).toBe(false)                      // 只跨了 0.1，不算「多一次」
+    expect(byLabel['连携']!.delta).toBeCloseTo(0.1, 6)
+    expect(byLabel['乱流']).toMatchObject({ major: true })
+    expect(byLabel['失衡']).toBeUndefined()                        // +1e-7 浮点噪声，直接不算变化
+    expect(byLabel['紊乱']).toBeUndefined()                        // 变少不标注
+    expect(byLabel['新项']).toBeUndefined()                        // 上一档没有该项 = 不标注（防口径漂移）
+    expect(majorChanges(changes).map(c => c.label).sort()).toEqual(['乱流', '大招', '强特'])
+  })
+
+  it('buildCurveChart：changes = 相邻档差分；jumps 只留「多了一次」的档', () => {
+    const rows: DifficultyCurveRow[] = [{
+      presetId: 'a', name: 'A',
+      ladder: mkLadder(
+        [[0, 100], [1, 200], [4, 300]],
+        ['G1', 'G2'],
+        [],
+        [
+          { 大招: 7, 连携: 8.9, 紊乱: 0 },
+          { 大招: 8, 连携: 8.95, 紊乱: 0 },  // 大招 +1（major）；连携 +0.05（minor）
+          { 大招: 8, 连携: 9.9, 紊乱: 1 },   // 连携 +0.95（minor）；紊乱 +1（major）
+        ],
+      ),
+    }]
+    const s = buildCurveChart(rows, 100).series[0]!
+    expect(s.points[0]!.changes).toEqual([])
+    expect(s.points[1]!.changes.map(c => c.label).sort()).toEqual(['大招', '连携'])
+    expect(s.points[2]!.changes.length).toBe(2)
+    // jumps = 有 major 的档位（第 2 档的 major 只有大招；第 3 档只留紊乱）
+    expect(s.jumps.map(j => j.cost)).toEqual([1, 4])
+    expect(s.jumps[0]!.changes.map(c => c.label)).toEqual(['大招'])
+    expect(s.jumps[1]!.changes.map(c => c.label)).toEqual(['紊乱'])
+  })
+})
+
 // ========== 集成：真跑一队（含现场恢复） ==========
 
 const res20 = { physical: 20, fire: 20, ice: 20, electric: 20, ether: 20, wind: 20 }
@@ -155,6 +208,22 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
     for (let i = 1; i < ladder.points.length; i++) {
       expect(ladder.points[i]!.x).toBeGreaterThanOrEqual(ladder.points[i - 1]!.x)
       expect(ladder.points[i]!.dmg).toBeGreaterThan(ladder.points[i - 1]!.dmg)
+    }
+
+    // 关键次数快照：7 项队伍级键齐备；changes 与相邻档差分逐位一致（面板/标注的数据源）
+    const p0 = ladder.points[0]!
+    for (const key of ['大招', '强特', '连携', '失衡', '异常触发', '紊乱', '乱流']) {
+      expect(typeof p0.counts?.[key], `快照应有「${key}」`).toBe('number')
+    }
+    const chartPts = buildCurveChart(rows, FAKE_PHASE.hp).series[0]!.points
+    for (let i = 1; i < chartPts.length; i++) {
+      expect(chartPts[i]!.changes).toEqual(diffKeyCounts(ladder.points[i - 1]!.counts, ladder.points[i]!.counts))
+    }
+    // 这条队在真 Boss 下确有跃迁；FAKE_BOSS 下只断言「标注的项都满足 major 契约」+ 数据非空
+    expect(chartPts.length).toBe(ladder.points.length)
+    for (const j of buildCurveChart(rows, FAKE_PHASE.hp).series[0]!.jumps) {
+      expect(j.changes.length).toBeGreaterThan(0)
+      for (const c of j.changes) expect(c.major).toBe(true)
     }
 
     // 现场恢复（曲线模式会临时改机制开关与权重策略，必须还原）
