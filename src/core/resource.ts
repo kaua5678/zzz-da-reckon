@@ -529,6 +529,17 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         break
       }
     }
+    // 逐轮残差轨迹（同一调用的折叠环内部序列；与上面的调用级记录同属收敛读数归属设施）
+    // 注意：`maxExcess ≤ 1e-3` 那条 break 在本记录之前 → **收敛即停的轮次不留记录**，
+    // 故「记录条数 = passes − 1 − 早停轮数」，别把记录条数当轮数读。
+    if (typeof process !== 'undefined' && process.env?.PROBE_TRACE_FOLD === '1') {
+      const g = globalThis as unknown as { __foldPasses?: unknown[] }
+      ;(g.__foldPasses ??= []).push({
+        call: (globalThis as unknown as { __foldTrace?: unknown[] }).__foldTrace?.length ?? 0,
+        pass: timePass, maxExcess, best: bestExcess, stagnant: stagnantPasses,
+        idle: maxIdle, refund: config.timeBudgetRefund ?? 0, conv: timeBudgetConverged,
+      })
+    }
     }
     return st
   }
@@ -951,6 +962,25 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 终局预留量（供 applyLiuyinPromote 判定跳过 post-hoc carve；与 iterate Step4 同一求解）
   // ——与上方 giftTimeOfSlot 同源（同一 helper、同一轴模式条件），不重算。
   const liuyinGiftTimeTotal = liuyinGiftFinal.time
+
+  // 收敛读数归属设施（2026-09-10 尾巴专项，`PROBE_TRACE_FOLD=1` 打开；不开则零副作用）：
+  // **一次预设求值会跑 N 次 `calcTeamResources`**（外层不动点轮 + 非轴对照 + 降配二分 6×2 + 下游重算，
+  // 实测 billy-roxy-lucia 18 次），每次自带一份折叠环与诊断量，而 `ConvergenceReport` 只暴露
+  // **被接受那次**的读数。逐 pass 打表若不按调用分组，就会把别的管线（例如第 2 轮就收敛的可行试探）
+  // 的读数当成被接受管线的——尾巴专项里正是这样误判过一轮（见 docs 坑33「尾巴专项收口」）。
+  // 消费方：`src/composables/__tests__/convergenceProbe.test.ts` 的 `PROBE_CONV_TEAM` 分支。
+  if (typeof process !== 'undefined' && process.env?.PROBE_TRACE_FOLD === '1') {
+    const g = globalThis as unknown as { __foldTrace?: unknown[] }
+    ;(g.__foldTrace ??= []).push({
+      passes: timeBudgetPasses,
+      conv: timeBudgetConverged,
+      residual: timeBudgetResidualSeconds,
+      idle: timeBudgetIdleSeconds,
+      refund: timeBudgetRefundedSeconds,
+      truncated: timeTruncatedSeconds,
+      team: configs.map(c => c.agentId).join('/'),
+    })
+  }
 
   return {
     totalTime,

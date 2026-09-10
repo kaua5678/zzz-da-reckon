@@ -7,6 +7,12 @@
  *
  * 运行：PROBE_CONV_SCAN=1 npx vitest run src/composables/__tests__/convergenceProbe.test.ts
  * 不设 env 时空跑（普通 vitest run 不受影响）。
+ *
+ * 第二用途（2026-09-10，尾巴专项）：`PROBE_CONV_TEAM=<预设id,...>` 逐队对照三读数——
+ * 冷跑 / 同队热跑 / 换队后回来。用来区分「扫描报的收敛量」是**队内禀**还是**管线口径**
+ * （`ConvergenceReport` 的五个字段分别由折叠环 / 规范重跑 / 比利重推 / 欠打回填试探 /
+ * 编排层降配探测写入，见 `core/resource.ts` 与 `useResourceCalc.ts` 注释）。
+ *   PROBE_CONV_TEAM=billy-roxy-lucia npx vitest run src/composables/__tests__/convergenceProbe.test.ts
  */
 import { describe, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -14,8 +20,10 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
 import { buildTeamTimeSummary } from '@/composables/teamTimeSummary'
+import { isFrontlineExecution } from '@/types/resource'
 
 const active = process.env.PROBE_CONV_SCAN === '1'
+const teamIds = (process.env.PROBE_CONV_TEAM ?? '').split(',').map(s => s.trim()).filter(Boolean)
 
 describe.runIf(active)('探针：收敛体检（阶段2 立项度量）', () => {
   it('全预设扫描：收敛态分布', async () => {
@@ -123,6 +131,95 @@ describe.runIf(active)('探针：收敛体检（阶段2 立项度量）', () => 
       ...notConverged.sort((a, b) => b.residual - a.residual)
         .map(n => `  ${n.id} passes=${n.passes} residual=${n.residual.toFixed(3)} idle=${n.idle.toFixed(2)} refund=${n.refund.toFixed(2)} slack=${n.slack.toFixed(2)} exit=${n.exit}`),
     ]
+    // eslint-disable-next-line no-console
+    console.log(lines.join('\n'))
+  }, 900_000)
+})
+
+/**
+ * 单队三读数对照（尾巴专项）：同一队 冷跑 / 同队热跑 / 换队回来 三次读 `ConvergenceReport`，
+ * 外加「装配后逐槽 行净占用 vs 账本」重算——用来判定报告里的 residual/idle/refund
+ * 各自出自哪条管线（折叠环 vs 比利重推 vs 欠打回填试探 vs 编排层降配探测）。
+ */
+describe.runIf(teamIds.length > 0)('探针：单队收敛报告口径', () => {
+  it('冷/热/换队回来 三读数 + 装配后逐槽重算', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const lines: string[] = []
+    const f = (n: number | undefined | null, d = 3) => (n ?? 0).toFixed(d)
+    // 多管线轨迹（需 PROBE_TRACE_FOLD=1 让 core 侧推入；每个快照打印「自上次以来」的调用序列）
+    let traceMark = 0
+    const drainTrace = (tag: string) => {
+      const g = globalThis as unknown as { __foldTrace?: Record<string, number | boolean | string>[] }
+      const all = g.__foldTrace ?? []
+      const fresh = all.slice(traceMark)
+      traceMark = all.length
+      if (fresh.length === 0) { lines.push(`  [管线] ${tag}：无 calcTeamResources 调用记录（未设 PROBE_TRACE_FOLD=1？）`); return }
+      lines.push(`  [管线] ${tag}：${fresh.length} 次调用`)
+      fresh.forEach((t, i) => lines.push(`    #${i} ${String(t.team)} passes=${t.passes} tbConv=${t.conv} residual=${f(Number(t.residual))} idle=${f(Number(t.idle))} refund=${f(Number(t.refund))} 截断=${f(Number(t.truncated))}`))
+      // 逐轮残差轨迹（按调用分组；缺 pass0 = 冻结 refund 那轮 `continue` 跳过尾部记录）
+      const gp = globalThis as unknown as { __foldPasses?: Record<string, number | boolean>[] }
+      const passes = gp.__foldPasses ?? []
+      const byCall = new Map<number, Record<string, number | boolean>[]>()
+      for (const r of passes) {
+        const k = Number(r.call)
+        if (!byCall.has(k)) byCall.set(k, [])
+        byCall.get(k)!.push(r)
+      }
+      const base = traceMark - fresh.length
+      for (const k of [...byCall.keys()].sort((a, b) => a - b)) {
+        if (k < base || k >= traceMark) continue
+        const rs = byCall.get(k)!
+        lines.push(`    ↳ #${k} 残差轨迹=[${rs.map(r => f(Number(r.maxExcess))).join(' → ')}] 判据停滞计数=[${rs.map(r => r.stagnant).join(',')}] conv=${rs[rs.length - 1]?.conv}`)
+      }
+    }
+
+    const snapshot = (id: string, tag: string) => {
+      const rr = calc.resourceResult.value
+      if (!rr) { lines.push(`### ${id} 【${tag}】 ← 无结果`); return }
+      const c = rr.convergence
+      const t = buildTeamTimeSummary({
+        rr, battleTime: rr.totalTime,
+        invincibleTime: config.enemy.invincibleTime ?? 0,
+        nameOf: (_a, slot) => `槽${slot}`,
+      })
+      lines.push(`\n---- ${id} 【${tag}】`)
+      lines.push(`residual=${f(c?.timeBudgetResidualSeconds)} idle=${f(c?.timeBudgetIdleSeconds)} refund=${f(c?.timeBudgetRefundedSeconds)} passes=${c?.timeBudgetPasses} tbConv=${c?.timeBudgetConverged} exit=${c?.outerExit ?? '—'} outerRounds=${c?.outerRounds ?? '—'} outerConverged=${c?.outerConverged ?? '—'} axisFallback=${c?.axisFallback ?? '—'} interactionScale=${c?.interactionScale == null ? '—' : f(c.interactionScale)}`)
+      lines.push(`slack=${f(t.slack)} over=${f(Math.max(0, -t.slack))} totalTime=${rr.totalTime} 失衡=${calc.stunPoolResult.value?.stunCount ?? '—'} 截断=${f(c?.timeTruncatedSeconds)}`)
+      // 装配后逐槽重算（与 frontlineRowsOf 同式：行全额 − 该行合轴分摊，只计前台行；
+      // 差 = 装配态下该槽「行净占用 − 账本」，正 = 超账本、负 = 欠打）
+      const overlap = rr.axisOverlapByAction ?? {}
+      for (const ch of rr.characters) {
+        const netRows = (ch.executions ?? []).reduce((s, e) =>
+          s + Math.max(0, (e.totalTime ?? 0) - (overlap[`${ch.slot}:${e.moveId}`] ?? 0)) * (isFrontlineExecution(e) ? 1 : 0), 0)
+        const ledger = ch.timeAllocation.necessaryTime + ch.timeAllocation.basicAttackTime
+        const giftRows = (ch.executions ?? []).filter(e => e.source === 'gift')
+        lines.push(`  槽${ch.slot}(${ch.agentId}) 账本=${f(ledger, 2)} 装配净行=${f(netRows, 2)} 差=${f(netRows - ledger)} 前台上限=${f(ch.timeAllocation.frontlineTime, 2)} 赠行=${giftRows.length} 行数=${(ch.executions ?? []).length}`)
+      }
+      drainTrace(tag)
+    }
+
+    const apply = (team: string[]) => {
+      for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
+      config.applyTeamPreset(team as [string, string, string])
+    }
+
+    for (const id of teamIds) {
+      const p = teamPresets.find(x => x.id === id)
+      if (!p) { lines.push(`### ${id} ← 预设未命中`); continue }
+      apply(p.team as string[])
+      snapshot(id, '冷跑（本进程首次）')
+      apply(p.team as string[])
+      snapshot(id, '同队热跑（紧接第二次）')
+      const other = teamPresets.find(x => x.id !== id && Array.isArray(x.team) && x.team.length === 3)
+      if (other) {
+        apply(other.team as string[])
+        apply(p.team as string[])
+        snapshot(id, `换队回来（先跑 ${other.id}）`)
+      }
+    }
     // eslint-disable-next-line no-console
     console.log(lines.join('\n'))
   }, 900_000)

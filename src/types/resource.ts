@@ -1067,6 +1067,8 @@ export interface CharacterResourceResult {
  * 但原先只有 ① 上报 `converged`，② 与 ③ 耗尽迭代上限时**静默接受末轮结果**：既无告警也无残差，
  * 测试也断言不到 —— 建模错误（例如某模块 estimateExSpecialTime 系统性高估）会被悄悄吞掉。
  * 本结构把三层的收敛状态与残差一起抬到结果对象上，让「没收敛」变成可观测、可断言的事实。
+ *
+ * @fact engine:收敛读数归属 口径: 本结构五个字段全部同源于**被接受的那次** `calcTeamResources` 调用；一次预设求值会跑 N 次（外层不动点轮 + 非轴对照 + 降配二分 6×2 + 下游重算，实测 billy-roxy-lucia 18 次 / auto-1591-1161-1211 6 次），逐 pass 打表不按调用分组会把可行试探的末轮（残差 0.000）误读成被接受管线的末轮 | 据 实测@2026-09-10 尾巴专项（PROBE_TRACE_FOLD + PROBE_CONV_TEAM） | 验 src/composables/__tests__/convergenceProbe.test.ts | 锚 src/types/resource.ts#ConvergenceReport | 信 确认
  */
 export interface ConvergenceReport {
   /** 时间预算外层：是否在上限内收敛（Σ执行行前台时间 ≤ 战斗时间） */
