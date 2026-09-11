@@ -85,6 +85,79 @@ export function scanFetchStubs(root = ROOT) {
   return { violations, stale }
 }
 
+// ---- 判据 11：棘轮 burn-down 契约（防「冻结 = 永久化」） ----
+//
+// 为什么需要：棘轮（agentId 53 / 展示层 23 / check-tokens 各基线）解决了「不许变差」，
+// 但**没有解决「什么时候变好」**——实测 `AGENT_BRANCH_BASELINE = 53` 自 2026-08-30 冻结后
+// 在 git 历史里**从未被下调过**（`git log -S` 只有 + 没有 -）。护栏因此变成一份「永久的豁免书」：
+// 新 agent 看到 53/53 全绿，会读成「这是可接受的状态」而不是「这是待还的债」。
+//
+// 本判据是**只报不红**的到期提醒（对齐 debt: registry 的 philosophy，但更软）：
+// 每条棘轮登记 { current, plan, due }；`zc status` 把「到期/超期/无进展」的棘轮点名。
+// 不设红线的理由：红了会逼人**改日期作弊**或**灌水凑数**，反而毁掉测量——
+// 与 timeGolden 基线「是测量工具不是开发否决权」（规则 10 用户裁决）同一条哲学。
+//
+// 到期语义：due 是「承诺下调到 target 的日期」，不是「必须清零」。
+// 到期日之后若 current 仍 == frozen 值（零进展），进 stale 列表被点名。
+
+/**
+ * 棘轮 burn-down 登记表。每条：
+ * - file/detect：基线所在与「怎么量当前值」
+ * - frozen：冻结时的值（= 代码里的 BASELINE 常量）
+ * - target：承诺下调到的值（可为 0 = 全清）
+ * - due：承诺到期日（ISO）
+ * - plan：一句「怎么降」（让接手者知道从哪下手，而不是只看到一个数字）
+ */
+export const RATCHET_BURNDOWN = [
+  {
+    id: 'agentId 分支',
+    file: 'src/composables/useResourceCalc.ts',
+    frozen: 53,
+    target: 0,
+    due: '2026-12-31',
+    plan: '抽 resourceCalc/convergence.ts（runCalcRound/runOuterLoop 移出）后有落点，再逐角色迁 applyTeamConfig 三阶段钩子（架构评审 #10 → #2）',
+  },
+  {
+    id: '展示层越层 import',
+    file: 'src/views + src/components',
+    frozen: 23,
+    target: 0,
+    due: '2026-12-31',
+    plan: '常量/纯函数下沉 src/data/ 或经编排层透出；逐文件清理后下调 EXHIBITION_LAYER_IMPORT_BASELINE',
+  },
+]
+
+/**
+ * 计算每条棘轮的 burn-down 状态。
+ * `measure(id)` 由调用方注入（避免本文件硬依赖各判据的测量实现）。
+ * 返回 [{ ...entry, current, progress, stale, overdue }]
+ * - progress = frozen - current（>0 表示已还款）
+ * - stale = 已过 due 且 progress === 0（零进展 → 点名）
+ * - overdue = 已过 due 但 progress > 0 且 current > target（有进展但没做完 → 提示剩余）
+ */
+export function computeBurndown(measure, today = new Date().toISOString().slice(0, 10)) {
+  return RATCHET_BURNDOWN.map(e => {
+    const current = measure(e.id)
+    const progress = e.frozen - current
+    const overdue = today > e.due
+    return {
+      ...e,
+      current,
+      progress,
+      remaining: Math.max(0, current - e.target),
+      overdue,
+      stale: overdue && progress <= 0,
+      done: current <= e.target,
+      dueSoon: !overdue && daysBetween(today, e.due) <= 30,
+    }
+  })
+}
+
+/** 两个 ISO 日期之间的天数（b - a） */
+export function daysBetween(a, b) {
+  return Math.round((Date.parse(b) - Date.parse(a)) / 86400000)
+}
+
 // ---- 判据 2：useResourceCalc agentId 分支棘轮 ----
 
 export const AGENT_BRANCH_FILE = 'src/composables/useResourceCalc.ts'

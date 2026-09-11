@@ -43,6 +43,31 @@ export interface GuardResult {
 }
 export declare function runAllChecks(root?: string): { results: GuardResult[]; ok: boolean }
 
+// 判据 11：棘轮 burn-down 契约（防「冻结 = 永久化」）
+export interface RatchetBurndownEntry {
+  id: string
+  file: string
+  frozen: number
+  target: number
+  due: string
+  plan: string
+}
+export interface RatchetBurndownState extends RatchetBurndownEntry {
+  current: number
+  progress: number
+  remaining: number
+  overdue: boolean
+  stale: boolean
+  done: boolean
+  dueSoon: boolean
+}
+export declare const RATCHET_BURNDOWN: RatchetBurndownEntry[]
+export declare function computeBurndown(
+  measure: (id: string) => number,
+  today?: string,
+): RatchetBurndownState[]
+export declare function daysBetween(a: string, b: string): number
+
 // 判据 7：展示层越层 import 棘轮（ARCHITECTURE §0 依赖方向）
 export declare const EXHIBITION_LAYER_DIRS: string[]
 export declare const EXHIBITION_LAYER_FORBIDDEN: RegExp

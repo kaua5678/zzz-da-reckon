@@ -11,6 +11,9 @@ import {
   DEBT_REGISTRY,
   AGENT_BRANCH_BASELINE,
   EXHIBITION_LAYER_IMPORT_BASELINE,
+  RATCHET_BURNDOWN,
+  computeBurndown,
+  daysBetween,
   detectFetchStub,
   detectExhibitionLayerImport,
   countExhibitionLayerImports,
@@ -133,6 +136,63 @@ describe('matchDebtRegistry（注册表匹配：文件相同 + 关键词包含�
     const { unregistered, cleared } = matchDebtRegistry(markers)
     expect(unregistered.map(m => m.file)).toEqual(['src/other.ts'])
     expect(cleared).toHaveLength(0)
+  })
+})
+
+describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）', () => {
+  // 语义钉死：棘轮解决「不许变差」，burn-down 解决「什么时候变好」。四条状态必须互不串味。
+  const measure = (id: string) => (id === 'agentId 分支' ? 53 : 23)
+
+  it('未到期：不报警（只在 due 前后才点名）', () => {
+    for (const b of computeBurndown(measure, '2026-09-11')) {
+      expect(b.stale).toBe(false)
+      expect(b.overdue).toBe(false)
+      expect(b.done).toBe(false)
+      expect(b.progress).toBe(0)
+    }
+  })
+
+  it('到期且零进展 → stale（点名；这是本判据存在的唯一理由）', () => {
+    const rows = computeBurndown(measure, '2027-01-15')
+    expect(rows.every(r => r.stale)).toBe(true)
+    expect(rows.every(r => r.overdue)).toBe(true)
+  })
+
+  it('到期但已有进展 → overdue 而非 stale（有还款就不骂）', () => {
+    const rows = computeBurndown(id => (id === 'agentId 分支' ? 40 : 23), '2027-01-15')
+    const agent = rows.find(r => r.id === 'agentId 分支')!
+    expect(agent.progress).toBe(13)
+    expect(agent.stale).toBe(false)
+    expect(agent.overdue).toBe(true)
+    expect(agent.remaining).toBe(40)
+    // 零进展的那条仍 stale
+    expect(rows.find(r => r.id !== 'agentId 分支')!.stale).toBe(true)
+  })
+
+  it('清零 → done（不再进提醒）', () => {
+    const rows = computeBurndown(() => 0, '2027-01-15')
+    expect(rows.every(r => r.done)).toBe(true)
+    expect(rows.every(r => r.remaining === 0)).toBe(true)
+    expect(rows.every(r => !r.stale)).toBe(true)
+  })
+
+  it('登记表本身自洽：frozen 与代码里的基线常量一致、due 可解析、target ≤ frozen', () => {
+    expect(RATCHET_BURNDOWN.length).toBeGreaterThan(0)
+    for (const e of RATCHET_BURNDOWN) {
+      expect(Number.isFinite(Date.parse(e.due))).toBe(true)
+      expect(e.target).toBeLessThanOrEqual(e.frozen)
+      expect(e.plan.length).toBeGreaterThan(10) // 必须写「怎么降」，不能只留一个数字
+    }
+    // frozen 必须等于真实基线常量（防登记表与护栏脱钩变成死数据）
+    const agentEntry = RATCHET_BURNDOWN.find(e => e.id === 'agentId 分支')!
+    const layerEntry = RATCHET_BURNDOWN.find(e => e.id === '展示层越层 import')!
+    expect(agentEntry.frozen).toBe(AGENT_BRANCH_BASELINE)
+    expect(layerEntry.frozen).toBe(EXHIBITION_LAYER_IMPORT_BASELINE)
+  })
+
+  it('daysBetween 计算正确（用于 dueSoon 提示）', () => {
+    expect(daysBetween('2026-09-11', '2026-12-31')).toBe(111)
+    expect(daysBetween('2026-12-31', '2026-12-31')).toBe(0)
   })
 })
 

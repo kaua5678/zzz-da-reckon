@@ -625,11 +625,18 @@ async function verbStatus(root = ROOT) {
     : []
   const foreign = detectForeignWip(paths, leases, mtimeMap(paths, root), Date.now(), undefined, recentlyOwnedPaths(allJournal, currentLane()))
   let debt = { registered: 0, unregistered: 0 }
+  let burndown = []
   try {
     const g = await import(pathToFileURL(join(root, 'scripts/check-guards.mjs')).href)
     const markers = g.scanDebtMarkers(root)
     const audit = g.matchDebtRegistry(markers)
     debt = { registered: markers.length - audit.unregistered.length, unregistered: audit.unregistered.length, cleared: audit.cleared.length }
+    // 判据 11：棘轮 burn-down（只报不红）——测量函数注入，zc 不复制各判据的实现
+    const measured = {
+      'agentId 分支': () => g.countAgentIdBranchLines(readFileSync(join(root, g.AGENT_BRANCH_FILE), 'utf8')),
+      '展示层越层 import': () => g.scanExhibitionLayerImports(root).count,
+    }
+    burndown = g.computeBurndown(id => (measured[id] ? measured[id]() : NaN))
   } catch { /* 护栏不可用时不阻塞 status */ }
   const statusDoc = join(root, 'docs/implementation-status.md')
   let backlog = null
@@ -646,7 +653,7 @@ async function verbStatus(root = ROOT) {
     ? 'zc lanes  # 有 ' + foreign.length + ' 个文件疑似并行会话在改：先确认归属再动手（规则 13）'
     : 'zc claim <你要改的文件>  # 占道后再动手'
   return envelope('status', true, {
-    branch, ahead: Number(ahead), changed: changed.length, changedPaths: paths, leases, foreignWip: foreign, debt, backlog, journal,
+    branch, ahead: Number(ahead), changed: changed.length, changedPaths: paths, leases, foreignWip: foreign, debt, burndown, backlog, journal,
     facts: { authored: authored.scanned.length, broken: authored.violations.length, reviewQueue: drift.length },
     deadClaims: deadClaimScan.dead,
     overExportedClaims: deadClaimScan.overExported,
@@ -832,6 +839,14 @@ function humanize(res) {
     lines.push('租约 ' + (d.leases?.length ?? 0) + ' 条' + (d.leases?.length ? '：' + d.leases.map(l => l.path + '←' + l.lane.slice(0, 12)).join(', ') : ''))
     if (d.foreignWip?.length) lines.push('⚠ 疑似并行会话在改（无租约 + 45 分钟内改过）：' + d.foreignWip.join(', '))
     if (d.debt) lines.push('债务 ' + d.debt.registered + ' 条已登记' + (d.debt.unregistered ? ' / ✗ ' + d.debt.unregistered + ' 条未登记' : ''))
+    // 判据 11：棘轮 burn-down（只报不红）——点名「到期零进展」的棘轮，防「冻结 = 永久豁免」
+    for (const b of d.burndown ?? []) {
+      if (b.done) continue
+      const head = `${b.id} ${b.frozen}→${b.current}（剩 ${b.remaining}，目标 ${b.target}）`
+      if (b.stale) lines.push(`⚠ 棘轮零进展·已到期(${b.due})：${head} → ${b.plan}`)
+      else if (b.overdue) lines.push(`· 棘轮超期未清(${b.due})：${head} → ${b.plan}`)
+      else if (b.dueSoon) lines.push(`· 棘轮临近到期(${b.due}，剩 ${daysBetween(new Date().toISOString().slice(0, 10), b.due)} 天)：${head}`)
+    }
     if (d.deadClaims?.length) lines.push('⚠ 死口径（注释声称口径但全仓含本文件零调用，规则 16）：' + d.deadClaims.map(h => `${h.name}@${h.file}`).join(', '))
     if (d.overExportedClaims?.length) lines.push('· 过度导出（仅本文件内用、可去 export 收窄 API）' + d.overExportedClaims.length + ' 个：' + d.overExportedClaims.map(h => `${h.name}@${h.file}`).join(', '))
     if (d.entropy) {
