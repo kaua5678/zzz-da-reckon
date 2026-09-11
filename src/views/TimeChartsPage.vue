@@ -1302,6 +1302,7 @@ import {
 import { buildFilmSimChart } from '@/composables/filmSimChart'
 import { computeStrengthBands, strengthBandTitle, type StrengthBand } from '@/composables/strengthBands'
 import { readSvgPointer } from '@/composables/svgPointer'
+import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
 import {
   buildPullValueChart,
   PV_GRADE_DEFS as pvGradeDefs,
@@ -1624,16 +1625,8 @@ const hoverCardY = ref(0)
 function onSvgMove(e: MouseEvent) {
   const { relX, svgX, rect } = readSvgPointer(e, { w: svgW.value, h: svgH.value })
   if (nodeCount.value <= 0) return
-  let best = -1
-  let bestDist = Infinity
-  chartPts.value.forEach((p, i) => {
-    const d = Math.abs(p.x - svgX)
-    if (d < bestDist) {
-      bestDist = d
-      best = i
-    }
-  })
-  if (best >= 0 && bestDist < plotW.value / Math.max(1, nodeCount.value)) {
+  const { index: best, distance: bestDist } = nearestIndexByX(chartPts.value, svgX)
+  if (best >= 0 && bestDist < xHitTolerance(plotW.value, nodeCount.value, 1)) {
     hoverNode.value = best
     hoverCardX.value = Math.min(rect.width - 240, relX + 12)
     hoverCardY.value = e.clientY - rect.top + 8
@@ -1763,16 +1756,8 @@ const chart3CardX = ref(0)
 const chart3CardY = ref(0)
 function onChart3Move(e: MouseEvent) {
   const { svgX, relX, relY, rect } = readSvgPointer(e, { w: svgW.value, h: chart3SvgH })
-  let best = -1
-  let bestDist = Infinity
-  chart3Pts.value.forEach((p, i) => {
-    const d = Math.abs(p.x - svgX)
-    if (d < bestDist) {
-      bestDist = d
-      best = i
-    }
-  })
-  if (best >= 0 && bestDist < (plotW.value / Math.max(1, VERSION_NODES.length)) * 2) {
+  const { index: best, distance: bestDist } = nearestIndexByX(chart3Pts.value, svgX)
+  if (best >= 0 && bestDist < xHitTolerance(plotW.value, VERSION_NODES.length, 2)) {
     chart3Hover.value = best
     chart3CardX.value = Math.min(rect.width - 240, relX + 12)
     chart3CardY.value = relY + 8
@@ -1897,16 +1882,8 @@ const scCardX = ref(0)
 const scCardY = ref(0)
 function onScMove(e: MouseEvent) {
   const { svgX, relX, relY, rect } = readSvgPointer(e, { w: svgW.value, h: scSvgH })
-  let best = -1
-  let bestDist = Infinity
-  scPts.value.forEach((p, i) => {
-    const d = Math.abs(p.x - svgX)
-    if (d < bestDist) {
-      bestDist = d
-      best = i
-    }
-  })
-  if (best >= 0 && bestDist < (plotW.value / Math.max(1, VERSION_NODES.length)) * 2) {
+  const { index: best, distance: bestDist } = nearestIndexByX(scPts.value, svgX)
+  if (best >= 0 && bestDist < xHitTolerance(plotW.value, VERSION_NODES.length, 2)) {
     scHover.value = best
     scCardX.value = Math.min(rect.width - 260, relX + 12)
     scCardY.value = relY + 8
@@ -2031,16 +2008,8 @@ const simCardX = ref(0)
 const simCardY = ref(0)
 function onSimMove(e: MouseEvent) {
   const { svgX, relX, relY, rect } = readSvgPointer(e, { w: svgW.value, h: simSvgH })
-  let best = -1
-  let bestDist = Infinity
-  simPts.value.forEach((p, i) => {
-    const d = Math.abs(p.x - svgX)
-    if (d < bestDist) {
-      bestDist = d
-      best = i
-    }
-  })
-  if (best >= 0 && bestDist < (plotW.value / Math.max(1, simPoints.value.length)) * 2) {
+  const { index: best, distance: bestDist } = nearestIndexByX(simPts.value, svgX)
+  if (best >= 0 && bestDist < xHitTolerance(plotW.value, simPoints.value.length, 2)) {
     simHover.value = best
     simCardX.value = Math.min(rect.width - 260, relX + 12)
     simCardY.value = relY + 8
