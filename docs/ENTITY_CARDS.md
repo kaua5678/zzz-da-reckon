@@ -81,6 +81,17 @@
   驱动盘效果无 coverage 滑块入口（effectCoverageMap 只收音擎与队友 buff）。
 - 未建模（无计算通道，非遗漏）：灵魂摇滚 4pc（受击减伤）、原始朋克 2pc（护盾量）。
 
+### 3.1 招式行（`agentSkills[].categories[].moves[].rows[]`）—— 四种来源
+
+| 来源 | 行 id | 谁写 | 说明 |
+|---|---|---|---|
+| nanoka 导入 | `damage` / `daze` / `decibel_recovery` / `anomaly_buildup` / `energy_recovery` / `flash_energy_recovery` / `ether_purify` / `attack_data_N` | `scripts/import-nanoka-v12.mjs` 等 | `ether_purify` 同时是 `move.actionTime` 的来源（÷100 = 秒），**不是**残痕积累 |
+| gachabase 补列 | `gash_buildup`（kind `gash`）/ `sharpness_gain`（`sharpness`）/ `flash_energy_recovery`（`flashEnergy`，页面列名 `adrenaline`） | `scripts/upsert-gachabase-rows.mjs` | **角色专属资源列**：残痕/锐能/闪能（命破专属能量）。抓取侧 `fetch-gachabase-agent.mjs` 为通用字段抓取，落行幂等；漏列由 `scripts/audit-gachabase-fields.mjs` 拦（有非零数据未导入 → exit 1）。语义对照见 `GAME_TERM_TO_CODE_FIELD.md` §11.1 |
+| 融合行 | `rowFusions`（spec） | `extract-move-fusions.mjs` | 合段倍率 |
+| 机制模块 | 运行时 `cfg.mechanicRowValues` | `src/mechanics/agents/*.ts` | 模块自算值，不落 catalog |
+
+**护栏**：页面新增列而抓取脚本白名单没更新 → 数据静默丢失，且**任何测试都不会红**（2026-09-11 事故：`gash_buildup` / `sharpness_gain_base` 就是这样消失的，导致「锻星残痕 120/s」在仓库里查不到）。`audit-gachabase-fields.mjs` 是这条通道的机器护栏，新增数据源列时先跑它。
+
 ## 4. Boss（**双数据源**，查证用 `resolve boss`）
 
 Boss 的事实分裂在两个文件里，**用途不同，别混**：

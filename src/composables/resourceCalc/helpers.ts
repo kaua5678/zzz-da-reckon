@@ -1274,6 +1274,25 @@ export const BASIC_BENCHMARK_OVERRIDE: Record<string, string> = {
 }
 
 /**
+ * 平A「第 3 段」挑选（`#N` 段里取 index 2，不足取末段）——**单一事实源**。
+ *
+ * 引擎默认基准（`getBasicComboMoves` 第 4 步）与需要**多套基准**的角色模块（如克拉蕾 1611
+ * 常态/猩红铭刻两态分支）都调本函数，避免两处各写一遍"第 3 段"而在规则变化时漂移。
+ */
+export function pickThirdNamedBasicSegment(moves: readonly SkillMove[]): SkillMove | null {
+  const named: SkillMove[] = []
+  for (const move of moves) {
+    const name = move.name?.en || ''
+    if (!name.match(/#\d+/)) continue
+    if (name.toLowerCase().includes('dash') || name.toLowerCase().includes('dodge')) continue
+    if (!move.actionTime || move.actionTime <= 0) continue
+    named.push(move)
+  }
+  if (named.length === 0) return null
+  return named[Math.min(2, named.length - 1)]
+}
+
+/**
  * 获取平A基准段（单段，秒均化）。
  * 优先：catalog agent.basicBenchmarkMoveId（数据配置）→ 硬编码 override 兜底 → 默认第 3 段（#3）；不足 3 段取最后一段。
  */
@@ -1313,8 +1332,7 @@ export function getBasicComboMoves(
   }
 
   // 4. 默认第 3 段（index 2），不足取末尾
-  const idx = Math.min(2, all.length - 1)
-  return all[idx]
+  return pickThirdNamedBasicSegment(all)
 }
 
 export function averageBasicRows(

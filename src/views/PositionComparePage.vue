@@ -41,7 +41,7 @@
             placeholder="属性"
             title="二级分类：该职业下的属性/体系"
           />
-          <n-select v-model:value="selectedPresetIds" :options="presetFilteredOptions" multiple size="small" filterable style="width: 220px" />
+          <n-select v-model:value="selectedPresetIds" :options="presetFilteredOptions" multiple size="small" filterable max-tag-count="responsive" style="width: 220px" />
           <n-select
             v-model:value="quickPickMainC"
             :options="mainCQuickOptions"

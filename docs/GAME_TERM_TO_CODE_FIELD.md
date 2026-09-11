@@ -212,6 +212,23 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 喧响值上限提升 X 点 | 不建模 | 计算器按整局总量口径，不设单条喧响上限（如橘福福额外能力「喧响上限+1000」明确不做） |
 | 物理异常[畏缩] | 覆盖率折入 `enemyStunTakenBonus` | 畏缩使敌人受到失衡值+7.5%，按覆盖率折算 |
 
+### 11.1 招式表的四个资源列（第二数据源 gachabase，勿混用）
+
+`data/raw/gachabase/<agentId>.json` 的页面里，每条 skill_data 有四个**不同**的资源列，
+名字很像但语义不同（2026-09-11 事故：把「秽息消耗」当成「残痕积累」，绕了两轮）：
+
+| base 网列名 | 页面字段 | catalog 行 | 说明 |
+|---|---|---|---|
+| 秽息消耗 | `ether_purify` | `rows[ether_purify]`（kind `etherPurify`） | **游戏里的动作时间**（×0.01 = 秒）：`move.actionTime = ether_purify/100`，`multiplierCoefficients` 有护栏锁此口径。它**不是**异常、**不是**残痕 |
+| 异常值积累 | `anomaly_buildup` | `rows[anomaly_buildup]`（kind `anomaly`） | 属性异常积蓄（打进异常条的量） |
+| 残痕积累 | `gash_buildup` | `rows[gash_buildup]`（kind `gash`） | 角色专属资源「残痕」的积累量（**目前只有克拉蕾 1611 有**）。与异常积蓄**在 basic 段常数值相同、在闪反/终结/支援段不同**（如 1611018：异常 78.33 vs 残痕 228.34） |
+| 锐能回复 | `sharpness_gain_base` | `rows[sharpness_gain]`（kind `sharpness`） | 角色专属资源「锐能」的回复量（**只有 1611**；/10000 后与 base 网页显示一致，如 0.946）。1611 口径：锐能只长在血锻四式，锻星/E/连携全 0 |
+| **闪能回复** | `adrenaline_base` | `rows[flash_energy_recovery]`（kind `flashEnergy`） | gachabase 英文列名 `adrenaline`，游戏里是**闪能**（命破专属能量；nanoka 译作「肾上腺素」是误译，用户 2026-09-11 确认）。落成 `flash_energy_recovery` 与引擎既有通道同名（`calcBasicAttackRegenPerSec` / `rowEnergyTotal` / 模块 `rowValue(move,'flash_energy_recovery')`）⇒ 无需改引擎。5 个角色非零：1051 12 招 / 1471 12 / 1441 17 / 1531 11 / 1371 9。**数据佐证**：这 5 个角色的 `energy_gain_base` 全 0 且与 `adrenaline` 互斥 —— 正是命破的「只有闪能、没有能量」 |
+
+- 抓取：`node scripts/fetch-gachabase-agent.mjs <id> <slug>`（**通用字段抓取**，不再白名单——加列不会静默丢）
+- 落行：`node scripts/upsert-gachabase-rows.mjs <id> --write`
+- 覆盖审计（新增列有没有漏）：`node scripts/audit-gachabase-fields.mjs`（有非零字段未导入即 exit 1）
+
 ---
 
 ## 12. 卢西娅·艾洛温（1451）专用词表

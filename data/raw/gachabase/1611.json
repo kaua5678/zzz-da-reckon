@@ -1,6 +1,6 @@
 {
   "source": "https://zzz.gachabase.net/agents/1611/claret/beta?lang=chs",
-  "fetchedAt": "2026-08-28T08:38:57.371Z",
+  "fetchedAt": "2026-09-10T16:21:43.575Z",
   "skill_data": [
     {
       "id": 1611001,
@@ -14,7 +14,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 95425,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 3151,
+      "sharpness_gain_base": 9460,
+      "sharpness_gain_step": 0,
       "ether_purify": 3151,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -29,7 +34,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 117975,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 3900,
+      "sharpness_gain_base": 11700,
+      "sharpness_gain_step": 0,
       "ether_purify": 3900,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -44,7 +54,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 167475,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 5530,
+      "sharpness_gain_base": 16590,
+      "sharpness_gain_step": 0,
       "ether_purify": 5530,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -59,7 +74,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 491700,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 16254,
+      "sharpness_gain_base": 48770,
+      "sharpness_gain_step": 0,
       "ether_purify": 16254,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -74,7 +94,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 151250,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 5996,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 4997,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -89,7 +114,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 403425,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 16000,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 13334,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -104,7 +134,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 514250,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 20400,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 17000,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -119,7 +154,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 201850,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 8000,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 6667,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -134,7 +174,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 373175,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 14801,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 12334,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -149,7 +194,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 118525,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 3916,
+      "sharpness_gain_base": 11750,
+      "sharpness_gain_step": 0,
       "ether_purify": 3916,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -164,7 +214,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 237050,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 7834,
+      "sharpness_gain_base": 23510,
+      "sharpness_gain_step": 0,
       "ether_purify": 22834,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -179,7 +234,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 221925,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 8801,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 22334,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -194,7 +254,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 118525,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 3917,
+      "sharpness_gain_base": 11760,
+      "sharpness_gain_step": 0,
       "ether_purify": 3917,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -209,7 +274,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 111100,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 3667,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 7334,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -224,7 +294,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 0,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 0,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 36664,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -239,7 +314,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 0,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 0,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 41664,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -254,7 +334,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 0,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 0,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 11664,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -269,7 +354,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 1131075,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 15667,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 15667,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -284,7 +374,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 2526975,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 44600,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 67167,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -299,7 +394,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 2187350,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 13400,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 41167,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -314,7 +414,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 100925,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 3335,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 3335,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -329,7 +434,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 710875,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 28197,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 23497,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -344,7 +454,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 171600,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 0,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 5671,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -359,7 +474,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 196625,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 0,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 6494,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -374,7 +494,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 0,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 0,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 0,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -389,7 +514,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 700975,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 0,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 23171,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -404,7 +534,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 2773100,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 30200,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 25167,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     },
     {
@@ -419,7 +554,12 @@
       "sp_consume": 0,
       "individual_decibel_gain_base": 0,
       "individual_decibel_gain_step": 0,
+      "gash_buildup": 40097,
+      "sharpness_gain_base": 0,
+      "sharpness_gain_step": 0,
       "ether_purify": 82164,
+      "adrenaline_base": 0,
+      "adrenaline_step": 0,
       "attack_data": []
     }
   ]

@@ -250,7 +250,39 @@ export interface ClaretSharpResourceSource {
   maimFromBurial: number
   /** 影画6 连携/终结重击直接触发的单体毁伤数（不消耗残痕） */
   maimFromC6: number
-  /** 锐能初始 60（进场，勘域 180s 一次）——v12 口径：锐能只此来源 */
+  /** 参与锐能账本的终结技次数（锐能额外来源 10/次） */
+  ultimateCount: number
+  /** 平A伤害秒均（%）＝常态基准 345.21 与铭刻基准 531.88 按铭刻时间占比加权 */
+  basicDamagePerSec: number
+  /** 平A失衡秒均（%）＝两态基准同法加权 */
+  basicDazePerSec: number
+  /** 平A残痕积累秒均（%）＝血锻 100/s 与锻星 120/s 同法加权（catalog `gash_buildup` 行） */
+  basicGashPerSec: number
+  /** 铭刻平A时间占比 0–1（账本推导或面板滑块覆盖） */
+  inscriptionBasicTimeShare: number
+  /** 占比来源：ledger = 由锐能账本推导（默认）；manual = 面板滑块覆盖 */
+  inscriptionBasicTimeShareSource: 'ledger' | 'manual'
+  /** 常态锐能产出合计（/s）= 自动累积（接战时间基准）+ 血锻招式增益 */
+  normalSharpnessPerSec: number
+  /** 锐能基础自动累积（/s，catalog `level60.sharpnessRegen`） */
+  sharpnessAutoPerSec: number
+  /** 常态血锻四式的锐能招式增益（/s，catalog `sharpness_gain` 列） */
+  normalAttackSharpnessPerSec: number
+  /** 账本推导出的常态平A时间（秒）＝轮数 × 攒能秒数 */
+  normalBasicTimeNeeded: number
+  /** 铭刻平A时间（秒）＝轮数 × 窗口时长 */
+  inscriptionBasicTime: number
+  /** 账本推导出的铭刻平A时间占比（面板未覆盖时的口径，供展示对照） */
+  derivedInscriptionTimeShare: number
+  /** 平A时间能支撑的进场轮数（常态攒能 → EX 进场 → 铭刻窗口），= EX 发数 */
+  inscriptionEntries: number
+  /** 全局总延长秒（连携×2s + 停表白送时长）——总额口径一次性加到铭刻总时间 */
+  inscriptionWindowSeconds: number
+  /** 自动累积的时长基准 = 接战时间（秒，前后台都回；用户口径 2026-09-11） */
+  combatTime: number
+  /** 单次进场锐能成本（60） */
+  sharpnessPerEntry: number
+  /** 锐能总量 = 进场 60（勘域 180s 一次）+ 终结技 ×10（单次上限不参与总量口径） */
   sharpnessGain: number
   /** 锐能可负担的秘血铸锋次数 = floor(锐能 / 60) */
   affordableExCount: number

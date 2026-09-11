@@ -57,6 +57,9 @@ function level60(stats) {
     anomalyMastery: num(base.anomaly_mastery_base),
     energyRegen: Math.round((num(base.energy_auto_recover) * 100 + flat('Base Energy Regen') / 100) * 100) / 100,
     flashEnergyRegen: Math.round((num(base.flash_energy_auto_recover) * 100 + flat('Base Adrenaline') / 100) * 100) / 100,
+    // 锐能自动累积（角色专属资源，目前只有克拉蕾 1611）：nanoka stats.ep_recover=150 → 1.5/s
+    // 非 0 才写（避免给 59 个无关角色塞 0 字段）
+    ...(num(base.ep_recover) > 0 ? { sharpnessRegen: Math.round((num(base.ep_recover) * 100 + flat('Base Sharpness') / 100) * 100) / 100 } : {}),
     energyMax: num(base.energy_max) || 120,
     flashEnergyMax: num(base.flash_energy_max) || 0,
     penRatio: Math.round(num(base.penetration_rate_base) * 100 * 100) / 100,

@@ -32,6 +32,8 @@ export interface Level60Stats {
   anomalyMastery: number
   energyRegen: number       // 能量自动回复（点/秒），普通角色 1.2，柏妮思 1.56
   flashEnergyRegen?: number // 闪能自动回复（点/秒），命破角色使用
+  /** 锐能自动累积（点/秒）——角色专属资源「锐能」，目前只有克拉蕾 1611（nanoka `stats.ep_recover`/100 = 1.5） */
+  sharpnessRegen?: number
   energyMax?: number        // 能量上限（默认 120 点）
   flashEnergyMax?: number   // 闪能上限（默认 0，命破角色才有）
   penRatio: number
