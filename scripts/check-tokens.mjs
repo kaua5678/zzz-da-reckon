@@ -431,7 +431,12 @@ export const HARDCODED_BASELINE = {
   'src/views/StunAxisPage.vue': 29,
   'src/views/TeamComparePage.vue': 6,
   'src/views/TeamConfigPage.vue': 0,
-  'src/views/TimeChartsPage.vue': 35,
+  // 2026-09-12 评审 #14 第十刀：悬浮卡样式整体搬进 components/ChartHoverCard.vue
+  // （scoped 样式不作用到子组件 ⇒ 必须随组件走）。该文件 2 处字面色值是**逐字搬迁**：
+  // `.hc-swap` 的 #f6ad55 与 `.hover-card` 的 box-shadow rgba(0,0,0,.4)——本次不改观感，
+  // 若将来要令牌化，属独立的视觉调整（需实机比对）。
+  'src/components/ChartHoverCard.vue': 2,
+  'src/views/TimeChartsPage.vue': 33,
   'src/views/WEngineFieldPage.vue': 3,
 }
 
@@ -457,7 +462,9 @@ export const FONT_SIZE_BASELINE = {
   'src/views/MechanicsTablePage.vue': 1,
   'src/views/ResourcePage.vue': 2,
   'src/views/StunAxisPage.vue': 1,
-  'src/views/TimeChartsPage.vue': 9,
+  // 同上：11.5px 随样式搬入 ChartHoverCard（原就在页面的离群基线里，本次仅文件归属变化）
+  'src/components/ChartHoverCard.vue': 1,
+  'src/views/TimeChartsPage.vue': 8,
 }
 
 /**

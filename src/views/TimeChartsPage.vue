@@ -214,20 +214,14 @@
         </g>
       </svg>
 
-      <!-- 悬浮卡片 -->
-      <div
+      <!-- 悬浮卡外壳见 components/ChartHoverCard.vue（行内容由 hoverRows 提供） -->
+      <ChartHoverCard
         v-if="hoverNode >= 0 && hoverInfo"
-        class="hover-card"
-        :style="{ left: hoverCardX + 'px', top: hoverCardY + 'px' }"
-      >
-        <div class="hc-title">{{ hoverInfo.nodeLabel }}</div>
-        <div class="hc-row">队伍：{{ hoverInfo.teamNames.join(' + ') }}</div>
-        <div class="hc-row">伤害 {{ compact(hoverInfo.damage) }}（{{ fmt(hoverInfo.hpRatio, 1) }}%）</div>
-        <div class="hc-row">{{ hoverInfo.goldLabel }}</div>
-        <div v-if="hoverInfo.schedule" class="hc-row">{{ hoverInfo.schedule }}</div>
-        <div v-if="hoverInfo.swap" class="hc-row hc-swap">{{ hoverInfo.swap }}</div>
-        <div v-if="hoverInfo.bench" class="hc-row hc-bench">{{ hoverInfo.bench }}</div>
-      </div>
+        :x="hoverCardX"
+        :y="hoverCardY"
+        :title="hoverInfo.nodeLabel"
+        :rows="hoverRows"
+      />
       </div>
 
       <!-- 换人事件列表 -->
@@ -602,17 +596,14 @@
           <span class="legend-hint legend-action" @click="chart3Legend.showAll()">全显示</span>
         </div>
 
-        <!-- 悬浮卡片 -->
-        <div
+        <!-- 悬浮卡外壳见 components/ChartHoverCard.vue -->
+        <ChartHoverCard
           v-if="chart3Hover >= 0 && chart3HoverInfo"
-          class="hover-card"
-          :style="{ left: chart3CardX + 'px', top: chart3CardY + 'px' }"
-        >
-          <div class="hc-title">{{ chart3HoverInfo.nodeLabel }} · {{ chart3HoverInfo.charName }} · 第{{ chart3HoverInfo.teamNo }}队</div>
-          <div class="hc-row">强队：{{ chart3HoverInfo.teamNames.join(' + ') }}</div>
-          <div class="hc-row">伤害 {{ compact(chart3HoverInfo.damage) }}（{{ fmt(chart3HoverInfo.hpRatio, 1) }}%）</div>
-          <div class="hc-row">{{ chart3HoverInfo.goldLabel }}</div>
-        </div>
+          :x="chart3CardX"
+          :y="chart3CardY"
+          :title="`${chart3HoverInfo.nodeLabel} · ${chart3HoverInfo.charName} · 第${chart3HoverInfo.teamNo}队`"
+          :rows="chart3HoverRows"
+        />
       </div>
       <div v-else class="empty-hint small-hint">
         为角色配置强队（手填三人或点「引擎建议」）后点「计算强队图」；预填 = 仓库 preset 队伍。
@@ -732,17 +723,14 @@
           />
         </svg>
 
-        <!-- 悬浮卡片 -->
-        <div
+        <!-- 悬浮卡外壳见 components/ChartHoverCard.vue -->
+        <ChartHoverCard
           v-if="scHover >= 0 && scHoverInfo"
-          class="hover-card"
-          :style="{ left: scCardX + 'px', top: scCardY + 'px' }"
-        >
-          <div class="hc-title">{{ scHoverInfo.nodeLabel }} · {{ scHoverInfo.mainName }} + {{ scHoverInfo.supportName }}</div>
-          <div class="hc-row">蓝 {{ scHoverInfo.teamANames.join(' + ') }}：{{ compact(scHoverInfo.damageA) }}</div>
-          <div class="hc-row">橙 {{ scHoverInfo.teamBNames.join(' + ') }}：{{ compact(scHoverInfo.damageB) }}</div>
-          <div class="hc-row" :class="scHoverInfo.diff > 0 ? 'sc-diff-a' : scHoverInfo.diff < 0 ? 'sc-diff-b' : ''">{{ scHoverInfo.diffText }}</div>
-        </div>
+          :x="scCardX"
+          :y="scCardY"
+          :title="`${scHoverInfo.nodeLabel} · ${scHoverInfo.mainName} + ${scHoverInfo.supportName}`"
+          :rows="scHoverRows"
+        />
       </div>
       <div v-else class="empty-hint small-hint">
         选对比槽位与两名角色后点「对比」：预设中「其余两槽相同、该槽位恰好一队 A 一队 B」的队伍
@@ -877,14 +865,14 @@
           <line v-if="simHover >= 0" :x1="simPts[simHover].x" :y1="padT" :x2="simPts[simHover].x" :y2="padT + plotH" class="hover-line" />
         </svg>
 
-        <!-- 悬浮卡片 -->
-        <div v-if="simHover >= 0 && simHoverInfo" class="hover-card" :style="{ left: simCardX + 'px', top: simCardY + 'px' }">
-          <div class="hc-title">期 {{ simHoverInfo.label }}</div>
-          <div class="hc-row">{{ simHoverInfo.date }} · 队伍 {{ simHoverInfo.teamNames.join('+') }}</div>
-          <div class="hc-row">伤害 {{ compact(simHoverInfo.damage) }}（{{ fmt(simHoverInfo.hpRatio, 1) }}%）</div>
-          <div class="hc-row">{{ simHoverInfo.totalGold }} 金 · {{ simHoverInfo.goldLabel }}</div>
-          <div class="hc-row">菲林：存 {{ simHoverInfo.filmBank }} · 本期投 {{ simHoverInfo.filmSpent }} · 累计 {{ simHoverInfo.filmInvestedTotal }}</div>
-        </div>
+        <!-- 悬浮卡外壳见 components/ChartHoverCard.vue -->
+        <ChartHoverCard
+          v-if="simHover >= 0 && simHoverInfo"
+          :x="simCardX"
+          :y="simCardY"
+          :title="`期 ${simHoverInfo.label}`"
+          :rows="simHoverRows"
+        />
       </div>
       <div v-else class="empty-hint small-hint">设置模拟参数后点「模拟」：每期按菲林投放 → 占比花/存 → 主C优先买金 → 当期 Boss + buff 出强度。</div>
 
@@ -1303,6 +1291,7 @@ import { buildFilmSimChart } from '@/composables/filmSimChart'
 import { computeStrengthBands, strengthBandTitle, type StrengthBand } from '@/composables/strengthBands'
 import { readSvgPointer } from '@/composables/svgPointer'
 import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
+import ChartHoverCard, { type HoverCardRow } from '@/components/ChartHoverCard.vue'
 import {
   buildPullValueChart,
   PV_GRADE_DEFS as pvGradeDefs,
@@ -1590,6 +1579,21 @@ const hoverInfo = computed(() => {
     })(),
   }
 })
+
+/** 悬浮卡行（外壳组件只负责样式与布局；行内容随图而异，留在这里） */
+const hoverRows = computed<HoverCardRow[]>(() => {
+  const h = hoverInfo.value
+  if (!h) return []
+  const rows: HoverCardRow[] = [
+    { text: `队伍：${h.teamNames.join(' + ')}` },
+    { text: `伤害 ${compact(h.damage)}（${fmt(h.hpRatio, 1)}%）` },
+    { text: h.goldLabel },
+  ]
+  if (h.schedule) rows.push({ text: h.schedule })
+  if (h.swap) rows.push({ text: h.swap, cls: 'hc-swap' })
+  if (h.bench) rows.push({ text: h.bench, cls: 'hc-bench' })
+  return rows
+})
 // ========== 多队并存强度（演示.xlsx 口径：队伍×版本矩阵，跌出 Top-K 即永久淘汰） ==========
 const survivalK = ref(3)
 const strengthBands = computed<StrengthBand[]>(() =>
@@ -1788,6 +1792,16 @@ const scBossTouched = ref(false)
 watch(selectedBossId, v => {
   if (!scBossTouched.value && v) scBossId.value = v
 })
+
+const chart3HoverRows = computed<HoverCardRow[]>(() => {
+  const h = chart3HoverInfo.value
+  if (!h) return []
+  return [
+    { text: `强队：${h.teamNames.join(' + ')}` },
+    { text: `伤害 ${compact(h.damage)}（${fmt(h.hpRatio, 1)}%）` },
+    { text: h.goldLabel },
+  ]
+})
 const scBoss = computed(() => bossPresets.value.find(b => b.id === scBossId.value) ?? null)
 /** 与顶部 selectedPhase 同口径：取该 Boss 最新危局期，否则最新期 */
 const scPhase = computed(() => {
@@ -1877,6 +1891,16 @@ const scHoverInfo = computed(() => {
         ? `${agentName(scAgentB.value)} 高 ${fmt(-diff, 1)}%`
         : '两队持平',
   }
+})
+
+const scHoverRows = computed<HoverCardRow[]>(() => {
+  const h = scHoverInfo.value
+  if (!h) return []
+  return [
+    { text: `蓝 ${h.teamANames.join(' + ')}：${compact(h.damageA)}` },
+    { text: `橙 ${h.teamBNames.join(' + ')}：${compact(h.damageB)}` },
+    { text: h.diffText, cls: h.diff > 0 ? 'sc-diff-a' : h.diff < 0 ? 'sc-diff-b' : '' },
+  ]
 })
 const scCardX = ref(0)
 const scCardY = ref(0)
@@ -2003,6 +2027,17 @@ const simHoverInfo = computed(() => {
     filmSpent: p.filmSpent,
     filmInvestedTotal: p.filmInvestedTotal,
   }
+})
+
+const simHoverRows = computed<HoverCardRow[]>(() => {
+  const h = simHoverInfo.value
+  if (!h) return []
+  return [
+    { text: `${h.date} · 队伍 ${h.teamNames.join('+')}` },
+    { text: `伤害 ${compact(h.damage)}（${fmt(h.hpRatio, 1)}%）` },
+    { text: `${h.totalGold} 金 · ${h.goldLabel}` },
+    { text: `菲林：存 ${h.filmBank} · 本期投 ${h.filmSpent} · 累计 ${h.filmInvestedTotal}` },
+  ]
 })
 const simCardX = ref(0)
 const simCardY = ref(0)
@@ -2337,32 +2372,6 @@ const ppTopValues = computed(() => (ppResult.value?.values ?? []).slice(0, 20))
   stroke-width: 1;
   stroke-dasharray: 2 2;
 }
-.hover-card {
-  position: absolute;
-  z-index: 10;
-  background: var(--app-tooltip-bg);
-  border: 1px solid var(--wa-140);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 11.5px;
-  pointer-events: none;
-  max-width: 260px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-}
-.hc-title {
-  font-weight: 700;
-  margin-bottom: 3px;
-  /* 原 #fff：明亮模式 .hover-card 底是 rgba(255,255,255,0.97)，白字不可见 */
-  color: var(--app-text-solid);
-}
-.hc-row {
-  color: var(--wa-780);
-  line-height: 1.5;
-}
-.hc-swap {
-  color: #f6ad55;
-  font-weight: 600;
-}
 .swap-events {
   margin-top: 10px;
   display: flex;
@@ -2469,9 +2478,6 @@ const ppTopValues = computed(() => (ppResult.value?.values ?? []).slice(0, 20))
   paint-order: stroke;
   stroke: rgba(0, 0, 0, 0.55);
   stroke-width: 2.5px;
-}
-.hc-bench {
-  color: var(--wa-550);
 }
 .no-change {
   color: var(--wa-300);
@@ -2834,13 +2840,4 @@ const ppTopValues = computed(() => (ppResult.value?.values ?? []).slice(0, 20))
 .sc-table {
   margin-top: 10px;
 }
-.sc-diff-a {
-  color: var(--c-info);
-  font-weight: 700;
-}
-.sc-diff-b {
-  color: var(--c-warning);
-  font-weight: 700;
-}
-
 </style>
