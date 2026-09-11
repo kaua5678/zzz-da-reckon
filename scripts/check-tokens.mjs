@@ -433,11 +433,14 @@ export const FONT_SIZE_BASELINE = {
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--text-2/--text-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 445
+export const WA_REF_BASELINE = 443
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 569
-/* 2026-09-12 下调 571→569：**不是回退，是搬家**——评审 #14 把时间图表页「限定S×直伤系数」图的
+export const VAR_TOTAL_BASELINE = 566
+/* 2026-09-12 再下调 569→566（同因）：评审 #14 第七刀把 Chart 5 的分级/气泡/柱状取色移入
+   `composables/pullValueChart.ts`（`--wa-140`/`--wa-150`/`--fg-3` 等 3 处 var() 随之外迁），
+   WA_REF_BASELINE 445→443 同理。**判据盲区同上：.ts 里的 var() 不计入。**
+   2026-09-12 下调 571→569：**不是回退，是搬家**——评审 #14 把时间图表页「限定S×直伤系数」图的
    几何/分档逻辑抽到 `composables/directDamageChart.ts`，其中的 `var(--wa-550)`（散点填充）与
    `var(--fg-3)`（图例持平档）随之从 .vue 移到 .ts。本判据**只扫 .vue**（见文件头判据 6），
    故计数合法下降；两处变量仍在用，只是换了文件。

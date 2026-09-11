@@ -1302,10 +1302,15 @@ import {
 import { buildFilmSimChart } from '@/composables/filmSimChart'
 import { computeStrengthBands, strengthBandTitle, type StrengthBand } from '@/composables/strengthBands'
 import { readSvgPointer } from '@/composables/svgPointer'
+import {
+  buildPullValueChart,
+  PV_GRADE_DEFS as pvGradeDefs,
+  pvTierLabel,
+} from '@/composables/pullValueChart'
 import { buildNewCharacterRows, computeFilmSimulation, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
 import { computeSlotComparePoints, type SlotComparePoint, type SlotCompareSlot } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
-import { computePullValue, MIN_PAIRS_FOR_GRADE, type PullValueInput, type PullValueResult, type PvCardRoomEffect, type PvCardTier, type PvCardValue } from '@/composables/pullValue'
+import { computePullValue, MIN_PAIRS_FOR_GRADE, type PullValueInput, type PullValueResult, type PvCardRoomEffect, type PvCardValue } from '@/composables/pullValue'
 import { PLANNER_FILM_PER_VERSION } from '@/data/filmEconomy'
 import { runPullPlanner, type PlannerRunResult } from '@/composables/pullPlannerEngine'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
@@ -2076,133 +2081,39 @@ async function runPullValue() {
 
 const pvSelectedCard = computed(() => pvResult.value?.cards.find(c => c.agentId === pvSelected.value) ?? null)
 
-/** 图行/表行同源过滤：limited = 限定+赠送（分级主视图）；all = 全部层 */
-const pvFilteredCards = computed(() => {
-  const r = pvResult.value
-  if (!r) return []
-  if (pvTierFilter.value === 'limited') return r.cards.filter(c => c.tier === 'limited' || c.tier === 'freeGift')
-  return r.cards
-})
-
-// ---- 分级筛选（T0~T3 / 样本不足；与「层」下拉正交）----
-/** 分级清单（含未参与分级的「样本不足」，它也是一档可筛的类别） */
-const PV_GRADE_NONE = 'na'
-const pvGradeDefs = [
-  { id: 'T0', label: 'T0', desc: '累计兑现前 25%', color: '#ff8f5a' },
-  { id: 'T1', label: 'T1', desc: '累计兑现 25~50%', color: '#f6ad55' },
-  { id: 'T2', label: 'T2', desc: '累计兑现 50~75%', color: '#a3a3b8' },
-  { id: 'T3', label: 'T3', desc: '累计兑现后 25%', color: '#5f6373' },
-  { id: PV_GRADE_NONE, label: '样本不足', desc: `配对数 < ${PV_MIN_PAIRS}，不参与分级`, color: 'var(--fg-3)' },
-] as const
-/** 某张卡属于哪一档（无 grade = 样本不足档） */
-function pvGradeOf(card: PvCardValue): string {
-  return card.grade ?? PV_GRADE_NONE
-}
+/** 派生模型（过滤/行整形/布局/文案）在 composables/pullValueChart.ts（纯函数，可单测）；
+ *  此处只留同名适配层：模板与交互状态零改动。 */
 const pvGradeLegend = useSeriesFilter(() => pvGradeDefs.map(g => ({ id: g.id, name: g.label })))
 const pvCounts = pvGradeLegend.counts
-/** 分级过滤后的卡（行/排名表共用；层过滤在前、分级在后） */
-const pvGradeFilteredCards = computed(() =>
-  pvFilteredCards.value.filter(c => pvGradeLegend.isVisible(pvGradeOf(c))),
-)
-/** 气泡图行 = 过滤后前 16 张（累计降序；行数上限防 SVG 过高） */
-const PV_MAX_ROWS = 16
-const pvRows = computed(() =>
-  pvGradeFilteredCards.value.slice(0, PV_MAX_ROWS).map((card, rowIndex) => ({
-    card,
-    rowIndex,
-    agentId: card.agentId,
-    label: agentName(card.agentId),
-    gradeText: card.grade ?? (card.totalPairs > 0 ? '·' : ''),
-  })),
-)
-const pvTableRows = computed(() => pvGradeFilteredCards.value)
-
-// ---- SVG 布局 ----
-const pvLabelW = 96
-const pvBarAreaW = 120
-const pvRowH = 22
-const pvPadT = 18
-const pvXLabelH = 26
-const pvSvgH = computed(() => pvPadT + pvRows.value.length * pvRowH + pvXLabelH)
-const pvPlotW = computed(() => svgW.value - pvLabelW - pvBarAreaW - 8)
-const pvBarX = computed(() => svgW.value - pvBarAreaW + 10)
-/** 房间列中心 x（列宽 = pvPlotW / 房间数） */
-function pvX(i: number): number {
-  const n = pvResult.value?.rooms.length ?? 1
-  const cw = pvPlotW.value / Math.max(1, n)
-  return pvLabelW + cw * i + cw / 2
-}
-function pvRowY(rowIndex: number): number {
-  return pvPadT + pvRowH * rowIndex + pvRowH / 2
-}
-const pvMaxAbsEffect = computed(() => {
-  let m = 1
-  for (const row of pvRows.value) for (const e of row.card.roomEffects) m = Math.max(m, Math.abs(e.effect))
-  return m
-})
-function pvBubbleR(e: { effect: number }): number {
-  if (e.effect === 0) return 1.6
-  return 2 + 5 * Math.sqrt(Math.abs(e.effect) / pvMaxAbsEffect.value)
-}
-function pvBubbleFill(e: { effect: number }): string {
-  if (e.effect > 0) return '#f6ad55'
-  if (e.effect < 0) return '#63b3ed'
-  return 'var(--wa-140)'
-}
-function pvBubbleTitle(card: PvCardValue, e: PvCardRoomEffect, i: number): string {
-  const room = pvResult.value?.rooms[i]
-  const roomLabel = room ? `${room.label}（${room.runCount} 投稿）` : e.roomKey
-  if (!e.appeared && e.effect === 0) return `${agentName(card.agentId)} · ${roomLabel}\n未出场/实装前（计 0）`
-  const pairNote = e.pairs > 0 ? `（${e.pairs} 配对中位数）` : '（无配对样本，计 0）'
-  return `${agentName(card.agentId)} · ${roomLabel}\n边际兑现 ${fmt(e.effect, 0)} 分${pairNote}${e.frontier ? '｜顶分在场' : ''}`
-}
-const pvXTicks = computed(() => {
-  const rooms = pvResult.value?.rooms ?? []
-  const step = Math.max(1, Math.ceil(rooms.length / 12))
-  const out: { index: number; label: string }[] = []
-  for (let i = 0; i < rooms.length; i += step) out.push({ index: i, label: rooms[i].date.slice(5) })
-  if (rooms.length > 1 && (rooms.length - 1) % step !== 0) {
-    out.push({ index: rooms.length - 1, label: rooms[rooms.length - 1].date.slice(5) })
-  }
-  return out
-})
-/** 行末累计柱（sqrt 尺度防一张大卡压扁全表） */
-const pvMaxCum = computed(() => Math.max(1, ...pvRows.value.map(r => Math.max(0, r.card.cumulative))))
-const pvBarMaxW = computed(() => pvBarAreaW - 44)
-function pvBarW(card: PvCardValue): number {
-  if (card.cumulative <= 0) return 0
-  return Math.sqrt(card.cumulative / pvMaxCum.value) * pvBarMaxW.value
-}
-const pvBarH = 10
-function pvBarY(card: PvCardValue): number {
-  const row = pvRows.value.find(r => r.card === card)
-  return row ? pvRowY(row.rowIndex) - pvBarH / 2 : 0
-}
-function pvBarFill(card: PvCardValue): string {
-  if (card.grade === 'T0') return '#ff8f5a'
-  if (card.grade === 'T1') return '#f6ad55'
-  if (card.grade === 'T2') return '#a3a3b8'
-  if (card.grade === 'T3') return '#5f6373'
-  /* 原 --wa-160：该档位从未定义（色阶只有 150/200），描边静默失效 */
-  return 'var(--wa-150)'
-}
-function pvRowTitle(row: { card: PvCardValue }): string {
-  const c = row.card
-  return [
-    `${agentName(c.agentId)}（${pvTierLabel(c.tier)}${c.releaseDate ? `，实装 ${c.releaseDate}` : ''}）`,
-    `累计兑现 ${fmt(c.cumulative, 0)} 分 · 场均 ${fmt(c.avgPerRoom, 0)} · 近3期 ${fmt(c.recentAvg, 0)}`,
-    `上场 ${c.roomsAppeared}/${c.observableRooms} 期 · 顶分在场 ${c.frontierRooms} 期 · ${c.totalPairs} 配对`,
-    `每万菲林 ${c.roiPer10kFilm == null ? '—（赠送）' : fmt(c.roiPer10kFilm, 0)} 分${c.grade ? ` · 分级 ${c.grade}` : ''}`,
-  ].join('\n')
-}
-function pvTierLabel(tier: PvCardTier): string {
-  return tier === 'limited' ? '限定' : tier === 'freeGift' ? '赠送' : tier === 'standard' ? '常驻' : 'A级'
-}
-/** 详情逐期柱高（% of max） */
-function pvDetailBarH(e: PvCardRoomEffect): string {
-  const pctv = (Math.abs(e.effect) / pvMaxAbsEffect.value) * 100
-  return `${Math.max(2, pctv)}%`
-}
+const pvc = computed(() => buildPullValueChart({
+  cards: pvResult.value?.cards ?? [],
+  rooms: pvResult.value?.rooms ?? [],
+  svgW: svgW.value,
+  tierFilter: pvTierFilter.value,
+  isGradeVisible: (g) => pvGradeLegend.isVisible(g),
+  nameOf: (id) => agentName(id),
+  fmt,
+}))
+const pvRows = computed(() => pvc.value.rows)
+const pvTableRows = computed(() => pvc.value.tableRows)
+const pvLabelW = pvc.value.labelW
+const pvRowH = pvc.value.rowH
+const pvPadT = pvc.value.padT
+const pvXLabelH = pvc.value.xLabelH
+const pvSvgH = computed(() => pvc.value.svgH)
+const pvBarX = computed(() => pvc.value.barX)
+const pvBarH = pvc.value.barH
+function pvX(i: number): number { return pvc.value.x(i) }
+function pvRowY(rowIndex: number): number { return pvc.value.rowY(rowIndex) }
+function pvBubbleR(e: { effect: number }): number { return pvc.value.bubbleR(e) }
+function pvBubbleFill(e: { effect: number }): string { return pvc.value.bubbleFill(e) }
+function pvBubbleTitle(card: PvCardValue, e: PvCardRoomEffect, i: number): string { return pvc.value.bubbleTitle(card, e, i) }
+function pvDetailBarH(e: PvCardRoomEffect): string { return pvc.value.detailBarH(e) }
+function pvBarW(card: PvCardValue): number { return pvc.value.barW(card) }
+function pvBarY(card: PvCardValue): number { return pvc.value.barY(card) }
+function pvBarFill(card: PvCardValue): string { return pvc.value.barFill(card) }
+function pvRowTitle(row: { card: PvCardValue }): string { return pvc.value.rowTitle(row) }
+const pvXTicks = computed(() => pvc.value.xTicks)
 function onPvMove(e: MouseEvent) {
   const { svgY } = readSvgPointer(e, { w: svgW.value, h: pvSvgH.value })
   const idx = Math.floor((svgY - pvPadT) / pvRowH)
