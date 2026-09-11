@@ -22,7 +22,7 @@ describe('位置对比（positionCompare）击破手口径', () => {
     const bossFile = JSON.parse(bossText)
     const boss = bossFile.bosses[0]
     const phase = boss.phases[0]
-    const lycaon = teamPresets.find(p => p.id === 'yidhari-lycaon-lucia')!
+    const lycaon = teamPresets.find(p => p.id === 'auto-1051-1141-1451')!
     const results = computePositionCompare(calc, [lycaon], boss, phase)
     const r = results[0]
     expect(r).toBeTruthy()
@@ -42,7 +42,7 @@ describe('位置对比（positionCompare）击破手口径', () => {
     const bossFile = JSON.parse(bossText)
     const boss = bossFile.bosses[0]
     const phase = boss.phases[0]
-    const liuyin = teamPresets.find(p => p.id === 'yidhari-liuyin-lucia')!
+    const liuyin = teamPresets.find(p => p.id === 'auto-1051-1481-1451')!
     const results = computePositionCompare(calc, [liuyin], boss, phase)
     const r = results[0]
     expect(r).toBeTruthy()
@@ -56,7 +56,7 @@ describe('位置对比（positionCompare）击破手口径', () => {
     await catalog.load()
     await catalog.loadTeammateBuffs()
     const config = useConfigStore()
-    const liuyin = teamPresets.find(p => p.id === 'yidhari-liuyin-lucia')!
+    const liuyin = teamPresets.find(p => p.id === 'auto-1051-1481-1451')!
     for (let slot = 0; slot < 3; slot++) {
       config.setAgent(slot, liuyin.team[slot])
       if (liuyin.wEngines?.[slot]) config.setWEngine(slot, liuyin.wEngines[slot])

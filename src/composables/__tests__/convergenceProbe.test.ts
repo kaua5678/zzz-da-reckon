@@ -374,7 +374,7 @@ describe.runIf(process.env.PROBE_CONV_BALANCE_COST === '1')('探针：边际均�
       const slot0 = config.team[0] as { basicAttackTimeWeight?: number } | undefined
       if (slot0) slot0.basicAttackTimeWeight = 0
       const c = snap()
-      if (p.id.startsWith('auto-1191') || p.id.startsWith('auto-1401') || p.id === 'billy-liuyin-lucia' || p.id === 'auto-1181-1511-1411') {
+      if (p.id.startsWith('auto-1191') || p.id.startsWith('auto-1401') || p.id === 'auto-1531-1481-1451' || p.id === 'auto-1181-1511-1411') {
         detail.push(`  ${p.id} 默认 dmg=${(a.dmg / 1e6).toFixed(1)}M ex0=${f(a.ex0)} bat0=${f(a.basic0)}s 留白→ 均衡 dmg=${(b.dmg / 1e6).toFixed(1)}M ex0=${f(b.ex0)}（${balMs}ms）→ 槽0权重0 dmg=${(c.dmg / 1e6).toFixed(1)}M ex0=${f(c.ex0)} bat0=${f(c.basic0)}s`)
       }
     }

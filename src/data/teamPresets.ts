@@ -34,6 +34,14 @@
  *   ]
  * }
  *
+ * 预设来源两种，同名队只留一条（用户 2026-09-11 裁决「去重吧，手动预设的都可以删了，那是早期的
+ * 默认交互，现在有自动交互了，特别是难度提升效果，完全不需要以前这个死数值」）：
+ *   · `auto-<主C-击破-辅助>.json` = `scripts/gen-auto-presets.mjs` 从**实战顶分归档**生成
+ *     （最低金 +2 窗口；`goldSteps: []` 默认 01 基线、交互 `parry8/dodge4` 是未校准占位）——保留为唯一来源；
+ *   · 手编 `<主C>-<队友>-lucia.json` = 早期人工录入（交互/加金顺序是**修好的死数值**，只在没有 auto 孪生时保留）。
+ *   2026-09-11 删掉的 8 条手编重复项：yidhari-lycaon-liuyin / yixuan-qingyi/liuyin/norma /
+ *   banyue-norma / billy-liuyin/norma（各自 auto- 孪生仍在；清单同步进 `data/__tests__/teamPresets.test.ts`）。
+ *
  * 金数口径：**总限定金** = 限定 S 角色本体1 + 限定音擎本体1 + 影画/精炼每级1；
  * 常驻 S 角色（莱卡恩/丽娜/猫又/11号/珂蕾妲/格莉丝）与 A 级角色、常驻音擎不计限定金。
  * 选择的目标限定金越界自动钳制到队伍 [基础金, 基础金+goldSteps 数]（见 teamCompare.ts）。

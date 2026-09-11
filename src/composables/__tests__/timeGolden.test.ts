@@ -6,7 +6,8 @@
  * 而本仓已经有过两次「重生成基线悄悄吸收别人漂移」的事故。本文件是重构的**唯一验收面**：
  * 每次改时间系统就跑它，差异必须逐条解释（哪队、哪个量、为什么），解释不了的 delta 不许进。
  *
- * 覆盖：127 预设（`teamPresets`，含 applyTeamPreset 的配装/交互）+ 60 角色 × 命座 0/6
+ * 覆盖：119 预设（`teamPresets` 展开难度变体后；2026-09-11 删掉 8 条与 auto- 重复的手编预设，127→119）
+ *       + 60 角色 × 命座 0/6
  * （`catalog.json` 全角色，走 harness 默认配装）。两者都是全管线真实计算。
  *
  * 口径（改精度前先想清楚）：伤害取整数（百万级，小数无意义）、时间取 3 位、次数取 4 位。
@@ -103,7 +104,7 @@ const baseline: Record<string, GoldenEntry> = (() => {
 const measured: Record<string, GoldenEntry> = {}
 
 describe('时间系统 golden 快照（重构等价性验收面）', () => {
-  it('127 预设：伤害 / 失衡 / 留白 / 逐槽时间账', async () => {
+  it('119 预设：伤害 / 失衡 / 留白 / 逐槽时间账', async () => {
     const presets = teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3)
     for (const p of presets) {
       if (FILTER && !p.id.includes(FILTER)) continue

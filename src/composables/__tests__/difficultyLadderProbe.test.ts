@@ -6,8 +6,8 @@
  *
  * 运行：
  *   PROBE_DIFF_LADDER=1 npx vitest run src/composables/__tests__/difficultyLadderProbe.test.ts
- *   PROBE_DIFF_LADDER=1 PROBE_DIFF_TEAMS=auto-1431-1341-1311,banyue-norma-lucia npx vitest run ...
- *   PROBE_DIFF_LADDER=1 PROBE_DIFF_ALL=1 npx vitest run ...   # 全 127 预设（慢，每队约 3~4s）
+ *   PROBE_DIFF_LADDER=1 PROBE_DIFF_TEAMS=auto-1431-1341-1311,auto-1471-1571-1451 npx vitest run ...
+ *   PROBE_DIFF_LADDER=1 PROBE_DIFF_ALL=1 npx vitest run ...   # 全 119 预设（慢，每队约 3~4s）
  * 不设 env 时空跑（普通 vitest run 不受影响）。
  *
  * ⚠️ 口径变更留痕（2026-09-10 晚，接 UI）：本探针此前直接用 `climbDifficultyLadder` 的**缺省基线**
@@ -30,7 +30,7 @@ const DUMP_COUNTS = process.env.PROBE_DIFF_COUNTS_DUMP === '1'
 
 const SAMPLE = [
   'auto-1521-1361-1311', 'auto-1311-1521-1361', 'auto-1521-1481-1311', 'auto-1461-1521-1031',
-  'auto-1431-1341-1311', 'banyue-norma-lucia', 'auto-1471-1571-1451',
+  'auto-1431-1341-1311', 'auto-1471-1571-1451',
   'auto-1041-1571-1031', 'auto-1531-1451-1481', 'auto-1221-1511-1211',
   'auto-1501-1511-1311', 'yixuan-jufufu-lucia',
 ]

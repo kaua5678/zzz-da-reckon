@@ -269,61 +269,19 @@ describe('teamCompare 金数/难度口径', () => {
     )
     expect(up.goldSteps.some(s => s.kind === 'wengine' && s.wEngineId === '14116')).toBe(true)
   })
-
-  it('星徽·比利队预设：基础 3 金（3 限定角色本体、基础音擎常驻/A 不计金），4 金起逐步买专武', async () => {
-    const catalog = useCatalogStore()
-    await catalog.load()
-    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
-    const preset = teamPresets.find(p => p.id === 'billy-norma-lucia')
-    expect(preset).toBeDefined()
-    const p = preset!
-    // 基础音擎 = 青漪灵鼎 13019(A) / 燃狱齿轮 14110(常驻S) / 啜泣摇篮 14121(常驻S)，均不计金
-    expect(p.wEngines).toEqual(['13019', '14110', '14121'])
-    expect(baseGoldOf(p)).toBe(3)
-    // 4 金 = 3 基础 + 1 步（首项 = 比利专武本体 14153，限定），影画全 0
-    const g4 = applyGoldSteps(p.goldSteps, 4, 3, p.standardSteps ?? [], p.wEngines ?? [])
-    expect(g4.totalGold).toBe(4)
-    expect(g4.cinemas).toEqual([0, 0, 0])
-    expect(isLimitedWEngine(g4.wEngines[0])).toBe(true)
-    // 6 金 = 3 基础 + 3 步（前 3 步都是专武本体：比利/卢西娅/诺姆），全队带专武、影画仍全 0
-    const g6 = applyGoldSteps(p.goldSteps, 6, 3, p.standardSteps ?? [], p.wEngines ?? [])
-    expect(g6.totalGold).toBe(6)
-    expect(g6.cinemas).toEqual([0, 0, 0])
-    expect(g6.wengineMods).toEqual([1, 1, 1])
-    expect(g6.wEngines).toEqual(['14153', '14157', '14145'])
-  })
-
-  it('莱卡恩队预设：基础 4 金，6 金 = 章鱼1命 + 卢西娅1命（影画 1/0/1）', () => {
-    const preset = teamPresets.find(p => p.id === 'yidhari-lycaon-lucia')
-    expect(preset).toBeDefined()
-    const p = preset!
-    expect(baseGoldOf(p)).toBe(4)
-    const r = applyGoldSteps(p.goldSteps, 6, 4, p.standardSteps)
-    expect(r.totalGold).toBe(6)
-    expect(r.cinemas).toEqual([1, 0, 1])
-    expect(r.wengineMods).toEqual([1, 1, 1])
-    expect(r.label).toContain('伊德海莉 1命')
-    expect(r.label).toContain('卢西娅 1命')
-  })
-
   it('伊德海莉限定队预设：全带限定专武 = 6 金基础（回归：若音擎漂移成常驻会使基础金变 4，8 金被展开成 4 步而出现 320101/050101 这类按专武口径像 10 金的配置）', () => {
-    const liuyin = teamPresets.find(p => p.id === 'yidhari-liuyin-lucia')
     const norma = teamPresets.find(p => p.id === 'yidhari-norma-lucia')
-    expect(liuyin).toBeDefined()
     expect(norma).toBeDefined()
-    // 音擎须为各自限定专武（琉音=昨夜来电 14148 / 诺姆=首席跟班 14157 / 卢西娅=铸梦炉歌 14145）
-    expect(liuyin!.wEngines).toEqual(['14105', '14148', '14145'])
+    // 音擎须为各自限定专武（伊德海莉=海妖摇篮 14105 / 诺姆=首席跟班 14157 / 卢西娅=铸梦炉歌 14145）
     expect(norma!.wEngines).toEqual(['14105', '14157', '14145'])
     // 3 限定角色 + 3 限定专武 = 6 金基础（常驻音擎/角色不计金）
-    expect(baseGoldOf(liuyin!)).toBe(6)
     expect(baseGoldOf(norma!)).toBe(6)
     // 8 金 = 6 基础 + 2 步（伊德海莉 1命 + 卢西娅 1命），影画 1/0/1、精炼全 1
-    const r = applyGoldSteps(liuyin!.goldSteps, 8, 6, liuyin!.standardSteps ?? [])
+    const r = applyGoldSteps(norma!.goldSteps, 8, 6, norma!.standardSteps ?? [])
     expect(r.totalGold).toBe(8)
     expect(r.cinemas).toEqual([1, 0, 1])
     expect(r.wengineMods).toEqual([1, 1, 1])
   })
-
   it('难度 = Σ(count × weight)，条目 weight 覆盖类型权重', () => {
     const { difficulty, detail } = computeDifficulty(TEST_PRESET.interactions)
     // 8×1.0 + 4×1.2 + 3×0.6 + 5×1.5 = 8 + 4.8 + 1.8 + 7.5 = 22.1

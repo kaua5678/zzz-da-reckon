@@ -40,19 +40,23 @@ describe('teamPresets 预设队伍库', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('带琉音的预设都有对应的诺姆复制版（琉音→诺姆，其余成员不变；auto- 复刻预设除外）', () => {
+  it('带琉音的预设都有对应的诺姆版队伍（琉音→诺姆，其余成员不变；auto- 孪生也算，手编优先）', () => {
     const key = (team: string[]) => [...team].sort().join('|')
-    const byReplacedTeam = new Map(
-      teamPresets
-        .filter(p => p.team.includes(NORMA) && !p.id.startsWith('auto-'))
-        .map(p => [key(p.team.map(id => (id === NORMA ? LIUYIN : id))), p]),
-    )
-    // 般琉卢带 2 个难度变体（普通轴 / 5嗔火10大）展开成 2 条 → 琉音队共 5 条
+    // 诺姆版队伍：手编优先，手编没有时认 auto- 孪生。2026-09-11 删掉 8 条与 auto- 完全重复的手编预设后，
+    // 般岳+诺姆+卢西娅 这一版只剩 `auto-1471-1571-1451`（来源 = 实战顶分归档）——规则仍成立。
+    const byReplacedTeam = new Map<string, (typeof teamPresets)[number]>()
+    for (const p of teamPresets) {
+      if (!p.team.includes(NORMA)) continue
+      const k = key(p.team.map(id => (id === NORMA ? LIUYIN : id)))
+      const prev = byReplacedTeam.get(k)
+      if (!prev || (prev.id.startsWith('auto-') && !p.id.startsWith('auto-'))) byReplacedTeam.set(k, p)
+    }
+    // 手编琉音队 = 般琉卢的 2 个难度变体（普通轴 / 5嗔火10大）；其余 4 条手编琉音队与 auto- 孪生重复，已删
     const liuyinPresets = teamPresets.filter(p => p.team.includes(LIUYIN) && !p.id.startsWith('auto-'))
-    expect(liuyinPresets.length).toBe(5)
+    expect(liuyinPresets.length).toBe(2)
     for (const liuyinPreset of liuyinPresets) {
       const normaTwin = byReplacedTeam.get(key(liuyinPreset.team))
-      expect(normaTwin, `缺少 ${liuyinPreset.id} 的诺姆复制版`).toBeDefined()
+      expect(normaTwin, `缺少 ${liuyinPreset.id} 的诺姆版队伍`).toBeDefined()
     }
   })
 
