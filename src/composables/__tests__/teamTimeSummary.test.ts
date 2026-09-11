@@ -95,12 +95,17 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
   })
 
   it('时间截断可见：被砍招式逐行上报（Σ cutSeconds == overflow），提示列出「哪条行被砍了几次」', async () => {
-    // 2026-09-11 用户实测口径：般岳+诺姆+卢西娅 全关档真被砍 60+s，而卡上只显示「已打满」——
-    // 截断此前只报总量，界面看不出砍了什么。本判据钉住「逐行可见」这条止血。
-    const t = await summaryOf(['1471', '1571', '1451'])
+    // 2026-09-11 用户实测口径：结构性溢出的队真被砍几十秒，而卡上只显示「已打满」——截断此前只报总量，
+    // 界面看不出砍了什么。本判据钉住「逐行可见」这条止血。
+    // 队选择：`1431+1481+1491`（降配二分 best=null 的真结构队，实测 over≈79s/21 条行）——
+    // 交互型溢出（如般+诺+卢）在 2026-09-11 降配判据修正后已被收进可行域（over=0），不再适合当样例。
+    const t = await summaryOf(['1431', '1481', '1491'])
     expect(t.overflow).toBeGreaterThan(1)
     expect(t.truncatedRows.length).toBeGreaterThan(0)
-    expect(t.truncatedRows.reduce((a, r) => a + r.cutSeconds, 0)).toBeCloseTo(t.overflow, 4)
+    // 恒等式带 1s 容差：逐行 cutSeconds = (before−after)×单位时长，与逐槽 used−kept 在小数次数行 +
+    // 整数装包（floor + 小数升序加回）下会差一个量化残差（实测 1431+1481+1491 槽0：50.837 vs 51.081，
+    // 差 0.244s = 0.3%）——与仓库既有「量化残差 ~1s 属合轴可覆盖」同一档。
+    expect(Math.abs(t.truncatedRows.reduce((a, r) => a + r.cutSeconds, 0) - t.overflow)).toBeLessThanOrEqual(1)
     for (const r of t.truncatedRows) {
       expect(r.countAfter).toBeLessThan(r.countBefore)
       expect(r.cutSeconds).toBeGreaterThan(0)
