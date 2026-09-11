@@ -1286,6 +1286,16 @@ import { PLANNER_FILM_PER_VERSION } from '@/data/filmEconomy'
 import { runPullPlanner, type PlannerRunResult } from '@/composables/pullPlannerEngine'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
 import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
+import {
+  buildDirectDamageChart,
+  DD_BAND_DEFS,
+  DD_CHART_LAYOUT,
+  ddBandOf as ddBandOfPure,
+  ddColor as ddColorOf,
+  ddJitter as ddJitterOf,
+  ddNeedLabel as ddNeedLabelOf,
+  ddShortName as ddShortNameOf,
+} from '@/composables/directDamageChart'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
@@ -1705,146 +1715,33 @@ const ddPoints = computed(() =>
   buildDirectDamageTimeline(catalogStore.catalog?.agents ?? [], catalogStore.catalog?.agentSkills ?? []),
 )
 
-const ddPadL = 46
-const ddPadR = 18
-const ddPadT = 18
-const ddPadB = 32
-const ddSvgH = 268
-const ddPlotBottom = ddSvgH - ddPadB
-
-/**
- * 直伤系数图横轴：按节点**宽度权重**排布（修 1.4/2.5 合并卡池列视觉偏窄——
- * 此前按节点索引等距，合并版只有一个节点、只有普通两期版一半宽）。
- * 合并卡池（phaseLabel='合并'，1.4/2.5）一个节点覆盖整个版本 = 2 格；上半/下半 = 1 格。
- */
-const ddNodeWidths = VERSION_NODES.map(n => (n.phaseLabel === '合并' ? 2 : 1))
-const ddTotalWidth = ddNodeWidths.reduce((a, b) => a + b, 0)
-const ddNodeFrac = (() => {
-  const lefts: number[] = []
-  const centers: number[] = []
-  let acc = 0
-  for (const w of ddNodeWidths) {
-    lefts.push(acc / ddTotalWidth)
-    centers.push((acc + w / 2) / ddTotalWidth)
-    acc += w
-  }
-  return { lefts, centers }
-})()
-function ddPlotSpan(): number {
-  return svgW.value - ddPadL - ddPadR
-}
-/** 节点列左缘（版本网格线 / 测试服阴影） */
-function ddX(nodeIndex: number): number {
-  return ddPadL + (ddNodeFrac.lefts[nodeIndex] ?? 0) * ddPlotSpan()
-}
-/** 节点列中心（散点 / 标签） */
-function ddCX(nodeIndex: number): number {
-  return ddPadL + (ddNodeFrac.centers[nodeIndex] ?? 0) * ddPlotSpan()
-}
-/** 版本列中心（版本号刻度文字，t.index = 该版本首节点下标） */
-function ddTickCenterX(firstIndex: number): number {
-  let w = 0
-  for (let j = firstIndex; j < VERSION_NODES.length && VERSION_NODES[j].version === VERSION_NODES[firstIndex].version; j++) w += ddNodeWidths[j]
-  return ddPadL + (ddNodeFrac.lefts[firstIndex] + w / 2) * ddPlotSpan()
-}
-
-const ddVMin = computed(() => {
-  const vs = ddPoints.value.map((p) => p.value).filter((v): v is number => v != null)
-  return Math.min(0.7, ...(vs.length ? vs : [0.7])) - 0.03
-})
-const ddVMax = computed(() => {
-  const vs = ddPoints.value.map((p) => p.value).filter((v): v is number => v != null)
-  return Math.max(1.3, ...(vs.length ? vs : [1.3])) + 0.03
-})
-
-function ddY(v: number): number {
-  const span = ddVMax.value - ddVMin.value
-  return ddPadT + (1 - (v - ddVMin.value) / span) * (ddPlotBottom - ddPadT)
-}
-
-const ddYTicks = [0.75, 0.9, 1.0, 1.1, 1.25]
-
-/** 每个版本只标首个节点的版本号 */
-const ddXTicks = (() => {
-  const seen = new Set<string>()
-  return VERSION_NODES.map((n, index) => ({ index, label: n.version })).filter(({ label }) => {
-    if (seen.has(label)) return false
-    seen.add(label)
-    return true
-  })
-})()
-
-/** 测试服节点阴影（note 含「测试服」）：覆盖该节点列（合并节点 = 2 格宽），随 svgW 响应式 */
-const ddTestServerRects = computed(() => {
-  const rects: Array<{ x: number; w: number }> = []
-  VERSION_NODES.forEach((n, index) => {
-    if (!(n.note ?? '').includes('测试服')) return
-    const left = ddX(index)
-    const w = (ddNodeWidths[index] / ddTotalWidth) * ddPlotSpan()
-    rects.push({ x: left, w: Math.max(8, w) })
-  })
-  return rects
-})
-
-function ddJitter(agentId: string): number {
-  let h = 0
-  for (let i = 0; i < agentId.length; i++) h = (h * 31 + agentId.charCodeAt(i)) | 0
-  return ((h % 7) - 3) * 4
-}
-
-function ddColor(v: number): string {
-  if (v > 1.05) return '#7dd3fc'
-  if (v < 0.95) return '#fdba74'
-  return 'var(--wa-550)'
-}
-
-/** 直伤系数三档（散点颜色即档位语义，图例筛选按同一把尺）：加强档 >105% / 持平 / 削弱档 <95% */
-const DDD_BOOST = 'boost'
-const DDD_FLAT = 'flat'
-const DDD_WEAK = 'weak'
-const ddBandDefs = [
-  { id: DDD_BOOST, label: '加强档 >105%', desc: '当期直伤特调上调', color: '#7dd3fc' },
-  { id: DDD_FLAT, label: '持平 ≈100%', desc: '无直伤特调', color: 'var(--fg-3)' },
-  { id: DDD_WEAK, label: '削弱档 <95%', desc: '当期直伤特调下调', color: '#fdba74' },
-] as const
-/** 某点属于哪一档（null 值点无档位，恒不参与筛选——它们本来就不画） */
-function ddBandOf(v: number): string {
-  if (v > 1.05) return DDD_BOOST
-  if (v < 0.95) return DDD_WEAK
-  return DDD_FLAT
-}
+// 几何/标度逻辑已抽到 composables/directDamageChart.ts（纯函数，可单测）；
+// 此处只留「模板绑定名 → 图表读数」的薄适配层，模板无需改动。
+const dd = computed(() => buildDirectDamageChart({
+  points: ddPoints.value,
+  svgW: svgW.value,
+  versionNodes: VERSION_NODES,
+}))
+const { padL: ddPadL, padR: ddPadR, padT: ddPadT, svgH: ddSvgH } = DD_CHART_LAYOUT
+const ddPlotBottom = DD_CHART_LAYOUT.svgH - DD_CHART_LAYOUT.padB
+const ddYTicks = dd.value.yTicks
+function ddX(nodeIndex: number): number { return dd.value.x(nodeIndex) }
+function ddCX(nodeIndex: number): number { return dd.value.cx(nodeIndex) }
+function ddTickCenterX(firstIndex: number): number { return dd.value.tickCenterX(firstIndex) }
+function ddY(v: number): number { return dd.value.y(v) }
+const ddXTicks = dd.value.xTicks
+const ddTestServerRects = computed(() => dd.value.testServerRects)
+function ddLabelY(p: DirectDamagePoint): number { return dd.value.labelY(p) }
+// 分档/颜色/抖动/截断：无状态纯函数，直接从模块引入
+const ddBandDefs = DD_BAND_DEFS
 const ddLegend = useSeriesFilter(() => ddBandDefs.map(b => ({ id: b.id, name: b.label })))
 /** 可见点（图上画什么）；注意 ddLabelSlots 仍按全量算，筛选不改变标签槽位分配 */
 const ddVisiblePoints = computed(() => ddPoints.value.filter(p => p.value == null || ddLegend.isVisible(ddBandOf(p.value))))
-
-function ddNeedLabel(v: number): boolean {
-  return Math.abs(v - 1) > 0.05
-}
-
-function ddShortName(name: string): string {
-  const cleaned = name.replace(/「|」/g, '')
-  return cleaned.length > 6 ? `${cleaned.slice(0, 6)}…` : cleaned
-}
-
-/** 同节点多个带标签点纵向错开；≥1 标在点上方、<1 标在下方 */
-const ddLabelSlots = computed(() => {
-  const groups = new Map<number, string[]>()
-  for (const p of ddPoints.value) {
-    if (p.value == null || !ddNeedLabel(p.value)) continue
-    const arr = groups.get(p.nodeIndex) ?? []
-    arr.push(p.agentId)
-    groups.set(p.nodeIndex, arr)
-  }
-  const m = new Map<string, number>()
-  for (const [, ids] of groups) ids.forEach((id, i) => m.set(id, i))
-  return m
-})
-
-function ddLabelY(p: DirectDamagePoint): number {
-  const v = p.value ?? 1
-  const slot = ddLabelSlots.value.get(p.agentId) ?? 0
-  return v >= 1 ? ddY(v) - (9 + slot * 13) : ddY(v) + 16 + slot * 13
-}
+function ddJitter(agentId: string): number { return ddJitterOf(agentId) }
+function ddColor(v: number): string { return ddColorOf(v) }
+function ddBandOf(v: number): string { return ddBandOfPure(v) }
+function ddNeedLabel(v: number): boolean { return ddNeedLabelOf(v) }
+function ddShortName(name: string): string { return ddShortNameOf(name) }
 
 // ========== Chart 3：每期新角色 · 强队强度（横轴 = 版本，点 = 当期新角色强队） ==========
 const chart3Rows = computed<NewCharacterRow[]>(() => buildNewCharacterRows())
