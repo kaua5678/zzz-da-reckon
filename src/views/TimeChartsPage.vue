@@ -1285,6 +1285,20 @@ import {
   timelineLaneTotalH,
   timelineSvgWidth,
 } from '@/composables/timelineChart'
+import {
+  buildChart3Scatter,
+  buildScPts,
+  chart3YGridOf,
+  chart3YLabelOf,
+  chart3YMaxOf,
+  chart3YOf,
+  linePointsOf,
+  scYGridOf,
+  scYLabelOf,
+  scYRangeOf,
+  versionXOf,
+  versionXTicksOf,
+} from '@/composables/versionChartGeometry'
 import { buildNewCharacterRows, computeFilmSimulation, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
 import { computeSlotComparePoints, type SlotComparePoint, type SlotCompareSlot } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
@@ -1724,37 +1738,15 @@ async function runChart3() {
 }
 
 // ---- Chart 3 SVG ----
+// Chart 3 几何：见 composables/versionChartGeometry.ts（纯函数，可单测）
+const TB = { padT, plotH }
 const chart3SvgH = padT + plotH + 30
-const chart3YMax = computed(() => {
-  const maxR = Math.max(...(chart3VisiblePts.value.map(p => p.hpRatio) ?? [0]), 0)
-  const target = Math.max(100, maxR * 1.05)
-  const step = target <= 200 ? 50 : 100
-  return Math.ceil(target / step) * step
-})
-function yOf3(v: number): number {
-  return padT + plotH - (v / chart3YMax.value) * plotH
-}
-const chart3YGrid = computed(() => {
-  const step = chart3YMax.value <= 200 ? 50 : 100
-  const out: number[] = []
-  for (let v = 0; v <= chart3YMax.value; v += step) out.push(yOf3(v))
-  return out
-})
-function chart3YLabel(i: number): number {
-  const step = chart3YMax.value <= 200 ? 50 : 100
-  return i * step
-}
-function chart3X(i: number): number {
-  const total = VERSION_NODES.length
-  if (total <= 1) return padL + plotW.value / 2
-  return padL + (i / (total - 1)) * plotW.value
-}
-const chart3XTicks = computed(() => {
-  const step = Math.max(1, Math.ceil(VERSION_NODES.length / 16))
-  const out: { index: number; label: string }[] = []
-  for (let i = 0; i < VERSION_NODES.length; i += step) out.push({ index: i, label: VERSION_NODES[i].label })
-  return out
-})
+const chart3YMax = computed(() => chart3YMaxOf(chart3VisiblePts.value.map(p => p.hpRatio)))
+function yOf3(v: number): number { return chart3YOf(v, chart3YMax.value, TB) }
+const chart3YGrid = computed(() => chart3YGridOf(chart3YMax.value, TB))
+function chart3YLabel(i: number): number { return chart3YLabelOf(i, chart3YMax.value) }
+function chart3X(i: number): number { return versionXOf(i, VERSION_NODES.length, padL, plotW.value) }
+const chart3XTicks = computed(() => versionXTicksOf(VERSION_NODES, 16))
 /** 散点：同节点多角色/多队伍横向错开；颜色按队伍构成稳定映射（同队同色，跨角色可对比） */
 /** Chart 3 图例系列 = 队伍构成（与散点颜色同一把钥匙：同队同色、跨角色同一条图例） */
 const chart3Series = computed(() => {
@@ -1769,30 +1761,17 @@ const chart3Legend = useSeriesFilter(() => chart3Series.value)
 const chart3Counts = chart3Legend.counts
 /** 可见散点（Y 轴刻度、散点、悬浮命中三者同源 ⇒ 隐藏高值队后轴跟着降） */
 const chart3VisiblePts = computed(() => chart3Points.value.filter(p => chart3Legend.isVisible(p.team.join(','))))
-const chart3Pts = computed(() => {
-  const perNode = new Map<string, number>()
-  for (const p of chart3VisiblePts.value) perNode.set(p.nodeId, (perNode.get(p.nodeId) ?? 0) + 1)
-  const seen = new Map<string, number>()
-  return chart3VisiblePts.value.map(p => {
-    const idx = nodeIndexOf(p.nodeId)
-    const total = perNode.get(p.nodeId) ?? 1
-    const k = seen.get(p.nodeId) ?? 0
-    seen.set(p.nodeId, k + 1)
-    const offset = (k - (total - 1) / 2) * 7
-    return {
-      x: chart3X(idx) + offset,
-      y: yOf3(Math.min(p.hpRatio, chart3YMax.value)),
-      color: colorOf(p.team.join(',')),
-      charName: p.charName,
-      nodeLabel: p.nodeLabel,
-      teamNames: p.team.map(agentName),
-      teamNo: p.teamIndex + 1,
-      damage: p.damage,
-      hpRatio: p.hpRatio,
-      goldLabel: p.goldLabel,
-    }
-  })
-})
+const chart3Pts = computed(() => buildChart3Scatter({
+  points: chart3VisiblePts.value,
+  nodeIndexOf: (id) => nodeIndexOf(id),
+  yMax: chart3YMax.value,
+  box: TB,
+  padL,
+  plotW: plotW.value,
+  versionTotal: VERSION_NODES.length,
+  colorOf: (key) => colorOf(key),
+  nameOf: (id) => agentName(id),
+}))
 const chart3Hover = ref(-1)
 const chart3HoverInfo = computed(() => chart3Pts.value[chart3Hover.value] ?? null)
 const chart3CardX = ref(0)
@@ -1886,6 +1865,7 @@ async function runSlotCompare() {
 }
 
 // ---- Chart 7 SVG（双折线：A 蓝 / B 橙，横轴 = 主C实装节点；纵轴 = 伤害自动刻度） ----
+// Chart 7 几何：见 composables/versionChartGeometry.ts（与 Chart 3 共享版本轴）
 const scSvgH = padT + plotH + 30
 /** A/B 两线的显隐（图例可点；纵轴按**剩下的线**缩放 ⇒ 只看一队时那条线铺满全高更好读） */
 const scLegend = useSeriesFilter(() => [
@@ -1893,68 +1873,22 @@ const scLegend = useSeriesFilter(() => [
   { id: 'B', name: agentName(scAgentB.value) },
 ])
 /** 纵轴贴合可见线的伤害范围（±8% 边距），不看 Boss 血量/击杀线，只看相对强弱 */
-const scYRange = computed(() => {
-  const vals = scPoints.value.flatMap(p => [
-    ...(scLegend.isVisible('A') ? [p.damageA] : []),
-    ...(scLegend.isVisible('B') ? [p.damageB] : []),
-  ])
-  if (vals.length === 0) return { min: 0, max: 1 }
-  let min = Math.min(...vals)
-  let max = Math.max(...vals)
-  if (max - min < 1e-9) {
-    min -= 1
-    max += 1
-  }
-  const pad = (max - min) * 0.08
-  return { min: min - pad, max: max + pad }
-})
-/** 优美刻度步长（1/2/5×10^n，画 4~5 条网格线） */
-const scYStep = computed(() => {
-  const raw = (scYRange.value.max - scYRange.value.min) / 4
-  if (raw <= 0) return 1
-  const pow = Math.pow(10, Math.floor(Math.log10(raw)))
-  const m = raw / pow
-  const nice = m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10
-  return nice * pow
-})
-function scY(v: number): number {
-  const { min, max } = scYRange.value
-  return padT + plotH - ((v - min) / (max - min)) * plotH
-}
-const scYGrid = computed(() => {
-  const { max } = scYRange.value
-  const step = scYStep.value
-  const start = Math.ceil(scYRange.value.min / step) * step
-  const out: number[] = []
-  for (let v = start; v <= max + 1e-9; v += step) out.push(scY(v))
-  return out
-})
-function scYLabel(i: number): string {
-  const step = scYStep.value
-  const start = Math.ceil(scYRange.value.min / step) * step
-  return compact(start + i * step)
-}
-/** 同主C多个支援组合 → 同节点横向错开（与 Chart 3 同款） */
-const scPts = computed(() => {
-  const perNode = new Map<string, number>()
-  for (const p of scPoints.value) perNode.set(p.nodeId, (perNode.get(p.nodeId) ?? 0) + 1)
-  const seen = new Map<string, number>()
-  return scPoints.value.map(p => {
-    const idx = nodeIndexOf(p.nodeId)
-    const total = perNode.get(p.nodeId) ?? 1
-    const k = seen.get(p.nodeId) ?? 0
-    seen.set(p.nodeId, k + 1)
-    const offset = (k - (total - 1) / 2) * 14
-    return {
-      x: chart3X(idx) + offset,
-      yA: scY(p.damageA),
-      yB: scY(p.damageB),
-      ...p,
-    }
-  })
-})
-const scLineA = computed(() => scPts.value.map(p => `${p.x},${p.yA}`).join(' '))
-const scLineB = computed(() => scPts.value.map(p => `${p.x},${p.yB}`).join(' '))
+const scYRange = computed(() => scYRangeOf(scPoints.value.flatMap(p => [
+  ...(scLegend.isVisible('A') ? [p.damageA] : []),
+  ...(scLegend.isVisible('B') ? [p.damageB] : []),
+])))
+const scYGrid = computed(() => scYGridOf(scYRange.value, TB))
+function scYLabel(i: number): string { return scYLabelOf(i, scYRange.value, compact) }
+const scPts = computed(() => buildScPts(scPoints.value, {
+  nodeIndexOf: (id) => nodeIndexOf(id),
+  range: scYRange.value,
+  box: TB,
+  padL,
+  plotW: plotW.value,
+  versionTotal: VERSION_NODES.length,
+}))
+const scLineA = computed(() => linePointsOf(scPts.value, p => ({ x: p.x, y: p.yA })))
+const scLineB = computed(() => linePointsOf(scPts.value, p => ({ x: p.x, y: p.yB })))
 const scHover = ref(-1)
 const scHoverInfo = computed(() => {
   const p = scPoints.value[scHover.value]
