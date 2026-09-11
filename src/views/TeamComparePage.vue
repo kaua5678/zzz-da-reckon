@@ -13,7 +13,7 @@
         <div
           v-if="chartMode === 'curve'"
           class="ctl-field"
-          title="曲线只套预设金步（按 goldSteps 顺序 + 常驻 standardSteps），越界自动钳制到该队档位范围；不含散点页的「最优加金 / 自动下位」"
+          title="【可选口径覆盖】缺省 = 预设基础档（同队同配装）。选具体金数只是换个口径看同一支队的曲线，越界按该队档位钳制；不含散点页的「最优加金 / 自动下位」"
         >
           <span class="ctl-label">曲线金档</span>
           <n-select v-model:value="curveGold" :options="curveGoldOptions" size="small" style="width: 140px" />
@@ -21,7 +21,7 @@
         <div
           v-if="chartMode === 'curve'"
           class="ctl-field"
-          title="曲线模式的当期 buff：只支持「不使用 / 具体某张牌」，**不做自动推荐**——自动推荐要对每张牌各算一次全量伤害，曲线每队本来就要跑 ~10 次求值，叠上去太慢。散点页的「自动推荐」不受影响"
+          title="【可选口径覆盖】缺省 = 不带 buff（同队同配装）。只支持「不使用 / 具体某张牌」，不做自动推荐——自动推荐要对每张牌各算一次全量伤害，曲线每队本来就要跑 ~10 次求值"
         >
           <span class="ctl-label">曲线 Buff</span>
           <n-select v-model:value="curveBuffChoice" :options="curveBuffOptions" size="small" style="width: 200px" />
@@ -277,9 +277,9 @@
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="chart-card">
       <template #header>难度曲线（{{ curveData.series.length }} 队 · 每队自己的 x）</template>
       <div class="compare-note curve-note">
-        口径：<b>{{ curveGold < 0 ? '预设基础档（0命1精 + 预设权重/交互/音擎/驱动盘）' : `${curveGold} 金（走预设金步 + 常驻步，越界按各队档位钳制）` }}</b>
-        + 当前期数 Boss + 静态权重（不跑自动分配）+ 当期 Buff（手动选，缺省不使用）；<b>不含「最优加金 / 自动下位」</b>
-        （曲线要的是跨队同口径的形状，故起点 ≠ 散点页的某个点）。
+        <b>口径 = 同一支队伍 · 同一个 Boss · 同一套配装</b>（{{ curveGold < 0 ? '预设基础档：0命1精 + 预设权重/交互/音擎/驱动盘' : `${curveGold} 金（口径覆盖）` }}
+        + 当前期数 Boss{{ curveBuffChoice === 'none' ? '' : ` + Buff「${curveBuffChoice}」` }}），
+        <b>只让「操作难度」从全关爬到全开</b>——配置不参与曲线（要对比配置请用散点图型）。
         x = 该队<b>自动算的</b>操作难度<b>绝对值</b>（Σ交互次数×权重 + 合轴溢出秒×权重；交互次数取这一档<b>实打</b>的次数，
         不是预设声明——联合策略调低弹刀、般岳补交互都会算进去）+ 队友合轴解放出来的前台秒数（合轴率把队友前台压出去多少，越多=对齐越难、总伤越高）；
         三项权重都在「难度权重」弹层调），<b>与散点页横轴同一把尺</b>。

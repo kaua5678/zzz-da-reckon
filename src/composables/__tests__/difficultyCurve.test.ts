@@ -323,6 +323,45 @@ describe('曲线 Buff 口径（手动选牌，不做自动推荐）', () => {
   }, 300_000)
 })
 
+describe('曲线模型不变式：同队伍 · 同 Boss · 同配装，只扫「操作难度」（用户 2026-09-10 口径）', () => {
+  it('阶梯全程：队伍/影画/音擎/驱动盘/敌方一字不改；变的只有操作侧（权重/交互/保底/投影/合轴率）', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    const ctx = { config, calc }
+    clearDifficultyLevers(ctx)
+    applyTeamToStore(config, preset)
+
+    // 配置签名：队伍身份 + 配装 + 敌方（**配置侧**，整个阶梯必须恒定）
+    const cfgSig = () => JSON.stringify({
+      team: config.team.map(t => [t.agentId, t.cinemaLevel, t.wEngineId, t.wEngineModLevel,
+        t.driveDisc.fourPieceSetId, t.driveDisc.twoPieceSetId]),
+      enemy: [config.enemy.hp, config.enemy.stunValue, config.enemy.battleTime],
+    })
+    // 操作侧签名：平A权重 + 交互次数 + 保底 + 投影 + 合轴率（这些**允许**随阶梯变）
+    const opSig = () => JSON.stringify({
+      w: config.team.map(t => t.basicAttackTimeWeight),
+      p: config.team.map(t => t.parryCount),
+      g: ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate'].map(k => config.getMechanicSetting(k, 0)),
+      proj: config.getMechanicSetting('time.stunPlanProjection', 0),
+      align: config.comboAlignOverrides,
+    })
+
+    const cfgSigs: string[] = []
+    const opSigs: string[] = []
+    const r = climbDifficultyLadder(ctx, preset.team as [string, string, string], {
+      costOf: c => measureOperationalDifficulty(c, preset),
+      capture: () => { cfgSigs.push(cfgSig()); opSigs.push(opSig()); return { counts: {}, dmgBySource: {} } },
+    })
+
+    expect(r.opened.length).toBeGreaterThan(0)              // 确实爬了（不是空跑）
+    expect(new Set(cfgSigs).size, '同队同 Boss 同配装：配置签名必须全程唯一').toBe(1)
+    expect(cfgSigs.length).toBe(r.points.length)             // 每一档都采过
+    expect(new Set(opSigs).size, '操作侧必须真的在变（否则这条不变式是空话）').toBeGreaterThan(1)
+  }, 300_000)
+})
+
 describe('图上标注分道（防重叠）', () => {
   it('同 x / 相近的标注分到不同道；离得远的可以共用一道；道号有界', () => {
     const items = [
