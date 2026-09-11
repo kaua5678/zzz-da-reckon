@@ -18,6 +18,7 @@
 //   4. font-size         —— 字号必须落在尺度档位上，离群值按文件棘轮，只减不增
 //   5. contrast          —— 关键前景/背景对对比度达标（明亮模式白底白字的机器兜底）
 //   6. alias             —— --wa-* 直接引用数只减不增（推语义别名层），var() 总数只增不减
+//      （口径 = src 下全部 .vue **加** src/composables 下的 .ts：把取色/几何抽到 .ts 不再被误报）
 //
 // 用法：
 //   node scripts/check-tokens.mjs             # 检查（npm run check / verify 已挂载）
@@ -335,6 +336,39 @@ function walkVue(root) {
 }
 
 /**
+ * 扫描 `src/composables` 下的 .ts（递归，排除 `__tests__` 与 `*.test.ts`）里的 var() 引用。
+ *
+ * 为什么需要（2026-09-12 评审 #14 时连续踩中三次）：`var()` 总数与 `--wa-*` 直引两个棘轮
+ * **原先只扫 .vue**，于是「把图表的取色/几何逻辑抽到 composables/*.ts」每次都被判成
+ * "有变量被改回字面量"（实测连续 571→569→566→561 四次下调基线）。更糟的是反向也漏：
+ * **在 .ts 里把 `var(--x)` 改成字面色值，本判据完全看不见** —— 而 `src/composables/` 正是
+ * 图表取色的主要落点（`timelineChart` / `versionChartGeometry` / `filmSimChart` /
+ * `pullValueChart` / `pullPlannerChart` 等）。
+ * 故把该目录的 .ts 一并纳入 var() 统计与「令牌必须已定义」检查。
+ * 注：只贡献 var 引用，**不参与**按文件的硬编码色值/字号基线（那些基线的口径仍是 .vue）。
+ */
+export function scanComposableFiles(root) {
+  const out = []
+  const base = join(root, 'src', 'composables')
+  if (!existsSync(base)) return out
+  const rec = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name)
+      if (statSync(p).isDirectory()) {
+        if (name === '__tests__') continue
+        rec(p)
+      } else if (name.endsWith('.ts') && !name.endsWith('.test.ts')) {
+        const rel = relative(root, p).split(sep).join('/')
+        const src = readFileSync(p, 'utf8')
+        out.push({ path: rel, varRefs: findVarRefs(stripComments(src)) })
+      }
+    }
+  }
+  rec(base)
+  return out.sort((a, b) => a.path.localeCompare(b.path))
+}
+
+/**
  * 逐文件扫描 .vue：硬编码色值数、离群字号数、var() 引用。
  * 返回 [{ path, hardcoded, fontOutliers: [{value}], varRefs: [names] }]
  */
@@ -433,24 +467,21 @@ export const FONT_SIZE_BASELINE = {
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--text-2/--text-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 443
+export const WA_REF_BASELINE = 446
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 561
-/* 2026-09-12 三度下调 566→561（同因，已第三次踩）：评审 #14 第八刀把 Chart 6 的泳道图例色
-   （`--app-primary`×2 / `--c-info`×3）移入 `composables/pullPlannerChart.ts`。
-   ⚠ **判据口径缺陷（待修，已有数据）**：本判据只扫 .vue，故"把 var() 随逻辑搬进 .ts"每次都被
-   误报为"改回字面量"。根治方案 = 把 src/composables 下的 .ts 一并纳入统计（实测增量：var +14、
-   `--wa-*` +7 ⇒ 新基线约 575 / 450），一次性重冻结即可永久消除这类假回归。
-   2026-09-12 再下调 569→566（同因）：评审 #14 第七刀把 Chart 5 的分级/气泡/柱状取色移入
-   `composables/pullValueChart.ts`（`--wa-140`/`--wa-150`/`--fg-3` 等 3 处 var() 随之外迁），
-   WA_REF_BASELINE 445→443 同理。**判据盲区同上：.ts 里的 var() 不计入。**
-   2026-09-12 下调 571→569：**不是回退，是搬家**——评审 #14 把时间图表页「限定S×直伤系数」图的
-   几何/分档逻辑抽到 `composables/directDamageChart.ts`，其中的 `var(--wa-550)`（散点填充）与
-   `var(--fg-3)`（图例持平档）随之从 .vue 移到 .ts。本判据**只扫 .vue**（见文件头判据 6），
-   故计数合法下降；两处变量仍在用，只是换了文件。
-   同期 WA_REF_BASELINE 446→445 是同一原因（--wa-* 直引少 1）。
-   ⚠ 判据盲区（记录在案）：.ts 模块里的 var() 不计入本判据——抽逻辑到 .ts 会让总量下降而被误报回退。 */
+export const VAR_TOTAL_BASELINE = 571
+/* 2026-09-12 **口径变更（一次性重冻结）**：var() 总数与 --wa-* 直引的统计面从「src 下全部 .vue」
+   扩为「.vue + src/composables 下的 .ts」（见 scanComposableFiles）。
+
+   为什么改：图表取色/几何此前在 .vue 里，评审 #14 把它们抽进 composables/*.ts 后，本判据
+   连续四次把"搬家"误报为"改回字面量"（571→569→566→561 四次手动下调基线）。反向也漏：
+   在 .ts 里把 var(--x) 换成字面色值，本判据完全看不见 —— 而 src/composables 正是取色的主要落点。
+   扩面后实测：var 561→571、--wa-* 443→446（差值即 .ts 里原本不可见的引用），
+   且 `tokens-defined` 在同一次扫描里对 .ts 一并生效（实测无未定义令牌）。
+
+   效果：**代码在 .vue 与 .ts 之间搬家不再改变计数** ⇒ 该棘轮只对真正的"变量↔字面量"变化敏感。
+   历史（.vue-only 口径下的四次下调）：571→569→566→561，均因逻辑外迁，非回退。 */
 
 
 // ---------------------------------------------------------------- 判据
@@ -555,7 +586,9 @@ export function runAllChecks(root = ROOT) {
   const undefinedRefs = new Set()
   let varTotal = 0
   let waRefs = 0
-  for (const f of scanned) {
+  // .vue + composables 的 .ts 共同构成「UI 层 var() 口径」（见 scanComposableFiles 注释）
+  const scannedComposables = scanComposableFiles(root)
+  for (const f of [...scanned, ...scannedComposables]) {
     for (const name of f.varRefs) {
       varTotal++
       if (name.startsWith('--wa-')) waRefs++

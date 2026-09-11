@@ -55,6 +55,8 @@ export interface ScannedVue {
   varRefs: string[]
 }
 export declare function scanVueFiles(root: string, fontScale: number[]): ScannedVue[]
+// composables 的 .ts 也纳入 var() 统计（评审 #14 口径根治，2026-09-12）
+export declare function scanComposableFiles(root: string): { path: string; varRefs: string[] }[]
 
 // 基线
 export declare const HARDCODED_WHITELIST: string[]

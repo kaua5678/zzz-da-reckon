@@ -32,6 +32,7 @@ import {
   resolveTokenRaw,
   runAllChecks,
   sameValue,
+  scanComposableFiles,
   scanVueFiles,
   stripComments,
 } from '../../../scripts/check-tokens.mjs'
@@ -238,6 +239,32 @@ describe('scanVueFiles（口径：样式声明区 + 模板，排除脚本）', (
     const files = scanVueFiles(process.cwd(), FONT_SCALE)
     expect(HARDCODED_WHITELIST.length).toBeGreaterThan(0)
     expect(files.some(f => f.path === 'src/App.vue')).toBe(true)
+  })
+})
+
+describe('scanComposableFiles（口径：把 composables 的 .ts 纳入 var() 统计）', () => {
+  // 为什么要有这条口径：评审 #14 把图表取色抽进 composables/*.ts 后，.vue-only 的统计面
+  // 连续四次把"搬家"误报为"改回字面量"；反向更糟——在 .ts 里把 var() 换成字面量完全看不见。
+  it('扫到 composables 下的 .ts，且**排除** __tests__ 与 *.test.ts', () => {
+    const files = scanComposableFiles(process.cwd())
+    expect(files.length).toBeGreaterThan(10)
+    for (const f of files) {
+      expect(f.path.startsWith('src/composables/')).toBe(true)
+      expect(f.path).not.toContain('__tests__')
+      expect(f.path.endsWith('.test.ts')).toBe(false)
+    }
+  })
+
+  it('抽出的图表模块里的 var() 确实被计入（以 pullValueChart 为例）', () => {
+    const files = scanComposableFiles(process.cwd())
+    const pv = files.find(f => f.path === 'src/composables/pullValueChart.ts')
+    expect(pv).toBeDefined()
+    expect(pv!.varRefs).toContain('--wa-150')
+    expect(pv!.varRefs).toContain('--fg-3')
+  })
+
+  it('目录不存在时返回空数组（不抛错）', () => {
+    expect(scanComposableFiles('/nonexistent-root')).toEqual([])
   })
 })
 
