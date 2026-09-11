@@ -6,7 +6,7 @@
  * 以及**元素尺寸为 0 时不产生 NaN**（隐藏图的防御路径）。
  */
 import { describe, expect, it } from 'vitest'
-import { readSvgPointer } from '@/composables/svgPointer'
+import { hoverCardPosition, readSvgPointer } from '@/composables/svgPointer'
 
 /** 合成事件：只提供被测代码读取的字段 */
 const evt = (clientX: number, clientY: number, rect: { left: number; top: number; width: number; height: number }) =>
@@ -69,5 +69,34 @@ describe('readSvgPointer（viewBox 用户坐标换算）', () => {
   it('矩形原样返回（悬浮卡定位与边界钳制仍需它）', () => {
     const rect = { left: 1, top: 2, width: 3, height: 4 }
     expect(readSvgPointer(evt(0, 0, rect), { w: 10, h: 10 }).rect).toEqual(rect)
+  })
+})
+
+describe('hoverCardPosition（悬浮卡落点：贴右边缘时左移）', () => {
+  it('常规：右下偏移 12/8', () => {
+    expect(hoverCardPosition({ relX: 100, relY: 50, containerWidth: 1000, cardWidth: 260 }))
+      .toEqual({ x: 112, y: 58 })
+  })
+
+  it('靠近右边缘：钳到「容器宽 − 卡宽」（不再溢出容器）', () => {
+    // relX=900 → 913 会超出 1000-260=740 ⇒ 取 740
+    expect(hoverCardPosition({ relX: 900, relY: 10, containerWidth: 1000, cardWidth: 260 }).x).toBe(740)
+    // 恰好等于边界时保持原值
+    expect(hoverCardPosition({ relX: 728, relY: 10, containerWidth: 1000, cardWidth: 260 }).x).toBe(740)
+  })
+
+  it('★ 口径：卡宽 240（Chart 1/3）与 260（Chart 7/4）不同 ⇒ 换位时机不同（逐字保留）', () => {
+    const at = (cardWidth: number) => hoverCardPosition({ relX: 700, relY: 0, containerWidth: 1000, cardWidth }).x
+    expect(at(240)).toBe(712)   // 1000-240=760 > 712 ⇒ 用 offset
+    expect(at(260)).toBe(712)   // 1000-260=740 > 712 ⇒ 同样用 offset
+    // 更靠右时才分化
+    expect(at(240)).toBe(712)
+    expect(hoverCardPosition({ relX: 760, relY: 0, containerWidth: 1000, cardWidth: 240 }).x).toBe(760)
+    expect(hoverCardPosition({ relX: 760, relY: 0, containerWidth: 1000, cardWidth: 260 }).x).toBe(740)
+  })
+
+  it('offset 可覆盖（默认 12/8）', () => {
+    expect(hoverCardPosition({ relX: 0, relY: 0, containerWidth: 500, cardWidth: 100, offsetX: 4, offsetY: 2 }))
+      .toEqual({ x: 4, y: 2 })
   })
 })

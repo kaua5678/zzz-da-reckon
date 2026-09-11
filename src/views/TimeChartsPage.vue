@@ -1289,7 +1289,7 @@ import {
 } from '@/composables/versionChartGeometry'
 import { buildFilmSimChart } from '@/composables/filmSimChart'
 import { computeStrengthBands, strengthBandTitle, type StrengthBand } from '@/composables/strengthBands'
-import { readSvgPointer } from '@/composables/svgPointer'
+import { hoverCardPosition, readSvgPointer } from '@/composables/svgPointer'
 import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
 import ChartHoverCard, { type HoverCardRow } from '@/components/ChartHoverCard.vue'
 import {
@@ -1627,13 +1627,14 @@ function bandTitle(b: StrengthBand): string {
 const hoverCardX = ref(0)
 const hoverCardY = ref(0)
 function onSvgMove(e: MouseEvent) {
-  const { relX, svgX, rect } = readSvgPointer(e, { w: svgW.value, h: svgH.value })
+  const { relX, relY, svgX, rect } = readSvgPointer(e, { w: svgW.value, h: svgH.value })
   if (nodeCount.value <= 0) return
   const { index: best, distance: bestDist } = nearestIndexByX(chartPts.value, svgX)
   if (best >= 0 && bestDist < xHitTolerance(plotW.value, nodeCount.value, 1)) {
     hoverNode.value = best
-    hoverCardX.value = Math.min(rect.width - 240, relX + 12)
-    hoverCardY.value = e.clientY - rect.top + 8
+    const card = hoverCardPosition({ relX, relY, containerWidth: rect.width, cardWidth: 240 })
+    hoverCardX.value = card.x
+    hoverCardY.value = card.y
   } else {
     hoverNode.value = -1
   }
@@ -1763,8 +1764,9 @@ function onChart3Move(e: MouseEvent) {
   const { index: best, distance: bestDist } = nearestIndexByX(chart3Pts.value, svgX)
   if (best >= 0 && bestDist < xHitTolerance(plotW.value, VERSION_NODES.length, 2)) {
     chart3Hover.value = best
-    chart3CardX.value = Math.min(rect.width - 240, relX + 12)
-    chart3CardY.value = relY + 8
+    const card = hoverCardPosition({ relX, relY, containerWidth: rect.width, cardWidth: 240 })
+    chart3CardX.value = card.x
+    chart3CardY.value = card.y
   } else {
     chart3Hover.value = -1
   }
@@ -1909,8 +1911,9 @@ function onScMove(e: MouseEvent) {
   const { index: best, distance: bestDist } = nearestIndexByX(scPts.value, svgX)
   if (best >= 0 && bestDist < xHitTolerance(plotW.value, VERSION_NODES.length, 2)) {
     scHover.value = best
-    scCardX.value = Math.min(rect.width - 260, relX + 12)
-    scCardY.value = relY + 8
+    const card = hoverCardPosition({ relX, relY, containerWidth: rect.width, cardWidth: 260 })
+    scCardX.value = card.x
+    scCardY.value = card.y
   } else {
     scHover.value = -1
   }
@@ -2046,8 +2049,9 @@ function onSimMove(e: MouseEvent) {
   const { index: best, distance: bestDist } = nearestIndexByX(simPts.value, svgX)
   if (best >= 0 && bestDist < xHitTolerance(plotW.value, simPoints.value.length, 2)) {
     simHover.value = best
-    simCardX.value = Math.min(rect.width - 260, relX + 12)
-    simCardY.value = relY + 8
+    const card = hoverCardPosition({ relX, relY, containerWidth: rect.width, cardWidth: 260 })
+    simCardX.value = card.x
+    simCardY.value = card.y
   } else {
     simHover.value = -1
   }

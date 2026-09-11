@@ -47,3 +47,27 @@ export function readSvgPointer(
     rect,
   }
 }
+
+/**
+ * 悬浮卡落点（2026-09-12 评审 #14 第十一刀）。
+ *
+ * 四张图的悬浮处理各写了一遍同一公式（`x = min(容器宽 − 卡宽, relX + 12)`、`y = relY + 8`），
+ * 且**卡宽取值不一致**（Chart 1/3 用 240、Chart 7/4 用 260）——本条注释把这个差异显式化，
+ * 抽取时逐字保留，不在重构里"顺手统一"（那会改变卡片贴右边缘时的换位时机）。
+ * `offsetX`/`offsetY` 允许覆盖（当前四张图都是 12/8，参数化只为将来单图微调不必再复制公式）。
+ */
+export function hoverCardPosition(o: {
+  relX: number
+  relY: number
+  /** 图表容器实测宽度（rect.width） */
+  containerWidth: number
+  /** 卡片预估宽度（用于贴右边缘时左移；各图取值不同） */
+  cardWidth: number
+  offsetX?: number
+  offsetY?: number
+}): { x: number; y: number } {
+  return {
+    x: Math.min(o.containerWidth - o.cardWidth, o.relX + (o.offsetX ?? 12)),
+    y: o.relY + (o.offsetY ?? 8),
+  }
+}
