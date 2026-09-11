@@ -622,14 +622,32 @@ export function calcTimeAllocation(
   }
 }
 
+/** 前台占用拆解（见 `frontlineOccupationBreakdown`） */
+export interface FrontlineOccupationBreakdown {
+  /** Σ物化前台行（含轴内重叠，未扣任何抵扣） */
+  grossFrontline: number
+  /** 轴内合轴节省（轴模式 = 栈引擎实际区间；非轴 = 0） */
+  axisOverlap: number
+  /** 实际生效的**合轴抵扣秒**（招式合轴率口径；max 口径防与轴内节省双扣） */
+  creditApplied: number
+  /** 净占用（超时判定口径） */
+  net: number
+  /**
+   * **合轴解放出来的前台时间（秒）** = grossFrontline − net。
+   * 用户 2026-09-10 口径：「这次新合轴就是把队友的前台时间进行合轴率的优化，再次解放出来部分
+   * 可使用的前台时间…合轴节约出来的时间越多，难度越高，总伤越多」⇒ 难度口径拿它当自变量。
+   */
+  saved: number
+}
+
 /**
- * 队伍前台净占用（秒，单一事实源）：Σ物化前台行 − 合轴抵扣。
+ * 队伍前台占用的**唯一拆解函数**：Σ物化前台行 / 轴内合轴节省 / 合轴抵扣 / 净占用 / 解放出来的时间。
  * 抵扣 = 每槽 max(招式合轴抵扣 comboAlignCredit, 轴内合轴节省 axisOverlapByAction)——
  * 同一物理并行（轴模式=栈引擎实际区间、非轴=合轴率均值）的两种模型，不叠加。
- * 与 iterate 平A池的 relief 同口径：超时判定（轴退化/降配/队伍对比）必须用本函数，
+ * 与 iterate 平A池的 relief 同口径：超时判定（轴退化/降配、队伍对比）必须用 `net`，
  * 否则合轴抵扣放宽后的平A池会被误判超时（2026-09-04 合轴口径）。
  */
-export function netFrontlineOccupation(rr: TeamResourceResult): number {
+export function frontlineOccupationBreakdown(rr: TeamResourceResult): FrontlineOccupationBreakdown {
   const overlap = rr.axisOverlapByAction ?? {}
   const overlapBySlot: Record<number, number> = {}
   for (const [key, sec] of Object.entries(overlap)) {
@@ -639,11 +657,17 @@ export function netFrontlineOccupation(rr: TeamResourceResult): number {
   let total = 0
   let totalCredit = 0
   let totalRowNet = 0
+  let gross = 0
+  let axisOverlap = 0
   for (const ch of rr.characters) {
     let rowNet = 0
     for (const exec of ch.executions) {
       if (!isFrontlineExecution(exec)) continue
-      rowNet += Math.max(0, (exec.totalTime ?? 0) - (overlap[`${ch.slot}:${exec.moveId}`] ?? 0))
+      const t = exec.totalTime ?? 0
+      gross += t
+      const cut = overlap[`${ch.slot}:${exec.moveId}`] ?? 0
+      axisOverlap += cut
+      rowNet += Math.max(0, t - cut)
     }
     // 合轴抵扣只再扣超出轴内节省的增量（max 口径，防双重扣减）
     const extraCredit = Math.max(0, (ch.timeAllocation.comboAlignCredit ?? 0) - (overlapBySlot[ch.slot] ?? 0))
@@ -652,10 +676,20 @@ export function netFrontlineOccupation(rr: TeamResourceResult): number {
     totalRowNet += rowNet
   }
   // 兜底：只有团队级 axisOverlapSeconds、无按块分摊（老注入路径/测试）→ 团队级 max 口径
-  if (Object.keys(overlap).length === 0 && (rr.axisOverlapSeconds ?? 0) > 0) {
-    return Math.max(0, totalRowNet - Math.max(totalCredit, rr.axisOverlapSeconds ?? 0))
+  const teamLevel = Object.keys(overlap).length === 0 && (rr.axisOverlapSeconds ?? 0) > 0
+  const net = teamLevel ? Math.max(0, totalRowNet - Math.max(totalCredit, rr.axisOverlapSeconds ?? 0)) : total
+  return {
+    grossFrontline: gross,
+    axisOverlap: teamLevel ? Math.max(0, gross - totalRowNet) : axisOverlap,
+    creditApplied: teamLevel ? Math.max(0, totalRowNet - net) : Math.max(0, totalRowNet - total),
+    net,
+    saved: Math.max(0, gross - net),
   }
-  return total
+}
+
+/** 队伍前台净占用（秒，单一事实源）：见 `frontlineOccupationBreakdown`，本函数只取 `net`（逐位等价）。 */
+export function netFrontlineOccupation(rr: TeamResourceResult): number {
+  return frontlineOccupationBreakdown(rr).net
 }
 
 // @fact engine:时间线截断 口径: 资源允许的动作量超过可用前台时按时间线截断（实战 180s 到点结算，不管这套连段打没打完），次数必须整数（floor+小数降序加回装包）、平A填充行先占位不参与截断、砍到0次的行整行消失；overflowSeconds 语义=被截断的秒数 | 据 用户@2026-09-05·复核@2026-09-08 | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/helpers.ts#truncateExecutionsToFrontline | 信 确认

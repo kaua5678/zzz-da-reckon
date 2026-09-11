@@ -87,6 +87,10 @@
                 <span class="diff-weight-label">合轴溢出（难度点/秒）</span>
                 <n-input-number v-model:value="diffWeights.overflow" size="tiny" :min="0" :max="20" :step="0.5" style="width: 84px" />
               </div>
+              <div class="diff-weight-row" title="队友合轴解放出来的前台时间（秒）也算难度：对齐得越精确越难打，但换来更多平A/资源 ⇒ 总伤更高">
+                <span class="diff-weight-label">队友合轴（难度点/秒）</span>
+                <n-input-number v-model:value="diffWeights.align" size="tiny" :min="0" :max="20" :step="0.5" style="width: 84px" />
+              </div>
               <div v-for="row in diffWeightRows" :key="row.type" class="diff-weight-row">
                 <span class="diff-weight-label">{{ row.label }}</span>
                 <n-input-number v-model:value="diffWeights.interaction[row.type]" size="tiny" :min="0" :max="20" :step="0.1" style="width: 84px" />
@@ -160,7 +164,7 @@
         已选 {{ selectedPresets.length }} 队 · 金档 {{ curveGold < 0 ? '预设基础档' : `${curveGold} 金` }}<template
           v-if="curveClampedCount > 0"
         >（{{ curveClampedCount }} 队越界已按各自档位钳制）</template>
-        · x = 操作难度（Σ交互次数×权重 + 合轴溢出秒×权重，<b>自动算</b>；权重在「难度权重」弹层可调）
+        · x = 操作难度（Σ交互次数×权重 + 合轴溢出秒×权重 + <b>队友合轴节省秒</b>×权重，<b>自动算</b>；三项权重在「难度权重」弹层可调）
         · 每队要跑 ~10 次全量伤害（约 3~4 秒/队 ⇒ 预计 ≈{{ fmt(selectedPresets.length * 3.4 / 60, 1) }} 分钟）——
         曲线模式建议只选几支队做「难易强度」对比，跑起来可点「中止」保留已算部分。
       </div>
@@ -268,7 +272,8 @@
         + 当前期数 Boss + 静态权重（不跑自动分配）；<b>不含 buff、不含「最优加金 / 自动下位」</b>
         （曲线要的是跨队同口径的形状，故起点 ≠ 散点页的某个点）。
         x = 该队<b>自动算的</b>操作难度<b>绝对值</b>（Σ交互次数×权重 + 合轴溢出秒×权重；交互次数取这一档<b>实打</b>的次数，
-        不是预设声明——联合策略调低弹刀、般岳补交互都会算进去；权重在「难度权重」弹层调），<b>与散点页横轴同一把尺</b>。
+        不是预设声明——联合策略调低弹刀、般岳补交互都会算进去）+ 队友合轴解放出来的前台秒数（合轴率把队友前台压出去多少，越多=对齐越难、总伤越高）；
+        三项权重都在「难度权重」弹层调），<b>与散点页横轴同一把尺</b>。
         y = 伤害/血量%。<b>各队起点/走向不齐是特性</b>：比形状（起点 / 斜率 / 天花板 / 提升倍数）；
         <b>x 会往左走</b>——有的杠杆减少交互次数（难度降、伤害升 = 白拿的优化，贪心会优先做）。
         每档只录取有实际增益的目标，负收益目标被丢弃并在下表如实列出。每队约 3~4 秒。
@@ -602,18 +607,20 @@ watch(autoEnginePool, v => {
 
 // ========== 难度权重（主观量，用户自填；INTERACTION_WEIGHTS 与 1秒=1点只是默认值） ==========
 const DIFF_WEIGHTS_KEY = 'zzz-compare-difficulty-weights'
-interface DiffWeightsState { overflow: number; interaction: Record<string, number> }
+interface DiffWeightsState { overflow: number; align: number; interaction: Record<string, number> }
 const DEFAULT_DIFF_WEIGHTS: DiffWeightsState = {
   overflow: 1,
+  align: 1,   // 队友合轴解放出来的前台时间：默认 1 秒 = 1 难度点（与溢出同档）
   interaction: { ...INTERACTION_WEIGHTS },
 }
 function loadDiffWeights(): DiffWeightsState {
-  const base: DiffWeightsState = { overflow: 1, interaction: { ...INTERACTION_WEIGHTS } }
+  const base: DiffWeightsState = { overflow: 1, align: 1, interaction: { ...INTERACTION_WEIGHTS } }
   try {
     const raw = localStorage.getItem(DIFF_WEIGHTS_KEY)
     if (raw) {
       const obj = JSON.parse(raw)
       if (typeof obj?.overflow === 'number' && Number.isFinite(obj.overflow) && obj.overflow >= 0) base.overflow = obj.overflow
+      if (typeof obj?.align === 'number' && Number.isFinite(obj.align) && obj.align >= 0) base.align = obj.align
       if (obj?.interaction && typeof obj.interaction === 'object') {
         for (const [k, v] of Object.entries(obj.interaction)) {
           if (typeof v === 'number' && Number.isFinite(v) && v >= 0) base.interaction[k] = v
@@ -630,7 +637,7 @@ watch(diffWeights, v => {
 const diffWeightRows = computed(() =>
   Object.keys(INTERACTION_WEIGHTS).map(t => ({ type: t, label: INTERACTION_LABELS[t] ?? t })))
 function resetDiffWeights() {
-  diffWeights.value = { overflow: DEFAULT_DIFF_WEIGHTS.overflow, interaction: { ...INTERACTION_WEIGHTS } }
+  diffWeights.value = { overflow: DEFAULT_DIFF_WEIGHTS.overflow, align: DEFAULT_DIFF_WEIGHTS.align, interaction: { ...INTERACTION_WEIGHTS } }
 }
 const enginePoolOptions = computed(() =>
   (catalogStore.displayWEngines ?? [])
@@ -696,7 +703,7 @@ async function runCompare() {
       autoEnginePool: autoEnginePool.value,
       buffs: buffChoice.value === 'none' ? [] : buffs,
       manualBuffTitle: buffChoice.value === '' || buffChoice.value === 'none' ? undefined : buffChoice.value,
-      difficultyWeights: { overflow: diffWeights.value.overflow, interaction: diffWeights.value.interaction },
+      difficultyWeights: { overflow: diffWeights.value.overflow, align: diffWeights.value.align, interaction: diffWeights.value.interaction },
     }))
   }
   points.value = all
@@ -728,7 +735,7 @@ async function runCurves() {
       boss,
       phase,
       goldLevel: curveGold.value >= 0 ? curveGold.value : undefined,
-      difficultyWeights: { overflow: diffWeights.value.overflow, interaction: diffWeights.value.interaction },
+      difficultyWeights: { overflow: diffWeights.value.overflow, align: diffWeights.value.align, interaction: diffWeights.value.interaction },
     }))
   }
   curveRows.value = all

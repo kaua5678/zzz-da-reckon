@@ -35,7 +35,7 @@ import {
 import type { useResourceCalc } from '@/composables/useResourceCalc'
 import ENGINE_POOLS_SRC from '@/data/enginePools.json'
 const ENGINE_POOLS = ENGINE_POOLS_SRC as Record<string, string[]>
-import { netFrontlineOccupation } from '@/core/resource/helpers'
+import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/helpers'
 
 type Calc = ReturnType<typeof useResourceCalc>
 
@@ -118,6 +118,12 @@ export interface TeamCompareOptions {
 export interface DifficultyWeights {
   interaction?: Record<string, number>
   overflow?: number
+  /**
+   * **合轴解放出来的前台时间**的难度权重（难度点/秒，缺省 1 = 与溢出同档）。
+   * 用户 2026-09-10 口径：「合轴节约出来的时间越多，难度越高，总伤越多」——
+   * 秒数来自 `core/resource/helpers#frontlineOccupationBreakdown().saved`（单一事实源）。
+   */
+  align?: number
 }
 
 /** 效果是否对当前队伍生效（特性限定 / 特性人数分档）。导出供测试。 */
@@ -148,7 +154,7 @@ const SPECIALTY_ZH_EN: Record<string, string> = {
 function specialtyEn(zh: string): string {
   return SPECIALTY_ZH_EN[zh] ?? zh
 }
-// @fact engine:操作难度/权重可调 口径: 难度权重是主观量——INTERACTION_WEIGHTS 与溢出 1秒=1点都只是默认值，用户在对比页「难度权重」弹层自填覆盖（localStorage 持久化）；优先级 条目weight > 用户覆盖 > 默认表 | 据 用户@2026-09-04 | 验 src/composables/__tests__/teamCompare.test.ts::难度权重用户覆盖 | 锚 src/composables/teamCompare.ts#computeDifficulty | 信 确认
+// @fact engine:操作难度/权重可调 口径: 难度 = Σ(交互次数×权重) + 合轴溢出秒×溢出权重 + **队友合轴节省秒×合轴权重**（三项都只是默认值：INTERACTION_WEIGHTS、溢出/合轴各 1 秒=1点），用户在对比页「难度权重」弹层自填覆盖（localStorage 持久化）；优先级 条目weight > 用户覆盖 > 默认表 | 据 用户@2026-09-04 | 验 src/composables/__tests__/teamCompare.test.ts::难度权重用户覆盖 | 锚 src/composables/teamCompare.ts#computeDifficulty | 信 确认
 export const INTERACTION_LABELS: Record<string, string> = {
   parry: '弹刀',
   dodge: '闪避',
@@ -179,12 +185,17 @@ function completeInteractionList(interactions: InteractionItem[], team: (string 
  * 权重优先级：条目自带 weight > 用户覆盖 weights.interaction > INTERACTION_WEIGHTS 默认表（未知类型 1）。
  * overflowSeconds（引擎输出）= 合轴抵扣后必做前台净占用仍超战斗时间的秒数：只有厚轴队 >0，
  * 代表实战须硬合轴才打得成的操作压力；默认 1 秒 = 1 难度点（weights.overflow 可调，用户口径 2026-09-04）。
+ * alignSeconds（引擎输出）= **合轴解放出来的前台时间**（`frontlineOccupationBreakdown().saved`）：
+ * 把队友前台按合轴率优化后收回来的秒数，越多 = 对齐要求越高 = 总伤越高（用户口径 2026-09-10），
+ * 默认 1 秒 = 1 难度点（weights.align 可调）；缺省 0 = 不计（不传的调用方零行为变更）。
  */
 export function computeDifficulty(
   interactions: InteractionItem[],
   team: (string | null | undefined)[] = [],
   overflowSeconds = 0,
   weights: DifficultyWeights = {},
+  /** 合轴解放出来的前台时间（秒，`frontlineOccupationBreakdown().saved`）；缺省 0 = 不计这一项 */
+  alignSeconds = 0,
 ): { difficulty: number; detail: string } {
   const items = completeInteractionList(interactions, team)
   let total = 0
@@ -201,6 +212,14 @@ export function computeDifficulty(
     const ow = weights.overflow ?? 1
     total += overflowSeconds * ow
     parts.push(`合轴溢出${Math.round(overflowSeconds * 10) / 10}s×${ow}`)
+  }
+  // 队友合轴解放出来的前台时间：对齐得越精确（解放越多）越难打，同时换来更多平A/资源 ⇒ 难度点。
+  if (alignSeconds > 0) {
+    const aw = weights.align ?? 1
+    if (aw > 0) {
+      total += alignSeconds * aw
+      parts.push(`队友合轴节省${Math.round(alignSeconds * 10) / 10}s×${aw}`)
+    }
   }
   return { difficulty: Math.round(total * 100) / 100, detail: parts.join(' + ') || '无交互' }
 }
@@ -933,7 +952,9 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
         // 合轴溢出（引擎输出）并入操作难度：默认 1 秒 = 1 难度点，权重可被用户覆盖（难度权重弹层）
         const { difficulty, detail } = computeDifficulty(
           preset.interactions, preset.team, calc.resourceResult.value?.overflowSeconds ?? 0,
-          options.difficultyWeights)
+          options.difficultyWeights,
+          // 队友合轴解放出来的前台时间（两图同一把尺：难度曲线也用它）
+          calc.resourceResult.value ? frontlineOccupationBreakdown(calc.resourceResult.value).saved : 0)
         const std = preset.standardSteps ?? []
         let cinemas: [number, number, number]
         let wengineMods: [number, number, number]

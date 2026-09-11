@@ -13,7 +13,8 @@ import {
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
 import type { LadderResult } from '@/composables/difficultyLadder'
-import { baseGoldOf } from '@/composables/teamCompare'
+import { applyTeamToStore, baseGoldOf, computeDifficulty } from '@/composables/teamCompare'
+import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/helpers'
 import { teamPresets } from '@/data/teamPresets'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
@@ -193,6 +194,37 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
     // 只要求伤害单调（曲线意义所在），并把「难度降过」这件事如实暴露出来。
     for (let i = 1; i < pts.length; i++) expect(pts[i]!.dmg).toBeGreaterThan(pts[i - 1]!.dmg)
     expect(pts.some((p, i) => i > 0 && p.x < pts[i - 1]!.x)).toBe(true) // 这条队实测就有降难度的一档
+  }, 300_000)
+})
+
+describe('队友合轴也算难度（用户 2026-09-10：合轴节约出来的时间越多，难度越高，总伤越多）', () => {
+  it('computeDifficulty 的 align 项：1 秒 = 1 点（可调），0 秒/权重 0 = 不出现', () => {
+    const base = computeDifficulty([{ type: 'parry', count: 10 }], [], 0, { interaction: { parry: 1 } })
+    expect(base.difficulty).toBe(10)
+    // 合轴解放 4 秒 ⇒ +4 点，并在明细里写明来源
+    const withAlign = computeDifficulty([{ type: 'parry', count: 10 }], [], 0, { interaction: { parry: 1 } }, 4)
+    expect(withAlign.difficulty).toBe(14)
+    expect(withAlign.detail).toContain('队友合轴节省4s')
+    // 权重可改：2 点/秒 ⇒ +8
+    expect(computeDifficulty([{ type: 'parry', count: 10 }], [], 0, { interaction: { parry: 1 }, align: 2 }, 4).difficulty).toBe(18)
+    // 权重 0 或没给秒数 = 老口径（零行为变更）
+    expect(computeDifficulty([{ type: 'parry', count: 10 }], [], 0, { interaction: { parry: 1 }, align: 0 }, 4).difficulty).toBe(10)
+    expect(computeDifficulty([{ type: 'parry', count: 10 }], [], 0, { interaction: { parry: 1 } }).difficulty).toBe(10)
+  })
+
+  it('前线占用拆解：gross / 轴内节省 / 抵扣 / 净占用 / saved 自洽（saved = gross − net）', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    // 用真实一队的结果核对恒等式（合轴默认全 0 ⇒ 多数队 saved 可能为 0，等式仍须成立）
+    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    applyTeamToStore(config, preset)          // 曲线算完会恢复现场 ⇒ 这里自己套一次队再读引擎结果
+    const rr = calc.resourceResult.value!
+    const b = frontlineOccupationBreakdown(rr)
+    expect(b.saved).toBeCloseTo(Math.max(0, b.grossFrontline - b.net), 6)
+    expect(b.creditApplied).toBeGreaterThanOrEqual(0)
+    expect(b.axisOverlap).toBeGreaterThanOrEqual(0)
+    expect(b.net).toBeCloseTo(netFrontlineOccupation(rr), 6)  // 拆解函数与净占用单一事实源一致
   }, 300_000)
 })
 

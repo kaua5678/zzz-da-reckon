@@ -3,7 +3,7 @@
  *
  * 用户 2026-09-10 口径（改这里前先读）：
  *  ① **x 轴 = 每队自己的优化路径**，纵轴伤害、**x 是「自动算的操作难度」绝对值**
- *     （= Σ交互次数×权重 + 合轴溢出秒×权重，与散点页横轴同一把尺；用户 2026-09-10：「难度系数肯定是自动算呀，
+ *     （= Σ交互次数×权重 + 合轴溢出秒×权重 + **队友合轴节省秒×权重**，与散点页横轴同一把尺；用户 2026-09-10：「难度系数肯定是自动算呀，
  *     参数可以修改，自变量就是交互值、吃掉队友的合轴时间等」）——**各队起点/走向不齐是特性**，
  *     对比看的是形状（起点 / 斜率 / 天花板 / 提升倍数）；
  *     ⚠️ x **不保证单调**：有的杠杆减少交互次数（难度降、伤害升 = 白拿的优化，贪心优先做）；
@@ -44,6 +44,7 @@ import {
   applyAxisBinding, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, restoreStore, snapshotStore,
   type DifficultyWeights,
 } from '@/composables/teamCompare'
+import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
 import { getAgentMechanic } from '@/mechanics'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
@@ -197,8 +198,11 @@ export function measureOperationalDifficulty(
   preset: TeamPreset,
   weights?: DifficultyWeights,
 ): number {
-  const overflow = ctx.calc.resourceResult.value?.overflowSeconds ?? 0
-  return computeDifficulty(liveInteractions(ctx.config, preset), preset.team, overflow, weights).difficulty
+  const rr = ctx.calc.resourceResult.value
+  const overflow = rr?.overflowSeconds ?? 0
+  // 队友合轴解放出来的前台时间也算难度（对齐越精确越难、总伤越高，用户口径 2026-09-10）
+  const saved = rr ? frontlineOccupationBreakdown(rr).saved : 0
+  return computeDifficulty(liveInteractions(ctx.config, preset), preset.team, overflow, weights, saved).difficulty
 }
 
 // ========== 伤害归因：这一档 +N 伤害是谁贡献的（同一份快照里采） ==========
