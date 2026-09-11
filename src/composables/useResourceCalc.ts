@@ -1857,67 +1857,91 @@ export function useResourceCalc() {
     // （banyue.test 锁窗注释：2026-08-23 已知现状）——这与轴无关，弃轴解决不了。
     // 故先跑一次非轴对照：仅当**非轴模式可行**（Σ前台净占用 ≤ 预算+容差）时才认定「轴需求是超时主因」并退化。
     // 非轴也超 = 配置本身超预算 → 走下方**非轴降配**（二分缩放交互次数）。
-    let axisFallback = false
-    let interactionScale: number | undefined
     /**
-     * **触发判据两条臂**（2026-09-11 用户口径：「交互次数导致的必要招式，通常是达成目标的最少要求；
-     * 如果必须溢出才能达成目标，那就不会强行往上加交互次数了」）：
-     *  - `overBudgetNet`（原口径，轴退化仍用它）：截断**之后**的净占用超预算。注意它读的是装配期
-     *    截断后的量，截断保证净占用恒 ≤ 预算 ⇒ 对「必要行本来就装不下」的队**永不成立**；
-     *  - `truncatedToo`（新增，只给**非轴降配**用）：装配期真截断 `overflowSeconds > 1s` ⇒ 手改配置
-     *    （应用主流程）里那些"必要行装不下、装配期按比例砍行"的队现在会真正进入降配二分。
-     *
-     * **生效面（实测，2026-09-11）**：对 119 个预设 **0 delta**（`timeGolden` 全绿）——预设场景本来就被
-     * 净占用臂/轴路径覆盖；对**默认配置的手组队**有效（实测 `仪玄+洛克茜+卢西娅`：截断 10.7→1.6s、
-     * 超预算 1.0→0.96s、降配 ×0.906）。**仍有 19 个预设结构性截断**（必要行本身超预算，缩交互也装不下），
-     * 那要靠轴侧触发 + 逐模块退化，见 `.claude/task-ledger-calc-core.md`。
-     *
-     * ⚠️ 别把 `truncatedToo` 并进**验收**臂一起收紧：实测把「截断 ≤1s」也当验收条件会让试算被拒，
-     * 而被拒的试算**仍会把副作用（热启动/cfg 缓存）留进最终态**（`yixuan-roxy-lucia` 实测
-     * 净占用被污染到 +2.8s、棘轮红）。试算不纯是既有隐患，重写阶段要给它加快照/还原。
+     * ===== 阶段 S3：可行化决策（`stageResolveFeasibility`，2026-09-11 显式化）=====
+     * 「轮结果 ⇒ 时间账能不能接受，不能接受就收拾」的唯一入口（此前这段是内联在 `calcOutput` 里的
+     * 匿名代码块，改动要读 60 行上下文）。**契约**：
+     *   输入：`r0` = 当前接受的整轮结果（含 resolvedAxes 判定轴/非轴态）；
+     *        隐含输入：`runOuterLoop` 闭包（重跑整轮）、`stunEffTime`（预算）、`lockedStunCount`（锁窗）。
+     *   输出：`{ r, axisFallback, interactionScale }` —— `r` 可能被换成**非轴态**或**某个降配档**。
+     *   判据：① 轴太厚（`overBudgetNet` 或补齐非法）⇒ 退化非轴；② 非轴仍撑不下
+     *         （`overBudgetNet` **或** 装配期真截断 `truncatedToo`）⇒ 二分缩放交互次数（6 轮，~1.6%）。
+     *   锁窗（`lockedStunCount >= 0`）= 用户明确意图 ⇒ **一律不动**，超时如实上报。
+     * 现状两条臂的语义与生效面见下方注释；**下一步**（账本 round 4 工作单）：
+     *   ① 给每次试算加快照/还原（试算纯化——实测被拒试算的副作用会留进最终态）；
+     *   ② 给轴侧 `r = noAxis` 加「时间账不恶化」闸门（现在是无条件替换，实测能掉 2.9s 净占用）。
      */
-    const overBudgetNet = (x: CalcRoundResult | null) =>
-      stunEffTime > 0 && x != null && frontlineTotalOf(x) > stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
-    const truncatedToo = (x: CalcRoundResult | null) =>
-      (x?.resourceResult?.overflowSeconds ?? 0) > TIME_BUDGET_TOLERANCE_SECONDS
-    const overBudget = overBudgetNet
-    let hadAxis = false
-    // 锁定失衡次数（命座对比/锁窗测试）= 用户明确意图「操作够就能打 N 次失衡」，同锁定不回填口径：
-    // 退化/降配会改变次数与交互结构，锁窗场景一律不触发（超时如实上报）。
-    if (lockedStunCount < 0) {
-      // 非法补齐（自动填充交互 > 200s，用户口径 2026-09-01）与超预算同等对待：
-      // 轴要的资源根本填不出来 ⇒ 轴不可操作 ⇒ 走同一条退化路径（补齐次数已在源头清零）
-      const topUpIllegal = (x: CalcRoundResult | null) => x?.banyueTopUp?.illegal === true
-      if ((overBudget(r.out) || topUpIllegal(r.out)) && r.out?.resolvedAxes?.length) {
-        hadAxis = true
-        const noAxis = runOuterLoop(true)
-        if (!overBudget(noAxis.out) && !topUpIllegal(noAxis.out)) axisFallback = true
-        r = noAxis // 可行与否都进入非轴态：不可行则走下方降配
-      }
-      // 非轴降配（用户口径 2026-08-30）：金身/招架这类手填交互与轴厚需求本质相同——超预算都要降配。
-      // 轴侧降配 = 退化（需求没了，补齐自动归零）；非轴侧 = 缩放用户交互次数直到净占用回到预算内。
-      // 二分找最大可行 scale（6 轮，精度 ~1.6%）；scale→0 仍超 = 非交互必要时间本身超预算，如实保留报超时。
-      if ((overBudget(r.out) || truncatedToo(r.out)) && !r.out?.resolvedAxes?.length) {
-        let lo = 0
-        let hi = 1
-        let best: { out: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter'; scale: number } | null = null
-        for (let i = 0; i < 6; i++) {
-          const mid = (lo + hi) / 2
-          const trial = runOuterLoop(true, mid)
-          if (overBudget(trial.out)) {
-            hi = mid
-          } else {
-            lo = mid
-            best = { ...trial, scale: mid }
+    type RoundOut = ReturnType<typeof runOuterLoop>
+    const stageResolveFeasibility = (
+      r0: RoundOut,
+    ): { r: RoundOut; axisFallback: boolean; interactionScale: number | undefined } => {
+      let r = r0
+      /**
+       * **触发判据两条臂**（2026-09-11 用户口径：「交互次数导致的必要招式，通常是达成目标的最少要求；
+       * 如果必须溢出才能达成目标，那就不会强行往上加交互次数了」）：
+       *  - `overBudgetNet`（原口径，轴退化仍用它）：截断**之后**的净占用超预算。注意它读的是装配期
+       *    截断后的量，截断保证净占用恒 ≤ 预算 ⇒ 对「必要行本来就装不下」的队**永不成立**；
+       *  - `truncatedToo`（新增，只给**非轴降配**用）：装配期真截断 `overflowSeconds > 1s` ⇒ 手改配置
+       *    （应用主流程）里那些"必要行装不下、装配期按比例砍行"的队现在会真正进入降配二分。
+       *
+       * **生效面（实测，2026-09-11）**：对 119 个预设 **0 delta**（`timeGolden` 全绿）——预设场景本来就被
+       * 净占用臂/轴路径覆盖；对**默认配置的手组队**有效（实测 `仪玄+洛克茜+卢西娅`：截断 10.7→1.6s、
+       * 超预算 1.0→0.96s、降配 ×0.906）。**仍有 19 个预设结构性截断**（必要行本身超预算，缩交互也装不下），
+       * 那要靠轴侧触发 + 逐模块退化，见 `.claude/task-ledger-calc-core.md`。
+       *
+       * ⚠️ 别把 `truncatedToo` 并进**验收**臂一起收紧：实测把「截断 ≤1s」也当验收条件会让试算被拒，
+       * 而被拒的试算**仍会把副作用（热启动/cfg 缓存）留进最终态**（`yixuan-roxy-lucia` 实测
+       * 净占用被污染到 +2.8s、棘轮红）。试算不纯是既有隐患，重写阶段要给它加快照/还原。
+       */
+      const overBudgetNet = (x: CalcRoundResult | null) =>
+        stunEffTime > 0 && x != null && frontlineTotalOf(x) > stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
+      const truncatedToo = (x: CalcRoundResult | null) =>
+        (x?.resourceResult?.overflowSeconds ?? 0) > TIME_BUDGET_TOLERANCE_SECONDS
+      const overBudget = overBudgetNet
+      let axisFallback = false
+      let interactionScale: number | undefined
+      let hadAxis = false
+      // 锁定失衡次数（命座对比/锁窗测试）= 用户明确意图「操作够就能打 N 次失衡」，同锁定不回填口径：
+      // 退化/降配会改变次数与交互结构，锁窗场景一律不触发（超时如实上报）。
+      if (lockedStunCount < 0) {
+        // 非法补齐（自动填充交互 > 200s，用户口径 2026-09-01）与超预算同等对待：
+        // 轴要的资源根本填不出来 ⇒ 轴不可操作 ⇒ 走同一条退化路径（补齐次数已在源头清零）
+        const topUpIllegal = (x: CalcRoundResult | null) => x?.banyueTopUp?.illegal === true
+        if ((overBudget(r.out) || topUpIllegal(r.out)) && r.out?.resolvedAxes?.length) {
+          hadAxis = true
+          const noAxis = runOuterLoop(true)
+          if (!overBudget(noAxis.out) && !topUpIllegal(noAxis.out)) axisFallback = true
+          r = noAxis // 可行与否都进入非轴态：不可行则走下方降配
+        }
+        // 非轴降配（用户口径 2026-08-30）：金身/招架这类手填交互与轴厚需求本质相同——超预算都要降配。
+        // 轴侧降配 = 退化（需求没了，补齐自动归零）；非轴侧 = 缩放用户交互次数直到净占用回到预算内。
+        // 二分找最大可行 scale（6 轮，精度 ~1.6%）；scale→0 仍超 = 非交互必要时间本身超预算，如实保留报超时。
+        if ((overBudget(r.out) || truncatedToo(r.out)) && !r.out?.resolvedAxes?.length) {
+          let lo = 0
+          let hi = 1
+          let best: { out: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter'; scale: number } | null = null
+          for (let i = 0; i < 6; i++) {
+            const mid = (lo + hi) / 2
+            const trial = runOuterLoop(true, mid)
+            if (overBudget(trial.out)) {
+              hi = mid
+            } else {
+              lo = mid
+              best = { ...trial, scale: mid }
+            }
+          }
+          if (best) {
+            r = best
+            axisFallback = hadAxis
+            interactionScale = best.scale
           }
         }
-        if (best) {
-          r = best
-          axisFallback = hadAxis
-          interactionScale = best.scale
-        }
       }
+      return { r, axisFallback, interactionScale }
     }
+
+    const { r: rAfterFeasibility, axisFallback, interactionScale } = stageResolveFeasibility(r)
+    r = rAfterFeasibility
     const { out: baseOut, outerRounds, outerConverged, outerExit } = r
     const out = baseOut?.resourceResult
       ? {
