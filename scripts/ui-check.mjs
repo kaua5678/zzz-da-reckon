@@ -306,7 +306,11 @@ try {
       } catch { /* 页面在忙 */ }
     }, 10000)
     try {
-      const expr = WAIT_FOR ? (WAIT_FOR.includes('(') || WAIT_FOR.includes('.') ? WAIT_FOR : `document.querySelectorAll('${WAIT_FOR}').length > 0`) : `document.querySelectorAll('.n-card').length > 1`
+      // --wait-for 两种写法：完整 JS 表达式（含括号，如 document.querySelectorAll(...)）或**选择器**
+      // （`polyline` / `.curve-seg` / `#id`）。别再拿「含不含点」判——`.curve-seg` 是选择器却被当成表达式（实测报 eval 错）。
+      const expr = WAIT_FOR
+        ? (WAIT_FOR.includes('(') ? WAIT_FOR : `document.querySelectorAll('${WAIT_FOR}').length > 0`)
+        : `document.querySelectorAll('.n-card').length > 1`
       const ms = await waitFor(expr, WAIT_TIMEOUT, `结果出现（${expr}）`)
       console.log(`[${String(ms).padStart(7)}ms] 等结果`)
     } finally { clearInterval(tick) }

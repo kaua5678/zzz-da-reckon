@@ -108,7 +108,7 @@ npm run minify:static # 生成产物瘦身/剔 catalog 死键（幂等；validat
 它读回 DOM 体检（polyline/标注重叠/表格溢出/JS 错误）并截图，**零 JS 错误 + 无重叠 + 无溢出 = PASS（退出码 0）**：
 
 ```bash
-node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --click 计算曲线 --wait-for polyline
+node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --click 计算曲线 --wait-for .curve-seg
 ```
 
 （无 root 环境缺 `libnspr4/libnss3` 时，按脚本文件头的「用户态 `apt-get download` + `dpkg-deb -x` 解包」补齐，

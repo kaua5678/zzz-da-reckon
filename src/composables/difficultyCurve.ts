@@ -42,12 +42,12 @@ import {
   type DifficultyGoal, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
 import {
-  applyAxisBinding, applyBuffToStore, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty,
+  applyAxisBinding, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty,
   restoreStore, snapshotStore, type DifficultyWeights,
 } from '@/composables/teamCompare'
 import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
 import { getAgentMechanic } from '@/mechanics'
-import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
+import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
 import type { InteractionItem, TeamPreset } from '@/types/teamPreset'
 
@@ -63,12 +63,6 @@ export interface DifficultyCurveOptions {
   /** 相对门槛（缺省 1e-4） */
   minGainRatio?: number
   /**
-   * 当期 buff 牌（缺省 = 不带 buff）。**只接受具体某张牌**，不做「自动推荐」——
-   * 自动推荐要对每张牌各算一次全量伤害（散点页每队 3~5 倍开销），曲线每队本来就要跑 ~10 次求值，
-   * 叠上去太慢；页面曲线模式的选择器因此**不含**「自动推荐」项（避免静默当成不带 buff）。
-   */
-  buff?: PhaseBuffCard | null
-  /**
    * 操作难度权重（主观量，页面「难度权重」弹层；缺省 = `INTERACTION_WEIGHTS` 默认表 + 溢出 1 秒 = 1 点）。
    * 直接决定 x 轴：`computeDifficulty` 的 Σ(交互×权重) + 溢出秒×权重。
    */
@@ -81,24 +75,11 @@ export interface DifficultyCurveOptions {
   goldLevel?: number
 }
 
-/** 实际套用的金档（来自 `applyGoldSteps`，含「钳制」字样与常驻明细） */
-export interface AppliedGold {
-  /** 用户选的目标金 */
-  target: number
-  /** 钳制后的实际总限定金 */
-  totalGold: number
-  label: string
-}
-
 /** 一队的阶梯结果（展示层行） */
 export interface DifficultyCurveRow {
   presetId: string
   name: string
   ladder: LadderResult
-  /** 实际套用的金档（含钳制结果），供页面注明口径 */
-  gold: AppliedGold
-  /** 实际套用的当期 buff 标题（缺省 = 不带 buff） */
-  buffTitle?: string
 }
 
 /**
@@ -120,13 +101,12 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
     configStore.timeWeightStrategy = 'static'
     for (const preset of options.presets) {
       applyAxisBinding(configStore, snap, preset)
-      // 金档：**两条路径都走 applyGoldSteps**（缺省目标 = 该队基础金）——否则「预设基础档」会漏掉
-      // standardSteps 常驻步，而「基础金档」带上它们，同一件事出现两个数（12/127 预设带 standardSteps）。
-      const targetGold = options.goldLevel ?? baseGoldOf(preset)
+      // 配装口径：套该队**预设基础金**的 `applyGoldSteps`（含 standardSteps 常驻步；缺省路径也走它，
+      // 否则「预设基础档」会漏掉常驻步而出现两个数）。曲线**不提供**金数档覆盖——金数提升属于
+      // 「提升率」类图表，不是难度曲线的事（用户 2026-09-10 口径）。
       const applied = applyGoldSteps(
-        preset.goldSteps, targetGold, baseGoldOf(preset), preset.standardSteps ?? [], preset.wEngines ?? [],
+        preset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), preset.standardSteps ?? [], preset.wEngines ?? [],
       )
-      const gold: AppliedGold = { target: targetGold, totalGold: applied.totalGold, label: applied.label }
       const ladder = climbDifficultyLadder({ config: configStore, calc }, preset.team as [string, string, string], {
         goals: options.goals,
         minGainRatio: options.minGainRatio,
@@ -136,10 +116,6 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
         base: (ctx, team) => {
           clearDifficultyLevers(ctx)
           applyTeamToStore(ctx.config, preset)
-          // 当期 buff 必须**在套队之后**：applyTeamToStore→setAgent→syncTeammateBuffsFromTeam()
-          // 会把 globalBuffs 重建，先套就被冲掉了（实测：先套 = 伤害反而更低，buff 完全没生效）。
-          // 效果可依赖 preset 的角色，所以每队各套一次；阶梯内部不动 globalBuffs，末尾 restoreStore 统一还原。
-          if (options.buff) applyBuffToStore(ctx.config, options.buff, preset)
           // 金步叠加：影画/精炼/音擎（驱动盘与权重/交互已由 applyTeamToStore 套好，金步不碰）
           for (let slot = 0; slot < 3; slot++) {
             ctx.config.setCinemaLevel(slot, applied.cinemas[slot])
@@ -150,7 +126,7 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
           return ctx.calc.teamTotalDamage.value
         },
       })
-      rows.push({ presetId: preset.id, name: preset.name, ladder, gold, buffTitle: options.buff?.title })
+      rows.push({ presetId: preset.id, name: preset.name, ladder })
     }
   } finally {
     configStore.timeWeightStrategy = extra.strategy
@@ -515,8 +491,6 @@ export interface CurveSeries {
   dropped: { id: string; gain: number }[]
   /** 一个目标都没录取（曲线是单点）：没有可优化的空间 */
   flat: boolean
-  /** 这条曲线实际套用的金档（含各队自己的钳制结果） */
-  gold: AppliedGold
   /**
    * **关键次数跃迁档**（只含 `major` = 「多了一次」的档）：图上标注与「关键变化」面板的唯一数据源。
    * 空数组 = 这条曲线爬升过程中没有出现「多放一次大招 / 多一次紊乱」这类台阶。
@@ -560,7 +534,6 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       opened: r.ladder.opened,
       dropped: r.ladder.dropped,
       flat: r.ladder.opened.length === 0,
-      gold: r.gold,
     }
   })
   const costMax = Math.max(1, ...series.map(s => s.totalCost))

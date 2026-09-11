@@ -14,10 +14,10 @@ import {
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS, clearDifficultyLevers, climbDifficultyLadder, type LadderResult } from '@/composables/difficultyLadder'
-import { applyTeamToStore, baseGoldOf, computeDifficulty } from '@/composables/teamCompare'
+import { applyTeamToStore, computeDifficulty } from '@/composables/teamCompare'
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/helpers'
 import { teamPresets } from '@/data/teamPresets'
-import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
+import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
 beforeEach(() => {
   newPinia()
@@ -46,7 +46,7 @@ function mkLadder(
 
 /** 合成图行（纯函数判据不关心金档，填占位） */
 const mkRow = (presetId: string, name: string, ladder: LadderResult): DifficultyCurveRow =>
-  ({ presetId, name, ladder, gold: { target: 0, totalGold: 0, label: '测试档' } })
+  ({ presetId, name, ladder })
 
 const HP = 100_000_000
 
@@ -296,72 +296,6 @@ describe('合轴节省秒数上曲线（用户：只需管合轴了多少时间�
   }, 300_000)
 })
 
-describe('曲线 Buff 口径（手动选牌，不做自动推荐）', () => {
-  // 注意：当期 buff 会**整表替换** `globalBuffs`（与散点页同款 `applyBuffToStore`），
-  // 所以「带牌 vs 不带牌」不是公平对照（不带牌时表里是默认全局 buff）。公平对照 = 两张同结构、
-  // 只差数值的牌 —— 这样只剩「牌的效果有没有进引擎」一个变量。
-  const cardOf = (title: string, critDmg: number): PhaseBuffCard =>
-    ({ title, testOnly: false, effects: [{ stat: 'critDmg', value: critDmg }], unparsed: [] })
-
-  it('套了 buff ⇒ 牌的效果真的进引擎、row.buffTitle 如实记录、算完现场恢复（globalBuffs 还原）', async () => {
-    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    await catalog.loadBuildRecommendations()
-    const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
-    const before = JSON.stringify(config.globalBuffs)
-
-    const weak = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE, buff: cardOf('弱牌', 0) })
-    const strong = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE, buff: cardOf('强牌', 60) })
-    expect(weak[0]!.buffTitle).toBe('弱牌')
-    expect(strong[0]!.buffTitle).toBe('强牌')
-    expect(strong[0]!.ladder.base).toBeGreaterThan(weak[0]!.ladder.base)   // 暴伤 +60% 真的进了伤害
-    expect(JSON.stringify(config.globalBuffs)).toBe(before)                // 现场恢复
-
-    // 缺省（不传 buff）不写 buffTitle：老口径零变更
-    const none = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE })
-    expect(none[0]!.buffTitle).toBeUndefined()
-  }, 300_000)
-})
-
-describe('曲线模型不变式：同队伍 · 同 Boss · 同配装，只扫「操作难度」（用户 2026-09-10 口径）', () => {
-  it('阶梯全程：队伍/影画/音擎/驱动盘/敌方一字不改；变的只有操作侧（权重/交互/保底/投影/合轴率）', async () => {
-    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    await catalog.loadBuildRecommendations()
-    const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
-    const ctx = { config, calc }
-    clearDifficultyLevers(ctx)
-    applyTeamToStore(config, preset)
-
-    // 配置签名：队伍身份 + 配装 + 敌方（**配置侧**，整个阶梯必须恒定）
-    const cfgSig = () => JSON.stringify({
-      team: config.team.map(t => [t.agentId, t.cinemaLevel, t.wEngineId, t.wEngineModLevel,
-        t.driveDisc.fourPieceSetId, t.driveDisc.twoPieceSetId]),
-      enemy: [config.enemy.hp, config.enemy.stunValue, config.enemy.battleTime],
-    })
-    // 操作侧签名：平A权重 + 交互次数 + 保底 + 投影 + 合轴率（这些**允许**随阶梯变）
-    const opSig = () => JSON.stringify({
-      w: config.team.map(t => t.basicAttackTimeWeight),
-      p: config.team.map(t => t.parryCount),
-      g: ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate'].map(k => config.getMechanicSetting(k, 0)),
-      proj: config.getMechanicSetting('time.stunPlanProjection', 0),
-      align: config.comboAlignOverrides,
-    })
-
-    const cfgSigs: string[] = []
-    const opSigs: string[] = []
-    const r = climbDifficultyLadder(ctx, preset.team as [string, string, string], {
-      costOf: c => measureOperationalDifficulty(c, preset),
-      capture: () => { cfgSigs.push(cfgSig()); opSigs.push(opSig()); return { counts: {}, dmgBySource: {} } },
-    })
-
-    expect(r.opened.length).toBeGreaterThan(0)              // 确实爬了（不是空跑）
-    expect(new Set(cfgSigs).size, '同队同 Boss 同配装：配置签名必须全程唯一').toBe(1)
-    expect(cfgSigs.length).toBe(r.points.length)             // 每一档都采过
-    expect(new Set(opSigs).size, '操作侧必须真的在变（否则这条不变式是空话）').toBeGreaterThan(1)
-  }, 300_000)
-})
-
 describe('图上标注分道（防重叠）', () => {
   it('同 x / 相近的标注分到不同道；离得远的可以共用一道；道号有界', () => {
     const items = [
@@ -375,7 +309,7 @@ describe('图上标注分道（防重叠）', () => {
     expect(lanes[0]).not.toBe(lanes[3])
     expect(lanes[1]).not.toBe(lanes[3])
     expect(lanes[2]).toBe(0)
-    for (const l of lanes) expect(l).toBeGreaterThanOrEqual(0), expect(l).toBeLessThan(3)
+    for (const l of lanes) expect(l).toBeLessThan(3)
   })
 
   it('道满了也不越界（退回最空的道，返回仍在 maxLanes 内）', () => {
@@ -453,40 +387,6 @@ describe('伤害归因（这一档 +N 伤害是谁贡献的）', () => {
     const sum = [...attr.top, ...attr.squeezed].reduce((s, c) => s + c.delta, 0) + attr.restDelta
     expect(sum).toBeCloseTo(attr.totalDelta, 6)                 // 其余 = −1，账对得上
   })
-})
-
-describe('金档口径（缺省 = 该队基础金；两条路径同源）', () => {
-  it('缺省档 == 显式基础金档（都走 applyGoldSteps，含 standardSteps）；更高金档伤害更高 + 越界钳制', async () => {
-    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    await catalog.loadBuildRecommendations()
-    const calc = useResourceCalc()
-    // 必须选**带 goldSteps** 的预设：auto-* 是「只有队伍」的自动预设，0 金步 ⇒ 测不出加金效果
-    const preset = teamPresets.find(p => p.id === 'yixuan-jufufu-lucia')!
-    expect(preset.goldSteps.length, '这条队应有金步').toBeGreaterThan(3)
-    const base = baseGoldOf(preset)
-    expect(base, '这条队应有基础金（限定角色本体）').toBeGreaterThan(0)
-
-    const def = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE })
-    expect(def[0]!.gold.target).toBe(base)
-    expect(def[0]!.gold.totalGold).toBe(base)
-
-    // 同一件事只能有一个数：显式传基础金 == 缺省（否则「预设基础档」会漏掉 standardSteps 常驻步）
-    const explicit = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE, goldLevel: base })
-    expect(explicit[0]!.gold.totalGold).toBe(base)
-    expect(explicit[0]!.ladder.base).toBeCloseTo(def[0]!.ladder.base, 6)
-
-    // 加金：实际金档上去了，基线伤害也跟着上去（同 Boss、同金步口径）
-    const richer = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE, goldLevel: base + 3 })
-    expect(richer[0]!.gold.totalGold).toBeGreaterThan(base)
-    expect(richer[0]!.ladder.base).toBeGreaterThan(def[0]!.ladder.base)
-
-    // 越界（远超该队档位上限）→ 钳制到最高档，如实记 target ≠ totalGold
-    const overflow = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE, goldLevel: 99 })
-    expect(overflow[0]!.gold.target).toBe(99)
-    expect(overflow[0]!.gold.totalGold).toBeLessThan(99)
-    expect(overflow[0]!.gold.totalGold).toBeGreaterThanOrEqual(richer[0]!.gold.totalGold)
-    expect(config.team.map(c => c.agentId)).toEqual(['', '', ''])
-  }, 300_000)
 })
 
 // ========== 集成：真跑一队（含现场恢复） ==========

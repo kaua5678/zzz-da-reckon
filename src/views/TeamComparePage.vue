@@ -10,22 +10,6 @@
             <n-radio-button value="curve">难度曲线</n-radio-button>
           </n-radio-group>
         </div>
-        <div
-          v-if="chartMode === 'curve'"
-          class="ctl-field"
-          title="【可选口径覆盖】缺省 = 预设基础档（同队同配装）。选具体金数只是换个口径看同一支队的曲线，越界按该队档位钳制；不含散点页的「最优加金 / 自动下位」"
-        >
-          <span class="ctl-label">曲线金档</span>
-          <n-select v-model:value="curveGold" :options="curveGoldOptions" size="small" style="width: 140px" />
-        </div>
-        <div
-          v-if="chartMode === 'curve'"
-          class="ctl-field"
-          title="【可选口径覆盖】缺省 = 不带 buff（同队同配装）。只支持「不使用 / 具体某张牌」，不做自动推荐——自动推荐要对每张牌各算一次全量伤害，曲线每队本来就要跑 ~10 次求值"
-        >
-          <span class="ctl-label">曲线 Buff</span>
-          <n-select v-model:value="curveBuffChoice" :options="curveBuffOptions" size="small" style="width: 200px" />
-        </div>
         <div class="ctl-field">
           <span class="ctl-label">期数</span>
           <n-select
@@ -72,8 +56,10 @@
             size="small"
             multiple
             filterable
+            max-tag-count="responsive"
             style="width: 220px"
             placeholder="选择队伍（可多选）"
+            title="默认全选全部预设队；框内只显示首队 +N，点开下拉可逐个勾选/清空"
           />
           <n-select
             v-model:value="quickPickMainC"
@@ -136,6 +122,7 @@
               size="small"
               multiple
               filterable
+              max-tag-count="responsive"
               style="width: 260px"
               placeholder="候选音擎"
             />
@@ -169,10 +156,7 @@
       </div>
 
       <div v-if="!computing && chartMode === 'curve'" class="compare-note">
-        已选 {{ selectedPresets.length }} 队 · 金档 {{ curveGold < 0 ? '预设基础档' : `${curveGold} 金` }}<template
-          v-if="curveClampedCount > 0"
-        >（{{ curveClampedCount }} 队越界已按各自档位钳制）</template>
-        · Buff {{ curveBuffChoice === 'none' ? '不使用' : curveBuffChoice }}（曲线不做自动推荐）
+        已选 {{ selectedPresets.length }} 队 · 每队用自己的预设配装（0命1精 + 预设音擎/驱动盘/权重/交互）
         · x = 操作难度（Σ交互次数×权重 + 合轴溢出秒×权重 + <b>队友合轴节省秒</b>×权重，<b>自动算</b>；三项权重在「难度权重」弹层可调）
         · 每队要跑 ~10 次全量伤害（约 3~4 秒/队 ⇒ 预计 ≈{{ fmt(selectedPresets.length * 3.4 / 60, 1) }} 分钟）——
         曲线模式建议只选几支队做「难易强度」对比，跑起来可点「中止」保留已算部分。
@@ -277,14 +261,14 @@
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="chart-card">
       <template #header>难度曲线（{{ curveData.series.length }} 队 · 每队自己的 x）</template>
       <div class="compare-note curve-note">
-        <b>口径 = 同一支队伍 · 同一个 Boss · 同一套配装</b>（{{ curveGold < 0 ? '预设基础档：0命1精 + 预设权重/交互/音擎/驱动盘' : `${curveGold} 金（口径覆盖）` }}
-        + 当前期数 Boss{{ curveBuffChoice === 'none' ? '' : ` + Buff「${curveBuffChoice}」` }}），
-        <b>只让「操作难度」从全关爬到全开</b>——配置不参与曲线（要对比配置请用散点图型）。
+        <b>口径 = 同一支队伍 · 同一个 Boss · 同一套配装</b>（预设基础档：0命1精 + 预设音擎/驱动盘/权重/交互 + 当前期数 Boss）
+        ，<b>只让「操作难度」从全关爬到全开</b>——配置不参与曲线（金数提升/换装在散点图型与「角色兑现」看）。
         x = 该队<b>自动算的</b>操作难度<b>绝对值</b>（Σ交互次数×权重 + 合轴溢出秒×权重；交互次数取这一档<b>实打</b>的次数，
         不是预设声明——联合策略调低弹刀、般岳补交互都会算进去）+ 队友合轴解放出来的前台秒数（合轴率把队友前台压出去多少，越多=对齐越难、总伤越高）；
         三项权重都在「难度权重」弹层调），<b>与散点页横轴同一把尺</b>。
         y = 伤害/血量%。<b>各队起点/走向不齐是特性</b>：比形状（起点 / 斜率 / 天花板 / 提升倍数）；
-        <b>x 会往左走</b>——有的杠杆减少交互次数（难度降、伤害升 = 白拿的优化，贪心会优先做）。
+        <b>虚线段 = 难度回落</b>：那一步的杠杆把交互次数/时间压力减掉了（难度降而伤害升 = 白拿的优化，贪心优先做），
+        所以折线会往左走一段（V 型就是这么来的）。
         每档只录取有实际增益的目标，负收益目标被丢弃并在下表如实列出。每队约 3~4 秒。
       </div>
       <div class="chart-area">
@@ -301,10 +285,12 @@
           <text :x="14" :y="padT + plotH / 2" text-anchor="middle" class="chart-axis-label" font-size="11" transform="rotate(-90 14 0)">伤害/血量 %</text>
 
           <g v-for="(s, si) in curveSeriesPx" :key="'cs' + si">
-            <polyline
-              v-if="s.pts.length > 1"
-              :points="s.pts.map(p => `${p.cx},${p.cy}`).join(' ')"
-              fill="none" :stroke="s.color" stroke-width="2" opacity="0.9"
+            <line
+              v-for="(g, gi) in s.segs" :key="'cs' + si + '-' + gi"
+              :x1="g.x1" :y1="g.y1" :x2="g.x2" :y2="g.y2"
+              class="curve-seg"
+              :stroke="s.color" :stroke-width="g.back ? 1.6 : 2" :opacity="g.back ? 0.7 : 0.9"
+              :stroke-dasharray="g.back ? '4,3' : undefined"
             />
             <circle
               v-for="(p, pi) in s.pts" :key="'cp' + si + '-' + pi"
@@ -389,17 +375,13 @@
         <table class="detail-table">
           <thead>
             <tr>
-              <th>队伍</th><th>金档</th><th>全关</th><th>终点</th><th>提升</th><th>倍数</th>
+              <th>队伍</th><th>全关</th><th>终点</th><th>提升</th><th>倍数</th>
               <th>操作难度</th><th>收益/难度</th><th>录取顺序</th><th>丢弃目标</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="s in curveData.series" :key="s.presetId" :class="{ 'curve-flat': s.flat }">
               <td class="td-team" :style="{ color: colorOf(s.presetId) }">{{ s.name }}</td>
-              <td>
-                {{ s.gold.totalGold }} 金
-                <span v-if="s.gold.totalGold !== s.gold.target" class="td-standard">（钳制）</span>
-              </td>
               <td>{{ compact(s.base) }}</td>
               <td>{{ compact(s.final) }}</td>
               <td :class="{ kill: s.gainPct > 0 }">+{{ fmt(s.gainPct, 1) }}%</td>
@@ -667,36 +649,6 @@ const chartMode = ref<'scatter' | 'curve'>('scatter')
 const curveRows = ref<DifficultyCurveRow[]>([])
 /** 曲线模式的中止标志（粒度 = 一队：单队阶梯是原子的；已算部分保留） */
 const curveAbort = ref(false)
-/**
- * 曲线金档：-1 = 预设基础档（缺省口径）。选具体金数时走 `teamCompare#applyGoldSteps`
- * （= 散点页同源，含 standardSteps 常驻全量应用、越界按该队档位钳制），
- * **不含**散点页的「最优加金 / 自动下位」两层。
- */
-const curveGold = ref<number>(-1)
-/**
- * 曲线 Buff：**不含**「自动推荐」（曲线每队本来就要跑 ~10 次全量求值；自动推荐再乘 3~5 倍）。
- * 选择器与散点页的 `buffChoice` 分开，避免「在曲线模式选了自动推荐 → 被静默当成不带 buff」。
- */
-const curveBuffChoice = ref<string>('none')
-const curveBuffOptions = computed(() => [
-  { value: 'none', label: '不使用（默认）' },
-  ...(currentPhaseView.value?.buffs ?? []).map(b => ({
-    value: b.title,
-    label: `${b.title || '(未命名)'}${b.testOnly ? '（测试服）' : ''}`,
-    disabled: b.testOnly,
-  })),
-])
-/** 期数切换后若选中的牌不在当期，回到「不使用」 */
-watch(currentPhaseView, () => {
-  const cur = curveBuffChoice.value
-  if (cur !== 'none' && !(currentPhaseView.value?.buffs ?? []).some(b => b.title === cur)) curveBuffChoice.value = 'none'
-})
-const curveGoldOptions = computed(() => [
-  { value: -1, label: '预设基础档' },
-  ...Array.from({ length: 13 }, (_, g) => ({ value: g, label: `${g} 金` })),
-])
-/** 选了金档但越界（该队档位范围更窄）被钳制的队数——如实上报，不静默 */
-const curveClampedCount = computed(() => curveRows.value.filter(r => r.gold.totalGold !== r.gold.target).length)
 
 function goldLevels(): number[] {
   const levels: number[] = []
@@ -762,10 +714,6 @@ async function runCurves() {
       presets: [p],
       boss,
       phase,
-      goldLevel: curveGold.value >= 0 ? curveGold.value : undefined,
-      buff: curveBuffChoice.value === 'none'
-        ? null
-        : ((currentPhaseView.value?.buffs ?? []).find(b => b.title === curveBuffChoice.value) ?? null),
       difficultyWeights: { overflow: diffWeights.value.overflow, align: diffWeights.value.align, interaction: diffWeights.value.interaction },
     }))
   }
@@ -907,6 +855,15 @@ const curveSeriesPx = computed(() => {
     ...s,
     color: colorOf(s.presetId),
     pts: s.points.map(p => ({ ...p, cx: curveXOf(p.cost), cy: curveYOf(p.ratio) })),
+    // 线段化（而不是一条 polyline）：难度**回落**的那段画虚线，一眼看出「白拿的优化」
+    segs: s.points.slice(1).map((p, i) => {
+      const prev = s.points[i]!
+      return {
+        x1: curveXOf(prev.cost), y1: curveYOf(prev.ratio),
+        x2: curveXOf(p.cost), y2: curveYOf(p.ratio),
+        back: p.cost < prev.cost - 1e-9,
+      }
+    }),
     jumpPts: s.jumps.map(j => ({
       ...j,
       cx: curveXOf(j.cost),
