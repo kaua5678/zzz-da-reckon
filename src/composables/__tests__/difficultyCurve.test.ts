@@ -9,14 +9,15 @@ import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource,
-  captureKeyCounts, diffKeyCounts, estimateLabelWidth, linkCountToDmg, liveInteractions, majorChanges, measureOperationalDifficulty,
+  captureKeyCounts, diffKeyCounts, estimateLabelWidth, linkCountToDmg, liveInteractions, majorChanges,
+  measureOperationalDifficulty, pickNonOverlapping,
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS, clearDifficultyLevers, climbDifficultyLadder, type LadderResult } from '@/composables/difficultyLadder'
 import { applyTeamToStore, baseGoldOf, computeDifficulty } from '@/composables/teamCompare'
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/helpers'
 import { teamPresets } from '@/data/teamPresets'
-import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
+import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
 
 beforeEach(() => {
   newPinia()
@@ -295,6 +296,33 @@ describe('合轴节省秒数上曲线（用户：只需管合轴了多少时间�
   }, 300_000)
 })
 
+describe('曲线 Buff 口径（手动选牌，不做自动推荐）', () => {
+  // 注意：当期 buff 会**整表替换** `globalBuffs`（与散点页同款 `applyBuffToStore`），
+  // 所以「带牌 vs 不带牌」不是公平对照（不带牌时表里是默认全局 buff）。公平对照 = 两张同结构、
+  // 只差数值的牌 —— 这样只剩「牌的效果有没有进引擎」一个变量。
+  const cardOf = (title: string, critDmg: number): PhaseBuffCard =>
+    ({ title, testOnly: false, effects: [{ stat: 'critDmg', value: critDmg }], unparsed: [] })
+
+  it('套了 buff ⇒ 牌的效果真的进引擎、row.buffTitle 如实记录、算完现场恢复（globalBuffs 还原）', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    const before = JSON.stringify(config.globalBuffs)
+
+    const weak = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE, buff: cardOf('弱牌', 0) })
+    const strong = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE, buff: cardOf('强牌', 60) })
+    expect(weak[0]!.buffTitle).toBe('弱牌')
+    expect(strong[0]!.buffTitle).toBe('强牌')
+    expect(strong[0]!.ladder.base).toBeGreaterThan(weak[0]!.ladder.base)   // 暴伤 +60% 真的进了伤害
+    expect(JSON.stringify(config.globalBuffs)).toBe(before)                // 现场恢复
+
+    // 缺省（不传 buff）不写 buffTitle：老口径零变更
+    const none = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE })
+    expect(none[0]!.buffTitle).toBeUndefined()
+  }, 300_000)
+})
+
 describe('图上标注分道（防重叠）', () => {
   it('同 x / 相近的标注分到不同道；离得远的可以共用一道；道号有界', () => {
     const items = [
@@ -320,6 +348,29 @@ describe('图上标注分道（防重叠）', () => {
 
   it('估宽：中文比数字宽（否则标注会算得过窄而叠上）', () => {
     expect(estimateLabelWidth('大招+1')).toBeLessThan(estimateLabelWidth('希希芙·蛇影层数来源+12'))
+  })
+})
+
+describe('标注碰撞剔除（分道之后仍会叠）', () => {
+  it('同位置只留优先级高的；离得远的都留；留下的两两不重叠', () => {
+    const box = (x: number, y: number, width = 60) => ({ x, y, width, height: 13 })
+    const keep = pickNonOverlapping([box(100, 100), box(105, 100), box(400, 100)], [1, 5, 3])
+    // 三个框：0/1 相撞、2 在远处。优先级 1>0 ⇒ 保留【第 1 个】（挤掉第 0 个），远的第 2 个照留
+    expect(keep).toEqual([false, true, true])
+
+    // 不变式：keep 出来的框两两不重叠（含斜对角相邻的情形）
+    const boxes = [box(10, 10), box(20, 20), box(12, 12), box(200, 10), box(205, 11), box(300, 40)]
+    const mask = pickNonOverlapping(boxes, [3, 6, 9, 1, 2, 0])
+    const kept = boxes.filter((_, i) => mask[i])
+    for (let i = 0; i < kept.length; i++) {
+      for (let j = i + 1; j < kept.length; j++) {
+        const a = kept[i]!, b = kept[j]!
+        const overlap = a.x - a.width / 2 < b.x + b.width / 2 && b.x - b.width / 2 < a.x + a.width / 2
+          && a.y - a.height / 2 < b.y + b.height / 2 && b.y - b.height / 2 < a.y + a.height / 2
+        expect(overlap).toBe(false)
+      }
+    }
+    expect(kept.length).toBeGreaterThan(0)
   })
 })
 

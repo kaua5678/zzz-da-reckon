@@ -42,12 +42,12 @@ import {
   type DifficultyGoal, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
 import {
-  applyAxisBinding, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, restoreStore, snapshotStore,
-  type DifficultyWeights,
+  applyAxisBinding, applyBuffToStore, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty,
+  restoreStore, snapshotStore, type DifficultyWeights,
 } from '@/composables/teamCompare'
 import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
 import { getAgentMechanic } from '@/mechanics'
-import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
+import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
 import type { InteractionItem, TeamPreset } from '@/types/teamPreset'
 
@@ -62,6 +62,12 @@ export interface DifficultyCurveOptions {
   goals?: DifficultyGoal[]
   /** 相对门槛（缺省 1e-4） */
   minGainRatio?: number
+  /**
+   * 当期 buff 牌（缺省 = 不带 buff）。**只接受具体某张牌**，不做「自动推荐」——
+   * 自动推荐要对每张牌各算一次全量伤害（散点页每队 3~5 倍开销），曲线每队本来就要跑 ~10 次求值，
+   * 叠上去太慢；页面曲线模式的选择器因此**不含**「自动推荐」项（避免静默当成不带 buff）。
+   */
+  buff?: PhaseBuffCard | null
   /**
    * 操作难度权重（主观量，页面「难度权重」弹层；缺省 = `INTERACTION_WEIGHTS` 默认表 + 溢出 1 秒 = 1 点）。
    * 直接决定 x 轴：`computeDifficulty` 的 Σ(交互×权重) + 溢出秒×权重。
@@ -91,6 +97,8 @@ export interface DifficultyCurveRow {
   ladder: LadderResult
   /** 实际套用的金档（含钳制结果），供页面注明口径 */
   gold: AppliedGold
+  /** 实际套用的当期 buff 标题（缺省 = 不带 buff） */
+  buffTitle?: string
 }
 
 /**
@@ -128,6 +136,10 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
         base: (ctx, team) => {
           clearDifficultyLevers(ctx)
           applyTeamToStore(ctx.config, preset)
+          // 当期 buff 必须**在套队之后**：applyTeamToStore→setAgent→syncTeammateBuffsFromTeam()
+          // 会把 globalBuffs 重建，先套就被冲掉了（实测：先套 = 伤害反而更低，buff 完全没生效）。
+          // 效果可依赖 preset 的角色，所以每队各套一次；阶梯内部不动 globalBuffs，末尾 restoreStore 统一还原。
+          if (options.buff) applyBuffToStore(ctx.config, options.buff, preset)
           // 金步叠加：影画/精炼/音擎（驱动盘与权重/交互已由 applyTeamToStore 套好，金步不碰）
           for (let slot = 0; slot < 3; slot++) {
             ctx.config.setCinemaLevel(slot, applied.cinemas[slot])
@@ -138,7 +150,7 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
           return ctx.calc.teamTotalDamage.value
         },
       })
-      rows.push({ presetId: preset.id, name: preset.name, ladder, gold })
+      rows.push({ presetId: preset.id, name: preset.name, ladder, gold, buffTitle: options.buff?.title })
     }
   } finally {
     configStore.timeWeightStrategy = extra.strategy
@@ -433,6 +445,32 @@ export function assignLabelLanes(items: { x: number; width: number }[], maxLanes
     laneRight[lane] = it.x + it.half
   }
   return lanes
+}
+
+/**
+ * 贪心挑**互不重叠**的标注（按 `priority` 从高到低录取；返回 keep 掩码）。
+ *
+ * 为什么需要：分道只能解决「同一行放不下」，道数与行高有限（G5 之后一条曲线能有 7+ 处跃迁），
+ * 实测仍会叠。这里用**估宽当上界的轴对齐矩形**做碰撞剔除——宁可少标两个，也不让文字糊成一团
+ * （完整清单始终在「关键变化」面板与 tooltip 里）。
+ */
+export function pickNonOverlapping(
+  boxes: { x: number; width: number; y: number; height: number }[],
+  priority: number[],
+): boolean[] {
+  const keep = new Array<boolean>(boxes.length).fill(false)
+  const order = boxes.map((_, i) => i).sort((a, b) => (priority[b] ?? 0) - (priority[a] ?? 0))
+  const kept: typeof boxes = []
+  for (const i of order) {
+    const b = boxes[i]!
+    const hit = kept.some(k =>
+      b.x - b.width / 2 < k.x + k.width / 2 && k.x - k.width / 2 < b.x + b.width / 2
+      && b.y - b.height / 2 < k.y + k.height / 2 && k.y - k.height / 2 < b.y + b.height / 2)
+    if (hit) continue
+    keep[i] = true
+    kept.push(b)
+  }
+  return keep
 }
 
 /** 标注文字估宽（font-size 9 + 加粗：中日韩 ≈10.5px/字，其余 ≈6.5px；宁可高估，低估会漏判重叠） */

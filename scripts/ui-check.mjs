@@ -190,6 +190,21 @@ const realMouseClick = async expr => {
   return pt
 }
 
+
+/** 求值片段：真正可见（自身+祖先都未隐藏）的**最后一个**下拉菜单里的选项 */
+const visibleMenuOpts = `(() => {
+  const shown = el => {
+    for (let n = el; n; n = n.parentElement) {
+      const st = getComputedStyle(n)
+      if (st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0') return false
+    }
+    return true
+  }
+  const menus = [...document.querySelectorAll('.n-base-select-menu')].filter(shown)
+  const last = menus[menus.length - 1]
+  return last ? [...last.querySelectorAll('.n-base-select-option')] : []
+})()`
+
 const failures = []
 try {
   await send('Page.enable')
@@ -223,11 +238,9 @@ try {
     })()`))
     // ⚠ naive-ui 把菜单 teleport 到 body，**关掉的菜单仍留在 DOM 里**（父容器还是 visible，
     // 所以 `option.offsetParent` 判不出来）⇒ 必须按「菜单元素自身可见」筛，否则会点到上一个菜单的选项。
-    const visibleOpts = `[...document.querySelectorAll('.n-base-select-menu')].filter(m => m.offsetParent !== null)
-      .flatMap(m => [...m.querySelectorAll('.n-base-select-option')])`
-    await step('等下拉选项', () => waitFor(`${visibleOpts}.length > 0`, 10000, '下拉'))
+    await step('等下拉选项', () => waitFor(`${visibleMenuOpts}.length > 0`, 10000, '下拉'))
     await step(`选「${optText}」`, () => realMouseClick(`(() => {
-      const opts = ${visibleOpts}
+      const opts = ${visibleMenuOpts}
       return opts.find(e => (e.textContent || '').trim().includes(${JSON.stringify(optText)})) ?? null
     })()`))
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
@@ -241,10 +254,8 @@ try {
       const sel = field ? [...field.querySelectorAll('.n-select')].pop() : null
       return sel?.querySelector('.n-base-selection') ?? null
     })()`))
-    const visibleMainC = `[...document.querySelectorAll('.n-base-select-menu')].filter(m => m.offsetParent !== null)
-      .flatMap(m => [...m.querySelectorAll('.n-base-select-option')])`
-    await step('等下拉选项', () => waitFor(`${visibleMainC}.length > 0`, 10000, '下拉'))
-    await step('选第一个主C', () => realMouseClick(`(() => { const o = ${visibleMainC}[0]; return o ?? null })()`))
+    await step('等下拉选项', () => waitFor(`${visibleMenuOpts}.length > 0`, 10000, '下拉'))
+    await step('选第一个主C', () => realMouseClick(`(() => { const o = ${visibleMenuOpts}[0]; return o ?? null })()`))
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
     await step('读已选队数', () => evaluate(`(document.body.textContent.match(/已选\\s*(\\d+)\\s*队/) || [])[1] ?? null`))
@@ -346,6 +357,7 @@ try {
         const tr = s?.querySelector('tbody tr')
         return tr ? [...tr.querySelectorAll('td')].map(e => e.textContent.replace(/\\s+/g, ' ').trim()).slice(0, 3) : null
       })(),
+      curveNote: (document.querySelector('.curve-note')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 140) || null,
       costNote: [...document.querySelectorAll('.compare-note')].map(e => e.textContent.replace(/\s+/g, ' ').trim()).find(t => t.includes('代价')) ?? null,
       errs: window.__errs || [],
     }

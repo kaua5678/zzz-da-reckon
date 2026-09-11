@@ -18,6 +18,14 @@
           <span class="ctl-label">曲线金档</span>
           <n-select v-model:value="curveGold" :options="curveGoldOptions" size="small" style="width: 140px" />
         </div>
+        <div
+          v-if="chartMode === 'curve'"
+          class="ctl-field"
+          title="曲线模式的当期 buff：只支持「不使用 / 具体某张牌」，**不做自动推荐**——自动推荐要对每张牌各算一次全量伤害，曲线每队本来就要跑 ~10 次求值，叠上去太慢。散点页的「自动推荐」不受影响"
+        >
+          <span class="ctl-label">曲线 Buff</span>
+          <n-select v-model:value="curveBuffChoice" :options="curveBuffOptions" size="small" style="width: 200px" />
+        </div>
         <div class="ctl-field">
           <span class="ctl-label">期数</span>
           <n-select
@@ -164,6 +172,7 @@
         已选 {{ selectedPresets.length }} 队 · 金档 {{ curveGold < 0 ? '预设基础档' : `${curveGold} 金` }}<template
           v-if="curveClampedCount > 0"
         >（{{ curveClampedCount }} 队越界已按各自档位钳制）</template>
+        · Buff {{ curveBuffChoice === 'none' ? '不使用' : curveBuffChoice }}（曲线不做自动推荐）
         · x = 操作难度（Σ交互次数×权重 + 合轴溢出秒×权重 + <b>队友合轴节省秒</b>×权重，<b>自动算</b>；三项权重在「难度权重」弹层可调）
         · 每队要跑 ~10 次全量伤害（约 3~4 秒/队 ⇒ 预计 ≈{{ fmt(selectedPresets.length * 3.4 / 60, 1) }} 分钟）——
         曲线模式建议只选几支队做「难易强度」对比，跑起来可点「中止」保留已算部分。
@@ -269,7 +278,7 @@
       <template #header>难度曲线（{{ curveData.series.length }} 队 · 每队自己的 x）</template>
       <div class="compare-note curve-note">
         口径：<b>{{ curveGold < 0 ? '预设基础档（0命1精 + 预设权重/交互/音擎/驱动盘）' : `${curveGold} 金（走预设金步 + 常驻步，越界按各队档位钳制）` }}</b>
-        + 当前期数 Boss + 静态权重（不跑自动分配）；<b>不含 buff、不含「最优加金 / 自动下位」</b>
+        + 当前期数 Boss + 静态权重（不跑自动分配）+ 当期 Buff（手动选，缺省不使用）；<b>不含「最优加金 / 自动下位」</b>
         （曲线要的是跨队同口径的形状，故起点 ≠ 散点页的某个点）。
         x = 该队<b>自动算的</b>操作难度<b>绝对值</b>（Σ交互次数×权重 + 合轴溢出秒×权重；交互次数取这一档<b>实打</b>的次数，
         不是预设声明——联合策略调低弹刀、般岳补交互都会算进去）+ 队友合轴解放出来的前台秒数（合轴率把队友前台压出去多少，越多=对齐越难、总伤越高）；
@@ -414,7 +423,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS } from '@/composables/teamCompare'
-import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
+import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
@@ -664,6 +673,24 @@ const curveAbort = ref(false)
  * **不含**散点页的「最优加金 / 自动下位」两层。
  */
 const curveGold = ref<number>(-1)
+/**
+ * 曲线 Buff：**不含**「自动推荐」（曲线每队本来就要跑 ~10 次全量求值；自动推荐再乘 3~5 倍）。
+ * 选择器与散点页的 `buffChoice` 分开，避免「在曲线模式选了自动推荐 → 被静默当成不带 buff」。
+ */
+const curveBuffChoice = ref<string>('none')
+const curveBuffOptions = computed(() => [
+  { value: 'none', label: '不使用（默认）' },
+  ...(currentPhaseView.value?.buffs ?? []).map(b => ({
+    value: b.title,
+    label: `${b.title || '(未命名)'}${b.testOnly ? '（测试服）' : ''}`,
+    disabled: b.testOnly,
+  })),
+])
+/** 期数切换后若选中的牌不在当期，回到「不使用」 */
+watch(currentPhaseView, () => {
+  const cur = curveBuffChoice.value
+  if (cur !== 'none' && !(currentPhaseView.value?.buffs ?? []).some(b => b.title === cur)) curveBuffChoice.value = 'none'
+})
 const curveGoldOptions = computed(() => [
   { value: -1, label: '预设基础档' },
   ...Array.from({ length: 13 }, (_, g) => ({ value: g, label: `${g} 金` })),
@@ -736,6 +763,9 @@ async function runCurves() {
       boss,
       phase,
       goldLevel: curveGold.value >= 0 ? curveGold.value : undefined,
+      buff: curveBuffChoice.value === 'none'
+        ? null
+        : ((currentPhaseView.value?.buffs ?? []).find(b => b.title === curveBuffChoice.value) ?? null),
       difficultyWeights: { overflow: diffWeights.value.overflow, align: diffWeights.value.align, interaction: diffWeights.value.interaction },
     }))
   }
@@ -885,24 +915,31 @@ const curveSeriesPx = computed(() => {
       text: j.changes.map(cntDelta).slice(0, 2).join('·') + (j.changes.length > 2 ? '…' : ''),
     })),
   }))
-  // 图上标注只保留**每队伤害增量最大的前 2 处**（G5 合轴率杠杆会让跃迁涨到 17 处，
-  // 全标必叠；完整清单在「关键变化」面板与 tooltip 里），再跨队统一分道错开抬升。
+  // 图上标注只保留**每队伤害增量最大的前 2 处**（G5 之后一条曲线能有 7+ 处跃迁，全标必叠；
+  // 完整清单在「关键变化」面板与 tooltip 里），再跨队分道 + 碰撞剔除（宁可少标，不糊成一团）。
   const seriesTop = series.map(s => {
-    const keep = new Set(
-      [...s.jumpPts]
-        .sort((a, b) => (b.dmg - (s.base ?? 0)) - (a.dmg - (s.base ?? 0)))
-        .slice(0, 2),
-    )
-    return s.jumpPts.filter(j => keep.has(j))
+    const rank = [...s.jumpPts].sort((a, b) => (b.dmg - s.base) - (a.dmg - s.base))
+    return new Set(rank.slice(0, 2))
   })
-  const all = seriesTop.flat()
-  const lanes = assignLabelLanes(all.map(j => ({ x: j.cx, width: estimateLabelWidth(j.text) })), 6)
-  let k = 0
-  return series.map((s, si) => ({
+  const flat: { j: (typeof series)[number]['jumpPts'][number]; base: number }[] = []
+  const offsets: number[] = []
+  series.forEach((s, si) => {
+    offsets.push(flat.length)
+    for (const j of s.jumpPts) if (seriesTop[si]!.has(j)) flat.push({ j, base: s.base })
+  })
+  const lanes = assignLabelLanes(flat.map(f => ({ x: f.j.cx, width: estimateLabelWidth(f.j.text) })), 6)
+  const boxes = flat.map((f, i) => ({
+    x: f.j.cx, y: f.j.cy - 11 - (lanes[i] ?? 0) * 15, width: estimateLabelWidth(f.j.text), height: 13,
+  }))
+  const keepMask = pickNonOverlapping(boxes, flat.map(f => f.j.dmg - f.base))
+  const slotOf = new Map(flat.map((f, gi) => [f.j, gi]))
+  return series.map(s => ({
     ...s,
     jumpPts: s.jumpPts.map(j => {
-      const idx = seriesTop[si]!.indexOf(j)
-      return { ...j, lane: idx < 0 ? 0 : (lanes[k++] ?? 0), labeled: idx >= 0 }
+      const gi = slotOf.get(j)
+      return gi === undefined
+        ? { ...j, lane: 0, labeled: false }
+        : { ...j, lane: lanes[gi] ?? 0, labeled: keepMask[gi] ?? false }
     }),
   }))
 })

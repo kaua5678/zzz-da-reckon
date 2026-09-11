@@ -709,8 +709,11 @@ export function restoreStore(configStore: ReturnType<typeof useConfigStore>, sna
 
 // ========== 应用到 store ==========
 
-/** 把 buff 牌写进全局 Buff 表（快照/恢复负责清理） */
-function applyBuffToStore(configStore: ReturnType<typeof useConfigStore>, card: PhaseBuffCard | null, preset: TeamPreset) {
+/**
+ * 把 buff 牌写进全局 Buff 表（快照/恢复负责清理）。
+ * **难度曲线也用它**（`difficultyCurve.ts`）：曲线模式手动选当期 buff 时，按队套一次。
+ */
+export function applyBuffToStore(configStore: ReturnType<typeof useConfigStore>, card: PhaseBuffCard | null, preset: TeamPreset) {
   const rows = (card?.effects ?? [])
     .map(e => resolveBuffEffect(e, preset))
     .filter((e): e is PhaseBuffEffect => e !== null)
