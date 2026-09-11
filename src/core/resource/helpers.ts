@@ -1254,7 +1254,16 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
   return paid + Math.max(0, Math.floor(cfg.freeExSpecialCount ?? 0))
 }
 
-/** 单次迭代：根据当前 state 计算新的 state */
+/**
+ * 单次迭代：根据当前 state 计算新的 state。
+ *
+ * **S1（资源账本预解）内的四步顺序不可交换**（2026-09-11 显式化）：
+ *   1. 单角色能量/喧响（`calcEnergySource` / `calcRawDecibelParts`，行级 Σ 取 `feasibleRows`）；
+ *   2. 队友伴随喧响（分享比例，依赖 Step1 的每槽收入）；
+ *   3. 终结技次数（喧响总量 ÷ 消耗，依赖 Step2）；
+ *   4. 必做动作前台时间 + 合轴抵扣 + 平A池分配 + **可行性封顶**（`timeFeasibleScale`，依赖 Step3 的次数）。
+ * 本函数是纯映射（同输入同输出），相位写入由 `materializeRows` 隔离；它的不动点由 `runInnerLoop` 收敛。
+ */
 export function iterate(
   configs: CharacterOperationConfig[],
   prevStates: IterationState[],

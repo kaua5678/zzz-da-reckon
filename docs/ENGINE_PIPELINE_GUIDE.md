@@ -74,6 +74,13 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
 3. 次数 = `Math.floor(effectiveBackstageTime(state.backstageTime, cfg) / cd)`，与其他上限取 min。
    需要账本/行一致的（资源 result 也引用次数）→ 把 cap 写 cfg 字段给 buildResourceResult 复用（卢西娅模式）。
 
+**阶段顺序（S0–S5）的单一事实源在代码里**（2026-09-11 显式化）：`core/resource.ts#calcTeamResources`
+函数头有阶段表（名字 / 位置 / 输入→输出 / 判据），S1 的四步顺序在 `core/resource/helpers.ts#iterate` 头注释。
+已抽出的命名阶段：`runInnerLoop`(S1) · `runFoldLoop`(S2) · `useResourceCalc#stageResolveFeasibility`(S3，含
+降配验收三臂与枚举取最大可行) · 逐槽装配截断(S4) 仍在 `calcTeamResources` 体内 · `return`(S5)。
+改核心前先读那张表，按阶段定位；**A 项（截断回灌）的预留接口** = `cfg.rowTimeLimit` → `feasibleRows`
+（缺省不截断 ⇒ 既有口径不动）。
+
 ## 2. 模块钩子速查（src/mechanics/types.ts）
 
 | 钩子 | 调用时机 | 能做什么 | 拿不到什么 |

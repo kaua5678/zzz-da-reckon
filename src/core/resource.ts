@@ -265,6 +265,22 @@ export const UNDERFILL_PROBE_THRESHOLD_SECONDS = TIME_BUDGET_TOLERANCE_SECONDS
 export const TIME_FOLD_MAX_PASSES = 32
 
 
+/**
+ * ===== 计算核心的**阶段顺序**（2026-09-11 显式化；改动前先读这张表，改动只落在对应阶段）=====
+ *
+ * | 阶段 | 名字 | 位置 | 输入 → 输出 | 判据/不变量 |
+ * |---|---|---|---|---|
+ * | S0 | 输入装配 | `useResourceCalc#runCalcRound`（`buildCharConfig` + `applyTeamMechanics`） | store/catalog → `cfg[]` | 规则 6：队伍级机制走 `applyTeamConfig` |
+ * | S1 | 资源账本预解（内层不动点） | `runInnerLoop` → `iterate`（`helpers.ts#iterate`，四步见其函数头） | `cfg[]` + 种子 → `IterationState[]` | 判稳 = 强特/终结次数 + `basicAttackTime` **严格相等**；跑满/入环 → 规范停点（冷热解耦） |
+ * | S2 | 时间预算折叠（外层不动点） | `runFoldLoop` | states → states（`cfg.timeBudgetExcess`/`timeBudgetRefund` 折入） | `Σ前台行 ≡ 账本`；`+=` 折正超出、负差 refund 回填；上限 `TIME_FOLD_MAX_PASSES` |
+ * | S3 | 可行化决策 | `useResourceCalc#stageResolveFeasibility`（轴退化 + 降配，2026-09-11 抽出） | 整轮结果 → `{r, axisFallback, interactionScale}` | 三臂不更差（截断/超预算/留白各 1s）+ 枚举取最大可行；锁窗一律不动 |
+ * | S4 | 装配 + 可行化截断 | 本函数体内的逐槽 `configs.map`（`truncateExecutionsToFrontline`） | states + cfg → `characters[]`（行/资源/时间） | 平A行不参与截断；后台行不占前台；整数装包；`overflowSeconds`/`truncationCuts` 逐行上报 |
+ * | S5 | 物化输出 | 本函数尾部的 `return` | 上面各阶段 → `TeamResourceResult` | 资源/计数取**未截断账本**、伤害/失衡取**截断后行**（二者不自洽是已知债务，见 DEBT_REGISTRY「截断不回灌资源循环」） |
+ *
+ * 顺序不可交换：S1 定次数/资源 → S2 让账本与物化行自洽 → S3 决定"撑不下时怎么退" → S4 削行 →
+ *  S5 输出。**S1 的行级资源收入按 `feasibleRows` 取（`cfg.rowTimeLimit` 由外环注入）**，
+ *  这条是 A 项（截断回灌）的预留接口，缺省不截断 ⇒ 既有口径不动。
+ */
 export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResult {
   const totalTime = config.totalTime
   // 伊德海莉连续松弛（0.5 阻尼）收敛比整数动力学慢：她的队内层迭代上限提到 100
