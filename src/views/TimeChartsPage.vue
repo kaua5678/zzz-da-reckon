@@ -1278,6 +1278,13 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamStrengthSeed, type TeamTimelineResult } from '@/composables/teamTimeline'
+import {
+  TIMELINE_LAYOUT,
+  buildTimelineChart,
+  timelineBossLaneY,
+  timelineLaneTotalH,
+  timelineSvgWidth,
+} from '@/composables/timelineChart'
 import { buildNewCharacterRows, computeFilmSimulation, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
 import { computeSlotComparePoints, type SlotComparePoint, type SlotCompareSlot } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
@@ -1489,107 +1496,33 @@ function agentName(id: string): string {
 }
 
 // ========== SVG 布局 ==========
-const svgW = computed(() => Math.max(480, Math.min(1180, typeof window !== 'undefined' ? window.innerWidth - 120 : 960)))
-const padL = 54
-const padR = 14
-const padT = 26
-const plotH = 300
-const laneH = 22
-const laneGap = 6
-const laneTotalH = laneH * 3 + laneGap * 2
-// 第 4 条车道：当期 Boss 排期（危局/试炼）
-const bossLaneY = padT + plotH + 12 + laneTotalH + laneGap
-const xLabelH = 26
-const svgH = computed(() => padT + plotH + 12 + laneTotalH + laneGap + laneH + xLabelH)
+// 时间线图几何/标度已抽到 composables/timelineChart.ts（纯函数，可单测）；
+// 此处只留同名适配层（模板与其余图表零改动）。
+const svgW = computed(() => timelineSvgWidth(typeof window !== 'undefined' ? window.innerWidth : undefined))
+const { padL, padR, padT, plotH, laneH, xLabelH } = TIMELINE_LAYOUT
+const laneTotalH = timelineLaneTotalH()
+const bossLaneY = timelineBossLaneY()
+const tl = computed(() => buildTimelineChart({
+  nodes: result.value?.nodes ?? [],
+  svgW: svgW.value,
+  nameOf: (id) => agentName(id),
+  colorOf: (id) => colorOf(id),
+}))
+const svgH = computed(() => tl.value.svgH)
+const nodeCount = computed(() => tl.value.nodeCount)
+const plotW = computed(() => tl.value.plotW)
+const cellW = computed(() => tl.value.cellW)
+const yMax = computed(() => tl.value.yMax)
+function yOf(v: number): number { return tl.value.yOf(v) }
+const yTicks = computed(() => tl.value.yTicks)
+function yLabel(i: number): number { return tl.value.yLabel(i) }
+const chartPts = computed(() => tl.value.chartPts)
+const linePoints = computed(() => tl.value.linePoints)
+const swapGuides = computed(() => tl.value.swapGuides)
+const laneDefs = computed(() => tl.value.laneDefs)
+const xTicks = computed(() => tl.value.xTicks)
 
-const nodeCount = computed(() => result.value?.nodes.length ?? 0)
-const plotW = computed(() => svgW.value - padL - padR)
-const cellW = computed(() => (nodeCount.value > 1 ? plotW.value / nodeCount.value : plotW.value))
-function xOf(i: number): number {
-  if (nodeCount.value <= 1) return padL + plotW.value / 2
-  return padL + (i / (nodeCount.value - 1)) * plotW.value
-}
-
-const yMax = computed(() => {
-  const maxR = Math.max(...(result.value?.nodes.map(n => n.hpRatio) ?? [0]), 0)
-  const target = Math.max(100, maxR * 1.05)
-  const step = target <= 200 ? 50 : 100
-  return Math.ceil(target / step) * step
-})
-function yOf(v: number): number {
-  return padT + plotH - (v / yMax.value) * plotH
-}
-const yTicks = computed(() => {
-  const step = yMax.value <= 200 ? 50 : 100
-  const out: number[] = []
-  for (let v = 0; v <= yMax.value; v += step) out.push(yOf(v))
-  return out
-})
-function yLabel(i: number): number {
-  const step = yMax.value <= 200 ? 50 : 100
-  return i * step
-}
-
-const chartPts = computed(() =>
-  (result.value?.nodes ?? []).map((n, i) => ({
-    x: xOf(i),
-    y: yOf(Math.min(n.hpRatio, yMax.value)),
-    color: colorOf(n.team[0]),
-    isSwap: !!n.swappedIn,
-  })),
-)
-const linePoints = computed(() => chartPts.value.map(p => `${p.x},${p.y}`).join(' '))
-
-const swapGuides = computed(() =>
-  (result.value?.nodes ?? [])
-    .map((n, i) => (n.swappedIn ? { x: xOf(i) } : null))
-    .filter((x): x is { x: number } => x !== null),
-)
-
-// 泳道
-const laneDefs = computed(() => {
-  const nodes = result.value?.nodes ?? []
-  const makeLane = (key: string, label: string, slotOf: (n: typeof nodes[number]) => string) => {
-    const cells = nodes.map((n, i) => ({
-      x: i === 0 ? padL : padL + i * cellW.value,
-      color: colorOf(slotOf(n)),
-      name: agentName(slotOf(n)),
-    }))
-    // 换人标签：每段连续同色块首格显示角色名
-    const labels: { x: number; text: string }[] = []
-    let prev: string | null = null
-    nodes.forEach((n, i) => {
-      const id = slotOf(n)
-      if (id !== prev) {
-        labels.push({ x: padL + i * cellW.value + 4, text: agentName(id) })
-        prev = id
-      }
-    })
-    return { key, label, cells, labels }
-  }
-  const laneY = (idx: number) => padT + plotH + 12 + idx * (laneH + laneGap)
-  return [
-    { ...makeLane('main', '主C', n => n.team[0]), y: laneY(0) },
-    { ...makeLane('t1', '队友1', n => n.team[1]), y: laneY(1) },
-    { ...makeLane('t2', '队友2', n => n.team[2]), y: laneY(2) },
-  ]
-})
-
-// X 轴标签：节点多时抽稀
-const xTicks = computed(() => {
-  const nodes = result.value?.nodes ?? []
-  if (nodes.length === 0) return []
-  const step = Math.max(1, Math.ceil(nodes.length / 14))
-  const out: { x: number; label: string }[] = []
-  for (let i = 0; i < nodes.length; i += step) {
-    out.push({ x: xOf(i), label: nodes[i].nodeLabel })
-  }
-  if ((nodes.length - 1) % step !== 0) {
-    out.push({ x: xOf(nodes.length - 1), label: nodes[nodes.length - 1].nodeLabel })
-  }
-  return out
-})
-
+// 悬浮
 // 悬浮
 const hoverNode = ref(-1)
 /** 换人判定徽标文案：上位 +12.4% / 平替 +0.8% */
