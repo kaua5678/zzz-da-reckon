@@ -42,3 +42,14 @@ export interface GuardResult {
   detail: string[]
 }
 export declare function runAllChecks(root?: string): { results: GuardResult[]; ok: boolean }
+
+// 判据 7：展示层越层 import 棘轮（ARCHITECTURE §0 依赖方向）
+export declare const EXHIBITION_LAYER_DIRS: string[]
+export declare const EXHIBITION_LAYER_FORBIDDEN: RegExp
+export declare const EXHIBITION_LAYER_IMPORT_BASELINE: number
+export declare function detectExhibitionLayerImport(line: string): boolean
+export declare function countExhibitionLayerImports(content: string): number
+export declare function scanExhibitionLayerImports(root?: string): {
+  count: number
+  sites: { file: string; line: number; text: string }[]
+}

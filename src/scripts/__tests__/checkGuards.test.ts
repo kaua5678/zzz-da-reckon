@@ -10,7 +10,10 @@ import { describe, expect, it } from 'vitest'
 import {
   DEBT_REGISTRY,
   AGENT_BRANCH_BASELINE,
+  EXHIBITION_LAYER_IMPORT_BASELINE,
   detectFetchStub,
+  detectExhibitionLayerImport,
+  countExhibitionLayerImports,
   fetchStubViolations,
   findForbiddenTracked,
   countAgentIdBranchLines,
@@ -55,13 +58,43 @@ describe('countAgentIdBranchLines（按行计，与棘轮基线同口径）', ()
 })
 
 describe('findForbiddenTracked（工作状态 ≠ 项目知识）', () => {
-  it('task-ledger / ledgers / .zcode / 未白名单的 .claude 文件都拒绝', () => {
+  it('task-ledger / ledgers / .zcode / .freebuff / 未白名单的 .claude 文件都拒绝', () => {
     expect(findForbiddenTracked(['.claude/task-ledger.md'])).toEqual(['.claude/task-ledger.md'])
     expect(findForbiddenTracked(['.claude/ledgers/guards-task-ledger-20260830.md'])).toHaveLength(1)
     expect(findForbiddenTracked(['.zcode/plans/x.md'])).toHaveLength(1)
+    expect(findForbiddenTracked(['.freebuff/project-id'])).toEqual(['.freebuff/project-id'])
     expect(findForbiddenTracked(['.claude/unknown.json'])).toHaveLength(1)
     expect(findForbiddenTracked(['.claude/settings.local.json'])).toEqual([])
     expect(findForbiddenTracked(['src/core/damage.ts'])).toEqual([])
+  })
+})
+
+describe('detectExhibitionLayerImport（展示层禁越层 import 引擎/录入层）', () => {
+  it('抓运行时 import / export-from / 动态 import 三种形态', () => {
+    expect(detectExhibitionLayerImport(`import { calcPanel } from '@/core/panel'`)).toBe(true)
+    expect(detectExhibitionLayerImport(`import { getAgentMechanic } from '@/mechanics'`)).toBe(true)
+    expect(detectExhibitionLayerImport(`import { agentSpecs } from '@/specs/registry'`)).toBe(true)
+    expect(detectExhibitionLayerImport(`export { sharpCritMultiplier } from '@/core/damage'`)).toBe(true)
+    expect(detectExhibitionLayerImport(`const m = await import('@/core/damage')`)).toBe(true)
+  })
+
+  it('放行：import type / 注释 / 编排层 / 相对路径 / 深层业务模块', () => {
+    expect(detectExhibitionLayerImport(`import type { AgentMechanicSpec } from '@/specs/types'`)).toBe(false)
+    expect(detectExhibitionLayerImport(`  // import { x } from '@/core/damage'`)).toBe(false)
+    expect(detectExhibitionLayerImport(`import { useResourceCalc } from '@/composables/useResourceCalc'`)).toBe(false)
+    expect(detectExhibitionLayerImport(`import FinalPanel from './FinalPanel.vue'`)).toBe(false)
+    expect(detectExhibitionLayerImport(`import { fmt } from '@/utils/format'`)).toBe(false)
+    // '@/corex/...' 不是 @/core 子路径，不得误抓（前缀必须紧跟 / 或引号）
+    expect(detectExhibitionLayerImport(`import { x } from '@/corex/y'`)).toBe(false)
+  })
+
+  it('按行计数（同一个 .vue 多处只算多行）', () => {
+    const src = [
+      `import { a } from '@/core/panel'`,
+      `import type { T } from '@/core/panel'`,
+      `import { b } from '@/mechanics'`,
+    ].join('\n')
+    expect(countExhibitionLayerImports(src)).toBe(2)
   })
 })
 
@@ -105,11 +138,12 @@ describe('matchDebtRegistry（注册表匹配：文件相同 + 关键词包含�
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('六条判据全绿（fetch-stub 集合相等 / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / 工作区状态 / 滑块棘轮 / debt 注册表 / @fact 锚点）', () => {
+  it('七条判据全绿（fetch-stub 集合相等 / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / 工作区状态 / 滑块棘轮 / debt 注册表 / @fact 锚点 / 展示层越层棘轮 ' + EXHIBITION_LAYER_IMPORT_BASELINE + '）', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(6)
+    expect(results).toHaveLength(7)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
+    expect(results.map(r => r.name.split(' ')[0])).toContain('exhibition-layer')
   })
 })

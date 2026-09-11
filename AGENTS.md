@@ -97,7 +97,7 @@
 
 ```bash
 npm run verify        # check-guards + validate:data + validate:specs + verify:recording + vitest + typecheck + build（一条链）
-npm run check-guards  # 机器护栏：fetch-stub 冻结（§3 harness 纪律）/ useResourceCalc agentId 棘轮（规则 6）/ 工作区状态防误提交（规则 13）
+npm run check-guards  # 机器护栏 7 项：fetch-stub 冻结（§3）/ agentId 棘轮（规则 6）/ 工作区状态防误提交（规则 13）/ 展示层越层棘轮（§0 依赖方向：views·components 禁 import @/core|@/mechanics|@/specs）/ 滑块生效测试（规则 12）/ debt 登记（规则 12）/ @fact 锚点（规则 16）
 npm run verify:recording  # 录入完成判据：声称 implemented 的角色必须有测试引用 + expect 断言 + 档案状态行
 npm run docs:status   # 重新生成 docs/implementation-status.md（CI 会检查漂移，漏跑即红）
 npm run minify:static # 生成产物瘦身/剔 catalog 死键（幂等；validate:data 报产物膨胀时用它修）

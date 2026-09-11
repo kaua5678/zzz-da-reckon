@@ -31,5 +31,8 @@ Thumbs.db
 # workbuddy agent runtime（上一个 Windows 端 agent 的工作区；用户 2026-09-10 授权清理，留 ignore 防再冒出来）
 .workbuddy/
 
+# freebuff agent runtime（agent 工作区标记，非项目知识；2026-09-11 评审发现 project-id 被误跟踪）
+.freebuff/
+
 # zc 车道租约与验证日志（工作状态，不是项目知识；check-guards 拒绝其被跟踪）
 .zc/

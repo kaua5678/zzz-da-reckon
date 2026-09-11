@@ -7,6 +7,8 @@
 //   1. fetch-stub 冻结   —— AGENTS §3「新测试一律用 src/test/harness.ts，禁止复制 fetch stub」
 //   2. agentId 分支棘轮  —— 规则 6「队伍级机制走 applyTeamConfig，禁止往 useResourceCalc 加分支」
 //   3. 工作区状态防误提交 —— 规则 13「task-ledger/ledgers 是工作状态不是项目知识」
+//   7. 展示层越层棘轮    —— ARCHITECTURE §0「依赖方向：展示 → 编排 → 引擎」
+//      （views/components 禁 import @/core|@/mechanics|@/specs；存量冻结只减不增）
 //
 // 用法：node scripts/check-guards.mjs（npm run check / npm run verify 已挂载）
 // 逃生口（都要求显式改本文件，让「例外」在 diff 里留痕）：
@@ -100,9 +102,70 @@ export const CLAUDE_TRACKED_ALLOWLIST = ['.claude/settings.local.json']
 
 export function findForbiddenTracked(trackedPaths) {
   return trackedPaths.filter(p =>
-    (p === '.claude/task-ledger.md' || p.startsWith('.claude/ledgers/') || p.startsWith('.zcode/') || p.startsWith('.zc/'))
+    (p === '.claude/task-ledger.md' || p.startsWith('.claude/ledgers/') || p.startsWith('.zcode/') || p.startsWith('.zc/')
+      || p.startsWith('.freebuff/'))
     || (p.startsWith('.claude/') && !CLAUDE_TRACKED_ALLOWLIST.includes(p)),
   )
+}
+
+// ---- 判据 7：展示层越层 import 棘轮 ----
+//
+// 规则来源：ARCHITECTURE §0「依赖方向：展示 → 编排 → 引擎」——views/components 只读编排层产物，
+// 不直接 import 引擎（@/core）或录入层（@/mechanics、@/specs）。
+//
+// 为什么是棘轮而不是一次清零：2026-09-11 评审实测 24 处（23 运行时 + 1 import type），
+// 其中多数是常量/纯函数（sharpCritMultiplier / ULTIMATE_COST_DEFAULT / scoreForDamageRatio /
+// SKILL_DMG_TARGET_LABELS…）。正解是下沉 src/data/ 或经编排层透出，但逐条属独立任务；
+// 先冻结防恶化（复制 agentId 棘轮的已验范式）。豁免 import type：纯类型不产生运行时依赖。
+
+/** 展示层目录（只扫 .vue；它们的逻辑入口就是 <script setup>） */
+export const EXHIBITION_LAYER_DIRS = ['src/views', 'src/components']
+
+/** 禁止的越层目标：引擎/录入层（@/core、@/mechanics、@/specs） */
+export const EXHIBITION_LAYER_FORBIDDEN = /@\/(?:core|mechanics|specs)(?:\/|['"])/
+
+/**
+ * 2026-09-11 冻结基线（评审时实测 23 处运行时越层 import；另有 1 处 `import type` 按豁免不计）。
+ * 只减不增：迁走一处 → 把基线下调到新值（护栏会提示）；上调没有合法路径。
+ */
+export const EXHIBITION_LAYER_IMPORT_BASELINE = 23
+
+/**
+ * 单行判定：是否构成越层依赖。
+ * 计入 `import ... from '@/core/...'`、`export ... from ...`、动态 `import('@/core/...')`；
+ * 豁免：注释行、`import type`（类型面不产生运行时边）。
+ */
+export function detectExhibitionLayerImport(line) {
+  const t = line.trim()
+  if (!t || t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return false
+  if (/^import\s+type\b/.test(t)) return false
+  const hasImportSyntax = /\bfrom\s+['"]/.test(t) || /\bimport\s*\(\s*['"]/.test(t)
+  return hasImportSyntax && EXHIBITION_LAYER_FORBIDDEN.test(t)
+}
+
+/** 扫一个 .vue 源码的越层 import 行数 */
+export function countExhibitionLayerImports(content) {
+  return content.split('\n').filter(detectExhibitionLayerImport).length
+}
+
+/** 扫展示层全部 .vue，返回 { count, sites: [{ file, line, text }] }（sites 供归因输出） */
+export function scanExhibitionLayerImports(root = ROOT) {
+  const sites = []
+  const rec = (dir) => {
+    if (!existsSync(dir)) return
+    for (const n of readdirSync(dir)) {
+      const p = join(dir, n)
+      if (statSync(p).isDirectory()) rec(p)
+      else if (n.endsWith('.vue')) {
+        const rel = relative(root, p).split(sep).join('/')
+        readFileSync(p, 'utf8').split('\n').forEach((l, i) => {
+          if (detectExhibitionLayerImport(l)) sites.push({ file: rel, line: i + 1, text: l.trim().slice(0, 100) })
+        })
+      }
+    }
+  }
+  for (const d of EXHIBITION_LAYER_DIRS) rec(join(root, d))
+  return { count: sites.length, sites }
 }
 
 // ---- 判据 4：滑块生效测试（「加了滑块但没有测试引用」= 死数据风险） ----
@@ -312,9 +375,25 @@ export function runAllChecks(root = ROOT) {
     results.push({
       name: 'workspace state not tracked (规则 13: 工作状态 ≠ 项目知识)',
       ok: bad.length === 0,
-      detail: bad.map(p => `  ✗ 工作区状态文件被跟踪：${p} → git rm --cached（.claude/ledgers/ 与 .zcode/ 已 gitignore）`),
+      detail: bad.map(p => `  ✗ 工作区状态文件被跟踪：${p} → git rm --cached（.zcode/ .zc/ .freebuff/ 已 gitignore）`),
     })
   }
+
+  // ---- 判据 7：展示层越层 import 棘轮（ARCHITECTURE §0 依赖方向） ----
+  const layer = scanExhibitionLayerImports(root)
+  results.push({
+    name: `exhibition-layer ratchet (ARCHITECTURE §0: 展示 → 编排 → 引擎，views/components 禁 import 引擎/录入层) = ${layer.count}/${EXHIBITION_LAYER_IMPORT_BASELINE}`,
+    ok: layer.count === EXHIBITION_LAYER_IMPORT_BASELINE,
+    detail: layer.count > EXHIBITION_LAYER_IMPORT_BASELINE
+      ? [
+        `  ✗ 越层 import ${EXHIBITION_LAYER_IMPORT_BASELINE}→${layer.count}：展示层直接 import 了 @/core|@/mechanics|@/specs`,
+        '    → 常量/纯函数下沉 src/data/，或经编排层（composables）透出；import type 不算越层',
+        ...layer.sites.slice(0, 12).map(s => `      ${s.file}:${s.line}  ${s.text}`),
+      ]
+      : layer.count < EXHIBITION_LAYER_IMPORT_BASELINE
+        ? [`  ✗ 越层 import ${EXHIBITION_LAYER_IMPORT_BASELINE}→${layer.count}：是进步，把 check-guards.mjs 的 EXHIBITION_LAYER_IMPORT_BASELINE 下调到 ${layer.count}（棘轮只减不增）`]
+        : [],
+  })
 
   const settings = scanSettingsCoverage(root)
   const newGaps = settings.untested.filter(e => !UNTESTED_SETTINGS_ALLOWLIST.includes(e))
