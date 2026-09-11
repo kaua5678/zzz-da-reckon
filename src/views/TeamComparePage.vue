@@ -847,13 +847,17 @@ const curveXTicks = computed(() => (curveData.value?.costTicks ?? [0]).map(c => 
 function cntNum(v: number): string {
   return Number.isInteger(v) ? String(v) : fmt(v, 1)
 }
-/** 图上标注用短文案：`大招+1` */
+/** 「合轴节省」是**秒**不是次数 ⇒ 文案带单位，免得「+91.5」看不出是什么 */
+const SECONDS_LABEL = '合轴节省'
+const unitOf = (label: string) => (label === SECONDS_LABEL ? 's' : '')
+
+/** 图上标注用短文案：`大招+1` / `合轴节省+91.5s` */
 function cntDelta(c: KeyCountChange): string {
-  return `${c.label}+${cntNum(c.delta)}`
+  return `${c.label}+${cntNum(c.delta)}${unitOf(c.label)}`
 }
-/** 面板/tooltip 用完整文案：`大招 7→8` */
+/** 面板/tooltip 用完整文案：`大招 7→8` / `合轴节省 0→91.5s` */
 function cntRange(c: KeyCountChange): string {
-  return `${c.label} ${cntNum(c.from)}→${cntNum(c.to)}`
+  return `${c.label} ${cntNum(c.from)}→${cntNum(c.to)}${unitOf(c.label)}`
 }
 /**
  * 关键变化文案（同档同类来源对照）：`大招 7→8（终结技系 Δ +78.00万）`。

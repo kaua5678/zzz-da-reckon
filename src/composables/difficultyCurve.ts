@@ -20,6 +20,7 @@
  * **关键次数标注**（用户 2026-09-10 口径：「难度上升到关键变化后可以标注，比如大招多了一次，
  * 毁伤多一次，异常角色就紊乱多一次乱流多一次」）：阶梯每档采一次 `captureKeyCounts` 快照，
  * 相邻档差分后**只标注 Δ≥1 的跃迁**（引擎次数常带小数，+0.1 的微调不算"多一次"，只进 tooltip）；
+ * 另加一项**「合轴节省」（秒）**——合轴率优化解放出来的前台时间，是 G5 的主指标（用户口径：只看省出多少秒）。
  * 队伍级 7 项来自引擎字段，角色专属项来自模块自己的 `resourceSections` 展示行（`<数> 次`）——
  * **不在这里硬编码角色**，新增角色只要模块有那行就自动被标注。
  *
@@ -349,6 +350,9 @@ export function captureKeyCounts(calc: Calc): Record<string, number> {
     anomaly: calc.anomalyPoolResult.value ?? null,
   }
   const out: Record<string, number> = {}
+  // 「合轴节省」放最前：用户口径「队友合轴率本来就是把队友招式的时间节约出来给主c…只需管合轴了多少时间出来」。
+  // 单位是**秒**（不是次数）——标签自带限定词，读起来不歧义。
+  out['合轴节省'] = calc.resourceResult.value ? frontlineOccupationBreakdown(calc.resourceResult.value).saved : 0
   for (const def of TEAM_KEY_COUNTS) out[def.label] = def.pick(input)
   const names = calc.agentNames.value
   for (const c of input.characters) {

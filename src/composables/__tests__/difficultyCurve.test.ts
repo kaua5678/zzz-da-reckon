@@ -9,7 +9,7 @@ import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource,
-  diffKeyCounts, estimateLabelWidth, linkCountToDmg, liveInteractions, majorChanges, measureOperationalDifficulty,
+  captureKeyCounts, diffKeyCounts, estimateLabelWidth, linkCountToDmg, liveInteractions, majorChanges, measureOperationalDifficulty,
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS, clearDifficultyLevers, climbDifficultyLadder, type LadderResult } from '@/composables/difficultyLadder'
@@ -275,6 +275,26 @@ describe('G5 合轴率优化（自动杠杆，用户 2026-09-10：手填→自�
   }, 300_000)
 })
 
+describe('合轴节省秒数上曲线（用户：只需管合轴了多少时间出来）', () => {
+  it('G5 录取的那一档，快照里的「合轴节省」涨幅 = 解放出来的秒数，且够 major（Δ≥1）', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    const ctx = { config, calc }
+    clearDifficultyLevers(ctx)
+    applyTeamToStore(config, preset)
+    const p0 = captureKeyCounts(calc)
+    expect(p0['合轴节省']).toBeCloseTo(0, 6)              // 全关：没做合轴率优化
+    DIFFICULTY_GOALS.find(g => g.id === 'G5')!.apply(ctx)
+    const p1 = captureKeyCounts(calc)
+    const d = diffKeyCounts(p0, p1).find(c => c.label === '合轴节省')
+    expect(d, '必须出现「合轴节省」涨幅').toBeTruthy()
+    expect(d!.delta).toBeCloseTo(frontlineOccupationBreakdown(calc.resourceResult.value!).saved, 6)
+    expect(d!.major).toBe(true)                            // Δ≥1 秒 ⇒ 进面板/标注
+  }, 300_000)
+})
+
 describe('图上标注分道（防重叠）', () => {
   it('同 x / 相近的标注分到不同道；离得远的可以共用一道；道号有界', () => {
     const items = [
@@ -445,9 +465,9 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
     }
     for (const p of ladder.points) expect(p.x).toBe(p.difficulty)
 
-    // 关键次数快照：7 项队伍级键齐备；changes 与相邻档差分逐位一致（面板/标注的数据源）
+    // 关键量快照：队伍级 7 项 + 「合轴节省」(秒) 齐备；changes 与相邻档差分逐位一致（面板/标注的数据源）
     const p0 = ladder.points[0]!
-    for (const key of ['大招', '强特', '连携', '失衡', '异常触发', '紊乱', '乱流']) {
+    for (const key of ['合轴节省', '大招', '强特', '连携', '失衡', '异常触发', '紊乱', '乱流']) {
       expect(typeof p0.counts?.[key], `快照应有「${key}」`).toBe('number')
     }
     const chartPts = buildCurveChart(rows, FAKE_PHASE.hp).series[0]!.points
