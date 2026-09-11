@@ -37,16 +37,22 @@ useResourceCalc()                      编排层入口（composables/useResource
 
 ## 2. 核心类型地图（一句话定位，全部在 src/types/）
 
+> 2026-09-11 起 `types/resource.ts`（原 2567 行单文件）已按域拆为 `types/resource/` 目录
+> （`time` / `energy` / `agentResources` / `execution` / `team` / `config` / `pools` + `index.ts` barrel）。
+> **下游一律写 `@/types/resource`**（85 个文件，路径零改动）；新增类型放进对应域文件并在 barrel re-export。
+> 定位口诀：资源账本→`energy`/`agentResources`，执行行→`execution`，收敛诊断→`team`，引擎输入面→`config`，
+> 失衡/异常/紊乱/轴→`pools`。
+
 | 类型 | 职责 | 谁产生 / 谁消费 |
 |---|---|---|
 | `PanelValues` | 角色面板（属性/乘区/敌方减益全字段，索引签名） | computePanelPhases 产生 → cfg.panel / 伤害池消费 |
-| `CharacterOperationConfig` | 单角色计算配置（可被机制模块改写） | buildCharConfig 产生 → 引擎 + 模块钩子消费 |
-| `IterationState` | 单轮迭代状态（次数/时间分配） | iterate 产生/消费 |
-| `SkillExecution` | 执行计划一行（moveId/倍率/时间/增伤字段） | buildExecutions 产生 → enrich 回填 → 各池消费 |
-| `TeamResourceResult` | 队伍资源结果（characters[] + executions + specResources） | calcTeamResources 产生 → 页面/池消费 |
-| `CharacterResourceResult` | 单角色资源结果（energySource/decibelSource/专属字段） | 同上 |
-| `StunAxis` / `StunAxisAction` | 失衡轴定义（槽位/动作/转大变体） | 用户/预设产生 → 轴引擎消费 |
-| `ResourceCalcConfig` | 全局计算配置（totalTime/stunCount/盾数） | useResourceCalc 产生 |
+| `CharacterOperationConfig` | 单角色计算配置（可被机制模块改写）——`types/resource/config.ts` | buildCharConfig 产生 → 引擎 + 模块钩子消费 |
+| `IterationState` | 单轮迭代状态（次数/时间分配）——`types/resource/time.ts` | iterate 产生/消费 |
+| `SkillExecution` | 执行计划一行（moveId/倍率/时间/增伤字段）——`types/resource/execution.ts` | buildExecutions 产生 → enrich 回填 → 各池消费 |
+| `TeamResourceResult` | 队伍资源结果（characters[] + executions + specResources）——`types/resource/team.ts` | calcTeamResources 产生 → 页面/池消费 |
+| `CharacterResourceResult` | 单角色资源结果（energySource/decibelSource/专属字段）——`types/resource/agentResources.ts` | 同上 |
+| `StunAxis` / `StunAxisAction` | 失衡轴定义（槽位/动作/转大变体）——`types/resource/pools.ts` | 用户/预设产生 → 轴引擎消费 |
+| `ResourceCalcConfig` | 全局计算配置（totalTime/stunCount/盾数）——`types/resource/config.ts` | useResourceCalc 产生 |
 
 ## 3. 任务 → 文件决策树（本文件的核心）
 
@@ -62,8 +68,8 @@ useResourceCalc()                      编排层入口（composables/useResource
 | **排查「时间分配吃不满 180s」/ 改欠打回填** | `core/resource.ts` 折叠循环之后的**末轮欠打回填**块（`UNDERFILL_PROBE_THRESHOLD_SECONDS`）→ `iterate` 的 `availableBasicTime` | 口径见 §4 坑 19①（三条纪律：门槛 1s=量化容差（平A权重队自由时间按权重全分配，2026-09-08 用户口径；**无排除队**——1591 一族 2026-09-10 解除）/ 可行性优先于留白 / 热启动只存规范种子）+ **坑 22**（必要前台封顶并回灌平A池；轴模式除外）；生效测试 `underfillRefund.test.ts` + `timeTruncation.test.ts`；**全库留白由 `timeFillRatchet.test.ts` 棘轮钉住**（`TIME_RATCHET_UPDATE=1` 重生成基线） |
 | **改「时间线截断」/ 出现小数次数 / 招式行消失** | `core/resource/helpers.ts` 的 `truncateExecutionsToFrontline`（装配阶段，整数装包） | 口径见 §4 坑 22；生效测试 `timeTruncation.test.ts`；模块侧读 `cfg.timePressureSeconds`，**不要读 `timeBudgetExcess`** |
 | **改结果页「时间分配汇总」卡** | `composables/teamTimeSummary.ts`（纯函数：账本口径 vs 物化口径 + 留白归因 + **「时间截断」逐行清单**） | 页面只渲染；生效测试 `teamTimeSummary.test.ts`（恒等式 + 归因 + 无敌缩预算 + 截断逐行可见）。「时间截断 X s / N 条行：论道 10→7…」= 装配期真被砍掉的量（`rr.truncationCuts`，Σ == `overflowSeconds`），旧文案「超预算」是错的（物化净占用其实 ≤ 预算） |
-| 排查「界面能量总额和次数不对应」 | `types/resource.ts` 的 `CrossAgentEnergy` / `derivedEnergy` 注释 | 看 `energySource.total`（展示，含 crossAgent）vs `derivedEnergy`（驱动次数）；两口律试已对齐（iterate 连携次数同口径，`timeSliceChainEnergy.test.ts` 锁定），差值 ≠ 0 即回归 |
-| 排查「算出来没收敛 / 数值抖动」 | `types/resource.ts` 的 `ConvergenceReport`；结果页计算状态条 | `convergence.timeBudgetConverged` / `outerExit`（`cycle` 正常、`maxIter` 可疑）；全角色断言在 `allAgentsSweep` |
+| 排查「界面能量总额和次数不对应」 | `types/resource/energy.ts` 的 `CrossAgentEnergy` / `derivedEnergy` 注释 | 看 `energySource.total`（展示，含 crossAgent）vs `derivedEnergy`（驱动次数）；两口律试已对齐（iterate 连携次数同口径，`timeSliceChainEnergy.test.ts` 锁定），差值 ≠ 0 即回归 |
+| 排查「算出来没收敛 / 数值抖动」 | `types/resource/team.ts` 的 `ConvergenceReport`；结果页计算状态条 | `convergence.timeBudgetConverged` / `outerExit`（`cycle` 正常、`maxIter` 可疑）；全角色断言在 `allAgentsSweep` |
 | 改失衡 / 异常 / 紊乱 | `core/stunPool/`、`core/anomalyPool/` | 同上 |
 | 改面板计算 / 局外局内 / 转模 | `composables/resourceCalc/helpers.ts`（computePanelPhases，applyPanel 调用点在此）→ `core/panel.ts` | 同上 |
 | **排查「招式单次时长/喧响比同族小一个量级」（连携显示 0.5s 一类）** | `core/resource.ts` 的 `fusedGroupMetrics` + `channelMetricsOf`（全部 `find*` 的唯一出口）；`data/moveFusions.ts` 登记组 + `countsTime` | 口径见 §4 坑 31：一次动作 = 登记组求和，**倍率·喧响·时间三侧同口径**（自动攻击/能力场段倍率照算、时间记 0）；生效测试 `moveFusion.test.ts`（含双计护栏） |
