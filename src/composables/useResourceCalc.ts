@@ -8,6 +8,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import {
   calcTeamResources,
   ULTIMATE_COST_DEFAULT,
+  TIME_BUDGET_TOLERANCE_SECONDS,
 } from '@/core/resource'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { computeParrySplit } from '@/core/parrySplit'
@@ -1858,8 +1859,28 @@ export function useResourceCalc() {
     // 非轴也超 = 配置本身超预算 → 走下方**非轴降配**（二分缩放交互次数）。
     let axisFallback = false
     let interactionScale: number | undefined
-    const overBudget = (x: CalcRoundResult | null) =>
+    /**
+     * **触发判据两条臂**（2026-09-11 用户口径：「交互次数导致的必要招式，通常是达成目标的最少要求；
+     * 如果必须溢出才能达成目标，那就不会强行往上加交互次数了」）：
+     *  - `overBudgetNet`（原口径，轴退化仍用它）：截断**之后**的净占用超预算。注意它读的是装配期
+     *    截断后的量，截断保证净占用恒 ≤ 预算 ⇒ 对「必要行本来就装不下」的队**永不成立**；
+     *  - `truncatedToo`（新增，只给**非轴降配**用）：装配期真截断 `overflowSeconds > 1s` ⇒ 手改配置
+     *    （应用主流程）里那些"必要行装不下、装配期按比例砍行"的队现在会真正进入降配二分。
+     *
+     * **生效面（实测，2026-09-11）**：对 119 个预设 **0 delta**（`timeGolden` 全绿）——预设场景本来就被
+     * 净占用臂/轴路径覆盖；对**默认配置的手组队**有效（实测 `仪玄+洛克茜+卢西娅`：截断 10.7→1.6s、
+     * 超预算 1.0→0.96s、降配 ×0.906）。**仍有 19 个预设结构性截断**（必要行本身超预算，缩交互也装不下），
+     * 那要靠轴侧触发 + 逐模块退化，见 `.claude/task-ledger-calc-core.md`。
+     *
+     * ⚠️ 别把 `truncatedToo` 并进**验收**臂一起收紧：实测把「截断 ≤1s」也当验收条件会让试算被拒，
+     * 而被拒的试算**仍会把副作用（热启动/cfg 缓存）留进最终态**（`yixuan-roxy-lucia` 实测
+     * 净占用被污染到 +2.8s、棘轮红）。试算不纯是既有隐患，重写阶段要给它加快照/还原。
+     */
+    const overBudgetNet = (x: CalcRoundResult | null) =>
       stunEffTime > 0 && x != null && frontlineTotalOf(x) > stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
+    const truncatedToo = (x: CalcRoundResult | null) =>
+      (x?.resourceResult?.overflowSeconds ?? 0) > TIME_BUDGET_TOLERANCE_SECONDS
+    const overBudget = overBudgetNet
     let hadAxis = false
     // 锁定失衡次数（命座对比/锁窗测试）= 用户明确意图「操作够就能打 N 次失衡」，同锁定不回填口径：
     // 退化/降配会改变次数与交互结构，锁窗场景一律不触发（超时如实上报）。
@@ -1876,7 +1897,7 @@ export function useResourceCalc() {
       // 非轴降配（用户口径 2026-08-30）：金身/招架这类手填交互与轴厚需求本质相同——超预算都要降配。
       // 轴侧降配 = 退化（需求没了，补齐自动归零）；非轴侧 = 缩放用户交互次数直到净占用回到预算内。
       // 二分找最大可行 scale（6 轮，精度 ~1.6%）；scale→0 仍超 = 非交互必要时间本身超预算，如实保留报超时。
-      if (overBudget(r.out) && !r.out?.resolvedAxes?.length) {
+      if ((overBudget(r.out) || truncatedToo(r.out)) && !r.out?.resolvedAxes?.length) {
         let lo = 0
         let hi = 1
         let best: { out: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter'; scale: number } | null = null
