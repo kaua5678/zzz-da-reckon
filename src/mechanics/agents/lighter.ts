@@ -122,7 +122,7 @@ export function computeLighterMoraleDmgBonus(input: LighterMoraleBuffInput): num
 }
 
 /** 满级核心冲击力加成%（喷发耗士气，默认吃满） */
-export function computeLighterImpactBonusPct(_cinemaLevel = 0): number {
+function computeLighterImpactBonusPct(_cinemaLevel = 0): number {
   return LIGHTER_IMPACT_CAP_PCT
 }
 
@@ -449,7 +449,7 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
  * 覆盖率 = 莱特后台时间 / 总时长（迭代态写入 lighterBackstageRatio）。
  * 喷发回能：后场角色每次喷发 +4，18s CD。
  */
-export function applyLighterTeamEnergyFlags(
+function applyLighterTeamEnergyFlags(
   characters: CharacterOperationConfig[],
   opts?: { exCounts?: number[]; combatTime?: number; teamEnergyConsumed?: number },
 ): void {

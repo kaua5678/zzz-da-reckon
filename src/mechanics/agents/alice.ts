@@ -210,7 +210,7 @@ function buildAliceCharConfig({
 
 // ============ buildExecutions ============
 
-export function aliceSwordWillTotal(
+function aliceSwordWillTotal(
   cfg: {
     aliceEnabled?: boolean
     aliceSwordWillPerSec?: number

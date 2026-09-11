@@ -256,7 +256,7 @@ export function computeClaretSharpResource(input: {
  * 显示两态残痕积累也不同（血锻 100/s vs 锻星 120/s）。故本模块自己按两套基准算秒均，
  * 再按铭刻时间占比加权覆盖执行行（见 `applyClaretBasicRows`）。
  */
-export function computeClaretBasicPerSec(
+function computeClaretBasicPerSec(
   normalMove: SkillMove | null | undefined,
   inscriptionMove: SkillMove | null | undefined,
   inscriptionTimeShare: number,
@@ -380,7 +380,7 @@ export const DEFAULT_CHAIN_IN_WINDOW_COVERAGE = 1
  *
  * 本函数只做「账本 → 时间」，不改变锐能/残痕结算（那部分在 `computeClaretSharpResource`）。
  */
-export function deriveClaretTwoStateTime(input: {
+function deriveClaretTwoStateTime(input: {
   basicAttackTime: number
   ultimateCount: number
   /** 常态锐能速率（/s）= 基础自动累积 + 血锻招式增益 */
@@ -464,7 +464,7 @@ export function deriveClaretTwoStateTime(input: {
  * 不是「停表」这个动作，而是「这些招式本就不申请强化」。两处口径同时成立，停表覆盖率固定 100%；
  * `stopwatchCoverage` 参数保留只为将来出现「吃强化的非平A招式」时能按比例回退。
  */
-export function computeInscriptionExtension(params: {
+function computeInscriptionExtension(params: {
   chainCount: number
   chainActionSeconds: number
   ultimateCount: number

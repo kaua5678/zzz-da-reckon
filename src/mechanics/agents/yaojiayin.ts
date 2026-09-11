@@ -198,7 +198,7 @@ function combatTimeOf(state: AgentResourceInput['state'], cfg: AgentResourceInpu
  * 入场触发次数：全队快支+招架+回避支援 + 全队连携（编排注入 yaojiayinTeamChainTotal）。
  * 耀嘉音本人连携/终结进华彩不额外计「队友入场」，但队友连携入场会计入。
  */
-export function estimateYaojiayinEntries(characters: CharacterOperationConfig[]): number {
+function estimateYaojiayinEntries(characters: CharacterOperationConfig[]): number {
   let entries = 0
   for (const ch of characters) {
     entries += Math.max(0, Math.floor(ch.quickAssistCount ?? 0))
@@ -211,7 +211,7 @@ export function estimateYaojiayinEntries(characters: CharacterOperationConfig[])
   return entries
 }
 
-export function applyYaojiayinTeamFlags(characters: CharacterOperationConfig[]): void {
+function applyYaojiayinTeamFlags(characters: CharacterOperationConfig[]): void {
   const yj = characters.find(c => c.agentId === YAOJIAYIN_ID)
   if (!yj) return
   const entries = estimateYaojiayinEntries(characters)

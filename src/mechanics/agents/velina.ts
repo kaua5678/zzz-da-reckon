@@ -61,7 +61,7 @@ function velinaColorElement(team: MechanicTeamMember[], _slot: number): string {
 }
 
 /** 风华：开局45点，每消耗1点能量获得1点；90点触发一次广域气旋。 */
-export function velinaBroadCycloneCountFromFloria(
+function velinaBroadCycloneCountFromFloria(
   cfg: { velinaEnabled?: boolean; exSpecialEnergyConsume?: number },
   state: { exSpecialCount: number },
 ): number {
@@ -76,7 +76,7 @@ export function velinaBroadCycloneCountFromFloria(
   return floria?.spendCounts['floria_broad_cyclone'] ?? 0
 }
 
-export function buildVelinaFloriaSource(
+function buildVelinaFloriaSource(
   cfg: { velinaEnabled?: boolean; exSpecialEnergyConsume?: number },
   state: { exSpecialCount: number },
 ): VelinaFloriaSource | undefined {

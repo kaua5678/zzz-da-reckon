@@ -90,7 +90,7 @@ function whole(value: number): number {
   return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }
 
-export function computeQianxiaGazeCycle(input: {
+function computeQianxiaGazeCycle(input: {
   cinemaLevel: number
   markSupply: number
   /** 队内强攻角色数（触发者） */

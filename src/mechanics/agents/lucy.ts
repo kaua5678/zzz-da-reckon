@@ -328,7 +328,7 @@ export const lucyMechanic: AgentMechanicModule = {
 }
 
 /** 组队后写入各槽位：每大从露西获得的能量、C1 标记 */
-export function applyLucyTeamEnergyFlags(characters: CharacterOperationConfig[]): void {
+function applyLucyTeamEnergyFlags(characters: CharacterOperationConfig[]): void {
   const lucy = characters.find(c => c.agentId === LUCY_ID)
   if (!lucy) return
   const cinema = Math.max(0, Math.floor(Number((lucy as any).lucyCinemaLevel ?? 0)))
