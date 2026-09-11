@@ -4,7 +4,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import type {
-  Agent, WEngine, DriveDiscConfig, SkillDamageTarget, CharacterBuildRecommendation,
+  Agent, WEngine, DriveDiscConfig, SkillDamageTarget, CharacterBuildRecommendation, TeammateBuffGroup,
 } from '@/types/catalog'
 import { computeOptimalSubStats, getTemplate, type OptimizeSubstatsOutput, type TeammateInfo } from '@/core/substatOptimizer'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
@@ -311,6 +311,134 @@ function defaultGlobalBuffs(): GlobalBuffRow[] {
 }
 
 // ========== Store ==========
+
+// ========== 队友 buff 启用状态：纯派生（模块级，可独立单测）==========
+// 2026-09-12 评审 #9：原内联在 store 方法里；因顶格书写而看似模块级，实际在 defineStore
+// 回调内（`export` 会报 TS1184）。抽到模块级后可用合成输入直接单测边界。
+
+/** 从 buff source 名称解析所需的影画等级
+ *  "核心被动" → 0, "额外能力" → 0, "强化特殊技" → 0
+ *  "影画一" → 1, "影画二" → 2, "影画三" → 3, "影画四" → 4, "影画五" → 5, "影画六" → 6
+ *  解析失败默认 0（总是启用）
+ */
+function parseCinemaRequirement(sourceLabel: string): number {
+  const cnNums: Record<string, number> = {
+    '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6,
+  }
+  const match = sourceLabel.match(/影画([一二三四五六])/)
+  if (match) return cnNums[match[1]] ?? 0
+  // 核心被动/额外能力/强化特殊技 等不需要影画
+  return 0
+}
+
+/**
+ * 队友 buff 启用状态的**纯派生**（2026-09-12 抽自 store 方法 `syncTeammateBuffsFromTeam`，评审 #9）。
+ *
+ * 为什么抽出来：这段判定（队伍 × 影画等级 × 额外能力激活 × 三个角色特例）此前内联在 store 方法里，
+ * 只能靠「建 store + 载 catalog」才测得到；抽成纯函数后可用**合成输入**直接单测边界
+ * （不在队 / 影画不足 / 额外能力未激活 / 雷米尔分层 / 波可娜 C6 互斥）。
+ *
+ * 语义与抽取前逐条一致（这是零行为抽取，不是重构）：
+ * - 返回顺序 = `groups` 遍历顺序（写入端依赖该顺序决定对象键序，positionCompare 会快照该对象）；
+ * - 只回答「**应该**启用吗」——用户手动开关与覆盖率由 store 的选择表持有（见 sync 的合并逻辑）。
+ */
+export function deriveTeammateBuffEnabled(
+  team: ReadonlyArray<Pick<CharacterConfig, 'slot' | 'agentId' | 'cinemaLevel' | 'potentialLevel' | 'wEngineId' | 'wEngineModLevel'>>,
+  groups: readonly TeammateBuffGroup[],
+  getAgent: (agentId: string) => Agent | null | undefined,
+): Array<{ id: string; enabled: boolean }> {
+  // 收集队伍中每个角色的影画等级，同时建立 agentId → teammateBuffId 的映射
+  const teamCinema: Record<string, number> = {}
+  const teamAgents = team
+    .filter(char => !!char.agentId)
+    .map(char => ({ char, agent: getAgent(char.agentId!) }))
+    .filter(item => !!item.agent)
+
+  for (const { char, agent } of teamAgents) {
+    if (char.agentId) {
+      // 直接用 agentId 匹配（仅队友角色的 id 就是 teammateBuffId）
+      teamCinema[char.agentId] = char.cinemaLevel
+      // nanoka 角色有 teammateBuffId 字段，用它也建立映射
+      if (agent?.teammateBuffId) {
+        teamCinema[agent.teammateBuffId] = char.cinemaLevel
+      }
+    }
+  }
+
+  const getRemielleAdditionalState = () => {
+    const remielleItem = teamAgents.find(({ agent }) => agent?.id === '1581' || agent?.teammateBuffId === '1581')
+    if (!remielleItem?.agent) return { active: false, anomalyCount: 0, tier: 0 }
+
+    const remielleFaction = remielleItem.agent.faction
+    const otherAgents = teamAgents
+      .filter(item => item !== remielleItem)
+      .map(item => item.agent)
+      .filter(Boolean)
+    const active = otherAgents.some(agent =>
+      agent?.specialty === 'anomaly' || (!!remielleFaction && agent?.faction === remielleFaction)
+    )
+    const anomalyCount = teamAgents.filter(({ agent }) => agent?.specialty === 'anomaly').length
+    const tier = active ? Math.max(1, Math.min(3, anomalyCount)) : 0
+    return { active, anomalyCount, tier }
+  }
+
+  const remielleAdditional = getRemielleAdditionalState()
+
+  // 构建 MechanicTeamMember[] 用于额外能力条件统一判定
+  const mechanicTeam: MechanicTeamMember[] = teamAgents.map(({ char, agent }) => ({
+    slot: char.slot,
+    agentId: char.agentId ?? '',
+    agent: agent ?? null,
+    cinemaLevel: char.cinemaLevel ?? 0,
+    potentialLevel: char.potentialLevel ?? 6,
+    wEngineId: char.wEngineId ?? '',
+    wEngineModLevel: char.wEngineModLevel ?? 1,
+  }))
+  // 预计算每个角色的额外能力是否激活（agentId → boolean）
+  const aaActiveMap = new Map<string, boolean>()
+  for (const mtm of mechanicTeam) {
+    if (!mtm.agent) continue
+    const aaSpec = getAgentSpec(mtm.agentId)?.additionalAbility
+    if (aaSpec) {
+      aaActiveMap.set(mtm.agentId, evalAdditionalAbility(mechanicTeam, mtm.slot, mtm.agent, aaSpec) === true)
+    }
+  }
+
+  function resolveSpecialTeammateBuffEnabled(buffId: string, baseEnabled: boolean): boolean {
+    if (buffId === '1581.additional_ability.atk_1_anomaly') return baseEnabled && remielleAdditional.active && remielleAdditional.tier === 1
+    if (buffId === '1581.additional_ability.atk_2_anomaly') return baseEnabled && remielleAdditional.active && remielleAdditional.tier === 2
+    if (buffId === '1581.additional_ability.atk_3_anomaly') return baseEnabled && remielleAdditional.active && remielleAdditional.tier === 3
+    if (buffId === '1581.core_passive.refringe_3_anomaly') return baseEnabled && remielleAdditional.tier === 3
+    if (buffId === '1581.additional_ability.prismatic_buildup') return baseEnabled && remielleAdditional.active
+    return baseEnabled
+  }
+
+  const out: Array<{ id: string; enabled: boolean }> = []
+  // 遍历所有队友 buff 组（保持 groups 顺序 = 抽取前写入对象键序）
+  for (const group of groups) {
+    const agentId = group.id
+    const cinemaLevel = teamCinema[agentId]
+    const inTeam = cinemaLevel !== undefined
+
+    for (const buff of group.buffs ?? []) {
+      const sourceLabel = buff.source?.zhCN ?? buff.sourceLabel?.zhCN ?? ''
+      const requiredCinema = parseCinemaRequirement(sourceLabel)
+      const baseShouldEnable = inTeam && cinemaLevel >= requiredCinema
+      let shouldEnable = resolveSpecialTeammateBuffEnabled(buff.id, baseShouldEnable)
+      // 波可娜 C6：困迹增伤从「仅追加攻击」扩展为「全伤害」——base 条在 C6 时禁用，防与 pulchra_cinema_6_trap_all 双计
+      if (agentId === '1351' && buff.id === 'pulchra_extra_trap_followup' && cinemaLevel >= 6) {
+        shouldEnable = false
+      }
+      // 通用额外能力门控：若 buff 来源为"额外能力"且来源角色额外能力未激活，则自动禁用
+      if (shouldEnable && buff.ownerId && sourceLabel === '额外能力') {
+        const aaActive = aaActiveMap.get(buff.ownerId)
+        if (aaActive === false) shouldEnable = false
+      }
+      out.push({ id: buff.id, enabled: shouldEnable })
+    }
+  }
+  return out
+}
 
 export const useConfigStore = defineStore('config', () => {
   const catalogStore = useCatalogStore()
@@ -900,20 +1028,7 @@ export const useConfigStore = defineStore('config', () => {
     setMechanicSetting('velina.cinema2CorrosionRate', Math.max(0, Math.min(1, Number.isFinite(value) ? value : 2 / 3)))
   }
 
-/** 从 buff source 名称解析所需的影画等级
- *  "核心被动" → 0, "额外能力" → 0, "强化特殊技" → 0
- *  "影画一" → 1, "影画二" → 2, "影画三" → 3, "影画四" → 4, "影画五" → 5, "影画六" → 6
- *  解析失败默认 0（总是启用）
- */
-function parseCinemaRequirement(sourceLabel: string): number {
-  const cnNums: Record<string, number> = {
-    '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6,
-  }
-  const match = sourceLabel.match(/影画([一二三四五六])/)
-  if (match) return cnNums[match[1]] ?? 0
-  // 核心被动/额外能力/强化特殊技 等不需要影画
-  return 0
-}
+
 
   function isTeammateBuffEnabled(buffId: string): boolean {
     return teammateBuffSelections.value[buffId]?.enabled ?? false
@@ -932,102 +1047,16 @@ function parseCinemaRequirement(sourceLabel: string): number {
     if (loaded) syncTeammateBuffsFromTeam()
   })
   function syncTeammateBuffsFromTeam() {
-    if (!catalogStore.teammateBuffGroups.length) return
-
-    // 收集队伍中每个角色的影画等级，同时建立 agentId → teammateBuffId 的映射
-    const teamCinema: Record<string, number> = {}
-    const teamAgents = team.value
-      .filter(char => !!char.agentId)
-      .map(char => ({ char, agent: catalogStore.getAgent(char.agentId!) }))
-      .filter(item => !!item.agent)
-
-    for (const { char, agent } of teamAgents) {
-      if (char.agentId) {
-        // 直接用 agentId 匹配（仅队友角色的 id 就是 teammateBuffId）
-        teamCinema[char.agentId] = char.cinemaLevel
-        // nanoka 角色有 teammateBuffId 字段，用它也建立映射
-        if (agent?.teammateBuffId) {
-          teamCinema[agent.teammateBuffId] = char.cinemaLevel
-        }
-      }
-    }
-
-    const getRemielleAdditionalState = () => {
-      const remielleItem = teamAgents.find(({ agent }) => agent?.id === '1581' || agent?.teammateBuffId === '1581')
-      if (!remielleItem?.agent) return { active: false, anomalyCount: 0, tier: 0 }
-
-      const remielleFaction = remielleItem.agent.faction
-      const otherAgents = teamAgents
-        .filter(item => item !== remielleItem)
-        .map(item => item.agent)
-        .filter(Boolean)
-      const active = otherAgents.some(agent =>
-        agent?.specialty === 'anomaly' || (!!remielleFaction && agent?.faction === remielleFaction)
-      )
-      const anomalyCount = teamAgents.filter(({ agent }) => agent?.specialty === 'anomaly').length
-      const tier = active ? Math.max(1, Math.min(3, anomalyCount)) : 0
-      return { active, anomalyCount, tier }
-    }
-
-    const remielleAdditional = getRemielleAdditionalState()
-
-    // 构建 MechanicTeamMember[] 用于额外能力条件统一判定
-    const mechanicTeam: MechanicTeamMember[] = teamAgents.map(({ char, agent }) => ({
-      slot: char.slot,
-      agentId: char.agentId ?? '',
-      agent: agent ?? null,
-      cinemaLevel: char.cinemaLevel ?? 0,
-      potentialLevel: char.potentialLevel ?? 6,
-      wEngineId: char.wEngineId ?? '',
-      wEngineModLevel: char.wEngineModLevel ?? 1,
-    }))
-    // 预计算每个角色的额外能力是否激活（agentId → boolean）
-    const aaActiveMap = new Map<string, boolean>()
-    for (const mtm of mechanicTeam) {
-      if (!mtm.agent) continue
-      const aaSpec = getAgentSpec(mtm.agentId)?.additionalAbility
-      if (aaSpec) {
-        aaActiveMap.set(mtm.agentId, evalAdditionalAbility(mechanicTeam, mtm.slot, mtm.agent, aaSpec) === true)
-      }
-    }
-
-    function resolveSpecialTeammateBuffEnabled(buffId: string, baseEnabled: boolean): boolean {
-      if (buffId === '1581.additional_ability.atk_1_anomaly') return baseEnabled && remielleAdditional.active && remielleAdditional.tier === 1
-      if (buffId === '1581.additional_ability.atk_2_anomaly') return baseEnabled && remielleAdditional.active && remielleAdditional.tier === 2
-      if (buffId === '1581.additional_ability.atk_3_anomaly') return baseEnabled && remielleAdditional.active && remielleAdditional.tier === 3
-      if (buffId === '1581.core_passive.refringe_3_anomaly') return baseEnabled && remielleAdditional.tier === 3
-      if (buffId === '1581.additional_ability.prismatic_buildup') return baseEnabled && remielleAdditional.active
-      return baseEnabled
-    }
-
-    // 遍历所有队友 buff 组
-    for (const group of catalogStore.teammateBuffGroups) {
-      const agentId = group.id
-      const cinemaLevel = teamCinema[agentId]
-      const inTeam = cinemaLevel !== undefined
-
-      for (const buff of group.buffs ?? []) {
-        const sourceLabel = buff.source?.zhCN ?? buff.sourceLabel?.zhCN ?? ''
-        const requiredCinema = parseCinemaRequirement(sourceLabel)
-        const baseShouldEnable = inTeam && cinemaLevel >= requiredCinema
-        let shouldEnable = resolveSpecialTeammateBuffEnabled(buff.id, baseShouldEnable)
-        // 波可娜 C6：困迹增伤从「仅追加攻击」扩展为「全伤害」——base 条在 C6 时禁用，防与 pulchra_cinema_6_trap_all 双计
-        if (agentId === '1351' && buff.id === 'pulchra_extra_trap_followup' && cinemaLevel >= 6) {
-          shouldEnable = false
-        }
-        // 通用额外能力门控：若 buff 来源为"额外能力"且来源角色额外能力未激活，则自动禁用
-        if (shouldEnable && buff.ownerId && sourceLabel === '额外能力') {
-          const aaActive = aaActiveMap.get(buff.ownerId)
-          if (aaActive === false) shouldEnable = false
-        }
-
-        // 只在状态变化时更新，保留用户设置的覆盖率
-        const current = teammateBuffSelections.value[buff.id]
-        if (!current) {
-          teammateBuffSelections.value[buff.id] = { enabled: shouldEnable, coverage: 100 }
-        } else if (current.enabled !== shouldEnable) {
-          current.enabled = shouldEnable
-        }
+    const groups = catalogStore.teammateBuffGroups
+    if (!groups.length) return
+    // 派生口径在模块级纯函数里（可单测）；此处只做「合并进选择表」——
+    // 保留用户覆盖率、仅在变化时改 enabled，与抽取前逐条一致。
+    for (const { id, enabled } of deriveTeammateBuffEnabled(team.value, groups, aid => catalogStore.getAgent(aid))) {
+      const current = teammateBuffSelections.value[id]
+      if (!current) {
+        teammateBuffSelections.value[id] = { enabled, coverage: 100 }
+      } else if (current.enabled !== enabled) {
+        current.enabled = enabled
       }
     }
   }
