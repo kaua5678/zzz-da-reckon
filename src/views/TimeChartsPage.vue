@@ -1307,6 +1307,11 @@ import {
   PV_GRADE_DEFS as pvGradeDefs,
   pvTierLabel,
 } from '@/composables/pullValueChart'
+import {
+  buildPlannerChart,
+  PP_LANE_DEFS,
+  ppTierLabelOf,
+} from '@/composables/pullPlannerChart'
 import { buildNewCharacterRows, computeFilmSimulation, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
 import { computeSlotComparePoints, type SlotComparePoint, type SlotCompareSlot } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
@@ -2178,87 +2183,29 @@ async function runPlanner() {
   }
 }
 
-// ---- Chart 6 SVG ----
-const ppLabelW = 60
-const ppPadT = 26
-const ppXLabelH = 26
-const ppPurchaseH = 44
-const ppScorePlotH = 90
-const ppLaneH = 20
-const ppSvgH = computed(() => {
-  const nLanes = 3
-  return ppPadT + ppPurchaseH + ppScorePlotH + nLanes * (ppLaneH + 6) + ppXLabelH
-})
-const ppStepCount = computed(() => ppResult.value?.plan.steps.length ?? 0)
-const ppPlotW = computed(() => svgW.value - ppLabelW - 16)
-const ppCellW = computed(() => ppPlotW.value / Math.max(1, ppStepCount.value))
-function ppX(i: number): number {
-  const n = Math.max(1, ppStepCount.value)
-  return ppLabelW + (i + 0.5) * (ppPlotW.value / n)
-}
-const ppXTicks = computed(() => {
-  const steps = ppResult.value?.plan.steps ?? []
-  const step = Math.max(1, Math.ceil(steps.length / 12))
-  const out: { index: number; label: string }[] = []
-  for (let i = 0; i < steps.length; i += step) out.push({ index: i, label: steps[i].date.slice(5) })
-  if (steps.length > 1 && (steps.length - 1) % step !== 0) {
-    out.push({ index: steps.length - 1, label: steps[steps.length - 1].date.slice(5) })
-  }
-  return out
-})
-const ppScoreMax = computed(() => Math.max(1, ...(ppResult.value?.plan.steps.map(s => s.assignment.totalScore) ?? [1])))
-function ppScoreY(v: number): number {
-  const top = ppPadT + ppPurchaseH
-  return top + ppScorePlotH - (v / ppScoreMax.value) * ppScorePlotH
-}
-const ppScorePts = computed(() =>
-  (ppResult.value?.plan.steps ?? []).map((s, i) => ({
-    x: ppX(i),
-    y: ppScoreY(s.assignment.totalScore),
-    score: s.assignment.totalScore,
-    label: s.periodLabel,
-  })),
-)
-const ppScoreLine = computed(() => ppScorePts.value.map(p => `${p.x},${p.y}`).join(' '))
-/** 三房间选队泳道 */
-const ppTeamLanes = computed(() => {
-  const steps = ppResult.value?.plan.steps ?? []
-  const top = ppPadT + ppPurchaseH + ppScorePlotH + 8
-  return [0, 1, 2].map(li => ({
-    y: top + li * (ppLaneH + 6),
-    h: ppLaneH,
-    cells: steps.map((s) => {
-      const pick = s.assignment.picks[li]
-      if (!pick || pick.team.every(m => !m)) return { empty: true, text: '', title: `${s.periodLabel} 房${li + 1}：无可用队` }
-      return {
-        empty: false,
-        text: pick.team.map(agentName).join('+'),
-        title: `${s.periodLabel} 房${li + 1}（${pick.bossRoom.bossName}）：${pick.team.map(agentName).join('+')} = ${fmt(pick.score, 0)} 分`,
-      }
-    }),
-  }))
-})
-
-// ---- 泳道筛选（点图例显隐：购买 / 期分 / 房1~房3）----
-/** 泳道清单：2 个固定泳道 + 3 个房间泳道 */
-const ppLaneDefs = [
-  { id: 'purchase', label: '购买', desc: '每期买了哪张卡（方块 = 卡，颜色同角色）', color: 'var(--app-primary)', fixed: true },
-  { id: 'score', label: '期分', desc: '每期危局总分折线', color: 'var(--app-primary)', fixed: true },
-  { id: 'room1', label: '房1', desc: '当期第 1 个 Boss 的选队', color: 'var(--c-info)', roomNo: 1 },
-  { id: 'room2', label: '房2', desc: '当期第 2 个 Boss 的选队', color: 'var(--c-info)', roomNo: 2 },
-  { id: 'room3', label: '房3', desc: '当期第 3 个 Boss 的选队', color: 'var(--c-info)', roomNo: 3 },
-] as const
+// ---- Chart 6 几何与泳道模型：见 composables/pullPlannerChart.ts（纯函数，可单测）----
+const ppc = computed(() => buildPlannerChart({
+  steps: ppResult.value?.plan.steps ?? [],
+  svgW: svgW.value,
+  nameOf: (id) => agentName(id),
+  fmt,
+  isLaneVisible: (id) => ppLegend.isVisible(id),
+}))
+const ppLaneDefs = PP_LANE_DEFS
 const ppLegend = useSeriesFilter(() => ppLaneDefs.map(d => ({ id: d.id, name: d.label })))
-/** 可见房间泳道（编号沿用原房号 ⇒ 隐藏房2 后房3 仍写「房3」，不会串号） */
-const ppVisibleTeamLanes = computed(() =>
-  ppTeamLanes.value
-    .map((lane, li) => ({ ...lane, roomNo: li + 1 }))
-    .filter(lane => ppLegend.isVisible(`room${lane.roomNo}`)),
-)
+const ppLabelW = ppc.value.labelW
+const ppPadT = ppc.value.padT
+const ppXLabelH = ppc.value.xLabelH
+const ppSvgH = computed(() => ppc.value.svgH)
+const ppCellW = computed(() => ppc.value.cellW)
+function ppX(i: number): number { return ppc.value.x(i) }
+const ppXTicks = computed(() => ppc.value.xTicks)
+function ppScoreY(v: number): number { return ppc.value.scoreY(v) }
+const ppScorePts = computed(() => ppc.value.scorePts)
+const ppScoreLine = computed(() => ppc.value.scoreLine)
+const ppVisibleTeamLanes = computed(() => ppc.value.visibleTeamLanes)
+const ppTierLabel = ppTierLabelOf
 const ppTopValues = computed(() => (ppResult.value?.values ?? []).slice(0, 20))
-function ppTierLabel(tier: number): string {
-  return tier === 3 ? '满配' : tier === 2 ? '本体+专武' : tier === 1 ? '本体' : '—'
-}
 </script>
 
 <style scoped>
