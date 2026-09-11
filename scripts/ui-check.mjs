@@ -31,6 +31,8 @@
  *   --out <目录>       截图与体检结果输出目录，默认 /tmp/zzz-ui
  *   --port <端口>      CDP 端口，默认 9222（脚本自己拉起浏览器，退出时关掉）
  *   --keep-open        跑完不关浏览器
+ *   --step <verb:参数> 通用脚本步（可重复，按顺序执行；见下方 stepList 注释）：tab/open/option/click/wait/eval/sleep
+ *                      例：--step "tab:队伍配置" --step "open:选择预设队伍" --step "option:般岳" --step "tab:资源池" --step "wait:时间截断"
  * 退出码：0 = 跑完且**零 JS 错误**；1 = 有错/超时（错误会打印）。
  */
 import { spawn } from 'node:child_process'
@@ -314,6 +316,65 @@ try {
       const ms = await waitFor(expr, WAIT_TIMEOUT, `结果出现（${expr}）`)
       console.log(`[${String(ms).padStart(7)}ms] 等结果`)
     } finally { clearInterval(tick) }
+  }
+
+  /**
+   * 通用脚本步（可重复 `--step <verb>:<参数>`，按出现顺序执行）——给「要跨页/跨控件」的流程用
+   * （固定 flags 只够单页单动作：一个 --tab / 一个 --click / 一个 --wait-for）：
+   *   `tab:<页签文本>`      点页头页签
+   *   `open:<控件文本>`     在含该文本的 `.n-base-selection` 上发真实鼠标事件（打开 naive-ui 下拉）
+   *   `option:<选项文本>`   点**当前可见**下拉菜单里含该文本的选项
+   *   `click:<按钮文本>`    点 `.n-button`
+   *   `wait:<选择器|表达式|文本>`  轮询到「选择器命中 / 表达式为真 / 页面文本包含」为止
+   *   `eval:<js>`          直接求值并打印结果（诊断用：可读回任意状态/按钮文本/选中数）
+   *   `sleep:<毫秒>`
+   * 用途示例（资源池「时间截断」行：需先选预设队伍再切页）：
+   *   node scripts/ui-check.mjs --step "tab:队伍配置" --step "open:选择预设队伍" \
+   *     --step "option:诺姆·霍洛维尔" --step "tab:资源池" --step "wait:时间截断"
+   */
+  const stepList = []
+  for (let i = 0; i < argv.length; i++) if (argv[i] === '--step') stepList.push(argv[i + 1] ?? '')
+  for (const raw of stepList) {
+    const cut = raw.indexOf(':')
+    const verb = cut >= 0 ? raw.slice(0, cut) : raw
+    const value = cut >= 0 ? raw.slice(cut + 1) : ''
+    if (verb === 'tab') {
+      await step(`[step] 点页签「${value}」`, () => evaluate(clickText('.n-tabs-tab', value)))
+      await sleep(600)
+    } else if (verb === 'open') {
+      await closeMenus()
+      await step(`[step] 打开「${value}」`, () => realMouseClick(`(() => {
+        const els = [...document.querySelectorAll('.n-base-selection')]
+        const target = els.find(e => (e.textContent || '').includes(${JSON.stringify(value)}))
+        return target ?? null
+      })()`))
+      await step('[step] 等下拉选项', () => waitFor(`${visibleMenuOpts}.length > 0`, 10000, '下拉'))
+    } else if (verb === 'option') {
+      await step(`[step] 选「${value}」`, () => realMouseClick(`(() => {
+        const opts = ${visibleMenuOpts}
+        return opts.find(e => (e.textContent || '').trim().includes(${JSON.stringify(value)})) ?? null
+      })()`))
+      await closeMenus()
+    } else if (verb === 'click') {
+      await step(`[step] 点按钮「${value}」`, () => evaluate(clickText('.n-button', value)))
+      await sleep(400)
+    } else if (verb === 'wait') {
+      // 选择器（`.cls` / `#id` / `[attr]` / 裸标签名如 `polyline`）→ 命中即真；其余按页面文本包含
+      const isSelector = /^[.#[]/.test(value) || /^[a-z][a-z0-9-]*$/.test(value)
+      const expr = value.includes('(')
+        ? value
+        : isSelector
+          ? `document.querySelectorAll(${JSON.stringify(value)}).length > 0`
+          : `document.body.innerText.includes(${JSON.stringify(value)})`
+      const ms = await step(`[step] 等「${value}」`, () => waitFor(expr, WAIT_TIMEOUT, value))
+      console.log(`[${String(ms).padStart(7)}ms] 等「${value}」`)
+    } else if (verb === 'eval') {
+      await step(`[step] eval ${value.slice(0, 60)}`, async () => JSON.stringify(await evaluate(value)))
+    } else if (verb === 'sleep') {
+      await sleep(Number(value) || 500)
+    } else {
+      throw new Error(`未知 --step 动词：${raw}（tab/open/option/click/wait/sleep）`)
+    }
   }
 
   await sleep(1200)

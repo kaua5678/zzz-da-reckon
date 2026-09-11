@@ -67,6 +67,32 @@ describe('时间线截断', () => {
     expect(r.cutSeconds).toBeCloseTo(10, 6)
   })
 
+  it('逐行明细 cuts：Σ cutSeconds == cutSeconds、次数与回能/喧响同比例（资源池清单 + 难度轴交互缩的输入）', () => {
+    const rows = [
+      row({ moveId: 'a', moveName: '强化特殊技：论道（连段）', count: 10, actionTime: 2, totalTime: 20, totalEnergyRecovery: 100, totalDecibelRecovery: 50 }),
+      row({ moveId: 'basic_attack', count: 0, actionTime: 0, totalTime: 30 }),
+      row({ moveId: 'b', moveName: '支援突击', count: 4, actionTime: 1, totalTime: 4, totalEnergyRecovery: 0, totalDecibelRecovery: 8 }),
+    ]
+    // 平A 30s 先占位 ⇒ 招式行只有 10s（原始 24s，砍 14s）
+    const r = truncateExecutionsToFrontline(rows, 40)
+    expect(r.usedSeconds).toBeCloseTo(24, 6)
+    expect(r.cutSeconds).toBeCloseTo(14, 6)
+    expect(r.cuts.reduce((a, c) => a + c.cutSeconds, 0)).toBeCloseTo(r.cutSeconds, 6)
+    const a = r.cuts.find(c => c.moveId === 'a')!
+    const b = r.cuts.find(c => c.moveId === 'b')!
+    // 小数升序装包：b 的 0.667 先加回（4→2），a 停在 4
+    expect([a.countBefore, a.countAfter]).toEqual([10, 4])
+    expect([b.countBefore, b.countAfter]).toEqual([4, 2])
+    // 砍掉部分带走的行级回能/喧响：同比例
+    expect(a.cutEnergyRecovery).toBeCloseTo(100 * (1 - 4 / 10), 6)
+    expect(a.cutDecibelRecovery).toBeCloseTo(50 * (1 - 4 / 10), 6)
+    expect(b.cutDecibelRecovery).toBeCloseTo(8 * (1 - 2 / 4), 6)
+    // 装得下时不产生任何明细
+    const fits = truncateExecutionsToFrontline([row({ count: 2, actionTime: 1, totalTime: 2 })], 10)
+    expect(fits.cuts).toEqual([])
+    expect(fits.usedSeconds).toBeCloseTo(2, 6)
+  })
+
   it('砍到 0 次的行整行消失（不留 count=0 的幽灵行）', () => {
     const rows = [
       row({ moveId: 'tiny', count: 1, actionTime: 9, totalTime: 9 }),

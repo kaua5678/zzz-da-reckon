@@ -12,6 +12,10 @@ import {
   computeAutoEnginePicks,
   DEFAULT_AUTO_ENGINE_POOL,
   computeDifficulty,
+  interactionSurvivalBySlot,
+  roundInteractionCount,
+  shrinkInteractionsByTruncation,
+  teamInteractionSurvival,
   computeOptimalGoldAllocations,
   computeTeamComparePoints,
   isLimitedAgent,
@@ -330,6 +334,28 @@ describe('teamCompare 金数/难度口径', () => {
     // 条目自带 weight 优先于用户覆盖（banyueGoldenParry 条目 weight 1.5，覆盖成 5 也不该生效）
     const itemWins = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 0, { interaction: { banyueGoldenParry: 5 } })
     expect(itemWins.difficulty).toBeCloseTo(22.1, 2)
+  })
+
+  it('截断存活率：交互按 kept/requested 缩（无截断 = 零变化），散点横轴与曲线同一口径', () => {
+    const items = [{ type: 'parry', count: 10 }]
+    // 无截断 / 未传 rr ⇒ 因子 1，逐位不变（只有带截断的队会动）
+    expect(teamInteractionSurvival(null)).toBe(1)
+    expect(shrinkInteractionsByTruncation(items, null)).toBe(items)
+    // 有截断槽（kept/requested = 0.6）⇒ 10 次弹刀缩成 6 次
+    const rr = { convergence: { truncationBySlot: [{ slot: 0, requested: 100, kept: 60, cutSeconds: 40 }] } } as never
+    expect(teamInteractionSurvival(rr)).toBeCloseTo(0.6, 6)
+    const shrunk = shrinkInteractionsByTruncation(items, rr)
+    expect(shrunk[0]!.count).toBeCloseTo(6, 6)
+    expect(shrunk[0]!.type).toBe('parry')
+    // 必须 2 位小数（实机点通实测：不取整会在明细里打 15 位浮点、撑破散点明细表）
+    expect(roundInteractionCount(7.244532236386592)).toBe(7.24)
+    const odd = shrinkInteractionsByTruncation([{ type: 'parry', count: 11 }], rr)
+    expect(odd[0]!.count).toBe(6.6)
+    expect(String(odd[0]!.count)).toHaveLength(3)
+    // 按槽粒度（曲线用）：槽 0 = 0.6、槽 1 无截断 = 缺省 1
+    const bySlot = interactionSurvivalBySlot(rr)
+    expect(bySlot.get(0)).toBeCloseTo(0.6, 6)
+    expect(bySlot.get(1)).toBeUndefined()
   })
 
   it('interactions：tauntCancel 映射到 setTauntCancelCount（般岳后摇取消），weight 0 不计难度', async () => {

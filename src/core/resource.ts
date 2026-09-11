@@ -1,7 +1,7 @@
 import type {
   ResourceCalcConfig, CharacterOperationConfig,
   TeamResourceResult, CharacterResourceResult,
-  IterationState, ExSpecialCostType, SkillExecution,
+  IterationState, ExSpecialCostType, SkillExecution, TruncationCut,
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics'
@@ -827,6 +827,10 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   )
   /** 时间线截断总量（装配阶段砍掉的秒数）：= 资源允许但时间装不下的部分，上报为 overflowSeconds */
   let timeTruncatedSeconds = 0
+  /** 逐行截断明细（团队级汇总，Σ cutSeconds == timeTruncatedSeconds）：资源池清单 + 难度轴交互缩放 */
+  const truncationCuts: TruncationCut[] = []
+  /** 各槽截断秒数账（requested/kept/cutSeconds）：存活率 = kept/requested，难度轴按它缩交互次数 */
+  const truncationBySlot: { slot: number; requested: number; kept: number; cutSeconds: number }[] = []
   const characters: CharacterResourceResult[] = configs.map((cfg, i) => {
     const state = states[i]
     const chainCountTotal = state.chainCountTotal
@@ -930,6 +934,15 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     }
     const executions = giftRowsHere.length > 0 ? [...truncated.executions, ...giftRowsHere] : truncated.executions
     timeTruncatedSeconds += truncated.cutSeconds
+    if (truncated.cuts.length > 0) {
+      for (const c of truncated.cuts) truncationCuts.push({ slot: cfg.slot, ...c })
+      truncationBySlot.push({
+        slot: cfg.slot,
+        requested: truncated.usedSeconds,
+        kept: Math.max(0, truncated.usedSeconds - truncated.cutSeconds),
+        cutSeconds: truncated.cutSeconds,
+      })
+    }
     // 显示口径统一：前台时间 = **前台**执行行 ΣtotalTime（后台行不占共享轴，如莱卡恩围猎蓄力；
     // 含合轴，机制改写行/倍率表行都在内），后台 = 总时间 - 前台。
     // 装配后追加的赠送行（诺姆赠链/琉音赠大）不在 Σ行里——展示层由 `normalizeDisplayTime`
@@ -976,6 +989,12 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 溢出 = **被时间线截断掉的秒数**（装配阶段实测）：为了塞进战斗时间砍掉了多少动作。
   // 截断后 Σ物化净占用恒 ≤ 预算，所以"账本超预算"（iterate 那份中间值）与"物化超预算"
   // 都不再是溢出——只有真被砍掉的时间才是。消费方：TeamComparePage 操作难度横轴（1秒=1难度点）。
+  // debt: 截断不回灌资源循环（A 项，2026-09-11 用户立项）——被砍招式的行级回能/喧响仍按**未截断**的
+  //       `state` 计进账本（`calcEnergySource` 走 `materializeRows(state)`），于是资源池总量/次数
+  //       （如强特 40 次）比 180s 计划实际兑现的高（实测般+诺+卢全关档：槽0 回能账本 200 vs 截断后行 Σ 140）。
+  //       修法（用户给定语义）：先按预算重分配平A池、交互只取「达成目标的最少要求」，装不下就重收敛，
+  //       直到截断为 0（A 项 = 截断后行重收敛）。due: A 项落地（含全库 delta 归因）时销号。
+  // @fact engine:资源账本/截断 口径: 资源池显示的能量/喧响/次数取**未截断**的收敛账本，装配期截断只削行（伤害/失衡随之降）⇒ 有截断时资源池总量与 180s 计划不自洽（截断秒数与逐行清单见 overflowSeconds/truncationCuts） | 据 用户@2026-09-11·实测般+诺+卢 | 验 src/composables/__tests__/teamTimeSummary.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
   config.overflowSeconds = timeTruncatedSeconds
 
   // 比利/伊德海莉终局旗标复位：cfg 对象被外层不动点/热启动复用，下轮调用必须回到实数迭代期
@@ -1015,6 +1034,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     axisOverlapSeconds: config.axisOverlapSeconds,
     axisOverlapByAction: config.axisOverlapByAction,
     overflowSeconds: config.overflowSeconds,
+    truncationCuts: truncationCuts.length > 0 ? truncationCuts : undefined,
     // 琉音好评转大赠链时间已由引擎预留（非轴）→ applyLiuyinPromote 不再 post-hoc carve 守恒
     liuyinGiftTimeReserved: liuyinGiftTimeTotal > 0 ? liuyinGiftTimeTotal : undefined,
     // 诺姆膛温换连携赠链时间（对称暴露，供「账本预留 == 装配赠行」机器判据核对）
@@ -1026,6 +1046,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       timeBudgetIdleSeconds,
       timeBudgetRefundedSeconds,
       timeTruncatedSeconds,
+      truncationBySlot: truncationBySlot.length > 0 ? truncationBySlot : undefined,
     },
   }
 }

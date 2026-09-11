@@ -12,7 +12,7 @@
 import type {
   ResourceCalcConfig, CharacterOperationConfig,
   EnergySource, CrossAgentEnergy, DecibelSource, TimeAllocation,
-  SkillExecution, IterationState, AnomalyEventExecution, TeamResourceResult,
+  SkillExecution, IterationState, AnomalyEventExecution, TeamResourceResult, TruncationCut,
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics'
@@ -706,11 +706,13 @@ export function netFrontlineOccupation(rr: TeamResourceResult): number {
  * 平A行是填充项（占剩余时间），不参与截断；后台行不占前台，自然也不参与。
  *
  * @returns 截断后的行 + 被砍掉的秒数（= 该槽真实的时间压力，供 overflowSeconds/操作难度消费）
+ *   + 截断前的招式行秒数（`usedSeconds`，存活率 = 1 − cutSeconds/usedSeconds）
+ *   + **逐行明细** `cuts`（Σ cutSeconds == cutSeconds；资源池「被砍招式」清单与难度轴交互缩放的输入）
  */
 export function truncateExecutionsToFrontline(
   executions: SkillExecution[],
   availableSeconds: number,
-): { executions: SkillExecution[]; cutSeconds: number } {
+): { executions: SkillExecution[]; cutSeconds: number; usedSeconds: number; cuts: Omit<TruncationCut, 'slot'>[] } {
   /** 可截断行：占前台且不是平A填充行 */
   const isTruncatable = (e: SkillExecution) => isFrontlineExecution(e) && e.moveId !== 'basic_attack'
   let used = 0
@@ -722,7 +724,7 @@ export function truncateExecutionsToFrontline(
   }
   // 平A是填充项先占位：招式行能用的只剩「可用前台 − 平A」
   const room = Math.max(0, availableSeconds - basicTime)
-  if (used <= room + 1e-9) return { executions, cutSeconds: 0 }
+  if (used <= room + 1e-9) return { executions, cutSeconds: 0, usedSeconds: used, cuts: [] }
 
   // 每行的「单位时长」：totalTime / count（count=1 但 totalTime 是聚合量的行，如飞光当量，
   // 也能正确处理）；count=0 的行（纯时间聚合）按整行一个单位处理。
@@ -780,9 +782,25 @@ export function truncateExecutionsToFrontline(
       truncatedRatio: ratio,
     }
   }).filter((e): e is SkillExecution => e !== null)
+  // 逐行截断明细（Σ cutSeconds == used − kept）：资源池「被砍招式」清单 + 难度轴交互缩放的输入
+  // （用户 2026-09-11：截断只报总量时，界面看不出砍了什么、交互还按全量计）。整行砍到 0 的也记。
+  const cuts: Omit<TruncationCut, 'slot'>[] = units
+    .filter(u => u.e.count > 0 && u.count < u.e.count)
+    .map(u => {
+      const ratio = u.count / u.e.count
+      return {
+        moveId: u.e.moveId,
+        moveName: u.e.moveName ?? u.e.moveId,
+        countBefore: u.e.count,
+        countAfter: u.count,
+        cutSeconds: (u.e.count - u.count) * u.perUnit,
+        cutEnergyRecovery: (u.e.totalEnergyRecovery ?? 0) * (1 - ratio),
+        cutDecibelRecovery: (u.e.totalDecibelRecovery ?? 0) * (1 - ratio),
+      }
+    })
   let kept = 0
   for (const e of out) if (isTruncatable(e)) kept += e.totalTime ?? 0
-  return { executions: out, cutSeconds: Math.max(0, used - kept) }
+  return { executions: out, cutSeconds: Math.max(0, used - kept), usedSeconds: used, cuts }
 }
 
 

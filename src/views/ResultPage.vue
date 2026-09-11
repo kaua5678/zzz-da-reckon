@@ -194,10 +194,10 @@
               <span class="pool-stat-value">{{ fmt(teamTimeSummary.basicShrink, 1) }}s</span>
               <span class="pool-stat-detail">平A时间被模块改写成专属行/挤给转大赠送行（时间守恒）</span>
             </div>
-            <div v-if="teamTimeSummary.overflow > 1" class="pool-stat danger">
-              <span class="pool-stat-label">超预算</span>
+            <div v-if="teamTimeSummary.truncatedRows.length > 0" class="pool-stat danger">
+              <span class="pool-stat-label">时间截断</span>
               <span class="pool-stat-value">{{ fmt(teamTimeSummary.overflow, 1) }}s</span>
-              <span class="pool-stat-detail">合轴抵扣后净占用仍超预算（轴/交互太厚）</span>
+              <span class="pool-stat-detail">{{ truncationHintText }}</span>
             </div>
             <div v-if="!teamTimeSummary.timeBudgetConverged" class="pool-stat danger">
               <span class="pool-stat-label">时间预算未收敛</span>
@@ -776,7 +776,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { fmt } from '@/utils/format'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import FinalPanel from '@/components/FinalPanel.vue'
-import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf } from '@/composables/teamTimeSummary'
+import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf, truncationHint as truncationHintOf } from '@/composables/teamTimeSummary'
 import { computeStunVulnSummary, rowAppliedStunMult } from '@/composables/stunVulnSummary'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
 import type { CharacterResourceResult, AnomalyEventRecord } from '@/types/resource'
@@ -838,6 +838,8 @@ const teamTimeSummary = computed(() => buildTeamTimeSummary({
 
 const poolFillText = computed(() => poolFillTextOf(teamTimeSummary.value))
 const slackHint = computed(() => slackHintOf(teamTimeSummary.value, fmt))
+// 「被砍招式」清单（时间截断那一行的 detail）：让 66.8s 这类真溢出可见（用户 2026-09-11 口径）
+const truncationHintText = computed(() => truncationHintOf(teamTimeSummary.value, fmt))
 
 // 获取角色特性
 function getSpecialty(agentId: string): string {

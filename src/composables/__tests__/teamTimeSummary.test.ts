@@ -11,7 +11,7 @@ import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { clearWarmStartCache } from '@/core/resource'
-import { buildTeamTimeSummary, poolFillText, slackHint } from '@/composables/teamTimeSummary'
+import { buildTeamTimeSummary, poolFillText, slackHint, truncationHint } from '@/composables/teamTimeSummary'
 import { fmt } from '@/utils/format'
 
 beforeEach(() => clearWarmStartCache())
@@ -92,6 +92,33 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
     })
     if (t.slack < -1) expect(slackHint(t, fmt)).toContain('动作比战斗时间还多')
     else expect(t.slack).toBeLessThanOrEqual(1)
+  })
+
+  it('时间截断可见：被砍招式逐行上报（Σ cutSeconds == overflow），提示列出「哪条行被砍了几次」', async () => {
+    // 2026-09-11 用户实测口径：般岳+诺姆+卢西娅 全关档真被砍 60+s，而卡上只显示「已打满」——
+    // 截断此前只报总量，界面看不出砍了什么。本判据钉住「逐行可见」这条止血。
+    const t = await summaryOf(['1471', '1571', '1451'])
+    expect(t.overflow).toBeGreaterThan(1)
+    expect(t.truncatedRows.length).toBeGreaterThan(0)
+    expect(t.truncatedRows.reduce((a, r) => a + r.cutSeconds, 0)).toBeCloseTo(t.overflow, 4)
+    for (const r of t.truncatedRows) {
+      expect(r.countAfter).toBeLessThan(r.countBefore)
+      expect(r.cutSeconds).toBeGreaterThan(0)
+    }
+    // 明细按砍掉秒数降序（页面直接切片显示 top N）
+    const cut = t.truncatedRows.map(r => r.cutSeconds)
+    expect([...cut].sort((a, b) => b - a)).toEqual(cut)
+    const hint = truncationHint(t, fmt)
+    expect(hint).toContain('砍掉')
+    expect(hint).toContain('条行')
+    expect(hint).toContain('仍计在账本里')   // A 项未落地前的已知不一致，必须写在用户看得见的地方
+  })
+
+  it('无截断的队：清单为空、提示为空串（止血只影响带截断的队，其余零变化）', async () => {
+    const t = await summaryOf(['1041', '1161', '1311'])
+    expect(t.overflow).toBeLessThanOrEqual(1)
+    expect(t.truncatedRows).toEqual([])
+    expect(truncationHint(t, fmt)).toBe('')
   })
 
   it('perSlot 明细与团队合计同源（卡上三个 chip 加起来对得上账）', async () => {

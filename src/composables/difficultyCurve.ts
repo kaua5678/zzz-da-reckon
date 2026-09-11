@@ -4,7 +4,9 @@
  * 用户 2026-09-10 口径（改这里前先读）：
  *  ① **x 轴 = 每队自己的优化路径**，纵轴伤害、**x 是「自动算的操作难度」绝对值**
  *     （= Σ交互次数×权重 + **时间压力秒×权重**，与散点页横轴同一把尺；用户 2026-09-10：「难度系数肯定是自动算呀，
- *     参数可以修改，自变量就是交互值、吃掉队友的合轴时间等」）——**各队起点/走向不齐是特性**，
+ *     参数可以修改，自变量就是交互值、吃掉队友的合轴时间等」）；**交互次数按装配期截断存活率缩**
+ *     （`kept/requested`，见 `liveInteractions`——用户 2026-09-11：「不上升合轴率导致招式截断，
+ *     那么对应的资源回复也应该降低，或者交互次数应该降低」）——**各队起点/走向不齐是特性**，
  *     对比看的是形状（起点 / 斜率 / 天花板 / 提升倍数）；
  *     ⚠️ 时间压力 = 硬溢出 + 合轴抵扣 **一笔秒数**（用户 2026-09-11：「通过合轴来让溢出时间降低这俩其实是一个东西」），
  *     只挂一个权重；x 仍**不保证单调**：有的杠杆减少交互次数（难度降、伤害升 = 白拿的优化，贪心优先做）；
@@ -33,6 +35,7 @@
  *
  * @fact engine:难度曲线/x轴 口径: x = **自动算的操作难度绝对值** = `computeDifficulty`(当前档实打交互次数, 时间压力秒, 用户权重) —— 与散点页横轴同一函数同一单位（故可直接对齐比较）；**时间压力 = 硬溢出 overflowSeconds + 合轴抵扣 saved，一笔秒数只挂一个权重**（用户 2026-09-11「合轴本身就有难度，通过合轴来让溢出时间降低这俩其实是一个东西」）；各队起点不齐是特性，且 x 不保证单调（杠杆可减少交互 ⇒ 难度降伤害升 = 白拿） | 据 用户@2026-09-10·口径合并@2026-09-11 | 验 difficultyCurve.test.ts::集成：x 轴 = 实测操作难度 | 锚 src/composables/difficultyCurve.ts#measureOperationalDifficulty | 信 确认
  * @fact engine:难度曲线/伤害归因 口径: 每档伤害按来源分组（直伤行 = 招式名、异常行 = 行 `type`，同名跨槽位合并），Σ 分组 ≡ 该档总伤害 ⇒ 归因精确；相邻档差分 = 正贡献 top + 被挤掉（最负在前）+ 其余，三段合计 ≡ 总 Δ | 据 实测@2026-09-10 | 验 difficultyCurve.test.ts::伤害归因 | 锚 src/composables/difficultyCurve.ts#attributeDmgChanges | 信 确认
+ * @fact engine:难度曲线/交互项截断缩 口径: x 的交互项按**装配期截断存活率**缩到「180s 里真打的次数」——每槽因子 = `convergence.truncationBySlot` 的 kept/requested（引擎截断是整槽按比例缩，故同比例缩该槽交互）；无截断/未传 rr 时因子 1 ⇒ 只有带截断的队数值会动。近似：按槽缩而没按交互类型精确缩（般岳 金身/双反 共用「冲霄」一行），精确版随 A 项（截断回灌资源循环）落地 | 据 用户@2026-09-11 | 验 difficultyCurve.test.ts::交互项按装配期截断存活率缩 | 锚 src/composables/difficultyCurve.ts#liveInteractions | 信 确认
  * @fact engine:难度曲线/关键次数标注 口径: 图上标注与「关键变化」面板只显示 Δ≥1 的次数跃迁（「多了一次」），Δ<1 的小数级微调只进 tooltip；关键次数 = 队伍级 7 项（大招/强特/连携/失衡/异常触发/紊乱/乱流，取自引擎结果字段）+ 角色专属「N 次」行（模块 `resourceSections` 自报，零角色硬编码） | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::只认「变多」 | 锚 src/composables/difficultyCurve.ts#diffKeyCounts | 信 确认
  * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
  */
@@ -43,13 +46,13 @@ import {
   type DifficultyGoal, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
 import {
-  applyAxisBinding, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty,
-  restoreStore, snapshotStore, type DifficultyWeights,
+  applyAxisBinding, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, interactionSurvivalBySlot,
+  restoreStore, roundInteractionCount, snapshotStore, type DifficultyWeights,
 } from '@/composables/teamCompare'
 import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
 import { getAgentMechanic } from '@/mechanics'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
-import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
+import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult, TeamResourceResult } from '@/types/resource'
 import type { InteractionItem, TeamPreset } from '@/types/teamPreset'
 
 type Calc = ReturnType<typeof useResourceCalc>
@@ -154,22 +157,35 @@ const ENGINE_INTERACTION_FIELDS: { type: string; field: keyof ReturnType<typeof 
 ]
 
 /**
- * **当前配置**（不是预设声明）的交互清单：难度曲线的「交互值」自变量必须是**这一档实际打的次数** ——
- * G2 联合策略会改弹刀、般岳会补交互、角点解会压非主C平A，读预设声明就量不出这些变化。
- * 无引擎字段的角色专属类型沿用预设声明（它们只进难度、不进引擎）。
+ * **当前配置**（不是预设声明）的交互清单，并按**装配期截断存活率**缩到「180s 里真打的次数」——
+ * 难度曲线的「交互值」自变量必须是**这一档实际打的次数**：G2 联合策略会改弹刀、般岳会补交互、
+ * 角点解会压非主C平A，读预设声明就量不出这些变化。
+ *
+ * 存活率（用户 2026-09-11 口径：「不上升合轴率导致招式截断，那么对应的资源回复也应该降低，
+ * 或者交互次数应该降低」）：`kept / requested` 取自 `rr.convergence.truncationBySlot`
+ * （Σ截断前招式行秒 → Σ保留）——引擎的截断是**整槽按比例缩**，故同比例缩该槽的交互次数即
+ * 「这一槽的招式被砍掉多少，交互也就少打多少」。无截断（或没传 `rr`）时因子 = 1，
+ * **不产生任何数值变化**（所以只有带截断的队会动）。
+ *
+ * ⚠️ 这是**止血近似**（A 项「截断回灌资源循环」的前置）：按槽缩而没按交互类型精确缩
+ * （如般岳 金身/双反 共用一行「冲霄」），且资源账本仍是未截断的（见 `core/resource.ts` 的 debt 标记）。
  */
 export function liveInteractions(
   config: ReturnType<typeof useConfigStore>,
   preset: TeamPreset,
+  rr?: TeamResourceResult | null,
 ): InteractionItem[] {
+  const survival = interactionSurvivalBySlot(rr)
+  // 缩后保留 2 位小数（roundInteractionCount）：不取整会在难度明细里打出 15 位浮点尾巴（实测撑破散点明细表）
+  const shrink = (slot: number, count: number) => roundInteractionCount(count * (survival.get(slot) ?? 1))
   const out: InteractionItem[] = []
   for (const { type, field } of ENGINE_INTERACTION_FIELDS) {
     let count = 0
-    for (let slot = 0; slot < 3; slot++) count += Number(config.team[slot]?.[field] ?? 0)
+    for (let slot = 0; slot < 3; slot++) count += shrink(slot, Number(config.team[slot]?.[field] ?? 0))
     out.push({ type, count })
   }
   for (const it of preset.interactions ?? []) {
-    if (!ENGINE_INTERACTION_FIELDS.some(f => f.type === it.type)) out.push(it)
+    if (!ENGINE_INTERACTION_FIELDS.some(f => f.type === it.type)) out.push({ ...it, count: shrink(it.slot ?? 0, it.count) })
   }
   return out
 }
@@ -194,7 +210,7 @@ export function measureOperationalDifficulty(
   const overflow = rr?.overflowSeconds ?? 0
   // 合轴抵扣出去的秒数：与硬溢出同属「必做前台超出 180s」这一笔，故交给 computeDifficulty 合成一项
   const saved = rr ? frontlineOccupationBreakdown(rr).saved : 0
-  return computeDifficulty(liveInteractions(ctx.config, preset), preset.team, overflow, weights, saved).difficulty
+  return computeDifficulty(liveInteractions(ctx.config, preset, rr), preset.team, overflow, weights, saved).difficulty
 }
 
 // ========== 伤害归因：这一档 +N 伤害是谁贡献的（同一份快照里采） ==========

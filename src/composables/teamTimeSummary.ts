@@ -12,7 +12,7 @@
  */
 import { netFrontlineOccupation } from '@/core/resource/helpers'
 import { isFrontlineExecution } from '@/types/resource'
-import type { SkillExecution, TeamResourceResult } from '@/types/resource'
+import type { SkillExecution, TeamResourceResult, TruncationCut } from '@/types/resource'
 
 export interface TeamTimeSlotSummary {
   slot: number
@@ -50,8 +50,14 @@ export interface TeamTimeSummary {
   ledgerInflation: number
   /** 平A行缩水 = basicTotal − 物化平A行（模块改写/挤给转大赠送行，时间守恒） */
   basicShrink: number
-  /** 合轴抵扣后净占用仍超预算的量（引擎 overflowSeconds） */
+  /** 合轴抵扣后净占用仍超预算的量（引擎 overflowSeconds）——**就是装配期真被砍掉的秒数** */
   overflow: number
+  /**
+   * 装配期被砍掉的招式行清单（按砍掉秒数降序，Σ `cutSeconds` == `overflow`）：资源池「被砍招式」显示源。
+   * 为什么要有它：截断此前只报总量，用户看不出砍了什么（2026-09-11 实测般岳+诺姆+卢西娅全关档砍了 66.8s /
+   * 21 条行，池子里却显示「已打满」）。
+   */
+  truncatedRows: TruncationCut[]
   /** 时间预算外层诊断（负残差/回填量/轮数/是否收敛） */
   idle: number
   refund: number
@@ -105,6 +111,7 @@ export function buildTeamTimeSummary(args: {
     ledgerInflation: requiredFrontline - rowsNecNet,
     basicShrink: basicTotal - rowsBasicNet,
     overflow: rr?.overflowSeconds ?? 0,
+    truncatedRows: [...(rr?.truncationCuts ?? [])].sort((a, b) => b.cutSeconds - a.cutSeconds),
     idle: rr?.convergence?.timeBudgetIdleSeconds ?? 0,
     refund: rr?.convergence?.timeBudgetRefundedSeconds ?? 0,
     timeBudgetConverged: rr?.convergence?.timeBudgetConverged ?? true,
@@ -127,6 +134,28 @@ export function buildTeamTimeSummary(args: {
 export function poolFillText(t: TeamTimeSummary): string {
   if (t.remainingFrontlinePool <= 0.05) return '池已被必要动作占满'
   return `${((t.basicTotal / t.remainingFrontlinePool) * 100).toFixed(0)}%`
+}
+
+/** 招式短名（列表用）：`强化特殊技：论道（山威·论道连段）` → `论道` */
+export function shortMoveName(moveName: string, moveId: string): string {
+  const afterColon = moveName.includes('：') ? moveName.slice(moveName.indexOf('：') + 1) : moveName
+  const noParen = afterColon.replace(/（[^）]*）/g, '').trim()
+  return noParen || moveId
+}
+
+/**
+ * 截断归因一句话（用户 2026-09-11：池子必须让人看见「砍了什么」）：
+ * `被砍 66.8s / 21 条行：论道 10→7、不动如山 25→17、撼天动地 3→2，等 21 条`。
+ * 末尾固定提示「被砍招式的回能/喧响仍在账本里」——这是 A 项（截断回灌资源循环）未落地前的已知不一致。
+ */
+export function truncationHint(t: TeamTimeSummary, fmt: (v: number, d?: number) => string, topN = 3): string {
+  const rows = t.truncatedRows
+  if (rows.length === 0) return ''
+  const head = rows.slice(0, topN)
+    .map(r => `${shortMoveName(r.moveName, r.moveId)} ${fmt(r.countBefore, 0)}→${fmt(r.countAfter, 0)}`)
+    .join('、')
+  const more = rows.length > topN ? `，等 ${rows.length} 条` : ''
+  return `砍掉 ${fmt(t.overflow, 1)}s / ${rows.length} 条行：${head}${more}；被砍招式的回能/喧响仍计在账本里（待 A 项修）`
 }
 
 /** 留白归因一句话：打满 / 超预算 / 未打满（拆成账本虚高 + 平A行缩水） */

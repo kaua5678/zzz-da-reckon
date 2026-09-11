@@ -167,6 +167,32 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
     expect(items.some(i => i.type === 'dodge')).toBe(true)          // 0 值也保留（明细要能照抄字段）
   })
 
+  it('交互项按装配期截断存活率缩：有截断 < config 全量；开满合轴率（截断 0）后逐位等于 config', async () => {
+    // 用户 2026-09-11：「不上升合轴率导致招式截断，那么对应的资源回复也应该降低，或者交互次数应该降低」。
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const preset = teamPresets.find(p => p.id === 'auto-1471-1571-1451')!
+    applyTeamToStore(config, preset)
+    await new Promise(r => setTimeout(r, 200))
+    const rr = calc.resourceResult.value!
+    expect(rr.overflowSeconds ?? 0).toBeGreaterThan(1)          // 这队全关档确实有截断（实测 60+s）
+    const raw = liveInteractions(config, preset)                // 不传 rr = 旧口径（config 全量）
+    const shrunk = liveInteractions(config, preset, rr)
+    const total = (items: { count: number }[]) => items.reduce((a, i) => a + i.count, 0)
+    expect(total(shrunk)).toBeLessThan(total(raw))
+    // 逐槽按 kept/requested 缩：般岳槽（0）截断最重
+    const slot0 = rr.convergence.truncationBySlot!.find(s => s.slot === 0)!
+    expect(slot0.kept / slot0.requested).toBeLessThan(1)
+    // 合轴率开满两档 ⇒ 截断归零 ⇒ 交互不再缩（「合轴率上升可以周转」的机器判据）
+    const g5 = DIFFICULTY_GOALS.find(g => g.id === 'G5')!
+    g5.apply({ config, calc }); await new Promise(r => setTimeout(r, 200))
+    g5.apply({ config, calc }); await new Promise(r => setTimeout(r, 200))
+    const rr2 = calc.resourceResult.value!
+    expect(rr2.overflowSeconds ?? 0).toBeLessThanOrEqual(1)
+    expect(total(liveInteractions(config, preset, rr2))).toBeCloseTo(total(liveInteractions(config, preset)), 6)
+  }, 120_000)
+
   it('measureOperationalDifficulty = Σ(交互×权重) + 溢出秒×溢出权重（权重可改）', async () => {
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!

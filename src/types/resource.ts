@@ -579,6 +579,30 @@ export function isFrontlineExecution(e: { timeBucket?: 'necessary' | 'basic' | '
   return e.timeBucket !== 'backstage'
 }
 
+/**
+ * 装配期时间线截断的**逐行**明细（`truncateExecutionsToFrontline` 产出 → 汇总进
+ * `TeamResourceResult.truncationCuts`）：这一行原本要打 `countBefore` 次、180s 里只留 `countAfter` 次，
+ * 砍掉的秒数与随之作废的行级回能/喧响。
+ *
+ * 为什么要有它（用户 2026-09-11 三问）：截断此前只报**总量**（`overflowSeconds`），于是
+ * ① 资源池看不到「砍了哪些招」；② 难度轴的交互次数仍按 config 全量计；③ 「被砍招式的回能还在账本里」
+ * 只能靠人肉推断。逐行明细是这三件事的共同输入（也是 A 项「截断回灌资源循环」的输入）。
+ */
+export interface TruncationCut {
+  slot: number
+  moveId: string
+  moveName: string
+  /** 截断前想打的次数 */
+  countBefore: number
+  /** 180s 里实际保留的次数 */
+  countAfter: number
+  cutSeconds: number
+  /** 砍掉部分作废的行级能量回复（按 totalEnergyRecovery 同比例） */
+  cutEnergyRecovery: number
+  /** 砍掉部分作废的行级喧响回复 */
+  cutDecibelRecovery: number
+}
+
 /** 异常事件执行记录：不属于普通直伤/失衡/积蓄招式行，但会由动作或资源触发 */
 export interface AnomalyEventExecution {
   /** 事件 id */
@@ -1125,6 +1149,13 @@ export interface ConvergenceReport {
    */
   timeTruncatedSeconds?: number
   /**
+   * 各槽装配期截断的秒数账：`requested` = 截断前该槽招式行秒数、`kept` = 180s 里真保住的、
+   * `cutSeconds` = 砍掉。**`kept / requested` = 该槽招式的存活率**，难度轴（`liveInteractions`）
+   * 用它把交互次数缩到「180s 里真打的次数」——用户 2026-09-11 口径：「不上升合轴率导致招式截断，
+   * 那么对应的资源回复也应该降低，或者交互次数应该降低」。
+   */
+  truncationBySlot?: { slot: number; requested: number; kept: number; cutSeconds: number }[]
+  /**
    * 失衡外层不动点（runCalcRound 环）是否真收敛。
    * 由编排层回填；`calcTeamResources` 单独调用时保持 false（它看不到外层）。
    */
@@ -1192,6 +1223,11 @@ export interface TeamResourceResult {
    * （1 秒 = 1 难度点，用户口径 2026-09-04；截断口径 2026-09-05）。
    */
   overflowSeconds?: number
+  /**
+   * 装配期被截断的招式**逐行明细**（Σ `cutSeconds` == `overflowSeconds`）：资源池「被砍招式」清单、
+   * 难度轴交互缩放的同一份输入（见 `TruncationCut`）。无截断时不带本字段。
+   */
+  truncationCuts?: TruncationCut[]
   /**
    * 琉音好评转大赠链时间预留量（非轴模式，秒）：iterate 已把 promote × 目标终结技时长计入
    * 必要时间（守恒由引擎成立）→ applyLiuyinPromote 见到本字段即**跳过 post-hoc carve**
