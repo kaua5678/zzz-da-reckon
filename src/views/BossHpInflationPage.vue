@@ -12,18 +12,21 @@
       <n-alert v-else-if="error" type="error" title="加载失败">{{ error }}</n-alert>
 
       <template v-else>
-        <!-- 图例（点击显隐） -->
+        <!-- 图例（点击显隐；筛选是纯展示——隐藏的 Boss 同时退出 Y 轴上限，否则轴按隐藏数据缩放） -->
         <div class="legend">
+          <span class="legend-hint">点图例显隐 · 显示 {{ legendCounts.visible }}/{{ legendCounts.total }}</span>
           <div
             v-for="b in bossSeries"
             :key="b.id"
             class="legend-item"
-            :class="{ off: !visible.has(b.id) }"
-            @click="toggle(b.id)"
+            :class="{ off: !filter.isVisible(b.id) }"
+            :title="`${b.name}：点击${filter.isVisible(b.id) ? '隐藏' : '显示'}`"
+            @click="filter.toggle(b.id)"
           >
             <span class="swatch" :style="{ background: b.color }"></span>
             <span class="name">{{ b.name }}{{ b.isCriticalAssault ? '·困难' : '' }}</span>
           </div>
+          <span class="legend-hint legend-action" @click="filter.showAll()">全显示</span>
         </div>
 
         <!-- SVG 折线图 -->
@@ -91,8 +94,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { NCard, NAlert } from 'naive-ui'
+import { useSeriesFilter } from '@/composables/seriesFilter'
 import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
 
 /** 20 色盘（区分不同 Boss 折线） */
@@ -115,7 +119,6 @@ interface BossSeries {
 const loading = ref(true)
 const error = ref('')
 const presets = ref<BossPreset[]>([])
-const visible = reactive(new Set<string>())
 const hover = ref<null | { name: string; color: string; seasonIdx: number; coeff: number; seasonLabel: string }>(null)
 
 onMounted(async () => {
@@ -124,8 +127,6 @@ onMounted(async () => {
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const j = (await res.json()) as BossPresetFile
     presets.value = j.bosses ?? []
-    // 按源怪物 id 初始化可见集（合并预设会拆成试炼版/恶名版多条，须用系列 id 而非预设 id）
-    for (const b of bossSeries.value) visible.add(b.id)
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
@@ -183,9 +184,12 @@ const bossSeries = computed<BossSeries[]>(() => {
     .filter(s => s.points.length > 0)
 })
 
-/** 可见系列（纯数据，供 maxCoeff 与坐标计算；不依赖坐标 → 无循环依赖） */
-const visibleData = computed(() => bossSeries.value.filter(b => visible.has(b.id)))
+// 图例筛选（与其余图表同一实现：默认全可见、点一下显隐、不允许全关；见 composables/seriesFilter.ts）
+const filter = useSeriesFilter(() => bossSeries.value)
+const legendCounts = filter.counts
 
+/** 可见系列（纯数据，供 maxCoeff 与坐标计算；不依赖坐标 → 无循环依赖） */
+const visibleData = computed(() => filter.filter(bossSeries.value))
 /** 可见系列（含折线坐标；依赖 visibleData + maxCoeff，晚于 maxCoeff 求值） */
 const visibleSeries = computed(() =>
   visibleData.value.map(b => ({
@@ -193,11 +197,6 @@ const visibleSeries = computed(() =>
     linePoints: b.points.map(p => `${xOf(p.seasonIdx)},${yOf(p.coeff)}`).join(' '),
   })),
 )
-
-function toggle(id: string) {
-  if (visible.has(id)) visible.delete(id)
-  else visible.add(id)
-}
 
 function seasonLabel(seasonIdx: number): string {
   return seasons.value[seasonIdx]?.label ?? ''
@@ -280,11 +279,14 @@ function onMove(e: MouseEvent) {
 <style scoped>
 .boss-hp-page { max-width: 1280px; }
 .muted { color: var(--wa-500); font-size: 12px; }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 12px; }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-bottom: 12px; }
 .legend-item { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; user-select: none; }
+.legend-item:hover { background: var(--fill-hover); }
 .legend-item.off { opacity: 0.35; text-decoration: line-through; }
+.legend-hint { color: var(--fg-3); font-size: 12px; }
+.legend-action { cursor: pointer; border-bottom: 1px dashed var(--line-strong); }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; flex: 0 0 auto; }
-.name { color: var(--wa-750); white-space: nowrap; }
+.name { color: var(--fg-2); white-space: nowrap; }
 .chart-wrap { overflow-x: auto; }
 .chart-svg { width: 100%; min-width: 900px; height: auto; }
 .grid-line { stroke: var(--wa-80); stroke-width: 1; }

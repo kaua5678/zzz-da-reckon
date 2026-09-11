@@ -148,7 +148,8 @@
       </div>
 
       <div v-if="!computing && chartMode === 'scatter' && points.length > 0" class="compare-note">
-        共 {{ points.length }} 个点 · 纵轴 = 伤害/血量%（100% 击杀线）· 横轴 = 操作难度（交互加权和 + 时间压力秒，权重可在「难度权重」调）· 点半径 = 限定金
+        共 {{ visiblePoints.length }}/{{ points.length }} 个点（图例可点显隐队伍，被隐藏的队<b>不计入坐标轴</b>）
+        · 纵轴 = 伤害/血量%（100% 击杀线）· 横轴 = 操作难度（交互加权和 + 时间压力秒，权重可在「难度权重」调）· 点半径 = 限定金
       </div>
 
       <div v-if="!computing && chartMode === 'curve'" class="compare-note">
@@ -212,18 +213,28 @@
           </g>
         </svg>
 
-        <!-- 图例 -->
+        <!-- 图例（点击显隐该队；隐藏的队同时退出坐标轴与明细表） -->
         <div class="chart-legend">
-          <span v-for="p in legendPresets" :key="p.id" class="lchip" :style="{ borderColor: p.color }">
+          <span class="legend-hint">点图例显隐 · {{ scatterCounts.visible }}/{{ scatterCounts.total }}</span>
+          <span
+            v-for="p in legendPresets"
+            :key="p.id"
+            class="lchip"
+            :class="{ off: !scatterLegend.isVisible(p.id) }"
+            :style="{ borderColor: p.color }"
+            :title="`${p.name}：点击${scatterLegend.isVisible(p.id) ? '隐藏' : '显示'}（隐藏后不参与坐标轴与明细表）`"
+            @click="scatterLegend.toggle(p.id)"
+          >
             <span class="ldot" :style="{ background: p.color }"></span>{{ p.name }}（{{ p.minGold }}~{{ p.maxGold }}金）
           </span>
+          <span class="legend-hint legend-action" @click="scatterLegend.showAll()">全显示</span>
         </div>
       </div>
     </n-card>
 
-    <!-- 明细表 -->
+    <!-- 明细表（跟随图例筛选：隐藏的队不出行） -->
     <n-card v-if="chartMode === 'scatter' && points.length > 0" size="small" :bordered="true" class="detail-card">
-      <template #header>明细（{{ points.length }} 点）</template>
+      <template #header>明细（{{ visiblePoints.length }}/{{ points.length }} 点）</template>
       <div class="detail-table-wrap">
         <table class="detail-table">
           <thead>
@@ -233,7 +244,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(p, i) in points" :key="i" :class="{ 'time-warn': p.timeExceeded }">
+            <tr v-for="(p, i) in visiblePoints" :key="i" :class="{ 'time-warn': p.timeExceeded }">
               <td class="td-team" :style="{ color: colorOf(p.presetId) }">{{ p.presetName }}</td>
               <td>
                 {{ p.goldLabel }}
@@ -255,7 +266,7 @@
 
     <!-- 难度曲线：每队自己的贪心提升路径（x = 自动算的操作难度，各队不对齐是特性） -->
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="chart-card">
-      <template #header>难度曲线（{{ curveData.series.length }} 队 · 每队自己的 x）</template>
+      <template #header>难度曲线（{{ curveData.series.length }} 队可见 · 每队自己的 x）</template>
       <div class="compare-note curve-note">
         <b>口径 = 同一支队伍 · 同一个 Boss · 同一套配装</b>（预设基础档：0命1精 + 预设音擎/驱动盘/权重/交互 + 当前期数 Boss）
         ，<b>只让「操作难度」从全关爬到全开</b>——配置不参与曲线（金数提升/换装在散点图型与「角色兑现」看）。
@@ -311,10 +322,21 @@
           </g>
         </svg>
 
+        <!-- 图例（点击显隐该队曲线；隐藏的队同时退出坐标轴与两张明细表） -->
         <div class="chart-legend">
-          <span v-for="s in curveData.series" :key="s.presetId" class="lchip" :style="{ borderColor: colorOf(s.presetId) }">
+          <span class="legend-hint">点图例显隐 · {{ curveCounts.visible }}/{{ curveCounts.total }}</span>
+          <span
+            v-for="s in curveAllSeries"
+            :key="s.presetId"
+            class="lchip"
+            :class="{ off: !curveLegend.isVisible(s.presetId) }"
+            :style="{ borderColor: colorOf(s.presetId) }"
+            :title="`${s.name}：点击${curveLegend.isVisible(s.presetId) ? '隐藏' : '显示'}（隐藏后不参与坐标轴与明细表）`"
+            @click="curveLegend.toggle(s.presetId)"
+          >
             <span class="ldot" :style="{ background: colorOf(s.presetId) }"></span>{{ s.name }}（{{ fmt(s.gainX, 2) }}× · +{{ fmt(s.gainPct, 1) }}%）
           </span>
+          <span class="legend-hint legend-action" @click="curveLegend.showAll()">全显示</span>
         </div>
       </div>
     </n-card>
@@ -367,7 +389,7 @@
 
     <!-- 曲线摘要表：难易强度对比看这几列 -->
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="detail-card">
-      <template #header>曲线摘要（{{ curveData.series.length }} 队）</template>
+      <template #header>曲线摘要（{{ curveData.series.length }} 队可见）</template>
       <div class="detail-table-wrap">
         <table class="detail-table">
           <thead>
@@ -404,6 +426,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS } from '@/composables/teamCompare'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
+import { useSeriesFilter } from '@/composables/seriesFilter'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
@@ -649,6 +672,25 @@ const curveRows = ref<DifficultyCurveRow[]>([])
 /** 曲线模式的中止标志（粒度 = 一队：单队阶梯是原子的；已算部分保留） */
 const curveAbort = ref(false)
 
+// ========== 图例筛选（点图例显隐某队；两个图型各一份独立状态） ==========
+// 隐藏必须传导到派生量：轴上限（yMax/xMax/costMax/ratioMax）、明细表、关键变化、曲线摘要
+// 全部读「可见集合」，否则轴按隐藏数据缩放 ⇒ 筛选看着没生效（见 seriesFilter.ts 文件头 ②）。
+const scatterLegend = useSeriesFilter(() =>
+  [...new Set(points.value.map(p => p.presetId))].map(id => ({
+    id,
+    name: teamPresets.find(t => t.id === id)?.name ?? id,
+  })),
+)
+/** 可见的散点（图 + 轴 + 明细表同源） */
+const visiblePoints = computed(() => points.value.filter(p => scatterLegend.isVisible(p.presetId)))
+/** 图例计数（顶层 ref 绑定 ⇒ 模板里自动解包，写 `scatterCounts.visible`） */
+const scatterCounts = scatterLegend.counts
+
+const curveLegend = useSeriesFilter(() => curveRows.value.map(r => ({ id: r.presetId, name: r.name })))
+const curveCounts = curveLegend.counts
+/** 可见曲线阶梯行（喂给 buildCurveChart，使其轴上限/刻度只按可见队算） */
+const visibleCurveRows = computed(() => curveRows.value.filter(r => curveLegend.isVisible(r.presetId)))
+
 function goldLevels(): number[] {
   const levels: number[] = []
   const min = Math.max(0, Math.min(goldMin.value, goldMax.value))
@@ -730,11 +772,11 @@ const plotH = 340
 const viewBox = computed(() => `0 0 ${svgW.value} ${padT + plotH + padB}`)
 
 const yMax = computed(() => {
-  const maxRatio = Math.max(...points.value.map(p => p.hpRatio), 0)
+  const maxRatio = Math.max(...visiblePoints.value.map(p => p.hpRatio), 0)
   return Math.max(100, Math.ceil(Math.max(maxRatio, 150) / 50) * 50)
 })
 const xMax = computed(() => {
-  const maxD = Math.max(...points.value.map(p => p.difficulty), 1)
+  const maxD = Math.max(...visiblePoints.value.map(p => p.difficulty), 1)
   return Math.max(10, Math.ceil(maxD / 5) * 5)
 })
 function yOf(v: number): number {
@@ -778,7 +820,7 @@ function colorOf(presetId: string): string {
 }
 
 const chartPts = computed(() =>
-  points.value.map(p => ({
+  visiblePoints.value.map(p => ({
     ...p,
     cx: xOf(p.difficulty),
     cy: yOf(Math.min(p.hpRatio, yMax.value)),
@@ -803,9 +845,12 @@ const legendPresets = computed(() => {
 })
 
 // ========== 难度曲线图表（x = 自动算的操作难度，y = 伤害/血量%） ==========
+// 只喂可见行 ⇒ costMax/ratioMax/costTicks 全部按可见队算（② 筛选传导到轴）
 const curveData = computed(() =>
-  curveRows.value.length > 0 ? buildCurveChart(curveRows.value, selectedPhase.value?.hp ?? 1) : null,
+  visibleCurveRows.value.length > 0 ? buildCurveChart(visibleCurveRows.value, selectedPhase.value?.hp ?? 1) : null,
 )
+/** 图例要展示**含隐藏队**的完整清单（否则隐藏后图例项消失，点不回来）；数字仍用可见集算的 gainX/gainPct */
+const curveAllSeries = computed(() => (curveRows.value.length > 0 ? buildCurveChart(curveRows.value, selectedPhase.value?.hp ?? 1).series : []))
 function curveXOf(v: number): number {
   return padL + (v / Math.max(1, curveData.value?.costMax ?? 1)) * plotW.value
 }
@@ -1133,9 +1178,11 @@ function killSeconds(hpRatio: number): number {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
   margin-top: 8px;
 }
 
+/* 可点图例（筛选）：与「血量膨胀」页同交互——点一下显隐该系列 */
 .lchip {
   display: inline-flex;
   align-items: center;
@@ -1145,6 +1192,28 @@ function killSeconds(hpRatio: number): number {
   border: 1px solid;
   border-radius: 10px;
   padding: 1px 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lchip:hover {
+  background: var(--fill-hover);
+}
+
+/* 隐藏态：划掉 + 变灰（一眼看出是「被我关掉了」而不是「这队没数据」） */
+.lchip.off {
+  opacity: 0.38;
+  text-decoration: line-through;
+}
+
+.legend-hint {
+  font-size: 11px;
+  color: var(--fg-3);
+}
+
+.legend-action {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--line-strong);
 }
 
 .ldot {

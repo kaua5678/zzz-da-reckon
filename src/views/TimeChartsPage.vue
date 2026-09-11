@@ -259,6 +259,25 @@
         <span class="ctl-label">每期并存 K</span>
         <n-input-number v-model:value="survivalK" :min="1" :max="6" size="small" style="width: 90px" />
       </template>
+
+      <!-- 图例（点击显隐某队横带）。筛选是**纯展示**：Top-K 排名与淘汰判定是数据性质
+           （K 是游戏约束，不是显示选项），隐藏某队不会让别的队「递补存活」——只少画一条带 -->
+      <div class="legend">
+        <span class="legend-hint">点图例显隐 · 显示 {{ strengthCounts.visible }}/{{ strengthCounts.total }} 队</span>
+        <div
+          v-for="b in strengthBands"
+          :key="b.seed.key"
+          class="legend-item"
+          :class="{ off: !strengthLegend.isVisible(b.seed.key) }"
+          :title="`${b.seed.team.map(agentName).join(' + ')}：点击${strengthLegend.isVisible(b.seed.key) ? '隐藏' : '显示'}这条存活带（Top-K 排名不变——K 是游戏约束）`"
+          @click="strengthLegend.toggle(b.seed.key)"
+        >
+          <span class="swatch" :style="{ background: colorOf(b.seed.key) }"></span>
+          <span class="name">{{ b.seed.shortLabel }} {{ fmt(b.seed.hpRatio, 1) }}%</span>
+        </div>
+        <span class="legend-hint legend-action" @click="strengthLegend.showAll()">全显示</span>
+      </div>
+
       <div class="timeline-wrap">
         <svg :viewBox="`0 0 ${svgW} ${strengthSvgH}`" class="timeline-svg">
           <!-- 网格 + Y 轴（复用 Chart1 的血量%尺度） -->
@@ -267,7 +286,7 @@
             <text :x="padL - 8" :y="y + 3" class="axis-label" text-anchor="end">{{ yLabel(i) }}%</text>
           </g>
           <!-- 每队一条存活横带：覆盖其存活的版本格 -->
-          <g v-for="b in strengthBands" :key="b.seed.key" class="strength-row">
+          <g v-for="b in visibleStrengthBands" :key="b.seed.key" class="strength-row">
             <line
               :x1="padL + b.startIndex * cellW"
               :y1="bandY(b.seed.hpRatio)"
@@ -385,6 +404,20 @@
       :bordered="true"
       title="限定S首次UP · 版本直伤系数（中心系数 = 支援突击伤害 / 标准值；支援突击通常不随角色改版，偏离即历代直伤膨胀档位）"
     >
+      <!-- 档位筛选（点图例显隐；三档就是散点颜色的语义，与图例同一把尺） -->
+      <div class="legend">
+        <span class="legend-hint">点图例显隐档位</span>
+        <div
+          v-for="band in ddBandDefs"
+          :key="band.id"
+          class="legend-item"
+          :class="{ off: !ddLegend.isVisible(band.id) }"
+          :title="`${band.desc}：点击${ddLegend.isVisible(band.id) ? '隐藏' : '显示'}该档（Y 轴固定 0.7~1.3 档位口径，不随筛选缩放）`"
+          @click="ddLegend.toggle(band.id)"
+        >
+          <span class="swatch" :style="{ background: band.color }"></span><span class="name">{{ band.label }}</span>
+        </div>
+      </div>
       <svg :width="svgW" :height="ddSvgH" class="dd-svg">
         <!-- 测试服节点阴影 -->
         <rect
@@ -415,8 +448,8 @@
           stroke-dasharray="4 4"
         />
         <text :x="svgW - ddPadR - 2" :y="ddY(1) - 5" text-anchor="end" class="dd-baseline">100% 标准</text>
-        <!-- 散点 -->
-        <g v-for="p in ddPoints" :key="`ddp${p.agentId}`">
+        <!-- 散点（按档位筛选：隐藏档不画；标签槽位仍按全量算 ⇒ 不因筛选而重排） -->
+        <g v-for="p in ddVisiblePoints" :key="`ddp${p.agentId}`">
           <circle
             v-if="p.value != null"
             :cx="ddCX(p.nodeIndex) + ddJitter(p.agentId)"
@@ -552,6 +585,23 @@
           />
         </svg>
 
+        <!-- 图例（点击显隐某支队；隐藏队的点不画，且退出 Y 轴刻度与悬浮命中——筛选传导到派生量） -->
+        <div class="legend">
+          <span class="legend-hint">点图例显隐 · 显示 {{ chart3Counts.visible }}/{{ chart3Counts.total }} 支队</span>
+          <div
+            v-for="s in chart3Series"
+            :key="s.id"
+            class="legend-item"
+            :class="{ off: !chart3Legend.isVisible(s.id) }"
+            :title="`${s.name}：点击${chart3Legend.isVisible(s.id) ? '隐藏' : '显示'}（隐藏后不参与 Y 轴刻度）`"
+            @click="chart3Legend.toggle(s.id)"
+          >
+            <span class="swatch" :style="{ background: colorOf(s.id) }"></span>
+            <span class="name">{{ s.name }}</span>
+          </div>
+          <span class="legend-hint legend-action" @click="chart3Legend.showAll()">全显示</span>
+        </div>
+
         <!-- 悬浮卡片 -->
         <div
           v-if="chart3Hover >= 0 && chart3HoverInfo"
@@ -626,9 +676,14 @@
       <!-- 双折线 SVG -->
       <div v-if="scPoints.length > 0" class="timeline-wrap chart3-plot">
         <div class="sc-legend">
-          <span class="sc-legend-item"><span class="sc-dot" :style="{ background: SC_COLOR_A }"></span>{{ agentName(scAgentA) }} 队</span>
-          <span class="sc-legend-item"><span class="sc-dot" :style="{ background: SC_COLOR_B }"></span>{{ agentName(scAgentB) }} 队</span>
+          <span class="sc-legend-item sc-legend-click" :class="{ off: !scLegend.isVisible('A') }" @click="scLegend.toggle('A')">
+            <span class="sc-dot" :style="{ background: SC_COLOR_A }"></span>{{ agentName(scAgentA) }} 队
+          </span>
+          <span class="sc-legend-item sc-legend-click" :class="{ off: !scLegend.isVisible('B') }" @click="scLegend.toggle('B')">
+            <span class="sc-dot" :style="{ background: SC_COLOR_B }"></span>{{ agentName(scAgentB) }} 队
+          </span>
           <span class="sc-legend-item">Boss：{{ scBossName }}</span>
+          <span class="legend-hint">点队名显隐该线（纵轴按剩下的线缩放）</span>
         </div>
         <svg
           :viewBox="`0 0 ${svgW} ${scSvgH}`"
@@ -645,12 +700,13 @@
             <line :x1="chart3X(t.index)" :y1="padT" :x2="chart3X(t.index)" :y2="padT + plotH" style="stroke: var(--fill-hover)" />
             <text :x="chart3X(t.index)" :y="scSvgH - 8" class="axis-label x-label" text-anchor="middle">{{ t.label }}</text>
           </g>
-          <!-- 两条对比折线 -->
-          <polyline :points="scLineA" class="sc-line sc-line-a" />
-          <polyline :points="scLineB" class="sc-line sc-line-b" />
+          <!-- 两条对比折线（图例可显隐；纵轴只按剩下的线缩放） -->
+          <polyline v-if="scLegend.isVisible('A')" :points="scLineA" class="sc-line sc-line-a" />
+          <polyline v-if="scLegend.isVisible('B')" :points="scLineB" class="sc-line sc-line-b" />
           <!-- 点 -->
           <g v-for="(p, i) in scPts" :key="'scp' + i">
             <circle
+              v-if="scLegend.isVisible('A')"
               :cx="p.x" :cy="p.yA" r="4" :fill="SC_COLOR_A"
               :style="{ stroke: scHover === i ? 'var(--app-text-solid)' : 'var(--line-strong)' }"
               :stroke-width="scHover === i ? 2 : 1"
@@ -659,6 +715,7 @@
               <title>{{ p.mainName }}：{{ p.teamA.map(agentName).join('+') }}（{{ fmt(p.hpRatioA, 1) }}%）</title>
             </circle>
             <circle
+              v-if="scLegend.isVisible('B')"
               :cx="p.x" :cy="p.yB" r="4" :fill="SC_COLOR_B"
               :style="{ stroke: scHover === i ? 'var(--app-text-solid)' : 'var(--line-strong)' }"
               :stroke-width="scHover === i ? 2 : 1"
@@ -767,8 +824,27 @@
         </div>
       </div>
 
-      <!-- 折线图：血量%主线 + 金数副线 -->
+      <!-- 折线图：血量%主线 + 金数副线（图例可点显隐） -->
       <div v-if="simPoints.length > 0" class="timeline-wrap sim-plot">
+        <div class="legend">
+          <span class="legend-hint">点图例显隐</span>
+          <div
+            class="legend-item"
+            :class="{ off: !simLegend.isVisible('hp') }"
+            title="队伍强度（伤害/当期 Boss 血量%）"
+            @click="simLegend.toggle('hp')"
+          >
+            <span class="swatch sim-swatch-hp"></span><span class="name">队伍强度 %</span>
+          </div>
+          <div
+            class="legend-item"
+            :class="{ off: !simLegend.isVisible('gold') }"
+            title="累计限定金数（右轴）"
+            @click="simLegend.toggle('gold')"
+          >
+            <span class="swatch sim-swatch-gold"></span><span class="name">金数（右轴）</span>
+          </div>
+        </div>
         <svg
           :viewBox="`0 0 ${svgW} ${simSvgH}`"
           class="timeline-svg"
@@ -783,14 +859,14 @@
           <line :x1="padL" :y1="simY(100)" :x2="svgW - padR" :y2="simY(100)" class="kill-line-ref" />
           <text :x="svgW - padR - 2" :y="simY(100) - 5" class="axis-label" text-anchor="end">100%</text>
           <!-- 队伍强度主线 -->
-          <polyline :points="simHpLine" class="sim-line" />
+          <polyline v-if="simLegend.isVisible('hp')" :points="simHpLine" class="sim-line" />
           <!-- 金数副线（右轴） -->
-          <polyline :points="simGoldLine" class="sim-gold-line" />
+          <polyline v-if="simLegend.isVisible('gold')" :points="simGoldLine" class="sim-gold-line" />
           <!-- 金数右轴刻度 -->
-          <text v-for="g in 4" :key="'gp' + g" :x="svgW - padR + 2" :y="simGoldY((simGoldMax / 4) * g) + 3" class="axis-label gold-axis-label">{{ Math.round((simGoldMax / 4) * g) }}</text>
+          <text v-for="g in (simLegend.isVisible('gold') ? 4 : 0)" :key="'gp' + g" :x="svgW - padR + 2" :y="simGoldY((simGoldMax / 4) * g) + 3" class="axis-label gold-axis-label">{{ Math.round((simGoldMax / 4) * g) }}</text>
           <!-- 点 -->
           <g v-for="(p, i) in simPts" :key="'fp' + i">
-            <circle :cx="p.x" :cy="p.y" r="3.5" :fill="p.color" :style="{ stroke: simHover === i ? 'var(--app-text-solid)' : 'var(--wa-250)' }" :stroke-width="simHover === i ? 2 : 1" class="trend-point">
+            <circle v-if="simLegend.isVisible('hp')" :cx="p.x" :cy="p.y" r="3.5" :fill="p.color" :style="{ stroke: simHover === i ? 'var(--app-text-solid)' : 'var(--wa-250)' }" :stroke-width="simHover === i ? 2 : 1" class="trend-point">
               <title>{{ p.label }}：{{ fmt(p.hpRatio, 1) }}%（{{ p.totalGold }}金）</title>
             </circle>
           </g>
@@ -857,6 +933,22 @@
           <span>观测窗口 {{ pvResult.window.firstDate }} ~ {{ pvResult.window.lastDate }}</span>
           <span>{{ pvResult.window.seasonCount }} 个赛季 · {{ pvResult.rooms.length }} 个危局房间 · {{ compact(pvResult.window.runCount) }} 条投稿</span>
           <span>单房间分数上限 65000（删失点：都打满 → 边际计 0）</span>
+        </div>
+
+        <!-- 分级筛选（点图例显隐某档；与「层」下拉是两个正交维度：层=卡池归属，分级=兑现强弱） -->
+        <div class="legend">
+          <span class="legend-hint">点图例显隐分级 · 显示 {{ pvCounts.visible }}/{{ pvCounts.total }} 档（行与排名表同源过滤）</span>
+          <div
+            v-for="g in pvGradeDefs"
+            :key="g.id"
+            class="legend-item"
+            :class="{ off: !pvGradeLegend.isVisible(g.id) }"
+            :title="`${g.desc}：点击${pvGradeLegend.isVisible(g.id) ? '隐藏' : '显示'}该档`"
+            @click="pvGradeLegend.toggle(g.id)"
+          >
+            <span class="swatch" :style="{ background: g.color }"></span><span class="name">{{ g.label }}</span>
+          </div>
+          <span class="legend-hint legend-action" @click="pvGradeLegend.showAll()">全显示</span>
         </div>
 
         <!-- 时间轴气泡图：行 = 卡（按累计降序），列 = 房间 -->
@@ -1073,6 +1165,22 @@
           <span v-if="ppResult!.stats">引擎求值 {{ ppResult!.stats.evaluations }} 次（缓存命中 {{ ppResult!.stats.cacheHits }}）· 耗时 {{ (ppResult!.stats.durationMs / 1000).toFixed(1) }}s</span>
         </div>
 
+        <!-- 泳道图例（点击显隐；泳道各自 y 固定，隐藏后留空位而不重排——避免开关一下整张图跳动） -->
+        <div class="legend">
+          <span class="legend-hint">点图例显隐泳道</span>
+          <div
+            v-for="d in ppLaneDefs"
+            :key="d.id"
+            class="legend-item"
+            :class="{ off: !ppLegend.isVisible(d.id) }"
+            :title="`${d.desc}：点击${ppLegend.isVisible(d.id) ? '隐藏' : '显示'}`"
+            @click="ppLegend.toggle(d.id)"
+          >
+            <span class="swatch" :style="{ background: d.color }"></span><span class="name">{{ d.label }}</span>
+          </div>
+          <span class="legend-hint legend-action" @click="ppLegend.showAll()">全显示</span>
+        </div>
+
         <!-- 策略甘特：期数 × 购买/队伍 -->
         <div class="timeline-wrap pp-plot">
           <svg :viewBox="`0 0 ${svgW} ${ppSvgH}`" class="timeline-svg">
@@ -1082,6 +1190,7 @@
               <text :x="ppX(t.index)" :y="ppSvgH - 8" text-anchor="middle" class="axis-label x-label">{{ t.label }}</text>
             </g>
             <!-- 购买泳道 -->
+            <template v-if="ppLegend.isVisible('purchase')">
             <text :x="ppLabelW - 6" :y="ppPadT + 8" text-anchor="end" class="lane-label">购买</text>
             <g v-for="(st, i) in ppResult.plan.steps" :key="'ppp' + i">
               <rect
@@ -1099,7 +1208,9 @@
                 {{ st.purchases.map(p => agentName(p.agentId)).join('/') }}
               </text>
             </g>
+            </template>
             <!-- 分数折线（期总分 + 累计） -->
+            <template v-if="ppLegend.isVisible('score')">
             <text :x="ppLabelW - 6" :y="ppScoreY(0) + 4" text-anchor="end" class="lane-label">期分</text>
             <polyline :points="ppScoreLine" class="pp-score-line" />
             <g v-for="(pt, i) in ppScorePts" :key="'pps' + i">
@@ -1107,9 +1218,10 @@
                 <title>{{ pt.label }}：{{ fmt(pt.score, 0) }} 分</title>
               </circle>
             </g>
+            </template>
             <!-- 三队伍泳道（当期 3 Boss 的选队） -->
-            <template v-for="(lane, li) in ppTeamLanes" :key="'pptl' + li">
-              <text :x="ppLabelW - 6" :y="lane.y + 10" text-anchor="end" class="lane-label">房{{ li + 1 }}</text>
+            <template v-for="(lane, li) in ppVisibleTeamLanes" :key="'pptl' + li">
+              <text :x="ppLabelW - 6" :y="lane.y + 10" text-anchor="end" class="lane-label">房{{ lane.roomNo }}</text>
               <g v-for="(cell, i) in lane.cells" :key="i">
                 <rect
                   :x="ppX(i) - ppCellW / 2" :y="lane.y" :width="ppCellW - 1" :height="lane.h"
@@ -1174,6 +1286,7 @@ import { PLANNER_FILM_PER_VERSION } from '@/data/filmEconomy'
 import { runPullPlanner, type PlannerRunResult } from '@/composables/pullPlannerEngine'
 import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
 import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
+import { useSeriesFilter } from '@/composables/seriesFilter'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 
@@ -1537,6 +1650,17 @@ const strengthBands = computed<StrengthBand[]>(() => {
     })
     .filter(b => b.endIndex >= b.startIndex)
 })
+
+// ========== 图例筛选（Chart 2：多队并存强度） ==========
+// 与散点/曲线不同，这里的筛选**只作用于画不画那条带**：Top-K 排名与淘汰判定是数据性质
+// （K 是游戏里的并存约束，不是显示选项），隐藏一队不会让别的队「递补存活」——
+// 那会造出一个不存在的强度结论。所以 strengthBands 全量保留，只在模板里按可见性跳过。
+const strengthLegend = useSeriesFilter(() =>
+  strengthBands.value.map(b => ({ id: b.seed.key, name: b.seed.shortLabel })),
+)
+const strengthCounts = strengthLegend.counts
+/** 图上真正画出的带（隐藏的跳过；排名/淘汰标注仍按全量算） */
+const visibleStrengthBands = computed(() => strengthBands.value.filter(b => strengthLegend.isVisible(b.seed.key)))
 const strengthSvgH = computed(() => padT + plotH + 12 + xLabelH)
 /** 横带 Y = 血量% 尺度，钳制进绘图区 */
 function bandY(hpRatio: number): number {
@@ -1674,6 +1798,25 @@ function ddColor(v: number): string {
   return 'var(--wa-550)'
 }
 
+/** 直伤系数三档（散点颜色即档位语义，图例筛选按同一把尺）：加强档 >105% / 持平 / 削弱档 <95% */
+const DDD_BOOST = 'boost'
+const DDD_FLAT = 'flat'
+const DDD_WEAK = 'weak'
+const ddBandDefs = [
+  { id: DDD_BOOST, label: '加强档 >105%', desc: '当期直伤特调上调', color: '#7dd3fc' },
+  { id: DDD_FLAT, label: '持平 ≈100%', desc: '无直伤特调', color: 'var(--fg-3)' },
+  { id: DDD_WEAK, label: '削弱档 <95%', desc: '当期直伤特调下调', color: '#fdba74' },
+] as const
+/** 某点属于哪一档（null 值点无档位，恒不参与筛选——它们本来就不画） */
+function ddBandOf(v: number): string {
+  if (v > 1.05) return DDD_BOOST
+  if (v < 0.95) return DDD_WEAK
+  return DDD_FLAT
+}
+const ddLegend = useSeriesFilter(() => ddBandDefs.map(b => ({ id: b.id, name: b.label })))
+/** 可见点（图上画什么）；注意 ddLabelSlots 仍按全量算，筛选不改变标签槽位分配 */
+const ddVisiblePoints = computed(() => ddPoints.value.filter(p => p.value == null || ddLegend.isVisible(ddBandOf(p.value))))
+
 function ddNeedLabel(v: number): boolean {
   return Math.abs(v - 1) > 0.05
 }
@@ -1753,7 +1896,7 @@ async function runChart3() {
 // ---- Chart 3 SVG ----
 const chart3SvgH = padT + plotH + 30
 const chart3YMax = computed(() => {
-  const maxR = Math.max(...(chart3Points.value.map(p => p.hpRatio) ?? [0]), 0)
+  const maxR = Math.max(...(chart3VisiblePts.value.map(p => p.hpRatio) ?? [0]), 0)
   const target = Math.max(100, maxR * 1.05)
   const step = target <= 200 ? 50 : 100
   return Math.ceil(target / step) * step
@@ -1783,11 +1926,24 @@ const chart3XTicks = computed(() => {
   return out
 })
 /** 散点：同节点多角色/多队伍横向错开；颜色按队伍构成稳定映射（同队同色，跨角色可对比） */
+/** Chart 3 图例系列 = 队伍构成（与散点颜色同一把钥匙：同队同色、跨角色同一条图例） */
+const chart3Series = computed(() => {
+  const seen = new Map<string, string>()
+  for (const p of chart3Points.value) {
+    const key = p.team.join(',')
+    if (!seen.has(key)) seen.set(key, p.team.map(agentName).join(' + '))
+  }
+  return [...seen.entries()].map(([id, name]) => ({ id, name }))
+})
+const chart3Legend = useSeriesFilter(() => chart3Series.value)
+const chart3Counts = chart3Legend.counts
+/** 可见散点（Y 轴刻度、散点、悬浮命中三者同源 ⇒ 隐藏高值队后轴跟着降） */
+const chart3VisiblePts = computed(() => chart3Points.value.filter(p => chart3Legend.isVisible(p.team.join(','))))
 const chart3Pts = computed(() => {
   const perNode = new Map<string, number>()
-  for (const p of chart3Points.value) perNode.set(p.nodeId, (perNode.get(p.nodeId) ?? 0) + 1)
+  for (const p of chart3VisiblePts.value) perNode.set(p.nodeId, (perNode.get(p.nodeId) ?? 0) + 1)
   const seen = new Map<string, number>()
-  return chart3Points.value.map(p => {
+  return chart3VisiblePts.value.map(p => {
     const idx = nodeIndexOf(p.nodeId)
     const total = perNode.get(p.nodeId) ?? 1
     const k = seen.get(p.nodeId) ?? 0
@@ -1901,9 +2057,17 @@ async function runSlotCompare() {
 
 // ---- Chart 7 SVG（双折线：A 蓝 / B 橙，横轴 = 主C实装节点；纵轴 = 伤害自动刻度） ----
 const scSvgH = padT + plotH + 30
-/** 纵轴贴合 A/B 两队伤害的数据范围（±8% 边距），不看 Boss 血量/击杀线，只看相对强弱 */
+/** A/B 两线的显隐（图例可点；纵轴按**剩下的线**缩放 ⇒ 只看一队时那条线铺满全高更好读） */
+const scLegend = useSeriesFilter(() => [
+  { id: 'A', name: agentName(scAgentA.value) },
+  { id: 'B', name: agentName(scAgentB.value) },
+])
+/** 纵轴贴合可见线的伤害范围（±8% 边距），不看 Boss 血量/击杀线，只看相对强弱 */
 const scYRange = computed(() => {
-  const vals = scPoints.value.flatMap(p => [p.damageA, p.damageB])
+  const vals = scPoints.value.flatMap(p => [
+    ...(scLegend.isVisible('A') ? [p.damageA] : []),
+    ...(scLegend.isVisible('B') ? [p.damageB] : []),
+  ])
   if (vals.length === 0) return { min: 0, max: 1 }
   let min = Math.min(...vals)
   let max = Math.max(...vals)
@@ -2123,6 +2287,11 @@ const simPts = computed(() =>
     totalGold: p.totalGold,
   })),
 )
+/** 两条线的显隐（图例可点）；隐藏主线时 Y 轴仍按血量%口径（尺度含义不变，只是不画线） */
+const simLegend = useSeriesFilter(() => [
+  { id: 'hp', name: '队伍强度 %' },
+  { id: 'gold', name: '金数（右轴）' },
+])
 const simHpLine = computed(() => simPts.value.map(p => `${p.x},${p.y}`).join(' '))
 const simGoldLine = computed(() =>
   simPoints.value.map((p, i) => `${simX(i)},${simGoldY(Math.min(p.totalGold, simGoldMax.value))}`).join(' '),
@@ -2212,10 +2381,31 @@ const pvFilteredCards = computed(() => {
   if (pvTierFilter.value === 'limited') return r.cards.filter(c => c.tier === 'limited' || c.tier === 'freeGift')
   return r.cards
 })
+
+// ---- 分级筛选（T0~T3 / 样本不足；与「层」下拉正交）----
+/** 分级清单（含未参与分级的「样本不足」，它也是一档可筛的类别） */
+const PV_GRADE_NONE = 'na'
+const pvGradeDefs = [
+  { id: 'T0', label: 'T0', desc: '累计兑现前 25%', color: '#ff8f5a' },
+  { id: 'T1', label: 'T1', desc: '累计兑现 25~50%', color: '#f6ad55' },
+  { id: 'T2', label: 'T2', desc: '累计兑现 50~75%', color: '#a3a3b8' },
+  { id: 'T3', label: 'T3', desc: '累计兑现后 25%', color: '#5f6373' },
+  { id: PV_GRADE_NONE, label: '样本不足', desc: `配对数 < ${PV_MIN_PAIRS}，不参与分级`, color: 'var(--fg-3)' },
+] as const
+/** 某张卡属于哪一档（无 grade = 样本不足档） */
+function pvGradeOf(card: PvCardValue): string {
+  return card.grade ?? PV_GRADE_NONE
+}
+const pvGradeLegend = useSeriesFilter(() => pvGradeDefs.map(g => ({ id: g.id, name: g.label })))
+const pvCounts = pvGradeLegend.counts
+/** 分级过滤后的卡（行/排名表共用；层过滤在前、分级在后） */
+const pvGradeFilteredCards = computed(() =>
+  pvFilteredCards.value.filter(c => pvGradeLegend.isVisible(pvGradeOf(c))),
+)
 /** 气泡图行 = 过滤后前 16 张（累计降序；行数上限防 SVG 过高） */
 const PV_MAX_ROWS = 16
 const pvRows = computed(() =>
-  pvFilteredCards.value.slice(0, PV_MAX_ROWS).map((card, rowIndex) => ({
+  pvGradeFilteredCards.value.slice(0, PV_MAX_ROWS).map((card, rowIndex) => ({
     card,
     rowIndex,
     agentId: card.agentId,
@@ -2223,7 +2413,7 @@ const pvRows = computed(() =>
     gradeText: card.grade ?? (card.totalPairs > 0 ? '·' : ''),
   })),
 )
-const pvTableRows = computed(() => pvFilteredCards.value)
+const pvTableRows = computed(() => pvGradeFilteredCards.value)
 
 // ---- SVG 布局 ----
 const pvLabelW = 96
@@ -2436,6 +2626,23 @@ const ppTeamLanes = computed(() => {
     }),
   }))
 })
+
+// ---- 泳道筛选（点图例显隐：购买 / 期分 / 房1~房3）----
+/** 泳道清单：2 个固定泳道 + 3 个房间泳道 */
+const ppLaneDefs = [
+  { id: 'purchase', label: '购买', desc: '每期买了哪张卡（方块 = 卡，颜色同角色）', color: 'var(--app-primary)', fixed: true },
+  { id: 'score', label: '期分', desc: '每期危局总分折线', color: 'var(--app-primary)', fixed: true },
+  { id: 'room1', label: '房1', desc: '当期第 1 个 Boss 的选队', color: 'var(--c-info)', roomNo: 1 },
+  { id: 'room2', label: '房2', desc: '当期第 2 个 Boss 的选队', color: 'var(--c-info)', roomNo: 2 },
+  { id: 'room3', label: '房3', desc: '当期第 3 个 Boss 的选队', color: 'var(--c-info)', roomNo: 3 },
+] as const
+const ppLegend = useSeriesFilter(() => ppLaneDefs.map(d => ({ id: d.id, name: d.label })))
+/** 可见房间泳道（编号沿用原房号 ⇒ 隐藏房2 后房3 仍写「房3」，不会串号） */
+const ppVisibleTeamLanes = computed(() =>
+  ppTeamLanes.value
+    .map((lane, li) => ({ ...lane, roomNo: li + 1 }))
+    .filter(lane => ppLegend.isVisible(`room${lane.roomNo}`)),
+)
 const ppTopValues = computed(() => (ppResult.value?.values ?? []).slice(0, 20))
 function ppTierLabel(tier: number): string {
   return tier === 3 ? '满配' : tier === 2 ? '本体+专武' : tier === 1 ? '本体' : '—'
@@ -2506,6 +2713,55 @@ function ppTierLabel(tier: number): string {
 }
 .timeline-wrap {
   position: relative;
+}
+/* ---- 可点图例筛选（与「血量膨胀」页同交互：点一下显隐该系列） ---- */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin-bottom: 10px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+}
+.legend-item:hover {
+  background: var(--fill-hover);
+}
+.legend-item.off {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+.legend-item .name {
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+.legend-hint {
+  font-size: 12px;
+  color: var(--fg-3);
+}
+.legend-action {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--line-strong);
+}
+/* Chart 4 两条线的图例色块（与图上 stroke 同源：主线 --app-primary、金数副线 --c-warning） */
+.sim-swatch-hp {
+  background: var(--app-primary);
+}
+.sim-swatch-gold {
+  background: var(--c-warning);
 }
 .grid-line {
   stroke: var(--wa-80);
@@ -3014,6 +3270,20 @@ function ppTierLabel(tier: number): string {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+/* 可点图例（Chart 7 的 A/B 两队）：点一下显隐该线 */
+.sc-legend-click {
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--radius-md);
+  padding: 1px 5px;
+}
+.sc-legend-click:hover {
+  background: var(--fill-hover);
+}
+.sc-legend-click.off {
+  opacity: 0.35;
+  text-decoration: line-through;
 }
 .sc-dot {
   width: 9px;
