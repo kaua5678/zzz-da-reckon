@@ -1933,8 +1933,13 @@ export function useResourceCalc() {
         // 这三条一起 = 「**不比改动前更差**，且尽量消掉截断」⇒ 相对棘轮（只拦变差）**构造上不可能变红**，
         // 变红的只可能是 timeGolden 的硬字段（那是有意的改进，按规则 10 归因后重生）。
         if ((overBudget(r.out) || truncatedToo(r.out)) && !r.out?.resolvedAxes?.length) {
-          let lo = 0
-          let hi = 1
+          // 搜索策略（2026-09-11 第三版，用户裁决）：**枚举候选 scale + 硬约束「真撑得下」取最大可行**。
+          // 前两版教训：① 二分假定"可行域是 scale 的下闭区间"，把「截断 ≤1s」并进验收后会在
+          // `yixuan-roxy-lucia` 上把好试算全拒（基线 3.78s 超预算）；② "最小截断优先"会把结构性溢出队压到
+          // scale=0.0625（交互几乎清零）只为少几秒截断 —— 与「交互只取达成目标的**最少要求**」相反。
+          // 本版：SCALES 由大到小扫，**首个同时满足「三臂不比基线更差」且「截断 ≤1s」**者即采纳
+          // （= 最大可行 scale、保留最多交互）；**无人满足 ⇒ 不动**（保基线态、截断如实上报 → 逐模块退化）。
+          const SCALES = [0.875, 0.75, 0.625, 0.5, 0.375, 0.25, 0.125, 0.0625]
           let best: { out: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter'; scale: number } | null = null
           const baseNet = frontlineTotalOf(r.out)
           const baseOver = Math.max(0, baseNet - stunEffTime)
@@ -1948,15 +1953,15 @@ export function useResourceCalc() {
               && Math.max(0, net - stunEffTime) <= baseOver + TIME_BUDGET_TOLERANCE_SECONDS
               && Math.max(0, stunEffTime - net) <= baseSlack + TIME_BUDGET_TOLERANCE_SECONDS
           }
-          for (let i = 0; i < 6; i++) {
-            const mid = (lo + hi) / 2
-            const trial = runOuterLoop(true, mid)
-            if (!acceptsTrial(trial.out)) {
-              hi = mid
-            } else {
-              lo = mid
-              best = { ...trial, scale: mid }
-            }
+          // 注：曾试过「先用最小候选探一次、失败即跳过扫描」的成本闸门 —— **实测会改结果**
+          // （同为"没人满足"的两种路径给出的最终态不同 ⇒ 再次印证试算顺序/次数会影响落点，见账本 round 5/7），
+          // 故不采用；结构性溢出队因此要付满 8 次整轮试算（已知成本，见账本 Open）。
+          for (const scale of SCALES) {
+            const trial = runOuterLoop(true, scale)
+            if (!acceptsTrial(trial.out)) continue
+            if ((trial.out?.resourceResult?.overflowSeconds ?? 0) > TIME_BUDGET_TOLERANCE_SECONDS) continue
+            best = { ...trial, scale }   // SCALES 递减 ⇒ 首个命中即最大可行
+            break
           }
           if (best) {
             r = best

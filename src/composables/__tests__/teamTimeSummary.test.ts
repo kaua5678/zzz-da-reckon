@@ -90,8 +90,11 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
       rr, battleTime: rr.totalTime, invincibleTime: 0,
       nameOf: (_a, slot) => `槽${slot}`,
     })
+    // 2026-09-11 降配搜索改「枚举 + 硬约束取最大可行」后：本配置的超预算被降配收进可行域
+    // （装配期截断归零），剩下 ~1.1s 的留白（三臂允许 ≤ 基线+1s），故上界放宽到 2s；
+    // 「轴/交互太厚」文案只在真超预算（slack < −1）时断言。
     if (t.slack < -1) expect(slackHint(t, fmt)).toContain('动作比战斗时间还多')
-    else expect(t.slack).toBeLessThanOrEqual(1)
+    else expect(t.slack).toBeLessThanOrEqual(2)
   })
 
   it('时间截断可见：被砍招式逐行上报（Σ cutSeconds == overflow），提示列出「哪条行被砍了几次」', async () => {
