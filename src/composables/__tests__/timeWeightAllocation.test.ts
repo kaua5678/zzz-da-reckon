@@ -177,7 +177,7 @@ describe('平A池权重·分配策略', () => {
     } else {
       expect(r.note ?? '').toContain('拉不回来')
     }
-  })
+  }, 120_000)   // 重负载用例：满套件并发下实测 ~36s（降配枚举给结构性溢出队加了整轮试算），显式给足超时
 
   it('⑥d 能量驱动（A2）：主C 强特次数不降 + 总伤不降（多A 喂能或整体还原基线）', async () => {
     const { catalog } = await setupHarness(['', '', ''])

@@ -56,5 +56,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // 重负载集成用例（全库 pass / 权重分配搜索 / 难度变体）在本机满套件并发下 30~80s：
+    // 默认 30s 会让它们随机超时（测的是机器负载，不是断言）。**真正的性能判据**已改为
+    // 「同进程参照量归一化」的比值（见 `charIncrementInt.test.ts`），这里只放开基础设施超时。
+    testTimeout: 180_000,
   },
 })

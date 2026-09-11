@@ -22,6 +22,20 @@ describe('charIncrement · 真实归档集成', () => {
     const configStore = useConfigStore()
     const before = JSON.stringify(configStore.team.map(t => t.agentId))
     const calc = useResourceCalc()
+    // ===== 性能判据：相对基准（2026-09-11 用户裁决，替换机器相关的绝对墙钟线）=====
+    // 为什么要改：绝对线 `< 30s`（仓库注释自述参考机全量 ~3.5s、用户慢机 10x ≈ 35s）在本机满套件并发
+    // 下会被推到 35~40s 而变红，单跑必绿 —— 它测的是**机器/并发**，不是**回归**。
+    // 现在改为「同进程内的轻量参照」归一化：先跑一次**缩减规模**的同一路径（前 2 个 run），
+    // 用它的耗时当单位工作量基准，断言全量 / 参照 ≤ RATIO_MAX（回归 = 单位工作量变慢）。
+    const refStart = performance.now()
+    await computeIncrementPass({
+      calc,
+      bosses: bossData.bosses as BossPreset[],
+      periodViews: bossData.phaseViews ?? [],
+      runs: raw.runs.slice(0, 2),
+      rooms: raw.rooms as Record<string, ArchiveRoom & { seasonStart?: string }>,
+    })
+    const refMs = Math.max(1, performance.now() - refStart)
     const res = await computeIncrementPass({
       calc,
       bosses: bossData.bosses as BossPreset[],
@@ -29,8 +43,13 @@ describe('charIncrement · 真实归档集成', () => {
       runs: raw.runs,
       rooms: raw.rooms as Record<string, ArchiveRoom & { seasonStart?: string }>,
     })
-    // 性能验收线：基底方案全量 < 30s（轻量装配实测 ~3.5s；用户慢机 10x ≈ 35s 边界内）
-    expect(res.stats.durationMs).toBeLessThan(30000)
+    const ratio = res.stats.durationMs / refMs
+    // 实测标定（2026-09-11 本机单跑）：全量 14.4s / 参照 0.43s ≈ **33×**（参考机上全量 ~3.5s、参照同量级
+    // ⇒ 该比值与机器无关；满套件并发时分子分母同步变大，故对并发也不敏感）。取 **3 倍余量 = 100×** 当回归线：
+    // 单位工作量慢 3 倍即红（真正的回归），机器/并发不再影响判定。
+    // eslint-disable-next-line no-console
+    console.log(`[perf] 全量 ${Math.round(res.stats.durationMs)}ms / 参照 ${Math.round(refMs)}ms = ${ratio.toFixed(1)}×`)
+    expect(ratio, `单位工作量变慢（全量 ${Math.round(res.stats.durationMs)}ms / 参照 ${Math.round(refMs)}ms）`).toBeLessThan(100)
     expect(res.periods.length).toBeGreaterThanOrEqual(8)
     expect(res.stats.baseTeams).toBeGreaterThan(60)
     for (const p of res.periods) {
