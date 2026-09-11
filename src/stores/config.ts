@@ -166,6 +166,46 @@ export function roleInteractionBaseline(specialty: string | undefined): { parry:
 }
 
 /**
+ * 角色「动作次数」类字段的上下界表（单一事实源，2026-09-11）。
+ *
+ * 为什么集中：这些字段此前各有 4 行逐字复制的 setter（`const char = team.value[slot]; if (char)
+ * char.x = Math.max(a, Math.min(b, count))`），16 份只有「字段名 + 上下界」不同（99 / 999 / 3 / -1
+ * 四档）。代价有二：①改 clamp 语义要改 16 处；②每录一个带动作次数的角色就再抄一份样板。
+ * （其余 setter 属别的语义族——等级 0..6/1..6/1..5、字符串 id、驱动盘——**不并入本表**。）
+ *
+ * 口径（逐字段与原 setter 逐位一致，改一个数字就是数值回归）：
+ * - 常规计数 `0..99`；`assaultOrderCount` / `perfectBlockCount` `0..999`（强袭训令/完美格挡可上百）；
+ * - `chainCountPerStun` `0..3`（每次失衡最多 3 连携）；
+ * - `yixuanExtremeAssistCount` `-1..99`（**-1 = 自动**取队友弹刀和上限，模块哨兵口径）。
+ */
+export const ACTION_COUNT_BOUNDS = {
+  parryCount: { min: 0, max: 99 },
+  dodgeCounterCount: { min: 0, max: 99 },
+  blockCount: { min: 0, max: 99 },
+  dualCounterCount: { min: 0, max: 99 },
+  quickAssistCount: { min: 0, max: 99 },
+  chainCountPerStun: { min: 0, max: 3 },
+  basicAttackTimeWeight: { min: 0, max: 99 },
+  assaultOrderCount: { min: 0, max: 999 },
+  perfectBlockCount: { min: 0, max: 999 },
+  yixuanInk2Count: { min: 0, max: 99 },
+  yixuanInk3Count: { min: 0, max: 99 },
+  yixuanPerfectBlockCount: { min: 0, max: 99 },
+  yixuanExtremeAssistCount: { min: -1, max: 99 },
+  yixuanBackstageComboCount: { min: 0, max: 99 },
+  promiaNiyingCount: { min: 0, max: 99 },
+  tauntCancelCount: { min: 0, max: 99 },
+} as const satisfies Record<string, { min: number; max: number }>
+
+export type ActionCountField = keyof typeof ACTION_COUNT_BOUNDS
+
+/** 按字段上下界钳制动作次数（纯函数，供 store 与测试共用；越界输入一律收敛到界内） */
+export function clampActionCount(field: ActionCountField, count: number): number {
+  const { min, max } = ACTION_COUNT_BOUNDS[field]
+  return Math.max(min, Math.min(max, count))
+}
+
+/**
  * 正反馈 refund 模块不吃通用交互基准（用户口径 2026-09-04「接线」）：伊德海莉是蓄力→极寒重碾
  * 循环 carry，弹刀/闪反归击破位，给她通用弹刀6/闪反10 会失真。refund 反馈本身已由
  * resolveExSpecialCount 连续松弛修复（种子无关），此排除是玩法口径而非确定性补丁。
@@ -485,10 +525,7 @@ export const useConfigStore = defineStore('config', () => {
     if (char) char.wEngineModLevel = Math.max(1, Math.min(5, level))
   }
 
-  function setTauntCancelCount(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.tauntCancelCount = Math.max(0, Math.min(99, count))
-  }
+  function setTauntCancelCount(slot: number, count: number) { setActionCount(slot, 'tauntCancelCount', count) }
 
   function setFourPieceSet(slot: number, setId: string) {
     const char = team.value[slot]
@@ -519,80 +556,46 @@ export const useConfigStore = defineStore('config', () => {
     else char.driveDisc.subStatAllocation[statId] = safeCount
   }
 
-  function setParryCount(slot: number, count: number) {
+  // ========== 角色动作次数：统一写入通道 ==========
+  //
+  // 下方 15 个命名 setter 都是一行包装（上下界见模块级 ACTION_COUNT_BOUNDS / clampActionCount）。
+  // **新角色不必再往 store 加 setter**：直接调 `setActionCount(slot, '<字段>', n)` 即可——
+  // 这正是评审 #9「角色 setter 泛化」要解决的「store 随角色数线性增长」。
+  // 命名 setter 保留是为了既有 14 个消费文件零改动；旧调用点可择机迁到通用入口。
+  function setActionCount(slot: number, field: ActionCountField, count: number) {
     const char = team.value[slot]
-    if (char) char.parryCount = Math.max(0, Math.min(99, count))
+    if (char) char[field] = clampActionCount(field, count)
   }
 
-  function setDodgeCounterCount(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.dodgeCounterCount = Math.max(0, Math.min(99, count))
-  }
+  function setParryCount(slot: number, count: number) { setActionCount(slot, 'parryCount', count) }
 
-  function setAssaultOrderCount(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.assaultOrderCount = Math.max(0, Math.min(999, count))
-  }
+  function setDodgeCounterCount(slot: number, count: number) { setActionCount(slot, 'dodgeCounterCount', count) }
 
-  function setPerfectBlockCount(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.perfectBlockCount = Math.max(0, Math.min(999, count))
-  }
+  function setAssaultOrderCount(slot: number, count: number) { setActionCount(slot, 'assaultOrderCount', count) }
 
-  function setBlockCount(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.blockCount = Math.max(0, Math.min(99, count))
-  }
-  function setDualCounterCount(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.dualCounterCount = Math.max(0, Math.min(99, count))
-  }
+  function setPerfectBlockCount(slot: number, count: number) { setActionCount(slot, 'perfectBlockCount', count) }
 
-  function setYixuanInk2Count(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.yixuanInk2Count = Math.max(0, Math.min(99, count))
-  }
+  function setBlockCount(slot: number, count: number) { setActionCount(slot, 'blockCount', count) }
+  function setDualCounterCount(slot: number, count: number) { setActionCount(slot, 'dualCounterCount', count) }
 
-  function setPromiaNiyingCount(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.promiaNiyingCount = Math.max(0, Math.min(99, count))
-  }
+  function setYixuanInk2Count(slot: number, count: number) { setActionCount(slot, 'yixuanInk2Count', count) }
+
+  function setPromiaNiyingCount(slot: number, count: number) { setActionCount(slot, 'promiaNiyingCount', count) }
 
   // 3连/完美格挡 ≤0 = 自动（剩余闪能打3连 / 全弹刀完美），≥1 手填（与模块哨兵同口径）
-  function setYixuanInk3Count(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.yixuanInk3Count = Math.max(0, Math.min(99, count))
-  }
+  function setYixuanInk3Count(slot: number, count: number) { setActionCount(slot, 'yixuanInk3Count', count) }
 
-  function setYixuanPerfectBlockCount(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.yixuanPerfectBlockCount = Math.max(0, Math.min(99, count))
-  }
+  function setYixuanPerfectBlockCount(slot: number, count: number) { setActionCount(slot, 'yixuanPerfectBlockCount', count) }
 
-  function setYixuanExtremeAssistCount(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.yixuanExtremeAssistCount = Math.max(-1, Math.min(99, count))
-  }
+  function setYixuanExtremeAssistCount(slot: number, count: number) { setActionCount(slot, 'yixuanExtremeAssistCount', count) }
 
-  function setYixuanBackstageComboCount(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.yixuanBackstageComboCount = Math.max(0, Math.min(99, count))
-  }
+  function setYixuanBackstageComboCount(slot: number, count: number) { setActionCount(slot, 'yixuanBackstageComboCount', count) }
 
-  function setQuickAssistCount(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.quickAssistCount = Math.max(0, Math.min(99, count))
-  }
+  function setQuickAssistCount(slot: number, count: number) { setActionCount(slot, 'quickAssistCount', count) }
 
-  function setChainCountPerStun(slot: number, count: number) {
-    const char = team.value[slot]
-    if (char) char.chainCountPerStun = Math.max(0, Math.min(3, count))
-  }
+  function setChainCountPerStun(slot: number, count: number) { setActionCount(slot, 'chainCountPerStun', count) }
 
-  function setBasicAttackTimeWeight(slot: number, weight: number) {
-    const char = team.value[slot]
-    if (char) char.basicAttackTimeWeight = Math.max(0, Math.min(99, weight))
-  }
+  function setBasicAttackTimeWeight(slot: number, weight: number) { setActionCount(slot, 'basicAttackTimeWeight', weight) }
 
   function getDefaultBasicAttackTimeWeight(agent?: Agent | null): number {
     return defaultBasicAttackTimeWeight(agent)
@@ -1233,6 +1236,8 @@ function parseCinemaRequirement(sourceLabel: string): number {
     setTwoPieceSet,
     setMainStat,
     setSubStatCount,
+    // 动作次数统一入口（新角色走这个，不必再加命名 setter）
+    setActionCount,
     setParryCount,
     setDodgeCounterCount,
     setBlockCount,
