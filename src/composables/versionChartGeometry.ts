@@ -15,12 +15,17 @@
  * - 两图散点都按「同节点多队伍横向错开」：Chart 3 间距 7px、Chart 7 间距 14px（刻意不同）。
  */
 import type { VersionNode } from '@/data/versionTimeline'
+import {
+  hpRatioYGridOf,
+  hpRatioYLabelOf,
+  hpRatioYMaxOf,
+  hpRatioYOf,
+  hpRatioYStepOf,
+  type PlotBox,
+} from './hpRatioAxis'
 
-/** 与页面共享的绘图区尺寸（padT/plotH 亦被其他图使用，由调用方注入而非在此重复定义） */
-export interface PlotBox {
-  padT: number
-  plotH: number
-}
+// 纵轴口径与 Chart 1/Chart 4 共享（见 hpRatioAxis.ts）；此处保留同名导出以免调用方改动
+export type { PlotBox }
 
 // ---------------- 共享：版本轴 ----------------
 
@@ -44,31 +49,12 @@ export function versionXTicksOf(
 // ---------------- Chart 3：每期新角色 · 强队强度 ----------------
 
 /** 纵轴上限：0 起，向上取整到 50/100 的整数倍（与 Chart 1 同款口径） */
-export function chart3YMaxOf(ratios: ReadonlyArray<number>): number {
-  const maxR = Math.max(...(ratios.length ? ratios : [0]), 0)
-  const target = Math.max(100, maxR * 1.05)
-  const step = target <= 200 ? 50 : 100
-  return Math.ceil(target / step) * step
-}
-
-export function chart3YStepOf(yMax: number): number {
-  return yMax <= 200 ? 50 : 100
-}
-
-export function chart3YOf(v: number, yMax: number, box: PlotBox): number {
-  return box.padT + box.plotH - (v / yMax) * box.plotH
-}
-
-export function chart3YGridOf(yMax: number, box: PlotBox): number[] {
-  const step = chart3YStepOf(yMax)
-  const out: number[] = []
-  for (let v = 0; v <= yMax; v += step) out.push(chart3YOf(v, yMax, box))
-  return out
-}
-
-export function chart3YLabelOf(i: number, yMax: number): number {
-  return i * chart3YStepOf(yMax)
-}
+// 委托共享纵轴（Chart 1/3/4 同口径，单一事实源在 hpRatioAxis.ts）
+export const chart3YMaxOf = hpRatioYMaxOf
+export const chart3YStepOf = hpRatioYStepOf
+export const chart3YOf = hpRatioYOf
+export const chart3YGridOf = hpRatioYGridOf
+export const chart3YLabelOf = hpRatioYLabelOf
 
 export interface Chart3ScatterInput<P> {
   points: ReadonlyArray<P>

@@ -1299,6 +1299,7 @@ import {
   versionXOf,
   versionXTicksOf,
 } from '@/composables/versionChartGeometry'
+import { buildFilmSimChart } from '@/composables/filmSimChart'
 import { buildNewCharacterRows, computeFilmSimulation, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
 import { computeSlotComparePoints, type SlotComparePoint, type SlotCompareSlot } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
@@ -2004,62 +2005,31 @@ async function runFilmSim() {
 }
 
 // ---- Chart 4 SVG（血量%主线 + 金数副线） ----
-const simSvgH = padT + plotH + 30
-const simYMax = computed(() => {
-  const maxR = Math.max(...(simPoints.value.map(p => p.hpRatio) ?? [0]), 0)
-  const target = Math.max(100, maxR * 1.05)
-  const step = target <= 200 ? 50 : 100
-  return Math.ceil(target / step) * step
-})
-function simY(v: number): number {
-  return padT + plotH - (v / simYMax.value) * plotH
-}
-const simYGrid = computed(() => {
-  const step = simYMax.value <= 200 ? 50 : 100
-  const out: number[] = []
-  for (let v = 0; v <= simYMax.value; v += step) out.push(simY(v))
-  return out
-})
-function simYLabel(i: number): number {
-  const step = simYMax.value <= 200 ? 50 : 100
-  return i * step
-}
-const simGoldMax = computed(() => Math.max(...(simPoints.value.map(p => p.totalGold) ?? [6]), 6))
-function simGoldY(g: number): number {
-  return padT + plotH - (g / simGoldMax.value) * plotH
-}
-function simX(i: number): number {
-  const n = simPoints.value.length
-  if (n <= 1) return padL + plotW.value / 2
-  return padL + (i / (n - 1)) * plotW.value
-}
-const simXTicks = computed(() => {
-  const pts = simPoints.value
-  const step = Math.max(1, Math.ceil(pts.length / 12))
-  const out: { index: number; label: string }[] = []
-  for (let i = 0; i < pts.length; i += step) out.push({ index: i, label: pts[i].label })
-  if (pts.length > 1 && (pts.length - 1) % step !== 0) out.push({ index: pts.length - 1, label: pts[pts.length - 1].label })
-  return out
-})
-const simPts = computed(() =>
-  simPoints.value.map((p, i) => ({
-    x: simX(i),
-    y: simY(Math.min(p.hpRatio, simYMax.value)),
-    color: colorOf(p.team.join(',')),
-    label: p.label,
-    hpRatio: p.hpRatio,
-    totalGold: p.totalGold,
-  })),
-)
+// Chart 4 几何：见 composables/filmSimChart.ts（与 Chart 1/3 共享血量%纵轴）
+const sim = computed(() => buildFilmSimChart({
+  points: simPoints.value,
+  svgW: svgW.value,
+  padL,
+  plotW: plotW.value,
+  box: TB,
+  colorOf: (key) => colorOf(key),
+}))
+const simSvgH = sim.value.svgH
+function simY(v: number): number { return sim.value.y(v) }
+const simYGrid = computed(() => sim.value.yGrid)
+function simYLabel(i: number): number { return sim.value.yLabel(i) }
+const simGoldMax = computed(() => sim.value.goldMax)
+function simGoldY(g: number): number { return sim.value.goldY(g) }
+function simX(i: number): number { return sim.value.x(i) }
+const simXTicks = computed(() => sim.value.xTicks)
+const simPts = computed(() => sim.value.pts)
+const simHpLine = computed(() => sim.value.hpLine)
+const simGoldLine = computed(() => sim.value.goldLine)
 /** 两条线的显隐（图例可点）；隐藏主线时 Y 轴仍按血量%口径（尺度含义不变，只是不画线） */
 const simLegend = useSeriesFilter(() => [
   { id: 'hp', name: '队伍强度 %' },
   { id: 'gold', name: '金数（右轴）' },
 ])
-const simHpLine = computed(() => simPts.value.map(p => `${p.x},${p.y}`).join(' '))
-const simGoldLine = computed(() =>
-  simPoints.value.map((p, i) => `${simX(i)},${simGoldY(Math.min(p.totalGold, simGoldMax.value))}`).join(' '),
-)
 const simHover = ref(-1)
 const simHoverInfo = computed(() => {
   const p = simPoints.value[simHover.value]

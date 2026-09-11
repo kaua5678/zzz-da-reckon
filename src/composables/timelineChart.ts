@@ -14,6 +14,12 @@
  * - x 轴标签按节点数抽稀到 ~14 个，并**保证末节点必被标注**。
  */
 import type { TimelineNodeResult } from '@/composables/teamTimeline'
+import {
+  hpRatioYGridOf,
+  hpRatioYLabelOf,
+  hpRatioYMaxOf,
+  hpRatioYOf,
+} from './hpRatioAxis'
 
 /** 画布留白与泳道尺寸（padT/plotH 与本页 Chart 2/3 共享；改动会同时影响它们） */
 export const TIMELINE_LAYOUT = {
@@ -129,14 +135,12 @@ export function buildTimelineChart(input: {
     return padL + (i / (nodeCount - 1)) * plotW
   }
 
-  const maxR = Math.max(...nodes.map(n => n.hpRatio), 0)
-  const target = Math.max(100, maxR * 1.05)
-  const yStep = target <= 200 ? 50 : 100
-  const yMax = Math.ceil(target / yStep) * yStep
-  const yOf = (v: number): number => padT + plotH - (v / yMax) * plotH
-  const yTicks: number[] = []
-  for (let v = 0; v <= yMax; v += yStep) yTicks.push(yOf(v))
-  const yLabel = (i: number): number => i * yStep
+  // 纵轴口径与 Chart 3/4 共享（单一事实源：hpRatioAxis.ts）
+  const box = { padT, plotH }
+  const yMax = hpRatioYMaxOf(nodes.map(n => n.hpRatio))
+  const yOf = (v: number): number => hpRatioYOf(v, yMax, box)
+  const yTicks = hpRatioYGridOf(yMax, box)
+  const yLabel = (i: number): number => hpRatioYLabelOf(i, yMax)
 
   const chartPts: TimelineChartPoint[] = nodes.map((n, i) => ({
     x: xOf(i),
