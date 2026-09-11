@@ -33,7 +33,7 @@
  *   不参与分级——它们定义的是保留效用/机会成本，不是抽卡投资标的）。
  */
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
-import { STANDARD_S_AGENT_IDS } from '@/composables/teamCompare'
+import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import { runLimitedGold } from '@/composables/limitedGold'
 import { CINEMA_GOLD_FILM } from '@/data/filmEconomy'
 

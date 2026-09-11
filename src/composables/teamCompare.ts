@@ -19,6 +19,7 @@
  * 设 minGold 门槛（低于该总限定金不生成点，表达「配置要求」）。
  * 纵轴：伤害 / Boss 血量 × 100%（100 = 击杀，200 = 两倍血量）。
  */
+import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import { useConfigStore, type CharacterConfig, type EnemyConfig } from '@/stores/config'
 import type { SkillDamageTarget } from '@/types/catalog'
 import { useCatalogStore } from '@/stores/catalog'
@@ -45,10 +46,10 @@ type Calc = ReturnType<typeof useResourceCalc>
  * 依据：ZZZ 常驻池 S 角色 = 猫又(1021)/11号(1041)/珂蕾妲(1101)/莱卡恩(1141)/格莉丝(1181)/丽娜(1211)；
  * 对应专武：钢铁肉垫(14102)/硫磺石(14104)/燃狱齿轮(14110)/拘缚者(14114)/嵌合编译器(14118)/啜泣摇篮(14121)。
  * 注意：焰心桂冠(14116) 是莱特专武（限定），不在常驻清单。
- * 名单本体在 @/data/standardMultiplierTable（标准倍率表稀有度分档共用），此处转出口保持原 API。
+ * 名单本体：角色名单在 @/data/standardMultiplierTable（标准倍率表稀有度分档共用），
+ * 音擎名单在下方常量。2026-09-11 已删除 `STANDARD_S_AGENT_IDS` 的浅转出口——
+ * 消费方一律直连单一事实源（原先 4 个 composable 经本文件间接引用 = 无谓横向依赖边）。
  */
-import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
-export { STANDARD_S_AGENT_IDS }
 export const STANDARD_S_WENGINE_IDS = new Set(['14102', '14104', '14110', '14114', '14118', '14121'])
 
 /**

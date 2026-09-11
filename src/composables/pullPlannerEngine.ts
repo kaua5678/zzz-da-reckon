@@ -54,7 +54,7 @@ function teamBudgetFor(team: [string, string, string], holdings: Record<string, 
   return budget
 }
 
-import { STANDARD_S_AGENT_IDS } from '@/composables/teamCompare'
+import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 
 /** 持有成员过滤：限定 S 未持有（tier 0）不可入队；常驻 S / A 级永远可用（成型号口径） */
 function usableMembers(pool: string[], holdings: Record<string, number>, catalog: ReturnType<typeof useCatalogStore>): string[] {

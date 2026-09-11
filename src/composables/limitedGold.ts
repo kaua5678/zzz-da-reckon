@@ -8,7 +8,7 @@
  * - 实战对比页 RunArchivePage（「仅看低金顶分」筛选）
  */
 import { AGENT_RELEASE_NODE } from '@/data/versionTimeline'
-import { STANDARD_S_AGENT_IDS } from '@/composables/teamCompare'
+import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 
 export interface LimitedGoldMember {
   agentId: string
