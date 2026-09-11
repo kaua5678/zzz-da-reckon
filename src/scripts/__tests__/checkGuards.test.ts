@@ -14,7 +14,9 @@ import {
   CORE_AGENT_BRANCH_FILES,
   EXHIBITION_LAYER_IMPORT_BASELINE,
   RATCHET_BURNDOWN,
+  auditDocTable,
   computeBurndown,
+  parseDocTable,
   countAgentIdBranchLinesInFiles,
   daysBetween,
   detectFetchStub,
@@ -218,13 +220,46 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
   })
 })
 
+describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => {
+  // 评审 P2-2：README 自述「共 11 份」+ 表尾「以本表为准（10 份）」+ docs/ 实有 13 份，
+  // CI 只查 implementation-status 漂移 → 这类清单漂移不可见。表里没有的文档 = agent 找不到。
+  it('parseDocTable：抽表格里的 docs/*.md 并读节标题份数自述', () => {
+    const fake = [
+      '## 6. 文档（3 份，其余在代码里）',
+      '',
+      '| `docs/A.md` | x |',
+      '| `docs/B.md` | y |',
+      '',
+      '## 7. 下一节',
+      '| `docs/SHOULD_NOT_APPEAR.md` | z |',
+    ].join('\n')
+    const r = parseDocTable(fake)
+    expect(r.files).toEqual(['A.md', 'B.md'])
+    expect(r.declaredCount).toBe(3)
+    // 越界：下一节的表格不得被算进来
+    expect(r.files).not.toContain('SHOULD_NOT_APPEAR.md')
+  })
+
+  it('parseDocTable：无 §6 时返回空（不崩）', () => {
+    expect(parseDocTable('# 只有标题')).toEqual({ files: [], declaredCount: null })
+  })
+
+  it('仓库现状：表与实际双向一致且份数自述正确（判据 9 的同源断言）', () => {
+    const r = auditDocTable()!
+    expect(r.missing.map(f => 'docs/' + f)).toEqual([])
+    expect(r.extra).toEqual([])
+    expect(r.declaredCount).toBe(r.actualCount)
+    expect(r.countMismatch).toBe(false)
+  })
+})
+
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('八条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / 工作区状态 / 滑块棘轮 / debt 注册表 / @fact 锚点 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + '）', () => {
+  it('九条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点）', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(8)
+    expect(results).toHaveLength(9)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
     expect(results.map(r => r.name.split(' ')[0])).toContain('exhibition-layer')
     // core 棘轮必须在列（规则 6 的引擎层延伸——此前 core 是豁免区）

@@ -40,6 +40,17 @@ export declare const DEBT_SCAN_SELF_REFERENTIAL: string[]
 export declare function scanDebtMarkers(root?: string): DebtMarker[]
 export declare function matchDebtRegistry(markers: DebtMarker[]): { unregistered: DebtMarker[]; cleared: string[] }
 
+// 判据 9：README §6 文档表 == docs/ 实际文件
+export declare function parseDocTable(readmeText: string): { files: string[]; declaredCount: number | null }
+export declare function listDocs(root?: string): string[]
+export declare function auditDocTable(root?: string): {
+  missing: string[]
+  extra: string[]
+  declaredCount: number | null
+  actualCount: number
+  countMismatch: boolean
+} | null
+
 export interface GuardResult {
   name: string
   ok: boolean

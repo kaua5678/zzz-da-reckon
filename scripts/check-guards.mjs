@@ -166,6 +166,51 @@ export function daysBetween(a, b) {
   return Math.round((Date.parse(b) - Date.parse(a)) / 86400000)
 }
 
+// ---- 判据 9：README 文档表 == docs/ 实际文件（防文档清单漂移） ----
+//
+// 为什么需要：2026-09-11 评审实测 README §6 自述「共 11 份」、表格末尾又写「以本表为准（10 份）」，
+// 而 docs/ 实有 13 份（DATA_FETCHING.md 与 multiplier-record.md 不在"唯一权威表"里）。
+// CI 只检查 `implementation-status.md` 的漂移，**这类清单漂移完全不可见**——而 README §6 正是
+// agent 找文档的入口（AGENTS §0「该改哪先查导航文档」）：表里没有的文档 = 事实上不存在。
+//
+// 口径：README §6 表格里出现的 `docs/*.md` 集合必须与 `ls docs/*.md` **双向相等**；
+// 且节标题里的份数自述必须等于实际值（防"加了文档忘了改数字"）。红：漏登记或份数不符。
+
+/** 从 README 的 §6 段落抽出被登记的文档名（basename） */
+export function parseDocTable(readmeText) {
+  const start = readmeText.indexOf('## 6.')
+  if (start < 0) return { files: [], declaredCount: null }
+  const rest = readmeText.slice(start)
+  const end = rest.indexOf('\n## ', 1)                 // 下一个二级标题
+  const section = end > 0 ? rest.slice(0, end) : rest
+  const files = [...section.matchAll(/`docs\/([A-Za-z0-9_.-]+\.md)`/g)].map(m => m[1])
+  const cm = section.match(/（(\d+) 份/)
+  return { files: [...new Set(files)].sort(), declaredCount: cm ? Number(cm[1]) : null }
+}
+
+/** 扫 docs/ 实际 .md 文件（basename 排序） */
+export function listDocs(root = ROOT) {
+  const dir = join(root, 'docs')
+  if (!existsSync(dir)) return []
+  return readdirSync(dir).filter(n => n.endsWith('.md')).sort()
+}
+
+/** 返回 { missing, extra, declaredCount, actualCount, countMismatch } */
+export function auditDocTable(root = ROOT) {
+  const readmePath = join(root, 'README.md')
+  if (!existsSync(readmePath)) return null
+  const { files, declaredCount } = parseDocTable(readFileSync(readmePath, 'utf8'))
+  const actual = listDocs(root)
+  const declared = new Set(files)
+  return {
+    missing: actual.filter(f => !declared.has(f)),      // 实际有、表里没登记
+    extra: files.filter(f => !actual.includes(f)),      // 表里登记、实际不存在（断链）
+    declaredCount,
+    actualCount: actual.length,
+    countMismatch: declaredCount !== null && declaredCount !== actual.length,
+  }
+}
+
 // ---- 判据 2：useResourceCalc agentId 分支棘轮 ----
 
 export const AGENT_BRANCH_FILE = 'src/composables/useResourceCalc.ts'
@@ -530,6 +575,20 @@ export function runAllChecks(root = ROOT) {
     detail: [
       ...unregistered.map(m => `  ✗ 未登记的 debt 标记：${m.file}: ${m.text.slice(0, 40)}… → 在 check-guards.mjs 的 DEBT_REGISTRY 登记一条（since=引入日期, due=到期动作）`),
       ...cleared.map(m => `  ✗ 已还清但未销号：${m} → 标记已不在代码里，从 DEBT_REGISTRY 删除该条`),
+    ],
+  })
+
+  // ---- 判据 9：README §6 文档表 == docs/ 实际文件（防清单漂移不可见） ----
+  const docs = auditDocTable(root)
+  results.push({
+    name: docs === null
+      ? 'docs table (README §6 == docs/*.md) ⚠ 无 README，跳过'
+      : `docs table (README §6 == docs/*.md) ${docs.actualCount} 份`,
+    ok: docs === null || (docs.missing.length === 0 && docs.extra.length === 0 && !docs.countMismatch),
+    detail: docs === null ? [] : [
+      ...docs.missing.map(f => `  ✗ docs/${f} 未登记进 README §6 文档表 → 补一行（表里没有的文档 = agent 找不到）`),
+      ...docs.extra.map(f => `  ✗ README §6 登记了 docs/${f}，但文件不存在 → 断链，删该行或补文件`),
+      ...(docs.countMismatch ? [`  ✗ README §6 自述「${docs.declaredCount} 份」，实际 ${docs.actualCount} 份 → 改节标题里的数字`] : []),
     ],
   })
 
