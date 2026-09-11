@@ -23,6 +23,8 @@
  *   --main-c           点「按主C快选」并选第一个选项（把全选 127 队收窄成 1~5 队）
  *   --select <标签>     打开某个 `.ctl-field`（按标签文本）里的下拉
  *   --option <文本片段> 与 --select 搭配：点选中包含该文本的选项（如 --option "8 金"）
+ *   --popover <按钮文本> 打开一个弹层（点该按钮），配合 --input/--value 设置里面的数字输入
+ *   --input <字段标签> --value <值>  在弹层里按行标签设置数字输入（如 --input G2 --value 9）
  *   --click <文本>     点按钮（按文本包含匹配）
  *   --wait-for <表达式> 轮询到该 JS 表达式为真（如 `polyline` 或完整表达式）
  *   --wait-timeout <ms> 默认 300000
@@ -244,6 +246,40 @@ try {
     await step('读已选队数', () => evaluate(`(document.body.textContent.match(/已选\\s*(\\d+)\\s*队/) || [])[1] ?? null`))
   }
 
+  // 弹层 + 数字输入：--popover <按钮文本> --input <行标签> --value <值>
+  const popoverText = arg('popover')
+  if (popoverText) {
+    await closeMenus()
+    await step(`打开弹层「${popoverText}」`, () => realMouseClick(`(() => {
+      const btns = [...document.querySelectorAll('.n-button')]
+      return btns.find(b => (b.textContent || '').trim().includes(${JSON.stringify(popoverText)})) ?? null
+    })()`))
+    await step('等弹层出现', () => waitFor(`[...document.querySelectorAll('.n-popover')].some(p => p.offsetParent !== null)`, 8000, '弹层'))
+  }
+  const inputLabel = arg('input')
+  if (inputLabel) {
+    const value = arg('value', '')
+    await step(`设置「${inputLabel}」= ${value}`, () => evaluate(`(() => {
+      const pops = [...document.querySelectorAll('.n-popover')].filter(p => p.offsetParent !== null)
+      for (const p of pops) {
+        const row = [...p.querySelectorAll('.diff-weight-row')].find(r => (r.querySelector('.diff-weight-label')?.textContent || '').includes(${JSON.stringify(inputLabel)}))
+        const input = row?.querySelector('input')
+        if (!input) continue
+        // naive-ui 的 input-number 认原生 input 事件 + Enter/blur 提交；直接改 .value 不会触发 v-model
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+        input.focus()
+        setter.call(input, String(${JSON.stringify(value)}))
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+        input.dispatchEvent(new Event('change', { bubbles: true }))
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+        input.dispatchEvent(new Event('blur', { bubbles: true }))
+        return 'ok'
+      }
+      return 'NO_ROW:' + pops.length
+    })()`))
+    await closeMenus()
+  }
+
   const click = arg('click')
   if (click) {
     await step(`点按钮「${click}」`, () => evaluate(clickText('.n-button', click)))
@@ -301,6 +337,7 @@ try {
         const tr = s?.querySelector('tbody tr')
         return tr ? [...tr.querySelectorAll('td')].map(e => e.textContent.replace(/\\s+/g, ' ').trim()).slice(0, 3) : null
       })(),
+      costNote: [...document.querySelectorAll('.compare-note')].map(e => e.textContent.replace(/\s+/g, ' ').trim()).find(t => t.includes('代价')) ?? null,
       errs: window.__errs || [],
     }
   })()`))

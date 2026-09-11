@@ -34,7 +34,7 @@
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
-  clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
+  DIFFICULTY_GOALS, clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
   type DifficultyGoal, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
 import { applyAxisBinding, applyGoldSteps, applyTeamToStore, baseGoldOf, restoreStore, snapshotStore } from '@/composables/teamCompare'
@@ -132,6 +132,23 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
     restoreStore(configStore, snap)
   }
   return rows
+}
+
+// ========== 目标代价（x 轴的可调口径） ==========
+
+/**
+ * 把用户填的**目标代价**套进目标集（x 轴 = 累积代价，贪心排序 = 增益÷代价 ⇒ 代价直接决定曲线形状）。
+ *
+ * 代价是主观量（同 `engine:操作难度/权重可调` 那条既有口径）：页面给的是占位默认
+ * （G1 权重均衡 1 / G2 弹刀·联合 3 / G3 保底 2 / G4 取整 0），用户可以改成自己的手感。
+ * 只认已知目标 id；缺省 / 非法值（NaN、负数）**回落目标自带代价**，不会把 x 轴弄坏。
+ */
+export function difficultyGoalsWithCosts(costs?: Record<string, number>): DifficultyGoal[] {
+  if (!costs) return DIFFICULTY_GOALS
+  return DIFFICULTY_GOALS.map(g => {
+    const c = costs[g.id]
+    return Number.isFinite(c) && (c as number) >= 0 ? { ...g, cost: c as number } : g
+  })
 }
 
 // ========== 伤害归因：这一档 +N 伤害是谁贡献的（同一份快照里采） ==========

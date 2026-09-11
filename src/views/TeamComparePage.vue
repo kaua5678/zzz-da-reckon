@@ -18,6 +18,25 @@
           <span class="ctl-label">曲线金档</span>
           <n-select v-model:value="curveGold" :options="curveGoldOptions" size="small" style="width: 140px" />
         </div>
+        <div
+          v-if="chartMode === 'curve'"
+          class="ctl-field"
+          title="难度代价是主观量：x 轴 = 各目标代价之和，贪心顺序 = 增益 ÷ 代价（代价越高的目标越晚被录取）。默认是占位口径（G1 权重均衡 1 / G2 弹刀·联合 3 / G3 保底 2 / G4 取整 0），按你的手感改，浏览器本地持久化"
+        >
+          <span class="ctl-label">难度代价</span>
+          <n-popover trigger="click" placement="bottom-end" :style="{ width: '340px' }">
+            <template #trigger>
+              <n-button size="small" quaternary>难度代价</n-button>
+            </template>
+            <div class="diff-weight-pop">
+              <div v-for="g in DIFFICULTY_GOALS" :key="g.id" class="diff-weight-row">
+                <span class="diff-weight-label">{{ g.id }} · {{ g.label }}</span>
+                <n-input-number v-model:value="diffCosts[g.id]" size="tiny" :min="0" :max="99" :step="0.5" style="width: 84px" />
+              </div>
+              <n-button size="tiny" style="margin-top: 6px" @click="resetDiffCosts">恢复默认代价</n-button>
+            </div>
+          </n-popover>
+        </div>
         <div class="ctl-field">
           <span class="ctl-label">期数</span>
           <n-select
@@ -160,6 +179,7 @@
         已选 {{ selectedPresets.length }} 队 · 金档 {{ curveGold < 0 ? '预设基础档' : `${curveGold} 金` }}<template
           v-if="curveClampedCount > 0"
         >（{{ curveClampedCount }} 队越界已按各自档位钳制）</template>
+        · 代价 {{ costScheme }}（「难度代价」弹层可调，贪心顺序 = 增益 ÷ 代价）
         · 每队要跑 ~10 次全量伤害（约 3~4 秒/队 ⇒ 预计 ≈{{ fmt(selectedPresets.length * 3.4 / 60, 1) }} 分钟）——
         曲线模式建议只选几支队做「难易强度」对比，跑起来可点「中止」保留已算部分。
       </div>
@@ -298,7 +318,7 @@
             <!-- 关键次数跃迁标注（「多了一次」量级）：加一圈 + 点上方文字 -->
             <g v-for="(j, ji) in s.jumpPts" :key="'cj' + si + '-' + ji">
               <circle :cx="j.cx" :cy="j.cy" r="6.5" fill="none" :stroke="s.color" stroke-width="1.2" opacity="0.85" />
-              <text :x="j.cx" :y="j.cy - 11 - j.lane * 11" text-anchor="middle" class="curve-jump-label" font-size="9">{{ j.text }}</text>
+              <text :x="j.cx" :y="j.cy - 11 - j.lane * 15" text-anchor="middle" class="curve-jump-label" font-size="9">{{ j.text }}</text>
             </g>
           </g>
 
@@ -405,7 +425,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS } from '@/composables/teamCompare'
-import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
+import { assignLabelLanes, attributeDmgChanges, difficultyGoalsWithCosts, estimateLabelWidth, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
@@ -660,6 +680,38 @@ const curveGoldOptions = computed(() => [
 /** 选了金档但越界（该队档位范围更窄）被钳制的队数——如实上报，不静默 */
 const curveClampedCount = computed(() => curveRows.value.filter(r => r.gold.totalGold !== r.gold.target).length)
 
+/**
+ * 目标代价（x 轴口径，**主观量**，同「难度权重」弹层先例）：默认 = `DIFFICULTY_GOALS` 的占位代价，
+ * 用户可改 + localStorage 持久化。改代价会同时改**贪心顺序**（score = 增益÷代价）与 x 轴刻度。
+ */
+const DIFF_COST_KEY = 'zzz-compare-difficulty-costs'
+function defaultDiffCosts(): Record<string, number> {
+  return Object.fromEntries(DIFFICULTY_GOALS.map(g => [g.id, g.cost]))
+}
+function loadDiffCosts(): Record<string, number> {
+  const base = defaultDiffCosts()
+  try {
+    const raw = localStorage.getItem(DIFF_COST_KEY)
+    if (raw) {
+      const obj = JSON.parse(raw)
+      for (const g of DIFFICULTY_GOALS) {
+        const v = obj?.[g.id]
+        if (typeof v === 'number' && Number.isFinite(v) && v >= 0) base[g.id] = v
+      }
+    }
+  } catch { /* 损坏回落默认 */ }
+  return base
+}
+const diffCosts = ref<Record<string, number>>(loadDiffCosts())
+watch(diffCosts, v => {
+  try { localStorage.setItem(DIFF_COST_KEY, JSON.stringify(v)) } catch { /* 忽略 */ }
+}, { deep: true })
+function resetDiffCosts() { diffCosts.value = defaultDiffCosts() }
+/** 口径行展示用：`G1=1 · G2=3 · G3=2 · G4=0` */
+const costScheme = computed(() =>
+  DIFFICULTY_GOALS.map(g => `${g.id}=${cntNum(diffCosts.value[g.id] ?? g.cost)}`).join(' · '),
+)
+
 function goldLevels(): number[] {
   const levels: number[] = []
   const min = Math.max(0, Math.min(goldMin.value, goldMax.value))
@@ -725,6 +777,7 @@ async function runCurves() {
       boss,
       phase,
       goldLevel: curveGold.value >= 0 ? curveGold.value : undefined,
+      goals: difficultyGoalsWithCosts(diffCosts.value),
     }))
   }
   curveRows.value = all
@@ -865,12 +918,13 @@ const curveSeriesPx = computed(() => {
       ...j,
       cx: curveXOf(j.cost),
       cy: curveYOf(j.ratio),
-      text: j.changes.map(cntDelta).join('·'),
+      // 图上只显示前 2 项（长标签会互压；完整清单在「关键变化」面板与 tooltip 里）
+      text: j.changes.map(cntDelta).slice(0, 2).join('·') + (j.changes.length > 2 ? '…' : ''),
     })),
   }))
   // 跨队统一分道：同一 x 附近的标注错开抬升，避免叠在一起（实机点通实测过 1 对重叠）
   const all = series.flatMap(s => s.jumpPts)
-  const lanes = assignLabelLanes(all.map(j => ({ x: j.cx, width: estimateLabelWidth(j.text) })))
+  const lanes = assignLabelLanes(all.map(j => ({ x: j.cx, width: estimateLabelWidth(j.text) })), 4)
   let k = 0
   return series.map(s => ({
     ...s,

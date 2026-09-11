@@ -8,11 +8,11 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
-  assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource,
+  assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource, difficultyGoalsWithCosts,
   diffKeyCounts, estimateLabelWidth, linkCountToDmg, majorChanges,
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
-import type { LadderResult } from '@/composables/difficultyLadder'
+import { DIFFICULTY_GOALS, type LadderResult } from '@/composables/difficultyLadder'
 import { baseGoldOf } from '@/composables/teamCompare'
 import { teamPresets } from '@/data/teamPresets'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
@@ -146,6 +146,42 @@ describe('关键次数差分（用户口径：难度上升到关键变化要标�
     expect(s.jumps[0]!.changes.map(c => c.label)).toEqual(['大招'])
     expect(s.jumps[1]!.changes.map(c => c.label)).toEqual(['紊乱'])
   })
+})
+
+describe('目标代价（x 轴口径可调）', () => {
+  it('只覆盖已知目标；未知键 / NaN / 负数回落；不改动原目标集', () => {
+    expect(difficultyGoalsWithCosts()).toEqual(DIFFICULTY_GOALS) // 不传 = 原样
+    const custom = difficultyGoalsWithCosts({ G2: 9, G1: 0, 不存在: 5, G3: Number.NaN, G4: -1 })
+    expect(custom.map(g => g.id)).toEqual(DIFFICULTY_GOALS.map(g => g.id))
+    expect(custom.find(g => g.id === 'G2')!.cost).toBe(9)
+    expect(custom.find(g => g.id === 'G1')!.cost).toBe(0)
+    expect(custom.find(g => g.id === 'G3')!.cost).toBe(DIFFICULTY_GOALS.find(g => g.id === 'G3')!.cost)
+    expect(custom.find(g => g.id === 'G4')!.cost).toBe(DIFFICULTY_GOALS.find(g => g.id === 'G4')!.cost)
+    expect(DIFFICULTY_GOALS.find(g => g.id === 'G2')!.cost).toBe(3) // 原集没被就地改
+  })
+
+  it('改代价真的进到 x 轴：全 0 代价 ⇒ 总代价 0；全 1 ⇒ 总代价 = 录取档数', async () => {
+    const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+
+    const zero = computeDifficultyCurves(calc, {
+      presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE,
+      goals: difficultyGoalsWithCosts({ G1: 0, G2: 0, G3: 0, G4: 0 }),
+    })
+    expect(zero[0]!.ladder.opened.length).toBeGreaterThan(0) // 代价 0 ≠ 不录取
+    expect(zero[0]!.ladder.points[zero[0]!.ladder.points.length - 1]!.x).toBe(0)
+
+    const one = computeDifficultyCurves(calc, {
+      presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE,
+      goals: difficultyGoalsWithCosts({ G1: 1, G2: 1, G3: 1, G4: 1 }),
+    })
+    const last = one[0]!.ladder.points[one[0]!.ladder.points.length - 1]!
+    expect(last.x).toBe(one[0]!.ladder.opened.length)
+    // 代价只影响「入场券」，不该把伤害算坏
+    expect(one[0]!.ladder.final).toBeGreaterThanOrEqual(one[0]!.ladder.base)
+  }, 300_000)
 })
 
 describe('图上标注分道（防重叠）', () => {
