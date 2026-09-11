@@ -90,8 +90,6 @@ export interface EnergySource {
   billyC1Energy: number
   /** 伊德海莉：非失衡（溯寒后）极寒重碾每次回 15 闪能 */
   yidhariRefund: number
-  /** 般岳：怒相内山威强特回闪能（4 山威/怒相 × 10/个，影画2 额外 +5/个） */
-  banyueSwayRefund: number
   /** 仪玄：额外闪能总账（完美格挡+10/次、极限闪避+5/次、影画1落雷+5/次，模块汇总进 cfg.yixuanFlashBonus） */
   yixuanFlashBonus: number
   /** 安东影画1：每个实际电钻招式最多回5能量，已计入 total */

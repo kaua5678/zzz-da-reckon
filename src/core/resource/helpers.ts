@@ -260,11 +260,10 @@ export function calcEnergySource(
   // 比利影画1·闪亮登场：冲刺/闪反原始命中次数合并后按5秒ICD封顶，由模块预计算总额。
   const billyC1Energy = n(cfg.billyC1Energy)
 
-  // 般岳：怒相内山威强特回闪能（4 山威/怒相 × 10/个，影画2 额外 +5/个）——嗔火循环固定点给出怒相次数与回闪总额
-  const banyueSwayRefund = cfg.agentId === '1471'
-    ? Math.max(0, computeBanyueCycleFromCfg(cfg).flashIncome - 420) // flashIncome − 进场/秒回 420 = 山威回闪能
-    : 0
-
+  // 般岳山威回闪能不再走这里：那是**招式级回能**（每发山威强特回 10，C2 +5），已由模块
+  // `mechanics/agents/banyue#patchExecutions` 落在执行行 `energyRecovery` 上 ⇒ 经 `skillRegen`
+  // （Σ 行级能量收入）进总账。此前用 `banyueSwayRefund` 平行字段加总，导致卡片「闪能·招式回复」
+  // 显示 0 而总账里却含这笔（2026-09-11 用户发现；规则 11 单一事实源 + 规则 16 挂活代码）。
   // 仪玄：额外闪能总账（模块在 buildCharConfig 汇总：完美格挡+10/次、极限闪避+5/次、影画1落雷+5/次）
   const yixuanFlashBonus = n(cfg.yixuanFlashBonus)
   const antonC1EnergyGift = cfg.agentId === '1111' ? n((cfg as any).antonC1EnergyGift) : 0
@@ -280,7 +279,6 @@ export function calcEnergySource(
     + qingyiC4Energy
     + lycaonC2Energy
     + billyC1Energy
-    + banyueSwayRefund
     + yixuanFlashBonus
     + antonC1EnergyGift
     + initialGift + shieldBreakGift + energyShieldBreakGift
@@ -330,7 +328,6 @@ export function calcEnergySource(
     lycaonC2Energy,
     billyC1Energy,
     yidhariRefund,
-    banyueSwayRefund,
     yixuanFlashBonus,
     antonC1EnergyGift,
     supportUltimateRegen,

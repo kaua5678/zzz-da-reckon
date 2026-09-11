@@ -174,7 +174,8 @@ export interface LadderPoint {
   dmgBySource?: Record<string, number>
   /**
    * 这一档的**绝对操作难度**（仅当 `opts.costOf` 给了才在；单位 = 展示层口径，如
-   * 「Σ交互次数×权重 + 合轴溢出秒×权重」的操作难度点）。`x` 就是它相对全关的增量。
+   * 「Σ交互次数×权重 + 时间压力秒×权重」的操作难度点，见 `teamCompare#computeDifficulty`）。
+   * `x` 就是它（**绝对值**，不是相对全关的增量）。
    */
   difficulty?: number
 }

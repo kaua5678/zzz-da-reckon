@@ -712,10 +712,34 @@ describe('资源池迭代口径（闪能/20 修复）', () => {
     const cfg = buildCharConfig(0, config, catalog)!
     const rr = calcTeamResources({ characters: [cfg], totalTime: 180, stunCount: 3 } as any)
     const c0 = rr.characters[0]
-    // 山威回闪能已计入闪能收入（rage=4 → 4×4×10 = 160）
-    expect(c0.energySource.banyueSwayRefund).toBe(160)
+    // 山威回闪能走**行级**（「闪能·招式回复」= Σ 行级能量收入，rowEnergyTotal 单一事实源）：
+    // rage=4 → 16 发山威强特 × 10 = 160，落在各自执行行上（不再有 banyueSwayRefund 平行字段）。
+    const swayRows = (c0.executions ?? []).filter(r => (r.energyRecovery ?? 0) === 10)
+    expect(swayRows.reduce((s, r) => s + r.count, 0)).toBe(16)
+    expect(swayRows.reduce((s, r) => s + (r.totalEnergyRecovery ?? 0), 0)).toBe(160)
+    expect(c0.energySource.skillRegen).toBeGreaterThanOrEqual(160)
+    expect('banyueSwayRefund' in c0.energySource).toBe(false)
     // 强特总数 = 怒相内（rage4 × 4 山威强特 = 16）+ 怒相外连段（2×9 = 18）= 34，而非 闪能/20
     expect(c0.exSpecialCount).toBe(34)
+  })
+
+  it('资源卡片文案：怒相内免费强特明写「不耗闪能 ⇒ 不产嗔火」，回能指向「闪能·招式回复」', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    const config = useConfigStore()
+    config.team[0] = { slot: 0, agentId: '1471', cinemaLevel: 0, ...baseConfig } as any
+    config.team[1] = { slot: 1, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+    config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 80))
+    const c0 = calc.resourceResult.value!.characters[0]
+    const sections = getAgentMechanic('1471')?.resourceSections?.({ result: c0 }) ?? []
+    const txt = JSON.stringify(sections)
+    expect(txt).toContain('怒相内免费强特')
+    expect(txt).not.toContain('怒相内强特')      // 旧标签会读成「嗔火来源 = 怒相内强特」（用户 2026-09-11 发现）
+    expect(txt).toContain('不产嗔火')
+    expect(txt).toContain('闪能·招式回复')
+    expect(txt).toContain('怒相内不产嗔火')
   })
 })
 

@@ -198,19 +198,22 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
   }, 300_000)
 })
 
-describe('队友合轴也算难度（用户 2026-09-10：合轴节约出来的时间越多，难度越高，总伤越多）', () => {
-  it('computeDifficulty 的 align 项：1 秒 = 1 点（可调），0 秒/权重 0 = 不出现', () => {
-    const base = computeDifficulty([{ type: 'parry', count: 10 }], [], 0, { interaction: { parry: 1 } })
+describe('时间压力 = 硬溢出 + 合轴抵扣（用户 2026-09-11：合轴让溢出降低，这俩其实是一个东西）', () => {
+  it('computeDifficulty 的时间压力项：两半合成一项、只挂一个权重，0 秒 = 不出现', () => {
+    const w = { interaction: { parry: 1 } }
+    const base = computeDifficulty([{ type: 'parry', count: 10 }], [], 0, w)
     expect(base.difficulty).toBe(10)
-    // 合轴解放 4 秒 ⇒ +4 点，并在明细里写明来源
-    const withAlign = computeDifficulty([{ type: 'parry', count: 10 }], [], 0, { interaction: { parry: 1 } }, 4)
+    // 合轴抵扣 4 秒 ⇒ +4 点，明细写明是「合轴抵扣」那一半
+    const withAlign = computeDifficulty([{ type: 'parry', count: 10 }], [], 0, w, 4)
     expect(withAlign.difficulty).toBe(14)
-    expect(withAlign.detail).toContain('队友合轴节省4s')
-    // 权重可改：2 点/秒 ⇒ +8
-    expect(computeDifficulty([{ type: 'parry', count: 10 }], [], 0, { interaction: { parry: 1 }, align: 2 }, 4).difficulty).toBe(18)
-    // 权重 0 或没给秒数 = 老口径（零行为变更）
-    expect(computeDifficulty([{ type: 'parry', count: 10 }], [], 0, { interaction: { parry: 1 }, align: 0 }, 4).difficulty).toBe(10)
-    expect(computeDifficulty([{ type: 'parry', count: 10 }], [], 0, { interaction: { parry: 1 } }).difficulty).toBe(10)
+    expect(withAlign.detail).toContain('时间压力4s(合轴抵扣4)×1')
+    // 硬溢出那一半同价：4 秒硬溢出 ≡ 4 秒合轴抵扣 ≡ 2+2 拆开（用户口径：同一笔秒数）
+    expect(computeDifficulty([{ type: 'parry', count: 10 }], [], 4, w, 0).difficulty).toBe(14)
+    expect(computeDifficulty([{ type: 'parry', count: 10 }], [], 2, w, 2).difficulty).toBe(14)
+    // 权重可改：2 点/秒 ⇒ +8；权重 0 / 无秒数 = 不出现（零行为变更）
+    expect(computeDifficulty([{ type: 'parry', count: 10 }], [], 0, { ...w, timePressure: 2 }, 4).difficulty).toBe(18)
+    expect(computeDifficulty([{ type: 'parry', count: 10 }], [], 0, { ...w, timePressure: 0 }, 4).difficulty).toBe(10)
+    expect(computeDifficulty([{ type: 'parry', count: 10 }], [], 0, w).difficulty).toBe(10)
   })
 
   it('前线占用拆解：gross / 轴内节省 / 抵扣 / 净占用 / saved 自洽（saved = gross − net）', async () => {

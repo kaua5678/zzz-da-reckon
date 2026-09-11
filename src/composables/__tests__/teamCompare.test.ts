@@ -333,25 +333,39 @@ describe('teamCompare 金数/难度口径', () => {
     expect(detail).not.toContain('banyueGoldenParry')
   })
 
-  it('合轴溢出并入难度：默认 1 秒 = 1 难度点（线性），缺省 0 不改变原口径', () => {
-    // 无溢出（多数队）：与旧口径逐位一致
+  it('时间压力并入难度：默认 1 秒 = 1 难度点（线性），缺省 0 不改变原口径', () => {
+    // 无时间压力（多数队）：与旧口径逐位一致
     const base = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 0)
     expect(base.difficulty).toBeCloseTo(22.1, 2)
-    expect(base.detail).not.toContain('合轴溢出')
-    // 溢出 12.3s：难度 +12.3，明细追加「合轴溢出12.3s×1」
+    expect(base.detail).not.toContain('时间压力')
+    // 硬溢出 12.3s：难度 +12.3，明细追加「时间压力12.3s(硬溢出12.3)×1」
     const withOverflow = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 12.3)
     expect(withOverflow.difficulty).toBeCloseTo(22.1 + 12.3, 2)
-    expect(withOverflow.detail).toContain('合轴溢出12.3s×1')
+    expect(withOverflow.detail).toContain('时间压力12.3s(硬溢出12.3)×1')
     // 生效性：改溢出值 → 难度确实变（+5s 差 = 难度差 5）
     const more = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 17.3)
     expect(more.difficulty - withOverflow.difficulty).toBeCloseTo(5, 2)
   })
 
-  it('难度权重用户覆盖：溢出权重与交互权重均可调（主观量，默认值可改）', () => {
-    // 溢出权重 2：12.3s × 2 = 24.6 → 22.1 + 24.6 = 46.7
-    const ow2 = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 12.3, { overflow: 2 })
+  it('溢出秒与合轴节省秒是**同一笔**时间压力：各挂一半权重=各挂全额（用户 2026-09-11 口径）', () => {
+    // 同一份「必做前台超出窗口的秒数」：12.3 全算硬溢出 ≡ 12.3 全算合轴抵扣 ≡ 拆成 10+2.3
+    const allHard = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 12.3, {}, 0)
+    const allAlign = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 0, {}, 12.3)
+    const split = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 2.3, {}, 10)
+    expect(allAlign.difficulty).toBeCloseTo(allHard.difficulty, 6)
+    expect(split.difficulty).toBeCloseTo(allHard.difficulty, 6)
+    expect(allAlign.detail).toContain('时间压力12.3s(合轴抵扣12.3)×1')
+    expect(split.detail).toContain('时间压力12.3s(合轴抵扣10+硬溢出2.3)×1')
+    // 只有一个权重：调它同时缩放两半（不存在「溢出权重 / 合轴权重」两个旋钮）
+    const w2 = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 2.3, { timePressure: 2 }, 10)
+    expect(w2.difficulty - 22.1).toBeCloseTo(12.3 * 2, 4)
+  })
+
+  it('难度权重用户覆盖：时间压力权重与交互权重均可调（主观量，默认值可改）', () => {
+    // 时间压力权重 2：12.3s × 2 = 24.6 → 22.1 + 24.6 = 46.7
+    const ow2 = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 12.3, { timePressure: 2 })
     expect(ow2.difficulty).toBeCloseTo(22.1 + 24.6, 2)
-    expect(ow2.detail).toContain('合轴溢出12.3s×2')
+    expect(ow2.detail).toContain('时间压力12.3s(硬溢出12.3)×2')
     // 交互权重覆盖：弹刀 1.0→2.0（8×2=16，比默认多 8）
     const parry2 = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 0, { interaction: { parry: 2 } })
     expect(parry2.difficulty).toBeCloseTo(22.1 + 8, 2)

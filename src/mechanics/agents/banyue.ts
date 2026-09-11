@@ -524,7 +524,8 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
   const rage = cycle.rageCount
   if (rage <= 0) return
 
-  const push = (moveId: string, name: string, count: number, category: string, note: string, energyConsume = 0, force = false) => {
+  // energyRecover = 行级回能/次（山威免费强特回闪能；缺省 0 = 不产闪能）
+  const push = (moveId: string, name: string, count: number, category: string, note: string, energyConsume = 0, force = false, energyRecover = 0) => {
     if (count <= 0 && !force) return
     executions.push({
       moveId,
@@ -537,8 +538,8 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
       totalComboAlignTime: 0,
       energyConsume,
       totalEnergyConsume: energyConsume * count,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      energyRecovery: energyRecover,
+      totalEnergyRecovery: energyRecover * count,
       damageMultiplier: dmg[moveId] ?? 0,
       damageMultiplierOverride: true,
       skillTableNote: note,
@@ -546,12 +547,17 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
   }
 
   // 每次怒相：焚身 → 山威连段（论道+狮吼怒 / 地动+山摇·怒，按轴内捏的 didong 块拆分）→ 倾山 → 摧岳
+  // 山威免费强特：不耗闪能、**回 10 闪能/次**（nanoka 核心被动「转而消耗1点[山威]并回复10点闪能」，
+  // 影画2 额外 +5）——这是招式级回能，必须落在**行级**（`rowEnergyTotal` 的单一事实源，
+  // 卡片「闪能·招式回复」= Σ行）：模块自己算 FlashIncome 只能当内部账本，不能再往
+  // `energySource` 加平行字段（否则展示层「招式回复 0」而总账里却含这笔，2026-09-11 修）。
+  const swayRefund = SWAY_REFUND + (cinemaLevel >= 2 ? C2_SWAY_REFUND_BONUS : 0)
   push(MOVE.fenShen, '普通攻击：焚身（入怒相）', rage, 'basic', `焚身 ×${rage}：221.7%，120嗔火入怒相`)
-  push(MOVE.lunDao, '强化特殊技：论道（山威·论道连段）', cycle.lunDaoRageCount, 'special', `山威免费 ×${cycle.lunDaoRageCount}：325.2%`, 0)
-  push(MOVE.shiZiHouNu, '强化特殊技：狮子吼·怒（山威·论道连段）', cycle.shiZiHouNuCount, 'special', `山威免费 ×${cycle.shiZiHouNuCount}：600.4%（论道派生连段）`, 0)
-  push(MOVE.diDong, '强化特殊技：地动（山威·地动山摇连段）', cycle.diDongRageCount, 'special', `山威免费 ×${cycle.diDongRageCount}：510%（地动山摇连段）`, 0)
-  push(MOVE.shanYaoNu, '强化特殊技：山摇·怒（山威·地动山摇连段）', cycle.shanYaoNuRageCount, 'special', `山威免费 ×${cycle.shanYaoNuRageCount}：650.6%（地动派生连段）`, 0)
-  push(MOVE.shanYao, '强化特殊技：山摇（山威）', cycle.shanYaoRageCount, 'special', `剩余山威 ×${cycle.shanYaoRageCount}：342.9%`, 0)
+  push(MOVE.lunDao, '强化特殊技：论道（山威·论道连段）', cycle.lunDaoRageCount, 'special', `山威免费 ×${cycle.lunDaoRageCount}：325.2%，回${swayRefund}闪能/次`, 0, false, swayRefund)
+  push(MOVE.shiZiHouNu, '强化特殊技：狮子吼·怒（山威·论道连段）', cycle.shiZiHouNuCount, 'special', `山威免费 ×${cycle.shiZiHouNuCount}：600.4%（论道派生连段），回${swayRefund}闪能/次`, 0, false, swayRefund)
+  push(MOVE.diDong, '强化特殊技：地动（山威·地动山摇连段）', cycle.diDongRageCount, 'special', `山威免费 ×${cycle.diDongRageCount}：510%（地动山摇连段），回${swayRefund}闪能/次`, 0, false, swayRefund)
+  push(MOVE.shanYaoNu, '强化特殊技：山摇·怒（山威·地动山摇连段）', cycle.shanYaoNuRageCount, 'special', `山威免费 ×${cycle.shanYaoNuRageCount}：650.6%（地动派生连段），回${swayRefund}闪能/次`, 0, false, swayRefund)
+  push(MOVE.shanYao, '强化特殊技：山摇（山威）', cycle.shanYaoRageCount, 'special', `剩余山威 ×${cycle.shanYaoRageCount}：342.9%，回${swayRefund}闪能/次`, 0, false, swayRefund)
   push(MOVE.qingShan, '普通攻击：倾山（退出怒相）', rage, 'basic', `倾山 ×${rage}：1739.9%，退出怒相`)
   push(MOVE.cuiYue, '普通攻击：摧岳', rage, 'basic', `摧岳 ×${rage}：756.7%`)
   // 怒相外连段（自动 = floor(剩余闪能/60)，滑块拆分论道连段/地动山摇连段）
@@ -697,8 +703,16 @@ function buildBanyueResourceSections({ result }: AgentResourceSectionsInput) {
     title: '般岳·嗔火/怒相循环',
     summary: `怒相 ${cycle.rageCount} 次 · 嗔火 ${fmt(cycle.furyTotal, 0)} · 山威免费强特 ${cycle.swayExCount}`,
     rows: [
-      { label: '嗔火来源', value: String(fmt(cycle.furyTotal, 0)), detail: `闪避×4 + 弹刀×4 + 金身×6 + 双反×10（${cycle.dualCounterCount}次） + 怒相外闪能×0.5` },
-      { label: '怒相内强特', value: `${cycle.lunDaoRageCount ? `论道×${cycle.lunDaoRageCount} + 狮子吼·怒×${cycle.shiZiHouNuCount}` : ''}${cycle.diDongRageCount ? `${cycle.lunDaoRageCount ? ' + ' : ''}地动×${cycle.diDongRageCount} + 山摇·怒×${cycle.shanYaoNuRageCount}` : ''}${cycle.shanYaoRageCount ? ` + 山摇×${cycle.shanYaoRageCount}` : ''}`, detail: '山威免费（回10闪能/次），每怒相 4 个；怒相内 2 组连段可自由分配论道/地动山摇（轴内捏块决定）' },
+      {
+        label: '嗔火来源',
+        value: String(fmt(cycle.furyTotal, 0)),
+        detail: `闪避×4 + 弹刀×4 + 金身×6 + 双反×10（${cycle.dualCounterCount}次） + 怒相外闪能×0.5；怒相内不产嗔火（怒相中的山威免费强特不耗闪能，自然也不回嗔火——nanoka：「处于[怒相]状态时，般岳无法再获得[嗔火]」）`,
+      },
+      {
+        label: '怒相内免费强特',
+        value: `${cycle.lunDaoRageCount ? `论道×${cycle.lunDaoRageCount} + 狮子吼·怒×${cycle.shiZiHouNuCount}` : ''}${cycle.diDongRageCount ? `${cycle.lunDaoRageCount ? ' + ' : ''}地动×${cycle.diDongRageCount} + 山摇·怒×${cycle.shanYaoNuRageCount}` : ''}${cycle.shanYaoRageCount ? ` + 山摇×${cycle.shanYaoRageCount}` : ''}`,
+        detail: `山威免费：耗 1 山威、不耗闪能 ⇒ 不产嗔火，每发回 10 闪能（影画2 +5）已计入上方「闪能·招式回复」；每怒相 4 个，怒相内 2 组连段可自由分配论道/地动山摇（轴内捏块决定）`,
+      },
       { label: '怒相外连段', value: `论道连段×${cycle.lunDaoOutCount} + 地动山摇连段×${cycle.diDongComboCount}`, detail: `共 ${cycle.comboOutCount} 组（60闪能/组，自动=floor(剩余闪能/60)）；[普]耗闪能产嗔火、[怒]耗山威免费；闪能收入 ${fmt(cycle.flashIncome, 0)} / 支出 ${fmt(cycle.flashSpent, 0)}` },
       { label: '怒相序列', value: `焚身→${[cycle.lunDaoRageCount ? `论道→狮子吼·怒×${cycle.lunDaoRageCount}` : '', cycle.diDongRageCount ? `地动→山摇·怒×${cycle.diDongRageCount}` : ''].filter(Boolean).join(' + ') || '（无连段）'}→倾山→摧岳`, detail: '每次怒相 120 嗔火；倾山退出、摧岳（C6 附伤载体）' },
       { label: '强特连段后摇', value: `失衡外 ×${cycle.comboOutRecoveryCount}（嘲讽取消 ${cycle.tauntCancelCount}）`, detail: recoveryDetail },

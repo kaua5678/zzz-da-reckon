@@ -71,19 +71,15 @@
             clearable
           />
         </div>
-        <div class="ctl-field" title="操作难度是主观量（两图共用同一口径）：难度曲线的 x 轴 = Σ(交互次数×权重) + 合轴溢出秒×权重；散点图横轴同口径。按你的手感改，浏览器本地持久化；预设条目自带 weight 仍最优先">
+        <div class="ctl-field" title="操作难度是主观量（两图共用同一口径）：难度 = Σ(交互次数×权重) + 时间压力秒×权重；散点图横轴同口径。按你的手感改，浏览器本地持久化；预设条目自带 weight 仍最优先">
           <n-popover trigger="click" placement="bottom-end" :style="{ width: '300px' }">
             <template #trigger>
               <n-button size="small" quaternary>难度权重</n-button>
             </template>
             <div class="diff-weight-pop">
-              <div class="diff-weight-row">
-                <span class="diff-weight-label">合轴溢出（难度点/秒）</span>
-                <n-input-number v-model:value="diffWeights.overflow" size="tiny" :min="0" :max="20" :step="0.5" style="width: 84px" />
-              </div>
-              <div class="diff-weight-row" title="队友合轴解放出来的前台时间（秒）也算难度：对齐得越精确越难打，但换来更多平A/资源 ⇒ 总伤更高">
-                <span class="diff-weight-label">队友合轴（难度点/秒）</span>
-                <n-input-number v-model:value="diffWeights.align" size="tiny" :min="0" :max="20" :step="0.5" style="width: 84px" />
+              <div class="diff-weight-row" title="时间压力 = 这套轴「要塞进战斗时间得挤出多少秒」= 合轴抵扣掉的秒 + 硬溢出剩下的秒。两者是同一笔秒数（允许溢出一部分正是因为队友可以合轴），所以只有一个权重">
+                <span class="diff-weight-label">时间压力（难度点/秒）</span>
+                <n-input-number v-model:value="diffWeights.timePressure" size="tiny" :min="0" :max="20" :step="0.5" style="width: 84px" />
               </div>
               <div v-for="row in diffWeightRows" :key="row.type" class="diff-weight-row">
                 <span class="diff-weight-label">{{ row.label }}</span>
@@ -152,12 +148,12 @@
       </div>
 
       <div v-if="!computing && chartMode === 'scatter' && points.length > 0" class="compare-note">
-        共 {{ points.length }} 个点 · 纵轴 = 伤害/血量%（100% 击杀线）· 横轴 = 操作难度（交互加权和 + 合轴溢出秒，权重可在「难度权重」调）· 点半径 = 限定金
+        共 {{ points.length }} 个点 · 纵轴 = 伤害/血量%（100% 击杀线）· 横轴 = 操作难度（交互加权和 + 时间压力秒，权重可在「难度权重」调）· 点半径 = 限定金
       </div>
 
       <div v-if="!computing && chartMode === 'curve'" class="compare-note">
         已选 {{ selectedPresets.length }} 队 · 每队用自己的预设配装（0命1精 + 预设音擎/驱动盘/权重/交互）
-        · x = 操作难度（Σ交互次数×权重 + 合轴溢出秒×权重 + <b>队友合轴节省秒</b>×权重，<b>自动算</b>；三项权重在「难度权重」弹层可调）
+        · x = 操作难度（Σ交互次数×权重 + <b>时间压力秒</b>×权重，<b>自动算</b>；时间压力 = 合轴抵扣掉的秒 + 硬溢出剩下的秒 = 同一笔秒数，只挂一个权重；交互/时间压力权重都在「难度权重」弹层调）
         · 每队要跑 ~10 次全量伤害（约 3~4 秒/队 ⇒ 预计 ≈{{ fmt(selectedPresets.length * 3.4 / 60, 1) }} 分钟）——
         曲线模式建议只选几支队做「难易强度」对比，跑起来可点「中止」保留已算部分。
       </div>
@@ -196,7 +192,7 @@
           <text v-if="yMax > 200" :x="padL + 4" :y="yOf(200) - 4" class="chart-refline-text" font-size="10">200% 两倍血量</text>
 
           <!-- 坐标轴标签 -->
-          <text :x="padL + plotW / 2" :y="padT + plotH + 34" text-anchor="middle" class="chart-axis-label" font-size="11">操作难度（交互+合轴溢出）</text>
+          <text :x="padL + plotW / 2" :y="padT + plotH + 34" text-anchor="middle" class="chart-axis-label" font-size="11">操作难度（交互加权 + 时间压力）</text>
           <text :x="14" :y="padT + plotH / 2" text-anchor="middle" class="chart-axis-label" font-size="11" transform="rotate(-90 14 0)">伤害/血量 %</text>
 
           <!-- 散点 -->
@@ -263,9 +259,10 @@
       <div class="compare-note curve-note">
         <b>口径 = 同一支队伍 · 同一个 Boss · 同一套配装</b>（预设基础档：0命1精 + 预设音擎/驱动盘/权重/交互 + 当前期数 Boss）
         ，<b>只让「操作难度」从全关爬到全开</b>——配置不参与曲线（金数提升/换装在散点图型与「角色兑现」看）。
-        x = 该队<b>自动算的</b>操作难度<b>绝对值</b>（Σ交互次数×权重 + 合轴溢出秒×权重；交互次数取这一档<b>实打</b>的次数，
-        不是预设声明——联合策略调低弹刀、般岳补交互都会算进去）+ 队友合轴解放出来的前台秒数（合轴率把队友前台压出去多少，越多=对齐越难、总伤越高）；
-        三项权重都在「难度权重」弹层调），<b>与散点页横轴同一把尺</b>。
+        x = 该队<b>自动算的</b>操作难度<b>绝对值</b>（Σ交互次数×权重 + <b>时间压力秒</b>×权重；交互次数取这一档<b>实打</b>的次数，
+        不是预设声明——联合策略调低弹刀、般岳补交互都会算进去；<b>时间压力 = 合轴抵扣掉的秒 + 硬溢出剩下的秒</b>——
+        允许溢出一部分正是因为队友可以合轴，所以这是同一笔秒数、只挂一个权重；
+        交互/时间压力权重都在「难度权重」弹层调），<b>与散点页横轴同一把尺</b>。
         y = 伤害/血量%。<b>各队起点/走向不齐是特性</b>：比形状（起点 / 斜率 / 天花板 / 提升倍数）；
         <b>虚线段 = 难度回落</b>：那一步的杠杆把交互次数/时间压力减掉了（难度降而伤害升 = 白拿的优化，贪心优先做），
         所以折线会往左走一段（V 型就是这么来的）。
@@ -281,7 +278,7 @@
           <line :x1="padL" :y1="curveYOf(100)" :x2="padL + plotW" :y2="curveYOf(100)" stroke="#e88080" stroke-dasharray="6,4" opacity="0.8" />
           <text :x="padL + 4" :y="curveYOf(100) - 4" fill="#e88080" font-size="10">击杀线 100%</text>
 
-          <text :x="padL + plotW / 2" :y="padT + plotH + 34" text-anchor="middle" class="chart-axis-label" font-size="11">操作难度绝对值（交互加权 + 合轴溢出，与散点同尺）</text>
+          <text :x="padL + plotW / 2" :y="padT + plotH + 34" text-anchor="middle" class="chart-axis-label" font-size="11">操作难度绝对值（交互加权 + 时间压力，与散点同尺）</text>
           <text :x="14" :y="padT + plotH / 2" text-anchor="middle" class="chart-axis-label" font-size="11" transform="rotate(-90 14 0)">伤害/血量 %</text>
 
           <g v-for="(s, si) in curveSeriesPx" :key="'cs' + si">
@@ -599,20 +596,22 @@ watch(autoEnginePool, v => {
 
 // ========== 难度权重（主观量，用户自填；INTERACTION_WEIGHTS 与 1秒=1点只是默认值） ==========
 const DIFF_WEIGHTS_KEY = 'zzz-compare-difficulty-weights'
-interface DiffWeightsState { overflow: number; align: number; interaction: Record<string, number> }
+interface DiffWeightsState { timePressure: number; interaction: Record<string, number> }
 const DEFAULT_DIFF_WEIGHTS: DiffWeightsState = {
-  overflow: 1,
-  align: 1,   // 队友合轴解放出来的前台时间：默认 1 秒 = 1 难度点（与溢出同档）
+  // 时间压力 = 硬溢出 + 合轴抵扣（同一笔秒数）：默认 1 秒 = 1 难度点（只有一个权重，见 teamCompare#computeDifficulty）
+  timePressure: 1,
   interaction: { ...INTERACTION_WEIGHTS },
 }
 function loadDiffWeights(): DiffWeightsState {
-  const base: DiffWeightsState = { overflow: 1, align: 1, interaction: { ...INTERACTION_WEIGHTS } }
+  const base: DiffWeightsState = { timePressure: 1, interaction: { ...INTERACTION_WEIGHTS } }
   try {
     const raw = localStorage.getItem(DIFF_WEIGHTS_KEY)
     if (raw) {
       const obj = JSON.parse(raw)
-      if (typeof obj?.overflow === 'number' && Number.isFinite(obj.overflow) && obj.overflow >= 0) base.overflow = obj.overflow
-      if (typeof obj?.align === 'number' && Number.isFinite(obj.align) && obj.align >= 0) base.align = obj.align
+      // 旧版存的是两个旋钮（overflow/align）——合并成一项后取两者中用户改过的那个（都=默认 1 时不变）
+      const legacy = [obj?.overflow, obj?.align].filter((v: unknown) => typeof v === 'number' && Number.isFinite(v))
+      const tp = typeof obj?.timePressure === 'number' && Number.isFinite(obj.timePressure) ? obj.timePressure : legacy[0]
+      if (typeof tp === 'number' && Number.isFinite(tp) && tp >= 0) base.timePressure = tp
       if (obj?.interaction && typeof obj.interaction === 'object') {
         for (const [k, v] of Object.entries(obj.interaction)) {
           if (typeof v === 'number' && Number.isFinite(v) && v >= 0) base.interaction[k] = v
@@ -629,7 +628,7 @@ watch(diffWeights, v => {
 const diffWeightRows = computed(() =>
   Object.keys(INTERACTION_WEIGHTS).map(t => ({ type: t, label: INTERACTION_LABELS[t] ?? t })))
 function resetDiffWeights() {
-  diffWeights.value = { overflow: DEFAULT_DIFF_WEIGHTS.overflow, align: DEFAULT_DIFF_WEIGHTS.align, interaction: { ...INTERACTION_WEIGHTS } }
+  diffWeights.value = { timePressure: DEFAULT_DIFF_WEIGHTS.timePressure, interaction: { ...INTERACTION_WEIGHTS } }
 }
 const enginePoolOptions = computed(() =>
   (catalogStore.displayWEngines ?? [])
@@ -683,7 +682,7 @@ async function runCompare() {
       autoEnginePool: autoEnginePool.value,
       buffs: buffChoice.value === 'none' ? [] : buffs,
       manualBuffTitle: buffChoice.value === '' || buffChoice.value === 'none' ? undefined : buffChoice.value,
-      difficultyWeights: { overflow: diffWeights.value.overflow, align: diffWeights.value.align, interaction: diffWeights.value.interaction },
+      difficultyWeights: { timePressure: diffWeights.value.timePressure, interaction: diffWeights.value.interaction },
     }))
   }
   points.value = all
@@ -714,7 +713,7 @@ async function runCurves() {
       presets: [p],
       boss,
       phase,
-      difficultyWeights: { overflow: diffWeights.value.overflow, align: diffWeights.value.align, interaction: diffWeights.value.interaction },
+      difficultyWeights: { timePressure: diffWeights.value.timePressure, interaction: diffWeights.value.interaction },
     }))
   }
   curveRows.value = all

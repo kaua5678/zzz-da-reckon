@@ -3,10 +3,11 @@
  *
  * 用户 2026-09-10 口径（改这里前先读）：
  *  ① **x 轴 = 每队自己的优化路径**，纵轴伤害、**x 是「自动算的操作难度」绝对值**
- *     （= Σ交互次数×权重 + 合轴溢出秒×权重 + **队友合轴节省秒×权重**，与散点页横轴同一把尺；用户 2026-09-10：「难度系数肯定是自动算呀，
+ *     （= Σ交互次数×权重 + **时间压力秒×权重**，与散点页横轴同一把尺；用户 2026-09-10：「难度系数肯定是自动算呀，
  *     参数可以修改，自变量就是交互值、吃掉队友的合轴时间等」）——**各队起点/走向不齐是特性**，
  *     对比看的是形状（起点 / 斜率 / 天花板 / 提升倍数）；
- *     ⚠️ x **不保证单调**：有的杠杆减少交互次数（难度降、伤害升 = 白拿的优化，贪心优先做）；
+ *     ⚠️ 时间压力 = 硬溢出 + 合轴抵扣 **一笔秒数**（用户 2026-09-11：「通过合轴来让溢出时间降低这俩其实是一个东西」），
+ *     只挂一个权重；x 仍**不保证单调**：有的杠杆减少交互次数（难度降、伤害升 = 白拿的优化，贪心优先做）；
  *  ② 点 = 累积开启的优化目标，档位数 = 录取到的目标数（最简版就是「全关 / 全开」两点）；
  *  ③ 开启顺序由贪心决定 ⇒ 这条曲线 = **该队的最优提升路径**。
  *
@@ -30,7 +31,7 @@
  *
  * `buildCurveChart` 是纯函数（不碰 store / 引擎），判据测试在同名单测文件里。
  *
- * @fact engine:难度曲线/x轴 口径: x = **自动算的操作难度绝对值** = `computeDifficulty`(当前档实打交互次数, 合轴溢出秒, 用户权重) —— 与散点页横轴同一函数同一单位（故可直接对齐比较）；各队起点不齐是特性，且 x 不保证单调（杠杆可减少交互 ⇒ 难度降伤害升 = 白拿）；目标自带 cost 只在**不接引擎**的静态口径下用 | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::集成：x 轴 = 实测操作难度 | 锚 src/composables/difficultyCurve.ts#measureOperationalDifficulty | 信 确认
+ * @fact engine:难度曲线/x轴 口径: x = **自动算的操作难度绝对值** = `computeDifficulty`(当前档实打交互次数, 时间压力秒, 用户权重) —— 与散点页横轴同一函数同一单位（故可直接对齐比较）；**时间压力 = 硬溢出 overflowSeconds + 合轴抵扣 saved，一笔秒数只挂一个权重**（用户 2026-09-11「合轴本身就有难度，通过合轴来让溢出时间降低这俩其实是一个东西」）；各队起点不齐是特性，且 x 不保证单调（杠杆可减少交互 ⇒ 难度降伤害升 = 白拿） | 据 用户@2026-09-10·口径合并@2026-09-11 | 验 difficultyCurve.test.ts::集成：x 轴 = 实测操作难度 | 锚 src/composables/difficultyCurve.ts#measureOperationalDifficulty | 信 确认
  * @fact engine:难度曲线/伤害归因 口径: 每档伤害按来源分组（直伤行 = 招式名、异常行 = 行 `type`，同名跨槽位合并），Σ 分组 ≡ 该档总伤害 ⇒ 归因精确；相邻档差分 = 正贡献 top + 被挤掉（最负在前）+ 其余，三段合计 ≡ 总 Δ | 据 实测@2026-09-10 | 验 difficultyCurve.test.ts::伤害归因 | 锚 src/composables/difficultyCurve.ts#attributeDmgChanges | 信 确认
  * @fact engine:难度曲线/关键次数标注 口径: 图上标注与「关键变化」面板只显示 Δ≥1 的次数跃迁（「多了一次」），Δ<1 的小数级微调只进 tooltip；关键次数 = 队伍级 7 项（大招/强特/连携/失衡/异常触发/紊乱/乱流，取自引擎结果字段）+ 角色专属「N 次」行（模块 `resourceSections` 自报，零角色硬编码） | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::只认「变多」 | 锚 src/composables/difficultyCurve.ts#diffKeyCounts | 信 确认
  * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
@@ -63,8 +64,8 @@ export interface DifficultyCurveOptions {
   /** 相对门槛（缺省 1e-4） */
   minGainRatio?: number
   /**
-   * 操作难度权重（主观量，页面「难度权重」弹层；缺省 = `INTERACTION_WEIGHTS` 默认表 + 溢出 1 秒 = 1 点）。
-   * 直接决定 x 轴：`computeDifficulty` 的 Σ(交互×权重) + 溢出秒×权重。
+   * 操作难度权重（主观量，页面「难度权重」弹层；缺省 = `INTERACTION_WEIGHTS` 默认表 + 时间压力 1 秒 = 1 点）。
+   * 直接决定 x 轴：`computeDifficulty` 的 Σ(交互×权重) + 时间压力秒×权重（时间压力 = 硬溢出 + 合轴抵扣）。
    */
   difficultyWeights?: DifficultyWeights
   /**
@@ -175,9 +176,11 @@ export function liveInteractions(
 
 /**
  * **自动算的操作难度**（x 轴自变量）＝ 既有单一事实源 `teamCompare#computeDifficulty`：
- *   Σ(交互次数 × 权重) + 合轴溢出秒 × 溢出权重
- * 其中「交互次数」取**当前档的实打次数**、「合轴溢出」取引擎的 `overflowSeconds`
- * （= 合轴抵扣后仍装不下、必须硬合轴才打得成的秒数 ⇒ 用户说的「吃掉（队友）合轴时间」那一半）。
+ *   Σ(交互次数 × 权重) + **时间压力秒 × 权重**
+ * 其中「交互次数」取**当前档的实打次数**；「时间压力」= 引擎 `overflowSeconds`（合轴抵扣后仍装不下、
+ * 被时间线截断掉的秒数）+ `frontlineOccupationBreakdown().saved`（合轴把队友前台压出去、解放成可用前台的秒数）。
+ * **这两个是同一笔秒数**（用户 2026-09-11 口径：「允许溢出一部分的原因是队友可以合轴，而合轴的效果是
+ * 总动作时间可以溢出一部分」）⇒ `computeDifficulty` 相加后只乘一个权重，不再各挂一个。
  * 权重是主观量、可改（页面「难度权重」弹层，localStorage），优先级见该函数注释。
  *
  * ⚠️ 与散点页**同一个函数、同一个单位** ⇒ 两张图的 x 轴可对齐比较（这正是难度曲线要解决的对比问题）。
@@ -189,7 +192,7 @@ export function measureOperationalDifficulty(
 ): number {
   const rr = ctx.calc.resourceResult.value
   const overflow = rr?.overflowSeconds ?? 0
-  // 队友合轴解放出来的前台时间也算难度（对齐越精确越难、总伤越高，用户口径 2026-09-10）
+  // 合轴抵扣出去的秒数：与硬溢出同属「必做前台超出 180s」这一笔，故交给 computeDifficulty 合成一项
   const saved = rr ? frontlineOccupationBreakdown(rr).saved : 0
   return computeDifficulty(liveInteractions(ctx.config, preset), preset.team, overflow, weights, saved).difficulty
 }

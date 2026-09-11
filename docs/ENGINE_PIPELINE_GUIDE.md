@@ -582,10 +582,15 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     生效测试 `comboAlignBudget.test.ts`（截断到 180 + 回流 + 守恒四条断言）。
     生效测试 `src/composables/__tests__/comboAlignBudget.test.ts`（8 例：池扩大/overflow 净额/
     GROSS-NET/max 不叠加/硬顶/端到端/回归守卫）。
-    **消费方**：`overflowSeconds` 已并入 TeamComparePage 操作难度横轴（`computeDifficulty` 加
-    overflow 参数，默认 1 秒 = 1 难度点；只厚轴队 >0，用户口径 2026-09-04）。难度是主观量——
-    交互权重与溢出权重都只是默认值，用户在对比页「难度权重」弹层自填覆盖（localStorage 持久化，
-    优先级 条目weight > 用户覆盖 > INTERACTION_WEIGHTS 默认表）。
+    **消费方**：`overflowSeconds` 已并入 TeamComparePage 操作难度横轴（`computeDifficulty` 的
+    **时间压力**项，默认 1 秒 = 1 难度点；只厚轴队 >0，用户口径 2026-09-04）。**2026-09-11 口径合并**
+    （用户：「合轴本身就有难度，通过合轴来让溢出时间降低这俩其实是一个东西；允许溢出一部分的原因
+    是队友可以合轴，而合轴的效果是总动作时间可以溢出一部分」）：难度里的时间压力 = 硬溢出
+    `overflowSeconds` + 合轴抵扣 `frontlineOccupationBreakdown().saved`，两半相加后**只挂一个权重**
+    （`weights.timePressure`）——原「溢出权重 + 合轴权重」两旋钮会把「拿合轴换掉溢出」重复计一次，
+    造成 V 型假象。难度是主观量——交互权重与时间压力权重都只是默认值，用户在对比页「难度权重」
+    弹层自填覆盖（localStorage 持久化，优先级 条目weight > 用户覆盖 > INTERACTION_WEIGHTS 默认表；
+    旧存的 overflow/align 两旋钮读取时合并成 timePressure）。
 
 22. **时间线截断 = 资源循环的硬不变量（2026-09-05 用户口径）**：资源允许的**动作量**超过可用
     前台时，必须在时间线处**截断**——实战 180s 到点结算，不管这一轮明心境/这套连段打没打完。
