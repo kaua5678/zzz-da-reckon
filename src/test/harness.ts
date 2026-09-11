@@ -84,6 +84,12 @@ export function setTeam(
   const catalog = useCatalogStore()
   for (let i = 0; i < 3; i++) {
     const t = team[i]
+    // 裸字符串（除空串占位）是调用方误用：`t.agentId` 会静默得到 undefined ⇒ 空队伍，
+    // 测试可能因此「因错误的原因通过」。这类静默失败实测踩过（初版特征测试 7/9 假红）。
+    if (typeof t === 'string' && t !== '') {
+      throw new Error(`[harness] setTeam 槽位 ${i} 收到裸字符串 ${JSON.stringify(t)}；`
+        + '请用对象形式 { agentId } 或空串占位（裸 id 会静默变成空队伍）')
+    }
     const agentId = t ? t.agentId : ''
     const base = agentId
       ? interactionBaselineFor(agentId, catalog.getAgent(agentId)?.specialty)
