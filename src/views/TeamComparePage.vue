@@ -18,25 +18,6 @@
           <span class="ctl-label">曲线金档</span>
           <n-select v-model:value="curveGold" :options="curveGoldOptions" size="small" style="width: 140px" />
         </div>
-        <div
-          v-if="chartMode === 'curve'"
-          class="ctl-field"
-          title="难度代价是主观量：x 轴 = 各目标代价之和，贪心顺序 = 增益 ÷ 代价（代价越高的目标越晚被录取）。默认是占位口径（G1 权重均衡 1 / G2 弹刀·联合 3 / G3 保底 2 / G4 取整 0），按你的手感改，浏览器本地持久化"
-        >
-          <span class="ctl-label">难度代价</span>
-          <n-popover trigger="click" placement="bottom-end" :style="{ width: '340px' }">
-            <template #trigger>
-              <n-button size="small" quaternary>难度代价</n-button>
-            </template>
-            <div class="diff-weight-pop">
-              <div v-for="g in DIFFICULTY_GOALS" :key="g.id" class="diff-weight-row">
-                <span class="diff-weight-label">{{ g.id }} · {{ g.label }}</span>
-                <n-input-number v-model:value="diffCosts[g.id]" size="tiny" :min="0" :max="99" :step="0.5" style="width: 84px" />
-              </div>
-              <n-button size="tiny" style="margin-top: 6px" @click="resetDiffCosts">恢复默认代价</n-button>
-            </div>
-          </n-popover>
-        </div>
         <div class="ctl-field">
           <span class="ctl-label">期数</span>
           <n-select
@@ -96,6 +77,24 @@
             clearable
           />
         </div>
+        <div class="ctl-field" title="操作难度是主观量（两图共用同一口径）：难度曲线的 x 轴 = Σ(交互次数×权重) + 合轴溢出秒×权重；散点图横轴同口径。按你的手感改，浏览器本地持久化；预设条目自带 weight 仍最优先">
+          <n-popover trigger="click" placement="bottom-end" :style="{ width: '300px' }">
+            <template #trigger>
+              <n-button size="small" quaternary>难度权重</n-button>
+            </template>
+            <div class="diff-weight-pop">
+              <div class="diff-weight-row">
+                <span class="diff-weight-label">合轴溢出（难度点/秒）</span>
+                <n-input-number v-model:value="diffWeights.overflow" size="tiny" :min="0" :max="20" :step="0.5" style="width: 84px" />
+              </div>
+              <div v-for="row in diffWeightRows" :key="row.type" class="diff-weight-row">
+                <span class="diff-weight-label">{{ row.label }}</span>
+                <n-input-number v-model:value="diffWeights.interaction[row.type]" size="tiny" :min="0" :max="20" :step="0.1" style="width: 84px" />
+              </div>
+              <n-button size="tiny" style="margin-top: 6px" @click="resetDiffWeights">恢复默认权重</n-button>
+            </div>
+          </n-popover>
+        </div>
         <!-- 以下旋钮只服务散点（曲线口径固定为「预设基础档 + 当前 Boss」，见 difficultyCurve.ts 文件头） -->
         <template v-if="chartMode === 'scatter'">
         <div class="ctl-field">
@@ -140,24 +139,6 @@
             placeholder="自动推荐"
           />
         </div>
-        <div class="ctl-field" title="操作难度是主观量：这里只是默认权重（交互 次数×权重 求和 + 合轴溢出秒×溢出权重），按你的手感改，浏览器本地持久化；预设条目自带 weight 仍最优先">
-          <n-popover trigger="click" placement="bottom-end" :style="{ width: '300px' }">
-            <template #trigger>
-              <n-button size="small" quaternary>难度权重</n-button>
-            </template>
-            <div class="diff-weight-pop">
-              <div class="diff-weight-row">
-                <span class="diff-weight-label">合轴溢出（难度点/秒）</span>
-                <n-input-number v-model:value="diffWeights.overflow" size="tiny" :min="0" :max="20" :step="0.5" style="width: 84px" />
-              </div>
-              <div v-for="row in diffWeightRows" :key="row.type" class="diff-weight-row">
-                <span class="diff-weight-label">{{ row.label }}</span>
-                <n-input-number v-model:value="diffWeights.interaction[row.type]" size="tiny" :min="0" :max="20" :step="0.1" style="width: 84px" />
-              </div>
-              <n-button size="tiny" style="margin-top: 6px" @click="resetDiffWeights">恢复默认权重</n-button>
-            </div>
-          </n-popover>
-        </div>
         </template>
         <n-button type="primary" size="small" :loading="computing" @click="chartMode === 'scatter' ? runCompare() : runCurves()">
           {{ chartMode === 'scatter' ? '计算' : '计算曲线' }}
@@ -179,7 +160,7 @@
         已选 {{ selectedPresets.length }} 队 · 金档 {{ curveGold < 0 ? '预设基础档' : `${curveGold} 金` }}<template
           v-if="curveClampedCount > 0"
         >（{{ curveClampedCount }} 队越界已按各自档位钳制）</template>
-        · 代价 {{ costScheme }}（「难度代价」弹层可调，贪心顺序 = 增益 ÷ 代价）
+        · x = 操作难度（Σ交互次数×权重 + 合轴溢出秒×权重，<b>自动算</b>；权重在「难度权重」弹层可调）
         · 每队要跑 ~10 次全量伤害（约 3~4 秒/队 ⇒ 预计 ≈{{ fmt(selectedPresets.length * 3.4 / 60, 1) }} 分钟）——
         曲线模式建议只选几支队做「难易强度」对比，跑起来可点「中止」保留已算部分。
       </div>
@@ -279,15 +260,17 @@
       </div>
     </n-card>
 
-    <!-- 难度曲线：每队自己的贪心提升路径（x 是累积难度代价，各队不对齐是特性） -->
+    <!-- 难度曲线：每队自己的贪心提升路径（x = 自动算的操作难度，各队不对齐是特性） -->
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="chart-card">
       <template #header>难度曲线（{{ curveData.series.length }} 队 · 每队自己的 x）</template>
       <div class="compare-note curve-note">
         口径：<b>{{ curveGold < 0 ? '预设基础档（0命1精 + 预设权重/交互/音擎/驱动盘）' : `${curveGold} 金（走预设金步 + 常驻步，越界按各队档位钳制）` }}</b>
         + 当前期数 Boss + 静态权重（不跑自动分配）；<b>不含 buff、不含「最优加金 / 自动下位」</b>
         （曲线要的是跨队同口径的形状，故起点 ≠ 散点页的某个点）。
-        x = 该队累积难度代价（G1 权重均衡 1 · G2 弹刀/联合 3 · G3 保底 2 · G4 取整 0，占位代价），y = 伤害/血量%。
-        <b>各队 x 不对齐是特性</b>：比形状（起点 / 斜率 / 天花板 / 提升倍数），不比同一 x 的大小；
+        x = 该队<b>自动算的</b>操作难度<b>绝对值</b>（Σ交互次数×权重 + 合轴溢出秒×权重；交互次数取这一档<b>实打</b>的次数，
+        不是预设声明——联合策略调低弹刀、般岳补交互都会算进去；权重在「难度权重」弹层调），<b>与散点页横轴同一把尺</b>。
+        y = 伤害/血量%。<b>各队起点/走向不齐是特性</b>：比形状（起点 / 斜率 / 天花板 / 提升倍数）；
+        <b>x 会往左走</b>——有的杠杆减少交互次数（难度降、伤害升 = 白拿的优化，贪心会优先做）。
         每档只录取有实际增益的目标，负收益目标被丢弃并在下表如实列出。每队约 3~4 秒。
       </div>
       <div class="chart-area">
@@ -300,7 +283,7 @@
           <line :x1="padL" :y1="curveYOf(100)" :x2="padL + plotW" :y2="curveYOf(100)" stroke="#e88080" stroke-dasharray="6,4" opacity="0.8" />
           <text :x="padL + 4" :y="curveYOf(100) - 4" fill="#e88080" font-size="10">击杀线 100%</text>
 
-          <text :x="padL + plotW / 2" :y="padT + plotH + 34" text-anchor="middle" class="chart-axis-label" font-size="11">累积难度代价（每队自己的优化路径）</text>
+          <text :x="padL + plotW / 2" :y="padT + plotH + 34" text-anchor="middle" class="chart-axis-label" font-size="11">操作难度绝对值（交互加权 + 合轴溢出，与散点同尺）</text>
           <text :x="14" :y="padT + plotH / 2" text-anchor="middle" class="chart-axis-label" font-size="11" transform="rotate(-90 14 0)">伤害/血量 %</text>
 
           <g v-for="(s, si) in curveSeriesPx" :key="'cs' + si">
@@ -349,12 +332,12 @@
       <div class="detail-table-wrap">
         <table class="detail-table">
           <thead>
-            <tr><th>队伍</th><th>难度</th><th>本档新开</th><th>关键变化</th><th>伤害</th><th>伤害归因（本档 Δ）</th></tr>
+            <tr><th>队伍</th><th>操作难度</th><th>本档新开</th><th>关键变化</th><th>伤害</th><th>伤害归因（本档 Δ）</th></tr>
           </thead>
           <tbody>
             <tr v-for="r in curveJumpRows" :key="r.key">
               <td class="td-team" :style="{ color: r.color }">{{ r.team }}</td>
-              <td>+{{ fmt(r.cost, 0) }} 点</td>
+              <td>{{ fmt(r.cost, 0) }} 点</td>
               <td class="td-detail">{{ r.opened === null ? '全关起点' : goalLabel(r.opened) }}</td>
               <td class="td-detail">{{ r.text }}</td>
               <td>
@@ -388,7 +371,7 @@
           <thead>
             <tr>
               <th>队伍</th><th>金档</th><th>全关</th><th>终点</th><th>提升</th><th>倍数</th>
-              <th>总代价</th><th>斜率</th><th>录取顺序</th><th>丢弃目标</th>
+              <th>操作难度</th><th>收益/难度</th><th>录取顺序</th><th>丢弃目标</th>
             </tr>
           </thead>
           <tbody>
@@ -425,7 +408,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS } from '@/composables/teamCompare'
-import { assignLabelLanes, attributeDmgChanges, difficultyGoalsWithCosts, estimateLabelWidth, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
+import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
@@ -680,38 +663,6 @@ const curveGoldOptions = computed(() => [
 /** 选了金档但越界（该队档位范围更窄）被钳制的队数——如实上报，不静默 */
 const curveClampedCount = computed(() => curveRows.value.filter(r => r.gold.totalGold !== r.gold.target).length)
 
-/**
- * 目标代价（x 轴口径，**主观量**，同「难度权重」弹层先例）：默认 = `DIFFICULTY_GOALS` 的占位代价，
- * 用户可改 + localStorage 持久化。改代价会同时改**贪心顺序**（score = 增益÷代价）与 x 轴刻度。
- */
-const DIFF_COST_KEY = 'zzz-compare-difficulty-costs'
-function defaultDiffCosts(): Record<string, number> {
-  return Object.fromEntries(DIFFICULTY_GOALS.map(g => [g.id, g.cost]))
-}
-function loadDiffCosts(): Record<string, number> {
-  const base = defaultDiffCosts()
-  try {
-    const raw = localStorage.getItem(DIFF_COST_KEY)
-    if (raw) {
-      const obj = JSON.parse(raw)
-      for (const g of DIFFICULTY_GOALS) {
-        const v = obj?.[g.id]
-        if (typeof v === 'number' && Number.isFinite(v) && v >= 0) base[g.id] = v
-      }
-    }
-  } catch { /* 损坏回落默认 */ }
-  return base
-}
-const diffCosts = ref<Record<string, number>>(loadDiffCosts())
-watch(diffCosts, v => {
-  try { localStorage.setItem(DIFF_COST_KEY, JSON.stringify(v)) } catch { /* 忽略 */ }
-}, { deep: true })
-function resetDiffCosts() { diffCosts.value = defaultDiffCosts() }
-/** 口径行展示用：`G1=1 · G2=3 · G3=2 · G4=0` */
-const costScheme = computed(() =>
-  DIFFICULTY_GOALS.map(g => `${g.id}=${cntNum(diffCosts.value[g.id] ?? g.cost)}`).join(' · '),
-)
-
 function goldLevels(): number[] {
   const levels: number[] = []
   const min = Math.max(0, Math.min(goldMin.value, goldMax.value))
@@ -777,7 +728,7 @@ async function runCurves() {
       boss,
       phase,
       goldLevel: curveGold.value >= 0 ? curveGold.value : undefined,
-      goals: difficultyGoalsWithCosts(diffCosts.value),
+      difficultyWeights: { overflow: diffWeights.value.overflow, interaction: diffWeights.value.interaction },
     }))
   }
   curveRows.value = all
@@ -866,7 +817,7 @@ const legendPresets = computed(() => {
   })
 })
 
-// ========== 难度曲线图表（x = 累积难度代价，y = 伤害/血量%） ==========
+// ========== 难度曲线图表（x = 自动算的操作难度，y = 伤害/血量%） ==========
 const curveData = computed(() =>
   curveRows.value.length > 0 ? buildCurveChart(curveRows.value, selectedPhase.value?.hp ?? 1) : null,
 )
@@ -978,7 +929,7 @@ const curveHoverTips = computed(() => {
   const attr = point.dmgChanges.length > 0 ? attributeDmgChanges(point.dmgChanges, 3, 1) : null
   return [
     s.name,
-    `难度 ${fmt(point.cost, 0)} 点 · 伤害 ${compact(point.dmg)}（${fmt(point.ratio, 1)}%）`,
+    `操作难度 ${fmt(point.cost, 0)} 点 · 伤害 ${compact(point.dmg)}（${fmt(point.ratio, 1)}%）`,
     attr
       ? `本档 Δ ${signedDmg(attr.totalDelta)} ← ${attr.top.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、') || '（无正贡献）'}${attr.squeezed.length > 0 ? `｜挤掉 ${attr.squeezed.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、')}` : ''}`
       : '本档无伤害变化（全关起点）',

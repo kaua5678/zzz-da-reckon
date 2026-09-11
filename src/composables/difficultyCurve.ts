@@ -2,8 +2,11 @@
  * 难度曲线展示层：把 `climbDifficultyLadder` 的逐队贪心阶梯变成可画、可比的形状。
  *
  * 用户 2026-09-10 口径（改这里前先读）：
- *  ① **x 轴 = 每队自己的优化路径**（累积难度代价），**各队 x 不对齐是特性**——
- *     对比看的是形状（起点 / 斜率 / 天花板 / 提升倍数），不是同一 x 上的大小；
+ *  ① **x 轴 = 每队自己的优化路径**，纵轴伤害、**x 是「自动算的操作难度」绝对值**
+ *     （= Σ交互次数×权重 + 合轴溢出秒×权重，与散点页横轴同一把尺；用户 2026-09-10：「难度系数肯定是自动算呀，
+ *     参数可以修改，自变量就是交互值、吃掉队友的合轴时间等」）——**各队起点/走向不齐是特性**，
+ *     对比看的是形状（起点 / 斜率 / 天花板 / 提升倍数）；
+ *     ⚠️ x **不保证单调**：有的杠杆减少交互次数（难度降、伤害升 = 白拿的优化，贪心优先做）；
  *  ② 点 = 累积开启的优化目标，档位数 = 录取到的目标数（最简版就是「全关 / 全开」两点）；
  *  ③ 开启顺序由贪心决定 ⇒ 这条曲线 = **该队的最优提升路径**。
  *
@@ -11,8 +14,8 @@
  *  · 全关基线 = `help teamCompare#applyTeamToStore`（预设声明的静态权重 / 交互 / 音擎 / 驱动盘）
  *    + `clearDifficultyLevers`（保底关、计数投影 off）+ `timeWeightStrategy='static'`（不跑自动分配）；
  *  · Boss / 期数 = 当前选中的期数视图（与散点同一入口）；
- *  · **不含 buff、不加金、不自动下位**（v1 有意简化：曲线要的是跨队同口径的形状，
- *    这三项都会让不同队站在不同起点上）⇒ 曲线起点 ≠ 散点页某个点，页面已注明。
+ *  · 金档可调（走 `applyGoldSteps`，缺省 = 该队基础金）；**不含 buff、不含「最优加金 / 自动下位」**
+ *    （曲线要的是跨队同口径的形状）⇒ 起点 ≠ 散点页某个点，页面已注明。
  *
  * **关键次数标注**（用户 2026-09-10 口径：「难度上升到关键变化后可以标注，比如大招多了一次，
  * 毁伤多一次，异常角色就紊乱多一次乱流多一次」）：阶梯每档采一次 `captureKeyCounts` 快照，
@@ -26,7 +29,7 @@
  *
  * `buildCurveChart` 是纯函数（不碰 store / 引擎），判据测试在同名单测文件里。
  *
- * @fact engine:难度曲线/x轴 口径: x = 每队自己的累积难度代价（G1 权重均衡 1 / G2 弹刀·联合 3 / G3 保底 2 / G4 取整 0，占位代价），**各队 x 不对齐是特性**——只比形状（起点/斜率/天花板/倍数），不比同一 x | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::单调不减 | 锚 src/composables/difficultyCurve.ts#buildCurveChart | 信 确认
+ * @fact engine:难度曲线/x轴 口径: x = **自动算的操作难度绝对值** = `computeDifficulty`(当前档实打交互次数, 合轴溢出秒, 用户权重) —— 与散点页横轴同一函数同一单位（故可直接对齐比较）；各队起点不齐是特性，且 x 不保证单调（杠杆可减少交互 ⇒ 难度降伤害升 = 白拿）；目标自带 cost 只在**不接引擎**的静态口径下用 | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::集成：x 轴 = 实测操作难度 | 锚 src/composables/difficultyCurve.ts#measureOperationalDifficulty | 信 确认
  * @fact engine:难度曲线/伤害归因 口径: 每档伤害按来源分组（直伤行 = 招式名、异常行 = 行 `type`，同名跨槽位合并），Σ 分组 ≡ 该档总伤害 ⇒ 归因精确；相邻档差分 = 正贡献 top + 被挤掉（最负在前）+ 其余，三段合计 ≡ 总 Δ | 据 实测@2026-09-10 | 验 difficultyCurve.test.ts::伤害归因 | 锚 src/composables/difficultyCurve.ts#attributeDmgChanges | 信 确认
  * @fact engine:难度曲线/关键次数标注 口径: 图上标注与「关键变化」面板只显示 Δ≥1 的次数跃迁（「多了一次」），Δ<1 的小数级微调只进 tooltip；关键次数 = 队伍级 7 项（大招/强特/连携/失衡/异常触发/紊乱/乱流，取自引擎结果字段）+ 角色专属「N 次」行（模块 `resourceSections` 自报，零角色硬编码） | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::只认「变多」 | 锚 src/composables/difficultyCurve.ts#diffKeyCounts | 信 确认
  * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
@@ -34,14 +37,17 @@
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
-  DIFFICULTY_GOALS, clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
+  clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
   type DifficultyGoal, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
-import { applyAxisBinding, applyGoldSteps, applyTeamToStore, baseGoldOf, restoreStore, snapshotStore } from '@/composables/teamCompare'
+import {
+  applyAxisBinding, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, restoreStore, snapshotStore,
+  type DifficultyWeights,
+} from '@/composables/teamCompare'
 import { getAgentMechanic } from '@/mechanics'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
-import type { TeamPreset } from '@/types/teamPreset'
+import type { InteractionItem, TeamPreset } from '@/types/teamPreset'
 
 type Calc = ReturnType<typeof useResourceCalc>
 
@@ -54,6 +60,11 @@ export interface DifficultyCurveOptions {
   goals?: DifficultyGoal[]
   /** 相对门槛（缺省 1e-4） */
   minGainRatio?: number
+  /**
+   * 操作难度权重（主观量，页面「难度权重」弹层；缺省 = `INTERACTION_WEIGHTS` 默认表 + 溢出 1 秒 = 1 点）。
+   * 直接决定 x 轴：`computeDifficulty` 的 Σ(交互×权重) + 溢出秒×权重。
+   */
+  difficultyWeights?: DifficultyWeights
   /**
    * **目标限定金**（缺省 = 该队预设基础金 `baseGoldOf(preset)`）。
    * 金步走 `teamCompare#applyGoldSteps`（= 散点页同源，含 `standardSteps` 常驻全量应用），
@@ -110,6 +121,8 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
         goals: options.goals,
         minGainRatio: options.minGainRatio,
         capture: ctx => captureLadderSnapshot(ctx.calc),
+        // x 轴 = 自动算的操作难度（不是手填代价）：每个目标实测 Δ难度
+        costOf: ctx => measureOperationalDifficulty(ctx, preset, options.difficultyWeights),
         base: (ctx, team) => {
           clearDifficultyLevers(ctx)
           applyTeamToStore(ctx.config, preset)
@@ -134,21 +147,58 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
   return rows
 }
 
-// ========== 目标代价（x 轴的可调口径） ==========
+// ========== 操作难度：自动算的 x 轴（用户 2026-09-10 口径） ==========
 
 /**
- * 把用户填的**目标代价**套进目标集（x 轴 = 累积代价，贪心排序 = 增益÷代价 ⇒ 代价直接决定曲线形状）。
- *
- * 代价是主观量（同 `engine:操作难度/权重可调` 那条既有口径）：页面给的是占位默认
- * （G1 权重均衡 1 / G2 弹刀·联合 3 / G3 保底 2 / G4 取整 0），用户可以改成自己的手感。
- * 只认已知目标 id；缺省 / 非法值（NaN、负数）**回落目标自带代价**，不会把 x 轴弄坏。
+ * 引擎侧交互字段 ↔ 难度交互类型（`computeDifficulty` 的入参口径）。
+ * 只列**有引擎字段**的类型；角色专属类型（如般岳·金身弹刀/双反）不进引擎字段，
+ * 由 `liveInteractions` 从预设声明里补回来。
  */
-export function difficultyGoalsWithCosts(costs?: Record<string, number>): DifficultyGoal[] {
-  if (!costs) return DIFFICULTY_GOALS
-  return DIFFICULTY_GOALS.map(g => {
-    const c = costs[g.id]
-    return Number.isFinite(c) && (c as number) >= 0 ? { ...g, cost: c as number } : g
-  })
+const ENGINE_INTERACTION_FIELDS: { type: string; field: keyof ReturnType<typeof useConfigStore>['team'][number] }[] = [
+  { type: 'parry', field: 'parryCount' },
+  { type: 'dodge', field: 'dodgeCounterCount' },
+  { type: 'quickAssist', field: 'quickAssistCount' },
+  { type: 'block', field: 'blockCount' },
+  { type: 'tauntCancel', field: 'tauntCancelCount' },
+]
+
+/**
+ * **当前配置**（不是预设声明）的交互清单：难度曲线的「交互值」自变量必须是**这一档实际打的次数** ——
+ * G2 联合策略会改弹刀、般岳会补交互、角点解会压非主C平A，读预设声明就量不出这些变化。
+ * 无引擎字段的角色专属类型沿用预设声明（它们只进难度、不进引擎）。
+ */
+export function liveInteractions(
+  config: ReturnType<typeof useConfigStore>,
+  preset: TeamPreset,
+): InteractionItem[] {
+  const out: InteractionItem[] = []
+  for (const { type, field } of ENGINE_INTERACTION_FIELDS) {
+    let count = 0
+    for (let slot = 0; slot < 3; slot++) count += Number(config.team[slot]?.[field] ?? 0)
+    out.push({ type, count })
+  }
+  for (const it of preset.interactions ?? []) {
+    if (!ENGINE_INTERACTION_FIELDS.some(f => f.type === it.type)) out.push(it)
+  }
+  return out
+}
+
+/**
+ * **自动算的操作难度**（x 轴自变量）＝ 既有单一事实源 `teamCompare#computeDifficulty`：
+ *   Σ(交互次数 × 权重) + 合轴溢出秒 × 溢出权重
+ * 其中「交互次数」取**当前档的实打次数**、「合轴溢出」取引擎的 `overflowSeconds`
+ * （= 合轴抵扣后仍装不下、必须硬合轴才打得成的秒数 ⇒ 用户说的「吃掉（队友）合轴时间」那一半）。
+ * 权重是主观量、可改（页面「难度权重」弹层，localStorage），优先级见该函数注释。
+ *
+ * ⚠️ 与散点页**同一个函数、同一个单位** ⇒ 两张图的 x 轴可对齐比较（这正是难度曲线要解决的对比问题）。
+ */
+export function measureOperationalDifficulty(
+  ctx: { config: ReturnType<typeof useConfigStore>; calc: Calc },
+  preset: TeamPreset,
+  weights?: DifficultyWeights,
+): number {
+  const overflow = ctx.calc.resourceResult.value?.overflowSeconds ?? 0
+  return computeDifficulty(liveInteractions(ctx.config, preset), preset.team, overflow, weights).difficulty
 }
 
 // ========== 伤害归因：这一档 +N 伤害是谁贡献的（同一份快照里采） ==========

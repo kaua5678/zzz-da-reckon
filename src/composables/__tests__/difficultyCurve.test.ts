@@ -8,11 +8,11 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
-  assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource, difficultyGoalsWithCosts,
-  diffKeyCounts, estimateLabelWidth, linkCountToDmg, majorChanges,
+  assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource,
+  diffKeyCounts, estimateLabelWidth, linkCountToDmg, liveInteractions, majorChanges, measureOperationalDifficulty,
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
-import { DIFFICULTY_GOALS, type LadderResult } from '@/composables/difficultyLadder'
+import type { LadderResult } from '@/composables/difficultyLadder'
 import { baseGoldOf } from '@/composables/teamCompare'
 import { teamPresets } from '@/data/teamPresets'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
@@ -148,39 +148,51 @@ describe('关键次数差分（用户口径：难度上升到关键变化要标�
   })
 })
 
-describe('目标代价（x 轴口径可调）', () => {
-  it('只覆盖已知目标；未知键 / NaN / 负数回落；不改动原目标集', () => {
-    expect(difficultyGoalsWithCosts()).toEqual(DIFFICULTY_GOALS) // 不传 = 原样
-    const custom = difficultyGoalsWithCosts({ G2: 9, G1: 0, 不存在: 5, G3: Number.NaN, G4: -1 })
-    expect(custom.map(g => g.id)).toEqual(DIFFICULTY_GOALS.map(g => g.id))
-    expect(custom.find(g => g.id === 'G2')!.cost).toBe(9)
-    expect(custom.find(g => g.id === 'G1')!.cost).toBe(0)
-    expect(custom.find(g => g.id === 'G3')!.cost).toBe(DIFFICULTY_GOALS.find(g => g.id === 'G3')!.cost)
-    expect(custom.find(g => g.id === 'G4')!.cost).toBe(DIFFICULTY_GOALS.find(g => g.id === 'G4')!.cost)
-    expect(DIFFICULTY_GOALS.find(g => g.id === 'G2')!.cost).toBe(3) // 原集没被就地改
+describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，用户 2026-09-10 口径）', () => {
+  it('liveInteractions：读**当前配置**的交互次数（不是预设声明），角色专属类型沿用预设', async () => {
+    const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    // 先清零（harness 的 TEST_BASE_CHAR 给每槽 quickAssistCount=3，不清零会串味）
+    for (const c of config.team) {
+      c.parryCount = 0; c.dodgeCounterCount = 0; c.quickAssistCount = 0; c.blockCount = 0
+    }
+    config.team[0]!.parryCount = 3
+    config.team[1]!.parryCount = 2
+    config.team[0]!.quickAssistCount = 4
+    const items = liveInteractions(config, preset)
+    expect(items.find(i => i.type === 'parry')!.count).toBe(5)      // 跨槽位求和 = 这一档实打次数
+    expect(items.find(i => i.type === 'quickAssist')!.count).toBe(4)
+    expect(items.some(i => i.type === 'dodge')).toBe(true)          // 0 值也保留（明细要能照抄字段）
   })
 
-  it('改代价真的进到 x 轴：全 0 代价 ⇒ 总代价 0；全 1 ⇒ 总代价 = 录取档数', async () => {
+  it('measureOperationalDifficulty = Σ(交互×权重) + 溢出秒×溢出权重（权重可改）', async () => {
+    const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    for (const c of config.team) { c.parryCount = 0; c.dodgeCounterCount = 0; c.quickAssistCount = 0; c.blockCount = 0; c.tauntCancelCount = 0 }
+    config.team[0]!.parryCount = 3
+    const calc = { resourceResult: { value: null } } as never
+    // 把弹刀权重设成 2 ⇒ 3 次弹刀 = 6 点难度
+    expect(measureOperationalDifficulty({ config, calc } as never, preset, { interaction: { parry: 2 } })).toBe(6)
+    // 权重换回默认 0.5 档（INTERACTION_WEIGHTS.parry）后，同一配置的量随之变化
+    const def = measureOperationalDifficulty({ config, calc } as never, preset)
+    expect(def).toBeGreaterThan(0)
+    expect(def).not.toBe(6)
+  })
+
+  it('集成：x 轴 = 实测操作难度（绝对值，与散点同尺），伤害单调增', async () => {
     const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
     const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
-
-    const zero = computeDifficultyCurves(calc, {
-      presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE,
-      goals: difficultyGoalsWithCosts({ G1: 0, G2: 0, G3: 0, G4: 0 }),
-    })
-    expect(zero[0]!.ladder.opened.length).toBeGreaterThan(0) // 代价 0 ≠ 不录取
-    expect(zero[0]!.ladder.points[zero[0]!.ladder.points.length - 1]!.x).toBe(0)
-
-    const one = computeDifficultyCurves(calc, {
-      presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE,
-      goals: difficultyGoalsWithCosts({ G1: 1, G2: 1, G3: 1, G4: 1 }),
-    })
-    const last = one[0]!.ladder.points[one[0]!.ladder.points.length - 1]!
-    expect(last.x).toBe(one[0]!.ladder.opened.length)
-    // 代价只影响「入场券」，不该把伤害算坏
-    expect(one[0]!.ladder.final).toBeGreaterThanOrEqual(one[0]!.ladder.base)
+    const [row] = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE })
+    const pts = row!.ladder.points
+    expect(pts[0]!.x).toBeGreaterThan(0)          // x = 绝对操作难度（全关也不是 0：有基础交互）
+    expect(pts[0]!.x).toBe(pts[0]!.difficulty)    // 与散点横轴同一口径，直接可比
+    for (const p of pts) expect(p.x).toBeCloseTo(p.difficulty!, 6)
+    // ⚠️ 实测口径下 x **不保证单调**：有的杠杆减少交互次数（难度降、伤害升 = 白拿的优化）。
+    // 只要求伤害单调（曲线意义所在），并把「难度降过」这件事如实暴露出来。
+    for (let i = 1; i < pts.length; i++) expect(pts[i]!.dmg).toBeGreaterThan(pts[i - 1]!.dmg)
+    expect(pts.some((p, i) => i > 0 && p.x < pts[i - 1]!.x)).toBe(true) // 这条队实测就有降难度的一档
   }, 300_000)
 })
 
@@ -325,7 +337,7 @@ const FAKE_PHASE: BossPresetPhase = {
 }
 
 describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
-  it('每队一条曲线、单调不减、且算完恢复现场（队伍/敌方/机制开关/权重策略）', async () => {
+  it('每队一条曲线、伤害单调不减，且算完恢复现场（队伍/敌方/机制开关/权重策略）', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
@@ -348,10 +360,11 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
     expect(ladder.base).toBeGreaterThan(0)
     expect(ladder.points[0]!.dmg).toBe(ladder.base)
     expect(ladder.opened.length).toBeGreaterThanOrEqual(1)
+    // 伤害必须单调增（曲线意义所在）；x = 绝对操作难度，**允许回落**（杠杆减少交互次数时难度下降）
     for (let i = 1; i < ladder.points.length; i++) {
-      expect(ladder.points[i]!.x).toBeGreaterThanOrEqual(ladder.points[i - 1]!.x)
       expect(ladder.points[i]!.dmg).toBeGreaterThan(ladder.points[i - 1]!.dmg)
     }
+    for (const p of ladder.points) expect(p.x).toBe(p.difficulty)
 
     // 关键次数快照：7 项队伍级键齐备；changes 与相邻档差分逐位一致（面板/标注的数据源）
     const p0 = ladder.points[0]!

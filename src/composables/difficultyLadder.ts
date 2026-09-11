@@ -103,7 +103,13 @@ function undo(ctx: LadderCtx, goal: DifficultyGoal) {
 }
 
 export interface LadderPoint {
-  /** 累积难度（各队自己的 x，不对齐是特性） */
+  /**
+   * x 轴值。两种口径：
+   *  · 缺省（静态 cost）：**累积**代价（从 0 开始累加各目标自带 cost）；
+   *  · 给了 `opts.costOf`：**实测的操作难度绝对值**（起点 = 全关那一档的难度，不是 0）——
+   *    于是这条曲线的 x 与散点图的横轴**同一把尺**（可跨图对照），代价是它不再保证单调：
+   *    有的杠杆会**减少**交互次数（如联合策略调低弹刀）⇒ 难度下降、伤害上升 = 白拿的优化。
+   */
   x: number
   dmg: number
   /** 这一档新录取的目标（null = 全关起点） */
@@ -118,6 +124,11 @@ export interface LadderPoint {
    * 相邻档做差就是「这一档 +N 伤害是谁贡献的」（见 `difficultyCurve.ts#diffDmgBySource`）。
    */
   dmgBySource?: Record<string, number>
+  /**
+   * 这一档的**绝对操作难度**（仅当 `opts.costOf` 给了才在；单位 = 展示层口径，如
+   * 「Σ交互次数×权重 + 合轴溢出秒×权重」的操作难度点）。`x` 就是它相对全关的增量。
+   */
+  difficulty?: number
 }
 
 /** 一档的快照：展示层要什么就采什么（`climbDifficultyLadder#opts.capture` 的返回） */
@@ -157,11 +168,25 @@ export interface LadderOpts {
    * 展示层用它做「大招多一次 / 紊乱多一次」标注与「这一档伤害是谁贡献的」归因。
    */
   capture?: (ctx: LadderCtx) => LadderSnapshot
+  /**
+   * **自定义「操作难度」测量**（用户 2026-09-10 口径：「难度系数肯定是自动算呀，参数可以修改，
+   * 自变量就是交互值、吃掉队友的合轴时间等」）。
+   *
+   * 给了它之后：
+   *  · 每个候选目标的代价 = **实测 Δ难度**（试开时前后各量一次，负增量按 0 = 免费杠杆）；
+   *  · 排序 `score = Δ伤害 ÷ Δ难度`（Δ难度 = 0 时退化为按 Δ伤害 排，即「白拿的优化先做」）；
+   *  · `x` 累积 Δ难度（单位 = 调用方口径），`LadderPoint.difficulty` 记绝对值。
+   * 缺省不给 = 沿用目标自带的静态 `cost`（纯策略模块的占位口径，供不接引擎的调用方用）。
+   */
+  costOf?: (ctx: LadderCtx) => number
 }
 
 /**
  * 从「全关」出发贪心爬阶梯：每步试开每个未录取目标，取 **Δ伤害 / 代价** 最高者；
  * **Δ<0 的目标不录取**（单调性保证）。代价为 0 的目标按 Δ 直接比较（除零保护）。
+ *
+ * 代价来源两种（见 `LadderOpts.costOf`）：缺省用目标自带静态 cost；给了 `costOf` 就**实测**
+ * 每个目标的操作难度增量（试开前/后各量一次），排序与 x 轴都用实测值。
  */
 export function climbDifficultyLadder(
   ctx: LadderCtx,
@@ -182,20 +207,29 @@ export function climbDifficultyLadder(
     const s = capture?.(ctx)
     return s ? { counts: s.counts, dmgBySource: s.dmgBySource } : {}
   }
-  const points: LadderPoint[] = [{ x: 0, dmg: base, opened: null, ...snap() }]
+  const costOf = opts.costOf
+  const cost0 = costOf ? costOf(ctx) : 0
+  const points: LadderPoint[] = [{
+    x: cost0, dmg: base, opened: null, ...snap(), ...(costOf ? { difficulty: cost0 } : {}),
+  }]
   const remaining = new Set(goals)
 
   while (remaining.size > 0) {
-    let best: { goal: DifficultyGoal; gain: number; score: number; dmg: number } | null = null
+    // 实测口径下，每个候选的代价 = 试开前后各量一次操作难度（当前已录取状态为基准）
+    const costBefore = costOf ? costOf(ctx) : 0
+    let best: { goal: DifficultyGoal; gain: number; score: number; dmg: number; dCost: number } | null = null
     for (const goal of remaining) {
       const snap = goal.mutates ? snapshot(ctx) : null
       goal.apply(ctx)
       const d = ctx.calc.teamTotalDamage.value
+      const costAfter = costOf ? costOf(ctx) : 0
       if (snap) restore(ctx, snap)
       else undo(ctx, goal)
       const gain = d - dmg
-      const score = goal.cost > 0 ? gain / goal.cost : gain
-      if (!best || score > best.score) best = { goal, gain, score, dmg: d }
+      // 实测 Δ难度：负增量按 0（免费杠杆 = 白拿的优化，按 Δ伤害 排）
+      const dCost = costOf ? Math.max(0, costAfter - costBefore) : goal.cost
+      const score = dCost > 0 ? gain / dCost : gain
+      if (!best || score > best.score) best = { goal, gain, score, dmg: d, dCost }
     }
     if (!best) break
     if (best.gain <= acceptAt) {
@@ -206,11 +240,14 @@ export function climbDifficultyLadder(
     }
     best.goal.apply(ctx)
     dmg = ctx.calc.teamTotalDamage.value
-    x += best.goal.cost
+    // 实测口径下 x = 这一档的**绝对**操作难度（与散点横轴同尺）；静态口径下仍是累积 cost
+    x = costOf ? costOf(ctx) : x + best.dCost
     opened.push(best.goal.id)
     remaining.delete(best.goal)
-    // 伤害落定后再采快照：这一档的 counts / dmgBySource 与这一档的 dmg 同源
-    points.push({ x, dmg, opened: best.goal.id, ...snap() })
+    // 伤害落定后再采快照：这一档的 counts / dmgBySource / difficulty 与这一档的 dmg 同源
+    points.push({
+      x, dmg, opened: best.goal.id, ...snap(), ...(costOf ? { difficulty: x } : {}),
+    })
   }
   return { base, final: dmg, points, opened, dropped }
 }
