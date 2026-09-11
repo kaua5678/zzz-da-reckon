@@ -431,11 +431,11 @@ export function assignLabelLanes(items: { x: number; width: number }[], maxLanes
   return lanes
 }
 
-/** 标注文字估宽（font-size 9：中日韩 ≈9px/字，其余 ≈5.5px） */
+/** 标注文字估宽（font-size 9 + 加粗：中日韩 ≈10.5px/字，其余 ≈6.5px；宁可高估，低估会漏判重叠） */
 export function estimateLabelWidth(text: string): number {
   let w = 0
-  for (const ch of text) w += /[\u3000-\u9fff\uff00-\uffef]/.test(ch) ? 9 : 5.5
-  return w + 6
+  for (const ch of text) w += /[\u3000-\u9fff\uff00-\uffef]/.test(ch) ? 10.5 : 6.5
+  return w + 8
 }
 
 // ========== 图表数据（纯函数） ==========

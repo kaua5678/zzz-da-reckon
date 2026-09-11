@@ -306,7 +306,10 @@
             <!-- 关键次数跃迁标注（「多了一次」量级）：加一圈 + 点上方文字 -->
             <g v-for="(j, ji) in s.jumpPts" :key="'cj' + si + '-' + ji">
               <circle :cx="j.cx" :cy="j.cy" r="6.5" fill="none" :stroke="s.color" stroke-width="1.2" opacity="0.85" />
-              <text :x="j.cx" :y="j.cy - 11 - j.lane * 15" text-anchor="middle" class="curve-jump-label" font-size="9">{{ j.text }}</text>
+              <text
+                v-if="j.labeled" :x="j.cx" :y="j.cy - 11 - j.lane * 15"
+                text-anchor="middle" class="curve-jump-label" font-size="9"
+              >{{ j.text }}</text>
             </g>
           </g>
 
@@ -344,17 +347,19 @@
               <td class="td-team" :style="{ color: r.color }">{{ r.team }}</td>
               <td>{{ fmt(r.cost, 0) }} 点</td>
               <td class="td-detail">{{ r.opened === null ? '全关起点' : goalLabel(r.opened) }}</td>
-              <td class="td-detail">{{ r.text }}</td>
+              <td class="td-detail"><div class="cell-clamp">{{ r.text }}</div></td>
               <td>
                 {{ compact(r.dmg) }}
                 <div class="td-standard">{{ signedDmg(r.attr.totalDelta) }}（{{ fmt(r.ratio, 1) }}%）</div>
               </td>
               <td class="td-detail">
-                {{ r.attr.top.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、') || '（无正贡献）' }}
-                <div v-if="r.attr.squeezed.length > 0" class="curve-neg">
-                  挤掉：{{ r.attr.squeezed.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、') }}
+                <div class="cell-clamp">
+                  {{ r.attr.top.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、') || '（无正贡献）' }}
+                  <div v-if="r.attr.squeezed.length > 0" class="curve-neg">
+                    挤掉：{{ r.attr.squeezed.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、') }}
+                  </div>
+                  <div v-if="Math.abs(r.attr.restDelta) > 1" class="td-standard">其余 {{ signedDmg(r.attr.restDelta) }}</div>
                 </div>
-                <div v-if="Math.abs(r.attr.restDelta) > 1" class="td-standard">其余 {{ signedDmg(r.attr.restDelta) }}</div>
               </td>
             </tr>
             <tr v-if="curveJumpRows.length === 0">
@@ -392,12 +397,8 @@
               <td>{{ fmt(s.gainX, 2) }}×</td>
               <td>{{ fmt(s.totalCost, 0) }} 点</td>
               <td>{{ fmt(s.slope, 1) }}%/点</td>
-              <td class="td-detail">
-                {{ s.flat ? '无优化空间（四目标均无增益）' : s.opened.map(goalLabel).join(' → ') }}
-              </td>
-              <td class="td-detail">
-                {{ s.dropped.length === 0 ? '—' : s.dropped.map(d => `${goalLabel(d.id)}（${compact(d.gain)}）`).join('、') }}
-              </td>
+              <td class="td-detail"><div class="cell-clamp">{{ s.flat ? '无优化空间（目标均无增益）' : s.opened.map(goalLabel).join(' → ') }}</div></td>
+              <td class="td-detail"><div class="cell-clamp">{{ s.dropped.length === 0 ? '—' : s.dropped.map(d => `${goalLabel(d.id)}（${compact(d.gain)}）`).join('、') }}</div></td>
             </tr>
           </tbody>
         </table>
@@ -880,13 +881,25 @@ const curveSeriesPx = computed(() => {
       text: j.changes.map(cntDelta).slice(0, 2).join('·') + (j.changes.length > 2 ? '…' : ''),
     })),
   }))
-  // 跨队统一分道：同一 x 附近的标注错开抬升，避免叠在一起（实机点通实测过 1 对重叠）
-  const all = series.flatMap(s => s.jumpPts)
-  const lanes = assignLabelLanes(all.map(j => ({ x: j.cx, width: estimateLabelWidth(j.text) })), 4)
+  // 图上标注只保留**每队伤害增量最大的前 2 处**（G5 合轴率杠杆会让跃迁涨到 17 处，
+  // 全标必叠；完整清单在「关键变化」面板与 tooltip 里），再跨队统一分道错开抬升。
+  const seriesTop = series.map(s => {
+    const keep = new Set(
+      [...s.jumpPts]
+        .sort((a, b) => (b.dmg - (s.base ?? 0)) - (a.dmg - (s.base ?? 0)))
+        .slice(0, 2),
+    )
+    return s.jumpPts.filter(j => keep.has(j))
+  })
+  const all = seriesTop.flat()
+  const lanes = assignLabelLanes(all.map(j => ({ x: j.cx, width: estimateLabelWidth(j.text) })), 6)
   let k = 0
-  return series.map(s => ({
+  return series.map((s, si) => ({
     ...s,
-    jumpPts: s.jumpPts.map(j => ({ ...j, lane: lanes[k++] ?? 0 })),
+    jumpPts: s.jumpPts.map(j => {
+      const idx = seriesTop[si]!.indexOf(j)
+      return { ...j, lane: idx < 0 ? 0 : (lanes[k++] ?? 0), labeled: idx >= 0 }
+    }),
   }))
 })
 /** 关键变化面板的行（跨队铺平；数据源 = 各队已过滤过 major 的 `jumps`） */
@@ -1092,6 +1105,20 @@ function killSeconds(hpRatio: number): number {
 .chart-hover-dot { fill: var(--app-text-solid); }
 .chart-tooltip-box { fill: var(--app-tooltip-bg); stroke: var(--wa-150); }
 .chart-tooltip-text { fill: var(--app-tooltip-text); }
+
+/* 长文本列（关键变化 / 伤害归因 / 录取顺序）：auto 布局下 td 的 max-content 会撑破容器，
+   实测溢出 191~200px ⇒ 单元格内套一个**限宽 block** 才能可靠换行 */
+.cell-clamp {
+  max-width: 300px;
+  white-space: normal;
+  line-height: 1.5;
+}
+
+.td-wrap {
+  white-space: normal;
+  min-width: 150px;
+  line-height: 1.5;
+}
 
 /* 伤害归因里的「被挤掉」行（负贡献）：用语义 danger 令牌，别加字面色值（令牌棘轮） */
 .curve-neg {

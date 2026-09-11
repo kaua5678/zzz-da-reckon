@@ -36,8 +36,13 @@ export interface DifficultyGoal {
   label: string
   /** 难度代价（占位口径，见文件头） */
   cost: number
-  /** 是否改写权重/交互次数（试开后需要快照还原） */
+  /** 是否改写权重/交互次数/合轴率（试开后需要快照还原） */
   mutates: boolean
+  /**
+   * **可重复录取**：录取后不退出候选池，下一轮继续试开，直到「增益低于门槛被丢弃」或 `LadderOpts.maxSteps` 用完。
+   * 用于「分档推进」的杠杆（如合轴率：先 +50%、再 +100%），使曲线能出现多个台阶而不是一步到顶。
+   */
+  repeatable?: boolean
   /** 打开该目标（在已录取目标之上生效） */
   apply: (ctx: LadderCtx) => void
 }
@@ -60,6 +65,34 @@ export const DIFFICULTY_GOALS: DifficultyGoal[] = [
     id: 'G4', label: '取整（失衡→计数投影）', cost: 0, mutates: false,
     apply: ctx => { ctx.config.setMechanicSetting('time.stunPlanProjection', 2) }, // 默认 round（实测优于 ceil）
   },
+  {
+    /**
+     * **合轴率优化（自动）** —— 用户 2026-09-10 口径：「合轴率在资源利用率处修改，但那是手动的，
+     * 之前没考虑自动修改」+「把队友的前台时间进行合轴率的优化，再次解放出来部分可使用的前台时间，
+     * 进而让主c的资源回复和平a时间更多，导致总伤增加」。
+     *
+     * 手填入口在结果页「合轴率调节」弹窗（slot × moveId，缺省 0）；这里把它变成**可自动推进的杠杆**：
+     * 每档把**该队执行计划里**每个招式的合轴率 +50%（上限 100%），由阶梯按 Δ伤害/Δ难度 决定值不值得做。
+     * 引擎只对 6 类招式消费合轴率（强特/终结技/连携技/闪避反击/轻弹刀/支援突击，见
+     * `resourceCalc/helpers#buildCharConfig` 的 `ov(...)`），其余 moveId 写进去是无害空操作。
+     * `repeatable`：50% → 100% 两档，边际收益掉到门槛以下就自动停。
+     */
+    id: 'G5', label: '合轴率优化（自动：把队友前台压成并行）', cost: 1, mutates: true, repeatable: true,
+    apply: ctx => {
+      const rr = ctx.calc.resourceResult.value
+      if (!rr) return
+      const STEP = 0.5
+      for (const ch of rr.characters) {
+        for (const exec of ch.executions ?? []) {
+          const moveId = exec.moveId
+          if (!moveId || (exec.totalTime ?? 0) <= 0) continue
+          const cur = ctx.config.getComboAlignOverride(ch.slot, moveId, 0)
+          if (cur >= 1) continue
+          ctx.config.setComboAlignOverride(ch.slot, moveId, Math.min(1, Math.round((cur + STEP) * 100) / 100))
+        }
+      }
+    },
+  },
 ]
 
 /**
@@ -69,6 +102,8 @@ export const DIFFICULTY_GOALS: DifficultyGoal[] = [
 export function clearDifficultyLevers(ctx: LadderCtx) {
   for (const k of GUARANTEE_KEYS) ctx.config.setMechanicSetting(k, 0)
   ctx.config.setMechanicSetting('time.stunPlanProjection', 0)
+  // 合轴率优化也是「优化目标」：全关 = 不动手动/表格给的合轴率（用户手填值由调用方快照还原）
+  for (let s = 0; s < 3; s++) ctx.config.clearComboAlignOverrides(s)
 }
 
 /**
@@ -83,16 +118,29 @@ export function resetDifficultyGoals(ctx: LadderCtx, team: [string, string, stri
   return ctx.calc.teamTotalDamage.value
 }
 
-function snapshot(ctx: LadderCtx) {
+interface LadderMutSnap {
+  w: number[]
+  p: number[]
+  /** 合轴率覆盖（slot → moveId → ratio）；G5 会写它，试开回滚必须一起还原 */
+  align: Record<number, Record<string, number>>
+}
+function snapshot(ctx: LadderCtx): LadderMutSnap {
   return {
     w: [0, 1, 2].map(s => ctx.config.team[s]!.basicAttackTimeWeight),
     p: [0, 1, 2].map(s => ctx.config.team[s]!.parryCount ?? 0),
+    align: JSON.parse(JSON.stringify(ctx.config.comboAlignOverrides ?? {})),
   }
 }
-function restore(ctx: LadderCtx, snap: { w: number[]; p: number[] }) {
+function restore(ctx: LadderCtx, snap: LadderMutSnap) {
   for (let s = 0; s < 3; s++) {
     ctx.config.setBasicAttackTimeWeight(s, snap.w[s])
     ctx.config.setParryCount(s, snap.p[s])
+  }
+  for (let s = 0; s < 3; s++) {
+    ctx.config.clearComboAlignOverrides(s)
+    for (const [moveId, ratio] of Object.entries(snap.align[s] ?? {})) {
+      ctx.config.setComboAlignOverride(s, moveId, ratio)
+    }
   }
 }
 /** 关掉一个已录取目标（仅在试开回滚时用） */
@@ -179,6 +227,8 @@ export interface LadderOpts {
    * 缺省不给 = 沿用目标自带的静态 `cost`（纯策略模块的占位口径，供不接引擎的调用方用）。
    */
   costOf?: (ctx: LadderCtx) => number
+  /** 最多录取多少档（防 repeatable 目标不收敛；缺省 24） */
+  maxSteps?: number
 }
 
 /**
@@ -208,6 +258,7 @@ export function climbDifficultyLadder(
     return s ? { counts: s.counts, dmgBySource: s.dmgBySource } : {}
   }
   const costOf = opts.costOf
+  const maxSteps = opts.maxSteps ?? 24
   const cost0 = costOf ? costOf(ctx) : 0
   const points: LadderPoint[] = [{
     x: cost0, dmg: base, opened: null, ...snap(), ...(costOf ? { difficulty: cost0 } : {}),
@@ -243,7 +294,9 @@ export function climbDifficultyLadder(
     // 实测口径下 x = 这一档的**绝对**操作难度（与散点横轴同尺）；静态口径下仍是累积 cost
     x = costOf ? costOf(ctx) : x + best.dCost
     opened.push(best.goal.id)
-    remaining.delete(best.goal)
+    // 可重复杠杆留在候选池里继续爬；普通目标录取即出池。maxSteps 是防呆（repeatable 靠「增益掉门槛」自然停）
+    if (!best.goal.repeatable) remaining.delete(best.goal)
+    if (opened.length >= maxSteps) break
     // 伤害落定后再采快照：这一档的 counts / dmgBySource / difficulty 与这一档的 dmg 同源
     points.push({
       x, dmg, opened: best.goal.id, ...snap(), ...(costOf ? { difficulty: x } : {}),

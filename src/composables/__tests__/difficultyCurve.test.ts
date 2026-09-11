@@ -12,7 +12,7 @@ import {
   diffKeyCounts, estimateLabelWidth, linkCountToDmg, liveInteractions, majorChanges, measureOperationalDifficulty,
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
-import type { LadderResult } from '@/composables/difficultyLadder'
+import { DIFFICULTY_GOALS, clearDifficultyLevers, climbDifficultyLadder, type LadderResult } from '@/composables/difficultyLadder'
 import { applyTeamToStore, baseGoldOf, computeDifficulty } from '@/composables/teamCompare'
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/helpers'
 import { teamPresets } from '@/data/teamPresets'
@@ -225,6 +225,53 @@ describe('队友合轴也算难度（用户 2026-09-10：合轴节约出来的�
     expect(b.creditApplied).toBeGreaterThanOrEqual(0)
     expect(b.axisOverlap).toBeGreaterThanOrEqual(0)
     expect(b.net).toBeCloseTo(netFrontlineOccupation(rr), 6)  // 拆解函数与净占用单一事实源一致
+  }, 300_000)
+})
+
+describe('G5 合轴率优化（自动杠杆，用户 2026-09-10：手填→自动）', () => {
+  it('套用 G5 ⇒ 合轴率覆盖被写入、saved 变大、伤害不降（自动优化真的省出前台时间）', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    const ctx = { config, calc }
+    clearDifficultyLevers(ctx)                 // 全关基线（会清掉合轴率覆盖）
+    applyTeamToStore(config, preset)
+    const d0 = calc.teamTotalDamage.value
+    const saved0 = frontlineOccupationBreakdown(calc.resourceResult.value!).saved
+    expect(saved0).toBeCloseTo(0, 6)           // 缺省合轴率全 0（opt-in）⇒ 全关 saved = 0
+
+    const g5 = DIFFICULTY_GOALS.find(g => g.id === 'G5')!
+    g5.apply(ctx)
+    const d1 = calc.teamTotalDamage.value
+    const saved1 = frontlineOccupationBreakdown(calc.resourceResult.value!).saved
+    expect(Object.keys(config.comboAlignOverrides ?? {}).length).toBeGreaterThan(0) // 覆盖写进去了
+    expect(saved1).toBeGreaterThan(0.5)        // 解放出前台时间
+    expect(d1).toBeGreaterThanOrEqual(d0)      // 伤害不降（自动合轴率的收益）
+    // 可重复：再套一次 ⇒ 合轴率到 100%，saved 更大
+    g5.apply(ctx)
+    expect(frontlineOccupationBreakdown(calc.resourceResult.value!).saved).toBeGreaterThan(saved1)
+  }, 300_000)
+
+  it('试开回滚不留痕：G5 没被录取时，合轴率覆盖必须还原（阶梯快照含 comboAlignOverrides）', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    const ctx = { config, calc }
+    clearDifficultyLevers(ctx)
+    applyTeamToStore(config, preset)
+    const before = JSON.stringify(config.comboAlignOverrides ?? {})
+    // minGainRatio=10（1000%）⇒ G5 的增益必然低于门槛 ⇒ 试开后丢弃
+    const r = climbDifficultyLadder(ctx, preset.team as [string, string, string], {
+      goals: [DIFFICULTY_GOALS.find(g => g.id === 'G5')!],
+      minGainRatio: 10,
+      costOf: c => measureOperationalDifficulty(c, preset),
+    })
+    expect(r.opened).toEqual([])
+    expect(r.dropped.map(d => d.id)).toEqual(['G5'])
+    expect(JSON.stringify(config.comboAlignOverrides ?? {})).toBe(before) // 没留痕
+    expect(frontlineOccupationBreakdown(calc.resourceResult.value!).saved).toBeCloseTo(0, 6)
   }, 300_000)
 })
 

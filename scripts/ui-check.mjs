@@ -194,6 +194,10 @@ const failures = []
 try {
   await send('Page.enable')
   await send('Runtime.enable')
+  // 关缓存：python http.server 不发 Cache-Control，浏览器会把 index.html 缓存住 ⇒
+  // 改完代码重新 build 后仍跑旧 bundle（实机点通实测踩到：修了却「没生效」）。
+  await send('Network.enable')
+  await send('Network.setCacheDisabled', { cacheDisabled: true })
   await send('Page.addScriptToEvaluateOnNewDocument', {
     source: `window.__errs=[];addEventListener('error',e=>window.__errs.push('error:'+e.message));addEventListener('unhandledrejection',e=>window.__errs.push('rej:'+String(e.reason)));`,
   })
@@ -316,6 +320,11 @@ try {
       cards: [...document.querySelectorAll('.n-card')].map(c => ({
         title: (c.querySelector('.n-card-header')?.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 30),
         w: Math.round(c.getBoundingClientRect().width), h: Math.round(c.getBoundingClientRect().height),
+      })),
+      tableOverflow: [...document.querySelectorAll('.detail-table-wrap')].map(w => ({
+        card: (w.closest('.n-card')?.querySelector('.n-card-header')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 24),
+        overflowX: w.scrollWidth - w.clientWidth,
+        widestCell: Math.max(0, ...[...w.querySelectorAll('th,td')].map(c => c.getBoundingClientRect().width)),
       })),
       tableOverflowX: [...document.querySelectorAll('.detail-table-wrap')].map(w => w.scrollWidth - w.clientWidth),
       // 曲线摘要表头 + 首行前三列（用来确认「金档」这类新列真的渲染了）
