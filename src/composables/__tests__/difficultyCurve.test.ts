@@ -8,10 +8,12 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
-  attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource, diffKeyCounts, linkCountToDmg, majorChanges,
+  assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource,
+  diffKeyCounts, estimateLabelWidth, linkCountToDmg, majorChanges,
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
 import type { LadderResult } from '@/composables/difficultyLadder'
+import { baseGoldOf } from '@/composables/teamCompare'
 import { teamPresets } from '@/data/teamPresets'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
@@ -40,6 +42,10 @@ function mkLadder(
   }
 }
 
+/** 合成图行（纯函数判据不关心金档，填占位） */
+const mkRow = (presetId: string, name: string, ladder: LadderResult): DifficultyCurveRow =>
+  ({ presetId, name, ladder, gold: { target: 0, totalGold: 0, label: '测试档' } })
+
 const HP = 100_000_000
 
 describe('buildCurveChart（纯函数）', () => {
@@ -55,8 +61,8 @@ describe('buildCurveChart（纯函数）', () => {
 
   it('比例 = 伤害/血量%；上界为 50 的倍数且 ≥100；刻度覆盖到 costMax', () => {
     const rows: DifficultyCurveRow[] = [
-      { presetId: 'a', name: 'A', ladder: mkLadder([[0, 45_000_000], [3, 90_000_000]], ['G2']) },
-      { presetId: 'b', name: 'B', ladder: mkLadder([[0, 20_000_000], [1, 22_000_000], [4, 30_000_000]], ['G1', 'G2']) },
+      mkRow('a', 'A', mkLadder([[0, 45_000_000], [3, 90_000_000]], ['G2'])),
+      mkRow('b', 'B', mkLadder([[0, 20_000_000], [1, 22_000_000], [4, 30_000_000]], ['G1', 'G2'])),
     ]
     const c = buildCurveChart(rows, HP)
     expect(c.series).toHaveLength(2)
@@ -69,8 +75,8 @@ describe('buildCurveChart（纯函数）', () => {
 
   it('单调不减 + 提升倍数/斜率：每队自己的 x 不对齐也照样成立', () => {
     const rows: DifficultyCurveRow[] = [
-      { presetId: 'a', name: 'A', ladder: mkLadder([[0, 10], [1, 20], [4, 30], [6, 30]], ['G1', 'G2', 'G3']) },
-      { presetId: 'b', name: 'B', ladder: mkLadder([[0, 10], [3, 11]], ['G2']) },
+      mkRow('a', 'A', mkLadder([[0, 10], [1, 20], [4, 30], [6, 30]], ['G1', 'G2', 'G3'])),
+      mkRow('b', 'B', mkLadder([[0, 10], [3, 11]], ['G2'])),
     ]
     for (const s of buildCurveChart(rows, 100).series) {
       for (let i = 1; i < s.points.length; i++) {
@@ -87,14 +93,14 @@ describe('buildCurveChart（纯函数）', () => {
   })
 
   it('平台队（一个目标都没录取）标 flat 且只有起点；代价 0 的目标不塌缩', () => {
-    const flat = buildCurveChart([{ presetId: 'f', name: 'F', ladder: mkLadder([[0, 45_000_000]]) }], HP)
+    const flat = buildCurveChart([mkRow('f', 'F', mkLadder([[0, 45_000_000]]))], HP)
     expect(flat.series[0]!.flat).toBe(true)
     expect(flat.series[0]!.points).toHaveLength(1)
     expect(flat.series[0]!.gainPct).toBe(0)
 
     // G4 代价 = 0：两点同 x（0 → 0），仍是两个可画的点
     const zeroCost = buildCurveChart(
-      [{ presetId: 'z', name: 'Z', ladder: mkLadder([[0, 50_000_000], [0, 50_500_000]], ['G4']) }], HP,
+      [mkRow('z', 'Z', mkLadder([[0, 50_000_000], [0, 50_500_000]], ['G4']))], HP,
     )
     expect(zeroCost.series[0]!.points).toHaveLength(2)
     expect(zeroCost.series[0]!.points.every(p => p.cost === 0)).toBe(true)
@@ -121,19 +127,16 @@ describe('关键次数差分（用户口径：难度上升到关键变化要标�
   })
 
   it('buildCurveChart：changes = 相邻档差分；jumps 只留「多了一次」的档', () => {
-    const rows: DifficultyCurveRow[] = [{
-      presetId: 'a', name: 'A',
-      ladder: mkLadder(
-        [[0, 100], [1, 200], [4, 300]],
-        ['G1', 'G2'],
-        [],
-        [
-          { 大招: 7, 连携: 8.9, 紊乱: 0 },
-          { 大招: 8, 连携: 8.95, 紊乱: 0 },  // 大招 +1（major）；连携 +0.05（minor）
-          { 大招: 8, 连携: 9.9, 紊乱: 1 },   // 连携 +0.95（minor）；紊乱 +1（major）
-        ],
-      ),
-    }]
+    const rows: DifficultyCurveRow[] = [mkRow('a', 'A', mkLadder(
+      [[0, 100], [1, 200], [4, 300]],
+      ['G1', 'G2'],
+      [],
+      [
+        { 大招: 7, 连携: 8.9, 紊乱: 0 },
+        { 大招: 8, 连携: 8.95, 紊乱: 0 },  // 大招 +1（major）；连携 +0.05（minor）
+        { 大招: 8, 连携: 9.9, 紊乱: 1 },   // 连携 +0.95（minor）；紊乱 +1（major）
+      ],
+    ))]
     const s = buildCurveChart(rows, 100).series[0]!
     expect(s.points[0]!.changes).toEqual([])
     expect(s.points[1]!.changes.map(c => c.label).sort()).toEqual(['大招', '连携'])
@@ -142,6 +145,34 @@ describe('关键次数差分（用户口径：难度上升到关键变化要标�
     expect(s.jumps.map(j => j.cost)).toEqual([1, 4])
     expect(s.jumps[0]!.changes.map(c => c.label)).toEqual(['大招'])
     expect(s.jumps[1]!.changes.map(c => c.label)).toEqual(['紊乱'])
+  })
+})
+
+describe('图上标注分道（防重叠）', () => {
+  it('同 x / 相近的标注分到不同道；离得远的可以共用一道；道号有界', () => {
+    const items = [
+      { x: 100, width: 60 },  // 与 110 重叠
+      { x: 110, width: 60 },
+      { x: 400, width: 60 },  // 远的，可回道 0
+      { x: 105, width: 60 },  // 与 100/110 重叠 ⇒ 道 2
+    ]
+    const lanes = assignLabelLanes(items, 3)
+    expect(lanes[0]).not.toBe(lanes[1])
+    expect(lanes[0]).not.toBe(lanes[3])
+    expect(lanes[1]).not.toBe(lanes[3])
+    expect(lanes[2]).toBe(0)
+    for (const l of lanes) expect(l).toBeGreaterThanOrEqual(0), expect(l).toBeLessThan(3)
+  })
+
+  it('道满了也不越界（退回最空的道，返回仍在 maxLanes 内）', () => {
+    const items = Array.from({ length: 6 }, (_, i) => ({ x: 100 + i, width: 80 }))
+    const lanes = assignLabelLanes(items, 2)
+    expect(lanes).toHaveLength(6)
+    for (const l of lanes) expect(l).toBeLessThan(2)
+  })
+
+  it('估宽：中文比数字宽（否则标注会算得过窄而叠上）', () => {
+    expect(estimateLabelWidth('大招+1')).toBeLessThan(estimateLabelWidth('希希芙·蛇影层数来源+12'))
   })
 })
 
@@ -185,6 +216,40 @@ describe('伤害归因（这一档 +N 伤害是谁贡献的）', () => {
     const sum = [...attr.top, ...attr.squeezed].reduce((s, c) => s + c.delta, 0) + attr.restDelta
     expect(sum).toBeCloseTo(attr.totalDelta, 6)                 // 其余 = −1，账对得上
   })
+})
+
+describe('金档口径（缺省 = 该队基础金；两条路径同源）', () => {
+  it('缺省档 == 显式基础金档（都走 applyGoldSteps，含 standardSteps）；更高金档伤害更高 + 越界钳制', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    // 必须选**带 goldSteps** 的预设：auto-* 是「只有队伍」的自动预设，0 金步 ⇒ 测不出加金效果
+    const preset = teamPresets.find(p => p.id === 'yixuan-jufufu-lucia')!
+    expect(preset.goldSteps.length, '这条队应有金步').toBeGreaterThan(3)
+    const base = baseGoldOf(preset)
+    expect(base, '这条队应有基础金（限定角色本体）').toBeGreaterThan(0)
+
+    const def = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE })
+    expect(def[0]!.gold.target).toBe(base)
+    expect(def[0]!.gold.totalGold).toBe(base)
+
+    // 同一件事只能有一个数：显式传基础金 == 缺省（否则「预设基础档」会漏掉 standardSteps 常驻步）
+    const explicit = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE, goldLevel: base })
+    expect(explicit[0]!.gold.totalGold).toBe(base)
+    expect(explicit[0]!.ladder.base).toBeCloseTo(def[0]!.ladder.base, 6)
+
+    // 加金：实际金档上去了，基线伤害也跟着上去（同 Boss、同金步口径）
+    const richer = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE, goldLevel: base + 3 })
+    expect(richer[0]!.gold.totalGold).toBeGreaterThan(base)
+    expect(richer[0]!.ladder.base).toBeGreaterThan(def[0]!.ladder.base)
+
+    // 越界（远超该队档位上限）→ 钳制到最高档，如实记 target ≠ totalGold
+    const overflow = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE, goldLevel: 99 })
+    expect(overflow[0]!.gold.target).toBe(99)
+    expect(overflow[0]!.gold.totalGold).toBeLessThan(99)
+    expect(overflow[0]!.gold.totalGold).toBeGreaterThanOrEqual(richer[0]!.gold.totalGold)
+    expect(config.team.map(c => c.agentId)).toEqual(['', '', ''])
+  }, 300_000)
 })
 
 // ========== 集成：真跑一队（含现场恢复） ==========

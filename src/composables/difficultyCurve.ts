@@ -37,7 +37,7 @@ import {
   clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
   type DifficultyGoal, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
-import { applyAxisBinding, applyTeamToStore, restoreStore, snapshotStore } from '@/composables/teamCompare'
+import { applyAxisBinding, applyGoldSteps, applyTeamToStore, baseGoldOf, restoreStore, snapshotStore } from '@/composables/teamCompare'
 import { getAgentMechanic } from '@/mechanics'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
@@ -54,6 +54,21 @@ export interface DifficultyCurveOptions {
   goals?: DifficultyGoal[]
   /** 相对门槛（缺省 1e-4） */
   minGainRatio?: number
+  /**
+   * **目标限定金**（缺省 = 该队预设基础金 `baseGoldOf(preset)`）。
+   * 金步走 `teamCompare#applyGoldSteps`（= 散点页同源，含 `standardSteps` 常驻全量应用），
+   * 越界自动钳制到该队档位范围；**不含**散点页的「最优加金 / 自动下位」两层。
+   */
+  goldLevel?: number
+}
+
+/** 实际套用的金档（来自 `applyGoldSteps`，含「钳制」字样与常驻明细） */
+export interface AppliedGold {
+  /** 用户选的目标金 */
+  target: number
+  /** 钳制后的实际总限定金 */
+  totalGold: number
+  label: string
 }
 
 /** 一队的阶梯结果（展示层行） */
@@ -61,6 +76,8 @@ export interface DifficultyCurveRow {
   presetId: string
   name: string
   ladder: LadderResult
+  /** 实际套用的金档（含钳制结果），供页面注明口径 */
+  gold: AppliedGold
 }
 
 /**
@@ -82,6 +99,13 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
     configStore.timeWeightStrategy = 'static'
     for (const preset of options.presets) {
       applyAxisBinding(configStore, snap, preset)
+      // 金档：**两条路径都走 applyGoldSteps**（缺省目标 = 该队基础金）——否则「预设基础档」会漏掉
+      // standardSteps 常驻步，而「基础金档」带上它们，同一件事出现两个数（12/127 预设带 standardSteps）。
+      const targetGold = options.goldLevel ?? baseGoldOf(preset)
+      const applied = applyGoldSteps(
+        preset.goldSteps, targetGold, baseGoldOf(preset), preset.standardSteps ?? [], preset.wEngines ?? [],
+      )
+      const gold: AppliedGold = { target: targetGold, totalGold: applied.totalGold, label: applied.label }
       const ladder = climbDifficultyLadder({ config: configStore, calc }, preset.team as [string, string, string], {
         goals: options.goals,
         minGainRatio: options.minGainRatio,
@@ -89,11 +113,17 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
         base: (ctx, team) => {
           clearDifficultyLevers(ctx)
           applyTeamToStore(ctx.config, preset)
+          // 金步叠加：影画/精炼/音擎（驱动盘与权重/交互已由 applyTeamToStore 套好，金步不碰）
+          for (let slot = 0; slot < 3; slot++) {
+            ctx.config.setCinemaLevel(slot, applied.cinemas[slot])
+            ctx.config.setWEngineModLevel(slot, applied.wengineMods[slot])
+            if (applied.wEngines[slot]) ctx.config.setWEngine(slot, applied.wEngines[slot])
+          }
           void team
           return ctx.calc.teamTotalDamage.value
         },
       })
-      rows.push({ presetId: preset.id, name: preset.name, ladder })
+      rows.push({ presetId: preset.id, name: preset.name, ladder, gold })
     }
   } finally {
     configStore.timeWeightStrategy = extra.strategy
@@ -302,6 +332,41 @@ export function majorChanges(changes: KeyCountChange[]): KeyCountChange[] {
   return changes.filter(c => c.major)
 }
 
+/**
+ * 图上标标注防重叠：按 x 从左到右贪心**分道**（返回每条标注的道号，0 = 最靠近点，越大越往上抬）。
+ *
+ * 为什么需要：金档/更多目标会让一条曲线上出现 6+ 处跃迁，文字标注会叠在一起
+ * （实机点通实测 1 对重叠）。宽度由调用方按「字数 × 经验字宽」估（渲染前拿不到真实宽），
+ * 估宽偏小最多退化成轻微重叠，不会崩。
+ */
+export function assignLabelLanes(items: { x: number; width: number }[], maxLanes = 3): number[] {
+  const lanes = new Array<number>(items.length).fill(0)
+  const laneRight: number[] = [] // 每道当前占用的最右端
+  const order = items.map((it, i) => ({ i, x: it.x, half: Math.max(1, it.width) / 2 })).sort((a, b) => a.x - b.x)
+  for (const it of order) {
+    let lane = laneRight.findIndex(right => right < it.x - it.half - 2)
+    if (lane === -1) {
+      if (laneRight.length < maxLanes) {
+        lane = laneRight.length
+        laneRight.push(0)
+      } else {
+        // 道满了：退回「当前最空」的那道（宁可轻微重叠，也不把标注甩出画面）
+        lane = laneRight.indexOf(Math.min(...laneRight))
+      }
+    }
+    lanes[it.i] = lane
+    laneRight[lane] = it.x + it.half
+  }
+  return lanes
+}
+
+/** 标注文字估宽（font-size 9：中日韩 ≈9px/字，其余 ≈5.5px） */
+export function estimateLabelWidth(text: string): number {
+  let w = 0
+  for (const ch of text) w += /[\u3000-\u9fff\uff00-\uffef]/.test(ch) ? 9 : 5.5
+  return w + 6
+}
+
 // ========== 图表数据（纯函数） ==========
 
 export interface CurveDatum {
@@ -337,6 +402,8 @@ export interface CurveSeries {
   dropped: { id: string; gain: number }[]
   /** 一个目标都没录取（曲线是单点）：没有可优化的空间 */
   flat: boolean
+  /** 这条曲线实际套用的金档（含各队自己的钳制结果） */
+  gold: AppliedGold
   /**
    * **关键次数跃迁档**（只含 `major` = 「多了一次」的档）：图上标注与「关键变化」面板的唯一数据源。
    * 空数组 = 这条曲线爬升过程中没有出现「多放一次大招 / 多一次紊乱」这类台阶。
@@ -380,6 +447,7 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       opened: r.ladder.opened,
       dropped: r.ladder.dropped,
       flat: r.ladder.opened.length === 0,
+      gold: r.gold,
     }
   })
   const costMax = Math.max(1, ...series.map(s => s.totalCost))

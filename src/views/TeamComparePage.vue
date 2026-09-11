@@ -10,6 +10,14 @@
             <n-radio-button value="curve">难度曲线</n-radio-button>
           </n-radio-group>
         </div>
+        <div
+          v-if="chartMode === 'curve'"
+          class="ctl-field"
+          title="曲线只套预设金步（按 goldSteps 顺序 + 常驻 standardSteps），越界自动钳制到该队档位范围；不含散点页的「最优加金 / 自动下位」"
+        >
+          <span class="ctl-label">曲线金档</span>
+          <n-select v-model:value="curveGold" :options="curveGoldOptions" size="small" style="width: 140px" />
+        </div>
         <div class="ctl-field">
           <span class="ctl-label">期数</span>
           <n-select
@@ -149,7 +157,10 @@
       </div>
 
       <div v-if="!computing && chartMode === 'curve'" class="compare-note">
-        已选 {{ selectedPresets.length }} 队 · 每队要跑 ~10 次全量伤害（约 3~4 秒/队 ⇒ 预计 ≈{{ fmt(selectedPresets.length * 3.4 / 60, 1) }} 分钟）——
+        已选 {{ selectedPresets.length }} 队 · 金档 {{ curveGold < 0 ? '预设基础档' : `${curveGold} 金` }}<template
+          v-if="curveClampedCount > 0"
+        >（{{ curveClampedCount }} 队越界已按各自档位钳制）</template>
+        · 每队要跑 ~10 次全量伤害（约 3~4 秒/队 ⇒ 预计 ≈{{ fmt(selectedPresets.length * 3.4 / 60, 1) }} 分钟）——
         曲线模式建议只选几支队做「难易强度」对比，跑起来可点「中止」保留已算部分。
       </div>
 
@@ -252,8 +263,9 @@
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="chart-card">
       <template #header>难度曲线（{{ curveData.series.length }} 队 · 每队自己的 x）</template>
       <div class="compare-note curve-note">
-        口径：预设基础档（0命1精 + 预设权重/交互/音擎/驱动盘）+ 当前期数 Boss + 静态权重（不跑自动分配）；
-        <b>不含 buff、不加金、不自动下位</b>（曲线要的是跨队同口径的形状，故起点 ≠ 散点页的点）。
+        口径：<b>{{ curveGold < 0 ? '预设基础档（0命1精 + 预设权重/交互/音擎/驱动盘）' : `${curveGold} 金（走预设金步 + 常驻步，越界按各队档位钳制）` }}</b>
+        + 当前期数 Boss + 静态权重（不跑自动分配）；<b>不含 buff、不含「最优加金 / 自动下位」</b>
+        （曲线要的是跨队同口径的形状，故起点 ≠ 散点页的某个点）。
         x = 该队累积难度代价（G1 权重均衡 1 · G2 弹刀/联合 3 · G3 保底 2 · G4 取整 0，占位代价），y = 伤害/血量%。
         <b>各队 x 不对齐是特性</b>：比形状（起点 / 斜率 / 天花板 / 提升倍数），不比同一 x 的大小；
         每档只录取有实际增益的目标，负收益目标被丢弃并在下表如实列出。每队约 3~4 秒。
@@ -286,7 +298,7 @@
             <!-- 关键次数跃迁标注（「多了一次」量级）：加一圈 + 点上方文字 -->
             <g v-for="(j, ji) in s.jumpPts" :key="'cj' + si + '-' + ji">
               <circle :cx="j.cx" :cy="j.cy" r="6.5" fill="none" :stroke="s.color" stroke-width="1.2" opacity="0.85" />
-              <text :x="j.cx" :y="j.cy - 11" text-anchor="middle" class="curve-jump-label" font-size="9">{{ j.text }}</text>
+              <text :x="j.cx" :y="j.cy - 11 - j.lane * 11" text-anchor="middle" class="curve-jump-label" font-size="9">{{ j.text }}</text>
             </g>
           </g>
 
@@ -355,13 +367,17 @@
         <table class="detail-table">
           <thead>
             <tr>
-              <th>队伍</th><th>全关</th><th>终点</th><th>提升</th><th>倍数</th>
+              <th>队伍</th><th>金档</th><th>全关</th><th>终点</th><th>提升</th><th>倍数</th>
               <th>总代价</th><th>斜率</th><th>录取顺序</th><th>丢弃目标</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="s in curveData.series" :key="s.presetId" :class="{ 'curve-flat': s.flat }">
               <td class="td-team" :style="{ color: colorOf(s.presetId) }">{{ s.name }}</td>
+              <td>
+                {{ s.gold.totalGold }} 金
+                <span v-if="s.gold.totalGold !== s.gold.target" class="td-standard">（钳制）</span>
+              </td>
               <td>{{ compact(s.base) }}</td>
               <td>{{ compact(s.final) }}</td>
               <td :class="{ kill: s.gainPct > 0 }">+{{ fmt(s.gainPct, 1) }}%</td>
@@ -389,7 +405,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS } from '@/composables/teamCompare'
-import { attributeDmgChanges, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
+import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
@@ -631,6 +647,18 @@ const chartMode = ref<'scatter' | 'curve'>('scatter')
 const curveRows = ref<DifficultyCurveRow[]>([])
 /** 曲线模式的中止标志（粒度 = 一队：单队阶梯是原子的；已算部分保留） */
 const curveAbort = ref(false)
+/**
+ * 曲线金档：-1 = 预设基础档（缺省口径）。选具体金数时走 `teamCompare#applyGoldSteps`
+ * （= 散点页同源，含 standardSteps 常驻全量应用、越界按该队档位钳制），
+ * **不含**散点页的「最优加金 / 自动下位」两层。
+ */
+const curveGold = ref<number>(-1)
+const curveGoldOptions = computed(() => [
+  { value: -1, label: '预设基础档' },
+  ...Array.from({ length: 13 }, (_, g) => ({ value: g, label: `${g} 金` })),
+])
+/** 选了金档但越界（该队档位范围更窄）被钳制的队数——如实上报，不静默 */
+const curveClampedCount = computed(() => curveRows.value.filter(r => r.gold.totalGold !== r.gold.target).length)
 
 function goldLevels(): number[] {
   const levels: number[] = []
@@ -692,7 +720,12 @@ async function runCurves() {
     const p = presets[i]
     progress.value = { pct: i / presets.length, text: `爬阶梯 ${p.name}（${i + 1}/${presets.length}，每队约 3~4 秒）...` }
     await new Promise(r => setTimeout(r, 0))
-    all.push(...computeDifficultyCurves(calc, { presets: [p], boss, phase }))
+    all.push(...computeDifficultyCurves(calc, {
+      presets: [p],
+      boss,
+      phase,
+      goldLevel: curveGold.value >= 0 ? curveGold.value : undefined,
+    }))
   }
   curveRows.value = all
   progress.value = { pct: 1, text: curveAbort.value ? `已中止：保留已算的 ${all.length} 条曲线` : `完成：${all.length} 条曲线` }
@@ -823,8 +856,8 @@ function cntRangeWithDmg(c: KeyCountChange, dmgChanges: { label: string; delta: 
 function signedDmg(v: number): string {
   return `${v >= 0 ? '+' : '−'}${compact(Math.abs(v))}`
 }
-const curveSeriesPx = computed(() =>
-  (curveData.value?.series ?? []).map(s => ({
+const curveSeriesPx = computed(() => {
+  const series = (curveData.value?.series ?? []).map(s => ({
     ...s,
     color: colorOf(s.presetId),
     pts: s.points.map(p => ({ ...p, cx: curveXOf(p.cost), cy: curveYOf(p.ratio) })),
@@ -834,8 +867,16 @@ const curveSeriesPx = computed(() =>
       cy: curveYOf(j.ratio),
       text: j.changes.map(cntDelta).join('·'),
     })),
-  })),
-)
+  }))
+  // 跨队统一分道：同一 x 附近的标注错开抬升，避免叠在一起（实机点通实测过 1 对重叠）
+  const all = series.flatMap(s => s.jumpPts)
+  const lanes = assignLabelLanes(all.map(j => ({ x: j.cx, width: estimateLabelWidth(j.text) })))
+  let k = 0
+  return series.map(s => ({
+    ...s,
+    jumpPts: s.jumpPts.map(j => ({ ...j, lane: lanes[k++] ?? 0 })),
+  }))
+})
 /** 关键变化面板的行（跨队铺平；数据源 = 各队已过滤过 major 的 `jumps`） */
 const curveJumpRows = computed(() =>
   curveSeriesPx.value.flatMap((s, si) =>

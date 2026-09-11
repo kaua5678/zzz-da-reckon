@@ -21,6 +21,8 @@
  *   --tab <文本>       点页头页签（按文本包含匹配）
  *   --radio <文本>     点单选/单选按钮（点在 input 上）
  *   --main-c           点「按主C快选」并选第一个选项（把全选 127 队收窄成 1~5 队）
+ *   --select <标签>     打开某个 `.ctl-field`（按标签文本）里的下拉
+ *   --option <文本片段> 与 --select 搭配：点选中包含该文本的选项（如 --option "8 金"）
  *   --click <文本>     点按钮（按文本包含匹配）
  *   --wait-for <表达式> 轮询到该 JS 表达式为真（如 `polyline` 或完整表达式）
  *   --wait-timeout <ms> 默认 300000
@@ -148,6 +150,44 @@ const step = async (label, fn) => {
   return res
 }
 
+/**
+ * 关掉所有可能开着的下拉（Esc + 点身体 + 等一拍）。
+ * 为什么必须做：naive-ui 的菜单 teleport 到 body，**关掉后仍留在 DOM 且父容器可见**——
+ * 不先关就点下一个 select，选项会落到上一个菜单上（实测把「8 金」点成了「预设基础档」，
+ * 于是 127 队全选着跑，5 分钟等不到结果）。
+ */
+const closeMenus = async () => {
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+  // 关键：naive-ui 靠 document 上的 **mousedown** 关菜单，`el.click()` 不派发 mousedown ⇒
+  // 必须用 CDP 发真实鼠标事件（点右下角空白页背景，避免误触控件）。
+  const { w, h } = await evaluate('({ w: window.innerWidth, h: window.innerHeight })')
+  for (const type of ['mousePressed', 'mouseReleased']) {
+    await send('Input.dispatchMouseEvent', { type, x: w - 12, y: h - 12, button: 'left', clickCount: 1 })
+  }
+  await sleep(300)
+}
+
+/**
+ * 真实鼠标点击（CDP Input 事件）——naive-ui 的 select / option 依赖 document 级 mousedown，
+ * 纯 `el.click()` 会「找到元素也点了，但值没变」。expr 求值成一个元素。
+ */
+const realMouseClick = async expr => {
+  // 先 scrollIntoView：控件可能在视口外（页面长 / 结果卡插入后布局变化），
+  // 直接按 rect 点会点到窗口外 ⇒ 事件落空、菜单打不开（实测 y=3383 > 视口 1400）。
+  const pt = await evaluate(`(() => {
+    const e = ${expr}; if (!e) return null
+    e.scrollIntoView({ block: 'center', inline: 'center' })
+    const r = e.getBoundingClientRect()
+    return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2), inView: r.top >= 0 && r.bottom <= window.innerHeight }
+  })()`)
+  if (!pt) return null
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: pt.x, y: pt.y })
+  await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: pt.x, y: pt.y, button: 'left', clickCount: 1 })
+  await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: pt.x, y: pt.y, button: 'left', clickCount: 1 })
+  return pt
+}
+
 const failures = []
 try {
   await send('Page.enable')
@@ -166,20 +206,39 @@ try {
   const radio = arg('radio')
   if (radio) await step(`点选项「${radio}」`, () => evaluate(clickText('.n-radio-button', radio, true)))
 
+  // 通用下拉选择：--select <ctl-label> --option <选项文本片段>
+  const selectLabel = arg('select')
+  if (selectLabel) {
+    const optText = arg('option', '')
+    await closeMenus()
+    await step(`打开「${selectLabel}」下拉`, () => realMouseClick(`(() => {
+      const field = [...document.querySelectorAll('.ctl-field')].find(f => f.querySelector('.ctl-label')?.textContent?.trim() === ${JSON.stringify(selectLabel)})
+      return field?.querySelector('.n-base-selection') ?? null
+    })()`))
+    // ⚠ naive-ui 把菜单 teleport 到 body，**关掉的菜单仍留在 DOM 里**（父容器还是 visible，
+    // 所以 `option.offsetParent` 判不出来）⇒ 必须按「菜单元素自身可见」筛，否则会点到上一个菜单的选项。
+    const visibleOpts = `[...document.querySelectorAll('.n-base-select-menu')].filter(m => m.offsetParent !== null)
+      .flatMap(m => [...m.querySelectorAll('.n-base-select-option')])`
+    await step('等下拉选项', () => waitFor(`${visibleOpts}.length > 0`, 10000, '下拉'))
+    await step(`选「${optText}」`, () => realMouseClick(`(() => {
+      const opts = ${visibleOpts}
+      return opts.find(e => (e.textContent || '').trim().includes(${JSON.stringify(optText)})) ?? null
+    })()`))
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+  }
+
   if (flag('main-c')) {
-    const openMainC = `(() => {
+    await closeMenus()
+    await step('打开「按主C快选」', () => realMouseClick(`(() => {
       const field = [...document.querySelectorAll('.ctl-field')].find(f => f.querySelector('.ctl-label')?.textContent?.trim() === '预设队伍')
       const sel = field ? [...field.querySelectorAll('.n-select')].pop() : null
-      const box = sel?.querySelector('.n-base-selection')
-      if (!box) return 'NO_BOX'
-      box.click(); return 'ok'
-    })()`
-    await step('打开「按主C快选」', () => evaluate(openMainC))
-    await step('等下拉选项', () => waitFor(`document.querySelectorAll('.n-base-select-option').length > 0`, 10000, '下拉'))
-    await step('选第一个主C', () => evaluate(`(() => {
-      const o = document.querySelector('.n-base-select-option'); if (!o) return 'NO_OPTION'
-      const t = (o.textContent || '').trim(); o.click(); return t
+      return sel?.querySelector('.n-base-selection') ?? null
     })()`))
+    const visibleMainC = `[...document.querySelectorAll('.n-base-select-menu')].filter(m => m.offsetParent !== null)
+      .flatMap(m => [...m.querySelectorAll('.n-base-select-option')])`
+    await step('等下拉选项', () => waitFor(`${visibleMainC}.length > 0`, 10000, '下拉'))
+    await step('选第一个主C', () => realMouseClick(`(() => { const o = ${visibleMainC}[0]; return o ?? null })()`))
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
     await step('读已选队数', () => evaluate(`(document.body.textContent.match(/已选\\s*(\\d+)\\s*队/) || [])[1] ?? null`))
@@ -223,6 +282,25 @@ try {
         w: Math.round(c.getBoundingClientRect().width), h: Math.round(c.getBoundingClientRect().height),
       })),
       tableOverflowX: [...document.querySelectorAll('.detail-table-wrap')].map(w => w.scrollWidth - w.clientWidth),
+      // 曲线摘要表头 + 首行前三列（用来确认「金档」这类新列真的渲染了）
+      summaryHeader: (() => {
+        const s = [...document.querySelectorAll('.detail-card')].find(c => (c.textContent || '').includes('曲线摘要'))
+        return s ? [...s.querySelectorAll('thead th')].map(e => e.textContent.trim()) : null
+      })(),
+      goldSelectText: (() => {
+        const f = [...document.querySelectorAll('.ctl-field')].find(x => x.querySelector('.ctl-label')?.textContent?.trim() === '曲线金档')
+        return f ? (f.querySelector('.n-base-selection')?.textContent || '').replace(/\\s+/g, ' ').trim() : null
+      })(),
+      firstSummaryGoldCell: (() => {
+        const s = [...document.querySelectorAll('.detail-card')].find(c => (c.textContent || '').includes('曲线摘要'))
+        const tr = s?.querySelector('tbody tr')
+        return tr ? (tr.querySelectorAll('td')[1]?.innerHTML || '').replace(/\\s+/g, ' ').trim().slice(0, 80) : null
+      })(),
+      summaryFirstRow: (() => {
+        const s = [...document.querySelectorAll('.detail-card')].find(c => (c.textContent || '').includes('曲线摘要'))
+        const tr = s?.querySelector('tbody tr')
+        return tr ? [...tr.querySelectorAll('td')].map(e => e.textContent.replace(/\\s+/g, ' ').trim()).slice(0, 3) : null
+      })(),
       errs: window.__errs || [],
     }
   })()`))
