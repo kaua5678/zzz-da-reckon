@@ -1277,7 +1277,7 @@ import { NCard, NSelect, NInputNumber, NButton, NProgress } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamStrengthSeed, type TeamTimelineResult } from '@/composables/teamTimeline'
+import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamTimelineResult } from '@/composables/teamTimeline'
 import {
   TIMELINE_LAYOUT,
   buildTimelineChart,
@@ -1300,6 +1300,7 @@ import {
   versionXTicksOf,
 } from '@/composables/versionChartGeometry'
 import { buildFilmSimChart } from '@/composables/filmSimChart'
+import { computeStrengthBands, strengthBandTitle, type StrengthBand } from '@/composables/strengthBands'
 import { buildNewCharacterRows, computeFilmSimulation, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
 import { computeSlotComparePoints, type SlotComparePoint, type SlotCompareSlot } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
@@ -1579,35 +1580,9 @@ const hoverInfo = computed(() => {
 })
 // ========== 多队并存强度（演示.xlsx 口径：队伍×版本矩阵，跌出 Top-K 即永久淘汰） ==========
 const survivalK = ref(3)
-interface StrengthBand {
-  seed: TeamStrengthSeed
-  startIndex: number
-  endIndex: number
-  /** 首次跌出 Top-K 的节点下标（null = 存活到最后） */
-  eliminatedAt: number | null
-}
-const strengthBands = computed<StrengthBand[]>(() => {
-  const seeds = result.value?.strengthSeeds ?? []
-  const nodeCount = result.value?.nodes.length ?? 0
-  const k = Math.max(1, Math.floor(survivalK.value || 1))
-  if (seeds.length === 0 || nodeCount === 0) return []
-  // 逐节点排名：可达（已实装且未被淘汰）按伤害取前 K；可达集合只增 ⇒ 排名单调不升 ⇒ 淘汰永久
-  // 注意：可达集合为空（如首期新队友尚未实装/全被收敛排除）不能提前 break——
-  // 否则后续所有期的 Top-K 裁剪都不会执行，弱队全部存活到最后（曾致淘汰失效）
-  const eliminatedAt = new Map<string, number>()
-  for (let n = 0; n < nodeCount; n++) {
-    const reachable = seeds.filter(s => s.startIndex <= n && !eliminatedAt.has(s.key))
-    reachable.sort((a, b) => b.damage - a.damage)
-    for (let r = k; r < reachable.length; r++) eliminatedAt.set(reachable[r].key, n)
-  }
-  return seeds
-    .map(seed => {
-      const cut = eliminatedAt.get(seed.key)
-      const endIndex = cut == null ? nodeCount - 1 : cut - 1
-      return { seed, startIndex: seed.startIndex, endIndex, eliminatedAt: cut ?? null }
-    })
-    .filter(b => b.endIndex >= b.startIndex)
-})
+const strengthBands = computed<StrengthBand[]>(() =>
+  computeStrengthBands(result.value?.strengthSeeds ?? [], result.value?.nodes.length ?? 0, survivalK.value),
+)
 
 // ========== 图例筛选（Chart 2：多队并存强度） ==========
 // 与散点/曲线不同，这里的筛选**只作用于画不画那条带**：Top-K 排名与淘汰判定是数据性质
@@ -1625,12 +1600,13 @@ function bandY(hpRatio: number): number {
   return yOf(Math.min(hpRatio, yMax.value))
 }
 function bandTitle(b: StrengthBand): string {
-  const team = b.seed.team.map(agentName).join('+')
-  const span = `${result.value?.nodes[b.startIndex]?.nodeLabel ?? ''} ~ ${result.value?.nodes[b.endIndex]?.nodeLabel ?? ''}`
-  const elim = b.eliminatedAt != null && result.value?.nodes[b.eliminatedAt]
-    ? `｜${result.value.nodes[b.eliminatedAt].nodeLabel} 起跌出 Top-${survivalK.value} 淘汰`
-    : '｜存活到最后'
-  return `${team}｜伤害 ${compact(b.seed.damage)}（${fmt(b.seed.hpRatio, 1)}%）｜${span}${elim}`
+  return strengthBandTitle(b, {
+    k: survivalK.value,
+    nameOf: (id) => agentName(id),
+    labelOf: (i) => result.value?.nodes[i]?.nodeLabel,
+    fmtCompact: compact,
+    fmtRatio: fmt,
+  })
 }
 const hoverCardX = ref(0)
 const hoverCardY = ref(0)
