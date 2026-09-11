@@ -1918,17 +1918,40 @@ export function useResourceCalc() {
           if (!overBudget(noAxis.out) && !topUpIllegal(noAxis.out)) axisFallback = true
           r = noAxis // 可行与否都进入非轴态：不可行则走下方降配
         }
-        // 非轴降配（用户口径 2026-08-30）：金身/招架这类手填交互与轴厚需求本质相同——超预算都要降配。
-        // 轴侧降配 = 退化（需求没了，补齐自动归零）；非轴侧 = 缩放用户交互次数直到净占用回到预算内。
-        // 二分找最大可行 scale（6 轮，精度 ~1.6%）；scale→0 仍超 = 非交互必要时间本身超预算，如实保留报超时。
+        // 非轴降配（用户口径 2026-08-30 + 2026-09-11「必须溢出才能达成目标，就不会强行往上加交互次数」）：
+        // 金身/招架这类手填交互与轴厚需求本质相同——撑不下都要降配。二分找**最大可行 scale**
+        // （6 轮，精度 ~1.6%）；scale→0 仍不行 = 非交互必要时间本身超预算，如实保留报超时。
+        //
+        // ===== 验收目标（2026-09-11 设计，替换原来的「净占用 ≤ 预算+2s」单臂）=====
+        // 单臂的毛病：① 它只看净占用、看不见「还在按比例砍行」（截断）；② 把「截断 ≤1s」并进单臂去收紧
+        // 又会把好试算一起拒掉（实测 `yixuan-roxy-lucia`：拒绝全部试算 ⇒ 停在基线态 3.78s 超预算，
+        // 而接受 scale=0.90625 ⇒ 0.96s 超预算 + 截断 10.7→1.6s）。所以改成**三条臂、都相对「二分前的基线态」
+        // （不是相对绝对阈值）**、各自带 1s 量化容差（与棘轮同源）：
+        //   ① `truncation(trial) ≤ truncation(base) + 1s` —— 不许砍得更多；
+        //   ② `overBudget(trial) ≤ overBudget(base) + 1s` —— 不许更超预算；
+        //   ③ `slack(trial) ≤ slack(base) + 1s` —— 不许把省下的时间变成留白/发呆（用户：「不搞表面工程」）。
+        // 这三条一起 = 「**不比改动前更差**，且尽量消掉截断」⇒ 相对棘轮（只拦变差）**构造上不可能变红**，
+        // 变红的只可能是 timeGolden 的硬字段（那是有意的改进，按规则 10 归因后重生）。
         if ((overBudget(r.out) || truncatedToo(r.out)) && !r.out?.resolvedAxes?.length) {
           let lo = 0
           let hi = 1
           let best: { out: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter'; scale: number } | null = null
+          const baseNet = frontlineTotalOf(r.out)
+          const baseOver = Math.max(0, baseNet - stunEffTime)
+          const baseSlack = Math.max(0, stunEffTime - baseNet)
+          const baseTruncation = r.out?.resourceResult?.overflowSeconds ?? 0
+          const acceptsTrial = (x: CalcRoundResult | null): boolean => {
+            if (!x) return false
+            const net = frontlineTotalOf(x)
+            const truncation = x.resourceResult?.overflowSeconds ?? 0
+            return truncation <= baseTruncation + TIME_BUDGET_TOLERANCE_SECONDS
+              && Math.max(0, net - stunEffTime) <= baseOver + TIME_BUDGET_TOLERANCE_SECONDS
+              && Math.max(0, stunEffTime - net) <= baseSlack + TIME_BUDGET_TOLERANCE_SECONDS
+          }
           for (let i = 0; i < 6; i++) {
             const mid = (lo + hi) / 2
             const trial = runOuterLoop(true, mid)
-            if (overBudget(trial.out)) {
+            if (!acceptsTrial(trial.out)) {
               hi = mid
             } else {
               lo = mid

@@ -267,7 +267,7 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     return config
   }
 
-  it('无轴：怒相内山威连段 8 + 怒相外自动连段 7（能量行级Σ后时间预算收窄），无地动/山摇·怒行', async () => {
+  it('无轴：怒相内山威连段 8 + 怒相外自动连段 9（降配收交互后时间腾出），无地动/山摇·怒行', async () => {
     await setupTeam(null)
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 50))
@@ -276,10 +276,14 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     // （skillRegen 0→41.0）→ 琉音强特 12→14 占走团队前台时间 → 般岳怒相外自动连段的
     // 时间预算收窄：外 9→7 组；怒相内山威（8）与般岳自身闪能总账（620）不变。
     // enrichExecutionPlan 会用倍率表名/note 覆盖来源标注 → 按 moveId 匹配（模块 push 序：山威内在前、怒相外在后）
+    // 2026-09-11 降配验收目标三臂化（消截断 + 不更超预算 + 不更留白，见 useResourceCalc#stageResolveFeasibility）：
+    // 本用例裸交互（弹刀10/闪避6/金身20/双反5→冲霄25）本身撑不下 ⇒ 降配 ×0.734375 收进可行域
+    // （实测 弹刀 10→7、闪避 6→4、金身 20→15、冲霄 25→15），腾出的时间让**怒相外自动连段 7→9**；
+    // 装配期截断 **43.21s → 0**（改动前是"必要行撑不下 → 按比例砍行"）。
     const lunDao = rows.filter(r => r.moveId === '1471015').map(r => r.count)
     const shiZiHouNu = rows.filter(r => r.moveId === '1471016').map(r => r.count)
-    expect(lunDao).toEqual([8, 7])
-    expect(shiZiHouNu).toEqual([8, 7])
+    expect(lunDao).toEqual([8, 9])
+    expect(shiZiHouNu).toEqual([8, 9])
     // 默认地动山摇连段 = 0 → 无地动/山摇·怒行
     expect(rows.some(r => r.moveId === '1471013' || r.moveId === '1471017')).toBe(false)
   })

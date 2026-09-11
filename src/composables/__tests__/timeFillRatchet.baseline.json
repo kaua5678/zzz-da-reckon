@@ -392,13 +392,13 @@
   "outerExit": "cycle"
  },
  "auto-1431-1341-1491": {
-  "slack": 2.1,
+  "slack": 1.5,
   "over": 0,
   "stun": 1,
   "outerExit": "cycle"
  },
  "auto-1431-1481-1311": {
-  "slack": 1.6,
+  "slack": 1.5,
   "over": 0,
   "stun": 2,
   "outerExit": "cycle"
@@ -422,7 +422,7 @@
   "outerExit": "cycle"
  },
  "auto-1431-1491-1341": {
-  "slack": 2.1,
+  "slack": 1.5,
   "over": 0,
   "stun": 1,
   "outerExit": "cycle"
@@ -434,7 +434,7 @@
   "outerExit": "stable"
  },
  "auto-1461-1361-1521": {
-  "slack": 1.6,
+  "slack": 1.7,
   "over": 0,
   "stun": 4,
   "outerExit": "stable"
@@ -452,7 +452,7 @@
   "outerExit": "stable"
  },
  "auto-1461-1521-1361": {
-  "slack": 1.6,
+  "slack": 1.7,
   "over": 0,
   "stun": 4,
   "outerExit": "stable"
@@ -596,7 +596,7 @@
   "outerExit": "stable"
  },
  "banyue-jufufu-lucia": {
-  "slack": 0.9,
+  "slack": 1.6,
   "over": 0,
   "stun": 3,
   "outerExit": "cycle"
@@ -705,9 +705,9 @@
  },
  "yixuan-roxy-lucia": {
   "slack": 0,
-  "over": 1,
+  "over": 0.2,
   "stun": 4,
-  "outerExit": "cycle"
+  "outerExit": "stable"
  },
  "yixuan-trigger-lucia": {
   "slack": 1.1,
