@@ -115,6 +115,9 @@ export interface StructureEntropy {
   branches: string[]
 }
 export declare function scanStructureEntropy(root?: string): StructureEntropy
+/** 死口径两态：dead=全仓含本文件零调用；overExported=仅本文件内调用（可去 export 收窄 API） */
+export interface DeadClaimHit { name: string; file: string }
+export declare function scanDeadClaims(root?: string): { dead: DeadClaimHit[]; overExported: DeadClaimHit[] }
 export interface Envelope<T = Record<string, unknown>> { ok: boolean; verb: string; data: T; next: string | null }
 export declare function envelope<T>(verb: string, ok: boolean, data: T, next?: string | null): Envelope<T>
 export declare function parsePorcelain(text: string): { status: string; path: string }[]

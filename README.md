@@ -18,9 +18,9 @@ npm run preview    # 预览产物
 ## 2. 检查与验收命令
 
 ```bash
-npm run verify          # 一条链验收：validate:data + validate:specs + vitest + typecheck + build
-npm run check           # validate:data + validate:specs + vitest（快速环，改完必跑）
-npm run typecheck       # vue-tsc --noEmit
+npm run verify          # 一条链验收：check-guards + check-tokens + validate:data + validate:specs + verify:recording + vitest + build（build 内含 vue-tsc 类型检查）
+npm run check           # check-guards + check-tokens + validate:data + validate:specs + vitest（快速环，改完必跑）
+npm run typecheck       # vue-tsc -p tsconfig.app.json --noEmit（单独跑更快；verify 链内已由 build 覆盖）
 npm run build
 npm run validate:specs # spec 结构/状态/倍率行引用校验（60 个角色 spec，含自定义模块死数据强制检查）
 npm run specs:coverage # 60 角色覆盖矩阵（转模/资源/融合/事件/验证数）

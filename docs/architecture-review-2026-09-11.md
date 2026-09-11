@@ -79,15 +79,32 @@ resourceCalc/helpers.ts 1946 行 · TeamConfigPage.vue 1850 行
 时序窗口已有真实竞态前科（`useResourceCalc.ts:76-78`）。`config.ts:522-556` 另硬编码
 ~30 个角色专属 setter。
 
-### 🟠 P1-3 迁移残留与死导出
-- 全仓扫描：59 个机制模块中 **13 个导出函数零外部引用**；其中
-  `applyLighterTeamEnergyFlags` / `applyLucyTeamEnergyFlags` / `applyYaojiayinTeamFlags` /
-  `applyYaojiayinTeamHook` 是 `applyTeamConfig` 迁移遗留（已无调用方）。
+### 🟠 P1-3 过度导出与工具误报（评审首版结论有误，此处已更正）
+- **首版说「13 个死导出、其中 4 个是 applyTeamConfig 迁移残留」——实测为误**：这 13 个函数
+  **全部在各自文件内被真实调用**（claret 三函数活在 `buildClaretResourceSource` 内、
+  `lighter`/`lucy`/`yaojiayin` 的 `apply*TeamFlags` 活在各自 `applyTeamConfig` 内）。
+  它们是**过度导出**（export 了但无外部消费者），不是死代码，也不是迁移残留。
+- 真问题是**扫描器口径**：`scripts/zc.mjs` 的 `scanDeadClaims` 按「除自身文件外零引用」判死口径，
+  把"模块内部私有实现但被 export"误判为死。2026-09-11 已修：拆成 `dead`（全仓含本文件零调用，
+  规则 16 原意）与 `overExported`（仅本文件内用，整洁性提示）。
+- **自指陷阱**（修这个 bug 时当场踩到 ×2）：扫描器/测试的注释里写出被扫函数的**真实符号名**，
+  就等于给它制造一次「跨文件引用」，该函数从清单里凭空消失。首次修复后 `computeClaret*` 就
+  因注释里写了名字而消失；测试里写期望清单字面量同样让它消失（改用字符串拼接后正常）。
+  已在扫描器注释与测试里各留一处警示。
 - `.freebuff/project-id` 曾被 git 跟踪且不在 `.gitignore` / 禁跟踪清单（本次已修）。
 
-### 🟡 P2-1 测试网偏斜与验收链冗余
-- `composables/__tests__` 67 文件中 14 个是 probe/debug 探针（~20%），与保护性断言混跑。
-- `verify` 链 typecheck 跑两遍（`typecheck` + `build` 内的 `vue-tsc -b`）。
+### 🟡 P2-1 测试网与验收链（评审首版部分结论已更正）
+- ~~`composables/__tests__` 67 文件中 14 个是 probe/debug 探针（~20%），与保护性断言混跑~~
+  **更正**：13 个 probe 文件**全部已用 `describe.runIf`/`it.runIf` 门控**，默认 vitest run
+  下自动 skip（实测 26 skipped）；它们不污染回归语义，只是仍参与 transform/collect。
+  分离价值仅剩一点 collect 开销（全量约 74~100s，probe 占比未单独测出），**不建议为此改动**。
+- **verify 链 typecheck 去重（已做，但与首版判断相反）**：首版说「build 里的 `vue-tsc -b` 与
+  `typecheck` 重复，删掉 typecheck」。实测结论相反——两者**不是重复**：
+  `typecheck`（`vue-tsc -p tsconfig.app.json --noEmit`）只覆盖 app project；
+  `vue-tsc -b` 覆盖 **app + node 两个 project**（实测：往 `vite.config.ts` 注入类型错，
+  `typecheck` 报 0 条、`-b` 报 1 条），且失败时同样非零退出（隔离目录实测 exit=1）。
+  故删掉的是 verify 链里那次**更弱且重复**的 `typecheck`，保留 `build` 内的 `-b`
+  （正确的做法是保留更强的那个）。`npm run typecheck` 本身作为"单跑更快"的入口保留。
 - UI 样式层：27 个 .vue / 4085 行 scoped CSS，只有颜色令牌（`check-tokens` 头部自述）。
 
 ### 🟡 P2-2 文档漂移
@@ -100,15 +117,15 @@ resourceCalc/helpers.ts 1946 行 · TeamConfigPage.vue 1850 行
 
 ## 4. 改进建议（按投入产出比）
 
-### 第一梯队：小成本（本次已做 #1/#2）
+### 第一梯队：小成本（本次已做 #1/#2/#5；#3/#6 经实测撤销）
 | # | 事项 | 状态 |
 |---|---|---|
-| 1 | `check-guards` 判据 7：views/components 越层 import 棘轮（基线 24，只减不增） | ✅ 本次 |
+| 1 | `check-guards` 判据 7：views/components 越层 import 棘轮（基线 23，只减不增） | ✅ 本次 |
 | 2 | 仓库卫生：`.freebuff/` 进 `.gitignore` + `git rm --cached` + 扩禁跟踪清单 | ✅ 本次 |
-| 3 | 清理 13 个零外部引用导出（优先 4 个 `applyXxxTeamFlags` 残留） | 待办 |
+| 3 | ~~清理 13 个零外部引用导出~~ | ❌ **撤销**：实测它们全在本文件内活跃调用，非死代码；真问题是扫描器误报，已修扫描器（见 P1-3） |
 | 4 | README 文档表补齐并统一份数 | ✅ 本次 |
-| 5 | `verify` 去重 typecheck（保留 `build` 内的） | 待办 |
-| 6 | probe 测试与回归网分离（`*.probe.test.ts` + `npm run probe`） | 待办 |
+| 5 | verify 去重 typecheck | ✅ 本次（删弱留强：删 `typecheck`，保留 `build` 内的 `vue-tsc -b`，后者覆盖 app+node） |
+| 6 | ~~probe 测试与回归网分离~~ | ❌ **撤销**：13 个 probe 全部已有 `runIf` 门控、默认 skip，语义上早已分离 |
 
 ### 第二梯队：中成本（建议开 goal 管理）
 | # | 事项 | 收益 | 成本 |

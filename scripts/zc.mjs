@@ -423,16 +423,27 @@ export function driftQueue(root = ROOT) {
 
 /**
  * 死口径扫描（AGENTS 规则 16）：`src/mechanics/agents/*.ts` 里**导出的函数**，紧邻注释块声称
- * 口径（含「用户确认 / 已确认 / 口径」），但除自身定义文件外**全仓零引用**。
+ * 口径（含「用户确认 / 已确认 / 口径」），但**全仓（含自身定义文件）零调用**。
  *
  * 为什么要机器看：挂着「用户确认」的死口径会骗到下一个 agent，并让它把错误归因直接发给用户
  * （实测 `shortAxisFeiguangCount` 标着「用户确认 4/10/5/12」而全仓零调用，白绕一轮排查）。
  * 只报不红——`zc status` 是 agent 体检面，不是 CI 判据（红了会逼人给函数瞎加引用骗扫描器）。
  * 已标「未接线 / 待接线 / 已废弃」的豁免：那是诚实处置，不是待修的谎。
+ *
+ * 2026-09-11 口径修正（评审实测）：旧实现按「除自身文件外是否被引用」判死，把**本文件内活跃调用**
+ * 的导出函数一并报成死口径——实测 claret 的「平A两态秒均」函数（活在 `buildClaretResourceSource`
+ * 内）、lighter/yaojiayin 的 `apply*TeamFlags`（活在各自 `applyTeamConfig` 内）等全部误报。
+ * 真死口径的定义是**连定义文件内都没人调用**。
+ * 两者分开报：`dead`（真死，规则 16 的原意）与 `overExported`（仅本文件内用 → 可去掉 export
+ * 收窄 API，属整洁性提示，不动逻辑）。
+ *
+ * ⚠ 自指陷阱（本文件踩过一次）：上面的示例**不能写出被扫函数的真实标识符**——写进注释就成了
+ * 一次「跨文件引用」，该函数会从 dead/overExported 里凭空消失（实测 computeClaret 那条被本注释
+ * 掩盖）。要举例就写描述性说法，别写符号名。
  */
 export function scanDeadClaims(root = ROOT) {
   const dir = join(root, 'src', 'mechanics', 'agents')
-  if (!existsSync(dir)) return []
+  if (!existsSync(dir)) return { dead: [], overExported: [] }
   const texts = new Map()
   const collect = (d) => {
     if (!existsSync(d)) return
@@ -446,7 +457,8 @@ export function scanDeadClaims(root = ROOT) {
   collect(join(root, 'scripts'))
   const CLAIM = /用户确认|已确认|口径/
   const EXEMPT = /未接线|待接线|已废弃|deprecated/i
-  const hits = []
+  const dead = []
+  const overExported = []
   for (const [path, text] of texts) {
     if (!path.startsWith(dir)) continue
     const lines = text.split('\n')
@@ -463,15 +475,19 @@ export function scanDeadClaims(root = ROOT) {
       }
       if (!CLAIM.test(doc) || EXEMPT.test(doc)) continue
       const re = new RegExp(`\\b${name}\\b`)
-      let refs = 0
+      let refsOutside = 0
       for (const [other, otherText] of texts) {
         if (other === path) continue
-        if (re.test(otherText)) { refs = 1; break }
+        if (re.test(otherText)) { refsOutside = 1; break }
       }
-      if (!refs) hits.push({ name, file: relative(root, path).split(sep).join('/') })
+      if (refsOutside) continue
+      // 同文件内除声明行以外还有没有调用点？（声明行本身是 `export function <name>`）
+      const calledInside = lines.some((l, idx) => idx !== i && !/^\s*(?:\/\/|\*|\/\*)/.test(l) && re.test(l))
+      const hit = { name, file: relative(root, path).split(sep).join('/') }
+      ;(calledInside ? overExported : dead).push(hit)
     }
   }
-  return hits
+  return { dead, overExported }
 }
 
 // @fact engine:zc/结构熵体检 决: zc status 只量体温不治病——自家代码最大文件行数 >1500（阈值取「降本增效体系」红线）与本地分支残留只报不红，红灯由人评估 | 据 用户@2026-09-07·复核@2026-09-08 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/zc.mjs#scanStructureEntropy | 信 确认
@@ -623,7 +639,7 @@ async function verbStatus(root = ROOT) {
   }
   const authored = auditAuthoredFacts(root)
   const drift = driftQueue(root)
-  const deadClaims = scanDeadClaims(root)
+  const deadClaimScan = scanDeadClaims(root)
   const entropy = scanStructureEntropy(root)
   const journal = allJournal.slice(-3)
   const next = foreign.length > 0
@@ -632,7 +648,8 @@ async function verbStatus(root = ROOT) {
   return envelope('status', true, {
     branch, ahead: Number(ahead), changed: changed.length, changedPaths: paths, leases, foreignWip: foreign, debt, backlog, journal,
     facts: { authored: authored.scanned.length, broken: authored.violations.length, reviewQueue: drift.length },
-    deadClaims,
+    deadClaims: deadClaimScan.dead,
+    overExportedClaims: deadClaimScan.overExported,
     entropy: { maxFileLines: entropy.maxFileLines, overCount: entropy.overThreshold.length, top: entropy.overThreshold.slice(0, 5), branchCount: entropy.branches.length, branches: entropy.branches },
   }, next)
 }
@@ -815,7 +832,8 @@ function humanize(res) {
     lines.push('租约 ' + (d.leases?.length ?? 0) + ' 条' + (d.leases?.length ? '：' + d.leases.map(l => l.path + '←' + l.lane.slice(0, 12)).join(', ') : ''))
     if (d.foreignWip?.length) lines.push('⚠ 疑似并行会话在改（无租约 + 45 分钟内改过）：' + d.foreignWip.join(', '))
     if (d.debt) lines.push('债务 ' + d.debt.registered + ' 条已登记' + (d.debt.unregistered ? ' / ✗ ' + d.debt.unregistered + ' 条未登记' : ''))
-    if (d.deadClaims?.length) lines.push('⚠ 死口径（注释声称口径但全仓零引用，规则 16）：' + d.deadClaims.map(h => `${h.name}@${h.file}`).join(', '))
+    if (d.deadClaims?.length) lines.push('⚠ 死口径（注释声称口径但全仓含本文件零调用，规则 16）：' + d.deadClaims.map(h => `${h.name}@${h.file}`).join(', '))
+    if (d.overExportedClaims?.length) lines.push('· 过度导出（仅本文件内用、可去 export 收窄 API）' + d.overExportedClaims.length + ' 个：' + d.overExportedClaims.map(h => `${h.name}@${h.file}`).join(', '))
     if (d.entropy) {
       const top = d.entropy.top?.[0]
       lines.push('结构熵 最大文件 ' + (top ? top.file + ' ' + top.lines + ' 行' : '无') + ' · 超 ' + d.entropy.maxFileLines + ' 行 ×' + d.entropy.overCount + ' · 本地分支 ' + d.entropy.branchCount)

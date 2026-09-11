@@ -8,6 +8,7 @@
  *    agentIds: [AGENT_ID] 常量间接没解析 → 12 个模块被误报无覆盖）。
  */
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import {
   CONFIDENCE,
   FACT_KINDS,
@@ -37,6 +38,7 @@ import {
   scanAuthoredFacts,
   auditAuthoredFacts,
   driftQueue,
+  scanDeadClaims,
   scanStructureEntropy,
   recentlyOwnedPaths,
 } from '../../../scripts/zc.mjs'
@@ -267,6 +269,51 @@ describe('仓库级：索引真的建得起来', () => {
     }
     expect(e.branches.length).toBeGreaterThanOrEqual(1)
     expect(e.branches).toContain('master')
+  })
+
+  // 2026-09-11 口径修正：旧实现按「除自身文件外零引用」判死口径，把**本文件内活跃调用**的导出
+  // 函数也报成死（实测误报 13 个：claret 平A两态秒均函数活在 buildClaretResourceSource 内、
+  // lighter/yaojiayin 的 apply*TeamFlags 活在各自 applyTeamConfig 内）。真死 = 连定义文件内
+  // 都没人调用。两态分开报，这条测试钉住分类语义（防再次混淆）。
+  it('死口径两态分类：dead 与 overExported 互斥，且 overExported 确在本文件内有调用点', () => {
+    const { dead, overExported } = scanDeadClaims()
+    // 两态互斥且都带定位信息
+    const key = (h: { name: string; file: string }) => h.file + '#' + h.name
+    const deadKeys = new Set(dead.map(key))
+    for (const h of overExported) expect(deadKeys.has(key(h))).toBe(false)
+    for (const h of [...dead, ...overExported]) {
+      expect(h.file).toMatch(/^src\/mechanics\/agents\/.+\.ts$/)
+      expect(h.name).toMatch(/^\w+$/)
+    }
+    // 仓库现状：当前 0 条真死；3 条过度导出（claret 两态三函数）——结构断言，清掉后请显式改数字。
+    // ⚠ 期望值必须**拼接**构造，不能写字面量符号名：本文件在 src/ 下，写全名就等于给扫描器
+    // 制造一次「跨文件引用」，三个符号会从清单里凭空消失（本测试第一版就踩了这个自指陷阱）。
+    expect(dead).toEqual([])
+    const CLARET = 'src/mechanics/agents/claret.ts#'
+    expect(overExported.map(key).sort()).toEqual([
+      CLARET + 'compute' + 'ClaretBasicPerSec',
+      CLARET + 'compute' + 'InscriptionExtension',
+      CLARET + 'derive' + 'ClaretTwoStateTime',
+    ])
+    // 每条 overExported 必须能在本文件里找到「声明行之外的调用点」（分类的判据本身）
+    for (const h of overExported) {
+      const src = readFileSync(new URL('../../../' + h.file, import.meta.url), 'utf8')
+      const callLines = src.split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)
+        && new RegExp(`\\b${h.name}\\b`).test(l)
+        && !new RegExp(`^\\s*export\\s+(?:async\\s+)?function\\s+${h.name}\\b`).test(l))
+      expect(callLines.length).toBeGreaterThan(0)
+    }
+  })
+
+  // 自指陷阱（本仓库踩过两次：check-guards 的 debt 扫描、zc 的死口径扫描）：工具/测试自己的
+  // 文本里写出被扫符号名 = 凭空制造一次「跨文件引用」，该函数从清单里消失。
+  it('自指护栏：期望清单不得把符号全名写成字面量（否则清单会空掉）', () => {
+    const scannerSrc = readFileSync(new URL('../../../scripts/zc.mjs', import.meta.url), 'utf8')
+    const { dead, overExported } = scanDeadClaims()
+    const listed = new Set([...dead, ...overExported].map(h => h.name))
+    // 清单里的每个符号都不得完整出现在扫描器源码里（拼接/描述性说法才行）
+    for (const name of listed) expect(scannerSrc.includes(name)).toBe(false)
+    expect(listed.size).toBeGreaterThan(0)
   })
 })
 describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会悄悄过期」的机器答案）', () => {

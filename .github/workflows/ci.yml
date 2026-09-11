@@ -14,7 +14,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # verify = validate:data + validate:specs + vitest + typecheck + build（一条链，无重复执行）
+      # verify = check-guards + check-tokens + validate:data + validate:specs + verify:recording + vitest + build
+      #（一条链；类型检查由 build 内的 vue-tsc -b 承担，2026-09-11 起不再单列 typecheck——-b 覆盖 app+node 两个 project）
       - run: npm run verify
 
   # 文档漂移检查独立成 job：原先它是 verify job 里 `npm run verify` 之后的一个 step，
