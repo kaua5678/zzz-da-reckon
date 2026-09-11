@@ -634,6 +634,7 @@ async function verbStatus(root = ROOT) {
     // 判据 11：棘轮 burn-down（只报不红）——测量函数注入，zc 不复制各判据的实现
     const measured = {
       'agentId 分支': () => g.countAgentIdBranchLines(readFileSync(join(root, g.AGENT_BRANCH_FILE), 'utf8')),
+      'core agentId 分支': () => g.countAgentIdBranchLinesInFiles(g.CORE_AGENT_BRANCH_FILES, root),
       '展示层越层 import': () => g.scanExhibitionLayerImports(root).count,
     }
     burndown = g.computeBurndown(id => (measured[id] ? measured[id]() : NaN))

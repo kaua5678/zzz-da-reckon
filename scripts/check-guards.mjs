@@ -118,6 +118,14 @@ export const RATCHET_BURNDOWN = [
     plan: '抽 resourceCalc/convergence.ts（runCalcRound/runOuterLoop 移出）后有落点，再逐角色迁 applyTeamConfig 三阶段钩子（架构评审 #10 → #2）',
   },
   {
+    id: 'core agentId 分支',
+    file: 'src/core/resource.ts + core/resource/helpers.ts',
+    frozen: 36,
+    target: 0,
+    due: '2027-03-31',
+    plan: '先抽 resourceCalc/convergence.ts 给编排层特判落点（评审 #10），再把 core 里的角色分支抽成 cfg 字段（模块写入、引擎读字段）或迁 applyTeamConfig',
+  },
+  {
     id: '展示层越层 import',
     file: 'src/views + src/components',
     frozen: 23,
@@ -163,6 +171,27 @@ export function daysBetween(a, b) {
 export const AGENT_BRANCH_FILE = 'src/composables/useResourceCalc.ts'
 /** 2026-08-30 冻结基线：规则 6 生效前的历史存量（按「含 agentId ===/!== 的行数」计） */
 export const AGENT_BRANCH_BASELINE = 53
+
+/**
+ * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。
+ *
+ * 为什么单独一条：规则 6 的棘轮此前只盯 `useResourceCalc.ts`（编排层），而 **core/ 引擎层是豁免区**——
+ * 评审实测 core 里沉淀了 36 处 `agentId === 'xxxx'` 特判（resource.ts 16 + resource/helpers.ts 20），
+ * 无任何护栏。它们与编排层那 53 处同根（角色逻辑没回到 `src/mechanics/agents/<id>.ts`），
+ * 且更隐蔽：core 号称「角色无关的纯函数引擎」，读代码的人会默认这里没有角色名。
+ *
+ * ⚠ 为什么不"一次清零"：这些特判承载真实机制（赠链槽位定位、终结技归属、命破分支…），
+ * 迁移需要先有落点（评审 #10 的 convergence.ts 与 applyTeamConfig 通道）。故与 agentId 棘轮同款：
+ * 冻结存量、只减不增，把「清零」变成 burn-down 契约（见 RATCHET_BURNDOWN）而非一次性工程。
+ */
+export const CORE_AGENT_BRANCH_FILES = ['src/core/resource.ts', 'src/core/resource/helpers.ts']
+/** 2026-09-11 冻结基线（评审实测 36 = 16 + 20）；只减不增 */
+export const CORE_AGENT_BRANCH_BASELINE = 36
+
+/** 跨多个文件计 agentId 分支总行数（与 countAgentIdBranchLines 同口径） */
+export function countAgentIdBranchLinesInFiles(files, root = ROOT) {
+  return files.reduce((n, f) => n + countAgentIdBranchLines(readFileSync(join(root, f), 'utf8')), 0)
+}
 
 export function countAgentIdBranchLines(content) {
   return content.split('\n').filter(l => /agentId\s*(===|!==)/.test(l)).length
@@ -437,6 +466,20 @@ export function runAllChecks(root = ROOT) {
       ? [`  ✗ 分支数 ${AGENT_BRANCH_BASELINE}→${branches}：角色特例逻辑写进 useResourceCalc 了。移到 src/mechanics/agents/<id>.ts 的 applyTeamConfig（三阶段钩子，派发器 composables/resourceCalc/helpers.ts）`]
       : branches < AGENT_BRANCH_BASELINE
         ? [`  ✗ 分支数 ${AGENT_BRANCH_BASELINE}→${branches}：是进步，把 check-guards.mjs 的 AGENT_BRANCH_BASELINE 下调到 ${branches}（棘轮只减不增）`]
+        : [],
+  })
+
+  // 引擎层同款棘轮（规则 6 在 core 的延伸；此前 core 是豁免区，评审实测 36 处无护栏）
+  const coreBranches = countAgentIdBranchLinesInFiles(CORE_AGENT_BRANCH_FILES, root)
+  results.push({
+    name: `core agentId ratchet (规则 6 延伸: 引擎层角色无关) ${CORE_AGENT_BRANCH_FILES.join(' + ')} = ${coreBranches}/${CORE_AGENT_BRANCH_BASELINE}`,
+    ok: coreBranches === CORE_AGENT_BRANCH_BASELINE,
+    detail: coreBranches > CORE_AGENT_BRANCH_BASELINE
+      ? [`  ✗ core 内 agentId 特判 ${CORE_AGENT_BRANCH_BASELINE}→${coreBranches}：引擎层应当角色无关。`,
+        '    → 角色机制回 src/mechanics/agents/<id>.ts；跨角色联动走 applyTeamConfig 三阶段钩子；',
+        '      确实需要引擎侧通用通道的，抽成 cfg 字段由模块写入（engine 读字段、不读 agentId）']
+      : coreBranches < CORE_AGENT_BRANCH_BASELINE
+        ? [`  ✗ core 内 agentId 特判 ${CORE_AGENT_BRANCH_BASELINE}→${coreBranches}：是进步，把 CORE_AGENT_BRANCH_BASELINE 下调到 ${coreBranches}（棘轮只减不增）`]
         : [],
   })
 

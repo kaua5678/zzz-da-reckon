@@ -10,9 +10,12 @@ import { describe, expect, it } from 'vitest'
 import {
   DEBT_REGISTRY,
   AGENT_BRANCH_BASELINE,
+  CORE_AGENT_BRANCH_BASELINE,
+  CORE_AGENT_BRANCH_FILES,
   EXHIBITION_LAYER_IMPORT_BASELINE,
   RATCHET_BURNDOWN,
   computeBurndown,
+  countAgentIdBranchLinesInFiles,
   daysBetween,
   detectFetchStub,
   detectExhibitionLayerImport,
@@ -139,9 +142,23 @@ describe('matchDebtRegistry（注册表匹配：文件相同 + 关键词包含�
   })
 })
 
+describe('countAgentIdBranchLinesInFiles（core 棘轮：规则 6 的引擎层延伸）', () => {
+  it('按文件求和，口径与单文件计数一致', () => {
+    const src = `if (c.agentId === '1051') {}\nif (x.agentId !== '1571') {}`
+    expect(countAgentIdBranchLines(src)).toBe(2)
+    // 真实仓库：core 两个文件的总和应等于冻结基线
+    const total = countAgentIdBranchLinesInFiles(CORE_AGENT_BRANCH_FILES)
+    expect(total).toBe(CORE_AGENT_BRANCH_BASELINE)
+    expect(CORE_AGENT_BRANCH_FILES.length).toBeGreaterThan(0)
+  })
+})
+
 describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）', () => {
-  // 语义钉死：棘轮解决「不许变差」，burn-down 解决「什么时候变好」。四条状态必须互不串味。
-  const measure = (id: string) => (id === 'agentId 分支' ? 53 : 23)
+  // 语义钉死：棘轮解决「不许变差」，burn-down 解决「什么时候变好」。四态必须互不串味。
+  // ⚠ fixture 必须**从登记表派生**（不能硬编码条数/某个 id 的返回值）：2026-09-11 加第 3 条棘轮时，
+  // 旧写法（非 agentId 的一律返回 23）把 core 条目也算成「已还 13」，三条断言同时假红。
+  const atFrozen = (id: string) => RATCHET_BURNDOWN.find(e => e.id === id)!.frozen
+  const measure = atFrozen
 
   it('未到期：不报警（只在 due 前后才点名）', () => {
     for (const b of computeBurndown(measure, '2026-09-11')) {
@@ -153,24 +170,29 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
   })
 
   it('到期且零进展 → stale（点名；这是本判据存在的唯一理由）', () => {
-    const rows = computeBurndown(measure, '2027-01-15')
+    const rows = computeBurndown(measure, '2028-01-15')  // 晚于登记表里最晚的 due
+    expect(rows.length).toBeGreaterThan(0)
     expect(rows.every(r => r.stale)).toBe(true)
     expect(rows.every(r => r.overdue)).toBe(true)
   })
 
   it('到期但已有进展 → overdue 而非 stale（有还款就不骂）', () => {
-    const rows = computeBurndown(id => (id === 'agentId 分支' ? 40 : 23), '2027-01-15')
-    const agent = rows.find(r => r.id === 'agentId 分支')!
+    // 只让第一条「已还一部分」，其余保持零进展
+    const first = RATCHET_BURNDOWN[0]
+    const partial = (id: string) => (id === first.id ? first.frozen - 13 : atFrozen(id))
+    const rows = computeBurndown(partial, '2028-01-15')
+    const agent = rows.find(r => r.id === first.id)!
     expect(agent.progress).toBe(13)
     expect(agent.stale).toBe(false)
     expect(agent.overdue).toBe(true)
-    expect(agent.remaining).toBe(40)
-    // 零进展的那条仍 stale
-    expect(rows.find(r => r.id !== 'agentId 分支')!.stale).toBe(true)
+    expect(agent.remaining).toBe(agent.current - agent.target)
+    // 零进展的那些仍 stale
+    expect(rows.filter(r => r.id !== first.id).every(r => r.stale)).toBe(true)
   })
 
   it('清零 → done（不再进提醒）', () => {
-    const rows = computeBurndown(() => 0, '2027-01-15')
+    const rows = computeBurndown(() => 0, '2028-01-15')
+    expect(rows.length).toBeGreaterThan(0)
     expect(rows.every(r => r.done)).toBe(true)
     expect(rows.every(r => r.remaining === 0)).toBe(true)
     expect(rows.every(r => !r.stale)).toBe(true)
@@ -184,10 +206,10 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
       expect(e.plan.length).toBeGreaterThan(10) // 必须写「怎么降」，不能只留一个数字
     }
     // frozen 必须等于真实基线常量（防登记表与护栏脱钩变成死数据）
-    const agentEntry = RATCHET_BURNDOWN.find(e => e.id === 'agentId 分支')!
-    const layerEntry = RATCHET_BURNDOWN.find(e => e.id === '展示层越层 import')!
-    expect(agentEntry.frozen).toBe(AGENT_BRANCH_BASELINE)
-    expect(layerEntry.frozen).toBe(EXHIBITION_LAYER_IMPORT_BASELINE)
+    const byId = (id: string) => RATCHET_BURNDOWN.find(e => e.id === id)!
+    expect(byId('agentId 分支').frozen).toBe(AGENT_BRANCH_BASELINE)
+    expect(byId('core agentId 分支').frozen).toBe(CORE_AGENT_BRANCH_BASELINE)
+    expect(byId('展示层越层 import').frozen).toBe(EXHIBITION_LAYER_IMPORT_BASELINE)
   })
 
   it('daysBetween 计算正确（用于 dueSoon 提示）', () => {
@@ -198,12 +220,14 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('七条判据全绿（fetch-stub 集合相等 / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / 工作区状态 / 滑块棘轮 / debt 注册表 / @fact 锚点 / 展示层越层棘轮 ' + EXHIBITION_LAYER_IMPORT_BASELINE + '）', () => {
+  it('八条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / 工作区状态 / 滑块棘轮 / debt 注册表 / @fact 锚点 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + '）', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(7)
+    expect(results).toHaveLength(8)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
     expect(results.map(r => r.name.split(' ')[0])).toContain('exhibition-layer')
+    // core 棘轮必须在列（规则 6 的引擎层延伸——此前 core 是豁免区）
+    expect(results.some(r => r.name.startsWith('core agentId ratchet'))).toBe(true)
   })
 })

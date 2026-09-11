@@ -14,6 +14,10 @@ export declare function scanFetchStubs(root?: string): { violations: string[]; s
 export declare const AGENT_BRANCH_FILE: string
 export declare const AGENT_BRANCH_BASELINE: number
 export declare function countAgentIdBranchLines(content: string): number
+// 引擎层 agentId 棘轮（规则 6 在 core 的延伸）
+export declare const CORE_AGENT_BRANCH_FILES: string[]
+export declare const CORE_AGENT_BRANCH_BASELINE: number
+export declare function countAgentIdBranchLinesInFiles(files: string[], root?: string): number
 
 // 判据 3：工作区状态防误提交
 export declare const CLAUDE_TRACKED_ALLOWLIST: string[]
