@@ -166,7 +166,10 @@ export function buildDirectDamageChart(input: {
   const tickCenterX = (firstIndex: number) => {
     let w = 0
     for (let j = firstIndex; j < versionNodes.length && versionNodes[j].version === versionNodes[firstIndex].version; j++) w += nodeWidths[j]
-    return padL + (lefts[firstIndex] + w / 2) * plotSpan
+    // 量纲必须一致：lefts 是**比例**（0..1），故半宽 w/2 也要除以 totalWidth 才是比例。
+    // 2026-09-12 修复（抽取时由单测发现）：原式写成 `lefts[first] + w/2`，把「格数」当「比例」用，
+    // 真实数据下刻度被推到画布外（首个版本 982 vs 应为 70，偏差 912px ⇒ 刻度文字不可见）。
+    return padL + (lefts[firstIndex] + (w / 2) / totalWidth) * plotSpan
   }
 
   // 纵轴：至少覆盖 0.7~1.3，再按数据外扩 ±0.03

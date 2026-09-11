@@ -79,14 +79,21 @@ describe('buildDirectDamageChart（几何与标度）', () => {
     expect(g.vMax).toBeCloseTo(1.33, 6)
   })
 
-  // ⚠ 已知缺陷（2026-09-12 抽取时由测试发现，本提交**忠实保留**原行为，修复另提）：
-  // `tickCenterX` 把「比例口径的 lefts」（0..1 分数）与「格数口径的 w/2」（0.5~n）相加后
-  // 再乘 plotSpan → 量纲不一致，刻度被推到画布外。真实数据实测偏差 **912px**（见账本）。
-  // 正确口径应为 `padL + (lefts[first] + (w/2)/totalWidth) * plotSpan`。
-  it('版本刻度中心：现状公式（含已知量纲缺陷，如实钉住）', () => {
+  // 2026-09-12 修复：原式 `lefts[first] + w/2` 把「比例」（0..1）与「格数」混用，量纲不一致，
+  // 真实数据下刻度被推到画布外（首个版本 982 vs 应为 70，偏差 912px ⇒ 刻度文字不可见）。
+  // 修复 = 半宽也换算成比例 `(w/2)/totalWidth`。本断言钉住修复后的口径。
+  it('版本刻度中心 = 该版本跨度中心（量纲修复：格数须换算成比例）', () => {
     const g = buildDirectDamageChart(base)
-    // 现状 = padL + (lefts[0] + w/2) * plotSpan，w = 2（2.0 上下半各 1 格）
-    expect(g.tickCenterX(0)).toBeCloseTo(g.padL + (g.lefts[0] + 2 / 2) * g.plotSpan, 6)
+    // 2.0 占前两格（各 1 格）→ 中心 = padL + 1 格宽
+    expect(g.tickCenterX(0)).toBeCloseTo(g.padL + g.plotSpan / 4, 6)
+    // 合并卡池（单节点 2 格）中心 = 该列中心
+    expect(g.tickCenterX(2)).toBeCloseTo(g.padL + (g.lefts[2] + (2 / 2) / g.totalWidth) * g.plotSpan, 6)
+    // 刻度不得越出绘图区（原缺陷下会到 padL+plotSpan 之外）
+    for (let i = 0; i < versionNodes.length; i++) {
+      const t = g.tickCenterX(i)
+      expect(t).toBeGreaterThanOrEqual(g.padL)
+      expect(t).toBeLessThanOrEqual(g.padL + g.plotSpan)
+    }
   })
 
   it('测试服阴影：只覆盖标注节点，且最小 8px 宽', () => {
