@@ -1301,6 +1301,7 @@ import {
 } from '@/composables/versionChartGeometry'
 import { buildFilmSimChart } from '@/composables/filmSimChart'
 import { computeStrengthBands, strengthBandTitle, type StrengthBand } from '@/composables/strengthBands'
+import { readSvgPointer } from '@/composables/svgPointer'
 import { buildNewCharacterRows, computeFilmSimulation, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
 import { computeSlotComparePoints, type SlotComparePoint, type SlotCompareSlot } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
@@ -1611,10 +1612,7 @@ function bandTitle(b: StrengthBand): string {
 const hoverCardX = ref(0)
 const hoverCardY = ref(0)
 function onSvgMove(e: MouseEvent) {
-  const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
-  const relX = e.clientX - rect.left
-  const scale = svgW.value / rect.width
-  const svgX = relX * scale
+  const { relX, svgX, rect } = readSvgPointer(e, { w: svgW.value, h: svgH.value })
   if (nodeCount.value <= 0) return
   let best = -1
   let bestDist = Infinity
@@ -1754,9 +1752,7 @@ const chart3HoverInfo = computed(() => chart3Pts.value[chart3Hover.value] ?? nul
 const chart3CardX = ref(0)
 const chart3CardY = ref(0)
 function onChart3Move(e: MouseEvent) {
-  const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
-  const scale = svgW.value / rect.width
-  const svgX = (e.clientX - rect.left) * scale
+  const { svgX, relX, relY, rect } = readSvgPointer(e, { w: svgW.value, h: chart3SvgH })
   let best = -1
   let bestDist = Infinity
   chart3Pts.value.forEach((p, i) => {
@@ -1768,8 +1764,8 @@ function onChart3Move(e: MouseEvent) {
   })
   if (best >= 0 && bestDist < (plotW.value / Math.max(1, VERSION_NODES.length)) * 2) {
     chart3Hover.value = best
-    chart3CardX.value = Math.min(rect.width - 240, e.clientX - rect.left + 12)
-    chart3CardY.value = e.clientY - rect.top + 8
+    chart3CardX.value = Math.min(rect.width - 240, relX + 12)
+    chart3CardY.value = relY + 8
   } else {
     chart3Hover.value = -1
   }
@@ -1890,9 +1886,7 @@ const scHoverInfo = computed(() => {
 const scCardX = ref(0)
 const scCardY = ref(0)
 function onScMove(e: MouseEvent) {
-  const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
-  const scale = svgW.value / rect.width
-  const svgX = (e.clientX - rect.left) * scale
+  const { svgX, relX, relY, rect } = readSvgPointer(e, { w: svgW.value, h: scSvgH })
   let best = -1
   let bestDist = Infinity
   scPts.value.forEach((p, i) => {
@@ -1904,8 +1898,8 @@ function onScMove(e: MouseEvent) {
   })
   if (best >= 0 && bestDist < (plotW.value / Math.max(1, VERSION_NODES.length)) * 2) {
     scHover.value = best
-    scCardX.value = Math.min(rect.width - 260, e.clientX - rect.left + 12)
-    scCardY.value = e.clientY - rect.top + 8
+    scCardX.value = Math.min(rect.width - 260, relX + 12)
+    scCardY.value = relY + 8
   } else {
     scHover.value = -1
   }
@@ -2026,9 +2020,7 @@ const simHoverInfo = computed(() => {
 const simCardX = ref(0)
 const simCardY = ref(0)
 function onSimMove(e: MouseEvent) {
-  const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
-  const scale = svgW.value / rect.width
-  const svgX = (e.clientX - rect.left) * scale
+  const { svgX, relX, relY, rect } = readSvgPointer(e, { w: svgW.value, h: simSvgH })
   let best = -1
   let bestDist = Infinity
   simPts.value.forEach((p, i) => {
@@ -2040,8 +2032,8 @@ function onSimMove(e: MouseEvent) {
   })
   if (best >= 0 && bestDist < (plotW.value / Math.max(1, simPoints.value.length)) * 2) {
     simHover.value = best
-    simCardX.value = Math.min(rect.width - 260, e.clientX - rect.left + 12)
-    simCardY.value = e.clientY - rect.top + 8
+    simCardX.value = Math.min(rect.width - 260, relX + 12)
+    simCardY.value = relY + 8
   } else {
     simHover.value = -1
   }
@@ -2212,8 +2204,7 @@ function pvDetailBarH(e: PvCardRoomEffect): string {
   return `${Math.max(2, pctv)}%`
 }
 function onPvMove(e: MouseEvent) {
-  const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
-  const svgY = ((e.clientY - rect.top) / rect.height) * pvSvgH.value
+  const { svgY } = readSvgPointer(e, { w: svgW.value, h: pvSvgH.value })
   const idx = Math.floor((svgY - pvPadT) / pvRowH)
   pvHover.value = pvRows.value[idx]?.agentId ?? ''
 }
