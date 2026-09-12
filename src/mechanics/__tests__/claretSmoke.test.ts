@@ -9,8 +9,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
+  claretMechanic,
   computeClaretSharpResource,
   C2_MAIM_MULT,
+  INITIAL_CRIT_DMG_TO_CRIT_RATE,
   SHARPNESS_COST_PER_EX,
   SHARPNESS_ULTIMATE_GAIN,
 } from '@/mechanics/agents/claret'
@@ -216,5 +218,33 @@ describe('克拉蕾全管线冒烟（v12）', () => {
       .executions.find(e => e.moveId === '1611013' && (e.damageMultiplierOverride ?? false))
     expect(row).toBeTruthy()
     expect(row!.damageMultiplier).toBeCloseTo(1625.6 * C2_MAIM_MULT, 1)
+  })
+})
+
+describe('克拉蕾初始暴伤→暴击率转化（核心被动：每 1% 初始暴伤 +0.35% 暴击率）', () => {
+  function panelWith(initialCritDmg: number, inCombatCritDmg = 0) {
+    const panel: any = { critRate: 19.4, critDmg: inCombatCritDmg }
+    claretMechanic.applyPanel!({
+      slot: 0,
+      agent: {} as any,
+      cinemaLevel: 0,
+      potentialLevel: 6,
+      team: [],
+      outOfCombatPanel: { critDmg: initialCritDmg } as any,
+      panel,
+      settings: {},
+    })
+    return panel
+  }
+
+  it('初始暴伤 40 → 暴击率 +14（40×0.35），再叠核心被动 +30', () => {
+    const p = panelWith(40)
+    expect(INITIAL_CRIT_DMG_TO_CRIT_RATE).toBe(0.35)
+    expect(p.critRate).toBeCloseTo(19.4 + 40 * 0.35 + 30, 5)
+  })
+
+  it('初始暴伤 0 → 只有核心被动 +30；局内暴伤拐（珂蕾妲潜能 +35）不参与转化', () => {
+    expect(panelWith(0).critRate).toBeCloseTo(19.4 + 30, 5)
+    expect(panelWith(0, 35).critRate).toBeCloseTo(19.4 + 30, 5)
   })
 })

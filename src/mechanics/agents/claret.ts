@@ -27,6 +27,8 @@ import { pickThirdNamedBasicSegment } from '@/composables/resourceCalc/helpers'
  * 锐能：进场 +60（勘域 180s 一次 → 每局一次）；秘血铸锋（EX）消耗 60 → 每局 1 发。
  *   —— 旧「2 毁伤/局 → 2.5 锐能放不出 EX」问题由 v12 文本解决（用户 2026-09 口径确认）。
  * 核心被动（猩红铭刻/连携/终结/无垢熔锋期间）：暴击率 +30%、残痕积蓄效率 +50%（满覆盖近似）。
+ * 核心被动·初始转化：每 1% 初始暴击伤害 → 初始暴击率 +0.35%（读 outOfCombatPanel，
+ *   局内暴伤拐不转化；旧「未建模，初始暴伤≈0」判断已修正——锋御词条第三优先就是暴伤）。
  * 额外能力·血裔传承：全队触发[浸染]时克拉蕾回 300 喧响（20s CD）；队友/自身触发[毁伤]时
  *   全队[锋御]进入[残锋]（锐暴伤害 +25%，40s 刷新）——残锋按自身面板近似（全队锋御同源）。
  * 影画1：猩红铭刻最大持续 +3s（时长无数值影响）；状态期间攻击命中无视 16% 电抗（满覆盖近似）。
@@ -73,6 +75,12 @@ export const M4_DMG_BONUS = 20
 export const M4_MOVE_IDS = new Set(['1611007', '1611029', '1611020', '1611021'])
 /** 残锋：全队锋御 锐暴伤害 +25%（40s 刷新，满覆盖近似） */
 export const RESIDUAL_EDGE_SHARP_CRIT_DMG = 25
+/**
+ * 核心被动·初始转化：每 1% **初始**暴击伤害 → 初始暴击率 +0.35%。
+ *
+ * @fact agent:1611/初始暴伤转暴击 口径: 每1%初始暴击伤害→初始暴击率+0.35%（读局外面板 critDmg，局内暴伤拐如珂蕾妲潜能不参与转化）；锋御模板基础暴伤=0，初始暴伤来自副词条/主词条/驱动盘 | 据 nanoka live3.2原文@2026-09（此前误记「未建模，初始暴伤≈0 无影响」——锋御词条优先级第三位就是暴伤，优化器分配后有实际收益） | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#INITIAL_CRIT_DMG_TO_CRIT_RATE | 信 确认
+ */
+export const INITIAL_CRIT_DMG_TO_CRIT_RATE = 0.35
 /** 葬血强袭每施放至多 3 次毁伤（连续 3 段横斩，各命中触发） */
 export const BURIAL_MAIM_PER_CAST = 3
 /**
@@ -122,7 +130,13 @@ function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: numb
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
-function applyClaretPanel({ panel, cinemaLevel }: AgentPanelInput): void {
+function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelInput): void {
+  // 核心被动·初始转化：每 1% 初始暴击伤害 → 初始暴击率 +0.35%。
+  // 初始口径 → 只读局外面板（珂蕾妲潜能等局内暴伤拐不参与转化）；基础暴伤 0，收益全来自副/主词条。
+  const initialCritDmg = Number(outOfCombatPanel?.critDmg ?? 0)
+  if (initialCritDmg > 0) {
+    panel.critRate = (panel.critRate ?? 0) + initialCritDmg * INITIAL_CRIT_DMG_TO_CRIT_RATE
+  }
   // 核心被动 Lv.7：猩红铭刻/连携/终结/无垢熔锋期间 暴击率 +30%（状态高频维持，满覆盖近似）
   panel.critRate = (panel.critRate ?? 0) + CORE_CRIT_RATE
   // 残锋：队友/自身触发[毁伤]后全队锋御 锐暴伤害 +25%（40s 刷新；按自身面板近似）
