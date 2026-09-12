@@ -631,12 +631,14 @@ async function verbStatus(root = ROOT) {
     const markers = g.scanDebtMarkers(root)
     const audit = g.matchDebtRegistry(markers)
     debt = { registered: markers.length - audit.unregistered.length, unregistered: audit.unregistered.length, cleared: audit.cleared.length }
-    // 判据 11：棘轮 burn-down（只报不红）——测量函数注入，zc 不复制各判据的实现
+    // 棘轮 burn-down（只报不红）——测量函数注入，zc 不复制各判据的实现
+    // （编号说明：check-guards 的判据 11 = 手册密度棘轮；burn-down 本身不是判据）
     const measured = {
       // 度量函数一律调用 check-guards 的具名导出（规则 11：口径单一实现，zc 不复制）
       'agentId 分支': () => g.countAgentBranchLines(root),
       'core agentId 分支': () => g.countAgentIdBranchLinesInFiles(g.CORE_AGENT_BRANCH_FILES, root),
       '展示层越层 import': () => g.scanExhibitionLayerImports(root).count,
+      '手册数字 id 密度': () => g.scanManualDensity(root)['docs/ENGINE_PIPELINE_GUIDE.md']?.density ?? NaN,
     }
     burndown = g.computeBurndown(id => (measured[id] ? measured[id]() : NaN))
   } catch { /* 护栏不可用时不阻塞 status */ }

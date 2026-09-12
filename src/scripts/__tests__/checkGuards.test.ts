@@ -7,7 +7,8 @@
  * ③ 仓库级 runAllChecks 全绿（在 vitest 里给出定位到行的失败信息，不用等 CI）
  */
 import { describe, expect, it } from 'vitest'
-import { readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   DEBT_REGISTRY,
@@ -17,6 +18,7 @@ import {
   CORE_AGENT_BRANCH_BASELINE,
   CORE_AGENT_BRANCH_FILES,
   EXHIBITION_LAYER_IMPORT_BASELINE,
+  MANUAL_DENSITY_CEILINGS,
   RATCHET_BURNDOWN,
   auditDocTable,
   computeBurndown,
@@ -34,6 +36,7 @@ import {
   extractSettingIds,
   matchDebtRegistry,
   auditCatalogLevel60,
+  scanManualDensity,
   runAllChecks,
 } from '../../../scripts/check-guards.mjs'
 
@@ -340,17 +343,19 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('十条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账）', () => {
+  it('十一条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮）', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(10)
+    expect(results).toHaveLength(11)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
     expect(results.map(r => r.name.split(' ')[0])).toContain('exhibition-layer')
     // core 棘轮必须在列（规则 6 的引擎层延伸——此前 core 是豁免区）
     expect(results.some(r => r.name.startsWith('core agentId ratchet'))).toBe(true)
     // 判据 10：catalog ↔ raw 对账（2026-09-12 新增，坑 40）
     expect(results.some(r => r.name.includes('catalog/raw level60 对账'))).toBe(true)
+    // 判据 11：手册数字 id 密度棘轮（2026-09-12 任务卡第 1 步，防手册编年史化）
+    expect(results.some(r => r.name.includes('手册密度棘轮'))).toBe(true)
   })
 })
 
@@ -378,5 +383,47 @@ describe('auditCatalogLevel60（判据 10：catalog ↔ raw 对账）', () => {
     expect(r.compared).toBeLessThanOrEqual(rawCount * r.fieldNames.length)
     // 真正要防的误报：无 raw 的角色绝不能出现在违规里
     expect(r.violations).toEqual([])
+  })
+})
+
+describe('scanManualDensity（判据 11：手册数字 id 密度棘轮，任务卡 2026-09-12）', () => {
+  it('仓库现状：四份方法文档全部可测且在天花板内（超 = 判据红，本条 = 回归护栏本身）', () => {
+    const d = scanManualDensity()
+    expect(Object.keys(d).sort()).toEqual(Object.keys(MANUAL_DENSITY_CEILINGS).sort())
+    for (const [file, v] of Object.entries(d)) {
+      expect(v.density, file).not.toBeNull()
+      expect(v.density!, `${file} 密度 ${v.density} 超天花板 ${v.ceiling}`).toBeLessThanOrEqual(v.ceiling)
+    }
+  })
+
+  it('口径：按 \\b1\\d{3}\\b 命中次数计，排除 7 位 moveId / 5 位 prop / boss id；打包编年行按次数加权', () => {
+    const root = mkdtempSync(join(tmpdir(), 'density-'))
+    mkdirSync(join(root, 'docs'))
+    // 每行一个用例：克拉蕾行 1 hit + 打包队名行 3 hits，其余行全部 0（边界排除验证）
+    writeFileSync(join(root, 'docs/ENGINE_PIPELINE_GUIDE.md'), [
+      '克拉蕾 1611 的口径',            // 1 hit
+      'moveId 1611028 不吃倍率',       // 0（7 位连续数字，\b 不成立）
+      '20101 暴击率突破 / 31201 精通',  // 0（5 位 prop id）
+      'boss 40002 猎血清道夫',          // 0（boss id 不以 1 开头）
+      'auto-1431-1481-1491 +39.4%',    // 3（打包编年行按次数计，这是口径的核心决定）
+      '协议文字，不含任何 id',           // 0（分母摊薄 = 期望方向）
+      '',                               // 尾行（split 产生，计入分母——口径稳定即可）
+    ].join('\n'))
+    const d = scanManualDensity(root)['docs/ENGINE_PIPELINE_GUIDE.md']
+    expect(d.hits).toBe(4)
+    expect(d.lines).toBe(7)
+    expect(d.density).toBeCloseTo(4 / 7, 3)
+    // 其余三份缺失 → density null（缺失不判红，与判据 10 同风格）
+    expect(scanManualDensity(root)['docs/AGENT_RECORDING_SOP.md'].density).toBeNull()
+  })
+
+  it('burn-down：手册密度条目存在且度量 id 可解析（漏接 measure 会静默 NaN → zc 点名失效）', () => {
+    const e = RATCHET_BURNDOWN.find(x => x.id === '手册数字 id 密度')
+    expect(e).toBeDefined()
+    expect(e!.file).toBe('docs/ENGINE_PIPELINE_GUIDE.md')
+    expect(e!.target).toBeLessThan(e!.frozen)
+    // zc.mjs measured 映射以 id 为键（rule 11：口径实现在 check-guards，zc 只注入）
+    const src = readFileSync(join(process.cwd(), 'scripts/zc.mjs'), 'utf8')
+    expect(src).toContain(`'${e!.id}'`)
   })
 })

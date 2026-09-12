@@ -135,6 +135,14 @@ export const RATCHET_BURNDOWN = [
     due: '2026-12-31',
     plan: '常量/纯函数下沉 src/data/ 或经编排层透出；逐文件清理后下调 EXHIBITION_LAYER_IMPORT_BASELINE',
   },
+  {
+    id: '手册数字 id 密度',
+    file: 'docs/ENGINE_PIPELINE_GUIDE.md',
+    frozen: 0.287,  // 2026-09-12 任务卡实测（密度口径见 MANUAL_DENSITY_CEILINGS 头注释；判据天花板 0.30 = 此值 + 余量）
+    target: 0.15,
+    due: '2026-10-31',
+    plan: '§4 编年式条目按「症状/根因/判据/否决记录」四栏模板拆薄（任务卡第 2→3 步：坑19 示范已做，余量在 33/35/30 等超长条目）；叙事删除留 git 指针。达 target 后同步下调判据天花板与 frozen',
+  },
 ]
 
 /**
@@ -263,6 +271,41 @@ export function auditCatalogLevel60(root = ROOT) {
     }
   }
   return { compared, violations, fieldNames: rules.map((r) => r.field) }
+}
+
+// ---- 判据 11：手册数字 id 密度棘轮（任务卡 2026-09-12「经验手册防历史记录化」第 1 步） ----
+
+/**
+ * 度量口径（写死在这里，别处不许另算）：**全文**中 `/\b1\d{3}\b/` 命中次数 ÷ 总行数。
+ * - 用「次数」不用「含 id 的行数」：编年史行的特征就是把一队 id 打包在同一行
+ *   （`auto-1431-1481-1491 +39.4%`），按行数计会被打包稀释，按次数计才对症。
+ * - `\b` 边界天然排除 7 位 moveId（1611028）、5 位 prop id（20101/31201）、boss id（4xxxx）。
+ * - 分母是**全文行数**：往手册里加纯协议/判据文字（不含 id）会摊薄密度——这正是期望方向，
+ *   案例编年史该进 git 历史与 .claude 账本，不该沉淀在手册里（AGENTS 规则 8 分层契约）。
+ * 天花板 = 2026-09-12 实测向上取整留余量后冻结。`MECHANICS_IMPLEMENTATION.md` **不在列**：
+ * 它是档案（逐角色口径记录，个体性=本职），任务卡实测后明确不动。
+ *
+ * @fact engine:guards/手册密度 口径: 密度 = /\b1\d{3}\b/ 次数 ÷ 行数，四份方法文档按 2026-09-12 实测冻结天花板；编年叙事只进 git/账本，手册只收协议/口径/证据 | 据 任务卡@2026-09-12（用户确认方向） | 验 src/scripts/__tests__/checkGuards.test.ts | 锚 scripts/check-guards.mjs#MANUAL_DENSITY_CEILINGS | 信 确认
+ */
+export const MANUAL_DENSITY_CEILINGS = {
+  'docs/ENGINE_PIPELINE_GUIDE.md': 0.30,      // 实测 0.287（病灶：§4 编年式条目；burn-down target 0.15）
+  'docs/AGENT_RECORDING_SOP.md': 0.05,        // 实测 0.037
+  'docs/GAME_TERM_TO_CODE_FIELD.md': 0.16,    // 实测 0.147
+  'docs/MECHANIC_PATTERNS.md': 0.20,          // 实测 0.187
+}
+
+/** 计算四份方法文档的数字 id 密度；文件缺失时该条 density = null（不判红，与判据 10 同风格） */
+export function scanManualDensity(root = ROOT) {
+  const out = {}
+  for (const [rel, ceiling] of Object.entries(MANUAL_DENSITY_CEILINGS)) {
+    const p = join(root, rel)
+    if (!existsSync(p)) { out[rel] = { ceiling, lines: 0, hits: 0, density: null }; continue }
+    const text = readFileSync(p, 'utf8')
+    const lines = text.split('\n').length
+    const hits = (text.match(/\b1\d{3}\b/g) ?? []).length
+    out[rel] = { ceiling, lines, hits, density: Math.round((hits / lines) * 1000) / 1000 }
+  }
+  return out
 }
 
 // ---- 判据 2：编排层 agentId 分支棘轮 ----
@@ -755,6 +798,19 @@ export function runAllChecks(root = ROOT) {
         `  → 全量报告（含不进本判据的容差/对照组）：node scripts/audit-catalog-level60.mjs`,
       ] : []),
     ],
+  })
+
+  // ---- 判据 11：手册数字 id 密度棘轮（任务卡 2026-09-12：防手册编年史化） ----
+  const density = scanManualDensity(root)
+  const dense = Object.entries(density).filter(([, d]) => d.density !== null && d.density > d.ceiling)
+  results.push({
+    name: dense.length === 0
+      ? `手册密度棘轮 (规则 8 分层契约: 协议/口径/证据进手册, 编年史进 git/账本) ${Object.keys(density).length}/${Object.keys(density).length} 达标`
+      : `手册密度棘轮 ✗ ${dense.length} 份超天花板`,
+    ok: dense.length === 0,
+    detail: dense.map(([f, d]) =>
+      `  ✗ ${f} 密度 ${d.density} > 天花板 ${d.ceiling}（hits ${d.hits}/行 ${d.lines}）`
+      + ` → 新案例叙事进 .claude 账本或 git，手册条目按「症状/根因/判据/否决记录」四栏模板写`),
   })
 
   return { results, ok: results.every(r => r.ok) }
