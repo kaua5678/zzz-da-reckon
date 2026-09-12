@@ -274,6 +274,21 @@ export const NICOLE_QUICK_ASSIST: MoveFusionGroup = {
 /** 妮可·强特（夹心糖衣炮弹）走 sustainedEx 注册表（四段各自成行），此处**不登记融合组**——
  *  登记会与已物化的兄弟段行双计；其能量场 1031106 的不占时间在 data/sustainedEx.ts 标记。 */
 
+/** 克拉蕾·反制支援：寸铁不让＝本体 + 紧随的支援突击：血华誓·琢形（两段都占前台时间）。
+ *  「发动[反制支援]后，点按攻击发动」= 一次化解控制技的连招，按一次动作计（前台动作数 +1 而非 +2）。
+ *  与普通弹刀那对（轻弹刀行 + 支援突击行两行分开）刻意不同：那对的时间/喧响按行各自物化，
+ *  而琢形只有反制支援会打（`findAssistFollowUp` 取首条 = 无垢熔锋，永远不会误取它）。 */
+export const CLARET_COUNTER_ASSIST: MoveFusionGroup = {
+  moveId: '1611028',
+  agentId: '1611',
+  label: '克拉蕾·反制支援：寸铁不让（含支援突击·琢形）',
+  terms: [
+    { moveId: '1611028', count: 1 },
+    { moveId: '1611030', count: 1 },
+  ],
+  note: 'full/1611.json assist「支援突击：血华誓·琢形」desc =「发动[反制支援]后，点按 攻击 发动」→ 与 1611028 同属一次动作（用户 2026-09-12「两个都算」）。',
+}
+
 // @fact engine:autoField/能量场不占前台时间 口径: 自动攻击/能力场段（妮可 1031303 连携能量场、1031305 终结能量场、1031106 强特能量场）倍率·失衡·积蓄·喧响照算，时间通道按 0 计——一次招式「打是全打，站场不算」 | 据 用户@2026-09-11「只有炮击算时间，能力场是自动攻击，不算时间」+ nanoka full/1031.json 炮击/能量场分行 | 验 src/composables/__tests__/moveFusion.test.ts#倍率融合：时间通道（连携技「单次时长」） | 锚 src/data/moveFusions.ts#NICOLE_CHAIN | 信 确认
 
 export const MOVE_FUSION_GROUPS: MoveFusionGroup[] = [
@@ -295,6 +310,7 @@ export const MOVE_FUSION_GROUPS: MoveFusionGroup[] = [
   ZHENDOU_ASSIST_BREAKING_FANG,
   QIANXIA_EX_BUBBLEGUM_BARRAGE,
   QIANXIA_EX_PHOTOGRAPHY,
+  CLARET_COUNTER_ASSIST,
 ]
 
 /** 主段 moveId → 融合组（查表键） */

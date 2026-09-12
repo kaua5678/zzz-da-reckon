@@ -278,7 +278,8 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     「保底4失衡」勾选时，`useResourceCalc` 外层不动点线程（`prevParrySplit`，般岳 `prevBanyueTopUp`
     同款收敛）按当前队伍反推——击破位（首个 `specialty==='stun'` 槽位）**正常弹刀** = 保底 4 次失衡所需、
     主C（槽位 0）= `parryTotal − 击破位`（主C 已手填不覆盖）；**不带支援突击弹刀**（只有轻弹刀倍率行 +
-    喧响 215、无支援突击行）全部归击破位、非用户可调（执行行：轻弹刀 count = parry + 无突击、支援突击
+    喧响 215、无支援突击行）按**对半分**（2026-09-10 更正，见本节末「弹刀口径三件事」——原文「全部归击破位」
+    是错的、与本坑开头长期漂移）、非用户可调（执行行：轻弹刀 count = parry + 无突击、支援突击
     count = parry）。**口径坑**：①缺口必须按「非弹刀失衡基数」算（失衡池 total − 击破位弹刀行贡献，行
     count 随弹刀缩放），否则补齐自身把缺口关掉会 0↔T 振荡；②无突击弹刀的失衡值先从缺口里扣掉再反推
     正常弹刀；③击破位每次弹刀失衡 = 招架支援 + 支援突击两行 `effectiveStun/count` 之和（无突击 = 仅招架
@@ -290,6 +291,32 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     轻弹刀打小怪无 daze）只计 215 喧响、不产任何行（不进 parryForBonus 之外的行生成）；**失衡赠礼**
     `stunGiftRatio` 应用时换算 `bossStunGift = 比例 × stunValue`，`calcStunPool` 加 `stunGift` 直接计入
     stunCount 推导（不计抗性/返还），反推的非弹刀基数也把它加进去（减少缺口）。
+    **控制技（紫光技）组 × 反制支援（2026-09-12 建通道，暂无 Boss 录数据）**：预设
+    `defaults.counterAssistGroups: number[]` **逐组记招架段数**（数组长度 = 组数；一组控制技 =
+    连续数段无闪光提示的攻击 + 一次完美反制，术语 2000003）。折算在 **store 侧**
+    （`stores/config.ts#syncBossInteractionPlan`，`flush:'sync'` 的 watch 驱动，**不改 convergence**）：
+    队内有反制支援角色且开关 `boss.counterAssistReplace`（缺省开）为真 → **整组不并入**
+    `appliedBoss.parryTotal/parryNoFollowUpTotal`（用户裁决「直接不把对应弹刀次数录进去，就无需反扣」，
+    比反扣少一个振荡面）；否则每组并入「1 次正常弹刀 + 段数−1 次无突击弹刀」——等价旧手工抄录口径。
+    承接槽位 `configStore.counterAssistSlot`（可设 `boss.counterAssistSlot` 指定，指定的槽位没这招则回退
+    自动，防静默失效）。执行行 = `core/resource/helpers#buildExecutions` 的反制支援一行，**一次动作**
+    （本体 1611028 + 专属支援突击 1611030 琢形 由 `data/moveFusions.ts#CLARET_COUNTER_ASSIST` 融合，
+    前台动作计数 +1 而非 +2，故 `countFrontActions` 的 fusedMoveIds 四处调用点无需改），
+    时间/喧响走融合口径；**不并入 parryCount** → 自动不产轻弹刀/支援突击行、**不拿弹刀 215 特殊动作奖励**、
+    不参与 `perParryDaze` 反推（用户口径「完全不拿 215，只算行内喧响」）。判据表：
+    角色侧招式配对在 `src/data/counterAssists.ts`（**不能按名字扫**：克拉蕾 assist 段有两条
+    `Assist Follow-Up`，无垢熔锋随招架、琢形随反制，名字匹配必挑错行）。
+    时间口径坑：这俩的 `ether_purify = 300 + 100t`，v12 导入器原先只按名扣 闪反1.5/招架2.5/终结5 →
+    两行各多算 3s（6.717/4.117 实为 3.717/1.117），已按 `MOVE_ETHER_BASE` 定点修，**catalog 已重跑**
+    （重跑时顺带修了该一次性导入器会静默丢掉 gachabase 补的 gash_buildup/sharpness_gain 行的 bug）。
+    两条附带口径（2026-09-12 用户裁决）：**角力按弹刀同权重进操作难度**（`INTERACTION_WEIGHTS.counterAssist=1.0`，
+    `difficultyCurve#liveInteractions` 运行时取组数并按承接槽位截断存活率缩——它不是 store 字段，别去
+    `ENGINE_INTERACTION_FIELDS` 里找）；**每组直接送 1 层残痕**（琢形原文「直接添加1层」→
+    `computeClaretSharpResource` +600 点且**不吃积蓄效率倍率**；表列 gash_buildup（本体 446 + 琢形 134 = 580/次）
+    走「全招式积累」通道照常计入——送层是额外奖励、表值是实打积累，两个来源不双计。残痕值本身的
+    三处历史错误（只算平A+EX、EX 错读 anomaly_buildup 列、把同时 3 层当成整局毁伤上限）同日一并纠正，
+    见 `MECHANICS_IMPLEMENTATION.md` 克拉蕾段）。判据：`counterAssist.test.ts`（登记一致性/折算幂等/产行/不拿215/送层/难度权重/
+    开关翻转结果确实变）+ `claretSmoke.test.ts::反制支援送残痕`。
 19. **时间预算欠打回填 + 轴退化（2026-08-30）**：坑 12 的折叠循环是单向的（只折正 excess），
     「estimate 高估 → basic 池被挤到 0 → 物化行打不满战斗时间」无人管——般岳队曾实测前台 172.8s
     欠打 7.2s（账本高估 13s 把平A池挤光）。双向修法：

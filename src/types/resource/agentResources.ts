@@ -105,12 +105,19 @@ export interface RoxyWindEnergySource {
 
 /** 克拉蕾残痕/锐能资源明细（v12 口径 2026-09-03） */
 export interface ClaretSharpResourceSource {
-  /** 残痕值来源（%）：平A聚合（秒均残痕值×平A时间）+ 秘血铸锋单发（234.96%）；锐化伤害命中积累 */
+  /** 残痕值来源（%）：平A（两态秒均×时间）+ **其余全部招式**（实打次数 × `gash_buildup` 表值），已 × 积蓄效率 */
   gashValuePct: number
+  /** 其中平A 贡献（%）——两态基准秒均 × 平A时间 × 积蓄效率 */
+  basicGashValuePct?: number
+  /** 其中「其余招式」贡献（%）= Σ 实打次数 × 该招 gash_buildup 表值 × 积蓄效率 */
+  moveGashValuePct?: number
   /** 残痕积蓄效率倍率 = 1 + 核心被动 50%（Lv7，猩红铭刻期间近似常驻）+ 影画2 20%（锐暴命中近似常驻） */
   gashBuildupMultiplier: number
   /** 残痕层数 = floor(残痕值 / 100)，上限 3 层（溢出浪费） */
   gashStacks: number
+  /** 反制支援送层数（= 整组化解的控制技组数）：琢形「重击命中**直接**添加1层[残痕]」，
+   *  每组 +600 点且**不吃积蓄效率倍率**（用户口径 2026-09-12）；0 = 本次计算没有反制支援。 */
+  counterAssistGashStacks?: number
   /** 血华誓毁伤需求次数（斩金断铁×1 + 葬血强袭×3 + 影画6 连携/终结各1） */
   maimDemand: number
   /** 命中残痕状态消耗的层数 = min(残痕层数, 需求) × 残痕覆盖率 */

@@ -1144,6 +1144,32 @@ export function buildExecutions(
     })
   }
 
+  // 反制支援（Counter Assist）：boss 控制技（紫光技）**整组化解**——一组 = 一次动作
+  // （本体 + 紧随的专属支援突击，两行由 data/moveFusions.ts#CLARET_COUNTER_ASSIST 融合）。
+  // 刻意不并进 parryCount：不产轻弹刀/支援突击行、不拿弹刀 215 特殊动作奖励、不参与
+  // 「保底4失衡」的每次弹刀失衡反推（用户口径 2026-09-12「完全不拿 215，只算行内喧响」）。
+  const counterAssistCount = Math.max(0, Math.floor(cfg.counterAssistCount ?? 0))
+  const counterAssistActionTime = cfg.counterAssistActionTime ?? 0
+  if (counterAssistCount > 0 && cfg.counterAssistMoveId && counterAssistActionTime > 0) {
+    const car = cfg.counterAssistComboAlignRatio ?? 0
+    const decibel = cfg.counterAssistDecibelRecovery ?? 0
+    executions.push({
+      moveId: cfg.counterAssistMoveId,
+      moveName: '反制支援（Counter Assist）',
+      category: 'assist',
+      count: counterAssistCount,
+      actionTime: counterAssistActionTime,
+      comboAlignRatio: car,
+      totalTime: counterAssistCount * counterAssistActionTime,
+      totalComboAlignTime: counterAssistCount * counterAssistActionTime * car,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      decibelRecovery: decibel,
+      totalDecibelRecovery: counterAssistCount * decibel,
+      timeBucket: 'necessary',
+    })
+  }
+
   // 招式执行计划完全构建后，模块可做最终修正（如按招式标签补增伤/暴击/固定附加伤害）。
   getAgentMechanic(cfg.agentId)?.patchExecutions?.({ cfg, state, executions, teamFrontlineSeconds })
 
@@ -1490,6 +1516,8 @@ export function iterate(
       + cfg.dodgeCounterCount * cfg.dodgeCounterActionTime
       + (cfg.parryCount ?? 0) * cfg.assistFollowUpActionTime
       + ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistActionTime
+      // 反制支援（控制技整组化解）与弹刀同类：必做前台时间，账本必须预留（否则物化行顶出预算被截断）
+      + Math.max(0, Math.floor(cfg.counterAssistCount ?? 0)) * (cfg.counterAssistActionTime ?? 0)
       + remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndActionTime
       // 诺姆膛温换连携赠链时间（目标槽）：装配后 applyNormaHatChain 追加的赠链行占前台，
       // 引擎必要时间必须预留（同连携 GROSS 全额口径），否则净占用顶出预算
@@ -1512,6 +1540,7 @@ export function iterate(
       + cfg.dodgeCounterCount * cfg.dodgeCounterActionTime * cfg.dodgeCounterComboAlignRatio
       + (cfg.parryCount ?? 0) * cfg.assistFollowUpActionTime * cfg.assistFollowUpComboAlignRatio
       + ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistActionTime * cfg.defensiveAssistComboAlignRatio
+      + Math.max(0, Math.floor(cfg.counterAssistCount ?? 0)) * (cfg.counterAssistActionTime ?? 0) * (cfg.counterAssistComboAlignRatio ?? 0)
       + remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndActionTime * cfg.remielleRainbowEndComboAlignRatio
       + giftComboAlign
     comboAlignTimes.push(exSpecialComboAlignTime(cfg, exForTime, ultForTime, prevStates[i]) + comboAlignGeneric)

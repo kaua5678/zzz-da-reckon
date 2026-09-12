@@ -175,6 +175,8 @@ export interface TeamComparePoint {
 /** 内置交互类型 → 难度权重（条目可 weight 覆盖；未知类型默认 1） */
 export const INTERACTION_WEIGHTS: Record<string, number> = {
   parry: 1.0, // 弹刀
+  // 反制支援（角力整组化解一组控制技）：用户口径 2026-09-12「角力的操作就是一次弹刀而已，计同等权重就行，确实不难」
+  counterAssist: 1.0,
   dodge: 1.2, // 闪避反击
   quickAssist: 0.6, // 快速支援
   block: 1.0, // 格挡（星徽·比利动力压制期间格挡等）

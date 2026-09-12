@@ -12,7 +12,7 @@ import type { CharacterResourceResult, ClaretSharpResourceSource } from '@/types
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions } from '@/specs/mechanics'
-import { pickThirdNamedBasicSegment } from '@/composables/resourceCalc/helpers'
+import { pickThirdNamedBasicSegment, fusedRowValue } from '@/composables/resourceCalc/helpers'
 
 /**
  * 克拉蕾（1611）v12 重录（2026-09-03，raw = nanoka 3.2.12+18601660）：
@@ -21,9 +21,12 @@ import { pickThirdNamedBasicSegment } from '@/composables/resourceCalc/helpers'
  * 锐暴伤害 150% 已随 level60.sharpCritDmg 接入）；**部分**锐化伤害命中积累残痕值，
  * 锐暴口径（用户 2026-09-09）：暴击率**封顶 200%**，100% 以上每 1% 是一次额外锐暴判定，
  *   每次锐暴**乘算**（150% → 爆一次 ×2.5、爆两次 ×6.25）——引擎 `core/damage.ts sharpCritMultiplier`；
- * 残痕值满时敌人进入[残痕]（最多 3 层）；斩金断铁/葬血强袭命中[残痕]敌人消耗 1 层触发[毁伤]。
- * 口径（用户 2026-09-03）：残痕每 600 点 = 1 层（1 次毁伤），上限 3 层；每命中积累 = 招式
- * anomaly_buildup 表值（%），积蓄效率 = 1 + 核心 50% + 影画2 20%（状态近似常驻）。
+ * 残痕值满时敌人进入[残痕]（同时最多挂 3 层）；斩金断铁/葬血强袭命中[残痕]敌人消耗 1 层触发[毁伤]。
+ * 口径（用户 2026-09-03，**2026-09-12 更正两处**）：残痕每 600 点 = 1 层（1 次毁伤）；每命中积累 = 该招
+ * **`gash_buildup`** 表值（%）——旧口径错写成 `anomaly_buildup`（异常积蓄列，两列在平A 段恰好同值、
+ * 在闪反/支援/终结段差很多，见 GAME_TERM_TO_CODE_FIELD §11.1），且只算平A+EX 漏掉其余全部招式；
+ * 「上限 3 层」是敌人身上**同时存量**上限，不是整局毁伤次数上限（全局计算器按总量：毁伤 = min(总层数, 消耗需求)）。
+ * 积蓄效率 = 1 + 核心 50% + 影画2 20%（状态近似常驻）。
  * 锐能：进场 +60（勘域 180s 一次 → 每局一次）；秘血铸锋（EX）消耗 60 → 每局 1 发。
  *   —— 旧「2 毁伤/局 → 2.5 锐能放不出 EX」问题由 v12 文本解决（用户 2026-09 口径确认）。
  * 核心被动（猩红铭刻/连携/终结/无垢熔锋期间）：暴击率 +30%、残痕积蓄效率 +50%（满覆盖近似）。
@@ -58,8 +61,14 @@ export const SHARPNESS_COST_PER_EX = 60
  * ⚠️ 该条此前**零引用**（只写在文档/注释里），本次接入 `computeClaretSharpResource`。
  */
 export const SHARPNESS_ULTIMATE_GAIN = 10
-/** 残痕值：每 600 点 = [残痕] 1 层（1 次毁伤），上限 3 层（用户口径 2026-09-03：残痕600点可以造成一次毁伤） */
+/** 残痕值：每 600 点 = [残痕] 1 层（1 次毁伤）（用户口径 2026-09-03：残痕600点可以造成一次毁伤） */
 export const GASH_PER_LAYER = 600
+/**
+ * **同时存量**上限 3 层（敌人身上最多挂 3 层，超出部分溢出浪费）。
+ * ⚠️ 这**不是整局毁伤次数上限**（用户口径 2026-09-12：「3层限制这个是单次，我们全局计算器怎么可能一局只有3次毁伤呢」）——
+ * 本计算器走整局总量口径：攒够就消耗、消耗完继续攒，故整局可用层数 = floor(总残痕值/600) 不设 3 的钳制，
+ * 真正的上限是**消耗需求**（斩金断铁/葬血强袭/影画6 能打几次）。此常量只用于展示与「单次存量」文案。
+ */
 export const GASH_MAX_STACKS = 3
 /** 残余积蓄效率：核心被动 +50%（Lv.7）/ 影画2 锐暴 +20% */
 export const GASH_EFF_CORE = 50
@@ -149,16 +158,25 @@ function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelIn
 
 /**
  * 克拉蕾残痕/锐能资源（v12）：
- * 残痕值 = 平A聚合（秒均残痕值 × 平A时间）+ 秘血铸锋单发（234.96%）→ × 积蓄效率；
- * 每 600 点 = 1 层（上限 3，溢出浪费）；毁伤需求 = 斩金断铁×1 + 葬血强袭×3 + 影画6(连携+终结)；
- * 毁伤 = min(层数, 需求) × 覆盖率 + 影画6 直接毁伤；
+ * **残痕值 = 平A聚合（两态秒均 × 平A时间）+ Σ 其余招式实打次数 × 该招 `gash_buildup` 表值**
+ *   （2026-09-12 用户更正的口径：闪反/连携/终结/支援突击/反制支援… 每招都在实打实积累，
+ *    旧实现只算平A+EX 且 EX 错读 `anomaly_buildup` 列，低估一大截）→ × 积蓄效率；
+ * 每 600 点 = 1 层；**`GASH_MAX_STACKS=3` 是敌人身上同时存量的上限，不是整局次数上限**
+ *   （全局计算器按总量走：攒够就消耗，一局毁伤次数 = min(总层数, 消耗需求)，不被 3 钳死）；
+ * 反制支援整组化解控制技时，琢形「直接添加1层」= 每组 +600 点、**不吃积蓄效率倍率**（送层不是积累）；
+ * 毁伤需求 = 斩金断铁×1 + 葬血强袭×3 + 影画6(连携+终结)；毁伤 = min(层数, 需求) × 覆盖率 + 影画6 直接毁伤；
  * 锐能 = 进场 60 + 终结技 10/次（raw chain.description[1]），秘血铸锋 60/发。
  */
 export function computeClaretSharpResource(input: {
+  /** 平A 残痕秒均（两态基准加权，% / s）——平A 是唯一按「秒均×时间」计的招式 */
   basicGashPerSec: number
   basicAttackTime: number
-  exGashValue: number
-  exCount: number
+  /**
+   * 平A 之外**全部招式**的残痕积累合计（%）= Σ 该招实打次数 × `gash_buildup` 表值
+   * （强特/闪反/连携/终结/快支/支援突击/反制支援…，2026-09-12 用户更正：每招都在实打实积累，
+   *  旧实现只算平A+EX 且 EX 错读 `anomaly_buildup` 列）。取代旧的 `exGashValue`/`exCount` 两参。
+   */
+  moveGashTotal?: number
   cleaveSpecialCount: number
   bloodBurialCount: number
   gashCoverage: number
@@ -182,6 +200,10 @@ export function computeClaretSharpResource(input: {
   combatTime?: number
   /** 铭刻平A时间（秒）——与常态时间成对回传 */
   inscriptionBasicTime?: number
+  /** 反制支援送的**直接残痕层数**（= 化解的控制技组数）：琢形原文「重击命中敌人时，
+   *  **直接为目标添加1层[残痕]**」（用户口径 2026-09-12「他的确是送了」）。
+   *  直接给层 → **不吃积蓄效率倍率**（不是"积累"，是"添加"），但仍受 3 层上限约束。 */
+  counterAssistGashStacks?: number
   /** 锐能基础自动累积（/s，catalog level60.sharpnessRegen） */
   sharpnessAutoPerSec?: number
   /** 常态血锻四式的锐能招式增益（/s，catalog sharpness_gain 列） */
@@ -194,12 +216,24 @@ export function computeClaretSharpResource(input: {
   sharpnessPerEntry?: number
   /** EX 发数覆盖（由两态循环解给出；缺省回落「锐能总量 / 60」） */
   affordableExCountOverride?: number
+  /** 反制支援（整组化解控制技）次数 → 琢形「重击命中**直接**为目标添加1层[残痕]」 */
+  counterAssistCount?: number
 }): ClaretSharpResourceSource {
   const cinemaLevel = Math.max(0, Math.floor(input.cinemaLevel ?? 0))
-  const baseGash = Math.max(0, input.basicGashPerSec * input.basicAttackTime + input.exGashValue * input.exCount)
+  // 平A = 秒均×时间（两态加权）；**其余全部招式** = Σ 实打次数 × 表列 `gash_buildup`
+  // （2026-09-12 用户更正：每招都在实打实积累，旧实现只算平A+EX 且 EX 那项错读了 `anomaly_buildup` 列）
+  const moveGashTotal = Math.max(0, Number(input.moveGashTotal ?? 0))
+  const baseGash = Math.max(0, input.basicGashPerSec * input.basicAttackTime) + moveGashTotal
   const buildupMultiplier = 1 + GASH_EFF_CORE / 100 + (cinemaLevel >= 2 ? GASH_EFF_C2 / 100 : 0)
-  const gashValuePct = baseGash * buildupMultiplier
-  const gashStacks = Math.min(GASH_MAX_STACKS, Math.floor(gashValuePct / GASH_PER_LAYER))
+  // 直接送的层**不进**积蓄效率倍率（原文是「添加1层」，不是「积累残痕值」；
+  // 表列 gash_buildup（本体 446 + 琢形 134）按全角色同口径仍不计——只认这一条明写的赠送）。
+  //
+  // @fact agent:1611/琢形送残痕 口径: 反制支援整组化解一组控制技 = 琢形「重击命中直接为目标添加1层[残痕]」→ 每组 +600 点**且不吃积蓄效率倍率**（送层不是积累），仍受 3 层上限；表列 gash_buildup（1611028=446 / 1611030=134）按「非平A非E 不计」的全局同口径仍不计入 | 据 用户@2026-09-12（「残痕建模一下，他的确是送了」）+ nanoka full/1611.json 琢形条目 | 验 src/mechanics/__tests__/claretSmoke.test.ts::反制支援送残痕 | 锚 src/mechanics/agents/claret.ts#computeClaretSharpResource | 信 确认
+  const counterAssistGashStacks = Math.max(0, Math.floor(input.counterAssistCount ?? 0))
+  const gashValuePct = baseGash * buildupMultiplier + counterAssistGashStacks * GASH_PER_LAYER
+  // 整局可用层数**不设 3 钳制**：3 层是敌人身上的同时存量上限（见 GASH_MAX_STACKS 注释），
+  // 总量口径下攒够就消耗、消耗完继续攒，真正的上限是下面的消耗需求次数（斩金断铁/葬血强袭/影画6）。
+  const gashStacks = Math.max(0, Math.floor(gashValuePct / GASH_PER_LAYER))
   const cleaveCount = Math.max(0, Math.floor(input.cleaveSpecialCount))
   const burialCount = Math.max(0, Math.floor(input.bloodBurialCount))
   const c6Extra = cinemaLevel >= 6
@@ -247,7 +281,10 @@ export function computeClaretSharpResource(input: {
     sharpnessPerEntry: Math.max(1, Number(input.sharpnessPerEntry ?? SHARPNESS_PER_ENTRY)),
     gashValuePct,
     gashBuildupMultiplier: buildupMultiplier,
+    moveGashValuePct: moveGashTotal * buildupMultiplier,
+    basicGashValuePct: Math.max(0, input.basicGashPerSec * input.basicAttackTime) * buildupMultiplier,
     gashStacks,
+    counterAssistGashStacks,
     maimDemand,
     gashStackConsumed,
     maimCount,
@@ -258,7 +295,7 @@ export function computeClaretSharpResource(input: {
     affordableExCount,
     sharpnessSpend,
     sharpnessRemaining: Math.max(0, sharpnessGain - sharpnessSpend),
-    note: 'v12 口径：锐化伤害命中积累残痕值（平A聚合 + 秘血铸锋 234.96%），每 600 点 = 1 层（用户口径；上限 3）；斩金断铁×1/葬血强袭×3 命中残痕各消耗 1 层触发毁伤；锐能 = 进场 60（勘域 180s 一次）+ 终结技 10/次，秘血铸锋 60/发。',
+    note: 'v12 口径：残痕值 = 平A（两态秒均×时间）+ 其余全部招式（实打次数 × gash_buildup 表值）→ × 积蓄效率，每 600 点 = 1 层；3 层是敌人身上同时存量上限、不是整局毁伤次数上限（毁伤 = min(总层数, 消耗需求) × 覆盖率）；斩金断铁×1/葬血强袭×3 命中残痕各消耗 1 层触发毁伤；反制支援整组化解控制技时琢形「重击命中直接添加 1 层残痕」（每组 +600 点、不吃积蓄效率倍率，与招式自身表值积累是两件事）；锐能 = 进场 60（勘域 180s 一次）+ 终结技 10/次，秘血铸锋 60/发。',
   }
 }
 
@@ -325,7 +362,22 @@ function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg }: AgentCharCon
   record.claretBloodBurialMoveId = findMoveById(skills, BLOOD_BURIAL_MOVE_ID)?.id ?? ''
   record.claretExMoveId = findMoveById(skills, EX_MOVE_ID)?.id ?? ''
   record.claretExDamageMultiplier = getRowValue(findMoveById(skills, EX_MOVE_ID), 'damage') || 1249.6
-  record.claretExGashValue = getRowValue(findMoveById(skills, EX_MOVE_ID), 'anomaly_buildup') || 234.96
+  /**
+   * 残痕积累表（moveId → 该招一发的 `gash_buildup` 点数）——**平A 段不入表**：
+   * 平A 按两态秒均 × 平A时间 计（见 `computeClaretBasicPerSec`），再按行计就是双计。
+   * 融合组走 `fusedRowValue`（反制支援 = 本体 446 + 琢形 134 = 580/次，一次动作一次积累）。
+   * ⚠️ 历史坑（2026-09-12 更正）：这里原先只取秘血铸锋一发、且读的是 `anomaly_buildup` 列
+   *   （234.96，真值 = `gash_buildup` 281.97）——列名混淆的老病根，见 GAME_TERM_TO_CODE_FIELD §11.1。
+   */
+  const gashByMoveId: Record<string, number> = {}
+  for (const cat of skills.categories) {
+    if (cat.id === 'basic') continue
+    for (const m of cat.moves ?? []) {
+      const v = fusedRowValue(skills, String(m.id), 'gash_buildup') ?? getRowValue(m, 'gash_buildup')
+      if (v > 0) gashByMoveId[String(m.id)] = v
+    }
+  }
+  record.claretGashByMoveId = gashByMoveId
   record.claretMaimDamageMultiplier = getRowValue(findMoveById(skills, MAIM_MOVE_ID), 'damage') || 1625.6
   record.claretBloodBurialDamageMultiplier = getRowValue(findMoveById(skills, BLOOD_BURIAL_MOVE_ID), 'damage') || 626.3
   // 平A两态基准（秒均）：常态=血锻基准段、猩红铭刻=锻星#3（用户口径 2026-09-11）
@@ -525,11 +577,25 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
   // EX 发数 = 循环轮数（每轮 = 一次 EX 进场；窗口内也在回锐能，故轮数由上面的双约束解出）
   const affordableExCount = Math.max(0, Math.floor(twoState.entries))
   const blended = computeClaretBasicPerSecFromCfg(record, twoState.share)
+  // ── 残痕：平A 之外的**全部招式**按「本局实打次数 × 该招 `gash_buildup` 表值」累加 ──
+  // 次数取**引擎发行那些行时读的同一批字段**，不去翻已生成的行：模块的 buildExecutions 钩子在
+  // 闪反/弹刀/支援突击/反制支援行**之前**派发（core/resource/helpers#buildExecutions 的顺序），
+  // 按行求和会随调用点漏项。平A 段不入这张表（按两态秒均×时间算，再按行算=双计）。
+  // 无物化行的交互（快速支援）不计积累 —— 与伤害/失衡侧同一近似。
+  const gashByMoveId = (record.claretGashByMoveId ?? {}) as Record<string, number>
+  const gashOf = (moveId: string | undefined) => (moveId ? gashByMoveId[moveId] ?? 0 : 0)
+  const moveGashTotal
+    = gashOf(cfg.exSpecialMoveId) * affordableExCount
+    + gashOf(cfg.dodgeCounterMoveId) * Math.max(0, cfg.dodgeCounterCount ?? 0)
+    + gashOf(cfg.defensiveAssistMoveId) * (Math.max(0, cfg.parryCount ?? 0) + Math.max(0, cfg.parryNoFollowUpCount ?? 0))
+    + gashOf(cfg.assistFollowUpMoveId) * Math.max(0, cfg.parryCount ?? 0)
+    + gashOf(cfg.counterAssistMoveId) * Math.max(0, Math.floor(cfg.counterAssistCount ?? 0))
+    + gashOf(cfg.ultimateMoveId) * Math.max(0, state.ultimateCount ?? 0)
+    + gashOf(cfg.chainMoveId) * Math.max(0, cfg.chainCountTotalOverride ?? state.chainCountTotal ?? 0)
   return computeClaretSharpResource({
     basicGashPerSec: blended.gash,
     basicAttackTime: Math.max(0, Number(state.basicAttackTime ?? 0)),
-    exGashValue: Number(record.claretExGashValue ?? 234.96),
-    exCount: affordableExCount,
+    moveGashTotal,
     cleaveSpecialCount: Number(record.claretCleaveCount ?? 0),
     bloodBurialCount: Number(record.claretBloodBurialCount ?? 0),
     gashCoverage: Number(record.claretGashCoverage ?? 1),
@@ -551,6 +617,8 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
     inscriptionWindowSeconds: twoState.extensionSeconds,
     sharpnessPerEntry: SHARPNESS_PER_ENTRY,
     affordableExCountOverride: affordableExCount,
+    // 反制支援（boss 控制技整组化解，store 折算注入 cfg）→ 琢形每次直接送 1 层残痕
+    counterAssistCount: Math.max(0, Math.floor(Number(cfg.counterAssistCount ?? 0))),
   })
 }
 
@@ -563,7 +631,7 @@ function buildClaretResourceResult({ cfg, state }: AgentResourceResultInput): Pa
 function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = Math.max(0, Math.floor(Number(record.claretCinemaLevel ?? 0)))
-  // 残痕值来源：平A聚合（秒均×时间）+ 秘血铸锋单发（表值）
+  // 残痕值来源：平A（两态秒均×时间）+ 其余全部招式（实打次数 × gash_buildup 表值）
   const source = buildClaretResourceSource(cfg, state)
   // 平A双基准覆盖：引擎只认一个基准段（默认血锻#3），但克拉蕾常态/铭刻两态招式不同
   // → 用账本推导出的铭刻时间占比加权出的秒均覆盖（enrich 见 damageMultiplierOverride 分支）
@@ -644,13 +712,20 @@ function buildClaretResourceSections({ result }: AgentResourceSectionsInput) {
       title: '克拉蕾残痕·毁伤（v12）',
       summary: `残痕值 ${fmt(source.gashValuePct)}% → ${source.gashStacks} 层 · 消耗 ${Math.floor(source.gashStackConsumed)} 层 · 毁伤 × ${source.maimCount}`,
       rows: [
-        { label: '残痕值', value: `${fmt(source.gashValuePct)}%`, detail: `平A（两态基准加权后 ${fmt(source.basicGashPerSec)}%/s × 时间）+ 秘血铸锋 234.96%；每 600 点 = 1 层（上限 3）` },
+        { label: '残痕值', value: `${fmt(source.gashValuePct)}%`, detail: `平A ${fmt(source.basicGashValuePct ?? 0)}%（两态基准 ${fmt(source.basicGashPerSec)}%/s × 时间）+ 其余招式积累 ${fmt(source.moveGashValuePct ?? 0)}%（各招实打次数 × 表列 gash_buildup，含强特/闪反/连携/终结/支援突击/反制支援），合计再 × 积蓄效率；每 600 点 = 1 层` },
         { label: '积蓄效率', value: `×${fmt(source.gashBuildupMultiplier)}`, detail: `1 + 核心 50%（Lv.7）+ 影画2 20%` },
+        ...(source.counterAssistGashStacks
+          ? [{
+              label: '反制支援送层',
+              value: `+${source.counterAssistGashStacks} 层`,
+              detail: `整组化解 ${source.counterAssistGashStacks} 组控制技，琢形「重击命中直接添加 1 层[残痕]」（不吃积蓄效率倍率）`,
+            }]
+          : []),
         { label: '毁伤需求', value: `${source.maimDemand} 次`, detail: '斩金断铁×1 + 葬血强袭×3 + 影画6(连携+终结)×1' },
         { label: '残痕消耗', value: `-${Math.floor(source.gashStackConsumed)} 层`, detail: '命中残痕状态敌人，每层一次毁伤（覆盖率折算）' },
         { label: '毁伤触发', value: `${source.maimCount} 次`, detail: `斩金断铁 ${source.maimFromCleave} + 葬血强袭 ${source.maimFromBurial} + 影画6 ${source.maimFromC6}` },
       ],
-      footer: 'v12：残痕值由锐化伤害命中积累（平A + 秘血铸锋表值），每 600 点 = 1 次毁伤（用户口径）；溢出（>3 层）浪费。',
+      footer: `v12：残痕值 = 平A（两态秒均×时间）+ 其余招式（实打次数 × gash_buildup 表值），每 600 点 = 1 层（用户口径）；敌人身上同时最多挂 ${GASH_MAX_STACKS} 层，但整局可用层数不钳制（攒够就消耗，毁伤上限是消耗需求次数）；反制支援化解控制技时琢形**额外直接送 1 层/组**（送层不吃积蓄效率，与招式自身的表值积累是两件事）；快速支援等无物化行的交互不计积累。`,
     },
     {
       id: 'claret-two-state-time',

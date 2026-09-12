@@ -24,12 +24,14 @@ import {
   findChainAttack,
   findDefensiveAssist,
   findAssistFollowUp,
+  findCounterAssist,
   findDodgeCounter,
   calcBasicAttackRegenPerSec,
   findRemielleRainbowEnd,
   findRemielleRadiantTurn,
   ULTIMATE_COST_DEFAULT,
 } from '@/core/resource'
+import { counterAssistOf } from '@/data/counterAssists'
 
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentMechanic, getRegisteredMechanicSettings, type AgentTeamPhase, type MechanicTeamMember } from '@/mechanics'
@@ -1617,6 +1619,13 @@ export function buildCharConfig(
   const chainAttack = findChainAttack(skills as AgentSkills)
   const defensiveAssist = findDefensiveAssist(skills as AgentSkills)
   const assistFollowUp = findAssistFollowUp(skills as AgentSkills)
+  // 反制支援（Counter Assist）：按登记表取行（克拉蕾 = 1611028 寸铁不让 + 1611030 琢形，
+  // 融合成「一次动作」），有登记 ≠ 一定发动——次数由 boss 控制技组与替换开关决定。
+  const counterAssistDecl = counterAssistOf(char.agentId)
+  const counterAssist = counterAssistDecl ? findCounterAssist(skills as AgentSkills, counterAssistDecl.moveId) : null
+  const counterAssistCount = counterAssist && configStore.counterAssistSlot === slot
+    ? (configStore.appliedBoss?.counterAssistGroups?.length ?? 0)
+    : 0
   const dodgeCounter = findDodgeCounter(skills as AgentSkills)
   const basicRegen = calcBasicAttackRegenPerSec(skills as AgentSkills)
   const remielleRainbowEnd = findRemielleRainbowEnd(skills as AgentSkills)
@@ -1731,6 +1740,13 @@ export function buildCharConfig(
     assistFollowUpActionTime: assistFollowUp?.actionTime ?? 0,
     assistFollowUpDecibelRecovery: assistFollowUp?.decibelRecovery ?? 0,
     assistFollowUpComboAlignRatio: ov(assistFollowUp?.moveId ?? '', assistFollowUp?.comboAlignRatio ?? 0),
+    // 反制支援（控制技整组化解）：时间/喧响 = 融合后「一次动作」的整段量（本体 + 琢形）；
+    // 次数 = 该槽位承接的控制技组数（store 折算，非用户手填）。
+    counterAssistMoveId: counterAssist?.moveId ?? '',
+    counterAssistActionTime: counterAssist?.actionTime ?? 0,
+    counterAssistDecibelRecovery: counterAssist?.decibelRecovery ?? 0,
+    counterAssistComboAlignRatio: ov(counterAssist?.moveId ?? '', counterAssist?.comboAlignRatio ?? 0),
+    counterAssistCount,
     backstageRegenBonus: 0,
     comboAlignRegenBonus: 0,
     zhenyuanTriggerCount: 0,

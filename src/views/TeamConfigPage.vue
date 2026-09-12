@@ -169,7 +169,7 @@
                       <n-grid cols="6" :x-gap="8">
                       <n-gi>
                         <div class="field">
-                          <span class="field-label">弹刀次数<span v-if="selectedChar.agentId === '1471' && banyueTopUpForSlot && banyueTopUpForSlot.parry > 0" class="field-hint">+{{ banyueTopUpForSlot.parry }}（轴自动）</span><span v-if="parrySplitForSlot" class="field-hint">{{ parrySplitForSlot.label }}</span></span>
+                          <span class="field-label">弹刀次数<span v-if="selectedChar.agentId === '1471' && banyueTopUpForSlot && banyueTopUpForSlot.parry > 0" class="field-hint">+{{ banyueTopUpForSlot.parry }}（轴自动）</span><span v-if="parrySplitForSlot" class="field-hint">{{ parrySplitForSlot.label }}</span><span v-if="counterAssistForSlot > 0" class="field-hint">（控制技 {{ counterAssistForSlot }} 组已转反制支援）</span></span>
                           <n-input-number
                             :value="selectedChar.parryCount || interactionDefaults.parry"
                             :min="0"
@@ -1127,6 +1127,13 @@ const parrySplitForSlot = computed<{ label: string } | null>(() => {
   }
   return null
 })
+/** 本槽位承接的反制支援次数（= boss 控制技组数，store 折算；0 = 该槽位不替换/未应用带控制技的 Boss）。
+ *  次数由 Boss 预设决定、非手填，故只在标签里露出，不给输入框（避免与「弹刀次数」抢同一个数）。 */
+const counterAssistForSlot = computed(() =>
+  configStore.counterAssistSlot === configStore.selectedSlot
+    ? (configStore.appliedBoss?.counterAssistGroups?.length ?? 0)
+    : 0,
+)
 // 自动轴预设命中时，按预设 guarantee 自动勾选保底目标（只在预设声明时填，不自动清除用户手勾）
 watch(autoPreset, (p) => {
   const g = p?.guarantee

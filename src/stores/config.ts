@@ -13,6 +13,8 @@ import { useCatalogStore } from './catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import type { MechanicTeamMember } from '@/mechanics/types'
+import type { AppliedBossPreset } from '@/types/bossPreset'
+import { counterAssistOf } from '@/data/counterAssists'
 
 // ========== 类型定义 ==========
 
@@ -1080,8 +1082,67 @@ export const useConfigStore = defineStore('config', () => {
     enemy.value[key][element] = value
   }
 
-  /** 当前应用的 Boss 预设（仅内存态，用于 UI 高亮 + 计算器弹刀反推/喧响赠礼；不随 enemy 持久化） */
-  const appliedBoss = ref<{ presetId: string; phaseId: string; at: number; parryTotal?: number; parryNoFollowUpTotal?: number; parryDecibelOnlyTotal?: number; xParryTotal?: number; decibelGift?: { slot: number; amount: number } } | null>(null)
+  /**
+   * 当前应用的 Boss 预设（仅内存态，用于 UI 高亮 + 计算器弹刀反推/喧响赠礼；不随 enemy 持久化）。
+   * `parryTotal`/`parryNoFollowUpTotal` 存**生效值**（含控制技组在无替换时的并入量），
+   * 由 `syncBossInteractionPlan` 按队伍/开关折算；预设原值另存 `presetParry*` 快照（见 types/bossPreset）。
+   */
+  const appliedBoss = ref<AppliedBossPreset | null>(null)
+
+  /**
+   * 反制支援（Counter Assist）整组替换控制技（紫光技）——**承接槽位**，-1 = 不替换。
+   *
+   * 判据全部来自数据层登记表 `src/data/counterAssists.ts`（无 agentId 分支）：
+   * - 预设必须声明 `counterAssistGroups`（该 Boss 有控制技）；
+   * - 开关 `boss.counterAssistReplace`（缺省 **1 = 开**，用户口径 2026-09-12「Boss 卡勾选，自动默认开」）；
+   * - 队内有声明反制支援招式的角色；`boss.counterAssistSlot` 可指定槽位（-1 = 自动取首个有的角色，
+   *   指定的槽位没有该招式则回退自动——避免"选了个没这招的人"静默失效）。
+   */
+  const counterAssistSlot = computed<number>(() => {
+    const groups = appliedBoss.value?.counterAssistGroups ?? []
+    if (groups.length === 0) return -1
+    if (getMechanicSetting('boss.counterAssistReplace', 1) === 0) return -1
+    const capable = (slot: number) => !!counterAssistOf(team.value[slot]?.agentId)
+    const pinned = Math.floor(getMechanicSetting('boss.counterAssistSlot', -1))
+    if (pinned >= 0 && capable(pinned)) return pinned
+    for (let i = 0; i < team.value.length; i++) if (capable(i)) return i
+    return -1
+  })
+
+  /**
+   * Boss 交互计划折算：控制技组（`counterAssistGroups`，逐组记招架段数）在无替换时
+   * 按「每组 1 次正常弹刀（头段招架 + 完美反制的支援突击）+ 段数−1 次无突击弹刀」**并入**
+   * 强制弹刀总数；被反制支援整组化解时不并入（= 当初就没录这些弹刀，无需反扣）。
+   * 幂等：只从 `presetParry*` 原值重算，反复调用不累积。
+   */
+  function syncBossInteractionPlan() {
+    const applied = appliedBoss.value
+    if (!applied) return
+    if (applied.presetParryTotal === undefined) applied.presetParryTotal = applied.parryTotal ?? 0
+    if (applied.presetParryNoFollowUpTotal === undefined) {
+      applied.presetParryNoFollowUpTotal = applied.parryNoFollowUpTotal ?? 0
+    }
+    const groups = applied.counterAssistGroups ?? []
+    const folded = counterAssistSlot.value >= 0 ? 0 : groups.length
+    const foldedNoFollowUp = counterAssistSlot.value >= 0
+      ? 0
+      : groups.reduce((sum, segs) => sum + Math.max(0, Math.floor(segs) - 1), 0)
+    applied.parryTotal = applied.presetParryTotal + folded
+    applied.parryNoFollowUpTotal = applied.presetParryNoFollowUpTotal + foldedNoFollowUp
+  }
+
+  // 队伍换人 / 两个开关翻转 → 立刻重算（**flush: 'sync'**：引擎与弹刀下限在同一 tick 内直读
+  // appliedBoss.parryTotal，pre-flush 会晚一帧导致「刚关掉替换但仍按弹刀计」的错值；
+  // 源只有 counterAssistSlot 与预设 id 快照，改的又是 parry* 本身 → 无回环）
+  watch(
+    [
+      counterAssistSlot,
+      () => appliedBoss.value?.presetId,
+      () => appliedBoss.value?.phaseId,
+    ],
+    syncBossInteractionPlan,
+    { flush: 'sync' },
+  )
 
   /**
    * 一键应用 Boss 预设：填充血量/失衡值/防御/等级/危局异常系数/失衡易伤/失衡时间 + 三张抗性表
@@ -1113,6 +1174,7 @@ export const useConfigStore = defineStore('config', () => {
     parryNoFollowUpTotal?: number
     parryDecibelOnlyTotal?: number
     xParryTotal?: number
+    counterAssistGroups?: number[]
     stunGiftRatio?: number
     decibelGift?: { slot: number; amount: number }
   }) {
@@ -1133,8 +1195,12 @@ export const useConfigStore = defineStore('config', () => {
       anomalyResistances: { ...phase.anomalyResistances },
       bossStunGift: Math.round((defaults.stunGiftRatio ?? 0) * phase.stunValue),
     })
-    // 声明了默认弹刀总数（正常/不带支援突击/只喧响）的 Boss → 自动勾选「保底4失衡」（弹刀反推的开关；用户可手动取消）
-    if (((defaults.parryTotal ?? 0) + (defaults.parryNoFollowUpTotal ?? 0) + (defaults.parryDecibelOnlyTotal ?? 0)) > 0) setMechanicSetting('guarantee.stun', 1)
+    // 声明了默认弹刀总数（正常/不带支援突击/只喧响）**或控制技组**的 Boss → 自动勾选「保底4失衡」
+    // （弹刀反推的开关；用户可手动取消）。控制技组无替换时会并入弹刀总数，故也算弹刀来源；
+    // 整组被反制支援化解时折算后总数可能归零 → parrySplitActive 自然为假，勾选无害。
+    const groups = defaults.counterAssistGroups ?? []
+    if (((defaults.parryTotal ?? 0) + (defaults.parryNoFollowUpTotal ?? 0) + (defaults.parryDecibelOnlyTotal ?? 0)) > 0
+      || groups.length > 0) setMechanicSetting('guarantee.stun', 1)
     appliedBoss.value = {
       presetId: preset.id,
       phaseId: phase.phaseId,
@@ -1144,7 +1210,12 @@ export const useConfigStore = defineStore('config', () => {
       parryDecibelOnlyTotal: defaults.parryDecibelOnlyTotal,
       xParryTotal: defaults.xParryTotal,
       decibelGift: defaults.decibelGift,
+      counterAssistGroups: groups.length > 0 ? [...groups] : undefined,
+      presetParryTotal: defaults.parryTotal ?? 0,
+      presetParryNoFollowUpTotal: defaults.parryNoFollowUpTotal ?? 0,
     }
+    // 控制技组按当前队伍折算（有反制支援角色 + 开关开 → 整组不并入弹刀；否则并入）
+    syncBossInteractionPlan()
   }
 
   function clearBossPreset() {
@@ -1327,6 +1398,8 @@ export const useConfigStore = defineStore('config', () => {
     appliedBoss,
     applyBossPreset,
     clearBossPreset,
+    /** 反制支援整组替换控制技：承接槽位（-1 = 不替换）。UI 与引擎同源判据。 */
+    counterAssistSlot,
     initDefaultTeam,
     applyTeamPreset,
   }

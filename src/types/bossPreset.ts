@@ -71,11 +71,46 @@ export interface BossPresetDefaults {
   /** 只给喧响的弹刀总次数（boss 机制强制，如 亵渎者 4 次小怪弹刀：轻弹刀打小怪、无 daze 无支援突击，
    *  只有喧响 215 奖励；全部归击破位，非用户可调。缺省 0 = 无该类型弹刀）。 */
   parryDecibelOnlyTotal?: number
+  /** 控制技（用户口中的「紫光技」）组：逐组记该组的**招架段数**，数组长度 = 组数
+   *  （一组 = 连续数段须招架的攻击 + 一次完美反制；各组的段数不同，所以逐组记而不是记总数）。
+   *  两种生效形态（开关 = 机制勾选 `boss.counterAssistReplace`，缺省开）：
+   *  - 队内**无**反制支援角色 / 用户关掉替换 → 每组按「1 次正常弹刀（头段招架 + 完美反制的
+   *    支援突击）+ (段数−1) 次不带支援突击弹刀」**并入** parryTotal / parryNoFollowUpTotal，
+   *    等价于旧「紫光技录成多次弹刀 + 一次支援突击」的手工抄录口径（不必再抄进那两个字段）；
+   *  - 有反制支援角色且开启替换 → 整组**不产生弹刀**（不并入即不反扣），改由该角色每组一次
+   *    反制支援整组化解（招式配对见 `src/data/counterAssists.ts`；只算行内喧响、不拿弹刀 215）。
+   *  缺省空 = 该 Boss 无可替换的控制技。 */
+  counterAssistGroups?: number[]
   /** 失衡赠礼比例（boss 白送失衡上限的比例，如 亵渎者 0.30 = 白送 30% 失衡上限的失衡值）。
    *  应用时换算成 bossStunGift = 比例 × phase.stunValue，计入失衡池总失衡值。 */
   stunGiftRatio?: number
   /** 喧响赠礼（boss 机制赠送，如 未知复合侵蚀体 6000 喧响给 1 号位，叠加在角色进场喧响之上） */
   decibelGift?: { slot: number; amount: number }
+}
+
+/**
+ * 「已应用 Boss 预设」的运行时态（`configStore.appliedBoss`，仅内存）：
+ * 由 `applyBossPreset` 从 `BossPresetDefaults` 复制而来，再按当前队伍/开关做一次交互计划折算
+ * （见 config.ts#syncBossInteractionPlan）。
+ *
+ * `parryTotal` / `parryNoFollowUpTotal` 存的是**生效值**（含控制技组在无替换时的并入量），
+ * 引擎与弹刀下限直读它们；`presetParryTotal` / `presetParryNoFollowUpTotal` 存**预设原值**，
+ * 开关翻转时按原值重算，不累积（幂等）。
+ */
+export interface AppliedBossPreset {
+  presetId: string
+  phaseId: string
+  at: number
+  parryTotal?: number
+  parryNoFollowUpTotal?: number
+  parryDecibelOnlyTotal?: number
+  xParryTotal?: number
+  decibelGift?: { slot: number; amount: number }
+  /** 控制技（紫光技）组的招架段数清单（预设原样，不随开关变） */
+  counterAssistGroups?: number[]
+  /** 预设原值快照（`applyBossPreset` 写入，折算 never 改它） */
+  presetParryTotal?: number
+  presetParryNoFollowUpTotal?: number
 }
 
 export interface BossPreset {

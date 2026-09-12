@@ -184,8 +184,18 @@ export function liveInteractions(
     for (let slot = 0; slot < 3; slot++) count += shrink(slot, Number(config.team[slot]?.[field] ?? 0))
     out.push({ type, count })
   }
+  // 反制支援（角力化解一组控制技）：次数不是 store 字段而是**运行时折算**（boss 控制技组 ×
+  // 队内有反制支援招式的角色），按承接槽位的截断存活率缩。
+  //
+  // @fact engine:操作难度/角力权重 口径: 反制支援每次角力 = 一次弹刀同权重（1.0），单列类型 `counterAssist` 以便明细可读、用户仍可单独覆盖；次数取运行时折算结果（`configStore.counterAssistSlot` ≥0 时的 `appliedBoss.counterAssistGroups.length`），并按承接槽位截断存活率缩，与其余交互同口径 | 据 用户@2026-09-12「角力的操作就是一次弹刀而已，计同等权重就行，确实不难」 | 验 src/composables/__tests__/counterAssist.test.ts::角力 = 一次弹刀同权重 | 锚 src/composables/difficultyCurve.ts#liveInteractions | 信 确认
+  const caSlot = config.counterAssistSlot
+  const caCount = caSlot >= 0 ? shrink(caSlot, config.appliedBoss?.counterAssistGroups?.length ?? 0) : 0
+  if (caCount > 0) out.push({ type: 'counterAssist', count: caCount, slot: caSlot })
   for (const it of preset.interactions ?? []) {
-    if (!ENGINE_INTERACTION_FIELDS.some(f => f.type === it.type)) out.push({ ...it, count: shrink(it.slot ?? 0, it.count) })
+    // 引擎侧已给出实打次数的类型不再吃预设声明（防双计）
+    if (ENGINE_INTERACTION_FIELDS.some(f => f.type === it.type)) continue
+    if (it.type === 'counterAssist' && caCount > 0) continue
+    out.push({ ...it, count: shrink(it.slot ?? 0, it.count) })
   }
   return out
 }

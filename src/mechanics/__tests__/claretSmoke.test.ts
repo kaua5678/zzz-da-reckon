@@ -1,7 +1,7 @@
 /**
  * 克拉蕾(1611) v12 录入生效测试（2026-09-03，nanoka 3.2.12+18601660）：
  * - 锐能：进场 60 + 终结技 10/次（raw chain.description[1]）→ 秘血铸锋 60/发（旧「毁伤回锐能」口径已废除）；
- * - 残痕值：平A聚合 + 秘血铸锋 234.96% × 积蓄效率（核心 50% + 影画2 20%）→ 满 100 = 1 层；
+ * - 残痕值：(平A两态秒均×时间 + 其余全部招式 实打次数×gash_buildup 表值) × 积蓄效率（核心 50% + 影画2 20%）→ 每 600 点 = 1 层；
  * - 毁伤：min(层数, 斩金断铁×1+葬血强袭×3+影画6)×覆盖率 + 影画6 直接毁伤；
  * - C2 毁伤倍率 ×130%（执行行 override）与 C1/C6 全管线抬升。
  */
@@ -25,8 +25,9 @@ describe('克拉蕾锐能（v12：进场 60 + 终结技 10/次 → 秘血铸锋 
   const base = {
     basicGashPerSec: 0,
     basicAttackTime: 0,
-    exGashValue: 234.96,
-    exCount: 1,
+    // 全招式口径（2026-09-12 更正）：平A 外招式按「实打次数 × gash_buildup 表值」求和后传入
+    // （1 发秘血铸锋 = 281.97；旧实现这里填 234.96 是 anomaly_buildup 列，且只算 EX 一发）
+    moveGashTotal: 281.97,
     cleaveSpecialCount: 1,
     bloodBurialCount: 1,
     gashCoverage: 1,
@@ -61,15 +62,15 @@ describe('克拉蕾锐能（v12：进场 60 + 终结技 10/次 → 秘血铸锋 
     expect(neg.ultimateCount).toBe(0)
   })
 
-  it('残痕值 = (平A聚合 + 秘血铸锋 234.96%) × 积蓄效率；每 600 点 = 1 层（上限 3）', () => {
-    // 仅 EX：234.96 × 1.5 = 352.44 → 0 层（用户口径：600 点一次毁伤）
+  it('残痕值 = (平A两态秒均×时间 + 其余招式实打×gash_buildup) × 积蓄效率；每 600 点 = 1 层', () => {
+    // 仅 1 发 EX：281.97 × 1.5 = 422.955 → 0 层（用户口径：600 点一次毁伤）
     const r = computeClaretSharpResource({ ...base, cinemaLevel: 0 })
     expect(r.gashBuildupMultiplier).toBeCloseTo(1.5, 5)
-    expect(r.gashValuePct).toBeCloseTo(234.96 * 1.5, 5)
+    expect(r.gashValuePct).toBeCloseTo(281.97 * 1.5, 5)
     expect(r.gashStacks).toBe(0)
-    // 平A 1200 + EX 234.96 → 1434.96 × 1.5 = 2152.44 → 3 层（上限）
+    // 平A 1200 + 招式 281.97 → × 1.5 = 2222.955 → 3 层
     const full = computeClaretSharpResource({ ...base, basicGashPerSec: 20, basicAttackTime: 60 })
-    expect(full.gashValuePct).toBeCloseTo((1200 + 234.96) * 1.5, 2)
+    expect(full.gashValuePct).toBeCloseTo((1200 + 281.97) * 1.5, 2)
     expect(full.gashStacks).toBe(3)
     // 影画2：积蓄效率 +20% → 1.7
     const r2 = computeClaretSharpResource({ ...base, cinemaLevel: 2 })
@@ -85,18 +86,53 @@ describe('克拉蕾锐能（v12：进场 60 + 终结技 10/次 → 秘血铸锋 
     expect(r.maimFromCleave).toBe(1)
     expect(r.maimFromBurial).toBe(2)
     expect(r.maimCount).toBe(3)
-    // C6：连携/终结各 +1 直接毁伤（不占残痕层数）
+    // C6：连携/终结各 +1 直接毁伤（不占残痕层数）；影画2 也在（×1.7）→ 2519.35 → 4 层
     const r6 = computeClaretSharpResource({ ...full, cinemaLevel: 6, chainCountTotal: 2, ultimateCount: 1 })
     expect(r6.maimFromC6).toBe(3)
-    expect(r6.maimCount).toBe(6) // 消耗 3 + C6 3
+    expect(r6.maimCount).toBe(7) // 消耗 4 + C6 3（旧实现被「3 层」整局钳制压成 6——用户 2026-09-12 纠正）
   })
 
   it('残痕覆盖率 50%：消耗层数按比例折算', () => {
     const full = { ...base, basicGashPerSec: 20, basicAttackTime: 30 }
     const r = computeClaretSharpResource({ ...full, cinemaLevel: 0, gashCoverage: 0.5 })
-    // (600+234.96)×1.5=1252.44 → 2 层 × 0.5 = 1 层消耗
+    // (600+281.97)×1.5=1322.955 → 2 层 × 0.5 = 1 层消耗
     expect(r.gashStackConsumed).toBe(1)
     expect(r.maimCount).toBe(1)
+  })
+
+  it('反制支援送残痕：每组控制技 = 琢形直接添加 1 层（600 点，**不吃积蓄效率倍率**、与表值积累并存不双计）', () => {
+    // base = 1 发 EX（表值 281.97）→ ×1.5 = 422.955，再 + 2 组送层 1200 = 1622.955 → 2 层
+    const r = computeClaretSharpResource({ ...base, counterAssistCount: 2 })
+    expect(r.counterAssistGashStacks).toBe(2)
+    expect(r.gashValuePct).toBeCloseTo(281.97 * 1.5 + 2 * 600, 4)
+    expect(r.gashStacks).toBe(2)
+    // 送层直接抬毁伤：需求 = 斩金断铁1 + 葬血强袭3 = 4 → 消耗 2 层 → 毁伤 2
+    expect(r.maimCount).toBe(2)
+    // 送层不吃倍率：+1 组恰好 +600 点（若按积累走会 ×1.5 = 900）
+    const one = computeClaretSharpResource({ ...base, counterAssistCount: 1 })
+    expect(one.gashValuePct - computeClaretSharpResource(base).gashValuePct).toBeCloseTo(600, 6)
+    // 招式自身的 gash_buildup（表值）与「送的一层」是两个来源，同时在场（不双计＝不互相覆盖）
+    expect(r.moveGashValuePct).toBeCloseTo(281.97 * 1.5, 4)
+    // 0 组时逐位等于原口径
+    expect(computeClaretSharpResource({ ...base, counterAssistCount: 0 }).gashValuePct)
+      .toBe(computeClaretSharpResource(base).gashValuePct)
+  })
+
+  it('整局可用层数不钳 3（3 = 敌人身上同时存量上限，不是毁伤次数上限）', () => {
+    // 平A 6000 点（×1.5=9000）+ 送 1 层 → 16 层；需求 4 → 消耗 4 → 毁伤 4（旧实现会被钳成 3）
+    const r = computeClaretSharpResource({
+      ...base, basicGashPerSec: 100, basicAttackTime: 60, counterAssistCount: 1,
+    })
+    expect(r.gashStacks).toBe(16)
+    expect(r.gashValuePct).toBeCloseTo((6000 + 281.97) * 1.5 + 600, 4)
+    expect(r.gashStackConsumed).toBe(4)
+    expect(r.maimCount).toBe(4)
+    // 真正卡住毁伤的是消耗需求，不是 3 层
+    const noDemand = computeClaretSharpResource({
+      ...base, basicGashPerSec: 100, basicAttackTime: 60, cleaveSpecialCount: 0, bloodBurialCount: 0,
+    })
+    expect(noDemand.gashStacks).toBeGreaterThan(3)
+    expect(noDemand.maimCount).toBe(0)
   })
 })
 

@@ -161,6 +161,7 @@ function specialtyEn(zh: string): string {
 // @fact engine:操作难度/权重可调 口径: 难度 = Σ(交互次数×权重) + **时间压力秒×时间压力权重**（时间压力 = 引擎硬溢出 overflowSeconds + 合轴抵扣 saved —— 用户 2026-09-11「这俩其实是一个东西」：同一份「必做前台超出可用窗口的秒数」，合轴吃掉多少、硬溢出剩多少都只是这笔秒数的两种花法，故**只挂一个权重**）；交互权重与时间压力权重都只是默认值（INTERACTION_WEIGHTS / 1 秒=1 点），用户在对比页「难度权重」弹层自填覆盖（localStorage 持久化）；优先级 条目weight > 用户覆盖 > 默认表 | 据 用户@2026-09-04·口径合并@2026-09-11 | 验 src/composables/__tests__/teamCompare.test.ts::难度权重用户覆盖 | 锚 src/composables/teamCompare.ts#computeDifficulty | 信 确认
 export const INTERACTION_LABELS: Record<string, string> = {
   parry: '弹刀',
+  counterAssist: '反制支援（角力）',
   dodge: '闪避',
   quickAssist: '快支',
   block: '格挡',

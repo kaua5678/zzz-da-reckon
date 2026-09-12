@@ -20,11 +20,31 @@
           <span>失衡 {{ fmt(brief.stunValue, 0) }}</span>
           <span>防 {{ brief.defense }} / Lv{{ brief.level }}</span>
           <span v-if="preset">倍率 {{ fmt(preset.monster.stunVuln, 2) }} / {{ fmt(preset.monster.stunTime, 1) }}s</span>
-          <span v-if="preset && (preset.defaults.shieldCount || preset.defaults.energyShield || preset.defaults.invincibleTime || preset.defaults.parryTotal || preset.defaults.parryNoFollowUpTotal || preset.defaults.parryDecibelOnlyTotal)">
-            秽盾 {{ preset.defaults.shieldCount }} / 能量盾 {{ preset.defaults.energyShield }}<template v-if="preset.defaults.invincibleTime"> / 无敌 {{ preset.defaults.invincibleTime }}s</template><template v-if="preset.defaults.parryTotal"> / 弹刀 {{ preset.defaults.parryTotal }}</template><template v-if="preset.defaults.parryNoFollowUpTotal"> / 无突击 {{ preset.defaults.parryNoFollowUpTotal }}</template><template v-if="preset.defaults.parryDecibelOnlyTotal"> / 只喧响 {{ preset.defaults.parryDecibelOnlyTotal }}</template>
+          <span v-if="preset && (preset.defaults.shieldCount || preset.defaults.energyShield || preset.defaults.invincibleTime || preset.defaults.parryTotal || preset.defaults.parryNoFollowUpTotal || preset.defaults.parryDecibelOnlyTotal || controlSkillGroups.length)">
+            秽盾 {{ preset.defaults.shieldCount }} / 能量盾 {{ preset.defaults.energyShield }}<template v-if="preset.defaults.invincibleTime"> / 无敌 {{ preset.defaults.invincibleTime }}s</template><template v-if="preset.defaults.parryTotal"> / 弹刀 {{ preset.defaults.parryTotal }}</template><template v-if="preset.defaults.parryNoFollowUpTotal"> / 无突击 {{ preset.defaults.parryNoFollowUpTotal }}</template><template v-if="preset.defaults.parryDecibelOnlyTotal"> / 只喧响 {{ preset.defaults.parryDecibelOnlyTotal }}</template><template v-if="controlSkillGroups.length"> / 控制技 {{ controlSkillGroups.length }}组（{{ controlSkillGroups.join('+') }}段）</template>
           </span>
         </div>
       </div>
+    </div>
+
+    <!-- 控制技（紫光技）× 反制支援：整组化解开关（应用后才有意义，队内有反制支援招式才生效） -->
+    <div v-if="controlSkillGroups.length > 0" class="counter-assist-row">
+      <n-checkbox
+        :checked="counterAssistReplaceOn"
+        :disabled="!teamHasCounterAssist"
+        @update:checked="v => configStore.setMechanicSetting('boss.counterAssistReplace', v ? 1 : 0)"
+      >
+        反制支援整组替换
+      </n-checkbox>
+      <span>{{ counterAssistSummary }}</span>
+      <n-select
+        v-if="counterAssistReplaceOn && teamHasCounterAssist"
+        :value="configStore.getMechanicSetting('boss.counterAssistSlot', -1)"
+        :options="counterAssistSlotOptions"
+        size="tiny"
+        style="width: 150px"
+        @update:value="v => configStore.setMechanicSetting('boss.counterAssistSlot', Number(v))"
+      />
     </div>
 
     <!-- 关卡固有 buff（layer_buff 数值效果） -->
@@ -47,9 +67,11 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { NTag, NButton } from 'naive-ui'
+import { NTag, NButton, NCheckbox, NSelect } from 'naive-ui'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, PhaseBossBrief, PhaseBuffEffect } from '@/types/bossPreset'
+import { useConfigStore } from '@/stores/config'
+import { counterAssistOf } from '@/data/counterAssists'
 
 const props = defineProps<{
   brief: PhaseBossBrief
@@ -60,6 +82,31 @@ const props = defineProps<{
 const emit = defineEmits<{ apply: [] }>()
 
 const iconFailed = ref(false)
+const configStore = useConfigStore()
+
+/** 该 Boss 的控制技（紫光技）组：逐组记招架段数；空 = 无（不显示替换行） */
+const controlSkillGroups = computed<number[]>(() => props.preset?.defaults?.counterAssistGroups ?? [])
+/** 队内是否有带反制支援招式的角色（判据 = 数据层登记表，与引擎同源） */
+const teamHasCounterAssist = computed(() => configStore.team.some(c => !!counterAssistOf(c?.agentId)))
+const counterAssistReplaceOn = computed(() => configStore.getMechanicSetting('boss.counterAssistReplace', 1) !== 0)
+/** 承接槽位（store 折算结果，-1 = 不替换） */
+const counterAssistSlot = computed(() => configStore.counterAssistSlot)
+const counterAssistSlotOptions = computed(() => [
+  { label: '承接：自动', value: -1 },
+  ...configStore.team
+    .filter(c => !!counterAssistOf(c?.agentId))
+    .map(c => ({ label: `承接：${(c.slot ?? 0) + 1}号位`, value: c.slot ?? 0 })),
+])
+const counterAssistSummary = computed(() => {
+  const groups = controlSkillGroups.value
+  if (groups.length === 0) return ''
+  if (!props.applied) return '应用此 Boss 后按当前队伍折算（有反制支援角色在场 = 整组替换）'
+  if (!teamHasCounterAssist.value) return `队内无反制支援角色 → ${groups.length} 组按弹刀计（每组 1 次带支援突击 + 其余无突击）`
+  if (!counterAssistReplaceOn.value) return '已关 → 整组按弹刀计（并入 boss 强制弹刀总数）'
+  if (counterAssistSlot.value < 0) return '开关已开但当前队伍无承接槽位'
+  const name = counterAssistOf(configStore.team[counterAssistSlot.value]?.agentId)?.label ?? '反制支援'
+  return `${(counterAssistSlot.value + 1)}号位以「${name}」整组化解 ${groups.length} 组（不产弹刀、不拿 215 喧响）`
+})
 
 /** 关卡固有 buff 的解析效果标签 */
 const layerEffects = computed<string[]>(() => {
@@ -198,6 +245,14 @@ function statLabelOf(stat: string): string {
   gap: 4px;
   flex-wrap: wrap;
   align-items: center;
+}
+
+.counter-assist-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 11px;
 }
 
 .layer-label {

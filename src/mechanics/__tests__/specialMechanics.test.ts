@@ -296,8 +296,9 @@ describe('Claret gash / sharpness resource（v12 口径 2026-09-03）', () => {
   const base = {
     basicGashPerSec: 0,
     basicAttackTime: 0,
-    exGashValue: 234.96,
-    exCount: 1,
+    // 全招式口径（2026-09-12）：平A 之外的招式 = Σ 实打次数 × gash_buildup 表值
+    // （这里当 1 发秘血铸锋算：表值 281.97，**不是**旧实现误读的 anomaly_buildup 234.96）
+    moveGashTotal: 281.97,
     cleaveSpecialCount: 1,
     bloodBurialCount: 1,
     gashCoverage: 1,
@@ -306,10 +307,10 @@ describe('Claret gash / sharpness resource（v12 口径 2026-09-03）', () => {
     ultimateCount: 0,
   }
 
-  it('残痕值 = 表值 × 积蓄效率（核心 50%）→ 每 600 点 = 1 层（上限 3），毁伤 = min(层数, 需求)', () => {
-    // (1200 平A + 234.96 EX) × 1.5 = 2152.44 → 3 层；需求 = 1 + 3 = 4 → 消耗 3 → 毁伤 3（cleave 1 + burial 2）
+  it('残痕值 = (平A + 全招式积累) × 积蓄效率（核心 50%）→ 每 600 点 = 1 层，毁伤 = min(层数, 需求)', () => {
+    // (1200 平A + 281.97 招式) × 1.5 = 2222.955 → 3 层；需求 = 1 + 3 = 4 → 消耗 3 → 毁伤 3（cleave 1 + burial 2）
     const result = computeClaretSharpResource({ ...base, basicGashPerSec: 20, basicAttackTime: 60 })
-    expect(result.gashValuePct).toBeCloseTo(2152.44, 2)
+    expect(result.gashValuePct).toBeCloseTo(2222.955, 2)
     expect(result.gashStacks).toBe(3)
     expect(result.gashStackConsumed).toBe(3)
     expect(result.maimCount).toBe(3)
@@ -330,14 +331,14 @@ describe('Claret gash / sharpness resource（v12 口径 2026-09-03）', () => {
 
   it('残痕覆盖率 50%：消耗层数按比例折算', () => {
     const result = computeClaretSharpResource({ ...base, basicGashPerSec: 20, basicAttackTime: 30, gashCoverage: 0.5 })
-    // (600+234.96)×1.5=1252.44 → 2 层 × 0.5 = 1 层消耗
+    // (600+281.97)×1.5=1322.955 → 2 层 × 0.5 = 1 层消耗
     expect(result.gashStackConsumed).toBe(1)
     expect(result.maimCount).toBe(1)
   })
 
   it('残痕值不足需求时：层数即消耗（不虚构毁伤）', () => {
     // 平A 聚合 40% × 1.5 = 60% → 0 层 → 无毁伤
-    const result = computeClaretSharpResource({ ...base, basicGashPerSec: 4, basicAttackTime: 10, exGashValue: 0, exCount: 0 })
+    const result = computeClaretSharpResource({ ...base, basicGashPerSec: 4, basicAttackTime: 10, moveGashTotal: 0 })
     expect(result.gashValuePct).toBeCloseTo(60, 1)
     expect(result.gashStacks).toBe(0)
     expect(result.maimCount).toBe(0)

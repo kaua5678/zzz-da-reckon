@@ -1368,6 +1368,32 @@ export function findAssistFollowUp(agentSkills: {
 }
 
 
+/** 从倍率表提取反制支援（Counter Assist）信息
+ *  按登记的 moveId 取行（不按名字扫：克拉蕾的 assist 段里「支援突击」有两条，按名会挑错行）。
+ *  融合组（`data/moveFusions.ts#CLARET_COUNTER_ASSIST`）已登记 → 时间/喧响走「一次动作」整段口径：
+ *  反制支援本体 + 紧随的专属支援突击（琢形）合成一行，前台动作也只计 1 次。
+ */
+export function findCounterAssist(agentSkills: {
+  categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
+}, moveId: string): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+  let move: { id: string; actionTime?: number | null; comboAlignRatio?: number; rows: { id: string; values: number[] }[] } | null = null
+  for (const cat of agentSkills.categories) {
+    const hit = cat.moves.find(m => String(m.id) === String(moveId))
+    if (hit) { move = hit; break }
+  }
+  if (!move) return null
+
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
+
+  return {
+    moveId: move.id,
+    actionTime,
+    decibelRecovery,
+    comboAlignRatio: move.comboAlignRatio ?? 0,
+  }
+}
+
+
 /** 从倍率表提取蕾米「普通攻击：垂虹」信息（特殊虚耀跟随该动作触发） */
 export function findRemielleRainbowEnd(agentSkills: {
   categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]

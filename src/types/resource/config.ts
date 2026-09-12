@@ -187,6 +187,18 @@ export interface CharacterOperationConfig {
   assistFollowUpDecibelRecovery: number
   /** 支援突击 合轴率 0-1 */
   assistFollowUpComboAlignRatio: number
+  /** 反制支援（Counter Assist）move id —— 登记见 `src/data/counterAssists.ts`；无该招式 = 空串。
+   *  时间/喧响是「一次动作」的融合值（本体 + 专属支援突击，见 data/moveFusions.ts#CLARET_COUNTER_ASSIST）。 */
+  counterAssistMoveId?: string
+  /** 反制支援 单次 actionTime（融合后含专属支援突击段） */
+  counterAssistActionTime?: number
+  /** 反制支援 单次喧响回复（融合后含专属支援突击段；**不拿弹刀 215 特殊动作奖励**，用户口径 2026-09-12） */
+  counterAssistDecibelRecovery?: number
+  /** 反制支援 合轴率 0-1 */
+  counterAssistComboAlignRatio?: number
+  /** 反制支援次数 = 本次计算由该角色整组化解的控制技组数（boss 预设 `counterAssistGroups` 注入，
+   *  非用户手填；0 = 不替换（队内无反制支援角色 / 用户关掉 `boss.counterAssistReplace`））。 */
+  counterAssistCount?: number
   /** 后台回能加成（点/秒，来自音擎"位于后场时回能提升"等） */
   backstageRegenBonus: number
   /** 非操作回能加成（点/秒，来自音擎"非操作中角色回能提升"等） */

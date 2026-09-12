@@ -211,6 +211,9 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 能量上限提升 X 点 | `energyMax` | 默认 120 |
 | 喧响值上限提升 X 点 | 不建模 | 计算器按整局总量口径，不设单条喧响上限（如橘福福额外能力「喧响上限+1000」明确不做） |
 | 物理异常[畏缩] | 覆盖率折入 `enemyStunTakenBonus` | 畏缩使敌人受到失衡值+7.5%，按覆盖率折算 |
+| [控制技]（用户口语「紫光技」） | boss 预设 `defaults.counterAssistGroups: number[]` | 术语 2000003：无闪光提示、无视无敌的**连续数段**攻击，须逐段[招架支援]/[回避支援]应对，全部成功 → [完美反制]。逐组记段数；无替换时按「每组 1 次正常弹刀 + 段数−1 次无突击弹刀」并入 `appliedBoss.parryTotal/parryNoFollowUpTotal`（`stores/config.ts#syncBossInteractionPlan`） |
+| [反制支援]（角力整组化解控制技） | `cfg.counterAssist{MoveId,ActionTime,DecibelRecovery,ComboAlignRatio,Count}` + `src/data/counterAssists.ts` | 一次动作化解一组：本体行与其**专属**支援突击行按 `data/moveFusions.ts` 融合成一行（克拉蕾 1611028 + 1611030 琢形）。**不拿弹刀 215 特殊动作奖励**、不产轻弹刀/支援突击行、不参与每次弹刀失衡反推（用户 2026-09-12） |
+| [完美反制] | （由上面的反制支援行/弹刀+支援突击承载） | 游戏侧是"全部招架成功"的结算奖励；计算器把它落在**行内倍率/失衡**上，不额外加 215 通道 |
 
 ### 11.1 招式表的四个资源列（第二数据源 gachabase，勿混用）
 
@@ -219,9 +222,9 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 
 | base 网列名 | 页面字段 | catalog 行 | 说明 |
 |---|---|---|---|
-| 秽息消耗 | `ether_purify` | `rows[ether_purify]`（kind `etherPurify`） | **游戏里的动作时间**（×0.01 = 秒）：`move.actionTime = ether_purify/100`，`multiplierCoefficients` 有护栏锁此口径。它**不是**异常、**不是**残痕 |
+| 秽息消耗 | `ether_purify` | `rows[ether_purify]`（kind `etherPurify`） | **游戏里的动作时间**：`move.actionTime = (ether_purify − 招式类型基数)/100`，基数 = 闪避反击 150 / 招架支援 250 / 终结技 500，个别招式另有定点基数（克拉蕾反制支援 1611028 与琢形 1611030 = 300，`scripts/import-nanoka-v12.mjs#MOVE_ETHER_BASE`；扣完 ≤0 则回退 `ether_purify/100`）。`multiplierCoefficients` + `actionTimeSanity` 有护栏锁此口径。它**不是**异常、**不是**残痕 |
 | 异常值积累 | `anomaly_buildup` | `rows[anomaly_buildup]`（kind `anomaly`） | 属性异常积蓄（打进异常条的量） |
-| 残痕积累 | `gash_buildup` | `rows[gash_buildup]`（kind `gash`） | 角色专属资源「残痕」的积累量（**目前只有克拉蕾 1611 有**）。与异常积蓄**在 basic 段常数值相同、在闪反/终结/支援段不同**（如 1611018：异常 78.33 vs 残痕 228.34） |
+| 残痕积累 | `gash_buildup` | `rows[gash_buildup]`（kind `gash`） | 角色专属资源「残痕」的积累量（**目前只有克拉蕾 1611 有**）。与异常积蓄**数值可以非常接近但语义不同列**（1611018 闪反：异常 78.33 vs 残痕 78.34 —— 差 0.01 也算两列）；**支援/连携/终结段差异巨大**（1611027 支援突击：异常 308.72 vs 残痕 156.67；1611021 终结：异常 321.63 vs 残痕 400.97）。⚠️ 别拿 `ether_purify` 当残痕（1611018 的 228.34 是**秽盾/时间**列）——克拉蕾残痕账本 2026-09-12 之前就错读过 `anomaly_buildup`（见 MECHANICS_IMPLEMENTATION 克拉蕾段） |
 | 锐能回复 | `sharpness_gain_base` | `rows[sharpness_gain]`（kind `sharpness`） | 角色专属资源「锐能」的回复量（**只有 1611**；/10000 后与 base 网页显示一致，如 0.946）。1611 口径：锐能只长在血锻四式，锻星/E/连携全 0 |
 | **闪能回复** | `adrenaline_base` | `rows[flash_energy_recovery]`（kind `flashEnergy`） | gachabase 英文列名 `adrenaline`，游戏里是**闪能**（命破专属能量；nanoka 译作「肾上腺素」是误译，用户 2026-09-11 确认）。落成 `flash_energy_recovery` 与引擎既有通道同名（`calcBasicAttackRegenPerSec` / `rowEnergyTotal` / 模块 `rowValue(move,'flash_energy_recovery')`）⇒ 无需改引擎。5 个角色非零：1051 12 招 / 1471 12 / 1441 17 / 1531 11 / 1371 9。**数据佐证**：这 5 个角色的 `energy_gain_base` 全 0 且与 `adrenaline` 互斥 —— 正是命破的「只有闪能、没有能量」 |
 
