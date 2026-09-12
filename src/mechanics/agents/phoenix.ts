@@ -9,8 +9,8 @@
  * - 异放（普罗米娅绝裁同款固定 releaseMultiplier 通道）：
  *   长按普攻 1641005（225+20×(s-1)，s=普攻技能等级）、终结技 1641013（300+27×(s-1)）、
  *   影画6 强特 200% + releaseModifier 无视 15% 防御（异放限定）。
- * - [余火]→长按普攻：燃烧攻击行 attack_data（引擎收集为 totalSpecialResourceRecovery）×
- *   影画1 获取效率 1.15 / 90 = 次数（buildExecutions 产行 + estimateExSpecialTime 同源计时）。
+ * - [余火]→长按普攻：燃烧攻击行 attack_data_0（moveId×倍率表直算——**buildExecutions 阶段
+ *   totalSpecialResourceRecovery 未 enrich 回填为 0**，2026-09-12 探针修正）×影画1 效率 / 90 = 次数。
  * - [蓄能]附加攻击 1641021：次数 = 强特二段 + 长按普攻 + 终结（重击命中来源）。
  * - 影画2 焚化积蓄效率 +15%×覆盖率；第二段回 8 能量（行级）；影画4 长按普攻 +200 喧响（行级）。
  *
@@ -71,6 +71,15 @@ export function phoenixWangliangChainBonus(ultCount: number, chainCount: number)
 }
 /** 长按普攻消耗余火 */
 export const PHOENIX_CHARGED_EMBER_COST = 90
+/** [燃烧攻击]集合（余火来源，倍率表 attack_data_0 列 = 每次命中的余火获取，/10000 口径 [猜测·低]）。
+ *  分支攻击 1641006（追斩后点按）不计入自动收入——操作向量，滑块/人工次数覆盖。 */
+export const PHOENIX_COMBUSTION_MOVE_IDS: ReadonlySet<string> = new Set([
+  '1641003', '1641004', // 普攻三/四段
+  '1641008', '1641009', // 强化特殊技第一/二段
+  '1641012', '1641013', // 连携/终结
+])
+/** 平A段循环（普攻一~四段，余火按第三/四段命中计） */
+export const PHOENIX_BASIC_SEGMENT_IDS: readonly string[] = ['1641001', '1641002', '1641003', '1641004']
 /** 异放固定倍率（满级 s=12）：长按普攻 225+20×11=445、终结 300+27×11=597、影画6 强特 200 */
 export const PHOENIX_RELEASE_BASE = { charged: 225, chargedPerLevel: 20, ult: 300, ultPerLevel: 27, c6Ex: 200 } as const
 /** 通用技能等级口径：影画3 +2、影画5 累计 +4 */
@@ -123,14 +132,49 @@ export function computePhoenixWeaknessCrit(input: {
   return { rate, dmg: tierDmg + c1 }
 }
 
+/**
+ * 平A三/四段（燃烧攻击）命中次数：按段循环计数（第三段=打完前两段后到达，第四段=再打完第三段）。
+ */
+export function phoenixBasicCombustionHits(basicTime: number, cycle: { moveId: string; actionTime: number }[]): { third: number; fourth: number } {
+  if (cycle.length !== 4 || basicTime <= 0) return { third: 0, fourth: 0 }
+  const cycleTime = cycle.reduce((s, seg) => s + seg.actionTime, 0)
+  if (cycleTime <= 0) return { third: 0, fourth: 0 }
+  const full = Math.floor(basicTime / cycleTime)
+  const tail = basicTime - full * cycleTime
+  const beforeThird = cycle[0].actionTime + cycle[1].actionTime
+  const third = full + (tail >= beforeThird - 1e-9 ? 1 : 0)
+  const fourth = full + (tail >= beforeThird + cycle[2].actionTime - 1e-9 ? 1 : 0)
+  return { third, fourth }
+}
+
+/**
+ * 余火收入：按 **moveId × 倍率表 attack_data_0** 直算（2026-09-12 探针修正）。
+ * ⚠️ buildExecutions 阶段 executions 的 `totalSpecialResourceRecovery` **尚未 enrich 回填**，
+ * 直接读它是 0（第一版因此长按普攻 0 次、1641 单人伤害全库垫底 #62/62）。分支攻击 1641006
+ *（追斩后点按）是操作向量，不计自动收入。
+ */
+export function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
+  const record = cfg as unknown as Record<string, unknown>
+  const meta = (record.phoenixCombustionMeta as Record<string, number> | undefined) ?? {}
+  const basicCycle = (record.phoenixBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
+  const basicTime = Math.max(0, Number((state as { basicAttackTime?: number } | undefined)?.basicAttackTime ?? 0))
+  const { third, fourth } = phoenixBasicCombustionHits(basicTime, basicCycle)
+  let income = third * (meta['1641003'] ?? 0) + fourth * (meta['1641004'] ?? 0)
+  for (const e of executions) {
+    if (!e.moveId || !PHOENIX_COMBUSTION_MOVE_IDS.has(e.moveId)) continue
+    if (e.moveId === '1641003' || e.moveId === '1641004') continue // 平A段已按段循环计
+    income += Math.max(0, Number(e.count ?? 0)) * (meta[e.moveId] ?? 0)
+  }
+  return income
+}
+
 /** 长按普攻次数（估时与物化唯一共用入口）：floor(余火收入×效率/90)，滑块覆盖优先 */
-export function phoenixChargedCount(cfg: AgentCharConfigInput['cfg'], executions: AgentResourceInput['executions']): number {
+export function phoenixChargedCount(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
   const override = setting(cfg, 'phoenix.chargedAttackCount', 0)
   if (override > 0) return whole(override)
   const cinema = whole(Number((cfg as unknown as Record<string, unknown>).phoenixCinemaLevel ?? 0))
-  const emberGain = Math.max(0, executions.reduce((s, e) => s + (e.totalSpecialResourceRecovery ?? 0), 0))
   const eff = cinema >= 1 ? 1 + PHOENIX_C1_EMBER_EFFICIENCY / 100 : 1
-  return Math.floor(emberGain * eff / PHOENIX_CHARGED_EMBER_COST)
+  return Math.floor(phoenixEmberIncome(cfg, state, executions) * eff / PHOENIX_CHARGED_EMBER_COST)
 }
 
 function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
@@ -170,6 +214,14 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCo
       energyCost: parseFloat(m?.energyCost?.['Energy Cost'] ?? '') || 0,
     }
   }
+  // 燃烧攻击余火获取（attack_data_0 列，moveId → 每次命中余火）
+  const combustion: Record<string, number> = {}
+  for (const moveId of PHOENIX_COMBUSTION_MOVE_IDS) {
+    const m = all.find(mm => mm.id === moveId)
+    combustion[moveId] = m?.rows?.find(r => r.id === 'attack_data_0')?.values?.[0] ?? 0
+  }
+  record.phoenixCombustionMeta = combustion
+  record.phoenixBasicCycle = PHOENIX_BASIC_SEGMENT_IDS.map(metaOf)
   record.phoenixChargedMeta = metaOf(PHOENIX_CHARGED_MOVE_ID)
   record.phoenixEx2Meta = metaOf(PHOENIX_EX2_MOVE_ID)
   record.phoenixEnergizeMeta = metaOf(PHOENIX_ENERGIZE_MOVE_ID)
@@ -210,7 +262,7 @@ function phoenixReleaseModifier({ panels }: ReleaseModifierInput): { enemyResRed
 function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cinema = whole(Number(record.phoenixCinemaLevel ?? 0))
-  const chargedCount = phoenixChargedCount(cfg, executions)
+  const chargedCount = phoenixChargedCount(cfg, state, executions)
   record.phoenixChargedCount = chargedCount
   const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))
   const ultCount = Math.max(0, Number(state.ultimateCount ?? 0))

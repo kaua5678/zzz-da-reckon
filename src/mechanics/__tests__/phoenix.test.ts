@@ -197,6 +197,17 @@ describe('菲欧妮（1641）⚠️3.3 测试服临时录入', () => {
     expect(entry!.totalTime).toBeCloseTo(entry!.count * entry!.actionTime, 6)
   })
 
+  it('余火自动推导防回归（2026-09-12 探针修正）：不给滑块时长按普攻次数必须 >0——收入按 moveId×倍率表直算，勿读 totalSpecialResourceRecovery（enrich 前为 0）', async () => {
+    await setup(['1641', '1171', ''], 0)
+    const calc = useResourceCalc()
+    const phoenix = calc.resourceResult.value!.characters.find(c => c.agentId === '1641')!
+    const charged = phoenix.executions.find(e => e.moveId === '1641005')
+    expect(charged).toBeTruthy()
+    expect(charged!.count).toBeGreaterThan(0)
+    // 单人缺省盘实测 8 次（180s）；队内平A时间被分走会更少，下界取 1 保结构性回归检测
+    expect(phoenix.specResources?.phoenix_cycle?.chargedCount).toBeGreaterThan(0)
+  })
+
   it('模块注册与滑块：3 个滑块齐全（脆弱暴击已移交 spec teamBuffs，无档位滑块）', () => {
     expect(phoenixMechanic.agentIds).toContain('1641')
     expect((phoenixMechanic.settings ?? []).map(s => s.id).sort()).toEqual([
