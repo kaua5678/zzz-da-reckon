@@ -124,3 +124,4 @@ export interface DocReviewTrigger {
   text: string
 }
 export declare function scanDocReviewTriggers(root?: string, today?: string): DocReviewTrigger[]
+export declare function countGuideSection4Lines(root?: string): number

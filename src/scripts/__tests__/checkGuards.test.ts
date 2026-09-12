@@ -36,6 +36,7 @@ import {
   extractSettingIds,
   matchDebtRegistry,
   auditCatalogLevel60,
+  countGuideSection4Lines,
   scanManualDensity,
   scanDocReviewTriggers,
   runAllChecks,
@@ -418,11 +419,17 @@ describe('scanManualDensity（判据 11：手册数字 id 密度棘轮，任务�
     expect(scanManualDensity(root)['docs/AGENT_RECORDING_SOP.md'].density).toBeNull()
   })
 
-  it('burn-down：手册密度条目存在且度量 id 可解析（漏接 measure 会静默 NaN → zc 点名失效）', () => {
-    const e = RATCHET_BURNDOWN.find(x => x.id === '手册数字 id 密度')
+  it('burn-down：「手册 §4 行数」条目存在且度量 id 已接进 zc（漏接 measure 会静默 NaN → 点名失效）', () => {
+    // 口径纠正 2026-09-12：还款面 = §4 行数（任务卡主口径 −40%）；密度只当判据 11 防变差天花板
+    //（批量拆薄实测反效果：散文删得快于证据数字，密度 0.196→0.237 不降反升）
+    const e = RATCHET_BURNDOWN.find(x => x.id === '手册 §4 行数')
     expect(e).toBeDefined()
     expect(e!.file).toBe('docs/ENGINE_PIPELINE_GUIDE.md')
     expect(e!.target).toBeLessThan(e!.frozen)
+    const cur = countGuideSection4Lines()
+    expect(Number.isFinite(cur)).toBe(true)
+    expect(cur).toBeLessThan(e!.frozen)      // 已还款（立项 1340 → 现 <1340）
+    expect(cur).toBeGreaterThanOrEqual(e!.target)  // 未到期误报清零
     // zc.mjs measured 映射以 id 为键（rule 11：口径实现在 check-guards，zc 只注入）
     const src = readFileSync(join(process.cwd(), 'scripts/zc.mjs'), 'utf8')
     expect(src).toContain(`'${e!.id}'`)

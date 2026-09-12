@@ -638,7 +638,7 @@ async function verbStatus(root = ROOT) {
       'agentId 分支': () => g.countAgentBranchLines(root),
       'core agentId 分支': () => g.countAgentIdBranchLinesInFiles(g.CORE_AGENT_BRANCH_FILES, root),
       '展示层越层 import': () => g.scanExhibitionLayerImports(root).count,
-      '手册数字 id 密度': () => g.scanManualDensity(root)['docs/ENGINE_PIPELINE_GUIDE.md']?.density ?? NaN,
+      '手册 §4 行数': () => g.countGuideSection4Lines(root),
     }
     burndown = g.computeBurndown(id => (measured[id] ? measured[id]() : NaN))
   } catch { /* 护栏不可用时不阻塞 status */ }

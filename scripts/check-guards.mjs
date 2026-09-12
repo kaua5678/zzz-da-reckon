@@ -136,12 +136,12 @@ export const RATCHET_BURNDOWN = [
     plan: '常量/纯函数下沉 src/data/ 或经编排层透出；逐文件清理后下调 EXHIBITION_LAYER_IMPORT_BASELINE',
   },
   {
-    id: '手册数字 id 密度',
+    id: '手册 §4 行数',
     file: 'docs/ENGINE_PIPELINE_GUIDE.md',
-    frozen: 0.287,  // 2026-09-12 任务卡实测（密度口径见 MANUAL_DENSITY_CEILINGS 头注释；判据天花板 0.30 = 此值 + 余量）
-    target: 0.15,
+    frozen: 1340,  // 任务卡立项基线（§4 常见坑表行数）。口径纠正归因 2026-09-12：原以密度 0.287→0.15 计还款，批量拆薄实测**反效果**（散文删得比证据数字快，密度反升）——密度留作防变差天花板（判据 11），还款改量行数 = 任务卡主口径「§4 −40%」
+    target: 804,
     due: '2026-10-31',
-    plan: '§4 编年式条目按「症状/根因/判据/否决记录」四栏模板拆薄（任务卡第 2→3 步：坑19 示范已做，余量在 33/35/30 等超长条目）；叙事删除留 git 指针。达 target 后同步下调判据天花板与 frozen',
+    plan: '已拆：坑19（341→133）/ 18（43→46 无可删叙事）/ 30+31（85→23）/ 33（164→85）/ 35（168→71），现 891 行，差额 87 行在 22/25/34/36–38 等中型条目（含叙事者拆，无叙事项不硬压——四栏模板见坑 19 示范）；达 target 后下调 frozen',
   },
 ]
 
@@ -284,11 +284,15 @@ export function auditCatalogLevel60(root = ROOT) {
  *   案例编年史该进 git 历史与 .claude 账本，不该沉淀在手册里（AGENTS 规则 8 分层契约）。
  * 天花板 = 2026-09-12 实测向上取整留余量后冻结。`MECHANICS_IMPLEMENTATION.md` **不在列**：
  * 它是档案（逐角色口径记录，个体性=本职），任务卡实测后明确不动。
+ * ⚠ **天花板是防变差的红灯面，不是还款面**（批量拆薄后的反效果实测，2026-09-12）：
+ * 四栏拆薄删的是散文（分母）而判据/否决记录按规则 16③ 必须保测量数字（分子），
+ * 于是密度**反升** 0.196→0.237——拿密度当还款目标会奖励灌水。还款量化在
+ * burn-down 条目「手册 §4 行数」（frozen 1340 → target 804 = 任务卡主口径「§4 行数 −40%」）。
  *
- * @fact engine:guards/手册密度 口径: 密度 = /\b1\d{3}\b/ 次数 ÷ 行数，四份方法文档按 2026-09-12 实测冻结天花板；编年叙事只进 git/账本，手册只收协议/口径/证据 | 据 任务卡@2026-09-12（用户确认方向） | 验 src/scripts/__tests__/checkGuards.test.ts | 锚 scripts/check-guards.mjs#MANUAL_DENSITY_CEILINGS | 信 确认
+ * @fact engine:guards/手册密度 口径: 密度 = /\b1\d{3}\b/ 次数 ÷ 行数，四份方法文档按 2026-09-12 实测冻结天花板；编年叙事只进 git/账本，手册只收协议/口径/证据；还款面 = §4 行数（密度只拦变差，拆薄后反升属口径性质） | 据 任务卡@2026-09-12（用户确认方向）·反效果实测@2026-09-12 | 验 src/scripts/__tests__/checkGuards.test.ts | 锚 scripts/check-guards.mjs#MANUAL_DENSITY_CEILINGS | 信 确认
  */
 export const MANUAL_DENSITY_CEILINGS = {
-  'docs/ENGINE_PIPELINE_GUIDE.md': 0.30,      // 实测 0.287（病灶：§4 编年式条目；burn-down target 0.15）
+  'docs/ENGINE_PIPELINE_GUIDE.md': 0.30,      // 立项实测 0.287；批量拆薄后 0.237（反升，见头注）
   'docs/AGENT_RECORDING_SOP.md': 0.05,        // 实测 0.037
   'docs/GAME_TERM_TO_CODE_FIELD.md': 0.16,    // 实测 0.147
   'docs/MECHANIC_PATTERNS.md': 0.20,          // 实测 0.187
@@ -306,6 +310,16 @@ export function scanManualDensity(root = ROOT) {
     out[rel] = { ceiling, lines, hits, density: Math.round((hits / lines) * 1000) / 1000 }
   }
   return out
+}
+
+/** ENGINE_PIPELINE_GUIDE §4「常见坑」区（## 4. 至 ## 5.）行数——burn-down「手册 §4 行数」的还款面度量 */
+export function countGuideSection4Lines(root = ROOT) {
+  const p = join(root, 'docs/ENGINE_PIPELINE_GUIDE.md')
+  if (!existsSync(p)) return NaN
+  const lines = readFileSync(p, 'utf8').split('\n')
+  const s4 = lines.findIndex(l => l.startsWith('## 4.'))
+  const s5 = lines.findIndex(l => l.startsWith('## 5.'))
+  return s4 >= 0 && s5 > s4 ? s5 - s4 : NaN
 }
 
 /**
