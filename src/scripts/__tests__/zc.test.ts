@@ -268,7 +268,9 @@ describe('仓库级：索引真的建得起来', () => {
       expect(e.overThreshold[i].lines).toBeLessThanOrEqual(e.overThreshold[i - 1].lines)
     }
     expect(e.branches.length).toBeGreaterThanOrEqual(1)
-    expect(e.branches).toContain('master')
+    // 两种合法 checkout 形态都要能过：常规分支（master）或 detached（CI/隔离 worktree 验货）——
+    // 旧实现硬断言 master，在 detached worktree 里红过一次（本用例标题明说"只报不红"）。
+    expect(e.branches.some(b => b === 'master' || b.includes('no branch'))).toBe(true)
   })
 
   // 2026-09-11 口径修正：旧实现按「除自身文件外零引用」判死口径，把**本文件内活跃调用**的导出
