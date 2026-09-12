@@ -111,11 +111,11 @@ export function scanFetchStubs(root = ROOT) {
 export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
-    file: 'src/composables/useResourceCalc.ts',  // 度量文件（AGENT_BRANCH_FILE）；分支落点已随收线刀进 resourceCalc/convergence.ts
-    frozen: 0,  // 2026-09-12 #10 五批：53→52(栈轴 1551)→48(promia)→39(四反馈块)→8(runCalcRound 收线刀)→0(本文件末 8 处真清偿，见 AGENT_BRANCH_BASELINE 注释的口径警告)
+    file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
+    frozen: 78,  // 2026-09-12 口径纠正后按**提交态**实测：单文件口径 53→…→0（那串大降绝大部分是位移），编排层全量 86→86→78。见 AGENT_BRANCH_BASELINE 注释
     target: 0,
     due: '2026-12-31',
-    plan: '本文件已清零。⚠ 下一步须先把度量范围扩到整个 resourceCalc/ 目录（现 convergence.ts 持 45 处，位移冒充清偿），再逐角色迁 applyTeamConfig 三阶段钩子（架构评审 #10 → #2）',
+    plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。hot spot：convergence.ts(45) > helpers.ts(18) > damagePool.ts(16)。架构评审 #10 → #2',
   },
   {
     id: 'core agentId 分支',
@@ -218,24 +218,55 @@ export function auditDocTable(root = ROOT) {
   }
 }
 
-// ---- 判据 2：useResourceCalc agentId 分支棘轮 ----
+// ---- 判据 2：编排层 agentId 分支棘轮 ----
 
+/**
+ * 度量范围 = **`useResourceCalc.ts` + 整个 `resourceCalc/` 目录**（2026-09-12 口径纠正）。
+ *
+ * 为什么必须扩到目录（本仓库最新的一条护栏教训）：原口径只量 `useResourceCalc.ts` 一个文件，
+ * 而评审 #10 把收敛域代码搬进了 `resourceCalc/`（convergence.ts 等）——**特判跟着代码一起搬**，
+ * 于是「把分支搬个家」就能让基线下降。实测编排层四文件合计：
+ * 86(4c4bf5d~1，53 基线时代) → 86(502af1c，标称已降到 8) → 78(第 27 轮真清偿 8 处后，提交态)。
+ * 即标称「-45」实为**净 0**，全是位移。教训：**度量范围必须跟着代码走**，
+ * 否则棘轮只会奖励重构、不奖励清偿。
+ */
+export const AGENT_BRANCH_DIR = 'src/composables/resourceCalc'
+/** 单文件入口（也在度量范围内；历史上是唯一度量点） */
 export const AGENT_BRANCH_FILE = 'src/composables/useResourceCalc.ts'
+
+/** 编排层被度量的全部文件（入口 + 目录内所有 .ts；__tests__ 不在该目录下） */
+export function listAgentBranchFiles(root = ROOT) {
+  const dir = join(root, AGENT_BRANCH_DIR)
+  const files = [AGENT_BRANCH_FILE]
+  if (existsSync(dir)) {
+    for (const n of readdirSync(dir).sort()) {
+      if (n.endsWith('.ts')) files.push(`${AGENT_BRANCH_DIR}/${n}`)
+    }
+  }
+  return files
+}
+
+/** 编排层 agentId 特判总数（跨全部度量文件；判据与 zc status 共用本函数，不各写一份） */
+export function countAgentBranchLines(root = ROOT) {
+  return countAgentIdBranchLinesInFiles(listAgentBranchFiles(root), root)
+}
+
 /**
  * 2026-08-30 冻结基线：规则 6 生效前的历史存量（按「含 agentId ===/!== 的行数」计）。
  *
- * 2026-09-12 下调 8→0（#10 真清偿，本文件的最后 8 处）：橘福福八面威风 → `specPanelBuffs`
- * 的 applyTeamConfig；卢西娅 4命帷幕 + 回血→伊德海莉 → `luciaElowen` 的 applyTeamConfig；
- * 四个轴窗口覆盖（般岳/仪玄/佩洛伊斯/可琳）→ 新钩子 `axisWindowOverlays`；交互栏补齐槽位 →
- * 声明 `producesInteractionTopUp`。**本文件（编排层）现已零 agentId 特判**。
+ * 沿革（**单文件口径**）：53（2026-08-30 冻结）→ 52(栈轴 1551) → 48(promia) → 39(四反馈块)
+ * → 8(runCalcRound 收线刀) → 0(第 27 轮真清偿 8 处，`useResourceCalc.ts` 该文件清零)。
  *
- * ⚠ 口径警告（留给下一个 agent，别被这个 0 骗了）：本棘轮**只度量 useResourceCalc.ts 一个文件**，
- * 而 #10 把代码搬进了 `resourceCalc/`，特判随之外迁——实测编排层四文件合计
- * 86(4c4bf5d~1) → 86(502af1c) → **79(本次)**，即 53→8 的「大降」绝大部分是**位移不是清偿**
- * （convergence.ts 现持 45 处）。真正的编排层棘轮应改为**度量整个 resourceCalc/ 目录**，
- * 否则把分支搬个家就能「降基线」。见账本 Open 段「棘轮口径失真」。
+ * ⚠ **2026-09-12 口径纠正（本条最重要）**：上面那串 53→0 是单文件读数，而 #10 把代码搬进了
+ * `resourceCalc/`——特判随之外迁，**编排层全量**实测 86→86→79。即 53→8 的「大降」绝大部分是
+ * **位移不是清偿**（四笔注因其实都如实写了「随本体进落点」，是度量范围没跟着代码走）。
+ * 故度量改为 `listAgentBranchFiles()`（入口 + 目录），frozen 取纠正后**提交态**实测值 **78**。
+ * **78 才是编排层真实的 agentId 特判存量**，逐角色迁 `applyTeamConfig`/声明式钩子才是真 burn-down。
+ *
+ * ⚠ 取数纪律：基线必须量**提交态（HEAD）**，不能量带并行会话 WIP 的工作树——本次实测工作树 79
+ * （含 session-bab4 未提交的 1 处），HEAD 实为 78。量错会让 CI 在别人提交后假红。
  */
-export const AGENT_BRANCH_BASELINE = 0
+export const AGENT_BRANCH_BASELINE = 78
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。
@@ -258,8 +289,22 @@ export function countAgentIdBranchLinesInFiles(files, root = ROOT) {
   return files.reduce((n, f) => n + countAgentIdBranchLines(readFileSync(join(root, f), 'utf8')), 0)
 }
 
+/**
+ * 计一个文件里的 agentId 特判行数（棘轮唯一计数口径）。
+ *
+ * ⚠ 2026-09-12 收紧：**注释行不计**（原口径把注释也算进去，与 `detectExhibitionLayerImport`
+ * 的同款豁免不一致）。实测踩过：迁移时在注释里写「原本是 `findIndex(c => c.agentId === 'xxxx')`」
+ * 解释来龙去脉，反而被自己数成 1 处违规（代码其实已清零）——**口径惩罚了写文档的人**。
+ * 豁免规则与本文件既有判据 7 完全一致（`//`/`*`/`/*` 开头的行），不引入第二套注释语法实现。
+ *
+ * 收紧后实测：度量面无任何注释行命中（79 与 36 均不含注释），故**基线数值不变**，属纯硬化。
+ */
 export function countAgentIdBranchLines(content) {
-  return content.split('\n').filter(l => /agentId\s*(===|!==)/.test(l)).length
+  return content.split('\n').filter(l => {
+    const t = l.trim()
+    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return false
+    return /agentId\s*(===|!==)/.test(l)
+  }).length
 }
 
 // ---- 判据 3：工作区状态文件防误提交 ----
@@ -523,12 +568,13 @@ export function runAllChecks(root = ROOT) {
     ],
   })
 
-  const branches = countAgentIdBranchLines(readFileSync(join(root, AGENT_BRANCH_FILE), 'utf8'))
+  const branchFiles = listAgentBranchFiles(root)
+  const branches = countAgentBranchLines(root)
   results.push({
-    name: `agentId ratchet (规则 6: 队伍级机制走 applyTeamConfig) ${AGENT_BRANCH_FILE} = ${branches}/${AGENT_BRANCH_BASELINE}`,
+    name: `agentId ratchet (规则 6: 队伍级机制走 applyTeamConfig) ${AGENT_BRANCH_FILE} + resourceCalc/ = ${branches}/${AGENT_BRANCH_BASELINE}`,
     ok: branches === AGENT_BRANCH_BASELINE,
     detail: branches > AGENT_BRANCH_BASELINE
-      ? [`  ✗ 分支数 ${AGENT_BRANCH_BASELINE}→${branches}：角色特例逻辑写进 useResourceCalc 了。移到 src/mechanics/agents/<id>.ts 的 applyTeamConfig（三阶段钩子，派发器 composables/resourceCalc/helpers.ts）`]
+      ? [`  ✗ 分支数 ${AGENT_BRANCH_BASELINE}→${branches}：角色特例逻辑写进编排层了（度量面 ${branchFiles.length} 个文件）。移到 src/mechanics/agents/<id>.ts 的 applyTeamConfig（三阶段钩子）或声明式钩子（axisWindowOverlays / backstageAutoFill 等），派发器在 composables/resourceCalc/helpers.ts`]
       : branches < AGENT_BRANCH_BASELINE
         ? [`  ✗ 分支数 ${AGENT_BRANCH_BASELINE}→${branches}：是进步，把 check-guards.mjs 的 AGENT_BRANCH_BASELINE 下调到 ${branches}（棘轮只减不增）`]
         : [],

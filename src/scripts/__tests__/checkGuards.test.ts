@@ -10,6 +10,8 @@ import { describe, expect, it } from 'vitest'
 import {
   DEBT_REGISTRY,
   AGENT_BRANCH_BASELINE,
+  AGENT_BRANCH_DIR,
+  AGENT_BRANCH_FILE,
   CORE_AGENT_BRANCH_BASELINE,
   CORE_AGENT_BRANCH_FILES,
   EXHIBITION_LAYER_IMPORT_BASELINE,
@@ -18,6 +20,8 @@ import {
   computeBurndown,
   parseDocTable,
   countAgentIdBranchLinesInFiles,
+  countAgentBranchLines,
+  listAgentBranchFiles,
   daysBetween,
   detectFetchStub,
   detectExhibitionLayerImport,
@@ -62,6 +66,16 @@ describe('countAgentIdBranchLines（按行计，与棘轮基线同口径）', ()
     expect(countAgentIdBranchLines(`if (a.agentId === '1' || b.agentId === '2') {}`)).toBe(1)
     expect(countAgentIdBranchLines(`c.agentId !== '3'`)).toBe(1)
     expect(countAgentIdBranchLines(`const cfg = characters.find(c => c.agentId)`)).toBe(0)
+  })
+
+  it('★ 注释行不计（2026-09-12 收紧：口径不再惩罚写文档的人）', () => {
+    // 事故形状：迁移时在注释里解释「原本是 findIndex(c => c.agentId === 'xxxx')」，
+    // 被自己的计数器数成 1 处违规（代码其实已清零）——文档写得越清楚，基线越容易假红。
+    expect(countAgentIdBranchLines(`// const x = c.agentId === '1'`)).toBe(0)
+    expect(countAgentIdBranchLines(` * c.agentId !== '2'`)).toBe(0)
+    expect(countAgentIdBranchLines(`/* if (c.agentId === '3') {} */`)).toBe(0)
+    // 真代码仍计；注释与代码同行时按代码计（行首非注释标记）
+    expect(countAgentIdBranchLines(`if (c.agentId === '4') {} // 注释`)).toBe(1)
   })
 })
 
@@ -155,6 +169,34 @@ describe('countAgentIdBranchLinesInFiles（core 棘轮：规则 6 的引擎层�
   })
 })
 
+describe('编排层度量范围（2026-09-12 口径纠正：单文件 → 入口 + resourceCalc/ 目录）', () => {
+  // 为什么需要这组用例：原口径只量 useResourceCalc.ts 一个文件，而 #10 把代码搬进 resourceCalc/
+  // ——特判随代码搬家即可「降基线」。实测标称 53→8 实为编排层全量 86→86（净 0）。
+  // 这组用例把「度量面必须覆盖目录」钉死，防回归成单文件口径（那会让护栏奖励搬家而非清偿）。
+  it('度量面 = 入口 + 目录内全部 .ts（不是只有入口一个文件）', () => {
+    const files = listAgentBranchFiles()
+    expect(files).toContain(AGENT_BRANCH_FILE)
+    expect(files.length).toBeGreaterThan(1)                       // 若退回单文件口径，此断言即红
+    for (const f of files.filter(f => f.includes(AGENT_BRANCH_DIR))) {
+      expect(f.startsWith(AGENT_BRANCH_DIR)).toBe(true)
+      expect(f.endsWith('.ts')).toBe(true)
+    }
+    // 目录内的执行域文件必须在册（这几个正是 #10 的落点，历史上曾是盲区）
+    expect(files.some(f => f.endsWith('resourceCalc/convergence.ts'))).toBe(true)
+    expect(files.some(f => f.endsWith('resourceCalc/helpers.ts'))).toBe(true)
+    expect(files.some(f => f.endsWith('resourceCalc/damagePool.ts'))).toBe(true)
+  })
+
+  it('全量计数 == 登记表 frozen，且**严格大于**入口单文件计数（证明目录确实进了度量面）', () => {
+    const total = countAgentBranchLines()
+    expect(total).toBe(AGENT_BRANCH_BASELINE)
+    expect(RATCHET_BURNDOWN.find(e => e.id === 'agentId 分支')!.frozen).toBe(AGENT_BRANCH_BASELINE)
+    // 入口文件现已清零；若总计数等于入口计数，说明目录没被算进去（口径退回）→ 红
+    const entryOnly = countAgentIdBranchLinesInFiles([AGENT_BRANCH_FILE])
+    expect(total).toBeGreaterThan(entryOnly)
+  })
+})
+
 describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）', () => {
   // 语义钉死：棘轮解决「不许变差」，burn-down 解决「什么时候变好」。四态必须互不串味。
   // ⚠ fixture 必须**从登记表派生**（不能硬编码条数/某个 id 的返回值）：2026-09-11 加第 3 条棘轮时，
@@ -169,8 +211,6 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
   const measure = atFrozen
   /** 未完成的棘轮（stale/overdue/还款语义只对它们成立） */
   const activeEntries = RATCHET_BURNDOWN.filter(e => e.frozen > e.target)
-  /** 已清零的棘轮（frozen === target；只应报 done，永不再被点名） */
-  const clearedEntries = RATCHET_BURNDOWN.filter(e => e.frozen <= e.target)
 
   it('未到期：不报警（只在 due 前后才点名）', () => {
     for (const b of computeBurndown(measure, '2026-09-11')) {
@@ -220,7 +260,19 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
   it('★ 已清零的棘轮即使过了 due 也不再被点名（原判据 frozen>0 掩盖的缺陷）', () => {
     // 回归钉子：原式 `stale: overdue && progress <= 0` 在 frozen=0 & current=0 时算 progress=0
     // → 判 stale，而同一行 done 却是 true（自相矛盾：既已完成又被点名）。
-    expect(clearedEntries.length).toBeGreaterThan(0)   // 前提：登记表里确有清零条目
+    // ⚠ 不能用「登记表里当前是否有清零条目」当初提——那让用例依赖当天账面的巧合：
+    //   2026-09-12 口径纠正把 frozen 从 0 调回 79 后，该前提立刻失效（本用例正是这么红的）。
+    // 故改为**直接对已完成条目做的事实验证**：临时把任一条目的 measure 压到 target，
+    // 无论登记表处于什么状态都应判 done 且不再 stale。
+    for (const e of RATCHET_BURNDOWN) {
+      const atTarget = (id: string) => (id === e.id ? e.target : atFrozen(id))
+      const row = computeBurndown(atTarget, '2028-01-15').find(r => r.id === e.id)!
+      expect(row.done).toBe(true)
+      expect(row.stale).toBe(false)      // ← 原判据在此处误报
+      expect(row.remaining).toBe(0)
+      expect(row.progress).toBe(e.frozen - e.target)
+    }
+    // 附带：若登记表确有天然已清零的条目（frozen === target），恒等检查也必须成立
     for (const r of computeBurndown(atFrozen, '2028-01-15')) {
       if (r.frozen <= r.target) {
         expect(r.done).toBe(true)

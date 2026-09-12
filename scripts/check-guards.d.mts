@@ -10,9 +10,12 @@ export declare const FETCH_STUB_ALLOWLIST: string[]
 export declare function fetchStubViolations(files: { path: string; content: string }[]): string[]
 export declare function scanFetchStubs(root?: string): { violations: string[]; stale: string[] }
 
-// 判据 2：agentId 分支棘轮
+// 判据 2：编排层 agentId 分支棘轮（2026-09-12 口径纠正：单文件 → 入口 + resourceCalc/ 目录）
+export declare const AGENT_BRANCH_DIR: string
 export declare const AGENT_BRANCH_FILE: string
 export declare const AGENT_BRANCH_BASELINE: number
+export declare function listAgentBranchFiles(root?: string): string[]
+export declare function countAgentBranchLines(root?: string): number
 export declare function countAgentIdBranchLines(content: string): number
 // 引擎层 agentId 棘轮（规则 6 在 core 的延伸）
 export declare const CORE_AGENT_BRANCH_FILES: string[]
