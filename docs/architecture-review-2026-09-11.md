@@ -106,6 +106,13 @@ resourceCalc/helpers.ts 1946 行 · TeamConfigPage.vue 1850 行
   故删掉的是 verify 链里那次**更弱且重复**的 `typecheck`，保留 `build` 内的 `-b`
   （正确的做法是保留更强的那个）。`npm run typecheck` 本身作为"单跑更快"的入口保留。
 - UI 样式层：27 个 .vue / 4085 行 scoped CSS，只有颜色令牌（`check-tokens` 头部自述）。
+- 覆盖实测（2026-09-12 补，修正"部分 composable 覆盖薄"的模糊印象）：按「81 个逻辑模块 × 测试引用」
+  扫描——`charIncrement`（199 行测试/10 例，5 导出全覆盖）与 `runArchiveImport`（220 行，含消歧/
+  别名/未收录路径）**并不薄**；真缺口是 11 个零测试引用模块。处置：活而无测的最大纯逻辑块
+  `utils/statMeta.ts`（269 行/9 调用方）已补 22 例特征化测试（`bed4c71`）；
+  `core/attributeRefs.ts`（201 行，全仓零引用、含"用户核对版"字样）已加"⚠ 无调用点"头并指明
+  活实现（`core/anomalyPool` 等），**删除或迁 docs 待用户裁决**；`data/enginePools.ts`（18 行死包装）
+  已删（消费方一直直接 import JSON）。
 
 ### 🟡 P2-2 文档漂移
 评审时 `README.md` §6 写「共 11 份」、「以本表为准（10 份）」，表 11 行，`docs/` 实有 13 份
