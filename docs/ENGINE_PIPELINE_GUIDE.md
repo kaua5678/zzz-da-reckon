@@ -1419,6 +1419,49 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
     （`node -e "const j=require('./src/composables/__tests__/timeFillRatchet.baseline.json');let s=0,n=0;for(const [k,v] of Object.entries(j)){if(k.startsWith('_'))continue;n++;s+=v.slack||0}console.log(n,s.toFixed(1))"`），
     不是文档旧值 391s ⇒ **留白不构成 5× 量级的主因**，别再把「伤害低」记到它头上。
 
+39. **「基线绿」不等于「改动生效」：数据订正类改动必须反向 A/B 证伪（2026-09-12 两条实测）**：
+    **症状**：改了 catalog 数值，`timeGolden` 全绿零 delta → 极易被读成「改动没生效 / 漏改了」。
+    **两个真实成因**（都可能表现为绿）：
+    ① **基线已被前人重生成过**（最常见）：`TIME_GOLDEN_UPDATE=1` 跑过一次，基线里**已经是订正后的值**，
+       于是「改对了」和「没改」都显示绿。1611 克拉蕾实测：基线里 `856266` 本就是订正后值。
+    ② **改动路径不进该仪器的度量面**：`applyPanel` 钩子在**编排层**（`resourceCalc/helpers.ts` 派发），
+       而 `PROBE_AGENT=<id> npm run probe:panel` 只调 `core/panel#calcPanel` —— 探针**看不到**任何
+       `applyPanel` 施加的修正（1611 的 +17.5% 暴击率就不在其中）。
+    **判据（照做，别凭绿/红下结论）**：
+    1. **反向 A/B**：临时把值改回旧值重跑，看 delta 是否如预期出现。1611 实测改回 critDmg=0 →
+       c0 **−21.569%** / c6 **−21.970%**（改完立刻用备份还原）。**出现预期 delta 才证明通道打通**。
+    2. **选对仪器**：判断你要验的东西在不在该仪器的路径上（探针 = 只有 calcPanel；`useResourceCalc`
+       的 `damagePanels` = 含 applyPanel 的权威面板）。不确定就两个都跑，对不上的差就是钩子贡献。
+    3. **单变量归因**：多处同时改时，逐个回退定位到**唯一**诱因（本批 20 处订正里，只有 1051 引起
+       时间账抖动、只有 1291 引起加权易伤快照漂移 —— 都是逐个回退实证出来的，不是猜的）。
+    **复算/工具**：`node scripts/audit-catalog-level60.mjs`（catalog ↔ raw 对账，见坑 40）。
+    **否决记录**：❌「测试绿了所以改动生效了」——这是本坑的全部代价；❌ 用探针读数当面板唯一权威
+    （不含 applyPanel）；❌ 多处一起改后靠 delta 猜归因（必须单变量回退）。
+
+40. **catalog 落库值必须与 raw 源可对账：漏加「突破加成」是最安静的一类数据错误（2026-09-12）**：
+    **症状**：某角色的 level60 字段 = **全库通用裸基值**（如暴击率全部恰好 5、暴伤全部恰好 50）。
+    因为「大家都一样」，**肉眼完全看不出来**；只有个别角色被单独订正后才会暴露口径分裂。
+    **根因模式**：导入脚本写「base + 突破加成」类字段时只取了 base。实测 `import-nanoka-beta-agent.mjs`
+    漏掉 `extra_level['6'].extra['20101'/'21101']` → **20 个角色**被落错（19 个 critRate + 1 个 critDmg），
+    而 1481/1571/1241/1461 经另一条已废弃路径入库的却是**含加成**的 19.4/78.8 —— 同一 catalog 两套口径。
+    **为什么这是「静默」的**：`core/panel#calcBasePanel` 直接读 `s.critRate`，**别处无补偿通道**，
+    所以错了不会报错、不会红，只会全体偏低一档。
+    **判据（改这类数据前必做三条自证）**：
+    ① **无第二通道**：`grep -rn "critRate" src/core/panel.ts` 确认只有直读、别处不补（有补偿则订正会双计，
+       必须停手上报）；② **库内已有正确样本**证明口径（本例：5 个角色已是 19.4/78.8）；
+    ③ **错得整整齐齐**（全部恰好等于某个通用基值）⇒ 单脚本漏写特征，而非逐角色口径差异。
+    **工具（泛用，不只查暴击）**：`scripts/lib/level60-rules.mjs` 是**规则表单一事实源**，
+    被审计与修复脚本共用 —— 加一行规则即可扩到任意字段，别在两处各抄公式。
+    · 审计：`node scripts/audit-catalog-level60.mjs [--field critRate] [--agent 1611] [--json]`（只读，有差异 EXIT=1）
+    · 修复：`node scripts/patch-level60-ascension.mjs [--write]`（dry-run 默认；只动审计判定的字段）
+    · 防复发：`import-nanoka-beta-agent.mjs` 已改为**从规则表取求值器**（`ruleOf('critRate')`），
+      下次重导不会再漏；改口径只需改 `lib/level60-rules.mjs` 一处。
+    **容差纪律**：对照组（如 atkBase）可设小容差（0.1）吸收历史舍入噪声，但**绝不能调到会吞掉真错误的量级**
+    （本例真错误 +5.5 远超容差，仍被抓出）。
+    **影响量级参考（供预判）**：critRate +14.4 的伤害涨幅 = `1+r·d` 模型下 **7%（critDmg 50%）～26%（critDmg 200%）**
+    —— 暴伤越高收益越大；**且会经 `timeWeightAllocation` 按伤害边际微调平A权重**，
+    故时间账可能出现 0.001–0.01s 的抖动（这是可解释传导，不是回归）。
+
 ## 5. 验收命令
 
 ```bash

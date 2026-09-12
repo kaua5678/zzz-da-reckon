@@ -55,6 +55,34 @@ curl -sS https://static.nanoka.cc/manifest.json   # zzz.latest / zzz.live / zzz.
 - 脚本已不再硬编码 hash：`fetch-nanoka-full-missing.mjs` / `import-nanoka-wengine.mjs` / `sync-build-recommendations.mjs` 都读 `manifest.zzz.live`（可用 `--version` 覆写）。
 - 判断「仓库里的数据是不是最新」：看 `data/raw/nanoka_missing/full/<id>.json` 的 `talent[].desc` / 音擎 raw 的 `name`——出现 `...`/`PlaceHolder` = 旧版或预发布占位，需按正式服重爬。
 
+## hdiff：版本对比（改数值前先看，别全库扫）
+
+**只对「新角色」和「新潜能激发」跑** —— 老角色数值通常不变，全库扫一遍是浪费（用户口径 2026-09-12）。
+
+- **网站看法**：`https://zzz.nanoka.cc/character/<id>?from=<旧版本>`（上端改版本号即可对比）。
+- **机器读法**（同一件事，可沉淀/可复现）：
+
+```bash
+node scripts/hdiff-agent.mjs <id> --from 3.2          # --to 省略 = manifest.zzz.latest
+node scripts/hdiff-agent.mjs --new --from 3.2         # 自动跑 manifest 的 zzz.new.character
+node scripts/hdiff-agent.mjs 1621 --from 3.2 --save   # 顺带把新版存档进 full/<id>.json
+```
+
+只报**会进 catalog 的字段**（规则表字段 + impact/异常精通/异常掌控/回能/能量上限），
+并单独提示**突破加成性质变化**（如 `13102 DEF+28.8%` → `20101 暴击+14.4%`——这改的是口径不是数值）。
+有差异 `EXIT=1`，可直接挂 CI。
+
+**判据：发现差异后先分清是哪一类，处置完全不同**
+
+| 类型 | 特征 | 处置 |
+|---|---|---|
+| **A 版本漂移** | 旧存档算得的值 ≈ catalog，线上新版不同 | catalog 整体按新版重导（1621 属此类：整份停在 08-04 旧版） |
+| **B 存档本身是错值** | 线上**各版本一致**，只有仓库旧存档不同 | 只改那一个字段；**别当成"版本更新"整体重导**（1611 defBase 属此类：线上 3.2/3.3.2 都是 35/48155，旧存档 30/41134 是错值） |
+
+⚠ **误判代价**：把 B 当 A 会去动本不该动的字段；把 A 当 B 只改一个字段会留下**版本混血**
+（1621 曾出现 critRate 按新版订正、defBase 仍含旧版 DEF 突破加成）。
+**区分方法：把线上至少两个版本互相比一遍**——一致 = B，不一致 = A。
+
 ## 测试服（beta）≠ 正式服：先判断要不要录
 
 - **测试服倍率/核心被动/影画都可能变**（v4 beta 把洛克茜整套 moveId 重排、核心被动重做、克拉蕾 C1/C2 改效果）。

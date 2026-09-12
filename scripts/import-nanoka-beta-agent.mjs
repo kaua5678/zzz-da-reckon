@@ -24,6 +24,9 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { writeJsonCompact } from './lib/jsonio.mjs'
 import { fetchJson } from './lib/http.mjs'
+// 暴击映射口径的单一事实源（规则 11）：与审计/修复脚本共用同一张规则表，
+// 保证「下次重导」不会再漏掉突破加成 —— 改口径只需改 lib/level60-rules.mjs 一处。
+import { FIELD_RULES } from './lib/level60-rules.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = process.argv.slice(2)
@@ -56,6 +59,13 @@ const SPECIALTY_KEYWORDS = [
 ]
 
 function num(v) { return typeof v === 'number' && Number.isFinite(v) ? v : 0 }
+
+/** 取规则表中某字段的 `expected(raw)` 求值器（找不到就大声失败，不静默回落） */
+function ruleOf(field) {
+  const rule = FIELD_RULES.find((r) => r.field === field)
+  if (!rule?.expected) throw new Error(`level60 规则表缺少字段 ${field}（检查 scripts/lib/level60-rules.mjs）`)
+  return rule.expected
+}
 function stripPrefix(s) { return String(s ?? '').replace(/^\(Test\d+\)/, '').trim() }
 function pick(dict, keywords) {
   const values = Object.values(dict ?? {}).map(String)
@@ -176,11 +186,22 @@ for (const id of ids) {
     hpBase: Math.round((num(st.hp_max) + num(st.hp_growth) / 10000 * 59 + num(lv6.hp_max)) * 10000) / 10000,
     atkBase: Math.round((num(st.attack) + num(st.attack_growth) / 10000 * 59 + num(lv6.attack) + num(ex6['12101']?.value)) * 10000) / 10000,
     defBase: Math.round((num(st.defence) + num(st.defence_growth) / 10000 * 59 + num(lv6.defence)) * 10000) / 10000,
-    critRate: Math.round(num(st.crit)) / 100,
-    critDmg: Math.round(num(st.crit_damage)) / 100,
+    // 暴击走规则表（单一事实源 = lib/level60-rules.mjs），不在此重抄公式。
+    // ⚠ 历史 bug（2026-09-12 修）：原本只写裸 `st.crit`/`st.crit_damage`，漏掉满级突破加成
+    // （20101/21101）→ 20 个角色被落成了全库通用裸基值 5/50，而 1481/1571/1241/1461 经另一条
+    // 路径入库的却是含加成的 19.4/78.8（同一 catalog 两套口径）。因「大家都一样」肉眼看不出来。
+    // 口径：level60 = **满级满突破面板**（core/panel#calcBasePanel 直接读，别处无补偿通道）。
+    critRate: ruleOf('critRate')(full),
+    critDmg: ruleOf('critDmg')(full),
     impact: num(st.break_stun),
-    anomalyProficiency: num(st.element_abnormal_power),
-    anomalyMastery: num(st.element_mystery),
+    // ⚠ 映射方向（2026-09-12 实证订正，勿照字面联想）：
+    // **异常精通 = element_mystery，异常掌控 = element_abnormal_power**——与字段名直觉相反。
+    // 证据三条：① 47 个角色里 42 个按此方向匹配；② 全部异常主C 的精通都落在较大那个值上
+    // （1091 星见雅 148 / 1331 薇薇安 118 / 1501 爱芮 116），符合「精通是累计值、掌控是百分比基底」；
+    // ③ extra_level 里 `31201` 的 name 就是「异常精通」、`31401` 是「异常掌控」，可交叉验证。
+    // 旧代码两行写反（精通←abnormal_power），实测 1621 洛克茜被落成了 精通110/掌控63（反的）。
+    anomalyProficiency: num(st.element_mystery),
+    anomalyMastery: num(st.element_abnormal_power),
     energyRegen: Math.round(num(st.sp_recover)) / 100,
     energyMax: num(st.sp_bar_point) || 120,
     penRatio: 0,

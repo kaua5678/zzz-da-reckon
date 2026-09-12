@@ -54,6 +54,13 @@ export declare function auditDocTable(root?: string): {
   countMismatch: boolean
 } | null
 
+// 判据 10：catalog level60 ↔ raw 源对账（防漏加满级突破加成，坑 40）
+export declare function auditCatalogLevel60(root?: string): {
+  compared: number
+  violations: { id: string; name: string; field: string; got: unknown; want: unknown }[]
+  fieldNames: string[]
+} | null
+
 export interface GuardResult {
   name: string
   ok: boolean

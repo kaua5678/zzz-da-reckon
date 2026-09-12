@@ -90,7 +90,12 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     return { config, calc: useResourceCalc() }
   }
 
-  it('案例 B（0 命轴双连携+决算）：决算行生效易伤 2.100、普通终结 1.000；加权快照 1.6860/0.6860/0.6237', async () => {
+  // 快照 2026-09-12 重排（1.6860→1.6900）：雨果(1291) level60.critRate 漏加满级突破加成，
+  // 订正 5→19.4（同批 20 处，口径见 scripts/lib/level60-rules.mjs）。
+  // 为什么「加权」快照会动：weightedVuln 是**按伤害加权**的均值（computeStunVulnSummary 传
+  // r.totalDamage）→ 不走暴击乘区的行（fixed/异常类）不随 critRate 放大，权重相对下降 → 均值上移。
+  // 单变量实证：仅把 1291 回退成 5，本文件 10 例全绿 ⇒ 归因唯一，非连带回归。
+  it('案例 B（0 命轴双连携+决算）：决算行生效易伤 2.100、普通终结 1.000；加权快照 1.6900/0.6900/0.6273', async () => {
     const { config, calc } = await setupHugoAxis()
     const vuln = config.enemy.stunVuln
     const p0 = calc.panels.value[0]
@@ -109,12 +114,12 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
       rows.map(r => ({ totalDamage: r.totalDamage, appliedStunMult: rowAppliedStunMult(r.stunMult, vuln, bonus, always, cap) })),
       full,
     )
-    expect(s.weightedVuln).toBeCloseTo(1.6860, 3)
-    expect(s.weightedCredit).toBeCloseTo(0.6860, 3)
-    expect(s.coverageRate).toBeCloseTo(0.6237, 3)
+    expect(s.weightedVuln).toBeCloseTo(1.6900, 3)
+    expect(s.weightedCredit).toBeCloseTo(0.6900, 3)
+    expect(s.coverageRate).toBeCloseTo(0.6273, 3)
   })
 
-  it('案例 D（加闪反块被轴认领一半）：加权快照 1.7165/0.7165/0.6514；闪反切成两行', async () => {
+  it('案例 D（加闪反块被轴认领一半）：加权快照 1.7211/0.7211/0.6555；闪反切成两行', async () => {
     const { config, calc } = await setupHugoAxis(true)
     const vuln = config.enemy.stunVuln
     const p0 = calc.panels.value[0]
@@ -131,8 +136,8 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
       rows.map(r => ({ totalDamage: r.totalDamage, appliedStunMult: rowAppliedStunMult(r.stunMult, vuln, bonus, always, cap) })),
       full,
     )
-    expect(s.weightedVuln).toBeCloseTo(1.7165, 3)
-    expect(s.weightedCredit).toBeCloseTo(0.7165, 3)
-    expect(s.coverageRate).toBeCloseTo(0.6514, 3)
+    expect(s.weightedVuln).toBeCloseTo(1.7211, 3)
+    expect(s.weightedCredit).toBeCloseTo(0.7211, 3)
+    expect(s.coverageRate).toBeCloseTo(0.6555, 3)
   })
 })

@@ -7,6 +7,8 @@
  * ③ 仓库级 runAllChecks 全绿（在 vitest 里给出定位到行的失败信息，不用等 CI）
  */
 import { describe, expect, it } from 'vitest'
+import { readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import {
   DEBT_REGISTRY,
   AGENT_BRANCH_BASELINE,
@@ -31,6 +33,7 @@ import {
   countAgentIdBranchLines,
   extractSettingIds,
   matchDebtRegistry,
+  auditCatalogLevel60,
   runAllChecks,
 } from '../../../scripts/check-guards.mjs'
 
@@ -337,14 +340,43 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('九条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点）', () => {
+  it('十条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账）', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(9)
+    expect(results).toHaveLength(10)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
     expect(results.map(r => r.name.split(' ')[0])).toContain('exhibition-layer')
     // core 棘轮必须在列（规则 6 的引擎层延伸——此前 core 是豁免区）
     expect(results.some(r => r.name.startsWith('core agentId ratchet'))).toBe(true)
+    // 判据 10：catalog ↔ raw 对账（2026-09-12 新增，坑 40）
+    expect(results.some(r => r.name.includes('catalog/raw level60 对账'))).toBe(true)
+  })
+})
+
+describe('auditCatalogLevel60（判据 10：catalog ↔ raw 对账）', () => {
+  // 2026-09-12 事故（坑 40）：导入脚本漏加满级突破加成 → 20 个角色的暴击被落成了
+  // 全库通用裸基值 5/50。因为「大家都一样」肉眼不可见、也不让任何测试变红，必须靠机器对账。
+  it('仓库现状：零差异（同源断言，与判据 10 用同一个 detector）', () => {
+    const r = auditCatalogLevel60()!
+    expect(r.violations).toEqual([])
+    expect(r.compared).toBeGreaterThan(0)
+    // 度量面必须含暴击两字段（漏任一条 = 事故可复发而不被拦）
+    expect(r.fieldNames).toEqual(expect.arrayContaining(['critRate', 'critDmg']))
+    // 容差/对照组（atkBase）不进判据——否则历史舍入噪声会长期挂红，逼人为变绿乱改口径
+    expect(r.fieldNames).not.toContain('atkBase')
+  })
+
+  it('只比对有 raw 源的角色；无 raw / 无该字段的不算违规（防误报）', () => {
+    const r = auditCatalogLevel60()!
+    // 全库 62 角色里只有约 47 个有 raw；若把无 raw 的当违规，这里会瞬间爆炸
+    const rawCount = readdirSync(join(process.cwd(), 'data/raw/nanoka_missing/full'))
+      .filter((f: string) => /^\d+\.json$/.test(f)).length
+    // 上限 = 有 raw 的角色 × 字段数（energyRegen 等规则对无数据角色会返回 undefined 跳过，
+    // 故实际 compared ≤ 上限——断言「不超上限」而非硬编码总数，加规则时不必改数字）
+    expect(r.compared).toBeGreaterThan(0)
+    expect(r.compared).toBeLessThanOrEqual(rawCount * r.fieldNames.length)
+    // 真正要防的误报：无 raw 的角色绝不能出现在违规里
+    expect(r.violations).toEqual([])
   })
 })

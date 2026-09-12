@@ -23,6 +23,8 @@ import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 // 语言层（事实语法/锚点解析）的单一实现在 zc.mjs，护栏只调用不复制（规则 11）
 import { auditAuthoredFacts } from './zc.mjs'
+// level60 字段映射规则表（审计/修复/导入脚本三方共用，规则 11）
+import { FIELD_RULES } from './lib/level60-rules.mjs'
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 
@@ -216,6 +218,51 @@ export function auditDocTable(root = ROOT) {
     actualCount: actual.length,
     countMismatch: declaredCount !== null && declaredCount !== actual.length,
   }
+}
+
+// ---- 判据 10：catalog ↔ raw 对账（防「漏加突破加成」这类全库静默数据错误） ----
+
+/**
+ * 为什么要有这条（2026-09-12 事故，见 ENGINE_PIPELINE_GUIDE §4 坑 40）：
+ * 导入脚本写「base + 突破加成」类字段时只取了 base → 20 个角色的 level60 暴击被落成了
+ * 全库通用裸基值 5/50。因为**大家都一样**，肉眼完全看不出来，也不会让任何测试变红
+ * （`core/panel#calcBasePanel` 直接读、别处无补偿通道）——是典型的「静默」错误。
+ *
+ * **只红「可修且零容差」的字段**：规则表里 `patchable: false`（如 atkBase 对照组）或带容差的
+ * 条目不进本判据——它们可能长期存在历史噪声或需人工确认，挂红会逼人去改不该改的东西
+ * （进而为了变绿而乱改口径）。这类差异靠人工跑 `node scripts/audit-catalog-level60.mjs` 看全量报告。
+ *
+ * 单一事实源：规则表在 `scripts/lib/level60-rules.mjs`（与审计/修复脚本共用，规则 11）。
+ */
+export function auditCatalogLevel60(root = ROOT) {
+  const catalogPath = join(root, 'public/static/catalog.json')
+  const rawDir = join(root, 'data/raw/nanoka_missing/full')
+  if (!existsSync(catalogPath) || !existsSync(rawDir)) return null
+  let catalog
+  try { catalog = JSON.parse(readFileSync(catalogPath, 'utf8')) } catch { return null }
+
+  const agentsById = new Map((catalog.agents ?? []).map((a) => [String(a.id), a]))
+  const rules = FIELD_RULES.filter((r) => r.patchable !== false && !r.tolerance)
+  const violations = []
+  let compared = 0
+
+  for (const file of readdirSync(rawDir).filter((f) => /^\d+\.json$/.test(f)).sort()) {
+    const id = file.replace('.json', '')
+    const agent = agentsById.get(id)
+    if (!agent) continue
+    let raw
+    try { raw = JSON.parse(readFileSync(join(rawDir, file), 'utf8')) } catch { continue }
+    for (const rule of rules) {
+      const want = rule.expected(raw)
+      if (want === undefined) continue
+      compared++
+      const got = agent.level60?.[rule.field]
+      if (Math.abs(Number(got ?? 0) - Number(want)) > 1e-9) {
+        violations.push({ id, name: agent.name?.zhCN ?? '', field: rule.field, got, want })
+      }
+    }
+  }
+  return { compared, violations, fieldNames: rules.map((r) => r.field) }
 }
 
 // ---- 判据 2：编排层 agentId 分支棘轮 ----
@@ -686,6 +733,24 @@ export function runAllChecks(root = ROOT) {
       }[v.problem] ?? v.problem
       return `  ✗ ${v.file}:${v.line} ${how}`
     }),
+  })
+
+  // ---- 判据 10：catalog level60 ↔ raw 源对账（坑 40：漏加突破加成是静默错误） ----
+  const lv60 = auditCatalogLevel60(root)
+  results.push({
+    name: lv60 === null
+      ? 'catalog/raw level60 对账 ⚠ 缺 catalog 或 raw 目录，跳过'
+      : `catalog/raw level60 对账 (${lv60.fieldNames.join('/')}) ${lv60.compared - lv60.violations.length}/${lv60.compared}`,
+    ok: lv60 === null || lv60.violations.length === 0,
+    detail: lv60 === null ? [] : [
+      ...lv60.violations.slice(0, 20).map(v =>
+        `  ✗ ${v.id} ${v.name} level60.${v.field}: ${v.got} → 应为 ${v.want}（漏加满级突破加成？）`),
+      ...(lv60.violations.length > 20 ? [`  …另有 ${lv60.violations.length - 20} 条`] : []),
+      ...(lv60.violations.length > 0 ? [
+        `  → 修：node scripts/patch-level60-ascension.mjs --write（改完跑 npm run verify 并量 timeGolden delta）`,
+        `  → 全量报告（含不进本判据的容差/对照组）：node scripts/audit-catalog-level60.mjs`,
+      ] : []),
+    ],
   })
 
   return { results, ok: results.every(r => r.ok) }
