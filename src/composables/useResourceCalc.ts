@@ -28,7 +28,7 @@ import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import { applyNormaHatChain } from './resourceCalc/normaHatChain'
 import { initialCalcRoundThreads, threadsAfterNullRound, type CalcRoundThreads } from './resourceCalc/roundThreads'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
-import { createConvergenceRoundInputs } from './resourceCalc/convergence'
+import { computePromiaNextRoundFeedback, createConvergenceRoundInputs } from './resourceCalc/convergence'
 import { computeLuciaHealPctPerUlt } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueMingwangStacks, computeBanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
@@ -1239,32 +1239,9 @@ export function useResourceCalc() {
     //   源1 = 全队强特命中次数（含薇薇安自己；同一招式至多一次）
     //   源2 = 全队异常触发次数（队友施加属性异常；0.5s CD 折算在模块内）
     // 普罗米娅·霜刑回复端（下一轮注入）：触发命中数 + 队友异放次数
-    let promiaTriggerHitsNext = 0
-    let promiaTeammateReleasesNext = 0
-    let promiaReleaseDecibelNext = 0
-    if (characters.some(c => c.agentId === '1541')) {
-      promiaTriggerHitsNext = ap1?.totalTriggerCount ?? 0
-      // 队友异放 = 除普罗米娅自身外的全队 release 事件（原文「队友触发异放」，自身异放回喧响另走 promiaReleaseDecibel）
-      promiaTeammateReleasesNext = (rrShown?.characters ?? rr.characters)
-        .filter(ch => ch.agentId !== '1541')
-        .flatMap(ch => ch.anomalyEventExecutions ?? [])
-        .filter(e => e.eventType === 'release' && e.count > 0)
-        .reduce((sum, e) => sum + Math.floor(e.count), 0)
-      // 普罗米娅自身异放回喧响（绝裁异放 + 影画6特殊异放）各 +100（0.5s CD 但异放次数远低于上限，不钳制）
-      const promiaCh = (rrShown?.characters ?? rr.characters).find(c => c.agentId === '1541')
-      const promiaReleaseTotal = (promiaCh?.anomalyEventExecutions ?? [])
-        .filter(e => e.eventType === 'release' && e.count > 0 && (e.eventId === 'promia_execution_release' || e.eventId === 'promia_c6_special_release'))
-        .reduce((sum, e) => sum + Math.floor(e.count), 0)
-      promiaReleaseDecibelNext = promiaReleaseTotal * 100
-      if (prevPromiaTriggerHits <= 0 && prevPromiaTeammateReleases <= 0) {
-        for (const c of characters) {
-          if (c.agentId === '1541') {
-            ;(c as any).promiaTriggerHitCount = promiaTriggerHitsNext
-            ;(c as any).promiaTeammateReleaseCount = promiaTeammateReleasesNext
-          }
-        }
-      }
-    }
+    // 普罗米娅·霜刑回复端（下一轮注入）本体在 convergence.ts（#10 第 2 批租户，逐字搬）
+    const { promiaTriggerHitsNext, promiaTeammateReleasesNext, promiaReleaseDecibelNext } =
+      computePromiaNextRoundFeedback({ characters, ap1, rrShown, rr, prevPromiaTriggerHits, prevPromiaTeammateReleases })
     // 失衡内异常系统 v2：轴内逐窗积蓄槽时间线 → 平均每窗触发次数 + 逐元素活跃覆盖。
     // 全部异常角色通用（不限定南宫羽）：消费方=异放/极性紊乱 dominant 归因、南宫羽颤音自动层数、UI「失衡内异常状态」栏
     let inStunAnomalyStateNext: InStunAnomalySummary | null = null

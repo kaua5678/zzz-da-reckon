@@ -17,7 +17,7 @@ import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { calcAnomalyPool, type AnomalySkillExecution } from '@/core/anomalyPool'
 import type { StunSkillExecution } from '@/core/stunPool'
-import type { StunAxis, ResourceCalcConfig, TeamResourceResult } from '@/types/resource'
+import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
@@ -298,4 +298,50 @@ export function createConvergenceRoundInputs(deps: {
     extractAnomalyExecsFrom, extractStunExecsFrom, aliceInfo, autoPreset, autoActive,
     resolveAxes, buildStackAxes, expandExecutedToCounts, calcAnomalyPoolInput,
   }
+}
+
+/**
+ * 普罗米娅·霜刑「下一轮反馈」（#10 第 2 批租户，2026-09-12 自 `useResourceCalc#runCalcRound` 逐字搬出）。
+ *
+ * 数据流刻意收纯：输入 = 本轮池结果 + 装配后行 + 上一轮两条线程值；输出 = 下一轮 threads 三值。
+ * **唯一保留的副作用** = 首轮（上轮两线程皆 0）把触发/队友异放计数写回 `characters` 元素
+ * ——展示端直接读那些字段，迁移前就在此处写，原地语义不变（同数组对象引用传入）。
+ */
+export function computePromiaNextRoundFeedback(deps: {
+  /** runCalcRound 本地的加工态数组（merged 对象）——本函数只读 agentId + 条件写回两个 promia 字段 */
+  characters: ReadonlyArray<{ agentId: string }>
+  ap1: AnomalyPoolResult | null
+  rrShown: TeamResourceResult | null
+  rr: TeamResourceResult
+  prevPromiaTriggerHits: number
+  prevPromiaTeammateReleases: number
+}): { promiaTriggerHitsNext: number; promiaTeammateReleasesNext: number; promiaReleaseDecibelNext: number } {
+  const { characters, ap1, rrShown, rr, prevPromiaTriggerHits, prevPromiaTeammateReleases } = deps
+  let promiaTriggerHitsNext = 0
+  let promiaTeammateReleasesNext = 0
+  let promiaReleaseDecibelNext = 0
+  if (characters.some(c => c.agentId === '1541')) {
+    promiaTriggerHitsNext = ap1?.totalTriggerCount ?? 0
+    // 队友异放 = 除普罗米娅自身外的全队 release 事件（原文「队友触发异放」，自身异放回喧响另走 promiaReleaseDecibel）
+    promiaTeammateReleasesNext = (rrShown?.characters ?? rr.characters)
+      .filter(ch => ch.agentId !== '1541')
+      .flatMap(ch => ch.anomalyEventExecutions ?? [])
+      .filter(e => e.eventType === 'release' && e.count > 0)
+      .reduce((sum, e) => sum + Math.floor(e.count), 0)
+    // 普罗米娅自身异放回喧响（绝裁异放 + 影画6特殊异放）各 +100（0.5s CD 但异放次数远低于上限，不钳制）
+    const promiaCh = (rrShown?.characters ?? rr.characters).find(c => c.agentId === '1541')
+    const promiaReleaseTotal = (promiaCh?.anomalyEventExecutions ?? [])
+      .filter(e => e.eventType === 'release' && e.count > 0 && (e.eventId === 'promia_execution_release' || e.eventId === 'promia_c6_special_release'))
+      .reduce((sum, e) => sum + Math.floor(e.count), 0)
+    promiaReleaseDecibelNext = promiaReleaseTotal * 100
+    if (prevPromiaTriggerHits <= 0 && prevPromiaTeammateReleases <= 0) {
+      for (const c of characters) {
+        if (c.agentId === '1541') {
+          ;(c as any).promiaTriggerHitCount = promiaTriggerHitsNext
+          ;(c as any).promiaTeammateReleaseCount = promiaTeammateReleasesNext
+        }
+      }
+    }
+  }
+  return { promiaTriggerHitsNext, promiaTeammateReleasesNext, promiaReleaseDecibelNext }
 }
