@@ -140,22 +140,29 @@ export const RATCHET_BURNDOWN = [
  * `measure(id)` 由调用方注入（避免本文件硬依赖各判据的测量实现）。
  * 返回 [{ ...entry, current, progress, stale, overdue }]
  * - progress = frozen - current（>0 表示已还款）
- * - stale = 已过 due 且 progress === 0（零进展 → 点名）
- * - overdue = 已过 due 但 progress > 0 且 current > target（有进展但没做完 → 提示剩余）
+ * - stale = 已过 due 且零进展（点名；这是本判据存在的唯一理由）
+ * - overdue = 已过 due 但还没做完（有进展或已清零 → 提示剩余/收尾，不算 stale）
+ *
+ * ⚠ 2026-09-12 修一处被 frozen>0 长期掩盖的判据缺陷：原式 `stale: overdue && progress <= 0`
+ * 在**已清零**时误报——frozen=0 且 current=0 ⇒ progress=0 ⇒ 判 stale，而同一行 `done` 却是 true
+ * （0 ≤ target）。此前所有棘轮 frozen 都 >0，`progress<=0` 恰与「零进展」等价，故从未暴露；
+ * agentId 棘轮 8→0 后立刻连红三条（未到期/有进展/清零三个用例），属**判据自身**的错。
+ * 修正：先排除已完成（done），再用 progress<=0 判零进展。
  */
 export function computeBurndown(measure, today = new Date().toISOString().slice(0, 10)) {
   return RATCHET_BURNDOWN.map(e => {
     const current = measure(e.id)
     const progress = e.frozen - current
     const overdue = today > e.due
+    const done = current <= e.target
     return {
       ...e,
       current,
       progress,
       remaining: Math.max(0, current - e.target),
       overdue,
-      stale: overdue && progress <= 0,
-      done: current <= e.target,
+      stale: overdue && !done && progress <= 0,
+      done,
       dueSoon: !overdue && daysBetween(today, e.due) <= 30,
     }
   })

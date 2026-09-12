@@ -159,30 +159,44 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
   // 语义钉死：棘轮解决「不许变差」，burn-down 解决「什么时候变好」。四态必须互不串味。
   // ⚠ fixture 必须**从登记表派生**（不能硬编码条数/某个 id 的返回值）：2026-09-11 加第 3 条棘轮时，
   // 旧写法（非 agentId 的一律返回 23）把 core 条目也算成「已还 13」，三条断言同时假红。
+  // ⚠ 2026-09-12 再修一次同族问题：agentId 棘轮 8→0 **清零**后，登记表首次出现
+  //   frozen === target === 0 的**已完成**条目。原三条用例默认「每条棘轮都还没做完」，
+  //   于是（a）未到期用例的 `done===false`、（b）stale 用例的 `every(stale)`、
+  //   （c）还款用例拿 RATCHET_BURNDOWN[0]（现为零清条目）算 progress 全部假红。
+  //   根因是**判据与用例都没建模「已完成」态**——故这里显式拆成两组：
+  //   active（未做完，适用 stale/overdue/progress 语义）+ cleared（已清零，只报 done）。
   const atFrozen = (id: string) => RATCHET_BURNDOWN.find(e => e.id === id)!.frozen
   const measure = atFrozen
+  /** 未完成的棘轮（stale/overdue/还款语义只对它们成立） */
+  const activeEntries = RATCHET_BURNDOWN.filter(e => e.frozen > e.target)
+  /** 已清零的棘轮（frozen === target；只应报 done，永不再被点名） */
+  const clearedEntries = RATCHET_BURNDOWN.filter(e => e.frozen <= e.target)
 
   it('未到期：不报警（只在 due 前后才点名）', () => {
     for (const b of computeBurndown(measure, '2026-09-11')) {
       expect(b.stale).toBe(false)
       expect(b.overdue).toBe(false)
-      expect(b.done).toBe(false)
       expect(b.progress).toBe(0)
+      // 清零条目此刻就该是 done；其余未完成
+      expect(b.done).toBe(b.frozen <= b.target)
     }
   })
 
   it('到期且零进展 → stale（点名；这是本判据存在的唯一理由）', () => {
     const rows = computeBurndown(measure, '2028-01-15')  // 晚于登记表里最晚的 due
     expect(rows.length).toBeGreaterThan(0)
-    expect(rows.every(r => r.stale)).toBe(true)
-    expect(rows.every(r => r.overdue)).toBe(true)
+    expect(activeEntries.length).toBeGreaterThan(0)      // 前提：登记表里有未完成条目
+    for (const r of rows) {
+      expect(r.overdue).toBe(true)
+      if (r.frozen > r.target) expect(r.stale).toBe(true)
+    }
   })
 
   it('到期但已有进展 → overdue 而非 stale（有还款就不骂）', () => {
-    // 只让第一条「已还一部分」，其余保持零进展。
-    // ⚠ 还款量必须**相对 frozen** 取（旧写法硬编码 -13：2026-09-12 agentId 条目 frozen 降到 8 后
-    //   造出负数读数，语义塌掉）。取 1/3 保证 0 < 已还 < frozen−target 对任何 frozen>target≥0 成立。
-    const first = RATCHET_BURNDOWN[0]
+    // 取**未完成**的第一条当被试（不能盲取 RATCHET_BURNDOWN[0]：清零条目 frozen=0 → 还款量算不出来）。
+    // 还款量相对 frozen 取 1/3，保证 0 < 已还 < frozen − target。
+    const first = activeEntries[0]
+    expect(first).toBeDefined()
     const paid = Math.max(1, Math.ceil(first.frozen / 3))
     const partial = (id: string) => (id === first.id ? first.frozen - paid : atFrozen(id))
     const rows = computeBurndown(partial, '2028-01-15')
@@ -191,8 +205,8 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
     expect(agent.stale).toBe(false)
     expect(agent.overdue).toBe(true)
     expect(agent.remaining).toBe(agent.current - agent.target)
-    // 零进展的那些仍 stale
-    expect(rows.filter(r => r.id !== first.id).every(r => r.stale)).toBe(true)
+    // 其余**未完成**条目仍零进展 → stale（清零条目不算，它已 done）
+    expect(rows.filter(r => r.id !== first.id && r.frozen > r.target).every(r => r.stale)).toBe(true)
   })
 
   it('清零 → done（不再进提醒）', () => {
@@ -201,6 +215,19 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
     expect(rows.every(r => r.done)).toBe(true)
     expect(rows.every(r => r.remaining === 0)).toBe(true)
     expect(rows.every(r => !r.stale)).toBe(true)
+  })
+
+  it('★ 已清零的棘轮即使过了 due 也不再被点名（原判据 frozen>0 掩盖的缺陷）', () => {
+    // 回归钉子：原式 `stale: overdue && progress <= 0` 在 frozen=0 & current=0 时算 progress=0
+    // → 判 stale，而同一行 done 却是 true（自相矛盾：既已完成又被点名）。
+    expect(clearedEntries.length).toBeGreaterThan(0)   // 前提：登记表里确有清零条目
+    for (const r of computeBurndown(atFrozen, '2028-01-15')) {
+      if (r.frozen <= r.target) {
+        expect(r.done).toBe(true)
+        expect(r.stale).toBe(false)
+        expect(r.progress).toBe(0)
+      }
+    }
   })
 
   it('登记表本身自洽：frozen 与代码里的基线常量一致、due 可解析、target ≤ frozen', () => {
