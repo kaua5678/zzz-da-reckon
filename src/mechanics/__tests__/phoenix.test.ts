@@ -103,6 +103,21 @@ describe('菲欧妮（1641）⚠️3.3 测试服临时录入', () => {
     expect(mate.anomalyCritRate ?? 0).toBeGreaterThanOrEqual(30)
   })
 
+  it('脆弱暴伤 3 档（2026-09-12 组队对账落地）：3 异常队 → 40；影画6 需求-1 → 2 异常即 40', async () => {
+    // 3 异常（菲欧妮+柏妮思+柳 1221）：15+10+15 = 40
+    const three = await setup(['1641', '1171', '1221'], 0)
+    const p40 = three.computePanelPhases(0, three.config, useCatalogStore())!.inCombat as any
+    expect(p40.anomalyCritDmg).toBeCloseTo(40, 5)
+    // 影画6（需求-1 = 有效异常数+1）：2 异常 +1171 → 按 3 档 → 40 + 影画一 20 = 60
+    const c6 = await setup(['1641', '1171', ''], 6)
+    const p60 = c6.computePanelPhases(0, c6.config, useCatalogStore())!.inCombat as any
+    expect(p60.anomalyCritDmg).toBeCloseTo(60, 5)
+    // 对照：2 异常 C0 只有 25（上一用例已证），3 档不误开
+    const two = await setup(['1641', '1171', ''], 0)
+    const p25 = two.computePanelPhases(0, two.config, useCatalogStore())!.inCombat as any
+    expect(p25.anomalyCritDmg).toBeCloseTo(25, 5)
+  })
+
   it('执行行/事件：余火驱动长按普攻（1641005）+ 蓄能附加攻击（1641021）+ 异放事件（445%/597% 固定倍率）', async () => {
     const { config } = await setup(['1641', '1171', ''], 0)
     config.setMechanicSetting('phoenix.chargedAttackCount', 6)
@@ -185,7 +200,7 @@ describe('菲欧妮（1641）⚠️3.3 测试服临时录入', () => {
     expect(chain0.anomalyBuildUp).toBe(1000)
   })
 
-  it('终结入场（1641019，2026-09-12 用户纠错）：每次终结后点按触发一次，行次数=终结次数并计入前台时间', async () => {
+  it('终结入场（1641019，2026-09-12 用户纠错）：每次终结后点按触发一次，行次数=终结次数；收尾追加攻击不占前台时间（1451007 先例）', async () => {
     const { config } = await setup(['1641', '1171', ''], 0)
     config.setMechanicSetting('phoenix.chargedAttackCount', 2) // 去掉余火循环对强特能量的耦合噪声
     const calc = useResourceCalc()
@@ -194,7 +209,7 @@ describe('菲欧妮（1641）⚠️3.3 测试服临时录入', () => {
     expect(entry).toBeTruthy()
     expect(entry!.count).toBe(phoenix.ultimateCount)
     expect(entry!.count).toBeGreaterThan(0)
-    expect(entry!.totalTime).toBeCloseTo(entry!.count * entry!.actionTime, 6)
+    expect(entry!.totalTime).toBe(0)
   })
 
   it('余火自动推导防回归（2026-09-12 探针修正）：不给滑块时长按普攻次数必须 >0——收入按 moveId×倍率表直算，勿读 totalSpecialResourceRecovery（enrich 前为 0）', async () => {

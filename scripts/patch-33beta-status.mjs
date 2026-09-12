@@ -74,7 +74,7 @@ const PATCH = {
           '[消亡]消费：终结进入（次数=终结次数）→下一次连携退出并+30%积蓄，加成次数=min(终结,连携)按占比乘连携行 anomalyBuildUp（行级乘法）。',
         ],
         pendingParts: [
-          '[重生]（无乘区）；[消亡]逐时序状态机本体（次数驱动乘区已建模）；脆弱暴伤 3 档（3异常→40，+15）编成自动推导未承载（teamBuff 覆盖率被 store 兜底 100 抹平，需正式版做覆盖率兜底/编成推导）。',
+          '[重生]（无乘区）；[消亡]逐时序状态机本体（次数驱动乘区已建模）。',
         ],
         codePaths: ['src/mechanics/agents/phoenix.ts', 'src/specs/agents/1641.json (teamBuffs)', 'src/composables/resourceCalc/helpers.ts (AA buff-id 过滤)'],
         pending: ['余火获取速率按 attack_data /10000 口径解读 [猜测·低]，待正式服复核。'],
@@ -87,7 +87,7 @@ const PATCH = {
         implementedParts: [
           '队伍存在其他[异常]/同阵营（声明式门控）：脆弱暴伤 +10（15→25，2 档）——spec teamBuffs tier2 条 + computePanelPhases buff-id 过滤（SOP §6.2）。',
         ],
-        pendingParts: ['3 档（3异常→40）编成自动推导未承载；影画6 需求-1 的档位+1 随之未承载。'],
+        pendingParts: [],
         codePaths: ['src/mechanics/agents/phoenix.ts', 'src/composables/resourceCalc/helpers.ts'],
         pending: [],
       },
@@ -96,7 +96,7 @@ const PATCH = {
       1: { status: 'implemented_approximation', implemented: ['脆弱目标异常伤害触发暴击时暴伤 +20（spec teamBuffs，source「影画一」自动命座门控，全队含自身同吃）；燃烧攻击余火获取效率 +15%（余火计数 ×1.15）。'], pending: ['入场 +1 点蓄能勘域窗口不建模。'] },
       2: { status: 'implemented_approximation', implemented: ['[焚化] 异常积蓄效率 +15% × 覆盖率滑块 phoenix.c2IncinerationCoverage（panel.anomalyBuildUpEfficiency）；强化特殊技第二段回 8 能量（行级 energyRecovery）。'], pending: ['「保留当前强化特殊技段数」状态机未建模。'] },
       4: { status: 'implemented_approximation', implemented: ['长按普攻 +200 喧响/次（initialDecibelGift；次数=滑块覆盖，自动=战斗时长/15s 估算）。'], pending: [] },
-      6: { status: 'implemented_approximation', implemented: ['强化特殊技终结一击异放 200%（buildAnomalyEvents）；异放无视 15% 防御（releaseModifier 异放限定）；额外能力所需异常角色数 -1（档位推导未承载，随 3 档留正式版）。'], pending: [] },
+      6: { status: 'implemented_approximation', implemented: ['强化特殊技终结一击异放 200%（buildAnomalyEvents）；异放无视 15% 防御（releaseModifier 异放限定）；额外能力所需异常角色数 -1（helpers 编成计数有效数+1，2026-09-12 组队对账落地）。'], pending: [] },
     },
   },
 }

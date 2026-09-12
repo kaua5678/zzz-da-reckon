@@ -189,19 +189,21 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCo
     const count = override > 0 ? whole(override) : Math.max(0, Math.floor((cfg.battleTime ?? 180) / 15))
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + PHOENIX_C4_CHARGED_DECIBEL * count
   }
-  // 强化特殊技走通用通道：每轮强特 = 第一段→第二段，**轮均耗能 = 40+40 = 80 并入
-  // cfg.exSpecialEnergyConsume**（resolveExSpecialCount 按此推强特次数，第二段行本身不再重复记耗能）。
-  // 耗能为 catalog energyCost 真实值（2026-09-12 从「能量消耗」param 行 desc 文本补抓）。
+  // 影画2「发动[强化特殊技：第二段]时回复8点能量」：第二段=通用强特行（下述），行级 energyRecovery
+  // 会被 enrich 回填 → 按估算强特次数并入 initialEnergyGift [猜测·低：战斗时长/15s 一次强特]。
+  if (cinemaLevel >= 2) {
+    cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + PHOENIX_C2_EX2_ENERGY * Math.max(0, Math.floor((cfg.battleTime ?? 180) / 15))
+  }
+  // 强化特殊技（2026-09-12 组队对账修正）：原文「第一段=点按 / 第二段=长按」是**同一强特的两种释放变体**
+  //（二选一），不是每轮连段——主循环取长按优选（第二段 1191.6% > 第一段 1046.2%），单段耗能 40。
+  // 第一段（1641008）= 点按变体，不进自动循环。
   const special = skills?.categories?.find(c => c.id === 'special')?.moves
-  const ex1 = special?.find(m => m.id === PHOENIX_EX1_MOVE_ID)
-  const ex2 = special?.find(m => m.id === PHOENIX_EX2_MOVE_ID)
-  if (ex1) {
-    cfg.exSpecialMoveId = PHOENIX_EX1_MOVE_ID
-    if (ex1.actionTime) cfg.exSpecialActionTime = ex1.actionTime
-    const ec1 = parseFloat(ex1.energyCost?.['Energy Cost'] ?? '')
-    const ec2 = parseFloat(ex2?.energyCost?.['Energy Cost'] ?? '')
-    const roundCost = (Number.isFinite(ec1) && ec1 > 0 ? ec1 : 0) + (Number.isFinite(ec2) && ec2 > 0 ? ec2 : 0)
-    if (roundCost > 0) cfg.exSpecialEnergyConsume = roundCost
+  const exHold = special?.find(m => m.id === PHOENIX_EX2_MOVE_ID)
+  if (exHold) {
+    cfg.exSpecialMoveId = PHOENIX_EX2_MOVE_ID
+    if (exHold.actionTime) cfg.exSpecialActionTime = exHold.actionTime
+    const ec = parseFloat(exHold.energyCost?.['Energy Cost'] ?? '')
+    if (Number.isFinite(ec) && ec > 0) cfg.exSpecialEnergyConsume = ec
   }
   const all = skills?.categories?.flatMap(c => c.moves ?? []) ?? []
   const metaOf = (moveId: string) => {
@@ -285,27 +287,9 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
       skillTableNote: `余火驱动 ×${chargedCount}${cinema >= 4 ? `；影画4 +${PHOENIX_C4_CHARGED_DECIBEL} 喧响/次（initialDecibelGift）` : ''}`,
     })
   }
-  // 强化特殊技第二段：按「每轮强特 = 第一段→第二段」近似 [猜测·低]；影画2 回 8 能量挂行级
-  const ex2Meta = record.phoenixEx2Meta as { moveId: string; actionTime: number } | undefined
-  if (ex2Meta && exCount > 0) {
-    executions.push({
-      moveId: ex2Meta.moveId,
-      moveName: '强化特殊技：第二段',
-      category: 'special',
-      element: 'fire',
-      count: exCount,
-      actionTime: ex2Meta.actionTime,
-      comboAlignRatio: 0,
-      totalTime: exCount * ex2Meta.actionTime,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
-      energyRecovery: cinema >= 2 ? PHOENIX_C2_EX2_ENERGY : 0,
-      totalEnergyRecovery: exCount * (cinema >= 2 ? PHOENIX_C2_EX2_ENERGY : 0),
-      skillTableNote: '每轮强特按两段近似（第二段耗能 40 并入 exSpecialEnergyConsume 轮均 80）',
-    })
-  }
-  // 蓄能附加攻击（视为强化特殊技）：重击命中来源 = 强特二段 + 长按普攻 + 终结
+  // 强化特殊技第二段（1641009）= 通用强特通道行（exSpecialMoveId，长按优选，单段耗能 40），
+  // 不再单独 push（2026-09-12 组队对账修正：第一/二段是点按/长按二选一变体，非连段）。
+  // 蓄能附加攻击（视为强化特殊技）：重击命中来源 = 强特(第二段) + 长按普攻 + 终结
   const energizeCount = exCount + chargedCount + ultCount
   const energizeMeta = record.phoenixEnergizeMeta as { moveId: string; actionTime: number } | undefined
   if (energizeMeta && energizeCount > 0) {
@@ -321,12 +305,13 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      skillTableNote: `重击命中送 ×${energizeCount}（强特二段+长按普攻+终结；附加攻击不占前台时间）`,
+      skillTableNote: `重击命中送 ×${energizeCount}（强特+长按普攻+终结；附加攻击不占前台时间）`,
     })
   }
   // 终结技：入场（1641019，1545.8%）——终结「招式发动后，可点按发动」→ 每次终结后点按触发一次
   //（用户口径 2026-09-12「喧响大后按攻击可以触发一次」，仪玄影画6「赠送次数=大招次数」同款计数）。
-  // 原文「切换入场/快支入场时发动」是消亡期间的另一触发面，此处按每次终结一次的稳定计数建模 [已确认]。
+  // **不占前台时间**（2026-09-12 组队对账修正：终结收尾追加攻击，卢西娅追加攻击 1451007 同款 0 时间先例；
+  // 计 2.4s×N 会把队内平A池挤光→余火断供→长按普攻打到 1 次，时间账失真放大近似误差）。
   const entryMeta = record.phoenixEntryMeta as { moveId: string; actionTime: number } | undefined
   if (entryMeta && ultCount > 0) {
     executions.push({
@@ -337,11 +322,11 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
       count: ultCount,
       actionTime: entryMeta.actionTime,
       comboAlignRatio: 0,
-      totalTime: ultCount * entryMeta.actionTime,
+      totalTime: 0,
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      skillTableNote: `每次终结后点按发动 ×${ultCount}（计数=终结次数，用户口径）`,
+      skillTableNote: `每次终结后点按发动 ×${ultCount}（计数=终结次数；收尾追加攻击不占前台时间）`,
     })
   }
 }
@@ -372,19 +357,16 @@ function patchPhoenixExecutions({ state, executions }: AgentResourceInput): void
 }
 
 /** 必做前台时间：长按普攻 + 强特第二段 + 终结入场（次数读上一轮 buildExecutions 的收敛值/终结次数） */
-function phoenixExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
+/** 必做前台时间：通用强特（第二段/长按优选）+ 长按普攻（次数读上一轮 buildExecutions 的收敛值）。
+ *  终结入场 = 收尾追加攻击不计时（1451007 先例）；强特点按变体（第一段）不进自动循环。 */
+function phoenixExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
   const record = cfg as unknown as Record<string, unknown>
   const exTime = Math.max(0, exSpecialCount) * (cfg.exSpecialActionTime ?? 0)
   const chargedMeta = record.phoenixChargedMeta as { actionTime: number } | undefined
-  const ex2Meta = record.phoenixEx2Meta as { actionTime: number } | undefined
-  const entryMeta = record.phoenixEntryMeta as { actionTime: number } | undefined
   const chargedCount = whole(Number(record.phoenixChargedCount ?? 0))
-  const ultCount = Math.max(0, Number(state?.ultimateCount ?? 0))
-  const ex2Time = ex2Meta ? Math.max(0, exSpecialCount) * ex2Meta.actionTime : 0
   const chargedTime = chargedMeta ? chargedCount * chargedMeta.actionTime : 0
-  const entryTime = entryMeta ? ultCount * entryMeta.actionTime : 0
   return {
-    necessaryTime: exTime + ex2Time + chargedTime + entryTime,
+    necessaryTime: exTime + chargedTime,
     comboAlignTime: exTime * (cfg.exSpecialComboAlignRatio ?? 0),
   }
 }
