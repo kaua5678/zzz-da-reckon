@@ -56,6 +56,8 @@ import { caesarMechanic } from './agents/caesar'
 import { zhaoMechanic } from './agents/zhao'
 import { benMechanic } from './agents/ben'
 import { sigridMechanic } from './agents/sigrid'
+import { severianMechanic } from './agents/severian'
+import { phoenixMechanic } from './agents/phoenix'
 import { qianxiaMechanic } from './agents/qianxia'
 import { panYinhuMechanic } from './agents/panYinhu'
 import { triggerMechanic } from './agents/trigger'
@@ -118,6 +120,9 @@ registerAgentMechanic(zhaoMechanic)
 registerAgentMechanic(benMechanic)
 registerAgentMechanic(aireMechanic)
 registerAgentMechanic(promiaMechanic)
+// ⚠️ 3.3 测试服临时录入（nanoka 3.3.2+18895034；正式服改版后需重抓重核）
+registerAgentMechanic(severianMechanic)
+registerAgentMechanic(phoenixMechanic)
 registerAgentMechanic(peiluoProminenceMechanic)
 registerAgentMechanic(sethMechanic)
 registerAgentMechanic(anbyZeroMechanic)

@@ -208,5 +208,19 @@
     "rank": 4,
     "type": 1,
     "element": 202
+  },
+  "1631": {
+    "zh": "赛维里安",
+    "en": "Severian",
+    "rank": 4,
+    "type": 1,
+    "element": 204
+  },
+  "1641": {
+    "zh": "菲欧妮",
+    "en": "Phoenix",
+    "rank": 4,
+    "type": 3,
+    "element": 201
   }
 }

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:1631",
+  "name": "赛维里安",
+  "agentIds": [
+    "1631"
+  ],
+  "status": "implemented_approximation",
+  "attributeConversions": [],
+  "resources": [],
+  "rowFusions": [],
+  "events": [],
+  "verifications": [],
+  "stateMachines": [],
+  "notes": [
+    "⚠️ 测试服角色（3.3 beta）：来源 nanoka 构建 3.3.2+18895034（2026-09-12 抓取，正式服 live=3.2 尚未上线）。倍率/被动/影画文本均带 (Test1) 前缀，约 1 周后会改版——重录时跑 `node scripts/fetch-nanoka-full-missing.mjs 1631 --force [--version <新版本>]` + `node scripts/import-nanoka-beta-agent.mjs 1631 --version <新版本> --force --write` 重导。双源对账证据：data/raw/gachabase/1631.json（与 nanoka param 逐行一致）。",
+    "基础信息：S 级风属性·强攻（斩击），新艾利都治安局。moveId 空间 = nanoka param/gachabase id（1631001-1631020），≠ skill_list id。招式：疾锋四段 1631001-004、疾锋四段闪避强化 1631020、烈旋 1631005、苍风影猎 1631006、特殊技 1631007、强化特殊技组合技/风刃 1631008/009、冲刺 1631010、闪反 1631011、连携 1631012、终结 1631013、快支 1631014、招架 1631015-017、支援突击 1631018、登场技 1631019。",
+    "核心被动·风回无终（原文要点）：暴击伤害+60%；疾锋发动瞬间有闪避判定（闪避成功该次普攻倍率/失衡率提至烈旋、额外+15流息）；烁影最多2层（自动闪避并发动烈旋；满层再获得→转化术语1000043且下次疾锋提升为烈旋）；每次极限闪避获得1层凭风（最多2层），持凭风时切换/快支入场自动发动入场技；入场技/连携技/终结技入场消耗所有凭风：1层最后一击伤害倍率固定+60%、2层+300%；固定招式命中或极限闪避获得流息（上限150）；流息100时长按普攻消耗100发动苍风影猎。",
+    "额外能力·最优编配（原文）：队伍中存在[支援]、[击破]或与自身阵营相同的角色时触发：进入战斗或换入前场攻击力+100（每级+10，最多+700，30s重复刷新）。",
+    "影画1（原文）：进入战场获得100点流息（勘域180s一次）；普通攻击暴击伤害提升60%。",
+    "影画2（原文）：登场技入场时替换为连携技（20s一次）；每次苍风影猎获得2层凭风；触发核心被动（最优编配）时额外提升15%攻击力。",
+    "影画3/5：[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2（走引擎通用命座技能等级规则）。",
+    "影画4（原文）：触发极限闪避或释放苍风影猎时，无视敌人16%防御力，持续15秒。",
+    "影画6（原文）：流息上限提升至180；苍风影猎最后一击额外伤害倍率固定提升900%；苍风影猎最后一击释放时获得[风起]：每秒积累10点流息，持续3秒（重复触发刷新）。",
+    "实现口径 [猜测·中]（模块 severian.ts）：① 核心被动暴伤+60、额外能力攻击+700（局内小攻击，additionalAbilityActive 门控）、影画2 +15%攻击力（同门控）、影画4 无视16%防御（覆盖率滑块 severian.c4Coverage 默认1）进 applyPanel；② 影画1 普攻暴伤+60 = basic 组 moveId 限定（patchExecutions critDmgBonus）；③ 凭风层数滑块 severian.fengfengStacks 0/1/2 默认1 → 连携1631012/终结1631013/登场1631019 行倍率固定+60/+300（damageMultiplierOverride 同区加算）；④ 苍风影猎次数 = 流息收入/100（buildExecutions 行 + estimateExSpecialTime 计时，滑块 severian.shadowHuntCount 0=自动）；⑤ 影画6 苍风影猎最后一击+900% 与[风起]流息+30并入同一计数式。",
+    "流息收入计数口径 [猜测·中]：疾锋四段命中×20（平A段循环计数 countBasicFinisherHits 同款）+ 烈旋×35 + 极限闪避（闪反行）×15 + 连携×50 + 终结×100 + 影画1入场+100（整局一次）+ 影画6风起+30（每次苍风影猎触发）。烁影层数转化与闪避判定成功率为操作向量，未建模。",
+    "未建模项：烁影层数状态机与自动闪避触发率；疾锋四段闪避成功强化（1631020 行存在于倍率表但无计数来源）；烈旋自动发动次数（原文由受击/烁影驱动，滑块 severian.blazingSpinCount 默认按极限闪避次数近似）；影画2「登场技替换为连携技」的招式替换；流息上限 150/180 对获取的截断（按「来多少打多少」总量口径，普罗米娅同款）。",
+    "强化特殊技能量消耗 [猜测·低]：beta 双源均无 energy_cost 数据，catalog 按全库最常见 60 兜底（import-nanoka-beta-agent.mjs），正式服复核后重导。",
+    "配装推荐 [占位]：build-recommendations 条目为 1611 fallback（荆棘玫瑰4pc/啄木鸟2pc，scripts/patch-33beta-status.mjs）——beta 角色不在 nanoka 正式服索引（sync-build-recommendations 会崩）；专武未录（NO_OWNER_ENGINES 快照含本角色）。正式服上线后：重抓 full JSON → 重导 catalog → 跑 sync-build-recommendations 1631 --write --force → 补专武 ownerAgentId → 从 NO_OWNER_ENGINES 移除 → 重核版本时间线节点日期。"
+  ],
+  "teamBuffs": [],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "support",
+          "stun"
+        ]
+      },
+      {
+        "type": "sameFactionAsSelf"
+      }
+    ],
+    "note": "额外能力·最优编配：队伍中存在[支援]/[击破]/同阵营角色时触发（攻击力+700 局内小攻击，影画2再+15%攻击力）。声明式条件，引擎判定写入 panel.additionalAbilityActive。[猜测·高]"
+  }
+}

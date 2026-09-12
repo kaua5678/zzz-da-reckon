@@ -72,6 +72,8 @@ export const VERSION_NODES: VersionNode[] = [
   { id: '3.1-1', version: '3.1', phaseLabel: '上半', label: '3.1 上半', date: '2026-07-29' },
   { id: '3.1-2', version: '3.1', phaseLabel: '下半', label: '3.1 下半', date: '2026-08-19' },
   { id: '3.2-1', version: '3.2', phaseLabel: '上半', label: '3.2 上半', date: '2026-09-09', note: '测试服数据（未实装/即将实装）' },
+  // ⚠️ 3.3 上半：nanoka 3.3.2+18895034 测试服快照（2026-09-12 录入），日期按 3 周节奏预计，实装后核对
+  { id: '3.3-1', version: '3.3', phaseLabel: '上半', label: '3.3 上半', date: '2026-09-30', note: '测试服数据（未实装），日期为预计' },
 ]
 
 /** 节点 id → 下标（有序） */
@@ -157,6 +159,9 @@ export const AGENT_RELEASE_NODE: Record<string, string> = {
   // 3.2（测试服/未实装）
   '1611': '3.2-1', // 克拉蕾
   '1621': '3.2-1', // 洛克茜
+  // 3.3（测试服/未实装，nanoka 3.3.2+18895034 快照）
+  '1631': '3.3-1', // 赛维里安
+  '1641': '3.3-1', // 菲欧妮
 }
 
 /** 角色实装节点 id；未知角色（四星/未收录）返回 null */

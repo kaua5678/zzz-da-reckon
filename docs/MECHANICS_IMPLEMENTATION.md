@@ -736,3 +736,18 @@
 - **额外能力·芳菲之邀**（队伍存在其他异常或同阵营角色时触发）：1/2/3 异常档 = 全队攻击 + 蕾米初始攻击力×6%/12%/40%（上限 1600，teammate-buffs derived，账本 E29 同式）；飞行姿态失衡值 +6%/12%/35%（resolveRemielleDazeBonus，仅 Radiant Turn 后台行吃，账本 F29/N20 同式）；全队攻击幻色目标异常积蓄效率 +15%（账本 C30/J11 同式）。
 - **未建模**：Prismatic 8 秒延长期时间轴（静态覆盖率近似）、Luminous Reflection 逐时序（C1 队友异常增伤 +10% 按全程覆盖）；damage.ts 直伤管线另含逐招耀变行（自身面板、无异化区）——**不进** damagePoolRows/队伍总伤害（teamTotalDamage=Σ damagePoolRows，2026-09-07 探针验证），仅作单人招式分解视图行，口径差异如实记录；游戏内实测伤害校对待做（账本为 Excel 模型值，非实测）。
 - **模块**：`src/mechanics/agents/remielle.ts`（展示层；伤害/资源主体在上述管线文件中）。
+
+### 赛维里安（severian / 1631）—— ⚠️ 3.3 测试服临时录入（风强攻·治安局）
+
+- **当前实现状态 [已实现·近似 2026-09-12]**（实现位置：`src/mechanics/agents/severian.ts` + spec `1631.json` + catalog 骨架（`scripts/import-nanoka-beta-agent.mjs` 从 nanoka 3.3.2+18895034 param 推导，双源对账 `data/raw/gachabase/1631.json`）；测试 `src/mechanics/__tests__/severian.test.ts` 7 例 + allAgentsSweep 不变量）。**数据为 3.3 beta 快照，正式服上线后约 1 周内会改版——重录流程见 spec notes 首条**。
+- **口径**：核心被动暴伤+60（applyPanel）；额外能力（[支援]/[击破]/同阵营声明式门控）攻击+700 局内小攻击 + 影画2 +15%攻击；影画1 普攻暴伤+60 = basic 组 moveId 限定（patchExecutions critDmgBonus）；影画4 无视16%防御 ×覆盖率滑块 `severian.c4Coverage`；[凭风] 入场技/连携/终结最后一击倍率固定+60/+300（层数滑块 `severian.fengfengStacks`，damageMultiplierOverride 同区加算）；影画6 苍风影猎最后一击+900%（行倍率同区加算）+[风起]+30流息定点反馈。
+- **流息→苍风影猎**：次数 = floor(收入/100)，收入 = 疾锋四段命中×20（平A段循环计数）+ 烈旋×35 + 极限闪避×15 + 连携×50 + 终结×100 + 影画1入场100；buildExecutions 产行 + estimateExSpecialTime 同源计时（滑块 `severian.shadowHuntCount` 0=自动）；烈旋次数按极限闪避近似（滑块 `severian.blazingSpinCount`）。
+- **未建模**：烁影层数状态机/自动闪避触发率；疾锋四段闪避强化（1631020 无计数来源）；影画2「登场技替换为连携技」；流息上限截断（总量口径）。强化特技能量消耗按 60 兜底 [猜测·低]（beta 双源无 energy_cost）。
+
+### 菲欧妮（phoenix / 1641）—— ⚠️ 3.3 测试服临时录入（火异常·坎卜斯黑枝）
+
+- **当前实现状态 [已实现·近似 2026-09-12]**（实现位置：`src/mechanics/agents/phoenix.ts` + spec `1641.json` + catalog 骨架（同上脚本，双源对账 `data/raw/gachabase/1641.json`）；测试 `src/mechanics/__tests__/phoenix.test.ts` 7 例 + allAgentsSweep 不变量）。**数据为 3.3 beta 快照，改版重录流程见 spec notes 首条**。
+- **口径**：核心异常精通+40；[脆弱] 异常伤害暴击 = anomalyCritRate 30+0.7×(掌控-145)、anomalyCritDmg 15/25/40（队伍异常数滑块 `phoenix.teamAnomalyCount`，额外能力门控）+ 影画1 +20——走引擎异常结算区既有 EV 乘区 `calcAnomalyCritExpect`（爱芮异放暴击同通道，未造新乘区）；异放：长按普攻 445%（225+20×(s-1)）/终结 597%（300+27×(s-1)，s=12+2(C3)+2(C5)）固定 releaseMultiplier（普罗米娅绝裁同款）+ 影画6 强特 200% 与异放无视15%防御（releaseModifier 异放限定）。
+- **余火→长按普攻**：燃烧攻击行 attack_data（三段8.02/四段14.76/分支8.02/强特15.02+19.70/连携14.88/终结28.82，/10000 口径 [猜测·低]，双源一致且只在「视为燃烧攻击」行非零）经引擎 totalSpecialResourceRecovery 收集；次数=floor(收入×影画1效率1.15/90)（滑块 `phoenix.chargedAttackCount` 0=自动）；蓄能附加攻击 1641021 次数 = 强特二段+长按普攻+终结。
+- **口径近似**：强化特殊技按「每轮强特=第一段→第二段」两段建模（第二段行次数=强特次数，能量只按第一段 60 计 [猜测·低]）；影画4 长按普攻+200喧响走 initialDecibelGift（行级 decibel 会被 enrich 回填）；影画1 暴伤+20 作用域近似为自身全部异常伤害暴击。
+- **未建模**：[重生]/[消亡]状态机（连携+30%积蓄、终结入场1641019时序）；影画2 保留强特段数；队友向脆弱异常暴击（团队面板通道未接，菲欧妮自身为主要受益人）。
