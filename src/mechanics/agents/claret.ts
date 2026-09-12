@@ -233,6 +233,9 @@ export function computeClaretSharpResource(input: {
   const gashValuePct = baseGash * buildupMultiplier + counterAssistGashStacks * GASH_PER_LAYER
   // 整局可用层数**不设 3 钳制**：3 层是敌人身上的同时存量上限（见 GASH_MAX_STACKS 注释），
   // 总量口径下攒够就消耗、消耗完继续攒，真正的上限是下面的消耗需求次数（斩金断铁/葬血强袭/影画6）。
+  // debt: 残痕总量口径天花板 「同时存量≤3层」本质是时序约束，总量口径只能表达为「不钳制+消耗需求封顶」，
+  // 极端配装（积累远快于消耗节奏）下溢出浪费未建模 ⇒ 偏乐观；升级路径 = 逐动作时序模拟或按消耗节奏窗口钳制
+  // （账本 task-ledger.md 2026-09-12 交接，登记于 check-guards DEBT_REGISTRY）。
   const gashStacks = Math.max(0, Math.floor(gashValuePct / GASH_PER_LAYER))
   const cleaveCount = Math.max(0, Math.floor(input.cleaveSpecialCount))
   const burialCount = Math.max(0, Math.floor(input.bloodBurialCount))
