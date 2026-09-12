@@ -70,9 +70,11 @@ const PATCH = {
           '[脆弱] 异常伤害暴击：**spec teamBuffs 通用承载**（rate 公式 30+max(0,掌控-145)×0.7 读源面板；伤 基础15 + 额外能力档位 tier2 +10（buff-id 过滤门控）+ 影画一 +20（中文数字 source 命座门控））——自体与队友同吃，引擎 EV 乘区 calcAnomalyCritExpect 通用消费。',
           '长按普攻/终结技终结一击异放：固定 releaseMultiplier 445%/597%（s=12 满级；影画3/5 技能等级 +2/+4 随动），buildAnomalyEvents（普罗米娅绝裁同款通道）。',
           '[余火]→长按普攻：燃烧攻击行 attack_data 收入×影画1 效率 1.15/90 = 次数（buildExecutions 产行）。',
+          '终结技：入场 1641019（1545.8%）：每次终结后点按一次，计数=ultimateCount（产行+计时，2026-09-12 用户纠错）。',
+          '[消亡]消费：终结进入（次数=终结次数）→下一次连携退出并+30%积蓄，加成次数=min(终结,连携)按占比乘连携行 anomalyBuildUp（行级乘法）。',
         ],
         pendingParts: [
-          '[重生]（无乘区）；[消亡]状态机（连携+30% 积蓄、终结入场时序）；脆弱暴伤 3 档（3异常→40，+15）编成自动推导未承载（teamBuff 覆盖率被 store 兜底 100 抹平，需正式版做覆盖率兜底/编成推导）。',
+          '[重生]（无乘区）；[消亡]逐时序状态机本体（次数驱动乘区已建模）；脆弱暴伤 3 档（3异常→40，+15）编成自动推导未承载（teamBuff 覆盖率被 store 兜底 100 抹平，需正式版做覆盖率兜底/编成推导）。',
         ],
         codePaths: ['src/mechanics/agents/phoenix.ts', 'src/specs/agents/1641.json (teamBuffs)', 'src/composables/resourceCalc/helpers.ts (AA buff-id 过滤)'],
         pending: ['余火获取速率按 attack_data /10000 口径解读 [猜测·低]，待正式服复核。'],

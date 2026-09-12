@@ -57,6 +57,18 @@ export const PHOENIX_EX1_MOVE_ID = '1641008' // 强化特殊技：第一段
 export const PHOENIX_EX2_MOVE_ID = '1641009' // 强化特殊技：第二段
 export const PHOENIX_ENERGIZE_MOVE_ID = '1641021' // 蓄能附加攻击（视为强化特殊技）
 export const PHOENIX_ULT_MOVE_ID = '1641013' // 终结技
+export const PHOENIX_ENTRY_MOVE_ID = '1641019' // 终结技：入场（终结「招式发动后，可点按发动」→ 每次终结一次，用户口径 2026-09-12）
+export const PHOENIX_CHAIN_MOVE_ID = '1641012' // 连携技（[消亡]消费：退出消亡并+30%积蓄）
+/** 消亡消费：连携技积蓄 +30%（原文「若处于[消亡]状态，则会退出[消亡]状态并使该次[连携技]累积的属性异常积蓄提升30%」） */
+export const PHOENIX_WANGLIANG_CHAIN_BUILDUP_PCT = 30
+/**
+ * 消亡→连携加成次数（消费型状态机，2026-09-12 用户纠错建模）：
+ * 消亡由终结技进入（进入次数 = 终结次数），每次消亡被**下一次连携**消费退出
+ * → 加成次数 = min(终结次数, 连携次数)。状态机本体不建，但次数驱动的乘区不丢。
+ */
+export function phoenixWangliangChainBonus(ultCount: number, chainCount: number): number {
+  return Math.max(0, Math.min(Math.floor(ultCount || 0), Math.floor(chainCount || 0)))
+}
 /** 长按普攻消耗余火 */
 export const PHOENIX_CHARGED_EMBER_COST = 90
 /** 异放固定倍率（满级 s=12）：长按普攻 225+20×11=445、终结 300+27×11=597、影画6 强特 200 */
@@ -161,6 +173,11 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCo
   record.phoenixChargedMeta = metaOf(PHOENIX_CHARGED_MOVE_ID)
   record.phoenixEx2Meta = metaOf(PHOENIX_EX2_MOVE_ID)
   record.phoenixEnergizeMeta = metaOf(PHOENIX_ENERGIZE_MOVE_ID)
+  record.phoenixEntryMeta = metaOf(PHOENIX_ENTRY_MOVE_ID)
+  record.phoenixChainMeta = {
+    ...metaOf(PHOENIX_CHAIN_MOVE_ID),
+    anomalyBuildUp: all.find(m => m.id === PHOENIX_CHAIN_MOVE_ID)?.rows?.find(r => r.id === 'anomaly_buildup')?.values?.[0] ?? 0,
+  }
 }
 
 /**
@@ -255,19 +272,67 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
       skillTableNote: `重击命中送 ×${energizeCount}（强特二段+长按普攻+终结；附加攻击不占前台时间）`,
     })
   }
+  // 终结技：入场（1641019，1545.8%）——终结「招式发动后，可点按发动」→ 每次终结后点按触发一次
+  //（用户口径 2026-09-12「喧响大后按攻击可以触发一次」，仪玄影画6「赠送次数=大招次数」同款计数）。
+  // 原文「切换入场/快支入场时发动」是消亡期间的另一触发面，此处按每次终结一次的稳定计数建模 [已确认]。
+  const entryMeta = record.phoenixEntryMeta as { moveId: string; actionTime: number } | undefined
+  if (entryMeta && ultCount > 0) {
+    executions.push({
+      moveId: entryMeta.moveId,
+      moveName: '终结技：入场（终结后点按）',
+      category: 'chain',
+      element: 'fire',
+      count: ultCount,
+      actionTime: entryMeta.actionTime,
+      comboAlignRatio: 0,
+      totalTime: ultCount * entryMeta.actionTime,
+      totalComboAlignTime: 0,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      skillTableNote: `每次终结后点按发动 ×${ultCount}（计数=终结次数，用户口径）`,
+    })
+  }
 }
 
-/** 必做前台时间：长按普攻 + 强特第二段（长按普攻次数读上一轮 buildExecutions 的收敛值） */
-function phoenixExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
+/**
+ * 消亡消费（2026-09-12 用户纠错建模）：终结进入[消亡]，下一次连携退出并+30%积蓄——
+ * 加成次数 = min(终结次数, 连携次数)（phoenixWangliangChainBonus），按占比乘到连携行积蓄
+ *（南宫羽 ×1.35 / 妮可C1 行级乘法同款先例；anomalyBuildUpOverride 同步防 enrich 回填）。
+ */
+function patchPhoenixExecutions({ state, executions }: AgentResourceInput): void {
+  const ultCount = Math.max(0, Number(state.ultimateCount ?? 0))
+  if (ultCount <= 0) return
+  const chainExec = executions.find(e => e.moveId === PHOENIX_CHAIN_MOVE_ID)
+  if (!chainExec) return
+  const chainCount = Math.max(0, Number(chainExec.count ?? 0))
+  if (chainCount <= 0) return
+  const consume = phoenixWangliangChainBonus(ultCount, chainCount)
+  if (consume <= 0) return
+  const base = Math.max(0, Number(chainExec.anomalyBuildUp ?? 0))
+  if (base <= 0) return
+  const ratio = consume / chainCount
+  chainExec.anomalyBuildUp = base * (1 + PHOENIX_WANGLIANG_CHAIN_BUILDUP_PCT / 100 * ratio)
+  chainExec.anomalyBuildUpOverride = true
+  if (chainExec.totalAnomalyBuildUp != null) {
+    chainExec.totalAnomalyBuildUp = chainExec.anomalyBuildUp * chainCount
+  }
+  chainExec.skillTableNote = `${chainExec.skillTableNote ?? ''}；[消亡]消费 ×${consume}/${chainCount}：连携积蓄+${PHOENIX_WANGLIANG_CHAIN_BUILDUP_PCT}%×占比${(ratio * 100).toFixed(0)}%`
+}
+
+/** 必做前台时间：长按普攻 + 强特第二段 + 终结入场（次数读上一轮 buildExecutions 的收敛值/终结次数） */
+function phoenixExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
   const record = cfg as unknown as Record<string, unknown>
   const exTime = Math.max(0, exSpecialCount) * (cfg.exSpecialActionTime ?? 0)
   const chargedMeta = record.phoenixChargedMeta as { actionTime: number } | undefined
   const ex2Meta = record.phoenixEx2Meta as { actionTime: number } | undefined
+  const entryMeta = record.phoenixEntryMeta as { actionTime: number } | undefined
   const chargedCount = whole(Number(record.phoenixChargedCount ?? 0))
+  const ultCount = Math.max(0, Number(state?.ultimateCount ?? 0))
   const ex2Time = ex2Meta ? Math.max(0, exSpecialCount) * ex2Meta.actionTime : 0
   const chargedTime = chargedMeta ? chargedCount * chargedMeta.actionTime : 0
+  const entryTime = entryMeta ? ultCount * entryMeta.actionTime : 0
   return {
-    necessaryTime: exTime + ex2Time + chargedTime,
+    necessaryTime: exTime + ex2Time + chargedTime + entryTime,
     comboAlignTime: exTime * (cfg.exSpecialComboAlignRatio ?? 0),
   }
 }
@@ -424,11 +489,12 @@ export const phoenixMechanic: AgentMechanicModule = {
   id: 'agent:phoenix',
   agentIds: [PHOENIX_ID],
   name: '菲欧妮·脆弱',
-  description: '⚠️3.3 测试服临时录入：核心异常精通+40、影画2 积蓄效率×覆盖率；脆弱异常暴击走 spec teamBuffs 通用承载（公式读源面板掌控，自体+队友同吃 EV 乘区）；长按普攻/终结/影画6 异放（固定 releaseMultiplier，普罗米娅同款）；余火→长按普攻计数；影画4 喧响、蓄能附加攻击。',
+  description: '⚠️3.3 测试服临时录入：核心异常精通+40、影画2 积蓄效率×覆盖率；脆弱异常暴击走 spec teamBuffs 通用承载（公式读源面板掌控，自体+队友同吃 EV 乘区）；长按普攻/终结/影画6 异放（固定 releaseMultiplier）；余火→长按普攻计数；终结入场=每次终结后点按一次（1641019 计数=终结次数）；[消亡]消费：连携积蓄+30%×min(终结,连携)/连携占比；影画4 喧响、蓄能附加攻击。',
   applyPanel: applyPhoenixPanel,
   buildCharConfig: buildPhoenixCharConfig,
   estimateExSpecialTime: phoenixExSpecialTime,
   buildExecutions: buildPhoenixExecutions,
+  patchExecutions: patchPhoenixExecutions,
   buildAnomalyEvents: buildPhoenixAnomalyEvents,
   buildResourceResult: buildPhoenixResourceResult,
   resourceSections: buildPhoenixResourceSections,

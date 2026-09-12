@@ -7,7 +7,9 @@ import {
   computePhoenixWeaknessCrit,
   phoenixMechanic,
   phoenixSkillLevel,
+  phoenixWangliangChainBonus,
   PHOENIX_RELEASE_BASE,
+  PHOENIX_WANGLIANG_CHAIN_BUILDUP_PCT,
 } from '@/mechanics/agents/phoenix'
 
 const baseConfig = {
@@ -159,6 +161,40 @@ describe('菲欧妮（1641）⚠️3.3 测试服临时录入', () => {
     await setup(['1641', '1171', ''], 6)
     const d6 = useResourceCalc().teamTotalDamage.value
     expect(d6).toBeGreaterThan(d0)
+  })
+
+  it('消亡消费（2026-09-12 用户纠错）：加成次数=min(终结,连携)；连携行积蓄 ×(1+30%×占比)', () => {
+    expect(phoenixWangliangChainBonus(2, 5)).toBe(2)
+    expect(phoenixWangliangChainBonus(5, 2)).toBe(2)
+    expect(phoenixWangliangChainBonus(0, 5)).toBe(0)
+    // 直调 patchExecutions：终结 2 / 连携 4 → 占比 0.5 → 积蓄 ×1.15（南宫羽 ×1.35 同款行级乘法）
+    const chain = {
+      moveId: '1641012', count: 4, anomalyBuildUp: 1000, totalAnomalyBuildUp: 4000,
+    } as any
+    phoenixMechanic.patchExecutions!({
+      cfg: {} as any,
+      state: { ultimateCount: 2 } as any,
+      executions: [chain],
+    })
+    expect(chain.anomalyBuildUp).toBeCloseTo(1000 * (1 + PHOENIX_WANGLIANG_CHAIN_BUILDUP_PCT / 100 * 0.5), 6)
+    expect(chain.anomalyBuildUpOverride).toBe(true)
+    expect(chain.totalAnomalyBuildUp).toBeCloseTo(4000 * 1.15, 6)
+    // 无终结 → 不动
+    const chain0 = { moveId: '1641012', count: 4, anomalyBuildUp: 1000 } as any
+    phoenixMechanic.patchExecutions!({ cfg: {} as any, state: { ultimateCount: 0 } as any, executions: [chain0] })
+    expect(chain0.anomalyBuildUp).toBe(1000)
+  })
+
+  it('终结入场（1641019，2026-09-12 用户纠错）：每次终结后点按触发一次，行次数=终结次数并计入前台时间', async () => {
+    const { config } = await setup(['1641', '1171', ''], 0)
+    config.setMechanicSetting('phoenix.chargedAttackCount', 2) // 去掉余火循环对强特能量的耦合噪声
+    const calc = useResourceCalc()
+    const phoenix = calc.resourceResult.value!.characters.find(c => c.agentId === '1641')!
+    const entry = phoenix.executions.find(e => e.moveId === '1641019')
+    expect(entry).toBeTruthy()
+    expect(entry!.count).toBe(phoenix.ultimateCount)
+    expect(entry!.count).toBeGreaterThan(0)
+    expect(entry!.totalTime).toBeCloseTo(entry!.count * entry!.actionTime, 6)
   })
 
   it('模块注册与滑块：3 个滑块齐全（脆弱暴击已移交 spec teamBuffs，无档位滑块）', () => {
