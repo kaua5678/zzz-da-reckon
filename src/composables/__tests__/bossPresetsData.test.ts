@@ -67,11 +67,13 @@ describe('boss-presets 期视图数据不变量', () => {
 describe('boss 敌方体型（BOSS_BODY_SIZES 手录 2026-09-05，TeamCompare 选中时写入敌方配置）', () => {
   const LEGAL = ['small', 'medium', 'large'] as const
 
-  it('全部 22 个预设都有合法 bodySize（新增 boss 未录体型即红，逼显式认领）', () => {
+  it('除测试服临时预设外全部 22 个预设都有合法 bodySize（新增 boss 未录体型即红，逼显式认领）', () => {
     for (const b of presets.bosses) {
+      // 40012 (Test1)僭越者：3.3 测试服临时预设，手录项（体型/弹刀/无敌）待正式服，2026-09 用户口径
+      if (b.id === '40012') continue
       expect(LEGAL, `${b.id} ${b.name} bodySize 合法`).toContain(b.bodySize)
     }
-    expect(presets.bosses.length).toBe(22)
+    expect(presets.bosses.length).toBe(23)
   })
 
   it('抽检用户手录值（小型：名可名/叶释渊/始主/薇斯珀；中型：亵渎者/彷徨猎手/血清道夫/冥宁芙）', () => {

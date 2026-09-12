@@ -177,3 +177,31 @@ describe('珂蕾妲滑块生效差分（防守卫冻结，SOP §3.5：改滑块�
     expect(off.c4DmgBonus).toBe(0)
   })
 })
+
+describe('珂蕾妲潜能觉醒：爆破作业（定稿 2026-09，spec teamBuffs 承载）', () => {
+  // 定稿文本（nanoka live 3.2 == 测试服 3.3.2 一致）：锋御 锐暴伤害 II..VI = 4/6/8/10/12%、
+  // 非锋御 暴击伤害 = 11/17/23/29/35%；默认潜能 VI 满档。旧 (Test1) 占位猜测已废。
+  // 分流由伤害 profile 天然实现：sharpCritDmg 只对锋御锐化伤害生效、critDmg 对锋御无效。
+  async function matePanel(withKoleda: boolean) {
+    const result = await setupHarness(
+      withKoleda
+        ? [
+            { agentId: '1101', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+            { agentId: '1011', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+          ]
+        : [
+            { agentId: '1121', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+            { agentId: '1011', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+          ],
+    )
+    for (const buff of result.config.globalBuffs) buff.enabled = false
+    return computePanelPhases(1, result.config, result.catalog)!.inCombat as any
+  }
+
+  it('队友面板差分：锐暴 +12（sharpCritDmg）与 暴伤 +35（critDmg），基线不带则无', async () => {
+    const withK = await matePanel(true)
+    const without = await matePanel(false)
+    expect((withK.sharpCritDmg ?? 0) - (without.sharpCritDmg ?? 0)).toBe(12)
+    expect((withK.critDmg ?? 0) - (without.critDmg ?? 0)).toBe(35)
+  })
+})

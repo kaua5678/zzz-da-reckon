@@ -189,6 +189,7 @@ const CATALOG_MONSTER_MAP = {
   '40009': 'boss.integrated_girtablullu',
   '40010': null,                              // 库萨里库（普通）
   '40011': null,                              // 异构·焚昼余火（危局异构·困难）
+  '40012': null,                              // (Test1)僭越者（3.3 测试服占位名；临时预设：只录自动信息，手录默认值待正式服，2026-09 用户口径）
   '30041': null,                              // 彷徨猎手（2.x 防卫战 Boss，用户确认收录）
 }
 const catalogById = new Map(catalog.bosses.map(b => [b.id, b]))
