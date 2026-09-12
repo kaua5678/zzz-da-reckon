@@ -28,6 +28,23 @@
 
 **gachabase 倍率口径**（`fetch-gachabase-agent.mjs` 头注释）：Lv12 = base + step×11，再 `/100`（damage/daze/anomaly/ether_purify）或 `/10000`（energy/decibel）。
 
+## 耗能位置（2026-09-12 用户纠错补录：第一版曾漏抓、误按 60 兜底）
+
+**能量消耗不在 param 数值字典里，也不在 gachabase**——它是 full JSON `skill.<cat>.description[].param[]`
+里的**独立展示行**：`name` 含「能量消耗」，**数值在 `desc` 文本里**（如 `"(Test1)80点"`，无 `{Skill:id}` 引用）。
+归属 moveId = 该 entry 参数序列中**前一个带 id 的 param 行**的 moveId（展示顺序保证耗能行跟在本招的倍率行后）：
+
+```
+(Test1)组合技伤害倍率   param:{1631008:{damage_percentage:…}}   ← 带 id
+(Test1)组合技失衡倍率   param:{1631008:{stun_ratio:…}}          ← 带 id
+(Test1)组合技能量消耗   desc:"(Test1)80点"                       ← 归 1631008
+(Test1)风刃最大能量消耗 desc:"(Test1)40点"                       ← 跟在 1631009 倍率行后 → 归 1631009
+```
+
+- 提取实现：`scripts/import-nanoka-beta-agent.mjs` 的 `collectEnergyCosts`（正则 `/能量消耗/` + desc 解析「N点」）。
+- 已知坑：**dump 参数时若「每个 moveId 只取首次出现」会把耗能行整个漏掉**（1631/1641 第一版就是这么漏的）；
+- catalog 落法：`energyCost: { 'Energy Cost': 'N' }`（`resolveExSpecialCount`/helpers:1538 以 energyCost 区分普通 special 与 exSpecial）。真实值示例（3.3 beta）：1631 组合技 80 / 风刃 40；1641 强特两段各 40。
+
 ## ⚠️ 版本：用 `manifest.zzz.live`，别用带 hash 的构建（2026-08 教训 + 2026-09 修订）
 
 ```bash

@@ -23,13 +23,72 @@
     "影画4（原文）：发动[长按普通攻击]时获得200点喧响值。",
     "影画6（原文）：额外能力所需[异常]角色数量减1；[强化特殊技]终结一击命中属性异常状态敌人时触发1次[异放]，固定结算200%倍率对应属性异常伤害；造成的[异放]无视敌人15%防御力。",
     "[余火]（原文）：[燃烧攻击]造成伤害时回复，上限120点；长按普攻消耗90点掷出武器（1641005，终结一击命中异常状态敌人触发1次异放，倍率 {225+20×(s-1)}%，s=普攻技能等级）。[蓄能]（原文）：强化特殊技第二段/长按普攻/终结技重击命中获得1点，下次重击发动一次额外攻击（视为强化特殊技，1641021）。[消亡]（原文）：终结技消耗全部生命并陷入消亡；消亡下连携技异常积蓄+30%；消亡时入场发动[终结技：入场]（1641019）。",
-    "实现口径 [猜测·中]（模块 phoenix.ts）：① 核心异常精通+40、脆弱异常暴击（anomalyCritRate 30+0.7×(掌控-145)、anomalyCritDmg 15/25/40 按队伍异常角色数滑块 phoenix.teamAnomalyCount 默认2、影画1再+20）进 applyPanel——引擎异常结算区已有 EV 乘区 calcAnomalyCritExpect=1+率×伤（爱芮异放暴击同通道），无需新乘区；影画1 +20 的作用域近似为自身全部异常伤害暴击（原文限定脆弱目标触发暴击时，异常队默认脆弱满覆盖）；② 异放：长按普攻（445%=225+20×11 满级）与终结技（597%=300+27×11）走 buildAnomalyEvents 固定 releaseMultiplier（普罗米娅绝裁同款），影画6 强特 200% + releaseModifier 无视15%防御（普罗米娅同款通道）；倍率 s=12+2(C3)+2(C5)，影画3/5 通用技能等级口径；③ 余火循环：燃烧攻击行 attack_data（三段8.02/四段14.76/分支8.02/强特15.02+19.70/连携14.88/终结28.82，/10000 口径，双源一致）经引擎 totalSpecialResourceRecovery 收集，长按普攻次数=floor(收入×影画1效率1.15/90)（buildExecutions 产行 + estimateExSpecialTime 计时，滑块 phoenix.chargedAttackCount 0=自动）；④ 蓄能附加攻击 1641021 次数 = 强特二段+长按普攻+终结次数；⑤ 影画2 焚化积蓄效率+15%×覆盖率滑块（默认1）、第二段回8能量挂行级 energyRecovery；影画4 长按普攻+200喧响挂行级 decibelRecovery。",
-    "未建模项：[重生]（无乘区）；[消亡]状态机（连携+30%积蓄、终结入场 1641019 触发时序）；影画2「保留强特段数」段数状态机；强化特殊技第一/二段按「每轮强特=两段」近似（第二段行次数=强特次数，能量消耗只按第一段 60 计 [猜测·低]）；队友向脆弱异常暴击（全队拐，spec teamBuffs 未录——脆弱本体是敌方 debuff，引擎按施加者面板结算，队友受益需团队面板通道）；长按普攻终结一击与蓄能重击的失衡内占比按事件计数器口径。",
-    "强化特殊技能量消耗 [猜测·低]：beta 双源均无 energy_cost 数据，catalog 按全库最常见 60 兜底（import-nanoka-beta-agent.mjs），正式服复核后重导。",
+    "实现口径 [已确认承载通道]（2026-09-12 用户纠错后修订）：① **脆弱异常暴击 = spec teamBuffs 通用承载**（phoenix.weakness_anomaly_crit_rate/_base/_tier2 + cinema1，见 teamBuffs 段）——公式读源面板掌控（30+max(0,x-145)×0.7），自体与队友同吃；引擎异常结算区既有 EV 乘区 calcAnomalyCritExpect=1+率×伤 通用消费（爱芮异放暴击同通道），**异常暴击机制是引擎级通用机制**，后续角色复用只需录 spec teamBuffs；档位 25 的额外能力门控走 computePanelPhases buff-id 过滤（SOP §6.2 标准接线）；影画门控用中文数字「影画一」（parseCinemaRequirement 只认 一…六，「影画1」不生效）；模块 applyPanel 只留自面板异常精通+40/影画2 积蓄效率，防双通道双计。**3 档（3异常→40，+15）未承载**：teamBuff 覆盖率被 store 兜底 100 抹平（syncTeammateBuffsFromTeam 建 selection 时 coverage:100，spec coverage:0 不生效）——需编成自动推导或覆盖率兜底改造，留正式版。② 异放：长按普攻（445%=225+20×11 满级）与终结技（597%=300+27×11）走 buildAnomalyEvents 固定 releaseMultiplier（普罗米娅绝裁同款），影画6 强特 200% + releaseModifier 无视15%防御（普罗米娅同款通道）；倍率 s=12+2(C3)+2(C5)，影画3/5 通用技能等级口径。③ 余火循环：燃烧攻击行 attack_data（三段8.02/四段14.76/分支8.02/强特15.02+19.70/连携14.88/终结28.82，/10000 口径，双源一致）经引擎 totalSpecialResourceRecovery 收集，长按普攻次数=floor(收入×影画1效率1.15/90)（buildExecutions 产行 + estimateExSpecialTime 计时，滑块 phoenix.chargedAttackCount 0=自动）。④ 蓄能附加攻击 1641021 次数 = 强特二段+长按普攻+终结次数。⑤ 影画2 焚化积蓄效率+15%×覆盖率滑块（默认1）、第二段回8能量挂行级 energyRecovery；影画4 长按普攻+200喧响走 initialDecibelGift（行级 decibel 会被 enrich 回填）。",
+    "未建模项（含收益评估 2026-09-12）：[重生]（回血无乘区，正确跳过）；[消亡]状态机——其中「消亡下连携技异常积蓄+30%」收益中等但连携次数少（每次失衡1次）故暂不建行级积蓄加成，「终结入场 1641019（1545.8%）」收益中等、触发依赖消亡时入场时序，未建计数来源；影画2「保留强特段数」段数状态机（低收益，段数近似两段已覆盖主体伤害）；强化特殊技第一/二段按「每轮强特=两段」近似，**轮均耗能=40+40=80 并入 exSpecialEnergyConsume**（真实值，见下条）；长按普攻终结一击与蓄能重击的失衡内占比按事件计数器口径。",
+    "能量消耗 [已确认]（2026-09-12 用户纠错）：耗能在 nanoka 页面「能量消耗」param 展示行的 **desc 文本**里（如「(Test1)80点」），不在 param 数值字典——第一版导入漏抓、误按 60 兜底。真实值：1641008 第一段 40、1641009 第二段 40（import-nanoka-beta-agent.mjs 的 collectEnergyCosts 已按此提取，找法见 docs/DATA_FETCHING.md「耗能位置」）。",
     "余火获取速率 [猜测·低]：原文「燃烧攻击造成伤害时回复[余火]」未给数值；attack_data 列恰好只在「视为燃烧攻击」的行非零（双源一致），按 /10000 口径解读为余火获取/次——待正式服或实测复核。",
     "配装推荐 [占位]：build-recommendations 条目为 1611 fallback（荆棘玫瑰4pc/啄木鸟2pc，scripts/patch-33beta-status.mjs）——beta 角色不在 nanoka 正式服索引（sync-build-recommendations 会崩）；专武未录（NO_OWNER_ENGINES 快照含本角色）。正式服上线后：重抓 full JSON → 重导 catalog → 跑 sync-build-recommendations 1641 --write --force → 补专武 ownerAgentId → 从 NO_OWNER_ENGINES 移除 → 重核版本时间线节点日期。"
   ],
-  "teamBuffs": [],
+  "teamBuffs": [
+    {
+      "id": "phoenix.weakness_anomaly_crit_rate",
+      "name": "脆弱·属性异常伤害可暴击（暴击率）",
+      "source": "核心被动",
+      "description": "[脆弱]（队伍任意角色对敌人造成属性异常伤害时施加，20秒）：目标受到属性异常伤害时有概率暴击，基础暴击率30%；菲欧妮异常掌控>145 时每点额外+0.7%（公式读源面板掌控）。作用对象=全队（含菲欧妮自身，引擎异常结算区 EV 乘区 calcAnomalyCritExpect 通用消费）。",
+      "target": "team",
+      "coverage": 1,
+      "status": "implemented_approximation",
+      "effects": [
+        {
+          "id": "phoenix.weakness_anomaly_crit_rate",
+          "type": "formula",
+          "stat": "anomalyCritRate",
+          "sourceStat": "anomalyMastery",
+          "sourcePanelPhase": "outOfCombat",
+          "formula": {
+            "expression": "30 + max(0, x - 145) * 0.7",
+            "valueUnit": "storedPercent"
+          }
+        }
+      ]
+    },
+    {
+      "id": "phoenix.weakness_anomaly_crit_dmg_base",
+      "name": "脆弱·异常暴伤（基础档）",
+      "source": "核心被动",
+      "description": "[脆弱]目标受到属性异常伤害的暴击伤害15%（核心被动基础档，无条件）。额外能力档位（2/3异常角色→25/40）见下两条。",
+      "target": "team",
+      "coverage": 1,
+      "status": "implemented",
+      "effects": [
+        { "id": "phoenix.weakness_anomaly_crit_dmg_base", "stat": "anomalyCritDmg", "mode": "flat", "value": 15 }
+      ]
+    },
+    {
+      "id": "phoenix.weakness_anomaly_crit_dmg_tier2",
+      "name": "脆弱·异常暴伤档位（2异常）",
+      "source": "额外能力",
+      "description": "队伍[异常]角色数=2 时脆弱暴伤提升为25%（15→25，+10）。需额外能力触发（其他异常/同阵营队友），由 computePanelPhases buff-id 过滤门控（SOP §6.2）。3 档（3异常→40，+15）编成自动推导未承载——见 notes 未建模项。",
+      "target": "team",
+      "coverage": 1,
+      "status": "implemented_approximation",
+      "effects": [
+        { "id": "phoenix.weakness_anomaly_crit_dmg_tier2", "stat": "anomalyCritDmg", "mode": "flat", "value": 10 }
+      ]
+    },
+    {
+      "id": "phoenix.cinema1_weakness_crit_dmg",
+      "name": "影画一·脆弱暴伤+20",
+      "source": "影画一",
+      "description": "脆弱目标受到的属性异常伤害触发暴击时，其暴击伤害额外提升20%（EV 乘区同区加算；原文含队友触发的异常伤害）。source 用中文数字「影画一」——syncTeammateBuffsFromTeam 的影画门控只认 影画一…影画六（parseCinemaRequirement）。",
+      "target": "team",
+      "coverage": 1,
+      "status": "implemented",
+      "effects": [
+        { "id": "phoenix.cinema1_weakness_crit_dmg", "stat": "anomalyCritDmg", "mode": "flat", "value": 20 }
+      ]
+    }
+  ],
   "additionalAbility": {
     "teamConditions": [
       {

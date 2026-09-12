@@ -12,6 +12,7 @@
  * - level60：hp/def = base + growth/10000×59 + level['6']；atk 再 + extra_level['6']['12101'].value；
  *   energyRegen = sp_recover/100；energyMax = sp_bar_point
  * - **同一 moveId 会出现在多个展示 param 行**（伤害倍率/失衡倍率行各带一份完整参数）——取首次出现，勿累加
+ * - 能量消耗：独立展示 param 行（name 含「能量消耗」，desc=「N点」文本），归属=前一个带 id 的 param 行 moveId
  * - moveId 空间 = param/gachabase id ≠ skill_list id（SOP §0.5 陷阱）
  *
  * 用法：node scripts/import-nanoka-beta-agent.mjs <id>... [--version <v>] [--write]
@@ -92,8 +93,30 @@ function collectMoves(full) {
   return moves
 }
 
-function enNamesOf(fullEn) {
-  const names = new Map()
+/**
+ * 能量消耗提取（2026-09-12 用户纠错：此前漏抓）——耗能**不在 param 数值字典里**，
+ * 而是同 entry 下独立的展示 param 行：name 含「能量消耗」，**desc 是文本**（如「(Test1)80点」），
+ * 无 {Skill:id} 引用 → 归属 = 该 entry 参数序列中**前一个带 id 的 param 行**的 moveId
+ * （组合技能量消耗 跟在 组合技伤害/失衡倍率 后 → 归 1631008；风刃最大能量消耗 → 归 1631009）。
+ */
+function collectEnergyCosts(full) {
+  const costs = new Map()
+  for (const cat of ['basic', 'dodge', 'special', 'chain', 'assist']) {
+    for (const entry of full.skill?.[cat]?.description ?? []) {
+      let lastMoveId = ''
+      for (const p of Array.isArray(entry?.param) ? entry.param : []) {
+        const ids = Object.keys(p?.param ?? {})
+        if (ids.length > 0) lastMoveId = ids[ids.length - 1]
+        if (!/能量消耗/.test(String(p?.name ?? ''))) continue
+        const amount = Number(String(p?.desc ?? '').replace(/<[^>]*>|\(Test\d+\)|点/g, '').trim())
+        if (lastMoveId && Number.isFinite(amount) && amount > 0) costs.set(lastMoveId, amount)
+      }
+    }
+  }
+  return costs
+}
+
+function enNamesOf(fullEn) {  const names = new Map()
   for (const cat of ['basic', 'dodge', 'special', 'chain', 'assist']) {
     for (const entry of fullEn.skill?.[cat]?.description ?? []) {
       const entryName = stripPrefix(entry?.name)
@@ -164,6 +187,7 @@ for (const id of ids) {
   }
 
   const moves = collectMoves(full)
+  const energyCosts = collectEnergyCosts(full)
   const enNames = enNamesOf(fullEn)
   const byCat = new Map()
   for (const m of moves.values()) {
@@ -186,7 +210,6 @@ for (const id of ids) {
     }
     if (ether > 0) rows.push({ id: 'ether_purify', kind: 'etherPurify', values: [Math.round(ether / 100 * 1000) / 1000] })
     const isUltimate = (/(终极技|终结技)/.test(m.entryName) || /Ultimate/.test(enNames.get(m.moveId) ?? '')) && !/入场/.test(m.entryName)
-    const isExSpecial = /强化特殊技/.test(m.entryName) || /EX Special/.test(enNames.get(m.moveId) ?? '')
     const move = {
       id: m.moveId,
       name: { zhCN: m.entryName, en: enNames.get(m.moveId) ?? m.entryName },
@@ -196,9 +219,10 @@ for (const id of ids) {
       timeType: isUltimate ? 'ultimate' : 'normal',
       actionTime: actionTime(ether, m.entryName),
     }
-    // 强化特殊技能量消耗：beta 数据双源均无 energy_cost（nanoka param/gachabase 皆缺）
-    // → 按全库最常见值 60 兜底 [猜测·低]，spec notes 标注待正式服复核
-    if (isExSpecial && damage > 0) move.energyCost = { 'Energy Cost': '60' }
+    // 能量消耗：从「能量消耗」展示 param 行的 desc 文本提取（collectEnergyCosts，2026-09-12 补）；
+    // 无耗能行的招式不写 energyCost（此前「强特 60 兜底」猜测作废）
+    const energyCost = energyCosts.get(m.moveId)
+    if (energyCost) move.energyCost = { 'Energy Cost': String(energyCost) }
     if (!byCat.has(m.cat)) byCat.set(m.cat, [])
     byCat.get(m.cat).push(move)
   }

@@ -29,6 +29,7 @@ const PATCH = {
           '暴击伤害 +60%（applyPanel panel.critDmg）。',
           '[凭风]：入场技/连携技/终结技最后一击伤害倍率固定 +60%/300%（层数滑块 severian.fengfengStacks，damageMultiplierOverride 同区加算，patchExecutions）。',
           '[流息]→苍风影猎：次数 = 流息收入/100（疾锋四段×20+烈旋×35+极限闪避×15+连携×50+终结×100，buildExecutions 产行 + estimateExSpecialTime 同源计时）。',
+          '长按风刃段（1631009，818.4%）：随强特产行，倍率/耗能40/时间按满充比例滑块 severian.windBladeChargeRatio 缩放（2026-09-12 用户纠错补录；强特组合技耗能 80 为真实值）。',
         ],
         pendingParts: [
           '烁影层数状态机与自动闪避触发率；疾锋四段闪避成功强化（1631020 无计数来源）；流息上限 150/180 截断（总量口径）。',
@@ -66,14 +67,14 @@ const PATCH = {
         status: 'implemented_approximation',
         implementedParts: [
           '异常精通 +40（applyPanel）。',
-          '[脆弱] 异常伤害暴击：anomalyCritRate 30 + 0.7×(掌控-145)、anomalyCritDmg 15/25/40（队伍异常角色数滑块 phoenix.teamAnomalyCount，需额外能力门控）——走引擎异常结算区既有 EV 乘区 calcAnomalyCritExpect。',
+          '[脆弱] 异常伤害暴击：**spec teamBuffs 通用承载**（rate 公式 30+max(0,掌控-145)×0.7 读源面板；伤 基础15 + 额外能力档位 tier2 +10（buff-id 过滤门控）+ 影画一 +20（中文数字 source 命座门控））——自体与队友同吃，引擎 EV 乘区 calcAnomalyCritExpect 通用消费。',
           '长按普攻/终结技终结一击异放：固定 releaseMultiplier 445%/597%（s=12 满级；影画3/5 技能等级 +2/+4 随动），buildAnomalyEvents（普罗米娅绝裁同款通道）。',
           '[余火]→长按普攻：燃烧攻击行 attack_data 收入×影画1 效率 1.15/90 = 次数（buildExecutions 产行）。',
         ],
         pendingParts: [
-          '[重生]（无乘区）；[消亡]状态机（连携+30% 积蓄、终结入场时序）；队友向脆弱异常暴击（团队面板通道）未建模。',
+          '[重生]（无乘区）；[消亡]状态机（连携+30% 积蓄、终结入场时序）；脆弱暴伤 3 档（3异常→40，+15）编成自动推导未承载（teamBuff 覆盖率被 store 兜底 100 抹平，需正式版做覆盖率兜底/编成推导）。',
         ],
-        codePaths: ['src/mechanics/agents/phoenix.ts'],
+        codePaths: ['src/mechanics/agents/phoenix.ts', 'src/specs/agents/1641.json (teamBuffs)', 'src/composables/resourceCalc/helpers.ts (AA buff-id 过滤)'],
         pending: ['余火获取速率按 attack_data /10000 口径解读 [猜测·低]，待正式服复核。'],
       },
       {
@@ -82,18 +83,18 @@ const PATCH = {
         implementation: 'implemented_approximation',
         status: 'implemented_approximation',
         implementedParts: [
-          '队伍存在其他[异常]/同阵营（声明式门控）：队伍异常角色数 2/3 → 脆弱暴伤 25%/40%（档位滑块，影画6 需求 -1 按档位+1 自动处理）。',
+          '队伍存在其他[异常]/同阵营（声明式门控）：脆弱暴伤 +10（15→25，2 档）——spec teamBuffs tier2 条 + computePanelPhases buff-id 过滤（SOP §6.2）。',
         ],
-        pendingParts: ['「队伍中异常角色数量」未从编成自动推导，用滑块表达（默认 2）。'],
-        codePaths: ['src/mechanics/agents/phoenix.ts'],
+        pendingParts: ['3 档（3异常→40）编成自动推导未承载；影画6 需求-1 的档位+1 随之未承载。'],
+        codePaths: ['src/mechanics/agents/phoenix.ts', 'src/composables/resourceCalc/helpers.ts'],
         pending: [],
       },
     ],
     cinemas: {
-      1: { status: 'implemented_approximation', implemented: ['脆弱目标异常伤害触发暴击时暴伤 +20（近似为自身 anomalyCritDmg 面板 +20）；燃烧攻击余火获取效率 +15%（余火计数 ×1.15）。'], pending: ['+20 的作用域近似为自身全部异常伤害暴击（原文限定脆弱目标触发暴击时）；入场 +1 点蓄能勘域窗口不建模。'] },
+      1: { status: 'implemented_approximation', implemented: ['脆弱目标异常伤害触发暴击时暴伤 +20（spec teamBuffs，source「影画一」自动命座门控，全队含自身同吃）；燃烧攻击余火获取效率 +15%（余火计数 ×1.15）。'], pending: ['入场 +1 点蓄能勘域窗口不建模。'] },
       2: { status: 'implemented_approximation', implemented: ['[焚化] 异常积蓄效率 +15% × 覆盖率滑块 phoenix.c2IncinerationCoverage（panel.anomalyBuildUpEfficiency）；强化特殊技第二段回 8 能量（行级 energyRecovery）。'], pending: ['「保留当前强化特殊技段数」状态机未建模。'] },
       4: { status: 'implemented_approximation', implemented: ['长按普攻 +200 喧响/次（initialDecibelGift；次数=滑块覆盖，自动=战斗时长/15s 估算）。'], pending: [] },
-      6: { status: 'implemented_approximation', implemented: ['强化特殊技终结一击异放 200%（buildAnomalyEvents）；异放无视 15% 防御（releaseModifier 异放限定）；额外能力所需异常角色数 -1（档位+1）。'], pending: [] },
+      6: { status: 'implemented_approximation', implemented: ['强化特殊技终结一击异放 200%（buildAnomalyEvents）；异放无视 15% 防御（releaseModifier 异放限定）；额外能力所需异常角色数 -1（档位推导未承载，随 3 档留正式版）。'], pending: [] },
     },
   },
 }

@@ -126,7 +126,6 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCo
   record.phoenixCinemaLevel = cinemaLevel
   record.phoenixAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
   record.phoenixAnomalyMastery = panel.anomalyMastery ?? 0
-  record.phoenixTeamAnomalyCount = Math.max(1, Math.min(3, Math.round(setting(cfg, 'phoenix.teamAnomalyCount', 2))))
   // 影画4：长按普攻 +200 喧响/次——行级 decibel 会被 enrich 按倍率表回填，改走 initialDecibelGift。
   // 次数：滑块覆盖优先；自动按 战斗时长/15s 一次长按普攻估算 [猜测·低]（余火循环收敛值在 buildExecutions 才有）。
   if (cinemaLevel >= 4) {
@@ -134,13 +133,19 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCo
     const count = override > 0 ? whole(override) : Math.max(0, Math.floor((cfg.battleTime ?? 180) / 15))
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + PHOENIX_C4_CHARGED_DECIBEL * count
   }
-  // 强化特殊技走通用通道：第一段（能量消耗 60 [猜测·低]）
-  const special = skills?.categories?.find(c => c.id === 'special')?.moves?.find(m => m.id === PHOENIX_EX1_MOVE_ID)
-  if (special) {
+  // 强化特殊技走通用通道：每轮强特 = 第一段→第二段，**轮均耗能 = 40+40 = 80 并入
+  // cfg.exSpecialEnergyConsume**（resolveExSpecialCount 按此推强特次数，第二段行本身不再重复记耗能）。
+  // 耗能为 catalog energyCost 真实值（2026-09-12 从「能量消耗」param 行 desc 文本补抓）。
+  const special = skills?.categories?.find(c => c.id === 'special')?.moves
+  const ex1 = special?.find(m => m.id === PHOENIX_EX1_MOVE_ID)
+  const ex2 = special?.find(m => m.id === PHOENIX_EX2_MOVE_ID)
+  if (ex1) {
     cfg.exSpecialMoveId = PHOENIX_EX1_MOVE_ID
-    if (special.actionTime) cfg.exSpecialActionTime = special.actionTime
-    const ec = parseFloat(special.energyCost?.['Energy Cost'] ?? '')
-    if (Number.isFinite(ec) && ec > 0) cfg.exSpecialEnergyConsume = ec
+    if (ex1.actionTime) cfg.exSpecialActionTime = ex1.actionTime
+    const ec1 = parseFloat(ex1.energyCost?.['Energy Cost'] ?? '')
+    const ec2 = parseFloat(ex2?.energyCost?.['Energy Cost'] ?? '')
+    const roundCost = (Number.isFinite(ec1) && ec1 > 0 ? ec1 : 0) + (Number.isFinite(ec2) && ec2 > 0 ? ec2 : 0)
+    if (roundCost > 0) cfg.exSpecialEnergyConsume = roundCost
   }
   const all = skills?.categories?.flatMap(c => c.moves ?? []) ?? []
   const metaOf = (moveId: string) => {
@@ -150,6 +155,7 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCo
       actionTime: m?.actionTime ?? 0,
       damage: m?.rows?.find(r => r.id === 'damage')?.values?.[0] ?? 0,
       decibelRecovery: m?.rows?.find(r => r.id === 'decibel_recovery')?.values?.[0] ?? 0,
+      energyCost: parseFloat(m?.energyCost?.['Energy Cost'] ?? '') || 0,
     }
   }
   record.phoenixChargedMeta = metaOf(PHOENIX_CHARGED_MOVE_ID)
@@ -157,19 +163,15 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCo
   record.phoenixEnergizeMeta = metaOf(PHOENIX_ENERGIZE_MOVE_ID)
 }
 
-function applyPhoenixPanel({ cinemaLevel, outOfCombatPanel, panel, settings }: AgentPanelInput): void {
+/**
+ * 面板层只剩自面板部分：异常精通 +40、影画2 积蓄效率。
+ * [脆弱] 异常暴击（率/伤）**不在这里写**——2026-09-12 改为 spec teamBuffs 声明式承载
+ *（phoenix.weakness_anomaly_crit_*，公式读源面板掌控；自体与队友同吃，引擎 EV 乘区通用消费；
+ * 额外能力门控走 computePanelPhases 的 buff-id 过滤，SOP §6.2 标准接线），防双通道双计。
+ */
+function applyPhoenixPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
   if (!panel) return
   panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + PHOENIX_CORE_PROFICIENCY
-  const teamCount = Math.max(1, Math.min(3, Math.round(settingOf(settings, 'phoenix.teamAnomalyCount', 2))))
-  const weakness = computePhoenixWeaknessCrit({
-    // 掌控取局外面板（applyPanel 期局内掌控尚未定型；掌控词条来自驱动盘，局外局内同值）
-    anomalyMastery: outOfCombatPanel?.anomalyMastery ?? panel.anomalyMastery ?? 0,
-    additionalActive: (panel.additionalAbilityActive ?? 0) > 0,
-    teamAnomalyCount: teamCount,
-    cinemaLevel,
-  })
-  panel.anomalyCritRate = (panel.anomalyCritRate ?? 0) + weakness.rate
-  panel.anomalyCritDmg = (panel.anomalyCritDmg ?? 0) + weakness.dmg
   if (cinemaLevel >= 2) {
     const cov = clamp01(settingOf(settings, 'phoenix.c2IncinerationCoverage', 1))
     panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + PHOENIX_C2_BUILDUP_EFF * cov
@@ -231,7 +233,7 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
       totalEnergyConsume: 0,
       energyRecovery: cinema >= 2 ? PHOENIX_C2_EX2_ENERGY : 0,
       totalEnergyRecovery: exCount * (cinema >= 2 ? PHOENIX_C2_EX2_ENERGY : 0),
-      skillTableNote: '每轮强特按两段近似（第二段能量消耗未计）',
+      skillTableNote: '每轮强特按两段近似（第二段耗能 40 并入 exSpecialEnergyConsume 轮均 80）',
     })
   }
   // 蓄能附加攻击（视为强化特殊技）：重击命中来源 = 强特二段 + 长按普攻 + 终结
@@ -339,12 +341,13 @@ function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput) {
   const record = cfg as unknown as Record<string, unknown>
   const cinema = whole(Number(record.phoenixCinemaLevel ?? 0))
   const additionalActive = record.phoenixAdditionalActive === true
-  const teamCount = Math.max(1, Math.min(3, Math.round(Number(record.phoenixTeamAnomalyCount ?? 2))))
   const chargedCount = whole(Number(record.phoenixChargedCount ?? 0))
+  // 展示口径：脆弱暴击实际承载 = spec teamBuffs（公式读源面板掌控 + 档位/影画门控）；
+  // 这里按 2 档（触发额外能力的最低编成）估算给资源卡看，权威值以面板为准。
   const weakness = computePhoenixWeaknessCrit({
     anomalyMastery: Number(record.phoenixAnomalyMastery ?? 0),
     additionalActive,
-    teamAnomalyCount: teamCount,
+    teamAnomalyCount: 2,
     cinemaLevel: cinema,
   })
   return {
@@ -356,11 +359,11 @@ function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput) {
         weaknessCritRate: Math.round(weakness.rate * 100) / 100,
         weaknessCritDmg: weakness.dmg,
         c1CritDmg: cinema >= 1 ? PHOENIX_C1_CRIT_DMG : 0,
-        teamAnomalyCount: Math.min(3, teamCount + (cinema >= 6 ? 1 : 0)),
+        teamAnomalyCount: 2,
         c2BuildUpEff: cinema >= 2 ? PHOENIX_C2_BUILDUP_EFF : 0,
         emberGain: 0,
         chargedCount,
-        note: '重生/消亡状态机与队友向脆弱异常暴击未建模；余火按总量口径。',
+        note: '脆弱暴击承载 = spec teamBuffs（含队友受益）；重生/消亡状态机未建模；余火按总量口径。',
       } as PhoenixCycle,
     },
   }
@@ -376,7 +379,7 @@ function buildPhoenixResourceSections({ result }: AgentResourceSectionsInput) {
     rows: [
       { label: '核心异常精通', value: `+${cycle.coreProficiency}`, detail: '计入面板' },
       { label: '脆弱异常暴击率', value: `${cycle.weaknessCritRate}%`, detail: '30 + 0.7×(掌控-145)' },
-      { label: '脆弱异常暴伤', value: `${cycle.weaknessCritDmg}%`, detail: `队伍异常数${cycle.teamAnomalyCount}${cycle.additionalActive ? '（额外能力已触发）' : '（额外能力未触发）'}${cycle.cinemaLevel >= 1 ? ' +影画1 20' : ''}` },
+      { label: '脆弱异常暴伤', value: `${cycle.weaknessCritDmg}%`, detail: `${cycle.additionalActive ? '额外能力已触发（2档口径）' : '额外能力未触发（基础15）'}${cycle.cinemaLevel >= 1 ? ' +影画1 20' : ''}；3档/影画6 档位+1 见 teamBuffs 说明` },
       { label: '影画2焚化积蓄效率', value: `+${cycle.c2BuildUpEff}%`, detail: '×覆盖率' },
       { label: '长按普攻次数', value: `×${cycle.chargedCount}`, detail: '余火收入/90' },
     ],
@@ -385,16 +388,6 @@ function buildPhoenixResourceSections({ result }: AgentResourceSectionsInput) {
 }
 
 const settings: MechanicSetting[] = [
-  {
-    id: 'phoenix.teamAnomalyCount',
-    label: '菲欧妮·队伍异常角色数',
-    description: '额外能力档位：队伍[异常]角色数 2/3 → 脆弱暴伤 25%/40%（1=仅自己=基础15%；影画6 需求-1 按同编成档位+1 自动处理）。',
-    default: 2,
-    min: 1,
-    max: 3,
-    step: 1,
-    suffix: '名',
-  },
   {
     id: 'phoenix.chargedAttackCount',
     label: '菲欧妮·长按普攻次数覆盖',
@@ -431,7 +424,7 @@ export const phoenixMechanic: AgentMechanicModule = {
   id: 'agent:phoenix',
   agentIds: [PHOENIX_ID],
   name: '菲欧妮·脆弱',
-  description: '⚠️3.3 测试服临时录入：核心异常精通+40、脆弱异常暴击（EV 乘区，率30+0.7×(掌控-145)/伤15-40+影画1 20）；长按普攻/终结/影画6 异放（固定 releaseMultiplier，普罗米娅同款）；余火→长按普攻计数；影画2 焚化积蓄效率、影画4 喧响、蓄能附加攻击。',
+  description: '⚠️3.3 测试服临时录入：核心异常精通+40、影画2 积蓄效率×覆盖率；脆弱异常暴击走 spec teamBuffs 通用承载（公式读源面板掌控，自体+队友同吃 EV 乘区）；长按普攻/终结/影画6 异放（固定 releaseMultiplier，普罗米娅同款）；余火→长按普攻计数；影画4 喧响、蓄能附加攻击。',
   applyPanel: applyPhoenixPanel,
   buildCharConfig: buildPhoenixCharConfig,
   estimateExSpecialTime: phoenixExSpecialTime,

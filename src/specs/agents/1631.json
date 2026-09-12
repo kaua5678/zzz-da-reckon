@@ -22,10 +22,10 @@
     "影画3/5：[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2（走引擎通用命座技能等级规则）。",
     "影画4（原文）：触发极限闪避或释放苍风影猎时，无视敌人16%防御力，持续15秒。",
     "影画6（原文）：流息上限提升至180；苍风影猎最后一击额外伤害倍率固定提升900%；苍风影猎最后一击释放时获得[风起]：每秒积累10点流息，持续3秒（重复触发刷新）。",
-    "实现口径 [猜测·中]（模块 severian.ts）：① 核心被动暴伤+60、额外能力攻击+700（局内小攻击，additionalAbilityActive 门控）、影画2 +15%攻击力（同门控）、影画4 无视16%防御（覆盖率滑块 severian.c4Coverage 默认1）进 applyPanel；② 影画1 普攻暴伤+60 = basic 组 moveId 限定（patchExecutions critDmgBonus）；③ 凭风层数滑块 severian.fengfengStacks 0/1/2 默认1 → 连携1631012/终结1631013/登场1631019 行倍率固定+60/+300（damageMultiplierOverride 同区加算）；④ 苍风影猎次数 = 流息收入/100（buildExecutions 行 + estimateExSpecialTime 计时，滑块 severian.shadowHuntCount 0=自动）；⑤ 影画6 苍风影猎最后一击+900% 与[风起]流息+30并入同一计数式。",
+    "实现口径 [猜测·中]（模块 severian.ts）：① 核心被动暴伤+60、额外能力攻击+700（局内小攻击，additionalAbilityActive 门控）、影画2 +15%攻击力（同门控）、影画4 无视16%防御（覆盖率滑块 severian.c4Coverage 默认1）进 applyPanel；② 影画1 普攻暴伤+60 = basic 组 moveId 限定（patchExecutions critDmgBonus）；③ 凭风层数滑块 severian.fengfengStacks 0/1/2 默认1 → 连携1631012/终结1631013/登场1631019 行倍率固定+60/+300（damageMultiplierOverride 同区加算）；④ 苍风影猎次数 = 流息收入/100（buildExecutions 行 + estimateExSpecialTime 计时，滑块 severian.shadowHuntCount 0=自动）；⑤ 影画6 苍风影猎最后一击+900% 与[风起]流息+30并入同一计数式；⑥ **长按风刃段（1631009，满倍率818.4%，2026-09-12 补建模）**：每次强特长按持续耗能发动，倍率/耗能40/时间按满充比例滑块 severian.windBladeChargeRatio（默认1）缩放，与组合技（1631008，耗能80 走 exSpecialEnergyConsume）同轮。",
     "流息收入计数口径 [猜测·中]：疾锋四段命中×20（平A段循环计数 countBasicFinisherHits 同款）+ 烈旋×35 + 极限闪避（闪反行）×15 + 连携×50 + 终结×100 + 影画1入场+100（整局一次）+ 影画6风起+30（每次苍风影猎触发）。烁影层数转化与闪避判定成功率为操作向量，未建模。",
-    "未建模项：烁影层数状态机与自动闪避触发率；疾锋四段闪避成功强化（1631020 行存在于倍率表但无计数来源）；烈旋自动发动次数（原文由受击/烁影驱动，滑块 severian.blazingSpinCount 默认按极限闪避次数近似）；影画2「登场技替换为连携技」的招式替换；流息上限 150/180 对获取的截断（按「来多少打多少」总量口径，普罗米娅同款）。",
-    "强化特殊技能量消耗 [猜测·低]：beta 双源均无 energy_cost 数据，catalog 按全库最常见 60 兜底（import-nanoka-beta-agent.mjs），正式服复核后重导。",
+    "未建模项（含收益评估 2026-09-12）：烁影层数状态机与自动闪避触发率（操作向量，无固定乘区收益——正确跳过）；疾锋四段闪避成功强化 1631020（收益评估：低频条件触发、倍率与烈旋相同 1493.4%，主体伤害已由烈旋行承载，增量≈0）；烈旋自动发动次数（原文由受击/烁影驱动，滑块 severian.blazingSpinCount 默认按极限闪避次数近似）；影画2「登场技替换为连携技」的招式替换（收益评估：仅影响连携/登场行占比，不改总量级，暂不建模）；流息上限 150/180 对获取的截断（按「来多少打多少」总量口径，普罗米娅同款）；「能量消耗达最大时额外获得一层烁影」（烁影=操作向量）。",
+    "能量消耗 [已确认]（2026-09-12 用户纠错）：耗能在「能量消耗」param 展示行的 desc 文本里（如「(Test1)80点」），不在 param 数值字典——第一版导入漏抓、误按 60 兜底。真实值：1631008 组合技 80、1631009 风刃最大 40（import-nanoka-beta-agent.mjs 的 collectEnergyCosts 已按此提取，找法见 docs/DATA_FETCHING.md「耗能位置」）。",
     "配装推荐 [占位]：build-recommendations 条目为 1611 fallback（荆棘玫瑰4pc/啄木鸟2pc，scripts/patch-33beta-status.mjs）——beta 角色不在 nanoka 正式服索引（sync-build-recommendations 会崩）；专武未录（NO_OWNER_ENGINES 快照含本角色）。正式服上线后：重抓 full JSON → 重导 catalog → 跑 sync-build-recommendations 1631 --write --force → 补专武 ownerAgentId → 从 NO_OWNER_ENGINES 移除 → 重核版本时间线节点日期。"
   ],
   "teamBuffs": [],

@@ -11,6 +11,9 @@
  *   影画6 苍风影猎最后一击 +900% 走 damageMultiplierOverride 同区加算。
  * - [流息]→苍风影猎：buildExecutions 产行（次数=流息收入/100，定点迭代含影画6[风起]反馈），
  *   estimateExSpecialTime 计入必要时间（青衣/希格莉德同款估时-物化同源）。
+ * - 长按风刃段（1631009，818.4%）：每次强特长按持续耗能（满充 40 点），倍率/耗能/时间按
+ *   满充比例滑块缩放（2026-09-12 用户纠错补录——耗能在「能量消耗」param 行 desc 文本里，
+ *   强特组合技 80 点同源，catalog energyCost 已按真实值重导）。
  *
  * 未建模（spec notes 在册）：烁影状态机、疾锋四段闪避强化（1631020 无计数来源）、
  * 影画2「登场技替换为连携技」、流息上限截断（总量口径）。
@@ -57,6 +60,9 @@ export const SEVERIAN_SHADOW_FLOW_COST = 100
 /** moveId（param 空间） */
 export const SEVERIAN_SHADOW_MOVE_ID = '1631006' // 普通攻击：苍风影猎
 export const SEVERIAN_LIEXUAN_MOVE_ID = '1631005' // 普通攻击：烈旋
+export const SEVERIAN_WIND_BLADE_MOVE_ID = '1631009' // 强化特殊技：瞬风裂毁·长按风刃最大段（818.4%）
+/** 长按风刃满充能量消耗（原文「风刃最大能量消耗 40点」，catalog energyCost 同源） */
+export const SEVERIAN_WIND_BLADE_ENERGY = 40
 export const SEVERIAN_CHAIN_MOVE_ID = '1631012' // 连携技：冽刃收割
 export const SEVERIAN_ULT_MOVE_ID = '1631013' // 终结技：戮灭的风灾
 export const SEVERIAN_ENTRY_MOVE_ID = '1631019' // 登场技：清场时刻
@@ -206,6 +212,7 @@ function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharC
   record.severianCarrierMeta = [SEVERIAN_CHAIN_MOVE_ID, SEVERIAN_ULT_MOVE_ID, SEVERIAN_ENTRY_MOVE_ID].map(metaOf)
   record.severianShadowMeta = metaOf(SEVERIAN_SHADOW_MOVE_ID)
   record.severianLiexuanMeta = metaOf(SEVERIAN_LIEXUAN_MOVE_ID)
+  record.severianWindBladeMeta = metaOf(SEVERIAN_WIND_BLADE_MOVE_ID)
   record.severianBasicCycle = SEVERIAN_BASIC_SEGMENT_IDS.map(metaOf)
 }
 
@@ -277,18 +284,45 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
       skillTableNote: `烁影/受击自动发动 ×${liexuanCount}（按极限闪避次数近似，滑块可覆盖）`,
     })
   }
+  // 长按风刃段（1631009，收益高：满倍率 818.4%）：每次强特长按持续消耗能量（满充 40 点）发动；
+  // 满充比例滑块 severian.windBladeChargeRatio——倍率/耗能/时间均按比例缩放（总量口径）。
+  // 「能量消耗达最大时额外获得一层烁影」未建模（烁影为操作向量）。
+  const windBladeMeta = record.severianWindBladeMeta as { moveId: string; actionTime: number; damage: number } | undefined
+  const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))
+  const bladeRatio = clamp01(setting(cfg, 'severian.windBladeChargeRatio', 1))
+  if (windBladeMeta && exCount > 0 && bladeRatio > 0) {
+    executions.push({
+      moveId: windBladeMeta.moveId,
+      moveName: '强化特殊技：瞬风裂毁（长按风刃段）',
+      category: 'special',
+      element: 'wind',
+      count: exCount,
+      actionTime: windBladeMeta.actionTime,
+      comboAlignRatio: 0,
+      totalTime: exCount * bladeRatio * windBladeMeta.actionTime,
+      totalComboAlignTime: 0,
+      energyConsume: SEVERIAN_WIND_BLADE_ENERGY * bladeRatio,
+      totalEnergyConsume: exCount * SEVERIAN_WIND_BLADE_ENERGY * bladeRatio,
+      damageMultiplier: windBladeMeta.damage * bladeRatio,
+      damageMultiplierOverride: true,
+      skillTableNote: `长按持续风刃 ×${exCount}（满充比例 ${(bladeRatio * 100).toFixed(0)}%，倍率/耗能 40/时间按比例；满充额外+1烁影未建模）`,
+    })
+  }
 }
 
-/** 必做前台时间：苍风影猎 + 烈旋（估时与 buildExecutions 同源计数） */
+/** 必做前台时间：苍风影猎 + 烈旋 + 长按风刃段（估时与 buildExecutions 同源计数） */
 function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
   const record = cfg as unknown as Record<string, unknown>
   const exTime = Math.max(0, exSpecialCount) * (cfg.exSpecialActionTime ?? 0)
   const shadowMeta = record.severianShadowMeta as { actionTime: number } | undefined
   const liexuanMeta = record.severianLiexuanMeta as { actionTime: number } | undefined
+  const windBladeMeta = record.severianWindBladeMeta as { actionTime: number } | undefined
   const shadowTime = shadowMeta ? severianShadowHuntCount(cfg, state) * shadowMeta.actionTime : 0
   const liexuanTime = liexuanMeta ? severianLiexuanCount(cfg) * liexuanMeta.actionTime : 0
+  const bladeRatio = clamp01(setting(cfg, 'severian.windBladeChargeRatio', 1))
+  const bladeTime = windBladeMeta ? Math.max(0, exSpecialCount) * bladeRatio * windBladeMeta.actionTime : 0
   return {
-    necessaryTime: exTime + shadowTime + liexuanTime,
+    necessaryTime: exTime + shadowTime + liexuanTime + bladeTime,
     comboAlignTime: exTime * (cfg.exSpecialComboAlignRatio ?? 0),
   }
 }
@@ -378,6 +412,16 @@ const settings: MechanicSetting[] = [
     max: 60,
     step: 1,
     suffix: '次',
+  },
+  {
+    id: 'severian.windBladeChargeRatio',
+    label: '赛维里安·长按风刃满充比例',
+    description: '强化特殊技长按持续风刃段（1631009，满倍率818.4%）：每次强特按此比例满充（倍率/耗能40点/时间同缩放）。原文「长按可在炮击前持续消耗能量不断发动风刃，能量消耗达最大时额外获得一层烁影」。',
+    default: 1,
+    min: 0,
+    max: 1,
+    step: 0.05,
+    suffix: '%',
   },
   {
     id: 'severian.c4Coverage',

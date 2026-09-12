@@ -142,10 +142,42 @@ describe('赛维里安（1631）⚠️3.3 测试服临时录入', () => {
     expect(calc6.teamTotalDamage.value).toBeGreaterThan(d0)
   })
 
-  it('模块注册与滑块：4 个滑块齐全，苍风影猎次数覆盖生效', async () => {
+  it('长按风刃段（1631009，2026-09-12 用户纠错补录）：随强特产行，倍率/耗能按满充比例滑块缩放', async () => {
+    const { config, catalog } = await setup(['1631', '1251', ''], 0)
+    const baseBlade = catalog.catalog!.agentSkills.find(s => s.agentId === '1631')!
+      .categories.find(c => c.id === 'special')!.moves.find(m => m.id === '1631009')!
+      .rows.find(r => r.id === 'damage')!.values[0]
+    expect(baseBlade).toBeGreaterThan(800) // 满倍率 818.4%（高收益段，必须建模）
+    // catalog 耗能真实值（param 行 desc 文本提取）
+    const bladeEc = catalog.catalog!.agentSkills.find(s => s.agentId === '1631')!
+      .categories.find(c => c.id === 'special')!.moves.find(m => m.id === '1631009')!.energyCost
+    expect(bladeEc?.['Energy Cost']).toBe('40')
+    const exEc = catalog.catalog!.agentSkills.find(s => s.agentId === '1631')!
+      .categories.find(c => c.id === 'special')!.moves.find(m => m.id === '1631008')!.energyCost
+    expect(exEc?.['Energy Cost']).toBe('80')
+
+    let calc = useResourceCalc()
+    let blade = calc.resourceResult.value!.characters.find(c => c.agentId === '1631')!
+      .executions.find(e => e.moveId === '1631009')!
+    expect(blade).toBeTruthy()
+    expect(blade.count).toBeGreaterThan(0) // 强特次数驱动
+    expect(blade.damageMultiplier).toBeCloseTo(baseBlade, 3) // 默认满充比例 1
+    expect((blade as any).damageMultiplierOverride).toBe(true)
+    expect(blade.totalEnergyConsume).toBeCloseTo(blade.count * 40, 5)
+
+    // 满充比例 0.5：倍率/耗能/时间同缩放
+    config.setMechanicSetting('severian.windBladeChargeRatio', 0.5)
+    calc = useResourceCalc()
+    blade = calc.resourceResult.value!.characters.find(c => c.agentId === '1631')!
+      .executions.find(e => e.moveId === '1631009')!
+    expect(blade.damageMultiplier).toBeCloseTo(baseBlade * 0.5, 3)
+    expect(blade.totalEnergyConsume).toBeCloseTo(blade.count * 20, 5)
+  })
+
+  it('模块注册与滑块：5 个滑块齐全，苍风影猎次数覆盖生效', async () => {
     expect(severianMechanic.agentIds).toContain('1631')
     expect((severianMechanic.settings ?? []).map(s => s.id).sort()).toEqual([
-      'severian.blazingSpinCount', 'severian.c4Coverage', 'severian.fengfengStacks', 'severian.shadowHuntCount',
+      'severian.blazingSpinCount', 'severian.c4Coverage', 'severian.fengfengStacks', 'severian.shadowHuntCount', 'severian.windBladeChargeRatio',
     ])
     const { config } = await setup(['1631', '1251', ''], 0)
     config.setMechanicSetting('severian.shadowHuntCount', 7)

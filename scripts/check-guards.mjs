@@ -112,10 +112,10 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts',  // 度量文件（AGENT_BRANCH_FILE）；分支落点已随收线刀进 resourceCalc/convergence.ts
-    frozen: 8,  // 2026-09-12 #10 四批：53→52(栈轴 1551)→48(promia)→39(四反馈块)→8(runCalcRound 收线刀整体外迁，cfg-merge 链/backstage/明王等随本体进落点)
+    frozen: 0,  // 2026-09-12 #10 五批：53→52(栈轴 1551)→48(promia)→39(四反馈块)→8(runCalcRound 收线刀)→0(本文件末 8 处真清偿，见 AGENT_BRANCH_BASELINE 注释的口径警告)
     target: 0,
     due: '2026-12-31',
-    plan: '抽 resourceCalc/convergence.ts（runCalcRound/runOuterLoop 移出）后有落点，再逐角色迁 applyTeamConfig 三阶段钩子（架构评审 #10 → #2）',
+    plan: '本文件已清零。⚠ 下一步须先把度量范围扩到整个 resourceCalc/ 目录（现 convergence.ts 持 45 处，位移冒充清偿），再逐角色迁 applyTeamConfig 三阶段钩子（架构评审 #10 → #2）',
   },
   {
     id: 'core agentId 分支',
@@ -214,8 +214,21 @@ export function auditDocTable(root = ROOT) {
 // ---- 判据 2：useResourceCalc agentId 分支棘轮 ----
 
 export const AGENT_BRANCH_FILE = 'src/composables/useResourceCalc.ts'
-/** 2026-08-30 冻结基线：规则 6 生效前的历史存量（按「含 agentId ===/!== 的行数」计） */
-export const AGENT_BRANCH_BASELINE = 8
+/**
+ * 2026-08-30 冻结基线：规则 6 生效前的历史存量（按「含 agentId ===/!== 的行数」计）。
+ *
+ * 2026-09-12 下调 8→0（#10 真清偿，本文件的最后 8 处）：橘福福八面威风 → `specPanelBuffs`
+ * 的 applyTeamConfig；卢西娅 4命帷幕 + 回血→伊德海莉 → `luciaElowen` 的 applyTeamConfig；
+ * 四个轴窗口覆盖（般岳/仪玄/佩洛伊斯/可琳）→ 新钩子 `axisWindowOverlays`；交互栏补齐槽位 →
+ * 声明 `producesInteractionTopUp`。**本文件（编排层）现已零 agentId 特判**。
+ *
+ * ⚠ 口径警告（留给下一个 agent，别被这个 0 骗了）：本棘轮**只度量 useResourceCalc.ts 一个文件**，
+ * 而 #10 把代码搬进了 `resourceCalc/`，特判随之外迁——实测编排层四文件合计
+ * 86(4c4bf5d~1) → 86(502af1c) → **79(本次)**，即 53→8 的「大降」绝大部分是**位移不是清偿**
+ * （convergence.ts 现持 45 处）。真正的编排层棘轮应改为**度量整个 resourceCalc/ 目录**，
+ * 否则把分支搬个家就能「降基线」。见账本 Open 段「棘轮口径失真」。
+ */
+export const AGENT_BRANCH_BASELINE = 0
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。
