@@ -234,13 +234,23 @@ export const AGENT_BRANCH_DIR = 'src/composables/resourceCalc'
 /** 单文件入口（也在度量范围内；历史上是唯一度量点） */
 export const AGENT_BRANCH_FILE = 'src/composables/useResourceCalc.ts'
 
-/** 编排层被度量的全部文件（入口 + 目录内所有 .ts；__tests__ 不在该目录下） */
+/**
+ * 编排层被度量的全部文件（入口 + 目录内所有 .ts）。
+ *
+ * 只扫**目录直属**的 .ts（不递归），故 `resourceCalc/__tests__/` 天然不在内——
+ * 棘轮量的是执行域源码，测试文件里的 `agentId === '...'` 是脚手架不是特判。
+ * （2026-09-12 勘误：上一版注释写成「__tests__ 不在该目录下」，实际它在，只是被子目录层级跳过；
+ *   结论没错但理由是错的，按规则 16 改正——错理由比没理由更危险。）
+ */
 export function listAgentBranchFiles(root = ROOT) {
   const dir = join(root, AGENT_BRANCH_DIR)
   const files = [AGENT_BRANCH_FILE]
   if (existsSync(dir)) {
     for (const n of readdirSync(dir).sort()) {
-      if (n.endsWith('.ts')) files.push(`${AGENT_BRANCH_DIR}/${n}`)
+      if (!n.endsWith('.ts')) continue
+      const p = join(dir, n)
+      if (!statSync(p).isFile()) continue      // 显式排除 __tests__/ 等子目录（不递归）
+      files.push(`${AGENT_BRANCH_DIR}/${n}`)
     }
   }
   return files
