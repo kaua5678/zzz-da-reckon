@@ -25,6 +25,7 @@ import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { SIGRID_LANCE_SEGMENT_IDS } from '@/mechanics/agents/sigrid'
 import { HUGO_EX_VERDICT_MOVE_ID, HUGO_ULT_MOVE_ID, HUGO_EX_FINAL_ACTION_TIME } from '@/mechanics/agents/hugo'
 import { extractSkillExecutions, findMoveById } from './helpers'
+import { inferSkillDamageTarget } from '@/core/damage'
 
 export function createConvergenceRoundInputs(deps: {
   configStore: ReturnType<typeof useConfigStore>
@@ -344,4 +345,120 @@ export function computePromiaNextRoundFeedback(deps: {
     }
   }
   return { promiaTriggerHitsNext, promiaTeammateReleasesNext, promiaReleaseDecibelNext }
+}
+
+/**
+ * 零号·安比「下一轮反馈」（#10 第 3 批租户，自 runCalcRound 逐字搬）：
+ * 队友追加攻击命中 → 白雷层数（16.667/次、33.333 折 1 层、ICD=floor(战斗/5)、默认计 75%）。
+ */
+export function computeAnbyNextRoundFeedback(deps: {
+  az: TeamResourceResult
+  catalogStore: ReturnType<typeof useCatalogStore>
+  battleTime: number | undefined
+}): { anbyZeroTeammateWlNext: number } {
+  const { az, catalogStore, battleTime } = deps
+  let anbyZeroTeammateWlNext = 0
+  const hits = az.characters
+    .filter(c => c.agentId !== '1381')
+    .reduce((sum, c) => {
+      const skills = catalogStore.getAgentSkills(c.agentId)
+      return sum + (c.executions ?? []).reduce((a, e) => {
+        if ((e as any).skillDamageTarget === 'additionalAttack') return a + (e.count ?? 0)
+        // resourceResult 行上没有现成标记：按 catalog moveId 现场推断（同伤害池 infer 口径）
+        for (const cat of skills?.categories ?? []) {
+          const mv = (cat.moves ?? []).find(m => String(m.id) === String(e.moveId))
+          if (mv && inferSkillDamageTarget(cat, mv) === 'additionalAttack') return a + (e.count ?? 0)
+        }
+        return a
+      }, 0)
+    }, 0)
+  const icdCap = Math.floor((battleTime ?? 180) / 5)
+  const triggers = Math.min(hits, icdCap)
+  if (az.characters.some(c => c.agentId === '1381')) {
+    anbyZeroTeammateWlNext = Math.floor(triggers * (16.667 / 33.333) * 0.75)
+  }
+  return { anbyZeroTeammateWlNext }
+}
+
+/**
+ * 露西 C6「下一轮反馈」（#10 第 3 批租户）：队友强特合计 + 回旋预估。
+ * 与普罗米娅不同：写回 characters **每轮都做**（无首轮守卫——消费端读的就是本轮估计值）。
+ */
+export function computeLucyNextRoundFeedback(deps: {
+  /** runCalcRound 本地加工态数组（merged 对象；本函数读 lucyCinemaLevel + 无条件写回两个估计字段） */
+  characters: Array<{ agentId: string }>
+  rr: TeamResourceResult
+}): { lucyTeammateExNext: number } {
+  const { characters, rr } = deps
+  let lucyTeammateExNext = 0
+  let mateEx = 0
+  for (const ch of rr.characters) {
+    if (ch.agentId !== '1151') mateEx += ch.exSpecialCount ?? 0
+  }
+  lucyTeammateExNext = mateEx
+  const lucyCh = rr.characters.find(c => c.agentId === '1151')
+  if (lucyCh) {
+    const cinema = Math.max(0, Math.floor(Number((characters.find(c => c.agentId === '1151') as any)?.lucyCinemaLevel ?? 0)))
+    const spins = Math.max(0, Math.floor(lucyCh.exSpecialCount ?? 0))
+      + (cinema >= 2 ? Math.max(0, Math.floor(lucyCh.chainCountTotal ?? 0)) + Math.max(0, Math.floor(lucyCh.ultimateCount ?? 0)) : 0)
+      + (cinema >= 6 ? mateEx : 0)
+    for (const c of characters) {
+      ;(c as any).lucyCheerSpinsEstimate = spins
+      ;(c as any).lucyTeammateExTotal = mateEx
+    }
+  }
+  return { lucyTeammateExNext }
+}
+
+/**
+ * 薇薇安落羽生花双源「下一轮注入」（#10 第 3 批租户）：
+ * 源1 = 全队强特命中（含自己，同一招式至多一次由行计数保证）；源2 = 全队异常触发次数。首轮直接写回。
+ */
+export function computeVivianNextRoundFeedback(deps: {
+  characters: Array<{ agentId: string }>
+  rr: TeamResourceResult
+  ap1: AnomalyPoolResult | null
+  prevVivianTeamEx: number
+}): { vivianTeamExNext: number; vivianAnomalyTriggersNext: number } {
+  const { characters, rr, ap1, prevVivianTeamEx } = deps
+  let vivianTeamExNext = 0
+  let vivianAnomalyTriggersNext = 0
+  if (characters.some(c => c.agentId === '1331')) {
+    vivianTeamExNext = rr.characters.reduce((sum, ch) => sum + (ch.exSpecialCount ?? 0), 0)
+    vivianAnomalyTriggersNext = (ap1?.perElement ?? []).reduce(
+      (sum, prog) => sum + (prog.triggerCount ?? 0),
+      0,
+    )
+    // 首轮无 prev → 用本轮值直接注入（buildExecutions 读 cfg）
+    if (prevVivianTeamEx <= 0) {
+      for (const c of characters) {
+        if (c.agentId === '1331') {
+          ;(c as any).vivianTeamExTotal = vivianTeamExNext
+          ;(c as any).vivianAnomalyTriggerTotal = vivianAnomalyTriggersNext
+        }
+      }
+    }
+  }
+  return { vivianTeamExNext, vivianAnomalyTriggersNext }
+}
+
+/** 艾莲影画4 冻结次数「下一轮反馈」（#10 第 3 批租户）：读异常池 ice 触发数；薇薇安同款首轮守卫。 */
+export function computeEllenNextRoundFeedback(deps: {
+  characters: Array<{ agentId: string }>
+  ap1: AnomalyPoolResult | null
+  prevEllenFreezeCount: number
+}): { ellenFreezeCountNext: number } {
+  const { characters, ap1, prevEllenFreezeCount } = deps
+  let ellenFreezeCountNext = 0
+  if (characters.some(c => c.agentId === '1191')) {
+    ellenFreezeCountNext = ap1?.perElement?.find(p => p.element === 'ice')?.triggerCount ?? 0
+    if (prevEllenFreezeCount <= 0) {
+      for (const c of characters) {
+        if (c.agentId === '1191') {
+          ;(c as any).ellenFreezeCount = ellenFreezeCountNext
+        }
+      }
+    }
+  }
+  return { ellenFreezeCountNext }
 }

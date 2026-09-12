@@ -1,5 +1,4 @@
 import { HUGO_EX_VERDICT_MOVE_ID, HUGO_ULT_MOVE_ID, isHugoEndsWindowMove, hugoMoveActionTime } from '@/mechanics/agents/hugo'
-import { inferSkillDamageTarget } from '@/core/damage'
 import { estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
 import { computeTeamVeilCountTotal } from '@/mechanics/teamVeil'
 import { computed } from 'vue'
@@ -28,7 +27,7 @@ import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import { applyNormaHatChain } from './resourceCalc/normaHatChain'
 import { initialCalcRoundThreads, threadsAfterNullRound, type CalcRoundThreads } from './resourceCalc/roundThreads'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
-import { computePromiaNextRoundFeedback, createConvergenceRoundInputs } from './resourceCalc/convergence'
+import { computeAnbyNextRoundFeedback, computeEllenNextRoundFeedback, computeLucyNextRoundFeedback, computePromiaNextRoundFeedback, computeVivianNextRoundFeedback, createConvergenceRoundInputs } from './resourceCalc/convergence'
 import { computeLuciaHealPctPerUlt } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueMingwangStacks, computeBanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
@@ -1157,53 +1156,13 @@ export function useResourceCalc() {
 
     // 零号·安比：队友追加攻击命中 → 银星充能（每次 16.667；每满 1/3=33.333 得 1 层白雷）；
     // 5 秒内最多触发一次（ICD 上限 = floor(战斗时长/5)）；默认只计 75%
-    let anbyZeroTeammateWlNext = 0
-    {
-      const az = adj2 ?? rr
-      const hits = az.characters
-        .filter(c => c.agentId !== '1381')
-        .reduce((sum, c) => {
-          const skills = catalogStore.getAgentSkills(c.agentId)
-          return sum + (c.executions ?? []).reduce((a, e) => {
-            if ((e as any).skillDamageTarget === 'additionalAttack') return a + (e.count ?? 0)
-            // resourceResult 行上没有现成标记：按 catalog moveId 现场推断（同伤害池 infer 口径）
-            for (const cat of skills?.categories ?? []) {
-              const mv = (cat.moves ?? []).find(m => String(m.id) === String(e.moveId))
-              if (mv && inferSkillDamageTarget(cat, mv) === 'additionalAttack') return a + (e.count ?? 0)
-            }
-            return a
-          }, 0)
-        }, 0)
-      const icdCap = Math.floor((configStore.enemy.battleTime ?? 180) / 5)
-      const triggers = Math.min(hits, icdCap)
-      if (az.characters.some(c => c.agentId === '1381')) {
-        anbyZeroTeammateWlNext = Math.floor(triggers * (16.667 / 33.333) * 0.75)
-      }
-    }
+    const { anbyZeroTeammateWlNext } = computeAnbyNextRoundFeedback({ az: adj2 ?? rr, catalogStore, battleTime: configStore.enemy.battleTime })
 
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
     const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly, aliceSparkThisRound)
 
     // 露西 C6：队友强特合计 + 回旋预估（供下一轮 C1 回能）
-    let lucyTeammateExNext = 0
-    {
-      let mateEx = 0
-      for (const ch of rr.characters) {
-        if (ch.agentId !== '1151') mateEx += ch.exSpecialCount ?? 0
-      }
-      lucyTeammateExNext = mateEx
-      const lucyCh = rr.characters.find(c => c.agentId === '1151')
-      if (lucyCh) {
-        const cinema = Math.max(0, Math.floor(Number((characters.find(c => c.agentId === '1151') as any)?.lucyCinemaLevel ?? 0)))
-        const spins = Math.max(0, Math.floor(lucyCh.exSpecialCount ?? 0))
-          + (cinema >= 2 ? Math.max(0, Math.floor(lucyCh.chainCountTotal ?? 0)) + Math.max(0, Math.floor(lucyCh.ultimateCount ?? 0)) : 0)
-          + (cinema >= 6 ? mateEx : 0)
-        for (const c of characters) {
-          ;(c as any).lucyCheerSpinsEstimate = spins
-          ;(c as any).lucyTeammateExTotal = mateEx
-        }
-      }
-    }
+    const { lucyTeammateExNext } = computeLucyNextRoundFeedback({ characters, rr })
 
     // 队伍级机制·postRound 阶段：本轮次数已收敛 → 为下一轮注入派生量。
     // `lighterTeamEnergyNext` 仍需在编排层线程化（作为下一轮 converge 的输入），
@@ -1353,37 +1312,10 @@ export function useResourceCalc() {
         }
       }
     }
-    let vivianTeamExNext = 0
-    let vivianAnomalyTriggersNext = 0
-    if (characters.some(c => c.agentId === '1331')) {
-      vivianTeamExNext = rr.characters.reduce((sum, ch) => sum + (ch.exSpecialCount ?? 0), 0)
-      vivianAnomalyTriggersNext = (ap1?.perElement ?? []).reduce(
-        (sum, prog) => sum + (prog.triggerCount ?? 0),
-        0,
-      )
-      // 首轮无 prev → 用本轮值直接注入（buildExecutions 读 cfg）
-      if (prevVivianTeamEx <= 0) {
-        for (const c of characters) {
-          if (c.agentId === '1331') {
-            ;(c as any).vivianTeamExTotal = vivianTeamExNext
-            ;(c as any).vivianAnomalyTriggerTotal = vivianAnomalyTriggersNext
-          }
-        }
-      }
-    }
+    const { vivianTeamExNext, vivianAnomalyTriggersNext } = computeVivianNextRoundFeedback({ characters, rr, ap1, prevVivianTeamEx })
 
     // 艾莲影画4 冻结次数：读异常池 ice 触发数（下一轮 cfg 生效，薇薇安同款反馈）
-    let ellenFreezeCountNext = 0
-    if (characters.some(c => c.agentId === '1191')) {
-      ellenFreezeCountNext = ap1?.perElement?.find(p => p.element === 'ice')?.triggerCount ?? 0
-      if (prevEllenFreezeCount <= 0) {
-        for (const c of characters) {
-          if (c.agentId === '1191') {
-            ;(c as any).ellenFreezeCount = ellenFreezeCountNext
-          }
-        }
-      }
-    }
+    const { ellenFreezeCountNext } = computeEllenNextRoundFeedback({ characters, ap1, prevEllenFreezeCount })
 
     return {
       resourceResult: rrShown,
