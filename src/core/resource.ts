@@ -274,7 +274,7 @@ export const TIME_FOLD_MAX_PASSES = 32
  * | S1 | 资源账本预解（内层不动点） | `runInnerLoop` → `iterate`（`helpers.ts#iterate`，四步见其函数头） | `cfg[]` + 种子 → `IterationState[]` | 判稳 = 强特/终结次数 + `basicAttackTime` **严格相等**；跑满/入环 → 规范停点（冷热解耦） |
  * | S2 | 时间预算折叠（外层不动点） | `runFoldLoop` | states → states（`cfg.timeBudgetExcess`/`timeBudgetRefund` 折入） | `Σ前台行 ≡ 账本`；`+=` 折正超出、负差 refund 回填；上限 `TIME_FOLD_MAX_PASSES` |
  * | S3 | 可行化决策 | `useResourceCalc#stageResolveFeasibility`（轴退化 + 降配，2026-09-11 抽出） | 整轮结果 → `{r, axisFallback, interactionScale}` | 三臂不更差（截断/超预算/留白各 1s）+ 枚举取最大可行；锁窗一律不动 |
- * | S4 | 装配 + 可行化截断 | 本函数体内的逐槽 `configs.map`（`truncateExecutionsToFrontline`） | states + cfg → `characters[]`（行/资源/时间） | 平A行不参与截断；后台行不占前台；整数装包；`overflowSeconds`/`truncationCuts` 逐行上报 |
+ * | S4 | 装配 + 可行化截断 | `stageAssembleSlot`（#8 分刀自逐槽 `configs.map` 抽出；截断在 `truncateExecutionsToFrontline`） | states + cfg → `characters[]`（行/资源/时间） | 平A行不参与截断；后台行不占前台；整数装包；`overflowSeconds`/`truncationCuts` 逐行上报 |
  * | S5 | 物化输出 | 本函数尾部的 `return` | 上面各阶段 → `TeamResourceResult` | 资源/计数取**未截断账本**、伤害/失衡取**截断后行**（二者不自洽是已知债务，见 DEBT_REGISTRY「截断不回灌资源循环」） |
  *
  * 顺序不可交换：S1 定次数/资源 → S2 让账本与物化行自洽 → S3 决定"撑不下时怎么退" → S4 削行 →
@@ -847,7 +847,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   const truncationCuts: TruncationCut[] = []
   /** 各槽截断秒数账（requested/kept/cutSeconds）：存活率 = kept/requested，难度轴按它缩交互次数 */
   const truncationBySlot: { slot: number; requested: number; kept: number; cutSeconds: number }[] = []
-  const characters: CharacterResourceResult[] = configs.map((cfg, i) => {
+  // ===== S4 装配段本体（#8 分刀，2026-09-12 零行为抽出）=====
+  // 自 `configs.map` 回调一比一搬入：累加（timeTruncatedSeconds / truncationCuts / truncationBySlot）
+  // 与 cfg 写回的**每槽执行顺序**、`cuts 非空才 push` 的条件守卫全在循环 wrapper 原样保持；
+  // 判据 = timeGolden / timeFillRatchet delta 0（规则 10）。骨架先例：runFoldLoop / runBillyFinalize。
+  const stageAssembleSlot = (cfg: (typeof configs)[number], i: number) => {
     const state = states[i]
     const chainCountTotal = state.chainCountTotal
 
@@ -949,16 +953,6 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       }))
     }
     const executions = giftRowsHere.length > 0 ? [...truncated.executions, ...giftRowsHere] : truncated.executions
-    timeTruncatedSeconds += truncated.cutSeconds
-    if (truncated.cuts.length > 0) {
-      for (const c of truncated.cuts) truncationCuts.push({ slot: cfg.slot, ...c })
-      truncationBySlot.push({
-        slot: cfg.slot,
-        requested: truncated.usedSeconds,
-        kept: Math.max(0, truncated.usedSeconds - truncated.cutSeconds),
-        cutSeconds: truncated.cutSeconds,
-      })
-    }
     // 显示口径统一：前台时间 = **前台**执行行 ΣtotalTime（后台行不占共享轴，如莱卡恩围猎蓄力；
     // 含合轴，机制改写行/倍率表行都在内），后台 = 总时间 - 前台。
     // 装配后追加的赠送行（诺姆赠链/琉音赠大）不在 Σ行里——展示层由 `normalizeDisplayTime`
@@ -978,7 +972,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       preModuleExecutions,
     }) ?? {}
 
-    return {
+    const result = {
       slot: cfg.slot,
       agentId: cfg.agentId,
       agentName: cfg.agentId, // 名称由上层填充
@@ -1000,6 +994,25 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       totalStunBuildUp: 0, // 后续由 damage.ts 补充
       ...mechanicResult,
     }
+    return {
+      result,
+      cutSeconds: truncated.cutSeconds,
+      // 守卫原样：cut 非空才记 cuts/账（与抽取前 push 条件一致）
+      cuts: truncated.cuts.length > 0 ? truncated.cuts.map(c => ({ slot: cfg.slot, ...c })) : [],
+      bySlotEntry: truncated.cuts.length > 0 ? {
+        slot: cfg.slot,
+        requested: truncated.usedSeconds,
+        kept: Math.max(0, truncated.usedSeconds - truncated.cutSeconds),
+        cutSeconds: truncated.cutSeconds,
+      } : null,
+    }
+  }
+  const characters: CharacterResourceResult[] = configs.map((cfg, i) => {
+    const s = stageAssembleSlot(cfg, i)
+    timeTruncatedSeconds += s.cutSeconds
+    for (const c of s.cuts) truncationCuts.push(c)
+    if (s.bySlotEntry) truncationBySlot.push(s.bySlotEntry)
+    return s.result
   })
 
   // 溢出 = **被时间线截断掉的秒数**（装配阶段实测）：为了塞进战斗时间砍掉了多少动作。
