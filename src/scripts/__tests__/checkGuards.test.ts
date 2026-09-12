@@ -179,12 +179,15 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
   })
 
   it('到期但已有进展 → overdue 而非 stale（有还款就不骂）', () => {
-    // 只让第一条「已还一部分」，其余保持零进展
+    // 只让第一条「已还一部分」，其余保持零进展。
+    // ⚠ 还款量必须**相对 frozen** 取（旧写法硬编码 -13：2026-09-12 agentId 条目 frozen 降到 8 后
+    //   造出负数读数，语义塌掉）。取 1/3 保证 0 < 已还 < frozen−target 对任何 frozen>target≥0 成立。
     const first = RATCHET_BURNDOWN[0]
-    const partial = (id: string) => (id === first.id ? first.frozen - 13 : atFrozen(id))
+    const paid = Math.max(1, Math.ceil(first.frozen / 3))
+    const partial = (id: string) => (id === first.id ? first.frozen - paid : atFrozen(id))
     const rows = computeBurndown(partial, '2028-01-15')
     const agent = rows.find(r => r.id === first.id)!
-    expect(agent.progress).toBe(13)
+    expect(agent.progress).toBe(paid)
     expect(agent.stale).toBe(false)
     expect(agent.overdue).toBe(true)
     expect(agent.remaining).toBe(agent.current - agent.target)

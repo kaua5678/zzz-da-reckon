@@ -111,8 +111,8 @@ export function scanFetchStubs(root = ROOT) {
 export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
-    file: 'src/composables/useResourceCalc.ts',
-    frozen: 39,  // 2026-09-12 #10 三批租户：53→52(1551 栈轴)→48(1541 promia 块)→39(第 3 批：1381 安比/1151 露西/1331 薇薇安/1191 艾莲 四反馈块迁入 convergence.ts)
+    file: 'src/composables/useResourceCalc.ts',  // 度量文件（AGENT_BRANCH_FILE）；分支落点已随收线刀进 resourceCalc/convergence.ts
+    frozen: 8,  // 2026-09-12 #10 四批：53→52(栈轴 1551)→48(promia)→39(四反馈块)→8(runCalcRound 收线刀整体外迁，cfg-merge 链/backstage/明王等随本体进落点)
     target: 0,
     due: '2026-12-31',
     plan: '抽 resourceCalc/convergence.ts（runCalcRound/runOuterLoop 移出）后有落点，再逐角色迁 applyTeamConfig 三阶段钩子（架构评审 #10 → #2）',
@@ -215,7 +215,7 @@ export function auditDocTable(root = ROOT) {
 
 export const AGENT_BRANCH_FILE = 'src/composables/useResourceCalc.ts'
 /** 2026-08-30 冻结基线：规则 6 生效前的历史存量（按「含 agentId ===/!== 的行数」计） */
-export const AGENT_BRANCH_BASELINE = 39
+export const AGENT_BRANCH_BASELINE = 8
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。
@@ -411,7 +411,7 @@ export const DEBT_REGISTRY = {
   // rowEnergyTotal 上方「能量收入行级Σ」，生效测试 energyRowParity.test.ts）。
   // 2026-09-07：横向动作覆盖缺斤少两（用户实测口径）——物化执行行少于实战动作序列，竖向字段
   // 已行级而横向无逐角色锚点。修复 = 实数化专项逐角色收口（弹刀反推/合轴自动填充同族手法）。
-  'src/composables/useResourceCalc.ts:轮换动作覆盖实数化': { since: '2026-09-07', due: '实数化专项逐角色收口（1481/1371 前例），以归档对拍定每角色动作锚点' },
+  'src/composables/resourceCalc/convergence.ts:轮换动作覆盖实数化': { since: '2026-09-07', due: '实数化专项逐角色收口（1481/1371 前例），以归档对拍定每角色动作锚点' },
   // 2026-09-10（账本 Open #6：spec JSON 的 debt: 标记纳入扫描）：柚叶转积蓄的贡献行挂柚叶槽位，
   // 若其积蓄在目标异常池占比最大会被误判为施加者——实际异常角色积蓄远大于支援柚叶，属已接受近似。
   'src/specs/agents/1411.json:贡献挂柚叶槽位': { since: '2026-09-10', due: '施加者判定按「除柚叶外最大贡献者」收口时销号；无专项计划则维持近似（已在 note 明示可接受）' },
