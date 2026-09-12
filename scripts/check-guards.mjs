@@ -112,7 +112,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts',
-    frozen: 53,
+    frozen: 52,  // 2026-09-12 #10 首批租户：buildStackAxes(1551 特判) 迁入 resourceCalc/convergence.ts 53→52
     target: 0,
     due: '2026-12-31',
     plan: '抽 resourceCalc/convergence.ts（runCalcRound/runOuterLoop 移出）后有落点，再逐角色迁 applyTeamConfig 三阶段钩子（架构评审 #10 → #2）',
@@ -215,7 +215,7 @@ export function auditDocTable(root = ROOT) {
 
 export const AGENT_BRANCH_FILE = 'src/composables/useResourceCalc.ts'
 /** 2026-08-30 冻结基线：规则 6 生效前的历史存量（按「含 agentId ===/!== 的行数」计） */
-export const AGENT_BRANCH_BASELINE = 53
+export const AGENT_BRANCH_BASELINE = 52
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。
