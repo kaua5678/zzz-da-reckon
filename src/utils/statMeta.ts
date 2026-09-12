@@ -1,3 +1,4 @@
+import { localized } from '@/utils/format'
 import { DAMAGE_ELEMENTS, ELEMENT_LABEL, ENEMY_DEBUFF_KIND_CONFIG, LEGACY_ENEMY_DEBUFF_STAT_IDS, enemyDebuffStatId, type EnemyDebuffKind } from '@/utils/enemyDebuffStats'
 
 export type FormulaZone =
@@ -254,11 +255,8 @@ export function getGlobalBuffStatOptions(display?: Record<string, any>) {
     label: zone,
     key: zone,
     children: items.map(item => {
-      const entry = display?.[item.value]
-      const lbl = entry?.label
-      let label = item.label
-      if (typeof lbl === 'string') label = lbl
-      else if (lbl && typeof lbl === 'object') label = lbl.zhCN ?? lbl.en ?? item.label
+      // LocalizedString 解析走单一事实源（@fact utils/format#localized）；空串 zhCN 不回退 en
+      const label = localized(display?.[item.value]?.label, item.label)
       return {
         label: `${label} (${item.value})`,
         value: item.value,
