@@ -525,6 +525,16 @@ export function computePanelPhases(
   const xideAdditionalActive = xideSlot >= 0
     ? evalAdditionalAbility(team, xideSlot, xideAgent, getAgentSpec('1461')?.additionalAbility) === true
     : false
+  // 菲欧妮（1641，⚠️3.3 测试服临时录入）额外能力：队伍存在其他[异常]/同阵营角色时触发
+  // ——脆弱暴伤档位（spec teamBuffs phoenix.weakness_anomaly_crit_dmg_tier2/tier3，SOP §6.2 接线）；
+  // 3 档需队伍[异常]角色数≥3（含她自己；影画6 需求-1 = 有效数+1，2026-09-12 组队对账落地）
+  const phoenixSlot = team.find(member => member.agentId === '1641')?.slot ?? -1
+  const phoenixAgent = phoenixSlot >= 0 ? catalogStore.getAgent('1641') ?? null : null
+  const phoenixAdditionalActive = phoenixSlot >= 0
+    ? evalAdditionalAbility(team, phoenixSlot, phoenixAgent, getAgentSpec('1641')?.additionalAbility) === true
+    : false
+  const phoenixCinema = phoenixSlot >= 0 ? (configStore.team[phoenixSlot]?.cinemaLevel ?? 0) : 0
+  const phoenixAnomalyCount = team.filter(m => m.agent?.specialty === 'anomaly').length + (phoenixCinema >= 6 ? 1 : 0)
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
     .filter(buff => buff.id !== 'rina.additional_electric_damage' || rinaAdditionalActive)
     .filter(buff => buff.id !== 'lighter.additional_morale_ice_fire_dmg' || lighterAdditionalActive)
@@ -541,6 +551,8 @@ export function computePanelPhases(
     .filter(buff => buff.id !== 'orphie.additional_def_ignore' || orphieAdditionalActive)
     .filter(buff => buff.id !== 'seed.core_vanguard_bright_attack' || xideAdditionalActive)
     .filter(buff => buff.id !== 'seed.cinema_2_encirclement_def_ignore' || xideAdditionalActive)
+    .filter(buff => buff.id !== 'phoenix.weakness_anomaly_crit_dmg_tier2' || phoenixAdditionalActive)
+    .filter(buff => buff.id !== 'phoenix.weakness_anomaly_crit_dmg_tier3' || (phoenixAdditionalActive && phoenixAnomalyCount >= 3))
 
   const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
   for (const buff of allTeammateBuffs) {

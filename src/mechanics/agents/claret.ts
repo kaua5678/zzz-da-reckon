@@ -87,7 +87,7 @@ export const RESIDUAL_EDGE_SHARP_CRIT_DMG = 25
 /**
  * 核心被动·初始转化：每 1% **初始**暴击伤害 → 初始暴击率 +0.35%。
  *
- * @fact agent:1611/初始暴伤转暴击 口径: 每1%初始暴击伤害→初始暴击率+0.35%（读局外面板 critDmg，局内暴伤拐如珂蕾妲潜能不参与转化）；锋御模板基础暴伤=0，初始暴伤来自副词条/主词条/驱动盘 | 据 nanoka live3.2原文@2026-09（此前误记「未建模，初始暴伤≈0 无影响」——锋御词条优先级第三位就是暴伤，优化器分配后有实际收益） | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#INITIAL_CRIT_DMG_TO_CRIT_RATE | 信 确认
+ * @fact agent:1611/初始暴伤转暴击 口径: 每1%初始暴击伤害→初始暴击率+0.35%（读局外面板 critDmg，局内暴伤拐如珂蕾妲潜能不参与转化）；锋御模板基础暴伤=50（与其他 61 名角色同模板），初始暴伤 = 基础 50 + 副词条/主词条/驱动盘 | 据 nanoka live3.2原文@2026-09-12（stats.crit_damage=5000→50%；**旧写「锋御模板基础暴伤=0」是错的**——它把 8 月过期快照的 critDmg=0 当成模板口径，已订正 catalog 1611 critDmg 0→50、critRate 19.4→33.8） | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#INITIAL_CRIT_DMG_TO_CRIT_RATE | 信 确认
  */
 export const INITIAL_CRIT_DMG_TO_CRIT_RATE = 0.35
 /** 葬血强袭每施放至多 3 次毁伤（连续 3 段横斩，各命中触发） */

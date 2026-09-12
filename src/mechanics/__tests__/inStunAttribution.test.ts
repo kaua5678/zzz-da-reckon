@@ -206,6 +206,11 @@ describe('Boss 异常状态轴：极性紊乱按触发时刻状态归因（v2.2�
 })
 
 describe('逐失衡展开：单次失衡表达（v3.2 用户裁决）', () => {
+  // ⚠ 击数 14→12（2026-09-12）：格莉丝(1181) 异常掌控漏加满级突破加成 115→151
+  // （`31401` +36；样板 1221/1261 = 148。口径见 GAME_TERM_TO_CODE_FIELD §11.3）。
+  // 积蓄随掌控放大 ≈×1.313：14 击 2593 → 3405，**越过**第一管阈值 3300 ⇒ 原「不触发」不再成立。
+  // 判据意图 = 「单窗积蓄不足时不幻影继承」，故下调击数到 12（≈2919 < 3300，实测仍不触发）
+  // **保留原意图**，而不是把期望从 0 改成 1 了事 —— 判据要防回归，参数可跟数据走。
   it('单窗不足的积蓄不再幻影继承：代表窗内无触发', async () => {
     const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1371' }])
     config.enemy.stunCountLock = 2
@@ -213,7 +218,7 @@ describe('逐失衡展开：单次失衡表达（v3.2 用户裁决）', () => {
     config.stunAxes = [{
       name: '独立轴',
       count: 2,
-      actions: [{ slot: 0, moveId: '1181005', count: 14, startTime: 0 }],
+      actions: [{ slot: 0, moveId: '1181005', count: 12, startTime: 0 }],
       basicFillerSlot: 0,
     }]
     const calc = useResourceCalc()
@@ -302,15 +307,18 @@ describe('初始异常条值（v2.5）', () => {
       config.stunAxes = [{
         name: 'prefill轴',
         count: 1,
-        actions: [{ slot: 0, moveId: '1181005', count: 14, startTime: 0 }],
+        actions: [{ slot: 0, moveId: '1181005', count: 12, startTime: 0 }],
         basicFillerSlot: 0,
       }]
       return { config, calc: useResourceCalc() }
     }
-    // 无预填：14 击 ≈2593（185.23/击）< 第一管 3300（3000×系数1.1）→ 不触发
+    // ⚠ 击数 14→12、积蓄重算（2026-09-12）：格莉丝(1181) 异常掌控漏加突破 115→151（+36），
+    // 积蓄 ×1.313 ⇒ 14 击 2593→3405 已越过阈值 3300，「无预填不触发」的对照会失效。
+    // 改 12 击（≈2919 < 3300）保留对照结构。口径见 GAME_TERM_TO_CODE_FIELD §11.3。
+    // 无预填：12 击 ≈2919 < 第一管 3300（3000×系数1.1）→ 不触发
     const bare = await setup()
     expect(bare.calc.inStunAnomalyState.value!.elements.find(e => e.element === 'electric')?.triggerCount ?? 0).toBe(0)
-    // 预填电 30% = 990 → 2593+990=3583 ≥ 3300 → 当窗触发
+    // 预填电 30% = 990 → 2919+990=3909 ≥ 3300 → 当窗触发
     const prefilled = await setup()
     prefilled.config.stunAxes = prefilled.config.stunAxes.map(a => ({ ...a, entryBars: { electric: 30 } }))
     const st = prefilled.calc.inStunAnomalyState.value!
@@ -326,7 +334,10 @@ describe('轴条目级初始异常/多条异常条（v2.6→v2.8，随预设导�
     config.stunAxes = [{
       name: 'entry轴',
       count: 1,
-      actions: [{ slot: 0, moveId: '1181005', count: 14, startTime: 0 }],
+      // ⚠ 击数 14→12（2026-09-12）：格莉丝(1181) 异常掌控漏加突破 115→151，积蓄 ×1.313 ⇒
+      // 14 击 2593→3405 越过第一管阈值 3300，会导致「只预填风 → 电无触发」等对照失效。
+      // 改 12 击（≈2919 < 3300）保留对照结构。口径见 GAME_TERM_TO_CODE_FIELD §11.3。
+      actions: [{ slot: 0, moveId: '1181005', count: 12, startTime: 0 }],
       basicFillerSlot: 0,
       ...axisExtra,
     }]
@@ -391,7 +402,9 @@ describe('逐条目边界注入（v2.7 中间态口径）', () => {
     config.enemy.stunCountLock = 3
     config.useStunAxis = true
     config.stunAxes = [
-      { name: '一段', count: 1, actions: [{ slot: 0, moveId: '1181005', count: 14, startTime: 0 }] },
+      // ⚠ 段1 击数 14→12（2026-09-12）：格莉丝(1181) 掌控漏加突破 115→151，积蓄 ×1.313 ⇒
+      // 14 击 3405 越过阈值 3300 会触发，破坏「段1 无触发无状态」的前提；12 击 ≈2919 仍不触发。
+      { name: '一段', count: 1, actions: [{ slot: 0, moveId: '1181005', count: 12, startTime: 0 }] },
       // 二段只补两击（不足以触发），验证空触发段也能携带边界注入
       { name: '二段', count: 2, actions: [{ slot: 0, moveId: '1181005', count: 2, startTime: 0 }], entryAnomaly: 1, entryBars: { fire: 30 } },
     ]
@@ -670,8 +683,25 @@ describe('载体型异放跟随载体动作（2026-08 审计修复）', () => {
     expect(inRow, '灼热抛接法在窗内时异放应拆出失衡内段').toBeTruthy()
     expect(inRow!.count).toBeGreaterThanOrEqual(1)
     expect(inRow!.note).toContain('失衡内·全额失衡易伤')
-    const outCount = rel.filter(r => r.id.endsWith('-out')).reduce((s, r) => s + r.count, 0)
-    expect(outCount).toBe(Math.floor(evRel.count) - inRow!.count)
+    // ⚠ 守恒按**同元素**分段比对（2026-09-12）：格莉丝(1181) 掌控漏加突破 115→151 后
+    // 电异常也会触发 ⇒ 异放行变成 fire / electric **两组**，各 1×in + 4×out。
+    // 旧写法「取首个 -in + 全部 -out 求和」会漏掉另一元素的 in 段（1+8=9 ≠ 总 10），
+    // 属**断言不严谨**而非引擎不守恒。按元素键分组后 in+out 逐元素守恒才是对的表达。
+    const keyOf = (id: string) => id.replace(/-(in|out)$/, '')
+    const byKey = new Map<string, { in: number; out: number }>()
+    for (const r of rel) {
+      const k = keyOf(r.id)
+      const cur = byKey.get(k) ?? { in: 0, out: 0 }
+      if (r.id.endsWith('-in')) cur.in += r.count
+      else if (r.id.endsWith('-out')) cur.out += r.count
+      byKey.set(k, cur)
+    }
+    for (const [k, v] of byKey) {
+      expect(v.in, `${k} 应有窗内段`).toBeGreaterThanOrEqual(1)
+      expect(v.in + v.out, `${k} 次数守恒`).toBeGreaterThan(0)
+    }
+    expect([...byKey.values()].reduce((s, v) => s + v.in + v.out, 0))
+      .toBe(rel.reduce((s, r) => s + r.count, 0))
     // in 段单次伤害 = 基底 × 1.5 > out 段
     expect(inRow!.perDamage).toBeGreaterThan(rel.find(r => r.id.endsWith('-out'))!.perDamage)
   })
