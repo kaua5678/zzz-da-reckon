@@ -127,21 +127,85 @@ writeJsonCompact(mechanicsPath, mechanics)
 writeJsonCompact(constellationsPath, constellations)
 console.log('已写入 character-mechanics.json + character-constellations.json（紧凑）')
 
-// ===== build-recommendations：beta 角色不在 nanoka 正式服索引（sync-build-recommendations 会崩），
-// 用 1611 的 fallback 占位条目（荆棘玫瑰/啄木鸟 + 通用主词条），正式服上线后重跑 sync 覆盖。
+// ===== build-recommendations（2026-09-12 第二版：真实推荐，替换掉 1611 fallback 占位）=====
+// beta 角色不在 nanoka 正式服索引（sync-build-recommendations 会崩）→ 从 full JSON 的
+// fairy_recommend（邦布精灵推荐，1641 有）+ catalog 专武/盘组直接构造；1631 fairy_recommend 为空，
+// 盘组/主词条按通用输出口径并显式标注。数据源版本 = nanoka 3.3.2+18895034 测试服。
 const recsPath = resolve(root, 'public/static/build-recommendations.json')
 const recs = JSON.parse(readFileSync(recsPath, 'utf8'))
-const fallbackSource = recs.characters['1611']
-if (!fallbackSource) { console.error('缺 fallback 源 1611'); process.exit(1) }
-for (const [id, patch] of Object.entries(PATCH)) {
-  if (recs.characters[id]) { console.log('recs 已存在', id); continue }
-  recs.characters[id] = {
-    ...JSON.parse(JSON.stringify(fallbackSource)),
-    name: patch.name,
-    nanoka_id: id,
-    source_url: `https://zzz.nanoka.cc/character/${id}`,
+const catalog = JSON.parse(readFileSync(resolve(root, 'public/static/catalog.json'), 'utf8'))
+
+function wengineBlock(id) {
+  const w = catalog.wEngines.find(x => x.id === id)
+  if (!w) { console.error(`catalog 缺音擎 ${id}`); process.exit(1) }
+  return {
+    nanoka_wengine_id: id,
+    rank: w.rarity,
+    name_en: w.name.en,
+    name_zh: w.name.zhCN,
+    icon: (w.images?.icon ?? '').split('/').pop()?.replace('.png', '') || `Weapon_S_${w.ownerAgentId ?? ''}`,
+    atk: w.level60?.atkBase ?? 713,
+    sub_stat: w.level60?.advancedStat?.stat ?? '',
+    desc: w.effect?.description?.zhCN ?? '',
+    catalog_wengine_id: id,
   }
-  console.log('recs fallback 补齐', id)
 }
+function discSetBlock(id) {
+  const s = catalog.driveDiscSets.find(x => x.id === id)
+  if (!s) { console.error(`catalog 缺盘组 ${id}`); process.exit(1) }
+  return {
+    id,
+    name_en: s.name.en ?? '',
+    name_zh: s.name.zhCN,
+    desc2_zh: s.twoPiece?.effects?.map(e => `${e.stat} ${e.value}${e.mode === 'pct' ? '%' : ''}`).join('，') ?? '',
+    desc4_zh: s.fourPiece?.effectText?.zhCN ?? '',
+  }
+}
+function statBlock(prop, name, format, icon) {
+  return { prop, name, format, icon }
+}
+
+// 1631 赛维里安：专武 14163 真实；盘组/主词条 fairy_recommend 空缺 → 通用输出口径（显式标注）
+recs.characters['1631'] = {
+  name: { zhCN: '赛维里安', en: 'Severian' },
+  nanoka_id: '1631',
+  source_url: 'https://zzz.nanoka.cc/character/1631',
+  strategy: [
+    '⚠️ 3.3 测试服（3.3.2+18895034）：nanoka fairy_recommend 为空——盘组沿用通用占位（荆棘玫瑰4pc+啄木鸟2pc），主词条按通用输出口径（暴伤/攻击力%/攻击力%），待正式服推荐上线后重导。',
+  ],
+  drive_disc_sets: { four_piece: discSetBlock('34200'), two_piece: discSetBlock('31000') },
+  main_stats: {
+    '4': statBlock('21103', '暴击伤害', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCritDam.png'),
+    '5': statBlock('12102', '攻击力', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png'),
+    '6': statBlock('12102', '攻击力', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png'),
+  },
+  substats: [
+    statBlock('20103', '暴击率', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCrit.png'),
+    statBlock('21103', '暴击伤害', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCritDam.png'),
+    statBlock('12102', '攻击力', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png'),
+  ],
+  wengine: wengineBlock('14163'),
+}
+// 1641 菲欧妮：fairy_recommend 真实推荐（自由蓝调4pc+法厄同之歌2pc；备选混沌爵士2pc+法厄同2pc）
+recs.characters['1641'] = {
+  name: { zhCN: '菲欧妮', en: 'Phoenix' },
+  nanoka_id: '1641',
+  source_url: 'https://zzz.nanoka.cc/character/1641',
+  strategy: [
+    '来源：nanoka fairy_recommend（3.3.2+18895034 测试服）——4pc 自由蓝调 + 2pc 法厄同之歌；备选 2pc 混沌爵士 + 2pc 法厄同之歌。主词条 4 异常掌控 / 5 异常精通 / 6 火伤，副词条优先攻击力%。',
+  ],
+  drive_disc_sets: { four_piece: discSetBlock('31300'), two_piece: discSetBlock('33000') },
+  main_stats: {
+    '4': statBlock('31402', '异常掌控', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconElementAbnormalPower.png'),
+    '5': statBlock('31203', '异常精通', '{0:0}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconElementMystery.png'),
+    '6': statBlock('31603', '火属性伤害加成', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconGeneralBuff/Packer/IconFire.png'),
+  },
+  substats: [
+    statBlock('31203', '异常精通', '{0:0}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconElementMystery.png'),
+    statBlock('12102', '攻击力', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png'),
+  ],
+  wengine: wengineBlock('14164'),
+}
+console.log('recs 真实推荐写入 1631（专武+通用输出口径）/ 1641（fairy_recommend 全量）')
 writeJsonCompact(recsPath, recs)
 console.log('已写入 build-recommendations.json（紧凑）')

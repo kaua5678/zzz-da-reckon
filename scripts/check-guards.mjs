@@ -112,7 +112,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 78,  // 2026-09-12 口径纠正后按**提交态**实测：单文件口径 53→…→0（那串大降绝大部分是位移），编排层全量 86→86→78。见 AGENT_BRANCH_BASELINE 注释
+    frozen: 79,  // 2026-09-12 口径纠正后按**提交态**实测：编排层全量 86→86→78→79（+1 = 菲欧妮 tier2 暴伤档位 buff-id 过滤，SOP §6.2 标准接线；plan 补充：17 条逐 buff-id 过滤应收敛为声明式 buff 级 teamConditions，勿再逐条加行）。见 AGENT_BRANCH_BASELINE 注释
     target: 0,
     due: '2026-12-31',
     plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。hot spot：convergence.ts(45) > helpers.ts(18) > damagePool.ts(16)。架构评审 #10 → #2',
@@ -273,10 +273,11 @@ export function countAgentBranchLines(root = ROOT) {
  * 故度量改为 `listAgentBranchFiles()`（入口 + 目录），frozen 取纠正后**提交态**实测值 **78**。
  * **78 才是编排层真实的 agentId 特判存量**，逐角色迁 `applyTeamConfig`/声明式钩子才是真 burn-down。
  *
- * ⚠ 取数纪律：基线必须量**提交态（HEAD）**，不能量带并行会话 WIP 的工作树——本次实测工作树 79
- * （含 session-bab4 未提交的 1 处），HEAD 实为 78。量错会让 CI 在别人提交后假红。
+ * ⚠ 取数纪律：基线必须量**提交态（HEAD）**，不能量带并行会话 WIP 的工作树——量错会让 CI 在别人提交后假红。
+ * 2026-09-12 +1：78→79 = 菲欧妮（1641）脆弱暴伤档位 tier2 的额外能力 buff-id 过滤（SOP §6.2 标准接线，
+ * 17 条同类先例的最新一条；收敛方向 = 声明式 buff 级 teamConditions 替代逐条过滤，勿再新增）。
  */
-export const AGENT_BRANCH_BASELINE = 78
+export const AGENT_BRANCH_BASELINE = 79
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。

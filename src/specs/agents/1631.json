@@ -13,7 +13,7 @@
   "verifications": [],
   "stateMachines": [],
   "notes": [
-    "⚠️ 测试服角色（3.3 beta）：来源 nanoka 构建 3.3.2+18895034（2026-09-12 抓取，正式服 live=3.2 尚未上线）。倍率/被动/影画文本均带 (Test1) 前缀，约 1 周后会改版——重录时跑 `node scripts/fetch-nanoka-full-missing.mjs 1631 --force [--version <新版本>]` + `node scripts/import-nanoka-beta-agent.mjs 1631 --version <新版本> --force --write` 重导。双源对账证据：data/raw/gachabase/1631.json（与 nanoka param 逐行一致）。",
+    "⚠️ 测试服角色（3.3 beta）：来源 nanoka 构建 3.3.2+18895034（2026-09-12 抓取，正式服 live=3.2 尚未上线），倍率/被动/影画文本均带 (Test1) 前缀。双源对账证据：data/raw/gachabase/1631.json（与 nanoka param 逐行一致）。专武 14163 已录（catalog wEngines，ownerAgentId=1631，效果取 talents.1：暴伤24%+普攻触发攻击15%/无视20%风抗）。",
     "基础信息：S 级风属性·强攻（斩击），新艾利都治安局。moveId 空间 = nanoka param/gachabase id（1631001-1631020），≠ skill_list id。招式：疾锋四段 1631001-004、疾锋四段闪避强化 1631020、烈旋 1631005、苍风影猎 1631006、特殊技 1631007、强化特殊技组合技/风刃 1631008/009、冲刺 1631010、闪反 1631011、连携 1631012、终结 1631013、快支 1631014、招架 1631015-017、支援突击 1631018、登场技 1631019。",
     "核心被动·风回无终（原文要点）：暴击伤害+60%；疾锋发动瞬间有闪避判定（闪避成功该次普攻倍率/失衡率提至烈旋、额外+15流息）；烁影最多2层（自动闪避并发动烈旋；满层再获得→转化术语1000043且下次疾锋提升为烈旋）；每次极限闪避获得1层凭风（最多2层），持凭风时切换/快支入场自动发动入场技；入场技/连携技/终结技入场消耗所有凭风：1层最后一击伤害倍率固定+60%、2层+300%；固定招式命中或极限闪避获得流息（上限150）；流息100时长按普攻消耗100发动苍风影猎。",
     "额外能力·最优编配（原文）：队伍中存在[支援]、[击破]或与自身阵营相同的角色时触发：进入战斗或换入前场攻击力+100（每级+10，最多+700，30s重复刷新）。",
@@ -26,7 +26,7 @@
     "流息收入计数口径 [猜测·中]：疾锋四段命中×20（平A段循环计数 countBasicFinisherHits 同款）+ 烈旋×35 + 极限闪避（闪反行）×15 + 连携×50 + 终结×100 + 影画1入场+100（整局一次）+ 影画6风起+30（每次苍风影猎触发）。烁影层数转化与闪避判定成功率为操作向量，未建模。",
     "未建模项（含收益评估 2026-09-12）：烁影层数状态机与自动闪避触发率（操作向量，无固定乘区收益——正确跳过）；疾锋四段闪避成功强化 1631020（收益评估：低频条件触发、倍率与烈旋相同 1493.4%，主体伤害已由烈旋行承载，增量≈0）；烈旋自动发动次数（原文由受击/烁影驱动，滑块 severian.blazingSpinCount 默认按极限闪避次数近似）；影画2「登场技替换为连携技」的招式替换（收益评估：仅影响连携/登场行占比，不改总量级，暂不建模）；流息上限 150/180 对获取的截断（按「来多少打多少」总量口径，普罗米娅同款）；「能量消耗达最大时额外获得一层烁影」（烁影=操作向量）。",
     "能量消耗 [已确认]（2026-09-12 用户纠错）：耗能在「能量消耗」param 展示行的 desc 文本里（如「(Test1)80点」），不在 param 数值字典——第一版导入漏抓、误按 60 兜底。真实值：1631008 组合技 80、1631009 风刃最大 40（import-nanoka-beta-agent.mjs 的 collectEnergyCosts 已按此提取，找法见 docs/DATA_FETCHING.md「耗能位置」）。",
-    "配装推荐 [占位]：build-recommendations 条目为 1611 fallback（荆棘玫瑰4pc/啄木鸟2pc，scripts/patch-33beta-status.mjs）——beta 角色不在 nanoka 正式服索引（sync-build-recommendations 会崩）；专武未录（NO_OWNER_ENGINES 快照含本角色）。正式服上线后：重抓 full JSON → 重导 catalog → 跑 sync-build-recommendations 1631 --write --force → 补专武 ownerAgentId → 从 NO_OWNER_ENGINES 移除 → 重核版本时间线节点日期。"
+    "配装推荐：专武 14163 已录（build-recommendations wengine 块 + ownerAgentId）；盘组/主词条——nanoka fairy_recommend 测试服为空，按通用输出口径（暴伤/攻击%/攻击%，盘组荆棘玫瑰4pc占位）并显式标注于推荐 strategy，待正式服推荐数据上线后重导（scripts/patch-33beta-status.mjs 一并更新）。"
   ],
   "teamBuffs": [],
   "additionalAbility": {

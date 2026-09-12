@@ -174,6 +174,16 @@ describe('赛维里安（1631）⚠️3.3 测试服临时录入', () => {
     expect(blade.totalEnergyConsume).toBeCloseTo(blade.count * 20, 5)
   })
 
+  it('专武 14163 生效差分（2026-09-12 录入）：装 vs 不装 → 暴伤+38.4、无视风抗+20%（特化门=attack 对齐；测试 wEngineModLevel=5 → 暴伤取精炼5值 38.4）', async () => {
+    const { config, computePanelPhases } = await setup(['1631', '1251', ''], 0)
+    const bare = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
+    config.team[0]!.wEngineId = '14163'
+    const armed = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
+    expect(armed.critDmg - bare.critDmg).toBeCloseTo(38.4, 5)
+    expect((armed.enemyWindResReduction ?? 0) - (bare.enemyWindResReduction ?? 0)).toBeCloseTo(32, 5) // 精炼5
+    expect(armed.atk).toBeGreaterThan(bare.atk) // +24% 攻击（精炼5 atkPct）+ 专武 713 白值
+  })
+
   it('模块注册与滑块：5 个滑块齐全，苍风影猎次数覆盖生效', async () => {
     expect(severianMechanic.agentIds).toContain('1631')
     expect((severianMechanic.settings ?? []).map(s => s.id).sort()).toEqual([

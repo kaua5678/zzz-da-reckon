@@ -161,7 +161,8 @@
   - **数据管道护栏**：`scripts/audit-gachabase-fields.mjs` 审计「页面有非零数据但 catalog 无落点」的列（**当前 60/60 角色已全量缓存、0 处缺口**）；`scripts/fetch-gachabase-agent.mjs` 已改通用字段抓取 + curl 回落（undici 对这批 ~400KB SSR 页约 1/3 超时，回落 curl 后一次过），杜绝再次白名单漏列。**同批发现并已修**：gachabase 列 `adrenaline_base` = 游戏**闪能**（命破专属能量，nanoka 误译「肾上腺素」，用户 2026-09-11 确认）→ 已落成 `rows[flash_energy_recovery]`（与引擎既有通道同名，无需改引擎）；受影响 5 角色 1051/1371/1441/1471/1531（数据佐证：这 5 个 `energy_gain_base` 全 0 且互斥 = 只有闪能没有能量）。实测 1441 真斗的强化特殊技次数由 6 降为 5（她的招式本身回闪能，账本此前漏计）。
 - **锐暴乘区（用户口径 2026-09-09）**：普通暴击 100% 封顶，锋御的锐暴**封顶 200%**——100% 以上每多 1% 是一次「额外锐暴判定」的概率，每次锐暴**乘算**（锐暴伤害 150% → 爆一次 ×2.5、爆两次 ×2.5²=6.25）。单一事实源 `core/damage.ts sharpCritMultiplier`：r≤100 → `1+r·d`，r>100 → `(1+d)×(1+p·d)`（p=溢出率）。旧实现是「溢出段加算」（1+基础×d+溢出×d），已废。
 - **自动副词条**：锋御（sharpen）走 `substatOptimizer` 的 `_default_sharpen` 模板（暴击率→防御力→暴击伤害，与邦布精灵推荐同序；`critRateCap: 200`，暴击按 200% 封顶而非百暴）。此前 `getTemplate` 没有 sharpen 分支 → 落 `_default_dps` 吃 atkPct（2026-09-09 用户报「自动副词条没配防御、还是攻击」），回归 `src/core/__tests__/substatOptimizer.test.ts` + `cinemaSkillLevel.test.ts` 的「一键应用」用例。
-- **模块**：`src/mechanics/agents/claret.ts`；catalog 1611 行由 `scripts/import-nanoka-v12.mjs` 按 v12 重建（正式服复核数值一致，无需重导）。
+- **反制支援 × 控制技（紫光技）整组化解（2026-09-12 建通道）**：克拉蕾是全库唯一锋御，倍率表里有 `1611028 反制支援：寸铁不让` + `1611030 支援突击：血华誓·琢形`（原文「即将被部分敌人的**控制技**攻击时…与怪物角力，**一次动作整组化解**」；控制技 = 术语 2000003，无闪光提示的连续数段攻击，全部招架 → 完美反制）。建模：Boss 预设 `defaults.counterAssistGroups` 逐组记招架段数 → 有她（或任何登记了反制支援的角色）在场且开关开时，**每组 = 她一行反制支援**（本体+琢形按 `data/moveFusions.ts#CLARET_COUNTER_ASSIST` 融合成一次动作：伤害 2306.9+1713.2、失衡 1072.4+790.4、喧响 252.698+218.735、前台 3.717+1.117=4.834s），**不产弹刀行、不拿弹刀 215 喧响、不参与每次弹刀失衡反推**（用户裁决）；关掉替换或队内无人时，整组按「1 次正常弹刀 + 段数−1 无突击弹刀」并入 boss 强制弹刀总数。配对表 `src/data/counterAssists.ts`（她的两条「支援突击」EN 同名，按名匹配必挑错行）。**Boss 数据尚未录**（用户：「暂不录数据，只建通道」）。判据 `src/composables/__tests__/counterAssist.test.ts`。
+- **模块**：`src/mechanics/agents/claret.ts`；catalog 1611 行由 `scripts/import-nanoka-v12.mjs` 按 v12 重建（正式服复核数值一致）。**2026-09-12 重跑一次**：反制支援/琢形的秽盾公式是 `300 + 100t`（旧导入器只按名扣 闪反/招架/终结 三类基数 → 这两行各多算 3s：6.717→**3.717**、4.117→**1.117**）；同批修该一次性导入器**会静默丢掉 gachabase 后补的 `gash_buildup`/`sharpness_gain` 行**的问题（不修则重跑后 1611 全 28 行掉残痕行）。
 
 ### 洛克茜（1621）
 
@@ -740,15 +741,15 @@
 
 ### 赛维里安（severian / 1631）—— ⚠️ 3.3 测试服临时录入（风强攻·治安局）
 
-- **当前实现状态 [已实现·近似 2026-09-12]**（实现位置：`src/mechanics/agents/severian.ts` + spec `1631.json` + catalog 骨架（`scripts/import-nanoka-beta-agent.mjs` 从 nanoka 3.3.2+18895034 param 推导，双源对账 `data/raw/gachabase/1631.json`）；测试 `src/mechanics/__tests__/severian.test.ts` 7 例 + allAgentsSweep 不变量）。**数据为 3.3 beta 快照，正式服上线后约 1 周内会改版——重录流程见 spec notes 首条**。
+- **当前实现状态 [已实现·近似 2026-09-12]**（实现位置：`src/mechanics/agents/severian.ts` + spec `1631.json` + catalog 骨架（`scripts/import-nanoka-beta-agent.mjs` 从 nanoka 3.3.2+18895034 param 推导，双源对账 `data/raw/gachabase/1631.json`）；测试 `src/mechanics/__tests__/severian.test.ts` 9 例 + allAgentsSweep 不变量）。**数据为 3.3 测试服快照（文本带 (Test1) 前缀）**。**专武 14163 已录**（ownerAgentId=1631，效果取 talents.1：暴伤24%+普攻触发攻击15%/无视20%风抗；装 vs 不装差分测试在案）；配装推荐 = 专武真实 + 盘组/主词条通用输出口径（fairy_recommend 测试服为空，标注于推荐 strategy）。
 - **口径**：核心被动暴伤+60（applyPanel）；额外能力（[支援]/[击破]/同阵营声明式门控）攻击+700 局内小攻击 + 影画2 +15%攻击；影画1 普攻暴伤+60 = basic 组 moveId 限定（patchExecutions critDmgBonus）；影画4 无视16%防御 ×覆盖率滑块 `severian.c4Coverage`；[凭风] 入场技/连携/终结最后一击倍率固定+60/+300（层数滑块 `severian.fengfengStacks`，damageMultiplierOverride 同区加算）；影画6 苍风影猎最后一击+900%（行倍率同区加算）+[风起]+30流息定点反馈；**长按风刃段（1631009，818.4%）随强特产行**，倍率/耗能40/时间按满充比例滑块 `severian.windBladeChargeRatio` 缩放。
 - **能量消耗（2026-09-12 用户纠错）**：真实值组合技 1631008=80 / 风刃 1631009=40——耗能在「能量消耗」param 展示行的 **desc 文本**里（如「(Test1)80点」），不在 param 数值字典；第一版漏抓误按 60 兜底，找法见 `docs/DATA_FETCHING.md`「耗能位置」。
 - **流息→苍风影猎**：次数 = floor(收入/100)，收入 = 疾锋四段命中×20（平A段循环计数）+ 烈旋×35 + 极限闪避×15 + 连携×50 + 终结×100 + 影画1入场100；buildExecutions 产行 + estimateExSpecialTime 同源计时（滑块 `severian.shadowHuntCount` 0=自动）；烈旋次数按极限闪避近似（滑块 `severian.blazingSpinCount`）。
-- **未建模**：烁影层数状态机/自动闪避触发率；疾锋四段闪避强化（1631020 无计数来源）；影画2「登场技替换为连携技」；流息上限截断（总量口径）。强化特技能量消耗按 60 兜底 [猜测·低]（beta 双源无 energy_cost）。
+- **未建模**：烁影层数状态机/自动闪避触发率；疾锋四段闪避强化（1631020 无计数来源）；影画2「登场技替换为连携技」；流息上限截断（总量口径）。
 
 ### 菲欧妮（phoenix / 1641）—— ⚠️ 3.3 测试服临时录入（火异常·坎卜斯黑枝）
 
-- **当前实现状态 [已实现·近似 2026-09-12]**（实现位置：`src/mechanics/agents/phoenix.ts` + spec `1641.json` + catalog 骨架（同上脚本，双源对账 `data/raw/gachabase/1641.json`）；测试 `src/mechanics/__tests__/phoenix.test.ts` 7 例 + allAgentsSweep 不变量）。**数据为 3.3 beta 快照，改版重录流程见 spec notes 首条**。
+- **当前实现状态 [已实现·近似 2026-09-12]**（实现位置：`src/mechanics/agents/phoenix.ts` + spec `1641.json` + catalog 骨架（同上脚本，双源对账 `data/raw/gachabase/1641.json`）；测试 `src/mechanics/__tests__/phoenix.test.ts` 11 例 + allAgentsSweep 不变量）。**数据为 3.3 测试服快照（文本带 (Test1) 前缀）**。**专武 14164 已录**（ownerAgentId=1641，效果取 talents.1：异常精通+75、队伍异常暴击触发火伤+40%；装 vs 不装差分测试在案）；配装推荐 = nanoka fairy_recommend 真实数据（4pc 自由蓝调+2pc 法厄同之歌，主词条 异常掌控/异常精通/火伤）。
 - **口径**：核心异常精通+40（applyPanel）；**[脆弱] 异常伤害暴击 = spec teamBuffs 通用承载**（2026-09-12 用户裁决「异常暴击是通用机制」）——rate 公式 `30+max(0,掌控-145)×0.7` 读源面板、伤 基础15 + 额外能力档位 tier2 +10（computePanelPhases buff-id 过滤门控，SOP §6.2）+ 影画一 +20（中文数字 source 自动命座门控），**自体与队友同吃**，引擎异常结算区 EV 乘区 `calcAnomalyCritExpect` 通用消费（爱芮异放暴击同通道）；后续异常暴击角色复用 = 只录 spec teamBuffs。异放：长按普攻 445%（225+20×(s-1)）/终结 597%（300+27×(s-1)，s=12+2(C3)+2(C5)）固定 releaseMultiplier（普罗米娅绝裁同款）+ 影画6 强特 200% 与异放无视15%防御（releaseModifier 异放限定）。
 - **能量消耗（2026-09-12 用户纠错）**：真实值强特两段各 40（轮均 80 并入 exSpecialEnergyConsume）——「能量消耗」param 行 desc 文本提取，找法见 `docs/DATA_FETCHING.md`「耗能位置」。
 - **未承载**：脆弱暴伤 3 档（3异常→40，+15）编成自动推导——teamBuff 覆盖率被 store 兜底 100 抹平（spec coverage:0 不生效），需覆盖率兜底改造或编成推导，留正式版；影画6 需求-1 的档位+1 随之未承载。

@@ -13,7 +13,7 @@
   "verifications": [],
   "stateMachines": [],
   "notes": [
-    "⚠️ 测试服角色（3.3 beta）：来源 nanoka 构建 3.3.2+18895034（2026-09-12 抓取，正式服 live=3.2 尚未上线）。倍率/被动/影画文本均带 (Test1) 前缀，约 1 周后会改版——重录时跑 `node scripts/fetch-nanoka-full-missing.mjs 1641 --force [--version <新版本>]` + `node scripts/import-nanoka-beta-agent.mjs 1641 --version <新版本> --force --write` 重导。双源对账证据：data/raw/gachabase/1641.json（与 nanoka param 逐行一致）。",
+    "⚠️ 测试服角色（3.3 beta）：来源 nanoka 构建 3.3.2+18895034（2026-09-12 抓取，正式服 live=3.2 尚未上线），倍率/被动/影画文本均带 (Test1) 前缀。双源对账证据：data/raw/gachabase/1641.json（与 nanoka param 逐行一致）。专武 14164 已录（catalog wEngines，ownerAgentId=1641，效果取 talents.1：异常精通+75、队伍异常暴击触发火伤+40%）。",
     "基础信息：S 级火属性·异常（斩击），坎卜斯黑枝。moveId 空间 = nanoka param/gachabase id（1641001-1641021）。招式：普攻四段 1641001-004、长按普攻 1641005、分支攻击 1641006、冲刺 1641010、闪反 1641011、特殊技追斩 1641007、强化特殊技第一/二段 1641008/009、蓄能附加攻击 1641021、连携 1641012、终结 1641013、终结入场 1641019、快支 1641014、招架 1641015-017、支援突击 1641018。第三/四段普攻、分支、强化特殊技两段、连携、终结均视为[燃烧攻击]。",
     "核心被动（原文要点）：异常精通+40；队伍中任意角色对敌人造成属性异常伤害时使其陷入[脆弱]20秒——脆弱敌人受到属性异常伤害时有概率暴击：基础暴击率30%、暴击伤害15%，异常掌控>145 时每点额外+0.7%暴击率；死亡退场可[重生]（回50%生命，300s一次，无乘区不建模）。",
     "额外能力（原文）：队伍中存在其他[异常]角色或同阵营角色时触发：队伍中[异常]角色数量为2/3时，脆弱敌人受到属性异常伤害的暴击伤害提升为25%/40%。",
@@ -27,7 +27,7 @@
     "未建模项（含收益评估 2026-09-12）：[重生]（回血无乘区，正确跳过）；[消亡]状态机本体逐时序不建——次数驱动的连携+30%积蓄与终结入场已按实现口径⑥⑦建模；影画2「保留强特段数」段数状态机（低收益，两段近似已覆盖主体伤害）；强化特殊技第一/二段按「每轮强特=两段」近似，**轮均耗能=40+40=80 并入 exSpecialEnergyConsume**（真实值，见下条）；长按普攻终结一击与蓄能重击的失衡内占比按事件计数器口径。经验已沉 SOP §3.5 根因表新行「把『状态机没建模』当成『次数驱动效果也不能建』」+ `GAME_TERM_TO_CODE_FIELD.md` §13「触发句→计数器通用协议」（与启动招式无关，勿记角色-招式结论）。",
     "能量消耗 [已确认]（2026-09-12 用户纠错）：耗能在 nanoka 页面「能量消耗」param 展示行的 **desc 文本**里（如「(Test1)80点」），不在 param 数值字典——第一版导入漏抓、误按 60 兜底。真实值：1641008 第一段 40、1641009 第二段 40（import-nanoka-beta-agent.mjs 的 collectEnergyCosts 已按此提取，找法见 docs/DATA_FETCHING.md「耗能位置」）。",
     "余火获取速率 [猜测·低]：原文「燃烧攻击造成伤害时回复[余火]」未给数值；attack_data 列恰好只在「视为燃烧攻击」的行非零（双源一致），按 /10000 口径解读为余火获取/次——待正式服或实测复核。",
-    "配装推荐 [占位]：build-recommendations 条目为 1611 fallback（荆棘玫瑰4pc/啄木鸟2pc，scripts/patch-33beta-status.mjs）——beta 角色不在 nanoka 正式服索引（sync-build-recommendations 会崩）；专武未录（NO_OWNER_ENGINES 快照含本角色）。正式服上线后：重抓 full JSON → 重导 catalog → 跑 sync-build-recommendations 1641 --write --force → 补专武 ownerAgentId → 从 NO_OWNER_ENGINES 移除 → 重核版本时间线节点日期。"
+    "配装推荐：专武 14164 已录（ownerAgentId=1641）；盘组/主词条来自 nanoka fairy_recommend 真实数据（3.3.2+18895034）——4pc 自由蓝调+2pc 法厄同之歌（备选混沌爵士2pc+法厄同2pc），主词条 4 异常掌控/5 异常精通/6 火伤，副词条优先攻击力%（scripts/patch-33beta-status.mjs 构造写入 build-recommendations）。"
   ],
   "teamBuffs": [
     {

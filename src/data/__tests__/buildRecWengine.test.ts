@@ -22,9 +22,9 @@ for (const w of catalog.wEngines ?? []) {
 }
 
 /** catalog 无专武归属的角色（更新前先确认专武确实未录入，而不是漏了 ownerAgentId） */
-const NO_OWNER_ENGINES = ['1551', '1631', '1641']
+const NO_OWNER_ENGINES = ['1551']
 // 1551 佩洛伊斯：专武尚未录入 catalog
-// 1631/1641 赛维里安/菲欧妮：3.3 测试服临时录入（nanoka 3.3.2+18895034），专武未随录；正式服上线后补 ownerAgentId 并从快照移除
+// 1631/1641 赛维里安/菲欧妮：专武 14163/14164 已按 3.3 测试服（3.3.2+18895034）录入（2026-09-12）
 
 describe('专武推荐全覆盖（catalog ownerAgentId → build-recommendations）', () => {
   it('catalog 每个角色都有配装推荐条目', () => {

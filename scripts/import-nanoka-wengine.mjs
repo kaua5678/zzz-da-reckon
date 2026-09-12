@@ -28,6 +28,9 @@ const catalogPath = resolve(root, 'public/static/catalog.json')
 const STATIC = 'https://static.nanoka.cc'
 /** --force：raw 存档已存在也重抓（重爬正式服数据用；默认跳过 = 幂等） */
 const force = process.argv.includes('--force')
+/** --version <v>：显式指定 nanoka 构建版本（录测试服角色专武用，如 '3.3.2+18895034'；缺省 = manifest.zzz.live） */
+const verIdx = process.argv.indexOf('--version')
+const explicitVersion = verIdx >= 0 ? process.argv[verIdx + 1] : ''
 
 const RARITY_MAP = { 2: 'B', 3: 'A', 4: 'S' }
 const SPECIALTY_MAP = {
@@ -183,6 +186,21 @@ const MANUAL_EFFECTS = {
     teamEffects: [fixed('nanoka_14162_team_dmg', 'dmgBonus', 20, 32)],
     desc: '装备者暴击率提升24%/26%/28%/30%/32%；造成的伤害无视目标15%/17.3%/19.5%/21.8%/24%风属性伤害抗性；装备者发动[强化特殊技]造成风属性伤害时，造成的失衡值提升16%/18.4%/20.8%/23.2%/25.6%，全队其他角色造成的伤害提升20%/23%/26%/29%/32%，持续50秒，重复触发时刷新持续时间，伤害提升效果全队唯一（默认满覆盖）。',
   },
+  '14163': { // ⚠️ 3.3 测试服（3.3.2+18895034）赛维里安专武（占位名「测试引擎」，效果取 talents.1）
+    effects: [
+      fixed('nanoka_14163_crit_dmg', 'critDmg', 24, 38.4),
+      fixed('nanoka_14163_atk', 'atkPct', 15, 24),
+      fixed('nanoka_14163_wind_res', 'enemyWindResReduction', 20, 32),
+    ],
+    desc: '装备者暴击伤害提升24%/27.6%/31.2%/34.8%/38.4%；装备者的[普通攻击]命中敌人时，攻击力提升15%/17.3%/19.5%/21.8%/24%，造成的伤害无视目标20%/23%/26%/29%/32%风属性伤害抗性，持续20秒（普攻命中刷新→默认满覆盖）。',
+  },
+  '14164': { // ⚠️ 3.3 测试服（3.3.2+18895034）菲欧妮专武（占位名「测试引擎」，效果取 talents.1）
+    effects: [
+      fixed('nanoka_14164_ap', 'anomalyProficiency', 75, 120, { mode: 'flat' }),
+      fixed('nanoka_14164_fire_dmg', 'fireDmg', 40, 64),
+    ],
+    desc: '装备者异常精通提升75/86/98/109/120点；队伍中任意角色对敌人造成的属性异常伤害产生暴击时，装备者造成的火属性伤害提升40%/46%/52%/58%/64%，持续20秒，重复触发刷新（菲欧妮自身即全队异常暴击制造者→默认满覆盖）。',
+  },
 }
 
 /** 60 级面板推导 */
@@ -205,6 +223,7 @@ function buildLevel60(zh) {
 let resolvedVersion = ''
 async function latestZzzVersion() {
   if (resolvedVersion) return resolvedVersion
+  if (explicitVersion) { resolvedVersion = explicitVersion; return resolvedVersion }
   const m = await fetchJson(`${STATIC}/manifest.json`, { timeoutMs: 20000 })
   resolvedVersion = m.zzz?.live ?? m.zzz?.latest
   return resolvedVersion
@@ -270,7 +289,7 @@ function buildEntry(id, zh, en) {
 // B 级（12011 电磁暴-贰式 / 12015 灰烬-钴蓝）2026-09-09 已从 catalog 移除（用户裁决：B 级没人用）→
 // 不再自动补录；MANUAL_EFFECTS 保留作恢复时的建模依据。
 const ALL_MISSING = ['13005', '13010', '13011', '13016', '13017', '13018', '13020', '13021', '13112', '13127', '13135', '14003', '14154', '14159']
-let ids = process.argv.slice(2).filter(a => !a.startsWith('--'))
+let ids = process.argv.slice(2).filter(a => !a.startsWith('--') && a !== explicitVersion)
 if (ids.length === 0) {
   // 无参数：对比 catalog 自动补录 nanoka 有但 catalog 缺的（含上述清单）
   const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'))

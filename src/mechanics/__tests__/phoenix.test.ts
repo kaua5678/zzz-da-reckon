@@ -208,6 +208,15 @@ describe('菲欧妮（1641）⚠️3.3 测试服临时录入', () => {
     expect(phoenix.specResources?.phoenix_cycle?.chargedCount).toBeGreaterThan(0)
   })
 
+  it('专武 14164 生效差分（2026-09-12 录入）：装 vs 不装 → 异常精通+120、火伤+64%（特化门=anomaly 对齐；测试 wEngineModLevel=5 → 精炼5值）', async () => {
+    const { config, computePanelPhases } = await setup(['1641', '1171', ''], 0)
+    const bare = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
+    config.team[0]!.wEngineId = '14164'
+    const armed = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
+    expect(armed.anomalyProficiency - bare.anomalyProficiency).toBeCloseTo(120, 5)
+    expect((armed.fireDmg ?? 0) - (bare.fireDmg ?? 0)).toBeCloseTo(64, 5)
+  })
+
   it('模块注册与滑块：3 个滑块齐全（脆弱暴击已移交 spec teamBuffs，无档位滑块）', () => {
     expect(phoenixMechanic.agentIds).toContain('1641')
     expect((phoenixMechanic.settings ?? []).map(s => s.id).sort()).toEqual([
