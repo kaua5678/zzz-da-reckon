@@ -772,13 +772,23 @@ async function verbCtx(args, root = ROOT) {
   return envelope('ctx', true, { ...w }, next)
 }
 
-function verbDrift(root = ROOT) {
+async function verbDrift(root = ROOT) {
   const { scanned, violations } = auditAuthoredFacts(root)
   const queue = driftQueue(root)
+  // 手册条目的「⟳复核｜到期」触发器（任务卡第 5 步；实现在 check-guards，文档清单单一来源 = 判据 11）
+  let manualTriggers = []
+  try {
+    const g = await import(pathToFileURL(join(root, 'scripts/check-guards.mjs')).href)
+    manualTriggers = g.scanDocReviewTriggers(root)
+  } catch { /* 护栏不可用时不阻塞 */ }
+  const manualDue = manualTriggers.filter(t => t.overdue)
   const next = violations.length
     ? '断锚/缺据的手写事实会让 check-guards 判据 6 变红：补 | 据 …… | 锚 <路径>#<符号>'
     : (queue.length ? '这些口径的实现自「据」之后动过 → 逐条复核，仍成立就把「据」更新到今天' : null)
-  return envelope('drift', violations.length === 0, { authored: scanned.length, violations, reviewQueue: queue }, next)
+  const next2 = manualDue.length
+    ? ((next ? next + '\\n' : '') + `手册 ${manualDue.length} 条「复核触发器」已到期 → 逐条复核：结论仍成立就撤标记，需改就改写条目（见 check-guards#scanDocReviewTriggers）`)
+    : next
+  return envelope('drift', violations.length === 0, { authored: scanned.length, violations, reviewQueue: queue, manualReview: manualTriggers, manualReviewDue: manualDue }, next2)
 }
 
 function appendJournal(entry) {
@@ -907,6 +917,11 @@ function humanize(res) {
     lines.push('手写事实 ' + d.authored + ' 条 · 断锚/缺据 ' + (d.violations?.length ?? 0) + ' 条 · 待复核 ' + (d.reviewQueue?.length ?? 0) + ' 条')
     for (const v of d.violations ?? []) lines.push('✗ ' + v.problem + ' @ ' + v.file + ':' + v.line + ' :: ' + v.raw.slice(0, 90))
     for (const q of d.reviewQueue ?? []) lines.push('⟳ ' + q.subject + ' 据 ' + q.since + '，锚 ' + q.anchor + ' 于 ' + q.touchedAt + ' 动过（' + q.at + '）')
+    const due = (d.manualReview ?? []).filter(t => t.overdue)
+    const pending = (d.manualReview ?? []).filter(t => !t.overdue)
+    if (d.manualReview?.length) lines.push('手册复核触发器：逾期 ' + due.length + ' 条 · 未到期 ' + pending.length + ' 条')
+    for (const t of due) lines.push('✗ ' + t.file + ':' + t.line + ' 到期 ' + t.due + '：' + t.text)
+    for (const t of pending) lines.push('○ ' + t.file + ':' + t.line + ' 到期 ' + t.due + '：' + t.text)
   } else if (res.verb === 'lanes') {
     if (!d.live?.length) lines.push('无活跃租约')
     for (const l of d.live ?? []) lines.push(l.path + ' ← ' + l.lane + '（' + l.ageMinutes + ' 分钟前，TTL ' + Math.round(l.ttlMs / 60000) + ' 分）')
@@ -928,7 +943,7 @@ export async function main(argv) {
     case 'lanes': res = verbLanes(); break
     case 'facts': res = verbFacts(args); break
     case 'done': res = verbDone(args); break
-    case 'drift': res = verbDrift(); break
+    case 'drift': res = await verbDrift(); break
     case 'brief': res = await verbBrief(args); break
     case 'ctx': res = await verbCtx(args); break
     case 'lang': res = envelope('lang', true, { grammar: grammar() }, null); break

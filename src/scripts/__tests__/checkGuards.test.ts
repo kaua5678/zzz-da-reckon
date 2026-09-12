@@ -37,6 +37,7 @@ import {
   matchDebtRegistry,
   auditCatalogLevel60,
   scanManualDensity,
+  scanDocReviewTriggers,
   runAllChecks,
 } from '../../../scripts/check-guards.mjs'
 
@@ -425,5 +426,38 @@ describe('scanManualDensity（判据 11：手册数字 id 密度棘轮，任务�
     // zc.mjs measured 映射以 id 为键（rule 11：口径实现在 check-guards，zc 只注入）
     const src = readFileSync(join(process.cwd(), 'scripts/zc.mjs'), 'utf8')
     expect(src).toContain(`'${e!.id}'`)
+  })
+})
+
+describe('scanDocReviewTriggers（手册复核触发器，任务卡第 5 步：只报不红）', () => {
+  it('抓「⟳复核: … | 到期 …」并按今天判逾期；容忍全角管道', () => {
+    const root = mkdtempSync(join(tmpdir(), 'trig-'))
+    mkdirSync(join(root, 'docs'))
+    writeFileSync(join(root, 'docs/ENGINE_PIPELINE_GUIDE.md'), [
+      '19. 坑标题',
+      '    ⟳复核: 正式服上线后重对数字 | 到期 2026-10-01',
+      '    ⟳复核: 重构完成后确认口径仍成立 ｜ 到期 2099-01-01',
+      '    普通行没有触发器',
+      '',
+    ].join('\n'))
+    const rows = scanDocReviewTriggers(root, '2026-09-12')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toMatchObject({ due: '2026-10-01', overdue: false, line: 2 })
+    expect(rows[1]).toMatchObject({ due: '2099-01-01', overdue: false })
+    expect(scanDocReviewTriggers(root, '2026-10-02')[0].overdue).toBe(true)
+  })
+  it('仓库现状：每条触发器都能被抓到（写了没被抓 = 格式错，静默失效）', () => {
+    let marked = 0
+    for (const rel of Object.keys(MANUAL_DENSITY_CEILINGS)) {
+      try {
+        for (const ln of readFileSync(join(process.cwd(), rel), 'utf8').split('\n')) {
+          // 计数 = 带真日期的触发器行；§4 开头的约定说明行（示例占位 `<YYYY-MM-DD>`）不算账
+          if (/⟳复核/.test(ln) && /到期\s*\d{4}-\d{2}-\d{2}/.test(ln)) marked++
+        }
+      } catch { /* 文档缺失由扫描器容忍 */ }
+    }
+    const found = scanDocReviewTriggers().length
+    expect(found).toBeGreaterThanOrEqual(3)  // 坑 19/27/38 三条示范标记
+    expect(found).toBe(marked)               // 可解析数 == 挂账数（漏一条 = 挂了个假账）
   })
 })

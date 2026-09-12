@@ -58,7 +58,7 @@
 5. **每个录入的机制 = spec 字段 + 生效测试**；命座效果录完跑一次「资源利用率页·命座提升率」确认无橙色「⚠无变化」警示（效果未接进计算的信号）。该自检已有自动化护栏兜底：`allAgentsSweep` 断言「声明已实现命座的角色 C6 伤害 > C0 伤害」，逐级三态判据在 `composables/cinemaUplift.ts`（页面与测试同源）——但页面自检仍要跑，它能定位到具体是哪一级。
 6. **跨角色/队伍级机制走 `applyTeamConfig` 钩子**（三阶段 build/converge/postRound，见 `docs/ENGINE_PIPELINE_GUIDE.md` §2），禁止往 `useResourceCalc` 新增 `agentId === 'xxxx'` 分支（机器护栏：`check-guards` 棘轮冻结存量基线，新增即红；存量清零后下调基线）；面板阶段的覆盖率滑块直接读 `AgentPanelInput.settings`，不要经 panel 字段走私（曾致般岳滑块静默失效）。**棘轮有 burn-down 契约**（`check-guards` 的 `RATCHET_BURNDOWN`：每条登记 frozen/target/due/plan），`zc status` 会点名「已到期且零进展」的棘轮——棘轮防变差，burn-down 防「冻结 = 永久豁免」，降了基线就同步下调 `frozen` 与进度。
 7. **spec 文件名必须是 `<agentId>.json`**（`validate:specs` 强制）：拼音 slug 会与别的角色撞车（`juhufu`=朱鸢 vs `jufufu`=橘福福），改错文件代价极高。
-8. **知识单一事实源在代码**：改代码时同步更新受影响的文档（`docs/` 清单见 README §6）；不要新建"复述代码"的文档，优先更新决策树条目。
+8. **知识单一事实源在代码；手册只收协议/口径/证据三类**：改代码时同步更新受影响的文档（`docs/` 清单见 README §6）；不要新建"复述代码"的文档，优先更新决策树条目。**分层契约**——方法类文档（ENGINE_PIPELINE_GUIDE / AGENT_RECORDING_SOP / GAME_TERM_TO_CODE_FIELD / MECHANIC_PATTERNS）条目只许三类：**协议**（怎么做：步骤/模板/钩子用法）、**口径**（是什么：数值/映射/裁决，手写时按规则 16 写成 `@fact` 钉实现旁）、**证据**（一行 + 实测数字，如否决记录）。编年叙事（逐日对账、逐队归因、实验过程）进 git 历史与 `.claude/` 账本，不进手册——git log 逐字保存，手册里只留结论与指针。§4 坑条目模板 = 症状/根因/判据/否决记录（示范见坑 19）。机器面：`check-guards` 判据 11 密度棘轮（四文档的数字 agentId 密度只降不升）+ burn-down 点名；带时效的结论挂 `⟳复核: <到点判什么> | 到期 <YYYY-MM-DD>` 触发器行，`zc drift` 点名逾期项（复核后撤标记或改写条目，别只删日期）。
 9. **完成必须声明 verifier + coverage**：每个改动结束时，回复里写明——由哪个命令/测试证明它生效（verifier），以及影响范围（哪些角色/页面/文件）。没有测试覆盖的改动先补测试，不算完成。
 10. **check 失败先诊断再动手**：先读失败断言/错误文件，写一句根因，再修。禁止不读输出直接重跑或直接改测试；若根因指向测试本身，先复核口径再改。**红基线不允许过夜**：曾有一条 `yixuanSmoke` 断言被当成"既存红"跨多个任务放着，而 CI 里文档漂移检查排在 `npm run verify` 之后同一 job——一红全哑、护栏整张失效（该 job 已拆开）。
     **基线是测量工具，不是开发否决权（用户裁决 2026-09-10）**：`timeGolden.baseline.json` /
@@ -97,7 +97,7 @@
 
 ```bash
 npm run verify        # check-guards + check-tokens + validate:data + validate:specs + verify:recording + vitest + build（一条链；build = vue-tsc -b && vite build，类型检查已含在内——2026-09-11 实证 -b 覆盖 app+node 两个 project 且失败非零退出，故不再单列 typecheck）
-npm run check-guards  # 机器护栏 9 项：fetch-stub 冻结（§3）/ agentId 棘轮（规则 6：编排层 useResourceCalc 53）/ **core agentId 棘轮**（规则 6 延伸：引擎层 role-agnostic，core 36）/ 工作区状态防误提交（规则 13）/ 展示层越层棘轮（§0：views·components 禁 import @/core|@/mechanics|@/specs）/ 滑块生效测试（规则 12）/ debt 登记（规则 12）/ docs 表（README §6 == docs/*.md，规则 8）/ @fact 锚点（规则 16）
+npm run check-guards  # 机器护栏 11 项：fetch-stub 冻结（§3）/ agentId 棘轮（规则 6：编排层 useResourceCalc + resourceCalc/ 目录 = 79）/ **core agentId 棘轮**（规则 6 延伸：引擎层 role-agnostic，core 36）/ 工作区状态防误提交（规则 13）/ 展示层越层棘轮（§0：views·components 禁 import @/core|@|mechanics|@/specs）/ 滑块生效测试（规则 12）/ debt 登记（规则 12）/ docs 表（README §6 == docs/*.md，规则 8）/ @fact 锚点（规则 16）/ catalog-raw level60 对账（坑 40）/ **手册密度棘轮**（规则 8 分层契约）
 npm run verify:recording  # 录入完成判据：声称 implemented 的角色必须有测试引用 + expect 断言 + 档案状态行
 npm run docs:status   # 重新生成 docs/implementation-status.md（CI 会检查漂移，漏跑即红）
 npm run minify:static # 生成产物瘦身/剔 catalog 死键（幂等；validate:data 报产物膨胀时用它修）

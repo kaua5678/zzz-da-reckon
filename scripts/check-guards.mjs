@@ -308,6 +308,29 @@ export function scanManualDensity(root = ROOT) {
   return out
 }
 
+/**
+ * 复核触发器（任务卡「经验手册防历史记录化」第 5 步；**只报不红**，zc drift 点名）：
+ * 方法文档里带有效期的结论，就地挂一行——
+ *     ⟳复核: <到点要判什么> | 到期 <YYYY-MM-DD>
+ * 到期日 ≤ 今天而标记还在 = 这条结论没人复核过，可能已经过期（事件型触发如「正式服上线」
+ * 写成预计复核日）。与判据 11 同族：一个拦新增编年史（红），一个防旧结论静默过期（报）。
+ * 机制同 drift 的诚实性：复核查实后改写结论并**撤掉标记**（或顺延日期并写明复核人理由），
+ * 不许只删日期装没发生。⚠ 自指陷阱：约定说明文字不许写出可解析的示例日期。
+ */
+export function scanDocReviewTriggers(root = ROOT, today = new Date().toISOString().slice(0, 10)) {
+  const rows = []
+  for (const rel of Object.keys(MANUAL_DENSITY_CEILINGS)) {
+    const p = join(root, rel)
+    if (!existsSync(p)) continue
+    const lines = readFileSync(p, 'utf8').split('\n')
+    lines.forEach((ln, i) => {
+      const m = ln.match(/⟳复核[:：]\s*(.+?)\s*[|｜]\s*到期\s*(\d{4}-\d{2}-\d{2})/)
+      if (m) rows.push({ file: rel, line: i + 1, due: m[2], overdue: m[2] <= today, text: m[1].trim() })
+    })
+  }
+  return rows
+}
+
 // ---- 判据 2：编排层 agentId 分支棘轮 ----
 
 /**

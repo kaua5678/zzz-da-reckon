@@ -103,3 +103,24 @@ export declare function scanExhibitionLayerImports(root?: string): {
   count: number
   sites: { file: string; line: number; text: string }[]
 }
+
+// 判据 11：手册数字 id 密度棘轮（任务卡 2026-09-12「经验手册防历史记录化」，防手册编年史化）
+export declare const MANUAL_DENSITY_CEILINGS: Record<string, number>
+export interface ManualDensityRow {
+  ceiling: number
+  lines: number
+  hits: number
+  /** null = 文档缺失（不判红，与判据 10 同风格） */
+  density: number | null
+}
+export declare function scanManualDensity(root?: string): Record<string, ManualDensityRow>
+
+// 复核触发器（任务卡第 5 步：手册条目「⟳复核: …｜到期 YYYY-MM-DD」，zc drift 点名逾期）
+export interface DocReviewTrigger {
+  file: string
+  line: number
+  due: string
+  overdue: boolean
+  text: string
+}
+export declare function scanDocReviewTriggers(root?: string, today?: string): DocReviewTrigger[]
