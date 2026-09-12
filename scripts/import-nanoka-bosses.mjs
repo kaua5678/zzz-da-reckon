@@ -114,7 +114,7 @@ function versionOf(zoneId) {
   for (const [ver, ids] of Object.entries(versionMap)) {
     if (ids.some(prefix => String(zoneId).startsWith(String(prefix)))) return ver
   }
-  return VERSION_FALLBACK.test(zoneId) ? '3.2' : ''
+  return VERSION_FALLBACK.find(({ re }) => re.test(zoneId))?.version ?? ''
 }
 
 /**
@@ -265,8 +265,12 @@ const BOSS_BODY_SIZES = {
 
 // @fact data:bossBodySize 口径: 22个TeamCompare可选boss的敌方体型为用户手录(2026-09-05)，覆盖表 BOSS_BODY_SIZES 随导入产物落 boss-presets.json 的 bodySize 字段；TeamCompare 选中 boss 自动写入敌方体型(未录 boss 默认中型)，艾莲霜锋剑气/苍角风团经 cfg.bodySize 消费 | 据 用户@2026-09-05 | 验 src/composables/__tests__/bossPresetsData.test.ts | 锚 scripts/import-nanoka-bosses.mjs#BOSS_BODY_SIZES | 信 确认
 
-/** version.json 未收录的 3.2 期数兜底（690451/690461/690471） */
-const VERSION_FALLBACK = /^6904[567]/
+/** version.json 未收录的测试服期数兜底：3.2 正式三期（690451/690461/690471，2026-09 上线）
+ *  + 3.3 测试服试炼三期（690481/690491/690501，无 live_begin） */
+const VERSION_FALLBACK = [
+  { re: /^6904[567]/, version: '3.2' },
+  { re: /^690(48|49|50)/, version: '3.3' },
+]
 
 /**
  * 危局总血量 = nanoka 原始单管血量（mo.stats.hp）× 管数（等效加强系数）。
@@ -316,7 +320,9 @@ for (const zoneId of Object.keys(summary)) {
         // 非正式上线日，混入会打乱时间轴（3.2 被排到 3.1 之前）。下游按 begin||phaseId 排序、空 begin 跳过匹配，均安全。
         const begin = info.live_begin ?? ''
         const modeType = mode.zone_type === 1002 ? 'critical_assault' : 'defense'
-        if (modeType === 'critical_assault') {
+        // 困难期弱点交集只让「已正式上线」（有 live_begin）的期数投票：
+        // 测试服期数会带错弱点（如 690491 复写体 弱火/风），混入会把真弱点（冰）抵消成空。
+        if (modeType === 'critical_assault' && begin) {
           const labels = Object.values(room.monster_weakness ?? {})
           if (labels.length) {
             const list = caWeaknessSets.get(String(mo.id)) ?? []
@@ -356,8 +362,9 @@ for (const zoneId of Object.keys(summary)) {
 
 /**
  * 危局弱点固定规则：同一怪物在危局强袭战所有期数里「都出现」的弱点才是真弱点。
- * 测试服期数可能带错数据（如 690471 异构·焚昼余火 弱电+风 是错的，与 690451 弱电
- * 取交集后只剩电）。防卫战期数保持当期标签（随期数变是正常的）。
+ * 测试服期数（无 live_begin）不参与投票——其标签常带错数据（如 690471 异构·焚昼余火
+ * 多贴了"风"、690491 复写体 弱火/风），混入会把真弱点抵消成空。与 690451/690461 弱电
+ * 取交集后 40011 只剩电。防卫战期数保持当期标签（随期数变是正常的）。
  */
 const caWeaknessIntersection = new Map() // monsterId -> Set<label>
 for (const [monsterId, lists] of caWeaknessSets) {

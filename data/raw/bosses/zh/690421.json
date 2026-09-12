@@ -990,6 +990,7 @@
                 }
               },
               "monster_weakness": {},
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
@@ -1033,7 +1034,7 @@
             },
             "69014406": {
               "title": "69014406_Title",
-              "desc": "· 成功<color=#FFAF2C>造成[部位破坏]</color>时，可获得<color=#FFAF2C>1000操作得分</color>；每次成功应对<color=#FFAF2C><Term:2000003></Term></color>时，可获得<color=#FFAF2C>500操作得分</color>；<color=#FFAF2C>阻止敌人的[侵蚀壁垒]充能完成并造成部位破坏</color>时，可获得<color=#FFAF2C>1500操作得分</color>。<Term:2000003></Term>期间，通过<color=#FFAF2C><Term:2000006></Term></color>造成<color=#FFAF2C>[完美反制]</color>时，会获得该次<color=#FFAF2C>[控制技]</color>剩余的成功应对得分。最多获得5000操作得分。"
+              "desc": "· 成功<color=#FFAF2C>造成[部位破坏]</color>时，可获得<color=#FFAF2C>1000操作得分</color>；每次成功<color=#FFAF2C>应对</color><Term:2000003></Term>时，可获得<color=#FFAF2C>500操作得分</color>；<color=#FFAF2C>阻止敌人的[侵蚀壁垒]充能完成并造成部位破坏</color>时，可获得<color=#FFAF2C>1500操作得分</color>，最多获得5000操作得分。"
             }
           },
           "layer_room": {
@@ -1062,6 +1063,7 @@
                 }
               },
               "monster_weakness": {},
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
@@ -1127,6 +1129,7 @@
                 "202": "冰属性",
                 "205": "以太"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
@@ -1196,6 +1199,7 @@
                 "203": "电属性",
                 "205": "以太"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },

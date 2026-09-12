@@ -993,6 +993,7 @@
                 "202": "Ice",
                 "205": "Ether"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
@@ -1067,6 +1068,9 @@
                 "202": "Ice",
                 "204": "Wind"
               },
+              "monster_resistance": {
+                "203": "Electric"
+              },
               "waves_num": 1
             }
           },
@@ -1104,7 +1108,7 @@
             },
             "69013104": {
               "title": "",
-              "desc": "During a <color=#FFAF2C>Control Skill</color>, every successful counter of a Boss attack grants <color=#FFAF2C>350 Performance Points</color>. A <color=#FFAF2C>Shutdown</color> of the Boss's <color=#FFAF2C>Control Skill</color> or counter of the final strike of certain skills inflicts on the Boss the <color=#FFAF2C>Impaired</color> effect and grants <color=#FFAF2C>750 Performance Points</color>. Earn up to 5,000 Performance Points from the above."
+              "desc": "During a <color=#FFAF2C>Control Skill</color>, every successful counter of a Boss attack grants <color=#FFAF2C>350 Performance Points</color>. A <color=#FFAF2C>Shutdown</color> of the Boss's <color=#FFAF2C>Control Skill</color> or counter of the final strike of certain skills inflicts on the Boss the <color=#FFAF2C>Impaired</color> effect and grants <color=#FFAF2C>750 Performance Points</color>. During the <Term:2000003></Term>, when triggering <color=#FFAF2C>Shutdown</color> via <color=#FFAF2C>Counter Assists</color>, obtain the remaining Performance Points available from the current <color=#FFAF2C>Control Skill</color>. Maximum obtainable Performance Points: 5,000."
             }
           },
           "layer_room": {
@@ -1135,6 +1139,10 @@
               "monster_weakness": {
                 "204": "Wind",
                 "205": "Ether"
+              },
+              "monster_resistance": {
+                "201": "Fire",
+                "202": "Ice"
               },
               "waves_num": 1
             }

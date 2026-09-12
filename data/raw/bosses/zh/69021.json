@@ -997,6 +997,7 @@
                 "200": "物理",
                 "205": "以太"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
@@ -1066,6 +1067,7 @@
                 "203": "电属性",
                 "205": "以太"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
@@ -1134,6 +1136,7 @@
               "monster_weakness": {
                 "205": "以太"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },

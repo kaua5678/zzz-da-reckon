@@ -1001,6 +1001,7 @@
                 "201": "Fire",
                 "202": "Ice"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
@@ -1075,6 +1076,7 @@
                 "202": "Ice",
                 "204": "Wind"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
@@ -1151,6 +1153,7 @@
               "monster_weakness": {
                 "202": "Ice"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },

@@ -975,7 +975,7 @@
                 "31437": {
                   "id": 40011,
                   "name": "异构·焚昼余火",
-                  "image": "UI/Sprite/A1DynamicLoad/BossCard/UnPacker/BossCardLv04/Monster_Mutant_HC.png",
+                  "image": "UI/Sprite/A1DynamicLoad/BossCard/UnPacker/BossCardLv04/Monster_HoloMutant.png",
                   "element": {
                     "ice": 0,
                     "fire": 0,
@@ -996,6 +996,9 @@
               "monster_weakness": {
                 "203": "电属性"
               },
+              "monster_resistance": {
+                "200": "物理"
+              },
               "waves_num": 1
             }
           },
@@ -1014,7 +1017,7 @@
             },
             "69014603": {
               "title": "锐裂",
-              "desc": "· 代理人的穿透率<color=#2BAD00>提升10%</color>，攻击命中敌人时无视其<color=#2BAD00>20%</color>的<color=#2EB6FF>电属性伤害抗性</color>和<color=#2BAD00>20%</color>的<color=#FF5521>火属性伤害抗性</color>。\n· 代理人发动<color=#FFFFFF>[强化特殊技]</color>后，锐化伤害<color=#2BAD00>提升30%</color>，防御力<color=#2BAD00>提升15%</color>，持续20秒，重复触发时刷新持续时间。"
+              "desc": "· 代理人的穿透率<color=#2BAD00>提升5%</color>，攻击命中敌人时无视其<color=#2BAD00>15%</color>的<color=#2EB6FF>电属性伤害抗性</color>。\n· 代理人发动<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[特殊技]</color>后，锐化伤害<color=#2BAD00>提升20%</color>，防御力<color=#2BAD00>提升10%</color>，持续20秒，重复触发时刷新持续时间。"
             }
           }
         }
@@ -1029,13 +1032,17 @@
           "stage_num": 1,
           "monster_level": 70,
           "layer_buff": {
+            "69013005": {
+              "title": "",
+              "desc": "· 适合<IconMap:Icon_AvatarClass_Armorer><color=#FFAF2C>[锋御]</color>特性的代理人挑战。"
+            },
             "69014506": {
               "title": "",
-              "desc": "·库萨里库受到的属性异常伤害<color=#FFAF2C>降低40%</color>。\n·代理人成功使用[招架支援]应对库萨里库的<Term:2000005></Term>时，将对其施加1层[识破]，每层[识破]会使其受到的<color=#FFAF2C>锐暴伤害提升20%</color>，[识破]最多叠加3层，持续60秒，重复触发时刷新持续时间。"
+              "desc": "· 库萨里库受到的属性异常伤害<color=#FFAF2C>降低40%</color>。\n· 代理人成功使用[招架支援]应对库萨里库的<Term:2000005></Term>时，将对其施加1层[识破]，使库萨里库进入失衡状态时，对其施加2层[识破]。每层[识破]会使其受到的<color=#FFAF2C>锐暴伤害提升20%</color>，[识破]最多叠加4层，持续<color=#FFAF2C>30</color>秒，重复触发时刷新持续时间。"
             },
             "69014507": {
               "title": "",
-              "desc": "·在库萨里库开启[侵蚀壁垒]后，使用<color=#FFFFFF>[招架支援]</color>反制库萨里库的<Term:2000005></Term>并对其造成部位破坏，可获得<color=#FFAF2C>1000操作得分</color>；成功通过<color=#FFFFFF>[招架支援]</color>应对<Term:2000005></Term>时，可获得<color=#FFAF2C>700操作得分</color>；<color=#FFAF2C>[完美反制]</color>库萨里库的<Term:2000003></Term>时，可获得<color=#FFAF2C>2000操作得分</color>。最多获得5000操作得分。"
+              "desc": "· 在库萨里库开启[侵蚀壁垒]后，使用<color=#FFFFFF>[招架支援]</color>反制库萨里库的<Term:2000005></Term>并对其造成部位破坏，可获得<color=#FFAF2C>1000操作得分</color>；成功通过<color=#FFFFFF>[招架支援]</color>应对<Term:2000005></Term>时，可获得<color=#FFAF2C>700操作得分</color>；<color=#FFAF2C>[完美反制]</color>库萨里库的<Term:2000003></Term>时，可获得<color=#FFAF2C>2000操作得分</color>。最多获得5000操作得分。"
             }
           },
           "layer_room": {
@@ -1067,6 +1074,9 @@
                 "201": "火属性",
                 "203": "电属性"
               },
+              "monster_resistance": {
+                "202": "冰属性"
+              },
               "waves_num": 1
             }
           },
@@ -1085,7 +1095,7 @@
             },
             "69014603": {
               "title": "锐裂",
-              "desc": "· 代理人的穿透率<color=#2BAD00>提升10%</color>，攻击命中敌人时无视其<color=#2BAD00>20%</color>的<color=#2EB6FF>电属性伤害抗性</color>和<color=#2BAD00>20%</color>的<color=#FF5521>火属性伤害抗性</color>。\n· 代理人发动<color=#FFFFFF>[强化特殊技]</color>后，锐化伤害<color=#2BAD00>提升30%</color>，防御力<color=#2BAD00>提升15%</color>，持续20秒，重复触发时刷新持续时间。"
+              "desc": "· 代理人的穿透率<color=#2BAD00>提升5%</color>，攻击命中敌人时无视其<color=#2BAD00>15%</color>的<color=#2EB6FF>电属性伤害抗性</color>。\n· 代理人发动<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[特殊技]</color>后，锐化伤害<color=#2BAD00>提升20%</color>，防御力<color=#2BAD00>提升10%</color>，持续20秒，重复触发时刷新持续时间。"
             }
           }
         },
@@ -1104,7 +1114,7 @@
             },
             "69014406": {
               "title": "69014406_Title",
-              "desc": "· 成功<color=#FFAF2C>造成[部位破坏]</color>时，可获得<color=#FFAF2C>1000操作得分</color>；每次成功应对<color=#FFAF2C><Term:2000003></Term></color>时，可获得<color=#FFAF2C>500操作得分</color>；<color=#FFAF2C>阻止敌人的[侵蚀壁垒]充能完成并造成部位破坏</color>时，可获得<color=#FFAF2C>1500操作得分</color>。<Term:2000003></Term>期间，通过<color=#FFAF2C><Term:2000006></Term></color>造成<color=#FFAF2C>[完美反制]</color>时，会获得该次<color=#FFAF2C>[控制技]</color>剩余的成功应对得分。最多获得5000操作得分。"
+              "desc": "· 成功<color=#FFAF2C>造成[部位破坏]</color>时，可获得<color=#FFAF2C>1000操作得分</color>；每次成功<color=#FFAF2C>应对</color><Term:2000003></Term>时，可获得<color=#FFAF2C>500操作得分</color>；<color=#FFAF2C>阻止敌人的[侵蚀壁垒]充能完成并造成部位破坏</color>时，可获得<color=#FFAF2C>1500操作得分</color>，最多获得5000操作得分。"
             }
           },
           "layer_room": {
@@ -1133,6 +1143,7 @@
                 }
               },
               "monster_weakness": {},
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
@@ -1151,7 +1162,7 @@
             },
             "69014603": {
               "title": "锐裂",
-              "desc": "· 代理人的穿透率<color=#2BAD00>提升10%</color>，攻击命中敌人时无视其<color=#2BAD00>20%</color>的<color=#2EB6FF>电属性伤害抗性</color>和<color=#2BAD00>20%</color>的<color=#FF5521>火属性伤害抗性</color>。\n· 代理人发动<color=#FFFFFF>[强化特殊技]</color>后，锐化伤害<color=#2BAD00>提升30%</color>，防御力<color=#2BAD00>提升15%</color>，持续20秒，重复触发时刷新持续时间。"
+              "desc": "· 代理人的穿透率<color=#2BAD00>提升5%</color>，攻击命中敌人时无视其<color=#2BAD00>15%</color>的<color=#2EB6FF>电属性伤害抗性</color>。\n· 代理人发动<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[特殊技]</color>后，锐化伤害<color=#2BAD00>提升20%</color>，防御力<color=#2BAD00>提升10%</color>，持续20秒，重复触发时刷新持续时间。"
             }
           }
         },
@@ -1207,6 +1218,9 @@
                 "202": "冰属性",
                 "204": "风属性"
               },
+              "monster_resistance": {
+                "203": "电属性"
+              },
               "waves_num": 1
             }
           },
@@ -1225,13 +1239,11 @@
             },
             "69014603": {
               "title": "锐裂",
-              "desc": "· 代理人的穿透率<color=#2BAD00>提升10%</color>，攻击命中敌人时无视其<color=#2BAD00>20%</color>的<color=#2EB6FF>电属性伤害抗性</color>和<color=#2BAD00>20%</color>的<color=#FF5521>火属性伤害抗性</color>。\n· 代理人发动<color=#FFFFFF>[强化特殊技]</color>后，锐化伤害<color=#2BAD00>提升30%</color>，防御力<color=#2BAD00>提升15%</color>，持续20秒，重复触发时刷新持续时间。"
+              "desc": "· 代理人的穿透率<color=#2BAD00>提升5%</color>，攻击命中敌人时无视其<color=#2BAD00>15%</color>的<color=#2EB6FF>电属性伤害抗性</color>。\n· 代理人发动<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[特殊技]</color>后，锐化伤害<color=#2BAD00>提升20%</color>，防御力<color=#2BAD00>提升10%</color>，持续20秒，重复触发时刷新持续时间。"
             }
           }
         }
       }
     }
-  ],
-  "begin_time": "2026-07-30 04:00:00",
-  "end_time": "2026-10-01 03:59:59"
+  ]
 }

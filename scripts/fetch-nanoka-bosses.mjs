@@ -65,7 +65,8 @@ function save(rel, data) {
   console.log(`OK  ${rel}`)
 }
 
-const version = process.argv[2] ?? (await latestZzzVersion())
+// 第一个非 --flag 参数才是版本号（此前 argv[2] 无条件当版本，`--force` 单独传时被吞成版本 → 404）
+const version = process.argv.slice(2).find(a => !a.startsWith('--')) ?? (await latestZzzVersion())
 const base = `${STATIC}/zzz/${version}`
 console.log(`nanoka boss API 版本: ${version}`)
 

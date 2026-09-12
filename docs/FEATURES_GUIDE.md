@@ -10,13 +10,13 @@
 1. 打开「属性配置」页 → 顶部「Boss 选择」卡片。**版本 + 危局期数两级下拉**（一期 = 1 困难 + 3 普通，**都是危局强袭战**；防卫战期默认不收，例外见下）。
 2. 每期分三区：
    - **困难 · 危局强袭战**：1 个 Boss，可应用
-   - **普通 · 危局强袭战**：当期 3 个 Boss，**同样可应用**（预设覆盖全部危局 Boss 共 15 个 + 老防卫战 Boss 彷徨猎手 1 个 = 16 个，用户确认收录）
+   - **普通 · 危局强袭战**：当期 3 个 Boss，**同样可应用**（预设覆盖全部危局 Boss 共 21 个 + 老防卫战 Boss 彷徨猎手 1 个 = 22 个，用户确认收录；3.3 测试服试炼期含未收录占位 Boss「(Test1)僭越者」，仅展示不可应用）
    - **当期 Buff**：3 张可选牌 + 各 Boss 卡上的**关卡固有 buff**（layer_buff 解析）
 3. 应用 Boss 时除填充敌人配置外，**自动把该 Boss 当期关卡固有 buff（layer_buff 数值效果）写入全局 Buff 表**（id 前缀 `layer-buff:`，切 Boss 时先清旧）
 3. 一键填充字段：血量 / 失衡值 / 防御 / 等级 / 危局异常系数（`bossAnomalyCoeff`）/ 失衡易伤（`stunVuln`）/ 失衡时间（`stunTime`）/ 三张抗性表 / 战斗时间 180s / 秽盾触发次数 / 能量盾次数 / 无敌时间（预设声明时，如 叶释渊 24s）/ 失衡赠礼（`bossStunGift`，预设 `stunGiftRatio` × 失衡上限，如 亵渎者 30%）。
    **不动的字段**：快支次数（角色侧）。
 3.1. **Boss 预设弹刀反推**（声明了 `parryTotal` / `parryNoFollowUpTotal` / `parryDecibelOnlyTotal` 的 Boss）：应用时自动勾选「保底4失衡」，计算器按当前队伍反推——击破位（首个 stun 特性槽位）**正常弹刀** = 保底 4 次失衡所需（封顶 `parryTotal`），主C = `parryTotal − 击破位`（主C 已手填则不覆盖）；**不带支援突击的弹刀**（`parryNoFollowUpTotal`，只有轻弹刀倍率行 + 喧响 215、无支援突击行）与**只给喧响的弹刀**（`parryDecibelOnlyTotal`，轻弹刀打小怪无 daze 无支援突击，只有喧响 215）全部归击破位、非用户可调；**喧响赠礼**（`decibelGift`）叠加到指定槽位进场喧响。交互栏显示「→ N（含无突击 M / 只喧响 K / 保底反推 +K）」提示，取消勾选即回到手动输入。实现：`src/core/parrySplit.ts` 纯函数 + `useResourceCalc` 外层不动点线程（般岳轴自动补齐同款收敛）。
-4. 底部「全部 Boss」折叠：16 个 Boss 按「危局异构（困难）」「危局常规（普通）」两组分组，点 chip 跳转到该 Boss 最新危局期。
+4. 底部「全部 Boss」折叠：22 个 Boss 按「危局异构（困难）」「危局常规（普通）」两组分组，点 chip 跳转到该 Boss 最新危局期。
 5. 已应用 Boss 卡片高亮；「清除已选」撤销高亮（不影响已填数值）。
 6. 期数标注：`(测试服)` 期的 buff 是 (Test1)TBD 占位，等正式服重跑 import 自动更新。
 
@@ -29,18 +29,18 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 
 - 原始数据 → `data/raw/bosses/{summary.json, version.json, zh|en/<期数id>.json, monster/<怪物id>.json}`
 - 端点与结构见 `scripts/fetch-nanoka-bosses.mjs` 头注释（boss.json / zh|en/boss/<id>.json / zh/monster/<id>.json）
-- **期视图**（`phaseViews`，Boss 选择 UI 的数据源）：覆盖全部 47 期（1.4–3.2）；每期含 普通 3 Boss（`defense`，可应用）/ 当期 buff（`buffs`）；3.1–3.2 另含 困难 Boss（`criticalAssault`，可应用），1.4–3.0 无困难模式
+- **期视图**（`phaseViews`，Boss 选择 UI 的数据源）：覆盖全部 50 期（1.4–3.2 正式 + 3.3 测试服试炼占位）；每期含 普通 3 Boss（`defense`，可应用）/ 当期 buff（`buffs`）；3.1–3.3 另含 困难 Boss（`criticalAssault`，可应用），1.4–3.0 无困难模式
 
 ### 1.3 修改入口（都在 `scripts/import-nanoka-bosses.mjs`）
 
 | 要改什么 | 改哪里 |
 | --- | --- |
-| 预设收录哪些 Boss | `CATALOG_MONSTER_MAP`（**危局 Boss**：困难异构 + 普通常规，共 15 个 + 用户确认收录的老防卫战 Boss 彷徨猎手 `30041`；`null` = 无 catalog 条目） |
+| 预设收录哪些 Boss | `CATALOG_MONSTER_MAP`（**危局 Boss**：困难异构 + 普通常规，共 21 个 + 用户确认收录的老防卫战 Boss 彷徨猎手 `30041`；`null` = 无 catalog 条目） |
 | 秽盾/能量盾/战斗时间/无敌时间/弹刀总数/喧响赠礼默认值 | `BOSS_DEFAULTS`（**秽盾是触发次数不是血量**：破盾奖励 60 能量 × 次数，名可名/叶释渊 = 1；不要填 3000 那种血量值。`invincibleTime` 无敌时间（秒）、`parryTotal` 正常弹刀下限、`parryNoFollowUpTotal` 不带支援突击弹刀下限、`parryDecibelOnlyTotal` 只给喧响弹刀下限（全归击破位）、`stunGiftRatio` 失衡赠礼比例（× 失衡上限）、`decibelGift` 喧响赠礼（叠加到指定槽位进场喧响）；口径见 §1.1） |
 | 失衡倍率/失衡时间公式 | `loadMonster()`：`(100+stun_damage_taken_ratio/100)/100`、`10000/destroy_recover_rate` |
 | 抗性映射 | `toCalcRes()`：怪物 `*_res` 万分比直接 /100（**游戏绝对值**：弱点 **-20** / 中性 0 / 抗性 +20~+40；引擎公式 `1 - res/100`） |
-| 关卡弱点并集/交集 | 危局期数取**跨期交集**（`caWeaknessIntersection`，测试服期数会带错弱点，如 690471 异构·焚昼余火多贴了"风"）；防卫战期数用当期标签 |
-| 新增期数版本标签兜底 | `VERSION_FALLBACK`（version.json 未收录的 3.2 期数前缀） |
+| 关卡弱点并集/交集 | 危局期数取**跨期交集**（`caWeaknessIntersection`，**只让已正式上线（有 live_begin）的期数投票**——测试服期数会带错弱点，如 690471 异构·焚昼余火多贴了"风"、690491 复写体 弱火/风会把真弱点"冰"抵消成空）；防卫战期数用当期标签 |
+| 新增期数版本标签兜底 | `VERSION_FALLBACK`（version.json 未收录的期数前缀 → 版本，当前 3.2 正式三期 + 3.3 试炼三期） |
 
 ### 1.4 当期 Buff 解析器（`scripts/phase-buff-parser.mjs`，类型声明 `phase-buff-parser.d.mts`）
 

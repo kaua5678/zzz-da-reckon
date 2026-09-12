@@ -7,8 +7,13 @@ const presets = JSON.parse(readFileSync(new URL('../../../public/static/boss-pre
 }
 
 describe('boss-presets 期视图数据不变量', () => {
-  it('每期 = 3 普通 + 3 buff；3.1/3.2 有 1 困难，1.4–3.0 无困难（全有预设可应用）', () => {
+  /** 测试服占位期（无 live_begin，如 3.3 试炼 690481/690491/690501）：
+   *  数据会变、Boss 名可能是占位（如 (Test1)僭越者 未收录预设），严格不变量只约束正式期。 */
+  const isTrial = (v: Record<string, any>) => !v.begin
+
+  it('正式期 = 3 普通 + 3 buff；3.1/3.2 有 1 困难，1.4–3.0 无困难（全有预设可应用）', () => {
     for (const v of presets.phaseViews) {
+      if (isTrial(v)) continue
       const hasCa = v.version === '3.1' || v.version === '3.2'
       if (hasCa) expect(v.criticalAssault, `${v.phaseId} 困难`).toBeTruthy()
       else expect(v.criticalAssault, `${v.phaseId} 困难`).toBeNull()
@@ -30,12 +35,14 @@ describe('boss-presets 期视图数据不变量', () => {
 
   it('困难 Boss 的期数是 critical_assault，普通是 defense', () => {
     for (const v of presets.phaseViews) {
-      if (v.criticalAssault) {
+      if (v.criticalAssault?.presetId) {
         const caPreset = presets.bosses.find(p => p.id === v.criticalAssault.presetId)
         const caPhase = caPreset!.phases.find(p => p.phaseId === v.phaseId && p.zoneKey === v.criticalAssault.zoneKey)
         expect(caPhase!.modeType).toBe('critical_assault')
       }
       for (const d of v.defense) {
+        // 测试服占位 Boss（未收录预设）无 presetId，跳过
+        if (!d.presetId) continue
         const preset = presets.bosses.find(p => p.id === d.presetId)
         const phase = preset!.phases.find(p => p.phaseId === v.phaseId && p.zoneKey === d.zoneKey)
         expect(phase!.modeType).toBe('defense')
@@ -43,13 +50,17 @@ describe('boss-presets 期视图数据不变量', () => {
     }
   })
 
-  it('期视图覆盖全部 47 期（1.4–3.2）；困难模式仅 3.1/3.2', () => {
-    expect(presets.phaseViews.length).toBe(47)
+  it('期视图覆盖全部 50 期（1.4–3.2 正式 + 3.3 试炼占位）；困难模式仅 3.1/3.2/3.3', () => {
+    expect(presets.phaseViews.length).toBe(50)
     const versions = [...new Set(presets.phaseViews.map(v => v.version))]
     expect(versions).toContain('1.4')
     expect(versions).toContain('3.2')
+    expect(versions).toContain('3.3')
     const caVersions = [...new Set(presets.phaseViews.filter(v => v.criticalAssault).map(v => v.version))]
-    expect(caVersions.sort()).toEqual(['3.1', '3.2'])
+    expect(caVersions.sort()).toEqual(['3.1', '3.2', '3.3'])
+    // 测试服试炼期恰好 3 期且都无 live_begin（有朝一日上线时本断言变红，逼回来转正）
+    const trials = presets.phaseViews.filter(isTrial)
+    expect(trials.map(v => v.phaseId).sort()).toEqual(['690481', '690491', '690501'])
   })
 })
 

@@ -993,6 +993,7 @@
                 "202": "冰属性",
                 "205": "以太"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
@@ -1061,6 +1062,7 @@
               "monster_weakness": {
                 "202": "冰属性"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
@@ -1130,6 +1132,7 @@
                 "203": "电属性",
                 "205": "以太"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },

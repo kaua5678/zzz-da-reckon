@@ -993,6 +993,7 @@
                 "202": "Ice",
                 "205": "Ether"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
@@ -1062,6 +1063,7 @@
                 "203": "Electric",
                 "204": "Wind"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
@@ -1127,6 +1129,7 @@
                 "202": "Ice",
                 "205": "Ether"
               },
+              "monster_resistance": {},
               "waves_num": 1
             }
           },
