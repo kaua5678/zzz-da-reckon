@@ -26,6 +26,8 @@ import { applySpecAttributeConversions } from '@/specs/runtime'
  */
 
 const LUCIA_AGENT_ID = '1451'
+/** 回血换算的目标角色：伊德海莉（烧血→喧响消费 `yidhariExternalHealPerUltPct`） */
+const YIDHARI_AGENT_ID = '1051'
 const A5_MOVE_ID = '1451005' // 普通攻击：星轨连击 #5（随想）
 const ADDITIONAL_ATTACK_MOVE_ID = '1451007' // 追加攻击（合唱，1100%/200异常/0失衡）
 const DREAM_TARGET = 500
@@ -423,6 +425,39 @@ export const luciaElowenMechanic: AgentMechanicModule = {
   agentIds: ['1451'],
   name: '卢西娅·艾洛温',
   description: '梦境值计划（500点→20次追加攻击）、计划外强特合轴0秒、[合唱]最后一段固定伤害/2命增伤/6命必暴暴伤、4命帷幕喧响、星光汇聚之地回血接入伊德海莉。',
+  /**
+   * 队伍级机制（规则 6 迁入，棘轮站点 2-3/8，2026-09-12 #10 真清偿）：两块原本共用一个
+   * 「卢西娅在队」守卫，故合并进本钩子一次清两处：
+   *
+   * ① **影画4·帷幕开启/延长** → 全队每人 +100 喧响（触发次数按梦境轴 + 15s CD 封顶 × 利用率滑块）。
+   *    消费端 `core/resource.ts` 读 `cfg.luciaC4DecibelPerTrigger` / `cfg.luciaC4CurtainCoverage`。
+   * ② **星光汇聚之地回血** → 终结技等级公式（12级 12.8%/大）× 覆盖滑块，换算成**伊德海莉自身生命%**
+   *    喂给烧血→喧响（仅伊德海莉在队时）。②跨槽位写 yidhari 字段正是本钩子的用途。
+   *
+   * 等价性：settings 已含注册默认兜底（lucia.c4CurtainCoverage=1 / lucia.healingCoverage=0.5），
+   * 与原 `configStore.getMechanicSetting(id, default)` 逐位等价；命座由派发器直接给（cinemaLevel）。
+   */
+  applyTeamConfig: ({ slot, characters, settings, cinemaLevel, phase }) => {
+    if (phase !== 'build') return
+    const self = characters.find(c => c.slot === slot)
+    if (!self) return
+    const clamp01 = (v: number) => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0))
+    // ① 影画4：帷幕触发 → 全队 +100 喧响/次（非 4 命不写字段 = 引擎既有无字段语义）
+    if (cinemaLevel >= 4) {
+      for (const cfg of characters) {
+        cfg.luciaC4DecibelPerTrigger = 100
+        cfg.luciaC4CurtainCoverage = clamp01(settings['lucia.c4CurtainCoverage'] ?? 1)
+      }
+    }
+    // ② 回血 → 伊德海莉烧血→喧响（换算比 = 卢西娅生命 / 伊德海莉生命）
+    const yidhari = characters.find(c => c.agentId === YIDHARI_AGENT_ID)
+    if (!yidhari) return
+    const healPctPerUlt = computeLuciaHealPctPerUlt(self.panel?.skillLevelBonus ?? 0)
+    const healingCoverage = clamp01(settings['lucia.healingCoverage'] ?? DEFAULT_HEALING_COVERAGE)
+    const luciaHp = Math.max(1, self.panel?.hp ?? 0)
+    const yidhariHp = Math.max(1, yidhari.panel?.hp ?? 0)
+    yidhari.yidhariExternalHealPerUltPct = healPctPerUlt * healingCoverage * (luciaHp / yidhariHp)
+  },
   applyPanel: applyLuciaPanel,
   buildCharConfig: buildLuciaCharConfig,
   estimateExSpecialTime: ({ cfg, exSpecialCount, ultimateCount }) => {

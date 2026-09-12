@@ -296,6 +296,20 @@ export const corinMechanic: AgentMechanicModule = {
   ],
   buildCharConfig: buildCorinCharConfig,
   applyTeamConfig: applyCorinTeamConfig,
+  /**
+   * 扫除帮手轴窗口覆盖（规则 6 迁入，棘轮站点 7/8，2026-09-12 #10 真清偿）：
+   * 原本由 `useResourceCalc` 的 `corinStunBonusMap` computed 按 agentId '1061' 找槽位、
+   * 自己查 catalog 取 basic 段 moveId 后直调。迁入后槽位/轴/倍率表访问都由派发器给。
+   * 非轴模式仍走伤害池的 `corin.additionalStunCoverage` 滑块分支。
+   */
+  axisWindowOverlays: ({ slot, axes, getAgentSkills }) => {
+    if (axes.length === 0) return null
+    const basicMoveIds = new Set(
+      (getAgentSkills(CORIN_ID)?.categories ?? []).find(c => c.id === 'basic')?.moves.map(m => m.id) ?? [],
+    )
+    const map = computeCorinStunBonusMoves(slot, axes, basicMoveIds)
+    return map.size > 0 ? { corinStunBonusMap: map } : null
+  },
   buildExecutions: buildCorinExecutions,
   applyPanel: applyCorinPanel,
   buildResourceResult: buildCorinResourceResult,

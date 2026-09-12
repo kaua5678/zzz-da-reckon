@@ -154,6 +154,17 @@ peiluoProminenceMechanic.settings = [{
   max: 1,
   step: 0.05,
 }]
+
+/**
+ * 阳炎轴窗口覆盖（规则 6 迁入，棘轮站点 6/8，2026-09-12 #10 真清偿）：
+ * 原本由 `useResourceCalc` 的 `peiluoKagerouMap` computed 按 agentId '1551' 找槽位后直调。
+ * 迁入后槽位/轴由派发器给；非轴模式仍走伤害池的 `peiluo.kagerouCoverage` 滑块分支。
+ */
+peiluoProminenceMechanic.axisWindowOverlays = ({ slot, axes }) => {
+  if (axes.length === 0) return null
+  const map = computePeiluoKagerouBonus(slot, axes)
+  return map.size > 0 ? { peiluoKagerouMap: map } : null
+}
 peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel }: any) => {
   // 影画1 黄昏旧章：进场获得 1000 点喧响值（勘域模式 180s 一次，整局口径按一次计）
   if ((cinemaLevel ?? 0) >= 1) {
@@ -549,6 +560,22 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
   agentIds: ['1391'],
   name: '橘福福·虎啸',
   description: '虎威4秒/次驱动威风；虎釜震煞/山君鼎戏·威势次数由账本收敛；虎啸满覆盖冲击+50；影画1/2/4/6 面板与附伤。',
+  /**
+   * 额外能力·八面威风（队伍级，规则 6 迁入）：队伍有强攻/命破 → 这些角色每次终结技 +300 喧响。
+   *
+   * 迁移自 `useResourceCalc` 的 `jufufuCfg` 分支（棘轮站点 1/8，2026-09-12 #10 真清偿）：
+   * 判定读本槽 cfg.panel.additionalAbilityActive（build 阶段面板已随 cfg 建好），
+   * 受益角色的 specialty 从 team 快照读，不再由编排层 import 本模块的常量。
+   */
+  applyTeamConfig: ({ slot, characters, team, phase }) => {
+    if (phase !== 'build') return
+    const self = characters.find(c => c.slot === slot)
+    if (!self || (self.panel?.additionalAbilityActive ?? 0) <= 0) return
+    for (const cfg of characters) {
+      const specialty = team.find(m => m.slot === cfg.slot)?.agent?.specialty
+      if (specialty === 'attack' || specialty === 'rupture') cfg.extraSelfDecibelPerUltimate = 300
+    }
+  },
   buildCharConfig: (input) => {
     jufufuSpecModule?.buildCharConfig?.(input)
     const cinema = input.cinemaLevel ?? 0

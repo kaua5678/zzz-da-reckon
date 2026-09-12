@@ -14,11 +14,6 @@ import { getAgentMechanic } from '@/mechanics'
 import { initialCalcRoundThreads, threadsAfterNullRound } from './resourceCalc/roundThreads'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
 import { createConvergenceRoundInputs, createRunCalcRound, type CalcRoundResult } from './resourceCalc/convergence'
-import { computeLuciaHealPctPerUlt } from '@/mechanics/agents/luciaElowen'
-import { computeBanyueMingwangStacks } from '@/mechanics/agents/banyue'
-import { computeCorinStunBonusMoves } from '@/mechanics/agents/corin'
-import { computeYixuanNingshenBonus } from '@/mechanics/agents/yixuan'
-import { computePeiluoKagerouBonus } from '@/mechanics/agents/specPanelBuffs'
 import type {
   CharacterOperationConfig,
   ResourceCalcConfig,
@@ -40,7 +35,7 @@ import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } f
  */
 const MAX_OUTER_ITER = 20
 
-const { computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, remielleSpecialVoidflareCount, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel } = ResourceCalcHelpers
+const { computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, remielleSpecialVoidflareCount, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays } = ResourceCalcHelpers
 export function useResourceCalc() {
   const configStore = useConfigStore()
   const catalogStore = useCatalogStore()
@@ -65,42 +60,9 @@ export function useResourceCalc() {
     // 队伍级机制（跨槽位联动）统一经 applyTeamConfig 钩子派发，按槽位 0→1→2。
     // 迁移前这里是 5 个 applyXxxTeamFlags 的手工 import + 手工按序调用（含莱特后场占比等
     // 内联 cfg 写入）；现在新角色的队伍级机制只改自己的模块，不必再动本文件。
+    // build 阶段的内联特判也已清零（2026-09-12 #10 真清偿）：橘福福八面威风 → specPanelBuffs，
+    // 卢西娅 4命帷幕 + 回血→伊德海莉 → luciaElowen，均在同一钩子的 build 相位完成。
     applyTeamMechanics({ characters, configStore, catalogStore, phase: 'build' })
-
-    // 橘福福额外能力·八面威风：队伍有强攻/命破时，这些角色每次终结技 +300 喧响
-    // （仪玄青溟云影走 ultimateCount；符法千重在收敛环用上一轮次数注入，见下方 1371 分支）。
-    const jufufuCfg = characters.find(cfg => cfg.agentId === '1391')
-    const jufufuAA = Boolean(jufufuCfg && (jufufuCfg.panel?.additionalAbilityActive ?? 0) > 0)
-    if (jufufuAA) {
-      for (const cfg of characters) {
-        const agent = catalogStore.getAgent(cfg.agentId)
-        if (agent?.specialty === 'attack' || agent?.specialty === 'rupture') {
-          cfg.extraSelfDecibelPerUltimate = 300
-        }
-      }
-    }
-
-    // 卢西娅4命：帷幕开启/延长（含伊德海莉大招开帷幕）→ 全队每人 +100 喧响；触发次数按梦境轴 + 15s CD 封顶 × 利用率滑块
-    const luciaCfg = characters.find(cfg => cfg.agentId === '1451')
-    if (luciaCfg) {
-      const luciaCinema = configStore.team[luciaCfg.slot]?.cinemaLevel ?? 0
-      if (luciaCinema >= 4) {
-        const coverage = Math.max(0, Math.min(1, configStore.getMechanicSetting('lucia.c4CurtainCoverage', 1)))
-        for (const cfg of characters) {
-          cfg.luciaC4DecibelPerTrigger = 100
-          cfg.luciaC4CurtainCoverage = coverage
-        }
-      }
-      // 星光汇聚之地回血：终结技等级公式（12级 12.8%/大）× 覆盖滑块 → 换算成伊德海莉自身生命%喂给烧血→喧响（仅伊德海莉在队时）
-      const yidhariCfg = characters.find(cfg => cfg.agentId === '1051')
-      if (yidhariCfg) {
-        const healPctPerUlt = computeLuciaHealPctPerUlt(luciaCfg.panel.skillLevelBonus ?? 0)
-        const coverage = Math.max(0, Math.min(1, configStore.getMechanicSetting('lucia.healingCoverage', 0.5)))
-        const luciaHp = Math.max(1, luciaCfg.panel.hp ?? 0)
-        const yidhariHp = Math.max(1, yidhariCfg.panel.hp ?? 0)
-        yidhariCfg.yidhariExternalHealPerUltPct = healPctPerUlt * coverage * (luciaHp / yidhariHp)
-      }
-    }
 
     if (characters.length === 0) return null
 
@@ -455,37 +417,16 @@ export function useResourceCalc() {
   /** 生效轴：条件轴方案命中后的轴（无方案时回退手动 stunAxes），供下游栈遍历/易伤分配统一消费 */
   const effectiveStunAxes = computed<StunAxis[]>(() => calcOutput.value?.resolvedAxes ?? configStore.stunAxes)
 
-  /** 般岳明王时间轴覆盖（失衡轴内）：怒相二连块触发明王窗口（2层→3层刷新），返回各招式实例加权平均层数 */
-  /** 般岳明王时间轴覆盖（非6命，轴内）：怒相二连块触发明王窗口（2层→3层刷新），返回各招式实例加权平均层数；6命满覆盖不扫描 */
-  const banyueMingwangStacks = computed(() => {
-    const banyueSlot = configStore.team.findIndex(c => c.agentId === '1471')
-    if (banyueSlot < 0 || effectiveStunAxes.value.length === 0) return new Map<string, number>()
-    const cinema = configStore.team[banyueSlot]?.cinemaLevel ?? 0
-    return computeBanyueMingwangStacks(banyueSlot, effectiveStunAxes.value, cinema)
-  })
-  /** 仪玄凝神时间轴覆盖（失衡轴内，般岳明王模式）：终结技块触发后 15s 窗口内动作暴伤+40%（影画6 附加贯穿+20%） */
-  const yixuanNingshenMap = computed(() => {
-    const yixuanSlot = configStore.team.findIndex(c => c.agentId === '1371')
-    if (yixuanSlot < 0 || effectiveStunAxes.value.length === 0) return new Map<string, { critDmg: number; sheerDmg: number }>()
-    const cinema = yixuanSlot >= 0 ? configStore.team[yixuanSlot]?.cinemaLevel ?? 0 : 0
-    return computeYixuanNingshenBonus(yixuanSlot, effectiveStunAxes.value, cinema)
-  })
-  /** 佩洛伊斯阳炎 buff 轴覆盖：上分支发动后 21s 窗口内上分支/决算终结暴伤+40%（触发块自身也享受） */
-  const peiluoKagerouMap = computed(() => {
-    const peiluoSlot = configStore.team.findIndex(c => c.agentId === '1551')
-    if (peiluoSlot < 0 || effectiveStunAxes.value.length === 0) return new Map<string, number>()
-    return computePeiluoKagerouBonus(peiluoSlot, effectiveStunAxes.value)
-  })
-  /** 可琳额外能力扫除帮手 buff 轴（失衡轴内）：轴内所有招式都在失衡窗口内 → 全部 +35%；普攻段归并 basic_attack 聚合行键 */
-  const corinStunBonusMap = computed(() => {
-    const corinSlot = configStore.team.findIndex(c => c.agentId === '1061')
-    if (corinSlot < 0 || effectiveStunAxes.value.length === 0) return new Map<string, number>()
-    const basicMoveIds = new Set(
-      (catalogStore.getAgentSkills('1061')?.categories ?? [])
-        .find(c => c.id === 'basic')?.moves.map(m => m.id) ?? [],
-    )
-    return computeCorinStunBonusMoves(corinSlot, effectiveStunAxes.value, basicMoveIds)
-  })
+  /**
+   * 失衡轴窗口覆盖四桶（般岳明王 / 仪玄凝神 / 佩洛伊斯阳炎 / 可琳扫除帮手）。
+   *
+   * 2026-09-12 #10 真清偿（棘轮站点 4-7/8）：原本是四个各自
+   * `configStore.team.findIndex(...)` 按角色 id 找槽位的 computed——编排层替角色找槽位、
+   * 判空、判轴，每加一个轴覆盖角色都要再改本文件。现在统一走注册表派发
+   * （`collectAxisWindowOverlays` → 模块自己的 `axisWindowOverlays` 钩子），
+   * 本文件不再出现任何角色 id。桶名与 DamagePoolContext 同名，下游零改动。
+   */
+  const axisOverlays = computed(() => collectAxisWindowOverlays(effectiveStunAxes.value, configStore, catalogStore))
 
   /** 当前命中的轴方案名（条件轴模式用于 UI 展示；无方案 = null） */
   const matchedPlanName = computed<string | null>(() => calcOutput.value?.matchedPlanName ?? null)
@@ -614,8 +555,9 @@ export function useResourceCalc() {
 
   /** 轴模式自动补齐的交互次数（保底，最终收敛值）：交互栏显示「弹刀 +N / 双反 +M」用 */
   const banyueInteractionTopUp = computed<{ slot: number; parry: number; dual: number } | null>(() => {
-    // 懒守卫：非般岳或非轴模式不触发全量计算（首页交互栏只在 1471 选中时读取）
-    const slot = configStore.team.findIndex(c => c.agentId === '1471')
+    // 懒守卫：无声明该能力的角色或非轴模式 → 不触发全量计算（首页交互栏只在选中该角色时读取）。
+    // 槽位由模块声明（producesInteractionTopUp）驱动，本文件不含角色 id（2026-09-12 #10 真清偿）。
+    const slot = configStore.team.findIndex(c => c.agentId && getAgentMechanic(c.agentId)?.producesInteractionTopUp)
     if (slot < 0 || (!configStore.useStunAxis && !autoActive.value)) return null
     const topUp = calcOutput.value?.banyueTopUp
     if (!topUp || (topUp.parry === 0 && topUp.dual === 0)) return null
@@ -773,10 +715,10 @@ export function useResourceCalc() {
     agentNames: agentNames.value,
     autoActive: autoActive.value,
     stunAxisResult: stunAxisResult.value,
-    banyueMingwangStacks: banyueMingwangStacks.value,
-    yixuanNingshenMap: yixuanNingshenMap.value,
-    peiluoKagerouMap: peiluoKagerouMap.value,
-    corinStunBonusMap: corinStunBonusMap.value,
+    banyueMingwangStacks: axisOverlays.value.banyueMingwangStacks,
+    yixuanNingshenMap: axisOverlays.value.yixuanNingshenMap,
+    peiluoKagerouMap: axisOverlays.value.peiluoKagerouMap,
+    corinStunBonusMap: axisOverlays.value.corinStunBonusMap,
     computeWindowDuration,
   }))
 

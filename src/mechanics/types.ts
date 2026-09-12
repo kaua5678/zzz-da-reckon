@@ -9,6 +9,7 @@ import type {
   MechanicSetting,
   SkillExecution,
   SpecialResourceSection,
+  StunAxis,
 } from '@/types/resource'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
@@ -305,11 +306,58 @@ export interface AgentMechanicModule {
   /** 连段动作：comboId → 复合招式（特殊技+重碾打包成一个栈单位，能量按打包口径一次扣除） */
   combos?: Record<string, { label: string; energyCost: number; moves: { moveId: string; count: number }[] }>
   /**
+   * 失衡轴窗口覆盖声明（规则 6 迁移落点，2026-09-12 #10 真清偿）：
+   * 模块按「轴内时间轴窗口」算出逐 moveId 的加权覆盖量，供伤害池消费。
+   *
+   * 为什么单列声明而不是让编排层按 agentId 分支算：这些覆盖量是**角色自己的**窗口语义
+   * （般岳明王 8s 二连触发 / 仪玄凝神大招后 15s / 佩洛伊斯阳炎上分支后 21s / 可琳扫除帮手），
+   * 此前 4 个函数分别被 useResourceCalc 直接 import + 在 computed 里按 agentId 找槽位调用，
+   * 每个新角色都要再改编排层（正是规则 6 要消灭的形状）。
+   *
+   * 返回 null/缺省 = 本模块本帧不参与（无该角色/无轴/命座已满覆盖等）；返回对象即按桶名覆盖。
+   * 桶名与伤害池入参同名（1:1 合并，编排层零映射逻辑）。
+   */
+  axisWindowOverlays?(input: AgentAxisOverlayInput): AgentAxisOverlays | null
+  /**
+   * 保底自动补齐的交互次数由本模块产出（`CalcRoundResult.banyueTopUp` 的槽位归属，规则 6 落点）。
+   *
+   * 存在的理由：交互栏要用「弹刀 +N / 双反 +M」，读的是轮内收敛值 `calcOutput.banyueTopUp`——
+   * 而它**很贵**，非本角色队伍不该触发全量计算（原实现是这个懒守卫的唯一理由）。编排层要保留
+   * 该守卫就得知道「本队有没有这种角色」，此前写成 `team.findIndex(c => c.agentId === '1471')`。
+   * 声明式（同 `backstageAutoFill` 范式）：编排层按声明找槽位，新角色接入不必再动编排层。
+   */
+  producesInteractionTopUp?: boolean
+  /**
    * 异常池预构建钩子：在 perElement 积蓄汇总之前调用（引擎已构建 elementMap 并预算 turbulenceCount）。
    * 模块可向 elementMap 注入额外积蓄贡献（如维琳娜风蚀替换广域），或把机制状态写入 store 供引擎消费。
    * 引擎保证：调用顺序在所有模块的 perElement 汇总之前，注入值进入所有下游（触发次数/覆盖率/note）。
    */
   transformAnomalyPool?(input: AgentAnomalyTransformInput): void
+}
+
+export interface AgentAxisOverlayInput {
+  /** 本模块角色所在槽位（编排层按注册表逐模块派发；模块无需自己 findIndex） */
+  slot: number
+  /** 生效失衡轴（空数组 = 非轴模式；模块自行决定是否退回覆盖率近似——本钩子只管轴内覆盖） */
+  axes: StunAxis[]
+  cinemaLevel: number
+  /** 倍率表访问（可琳等需要把普攻段归并到 'basic_attack' 聚合行键时查 basic 段 moveId） */
+  getAgentSkills: (agentId: string) => { categories: { id: string; moves: { id: string }[] }[] } | undefined
+}
+
+/**
+ * 轴窗口覆盖结果：字段名与 `DamagePoolContext` 的四个桶 **同名**，编排层按需 1:1 合并
+ * （缺省 = 该模块不产出这一桶）。数值语义：
+ * - `banyueMingwangStacks`：moveId → 明王层数（消费端 × MINGWANG_BASE_PER_STACK）
+ * - `yixuanNingshenMap`：moveId → { critDmg, sheerDmg }
+ * - `peiluoKagerouMap`：moveId → 阳炎暴伤（0-40）
+ * - `corinStunBonusMap`：moveId → 扫除帮手增伤%（恒 CORIN_ADDITIONAL_DMG）
+ */
+export interface AgentAxisOverlays {
+  banyueMingwangStacks?: Map<string, number>
+  yixuanNingshenMap?: Map<string, { critDmg: number; sheerDmg: number }>
+  peiluoKagerouMap?: Map<string, number>
+  corinStunBonusMap?: Map<string, number>
 }
 
 /** transformAnomalyPool 钩子输入（calcAnomalyPool 内部，perElement 之前） */

@@ -40,6 +40,7 @@ import type {
   TeamResourceResult,
   SkillExecution,
   AnomalyProgress,
+  StunAxis,
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
 import type { PanelValues, TeammateBuff, AgentSkills, SkillMove, Agent, DriveDiscConfig } from '@/types/catalog'
@@ -313,6 +314,49 @@ export function applyTeamMechanics(params: {
       teamEnergyConsumed,
     })
   }
+}
+
+/**
+ * 派发「失衡轴窗口覆盖」钩子（`axisWindowOverlays`，规则 6 的第四个落点）。
+ *
+ * 与 `applyTeamMechanics` 的区别：那个是**写入式**（模块改 cfg 字段），本函数是**取值式**
+ * （模块算逐 moveId 覆盖量，编排层合并后交给伤害池）。原本这四块（般岳明王/仪玄凝神/佩洛伊斯
+ * 阳炎/可琳扫除帮手）是 useResourceCalc 里四个各自按角色 id 找槽位的 computed
+ * ——编排层替角色找槽位，每加一个轴覆盖角色就要再改一次编排层。
+ *
+ * 派发顺序 = 注册表顺序（取值式无写入，顺序不影响结果；与 applyTeamMechanics 的槽位序不同不需要）。
+ * 返回扁平化后的四桶（与 `DamagePoolContext` 同名，调用方直接展开）。
+ */
+export function collectAxisWindowOverlays(
+  axes: StunAxis[],
+  configStore: ReturnType<typeof useConfigStore>,
+  catalogStore: ReturnType<typeof useCatalogStore>,
+): {
+  banyueMingwangStacks: Map<string, number>
+  yixuanNingshenMap: Map<string, { critDmg: number; sheerDmg: number }>
+  peiluoKagerouMap: Map<string, number>
+  corinStunBonusMap: Map<string, number>
+} {
+  const out = {
+    banyueMingwangStacks: new Map<string, number>(),
+    yixuanNingshenMap: new Map<string, { critDmg: number; sheerDmg: number }>(),
+    peiluoKagerouMap: new Map<string, number>(),
+    corinStunBonusMap: new Map<string, number>(),
+  }
+  if (axes.length === 0) return out
+  const getAgentSkills = (agentId: string) => catalogStore.getAgentSkills(agentId) as
+    { categories: { id: string; moves: { id: string }[] }[] } | undefined
+  for (const member of buildMechanicTeamMembers(configStore, catalogStore)) {
+    const hook = getAgentMechanic(member.agentId)?.axisWindowOverlays
+    if (!hook) continue
+    const res = hook({ slot: member.slot, axes, cinemaLevel: member.cinemaLevel, getAgentSkills })
+    if (!res) continue
+    if (res.banyueMingwangStacks) out.banyueMingwangStacks = res.banyueMingwangStacks
+    if (res.yixuanNingshenMap) out.yixuanNingshenMap = res.yixuanNingshenMap
+    if (res.peiluoKagerouMap) out.peiluoKagerouMap = res.peiluoKagerouMap
+    if (res.corinStunBonusMap) out.corinStunBonusMap = res.corinStunBonusMap
+  }
+  return out
 }
 
 /**

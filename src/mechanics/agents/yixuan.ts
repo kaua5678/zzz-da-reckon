@@ -862,5 +862,16 @@ export const yixuanMechanic: AgentMechanicModule = {
     minPeriodSeconds: 3,
   },
   buildAnomalyEvents: input => specBase.buildAnomalyEvents?.(input),
+  /**
+   * 凝神轴窗口覆盖（规则 6 迁入，棘轮站点 5/8，2026-09-12 #10 真清偿）：
+   * 原本由 `useResourceCalc` 的 `yixuanNingshenMap` computed 按 agentId '1371' 找槽位后直调。
+   * 与原逻辑逐位一致：只看「在队 + 有轴」；6 命满覆盖分支由**伤害池**判（读 c6 滑块，不读本表），
+   * 故此处不重复判命座——覆盖层保持纯数据，消费端继续拥有口径。
+   */
+  axisWindowOverlays: ({ slot, axes, cinemaLevel }) => {
+    if (axes.length === 0) return null
+    const map = computeYixuanNingshenBonus(slot, axes, cinemaLevel)
+    return map.size > 0 ? { yixuanNingshenMap: map } : null
+  },
   settings,
 }

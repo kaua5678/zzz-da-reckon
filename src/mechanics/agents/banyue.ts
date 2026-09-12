@@ -893,6 +893,24 @@ export const banyueMechanic: AgentMechanicModule = {
   // 跟随倾山轴内单位（damagePool 消费 axisStunFor('banyue_c6_crush_attach')；2026-08 审计补注册，
   // 此前未在 attachedEvents 登记 → 轴内附伤恒无易伤）
   attachedEvents: { [MOVE.qingShan]: ['banyue_c6_crush_attach'] },
+  /**
+   * 明王轴窗口覆盖（规则 6 迁入，棘轮站点 4/8，2026-09-12 #10 真清偿）：
+   * 原本由 `useResourceCalc` 的 `banyueMingwangStacks` computed 按 agentId '1471' 找槽位后直调
+   * `computeBanyueMingwangStacks`——编排层替角色找槽位+判空+判轴，正是规则 6 要消灭的形状。
+   * 迁入后：槽位/命座/轴由派发器给，模块自己决定何时不参与（6命满覆盖 → 不扫描返回 null）。
+   * 消费端仍读 DamagePoolContext.banyueMingwangStacks（桶名不变，数值逐位不变）。
+   */
+  axisWindowOverlays: ({ slot, axes, cinemaLevel }) => {
+    if (axes.length === 0) return null
+    const map = computeBanyueMingwangStacks(slot, axes, cinemaLevel)
+    return map.size > 0 ? { banyueMingwangStacks: map } : null
+  },
+  /**
+   * 交互栏「轴模式自动补齐」的槽位归属声明（规则 6 迁入，棘轮站点 8/8，2026-09-12 #10 真清偿）：
+   * 原本 `useResourceCalc.banyueInteractionTopUp` 写死 `findIndex(c => c.agentId === '1471')`。
+   * 该 computed 的槽位查找 + 懒守卫（非本角色队伍不触发全量计算）改由编排层按本声明完成。
+   */
+  producesInteractionTopUp: true,
   // 失衡轴动作块：怒相连段（论道→狮子吼·怒 / 地动→山摇·怒）= 怒相技能，山威免费（4 山威/怒相 = 2 组），
   // 不耗闪能不回嗔火；怒相内 2 组连段可在两个块间自由分配（didong 块优先占山威配额），明王触发源两者皆认领
   combos: {
