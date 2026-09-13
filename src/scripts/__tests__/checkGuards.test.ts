@@ -833,6 +833,32 @@ describe('scanDtsDrift / extractRuntimeExports（判据 14-C：TS2305 模式）'
     ].join('\n'))).toEqual(['A', 'C', 'f', 'remote', 'x', 'z'])
   })
 
+  // T15 审计 #11 发现（本轮修复）：`export * from './x.mjs'`（barrel 写法）原先不被识别
+  // ⇒ 目标文件的所有具名导出会被整组误判成 `declared-not-exported` **假红**。
+  // 实现改成带 resolver 递归解析目标文件（防环 + 越界/缺失记 ✗ 标记名而非静默）。
+  it('★ export * from（barrel）递归解析目标导出（否则整组假红）', () => {
+    const impl = ['export const A = 1', 'export function B() {}', 'export type T = string'].join('\n')
+    const barrel = "export * from './impl.mjs'"
+    const got = extractRuntimeExports(barrel, () => ({ source: impl, resolve: null }))
+    expect(got).toEqual(['A', 'B'])
+    // 不传 resolver = 旧行为（拿不到目标导出）——接口保留该降级路径，不抛错
+    expect(extractRuntimeExports(barrel)).toEqual([])
+  })
+
+  it('★ barrel 目标缺失/越界 → 记 ✗ 标记名（判据变红，不静默当成「无导出」）', () => {
+    const got = extractRuntimeExports("export * from './missing.mjs'", () => null)
+    expect(got).toHaveLength(1)
+    expect(got[0]).toContain('✗')
+    expect(got[0]).toContain('missing.mjs')
+  })
+
+  it('★ barrel 自环不成死循环（visited 防环）', () => {
+    const a = "export * from './a.mjs'"
+    // 目标 = 自己：第一次进去后再解析同一文件应被 visited 拦下
+    const got = extractRuntimeExports(a, () => ({ source: a, resolve: () => ({ source: '', resolve: null }) }))
+    expect(Array.isArray(got)).toBe(true)
+  })
+
   it('仓库现状：六对手写 .d.mts 零漂移（本判据上线时一次补齐 16 个漏声明）', () => {
     const r = scanDtsDrift()
     expect(r.pairs.length).toBeGreaterThanOrEqual(6)

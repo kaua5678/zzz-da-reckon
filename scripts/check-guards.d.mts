@@ -211,7 +211,14 @@ export declare function scanDtsDrift(root?: string): {
   /** .mjs 导出了但影子 API 没写 ⇒ TS 侧看不见 */
   exportedNotDeclared: DtsDriftRow[]
 }
-export declare function extractRuntimeExports(source: string): string[]
+/**
+ * 从 `.mjs` 源码抽运行时导出名。`resolve`（可选）用于递归解析 `export * from '<spec>'`：
+ * 传 null 时该写法不产出名字（旧行为）；返回 null 表示目标缺失/越界 → 记一条 `✗` 标记名。
+ */
+export declare function extractRuntimeExports(
+  source: string,
+  resolve?: ((spec: string) => { source: string; resolve: unknown } | null) | null,
+): string[]
 /**
  * 按白名单豁免死通道候选。`segment`（'A'|'B'|'C'）**应显式传**：候选为空时也要查该段
  * 清单是否该销号（不传则退回「从候选推断段」，空候选 = 不查 stale 的旧行为）。

@@ -1295,7 +1295,18 @@ export function scanDtsDrift(root = ROOT) {
     const mjsText = readFileSync(mjsPath, 'utf8')
     const typeOnly = new Set([...dtsText.matchAll(/export declare (?:interface|type)\s+([A-Za-z_$][\w$]*)/g)].map(m => m[1]))
     const declared = [...new Set([...dtsText.matchAll(/export declare (?:const|function|class|enum|let|var)\s+([A-Za-z_$][\w$]*)/g)].map(m => m[1]))]
-    const runtime = extractRuntimeExports(mjsText)
+    // `export * from '<spec>'` 递归解析（T15 审计 #11）：从 .mjs 所在目录解析相对路径，
+    // 越出 root 或文件不存在时返回 null（→ 标记名进 runtime，判据变红而非静默）
+    const rtSeen = new Set()
+    const rtResolve = (spec) => {
+      const dir = dirname(mjsPath)
+      const abs = spec.startsWith('.') ? join(dir, spec) : null
+      if (!abs || !existsSync(abs) || relPosix(root, abs).startsWith('..')) return null
+      if (rtSeen.has(abs)) return { source: '', resolve: null }   // 防环
+      rtSeen.add(abs)
+      return { source: readFileSync(abs, 'utf8'), resolve: rtResolve }
+    }
+    const runtime = extractRuntimeExports(mjsText, rtResolve)
     const relDts = relPosix(root, dtsPath)
     const relMjs = relPosix(root, mjsPath)
     const dOnly = declared.filter(d => !runtime.includes(d))
@@ -1311,11 +1322,19 @@ export function scanDtsDrift(root = ROOT) {
 
 /**
  * 从 `.mjs` 源码静态抽取**运行时导出名**。
- * 覆盖三种合法写法：`export function/const/class/let/var <名>`、`export { a, b as c }`、
- * `export { x } from './y.mjs'`（re-export 也是运行时导出）。`export type`/`export default` 不计
+ * 覆盖四种合法写法：`export function/const/class/let/var <名>`、`export { a, b as c }`、
+ * `export { x } from './y.mjs'`（re-export 也是运行时导出）、**`export * from './y.mjs'`**
+ * （barrel 写法，2026-09-14 补，T15 审计 #11）。`export type`/`export default` 不计
  * ——前者不进运行时表，后者无具名绑定（本仓 scripts/ 实测零 default export，判据会锁死这条假设）。
+ *
+ * `export * from './y.mjs'` 必须**递归解析目标文件**（它把目标的所有具名导出原样re-export）：
+ * 不解析就会把整组符号误判成 `declared-not-exported` 假红。递归带 visited 集合防环，
+ * 目标文件缺失或越出 root 时**不静默**——记一条 `✗` 标记名，让判据变红而不是假装通过。
+ *
+ * @param source `.mjs` 源码
+ * @param resolve 可选：把 `from '<spec>'` 解析成绝对路径（缺省 = 不递归，只当无导出）
  */
-export function extractRuntimeExports(source) {
+export function extractRuntimeExports(source, resolve = null) {
   const names = new Set()
   for (const m of source.matchAll(/^export\s+(?:async\s+)?(?:function|const|class|let|var)\s+([A-Za-z_$][\w$]*)/gm)) names.add(m[1])
   for (const m of source.matchAll(/^export\s*\{([^}]*)\}/gm)) {
@@ -1325,6 +1344,12 @@ export function extractRuntimeExports(source) {
       const as = seg.match(/^([A-Za-z_$][\w$]*)\s+as\s+([A-Za-z_$][\w$]*)$/)
       names.add(as ? as[2] : seg)
     }
+  }
+  for (const m of source.matchAll(/^export\s+\*\s+from\s*['"]([^'"]+)['"]/gm)) {
+    if (!resolve) continue
+    const target = resolve(m[1])
+    if (!target) { names.add(`✗ unresolved export * from '${m[1]}'`); continue }
+    for (const n of extractRuntimeExports(target.source, target.resolve)) names.add(n)
   }
   return [...names].sort()
 }
