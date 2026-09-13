@@ -178,7 +178,11 @@ export declare function auditNounTriage(
 // 判据 14：死通道扫描（A 零读零写 / B 只读不写 / C 手写 .d.mts 漂移）
 export interface DeadChannelEntry {
   since: string
+  /** ISO 日期（`YYYY-MM-DD`）——与 RATCHET_BURNDOWN 的 due 同源；散文写 action */
   due: string
+  /** 怎么处置（原先写在 due 里的中文说明，2026-09-14 拆出来让 due 可机器比对） */
+  action: string
+  /** 怎么证明它是死的（防「为绿而登记」） */
   why: string
 }
 export declare const DEAD_CHANNEL_ALLOWLIST: Record<string, DeadChannelEntry>

@@ -1013,79 +1013,124 @@ export const DEAD_CHANNEL_ALLOWLIST = {
   // 段 A：导出可选项零读零写（goldLevel 模式）
   'A|src/core/buff.ts coverageMap': {
     since: '2026-09-13',
-    due: 'buff.ts 的 coverageMap 输入槽无人读写——确认是无用槽后删字段，或接上消费点后销号',
+    action: 'buff.ts 的 coverageMap 输入槽无人读写——确认是无用槽后删字段，或接上消费点后销号',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '实测零读零写（判据 14-A 首轮扫描）；疑似历史残留输入槽，未接线但也不报错',
   },
   'A|src/core/resource/helpers.ts moduleInputRows': {
     since: '2026-09-13',
-    due: 'moduleInputRows 输入行通道空转——确认为预留则删，或由模块 buildExecutions 写入后销号',
+    action: 'moduleInputRows 输入行通道空转——确认为预留则删，或由模块 buildExecutions 写入后销号',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '实测零读零写；resource.ts:75 有同名字段（两处同名），疑似「声明了没人填」的预留通道',
   },
   'A|src/core/resource.ts moduleInputRows': {
     since: '2026-09-13',
-    due: '同 helpers.ts:846，随该条一并处置（同一通道的两个声明点）',
+    action: '同 helpers.ts:846，随该条一并处置（同一通道的两个声明点）',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '实测零读零写；与 helpers.ts:846 同名同源',
   },
   'A|src/composables/runArchiveImport.ts weaknesses': {
     since: '2026-09-13',
-    due: '归档导入的弱点字段未消费——归档只做单条部署对照（用户裁决 2026-09），确认无用途后删',
+    action: '归档导入的弱点字段未消费——归档只做单条部署对照（用户裁决 2026-09），确认无用途后删',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '归档导入 DTO 的展示字段；按用户裁决归档不作误差判据，可能永远不需要',
   },
   'A|src/composables/runArchiveImport.ts hpTotal': {
     since: '2026-09-13',
-    due: '同 weaknesses，随归档导入 DTO 一并处置',
+    action: '同 weaknesses，随归档导入 DTO 一并处置',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '归档导入 DTO 字段，无消费点',
   },
   // 段 B：可选项只读不写（invincibleTime 模式；`?? 默认值` 兜底 ⇒ 静默走默认）
   'B|src/composables/difficultyLadder.ts minGain': {
     since: '2026-09-13',
-    due: 'LadderOpts.minGain 无人传（minGainRatio 才是活通道）——确认为无用则删，或接上调用点后销号',
+    action: 'LadderOpts.minGain 无人传（minGainRatio 才是活通道）——确认为无用则删，或接上调用点后销号',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '只读不写：实现读 `opts.minGain ?? 0`，全仓零写入点（同族的 minGainRatio 有调用点）',
   },
   'B|src/composables/difficultyLadder.ts maxSteps': {
     since: '2026-09-13',
-    due: 'LadderOpts.maxSteps 无人传（走 `?? 24` 默认）——确认默认即唯一口径则删字段',
+    action: 'LadderOpts.maxSteps 无人传（走 `?? 24` 默认）——确认默认即唯一口径则删字段',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '只读不写：实现读 `opts.maxSteps ?? 24`，全仓零写入点',
   },
   'B|src/composables/multiplierCoefficients.ts zeroEnergyRow': {
     since: '2026-09-13',
-    due: 'zeroEnergyRow 只读不写——确认是否为「显式录 0 行」的预留标记，无用则删',
+    action: 'zeroEnergyRow 只读不写——确认是否为「显式录 0 行」的预留标记，无用则删',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '只读不写；与 FEATURES_GUIDE「普攻回能显式录 0 的 13 条以 0% 打标」语义疑似相关',
   },
   'B|src/composables/pullPlannerEngine.ts freePoolPerSpecialty': {
     since: '2026-09-13',
-    due: '抽卡规划器的 freePoolPerSpecialty 无人传——接上 UI 或删除',
+    action: '抽卡规划器的 freePoolPerSpecialty 无人传——接上 UI 或删除',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '只读不写（走 `?? 默认`）；抽卡价值只用期望值口径（用户裁决 2026-09-01），该字段疑似旧模拟残留',
   },
   'B|src/composables/timeWeightBalancer.ts minWeight': {
     since: '2026-09-13',
-    due: 'minWeight 只读不写——确认默认值即唯一口径则删字段',
+    action: 'minWeight 只读不写——确认默认值即唯一口径则删字段',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '只读不写（走 `?? 默认`）',
   },
   // ⚠ 本条是**扫描器已知盲区的产物**，登记理由与上面几条（真死通道）不同：见 why。
   'B|src/composables/runArchiveImport.ts resistances': {
     since: '2026-09-13',
-    due: '归档 DTO 的 resistances 字段——与 weaknesses/hpTotal 同族（活动/归档 JSON 契约面），随归档 DTO 一并确认删留',
+    action: '归档 DTO 的 resistances 字段——与 weaknesses/hpTotal 同族（活动/归档 JSON 契约面），随归档 DTO 一并确认删留',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '**名字撞车导致的误报**（实测核实）：本扫描器按字段名全仓计数，reads=21 全部来自 src/stores/config.ts 的**同名但无关**字段 `EnemyConfig.resistances`（旧版单表抗性，:1068/:1285 有兼容读取）；归档的 `ArchiveRoom.resistances` 自身零消费者（run-archive.json 实测 0 处出现该键）。这是 T10 报告的盲区②「跨类型同名结构写入」的样本——判据 14 是字段名级启发式，不是符号级引用分析。**留着这条登记而非删掉判据**：它如实记录了「此处有一个名字撞车的字段」，且 T10 用 TypeScript LanguageService 复核过同族字段（weaknesses/hpTotal 真为零读零写）。',
   },
   'B|src/core/damage.ts isRupture': {
     since: '2026-09-13',
-    due: 'DirectDamageInput.isRupture 零写入——函数体内已用 profile 判贯穿，确认冗余后删',
+    action: 'DirectDamageInput.isRupture 零写入——函数体内已用 profile 判贯穿，确认冗余后删',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '只读不写：`input.isRupture ? RUPTURE_DAMAGE_PROFILE : …` 的兼容入参，全仓调用点都改传 specialDamageProfile（resolveSpecialDamageProfile），该入参已成死通道',
   },
   'B|src/core/effectiveTime.ts blockSeconds': {
     since: '2026-09-13',
-    due: 'phaseDelayedCooldown 的 blockSeconds 形参无人传（走 `?? c` 旧口径）——接上 frontBlockSeconds 或删形参',
+    action: 'phaseDelayedCooldown 的 blockSeconds 形参无人传（走 `?? c` 旧口径）——接上 frontBlockSeconds 或删形参',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '只读不写；注意 frontBlockSeconds 是被测试与调用方用的活通道，死的是 phaseDelayedCooldown 的这个形参',
   },
   'B|src/data/stunAxisPresets.ts chapter': {
     since: '2026-09-13',
-    due: '轴预设的 chapter 字段只读不写（预设数据里没人填）——补数据或删字段',
+    action: '轴预设的 chapter 字段只读不写（预设数据里没人填）——补数据或删字段',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '只读不写；同类 guarantee 与 preset 的其它字段有数据，chapter 疑似未填',
   },
   'B|src/data/stunAxisPresets.ts guarantee': {
     since: '2026-09-13',
-    due: '同 chapter，随轴预设字段一并处置',
+    action: '同 chapter，随轴预设字段一并处置',
+    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
+    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
+    due: '2026-12-31',
     why: '只读不写',
   },
   // 段 C（手写 .d.mts 漂移）**首轮即清零**：本判据上线时把 check-guards.d.mts 的漏声明一次补齐

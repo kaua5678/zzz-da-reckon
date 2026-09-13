@@ -888,9 +888,27 @@ describe('applyDeadChannelAllowlist（判据 14 的豁免与 burn-down）', () =
   it('每条豁免都必须写 why（防「为绿而登记」把判据变成橡皮图章）', () => {
     for (const [k, v] of Object.entries(DEAD_CHANNEL_ALLOWLIST)) {
       expect(v.since, k).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-      expect(v.due, k).toBeTruthy()
       expect(v.why, k).toBeTruthy()
     }
+  })
+
+  // T15 审计 #6 发现（本轮修复）：`due` 原先写的是**处置说明散文**（15 条全是中文），
+  // 全仓零日期解析 ⇒ 这批冻结豁免**零到期压力**，只能靠有人主动补触发器才销号
+  // —— 正是「冻结 = 永久豁免」要防的形态（与判据 15 的 `到期 YYYY-MM-DD` 形成对比，后者至少是机器可比的）。
+  // 修法：`due` 收成 ISO 日期、散文改挂 `action`；本测试把口径钉死。
+  it('★ 豁免的 due 必须是 ISO 日期、处置说明挂 action（防「散文 due = 零到期压力」）', () => {
+    for (const [k, v] of Object.entries(DEAD_CHANNEL_ALLOWLIST)) {
+      expect(v.due, `${k} 的 due 必须是 YYYY-MM-DD（散文请写 action）`).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(v.action, `${k} 必须写 action（怎么处置）`).toBeTruthy()
+      expect(v.why, `${k} 必须写 why（怎么证明它是死的）`).toBeTruthy()
+    }
+  })
+
+  it('★ 豁免的 due 与 RATCHET_BURNDOWN「死通道豁免清单」同源（两处日期不许各写各的）', () => {
+    const bd = RATCHET_BURNDOWN.find(x => x.id === '死通道豁免清单')!
+    const dues = new Set(Object.values(DEAD_CHANNEL_ALLOWLIST).map(v => v.due))
+    // 清单条目的到期日必须都落在该棘轮的 due 上（否则「到期了也没人管」）
+    expect([...dues]).toEqual([bd.due])
   })
 
   it('仓库现状：三类候选全部已登记（fresh 为空）', () => {
