@@ -221,11 +221,11 @@ const BOSS_DEFAULTS = {
   '30038': { battleTime: 180, shieldCount: 1, energyShield: 0, invincibleTime: 29, parryNoFollowUpTotal: 2, parryDecibelOnlyTotal: 4, stunGiftRatio: 0.3 }, // 「亵渎者」（无敌 29s / 秽盾 1 / 无突击弹刀 2 / 只喧响弹刀 4 / 白送 30% 失衡上限）
   '30041': { battleTime: 180, shieldCount: 1, energyShield: 0, invincibleTime: 2, parryTotal: 1 }, // 彷徨猎手（无敌 2s / 秽盾 1 / 正常弹刀 1）
   '30042': { battleTime: 180, shieldCount: 1, energyShield: 0, invincibleTime: 24, parryTotal: 13 }, // 魇缚者·叶释渊（无敌 24s / 秽盾 1 / 弹刀 13）
-  '40000': { battleTime: 180, shieldCount: 2, energyShield: 0, invincibleTime: 6, parryTotal: 1, parryNoFollowUpTotal: 3 }, // 太初梦魇（无敌 6s / 秽盾 2 / 正常弹刀 1 / 无突击弹刀 3）
-  '40001': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 15, parryTotal: 2, parryNoFollowUpTotal: 7 }, // 薇斯珀（无敌 15s / 正常弹刀 2 / 无突击弹刀 7）
-  '40002': { battleTime: 180, shieldCount: 0, energyShield: 1, invincibleTime: 7, parryNoFollowUpTotal: 6 }, // 猎血清道夫（无敌 7s / 能量盾 1 / 无突击弹刀 3+3）
-  '40003': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 7, parryNoFollowUpTotal: 6 }, // 复写体·猎血清道夫（困难；无敌 7s / 无能量盾 / 无突击弹刀 6）
-  '40005': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 8, parryTotal: 2, parryNoFollowUpTotal: 4 }, // 焚昼余火·法厄同（无敌 4+4=8s 待确认 / 正常弹刀 2 / 无突击弹刀 4）
+  '40000': { battleTime: 180, shieldCount: 2, energyShield: 0, invincibleTime: 6, counterAssistGroups: [4] }, // 太初梦魇·始主（无敌 6s / 秽盾 2 / 控制技 1 组 4 段——用户@2026-09-13「始主4次弹刀+1个支援突击」；原录「正常1/无突击3」正是这条控制技的粗录，改组后不替换折算=1正常+3无突击**逐位同旧值**，纯增益=可被反制支援整组化解）
+  '40001': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 15, parryTotal: 2, parryNoFollowUpTotal: 7 }, // 薇斯珀（无敌 15s / 正常弹刀 2 / 无突击弹刀 7；控制技数据未给，维持旧录入）
+  '40002': { battleTime: 180, shieldCount: 0, energyShield: 1, invincibleTime: 7, counterAssistGroups: [5] }, // 猎血清道夫（无敌 7s / 能量盾 1 / 控制技 1 组 5 段——用户@2026-09-13「清道夫5次弹刀+1个支援突击，也就是4次只弹+1次弹+支援突击」；原录「无突击弹刀 3+3=6」是该控制技的误拆（段数多记 1、突击没记），改组后不替换折算=1正常+4无突击）
+  '40003': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 7, counterAssistGroups: [5] }, // 复写体·猎血清道夫（困难；无敌 7s / 控制技同 40002 一系（旧录同为 3+3）；[假设] 困难版与普版控制技同段数——Boss 卡可编辑，实测不符由用户改）
+  '40005': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 8, counterAssistGroups: [4] }, // 焚昼余火·法厄同（无敌 4+4=8s 待确认 / 控制技 1 组 4 段——用户@2026-09-13「余火4次弹刀+1个支援突击」；原录「正常2/无突击4」不替换折算会变 1+3（**delta：总弹刀 6→4、正常 2→1**），属对旧粗录的订正）
   '40006': { battleTime: 180, shieldCount: 0, energyShield: 1, parryTotal: 1, parryNoFollowUpTotal: 2, xParryTotal: 1 }, // 基塔布鲁（能量盾 1 / 无突击弹刀 2 / x弹刀 1：两人同时招架——支援突击/喧响算两人的、前台时间只计一份，2026-09-02 用户口径）
   '40008': { battleTime: 180, shieldCount: 0, energyShield: 2, parryTotal: 1, parryNoFollowUpTotal: 2 }, // 基塔布鲁·滞变畸兽（能量盾 2 / 正常弹刀 1 / 无突击弹刀 2；x弹刀同族待核）
   '300121': { battleTime: 180, shieldCount: 0, energyShield: 0, invincibleTime: 24 },      // 恶名·冥宁芙（无敌 24s）

@@ -27,24 +27,48 @@
       </div>
     </div>
 
-    <!-- 控制技（紫光技）× 反制支援：整组化解开关（应用后才有意义，队内有反制支援招式才生效） -->
-    <div v-if="controlSkillGroups.length > 0" class="counter-assist-row">
-      <n-checkbox
-        :checked="counterAssistReplaceOn"
-        :disabled="!teamHasCounterAssist"
-        @update:checked="v => configStore.setMechanicSetting('boss.counterAssistReplace', v ? 1 : 0)"
-      >
-        反制支援整组替换
-      </n-checkbox>
-      <span>{{ counterAssistSummary }}</span>
-      <n-select
-        v-if="counterAssistReplaceOn && teamHasCounterAssist"
-        :value="configStore.getMechanicSetting('boss.counterAssistSlot', -1)"
-        :options="counterAssistSlotOptions"
-        size="tiny"
-        style="width: 150px"
-        @update:value="v => configStore.setMechanicSetting('boss.counterAssistSlot', Number(v))"
-      />
+    <!-- 控制技（紫光技）× 反制支援：整组化解开关 + 逐组招架段数可编辑（用户对导入默认值不满意可调；
+         编辑只活在 appliedBoss，重新应用 Boss 回落预设默认；引擎/折算/难度曲线全读同一活引用） -->
+    <div v-if="controlSkillGroups.length > 0 || applied" class="counter-assist-row">
+      <div v-if="controlSkillGroups.length > 0" class="ca-toggle">
+        <n-checkbox
+          :checked="counterAssistReplaceOn"
+          :disabled="!teamHasCounterAssist || !applied"
+          @update:checked="v => configStore.setMechanicSetting('boss.counterAssistReplace', v ? 1 : 0)"
+        >
+          反制支援整组替换
+        </n-checkbox>
+        <span>{{ counterAssistSummary }}</span>
+        <n-select
+          v-if="counterAssistReplaceOn && teamHasCounterAssist"
+          :value="configStore.getMechanicSetting('boss.counterAssistSlot', -1)"
+          :options="counterAssistSlotOptions"
+          size="tiny"
+          style="width: 150px"
+          @update:value="v => configStore.setMechanicSetting('boss.counterAssistSlot', Number(v))"
+        />
+        <span v-if="foldReadout" class="ca-fold">{{ foldReadout }}</span>
+      </div>
+      <span v-else class="ca-label">控制技：未录入</span>
+      <div v-if="applied" class="ca-editor">
+        <span class="ca-label">招架段数</span>
+        <span v-for="(g, i) in controlSkillGroups" :key="i" class="ca-group">
+          <span class="ca-idx">组{{ i + 1 }}</span>
+          <n-input-number
+            :value="g"
+            :min="1"
+            :max="12"
+            :step="1"
+            size="tiny"
+            :show-button="false"
+            style="width: 56px"
+            @update:value="v => onSegs(i, Number(v))"
+          />
+          <n-button size="tiny" text type="error" @click="onRemoveGroup(i)">✕</n-button>
+        </span>
+        <n-button size="tiny" :disabled="controlSkillGroups.length >= 8" @click="onAddGroup">＋组</n-button>
+        <n-button v-if="groupsEdited" size="tiny" text type="primary" @click="onResetGroups">恢复默认</n-button>
+      </div>
     </div>
 
     <!-- 关卡固有 buff（layer_buff 数值效果） -->
@@ -67,7 +91,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { NTag, NButton, NCheckbox, NSelect } from 'naive-ui'
+import { NTag, NButton, NCheckbox, NSelect, NInputNumber } from 'naive-ui'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, PhaseBossBrief, PhaseBuffEffect } from '@/types/bossPreset'
 import { useConfigStore } from '@/stores/config'
@@ -84,8 +108,52 @@ const emit = defineEmits<{ apply: [] }>()
 const iconFailed = ref(false)
 const configStore = useConfigStore()
 
-/** 该 Boss 的控制技（紫光技）组：逐组记招架段数；空 = 无（不显示替换行） */
-const controlSkillGroups = computed<number[]>(() => props.preset?.defaults?.counterAssistGroups ?? [])
+/**
+ * 该 Boss 的控制技（紫光技）组（逐组招架段数）——**生效值**：
+ * 已应用 = appliedBoss 上的活值（可被用户编辑，与引擎/折算/难度曲线同源）；
+ * 未应用 = 预设默认值（展示用）。
+ */
+const controlSkillGroups = computed<number[]>(() =>
+  props.applied
+    ? (configStore.appliedBoss?.counterAssistGroups ?? [])
+    : (props.preset?.defaults?.counterAssistGroups ?? []))
+/** 编辑是否偏离预设默认（决定「恢复默认」按钮显隐） */
+const groupsEdited = computed(() => {
+  if (!props.applied) return false
+  const live = configStore.appliedBoss?.counterAssistGroups ?? []
+  const def = props.preset?.defaults?.counterAssistGroups ?? []
+  return live.length !== def.length || live.some((v, i) => v !== def[i])
+})
+function commitGroups(groups: number[]) {
+  configStore.setCounterAssistGroups(groups)
+}
+function onSegs(i: number, v: number) {
+  const cur = [...(configStore.appliedBoss?.counterAssistGroups ?? [])]
+  if (!Number.isFinite(v) || v <= 0) return
+  cur[i] = v
+  commitGroups(cur)
+}
+function onAddGroup() {
+  commitGroups([...(configStore.appliedBoss?.counterAssistGroups ?? []), 4])
+}
+function onRemoveGroup(i: number) {
+  const cur = [...(configStore.appliedBoss?.counterAssistGroups ?? [])]
+  cur.splice(i, 1)
+  commitGroups(cur)
+}
+function onResetGroups() {
+  commitGroups([...(props.preset?.defaults?.counterAssistGroups ?? [])])
+}
+/** 折算读数：编辑段数/开关翻转后，弹刀侧与反制侧各得到什么（一眼核对，不用开控制台） */
+const foldReadout = computed(() => {
+  const applied = props.applied ? configStore.appliedBoss : null
+  if (!applied) return ''
+  if (counterAssistSlot.value >= 0) {
+    const segs = (applied.counterAssistGroups ?? []).reduce((a, b) => a + Math.max(1, Math.floor(b)), 0)
+    return `本局反制支援 ×${(applied.counterAssistGroups ?? []).length}（化解 ${segs} 段，不产弹刀）`
+  }
+  return `按弹刀计：正常 ${applied.parryTotal ?? 0} / 无突击 ${applied.parryNoFollowUpTotal ?? 0}`
+})
 /** 队内是否有带反制支援招式的角色（判据 = 数据层登记表，与引擎同源） */
 const teamHasCounterAssist = computed(() => configStore.team.some(c => !!counterAssistOf(c?.agentId)))
 const counterAssistReplaceOn = computed(() => configStore.getMechanicSetting('boss.counterAssistReplace', 1) !== 0)
@@ -253,6 +321,40 @@ function statLabelOf(stat: string): string {
   flex-wrap: wrap;
   align-items: center;
   font-size: 11px;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.ca-toggle {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ca-editor {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ca-group {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.ca-idx {
+  color: var(--fg-3);
+}
+
+.ca-label {
+  color: var(--fg-2);
+}
+
+.ca-fold {
+  color: var(--fg-3);
 }
 
 .layer-label {

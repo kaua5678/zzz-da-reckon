@@ -1131,6 +1131,20 @@ export const useConfigStore = defineStore('config', () => {
     applied.parryNoFollowUpTotal = applied.presetParryNoFollowUpTotal + foldedNoFollowUp
   }
 
+  /**
+   * 用户编辑控制技组（Boss 卡）：对导入默认值不满意可改逐组段数/组数（引擎与折算全读
+   * `appliedBoss.counterAssistGroups` 活引用，改这里 = 全链生效）。约束：组 ≤8、每组段数 1~12；
+   * 空数组 = 清除（该 Boss 按无控制技处理）。折算幂等（只从 presetParry* 快照重算）。
+   * 重新应用 Boss 即回落预设默认值（编辑只活在 appliedBoss，不落预设静态数据）。
+   */
+  function setCounterAssistGroups(groups: number[]) {
+    const applied = appliedBoss.value
+    if (!applied) return
+    const clean = groups.slice(0, 8).map(g => Math.min(12, Math.max(1, Math.floor(g) || 1)))
+    applied.counterAssistGroups = clean.length > 0 ? clean : undefined
+    syncBossInteractionPlan()
+  }
+
   // 队伍换人 / 两个开关翻转 → 立刻重算（**flush: 'sync'**：引擎与弹刀下限在同一 tick 内直读
   // appliedBoss.parryTotal，pre-flush 会晚一帧导致「刚关掉替换但仍按弹刀计」的错值；
   // 源只有 counterAssistSlot 与预设 id 快照，改的又是 parry* 本身 → 无回环）
@@ -1400,6 +1414,8 @@ export const useConfigStore = defineStore('config', () => {
     clearBossPreset,
     /** 反制支援整组替换控制技：承接槽位（-1 = 不替换）。UI 与引擎同源判据。 */
     counterAssistSlot,
+    /** Boss 控制技组用户可编辑（默认来自预设；改后即时重折算，重新应用 Boss 回落默认） */
+    setCounterAssistGroups,
     initDefaultTeam,
     applyTeamPreset,
   }

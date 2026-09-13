@@ -259,3 +259,70 @@ describe('难度口径：角力 = 一次弹刀同权重（用户 2026-09-12）',
       .some(i => i.type === 'counterAssist')).toBe(false)
   })
 })
+
+describe('真实 Boss 控制技默认值（用户 2026-09-13 录入：段数即「招架段数」= 反制支援化解的一组）', () => {
+  const defOf = (id: string) => bossData.bosses.find((b: { id: string }) => b.id === id)?.defaults
+  it('清道夫 40002/40003=1组5段、始主 40000=1组4段、余火 40005=1组4段（与用户口径逐字对齐）', () => {
+    expect(defOf('40002')?.counterAssistGroups).toEqual([5])
+    expect(defOf('40003')?.counterAssistGroups).toEqual([5])
+    expect(defOf('40000')?.counterAssistGroups).toEqual([4])
+    expect(defOf('40005')?.counterAssistGroups).toEqual([4])
+  })
+  it('防双计：这些 Boss 的强制弹刀总数清空（控制技只走组通道，非替换时由折算并回）', () => {
+    for (const id of ['40002', '40003', '40000', '40005']) {
+      const d = defOf(id)!
+      expect(d.parryTotal ?? 0, `${id} 不该再静态记正常弹刀`).toBe(0)
+      expect(d.parryNoFollowUpTotal ?? 0, `${id} 不该再静态记无突击弹刀`).toBe(0)
+    }
+  })
+  it('始主组折算逐位等于旧静态录入（正常1+无突击3=[4]折出），纯增益=可被整组化解', async () => {
+    // [4] → 1 次正常弹刀 + 3 无突击，与 BOSS_DEFAULTS 旧值 {parryTotal:1, parryNoFollowUpTotal:3} 一致
+    const { config } = await setupHarness([...TEAM_WITHOUT_CLARET])
+    const preset = bossData.bosses.find((b: { id: string }) => b.id === '40000')!
+    expect(preset, 'boss-presets.json 缺 40000 始主预设').toBeTruthy()
+    config.applyBossPreset({ id: preset.id }, preset.phases[0] as never, preset.monster as never, preset.defaults as never)
+    expect(config.appliedBoss?.parryTotal).toBe(1)
+    expect(config.appliedBoss?.parryNoFollowUpTotal).toBe(3)
+  })
+})
+
+describe('控制技组用户可编辑（Boss 卡对默认值不满意可调整，引擎全链读同一活引用）', () => {
+  it('改段数 / 加组 / 删组 / 清空 → 折算即时重算且幂等；清空回落无组', async () => {
+    const { config } = await setupHarness([...TEAM_WITHOUT_CLARET])
+    applyBoss(config, [3, 4])
+    expect(config.appliedBoss?.parryTotal).toBe(15)   // 13 + 2 组
+    expect(config.appliedBoss?.parryNoFollowUpTotal).toBe(2 + 3) // (3-1)+(4-1)=5
+
+    config.setCounterAssistGroups([6])
+    expect(config.appliedBoss?.parryTotal).toBe(13 + 1)
+    expect(config.appliedBoss?.parryNoFollowUpTotal).toBe(5)
+    config.setCounterAssistGroups([6])                // 幂等：重复设同值不累积
+    expect(config.appliedBoss?.parryTotal).toBe(14)
+    expect(config.appliedBoss?.parryNoFollowUpTotal).toBe(5)
+
+    config.setCounterAssistGroups([])                 // 清空 = 无控制技
+    expect(config.appliedBoss?.counterAssistGroups).toBeUndefined()
+    expect(config.appliedBoss?.parryTotal).toBe(13)
+    expect(config.appliedBoss?.parryNoFollowUpTotal ?? 0).toBe(0)
+  })
+  it('越界钳制：段数 1~12、组数 ≤8、非正数回 1（防脏输入击穿折算）', async () => {
+    const { config } = await setupHarness([...TEAM_WITHOUT_CLARET])
+    applyBoss(config, [3])
+    config.setCounterAssistGroups([0, -5, 999, ...Array(10).fill(2)])
+    const g = config.appliedBoss?.counterAssistGroups ?? []
+    expect(g.length).toBe(8)
+    expect(g[0]).toBe(1); expect(g[1]).toBe(1); expect(g[2]).toBe(12)
+    // 无替换折算上限：8 组 → 正常 +8
+    expect(config.appliedBoss?.parryTotal).toBe(13 + 8)
+  })
+  it('有克拉蕾在场时编辑段数：反制支援次数 = 组数（化解动作数随组数变），弹刀侧仍不并入', async () => {
+    const { config } = await setupHarness([...TEAM_WITH_CLARET])
+    applyBoss(config, [5])
+    expect(config.counterAssistSlot).toBe(2)
+    expect(config.appliedBoss?.parryTotal).toBe(13)   // 整组不并入
+    config.setCounterAssistGroups([5, 5, 5])          // 三组
+    const items = liveInteractions(config, { team: ['1611', '1251', '1081'] } as never)
+    expect(items.find(i => i.type === 'counterAssist')?.count).toBe(3)
+    expect(config.appliedBoss?.parryTotal).toBe(13)   // 仍不并入
+  })
+})
