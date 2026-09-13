@@ -229,6 +229,10 @@ export declare function applyDeadChannelAllowlist(
 // 判据 15：口径复核触发器强制（游戏语义 @fact 必须挂 ⟳复核 + 到期日）
 export declare const CALIBER_NON_GAME_SUBJECTS: string[]
 export declare const CALIBER_TRIGGER_KINDS: string[]
+/** 工程元口径的锚文件位判据（scripts/ · docs/ · src/utils/） */
+export declare function isEngineeringAnchor(file: string): boolean
+/** 工程元口径 = subject 前缀命中 **且** 锚文件在工程位（单看前缀是可逃逸白名单） */
+export declare function isEngineeringFact(fact: { subject: string }, file: string): boolean
 export declare const CALIBER_TRIGGER_ALLOWLIST: string[]
 export interface CaliberTriggerRow {
   file: string

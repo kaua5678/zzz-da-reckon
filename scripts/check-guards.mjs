@@ -1408,6 +1408,31 @@ export const CALIBER_NON_GAME_SUBJECTS = [
 export const CALIBER_TRIGGER_KINDS = ['口径', '映射']
 
 /**
+ * 工程元口径的**锚文件位**：`scripts/**`（工具链）· `docs/**`（手册）· `src/utils/**`（通用格式化/
+ * 展示工具，与游戏机制无关）。
+ *
+ * `src/utils/**` 收进来的依据 = `docs/ARCHITECTURE.md` §0 的五层模型里它不属于任何机制层，
+ * 内容是 `format.ts`（数字/本地化格式化）/ `statMeta.ts`（属性元数据）/ `modelingGaps.ts`（缺口提示）/
+ * `image.ts`（图片 URL）这类纯工具——实测仓库里唯一的 `utils/` 前缀事实就是
+ * `@fact utils/format/localized`（LocalizedString 解析口径，锚 src/utils/format.ts）。
+ * 见 `isEngineeringFact` 的组合判据说明。
+ */
+export function isEngineeringAnchor(file) {
+  return /^(scripts|docs|src\/utils)\//.test(file)
+}
+
+/**
+ * 是否为「工程元口径」= subject 前缀命中 **且** 锚文件在工程位。
+ *
+ * 单看前缀是可逃逸白名单（作者改个 subject 就绕开判据）；单看文件位又会把
+ * 「写在 src/ 里的工具函数口径」（如 `utils/format/localized`）误判成游戏口径。
+ * 两者**同时**成立才豁免 —— 逃逸路径只剩「把锚挪出 src/**」，那已是真工程元口径。
+ */
+export function isEngineeringFact(fact, file) {
+  return CALIBER_NON_GAME_SUBJECTS.some(p => fact.subject.startsWith(p)) && isEngineeringAnchor(file)
+}
+
+/**
  * 存量口径豁免清单（棘轮基线）：key = `<file>:<line> <subject>`。
  * ⚠ 这张表只许**缩短**：给某条口径补上 `⟳复核` 行之后，从本表删掉该行（漏删即红 = stale）。
  * 为什么允许存量豁免：85 条一次性补完不现实，全红会逼人**删判据**（判据死掉比缺口更糟）。
@@ -1509,7 +1534,13 @@ export function scanCaliberTriggers(root = ROOT, facts = null) {
   for (const s of scanned) {
     const f = s.fact
     if (!f || !CALIBER_TRIGGER_KINDS.includes(f.kind)) continue
-    if (CALIBER_NON_GAME_SUBJECTS.some(p => f.subject.startsWith(p))) continue
+    // 工程元口径豁免 = **subject 前缀命中 且 锚文件在工程位（scripts/ 或 docs/）**。
+    // 为什么必须加后半条（2026-09-14 修，T15 审计 #10）：原先只看前缀，而前缀由作者自由书写
+    // ⇒ **游戏口径只要把 subject 写成 `ui:agent/1561风华上限` 就整条不进 game 集**，
+    // 既不红也不进清单（实测逃逸成功：game=0 / missing=0）。
+    // 加锚文件判据后，「工程前缀 + 游戏代码」这一组合会被**当成游戏口径**要求触发器——
+    // 逃逸要么放弃前缀、要么把锚挪出 src/**（后者是真工程元口径，合理）。
+    if (isEngineeringFact(f, s.file)) continue
     const p = join(root, s.file)
     const lines = existsSync(p) ? readFileSync(p, 'utf8').split('\n') : []
     // 本行 + 下一行（允许 `⟳复核` 写在 @fact 行的尾部，或紧随其后单独一行）

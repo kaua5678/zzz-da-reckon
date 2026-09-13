@@ -932,6 +932,13 @@ describe('scanCaliberTriggers（判据 15：游戏语义口径必须挂 ⟳复�
     writeFileSync(join(root, 'src/core/x.ts'), body)
     return root
   }
+  /** 同上，但可指定落点（2026-09-14：工程元口径豁免要看锚文件位，需要在 src/utils、scripts 下落 @fact） */
+  const fixtureAt = (dir: string, body: string) => {
+    const root = mkdtempSync(join(tmpdir(), 'cal-'))
+    mkdirSync(join(root, dir), { recursive: true })
+    writeFileSync(join(root, dir, 'x.ts'), body)
+    return root
+  }
   const FACT = '// @fact engine:damage/乘区顺序 口径: 顺序 = 代码顺序 | 据 实测@2026-09-01 | 锚 src/core/x.ts#f | 信 确认'
 
   it('★ 游戏语义口径缺触发器 = 红面（missing）', () => {
@@ -963,12 +970,35 @@ describe('scanCaliberTriggers（判据 15：游戏语义口径必须挂 ⟳复�
   })
 
   it('★ 工程元口径豁免（engine:guards / engine:zc / ui: / utils/）——它们的复核靠守卫红', () => {
-    const root = fixture([
+    // 2026-09-14 修（T15 审计 #10）：豁免从「只看 subject 前缀」收紧为「前缀 **且** 锚文件在工程位
+    // （scripts/ / docs/ / src/utils/）」。原口径下**游戏口径只要把 subject 写成 `ui:…` 就整条逃逸**
+    // （实测 game=0 / missing=0，既不红也不进清单）。故本 fixture 把工程元口径的 @fact 写在 `src/utils/`，
+    // 逃逸样本另立一例（下一条）。
+    const root = fixtureAt('src/utils', [
       '// @fact engine:guards/自指豁免 口径: 扫描器自身含被扫模式属自指 | 据 实测@2026-09-01',
       '// @fact utils/format/localized 口径: nullish 链取值 | 据 终态核对@2026-09-12',
       'export function f() {}',
     ].join('\n'))
     expect(scanCaliberTriggers(root).game).toEqual([])
+  })
+
+  it('★ 工程前缀 + 游戏代码 = 不豁免（前缀是可逃逸白名单，必须配锚文件位）', () => {
+    // 逃逸形态：subject 写 `ui:` 前缀但锚在 src/core（游戏代码）⇒ 仍按游戏口径要求触发器
+    const root = fixtureAt('src/core', [
+      '// @fact ui:agent/1561风华上限 口径: 上限 135 | 据 实测@2026-09-01',
+      'export function f() {}',
+    ].join('\n'))
+    const r = scanCaliberTriggers(root)
+    expect(r.game.map(g => g.subject)).toEqual(['ui:agent/1561风华上限'])
+    expect(r.missing).toHaveLength(1)
+  })
+
+  it('★ 无工程前缀、锚在 scripts = 仍算游戏口径（前缀才是豁免入口，文件位不是）', () => {
+    const root = fixtureAt('scripts', [
+      '// @fact engine:x/y 口径: z | 据 实测@2026-09-01',
+      'export const a = 1',
+    ].join('\n'))
+    expect(scanCaliberTriggers(root).missing).toHaveLength(1)
   })
 
   it('非口径/映射种类不强制（未建模/债/决 不挂日期 —— 债有自己的 DEBT_REGISTRY 到期动作）', () => {
