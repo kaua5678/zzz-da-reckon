@@ -1,8 +1,13 @@
 /**
  * 角色分数增量（charIncrement）真实归档集成测试：
- * - computeIncrementPass 全量：秒级完成（≤60s 防回归——这是「不卡死」的验收线）、快照恢复
+ * - computeIncrementPass 全量：**性能判据 = 同进程参照量归一化比值**（≤100×，见下方注释；
+ *   2026-09-11 用户裁决废除绝对墙钟线）、快照恢复
  * - 期/房间/基底队规模合理；账号分 ≤ 180000（3 房 × 60000 伤害分上限，操作分已剔除）
  * - 卡增量语义：卢西娅（1451，命破专拐）累计 > 0 且「禁用后被替代队顶上」至少出现一次
+ *
+ * 超时：**不写 per-test 绝对超时**（2026-09-14 实测：两个用例原先各钉 `90000`，而本文件单跑 41s / 29s、
+ * 满套件并发下必然 `Test timed out in 90000ms` ⇒ 那是「机器/并发」的第二个副本，与已废除的绝对墙钟线同族）。
+ * 基础设施超时统一由 `vite.config.ts` 的 `testTimeout: 180_000` 承担（本仓重负载用例的既定做法）。
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
@@ -64,7 +69,7 @@ describe('charIncrement · 真实归档集成', () => {
     }
     // 快照恢复
     expect(JSON.stringify(configStore.team.map(t => t.agentId))).toBe(before)
-  }, 90000)
+  })
 
   it('卢西娅增量：累计 > 0；被禁后存在「替代队顶上」的期（潘引壶/其他队）', async () => {
     await setupHarness([{ agentId: '1021' }, { agentId: '1031' }, { agentId: '1131' }])
@@ -91,5 +96,5 @@ describe('charIncrement · 真实归档集成', () => {
     ])
     expect(rank).toHaveLength(2)
     for (const r of rank) expect(r.total).toBeGreaterThanOrEqual(0)
-  }, 90000)
+  })
 })
