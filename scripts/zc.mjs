@@ -651,9 +651,15 @@ async function verbStatus(root = ROOT) {
         const c = g.applyDeadChannelAllowlist([...d.declaredNotExported, ...d.exportedNotDeclared]).allowlisted.length
         return a + b + c
       },
+      // ⚠ 同「游戏语义口径复核触发器」的坑（2026-09-14 实测，T15 审计 #4）：
+      // 原 measure 只数 `unhandled.length`，而判据 13 上线时就把 40 条判成 deferred 清零了
+      // ⇒ current 恒为 0、done=true，**41 条挂账从提醒面消失**（与上面那条首版缺陷同型：
+      // 「存量一登记，棘轮就自称还清」）。剩余工作量 = unhandled（红灯）+ deferred（已挂账存量）。
       '名词表未处理': () => {
         const n = g.auditNounTriage(root)
-        return n === null ? NaN : n.unhandled.length
+        if (n === null) return NaN
+        const deferred = Object.values(n.triage.entries ?? {}).filter(e => e?.state === 'deferred').length
+        return n.unhandled.length + deferred
       },
     }
     burndown = g.computeBurndown(id => (measured[id] ? measured[id]() : NaN))

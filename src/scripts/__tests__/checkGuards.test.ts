@@ -285,6 +285,18 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
     expect(deferred).toBeGreaterThan(0)
   })
 
+  // T15 审计 #4 发现（本轮修复）：名词表棘轮原写 frozen: 0 且 measure 只数 unhandled，
+  // 而判据 13 上线时就把 40 条判成 deferred 清零 ⇒ current 恒 0 / done=true，
+  // **41 条挂账从提醒面直接消失**——与「游戏语义口径复核触发器」首版同型缺陷。
+  it('★ 名词表棘轮的剩余量含 deferred 存量（挂账不等于还清）', () => {
+    const n = auditNounTriage()!
+    const deferred = Object.values(n.triage.entries ?? {}).filter(e => e?.state === 'deferred').length
+    const e = RATCHET_BURNDOWN.find(x => x.id === '名词表未处理')!
+    expect(e.frozen, 'frozen 必须等于「unhandled + deferred」的实测剩余量').toBe(n.unhandled.length + deferred)
+    expect(e.frozen).toBeGreaterThan(0)   // 若归零，说明存量被当成还清了
+    expect(deferred).toBeGreaterThan(0)
+  })
+
   it('★ 本轮新增的三条棘轮都登记了 due 与 plan（防「冻结 = 永久豁免」）', () => {
     for (const id of ['游戏语义口径复核触发器', '死通道豁免清单', '名词表未处理']) {
       const e = RATCHET_BURNDOWN.find(x => x.id === id)
@@ -1125,7 +1137,9 @@ describe('scanManualDensity（判据 11：手册数字 id 密度棘轮，任务�
         + `frozen/target 同步下调到 ${cur}（棘轮只减不增），并在 plan 里记一句本轮到点。`).toBe(cur)
       expect(e!.target).toBe(cur)
     }
-    // zc.mjs measured 映射以 id 为键（rule 11：口径实现在 check-guards，zc 只注入）
+    // zc.mjs measured 映射以 id 为键（rule 11：口径实现在 check-guards，zc 只注入）。
+    // 只查「该 id 出现在 measure 映射里」（存在性），不断言 measure 的具体表达式——
+    // 后者是共模面（T15 审计 #12）：实现换个等价写法就假红，实现真错了也照样假绿。
     const src = readFileSync(join(process.cwd(), 'scripts/zc.mjs'), 'utf8')
     expect(src).toContain(`'${e!.id}'`)
   })

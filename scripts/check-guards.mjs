@@ -170,10 +170,17 @@ export const RATCHET_BURNDOWN = [
   {
     id: '名词表未处理',
     file: 'scripts/lib/noun-triage.json（源 = data/raw/nanoka_missing/noun_3.2.3.json）',
-    frozen: 0,  // 判据 13 上线即要求 unhandled=0（每条至少有着落：modeled 给锚 / deferred 给登记）。首轮实测 **27 modeled / 41 deferred / 0 unhandled**（40 条 unhandled 按「挂账」处置：敌人情报 2 + 角色真缺口 3 + 活动武备 35 全段判范围外，登记落点 docs/MECHANICS_IMPLEMENTATION.md §3.05）。frozen 保持 0 = 不许有未处理项；这个棘轮的存在意义是「源数据新增名词时必须同步对账」
+    frozen: 41,  // 2026-09-14 口径纠正（T15 审计 #4）：原写 frozen: 0 且度量只数 unhandled ⇒
+    // 判据 13 上线时就把 40 条判成 deferred 清零，**current 恒 0 / done=true，41 条挂账从提醒面消失**
+    // ——与「游戏语义口径复核触发器」首版同型缺陷（存量一登记，棘轮就自称还清）。
+    // 现度量 = unhandled（红灯）+ deferred（已挂账存量）＝ 41（27 modeled / 41 deferred / 0 unhandled，
+    // 40 条 unhandled 按「挂账」处置：敌人情报 2 + 角色真缺口 3 + 活动武备 35 全段判范围外，
+    // 登记落点 docs/MECHANICS_IMPLEMENTATION.md §3.05）。
+    // ⚠ 这个棘轮有两件事：① unhandled 必须恒 0（源新增名词必须同步对账）；② deferred 是**存量**
+    // 不是「已还清」，处置一条降一条（销号路径 = 建模后转 modeled，或改判范围外并从这里去掉）。
     target: 0,
     due: '2026-12-31',
-    plan: '源数据（noun*.json）新增/变更名词时，在 noun-triage.json 补三态判定；unhandled 项按「建模或挂账」处置（挂账也是合法态，见判据 13 头注释）。另：源文件与对账文件的键集合必须相等（多了少了都红）',
+    plan: '① 硬判据：unhandled 恒 0 + 源/账键集合相等（源新增名词必须同步对账）；② burn-down：41 条 deferred 逐条处置——能建模的转 modeled（补 src 消费锚点），确认范围外的改判并从清单移除。⚠ 不许「为绿而登记」：deferred 必须带 registeredAt（文件:行）+ since（日期）',
   },
 ]
 
