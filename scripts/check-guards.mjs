@@ -133,7 +133,7 @@ export const RATCHET_BURNDOWN = [
     frozen: 5,  // 2026-09-13 架构诊断实测（不含测试）：赠链族契约落地后剩余 5 处 —— luciaElowen×3 / banyue×1 / norma×1 / liuyin×1 / velina×2
     target: 0,
     due: '2027-03-31',
-    plan: '按 `crossAgentSupply` 同款范式逐族迁移（kind: curtain / ex-count-source / corrosion…），把角色数学搬回模块、引擎按能力查询（见 CORE_ROLE_IMPORT_BASELINE 头注释的逐条落点）。⚠ 其中 norma/liuyin/velina 的 4 处引用在本批迁移后**已零调用**（仅剩 import 行），可直接删',
+    plan: '⚠ 迁移前提已实测证伪（2026-09-13 T8）：5 处全是活引用、0 死引用；三处（velina / banyue / luciaElowen）都需**引擎契约改动**（给 AgentMechanicModule 加「引擎期求值」能力 + 把注册表穿进 calcTurbulenceDamage 等签名），不是机械迁移——详见 CORE_ROLE_IMPORT_BASELINE 头注释的逐条实测依据。勿按「可直接删死引用」的原计划重走',
   },
   {
     id: '展示层越层 import',
@@ -568,13 +568,22 @@ const CORE_ROLE_IMPORT_RE = /^\s*import\s+(?!type\s)[^'"]*from\s+['"]@\/mechanic
  * 但引擎侧仍有 4 处对本批未迁移能力的直接引用（见下），故冻结 7。
  * 只减不增：迁一处 → 把基线下调到新值；上调没有合法路径。
  *
- * 剩余 7 处的迁移落点（下一批，按 `crossAgentSupply` 同款范式）：
- *  · `luciaElowen#computeLuciaCurtainTriggers` ×2 → 帷幕触发次数（跨槽，`crossAgentSupply.kind: 'curtain'`）
- *  · `banyue#computeBanyueCycleFromCfg`/`readAxisExCounts` ×1 → 嗔火/怒相循环（`kind: 'ex-count-source'`）
- *  · `norma#computeNormaHatToChainCount` ×1 → 已由 `gift-chain:chain` 覆盖，**可直接删引用**
- *  · `liuyin#computeLiuyinHugCounts`/`computeLiuyinSource`/`resolveUltimateTargetSlot` ×1 → 同上，可直接删
- *  · `velina#simulateVelinaCorrosionState` ×2 → 已走 `transformAnomalyPool` 钩子，**可删引用**
- * ⚠ 删引用前先确认该符号在 helpers.ts 内确实零调用（grep 计数含 import 行本身）。
+ * 剩余 5 处的迁移前提**已被实测证伪（2026-09-13 T8，勿照原计划重走）**：
+ * 原本预期「赠链族迁走后会剩零调用死引用可删」——**实测 0 个死引用**，5 处 import 的每个符号都有活调用：
+ *  · `velina#simulateVelinaCorrosionState` ×2（anomalyPool.ts:328 / anomalyPool/helpers.ts:1195）——
+ *    **不能只删**：模块的 `transformAnomalyPool` 钩子已算过一次，但用的是**预算值** `preTurbulenceCount`，
+ *    而 core 这两处是**最终值**二次结算（注释原文「风蚀状态机按最终乱流次数重新结算」）⇒ **有意双轨**，
+ *    删任一处都改数值；且两处 core 的 `cinema2CorrosionRate` 兜底来源还不一样，连合并都不能证逐位等价。
+ *  · `banyue#computeBanyueCycleFromCfg`/`readAxisExCounts` ×1——函数本身纯（只吃 cfg），但它读的
+ *    `banyueAxisEx` **由编排层逐轮注入**（convergence.ts:980），模块 `buildCharConfig` 跑在 cfg 合并**之前**
+ *    ⇒ 预先算会读到过期值。改「converge 相位算好写 cfg」则**测试直调 `calcTeamResources` 的路径不经过钩子**
+ *    ⇒ 静默回落通用「闪能/20」公式（正是该分支存在的原因）⇒ 必须设计成缺失时**大声失败**，属引擎改动。
+ *  · `luciaElowen#computeLuciaCurtainTriggers` ×2——入参全是**引擎收敛态**，且两个相位各调一次
+ *    （iterate 内用 prevStates / 收敛后用最终 states），脱钩同样需「core 经注册表向模块要值」+ 穿参数。
+ *
+ * ⇒ **三处都是引擎契约改动**（给 `AgentMechanicModule` 加「引擎期求值」能力 + 把注册表穿进
+ * `calcTurbulenceDamage` 等签名），不是机械迁移。原计划里「norma/liuyin/velina 可直接删」**已证伪**
+ * （norma/liuyin 那两条随赠链族一起迁走了；velina 那条不成立）。
  */
 export const CORE_ROLE_IMPORT_BASELINE = 5
 
