@@ -1,0 +1,348 @@
+/**
+ * 死通道扫描 · **LanguageService 精粒度版**（判据 14 的补充面；挂 vitest，不进 `npm run check` 链）。
+ *
+ * 立项：`.claude/task-ledger-silent-gaps.md` Open O2——现有判据 14 是**字段名级正则**（check-guards.mjs），
+ * 已实测两类盲区：① 扫不到**内联 opts**（`function f(o: { bar?: T })`）与 `stores/types` 面；
+ * ② 同名无关字段误报（归档 DTO 的抗性字段：21 个「读取点」全是 `stores/config.ts`
+ * 同名字段）。本模块用 TypeScript LanguageService（`ls.findReferences`，精确到属性符号）+
+ * AST 写入点交叉，补这两个面。建 program 实测 ~4s ⇒ 只适合 vitest，不适合 check 链首端。
+ *
+ * **什么算死**（同时满足才报，宁可漏报不误报）：
+ *   1. 候选 = `DEFAULT_SCAN_DIRS` 内**导出的** interface/type 的可选属性（`foo?: T`），
+ *      或**导出函数**的内联 opts 形参（`(o: { foo?: T })`）里的可选属性；
+ *   2. **零写入点**：全程序 AST 里没有任何 `PropertyAssignment`/`属性赋值` 以该名字写值
+ *      （跨类型同名写入也算——保守方向：namesake 写入会**压制**报告，这正是 O2 反误报要的），
+ *      且 LS 的 write-access 引用为 0，且 .vue 文本里没有 `foo:` 写入形态（TS 看不见 .vue）；
+ *   3. 声明本身之外无其它引用也允许（reads=0 → `dead-both`；reads>0 → `dead-input`，
+ *      即「实现读 `opts.foo ?? 默认` 但全仓没人传」的 goldLevel 死旋钮）。
+ * **什么不算死**：① .vue / 其它类型里有同名写入（哪怕无关——保守压制）；② 测试里有写入；
+ *   ③ spread 写入（`...partial`）在 AST 上不可见——**已知盲区**，靠 LS write-access 兜一部分，
+ *   剩余风险 = 漏报（不误报），可接受。
+ * **豁免/棘轮**：`DEAD_CHANNEL_LS_BASELINE` 冻结现状（key = `文件:行 符号`，每条带 since + 证据）；
+ * 测试断言「实测死集合 ⊆ 基线」（**新增即红**）；基线条目已不再命中 = 改善，测试打印提示、
+ * 由下任从基线删掉（棘轮只减不增，与 DEAD_CHANNEL_ALLOWLIST 同款纪律：不许为绿而登记）。
+ *
+ * @fact engine:guards/死通道LS 口径: 死通道=导出可选属性/内联opts可选属性 全仓零写入点（AST PropertyAssignment∪LS write-access∪vue `foo:` 三重交叉，namesake 同名写入保守压制不报）；reads=0 记 dead-both、reads>0 记 dead-input；基线棘轮新增即红 | 据 实测@2026-09-14 | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadChannelsLs | 信 高
+ */
+import { createRequire } from 'node:module'
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
+import { join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const require = createRequire(import.meta.url)
+const ts = require('typescript')
+
+/** 候选声明的扫描面（O2 盲区 stores/types 已并入）；引用分析仍覆盖整个 program */
+export const DEFAULT_SCAN_DIRS = ['src/composables', 'src/core', 'src/data', 'src/stores', 'src/types']
+
+export const REPO_ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..')
+
+/**
+ * 冻结基线（棘轮：只许减少）。key = `<相对文件>:<行> <属性名>`。
+ * 每条 why 必须写「怎么证明它是死的」——不许为绿而登记（同 DEAD_CHANNEL_ALLOWLIST 纪律）。
+ * 首轮实测 2026-09-14（与 T10 报告 /home/kaua/.dsh/session-manager/reports/T10-a1.md 对账见报告）。
+ */
+export const DEAD_CHANNEL_LS_BASELINE = {
+  'src/composables/pullPlannerEngine.ts:375 freePoolPerSpecialty': {
+    since: '2026-09-14',
+    why: 'dead-input：实现读 `opts.freePoolPerSpecialty ?? 默认`（:417），全仓（CharIncrementPage/TimeChartsPage 等调用方）零传入；判据 14 正则版同条已登记（B|…freePoolPerSpecialty），LS 版符号级复核一致',
+  },
+  'src/types/catalog.ts:191 agentSkillId': {
+    since: '2026-09-14',
+    why: 'dead-both：全仓 grep -w 仅命中本声明行（SkillTarget.agentSkillId 零读零写）',
+  },
+  'src/types/catalog.ts:293 skillLevelBonuses': {
+    since: '2026-09-14',
+    why: 'dead-both：全仓仅命中声明行（CoreSkillLevel.skillLevelBonuses 零读零写）',
+  },
+  'src/types/resource/config.ts:257 roxyWindCannonMoveId': {
+    since: '2026-09-14',
+    why: 'dead-both：CharacterOperationConfig 的仪玄风炮槽位——全仓仅命中声明行，模块（yixuan.ts）用别的字段名取数，此槽零读零写',
+  },
+  'src/types/resource/config.ts:259 roxyWindEyeMoveId': {
+    since: '2026-09-14',
+    why: 'dead-both：同 roxy 族，全仓仅命中声明行',
+  },
+  'src/types/resource/config.ts:263 roxyCycloneHammerMoveId': {
+    since: '2026-09-14',
+    why: 'dead-both：同 roxy 族，全仓仅命中声明行',
+  },
+  'src/types/resource/config.ts:265 roxyCycloneHammerCount': {
+    since: '2026-09-14',
+    why: 'dead-both：同 roxy 族，全仓仅命中声明行',
+  },
+  'src/types/resource/config.ts:277 claretMaimBurialMoveId': {
+    since: '2026-09-14',
+    why: 'dead-both：克拉蕾残痕族槽位，全仓仅命中声明行（模块未接此槽）',
+  },
+  'src/types/resource/config.ts:285 claretMaimBurialDamageMultiplier': {
+    since: '2026-09-14',
+    why: 'dead-both：同 claret 族，全仓仅命中声明行',
+  },
+  'src/types/resource/config.ts:317 claretSharpnessCost': {
+    since: '2026-09-14',
+    why: 'dead-both：同 claret 族（残痕消耗值在实现里另有来源，此配置槽零读零写）',
+  },
+  'src/types/resource/config.ts:449 normaBarrageCoverage': {
+    since: '2026-09-14',
+    why: 'dead-both：诺姆弹幕覆盖率槽，全仓仅命中声明行',
+  },
+  'src/types/resource/config.ts:451 normaTechGapCoverage': {
+    since: '2026-09-14',
+    why: 'dead-both：同 norma 族，全仓仅命中声明行',
+  },
+}
+
+/** 走目录收 .ts（跳过 __tests__ 与 .d.ts——测试写入也算写入，故测试文件进 program 但不进候选面） */
+function walkTs(dir, out = []) {
+  if (!existsSync(dir)) return out
+  for (const e of readdirSync(dir)) {
+    const p = join(dir, e)
+    const st = statSync(p)
+    if (st.isDirectory()) walkTs(p, out)
+    else if (e.endsWith('.ts') && !e.endsWith('.d.ts')) out.push(p)
+  }
+  return out
+}
+
+/** program 覆盖面：src 全部 .ts（含 __tests__，写入点要全仓计数）+ scripts 的 .ts */
+export function collectProgramFiles(root) {
+  return [...walkTs(join(root, 'src')), ...walkTs(join(root, 'scripts'))]
+}
+
+export function createLsHost(files, root) {
+  const cache = new Map()
+  const read = (f) => {
+    if (cache.has(f)) return cache.get(f)
+    let text = null
+    try { text = readFileSync(f, 'utf8') } catch { text = null }
+    cache.set(f, text)
+    return text
+  }
+  return {
+    getScriptFileNames: () => files,
+    getScriptVersion: () => '0',
+    getScriptSnapshot: (f) => {
+      const t = read(f)
+      return t == null ? undefined : ts.ScriptSnapshot.fromString(t)
+    },
+    getCurrentDirectory: () => root,
+    getCompilationSettings: () => ({
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      strict: false,          // 与 T10 同口径：只要引用图，不做类型检查
+      noEmit: true,
+      skipLibCheck: true,
+      allowImportingTsExtensions: true,
+      resolveJsonModule: true,
+    }),
+    getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
+    fileExists: (f) => read(f) != null,
+    readFile: (f) => read(f) ?? undefined,
+    readDirectory: () => [],
+  }
+}
+
+const isExported = (node) =>
+  (ts.canHaveModifiers(node) ? ts.getModifiers(node) ?? [] : []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+
+/** 候选：导出 interface/type 的可选属性 + 导出函数内联 opts 形参的可选属性 */
+function collectCandidates(program, scanDirs, root) {
+  const inScan = (f) => scanDirs.some((d) => f.startsWith(join(root, d)))
+  const cands = []
+  for (const sf of program.getSourceFiles()) {
+    if (sf.isDeclarationFile || !inScan(sf.fileName)) continue
+    const rel = relative(root, sf.fileName)
+    const addProps = (typeNode, container) => {
+      if (!typeNode || !ts.isTypeLiteralNode(typeNode)) return
+      for (const member of typeNode.members) {
+        if (ts.isPropertySignature(member) && member.questionToken && ts.isIdentifier(member.name)) {
+          cands.push({ file: rel, line: sf.getLineAndCharacterOfPosition(member.getStart()).line + 1, prop: member.name.text, container })
+        }
+      }
+    }
+    const visit = (node) => {
+      if (ts.isInterfaceDeclaration(node) && isExported(node)) {
+        for (const member of node.members) {
+          if (ts.isPropertySignature(member) && member.questionToken && ts.isIdentifier(member.name)) {
+            cands.push({ file: rel, line: sf.getLineAndCharacterOfPosition(member.getStart()).line + 1, prop: member.name.text, container: node.name.text })
+          }
+        }
+      }
+      // 导出函数/导出 const 箭头函数的内联 opts 形参
+      const fn = ts.isFunctionDeclaration(node) && isExported(node) ? node
+        : ts.isVariableStatement(node) && isExported(node)
+          ? node.declarationList.declarations.map((d) => d.initializer).find((i) => i && (ts.isArrowFunction(i) || ts.isFunctionExpression(i)))
+          : null
+      if (fn && fn.parameters) {
+        for (const p of fn.parameters) addProps(p.type, `${(fn.name && fn.name.text) || 'arrow'}#opts`)
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sf)
+  }
+  return cands
+}
+
+/** 写入点（名字级、跨类型保守压制）：AST PropertyAssignment + `.foo =` 赋值 */
+function collectValueWrites(program) {
+  const writes = new Map() // prop -> [{file,line}]
+  const push = (name, sf, pos) => {
+    const rel = sf.fileName
+    const line = sf.getLineAndCharacterOfPosition(pos).line + 1
+    if (!writes.has(name)) writes.set(name, [])
+    writes.get(name).push({ file: rel, line })
+  }
+  for (const sf of program.getSourceFiles()) {
+    if (sf.isDeclarationFile) continue
+    const visit = (node) => {
+      if (ts.isPropertyAssignment(node) && ts.isIdentifier(node.name)) push(node.name.text, sf, node.name.getStart())
+      else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+        && ts.isPropertyAccessExpression(node.left) && ts.isIdentifier(node.left.name)) push(node.left.name.text, sf, node.left.name.getStart())
+      ts.forEachChild(node, visit)
+    }
+    visit(sf)
+  }
+  return writes
+}
+
+/** .vue 文本兜底：TS 看不见 .vue，任何 `^\s*foo\s*:` 行都当潜在写入（保守压制）。一次遍历建索引。 */
+function buildVueWriteIndex(root) {
+  const idx = new Map()
+  const walk = (dir) => {
+    for (const e of readdirSync(dir)) {
+      const p = join(dir, e)
+      const st = statSync(p)
+      if (st.isDirectory()) { if (e !== '__tests__') walk(p) }
+      else if (e.endsWith('.vue')) {
+        const lines = readFileSync(p, 'utf8').split('\n')
+        lines.forEach((l, i) => {
+          const m = l.match(/^\s*([A-Za-z_$][\w$]*)\s*:/)
+          if (!m) return
+          if (!idx.has(m[1])) idx.set(m[1], [])
+          idx.get(m[1]).push(`${relative(root, p)}:${i + 1}`)
+        })
+      }
+    }
+  }
+  const src = join(root, 'src')
+  if (existsSync(src)) walk(src)
+  return idx
+}
+
+/** 名字级文本出现索引（src + data + public/static 的 .ts/.vue/.json）：file:line 集合，供隔离判定 */
+function buildNameOccurrenceIndex(root) {
+  const idx = new Map()
+  const exts = new Set(['.ts', '.vue', '.json'])
+  const addFile = (p) => {
+    if (!exts.has(p.slice(p.lastIndexOf('.')))) return
+    let text
+    try { text = readFileSync(p, 'utf8') } catch { return }
+    const rel = relative(root, p)
+    text.split('\n').forEach((l, i) => {
+      for (const m of l.matchAll(/\b([A-Za-z_$][\w$]*)\b/g)) {
+        const k = `${rel}:${i + 1}`
+        if (!idx.has(m[1])) idx.set(m[1], new Set())
+        idx.get(m[1]).add(k)
+      }
+    })
+  }
+  const walk = (dir) => {
+    if (!existsSync(dir)) return
+    for (const e of readdirSync(dir)) {
+      const p = join(dir, e)
+      const st = statSync(p)
+      if (st.isDirectory()) { if (e !== '__tests__' && e !== 'node_modules') walk(p) }
+      else addFile(p)
+    }
+  }
+  walk(join(root, 'src'))
+  walk(join(root, 'data'))
+  walk(join(root, 'public', 'static'))
+  return idx
+}
+
+/**
+ * 扫描死通道。
+ * @param {{root?: string, dirs?: string[], files?: string[]}} [opts] root=仓库根；files 供单测注入自建 program
+ * @returns {{dead: Array<{key:string,file:string,line:number,prop:string,container:string,reads:number,confidence:'dead-both'|'dead-input',evidence:string}>, candidates:number, ms:number}}
+ */
+export function scanDeadChannelsLs(opts = {}) {
+  const root = opts.root ?? REPO_ROOT
+  const dirs = opts.dirs ?? DEFAULT_SCAN_DIRS
+  const t0 = Date.now()
+  const files = opts.files ?? collectProgramFiles(root)
+  const ls = ts.createLanguageService(createLsHost(files, root))
+  const program = ls.getProgram()
+  const cands = collectCandidates(program, dirs, root)
+  const writes = collectValueWrites(program)
+  const vueIdx = buildVueWriteIndex(root)
+  const occIdx = opts.strictTextIsolation === false ? null : buildNameOccurrenceIndex(root)
+  const dead = []
+  const seen = new Set()
+  for (const c of cands) {
+    const key0 = `${c.file}:${c.line} ${c.prop}`
+    if (seen.has(key0)) continue
+    seen.add(key0)
+    if (writes.has(c.prop)) continue                      // AST 名字级写入（含 namesake，保守压制）
+    const abs = join(root, c.file)
+    const src = program.getSourceFile(abs)
+    if (!src) continue
+    const lines = src.text.split('\n')
+    const lineText = lines[c.line - 1] ?? ''
+    const offset = lines.slice(0, c.line - 1).reduce((s, l) => s + l.length + 1, 0) + lineText.indexOf(c.prop)
+    let lsWrites = 0
+    let reads = 0
+    const readLocs = []
+    const attributed = new Set([`${c.file}:${c.line}`])   // 声明行 + LS 归属的引用行 = 允许出现处
+    for (const sym of ls.findReferences(abs, offset) ?? []) {
+      for (const r of sym.references) {
+        const rf = program.getSourceFile(r.fileName)
+        if (rf) {
+          const rl = rf.getLineAndCharacterOfPosition(r.textSpan.start).line + 1
+          attributed.add(`${relative(root, r.fileName)}:${rl}`)
+        }
+        if (r.isDefinition) continue
+        if (r.isWriteAccess) { lsWrites++; continue }
+        reads++
+        if (readLocs.length < 3 && rf) readLocs.push(`${relative(root, r.fileName)}:${rf.getLineAndCharacterOfPosition(r.textSpan.start).line + 1}`)
+      }
+    }
+    if (lsWrites > 0) continue
+    if (vueIdx.has(c.prop)) continue
+    // 名字级文本隔离（防 namesake / spread / JSON 数据契约误报）：除声明行与 LS 归属引用行外，
+    // 该名字在 src+data+public/static 里还有任何出现 ⇒ 保守压制不报（O2 反误报的核心闸门）
+    if (occIdx) {
+      const extra = [...(occIdx.get(c.prop) ?? [])].filter((loc) => !attributed.has(loc))
+      if (extra.length > 0) continue
+    }
+    dead.push({
+      key: key0,
+      file: c.file,
+      line: c.line,
+      prop: c.prop,
+      container: c.container,
+      reads,
+      confidence: reads === 0 ? 'dead-both' : 'dead-input',
+      evidence: reads === 0
+        ? `零写入点（AST+LS+vue 三重交叉）且零读取；容器 ${c.container}`
+        : `零写入点（AST+LS+vue 三重交叉）；实现读 ${reads} 处（${readLocs.join('、')}）走 ?? 默认`,
+    })
+  }
+  dead.sort((a, b) => a.key.localeCompare(b.key))
+  return { dead, candidates: cands.length, ms: Date.now() - t0 }
+}
+
+/** 棘轮 diff：fresh = 实测有但基线没有（红）；resolved = 基线有但实测没有（改善，打印提示） */
+export function diffAgainstBaseline(dead, baseline = DEAD_CHANNEL_LS_BASELINE) {
+  const base = new Set(Object.keys(baseline))
+  const now = new Set(dead.map((d) => d.key))
+  return {
+    fresh: dead.filter((d) => !base.has(d.key)),
+    resolved: [...base].filter((k) => !now.has(k)),
+  }
+}
+
+// 基线生成记录（2026-09-14 首轮）：`node -e "import('./scripts/lib/dead-channel-ls.mjs').then(m=>console.log(JSON.stringify(m.scanDeadChannelsLs().dead,null,1)))"`
+// → 逐条人工复核后钉进 DEAD_CHANNEL_LS_BASELINE（每条 why 带证据行号）；复核过程与 T10 对账见夜班报告 T14-a1。
