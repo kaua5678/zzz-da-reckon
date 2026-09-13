@@ -7,7 +7,9 @@
  * ③ 仓库级 runAllChecks 全绿（在 vitest 里给出定位到文件的失败信息，不用等 CI）
  */
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { tmpdir } from 'node:os'
 import {
   CONTRAST_EXTRA_PAIRS,
   NAIVE_TOKEN_MAP,
@@ -20,6 +22,7 @@ import {
   extractBlock,
   extractDeclarationRegions,
   extractFlatPairs,
+  extractStyleBlocks,
   extractTemplateSource,
   findFontSizes,
   findVarRefs,
@@ -239,6 +242,60 @@ describe('scanVueFiles（口径：样式声明区 + 模板，排除脚本）', (
     const files = scanVueFiles(process.cwd(), FONT_SCALE)
     expect(HARDCODED_WHITELIST.length).toBeGreaterThan(0)
     expect(files.some(f => f.path === 'src/App.vue')).toBe(true)
+  })
+})
+
+describe('extractStyleBlocks 的 <style src> 支持（2026-09-14 实测补的静默逃生通道）', () => {
+  // 为什么要有这组：把 627 行 CSS 从 .vue 搬到独立 .css（`<style scoped src="…">`）后，
+  // 首版 extractStyleBlocks 只读 .vue 内联正文 ⇒ 硬编码色值 33→3、离群字号 8→0、var() 76→21
+  // **三份计数一起消失**，而判据只会报「是进步，把基线下调」——「把 CSS 挪出 .vue」于是成了
+  // 三条棘轮的静默逃生通道（实测于 TimeChartsPage.vue 样式外置）。
+  const room = (files: Record<string, string>) => {
+    const dir = mkdtempSync(join(tmpdir(), 'tokens-src-'))
+    for (const [rel, text] of Object.entries(files)) {
+      const p = join(dir, rel)
+      mkdirSync(dirname(p), { recursive: true })
+      writeFileSync(p, text)
+    }
+    return dir
+  }
+
+  it('src 指向的 .css 内容计入硬编码色值/离群字号/var()', () => {
+    const root = room({
+      'src/views/A.vue': '<template><div class="a" /></template>\n<style scoped src="./a.css"></style>\n',
+      'src/views/a.css': '.a { color: #ff0000; font-size: 11.5px; background: var(--wa-60); }',
+    })
+    const f = scanVueFiles(root, FONT_SCALE).find(x => x.path === 'src/views/A.vue')!
+    expect(f.hardcoded).toBe(1) // #ff0000 来自外置 css（模板无内联样式）
+    expect(f.fontOutliers).toEqual(['11.5px'])
+    expect(f.varRefs).toContain('--wa-60')
+  })
+
+  it('内联 <style> 与外置 .css 并存时 var() 不双计（各算一次）', () => {
+    const root = room({
+      'src/views/B.vue': '<template><div /></template>\n<style scoped>.b { color: var(--c-info); }</style>\n<style scoped src="./b.css"></style>\n',
+      'src/views/b.css': '.b2 { color: var(--c-danger); }',
+    })
+    const f = scanVueFiles(root, FONT_SCALE).find(x => x.path === 'src/views/B.vue')!
+    expect(f.varRefs.filter(v => v === '--c-info')).toHaveLength(1)
+    expect(f.varRefs.filter(v => v === '--c-danger')).toHaveLength(1)
+  })
+
+  it('src 指到仓外/不存在的文件不静默（计入一行可归因的 ✗ 标记，计数不虚高）', () => {
+    const root = room({ 'src/views/C.vue': '<template><div /></template>\n<style scoped src="./missing.css"></style>\n' })
+    const blocks = extractStyleBlocks(readFileSync(join(root, 'src/views/C.vue'), 'utf8'), { root, filePath: 'src/views/C.vue' })
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0].content).toContain('无法解析')
+    const f = scanVueFiles(root, FONT_SCALE).find(x => x.path === 'src/views/C.vue')!
+    expect(f.hardcoded).toBe(0)
+    expect(f.varRefs).toEqual([])
+  })
+
+  it('不传 root/filePath 时退回旧行为（纯字符串提取，不读文件系统）', () => {
+    const blocks = extractStyleBlocks('<style scoped src="./whatever.css">.x{}</style>')
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0].content.trim()).toBe('.x{}')
+    expect(blocks[0].external).toBe('')
   })
 })
 

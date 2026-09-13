@@ -43,17 +43,40 @@ export function stripComments(text) {
 /**
  * 抽出 .vue 的 <style> 块正文（去标签与注释）。
  * 返回 [{ content, startLine }]，startLine 用于归因（当前判据只用到计数，保留备用）。
+ *
+ * **`<style scoped src="./x.css">` 必须跟着读**（2026-09-14 实测缺口）：
+ * 首版只看 `.vue` 内联的 `<style>` 正文，把样式外置到独立 `.css` 后**三份计数一起消失**
+ * （实测 TimeChartsPage 把 627 行样式搬到 `views/timeCharts/TimeChartsPage.css` 后：
+ * 硬编码色值 33→3、离群字号 8→0、var() 76→21），判据只会报「是进步，下调基线」——
+ * 于是「把 CSS 挪出 .vue」成了三条棘轮的静默逃生通道。
+ * 传 `{ root, filePath }` 时按 `<style src>` 解析同仓 `.css` 一并计入；不传则退回旧行为（纯字符串提取）。
  */
-export function extractStyleBlocks(source) {
+export function extractStyleBlocks(source, opts = {}) {
+  const { root = null, filePath = null } = opts
   const out = []
   const re = /<style\b([^>]*)>([\s\S]*?)<\/style>/g
   let m
   while ((m = re.exec(source)) !== null) {
     const before = source.slice(0, m.index)
-    out.push({
-      content: stripComments(m[2]),
-      startLine: before.split('\n').length,
-    })
+    const startLine = before.split('\n').length
+    const attrs = m[1] ?? ''
+    const srcMatch = /\bsrc\s*=\s*("([^"]*)"|'([^']*)')/.exec(attrs)
+    const srcFile = srcMatch ? (srcMatch[2] ?? srcMatch[3] ?? '') : ''
+    let content = stripComments(m[2])
+    let external = ''
+    if (srcFile && root && filePath) {
+      // 解析相对 .vue 的路径；越出 root 或文件缺失时**不静默**——留一行注释型标记给归因
+      const dir = dirname(join(root, filePath))
+      const resolved = srcFile.startsWith('/') ? join(root, srcFile.slice(1)) : join(dir, srcFile)
+      const rel = relative(root, resolved)
+      if (!rel.startsWith('..') && existsSync(resolved)) {
+        external = stripComments(readFileSync(resolved, 'utf8'))
+        content += '\n' + external
+      } else {
+        content += `\n/* ✗ <style src="${srcFile}"> 无法解析（${rel}）——该块的色值/字号/var 未计入 */\n`
+      }
+    }
+    out.push({ content, external, startLine })
   }
   return out
 }
@@ -376,7 +399,7 @@ export function scanVueFiles(root, fontScale) {
   const scale = new Set(fontScale)
   return walkVue(root).map(path => {
     const source = readFileSync(join(root, path), 'utf8')
-    const styleBlocks = extractStyleBlocks(source)
+    const styleBlocks = extractStyleBlocks(source, { root, filePath: path })
     const css = styleBlocks.map(b => b.content).join('\n')
     const decls = extractDeclarationRegions(css).join('\n')
 
@@ -386,7 +409,11 @@ export function scanVueFiles(root, fontScale) {
     const fontOutliers = findFontSizes(decls).filter(f => !scale.has(f.num)).map(f => f.value)
     // varRefs 必须走「去注释」后的文本：注释里引用旧令牌名（如「原为 var(--x)」）不是活引用，
     // 计入会让 tokens-defined 与 alias 棘轮同时误报。
-    return { path, hardcoded, fontOutliers, varRefs: findVarRefs(stripComments(source)) }
+    // **外置样式表里的引用也要计入**（同 extractStyleBlocks 的 src 说明）：否则把 CSS 搬出 .vue
+    // 会让 var 总数「无端下跌」，alias 棘轮当场误报「有变量被改回字面量」。
+    // 只补 `external`（真正来自 .css 文件的那部分）——内联 <style> 本来就在 source 里，补整块会双计。
+    const externalCss = styleBlocks.map(b => b.external ?? '').join('\n')
+    return { path, hardcoded, fontOutliers, varRefs: findVarRefs(stripComments(source) + '\n' + externalCss) }
   })
 }
 

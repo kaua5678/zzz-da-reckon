@@ -12,6 +12,10 @@
  *
  * 全角色版的零成本不变量（60 角色 C0 vs C6 伤害必须有提升）在 allAgentsSweep.test.ts，
  * 本文件只覆盖分析器本身的逐级语义，避免重复烧 CI 时间。
+ *
+ * 超时：**不写 per-test 绝对超时**（2026-09-14 实测：本文件用例单跑 17.1s / 14.1s，原先钉 `30000`，
+ * 满套件并发下占比 57% / 47% —— 与 `charIncrementInt.test.ts` 同族缺陷：它测的是机器/并发，不是回归）。
+ * 统一由 `vite.config.ts` 的 `testTimeout: 180_000` 承担。
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
@@ -48,7 +52,7 @@ async function analyze(agentId: string, mates: string[] = [], configure?: (confi
 }
 
 describe('analyzeCinemaUplift（命座提升率 + 死数据自检）', () => {
-  it('不改坏现场：命座等级与失衡锁在返回前恢复原值', { timeout: 30000 }, async () => {
+  it('不改坏现场：命座等级与失衡锁在返回前恢复原值', async () => {
     const { config } = await setupHarness([{ agentId: '1371', cinemaLevel: 2 }, { agentId: '1251' }, { agentId: '1271' }])
     const calc = useResourceCalc()
     const catalogStore = useCatalogStore()
@@ -79,7 +83,7 @@ describe('analyzeCinemaUplift（命座提升率 + 死数据自检）', () => {
       expect(e.ultBefore).toBeGreaterThanOrEqual(0)
       expect(e.ultAfter).toBeGreaterThanOrEqual(0)
     }
-  }, 30000)
+  })
 
   it('自检语义：面板有字段变化 → ok；无面板变化但伤害移动 |gain| ≥ ε（含微负）→ execLevel；零移动 → unimplemented', async () => {
     const { rows } = await analyze('1371', ['1251', '1271'])
@@ -93,7 +97,7 @@ describe('analyzeCinemaUplift（命座提升率 + 死数据自检）', () => {
         expect(e.warn).toBe('unimplemented')
       }
     }
-  }, 30000)
+  })
 
   it('防死数据：状态表声明已实现的命座级别不得被判为 unimplemented（仪玄/般岳/卢西娅）', async () => {
     type Configure = (config: ReturnType<typeof useConfigStore>) => void
@@ -117,5 +121,5 @@ describe('analyzeCinemaUplift（命座提升率 + 死数据自检）', () => {
         `${agentId} 以下命座在状态表标了已实现，但面板无变化且伤害无提升（死数据）：${bad.join('、')}`,
       ).toHaveLength(0)
     }
-  }, 60000)
+  })
 })

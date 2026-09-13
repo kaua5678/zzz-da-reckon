@@ -7,7 +7,8 @@ export declare const GLOBAL_CSS: string
 export declare function stripComments(text: string): string
 export declare function extractStyleBlocks(
   source: string,
-): { content: string; startLine: number }[]
+  opts?: { root?: string | null; filePath?: string | null },
+): { content: string; external: string; startLine: number }[]
 export declare function extractTemplateSource(source: string): string
 export declare function extractDeclarationRegions(css: string): string[]
 export declare function countHardcodedColors(text: string): number
