@@ -333,6 +333,93 @@ export interface AgentMechanicModule {
    * 引擎保证：调用顺序在所有模块的 perElement 汇总之前，注入值进入所有下游（触发次数/覆盖率/note）。
    */
   transformAnomalyPool?(input: AgentAnomalyTransformInput): void
+  /**
+   * **跨槽位供给声明**（规则 6 在引擎层的落点，2026-09-13 立项）。
+   *
+   * 存在的理由：引擎里长期住着「某角色怎么把资源送给队友」的角色专属数学——赠链族
+   * （`core/resource.ts` 的 `normaGiftChainInfo`/`liuyinGiftChainInfo`/`liuyinGiftTime` 等 135 行）
+   * 与跨角色回能族（`calcCrossAgentEnergy` 里的露西/莱特/席德分支）。它们**既不被 agentId 棘轮计数**
+   * （不写 id 字面量，只 import 那个角色的模块），又必须随角色更新而改引擎——正是规则 6 要消灭的形状。
+   *
+   * 为什么不搬进 `applyTeamConfig`：那些供给要在**引擎内层热循环**（`iterate`）/折叠环每个 pass 重算，
+   * 而 `applyTeamConfig` 由编排层按三相位派发、输入带 configStore——引擎契约 `ResourceCalcConfig`
+   * 是纯数据，没有派发钩子所需的上下文。故本声明是**纯函数式**的：引擎每 pass 按类别查询槽位、
+   * 调 `supply()` 拿数量、按 `targetSlot()` 落点，全程不含角色 id。
+   *
+   * 新角色接入 = 只写自己的模块（引擎与编排层零改动），与 `producesInteractionTopUp` /
+   * `backstageAutoFill` / `axisWindowOverlays` 同族。
+   */
+  crossAgentSupply?: CrossAgentSupplySpec
+}
+
+/**
+ * 跨槽位供给声明（`AgentMechanicModule.crossAgentSupply`）。
+ *
+ * 一个模块可声明**多条**（如诺姆既有赠链又有膛温喧响）；引擎按 `kind` 查询，同一 kind
+ * 在一队内只应有**一个**提供者（多提供者时引擎取注册顺序首个并上报，不静默求和）。
+ */
+export interface CrossAgentSupplySpec {
+  /**
+   * 供给类别。引擎按类别查询与执行（新类别 = 两边各加一个消费点，不是新角色各加一个分支）：
+   * - `'gift-chain:chain'`：赠**连携行**给队友（占用队友前台时间）——诺姆膛温帽子把戏
+   * - `'gift-chain:ultimate'`：赠**终结技行**给队友——琉音好评转大
+   *   （两者同属赠链但落点行不同 ⇒ 类别按「赠什么行」区分，不按「谁赠的」区分：
+   *    同队可同时存在，引擎取**全部**同类提供者各自出数，不静默合并）
+   * - 后续批次：`'neighbor-ult-energy'` / `'vanguard-energy'` / `'c4-burst'` / `'curtain'`
+   */
+  kind: string
+  /**
+   * 本 pass 的供给量（单位随 kind：'gift-chain' = 赠送动作**次数**）。
+   *
+   * **必须是纯函数**：只读入参与自己 cfg 上的模块写入字段，不得依赖 store/DOM/时间。
+   * 引擎会在内层热循环与折叠环里反复调用它（一次求值可达数百次）。
+   *
+   * `targetCfg` 由引擎先按 `targetSlot()` 解析后传入（部分类别的供给量依赖落点：
+   * 如琉音转大要按目标槽的连携次数做 60/90 拆分）。槽位无效时 `targetCfg` 为 undefined，
+   * 此时应返回 0。
+   */
+  supply(input: CrossAgentSupplyInput): number
+  /**
+   * 供给落点槽位（缺省 = 上一位队友，环绕，与 `resolveUltimateTargetSlot` 同口径）。
+   * 模块自己读 `cfg` 上的设置字段（如 `setting:liuyin.ultimateTargetSlot`）——
+   * 引擎不解释角色私有设置键。
+   */
+  targetSlot?(input: { ownSlot: number; teamSize: number; cfg: CharacterOperationConfig }): number
+  /**
+   * 单个供给单位占用**落点槽**的前台秒数（缺省 = 落点 cfg 的 `ultimateActionTime`）。
+   * 用于折叠环/欠打试探把赠送时间计入行测量（否则预留被读成 idle → refund 双击）。
+   */
+  secondsPerUnit?(input: { targetCfg: CharacterOperationConfig; ownCfg: CharacterOperationConfig }): number
+  /**
+   * 本类别受轴模式抑制时为 true（缺省 false = 轴内外同口径）。
+   * 琉音赠大即此例：轴内次数由轴预设 decide，通用公式在轴模式会算出另一个数，
+   * 故轴模式跳过供给（2026-09-10 实测口径，见 docs 坑19①）。
+   */
+  axisSuppressed?: boolean
+  /**
+   * 每个供给单位给**提供者自己**带来的额外喧响（缺省 0 = 不产）。
+   * 诺姆影画4「膛温换连携」即此例：每次赠链 +200 不可分享喧响（影画4 门控在模块内判，
+   * 未达命座时本函数返回 0）——引擎不该为此 import 该角色模块。
+   */
+  decibelPerUnit?(input: { cfg: CharacterOperationConfig }): number
+}
+
+/** `crossAgentSupply.supply()` 入参：纯数据，引擎在热循环里可直接构造 */
+export interface CrossAgentSupplyInput {
+  /** 提供者自己的 cfg */
+  cfg: CharacterOperationConfig
+  /** 提供者自己上一轮/本轮的收敛状态 */
+  state: IterationState
+  /** 供给落点槽的 cfg（槽位无效时 undefined ⇒ 返回 0） */
+  targetCfg?: CharacterOperationConfig
+  /** 供给落点槽的状态（同上；部分类别按落点次数折算） */
+  targetState?: IterationState
+  /** 失衡次数（计划值；部分类别按它折算窗口数） */
+  stunCount: number
+  /** 战斗总时长（秒） */
+  totalTime: number
+  /** 队伍槽位数（含空槽，与编排层 `configStore.team.length` 同源；缺省用 configs.length） */
+  teamSize: number
 }
 
 export interface AgentAxisOverlayInput {

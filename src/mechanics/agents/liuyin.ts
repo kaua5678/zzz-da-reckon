@@ -469,6 +469,46 @@ export const liuyinMechanic: AgentMechanicModule = {
   description: '好评/客诉资源、暴击转冲击、额外能力强特暴伤、4命进场能量、按上一位队友特性的专属直伤。',
   applyPanel: applyLiuyinPanel,
   buildCharConfig: buildLiuyinCharConfig,
+  /**
+   * 跨槽位供给：好评转大 → 送给目标队友的**终结技行**（规则 6 在引擎层的落点）。
+   *
+   * 迁移自 `core/resource.ts#liuyinGiftChainInfo`（2026-09-13，数值逐位保留）。三处口径要点：
+   * ① **轴模式抑制**（`axisSuppressed`）：轴内 60/90 转大次数由轴预设 `promoteVariant` 块决定，
+   *    通用公式在轴模式会算出另一个数（2026-09-10 实测：预留侧会让 4 队留白变差 +0.27~2.70s）
+   *    ⇒ 轴模式不由本供给出数，改由编排层注入 `axisLiuyinPromote`（见 docs 坑19①）。
+   * ② 落点缺省 = 上一位队友（`resolveUltimateTargetSlot`，用户可经 `liuyin.ultimateTargetSlot` 覆盖）。
+   * ③ 单位耗时 = 落点槽的 `ultimateActionTime`（转大是把队友的**连携**升级为**终结技**）。
+   */
+  crossAgentSupply: {
+    kind: 'gift-chain:ultimate',
+    axisSuppressed: true,
+    supply: ({ cfg, state, targetCfg, stunCount, totalTime }) => {
+      if (!targetCfg) return 0
+      const src = computeLiuyinSource({
+        exSpecialCount: state.exSpecialCount,
+        ultimateCount: state.ultimateCount,
+        combatTime: cfg.battleTime ?? totalTime,
+        cinemaLevel: cfg.liuyinCinemaLevel ?? 0,
+        extraAbilityActive: cfg.liuyinExtraAbilityActive ?? false,
+        previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
+      })
+      // 目标槽的连携总数（60 转大吃掉的是**目标槽的连携窗口**）
+      const targetChainTotal = Math.min(
+        (targetCfg.chainCountPerStun ?? 0) * stunCount,
+        targetCfg.chainCountTotalOverride ?? (targetCfg.chainCountPerStun ?? 0) * stunCount,
+      )
+      const hug = computeLiuyinHugCounts(
+        src.goodReviewTotal,
+        stunCount,
+        Math.floor(cfgNum(cfg, 'liuyin.hug60Count', -1)),
+        targetChainTotal,
+      )
+      return hug.hug60 + hug.hug90
+    },
+    targetSlot: ({ ownSlot, teamSize, cfg }) =>
+      resolveUltimateTargetSlot(ownSlot, teamSize, Math.floor(cfgNum(cfg, 'liuyin.ultimateTargetSlot', -1))),
+    secondsPerUnit: ({ targetCfg }) => targetCfg.ultimateActionTime ?? 0,
+  },
   estimateExSpecialTime: liuyinExSpecialTime,
   buildExecutions: buildLiuyinExecutions,
   buildResourceResult: buildLiuyinResourceResult,

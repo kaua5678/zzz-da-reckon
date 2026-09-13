@@ -18,8 +18,7 @@ import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueCycleFromCfg, readAxisExCounts } from '@/mechanics/agents/banyue'
-import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
-import { computeLiuyinHugCounts, computeLiuyinSource, resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
+import { crossAgentSupplyAt, findCrossAgentSupplySlots, giftDecibelForCfg } from './crossAgentSupply'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { resolveExtraExCount } from '@/data/exSpecialPlans'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
@@ -1398,20 +1397,9 @@ export function iterate(
     const extraSelfDecibel = (cfg.extraSelfDecibelReward ?? 0)
       + (cfg.extraSelfDecibelPerUltimate ?? 0) * prev.ultimateCount
       + (cfg.luciaC4DecibelPerTrigger ?? 0) * curtainTriggers
-      // 诺姆影画4·膛温换连携：诺姆+上一位队友各 +200 不可分享喧响（次数 = floor(膛温/80)，
-      // buildResourceResult 上一轮写入 cfg.normaHatToChainCount；计入终结技次数）
-      // 诺姆影画4·膛温换连携：诺姆+上一位队友各 +200 不可分享喧响（次数 = floor(膛温/80)，
-      // 直接调模块纯函数（iterate 内可用 prev 状态），计入终结技次数）
-      // agentId 判断冗余已删：normaCinemaLevel 唯一写入方 = src/mechanics/agents/norma.ts:236
-      // （非诺姆 cfg 恒 undefined → ?? 0 → false，与原式逐位等价）。
-      + ((cfg.normaCinemaLevel ?? 0) >= 4
-        ? computeNormaHatToChainCount(cfg, {
-            exSpecialCount: prev.exSpecialCount,
-            ultimateCount: prev.ultimateCount,
-            frontlineTime: prev.frontlineTime,
-            battleTime: totalTime,
-          }, Number((cfg as unknown as Record<string, unknown>)['setting:norma.holdSeconds'] ?? 2)) * 200 * 2
-        : 0)
+      // 诺姆影画4·膛温换连携：每次赠链「诺姆 + 上一位队友各 +200 不可分享喧响」，计入终结技次数。
+      // 次数与门控由模块经 `crossAgentSupply` 自报（本文件不再 import 角色模块、不写 id）。
+      + giftDecibelForCfg(configs, prevStates, cfg, totalTime)
       + yidhariBurn
     // 特殊动作奖励（本轮即时按连携/弹刀/闪反/快支次数结算）+ 异常奖励（上一轮异常池回填），均含队友伴随
     const externalDecibelBonus = (globalCfg.specialActionDecibelBonusPerSlot?.[i] ?? 0)
@@ -1426,25 +1414,14 @@ export function iterate(
   // 诺姆膛温换连携（C4）时间信道（2026-09-06 补账）：帽子把戏把「上一位队友」的快速支援替换为
   // 其本人连携技 hatCount 次——喧响侧已在 Step 3 extraSelfDecibel 计入，**时间侧此前漏账**：
   // 赠链行由 applyNormaHatChain 在装配后追加、引擎必要时间没预留，实数化把时间线塞满后
-  // 它把净占用顶出预算（实测 billy/norma 队 +14.2s）。按同一 cfg 通道把 hatCount × 目标连携
+  // 它把净占用顶出预算（实测 billy/norma 队 +14.2s）。按同一通道把 hatCount × 目标连携
   // 时长加进目标槽必要时间（GROSS 全额，合轴比随目标连携行口径）。
-  const normaGiftSlot = configs.findIndex(c => c.agentId === '1571')
-  let normaGiftTargetIdx = -1
-  let normaGiftChainTime = 0
-  if (normaGiftSlot >= 0) {
-    const nCfg = configs[normaGiftSlot]
-    const hatCount = computeNormaHatToChainCount(nCfg, {
-      exSpecialCount: prevStates[normaGiftSlot].exSpecialCount,
-      ultimateCount: prevStates[normaGiftSlot].ultimateCount,
-      frontlineTime: prevStates[normaGiftSlot].frontlineTime,
-      battleTime: nCfg.normaBattleTime ?? totalTime,
-    }, Number((nCfg as unknown as Record<string, unknown>)['setting:norma.holdSeconds'] ?? 2))
-    if (hatCount > 0) {
-      const setting = Number((nCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
-      normaGiftTargetIdx = resolveUltimateTargetSlot(normaGiftSlot, configs.length, setting)
-      normaGiftChainTime = hatCount * (configs[normaGiftTargetIdx].chainActionTime ?? 0)
-    }
-  }
+  // 数量/落点/单位耗时由模块的 `crossAgentSupply` 自报（引擎不 import 角色模块、不写 id）。
+  const normaGift = crossAgentSupplyAt(configs, prevStates, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
+    totalTime, stunCount: globalCfg.stunCount ?? 0,
+  })
+  const normaGiftTargetIdx = normaGift.count > 0 ? normaGift.targetIdx : -1
+  const normaGiftChainTime = normaGift.time
   const totalNecessary: number[] = []
   const comboAlignTimes: number[] = []
   const comboAlignCredits: number[] = []
@@ -1454,41 +1431,14 @@ export function iterate(
   // 枪尖/般岳焚身/琉音猜拳）聚合行被抠剩 ~0、carve 落空 → 守恒破、净占用 +7.2s（实测
   // auto-1591-1481-1311）。引擎侧按同一求解预留必要时间：赠行时间进目标槽必要（GROSS），
   // 平A池随之收缩，守恒成立且不再依赖 post-hoc carve。**轴模式除外**：轴内 60/90 转大次数由
-  // 轴预设 promoteVariant 块决定（useResourceCalc 层，iterate 拿不到），保留旧 carve 路径。
-  const liuyinGiftAxisActive = !!globalCfg.axisMode
-  const liuyinGiftSlot = liuyinGiftAxisActive ? -1 : configs.findIndex(c => c.agentId === '1481')
-  let liuyinGiftTargetIdx = -1
-  let liuyinGiftTime = 0
-  if (liuyinGiftSlot >= 0) {
-    const lCfg = configs[liuyinGiftSlot]
-    const lState = prevStates[liuyinGiftSlot]
-    const src = computeLiuyinSource({
-      exSpecialCount: lState.exSpecialCount,
-      ultimateCount: lState.ultimateCount,
-      combatTime: lCfg.battleTime ?? totalTime,
-      cinemaLevel: lCfg.liuyinCinemaLevel ?? 0,
-      extraAbilityActive: lCfg.liuyinExtraAbilityActive ?? false,
-      previousTeammateSlot: lCfg.liuyinPreviousTeammateSlot ?? 0,
-    })
-    const setting = Number((lCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
-    const targetIdx = resolveUltimateTargetSlot(liuyinGiftSlot, configs.length, setting)
-    const stunCount = globalCfg.stunCount ?? 0
-    const targetChainTotal = Math.min(
-      (configs[targetIdx].chainCountPerStun ?? 0) * stunCount,
-      configs[targetIdx].chainCountTotalOverride ?? (configs[targetIdx].chainCountPerStun ?? 0) * stunCount,
-    )
-    const hug = computeLiuyinHugCounts(
-      src.goodReviewTotal,
-      stunCount,
-      Math.floor(Number((lCfg as unknown as Record<string, unknown>)['setting:liuyin.hug60Count'] ?? -1)),
-      targetChainTotal,
-    )
-    const promote = hug.hug60 + hug.hug90
-    if (promote > 0) {
-      liuyinGiftTargetIdx = targetIdx
-      liuyinGiftTime = promote * (configs[targetIdx].ultimateActionTime ?? 0)
-    }
-  }
+  // 轴预设 promoteVariant 块决定（useResourceCalc 层，iterate 拿不到），保留旧 carve 路径
+  // ——该抑制现由模块的 `axisSuppressed` 声明，引擎不写「有没有该角色」的 flag。
+  const liuyinGift = crossAgentSupplyAt(configs, prevStates, findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1, {
+    totalTime, stunCount: globalCfg.stunCount ?? 0,
+    axisMode: !!globalCfg.axisMode,
+  })
+  const liuyinGiftTargetIdx = liuyinGift.count > 0 ? liuyinGift.targetIdx : -1
+  const liuyinGiftTime = liuyinGift.time
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]
     const exSpecialCount = resolveExSpecialCount(cfg, energies[i])

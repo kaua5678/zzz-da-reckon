@@ -6,138 +6,55 @@ import type {
 import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
-import { computeNormaHatToChainCount } from '@/mechanics/agents/norma'
-import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
-import { computeLiuyinHugCounts, computeLiuyinSource } from '@/mechanics/agents/liuyin'
 import { moveFusionByMoveId } from '@/data/moveFusions'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 
-/**
- * 诺姆膛温换连携（C4）赠链时间信道（与 iterate Step4 同口径）：hatCount 次赠链由
- * applyNormaHatChain 在装配后追加到「上一位队友」的执行计划，其时间已由 iterate 计入
- * 该槽必要时间——折叠环/欠打试探的行测量必须同样计入，否则预留被读成 idle → refund 双击。
- */
-function normaGiftChainInfo(
-  configs: CharacterOperationConfig[],
-  states: IterationState[],
-  normaSlot: number,
-  totalTime: number,
-  teamSize?: number,
-): { targetIdx: number; time: number; count: number } {
-  const nCfg = configs[normaSlot]
-  if (!nCfg) return { targetIdx: -1, time: 0, count: 0 }
-  const hatCount = computeNormaHatToChainCount(nCfg, {
-    exSpecialCount: states[normaSlot].exSpecialCount,
-    ultimateCount: states[normaSlot].ultimateCount,
-    frontlineTime: states[normaSlot].frontlineTime,
-    battleTime: nCfg.normaBattleTime ?? totalTime,
-  }, Number((nCfg as unknown as Record<string, unknown>)['setting:norma.holdSeconds'] ?? 2))
-  if (hatCount <= 0) return { targetIdx: -1, time: 0, count: 0 }
-  const setting = Number((nCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
-  const targetIdx = resolveUltimateTargetSlot(normaSlot, teamSize ?? configs.length, setting)
-  return { targetIdx, time: hatCount * (configs[targetIdx]?.chainActionTime ?? 0), count: hatCount }
-}
+import {
+  crossAgentSupplyAt,
+  crossAgentSuppliesOf,
+  findCrossAgentSupplySlots,
+  giftDecibelForCfg,
+  type CrossAgentSupplyInfo,
+} from './resource/crossAgentSupply'
+
+export { crossAgentSupplyAt, crossAgentSuppliesOf, findCrossAgentSupplySlots }
+export type { CrossAgentSupplyInfo }
+
+// ============ 单角色能量计算 ============
 
 /**
- * 琉音好评转大赠链时间（非轴，与 iterate Step4 同口径）：promote 个赠大 = 目标槽 promote ×
- * ultimateActionTime——装配后 applyLiuyinPromote 追加的行时间必须在此预留（守恒破 +7.2s 前例），
- * 折叠环/欠打试探的行测量同口径计入，否则预留被读成 idle → refund 双击。
- */
-function liuyinGiftChainInfo(
-  configs: CharacterOperationConfig[],
-  states: IterationState[],
-  liuyinSlot: number,
-  totalTime: number,
-  stunCount: number,
-  teamSize?: number,
-): { targetIdx: number; time: number; count: number } {
-  const lCfg = configs[liuyinSlot]
-  if (!lCfg) return { targetIdx: -1, time: 0, count: 0 }
-  const lState = states[liuyinSlot]
-  const src = computeLiuyinSource({
-    exSpecialCount: lState.exSpecialCount,
-    ultimateCount: lState.ultimateCount,
-    combatTime: lCfg.battleTime ?? totalTime,
-    cinemaLevel: lCfg.liuyinCinemaLevel ?? 0,
-    extraAbilityActive: lCfg.liuyinExtraAbilityActive ?? false,
-    previousTeammateSlot: lCfg.liuyinPreviousTeammateSlot ?? 0,
-  })
-  const setting = Number((lCfg as unknown as Record<string, unknown>)['setting:liuyin.ultimateTargetSlot'] ?? -1)
-  const targetIdx = resolveUltimateTargetSlot(liuyinSlot, teamSize ?? configs.length, setting)
-  const tCfg = configs[targetIdx]
-  const targetChainTotal = Math.min(
-    (tCfg?.chainCountPerStun ?? 0) * stunCount,
-    tCfg?.chainCountTotalOverride ?? (tCfg?.chainCountPerStun ?? 0) * stunCount,
-  )
-  const hug = computeLiuyinHugCounts(
-    src.goodReviewTotal,
-    stunCount,
-    Math.floor(Number((lCfg as unknown as Record<string, unknown>)['setting:liuyin.hug60Count'] ?? -1)),
-    targetChainTotal,
-  )
-  const promote = hug.hug60 + hug.hug90
-  if (promote <= 0) return { targetIdx: -1, time: 0, count: 0 }
-  return { targetIdx, time: promote * (configs[targetIdx]?.ultimateActionTime ?? 0), count: promote }
-}
-
-/**
- * 琉音赠大时间**跨层统一入口**（2026-09-10）：轴模式与「轴栈窗口口径」对齐——
- * 轴内 60/90 转大次数由轴预设 promoteVariant 块决定（编排层按窗口数加权后经
- * `config.axisLiuyinPromote` 注入），通用公式 `liuyinGiftChainInfo`（好评/连携窗口推导）
- * 在轴模式会算出另一个数（旧代码干脆跳过测量 → 试探看不见赠行）。非轴模式仍走通用公式。
+ * 赠行**物化口径**（阶段1 ②，2026-09-10）：行由引擎产出（存在/次数单一事实源），倍率由编排层补。
  *
- * **调用范围（实测校准，别顺手扩大）**：目前只有 `frontlineRowsOf`（试探测量）用它；
- * `iterate` 预留与装配侧 `giftTimeOfSlot` **仍维持「轴模式不计入」**——2026-09-10 分别开关实测：
- * 预留侧 4 队留白变差（+0.27~2.70s），装配侧落点大改（stun 4→6、dmg ±5.8%/+32.5%），
- * 两者都属数值重排须裁决（见 docs/ENGINE_PIPELINE_GUIDE.md §4 坑19①）。
+ * 下面两个薄包装只是把「账本口径」（`crossAgentSupplyAt`，带秒数）转成「行口径」（带次数），
+ * 并统一按 `config.teamSize`（编排层队长）解析目标槽——与账本口径 `configs.length` 解耦。
  */
-function liuyinGiftTime(
-  configs: CharacterOperationConfig[],
-  states: IterationState[],
-  totalTime: number,
-  stunCount: number,
-  axisPromote: { targetSlot: number; count: number } | undefined,
-  axisMode: boolean,
-  teamSize?: number,
-): { targetIdx: number; time: number; count: number } {
-  const liuyinSlot = configs.findIndex(c => c.agentId === '1481')
-  if (liuyinSlot < 0) return { targetIdx: -1, time: 0, count: 0 }
-  if (!axisMode) return liuyinGiftChainInfo(configs, states, liuyinSlot, totalTime, stunCount, teamSize)
-  if (!axisPromote || axisPromote.count <= 0) return { targetIdx: -1, time: 0, count: 0 }
-  const tCfg = configs[axisPromote.targetSlot]
-  if (!tCfg) return { targetIdx: -1, time: 0, count: 0 }
-  return {
-    targetIdx: axisPromote.targetSlot,
-    time: axisPromote.count * (tCfg.ultimateActionTime ?? 0),
-    count: axisPromote.count,
-  }
-}
-
-/**
- * 队长口径统一（2026-09-10，用户裁决 #2「基线不拦开发、以长期利益为主」）：
- * `resolveUltimateTargetSlot` 的「上一位队友」依赖队长——引擎只拿到已配置角色
- * （`configs.length`），编排层用 `configStore.team.length`（含空槽）。两套口径会让引擎在
- * 退化配置（单角色扫描）下物化出编排层永远撤掉的赠行（实测 front 顶到 180、8 条 golden delta）。
- * 现**统一按编排层注入的 `config.teamSize`**（缺省回落 `configs.length`，兼容单测直接调 core）。
- * 账本/试探/行/展示四处同源，不再分家。
- */
-function normaGiftRowSpec(
-  configs: CharacterOperationConfig[], states: IterationState[], normaSlot: number, totalTime: number, teamSize: number | undefined,
+function chainGiftRowSpec(
+  configs: CharacterOperationConfig[], states: IterationState[], totalTime: number, teamSize: number | undefined,
 ): { targetIdx: number; count: number } {
-  const info = normaGiftChainInfo(configs, states, normaSlot, totalTime, teamSize)
-  return info.count <= 0 || !configs[info.targetIdx] ? { targetIdx: -1, count: 0 } : { targetIdx: info.targetIdx, count: info.count }
+  const [info] = crossAgentSuppliesOf(configs, states, 'gift-chain:chain', {
+    totalTime, stunCount: 0, teamSize, axisMode: false,
+  })
+  return !info || info.count <= 0 || !configs[info.targetIdx]
+    ? { targetIdx: -1, count: 0 }
+    : { targetIdx: info.targetIdx, count: info.count }
 }
 
-/** 行口径的琉音赠大（含次数）：轴模式用轴预设计数，非轴用通用公式；目标槽按 `teamSize` 解析 */
-function liuyinGiftRowSpec(
+/** 行口径的琉音赠大（含次数）：轴模式用轴预设计数，非轴用模块供给；目标槽按 `teamSize` 解析 */
+function ultimateGiftRowSpec(
   configs: CharacterOperationConfig[], states: IterationState[], totalTime: number, stunCount: number,
   axisPromote: { targetSlot: number; count: number } | undefined, axisMode: boolean, teamSize: number | undefined,
 ): { targetIdx: number; count: number } {
-  const info = liuyinGiftTime(configs, states, totalTime, stunCount, axisPromote, axisMode, teamSize)
-  return info.count <= 0 || !configs[info.targetIdx] ? { targetIdx: -1, count: 0 } : { targetIdx: info.targetIdx, count: info.count }
+  // 轴模式：次数由轴预设 `promoteVariant` 块决定（模块供给被 axisSuppressed 跳过），预设计数优先
+  if (axisMode && axisPromote && axisPromote.count > 0) {
+    return configs[axisPromote.targetSlot] ? { targetIdx: axisPromote.targetSlot, count: axisPromote.count } : { targetIdx: -1, count: 0 }
+  }
+  const [info] = crossAgentSuppliesOf(configs, states, 'gift-chain:ultimate', {
+    totalTime, stunCount, teamSize, axisMode,
+  })
+  return !info || info.count <= 0 || !configs[info.targetIdx]
+    ? { targetIdx: -1, count: 0 }
+    : { targetIdx: info.targetIdx, count: info.count }
 }
-
-// ============ 单角色能量计算 ============
 
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 import * as ResourceCalcHelpers from './resource/helpers'
@@ -479,15 +396,18 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 诺姆膛温换连携赠链行在装配后被 applyNormaHatChain 追加、不在 buildExecutions 产物里——
     // 行测量必须计入其时间（iterate 必要时间已按同一口径预留），否则折叠环会把预留读成
     // idle → pass0 refund 双击（与最高马力星光行同病）。
-    const giftNormaSlot = configs.findIndex(c => c.agentId === '1571')
-    const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, st, giftNormaSlot, totalTime, config.teamSize) : { targetIdx: -1, time: 0 }
+    // 供给量与落点由模块声明（`crossAgentSupply`），引擎按类别查询——本文件不再含角色 id。
+    const chainGiftInfo = crossAgentSupplyAt(configs, st, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
+      totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
+    })
     // 琉音好评转大赠链行同理（非轴）：装配后 applyLiuyinPromote 追加，行测量计入其时间
     // 琉音赠大：**只作测量口径统一**（2026-09-10 实测：轴模式也在此预留会让 4 队留白变差
     // +0.27~2.70s——预留挤平A池而赠行不等量补回，见 docs 坑19①；故 iterate 侧维持旧口径「轴模式不预留」，
-    // 只有 `frontlineRowsOf` 试探测量与 `giftTimeOfSlot` 装配侧按轴预设计数统一）
-    const giftLiuyin = !config.axisMode && configs.some(c => c.agentId === '1481')
-      ? liuyinGiftChainInfo(configs, st, configs.findIndex(c => c.agentId === '1481'), totalTime, config.stunCount ?? 0, config.teamSize)
-      : { targetIdx: -1, time: 0 }
+    // 只有 `frontlineRowsOf` 试探测量与 `giftTimeOfSlot` 装配侧按轴预设计数统一）。
+    // 轴模式抑制由模块的 `axisSuppressed` 声明，引擎不写 flag 判断。
+    const ultimateGift = crossAgentSupplyAt(configs, st, findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1, {
+      totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize, axisMode: config.axisMode,
+    })
     for (let i = 0; i < configs.length; i++) {
       const cfg = configs[i]
       const state = st[i]
@@ -503,8 +423,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         (sum, e) => sum + Math.max(0, (e.totalTime ?? 0) - (overlapByAction?.[`${cfg.slot}:${e.moveId}`] ?? 0))
           * (isFrontlineExecution(e) ? 1 : 0),
         0,
-      ) + (i === gift.targetIdx ? gift.time : 0)
-        + (i === giftLiuyin.targetIdx ? giftLiuyin.time : 0)
+      ) + (i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0)
+        + (i === ultimateGift.targetIdx ? ultimateGift.time : 0)
       // 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget + refund）
       const excess = rowTime - (state.necessaryTime + state.basicAttackTime)
       // 真实时间压力（模块退化判据的权威信号，见 CharacterOperationConfig.timePressureSeconds）：
@@ -642,7 +562,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   //       次数对应的秒数；升级路径见 check-guards DEBT_REGISTRY 同名词条。
   {
     const budgetSeconds = totalTime - (config.invincibleTime ?? 0)
-    const giftNormaSlot = configs.findIndex(c => c.agentId === '1571')
+    const chainGiftProvider = findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1
+    const ultimateGiftProvider = findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1
     /**
      * Σ物化前台**净**占用：扣轴内合轴分摊 + 每槽超出该分摊的招式合轴抵扣（max 不叠加）——
      * 与超时判定单一事实源 `netFrontlineOccupation` **完全同口径**，否则试探门控放行、
@@ -657,12 +578,21 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         if (idx >= 0 && Number.isFinite(sec)) overlapBySlot[idx] += sec
       }
       let total = 0
-      const gift = giftNormaSlot >= 0 ? normaGiftChainInfo(configs, st, giftNormaSlot, totalTime, config.teamSize) : { targetIdx: -1, time: 0 }
-      // 琉音赠大：轴模式用轴预设计数（`config.axisLiuyinPromote`），非轴用通用公式（跨层统一入口）
-      const giftLiu = liuyinGiftTime(
-        configs, st, totalTime, config.stunCount ?? 0,
-        config.axisLiuyinPromote, !!config.axisMode,
-      )
+      const chainGiftInfo = crossAgentSupplyAt(configs, st, chainGiftProvider, {
+        totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
+      })
+      // 琉音赠大：轴模式用轴预设计数（`config.axisLiuyinPromote`），非轴用模块供给（跨层统一入口）
+      const giftLiu = crossAgentSupplyAt(configs, st, ultimateGiftProvider, {
+        totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
+        // 轴模式：模块供给被 `axisSuppressed` 跳过，改用轴预设的 promote 计数（跨层统一入口）
+        ...(config.axisMode ? { axisMode: true } : {}),
+      })
+      const giftLiuTime = config.axisMode && config.axisLiuyinPromote && config.axisLiuyinPromote.count > 0
+        ? config.axisLiuyinPromote.count * (configs[config.axisLiuyinPromote.targetSlot]?.ultimateActionTime ?? 0)
+        : giftLiu.time
+      const giftLiuTarget = config.axisMode && config.axisLiuyinPromote && config.axisLiuyinPromote.count > 0
+        ? config.axisLiuyinPromote.targetSlot
+        : giftLiu.targetIdx
       for (let i = 0; i < configs.length; i++) {
         const cfg = configs[i]
         const state = st[i]
@@ -682,8 +612,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
           (sum, e) => sum + Math.max(0, (e.totalTime ?? 0)
             - (overlap[`${cfg.slot}:${e.moveId}`] ?? 0))
             * (isFrontlineExecution(e) ? 1 : 0),
-          0) + (i === gift.targetIdx ? gift.time : 0)
-            + (i === giftLiu.targetIdx ? giftLiu.time : 0)
+          0) + (i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0)
+            + (i === giftLiuTarget ? giftLiuTime : 0)
         const extraCredit = Math.max(0, (state.comboAlignCredit ?? 0) - overlapBySlot[i])
         total += Math.max(0, rowNet - extraCredit)
       }
@@ -824,24 +754,22 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
    * ② 资源卡「总计」= 战斗时间 + 赠送秒数（用户实测 2026-09-08：诺姆入队后主C 180s + 诺姆连携秒数）。
    * 轴模式不预留（轴内赠块由轴引擎计账，见 helpers.ts `liuyinGiftAxisActive`），故同样不在此计入。
    */
-  const giftNormaIdxFinal = configs.findIndex(c => c.agentId === '1571')
-  const normaGiftFinal = giftNormaIdxFinal >= 0
-    ? normaGiftChainInfo(configs, states, giftNormaIdxFinal, totalTime, config.teamSize)
-    : { targetIdx: -1, time: 0 }
+  const chainGiftFinal = crossAgentSupplyAt(configs, states, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
+    totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
+  })
   // 琉音赠大（装配侧：截断上限 + 前台展示）：轴模式维持旧口径「不预留/不计入」（2026-09-10 实测：
-  // 改用轴预设计数会让落点大改——stun 4→6、dmg ±5.8%/+32.5%，属数值重排，须裁决；见 docs 坑19①）
-  const liuyinGiftFinal = !config.axisMode && configs.some(c => c.agentId === '1481')
-    ? liuyinGiftChainInfo(configs, states, configs.findIndex(c => c.agentId === '1481'), totalTime, config.stunCount ?? 0, config.teamSize)
-    : { targetIdx: -1, time: 0 }
+  // 改用轴预设计数会让落点大改——stun 4→6、dmg ±5.8%/+32.5%，属数值重排，须裁决；见 docs 坑19①）。
+  // 轴模式抑制 = 模块的 `axisSuppressed` 声明，引擎不写「有没有该角色」的 flag 判断。
+  const ultimateGiftFinal = crossAgentSupplyAt(configs, states, findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1, {
+    totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize, axisMode: config.axisMode,
+  })
   const giftTimeOfSlot = (idx: number): number =>
-    (idx === normaGiftFinal.targetIdx ? normaGiftFinal.time : 0)
-    + (idx === liuyinGiftFinal.targetIdx ? liuyinGiftFinal.time : 0)
+    (idx === chainGiftFinal.targetIdx ? chainGiftFinal.time : 0)
+    + (idx === ultimateGiftFinal.targetIdx ? ultimateGiftFinal.time : 0)
   // 赠行**物化口径**（阶段1 ②，2026-09-10）：行由引擎产出（存在/次数单一事实源），倍率由编排层补。
   // 目标槽按 `config.teamSize`（编排层队长）解析——与账本口径 `configs.length` 解耦，见 giftRowTargetSlot。
-  const normaGiftRow = giftNormaIdxFinal >= 0
-    ? normaGiftRowSpec(configs, states, giftNormaIdxFinal, totalTime, config.teamSize)
-    : { targetIdx: -1, count: 0 }
-  const liuyinGiftRow = liuyinGiftRowSpec(
+  const chainGiftRow = chainGiftRowSpec(configs, states, totalTime, config.teamSize)
+  const ultimateGiftRow = ultimateGiftRowSpec(
     configs, states, totalTime, config.stunCount ?? 0,
     config.axisLiuyinPromote, !!config.axisMode, config.teamSize,
   )
@@ -901,18 +829,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       teammateShare += otherShareable * otherCfg.decibelShareRatio
     }
 
-    // 诺姆影画4·膛温换连携喧响：次数 = floor(膛温/80)，直接调模块纯函数（不依赖 buildResourceResult 写入，
-    // 避免把 buildResourceResult 提前改变 billy 等角色的 cfg 时序）
-    // agentId 判断冗余已删：normaCinemaLevel 唯一写入方 = src/mechanics/agents/norma.ts:236
-    // （模块只对自己的 cfg 运行 ⇒ 字段有值即蕴含 agentId === '1571'），非诺姆 cfg 恒 undefined → ?? 0 → false。
-    const normaC4Decibel = (cfg.normaCinemaLevel ?? 0) >= 4
-      ? computeNormaHatToChainCount(cfg, {
-          exSpecialCount: state.exSpecialCount,
-          ultimateCount: state.ultimateCount,
-          frontlineTime: state.frontlineTime,
-          battleTime: totalTime,
-        }, Number((cfg as unknown as Record<string, unknown>)['setting:norma.holdSeconds'] ?? 2)) * 200 * 2
-      : 0
+    // 诺姆影画4·膛温换连携喧响：`giftDecibelForCfg` 已含 `decibelPerUnit × count`
+    // （400 = 诺姆+上一位队友两侧合计，门控在模块内判），引擎**不再**自己乘系数。
+    const normaC4Decibel = giftDecibelForCfg(configs, states, cfg, totalTime)
 
     const decibelSrc = calcDecibelSource(cfg, state, teammateShare, chainCountTotal, totalTime,
       (cfg.luciaC4DecibelPerTrigger ?? 0) * curtainTriggers
@@ -937,21 +856,21 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       builtExecutions, Math.max(0, state.necessaryTime + state.basicAttackTime - giftTimeThisSlot))
     // 赠行由**引擎**物化（阶段1 ②）：仍追加在截断之后（永不被截），截断上限仍先扣赠行时间
     const giftRowsHere: SkillExecution[] = []
-    if (i === liuyinGiftRow.targetIdx && liuyinGiftRow.count > 0) {
+    if (i === ultimateGiftRow.targetIdx && ultimateGiftRow.count > 0) {
       giftRowsHere.push(buildGiftRow({
         moveId: cfg.ultimateMoveId,
         moveName: '好评转大·队友终结技',
-        count: liuyinGiftRow.count,
+        count: ultimateGiftRow.count,
         actionTime: cfg.ultimateActionTime ?? 0,
         skillDamageTarget: 'ultimate',
         skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
       }))
     }
-    if (i === normaGiftRow.targetIdx && normaGiftRow.count > 0) {
+    if (i === chainGiftRow.targetIdx && chainGiftRow.count > 0) {
       giftRowsHere.push(buildGiftRow({
         moveId: cfg.chainMoveId,
         moveName: '诺姆膛温替换·队友连携技',
-        count: normaGiftRow.count,
+        count: chainGiftRow.count,
         actionTime: cfg.chainActionTime ?? 0,
         comboAlignRatio: cfg.chainComboAlignRatio ?? 0,
         skillTableNote: '诺姆预热膛温≥80%帽子把戏：上一位队友的快速支援替换为其本人连携技（招式与倍率取该队友技能表）',
@@ -1039,7 +958,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
 
   // 终局预留量（供 applyLiuyinPromote 判定跳过 post-hoc carve；与 iterate Step4 同一求解）
   // ——与上方 giftTimeOfSlot 同源（同一 helper、同一轴模式条件），不重算。
-  const liuyinGiftTimeTotal = liuyinGiftFinal.time
+  const liuyinGiftTimeTotal = ultimateGiftFinal.time
 
   // 收敛读数归属设施（2026-09-10 尾巴专项，`PROBE_TRACE_FOLD=1` 打开；不开则零副作用）：
   // **一次预设求值会跑 N 次 `calcTeamResources`**（外层不动点轮 + 非轴对照 + 降配二分 6×2 + 下游重算，
@@ -1073,7 +992,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 琉音好评转大赠链时间已由引擎预留（非轴）→ applyLiuyinPromote 不再 post-hoc carve 守恒
     liuyinGiftTimeReserved: liuyinGiftTimeTotal > 0 ? liuyinGiftTimeTotal : undefined,
     // 诺姆膛温换连携赠链时间（对称暴露，供「账本预留 == 装配赠行」机器判据核对）
-    normaGiftTimeReserved: normaGiftFinal.time > 0 ? normaGiftFinal.time : undefined,
+    normaGiftTimeReserved: chainGiftFinal.time > 0 ? chainGiftFinal.time : undefined,
     convergence: {
       timeBudgetConverged,
       timeBudgetPasses,

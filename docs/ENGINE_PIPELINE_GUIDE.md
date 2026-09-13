@@ -97,7 +97,17 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
 | `resolveExecutionDamage` | 直伤行结算时 | 覆盖该行的元素/来源/note（返回 null 走通用规则） | — |
 | `releaseModifier` | 异放/乱流释放伤害 | 减抗修正 | — |
 | `transformAnomalyPool` | 异常池 perElement 汇总前 | 向 elementMap 注入积蓄贡献（风蚀等） | — |
+| `crossAgentSupply`（**声明式，非函数**） | 引擎**内层热循环/折叠环每个 pass**按 `kind` 查询 | 声明「我向队友送什么、送多少、送给谁、占多少秒、附带多少喧响」：`supply()` / `targetSlot()` / `secondsPerUnit()` / `decibelPerUnit()` / `axisSuppressed`。引擎侧 `crossAgentSupplyAt`/`crossAgentSuppliesOf`（`core/resource/crossAgentSupply.ts`）执行，**全程不含角色 id** | — （纯数据入参，见 `CrossAgentSupplyInput`） |
 | `resourceSections` | 展示 | 资源卡片（资源利用率页） | cfg（只读 result） |
+
+**为什么 `crossAgentSupply` 不能并进 `applyTeamConfig`**（2026-09-13 架构诊断，勿重走）：
+那些量要在 `iterate`（内层不动点）与折叠环**每个 pass 重算**，而 `applyTeamConfig` 由编排层按三相位
+派发、输入带 `configStore`——引擎契约 `ResourceCalcConfig` 是**纯数据**，热循环里派发不动全模块钩子。
+故它是**声明式纯函数**：引擎按能力查询、模块自报数量。落地记录：赠链族（诺姆膛温赠连携 / 琉音好评转大）
+原先在 `core/resource.ts` 住着 135 行角色数学 + 在 `helpers.ts` 有第二份副本，靠
+`configs.findIndex(c => c.agentId === '1571'/'1481')` 找槽位——**新角色接赠链必须改引擎**，
+且因为不写 id 字面量而**不被 agentId 棘轮计数**（规则 6 的真实漏网面）。
+现已收口：core agentId 26→16、core role-import 11→5，`timeGolden` **0 delta**。
 | `transformSkillExecutions` | 失衡/异常提取时 | 专属失衡/积蓄贡献或最终面板后处理 | — |
 
 **`transformSkillExecutions` 只做面板后处理时不要开 `replaceSkillExecutionExtraction`**：该标志为 true

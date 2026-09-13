@@ -17,6 +17,7 @@ import {
   AGENT_BRANCH_FILE,
   CORE_AGENT_BRANCH_BASELINE,
   CORE_AGENT_BRANCH_FILES,
+  CORE_ROLE_IMPORT_BASELINE,
   EXHIBITION_LAYER_IMPORT_BASELINE,
   MANUAL_DENSITY_CEILINGS,
   RATCHET_BURNDOWN,
@@ -345,15 +346,18 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('十一条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮）', () => {
+  it('十二条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮）', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(11)
+    expect(results).toHaveLength(12)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
     expect(results.map(r => r.name.split(' ')[0])).toContain('exhibition-layer')
     // core 棘轮必须在列（规则 6 的引擎层延伸——此前 core 是豁免区）
     expect(results.some(r => r.name.startsWith('core agentId ratchet'))).toBe(true)
+    // 判据 12：core role-import 棘轮（2026-09-13 架构诊断新增）——agentId 字面量是**词法**判据，
+    // 看不见「引擎静态 import 具体角色模块」这种更强耦合；本判据是它的语义补强面。
+    expect(results.some(r => r.name.startsWith('core role-import ratchet'))).toBe(true)
     // 判据 10：catalog ↔ raw 对账（2026-09-12 新增，坑 40）
     expect(results.some(r => r.name.includes('catalog/raw level60 对账'))).toBe(true)
     // 判据 11：手册数字 id 密度棘轮（2026-09-12 任务卡第 1 步，防手册编年史化）

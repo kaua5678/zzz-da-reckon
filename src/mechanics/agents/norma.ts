@@ -10,6 +10,7 @@ import type {
 import type { AgentSkills, SkillMove, PanelValues } from '@/types/catalog'
 import type { CharacterResourceResult, MechanicSetting, NormaMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
+import { resolveUltimateTargetSlot } from './liuyin'
 
 const NORMA_AGENT_ID = '1571'
 
@@ -581,6 +582,38 @@ export const normaMechanic: AgentMechanicModule = {
   description: '预热膛温资源、嗯呢弹幕（6段+炮塔+全队增伤）、膛温帽子把戏→连携替换、火力实验导弹、技术鸿沟失衡易伤。',
   applyPanel: applyNormaPanel,
   buildCharConfig: buildNormaCharConfig,
+  /**
+   * 跨槽位供给：膛温帽子把戏 → 送给「上一位队友」的连携行（规则 6 在引擎层的落点）。
+   *
+   * 迁移自 `core/resource.ts#normaGiftChainInfo`（2026-09-13，数值逐位保留）：那段数学原先住在
+   * 引擎里，且靠 `configs.findIndex(c => c.agentId === '1571')` 找槽位——新角色接赠链要改引擎。
+   * 现在引擎按 `kind: 'gift-chain'` 查槽位 + 调本 `supply()`，落点缺省 = 上一位队友。
+   */
+  crossAgentSupply: {
+    kind: 'gift-chain:chain',
+    supply: ({ cfg, state, totalTime }) => computeNormaHatToChainCount(
+      cfg,
+      {
+        exSpecialCount: state.exSpecialCount,
+        ultimateCount: state.ultimateCount,
+        frontlineTime: state.frontlineTime,
+        battleTime: cfg.normaBattleTime ?? totalTime,
+      },
+      cfgNum(cfg, 'norma.holdSeconds', 2),
+    ),
+    // 落点设置键沿用 `liuyin.ultimateTargetSlot`（历史口径：两人共用同一个「送给谁」下拉，
+    // 2026-09-13 迁移时逐位保留——改成 norma 私有键会改掉用户已存的设置值）。
+    targetSlot: ({ ownSlot, teamSize, cfg }) =>
+      resolveUltimateTargetSlot(ownSlot, teamSize, Math.floor(cfgNum(cfg, 'liuyin.ultimateTargetSlot', -1))),
+    // 赠的是**连携**行 ⇒ 单位耗时 = 落点槽的 chainActionTime（与琉音赠大用 ultimateActionTime 不同）
+    secondsPerUnit: ({ targetCfg }) => targetCfg.chainActionTime ?? 0,
+    // 影画4·膛温换连携：每次赠链「诺姆 + 上一位队友**各** +200 不可分享喧响」。
+    // ⚠ 引擎在逐槽循环里对每个 cfg 调本函数，但 `normaCinemaLevel` **只写在诺姆自己的 cfg 上**
+    //   ⇒ 实际只在诺姆槽结算（迁移前的 `* 200 * 2` 即此语义：在诺姆槽一次算入两侧的量）。
+    //   故这里返回 **400 = 两侧合计**，不是单侧 200——改口径前先看这条。
+    //   门控（影画4）在模块内判，引擎不读 normaCinemaLevel。
+    decibelPerUnit: ({ cfg }) => ((cfg.normaCinemaLevel ?? 0) >= 4 ? 400 : 0),
+  },
   estimateExSpecialTime({ cfg, exSpecialCount }) {
     // 嗯呢弹幕真实前台时间（修复：通用公式只用 #1 单段 0.493s → 严重低估）：
     // 一次强特 = 点射 #1(0.493) + 弹头 #2/#3(0.74) + 长按延长（#4 0.4 + 延长弹头 0.6）/s

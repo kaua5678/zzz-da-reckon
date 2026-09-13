@@ -1,0 +1,139 @@
+/**
+ * 跨槽位供给的**通用执行器**（规则 6 在引擎层的落点，2026-09-13 架构收口）。
+ *
+ * 为什么单列一个文件：`core/resource.ts` 与 `core/resource/helpers.ts` 都要用它，而前者 import
+ * 后者（单向）——执行器若住在前者会形成环。本文件只依赖类型 + 注册表，两个消费者都能安全 import。
+ *
+ * 取代原先散在两个文件里的角色专属数学（`resource.ts` 的 `normaGiftChainInfo` /
+ * `liuyinGiftChainInfo` / `liuyinGiftTime` 三函数 135 行，`helpers.ts` 里同一份赠链计算的第二副本）。
+ * 它们的共同形状是「按 `agentId === '<id>'` 找槽位，再算某角色特有的赠送量」：
+ *   · 新角色接赠链**必须改引擎**；
+ *   · 且**不被 agentId 棘轮计数**（它们不写 id 字面量，只 import 那个角色的模块）
+ *     —— 这正是规则 6 的真实漏网面，故另立判据 12（`core role-import ratchet`）盯住它。
+ *
+ * 现在引擎只按**能力类别**查询（`crossAgentSupply.kind`），数量与落点由模块自报：
+ *   · `supply()`         —— 送多少（纯函数，引擎每 pass 调）
+ *   · `targetSlot()`     —— 送给谁（缺省 = 上一位队友，环绕）
+ *   · `secondsPerUnit()` —— 每个单位占落点槽多少秒（缺省 = 落点 ultimateActionTime）
+ *   · `decibelPerUnit()` —— 每个单位给提供者自己多少喧响（缺省 0）
+ *   · `axisSuppressed`   —— 该类别在轴模式下不出数（琉音赠大：轴内次数由轴预设决定，见 docs 坑19①）
+ */
+import type { CharacterOperationConfig, IterationState } from '@/types/resource'
+import { getAgentMechanic } from '@/mechanics'
+
+export interface CrossAgentSupplyInfo {
+  /** 提供者槽位（未提供 = -1） */
+  providerSlot: number
+  /** 落点槽位（无效 = -1） */
+  targetIdx: number
+  /** 供给单位数（次数） */
+  count: number
+  /** 占用落点槽的秒数 = count × secondsPerUnit */
+  time: number
+}
+
+export interface CrossAgentSupplyQuery {
+  /** 战斗总时长（秒） */
+  totalTime: number
+  /** 失衡次数（计划值；部分类别按它折算窗口数） */
+  stunCount: number
+  /** 轴模式：`axisSuppressed` 的提供者在此跳过 */
+  axisMode?: boolean
+  /** 槽位数（编排层注入，与 `configStore.team.length` 同源；缺省 `configs.length`） */
+  teamSize?: number
+}
+
+const NO_SUPPLY: CrossAgentSupplyInfo = { providerSlot: -1, targetIdx: -1, count: 0, time: 0 }
+
+/**
+ * 某类别的**全部**供给者槽位（按槽位序）。
+ *
+ * 为什么是列表而不是「找一个」：同一类别可以有多名提供者且**同时生效**——例如同队两个
+ * 赠连携角色各自送自己的那一份。引擎不假设唯一性，也不静默求和（调用方按需合并，
+ * 避免把「两个提供者」误当重复注册）。
+ */
+export function findCrossAgentSupplySlots(configs: CharacterOperationConfig[], kind: string): number[] {
+  const out: number[] = []
+  for (let i = 0; i < configs.length; i++) {
+    if (getAgentMechanic(configs[i].agentId)?.crossAgentSupply?.kind === kind) out.push(i)
+  }
+  return out
+}
+
+/** 解析**单个**槽位的跨槽位供给（`providerSlot` 无声明或槽位无效时返回空）。 */
+export function crossAgentSupplyAt(
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+  providerSlot: number,
+  query: CrossAgentSupplyQuery,
+): CrossAgentSupplyInfo {
+  const cfg = configs[providerSlot]
+  const spec = cfg ? getAgentMechanic(cfg.agentId)?.crossAgentSupply : undefined
+  if (!cfg || !spec) return NO_SUPPLY
+  const empty = { ...NO_SUPPLY, providerSlot }
+  if (spec.axisSuppressed && query.axisMode) return empty
+  const state = states[providerSlot]
+  if (!state) return empty
+  const teamSize = query.teamSize ?? configs.length
+  const targetIdx = spec.targetSlot
+    ? spec.targetSlot({ ownSlot: providerSlot, teamSize, cfg })
+    // 缺省落点 = 上一位队友（环绕）——与 `resolveUltimateTargetSlot` 的自动口径一致，
+    // 但引擎不 import 角色模块：需要该语义的模块用 targetSlot() 显式声明。
+    : (providerSlot - 1 + teamSize) % teamSize
+  const targetCfg = configs[targetIdx]
+  if (!targetCfg) return empty
+  const count = Math.max(0, Math.floor(spec.supply({
+    cfg,
+    state,
+    targetCfg,
+    targetState: states[targetIdx],
+    stunCount: query.stunCount,
+    totalTime: query.totalTime,
+    teamSize,
+  }) || 0))
+  if (count <= 0) return { ...empty, targetIdx }
+  const perUnit = spec.secondsPerUnit
+    ? spec.secondsPerUnit({ targetCfg, ownCfg: cfg })
+    : (targetCfg.ultimateActionTime ?? 0)
+  return { providerSlot, targetIdx, count, time: count * perUnit }
+}
+
+/** 解析某类别的**全部**供给（按槽位序，仅含有量的）。 */
+export function crossAgentSuppliesOf(
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+  kind: string,
+  query: CrossAgentSupplyQuery,
+): CrossAgentSupplyInfo[] {
+  const out: CrossAgentSupplyInfo[] = []
+  for (const providerSlot of findCrossAgentSupplySlots(configs, kind)) {
+    const info = crossAgentSupplyAt(configs, states, providerSlot, query)
+    if (info.count > 0) out.push(info)
+  }
+  return out
+}
+
+/**
+ * 某 cfg 的「赠链附带喧响」折算：`decibelPerUnit(自己的 spec) × 自己的供给单位数`。
+ *
+ * 语义注意：`normaCinemaLevel` 这类命座字段**只写在角色自己的 cfg 上**，因此引擎在逐槽循环里
+ * 对每个 cfg 调用本函数时，实际只有提供者那一槽算出非零——这正是迁移前 `hatCount * 200 * 2`
+ * 的效果（在诺姆槽一次算入「诺姆 + 上一位队友」两侧的量），故 norma 模块的 `decibelPerUnit`
+ * 返回 **400**（两侧合计）而不是 200。改口径前先读这条。
+ */
+export function giftDecibelForCfg(
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+  cfg: CharacterOperationConfig,
+  totalTime: number,
+): number {
+  const slot = configs.indexOf(cfg)
+  if (slot < 0) return 0
+  const spec = getAgentMechanic(cfg.agentId)?.crossAgentSupply
+  const state = states[slot]
+  if (!spec?.decibelPerUnit || !state) return 0
+  const count = Math.max(0, Math.floor(spec.supply({
+    cfg, state, stunCount: 0, totalTime, teamSize: configs.length,
+  }) || 0))
+  return count * Math.max(0, spec.decibelPerUnit({ cfg }) || 0)
+}

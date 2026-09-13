@@ -122,10 +122,18 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'core agentId 分支',
     file: 'src/core/resource.ts + core/resource/helpers.ts',
-    frozen: 26,  // 2026-09-11 评审冻结 36（resource.ts 16 + helpers.ts 20）→ 26（2026-09-13 T6 首次真清偿 −10：删 yidhariContinuousEx 7 处 / normaCinemaLevel 2 处 / antonC1EnergyGift 1 处的冗余 agentId 守卫，判据 = 字段唯一写入方为对应角色模块，timeGolden 0 delta）。详见 CORE_AGENT_BRANCH_BASELINE 头注释的沿革与「有意不动」两类
+    frozen: 16,  // 2026-09-11 评审冻结 36（resource.ts 16 + helpers.ts 20）→ 26（2026-09-13 T6 首次真清偿 −10：删 yidhariContinuousEx 7 处 / normaCinemaLevel 2 处 / antonC1EnergyGift 1 处的冗余 agentId 守卫，判据 = 字段唯一写入方为对应角色模块，timeGolden 0 delta）→ 18（2026-09-13 crossAgentSupply 架构收口：赠链族 8 处槽位查找改按能力类别查询，0 delta）。详见 CORE_AGENT_BRANCH_BASELINE 头注释的沿革
     target: 0,
     due: '2027-03-31',
-    plan: '剩 26 处：① 先把 convergence.ts:957 的 yidhariInStunExCount / :1074 的 billyAxisActive 写入方挪进对应角色模块，再删 helpers.ts:1271 与 resource.ts:595 的守卫（现不冗余）；② `!==` 短路形态逐处论证后化简；③ 跨角色查找（findIndex 找队友槽位）与纯 agentId 写入（billyFinalizeChain / yidhariFinalizeEx 由引擎写角色字段）属真特判，需走 applyTeamConfig / convergence 落点（评审 #10）',
+    plan: '剩 18 处：① 先把 convergence.ts:957 的 yidhariInStunExCount / :1074 的 billyAxisActive 写入方挪进对应角色模块，再删 helpers.ts:1271 与 resource.ts:595 的守卫（现不冗余）；② `!==` 短路形态逐处论证后化简；③ 跨角色查找（findIndex 找队友槽位）与纯 agentId 写入（billyFinalizeChain / yidhariFinalizeEx 由引擎写角色字段）属真特判，需走 applyTeamConfig / convergence 落点（评审 #10）；④ 同批新增判据 12（core role-import 棘轮 7 处）——它是本条的**语义补强面**：agentId 字面量清零 ≠ 角色无关，引擎静态 import 角色模块同样要清',
+  },
+  {
+    id: 'core 角色模块引用',
+    file: 'src/core/** → @/mechanics/agents/*',
+    frozen: 5,  // 2026-09-13 架构诊断实测（不含测试）：赠链族契约落地后剩余 5 处 —— luciaElowen×3 / banyue×1 / norma×1 / liuyin×1 / velina×2
+    target: 0,
+    due: '2027-03-31',
+    plan: '按 `crossAgentSupply` 同款范式逐族迁移（kind: curtain / ex-count-source / corrosion…），把角色数学搬回模块、引擎按能力查询（见 CORE_ROLE_IMPORT_BASELINE 头注释的逐条落点）。⚠ 其中 norma/liuyin/velina 的 4 处引用在本批迁移后**已零调用**（仅剩 import 行），可直接删',
   },
   {
     id: '展示层越层 import',
@@ -441,8 +449,14 @@ export const CORE_AGENT_BRANCH_FILES = ['src/core/resource.ts', 'src/core/resour
  *    `billyAxisActive` ← `convergence.ts:1074` ——编排层可能对任意 cfg 写它们，「字段存在」不蕴含
  *    「是该角色」，故 helpers.ts:1271 与 resource.ts:595 的守卫**不冗余**，保留。
  *    正解是把这两个写入方挪进对应模块（再删守卫），不是先删守卫。
+ *
+ * 26 → 18 沿革（2026-09-13，`crossAgentSupply` 架构收口）：赠链族 8 处槽位查找
+ * （`findIndex(c => c.agentId === '1571'/'1481')`，散在 resource.ts 的折叠环/试探/装配三处 × 多个副本）
+ * 改成引擎按**能力类别**查询（`findCrossAgentSupplySlots(configs, 'gift-chain:chain'|'gift-chain:ultimate')`），
+ * 数量与落点由模块的 `crossAgentSupply` 自报；详见判据 12（静态角色 import 棘轮）的说明。
+ * `timeGolden` 3 tests **0 delta**（105 预设 + 60 角色×命座 0/6）。
  */
-export const CORE_AGENT_BRANCH_BASELINE = 26
+export const CORE_AGENT_BRANCH_BASELINE = 16
 
 /** 跨多个文件计 agentId 分支总行数（与 countAgentIdBranchLines 同口径） */
 export function countAgentIdBranchLinesInFiles(files, root = ROOT) {
@@ -526,6 +540,63 @@ export const EXHIBITION_LAYER_FORBIDDEN = /@\/(?:core|mechanics|specs)(?:\/|['"]
  * BANYUE_AXIS_MOVE_META / computeYixuanNingshenBlocks。它们要经编排层透出，属架构改动。
  */
 export const EXHIBITION_LAYER_IMPORT_BASELINE = 15
+
+// ---- 判据 12：引擎层「静态依赖具体角色模块」棘轮 ----
+//
+// 为什么需要（2026-09-13 架构诊断）：agentId 棘轮是**词法**判据（`/agentId\s*(===|!==)/`），
+// 双向失真——既漏掉等价写法（`c.liuyinCinemaLevel !== undefined` 不被计数），
+// 又**完全看不见**强得多的耦合形态：`core/` 直接 `import ... from '@/mechanics/agents/<角色>'`。
+// 实测病灶：`core/resource.ts` 曾住着 135 行「诺姆怎么赠链、琉音怎么转大」的角色数学
+// （`normaGiftChainInfo` / `liuyinGiftChainInfo` / `liuyinGiftTime`），它们不写 id 字面量
+// ⇒ 棘轮零意见，但**新角色接赠链必须改引擎**——正是规则 6 要消灭的形状。
+//
+// 度量面 = `src/core/**` 对 `@/mechanics/agents/*` 的**值**导入（`import type` 豁免：纯类型不产生
+// 运行时依赖，与判据 7 同款豁免）。正解 = 模块经 `AgentMechanicModule` 钩子/声明式字段暴露能力
+// （`crossAgentSupply` / `axisWindowOverlays` / `backstageAutoFill` …），引擎按能力查询、不按角色查询。
+
+/** 引擎层目录（依赖方向最内层，应当角色无关） */
+export const CORE_LAYER_DIR = 'src/core'
+
+/** 角色模块路径（值导入 = 硬耦合；type-only 豁免） */
+const CORE_ROLE_IMPORT_RE = /^\s*import\s+(?!type\s)[^'"]*from\s+['"]@\/mechanics\/agents\/[^'"]+['"]/
+
+/**
+ * 2026-09-13 冻结基线：诊断时实测 **7 处**（不含测试）——
+ * `core/resource.ts` 1（luciaElowen）+ `core/resource/helpers.ts` 4（luciaElowen / banyue / norma / liuyin）
+ * + `core/anomalyPool.ts` 1 + `core/anomalyPool/helpers.ts` 1（均 velina）。
+ * 同批 `crossAgentSupply` 契约落地后**赠链族数学**（135 行）已迁进 norma/liuyin 模块，
+ * 但引擎侧仍有 4 处对本批未迁移能力的直接引用（见下），故冻结 7。
+ * 只减不增：迁一处 → 把基线下调到新值；上调没有合法路径。
+ *
+ * 剩余 7 处的迁移落点（下一批，按 `crossAgentSupply` 同款范式）：
+ *  · `luciaElowen#computeLuciaCurtainTriggers` ×2 → 帷幕触发次数（跨槽，`crossAgentSupply.kind: 'curtain'`）
+ *  · `banyue#computeBanyueCycleFromCfg`/`readAxisExCounts` ×1 → 嗔火/怒相循环（`kind: 'ex-count-source'`）
+ *  · `norma#computeNormaHatToChainCount` ×1 → 已由 `gift-chain:chain` 覆盖，**可直接删引用**
+ *  · `liuyin#computeLiuyinHugCounts`/`computeLiuyinSource`/`resolveUltimateTargetSlot` ×1 → 同上，可直接删
+ *  · `velina#simulateVelinaCorrosionState` ×2 → 已走 `transformAnomalyPool` 钩子，**可删引用**
+ * ⚠ 删引用前先确认该符号在 helpers.ts 内确实零调用（grep 计数含 import 行本身）。
+ */
+export const CORE_ROLE_IMPORT_BASELINE = 5
+
+/** 扫 `src/core/**` 里对具体角色模块的值导入 → [{ file, line, text }]（**不含测试**：测试自由引用模块） */
+export function scanCoreRoleImports(root = ROOT) {
+  const sites = []
+  const rec = (dir) => {
+    if (!existsSync(dir)) return
+    for (const n of readdirSync(dir)) {
+      const p = join(dir, n)
+      if (statSync(p).isDirectory()) { rec(p); continue }
+      if (!n.endsWith('.ts') || n.endsWith('.d.ts')) continue
+      const rel = relative(root, p).split(sep).join('/')
+      if (rel.includes('__tests__') || rel.endsWith('.test.ts')) continue
+      readFileSync(p, 'utf8').split('\n').forEach((l, i) => {
+        if (CORE_ROLE_IMPORT_RE.test(l)) sites.push({ file: rel, line: i + 1, text: l.trim().slice(0, 110) })
+      })
+    }
+  }
+  rec(join(root, CORE_LAYER_DIR))
+  return { count: sites.length, sites }
+}
 
 /**
  * 单行判定：是否构成越层依赖。
@@ -808,6 +879,26 @@ export function runAllChecks(root = ROOT) {
       ]
       : layer.count < EXHIBITION_LAYER_IMPORT_BASELINE
         ? [`  ✗ 越层 import ${EXHIBITION_LAYER_IMPORT_BASELINE}→${layer.count}：是进步，把 check-guards.mjs 的 EXHIBITION_LAYER_IMPORT_BASELINE 下调到 ${layer.count}（棘轮只减不增）`]
+        : [],
+  })
+
+  // ---- 判据 12：引擎层静态依赖具体角色模块棘轮（agentId 棘轮的语义补强面） ----
+  const coreRole = scanCoreRoleImports(root)
+  results.push({
+    name: `core role-import ratchet (规则 6 语义面: 引擎按能力查询, 不按角色查询) src/core/** → @/mechanics/agents/* = ${coreRole.count}/${CORE_ROLE_IMPORT_BASELINE}`,
+    ok: coreRole.count === CORE_ROLE_IMPORT_BASELINE,
+    detail: coreRole.count > CORE_ROLE_IMPORT_BASELINE
+      ? [
+        `  ✗ 引擎层新增对具体角色模块的值导入 ${CORE_ROLE_IMPORT_BASELINE}→${coreRole.count}：`,
+        '    → 角色数学回 src/mechanics/agents/<id>.ts，经 `AgentMechanicModule` 声明式字段暴露能力',
+        '      （crossAgentSupply / axisWindowOverlays / backstageAutoFill / transformAnomalyPool …），',
+        '      引擎按**能力**查询（`getAgentMechanic(id)?.<能力>`），不 import 具体模块、不写 id 字面量。',
+        '    → 为什么另立判据：agentId 棘轮是词法判据，看不见这种耦合（它不写 id）——实测病灶是',
+        '      core/resource.ts 曾住 135 行诺姆/琉音赠链数学，新角色接赠链必须改引擎。',
+        ...coreRole.sites.slice(0, 12).map(s => `      ${s.file}:${s.line}  ${s.text}`),
+      ]
+      : coreRole.count < CORE_ROLE_IMPORT_BASELINE
+        ? [`  ✗ core role-import ${CORE_ROLE_IMPORT_BASELINE}→${coreRole.count}：是进步，把 CORE_ROLE_IMPORT_BASELINE 下调到 ${coreRole.count}（棘轮只减不增）`]
         : [],
   })
 

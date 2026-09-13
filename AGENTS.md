@@ -97,7 +97,7 @@
 
 ```bash
 npm run verify        # check-guards + check-tokens + validate:data + validate:specs + verify:recording + vitest + build（一条链；build = vue-tsc -b && vite build，类型检查已含在内——2026-09-11 实证 -b 覆盖 app+node 两个 project 且失败非零退出，故不再单列 typecheck）
-npm run check-guards  # 机器护栏 11 项：fetch-stub 冻结（§3）/ agentId 棘轮（规则 6：编排层 useResourceCalc + resourceCalc/ 目录 = 79）/ **core agentId 棘轮**（规则 6 延伸：引擎层 role-agnostic，core 36）/ 工作区状态防误提交（规则 13）/ 展示层越层棘轮（§0：views·components 禁 import @/core|@|mechanics|@/specs）/ 滑块生效测试（规则 12）/ debt 登记（规则 12）/ docs 表（README §6 == docs/*.md，规则 8）/ @fact 锚点（规则 16）/ catalog-raw level60 对账（坑 40）/ **手册密度棘轮**（规则 8 分层契约）
+npm run check-guards  # 机器护栏 12 项：fetch-stub 冻结（§3）/ agentId 棘轮（规则 6：编排层 useResourceCalc + resourceCalc/ 目录 = 65）/ **core agentId 棘轮**（规则 6 延伸：引擎层 role-agnostic，core 16）/ 工作区状态防误提交（规则 13）/ 展示层越层棘轮（§0：views·components 禁 import @/core|@|mechanics|@/specs = 15）/ **core role-import 棘轮**（规则 6 语义面：`src/core/**` 禁 import 具体角色模块 = 5）/ 滑块生效测试（规则 12）/ debt 登记（规则 12）/ docs 表（README §6 == docs/*.md，规则 8）/ @fact 锚点（规则 16）/ catalog-raw level60 对账（坑 40）/ **手册密度棘轮**（规则 8 分层契约）
 npm run verify:recording  # 录入完成判据：声称 implemented 的角色必须有测试引用 + expect 断言 + 档案状态行
 npm run docs:status   # 重新生成 docs/implementation-status.md（CI 会检查漂移，漏跑即红）
 npm run minify:static # 生成产物瘦身/剔 catalog 死键（幂等；validate:data 报产物膨胀时用它修）
