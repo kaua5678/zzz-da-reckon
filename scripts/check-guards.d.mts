@@ -167,6 +167,8 @@ export interface NounTriageAudit {
   noRegister: string[]
   /** 未处理项（each: '<key> <name>｜<evidence>'）——判据 13 的红面 */
   unhandled: string[]
+  /** 源面异常（源/账缺失、源键数低于冻结下限）——防「删账本 / 清空源 = 全绿」 */
+  sourceShrunk: string[]
 }
 export declare function auditNounTriage(
   root?: string,
