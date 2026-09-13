@@ -425,11 +425,21 @@ describe('scanManualDensity（判据 11：手册数字 id 密度棘轮，任务�
     const e = RATCHET_BURNDOWN.find(x => x.id === '手册 §4 行数')
     expect(e).toBeDefined()
     expect(e!.file).toBe('docs/ENGINE_PIPELINE_GUIDE.md')
-    expect(e!.target).toBeLessThan(e!.frozen)
+    expect(e!.target).toBeLessThanOrEqual(e!.frozen)
     const cur = countGuideSection4Lines()
     expect(Number.isFinite(cur)).toBe(true)
-    expect(cur).toBeLessThan(e!.frozen)      // 已还款（立项 1340 → 现 <1340）
-    expect(cur).toBeGreaterThanOrEqual(e!.target)  // 未到期误报清零
+    expect(cur).toBeLessThanOrEqual(e!.frozen)   // 棘轮语义：不许涨过冻结值
+    // 原断言是 `cur >= target`（「未到期误报清零」），2026-09-13 实测发现它**惩罚超额还款**：
+    // 工人把 §4 拆到 719 行（< target 804）、check-guards 本体 11/11 全绿，却因这条单测红，
+    // 被迫回退到刚好 804。达标（≤target）即条目 done，继续降是纯收益，判据不该拦。
+    // 真正的「误报清零」防护改为**结算要求**：低于 target 就必须把登记表结算掉（frozen/target
+    // 同步下调到当前值），否则条目会一直挂着旧目标显示「已完成」。
+    if (cur < e!.target) {
+      expect(e!.frozen,
+        `「手册 §4 行数」已超额达标（现 ${cur} 行 < target ${e!.target}）：请结算登记表——`
+        + `frozen/target 同步下调到 ${cur}（棘轮只减不增），并在 plan 里记一句本轮到点。`).toBe(cur)
+      expect(e!.target).toBe(cur)
+    }
     // zc.mjs measured 映射以 id 为键（rule 11：口径实现在 check-guards，zc 只注入）
     const src = readFileSync(join(process.cwd(), 'scripts/zc.mjs'), 'utf8')
     expect(src).toContain(`'${e!.id}'`)

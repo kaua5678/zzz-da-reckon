@@ -25,7 +25,7 @@ import type { SkillDamageTarget } from '@/types/catalog'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard, PhaseBuffEffect } from '@/types/bossPreset'
 import { cloneStunAxes, stunAxisPresets } from '@/data/stunAxisPresets'
-import { fmt } from '@/utils/format'
+import { fmt, localized } from '@/utils/format'
 import {
   INTERACTION_WEIGHTS,
   type GoldStep,
@@ -342,7 +342,7 @@ export function buildGoldStepsFromConfig(
     const { agentId, wEngineId } = team[slot] ?? {}
     if (!agentId) continue
     const agent = catalog.getAgent(agentId)
-    const name = agent?.name.zhCN ?? agent?.name.en ?? `槽位${slot + 1}`
+    const name = localized(agent?.name, `槽位${slot + 1}`)
     // 影画步进（限定 → goldSteps，常驻/A级 → standardSteps）
     const cinema = Math.max(0, Math.min(6, cinemas[slot] ?? 0))
     const cTarget = isLimitedAgent(agentId) ? goldSteps : standardSteps
@@ -535,7 +535,7 @@ export function computeAutoEnginePicks(
       const damage = calc.teamTotalDamage.value
       if (!best || damage > best.damage) {
         const limited = isLimitedWEngine(w.id)
-        best = { id: w.id, mod, label: `${w.name.zhCN ?? w.name.en ?? w.id} R${mod}${limited ? '（限定）' : ''}`, damage }
+        best = { id: w.id, mod, label: `${localized(w.name, w.id)} R${mod}${limited ? '（限定）' : ''}`, damage }
       }
     }
     if (best) {

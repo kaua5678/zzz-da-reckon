@@ -96,7 +96,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { sharpCritMultiplier } from '@/core/damage'
 import { isPctStat } from '@/utils/statMeta'
-import { fmt, pct } from '@/utils/format'
+import { fmt, pct, localized } from '@/utils/format'
 import type { BuffEffect, BuffGroup, PanelValues } from '@/types/catalog'
 
 const configStore = useConfigStore()
@@ -157,12 +157,6 @@ function targetedRows(pIn: PanelValues, prefix: string, labelOf: (t: string) => 
   return Object.entries(pIn)
     .filter(([key, v]) => key.startsWith(`${prefix}__`) && v)
     .map(([key, v]) => ({ stat: key, label: `${labelOf(key.replace(`${prefix}__`, ''))}（定向）`, value: v as number }))
-}
-
-function localized(obj: any): string {
-  if (!obj) return ''
-  if (typeof obj === 'string') return obj
-  return obj.zhCN ?? obj.en ?? ''
 }
 
 /** effect 是否生命类及其阶段（局内/局外）；非生命类返回 null */

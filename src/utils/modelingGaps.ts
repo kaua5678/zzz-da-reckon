@@ -7,6 +7,7 @@
  * 2. 实战对比页部署后的建模缺口清单——按队伍 agentId 列出未接线的命座/机制条目 +
  *    邦布未建模的固定提示。纯信息展示，不做拦截（归档不作误差判据的用户裁决不变）。
  */
+import { localized } from './format'
 
 export interface SetGapInfo {
   twoPieceUnmodeled: boolean
@@ -90,7 +91,7 @@ export function collectCinemaGaps(
   for (const id of agentIds) {
     const ch = ledger?.[id]
     if (!ch) continue
-    const agentName = ch.name?.zhCN ?? ch.name?.en ?? id
+    const agentName = localized(ch.name, id)
     for (const c of ch.cinemas ?? []) {
       const pending = c.pending ?? []
       if (!isRealGapStatus(c.status) && pending.length === 0) continue
@@ -113,7 +114,7 @@ export function collectMechanicGaps(
   for (const id of agentIds) {
     const ch = ledger?.[id]
     if (!ch) continue
-    const agentName = ch.name?.zhCN ?? ch.name?.en ?? id
+    const agentName = localized(ch.name, id)
     for (const m of ch.mechanics ?? []) {
       const pending = m.pending ?? []
       if (!isRealGapStatus(m.implementation) && pending.length === 0) continue

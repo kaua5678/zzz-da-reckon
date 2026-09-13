@@ -365,6 +365,91 @@ export function collectAxisWindowOverlays(
  * 计算最终面板的局外/局内两阶段（供最终面板展示：局外 = calcPanel.outOfCombat，
  * 局内 = 在局外基础上叠队友/全局 buff 与角色机制 applyPanel 修正后的权威面板，与计算完全一致）。
  */
+/**
+ * 额外能力门控簇登记表（规则 6：SOP §6.2 第 3 步「按 buff id 过滤」的唯一登记处）。
+ *
+ * agentId → 受该角色「额外能力」门控的 teammate-buff id 列表。新增来源为「额外能力」的 buff
+ * 必须在此登记（并把求值接进 `evalAdditionalAbilityBuffGates`），否则门控静默失效——
+ * 护栏：`src/composables/__tests__/additionalGate.test.ts` 断言本表与 catalog `teammate-buffs.json`
+ * 的 `source === '额外能力'` buff、spec `teamBuffs` 的 `source === '额外能力'` 条目一一对应。
+ *
+ * ⚠ 三条不可机械等同的登记（2026-09-13 自散落注释收敛，语义逐位保留）：
+ * - 1071 凯撒：同阵营之外「其他可招架支援角色」以「有任意队友」近似满足（见 evalAdditionalAbilityBuffGates）。
+ * - 1461 席德：两条 buff 来源是核心被动/影画二（非「额外能力」），但与 spec additionalAbility
+ *   同条件（spec 注明「核心被动与影画2 同条件，两条 buff 一并门控」）。
+ * - 1421 潘引壶 cinema_1（影画一）随额外能力同条件门控；1281 派派与 1641 菲欧妮的 buff
+ *   不在 catalog `teammate-buffs.json` 而在各自 spec 的 `teamBuffs`（结构不同：catalog 侧
+ *   `sourceLabel.zhCN`、spec 侧 `source` 字符串）；菲欧妮 tier3 另需队伍 [异常] 角色数 ≥3。
+ */
+export const ADDITIONAL_GATE_BUFFS: Record<string, readonly string[]> = {
+  // 丽娜：额外能力——队伍有[异常]或同阵营角色时，感电伤害提升
+  '1211': ['rina.additional_electric_damage'],
+  // 莱特：额外能力——士气高昂时，队中[冰]/[火]角色伤害提升
+  '1161': ['lighter.additional_morale_ice_fire_dmg'],
+  // 妮可：额外能力——队伍有[强攻]/[异常]角色时，以太伤害提升
+  '1031': ['nicole.additional_ether_damage'],
+  // 苍角：额外能力——旗势状态下，队中角色冰伤提升
+  '1131': ['soukaku.additional_ice_damage'],
+  // 凯撒：额外能力——「战意」状态下伤害提升（触发条件见表头 ⚠ 第 1 条）
+  '1071': ['caesar.additional_battle_spirit_dmg'],
+  // 本：额外能力——有护盾角色暴击率提升
+  '1121': ['ben.additional_shield_crit_rate'],
+  // 千夏额外能力·白日梦对位法：队伍存在[强攻]或与自身阵营（妄想天使）相同的角色时触发（帷幕失衡易伤+30%）
+  '1491': ['buff_23620b7000'],
+  // 照额外能力·凝聚力：队伍存在[强攻]或[异常]或[支援]角色时触发（全队增伤10%~40%按初始生命公式）
+  '1341': ['zhao.additional_ability.dmg_bonus'],
+  // 派派额外能力·同步疾驰：同属性、同阵营或其他异常队友在队，动力20层按稳态覆盖近似（buff 在 spec teamBuffs）
+  '1281': ['piper_extra_team_damage'],
+  // 潘引壶额外能力·食铁纳金：队伍存在[命破]或同阵营（云岿山）角色时触发（[气绝]增伤+20%，影画1再+10%）
+  '1421': ['pan_yinhu.additional_stupefaction_dmg', 'pan_yinhu.cinema_1_stupefaction_dmg'],
+  // 希希芙额外能力·毒素发酵：队伍存在[击破]或同属性（电）角色时触发（全队暴伤+40%、自身额外+10%）
+  '1521': ['xixifu.additional_toxin_crit_dmg'],
+  // 奥菲丝额外能力·熔炉所铸：队伍存在[击破]或[支援]角色时触发（准星聚焦追加攻击无视25%防御）
+  '1301': ['orphie.additional_def_ignore'],
+  // 席德核心被动/额外能力·花链协议/奇兵轰临：队伍存在其他[强攻]角色时触发（正兵明攻/围杀拐与影画2 无视防御）
+  '1461': ['seed.core_vanguard_bright_attack', 'seed.cinema_2_encirclement_def_ignore'],
+  // 菲欧妮（1641，⚠️3.3 测试服临时录入）额外能力：队伍存在其他[异常]/同阵营角色时触发
+  // ——脆弱暴伤档位（spec teamBuffs，SOP §6.2 接线）；tier3 附加条件见 evalAdditionalAbilityBuffGates
+  '1641': ['phoenix.weakness_anomaly_crit_dmg_tier2', 'phoenix.weakness_anomaly_crit_dmg_tier3'],
+}
+
+/**
+ * 求 ADDITIONAL_GATE_BUFFS 登记的全部门控：buffId → 是否放行（未登记的 buff 不在 Map 中 = 不受门控，
+ * 消费方判据为 `gates.get(buff.id) !== false`）。求值时机与迁移前逐位一致：面板阶段（calcPanel 之前）一次求值。
+ */
+export function evalAdditionalAbilityBuffGates(
+  team: MechanicTeamMember[],
+  getCatalogAgent: (agentId: string) => Agent | null,
+): Map<string, boolean> {
+  // 第一步：每角色按 spec additionalAbility 声明求值（不在队 = false）；slot 查找走索引表，零 agentId 特判
+  const slotByAgentId = new Map<string, number>(team.map(member => [member.agentId, member.slot]))
+  const activeByAgent = new Map<string, boolean>()
+  for (const agentId of Object.keys(ADDITIONAL_GATE_BUFFS)) {
+    const slot = slotByAgentId.get(agentId) ?? -1
+    activeByAgent.set(agentId, slot >= 0
+      && evalAdditionalAbility(team, slot, getCatalogAgent(agentId), getAgentSpec(agentId)?.additionalAbility) === true)
+  }
+  // 凯撒 1071 修正：同阵营（上式）之外，「其他可招架支援角色」以「有任意队友」近似满足
+  {
+    const slot = slotByAgentId.get('1071') ?? -1
+    if (slot >= 0 && team.some(m => m.slot !== slot && !!m.agentId)) activeByAgent.set('1071', true)
+  }
+  // 第二步：展平为 buffId → active
+  const gates = new Map<string, boolean>()
+  for (const [agentId, buffIds] of Object.entries(ADDITIONAL_GATE_BUFFS)) {
+    for (const buffId of buffIds) gates.set(buffId, activeByAgent.get(agentId) === true)
+  }
+  // 菲欧妮 1641 修正：tier3 另需队伍 [异常] 角色数 ≥3（含她自己；影画6 需求-1 = 有效数+1，2026-09-12 组队对账落地）
+  {
+    const slot = slotByAgentId.get('1641') ?? -1
+    const cinemaLevel = slot >= 0 ? (team[slot]?.cinemaLevel ?? 0) : 0
+    const anomalyCount = team.filter(m => m.agent?.specialty === 'anomaly').length + (cinemaLevel >= 6 ? 1 : 0)
+    const tier3 = 'phoenix.weakness_anomaly_crit_dmg_tier3'
+    gates.set(tier3, gates.get(tier3) === true && anomalyCount >= 3)
+  }
+  return gates
+}
+
 export function computePanelPhases(
   slot: number,
   configStore: ReturnType<typeof useConfigStore>,
@@ -450,109 +535,13 @@ export function computePanelPhases(
       teammateName: { zhCN: b.name },
     }))
   const team = buildMechanicTeamMembers(configStore, catalogStore)
-  const rinaSlot = team.find(member => member.agentId === '1211')?.slot ?? -1
-  const rinaAgent = rinaSlot >= 0 ? catalogStore.getAgent('1211') ?? null : null
-  const rinaAdditionalActive = rinaSlot >= 0
-    ? evalAdditionalAbility(team, rinaSlot, rinaAgent, getAgentSpec('1211')?.additionalAbility) === true
-    : false
-  const lighterSlot = team.find(member => member.agentId === '1161')?.slot ?? -1
-  const lighterAgent = lighterSlot >= 0 ? catalogStore.getAgent('1161') ?? null : null
-  const lighterAdditionalActive = lighterSlot >= 0
-    ? evalAdditionalAbility(team, lighterSlot, lighterAgent, getAgentSpec('1161')?.additionalAbility) === true
-    : false
-  const nicoleSlot = team.find(member => member.agentId === '1031')?.slot ?? -1
-  const nicoleAgent = nicoleSlot >= 0 ? catalogStore.getAgent('1031') ?? null : null
-  const nicoleAdditionalActive = nicoleSlot >= 0
-    ? evalAdditionalAbility(team, nicoleSlot, nicoleAgent, getAgentSpec('1031')?.additionalAbility) === true
-    : false
-  const soukakuSlot = team.find(member => member.agentId === '1131')?.slot ?? -1
-  const soukakuAgent = soukakuSlot >= 0 ? catalogStore.getAgent('1131') ?? null : null
-  const soukakuAdditionalActive = soukakuSlot >= 0
-    ? evalAdditionalAbility(team, soukakuSlot, soukakuAgent, getAgentSpec('1131')?.additionalAbility) === true
-    : false
-  // 凯撒额外能力：同阵营或「其他可招架支援角色」（有任意队友即近似满足）
-  const caesarSlot = team.find(member => member.agentId === '1071')?.slot ?? -1
-  const caesarAgent = caesarSlot >= 0 ? catalogStore.getAgent('1071') ?? null : null
-  const caesarFactionActive = caesarSlot >= 0
-    ? evalAdditionalAbility(team, caesarSlot, caesarAgent, getAgentSpec('1071')?.additionalAbility) === true
-    : false
-  const caesarAdditionalActive = caesarSlot >= 0
-    && (caesarFactionActive || team.some(m => m.slot !== caesarSlot && !!m.agentId))
-  const benSlot = team.find(member => member.agentId === '1121')?.slot ?? -1
-  const benAgent = benSlot >= 0 ? catalogStore.getAgent('1121') ?? null : null
-  const benAdditionalActive = benSlot >= 0
-    ? evalAdditionalAbility(team, benSlot, benAgent, getAgentSpec('1121')?.additionalAbility) === true
-    : false
-  // 千夏额外能力·白日梦对位法：队伍存在[强攻]或与自身阵营（妄想天使）相同的角色时触发（帷幕失衡易伤+30%）
-  const qianxiaSlot = team.find(member => member.agentId === '1491')?.slot ?? -1
-  const qianxiaAgent = qianxiaSlot >= 0 ? catalogStore.getAgent('1491') ?? null : null
-  const qianxiaAdditionalActive = qianxiaSlot >= 0
-    ? evalAdditionalAbility(team, qianxiaSlot, qianxiaAgent, getAgentSpec('1491')?.additionalAbility) === true
-    : false
-  // 照额外能力·凝聚力：队伍存在[强攻]或[异常]或[支援]角色时触发（全队增伤10%~40%按初始生命公式）
-  const zhaoSlot = team.find(member => member.agentId === '1341')?.slot ?? -1
-  const zhaoAgent = zhaoSlot >= 0 ? catalogStore.getAgent('1341') ?? null : null
-  const zhaoAdditionalActive = zhaoSlot >= 0
-    ? evalAdditionalAbility(team, zhaoSlot, zhaoAgent, getAgentSpec('1341')?.additionalAbility) === true
-    : false
-  // 派派额外能力·同步疾驰：同属性、同阵营或其他异常队友在队，动力20层按稳态覆盖近似。
-  const piperSlot = team.find(member => member.agentId === '1281')?.slot ?? -1
-  const piperAgent = piperSlot >= 0 ? catalogStore.getAgent('1281') ?? null : null
-  const piperAdditionalActive = piperSlot >= 0
-    ? evalAdditionalAbility(team, piperSlot, piperAgent, getAgentSpec('1281')?.additionalAbility) === true
-    : false
-  // 潘引壶额外能力·食铁纳金：队伍存在[命破]或同阵营（云岿山）角色时触发（[气绝]增伤+20%，影画1再+10%）
-  const panYinhuSlot = team.find(member => member.agentId === '1421')?.slot ?? -1
-  const panYinhuAgent = panYinhuSlot >= 0 ? catalogStore.getAgent('1421') ?? null : null
-  const panYinhuAdditionalActive = panYinhuSlot >= 0
-    ? evalAdditionalAbility(team, panYinhuSlot, panYinhuAgent, getAgentSpec('1421')?.additionalAbility) === true
-    : false
-  // 希希芙额外能力·毒素发酵：队伍存在[击破]或同属性（电）角色时触发（全队暴伤+40%、自身额外+10%）
-  const xixifuSlot = team.find(member => member.agentId === '1521')?.slot ?? -1
-  const xixifuAgent = xixifuSlot >= 0 ? catalogStore.getAgent('1521') ?? null : null
-  const xixifuAdditionalActive = xixifuSlot >= 0
-    ? evalAdditionalAbility(team, xixifuSlot, xixifuAgent, getAgentSpec('1521')?.additionalAbility) === true
-    : false
-  // 奥菲丝额外能力·熔炉所铸：队伍存在[击破]或[支援]角色时触发（准星聚焦追加攻击无视25%防御）
-  const orphieSlot = team.find(member => member.agentId === '1301')?.slot ?? -1
-  const orphieAgent = orphieSlot >= 0 ? catalogStore.getAgent('1301') ?? null : null
-  const orphieAdditionalActive = orphieSlot >= 0
-    ? evalAdditionalAbility(team, orphieSlot, orphieAgent, getAgentSpec('1301')?.additionalAbility) === true
-    : false
-  // 席德核心被动/额外能力·花链协议/奇兵轰临：队伍存在其他[强攻]角色时触发（正兵明攻/围杀拐与影画2 无视防御）
-  const xideSlot = team.find(member => member.agentId === '1461')?.slot ?? -1
-  const xideAgent = xideSlot >= 0 ? catalogStore.getAgent('1461') ?? null : null
-  const xideAdditionalActive = xideSlot >= 0
-    ? evalAdditionalAbility(team, xideSlot, xideAgent, getAgentSpec('1461')?.additionalAbility) === true
-    : false
-  // 菲欧妮（1641，⚠️3.3 测试服临时录入）额外能力：队伍存在其他[异常]/同阵营角色时触发
-  // ——脆弱暴伤档位（spec teamBuffs phoenix.weakness_anomaly_crit_dmg_tier2/tier3，SOP §6.2 接线）；
-  // 3 档需队伍[异常]角色数≥3（含她自己；影画6 需求-1 = 有效数+1，2026-09-12 组队对账落地）
-  const phoenixSlot = team.find(member => member.agentId === '1641')?.slot ?? -1
-  const phoenixAgent = phoenixSlot >= 0 ? catalogStore.getAgent('1641') ?? null : null
-  const phoenixAdditionalActive = phoenixSlot >= 0
-    ? evalAdditionalAbility(team, phoenixSlot, phoenixAgent, getAgentSpec('1641')?.additionalAbility) === true
-    : false
-  const phoenixCinema = phoenixSlot >= 0 ? (configStore.team[phoenixSlot]?.cinemaLevel ?? 0) : 0
-  const phoenixAnomalyCount = team.filter(m => m.agent?.specialty === 'anomaly').length + (phoenixCinema >= 6 ? 1 : 0)
+  // 额外能力门控簇（14 角色 / 17 条 buff）：slot 查找 + evalAdditionalAbility 求值 + 按 buff id 过滤
+  // 已收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates（规则 6 棘轮 burn-down 第 1 批，
+  // 2026-09-13 逐位等价迁移；原 14 个 `xxxAdditionalActive` + 17 条逐 id `.filter`）。语义偏离与注释全部保留在表侧。
+  const additionalAbilityBuffGates = evalAdditionalAbilityBuffGates(
+    team, id => catalogStore.getAgent(id) ?? null)
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
-    .filter(buff => buff.id !== 'rina.additional_electric_damage' || rinaAdditionalActive)
-    .filter(buff => buff.id !== 'lighter.additional_morale_ice_fire_dmg' || lighterAdditionalActive)
-    .filter(buff => buff.id !== 'nicole.additional_ether_damage' || nicoleAdditionalActive)
-    .filter(buff => buff.id !== 'soukaku.additional_ice_damage' || soukakuAdditionalActive)
-    .filter(buff => buff.id !== 'caesar.additional_battle_spirit_dmg' || caesarAdditionalActive)
-    .filter(buff => buff.id !== 'ben.additional_shield_crit_rate' || benAdditionalActive)
-    .filter(buff => buff.id !== 'buff_23620b7000' || qianxiaAdditionalActive)
-    .filter(buff => buff.id !== 'zhao.additional_ability.dmg_bonus' || zhaoAdditionalActive)
-    .filter(buff => buff.id !== 'piper_extra_team_damage' || piperAdditionalActive)
-    .filter(buff => buff.id !== 'pan_yinhu.additional_stupefaction_dmg' || panYinhuAdditionalActive)
-    .filter(buff => buff.id !== 'pan_yinhu.cinema_1_stupefaction_dmg' || panYinhuAdditionalActive)
-    .filter(buff => buff.id !== 'xixifu.additional_toxin_crit_dmg' || xixifuAdditionalActive)
-    .filter(buff => buff.id !== 'orphie.additional_def_ignore' || orphieAdditionalActive)
-    .filter(buff => buff.id !== 'seed.core_vanguard_bright_attack' || xideAdditionalActive)
-    .filter(buff => buff.id !== 'seed.cinema_2_encirclement_def_ignore' || xideAdditionalActive)
-    .filter(buff => buff.id !== 'phoenix.weakness_anomaly_crit_dmg_tier2' || phoenixAdditionalActive)
-    .filter(buff => buff.id !== 'phoenix.weakness_anomaly_crit_dmg_tier3' || (phoenixAdditionalActive && phoenixAnomalyCount >= 3))
+    .filter(buff => additionalAbilityBuffGates.get(buff.id) !== false)
 
   const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
   for (const buff of allTeammateBuffs) {

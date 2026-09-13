@@ -13,6 +13,7 @@
  *   - unmodeled：有官方文本但无数值效果（生存向/机制向）→ 明说未建模，不留空白
  */
 import { getStatMeta, isPctStat } from './statMeta'
+import { localized } from './format'
 
 interface EffectLike {
   id?: string
@@ -163,7 +164,7 @@ export function buildDiscEffectRows(
       rows.push(r)
     }
   }
-  const nameOf = (s: DiscSetLike) => s.name?.zhCN ?? s.name?.en ?? String(s.id ?? '')
+  const nameOf = (s: DiscSetLike) => localized(s.name, String(s.id ?? ''))
   /** 一个套装被穿上时应该出现的段（4件套含其 2 件段） */
   const piecesOfEquippedSet = (set: DiscSetLike, asFour: boolean) => {
     const id = String(set.id ?? '')

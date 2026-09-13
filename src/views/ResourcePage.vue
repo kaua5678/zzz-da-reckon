@@ -55,6 +55,7 @@ import { NSelect, NDataTable, NTag } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { getImageUrl } from '@/utils/image'
+import { localized } from '@/utils/format'
 import type { SkillCategory, SkillMove, Agent } from '@/types/catalog'
 
 const catalogStore = useCatalogStore()
@@ -91,7 +92,7 @@ const currentAgent = computed<Agent | null>(() => {
 
 const agentName = computed(() => {
   if (!currentAgent.value) return ''
-  return currentAgent.value.name.zhCN ?? currentAgent.value.name.en ?? currentAgent.value.id
+  return localized(currentAgent.value.name, currentAgent.value.id)
 })
 
 const agentImageUrl = computed(() => {

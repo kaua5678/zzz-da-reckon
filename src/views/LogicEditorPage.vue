@@ -188,6 +188,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useLogicEditorStore } from '@/stores/logicEditor'
 import { logicEditorStateToSpecs } from '@/logicEditor/toSpec'
 import { STAT_META } from '@/utils/statMeta'
+import { localized } from '@/utils/format'
 import type { LogicObject, ObjectNature, RowFusionRule } from '@/logicEditor/types'
 import type { SkillMove } from '@/types/catalog'
 
@@ -228,12 +229,6 @@ onMounted(async () => {
     }
   }
 })
-
-function localized(obj: any): string {
-  if (!obj) return ''
-  if (typeof obj === 'string') return obj
-  return obj.zhCN ?? obj.en ?? ''
-}
 
 function findMove(moveId: string): SkillMove | null {
   for (const agentId of catalogStore.displayAgents.map(agent => agent.id)) {

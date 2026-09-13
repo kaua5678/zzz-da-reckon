@@ -180,6 +180,7 @@ import type { DeployConfig } from '@/composables/runArchiveImport'
 import { runLimitedGold, lowGoldFrontier } from '@/composables/limitedGold'
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
+import { localized } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView, PhaseBuffCard } from '@/types/bossPreset'
 import {
   BANGBOO_GAP_HINT,
@@ -315,7 +316,7 @@ const filteredRuns = computed(() => {
 
 function agentName(id: string): string {
   const a = catalogStore.getAgent(id)
-  return a?.name?.zhCN ?? a?.name?.en ?? id
+  return localized(a?.name, id)
 }
 
 function getSpecialty(id: string): string {

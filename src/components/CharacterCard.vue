@@ -71,6 +71,7 @@ import { MusicalNotesOutline, ChevronDownOutline } from '@vicons/ionicons5'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { getImageUrl } from '@/utils/image'
+import { localized } from '@/utils/format'
 import type { Agent } from '@/types/catalog'
 
 const props = defineProps<{
@@ -106,7 +107,7 @@ const agentImageUrl = computed(() => {
 
 const agentName = computed(() => {
   if (!agent.value) return ''
-  return agent.value.name.zhCN ?? agent.value.name.en ?? agent.value.id
+  return localized(agent.value.name, agent.value.id)
 })
 
 const wengineName = computed(() => {
@@ -114,7 +115,7 @@ const wengineName = computed(() => {
   if (!wengineId) return '无音擎'
   const w = catalogStore.getWEngine(wengineId)
   if (!w) return '无音擎'
-  return w.name.zhCN ?? w.name.en ?? w.id
+  return localized(w.name, w.id)
 })
 
 // 可选角色列表（过滤掉已选的，保留当前槽位的角色）
@@ -127,7 +128,7 @@ const availableOptions = computed(() => {
       const rarity = a.rarity
       const specialty = SPECIALTY_LABEL[a.specialty] ?? a.specialty
       const attr = ATTRIBUTE_LABEL[a.attribute] ?? a.attribute
-      const name = a.name.zhCN ?? a.name.en ?? a.id
+      const name = localized(a.name, a.id)
       return {
         label: `${name} · ${rarity} · ${specialty} · ${attr}`,
         value: a.id,
@@ -145,7 +146,7 @@ const dropdownOptions = computed(() => {
       const rarity = a.rarity
       const specialty = SPECIALTY_LABEL[a.specialty] ?? a.specialty
       const attr = ATTRIBUTE_LABEL[a.attribute] ?? a.attribute
-      const name = a.name.zhCN ?? a.name.en ?? a.id
+      const name = localized(a.name, a.id)
       return {
         label: `${name} · ${rarity} · ${specialty} · ${attr}`,
         key: a.id,

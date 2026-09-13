@@ -90,6 +90,7 @@ import { computed, ref } from 'vue'
 import { NAlert, NButton, NCard, NEmpty, NGi, NGrid, NInput, NSpace, NTag } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { getStatMeta, phaseStatLabel } from '@/utils/statMeta'
+import { localized } from '@/utils/format'
 import type { BuffEffect, BuffGroup, Specialty, WEngine, WEngineAdvancedStat } from '@/types/catalog'
 
 interface FieldRow { id: string; source: string; stat: string; label: string; zone: string; mode: string; type: string; valueText: string; stackCoverageText: string; note: string }
@@ -127,7 +128,6 @@ const summary = computed(() => ({
   effectCount: engines.value.reduce((sum, engine) => sum + collectRows(engine).length, 0),
 }))
 
-function localized(obj: any): string { if (!obj) return ''; if (typeof obj === 'string') return obj; return obj.zhCN ?? obj.en ?? '' }
 function specialtyLabel(specialty: string): string { return ({ attack: '强攻', stun: '击破', anomaly: '异常', support: '支援', defense: '防护', rupture: '命破', sharpen: '锋御' } as Record<string, string>)[specialty] ?? specialty }
 function statLabel(stat: string): string {
   const mode = stat === 'impact' ? 'impactPct' : stat

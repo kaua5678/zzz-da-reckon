@@ -114,10 +114,10 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 79,  // 2026-09-12 口径纠正后按**提交态**实测：编排层全量 86→86→78→79（+1 = 菲欧妮 tier2 暴伤档位 buff-id 过滤，SOP §6.2 标准接线；plan 补充：17 条逐 buff-id 过滤应收敛为声明式 buff 级 teamConditions，勿再逐条加行）。见 AGENT_BRANCH_BASELINE 注释
+    frozen: 65,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）。见 AGENT_BRANCH_BASELINE 注释
     target: 0,
     due: '2026-12-31',
-    plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。hot spot：convergence.ts(45) > helpers.ts(18) > damagePool.ts(16)。架构评审 #10 → #2',
+    plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。hot spot：convergence.ts(45) > damagePool.ts(16) > helpers.ts(4)。架构评审 #10 → #2',
   },
   {
     id: 'core agentId 分支',
@@ -138,10 +138,10 @@ export const RATCHET_BURNDOWN = [
   {
     id: '手册 §4 行数',
     file: 'docs/ENGINE_PIPELINE_GUIDE.md',
-    frozen: 1340,  // 任务卡立项基线（§4 常见坑表行数）。口径纠正归因 2026-09-12：原以密度 0.287→0.15 计还款，批量拆薄实测**反效果**（散文删得比证据数字快，密度反升）——密度留作防变差天花板（判据 11），还款改量行数 = 任务卡主口径「§4 −40%」
-    target: 804,
+    frozen: 719,  // 任务卡立项基线 1340（§4 常见坑表行数）。口径纠正归因 2026-09-12：原以密度 0.287→0.15 计还款，批量拆薄实测**反效果**（散文删得比证据数字快，密度反升）——密度留作防变差天花板（判据 11），还款改量行数 = 任务卡主口径「§4 −40%」。2026-09-13 一轮达标并结算 1340→804（−40%）；**二轮（2026-09-13，T4）804 → 719（再 −85，累计 −46%）并再次结算**：拆坑 22（22→6）/ 25（32→7）/ 34（24→7）/ 36（31→6），手法 = 合并折行 + 删过程叙事句（「用户报的」「本轮」「为什么一直没人看见」这类），实测数字/文件:行锚点/否决记录/判据行一律保留
+    target: 719,
     due: '2026-10-31',
-    plan: '已拆：坑19（341→133）/ 18（43→46 无可删叙事）/ 30+31（85→23）/ 33（164→85）/ 35（168→71），现 891 行，差额 87 行在 22/25/34/36–38 等中型条目（含叙事者拆，无叙事项不硬压——四栏模板见坑 19 示范）；达 target 后下调 frozen',
+    plan: '✅ 已两轮到点（2026-09-13）：1340→804（−40%）→719（−46%）。坑19（341→133）/ 18 / 30+31（85→23）/ 33（164→85）/ 35（168→71）/ 22·25·34·36 四栏化后再压折行。余量见 T4 报告「信息密度下限」段——坑 19/31/33/35 否决记录已逐条一事一行，再压只能动证据（不许）；后续若再拆按同法「合并折行 + 删叙事句」并**再次结算 frozen**，无叙事项不硬压',
   },
 ]
 
@@ -287,7 +287,7 @@ export function auditCatalogLevel60(root = ROOT) {
  * ⚠ **天花板是防变差的红灯面，不是还款面**（批量拆薄后的反效果实测，2026-09-12）：
  * 四栏拆薄删的是散文（分母）而判据/否决记录按规则 16③ 必须保测量数字（分子），
  * 于是密度**反升** 0.196→0.237——拿密度当还款目标会奖励灌水。还款量化在
- * burn-down 条目「手册 §4 行数」（frozen 1340 → target 804 = 任务卡主口径「§4 行数 −40%」）。
+ * burn-down 条目「手册 §4 行数」（frozen 1340 → 804（−40%）→ 719（−46%，二轮结算），还款面 = 任务卡主口径「§4 行数 −40%」）。
  *
  * @fact engine:guards/手册密度 口径: 密度 = /\b1\d{3}\b/ 次数 ÷ 行数，四份方法文档按 2026-09-12 实测冻结天花板；编年叙事只进 git/账本，手册只收协议/口径/证据；还款面 = §4 行数（密度只拦变差，拆薄后反升属口径性质） | 据 任务卡@2026-09-12（用户确认方向）·反效果实测@2026-09-12 | 验 src/scripts/__tests__/checkGuards.test.ts | 锚 scripts/check-guards.mjs#MANUAL_DENSITY_CEILINGS | 信 确认
  */
@@ -403,8 +403,11 @@ export function countAgentBranchLines(root = ROOT) {
  * ⚠ 取数纪律：基线必须量**提交态（HEAD）**，不能量带并行会话 WIP 的工作树——量错会让 CI 在别人提交后假红。
  * 2026-09-12 +1：78→79 = 菲欧妮（1641）脆弱暴伤档位 tier2 的额外能力 buff-id 过滤（SOP §6.2 标准接线，
  * 17 条同类先例的最新一条；收敛方向 = 声明式 buff 级 teamConditions 替代逐条过滤，勿再新增）。
+ * 2026-09-13 −14：79→65 = helpers.ts 额外能力门控簇（14 角色 slot 查找 + evalAdditionalAbility 求值 +
+ * 17 条逐 buff-id 过滤）收敛为数据驱动表 `ADDITIONAL_GATE_BUFFS` + `evalAdditionalAbilityBuffGates`
+ * （SOP §6.2 语义逐位保留；一一对应护栏 `additionalGate.test.ts`）。真 burn-down 的第一簇。
  */
-export const AGENT_BRANCH_BASELINE = 79
+export const AGENT_BRANCH_BASELINE = 65
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。

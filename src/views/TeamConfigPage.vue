@@ -864,6 +864,7 @@ import { applyTargetedStat } from '@/core/buff'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { getImageUrl } from '@/utils/image'
 import { isPctStat, phaseStatLabel } from '@/utils/statMeta'
+import { localized } from '@/utils/format'
 import { discSetGapLabel } from '@/utils/modelingGaps'
 import { buildDiscEffectRows } from '@/utils/discEffectRows'
 import type { WEngine, WEngineAdvancedStat, PanelValues, CharacterBuildRecommendation, BuffEffect, BuffGroup } from '@/types/catalog'
@@ -990,7 +991,7 @@ function agentName(slot: number): string {
   const id = configStore.team[slot]?.agentId
   if (!id) return '（未选角色）'
   const agent = catalogStore.getAgent(id)
-  return agent?.name.zhCN ?? agent?.name.en ?? id
+  return localized(agent?.name, id)
 }
 
 // ========== 保存到预设文件（下载 JSON 写回 goldSteps/standardSteps） ==========
@@ -1271,7 +1272,7 @@ const availableAgentOptions = computed(() => {
   return catalogStore.displayAgents
     .filter(a => !used.includes(a.id) || a.id === currentId)
     .map(a => {
-      const name = a.name.zhCN ?? a.name.en ?? a.id
+      const name = localized(a.name, a.id)
       const specialty = SPECIALTY_LABEL[a.specialty] ?? a.specialty
       const attr = ATTRIBUTE_LABEL[a.attribute] ?? a.attribute
       return {
@@ -1283,7 +1284,7 @@ const availableAgentOptions = computed(() => {
 
 const wengineOptions = computed(() =>
   catalogStore.displayWEngines.map(w => ({
-    label: `${w.name.zhCN ?? w.name.en ?? w.id} (${w.rarity})`,
+    label: `${localized(w.name, w.id)} (${w.rarity})`,
     value: w.id,
   })),
 )
@@ -1291,7 +1292,7 @@ const wengineOptions = computed(() =>
 const setOptions = computed(() =>
   catalogStore.displayDriveDiscSets.map(s => ({
     // 未建模角标（2pc/4pc 只有文本无数值效果，选了也是白板）
-    label: (s.name.zhCN ?? s.name.en ?? s.id) + discSetGapLabel(s),
+    label: localized(s.name, s.id) + discSetGapLabel(s),
     value: s.id,
   })),
 )
@@ -1332,19 +1333,13 @@ function formatWEngineStat(stat: WEngineAdvancedStat): string {
 
 const wengineEffectName = computed(() => {
   if (!wengine.value) return ''
-  return wengine.value.effect.name.zhCN ?? wengine.value.effect.name.en ?? ''
+  return localized(wengine.value.effect.name)
 })
 
 const wengineEffectDesc = computed(() => {
   if (!wengine.value) return ''
-  return wengine.value.effect.description.zhCN ?? wengine.value.effect.description.en ?? ''
+  return localized(wengine.value.effect.description)
 })
-
-function localized(obj: any): string {
-  if (!obj) return ''
-  if (typeof obj === 'string') return obj
-  return obj.zhCN ?? obj.en ?? ''
-}
 
 function effectValueText(effect: BuffEffect): string {
   const modValue = (effect as any).modificationValues?.value

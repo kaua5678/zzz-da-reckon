@@ -15,6 +15,7 @@ import { evalAdditionalAbility } from '@/specs/teamCondition'
 import type { MechanicTeamMember } from '@/mechanics/types'
 import type { AppliedBossPreset } from '@/types/bossPreset'
 import { counterAssistOf } from '@/data/counterAssists'
+import { localized } from '@/utils/format'
 
 // ========== 类型定义 ==========
 
@@ -261,12 +262,6 @@ export const REC_MAIN_STAT_MAP: Record<string, string> = {
   '电属性伤害加成': 'electricDmg',
   '以太伤害加成': 'etherDmg',
   '风属性伤害加成': 'windDmg',
-}
-
-function localizedName(obj: any): string {
-  if (!obj) return ''
-  if (typeof obj === 'string') return obj
-  return obj.zhCN ?? obj.en ?? ''
 }
 
 function defaultResistanceTable(value: number): Record<string, number> {
@@ -733,7 +728,7 @@ export const useConfigStore = defineStore('config', () => {
 
   function findDriveDiscSetByRecommendationName(name?: string) {
     if (!name) return undefined
-    return catalogStore.displayDriveDiscSets.find(set => localizedName(set.name) === name)
+    return catalogStore.displayDriveDiscSets.find(set => localized(set.name) === name)
   }
 
   /** 自动/手动应用当前角色的配装推荐：专武、驱动盘、主词条、副词条 */

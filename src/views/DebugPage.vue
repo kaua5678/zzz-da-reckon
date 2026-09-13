@@ -103,7 +103,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { computePanel } from '@/composables/resourceCalc/helpers'
 import { SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget } from '@/core/buff'
-import { fmt, pct } from '@/utils/format'
+import { fmt, pct, localized } from '@/utils/format'
 import { getStatMeta, isPctStat, phaseStatLabel } from '@/utils/statMeta'
 import type { BuffEffect, BuffGroup, PanelValues, TeammateBuff } from '@/types/catalog'
 
@@ -134,7 +134,7 @@ const selectedWEngine = computed(() => selectedChar.value?.wEngineId ? catalogSt
 const slotOptions = computed(() => configStore.team.map((char, index) => {
   const agent = char.agentId ? catalogStore.getAgent(char.agentId) : undefined
   return {
-    label: `槽位 ${index + 1} · ${agent?.name.zhCN ?? agent?.name.en ?? '未选择'}`,
+    label: `槽位 ${index + 1} · ${localized(agent?.name, '未选择')}`,
     value: index,
   }
 }))
@@ -163,12 +163,6 @@ const panelSummary = computed(() => {
     { label: '能量回复', value: `${fmt(p.energyRegen, 2)}/秒` },
   ]
 })
-
-function localized(obj: any): string {
-  if (!obj) return ''
-  if (typeof obj === 'string') return obj
-  return obj.zhCN ?? obj.en ?? ''
-}
 
 function row(source: string, item: string, stat: string, value: number | string, mode: string, note?: string, labelOverride?: string): DebugRow {
   const meta = getStatMeta(stat)

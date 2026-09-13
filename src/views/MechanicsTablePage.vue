@@ -172,6 +172,7 @@ import { NInput, NSelect, NSpace, NSwitch, NTag } from 'naive-ui'
 import { agentSpecs } from '@/specs/registry'
 import type { AgentMechanicSpec } from '@/specs/types'
 import { useCatalogStore } from '@/stores/catalog'
+import { localized } from '@/utils/format'
 
 const catalogStore = useCatalogStore()
 const selectedAgentId = ref<string | null>(null)
@@ -263,9 +264,9 @@ function teamBuffRows(spec: AgentMechanicSpec): DisplayTeamBuff[] {
     const coverage = coverageValues.length > 0 ? Math.min(...coverageValues) : 1
     rows.push({
       id: buff.id,
-      name: buff.name?.zhCN ?? buff.name?.en ?? buff.id,
-      source: buff.source?.zhCN ?? buff.source?.en ?? buff.sourceLabel?.zhCN ?? '',
-      description: buff.description?.zhCN ?? buff.description?.en ?? buff.conditionLabel?.zhCN ?? '',
+      name: localized(buff.name, buff.id),
+      source: localized(buff.source, buff.sourceLabel?.zhCN ?? ''),
+      description: localized(buff.description, buff.conditionLabel?.zhCN ?? ''),
       targetLabel: '全队/队友',
       coverageLabel: `${Math.round(coverage * 100)}%`,
       effectsText,
