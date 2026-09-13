@@ -1293,6 +1293,11 @@ import { hoverCardPosition, readSvgPointer } from '@/composables/svgPointer'
 import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
 import ChartHoverCard, { type HoverCardRow } from '@/components/ChartHoverCard.vue'
 import {
+  buildFilmSimHoverInfo,
+  buildSlotCompareHoverInfo,
+  buildTimelineHoverInfo,
+} from '@/composables/charts/hoverInfoBuilders'
+import {
   buildPullValueChart,
   PV_GRADE_DEFS as pvGradeDefs,
   pvTierLabel,
@@ -1508,30 +1513,9 @@ const xTicks = computed(() => tl.value.xTicks)
 const hoverNode = ref(-1)
 // swapKindLabel / benchText 已出函 composables/charts/agentPresentation.ts（第一片拆分）；
 // benchText 搬迁后需注入 `nameOf`（原闭包本页 agentName），调用点改为传 `agentName`。
-const hoverInfo = computed(() => {
-  const n = result.value?.nodes[hoverNode.value]
-  if (!n) return null
-  return {
-    nodeLabel: n.nodeLabel,
-    teamNames: n.team.map(agentName),
-    damage: n.damage,
-    hpRatio: n.hpRatio,
-    goldLabel: n.goldLabel,
-    swap: n.swappedIn
-      ? `换上 ${agentName(n.swappedIn)}，换下 ${agentName(n.swappedOut!)}` +
-        (n.swapKind ? `（${swapKindLabel(n.swapKind, n.swapUpliftPct)}）` : '')
-      : '',
-    bench: n.newAgentBench ? benchText(n.newAgentBench, agentName) : '',
-    schedule: (() => {
-      const p = periodOf(n.nodeId)
-      if (!p) return ''
-      const parts: string[] = []
-      if (p.normalBosses.length > 0) parts.push(`危局·普通：${p.normalBosses.map(x => x.bossName).join('/')}`)
-      if (p.criticalBosses.length > 0) parts.push(`危局·困难：${p.criticalBosses.map(x => x.bossName).join('/')}`)
-      return parts.join(' · ')
-    })(),
-  }
-})
+/** 构造已出函 composables/charts/hoverInfoBuilders.ts（第二片拆分）；依赖经参数注入 */
+const hoverInfo = computed(() =>
+  buildTimelineHoverInfo(result.value?.nodes[hoverNode.value], { agentName, periodOf }))
 
 /** 悬浮卡行（外壳组件只负责样式与布局；行内容随图而异）——构造已出函 composables/charts/hoverCardRows.ts */
 const hoverRows = computed<HoverCardRow[]>(() => buildTimelineHoverRows(hoverInfo.value))
@@ -1779,26 +1763,12 @@ const scPts = computed(() => buildScPts(scPoints.value, {
 const scLineA = computed(() => linePointsOf(scPts.value, p => ({ x: p.x, y: p.yA })))
 const scLineB = computed(() => linePointsOf(scPts.value, p => ({ x: p.x, y: p.yB })))
 const scHover = ref(-1)
-const scHoverInfo = computed(() => {
-  const p = scPoints.value[scHover.value]
-  if (!p) return null
-  const diff = p.damageB > 0 ? Math.round(((p.damageA - p.damageB) / p.damageB) * 1000) / 10 : 0
-  return {
-    nodeLabel: p.nodeLabel,
-    mainName: p.mainName,
-    supportName: agentName(p.supportId),
-    teamANames: p.teamA.map(agentName),
-    teamBNames: p.teamB.map(agentName),
-    damageA: p.damageA,
-    damageB: p.damageB,
-    diff,
-    diffText: diff > 0
-      ? `${agentName(scAgentA.value)} 高 ${fmt(diff, 1)}%`
-      : diff < 0
-        ? `${agentName(scAgentB.value)} 高 ${fmt(-diff, 1)}%`
-        : '两队持平',
-  }
-})
+const scHoverInfo = computed(() =>
+  buildSlotCompareHoverInfo(scPoints.value[scHover.value], {
+    agentName,
+    scAgentA: scAgentA.value,
+    scAgentB: scAgentB.value,
+  }))
 
 const scHoverRows = computed<HoverCardRow[]>(() => buildSlotCompareHoverRows(scHoverInfo.value))
 const scCardX = ref(0)
@@ -1892,22 +1862,8 @@ const simLegend = useSeriesFilter(() => [
   { id: 'gold', name: '金数（右轴）' },
 ])
 const simHover = ref(-1)
-const simHoverInfo = computed(() => {
-  const p = simPoints.value[simHover.value]
-  if (!p) return null
-  return {
-    label: p.label,
-    date: p.date,
-    teamNames: p.team.map(agentName),
-    damage: p.damage,
-    hpRatio: p.hpRatio,
-    totalGold: p.totalGold,
-    goldLabel: p.goldLabel,
-    filmBank: p.filmBank,
-    filmSpent: p.filmSpent,
-    filmInvestedTotal: p.filmInvestedTotal,
-  }
-})
+const simHoverInfo = computed(() =>
+  buildFilmSimHoverInfo(simPoints.value[simHover.value], { agentName }))
 
 const simHoverRows = computed<HoverCardRow[]>(() => buildFilmSimHoverRows(simHoverInfo.value))
 const simCardX = ref(0)
