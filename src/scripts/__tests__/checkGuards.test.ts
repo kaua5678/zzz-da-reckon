@@ -53,6 +53,7 @@ import {
   scanDtsDrift,
   extractRuntimeExports,
   applyDeadChannelAllowlist,
+  countDeadChannelWorkload,
   stripStringLiterals,
   stripCommentsAndStrings,
   // 判据 15：口径复核触发器
@@ -935,6 +936,25 @@ describe('applyDeadChannelAllowlist（判据 14 的豁免与 burn-down）', () =
     const dues = new Set(Object.values(DEAD_CHANNEL_ALLOWLIST).map(v => v.due))
     // 清单条目的到期日必须都落在该棘轮的 due 上（否则「到期了也没人管」）
     expect([...dues]).toEqual([bd.due])
+  })
+
+  // T15 审计 #13 发现（本轮修复）：namesake 记录（`resistances`）的候选永远存在（reads 恒 > 0），
+  // 永远不会 stale。把它算进 burn-down ⇒ 棘轮**永远还不完**（假「有存量」）；
+  // 把它从清单删掉 ⇒ 判据又会对它误报 fresh。正解：留在清单、但不计工作量（kind:'namesake'）。
+  it('★ namesake 记录不计入 burn-down 工作量（否则棘轮永远还不完）', () => {
+    const all = Object.keys(DEAD_CHANNEL_ALLOWLIST).length
+    const workload = countDeadChannelWorkload()
+    expect(workload).toBeLessThan(all)                       // 确有 namesake 被排除
+    expect(workload).toBe(all - 1)                           // 现状恰好 1 条
+    const namesake = Object.entries(DEAD_CHANNEL_ALLOWLIST).filter(([, v]) => v.kind === 'namesake')
+    expect(namesake).toHaveLength(1)
+    // namesake 条目仍留在清单里（删掉会让判据对它误报 fresh）
+    expect(Object.keys(DEAD_CHANNEL_ALLOWLIST)).toContain(namesake[0][0])
+  })
+
+  it('★ 死通道棘轮的 frozen 等于 workload（不是 allowlist 总长）', () => {
+    const bd = RATCHET_BURNDOWN.find(x => x.id === '死通道豁免清单')!
+    expect(bd.frozen).toBe(countDeadChannelWorkload())
   })
 
   it('仓库现状：三类候选全部已登记（fresh 为空）', () => {

@@ -644,13 +644,10 @@ async function verbStatus(root = ROOT) {
       // missing 一登记就归零，用它当 current 会让棘轮当场显示「已完成」（实测踩过：
       // 首版写 missing.length，8 条棘轮里这条 current=0/done=true 直接消失）。
       '游戏语义口径复核触发器': () => g.scanCaliberTriggers(root).missing.length + g.CALIBER_TRIGGER_ALLOWLIST.length,
-      '死通道豁免清单': () => {
-        const a = g.applyDeadChannelAllowlist(g.scanDeadOptionalProps(root)).allowlisted.length
-        const b = g.applyDeadChannelAllowlist(g.scanReadOnlyOptionalProps(root)).allowlisted.length
-        const d = g.scanDtsDrift(root)
-        const c = g.applyDeadChannelAllowlist([...d.declaredNotExported, ...d.exportedNotDeclared]).allowlisted.length
-        return a + b + c
-      },
+      // 用 countDeadChannelWorkload 而不是 allowlisted.length 之和：后者的口径已由该函数接管，
+      // namesake 记录（kind:'namesake'）不计入待处置量（它的候选永不消失，算进去棘轮永远还不完）——
+      // 见 check-guards.mjs#countDeadChannelWorkload 与 T15 审计 #13。
+      '死通道豁免清单': () => g.countDeadChannelWorkload(),
       // ⚠ 同「游戏语义口径复核触发器」的坑（2026-09-14 实测，T15 审计 #4）：
       // 原 measure 只数 `unhandled.length`，而判据 13 上线时就把 40 条判成 deferred 清零了
       // ⇒ current 恒为 0、done=true，**41 条挂账从提醒面消失**（与上面那条首版缺陷同型：

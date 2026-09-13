@@ -184,8 +184,16 @@ export interface DeadChannelEntry {
   action: string
   /** 怎么证明它是死的（防「为绿而登记」） */
   why: string
+  /**
+   * `'namesake'` = 名字撞车导致的**误报记录**（不是待处置死通道）：
+   * 它的候选永远存在、永远不会 stale，故不计入 burn-down 工作量。
+   * 缺省 = 真死通道（待处置）。
+   */
+  kind?: 'namesake'
 }
 export declare const DEAD_CHANNEL_ALLOWLIST: Record<string, DeadChannelEntry>
+/** burn-down 的真实剩余工作量 = 清单里 kind !== 'namesake' 的条数 */
+export declare function countDeadChannelWorkload(allowlist?: Record<string, DeadChannelEntry>): number
 export interface DeadChannelCandidate {
   key: string
   file: string

@@ -162,7 +162,9 @@ export const RATCHET_BURNDOWN = [
   {
     id: '死通道豁免清单',
     file: 'scripts/check-guards.mjs DEAD_CHANNEL_ALLOWLIST',
-    frozen: 15,  // 2026-09-13 首轮实测（判据 14 上线时冻结）：A 零读零写 5（goldLevel 模式）/ B 只读不写 10（invincibleTime 模式，含 1 条 namesake 误报样本 runArchiveImport.resistances，已在 why 里如实标注）/ C 手写 d.mts 漂移 **0**（上线即把 16 个漏声明一次补齐 = 判据的正确用法）。三类（除误报样本外）都是存量：通道在、类型在、编译过，就是没人用
+    frozen: 14,  // 2026-09-13 首轮实测 15（判据 14 上线时冻结）→ 14（2026-09-14 T15 审计 #13：
+    // 扣掉 1 条 kind:'namesake' 的误报记录 runArchiveImport.resistances —— 它的候选永不消失、
+    // 永远不会 stale，算进待处置量会让棘轮**永远还不完**。口径见 countDeadChannelWorkload）：A 零读零写 5（goldLevel 模式）/ B 只读不写 10（invincibleTime 模式，含 1 条 namesake 误报样本 runArchiveImport.resistances，已在 why 里如实标注）/ C 手写 d.mts 漂移 **0**（上线即把 16 个漏声明一次补齐 = 判据的正确用法）。三类（除误报样本外）都是存量：通道在、类型在、编译过，就是没人用
     target: 0,
     due: '2026-12-31',
     plan: '逐条「接上或删掉」二选一——接上消费点（如 phaseDelayedCooldown 的 blockSeconds 接 frontBlockSeconds、轴预设 chapter 补数据）或删死字段；处置一条从 DEAD_CHANNEL_ALLOWLIST 删一条（漏删即红 = 棘轮只减不增）。⚠ 不许「为绿而登记」：新增豁免必须写 why（怎么证明它是死的），否则判据退化成橡皮图章',
@@ -1092,8 +1094,12 @@ export const DEAD_CHANNEL_ALLOWLIST = {
     due: '2026-12-31',
     why: '只读不写（走 `?? 默认`）',
   },
-  // ⚠ 本条是**扫描器已知盲区的产物**，登记理由与上面几条（真死通道）不同：见 why。
+  // ⚠ 本条是**扫描器已知盲区的产物**，登记理由与上面几条（真死通道）不同：见 why + kind。
+  // kind: 'namesake' ⇒ 它是「名字撞车」的记录，不是「待处置的死通道」——
+  // 故**不进 burn-down 计数**（见 countDeadChannelWorkload）：它的 reads 恒 > 0，候选永远不会消失，
+  // 拿它当待办会让棘轮永远还不完（T15 审计 #13）。真正的处置对象是上面那些 kind 缺省的条目。
   'B|src/composables/runArchiveImport.ts resistances': {
+    kind: 'namesake',
     since: '2026-09-13',
     action: '归档 DTO 的 resistances 字段——与 weaknesses/hpTotal 同族（活动/归档 JSON 契约面），随归档 DTO 一并确认删留',
     // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
@@ -1371,6 +1377,19 @@ function walkSrcFiles(root) {
 
 function relPosix(root, p) {
   return relative(root, p).split(sep).join('/')
+}
+
+/**
+ * 死通道 burn-down 的**真实剩余工作量** = 豁免清单里 `kind !== 'namesake'` 的条数。
+ *
+ * 为什么单列这个函数（2026-09-14，T15 审计 #13）：namesake 条目（如 `resistances`）是
+ * 「扫描器名字撞车」的**记录**，不是待处置的死通道——它的候选永远存在（reads 恒 > 0），
+ * 永远不会 stale，把它算进 burn-down 会让棘轮**永远还不完**（假「有存量」）。
+ * 反之若把它从清单删掉，判据又会对它误报 fresh。故：留在清单、但不计工作量。
+ * `why` 里必须写明是 namesake（本函数只看 kind，不猜）。
+ */
+export function countDeadChannelWorkload(allowlist = DEAD_CHANNEL_ALLOWLIST) {
+  return Object.values(allowlist).filter(v => v.kind !== 'namesake').length
 }
 
 /**
