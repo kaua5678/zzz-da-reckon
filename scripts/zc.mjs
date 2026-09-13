@@ -637,8 +637,24 @@ async function verbStatus(root = ROOT) {
       // 度量函数一律调用 check-guards 的具名导出（规则 11：口径单一实现，zc 不复制）
       'agentId 分支': () => g.countAgentBranchLines(root),
       'core agentId 分支': () => g.countAgentIdBranchLinesInFiles(g.CORE_AGENT_BRANCH_FILES, root),
+      'core 角色模块引用': () => g.scanCoreRoleImports(root).count,
       '展示层越层 import': () => g.scanExhibitionLayerImports(root).count,
       '手册 §4 行数': () => g.countGuideSection4Lines(root),
+      // ⚠ 度量「**剩余工作量**」= 豁免清单长度，不是 missing.length——
+      // missing 一登记就归零，用它当 current 会让棘轮当场显示「已完成」（实测踩过：
+      // 首版写 missing.length，8 条棘轮里这条 current=0/done=true 直接消失）。
+      '游戏语义口径复核触发器': () => g.scanCaliberTriggers(root).missing.length + g.CALIBER_TRIGGER_ALLOWLIST.length,
+      '死通道豁免清单': () => {
+        const a = g.applyDeadChannelAllowlist(g.scanDeadOptionalProps(root)).allowlisted.length
+        const b = g.applyDeadChannelAllowlist(g.scanReadOnlyOptionalProps(root)).allowlisted.length
+        const d = g.scanDtsDrift(root)
+        const c = g.applyDeadChannelAllowlist([...d.declaredNotExported, ...d.exportedNotDeclared]).allowlisted.length
+        return a + b + c
+      },
+      '名词表未处理': () => {
+        const n = g.auditNounTriage(root)
+        return n === null ? NaN : n.unhandled.length
+      },
     }
     burndown = g.computeBurndown(id => (measured[id] ? measured[id]() : NaN))
   } catch { /* 护栏不可用时不阻塞 status */ }
@@ -777,18 +793,29 @@ async function verbDrift(root = ROOT) {
   const queue = driftQueue(root)
   // 手册条目的「⟳复核｜到期」触发器（任务卡第 5 步；实现在 check-guards，文档清单单一来源 = 判据 11）
   let manualTriggers = []
+  // 代码侧 @fact 的同类触发器（T15 审计 #3：判据 15 只查「有没有」，逾期从无人点名 ⇒ 触发器是装饰）
+  let codeTriggers = []
   try {
     const g = await import(pathToFileURL(join(root, 'scripts/check-guards.mjs')).href)
     manualTriggers = g.scanDocReviewTriggers(root)
+    codeTriggers = g.scanCaliberTriggerDue(root)
   } catch { /* 护栏不可用时不阻塞 */ }
   const manualDue = manualTriggers.filter(t => t.overdue)
+  const codeDue = codeTriggers.filter(t => t.overdue)
   const next = violations.length
     ? '断锚/缺据的手写事实会让 check-guards 判据 6 变红：补 | 据 …… | 锚 <路径>#<符号>'
     : (queue.length ? '这些口径的实现自「据」之后动过 → 逐条复核，仍成立就把「据」更新到今天' : null)
-  const next2 = manualDue.length
-    ? ((next ? next + '\\n' : '') + `手册 ${manualDue.length} 条「复核触发器」已到期 → 逐条复核：结论仍成立就撤标记，需改就改写条目（见 check-guards#scanDocReviewTriggers）`)
-    : next
-  return envelope('drift', violations.length === 0, { authored: scanned.length, violations, reviewQueue: queue, manualReview: manualTriggers, manualReviewDue: manualDue }, next2)
+  const dueLine = (n, where, hint) => `${where} ${n} 条「复核触发器」已到期 → 逐条复核：结论仍成立就撤标记，需改就改写条目（见 ${hint}）`
+  const next2 = [
+    next,
+    manualDue.length ? dueLine(manualDue.length, '手册', 'check-guards#scanDocReviewTriggers') : null,
+    codeDue.length ? dueLine(codeDue.length, '代码 @fact', 'check-guards#scanCaliberTriggerDue') : null,
+  ].filter(Boolean).join('\\n') || null
+  return envelope('drift', violations.length === 0, {
+    authored: scanned.length, violations, reviewQueue: queue,
+    manualReview: manualTriggers, manualReviewDue: manualDue,
+    codeReview: codeTriggers, codeReviewDue: codeDue,
+  }, next2)
 }
 
 function appendJournal(entry) {

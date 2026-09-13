@@ -58,6 +58,7 @@ import {
   // 判据 15：口径复核触发器
   CALIBER_TRIGGER_ALLOWLIST,
   scanCaliberTriggers,
+  scanCaliberTriggerDue,
 } from '../../../scripts/check-guards.mjs'
 // parseFactLine 的单一实现在 zc.mjs（规则 11）——判据 15 的「行尾追加不破坏解析」断言要直接用它
 import { parseFactLine } from '../../../scripts/zc.mjs'
@@ -952,6 +953,65 @@ describe('scanCaliberTriggers（判据 15：游戏语义口径必须挂 ⟳复�
     const hit = r.withTrigger.find(t => t.subject === 'engine:time/无敌≠秽盾')
     expect(hit, 'effectiveTime.ts 的 @fact engine:time/无敌≠秽盾 必须挂 ⟳复核').toBeTruthy()
     expect(hit!.file).toBe('src/core/effectiveTime.ts')
+  })
+})
+
+// T15 对抗审计 #3 发现（本轮修复）：判据 15 的 hasTrigger **只查「有没有 ⟳复核 + 到期」**，
+// 从不比对今天；唯一做逾期比对的 scanDocReviewTriggers 只扫 4 本方法文档、**完全不扫 src/** 的 @fact**。
+// ⇒ 代码级口径写上「到期 X」后，过期了永远没人被点名，触发器退化成**装饰**
+// （挂上那天与过期那天看起来一样）——而判据 15 的立项缘起正是「effectiveTime 那条挂了 14 天才被纠正」。
+describe('scanCaliberTriggerDue（判据 15 的逾期检查：代码侧 @fact 触发器）', () => {
+  const fixture = (body: string) => {
+    const root = mkdtempSync(join(tmpdir(), 'caldue-'))
+    mkdirSync(join(root, 'src/core'), { recursive: true })
+    writeFileSync(join(root, 'src/core/x.ts'), body)
+    return root
+  }
+  const FACT = '// @fact engine:damage/乘区顺序 口径: 顺序 = 代码顺序 | 据 实测@2026-09-01 | 锚 src/core/x.ts#f | 信 确认'
+
+  it('★ 到期日已过 = overdue（这是判据 15 原先完全不做的比对）', () => {
+    const root = fixture([
+      FACT,
+      '// ⟳复核: 下个大版本后重对乘区顺序 | 到期 2020-01-01',
+      'export function f() {}',
+    ].join('\n'))
+    const rows = scanCaliberTriggerDue(root, '2026-09-14')
+    expect(rows).toHaveLength(1)
+    expect(rows[0].overdue).toBe(true)
+    expect(rows[0].subject).toBe('engine:damage/乘区顺序')
+    expect(rows[0].due).toBe('2020-01-01')
+  })
+
+  it('未到期 = 不 overdue（日期比对是双向的，不是「有日期就算逾期」）', () => {
+    const root = fixture([
+      FACT,
+      '// ⟳复核: 以后再看 | 到期 2099-12-31',
+      'export function f() {}',
+    ].join('\n'))
+    expect(scanCaliberTriggerDue(root, '2026-09-14').map(r => r.overdue)).toEqual([false])
+  })
+
+  it('到期当天 = overdue（边界含当天，与 scanDocReviewTriggers 同口径）', () => {
+    const root = fixture([FACT, '// ⟳复核: x | 到期 2026-09-14', 'export function f() {}'].join('\n'))
+    expect(scanCaliberTriggerDue(root, '2026-09-14')[0].overdue).toBe(true)
+  })
+
+  it('行尾写法也被认（与 scanCaliberTriggers 同一处 near 口径）', () => {
+    const root = fixture([FACT + ' ⟳复核: y | 到期 2020-01-01', 'export function f() {}'].join('\n'))
+    expect(scanCaliberTriggerDue(root, '2026-09-14')).toHaveLength(1)
+  })
+
+  it('没有触发器的口径不进本表（它是「逾期检查」，不是「缺失检查」——缺失由判据 15 红面管）', () => {
+    const root = fixture([FACT, 'export function f() {}'].join('\n'))
+    expect(scanCaliberTriggerDue(root, '2026-09-14')).toEqual([])
+  })
+
+  it('仓库现状：1 条代码级触发器、当前零逾期（逾期时长由 zc drift 点名，只报不红）', () => {
+    const rows = scanCaliberTriggerDue()
+    expect(rows.length).toBeGreaterThanOrEqual(1)
+    expect(rows.filter(r => r.overdue)).toEqual([])
+    // 与判据 15 的 withTrigger 同源：有触发器 ⇔ 进本表（防止两条口径各算各的）
+    expect(rows.length).toBe(scanCaliberTriggers().withTrigger.length)
   })
 })
 

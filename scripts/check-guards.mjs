@@ -377,6 +377,37 @@ export function scanDocReviewTriggers(root = ROOT, today = new Date().toISOStrin
   return rows
 }
 
+/**
+ * 代码侧 `@fact` 的复核触发器**逾期**检查（T15 对抗审计 #3 发现、本轮补的盲区）。
+ *
+ * 为什么需要：判据 15 的 `hasTrigger` **只查「有没有 ⟳复核 + 到期」**，从不比对今天；
+ * 而唯一做逾期比对的 `scanDocReviewTriggers` 只遍历 `MANUAL_DENSITY_CEILINGS` 的**4 本方法文档**，
+ * 完全不扫 `src/**` 的 `@fact`。⇒ 代码级口径写上「到期 2026-12-31」后，过期了**永远没人被点名**，
+ * 而判据 15 的立项缘起正是「effectiveTime 那条口径挂了 14 天才被用户纠正」——没有逾期检查，
+ * 触发器就只是**装饰**（挂上那天与过期那天看起来一样）。
+ *
+ * 口径：**只报不红**（与 scanDocReviewTriggers 同族；红了会逼人改日期作弊——规则 16 的既有教训）。
+ * 数据源复用 `scanCaliberTriggers` 的 `withTrigger`（已是「有触发器的游戏语义口径」全集）。
+ */
+export function scanCaliberTriggerDue(root = ROOT, today = new Date().toISOString().slice(0, 10)) {
+  const { withTrigger } = scanCaliberTriggers(root)
+  const rows = []
+  for (const t of withTrigger) {
+    const p = join(root, t.file)
+    if (!existsSync(p)) continue
+    const lines = readFileSync(p, 'utf8').split('\n')
+    // 触发器可能写在同一行尾部，或紧随其后单独一行（与 scanCaliberTriggers 同口径）
+    const near = [lines[t.line - 1] ?? '', lines[t.line] ?? ''].join('\n')
+    const m = near.match(/⟳复核[:：]\s*([\s\S]*?)[|｜]\s*到期\s*(\d{4}-\d{2}-\d{2})/)
+    if (!m) continue
+    rows.push({
+      file: t.file, line: t.line, subject: t.subject, kind: t.kind,
+      due: m[2], overdue: m[2] <= today, text: m[1].replace(/\s+/g, ' ').trim(),
+    })
+  }
+  return rows
+}
+
 // ---- 判据 2：编排层 agentId 分支棘轮 ----
 
 /**

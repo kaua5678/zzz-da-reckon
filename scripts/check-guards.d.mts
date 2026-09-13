@@ -223,6 +223,17 @@ export interface CaliberTriggerRow {
   subject: string
   kind: string
 }
+export interface CaliberTriggerDueRow {
+  file: string
+  line: number
+  subject: string
+  kind: string
+  due: string
+  overdue: boolean
+  text: string
+}
+/** 代码侧 @fact 触发器的**逾期**检查（判据 15 原先只查「有没有」，从不比对今天） */
+export declare function scanCaliberTriggerDue(root?: string, today?: string): CaliberTriggerDueRow[]
 export declare function scanCaliberTriggers(
   root?: string,
   facts?: { file: string; line: number; raw?: string; fact?: { subject: string; kind: string } | null }[] | null,
