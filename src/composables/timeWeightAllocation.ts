@@ -24,6 +24,20 @@ import { isCarrySpecialty } from '../../scripts/lib/presetCategories.mjs'
 import type { TimeWeightMode } from '@/types/resource'
 
 /**
+ * ⑤ 合轴匀出的**接受判据**（纯函数，与 `feasibilitySearch.downscaleTrialAccepted` 同款风格——
+ * 决策可全矩阵单测，不靠夹具碰运气）。语义（用户 2026-09-13 留白裁决的机器面）：
+ * 三个改善信号至少占一个（平A池↑ = 匀出成功回流 / 截断↓ = 多吃被吸收 / 总伤↑），
+ * 且总伤不低于该步前地板（不许拿伤害当匀的代价）、失衡不降（「次数是分配的结果」先例：
+ * 只防主动卖，不拦截分配抖动）、且维持可行门（净占用≤预算经合轴补偿达成，不许反向恶化）。
+ */
+export function reliefTrialAccepted(a: {
+  p0: number; p1: number; t0: number; t1: number; d0: number; d1: number; s0: number; s1: number; feasible: boolean
+}): boolean {
+  return (a.p1 > a.p0 + 1e-3 || a.t1 < a.t0 - 1e-3 || a.d1 > a.d0 + 1e-6)
+    && a.d1 >= a.d0 - 1e-6 && a.s1 >= a.s0 - 1e-9 && a.feasible
+}
+
+/**
  * 队伍输出核心槽（升序）。口径单源 = `scripts/lib/presetCategories.mjs#isCarrySpecialty`
  * （强攻/命破/异常/锋御=输出定位；击破/支援/防护=辅助）。首元素即 `resolveCarryAgent` 的
  * 「第一核心」（槽0=主C、槽0 辅助位退队内第一输出位）。
@@ -311,6 +325,51 @@ export const jointLeverStrategy: TimeWeightStrategy = {
       for (let s = 0; s < 3; s++) configStore.setBasicAttackTimeWeight(s, weightsMid[s])
       notes.push(`③④ 步弄坏主C 强特（${starvedNow.map(x => `槽${x.c + 1}：${x.mid}→${x.now}`).join('、')}），权重已还原 ①② 末态`)
     }
+    // ⑤ 合轴匀出（用户裁决 2026-09-13，留白语义：「平A会把剩余时间吃完。允许多吃，多吃就上调
+    // 队友的合轴率匀出来；少吃=完全发呆不允许」）：杠杆 = 上调**非输出槽**的可合轴执行行的覆盖比例，
+    // 逐档 +0.25、封顶 1.0——合轴段不占三人共享时间轴、回流平A池（坑21「合轴率就是周转手段」），
+    // 腾出的前台由主C 平A 多吃掉。**枚举源 = 引擎实际产出的执行行**（`executions` 的 moveId +
+    // 生效 comboAlignRatio）：与 buildCharConfig 的 `ov(moveId,表默认)` 消费面天然同源——从 catalog
+    // 表扫 `comboAlignRatio>0` 会设到引擎不读的键（2026-09-13 实测否决），且行值已含现有覆盖、
+    // 二轮直接续爬。不能合轴的招式（ratio=0）不硬凑=模型作弊。接受门 =（平A池↑ 或 截断↓ 或 总伤↑）
+    // 且总伤不低于该步前地板 且 失衡不降（「次数是分配的结果」先例：只防作弊不拦截）且 feasible()；
+    // 无改善当场回滚。覆盖是嵌套 ref 突变，必须 triggerRefresh 才进重算（②弹刀靠整值 setter 隐式触发，
+    // 不同源）。只挂 'joint' 深搜档（非默认档 ⇒ golden/留白棘轮零外溢）；手动录入面 = 结果页合轴弹窗。
+    const poolSecs = () => (calc.resourceResult.value?.characters ?? [])
+      .reduce((acc, c) => acc + Math.max(0, c.timeAllocation?.basicAttackTime ?? 0), 0)
+    let reliefSteps = 0
+    const reliefT0 = truncation()
+    const reliefP0 = poolSecs()
+    for (let round = 0; round < 4; round++) {
+      let anyRelief = false
+      for (const s of [0, 1, 2].filter(x => !carries.includes(x) && String(configStore.team[x]?.agentId ?? ''))) {
+        const ch = calc.resourceResult.value?.characters?.find(c => c.slot === s)
+        if (!ch) continue
+        const targets = new Map<string, number>()
+        for (const exec of ch.executions) {
+          if (exec.actionTime > 0 && exec.comboAlignRatio > 1e-9 && exec.comboAlignRatio < 1 - 1e-9)
+            targets.set(String(exec.moveId), Math.max(targets.get(String(exec.moveId)) ?? 0, exec.comboAlignRatio))
+        }
+        for (const [moveId, cur] of targets) {
+          const t0 = truncation(); const p0 = poolSecs(); const st0 = stunOf(); const floorNow = calc.teamTotalDamage.value
+          configStore.setComboAlignOverride(s, moveId, Math.min(1, cur + 0.25))
+          configStore.triggerRefresh()
+          const t1 = truncation(); const p1 = poolSecs(); const d1 = calc.teamTotalDamage.value
+          if (reliefTrialAccepted({ p0, p1, t0, t1, d0: floorNow, d1, s0: st0, s1: stunOf(), feasible: feasible() })) {
+            reliefSteps++
+            anyRelief = true
+          } else {
+            configStore.setComboAlignOverride(s, moveId, cur)
+            configStore.triggerRefresh()
+          }
+        }
+      }
+      if (!anyRelief) break
+    }
+    if (reliefSteps > 0) {
+      notes.push(`合轴匀出：非输出槽可合轴行上调 ${reliefSteps} 档（平A池 ${reliefP0.toFixed(1)}→${poolSecs().toFixed(1)}s、`
+        + `截断 ${reliefT0.toFixed(2)}→${truncation().toFixed(2)}s，多吃由合轴吸收、总伤不降）`)
+    }
     const parryAfter = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.parryCount ?? 0)))
     const parryMoved = parryAfter.some((v, i) => v !== parryBefore[i])
     if (parryMoved) {
@@ -324,8 +383,8 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     const interactionMoved = ['parryCount', 'blockCount', 'dualCounterCount', 'dodgeCounterCount']
       .some(k => [0, 1, 2].some(s => Number((configStore.team[s] as Record<string, unknown>)[k] ?? 0)
         !== Number((interactionBefore[s] as Record<string, unknown>)[k] ?? 0)))
-    // rolledBack（v2 守卫）只回滚权重：弹刀/其它交互的改动仍在 → moved 不算权重类
-    const moved = parryMoved || interactionMoved || (!rolledBack && (w.applied || energyMoved || cornerMoved))
+    // rolledBack（v2 守卫）只回滚权重：弹刀/其它交互/⑤ 合轴覆盖的改动仍在 → moved 不算权重类
+    const moved = parryMoved || interactionMoved || reliefSteps > 0 || (!rolledBack && (w.applied || energyMoved || cornerMoved))
     return {
       strategyId: jointLeverStrategy.id,
       weights: [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0))),
@@ -335,6 +394,7 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     }
   },
 }
+
 
 /**
  * 策略①：边际均衡（联合策略的①号子步，也可单独用）。
