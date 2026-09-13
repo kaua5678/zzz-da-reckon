@@ -285,7 +285,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   const totalTime = config.totalTime
   // 伊德海莉连续松弛（0.5 阻尼）收敛比整数动力学慢：她的队内层迭代上限提到 100
   // （阻尼残差减半每轮，且判稳用严格相等——浮点不动点约需 40+ 轮；只影响含她的队，其余队维持 20 历史口径）。
-  const yidhariContinuousPresent = config.characters.some(c => c.agentId === '1051' && c.yidhariContinuousEx === true)
+  // agentId 判断冗余已删：yidhariContinuousEx 唯一写入方 = src/mechanics/agents/yidhari.ts:148
+  // （模块只对自己的 cfg 运行 ⇒ 该字段为 true 即蕴含 agentId === '1051'），引擎层不读 agentId。
+  const yidhariContinuousPresent = config.characters.some(c => c.yidhariContinuousEx === true)
   const maxIter = Math.max(config.maxIterations || 20, yidhariContinuousPresent ? 100 : 0)
   const configs = config.characters
   // 欠打试探排除队（2026-09-08 立 → **2026-09-10 解除，现无任何排除队**）：
@@ -758,7 +760,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 伊德海莉终局整数重推（targeted 连续松弛收尾，2026-09-04）：迭代期她的强特次数以实数参与收敛
   // （refund 反馈解析求解 → 唯一不动点，消除 19/20 双稳态），终局 floor 一次 + 整数态重推 ≤12 轮
   // 到全状态逐位稳定，让时间预算/能量/喧响账本与整数次数自洽（只作用于 1051，不动其他模块的收敛语义）。
-  const yidhariFinalizeIdx = configs.findIndex(c => c.agentId === '1051' && c.yidhariContinuousEx)
+  // agentId 判断冗余已删（同上：yidhariContinuousEx 唯一写入方 = yidhari.ts:148）；写成 `=== true`
+  // 保持 findIndex 谓词返回 boolean，语义与原式逐位等价。
+  const yidhariFinalizeIdx = configs.findIndex(c => c.yidhariContinuousEx === true)
   if (yidhariFinalizeIdx >= 0) {
     const yCfg = configs[yidhariFinalizeIdx]
     yCfg.yidhariFinalizeEx = true
@@ -899,7 +903,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
 
     // 诺姆影画4·膛温换连携喧响：次数 = floor(膛温/80)，直接调模块纯函数（不依赖 buildResourceResult 写入，
     // 避免把 buildResourceResult 提前改变 billy 等角色的 cfg 时序）
-    const normaC4Decibel = (cfg.normaCinemaLevel ?? 0) >= 4 && cfg.agentId === '1571'
+    // agentId 判断冗余已删：normaCinemaLevel 唯一写入方 = src/mechanics/agents/norma.ts:236
+    // （模块只对自己的 cfg 运行 ⇒ 字段有值即蕴含 agentId === '1571'），非诺姆 cfg 恒 undefined → ?? 0 → false。
+    const normaC4Decibel = (cfg.normaCinemaLevel ?? 0) >= 4
       ? computeNormaHatToChainCount(cfg, {
           exSpecialCount: state.exSpecialCount,
           ultimateCount: state.ultimateCount,

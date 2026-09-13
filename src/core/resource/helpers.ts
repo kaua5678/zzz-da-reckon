@@ -266,7 +266,10 @@ export function calcEnergySource(
   // 显示 0 而总账里却含这笔（2026-09-11 用户发现；规则 11 单一事实源 + 规则 16 挂活代码）。
   // 仪玄：额外闪能总账（模块在 buildCharConfig 汇总：完美格挡+10/次、极限闪避+5/次、影画1落雷+5/次）
   const yixuanFlashBonus = n(cfg.yixuanFlashBonus)
-  const antonC1EnergyGift = cfg.agentId === '1111' ? n((cfg as any).antonC1EnergyGift) : 0
+  // agentId 判断冗余已删：antonC1EnergyGift 唯一写入方 = src/mechanics/agents/anton.ts:53
+  // （setRecord 只写本模块自己的 cfg）；n() 把 undefined 映射为 0，与原三元的 else 分支同值
+  // ——与上一行 yixuanFlashBonus 的无守卫写法同款。
+  const antonC1EnergyGift = n((cfg as any).antonC1EnergyGift)
 
   const initialGift = cfg.initialEnergyGift
   const shieldBreakGift = shieldCount * 60
@@ -1246,7 +1249,9 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
       + c.diDongOutCount + c.shanYaoNuOutCount
       + axisNormal
   }
-  if (cfg.agentId === '1051' && cfg.yidhariContinuousEx && (cfg.yidhariRefundPerOutStunEx ?? 0) > 0) {
+  // agentId 判断冗余已删：yidhariContinuousEx 唯一写入方 = src/mechanics/agents/yidhari.ts:148
+  // （模块只对自己的 cfg 运行 ⇒ 字段为 true 即蕴含 agentId === '1051'），引擎层不读 agentId。
+  if (cfg.yidhariContinuousEx === true && (cfg.yidhariRefundPerOutStunEx ?? 0) > 0) {
     // debt: 全局实数化收敛重构（正反馈模块统一连续通道 + 逐模块重校准）——本分支是 1051 的 targeted
     // 修复（解析不动点 + 阻尼实数迭代 + 终局整数重推）；全局「实数化松弛、终局才 floor」会重排所有
     // 带时间/资源循环模块的均衡（sigrid 出枪式消失前例），需专项按模块重校准。
@@ -1338,7 +1343,8 @@ export function iterate(
     // 伊德海莉实数迭代期：喧响按 floor 后的整数次数算——若按实数，喧响→终结技阈值的
     // 4↔5 翻转会把实数次数拽成 2-循环（20.23↔20.35，必要时间随大翻跳）；floor 只影响
     // 迭代期喧响信道，终局整数重推后二者一致。
-    const decibelExCount = cfg.agentId === '1051' && cfg.yidhariContinuousEx
+    // agentId 判断冗余已删（同 resolveExSpecialCount：yidhariContinuousEx 唯一写入方 = yidhari.ts:148）。
+    const decibelExCount = cfg.yidhariContinuousEx === true
       ? Math.floor(exSpecialCount)
       : exSpecialCount
     const rawDecibel = calcRawDecibelParts(cfg, prev, chainCountInput, decibelExCount, prev.ultimateCount, totalTime, teamFrontline)
@@ -1396,7 +1402,9 @@ export function iterate(
       // buildResourceResult 上一轮写入 cfg.normaHatToChainCount；计入终结技次数）
       // 诺姆影画4·膛温换连携：诺姆+上一位队友各 +200 不可分享喧响（次数 = floor(膛温/80)，
       // 直接调模块纯函数（iterate 内可用 prev 状态），计入终结技次数）
-      + ((cfg.normaCinemaLevel ?? 0) >= 4 && cfg.agentId === '1571'
+      // agentId 判断冗余已删：normaCinemaLevel 唯一写入方 = src/mechanics/agents/norma.ts:236
+      // （非诺姆 cfg 恒 undefined → ?? 0 → false，与原式逐位等价）。
+      + ((cfg.normaCinemaLevel ?? 0) >= 4
         ? computeNormaHatToChainCount(cfg, {
             exSpecialCount: prev.exSpecialCount,
             ultimateCount: prev.ultimateCount,
@@ -1493,7 +1501,8 @@ export function iterate(
     // 4↔5 翻转会把实数强特次数拽成 2-循环（必要时间跳变 → 平A时间/回能/喧响同步跳变）；
     // 状态里 ult 仍是整数（终局一致），只有时间信道用实数参与收敛。
     // （旧「轴内喧响轨保持整数」的例外已随裁决 A 取消——轨不再反推次数。）
-    const yidhariRealUlt = cfg.agentId === '1051' && cfg.yidhariContinuousEx === true
+    // agentId 判断冗余已删：yidhariContinuousEx 唯一写入方 = src/mechanics/agents/yidhari.ts:148。
+    const yidhariRealUlt = cfg.yidhariContinuousEx === true
       && cfg.yidhariFinalizeEx !== true
     const ultForTime = yidhariRealUlt ? decibels[i] / cfg.ultimateCost : ultimateCount
 
@@ -1501,7 +1510,8 @@ export function iterate(
     // 与队友耦合，队友整数次数在阈值处翻转会把她的次数拽成 2-循环（如 19.54↔19.71，队友 6↔7）。
     // 必要时间按 (prev+new)/2 松弛：不动点不变（不动点处 prev==new），2-循环振幅每迭代减半，
     // 两个种子收敛到同一中点 → 终局 floor 唯一。终局重推（finalize）不阻尼（直接按整数账本重算）。
-    const exForTime = cfg.agentId === '1051' && cfg.yidhariContinuousEx === true
+    // agentId 判断冗余已删（同 yidhariRealUlt：yidhariContinuousEx 唯一写入方 = yidhari.ts:148）。
+    const exForTime = cfg.yidhariContinuousEx === true
       && cfg.yidhariFinalizeEx !== true
       ? (prevStates[i].exSpecialCount + exSpecialCount) / 2
       : exSpecialCount
@@ -1658,7 +1668,8 @@ export function iterate(
     // 伊德海莉迭代期状态写入阻尼值（与必要时间信道同源）：原始实数次数经共享平A池与队友整数
     // 次数耦合会 2-循环（19.54↔19.71），状态与时间信道统一按 (prev+new)/2 松弛——不动点不变，
     // 2-循环振幅每迭代减半，两个种子收敛到同一中点，终局 floor 唯一。终局重推（finalize）写整数。
-    const storedEx = cfg.agentId === '1051' && cfg.yidhariContinuousEx === true && cfg.yidhariFinalizeEx !== true
+    // agentId 判断冗余已删（yidhariContinuousEx 唯一写入方 = src/mechanics/agents/yidhari.ts:148）。
+    const storedEx = cfg.yidhariContinuousEx === true && cfg.yidhariFinalizeEx !== true
       ? (prevStates[i].exSpecialCount + exSpecialCount) / 2
       : exSpecialCount
 

@@ -122,10 +122,10 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'core agentId 分支',
     file: 'src/core/resource.ts + core/resource/helpers.ts',
-    frozen: 36,
+    frozen: 26,  // 2026-09-11 评审冻结 36（resource.ts 16 + helpers.ts 20）→ 26（2026-09-13 T6 首次真清偿 −10：删 yidhariContinuousEx 7 处 / normaCinemaLevel 2 处 / antonC1EnergyGift 1 处的冗余 agentId 守卫，判据 = 字段唯一写入方为对应角色模块，timeGolden 0 delta）。详见 CORE_AGENT_BRANCH_BASELINE 头注释的沿革与「有意不动」两类
     target: 0,
     due: '2027-03-31',
-    plan: '先抽 resourceCalc/convergence.ts 给编排层特判落点（评审 #10），再把 core 里的角色分支抽成 cfg 字段（模块写入、引擎读字段）或迁 applyTeamConfig',
+    plan: '剩 26 处：① 先把 convergence.ts:957 的 yidhariInStunExCount / :1074 的 billyAxisActive 写入方挪进对应角色模块，再删 helpers.ts:1271 与 resource.ts:595 的守卫（现不冗余）；② `!==` 短路形态逐处论证后化简；③ 跨角色查找（findIndex 找队友槽位）与纯 agentId 写入（billyFinalizeChain / yidhariFinalizeEx 由引擎写角色字段）属真特判，需走 applyTeamConfig / convergence 落点（评审 #10）',
   },
   {
     id: '展示层越层 import',
@@ -422,8 +422,27 @@ export const AGENT_BRANCH_BASELINE = 65
  * 冻结存量、只减不增，把「清零」变成 burn-down 契约（见 RATCHET_BURNDOWN）而非一次性工程。
  */
 export const CORE_AGENT_BRANCH_FILES = ['src/core/resource.ts', 'src/core/resource/helpers.ts']
-/** 2026-09-11 冻结基线（评审实测 36 = 16 + 20）；只减不增 */
-export const CORE_AGENT_BRANCH_BASELINE = 36
+/** 2026-09-11 冻结基线（评审实测 36 = 16 + 20）→ **26**（2026-09-13 T6 首次真清偿 −10，见下沿革）；只减不增。
+ *
+ * 36 → 26 沿革（2026-09-13，T6）：删掉 10 处「`cfg.agentId === 'X' && cfg.<该角色模块专属字段>`」里的
+ * **冗余 agentId 判断**——判据是「该字段的唯一写入方 = X 的角色模块」（模块只对自己的 cfg 运行，
+ * 故字段存在/为真即蕴含 agentId === 'X'）。逐处核实唯一写入方后化简，`timeGolden` 3 tests **0 数值 delta**：
+ *  · `yidhariContinuousEx`（唯一写入方 `src/mechanics/agents/yidhari.ts:148`）→ 去掉 7 处守卫
+ *    （resource.ts 的 yidhariContinuousPresent / yidhariFinalizeIdx；helpers.ts 的 resolveExSpecialCount
+ *    refund 分支 / decibelExCount / yidhariRealUlt / exForTime / storedEx）
+ *  · `normaCinemaLevel`（唯一写入方 `src/mechanics/agents/norma.ts:236`）→ 去掉 2 处守卫
+ *    （resource.ts 的 normaC4Decibel；helpers.ts 的赠链喧响分支；非诺姆 cfg 恒 undefined → `?? 0` → false）
+ *  · `antonC1EnergyGift`（唯一写入方 `src/mechanics/agents/anton.ts:53` 的 setRecord）→ 去掉 1 处三元守卫
+ *    （`n()` 把 undefined 映射为 0，与原三元 else 分支同值；与紧邻的 yixuanFlashBonus 无守卫写法同款）
+ * **有意不动**的两类（下一批候选，勿按本条口径照抄删除）：
+ *  · `!==` 短路形态（helpers.ts 的 `cfg.agentId !== '1051' || yidhariRefundPer <= 0` 等）——删左操作数会把
+ *    「非目标角色一律返回 0」变成「只看字段」，语义不等价，需逐处论证。
+ *  · **写入方在编排层而非角色模块**的字段：`yidhariInStunExCount` ← `convergence.ts:957`、
+ *    `billyAxisActive` ← `convergence.ts:1074` ——编排层可能对任意 cfg 写它们，「字段存在」不蕴含
+ *    「是该角色」，故 helpers.ts:1271 与 resource.ts:595 的守卫**不冗余**，保留。
+ *    正解是把这两个写入方挪进对应模块（再删守卫），不是先删守卫。
+ */
+export const CORE_AGENT_BRANCH_BASELINE = 26
 
 /** 跨多个文件计 agentId 分支总行数（与 countAgentIdBranchLines 同口径） */
 export function countAgentIdBranchLinesInFiles(files, root = ROOT) {
