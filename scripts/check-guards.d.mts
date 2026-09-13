@@ -139,6 +139,8 @@ export declare function scanCoreRoleImports(root?: string): {
 export declare const NOUN_TRIAGE_FILE: string
 export declare const NOUN_SOURCE_FILE: string
 export declare const NOUN_STATES: string[]
+/** 源文件最小键数（只减不增；防「把源清空 = 无项可审 = 全绿」的假绿通道） */
+export declare const NOUN_SOURCE_MIN_KEYS: number
 export interface NounTriageEntry {
   name?: string
   title?: string

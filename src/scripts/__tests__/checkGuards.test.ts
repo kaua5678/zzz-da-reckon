@@ -44,6 +44,7 @@ import {
   // 判据 13：名词表三态对账
   NOUN_TRIAGE_FILE,
   NOUN_SOURCE_FILE,
+  NOUN_SOURCE_MIN_KEYS,
   auditNounTriage,
   // 判据 14：死通道扫描
   DEAD_CHANNEL_ALLOWLIST,
@@ -500,6 +501,51 @@ describe('auditNounTriage（判据 13：名词表三态）', () => {
   it('文件缺失 → null（不判红，与判据 9/10 同风格：环境不全不误伤）', () => {
     const root = mkdtempSync(join(tmpdir(), 'noun-empty-'))
     expect(auditNounTriage(root, () => ({ ok: true, reason: 'symbol' }))).toBeNull()
+  })
+
+  // T15 对抗审计 #2 发现（本轮修复）：原先「任一文件缺失 → null → 跳过」，
+  // 于是**删掉对账文件就是零成本全绿**（源还在，账没了）。源在、账没了是真问题。
+  it('★ 源在、对账文件被删 = 红（删账本不能让判据变绿）', () => {
+    const root = mkdtempSync(join(tmpdir(), 'noun-nodel-'))
+    mkdirSync(join(root, 'data/raw/nanoka_missing'), { recursive: true })
+    writeFileSync(join(root, NOUN_SOURCE_FILE), JSON.stringify(SRC))
+    const r = must(auditNounTriage(root, () => ({ ok: true, reason: 'symbol' })))
+    expect(r.ok).toBe(false)
+    expect(r.sourceShrunk.join()).toContain('对账文件缺失')
+  })
+
+  it('★ 对账文件在、源被删 = 红（源是外部事实面，不该被删）', () => {
+    const root = mkdtempSync(join(tmpdir(), 'noun-nosrc-'))
+    mkdirSync(join(root, 'scripts/lib'), { recursive: true })
+    writeFileSync(join(root, NOUN_TRIAGE_FILE), JSON.stringify({ entries: {} }))
+    const r = must(auditNounTriage(root, () => ({ ok: true, reason: 'symbol' })))
+    expect(r.ok).toBe(false)
+    expect(r.sourceShrunk.join()).toContain('源文件缺失')
+  })
+
+  // T15 对抗审计 #8 发现（本轮修复）：判据是「源里的键都要有对账」⇒ **把源清空成 {} 反而全绿**
+  // （无项可审 = missing/extra/unhandled 全空）。源是 nanoka 转录的事实面，不该反向被削。
+  // 注意：最小键数下限只在 `root === ROOT`（真实仓库）生效，fixture 传的是临时目录 ⇒ 不校验条数。
+  // 故这里直接对**真实仓库**断言「现状键数 ≥ 冻结下限」，并把下限本身钉住（防止有人顺手调小）。
+  it('★ 源被削 = 红（清空源不能变成作弊通道）；下限只在真实仓库生效', () => {
+    const real = must(auditNounTriage())
+    expect(real.sourceKeys.length).toBeGreaterThanOrEqual(NOUN_SOURCE_MIN_KEYS)
+    expect(real.sourceShrunk).toEqual([])
+    // fixture（root≠ROOT）不校验绝对条数 ⇒ 最小样例仍然可测
+    const mini = must(auditNounTriage(fixture({}, {}), () => ({ ok: true, reason: 'symbol' })))
+    expect(mini.sourceShrunk).toEqual([])
+    expect(mini.ok).toBe(true)
+  })
+
+  it('下限常量为实测值 68（改小它必须先说明为什么源可以变少）', () => {
+    expect(NOUN_SOURCE_MIN_KEYS).toBe(68)
+  })
+
+  // T15 对抗审计 #9 发现（本轮修复）：`if (!e.evidence)` 不 trim ⇒ 纯空格算「有证据」。
+  it('evidence 为纯空格 = 缺证据（trim 后判）', () => {
+    const root = fixture(SRC, { '2000002': { name: '[秽盾]', state: 'unhandled', evidence: '   \n  ' } })
+    const r = must(auditNounTriage(root, () => ({ ok: true, reason: 'symbol' })))
+    expect(r.noEvidence).toHaveLength(1)
   })
 
   it('仓库现状：68 条全部有着落（unhandled=0，每条 modeled 锚可解析）', () => {

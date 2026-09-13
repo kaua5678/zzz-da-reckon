@@ -880,14 +880,46 @@ export const NOUN_SOURCE_FILE = 'data/raw/nanoka_missing/noun_3.2.3.json'
 export const NOUN_STATES = ['modeled', 'deferred', 'unhandled']
 
 /**
+ * 名词表源文件的最小键数（**只减不增地**冻结；2026-09-14 实测 68）。
+ *
+ * 为什么要有（T15 对抗审计 #8 发现、本轮实测复核）：判据是「源里的键都要有对账」，
+ * 于是**把源文件清空成 `{}` 反而全绿**（无项可审 = missing/extra/unhandled 全空）。
+ * 源文件是 nanoka 原文转录的**外部事实面**，不该由本仓库的对账动作反向改写——
+ * 键数一旦减少就是「源被削了」，必须红。要合法减少先改这个常量并写清为什么。
+ */
+export const NOUN_SOURCE_MIN_KEYS = 68
+
+/**
  * 校验名词表三态对账。返回 { ok, source, triage, missing, extra, badState, noEvidence,
- * brokenAnchor, noRegister, unhandled }。
- * 文件缺失时返回 null（不判红，与判据 9/10 同风格：环境不全不误伤）。
+ * brokenAnchor, noRegister, unhandled, sourceShrunk }。
+ *
+ * 文件缺失：**源在、对账文件没了 = 红**（T15 审计 #2：那正是「把账本删掉就绿」的逃生通道）；
+ * 只有两者都不在才返回 null（环境不全不误伤——与判据 9/10 同风格）。
  */
 export function auditNounTriage(root = ROOT, resolveAnchorFn = resolveAnchor) {
   const srcPath = join(root, NOUN_SOURCE_FILE)
+  // 最小键数下限只在**真实仓库**生效：单测 fixture 就是 1–2 条的最小样例（`root !== ROOT`
+  // ⇒ 降级为「源/账至少一方的存在性必须自洽」那两条，不校验绝对条数）。
+  // 否则每个最小 fixture 都得凑满 68 条噪音数据，判据的可测性反而被这条下限吃掉。
+  const minKeys = root === ROOT ? NOUN_SOURCE_MIN_KEYS : 0
   const triagePath = join(root, NOUN_TRIAGE_FILE)
-  if (!existsSync(srcPath) || !existsSync(triagePath)) return null
+  const hasSource = existsSync(srcPath)
+  const hasTriage = existsSync(triagePath)
+  if (!hasSource && !hasTriage) return null
+  if (hasSource && !hasTriage) {
+    return {
+      ok: false, source: {}, triage: { entries: {} }, sourceKeys: [], missing: [], extra: [],
+      badState: [], noEvidence: [], brokenAnchor: [], noRegister: [], unhandled: [],
+      sourceShrunk: [`源文件在（${NOUN_SOURCE_FILE}）但对账文件缺失（${NOUN_TRIAGE_FILE}）→ 补回对账文件（删账本不能让判据变绿）`],
+    }
+  }
+  if (!hasSource && hasTriage) {
+    return {
+      ok: false, source: {}, triage: {}, sourceKeys: [], missing: [], extra: [],
+      badState: [], noEvidence: [], brokenAnchor: [], noRegister: [], unhandled: [],
+      sourceShrunk: [`对账文件在（${NOUN_TRIAGE_FILE}）但源文件缺失（${NOUN_SOURCE_FILE}）→ 源是外部事实面，不该被删`],
+    }
+  }
   const source = JSON.parse(readFileSync(srcPath, 'utf8'))
   const triage = JSON.parse(readFileSync(triagePath, 'utf8'))
   const entries = triage.entries ?? {}
@@ -900,9 +932,14 @@ export function auditNounTriage(root = ROOT, resolveAnchorFn = resolveAnchor) {
   const brokenAnchor = []
   const noRegister = []
   const unhandled = []
+  // 源被削（清空 = 无项可审 = 全绿）是最廉价的假绿通道，见 NOUN_SOURCE_MIN_KEYS
+  const sourceShrunk = sourceKeys.length < minKeys
+    ? [`源键数 ${sourceKeys.length} < 冻结下限 ${minKeys}（${NOUN_SOURCE_FILE}）→ 源是 nanoka 转录的事实面，不该变少；确需下调先改 NOUN_SOURCE_MIN_KEYS 并写明理由`]
+    : []
   for (const [key, e] of Object.entries(entries)) {
     if (!NOUN_STATES.includes(e.state)) badState.push(`${key} ${e.name ?? ''} → state=${e.state}`)
-    if (!e.evidence) noEvidence.push(`${key} ${e.name ?? ''}`)
+    // trim：纯空格/换行不算证据（T15 审计 #9）
+    if (!e.evidence?.trim()) noEvidence.push(`${key} ${e.name ?? ''}`)
     if (e.state === 'modeled') {
       const r = resolveAnchorFn(e.anchor, root)
       if (!r.ok) brokenAnchor.push(`${key} ${e.name ?? ''} → ${e.anchor ?? '(缺锚)'}（${r.reason}）`)
@@ -914,8 +951,8 @@ export function auditNounTriage(root = ROOT, resolveAnchorFn = resolveAnchor) {
   }
   const ok = missing.length === 0 && extra.length === 0 && badState.length === 0
     && noEvidence.length === 0 && brokenAnchor.length === 0 && noRegister.length === 0
-    && unhandled.length === 0
-  return { ok, source, triage, sourceKeys, missing, extra, badState, noEvidence, brokenAnchor, noRegister, unhandled }
+    && unhandled.length === 0 && sourceShrunk.length === 0
+  return { ok, source, triage, sourceKeys, missing, extra, badState, noEvidence, brokenAnchor, noRegister, unhandled, sourceShrunk }
 }
 
 // ---- 判据 14：死通道扫描（防「接口/参数在但实现没接」） ----
@@ -1587,10 +1624,11 @@ export function runAllChecks(root = ROOT) {
   }
   results.push({
     name: noun === null
-      ? `名词表三态对账 ⚠ 缺 ${NOUN_SOURCE_FILE} 或 ${NOUN_TRIAGE_FILE}，跳过`
-      : `名词表三态对账 (${NOUN_SOURCE_FILE}: ${noun.sourceKeys.length} 条 → modeled ${nounCounts.modeled} / deferred ${nounCounts.deferred} / unhandled ${nounCounts.unhandled})`,
+      ? `名词表三态对账 ⚠ ${NOUN_SOURCE_FILE} 与 ${NOUN_TRIAGE_FILE} 均缺失，跳过`
+      : `名词表三态对账 (${NOUN_SOURCE_FILE}: ${noun.sourceKeys.length} 条 → modeled ${nounCounts?.modeled ?? 0} / deferred ${nounCounts?.deferred ?? 0} / unhandled ${nounCounts?.unhandled ?? 0})`,
     ok: noun === null || noun.ok,
     detail: noun === null ? [] : [
+      ...(noun.sourceShrunk ?? []).map(s => `  ✗ 源面异常：${s}`),
       ...noun.missing.map(k => `  ✗ 源里有但未对账：${k} ${noun.source[k]?.name ?? ''} → 在 ${NOUN_TRIAGE_FILE} 补一条三态判定`),
       ...noun.extra.map(k => `  ✗ 对账文件多出源里没有的键：${k} → 源数据已变，删该条`),
       ...noun.badState.map(s => `  ✗ state 非法：${s} → 只许 ${NOUN_STATES.join(' / ')}`),
