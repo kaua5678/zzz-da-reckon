@@ -183,14 +183,14 @@
               stroke-width="1"
               class="lane-cell"
             >
-              <title>{{ bossCellTitle(n.nodeId) }}</title>
+              <title>{{ bossCellTitle(periodOf(n.nodeId)) }}</title>
             </rect>
             <text
               :x="padL + i * cellW + 4"
               :y="bossLaneY + laneH / 2 + 3"
               class="lane-text"
               :class="{ 'boss-hit': selectedBossAppearances.has(n.nodeId) }"
-            >{{ bossCellText(n.nodeId) || '—' }}</text>
+            >{{ bossCellText(periodOf(n.nodeId)) || '—' }}</text>
           </template>
         </g>
 
@@ -365,9 +365,9 @@
               <td class="gold-cell">{{ r.goldLabel }}</td>
               <td>
                 <span
-                  v-if="bossCellText(r.nodeId)"
+                  v-if="bossCellText(periodOf(r.nodeId))"
                   :class="{ 'boss-hit': selectedBossAppearances.has(r.nodeId) }"
-                >{{ bossCellText(r.nodeId) }}</span>
+                >{{ bossCellText(periodOf(r.nodeId)) }}</span>
                 <span v-else class="no-change">—</span>
               </td>
               <td>
@@ -375,7 +375,7 @@
                   换入 {{ agentName(r.swappedIn) }} ⬅ 换出 {{ agentName(r.swappedOut ?? '') }}
                   <span v-if="r.swapKind" class="swap-kind" :class="r.swapKind">{{ swapKindLabel(r.swapKind, r.swapUpliftPct) }}</span>
                 </span>
-                <span v-else-if="r.newAgentBench" class="bench-note">{{ benchText(r.newAgentBench) }}</span>
+                <span v-else-if="r.newAgentBench" class="bench-note">{{ benchText(r.newAgentBench, agentName) }}</span>
                 <span v-else class="no-change">—</span>
               </td>
             </tr>
@@ -1265,7 +1265,7 @@ import { NCard, NSelect, NInputNumber, NButton, NProgress } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computeTeamTimeline, type NewAgentBench, type SwapKind, type TeamTimelineResult } from '@/composables/teamTimeline'
+import { type TeamTimelineResult } from '@/composables/teamTimeline'
 import {
   TIMELINE_LAYOUT,
   buildTimelineChart,
@@ -1302,13 +1302,13 @@ import {
   PP_LANE_DEFS,
   ppTierLabelOf,
 } from '@/composables/pullPlannerChart'
-import { buildNewCharacterRows, computeFilmSimulation, computeNewCharacterPoints, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
-import { computeSlotComparePoints, type SlotComparePoint, type SlotCompareSlot } from '@/composables/teamTimeline'
+import { buildNewCharacterRows, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
+import { type SlotComparePoint, type SlotCompareSlot } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
 import { computePullValue, MIN_PAIRS_FOR_GRADE, type PullValueInput, type PullValueResult, type PvCardRoomEffect, type PvCardValue } from '@/composables/pullValue'
 import { PLANNER_FILM_PER_VERSION } from '@/data/filmEconomy'
 import { runPullPlanner, type PlannerRunResult } from '@/composables/pullPlannerEngine'
-import { AGENT_RELEASE_NODE, VERSION_NODES, releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
+import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
 import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
 import {
   buildDirectDamageChart,
@@ -1321,6 +1321,10 @@ import {
   ddShortName as ddShortNameOf,
 } from '@/composables/directDamageChart'
 import { useSeriesFilter } from '@/composables/seriesFilter'
+// 第一片拆分（2026-09-13）：纯展示助手 / 悬浮卡行 / 跑批编排 出函到 composables/charts/
+import { benchText, bossCellText, bossCellTitle, colorOf, swapKindLabel } from '@/composables/charts/agentPresentation'
+import { chart3HoverRows as buildChart3HoverRows, filmSimHoverRows as buildFilmSimHoverRows, slotCompareHoverRows as buildSlotCompareHoverRows, timelineHoverRows as buildTimelineHoverRows } from '@/composables/charts/hoverCardRows'
+import { runChart3Compute, runFilmSimCompute, runSlotCompareCompute, runTeamTimelineCompute } from '@/composables/charts/chartRunners'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 
@@ -1400,21 +1404,8 @@ const bossPeriodAxis = computed(() => {
 function periodOf(nodeId: string): PeriodAxisNode | undefined {
   return periodById.value.get(nodeId)
 }
-/** 节点车道文案：该期危局·普通首个 Boss（多个标注 ×n） */
-function bossCellText(nodeId: string): string {
-  const p = periodOf(nodeId)
-  if (!p || p.normalBosses.length === 0) return ''
-  const first = p.normalBosses[0].bossName
-  return p.normalBosses.length > 1 ? `${first} 等${p.normalBosses.length}` : first
-}
-function bossCellTitle(nodeId: string): string {
-  const p = periodOf(nodeId)
-  if (!p) return '当期无排期数据'
-  const parts: string[] = []
-  if (p.normalBosses.length > 0) parts.push(`危局·普通：${p.normalBosses.map(b => b.bossName).join('/')}`)
-  if (p.criticalBosses.length > 0) parts.push(`危局·困难：${p.criticalBosses.map(b => b.bossName).join('/')}`)
-  return parts.join('\n') || '当期无排期数据'
-}
+// bossCellText / bossCellTitle 已出函 composables/charts/agentPresentation.ts（第一片拆分）；
+// 搬迁后入参改为已解析的 PeriodAxisNode，调用点传 `periodOf(nodeId)`，判定与文案逐字不变。
 const selectedBossAppearances = computed(() => {
   const out = new Set<string>()
   if (!selectedBossId.value) return out
@@ -1464,50 +1455,23 @@ const progress = ref<{ pct: number; text: string } | null>(null)
 const result = ref<TeamTimelineResult | null>(null)
 
 async function runCompute() {
-  const boss = selectedBoss.value
-  const phase = selectedPhase.value
-  if (!boss || !phase) return
-  if (!releaseNodeOf(mainAgentId.value)) return
-  const pool = candidatePool.value.filter(id => id !== mainAgentId.value)
-  if (pool.length < 2) {
-    progress.value = { pct: 1, text: '候选队友至少需要 2 名（不含主C）' }
-    setTimeout(() => { progress.value = null }, 2500)
-    return
-  }
-  if (bossPeriodAxis.value.length === 0) {
-    progress.value = { pct: 1, text: '所选 Boss 在危局期数数据中无登场记录' }
-    setTimeout(() => { progress.value = null }, 2500)
-    return
-  }
-  computing.value = true
-  progress.value = { pct: 0, text: '准备…' }
-  await nextTick()
-  try {
-    result.value = await computeTeamTimeline(calc, {
-      mainAgentId: mainAgentId.value,
-      boss,
-      phase,
-      budget: budget.value ?? 6,
-      // 横轴刻度用期号（seq，如「45」代表 69045）；只算所选 Boss 登场的期数
-      axisNodes: bossPeriodAxis.value.map(p => ({ id: p.id, label: `${p.seq}`, date: p.begin })),
-      candidatePool: candidatePool.value,
-      autoBuild: autoBuild.value,
-      optimalGold: optimalGold.value,
-      onProgress: p => { progress.value = p },
-    })
-  } finally {
-    computing.value = false
-    progress.value = null
-  }
+  // 校验/装配/调用已出函 composables/charts/chartRunners.ts#runTeamTimelineCompute（第一片拆分，逐字搬迁）
+  await runTeamTimelineCompute({
+    calc, computing, progress, result,
+    boss: selectedBoss.value,
+    phase: selectedPhase.value,
+    mainAgentId: mainAgentId.value,
+    // 横轴刻度用期号（seq，如「45」代表 69045）；只算所选 Boss 登场的期数
+    axisNodes: bossPeriodAxis.value.map(p => ({ id: p.id, label: `${p.seq}`, date: p.begin })),
+    candidatePool: candidatePool.value,
+    budget: budget.value,
+    autoBuild: autoBuild.value,
+    optimalGold: optimalGold.value,
+  })
 }
 
 // ========== 颜色 ==========
-const PALETTE = ['#63e2b7', '#63b3ed', '#f6ad55', '#f687b3', '#b794f4', '#f6e05e', '#4fd1c5', '#fc8181', '#68d391', '#90cdf4', '#fbd38d', '#fbb6ce', '#d6bcfa', '#fefcbf', '#81e6d9', '#feb2b2']
-function colorOf(agentId: string): string {
-  let h = 0
-  for (let i = 0; i < agentId.length; i++) h = (h * 31 + agentId.charCodeAt(i)) >>> 0
-  return PALETTE[h % PALETTE.length]
-}
+// PALETTE / colorOf 已出函 composables/charts/agentPresentation.ts（第一片拆分，原样搬迁）
 function agentName(id: string): string {
   return catalogStore.getAgent(id)?.name.zhCN ?? id
 }
@@ -1542,19 +1506,8 @@ const xTicks = computed(() => tl.value.xTicks)
 // 悬浮
 // 悬浮
 const hoverNode = ref(-1)
-/** 换人判定徽标文案：上位 +12.4% / 平替 +0.8% */
-function swapKindLabel(kind: SwapKind, pct?: number): string {
-  const label = kind === 'upgrade' ? '上位' : '平替'
-  return pct == null ? label : `${label} ${pct > 0 ? '+' : ''}${fmt(pct, 1)}%`
-}
-/** 实装未进队标注：X 实装未进队 · 平替（差 y%，可不抽）/ 未上位（差 y%） */
-function benchText(b: NewAgentBench): string {
-  const names = b.agents.map(agentName).join('/')
-  const gap = fmt(Math.abs(b.gapPct), 1)
-  return b.kind === 'lateral'
-    ? `${names} 实装未进队 · 平替（差 ${gap}%，可不抽）`
-    : `${names} 实装未进队 · 未上位（差 ${gap}%）`
-}
+// swapKindLabel / benchText 已出函 composables/charts/agentPresentation.ts（第一片拆分）；
+// benchText 搬迁后需注入 `nameOf`（原闭包本页 agentName），调用点改为传 `agentName`。
 const hoverInfo = computed(() => {
   const n = result.value?.nodes[hoverNode.value]
   if (!n) return null
@@ -1568,7 +1521,7 @@ const hoverInfo = computed(() => {
       ? `换上 ${agentName(n.swappedIn)}，换下 ${agentName(n.swappedOut!)}` +
         (n.swapKind ? `（${swapKindLabel(n.swapKind, n.swapUpliftPct)}）` : '')
       : '',
-    bench: n.newAgentBench ? benchText(n.newAgentBench) : '',
+    bench: n.newAgentBench ? benchText(n.newAgentBench, agentName) : '',
     schedule: (() => {
       const p = periodOf(n.nodeId)
       if (!p) return ''
@@ -1580,20 +1533,8 @@ const hoverInfo = computed(() => {
   }
 })
 
-/** 悬浮卡行（外壳组件只负责样式与布局；行内容随图而异，留在这里） */
-const hoverRows = computed<HoverCardRow[]>(() => {
-  const h = hoverInfo.value
-  if (!h) return []
-  const rows: HoverCardRow[] = [
-    { text: `队伍：${h.teamNames.join(' + ')}` },
-    { text: `伤害 ${compact(h.damage)}（${fmt(h.hpRatio, 1)}%）` },
-    { text: h.goldLabel },
-  ]
-  if (h.schedule) rows.push({ text: h.schedule })
-  if (h.swap) rows.push({ text: h.swap, cls: 'hc-swap' })
-  if (h.bench) rows.push({ text: h.bench, cls: 'hc-bench' })
-  return rows
-})
+/** 悬浮卡行（外壳组件只负责样式与布局；行内容随图而异）——构造已出函 composables/charts/hoverCardRows.ts */
+const hoverRows = computed<HoverCardRow[]>(() => buildTimelineHoverRows(hoverInfo.value))
 // ========== 多队并存强度（演示.xlsx 口径：队伍×版本矩阵，跌出 Top-K 即永久淘汰） ==========
 const survivalK = ref(3)
 const strengthBands = computed<StrengthBand[]>(() =>
@@ -1698,26 +1639,17 @@ const chart3Computing = ref(false)
 const chart3Progress = ref<{ pct: number; text: string } | null>(null)
 const chart3Points = ref<NewCharacterPoint[]>([])
 async function runChart3() {
-  const boss = selectedBoss.value
-  const phase = selectedPhase.value
-  if (!boss || !phase) return
-  chart3Computing.value = true
-  chart3Progress.value = { pct: 0, text: '准备…' }
-  try {
-    chart3Points.value = await computeNewCharacterPoints(calc, {
-      rows: chart3Rows.value,
-      teams: chart3Teams.value,
-      boss,
-      phase,
-      budget: budget.value ?? 6,
-      autoBuild: autoBuild.value,
-      optimalGold: optimalGold.value,
-      onProgress: p => { chart3Progress.value = p },
-    })
-  } finally {
-    chart3Computing.value = false
-    chart3Progress.value = null
-  }
+  // 校验/装配/调用已出函 composables/charts/chartRunners.ts#runChart3Compute（第一片拆分，逐字搬迁）
+  await runChart3Compute({
+    calc, computing: chart3Computing, progress: chart3Progress, points: chart3Points,
+    boss: selectedBoss.value,
+    phase: selectedPhase.value,
+    rows: chart3Rows.value,
+    teams: chart3Teams.value,
+    budget: budget.value,
+    autoBuild: autoBuild.value,
+    optimalGold: optimalGold.value,
+  })
 }
 
 // ---- Chart 3 SVG ----
@@ -1795,15 +1727,7 @@ watch(selectedBossId, v => {
   if (!scBossTouched.value && v) scBossId.value = v
 })
 
-const chart3HoverRows = computed<HoverCardRow[]>(() => {
-  const h = chart3HoverInfo.value
-  if (!h) return []
-  return [
-    { text: `强队：${h.teamNames.join(' + ')}` },
-    { text: `伤害 ${compact(h.damage)}（${fmt(h.hpRatio, 1)}%）` },
-    { text: h.goldLabel },
-  ]
-})
+const chart3HoverRows = computed<HoverCardRow[]>(() => buildChart3HoverRows(chart3HoverInfo.value))
 const scBoss = computed(() => bossPresets.value.find(b => b.id === scBossId.value) ?? null)
 /** 与顶部 selectedPhase 同口径：取该 Boss 最新危局期，否则最新期 */
 const scPhase = computed(() => {
@@ -1815,37 +1739,18 @@ const scPhase = computed(() => {
 const scBossName = computed(() => scBoss.value?.name ?? '—')
 
 async function runSlotCompare() {
-  const boss = scBoss.value
-  const phase = scPhase.value
-  if (!boss || !phase) {
-    scProgress.value = { pct: 1, text: '先选 Boss（卡片右上角，默认跟随顶部）' }
-    setTimeout(() => { scProgress.value = null }, 2500)
-    return
-  }
-  if (scAgentA.value === scAgentB.value) {
-    scProgress.value = { pct: 1, text: '两名对比角色不能相同' }
-    setTimeout(() => { scProgress.value = null }, 2500)
-    return
-  }
-  scComputing.value = true
-  scProgress.value = { pct: 0, text: '准备…' }
-  await nextTick()
-  try {
-    scPoints.value = await computeSlotComparePoints(calc, {
-      slot: scSlot.value,
-      agentA: scAgentA.value,
-      agentB: scAgentB.value,
-      boss,
-      phase,
-      budget: budget.value ?? 6,
-      autoBuild: autoBuild.value,
-      optimalGold: optimalGold.value,
-      onProgress: p => { scProgress.value = p },
-    })
-  } finally {
-    scComputing.value = false
-    scProgress.value = null
-  }
+  // 校验/装配/调用已出函 composables/charts/chartRunners.ts#runSlotCompareCompute（第一片拆分，逐字搬迁）
+  await runSlotCompareCompute({
+    calc, computing: scComputing, progress: scProgress, points: scPoints,
+    boss: scBoss.value,
+    phase: scPhase.value,
+    slot: scSlot.value,
+    agentA: scAgentA.value,
+    agentB: scAgentB.value,
+    budget: budget.value,
+    autoBuild: autoBuild.value,
+    optimalGold: optimalGold.value,
+  })
 }
 
 // ---- Chart 7 SVG（双折线：A 蓝 / B 橙，横轴 = 主C实装节点；纵轴 = 伤害自动刻度） ----
@@ -1895,15 +1800,7 @@ const scHoverInfo = computed(() => {
   }
 })
 
-const scHoverRows = computed<HoverCardRow[]>(() => {
-  const h = scHoverInfo.value
-  if (!h) return []
-  return [
-    { text: `蓝 ${h.teamANames.join(' + ')}：${compact(h.damageA)}` },
-    { text: `橙 ${h.teamBNames.join(' + ')}：${compact(h.damageB)}` },
-    { text: h.diffText, cls: h.diff > 0 ? 'sc-diff-a' : h.diff < 0 ? 'sc-diff-b' : '' },
-  ]
-})
+const scHoverRows = computed<HoverCardRow[]>(() => buildSlotCompareHoverRows(scHoverInfo.value))
 const scCardX = ref(0)
 const scCardY = ref(0)
 function onScMove(e: MouseEvent) {
@@ -1951,41 +1848,21 @@ const simTargetOptions = computed(() =>
 )
 
 async function runFilmSim() {
-  const boss = selectedBoss.value
-  if (!boss) return
-  const axis = bossPeriodAxis.value.map(p => ({ id: p.id, label: `${p.seq}`, date: p.begin }))
-  if (axis.length === 0) {
-    simProgress.value = { pct: 1, text: '所选 Boss 在危局期数数据中无登场记录' }
-    setTimeout(() => { simProgress.value = null }, 2500)
-    return
-  }
-  if (candidatePool.value.filter(id => id !== mainAgentId.value).length < 2) {
-    simProgress.value = { pct: 1, text: '候选队友至少 2 名（不含主C）' }
-    setTimeout(() => { simProgress.value = null }, 2500)
-    return
-  }
-  simComputing.value = true
-  simProgress.value = { pct: 0, text: '准备…' }
-  try {
-    const res = await computeFilmSimulation(calc, {
-      boss,
-      axisNodes: axis,
-      periodViews: phaseViews.value,
-      mainAgentId: mainAgentId.value,
-      candidatePool: candidatePool.value,
-      initialGold: simInitialGold.value ?? 6,
-      filmPerVersion: simFilmPerVersion.value ?? 15000,
-      spendRatio: simSpendRatio.value ?? 0.5,
-      budgetYuanPerVersion: simBudgetYuan.value ?? 0,
-      targetPeriodId: simTargetPeriod.value || undefined,
-      autoBuild: autoBuild.value,
-      onProgress: p => { simProgress.value = p },
-    })
-    simPoints.value = res.points
-  } finally {
-    simComputing.value = false
-    simProgress.value = null
-  }
+  // 校验/装配/调用已出函 composables/charts/chartRunners.ts#runFilmSimCompute（第一片拆分，逐字搬迁）
+  await runFilmSimCompute({
+    calc, computing: simComputing, progress: simProgress, points: simPoints,
+    boss: selectedBoss.value,
+    axisNodes: bossPeriodAxis.value.map(p => ({ id: p.id, label: `${p.seq}`, date: p.begin })),
+    periodViews: phaseViews.value,
+    mainAgentId: mainAgentId.value,
+    candidatePool: candidatePool.value,
+    initialGold: simInitialGold.value,
+    filmPerVersion: simFilmPerVersion.value,
+    spendRatio: simSpendRatio.value,
+    budgetYuan: simBudgetYuan.value,
+    targetPeriod: simTargetPeriod.value,
+    autoBuild: autoBuild.value,
+  })
 }
 
 // ---- Chart 4 SVG（血量%主线 + 金数副线） ----
@@ -2032,16 +1909,7 @@ const simHoverInfo = computed(() => {
   }
 })
 
-const simHoverRows = computed<HoverCardRow[]>(() => {
-  const h = simHoverInfo.value
-  if (!h) return []
-  return [
-    { text: `${h.date} · 队伍 ${h.teamNames.join('+')}` },
-    { text: `伤害 ${compact(h.damage)}（${fmt(h.hpRatio, 1)}%）` },
-    { text: `${h.totalGold} 金 · ${h.goldLabel}` },
-    { text: `菲林：存 ${h.filmBank} · 本期投 ${h.filmSpent} · 累计 ${h.filmInvestedTotal}` },
-  ]
-})
+const simHoverRows = computed<HoverCardRow[]>(() => buildFilmSimHoverRows(simHoverInfo.value))
 const simCardX = ref(0)
 const simCardY = ref(0)
 function onSimMove(e: MouseEvent) {
