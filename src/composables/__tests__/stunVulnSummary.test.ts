@@ -11,7 +11,7 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { stunAxisPresets, cloneStunAxes } from '@/data/stunAxisPresets'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
-import { computeStunVulnSummary, rowAppliedStunMult } from '@/composables/stunVulnSummary'
+import { computeStunVulnSummary, computeStunVulnBySlot, rowAppliedStunMult } from '@/composables/stunVulnSummary'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 
 describe('rowAppliedStunMult（行级分量 → 生效易伤）', () => {
@@ -139,5 +139,38 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     expect(s.weightedVuln).toBeCloseTo(1.7211, 3)
     expect(s.weightedCredit).toBeCloseTo(0.7211, 3)
     expect(s.coverageRate).toBeCloseTo(0.6555, 3)
+  })
+})
+
+describe('computeStunVulnBySlot（逐人增幅，用户 2026-09-13）', () => {
+  const rows = [
+    { slot: 0, totalDamage: 100, appliedStunMult: 2.1 },
+    { slot: 0, totalDamage: 100, appliedStunMult: 1.0 },
+    { slot: 1, totalDamage: 50, appliedStunMult: 1.0 },
+    { slot: 2, totalDamage: 200, appliedStunMult: 2.1 },
+  ]
+  it('按槽位分组、同口径：满额 2.1/零 1.0，逐人 credit 与兑现率各自独立', () => {
+    const out = computeStunVulnBySlot(rows, 2.1)
+    expect(out.map(o => o.slot)).toEqual([0, 1, 2])
+    const [s0, s1, s2] = out
+    expect(s0.total).toBe(200)
+    expect(s0.credit).toBeCloseTo(0.55, 3)   // (2.1+1.0)/2 − 1
+    expect(s0.coverageRate).toBeCloseTo(0.5, 3)
+    expect(s1.credit).toBeCloseTo(0, 6)      // 完全没吃到易伤
+    expect(s1.coverageRate).toBeCloseTo(0, 6)
+    expect(s2.credit).toBeCloseTo(1.1, 3)    // 满额
+    expect(s2.coverageRate).toBeCloseTo(1, 6)
+  })
+  it('交叉对账：Σ(逐人 total × weightedVuln)/Σtotal == 全队 weightedVuln（分组不改加权，防两处口径漂移）', () => {
+    const team = computeStunVulnSummary(rows, 2.1)
+    const totalAll = rows.reduce((a, r) => a + r.totalDamage, 0)
+    const recalc = computeStunVulnBySlot(rows, 2.1).reduce((a, o) => a + o.total * o.weightedVuln, 0) / totalAll
+    expect(team.weightedVuln).toBeCloseTo(recalc, 9)
+  })
+  it('空槽/零伤害不炸；单人队也返回一条', () => {
+    expect(computeStunVulnBySlot([], 2.1)).toEqual([])
+    const one = computeStunVulnBySlot([{ slot: 2, totalDamage: 100, appliedStunMult: 1.05 }], 2.1)
+    expect(one).toHaveLength(1)
+    expect(one[0].coverageRate).toBeCloseTo(0.05 / 1.1, 3)
   })
 })

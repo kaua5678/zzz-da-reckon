@@ -66,3 +66,38 @@ export function computeStunVulnSummary(
     coverageRate: fullCredit > 1e-9 ? Math.max(0, Math.min(1, credit / fullCredit)) : 0,
   }
 }
+
+/**
+ * 逐人（按槽位）失衡易伤增幅（用户 2026-09-13：「分别对 3 个人的增幅是多少，对全队增幅又是多少，
+ * 这样能检查是不是只兑现了两成」）。**复用 `computeStunVulnSummary`**（同口径不另写公式，规则 11）：
+ * 按 slot 分组各调一次，满额参照 = 全队 fullMult。让「全队加权」可下钻到每成员——
+ * 谁的易伤吃满 / 谁几乎没吃到（兑现率 = credit/fullCredit）一眼对账。
+ */
+export interface StunVulnPerSlot {
+  slot: number
+  /** 该槽位总伤（易伤额外伤害 = total × credit） */
+  total: number
+  weightedVuln: number
+  /** 增幅 = 该人加权生效易伤 − 1 */
+  credit: number
+  /** 兑现率 = credit / (fullMult−1)（与全队同一满额参照，直读「只兑现 X 成」） */
+  coverageRate: number
+}
+
+export function computeStunVulnBySlot(
+  rows: { slot: number; totalDamage: number; appliedStunMult: number }[],
+  fullMult: number,
+): StunVulnPerSlot[] {
+  const slots = [...new Set(rows.map(r => r.slot))].sort((a, b) => a - b)
+  return slots.map(slot => {
+    const mine = rows.filter(r => r.slot === slot)
+    const s = computeStunVulnSummary(mine, fullMult)
+    return {
+      slot,
+      total: mine.reduce((acc, r) => acc + Math.max(0, r.totalDamage), 0),
+      weightedVuln: s.weightedVuln,
+      credit: s.weightedCredit,
+      coverageRate: s.coverageRate,
+    }
+  })
+}

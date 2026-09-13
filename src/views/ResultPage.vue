@@ -679,6 +679,13 @@
               </span>
             </span>
           </div>
+          <div v-if="stunVulnPerSlot.length > 1 && stunVulnSummary.fullCredit > 1e-9" class="damage-pool-row damage-pool-slots">
+            <span class="damage-pool-footer-label">逐人增幅</span>
+            <span v-for="p in stunVulnPerSlot" :key="p.slot" class="damage-pool-slot-item">
+              {{ p.name }} <b>+{{ p.credit.toFixed(3) }}</b>
+              <span class="damage-pool-footer-sub">（兑现 {{ (p.coverageRate * 100).toFixed(0) }}% · 额外伤害 {{ fmt(p.total - p.total / p.weightedVuln, 0) }}）</span>
+            </span>
+          </div>
         </div>
       </n-card>
         </n-tab-pane>
@@ -777,7 +784,7 @@ import { fmt } from '@/utils/format'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import FinalPanel from '@/components/FinalPanel.vue'
 import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf, truncationHint as truncationHintOf } from '@/composables/teamTimeSummary'
-import { computeStunVulnSummary, rowAppliedStunMult } from '@/composables/stunVulnSummary'
+import { computeStunVulnSummary, computeStunVulnBySlot, rowAppliedStunMult } from '@/composables/stunVulnSummary'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
 import type { CharacterResourceResult, AnomalyEventRecord } from '@/types/resource'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
@@ -901,16 +908,26 @@ function stunVulnTitleOf(row: DamagePoolRow): string {
     : (row.stunMult >= 1 ? 1 : 0)
   return `轴内覆盖 ${(frac * 100).toFixed(0)}% → 生效易伤 ×${appliedVulnOf(row)}`
 }
-const stunVulnSummary = computed(() => {
+// 行级生效易伤映射（全队汇总与逐人共用，避免两处各算一遍漂移）
+const stunVulnAppliedRows = computed(() => {
   const { vuln, bonus, always, cap } = stunVulnPanelOf()
-  const full = calcStunMultiplier(vuln, bonus, always, cap, true)
-  return computeStunVulnSummary(
-    damagePoolRows.value.map(row => ({
+  return {
+    full: calcStunMultiplier(vuln, bonus, always, cap, true),
+    rows: damagePoolRows.value.map(row => ({
+      slot: row.slot,
       totalDamage: row.totalDamage,
       appliedStunMult: rowAppliedStunMult(row.stunMult, vuln, bonus, always, cap),
     })),
-    full,
-  )
+  }
+})
+const stunVulnSummary = computed(
+  () => computeStunVulnSummary(stunVulnAppliedRows.value.rows, stunVulnAppliedRows.value.full))
+/** 逐人失衡易伤增幅（用户 2026-09-13）：全队加权可下钻到每成员，直读「只兑现 X 成」 */
+const stunVulnPerSlot = computed(() => {
+  const { full, rows } = stunVulnAppliedRows.value
+  const names = new Map<number, string>()
+  for (const r of damagePoolRows.value) if (!names.has(r.slot)) names.set(r.slot, r.agentName || `${r.slot + 1}号位`)
+  return computeStunVulnBySlot(rows, full).map(p => ({ ...p, name: names.get(p.slot) ?? `${p.slot + 1}号位` }))
 })
 
 // 紊乱伤害已纳入 damagePoolRows，无需额外加算
@@ -1453,6 +1470,18 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+.damage-pool-slots {
+  background: var(--app-tablehead-bg);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 12px;
+}
+.damage-pool-slot-item b {
+  color: var(--app-accent-gold);
+  font-weight: 600;
 }
 .damage-pool-footer-label {
   color: var(--app-text-dim);
