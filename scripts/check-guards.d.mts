@@ -208,7 +208,14 @@ export declare function scanDtsDrift(root?: string): {
   exportedNotDeclared: DtsDriftRow[]
 }
 export declare function extractRuntimeExports(source: string): string[]
-export declare function applyDeadChannelAllowlist(candidates: DeadChannelCandidate[] | DtsDriftRow[]): {
+/**
+ * 按白名单豁免死通道候选。`segment`（'A'|'B'|'C'）**应显式传**：候选为空时也要查该段
+ * 清单是否该销号（不传则退回「从候选推断段」，空候选 = 不查 stale 的旧行为）。
+ */
+export declare function applyDeadChannelAllowlist(
+  candidates: DeadChannelCandidate[] | DtsDriftRow[],
+  segment?: string | null,
+): {
   fresh: (DeadChannelCandidate | DtsDriftRow)[]
   allowlisted: (DeadChannelCandidate | DtsDriftRow)[]
   /** 清单里已不再命中的行（按 A|/B|/C| 段各自计算） */

@@ -838,7 +838,26 @@ describe('applyDeadChannelAllowlist（判据 14 的豁免与 burn-down）', () =
     expect(r.fresh).toHaveLength(1)
   })
 
-  it('空候选集不产生 stale（不能因为「本段没扫到」把清单判过期）', () => {
+  // 2026-09-14 修（T15 审计 #5 发现）：原断言「空候选集不产生 stale」把**腐烂行为钉成了契约**——
+  // 段被清干净 ⇒ 该段候选集为空 ⇒ 该段清单条目永久留存，且棘轮读数照常下降（候选没了自然 0）。
+  // 「修好了但忘了销号」恰恰是本判据要抓的形态，却因为修好了而看不见。
+  // 现改为：段集合取自**清单自身**，空候选集 ⇒ 全清单 stale（红）。
+  it('★ 显式段 + 空候选集 = 该段清单全 stale（段清干净了就必须销号，否则永久留存）', () => {
+    const aKeys = Object.keys(DEAD_CHANNEL_ALLOWLIST).filter(k => k.startsWith('A|'))
+    expect(aKeys.length).toBeGreaterThan(0)
+    expect(applyDeadChannelAllowlist([], 'A').stale).toEqual(aKeys)
+  })
+
+  it('★ 段与段各查各的（B 段调用不会把 A 段清单误报过期）', () => {
+    const bKey = Object.keys(DEAD_CHANNEL_ALLOWLIST).find(k => k.startsWith('B|'))!
+    const [file, name] = [bKey.slice(2).split(' ')[0], bKey.slice(2).split(' ')[1]]
+    const r = applyDeadChannelAllowlist([{ key: bKey, file, line: 1, name }], 'B')
+    expect(r.stale).not.toContain(bKey)              // 本段命中 ⇒ 不过期
+    expect(r.stale.every(k => k.startsWith('B|'))).toBe(true)   // 只查 B 段 ⇒ A/C 段不参与
+    expect(r.stale.length).toBe(Object.keys(DEAD_CHANNEL_ALLOWLIST).filter(k => k.startsWith('B|')).length - 1)
+  })
+
+  it('不传 segment 时退回旧行为（从候选推断；空候选 = 不查 stale）——只给旧调用方兜底', () => {
     expect(applyDeadChannelAllowlist([]).stale).toEqual([])
   })
 

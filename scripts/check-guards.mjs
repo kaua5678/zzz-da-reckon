@@ -1299,20 +1299,29 @@ function relPosix(root, p) {
 /**
  * 按白名单豁免死通道候选；返回 { fresh, allowlisted, stale }。
  *
- * `stale`（清单里已不再命中的行）**只在该候选集自己所属的段内计算**（key 前缀 `A|`/`B|`/`C|`）——
- * 三段各查各的：若拿 global key 列表去比单个段的命中集，A 段的 13 条会被 B 段调用误报成 stale
- * （实测：三段合并跑时 15 条全报 expired，而它们其实全在 A/B 段命中）。
+ * `stale`（清单里已不再命中的行）**只在同一段内计算**（key 前缀 `A|`/`B|`/`C|`）——
+ * 三段各查各的：若拿 global key 列表去比单个段的命中集，A 段的条目会被 B 段调用误报成 stale。
+ *
+ * ⚠ **必须显式传 `segment`**（2026-09-14 修，T15 审计 #5 发现）：
+ * 首版 `segments` 从 candidates 推断，于是「某段被清干净 ⇒ 该段候选集为空 ⇒ 该段永不查 stale」
+ * ——实测 A 段清空后清单里 5 条 `A|` 记录永久留存，且棘轮读数照常下降（度量 = allowlisted.length，
+ * 候选没了自然 0）。**「修好了但忘了销号」恰好是这个判据要抓的形态，却因为修好了而看不见**。
+ * 现改为由**调用方声明本次扫的是哪一段**：候选为空也照常查该段 stale（空 = 全 stale = 红）。
+ *
+ * 不传 `segment` 时退回「从候选推断段」（`fresh`/`allowlisted` 仍然正确，`stale` 在空候选时为
+ * 空数组）——**只给不理解 scope 的旧调用方兜底**，生产接线一律显式传。
  */
-export function applyDeadChannelAllowlist(candidates) {
+export function applyDeadChannelAllowlist(candidates, segment = null) {
   const keys = Object.keys(DEAD_CHANNEL_ALLOWLIST)
   const fresh = candidates.filter(c => !keys.includes(c.key))
   const allowlisted = candidates.filter(c => keys.includes(c.key))
   const hit = new Set(candidates.map(c => c.key))
-  // 段前缀从候选自身取（空候选集时无可推断段 → 返回空 stale，不误报）
-  const segments = new Set(candidates.map(c => c.key.slice(0, c.key.indexOf('|') + 1)))
-  const stale = segments.size === 0
-    ? []
-    : keys.filter(k => segments.has(k.slice(0, k.indexOf('|') + 1)) && !hit.has(k))
+  const segOf = (k) => k.slice(0, k.indexOf('|') + 1)
+  // 显式 scope 优先（空候选也查）；否则从候选推断（旧行为，空候选 = 不查）
+  const segments = segment
+    ? new Set([segment.endsWith('|') ? segment : segment + '|'])
+    : new Set(candidates.map(c => segOf(c.key)))
+  const stale = segments.size === 0 ? [] : keys.filter(k => segments.has(segOf(k)) && !hit.has(k))
   return { fresh, allowlisted, stale }
 }
 
@@ -1677,11 +1686,12 @@ export function runAllChecks(root = ROOT) {
 
   // ---- 判据 14：死通道扫描（防「接口/参数在但实现没接」） ----
   {
-    const deadA = applyDeadChannelAllowlist(scanDeadOptionalProps(root))
-    const deadB = applyDeadChannelAllowlist(scanReadOnlyOptionalProps(root))
+    // 显式传段：候选为空时也要查该段清单是否该销号（见 applyDeadChannelAllowlist 的 ⚠ 说明）
+    const deadA = applyDeadChannelAllowlist(scanDeadOptionalProps(root), 'A')
+    const deadB = applyDeadChannelAllowlist(scanReadOnlyOptionalProps(root), 'B')
     const dts = scanDtsDrift(root)
     const dtsDrift = [...dts.declaredNotExported, ...dts.exportedNotDeclared]
-    const dtsFresh = applyDeadChannelAllowlist(dtsDrift)
+    const dtsFresh = applyDeadChannelAllowlist(dtsDrift, 'C')
     const fresh = [...deadA.fresh, ...deadB.fresh, ...dtsFresh.fresh]
     const stale = [...deadA.stale, ...deadB.stale, ...dtsFresh.stale]
     const counts = `A 零读零写 ${deadA.allowlisted.length} / B 只读不写 ${deadB.allowlisted.length} / C dts 漂移 ${dtsFresh.allowlisted.length}`
