@@ -266,11 +266,23 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
     // 一旦存量登记进 CALIBER_TRIGGER_ALLOWLIST，missing 当场归零 ⇒ 8 条棘轮里这条
     // current=0 / done=true，**从提醒面直接消失**（冻结 82 条待补 = 装作已还清）。
     // 对「棘轮 = 存量豁免 + 新增即红」形态的判据，剩余量 = 红灯数 + 豁免清单长度。
-    const zc = readFileSync(join(process.cwd(), 'scripts/zc.mjs'), 'utf8')
-    expect(zc).toContain('CALIBER_TRIGGER_ALLOWLIST.length')
-    expect(zc).toContain('g.scanCaliberTriggers(root).missing.length + g.CALIBER_TRIGGER_ALLOWLIST.length')
-    // 死通道同款：剩余量 = 三段 allowlisted 之和（fresh 恒为 0 是"守得住"，不是"还完了"）
-    expect(zc).toContain('applyDeadChannelAllowlist(g.scanDeadOptionalProps(root)).allowlisted.length')
+    //
+    // ⚠ 2026-09-14 从「断言 zc.mjs 源码含某个表达式字符串」改为**行为断言**（T15 审计 #12）：
+    // 断言实现文本是共模失效面——实现换个等价写法测试就假红；而实现真错了（比如漏加 allowlist
+    // 长度）只要那串字符串还在也会假绿。改为直接算剩余量并验证「存量非空 ⇒ 读数不归零」这条语义。
+    const triggers = scanCaliberTriggers()
+    const deadA = applyDeadChannelAllowlist(scanDeadOptionalProps(), 'A')
+    const deadB = applyDeadChannelAllowlist(scanReadOnlyOptionalProps(), 'B')
+    const noun = auditNounTriage()!
+    // 语义判据：豁免清单非空 ⇒ 剩余量必须含清单长度（否则「冻结 = 装作已还清」）
+    expect(CALIBER_TRIGGER_ALLOWLIST.length).toBeGreaterThan(0)   // 存量确实非空
+    expect(triggers.missing.length + CALIBER_TRIGGER_ALLOWLIST.length).toBe(triggers.game.length)
+    // 死通道同款：三段 allowlisted 之和（fresh 恒为 0 是「守得住」，不是「还完了」）
+    expect(Object.keys(DEAD_CHANNEL_ALLOWLIST).length).toBeGreaterThan(0)
+    expect(deadA.allowlisted.length + deadB.allowlisted.length).toBe(Object.keys(DEAD_CHANNEL_ALLOWLIST).length)
+    // 名词表同款：deferred 是存量挂账，不是「已还清」
+    const deferred = Object.values(noun.triage.entries ?? {}).filter(e => e.state === 'deferred').length
+    expect(deferred).toBeGreaterThan(0)
   })
 
   it('★ 本轮新增的三条棘轮都登记了 due 与 plan（防「冻结 = 永久豁免」）', () => {
