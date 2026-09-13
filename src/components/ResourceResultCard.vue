@@ -311,7 +311,7 @@ import { NCard, NTag, NDataTable } from 'naive-ui'
 import type { CharacterResourceResult, StunPoolResult, AnomalyPoolResult } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { getAgentMechanic } from '@/mechanics'
-import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS } from '@/core/anomalyPool/helpers'
+import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 
 const props = defineProps<{
   result: CharacterResourceResult

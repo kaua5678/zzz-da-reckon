@@ -189,7 +189,7 @@ dot 与后台/CD 自动伤害都不结算。已扣无敌的位置：异常池 Do
 | **喧响收入** | 行级 Σ `rowDecibelTotal` / 旧聚合通道（已删） | 行级 Σ（`@fact engine:喧响收入行级Σ`） | ✅ 已收口 |
 | **能量** | `energySource.total` / `derivedEnergy` | 同一函数同一入参（坑 14） | ✅ 已收口 |
 | **伤害乘区** | `calcDirectDamage` / `calcAnomalyDamage` | 各自单源；**输入**（减防等）曾漏传 | ✅ 已收口（坑 26） |
-| **暴击/锐暴乘区** | `core/damage.ts`（权威）/ `substatOptimizer` 贪心评分 / `FinalPanel`·`StatPanel` 展示 | **`core/damage.ts` `sharpCritMultiplier`**（锋御 200% 封顶、100% 以上额外锐暴**乘算**；优化器与 UI 一律调它，不得各自实现） | ✅ 已收口（2026-09-09 克拉蕾锐暴口径） |
+| **暴击/锐暴乘区** | 定义 `data/sharpCritMultiplier.ts`（权威）/ `substatOptimizer` 贪心评分 / `FinalPanel`·`StatPanel` 展示 | **`data/sharpCritMultiplier.ts` `sharpCritMultiplier`**（锋御 200% 封顶、100% 以上额外锐暴**乘算**；优化器与 UI 一律调它，不得各自实现）。2026-09-13 展示层棘轮下沉：**定义**移到 `src/data/`，`core/damage.ts` re-export（引擎侧调用点与 `@fact` 锚不变） | ✅ 已收口（2026-09-09 克拉蕾锐暴口径；2026-09-13 下沉，行为 0 delta） |
 | **倍率/失衡/积蓄行值** | 倍率表 / `enrichExecutionPlan` 回填 / 模块 override | 倍率表 + `*Override` 标记 | ✅ 单一 |
 | **多段招式「一次动作」时长/喧响** | catalog 段行 / `find*` 头段 / `moveFusions` 登记组 / 赠送回填（诺姆·琉音） | `moveFusions` 登记组 → `fusedGroupMetrics`+`channelMetricsOf`（自动攻击段 `countsTime:false` 不占时间） | ✅ 全通道已收口（坑 31，未登记组属数据录入侧） |
 

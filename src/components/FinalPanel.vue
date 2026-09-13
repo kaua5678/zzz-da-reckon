@@ -94,7 +94,7 @@ import { NCard, NCollapse, NCollapseItem, NGi, NGrid, NTabPane, NTabs } from 'na
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
-import { sharpCritMultiplier } from '@/core/damage'
+import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { isPctStat } from '@/utils/statMeta'
 import { fmt, pct, localized } from '@/utils/format'
 import type { BuffEffect, BuffGroup, PanelValues } from '@/types/catalog'

@@ -130,10 +130,10 @@ export const RATCHET_BURNDOWN = [
   {
     id: '展示层越层 import',
     file: 'src/views + src/components',
-    frozen: 23,
+    frozen: 15,  // 2026-09-11 评审冻结 23 → 15（2026-09-13 T7 首次真清偿 −8：纯常量/纯函数下沉 src/data，原位置改 re-export + 展示层改 import 路径，vue-tsc 0 错、@fact 锚 93/93 不变）。下沉清单与「剩 15 处为何不能下沉」见 EXHIBITION_LAYER_IMPORT_BASELINE 头注释
     target: 0,
     due: '2026-12-31',
-    plan: '常量/纯函数下沉 src/data/ 或经编排层透出；逐文件清理后下调 EXHIBITION_LAYER_IMPORT_BASELINE',
+    plan: '剩 15 处全是**真引擎调用**（getAgentMechanic×4 / buildTeammateBuffSourceContext×2 / calcPanel / applyTargetedStat / calcStunMultiplier / allocateAxisWindows / computeOptimalSubStats+getTemplate / readImpactVar+writeImpactVar / agentSpecs / computeBanyueMingwangBlocks+BANYUE_AXIS_MOVE_META / computeYixuanNingshenBlocks），无纯常量可下沉；正解是经编排层（composables/resourceCalc）透出面板/引擎产物，属架构改动，逐条独立立项。纯函数类已全部下沉完毕（23→15）',
   },
   {
     id: '手册 §4 行数',
@@ -497,10 +497,35 @@ export const EXHIBITION_LAYER_DIRS = ['src/views', 'src/components']
 export const EXHIBITION_LAYER_FORBIDDEN = /@\/(?:core|mechanics|specs)(?:\/|['"])/
 
 /**
- * 2026-09-11 冻结基线（评审时实测 23 处运行时越层 import；另有 1 处 `import type` 按豁免不计）。
- * 只减不增：迁走一处 → 把基线下调到新值（护栏会提示）；上调没有合法路径。
+ * 2026-09-11 冻结基线（评审时实测 23 处运行时越层 import；另有 1 处 `import type` 按豁免不计）
+ * → **15**（2026-09-13 T7 首次真清偿 −8）。只减不增：迁走一处 → 把基线下调到新值；上调没有合法路径。
+ *
+ * 23 → 15 沿革（纯常量/纯函数下沉 `src/data/`，原位置改 re-export ⇒ 引擎侧调用点、测试、
+ * `@fact` 锚零改动，规则 11 单一事实源不破；实测 vue-tsc 0 错、@fact 锚 93/93 不变）：
+ *  · `SKILL_DMG_TARGETS`/`SKILL_DMG_TARGET_LABELS`/`normalizeSkillDamageTarget`
+ *    `core/buff.ts` → `data/skillDamageTargets.ts`（buff.ts re-export）
+ *    ⇒ 属性配置页 + 调试页 2 处
+ *  · `scoreForDamageRatio`（含 SCORE_CURVES/cap/逆函数，整模块纯）
+ *    `core/deadlyAssaultScore.ts` → `data/deadlyAssaultScore.ts`（core 留 re-export 壳）⇒ 实战对比页 1 处
+ *  · `ANOMALY/DISORDER/TURBULENCE_DECIBEL_BONUS`
+ *    `core/anomalyPool/helpers.ts` → `data/anomalyDecibelBonuses.ts`（helpers import+re-export）
+ *    ⇒ 结果卡 1 处
+ *  · `ULTIMATE_COST_DEFAULT` `core/resource.ts` → `data/resourceDefaults.ts`（resource.ts re-export）⇒ 队伍配置页 1 处
+ *  · `BOSS_ENTRY_ANOMALY_OPTIONS` `core/stunAxis/inStunAnomaly.ts` → `data/bossEntryAnomalyOptions.ts` ⇒ 失衡轴页 1 处
+ *  · `sharpCritMultiplier` `core/damage.ts` → `data/sharpCritMultiplier.ts`（damage.ts re-export）
+ *    ⇒ 面板卡 + 属性面板 2 处。⚠ 偏离 T7 简报的「本批不要碰」清单：简报把它列为「真引擎调用，
+ *    需经编排层透出或改架构」，但**实测它是纯函数**（2 个标量入参 → 1 个数，无 import/无状态），
+ *    且本文件 :489 的设计注释与 `docs/architecture-review-2026-09-11.md:162` 都已把它列进
+ *    「常量/纯函数，正解是下沉 src/data/」名单——无需架构改动。如需回退，把该函数搬回 damage.ts +
+ *    两个组件 import 改回 `@/core/damage` 即可（棘轮基线同步回调 15→17）。
+ *
+ * **剩 15 处不能再按本法下沉**（逐处核过，全是真引擎调用或注册表读取，无纯常量）：
+ * getAgentMechanic×4 / buildTeammateBuffSourceContext×2 / calcPanel / applyTargetedStat /
+ * calcStunMultiplier / allocateAxisWindows / computeOptimalSubStats+getTemplate /
+ * readImpactVar+writeImpactVar（收 configStore，非纯）/ agentSpecs / computeBanyueMingwangBlocks+
+ * BANYUE_AXIS_MOVE_META / computeYixuanNingshenBlocks。它们要经编排层透出，属架构改动。
  */
-export const EXHIBITION_LAYER_IMPORT_BASELINE = 23
+export const EXHIBITION_LAYER_IMPORT_BASELINE = 15
 
 /**
  * 单行判定：是否构成越层依赖。

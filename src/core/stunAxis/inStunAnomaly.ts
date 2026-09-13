@@ -9,6 +9,11 @@
  * ANOMALY_DURATION 秒（通常覆盖至窗尾）。积蓄速率均匀摊到动作时长内（瞬发招式记在起点）。
  */
 import { ANOMALY_DURATION, BUILDUP_THRESHOLD_TABLE, getBaseElement } from '@/core/anomalyPool/helpers'
+// 下沉（2026-09-13 展示层越层棘轮）：选项表**定义**在 src/data/bossEntryAnomalyOptions.ts，
+// 此处 re-export 保持引擎侧 `bossEntryAnomalyElement()` 与既有 `@/core/stunAxis/inStunAnomaly`
+// 引用零改动；展示层（失衡轴页）改 import `@/data/…`。
+import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/data/bossEntryAnomalyOptions'
+export { BOSS_ENTRY_ANOMALY_OPTIONS }
 
 export interface InStunAction {
   /** 来源招式 id（可选）：填了才会在触发事件上标注「哪个招式触发的」（轴编辑器块级可视化用） */
@@ -219,20 +224,8 @@ export function computeInStunAnomalyTimeline(input: {
 // 不参与替换、也不被替换）。本函数把 v2 时间线的触发序列推进成逐窗状态链。
 
 /**
- * Boss 进窗初始异常状态选项（用户口径 v2 需求②「可指定进入窗口时的异常状态」）。
- * 机制设置键 `boss.entryAnomaly`，存 number 索引（设置存储为 number），0=无。
+ * 设置索引 → 初始状态元素（''=无）
  */
-export const BOSS_ENTRY_ANOMALY_OPTIONS: ReadonlyArray<{ value: number; element: string }> = [
-  { value: 0, element: '' },
-  { value: 1, element: 'fire' },
-  { value: 2, element: 'electric' },
-  { value: 3, element: 'ice' },
-  { value: 4, element: 'ether' },
-  { value: 5, element: 'physical' },
-  { value: 6, element: 'wind' },
-]
-
-/** 设置索引 → 初始状态元素（''=无） */
 export function bossEntryAnomalyElement(settingValue: number): string {
   return BOSS_ENTRY_ANOMALY_OPTIONS.find(o => o.value === settingValue)?.element ?? ''
 }

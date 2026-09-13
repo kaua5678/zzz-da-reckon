@@ -178,7 +178,7 @@ import { submissionToDeploy, type ArchiveRun, type ArchiveRoom } from '@/composa
 import { applyDeployConfig, applyPeriodBuff } from '@/composables/runArchiveDeploy'
 import type { DeployConfig } from '@/composables/runArchiveImport'
 import { runLimitedGold, lowGoldFrontier } from '@/composables/limitedGold'
-import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
+import { scoreForDamageRatio } from '@/data/deadlyAssaultScore'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import { localized } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView, PhaseBuffCard } from '@/types/bossPreset'

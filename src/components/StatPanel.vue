@@ -502,7 +502,7 @@ import { ref, computed } from 'vue'
 import { NCollapse, NCollapseItem } from 'naive-ui'
 import type { DamageElement, PanelValues } from '@/types/catalog'
 import { getStatMeta, isPctStat } from '@/utils/statMeta'
-import { sharpCritMultiplier } from '@/core/damage'
+import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 
 const props = defineProps<{
   panel: PanelValues

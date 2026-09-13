@@ -254,7 +254,7 @@ import { computeYixuanNingshenBlocks } from '@/mechanics/agents/yixuan'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 import { fmt } from '@/utils/format'
 import type { StunAxisAction, StunAxisPlan, StunAxis } from '@/types/resource'
-import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/core/stunAxis/inStunAnomaly'
+import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/data/bossEntryAnomalyOptions'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()

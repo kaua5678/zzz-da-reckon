@@ -399,7 +399,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useStatLabel } from '@/composables/useStatLabel'
 import { getGlobalBuffStatOptions } from '@/utils/statMeta'
 import { localized } from '@/utils/format'
-import { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS } from '@/core/buff'
+import { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
 import BossSelectCard from '@/components/BossSelectCard.vue'
 import type { TeammateBuffGroup, TeammateBuff, BuffEffect } from '@/types/catalog'
 

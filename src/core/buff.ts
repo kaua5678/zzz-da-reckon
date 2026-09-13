@@ -11,27 +11,10 @@ import { GENERATED_ENEMY_DEBUFF_STAT_IDS, LEGACY_ENEMY_DEBUFF_STAT_IDS, normaliz
 /** 收集的 buff 列表 */
 
 
-export const SKILL_DMG_TARGETS: SkillDamageTarget[] = [
-  'all', 'basic', 'special', 'exSpecial', 'ultimate', 'chain', 'assist', 'dodgeCounter', 'dashAttack', 'additionalAttack',
-]
-
-export const SKILL_DMG_TARGET_LABELS: Record<SkillDamageTarget, string> = {
-  all: '全部招式',
-  basic: '普通攻击',
-  special: '特殊技',
-  exSpecial: '强化特殊技',
-  ultimate: '终结技',
-  chain: '连携技',
-  assist: '支援技',
-  dodgeCounter: '闪避反击',
-  dashAttack: '冲刺攻击',
-  additionalAttack: '追加攻击',
-}
-
-export function normalizeSkillDamageTarget(target?: string): SkillDamageTarget {
-  if (target && (SKILL_DMG_TARGETS as string[]).includes(target)) return target as SkillDamageTarget
-  return 'all'
-}
+// 下沉（2026-09-13 展示层越层棘轮）：三个符号的**定义**在 src/data/skillDamageTargets.ts，
+// 此处 re-export 保持引擎侧既有调用点与 `@/core/buff` 引用零改动；展示层改 import `@/data/…`。
+export { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
+import { normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 
 function targetedStatKey(stat: string, target?: string): string {
   const normalized = normalizeSkillDamageTarget(target)

@@ -147,21 +147,11 @@ function calcCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCr
   }
 }
 
-/**
- * 锋御锐暴乘区期望值（用户口径 2026-09-09）。
- *
- * 普通暴击 100% 封顶；锋御的**锐暴封顶 200%**——100% 以上每多 1% 是一次「额外锐暴判定」的概率，
- * 每次锐暴都是**乘算**：锐暴伤害 150% → 爆一次 ×2.5、爆两次 ×2.5² = 6.25。
- *   期望 = r ≤ 100 时 1 + r·d；r > 100 时 (1+d) × (1 + p·d)，p = min(1, (r-100)/100)。
- * 实测锚：r=150、d=1.5 → 0.5×2.5 + 0.5×6.25 = 4.375（= 2.5×1.75）。
- */
-export function sharpCritMultiplier(critRateRaw: number, sharpCritDmgPct: number): number {
-  const d = sharpCritDmgPct / 100
-  const r = Math.max(0, critRateRaw)
-  if (r <= 100) return 1 + (r / 100) * d
-  const p = Math.min(1, (r - 100) / 100)
-  return (1 + d) * (1 + p * d)
-}
+// 下沉（2026-09-13 展示层越层棘轮）：**定义**在 src/data/sharpCritMultiplier.ts，此处 re-export
+// 保持引擎侧调用点（本文件 calcSharpCritMultiplier、substatOptimizer）与文档引用零改动；
+// 展示层（FinalPanel / StatPanel）改 import `@/data/…`。改公式只改 src/data 那一处。
+import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
+export { sharpCritMultiplier }
 
 function calcSharpCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCrit', targetSkillType?: SkillDamageTarget): { multiplier: number; label: string } {
   const sharpCritDmg = getTargetedStat(panel, 'sharpCritDmg', targetSkillType) + (panel.enemyCritDmgTakenBonus ?? 0)

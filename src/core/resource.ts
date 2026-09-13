@@ -1088,8 +1088,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
 
 // ============ 辅助函数 ============
 
-/** 终结技喧响消耗（全游戏统一3000，仅1个角色为2000暂不纳入计算器） */
-export const ULTIMATE_COST_DEFAULT = 3000
+// 下沉（2026-09-13 展示层越层棘轮）：定义在 src/data/resourceDefaults.ts，此处 re-export 保持
+// 引擎侧调用点与既有 `@/core/resource` 引用零改动；展示层改 import `@/data/…`。
+export { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 
 /** 从倍率表数据提取强特信息
  *  在 special category 中找 "EX Special Attack" 的 move

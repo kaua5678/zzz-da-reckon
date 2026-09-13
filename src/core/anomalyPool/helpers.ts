@@ -54,10 +54,11 @@ import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
 import { simulateVelinaCorrosionState } from '@/mechanics/agents/velina'
 
 // ============ 喧响奖励常量 ============
-
-export const ANOMALY_DECIBEL_BONUS = 170   // 触发属性异常奖励
-export const DISORDER_DECIBEL_BONUS = 85    // 触发紊乱奖励
-export const TURBULENCE_DECIBEL_BONUS = 85  // 触发乱流奖励
+// 下沉（2026-09-13 展示层越层棘轮）：定义在 src/data/anomalyDecibelBonuses.ts（单一事实源，
+// 规则 11：core 与 data 不各存一份）；此处 import + re-export 保持 anomalyPool.ts 的解构与
+// 既有 `@/core/anomalyPool/helpers` 引用零改动；展示层改 import `@/data/…`。
+import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
+export { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS }
 
 // ============ 伤害计算常量 ============
 
