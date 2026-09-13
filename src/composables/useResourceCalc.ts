@@ -301,8 +301,9 @@ export function useResourceCalc() {
        * 副作用**（受控实验：显式拒绝全部试算得到的就是基线值；关掉热启动、关掉本触发臂也都复现同一基线）。
        * 所以「+2.8s 回归」= 验收太严 ⇒ 停在基线态，不是污染。**验收目标怎么定**（消截断 / 时间账不恶化 /
        * 伤害不降）是需要设计的口径问题，别再用「收紧验收」当修法。
-       * 另：本队两次等价调用的 `axisFallback` 出现过 true/false 分叉 ⇒ 疑与「非实数化队落点随初值漂移」
-       * 的既有性质有关（多不动点 + 调用顺序），待专项复现，不要先按"泄漏"去修。
+       * 另：本队两次等价调用的 `axisFallback` true/false 分叉，2026-09-13 复现定性 = **验收臂 + 非单调
+       * 可行集的必然产物**，不是状态泄漏：每个 scale 的试算结果与试算次序无关（实测 0.25 单独 vs 跟在
+       * 0.0625 后，net 均 180.191/计数均 16/6）；次序只改「哪个 scale 先被采纳」。要动这条得先证可行集下闭。
        */
       const overBudgetNet = (x: CalcRoundResult | null) =>
         stunEffTime > 0 && x != null && frontlineTotalOf(x) > stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
@@ -359,9 +360,11 @@ export function useResourceCalc() {
               && Math.max(0, net - stunEffTime) <= baseOver + TIME_BUDGET_TOLERANCE_SECONDS
               && Math.max(0, stunEffTime - net) <= baseSlack + TIME_BUDGET_TOLERANCE_SECONDS
           }
-          // 注：曾试过「先用最小候选探一次、失败即跳过扫描」的成本闸门 —— **实测会改结果**
-          // （同为"没人满足"的两种路径给出的最终态不同 ⇒ 再次印证试算顺序/次数会影响落点，见账本 round 5/7），
-          // 故不采用；结构性溢出队因此要付满 8 次整轮试算（已知成本，见账本 Open）。
+          // **否决记录（2026-09-13 复现定性，见 docs 坑19 判据⑤）**：曾试过「先用最小候选探一次、失败即跳过扫描」
+          // 的成本闸门，实测改结果。**根因不是"试算不纯/状态泄漏"**——受控实验证明每个 scale 的试算结果与
+          // 它前面跑过哪些试算**无关**（0.25 单独跑与跟在 0.0625 后跑，net 均 180.191）；真因是**可行集非下闭**
+          // （全库 21 队中 7 队「存在可行 x 且存在 y<x 不可行」，3 队最小档不可行但更大档可行）⇒
+          // 「最小档不行 ⇒ 全体不行」的前提为假，成本闸门必然漏掉更大档。故不采用；结构性溢出队付满 8 次试算。
           for (const scale of SCALES) {
             const trial = runOuterLoop(true, scale)
             if (!acceptsTrial(trial.out)) continue
