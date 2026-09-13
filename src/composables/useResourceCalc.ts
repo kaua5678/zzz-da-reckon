@@ -14,6 +14,7 @@ import { getAgentMechanic } from '@/mechanics'
 import { initialCalcRoundThreads, threadsAfterNullRound } from './resourceCalc/roundThreads'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
 import { createConvergenceRoundInputs, createRunCalcRound, type CalcRoundResult } from './resourceCalc/convergence'
+import { DOWNSCALE_SCALES, selectDownscaleScale, downscaleTrialAccepted } from './resourceCalc/feasibilitySearch'
 import type {
   CharacterOperationConfig,
   ResourceCalcConfig,
@@ -346,34 +347,29 @@ export function useResourceCalc() {
           // scale=0.0625（交互几乎清零）只为少几秒截断 —— 与「交互只取达成目标的**最少要求**」相反。
           // 本版：SCALES 由大到小扫，**首个同时满足「三臂不比基线更差」且「截断 ≤1s」**者即采纳
           // （= 最大可行 scale、保留最多交互）；**无人满足 ⇒ 不动**（保基线态、截断如实上报 → 逐模块退化）。
-          const SCALES = [0.875, 0.75, 0.625, 0.5, 0.375, 0.25, 0.125, 0.0625]
-          let best: { out: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter'; scale: number } | null = null
+          // **策略的单一事实源 = `resourceCalc/feasibilitySearch.ts`**（纯函数 + 回归测试；判据⑤的`@fact`在那里）。
+          // **否决记录（2026-09-13 复现定性）**：曾试过「先用最小候选探一次、失败即跳过扫描」的成本闸门，实测改结果。
+          // **根因不是"试算不纯/状态泄漏"**——受控实验证明每个 scale 的试算结果与它前面跑过哪些试算**无关**
+          // （0.25 单独跑与跟在 0.0625 后跑，net 均 180.191）；真因是**可行集非下闭**（全库 21 队中 7 队
+          // 「存在可行 x 且存在 y<x 不可行」，3 队最小档不可行但更大档可行）⇒「最小档不行 ⇒ 全体不行」的前提为假。
           const baseNet = frontlineTotalOf(r.out)
-          const baseOver = Math.max(0, baseNet - stunEffTime)
-          const baseSlack = Math.max(0, stunEffTime - baseNet)
           const baseTruncation = r.out?.resourceResult?.overflowSeconds ?? 0
-          const acceptsTrial = (x: CalcRoundResult | null): boolean => {
-            if (!x) return false
-            const net = frontlineTotalOf(x)
-            const truncation = x.resourceResult?.overflowSeconds ?? 0
-            return truncation <= baseTruncation + TIME_BUDGET_TOLERANCE_SECONDS
-              && Math.max(0, net - stunEffTime) <= baseOver + TIME_BUDGET_TOLERANCE_SECONDS
-              && Math.max(0, stunEffTime - net) <= baseSlack + TIME_BUDGET_TOLERANCE_SECONDS
-          }
-          // **否决记录（2026-09-13 复现定性，见 docs 坑19 判据⑤）**：曾试过「先用最小候选探一次、失败即跳过扫描」
-          // 的成本闸门，实测改结果。**根因不是"试算不纯/状态泄漏"**——受控实验证明每个 scale 的试算结果与
-          // 它前面跑过哪些试算**无关**（0.25 单独跑与跟在 0.0625 后跑，net 均 180.191）；真因是**可行集非下闭**
-          // （全库 21 队中 7 队「存在可行 x 且存在 y<x 不可行」，3 队最小档不可行但更大档可行）⇒
-          // 「最小档不行 ⇒ 全体不行」的前提为假，成本闸门必然漏掉更大档。故不采用；结构性溢出队付满 8 次试算。
-          for (const scale of SCALES) {
+          const acceptsTrial = (x: CalcRoundResult | null): boolean => x != null && downscaleTrialAccepted({
+            trialNet: frontlineTotalOf(x),
+            trialTruncation: x.resourceResult?.overflowSeconds ?? 0,
+            baseNet,
+            baseTruncation,
+            stunEffTime,
+            toleranceSeconds: TIME_BUDGET_TOLERANCE_SECONDS,
+          })
+          const best = selectDownscaleScale(DOWNSCALE_SCALES, scale => {
             const trial = runOuterLoop(true, scale)
-            if (!acceptsTrial(trial.out)) continue
-            if ((trial.out?.resourceResult?.overflowSeconds ?? 0) > TIME_BUDGET_TOLERANCE_SECONDS) continue
-            best = { ...trial, scale }   // SCALES 递减 ⇒ 首个命中即最大可行
-            break
-          }
+            const accepted = acceptsTrial(trial.out)
+              && (trial.out?.resourceResult?.overflowSeconds ?? 0) <= TIME_BUDGET_TOLERANCE_SECONDS
+            return { accepted, value: { ...trial, scale } }
+          })
           if (best) {
-            r = best
+            r = best.value
             axisFallback = hadAxis
             interactionScale = best.scale
           }
