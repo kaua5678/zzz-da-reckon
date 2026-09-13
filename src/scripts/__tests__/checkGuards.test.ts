@@ -41,7 +41,24 @@ import {
   scanManualDensity,
   scanDocReviewTriggers,
   runAllChecks,
+  // 判据 13：名词表三态对账
+  NOUN_TRIAGE_FILE,
+  NOUN_SOURCE_FILE,
+  auditNounTriage,
+  // 判据 14：死通道扫描
+  DEAD_CHANNEL_ALLOWLIST,
+  scanDeadOptionalProps,
+  scanReadOnlyOptionalProps,
+  scanDtsDrift,
+  extractRuntimeExports,
+  applyDeadChannelAllowlist,
+  stripStringLiterals,
+  // 判据 15：口径复核触发器
+  CALIBER_TRIGGER_ALLOWLIST,
+  scanCaliberTriggers,
 } from '../../../scripts/check-guards.mjs'
+// parseFactLine 的单一实现在 zc.mjs（规则 11）——判据 15 的「行尾追加不破坏解析」断言要直接用它
+import { parseFactLine } from '../../../scripts/zc.mjs'
 
 describe('detectFetchStub（直接操纵全局 fetch 的写法）', () => {
   it('抓全部四种 stub 形态', () => {
@@ -241,6 +258,28 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
     }
   })
 
+  it('★ 新增棘轮的 current 必须是「剩余工作量」而不是「当前红灯数」（2026-09-13 实测踩坑）', () => {
+    // 判据 15（口径复核触发器）首版的 measure 写成 `scanCaliberTriggers().missing.length`：
+    // 一旦存量登记进 CALIBER_TRIGGER_ALLOWLIST，missing 当场归零 ⇒ 8 条棘轮里这条
+    // current=0 / done=true，**从提醒面直接消失**（冻结 82 条待补 = 装作已还清）。
+    // 对「棘轮 = 存量豁免 + 新增即红」形态的判据，剩余量 = 红灯数 + 豁免清单长度。
+    const zc = readFileSync(join(process.cwd(), 'scripts/zc.mjs'), 'utf8')
+    expect(zc).toContain('CALIBER_TRIGGER_ALLOWLIST.length')
+    expect(zc).toContain('g.scanCaliberTriggers(root).missing.length + g.CALIBER_TRIGGER_ALLOWLIST.length')
+    // 死通道同款：剩余量 = 三段 allowlisted 之和（fresh 恒为 0 是"守得住"，不是"还完了"）
+    expect(zc).toContain('applyDeadChannelAllowlist(g.scanDeadOptionalProps(root)).allowlisted.length')
+  })
+
+  it('★ 本轮新增的三条棘轮都登记了 due 与 plan（防「冻结 = 永久豁免」）', () => {
+    for (const id of ['游戏语义口径复核触发器', '死通道豁免清单', '名词表未处理']) {
+      const e = RATCHET_BURNDOWN.find(x => x.id === id)
+      expect(e, `${id} 必须进 RATCHET_BURNDOWN`).toBeDefined()
+      expect(e!.due).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(e!.plan.length, `${id} 的 plan 要写清「怎么降」`).toBeGreaterThan(20)
+      expect(e!.file, `${id} 要写清基线在哪`).toBeTruthy()
+    }
+  })
+
   it('到期但已有进展 → overdue 而非 stale（有还款就不骂）', () => {
     // 取**未完成**的第一条当被试（不能盲取 RATCHET_BURNDOWN[0]：清零条目 frozen=0 → 还款量算不出来）。
     // 还款量相对 frozen 取 1/3，保证 0 < 已还 < frozen − target。
@@ -346,11 +385,11 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('十二条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮）', () => {
+  it('十五条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器**)', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(12)
+    expect(results).toHaveLength(15)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
     expect(results.map(r => r.name.split(' ')[0])).toContain('exhibition-layer')
     // core 棘轮必须在列（规则 6 的引擎层延伸——此前 core 是豁免区）
@@ -362,6 +401,468 @@ describe('仓库级自洽（真实扫描）', () => {
     expect(results.some(r => r.name.includes('catalog/raw level60 对账'))).toBe(true)
     // 判据 11：手册数字 id 密度棘轮（2026-09-12 任务卡第 1 步，防手册编年史化）
     expect(results.some(r => r.name.includes('手册密度棘轮'))).toBe(true)
+    // 判据 13/14/15：「静默缺口」体检三件（2026-09-13）——共同点是**没有任何失败测试**：
+    // 源数据在、代码也在，只是两者之间没有连线（机器不红 ⇒ 人不知道）。
+    expect(results.some(r => r.name.includes('名词表三态对账'))).toBe(true)
+    expect(results.some(r => r.name.includes('死通道扫描'))).toBe(true)
+    expect(results.some(r => r.name.includes('口径复核触发器'))).toBe(true)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 判据 13：名词表三态对账（防「数据在源里但没人消费」）
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('auditNounTriage（判据 13：名词表三态）', () => {
+  /** 造一个最小仓库：源名词表 + 三态对账文件（可指定 entries 覆盖） */
+  const fixture = (source: Record<string, unknown>, entries: Record<string, unknown>) => {
+    const root = mkdtempSync(join(tmpdir(), 'noun-'))
+    mkdirSync(join(root, 'data/raw/nanoka_missing'), { recursive: true })
+    mkdirSync(join(root, 'scripts/lib'), { recursive: true })
+    writeFileSync(join(root, NOUN_SOURCE_FILE), JSON.stringify(source))
+    writeFileSync(join(root, NOUN_TRIAGE_FILE), JSON.stringify({ entries }))
+    return root
+  }
+  const SRC = { '2000002': { name: '[秽盾]', title: '秽盾', skill: '敌人情报' } }
+  /** 断言非 null 后返回（这些用例的 root 都建了完整 fixture，null 只可能是判据回归） */
+  const must = (x: ReturnType<typeof auditNounTriage>) => {
+    expect(x).not.toBeNull()
+    return x!
+  }
+
+  it('三态齐备且锚可解析 = 绿；unhandled 才红（挂账是合法处置）', () => {
+    const root = fixture(SRC, {
+      '2000002': { name: '[秽盾]', title: '秽盾', state: 'modeled', anchor: 'src/x.ts#foo', evidence: 'ok' },
+    })
+    // 锚解析注入：这个 fixture 里没有 src/x.ts，故用假 resolver 模拟「可解析」
+    const okResolve = () => ({ ok: true, reason: 'symbol' })
+    const r = must(auditNounTriage(root, okResolve))
+    expect(r.ok).toBe(true)
+    expect(r.unhandled).toEqual([])
+  })
+
+  it('★ unhandled = 红（两者皆无：零消费锚点 + 零登记）', () => {
+    const root = fixture(SRC, {
+      '2000002': { name: '[秽盾]', title: '秽盾', state: 'unhandled', evidence: '搜了 src/docs 零命中' },
+    })
+    const r = must(auditNounTriage(root, () => ({ ok: true, reason: 'symbol' })))
+    expect(r.ok).toBe(false)
+    expect(r.unhandled).toHaveLength(1)
+    expect(r.unhandled[0]).toContain('秽盾')
+  })
+
+  it('deferred 必须带 registeredAt + since（挂账不是口头说说）', () => {
+    const root = fixture(SRC, {
+      '2000002': { name: '[秽盾]', title: '秽盾', state: 'deferred', evidence: '挂账' },
+    })
+    const r = must(auditNounTriage(root, () => ({ ok: true, reason: 'symbol' })))
+    expect(r.ok).toBe(false)
+    expect(r.noRegister).toHaveLength(1)
+    // 补齐两项即绿
+    const root2 = fixture(SRC, {
+      '2000002': { name: '[秽盾]', title: '秽盾', state: 'deferred', registeredAt: 'docs/X.md:58', since: '2026-09-13', evidence: '挂账' },
+    })
+    expect(must(auditNounTriage(root2, () => ({ ok: true, reason: 'symbol' }))).ok).toBe(true)
+  })
+
+  it('★ modeled 的锚断了 = 红（同判据 6 哲学：断锚 = 口径已过期）', () => {
+    const root = fixture(SRC, {
+      '2000002': { name: '[秽盾]', title: '秽盾', state: 'modeled', anchor: 'src/renamed.ts#gone', evidence: 'ok' },
+    })
+    const r = must(auditNounTriage(root, () => ({ ok: false, reason: 'file-missing' })))
+    expect(r.ok).toBe(false)
+    expect(r.brokenAnchor).toHaveLength(1)
+  })
+
+  it('★ 键集合必须相等（源新增名词静默进来 = 红；多出的键也是红）', () => {
+    const root = fixture({ ...SRC, '2000003': { name: '[控制技]', title: '控制技' } }, {
+      '2000002': { name: '[秽盾]', state: 'deferred', registeredAt: 'docs/X.md:1', since: '2026-09-13', evidence: 'e' },
+      '9999999': { name: '[不存在]', state: 'unhandled', evidence: 'e' },
+    })
+    const r = must(auditNounTriage(root, () => ({ ok: true, reason: 'symbol' })))
+    expect(r.ok).toBe(false)
+    expect(r.missing).toEqual(['2000003'])   // 源里有但没人判
+    expect(r.extra).toEqual(['9999999'])     // 判了但源里没有
+  })
+
+  it('state 只许三值 + 每条必须有 evidence', () => {
+    const root = fixture(SRC, {
+      '2000002': { name: '[秽盾]', state: '随便写', evidence: 'e' },
+    })
+    const r = must(auditNounTriage(root, () => ({ ok: true, reason: 'symbol' })))
+    expect(r.badState).toHaveLength(1)
+    const root2 = fixture(SRC, { '2000002': { name: '[秽盾]', state: 'unhandled' } })
+    const r2 = must(auditNounTriage(root2, () => ({ ok: true, reason: 'symbol' })))
+    expect(r2.noEvidence).toHaveLength(1)
+  })
+
+  it('文件缺失 → null（不判红，与判据 9/10 同风格：环境不全不误伤）', () => {
+    const root = mkdtempSync(join(tmpdir(), 'noun-empty-'))
+    expect(auditNounTriage(root, () => ({ ok: true, reason: 'symbol' }))).toBeNull()
+  })
+
+  it('仓库现状：68 条全部有着落（unhandled=0，每条 modeled 锚可解析）', () => {
+    const r = must(auditNounTriage())
+    // 条数 = 源文件键数（68；含 10000081 与 1000008 的重复条目——源如此，如实对账）
+    expect(r.sourceKeys).toHaveLength(68)
+    expect(r.unhandled).toEqual([])
+    expect(r.brokenAnchor).toEqual([])
+    expect(r.missing).toEqual([])
+    expect(r.extra).toEqual([])
+    // 三态分布如实：modeled 27 / deferred 41（40 条 unhandled 按挂账处置后的终态）
+    const states = Object.values(r.triage.entries!)
+    expect(states.filter(e => e.state === 'modeled').length).toBeGreaterThanOrEqual(25)
+    expect(states.filter(e => e.state === 'deferred').length).toBeGreaterThanOrEqual(40)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 判据 14：死通道扫描（A 零读零写 / B 只读不写 / C 手写 .d.mts 漂移）
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('scanDeadOptionalProps（判据 14-A：goldLevel 模式）', () => {
+  /** 造一个最小 src 树；files = { '<rel>': content } */
+  const fixture = (files: Record<string, string>) => {
+    const root = mkdtempSync(join(tmpdir(), 'dead-'))
+    for (const [rel, content] of Object.entries(files)) {
+      mkdirSync(join(root, rel, '..'), { recursive: true })
+      writeFileSync(join(root, rel), content)
+    }
+    return root
+  }
+
+  it('★ 零读零写 = 死（goldLevel 的形态：声明了、类型可选、没人传）', () => {
+    const root = fixture({
+      'src/composables/x.ts': [
+        'export interface Opts {',
+        '  goldLevel?: number',
+        '  used?: number',
+        '}',
+        'export function f(o: Opts) { return o.used ?? 0 }',
+      ].join('\n'),
+    })
+    const dead = scanDeadOptionalProps(root)
+    expect(dead.map(d => d.name)).toEqual(['goldLevel'])
+    // key 用 file+name（**不含行号**）：行号在文件一被编辑就漂，清单会变成一次性消耗品
+    expect(dead[0].key).toBe('A|src/composables/x.ts goldLevel')
+  })
+
+  it('写入点算活（`goldLevel:` 出现在别处 = 有人传）', () => {
+    const root = fixture({
+      'src/composables/x.ts': ['export interface Opts {', '  goldLevel?: number', '}'].join('\n'),
+      'src/composables/caller.ts': 'const o: Opts = { goldLevel: 3 }',
+    })
+    expect(scanDeadOptionalProps(root)).toEqual([])
+  })
+
+  it('读取点算活（`.goldLevel` 被读 = 通道在用）', () => {
+    const root = fixture({
+      'src/composables/x.ts': ['export interface Opts {', '  goldLevel?: number', '}'].join('\n'),
+      'src/composables/caller.ts': 'const n = opts.goldLevel ?? 0',
+    })
+    expect(scanDeadOptionalProps(root)).toEqual([])
+  })
+
+  it('声明行自身不计写入（否则每个声明都自证活着 = 判据永远绿）', () => {
+    const root = fixture({
+      'src/core/y.ts': ['export interface Opts {', '  lonely?: string', '}'].join('\n'),
+    })
+    expect(scanDeadOptionalProps(root).map(d => d.name)).toEqual(['lonely'])
+  })
+
+  it('测试文件里的引用也算活（测试专用字段不是死通道）', () => {
+    const root = fixture({
+      'src/core/y.ts': ['export interface Opts {', '  onlyInTests?: string', '}'].join('\n'),
+      'src/core/__tests__/y.test.ts': 'const o: Opts = { onlyInTests: "x" }',
+    })
+    expect(scanDeadOptionalProps(root)).toEqual([])
+  })
+})
+
+describe('scanReadOnlyOptionalProps（判据 14-B：invincibleTime 模式）', () => {
+  const fixture = (files: Record<string, string>) => {
+    const root = mkdtempSync(join(tmpdir(), 'ro-'))
+    for (const [rel, content] of Object.entries(files)) {
+      mkdirSync(join(root, rel, '..'), { recursive: true })
+      writeFileSync(join(root, rel), content)
+    }
+    return root
+  }
+
+  it('★ 只读不写 = 通道空转（实现读 `?? 默认`，全仓零写入点）', () => {
+    const root = fixture({
+      'src/core/effectiveTime.ts': [
+        'interface Cfg {',
+        '  invincibleTime?: number',
+        '}',
+        'export function t(c: Cfg) { return 180 - (c.invincibleTime ?? 0) }',
+      ].join('\n'),
+    })
+    const ro = scanReadOnlyOptionalProps(root)
+    expect(ro.map(d => d.name)).toEqual(['invincibleTime'])
+    expect(ro[0].reads).toBeGreaterThan(0)
+    expect(ro[0].writes).toBe(0)
+  })
+
+  it('有写入点 = 不是空转（数据面给了值）', () => {
+    const root = fixture({
+      'src/core/x.ts': [
+        'interface Cfg {',
+        '  invincibleTime?: number',
+        '}',
+        'export function t(c: Cfg) { return c.invincibleTime ?? 0 }',
+      ].join('\n'),
+      'src/stores/s.ts': 'const cfg = { invincibleTime: 24 }',
+    })
+    expect(scanReadOnlyOptionalProps(root)).toEqual([])
+  })
+
+  it('零读零写不进 B 段（那是 A 段的判据，两段不重叠）', () => {
+    const root = fixture({
+      'src/core/x.ts': ['interface Cfg {', '  nobody?: number', '}'].join('\n'),
+    })
+    expect(scanReadOnlyOptionalProps(root)).toEqual([])
+    expect(scanDeadOptionalProps(root).map(d => d.name)).toEqual(['nobody'])
+  })
+
+  // 2026-09-14 实测缺陷（false-green 面）：判据按**字段名文本**计数，
+  // 于是「夹具里的示例串」也能当写入点。实测事故：并行车道新增 deadChannelLs.test.ts 里
+  // 一行 `{ resistances: {} }` 的构造输入，让判据 14-B 当场 10→9（真实死通道
+  // `B|src/composables/runArchiveImport.ts resistances` 被抹掉，反而报「豁免过期」而红）。
+  // ⇒ 计数前必须去字符串字面量（stripStringLiterals）。
+  it('★ 字符串字面量里的 `name:` 不算写入点（夹具串不该抹掉真实死通道）', () => {
+    const root = fixture({
+      'src/composables/runArchiveImport.ts': [
+        'export interface ArchiveRoom {',
+        '  resistances?: string[]',
+        '}',
+        'export function f(r: ArchiveRoom) { return Object.keys(r.resistances ?? {}).length }',
+      ].join('\n'),
+      // 测试夹具：这里的 `resistances: {}` 是**构造输入的字面量串**，不是写入点
+      'src/composables/__tests__/fixture.test.ts': "const src = `export const enemy = { resistances: {} }`\n",
+    })
+    const ro = scanReadOnlyOptionalProps(root)
+    expect(ro.map(d => d.name)).toEqual(['resistances'])
+    expect(ro[0].writes).toBe(0)
+  })
+
+  it('单引号/双引号串里的 `name:` 同样不算写入点', () => {
+    const root = fixture({
+      'src/core/x.ts': ['interface Cfg {', '  invincibleTime?: number', '}',
+        'export function t(c: Cfg) { return c.invincibleTime ?? 0 }'].join('\n'),
+      'src/core/helper.ts': "export const doc = 'invincibleTime: 24'\nexport const doc2 = \"invincibleTime: 30\"\n",
+    })
+    expect(scanReadOnlyOptionalProps(root).map(d => d.name)).toEqual(['invincibleTime'])
+  })
+
+  it('真写入点（对象字面量键）仍然算活——去字符串没有把判据去瘫', () => {
+    const root = fixture({
+      'src/core/x.ts': ['interface Cfg {', '  invincibleTime?: number', '}',
+        'export function t(c: Cfg) { return c.invincibleTime ?? 0 }'].join('\n'),
+      'src/core/real.ts': 'const cfg: Cfg = { invincibleTime: 24 }',
+    })
+    expect(scanReadOnlyOptionalProps(root)).toEqual([])
+  })
+
+  it('stripStringLiterals：模板串/单双引号串被抹平，代码本体不动', () => {
+    expect(stripStringLiterals('const a = `x: 1`; const b = \'y: 2\'; const c = "z: 3"; const d = { k: 4 }'))
+      .toBe('const a = ``; const b = \'\'; const c = ""; const d = { k: 4 }')
+    // 转义引号不误伤
+    expect(stripStringLiterals("const s = 'it\\'s: fine'")).toBe("const s = ''")
+  })
+})
+
+describe('scanDtsDrift / extractRuntimeExports（判据 14-C：TS2305 模式）', () => {
+  const fixture = (dtsName: string, dtsBody: string, mjsBody: string) => {
+    const root = mkdtempSync(join(tmpdir(), 'dts-'))
+    mkdirSync(join(root, 'scripts'), { recursive: true })
+    writeFileSync(join(root, 'scripts', dtsName + '.d.mts'), dtsBody)
+    writeFileSync(join(root, 'scripts', dtsName + '.mjs'), mjsBody)
+    return root
+  }
+
+  it('★ 声明了但运行时没有 = TS2305（实测事故：CORE_ROLE_IMPORT_BASELINE）', () => {
+    const root = fixture('m',
+      'export declare const A: number\nexport declare const GHOST: number\n',
+      'export const A = 1\n')
+    const r = scanDtsDrift(root)
+    expect(r.declaredNotExported.map(x => x.names[0])).toEqual(['GHOST'])
+    expect(r.declaredNotExported[0].key).toBe('C|scripts/m.d.mts#GHOST')
+  })
+
+  it('★ 导出了但影子 API 没写 = TS 侧看不见（方向相反，同样报）', () => {
+    const root = fixture('m',
+      'export declare const A: number\n',
+      'export const A = 1\nexport const UNDOCUMENTED = 2\n')
+    const r = scanDtsDrift(root)
+    expect(r.exportedNotDeclared.map(x => x.names[0])).toEqual(['UNDOCUMENTED'])
+  })
+
+  it('interface/type 是纯类型、不进运行时表 ⇒ 不算漂移', () => {
+    const root = fixture('m',
+      'export interface Opts { a: number }\nexport type T = string\nexport declare const A: number\n',
+      'export const A = 1\n')
+    const r = scanDtsDrift(root)
+    expect(r.declaredNotExported).toEqual([])
+    expect(r.exportedNotDeclared).toEqual([])
+  })
+
+  it('extractRuntimeExports 覆盖三种写法（声明 / export {} / re-export）', () => {
+    expect(extractRuntimeExports([
+      'export function f() {}',
+      'export const A = 1',
+      'export class C {}',
+      'const x = 1, y = 2',
+      'export { x, y as z }',
+      "export { remote } from './other.mjs'",
+      'export type OnlyType = string',
+    ].join('\n'))).toEqual(['A', 'C', 'f', 'remote', 'x', 'z'])
+  })
+
+  it('仓库现状：六对手写 .d.mts 零漂移（本判据上线时一次补齐 16 个漏声明）', () => {
+    const r = scanDtsDrift()
+    expect(r.pairs.length).toBeGreaterThanOrEqual(6)
+    expect(r.declaredNotExported).toEqual([])
+    expect(r.exportedNotDeclared).toEqual([])
+  })
+})
+
+describe('applyDeadChannelAllowlist（判据 14 的豁免与 burn-down）', () => {
+  it('★ stale 只在同一段内计算（A 段清单不被 B 段调用误报过期）', () => {
+    // 实测踩过：三段合并跑时拿 global key 列表比单段命中集 → A 段 13 条全被误报 expired
+    const a = applyDeadChannelAllowlist(scanDeadOptionalProps())
+    const b = applyDeadChannelAllowlist(scanReadOnlyOptionalProps())
+    expect(a.stale).toEqual([])
+    expect(b.stale).toEqual([])
+  })
+
+  it('已登记条目进 allowlisted、不进 fresh', () => {
+    const key = Object.keys(DEAD_CHANNEL_ALLOWLIST)[0]
+    const r = applyDeadChannelAllowlist([{ key, file: 'x', line: 1, name: 'n' }])
+    expect(r.fresh).toEqual([])
+    expect(r.allowlisted).toHaveLength(1)
+  })
+
+  it('未登记的候选进 fresh（= 红面）', () => {
+    const r = applyDeadChannelAllowlist([{ key: 'A|nope.ts ghost', file: 'nope.ts', line: 1, name: 'ghost' }])
+    expect(r.fresh).toHaveLength(1)
+  })
+
+  it('空候选集不产生 stale（不能因为「本段没扫到」把清单判过期）', () => {
+    expect(applyDeadChannelAllowlist([]).stale).toEqual([])
+  })
+
+  it('每条豁免都必须写 why（防「为绿而登记」把判据变成橡皮图章）', () => {
+    for (const [k, v] of Object.entries(DEAD_CHANNEL_ALLOWLIST)) {
+      expect(v.since, k).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(v.due, k).toBeTruthy()
+      expect(v.why, k).toBeTruthy()
+    }
+  })
+
+  it('仓库现状：三类候选全部已登记（fresh 为空）', () => {
+    const a = applyDeadChannelAllowlist(scanDeadOptionalProps())
+    const b = applyDeadChannelAllowlist(scanReadOnlyOptionalProps())
+    const d = scanDtsDrift()
+    const c = applyDeadChannelAllowlist([...d.declaredNotExported, ...d.exportedNotDeclared])
+    expect([...a.fresh, ...b.fresh, ...c.fresh]).toEqual([])
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 判据 15：口径复核触发器强制（防「旧结论静默过期」）
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('scanCaliberTriggers（判据 15：游戏语义口径必须挂 ⟳复核）', () => {
+  /** 造一个最小仓库：一个带 @fact 的源文件 */
+  const fixture = (body: string) => {
+    const root = mkdtempSync(join(tmpdir(), 'cal-'))
+    mkdirSync(join(root, 'src/core'), { recursive: true })
+    writeFileSync(join(root, 'src/core/x.ts'), body)
+    return root
+  }
+  const FACT = '// @fact engine:damage/乘区顺序 口径: 顺序 = 代码顺序 | 据 实测@2026-09-01 | 锚 src/core/x.ts#f | 信 确认'
+
+  it('★ 游戏语义口径缺触发器 = 红面（missing）', () => {
+    const root = fixture([FACT, 'export function f() {}'].join('\n'))
+    const r = scanCaliberTriggers(root)
+    expect(r.game).toHaveLength(1)
+    expect(r.missing.map(m => m.subject)).toEqual(['engine:damage/乘区顺序'])
+  })
+
+  it('★ 紧邻下一行挂 ⟳复核 即绿（触发器的合法写法）', () => {
+    const root = fixture([
+      FACT,
+      '// ⟳复核: 下个大版本后重对乘区顺序 | 到期 2026-12-31',
+      'export function f() {}',
+    ].join('\n'))
+    const r = scanCaliberTriggers(root)
+    expect(r.missing).toEqual([])
+    expect(r.withTrigger).toHaveLength(1)
+  })
+
+  it('写在 @fact 行尾也认（同一行两种位置都合法）', () => {
+    const root = fixture([FACT + ' ⟳复核: 复核乘区 | 到期 2026-12-31', 'export function f() {}'].join('\n'))
+    expect(scanCaliberTriggers(root).missing).toEqual([])
+  })
+
+  it('只有 ⟳复核 没有到期日 = 缺（到期日才是机器判据，缺了就永远不提醒）', () => {
+    const root = fixture([FACT, '// ⟳复核: 以后再看看', 'export function f() {}'].join('\n'))
+    expect(scanCaliberTriggers(root).missing).toHaveLength(1)
+  })
+
+  it('★ 工程元口径豁免（engine:guards / engine:zc / ui: / utils/）——它们的复核靠守卫红', () => {
+    const root = fixture([
+      '// @fact engine:guards/自指豁免 口径: 扫描器自身含被扫模式属自指 | 据 实测@2026-09-01',
+      '// @fact utils/format/localized 口径: nullish 链取值 | 据 终态核对@2026-09-12',
+      'export function f() {}',
+    ].join('\n'))
+    expect(scanCaliberTriggers(root).game).toEqual([])
+  })
+
+  it('非口径/映射种类不强制（未建模/债/决 不挂日期 —— 债有自己的 DEBT_REGISTRY 到期动作）', () => {
+    const root = fixture([
+      '// @fact agent:1411/c6 未建模: 蓄能炮弹不实现 | 据 用户@2026-08-30',
+      '// @fact engine:zc/语法 决: 语法只在解析器定义 | 据 用户@2026-08-31',
+      'export function f() {}',
+    ].join('\n'))
+    expect(scanCaliberTriggers(root).game).toEqual([])
+  })
+
+  it('★ 行尾追加 ⟳复核 不破坏 parseFactLine（解析器只认 据/验/锚/信 槽位）', () => {
+    const line = FACT + ' ⟳复核: 复核乘区顺序 | 到期 2026-12-31'
+    const f = parseFactLine(line.replace(/^\/\/ /, ''))
+    expect(f).not.toBeNull()
+    expect(f!.subject).toBe('engine:damage/乘区顺序')
+    expect(f!.claim).toBe('顺序 = 代码顺序')
+    expect(f!.provenance).toBe('实测@2026-09-01')
+  })
+
+  it('豁免清单补上触发器后必须销号（stale = 漏删即红，棘轮只减不增）', () => {
+    const key = CALIBER_TRIGGER_ALLOWLIST[0]
+    const r = scanCaliberTriggers()
+    // 仓库现状：清单里的条目全部仍命中（stale 为空）——补完一条要同步删一行
+    expect(r.stale).toEqual([])
+    expect(CALIBER_TRIGGER_ALLOWLIST).toContain(key)
+  })
+
+  it('仓库现状：新增的游戏语义口径没有裸奔（missing 为空 = 存量已全部登记待补）', () => {
+    const r = scanCaliberTriggers()
+    expect(r.missing).toEqual([])
+    expect(r.stale).toEqual([])
+    // 存量基线如实：82 条缺触发器（全部登记在 CALIBER_TRIGGER_ALLOWLIST 里 burn-down）+
+    // 1 条已挂（本轮新挂的 effectiveTime「无敌≠秽盾」）= 83 条游戏语义口径。
+    // 恒等式：missing 为空 ⇔ 每条缺触发器的口径都在豁免清单里（漏登记一条即红 = 新增口径不许裸奔）。
+    expect(r.game.length).toBeGreaterThanOrEqual(80)
+    expect(CALIBER_TRIGGER_ALLOWLIST.length).toBe(r.game.length)
+    expect(r.withTrigger.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('★ 本轮新挂的触发器可被抓到（effectiveTime 的「无敌≠秽盾」= 判据 15 的首个真实用例）', () => {
+    const r = scanCaliberTriggers()
+    const hit = r.withTrigger.find(t => t.subject === 'engine:time/无敌≠秽盾')
+    expect(hit, 'effectiveTime.ts 的 @fact engine:time/无敌≠秽盾 必须挂 ⟳复核').toBeTruthy()
+    expect(hit!.file).toBe('src/core/effectiveTime.ts')
   })
 })
 

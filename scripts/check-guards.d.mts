@@ -21,6 +21,8 @@ export declare function countAgentIdBranchLines(content: string): number
 export declare const CORE_AGENT_BRANCH_FILES: string[]
 export declare const CORE_AGENT_BRANCH_BASELINE: number
 export declare function countAgentIdBranchLinesInFiles(files: string[], root?: string): number
+// 引擎层「按角色名的值导入」棘轮（判据 12，T8 证伪后改口径：baseline=5，全活引用不许增）
+export declare const CORE_ROLE_IMPORT_BASELINE: number
 
 // 判据 3：工作区状态防误提交
 export declare const CLAUDE_TRACKED_ALLOWLIST: string[]
@@ -125,3 +127,107 @@ export interface DocReviewTrigger {
 }
 export declare function scanDocReviewTriggers(root?: string, today?: string): DocReviewTrigger[]
 export declare function countGuideSection4Lines(root?: string): number
+
+// 判据 12：core role-import 棘轮（上面 CORE_ROLE_IMPORT_BASELINE 是它的基线常量）
+export declare const CORE_LAYER_DIR: string
+export declare function scanCoreRoleImports(root?: string): {
+  count: number
+  sites: { file: string; line: number; text: string }[]
+}
+
+// 判据 13：名词表三态对账（防「数据在源里但没人消费」）
+export declare const NOUN_TRIAGE_FILE: string
+export declare const NOUN_SOURCE_FILE: string
+export declare const NOUN_STATES: string[]
+export interface NounTriageEntry {
+  name?: string
+  title?: string
+  skill?: string
+  /** modeled = src 有可解析消费锚点 / deferred = 有登记（registeredAt + since）/ unhandled = 两者皆无（红） */
+  state: string
+  anchor?: string
+  registeredAt?: string
+  since?: string
+  evidence?: string
+  duplicateOf?: string
+}
+export interface NounTriageAudit {
+  ok: boolean
+  source: Record<string, unknown>
+  triage: { entries?: Record<string, NounTriageEntry>; [k: string]: unknown }
+  sourceKeys: string[]
+  /** 源里有但未对账 / 对账文件多出源里没有的键 */
+  missing: string[]
+  extra: string[]
+  badState: string[]
+  noEvidence: string[]
+  brokenAnchor: string[]
+  noRegister: string[]
+  /** 未处理项（each: '<key> <name>｜<evidence>'）——判据 13 的红面 */
+  unhandled: string[]
+}
+export declare function auditNounTriage(
+  root?: string,
+  resolveAnchorFn?: (anchor: string | null | undefined, root?: string) => { ok: boolean; reason: string },
+): NounTriageAudit | null
+
+// 判据 14：死通道扫描（A 零读零写 / B 只读不写 / C 手写 .d.mts 漂移）
+export interface DeadChannelEntry {
+  since: string
+  due: string
+  why: string
+}
+export declare const DEAD_CHANNEL_ALLOWLIST: Record<string, DeadChannelEntry>
+export interface DeadChannelCandidate {
+  key: string
+  file: string
+  line: number
+  name: string
+  reads?: number
+  writes?: number
+}
+export declare function scanDeadOptionalProps(root?: string): DeadChannelCandidate[]
+export declare function scanReadOnlyOptionalProps(root?: string): DeadChannelCandidate[]
+export declare function stripStringLiterals(text: string): string
+export interface DtsDriftRow {
+  dts: string
+  mjs: string
+  names: string[]
+  key: string
+}
+export declare function scanDtsDrift(root?: string): {
+  pairs: { dts: string; mjs: string; declared: number; runtime: number }[]
+  /** .d.mts 声明了但 .mjs 没有 ⇒ 具名 import 即 TS2305 */
+  declaredNotExported: DtsDriftRow[]
+  /** .mjs 导出了但影子 API 没写 ⇒ TS 侧看不见 */
+  exportedNotDeclared: DtsDriftRow[]
+}
+export declare function extractRuntimeExports(source: string): string[]
+export declare function applyDeadChannelAllowlist(candidates: DeadChannelCandidate[] | DtsDriftRow[]): {
+  fresh: (DeadChannelCandidate | DtsDriftRow)[]
+  allowlisted: (DeadChannelCandidate | DtsDriftRow)[]
+  /** 清单里已不再命中的行（按 A|/B|/C| 段各自计算） */
+  stale: string[]
+}
+
+// 判据 15：口径复核触发器强制（游戏语义 @fact 必须挂 ⟳复核 + 到期日）
+export declare const CALIBER_NON_GAME_SUBJECTS: string[]
+export declare const CALIBER_TRIGGER_KINDS: string[]
+export declare const CALIBER_TRIGGER_ALLOWLIST: string[]
+export interface CaliberTriggerRow {
+  file: string
+  line: number
+  subject: string
+  kind: string
+}
+export declare function scanCaliberTriggers(
+  root?: string,
+  facts?: { file: string; line: number; raw?: string; fact?: { subject: string; kind: string } | null }[] | null,
+): {
+  game: (CaliberTriggerRow & { key: string })[]
+  withTrigger: CaliberTriggerRow[]
+  /** 游戏语义口径里缺触发器的（判据 15 的红面） */
+  missing: (CaliberTriggerRow & { key: string })[]
+  /** 豁免清单里已补上触发器的行（漏删即红） */
+  stale: string[]
+}

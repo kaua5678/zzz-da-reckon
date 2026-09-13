@@ -22,7 +22,7 @@ import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'n
 import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 // 语言层（事实语法/锚点解析）的单一实现在 zc.mjs，护栏只调用不复制（规则 11）
-import { auditAuthoredFacts } from './zc.mjs'
+import { auditAuthoredFacts, resolveAnchor, scanAuthoredFacts } from './zc.mjs'
 // level60 字段映射规则表（审计/修复/导入脚本三方共用，规则 11）
 import { FIELD_RULES } from './lib/level60-rules.mjs'
 
@@ -146,10 +146,34 @@ export const RATCHET_BURNDOWN = [
   {
     id: '手册 §4 行数',
     file: 'docs/ENGINE_PIPELINE_GUIDE.md',
-    frozen: 719,  // 任务卡立项基线 1340（§4 常见坑表行数）。口径纠正归因 2026-09-12：原以密度 0.287→0.15 计还款，批量拆薄实测**反效果**（散文删得比证据数字快，密度反升）——密度留作防变差天花板（判据 11），还款改量行数 = 任务卡主口径「§4 −40%」。2026-09-13 一轮达标并结算 1340→804（−40%）；**二轮（2026-09-13，T4）804 → 719（再 −85，累计 −46%）并再次结算**：拆坑 22（22→6）/ 25（32→7）/ 34（24→7）/ 36（31→6），手法 = 合并折行 + 删过程叙事句（「用户报的」「本轮」「为什么一直没人看见」这类），实测数字/文件:行锚点/否决记录/判据行一律保留
-    target: 719,
+    frozen: 718,  // 任务卡立项基线 1340（§4 常见坑表行数）。口径纠正归因 2026-09-12：原以密度 0.287→0.15 计还款，批量拆薄实测**反效果**（散文删得比证据数字快，密度反升）——密度留作防变差天花板（判据 11），还款改量行数 = 任务卡主口径「§4 −40%」。2026-09-13 一轮达标并结算 1340→804（−40%）；**二轮（T4）804 → 719（−85，累计 −46%）**：拆坑 22（22→6）/ 25（32→7）/ 34（24→7）/ 36（31→6），手法 = 合并折行 + 删过程叙事句，实测数字/文件:行锚点/否决记录/判据行一律保留；**三轮（静默缺口体检）719 → 718 并结算**：新增坑 38⑤（四类静默缺口 + 判据 13/14/15 索引，2 行）+ 症状索引追加，代价从坑 38 的 ②③ 折行压缩里出（删的是重复叙述与冗词，实测数字/命令/否决记录全留）
+    target: 718,
     due: '2026-10-31',
     plan: '✅ 已两轮到点（2026-09-13）：1340→804（−40%）→719（−46%）。坑19（341→133）/ 18 / 30+31（85→23）/ 33（164→85）/ 35（168→71）/ 22·25·34·36 四栏化后再压折行。余量见 T4 报告「信息密度下限」段——坑 19/31/33/35 否决记录已逐条一事一行，再压只能动证据（不许）；后续若再拆按同法「合并折行 + 删叙事句」并**再次结算 frozen**，无叙事项不硬压',
+  },
+  {
+    id: '游戏语义口径复核触发器',
+    file: 'src/**（手写 @fact，种类=口径/映射，排除工程元口径）',
+    frozen: 82,  // 2026-09-13 实测（判据 15 上线时）：83 条游戏语义口径里仅 1 条有触发器（本轮新挂的 effectiveTime「无敌≠秽盾」），其余 82 条此前**全部是「永不过期」的**——`effectiveTime.ts` 那条「无敌（秽盾/转阶段动画）」挂了 14 天，用户 2026-09-13 才纠正
+    target: 0,
+    due: '2026-12-31',
+    plan: '逐条补 `⟳复核: <到点判什么> | 到期 <YYYY-MM-DD>`（@fact 行尾或下一行注释；解析器只认 据/验/锚/信，追加不破坏 parseFactLine），补一条从 CALIBER_TRIGGER_ALLOWLIST 删一条（漏删即红 = 棘轮只减不增）。优先补**时效敏感**的：nanoka 原文转录的（版本更新即失效）、口径依赖「用户当时裁决」且游戏已改版的、标了 [猜测]/近似 的。到期日建议 2026-12-31（下个大版本后复核）',
+  },
+  {
+    id: '死通道豁免清单',
+    file: 'scripts/check-guards.mjs DEAD_CHANNEL_ALLOWLIST',
+    frozen: 15,  // 2026-09-13 首轮实测（判据 14 上线时冻结）：A 零读零写 5（goldLevel 模式）/ B 只读不写 10（invincibleTime 模式，含 1 条 namesake 误报样本 runArchiveImport.resistances，已在 why 里如实标注）/ C 手写 d.mts 漂移 **0**（上线即把 16 个漏声明一次补齐 = 判据的正确用法）。三类（除误报样本外）都是存量：通道在、类型在、编译过，就是没人用
+    target: 0,
+    due: '2026-12-31',
+    plan: '逐条「接上或删掉」二选一——接上消费点（如 phaseDelayedCooldown 的 blockSeconds 接 frontBlockSeconds、轴预设 chapter 补数据）或删死字段；处置一条从 DEAD_CHANNEL_ALLOWLIST 删一条（漏删即红 = 棘轮只减不增）。⚠ 不许「为绿而登记」：新增豁免必须写 why（怎么证明它是死的），否则判据退化成橡皮图章',
+  },
+  {
+    id: '名词表未处理',
+    file: 'scripts/lib/noun-triage.json（源 = data/raw/nanoka_missing/noun_3.2.3.json）',
+    frozen: 0,  // 判据 13 上线即要求 unhandled=0（每条至少有着落：modeled 给锚 / deferred 给登记）。首轮实测 **27 modeled / 41 deferred / 0 unhandled**（40 条 unhandled 按「挂账」处置：敌人情报 2 + 角色真缺口 3 + 活动武备 35 全段判范围外，登记落点 docs/MECHANICS_IMPLEMENTATION.md §3.05）。frozen 保持 0 = 不许有未处理项；这个棘轮的存在意义是「源数据新增名词时必须同步对账」
+    target: 0,
+    due: '2026-12-31',
+    plan: '源数据（noun*.json）新增/变更名词时，在 noun-triage.json 补三态判定；unhandled 项按「建模或挂账」处置（挂账也是合法态，见判据 13 头注释）。另：源文件与对账文件的键集合必须相等（多了少了都红）',
   },
 ]
 
@@ -755,6 +779,12 @@ export const DEBT_REGISTRY = {
   // 「不钳制 + 消耗需求封顶」⇒ 极端配装（积累速率 ≫ 消耗节奏）下偏乐观。上条会话因 check-guards.mjs
   // 被并行会话占用、按规则 13 先记账本不登记，本条补登（代码标记在 claret.ts gashStacks 计算处）。
   'src/mechanics/agents/claret.ts:残痕总量口径天花板': { since: '2026-09-12', due: '残痕层数按消耗节奏窗口钳制（需逐动作时序模拟，与实数化收敛专项同族）；若用户裁决接受总量口径近似则销号并留 @fact' },
+  // 2026-09-13（静默缺口体检）：[秽盾] 全仓无建模——这是判据 13（名词表三态）抓到的**样本缺口**。
+  // 原文 noun_3.2.3.json #2000002：高额防御/减伤/抗打断且不失衡、可被攻击削减、打破时净除伤害 + 回能/闪能。
+  // 现状：`shieldCount` 只承载「破盾奖励次数→折能量」，不是盾本体；且旧头注释把秽盾当**无敌时间**
+  // （2026-09-13 用户已纠正，口径见 src/core/effectiveTime.ts 的 @fact engine:time/无敌≠秽盾）。
+  // 代码标记在 effectiveTime.ts 的未建模说明处；挂账登记落点亦见 docs/MECHANICS_IMPLEMENTATION.md §3.05。
+  'src/core/effectiveTime.ts:秽盾机制': { since: '2026-09-13', due: '秽盾专项立项：① 破盾回能/闪能（每破一盾为代理人回能）② 削盾量通道（秽盾量/100 = 动作时间，见 mechanism-reference §7.4）③ 防御/减伤乘区（+80% 防御、25% 减伤，贯穿同样生效）④ 破盾「秽盾净除」伤害。四者都不许复用 invincibleTime（那是真无敌）。落地后销号' },
 }
 
 /**
@@ -821,8 +851,542 @@ function listTrackedFiles(root) {
   }
 }
 
+// ---- 判据 13：名词表三态对账（防「数据在源里但没人消费」） ----
+//
+// 为什么需要：2026-09-13 实测——`data/raw/nanoka_missing/noun_3.2.3.json` 68 条名词里，
+// [秽盾]（键 2000002）**全仓零消费锚点**：原文写「获得高额的防御力、减伤加成和抗打断能力提升
+// 且不会失衡；代理人能通过攻击削减[秽盾]」「被打破时…回复能量或闪能」，而仓库只把
+// `shieldCount` 当「破盾奖励次数」折能量——盾本体的防御/减伤/削盾量/破盾净除全无建模，
+// 且 `core/effectiveTime.ts` 头注释还把秽盾当成**无敌时间**（旧口径，2026-09-13 用户已纠正）。
+//
+// 这类缺口**没有任何失败测试**：源数据在、代码也在，只是两者之间没有连线。机器不红 ⇒ 人不知道。
+// 本判据把三态变成机器判据：**已建模**（src 有可解析消费锚点）/ **已挂账**（登记位置 + since）/
+// **未处理**（两者皆无）——未处理即红。
+//
+// 三态数据由 `scripts/lib/noun-triage.json` 承载（逐条判定 + 证据），本判据只做**校验**：
+// ① 覆盖完整性（源里的键一个不许漏、也不许多）
+// ② `modeled` 的锚必须能被 `resolveAnchor` 解析（断锚 = 口径已过期，同判据 6 的哲学）
+// ③ `deferred` 必须有 `registeredAt` + `since`（挂账不是"口头说说"，要有落点与日期）
+// ④ 源数据自身变化（新增/删除名词）必须同步对账文件——否则新名词静默进来没人判
+//
+// 为什么允许「挂账」态：一次性把 68 条全修完不现实，全红会逼人**关掉判据**（判据失效）。
+// 挂账 = 诚实处置（同 debt: registry / RATCHET_BURNDOWN 的哲学），未处理才是静默缺口。
+
+/** 名词表三态对账文件（逐条判定 + 证据；由人工/子代理维护，本判据校验其自洽性） */
+export const NOUN_TRIAGE_FILE = 'scripts/lib/noun-triage.json'
+/** 名词表源（nanoka 原文；`noun*.json` 的当前唯一实文件） */
+export const NOUN_SOURCE_FILE = 'data/raw/nanoka_missing/noun_3.2.3.json'
+/** 三态取值（改这里 = 改判据语义，diff 里留痕） */
+export const NOUN_STATES = ['modeled', 'deferred', 'unhandled']
+
+/**
+ * 校验名词表三态对账。返回 { ok, source, triage, missing, extra, badState, noEvidence,
+ * brokenAnchor, noRegister, unhandled }。
+ * 文件缺失时返回 null（不判红，与判据 9/10 同风格：环境不全不误伤）。
+ */
+export function auditNounTriage(root = ROOT, resolveAnchorFn = resolveAnchor) {
+  const srcPath = join(root, NOUN_SOURCE_FILE)
+  const triagePath = join(root, NOUN_TRIAGE_FILE)
+  if (!existsSync(srcPath) || !existsSync(triagePath)) return null
+  const source = JSON.parse(readFileSync(srcPath, 'utf8'))
+  const triage = JSON.parse(readFileSync(triagePath, 'utf8'))
+  const entries = triage.entries ?? {}
+  const sourceKeys = Object.keys(source)
+  const triagedKeys = Object.keys(entries)
+  const missing = sourceKeys.filter(k => !triagedKeys.includes(k))
+  const extra = triagedKeys.filter(k => !sourceKeys.includes(k))
+  const badState = []
+  const noEvidence = []
+  const brokenAnchor = []
+  const noRegister = []
+  const unhandled = []
+  for (const [key, e] of Object.entries(entries)) {
+    if (!NOUN_STATES.includes(e.state)) badState.push(`${key} ${e.name ?? ''} → state=${e.state}`)
+    if (!e.evidence) noEvidence.push(`${key} ${e.name ?? ''}`)
+    if (e.state === 'modeled') {
+      const r = resolveAnchorFn(e.anchor, root)
+      if (!r.ok) brokenAnchor.push(`${key} ${e.name ?? ''} → ${e.anchor ?? '(缺锚)'}（${r.reason}）`)
+    }
+    if (e.state === 'deferred' && (!e.registeredAt || !e.since)) {
+      noRegister.push(`${key} ${e.name ?? ''} → registeredAt=${e.registeredAt ?? '(缺)'} since=${e.since ?? '(缺)'}`)
+    }
+    if (e.state === 'unhandled') unhandled.push(`${key} ${e.name ?? ''}｜${e.evidence ?? '（无证据）'}`)
+  }
+  const ok = missing.length === 0 && extra.length === 0 && badState.length === 0
+    && noEvidence.length === 0 && brokenAnchor.length === 0 && noRegister.length === 0
+    && unhandled.length === 0
+  return { ok, source, triage, sourceKeys, missing, extra, badState, noEvidence, brokenAnchor, noRegister, unhandled }
+}
+
+// ---- 判据 14：死通道扫描（防「接口/参数在但实现没接」） ----
+//
+// 为什么需要：2026-09-13 连续发现三类「机器不红、人就发现不了」的通道：
+//   ① **导出的可选项零调用**——`difficultyCurve.ts` 曾有从未接线的 `goldLevel` 死参数
+//      （`bac9ce9` 引入 → `82c323a` 移除）。类型上可选、编译通过、测试不红，就是没人传。
+//   ② **引擎读的配置字段全库零数据**——`invincibleTime`：引擎 6 处读、面板可写、类型有，
+//      但 `boss-presets.json` 23 boss / **159 期相**里只有 12 个 boss 有值、期相 **0** 条 ⇒ 通道空转。
+//   ③ **手写 `.d.mts` 声明与 `.mjs` 实际导出漂移**——`check-guards.d.mts` 曾漏声明
+//      `CORE_ROLE_IMPORT_BASELINE`，而 `checkGuards.test.ts` 从 `.mjs` 具名 import ⇒ TS2305。
+//      `.d.mts` 是**手写的影子 API**，被 `tsconfig.app` 的 `src/**` 消费 ⇒ 漂移只在 `vue-tsc` 暴露。
+//
+// 三条子判据都是**只报不红 + 白名单豁免（带 since/due）**：首轮必然有存量误报（外部契约字段、
+// 预留通道、测试专用），一次性全红会逼人关掉判据。红线只给「**新增未登记**」——
+// 与 debt: registry（判据 5）同款：豁免要写进清单（diff 里留痕），清单过期（已不再命中）也红。
+
+/** 死通道豁免清单：key = `A|<file>:<line> <name>` 形式，value = { since, due, why } */
+export const DEAD_CHANNEL_ALLOWLIST = {
+  // 段 A：导出可选项零读零写（goldLevel 模式）
+  'A|src/core/buff.ts coverageMap': {
+    since: '2026-09-13',
+    due: 'buff.ts 的 coverageMap 输入槽无人读写——确认是无用槽后删字段，或接上消费点后销号',
+    why: '实测零读零写（判据 14-A 首轮扫描）；疑似历史残留输入槽，未接线但也不报错',
+  },
+  'A|src/core/resource/helpers.ts moduleInputRows': {
+    since: '2026-09-13',
+    due: 'moduleInputRows 输入行通道空转——确认为预留则删，或由模块 buildExecutions 写入后销号',
+    why: '实测零读零写；resource.ts:75 有同名字段（两处同名），疑似「声明了没人填」的预留通道',
+  },
+  'A|src/core/resource.ts moduleInputRows': {
+    since: '2026-09-13',
+    due: '同 helpers.ts:846，随该条一并处置（同一通道的两个声明点）',
+    why: '实测零读零写；与 helpers.ts:846 同名同源',
+  },
+  'A|src/composables/runArchiveImport.ts weaknesses': {
+    since: '2026-09-13',
+    due: '归档导入的弱点字段未消费——归档只做单条部署对照（用户裁决 2026-09），确认无用途后删',
+    why: '归档导入 DTO 的展示字段；按用户裁决归档不作误差判据，可能永远不需要',
+  },
+  'A|src/composables/runArchiveImport.ts hpTotal': {
+    since: '2026-09-13',
+    due: '同 weaknesses，随归档导入 DTO 一并处置',
+    why: '归档导入 DTO 字段，无消费点',
+  },
+  // 段 B：可选项只读不写（invincibleTime 模式；`?? 默认值` 兜底 ⇒ 静默走默认）
+  'B|src/composables/difficultyLadder.ts minGain': {
+    since: '2026-09-13',
+    due: 'LadderOpts.minGain 无人传（minGainRatio 才是活通道）——确认为无用则删，或接上调用点后销号',
+    why: '只读不写：实现读 `opts.minGain ?? 0`，全仓零写入点（同族的 minGainRatio 有调用点）',
+  },
+  'B|src/composables/difficultyLadder.ts maxSteps': {
+    since: '2026-09-13',
+    due: 'LadderOpts.maxSteps 无人传（走 `?? 24` 默认）——确认默认即唯一口径则删字段',
+    why: '只读不写：实现读 `opts.maxSteps ?? 24`，全仓零写入点',
+  },
+  'B|src/composables/multiplierCoefficients.ts zeroEnergyRow': {
+    since: '2026-09-13',
+    due: 'zeroEnergyRow 只读不写——确认是否为「显式录 0 行」的预留标记，无用则删',
+    why: '只读不写；与 FEATURES_GUIDE「普攻回能显式录 0 的 13 条以 0% 打标」语义疑似相关',
+  },
+  'B|src/composables/pullPlannerEngine.ts freePoolPerSpecialty': {
+    since: '2026-09-13',
+    due: '抽卡规划器的 freePoolPerSpecialty 无人传——接上 UI 或删除',
+    why: '只读不写（走 `?? 默认`）；抽卡价值只用期望值口径（用户裁决 2026-09-01），该字段疑似旧模拟残留',
+  },
+  'B|src/composables/timeWeightBalancer.ts minWeight': {
+    since: '2026-09-13',
+    due: 'minWeight 只读不写——确认默认值即唯一口径则删字段',
+    why: '只读不写（走 `?? 默认`）',
+  },
+  // ⚠ 本条是**扫描器已知盲区的产物**，登记理由与上面几条（真死通道）不同：见 why。
+  'B|src/composables/runArchiveImport.ts resistances': {
+    since: '2026-09-13',
+    due: '归档 DTO 的 resistances 字段——与 weaknesses/hpTotal 同族（活动/归档 JSON 契约面），随归档 DTO 一并确认删留',
+    why: '**名字撞车导致的误报**（实测核实）：本扫描器按字段名全仓计数，reads=21 全部来自 src/stores/config.ts 的**同名但无关**字段 `EnemyConfig.resistances`（旧版单表抗性，:1068/:1285 有兼容读取）；归档的 `ArchiveRoom.resistances` 自身零消费者（run-archive.json 实测 0 处出现该键）。这是 T10 报告的盲区②「跨类型同名结构写入」的样本——判据 14 是字段名级启发式，不是符号级引用分析。**留着这条登记而非删掉判据**：它如实记录了「此处有一个名字撞车的字段」，且 T10 用 TypeScript LanguageService 复核过同族字段（weaknesses/hpTotal 真为零读零写）。',
+  },
+  'B|src/core/damage.ts isRupture': {
+    since: '2026-09-13',
+    due: 'DirectDamageInput.isRupture 零写入——函数体内已用 profile 判贯穿，确认冗余后删',
+    why: '只读不写：`input.isRupture ? RUPTURE_DAMAGE_PROFILE : …` 的兼容入参，全仓调用点都改传 specialDamageProfile（resolveSpecialDamageProfile），该入参已成死通道',
+  },
+  'B|src/core/effectiveTime.ts blockSeconds': {
+    since: '2026-09-13',
+    due: 'phaseDelayedCooldown 的 blockSeconds 形参无人传（走 `?? c` 旧口径）——接上 frontBlockSeconds 或删形参',
+    why: '只读不写；注意 frontBlockSeconds 是被测试与调用方用的活通道，死的是 phaseDelayedCooldown 的这个形参',
+  },
+  'B|src/data/stunAxisPresets.ts chapter': {
+    since: '2026-09-13',
+    due: '轴预设的 chapter 字段只读不写（预设数据里没人填）——补数据或删字段',
+    why: '只读不写；同类 guarantee 与 preset 的其它字段有数据，chapter 疑似未填',
+  },
+  'B|src/data/stunAxisPresets.ts guarantee': {
+    since: '2026-09-13',
+    due: '同 chapter，随轴预设字段一并处置',
+    why: '只读不写',
+  },
+  // 段 C（手写 .d.mts 漂移）**首轮即清零**：本判据上线时把 check-guards.d.mts 的漏声明一次补齐
+  // （16 个：判据 12 的 CORE_LAYER_DIR/scanCoreRoleImports + 判据 13/14/15 的全部新导出），
+  // 故无 C 段豁免条目——这正是判据该有的用法：发现漂移 → 补齐声明 → 清单为空。
+  // ⚠ 以后 C 段真出现漂移，正解同样是补声明而不是登记豁免。
+}
+
+/**
+ * 去掉**字符串字面量**（模板串 / 单引号串 / 双引号串），供判据 14 的字段名计数使用。
+ *
+ * 为什么需要（2026-09-14 实测缺陷）：本判据按**字段名文本**计数，字符串里出现的
+ * `resistances: {}` 会被当成一次「写入点」⇒ 一条**测试夹具里的示例串**就能把一条真实的
+ * 生产死通道从清单里抹掉。实测：并行车道新增的 `deadChannelLs.test.ts` 里有一行
+ * `{ resistances: {} }` 的构造输入，判据 14 的 B 段当场 10→9（`B|…runArchiveImport.ts resistances`
+ * 变成「豁免过期」而红）——**判据被无关测试的措辞左右**，这是 false-green 面。
+ * 去字符串后 B 段实测恢复为冻结基线 10 条（reads/writes 两侧都去，口径一致）。
+ */
+export function stripStringLiterals(text) {
+  return text
+    .replace(/`(?:[^`\\]|\\.)*`/g, '``')
+    .replace(/'(?:[^'\\\n]|\\.)*'/g, "''")
+    .replace(/"(?:[^"\\\n]|\\.)*"/g, '""')
+}
+
+/**
+ * 段 A：导出可选项**零读零写**（`goldLevel` 模式）。
+ * 范围 = `src/{core,composables,data}/**` 非测试文件里缩进 2–4 空格的 `name?: T` 声明。
+ * 判定 = 全仓（含测试）既无读取形态（`.name` / `??` / 解构）也无写入形态（`name:` / `.name =`）。
+ * 排除声明行自身（否则每个声明都自计一次写入）。计数前先去字符串字面量（见 stripStringLiterals）。
+ */
+export function scanDeadOptionalProps(root = ROOT) {
+  const files = walkSrcFiles(root)
+  const texts = files.map(f => [relPosix(root, f), readFileSync(f, 'utf8')])
+  const decls = []
+  for (const [rel, text] of texts) {
+    if (rel.includes('__tests__')) continue
+    if (!/^src\/(core|composables|data)\//.test(rel)) continue
+    text.split('\n').forEach((ln, i) => {
+      const m = ln.match(/^\s{2,4}(\w+)\?\s*:\s*\S/)
+      if (m) decls.push({ file: rel, line: i + 1, name: m[1] })
+    })
+  }
+  const count = (name, excludeFile, excludeLine) => {
+    const reRead = new RegExp('[.\\?]\\.?' + name + '\\b|\\b' + name + '\\s*\\?\\?|\\{\\s*' + name + '\\s*[,}]|\\b' + name + '\\s*[,}]\\s*=', 'g')
+    const reWrite = new RegExp('(^|[\\s{,(])' + name + '\\s*:(?!:)', 'g')
+    const reAssign = new RegExp('\\.' + name + '\\s*=(?!=)', 'g')
+    let reads = 0, writes = 0
+    for (const [rel, text] of texts) {
+      // 去字符串字面量：夹具里的 `{ resistances: {} }` 这类示例串不该被算成写入点（见 stripStringLiterals）
+      let t = stripStringLiterals(text)
+      if (rel === excludeFile) {
+        const lines = t.split('\n')
+        lines.splice(excludeLine - 1, 1)
+        t = lines.join('\n')
+      }
+      reads += (t.match(reRead) ?? []).length
+      writes += (t.match(reWrite) ?? []).length + (t.match(reAssign) ?? []).length
+    }
+    return { reads, writes }
+  }
+  const dead = []
+  for (const d of decls) {
+    const { reads, writes } = count(d.name, d.file, d.line)
+    if (reads === 0 && writes === 0) dead.push({ ...d, reads, writes, key: `A|${d.file} ${d.name}` })
+  }
+  return dead
+}
+
+/**
+ * 段 B：可选项**只读不写**（`invincibleTime` 模式的字段级同款：引擎读、面板可写、数据不给）。
+ * 实现里有 `?? 默认值` 兜底 ⇒ 缺数据时静默走默认，不报错——正是"通道空转"的形态。
+ */
+export function scanReadOnlyOptionalProps(root = ROOT) {
+  const files = walkSrcFiles(root)
+  const texts = files.map(f => [relPosix(root, f), readFileSync(f, 'utf8')])
+  const decls = []
+  for (const [rel, text] of texts) {
+    if (rel.includes('__tests__')) continue
+    if (!/^src\/(core|composables|data)\//.test(rel)) continue
+    text.split('\n').forEach((ln, i) => {
+      const m = ln.match(/^\s{2,4}(\w+)\?\s*:\s*\S/)
+      if (m) decls.push({ file: rel, line: i + 1, name: m[1] })
+    })
+  }
+  const count = (name, excludeFile, excludeLine) => {
+    const reRead = new RegExp('[.\\?]\\.?' + name + '\\b|\\b' + name + '\\s*\\?\\?|\\{\\s*' + name + '\\s*[,}]|\\b' + name + '\\s*[,}]\\s*=', 'g')
+    const reWrite = new RegExp('(^|[\\s{,(])' + name + '\\s*:(?!:)', 'g')
+    const reAssign = new RegExp('\\.' + name + '\\s*=(?!=)', 'g')
+    let reads = 0, writes = 0
+    for (const [rel, text] of texts) {
+      // 同段 A：夹具串里的 `resistances: {}` 曾把本条真实的死通道抹掉（见 stripStringLiterals）
+      let t = stripStringLiterals(text)
+      if (rel === excludeFile) {
+        const lines = t.split('\n')
+        lines.splice(excludeLine - 1, 1)
+        t = lines.join('\n')
+      }
+      reads += (t.match(reRead) ?? []).length
+      writes += (t.match(reWrite) ?? []).length + (t.match(reAssign) ?? []).length
+    }
+    return { reads, writes }
+  }
+  const out = []
+  for (const d of decls) {
+    const { reads, writes } = count(d.name, d.file, d.line)
+    if (reads > 0 && writes === 0) out.push({ ...d, reads, writes, key: `B|${d.file} ${d.name}` })
+  }
+  return out
+}
+
+/**
+ * 段 C：手写 `.d.mts` 与实际 `.mjs` **运行时导出**的一致性（TS2305 模式）。
+ * 只看「值声明」（`export declare const/function/class/enum`），`interface`/`type` 是纯类型、
+ * 不进运行时导出表，误报为漂移。
+ *
+ * 两个方向都报：
+ * - `declared-not-exported`：`.d.mts` 声明了 `.mjs` 没有的值 ⇒ 具名 import 即 **TS2305**
+ *   （实测事故：`CORE_ROLE_IMPORT_BASELINE`）。
+ * - `exported-not-declared`：`.mjs` 导出了但影子 API 没写 ⇒ TS 侧看不见（本轮实测 2 处）。
+ *
+ * 实现用**静态抽取**而非 `import()`：本文件自己就是被对账对象之一，动态 import 会成环
+ * （实测 `unsettled top-level await`），且执行 `.mjs` 顶层副作用对「导出表」这件事是多余的。
+ */
+export function scanDtsDrift(root = ROOT) {
+  const dir = join(root, 'scripts')
+  if (!existsSync(dir)) return { pairs: [], declaredNotExported: [], exportedNotDeclared: [] }
+  const dts = []
+  const rec = (d) => {
+    if (!existsSync(d)) return
+    for (const n of readdirSync(d)) {
+      const p = join(d, n)
+      if (statSync(p).isDirectory()) { if (!['node_modules', 'dist'].includes(n)) rec(p); continue }
+      if (n.endsWith('.d.mts')) dts.push(p)
+    }
+  }
+  rec(dir)
+  const pairs = []
+  const declaredNotExported = []
+  const exportedNotDeclared = []
+  for (const dtsPath of dts.sort()) {
+    const mjsPath = dtsPath.replace(/\.d\.mts$/, '.mjs')
+    if (!existsSync(mjsPath)) continue
+    const dtsText = readFileSync(dtsPath, 'utf8')
+    const mjsText = readFileSync(mjsPath, 'utf8')
+    const typeOnly = new Set([...dtsText.matchAll(/export declare (?:interface|type)\s+([A-Za-z_$][\w$]*)/g)].map(m => m[1]))
+    const declared = [...new Set([...dtsText.matchAll(/export declare (?:const|function|class|enum|let|var)\s+([A-Za-z_$][\w$]*)/g)].map(m => m[1]))]
+    const runtime = extractRuntimeExports(mjsText)
+    const relDts = relPosix(root, dtsPath)
+    const relMjs = relPosix(root, mjsPath)
+    const dOnly = declared.filter(d => !runtime.includes(d))
+    const eOnly = runtime.filter(e => !declared.includes(e) && !typeOnly.has(e))
+    pairs.push({ dts: relDts, mjs: relMjs, declared: declared.length, runtime: runtime.length })
+    // key 逐符号展开（不是整组一个 key）：豁免/销号要能精到单个符号，
+    // 否则「补了一个声明」就得把整组 key 重写一遍（清单会变成一次性消耗品）
+    for (const n of dOnly) declaredNotExported.push({ dts: relDts, mjs: relMjs, names: [n], key: `C|${relDts}#${n}` })
+    for (const n of eOnly) exportedNotDeclared.push({ dts: relDts, mjs: relMjs, names: [n], key: `C|${relDts}#${n}` })
+  }
+  return { pairs, declaredNotExported, exportedNotDeclared }
+}
+
+/**
+ * 从 `.mjs` 源码静态抽取**运行时导出名**。
+ * 覆盖三种合法写法：`export function/const/class/let/var <名>`、`export { a, b as c }`、
+ * `export { x } from './y.mjs'`（re-export 也是运行时导出）。`export type`/`export default` 不计
+ * ——前者不进运行时表，后者无具名绑定（本仓 scripts/ 实测零 default export，判据会锁死这条假设）。
+ */
+export function extractRuntimeExports(source) {
+  const names = new Set()
+  for (const m of source.matchAll(/^export\s+(?:async\s+)?(?:function|const|class|let|var)\s+([A-Za-z_$][\w$]*)/gm)) names.add(m[1])
+  for (const m of source.matchAll(/^export\s*\{([^}]*)\}/gm)) {
+    for (const part of m[1].split(',')) {
+      const seg = part.trim()
+      if (!seg) continue
+      const as = seg.match(/^([A-Za-z_$][\w$]*)\s+as\s+([A-Za-z_$][\w$]*)$/)
+      names.add(as ? as[2] : seg)
+    }
+  }
+  return [...names].sort()
+}
+
+/** `src/**` 下所有 .ts/.vue 文件（跳过 node_modules/dist/.git） */
+function walkSrcFiles(root) {
+  const out = []
+  const rec = (dir) => {
+    if (!existsSync(dir)) return
+    for (const n of readdirSync(dir)) {
+      const p = join(dir, n)
+      if (statSync(p).isDirectory()) { if (!['node_modules', 'dist', '.git'].includes(n)) rec(p) }
+      else if (/\.(ts|vue)$/.test(n)) out.push(p)
+    }
+  }
+  rec(join(root, 'src'))
+  return out.sort()
+}
+
+function relPosix(root, p) {
+  return relative(root, p).split(sep).join('/')
+}
+
+/**
+ * 按白名单豁免死通道候选；返回 { fresh, allowlisted, stale }。
+ *
+ * `stale`（清单里已不再命中的行）**只在该候选集自己所属的段内计算**（key 前缀 `A|`/`B|`/`C|`）——
+ * 三段各查各的：若拿 global key 列表去比单个段的命中集，A 段的 13 条会被 B 段调用误报成 stale
+ * （实测：三段合并跑时 15 条全报 expired，而它们其实全在 A/B 段命中）。
+ */
+export function applyDeadChannelAllowlist(candidates) {
+  const keys = Object.keys(DEAD_CHANNEL_ALLOWLIST)
+  const fresh = candidates.filter(c => !keys.includes(c.key))
+  const allowlisted = candidates.filter(c => keys.includes(c.key))
+  const hit = new Set(candidates.map(c => c.key))
+  // 段前缀从候选自身取（空候选集时无可推断段 → 返回空 stale，不误报）
+  const segments = new Set(candidates.map(c => c.key.slice(0, c.key.indexOf('|') + 1)))
+  const stale = segments.size === 0
+    ? []
+    : keys.filter(k => segments.has(k.slice(0, k.indexOf('|') + 1)) && !hit.has(k))
+  return { fresh, allowlisted, stale }
+}
+
+// ---- 判据 15：口径复核触发器强制（防「旧结论静默过期」） ----
+//
+// 为什么需要：`zc drift` 已有「锚文件在『据』日期之后被改过」的点名机制，但它是**只报不红**，
+// 且只看「锚文件 mtime」——看不见「口径本身需要定期复核」这件事。实测：手写 `@fact` 93 条里
+// 85 条是**游戏语义**（口径=已定的算法/语义），而带 `⟳复核` 触发器的**一条都没有**
+// （docs 里仅 3 条）⇒ 所有口径都是"永不过期"的，包括 `effectiveTime.ts` 那条
+// 「无敌（秽盾/转阶段动画）」——用户 2026-09-13 才纠正，代码里已挂了 14 天没人发现。
+//
+// 判据形态 = **棘轮 + 豁免清单（带 since/due）**：
+// - 存量口径进豁免清单（一次性），新增游戏语义口径缺 `⟳复核` 行 = 红；
+// - 豁免清单条目补齐触发器后销号（清单过期即红 ⇒ burn-down，防「冻结 = 永久豁免」）；
+// - 触发器写在 `@fact` 的**下一行注释**（`⟳复核: <到点判什么> | 到期 <YYYY-MM-DD>`）——
+//   解析器只认 `据|验|锚|信` 槽位，未知前缀直接忽略 ⇒ 行尾追加不破坏 `parseFactLine`。
+//
+// 「游戏语义」判定 = 主体**不是**工程元口径（`engine:guards` / `engine:zc` / `ui:` / `utils:`）
+// 且种类 ∈ {口径, 映射}。工程元口径的"复核"由守卫自己保证（判据红了就有人看），不需要挂日期。
+
+/**
+ * 工程元口径主体前缀（这些的复核靠守卫红，不靠日期提醒）——
+ * `engine:guards`（护栏自身口径）/ `engine:zc`（工具链）/ `ui:`（UI 契约）/
+ * `utils/`、`utils:`（通用工具）/ `engine:mechanics单一事实源`（校验器元规则）。
+ * 用前缀匹配：主体写法既有 `utils:format` 也有 `utils/format/localized`（`/` 分隔）。
+ */
+export const CALIBER_NON_GAME_SUBJECTS = [
+  'engine:guards', 'engine:zc', 'ui:', 'utils:', 'utils/',
+  'engine:mechanics',
+]
+/** 需要复核触发器的种类（口径=已定语义；映射=术语↔字段对应，游戏改版即失效） */
+export const CALIBER_TRIGGER_KINDS = ['口径', '映射']
+
+/**
+ * 存量口径豁免清单（棘轮基线）：key = `<file>:<line> <subject>`。
+ * ⚠ 这张表只许**缩短**：给某条口径补上 `⟳复核` 行之后，从本表删掉该行（漏删即红 = stale）。
+ * 为什么允许存量豁免：85 条一次性补完不现实，全红会逼人**删判据**（判据死掉比缺口更糟）。
+ */
+export const CALIBER_TRIGGER_ALLOWLIST = [
+  "src/composables/difficultyCurve.ts engine:难度曲线/x轴",
+  "src/composables/difficultyCurve.ts engine:难度曲线/伤害归因",
+  "src/composables/difficultyCurve.ts engine:难度曲线/交互项截断缩",
+  "src/composables/difficultyCurve.ts engine:难度曲线/关键次数标注",
+  "src/composables/difficultyCurve.ts engine:难度曲线/全关基线",
+  "src/composables/difficultyCurve.ts engine:操作难度/角力权重",
+  "src/composables/resourceCalc/convergence.ts engine:轴内块数落地",
+  "src/composables/resourceCalc/damagePool.ts engine:damage/减防通道",
+  "src/composables/resourceCalc/damagePool.ts engine:damage/非轴失衡易伤",
+  "src/composables/resourceCalc/feasibilitySearch.ts engine:降配搜索/非下闭可行集",
+  "src/composables/resourceCalc/helpers.ts disc:覆盖率并入范围",
+  "src/composables/resourceCalc/liuyinPromote.ts engine:实战档位喧响计数",
+  "src/composables/resourceCalc/liuyinPromote.ts engine:失衡次数不动点",
+  "src/composables/stunVulnSummary.ts engine:失衡易伤可见化/加权信用",
+  "src/composables/teamCompare.ts engine:操作难度/权重可调",
+  "src/composables/teamTimeline.ts slotSweep:选第三人求值口径",
+  "src/composables/timeWeightAllocation.ts engine:分配策略/主C判定",
+  "src/core/damage.ts engine:damage/乘区顺序",
+  "src/core/effectiveTime.ts engine:stun/时间守恒",
+  "src/core/panel.ts engine:driveDisc/固定主词条",
+  "src/core/resource/helpers.ts engine:能量收入行级Σ",
+  "src/core/resource/helpers.ts engine:喧响收入行级Σ",
+  "src/core/resource/helpers.ts engine:时间线截断",
+  "src/core/resource/helpers.ts yidhari:refund不动点",
+  "src/core/resource/helpers.ts engine:合轴预算抵扣",
+  "src/core/resource/helpers.ts engine:单角色前线上限",
+  "src/core/resource.ts engine:欠打回填",
+  "src/core/resource.ts engine:折叠环上限",
+  "src/core/resource.ts engine:热启动逐位透明",
+  "src/core/resource.ts engine:判稳含平A时间",
+  "src/core/resource.ts engine:收敛环停点规范化",
+  "src/core/resource.ts engine:资源账本/截断",
+  "src/core/resource.ts engine:fusedGroupMetrics/一次动作整段量",
+  "src/core/resource.ts engine:findChainAttack/多段连携",
+  "src/data/counterAssists.ts data:反制支援/招式配对",
+  "src/data/exSpecialPlans.ts engine:exSpecialPlan/千夏拍照",
+  "src/data/exSpecialPlans.ts engine:exSpecialPlan/成本类型化",
+  "src/data/moveFusions.ts engine:moveFusion/飞雪斩击",
+  "src/data/moveFusions.ts engine:moveFusion/春临",
+  "src/data/moveFusions.ts engine:moveFusion/兔兔连斩",
+  "src/data/moveFusions.ts engine:moveFusion/孤影断獠",
+  "src/data/moveFusions.ts engine:moveFusion/泡泡糖轰炸",
+  "src/data/moveFusions.ts engine:autoField/能量场不占前台时间",
+  "src/data/sustainedEx.ts engine:sustainedEx/基准秒",
+  "src/data/teamPresets.ts preset:队伍分类口径",
+  "src/mechanics/__tests__/remielle.test.ts agent:1581/异化C2加算单写者",
+  "src/mechanics/agents/banyue.ts engine:banyue/补齐时间上限",
+  "src/mechanics/agents/claret.ts agent:1611/锐能·终结技回复",
+  "src/mechanics/agents/claret.ts agent:1611/初始暴伤转暴击",
+  "src/mechanics/agents/claret.ts agent:1611/平A双基准",
+  "src/mechanics/agents/claret.ts agent:1611/琢形送残痕",
+  "src/mechanics/agents/claret.ts agent:1611/铭刻窗口·停表",
+  "src/mechanics/agents/ellen.ts agent:1191/喧响行级回填审计",
+  "src/mechanics/agents/liuyin.ts agent:1481/60转大上限",
+  "src/mechanics/agents/liuyin.ts agent:1481/强特计划估时",
+  "src/mechanics/agents/nicole.ts agent:1031/影画1能量场",
+  "src/mechanics/agents/piper.ts agent:1281/动力",
+  "src/mechanics/agents/piper.ts agent:1281/影画2",
+  "src/mechanics/agents/remielle.ts agent:1581/耀变倍率提升",
+  "src/mechanics/agents/roxy.ts agent:1621/自旋喧响每秒口径",
+  "src/mechanics/agents/sigrid.ts agent:1591/出枪式段时间",
+  "src/mechanics/agents/sigrid.ts agent:1591/影画1溢出",
+  "src/mechanics/agents/sigrid.ts agent:1591/敛枪式估时",
+  "src/mechanics/agents/sigrid.ts agent:1591/出枪式机会计数",
+  "src/mechanics/agents/sigrid.ts agent:1591/影画6破阵提速",
+  "src/mechanics/agents/sigrid.ts agent:1591/影画1第三段送机会",
+  "src/mechanics/agents/soukaku.ts agent:1131/强特",
+  "src/mechanics/agents/starlightBilly.ts agent:1531/链数实数化",
+  "src/mechanics/agents/yeshuguang.ts agent:1431/帷幕易伤",
+  "src/mechanics/agents/yeshuguang.ts agent:1431/自动选轴",
+  "src/mechanics/agents/yeshuguang.ts agent:1431/短轴资源",
+  "src/mechanics/agents/yeshuguang.ts agent:1431/轮数实数化",
+  "src/mechanics/agents/zhao.ts agent:1341/EQ合轴",
+  "src/mechanics/agents/zhuYuan.ts agent:1241朱鸢特化",
+  "src/mechanics/agents/zhuYuan.ts agent:1241/压制以太弹时间",
+  "src/stores/config.ts engine:平A权重阶梯",
+  "src/stores/config.ts engine:交互基准",
+  "src/types/resource/team.ts engine:收敛读数归属",
+  "src/views/TeamComparePage.vue sweepPage:第三人候选圈定",
+  "scripts/gen-auto-presets.mjs engine:preset/队伍身份",
+  "scripts/import-nanoka-bosses.mjs data:bossBodySize",
+  "scripts/import-nanoka-v12.mjs data:1611/反制支援两行秽盾基数",
+]
+
+/**
+ * 扫游戏语义口径缺 `⟳复核` 触发器的情况。
+ * 「有没有触发器」= 该 `@fact` 行本身或**紧邻的下一行**（都是注释）里出现 `⟳复核` + `到期 <日期>`。
+ * 返回 { game: [{file,line,subject,kind}], withTrigger, missing, stale }。
+ */
+export function scanCaliberTriggers(root = ROOT, facts = null) {
+  const scanned = facts ?? scanAuthoredFacts(root)
+  const game = []
+  const withTrigger = []
+  for (const s of scanned) {
+    const f = s.fact
+    if (!f || !CALIBER_TRIGGER_KINDS.includes(f.kind)) continue
+    if (CALIBER_NON_GAME_SUBJECTS.some(p => f.subject.startsWith(p))) continue
+    const p = join(root, s.file)
+    const lines = existsSync(p) ? readFileSync(p, 'utf8').split('\n') : []
+    // 本行 + 下一行（允许 `⟳复核` 写在 @fact 行的尾部，或紧随其后单独一行）
+    const near = [s.raw ?? '', lines[s.line] ?? ''].join('\n')
+    const hasTrigger = /⟳复核[:：]/.test(near) && /到期\s*\d{4}-\d{2}-\d{2}/.test(near)
+    const row = { file: s.file, line: s.line, subject: f.subject, kind: f.kind }
+    if (hasTrigger) withTrigger.push(row)
+    else game.push({ ...row, key: `${s.file} ${f.subject}` })
+  }
+  const exempt = new Set(CALIBER_TRIGGER_ALLOWLIST)
+  const missing = game.filter(g => !exempt.has(g.key))
+  const hit = new Set(game.map(g => g.key))
+  const stale = CALIBER_TRIGGER_ALLOWLIST.filter(k => !hit.has(k))
+  return { game, withTrigger, missing, stale }
+}
+
 // ---- 汇总 ----
 
+/**
+ * 全部判据。
+ * **async**：判据 14-C 需要 `import()` 各 `.mjs` 拿运行时导出表（与手写 `.d.mts` 对账）——
+ * 静态 import 会成环（本文件就是被对账对象之一）。
+ */
 export function runAllChecks(root = ROOT) {
   const results = []
 
@@ -996,6 +1560,78 @@ export function runAllChecks(root = ROOT) {
       `  ✗ ${f} 密度 ${d.density} > 天花板 ${d.ceiling}（hits ${d.hits}/行 ${d.lines}）`
       + ` → 新案例叙事进 .claude 账本或 git，手册条目按「症状/根因/判据/否决记录」四栏模板写`),
   })
+
+  // ---- 判据 13：名词表三态对账（防「数据在源里但没人消费」） ----
+  const noun = auditNounTriage(root)
+  const nounCounts = noun === null ? null : noun.triage.entries && {
+    modeled: Object.values(noun.triage.entries).filter(e => e.state === 'modeled').length,
+    deferred: Object.values(noun.triage.entries).filter(e => e.state === 'deferred').length,
+    unhandled: noun.unhandled.length,
+  }
+  results.push({
+    name: noun === null
+      ? `名词表三态对账 ⚠ 缺 ${NOUN_SOURCE_FILE} 或 ${NOUN_TRIAGE_FILE}，跳过`
+      : `名词表三态对账 (${NOUN_SOURCE_FILE}: ${noun.sourceKeys.length} 条 → modeled ${nounCounts.modeled} / deferred ${nounCounts.deferred} / unhandled ${nounCounts.unhandled})`,
+    ok: noun === null || noun.ok,
+    detail: noun === null ? [] : [
+      ...noun.missing.map(k => `  ✗ 源里有但未对账：${k} ${noun.source[k]?.name ?? ''} → 在 ${NOUN_TRIAGE_FILE} 补一条三态判定`),
+      ...noun.extra.map(k => `  ✗ 对账文件多出源里没有的键：${k} → 源数据已变，删该条`),
+      ...noun.badState.map(s => `  ✗ state 非法：${s} → 只许 ${NOUN_STATES.join(' / ')}`),
+      ...noun.noEvidence.map(s => `  ✗ 缺 evidence：${s} → 写一句话（在哪找到的什么 / 搜了什么没找到）`),
+      ...noun.brokenAnchor.map(s => `  ✗ modeled 但锚解析不到：${s} → 改锚或降级为 deferred/unhandled（断锚 = 口径已过期）`),
+      ...noun.noRegister.map(s => `  ✗ deferred 但缺登记：${s} → 补 registeredAt（<文件>:<行>）与 since（日期）`),
+      ...noun.unhandled.map(s => `  ✗ 未处理（红）：${s} → 建模（补 src 消费锚点）或挂账（登记进 docs 待办/DEBT_REGISTRY）；`
+        + '挂账也是合法处置，见判据 13 头注释'),
+      ...(noun.unhandled.length > 0 ? [
+        `  → 数据在源里但没人消费 = 无失败测试的静默缺口（[秽盾] 就是这么漏了 14 天）。`,
+        `  → 本轮只要求「每条有着落」：modeled 给锚 / deferred 给登记 / unhandled 清零。`,
+      ] : []),
+    ],
+  })
+
+  // ---- 判据 14：死通道扫描（防「接口/参数在但实现没接」） ----
+  {
+    const deadA = applyDeadChannelAllowlist(scanDeadOptionalProps(root))
+    const deadB = applyDeadChannelAllowlist(scanReadOnlyOptionalProps(root))
+    const dts = scanDtsDrift(root)
+    const dtsDrift = [...dts.declaredNotExported, ...dts.exportedNotDeclared]
+    const dtsFresh = applyDeadChannelAllowlist(dtsDrift)
+    const fresh = [...deadA.fresh, ...deadB.fresh, ...dtsFresh.fresh]
+    const stale = [...deadA.stale, ...deadB.stale, ...dtsFresh.stale]
+    const counts = `A 零读零写 ${deadA.allowlisted.length} / B 只读不写 ${deadB.allowlisted.length} / C dts 漂移 ${dtsFresh.allowlisted.length}`
+    results.push({
+      name: `死通道扫描 (规则 16: 接口在实现没接) ${counts} 已豁免`,
+      ok: fresh.length === 0 && stale.length === 0,
+      detail: [
+        ...fresh.map(c => `  ✗ 新增未登记死通道：${c.key}${'reads' in c ? `（reads=${c.reads} writes=${c.writes}）` : ''}`
+          + ` → 接上消费点，或在 check-guards.mjs 的 DEAD_CHANNEL_ALLOWLIST 登记一条（since/due/why）`),
+        ...stale.map(k => `  ✗ 豁免清单过期：${k} → 已不再命中，从 DEAD_CHANNEL_ALLOWLIST 删掉该条（棘轮只减不增）`),
+        ...(fresh.length > 0 || stale.length > 0 ? [
+          '  → 三类形态：A 导出的可选项零调用（goldLevel 模式）/ B 可选项只读不写、`?? 默认值` 静默兜底',
+          '    （invincibleTime 模式：引擎读、面板可写、数据不给）/ C 手写 .d.mts 与 .mjs 运行时导出漂移（TS2305 模式）。',
+        ] : []),
+      ],
+    })
+  }
+
+  // ---- 判据 15：口径复核触发器强制（防「旧结论静默过期」） ----
+  {
+    const cal = scanCaliberTriggers(root, authored.scanned)
+    results.push({
+      name: `口径复核触发器 (规则 8/16: 游戏语义口径必须挂 ⟳复核 到期日) 已挂 ${cal.withTrigger.length} / 待补 ${cal.missing.length}`,
+      ok: cal.missing.length === 0 && cal.stale.length === 0,
+      detail: [
+        ...cal.missing.slice(0, 20).map(m => `  ✗ 游戏语义口径缺复核触发器：${m.key} → 在 @fact 行尾或下一行注释补`
+          + ' `⟳复核: <到点判什么> | 到期 <YYYY-MM-DD>`（解析器只认 据/验/锚/信 槽位，追加不影响 parseFactLine）'),
+        ...(cal.missing.length > 20 ? [`  …另有 ${cal.missing.length - 20} 条`] : []),
+        ...cal.stale.map(k => `  ✗ 豁免清单过期：${k} → 该口径已补触发器，从 CALIBER_TRIGGER_ALLOWLIST 删掉该行（棘轮只减不增）`),
+        ...(cal.missing.length > 0 ? [
+          `  → 到期日在 check-guards 判据 16 ≠ 这里：本判据只查「有没有」触发器（防止口径"永不过期"），`,
+          `     `+"`zc drift`"+` 查「到没到期」并点名逾期项。工程元口径（${CALIBER_NON_GAME_SUBJECTS.join(' / ')}）豁免——它们的复核靠守卫红。`,
+        ] : []),
+      ],
+    })
+  }
 
   return { results, ok: results.every(r => r.ok) }
 }
