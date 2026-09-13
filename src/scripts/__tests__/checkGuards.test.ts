@@ -53,6 +53,7 @@ import {
   extractRuntimeExports,
   applyDeadChannelAllowlist,
   stripStringLiterals,
+  stripCommentsAndStrings,
   // 判据 15：口径复核触发器
   CALIBER_TRIGGER_ALLOWLIST,
   scanCaliberTriggers,
@@ -629,7 +630,7 @@ describe('scanReadOnlyOptionalProps（判据 14-B：invincibleTime 模式）', (
   // 于是「夹具里的示例串」也能当写入点。实测事故：并行车道新增 deadChannelLs.test.ts 里
   // 一行 `{ resistances: {} }` 的构造输入，让判据 14-B 当场 10→9（真实死通道
   // `B|src/composables/runArchiveImport.ts resistances` 被抹掉，反而报「豁免过期」而红）。
-  // ⇒ 计数前必须去字符串字面量（stripStringLiterals）。
+  // ⇒ 计数前必须去字符串字面量 + 注释（stripCommentsAndStrings）。
   it('★ 字符串字面量里的 `name:` 不算写入点（夹具串不该抹掉真实死通道）', () => {
     const root = fixture({
       'src/composables/runArchiveImport.ts': [
@@ -638,8 +639,9 @@ describe('scanReadOnlyOptionalProps（判据 14-B：invincibleTime 模式）', (
         '}',
         'export function f(r: ArchiveRoom) { return Object.keys(r.resistances ?? {}).length }',
       ].join('\n'),
-      // 测试夹具：这里的 `resistances: {}` 是**构造输入的字面量串**，不是写入点
-      'src/composables/__tests__/fixture.test.ts': "const src = `export const enemy = { resistances: {} }`\n",
+      // 测试夹具：这里的 `resistances: {}` 是**构造输入的字面量串**，不是写入点。
+      // ⚠ 夹具串本身必须用单引号包（不能用嵌套模板串）——嵌套反引号会把去串正则的边界打乱。
+      'src/composables/__tests__/fixture.test.ts': 'const src = \'export const enemy = { resistances: {} }\'\n',
     })
     const ro = scanReadOnlyOptionalProps(root)
     expect(ro.map(d => d.name)).toEqual(['resistances'])
@@ -669,6 +671,47 @@ describe('scanReadOnlyOptionalProps（判据 14-B：invincibleTime 模式）', (
       .toBe('const a = ``; const b = \'\'; const c = ""; const d = { k: 4 }')
     // 转义引号不误伤
     expect(stripStringLiterals("const s = 'it\\'s: fine'")).toBe("const s = ''")
+  })
+
+  // T15 对抗审计的 #1 发现（本轮实测复核属实，同日修复）：注释里的 `name:` 同样算写入点 ⇒
+  // **一条 TODO 注释就能把真死通道洗白**。这是唯一会因日常写 TODO 而静默失效的形态。
+  it('★ 注释里的 `name:` 不算写入点（TODO 注释不该把真死通道洗白）', () => {
+    const root = fixture({
+      'src/core/effectiveTime.ts': [
+        'interface Cfg {',
+        '  blockSeconds?: number',
+        '}',
+        'export function t(c: Cfg) { return c.blockSeconds ?? 0 }',
+      ].join('\n'),
+      'src/core/notes.ts': [
+        '// TODO: blockSeconds: 待接 frontBlockSeconds（这条注释曾把真死通道洗白）',
+        '/* blockSeconds: 旧口径，保留兼容 */',
+        'export const keep = 1',
+      ].join('\n'),
+    })
+    const ro = scanReadOnlyOptionalProps(root)
+    expect(ro.map(d => d.name)).toEqual(['blockSeconds'])
+    expect(ro[0].writes).toBe(0)
+  })
+
+  it('块注释/行注释被剥，但真写入点与代码本体不受影响', () => {
+    const stripped = stripCommentsAndStrings([
+      '// inc: 1',
+      '/* inc: 2 */',
+      'const url = "https://a.b/inc: x"',
+      'const real = { inc: 3 }',
+      'const ratio = a / b // 不是注释符号误伤：2/3',
+    ].join('\n'))
+    // 注释里 2 处 + 字符串里 1 处被剥掉 ⇒ 只剩真写入点那 1 处
+    expect(stripped.match(/(^|[\s{,(])inc\s*:(?!:)/gm) ?? []).toHaveLength(1)
+    expect(stripped).toContain('const real = { inc: 3 }')  // 真写入点保留
+    expect(stripped).toContain('const ratio = a / b')      // `2/3` 不被当成行注释
+  })
+
+  it('stripCommentsAndStrings：先剥注释再去串（反序会把真代码吞掉）', () => {
+    // 注释里出现单引号：若先按引号去串，这行的引号会把「串」开在错误位置，吞掉后半段代码
+    const s = stripCommentsAndStrings("// 说明：'未闭合的引号\nconst keep = 1")
+    expect(s).toContain('const keep = 1')
   })
 })
 

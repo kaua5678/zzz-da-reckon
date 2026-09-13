@@ -189,6 +189,7 @@ export interface DeadChannelCandidate {
 export declare function scanDeadOptionalProps(root?: string): DeadChannelCandidate[]
 export declare function scanReadOnlyOptionalProps(root?: string): DeadChannelCandidate[]
 export declare function stripStringLiterals(text: string): string
+export declare function stripCommentsAndStrings(text: string): string
 export interface DtsDriftRow {
   dts: string
   mjs: string

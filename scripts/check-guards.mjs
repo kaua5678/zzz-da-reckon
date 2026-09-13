@@ -1020,14 +1020,31 @@ export const DEAD_CHANNEL_ALLOWLIST = {
 }
 
 /**
- * 去掉**字符串字面量**（模板串 / 单引号串 / 双引号串），供判据 14 的字段名计数使用。
+ * 去掉**注释**与**字符串字面量**，供判据 14 的字段名计数使用。
  *
- * 为什么需要（2026-09-14 实测缺陷）：本判据按**字段名文本**计数，字符串里出现的
- * `resistances: {}` 会被当成一次「写入点」⇒ 一条**测试夹具里的示例串**就能把一条真实的
- * 生产死通道从清单里抹掉。实测：并行车道新增的 `deadChannelLs.test.ts` 里有一行
- * `{ resistances: {} }` 的构造输入，判据 14 的 B 段当场 10→9（`B|…runArchiveImport.ts resistances`
- * 变成「豁免过期」而红）——**判据被无关测试的措辞左右**，这是 false-green 面。
- * 去字符串后 B 段实测恢复为冻结基线 10 条（reads/writes 两侧都去，口径一致）。
+ * 为什么需要（2026-09-14 实测缺陷，两段各自独立咬过一次）：
+ * 本判据按**字段名文本**计数，于是任何「不是代码」的地方出现 `name:` / `.name` 都算活引用。
+ * ① **字符串字面量**：并行车道新增的 `deadChannelLs.test.ts` 里一行 `{ resistances: {} }`
+ *    夹具构造串，让判据 14-B 当场 10→9——真实死通道 `B|…runArchiveImport.ts resistances`
+ *    被抹掉，判据反而报「豁免过期」而红。
+ * ② **注释**（同日 T15 对抗审计发现、实测复核）：`// TODO: resistances: 待接` 或
+ *    `/* blockSeconds: 旧口径 *​/` 同样算写入点 ⇒ 一条 TODO 注释就能把真死通道洗白。
+ *    这是**唯一会因日常写 TODO 而静默失效**的形态。
+ * 顺序要紧：**先剥注释再去串**。反过来的话，`// '` 这种注释里的引号会先把「串」开在错误位置，
+ * 把后半段真代码整段吞掉（实测：反过来做会把 `const a = 1` 之后的行吃光）。
+ * 去两侧（reads/writes）口径一致，B 段实测恢复为冻结基线 10 条。
+ */
+export function stripCommentsAndStrings(text) {
+  return stripStringLiterals(
+    text
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')      // 块注释（含 JSDoc）
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1'),  // 行注释（避开 `https://` 的假注释）
+  )
+}
+
+/**
+ * 去掉**字符串字面量**（模板串 / 单引号串 / 双引号串）。
+ * 见 `stripCommentsAndStrings` 的说明——判据 14 用前者，本函数保留为可单测的最小单元。
  */
 export function stripStringLiterals(text) {
   return text
@@ -1040,7 +1057,7 @@ export function stripStringLiterals(text) {
  * 段 A：导出可选项**零读零写**（`goldLevel` 模式）。
  * 范围 = `src/{core,composables,data}/**` 非测试文件里缩进 2–4 空格的 `name?: T` 声明。
  * 判定 = 全仓（含测试）既无读取形态（`.name` / `??` / 解构）也无写入形态（`name:` / `.name =`）。
- * 排除声明行自身（否则每个声明都自计一次写入）。计数前先去字符串字面量（见 stripStringLiterals）。
+ * 排除声明行自身（否则每个声明都自计一次写入）。计数前先去注释与字符串（见 stripCommentsAndStrings）。
  */
 export function scanDeadOptionalProps(root = ROOT) {
   const files = walkSrcFiles(root)
@@ -1060,8 +1077,8 @@ export function scanDeadOptionalProps(root = ROOT) {
     const reAssign = new RegExp('\\.' + name + '\\s*=(?!=)', 'g')
     let reads = 0, writes = 0
     for (const [rel, text] of texts) {
-      // 去字符串字面量：夹具里的 `{ resistances: {} }` 这类示例串不该被算成写入点（见 stripStringLiterals）
-      let t = stripStringLiterals(text)
+      // 去注释与字符串：夹具串/待办注释不该被算成写入点（见 stripCommentsAndStrings）
+      let t = stripCommentsAndStrings(text)
       if (rel === excludeFile) {
         const lines = t.split('\n')
         lines.splice(excludeLine - 1, 1)
@@ -1102,8 +1119,8 @@ export function scanReadOnlyOptionalProps(root = ROOT) {
     const reAssign = new RegExp('\\.' + name + '\\s*=(?!=)', 'g')
     let reads = 0, writes = 0
     for (const [rel, text] of texts) {
-      // 同段 A：夹具串里的 `resistances: {}` 曾把本条真实的死通道抹掉（见 stripStringLiterals）
-      let t = stripStringLiterals(text)
+      // 同段 A：夹具串/注释里的 `resistances:` 曾把本条真实的死通道抹掉（见 stripCommentsAndStrings）
+      let t = stripCommentsAndStrings(text)
       if (rel === excludeFile) {
         const lines = t.split('\n')
         lines.splice(excludeLine - 1, 1)
