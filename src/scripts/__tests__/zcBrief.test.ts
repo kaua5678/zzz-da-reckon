@@ -7,6 +7,7 @@
  * ③ 没命中时必须大声承认（返回空 + 提示自己读决策树），绝不能凑一个看似合理的答案。
  */
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import {
   buildBrief,
   cjkTokens,
@@ -15,6 +16,7 @@ import {
   inferTier,
   parseMarkdownTables,
   parseNumberedItems,
+  pickMainRun,
   scoreText,
   hasStrongOverlap,
 } from '../../../scripts/zc-brief.mjs'
@@ -69,6 +71,30 @@ describe('markdown 解析（出处指错比不给更糟）', () => {
     expect(items[1].n).toBe(2)
   })
 
+  it('stopAtHeadingLevel=2：跨 `###` 小节继续，遇 `##` 同级标题才收尾', () => {
+    const list = ['### 序言小清单', '1. **纪律一**', '2. **纪律二**', '### 坑表', '1. **坑一**', '2. **坑二**', '3. **坑三**', '## 下一大节', '4. **不该进来**'].join('\n')
+    const items = parseNumberedItems(list, 1, { stopAtHeadingLevel: 2 })
+    expect(items.map(i => i.title)).toEqual(['纪律一', '纪律二', '坑一', '坑二', '坑三'])
+    // 缺省 = 任意标题即止（旧行为），小节里的 `###` 会把清单截断
+    expect(parseNumberedItems(list).map(i => i.title)).toEqual(['纪律一', '纪律二'])
+  })
+
+  it('pickMainRun 取最长连续编号串：小节序言的子清单不得顶掉主清单', () => {
+    const mk = (n: number) => ({ n, title: 't' + n, body: 'b', line: n })
+    expect(pickMainRun([mk(1), mk(2), mk(1), mk(2), mk(3), mk(4)]).map(x => x.n)).toEqual([1, 2, 3, 4])
+    expect(pickMainRun([])).toEqual([])
+  })
+
+  it('§4 坑表真的可达（2026-09-14 回归锁：旧解析器一遇 `###` 就 break ⇒ 40 条坑静默归零）', () => {
+    const md = readFileSync('docs/ENGINE_PIPELINE_GUIDE.md', 'utf8')
+    const start = findHeadingLine(md, /常见坑/)
+    expect(start).toBeGreaterThan(0)
+    const items = pickMainRun(parseNumberedItems(md.split('\n').slice(start).join('\n'), 1, { stopAtHeadingLevel: 2 }))
+    expect(items.length).toBeGreaterThanOrEqual(30)
+    expect(items[0].n).toBe(1)
+    expect(items.map(i => i.title).join(' ')).toMatch(/moveId/) // 坑 4 一类必须在结果集里
+  })
+
   it('findHeadingLine 只认标题行', () => {
     expect(findHeadingLine(md, /标题/)).toBe(1)
     expect(findHeadingLine(md, /不存在/)).toBe(0)
@@ -109,6 +135,8 @@ describe('仓库级：真实任务描述能命中该读的那几行', () => {
     expect(b.causes.length).toBeGreaterThan(0)
     expect(b.causes.map(c => c.symptom).join(' ')).toMatch(/滑块|不变/)
     expect(b.pits.length).toBeGreaterThan(0)
+    // 命中的必须是**真坑**（坑 1 = 面板滑块拿不到 settings），不是小节里顺带的编号句子
+    expect(b.pits.map(p => p.title).join(' ')).toMatch(/滑块|settings/)
   })
 
   it('每条命中都带可跳转的出处（文件:行），且行号真的指到那一行', () => {

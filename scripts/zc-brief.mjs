@@ -74,8 +74,16 @@ export function parseMarkdownTables(md) {
   return tables
 }
 
-/** 「N. **标题**：正文」式编号清单 → 条目（正文含后续缩进行） */
-export function parseNumberedItems(md, fromLine = 1) {
+/**
+ * 「N. **标题**：正文」式编号清单 → 条目（正文含后续缩进行）。
+ * `opts.stopAtHeadingLevel`（缺省 6 = 任意标题即止，旧行为）：只在**同级或更高级**标题处结束整份清单，
+ * 在更深层标题处只结束当前条目。为什么需要（2026-09-14 实测的机器面失效）：
+ * `ENGINE_PIPELINE_GUIDE.md` §4 坑表里穿插着 `### ⏱ 时间系统三本账` / `### 🔁 同一物理量` 这类
+ * h3 小节，旧版一遇标题就 `break` ⇒ **40 条坑一条都没被检索到**（只捞到 3 条「三条纪律」假坑），
+ * 而 `zc brief` 把坑表宣传为排查类任务的主要检索面——文档写了却查不到 = 白维护。
+ */
+export function parseNumberedItems(md, fromLine = 1, opts = {}) {
+  const stopAt = opts.stopAtHeadingLevel ?? 6
   const lines = String(md).split('\n')
   const items = []
   let cur = null
@@ -87,15 +95,35 @@ export function parseNumberedItems(md, fromLine = 1) {
     } else if (cur && /^\s+\S/.test(lines[i])) {
       cur.body += ' ' + lines[i].trim()
     } else if (cur && /^#{1,6}\s/.test(lines[i])) {
-      // 标题 = 本节结束：后面再出现的编号是别的清单，不能吃进来
+      // 标题 = 当前条目结束；同级或更高级标题 = 整份清单结束
       items.push(cur); cur = null
-      break
+      const level = lines[i].match(/^#+/)[0].length
+      if (level <= stopAt) break
     } else if (cur && /^>/.test(lines[i])) {
       items.push(cur); cur = null
     }
   }
   if (cur) items.push(cur)
   return items
+}
+
+/**
+ * 同一段里可能混进多份编号清单（§4 坑表前就挂着「三条纪律 1./2./3.」）。
+ * 主清单 = **最长的连续递增编号串**（子清单通常三五条，主清单几十条）；
+ * 平局取最后出现的（越靠后越可能是本节正文而非序言）。
+ */
+export function pickMainRun(items) {
+  const runs = []
+  let cur = []
+  for (const it of items) {
+    if (cur.length && it.n !== cur[cur.length - 1].n + 1) { runs.push(cur); cur = [] }
+    cur.push(it)
+  }
+  if (cur.length) runs.push(cur)
+  if (!runs.length) return []
+  let best = runs[0]
+  for (const r of runs) if (r.length >= best.length) best = r
+  return best
 }
 
 /** 找到某个 markdown 标题所在行（1-based，未命中 = 0） */
@@ -150,7 +178,7 @@ export function buildBrief(query, opts = {}) {
 
   const ruleStart = findHeadingLine(agents, /硬性规则/)
   const rules = ruleStart
-    ? parseNumberedItems(agents.split('\n').slice(ruleStart).join('\n'), 1).map(r => ({ ...r, line: r.line + ruleStart }))
+    ? pickMainRun(parseNumberedItems(agents.split('\n').slice(ruleStart).join('\n'), 1, { stopAtHeadingLevel: 2 })).map(r => ({ ...r, line: r.line + ruleStart }))
     : []
   const hitRules = pick(rules, r => r.body)
 
@@ -165,7 +193,7 @@ export function buildBrief(query, opts = {}) {
 
   const pitStart = findHeadingLine(pipeline, /常见坑/)
   const pits = pitStart
-    ? parseNumberedItems(pipeline.split('\n').slice(pitStart).join('\n'), 1).map(p => ({ ...p, line: p.line + pitStart }))
+    ? pickMainRun(parseNumberedItems(pipeline.split('\n').slice(pitStart).join('\n'), 1, { stopAtHeadingLevel: 2 })).map(p => ({ ...p, line: p.line + pitStart }))
     : []
   const hitPits = pick(pits, p => p.body)
 

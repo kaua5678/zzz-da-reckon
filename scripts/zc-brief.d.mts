@@ -13,7 +13,10 @@ export interface MarkdownTable {
 export declare function parseMarkdownTables(md: string): MarkdownTable[]
 
 export interface NumberedItem { n: number; title: string; body: string; line: number }
-export declare function parseNumberedItems(md: string, fromLine?: number): NumberedItem[]
+export interface NumberedItemsOptions { /** 遇到 level ≤ 此值的标题才结束整份清单（缺省 6 = 任意标题即止，旧行为） */ stopAtHeadingLevel?: number }
+export declare function parseNumberedItems(md: string, fromLine?: number, opts?: NumberedItemsOptions): NumberedItem[]
+/** 同段混进多份编号清单时取主清单 = 最长连续递增编号串（平局取最后一段） */
+export declare function pickMainRun(items: NumberedItem[]): NumberedItem[]
 export declare function findHeadingLine(md: string, re: RegExp): number
 export declare function inferTier(query: string): 'fast' | 'full' | 'loop'
 
