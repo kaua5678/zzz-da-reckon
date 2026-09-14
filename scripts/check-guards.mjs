@@ -25,6 +25,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { auditAuthoredFacts, resolveAnchor, scanAuthoredFacts } from './zc.mjs'
 // level60 字段映射规则表（审计/修复/导入脚本三方共用，规则 11）
 import { FIELD_RULES } from './lib/level60-rules.mjs'
+import { scanScopedStyleReach } from './lib/scoped-style-reach.mjs'
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 
@@ -1847,8 +1848,29 @@ export function runAllChecks(root = ROOT) {
         ...(cal.missing.length > 20 ? [`  …另有 ${cal.missing.length - 20} 条`] : []),
         ...cal.stale.map(k => `  ✗ 豁免清单过期：${k} → 该口径已补触发器，从 CALIBER_TRIGGER_ALLOWLIST 删掉该行（棘轮只减不增）`),
         ...(cal.missing.length > 0 ? [
-          `  → 到期日在 check-guards 判据 16 ≠ 这里：本判据只查「有没有」触发器（防止口径"永不过期"），`,
+          `  → 到期与否不在本判据（这里只查「有没有」触发器，防止口径"永不过期"），逾期点名见 ` + "`zc drift`" + ` / #scanCaliberTriggerDue，`,
           `     `+"`zc drift`"+` 查「到没到期」并点名逾期项。工程元口径（${CALIBER_NON_GAME_SUBJECTS.join(' / ')}）豁免——它们的复核靠守卫红。`,
+        ] : []),
+      ],
+    })
+  }
+
+  // ---- 判据 16：scoped 样式可达性（防「抽组件把 DOM 搬走、规则留在页面」） ----
+  {
+    const reach = scanScopedStyleReach(root)
+    results.push({
+      name: `scoped 样式可达性 (规则 16: 组件用了页面私有 scoped 的类) 失配 ${reach.violations.length} 处`
+        + (reach.skip ? `（${reach.skip}，跳过）` : `（定义面 ${reach.defs} 条 / 消费组件 ${reach.consumers} 个）`),
+      ok: reach.skip !== null || reach.violations.length === 0,
+      detail: [
+        ...reach.violations.slice(0, 15).map(v => `  ✗ .${v.cls} 用在 ${v.component}，但只在 ${v.definedIn}（${v.ownerPage} 私有 scoped）里定义`
+          + ` → 该规则对这个组件**不生效**（scoped 选择器带的是页面的 data-v-*）`),
+        ...(reach.violations.length > 15 ? [`  …另有 ${reach.violations.length - 15} 处`] : []),
+        ...(reach.violations.length > 0 ? [
+          '  → 症状是「屏幕上少了一条线/一处字号」，编译过、测试绿、ui-check 也不报 ⇒ 只能靠本判据。',
+          '  → 修法二选一：① 类是跨块共享的 ⇒ 搬进 src/styles/chart-blocks.css（各块用 <style scoped src> 载入，',
+          '     **特异性不变**、源码一份）；② 只有该组件用 ⇒ 搬进组件自己的 css（或全局 charts.css）。',
+          '  → 别「复制一份到组件里」了事（规则 11 双份必漂移；实测 dd-caption 两份已漂 11 vs 11.5px）。',
         ] : []),
       ],
     })

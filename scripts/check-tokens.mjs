@@ -498,7 +498,10 @@ export const HARDCODED_BASELINE = {
   // 2026-09-14 控制面板抽组件（components/charts/TimeChartsControls.vue）：1 处字面色值是**逐字搬迁**
   // —— .boss-data-title 的 #f6ad55（原在 TimeChartsPage.css）。页面侧同轮 32 → 31。
   'src/components/charts/TimeChartsControls.vue': 1,
-  'src/views/TimeChartsPage.vue': 21,   // 23 → 21（node-note 的两处字面色值随该类迁去 chart-blocks.css）
+  'src/views/TimeChartsPage.vue': 20,   // 23 → 21（node-note 的两处字面色值随该类迁去 chart-blocks.css）
+  // → 20（2026-09-14 修「抽组件后样式留在页面 scoped」失样式面：`.kill-line-ref` 从页面 scoped
+  // 搬进 styles/chart-blocks.css 时，那条字面 `rgba(99,226,183,0.35)` 换成语义令牌
+  // `stroke: var(--c-success)` + `stroke-opacity: .35`（暗色主题逐位等价）⇒ 净 −1 处字面色值。
   // 2026-09-14 图表块基元外置（src/styles/chart-blocks.css，经 <style scoped src> 载入）：
   // 1 处字面色值是**逐字搬迁**——`.kill-line` 的 #63e2b7（原在 TimeChartsPage.css）。页面 31 → 30。
   'src/styles/chart-blocks.css': 3,   // 1 → 3（+ .node-note 的 #f6ad55 与 rgba(246,173,85,.35)，逐字搬迁）
@@ -558,7 +561,7 @@ export const WA_REF_BASELINE = 444  /* 443 → 444（2026-09-14 直伤系数图�
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 581  /* 587 → 581（2026-09-14 第三轮：`.legend` 家族全局化去重）。
+export const VAR_TOTAL_BASELINE = 582  /* 581 → 582（2026-09-14 同上：`.kill-line-ref` 的字面色值换成 var(--c-success)，+1 处 var() 引用）。 */  /* 587 → 581（2026-09-14 第三轮：`.legend` 家族全局化去重）。
    逐字归因：该家族原本在 4 个文件各写一份（时间图表页 / 血量膨胀页 / 队伍对比页 / 直伤图组件），
    收敛到 src/styles/charts.css 一份后，重复的 var() 引用消失 ⇒ **净 −6**（--fill-hover/--fg-2/--fg-3
    各从 2–4 份变 1 份）。这是去重不是「改回字面量」（--wa-* 直引不变，仍 444）。 */  /* 584 → 587（同上：直伤图抽组件，图例类 var() 引用随组件走，净 +3）。 */  /* 576 → 573（2026-09-14 图表样式收敛去重）→ 577

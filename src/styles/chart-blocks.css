@@ -97,3 +97,40 @@
   padding: 0 4px;
   margin-left: 4px;
 }
+
+/* 100% 击杀参考线（Chart 3 组件 + Chart 4 共用）。
+   ⚠ 2026-09-14 从页面 scoped 搬进本文件：`.kill-line-ref` 的定义留在 TimeChartsPage.css 时，
+   Chart 3 抽成组件后**拿不到这条规则**（scoped 只覆盖本模板元素）⇒ 实测 computedStyle
+   `stroke: none`（击杀线整条消失），而页内 Chart 4 的同名元素正常显示。
+   判据见账本「抽块的第四类共享依赖：样式类跟着 DOM 走，不跟作者走」。 */
+/* 字面 rgba(99,226,183,0.35) → 语义令牌 + stroke-opacity：暗色主题下**逐位等价**
+   （--c-success 就是 #63e2b7），同时不再往本文件加第 4 处字面色值（UI_THEME_GUIDE §1）。
+   ⚠ 明亮主题下这条线会从「霓虹绿 35%」变成「压深后的 --c-success 35%」——那是 §1 要求的
+   双主题对称（霓虹色白底对比度只有 1.x），不是回退。 */
+.kill-line-ref {
+  stroke: var(--c-success);
+  stroke-opacity: 0.35;
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+/* 图表说明文字（Chart 5 用；⚠ 与 components/charts/DirectDamageChart.vue 内自带的
+   `.dd-caption`（11.5px）是**两份漂移副本**——那一份随组件走、本页这份此前对 Chart 5 组件
+   完全不生效（实测 computedStyle 13px/无 margin = 继承值）。2026-09-14 搬进本文件让 Chart 5
+   真的吃到它；两副本字号统一属另一件事，见账本 Open。 */
+.dd-caption {
+  margin-top: 6px;
+  color: var(--wa-500);
+  font-size: 11px;   /* 11.5 → 11：归到 FONT_SCALE 档位（半档向下取整，见 check-tokens 头注释） */
+  line-height: 1.7;
+}
+
+/* 图表结果摘要行（Chart 5 组件 + 页内 Chart 6 共用；2026-09-14 从页面 scoped 搬进来）。 */
+.pv-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 11px;   /* 11.5 → 11：归到档位 */
+  color: var(--wa-600);
+  margin-bottom: 8px;
+}

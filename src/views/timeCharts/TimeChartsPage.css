@@ -110,25 +110,11 @@
   stroke: rgba(0, 0, 0, 0.55);
   stroke-width: 2.5px;
 }
-/* 本类是 Chart 5 的通用说明文字样式（名字沿用直伤图；直伤图已抽组件，其自带副本）。
-   注意不要再给直伤图加 dd-* 样式——那些随 components/charts/DirectDamageChart.vue 走。 */
-.dd-caption {
-  margin-top: 6px;
-  color: var(--wa-500);
-  font-size: 11px;   /* 11.5 → 11：归到 FONT_SCALE 档位（半档向下取整，见 check-tokens 头注释） */
-  line-height: 1.7;
-}
-
 .sim-main-name {
   font-size: 12px;
   color: var(--wa-850);
   padding: 3px 0 6px;
   white-space: nowrap;
-}
-.kill-line-ref {
-  stroke: rgba(99, 226, 183, 0.35);
-  stroke-width: 1;
-  stroke-dasharray: 4 4;
 }
 
 /* ========== Boss 数据条 ========== */
@@ -164,14 +150,8 @@
 }
 
 /* ========== Chart 5：抽卡价值 · 危局兑现 ========== */
-.pv-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  font-size: 11px;   /* 11.5 → 11：归到档位 */
-  color: var(--wa-600);
-  margin-bottom: 8px;
-}
+/* .pv-summary 搬进 styles/chart-blocks.css（2026-09-14）：Chart 5 已抽组件、Chart 6 仍在页面，
+   两边都用这个类 ⇒ 页面私有 scoped 对组件不生效（判据 16 抓到的第三条）。 */
 .pv-sel-row {
   background: rgba(246, 173, 85, 0.08);
 }
