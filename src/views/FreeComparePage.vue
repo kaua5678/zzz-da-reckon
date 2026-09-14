@@ -492,7 +492,7 @@ onMounted(async () => {
 }
 .muted {
   font-size: 12px;
-  color: var(--wa-550);
+  color: var(--fg-3);
 }
 .ctl-block {
   border-top: 1px solid var(--app-border);
@@ -511,7 +511,7 @@ onMounted(async () => {
 }
 .ctl-hint {
   font-size: 12px;
-  color: var(--wa-550);
+  color: var(--fg-3);
   font-weight: 400;
 }
 .ctl-row {
@@ -528,7 +528,7 @@ onMounted(async () => {
 }
 .ctl-label {
   font-size: 12px;
-  color: var(--wa-700);
+  color: var(--fg-2);
   white-space: nowrap;
 }
 .series-row {
@@ -539,11 +539,11 @@ onMounted(async () => {
 }
 .code-label {
   font-size: 12px;
-  color: var(--wa-700);
+  color: var(--fg-2);
 }
 .code-read {
   font-size: 12px;
-  color: var(--wa-550);
+  color: var(--fg-3);
   min-width: 84px;
 }
 .run-row {
@@ -553,7 +553,7 @@ onMounted(async () => {
 }
 .cost-hint {
   font-size: 12px;
-  color: var(--wa-550);
+  color: var(--fg-3);
 }
 .progress-row {
   display: flex;
@@ -563,7 +563,7 @@ onMounted(async () => {
 }
 .progress-text {
   font-size: 12px;
-  color: var(--wa-550);
+  color: var(--fg-3);
 }
 .fc-legend {
   display: flex;
@@ -593,7 +593,7 @@ onMounted(async () => {
 }
 .legend-hint {
   font-size: 12px;
-  color: var(--wa-550);
+  color: var(--fg-3);
 }
 .fc-plot-wrap {
   width: 100%;
@@ -605,12 +605,12 @@ onMounted(async () => {
   display: block;
 }
 .grid-line {
-  stroke: var(--wa-120);
+  stroke: var(--line);
   stroke-width: 1;
 }
 .axis-label {
   font-size: 11px;
-  fill: var(--wa-550);
+  fill: var(--fg-3);
 }
 .fc-line {
   fill: none;
@@ -647,7 +647,7 @@ onMounted(async () => {
 }
 .empty-hint {
   font-size: 13px;
-  color: var(--wa-550);
+  color: var(--fg-3);
   padding: 16px;
   text-align: center;
 }
