@@ -498,7 +498,10 @@ export const HARDCODED_BASELINE = {
   // 2026-09-14 控制面板抽组件（components/charts/TimeChartsControls.vue）：1 处字面色值是**逐字搬迁**
   // —— .boss-data-title 的 #f6ad55（原在 TimeChartsPage.css）。页面侧同轮 32 → 31。
   'src/components/charts/TimeChartsControls.vue': 1,
-  'src/views/TimeChartsPage.vue': 31,
+  'src/views/TimeChartsPage.vue': 30,
+  // 2026-09-14 图表块基元外置（src/styles/chart-blocks.css，经 <style scoped src> 载入）：
+  // 1 处字面色值是**逐字搬迁**——`.kill-line` 的 #63e2b7（原在 TimeChartsPage.css）。页面 31 → 30。
+  'src/styles/chart-blocks.css': 1,
   'src/views/WEngineFieldPage.vue': 3,
 }
 

@@ -1862,3 +1862,6 @@ const ppTopValues = computed(() => (ppResult.value?.values ?? []).slice(0, 20))
 </script>
 
 <style scoped src="./timeCharts/TimeChartsPage.css"></style>
+<!-- 图表块通用基元（页内多块共享）：独立文件 + scoped src ⇒ 带本页 scope id、特异性不变，源码仅一份。
+     为什么不能放全局表、以及搬运时踩过的「逗号选择器组」坑，见 src/styles/chart-blocks.css 文件头。 -->
+<style scoped src="@/styles/chart-blocks.css"></style>

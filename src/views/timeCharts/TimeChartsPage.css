@@ -11,18 +11,6 @@
 .chart-progress .n-progress {
   flex: 1;
 }
-.chart-subtitle {
-  font-size: 12px;
-  color: var(--wa-550);
-}
-.timeline-svg {
-  width: 100%;
-  display: block;
-  user-select: none;
-}
-.timeline-wrap {
-  position: relative;
-}
 /* ---- 可点图例筛选（与「血量膨胀」页同交互：点一下显隐该系列） ---- */
 /* Chart 4 两条线的图例色块（与图上 stroke 同源：主线 --app-primary、金数副线 --c-warning） */
 .sim-swatch-hp {
@@ -70,26 +58,6 @@
   border-radius: 6px;
   padding: 2px 8px;
 }
-.table-wrap {
-  overflow-x: auto;
-}
-.tl-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-.tl-table th,
-.tl-table td {
-  text-align: left;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--wa-60);
-  white-space: nowrap;
-}
-.tl-table th {
-  color: var(--wa-500);
-  font-weight: 600;
-  font-size: 11px;
-}
 .tl-table tr:hover td {
   background: var(--wa-30);
 }
@@ -100,17 +68,6 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-}
-.dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-left: 4px;
-}
-.kill-line {
-  color: #63e2b7;
-  font-weight: 700;
 }
 .gold-cell {
   color: var(--wa-700);
@@ -158,9 +115,6 @@
   stroke: rgba(0, 0, 0, 0.55);
   stroke-width: 2.5px;
 }
-.no-change {
-  color: var(--wa-300);
-}
 .node-note {
   font-size: 10px;
   color: #f6ad55;
@@ -168,12 +122,6 @@
   border-radius: 4px;
   padding: 0 4px;
   margin-left: 4px;
-}
-.empty-hint {
-  color: var(--wa-500);
-  font-size: 13px;
-  line-height: 1.8;
-  padding: 12px 4px;
 }
 /* 本类是 Chart 5 的通用说明文字样式（名字沿用直伤图；直伤图已抽组件，其自带副本）。
    注意不要再给直伤图加 dd-* 样式——那些随 components/charts/DirectDamageChart.vue 走。 */
@@ -228,17 +176,10 @@
 .add-team-btn {
   margin-top: 2px;
 }
-.chart3-plot {
-  margin-top: 4px;
-}
 .kill-line-ref {
   stroke: rgba(99, 226, 183, 0.35);
   stroke-width: 1;
   stroke-dasharray: 4 4;
-}
-.small-hint {
-  font-size: 12px;
-  padding: 8px 2px;
 }
 
 /* ========== Boss 数据条 ========== */

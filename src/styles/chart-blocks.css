@@ -1,0 +1,82 @@
+/* ============================================================
+ * 时间图表页 · 图表块通用基元（页内 scoped，多块共享）
+ *
+ * ⚠ 为什么是「独立文件 + <style scoped src>」而不是塞进 styles/charts.css（全局表）：
+ * 全局表的规则**特异性低于** scoped 规则——`<style scoped>` 会给每个选择器追加 `[data-v-*]`。
+ * 实测（CDP 读生效选择器）：`table.tl-table td` 上真正生效的是
+ *   `.tl-table th[data-v-6513bed7], .tl-table td[data-v-6513bed7]`
+ * 把这些规则搬进全局表 = **降特异性** ⇒ 原本被它们盖住的页面其它 scoped 规则
+ * （如 `.chart3-teams-cell` 的列宽/内边距）突然生效，表格列宽重排
+ * （实测：页面高度 +49px、Chart 3 的 team 单元格 x 位移 66px、DOM 指纹差异 4466 行）。
+ *
+ * 正解 = 本文件：`<style scoped src="...">` 展开后**带调用方的 scope id**
+ * ⇒ 每个使用它的组件都得到**自己作用域下、特异性不变**的一份，而**源码只有一份**
+ * （既满足规则 11 单一事实源，又不复制粘贴）。
+ *
+ * 用法：`<style scoped src="@/styles/chart-blocks.css"></style>`（`@/` 由 vite 解析）。
+ *
+ * ⚠ 搬运纪律（本轮踩过）：源文件里有**逗号连接的选择器组**
+ * （`.tl-table th,\n.tl-table td { … }`）。按单个选择器名做正则删除会只删掉列表的一半、
+ * 留下悬空选择器与下一条规则粘连（实测把 `.tl-table th,` 粘到了 `.team-cell` 上，
+ * 导致 thead 高度 30→20px）。**必须整条规则搬**，本文件就是这么生成的。
+ */
+
+.chart-subtitle {
+  font-size: 12px;
+  color: var(--wa-550);
+}
+.timeline-svg {
+  width: 100%;
+  display: block;
+  user-select: none;
+}
+.timeline-wrap {
+  position: relative;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+.tl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.tl-table th,
+.tl-table td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--wa-60);
+  white-space: nowrap;
+}
+.tl-table th {
+  color: var(--wa-500);
+  font-weight: 600;
+  font-size: 11px;
+}
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 4px;
+}
+.kill-line {
+  color: #63e2b7;
+  font-weight: 700;
+}
+.no-change {
+  color: var(--wa-300);
+}
+.empty-hint {
+  color: var(--wa-500);
+  font-size: 13px;
+  line-height: 1.8;
+  padding: 12px 4px;
+}
+.chart3-plot {
+  margin-top: 4px;
+}
+.small-hint {
+  font-size: 12px;
+  padding: 8px 2px;
+}
