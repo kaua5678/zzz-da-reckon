@@ -8,30 +8,16 @@
   flex-direction: column;
   gap: 12px;
 }
-.chart-progress .n-progress {
-  flex: 1;
-}
+/* `.chart-progress .n-progress`（进度条填满行宽）随 Chart 6 组件走
+   （views/timeCharts/pull-planner-chart.css，2026-09-14 抽组件）：页面侧该块抽走后无其它消费者。 */
 /* ---- 可点图例筛选（与「血量膨胀」页同交互：点一下显隐该系列） ---- */
 /* Chart 4 的图例色块 / 主线名随组件走（views/timeCharts/film-sim-chart.css，2026-09-14 抽组件）。 */
+/* `.lane-label` / `.lane-cell` / `.lane-text` 搬进 styles/chart-blocks.css（2026-09-14）：
+   Chart 6 抽组件后与页内 Chart 1 两边共用 ⇒ 页面私有 scoped 对组件不生效（判据 16）。 */
 .swap-line {
   stroke: rgba(246, 173, 85, 0.45);
   stroke-width: 1;
   stroke-dasharray: 3 3;
-}
-.lane-label {
-  fill: var(--wa-500);
-  font-size: 10px;
-}
-.lane-cell {
-  stroke: rgba(15, 15, 18, 0.9);
-  stroke-width: 0.5;
-  opacity: 0.92;
-}
-.lane-text {
-  fill: rgba(10, 10, 14, 0.85);
-  font-size: 9px;
-  font-weight: 700;
-  pointer-events: none;
 }
 .swap-events {
   margin-top: 10px;
@@ -115,35 +101,13 @@
 /* ========== Chart 5：抽卡价值 · 危局兑现 ========== */
 /* .pv-summary 搬进 styles/chart-blocks.css（2026-09-14）：Chart 5 已抽组件、Chart 6 仍在页面，
    两边都用这个类 ⇒ 页面私有 scoped 对组件不生效（判据 16 抓到的第三条）。 */
-.pv-sel-row {
-  background: rgba(246, 173, 85, 0.08);
-}
+/* .pv-sel-row 随 Chart 6 组件走（views/timeCharts/pull-planner-chart.css，2026-09-14 抽组件）：
+   页面侧抽走后只剩 PullValueChart.vue 模板里的 :class 动态引用——那边**本就吃不到**
+   （页面 scoped 打不到子组件元素），现状原样保留，见该 css 文件头。 */
 
-/* ========== Chart 6：抽卡规划器 ========== */
-.pp-plot {
-  margin-bottom: 8px;
-}
-.pp-purchase {
-  stroke: rgba(15, 15, 18, 0.9);
-  stroke-width: 0.5;
-  cursor: default;
-}
-.pp-purchase-label {
-  fill: var(--wa-650);
-  font-size: 9px;
-}
-.pp-score-line {
-  fill: none;
-  stroke: var(--app-primary);
-  stroke-width: 2;
-  stroke-linejoin: round;
-}
-.pp-team-text {
-  fill: rgba(10, 10, 14, 0.85);
-  font-size: 8px;   /* 8.5 → 8：归到档位 */
-  font-weight: 700;
-  pointer-events: none;
-}
-.pp-values {
-  margin-top: 10px;
-}
+/* ========== Chart 6：抽卡规划器 ==========
+   整块已抽组件 components/charts/PullPlannerChart.vue（2026-09-14）：独占类
+   （.pp-plot/.pp-purchase/.pp-purchase-label/.pp-score-line/.pp-team-text/.pp-values/.pv-sel-row）
+   随组件走 views/timeCharts/pull-planner-chart.css；`.sim-controls`/`.pv-summary`/`.chart3-actions`
+   本就在 styles/chart-blocks.css（页面与组件都载入）；`.lane-*` 三条同轮搬进 chart-blocks.css
+   （与页内 Chart 1 共用）。 */

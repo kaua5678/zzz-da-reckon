@@ -505,13 +505,19 @@ export const HARDCODED_BASELINE = {
   //（global.css 双主题对称）⇒ 换令牌 = 亮色主题金线改色 = 真视觉 delta，与「抽组件零 delta」的验收冲突。
   // 正解（单独一轮 + 双主题实机取证）见账本 Open。
   'src/components/charts/FilmSimChart.vue': 2,
-  'src/views/TimeChartsPage.vue': 18,   // 23 → 21（node-note 的两处字面色值随该类迁去 chart-blocks.css）
+  // Chart 6 抽组件（2026-09-14，工人 309e86b2 复核数字、派活方登记）：18 → 12，**净 −6 全部是逐字搬迁**
+  // （lane-cell/lane-text 随 lane-* 共用类进 chart-blocks.css +2；pp-purchase/pp-team-text/pv-sel-row
+  //  + 模板 rgba(99,179,237,.13) 随组件走 +4）。三处合计 12+5+4 = 21，与改前 18+3 = 21 **相等 ⇒ 棘轮未放松**。
+  // ⚠ pv-sel-row 不换令牌也不搬进共享表：它一搬 = Chart 5 的选中高亮凭空出现 = 真视觉 delta（见该 css 头注释）。
+  'src/components/charts/PullPlannerChart.vue': 4,
+  'src/views/TimeChartsPage.vue': 12,   // 23 → 21（node-note 的两处字面色值随该类迁去 chart-blocks.css）
   // → 20（2026-09-14 修「抽组件后样式留在页面 scoped」失样式面：`.kill-line-ref` 从页面 scoped
   // 搬进 styles/chart-blocks.css 时，那条字面 `rgba(99,226,183,0.35)` 换成语义令牌
   // `stroke: var(--c-success)` + `stroke-opacity: .35`（暗色主题逐位等价）⇒ 净 −1 处字面色值。
   // 2026-09-14 图表块基元外置（src/styles/chart-blocks.css，经 <style scoped src> 载入）：
   // 1 处字面色值是**逐字搬迁**——`.kill-line` 的 #63e2b7（原在 TimeChartsPage.css）。页面 31 → 30。
-  'src/styles/chart-blocks.css': 3,   // 1 → 3（+ .node-note 的 #f6ad55 与 rgba(246,173,85,.35)，逐字搬迁）
+  'src/styles/chart-blocks.css': 5,  // 3 → 5（2026-09-14 Chart 6 抽组件：`.lane-cell`/`.lane-text` 两条 rgba 随 lane-* 共用类**逐字搬迁**进来；
+  //   同轮页面 18→12、新组件 +4，三处合计 12+5+4 = 21 = 改前 18+3 ⇒ **总量不变、棘轮未放松**）   // 1 → 3（+ .node-note 的 #f6ad55 与 rgba(246,173,85,.35)，逐字搬迁）
   // 2026-09-14 Chart 5 抽组件（components/charts/PullValueChart.vue）：7 处字面色值是**整组搬迁**
   // （原在 TimeChartsPage.css 的 .pv-* 规则里）。页面 30 → 23。
   'src/components/charts/PullValueChart.vue': 7,
