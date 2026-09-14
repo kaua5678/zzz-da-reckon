@@ -125,6 +125,16 @@
   line-height: 1.7;
 }
 
+/* 模拟/规划参数表单行（Chart 4 组件 FilmSimChart.vue + 页内 Chart 6 共用；2026-09-14 从页面
+   scoped 搬进来——页面私有 scoped 对组件不生效（判据 16），而 Chart 6 仍在页面 ⇒ 只能放这里）。 */
+.sim-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-end;
+  margin-bottom: 10px;
+}
+
 /* 图表结果摘要行（Chart 5 组件 + 页内 Chart 6 共用；2026-09-14 从页面 scoped 搬进来）。 */
 .pv-summary {
   display: flex;

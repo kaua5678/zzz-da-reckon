@@ -1,0 +1,40 @@
+/* Chart 4 菲林经济模拟 · 组件内样式（2026-09-14 从 views/timeCharts/TimeChartsPage.css 整条搬迁）。
+   经 <style scoped src> 载入 ⇒ 带组件自己的 scope id、特异性不变（搬运纪律见 styles/chart-blocks.css 文件头：
+   必须整条规则搬，逗号选择器组要整体处理——本块无逗号组）。
+   ⚠ `.sim-controls` 不在此文件：它与页内 Chart 6 共用 ⇒ 在 styles/chart-blocks.css（判据 16）。 */
+/* Chart 4 两条线的图例色块（与图上 stroke 同源：主线 --app-primary、金数副线 --c-warning） */
+.sim-swatch-hp {
+  background: var(--app-primary);
+}
+.sim-swatch-gold {
+  background: var(--c-warning);
+}
+.sim-main-name {
+  font-size: 12px;
+  color: var(--wa-850);
+  padding: 3px 0 6px;
+  white-space: nowrap;
+}
+
+/* ========== Chart 4：菲林经济模拟 ========== */
+.sim-plot {
+  margin-top: 4px;
+}
+.sim-line {
+  fill: none;
+  stroke: var(--app-primary);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.sim-gold-line {
+  fill: none;
+  stroke: #f6ad55;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.gold-axis-label {
+  fill: rgba(246, 173, 85, 0.75);
+}

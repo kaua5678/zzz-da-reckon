@@ -498,7 +498,14 @@ export const HARDCODED_BASELINE = {
   // 2026-09-14 控制面板抽组件（components/charts/TimeChartsControls.vue）：1 处字面色值是**逐字搬迁**
   // —— .boss-data-title 的 #f6ad55（原在 TimeChartsPage.css）。页面侧同轮 32 → 31。
   'src/components/charts/TimeChartsControls.vue': 1,
-  'src/views/TimeChartsPage.vue': 20,   // 23 → 21（node-note 的两处字面色值随该类迁去 chart-blocks.css）
+  // Chart 4 抽组件（2026-09-14）：这两处字面色值是**逐字搬迁**（`.sim-gold-line` 的 #f6ad55、
+  // `.gold-axis-label` 的 rgba(246,173,85,0.75)），原记在 TimeChartsPage.vue 名下 ⇒ 那边 20→18、
+  // 这边 +2，**合计 160 不变**（棘轮未放松）。
+  // 为什么不顺手换成 var(--c-warning)：暗色主题下 --c-warning == #f6ad55，但**亮色主题是 #b45309**
+  //（global.css 双主题对称）⇒ 换令牌 = 亮色主题金线改色 = 真视觉 delta，与「抽组件零 delta」的验收冲突。
+  // 正解（单独一轮 + 双主题实机取证）见账本 Open。
+  'src/components/charts/FilmSimChart.vue': 2,
+  'src/views/TimeChartsPage.vue': 18,   // 23 → 21（node-note 的两处字面色值随该类迁去 chart-blocks.css）
   // → 20（2026-09-14 修「抽组件后样式留在页面 scoped」失样式面：`.kill-line-ref` 从页面 scoped
   // 搬进 styles/chart-blocks.css 时，那条字面 `rgba(99,226,183,0.35)` 换成语义令牌
   // `stroke: var(--c-success)` + `stroke-opacity: .35`（暗色主题逐位等价）⇒ 净 −1 处字面色值。
