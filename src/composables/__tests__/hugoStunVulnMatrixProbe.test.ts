@@ -1,7 +1,7 @@
 /**
  * 探针：雨果（1291）逐招「失衡易伤」矩阵——哪些招式吃满、哪些吃一部分、哪些完全不吃。
  *
- * 三层逻辑（口径出处见 docs/MECHANICS_IMPLEMENTATION.md:512/517 + hugo.ts:33-45）：
+ * 三层逻辑（口径权威 = `src/mechanics/agents/hugo.ts:33-45`；档案段见 docs/MECHANICS_IMPLEMENTATION.md 的「雨果（1291）」段）：
  *  ① 非轴：白名单 `HUGO_FULL_STUN_MOVES`（失衡赠送连携 1291015 / 终结技本体 1291018 /
  *     强特决算 1291_ex_verdict_final / 决算追加 1291_ultimate_verdict_bonus）直给 1，
  *     其余招式直给 0（不走全局覆盖率）；未列白名单的槽位不受影响。

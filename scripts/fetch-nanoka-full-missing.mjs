@@ -6,7 +6,7 @@
  *   - 带 id  ：只抓指定角色（重爬正式服数据用，如 1611 1621）
  *   - --force：存档已存在也重抓（默认跳过 = 幂等）
  *   - 版本：默认 manifest.zzz.live（正式服；available 里的带 hash 构建是测试服/预发布，
- *     名字与文案可能是占位 "..."——见 docs/DATA_FETCHING.md「版本 hash 是最容易踩的坑」）
+ *     名字与文案可能是占位 "..."——见 docs/DATA_FETCHING.md「⚠️ 版本：用 `manifest.zzz.live`，别用带 hash 的构建」）
  *
  * 输出：data/raw/nanoka_missing/full/<id>.json
  */

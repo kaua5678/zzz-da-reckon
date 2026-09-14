@@ -593,8 +593,8 @@ export const EXHIBITION_LAYER_FORBIDDEN = /@\/(?:core|mechanics|specs)(?:\/|['"]
  *  · `sharpCritMultiplier` `core/damage.ts` → `data/sharpCritMultiplier.ts`（damage.ts re-export）
  *    ⇒ 面板卡 + 属性面板 2 处。⚠ 偏离 T7 简报的「本批不要碰」清单：简报把它列为「真引擎调用，
  *    需经编排层透出或改架构」，但**实测它是纯函数**（2 个标量入参 → 1 个数，无 import/无状态），
- *    且本文件 :489 的设计注释与 `docs/architecture-review-2026-09-11.md:162` 都已把它列进
- *    「常量/纯函数，正解是下沉 src/data/」名单——无需架构改动。如需回退，把该函数搬回 damage.ts +
+ *    且本文件 :489 的设计注释早已把它列进「常量/纯函数，正解是下沉 src/data/」名单
+ *    （原出处 = 2026-09-11 架构评审快照，快照已删、未落地项迁 .claude 账本）——无需架构改动。如需回退，把该函数搬回 damage.ts +
  *    两个组件 import 改回 `@/core/damage` 即可（棘轮基线同步回调 15→17）。
  *
  * **剩 15 处不能再按本法下沉**（逐处核过，全是真引擎调用或注册表读取，无纯常量）：
@@ -1702,7 +1702,7 @@ export function runAllChecks(root = ROOT) {
     name: `settings coverage (规则 12/§2: 滑块声明必须有「改了确实变」测试) 已测 ${[...settings.declared.values()].flat().length - settings.untested.length}/${[...settings.declared.values()].flat().length}`,
     ok: newGaps.length === 0,
     detail: [
-      ...newGaps.map(e => `  ✗ 新滑块无测试引用：${e} → 补「改滑块→面板/结果确实变」的生效测试（AGENTS §2 滑块行，般岳 rageGainCoverage 曾静默失效）`),
+      ...newGaps.map(e => `  ✗ 新滑块无测试引用：${e} → 补「改滑块→面板/结果确实变」的生效测试（ARCHITECTURE.md §3 滑块行，般岳 rageGainCoverage 曾静默失效）`),
       ...settings.stale.map(e => `  ⚠ 清单可回收：${e} 已有测试，从 UNTESTED_SETTINGS_ALLOWLIST 删掉该行`),
     ],
   })
