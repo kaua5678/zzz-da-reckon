@@ -31,6 +31,8 @@
       <span>观测窗口 {{ pvResult.window.firstDate }} ~ {{ pvResult.window.lastDate }}</span>
       <span>{{ pvResult.window.seasonCount }} 个赛季 · {{ pvResult.rooms.length }} 个危局房间 · {{ compact(pvResult.window.runCount) }} 条投稿</span>
       <span>单房间分数上限 65000（删失点：都打满 → 边际计 0）</span>
+      <!-- 环境膨胀上下文（用户 2026-09-14 目标②：把膨胀接进抽取价值读数） -->
+      <span v-if="inflationNote" :title="inflationTitle">{{ inflationNote }}</span>
     </div>
 
     <!-- 分级筛选（点图例显隐某档；与「层」下拉是两个正交维度：层=卡池归属，分级=兑现强弱） -->
@@ -216,7 +218,7 @@
  * 父页面只传 `svgW`（响应式布局宽度）。
  * 解析器 `computePullValue` 是纯函数（零引擎求值），本组件因此不依赖 useResourceCalc。
  */
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { NButton, NCard, NProgress, NSelect } from 'naive-ui'
 import { compact, fmt } from '@/utils/format'
 import { useCatalogStore } from '@/stores/catalog'
@@ -225,6 +227,7 @@ import { colorOf } from '@/composables/charts/agentPresentation'
 import { readSvgPointer } from '@/composables/svgPointer'
 import { MIN_PAIRS_FOR_GRADE, computePullValue, type PullValueInput, type PullValueResult, type PvCardRoomEffect, type PvCardValue } from '@/composables/pullValue'
 import { PV_GRADE_DEFS as pvGradeDefs, buildPullValueChart, pvTierLabel } from '@/composables/pullValueChart'
+import { buildInflationFromFile, mapRoomsToInflation, type InflationSeries } from '@/composables/inflationCurve'
 
 const props = defineProps<{
   /** 图表宽度（父页面的响应式布局宽度） */
@@ -271,6 +274,50 @@ async function runPullValue() {
 }
 
 const pvSelectedCard = computed(() => pvResult.value?.cards.find(c => c.agentId === pvSelected.value) ?? null)
+
+// ========== 环境膨胀上下文（目标②后半句：把膨胀接进兑现读数） ==========
+// 口径见 composables/inflationCurve.ts：危局分数已按当期血量归一，跨期可直接相加；
+// 这里补的是「这些兑现发生在环境涨到几成的时候」——把绝对分换算回首版本口径的**含金量**。
+const inflationSeries = ref<InflationSeries | null>(null)
+onMounted(async () => {
+  // 与图数据同源（boss-presets.json 的 phase.hp 按版本聚合）；失败则整块不显示（不影响主读数）
+  try {
+    const res = await fetch('/static/boss-presets.json')
+    if (!res.ok) return
+    inflationSeries.value = buildInflationFromFile(await res.json(), 'defense')
+  } catch { /* 拿不到就只显示原来的摘要 */ }
+})
+
+const inflationCtx = computed(() => {
+  const s = inflationSeries.value
+  if (!s || !pvResult.value) return []
+  return mapRoomsToInflation(pvResult.value.rooms.map(r => ({ key: r.key, date: r.date })), s)
+})
+
+/** 观测窗口内的平均环境指数（房间数加权；clamped 的照算——它们本就是窗口内房间） */
+const avgInflationIndex = computed(() => {
+  const xs = inflationCtx.value.map(c => c.index)
+  return xs.length > 0 ? xs.reduce((a, b) => a + b, 0) / xs.length : null
+})
+
+const inflationNote = computed(() => {
+  const avg = avgInflationIndex.value
+  if (avg == null) return ''
+  return `观测窗口平均环境 ${avg.toFixed(0)}%（首版本 = 100%）`
+})
+
+const inflationTitle = computed(() => {
+  const avg = avgInflationIndex.value
+  if (avg == null) return ''
+  const s = inflationSeries.value!
+  const first = s.points[0]
+  const last = s.points[s.points.length - 1]
+  return `环境膨胀口径（boss-presets.json phase.hp 按版本聚合，仅 defense 模式）：`
+    + `${s.baseVersion} = 100% → ${last.version} = ${last.index.toFixed(0)}%；本窗口均值 ${avg.toFixed(0)}%。`
+    + `危局分数已按当期血量归一（60000×伤害/血量 + 5000 操作分），跨期可直接相加；`
+    + `本读数是「兑现发生在环境涨到几成时」的上下文——同样的绝对分，晚期含金量更低。`
+    + `（首版本均值 ${first.avgHp > 0 ? Math.round(first.avgHp / 1e6) + 'M' : '—'}）`
+})
 
 /** 派生模型（过滤/行整形/布局/文案）在 composables/pullValueChart.ts（纯函数，可单测） */
 const pvGradeLegend = useSeriesFilter(() => pvGradeDefs.map(g => ({ id: g.id, name: g.label })))
