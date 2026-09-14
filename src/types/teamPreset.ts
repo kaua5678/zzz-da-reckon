@@ -75,7 +75,7 @@ export interface TeamPresetVariant {
 export interface AutoEngineSlotConfig {
   /** 候选音擎 id 列表（直写） */
   pool?: string[]
-  /** 候选音擎命名池（src/data/enginePools.ts 的键），与 pool 二选一或并用（并集） */
+  /** 候选音擎命名池（src/data/enginePools.json 的键），与 pool 二选一或并用（并集） */
   poolRef?: string
 }
 
@@ -90,6 +90,21 @@ export interface AutoEngineConfig {
   bySlot?: Record<string, AutoEngineSlotConfig>
   /** 默认精炼档覆盖：A 级 / 常驻 S（缺省 5 / 3） */
   mods?: { aRank?: number; standard?: number }
+}
+
+/**
+ * 备选轴档（2026-09-13）：同一预设的高难度轴段——难度曲线里作为「切轴」目标档（爬梯按增益录取），
+ * 一般轴 = 基础段（stunAxisPresetId），altAxes = 高难段，一条队伍一条曲线分段呈现，不再拆变体预设。
+ */
+export interface TeamAltAxis {
+  /** 档 id（英文 kebab，进爬梯目标 id：`AXIS:${id}`） */
+  id: string
+  /** 展示名（如 "10大轴"） */
+  name: string
+  /** 绑定失衡轴预设 id（src/data/stunAxisPresets） */
+  stunAxisPresetId: string
+  /** 说明/达成条件 */
+  note?: string
 }
 
 /** 预设队伍 */
@@ -130,6 +145,8 @@ export interface TeamPreset {
   variants?: TeamPresetVariant[]
   /** 绑定失衡轴预设 id（缺省不绑定；变体可各自覆盖，见 TeamPresetVariant.stunAxisPresetId） */
   stunAxisPresetId?: string
+  /** 备选轴档（高难度段，2026-09-13）：难度曲线里作为「切轴」目标档逐个录取，一条队伍一条曲线分段 */
+  altAxes?: TeamAltAxis[]
   /** 该预设存在的最低总限定金（低于此金数不生成对比点；变体可覆盖） */
   minGold?: number
   /** 预设级自动下位声明（可选）：按角色/按槽位的下位池与精炼档，声明即覆盖页面设置 */

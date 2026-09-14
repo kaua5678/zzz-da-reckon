@@ -91,6 +91,10 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 2. 散点图：横轴 = 操作难度（交互加权和），纵轴 = 伤害/血量%（100% = 击杀线，200% = 两倍血量）。
    点颜色 = 队伍、半径 = 金数；hover 显示明细（含 buff 名）；底部明细表（含 Buff 列）+ CSV 导出。
 3. **buff 推荐**：自动模式对每个队伍三张可用牌各算一次伤害（用第一个金数档，在所选 Boss 期数应用后评估），取最高者作为该队所有点的 buff；手动模式全队用指定牌。测试服牌不参与。
+4. **图型三选**（控制面板「图型」单选：散点 / 难度曲线 / **选第三人**，2026-09-13 新增后两者）：
+   - **难度曲线**：每队自己的贪心优化路径（x = 累积难度代价，与散点同函数同尺），**x 不保证单调**（杠杆可让难度降而伤害升 = 白拿的优化）；配装固定为预设基础金，**页面不提供金数档**（金数提升属「提升率」类图表，用户 2026-09-10 口径）。
+     - **切轴档（`preset.altAxes`，2026-09-13）**：高难度轴（如 般琉卢 的「10大轴」）作为爬梯的「切轴」目标档（`difficultyCurve#makeAltAxisGoal`，id = `AXIS:<alt.id>`）——一条队伍一条曲线分段，**不再拆变体预设**；试开回滚由阶梯快照连轴状态一起还原（`difficultyLadder` 的 `LadderMutSnap` 含 `stunAxes/stunAxisPlans/useStunAxis`），故多次试开互不污染。首个用户 = 般岳+琉音+卢西娅（原「普通轴 / 5嗔火10大」两条难度变体已合并进该预设本体 + `altAxes`，二者在对比引擎中逐位等价）。
+   - **选第三人**：固定 2 个队友 + 第三个槽位在**选定候选范围**里排名（用户口径 2026-09-13：「目前的都是预设队伍，不太自由」+「第三人不是海选，是选定部分角色」）。候选圈定 = 槽位（0=主C/1=击破/2=支援）+ 职业多选筛选（空 = 全部）+ 可再手选子集；求值口径 = `teamTimeline#computeSlotSweepPoints`（**与 Chart 7 同口径**：`evalTeamByBudget` 单一事实源、maxIter 未收敛跳过计入 skipped、不含当期 buff 牌与自动下位），快照/恢复不留痕；结果 = 伤害降序排名表（伤害占比背景条），支持「最优加金（慢）」与预算输入。判据 `composables/__tests__/slotSweep.test.ts`。
 
 ### 3.2 添加预设队伍（高频操作）
 
@@ -151,6 +155,8 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 交互 → 角色配置映射（含 tauntCancel） | `src/composables/teamCompare.ts` `applyTeamToStore`（parry/dodge/quickAssist/block/tauntCancel → `set*Count`） |
 | 般岳轴模式自动补齐交互次数 | `src/mechanics/agents/banyue.ts` `computeBanyueInteractionTopUp`（纯函数：嗔火缺口→双反、喧响缺口→弹刀）+ `src/composables/useResourceCalc.ts`（外不动点 `prevBanyueTopUp` 线程、弹刀计入 `calcSpecialActionBonus`、暴露 `banyueInteractionTopUp`）；交互栏显示在 `TeamConfigPage.vue` |
 | 散点图/控制面板/明细表 | `src/views/TeamComparePage.vue`（自绘 SVG，无图表库；buff 选择器 = 自动推荐/手动指定） |
+| **难度曲线（含切轴档）** | `src/composables/difficultyCurve.ts`（`computeDifficultyCurves` + `makeAltAxisGoal` 把 `preset.altAxes` 做成 `AXIS:*` 目标）+ `src/composables/difficultyLadder.ts`（目标集 G1–G5 + 试开快照，`LadderMutSnap` 已含轴状态）；数据 `src/data/teamPresets/*.json` 的 `altAxes`；判据 `__tests__/difficultyCurve.test.ts` + `difficultyLadder.test.ts` |
+| **选第三人** | `src/composables/teamTimeline.ts`：`computeSlotSweepPoints`（求值）+ `slotSweepCandidates`（候选池）+ `sweepTeamForCandidate`（纯函数组队）；判据 `__tests__/slotSweep.test.ts`；口径 `@fact slotSweep:选第三人求值口径`（含 `⟳复核`） |
 | 页面注册 | `src/views/CalculatorView.vue` pageMap + `src/components/AppHeader.vue`（`teamCompare` tab） |
 | 测试 | `src/composables/__tests__/teamCompare.test.ts`（金数/难度/批量/现场恢复/buff 推荐/buff 条件/自动下位择优） |
 

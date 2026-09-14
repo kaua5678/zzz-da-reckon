@@ -43,7 +43,7 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
-  type DifficultyGoal, type LadderResult, type LadderSnapshot,
+  DIFFICULTY_GOALS, type DifficultyGoal, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
 import {
   applyAxisBinding, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, interactionSurvivalBySlot,
@@ -71,12 +71,8 @@ export interface DifficultyCurveOptions {
    * 直接决定 x 轴：`computeDifficulty` 的 Σ(交互×权重) + 时间压力秒×权重（时间压力 = 硬溢出 + 合轴抵扣）。
    */
   difficultyWeights?: DifficultyWeights
-  /**
-   * **目标限定金**（缺省 = 该队预设基础金 `baseGoldOf(preset)`）。
-   * 金步走 `teamCompare#applyGoldSteps`（= 散点页同源，含 `standardSteps` 常驻全量应用），
-   * 越界自动钳制到该队档位范围；**不含**散点页的「最优加金 / 自动下位」两层。
-   */
-  goldLevel?: number
+  // 注意：这里**没有**金数档参数——曲线口径固定为预设基础金（金数提升属「提升率」类图表，
+  // 用户 2026-09-10 口径；2026-09-13 曾发现接口上留过一个从未接线的 goldLevel 死参数，已删）。
 }
 
 /** 一队的阶梯结果（展示层行） */
@@ -84,6 +80,27 @@ export interface DifficultyCurveRow {
   presetId: string
   name: string
   ladder: LadderResult
+}
+
+/**
+ * 切轴目标档工厂（2026-09-13）：把 preset.altAxes 的高难度轴做成爬梯目标——apply = 从**阶梯起点轴态**
+ * 切到备选轴（applyAxisBinding 先恢复 baseAxisSnap 再绑定，保证多次试开互不污染）；试开回滚由
+ * 阶梯快照统一还原（difficultyLadder 的 LadderMutSnap 已含轴状态）。一般轴 = 基础段（preset 绑定轴），
+ * 切轴档录取后曲线在高难度端多出一段伤害——一条队伍一条曲线分段，不再拆变体预设。
+ */
+export function makeAltAxisGoal(
+  alt: NonNullable<TeamPreset['altAxes']>[number],
+  baseAxisSnap: { stunAxes: unknown[]; stunAxisPlans: unknown[]; useStunAxis: boolean },
+): DifficultyGoal {
+  return {
+    id: `AXIS:${alt.id}`,
+    label: `切轴：${alt.name}`,
+    cost: 3,
+    mutates: true,
+    apply: ctx => {
+      applyAxisBinding(ctx.config, baseAxisSnap, { stunAxisPresetId: alt.stunAxisPresetId })
+    },
+  }
 }
 
 /**
@@ -105,6 +122,17 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
     configStore.timeWeightStrategy = 'static'
     for (const preset of options.presets) {
       applyAxisBinding(configStore, snap, preset)
+      // 切轴档（preset.altAxes，2026-09-13）：快照阶梯起点轴态 → 备选轴做成「切轴」目标；
+      // 显式传 goals = 完全覆盖（不含切轴档），缺省 = DIFFICULTY_GOALS + 切轴档
+      const baseAxisSnap = {
+        stunAxes: JSON.parse(JSON.stringify(configStore.stunAxes)) as unknown[],
+        stunAxisPlans: JSON.parse(JSON.stringify(configStore.stunAxisPlans)) as unknown[],
+        useStunAxis: configStore.useStunAxis,
+      }
+      const goals = options.goals ?? [
+        ...DIFFICULTY_GOALS,
+        ...(preset.altAxes ?? []).map(a => makeAltAxisGoal(a, baseAxisSnap)),
+      ]
       // 配装口径：套该队**预设基础金**的 `applyGoldSteps`（含 standardSteps 常驻步；缺省路径也走它，
       // 否则「预设基础档」会漏掉常驻步而出现两个数）。曲线**不提供**金数档覆盖——金数提升属于
       // 「提升率」类图表，不是难度曲线的事（用户 2026-09-10 口径）。
@@ -112,7 +140,7 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
         preset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), preset.standardSteps ?? [], preset.wEngines ?? [],
       )
       const ladder = climbDifficultyLadder({ config: configStore, calc }, preset.team as [string, string, string], {
-        goals: options.goals,
+        goals,
         minGainRatio: options.minGainRatio,
         capture: ctx => captureLadderSnapshot(ctx.calc),
         // x 轴 = 自动算的操作难度（不是手填代价）：每个目标实测 Δ难度

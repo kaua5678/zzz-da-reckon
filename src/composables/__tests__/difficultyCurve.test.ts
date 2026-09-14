@@ -153,7 +153,7 @@ describe('关键次数差分（用户口径：难度上升到关键变化要标�
 describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，用户 2026-09-10 口径）', () => {
   it('liveInteractions：读**当前配置**的交互次数（不是预设声明），角色专属类型沿用预设', async () => {
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
     // 先清零（harness 的 TEST_BASE_CHAR 给每槽 quickAssistCount=3，不清零会串味）
     for (const c of config.team) {
       c.parryCount = 0; c.dodgeCounterCount = 0; c.quickAssistCount = 0; c.blockCount = 0
@@ -172,7 +172,7 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
     // 纯函数口径（假 rr 只给 convergence.truncationBySlot）——不依赖"哪个队真截断"（那个集合随引擎修复在变：
     // 降配判据修正后交互型溢出被收进可行域，只剩 1431 簇等结构队）。
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
     for (const c of config.team) { c.parryCount = 0; c.dodgeCounterCount = 0; c.quickAssistCount = 0; c.blockCount = 0 }
     config.team[0]!.parryCount = 8
     config.team[1]!.parryCount = 4
@@ -193,7 +193,7 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
 
   it('measureOperationalDifficulty = Σ(交互×权重) + 溢出秒×溢出权重（权重可改）', async () => {
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
     for (const c of config.team) { c.parryCount = 0; c.dodgeCounterCount = 0; c.quickAssistCount = 0; c.blockCount = 0; c.tauntCancelCount = 0 }
     config.team[0]!.parryCount = 3
     const calc = { resourceResult: { value: null } } as never
@@ -209,7 +209,7 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
     const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
     const [row] = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE })
     const pts = row!.ladder.points
     expect(pts[0]!.x).toBeGreaterThan(0)          // x = 绝对操作难度（全关也不是 0：有基础交互）
@@ -245,7 +245,7 @@ describe('时间压力 = 硬溢出 + 合轴抵扣（用户 2026-09-11：合轴�
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
     // 用真实一队的结果核对恒等式（合轴默认全 0 ⇒ 多数队 saved 可能为 0，等式仍须成立）
-    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
     applyTeamToStore(config, preset)          // 曲线算完会恢复现场 ⇒ 这里自己套一次队再读引擎结果
     const rr = calc.resourceResult.value!
     const b = frontlineOccupationBreakdown(rr)
@@ -261,7 +261,7 @@ describe('G5 合轴率优化（自动杠杆，用户 2026-09-10：手填→自�
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)                 // 全关基线（会清掉合轴率覆盖）
     applyTeamToStore(config, preset)
@@ -285,7 +285,7 @@ describe('G5 合轴率优化（自动杠杆，用户 2026-09-10：手填→自�
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
@@ -308,7 +308,7 @@ describe('合轴节省秒数上曲线（用户：只需管合轴了多少时间�
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')!
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
@@ -457,8 +457,8 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'auto-1311-1521-1361')
-    expect(preset, '预设数据里应有 auto-1311-1521-1361（实测 +42.9% 的爬梯样本）').toBeTruthy()
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')
+    expect(preset, '预设数据里应有 auto-1521-1361-1311（实测 +42.9% 的爬梯样本）').toBeTruthy()
 
     const before = {
       agents: config.team.map(c => c.agentId),
@@ -516,5 +516,31 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
     expect(config.timeWeightStrategy).toBe(before.strategy)
     expect(JSON.stringify(config.mechanicSettings)).toBe(before.mechanics)
     expect(config.appliedBoss).toEqual(before.boss)
+  }, 300_000)
+
+  it('切轴档（altAxes，2026-09-13）：作为 AXIS 目标进入爬梯，录取或如实丢弃，且不破坏单调与现场', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const preset = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')
+    expect(preset?.altAxes, '般琉卢应带 10大轴切轴档').toHaveLength(1)
+
+    const rows = computeDifficultyCurves(calc, { presets: [preset!], boss: FAKE_BOSS, phase: FAKE_PHASE })
+    const ladder = rows[0]!.ladder
+    // 每一档的录取 id ∈ 基础目标集 ∪ AXIS:*；切轴档要么被录取（曲线高难段）、要么如实进 dropped
+    const baseIds = new Set(DIFFICULTY_GOALS.map(g => g.id))
+    for (const o of ladder.opened) {
+      expect(baseIds.has(o) || o.startsWith('AXIS:'), `录取 id ${o} 必须来自目标集或切轴档`).toBe(true)
+    }
+    const axisAccepted = ladder.opened.some(o => o.startsWith('AXIS:'))
+    const axisDropped = ladder.dropped.some(d => d.id.startsWith('AXIS:'))
+    expect(axisAccepted || axisDropped, '切轴档必须被裁过决（录取或丢弃），不许静默消失').toBe(true)
+    // 若被录取：它必须是高难度端（伤害不低于前一档，单调契约照常成立）
+    if (axisAccepted) {
+      const idx = ladder.opened.findIndex(o => o.startsWith('AXIS:'))
+      expect(ladder.points[idx! + 1]!.dmg).toBeGreaterThanOrEqual(ladder.points[idx!]!.dmg)
+    }
+    // 现场恢复：切轴试开会改轴状态，跑完必须还原
+    expect(config.useStunAxis).toBe(false) // FAKE_BOSS + 该预设：快照轴态是未启用
   }, 300_000)
 })

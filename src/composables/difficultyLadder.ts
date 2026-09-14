@@ -123,12 +123,19 @@ interface LadderMutSnap {
   p: number[]
   /** 合轴率覆盖（slot → moveId → ratio）；G5 会写它，试开回滚必须一起还原 */
   align: Record<number, Record<string, number>>
+  /** 轴状态（切轴档会写 stunAxes/stunAxisPlans/useStunAxis，试开回滚必须一起还原） */
+  axes: unknown[]
+  axisPlans: unknown[]
+  useStunAxis: boolean
 }
 function snapshot(ctx: LadderCtx): LadderMutSnap {
   return {
     w: [0, 1, 2].map(s => ctx.config.team[s]!.basicAttackTimeWeight),
     p: [0, 1, 2].map(s => ctx.config.team[s]!.parryCount ?? 0),
     align: JSON.parse(JSON.stringify(ctx.config.comboAlignOverrides ?? {})),
+    axes: JSON.parse(JSON.stringify(ctx.config.stunAxes)),
+    axisPlans: JSON.parse(JSON.stringify(ctx.config.stunAxisPlans)),
+    useStunAxis: ctx.config.useStunAxis,
   }
 }
 function restore(ctx: LadderCtx, snap: LadderMutSnap) {
@@ -142,6 +149,9 @@ function restore(ctx: LadderCtx, snap: LadderMutSnap) {
       ctx.config.setComboAlignOverride(s, moveId, ratio)
     }
   }
+  ctx.config.stunAxes.splice(0, ctx.config.stunAxes.length, ...(snap.axes as never[]))
+  ctx.config.stunAxisPlans.splice(0, ctx.config.stunAxisPlans.length, ...(snap.axisPlans as never[]))
+  ctx.config.useStunAxis = snap.useStunAxis
 }
 /** 关掉一个已录取目标（仅在试开回滚时用） */
 function undo(ctx: LadderCtx, goal: DifficultyGoal) {
