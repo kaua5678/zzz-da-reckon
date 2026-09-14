@@ -2,6 +2,8 @@
 
 export declare const ROOT: string
 export declare const GLOBAL_CSS: string
+/** 扫描面里除外的样式表（令牌定义源 global.css：其字面色值是定义本体，计进去会误判为「散落」） */
+export declare const STYLE_SHEET_EXCLUDED: string[]
 
 // 文本解析
 export declare function stripComments(text: string): string

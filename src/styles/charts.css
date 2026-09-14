@@ -1,0 +1,69 @@
+/* ============================================================
+ * 图表基元样式（跨页共享）——2026-09-14 收敛
+ *
+ * 为什么有这个文件：`.grid-line` / `.axis-label` / `.x-label` / `.hover-line` /
+ * `.trend-line` / `.trend-point` 这 6 个类在**多页各写一份 scoped 定义，且已漂移**。
+ * 实测（收敛前）：
+ *   · `.axis-label` 时间图表页 10px vs 血量膨胀页 11px
+ *   · `.x-label`    时间图表页 9.5px（**离群字号**） vs 血量膨胀页 10px
+ *   · `.hover-line` 虚线 `2 2` vs `3 3`
+ *   · `.trend-line` stroke-width 2 vs 1.8
+ *   · `.trend-point` 时间图表页只有 `cursor: pointer`（描边由 :style 内联给），
+ *                    血量膨胀页有 `stroke/width`（内联没有）
+ * 同名不同值 = 同义色散落（UI_THEME_GUIDE §1 的病根）。
+ *
+ * 取值裁决（用户 2026-09-14 授权「图表你随便做样式」，由本文件固化）：
+ *   · **取时间图表页的值为主**（它的用量大一个量级：axis-label 15 处 vs 2 处、
+ *     x-label 7 vs 1、hover-line 4 vs 1），唯一例外是 `.x-label` 取 10px
+ *     —— 因为 9.5px 是**离群字号**（FONT_SCALE = 8/9/10/11/12/13/14/16/18/20/24），
+ *     10px 才是档位值（且血量膨胀页本来就是 10px）。
+ *   · `.trend-point` 的 `stroke/width` 收进共享规则：对时间图表页**零 delta**
+ *     （它用 `:style` 内联给出，inline 优先级高于类选择器），对血量膨胀页是原有的值。
+ *
+ * ⚠ 只搬这 6 个**跨页同名**的基元。页面自己的 `.hover-card`（与
+ * `components/ChartHoverCard.vue` 的 `.hover-card` **同名不同义**）等一律留在页内
+ * scoped 样式里，**不要**收进来（全局化会跨页串味）。
+ *
+ * ⚠ 本文件在 `check-tokens` 的扫描面内（2026-09-14 起 `src/styles/*.css` 与 .vue 同等计量，
+ * `global.css` 例外——它是令牌定义源）。新增规则请用令牌，别写字面色值。
+ */
+
+/* 网格线：图表背景格子 */
+.grid-line {
+  stroke: var(--wa-80);
+  stroke-width: 1;
+}
+
+/* 轴刻度文字（y 轴数值 / x 轴节点标签） */
+.axis-label {
+  fill: var(--wa-450);
+  font-size: 10px;
+}
+
+/* x 轴标签（比 .axis-label 略小一档的补充变体；两页统一 10px） */
+.x-label {
+  font-size: 10px;
+}
+
+/* 跟随鼠标的竖参考线 */
+.hover-line {
+  stroke: var(--wa-350);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+/* 主趋势折线 */
+.trend-line {
+  fill: none;
+  stroke: var(--app-primary);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* 趋势折线上的数据点（描边色/宽可被页面用 :style 内联覆盖） */
+.trend-point {
+  stroke: var(--wa-250);
+  stroke-width: 0.5;
+  cursor: pointer;
+}

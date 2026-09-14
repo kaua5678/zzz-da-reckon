@@ -345,6 +345,21 @@ export function resolveTokenColor(tokens, name, baseBg) {
 
 // ---------------------------------------------------------------- 扫描
 
+/**
+ * 扫描面 = `src/**` 的全部 `.vue` **加** `src/styles/*.css`。
+ *
+ * 为什么把 `src/styles/*.css` 收进来（2026-09-14，收敛跨页图表样式时发现）：
+ * 首版的扫描面只有 `.vue`（+ `src/composables/*.ts` 贡献 var 引用），于是**把 CSS 从 .vue 搬进
+ * `src/styles/` 会让四条棘轮一起失明**——与 2026-09-14 早先修的 `<style src>` 盲区**同型**
+ * （那次是搬进独立 .css，这次是搬进 styles 目录）。实测：把 6 个跨页图表类收进
+ * `styles/charts.css` 后，若不扩面，两页的硬编码色值/离群字号计数会「凭空下降」，
+ * 判据只会报「是进步，把基线下调」⇒ 又一个静默逃生通道。
+ *
+ * ⚠ `global.css` **除外**：它是令牌定义源（`:root`/`html.light` 的字面色值就是定义本体），
+ * 计进去会把「定义」误判成「散落」（与 `App.vue` 在 HARDCODED_WHITELIST 里同一个道理）。
+ */
+export const STYLE_SHEET_EXCLUDED = ['src/styles/global.css']
+
 function walkVue(root) {
   const out = []
   const rec = (dir) => {
@@ -355,6 +370,15 @@ function walkVue(root) {
     }
   }
   rec(join(root, 'src'))
+  // src/styles/*.css（顶层，不递归子目录：目前只有 global.css 与 charts.css）
+  const stylesDir = join(root, 'src', 'styles')
+  if (existsSync(stylesDir)) {
+    for (const name of readdirSync(stylesDir)) {
+      if (!name.endsWith('.css')) continue
+      const rel = relative(root, join(stylesDir, name)).split(sep).join('/')
+      if (!STYLE_SHEET_EXCLUDED.includes(rel)) out.push(rel)
+    }
+  }
   return out.sort()
 }
 
@@ -399,7 +423,11 @@ export function scanVueFiles(root, fontScale) {
   const scale = new Set(fontScale)
   return walkVue(root).map(path => {
     const source = readFileSync(join(root, path), 'utf8')
-    const styleBlocks = extractStyleBlocks(source, { root, filePath: path })
+    // 独立 .css 文件没有 <style> 包裹：整份正文就是样式（否则会算出 0，又是一次静默失明）
+    const isPlainCss = path.endsWith('.css')
+    const styleBlocks = isPlainCss
+      ? [{ content: stripComments(source), external: '', startLine: 1 }]
+      : extractStyleBlocks(source, { root, filePath: path })
     const css = styleBlocks.map(b => b.content).join('\n')
     const decls = extractDeclarationRegions(css).join('\n')
 
@@ -491,7 +519,7 @@ export const FONT_SIZE_BASELINE = {
   'src/views/StunAxisPage.vue': 1,
   // 同上：11.5px 随样式搬入 ChartHoverCard（原就在页面的离群基线里，本次仅文件归属变化）
   'src/components/ChartHoverCard.vue': 1,
-  'src/views/TimeChartsPage.vue': 8,
+  'src/views/TimeChartsPage.vue': 7,
 }
 
 /**
@@ -501,10 +529,14 @@ export const FONT_SIZE_BASELINE = {
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--text-2/--text-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 446
+export const WA_REF_BASELINE = 443  /* 446 → 443（2026-09-14 图表样式收敛）：6 个跨页同名类
+   （grid-line/axis-label/x-label/hover-line/trend-line/trend-point）从两页各自 scoped 定义
+   收敛进 src/styles/charts.css。逐字归因：删 8 个 var（时间图表 4 / 血量膨胀 4）、新增共享表 5 个
+   ⇒ 净 −3；wa 删 7、新增 4 ⇒ 净 −3。**是去重不是回退**（`--wa-80`/`--wa-450`/`--wa-350` 各从 2 份变 1 份）。
+   同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 576
+export const VAR_TOTAL_BASELINE = 573  /* 576 → 573：同上（8 删 − 5 增 = 净 −3，纯去重） */
 /* 2026-09-12 **口径变更（一次性重冻结）**：var() 总数与 --wa-* 直引的统计面从「src 下全部 .vue」
    扩为「.vue + src/composables 下的 .ts」（见 scanComposableFiles）。
 

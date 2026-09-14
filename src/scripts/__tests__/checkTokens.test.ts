@@ -229,6 +229,30 @@ describe('字体栈一致性（规则 11：global.css ↔ App.vue 单一事实�
   })
 })
 
+describe('scanVueFiles 的扫描面含 src/styles/*.css（2026-09-14 补的第二个搬家盲区）', () => {
+  // 为什么要有这组：与 extractStyleBlocks 的 `<style src>` 盲区**同型**——把 CSS 从 .vue 搬进
+  // `src/styles/` 会让四条棘轮一起失明（实测：6 个跨页图表类收进 styles/charts.css 后，
+  // 若不扩面，两页计数会「凭空下降」，判据只报「是进步，把基线下调」）。
+  it('★ src/styles/*.css 在扫描面内（搬进 styles 目录不再失明）', () => {
+    const files = scanVueFiles(process.cwd(), FONT_SCALE)
+    const paths = files.map(f => f.path)
+    expect(paths).toContain('src/styles/charts.css')
+  })
+
+  it('★ global.css 除外（它是令牌定义源，字面色值就是定义本体）', () => {
+    const files = scanVueFiles(process.cwd(), FONT_SCALE)
+    expect(files.map(f => f.path)).not.toContain('src/styles/global.css')
+  })
+
+  it('★ charts.css 的规则被真实计量（不是当成 0 混过去）', () => {
+    const f = scanVueFiles(process.cwd(), FONT_SCALE).find(x => x.path === 'src/styles/charts.css')!
+    expect(f).toBeDefined()
+    // 6 个共享基元里的 var() 引用必须被数出来（否则「搬进 .css 就失明」的缺陷会复发）
+    expect(f.varRefs).toContain('--wa-80')
+    expect(f.varRefs).toContain('--app-primary')
+  })
+})
+
 describe('scanVueFiles（口径：样式声明区 + 模板，排除脚本）', () => {
   it('脚本里的属性色板不计入硬编码', () => {
     const files = scanVueFiles(process.cwd(), FONT_SCALE)

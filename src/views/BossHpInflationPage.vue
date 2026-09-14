@@ -289,14 +289,8 @@ function onMove(e: MouseEvent) {
 .name { color: var(--fg-2); white-space: nowrap; }
 .chart-wrap { overflow-x: auto; }
 .chart-svg { width: 100%; min-width: 900px; height: auto; }
-.grid-line { stroke: var(--wa-80); stroke-width: 1; }
 .ref-line { stroke: var(--wa-300); stroke-width: 1; stroke-dasharray: 4 3; }
 .ref-label { fill: var(--wa-420); font-size: 11px; }
-.axis-label { fill: var(--wa-450); font-size: 11px; }
-.x-label { font-size: 10px; }
-.trend-line { stroke-width: 1.8; }
-.trend-point { stroke: var(--wa-250); stroke-width: 0.5; }
-.hover-line { stroke: var(--wa-350); stroke-width: 1; stroke-dasharray: 3 3; }
 .hover-card {
   display: flex; align-items: center; gap: 6px;
   margin-top: 8px; font-size: 12px; color: var(--wa-750);
