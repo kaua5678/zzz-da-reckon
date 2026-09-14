@@ -229,8 +229,9 @@ describe('平A池权重·分配策略', () => {
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
     const calc = useResourceCalc()
-    // 柏妮思(异常)+维琳娜(异常)+柚叶(支援)：双异常核心队（预设库 28 支双 C 队同款结构）
-    const p = teamPresets.find(x => x.id === 'auto-1171-1561-1411')!
+    // 维琳娜(异常)+柏妮思(异常)+柚叶(支援)：双异常核心队（预设库多支双 C 队同款结构；
+    // 2026-09-13 成员集合去重后该队只留 auto-1561-1171-1411 一条，槽序 = 维琳娜/柏妮思/柚叶）
+    const p = teamPresets.find(x => x.id === 'auto-1561-1171-1411')!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     const chars = () => calc.resourceResult.value!.characters
@@ -241,8 +242,8 @@ describe('平A池权重·分配策略', () => {
     const exA2 = chars()[0]!.exSpecialCount
     const exB2 = chars()[1]!.exSpecialCount
     // 判据（逐核心）：两个主C 的强特次数都不许低于策略入口
-    expect(exA2, '主C#1（柏妮思）强特次数不降').toBeGreaterThanOrEqual(exA)
-    expect(exB2, '主C#2（维琳娜）强特次数不降（A4 前该槽被角点解当辅助压过）').toBeGreaterThanOrEqual(exB)
+    expect(exA2, '主C#1（维琳娜）强特次数不降').toBeGreaterThanOrEqual(exA)
+    expect(exB2, '主C#2（柏妮思）强特次数不降（A4 前该槽被角点解当辅助压过）').toBeGreaterThanOrEqual(exB)
     expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(dmgBase - 1e-6)
     // 角点解若出手，被压的只能是柚叶（支援位 slot3）——输出槽权重不降
     const m = (r.note ?? '').match(/角点解：非主C 权重 ([\d./]+)→([\d./]+)/)

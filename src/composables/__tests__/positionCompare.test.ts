@@ -35,8 +35,8 @@ describe('位置对比（主C/击破手/辅助，同款限定金）', () => {
   }
 
   it('击破手：金数应用 + 位置识别 + 失衡值/占比输出', async () => {
-    const r6 = await runPosition('banyue-liuyin-lucia__normal', 'breaker', 6)
-    const r8 = await runPosition('banyue-liuyin-lucia__normal', 'breaker', 8)
+    const r6 = await runPosition('banyue-liuyin-lucia', 'breaker', 6)
+    const r8 = await runPosition('banyue-liuyin-lucia', 'breaker', 8)
     expect(r6).toHaveLength(1)
     expect(r6[0].position).toBe('breaker')
     expect(r6[0].agentName).toBe('琉音') // 队内唯一击破手
@@ -49,7 +49,7 @@ describe('位置对比（主C/击破手/辅助，同款限定金）', () => {
   }, 120000)
 
   it('辅助：卢西娅（support）位置可识别，积蓄/失衡占比落在合理区间', async () => {
-    const rows = await runPosition('banyue-liuyin-lucia__normal', 'support')
+    const rows = await runPosition('banyue-liuyin-lucia', 'support')
     expect(rows).toHaveLength(1)
     const r = rows[0]
     expect(r.position).toBe('support')
@@ -60,7 +60,7 @@ describe('位置对比（主C/击破手/辅助，同款限定金）', () => {
   }, 120000)
 
   it('主C：位置识别 + 自身总伤构成自洽（直伤+异放+紊乱+其他异常）+ 占比区间', async () => {
-    const rows = await runPosition('banyue-liuyin-lucia__normal', 'main')
+    const rows = await runPosition('banyue-liuyin-lucia', 'main')
     expect(rows).toHaveLength(1)
     const r = rows[0]
     expect(r.position).toBe('main')

@@ -91,12 +91,6 @@
   "stun": 2,
   "outerExit": "stable"
  },
- "auto-1091-1511-1031": {
-  "slack": 1.7,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
  "auto-1091-1511-1211": {
   "slack": 3.4,
   "over": 0,
@@ -114,12 +108,6 @@
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
- },
- "auto-1171-1561-1411": {
-  "slack": 0.7,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "cycle"
  },
  "auto-1181-1511-1411": {
   "slack": 1.1,
@@ -229,12 +217,6 @@
   "stun": 2,
   "outerExit": "stable"
  },
- "auto-1261-1411-1561": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
  "auto-1261-1561-1411": {
   "slack": 0,
   "over": 0,
@@ -245,18 +227,6 @@
   "slack": 0,
   "over": 0,
   "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1261-1581-1561": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1311-1521-1361": {
-  "slack": 0,
-  "over": 0,
-  "stun": 4,
   "outerExit": "stable"
  },
  "auto-1321-1161-1311": {
@@ -337,12 +307,6 @@
   "stun": 2,
   "outerExit": "stable"
  },
- "auto-1401-1031-1411": {
-  "slack": 4,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "cycle"
- },
  "auto-1401-1261-1411": {
   "slack": 2,
   "over": 0,
@@ -367,18 +331,6 @@
   "stun": 3,
   "outerExit": "cycle"
  },
- "auto-1411-1171-1561": {
-  "slack": 0.6,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1411-1541-1561": {
-  "slack": 1.1,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
  "auto-1431-1341-1031": {
   "slack": 3.8,
   "over": 0,
@@ -387,12 +339,6 @@
  },
  "auto-1431-1341-1311": {
   "slack": 4.2,
-  "over": 0,
-  "stun": 1,
-  "outerExit": "cycle"
- },
- "auto-1431-1341-1491": {
-  "slack": 3.2,
   "over": 0,
   "stun": 1,
   "outerExit": "cycle"
@@ -427,25 +373,7 @@
   "stun": 1,
   "outerExit": "cycle"
  },
- "auto-1461-1311-1521": {
-  "slack": 1.7,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1461-1361-1521": {
-  "slack": 1.7,
-  "over": 0,
-  "stun": 4,
-  "outerExit": "stable"
- },
  "auto-1461-1521-1031": {
-  "slack": 1.1,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1461-1521-1311": {
   "slack": 1.1,
   "over": 0,
   "stun": 3,
@@ -511,12 +439,6 @@
   "stun": 3,
   "outerExit": "stable"
  },
- "auto-1531-1451-1481": {
-  "slack": 0,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
  "auto-1531-1481-1451": {
   "slack": 3.2,
   "over": 0,
@@ -549,12 +471,6 @@
  },
  "auto-1561-1171-1411": {
   "slack": 0.7,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1581-1261-1561": {
-  "slack": 0,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -601,13 +517,7 @@
   "stun": 3,
   "outerExit": "cycle"
  },
- "banyue-liuyin-lucia__normal": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "banyue-liuyin-lucia__wrath5-ult10": {
+ "banyue-liuyin-lucia": {
   "slack": 0,
   "over": 0,
   "stun": 2,
