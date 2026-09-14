@@ -216,6 +216,9 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 异常精通 | `anomalyProficiency` | ⚠ raw 字段 = `stats.element_mystery`（**反直觉**，见 11.2） |
 | 异常掌控 | `anomalyMastery` | ⚠ raw 字段 = `stats.element_abnormal_power`（**反直觉**，见 11.2） |
 | [完美反制] | （由上面的反制支援行/弹刀+支援突击承载） | 游戏侧是"全部招架成功"的结算奖励；计算器把它落在**行内倍率/失衡**上，不额外加 215 通道 |
+| [秽盾]（术语 2000002） | **未建模**（`enemy.shieldCount` 只是「破盾奖励次数」，**不是盾本体**） | 原文：获得高额**防御力、减伤**加成和**抗打断**能力提升且**不会失衡**；代理人**能通过攻击削减**[秽盾]；被打破时敌人受一次「秽盾净除」伤害 + 为代理人**回复能量或闪能**。即 **秽盾期间 boss 照常可被攻击 ≠ 无敌**——**绝不许**把它当 `invincibleTime` 填（旧口径错误，用户 2026-09-13 纠正；引擎侧口径见 `core/effectiveTime.ts` 的 `@fact engine:time/无敌≠秽盾`）。四通道（防御/减伤乘区、削盾量、破盾回能/净除伤害）挂账见 `MECHANICS_IMPLEMENTATION.md` §3.05；理论数值（+80% 防御 / 25% 减伤 / 破盾 60 能量）见 `mechanism-reference.md` §7 |
+| [侵蚀壁垒]（术语 2000001） | **未建模**（挂账 §3.05） | 暴击伤害抗性/攻击力/抗打断提升 + 全队随时间损失生命值；被打破后部分生命值转化 + 回能 |
+| [连携招架]（术语 2000004） | **未建模**（挂账 §3.05） | X 型金光提示连点两次 → 两代理人共同招架、累积大量失衡值，成功后可接[连携突击]。与 [控制技]/[反制支援] 是**不同机制**，勿混 |
 
 ### 11.2 ⚠ 异常精通 / 异常掌控 的 raw 字段是**反的**（2026-09-12 实证订正）
 
@@ -276,31 +279,23 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 锐能回复 | `sharpness_gain_base` | `rows[sharpness_gain]`（kind `sharpness`） | 角色专属资源「锐能」的回复量（**只有 1611**；/10000 后与 base 网页显示一致，如 0.946）。1611 口径：锐能只长在血锻四式，锻星/E/连携全 0 |
 | **闪能回复** | `adrenaline_base` | `rows[flash_energy_recovery]`（kind `flashEnergy`） | gachabase 英文列名 `adrenaline`，游戏里是**闪能**（命破专属能量；nanoka 译作「肾上腺素」是误译，用户 2026-09-11 确认）。落成 `flash_energy_recovery` 与引擎既有通道同名（`calcBasicAttackRegenPerSec` / `rowEnergyTotal` / 模块 `rowValue(move,'flash_energy_recovery')`）⇒ 无需改引擎。5 个角色非零：1051 12 招 / 1471 12 / 1441 17 / 1531 11 / 1371 9。**数据佐证**：这 5 个角色的 `energy_gain_base` 全 0 且与 `adrenaline` 互斥 —— 正是命破的「只有闪能、没有能量」 |
 
-- 抓取：`node scripts/fetch-gachabase-agent.mjs <id> <slug>`（**通用字段抓取**，不再白名单——加列不会静默丢）
-- 落行：`node scripts/upsert-gachabase-rows.mjs <id> --write`
-- 覆盖审计（新增列有没有漏）：`node scripts/audit-gachabase-fields.mjs`（有非零字段未导入即 exit 1）
+- 管道三命令（四来源总览见 `ENTITY_CARDS.md` §3.1，此处不重复）：抓取 `node scripts/fetch-gachabase-agent.mjs <id> <slug>`（通用字段抓取，加列不会静默丢）→ 落行 `node scripts/upsert-gachabase-rows.mjs <id> --write` → 覆盖审计 `node scripts/audit-gachabase-fields.mjs`（有非零字段未导入即 exit 1）。
 
 ---
 
-## 12. 卢西娅·艾洛温（1451）专用词表
+## 12. 卢西娅·艾洛温（1451）专用词表（最小映射）
 
-| 游戏文本 | 计算器字段/实现 | 说明 |
-|---------|------|------|
-| [随想]（A5/闪反/快支/特殊技） | `1451005` 等随想行 | 招式升级为[合唱]的伤害不拆分，A5 统一按随想 `1451005`（用户口径） |
-| [合唱]（强特/追加攻击/连携/终结技/支援突击） | `patchExecutions` 按 moveId 集合修正 | 追加攻击 `1451007` + `cfg.{exSpecial,ultimate,chain,assistFollowUp}MoveId` |
-| [合唱]最后一段按最大生命值 X% 附加伤害 | `SkillExecution.flatDamageBonus` | 乘区前固定伤害 = `局内生命 × (34% + 3%×终结技等级)/100`（爬取公式 `0.34+AvatarSkillLevel(1)*0.03`，12级=70%），全部[合唱]行整行近似 |
-| [梦境值] | spec `lucia_dream_value` + `computeLuciaDreamPlan` | 目标 500：初始60 + A5×3(40) + E×2(60) + Q×2(100)；消耗 25/次 → 追加攻击 |
-| [追加攻击]（合唱） | event `lucia_additional_attack` + `1451007` | 默认20次（180s/9s），1100%倍率/200%异常积蓄/0失衡，不占前台时间 |
-| [以太帷幕·涌泉]（开启/延长） | `computeLuciaCurtainTriggers` + `luciaC4DecibelPerTrigger` | 4命：开启/延长事件 → 全队每人+100喧响；15s CD 封顶 × `lucia.c4CurtainCoverage` 滑块；含伊德海莉大招开帷幕 |
-| [巡梦童谣]（全队伤+20%） | teammate-buffs `lucia_elowen.core_dream_song` | F级 20%，coverage 可调 |
-| [巡梦童谣]抗性无视/喧响获取 | teammate-buffs `lucia_elowen.cinema_1_dream_song_res_ignore` | 一命：18%全抗无视（`enemyResReduction`）+ 5%喧响获取（`decibelGainEfficiency`，全队3人） |
-| [破暗]（贯穿力） | teammate-buffs `lucia_elowen.ex_special_darkbreaker_sheer_force` | 公式 `clamp(12 + floor(hp/200)×(5+s×0.2), 12, 612+s×24)`，s=12+skillLevelBonus，局外生命 |
-| [破暗]暴伤+30%（额外能力） | teammate-buffs `lucia_elowen.additional_long_night_crit_dmg` | 队伍有命破/击破时 |
-| 影画2 全队贯穿伤害+15% | teammate-buffs `lucia_elowen.cinema_2_darkbreaker_sheer_dmg` | 破暗全覆盖近似全队 |
-| 影画2 自身[合唱]伤害+15% | `SkillExecution.dmgBonus`（patchExecutions） | 全部[合唱]行增伤区 +15% |
-| 影画6 初始生命 2% → 攻击 | spec `lucia_c6_hp_to_atk`（`attributeConversions`） | 局内小攻击，按局内面板近似 |
-| 影画6 [合唱]必暴/暴伤+30% | `SkillExecution.critRateBonus/critDmgBonus`（patchExecutions） | 全部[合唱]行必暴 + 暴伤+30% |
-| [星光汇聚之地]回血 | `computeLuciaHealPctPerUlt` → `yidhariExternalHealPerUltPct` | 每大 = 8s × (1%+0.05%×终结技等级)/s（12级 12.8%）；换算成伊德海莉生命%接入烧血→喧响（伊德海莉在队时） |
+> 完整口径的唯一事实源 = `src/mechanics/agents/luciaElowen.ts` 头注释 + spec `src/specs/agents/1451.json` notes
+> （2026-09-14 由 15 行明细压缩为最小映射；拐力数值以 `public/static/teammate-buffs.json` `lucia_elowen.*` 组为准）。
+
+| 游戏文本 | 引擎字段/通道 |
+|---------|------|
+| [随想] / [合唱] | 随想 = `1451005`；合唱 = `patchExecutions` 按 moveId 集合修正（追加攻击 `1451007` + `cfg.*MoveId`）；[合唱]末段按最大生命 X% 附加 → `SkillExecution.flatDamageBonus` |
+| [梦境值] | spec `lucia_dream_value` + `computeLuciaDreamPlan`（目标 500；消耗 25/次 → 追加攻击默认 20 次、不占前台时间） |
+| [以太帷幕·涌泉] | `computeLuciaCurtainTriggers` + `luciaC4DecibelPerTrigger`（4命开启/延长 → 全队每人 +100 喧响，15s CD 封顶 × `lucia.c4CurtainCoverage` 滑块） |
+| [巡梦童谣] / [破暗] | teammate-buffs `lucia_elowen.*` 组（F级全队伤、一命全抗无视+喧响获取、破暗贯穿力 formula、额外能力暴伤） |
+| 影画2 / 影画6 | 影画2：全队贯穿增伤 + 自身[合唱]增伤；影画6：`attributeConversions` 生命→攻击 + [合唱]必暴/暴伤（patchExecutions） |
+| [星光汇聚之地]回血 | `computeLuciaHealPctPerUlt` → `yidhariExternalHealPerUltPct`（换算成伊德海莉生命%接入烧血→喧响，伊德海莉在队时） |
 
 ---
 

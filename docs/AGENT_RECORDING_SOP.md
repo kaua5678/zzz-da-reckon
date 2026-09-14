@@ -6,10 +6,10 @@
 
 ## 0. 铁律
 
-1. **每个录入的机制 = spec 字段 + 生效测试**。没有测试的录入不算完成。
+1. **每个录入的机制 = spec 字段 + 生效测试**（= `AGENTS.md` 规则 5，此处不重复展开）。
 2. **spec 不是数据源，代码消费端才是**。录入后先回答：哪个函数读它？
-3. **不要依赖 `enrichExecutionPlan` 之后的 name/note 匹配**（会被倍率表回填覆盖），测试/逻辑按 `moveId` 匹配。
-4. **自定义 TS 模块角色**（`src/mechanics/agents/*.ts` 注册过的）**绕过 spec 解释器**：spec 里的 adjustable 滑块、attributeConversions 是死数据，机制必须在模块里实现。
+3. `moveId` 匹配 = `AGENTS.md` 规则 3（此处不重复）。
+4. 模块角色 spec 死字段 = `AGENTS.md` 规则 4（此处不重复）。
 5. **加成一律进既有乘区加算，禁止造独立乘区**（2026-08-23 用户铁律）：任何「提升 X%」都落在引擎既有的某个乘区里与同区其他来源**加算**——绝不写成行级 ×(1+X) 的独立乘区（如格莉丝积蓄 +130% 曾误写成 baseBuildUp×2.3，正确做法是进「异常积蓄效率区」+130）。先回答「这个加成属于哪个既有乘区」再写代码。
 6. **招式限定必须落实到位，禁止一视同仁近似**：文本写明「只有某几招生效」时就做**引擎级招式限定**（行级字段/钩子按 moveId 精确到行），面板级/全局级一视同仁是马虎。确需近似的唯一合法姿势：先算限定招式的**占比**（如该招积蓄占总量比例），用 `边际效用 × 占比` 做最终加权修正，并注释公式——不是把满额加成分给所有人。
 
@@ -19,7 +19,7 @@
 
 **原文位置**：`data/raw/nanoka_missing/full/<agentId>.json`（部分角色在 `data/raw/nanoka_<id>_zh.json`）。四类信息承载：
 
-| 想知道的 | 原文字段 | 例子（薇薇安 1331） |
+| 想知道的 | 原文字段 | 例子（薇薇安） |
 |---|---|---|
 | 逻辑/触发条件/状态 | `passive.level.<满级id>.desc`（核心被动+额外能力） | 「落羽生花命中**异常目标**才触发异放」「队友施加异常→消耗护羽→落羽生花，0.5s CD」 |
 | 资源回复与消耗 | `skill.*.description`（招式描述里「回复 N 点 X / 消耗 N 点 Y」） | 飞羽来源（淑女礼仪+1/强特+3/连携+2/终结+5…）、悬落消耗飞羽转护羽 |
@@ -74,13 +74,13 @@
 
 > 已去重（同一条在别处已有权威来源，不在此重复）：`moveId` 匹配 → §0 铁律 3 + `ENGINE_PIPELINE_GUIDE.md` §4 坑4；模块角色 spec 死字段 → §0 铁律 4 + `AGENTS.md` §1 规则4；fetch stub → 下方 §7 测试卫生。
 
-## 3.5 命座提升率丢失 / buff 丢失 · 根因与自查（星徽·比利 1531 录入实证）
+## 3.5 命座提升率丢失 / buff 丢失 · 根因与自查（星徽·比利录入实证）
 
 命座提升率显示 0% / 偏低 / 偏高，几乎都是**效果没被计算消费**或**消费在错误的层/乘区**。按根因分类自查：
 
 | 根因 | 症状 | 实测案例 | 自查 |
 |---|---|---|---|
-| 面板 buff 施加点错误 | 覆盖率滑块不生效，提升率恒定不变 | 般岳 `rageGainCoverage`：applyPanel 读 `panel.banyueRageCoverage`（从未被写入的对象）→ 滑块**长期静默失效**（已修） | **已修接口**：`AgentPanelInput` 现在带已解析的 `settings`，面板阶段直接 `input.settings['<id>'] ?? 默认值`。旧两条绕法（computePanelPhases 硬编码块 / 经 panel 字段走私）**已废弃，勿再用**。滑块必须配一条「改滑块 → 面板/结果确实变」的生效测试 |
+| 面板 buff 施加点错误 | 覆盖率滑块不生效，提升率恒定不变 | 般岳 `rageGainCoverage`：applyPanel 读了从未被写入的 `panel.banyueRageCoverage` → 滑块**长期静默失效**（已修） | 面板阶段直接 `input.settings['<id>'] ?? 默认值`（旧两条绕法已废弃，接口细节见 `ENGINE_PIPELINE_GUIDE.md` §4 坑1）；滑块必须配一条「改滑块 → 面板/结果确实变」的生效测试 |
 | 作用域错误 | 提升率偏高（buff 作用到不该作用的招式/角色） | 旧 `billyStarGlowMechanic` 把星辉挂**全局 dmgBonus**（文本只作用 6 个目标招式） | 每录一个 buff 问三问：谁受益（自身/全队/敌人）？哪些招式（moveId 集合）？哪个乘区？ |
 | 乘区位置错误 | 提升率数值不对（非零但错） | C6"贯穿伤害+18%"最初挂通用增伤区，应为**贯穿增伤乘区**（`sheerDmgBonus`，引擎后补执行级通道） | 乘区查表：通用 `dmgBonus` / 元素 / `skillDmgBonus*` / 贯穿 `sheerDmgBonus` / 暴伤 `critDmgBonus` / 抗性 `enemyXxxResReduction` / 基础区 `flatDamageBonus` |
 | 计数源错误 | 次数类 buff 量不对 | 孤轮+8 决意只按付费强特计（**免费衔接的孤轮漏算**，后改按孤轮总次数）；格挡按招架近似（应为 `blockCount` 交互次数） | buff 次数由什么驱动：闪能 / HP / 交互次数 / 命中次数？按真实来源计数，**不要拿邻近计数近似** |
@@ -97,14 +97,7 @@
 
 **系统级兜底（资源利用率页「命座提升率」自检）**：逐命座对比 局内面板字段 diff + 伤害增量，自动打标——`ok`（有字段变化）/ `执行级`（无面板变化但伤害提升，moveId 级效果属正常）/ `⚠无变化`（无字段无伤害，效果可能未接进计算）。录入时不必手工做整套差分，但**至少跑一次命座提升率计算确认无橙色警示**。
 
-## 4. 验收命令（录入完成后）
-
-```bash
-npm run verify      # validate:data + validate:specs + vitest + typecheck + build（一条链）
-npm run docs:status # 重新生成 implementation-status.md（CI 检查漂移）
-```
-
-## 3.8 异常结算区与跨角色计数（薇薇安 1331 实证，2026-08）
+## 3.8 异常结算区与跨角色计数（薇薇安实证，2026-08）
 
 **异放（release）跟随事件触发**，不是独立资源。录入异放类核心被动时：
 - 载体 = 触发异放的招式（如薇薇安落羽生花、爱芮绝对音准#3）；**触发有条件**——「命中处于异常状态的目标」才触发（异常角色默认满覆盖，`xxx.releaseCoverage` 滑块默认 1）。
@@ -112,12 +105,7 @@ npm run docs:status # 重新生成 implementation-status.md（CI 检查漂移）
 - **异放限定增益**（如「异放无视 15% 抗性」）必须走模块 `releaseModifier` 返回 `enemyResReduction`——**只作用于异放结算**（`pushRelease` 单独加）。禁止写成面板级 `enemyResReduction`（会让全伤害都无视抗性）。
 - **异放暴击**（如爱芮 C1）用事件的 `releaseCrit` 字段（基础率/伤 + 掌控阈值递增）。
 
-**跨角色计数（团队级触发）**：机制依赖「全队强特次数」「全队异常触发次数」时，`buildAnomalyEvents` 阶段拿不到（异常池在更后阶段）。用**收敛注入**模式（参照露西 `lucyTeammateExNext` / 莱卡恩 `backstageDodgeCount`）：
-1. `useResourceCalc.ts` runCalcRound 增加 `prev<Agent><Metric>` 参数 + 返回值字段
-2. 异常池算完后聚合（`rr.characters` 的 exSpecialCount、`ap1.perElement` 的 triggerCount）
-3. merged 块按 agentId 注入 cfg（`vivianTeamExTotal` 等）
-4. 模块 `cycleFromInput` 读注入字段，首轮回退 `state.exSpecialCount`
-5. 收敛循环传 prev（`prevVivianTeamEx = out?.vivianTeamEx`）
+**跨角色计数（团队级触发）**：机制依赖「全队强特次数」「全队异常触发次数」时，`buildAnomalyEvents` 阶段拿不到（异常池在更后阶段）。新增跨轮反馈 = 在 `resourceCalc/roundThreads.ts` 的 `CalcRoundThreads` 加**一个字段 + `initialCalcRoundThreads` 初值 + 轮内读写**（先例 `lucyTeammateEx` / `vivianTeamEx` / `vivianAnomalyTriggers` / `lighterTeamEnergy`），**不动 `runCalcRound` 签名**（历史形态是 21 个 prev 位置参数，漏一处即静默断链，已结构体化）；只影响伤害、不改终结技/喧响序列的线程（如 `lighterTeamEnergy`）要同步加进 `runOuterLoop` 手写收敛判据，否则提前判 stable。**团队级增益本体走角色模块 `applyTeamConfig`**（三阶段 build/converge/postRound，见 `ENGINE_PIPELINE_GUIDE.md` §2；规则 6：禁止往 `useResourceCalc` 加 agentId 分支）。
 
 **后台自动招式**（预言 DoT、邦布、虎威等）：`timeBucket: 'backstage'`、`actionTime 0` 不占前台时间；次数 = `floor(战斗时长 × 覆盖率 / 间隔)`（如预言 DoT = floor(t × dotCoverage × releaseCoverage / 0.55)）。文档先例：莱卡恩围猎蓄力、橘福福虎威、露西邦布、丽娜邦布。
 
@@ -141,7 +129,11 @@ npm run docs:status # 重新生成 implementation-status.md（CI 检查漂移）
 | 异放次数源·事件计数器 | 元素失衡内触发占比 = 时间线触发数 / 全局池触发数；release 按占比拆「失衡内(全额失衡易伤)/轴外(无易伤)」两段，总次数守恒；`inStunBound: true` 全额记失衡内不拆分 |
 | 异放跟随载体招式 | 事件与前台动作 1:1 触发（如柏妮思灼热抛接法、普罗米娅绝裁）：事件标 `followCarrierInStun: true` + `carrierMoveId` → 失衡内占比 = 载体栈轴内单位/载体总次数（载体无执行行时以事件次数兜底）；未标记的 release 回落事件计数器口径 |
 | 资源驱动特殊普攻载体（爱芮绝对音准#3、薇薇安落羽生花） | 特殊普攻消耗资源（应援能量/护羽），**不是 basic filler 兜底能打出的**（filler 只打点倍率）→ 轴内占比 = 载体栈轴内单位/载体总次数；玩家显式捏进窗内才吃易伤，不捏=轴外。事件次数与载体次数不成 1:1 时（落羽生花异放 = 落羽生花×命中异常占比）用 `carrierTotalCount` 显式给分母 |
-| 6命附伤跟随触发载体吃易伤 | 附伤事件和动作绑定（般岳 C6 随倾山、简6命随强击触发、爱丽丝6命随 SW3/终结技、琉音6命余音随转大/全队终极技）→ 轴内按载体轴内占比吃易伤：动作载体走 `attachedEvents`/`ultimateInAxisFraction`，异常触发载体走 `inWindowFraction(元素)`；非轴全局覆盖率 |
+| 6命附伤跟随触发载体吃易伤 | 协议：附伤事件和动作绑定 → 轴内按载体轴内占比吃易伤——动作载体走 `attachedEvents`/`ultimateInAxisFraction`，异常触发载体走 `inWindowFraction(元素)`；非轴全局覆盖率。先例：般岳 C6 随倾山、琉音6命余音；简6命/爱丽丝6命的完整占比口径见 `MECHANICS_IMPLEMENTATION.md` 对应档案段 |
+
+## 4. 验收命令（录入完成后）
+
+验收命令单一事实源 = `AGENTS.md` §3（`npm run verify` 一条链 + `npm run docs:status`）。
 
 ## 5. 生效测试模板（机制录入必备）
 
@@ -212,10 +204,9 @@ expect(pN.enemyPhysicalResReduction - p0.enemyPhysicalResReduction).toBe(18)
 
 ### 6.6 邻位回能模板（终结 +10 / 下一位再 +20）
 
-1. 纯函数 `assignXxxUltNeighborEnergy(slots, selfSlot)` → 三人 30/10，两人 30  
-2. `applyXxxTeamEnergyFlags(characters)` 写 `cfg.xxxEnergyPerXxxUlt`  
-3. `useResourceCalc` 组队后调用 apply  
-4. `calcXxxUltEnergy` 在 iterate 能量总和里 `+ per × ultimateCount`  
+1. 模块/数据纯函数 `assignXxxUltNeighborEnergy(slots, selfSlot)` → 三人 30/10，两人 30
+2. 角色模块 `applyTeamConfig` 写 `cfg.xxxEnergyPerXxxUlt` 标志（规则 6：不经 `useResourceCalc` 组队分支）
+3. `roundThreads`（`CalcRoundThreads` 字段）或 iterate 能量总和消费：`+ per × ultimateCount`（先例 `lighterTeamEnergy`）
 （丽娜 / 露西 / 苍角同款）
 
 ### 6.7 能量口径
@@ -226,15 +217,10 @@ expect(pN.enemyPhysicalResReduction - p0.enemyPhysicalResReduction).toBe(18)
 | `exSpecialEnergyConsume = 0` | `resolveExSpecialCount` **恒返回 0**；和弦/士气等自管耗能时必须关掉通用强特 |
 | CD 回能整局近似 | `floor(battleTime / cd) × amount` 并入 `initialEnergyGift`（妮可 C2、莱特 C4 喷发定额等） |
 
-### 6.8 「简单角色」快录路径
+### 6.8 「简单角色」快录路径（只留与 AGENTS.md §0 录入五步不同的拐力 delta）
 
-1. 读 nanoka 原文满级被动 + 影画；对照 `teammate-buffs` 组是否已有  
-2. 修 buff 文案/公式；补 `additionalAbility` + helpers 过滤  
-3. 薄 `src/mechanics/agents/<id>.ts`：只做草稿没有的（执行级增伤、邻位回能、转模、C6）  
-4. `mechanics/index.ts` 注册  
-5. 测试：纯函数 + 面板差分 +（如有）执行行 `moveId`  
-6. `character-constellations.json` 更新该 id 状态；`MECHANICS_IMPLEMENTATION.md` 加一小节  
-7. `npm test -- <file>` + `npm run typecheck` → commit/push  
+- **双轨入口**：`teammate-buffs.json` 草稿 ↔ spec `teamBuffs`（§6.1）——读原文后先对照草稿组，修草稿优先、新效果录 spec（source 写「影画X」自动命座门控）。
+- 薄 `src/mechanics/agents/<id>.ts` 只做草稿没有的（执行级增伤、邻位回能、转模、C6）；拐力数值以草稿/用户口径为准，其余步骤（读原文/档案/模式匹配/交付）走 AGENTS.md §0 五步。
 
 范围扩大/无敌/护盾吸收量等**无乘区**效果：constellations 标 skip/pending，不要假装进伤害。
 
@@ -254,10 +240,7 @@ expect(pN.enemyPhysicalResReduction - p0.enemyPhysicalResReduction).toBe(18)
 2. **每条机制有生效测试**——测试断言「改机制 → 伤害池/面板**真的变**」（差分断言，不是字段存在）。`npm test -- <file>` 绿 + `allAgentsSweep` 绿。
 3. **命座提升率页自检 + 档案段状态行已更新**——「资源利用率页·命座提升率」无橙色「⚠无变化」；档案段「当前实现状态」行改对、口径同步。
 
-**口径自检（AGENTS 规则 16，交付前 30 秒）**：口径挂到的函数/字段必须**有调用点**——
-`grep -rn "函数名(" src` 零命中 = 死口径（挂着「用户确认」的注释比没注释更危险，实测
-`shortAxisFeiguangCount` 全仓零引用却标着「用户确认 4/10/5/12」，白绕一轮）；`@fact` 主体
-带限定词（`1431/局外连接段` ≠ `1431/连接段`），否则下一个 agent 会按名字联想套用并输出错误归因。
+**口径自检 = `AGENTS.md` 规则 16**（grep 调用点排除死口径 + `@fact` 主体带限定词），30 秒。
 
 **核心原则**：完成 = 「机制进了伤害池/面板 **且** 有测试证明它进了」。写了代码改了 spec 但机制没进结算 = 未完成（2026-08 薇薇安实证：额外能力 +12% 声称"teammate-buffs 承载"实际没承载）。
 

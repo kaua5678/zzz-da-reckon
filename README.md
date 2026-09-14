@@ -1,6 +1,6 @@
 # ZZZ 伤害计算器
 
-绝区零（ZZZ）伤害计算器：**60 名角色**的资源回复/消耗、属性 buff、招式调用、命座、额外能力的完备计算。
+绝区零（ZZZ）伤害计算器：**全部已收录角色**（数量以 `docs/implementation-status.md` 为准）的资源回复/消耗、属性 buff、招式调用、命座、额外能力的完备计算。
 技术栈：Vue 3 + TypeScript + Vite + Naive UI + Pinia + Vitest。
 核心口径：**整局总量**（不算逐帧时间轴，算"整局回复量 vs 整局消耗量"），用户可调覆盖率/占比参数。
 
@@ -22,8 +22,8 @@ npm run verify          # 一条链验收：check-guards + check-tokens + valida
 npm run check           # check-guards + check-tokens + validate:data + validate:specs + vitest（快速环，改完必跑）
 npm run typecheck       # vue-tsc -p tsconfig.app.json --noEmit（单独跑更快；verify 链内已由 build 覆盖）
 npm run build
-npm run validate:specs # spec 结构/状态/倍率行引用校验（60 个角色 spec，含自定义模块死数据强制检查）
-npm run specs:coverage # 60 角色覆盖矩阵（转模/资源/融合/事件/验证数）
+npm run validate:specs # spec 结构/状态/倍率行引用校验（全角色 spec，含自定义模块死数据强制检查）
+npm run specs:coverage # 全角色覆盖矩阵（转模/资源/融合/事件/验证数）
 npm run docs:status    # 重新生成 docs/implementation-status.md（CI 会检查漂移，漏跑即红）
 ```
 
@@ -31,7 +31,7 @@ npm run docs:status    # 重新生成 docs/implementation-status.md（CI 会检�
 
 > 测试约定：新测试一律用 `src/test/harness.ts`（`setupHarness` / `mockStaticFetch` / `setTeam`）装配
 > pinia + 三文件 fetch stub + 队伍，禁止复制样板；全局回归网 = `src/composables/__tests__/allAgentsSweep.test.ts`
-> （60 角色 × 命座 0/6 不变量）。
+> （全角色 × 命座 0/6 不变量）。
 
 ## 3. 角色录入（唯一高频工作流）
 
@@ -65,18 +65,18 @@ scripts/           validate / specs / docs:status / 数据导入等
 data/raw/          nanoka 原始数据（含 nanoka_missing/）
 ```
 
-## 5. 数据源与关键口径
+## 5. 数据源与关键口径（细节在各自主档，本节只做索引——同一事实不在这里重写一遍）
 
-- **nanoka.cc 爬虫** → `public/static/catalog.json`：60 角色基础属性 + 完整倍率表（编译期快照，改数据要同步快照与导入脚本）；音擎补录走 `scripts/import-nanoka-wengine.mjs`（无参自动补 nanoka 有而 catalog 缺的武器，`data/raw/nanoka_wengine_*.json` 为原始数据，60 级面板按 base/rand 推导、被动 buff 在脚本 MANUAL_EFFECTS 人工建模）。
-- **Boss 预设**：`scripts/fetch-nanoka-bosses.mjs` + `scripts/import-nanoka-bosses.mjs` → `public/static/boss-presets.json`（危局强袭战 22 个 Boss 预设（含新补录 恶名·冥宁芙 / 「亵渎者」 / 叛律孤歌·薇斯珀 / 猎血清道夫）× 各期血量/失衡/防御/异常系数/三张抗性表 + 怪物本体失衡倍率/失衡时间 + 用户确认收录的老防卫战 Boss 彷徨猎手；期数覆盖 1.4–3.2 正式期 + 3.3 测试服试炼占位期（无 live_begin，时间轴默认剔除）），属性配置页 `BossSelectCard.vue` 一键填充。
-- **预设队伍对比**：`src/data/teamPresets/`（JSON，含加金顺序/交互清单/常驻配置）→ 队伍对比页散点图（x=操作难度=交互加权和，y=伤害/血量%，点=队伍×限定金）。批量计算管线在 `src/composables/teamCompare.ts`，金数口径：总限定金 = 限定 S 角色本体/音擎本体 + 影画/精炼步，常驻 S 角色（莱卡恩等）与常驻音擎不计；选择越界自动钳制到队伍档位范围；常驻角色命座/精炼走 `standardSteps`（不占限定金，改文件后重跑）。
-- **teammate-buffs.json**：全队拐力（核心被动/额外能力/命座拐），按 `source.zhCN` 里的"影画X"自动按命座门控。
-- **实战对比**：`node scripts/fetch-zzz-run-archive.mjs` 抓 zzz-run-archive（公开 JSON API）全量 approved 到 `data/raw/zzz-run-archive/`（幂等覆盖，`--dry-run`/`--limit`/`--max-targets`）；`node scripts/import-zzz-run-archive.mjs` 精炼成 `public/static/run-archive.json`（只收危局）。归档用 nanoka.cc id 与 catalog 同源；`src/composables/runArchiveImport.ts`（`submissionToDeploy`/`matchBossPreset`/`matchBossPhase`）把投稿映射为部署配置（命座/音擎/精炼直通 + Boss 名→预设 + 赛季日期→期相位），`src/composables/runArchiveDeploy.ts`（`applyDeployConfig`）写进 store，落「实战对比」Tab（`src/views/RunArchivePage.vue`）。仅危局强袭（Deadly Assault*），防卫战/歼灭（小怪转火非打桩）排除；配装缺口由计算器默认理想配装兜底。
-- **动作时间公式**（基于倍率表 `ether_purify` 行）：一般招式 `秽盾/100`、闪避反击 `-1.5`、轻重弹刀 `-2.5`、终结技 `-5`。
-- **合轴率** `comboAlignRatio`：动作时间内可与其他操作并行的比例，硬编码进 catalog 静态数据。
-- **失衡轴**：`src/data/stunAxisPresets/` 下的预设 JSON（`team` 按槽位匹配、`*` 通配、`chapter` 字段用于章鱼自动轴按伊德海莉命座选轴）。
+| 主题 | 唯一事实源 | 细节在哪 |
+|---|---|---|
+| 角色/音擎基础属性 + 完整倍率表 | `public/static/catalog.json`（编译期快照；**改数值 = 改 `scripts/` 导入/爬取脚本重跑，勿手改 JSON**） | `docs/DATA_FETCHING.md`（抓取/导入约定、版本 hash 坑） |
+| Boss 预设（各期血量/失衡/防御/抗性/默认交互） | `public/static/boss-presets.json` ← `scripts/{fetch,import}-nanoka-bosses.mjs` 的 `BOSS_DEFAULTS` | `docs/FEATURES_GUIDE.md` §1 |
+| 预设队伍 + 限定金口径 | `src/data/teamPresets/*.json`（`auto-` 为唯一来源，同名/同成员集合只留一条） | `docs/FEATURES_GUIDE.md` §2–3 |
+| 全队拐力 | `public/static/teammate-buffs.json`（采集）+ spec `teamBuffs`（人工）→ `stores/catalog.ts` 合并 | `docs/AGENT_RECORDING_SOP.md` §6.1 |
+| 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
+| 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（14 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（13 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -86,14 +86,13 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/AGENT_RECORDING_SOP.md` | **角色录入 SOP（AI 快速上手）**：spec 字段→消费者→生效测试清单、防死数据铁律、踩坑清单 |
 | `docs/MECHANIC_PATTERNS.md` | **机制模式目录**：游戏文本 → 计算逻辑的翻译词典——九个计算维度、确定性四级（L0 直读/L1 直译/L2 近似/L3 凹分拍板）、凹分思想提炼路径（录新角色先做模式匹配） |
 | `docs/GAME_TERM_TO_CODE_FIELD.md` | 中文游戏术语 → 计算器字段映射（AI 录入时查字段用） |
-| `docs/MECHANICS_IMPLEMENTATION.md` | 角色特殊机制档案：已实现机制角色口径（洛克茜/克拉蕾/柏妮思/雅/琉音/诺姆/青衣/般岳/卢西娅/星徽·比利等）与通用自动失衡轴 |
+| `docs/MECHANICS_IMPLEMENTATION.md` | **逐角色机制档案**（录角色前先 grep 该角色段）：当前实现状态行 + 只有档案知道的用户裁决与未建模项 + 实现指针；§0 特化中英映射表、§3.05 名词缺口挂账。机制细节以 `src/specs/agents/<id>.json` notes 与模块头注释为唯一事实源，档案不复述它们 |
 | `docs/FEATURES_GUIDE.md` | **Boss 选择 + 队伍对比功能手册**：操作方式、数据管道命令、修改入口表、口径与验证命令（新功能必更新） |
 | `docs/UI_THEME_GUIDE.md` | **UI 主题系统指南**：明暗双主题三层颜色体系（--app-*/--wa-* 色阶）、切换机制、SVG 填坑、ZZZ 品牌色板、改 UI 前必读 |
-| `docs/implementation-status.md` | **自动生成**，60 角色覆盖矩阵（唯一权威进度，勿手改） |
-| `docs/mechanism-reference.md` | 游戏底层机制理论（啵啵獭 10 期：能量/喧响/击破/异常/紊乱/防御/秽盾/风），纯参考，不随代码维护 |
+| `docs/implementation-status.md` | **自动生成**，全角色覆盖矩阵（唯一权威进度，勿手改） |
+| `docs/mechanism-reference.md` | 游戏底层机制理论（啵啵獭 10 期）：**只留尚未建模的理论存量**（秽盾/接战状态/精英怪档/待实测系数）；已进引擎的公式与倍率表以 `src/core/**` 为唯一事实源，本文只给指针 |
 | `docs/DATA_FETCHING.md` | 数据抓取/导入约定（nanoka 等数据源的管道与字段口径） |
 | `docs/multiplier-record.md` | **自动生成**倍率表系数演算记录（`npm run gen:multiplier-record`），供倍率系数页核对 |
-| `docs/architecture-review-2026-09-11.md` | **点时间快照**架构评审（分层现状/债务/改进建议）；不随代码维护，结论落地后以代码为准 |
 
-> 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建。
-> 文档数量以本表为准（14 份），新增文档需同步本表。
+> 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条迁 `.claude/task-ledger-arch-refactor.md` Open 段）。
+> 文档数量以本表为准（13 份），新增文档需同步本表。

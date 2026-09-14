@@ -1,19 +1,19 @@
 # AGENTS.md
 
 > 本仓库：ZZZ 伤害计算器（Vue 3 + TypeScript + Vite + Naive UI + Pinia + Vitest）。
-> **任何改动前必读本文件；"这代码怎么跑 / 该改哪"先查下面的导航文档，不要从零翻目录。**
+> **任何改动前必读本文件；"这代码怎么跑 / 该改哪"先查 §0 导航表与 `docs/ARCHITECTURE.md` §3 决策树（或直接跑 `zc brief`），定位到文件再进去读代码。**
 
 ## 0. 任务分级：先认档，再按档读文档
 
 | 档 | 适用 | 必读 | 可跳过 |
 |---|---|---|---|
-| `fast` | 改 UI / 文案 / 单条测试 / 单文件小修 | 本文件 §1（含规则 15/16）+ 目标文件头注释 | docs 全套（涉及页面时扫一眼对应 .vue 与 AppHeader） |
+| `fast` | 改 UI / 文案 / 单条测试 / 单文件小修 | 本文件 §1（含规则 15/16）+ 目标文件头注释；**改 UI/样式 → `docs/UI_THEME_GUIDE.md` 是必读**（令牌与双主题口径不在代码里，`.vue` 也基本没有头注释） | 其余 docs（涉及页面时扫一眼对应 .vue 与 AppHeader） |
 | `full` | 录角色 / 补机制 / 改引擎 / 排查 buff 没生效 | 本文件 §1 + `docs/ARCHITECTURE.md` §3 + 对应管线文档 | `docs/mechanism-reference.md` 纯参考可不读 |
 | `loop` | 跨多文件重构 / 批量迁移 / 数据管道改动 | `full` 全部 + 本文件 §4 长任务账本 | — |
 
-要不要开**外部闭环**（goal / 完成模式 / optimal 重档）不是凭感觉——按本节末「自主开环分级」表判（粗对齐：fast 不开、full 的排查类上完成模式、loop 至少建 goal）。
+要不要开**外部闭环**不是凭感觉——按本节末「要不要开外部闭环」表判（粗对齐：fast 不开、full 的排查类先写预测再对账、loop 至少建 goal）。
 
-`full` / `loop` 档的**读法：步骤必读、参考按症状查**。参考文档里的具体案例（某角色某坑）换到新角色往往无法类比——不要通读整篇参考，命中哪条读哪条：
+`full` / `loop` 档的**读法：步骤必读、参考按症状查**。参考文档里的具体案例（某角色某坑）换到新角色往往无法类比——按症状只读命中的那一条：
 
 | 何时 | 读哪个 |
 |---|---|
@@ -36,29 +36,29 @@
 
 其他任务（改引擎/排查/UI）不需读原文/档案。未收录的新角色以 spec notes + raw 数据为准。
 
-### 自主开环分级（要不要开外部闭环：按表判，不许凭感觉）
+### 要不要开外部闭环：按表判，不许凭感觉
 
-惰性启发式总会把活判成「简单、不用开环」——所以开环是**规则判断不是 vibe 判断**。分档如下；**agent 自主发起、自主跑到验证，冻结合同与终验/审计放行留真人**（`delivery_feedback` 要求真人逐字帧、判分器只许收紧不许放松——这是设计，不是疏漏）：
+惰性启发式总会把活判成「简单、不用开环」——所以开环是**规则判断不是 vibe 判断**。**终验与验收放行留真人**（判分器只许收紧不许放松，这是设计不是疏漏）：
 
 | 触发条件 | 开什么 | 闭合方式 |
 |---|---|---|
 | `fast` 档 / 一条 `zc done --verifier` 就能交代 | **不开外部环**，走仓库轻闭环（`zc claim` → 改 → `npm run check` → `zc done`） | verifier 绿即闭 |
-| `loop` 档，或跨多轮但完成判据说得清 | `create_goal`（轻档，agent 可自主推断长任务，无需用户点名） | goal 判据达成 → complete |
-| **排查数值/机制错误**，需「预测 → 盘上实测 → 对账」（伤害偏低、失衡次数错这类） | `super_task_completion_mode`（purpose + assertions + measure）；需逐动作对账时上重档：`optimal_declare` 声明预测 → `probe_record` 实跑 → `optimal_converge` 对账 | 实测与预测吻合才闭合；discrepancy 即回炉，不就地改预测 |
-| 跨会话、需审计/信誉留痕的大项目 | 重档 + 审计（`audit_dispatch`/`audit_record`，redteam 组逐动作 pass 才落账） | **真人确认**后终验；agent 不得自行宣布验收 |
+| `loop` 档，或跨多轮但完成判据说得清 | `create_goal`（agent 可自主推断长任务，无需用户点名）+ §4 账本 | goal 判据达成 → `update_goal complete` |
+| **排查数值/机制错误**（伤害偏低、失衡次数错这类） | **预测先行**：动手前把「预测值 + 判据」写进账本 `Next`，再跑盘上实测对账（`npx vitest run <相关测试>` / `PROBE_AGENT=<id> npm run probe:panel` / `subagent` 跑一次性探针） | 实测与预测吻合才闭合；**discrepancy 即回炉，不许就地改预测** |
+| 跨会话、需留痕的大项目 | 多工人派发（§5）+ 每步 `zc done` 落账 | **真人确认**后终验；agent 不得自行宣布验收 |
 
-配套约定：**harness 的 autoStart / writeGate 保持关闭**（本仓库高频小修为主，写闸的价值已被 `zc claim` + `check-guards` + 规则 13 覆盖）；开了重档**不豁免**本仓库验收链——`npm run verify` + `zc done` 仍是交付口径，重档只加「预测先行 + 逐动作对账」，不替代轻闭环。
+配套约定：**harness 的 autoStart / writeGate 保持关闭**（本仓库高频小修为主，写闸价值已被 `zc claim` + `check-guards` + 规则 13 覆盖）；**开了闭环不豁免本仓库验收链**——`npm run verify` + `zc done` 仍是交付口径。
 
 ## 1. 硬性规则
 
-1. **基线先绿再动手**：改代码前跑 `npm run check` 确认通过；改完跑 check + `npm run typecheck` + `npm run build`（验收命令见 §3）。
+1. **基线先绿再动手**：改代码前跑 `npm run check` 确认通过；改完跑 check + `npm run build`（验收命令见 §3）。
 2. **数值唯一事实源 = `public/static/catalog.json`**：改数值走 `scripts/` 导入/爬取脚本重跑，不要手改 JSON 本体。
 3. **执行行匹配一律用 `moveId`**，不按 name/note（`enrichExecutionPlan` 会从倍率表回填覆盖它们）。
 4. **自定义 TS 模块角色**（`src/mechanics/agents/*.ts` 注册过）的 spec 字段是死数据：adjustable 滑块/attributeConversions 必须在模块里实现，spec 只作记录（`validate:specs` 已强制：模块角色的 attributeConversions 必须可证明被消费——模块显式调用 `applySpecAttributeConversions` 或条目 note 标注「实现位置：」，否则校验失败）。
-5. **每个录入的机制 = spec 字段 + 生效测试**；命座效果录完跑一次「资源利用率页·命座提升率」确认无橙色「⚠无变化」警示（效果未接进计算的信号）。该自检已有自动化护栏兜底：`allAgentsSweep` 断言「声明已实现命座的角色 C6 伤害 > C0 伤害」，逐级三态判据在 `composables/cinemaUplift.ts`（页面与测试同源）——但页面自检仍要跑，它能定位到具体是哪一级。
-6. **跨角色/队伍级机制走 `applyTeamConfig` 钩子**（三阶段 build/converge/postRound，见 `docs/ENGINE_PIPELINE_GUIDE.md` §2），禁止往 `useResourceCalc` 新增 `agentId === 'xxxx'` 分支（机器护栏：`check-guards` 棘轮冻结存量基线，新增即红；存量清零后下调基线）；面板阶段的覆盖率滑块直接读 `AgentPanelInput.settings`，不要经 panel 字段走私（曾致般岳滑块静默失效）。**棘轮有 burn-down 契约**（`check-guards` 的 `RATCHET_BURNDOWN`：每条登记 frozen/target/due/plan），`zc status` 会点名「已到期且零进展」的棘轮——棘轮防变差，burn-down 防「冻结 = 永久豁免」，降了基线就同步下调 `frozen` 与进度。
+5. **每个录入的机制 = spec 字段 + 生效测试**；命座效果录完跑一次「资源利用率页·命座提升率」确认无橙色「⚠无变化」警示（效果未接进计算的信号）。该自检有自动化护栏兜底：`allAgentsSweep` 断言「声明已实现命座的角色 C6 伤害 > C0 伤害」，逐级三态判据在 `composables/cinemaUplift.ts`（页面与测试同源）——页面自检仍要跑，它能定位到具体哪一级。
+6. **跨角色/队伍级机制走 `applyTeamConfig` 钩子**（三阶段 build/converge/postRound，见 `docs/ENGINE_PIPELINE_GUIDE.md` §2），禁止往 `useResourceCalc` 新增 `agentId === 'xxxx'` 分支（机器护栏：`check-guards` agentId 棘轮冻结存量基线，新增即红；存量清零后下调基线）；面板阶段的覆盖率滑块直接读 `AgentPanelInput.settings`，不要经 panel 字段走私（曾致般岳滑块静默失效）。**棘轮有 burn-down 契约**（`check-guards` 的 `RATCHET_BURNDOWN`：每条登记 frozen/target/due/plan），`zc status` 会点名「已到期且零进展」的棘轮——棘轮防变差，burn-down 防「冻结 = 永久豁免」，降了基线就同步下调 `frozen` 与进度。
 7. **spec 文件名必须是 `<agentId>.json`**（`validate:specs` 强制）：拼音 slug 会与别的角色撞车（`juhufu`=朱鸢 vs `jufufu`=橘福福），改错文件代价极高。
-8. **知识单一事实源在代码；手册只收协议/口径/证据三类**：改代码时同步更新受影响的文档（`docs/` 清单见 README §6）；不要新建"复述代码"的文档，优先更新决策树条目。**分层契约**——方法类文档（ENGINE_PIPELINE_GUIDE / AGENT_RECORDING_SOP / GAME_TERM_TO_CODE_FIELD / MECHANIC_PATTERNS）条目只许三类：**协议**（怎么做：步骤/模板/钩子用法）、**口径**（是什么：数值/映射/裁决，手写时按规则 16 写成 `@fact` 钉实现旁）、**证据**（一行 + 实测数字，如否决记录）。编年叙事（逐日对账、逐队归因、实验过程）进 git 历史与 `.claude/` 账本，不进手册——git log 逐字保存，手册里只留结论与指针。§4 坑条目模板 = 症状/根因/判据/否决记录（示范见坑 19）。机器面：`check-guards` 判据 11 密度棘轮（四文档的数字 agentId 密度只降不升）+ burn-down 点名；带时效的结论挂 `⟳复核: <到点判什么> | 到期 <YYYY-MM-DD>` 触发器行，`zc drift` 点名逾期项（复核后撤标记或改写条目，别只删日期）。
+8. **知识单一事实源在代码；手册只收协议/口径/证据三类**：改代码时同步更新受影响的文档（`docs/` 清单见 README §6）；不要新建"复述代码"的文档，优先更新决策树条目。**分层契约**——方法类文档（ENGINE_PIPELINE_GUIDE / AGENT_RECORDING_SOP / GAME_TERM_TO_CODE_FIELD / MECHANIC_PATTERNS）条目只许三类：**协议**（怎么做：步骤/模板/钩子用法）、**口径**（是什么：数值/映射/裁决，手写时按规则 16 写成 `@fact` 钉实现旁）、**证据**（一行 + 实测数字，如否决记录）。编年叙事（逐日对账、逐队归因、实验过程）进 git 历史与 `.claude/` 账本，不进手册——git log 逐字保存，手册里只留结论与指针。§4 坑条目模板 = 症状/根因/判据/否决记录（示范见坑 19）。机器面：`check-guards` 手册密度棘轮（四文档的数字 agentId 密度只降不升）+ burn-down 点名；带时效的结论挂 `⟳复核: <到点判什么> | 到期 <YYYY-MM-DD>` 触发器行，`zc drift` 点名逾期项（复核后撤标记或改写条目，别只删日期）。
 9. **完成必须声明 verifier + coverage**：每个改动结束时，回复里写明——由哪个命令/测试证明它生效（verifier），以及影响范围（哪些角色/页面/文件）。没有测试覆盖的改动先补测试，不算完成。
 10. **check 失败先诊断再动手**：先读失败断言/错误文件，写一句根因，再修。禁止不读输出直接重跑或直接改测试；若根因指向测试本身，先复核口径再改。**红基线不允许过夜**：曾有一条 `yixuanSmoke` 断言被当成"既存红"跨多个任务放着，而 CI 里文档漂移检查排在 `npm run verify` 之后同一 job——一红全哑、护栏整张失效（该 job 已拆开）。
     **基线是测量工具，不是开发否决权（用户裁决 2026-09-10）**：`timeGolden.baseline.json` /
@@ -70,63 +70,54 @@
     长期利益优先：口径错了就改引擎，基线跟着重排。
 11. **跨文件常量只从单一来源引用**：能量/喧响/倍率/异常等共享数值必须引用 `core/`、类型定义或 `statMeta` 中的常量，禁止在模块/页面里复制字面量；改口径先改源，再跑 check。跨角色回能只改 `calcCrossAgentEnergy`（单一事实源）。
 12. **最小实现阶梯（只约束「写多少」，不约束「对不对」）**：写码前停在第一档能成立的——①这功能真要建吗（YAGNI）②仓库已能复用吗（规则 11 + 决策树）③语言/平台/已装依赖能覆盖吗（ES·TS 内置 → Vue/Naive UI/Pinia 自带 → 已装包）④一行能搞定吗 ⑤才写最小可用。阶梯缩短**解法**，永不缩短**读懂**与**验证**：规则 5/9/10/11 与领域档案（`docs/MECHANICS_IMPLEMENTATION.md` 的口径与未建模项）优先于本阶梯。有意简化且砍了真实角落（O(n²) 扫描 / naive 启发式 / 全局近似 / 暂未建模）时，就地写 `debt: <天花板>, <升级路径>` 注释，供 `grep -rn 'debt:' src scripts` 回收进账本 Open 段；**新增 debt 标记必须在 `check-guards` 的 DEBT_REGISTRY 登记（since/due），还清时销号，漏登记即红**。
-13. **共享工作区显式路径提交**：只 `git add <改动文件>`，把 `-A`/`--all` 当禁区（会卷走并行会话 WIP，历史事故 ×2）；`.claude/ledgers/`、`.zcode/` 已 gitignore 且 `check-guards` 拒绝其被跟踪——但**源码级 WIP 仍靠本条文字规则**（git 事后无法区分谁改的）；改共享文件后**写后即验**（`grep`/`git diff --stat` 确认落盘），不 `git checkout` 还原他人编辑中的文件。
+13. **共享工作区显式路径提交**：只 `git add <改动文件>`，把 `-A`/`--all` 当禁区（会卷走并行会话 WIP，历史事故 ×2）；`.claude/ledgers/`、`.zcode/`、`.zc/` 已 gitignore 且 `check-guards` 拒绝其被跟踪。**源码级 WIP 有机器面**：仓库根 `.git-guardrails.json` 启用插件 `dsh-git-guardrail`，在执行前拦 `git add -A/--all/./*`、`commit -a/-am`、`reset --hard`、`clean -f`、`checkout .`、`push --force`（拒绝理由直接给替代写法；`add -u`/`-p`/显式路径放行；无标记文件 = 完全不介入；临时放行往该文件写 `disabledRules: ["<规则id>"]`，详见 `~/dsh-plugins/dsh-git-guardrail/README.md`）。改共享文件后**写后即验**（`grep`/`git diff --stat` 确认落盘），不 `git checkout` 还原他人编辑中的文件。
 14. **生成产物与行尾由环境强制**：`public/static/*.json` 紧凑写、`catalog.json` 顶层键 == `Catalog` 字段由 `validate:data` 强制（红 → `npm run minify:static`）；行尾统一 LF 由 `.editorconfig`/`.gitattributes` 强制，python 改文本文件用 `newline=''` 防 CRLF 翻面 churn（历史事故 ×2）。
 15. **跨实体断言必须查证，派生数值必须问引擎**：凡要写「X 的专武/归属/属性/数值是 Y」（音擎↔角色、套装↔效果、id↔名字），先跑 `node scripts/resolve.mjs <类型> <名|id>`（`docs/ENTITY_CARDS.md` §0），输出引用一律用 `名字(id)` 绑定格式；歧义或未命中时工具 exit 1，**绝不凭名字联想静默选最像的**（游戏名词在训练分布里有强先验，名字联想断言能一路通过不报错——2026-08-30「心弦夜响→仪玄专武」事故 ×2 同日）。面板/暴击预算等**派生数值以引擎探针为权威**（`PROBE_AGENT=<id> npm run probe:panel`），禁止手工汇总 catalog JSON。
-
 16. **口径必须挂在活代码上，主体必须带限定词，否决必须留痕**（三件事都是防"文档骗 agent"）：
     ① 写「X 是 Y」前先 `grep -rn "X(" src`——零调用点 = **死口径**，挂着「用户确认」的注释比没注释更危险（实测 `shortAxisFeiguangCount` 全仓零引用却标着「用户确认 4/10/5/12」，白绕一轮）。
     ② `@fact` 主体带限定词：写 `1431/局外连接段` 而不是 `1431/连接段`——无限定词的主体会被按名字联想套用（实测把「局外连接段归平A池」读成「明心境连接段不建行」，并把错误归因直接发给了用户）。
     ③ **试过又放弃的方案必须写进 `ENGINE_PIPELINE_GUIDE.md` §4 对应坑条目的「否决记录」**（一句话 + 实测数字）。最有价值的知识常常是"别这么改"，而它此前只活在代码注释里、docs 零命中（`=`/`max()` 折叠 → 溢出 186s 就是例子）。
 
-## 2. 常见任务入口（完整决策树见 docs/ARCHITECTURE.md §3）
+## 2. 常见任务入口
+
+**决策树单源在 `docs/ARCHITECTURE.md` §3**（任务 → 先读 → 再改；`zc brief` 与 `zc ctx` 都检索它，跑一次比翻表快）。本节只收 §3 没有的口径：
 
 | 任务 | 改哪 |
 |---|---|
-| 录新角色 / 补机制 | `src/specs/agents/<agentId>.json`（文件名必须=agentId）+ `src/mechanics/agents/<id>.ts`（注册进 `src/mechanics/index.ts`） |
-| **跨角色 / 队伍级联动** | 角色模块自己的 `applyTeamConfig`（三阶段）；派发器在 `resourceCalc/helpers.ts`，勿动 `useResourceCalc` |
-| **加一个可调滑块** | 模块 `settings` 声明 + 面板阶段读 `AgentPanelInput.settings`；必须补「改滑块→结果确实变」生效测试 |
-| 改伤害公式 / 乘区 | `src/core/damage.ts`（乘区顺序 = 代码顺序） |
-| 改资源池 / 失衡 / 异常 | `src/core/resource*.ts`、`src/core/stunPool/`、`src/core/anomalyPool/`；跨角色回能只改 `calcCrossAgentEnergy` |
-| 改面板 / 转模 / 局外局内 | `src/composables/resourceCalc/helpers.ts`（computePanelPhases） |
-| 改失衡轴 / 自动轴 / 预设 | `src/data/stunAxisPresets.ts` + `src/data/stunAxisPresets/*.json` |
-| 排查 buff / 命座没生效 | `docs/AGENT_RECORDING_SOP.md` §3.5 根因表；页面「命座提升率」自检 |
-| **改抽卡价值 / 抽卡成本** | **只用期望值口径**（用户裁决 2026-09-01：宏观研究期望足够，模拟抽卡运气已删）：`src/composables/pullValue.ts`（每万菲林兑现 ROI，单一事实源 = `data/filmEconomy.ts`）+ `src/composables/pullPlannerEngine.ts`（规划器，TIER_COSTS 常量价）；gachaCost / acquisitionValue 引擎已整体删除，不要再引入抽卡随机模拟 |
+| **改抽卡价值 / 抽卡成本** | **只用期望值口径**（用户裁决 2026-09-01：宏观研究期望足够，模拟抽卡运气已删）：`src/composables/pullValue.ts`（每万菲林兑现 ROI，单一事实源 = `data/filmEconomy.ts`）+ `src/composables/pullPlannerEngine.ts`（规划器，TIER_COSTS 常量价）；gachaCost / acquisitionValue 引擎已整体删除，**不要再引入抽卡随机模拟** |
 
 ## 3. 验收命令
 
 ```bash
-npm run verify        # check-guards + check-tokens + validate:data + validate:specs + verify:recording + vitest + build（一条链；build = vue-tsc -b && vite build，类型检查已含在内——2026-09-11 实证 -b 覆盖 app+node 两个 project 且失败非零退出，故不再单列 typecheck）
-npm run check-guards  # 机器护栏 12 项：fetch-stub 冻结（§3）/ agentId 棘轮（规则 6：编排层 useResourceCalc + resourceCalc/ 目录 = 65）/ **core agentId 棘轮**（规则 6 延伸：引擎层 role-agnostic，core 16）/ 工作区状态防误提交（规则 13）/ 展示层越层棘轮（§0：views·components 禁 import @/core|@|mechanics|@/specs = 15）/ **core role-import 棘轮**（规则 6 语义面：`src/core/**` 禁 import 具体角色模块 = 5）/ 滑块生效测试（规则 12）/ debt 登记（规则 12）/ docs 表（README §6 == docs/*.md，规则 8）/ @fact 锚点（规则 16）/ catalog-raw level60 对账（坑 40）/ **手册密度棘轮**（规则 8 分层契约）
-npm run verify:recording  # 录入完成判据：声称 implemented 的角色必须有测试引用 + expect 断言 + 档案状态行
+npm run verify        # check-guards + check-tokens + validate:data + validate:specs + verify:recording + vitest + build（build = vue-tsc -b && vite build，类型检查已含在内，故不再单列 typecheck）
+npm run check         # 快速环（改完必跑）
+npm run check-guards  # 机器护栏 15 项——判据清单与实测阈值跑一次就打印，逐项口径写在 scripts/check-guards.mjs 头注释（本文不复制）
+npm run verify:recording  # 录入完成判据（判据细节见下）
 npm run docs:status   # 重新生成 docs/implementation-status.md（CI 会检查漂移，漏跑即红）
 npm run minify:static # 生成产物瘦身/剔 catalog 死键（幂等；validate:data 报产物膨胀时用它修）
 ```
 
-**UI 改动必须实机点通一次（不再接受「没做」）**：`npm run build` 后用 `scripts/ui-check.mjs` 走一遍
-（`python3 -m http.server 8099 --directory dist` 起静态服务 + headless Chromium 经 CDP 点页签/控件/按钮），
-它读回 DOM 体检（polyline/标注重叠/表格溢出/JS 错误）并截图，**零 JS 错误 + 无重叠 + 无溢出 = PASS（退出码 0）**：
+**UI 改动必须实机点通一次**：`npm run build` 后用 `scripts/ui-check.mjs`（起静态服务 + headless Chromium 经 CDP 点页签/控件/按钮，读回 DOM 体检：polyline/标注重叠/表格溢出/JS 错误），**零 JS 错误 + 无重叠 + 无溢出 = PASS（退出码 0）**：
 
 ```bash
 node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --click 计算曲线 --wait-for .curve-seg
 ```
 
-（无 root 环境缺 `libnspr4/libnss3` 时，按脚本文件头的「用户态 `apt-get download` + `dpkg-deb -x` 解包」补齐，
-脚本会自动探测 `~/.local/chrome-deps`。）
+（无 root 环境缺 `libnspr4/libnss3` 时，按脚本文件头的「用户态 `apt-get download` + `dpkg-deb -x` 解包」补齐，脚本会自动探测 `~/.local/chrome-deps`。）
 
-**实战归档只做「单条部署对照」（RunArchivePage），不作误差判据**（用户裁决 2026-09）：归档是 approved 顶尖投稿（幸存者偏差、配装/操作/词条都未知），预测值与其差分不度量「真实性」，**不设低估/高估、不设基线、不据此拦或对冲任何录入改动**。录机制只按原文/口径录，不看这条改动会让预测分更接近还是更远离某条投稿。
+**`verify:recording` 是机器判据**——防"写了代码改了 spec 就声称完成"：对每个 `status ∈ implemented*` 的角色查①测试文件引用 agentId（无=FAIL）②有 expect 断言（无=WARN）③档案段有状态行（无=WARN）。录入后跑它确认无 FAIL；WARN 按 SOP §6.10 第 3 项补状态行消除。
 
-`verify:recording` 是**机器判据**——防止"写了代码改了 spec 就声称完成"：对每个 `status ∈ implemented*` 的角色，检查①测试文件引用 agentId（无=FAIL）②有 expect 断言（无=WARN）③档案段有状态行（无=WARN）。录入角色后跑它确认无 FAIL；WARN（档案无状态行）按 SOP §6.10 第 3 项补状态行后消除。
+**新测试一律用 `src/test/harness.ts`**（`setupHarness` / `mockStaticFetch` / `setTeam`），禁止复制三文件 fetch stub（存量 stub 已冻结在 `check-guards` 清单里，新增即红；迁移一个就删一行）；全局回归网 = `src/composables/__tests__/allAgentsSweep.test.ts`（全角色 × 命座 0/6 不变量）。
 
-新测试一律用 `src/test/harness.ts`（`setupHarness` / `mockStaticFetch` / `setTeam`），禁止复制三文件 fetch stub（机器护栏：存量 stub 已冻结在 `scripts/check-guards.mjs` 清单里，新增即红；迁移一个到 harness 就删一行）；全局回归网 = `src/composables/__tests__/allAgentsSweep.test.ts`（60 角色 × 命座 0/6 不变量）。
+**实战归档只做「单条部署对照」（RunArchivePage），不作误差判据**（用户裁决 2026-09，口径全文见 `ARCHITECTURE.md` §3「实战归档对拍」行）：归档是 approved 顶尖投稿（幸存者偏差、配装/操作/词条未知），预测值与其差分不度量「真实性」——不设低估/高估、不设基线、不据此拦或对冲任何录入改动。
 
-**拿到任务先跑 `node scripts/zc.mjs brief "<任务一句话>"`**：它检索既有结构化表格（AGENTS §1 硬性规则 / §2 与 ARCHITECTURE §3 决策树 / ENGINE_PIPELINE_GUIDE §4 坑表 / AGENT_RECORDING_SOP §3.5 根因表）+ 任务里提到的 agentId 的既有口径与覆盖测试，**每条带「文件:行」出处**，一页顶替扫 650KB 散文。命不中会直说「决策树没命中 → 自己读 ARCHITECTURE §3」，不编答案；命不中且你做完了，就往决策树补一行。
+**拿到任务先跑 `node scripts/zc.mjs brief "<任务一句话>"`**：一页检索完 §1 规则 / `ARCHITECTURE.md` §3 决策树 / `ENGINE_PIPELINE_GUIDE.md` §4 坑表 / `AGENT_RECORDING_SOP.md` §3.5 根因表 + 该 agentId 的既有口径与覆盖测试，每条带「文件:行」出处；命不中会直说，不编答案——**命不中且你做完了，就往决策树补一行**。
 
-**开局/收工走 `zc`（agent 专属入口，v0；带 `--` 参数一律用 node 直调，npm run 会吞掉 flag）**：`node scripts/zc.mjs status` 一条命令给全开局考古（分支/未推送/工作区改动/**疑似并行会话在改的文件**/债务/待办/最近验证记录）；动手前 `node scripts/zc.mjs claim <文件…>` 占道（规则 13 的机器面，冲突大声失败；**并自动带出该文件上钉死的口径/决策树行/头注释职责声明**，要看单文件完整上下文另用 `node scripts/zc.mjs ctx <文件路径>`）；收工 `node scripts/zc.mjs done --verifier <命令> --coverage <范围> [--deps <新增依赖> --risk <可能崩点>]` 把规则 9 的声明落进 `.zc/journal.jsonl`（否则它只活在聊天里，下一个 agent 继承不到）；查口径 `node scripts/zc.mjs facts agent:<id>`、查质量缺口 `--gaps`、打印事实语法 `node scripts/zc.mjs lang`（语法唯一定义在 `scripts/zc.mjs` 的解析器里，不另写文档）。
+**开局/收工走 `zc`**（带 `--` 的参数用 node 直调，`npm run` 会吞 flag；子命令全集以 `node scripts/zc.mjs` 自述为准）：`status` 开局考古（分支/工作区改动/**疑似并行会话在改的文件**/债务/待办/最近验证）→ 动手前 `claim <文件…>` 占道（规则 13 的机器面，冲突大声失败，并带出该文件钉死的口径与职责声明；单文件完整上下文用 `ctx`）→ 收工 `done --verifier <命令> --coverage <范围> [--deps … --risk …]` 把规则 9 的声明落进 `.zc/journal.jsonl`（否则只活在聊天里，下一个 agent 继承不到）；另有 `facts`（查口径）/ `drift`（复核队列）/ `lang`（事实语法）。
 
-**定了新口径就写成一行 `@fact` 钉在实现旁边**（不要再写成段落散文）：`@fact <主体> <种类>: <内容> | 据 <谁定的@日期> | 验 <测试> | 锚 <路径>#<符号> | 信 <确认/高/中/低>`。机器判据（`check-guards` 判据 6）：手写事实必须有「据」且「锚」解析得到，**断锚即红**（锚符号被改名/删除 = 口径已过期）；锚文件在「据」之后被改过的口径进 `node scripts/zc.mjs drift` 复核队列（只报不红——红了会逼人改日期作弊）。既有 spec notes/模块注释里的散文口径是存量，`zc facts` 会自动抽取（当前 630 条 / 结构化率 10%），不必回头迁移。
-
-查证与探针（规则 15 的工具面，详见 `docs/ENTITY_CARDS.md` §0）：`node scripts/resolve.mjs <音擎|角色|专武|套装|boss|buff|spec|audit> <名|id>` 实体解析（歧义大声失败）；`PROBE_AGENT=<id> npm run probe:panel` 面板探针（副词条/音擎/命座/套装可经 `PROBE_SUBSTATS/ENGINE/MOD/CINEMA/FOUR/TWO` 覆盖，默认口径=专武精炼1·命座0·配装推荐主词条）。
+**定了新口径就写成一行 `@fact` 钉在实现旁边**（不写成散文；完整语法 `zc lang`，本文不复制）：
+`@fact <主体·限定词> <种类>: <内容> | 据 <谁定的@日期> | 验 <测试> | 锚 <路径>#<符号> | 信 <确认/高/中/低>`。
+机器判据：必须有「据」且「锚」解析得到，**断锚即红**（锚符号被改名 = 口径已过期）；锚文件在「据」之后被改过的进 `zc drift` 队列（只报不红——红了会逼人改日期作弊）。
 
 ## 4. 长任务账本（loop 档）
 

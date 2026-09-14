@@ -22,7 +22,6 @@
 | `scripts/fetch-nanoka-full-missing.mjs [<id>...] [--force] [--version <v>]` | 爬 nanoka 全量（含 talent/passive）；不带 id = 补「缺失角色」，带 id = 重爬指定角色（`--force` 覆盖存档） | `data/raw/nanoka_missing/full/<id>.json` |
 | `scripts/import-nanoka-wengine.mjs <id>... [--force]` | 音擎 raw + catalog.wEngines（`--force` 按正式服重抓 raw 后重导） | `data/raw/nanoka_wengine_<id>_{zh,en}.json` + catalog |
 | `scripts/sync-build-recommendations.mjs <id>... [--write] [--force] [--verify-rule]` | 邦布精灵配装推荐（4pc/2pc/主词条/副词条/专武） | `data/raw/nanoka_{character,equipment,weapon}.json` + build-recommendations.json |
-| `scripts/fetch-nanoka-missing.py` | 爬 nanoka skills+stats（依赖本机 `F:\trae_output\nanoka_scraper`，已退役） | `data/raw/nanoka_missing/<id>_skills.json` + `_stats.json` |
 
 **出网**：脚本走 `scripts/lib/http.mjs` 的 `fetchJson`（node fetch 优先，失败回退 `curl`）——本机存在「node 出网被拦（ETIMEDOUT/ENETUNREACH）、curl 正常」的环境，回退让数据管线照跑。
 
@@ -87,7 +86,7 @@ node scripts/hdiff-agent.mjs 1621 --from 3.2 --save   # 顺带把新版存档进
 
 - **测试服倍率/核心被动/影画都可能变**（v4 beta 把洛克茜整套 moveId 重排、核心被动重做、克拉蕾 C1/C2 改效果）。
 - 若倍率/被动/影画在测试服还在变 → **等正式服再重构**；否则录一半测试服值，正式服上线又得重录一遍。
-- **2026-09-09 正式服复核（1611 克拉蕾 / 1621 洛克茜）**：技能倍率/被动/影画文本与 v12 测试服一致（被动/影画 2·6 仅措辞修订），但**音擎被改过**——14161 锐化伤害从测试服叠层口径（12%→20%）改成正式服的 10%→16%，14162 才拿到正式名「绯月银棺」。**结论：影画/被动文本可以按测试服录，音擎数值必须等正式服重抓。**
+- **结论（2026-09-09 正式服复核实证）：影画/被动文本可按测试服录，音擎数值必须等正式服重抓**——1611 克拉蕾/1621 洛克茜的技能倍率/被动/影画文本与 v12 测试服一致，但音擎被改过（14161 锐化伤害从测试服叠层口径 12%→20% 改为正式服 10%→16%）。
 - 影画文本（talent desc）相对稳定，但 v4 也出现过「克拉蕾 C1/C2 从 3.2.1 到 v4 完全改写」——**别假设测试服影画=最终**。
 
 ## 记录归档
