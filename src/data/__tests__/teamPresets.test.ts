@@ -51,38 +51,35 @@ describe('teamPresets 预设队伍库', () => {
       const prev = byReplacedTeam.get(k)
       if (!prev || (prev.id.startsWith('auto-') && !p.id.startsWith('auto-'))) byReplacedTeam.set(k, p)
     }
-    // 手编琉音队 = 般琉卢的 2 个难度变体（普通轴 / 5嗔火10大）；其余 4 条手编琉音队与 auto- 孪生重复，已删
+    // 手编琉音队 = 般琉卢单条（2026-09-13 用户裁决：原「普通轴/5嗔火10大」两难度变体已并入单条，
+    // 对比引擎中二者逐位等价、难度分级交给难度曲线）；其余 4 条手编琉音队与 auto- 孪生重复，已删
     const liuyinPresets = teamPresets.filter(p => p.team.includes(LIUYIN) && !p.id.startsWith('auto-'))
-    expect(liuyinPresets.length).toBe(2)
+    expect(liuyinPresets.length).toBe(1)
     for (const liuyinPreset of liuyinPresets) {
       const normaTwin = byReplacedTeam.get(key(liuyinPreset.team))
       expect(normaTwin, `缺少 ${liuyinPreset.id} 的诺姆版队伍`).toBeDefined()
     }
   })
 
-  it('难度变体（队伍分类）：带 variants 的预设展开成独立条目，本体不再单独出现', () => {
+  it('难度变体已并入单条（2026-09-13 用户裁决）：般琉卢单条目绑定通用轴，两条变体 id 不复存在', () => {
     const ids = teamPresets.map(p => p.id)
-    expect(ids).not.toContain('banyue-liuyin-lucia')
-    const normal = teamPresets.find(p => p.id === 'banyue-liuyin-lucia__normal')
-    const wrath = teamPresets.find(p => p.id === 'banyue-liuyin-lucia__wrath5-ult10')
-    expect(normal).toBeDefined()
-    expect(wrath).toBeDefined()
-    for (const v of [normal!, wrath!]) {
-      expect(v.name).toContain('般岳+琉音+卢西娅·')
-      // 队伍/音擎/加金步与本体共用（金数口径不变）
-      expect(v.team).toEqual(['1471', '1481', '1451'])
-      expect(v.wEngines).toEqual(['14147', '14148', '14145'])
-      expect(v.goldSteps.length).toBeGreaterThan(0)
-      expect(v.interactions.length).toBeGreaterThan(0)
-      // 展开标记：指向源预设（保存回写 goldSteps 时重定向到源文件）
-      expect(v.variantOf).toBe('banyue-liuyin-lucia')
-      expect(v.variants).toBeUndefined()
-    }
-    expect(normal!.name).toContain('普通轴')
-    expect(normal!.stunAxisPresetId).toBe('preset-1471-1481-1451')
-    expect(wrath!.name).toContain('5嗔火10大')
-    // 5嗔火10大 达成条件记在 note：5 次嗔火 + 琉音回能高（好评 ≥390 → 10 大）
-    expect(wrath!.note).toContain('好评 ≥390')
+    // 合并后本体条目直接出现，变体后缀 id 删除（对比引擎中普通轴/5嗔火10大逐位等价——
+    // 10大轴在可行化阶段即被「轴需求超出时间预算」弃用，难度分级交给难度曲线）
+    expect(ids).toContain('banyue-liuyin-lucia')
+    expect(ids).not.toContain('banyue-liuyin-lucia__normal')
+    expect(ids).not.toContain('banyue-liuyin-lucia__wrath5-ult10')
+    const merged = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')!
+    expect(merged.team).toEqual(['1471', '1481', '1451'])
+    expect(merged.wEngines).toEqual(['14147', '14148', '14145'])
+    expect(merged.goldSteps.length).toBeGreaterThan(0)
+    expect(merged.interactions.length).toBeGreaterThan(0)
+    // 绑定「般琉通用」好评溢出轴（原普通轴变体的绑定，行为保持）；altAxes「10大轴」= 难度曲线高难度段
+    expect(merged.stunAxisPresetId).toBe('preset-1471-1481-1451')
+    expect(merged.altAxes).toHaveLength(1)
+    expect(merged.altAxes![0]!.stunAxisPresetId).toBe('preset-1471-1481-*-fury5-ult10')
+    // 10大轴去向记在 note（结构保留在失衡轴预设「5火10大」，达成条件见其 note）
+    expect(merged.note).toContain('5嗔火10大')
+    expect(merged.variants).toBeUndefined()
   })
 
   it('诺姆复制版的专武随角色替换（专武 14157 首席跟班，或常驻击破音擎）', () => {
@@ -169,14 +166,27 @@ describe('预设分组（两级下拉：分类 → 队伍）', () => {
   })
 
   it('辅助位带队的自动预设按队内输出位归类（旧版会塞进「支援队/击破队」）', () => {
-    // 耀嘉音(支援)+希希芙(强攻)+扳机 → 强攻队·电；南宫羽(击破)+维琳娜(异常)+柚叶 → 异常队·风
-    expect(pick('auto-1311-1521-1361')).toMatchObject({ group: '强攻队', subgroup: '电' })
+    // 希希芙(强攻)+扳机(击破)+耀嘉音(支援) → 强攻队·电；南宫羽(击破)+维琳娜(异常)+柚叶 → 异常队·风
+    expect(pick('auto-1521-1361-1311')).toMatchObject({ group: '强攻队', subgroup: '电' })
     expect(pick('auto-1511-1561-1411')).toMatchObject({ group: '异常队', subgroup: '风' })
-    expect(pick('auto-1411-1171-1561')).toMatchObject({ group: '异常队', subgroup: '火' })
     // 朱鸢特化修正（原文=强攻）后，她的自动收录队落强攻队·以太，不再是「击破队」
     expect(pick('auto-1241-1031-1311')).toMatchObject({ group: '强攻队', subgroup: '以太' })
     // 流明属性预设不再写原始英文键
-    expect(pick('auto-1581-1261-1561').subgroup).toBe('流明')
+    expect(pick('auto-1581-1501-1561').subgroup).toBe('流明')
+  })
+
+  // 用户报障 2026-09-13：预设库里出现「同一 3 人只换了槽位」的重复条目（auto 生成器去重键
+  // 用了顺序敏感的 join，同 3 人换位即新签名）。成员集合（顺序无关）才是队伍身份——
+  // 手编难度变体（variants 展开）同队多条是特性，故只对 auto-* 生效。
+  it('auto-* 预设按成员集合去重：不存在「同 3 人换槽位」的重复条目', () => {
+    const bySet = new Map<string, string[]>()
+    for (const p of teamPresets.filter(x => x.id.startsWith('auto-'))) {
+      const key = [...(p.team as string[])].sort().join('+')
+      bySet.set(key, [...(bySet.get(key) ?? []), p.id])
+    }
+    const dups = [...bySet.entries()].filter(([, ids]) => ids.length > 1)
+    expect(dups, `重复预设（同成员集合）：${dups.map(([k, ids]) => `${k} → ${ids.join(', ')}`).join('；')}`
+      + '（跑 node scripts/gen-auto-presets.mjs 重新生成）').toEqual([])
   })
 
   // 分类口径单源 = scripts/lib/presetCategories.mjs（validate:data 用它护栏，这里再跑一遍）

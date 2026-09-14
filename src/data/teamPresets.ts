@@ -60,6 +60,10 @@
  *   ]
  * 加载时展开成独立条目：id = `${id}__${变体id}`、名 = `${name}·${变体名}`，
  * team/wEngines/goldSteps 共用本体；带 variants 的队伍本体条目不再单独出现。
+ *
+ * 备选轴档 altAxes（2026-09-13，接替难度变体的「高难一段」表达）：
+ * 同一队伍的高难度轴（如 般琉卢 的 10大轴）作为难度曲线的「切轴」目标档（爬梯按增益录取，
+ * 见 difficultyCurve.ts#makeAltAxisGoal），一条队伍一条曲线分段——不再拆变体预设。
  */
 import type { SelectGroupOption, SelectOption } from 'naive-ui'
 import type { TeamPreset } from '@/types/teamPreset'
