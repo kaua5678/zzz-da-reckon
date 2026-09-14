@@ -3,11 +3,12 @@
     <!-- 控制面板 -->
     <n-card size="small" :bordered="true">
       <div class="compare-controls">
-        <div class="ctl-field" title="散点 = 各队在各金数档的一个点；难度曲线 = 每队自己的贪心优化路径（x 是累积难度代价，各队不对齐是特性，看形状不看同一 x）">
+        <div class="ctl-field" title="散点 = 各队在各金数档的一个点；难度曲线 = 每队自己的贪心优化路径（x 是累积难度代价，各队不对齐是特性，看形状不看同一 x）；选第三人 = 固定 2 个队友，第三槽在选定候选（职业筛选/手选）里逐个试算排名">
           <span class="ctl-label">图型</span>
           <n-radio-group v-model:value="chartMode" size="small">
             <n-radio-button value="scatter">散点</n-radio-button>
             <n-radio-button value="curve">难度曲线</n-radio-button>
+            <n-radio-button value="sweep">选第三人</n-radio-button>
           </n-radio-group>
         </div>
         <div class="ctl-field">
@@ -134,11 +135,66 @@
             placeholder="自动推荐"
           />
         </div>
+        <div class="ctl-field" title="第三轴 = 时间：把每队主C的首次卡池时间编码成颜色（冷=早 / 暖=晚）与点大小（越新越大）。关闭时颜色仍表示队伍身份（跟图例显隐一致）">
+          <n-checkbox v-model:checked="colorByRelease" size="small">按主C实装时间着色</n-checkbox>
+        </div>
         </template>
-        <n-button type="primary" size="small" :loading="computing" @click="chartMode === 'scatter' ? runCompare() : runCurves()">
-          {{ chartMode === 'scatter' ? '计算' : '计算曲线' }}
+        <!-- 选第三人：固定 2 个队友 + 候选范围（职业筛选/手选），不依赖预设队伍（求值口径同「同槽位角色对比」） -->
+        <template v-if="chartMode === 'sweep'">
+          <div class="ctl-field" title="第三人补进哪个槽位：其余两槽固定，该槽在候选池里逐个试算排名">
+            <span class="ctl-label">第三人槽位</span>
+            <n-select v-model:value="sweepSlot" :options="sweepSlotOptions" size="small" style="width: 92px" />
+          </div>
+          <div v-for="fs in sweepFixedSlots" :key="fs" class="ctl-field">
+            <span class="ctl-label">固定·{{ slotLabels[fs] }}</span>
+            <n-select
+              v-model:value="sweepFixedBySlot[fs]"
+              :options="agentOptions"
+              size="small"
+              filterable
+              style="width: 132px"
+              placeholder="选角色"
+            />
+          </div>
+          <div class="ctl-field" title="候选职业（可多选）：第三人的候选范围，空 = 全部职业。比如固定蕾米埃尔+维琳娜、只勾「异常」→ 第三人在全部异常角色里比">
+            <span class="ctl-label">候选职业</span>
+            <n-select
+              v-model:value="sweepSpecFilter"
+              :options="sweepSpecOptions"
+              size="small"
+              multiple
+              style="width: 150px"
+              placeholder="全部职业"
+            />
+          </div>
+          <div class="ctl-field" title="在职业筛选内再手选候选人（可多选，空 = 筛选后全部）">
+            <span class="ctl-label">候选角色</span>
+            <n-select
+              v-model:value="sweepCandidateSel"
+              :options="sweepCandidateOptions"
+              size="small"
+              multiple
+              filterable
+              max-tag-count="responsive"
+              style="width: 170px"
+              placeholder="筛选后全部"
+            />
+          </div>
+          <div class="ctl-field" title="总限定金预算：限定 S 角色本体 1 金 + 限定音擎本体 1 金 + 影画/精炼每级 1 金；常驻/A 级角色与常驻音擎不计">
+            <span class="ctl-label">限定金</span>
+            <n-input-number v-model:value="sweepBudget" size="small" :min="0" :max="18" style="width: 70px" />
+          </div>
+          <div class="ctl-field" title="逐金贪婪挑伤害提升最大的加金组合（每名候选多算几轮，候选多时显著变慢，慎开）；关闭则按主C优先确定性分配（每名候选 1 次求值）">
+            <n-checkbox v-model:checked="sweepOptimalGold" size="small">最优加金（慢）</n-checkbox>
+          </div>
+        </template>
+        <n-button
+          type="primary" size="small" :loading="computing"
+          @click="chartMode === 'scatter' ? runCompare() : chartMode === 'curve' ? runCurves() : runSweep()"
+        >
+          {{ chartMode === 'scatter' ? '计算' : chartMode === 'curve' ? '计算曲线' : '计算第三人' }}
         </n-button>
-        <n-button v-if="chartMode === 'curve' && computing" size="small" @click="curveAbort = true">中止</n-button>
+        <n-button v-if="(chartMode === 'curve' || chartMode === 'sweep') && computing" size="small" @click="chartMode === 'curve' ? (curveAbort = true) : (sweepAbort = true)">中止</n-button>
       </div>
 
       <!-- 进度 -->
@@ -159,6 +215,12 @@
         曲线模式建议只选几支队做「难易强度」对比，跑起来可点「中止」保留已算部分。
       </div>
 
+      <div v-if="!computing && chartMode === 'sweep' && !sweepResult" class="compare-note">
+        固定 2 个队友、第三人从<b>选定范围</b>里对比（不依赖预设队伍）：「候选职业」圈范围（空 = 全部），「候选角色」可再手选子集（空 = 筛选后全部）。
+        候选逐个以同一预算求值后按伤害排名。口径与时间图表页「同槽位角色对比」一致：预算感知确定性配装（主C优先，每名候选 1 次求值）或勾选「最优加金」逐金贪婪；
+        不含当期 buff / 自动下位；未收敛（maxIter）候选跳过并在结果里注明。
+      </div>
+
       <div v-if="teamPresets.length === 0" class="empty-hint">
         暂无预设队伍 —— 复制 <code>src/data/teamPresets/_template.json</code> 到同目录改名编辑（删掉
         <code>disabled</code> 字段），刷新后自动加载。加金顺序/交互清单说明见文件头注释。
@@ -167,12 +229,16 @@
         Boss 预设数据未加载（运行 <code>node scripts/import-nanoka-bosses.mjs</code> 生成
         <code>public/static/boss-presets.json</code>）。
       </div>
-      <div v-else-if="!computing && points.length === 0" class="empty-hint guide-hint">
+      <div v-else-if="chartMode === 'scatter' && !computing && points.length === 0" class="empty-hint guide-hint">
         已预选最新期数 / 全部队伍 / 限定金区间 —— 点「计算」生成散点图（默认不带当期 buff，可下拉开启）。
         限定金只统计限定 S 角色/音擎（常驻角色如莱卡恩不计）；选择越界自动钳制到队伍档位范围。
         「最优加金（≤12金）」默认开启：≤12金自动逐金挑选伤害提升最大的加金组合（含专武本体购买，贪婪搜索，较慢），12金以上仍按预设 goldSteps 顺序；
         「自动下位」默认开启：未穿限定音擎的槽位从「下位装填池」（默认常驻 S + 预设常用 A 级，可增删）按伤害择优穿戴，A 级默认精炼 5、常驻默认精炼 3 可调，预设 wEngines 仅限定音擎保留；
         限定专武作为加金步（goldSteps 里带 wEngineId 的步骤），如星徽·比利队基础 3 金（3 角色本体、无专武），4 金起在对比里逐步买专武，改完重跑一次对比即可。
+      </div>
+      <div v-else-if="chartMode === 'sweep' && !computing && !sweepResult" class="empty-hint guide-hint">
+        选好第三人槽位与两个固定队友 → 圈定候选（「候选职业」勾异常/命破等，或「候选角色」手选）→ 点「计算第三人」。
+        固定队友不必来自同一预设队——任何角色组合都可以比；结果为候选伤害排名表（伤害占比条 + 加金明细），直接回答「这两个队友下第三人选谁」。
       </div>
     </n-card>
 
@@ -228,6 +294,17 @@
             <span class="ldot" :style="{ background: p.color }"></span>{{ p.name }}（{{ p.minGold }}~{{ p.maxGold }}金）
           </span>
           <span class="legend-hint legend-action" @click="scatterLegend.showAll()">全显示</span>
+        </div>
+
+        <!-- 第三轴图例（主C首池时间档；只在开启着色时显示，避免与队伍图例抢注意力） -->
+        <div v-if="colorByRelease" class="chart-legend time-legend">
+          <span class="legend-hint">第三轴 · 主C首池时间（冷 = 早 / 暖 = 晚，点越大越新）</span>
+          <span
+            v-for="(r, i) in timeLegend" :key="'tl' + i"
+            class="lchip" :title="r.title"
+          >
+            <span class="ldot" :style="{ background: r.color }"></span>{{ r.label }}（{{ r.count }} 队）
+          </span>
         </div>
       </div>
     </n-card>
@@ -414,6 +491,44 @@
         </table>
       </div>
     </n-card>
+    <!-- 选第三人排名表：固定 2 队友下，第三人候选按伤害排名（背景条 = 伤害占比） -->
+    <n-card v-if="chartMode === 'sweep' && sweepResult" size="small" :bordered="true" class="detail-card">
+      <template #header>
+        第三人对比（固定 {{ agentNameOf(sweepResult.fixed[0]) }} + {{ agentNameOf(sweepResult.fixed[1]) }} ·
+        {{ slotLabels[sweepResult.slot] }} · {{ sweepResult.points.length }} 名候选<template v-if="sweepResult.skipped > 0"> · 跳过未收敛 {{ sweepResult.skipped }}</template>）
+      </template>
+      <div class="compare-note">
+        候选范围：{{ sweepSpecLabel }}<template v-if="sweepCandidateSel.length > 0">（手选 {{ sweepCandidateSel.length }} 名）</template>。
+        同一 Boss / 期数 / 限定金预算（{{ sweepBudget }}金）下逐候选求值（{{ sweepOptimalGold ? '逐金贪婪最优加金' : '主C优先确定性分配' }}）；
+        按伤害降序，名字条长度 = 相对第 1 名的伤害占比。不含当期 buff / 自动下位；各队总金可能低于预算（低于基础金时钳制）。
+      </div>
+      <div class="detail-table-wrap">
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>排名</th><th>第三人</th><th>伤害</th><th>伤害/血量</th><th>限定金</th><th>加金明细</th><th>队伍</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(p, i) in sweepResult.points" :key="p.candidateId" class="sweep-row">
+              <td>{{ i + 1 }}</td>
+              <td
+                class="td-team sweep-name"
+                :style="{ background: `linear-gradient(90deg, rgba(99,226,183,0.16) ${sweepBarPct(p.damage)}%, transparent ${sweepBarPct(p.damage)}%)` }"
+              >{{ p.candidateName }}</td>
+              <td>{{ compact(p.damage) }}</td>
+              <td :class="{ kill: p.hpRatio >= 100 }">{{ fmt(p.hpRatio, 1) }}%<template v-if="p.hpRatio > 100"><div class="kill-time">≈{{ killSeconds(p.hpRatio) }}s 击杀</div></template></td>
+              <td>{{ p.totalGold }}</td>
+              <td class="td-detail"><div class="cell-clamp">{{ goldDetail(p.goldLabel) }}</div></td>
+              <td class="td-detail">{{ teamNames(p.team) }}</td>
+            </tr>
+            <tr v-if="sweepResult.points.length === 0">
+              <td colspan="7" class="td-detail">没有可用候选：全部未收敛或候选池为空（检查固定队友选择）。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </n-card>
   </div>
 </template>
 
@@ -424,12 +539,15 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS } from '@/composables/teamCompare'
+import { computeSlotSweepPoints, type SlotCompareSlot, type SlotSweepResult } from '@/composables/teamTimeline'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { fmt, compact } from '@/utils/format'
+import { encodePointTimes, timeLegendRows } from '@/composables/pointTimeAxis'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
+import type { Specialty } from '@/types/catalog'
 import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
 import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
 
@@ -665,8 +783,8 @@ const enginePoolOptions = computed(() =>
 const computing = ref(false)
 const progress = ref<{ pct: number; text: string } | null>(null)
 const points = ref<TeamComparePoint[]>([])
-/** 图型：散点（各队各金档一个点）/ 难度曲线（每队自己的贪心提升路径） */
-const chartMode = ref<'scatter' | 'curve'>('scatter')
+/** 图型：散点（各队各金档一个点）/ 难度曲线（每队自己的贪心提升路径）/ 第三人海选（固定2队友+全角色扫第三槽） */
+const chartMode = ref<'scatter' | 'curve' | 'sweep'>('scatter')
 /** 曲线结果（原始阶梯，画图与摘要都从它派生） */
 const curveRows = ref<DifficultyCurveRow[]>([])
 /** 曲线模式的中止标志（粒度 = 一队：单队阶梯是原子的；已算部分保留） */
@@ -764,6 +882,114 @@ async function runCurves() {
   computing.value = false
 }
 
+// ========== 选第三人（不依赖预设队伍：固定 2 队友 + 候选范围试算第三槽） ==========
+// 求值口径在 teamTimeline.ts#computeSlotSweepPoints（@fact slotSweep），页面只做候选圈定与展示。
+/** 职业中文标签（与 WEngineFieldPage/ResourcePage 同款映射；specialty 联合类型单源在 types/catalog） */
+const SWEEP_SPEC_LABELS = { attack: '强攻', stun: '击破', anomaly: '异常', support: '支援', defense: '防护', rupture: '命破', sharpen: '锋御' } as const
+const SLOT_LABELS = ['主C位', '击破位', '支援位'] as const
+const slotLabels = SLOT_LABELS
+const sweepSlot = ref<SlotCompareSlot>(1)
+const sweepSlotOptions: Array<{ value: SlotCompareSlot; label: string }> = [
+  { value: 0, label: '主C槽' },
+  { value: 1, label: '击破槽' },
+  { value: 2, label: '支援槽' },
+]
+// @fact sweepPage:第三人候选圈定 口径: 候选池 = 「候选职业」多选（空=全部 specialty）过滤后的可见角色 − 固定 2 人；「候选角色」可再手选收窄（空=筛选后全部）；默认态 = 用户 2026-09-13 示例（固定 蕾米埃尔(1581)+维琳娜(1561)、候选职业=异常） | 据 用户 2026-09-13「第三人不是海选，是选定部分角色。比如蕾米+维琳娜，第三人就是任何异常角色」 | 验 src/composables/__tests__/slotSweep.test.ts（candidateIds 收窄口径） | 锚 src/views/TeamComparePage.vue#sweepCandidates | 信 确认
+/** 三个槽位各自固定的队友（第三人槽位上的值不读）；默认 = 蕾米埃尔 + 维琳娜（用户示例） */
+const sweepFixedBySlot = ref<Record<number, string | null>>({ 0: '1581', 1: null, 2: '1561' })
+/** 候选职业（空 = 全部）；默认异常 = 用户示例「第三人就是任何异常角色」 */
+const sweepSpecFilter = ref<Specialty[]>(['anomaly'])
+/** 在职业筛选内再手选候选（空 = 筛选后全部） */
+const sweepCandidateSel = ref<string[]>([])
+const sweepBudget = ref(6)
+const sweepOptimalGold = ref(false)
+const sweepAbort = ref(false)
+const sweepResult = ref<SlotSweepResult | null>(null)
+/** 固定队友所在的两个槽位（按槽位序） */
+const sweepFixedSlots = computed(() => [0, 1, 2].filter(s => s !== sweepSlot.value))
+const agentOptions = computed(() =>
+  catalogStore.displayAgents.map(a => ({ value: a.id, label: a.name.zhCN ?? a.name.en ?? a.id })),
+)
+const sweepSpecOptions = (Object.entries(SWEEP_SPEC_LABELS) as Array<[Specialty, string]>)
+  .map(([value, label]) => ({ value, label }))
+const sweepSpecLabel = computed(() =>
+  sweepSpecFilter.value.length === 0 ? '全部职业' : sweepSpecFilter.value.map(s => SWEEP_SPEC_LABELS[s] ?? s).join('、'),
+)
+/** 候选池：职业筛选 → 排除固定 2 人（fixed 未选齐时先按已选的剔除） */
+const sweepCandidates = computed(() => {
+  const fixed = sweepFixedSlots.value.map(s => sweepFixedBySlot.value[s]).filter((v): v is string => !!v)
+  return catalogStore.displayAgents
+    .filter(a => sweepSpecFilter.value.length === 0 || sweepSpecFilter.value.includes(a.specialty))
+    .filter(a => !fixed.includes(a.id))
+})
+const sweepCandidateOptions = computed(() =>
+  sweepCandidates.value.map(a => ({ value: a.id, label: a.name.zhCN ?? a.name.en ?? a.id })),
+)
+
+async function runSweep() {
+  const boss = selectedBoss.value
+  const phase = selectedPhase.value
+  if (!boss || !phase) return
+  const fixedSlots = sweepFixedSlots.value
+  const f0 = sweepFixedBySlot.value[fixedSlots[0]!]
+  const f1 = sweepFixedBySlot.value[fixedSlots[1]!]
+  if (!f0 || !f1) {
+    progress.value = { pct: 1, text: '先选齐两个固定队友' }
+    setTimeout(() => { progress.value = null }, 2500)
+    return
+  }
+  if (f0 === f1) {
+    progress.value = { pct: 1, text: '两个固定队友不能相同' }
+    setTimeout(() => { progress.value = null }, 2500)
+    return
+  }
+  // 手选子集与职业筛选取交集（手选项可能已随筛选变化失效）
+  const pool = sweepCandidates.value
+  const candidateIds = sweepCandidateSel.value.length > 0
+    ? pool.filter(a => sweepCandidateSel.value.includes(a.id)).map(a => a.id)
+    : pool.map(a => a.id)
+  if (candidateIds.length === 0) {
+    progress.value = { pct: 1, text: '候选池为空：换个职业筛选，或在「候选角色」里手选候选人' }
+    setTimeout(() => { progress.value = null }, 3000)
+    return
+  }
+  computing.value = true
+  sweepAbort.value = false
+  progress.value = { pct: 0, text: '' }
+  try {
+    sweepResult.value = await computeSlotSweepPoints(calc, {
+      slot: sweepSlot.value,
+      fixed: [f0, f1],
+      boss,
+      phase,
+      budget: sweepBudget.value,
+      optimalGold: sweepOptimalGold.value,
+      candidateIds,
+      shouldAbort: () => sweepAbort.value,
+      onProgress: p => { progress.value = p },
+    })
+  } finally {
+    sweepAbort.value = false
+    computing.value = false
+  }
+}
+
+function agentNameOf(id: string | null | undefined): string {
+  return id ? (catalogStore.getAgent(id)?.name.zhCN ?? id) : '—'
+}
+function teamNames(team: [string, string, string]): string {
+  return team.map(agentNameOf).join(' + ')
+}
+/** 加金明细：去掉 goldLabel开头的「N金：」段（总金已在限定金列） */
+function goldDetail(label: string): string {
+  const i = label.indexOf('：')
+  return i >= 0 ? label.slice(i + 1) : label
+}
+const sweepMaxDamage = computed(() => Math.max(...(sweepResult.value?.points ?? []).map(p => p.damage), 1))
+function sweepBarPct(damage: number): number {
+  return Math.round((damage / sweepMaxDamage.value) * 1000) / 10
+}
+
 // ========== 图表 ==========
 const svgW = computed(() => Math.max(420, Math.min(1100, typeof window !== 'undefined' ? window.innerWidth - 120 : 960)))
 const padL = 46, padR = 16, padT = 24, padB = 44
@@ -819,14 +1045,45 @@ function colorOf(presetId: string): string {
   return presetColors.value[presetId] ?? '#888'
 }
 
+// ========== 第三轴：主C首池时间（用户 2026-09-14：「还可以找第三个轴，就是时间」） ==========
+// 不做真 3D（可读性 + 零依赖 + 可单测，依据见 composables/pointTimeAxis.ts 文件头）：
+// 时间编码成**颜色 + 点大小**叠加在既有 (难度, 伤害) 平面上。
+// 缺省关闭，因为颜色当前属队伍身份（图例按队显隐）；开启后颜色改由时间档驱动。
+const colorByRelease = ref(false)
+
+/** 每队主C（槽位 0）的实装时间编码；未收录主C → 中性色（不猜时间） */
+const timeEncoding = computed(() => {
+  const mains = visiblePoints.value.map(p => teamPresets.find(t => t.id === p.presetId)?.team[0] ?? '')
+  return encodePointTimes(mains)
+})
+
+/** 时间图例（含「主C未收录」条），按档列队伍名 */
+const timeLegend = computed(() => {
+  const enc = timeEncoding.value
+  const namesByBucket = new Map<number, string[]>()
+  enc.byIndex.forEach((e, i) => {
+    const p = visiblePoints.value[i]
+    if (!p) return
+    const arr = namesByBucket.get(e.bucketIndex) ?? []
+    arr.push(p.presetName)
+    namesByBucket.set(e.bucketIndex, arr)
+  })
+  return timeLegendRows(enc.buckets, enc.unknownCount, bi => [...new Set(namesByBucket.get(bi) ?? [])])
+})
+
 const chartPts = computed(() =>
-  visiblePoints.value.map(p => ({
-    ...p,
-    cx: xOf(p.difficulty),
-    cy: yOf(Math.min(p.hpRatio, yMax.value)),
-    r: 3 + Math.min(p.goldCount, 36) * 0.5,
-    color: colorOf(p.presetId),
-  })),
+  visiblePoints.value.map((p, i) => {
+    const t = timeEncoding.value.byIndex[i]
+    const useTime = colorByRelease.value && t && t.bucketIndex >= 0
+    return {
+      ...p,
+      cx: xOf(p.difficulty),
+      cy: yOf(Math.min(p.hpRatio, yMax.value)),
+      r: 3 + Math.min(p.goldCount, 36) * 0.5 + (useTime ? t.radiusBonus : 0),
+      color: useTime ? t.color : colorOf(p.presetId),
+      release: t?.release ?? null,
+    }
+  }),
 )
 
 const legendPresets = computed(() => {
@@ -1019,6 +1276,8 @@ const hoverTips = computed(() => {
     `难度 ${fmt(p.difficulty, 1)} · ${p.difficultyDetail}`,
     `影画 ${p.cinemas.join('/')} · 精炼 ${p.wengineMods.join('/')}`,
     p.timeExceeded ? `⚠ ${p.timeDetail}` : `✓ ${p.timeDetail}`,
+    // 第三轴（时间）：主C首池；未收录主C 明说「未收录」而不是留空（避免看着像 0/最早）
+    p.release ? `主C首池 ${p.release.nodeLabel}（${p.release.date}）` : '主C首池：未收录（不参与时间着色）',
   ]
 })
 
@@ -1252,6 +1511,12 @@ function killSeconds(hpRatio: number): number {
 
 .td-team {
   font-weight: 600;
+}
+
+/* 第三人海选：名字列左对齐（伤害占比背景条从左侧铺，右对齐会「名在条外」） */
+.sweep-name {
+  text-align: left;
+  min-width: 110px;
 }
 
 .td-detail {
