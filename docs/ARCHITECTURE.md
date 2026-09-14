@@ -89,6 +89,7 @@ useResourceCalc()                      编排层入口（composables/useResource
 | 改音擎 / 驱动盘 / 敌人 / Boss | `public/static/catalog.json`（编译期快照，改数据走 scripts/ 导入脚本，勿手改）；角色特化对齐 `scripts/fix-agent-specialty.mjs`、套装数据/条件元数据 `scripts/patch-disc-sets.mjs` | scripts/ + catalogStore；特化↔专武一致性在 `core/__tests__/catalogData.test.ts`，套装效果可见性在 `utils/__tests__/discEffectRows.test.ts` |
 | 改 Boss 预设默认值（无敌时间/秽盾/弹刀总数/控制技组） | `scripts/import-nanoka-bosses.mjs` `BOSS_DEFAULTS`（重跑生成 `public/static/boss-presets.json`） | 弹刀「保底4失衡」反推运行时拆分：`core/parrySplit.ts`（纯函数）+ `useResourceCalc` 外层不动点线程 `prevParrySplit`（般岳 `prevBanyueTopUp` 同款收敛）；口径见 `ENGINE_PIPELINE_GUIDE.md` §4 坑 18 |
 | 录/改「控制技（紫光技）× 反制支援」交互替换 | `public/static/boss-presets.json` 的 `defaults.counterAssistGroups`（逐组记招架段数，导入侧 `BOSS_DEFAULTS`）；角色招式配对 `src/data/counterAssists.ts`（@fact data:反制支援/招式配对） | 折算在 store 侧 `stores/config.ts#syncBossInteractionPlan`（不改编排层）+ 产行 `core/resource/helpers#buildExecutions`（一次动作 = 本体+专属支援突击，融合见 `data/moveFusions.ts`）；判据 `counterAssist.test.ts`，口径见 `ENGINE_PIPELINE_GUIDE.md` §4 坑 18 末段 |
+| **把页面里一块 UI/svg 图抽成组件**（时间图表页系列）| 先数该块引用的页面级符号与**共享 class**；`styles/chart-blocks.css` 文件头（为什么共享类不能进全局表）+ 判据 16 头注释 | `src/components/charts/*.vue` + `src/views/timeCharts/*.css`。**零 delta 判据**：CDP 整页 DOM 指纹探针**必须禁 HTTP 缓存并打印加载的 chunk 名**（`python http.server` 不发 Cache-Control ⇒ 会静默量到上一版构建，「零 delta」就成了假结论，实测踩过） |
 
 ## 4. 数据流速查（谁写谁读，防"录了没消费"）
 
