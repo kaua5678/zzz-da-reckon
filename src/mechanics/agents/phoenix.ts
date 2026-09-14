@@ -71,8 +71,16 @@ export function phoenixWangliangChainBonus(ultCount: number, chainCount: number)
 }
 /** 长按普攻消耗余火 */
 export const PHOENIX_CHARGED_EMBER_COST = 90
-/** [燃烧攻击]集合（余火来源，倍率表 attack_data_0 列 = 每次命中的余火获取，/10000 口径 [猜测·低]）。
- *  分支攻击 1641006（追斩后点按）不计入自动收入——操作向量，滑块/人工次数覆盖。 */
+/** [燃烧攻击]集合（余火来源：倍率表 `attack_data_0` 列 = **每次命中的余火获取**）。
+ *
+ * 标度口径（2026-09-14 用户复核「每次回复应该是十几」后**确认**，此前标 `[猜测·低]`）：
+ * 这批整型列统一是 **×10000**——同一行的 `energy_gain_base=71040` 在 catalog 里就是
+ * `energy_recovery 7.104`（`node scripts/resolve.mjs 招式 1641 1641004` 可查），
+ * 故 `attack_data[1641004]=147634` → **14.7634 余火/次**（三段 8.02 / 四段 14.76 /
+ * 强特 15.02+19.70 / 连携 14.88 / 终结 28.82），双源（gachabase + nanoka_missing/full）同值。
+ * 反证 `/100` 读法：那会给出 1476 余火/次，而长按只花 90 ⇒ 一次燃烧攻击即可连放 16 次长按，明显不成立。
+ *
+ * 分支攻击 1641006（追斩后点按）不计入自动收入——操作向量，滑块/人工次数覆盖。 */
 export const PHOENIX_COMBUSTION_MOVE_IDS: ReadonlySet<string> = new Set([
   '1641003', '1641004', // 普攻三/四段
   '1641008', '1641009', // 强化特殊技第一/二段
