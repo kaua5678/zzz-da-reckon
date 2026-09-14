@@ -75,6 +75,16 @@ const FIXES = [
     replace: '**待建乘区**（2026-09-14 用户裁决）：本 spec 口径行（2026-08-26 用户确认）「特殊虚耀 ×2.5 独立乘区」引擎**零实现**——全仓 2.5 只在 useResourceCalc 的 formula 文案字符串里，core/damage.ts 明写「特殊虚耀不走直伤公式，只保留事件次数记录」。用户裁决原话：「游戏里这就是特殊虚耀特有的单独乘区，因为特殊虚耀的基础区是蕾米自己的，不同于普通虚耀，所以给这个伤害翻 2.5 倍单独赔偿。**引擎没有就造一个乘区**」。⇒ 待办 = 给特殊虚耀建 250% 独立乘区并接进异常结算（full 档：先写预测再量 timeGolden delta 逐队归因，规则 10）。落点候选 src/core/anomalyPool/（耀变/异放结算同族），别在编排层加 agentId 分支（规则 6）。',
     why: '用户裁决「造一个乘区」⇒ 由「账本有引擎没有」升级为明确的待建项',
   },
+  // 第三轮（2026-09-14，工人 ff24a370 证伪上一轮派活方的审计）：**「引擎零实现」是我读错了**。
+  // 乘区自初始提交 1a1f8c6 就在线：`resourceCalc/damagePool.ts:1589` `specialMultiplier = rainbowMultiplier * 2.5`
+  // ⇒ 我那句「全仓 2.5 只在 formula 文案字符串里」漏搜了 `src/composables/resourceCalc/`（只查了 core/anomalyPool）。
+  // `core/damage.ts:997` 的「不走直伤公式、只计次数」说的是 **core 直伤视图防双计**，不是没实现。
+  {
+    agentId: '1581', mechId: 'special_voidflare',
+    match: '待建乘区**（2026-09-14 用户裁决）',
+    replace: '已实现（2026-09-14 复核纠正）：×2.5 独立乘区自初始提交 `1a1f8c6` 就在线——落点 `src/composables/resourceCalc/damagePool.ts` 的 `specialMultiplier = rainbowMultiplier * 2.5` → `calcVoidflareDamage`（垂虹 1581007 耀变倍率 × 进场面板，C1 另有无视 50% 抗），行 `remielle-special-voidflare` 汇入 teamTotalDamage。实测 C6 3 异常队：垂虹 180% ⇒ 基础区 450%，行 perDamage 与独立重算**逐位相等**（不乘 2.5 的重算比值恰 2.5）；普通虚耀三载体行（assist/ultimate/basic）无 ×2.5。⚠ 本条 pending 曾被我误写成「引擎零实现/待建」——根因 = 只 grep 了 core 与 anomalyPool、漏了编排层，且把 `core/damage.ts`「不走直伤公式」（那是**防双计**）读成「未实现」⇒ 若照字面再建一处会 ×6.25 双计。回归锁 = remielle.test.ts 的乘区逐位断言（该乘区此前全仓零测试）。',
+    why: '上一轮派活方审计错误，按实测撤回「待建」并留下误判根因（防下任再建第二处）',
+  },
 ]
 
 const data = JSON.parse(readFileSync(MECHANICS, 'utf8'))

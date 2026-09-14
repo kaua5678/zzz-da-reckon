@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases, calcVoidflareDamage, computeRemielleEntryPanel, findMoveById, getRemielleLevelValue } from '@/composables/resourceCalc/helpers'
 import { computeRemielleMechanic } from '@/mechanics/agents/remielle'
 
 /** 3异常队（蕾米+薇薇安+月城柳），额外能力 tier=3；globalBuffs 关掉防污染（SOP §7） */
@@ -66,5 +66,52 @@ describe('蕾米埃尔（1581）虚曜·耀变·异化系数', () => {
     // 展示账本与引擎公式同源不变量：耀变倍率提升(×0.2%) = 异化系数(×0.02%) × 10
     expect(row.remielleMechanicSource!.luminizeMultiplierBonus)
       .toBeCloseTo(row.remielleMechanicSource!.refringeCoefficient * 10, 5)
+  })
+
+  // @fact agent:1581/特殊虚耀×2.5独立乘区 口径: 特殊虚耀（开局虚耀·垂虹载体·全吃进场记录面板）伤害 = 垂虹耀变倍率 ×2.5 的独立乘区，只作用于特殊虚耀行 remielle-special-voidflare；普通虚耀（花羽轮舞/缭乱终幕/惊鸿载体·基础区=触发队友面板）不吃该乘区——两者基础区来源不同（特殊=蕾米自供偏低故补偿 2.5 倍、普通=队友供偏高） | 据 用户@2026-08-26（原文见 src/specs/agents/1581.json 口径行）+ 用户@2026-09-14「引擎没有就造一个乘区」 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/composables/resourceCalc/damagePool.ts#buildDamagePoolRows | 信 确认
+  // ⟳复核: 若 ×2.5 落点迁移（如搬去 core/anomalyPool）或特殊虚耀基础区口径变化，确认全仓只保留一处 ×2.5（防 ×6.25 双计：grep -rn "rainbowMultiplier \* 2.5" src 应恰好 1 处） | 到期 2026-12-31
+  it('特殊虚耀 ×2.5 独立乘区生效（2026-09-15 复核：乘区自初始提交即在线，2026-09-14「引擎零实现」审计系误判）；普通虚耀逐字不吃 ×2.5', async () => {
+    const { config, catalog } = await setup(6)
+    const calc = useResourceCalc()
+    const rows = calc.damagePoolRows.value
+    const special = rows.find(r => r.id === 'remielle-special-voidflare')
+    expect(special, 'C6 3异常队必须结算特殊虚耀行').toBeTruthy()
+
+    // —— 独立重算：垂虹（1581007）耀变倍率 × 进场记录面板（特殊虚耀口径：不吃队友战内拐） ——
+    const entryPanel = computeRemielleEntryPanel(0, config, catalog)!
+    const rainbowMove = findMoveById(catalog.getAgentSkills('1581'), '1581007')
+    const rainbowLuminizeRow = rainbowMove?.rows.find(r => (r as any).kind === 'luminizeMultiplier' || r.id === 'luminize_multiplier')
+    const rainbowMultiplier = getRemielleLevelValue(rainbowLuminizeRow as never, entryPanel.skillLevelBonus ?? 0)
+    expect(rainbowMultiplier).toBeGreaterThan(0)
+    const settle = (m: number) => calcVoidflareDamage({
+      sourcePanel: entryPanel,
+      remiellePanel: entryPanel,
+      multiplier: m,
+      element: 'lumiflux',
+      enemyDefense: config.enemy.defense,
+      enemyResistances: (config.enemy as any).damageResistances ?? (config.enemy as any).resistances ?? {},
+      stunMultiplier: config.enemy.stunVuln,
+      stunned: true,
+      cinema1ResIgnore: 50,
+    }).damage
+
+    // ① 特殊虚耀行 = 基础（不乘 2.5）× 2.5（独立乘区），逐位相等
+    expect(special!.perDamage).toBeCloseTo(settle(rainbowMultiplier * 2.5), 6)
+    expect(special!.perDamage / settle(rainbowMultiplier)).toBeCloseTo(2.5, 9)
+
+    // ② 普通虚耀逐字不变：各载体行基础区倍率 = 对应招式自己的耀变倍率（无 ×2.5）
+    const baseMultiplierIn = (note: string) => Number(/×([\d,.]+)% × 增伤/.exec(note)?.[1]?.replace(/,/g, '') ?? NaN)
+    expect(baseMultiplierIn(special!.note)).toBeCloseTo(rainbowMultiplier * 2.5, 9)
+    for (const [moveId, rowId] of [['1581015', 'remielle-luminize-assist'], ['1581016', 'remielle-luminize-ultimate'], ['1581008', 'remielle-luminize-basic']] as const) {
+      const move = findMoveById(catalog.getAgentSkills('1581'), moveId)
+      const luminizeRow = move?.rows.find(r => (r as any).kind === 'luminizeMultiplier' || r.id === 'luminize_multiplier')
+      const mult = getRemielleLevelValue(luminizeRow as never, entryPanel.skillLevelBonus ?? 0)
+      const normalRows = rows.filter(r => String(r.id).startsWith(`${rowId}-`))
+      expect(normalRows.length, `${rowId} 必须有普通虚耀行`).toBeGreaterThan(0)
+      for (const r of normalRows) {
+        expect(baseMultiplierIn(r.note)).toBeCloseTo(mult, 9)
+        expect(baseMultiplierIn(r.note)).not.toBeCloseTo(mult * 2.5, 3)
+      }
+    }
   })
 })
