@@ -143,36 +143,6 @@ const ddVisiblePoints = computed(() =>
 /* 图例类（.legend/.legend-item/.legend-hint/.legend-action/.swatch/.name）是**跨块共享**的，
    从 TimeChartsPage.css 整段复制（scoped 不作用到子组件；页面那份保留给其他块）。
    ⚠ 漏掉这几个类会让图例退化成竖排（实测：legend 高度 19px → 83px，整卡 +54px）。 */
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 14px;
-  margin-bottom: 10px;
-}
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  user-select: none;
-  font-size: 12px;
-}
-.swatch {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  flex: 0 0 auto;
-}
-.legend-hint {
-  font-size: 12px;
-  color: var(--fg-3);
-}
-.legend-action {
-  cursor: pointer;
-  border-bottom: 1px dashed var(--line-strong);
-}
 
 /* 逐字复制自 views/timeCharts/TimeChartsPage.css 的本图独占类（scoped 不作用到子组件 ⇒ 必须随组件走）。
    ⚠ `.dd-caption` 在页面里被 Chart 5 复用作通用说明文字样式，故页面那份保留（两份内容一致）。

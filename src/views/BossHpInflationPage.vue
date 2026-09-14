@@ -394,12 +394,6 @@ function onMove(e: MouseEvent) {
 .boss-hp-page { max-width: 1280px; }
 .muted { color: var(--wa-500); font-size: 12px; }
 .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-bottom: 12px; }
-.legend-item { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; user-select: none; }
-.legend-item:hover { background: var(--fill-hover); }
-.legend-item.off { opacity: 0.35; text-decoration: line-through; }
-.legend-hint { color: var(--fg-3); font-size: 12px; }
-.legend-action { cursor: pointer; border-bottom: 1px dashed var(--line-strong); }
-.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; flex: 0 0 auto; }
 .name { color: var(--fg-2); white-space: nowrap; }
 .chart-wrap { overflow-x: auto; }
 .chart-svg { width: 100%; min-width: 900px; height: auto; }

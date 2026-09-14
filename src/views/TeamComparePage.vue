@@ -1532,10 +1532,6 @@ function killSeconds(hpRatio: number): number {
   color: var(--fg-3);
 }
 
-.legend-action {
-  cursor: pointer;
-  border-bottom: 1px dashed var(--line-strong);
-}
 
 .ldot {
   width: 8px;
