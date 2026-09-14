@@ -167,10 +167,36 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 紊乱伤害提升 X% | `disorderDamageBonus` | 紊乱增伤，替代 `anomalyDmgBonus`，不影响 DOT |
 | 异放伤害提升 X% | `anomalyReleaseDmgBonus` | 异放专用独立增伤区，只在 settlementType=release 时进入公式 |
 | 灼烧/感电/侵蚀 DOT | `calcStandardDotDamage()` | 引擎自动算，`STANDARD_DOT_CONFIG` 注册参数 |
-| 风化/畏缩/霜寒 | 无 DOT | 只有持续状态（buff），没有 DOT 伤害；风化有浸染(infection)直伤+10%独立乘区 |
+| 风化/畏缩/霜寒 | 无逐跳 DOT | 只有持续状态（buff）：风化 = **一次性伤害 1250%** + 30s 状态（见 8.2），畏缩/霜寒纯状态；风化有浸染(infection)直伤+10%独立乘区 |
 | X 属性异常伤害提升 X% | `windAnomalyDmgBonus` 等 | 元素专属异常增伤 |
 | 紊乱基础倍率提升 X 点 | `disorderBaseMultiplierBonus` | 加到紊乱基础倍率（如 450→700） |
 | 异常持续时间延长 X 秒 | `{element}AnomalyDurationBonusSeconds` | 元素专属，如 `physicalAnomalyDurationBonusSeconds` |
+
+### 8.1 虚曜 / 耀变 / 特殊虚耀（蕾米埃尔专用）
+
+- **虚曜**：虚曜池 = 队友的属性异常触发次数；支援技/终结技不消耗、惊鸿清空；Q 按 3 个/批在队友间分配。耀变结算在**异常池**自动进行，不是直伤通道。
+- **耀变**：倍率提升 = 异常精通 × 0.2%；耀变子弹倍率 = 160/320/320/336 ×(1 + 精通×0.2%) ×4命 1.12（与用户账本 + 原文四源核对一致）。
+- **特殊虚耀**：垂虹（1581007）耀变倍率 × **2.5 独立乘区**——全仓唯一算术落点 `damagePool.ts` `specialMultiplier = rainbowMultiplier * 2.5`；吃蕾米**进场记录面板**（自身被动/命座/装备，**不吃**队友战内拐力）。普通虚耀三载体行（支援/终结/普攻）**无 ×2.5**。
+  ⚠ 易误读：`core/damage.ts` 对该行「不走直伤公式、只计次数」的注释是**防双计**（core 直伤面板路径不重复结算），不是未实现——照字面再建一处乘区 = ×6.25 双计。
+  证据：实测 C6 3 异常队垂虹 180% ⇒ 基础区 450%，行 perDamage 与独立重算逐位相等（回归锁 `src/mechanics/__tests__/remielle.test.ts`）。
+- @fact 1581·特殊虚耀 口径: 特殊虚耀 = 垂虹耀变倍率 ×2.5 独立乘区（唯一算术落点 damagePool.ts），吃进场面板、不吃队友拐；普通虚耀三载体行不吃 ×2.5；core/damage.ts「不走直伤公式」是防双计不是未实现 | 据 用户@2026-08-26·复核@2026-09-15 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/composables/resourceCalc/damagePool.ts#buildDamagePoolRows | 信 确认
+  ⟳复核: 游戏内实伤对表一次，确认 ×2.5 独立乘区与进场面板口径 | 到期 2026-12-31
+
+### 8.2 风化状态与风蚀
+
+| 术语 | 口径 |
+|---|---|
+| 风化 | 打满风异常积蓄触发：**一次性**风化伤害（基础倍率 1250%）+ 施加 30s 风化状态（期间风属性直接攻击伤害提升）；**无逐跳 DoT** |
+| 乱流 | 风化 + 其他属性异常叠加触发：范围伤害，继承非风属性异常质量；风化状态下**不触发常规紊乱**（3s CD）；**有风属性时 DoT 归零**（被乱流吸收） |
+| 浸染 | 风化状态下首次受其他属性伤害触发的染色直伤（+10% 独立乘区） |
+| 风蚀（维琳娜专属资源） | spec `velina_corrosion`（0–2 层状态机）；2 命「从风化获得」按近似比例滑块接入（默认 1.0） |
+
+- @fact 风化状态 口径: 风化 = 一次性伤害 1250% + 30s 状态（无逐跳 DoT）；有风属性时 DoT 归零、走乱流；持续时间唯一事实源 ANOMALY_DURATION（风化 30s） | 据 mechanism-reference 异常章@2026-09-15 | 验 src/core/anomalyPool/helpers.ts#ANOMALY_DURATION | 锚 src/core/anomalyPool/helpers.ts#ANOMALY_DURATION | 信 高
+
+### 8.3 余火（菲欧妮专属资源）的标度口径
+
+- 倍率表整型资源列统一 **×10000**：同一行 `energy_gain_base=71040` 在 catalog 就是 `energy_recovery 7.104`（`node scripts/resolve.mjs 招式 1641 1641004` 可查）⇒ `attack_data[1641004]=147634` 即 **14.7634 余火/次**（三段 8.02 / 四段 14.76 / 强特 15.02+19.70 / 连携 14.88 / 终结 28.82，gachabase 与 nanoka 双源同值）；长按普攻消耗 90。反证 `/100` 读法 = 1476 余火/次 ⇒ 一次命中连放 16 次长按，不成立。
+- @fact 1641·余火标度 口径: 倍率表整型列 ×10000（同列 energy_gain 71040 → catalog 7.104 互证），attack_data/10000 = 余火/次，长按消耗 90 | 据 用户复核@2026-09-14 | 验 src/mechanics/agents/phoenix.ts#PHOENIX_COMBUSTION_MOVE_IDS | 锚 src/mechanics/agents/phoenix.ts#PHOENIX_COMBUSTION_MOVE_IDS | 信 确认
 
 ---
 
