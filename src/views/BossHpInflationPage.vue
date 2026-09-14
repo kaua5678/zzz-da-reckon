@@ -90,6 +90,67 @@
         </div>
       </template>
     </n-card>
+
+    <!-- ============ 环境膨胀指数（Boss 平均血量 × 时间） ============ -->
+    <n-card size="small" :bordered="true">
+      <template #header>
+        <span>环境膨胀指数（Boss 平均血量 × 时间）</span>
+      </template>
+      <template #header-extra>
+        <span class="muted">
+          横轴 = 版本；纵轴 = 该版本 Boss 平均血量（首版本 = 100%）。
+          数据源 = boss-presets.json <code>phase.hp</code> 按版本聚合（<b>不是</b> hpVersionCoeff——那是同一 Boss 跨期的缩放系数，跨 Boss 求平均无意义）
+        </span>
+      </template>
+
+      <div class="muted" style="padding: 8px 0">
+        <b>{{ inflationSummary }}</b>
+        <span v-if="inflationLowSampleNote"> · {{ inflationLowSampleNote }}</span>
+      </div>
+
+      <div class="chart-wrap">
+        <svg :viewBox="`0 0 ${inflationSvgW} ${inflationSvgH}`" class="chart-svg">
+          <!-- 网格 + Y 轴标签 -->
+          <g v-for="(t, i) in inflationTicks" :key="'ig' + i">
+            <line :x1="inflationLayout.padL" :x2="inflationLayout.padL + inflationLayout.plotW" :y1="t.y" :y2="t.y" class="grid-line" />
+            <text :x="inflationLayout.padL - 8" :y="t.y + 4" text-anchor="end" class="axis-label">{{ t.v }}%</text>
+          </g>
+
+          <!-- 100% 基准线（首版本） -->
+          <line
+            v-if="inflationChart.baseY != null"
+            :x1="inflationLayout.padL" :x2="inflationLayout.padL + inflationLayout.plotW"
+            :y1="inflationChart.baseY" :y2="inflationChart.baseY" class="ref-line"
+          />
+          <text v-if="inflationChart.baseY != null" :x="inflationLayout.padL + 4" :y="inflationChart.baseY - 5" class="ref-label">100% 首版本基准</text>
+
+          <!-- 膨胀折线 -->
+          <polyline :points="inflationChart.linePoints" fill="none" class="inf-line" />
+
+          <!-- 数据点（低样本版本用空心区分） -->
+          <circle
+            v-for="(p, i) in inflationChart.line" :key="'ip' + i"
+            :cx="p.x" :cy="p.y" :r="p.point.lowSample ? 3 : 3.5"
+            :fill="p.point.lowSample ? 'transparent' : 'var(--c-chart-4)'"
+            class="trend-point"
+            :style="{ stroke: 'var(--c-chart-4)' }"
+            :stroke-width="p.point.lowSample ? 1.5 : 0.5"
+          >
+            <title>{{ p.version }}：平均血量 {{ fmt(p.point.avgHp, 0) }}（{{ p.index.toFixed(1) }}%{{ p.point.momPct == null ? '' : '，环比 ' + (p.point.momPct >= 0 ? '+' : '') + p.point.momPct.toFixed(1) + '%' }}）· 样本 {{ p.point.samples }}{{ p.point.lowSample ? '（低样本）' : '' }}</title>
+          </circle>
+
+          <!-- 角色首池标记（只画有环境水位的） -->
+          <g v-for="(m, i) in inflationChart.markers" :key="'im' + i">
+            <circle :cx="m.x" :cy="m.y" r="2.5" fill="var(--c-warning)" opacity="0.85">
+              <title>{{ m.agentName }}（{{ m.version }} 首池）：实装时环境 = {{ m.environmentIndex.toFixed(1) }}%（首版本 = 100%）</title>
+            </circle>
+          </g>
+
+          <!-- X 轴版本标签 -->
+          <text v-for="(t, i) in inflationChart.xTicks" :key="'ix' + i" :x="t.x" :y="inflationLayout.padT + inflationLayout.plotH + 18" text-anchor="middle" class="axis-label x-label">{{ t.label }}</text>
+        </svg>
+      </div>
+    </n-card>
   </div>
 </template>
 
@@ -98,6 +159,11 @@ import { computed, onMounted, ref } from 'vue'
 import { NCard, NAlert } from 'naive-ui'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
+import { fmt } from '@/utils/format'
+import { buildInflationSeries, buildReleaseStrengths, type InflationMode } from '@/composables/inflationCurve'
+import { INFLATION_SVG_WIDTH, buildInflationChart, inflationSvgHeight } from '@/composables/inflationChart'
+import { buildDirectDamageTimeline } from '@/composables/multiplierCoefficients'
+import { useCatalogStore } from '@/stores/catalog'
 
 /** 20 色盘（区分不同 Boss 折线） */
 const PALETTE = [
@@ -132,6 +198,54 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+})
+
+// ========== 环境膨胀指数（Boss 平均血量 × 时间） ==========
+// 口径见 composables/inflationCurve.ts 文件头：用 phase.hp（绝对量）按版本聚合，
+// 按 modeType 隔离（defense 样本最全）；角色侧只做「实装时环境水位」对照。
+const catalogStore = useCatalogStore()
+/** 默认看 defense（防卫战）：141 期相 / 16 版本，每版本满编 9 个样本 */
+const inflationMode = ref<InflationMode>('defense')
+
+const inflationSeries = computed(() => buildInflationSeries(presets.value, inflationMode.value))
+
+/** 角色首池锚：直伤系数只作「首池节点」定位用，**不是**强度结论（见 inflationCurve 文件头） */
+const inflationReleases = computed(() => {
+  const cat = catalogStore.catalog
+  if (!cat) return []
+  const dd = buildDirectDamageTimeline(cat.agents ?? [], cat.agentSkills ?? [])
+  return buildReleaseStrengths(dd, inflationSeries.value)
+})
+
+const inflationChart = computed(() =>
+  buildInflationChart(inflationSeries.value, inflationReleases.value, INFLATION_SVG_WIDTH, 12))
+
+const inflationSvgW = INFLATION_SVG_WIDTH
+const inflationSvgH = inflationSvgHeight()
+const inflationLayout = computed(() => inflationChart.value.layout)
+
+/** y 网格（数值 + 像素） */
+const inflationTicks = computed(() => {
+  const { axis, layout } = inflationChart.value
+  return axis.ticks.map(v => ({
+    v,
+    y: layout.padT + layout.plotH - ((v - axis.min) / Math.max(1e-9, axis.max - axis.min)) * layout.plotH,
+  }))
+})
+
+const inflationSummary = computed(() => {
+  const s = inflationSeries.value
+  if (s.points.length === 0) return '（无数据）'
+  const last = s.points[s.points.length - 1]
+  return `环境膨胀：${s.baseVersion}（基准 100%）→ ${last.version} = ${last.index.toFixed(1)}%`
+    + `（${s.points.length} 个版本；累计涨 ${(last.index - 100).toFixed(0)}%）`
+})
+
+const inflationLowSampleNote = computed(() => {
+  const thin = inflationSeries.value.points.filter(p => p.lowSample)
+  return thin.length === 0
+    ? ''
+    : `空心点 = 低样本版本（${thin.map(p => p.version).join('/')}），均值置信度低于其他点`
 })
 
 /** 全部期数（按开始日期升序，跨 Boss 去重） */
@@ -294,5 +408,12 @@ function onMove(e: MouseEvent) {
 .hover-card {
   display: flex; align-items: center; gap: 6px;
   margin-top: 8px; font-size: 12px; color: var(--wa-750);
+}
+/* 环境膨胀折线（本页新增图；与上方各 Boss 系数折线区分色） */
+.inf-line {
+  stroke: var(--c-chart-4);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
 }
 </style>

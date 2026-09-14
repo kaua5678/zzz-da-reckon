@@ -43,9 +43,9 @@
  * critical_assault 单独可选。
  *
  * ## 覆盖率的诚实处理
- * 早期版本某些 Boss 尚未登场 ⇒ 每版本样本数 `n` 会 <9。**该版本若 n < 阈值则该点标
- * `lowSample` 并由调用方决定是否显示**（不静默当成等权平均——3 个样本的均值与 9 个的均值
- * 不在同一置信度上）。实测 2.4 版本 n=6（全库唯一低样本版本）。
+ * 早期版本某些 Boss 尚未登场 ⇒ 每版本样本数 `n` 会 < 满编。**该版本标 `lowSample`**，
+ * 由调用方区分显示（不静默当成等权平均——6 个样本的均值与 9 个的不在同一置信度上）。
+ * 判定用**自校准**口径（`isLowSample`：样本数 < 本序列最大样本数），实测标记 2.4（n=6 < 满编 9）。
  */
 import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
@@ -55,8 +55,22 @@ import type { DirectDamagePoint } from '@/composables/multiplierCoefficients'
 export const INFLATION_MODES = ['defense', 'critical_assault'] as const
 export type InflationMode = typeof INFLATION_MODES[number]
 
-/** 低于此样本数的版本点标 lowSample（实测每版本满编 9） */
+/** 绝对下限：样本数低于此值判「数据不足」（连一个可用的平均值都撑不起） */
 export const MIN_SAMPLES_PER_VERSION = 6
+
+/**
+ * lowSample 判定 = **样本数 < 该序列里的最大样本数**（自校准），而非固定阈值。
+ *
+ * 为什么自校准（2026-09-14 实测踩到）：首版用固定阈值 `samples < 6`，而真实数据里
+ * 2.4 版本恰好 n=6 —— **等于阈值 ⇒ 不被标记**，于是「低样本版本」机制在真实数据上
+ * **一条都不触发**（vacuous），而文档却写着「2.4 是低样本」。固定阈值还两头不讨好：
+ * 数据补全后满编从 9 变 12，阈值又失效。
+ * 自校准口径 = 「哪个版本没凑齐该有的 Boss 数」——2.4 的 6 < 满编 9 ⇒ 正确标记。
+ * 样本数全相等（数据稀疏或极完整）时无人被标记 = 合理（没有相对短板）。
+ */
+export function isLowSample(samples: number, maxSamples: number): boolean {
+  return samples < maxSamples
+}
 
 /** 环境膨胀的一个版本点 */
 export interface InflationPoint {
@@ -141,6 +155,8 @@ export function buildInflationSeries(
   const versions = [...buckets.keys()].sort((a, b) => versionOrder(a) - versionOrder(b) || a.localeCompare(b))
   const baseVersion = versions[0] ?? ''
   const baseAvg = baseVersion ? avg(buckets.get(baseVersion)!.hp) : 0
+  // 自校准基准 = 本序列里最全的那个版本的样本数（见 isLowSample）
+  const maxSamples = versions.reduce((m, v) => Math.max(m, buckets.get(v)!.hp.length), 0)
 
   const points: InflationPoint[] = []
   let prevAvg: number | null = null
@@ -153,7 +169,7 @@ export function buildInflationSeries(
       versionIndex: versionOrder(v),
       avgHp,
       samples: bucket.hp.length,
-      lowSample: bucket.hp.length < MIN_SAMPLES_PER_VERSION,
+      lowSample: isLowSample(bucket.hp.length, maxSamples),
       // baseAvg = 0（空输入）时不产生 NaN：index 记 100（无信息，调用方按 points.length 判空）
       index: baseAvg > 0 ? (avgHp / baseAvg) * 100 : 100,
       momPct: prevAvg && prevAvg > 0 ? (avgHp / prevAvg - 1) * 100 : null,

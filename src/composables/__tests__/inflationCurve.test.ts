@@ -13,10 +13,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   INFLATION_MODES,
-  MIN_SAMPLES_PER_VERSION,
   buildInflationFromFile,
   buildInflationSeries,
   buildReleaseStrengths,
+  isLowSample,
+  MIN_SAMPLES_PER_VERSION,
 } from '@/composables/inflationCurve'
 import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
 import { readFileSync } from 'node:fs'
@@ -58,13 +59,39 @@ describe('buildInflationSeries（环境侧：Boss 平均血量膨胀）', () => 
     expect(s.points[1].momPct).toBeCloseTo(50, 6)
   })
 
-  it('★ lowSample 标记：样本数 < 阈值时标记（不静默当成等权平均）', () => {
-    const few = Array.from({ length: MIN_SAMPLES_PER_VERSION - 1 }, () => ph('1.0', 'defense', 100))
-    const enough = Array.from({ length: MIN_SAMPLES_PER_VERSION }, () => ph('1.1', 'defense', 100))
-    const s = buildInflationSeries([{ phases: [...few, ...enough] }])
-    expect(s.points[0].lowSample).toBe(true)
-    expect(s.points[1].lowSample).toBe(false)
-    expect(s.points[0].samples).toBe(MIN_SAMPLES_PER_VERSION - 1)
+  // 2026-09-14 实测修正：首版用**固定阈值** `samples < 6`，而真实 2.4 版本恰好 n=6
+  // ⇒ 等于阈值不被标记，「低样本」机制在真实数据上一条都不触发（vacuous）。
+  // 改自校准：样本数 < 本序列最大样本数。固定阈值也经不起数据补全（满编 9→12 就失效）。
+  it('★ lowSample = 自校准（样本数 < 本序列最大样本数），不是固定阈值', () => {
+    const few = Array.from({ length: 3 }, () => ph('1.0', 'defense', 100))
+    const full = Array.from({ length: 9 }, () => ph('1.1', 'defense', 100))
+    const s = buildInflationSeries([{ phases: [...few, ...full] }])
+    expect(s.points[0].lowSample).toBe(true)    // 3 < 9
+    expect(s.points[1].lowSample).toBe(false)   // 9 = 满编
+    expect(s.points[0].samples).toBe(3)
+  })
+
+  it('★ 真实数据里恰好等于旧固定阈值的版本必须被标记（防止 vacuous 回归）', () => {
+    const s = buildInflationFromFile(realFile, 'defense')
+    const thin = s.points.filter(p => p.lowSample)
+    // 实测 2.4（n=6 < 满编 9）是唯一短板版本；旧口径下它是 0 条
+    expect(thin.length).toBeGreaterThanOrEqual(1)
+    expect(thin.map(p => p.version)).toContain('2.4')
+  })
+
+  it('isLowSample 本体：严格小于才标记（相等 = 满编）', () => {
+    expect(isLowSample(5, 9)).toBe(true)
+    expect(isLowSample(9, 9)).toBe(false)
+    expect(isLowSample(10, 9)).toBe(false)
+    expect(MIN_SAMPLES_PER_VERSION).toBeGreaterThan(0)   // 绝对下限仍导出（数据不足的兜底语义）
+  })
+
+  it('样本数全相等时无人被标记（没有相对短板 = 合理）', () => {
+    const s = buildInflationSeries([
+      { phases: [ph('1.0', 'defense', 100), ph('1.0', 'defense', 100)] },
+      { phases: [ph('1.1', 'defense', 200), ph('1.1', 'defense', 200)] },
+    ])
+    expect(s.points.every(p => !p.lowSample)).toBe(true)
   })
 
   it('脏数据被跳过（hp 非有限/≤0），不污染平均', () => {
@@ -99,7 +126,7 @@ describe('buildInflationSeries（环境侧：Boss 平均血量膨胀）', () => 
     expect(s.cumulativePct).toBeGreaterThan(300)
     // 每版本样本数应至少为 1，且绝大多数版本满编
     const thin = s.points.filter(p => p.lowSample)
-    expect(thin.length).toBeLessThanOrEqual(2)   // 实测仅 2.4（n=6）一条
+    expect(thin.length).toBeLessThanOrEqual(3)   // 实测仅 2.4（n=6 < 满编 9）一条
   })
 
   it('INFLATION_MODES 两个模式在真实数据里都有样本（判据不是死的）', () => {
