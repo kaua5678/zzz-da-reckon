@@ -1,0 +1,4 @@
+{
+  "$comment": "启用 dsh-git-guardrail：拦截 git add -A/--all、commit -a、reset --hard 等不可逆 git 操作（AGENTS 规则 13 的机器面）。删本文件=整体停用；disabledRules 填规则 id 可逐条关（见 ~/dsh-plugins/dsh-git-guardrail/README.md）。",
+  "disabledRules": []
+}

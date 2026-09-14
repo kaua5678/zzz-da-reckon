@@ -1497,7 +1497,6 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   "src/composables/resourceCalc/liuyinPromote.ts engine:失衡次数不动点",
   "src/composables/stunVulnSummary.ts engine:失衡易伤可见化/加权信用",
   "src/composables/teamCompare.ts engine:操作难度/权重可调",
-  "src/composables/teamTimeline.ts slotSweep:选第三人求值口径",
   "src/composables/timeWeightAllocation.ts engine:分配策略/主C判定",
   "src/core/damage.ts engine:damage/乘区顺序",
   "src/core/effectiveTime.ts engine:stun/时间守恒",
@@ -1561,7 +1560,6 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   "src/stores/config.ts engine:交互基准",
   "src/types/resource/team.ts engine:收敛读数归属",
   "src/views/TeamComparePage.vue sweepPage:第三人候选圈定",
-  "scripts/gen-auto-presets.mjs engine:preset/队伍身份",
   "scripts/import-nanoka-bosses.mjs data:bossBodySize",
   "scripts/import-nanoka-v12.mjs data:1611/反制支援两行秽盾基数",
 ]
