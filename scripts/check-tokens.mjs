@@ -491,7 +491,11 @@ export const HARDCODED_BASELINE = {
   // `.hc-swap` 的 #f6ad55 与 `.hover-card` 的 box-shadow rgba(0,0,0,.4)——本次不改观感，
   // 若将来要令牌化，属独立的视觉调整（需实机比对）。
   'src/components/ChartHoverCard.vue': 2,
-  'src/views/TimeChartsPage.vue': 33,
+  // 2026-09-14 直伤系数图抽组件（components/charts/DirectDamageChart.vue）：2 处字面色值是**逐字搬迁**——
+  // 模板里测试服阴影的 rgba(246,173,85,.06) 与 .dd-label 的 paint-order 描边 rgba(10,10,14,.85)。
+  // 页面侧同轮下降 33 → 32（删掉了随组件走的 4 条 dd-* 规则里的字面色值）。
+  'src/components/charts/DirectDamageChart.vue': 2,
+  'src/views/TimeChartsPage.vue': 32,
   'src/views/WEngineFieldPage.vue': 3,
 }
 
@@ -520,6 +524,7 @@ export const FONT_SIZE_BASELINE = {
   // 同上：11.5px 随样式搬入 ChartHoverCard（原就在页面的离群基线里，本次仅文件归属变化）
   'src/components/ChartHoverCard.vue': 1,
   'src/views/TimeChartsPage.vue': 7,
+  'src/components/charts/DirectDamageChart.vue': 1,   // .dd-caption 的 11.5px（搬迁前就在页面的离群基线里）
 }
 
 /**
@@ -529,14 +534,16 @@ export const FONT_SIZE_BASELINE = {
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--text-2/--text-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 443  /* 446 → 443（2026-09-14 图表样式收敛）：6 个跨页同名类
+export const WA_REF_BASELINE = 444  /* 443 → 444（2026-09-14 直伤系数图抽组件：图例类随组件走，
+   组件内多出 6 处 --wa-* 引用，页面侧同步减少 ⇒ 净 +1）。 */
+  /* 446 → 443（2026-09-14 图表样式收敛）：6 个跨页同名类
    （grid-line/axis-label/x-label/hover-line/trend-line/trend-point）从两页各自 scoped 定义
    收敛进 src/styles/charts.css。逐字归因：删 8 个 var（时间图表 4 / 血量膨胀 4）、新增共享表 5 个
    ⇒ 净 −3；wa 删 7、新增 4 ⇒ 净 −3。**是去重不是回退**（`--wa-80`/`--wa-450`/`--wa-350` 各从 2 份变 1 份）。
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 584  /* 576 → 573（2026-09-14 图表样式收敛去重）→ 577
+export const VAR_TOTAL_BASELINE = 587  /* 584 → 587（同上：直伤图抽组件，图例类 var() 引用随组件走，净 +3）。 */  /* 576 → 573（2026-09-14 图表样式收敛去重）→ 577
    （环境膨胀图 .inf-line 用 var(--c-chart-4) 等 +4）→ 582（队伍对比第三轴：时间档配色
    4 档 --c-chart-9/3/4/6 + 未收录中性色 --fg-3 = +5，全部走语义别名）。
    注：--wa-* 直引始终不变（443）——新图取色一律用语义别名，不用 --wa-* 直引。

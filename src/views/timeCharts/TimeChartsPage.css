@@ -255,25 +255,8 @@
   line-height: 1.8;
   padding: 12px 4px;
 }
-.dd-svg {
-  display: block;
-  max-width: 100%;
-}
-.dd-tick {
-  fill: var(--wa-450);
-  font-size: 10px;
-}
-.dd-baseline {
-  fill: var(--wa-600);
-  font-size: 10px;
-}
-.dd-label {
-  fill: var(--wa-820);
-  font-size: 10px;
-  paint-order: stroke;
-  stroke: rgba(10, 10, 14, 0.85);
-  stroke-width: 3px;
-}
+/* 本类是 Chart 5 的通用说明文字样式（名字沿用直伤图；直伤图已抽组件，其自带副本）。
+   注意不要再给直伤图加 dd-* 样式——那些随 components/charts/DirectDamageChart.vue 走。 */
 .dd-caption {
   margin-top: 6px;
   color: var(--wa-500);

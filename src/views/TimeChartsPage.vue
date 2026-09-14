@@ -393,79 +393,8 @@
     </n-card>
 
     <!-- ============ 限定S首次UP × 版本直伤系数（倍率演算引擎静态推导，无需点计算） ============ -->
-    <n-card
-      size="small"
-      :bordered="true"
-      title="限定S首次UP · 版本直伤系数（中心系数 = 支援突击伤害 / 标准值；支援突击通常不随角色改版，偏离即历代直伤膨胀档位）"
-    >
-      <!-- 档位筛选（点图例显隐；三档就是散点颜色的语义，与图例同一把尺） -->
-      <div class="legend">
-        <span class="legend-hint">点图例显隐档位</span>
-        <div
-          v-for="band in ddBandDefs"
-          :key="band.id"
-          class="legend-item"
-          :class="{ off: !ddLegend.isVisible(band.id) }"
-          :title="`${band.desc}：点击${ddLegend.isVisible(band.id) ? '隐藏' : '显示'}该档（Y 轴固定 0.7~1.3 档位口径，不随筛选缩放）`"
-          @click="ddLegend.toggle(band.id)"
-        >
-          <span class="swatch" :style="{ background: band.color }"></span><span class="name">{{ band.label }}</span>
-        </div>
-      </div>
-      <svg :width="svgW" :height="ddSvgH" class="dd-svg">
-        <!-- 测试服节点阴影 -->
-        <rect
-          v-for="r in ddTestServerRects"
-          :key="`ddts${r.x}`"
-          :x="r.x"
-          :y="ddPadT"
-          :width="r.w"
-          :height="ddPlotBottom - ddPadT"
-          fill="rgba(246, 173, 85, 0.06)"
-        />
-        <!-- 版本分隔网格 + 版本号刻度（网格线在版本列左缘，刻度文字在列中心） -->
-        <g v-for="t in ddXTicks" :key="`ddx${t.index}`">
-          <line :x1="ddX(t.index)" :y1="ddPadT" :x2="ddX(t.index)" :y2="ddPlotBottom" style="stroke: var(--wa-60)" />
-          <text :x="ddTickCenterX(t.index)" :y="ddPlotBottom + 14" text-anchor="middle" class="dd-tick">{{ t.label }}</text>
-        </g>
-        <!-- y 刻度 -->
-        <text v-for="t in ddYTicks" :key="`ddy${t}`" :x="ddPadL - 6" :y="ddY(t) + 4" text-anchor="end" class="dd-tick">
-          {{ Math.round(t * 100) }}%
-        </text>
-        <!-- 100% 基准线 -->
-        <line
-          :x1="ddPadL"
-          :y1="ddY(1)"
-          :x2="svgW - ddPadR"
-          :y2="ddY(1)"
-          style="stroke: var(--wa-280)"
-          stroke-dasharray="4 4"
-        />
-        <text :x="svgW - ddPadR - 2" :y="ddY(1) - 5" text-anchor="end" class="dd-baseline">100% 标准</text>
-        <!-- 散点（按档位筛选：隐藏档不画；标签槽位仍按全量算 ⇒ 不因筛选而重排） -->
-        <g v-for="p in ddVisiblePoints" :key="`ddp${p.agentId}`">
-          <circle
-            v-if="p.value != null"
-            :cx="ddCX(p.nodeIndex) + ddJitter(p.agentId)"
-            :cy="ddY(p.value)"
-            r="4"
-            :style="{ fill: ddColor(p.value) }"
-          >
-            <title>{{ p.agentName }}（{{ p.nodeLabel }}{{ p.nodeNote ? '，' + p.nodeNote : '' }}）：{{ (p.value * 100).toFixed(1) }}%</title>
-          </circle>
-          <text
-            v-if="p.value != null && ddNeedLabel(p.value)"
-            :x="ddCX(p.nodeIndex) + ddJitter(p.agentId)"
-            :y="ddLabelY(p)"
-            text-anchor="middle"
-            class="dd-label"
-          >{{ ddShortName(p.agentName) }}</text>
-        </g>
-      </svg>
-      <div class="dd-caption">
-        每点 = 一位限定S在其首次 UP 节点的支援突击伤害比值。灰 ≈100%（无直伤特调）、蓝 &gt;105%（当期加强档）、橙 &lt;95%；悬停看数值。3.2 阴影为测试服数据；常驻 S 与 A 级不参与。演算口径见「倍率系数记录」页。
-      </div>
-    </n-card>
+    <!-- 整块已抽组件 components/charts/DirectDamageChart.vue（2026-09-14；本图 dd-* 类为该图独占） -->
+    <DirectDamageChart :points="ddPoints" :svg-w="svgW" />
 
     <!-- ============ Chart 3：每期新角色 · 强队强度（横轴 = 版本，点 = 当期新角色强队，用户清单 + 引擎辅助） ============ -->
     <n-card size="small" :bordered="true">
@@ -1292,6 +1221,7 @@ import { computeStrengthBands, strengthBandTitle, type StrengthBand } from '@/co
 import { hoverCardPosition, readSvgPointer } from '@/composables/svgPointer'
 import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
 import ChartHoverCard, { type HoverCardRow } from '@/components/ChartHoverCard.vue'
+import DirectDamageChart from '@/components/charts/DirectDamageChart.vue'
 import {
   buildFilmSimHoverInfo,
   buildSlotCompareHoverInfo,
@@ -1314,17 +1244,7 @@ import { computePullValue, MIN_PAIRS_FOR_GRADE, type PullValueInput, type PullVa
 import { PLANNER_FILM_PER_VERSION } from '@/data/filmEconomy'
 import { runPullPlanner, type PlannerRunResult } from '@/composables/pullPlannerEngine'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
-import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
-import {
-  buildDirectDamageChart,
-  DD_BAND_DEFS,
-  DD_CHART_LAYOUT,
-  ddBandOf as ddBandOfPure,
-  ddColor as ddColorOf,
-  ddJitter as ddJitterOf,
-  ddNeedLabel as ddNeedLabelOf,
-  ddShortName as ddShortNameOf,
-} from '@/composables/directDamageChart'
+import { buildDirectDamageTimeline } from '@/composables/multiplierCoefficients'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 // 第一片拆分（2026-09-13）：纯展示助手 / 悬浮卡行 / 跑批编排 出函到 composables/charts/
 import { benchText, bossCellText, bossCellTitle, colorOf, swapKindLabel } from '@/composables/charts/agentPresentation'
@@ -1570,33 +1490,8 @@ const ddPoints = computed(() =>
   buildDirectDamageTimeline(catalogStore.catalog?.agents ?? [], catalogStore.catalog?.agentSkills ?? []),
 )
 
-// 几何/标度逻辑已抽到 composables/directDamageChart.ts（纯函数，可单测）；
-// 此处只留「模板绑定名 → 图表读数」的薄适配层，模板无需改动。
-const dd = computed(() => buildDirectDamageChart({
-  points: ddPoints.value,
-  svgW: svgW.value,
-  versionNodes: VERSION_NODES,
-}))
-const { padL: ddPadL, padR: ddPadR, padT: ddPadT, svgH: ddSvgH } = DD_CHART_LAYOUT
-const ddPlotBottom = DD_CHART_LAYOUT.svgH - DD_CHART_LAYOUT.padB
-const ddYTicks = dd.value.yTicks
-function ddX(nodeIndex: number): number { return dd.value.x(nodeIndex) }
-function ddCX(nodeIndex: number): number { return dd.value.cx(nodeIndex) }
-function ddTickCenterX(firstIndex: number): number { return dd.value.tickCenterX(firstIndex) }
-function ddY(v: number): number { return dd.value.y(v) }
-const ddXTicks = dd.value.xTicks
-const ddTestServerRects = computed(() => dd.value.testServerRects)
-function ddLabelY(p: DirectDamagePoint): number { return dd.value.labelY(p) }
-// 分档/颜色/抖动/截断：无状态纯函数，直接从模块引入
-const ddBandDefs = DD_BAND_DEFS
-const ddLegend = useSeriesFilter(() => ddBandDefs.map(b => ({ id: b.id, name: b.label })))
-/** 可见点（图上画什么）；注意 ddLabelSlots 仍按全量算，筛选不改变标签槽位分配 */
-const ddVisiblePoints = computed(() => ddPoints.value.filter(p => p.value == null || ddLegend.isVisible(ddBandOf(p.value))))
-function ddJitter(agentId: string): number { return ddJitterOf(agentId) }
-function ddColor(v: number): string { return ddColorOf(v) }
-function ddBandOf(v: number): string { return ddBandOfPure(v) }
-function ddNeedLabel(v: number): boolean { return ddNeedLabelOf(v) }
-function ddShortName(name: string): string { return ddShortNameOf(name) }
+// 几何/标度/分档/筛选全部随组件走（components/charts/DirectDamageChart.vue）。
+// 本页只负责把数据传进去：`ddPoints` 是直伤系数时间线。
 
 // ========== Chart 3：每期新角色 · 强队强度（横轴 = 版本，点 = 当期新角色强队） ==========
 const chart3Rows = computed<NewCharacterRow[]>(() => buildNewCharacterRows())
