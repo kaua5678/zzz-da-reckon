@@ -1093,6 +1093,32 @@ export interface SlotCompareOptions {
 }
 
 /**
+ * 单队按预算求值（Chart 7 与第三人海选共用的单一事实源）：
+ * optimalGold = 逐金贪婪最优加金（computeOptimalTeamAllocation）；否则预算感知确定性分配
+ * （budgetAwareStateFor，主C优先，1 次求值）。外层未收敛（maxIter）→ null（该队读数不可信，调用方跳过）。
+ */
+function evalTeamByBudget(
+  calc: Calc,
+  configStore: ReturnType<typeof useConfigStore>,
+  catalog: ReturnType<typeof useCatalogStore>,
+  team: [string, string, string],
+  budget: number,
+  autoBuild: boolean,
+  optimalGold: boolean,
+): { damage: number; totalGold: number; goldLabel: string } | null {
+  if (optimalGold) {
+    const alloc = computeOptimalTeamAllocation(calc, configStore, team, budget, autoBuild)
+    if (!Number.isFinite(alloc.damage)) return null
+    return { damage: alloc.damage, totalGold: alloc.totalGold, goldLabel: alloc.label }
+  }
+  const budgetAware = budgetAwareStateFor(team, budget, catalog)
+  applyTeamToStore(configStore, team, budgetAware.state, autoBuild)
+  const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
+  if (conv === 'maxIter') return null
+  return { damage: calc.teamTotalDamage.value, totalGold: budgetAware.totalGold, goldLabel: budgetAware.label }
+}
+
+/**
  * 计算 Chart 7 各组对比点：对每对队伍按所选金数配装求 A/B 两队的伤害
  * （口径与 computeNewCharacterPoints 一致：轻量档 budgetAwareStateFor 零额外求值，
  * optimalGold 档逐金贪婪；任一队基础态未收敛 → 整组跳过），
@@ -1107,18 +1133,8 @@ export async function computeSlotComparePoints(calc: Calc, opts: SlotCompareOpti
     configStore.applyBossPreset({ id: opts.boss.id }, opts.phase, opts.boss.monster, opts.boss.defaults)
     const pairs = findSlotComparePairs(teamPresets, opts.slot, opts.agentA, opts.agentB)
       .filter(p => releaseNodeOf(p.main) != null && catalog.getAgent(p.main))
-    const evalOne = (team: [string, string, string]): { damage: number; totalGold: number; goldLabel: string } | null => {
-      if (opts.optimalGold) {
-        const alloc = computeOptimalTeamAllocation(calc, configStore, team, opts.budget, opts.autoBuild === true)
-        if (!Number.isFinite(alloc.damage)) return null
-        return { damage: alloc.damage, totalGold: alloc.totalGold, goldLabel: alloc.label }
-      }
-      const budgetAware = budgetAwareStateFor(team, opts.budget, catalog)
-      applyTeamToStore(configStore, team, budgetAware.state, opts.autoBuild === true)
-      const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
-      if (conv === 'maxIter') return null
-      return { damage: calc.teamTotalDamage.value, totalGold: budgetAware.totalGold, goldLabel: budgetAware.label }
-    }
+    const evalOne = (team: [string, string, string]) =>
+      evalTeamByBudget(calc, configStore, catalog, team, opts.budget, opts.autoBuild === true, opts.optimalGold === true)
     const points: SlotComparePoint[] = []
     for (let i = 0; i < pairs.length; i++) {
       const pair = pairs[i]
@@ -1150,6 +1166,126 @@ export async function computeSlotComparePoints(calc: Calc, opts: SlotCompareOpti
     points.sort((a, b) => nodeIndexOf(a.nodeId) - nodeIndexOf(b.nodeId) || a.supportId.localeCompare(b.supportId))
     report(1, `完成：${points.length} 组对比`)
     return points
+  } finally {
+    restoreStore(configStore, snap)
+  }
+}
+
+// ========== 选第三人（队伍对比页）：固定两槽 + 候选范围扫第三槽 ==========
+//
+// 用户口径（2026-09-13）：预设队伍不自由——想固定 2 个队友、把第三槽在**选定候选范围**里对比
+// （如固定蕾米埃尔+维琳娜，第三人在异常角色里选；候选圈定 = 页面层职业筛选/手选，经 candidateIds 传入）。
+// Chart 7 只能比「预设里恰好凑成同两槽的 A/B 两队」，这里把同款求值推广到任意三元组：
+// 求值 = evalTeamByBudget 单一事实源（预算感知确定性分配 / 逐金贪婪），maxIter 未收敛跳过；
+// 不含当期 buff 牌与自动下位（与 Chart 7 /「队伍对比·不使用」一致）；快照/恢复不留痕。
+// @fact slotSweep:选第三人求值口径 口径: 候选=candidateIds 覆盖（缺省=catalog 可见角色−固定2人，页面层用职业筛选/手选收窄）；求值=evalTeamByBudget（预算感知确定性分配或逐金贪婪，maxIter 跳过）；槽位语义 0=主C/1=击破/2=支援，固定队友按其余两槽槽位序 | 据 用户 2026-09-13「对比固定2个队友，然后选第三个人。目前的都是预设队伍，不太自由」+ 同日「第三人不是海选，是选定部分角色」 | 验 src/composables/__tests__/slotSweep.test.ts | 锚 src/composables/teamTimeline.ts#computeSlotSweepPoints | 信 确认
+// ⟳复核: 若把「选第三人」改成吃当期 buff 牌/自动下位（向散点页口径靠）时，确认本口径「与 Chart 7 同口径、不含 buff/下位」是否仍成立并改写条目 | 到期 2026-12-31
+
+/** 组出「固定两槽 + 候选补海选槽」的队伍三元组（纯函数；fixed 按其余两槽的槽位序） */
+export function sweepTeamForCandidate(
+  slot: SlotCompareSlot,
+  fixed: [string, string],
+  candidateId: string,
+): [string, string, string] {
+  const team: [string, string, string] = ['', '', '']
+  let fi = 0
+  for (let s = 0; s < 3; s++) {
+    if (s === slot) team[s] = candidateId
+    else team[s] = fixed[fi++] ?? ''
+  }
+  return team
+}
+
+/** 海选结果一行（points 已按伤害降序） */
+export interface SlotSweepPoint {
+  candidateId: string
+  candidateName: string
+  team: [string, string, string]
+  damage: number
+  /** 伤害/该期 Boss 血量 %（2 位小数，同 Chart 7） */
+  hpRatio: number
+  totalGold: number
+  goldLabel: string
+}
+
+export interface SlotSweepResult {
+  slot: SlotCompareSlot
+  /** 固定的两个队友（按其余两槽的槽位序） */
+  fixed: [string, string]
+  points: SlotSweepPoint[]
+  /** 未收敛（maxIter）被跳过的候选数 */
+  skipped: number
+}
+
+export interface SlotSweepOptions {
+  /** 海选的槽位：0=主C、1=击破、2=支援 */
+  slot: SlotCompareSlot
+  /** 固定的两个队友，按「除海选槽外其余两槽」的槽位序 */
+  fixed: [string, string]
+  boss: BossPreset
+  phase: BossPresetPhase
+  budget: number
+  /** 自动配装（推荐驱动盘 + 词条优化器）；缺省 false = 轻量速算（同 Chart 7） */
+  autoBuild?: boolean
+  /** 最优加金（逐金贪婪）；缺省 false = 预算感知确定性分配（同 Chart 7） */
+  optimalGold?: boolean
+  /** 候选池覆盖（缺省 = 目录全部可见角色 − 固定 2 人；测试/定向复算用） */
+  candidateIds?: string[]
+  /** 中止探测（粒度 = 一个候选；已算部分照常返回） */
+  shouldAbort?: () => boolean
+  onProgress?: (p: { pct: number; text: string }) => void
+}
+
+/** 候选池（纯函数）：candidateIds 覆盖或目录全部可见角色，统一剔除固定成员与目录查不到的 id */
+export function slotSweepCandidates(
+  catalog: ReturnType<typeof useCatalogStore>,
+  fixed: [string, string],
+  candidateIds?: string[],
+): string[] {
+  const fixedSet = new Set(fixed)
+  return (candidateIds ?? catalog.displayAgents.map(a => a.id))
+    .filter(id => !fixedSet.has(id) && catalog.getAgent(id))
+}
+
+/**
+ * 第三人海选：固定两槽，第三槽对候选逐个按同一预算求值（evalTeamByBudget），
+ * 结果按伤害降序。候选缺省 = 目录全部可见角色 − 固定 2 人；Boss 一次应用（applyBossPreset）；
+ * 现场快照/恢复，跑完不留痕。未收敛（maxIter）候选跳过并计入 skipped。
+ */
+export async function computeSlotSweepPoints(calc: Calc, opts: SlotSweepOptions): Promise<SlotSweepResult> {
+  const configStore = useConfigStore()
+  const catalog = useCatalogStore()
+  const snap = snapshotStore(configStore)
+  const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
+  try {
+    configStore.applyBossPreset({ id: opts.boss.id }, opts.phase, opts.boss.monster, opts.boss.defaults)
+    const candidateIds = slotSweepCandidates(catalog, opts.fixed, opts.candidateIds)
+    const points: SlotSweepPoint[] = []
+    let skipped = 0
+    let aborted = false
+    for (let i = 0; i < candidateIds.length; i++) {
+      if (opts.shouldAbort?.()) { aborted = true; break }
+      const agent = catalog.getAgent(candidateIds[i])!
+      const team = sweepTeamForCandidate(opts.slot, opts.fixed, agent.id)
+      const res = evalTeamByBudget(calc, configStore, catalog, team, opts.budget, opts.autoBuild === true, opts.optimalGold === true)
+      if (!res) { skipped++; continue }
+      points.push({
+        candidateId: agent.id,
+        candidateName: agent.name.zhCN ?? agent.name.en ?? agent.id,
+        team,
+        damage: res.damage,
+        hpRatio: opts.phase.hp > 0 ? Math.round((res.damage / opts.phase.hp) * 10000) / 100 : 0,
+        totalGold: res.totalGold,
+        goldLabel: res.goldLabel,
+      })
+      report((i + 1) / candidateIds.length, `第三人对比 ${i + 1}/${candidateIds.length}（${agent.name.zhCN ?? agent.id}）…`)
+      if (i % 2 === 0) await yieldNow()
+    }
+    points.sort((a, b) => b.damage - a.damage || a.candidateName.localeCompare(b.candidateName))
+    report(1, aborted
+      ? `已中止：保留已算的 ${points.length} 名候选`
+      : `完成：${points.length} 名候选${skipped > 0 ? `（跳过未收敛 ${skipped}）` : ''}`)
+    return { slot: opts.slot, fixed: [...opts.fixed] as [string, string], points, skipped }
   } finally {
     restoreStore(configStore, snap)
   }
