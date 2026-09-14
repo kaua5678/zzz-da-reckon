@@ -322,158 +322,20 @@
     <DirectDamageChart :points="ddPoints" :svg-w="svgW" />
 
     <!-- ============ Chart 3：每期新角色 · 强队强度（横轴 = 版本，点 = 当期新角色强队，用户清单 + 引擎辅助） ============ -->
-    <n-card size="small" :bordered="true">
-      <template #header>
-        每期新角色 · 强队强度
-        <span class="chart-subtitle">横轴 = 版本（卡池期）；点 = 当期新 S 角色的强队（纯用户手填展示，同角色可加多队对比；按当前全部已实装 + 所选金数配装）</span>
-      </template>
-      <template #header-extra>
-        <div class="chart3-actions">
-          <span class="ctl-label">未配置强队的角色不出点</span>
-          <n-button size="small" type="primary" :loading="chart3Computing" @click="runChart3">
-            {{ chart3Points.length > 0 ? '重新计算强队图' : '计算强队图' }}
-          </n-button>
-        </div>
-      </template>
-
-      <!-- 强队清单（版本 → 新角色 → 强队列表；同角色多队 = 同一时间点多点展示） -->
-      <div class="table-wrap chart3-list">
-        <table class="tl-table">
-          <thead>
-            <tr>
-              <th>版本</th>
-              <th>当期新角色</th>
-              <th>强队（每支 = 主C + 队友1 + 队友2；可添加多支）</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in chart3Rows" :key="row.charId">
-              <td>
-                {{ row.nodeLabel }}
-                <span v-if="row.nodeNote" class="node-note" :title="row.nodeNote">{{ row.nodeNote }}</span>
-              </td>
-              <td>
-                <span class="dot" :style="{ background: colorOf(row.charId) }"></span>{{ agentName(row.charId) }}
-              </td>
-              <td class="chart3-teams-cell">
-                <div v-for="(team, ti) in chart3Teams[row.charId]" :key="ti" class="team-cell chart3-team-inputs">
-                  <span class="team-no">{{ ti + 1 }}</span>
-                  <n-select
-                    v-model:value="team[0]"
-                    :options="allAgentOptions"
-                    size="tiny"
-                    filterable
-                    style="width: 118px"
-                    placeholder="主C"
-                  />
-                  <n-select
-                    v-model:value="team[1]"
-                    :options="allAgentOptions"
-                    size="tiny"
-                    filterable
-                    style="width: 118px"
-                    placeholder="队友1"
-                  />
-                  <n-select
-                    v-model:value="team[2]"
-                    :options="allAgentOptions"
-                    size="tiny"
-                    filterable
-                    style="width: 118px"
-                    placeholder="队友2"
-                  />
-                  <n-button size="tiny" quaternary @click="removeChart3Team(row.charId, ti)">✕</n-button>
-                </div>
-                <n-button size="tiny" quaternary dashed class="add-team-btn" @click="addChart3Team(row.charId)">＋ 添加队伍</n-button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- 强队强度散点 -->
-      <div v-if="chart3Points.length > 0" class="timeline-wrap chart3-plot">
-        <svg
-          :viewBox="`0 0 ${svgW} ${chart3SvgH}`"
-          class="timeline-svg"
-          @mousemove="onChart3Move"
-          @mouseleave="chart3Hover = -1"
-        >
-          <g v-for="(y, i) in chart3YGrid" :key="'c3g' + i">
-            <line :x1="padL" :x2="svgW - padR" :y1="y" :y2="y" class="grid-line" />
-            <text :x="padL - 8" :y="y + 3" class="axis-label" text-anchor="end">{{ chart3YLabel(i) }}%</text>
-          </g>
-          <!-- 100% 击杀线 -->
-          <line :x1="padL" :y1="yOf3(100)" :x2="svgW - padR" :y2="yOf3(100)" class="kill-line-ref" />
-          <text :x="svgW - padR - 2" :y="yOf3(100) - 5" class="axis-label" text-anchor="end">100% 击杀线</text>
-          <!-- X 轴版本刻度 -->
-          <g v-for="t in chart3XTicks" :key="'c3x' + t.index">
-            <line :x1="chart3X(t.index)" :y1="padT" :x2="chart3X(t.index)" :y2="padT + plotH" style="stroke: var(--wa-60)" />
-            <text :x="chart3X(t.index)" :y="chart3SvgH - 8" class="axis-label x-label" text-anchor="middle">{{ t.label }}</text>
-          </g>
-          <!-- 点 -->
-          <g v-for="(p, i) in chart3Pts" :key="'c3p' + i">
-            <circle
-              :cx="p.x"
-              :cy="p.y"
-              r="4.5"
-              :fill="p.color"
-              :style="{ stroke: chart3Hover === i ? 'var(--app-text-solid)' : 'var(--wa-250)' }"
-              :stroke-width="chart3Hover === i ? 2 : 1"
-              class="trend-point"
-            >
-              <title>{{ p.charName }}：{{ p.teamNames.join('+') }}（{{ fmt(p.hpRatio, 1) }}%）</title>
-            </circle>
-          </g>
-          <line
-            v-if="chart3Hover >= 0"
-            :x1="chart3Pts[chart3Hover].x" :y1="padT"
-            :x2="chart3Pts[chart3Hover].x" :y2="padT + plotH"
-            class="hover-line"
-          />
-        </svg>
-
-        <!-- 图例（点击显隐某支队；隐藏队的点不画，且退出 Y 轴刻度与悬浮命中——筛选传导到派生量） -->
-        <div class="legend">
-          <span class="legend-hint">点图例显隐 · 显示 {{ chart3Counts.visible }}/{{ chart3Counts.total }} 支队</span>
-          <div
-            v-for="s in chart3Series"
-            :key="s.id"
-            class="legend-item"
-            :class="{ off: !chart3Legend.isVisible(s.id) }"
-            :title="`${s.name}：点击${chart3Legend.isVisible(s.id) ? '隐藏' : '显示'}（隐藏后不参与 Y 轴刻度）`"
-            @click="chart3Legend.toggle(s.id)"
-          >
-            <span class="swatch" :style="{ background: colorOf(s.id) }"></span>
-            <span class="name">{{ s.name }}</span>
-          </div>
-          <span class="legend-hint legend-action" @click="chart3Legend.showAll()">全显示</span>
-        </div>
-
-        <!-- 悬浮卡外壳见 components/ChartHoverCard.vue -->
-        <ChartHoverCard
-          v-if="chart3Hover >= 0 && chart3HoverInfo"
-          :x="chart3CardX"
-          :y="chart3CardY"
-          :title="`${chart3HoverInfo.nodeLabel} · ${chart3HoverInfo.charName} · 第${chart3HoverInfo.teamNo}队`"
-          :rows="chart3HoverRows"
-        />
-      </div>
-      <div v-else class="empty-hint small-hint">
-        为角色配置强队（手填三人或点「引擎建议」）后点「计算强队图」；预填 = 仓库 preset 队伍。
-      </div>
-
-      <!-- 进度条 -->
-      <div v-if="chart3Computing || chart3Progress" class="chart-progress">
-        <n-progress
-          type="line"
-          :percentage="Math.round((chart3Progress?.pct ?? 0) * 100)"
-          :show-indicator="false"
-          :height="6"
-        />
-        <span class="progress-text">{{ chart3Progress?.text ?? '' }}</span>
-      </div>
-    </n-card>
+    <!-- 整块已抽组件 components/charts/NewCharacterChart.vue（2026-09-14）；样式随组件走 -->
+    <NewCharacterChart
+      :svg-w="svgW"
+      :pad-l="padL"
+      :pad-r="padR"
+      :plot-w="plotW"
+      :pad-t="padT"
+      :plot-h="plotH"
+      :boss="selectedBoss"
+      :phase="selectedPhase"
+      :budget="budget"
+      :auto-build="autoBuild"
+      :optimal-gold="optimalGold"
+    />
 
     <!-- ============ Chart 7：同槽位角色对比（预设中其余两槽相同、所选槽位 A/B 两队） ============ -->
     <n-card size="small" :bordered="true">
@@ -929,12 +791,7 @@ import {
   timelineSvgWidth,
 } from '@/composables/timelineChart'
 import {
-  buildChart3Scatter,
   buildScPts,
-  chart3YGridOf,
-  chart3YLabelOf,
-  chart3YMaxOf,
-  chart3YOf,
   linePointsOf,
   scYGridOf,
   scYLabelOf,
@@ -949,6 +806,7 @@ import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
 import ChartHoverCard, { type HoverCardRow } from '@/components/ChartHoverCard.vue'
 import DirectDamageChart from '@/components/charts/DirectDamageChart.vue'
 import PullValueChart from '@/components/charts/PullValueChart.vue'
+import NewCharacterChart from '@/components/charts/NewCharacterChart.vue'
 import TimeChartsControls from '@/components/charts/TimeChartsControls.vue'
 import {
   buildFilmSimHoverInfo,
@@ -960,7 +818,7 @@ import {
   PP_LANE_DEFS,
   ppTierLabelOf,
 } from '@/composables/pullPlannerChart'
-import { buildNewCharacterRows, prefillStrongTeamsFromPresets, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow } from '@/composables/teamTimeline'
+import { type FilmSimPoint } from '@/composables/teamTimeline'
 import { type SlotComparePoint, type SlotCompareSlot } from '@/composables/teamTimeline'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
 import { PLANNER_FILM_PER_VERSION } from '@/data/filmEconomy'
@@ -970,8 +828,8 @@ import { buildDirectDamageTimeline } from '@/composables/multiplierCoefficients'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 // 第一片拆分（2026-09-13）：纯展示助手 / 悬浮卡行 / 跑批编排 出函到 composables/charts/
 import { benchText, bossCellText, bossCellTitle, colorOf, swapKindLabel } from '@/composables/charts/agentPresentation'
-import { chart3HoverRows as buildChart3HoverRows, filmSimHoverRows as buildFilmSimHoverRows, slotCompareHoverRows as buildSlotCompareHoverRows, timelineHoverRows as buildTimelineHoverRows } from '@/composables/charts/hoverCardRows'
-import { runChart3Compute, runFilmSimCompute, runSlotCompareCompute, runTeamTimelineCompute } from '@/composables/charts/chartRunners'
+import { filmSimHoverRows as buildFilmSimHoverRows, slotCompareHoverRows as buildSlotCompareHoverRows, timelineHoverRows as buildTimelineHoverRows } from '@/composables/charts/hoverCardRows'
+import { runFilmSimCompute, runSlotCompareCompute, runTeamTimelineCompute } from '@/composables/charts/chartRunners'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 
@@ -1214,96 +1072,18 @@ const ddPoints = computed(() =>
 
 // 几何/标度/分档/筛选全部随组件走（components/charts/DirectDamageChart.vue）。
 // 本页只负责把数据传进去：`ddPoints` 是直伤系数时间线。
+/** 绘图盒（Chart 4 用；原与 Chart 3 共用，Chart 3 抽走后此处只服务 Chart 4） */
+const TB = { padT, plotH }
 
-// ========== Chart 3：每期新角色 · 强队强度（横轴 = 版本，点 = 当期新角色强队） ==========
-const chart3Rows = computed<NewCharacterRow[]>(() => buildNewCharacterRows())
-/** 强队清单：charId → 强队列表（每支 3 人；同角色多队 = 同一时间点多点展示；空数组 = 不出点）；预填口述预设 */
-const chart3Teams = ref<Record<string, [string, string, string][]>>(initChart3Teams())
-function initChart3Teams(): Record<string, [string, string, string][]> {
-  const out: Record<string, [string, string, string][]> = {}
-  const prefill = prefillStrongTeamsFromPresets()
-  for (const row of buildNewCharacterRows()) out[row.charId] = prefill[row.charId] ? [prefill[row.charId]] : []
-  return out
-}
-function addChart3Team(charId: string) {
-  chart3Teams.value[charId].push(['', '', ''])
-}
-function removeChart3Team(charId: string, index: number) {
-  chart3Teams.value[charId].splice(index, 1)
-}
+// Chart 3 把这两个量带进了组件；但 **Chart 7 也用**（同一条版本轴 + 同一份角色选项）
+// ⇒ 留在页面作共享量（这是「抽块前先确认共享依赖」的又一处实例，见账本）。
 /** 强队成员可选全部角色（S+A；A 级支援如苍角/妮可可作队友） */
 const allAgentOptions = computed(() =>
   catalogStore.displayAgents.map(a => ({ value: a.id, label: `${a.name.zhCN ?? a.id}（${a.rarity}）` })),
 )
-
-const chart3Computing = ref(false)
-const chart3Progress = ref<{ pct: number; text: string } | null>(null)
-const chart3Points = ref<NewCharacterPoint[]>([])
-async function runChart3() {
-  // 校验/装配/调用已出函 composables/charts/chartRunners.ts#runChart3Compute（第一片拆分，逐字搬迁）
-  await runChart3Compute({
-    calc, computing: chart3Computing, progress: chart3Progress, points: chart3Points,
-    boss: selectedBoss.value,
-    phase: selectedPhase.value,
-    rows: chart3Rows.value,
-    teams: chart3Teams.value,
-    budget: budget.value,
-    autoBuild: autoBuild.value,
-    optimalGold: optimalGold.value,
-  })
-}
-
-// ---- Chart 3 SVG ----
-// Chart 3 几何：见 composables/versionChartGeometry.ts（纯函数，可单测）
-const TB = { padT, plotH }
-const chart3SvgH = padT + plotH + 30
-const chart3YMax = computed(() => chart3YMaxOf(chart3VisiblePts.value.map(p => p.hpRatio)))
-function yOf3(v: number): number { return chart3YOf(v, chart3YMax.value, TB) }
-const chart3YGrid = computed(() => chart3YGridOf(chart3YMax.value, TB))
-function chart3YLabel(i: number): number { return chart3YLabelOf(i, chart3YMax.value) }
-function chart3X(i: number): number { return versionXOf(i, VERSION_NODES.length, padL, plotW.value) }
+/** 版本轴刻度（Chart 3 组件内部也有同名副本——两处都只读 VERSION_NODES，无状态） */
 const chart3XTicks = computed(() => versionXTicksOf(VERSION_NODES, 16))
-/** 散点：同节点多角色/多队伍横向错开；颜色按队伍构成稳定映射（同队同色，跨角色可对比） */
-/** Chart 3 图例系列 = 队伍构成（与散点颜色同一把钥匙：同队同色、跨角色同一条图例） */
-const chart3Series = computed(() => {
-  const seen = new Map<string, string>()
-  for (const p of chart3Points.value) {
-    const key = p.team.join(',')
-    if (!seen.has(key)) seen.set(key, p.team.map(agentName).join(' + '))
-  }
-  return [...seen.entries()].map(([id, name]) => ({ id, name }))
-})
-const chart3Legend = useSeriesFilter(() => chart3Series.value)
-const chart3Counts = chart3Legend.counts
-/** 可见散点（Y 轴刻度、散点、悬浮命中三者同源 ⇒ 隐藏高值队后轴跟着降） */
-const chart3VisiblePts = computed(() => chart3Points.value.filter(p => chart3Legend.isVisible(p.team.join(','))))
-const chart3Pts = computed(() => buildChart3Scatter({
-  points: chart3VisiblePts.value,
-  nodeIndexOf: (id) => nodeIndexOf(id),
-  yMax: chart3YMax.value,
-  box: TB,
-  padL,
-  plotW: plotW.value,
-  versionTotal: VERSION_NODES.length,
-  colorOf: (key) => colorOf(key),
-  nameOf: (id) => agentName(id),
-}))
-const chart3Hover = ref(-1)
-const chart3HoverInfo = computed(() => chart3Pts.value[chart3Hover.value] ?? null)
-const chart3CardX = ref(0)
-const chart3CardY = ref(0)
-function onChart3Move(e: MouseEvent) {
-  const { svgX, relX, relY, rect } = readSvgPointer(e, { w: svgW.value, h: chart3SvgH })
-  const { index: best, distance: bestDist } = nearestIndexByX(chart3Pts.value, svgX)
-  if (best >= 0 && bestDist < xHitTolerance(plotW.value, VERSION_NODES.length, 2)) {
-    chart3Hover.value = best
-    const card = hoverCardPosition({ relX, relY, containerWidth: rect.width, cardWidth: 240 })
-    chart3CardX.value = card.x
-    chart3CardY.value = card.y
-  } else {
-    chart3Hover.value = -1
-  }
-}
+function chart3X(i: number): number { return versionXOf(i, VERSION_NODES.length, padL, plotW.value) }
 
 // ========== Chart 7：同槽位角色对比（预设中其余两槽相同、所选槽位 A/B 两队） ==========
 const SC_COLOR_A = 'var(--c-info)'
@@ -1327,8 +1107,6 @@ const scBossTouched = ref(false)
 watch(selectedBossId, v => {
   if (!scBossTouched.value && v) scBossId.value = v
 })
-
-const chart3HoverRows = computed<HoverCardRow[]>(() => buildChart3HoverRows(chart3HoverInfo.value))
 const scBoss = computed(() => bossPresets.value.find(b => b.id === scBossId.value) ?? null)
 /** 与顶部 selectedPhase 同口径：取该 Boss 最新危局期，否则最新期 */
 const scPhase = computed(() => {

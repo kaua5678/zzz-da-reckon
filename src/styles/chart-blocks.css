@@ -87,3 +87,13 @@
   align-items: center;
   gap: 8px;
 }
+
+/* 版本节点备注徽标（Chart 3 组件 + 页内明细表共用；Chart 3 抽走后必须共享）。 */
+.node-note {
+  font-size: 10px;
+  color: #f6ad55;
+  border: 1px solid rgba(246, 173, 85, 0.35);
+  border-radius: 4px;
+  padding: 0 4px;
+  margin-left: 4px;
+}

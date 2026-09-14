@@ -64,11 +64,6 @@
 .tl-table tr.swap-row td {
   background: rgba(246, 173, 85, 0.05);
 }
-.team-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
 .gold-cell {
   color: var(--wa-700);
   max-width: 340px;
@@ -115,14 +110,6 @@
   stroke: rgba(0, 0, 0, 0.55);
   stroke-width: 2.5px;
 }
-.node-note {
-  font-size: 10px;
-  color: #f6ad55;
-  border: 1px solid rgba(246, 173, 85, 0.35);
-  border-radius: 4px;
-  padding: 0 4px;
-  margin-left: 4px;
-}
 /* 本类是 Chart 5 的通用说明文字样式（名字沿用直伤图；直伤图已抽组件，其自带副本）。
    注意不要再给直伤图加 dd-* 样式——那些随 components/charts/DirectDamageChart.vue 走。 */
 .dd-caption {
@@ -132,44 +119,11 @@
   line-height: 1.7;
 }
 
-/* ========== Chart 3：每期新角色 · 强队强度 ========== */
-.chart3-list {
-  max-height: 340px;
-  overflow-y: auto;
-  margin-bottom: 8px;
-}
-.chart3-team-inputs {
-  gap: 6px;
-}
 .sim-main-name {
   font-size: 12px;
   color: var(--wa-850);
   padding: 3px 0 6px;
   white-space: nowrap;
-}
-.chart3-teams-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: flex-start;
-}
-.chart3-teams-cell .team-cell {
-  gap: 6px;
-}
-.team-no {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--wa-80);
-  color: var(--wa-600);
-  font-size: 10px;
-  flex: 0 0 auto;
-}
-.add-team-btn {
-  margin-top: 2px;
 }
 .kill-line-ref {
   stroke: rgba(99, 226, 183, 0.35);

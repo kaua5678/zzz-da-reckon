@@ -1,0 +1,41 @@
+/* Chart 3 每期新角色强队图 · 组件内样式（2026-09-14 从 views/timeCharts/TimeChartsPage.css 整条搬迁）。
+   经 <style scoped src> 载入 ⇒ 带组件 scope id、特异性不变。
+   注：.team-cell / .chart3-teams-cell .team-cell 也在内——后者的复合选择器需要前者同作用域解析。 */
+/* ========== Chart 3：每期新角色 · 强队强度（2026-09-14 随组件搬迁） ========== */
+.chart3-list {
+  max-height: 340px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+.team-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.chart3-team-inputs {
+  gap: 6px;
+}
+.chart3-teams-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.chart3-teams-cell .team-cell {
+  gap: 6px;
+}
+.team-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--wa-80);
+  color: var(--wa-600);
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+.add-team-btn {
+  margin-top: 2px;
+}
