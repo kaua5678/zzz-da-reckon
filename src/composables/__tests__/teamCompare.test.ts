@@ -17,6 +17,7 @@ import {
   shrinkInteractionsByTruncation,
   teamInteractionSurvival,
   computeOptimalGoldAllocations,
+  goldAlternativesOf,
   computeTeamComparePoints,
   isLimitedAgent,
   isLimitedWEngine,
@@ -465,6 +466,81 @@ describe('teamCompare 最优加金（≤12金贪婪）', () => {
       expect(allocs[i].damage).toBeGreaterThanOrEqual(allocs[i - 1].damage)
       expect(allocs[i].totalGold).toBe(base + i)
     }
+  })
+
+  // 2026-09-14 用户需求「同队同金不同分配对比」：贪婪搜索本来就**试算了每档的全部候选**
+  // （每个槽位的下一级影画/精炼/音擎本体），但只留赢家、其余扔掉。用户要看「这笔金投给谁」，
+  // 正是那些被扔掉的候选 ⇒ 加 `recordAlternatives` 记录它们（伤害已算过，接近零成本）。
+  it('★ 同金档候选记录：赢家标记 + 相对最优的损失（同队同金不同分配的原料）', () => {
+    // 本文件用 newPinia + mockStaticFetch（beforeEach），不引 setupHarness
+    const config = useConfigStore()
+    config.team[0].agentId = '1051'; config.team[0].wEngineId = '14105'
+    config.team[1].agentId = '1141'; config.team[1].wEngineId = '14114'
+    config.team[2].agentId = '1451'; config.team[2].wEngineId = '14145'
+    const preset: TeamPreset = {
+      id: 'alt-test', name: '候选记录测试',
+      team: ['1051', '1141', '1451'],
+      wEngines: ['14105', '14114', '14145'],
+      goldSteps: [
+        { label: '伊德海莉 1命', slot: 0, kind: 'cinema', value: 1 },
+        { label: '伊德海莉 2命', slot: 0, kind: 'cinema', value: 2 },
+        { label: '卢西娅 1命', slot: 2, kind: 'cinema', value: 1 },
+      ],
+      interactions: [],
+    }
+    // 假伤害：伊德海莉影画边际 50 > 卢西娅影画 49（差 1 ⇒ 每档 2 个候选，赢家明确）
+    const calc = {
+      teamTotalDamage: computed(() => {
+        const c = config.team
+        const c0 = c[0].agentId === '1051' ? c[0].cinemaLevel : 0
+        const c2 = c[2].agentId === '1451' ? c[2].cinemaLevel : 0
+        return 100 + 50 * c0 + 49 * c2
+      }),
+    } as unknown as ReturnType<typeof useResourceCalc>
+
+    // 缺省不收集（零开销）：alternatives 为空
+    const plain = computeOptimalGoldAllocations(calc, config, preset, baseGoldOf(preset))
+    expect(goldAlternativesOf(plain)).toEqual([])
+
+    const allocs = computeOptimalGoldAllocations(calc, config, preset, baseGoldOf(preset), [], { recordAlternatives: true })
+    const alts = goldAlternativesOf(allocs)
+    expect(alts.length).toBeGreaterThan(0)
+
+    // 每档**恰好** 1 个赢家；候选数随档位增长（首档只有「主C 1命」一个可用候选——
+    // 「卢西娅 1命」要等主C 那条线被提交后才成为可选项，这是贪婪的时序语义，不是缺陷）
+    const golds = [...new Set(alts.map(a => a.budgetGold))].sort((a, b) => a - b)
+    for (const gold of golds) {
+      expect(alts.filter(a => a.budgetGold === gold).filter(a => a.isBest)).toHaveLength(1)
+    }
+    const counts = golds.map(g => alts.filter(a => a.budgetGold === g).length)
+    expect(counts[0]).toBeGreaterThanOrEqual(1)
+    expect(Math.max(...counts)).toBeGreaterThanOrEqual(2)   // 至少有某档存在「投给谁」的分歧
+
+    // 赢家 = 该档最优；其余 lossPct ≥ 0 且与 bestDamage 自洽
+    for (const a of alts) {
+      expect(a.bestDamage).toBeGreaterThan(0)
+      if (a.isBest) {
+        expect(a.deltaVsBest).toBe(0)
+        expect(a.lossPct).toBe(0)
+      } else {
+        expect(a.deltaVsBest).toBeLessThan(0)
+        expect(a.lossPct).toBeGreaterThan(0)
+        expect(a.lossPct).toBeCloseTo(((a.bestDamage - a.damage) / a.bestDamage) * 100, 9)
+      }
+    }
+
+    // 首档（基础金+1）赢家应是主C 1命（边际 50 > 支援 49），另一位候选损失 ≈ 1/150
+    const first = alts.filter(a => a.budgetGold === baseGoldOf(preset) + 1)
+    const winner = first.find(a => a.isBest)!
+    expect(winner.step.label).toContain('伊德海莉 1命')
+    const loser = first.find(a => !a.isBest)!
+    expect(loser.step.label).toContain('卢西娅 1命')
+    expect(loser.lossPct).toBeCloseTo((1 / 150) * 100, 6)
+
+    // 候选带完整状态（UI 要显示「这套分配长什么样」）
+    expect(winner.state.cinemas[0]).toBe(1)
+    expect(loser.state.cinemas[2]).toBe(1)
+    expect(loser.state.cinemas[0]).toBe(0)   // 输家没投主C
   })
 
   it('贪婪：acquire 提交后该槽位精炼从 1 重算（常驻旧音擎的精炼不虚标到新专武）', async () => {

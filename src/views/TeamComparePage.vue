@@ -138,6 +138,11 @@
         <div class="ctl-field" title="第三轴 = 时间：把每队主C的首次卡池时间编码成颜色（冷=早 / 暖=晚）与点大小（越新越大）。关闭时颜色仍表示队伍身份（跟图例显隐一致）">
           <n-checkbox v-model:checked="colorByRelease" size="small">按主C实装时间着色</n-checkbox>
         </div>
+        <div class="ctl-field" title="显示「同一支队、同一个金数，这笔金投给谁」的分歧：贪婪搜索本来就试算了每档的全部候选（各槽位的下一级影画/精炼/专武本体），此处把被淘汰的候选也列出来，附「选错的代价 %」。需勾选「最优加金」">
+          <n-checkbox v-model:checked="showGoldAlternatives" size="small" :disabled="!optimalGold">
+            同金分配对比
+          </n-checkbox>
+        </div>
         </template>
         <!-- 选第三人：固定 2 个队友 + 候选范围（职业筛选/手选），不依赖预设队伍（求值口径同「同槽位角色对比」） -->
         <template v-if="chartMode === 'sweep'">
@@ -341,6 +346,37 @@
       </div>
     </n-card>
 
+    <!-- 同金分配对比（用户 2026-09-14：「同队的不同武器、命座等金数对比」） -->
+    <n-card
+      v-if="chartMode === 'scatter' && showGoldAlternatives && goldAltRows.length > 0"
+      size="small" :bordered="true" class="detail-card"
+    >
+      <template #header>同金分配对比（同一支队、同一个金数，这笔金投给谁）</template>
+      <div class="compare-note">
+        贪婪搜索每档会试算**全部**候选（各槽位的下一级影画/精炼/专武本体），此表把被淘汰的也列出来。
+        「代价」= 相对该档最优分配的伤害损失（列内按损失升序，★ = 贪婪实际选中的那个）。
+      </div>
+      <div class="detail-table-wrap">
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>队伍</th><th>金数</th><th>这笔金投给</th><th>伤害</th><th>代价</th><th>分配后状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(a, i) in goldAltRows" :key="'ga' + i" :class="{ 'ga-best': a.isBest }">
+              <td class="td-team" :style="{ color: colorOf(a.presetId) }">{{ a.presetName }}</td>
+              <td>{{ a.budgetGold }}金</td>
+              <td>{{ a.step.label }}<span v-if="a.isBest"> ★</span></td>
+              <td>{{ compact(a.damage) }}</td>
+              <td :class="{ 'ga-loss': !a.isBest }">{{ a.isBest ? '— 最优' : '−' + fmt(a.lossPct, 2) + '%' }}</td>
+              <td>{{ a.state.cinemas.join('/') }} 命 · 精炼 {{ a.state.wengineMods.join('/') }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </n-card>
+
     <!-- 难度曲线：每队自己的贪心提升路径（x = 自动算的操作难度，各队不对齐是特性） -->
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="chart-card">
       <template #header>难度曲线（{{ curveData.series.length }} 队可见 · 每队自己的 x）</template>
@@ -538,7 +574,7 @@ import { NCard, NSelect, NInputNumber, NButton, NCheckbox, NPopover, NRadioGroup
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS } from '@/composables/teamCompare'
+import { computeTeamComparePoints, goldAlternativesOfPoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, type GoldAllocationAlternative } from '@/composables/teamCompare'
 import { computeSlotSweepPoints, type SlotCompareSlot, type SlotSweepResult } from '@/composables/teamTimeline'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
@@ -710,6 +746,19 @@ const goldMin = ref(0)
 const goldMax = ref(6)
 /** 最优加金（≤12金）：不用预设排列顺序，逐金挑提升最大的组合；12金以上回退预设顺序 */
 const optimalGold = ref(true)
+/** 同金分配对比表（勾选后收集贪婪搜索的落选候选） */
+const showGoldAlternatives = ref(false)
+const goldAlternatives = ref<Array<GoldAllocationAlternative & { presetId: string; presetName: string }>>([])
+
+/** 表行：按 (队伍, 金数) 分组、组内按代价升序（★ 优先），便于一眼看出「投给谁最划算」 */
+const goldAltRows = computed(() => {
+  const rows = [...goldAlternatives.value]
+  rows.sort((a, b) => a.presetId.localeCompare(b.presetId)
+    || a.budgetGold - b.budgetGold
+    || Number(b.isBest) - Number(a.isBest)
+    || a.lossPct - b.lossPct)
+  return rows
+})
 /** 自动下位音擎（缺省开）：非限定槽位从装填池按伤害择优穿戴；选中限定音擎按本体如实计金 */
 const autoEngine = ref(true)
 /** 自动下位默认精炼档：A 级 / 常驻 S */
@@ -824,6 +873,7 @@ async function runCompare() {
   if (presets.length === 0 || !boss || !phase) return
   computing.value = true
   progress.value = { pct: 0, text: '' }
+  goldAlternatives.value = []
   const all: TeamComparePoint[] = []
   const levels = goldLevels()
   const buffs = currentPhaseView.value?.buffs ?? []
@@ -832,18 +882,23 @@ async function runCompare() {
     const p = presets[i]
     progress.value = { pct: i / presets.length, text: `计算 ${p.name}（${i + 1}/${presets.length}）...` }
     await new Promise(r => setTimeout(r, 0))
-    all.push(...computeTeamComparePoints(calc, {
+    const batch = computeTeamComparePoints(calc, {
       presets: [p],
       goldLevels: levels,
       boss,
-      optimalGold: optimalGold.value,      phase,
+      optimalGold: optimalGold.value,
+      recordGoldAlternatives: showGoldAlternatives.value,
+      phase,
       autoEngine: autoEngine.value,
       autoEngineMods: { aRank: autoModA.value, standard: autoModStd.value },
       autoEnginePool: autoEnginePool.value,
       buffs: buffChoice.value === 'none' ? [] : buffs,
       manualBuffTitle: buffChoice.value === '' || buffChoice.value === 'none' ? undefined : buffChoice.value,
       difficultyWeights: { timePressure: diffWeights.value.timePressure, interaction: diffWeights.value.interaction },
-    }))
+    })
+    all.push(...batch)
+    // 同金分配候选经数组属性回传（未开启收集时为空数组）
+    if (showGoldAlternatives.value) goldAlternatives.value.push(...goldAlternativesOfPoints(batch))
   }
   points.value = all
   progress.value = { pct: 1, text: `完成：${all.length} 个点` }
@@ -1386,6 +1441,13 @@ function killSeconds(hpRatio: number): number {
 .chart-card,
 .detail-card {
   margin-top: 0;
+}
+/* 同金分配对比表（最优行高亮 + 落选代价红色） */
+.ga-best {
+  background: var(--fill-hover);
+}
+.ga-loss {
+  color: var(--c-danger);
 }
 
 .compare-svg {
