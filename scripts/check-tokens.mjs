@@ -498,10 +498,13 @@ export const HARDCODED_BASELINE = {
   // 2026-09-14 控制面板抽组件（components/charts/TimeChartsControls.vue）：1 处字面色值是**逐字搬迁**
   // —— .boss-data-title 的 #f6ad55（原在 TimeChartsPage.css）。页面侧同轮 32 → 31。
   'src/components/charts/TimeChartsControls.vue': 1,
-  'src/views/TimeChartsPage.vue': 30,
+  'src/views/TimeChartsPage.vue': 23,
   // 2026-09-14 图表块基元外置（src/styles/chart-blocks.css，经 <style scoped src> 载入）：
   // 1 处字面色值是**逐字搬迁**——`.kill-line` 的 #63e2b7（原在 TimeChartsPage.css）。页面 31 → 30。
   'src/styles/chart-blocks.css': 1,
+  // 2026-09-14 Chart 5 抽组件（components/charts/PullValueChart.vue）：7 处字面色值是**整组搬迁**
+  // （原在 TimeChartsPage.css 的 .pv-* 规则里）。页面 30 → 23。
+  'src/components/charts/PullValueChart.vue': 7,
   'src/views/WEngineFieldPage.vue': 3,
 }
 
@@ -529,9 +532,10 @@ export const FONT_SIZE_BASELINE = {
   'src/views/StunAxisPage.vue': 1,
   // 同上：11.5px 随样式搬入 ChartHoverCard（原就在页面的离群基线里，本次仅文件归属变化）
   'src/components/ChartHoverCard.vue': 1,
-  'src/views/TimeChartsPage.vue': 5,
+  'src/views/TimeChartsPage.vue': 3,   // 5 → 3（Chart 5 的 10.5/8.5px 两条随组件搬迁）
   'src/components/charts/DirectDamageChart.vue': 1,   // .dd-caption 的 11.5px（搬迁前就在页面的离群基线里）
   'src/components/charts/TimeChartsControls.vue': 1,   // .boss-data-item 的 11.5px（原在页面的离群基线里）
+  'src/components/charts/PullValueChart.vue': 2,   // .pv-row-label 10.5px / .pv-detail-bar-label 8.5px（随组件搬迁）
   // 2026-09-14 第二轮：共享控件基元（.ctl-*/.chart-progress/.progress-text/.ctl-note）收敛到
   // src/styles/charts.css ⇒ `.ctl-note` 的 10.5px 从页面基线**平移**到本表（页面 7→6、本表 0→1），
   // 合计不变。是归属变化不是新增债务。

@@ -1,0 +1,113 @@
+/* Chart 5 抽卡价值图 · 组件内样式（2026-09-14 从 views/timeCharts/TimeChartsPage.css 整条搬迁）。
+   ⚠ 通过 <style scoped src> 载入 ⇒ 带本组件 scope id、特异性不变；.pv-sel-row / .pv-summary
+   两条**留在页面**（Chart 6 也用），故此处不含。 */
+.pv-plot {
+  margin-bottom: 8px;
+}
+.pv-row-bg {
+  fill: transparent;
+  cursor: pointer;
+}
+.pv-row-hover {
+  fill: var(--wa-30);
+}
+.pv-row-label {
+  fill: var(--wa-750);
+  font-size: 10.5px;
+}
+.pv-grade {
+  font-size: 9px;
+  font-weight: 700;
+}
+.pv-T0 {
+  fill: #ff8f5a;
+}
+.pv-T1 {
+  fill: #f6ad55;
+}
+.pv-T2 {
+  fill: #a3a3b8;
+}
+.pv-T3 {
+  fill: #5f6373;
+}
+.pv-bubble {
+  cursor: pointer;
+}
+.pv-release-line {
+  stroke: var(--app-primary);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+.pv-release-label {
+  fill: var(--app-primary);
+  font-size: 9px;
+}
+.pv-bar-label {
+  fill: var(--wa-700);
+  font-size: 10px;
+}
+.pv-detail {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--wa-70);
+  border-radius: 8px;
+  background: var(--wa-20);
+}
+.pv-detail-title {
+  font-size: 12px;
+  color: var(--wa-780);
+  line-height: 1.8;
+  margin-bottom: 8px;
+}
+.pv-detail-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 90px;
+  overflow-x: auto;
+  padding-top: 2px;
+}
+.pv-detail-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  min-width: 34px;
+  height: 100%;
+}
+.pv-detail-bar-fill {
+  width: 12px;
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+}
+.pv-detail-bar-fill.pv-pos {
+  background: #f6ad55;
+}
+.pv-detail-bar-fill.pv-neg {
+  background: #63b3ed;
+}
+.pv-detail-bar-label {
+  font-size: 8.5px;
+  color: var(--wa-450);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  max-height: 46px;
+  overflow: hidden;
+}
+.pv-detail-bar-val {
+  font-size: 9px;
+  color: var(--wa-650);
+  white-space: nowrap;
+}
+.pv-out {
+  opacity: 0.45;
+}
+.pv-neg-num {
+  color: #63b3ed;
+}
+.pv-detail-bar.pv-out .pv-detail-bar-fill {
+  background: var(--wa-120);
+}

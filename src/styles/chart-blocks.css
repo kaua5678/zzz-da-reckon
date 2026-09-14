@@ -80,3 +80,10 @@
   font-size: 12px;
   padding: 8px 2px;
 }
+
+/* 图表卡片右上角操作区（Chart 3/5/7 共用；Chart 5 抽组件后仍需，故在此共享）。 */
+.chart3-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
