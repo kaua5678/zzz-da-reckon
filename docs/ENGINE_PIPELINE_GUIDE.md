@@ -135,8 +135,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
 
 ### ⏱ 时间系统三本账（读坑 12 / 19 / 21 / 22 前先对齐这张表）
 
-引擎里跟"时间"有关的数**是三本不同的账**，天然不等。把它们当一本是这一族 bug 的共同根源
-（实测：同一队三者可差 90s，而 UI 只报其中一本）。
+引擎里跟"时间"有关的数**是三本不同的账**，天然不等。把它们当一本是这一族 bug 的共同根源（实测：同一队三者可差 90s，而 UI 只报其中一本）。
 
 | 账 | 是什么 | 谁写 | 谁读 | 与物化行不符时意味着 |
 |---|---|---|---|---|
@@ -227,8 +226,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     `timeBucket: 'backstage'`**（如莱卡恩围猎蓄力/蕾米 Radiant Turn）——后台行不进折叠目标与队伍对比的
     超时校验（`isFrontlineExecution`，未打标按前台保守处理），否则会误报「超时」并虚增账本。
 13. **队伍级联动别写进编排层**：跨槽位效果用 `applyTeamConfig` 钩子（见 §2），不要往
-    `useResourceCalc` 加 agentId 分支。历史上 5 条队伍级机制被编排层手工 import + 手工按序调用，
-    其中莱特那条要在 3 个位置各调一次，漏一处就是静默错值。
+    `useResourceCalc` 加 agentId 分支。历史上 5 条队伍级机制被编排层手工 import + 手工按序调用，其中莱特那条要在 3 个位置各调一次，漏一处就是静默错值。
 14. **能量口径分两个数**：`energySource.total`（展示明细合计，含队友联动 `crossAgent`）与
     `derivedEnergy`（真正驱动 exSpecialCount 的收敛能量）。二者应当一致：iterate 与最终装配
     用同一函数、同一入参（连携次数同口径）。历史版本 iterate 内调 `calcEnergySource` 时
@@ -799,6 +797,9 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     手册不写死、历史文档旧值一律作废；复算用下面这条命令，输出 = 队数 / 留白合计秒）：
     `node -e "const j=require('./src/composables/__tests__/timeFillRatchet.baseline.json');let s=0,n=0;for(const [k,v] of Object.entries(j)){if(k.startsWith('_'))continue;n++;s+=v.slack||0}console.log(n,s.toFixed(1))"` ⇒ **留白不构成 5× 量级的主因**，别再把「伤害低」记到它头上。
     · **⑤ 四类「源数据在、代码也在，只是没连线」→ 已上机器判据（2026-09-13，判据 13/14/15）**：症状 = 全绿、构建过、测试不红而功能不存在。四类形态（数据在源里没人消费 / 导出的可选项零调用 / 引擎读的配置字段全库零数据 / 手写 `.d.mts` 漂移）、判据纪律与逐条修法在 `check-guards.mjs` 判据 13/14/15 头注释与 `MECHANICS_IMPLEMENTATION.md` §3.05（规则 8：手册不复述代码）。**样本口径（2026-09-13 用户定）**：`invincibleTime` **只表示真无敌**（转阶段动画），**不含秽盾**——[秽盾] 期间 boss **可被攻击**（nanoka #2000002）⇒ 属**伤害乘区/失衡通道**、非时间扣除；`core/effectiveTime.ts`。
+    · **⑥ 第五类＝渲染侧静默（2026-09-14 新增判据 16「scoped 样式可达性」）**：抽组件把 DOM 搬进子组件、规则留在页面 `<style scoped>`
+      ⇒ 选择器带的是**页面的** `data-v-*`、组件元素只带自己的 ⇒ **规则静默失配**（编译过 / 2295 例测试全绿 / ui-check 也 PASS，症状只是少一条线）。
+      实测 3 条真回归与**唯一合法修法**（跨块共享类进 `styles/chart-blocks.css`，各块 `<style scoped src>` 载入 ⇒ 特异性不变、源码一份；复制两份必漂：`.dd-caption` 已漂 11 vs 11.5px）在判据 16 头注释 + `scopedStyleReach.test.ts`（含两条反向闸门：注释里的 `<style scoped src>` 字样、嵌套 `<template #slot>` 截断）。
 
 39. **「基线绿」不等于「改动生效」：数据订正类改动必须反向 A/B 证伪（2026-09-12 两条实测）**：
     **症状**：改了 catalog 数值，`timeGolden` 全绿零 delta → 极易被读成「改动没生效 / 漏改了」。
@@ -837,8 +838,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     · 修复：`node scripts/patch-level60-ascension.mjs [--write]`（dry-run 默认；只动审计判定的字段）
     · 防复发：`import-nanoka-beta-agent.mjs` 已改为**从规则表取求值器**（`ruleOf('critRate')`），
       下次重导不会再漏；改口径只需改 `lib/level60-rules.mjs` 一处。
-    **容差纪律**：对照组（如 atkBase）可设小容差（0.1）吸收历史舍入噪声，但**绝不能调到会吞掉真错误的量级**
-    （本例真错误 +5.5 远超容差，仍被抓出）。
+    **容差纪律**：对照组（如 atkBase）可设小容差（0.1）吸收历史舍入噪声，但**绝不能调到会吞掉真错误的量级**（本例真错误 +5.5 远超容差，仍被抓出）。
     **影响量级参考（供预判）**：critRate +14.4 的伤害涨幅 = `1+r·d` 模型下 **7%（critDmg 50%）～26%（critDmg 200%）**
     —— 暴伤越高收益越大；**且会经 `timeWeightAllocation` 按伤害边际微调平A权重**，
     故时间账可能出现 0.001–0.01s 的抖动（这是可解释传导，不是回归）。
