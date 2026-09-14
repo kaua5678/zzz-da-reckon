@@ -60,3 +60,37 @@ export function bossCellTitle(p: PeriodAxisNode | undefined): string {
   if (p.criticalBosses.length > 0) parts.push(`危局·困难：${p.criticalBosses.map(b => b.bossName).join('/')}`)
   return parts.join('\n') || '当期无排期数据'
 }
+
+/**
+ * Chart 7 汇总表行（2026-09-14 随组件抽取从 `SlotCompareChart.vue` 出函，逐字搬迁）。
+ *
+ * 口径（用户可见，别顺手改）：
+ * - 相对差值 = (A − B) / B × 100，**保留 1 位小数**（四舍五入到千分位再 /10）；B 为 0 时给 0（不除零）。
+ * - 三态胜负：diff > 0 → A 强 / diff < 0 → B 强 / diff == 0 → 持平（`tie` 与两侧都不同色）。
+ * - 文案用**对比角色名**（A/B 两名角色），不是队名。
+ * ⚠ 搬迁时把 `agentName` 改为入参 `nameA`/`nameB`（原函数闭包页面的 `agentName`），判定与文案逐字不变。
+ */
+export interface SlotCompareTableRowInput {
+  damageA: number
+  damageB: number
+}
+
+export function slotCompareTableRows<T extends SlotCompareTableRowInput>(
+  points: ReadonlyArray<T>,
+  deps: { nameA: string; nameB: string },
+): Array<T & { diff: number; winner: 'A' | 'B' | 'tie'; conclusion: string }> {
+  return points.map(p => {
+    const diff = p.damageB > 0 ? Math.round(((p.damageA - p.damageB) / p.damageB) * 1000) / 10 : 0
+    const winner = diff > 0 ? 'A' as const : diff < 0 ? 'B' as const : 'tie' as const
+    return {
+      ...p,
+      diff,
+      winner,
+      conclusion: winner === 'A'
+        ? `${deps.nameA} 更强`
+        : winner === 'B'
+          ? `${deps.nameB} 更强`
+          : '持平',
+    }
+  })
+}

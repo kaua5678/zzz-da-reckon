@@ -1,0 +1,52 @@
+/* Chart 7 同槽位角色对比 · 组件内样式（2026-09-14 从 views/timeCharts/TimeChartsPage.css 整条搬迁）。
+   经 <style scoped src> 载入 ⇒ 带组件自己的 scope id、特异性不变（搬运纪律见 styles/chart-blocks.css 文件头：
+   必须整条规则搬，逗号选择器组要整体处理——本块无逗号组）。 */
+/* ========== Chart 7：同槽位角色对比 ========== */
+.sc-legend {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--fg-3);
+  margin-bottom: 4px;
+}
+.sc-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+/* 可点图例（Chart 7 的 A/B 两队）：点一下显隐该线 */
+.sc-legend-click {
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--radius-md);
+  padding: 1px 5px;
+}
+.sc-legend-click:hover {
+  background: var(--fill-hover);
+}
+.sc-legend-click.off {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+.sc-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.sc-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.sc-line-a {
+  stroke: var(--c-info);
+}
+.sc-line-b {
+  stroke: var(--c-warning);
+}
+.sc-table {
+  margin-top: 10px;
+}

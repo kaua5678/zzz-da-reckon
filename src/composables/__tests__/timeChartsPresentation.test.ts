@@ -14,6 +14,7 @@ import {
   bossCellText,
   bossCellTitle,
   colorOf,
+  slotCompareTableRows,
   swapKindLabel,
 } from '@/composables/charts/agentPresentation'
 import {
@@ -145,5 +146,45 @@ describe('hoverCardRows：悬浮信息 → 行（行序与强调类是契约）'
       totalGold: 6, goldLabel: '6 金', filmBank: 12000, filmSpent: 3000, filmInvestedTotal: 9000,
     })
     expect(rows[3].text).toBe('菲林：存 12000 · 本期投 3000 · 累计 9000')
+  })
+})
+
+describe('agentPresentation：Chart 7 汇总表行（2026-09-14 随组件抽取出函，锁三态与文案）', () => {
+  const pt = (damageA: number, damageB: number, extra: Record<string, string | number> = {}) =>
+    Object.assign({ mainId: 'm', supportId: 's', nodeId: '1.0', nodeLabel: '1.0', damageA, damageB }, extra)
+  const deps = { nameA: '琉音', nameB: '诺姆·霍洛维尔' }
+
+  it('diff = (A−B)/B×100，保留 1 位小数', () => {
+    expect(slotCompareTableRows([pt(110, 100)], deps)[0].diff).toBe(10)
+    expect(slotCompareTableRows([pt(1096.64, 1292.71)], deps)[0].diff).toBe(-15.2)
+    expect(slotCompareTableRows([pt(100, 300)], deps)[0].diff).toBe(-66.7)
+  })
+
+  it('三态：A 强 / B 强 / 持平，文案用对比角色名', () => {
+    const [a] = slotCompareTableRows([pt(200, 100)], deps)
+    expect(a.winner).toBe('A')
+    expect(a.conclusion).toBe('琉音 更强')
+    const [b] = slotCompareTableRows([pt(100, 200)], deps)
+    expect(b.winner).toBe('B')
+    expect(b.conclusion).toBe('诺姆·霍洛维尔 更强')
+    const [t] = slotCompareTableRows([pt(100, 100)], deps)
+    expect(t.winner).toBe('tie')
+    expect(t.conclusion).toBe('持平')
+  })
+
+  it('B 伤害为 0 时不除零（diff=0 → 持平）', () => {
+    const [r] = slotCompareTableRows([pt(500, 0)], deps)
+    expect(r.diff).toBe(0)
+    expect(r.winner).toBe('tie')
+  })
+
+  it('逐点保留原字段（表格其余列靠它们渲染）', () => {
+    const [r] = slotCompareTableRows([pt(1, 2, { supportId: '1481', totalGoldA: 8 })], deps)
+    expect(r.supportId).toBe('1481')
+    expect(r.totalGoldA).toBe(8)
+  })
+
+  it('空输入 → 空表（未点「对比」时不渲染汇总行）', () => {
+    expect(slotCompareTableRows([], deps)).toEqual([])
   })
 })
