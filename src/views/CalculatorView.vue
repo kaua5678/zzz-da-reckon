@@ -65,6 +65,7 @@ const pageMap: Record<string, any> = {
   stunAxis: lazyPage(() => import('@/views/StunAxisPage.vue')),
   teamCompare: lazyPage(() => import('@/views/TeamComparePage.vue')),
   breakerCompare: lazyPage(() => import('@/views/PositionComparePage.vue')),
+  freeCompare: lazyPage(() => import('@/views/FreeComparePage.vue')),
   timeline: lazyPage(() => import('@/views/TimeChartsPage.vue')),
   debug: lazyPage(() => import('@/views/DebugPage.vue')),
   wengineFields: lazyPage(() => import('@/views/WEngineFieldPage.vue')),

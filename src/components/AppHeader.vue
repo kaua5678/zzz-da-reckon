@@ -47,6 +47,7 @@
         >
           <n-tab-pane name="teamCompare" tab="队伍对比" />
           <n-tab-pane name="breakerCompare" tab="位置对比" />
+          <n-tab-pane name="freeCompare" tab="自由对比" />
           <n-tab-pane name="runArchive" tab="实战对比" />
         </n-tabs>
       </div>
@@ -110,7 +111,7 @@ const themeStore = useThemeStore()
 
 const setupTabs = ['team', 'attribute', 'resource']
 const analyzeTabs = ['result', 'resourceUtilization', 'stunAxis', 'timeline']
-const compareTabs = ['teamCompare', 'breakerCompare', 'runArchive']
+const compareTabs = ['teamCompare', 'breakerCompare', 'freeCompare', 'runArchive']
 const planTabs = ['charIncrement', 'bossHp']
 const developerTabs = ['debug', 'wengineFields', 'logic', 'mechanic', 'multiplierCoeff']
 const sectionValue = (tabs: string[]) =>
