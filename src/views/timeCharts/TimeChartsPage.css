@@ -1,54 +1,15 @@
+/* 共享控件基元（.chart-controls / .ctl-field / .ctl-label / .ctl-check / .ctl-hint /
+   .chart-progress / .progress-text / .ctl-note）已收敛到 src/styles/charts.css（全局表，2026-09-14）。
+   本文件只保留本页独占的样式。
+   ⚠ 注释里别用带星号的通配写法（星号加斜杠会提前闭合注释，本轮实测踩到）。 */
 .time-charts-page {
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.chart-controls {
-  display: flex;
-  gap: 14px;
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
-.ctl-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.ctl-label {
-  font-size: 11px;
-  color: var(--wa-550);
-}
-.ctl-check {
-  font-size: 11px;
-  color: var(--wa-650);
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding-bottom: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.ctl-hint {
-  flex: 1 1 280px;
-  min-width: 280px;
-}
-.chart-progress {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
 .chart-progress .n-progress {
   flex: 1;
-}
-.progress-text {
-  font-size: 11px;
-  color: var(--wa-600);
-  white-space: nowrap;
-  max-width: 60%;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .chart-subtitle {
   font-size: 12px;
@@ -284,12 +245,6 @@
   padding: 3px 0 6px;
   white-space: nowrap;
 }
-.ctl-note {
-  font-size: 10.5px;
-  color: var(--wa-450);
-  max-width: 220px;
-  line-height: 1.5;
-}
 .chart3-teams-cell {
   display: flex;
   flex-direction: column;
@@ -328,28 +283,6 @@
 }
 
 /* ========== Boss 数据条 ========== */
-.boss-data-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  align-items: center;
-  margin-top: 10px;
-  padding: 8px 12px;
-  border: 1px solid var(--wa-70);
-  border-radius: 8px;
-  background: var(--wa-20);
-}
-.boss-data-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: #f6ad55;
-  white-space: nowrap;
-}
-.boss-data-item {
-  font-size: 11.5px;
-  color: var(--wa-720);
-  white-space: nowrap;
-}
 
 /* ========== Chart 4：菲林经济模拟 ========== */
 .sim-controls {

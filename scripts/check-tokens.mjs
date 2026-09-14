@@ -495,7 +495,10 @@ export const HARDCODED_BASELINE = {
   // 模板里测试服阴影的 rgba(246,173,85,.06) 与 .dd-label 的 paint-order 描边 rgba(10,10,14,.85)。
   // 页面侧同轮下降 33 → 32（删掉了随组件走的 4 条 dd-* 规则里的字面色值）。
   'src/components/charts/DirectDamageChart.vue': 2,
-  'src/views/TimeChartsPage.vue': 32,
+  // 2026-09-14 控制面板抽组件（components/charts/TimeChartsControls.vue）：1 处字面色值是**逐字搬迁**
+  // —— .boss-data-title 的 #f6ad55（原在 TimeChartsPage.css）。页面侧同轮 32 → 31。
+  'src/components/charts/TimeChartsControls.vue': 1,
+  'src/views/TimeChartsPage.vue': 31,
   'src/views/WEngineFieldPage.vue': 3,
 }
 
@@ -523,8 +526,13 @@ export const FONT_SIZE_BASELINE = {
   'src/views/StunAxisPage.vue': 1,
   // 同上：11.5px 随样式搬入 ChartHoverCard（原就在页面的离群基线里，本次仅文件归属变化）
   'src/components/ChartHoverCard.vue': 1,
-  'src/views/TimeChartsPage.vue': 7,
+  'src/views/TimeChartsPage.vue': 5,
   'src/components/charts/DirectDamageChart.vue': 1,   // .dd-caption 的 11.5px（搬迁前就在页面的离群基线里）
+  'src/components/charts/TimeChartsControls.vue': 1,   // .boss-data-item 的 11.5px（原在页面的离群基线里）
+  // 2026-09-14 第二轮：共享控件基元（.ctl-*/.chart-progress/.progress-text/.ctl-note）收敛到
+  // src/styles/charts.css ⇒ `.ctl-note` 的 10.5px 从页面基线**平移**到本表（页面 7→6、本表 0→1），
+  // 合计不变。是归属变化不是新增债务。
+  'src/styles/charts.css': 1,
 }
 
 /**

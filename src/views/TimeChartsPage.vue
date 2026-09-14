@@ -1,100 +1,25 @@
 <template>
   <div class="time-charts-page">
     <!-- ============ 控制面板 ============ -->
-    <n-card size="small" :bordered="true">
-      <div class="chart-controls">
-        <div class="ctl-field">
-          <span class="ctl-label">主C角色（S级）</span>
-          <n-select
-            v-model:value="mainAgentId"
-            :options="mainAgentOptions"
-            size="small"
-            filterable
-            style="width: 200px"
-          />
-        </div>
-        <div class="ctl-field">
-          <span class="ctl-label">Boss</span>
-          <n-select
-            v-model:value="selectedBossId"
-            :options="bossOptions"
-            size="small"
-            filterable
-            style="width: 240px"
-            placeholder="选择 Boss（必选，默认最新危局）"
-          />
-        </div>
-        <div class="ctl-field">
-          <span class="ctl-label">限定金预算</span>
-          <n-input-number
-            v-model:value="budget"
-            :min="0"
-            :max="24"
-            size="small"
-            style="width: 110px"
-          />
-        </div>
-        <div class="ctl-field">
-          <span class="ctl-label">候选队友（策展池）</span>
-          <n-select
-            v-model:value="candidatePool"
-            :options="candidateOptions"
-            multiple
-            size="small"
-            filterable
-            style="width: 340px"
-            placeholder="至少 2 名；默认 青衣/潘引壶/橘福福/卢西娅/琉音"
-          />
-        </div>
-        <div class="ctl-field">
-          <label class="ctl-check">
-            <input v-model="autoBuild" type="checkbox" />
-            自动配装（推荐+词条优化，慢）
-          </label>
-          <label class="ctl-check">
-            <input v-model="optimalGold" type="checkbox" />
-            最优加金分配（逐金贪婪，慢）
-          </label>
-        </div>
-        <div class="ctl-field">
-          <n-button type="primary" size="small" :loading="computing" @click="runCompute">
-            {{ result ? '重新计算' : '计算' }}
-          </n-button>
-        </div>
-        <div class="ctl-field ctl-hint">
-          <span class="ctl-label">说明：只枚举候选池内组合（C(n,2)，每队只算一次——同队跨期面对同一 Boss 数值不变，
-            当期 Buff 不参与），默认轻量速算 = 兜底配装 + 主C优先确定性加金；
-            勾选「自动配装 / 最优加金」切换全量档（慢）。横轴 = 所选 Boss 登场的危局期数（期号如「45」代表 69045；一版约 3 期、每期 ~14 天，只看普通模式），从其首次登场起算到最新——只对抗这一个 Boss 看队伍成长；角色期数中途实装也算该期可用。</span>
-        </div>
-      </div>
-
-      <!-- Boss 数据（所选 Boss 最新危局期的数值；换 Boss 即切换） -->
-      <div v-if="selectedBoss && selectedPhase" class="boss-data-strip">
-        <span class="boss-data-title">Boss 数据 · {{ selectedBoss.name }}</span>
-        <span class="boss-data-item">期 {{ selectedPhase.label }}</span>
-        <span class="boss-data-item">血量 {{ compact(selectedPhase.hp) }}</span>
-        <span class="boss-data-item">失衡值 {{ fmt(selectedPhase.stunValue, 0) }}</span>
-        <span class="boss-data-item">防御 {{ selectedPhase.defense }}</span>
-        <span class="boss-data-item">Lv{{ selectedPhase.level }}</span>
-        <span class="boss-data-item">异常系数 ×{{ selectedPhase.bossAnomalyCoeff }}</span>
-        <span class="boss-data-item">失衡倍率 ×{{ selectedBoss.monster.stunVuln }}</span>
-        <span class="boss-data-item">失衡时间 {{ fmt(selectedBoss.monster.stunTime, 1) }}s</span>
-        <span class="boss-data-item">战斗 {{ selectedBoss.defaults.battleTime }}s</span>
-        <span class="boss-data-item">弱点 {{ selectedPhase.weakness.join('/') || '—' }}</span>
-        <span class="boss-data-item">抗性 {{ selectedPhase.resistance.join('/') || '—' }}</span>
-      </div>
-
-      <!-- 进度条 -->
-      <div v-if="computing || progress" class="chart-progress">
-        <n-progress
-          type="line"
-          :percentage="Math.round((progress?.pct ?? 0) * 100)"
-          :show-indicator="false"
-          :height="6"
-        />
-        <span class="progress-text">{{ progress?.text ?? '' }}</span>
-      </div>
-    </n-card>
+    <!-- 整块已抽组件 components/charts/TimeChartsControls.vue（2026-09-14 第三片）。
+         共享控件基元在 src/styles/charts.css；boss-data-* 随组件走。 -->
+    <TimeChartsControls
+      v-model:main-agent-id="mainAgentId"
+      v-model:selected-boss-id="selectedBossId"
+      v-model:budget="budget"
+      v-model:candidate-pool="candidatePool"
+      v-model:auto-build="autoBuild"
+      v-model:optimal-gold="optimalGold"
+      :main-agent-options="mainAgentOptions"
+      :boss-options="bossOptions"
+      :candidate-options="candidateOptions"
+      :computing="computing"
+      :progress="progress"
+      :result="result"
+      :selected-boss="selectedBoss"
+      :selected-phase="selectedPhase"
+      @run="runCompute"
+    />
 
     <!-- ============ Chart 1：队伍强度随版本演变 ============ -->
     <n-card v-if="result" size="small" :bordered="true" title="队伍强度随版本演变">
@@ -1222,6 +1147,7 @@ import { hoverCardPosition, readSvgPointer } from '@/composables/svgPointer'
 import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
 import ChartHoverCard, { type HoverCardRow } from '@/components/ChartHoverCard.vue'
 import DirectDamageChart from '@/components/charts/DirectDamageChart.vue'
+import TimeChartsControls from '@/components/charts/TimeChartsControls.vue'
 import {
   buildFilmSimHoverInfo,
   buildSlotCompareHoverInfo,

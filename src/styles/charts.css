@@ -67,3 +67,84 @@
   stroke-width: 0.5;
   cursor: pointer;
 }
+
+/* ============================================================
+ * 控制面板基元（2026-09-14 第二轮收敛）
+ *
+ * 为什么扩到这些类：T11 报告曾把「控制面板抽子组件（模板 3–97）」判为「被 scoped 挡住」——
+ * 理由是 `ctl-field`/`ctl-label`/`ctl-check`/`ctl-hint` **不是本块独占**（Chart 2/3/4/6 也在用），
+ * 抽走后「要么留在页面（scoped 不作用到子组件 ⇒ 掉样式）要么全局化（跨页观感风险）」。
+ * 那个二难的前提是「全局化必然改观感」——**本文件的存在使该前提不成立**：
+ * 全局表里放的是**各页完全同名同值**的类，唯一一处值不同的（`ImpactChart.vue` 的
+ * `.ctl-label` 12px/--wa-500）靠 **scoped 特异性更高**（`.x[data-v-…]` > `.x`）自然胜出，
+ * 不受本文件影响。故这里是**去重**，不是跨页改观感。
+ *
+ * 只收「至少两处定义且逐字相同」的类；`boss-data-*` 是控制面板独占，随组件走。
+ * 各页原有的同名 scoped 定义**留着不删也没关系**（同值、特异性更高），
+ * 但新代码请直接用本文件这份。
+ */
+
+/* 控件行容器 */
+.chart-controls {
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+/* 单个控件格（标签在上、控件在下） */
+.ctl-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 控件标签 */
+.ctl-label {
+  font-size: 11px;
+  color: var(--wa-550);
+}
+
+/* 复选行（label 包 input） */
+.ctl-check {
+  font-size: 11px;
+  color: var(--wa-650);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-bottom: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* 占满剩余宽度的说明格 */
+.ctl-hint {
+  flex: 1 1 280px;
+  min-width: 280px;
+}
+
+/* 跑批进度条行 */
+.chart-progress {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 进度文字（超长省略） */
+.progress-text {
+  font-size: 11px;
+  color: var(--wa-600);
+  white-space: nowrap;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 小号说明文字（控件格里） */
+.ctl-note {
+  font-size: 10.5px;
+  color: var(--wa-450);
+  max-width: 220px;
+  line-height: 1.5;
+}
