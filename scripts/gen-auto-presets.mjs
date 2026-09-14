@@ -13,6 +13,8 @@
  *   职业直接当队名，于是 耀嘉音/柚叶 带队的实战队塞出了「支援队」这类假分类）。
  *   goldSteps = []（默认 01 基线——用户「默认配置全 01」；
  *   实战命座/精炼记入 note 出处）；interactions = parry8/dodge4（难度 0，自动队供参考）。
+ * - 同名队去重：**成员集合相同（顺序无关）= 同一队**，只留 1 条（保留判据见去重段）；
+ *   本脚本会清理 `auto-*` 孤儿文件（上一轮生成但本轮不再产出的），手编预设不受影响。
  * - 同一口径的回填/校验：`node scripts/sync-preset-categories.mjs`（手编预设 subgroup
  *   漏填曾让「命破队·火」只出 1 条，般岳其余配队掉进「未分属性」看不见）。
  * - 常驻 S 名单与发布节点：↓ 两处键级常量与 TS 侧同源（改动需同步）：
@@ -20,10 +22,10 @@
  *
  * 用法：node scripts/gen-auto-presets.mjs
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { classifyPreset } from './lib/presetCategories.mjs'
+import { classifyPreset, resolveCarryAgent } from './lib/presetCategories.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const archive = JSON.parse(readFileSync(join(root, 'public/static/run-archive.json'), 'utf8'))
@@ -64,12 +66,28 @@ for (const { maxScore, runs } of byRoom.values()) {
   for (const r of top) if (teamGold(r.team) <= minGold + 2) frontier.push(r)
 }
 
-// 按队伍组合去重（同 3 角色 = 1 条；保留金数最低、平手取 score 高者）
+// 按队伍组合去重（同 3 角色 = 1 条，**与槽位顺序无关**）。
+// 修复 2026-09-13：旧签名 `team.map(agentId).join('+')` 顺序敏感——同一 3 人换位即不同签名，
+// 曾产出 11 组重复（14 条冗余，如 auto-1091-1031-1511 与 auto-1091-1511-1031 实为同一队）。
+// 排序键 = 成员 id 升序拼接；保留判据：金数低 > score 高 > 槽位 0 是输出核心（展示口径
+// 本库约定 0=主C）> run id 字典序（纯确定性兜底）。
+// @fact engine:preset/队伍身份 口径: 成员集合顺序无关——同 3 人换槽位 = 同队只留 1 条；保留判据 金数低 > score 高 > 槽位 0 是输出核心 > run id 字典序 |据 用户报障@2026-09-13 |验 src/data/__tests__/teamPresets.test.ts「auto-* 预设按成员集合去重」 |锚 scripts/gen-auto-presets.mjs#better |信 高
+// ⟳复核: 若放宽到 4 人队 / 允许同队多形态共存（如按轴分家）时，确认「成员集合 = 队伍身份」这条去重口径仍成立，并同步保留判据 | 到期 2026-12-31
 const byTeam = new Map()
+const better = (r, cur) => {
+  const g = teamGold(r.team) - teamGold(cur.team)
+  if (g !== 0) return g < 0
+  const s = (r.score ?? 0) - (cur.score ?? 0)
+  if (s !== 0) return s > 0
+  const carryFirst = (x) => (resolveCarryAgent(x.team.map(m => String(m.agentId)), agentOf) === String(x.team[0].agentId) ? 0 : 1)
+  const c = carryFirst(r) - carryFirst(cur)
+  if (c !== 0) return c < 0
+  return String(r.id) < String(cur.id)
+}
 for (const r of frontier) {
-  const sig = r.team.map(m => m.agentId).join('+')
+  const sig = [...r.team.map(m => String(m.agentId))].sort().join('+')
   const cur = byTeam.get(sig)
-  if (!cur || teamGold(r.team) < teamGold(cur.team) || (teamGold(r.team) === teamGold(cur.team) && (r.score ?? 0) > (cur.score ?? 0))) byTeam.set(sig, r)
+  if (!cur || better(r, cur)) byTeam.set(sig, r)
 }
 
 const kebab = (s) => s.replace(/[^a-z0-9]+/gi, '-').toLowerCase().replace(/^-|-$/g, '')
@@ -102,6 +120,16 @@ const outDir = join(root, 'src/data/teamPresets')
 for (const p of presets) {
   writeFileSync(join(outDir, `${p.id}.json`), JSON.stringify(p, null, 2) + '\n')
 }
+// 孤儿清理：auto-* 只由本脚本产出（用户 2026-09-11 裁决「同名队 auto- 为唯一来源」），
+// 本轮没再生成的 auto-* 文件 = 上一轮遗留（重复队被去重 / 归档数据变动），删掉防止复活。
+const keepIds = new Set(presets.map(p => `${p.id}.json`))
+let removed = 0
+for (const f of readdirSync(outDir)) {
+  if (!f.startsWith('auto-') || !f.endsWith('.json') || keepIds.has(f)) continue
+  unlinkSync(join(outDir, f))
+  removed++
+}
+if (removed) console.log(`清理孤儿 auto-* 文件 ${removed} 条`)
 const groupCount = {}
 for (const p of presets) groupCount[`${p.group} · ${p.subgroup}`] = (groupCount[`${p.group} · ${p.subgroup}`] ?? 0) + 1
 console.log(`前沿 ${frontier.length} 队 → 去重后 ${presets.length} 条自动预设`)
