@@ -131,7 +131,10 @@ export function calcCrossAgentEnergy(
   // 操作时间 = 前台时间 − 合轴时间（后台与自动追加攻击不计）。
   // 正兵槽位由席德模块 applyTeamConfig（build）写入 cfg.xideVanguardSlot（初始攻击最高的强攻队友）。
   let xideVanguardEnergy = 0
-  const xideIdx = configs.findIndex(c => c.agentId === '1461')
+  // 2026-09-15 core 棘轮批次2：原 `configs.findIndex(c => c.agentId === '1461')` 改为**按字段找槽**
+  // ——`xideVanguardSlot` 的唯一写入方 = `xide.ts` 的 applyTeamConfig（build 阶段，早于本函数）
+  // ⇒ 该字段存在即蕴含「是席德的 cfg」（判据同 T6；规则 6：引擎按能力/字段查询，不按角色名查询）。
+  const xideIdx = configs.findIndex(c => (c as unknown as Record<string, unknown>).xideVanguardSlot !== undefined)
   if (xideIdx >= 0) {
     const xideCfg = configs[xideIdx]
     const vanguardSlot = Math.floor(num((xideCfg as any).xideVanguardSlot))

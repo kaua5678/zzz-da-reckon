@@ -123,7 +123,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'core agentId 分支',
     file: 'src/core/resource.ts + core/resource/helpers.ts',
-    frozen: 12,  // 2026-09-11 评审冻结 36（resource.ts 16 + helpers.ts 20）→ 26（2026-09-13 T6 首次真清偿 −10）→ 18（2026-09-13 crossAgentSupply 收口 −8）→ **12**（2026-09-15 批次2 −4：helpers.ts 里 4 处 yidhari 守卫化简——1 处 `!==` 短路左操作数（yidhariRefund）+ 2 处 `if (cfg.agentId !== '1051')`（yidhariBurn×2）+ 1 处 `agentId === '1051' && 字段!==undefined`；判据 = 相关字段唯一写入方 = yidhari.ts 模块且无默认值 ⇒ 字段判据完全覆盖角色判据，timeGolden 0 delta，反向验证破坏该字段消费 ⇒ preset:yidhari-qingyi-lucia 精确红）。详见 CORE_AGENT_BRANCH_BASELINE 头注释的沿革
+    frozen: 11,  // 2026-09-11 评审冻结 36（resource.ts 16 + helpers.ts 20）→ 26（2026-09-13 T6 首次真清偿 −10）→ 18（2026-09-13 crossAgentSupply 收口 −8）→ **12**（2026-09-15 批次2 −4：helpers.ts 里 4 处 yidhari 守卫化简——1 处 `!==` 短路左操作数（yidhariRefund）+ 2 处 `if (cfg.agentId !== '1051')`（yidhariBurn×2）+ 1 处 `agentId === '1051' && 字段!==undefined`；判据 = 相关字段唯一写入方 = yidhari.ts 模块且无默认值 ⇒ 字段判据完全覆盖角色判据，timeGolden 0 delta，反向验证破坏该字段消费 ⇒ preset:yidhari-qingyi-lucia 精确红）。详见 CORE_AGENT_BRANCH_BASELINE 头注释的沿革
     target: 0,
     due: '2027-03-31',
     plan: '剩 18 处：① 先把 convergence.ts:957 的 yidhariInStunExCount / :1074 的 billyAxisActive 写入方挪进对应角色模块，再删 helpers.ts:1271 与 resource.ts:595 的守卫（现不冗余）；② `!==` 短路形态逐处论证后化简；③ 跨角色查找（findIndex 找队友槽位）与纯 agentId 写入（billyFinalizeChain / yidhariFinalizeEx 由引擎写角色字段）属真特判，需走 applyTeamConfig / convergence 落点（评审 #10）；④ 同批新增判据 12（core role-import 棘轮 7 处）——它是本条的**语义补强面**：agentId 字面量清零 ≠ 角色无关，引擎静态 import 角色模块同样要清',
@@ -561,8 +561,20 @@ export const CORE_AGENT_BRANCH_FILES = ['src/core/resource.ts', 'src/core/resour
  *    `billyFinalizeChain` 的初值 `false` 由本文件 :965 的 `if (cfg.agentId === '1531')` 循环写入
  *    （非 undefined = 已初始化），故 `billyFinalizeChain === false` 会把非比利 cfg 一并纳入重推。
  *    该类属「按角色复位旗标」的跨 cfg 循环，不在 T6 冗余判据范围内。
+ *  · 12 → 11（2026-09-15 同批）：`helpers.ts` 的席德正兵回能
+ *    `configs.findIndex(c => c.agentId === '1461')` → 按**字段**找槽
+ *    `findIndex(c => c.xideVanguardSlot !== undefined)`（该字段唯一写入方 = `xide.ts` 的
+ *    applyTeamConfig，build 阶段早于本函数 ⇒ 字段存在即蕴含是席德的 cfg）。
+ *    这是 `crossAgentSupply` 同族的「引擎按能力/字段查询」落点，0 delta。
+ *  · **剩余 11 处的性质**（下一批需先扩契约，别再逐处硬删）：
+ *    - `findIndex(c => c.agentId === '1211'/'1131'/'1151'/'1451'/'1051')` 共 6 处 = 跨槽位
+ *      「找**队友**槽位」查询（丽娜/苍角/露西终结邻位回能、卢西娅帷幕、伊德海莉烧血）。
+ *      落点 = 实现 `types.ts` 已预告的 `'neighbor-ult-energy'` / `'curtain'` 等
+ *      `crossAgentSupply` kind（模块声明能力、引擎按类别查槽位），**属新功能不是删守卫**。
+ *    - `helpers.ts:1283` 的般岳强特次数分支（调 `computeBanyueCycleFromCfg`）与
+ *      `resource.ts:523/962/963` 的比利终局旗标 = 引擎层真特判，需先有派发落点。
  */
-export const CORE_AGENT_BRANCH_BASELINE = 12
+export const CORE_AGENT_BRANCH_BASELINE = 11
 
 /** 跨多个文件计 agentId 分支总行数（与 countAgentIdBranchLines 同口径） */
 export function countAgentIdBranchLinesInFiles(files, root = ROOT) {
