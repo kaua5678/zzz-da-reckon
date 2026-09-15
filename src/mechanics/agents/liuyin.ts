@@ -77,36 +77,52 @@ export function resolveUltimateTargetSlot(ownSlot: number, teamLength: number, s
  * 抱拳（消耗客诉的送客长按）命中后检查好评是否 ≥90，达到才能打开大招选择窗口。
  * - 60 转大：目标队友有连携窗口（可连携的敌人）时，只消耗 60 好评把这次连携升级为终结技（连携 -1、终结 +1）。
  * - 90 转大：没有连携窗口时，直接消耗 90 好评打出终结技（终结 +1）。
- * 每次转大消耗一次开窗机会（floor(好评总量/90) 为硬上限）。
+ * **开窗次数 = 阈值结转口径**（原文逐字：「当[好评]**满90点**且琉音…打开[连携技]窗口时…消耗60点」/
+ * 「当[好评]**满90点**且…命中未打开[连携技]窗口的敌人时，将消耗90点」）——
+ * 每次开窗都要求**当刻**好评 ≥90，扣 60（有连携窗口）或 90（无窗口），剩余好评**结转**到下一次开窗。
+ * ⇒ 计数 = 贪心推进：`while (好评 ≥ 90) { 有窗口扣60否则扣90 }`。
+ *
+ * ⚠ 2026-09-15 修（原为 `floor(好评总量/90)` 的**预算上限**模型）：两者在 60 档上不等价——
+ * 好评 390 时旧模型 4 次、结转口径 **6 次**（= 90 + 60×5，正是用户需求链③「4喧响+6好评转大，
+ * 好评≥390=90+60×5 阈值结转口径」的算式）。旧模型把「预算」当成了「次数」，
+ * 在好评落在 [90+60k, 90(k+1)) 区间时少算。**无连携窗口时两者一致**（全走 90 ⇒ floor(G/90)），
+ * 故差异只出现在有连携窗口的队。
  * 60 转大默认 = 连携次数（每次连携 1 次，连携本身保留），上限每次失衡 2 次（用户口径 2026-09），可调。
  * 返回的 hug60 即"被替换掉的连携数"，也是影画6 余音的触发次数来源之一。
  */
 // @fact agent:1481/60转大上限 口径: 60 转大默认=连携次数(每次连携1次、连携保留)，上限每次失衡 2 次，liuyin.hug60Count 可调总转大数 | 据 用户@2026-09 | 验 src/mechanics/__tests__/liuyin.test.ts | 锚 src/mechanics/agents/liuyin.ts#computeLiuyinHugCounts | 信 确认
+// @fact agent:1481/开窗次数 口径: 阈值结转——每次开窗要求当刻好评≥90，有连携窗口扣60/无窗口扣90，余额结转；故计数为贪心推进（好评390+连携窗口⇒6窗=90+60×5），**不是** floor(总量/90) 的预算上限模型（后者在好评落在 [90+60k,90(k+1)) 区间时少算；无连携窗口时两者一致） | 据 原文核心被动「当[好评]满90点且…」+ 用户需求链③@2026-09-13 | 验 src/mechanics/__tests__/liuyin.test.ts | 锚 src/mechanics/agents/liuyin.ts#computeLiuyinHugCounts | 信 确认
+// ⟳复核: 若琉音原文改版（好评消耗值 60/90 或开窗条件变动）则复核本口径；另「连携/破阵按实际失衡次数」改造（坑19未落地·有裁决A）开工时一并复核 | 到期 2026-12-31
 export function computeLiuyinHugCounts(
   goodReviewTotal: number,
   stunCount: number,
   hug60Setting: number,
   targetChainCountTotal = Number.POSITIVE_INFINITY,
 ) {
-  const windows = Math.floor(Math.max(0, goodReviewTotal) / HUG90_COST)
+  const G = Math.max(0, goodReviewTotal)
   // 60 转大：默认每次连携 1 次（连携本身保留），上限每次失衡 2 次（用户口径 2026-09）。
   // 消耗失衡赠送的连携窗口（有轴时由轴内连携块决定；无轴兜底 = 每失衡 1 次）。
   const auto60 = Number.isFinite(targetChainCountTotal)
     ? Math.max(0, Math.floor(targetChainCountTotal))
     : Math.max(0, Math.floor(stunCount))
-  const max60 = 2 * Math.max(0, Math.floor(stunCount))
-  const hug60 = Math.min(
+  // 本次可用的 60 档次数上限（三重夹紧：设置值 / 连携窗口数 / 每失衡 2 次）
+  const cap60 = Math.min(
     hug60Setting >= 0 ? Math.floor(hug60Setting) : auto60,
-    windows,
     Math.max(0, Math.floor(targetChainCountTotal)),
-    max60,
+    2 * Math.max(0, Math.floor(stunCount)),
   )
-  const hug90 = Math.max(0, windows - hug60)
-  const remainingGoodReview = Math.max(
-    0,
-    Math.max(0, goodReviewTotal) - hug60 * HUG60_COST - hug90 * HUG90_COST,
-  )
-  return { hug60, hug90, remainingGoodReview }
+  /**
+   * 阈值结转贪心：每次开窗要求**当刻** ≥90，优先用 60 档（有连携窗口 + 未超 cap60），
+   * 否则用 90 档。**预算安全**由循环条件保证（花 60 或 90 都 ≤ 当刻余额）。
+   */
+  let hug60 = 0
+  let hug90 = 0
+  let rest = G
+  while (rest >= HUG90_COST) {
+    if (hug60 < cap60) { rest -= HUG60_COST; hug60++ }
+    else { rest -= HUG90_COST; hug90++ }
+  }
+  return { hug60, hug90, remainingGoodReview: rest }
 }
 
 function cfgNum(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
@@ -152,7 +168,7 @@ export function computeLiuyinSource(input: LiuyinSourceInput): LiuyinMechanicSou
   const total = GOOD_REVIEW_INITIAL + gainTotal
 
   // 等效总量规则（用户确认）：
-  // - 转大次数 = floor(好评总量 / 90)（好评满 90 开窗即可抱拳转大；60/90 分配在 promoteFixpoint 按连携窗口拆）
+  // - 转大次数 = 阈值结转贪心（每次开窗当刻需满 90；60/90 分配在 promoteFixpoint 按连携窗口拆，见 computeLiuyinHugCounts）
   // - 抱拳次数（送客长按 1481009 执行）= 转大次数 + 琉音终结技次数
   //   （好评满90 → 抱拳转大；琉音终结技送 1 客诉 → 抱拳不转大，纯伤害）
   const promoteWindows = Math.floor(total / 90)
@@ -175,7 +191,7 @@ export function computeLiuyinSource(input: LiuyinSourceInput): LiuyinMechanicSou
     cinemaLevel,
     note:
       '好评：进场60，接战(整场战斗时长)每秒0.6、强特重击7.5（1命×1.16），整局口径不按120上限截断；' +
-      '等效规则：转大次数=floor(好评/90)，抱拳次数=转大次数+琉音终结技次数（终结技送客诉→抱拳不转大）。',
+      '等效规则：转大次数=阈值结转（每次开窗当刻需满90，扣60/90后余额结转），抱拳次数=转大次数+琉音终结技次数（终结技送客诉→抱拳不转大）。',
   }
 }
 
@@ -400,7 +416,7 @@ function buildLiuyinResourceSections({ result }: AgentResourceSectionsInput) {
       title: '琉音·抱拳（送客长按）',
       summary: `抱拳 ${fmt(source.farewellCount)} 次（转大 ${fmt(source.promoteWindows)} + 终结技 ${fmt(source.ownUltimateCount)}）`,
       rows: [
-        { label: '转大次数', value: `+${fmt(source.promoteWindows)}`, detail: 'floor(好评总量 / 90)，每次满90好评抱拳转大' },
+        { label: '转大次数', value: `+${fmt(source.promoteWindows)}`, detail: '阈值结转：每次开窗当刻需满90好评，扣60（有连携窗口）/90（无窗口）后余额结转' },
         { label: '终结技送客诉', value: `+${fmt(source.ownUltimateCount)}`, detail: '琉音终结技每次送 1 客诉 → 抱拳不转大（纯伤害）' },
         { label: '抱拳总数', value: `${fmt(source.farewellCount)} 次 × 1481009`, detail: '转大次数 + 终结技次数；每次造成物理伤害并触发上一位角色快速支援' },
       ],

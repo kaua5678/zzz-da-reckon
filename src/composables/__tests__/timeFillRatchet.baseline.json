@@ -20,7 +20,7 @@
   "outerExit": "stable"
  },
  "auto-1021-1481-1341": {
-  "slack": 0,
+  "slack": 1.6,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
@@ -344,7 +344,7 @@
   "outerExit": "cycle"
  },
  "auto-1431-1481-1311": {
-  "slack": 1.5,
+  "slack": 2.4,
   "over": 0,
   "stun": 2,
   "outerExit": "cycle"
@@ -356,10 +356,10 @@
   "outerExit": "stable"
  },
  "auto-1431-1481-1491": {
-  "slack": 2.6,
+  "slack": 3.5,
   "over": 0,
   "stun": 2,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1431-1491-1311": {
   "slack": 1.1,
@@ -500,7 +500,7 @@
   "outerExit": "stable"
  },
  "auto-1591-1481-1311": {
-  "slack": 1,
+  "slack": 0.7,
   "over": 0,
   "stun": 2,
   "outerExit": "cycle"

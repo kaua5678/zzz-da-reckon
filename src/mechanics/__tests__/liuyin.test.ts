@@ -31,7 +31,7 @@ describe('琉音好评/等效规则（用户确认）', () => {
     expect(s.goodReviewTotal).toBeCloseTo(60 + (100 * 0.6 + 10 * 7.5) * 1.16, 6)
   })
 
-  it('等效规则：转大次数=floor(好评/90)，抱拳次数=转大+终结技次数', () => {
+  it('等效规则：转大次数（阈值结转），抱拳次数=转大+终结技次数', () => {
     const s = computeLiuyinSource({
       exSpecialCount: 10,
       ultimateCount: 4,
@@ -62,15 +62,19 @@ describe('琉音好评/等效规则（用户确认）', () => {
     expect(h3.hug60).toBe(0)
     expect(h3.hug90).toBe(0)
 
-    // 好评 450 → 开窗 5；连携窗口 3 → 60 转大 3 次（有轴：连携窗口决定），剩余 2 走 90
+    // 好评 450、连携窗口 3 → 结转口径（2026-09-15 修）：60×3（余 270）→ 90×3（余 0）⇒ 共 6 窗
+    // ⚠ 旧断言是 5（= floor(450/90) 预算上限模型）；两者差在「60 档省下的 30 点是否结转」，
+    // 原文是「当[好评]**满90点**且…」逐次判定 ⇒ 结转，故 6。详见 computeLiuyinHugCounts 头注释。
     const h4 = computeLiuyinHugCounts(450, 2, -1, 3)
     expect(h4.hug60).toBe(3)
-    expect(h4.hug90).toBe(2)
+    expect(h4.hug90).toBe(3)
 
     // 上限：每次失衡最多 2 次 60 转大（用户口径 2026-09）——连携 10、失衡 2 → 60 转大被 2×2 封顶到 4
+    // 结转口径下剩余 450−4×60=210 → 90×2=180，余 30 ⇒ 共 6 窗（旧断言 hug90=1/共 5）
     const h5 = computeLiuyinHugCounts(450, 2, -1, 10)
     expect(h5.hug60).toBe(4)
-    expect(h5.hug90).toBe(1)
+    expect(h5.hug90).toBe(2)
+    expect(h5.remainingGoodReview).toBe(30)
   })
 })
 
@@ -107,5 +111,49 @@ describe('琉音强特计划估时（2026-09-06 补）', () => {
       ultimateCount: 2,
     })!
     expect(axisEst.necessaryTime).toBeCloseTo(20 * 0.617, 9)
+  })
+})
+
+/**
+ * 阈值结转口径（2026-09-15 修）—— 用户需求链③「好评≥390 = 90+60×5 ⇒ 6 窗」。
+ *
+ * 原文（`data/raw/nanoka_missing/full/1481.json` 核心被动）逐字：
+ *   「当[好评]**满90点**且琉音…打开[连携技]窗口时…琉音消耗**60**点」
+ *   「当[好评]**满90点**且…命中未打开[连携技]窗口的敌人时，将消耗**90**点」
+ * ⇒ 每次开窗都要求**当刻** ≥90，扣 60/90 后**余额结转**，故计数是贪心推进而非
+ *   `floor(总量/90)`（后者是「预算上限」，把预算当了次数）。
+ *
+ * 三条断言各盯一个失败模式：
+ *  ① 有连携窗口时 390 ⇒ **6**（旧模型 4；这是本修正的唯一目的）；
+ *  ② **无**连携窗口时两者**必须一致**（全走 90 ⇒ floor(G/90)）——防「顺手改成一律 +N」；
+ *  ③ 任何输入都不超支（余额 = G − 花费 ≥ 0）——防贪心把好评花成负数。
+ */
+describe('琉音阈值结转口径（好评 → 开窗次数）', () => {
+  it('★ 好评 390 + 连携窗口 ⇒ 6 窗（= 90 + 60×5，需求链③的算式）', () => {
+    const r = computeLiuyinHugCounts(390, 4, -1, 6)
+    expect(r.hug60 + r.hug90, '390 应开 6 窗').toBe(6)
+    expect(r.hug60).toBe(6)          // 6×60 = 360 ≤ 390，余 30
+    expect(r.hug90).toBe(0)
+    expect(r.remainingGoodReview).toBe(30)
+  })
+
+  it('★ 无连携窗口时与旧口径一致（全走 90 ⇒ floor(G/90)）——防一律放大', () => {
+    for (const G of [90, 180, 270, 390, 450, 540]) {
+      const r = computeLiuyinHugCounts(G, 4, -1, 0)
+      expect(r.hug60 + r.hug90, `G=${G} 无窗口`).toBe(Math.floor(G / 90))
+    }
+  })
+
+  it('★ 预算安全：任意 (好评, 连携, 失衡) 组合都不超支', () => {
+    for (const G of [90, 150, 207, 330, 390, 450, 540, 1000]) {
+      for (const chain of [0, 1, 3, 6, 10]) {
+        for (const stun of [1, 2, 4]) {
+          const r = computeLiuyinHugCounts(G, stun, -1, chain)
+          const spend = r.hug60 * 60 + r.hug90 * 90
+          expect(spend, `G=${G} chain=${chain} stun=${stun} 超支`).toBeLessThanOrEqual(G)
+          expect(r.remainingGoodReview).toBe(G - spend)
+        }
+      }
+    }
   })
 })

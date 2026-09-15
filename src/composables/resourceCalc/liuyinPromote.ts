@@ -3,7 +3,7 @@
  *
  * 因果链：抱拳（客诉）命中 → 好评≥90 打开大招选择窗口 → 60 转大（有连携窗口：替换目标队友连携）
  * 或 90 转大（无窗口：白送终结技）。转大终结技 daze 进失衡池 → 失衡次数变 → 60 抱拳默认按
- * 失衡次数 → 转大次数变（正反馈）；好评≥90 开窗次数（floor(好评/90)）是硬上限，正反馈单调
+ * 失衡次数 → 转大次数变（正反馈）；开窗次数（阈值结转，见 computeLiuyinHugCounts）有界，正反馈单调
  * 有界必收敛（MAX_PROMOTE_ITER 轮兜底）。倍率表全走目标队友执行计划自然调用。
  */
 import { calcStunPool } from '@/core/stunPool'
@@ -185,7 +185,7 @@ export function buildPromoteParams(
  * 转大不动点：抱拳命中→检查好评≥90 打开大招选择窗口→60 转大（有连携窗口：目标队友连携 -1、终结技 +1）
  * 或 90 转大（无连携窗口：终结技 +1）。倍率表全走目标队友执行计划自然调用。
  * 正反馈：转大终结技 daze 进失衡池 → 失衡次数变 → 60 抱拳默认按失衡次数 → 转大次数变；
- * 好评≥90 开窗次数（floor(好评/90)）是硬上限，正反馈单调有界必收敛（MAX_PROMOTE_ITER 轮兜底）。
+ * 开窗次数（阈值结转口径，见 computeLiuyinHugCounts）有界，正反馈单调有界必收敛（MAX_PROMOTE_ITER 轮兜底）。
  */
 function adjustStunExecs(
   execs: StunSkillExecution[],

@@ -331,7 +331,7 @@ export interface LiuyinMechanicSource {
   goodReviewTotal: number
   /** 强特重击次数（= exSpecialCount，用于好评回复与专属直伤） */
   exHeavyCount: number
-  /** 转大次数（开窗次数 = floor(好评总量/90)，每次满 90 好评可抱拳转大一次；60/90 分配见 promoteFixpoint） */
+  /** 转大次数（**阈值结转**口径：每次开窗当刻需满 90，扣 60/90 后余额结转 ⇒ 见 computeLiuyinHugCounts；60/90 分配见 promoteFixpoint） */
   promoteWindows: number
   /** 琉音自己的终结技次数（每次终结技送 1 客诉，可打一次不转大的抱拳） */
   ownUltimateCount: number
