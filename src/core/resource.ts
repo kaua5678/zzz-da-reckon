@@ -218,10 +218,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   //    `trialRows=181.35 > 预算−容差 179`（fits=false）→ 回滚「宁可留白不制造超预算」；开关该
   //    排除在**全链逐位零差异**（`timeGolden` 127 预设 + 60 角色×命座 0/6 全 0 delta、
   //    `timeLedgerInvariants`/`timeFillRatchet`/`underfillRefund` 同绿、`npm run verify` EXIT=0）。
-  //    **测量口径缺口本身仍在**（轴模式赠大时间不进 `frontlineRowsOf`，且轴模式 promote 次数由轴
-  //    预设决定、`liuyinGiftChainInfo` 回落通用公式会算错），只是不再被排除掩盖——现由
-  //    `timeLedgerInvariants` 兜住：一旦某队真的因此越账，护栏立刻红。真收口 = 把轴 promote 计数
-  //    线程化进 core（半修 C/D 路线，见 docs/ENGINE_PIPELINE_GUIDE.md §4 坑19①）。
+  //    **该缺口已收口（2026-09-15 复核）**：轴模式赠大时间**已进** `frontlineRowsOf`
+  //    （见下方 `config.axisLiuyinPromote` 分支）；轴模式 promote 次数与通用公式的**分歧也已关闭**
+  //    （阈值结转修正，判据 `liuyin.test.ts`「通用公式 vs 轴预设声明」）。
+  //    ⚠ 旧注释引用的 `liuyinGiftChainInfo` 已删（2026-09-13 迁为模块 `crossAgentSupply`），
+  //    别再按它去找代码。仍由 `timeLedgerInvariants` 持续兜住越账。
   //  · 1051 伊德海莉 / 1531 星徽·比利：**2026-09-08 已放回**——它们当初被排除是因为热启动缓存注入
   //    收敛末态导致冷/热落点分叉（0.009s / 0.0015s），而「缓存只存规范种子」修好后同配置计算逐位
   //    稳定，两族试探全绿（seedInvariance / warmStart / yidhariInteractionGrid / timeLedgerInvariants）。

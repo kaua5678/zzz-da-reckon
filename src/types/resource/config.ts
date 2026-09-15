@@ -765,8 +765,14 @@ export interface ResourceCalcConfig {
   axisOverlapByAction?: Record<string, number>
   /**
    * 轴模式琉音赠大计数（编排层注入，`useResourceCalc` 按轴预设 promoteVariant 块 × 窗口数加权）：
-   * 轴内 60/90 转大次数**由轴预设决定**，core 的 `liuyinGiftChainInfo` 通用公式（好评/连携窗口推导）
-   * 会算出另一个数——跨层口径统一入口，见 `core/resource.ts#liuyinGiftTime`。
+   * 轴内 60/90 转大次数**由轴预设决定**（不是通用公式推导）——这是跨层口径统一入口，
+   * 消费方 `core/resource.ts` 的 `frontlineRowsOf`（试探测量）与 `giftTimeOfSlot`（装配侧）。
+   *
+   * ⚠ 原文提到的 `liuyinGiftChainInfo` **已不存在**（2026-09-13 迁为模块声明式
+   * `crossAgentSupply`，见 `core/resource/crossAgentSupply.ts` 头注释）。
+   * 且「通用公式会算错」这条**已由阈值结转修正关闭**（2026-09-15）：
+   * 通用公式与轴预设声明现在给出同一个开窗数（实测 10大轴 60×4+90×1=5 两侧一致，
+   * 修前通用公式算 4），判据 = `liuyin.test.ts`「通用公式 vs 轴预设声明」。
    */
   axisLiuyinPromote?: { targetSlot: number; count: number }
   /**
