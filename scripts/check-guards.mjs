@@ -123,7 +123,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'core agentId 分支',
     file: 'src/core/resource.ts + core/resource/helpers.ts',
-    frozen: 16,  // 2026-09-11 评审冻结 36（resource.ts 16 + helpers.ts 20）→ 26（2026-09-13 T6 首次真清偿 −10：删 yidhariContinuousEx 7 处 / normaCinemaLevel 2 处 / antonC1EnergyGift 1 处的冗余 agentId 守卫，判据 = 字段唯一写入方为对应角色模块，timeGolden 0 delta）→ 18（2026-09-13 crossAgentSupply 架构收口：赠链族 8 处槽位查找改按能力类别查询，0 delta）。详见 CORE_AGENT_BRANCH_BASELINE 头注释的沿革
+    frozen: 12,  // 2026-09-11 评审冻结 36（resource.ts 16 + helpers.ts 20）→ 26（2026-09-13 T6 首次真清偿 −10）→ 18（2026-09-13 crossAgentSupply 收口 −8）→ **12**（2026-09-15 批次2 −4：helpers.ts 里 4 处 yidhari 守卫化简——1 处 `!==` 短路左操作数（yidhariRefund）+ 2 处 `if (cfg.agentId !== '1051')`（yidhariBurn×2）+ 1 处 `agentId === '1051' && 字段!==undefined`；判据 = 相关字段唯一写入方 = yidhari.ts 模块且无默认值 ⇒ 字段判据完全覆盖角色判据，timeGolden 0 delta，反向验证破坏该字段消费 ⇒ preset:yidhari-qingyi-lucia 精确红）。详见 CORE_AGENT_BRANCH_BASELINE 头注释的沿革
     target: 0,
     due: '2027-03-31',
     plan: '剩 18 处：① 先把 convergence.ts:957 的 yidhariInStunExCount / :1074 的 billyAxisActive 写入方挪进对应角色模块，再删 helpers.ts:1271 与 resource.ts:595 的守卫（现不冗余）；② `!==` 短路形态逐处论证后化简；③ 跨角色查找（findIndex 找队友槽位）与纯 agentId 写入（billyFinalizeChain / yidhariFinalizeEx 由引擎写角色字段）属真特判，需走 applyTeamConfig / convergence 落点（评审 #10）；④ 同批新增判据 12（core role-import 棘轮 7 处）——它是本条的**语义补强面**：agentId 字面量清零 ≠ 角色无关，引擎静态 import 角色模块同样要清',
@@ -547,8 +547,22 @@ export const CORE_AGENT_BRANCH_FILES = ['src/core/resource.ts', 'src/core/resour
  * 改成引擎按**能力类别**查询（`findCrossAgentSupplySlots(configs, 'gift-chain:chain'|'gift-chain:ultimate')`），
  * 数量与落点由模块的 `crossAgentSupply` 自报；详见判据 12（静态角色 import 棘轮）的说明。
  * `timeGolden` 3 tests **0 delta**（105 预设 + 60 角色×命座 0/6）。
+ *
+ * 18 → 12 沿革（2026-09-15 批次2，−6）：把 `!==` 短路与 `agentId === X && 字段` 两类守卫的
+ * **左操作数**删掉，换成纯字段判据（判据同 T6：字段唯一写入方 = 该角色模块 ⇒ 字段即蕴含角色）：
+ *  · `helpers.ts` yidhari 族 4 处：`cfg.agentId !== '1051' || yidhariRefundPer <= 0` → `yidhariRefundPer <= 0`
+ *    （refund 量派生自模块写的 `yidhariRefundPerOutStunEx`）；两处 `if (cfg.agentId !== '1051') return 0`
+ *    （烧血喧响 ×2）→ `if (cfg.yidhariDecibelPerHpPct === undefined) return 0`；
+ *    另有 1 处 `agentId === '1051' && 字段 !== undefined` → 纯字段判定。
+ *    ⚠ 判别字段必须选**无 `?? 默认` 回退**的那个（`yidhariDecibelPerHpPct`）：同分支的
+ *    `yidhariExHealMissingHpPct ?? 0.75` / `yidhariExternalHealPct ?? 0` 对任意 cfg 都有值，不能当判据。
+ *  · ⚠ **不成立的一类**（本次试过并回退，留痕）：`resource.ts:518` 的
+ *    `configs.filter(c => c.agentId === '1531' && billyAxisActive !== 1)` **不能**改成字段判据——
+ *    `billyFinalizeChain` 的初值 `false` 由本文件 :965 的 `if (cfg.agentId === '1531')` 循环写入
+ *    （非 undefined = 已初始化），故 `billyFinalizeChain === false` 会把非比利 cfg 一并纳入重推。
+ *    该类属「按角色复位旗标」的跨 cfg 循环，不在 T6 冗余判据范围内。
  */
-export const CORE_AGENT_BRANCH_BASELINE = 16
+export const CORE_AGENT_BRANCH_BASELINE = 12
 
 /** 跨多个文件计 agentId 分支总行数（与 countAgentIdBranchLines 同口径） */
 export function countAgentIdBranchLinesInFiles(files, root = ROOT) {

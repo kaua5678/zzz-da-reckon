@@ -293,7 +293,11 @@ export function calcEnergySource(
   // 终局整数重推（yidhariFinalizeEx）才 floor——floor 只发生一次，不在收敛中途截断资源循环。
   const yidhariRefundPer = cfg.yidhariRefundPerOutStunEx !== undefined ? n(cfg.yidhariRefundPerOutStunEx) : 0
   const yidhariRefund = (() => {
-    if (cfg.agentId !== '1051' || yidhariRefundPer <= 0) return 0
+    // 原判据 `cfg.agentId !== '1051' || yidhariRefundPer <= 0`：左侧 agentId 判断**冗余**——
+    // `yidhariRefundPer` 派生自 `yidhariRefundPerOutStunEx`，其唯一写入方 = `yidhari.ts:145`
+    // （模块只写自己那份 cfg）⇒ 该值为 0 即蕴含「不是该角色或未启用」，短路语义由右操作数完全覆盖。
+    // 2026-09-15 core 棘轮批次2（T6 冗余判据），timeGolden 0 delta。
+    if (yidhariRefundPer <= 0) return 0
     const consume = n(cfg.exSpecialEnergyConsume)
     if (consume <= yidhariRefundPer) return 0
     const finalize = cfg.yidhariFinalizeEx === true
@@ -555,7 +559,12 @@ export function calcDecibelSource(
   const teammateShareWithEfficiency = teammateShare * efficiency
   // 伊德海莉烧血喧响：开局场外烧 75% 至 25% + 战斗中把全部回复量烧掉；固定不可分享
   const yidhariBurnDecibel = (() => {
-    if (cfg.agentId !== '1051') return 0
+    // 原判据 `cfg.agentId !== '1051'`：改用**模块专属字段**判别（2026-09-15 core 棘轮批次2）。
+    // `yidhariDecibelPerHpPct` 的唯一写入方 = `yidhari.ts:113`（模块无条件写自己那份 cfg）⇒
+    // 非该角色 cfg 恒 undefined。不能用下面带 `?? 默认` 的两个字段做判据（它们对任意 cfg 都有值），
+    // 故显式取这个无默认的字段（判据同 T6；规则 6：引擎按能力/字段查询，不按角色名查询）。
+    // timeGolden 0 delta。
+    if (cfg.yidhariDecibelPerHpPct === undefined) return 0
     const missing = Math.max(0, Math.min(1, cfg.yidhariExHealMissingHpPct ?? 0.75))
     const decibelPerHp = cfg.yidhariDecibelPerHpPct ?? 10
     const external = Math.max(0, cfg.yidhariExternalHealPct ?? 0)
@@ -1306,7 +1315,10 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
     const paid = totalEnergy / consume
     return finalize ? Math.floor(paid) : paid
   }
-  if (cfg.agentId === '1051' && cfg.yidhariInStunExCount !== undefined) {
+  // 伊德海莉失衡内强特：字段非 undefined 即蕴含是该角色（唯一写入方 = convergence.ts 的
+  // `merged.agentId === '1051'` 分支 ⇒ 只写它自己那份 cfg）⇒ agentId 判断冗余，已删
+  // （2026-09-15 core 棘轮批次2，判据同 T6）。
+  if (cfg.yidhariInStunExCount !== undefined) {
     const inStun = cfg.yidhariInStunExCount
     const inStunCost = cfg.yidhariInStunEnergyCost ?? inStun * cfg.exSpecialEnergyConsume
     const remaining = totalEnergy - inStunCost
@@ -1418,7 +1430,8 @@ export function iterate(
     const prev = prevStates[i]
     // 伊德海莉烧血喧响：开局场外烧 75% + 战斗中把全部回复量烧掉（固定不可分享，参与终结技次数）
     const yidhariBurn = (() => {
-      if (cfg.agentId !== '1051') return 0
+      // 同上方 yidhariBurnDecibel：用无默认值的模块专属字段判别（2026-09-15 core 棘轮批次2）。
+      if (cfg.yidhariDecibelPerHpPct === undefined) return 0
       const missing = Math.max(0, Math.min(1, cfg.yidhariExHealMissingHpPct ?? 0.75))
       const decibelPerHp = cfg.yidhariDecibelPerHpPct ?? 10
       // 外部回血（卢西娅星光汇聚之地）：固定部分 + 按卢西娅终结技次数结算部分（%自身最大生命值）

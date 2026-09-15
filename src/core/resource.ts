@@ -515,6 +515,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 否则「floor 后 +1 链（≈10s）」的时长会被当成余量放行（1s 容差兜不住一整链）。
   const runBillyFinalize = (from: IterationState[]): IterationState[] => {
     let st = from
+    // 星徽·比利终局整数重推：保留 agentId 判据。⚠ 2026-09-15 试过按字段改写（「唯一写入方是它的
+    // cfg ⇒ agentId 冗余」），**实测不成立**：`billyFinalizeChain` 的初值 `false` 是由本文件 :965
+    // 的 `if (cfg.agentId === '1531')` 循环写入的（非 undefined 即「已初始化」），故改用
+    // `billyFinalizeChain === false` 作判据会把**非比利 cfg**（该字段 undefined）也纳入重推，
+    // 而它对非比利 cfg 无意义。⇒ 该处属「写入方是编排/引擎层的按角色复位」，不在 T6 冗余判据范围内。
     const billyFinalizeConfigs = configs.filter(c => c.agentId === '1531' && Number((c as unknown as Record<string, unknown>).billyAxisActive ?? 0) !== 1)
     if (billyFinalizeConfigs.length > 0) {
       for (const bCfg of billyFinalizeConfigs) bCfg.billyFinalizeChain = true
