@@ -22,7 +22,7 @@
  * 测试断言「实测死集合 ⊆ 基线」（**新增即红**）；基线条目已不再命中 = 改善，测试打印提示、
  * 由下任从基线删掉（棘轮只减不增，与 DEAD_CHANNEL_ALLOWLIST 同款纪律：不许为绿而登记）。
  *
- * @fact engine:guards/死通道LS 口径: 死通道=导出可选属性/内联opts可选属性 全仓零写入点（AST PropertyAssignment∪LS write-access∪vue `foo:` 三重交叉，namesake 同名写入保守压制不报）；reads=0 记 dead-both、reads>0 记 dead-input；基线棘轮新增即红 | 据 实测@2026-09-14 | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadChannelsLs | 信 高
+ * @fact engine:guards/死通道LS 口径: 死通道=导出可选属性/内联opts可选属性 全仓零写入点（AST PropertyAssignment∪LS write-access∪vue `foo:` 三重交叉，namesake 同名写入保守压制不报）；reads=0 记 dead-both、reads>0 记 dead-input；基线棘轮新增即红；**基线键行号无关**（`文件 符号`，带行号的旧键经 normalizeBaseKey 兼容——2026-09-15 实测：无关改动给 types/resource/config.ts 插 9 行致 9 条冻结基线条目假红） | 据 实测@2026-09-15 | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadChannelsLs | 信 高
  */
 import { createRequire } from 'node:module'
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
@@ -38,7 +38,8 @@ export const DEFAULT_SCAN_DIRS = ['src/composables', 'src/core', 'src/data', 'sr
 export const REPO_ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..')
 
 /**
- * 冻结基线（棘轮：只许减少）。key = `<相对文件>:<行> <属性名>`。
+ * 冻结基线（棘轮：只许减少）。key = `<相对文件> <属性名>`（**行号无关**——带行号的旧键仍被
+ * `normalizeBaseKey` 兼容，见其注释里的错位假红事故）。
  * 每条 why 必须写「怎么证明它是死的」——不许为绿而登记（同 DEAD_CHANNEL_ALLOWLIST 纪律）。
  * 首轮实测 2026-09-14（与 T10 报告 /home/kaua/.dsh/session-manager/reports/T10-a1.md 对账见报告）。
  */
@@ -283,8 +284,17 @@ export function scanDeadChannelsLs(opts = {}) {
   const seen = new Set()
   for (const c of cands) {
     const key0 = `${c.file}:${c.line} ${c.prop}`
-    if (seen.has(key0)) continue
-    seen.add(key0)
+    /**
+     * **行号无关键**（2026-09-15 加）：`key0` 含行号 ⇒ 只要在它上面插/删任意行，
+     * 已冻结的基线条目就整体错位，实测会把**同一个死字段**报成「新增死通道」而红
+     * （事故：自由对比/爱丽丝剑仪两笔各给 `types/resource/config.ts` 加了若干行，
+     * 该文件里 9 条 roxy / claret / norma 系基线条目行号 +9 ⇒ 判据 14-LS 当场假红 9 条，
+     * 而它们**一条没变**）。棘轮要拦的是「新的死字段」，不是「同一字段换了行号」。
+     * 引用分析与基线比对一律用本键；`file`/`line` 仍保留在返回值里供人定位。
+     */
+    const stableKey = `${c.file} ${c.prop}`
+    if (seen.has(stableKey)) continue
+    seen.add(stableKey)
     if (writes.has(c.prop)) continue                      // AST 名字级写入（含 namesake，保守压制）
     const abs = join(root, c.file)
     const src = program.getSourceFile(abs)
@@ -318,7 +328,8 @@ export function scanDeadChannelsLs(opts = {}) {
       if (extra.length > 0) continue
     }
     dead.push({
-      key: key0,
+      key: stableKey,
+      keyWithLine: key0,
       file: c.file,
       line: c.line,
       prop: c.prop,
@@ -335,12 +346,25 @@ export function scanDeadChannelsLs(opts = {}) {
 }
 
 /** 棘轮 diff：fresh = 实测有但基线没有（红）；resolved = 基线有但实测没有（改善，打印提示） */
+/**
+ * 基线键规范化：容忍两种写法 ——
+ * - 老写法 `<文件>:<行> <符号>`（首轮 2026-09-14 生成，键里带行号）
+ * - 新写法 `<文件> <符号>`（行号无关，推荐）
+ * 两条都归一到 `文件 符号` 再比对 ⇒ **老的基线不必重写**即可获得行号无关性
+ * （迁移是渐进的：下次动到某条时顺手去掉行号即可）。
+ */
+export function normalizeBaseKey(k) {
+  // 去掉 `:数字` 行号段（路径里不会有 `:数字 ` 这种形状）
+  return String(k).replace(/:\d+\s/, ' ')
+}
+
 export function diffAgainstBaseline(dead, baseline = DEAD_CHANNEL_LS_BASELINE) {
-  const base = new Set(Object.keys(baseline))
-  const now = new Set(dead.map((d) => d.key))
+  const base = new Set(Object.keys(baseline).map(normalizeBaseKey))
+  const now = new Set(dead.map((d) => normalizeBaseKey(d.key)))
   return {
-    fresh: dead.filter((d) => !base.has(d.key)),
-    resolved: [...base].filter((k) => !now.has(k)),
+    fresh: dead.filter((d) => !base.has(normalizeBaseKey(d.key))),
+    // resolved 用「基线键规范化后是否仍出现在实测集合」判定
+    resolved: Object.keys(baseline).filter((k) => !now.has(normalizeBaseKey(k))),
   }
 }
 

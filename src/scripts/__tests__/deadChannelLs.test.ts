@@ -136,4 +136,40 @@ describe('dead-channel-ls 棘轮（仓库级现状断言）', () => {
     const { fresh } = diffAgainstBaseline(dead, DEAD_CHANNEL_LS_BASELINE)
     expect(fresh.map(f => f.prop)).toContain('brandNewDeadKnob')
   })
+
+  /**
+   * ⑨ 行号无关键（2026-09-15 修的真实假红）。
+   *
+   * 事故：两笔无关改动（自由对比工作台 + 爱丽丝剑仪）给 `src/types/resource/config.ts`
+   * 各插了几行，把该文件里 9 条已冻结基线条目（roxy / claret / norma 系）的行号整体推后，
+   * 而它们**一条都没变** —— 旧键 `<文件>:<行> <符号>` 含行号 ⇒ 判据当场假红 9 条。
+   * 棘轮要拦的是「**新的**死字段」，不是「同一字段换了行号」。
+   *
+   * 本用例构造「同一字段、两种行号」的两个键，断言：
+   *  ① 带行号的旧键与新键被归一到同一形状（normalizeBaseKey）；
+   *  ② 只在基线里有「老写法」条目时，同字段换行号**不判 fresh**（不假红）；
+   *  ③ 真·新字段仍然判 fresh（棘轮没被削弱 —— 这条防"为了不假红而把判据改松"）。
+   */
+  it('⑨ 行号无关键：同字段换行号不假红，真新字段仍红', () => {
+    const base = { 'src/types/x.ts:100 oldDeadKnob': { since: '2026-09-15', why: 'fixture' } }
+    /** 造一条完整的 DeadHit（字段与 scans/lib 返回结构一致，别用残缺对象糊过去） */
+    const hit = (line: number, prop: string): DeadHit => ({
+      key: `src/types/x.ts:${line} ${prop}`,
+      file: 'src/types/x.ts',
+      line,
+      prop,
+      container: 'CharacterOperationConfig',
+      reads: 0,
+      confidence: 'dead-both',
+      evidence: 'fixture',
+    })
+    // 同字段、行号从 100 挪到 145（= 上游插了 45 行）
+    const shifted = [hit(145, 'oldDeadKnob')]
+    const { fresh, resolved } = diffAgainstBaseline(shifted, base)
+    expect(fresh.map(f => f.prop), '同字段换行号不该判 fresh（这正是那次假红的形态）').toEqual([])
+    expect(resolved, '同字段换行号也不该判 resolved（它没被销账）').toEqual([])
+    // 棘轮未被削弱：真·新字段必须仍判 fresh
+    const trulyNew = [...shifted, hit(200, 'brandNewKnob')]
+    expect(diffAgainstBaseline(trulyNew, base).fresh.map(f => f.prop)).toEqual(['brandNewKnob'])
+  })
 })

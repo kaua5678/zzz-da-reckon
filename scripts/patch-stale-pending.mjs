@@ -85,6 +85,41 @@ const FIXES = [
     replace: '已实现（2026-09-14 复核纠正）：×2.5 独立乘区自初始提交 `1a1f8c6` 就在线——落点 `src/composables/resourceCalc/damagePool.ts` 的 `specialMultiplier = rainbowMultiplier * 2.5` → `calcVoidflareDamage`（垂虹 1581007 耀变倍率 × 进场面板，C1 另有无视 50% 抗），行 `remielle-special-voidflare` 汇入 teamTotalDamage。实测 C6 3 异常队：垂虹 180% ⇒ 基础区 450%，行 perDamage 与独立重算**逐位相等**（不乘 2.5 的重算比值恰 2.5）；普通虚耀三载体行（assist/ultimate/basic）无 ×2.5。⚠ 本条 pending 曾被我误写成「引擎零实现/待建」——根因 = 只 grep 了 core 与 anomalyPool、漏了编排层，且把 `core/damage.ts`「不走直伤公式」（那是**防双计**）读成「未实现」⇒ 若照字面再建一处会 ×6.25 双计。回归锁 = remielle.test.ts 的乘区逐位断言（该乘区此前全仓零测试）。',
     why: '上一轮派活方审计错误，按实测撤回「待建」并留下误判根因（防下任再建第二处）',
   },
+  // 第三轮（2026-09-15 爱丽丝剑仪修复时顺手纠正）：三条 pending 的**前提已被盘上实测证伪**。
+  // ⚠ 逐条都有实证，不是"看着像做了"：
+  // ⚠ 只处理**活的** `pending[]` 数组（消费方 = src/utils/modelingGaps.ts，pending 非空即列缺口）。
+  //   同族字段 `pendingParts`/`implementedParts`/`codePaths` **全仓零消费**（实测 0 处），
+  //   往那里改文本没人看得到 ⇒ 不碰（「1命剑仪回复未接入资源池」这句就只在 pendingParts 里，
+  //   故本轮不为它加 FIX；哪天 pendingParts 被接上消费再一并处置）。
+  //   · 「1命剑仪回复未接入资源池」→ `alice.ts` 有 `C1_POLARITY_ASSAULT_SWORD_WILL = 35`
+  //     且 `buildAliceCharConfig` 按 cinemaLevel>=1 写入 `alicePolarityAssaultSwordWill`；
+  //   · 「剑仪池尚未接入资源卡片」→ `alice.ts` 的 `resourceSections` 产出 `alice-sword-will` 卡；
+  //   · 「紊乱倍率Buff未由引擎读取」→ `cfg.aliceCoweringDisorderBonusPerSec/Max` 经
+  //     `convergence.ts:84` 的 `coweringConfig` 流到 `core/anomalyPool/helpers.ts:1100`
+  //     参与紊乱结算（接到活代码，非死口径）。
+  // 本次新修复的「全队强击/紊乱两条 gain 恒产 0」是**另一个**缺口（见 spec notes 2026-09-15 条），
+  // 不在这三条里——别把这次修复读成"这几条本来就对"。
+  {
+    agentId: '1401', mechId: 'seek_odd_hunt_ghost',
+    match: '剑仪池尚未接入资源卡片',
+    replace: null,
+    intoImplemented: '剑仪池已接入资源卡片：alice.ts 的 resourceSections 产出 alice-sword-will 卡（入场/普攻/强特/极性强击/消耗 分组行，2026-09-15 复核）。',
+    why: '盘上实证：resourceSections 有该卡片定义',
+  },
+  {
+    agentId: '1401', mechId: 'seek_odd_hunt_ghost',
+    match: '异常精通转换未被面板公式读取',
+    replace: null,
+    intoImplemented: '异常精通转换已接入：alice.ts applyAlicePanel 走 applySpecAttributeConversions 通用通道写 anomalyProficiency（spec attributeConversions[alice_mastery_to_proficiency]，validate:specs 有机器判据，2026-09-15 复核）。',
+    why: '盘上实证：applySpecAttributeConversions 调用 + validate:specs 强制模块角色必须可证明被消费',
+  },
+  {
+    agentId: '1401', mechId: 'sword_heart_dual_rainbow',
+    match: '紊乱倍率Buff未由引擎读取',
+    replace: null,
+    intoImplemented: '紊乱倍率加成已接入引擎：cfg.aliceCoweringDisorderBonusPerSec/Max（18/180）经 convergence.ts 的 coweringConfig 流入 core/anomalyPool/helpers.ts 参与紊乱伤害结算（2026-09-15 复核）。',
+    why: '盘上实证：常量→coweringConfig→helpers 紊乱结算调用链完整',
+  },
 ]
 
 const data = JSON.parse(readFileSync(MECHANICS, 'utf8'))
@@ -104,7 +139,25 @@ for (const fix of FIXES) {
     const targetPresent = fix.replace
       ? (mech.pending ?? []).includes(fix.replace)
       : (mech.implemented ?? []).includes(fix.intoImplemented ?? '\x00')
-    const already = targetPresent && !(mech.pending ?? []).some(x => x.includes(fix.match))
+    /**
+     * 「已被后续链条覆盖」也算已改（2026-09-15 修的真实误报）。
+     *
+     * 本脚本是**链式**的：同一个 mechId 允许多条 FIX 顺序生效（旧文本在 → 打第 1 条；
+     * 已是第 1 条的新文本 → 打第 2 条）。但链条**走完之后**，前面几环的 `match` 与 `replace`
+     * 都不在当前文本里了 ⇒ 旧判据（`targetPresent && !some(match)`）报「定位失败」并以 exit 1
+     * 中断整个脚本 —— 实测 `1581/special_voidflare` 第 1 环（match「方向纠正（2026-09-14 实测）」）
+     * 就是这形态：text 已推进到第 3 环的产物，第 1 环两个串都不在，于是脚本死在它这里，
+     * **它后面的所有 FIX 一条都跑不到**（本次 1401 那几条就被卡住）。
+     *
+     * 判据修正：同 mechId 的**任一** FIX 的 `replace`/`intoImplemented` 已落在目标数组里
+     * ⇒ 说明链条至少推进过 ⇒ 本环视为已改（幂等 skip），不中断。
+     */
+    const anyStageApplied = FIXES
+      .filter(f => f.agentId === fix.agentId && f.mechId === fix.mechId)
+      .some(f => (f.replace
+        ? (mech.pending ?? []).includes(f.replace)
+        : (mech.implemented ?? []).includes(f.intoImplemented ?? '\x00')))
+    const already = (targetPresent || anyStageApplied) && !(mech.pending ?? []).some(x => x.includes(fix.match))
     console.log(`${already ? 'skip(已改)' : '✗ 定位失败'} ${fix.agentId}/${fix.mechId}`)
     if (!already) process.exit(1)
     continue
