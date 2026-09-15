@@ -6,6 +6,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   MechanicTeamMember,
+  AgentTeamConfigInput,
 } from '../types'
 import type { AgentSkills, SkillMove, PanelValues } from '@/types/catalog'
 import type { CharacterResourceResult, MechanicSetting, NormaMechanicSource } from '@/types/resource'
@@ -582,6 +583,23 @@ export const normaMechanic: AgentMechanicModule = {
   description: '预热膛温资源、嗯呢弹幕（6段+炮塔+全队增伤）、膛温帽子把戏→连携替换、火力实验导弹、技术鸿沟失衡易伤。',
   applyPanel: applyNormaPanel,
   buildCharConfig: buildNormaCharConfig,
+  /**
+   * converge 阶段：把本轮失衡次数 / 覆盖率 / 战斗时间写进本槽 cfg（诺姆火力实验导弹舱与
+   * 失衡内资源循环消费）。2026-09-15 arch 棘轮自 `convergence.ts` 的 `merged.agentId === '1571'`
+   * 分支搬入（规则 6：编排层不写角色规则）。三个字段的消费方**只有本模块**
+   * （`config.ts:466/468` 声明，`norma.ts:299-301/478-480` 读），故 agentId 判断冗余。
+   * ⚠ `stunCoverage` 取 `teamStunCoverage`（编排层对**所有**角色通用注入的同一个量），
+   * 与原分支的 `provStunCoverage` 同源同值。
+   */
+  applyTeamConfig: ({ phase, slot, characters, stunCount, combatTime }: AgentTeamConfigInput) => {
+    if (phase !== 'converge') return
+    const cfg = characters[slot]
+    if (!cfg) return
+    const record = cfg as unknown as Record<string, unknown>
+    record.normaStunCount = stunCount
+    record.normaStunCoverage = (cfg as unknown as { teamStunCoverage?: number }).teamStunCoverage ?? 0
+    record.normaBattleTime = combatTime
+  },
   /**
    * 跨槽位供给：膛温帽子把戏 → 送给「上一位队友」的连携行（规则 6 在引擎层的落点）。
    *

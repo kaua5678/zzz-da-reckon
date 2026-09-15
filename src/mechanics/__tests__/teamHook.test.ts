@@ -130,8 +130,7 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     }
   })
 
-  it('★ converge 阶段递入的 threads 快照被模块读进自己那份 cfg（契约生效，非只声明）', () => {
-    // 用一份「每个字段都是可辨识哨兵值」的快照；模块只应写自己那个字段。
+  it('★ converge 阶段递入的 threads 快照被模块读进自己那份 cfg（契约生效，非只声明）', () => {    // 用一份「每个字段都是可辨识哨兵值」的快照；模块只应写自己那个字段。
     const sentinel = { ...initialCalcRoundThreads(), anbyZeroTeammateWl: 7, ellenFreezeCount: 5 }
     const mk = (agentId: string, slot = 0) => ({ agentId, slot } as any)
     const probe = (agentId: string, field: string, expectVal: unknown) => {
@@ -148,5 +147,27 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     probe('1191', 'ellenFreezeCount', 5)
     probe('1431', 'yeshuguangGiftUltCount', sentinel.yeshuguangGiftUlt)
     probe('1331', 'vivianTeamExTotal', sentinel.vivianTeamEx)
+  })
+
+  // 2026-09-15 arch 棘轮第 4 小簇：诺姆(1571)/青衣(1251) 的失衡次数注入从 convergence.ts 的
+  // `merged.agentId === '…'` 分支迁进模块 applyTeamConfig（读 hook 入参 stunCount/combatTime）。
+  // 判据同 T6：三类字段的消费方只有本模块 ⇒ 不需要在编排层认人。
+  it('★ 诺姆/青衣的 converge 钩子把失衡次数（与覆盖率/战斗时间）写进本槽 cfg', () => {
+    const mkProbe = (agentId: string) => {
+      const characters = [{ agentId, slot: 0, teamStunCoverage: 0.42 } as any]
+      getAgentMechanic(agentId)!.applyTeamConfig!({
+        slot: 0, agent: null, cinemaLevel: 0, potentialLevel: 6, characters,
+        team: [{ slot: 0, agentId, agent: null, cinemaLevel: 0, potentialLevel: 6, wEngineId: '', wEngineModLevel: 1 }],
+        settings: {}, phase: 'converge', combatTime: 210, exCounts: [0], stunCount: 7,
+        teamEnergyConsumed: 0,
+      } as any)
+      return characters[0] as any
+    }
+    const norma = mkProbe('1571')
+    expect(norma.normaStunCount, '诺姆失衡次数未注入').toBe(7)
+    expect(norma.normaStunCoverage, '诺姆失衡覆盖率未注入（应取通用 teamStunCoverage）').toBe(0.42)
+    expect(norma.normaBattleTime, '诺姆战斗时间未注入').toBe(210)
+    const qingyi = mkProbe('1251')
+    expect(qingyi.qingyiStunCount, '青衣失衡次数未注入').toBe(7)
   })
 })

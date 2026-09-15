@@ -115,7 +115,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 55,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）→ **55**（2026-09-15 同批第 3 小簇：轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽 `cfg.ultimateCost`（`specPanelBuffs.ts:174` 早已写 2000）⇒ agentId 判断冗余，同 T6 判据；解析抽成导出纯函数 `resolveAxisUltimateDecibelCost` 以便单测直接证伪「按槽读」）。见 AGENT_BRANCH_BASELINE 注释
+    frozen: 53,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）→ **55**（2026-09-15 同批第 3 小簇：轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽 `cfg.ultimateCost`）→ **53**（2026-09-15 同批第 4 小簇：`nomra 1571` 的 normaStunCount/Coverage/BattleTime 与 `qingyi 1251` 的 qingyiStunCount 注入迁进各自模块的 applyTeamConfig——消费方只有本模块，且 hook 入参已含 stunCount/combatTime；timeGolden 0 delta，反向验证删注入 ⇒ 精确红）。见 AGENT_BRANCH_BASELINE 注释
     target: 0,
     due: '2026-12-31',
     plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。跨轮反馈走 `AgentTeamConfigInput.threads`（2026-09-15 新增的通用通道，别再逐字段铺开契约）。hot spot：convergence.ts(35) > damagePool.ts(16) > helpers.ts(4)。架构评审 #10 → #2',
@@ -496,8 +496,13 @@ export function countAgentBranchLines(root = ROOT) {
  * `cfg.ultimateCost`（`specPanelBuffs.ts:174` 早已写 2000）⇒ agentId 判断冗余（同 T6 判据：
  * 字段唯一写入方 = 该角色模块）。解析抽成导出纯函数 `resolveAxisUltimateDecibelCost`，使
  * 「按槽读、不按 agentId 认人」可被单测直接证伪（教训：断言写在**输入**上会假绿，见 peiluo.test.ts 注释）。
+ * 2026-09-15 −2：55→53 = `nomra 1571`（normaStunCount/normaStunCoverage/normaBattleTime）与
+ * `qingyi 1251`（qingyiStunCount）的失衡次数注入迁进各自模块的 `applyTeamConfig`（converge 阶段）。
+ * 判据同 T6：字段消费方**只有本模块**（`config.ts` 声明、模块内读），且 hook 入参已含
+ * `stunCount`/`combatTime` ⇒ 不需要在编排层认人。实测：timeGolden 0 delta；
+ * 反向验证（停掉 norma 的注入）⇒ `agent:1571:c6.slot0` 时间账精确变化 = 注入是活反馈。
  */
-export const AGENT_BRANCH_BASELINE = 55
+export const AGENT_BRANCH_BASELINE = 53
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。

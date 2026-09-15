@@ -5,6 +5,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentTeamConfigInput,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, QingyiMechanicSource } from '@/types/resource'
@@ -376,6 +377,17 @@ export const qingyiMechanic: AgentMechanicModule = {
   description: '闪络电压/醉花月云转/羁服满层：每失衡 2 轮醉花，电压大头来自大招/强特/连携（通用电压），缺口由一煞#4 连打（≈25 电压/秒）补齐，剩余平A按循环秒均。',
   applyPanel: applyQingyiPanel,
   buildCharConfig: buildQingyiCharConfig,
+  /**
+   * converge 阶段：把本轮失衡次数写进本槽 cfg（青衣醉花月云转按失衡次数计轮）。
+   * 2026-09-15 arch 棘轮自 `convergence.ts` 的 `merged.agentId === '1251'` 分支搬入（规则 6）。
+   * 消费方只有本模块（`qingyi.ts:189`），故 agentId 判断冗余。
+   */
+  applyTeamConfig: ({ phase, slot, characters, stunCount }: AgentTeamConfigInput) => {
+    if (phase !== 'converge') return
+    const cfg = characters[slot]
+    if (!cfg) return
+    ;(cfg as unknown as Record<string, unknown>).qingyiStunCount = stunCount
+  },
   buildExecutions: buildQingyiExecutions,
   buildResourceResult: buildQingyiResourceResult,
   resourceSections: buildQingyiResourceSections,

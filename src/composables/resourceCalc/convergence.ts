@@ -959,12 +959,8 @@ export function createRunCalcRound(deps: {
       if (decibelParryActive && cfg.slot === 0) {
         merged.parryDecibelOnlyCount = (merged.parryDecibelOnlyCount ?? 0) + prevDecibelParry
       }
-      if (merged.agentId === '1571') {
-        return { ...merged, normaStunCount: stunCount, normaStunCoverage: provStunCoverage, normaBattleTime: base.totalTime }
-      }
-      if (merged.agentId === '1251') {
-        return { ...merged, qingyiStunCount: stunCount }
-      }
+      // 2026-09-15 arch 棘轮：norva(1571)/qingyi(1251) 的失衡次数注入已迁进各自模块的
+      // applyTeamConfig（converge 阶段读同一组 hook 入参 stunCount/combatTime，规则 6）。
       if (merged.agentId === '1291' && hugoAxisRemainingStunSeconds !== undefined) {
         // 雨果轴模式：决算剩余失衡时间 + 决算次数由轴内块反推（覆盖滑块）；非轴回落 buildCharConfig 的滑块值。
         // 次数口径：轴内 1291_ex_verdict_final 块 = 强特决算、轴内 1291018 块 = 终结技决算（合法轴 C2=Q→E；E→E 非法不建模）。
