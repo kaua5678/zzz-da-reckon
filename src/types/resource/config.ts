@@ -524,6 +524,10 @@ export interface CharacterOperationConfig {
   zhuyuanC1ChainReload?: number
   /** 朱鸢影画1 快速装填终结回复量（9，非影画1 为 0；computeZhuYuanShellsTotal 写入） */
   zhuyuanC1UltReload?: number
+  /** 黄光交互次数（= parryCount；「弹刀 or 回避支援」是同一次交互的两种分支，一个角色只能其一，
+   *  用户 2026-09-15 口径）。buildCharConfig 写入，spec 规则 shells_def_assist 按它给
+   *  支援突击·自卫还击(1241025) +3 强化霰弹/次——与 core 产支援突击行用同一个次数源，不是双计 */
+  defAssistCount?: number
   /** 青衣失衡次数（外层不动点传入，供醉花月云转轮数） */
   qingyiStunCount?: number
   /** 青衣通用行实测总时间（buildExecutions 写入，电压计划预算扣减用） */

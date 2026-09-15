@@ -21,6 +21,7 @@ import { computeBanyueCycleFromCfg, readAxisExCounts } from '@/mechanics/agents/
 import { crossAgentSupplyAt, findCrossAgentSupplySlots, giftDecibelForCfg } from './crossAgentSupply'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { resolveExtraExCount } from '@/data/exSpecialPlans'
+import { EVADE_ASSIST_ACTION_TIME_SECONDS, EVADE_ASSIST_MOVE_ID } from '@/data/resourceDefaults'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 
 /**
@@ -1121,6 +1122,41 @@ export function buildExecutions(
       decibelRecovery: cfg.defensiveAssistDecibelRecovery,
       totalDecibelRecovery: totalDefensiveAssist * cfg.defensiveAssistDecibelRecovery,
       timeBucket: 'necessary',
+    })
+  }
+
+  // @fact engine:time/回避支援 口径: 无招架支援的角色，一次黄光交互产「回避支援」行 = 1.166s 必要前台 + 零伤害零失衡（时停＝纯亏时间）；判据用 `!defensiveAssistMoveId`（数据驱动、不列角色名单，真斗 1441 那种「有 moveId 但 actionTime=0」不会被误判）；215 喧响走 calcSpecialActionBonus 的 parry 通道按 parryCount 计、行内 decibel 给 0 不重复计；不套 parryTimeFreeCount 豁免 | 据 用户@2026-09-15「弹刀和回避支援本身都是对黄光的一次交互…一个角色要么只能弹刀，要么只能回避…只是前面弹刀的1.16秒换成了1.16秒的时停效果，纯亏时间」+「按照真实的模拟来，老测试不通过就修改老测试」 | 验 src/core/__tests__/evadeAssist.test.ts | 锚 src/core/resource/helpers.ts#buildExecutions | 信 确认
+  // ⟳复核: raw 里「回避支援」若补出倍率/失衡数据（当前 param 块完全缺失）或弹刀侧 1.166 众数口径变了，须重对 | 到期 2026-12-15
+  // 回避支援（Evade Assist）：**没有招架支援的角色**对黄光的那一次交互。
+  // 口径（用户 2026-09-15）：「弹刀和回避支援本身都是对黄光的一次交互…一个角色要么只能弹刀，
+  // 要么只能回避」「回避支援和支援突击用的公式是一样的，而且也有215喧响奖励，只是前面弹刀的
+  // 1.16秒换成了1.16秒的时停效果，纯亏时间」⇒ 与轻弹刀同长同 215，但**不产伤害/失衡**。
+  // 判据走数据、不列角色名单（规则 6）：`defensiveAssistMoveId` 为空 = 该角色没有招架支援。
+  // 实测命中 6 个：1081 比利 / 1181 格莉丝 / 1211 丽娜 / 1241 朱鸢 / 1311 耀嘉音 / 1351 波可娜。
+  // ⚠ 必须用 `defensiveAssistMoveId`（而非 `defensiveAssistActionTime > 0`）分派：真斗 1441
+  //   **有** moveId 但 actionTime=0（既存数据缺口，见账本 Open），它是招架型，不能被误判成回避。
+  // ⚠ 不套 `parryTimeFreeCount`（x 弹刀时间豁免）：那条豁免的语义是「非主弹窗位的弹刀不占前台」，
+  //   回避按用户口径**照扣**（时停期间自己也没输出 = 纯亏）。215 喧响走 `calcSpecialActionBonus`
+  //   的 parry 通道（按 parryCount 计），与弹刀同，故此处行内 decibel 给 0、不重复计。
+  // 本体在原文里没有任何倍率（raw 无 param 块）⇒ 零倍率、只占时间的合成行（先例：般岳后摇）。
+  if (!cfg.defensiveAssistMoveId && cfg.parryCount > 0 && cfg.assistFollowUpMoveId) {
+    executions.push({
+      moveId: EVADE_ASSIST_MOVE_ID,
+      moveName: '回避支援（Evade Assist）',
+      category: 'assist',
+      count: cfg.parryCount,
+      actionTime: EVADE_ASSIST_ACTION_TIME_SECONDS,
+      comboAlignRatio: 0,
+      totalTime: cfg.parryCount * EVADE_ASSIST_ACTION_TIME_SECONDS,
+      totalComboAlignTime: 0,
+      energyConsume: 0,
+      totalEnergyConsume: 0,
+      decibelRecovery: 0,
+      totalDecibelRecovery: 0,
+      damageMultiplier: 0,
+      damageMultiplierOverride: true,
+      timeBucket: 'necessary',
+      skillTableNote: '回避支援 = 该角色对黄光的一次交互（无招架支援）；时停 1.166s/次，不产伤害与失衡',
     })
   }
 

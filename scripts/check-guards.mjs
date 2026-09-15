@@ -1168,12 +1168,14 @@ export const DEAD_CHANNEL_ALLOWLIST = {
  *    修复 = 正则加 `(?:\?\?|\|\||&&)?` 前缀（A/B 两段同改）；实测只清掉这 1 条误报，
  *    其余冻结条目零变化。判据 `checkGuards.test.ts`「复合赋值也算写入」钉住。
  */
+export function stripComments(text) {
+  return text
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')      // 块注释（含 JSDoc）
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1')   // 行注释（避开 `https://` 的假注释）
+}
+
 export function stripCommentsAndStrings(text) {
-  return stripStringLiterals(
-    text
-      .replace(/\/\*[\s\S]*?\*\//g, ' ')      // 块注释（含 JSDoc）
-      .replace(/(^|[^:])\/\/[^\n]*/g, '$1'),  // 行注释（避开 `https://` 的假注释）
-  )
+  return stripStringLiterals(stripComments(text))
 }
 
 /**

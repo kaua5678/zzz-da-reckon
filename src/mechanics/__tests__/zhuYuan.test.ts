@@ -128,6 +128,25 @@ describe('朱鸢强化霰弹资源循环', () => {
     expect(shells.spendCounts.shells_suppression_spend).toBe(36)
   })
 
+  it('自卫还击霰弹接黄光交互次数（次数源由 buildCharConfig 写入 ⇒ 可红自证）', () => {
+    // 缺陷回归（2026-09-15 剑仪池式全库扫描查出，同 1401 形态）：spec 规则 shells_def_assist
+    // 声明 status:"implemented"、countSource:"cfgField"、countField:"defAssistCount"，但
+    // `defAssistCount` 在全仓**生产代码里零写入** ⇒ 解释器 `?? 0` 兜底 ⇒ 自卫还击的霰弹收益恒为 0。
+    // 上面那条「霰弹账目」测试一直绿，是因为它**手填** cfg.defAssistCount —— 测试自证、生产恒 0。
+    // 本测试走真实装配路径：只给 parryCount，由模块自己写次数源。
+    const cfg: any = { parryCount: 8, dodgeCounterCount: 1, quickAssistCount: 1 }
+    zhuYuanMechanic.buildCharConfig!({ cfg, cinemaLevel: 0 } as any)
+    expect(cfg.defAssistCount).toBe(8)
+    const result: any = zhuYuanMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
+    const shells = result.specResources.zhuyuan_shells
+    // 支援突击 1241025 发动 8 次 × 3 枚（原文「招式发动时，获得3枚[强化霰弹]」）
+    expect(shells.gains.shells_def_assist).toBeCloseTo(24, 5)
+    // 不带支援突击的弹刀不产支援突击行 ⇒ 不计入（core 支援突击块 count = parryCount，非两者之和）
+    const cfg2: any = { parryCount: 8, parryNoFollowUpCount: 5, dodgeCounterCount: 1, quickAssistCount: 1 }
+    zhuYuanMechanic.buildCharConfig!({ cfg: cfg2, cinemaLevel: 0 } as any)
+    expect(cfg2.defAssistCount).toBe(8)
+  })
+
   it('影画1 快速装填（用户口径：连携6枚/终结9枚）', () => {
     const cfg: any = { zhuyuanCinemaLevel: 1, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
     const result: any = zhuYuanMechanic.buildResourceResult!({ cfg, state: mkState() } as any)

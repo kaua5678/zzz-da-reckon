@@ -18,6 +18,7 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { clearWarmStartCache, calcTeamResources } from '@/core/resource'
 import { UNDERFILL_PROBE_THRESHOLD_SECONDS, TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
+import { EVADE_ASSIST_ACTION_TIME_SECONDS } from '@/data/resourceDefaults'
 import { buildTeamTimeSummary } from '@/composables/teamTimeSummary'
 
 beforeEach(() => clearWarmStartCache())
@@ -40,9 +41,15 @@ describe('末轮欠打回填', () => {
   it('① 自由时间 >1s 的队列试探回填：refund>0，留白收进量化/试探粒度地板', async () => {
     // 1181/1511/1411：留白 7.4s（10s 门槛下从不试探、refund=0）→ 09-08 门槛降为 1s（=量化容差）
     // 后被试探：实测 refund 5.6s、留白收进 1.1s（≤ 2×容差 = 折半试探的粒度地板）。
+    // **2026-09-15 地板加一档回避时长**（用户裁决「按真实模拟来，老测试不通过就改老测试」）：
+    // 1181 格莉丝是**回避型**（catalog 无招架支援 ⇒ `findDefensiveAssist` 为 null），新增的
+    // 「回避支援」必要行按 1.166s 为粒度扣前台时间（`@fact engine:time/回避支援`），
+    // 试探落点因此量化到 1.166s 的整数倍 ⇒ 实测该队留白 1.1 → **2.323s**。
+    // 地板相应 = 折半试探粒度(2×容差) + 一档回避时长 = 3.166s。
+    // ⚠ 这是**新增必要动作的量化后果**，不是回填失效：`refund > 0` 那条硬判据保持原样不动。
     const t = await summary(['1181', '1511', '1411'])
     expect(t.refund).toBeGreaterThan(0)
-    expect(t.slack).toBeLessThanOrEqual(2 * TIME_BUDGET_TOLERANCE_SECONDS)
+    expect(t.slack).toBeLessThanOrEqual(2 * TIME_BUDGET_TOLERANCE_SECONDS + EVADE_ASSIST_ACTION_TIME_SECONDS)
     // 1191/1481/1451… 取 1191/1481/1311：旧门槛（10s）时代的大欠打样例——refund>0 在两个
     // 门槛下都必须成立（欠打 8.9s 的放大环使填充不可行是既有物理，门控只保证「可行部分全分」）。
     const s2 = await summary(['1191', '1481', '1311'])

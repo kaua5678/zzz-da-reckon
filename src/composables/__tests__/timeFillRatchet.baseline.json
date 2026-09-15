@@ -110,19 +110,19 @@
   "outerExit": "stable"
  },
  "auto-1181-1511-1411": {
-  "slack": 1.1,
+  "slack": 2.3,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "auto-1181-1561-1411": {
-  "slack": 2.1,
+  "slack": 1.9,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
  "auto-1181-1561-1581": {
-  "slack": 1.6,
+  "slack": 1.4,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"

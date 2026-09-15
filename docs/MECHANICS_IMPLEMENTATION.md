@@ -378,6 +378,7 @@
 - 文件名口径：旧文件名 `juhufu` 与橘福福拼音 `jufufu` 只差一字，spec 文件名必须按 agentId（规则 7）。
 - **定位**：机制全部自身向，无团队 buff（原 1241 teammate-buffs 组为误挂的橘福福旧版草稿，已删除；橘福福正式版在 1391 组）。
 - **强化霰弹资源循环**（spec resource `zhuyuan_shells`，用户口径：资源条是角色核心特色）：初始6枚；获取=突击模式段4/5每连段+1、闪避反击+1、全弹连射+3、歼灭模式/MAX+3、掩护射击+1、自卫还击+3、影画1 快速装填连携+6/终结+9（原文6/9 口径用户确认，cfgField 命座门控）；消耗=压制模式开火（总量口径，count=初始+总获取）。**影画6 以太余温**：累计消耗12枚得1次，追加4枚×220%攻击力以太鹿弹（`buildExecutions` 执行行）+ 余温强特耗能-30 按回能口径并入 `initialEnergyGift`（`buildResourceResult`）。
+- **自卫还击次数源 [2026-09-15 接上]**（口径：`@fact agent:1241/自卫还击霰弹次数源`）：`shells_def_assist` 的 `cfgField defAssistCount` 此前**全仓生产代码零写入** ⇒ 该收入恒为 0（同 1401 剑仪池形态，2026-09-15 全库扫描查出；单测因手填该字段一直绿）。现由 `buildZhuYuanCharConfig` 写 = `cfg.parryCount`——据用户口径「弹刀和回避支援本身都是对黄光的一次交互」，而 core 的支援突击行本身按 `parryCount` 产 ⇒ 伤害行与霰弹**同源同次数、不是双计**。证据：delta 全含 1241（`agent:1241:c0` +4.491% / `agent:1241:c6` +0.583% / `preset:auto-1241-1031-1311` +1.237%），**时间账与逐槽 slot 零变化**（多出的 18 枚被上一条「挤出等量平A时间」口径吸收）。机器面：`validate:specs` 增「cfg 字段必须有生产写入方」判据。
 - **压制模式以太强化霰弹（招式级+时间驱动，2026-08-26）**：物理不打，只打以太子弹——1 枚霰弹 = 1 段以太强化霰弹（`1241010/1241011/1241012` 三段轮转），就像艾莲 1 颗充能打 1 段平A，各段 DPS 相同（蓄力↔急冻拆分只是重复获取豆子）。`buildExecutions` 生成以太子弹执行行（`element=ether`、`category=basic`），数量 = `min(霰弹总量, floor(平A池时间/单段均时))`，时间有界、超出平A池的霰弹浪费（时间紧可浪费）。**弹占的就是平A池那份时间**，故生成后必须从 `basic_attack` 聚合行挤出等量时间（`@fact agent:1241/压制以太弹时间`；不挤出 = 重复计费，见 ENGINE_PIPELINE_GUIDE §4 坑19③ 物化侧多算）。
 - **未建模**：影画2 防御向（抗打断/受到伤害-10%）。
 - **模块**：`src/mechanics/agents/zhuYuan.ts`（applyPanel + 霰弹资源 buildExecutions/buildResourceResult）+ helpers 失衡覆盖率块。

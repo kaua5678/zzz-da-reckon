@@ -351,6 +351,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | `state.basicAttackTime`（配合段循环计数） | 平A第N段命中；「任意[出枪式]命中」按段循环 | 1591 凛冽枪尖#4 命中（countBasicSegments） |
 | `cfg.dodgeCounterCount` | 极限闪避/闪避反击 | 1631 烈旋（受击/烁影驱动的近似源） |
 | `cfg.parryCount` / `cfg.blockCount` | 格挡/招架/弹刀 | 1591 支援突击：冰饕 |
+| `cfg.parryCount`（**双重语义**）+ 合成行 `evade_assist` | 「弹刀/回避次数」——对**黄光**的一次交互 | 招架型角色产「轻弹刀＋支援突击」两行；**无招架支援**的角色（回避型）产「回避支援」行（1.166s 必要前台、零伤害零失衡＝时停纯亏）＋支援突击。一个角色只能其一，判据 = `!defensiveAssistMoveId`（数据驱动，不列角色名单）。口径单源 `@fact engine:time/回避支援`（`core/resource/helpers.ts#buildExecutions`）；时间常量与 moveId 在 `data/resourceDefaults.ts` |
 | `cfg.quickAssistCount` | 快速支援 | — |
 | `cfg.stunCount`（失衡池收敛回填） | 失衡时/命中失衡敌人/每次失衡 | 1591 破阵=每次失衡一套 |
 | 异常池触发次数（`ap1.perElement`/totalTriggerCount，经收敛注入） | 触发属性异常时/命中异常状态敌人 | 1541 寒蚀收入、1331 异放 |

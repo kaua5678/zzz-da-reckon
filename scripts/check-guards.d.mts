@@ -205,6 +205,10 @@ export interface DeadChannelCandidate {
 export declare function scanDeadOptionalProps(root?: string): DeadChannelCandidate[]
 export declare function scanReadOnlyOptionalProps(root?: string): DeadChannelCandidate[]
 export declare function stripStringLiterals(text: string): string
+/** 只去注释（块注释 + 行注释）。`validate-specs.mjs` 的「死口径」判据用它——
+ *  那里必须保留字符串字面量（`obj['field'] = v` 是合法写入形态），所以不能复用
+ *  `stripCommentsAndStrings`。见 check-guards.mjs 中本函数的注释。 */
+export declare function stripComments(text: string): string
 export declare function stripCommentsAndStrings(text: string): string
 export interface DtsDriftRow {
   dts: string

@@ -1251,10 +1251,17 @@ export function findDefensiveAssist(agentSkills: {
   const assist = agentSkills.categories.find(c => c.id === 'assist')
   if (!assist) return null
 
-  const move = assist.moves.find(m => {
-    const name = m.name?.en?.toLowerCase() || ''
-    return name.includes('defensive assist') && name.includes('#1')
-  })
+  const defensiveAssists = assist.moves.filter(m =>
+    (m.name?.en?.toLowerCase() || '').includes('defensive assist'))
+  // 首选 `#1` 段：轻弹刀只取 #1（#2/#3 = 重招架/连续招架，见 ENGINE_PIPELINE_GUIDE §4「弹刀口径三件事」
+  // ——引擎取 #1 + 支援突击 = 完整一次弹刀）。
+  // **命名约定回退**（2026-09-15 实测）：3.3 新角色 1631/1641 的 catalog `en` 名**不带 `#N`**
+  // （zh 侧写成「·轻招架/·重招架/·连续招架失衡倍率」），原式直接返回 null ⇒ 这两个角色
+  // **从来没产过轻弹刀行**（白丢 1.166s 前台与 366 失衡）。按 id 升序取第一条 = 轻招架。
+  // 安全性实测：56 个有招架的角色里，min-id 与 `#1` 命中仅 3 例不一致 = 1631/1641（本修复目标）
+  // 与真斗 1441（它**有** `#1`，仍走首选分支 ⇒ 零变化；其 `#1` 的 actionTime=0 是另一条既存数据缺口）。
+  const move = defensiveAssists.find(m => (m.name?.en || '').includes('#1'))
+    ?? [...defensiveAssists].sort((a, b) => (Number(a.id) - Number(b.id)) || String(a.id).localeCompare(String(b.id)))[0]
   if (!move) return null
 
   // 一次动作可能被 catalog 拆成多段（登记融合组）：时间与喧响走融合口径（坑 31）。

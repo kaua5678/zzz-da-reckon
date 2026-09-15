@@ -17,6 +17,8 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+// 复用护栏的注释剥离（规则 11：同一转换只留一份，别在这重抄正则）
+import { stripComments } from './check-guards.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const specDir = join(root, 'src', 'specs', 'agents')
@@ -75,6 +77,47 @@ for (const file of readdirSync(mechanicsDir)) {
     }
   }
 }
+
+/**
+ * 生产代码语料（判据「死口径」用，AGENTS 规则 16①）。
+ * 排除四处：src/specs/**（spec 声明本体，自己引用自己不算生产者）、src/types/**
+ * （**类型声明不是写入方** —— 实测踩过：把字段补进 config.ts 后，删掉模块里的真实赋值，
+ * 判据仍绿 ⇒ 假阴性。声明只是让 `?? 0` 有个类型可钻）、__tests__/**
+ * （**测试手填 cfg 字段不算生产者——这正是 1241 能藏住的假绿来源**）、非 ts/vue 文件。
+ *
+ * ⚠ **必须去注释**（2026-09-15 实测假阴性）：修 1241 时在 `zhuYuan.ts` 写了
+ * `// @fact … 口径: defAssistCount = cfg.parryCount`，判据把**这条口径注释本身当成了生产者**——
+ * 删掉真实赋值后仍然全绿（**口径注释给自己洗白**）。与判据 14 的「夹具串抹掉真实死通道」同族，
+ * 复用同一个 `stripComments`（单一来源，别在这再抄一份正则）。
+ *
+ * ⚠ 判据强度 = **字段名级 mention**，不是符号级写入分析：只读提及也会算命中。
+ * 刻意如此——写形态太杂（`obj.f =` / `obj['f'] =` / `??=` / 对象字面量 / spread），
+ * 按写形态匹配会**把已接上的通道报成死的**（判据 14 ③ 记过这条：假红比漏报更危险，
+ * 会逼人去登记假豁免）。本判据的目标形态是 1241/1401 那种「生产代码**完全没人碰**这个字段」。
+ */
+const specsSrcDir = join(root, 'src', 'specs')
+const typesSrcDir = join(root, 'src', 'types')
+const productionSrcText = (() => {
+  const chunks = []
+  const walk = dir => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (entry.name === '__tests__') continue
+        if (p === specsSrcDir || p.startsWith(specsSrcDir + '/')) continue
+        if (p === typesSrcDir || p.startsWith(typesSrcDir + '/')) continue
+        walk(p)
+      } else if (/\.vue$|\.ts$/.test(entry.name) && !entry.name.endsWith('.d.ts')) {
+        chunks.push(stripComments(readFileSync(p, 'utf8')))
+      }
+    }
+  }
+  walk(join(root, 'src'))
+  return chunks.join('\n')
+})()
+const hasProductionProducer = field =>
+  typeof field === 'string' && field.length > 0
+  && new RegExp(`\\b${field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(productionSrcText)
 
 const files = readdirSync(specDir).filter(file => file.endsWith('.json'))
 check('spec directory has JSON files', files.length > 0)
@@ -197,6 +240,35 @@ for (const file of files) {
           console.log(`  WARN ${label}: adjustable 滑块 ${slider.adjustable?.id ?? slider.path}（路径 ${slider.path}）在自定义模块角色 spec 无消费者（AGENTS 规则 4）——机制必须在模块实现；仅作记录请在 note 写「实现位置：」`)
         }
       }
+    }
+  }
+
+  // ===== 死口径检查（AGENTS 规则 16①）：spec 用 cfgField 引用的字段必须有生产写入方 =====
+  // 动机（实测两例同族，都是「声明 implemented 但结构上拿不到数」= 剑仪池式缺陷）：
+  //   · 1401 剑仪池两条 gain 规则：`buildAliceSwordWillSource` 的三个调用点没传第 3 参次数源
+  //     ⇒ 函数内 `?? 0` 兜底 ⇒ 恒产 0（commit 1de3e47 修）。
+  //   · 1241 `shells_def_assist`：countField `defAssistCount` **全仓生产代码零写入**（只在 spec
+  //     与测试里出现）⇒ 同样恒产 0，而单测因为**手填** cfg 字段一直绿着 —— 2026-09-15 扫描查出。
+  // 判据：凡 spec 用 cfgField 引用的字段名，必须在生产代码里出现。`resource:` 前缀的 key 除外
+  // （那类由 resourceEventCounts 生成或模块在 counts 里注入，不走 cfg 字段）。
+  for (const res of spec.resources ?? []) {
+    const cfgRefs = []
+    if (res.initialValueSource === 'cfgField') cfgRefs.push([`resources.${res.id}.initialValueField`, res.initialValueField])
+    for (const key of ['gainRules', 'feedbackGainRules', 'spendRules']) {
+      for (const rule of res[key] ?? []) {
+        if (rule?.countSource === 'cfgField') cfgRefs.push([`resources.${res.id}.${key}.${rule.id ?? '?'}.countField`, rule.countField])
+        if (rule?.valueSource === 'cfgField') cfgRefs.push([`resources.${res.id}.${key}.${rule.id ?? '?'}.valueField`, rule.valueField])
+      }
+    }
+    for (const [where, field] of cfgRefs) {
+      if (typeof field !== 'string' || field.startsWith('resource:')) continue
+      check(
+        `${label}: cfg 字段 ${field} 有生产写入方（${where}）`,
+        hasProductionProducer(field),
+        `spec 按 cfgField 读它，但 src 生产代码（已排除 src/specs 与 __tests__）零命中 ⇒ 解释器 \`?? 0\` 兜底 ⇒ 该规则恒产 0，而单测可能因手填该字段照常绿。`
+        + `修法三选一：① 模块把字段写进 cfg（参考 1401 走 applyTeamConfig converge 注入 / 1241 走 buildCharConfig）；`
+        + `② countSource 改用引擎已有的次数源；③ 确属未建模则删条目并在 docs/MECHANICS_IMPLEMENTATION.md 档案段记「未建模」。`
+      )
     }
   }
 }
