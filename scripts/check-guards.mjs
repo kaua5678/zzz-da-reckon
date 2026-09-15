@@ -123,7 +123,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'core agentId 分支',
     file: 'src/core/resource.ts + core/resource/helpers.ts',
-    frozen: 8,  // 2026-09-11 评审冻结 36（resource.ts 16 + helpers.ts 20）→ 26（2026-09-13 T6 首次真清偿 −10）→ 18（2026-09-13 crossAgentSupply 收口 −8）→ **12**（2026-09-15 批次2 −4：helpers.ts 里 4 处 yidhari 守卫化简——1 处 `!==` 短路左操作数（yidhariRefund）+ 2 处 `if (cfg.agentId !== '1051')`（yidhariBurn×2）+ 1 处 `agentId === '1051' && 字段!==undefined`；判据 = 相关字段唯一写入方 = yidhari.ts 模块且无默认值 ⇒ 字段判据完全覆盖角色判据，timeGolden 0 delta，反向验证破坏该字段消费 ⇒ preset:yidhari-qingyi-lucia 精确红）。详见 CORE_AGENT_BRANCH_BASELINE 头注释的沿革
+    frozen: 6,  // 2026-09-11 评审冻结 36（resource.ts 16 + helpers.ts 20）→ 26（2026-09-13 T6 首次真清偿 −10）→ 18（2026-09-13 crossAgentSupply 收口 −8）→ **12**（2026-09-15 批次2 −4：helpers.ts 里 4 处 yidhari 守卫化简——1 处 `!==` 短路左操作数（yidhariRefund）+ 2 处 `if (cfg.agentId !== '1051')`（yidhariBurn×2）+ 1 处 `agentId === '1051' && 字段!==undefined`；判据 = 相关字段唯一写入方 = yidhari.ts 模块且无默认值 ⇒ 字段判据完全覆盖角色判据，timeGolden 0 delta，反向验证破坏该字段消费 ⇒ preset:yidhari-qingyi-lucia 精确红）。详见 CORE_AGENT_BRANCH_BASELINE 头注释的沿革
     target: 0,
     due: '2027-03-31',
     plan: '剩 18 处：① 先把 convergence.ts:957 的 yidhariInStunExCount / :1074 的 billyAxisActive 写入方挪进对应角色模块，再删 helpers.ts:1271 与 resource.ts:595 的守卫（现不冗余）；② `!==` 短路形态逐处论证后化简；③ 跨角色查找（findIndex 找队友槽位）与纯 agentId 写入（billyFinalizeChain / yidhariFinalizeEx 由引擎写角色字段）属真特判，需走 applyTeamConfig / convergence 落点（评审 #10）；④ 同批新增判据 12（core role-import 棘轮 7 处）——它是本条的**语义补强面**：agentId 字面量清零 ≠ 角色无关，引擎静态 import 角色模块同样要清',
@@ -580,15 +580,25 @@ export const CORE_AGENT_BRANCH_FILES = ['src/core/resource.ts', 'src/core/resour
  *    一刀切 skip 会少算；② 提供的 `perTargetAmounts` 读的是**提供者自己那份 cfg**，
  *    若某量是编排层「写给全队」的估计值，两边取值时机可能不同（本批实测该差异不成立，
  *    但契约里保留了 `targetCfgOf` 供需要时用）。
- *  · **剩余 8 处的性质**（下一批需先扩契约，别再逐处硬删）：
- *    - `findIndex(c => c.agentId === '1211'/'1131'/'1151'/'1451'/'1051')` 共 6 处 = 跨槽位
- *      「找**队友**槽位」查询（丽娜/苍角/露西终结邻位回能、卢西娅帷幕、伊德海莉烧血）。
- *      落点 = 实现 `types.ts` 已预告的 `'neighbor-ult-energy'` / `'curtain'` 等
- *      `crossAgentSupply` kind（模块声明能力、引擎按类别查槽位），**属新功能不是删守卫**。
- *    - `helpers.ts:1283` 的般岳强特次数分支（调 `computeBanyueCycleFromCfg`）与
- *      `resource.ts:523/962/963` 的比利终局旗标 = 引擎层真特判，需先有派发落点。
+ *  · 8 → **6**（2026-09-15 同批）：伊德海莉烧血的跨槽查找（`findIndex(c => c.agentId === '1051')`
+ *    ×2，helpers.ts 与 resource.ts 各一处）→ 按**模块专属字段** `yidhariDecibelPerHpPct`
+ *    找槽（唯一写入方 = yidhari.ts 的 buildCharConfig，无条件写且无 `?? 默认`）。
+ *    ⚠ **卢西娅那两处（'1451'）试过并回退**：`luciaCinemaLevel` 写在编排层的另一份 cfg 上，
+ *    在 `iterate` / 收敛后两条路径上实测**都是 undefined** ⇒ 改字段判据会让 `luciaSlot` 恒 -1
+ *    （帷幕触发数归零，`luciaElowen.test.ts` 的 `yidhariExternalHealPct` 12.8 → 0 精确红）。
+ *    ⇒ 「字段唯一写入方」是**必要非充分**条件：还要验证该字段在**消费点所在的那份 cfg** 上有值
+ *    （T6 判据的补充：写入时机/所在对象必须与读取点一致）。
+ *  · **剩余 4 处的性质**（引擎层真特判，需先有派发落点，别再逐处硬删）：
+ *    - `helpers.ts` 般岳(`1471`) 强特次数分支 —— 调模块专属求解器 `computeBanyueCycleFromCfg`
+ *      （落点 = 让该模块声明一个「强特次数求解器」能力，引擎按能力查询，同
+ *      `crossAgentSupply`/`backstageAutoFill` 范式；需要设计，不是删守卫）。
+ *    - `resource.ts:523` 比利(`1531`) 终局整数重推过滤 + `:962/:963` 的
+ *      比利/伊德海莉终局旗标复位 —— 按角色**复位自己那份 cfg**的跨 cf​g 循环。
+ *      ⚠ 试过改字段判据并**否决**：`billyFinalizeChain` 初值 `false` 由 `:962` 的
+ *      `if (cfg.agentId === '1531')` 循环写入（非 undefined = 已初始化）⇒ 字段判据会
+ *      把非比利 cfg 一并纳入重推。详见 `resource.ts:518` 附近注释。
  */
-export const CORE_AGENT_BRANCH_BASELINE = 8
+export const CORE_AGENT_BRANCH_BASELINE = 6
 
 /** 跨多个文件计 agentId 分支总行数（与 countAgentIdBranchLines 同口径） */
 export function countAgentIdBranchLinesInFiles(files, root = ROOT) {

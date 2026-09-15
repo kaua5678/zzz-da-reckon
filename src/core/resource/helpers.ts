@@ -1382,8 +1382,12 @@ export function iterate(
   }
 
   // 卢西娅4命：帷幕开启/延长（含队友如伊德海莉大招开帷幕）→ 全队每人喧响；15s CD 封顶 × 利用率滑块
+  // 2026-09-15 core 棘轮批次4：伊德海莉按**模块专属字段**找槽（`yidhariDecibelPerHpPct` 的
+  // 唯一写入方 = yidhari.ts 的 buildCharConfig，无条件写、且无 `?? 默认` ⇒ 字段存在即蕴含是该角色）。
+  // ⚠ 卢西娅这半**保持 agentId**：`luciaCinemaLevel` 在 iterate 的这条路径上实测为 undefined
+  // （写在编排层的另一份 cfg 上），改字段判据会让 luciaSlot 恒 -1（详见 resource.ts 同款注释）。
   const luciaSlot = configs.findIndex(c => c.agentId === '1451')
-  const yidhariSlot = configs.findIndex(c => c.agentId === '1051')
+  const yidhariSlot = configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)
   const curtainCoverage = configs.find(c => c.luciaC4CurtainCoverage !== undefined)?.luciaC4CurtainCoverage ?? 1
   const curtainTriggers = luciaSlot >= 0
     ? computeLuciaCurtainTriggers(

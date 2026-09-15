@@ -738,8 +738,14 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   if (!config.initialStates) storeWarmStart(warmExactKey, warmSeedStates)
 
   // 收敛后按最终状态折算跨角色联动：卢西娅4命帷幕触发次数（含伊德海莉大招开帷幕）、回血按卢西娅大招次数
+  // 2026-09-15 core 棘轮批次4：按模块专属字段找槽（同 helpers.ts 同款判据；见该处注释）。
+  // ⚠ 卢西娅**必须仍按 agentId 找槽**（2026-09-15 实测）：这里读的是 `config.initialStates` 收敛后的
+  // configs，而 `luciaCinemaLevel` 由 luciaElowen 的 buildCharConfig 写在**编排层的另一份 cfg**上，
+  // 到这一步实测为 undefined（探针：hasLucia=[null,null] ⇒ luciaSlot 恒 -1 ⇒ 帷幕触发数归零、
+  // luciaElowen.test.ts 的 yidhariExternalHealPct 12.8 变 0）。伊德海莉的
+  // `yidhariDecibelPerHpPct` 在这一步**有值**（探针 hasYid=[null,10]），故那半可以改字段判据。
   const luciaSlot = configs.findIndex(c => c.agentId === '1451')
-  const yidhariSlot = configs.findIndex(c => c.agentId === '1051')
+  const yidhariSlot = configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)
   const curtainCoverage = configs.find(c => c.luciaC4CurtainCoverage !== undefined)?.luciaC4CurtainCoverage ?? 1
   const curtainTriggers = luciaSlot >= 0
     ? computeLuciaCurtainTriggers(
