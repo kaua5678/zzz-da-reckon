@@ -176,7 +176,21 @@ export function useResourceCalc() {
       let prevDecibelParrySeq = ''
       /** 爱丽丝剑仪 spark 次数序列（反馈环稳定判据，见下方 aliceSeq 注释） */
       let prevAliceSeq = ''
-      const seenStunCounts = new Set<number>()
+      /**
+       * 上一轮的失衡次数（真 2-循环判定用，2026-09-15 修）。
+       *
+       * ⚠ 原实现是 `Set<number>` + `Math.round(v * 10)` 的 **0.1 粒度桶**，注释自称「2-循环去重键取 0.1 粒度」。
+       * 那个粒度分不清「真的在两值间来回跳」与「正在收敛但两轮落在同一个桶里」——
+       * 实测（爱丽丝+格利丝+11号，探针逐轮打印）：`stunCount` 轨迹
+       * `0 → 1.0 → 0.91111 → 0.91901 → 0.91831`，`|Δ| = 1.0 → 0.089 → 0.0079 → 0.0007`
+       * 是**等比收敛**（且第 4 轮 ultSeq/anomalySeq 已全稳定），但后三轮四舍五入都进「9 号桶」
+       * ⇒ 被误判 `cycle` 提前终止，**再也收敛不到底**。
+       * 本改动前，任何改动只要把这支队推进同一个桶就会触发它（我这次接爱丽丝剑仪次数源就撞上了）。
+       *
+       * 正解 = 记住上一轮的值 `prevStunValue`，用**真 2-循环**条件判定：本轮值与上一轮相近（<容差）
+       * 且与上上轮也相近 ⇒ 才是在两个值之间来回跳。收敛中的单调序列不满足（每轮都在变）。
+       */
+      let prevStunValue: number | null = null
       let outerRounds = 0
       let outerConverged = false
       let outerExit: 'stable' | 'cycle' | 'maxIter' = 'maxIter'
@@ -225,7 +239,17 @@ export function useResourceCalc() {
           }
         }
         // 终结技次数与异常喧响奖励序列稳定才收敛（异常奖励 → 终结技次数 → 执行计划/时间分配 → 异常触发次数）
-        const ultSeq = (out?.resourceResult?.characters ?? []).map(c => c.ultimateCount).join(',')
+        /**
+         * ⚠ 终结技次数按**定长定点**入序列，不是裸 `toFixed`/原值。
+         *
+         * 原实现是 `.join(',')` 直接拼原值 ⇒ 只要某槽的 `ultimateCount` 是**收敛中的小数**
+         * （如 4.6666624 → 4.66666752 → 4.666666496…），字符串比较**永远不相等** ⇒
+         * `feedbackStable` 恒 false ⇒ 跑满 20 轮报 `maxIter`（实测 `auto-1051-1481-1451`：
+         * stunCount 早在 k=9 就稳在 1.66667，ultSeq 却一直在第 6 位小数抖）。
+         * 与 stunCount 的 0.05 容差同源问题：**离散量的判稳必须给量化容差**。
+         * 取 3 位小数（次数量级足够；同仓 `timeGolden` 的 slotSig 也用 4 位）。
+         */
+        const ultSeq = (out?.resourceResult?.characters ?? []).map(c => (c.ultimateCount ?? 0).toFixed(3)).join(',')
         const anomalySeq = (out?.anomalyPool?.perSlotBonus ?? []).map(v => Math.round(v)).join(',')
         const topUpSeq = `${out?.banyueTopUp?.parry},${out?.banyueTopUp?.dual}`
         const parrySplitSeq = out?.parrySplit ? `${out.parrySplit.breakerParry},${out.parrySplit.mainDpsParry}` : ''
@@ -263,8 +287,15 @@ export function useResourceCalc() {
           // 失衡次数与玄墨异常触发次数双稳定才收敛（异常触发 → 回闪能 → 强特 → 积蓄 → 触发）
           // 小数失衡时代：浮点比较改 0.05 容差；2-循环去重键取 0.1 粒度
           if (Math.abs(next - stunCount) < 0.05 && ait === threads.auricInkFlash && feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
-          if (seenStunCounts.has(Math.round(next * 10))) { outerExit = 'cycle'; break }
-          seenStunCounts.add(Math.round(stunCount * 10))
+          /**
+           * 真 2-循环：`next` 回到**上上轮**的值附近（而上一轮是另一个值）。
+           * 用 0.05 容差（与上面的判稳容差同源）；收敛中的序列每轮都在动 ⇒ 不会命中。
+           */
+          const isTwoCycle = prevStunValue !== null
+            && Math.abs(next - prevStunValue) < 0.05
+            && Math.abs(next - stunCount) >= 0.05
+          if (isTwoCycle) { outerExit = 'cycle'; break }
+          prevStunValue = stunCount
           stunCount = next
         }
         // 线程推进：anomalyDecibelBonus 旧版从 out.anomalyPool 现取（threadsNext 内置空数组占位），
