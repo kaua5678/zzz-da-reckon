@@ -212,8 +212,12 @@ export function createConvergenceRoundInputs(deps: {
           actionTime = typeof (act as { duration?: number }).duration === 'number'
             ? (act as { duration: number }).duration
             : (move?.actionTime ?? 0)
-          // 佩洛伊斯分支大招 2000 喧响/次（角色口径）；其余终结技 3000
-          decibelCost = (move?.name?.en ?? '').toLowerCase().includes('ultimate') ? (agentId === '1551' ? 2000 : 3000) : 0
+          // 终结技喧响消耗：读**本槽 cfg 的 ultimateCost**（角色口径，模块在 buildCharConfig
+          // 里写自己那份，如佩洛伊斯 1551 = 2000），缺省回落全局默认 3000。
+          // 2026-09-15 arch 棘轮：原为 `agentId === '1551' ? 2000 : 3000` 硬编码特判——
+          // 而 `specPanelBuffs.ts:174` 早已写 `cfg.ultimateCost = PEILUO_ULT_COST`（2000），
+          // 故该 agentId 判断**冗余**（判据同 T6：字段唯一写入方 = 该角色模块 ⇒ 不需要再认人）。
+          decibelCost = resolveAxisUltimateDecibelCost(move?.name?.en, resourceConfig.value?.characters, act.slot)
           // 60/90 转大块是琉音好评赠送的终结技（白送，不耗目标喧响），只占窗口时间不扣喧响
           if (act.promoteVariant) decibelCost = 0
         }
@@ -299,6 +303,27 @@ export function createConvergenceRoundInputs(deps: {
     extractAnomalyExecsFrom, extractStunExecsFrom, autoPreset, autoActive,
     resolveAxes, buildStackAxes, expandExecutedToCounts, calcAnomalyPoolInput,
   }
+}
+
+/**
+ * 轴内某动作的**终结技喧响消耗**（纯函数，导出供单测直接钉住）。
+ *
+ * 口径：只对「英文名含 `ultimate`」的招式收费（其余 0）；消耗取**本槽 cfg 的 `ultimateCost`**
+ * （角色模块在 `buildCharConfig` 写自己那份，如佩洛伊斯 1551 = 2000），未设则回落全局默认 3000。
+ *
+ * 为什么抽出来（2026-09-15 arch 棘轮）：原实现是硬编码 `agentId === '1551' ? 2000 : 3000`，
+ * 而 `specPanelBuffs.ts:174` 早已写 `cfg.ultimateCost = PEILUO_ULT_COST` ⇒ 该 agentId 判断**冗余**
+ * （判据同 T6：字段唯一写入方 = 该角色模块）。抽纯函数是为了让「按**槽位**读、不是按 agentId 认人」
+ * 这条口径**可被单测直接证伪**——只断言「配置里有 2000」是不够的（那是输入，不是被改的那行），
+ * 必须断言解析结果**随槽位变化**（实测教训：第一版测试断言在输入上，反向验证时照样绿）。
+ */
+export function resolveAxisUltimateDecibelCost(
+  moveEnName: unknown,
+  chars: ReadonlyArray<{ ultimateCost?: number }> | undefined,
+  slot: number,
+): number {
+  if (!String(moveEnName ?? '').toLowerCase().includes('ultimate')) return 0
+  return chars?.[slot]?.ultimateCost ?? ULTIMATE_COST_DEFAULT
 }
 
 /**

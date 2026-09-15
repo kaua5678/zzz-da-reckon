@@ -115,10 +115,10 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 56,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）。见 AGENT_BRANCH_BASELINE 注释
+    frozen: 55,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）→ **55**（2026-09-15 同批第 3 小簇：轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽 `cfg.ultimateCost`（`specPanelBuffs.ts:174` 早已写 2000）⇒ agentId 判断冗余，同 T6 判据；解析抽成导出纯函数 `resolveAxisUltimateDecibelCost` 以便单测直接证伪「按槽读」）。见 AGENT_BRANCH_BASELINE 注释
     target: 0,
     due: '2026-12-31',
-    plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。跨轮反馈走 `AgentTeamConfigInput.threads`（2026-09-15 新增的通用通道，别再逐字段铺开契约）。hot spot：convergence.ts(36) > damagePool.ts(16) > helpers.ts(4)。架构评审 #10 → #2',
+    plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。跨轮反馈走 `AgentTeamConfigInput.threads`（2026-09-15 新增的通用通道，别再逐字段铺开契约）。hot spot：convergence.ts(35) > damagePool.ts(16) > helpers.ts(4)。架构评审 #10 → #2',
   },
   {
     id: 'core agentId 分支',
@@ -493,8 +493,12 @@ export function countAgentBranchLines(root = ROOT) {
  * 那份 cfg」（规则 6）。契约面 = `AgentTeamConfigInput.threads`（递整份 `CalcRoundThreads` 快照，
  * 不再逐字段铺开——`roundThreads.ts` 头注释写明它本就是这份集合的单一事实源）。
  * 判据 = `timeGolden` 16 键 **0 delta** + `allAgentsSweep`/`timeFillRatchet`/`underfillRefund` 全绿。
+ * 2026-09-15 −1：56→55 = 轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽
+ * `cfg.ultimateCost`（`specPanelBuffs.ts:174` 早已写 2000）⇒ agentId 判断冗余（同 T6 判据：
+ * 字段唯一写入方 = 该角色模块）。解析抽成导出纯函数 `resolveAxisUltimateDecibelCost`，使
+ * 「按槽读、不按 agentId 认人」可被单测直接证伪（教训：断言写在**输入**上会假绿，见 peiluo.test.ts 注释）。
  */
-export const AGENT_BRANCH_BASELINE = 56
+export const AGENT_BRANCH_BASELINE = 55
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。

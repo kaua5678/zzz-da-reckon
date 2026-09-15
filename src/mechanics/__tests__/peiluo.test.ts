@@ -49,6 +49,38 @@ describe('佩洛伊斯（1551）影画1 黄昏旧章', () => {
     expect(cfg.ultimateCost).toBe(2000)
     expect(cfg.ultimateMoveId).toBe('1551015')
   })
+
+  // 2026-09-15 arch 棘轮：轴内终结技喧响消耗原先硬编码 `agentId === '1551' ? 2000 : 3000`，
+  // 现改读本槽 `cfg.ultimateCost`（模块在 buildCharConfig 写自己那份；缺省回落全局 3000）。
+  // 解析 = 导出的纯函数 `resolveAxisUltimateDecibelCost`（编排层唯一消费点）。
+  //
+  // ⚠ 判据必须落在**按槽解析的结果**上。两条踩过的假绿（都靠反向验证抓到）：
+  //   ① 断言在 `decibelSource.total` —— 那是**收入**，与消耗无关 ⇒ A/B 完全相同；
+  //   ② 断言在「配置里有 2000」—— 那是**输入**，不是被改的那行 ⇒ 把读取改成 `characters[0]` 照样绿。
+  //   本用例用**同一次调用里两个不同槽**的返回值差异钉死「按槽读」。
+  it('★ 轴内终结技喧响消耗按槽解析 cfg.ultimateCost（不是按 agentId 认人）', async () => {
+    const { resolveAxisUltimateDecibelCost } = await import('@/composables/resourceCalc/convergence')
+    const chars = [{ ultimateCost: 3000 }, { ultimateCost: 2000 }] // 槽0 普通、槽1 佩洛伊斯
+    const ULT = 'Ultimate: Total Annihilation'
+    // 同一招式名、不同槽 ⇒ 消耗必须不同（这正是「按槽读」与「按 agentId/固定槽读」的分水岭）
+    expect(resolveAxisUltimateDecibelCost(ULT, chars, 0)).toBe(3000)
+    expect(resolveAxisUltimateDecibelCost(ULT, chars, 1), '槽1 必须读到 2000').toBe(2000)
+    // 未设 ultimateCost 的槽回落全局默认
+    expect(resolveAxisUltimateDecibelCost(ULT, [{}], 0)).toBe(3000)
+    // 非终结技招式 = 0（该分支的守卫仍在）
+    expect(resolveAxisUltimateDecibelCost('Basic Attack: Sunset', chars, 1)).toBe(0)
+    expect(resolveAxisUltimateDecibelCost(undefined, chars, 1)).toBe(0)
+  })
+
+  it('★ 编排层给佩洛伊斯槽写的是 2000（模块口径，非全局默认）', async () => {
+    const { setupHarness } = await import('@/test/harness')
+    const { useResourceCalc } = await import('@/composables/useResourceCalc')
+    await setupHarness([{ agentId: '1051' }, { agentId: '1551' }, { agentId: '1101' }])
+    const calc = useResourceCalc() as any
+    const byAgent = new Map(calc.resourceConfig.value.characters.map((c: any) => [c.agentId, c.ultimateCost]))
+    expect(byAgent.get('1551'), '佩洛伊斯必须由模块写入 2000').toBe(2000)
+    expect(byAgent.get('1051'), '普通角色回落全局默认 3000').toBe(3000)
+  })
 })
 
 describe('佩洛伊斯大招三分支拆分（patchExecutions）', () => {
