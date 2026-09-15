@@ -1,10 +1,12 @@
 /**
- * 判据 16「scoped 样式可达性」双层测试（2026-09-14）。
+ * 判据 16「scoped 样式可达性」双层测试（2026-09-14；同日扩面至三个定义来源面）。
  *
  *  ① detector 单测（构造源码，可红性自证）：
  *     「组件用了页面私有 scoped 的类」必须报；补上 `<style scoped src>` 载入后必须不报
  *     ——这一对是判据的核心 discriminating pair（少一半就是误报/漏报）。
- *  ② 仓库级判据：真实仓库当前失配数 = 0（本轮已清 3 条，见账本）。
+ *     面二「类只定义在共享 scoped-src 文件（chart-blocks.css）」与
+ *     面三「类只定义在另一个组件的内联 scoped」各配一对「违规报 / 合法不报」。
+ *  ② 仓库级判据：真实仓库当前失配数 = 0（本轮已清 3 条，见账本；扩面后仍 0）。
  *     基线取 **0** 而不是「冻结存量」：非零存量全是真 bug，没有可豁免的形态
  *     （豁免通道 = 把类搬进 styles/chart-blocks.css 或组件自己的 css，不是登记）。
  *
@@ -13,6 +15,8 @@
  *   `.dd-caption`（Chart 5 抽走，`36b49f4`）→ 说明文字 11px/`--wa-500` 失效，实测继承 13px
  *   `.pv-summary`（Chart 5 抽走后页面 Chart 6 仍用）→ 组件侧摘要行 flex/gap 失效
  * 三条都不是「写错」，是**搬 DOM 时没搬规则**；vue-tsc/单测/ui-check 全都不红。
+ * 扩面依据：面一只能拦「规则留在页面」；规则留在**共享 css 但消费者没载入**（面二）或留在
+ *   **他组件内联 scoped**（面三）时同样静默失配，形状不同、症状相同。
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
@@ -135,6 +139,59 @@ describe('判据 16 detector（构造输入，可红性自证）', () => {
     expect(r.violations.some(v => v.cls === 'pv-summary' && v.component.endsWith('Prose.vue'))).toBe(true)
     expect(r.violations.some(v => v.cls === 'chart-subtitle' && v.component.endsWith('Prose.vue')),
       'chart-subtitle 由 chart-blocks.css 提供 ⇒ 不该报').toBe(false)
+  })
+
+  // ---- 面二：共享 scoped-src 文件（chart-blocks.css 之类）----
+
+  /** 单类消费者：模板只静态用一个类，样式块由用例给 */
+  const singleClsComp = (cls: string, styleBlock: string) => `<template>\n  <span class="${cls}">x</span>\n</template>\n<script setup lang="ts">const z = 1</script>\n${styleBlock}`
+
+  it('★ 面二：类只定义在共享 scoped-src 文件里，消费者组件没载入它 ⇒ 报', () => {
+    // 先造一个合法载入方，让 chart-blocks.css 成为「被 <style scoped src> 载入的共享文件」
+    writeFileSync(join(root, 'src/components/charts/SharedUser.vue'),
+      singleClsComp('chart-subtitle', '<style scoped src="@/styles/chart-blocks.css"></style>'))
+    // 消费者：模板用了 chart-subtitle，但既没载入 chart-blocks.css、自己也没有定义
+    writeFileSync(join(root, 'src/components/charts/SharedMissing.vue'),
+      singleClsComp('chart-subtitle', '<style scoped>\n.own-elsewhere { color: red; }\n</style>'))
+    const r = scan()
+    const hit = r.violations.find(v => v.cls === 'chart-subtitle' && v.component.endsWith('SharedMissing.vue'))
+    expect(hit, '漏报：chart-subtitle 只在 chart-blocks.css 定义，消费者没载入就吃不到').toBeTruthy()
+    expect(hit!.definedIn).toContain('chart-blocks.css')
+    expect(r.violations.some(v => v.cls === 'chart-subtitle' && v.component.endsWith('SharedUser.vue')),
+      '合法载入方不该被误报').toBe(false)
+  })
+
+  it('★ 面二：消费者也用 <style scoped src> 载入共享文件 ⇒ 不报（合法写法不误伤）', () => {
+    writeFileSync(join(root, 'src/components/charts/SharedMissing.vue'),
+      singleClsComp('chart-subtitle', '<style scoped src="@/styles/chart-blocks.css"></style>'))
+    const r = scan()
+    expect(r.violations.filter(v => v.cls === 'chart-subtitle' && v.component.endsWith('SharedMissing.vue')),
+      '修好了就该绿').toHaveLength(0)
+  })
+
+  // ---- 面三：他组件内联 scoped ----
+
+  it('★ 面三：类只定义在另一个组件的内联 scoped 里，消费者静态使用 ⇒ 报', () => {
+    // 定义方：自己内联 scoped 定义 + 自己用（合法）
+    writeFileSync(join(root, 'src/components/charts/HoverOwner.vue'),
+      singleClsComp('owner-badge', '<style scoped>\n.owner-badge { border: 1px solid red; }\n</style>'))
+    // 消费者：用了 owner-badge，但内联 scoped 里没有同名定义、也没有任何载入源提供它
+    writeFileSync(join(root, 'src/components/charts/BadgeBorrower.vue'),
+      singleClsComp('owner-badge', '<style scoped>\n.other-cls { color: red; }\n</style>'))
+    const r = scan()
+    const hit = r.violations.find(v => v.cls === 'owner-badge' && v.component.endsWith('BadgeBorrower.vue'))
+    expect(hit, '漏报：owner-badge 只在 HoverCardOwner 内联 scoped 定义，别的组件永远吃不到').toBeTruthy()
+    expect(hit!.definedIn).toContain('HoverOwner.vue#inline')
+    expect(r.violations.some(v => v.cls === 'owner-badge' && v.component.endsWith('HoverOwner.vue')),
+      '定义方自用不该被误报').toBe(false)
+  })
+
+  it('★ 面三：消费者自己内联 scoped 里也有同名定义 ⇒ 不报（各自一份是 scoped 下的合法写法）', () => {
+    writeFileSync(join(root, 'src/components/charts/BadgeBorrower.vue'),
+      singleClsComp('owner-badge', '<style scoped>\n.owner-badge { border: 1px solid red; }\n</style>'))
+    const r = scan()
+    expect(r.violations.filter(v => v.cls === 'owner-badge' && v.component.endsWith('BadgeBorrower.vue')),
+      '组件自己有同名定义 ⇒ 可达，不判').toHaveLength(0)
   })
 })
 

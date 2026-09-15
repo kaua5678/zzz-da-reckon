@@ -1862,22 +1862,30 @@ export function runAllChecks(root = ROOT) {
     })
   }
 
-  // ---- 判据 16：scoped 样式可达性（防「抽组件把 DOM 搬走、规则留在页面」） ----
+  // ---- 判据 16：scoped 样式可达性（防「规则留在别处的 scoped 里，消费组件吃不到」） ----
   {
     const reach = scanScopedStyleReach(root)
+    const KIND_LABEL = {
+      'views-css': 'src/views 下的 scoped css',
+      'shared-css': '共享 scoped-src 文件',
+      'page-inline': '页面内联 scoped',
+      'component-inline': '他组件内联 scoped',
+    }
+    const kindLabel = k => k.split('+').map(x => KIND_LABEL[x] ?? x).join(' + ')
     results.push({
-      name: `scoped 样式可达性 (规则 16: 组件用了页面私有 scoped 的类) 失配 ${reach.violations.length} 处`
+      name: `scoped 样式可达性 (规则 16: 组件用了「看不见的 scoped 定义」的类) 失配 ${reach.violations.length} 处`
         + (reach.skip ? `（${reach.skip}，跳过）` : `（定义面 ${reach.defs} 条 / 消费组件 ${reach.consumers} 个）`),
       ok: reach.skip !== null || reach.violations.length === 0,
       detail: [
-        ...reach.violations.slice(0, 15).map(v => `  ✗ .${v.cls} 用在 ${v.component}，但只在 ${v.definedIn}（${v.ownerPage} 私有 scoped）里定义`
-          + ` → 该规则对这个组件**不生效**（scoped 选择器带的是页面的 data-v-*）`),
+        ...reach.violations.slice(0, 15).map(v => `  ✗ .${v.cls} 用在 ${v.component}，但只在 ${v.definedIn}（${kindLabel(v.kind)}）里定义`
+          + ` → 该规则对这个组件**不生效**（scoped 选择器带的是定义方的 data-v-*）`),
         ...(reach.violations.length > 15 ? [`  …另有 ${reach.violations.length - 15} 处`] : []),
         ...(reach.violations.length > 0 ? [
           '  → 症状是「屏幕上少了一条线/一处字号」，编译过、测试绿、ui-check 也不报 ⇒ 只能靠本判据。',
-          '  → 修法二选一：① 类是跨块共享的 ⇒ 搬进 src/styles/chart-blocks.css（各块用 <style scoped src> 载入，',
-          '     **特异性不变**、源码一份）；② 只有该组件用 ⇒ 搬进组件自己的 css（或全局 charts.css）。',
-          '  → 别「复制一份到组件里」了事（规则 11 双份必漂移；实测 dd-caption 两份已漂 11 vs 11.5px）。',
+          '  → 修法三选一：① 类是跨块共享的 ⇒ 搬进 src/styles/chart-blocks.css（各块用 <style scoped src> 载入，',
+          '     **特异性不变**、源码一份）；② 只有该组件用 ⇒ 搬进组件自己的 css（或全局 charts.css）；',
+          '     ③ 消费组件确实要用 ⇒ 补 `<style scoped src>` 载入定义文件，或在自己内联 scoped 里补一份（注明出自定义方）。',
+          '  → 别无出处地「复制一份到组件里」了事（规则 11 双份必漂移；实测 dd-caption 两份已漂 11 vs 11.5px）。',
         ] : []),
       ],
     })
