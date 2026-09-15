@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getAgentMechanic } from '@/mechanics'
+import { initialCalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 
 async function run(team: Array<{ agentId: string; cinemaLevel?: number } | ''>) {
   await setupHarness(team)
@@ -111,5 +112,41 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
       chord!.totalGain,
       '咏叹获取为 0 —— 入场次数没被队伍级钩子汇总（converge 阶段未派发）',
     ).toBeGreaterThan(0)
+  })
+
+  // ── 2026-09-15 arch 棘轮第 2 批：跨轮反馈改走 AgentTeamConfigInput.threads ──────────────
+  // 这 9 处原先在 convergence.ts 的 characters.map 里逐 `merged.agentId === '…'` 分支写 cfg。
+  // 迁进各自模块后，「钩子有没有读快照」在单测网里同样不可见（同本文件头注的理由），
+  // 故这里钉住两条：① 9 个模块都声明了钩子；② 喂一个可辨识的线程快照，模块必须把它写进 cfg。
+  it('★ 跨轮反馈 9 个模块都声明 applyTeamConfig（防迁移后钩子丢失 → 反馈静默归零）', () => {
+    for (const [agentId, name] of [
+      ['1381', '零号·安比'], ['1391', '橘福福'], ['1431', '叶瞬光'], ['1151', '露西'],
+      ['1541', '普罗米娅'], ['1331', '薇薇安'], ['1161', '莱特'], ['1181', '格莉丝'], ['1191', '艾莲'],
+    ] as const) {
+      expect(
+        typeof getAgentMechanic(agentId)?.applyTeamConfig,
+        `${name}(${agentId}) 未声明 applyTeamConfig —— 跨轮反馈会静默断链`,
+      ).toBe('function')
+    }
+  })
+
+  it('★ converge 阶段递入的 threads 快照被模块读进自己那份 cfg（契约生效，非只声明）', () => {
+    // 用一份「每个字段都是可辨识哨兵值」的快照；模块只应写自己那个字段。
+    const sentinel = { ...initialCalcRoundThreads(), anbyZeroTeammateWl: 7, ellenFreezeCount: 5 }
+    const mk = (agentId: string, slot = 0) => ({ agentId, slot } as any)
+    const probe = (agentId: string, field: string, expectVal: unknown) => {
+      const characters = [mk(agentId)]
+      getAgentMechanic(agentId)!.applyTeamConfig!({
+        slot: 0, agent: null, cinemaLevel: 6, potentialLevel: 6, characters,
+        team: [{ slot: 0, agentId, agent: null, cinemaLevel: 6, potentialLevel: 6, wEngineId: '', wEngineModLevel: 1 }],
+        settings: {}, phase: 'converge', combatTime: 180, exCounts: [0], stunCount: 0,
+        teamEnergyConsumed: 0, threads: sentinel,
+      } as any)
+      expect((characters[0] as any)[field], `${agentId} 的 converge 钩子没把 ${field} 写进 cfg`).toEqual(expectVal)
+    }
+    probe('1381', 'anbyZeroTeammateWhiteLightning', 7)
+    probe('1191', 'ellenFreezeCount', 5)
+    probe('1431', 'yeshuguangGiftUltCount', sentinel.yeshuguangGiftUlt)
+    probe('1331', 'vivianTeamExTotal', sentinel.vivianTeamEx)
   })
 })

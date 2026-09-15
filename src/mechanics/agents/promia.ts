@@ -25,6 +25,7 @@ import type {
   AgentResourceInput,
   AgentResourceSectionsInput,
   ReleaseModifierInput,
+  AgentTeamConfigInput,
 } from '../types'
 
 export const PROMIA_ID = '1541'
@@ -339,6 +340,21 @@ export const promiaMechanic: AgentMechanicModule = {
   description: '异常掌控转精通、影画2精通、额外能力冰异常积蓄效率；绝裁异放已接（霜刑上限钳制），全队异放增伤 0.35%/点未接面板。',
   applyPanel: applyPromiaPanel,
   buildCharConfig: buildPromiaCharConfig,
+  /**
+   * converge 阶段：注入上一轮「霜刑回复端」（触发命中数 + 队友异放次数 + 自身异放回喧响）。
+   * 2026-09-15 arch 棘轮第 2 批自 `convergence.ts` 的 `merged.agentId === '1541'` 分支搬入（规则 6）。
+   * 缩放与取整逐位保留原分支语义。
+   */
+  applyTeamConfig: ({ phase, slot, characters, threads }: AgentTeamConfigInput) => {
+    if (phase !== 'converge' || !threads) return
+    const cfg = characters[slot]
+    if (!cfg) return
+    const record = cfg as unknown as Record<string, unknown>
+    record.promiaTriggerHitCount = Math.max(0, Math.floor(threads.promiaTriggerHits))
+    record.promiaTeammateReleaseCount = Math.max(0, Math.floor(threads.promiaTeammateReleases))
+    record.extraSelfDecibelReward =
+      Math.max(0, Number(record.extraSelfDecibelReward ?? 0)) + Math.max(0, Math.floor(threads.promiaReleaseDecibel))
+  },
   buildExecutions: buildPromiaExecutions,
   buildAnomalyEvents: buildPromiaAnomalyEvents,
   buildResourceResult: buildPromiaResourceResult,

@@ -303,7 +303,16 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
 export const lucyMechanic: AgentMechanicModule = {
   // 队伍级机制（原先由 useResourceCalc 手工 import + 调用 applyLucyTeamEnergyFlags）：
   // 露西终结邻位回能 + 影画1 回旋全队回能标记。只在 build 阶段动手，与迁移前的调用时机一致。
-  applyTeamConfig: ({ characters, phase }) => {
+  applyTeamConfig: ({ slot, characters, phase, threads }) => {
+    if (phase === 'converge') {
+      // 2026-09-15 arch 棘轮第 2 批：注入上一轮「队友强特合计（不含自己）」——影画1 回能预估用。
+      // 自 `convergence.ts` 的 `merged.agentId === '1151'` 分支搬入（规则 6）。
+      const cfg = characters[slot]
+      if (cfg && threads) {
+        ;(cfg as unknown as Record<string, unknown>).lucyTeammateExTotal = threads.lucyTeammateEx
+      }
+      return
+    }
     if (phase !== 'build') return
     applyLucyTeamEnergyFlags(characters)
   },

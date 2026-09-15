@@ -125,10 +125,17 @@ function applyGracePanel(input: AgentPanelInput): void {
  *  为什么不是 buildExecutions 直接写：converge 在 iterate 能量结算前生效，buildExecutions 在之后；
  *  graceC1Cycles 由编排层 postRound 从本轮收敛结果线程化到下一轮（莱特 C4 同阶段）。
  *  幂等：先扣上一轮本模块写入量再写新值（合并 cfg 每轮从 base 重建，prev 通常为 0，可琳 C4 同款）。 */
-function applyGraceTeamConfig({ slot, phase, characters, cinemaLevel }: AgentTeamConfigInput): void {
+function applyGraceTeamConfig({ slot, phase, characters, cinemaLevel, threads }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
   const cfg = characters[slot]
-  if (!cfg || (cinemaLevel ?? 0) < 1) return
+  if (!cfg) return
+  // 2026-09-15 arch 棘轮第 2 批：先把上一轮收敛的「轮换数」线程值写进本槽 cfg（下方消费）。
+  // 语义 = `convergence.ts` 原 `merged.agentId === '1181'` 分支（规则 6），取整/地板逐位保留。
+  if (threads) {
+    ;(cfg as unknown as Record<string, unknown>).graceC1Cycles =
+      Math.max(0, Math.floor(Number(threads.graceC1Cycles ?? 0)))
+  }
+  if ((cinemaLevel ?? 0) < 1) return
   const cycles = Math.max(0, Math.floor(Number((cfg as any).graceC1Cycles ?? 0)))
   const gift = GRACE_C1_TEAM_ENERGY_PER_CYCLE * cycles
   const prev = Math.max(0, Number((cfg as any).graceC1TeamEnergyTotal ?? 0))

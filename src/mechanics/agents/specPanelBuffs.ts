@@ -567,7 +567,18 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
    * 判定读本槽 cfg.panel.additionalAbilityActive（build 阶段面板已随 cfg 建好），
    * 受益角色的 specialty 从 team 快照读，不再由编排层 import 本模块的常量。
    */
-  applyTeamConfig: ({ slot, characters, team, phase }) => {
+  applyTeamConfig: ({ slot, characters, team, phase, threads }) => {
+    if (phase === 'converge') {
+      // 2026-09-15 arch 棘轮第 2 批：注入上一轮收敛的「全队终结总次数」（橘福福影画2 威势）。
+      // 自 `convergence.ts` 的 `merged.agentId === '1391'` 分支搬入（规则 6）。语义与原分支逐位一致：
+      // 上一轮值 ≤0 时写 undefined（= 不覆盖 build 阶段的初值），>0 才注入。
+      const cfg = characters[slot]
+      if (cfg && threads) {
+        ;(cfg as unknown as Record<string, unknown>).jufufuTeamUltimateCount =
+          threads.teamUltimateForJufufu > 0 ? threads.teamUltimateForJufufu : undefined
+      }
+      return
+    }
     if (phase !== 'build') return
     const self = characters.find(c => c.slot === slot)
     if (!self || (self.panel?.additionalAbilityActive ?? 0) <= 0) return

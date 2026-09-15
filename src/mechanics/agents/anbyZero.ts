@@ -30,6 +30,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentSkillTransformInput,
+  AgentTeamConfigInput,
 } from '../types'
 
 export const ANBY_ZERO_ID = '1381'
@@ -302,6 +303,17 @@ export const anbyZeroMechanic: AgentMechanicModule = {
   ],
   applyPanel: applyAnbyZeroPanel,
   buildCharConfig: buildAnbyZeroCharConfig,
+  /**
+   * converge 阶段：注入上一轮收敛的「队友追加攻击命中折算白雷层数」（跨轮反馈）。
+   * 2026-09-15 arch 棘轮第 2 批自 `convergence.ts` 的 `merged.agentId === '1381'` 分支搬入
+   * （规则 6：编排层不写角色规则）。线程由编排层在 postRound 线程化，此处只读。
+   */
+  applyTeamConfig: ({ phase, slot, characters, threads }: AgentTeamConfigInput) => {
+    if (phase !== 'converge' || !threads) return
+    const cfg = characters[slot]
+    if (!cfg) return
+    ;(cfg as unknown as Record<string, unknown>).anbyZeroTeammateWhiteLightning = threads.anbyZeroTeammateWl
+  },
   buildExecutions: buildAnbyZeroExecutions,
   transformSkillExecutions: markAnbyZeroChainTarget,
   buildResourceResult: buildAnbyZeroResourceResult,

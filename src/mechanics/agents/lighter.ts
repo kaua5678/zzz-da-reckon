@@ -516,7 +516,7 @@ export const lighterMechanic: AgentMechanicModule = {
    * - converge：用**上一轮**全队能量消耗重算喷发回能；
    * - postRound：用本轮收敛的 exCounts 估出全队能量消耗，供下一轮使用。
    */
-  applyTeamConfig: ({ characters, phase, settings, combatTime, exCounts, teamEnergyConsumed }) => {
+  applyTeamConfig: ({ characters, phase, settings, combatTime, exCounts, teamEnergyConsumed, threads }) => {
     const lighter = characters.find(c => c.agentId === LIGHTER_ID)
     if (!lighter) return
     if (phase === 'build') {
@@ -530,6 +530,11 @@ export const lighterMechanic: AgentMechanicModule = {
         combatTime,
         teamEnergyConsumed: Math.max(0, teamEnergyConsumed || 0),
       })
+      // 2026-09-15 arch 棘轮第 2 批：本槽的「上一轮全队能量消耗」线程值写进 cfg（莱特 C4 消费）。
+      // 自 `convergence.ts` 原 `merged.agentId === '1161'` 分支搬入（规则 6）；地板语义逐位保留。
+      if (threads) {
+        ;(lighter as any).lighterTeamEnergyConsumed = Math.max(0, threads.lighterTeamEnergy || 0)
+      }
       return
     }
     // postRound：本轮次数已知 → 估下一轮全队普通能量消耗

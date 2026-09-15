@@ -115,10 +115,10 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 65,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）。见 AGENT_BRANCH_BASELINE 注释
+    frozen: 56,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）。见 AGENT_BRANCH_BASELINE 注释
     target: 0,
     due: '2026-12-31',
-    plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。hot spot：convergence.ts(45) > damagePool.ts(16) > helpers.ts(4)。架构评审 #10 → #2',
+    plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。跨轮反馈走 `AgentTeamConfigInput.threads`（2026-09-15 新增的通用通道，别再逐字段铺开契约）。hot spot：convergence.ts(36) > damagePool.ts(16) > helpers.ts(4)。架构评审 #10 → #2',
   },
   {
     id: 'core agentId 分支',
@@ -479,8 +479,13 @@ export function countAgentBranchLines(root = ROOT) {
  * 2026-09-13 −14：79→65 = helpers.ts 额外能力门控簇（14 角色 slot 查找 + evalAdditionalAbility 求值 +
  * 17 条逐 buff-id 过滤）收敛为数据驱动表 `ADDITIONAL_GATE_BUFFS` + `evalAdditionalAbilityBuffGates`
  * （SOP §6.2 语义逐位保留；一一对应护栏 `additionalGate.test.ts`）。真 burn-down 的第一簇。
+ * 2026-09-15 −9：65→56 = `convergence.ts` cfg-merge 簇（1381/1391/1431/1151/1541/1331/1161/1181/1191）
+ * 的跨轮反馈注入从「编排层逐 agentId 分支写 cfg」改为「模块 applyTeamConfig 读 threads 快照写自己
+ * 那份 cfg」（规则 6）。契约面 = `AgentTeamConfigInput.threads`（递整份 `CalcRoundThreads` 快照，
+ * 不再逐字段铺开——`roundThreads.ts` 头注释写明它本就是这份集合的单一事实源）。
+ * 判据 = `timeGolden` 16 键 **0 delta** + `allAgentsSweep`/`timeFillRatchet`/`underfillRefund` 全绿。
  */
-export const AGENT_BRANCH_BASELINE = 65
+export const AGENT_BRANCH_BASELINE = 56
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。

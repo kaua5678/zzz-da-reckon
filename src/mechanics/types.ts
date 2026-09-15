@@ -13,6 +13,7 @@ import type {
 } from '@/types/resource'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
+import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 
 /** 队伍中某个槽位的最小上下文快照 */
 export interface MechanicTeamMember {
@@ -123,7 +124,26 @@ export interface AgentTeamConfigInput {
   /** 全队**紊乱**次数（上一轮异常池收敛值）。消费方：爱丽丝剑仪的 `alice_disorder_gain`。build 阶段 0 */
   aliceDisorderCount?: number
 
+  /**
+   * 上一轮收敛线程（`CalcRoundThreads`）的**只读快照** —— 跨轮反馈的通用输入通道。
+   *
+   * 为什么递整份快照而不是逐字段铺开（2026-09-15 arch 棘轮第 2 批）：这些量此前由编排层在
+   * `convergence.ts` 的 `characters.map` 里**逐 agentId 分支**写进 cfg（9 个
+   * `if (merged.agentId === …)`）。逐字段铺开会让契约随每个新反馈线性增长（本批一次要加 9 个），
+   * 而 `threads` 本身**已经是**这份集合的单一事实源（`resourceCalc/roundThreads.ts`，头注释写明
+   * 它就是为了终结「每加一个反馈要在三处同步加一行」而结构体化的）。
+   *
+   * 语义与 `aliceTeamAssaultCount` / `teamEnergyConsumed` 同款：**build 阶段是初值**（次数还没产出），
+   * converge 阶段带上一轮的收敛值进来 —— 这是「异常池在 `buildExecutions` **之后**才算」这个顺序逼出来的。
+   * 模块自己决定读哪个字段、怎么写进 cfg（规则 6：编排层不写角色规则）。
+   *
+   * ⚠ **只许读**：线程的写回由编排层在 postRound 统一线程化（单一 owner），模块写它会破坏收敛性。
+   */
+  threads?: Readonly<CalcRoundThreads>
 }
+
+/** 上一轮收敛线程的快照类型（结构定义在 `composables/resourceCalc/roundThreads.ts`） */
+export type { CalcRoundThreads }
 
 export interface AgentExSpecialTimeInput {
   cfg: CharacterOperationConfig

@@ -29,6 +29,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentTeamConfigInput,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, MechanicSetting, SkillExecution } from '@/types/resource'
@@ -675,6 +676,16 @@ export const yeshuguangMechanic: AgentMechanicModule = {
   description: '白毛明心境：打满/两条提速短轴；满易伤；C6 明灯愿强化与 1500% 收尾附伤。',
   settings: yeshuguangSettings,
   buildCharConfig,
+  /**
+   * converge 阶段：注入上一轮「琉音转大赠送的叶瞬光逐云次数」（跨轮反馈）。
+   * 2026-09-15 arch 棘轮第 2 批自 `convergence.ts` 的 `merged.agentId === '1431'` 分支搬入（规则 6）。
+   */
+  applyTeamConfig: ({ phase, slot, characters, threads }: AgentTeamConfigInput) => {
+    if (phase !== 'converge' || !threads) return
+    const cfg = characters[slot]
+    if (!cfg) return
+    ;(cfg as unknown as Record<string, unknown>).yeshuguangGiftUltCount = threads.yeshuguangGiftUlt
+  },
   buildExecutions,
   /** 相位写入（引擎在物化调用点补写）：本次物化的明心境 cycle 缓存，供下一轮 estimate 复用 */
   materializePhaseState: ({ cfg, state }) => {

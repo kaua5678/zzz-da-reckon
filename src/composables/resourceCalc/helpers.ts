@@ -34,6 +34,7 @@ import {
 import { counterAssistOf } from '@/data/counterAssists'
 
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
+import type { CalcRoundThreads } from './roundThreads'
 import { getAgentMechanic, getRegisteredMechanicSettings, type AgentTeamPhase, type MechanicTeamMember } from '@/mechanics'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
@@ -265,6 +266,8 @@ export function applyTeamMechanics(params: {
   aliceTeamAssaultCount?: number
   /** 全队紊乱次数（上一轮异常池收敛值；爱丽丝剑仪 `alice_disorder_gain` 用） */
   aliceDisorderCount?: number
+  /** 上一轮收敛线程快照（跨轮反馈通用通道；模块按需读并写进自己那份 cfg，规则 6） */
+  threads?: Readonly<CalcRoundThreads>
 }): void {
   const { characters, configStore, catalogStore, phase } = params
   if (characters.length === 0) return
@@ -277,6 +280,7 @@ export function applyTeamMechanics(params: {
   const teamEnergyConsumed = params.teamEnergyConsumed ?? 0
   const aliceTeamAssaultCount = params.aliceTeamAssaultCount ?? 0
   const aliceDisorderCount = params.aliceDisorderCount ?? 0
+  const threads = params.threads
 
 
   // 各槽位「异常积储主元素」（2026-09-02）：优先模块声明（雅模块把积蓄归并为 frostfire；
@@ -322,6 +326,7 @@ export function applyTeamMechanics(params: {
       teamEnergyConsumed,
       aliceTeamAssaultCount,
       aliceDisorderCount,
+      threads,
     })
   }
 }

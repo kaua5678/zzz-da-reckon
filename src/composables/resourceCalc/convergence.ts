@@ -565,17 +565,14 @@ export function createRunCalcRound(deps: {
       banyueTopUp: prevBanyueTopUp,
       parrySplit: prevParrySplit,
       yixuanFuFaForJufufu: prevYixuanFuFaForJufufu,
-      teamUltimateForJufufu: prevTeamUltimateForJufufu,
-      yeshuguangGiftUlt: prevYeshuguangGiftUlt,
-      lucyTeammateEx: prevLucyTeammateEx,
+      // 2026-09-15 arch 棘轮第 2 批：teamUltimateForJufufu / yeshuguangGiftUlt / lucyTeammateEx /
+      // graceC1Cycles / anbyZeroTeammateWl / vivianAnomalyTriggers / promiaReleaseDecibel 这 7 条
+      // 不再在此解构——它们已改由各模块的 applyTeamConfig 从 `threads` 快照直接读（规则 6），
+      // 编排层不再逐 agentId 分支写 cfg。
       lighterTeamEnergy: prevLighterTeamEnergy,
-      graceC1Cycles: prevGraceC1Cycles,
-      anbyZeroTeammateWl: prevAnbyZeroTeammateWl,
       vivianTeamEx: prevVivianTeamEx,
-      vivianAnomalyTriggers: prevVivianAnomalyTriggers,
       promiaTriggerHits: prevPromiaTriggerHits,
       promiaTeammateReleases: prevPromiaTeammateReleases,
-      promiaReleaseDecibel: prevPromiaReleaseDecibel,
       aliceTeamAssaultCount: prevAliceTeamAssaultCount,
       aliceDisorderCount: prevAliceDisorderCount,
       inStunWindowTriggers: prevInStunWindowTriggers,
@@ -973,10 +970,6 @@ export function createRunCalcRound(deps: {
           peiluoVerdictCount: stunCount,
         }
       }
-      if (merged.agentId === '1381') {
-        // 零号·安比：队友追加攻击命中折算的白雷层数（外层不动点线程回填）
-        return { ...merged, anbyZeroTeammateWhiteLightning: prevAnbyZeroTeammateWl }
-      }
       if (merged.agentId === '1471') {
         // 般岳：轴内捏的强特/连段块 → 次数反馈给模块（先扣闪能，剩余自动补连段）；轴模式地动滑块归 0
         const banyueAxisEx = axisActionCountsBySlot[cfg.slot] ?? {}
@@ -1117,25 +1110,6 @@ export function createRunCalcRound(deps: {
           lycaonC2Energy: c2Per > 0 ? (stunCount + teamChainTotal) * c2Per : 0,
         }
       }
-      if (merged.agentId === '1391') {
-        return {
-          ...merged,
-          jufufuTeamUltimateCount: prevTeamUltimateForJufufu > 0 ? prevTeamUltimateForJufufu : undefined,
-        }
-      }
-      if (merged.agentId === '1431') {
-        return {
-          ...merged,
-          yeshuguangGiftUltCount: prevYeshuguangGiftUlt,
-        }
-      }
-      if (merged.agentId === '1151') {
-        // 队友强特合计（不含自己）：用上一轮 resource 结果更好，这里用 prev 注入字段
-        return {
-          ...merged,
-          lucyTeammateExTotal: prevLucyTeammateEx,
-        }
-      }
       if (merged.agentId === '1511') {
         // 失衡内异常系统 v2（上一轮时间线）：每窗轴内异常触发数 → 颤音自动层数；
         // 轴内「快速支援」放置块数 → 模块按块数生成快支行（极性载体+窗内伤害吃易伤）
@@ -1151,42 +1125,6 @@ export function createRunCalcRound(deps: {
           })
         }
         return { ...merged, inStunWindowTriggers: Math.max(0, prevInStunWindowTriggers), nangongQuickAssistPlaced }
-      }
-      if (merged.agentId === '1541') {
-        // 普罗米娅·霜刑回复端（上一轮池结果）：触发命中数 + 队友异放次数；
-        // 异放回喧响（上一轮绝裁/特殊异放次数 ×100）经 extraSelfDecibelReward 注入终结技次数
-        return {
-          ...merged,
-          promiaTriggerHitCount: Math.max(0, Math.floor(prevPromiaTriggerHits)),
-          promiaTeammateReleaseCount: Math.max(0, Math.floor(prevPromiaTeammateReleases)),
-          extraSelfDecibelReward: (merged.extraSelfDecibelReward ?? 0) + Math.max(0, Math.floor(prevPromiaReleaseDecibel)),
-        }
-      }
-      if (merged.agentId === '1331') {
-        // 薇薇安落羽生花双源（上一轮收敛值）：
-        //   源1 = 全队强特命中次数（任意角色强化特殊技命中，同一招式至多一次）
-        //   源2 = 全队异常触发次数（队友施加属性异常，0.5s CD 折算在模块内）
-        return {
-          ...merged,
-          vivianTeamExTotal: prevVivianTeamEx,
-          vivianAnomalyTriggerTotal: prevVivianAnomalyTriggers,
-        }
-      }
-      if (merged.agentId === '1161') {
-        const ratio = Math.max(0, Math.min(1, configStore.getMechanicSetting('lighter.backstageRatio', 2 / 3)))
-        return {
-          ...merged,
-          lighterBackstageRatio: ratio,
-          lighterTeamEnergyConsumed: Math.max(0, prevLighterTeamEnergy || 0),
-        }
-      }
-      if (merged.agentId === '1181') {
-        // 格莉丝影画1 全队回能：上一轮收敛的轮换数（postRound 线程化），converge 阶段 applyTeamConfig 消费
-        return { ...merged, graceC1Cycles: Math.max(0, Math.floor(Number(prevGraceC1Cycles ?? 0))) }
-      }
-      if (merged.agentId === '1191') {
-        // 艾莲影画4 冻结次数：读上一轮异常池 ice 触发数（下一轮 cfg 生效，薇薇安同款反馈）
-        return { ...merged, ellenFreezeCount: Math.max(0, Math.floor(prevEllenFreezeCount)) }
       }
       if (merged.agentId === '1201') {
         // 悠真：轴内飞弦·斩/甲乙矢次数（失衡轴块，捏轴精度，仪玄 yixuanAxisEx 同款）→ 模块分轴内/轴外
@@ -1237,6 +1175,11 @@ export function createRunCalcRound(deps: {
       // 在 converge 阶段把它们写进 cfg，供本轮 buildExecutions 产星芒圆舞曲行时消费。
       aliceTeamAssaultCount: prevAliceTeamAssaultCount,
       aliceDisorderCount: prevAliceDisorderCount,
+      // 上一轮收敛线程快照（2026-09-15 arch 棘轮第 2 批）：跨轮反馈的通用通道。
+      // 原先这些量（1381/1391/1431/1151/1541/1331/1161/1181/1191 共 9 处）是在本文件
+      // characters.map 里逐 `merged.agentId === '…'` 分支写进 cfg 的；现由各模块自己的
+      // applyTeamConfig 按需读取并写进自己那份 cfg（规则 6：编排层不写角色规则）。
+      threads,
     })
     // 特殊动作喧响奖励（弹刀215/闪反10/连携10/快支20，含伴随50%）：本轮即时结算——
     // 输入只有用户配置的次数与连携数（= chainCountTotalOverride ?? chainCountPerStun × stunCount），无 ultimateCount 反馈环
