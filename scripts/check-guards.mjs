@@ -163,9 +163,15 @@ export const RATCHET_BURNDOWN = [
   {
     id: '死通道豁免清单',
     file: 'scripts/check-guards.mjs DEAD_CHANNEL_ALLOWLIST',
-    frozen: 14,  // 2026-09-13 首轮实测 15（判据 14 上线时冻结）→ 14（2026-09-14 T15 审计 #13：
+    frozen: 11,  // 2026-09-13 首轮实测 15（判据 14 上线时冻结）→ 14（2026-09-14 T15 审计 #13：
     // 扣掉 1 条 kind:'namesake' 的误报记录 runArchiveImport.resistances —— 它的候选永不消失、
-    // 永远不会 stale，算进待处置量会让棘轮**永远还不完**。口径见 countDeadChannelWorkload）：A 零读零写 5（goldLevel 模式）/ B 只读不写 10（invincibleTime 模式，含 1 条 namesake 误报样本 runArchiveImport.resistances，已在 why 里如实标注）/ C 手写 d.mts 漂移 **0**（上线即把 16 个漏声明一次补齐 = 判据的正确用法）。三类（除误报样本外）都是存量：通道在、类型在、编译过，就是没人用
+    // 永远不会 stale，算进待处置量会让棘轮**永远还不完**。口径见 countDeadChannelWorkload）
+    // → **11**（2026-09-15：销号 3 条**假阳性**——coverageMap / moduleInputRows ×2 实测是
+    // **完全接通的活通道**，被判死只因检测器漏了「裸标识符读 + 位置实参」形态；修 scanDeadOptionalProps
+    // 的 reBare 后自然不再命中，见该函数头注的逐条取证。**这不是调基线蒙混，是判据自身的缺陷修复**）：
+    // A 零读零写 2（runArchiveImport 的 weaknesses/hpTotal）/ B 只读不写 10（含 1 条 namesake 误报样本
+    // runArchiveImport.resistances，已在 why 里如实标注）/ C 手写 d.mts 漂移 **0**（上线即把 16 个漏声明
+    // 一次补齐 = 判据的正确用法）。三类（除误报样本外）都是存量：通道在、类型在、编译过，就是没人用
     target: 0,
     due: '2026-12-31',
     plan: '逐条「接上或删掉」二选一——接上消费点（如 phaseDelayedCooldown 的 blockSeconds 接 frontBlockSeconds、轴预设 chapter 补数据）或删死字段；处置一条从 DEAD_CHANNEL_ALLOWLIST 删一条（漏删即红 = 棘轮只减不增）。⚠ 不许「为绿而登记」：新增豁免必须写 why（怎么证明它是死的），否则判据退化成橡皮图章',
@@ -1019,30 +1025,10 @@ export function auditNounTriage(root = ROOT, resolveAnchorFn = resolveAnchor) {
 /** 死通道豁免清单：key = `A|<file>:<line> <name>` 形式，value = { since, due, why } */
 export const DEAD_CHANNEL_ALLOWLIST = {
   // 段 A：导出可选项零读零写（goldLevel 模式）
-  'A|src/core/buff.ts coverageMap': {
-    since: '2026-09-13',
-    action: 'buff.ts 的 coverageMap 输入槽无人读写——确认是无用槽后删字段，或接上消费点后销号',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '实测零读零写（判据 14-A 首轮扫描）；疑似历史残留输入槽，未接线但也不报错',
-  },
-  'A|src/core/resource/helpers.ts moduleInputRows': {
-    since: '2026-09-13',
-    action: 'moduleInputRows 输入行通道空转——确认为预留则删，或由模块 buildExecutions 写入后销号',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '实测零读零写；resource.ts:75 有同名字段（两处同名），疑似「声明了没人填」的预留通道',
-  },
-  'A|src/core/resource.ts moduleInputRows': {
-    since: '2026-09-13',
-    action: '同 helpers.ts:846，随该条一并处置（同一通道的两个声明点）',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '实测零读零写；与 helpers.ts:846 同名同源',
-  },
+  // ⚠ 2026-09-15 销号 3 条（**假阳性**，非真债）：coverageMap / moduleInputRows ×2 全部是
+  // **完全接通的活通道**，因读判定漏了「裸标识符 + 位置实参」形态而被误记成死通道
+  // （详见 scanDeadOptionalProps 头注的取证）。修检测器后这 3 条自然不再命中 ⇒ 从清单删除
+  // （棘轮只减不增：留着即 stale 红）。
   'A|src/composables/runArchiveImport.ts weaknesses': {
     since: '2026-09-13',
     action: '归档导入的弱点字段未消费——归档只做单条部署对照（用户裁决 2026-09），确认无用途后删',
@@ -1197,8 +1183,21 @@ export function stripStringLiterals(text) {
 /**
  * 段 A：导出可选项**零读零写**（`goldLevel` 模式）。
  * 范围 = `src/{core,composables,data}/**` 非测试文件里缩进 2–4 空格的 `name?: T` 声明。
- * 判定 = 全仓（含测试）既无读取形态（`.name` / `??` / 解构）也无写入形态（`name:` / `.name =`）。
+ * 判定 = 全仓（含测试）既无读取形态也无写入形态（写入 = `name:` / `.name =`）。
  * 排除声明行自身（否则每个声明都自计一次写入）。计数前先去注释与字符串（见 stripCommentsAndStrings）。
+ *
+ * ⚠ **读判定必须含「裸标识符」形态**（2026-09-15 修，本判据上线以来最贵的一次假阳性）：
+ * 原先 `reRead` 只认 `.name` / `??` / 解构 / `,name] =` 四种，于是**形参位置传参**与
+ * **裸标识符真值判断**全都不算读。实测后果：3 条**完全接通**的通道被判「零读零写」进豁免清单——
+ *   · `coverageMap` —— `buff.ts:777` 读 `coverageMap?.get(e.id)`（可选链）+
+ *     `panel.ts:280/285` 以**位置实参**传入（`applyBuffs(a, b, config.effectCoverageMap)`）
+ *   · `moduleInputRows` —— `helpers.ts:958-960` 真值判断 + `.length=0` + `.push()`（全裸标识符）+
+ *     `resource.ts:77` 位置实参；`resource.ts:846-847` 传 `preModuleExecutions`，:898 被
+ *     `buildResourceResult` 消费（**活通道，端到端可用**）
+ * 这类假阳性的方向最坏：它把「已接好的通道」记成债，逼后来人去「接」一个本来就通的线
+ * （或按清单「删死字段」把功能删掉）——与判据 14 立项目的（找真断线）恰好相反。
+ * 修法 = 增一条 `reBare`：标识符**不以 `.` 开头**（排除 `x.name` 成员名与声明本身）、
+ * 且右侧**不是单冒号**（排除 `name:` 对象字面量写入 = 写、以及 `name?:` 声明）。
  */
 export function scanDeadOptionalProps(root = ROOT) {
   const files = walkSrcFiles(root)
@@ -1214,6 +1213,10 @@ export function scanDeadOptionalProps(root = ROOT) {
   }
   const count = (name, excludeFile, excludeLine) => {
     const reRead = new RegExp('[.\\?]\\.?' + name + '\\b|\\b' + name + '\\s*\\?\\?|\\{\\s*' + name + '\\s*[,}]|\\b' + name + '\\s*[,}]\\s*=', 'g')
+    // 裸标识符读（2026-09-15 补）：非成员访问、非对象字面量键、非可选声明。
+    // `(?!\s*:\s*[^:=])` 放行 `name: value`（写）与 `name?: T`（声明），但 `name ? a : b` 里
+    // 的 `name` 后跟空格+`?`+空格，不匹配 `:` ⇒ 仍算读（三元真值判断是真读）。
+    const reBare = new RegExp('(?<![.\\w$])' + name + '\\b(?!\\s*:)(?!\\s*\\?\\s*:)', 'g')
     const reWrite = new RegExp('(^|[\\s{,(])' + name + '\\s*:(?!:)', 'g')
     const reAssign = new RegExp('\\.' + name + '\\s*(?:\\?\\?|\\|\\||&&)?=(?!=)', 'g')
     let reads = 0, writes = 0
@@ -1225,7 +1228,7 @@ export function scanDeadOptionalProps(root = ROOT) {
         lines.splice(excludeLine - 1, 1)
         t = lines.join('\n')
       }
-      reads += (t.match(reRead) ?? []).length
+      reads += (t.match(reRead) ?? []).length + (t.match(reBare) ?? []).length
       writes += (t.match(reWrite) ?? []).length + (t.match(reAssign) ?? []).length
     }
     return { reads, writes }

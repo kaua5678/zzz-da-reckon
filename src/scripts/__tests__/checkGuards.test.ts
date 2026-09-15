@@ -653,6 +653,75 @@ describe('scanDeadOptionalProps（判据 14-A：goldLevel 模式）', () => {
     })
     expect(scanDeadOptionalProps(root)).toEqual([])
   })
+
+  // 2026-09-15：本判据上线以来最贵的一次假阳性（实测 3 条活通道被判死）。
+  // 原先 reRead 只认 `.name` / `??` / 解构 ⇒ 形参位置传参与裸标识符真值判断都不算读。
+  describe('★ 裸标识符读必须算读（2026-09-15 修假阳性：活通道被判死）', () => {
+    const DECL = ['export interface Opts {', '  moduleInputRows?: string[]', '}'].join('\n')
+
+    it('形参位置传参（`f(a, b, moduleInputRows)`）= 读 —— coverageMap 的真实形态', () => {
+      const root = fixture({
+        'src/core/x.ts': DECL,
+        'src/core/caller.ts': 'export function g(o: Opts) { return h(1, 2, o.moduleInputRows) }',
+      })
+      expect(scanDeadOptionalProps(root)).toEqual([])
+      // 更狠的形态：**裸标识符**位置实参（coverageMap 在 panel.ts:280 就是这样传的）
+      const root2 = fixture({
+        'src/core/x.ts': DECL,
+        'src/core/caller.ts': 'export function g(moduleInputRows: string[]) { return h(1, 2, moduleInputRows) }',
+      })
+      expect(
+        scanDeadOptionalProps(root2).map(d => d.name),
+        '裸标识符位置实参被当成零读 —— 活通道会被记成死债（本判据最坏的失效方向）',
+      ).toEqual([])
+    })
+
+    it('可选链读（`moduleInputRows?.length`）= 读 —— buff.ts:777 的真实形态', () => {
+      const root = fixture({
+        'src/core/x.ts': DECL,
+        'src/core/caller.ts': 'export function g(moduleInputRows?: string[]) { return moduleInputRows?.length ?? 0 }',
+      })
+      expect(scanDeadOptionalProps(root)).toEqual([])
+    })
+
+    it('裸标识符真值判断 / .length / .push = 读 —— helpers.ts:958-960 的真实形态', () => {
+      const root = fixture({
+        'src/core/x.ts': DECL,
+        'src/core/caller.ts': [
+          'export function g(moduleInputRows?: string[], rows: string[] = []) {',
+          '  if (moduleInputRows) {',
+          '    moduleInputRows.length = 0',
+          '    moduleInputRows.push(...rows)',
+          '  }',
+          '}',
+        ].join('\n'),
+      })
+      expect(scanDeadOptionalProps(root)).toEqual([])
+    })
+
+    it('三元真值判断（`x ? a : b`）算读，但对象字面量键（`x: v`）仍算写不算读', () => {
+      const ternary = fixture({
+        'src/core/x.ts': DECL,
+        'src/core/caller.ts': 'export function g(moduleInputRows?: string[]) { return moduleInputRows ? 1 : 0 }',
+      })
+      expect(scanDeadOptionalProps(ternary)).toEqual([])
+      // 反向面：只有 `name: value`（写）而无任何读 ⇒ 仍应判活（写也是接线），但绝不能因「写了」
+      // 就把声明行自身算成写；下面这条同时验证 select 之类**同名但纯写入**不误伤
+      const writeOnly = fixture({
+        'src/core/x.ts': DECL,
+        'src/core/caller.ts': 'export const o: Opts = { moduleInputRows: [] }',
+      })
+      expect(scanDeadOptionalProps(writeOnly)).toEqual([])
+    })
+
+    it('真死通道仍然报（修假阳性不能把判据改成永不红）', () => {
+      const root = fixture({
+        'src/core/x.ts': DECL,
+        'src/core/other.ts': 'export const unrelated = 1',
+      })
+      expect(scanDeadOptionalProps(root).map(d => d.name)).toEqual(['moduleInputRows'])
+    })
+  })
 })
 
 describe('scanReadOnlyOptionalProps（判据 14-B：invincibleTime 模式）', () => {
