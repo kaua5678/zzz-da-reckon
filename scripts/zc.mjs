@@ -335,7 +335,22 @@ export function resolveAnchor(anchor, root = ROOT) {
   return { ok: false, reason: 'symbol-missing', path, symbol }
 }
 
-/** 全仓扫作者手写事实（.ts/.mjs/.vue 的注释行） */
+/**
+ * 全仓扫作者手写事实。
+ *
+ * 语料 = 代码注释行（`.ts/.mjs/.vue` 的 `// @fact` 等）+ **docs/ 的 `@fact` 声明行**。
+ *
+ * 为什么要收 docs（2026-09-15 术语表 review 实测补的盲区）：规则 8 允许手册写「口径」，
+ * 而钉口径的机制就是 `@fact`（带 据/验/锚）。但原语料只有 `src/` 与 `scripts/` ⇒
+ * **写进 docs 的 `@fact` 完全不被判据 6（锚解析）与判据 15（⟳复核 触发器）看见**：
+ * 实测 `docs/GAME_TERM_TO_CODE_FIELD.md` 3 条声明（1581·特殊虚耀 / 风化状态 / 1641·余火标度）
+ * 断锚、缺据、缺触发器都不会红——恰好是规则 16「文档骗 agent」的形态。
+ * 收进来后这 3 条立刻纳入同两判据（实测 100 → 103 条，零违规）。
+ *
+ * docs 的写法与代码不同：列表项前缀（`- @fact …`）要剥掉，故比对代码多一步
+ * `^[-*+]\s+`；散文里的**提及**（如 `\`@fact engine:time/无敌≠秽盾\`` 被引用在句子里）
+ * 因不以 `@fact ` 起始而不入语料——实测 27 处 `@fact` 字面里只有 3 处是声明。
+ */
 export function scanAuthoredFacts(root = ROOT) {
   const out = []
   const rec = (dir) => {
@@ -347,10 +362,13 @@ export function scanAuthoredFacts(root = ROOT) {
         if (['node_modules', 'dist', '.git'].includes(name)) continue
         rec(p); continue
       }
-      if (!/\.(ts|mjs|vue)$/.test(name)) continue
+      // docs/ 只收 .md；src/、scripts/ 收代码文件
+      const isDoc = rel.startsWith('docs/')
+      if (isDoc ? !name.endsWith('.md') : !/\.(ts|mjs|vue)$/.test(name)) continue
       const lines = readFileSync(p, 'utf8').split('\n')
       for (let i = 0; i < lines.length; i++) {
-        const body = stripCommentPrefix(lines[i])
+        // docs 的列表项前缀（`- @fact`）不是注释前缀，单独剥
+        const body = stripCommentPrefix(lines[i]).replace(/^[-*+]\s+/, '')
         if (!body.startsWith('@fact ')) continue
         // 语法模板/示例行（主体写成 <主体> 这类占位符）不是事实：它们是语法自述的一部分，
         // 扫进来会让语言的定义文件自己变成第一条违规（自指问题第三次，前两次见 check-guards
@@ -364,6 +382,7 @@ export function scanAuthoredFacts(root = ROOT) {
   }
   rec(join(root, 'src'))
   rec(join(root, 'scripts'))
+  rec(join(root, 'docs'))
   return out
 }
 

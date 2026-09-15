@@ -367,6 +367,18 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
     expect(violations.map(v => v.file + ':' + v.line + ' ' + v.problem)).toEqual([])
   })
 
+  // 2026-09-15 术语表 review 实测补的盲区：规则 8 允许手册写「口径」，钉口径的机制就是 @fact，
+  // 但原语料只有 src/ 与 scripts/ ⇒ **写进 docs 的 @fact 既不被判据 6（锚）也不被判据 15
+  // （⟳复核）看见**，断锚/缺据/缺触发器都不红——正是规则 16「文档骗 agent」的形态。
+  it('★ docs/ 的 @fact 声明也入语料（防「写进手册就脱离护栏」）', () => {
+    const authored = scanAuthoredFacts()
+    const fromDocs = authored.filter(a => a.file.startsWith('docs/'))
+    expect(fromDocs.length).toBeGreaterThan(0)                        // 若退回只扫 src+scripts，此断言即红
+    expect(fromDocs.every(a => a.fact)).toBe(true)                    // docs 的声明行必须可解析（非散文提及）
+    // 反向面：散文里的**提及**（被引号包住的那种）不该被当成事实
+    expect(authored.every(a => !a.raw.includes('`@fact'))).toBe(true)
+  })
+
   // driftQueue 逐锚跑 git log：全量并行负载下实测超 5s 默认超时（2026-09-10 verify 偶发
   // "Test timed out in 5000ms"，改动前基线亦偶发）——隔离跑 2.8s，负载下余量取 60s。
   it('复核队列条目结构完整（锚文件在「据」之后动过才进队，同日改动不进）', () => {

@@ -191,12 +191,14 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 浸染 | 风化状态下首次受其他属性伤害触发的染色直伤（+10% 独立乘区） |
 | 风蚀（维琳娜专属资源） | spec `velina_corrosion`（0–2 层状态机）；2 命「从风化获得」按近似比例滑块接入（默认 1.0） |
 
-- @fact 风化状态 口径: 风化 = 一次性伤害 1250% + 30s 状态（无逐跳 DoT）；有风属性时 DoT 归零、走乱流；持续时间唯一事实源 ANOMALY_DURATION（风化 30s） | 据 mechanism-reference 异常章@2026-09-15 | 验 src/core/anomalyPool/helpers.ts#ANOMALY_DURATION | 锚 src/core/anomalyPool/helpers.ts#ANOMALY_DURATION | 信 高
+- @fact 风化状态 口径: 风化 = 一次性伤害 1250% + 30s 状态（无逐跳 DoT）；有风属性时 DoT 归零、走乱流；持续时间唯一事实源 ANOMALY_DURATION（风化 30s） | 据 mechanism-reference 异常章@2026-09-15 | 验 src/core/__tests__/anomalyPool.test.ts::splits non-wind anomalies into disorder window and turbulence window | 锚 src/core/anomalyPool/helpers.ts#ANOMALY_DURATION | 信 高
+  ⟳复核: 游戏内实测一次风化单次伤害（1250%）与 30s 状态时长，确认无逐跳 DoT 与「有风属性时 DoT 归零走乱流」 | 到期 2026-12-31
 
 ### 8.3 余火（菲欧妮专属资源）的标度口径
 
 - 倍率表整型资源列统一 **×10000**：同一行 `energy_gain_base=71040` 在 catalog 就是 `energy_recovery 7.104`（`node scripts/resolve.mjs 招式 1641 1641004` 可查）⇒ `attack_data[1641004]=147634` 即 **14.7634 余火/次**（三段 8.02 / 四段 14.76 / 强特 15.02+19.70 / 连携 14.88 / 终结 28.82，gachabase 与 nanoka 双源同值）；长按普攻消耗 90。反证 `/100` 读法 = 1476 余火/次 ⇒ 一次命中连放 16 次长按，不成立。
-- @fact 1641·余火标度 口径: 倍率表整型列 ×10000（同列 energy_gain 71040 → catalog 7.104 互证），attack_data/10000 = 余火/次，长按消耗 90 | 据 用户复核@2026-09-14 | 验 src/mechanics/agents/phoenix.ts#PHOENIX_COMBUSTION_MOVE_IDS | 锚 src/mechanics/agents/phoenix.ts#PHOENIX_COMBUSTION_MOVE_IDS | 信 确认
+- @fact 1641·余火标度 口径: 倍率表整型列 ×10000（同列 energy_gain 71040 → catalog 7.104 互证），attack_data/10000 = 余火/次，长按消耗 90 | 据 用户复核@2026-09-14 | 验 src/mechanics/__tests__/phoenix.test.ts::余火自动推导防回归 | 锚 src/mechanics/agents/phoenix.ts#PHOENIX_COMBUSTION_MOVE_IDS | 信 确认
+  ⟳复核: 下个版本核对倍率表整型列标度仍为 ×10000（同列 energy_gain 与 catalog energy_recovery 互证），长按消耗仍为 90 | 到期 2026-12-31
 
 ---
 

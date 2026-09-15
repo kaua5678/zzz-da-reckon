@@ -154,7 +154,7 @@ export const RATCHET_BURNDOWN = [
   },
   {
     id: '游戏语义口径复核触发器',
-    file: 'src/**（手写 @fact，种类=口径/映射，排除工程元口径）',
+    file: 'src/**、scripts/**、docs/**（手写 @fact 声明行，种类=口径/映射，排除工程元口径；docs 自 2026-09-15 起入语料）',
     frozen: 82,  // 2026-09-13 实测（判据 15 上线时）：83 条游戏语义口径里仅 1 条有触发器（本轮新挂的 effectiveTime「无敌≠秽盾」），其余 82 条此前**全部是「永不过期」的**——`effectiveTime.ts` 那条「无敌（秽盾/转阶段动画）」挂了 14 天，用户 2026-09-13 才纠正
     target: 0,
     due: '2026-12-31',
@@ -1743,6 +1743,8 @@ export function runAllChecks(root = ROOT) {
   // ---- 判据 6：手写 @fact 的锚必须解析得到（语言层，规则 8/9 的机器面） ----
   // 抽取自散文的事实不受约束（存量）；作者手写的 @fact 是新增承诺，必须能钉在代码上，
   // 否则口径会悄悄过期——这正是文档腐烂的形态，只是换了个更短的载体。
+  // 语料含 docs/ 的声明行（2026-09-15 术语表 review 补的盲区）：规则 8 允许手册写「口径」，
+  // 若不入语料则手册里的 @fact 断锚/缺据都不红——实测 3 条 docs 事实此前完全不可见。
   const authored = auditAuthoredFacts(root)
   results.push({
     name: `@fact anchors (语言层: 手写口径必须有据 + 锚得住) ${authored.scanned.length - authored.violations.length}/${authored.scanned.length}`,
