@@ -978,19 +978,8 @@ export function createRunCalcRound(deps: {
           : {}
         return { ...merged, yidhariStunCount: stunCount, ...exOverride }
       }
-      if (merged.agentId === '1551') {
-        // 佩洛伊斯：额外能力 连携回 300 喧响 × 连携总次数（失衡连携与诺姆赠送连携同算）；
-        // 影画2：下分支开局固定一次 → 回 1500 喧响（上限不建模）；
-        // 决算（右分支）次数：滑块 >=0 用滑块，缺省 -1 = 一次失衡一次决算。
-        const cinema = configStore.team[merged.slot]?.cinemaLevel ?? 0
-        const chainTotal = merged.chainCountTotalOverride ?? (merged.chainCountPerStun ?? 0) * countStun
-        return {
-          ...merged,
-          extraSelfDecibelReward: (merged.extraSelfDecibelReward ?? 0) + chainTotal * 300 + (cinema >= 2 ? 1500 : 0),
-          // 决算次数 = 失衡次数（一次失衡只能决算一次，决算后即出失衡）；轴模式按轴内 1551016 块计数
-          peiluoVerdictCount: stunCount,
-        }
-      }
+      // 2026-09-15 arch 棘轮：佩洛伊斯(1551) 的 peiluoVerdictCount / extraSelfDecibelReward 注入
+      // 已迁进 specPanelBuffs 的 peiluoProminenceMechanic.applyTeamConfig（规则 6）。
       if (merged.agentId === '1471') {
         // 般岳：轴内捏的强特/连段块 → 次数反馈给模块（先扣闪能，剩余自动补连段）；轴模式地动滑块归 0
         const banyueAxisEx = axisActionCountsBySlot[cfg.slot] ?? {}

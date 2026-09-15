@@ -170,4 +170,45 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     const qingyi = mkProbe('1251')
     expect(qingyi.qingyiStunCount, '青衣失衡次数未注入').toBe(7)
   })
+
+  // 2026-09-15 arch 棘轮第 5 小簇：佩洛伊斯(1551) 的 peiluoVerdictCount / extraSelfDecibelReward
+  // 从 convergence.ts 的 `merged.agentId === '1551'` 分支迁进 specPanelBuffs 的 applyTeamConfig。
+  // ⚠ 逐位等价要点：原分支**无条件**写 peiluoVerdictCount（含轴模式）——本用例显式覆盖这一点。
+  it('★ 佩洛伊斯 converge 钩子：连携×300 + 影画2 1500 累加进 extraSelfDecibelReward；verdict=失衡次数', () => {
+    const run = (opts: { cinema: number; chainPerStun?: number; chainOverride?: number; extra?: number }) => {
+      const characters = [{
+        agentId: '1551', slot: 0, chainCountPerStun: opts.chainPerStun ?? 2,
+        ...(opts.chainOverride !== undefined ? { chainCountTotalOverride: opts.chainOverride } : {}),
+        ...(opts.extra !== undefined ? { extraSelfDecibelReward: opts.extra } : {}),
+      } as any]
+      getAgentMechanic('1551')!.applyTeamConfig!({
+        slot: 0, agent: null, cinemaLevel: opts.cinema, potentialLevel: 6, characters,
+        team: [{ slot: 0, agentId: '1551', agent: null, cinemaLevel: opts.cinema, potentialLevel: 6, wEngineId: '', wEngineModLevel: 1 }],
+        settings: {}, phase: 'converge', combatTime: 180, exCounts: [0], stunCount: 5,
+        teamEnergyConsumed: 0,
+      } as any)
+      return characters[0] as any
+    }
+    // C0：连携 2/失衡 × 5 失衡 = 10 次 × 300 = 3000；无影画2 加成
+    const c0 = run({ cinema: 0 })
+    expect(c0.extraSelfDecibelReward, 'C0 连携回喧响').toBe(3000)
+    expect(c0.peiluoVerdictCount, 'C0 决算次数=失衡次数').toBe(5)
+    // C2：额外 +1500
+    expect(run({ cinema: 2 }).extraSelfDecibelReward, 'C2 影画2 开局 +1500').toBe(3000 + 1500)
+    // 轴模式覆盖值优先（chainCountTotalOverride 走轴内加权，不再乘失衡次数）
+    expect(run({ cinema: 0, chainOverride: 7 }).extraSelfDecibelReward, '轴覆盖值优先').toBe(7 * 300)
+    // 累加而非覆盖（共享通道，橘福福/蕾米埃尔等也会 +=）
+    expect(run({ cinema: 0, extra: 500 }).extraSelfDecibelReward, '必须累加共享通道').toBe(500 + 3000)
+    // ⚠ 轴模式**也必须**写 verdict（原分支无门控）——加 `if (!cfg.axisMode)` 门控即红
+    const axisCfg = {
+      agentId: '1551', slot: 0, chainCountPerStun: 2, axisMode: true,
+    } as any
+    getAgentMechanic('1551')!.applyTeamConfig!({
+      slot: 0, agent: null, cinemaLevel: 0, potentialLevel: 6, characters: [axisCfg],
+      team: [{ slot: 0, agentId: '1551', agent: null, cinemaLevel: 0, potentialLevel: 6, wEngineId: '', wEngineModLevel: 1 }],
+      settings: {}, phase: 'converge', combatTime: 180, exCounts: [0], stunCount: 5,
+      teamEnergyConsumed: 0,
+    } as any)
+    expect(axisCfg.peiluoVerdictCount, '轴模式也必须写 verdict（原分支无门控，加门控=行为静默改变）').toBe(5)
+  })
 })

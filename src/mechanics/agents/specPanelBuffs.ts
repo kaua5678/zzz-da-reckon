@@ -3,6 +3,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentSkillTransformInput,
+  AgentTeamConfigInput,
 } from '../types'
 import type { PanelValues } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
@@ -164,6 +165,33 @@ peiluoProminenceMechanic.axisWindowOverlays = ({ slot, axes }) => {
   if (axes.length === 0) return null
   const map = computePeiluoKagerouBonus(slot, axes)
   return map.size > 0 ? { peiluoKagerouMap: map } : null
+}
+/**
+ * converge 阶段（2026-09-15 arch 棘轮自 `convergence.ts` 的 `merged.agentId === '1551'` 分支搬入，规则 6）：
+ *
+ * ① `peiluoVerdictCount` —— **非轴**模式决算次数 = 失衡次数（一次失衡只能决算一次，决算后即出失衡）；
+ *    轴模式由 `axisWindowOverlays` 按轴内 1551016 块计数，故此处不写（保持轴路径不回退）。
+ *    该字段消费方**只有本模块**（`patchExecutions` 上文），故原 agentId 判断冗余（同 T6 判据）。
+ * ② `extraSelfDecibelReward` += 连携总次数 × 300（额外能力：连携回 300 喧响；失衡连携与诺姆赠送连携同算）
+ *    + 影画2 开局固定一次 1500（上限不建模）。
+ *    ⚠ 该字段是**跨角色共享累加通道**（另有 `useResourceCalc` 的橘福福 `fufaDecibel`、`helpers.ts`
+ *    的蕾米埃尔、`orphie.ts` 的影画2 各自 `+=`；`core/resource.ts:251` 汇总），故这里必须**累加**
+ *    而不是覆盖——原分支写的也是 `(merged.extraSelfDecibelReward ?? 0) + …`。
+ *    因为共享，本钩子的 phase 门只按 converge（与其它角色的写入时机一致）。
+ */
+peiluoProminenceMechanic.applyTeamConfig = ({ phase, slot, characters, cinemaLevel, stunCount }: AgentTeamConfigInput) => {
+  if (phase !== 'converge') return
+  const cfg = characters[slot] as (typeof characters)[number] & Record<string, unknown>
+  if (!cfg) return
+  const cinema = cinemaLevel ?? 0
+  // 连携总次数：轴模式用轴内加权后的覆盖值（由编排层通用注入 cfg），否则 chainCountPerStun × 失衡次数
+  const chainTotal = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * stunCount
+  cfg.extraSelfDecibelReward = Number(cfg.extraSelfDecibelReward ?? 0) + chainTotal * 300 + (cinema >= 2 ? 1500 : 0)
+  // ⚠ 必须**无条件**写（含轴模式）——原编排层分支就是 `peiluoVerdictCount: stunCount`、无门控。
+  // 轴模式下决算次数另由 `axisWindowOverlays` 的 1551016 块计数经 `patchExecutions` 消费，
+  // 但该字段本身在轴上也要有值（首轮/无块时回落它）。第一版我擅自加了 `if (!cfg.axisMode)`
+  // 门控 ⇒ 轴模式行为静默改变（timeGolden 未覆盖该路径、不红）——已改回逐位等价。
+  cfg.peiluoVerdictCount = stunCount
 }
 peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel }: any) => {
   // 影画1 黄昏旧章：进场获得 1000 点喧响值（勘域模式 180s 一次，整局口径按一次计）
