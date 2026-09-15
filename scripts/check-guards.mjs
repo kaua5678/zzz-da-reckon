@@ -163,15 +163,18 @@ export const RATCHET_BURNDOWN = [
   {
     id: '死通道豁免清单',
     file: 'scripts/check-guards.mjs DEAD_CHANNEL_ALLOWLIST',
-    frozen: 11,  // 2026-09-13 首轮实测 15（判据 14 上线时冻结）→ 14（2026-09-14 T15 审计 #13：
+    frozen: 9,  // 2026-09-13 首轮实测 15（判据 14 上线时冻结）→ 14（2026-09-14 T15 审计 #13：
     // 扣掉 1 条 kind:'namesake' 的误报记录 runArchiveImport.resistances —— 它的候选永不消失、
     // 永远不会 stale，算进待处置量会让棘轮**永远还不完**。口径见 countDeadChannelWorkload）
-    // → **11**（2026-09-15：销号 3 条**假阳性**——coverageMap / moduleInputRows ×2 实测是
-    // **完全接通的活通道**，被判死只因检测器漏了「裸标识符读 + 位置实参」形态；修 scanDeadOptionalProps
-    // 的 reBare 后自然不再命中，见该函数头注的逐条取证。**这不是调基线蒙混，是判据自身的缺陷修复**）：
-    // A 零读零写 2（runArchiveImport 的 weaknesses/hpTotal）/ B 只读不写 10（含 1 条 namesake 误报样本
-    // runArchiveImport.resistances，已在 why 里如实标注）/ C 手写 d.mts 漂移 **0**（上线即把 16 个漏声明
-    // 一次补齐 = 判据的正确用法）。三类（除误报样本外）都是存量：通道在、类型在、编译过，就是没人用
+    // → **9**（2026-09-15 销号 5 条**假阳性**，两个检测器缺陷，**不是调基线蒙混**）：
+    //   · 段 A 3 条（coverageMap / moduleInputRows ×2）—— 读判定漏「裸标识符读 + 位置实参」，
+    //     实测均为端到端接通的活通道（详见 scanDeadOptionalProps 头注）
+    //   · 段 B 2 条（stunAxisPresets 的 chapter / guarantee）—— 写判定不扫 JSON，
+    //     而数据就在 `src/data/stunAxisPresets/*.json`（详见 scanReadOnlyOptionalProps 头注）
+    // 现况：A 零读零写 2（runArchiveImport 的 weaknesses/hpTotal，确无消费点）/ B 只读不写 8
+    // （含 1 条 namesake 误报样本 runArchiveImport.resistances，已在 why 里如实标注）/
+    // C 手写 d.mts 漂移 **0**（上线即把 16 个漏声明一次补齐 = 判据的正确用法）。
+    // 三类（除误报样本外）都是存量：通道在、类型在、编译过，就是没人用
     target: 0,
     due: '2026-12-31',
     plan: '逐条「接上或删掉」二选一——接上消费点（如 phaseDelayedCooldown 的 blockSeconds 接 frontBlockSeconds、轴预设 chapter 补数据）或删死字段；处置一条从 DEAD_CHANNEL_ALLOWLIST 删一条（漏删即红 = 棘轮只减不增）。⚠ 不许「为绿而登记」：新增豁免必须写 why（怎么证明它是死的），否则判据退化成橡皮图章',
@@ -1115,22 +1118,12 @@ export const DEAD_CHANNEL_ALLOWLIST = {
     due: '2026-12-31',
     why: '只读不写；注意 frontBlockSeconds 是被测试与调用方用的活通道，死的是 phaseDelayedCooldown 的这个形参',
   },
-  'B|src/data/stunAxisPresets.ts chapter': {
-    since: '2026-09-13',
-    action: '轴预设的 chapter 字段只读不写（预设数据里没人填）——补数据或删字段',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '只读不写；同类 guarantee 与 preset 的其它字段有数据，chapter 疑似未填',
-  },
-  'B|src/data/stunAxisPresets.ts guarantee': {
-    since: '2026-09-13',
-    action: '同 chapter，随轴预设字段一并处置',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '只读不写',
-  },
+  // ⚠ 2026-09-15 销号 2 条（**假阳性**）：`stunAxisPresets` 的 chapter / guarantee 被判「只读不写、
+  // 预设数据里没人填」，但实测**数据就在 JSON 里**：`src/data/stunAxisPresets/{0章-琉,0章其他,
+  // 1章-琉,1章其他}.json` 各有 `"chapter": 0/1`（`stunAxisPresets.test.ts:153-156` 逐条断言），
+  // `5火10大.json` 有 `guarantee`。原判据只在 `.ts/.vue` 语料里找写入 ⇒ 数据驱动的字段一律误判。
+  // 修 scanReadOnlyOptionalProps（写判定语料扩到 JSON）后自然不再命中，故从清单删除。
+  // 原 why「chapter 疑似未填」是**错的**（规则 16：文档/注释也会骗 agent，故此处留痕纠正）。
   // 段 C（手写 .d.mts 漂移）**首轮即清零**：本判据上线时把 check-guards.d.mts 的漏声明一次补齐
   // （16 个：判据 12 的 CORE_LAYER_DIR/scanCoreRoleImports + 判据 13/14/15 的全部新导出），
   // 故无 C 段豁免条目——这正是判据该有的用法：发现漂移 → 补齐声明 → 清单为空。
@@ -1244,10 +1237,32 @@ export function scanDeadOptionalProps(root = ROOT) {
 /**
  * 段 B：可选项**只读不写**（`invincibleTime` 模式的字段级同款：引擎读、面板可写、数据不给）。
  * 实现里有 `?? 默认值` 兜底 ⇒ 缺数据时静默走默认，不报错——正是"通道空转"的形态。
+ *
+ * ⚠ **数据文件里的键必须算「写」**（2026-09-15 修第二个假阳性）：原先写判定只在 `.ts/.vue`
+ * 语料里找 `name:`，于是**由 JSON 供给的字段**一律被判「只读不写」。实测后果：
+ * `stunAxisPresets` 的 `chapter` / `guarantee` 被判死通道，而它们**有数据**：
+ *   · `chapter` —— `src/data/stunAxisPresets/{0章-琉,0章其他,1章-琉,1章其他}.json` 各有
+ *     `"chapter": 0/1`，且 `stunAxisPresets.ts:234` 真按它过滤
+ *   · `guarantee` —— `5火10大.json` 有值，`TeamConfigPage.vue:1140` 读它
+ * 与判据 10（catalog/raw 对账）同族：**数值的唯一事实源常在 JSON 而非 TS**，
+ * 只看 TS 会把「数据驱动」误判成「通道空转」。
  */
 export function scanReadOnlyOptionalProps(root = ROOT) {
   const files = walkSrcFiles(root)
   const texts = files.map(f => [relPosix(root, f), readFileSync(f, 'utf8')])
+  // 数据语料（2026-09-15 补）：JSON 里的 `"name":` 即「有人供给这个字段」。
+  const jsonTexts = []
+  for (const dir of ['src', 'public/static']) {
+    const rec = (d) => {
+      if (!existsSync(d)) return
+      for (const n of readdirSync(d)) {
+        const p = join(d, n)
+        if (statSync(p).isDirectory()) { if (!['node_modules', 'dist', '.git'].includes(n)) rec(p) }
+        else if (n.endsWith('.json')) jsonTexts.push([relPosix(root, p), readFileSync(p, 'utf8')])
+      }
+    }
+    rec(join(root, dir))
+  }
   const decls = []
   for (const [rel, text] of texts) {
     if (rel.includes('__tests__')) continue
@@ -1273,6 +1288,9 @@ export function scanReadOnlyOptionalProps(root = ROOT) {
       reads += (t.match(reRead) ?? []).length
       writes += (t.match(reWrite) ?? []).length + (t.match(reAssign) ?? []).length
     }
+    // JSON 供给（与 reWrite 同形态：`"name": value`）
+    const reJsonWrite = new RegExp('"' + name + '"\\s*:', 'g')
+    for (const [, t] of jsonTexts) writes += (t.match(reJsonWrite) ?? []).length
     return { reads, writes }
   }
   const out = []

@@ -780,6 +780,42 @@ describe('scanReadOnlyOptionalProps（判据 14-B：invincibleTime 模式）', (
     expect(scanReadOnlyOptionalProps(root), '??= 写入必须被认出来').toEqual([])
   })
 
+  // 2026-09-15 实测缺陷（第二个假阳性）：写判定原先只在 `.ts/.vue` 语料里找 `name:`，
+  // 于是**由 JSON 供给的字段**一律被判「只读不写」。实测事故：`stunAxisPresets` 的
+  // chapter / guarantee 被判死通道，而数据就在 `src/data/stunAxisPresets/*.json`
+  // （`"chapter": 0/1`，且测试逐条断言）。与判据 10 同族：数值的唯一事实源常在 JSON 而非 TS。
+  it('★ JSON 数据面供给也算写入（数据驱动的可选字段不是死通道）', () => {
+    const root = fixture({
+      'src/data/presets.ts': [
+        'export interface AxisPreset {',
+        '  chapter?: number',
+        '  guarantee?: { stun?: number }',
+        '}',
+        'export function pick(p: AxisPreset) { return p.chapter === undefined || p.chapter === 0 }',
+      ].join('\n'),
+      'src/data/axis/0章.json': '{ "id": "p1", "chapter": 0 }',
+      'src/data/axis/1章.json': '{ "id": "p2", "chapter": 1, "guarantee": { "stun": 2 } }',
+    })
+    const ro = scanReadOnlyOptionalProps(root)
+    expect(
+      ro.map(d => d.name),
+      'JSON 里给了值的字段被判「只读不写」—— 数据驱动的通道会被误记成空转',
+    ).toEqual([])
+  })
+
+  it('JSON 里也没有的字段仍是死通道（修假阳性不能把判据改成永不红）', () => {
+    const root = fixture({
+      'src/data/presets.ts': [
+        'export interface AxisPreset {',
+        '  neverFilled?: number',
+        '}',
+        'export function pick(p: AxisPreset) { return p.neverFilled ?? 0 }',
+      ].join('\n'),
+      'src/data/axis/0章.json': '{ "id": "p1", "chapter": 0 }',
+    })
+    expect(scanReadOnlyOptionalProps(root).map(d => d.name)).toEqual(['neverFilled'])
+  })
+
   it('零读零写不进 B 段（那是 A 段的判据，两段不重叠）', () => {
     const root = fixture({
       'src/core/x.ts': ['interface Cfg {', '  nobody?: number', '}'].join('\n'),
