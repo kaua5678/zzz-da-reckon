@@ -1160,6 +1160,13 @@ export const DEAD_CHANNEL_ALLOWLIST = {
  * 顺序要紧：**先剥注释再去串**。反过来的话，`// '` 这种注释里的引号会先把「串」开在错误位置，
  * 把后半段真代码整段吞掉（实测：反过来做会把 `const a = 1` 之后的行吃光）。
  * 去两侧（reads/writes）口径一致，B 段实测恢复为冻结基线 10 条。
+ *
+ * ③ **复合赋值**（2026-09-15 实测缺陷，false-red 面）：写入检测原式 `\.name\s*=(?!=)`
+ *    只认简单赋值，不认 `??=` / `||=` / `&&=`。自由对比工作台的 `FreeCompareSeries.downgrades?`
+ *    在 `engine.ts` 用 `(out[si].downgrades ??= [])` 写入，却被判 `writes=0` 打成死通道——
+ *    **把已接上的通道报成死的**，会逼人去登记假豁免（比漏报更危险）。
+ *    修复 = 正则加 `(?:\?\?|\|\||&&)?` 前缀（A/B 两段同改）；实测只清掉这 1 条误报，
+ *    其余冻结条目零变化。判据 `checkGuards.test.ts`「复合赋值也算写入」钉住。
  */
 export function stripCommentsAndStrings(text) {
   return stripStringLiterals(
@@ -1201,7 +1208,7 @@ export function scanDeadOptionalProps(root = ROOT) {
   const count = (name, excludeFile, excludeLine) => {
     const reRead = new RegExp('[.\\?]\\.?' + name + '\\b|\\b' + name + '\\s*\\?\\?|\\{\\s*' + name + '\\s*[,}]|\\b' + name + '\\s*[,}]\\s*=', 'g')
     const reWrite = new RegExp('(^|[\\s{,(])' + name + '\\s*:(?!:)', 'g')
-    const reAssign = new RegExp('\\.' + name + '\\s*=(?!=)', 'g')
+    const reAssign = new RegExp('\\.' + name + '\\s*(?:\\?\\?|\\|\\||&&)?=(?!=)', 'g')
     let reads = 0, writes = 0
     for (const [rel, text] of texts) {
       // 去注释与字符串：夹具串/待办注释不该被算成写入点（见 stripCommentsAndStrings）
@@ -1243,7 +1250,7 @@ export function scanReadOnlyOptionalProps(root = ROOT) {
   const count = (name, excludeFile, excludeLine) => {
     const reRead = new RegExp('[.\\?]\\.?' + name + '\\b|\\b' + name + '\\s*\\?\\?|\\{\\s*' + name + '\\s*[,}]|\\b' + name + '\\s*[,}]\\s*=', 'g')
     const reWrite = new RegExp('(^|[\\s{,(])' + name + '\\s*:(?!:)', 'g')
-    const reAssign = new RegExp('\\.' + name + '\\s*=(?!=)', 'g')
+    const reAssign = new RegExp('\\.' + name + '\\s*(?:\\?\\?|\\|\\||&&)?=(?!=)', 'g')
     let reads = 0, writes = 0
     for (const [rel, text] of texts) {
       // 同段 A：夹具串/注释里的 `resistances:` 曾把本条真实的死通道抹掉（见 stripCommentsAndStrings）

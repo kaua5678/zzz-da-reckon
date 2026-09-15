@@ -15,7 +15,7 @@
 
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { snapshotStore, restoreStore } from '@/composables/teamCompare'
+import { snapshotStore, restoreStore, isLimitedWEngine } from '@/composables/teamCompare'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   type AxisId,
@@ -47,6 +47,12 @@ export interface FreeCompareSeries {
   values: Array<number | null>
   /** 未取到值的档位数（如未收敛/跳过） */
   skipped: number
+  /**
+   * 「无专武」档实际穿上的下位音擎（label，去重后按首次出现序）。
+   * 为什么要露出来：下位是**按伤害择优**挑的（同职业三把 A 级实测差 3–8pp），
+   * 不显示的话用户看到「20」的数字却不知道底下穿的是哪把 —— 无法核对也无法复现。
+   */
+  downgrades?: string[]
 }
 
 export interface FreeComparePoint {
@@ -68,6 +74,11 @@ export interface FreeCompareResult {
   evaluations: number
   /** 被跳过的次数（未收敛等） */
   skipped: number
+  /**
+   * 「无专武」档挑下位音擎时的额外试算次数（**不含**在 `evaluations` 里）。
+   * 池大小 × 首个未命中的 (队友,角色,命座) 键；同键后续档位走缓存不重复试算。
+   */
+  pickEvaluations: number
 }
 
 export interface FreeCompareOptions {
@@ -99,8 +110,15 @@ export function signatureWEngineId(catalog: ReturnType<typeof useCatalogStore>, 
  * 这条坑 `computeAutoEnginePicks`（`teamCompare.ts:530-533`）与 `computeOptimalGoldAllocations`
  * （`:651-653`）的注释都是防它 —— 它们只认 `preset.wEngines` 不回读 store，同一个道理。
  *
- * ⚠ 空串 `wEngineId: ''` 是安全的：全仓消费点一律 `char.wEngineId ? getWEngine(...) : undefined`
- * （`resourceCalc/helpers.ts:464/:811/:1659`），不会炸。
+ * ⚠ **也不能裸奔**：空音擎实测比专武本体低 **34–41%**（探针 `freeCompareDowngradeProbe.test.ts`
+ * 三角色实测：柏妮思 −39.4% / 菲欧妮 −34.4% / 维琳娜 −41.2%）—— 那不是「没抽专武」，
+ * 那是「没带武器」，两者差着一个量级，混起来读会让整个无专武档失真。
+ * ⇒ 用户口径 2026-09-15「右位 0 = 用了下位武器，比如 A 级武器」= 必须穿一件下位。
+ *
+ * ⚠ **下位挑哪把不能按 id 顺序**（本函数第一版就是 `find()` 取第一件 = 武断）：
+ * 实测同职业三把 A 级音擎差 **3–8 个百分点**（柏妮思：双生泣星 −8.9% / 触电唇彩 −8.6% /
+ * 咚哒回声 −16.9%），挑错一把会让「无专武」档凭空多亏 8pp。
+ * ⇒ 默认走 **按伤害择优**（`pickDowngradeByDamage`），与 `computeAutoEnginePicks` 同思路。
  */
 function applyCodeToSlot(
   configStore: ReturnType<typeof useConfigStore>,
@@ -109,6 +127,7 @@ function applyCodeToSlot(
   agentId: string,
   code: SetupCode,
   fallbackWEngine: string,
+  fallbackMod: number,
 ): void {
   configStore.setAgent(slot, agentId)
   configStore.setCinemaLevel(slot, code.cinema)
@@ -119,20 +138,124 @@ function applyCodeToSlot(
     configStore.setWEngine(slot, wid)
     configStore.setWEngineModLevel(slot, Math.max(1, Math.min(5, code.wengine)))
   } else {
-    // 无专武：显式穿下位（fallback 由调用方给，缺省 '' = 裸奔，引擎按无音擎算）
     configStore.setWEngine(slot, fallbackWEngine)
-    configStore.setWEngineModLevel(slot, 1)
+    // A 级默认精炼 5、常驻 S 默认精炼 3（与 `computeAutoEnginePicks` 的 mods 口径一致）
+    configStore.setWEngineModLevel(slot, fallbackWEngine ? fallbackMod : 1)
   }
 }
 
-/** 装配时的下位音擎兜底：优先角色所属「常驻/A」池里的第一件，否则空串（引擎按无音擎算） */
-function fallbackFor(catalog: ReturnType<typeof useCatalogStore>, agentId: string): string {
+/** 下位候选：同职业的**非常驻 S / A 级**音擎（`ownerAgentId` 为空 = 不是谁的专武） */
+export interface DowngradeCandidate {
+  id: string
+  mod: number
+  label: string
+}
+
+/**
+ * 枚举某角色的「下位音擎」候选池：同职业、非专属（`ownerAgentId` 空）、非限定。
+ *
+ * 口径（三条都对着用户原话「用了下位武器，比如 a 级武器」）：
+ *  - **同职业**：音擎被动多数带专精要求（`WEngineEffect.requirement.specialty`），
+ *    跨职业穿等于白板 —— 与 `computeAutoEnginePicks` 的「试算天然只让匹配角色吃满」同源。
+ *  - **非专属**：`ownerAgentId` 有值 = 别人的专武，那不是「下位」是「另一把专武」（要花金）。
+ *  - **非限定**：常驻 S 与 A 级都不占限定金 ⇒ 整个「无专武」档 0 金，与配置码金数口径自洽。
+ * 精炼档：A 级默认 5、常驻 S 默认 3（`teamCompare.ts:523-524` 同口径，可经 `mods` 覆盖）。
+ */
+export function downgradeCandidates(
+  catalog: ReturnType<typeof useCatalogStore>,
+  agentId: string,
+  mods: { aRank?: number; standard?: number } = {},
+): DowngradeCandidate[] {
   const agent = catalog.getAgent(agentId)
-  if (!agent) return ''
-  const same = (catalog.displayWEngines ?? []).find(
-    w => !w.ownerAgentId && w.specialty === agent.specialty && w.rarity !== 'S',
-  )
-  return same?.id ?? ''
+  if (!agent) return []
+  const aMod = mods.aRank ?? 5
+  const stdMod = mods.standard ?? 3
+  return (catalog.displayWEngines ?? [])
+    .filter(w => !w.ownerAgentId && w.specialty === agent.specialty && !isLimitedWEngine(w.id))
+    .map(w => ({
+      id: w.id,
+      mod: w.rarity === 'A' ? aMod : stdMod,
+      label: `${w.name.zhCN ?? w.id} R${w.rarity === 'A' ? aMod : stdMod}`,
+    }))
+}
+
+/**
+ * 按伤害择优挑下位音擎（**与 `computeAutoEnginePicks` 同思路**：逐个试算全队伤害取最高）。
+ *
+ * 为什么必须择优而不是取第一件：实测同职业 A 级之间差 3–8pp（见 `applyCodeToSlot` 注释），
+ * 而「无专武」是用户明确要比的一个档位 —— 用一个随机偏低的基准去比，结论就是错的。
+ *
+ * 代价：池大小（异常职业 3 件）× 1 次全量求值。**调用方负责缓存**（`engine.ts` 用
+ * `${teamKey}|${agentId}|${cinema}` 做键），否则档位 × 系列会被放大成 N×池 次求值。
+ * 池为空（A 级角色等）返回 null，调用方回落空音擎。
+ */
+export function pickDowngradeByDamage(
+  calc: Calc,
+  configStore: ReturnType<typeof useConfigStore>,
+  catalog: ReturnType<typeof useCatalogStore>,
+  slot: number,
+  agentId: string,
+  mods: { aRank?: number; standard?: number } = {},
+): DowngradeCandidate | null {
+  const pool = downgradeCandidates(catalog, agentId, mods)
+  if (pool.length === 0) return null
+  // 单件池不用试算（省一次全量求值）：没有可比的第二件，择优退化成恒等
+  if (pool.length === 1) {
+    configStore.setWEngine(slot, pool[0].id)
+    configStore.setWEngineModLevel(slot, pool[0].mod)
+    return pool[0]
+  }
+  let best: DowngradeCandidate | null = null
+  let bestDmg = -Infinity
+  for (const c of pool) {
+    configStore.setWEngine(slot, c.id)
+    configStore.setWEngineModLevel(slot, c.mod)
+    const dmg = calc.teamTotalDamage.value
+    if (Number.isFinite(dmg) && dmg > bestDmg) { bestDmg = dmg; best = c }
+  }
+  // 提交赢家：下一槽的试算/最终读数都基于它
+  if (best) {
+    configStore.setWEngine(slot, best.id)
+    configStore.setWEngineModLevel(slot, best.mod)
+  }
+  return best
+}
+
+/**
+ * 下位音擎解析器（带缓存）——「无专武」档每次都择优会 ×池大小 次求值，
+ * 而同一个 (队友组合, 角色, 命座) 的择优结果在一轮对比里是常量 ⇒ 缓存是必需的，不是优化。
+ *
+ * 缓存键含 `cinema`：命座会改角色机制（如某命座改强特占比），可能翻转最优下位（实测三把差 3–8pp，
+ * 不是不可能翻转）；键含队友组合是因为择优读的是**全队伤害**，换队友就换了判据。
+ */
+function makeDowngradeResolver(calc: Calc, configStore: ReturnType<typeof useConfigStore>, catalog: ReturnType<typeof useCatalogStore>) {
+  const cache = new Map<string, DowngradeCandidate | null>()
+  return {
+    /** 解析并**把结果写进 store**（调用方随后求值即为该下位配置） */
+    resolve(slot: number, agentId: string, cinema: number, teamKey: string): DowngradeCandidate | null {
+      const key = `${teamKey}|${agentId}|${cinema}`
+      const hit = cache.get(key)
+      if (hit !== undefined) {
+        if (hit) {
+          configStore.setWEngine(slot, hit.id)
+          configStore.setWEngineModLevel(slot, hit.mod)
+        } else {
+          configStore.setWEngine(slot, '')
+        }
+        this.lastPicked = hit
+        return hit
+      }
+      const best = pickDowngradeByDamage(calc, configStore, catalog, slot, agentId)
+      cache.set(key, best)
+      this.lastPicked = best
+      if (!best) configStore.setWEngine(slot, '')
+      return best
+    },
+    /** 缓存统计（供 UI 显示真实求值次数；也便于测试断言缓存真的生效） */
+    get size() { return cache.size },
+    /** 最近一次 resolve 选中的件（调用方收集起来展示「20 档底下穿的是哪把」） */
+    lastPicked: null as DowngradeCandidate | null,
+  }
 }
 
 // ========== 主入口 ==========
@@ -171,8 +294,11 @@ export async function computeFreeCompare(
     values: new Array(levels.length).fill(null),
     skipped: 0,
   }))
+  const downgrade = makeDowngradeResolver(calc, configStore, catalog)
   let evaluations = 0
   let skipped = 0
+  /** 择优自身的试算次数（池大小 × 首个未命中），单独计，避免它被误读成"档位求值" */
+  let pickEvaluations = 0
 
   try {
     for (let si = 0; si < series.length; si++) {
@@ -191,12 +317,37 @@ export async function computeFreeCompare(
           wengine: level.override.wengine ?? spec.code.wengine,
         }
         const team = teamOf(spec, cs)
+        // 条件角色先定位槽位。条件与系列成员重叠时**条件胜**（用户原话「维琳娜0命1命2命的情况下」
+        // 是场景约束，系列只描述「谁跟谁比」；场景约束理应对该角色生效）
+        const condSlots = new Map<number, SetupCode>()
+        for (const c of cs.conditions ?? []) {
+          const s = team.indexOf(c.agentId)
+          if (s >= 0) condSlots.set(s, conditionToCode(c))
+        }
+        // 第一遍：把三槽的角色/命座/专武写全（**择优要读全队伤害，必须等队伍齐了再试**）
+        const needPick: Array<{ slot: number; agentId: string; cinema: number }> = []
         for (let slot = 0; slot < 3; slot++) {
           const agentId = team[slot]
           if (!agentId) continue
-          applyCodeToSlot(configStore, catalog, slot, agentId, code, fallbackFor(catalog, agentId))
+          const slotCode = condSlots.get(slot) ?? code
+          applyCodeToSlot(configStore, catalog, slot, agentId, slotCode, '', 1)
+          if (slotCode.wengine === 0) needPick.push({ slot, agentId, cinema: slotCode.cinema })
         }
-        applyConditions(configStore, catalog, cs, team)
+        // 第二遍：无专武的槽位按伤害择优挑下位（池>1 时内部会试算；缓存跨档位复用）
+        for (const p of needPick) {
+          const before = downgrade.size
+          downgrade.resolve(p.slot, p.agentId, p.cinema, `${team.join(',')}|${code.cinema}${code.wengine}`)
+          if (downgrade.size > before) {
+            // 新键 = 真的试算了；池大小由候选数决定（异常职业 3 件）
+            pickEvaluations += Math.max(0, downgradeCandidates(catalog, p.agentId).length - 1)
+          }
+          const picked = downgrade.lastPicked
+          if (picked) {
+            const list = (out[si].downgrades ??= [])
+            const tag = `${nameOf(p.agentId)}：${picked.label}`
+            if (!list.includes(tag)) list.push(tag)
+          }
+        }
 
         // ---- 求值 ----
         const value = readMetric(calc, m, env, spec)
@@ -227,6 +378,7 @@ export async function computeFreeCompare(
       durationMs: Date.now() - started,
       evaluations,
       skipped,
+      pickEvaluations,
     }
   }
 }
@@ -270,21 +422,6 @@ function applyConstraintBaseline(
   if (cs.autoBuild && catalog.buildRecsLoaded) {
     const team = teamOf(spec, cs)
     configStore.applyTeamPreset([team[0], team[1], team[2]] as [string, string, string])
-  }
-}
-
-/** 条件角色（用户原话「维琳娜 0命1命2命」）：找到它在队里的槽位并覆盖配置码 */
-function applyConditions(
-  configStore: ReturnType<typeof useConfigStore>,
-  catalog: ReturnType<typeof useCatalogStore>,
-  cs: ConstraintSpec,
-  team: readonly string[],
-): void {
-  for (const c of cs.conditions ?? []) {
-    const slot = team.indexOf(c.agentId)
-    if (slot < 0) continue // 条件角色不在队里 = 该约束不适用（如实忽略，不报错）
-    const code = conditionToCode(c)
-    applyCodeToSlot(configStore, catalog, slot, c.agentId, code, fallbackFor(catalog, c.agentId))
   }
 }
 

@@ -693,6 +693,24 @@ describe('scanReadOnlyOptionalProps（判据 14-B：invincibleTime 模式）', (
     expect(scanReadOnlyOptionalProps(root)).toEqual([])
   })
 
+  // 2026-09-15 实测缺陷（false-red 面）：写入检测原式 `\.name\s*=(?!=)` **只认简单赋值**，
+  // 不认复合赋值 `??=`/`||=`/`&&=`。实测事故：自由对比工作台的 `FreeCompareSeries.downgrades?`
+  // 明明在 engine.ts:346 用 `(out[si].downgrades ??= [])` 写入，却被判 `writes=0` 打成
+  // 「只读不写死通道」——**扫描器把已接上的通道报成死的**，比漏报更危险（会逼人去登记假豁免）。
+  // 修复方向 = 补识别复合赋值（而非登记豁免）：实测该修复只清掉这 1 条误报、不动其余任何条目。
+  it('★ 复合赋值也算写入（`??=` / `||=` / `&&=` 不是死通道）', () => {
+    const root = fixture({
+      'src/core/x.ts': [
+        'interface Cfg {',
+        '  downgrades?: string[]',
+        '}',
+        'export function t(c: Cfg) { return c.downgrades ?? [] }',
+      ].join('\n'),
+      'src/composables/w.ts': 'const list = (obj.downgrades ??= []); list.push("a")',
+    })
+    expect(scanReadOnlyOptionalProps(root), '??= 写入必须被认出来').toEqual([])
+  })
+
   it('零读零写不进 B 段（那是 A 段的判据，两段不重叠）', () => {
     const root = fixture({
       'src/core/x.ts': ['interface Cfg {', '  nobody?: number', '}'].join('\n'),

@@ -132,7 +132,8 @@
         <div class="card-header">
           <span>{{ result.metricLabel }} · x = {{ result.axisLabel }}</span>
           <span class="muted">
-            {{ result.evaluations }} 次求值 · 耗时 {{ (result.durationMs / 1000).toFixed(1) }}s
+            {{ result.evaluations }} 次求值<template v-if="result.pickEvaluations > 0"> + {{ result.pickEvaluations }} 次下位择优</template>
+            · 耗时 {{ (result.durationMs / 1000).toFixed(1) }}s
             <template v-if="result.skipped > 0"> · {{ result.skipped }} 档无读数</template>
           </span>
         </div>
@@ -149,6 +150,12 @@
           <span class="fc-dot" :style="{ background: colorOf(s.id) }"></span>{{ s.label }}
         </span>
         <span class="legend-hint">点系列名显隐（纵轴按剩下的线缩放）</span>
+      </div>
+
+      <!-- 无专武档实际穿的下位件：按伤害择优挑的（实测同职业三把 A 级差 3~8pp），不显示就没法核对 -->
+      <div v-if="downgradeNotes.length > 0" class="fc-note">
+        <span class="fc-note-label">无专武档实际穿的下位（按伤害择优）：</span>
+        <span v-for="n in downgradeNotes" :key="n" class="fc-note-item">{{ n }}</span>
       </div>
 
       <div class="fc-plot-wrap">
@@ -334,8 +341,11 @@ const costHint = computed(() => {
   ).length ?? 0
   const n = levels * series.value.filter(s => s.agentId).length
   if (n === 0) return ''
-  const sec = Math.round(n * 0.35)
-  return `预计 ${n} 次求值 ≈ ${sec}s${autoBuild.value ? '（开了推荐配装，会更慢）' : ''}`
+  // 含「无专武」档时每系列多 ~(池大小−1) 次择优试算（同 (队友,角色,命座) 键后续档位走缓存）
+  const hasNoWengine = (setupCodes.value ?? []).some(c => c[1] === '0')
+  const picks = hasNoWengine ? series.value.filter(s => s.agentId).length * 2 : 0
+  const sec = Math.round((n + picks) * 0.35)
+  return `预计 ${n + picks} 次求值 ≈ ${sec}s${autoBuild.value ? '（开了推荐配装，会更慢）' : ''}`
 })
 
 async function runCompare() {
@@ -457,6 +467,15 @@ const visibleLines = computed(() => {
     }))
     return { id: s.id, label: s.label, pts, points: pts.map(p => `${p.x},${p.y}`).join(' ') }
   })
+})
+
+/** 无专武档实际穿的下位件（去重；空 = 本次没跑无专武档） */
+const downgradeNotes = computed(() => {
+  const out: string[] = []
+  for (const s of result.value?.series ?? []) {
+    for (const d of s.downgrades ?? []) if (!out.includes(d)) out.push(d)
+  }
+  return out
 })
 
 function cellText(v: number | null): string {
@@ -594,6 +613,23 @@ onMounted(async () => {
 .legend-hint {
   font-size: 12px;
   color: var(--fg-3);
+}
+.fc-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--fg-3);
+}
+.fc-note-label {
+  color: var(--fg-2);
+}
+.fc-note-item {
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
 }
 .fc-plot-wrap {
   width: 100%;

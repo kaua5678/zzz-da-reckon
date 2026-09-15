@@ -16,7 +16,7 @@ import { mockStaticFetch, setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computeFreeCompare, signatureWEngineId } from '@/composables/freeCompare/engine'
+import { computeFreeCompare, downgradeCandidates, signatureWEngineId } from '@/composables/freeCompare/engine'
 import { parseSetupCode, type SeriesSpec } from '@/composables/freeCompare/axes'
 
 /**
@@ -67,19 +67,51 @@ describe('自由对比求值器（真引擎）', () => {
     expect(after, '跑完对比后现场必须逐字段还原').toBe(before)
   })
 
-  it('★ 无专武（20）真的没穿专武 —— 防 setAgent 自动推荐导致静默偏高', async () => {
+  it('★ 无专武（20）= 穿下位音擎，**不是裸奔**（用户口径 2026-09-15：「用了下位武器，比如 a 级武器」）', async () => {
     const catalog = useCatalogStore()
     const sig = signatureWEngineId(catalog, BURNICE)
     expect(sig, '柏妮思(1171) 应当有专武可查（灼心摇壶 14117）').toBeTruthy()
 
     // 装配 20（无专武）：求值中途抓 store 状态
     const noSig = await captureSlot0({ id: 's', kind: 'agent', members: [BURNICE], code: code('20') })
-    expect(noSig, 'wengine=0 时不该还穿着专武').not.toBe(sig)
+    expect(noSig.wEngineId, 'wengine=0 时不该还穿着专武').not.toBe(sig)
+    expect(noSig.wEngineId, '★ 也不该是空音擎——裸奔实测比专武本体低 34~41%，那是「没带武器」不是「没抽专武」').not.toBe('')
+    // 穿上的必须是「同职业、非专属、非限定」的下位件
+    const worn = catalog.getWEngine(noSig.wEngineId)
+    expect(worn, `穿上的 ${noSig.wEngineId} 应当能在 catalog 里查到`).toBeTruthy()
+    expect(worn!.ownerAgentId, '下位不能是别人的专武').toBeFalsy()
+    expect(worn!.specialty).toBe(catalog.getAgent(BURNICE)!.specialty)
+    // A 级默认精炼 5（与 computeAutoEnginePicks 的 mods 口径一致）
+    expect(noSig.modLevel).toBe(5)
 
     // 对照：装配 21（有专武本体）应当穿上专武且精炼 1
     const withSig = await captureSlot0({ id: 's', kind: 'agent', members: [BURNICE], code: code('21') })
     expect(withSig.wEngineId).toBe(sig)
     expect(withSig.modLevel).toBe(1)
+  })
+
+  it('★★ 无专武档挑的是**伤害最高**的下位，不是 id 顺序第一把（实测三把差 3~8pp）', async () => {
+    const catalog = useCatalogStore()
+    const calc = useResourceCalc()
+    const config = useConfigStore()
+    const worn = await captureSlot0({ id: 's', kind: 'agent', members: [BURNICE], code: code('20') })
+
+    // 穷举该角色的全部下位候选，确认工作台挑中的那把确实是最高伤害
+    const pool = downgradeCandidates(catalog, BURNICE)
+    expect(pool.length, '柏妮思是异常职业，下位池应当有 3 把 A 级').toBeGreaterThan(1)
+
+    const team: [string, string, string] = [BURNICE, VELINA, '']
+    config.applyTeamPreset(team)
+    config.setCinemaLevel(0, 2) // 20 = 2 命
+    let bestId = ''
+    let bestDmg = -Infinity
+    for (const c of pool) {
+      config.setWEngine(0, c.id)
+      config.setWEngineModLevel(0, c.mod)
+      const d = calc.teamTotalDamage.value
+      if (Number.isFinite(d) && d > bestDmg) { bestDmg = d; bestId = c.id }
+    }
+    expect(worn.wEngineId, `工作台穿的是 ${worn.wEngineId}，但实测最高的是 ${bestId}`).toBe(bestId)
   })
 
   it('★ 命座维度：同一系列 0 命 → 1 命，伤害不应下降（命座是纯增益的健全性检查）', async () => {
