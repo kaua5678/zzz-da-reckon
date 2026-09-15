@@ -157,3 +157,37 @@ describe('琉音阈值结转口径（好评 → 开窗次数）', () => {
     }
   })
 })
+
+/**
+ * ★ 跨层一致性：通用公式（非轴）与**轴预设声明**必须给出同一个开窗数。
+ *
+ * 这是 `core/resource.ts:222-224` 点名的「真收口 = 把轴 promote 计数线程化进 core」那条缺口的
+ * **可观测判据**：原文「轴模式 promote 次数由轴预设决定、`liuyinGiftChainInfo` 回落通用公式
+ * **会算错**」。阈值结转修正前实测分歧：10大轴声明 `60×4+90×1=5`，通用公式算 `60×4+90×0=4`
+ * （floor 丢掉结转的 30 点）⇒ 同一队两条路径给出不同的转大次数。
+ *
+ * 本用例把「两口径一致」钉成机器判据 —— 将来谁改任一侧而不同步，这里立刻红。
+ */
+describe('★ 琉音跨层一致性：通用公式 vs 轴预设声明', () => {
+  it('10大轴声明的 60/90 次数 = 通用公式（好评 390、连携 = 声明 60 档数）', async () => {
+    const { stunAxisPresets } = await import('@/data/stunAxisPresets')
+    const big10 = stunAxisPresets.find((x: { id: string }) => x.id === 'preset-1471-1481-*-fury5-ult10') as
+      { axes?: Array<{ actions: Array<{ promoteVariant?: string; count: number }> }> } | undefined
+    expect(big10, '10大轴预设应当存在（般琉卢的高难段）').toBeTruthy()
+    let declared60 = 0
+    let declared90 = 0
+    for (const ax of big10!.axes ?? []) {
+      for (const a of ax.actions) {
+        if (a.promoteVariant === '60') declared60 += a.count
+        else if (a.promoteVariant === '90') declared90 += a.count
+      }
+    }
+    expect(declared60 + declared90, '轴预设应当声明转大次数').toBeGreaterThan(0)
+    // 预设的 note 写着「好评≥390」，即该轴档的前提好评量
+    const g = computeLiuyinHugCounts(390, 4, -1, declared60)
+    expect(
+      g.hug60 + g.hug90,
+      `通用公式算 ${g.hug60 + g.hug90} 窗，轴预设声明 ${declared60 + declared90} 窗 —— 两口径必须一致（原缺口见本用例头注释）`,
+    ).toBe(declared60 + declared90)
+  })
+})
