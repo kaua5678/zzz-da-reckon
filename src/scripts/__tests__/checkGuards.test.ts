@@ -816,6 +816,46 @@ describe('scanReadOnlyOptionalProps（判据 14-B：invincibleTime 模式）', (
     expect(scanReadOnlyOptionalProps(root).map(d => d.name)).toEqual(['neverFilled'])
   })
 
+  // 2026-09-15 实测缺陷（第三个假阳性）：`{ …, zeroEnergyRow }` 的**对象简写**是写，
+  // 但写判定 `reWrite` 要求冒号 ⇒ 简写被判「零写入」。实测事故：`multiplierCoefficients.ts:164`
+  // 的 `zeroEnergyRow,` 是真写（:146 计算 → :149 打标 → :299 消费），却被记成只读不写。
+  describe('★ 对象字面量简写也算写入（`{ … , name }` 形态）', () => {
+    const DECL = ['export interface Unit {', '  zeroEnergyRow?: boolean', '}'].join('\n')
+
+    it('跨行对象字面量里的简写 = 写（真实形态：units.push({ … , zeroEnergyRow, })）', () => {
+      const root = fixture({
+        'src/composables/m.ts': DECL,
+        'src/composables/w.ts': [
+          'export function g(units: Unit[], zeroEnergyRow: boolean) {',
+          '  units.push({',
+          '    moveId: "1",',
+          '    zeroEnergyRow,',
+          '  })',
+          '}',
+        ].join('\n'),
+      })
+      expect(scanReadOnlyOptionalProps(root)).toEqual([])
+    })
+
+    it('⚠ 函数实参（`Math.max(minGain, x)`）**不算**写 —— 否则真死通道被洗白', () => {
+      // 这是本修复第一版的真实 bug：把 `f(minGain, …)` 当成对象简写 ⇒ 只读字段被判「有写入」
+      // 而退出死通道集合（判据最坏的失效方向）。
+      const root = fixture({
+        'src/composables/l.ts': ['export interface O {', '  minGain?: number', '}'].join('\n'),
+        'src/composables/u.ts': [
+          'export function g(opts: O, base: number) {',
+          '  const minGain = opts.minGain ?? 0',
+          '  return Math.max(minGain, base)',
+          '}',
+        ].join('\n'),
+      })
+      expect(
+        scanReadOnlyOptionalProps(root).map(d => d.name),
+        '函数实参被误判成对象简写 ⇒ 真死通道消失',
+      ).toEqual(['minGain'])
+    })
+  })
+
   it('零读零写不进 B 段（那是 A 段的判据，两段不重叠）', () => {
     const root = fixture({
       'src/core/x.ts': ['interface Cfg {', '  nobody?: number', '}'].join('\n'),

@@ -163,16 +163,15 @@ export const RATCHET_BURNDOWN = [
   {
     id: '死通道豁免清单',
     file: 'scripts/check-guards.mjs DEAD_CHANNEL_ALLOWLIST',
-    frozen: 9,  // 2026-09-13 首轮实测 15（判据 14 上线时冻结）→ 14（2026-09-14 T15 审计 #13：
+    frozen: 8,  // 2026-09-13 首轮实测 15（判据 14 上线时冻结）→ 14（2026-09-14 T15 审计 #13：
     // 扣掉 1 条 kind:'namesake' 的误报记录 runArchiveImport.resistances —— 它的候选永不消失、
     // 永远不会 stale，算进待处置量会让棘轮**永远还不完**。口径见 countDeadChannelWorkload）
-    // → **9**（2026-09-15 销号 5 条**假阳性**，两个检测器缺陷，**不是调基线蒙混**）：
-    //   · 段 A 3 条（coverageMap / moduleInputRows ×2）—— 读判定漏「裸标识符读 + 位置实参」，
-    //     实测均为端到端接通的活通道（详见 scanDeadOptionalProps 头注）
-    //   · 段 B 2 条（stunAxisPresets 的 chapter / guarantee）—— 写判定不扫 JSON，
-    //     而数据就在 `src/data/stunAxisPresets/*.json`（详见 scanReadOnlyOptionalProps 头注）
-    // 现况：A 零读零写 2（runArchiveImport 的 weaknesses/hpTotal，确无消费点）/ B 只读不写 8
-    // （含 1 条 namesake 误报样本 runArchiveImport.resistances，已在 why 里如实标注）/
+    // → **8**（2026-09-15 销号 7 条**假阳性**，三个检测器缺陷，**不是调基线蒙混**）：
+    //   · 段 A 3 条（coverageMap / moduleInputRows ×2）—— 读判定漏「裸标识符读 + 位置实参」
+    //   · 段 B 4 条（stunAxisPresets 的 chapter / guarantee —— 写判定不扫 JSON；
+    //     difficultyLadder 的 minGain / multiplierCoefficients 的 zeroEnergyRow —— 写判定漏对象**简写**）
+    // 现况：A 零读零写 2（runArchiveImport 的 weaknesses/hpTotal，确无消费点）/ B 只读不写 6（含 1 条
+    // namesake 误报样本 runArchiveImport.resistances，已在 why 里如实标注）/
     // C 手写 d.mts 漂移 **0**（上线即把 16 个漏声明一次补齐 = 判据的正确用法）。
     // 三类（除误报样本外）都是存量：通道在、类型在、编译过，就是没人用
     target: 0,
@@ -1069,14 +1068,11 @@ export const DEAD_CHANNEL_ALLOWLIST = {
     due: '2026-12-31',
     why: '只读不写：实现读 `opts.maxSteps ?? 24`，全仓零写入点',
   },
-  'B|src/composables/multiplierCoefficients.ts zeroEnergyRow': {
-    since: '2026-09-13',
-    action: 'zeroEnergyRow 只读不写——确认是否为「显式录 0 行」的预留标记，无用则删',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '只读不写；与 FEATURES_GUIDE「普攻回能显式录 0 的 13 条以 0% 打标」语义疑似相关',
-  },
+  // ⚠ 2026-09-15 销号 2 条（**假阳性**）：`minGain`（difficultyLadder）与 `zeroEnergyRow`
+  // （multiplierCoefficients）被判「只读不写」，但实测都有写入点，只是形态是**对象字面量简写**
+  // （`{ …, zeroEnergyRow }` / 调用点的 `minGain,`）——而原写判定 `reWrite` 要求冒号。
+  // 修 scanReadOnlyOptionalProps（补 reShorthand，逐行排除 const/let/var 绑定）后自然不再命中。
+  // `zeroEnergyRow` 证据链：`:146` 计算 → `:149` 用它打标 → `:164` 简写写入 → `:299` 消费。
   'B|src/composables/pullPlannerEngine.ts freePoolPerSpecialty': {
     since: '2026-09-13',
     action: '抽卡规划器的 freePoolPerSpecialty 无人传——接上 UI 或删除',
@@ -1280,6 +1276,20 @@ export function scanReadOnlyOptionalProps(root = ROOT) {
     const reRead = new RegExp('[.\\?]\\.?' + name + '\\b|\\b' + name + '\\s*\\?\\?|\\{\\s*' + name + '\\s*[,}]|\\b' + name + '\\s*[,}]\\s*=', 'g')
     const reWrite = new RegExp('(^|[\\s{,(])' + name + '\\s*:(?!:)', 'g')
     const reAssign = new RegExp('\\.' + name + '\\s*(?:\\?\\?|\\|\\||&&)?=(?!=)', 'g')
+    // 简写属性写（2026-09-15 修第三个假阳性）：`{ …, zeroEnergyRow }` 与 `zeroEnergyRow: v` 等价，
+    // 但 reWrite 要求冒号 ⇒ 简写形态被判「零写入」。实测事故：`multiplierCoefficients.ts:164`
+    // 的 `zeroEnergyRow,` 是**真写**（:146 计算、:149 用它打标、:299 消费），却被记成只读不写。
+    //
+    // ⚠ 必须限定「该标识符处在对象/数组**字面量**里」——否则 `Math.max(minGain, base * …)`
+    // 这类**函数实参**会被误判成对象简写（那不是写、是读），把**真死通道洗白**
+    // （本判据最坏的失效方向；第一版用「前面有 `{` 或有 `,`」就踩了：`minGain` 只有读却因
+    //  该行被判「有写入」而退出死通道集合——靠「真死通道仍报」的反向用例抓到）。
+    // 判据 = 逐字符扫该标识符**之前**的前缀，跟踪小括号深度；深度为 0 时最后出现的
+    // 开符是 `{` 或 `[` ⇒ 在字面量里 = 简写写；是 `(`（函数实参）⇒ 不算写。
+    // 同时排除 `const/let/var/function` 绑定声明行。
+    // 注意匹配起点：`name` 可能在行首（仅缩进）⇒ 不能用 `[\s{,(]` 作前置捕获，
+    // 否则 match.index 落在前一个空白上、前缀切错（第一版即此 bug，`zeroEnergyRow,` 未被识别）。
+    const reShorthand = new RegExp('(?<![.\\w$])' + name + '\\s*(?=[,}])', 'g')
     let reads = 0, writes = 0
     for (const [rel, text] of texts) {
       // 同段 A：夹具串/注释里的 `resistances:` 曾把本条真实的死通道抹掉（见 stripCommentsAndStrings）
@@ -1289,8 +1299,32 @@ export function scanReadOnlyOptionalProps(root = ROOT) {
         lines.splice(excludeLine - 1, 1)
         t = lines.join('\n')
       }
+      // 简写写判定：必须扫**整份文本**并维护**定界符栈**。
+      // 两个反例逼出了正确形态（都实测过）：
+      //   ① 按行扫 ⇒ 对象字面量跨行（`units.push({` 在前、`zeroEnergyRow,` 在 20 行后）看不到 `{`；
+      //   ② 只认「小括号深度 0 时的 `{`」⇒ 上例的 `{` 在 `push(` 里面（深度 1）照样漏。
+      // 正确判据 = 该标识符处**栈顶**是 `{` 或 `[`（= 处在对象/数组字面量里 = 简写写）；
+      // 栈顶是 `(`（函数实参，如 `Math.max(minGain, …)`）= 读，不算写。
+      let shorthandWrites = 0
+      {
+        const stack = []
+        const bindRe = new RegExp('\\b(?:const|let|var|function)\\s+' + name + '\\b')
+        const lineOf = (idx) => { const i = t.lastIndexOf('\n', idx - 1); return t.slice(i + 1, t.indexOf('\n', idx) === -1 ? t.length : t.indexOf('\n', idx)) }
+        reShorthand.lastIndex = 0
+        let m
+        let cursor = 0
+        while ((m = reShorthand.exec(t))) {
+          for (; cursor < m.index; cursor++) {
+            const ch = t[cursor]
+            if (ch === '(' || ch === '{' || ch === '[') stack.push(ch)
+            else if (ch === ')' || ch === '}' || ch === ']') stack.pop()
+          }
+          const top = stack[stack.length - 1]
+          if (!bindRe.test(lineOf(m.index)) && (top === '{' || top === '[')) shorthandWrites++
+        }
+      }
       reads += (t.match(reRead) ?? []).length
-      writes += (t.match(reWrite) ?? []).length + (t.match(reAssign) ?? []).length
+      writes += (t.match(reWrite) ?? []).length + (t.match(reAssign) ?? []).length + shorthandWrites
     }
     // JSON 供给（与 reWrite 同形态：`"name": value`）
     const reJsonWrite = new RegExp('"' + name + '"\\s*:', 'g')
