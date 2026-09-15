@@ -285,7 +285,8 @@ export function useResourceCalc() {
           if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
         } else {
           // 失衡次数与玄墨异常触发次数双稳定才收敛（异常触发 → 回闪能 → 强特 → 积蓄 → 触发）
-          // 小数失衡时代：浮点比较改 0.05 容差；2-循环去重键取 0.1 粒度
+          // 小数失衡时代：浮点比较用 0.05 容差；2-循环判定见下方 isTwoCycle（2026-09-15 由
+          // 「0.1 粒度去重桶」改为真 2-循环——旧粒度会把正在收敛的序列误判成循环，详见该处注释）
           if (Math.abs(next - stunCount) < 0.05 && ait === threads.auricInkFlash && feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
           /**
            * 真 2-循环：`next` 回到**上上轮**的值附近（而上一轮是另一个值）。
