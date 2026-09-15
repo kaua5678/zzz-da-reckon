@@ -91,7 +91,7 @@
 ```bash
 npm run verify        # check-guards + check-tokens + validate:data + validate:specs + verify:recording + vitest + build（build = vue-tsc -b && vite build，类型检查已含在内，故不再单列 typecheck）
 npm run check         # 快速环（改完必跑）
-npm run check-guards  # 机器护栏 15 项——判据清单与实测阈值跑一次就打印，逐项口径写在 scripts/check-guards.mjs 头注释（本文不复制）
+npm run check-guards  # 机器护栏（条数会随加固变化，故本文不写死数字）——判据清单与实测阈值跑一次就打印，逐项口径写在 scripts/check-guards.mjs 头注释（本文不复制）
 npm run verify:recording  # 录入完成判据（判据细节见下）
 npm run docs:status   # 重新生成 docs/implementation-status.md（CI 会检查漂移，漏跑即红）
 npm run minify:static # 生成产物瘦身/剔 catalog 死键（幂等；validate:data 报产物膨胀时用它修）
@@ -155,3 +155,25 @@ node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --cli
    这些正是护栏要拦的）。
 4. 报告文件写在派活指定的路径（第一行 `STATUS: done|blocked`），**最后一条回复也带一行 STATUS**
    （双通道，报告丢了管理员还能从对话里回收）。
+
+## 6. 子代理模型路由（派发 workflow/subagent 前必读）
+
+派发子代理前先读 `~/.dsh/model-routing.yaml`（不存在则用下表兜底），按任务分档钉 `{provider, model}`：
+
+| 档 | 用途 | 默认路由 | effort 上限 |
+|---|---|---|---|
+| review | 代码审查、架构/接口设计、疑难诊断、验收评审、spec 拆分把关 | `wb/deepseek-v4.1-flash` → `b-ai/qwen3.8-flash` → `wba/deepseek-v4.1-flash` → `wba/hy4-preview-f` | max |
+| fast | 批量机械改动、跑测试、日志/数据汇总、文档生成 | `wba/deepseek-v4.1-flash`@low → `b-ai/qwen3.8-flash` → `mimo/xiaomi/mimo-pro` | low~high |
+| default | 未匹配到以上两档的兜底 | `b-ai/qwen3.8-flash`（实测最稳） | high |
+
+- 显式钉档：`workflow` 的 `agent(prompt, { provider, model })`；同一 workflow 可按 phase 分档
+  （如调研用 fast、实施用 review）。
+- 白名单：模型须在 settings.yaml `subagent-model-selection.allowedModels` 内，否则界面上选不到。
+- effort 必须落在该模型 `reasoningEfforts` 声明内；实测 `max` **b-ai / wb / wba 三家都有**，只有 **mimo 没有**（上限 high）。
+  ⚠ 且**档位 ≠ 强度**：2026-09-14 四模型横评实测「四款全部不随 effort 档位单调缩放」（`~/.dsh/model-routing.yaml` 头），
+  别把 `max` 当"更聪明"用；hy4-preview-f 另有下限（思考预算 3k 会截断失败、12k OK）。
+- 档内 candidates 按序优先，失败（402 / UNSUPPORTED / 连接失败）顺延下一个；全失败降级 default 并写明原因。
+- `wb`(7863,wb2api) 与 `wba`(7865,wbai-server) 是两个不同网关；hy4-preview-f 仅 wba 有，其上游要求首条消息为 system prompt。
+- 前端不显示子代理实际模型（descriptor 为 model-hidden，UI 未渲染 model 字段）：
+  派发时把档位和模型写进 label（如 `review·wb-v4.1`），收尾回复注明各档实际钉的模型。
+- 想换档位模型：改 `~/.dsh/model-routing.yaml`，不要改本节。
