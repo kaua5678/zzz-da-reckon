@@ -316,6 +316,46 @@ export const lucyMechanic: AgentMechanicModule = {
     if (phase !== 'build') return
     applyLucyTeamEnergyFlags(characters)
   },
+  /**
+   * 跨槽位供给：终结技**邻位回能** + 影画1 回旋全队回能（每次 +2）。
+   *
+   * 2026-09-15 core 棘轮批次3 自 `core/resource/helpers.ts#calcCrossAgentEnergy` 的
+   * `findIndex(c => c.agentId === '1151')` 迁出（规则 6）。原逻辑两段：① 邻位回能
+   * （下一位 30 / 上一位 10）× 露西终结技次数；② 影画1 门控下 `spinEst × 2` 给**全队每人**
+   * （故 perTargetAmounts 对每个非自己槽位都加同一份 spinEst×2）。
+   *
+   * `spinEst` 的取值优先级逐位保留原实现：`lucyCheerSpinsEstimate`（上一轮线程写入的估计值）
+   * >0 时优先；否则按 1 命基础 + 影画2（＋连携＋终结）+ 影画6（＋队友强特合计）现算。
+   * 这三个字段都写在**露西自己的 cfg** 上（本模块 `applyLucyTeamEnergyFlags` 与 converge 注入）。
+   */
+  crossAgentSupply: {
+    kind: 'neighbor-ult-energy',
+    displayKey: 'lucyEnergy',
+    supply: () => 0,
+    perTargetAmounts: ({ ownSlot, teamSize, cfg, state }) => {
+      const rec = cfg as unknown as Record<string, unknown>
+      const slots = Array.from({ length: teamSize }, (_, i) => i)
+      const ults = Math.max(0, Math.floor(state.ultimateCount ?? 0))
+      const per = assignLucyUltNeighborEnergy(slots, ownSlot)
+      const out: Record<number, number> = {}
+      for (const [slot, amount] of Object.entries(per)) out[Number(slot)] = amount * ults
+      // 影画1 回旋全队回能：每个非自己槽位都得同一份
+      if (Number(rec.lucyC1Enabled ?? 0) > 0) {
+        const hint = Math.max(0, Number(rec.lucyCheerSpinsEstimate ?? 0))
+        const cinema = Math.max(0, Math.floor(Number(rec.lucyCinemaLevel ?? 0)))
+        const spinEst = hint > 0
+          ? hint
+          : Math.max(0, Math.floor(state.exSpecialCount ?? 0))
+            + (cinema >= 2 ? Math.max(0, Math.floor(state.chainCountTotal ?? 0)) + ults : 0)
+            + (cinema >= 6 ? Math.max(0, Number(rec.lucyTeammateExTotal ?? 0)) : 0)
+        // ⚠ C1 回旋回能是**全队每人**（含露西自己）——迁移前原式无条件 `lucyEnergy += spinEst*2`，
+        // 与上面「邻位回能不给提供者自己」不同。第一版我照邻位习惯跳过自己 ⇒ timeGolden 红
+        // （agent:1151:c6.slot0）。逐位保留原语义。
+        for (const s of slots) out[s] = (out[s] ?? 0) + spinEst * 2
+      }
+      return out
+    },
+  },
   id: 'agent:lucy',
   agentIds: [LUCY_ID],
   name: '露西·加油/小猪',

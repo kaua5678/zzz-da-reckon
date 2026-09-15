@@ -306,6 +306,30 @@ export const rinaMechanic: AgentMechanicModule = {
     if (phase !== 'build') return
     applyRinaTeamEnergyFlags(characters)
   },
+  /**
+   * 跨槽位供给：终结技**邻位回能**（下一位 30 / 上一位 10，两人队另一位 30）。
+   *
+   * 2026-09-15 core 棘轮批次3：原先引擎在 `calcCrossAgentEnergy` 里
+   * `findIndex(c => c.agentId === '1211')` 找丽娜槽位再乘系数；现引擎只按 kind 找提供者
+   * （`neighborUltEnergyFor`），邻位分配语义留在本模块（规则 6）。
+   * 为什么不能靠 cfg 字段反向定位：`rinaEnergyPerRinaUlt` 是**写给全队**的 buff 值，
+   * 无法据此认出「谁是提供者」。
+   */
+  crossAgentSupply: {
+    kind: 'neighbor-ult-energy',
+    displayKey: 'rinaUltEnergy',
+    // 本类别的量由 perTargetAmounts 全权给出；supply() 留 0（引擎不消费它）
+    supply: () => 0,
+    perTargetAmounts: ({ ownSlot, teamSize, cfg, state }) => {
+      const slots = Array.from({ length: teamSize }, (_, i) => i)
+      const ults = Math.max(0, Math.floor(state.ultimateCount ?? 0))
+      const per = assignRinaUltNeighborEnergy(slots, ownSlot)
+      const out: Record<number, number> = {}
+      for (const [slot, amount] of Object.entries(per)) out[Number(slot)] = amount * ults
+      void cfg
+      return out
+    },
+  },
   id: 'agent:rina',
   agentIds: [RINA_ID],
   name: '丽娜·邦布支援',

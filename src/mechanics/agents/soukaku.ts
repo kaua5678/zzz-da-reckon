@@ -263,6 +263,24 @@ export const soukakuMechanic: AgentMechanicModule = {
     if (phase !== 'build') return
     applySoukakuTeamEnergyFlags(characters)
   },
+  /**
+   * 跨槽位供给：终结技**邻位回能**（下一位 30 / 上一位 10，两人队另一位 30）。
+   * 2026-09-15 core 棘轮批次3 自 `core/resource/helpers.ts#calcCrossAgentEnergy` 的
+   * `findIndex(c => c.agentId === '1131')` 迁出（规则 6）；邻位语义留在本模块。
+   */
+  crossAgentSupply: {
+    kind: 'neighbor-ult-energy',
+    displayKey: 'soukakuUltEnergy',
+    supply: () => 0,
+    perTargetAmounts: ({ ownSlot, teamSize, state }) => {
+      const slots = Array.from({ length: teamSize }, (_, i) => i)
+      const ults = Math.max(0, Math.floor(state.ultimateCount ?? 0))
+      const per = assignSoukakuUltNeighborEnergy(slots, ownSlot)
+      const out: Record<number, number> = {}
+      for (const [slot, amount] of Object.entries(per)) out[Number(slot)] = amount * ults
+      return out
+    },
+  },
   id: 'agent:soukaku',
   agentIds: [SOUKAKU_ID],
   name: '苍角·刃旗助威',

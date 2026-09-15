@@ -3,7 +3,7 @@ import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases, getTeamAnomalyDurationBonus } from '@/composables/resourceCalc/helpers'
-import { calcRinaUltEnergy } from '@/core/resource/helpers'
+import { neighborUltEnergyByProvider } from '@/core/resource/crossAgentSupply'
 import {
   applyRinaTeamEnergyFlags,
   assignRinaUltNeighborEnergy,
@@ -194,7 +194,11 @@ describe('丽娜面板与资源接线', () => {
     expect(configs[2].rinaEnergyPerRinaUlt).toBe(30)
 
     const states: any[] = configs.map((_, index) => ({ ultimateCount: index === 1 ? 1 : 0 }))
-    expect(calcRinaUltEnergy(configs as any, states, configs[0] as any)).toBe(10)
-    expect(calcRinaUltEnergy(configs as any, states, configs[2] as any)).toBe(30)
+    // 2026-09-15 core 棘轮批次3：原 `calcRinaUltEnergy(configs, states, target)` 已删——
+    // 引擎改走通用类别查询 `neighborUltEnergyByProvider`（模块 crossAgentSupply 声明）。
+    // 断言口径不变：槽0 拿 10、槽2 拿 30（丽娜在槽1）。
+    const q = { totalTime: 180, stunCount: 0 }
+    expect(neighborUltEnergyByProvider(configs as any, states, 0, q).total).toBe(10)
+    expect(neighborUltEnergyByProvider(configs as any, states, 2, q).total).toBe(30)
   })
 })

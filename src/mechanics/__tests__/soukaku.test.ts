@@ -3,7 +3,7 @@ import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
-import { calcSoukakuUltEnergy } from '@/core/resource/helpers'
+import { neighborUltEnergyByProvider } from '@/core/resource/crossAgentSupply'
 import {
   applySoukakuTeamEnergyFlags,
   assignSoukakuUltNeighborEnergy,
@@ -57,13 +57,15 @@ describe('苍角纯函数', () => {
     expect(configs[1].soukakuEnergyPerSoukakuUlt).toBe(0)
   })
 
-  it('calcSoukakuUltEnergy 按终结次数结算', () => {
+  it('邻位回能按终结次数结算（走通用类别查询：模块 crossAgentSupply 声明）', () => {
+    // 2026-09-15 core 棘轮批次3：原 `calcSoukakuUltEnergy` 已删，改走 `neighborUltEnergyByProvider`。
+    // 语义不变：苍角在槽1、2 次终结 ⇒ 槽0（邻位）拿 30×2 = 60。
     const configs: any[] = [
-      { slot: 0, agentId: '1091', soukakuEnergyPerSoukakuUlt: 30 },
-      { slot: 1, agentId: '1131', soukakuEnergyPerSoukakuUlt: 0 },
+      { slot: 0, agentId: '1091' },
+      { slot: 1, agentId: '1131' },
     ]
     const states: any[] = [{ ultimateCount: 2 }, { ultimateCount: 2 }]
-    expect(calcSoukakuUltEnergy(configs, states, configs[0])).toBe(60)
+    expect(neighborUltEnergyByProvider(configs, states, 0, { totalTime: 180, stunCount: 0 }).total).toBe(60)
   })
 
   it('影画6 霜染段 dmgBonus+45', () => {

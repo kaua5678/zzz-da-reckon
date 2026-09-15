@@ -18,7 +18,7 @@ import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueCycleFromCfg, readAxisExCounts } from '@/mechanics/agents/banyue'
-import { crossAgentSupplyAt, findCrossAgentSupplySlots, giftDecibelForCfg } from './crossAgentSupply'
+import { crossAgentSupplyAt, findCrossAgentSupplySlots, giftDecibelForCfg, neighborUltEnergyByProvider } from './crossAgentSupply'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { resolveExtraExCount } from '@/data/exSpecialPlans'
 import { EVADE_ASSIST_ACTION_TIME_SECONDS, EVADE_ASSIST_MOVE_ID } from '@/data/resourceDefaults'
@@ -34,30 +34,6 @@ function countStunOf(globalCfg: ResourceCalcConfig): number {
 }
 
 // ============ 单角色能量计算 ============
-
-/** 丽娜终结技按槽位给当前角色补充的能量。 */
-export function calcRinaUltEnergy(
-  configs: CharacterOperationConfig[],
-  states: IterationState[],
-  target: CharacterOperationConfig,
-): number {
-  const rinaIndex = configs.findIndex(config => config.agentId === '1211')
-  if (rinaIndex < 0) return 0
-  const ultimateCount = Math.max(0, Math.floor(states[rinaIndex]?.ultimateCount ?? 0))
-  return Math.max(0, Number(target.rinaEnergyPerRinaUlt ?? 0)) * ultimateCount
-}
-
-/** 苍角终结技按槽位给当前角色补充的能量（邻位 30/10）。 */
-export function calcSoukakuUltEnergy(
-  configs: CharacterOperationConfig[],
-  states: IterationState[],
-  target: CharacterOperationConfig,
-): number {
-  const idx = configs.findIndex(config => config.agentId === '1131')
-  if (idx < 0) return 0
-  const ultimateCount = Math.max(0, Math.floor(states[idx]?.ultimateCount ?? 0))
-  return Math.max(0, Number((target as any).soukakuEnergyPerSoukakuUlt ?? 0)) * ultimateCount
-}
 
 /**
  * 队友联动回能（跨角色能量来源的单一事实源）。
@@ -97,31 +73,23 @@ export function calcCrossAgentEnergy(
     }
   }
 
-  // 支援角色终结技邻位回能（次数使用传入状态参与收敛）
-  const rinaUltEnergy = calcRinaUltEnergy(configs, states, cfg)
-  const soukakuUltEnergy = calcSoukakuUltEnergy(configs, states, cfg)
-
-  // 露西：终结邻位回能 + 影画1 回旋全队回能（次数用传入的露西 state）
-  let lucyEnergy = 0
-  const lucyIdx = configs.findIndex(c => c.agentId === '1151')
-  if (lucyIdx >= 0) {
-    const lucyPrev = states[lucyIdx]
-    const lucyUlt = Math.max(0, Math.floor(lucyPrev?.ultimateCount ?? 0))
-    const lucyCfg = configs[lucyIdx]
-    const lucyCinema = Math.max(0, Math.floor(num((lucyCfg as any).lucyCinemaLevel)))
-    lucyEnergy += Math.max(0, num(cfg.lucyEnergyPerLucyUlt)) * lucyUlt
-    if (num(cfg.lucyC1Enabled) > 0) {
-      const spinsHint = Math.max(0, num((cfg as any).lucyCheerSpinsEstimate))
-      const spinEst = spinsHint > 0
-        ? spinsHint
-        : Math.max(0, Math.floor(lucyPrev?.exSpecialCount ?? 0))
-          + (lucyCinema >= 2
-            ? Math.max(0, Math.floor(lucyPrev?.chainCountTotal ?? 0)) + lucyUlt
-            : 0)
-          + (lucyCinema >= 6 ? Math.max(0, num((lucyCfg as any).lucyTeammateExTotal)) : 0)
-      lucyEnergy += spinEst * 2
-    }
-  }
+  // 支援角色终结技**邻位回能**（丽娜/苍角/露西；次数使用传入状态参与收敛）。
+  // 2026-09-15 core 棘轮批次3：原为三段各自 `findIndex(c => c.agentId === '<id>')` 的角色专属数学
+  // （丽娜/苍角的 calcXxxUltEnergy + 露西的内联块），现引擎只按**能力类别**查询：
+  // 各模块用 `crossAgentSupply.kind = 'neighbor-ult-energy'` 声明自己、用 `perTargetAmounts()`
+  // 报「送给每个落点多少能量」（邻位 30/10 分配、影画1 回旋回能、乘自己终结技次数都在模块内）。
+  // 新角色接邻位回能不必再改引擎（规则 6）。
+  //
+  // ⚠ 明细字段（rina/soukaku/lucy 三个来源）由 `byProvider` 按**提供者槽位**拆分，
+  // 供 `ResourceResultCard.vue` 逐条展示；`total` 用合计值（同一落点可同时被多名提供者回能，
+  // 明细相加 = total，不会漏也不会重）。
+  const neighborUlt = neighborUltEnergyByProvider(configs, states, slotIndex, {
+    totalTime: 180, stunCount: 0,
+  })
+  const byKey = neighborUlt.byDisplayKey
+  const rinaUltEnergy = byKey.rinaUltEnergy ?? 0
+  const soukakuUltEnergy = byKey.soukakuUltEnergy ?? 0
+  const lucyEnergy = byKey.lucyEnergy ?? 0
 
   // 莱特影画4：进士气喷发时后场角色 +4 能量（18s CD，总额预写入 cfg.lighterC4BurstEnergy）
   const lighterC4Raw = num((cfg as any).lighterC4BurstEnergy)
@@ -159,8 +127,8 @@ export function calcCrossAgentEnergy(
     lucyEnergy,
     lighterC4Energy,
     xideVanguardEnergy,
-    total: supportUltimateRegen + teamUltimateFlash + rinaUltEnergy
-      + soukakuUltEnergy + lucyEnergy + lighterC4Energy + xideVanguardEnergy,
+    total: supportUltimateRegen + teamUltimateFlash + neighborUlt.total
+      + lighterC4Energy + xideVanguardEnergy,
   }
 }
 

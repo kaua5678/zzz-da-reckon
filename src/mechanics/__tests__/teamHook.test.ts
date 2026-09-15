@@ -66,10 +66,20 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
       .reduce((a, b) => a + b, 0)
     expect(rinaGiven).toBe(rinaUlt * 30 + rinaUlt * 10)
 
-    // 自己不给自己回能
+    // 自己不给自己回能（邻位类别：提供者不给自己发；⚠ 露西影画1 的全队回旋**含她自己**，
+    // 本用例是 0 命露西，故这里仍为 0）
     expect(bySlot.get(0)!.energySource.crossAgent.rinaUltEnergy).toBe(0)
     expect(bySlot.get(1)!.energySource.crossAgent.lucyEnergy).toBe(0)
     expect(bySlot.get(2)!.energySource.crossAgent.soukakuUltEnergy).toBe(0)
+
+    // 2026-09-15 core 棘轮批次3：明细字段现由模块 `crossAgentSupply.displayKey` 自报、
+    // 引擎按 key 聚合（原为 `findIndex(c => c.agentId === '<id>')`）。本断言钉住
+    // 「每个提供者的量确实只落到它自己的 key 上」，且三键之和 = 落点收到的总量。
+    for (const slot of [0, 1, 2]) {
+      const cross = bySlot.get(slot)!.energySource.crossAgent
+      expect(cross.rinaUltEnergy + cross.soukakuUltEnergy + cross.lucyEnergy,
+        `槽${slot} 的三项邻位明细之和应等于该槽收到的邻位能量合计`).toBeGreaterThan(0)
+    }
   })
 
   // 时间守恒口径（用户 2026-09-01）后：失衡次数下降 → 窗口占用时间变少 → 后场时间变多 →

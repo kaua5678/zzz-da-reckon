@@ -416,6 +416,38 @@ export interface CrossAgentSupplySpec {
    */
   targetSlot?(input: { ownSlot: number; teamSize: number; cfg: CharacterOperationConfig }): number
   /**
+   * **多落点**供给（可选，优先级高于 `targetSlot`）：一次给出「槽位 → 该落点得到的量」的完整映射。
+   *
+   * 为什么需要（2026-09-15 core 棘轮批次3，丽娜/苍角/露西邻位回能）：这些机制的落点是
+   * 「**下一位队友 30 + 上一位队友 10**」——同一提供者对不同落点给**不同的量**，
+   * 而 `targetSlot()` 只能表达单落点 + `supply()` 单值。故补这个可选槽位（不破坏既有提供者）。
+   * 返回的 `Record` 的 key 是**槽位下标**，value 是该落点获得的量（本类别语义 = 能量总量）。
+   * 引擎遍历提供者求和（见 `neighborUltEnergyByProvider`）；不需要多落点的类别继续用 `supply()`+`targetSlot()`。
+   *
+   * ⚠ `targetCfg` 语义：部分机制的量依赖**落点自己那份 cfg** 上的字段（如露西影画1 的
+   * `lucyCheerSpinsEstimate` 是编排层**写给全队**的估计值，提供者自己那份可能还没写）。
+   * 迁移前引擎正是读目标 cfg 取的这些值，故此处显式提供，模块按需读。
+   */
+  perTargetAmounts?(input: {
+    ownSlot: number
+    teamSize: number
+    cfg: CharacterOperationConfig
+    state: IterationState
+    /** 各槽位的 cfg（模块需要按落点读字段时用；`targetCfgOf(slot)` 取不到则 undefined） */
+    targetCfgOf?: (slot: number) => CharacterOperationConfig | undefined
+  }): Record<number, number>
+  /**
+   * 本供给在 `CrossAgentEnergy` 里对应的**展示明细键**（可选）。
+   *
+   * 为什么需要（2026-09-15 core 棘轮批次3）：`CrossAgentEnergy` 暴露
+   * `rinaUltEnergy` / `soukakuUltEnergy` / `lucyEnergy` 三个「来源」字段供
+   * `ResourceResultCard.vue` 逐条展示，迁移前引擎靠 `findIndex(c => c.agentId === '1211')`
+   * 之类把值填进对应字段。现在改由**模块自报键名**、引擎按 key 聚合
+   * （`neighborUltEnergyByProvider` 的 `byDisplayKey`）⇒ 引擎侧零角色名，
+   * 而 UI 字段名与语义不变（新增提供者只需声明自己的 key + 在 UI 加一行）。
+   */
+  displayKey?: string
+  /**
    * 单个供给单位占用**落点槽**的前台秒数（缺省 = 落点 cfg 的 `ultimateActionTime`）。
    * 用于折叠环/欠打试探把赠送时间计入行测量（否则预留被读成 idle → refund 双击）。
    */

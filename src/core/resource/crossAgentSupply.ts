@@ -114,6 +114,55 @@ export function crossAgentSuppliesOf(
 }
 
 /**
+ * 「邻位回能」类别：返回 `targetSlot` 槽从**每个**提供者分别获得的能量（按提供者槽位索引）。
+ *
+ * 为什么返回明细而不只返回合计：`CrossAgentEnergy` 要向 UI 暴露
+ * `rinaUltEnergy` / `soukakuUltEnergy` / `lucyEnergy` 三个「来源」字段
+ * （`ResourceResultCard.vue` 逐条展示），故必须能按提供者拆分；`total` 用合计值。
+ *
+ * 为什么单列这个类别（2026-09-15 core 棘轮批次3）：迁移前这段数学住在 `calcCrossAgentEnergy` 里，
+ * 形状是「丽娜/苍角/露西 各一个 `findIndex(c => c.agentId === '<id>')` → 查它的终结技次数 →
+ * 乘一个按**邻位关系**分配的系数」。三段几乎相同的代码，且新角色接入必须改引擎。
+ * 关键难点（试过按 cfg 字段改写并**否决**）：`rinaEnergyPerRinaUlt` 这类字段是**写给全队**的
+ * buff 值（提供者遍历全队各写一份自己的份额），因此**无法反向标识提供者槽位**——必须由模块
+ * 自己声明「我是提供者」，引擎按 kind 找槽位。这正是 `crossAgentSupply` 存在的理由。
+ *
+ * 契约：模块用 `perTargetAmounts()` 返回「本提供者送给每个落点的**能量总量**」
+ * （邻位 30/10 的分配语义、影画1 的回旋回能、乘自己终结技次数，全在模块内）。
+ * 引擎只做「按 kind 找提供者 + 按落点取数」。求和而非覆盖：一个落点可同时收到多名提供者。
+ */
+export function neighborUltEnergyByProvider(
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+  targetSlot: number,
+  query: CrossAgentSupplyQuery,
+): { total: number; byProvider: Record<number, number>; byDisplayKey: Record<string, number> } {
+  const teamSize = query.teamSize ?? configs.length
+  const byProvider: Record<number, number> = {}
+  const byDisplayKey: Record<string, number> = {}
+  let total = 0
+  for (const providerSlot of findCrossAgentSupplySlots(configs, 'neighbor-ult-energy')) {
+    // ⚠ **不在引擎侧跳过提供者自己**：是否给自己回能由模块的 perTargetAmounts 决定
+    // （丽娜/苍角的 assignXxx 内部已 `others = slots.filter(s => s !== ownSlot)`；
+    //   露西影画1 的「回旋全队回能」**含她自己**——引擎侧一刀切 skip 会少算，实测 timeGolden 红）。
+    const cfg = configs[providerSlot]
+    const spec = cfg ? getAgentMechanic(cfg.agentId)?.crossAgentSupply : undefined
+    const state = states[providerSlot]
+    if (!cfg || !spec?.perTargetAmounts || !state) continue
+    const amounts = spec.perTargetAmounts({ ownSlot: providerSlot, teamSize, cfg, state })
+    const v = amounts?.[targetSlot]
+    if (typeof v === 'number' && v > 0) {
+      byProvider[providerSlot] = v
+      total += v
+      // 展示明细按模块自报的 displayKey 聚合（引擎不认识角色名）
+      const key = spec.displayKey
+      if (key) byDisplayKey[key] = (byDisplayKey[key] ?? 0) + v
+    }
+  }
+  return { total, byProvider, byDisplayKey }
+}
+
+/**
  * 某 cfg 的「赠链附带喧响」折算：`decibelPerUnit(自己的 spec) × 自己的供给单位数`。
  *
  * 语义注意：`normaCinemaLevel` 这类命座字段**只写在角色自己的 cfg 上**，因此引擎在逐槽循环里
