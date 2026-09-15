@@ -433,6 +433,7 @@
 - **当前实现状态 [已实现·近似 2026-08-26]**（实现位置：`src/mechanics/agents/alice.ts` + `src/composables/useResourceCalc.ts` 畏缩 DoT/决胜附伤 + `src/core/anomalyPool.ts` 畏缩 DoT 结算 + spec `1401.json` teamBuffs；测试 `src/mechanics/__tests__/alice.test.ts`）。含：剑仪资源、极性强击、畏缩 DoT、影画 1/2/4/6。
 - **畏缩 DoT（核心被动）**：畏缩状态敌人每 0.95s 受强击伤害 2.5% 的固定异常伤害（`calcAliceCoweringDot`）；紊乱倍率随物理异常剩余时长提升（每剩余 1s +18%，上限 180%）。
 - **未建模**：决胜状态逐时序（30s 持续按每状态次数滑块近似）。影画4 强化星仪序曲(1401005)物理异常积蓄 +25% 已接入（`transformAliceAnomalyPool` 对 physical 贡献 ×1.25）。
+- **剑仪两条外部次数源 [已实现 2026-09-15]**（`alice_team_assault_gain` +10/次、`alice_disorder_gain` +30/次）：此前**声明 implemented 但恒产 0**（`buildAliceSwordWillSource` 三个调用点都没传第 3 参）。现走 `applyTeamConfig` converge 阶段跨轮注入（同莱特 `teamEnergyConsumed`），口径三条：强击**只算爱丽丝自己**的 `physical`（不含极性强击——它另有 `alice_polarity_feedback` 规则）、紊乱**带额外能力门控**。生效测试 `alice.test.ts` 4 例；副作用：剑仪行占 180s 预算 ⇒ 多队 +4.5~12.8%、**单人 C6 净 −1.17%**（真实权衡）。
 - **模块**：`src/mechanics/agents/alice.ts`。
 
 ### 浮波柚叶（1411）—— 支援：甜度点/狸之愿/硬糖射击·转积蓄

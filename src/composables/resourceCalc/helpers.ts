@@ -261,6 +261,10 @@ export function applyTeamMechanics(params: {
   ultimateCounts?: number[]
   stunCount?: number
   teamEnergyConsumed?: number
+  /** 全队强击触发次数（上一轮异常池收敛值；爱丽丝剑仪 `alice_team_assault_gain` 用） */
+  aliceTeamAssaultCount?: number
+  /** 全队紊乱次数（上一轮异常池收敛值；爱丽丝剑仪 `alice_disorder_gain` 用） */
+  aliceDisorderCount?: number
 }): void {
   const { characters, configStore, catalogStore, phase } = params
   if (characters.length === 0) return
@@ -271,6 +275,8 @@ export function applyTeamMechanics(params: {
   const ultimateCounts = params.ultimateCounts ?? characters.map(() => 0)
   const stunCount = params.stunCount ?? 0
   const teamEnergyConsumed = params.teamEnergyConsumed ?? 0
+  const aliceTeamAssaultCount = params.aliceTeamAssaultCount ?? 0
+  const aliceDisorderCount = params.aliceDisorderCount ?? 0
 
 
   // 各槽位「异常积储主元素」（2026-09-02）：优先模块声明（雅模块把积蓄归并为 frostfire；
@@ -314,6 +320,8 @@ export function applyTeamMechanics(params: {
       ultimateCounts,
       stunCount,
       teamEnergyConsumed,
+      aliceTeamAssaultCount,
+      aliceDisorderCount,
     })
   }
 }

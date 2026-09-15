@@ -49,7 +49,7 @@
         },
         {
           "id": "alice_team_assault_gain",
-          "trigger": "全队强击",
+          "trigger": "爱丽丝自触发的物理强击（积蓄条打满，不含极性强击）",
           "countSource": "teamAssaultCount",
           "valueSource": "cfgField",
           "valueField": "aliceTeamAssaultSwordWill",
@@ -57,7 +57,7 @@
         },
         {
           "id": "alice_disorder_gain",
-          "trigger": "紊乱",
+          "trigger": "全队紊乱（带额外能力门控：队伍存在另一名异常/支援）",
           "countSource": "disorderCount",
           "valueSource": "cfgField",
           "valueField": "aliceDisorderSwordWill",
@@ -171,6 +171,7 @@
   ],
   "stateMachines": [],
   "notes": [
+    "剑仪两条外部次数源 [2026-09-15 修复·实测]：`alice_team_assault_gain`（+10/次）与 `alice_disorder_gain`（+30/次）此前**声明 implemented 但恒产 0** —— `buildAliceSwordWillSource(cfg, state)` 的三个调用点都没传第 3 参 anomalyPoolData，函数内 `?? 0` 兜底。现走 `applyTeamConfig`(converge 阶段) 把上一轮异常池次数写进 cfg（`aliceTeamAssaultCount`/`aliceDisorderCount`），与莱特 teamEnergyConsumed 同款跨轮反馈（异常池在 buildExecutions 之后才算，只能带上一轮值）。三条口径：① 强击**只算 physical 且只算爱丽丝自己**触发的（原文主语「**爱丽丝**通过属性异常积蓄触发[强击]时」；实测爱丽丝+柚叶+悠真 physical 16 次 = 爱丽丝 11/柚叶 5 ⇒ team 口径会多算 45%）；② `physical_polar_assault` **必须排除**（原文「无视属性积蓄进度」不属于「通过积蓄触发」，且极性强击另有 feedbackGainRules[alice_polarity_feedback] countSource=totalSparkCount 给剑意，两处都算即双计）；③ 紊乱**带额外能力门控**（原文「队伍中存在另一名[异常]或[支援]角色时触发」），门控未过该收入为 0。生效测试 `alice.test.ts`「爱丽丝剑仪外部次数源」4 例（含双向门控与 self/team 口径对照）。副作用（真实权衡非缺陷）：剑仪行占用 180s 预算，多队净 +4.5~12.8%，**单人爱丽丝 C6 因平A被挤净 −1.17%**。",
     "畏缩状态本身无 DOT，只是持续时间内敌人失衡值 +7.5% 的 buff。",
     "6 命附伤已确认（用户口径 2026-08-26）：只吃异常精通+暴伤（必定暴击），不吃增伤/防御/抗性/易伤等乘区——结算 = 精通 × 3300% × (1+暴伤/100)。"
   ],

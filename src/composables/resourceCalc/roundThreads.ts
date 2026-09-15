@@ -57,6 +57,16 @@ export interface CalcRoundThreads {
   promiaTeammateReleases: number
   /** 普罗米娅自身异放回喧响（绝裁/影画6 各 +100） */
   promiaReleaseDecibel: number
+  /**
+   * 爱丽丝剑仪的两条外部次数源（上一轮异常池收敛值）：
+   * 全队强击次数（`physical` + `physical_polar_assault` 两键之和）/ 紊乱次数。
+   * 为什么必须跨轮：异常池在 `buildExecutions` **之后**才算，而剑仪的星芒圆舞曲行要在
+   * `buildExecutions` 里产出 ⇒ 只能带上一轮值（`vivianAnomalyTriggers` 同款理由）。
+   * 消费方 = 爱丽丝模块的 `applyTeamConfig`（converge 阶段写进 cfg，供本轮 buildCharConfig 读）。
+   */
+  aliceTeamAssaultCount: number
+  /** 爱丽丝剑仪：全队紊乱次数（上一轮异常池收敛值） */
+  aliceDisorderCount: number
   /** 失衡内异常系统 v2：平均每窗异常触发次数（南宫羽颤音自动层数） */
   inStunWindowTriggers: number
   /** 艾莲影画4 冻结次数（异常池 ice 触发数） */
@@ -94,6 +104,8 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
     promiaTriggerHits: 0,
     promiaTeammateReleases: 0,
     promiaReleaseDecibel: 0,
+    aliceTeamAssaultCount: 0,
+    aliceDisorderCount: 0,
     inStunWindowTriggers: 0,
     ellenFreezeCount: 0,
     teamVeilCountTotal: 0,

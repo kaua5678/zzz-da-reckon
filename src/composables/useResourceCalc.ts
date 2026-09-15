@@ -174,6 +174,8 @@ export function useResourceCalc() {
       let prevBackstageSeq = ''
       let prevBuildUpFracSeq = ''
       let prevDecibelParrySeq = ''
+      /** 爱丽丝剑仪 spark 次数序列（反馈环稳定判据，见下方 aliceSeq 注释） */
+      let prevAliceSeq = ''
       const seenStunCounts = new Set<number>()
       let outerRounds = 0
       let outerConverged = false
@@ -232,7 +234,29 @@ export function useResourceCalc() {
         // 恒为 3，仅按 stunCount 判稳会让 N 没爬完就提前 stable——用户口径：保底4要打满）
         const buildUpFracSeq = out?.stunPool ? (out.stunPool.totalStunBuildUp / out.stunPool.bossStunValue).toFixed(2) : ''
         const decibelParrySeq = `${t.decibelParry ?? 0}`
-        const feedbackStable = ultSeq === prevUltSeq && anomalySeq === prevAnomalySeq && topUpSeq === prevTopUpSeq && parrySplitSeq === prevParrySplitSeq && decibelParrySeq === prevDecibelParrySeq && backstageSeq === prevBackstageSeq && buildUpFracSeq === prevBuildUpFracSeq
+        /**
+         * 爱丽丝剑仪反馈序列（2026-09-15 加入）：剑仪收入现在接了**全队强击/紊乱次数**
+         * （`alice_team_assault_gain`/`alice_disorder_gain`），于是形成一条新反馈环——
+         * 剑仪↑ → 星芒圆舞曲#3 行↑ → 前排时间↑ → 平A池↓ → 剑仪↓（负反馈）；
+         * 同时多出的行进异常池 → 强击/紊乱次数↑ → 剑仪↑（正反馈）。
+         * 不纳入收敛判据就会**提前判 stable**或落进 2-循环（实测：auto-1401-1261-1411 /
+         * 爱丽丝+格莉丝+11号 两支 A/B 对照从 stable 变 cycle，最终失衡次数相同但路径不同）。
+         * 与 `lighterTeamEnergy`/`promia*` 同类（只影响伤害与执行行、不改终结技序列），
+         * 按 `roundThreads.ts` 头注释的纪律必须显式加进来。
+         *
+         * ⚠ 实测附带发现（2026-09-15，**未修，仅登记**）：这套 `cycle` 检测的 2-循环去重键是
+         * `Math.round(stunCount × 10)`（0.1 粒度），会把**正在收敛**的小数判定成 2-循环。
+         * 轨迹证据（爱丽丝+格莉丝+11号，PROBE_TRACE_CYCLE=1 实测）：
+         *   stunCount 0 → 1.0 → 0.91111 → 0.91901 → 0.91831，|Δ| = 1.0 → 0.089 → 0.0079 → 0.0007
+         *   （等比收敛，且第 4 轮 ultSeq/anomalySeq 已全稳定），但后三轮的键都是 `9` ⇒ 误报 cycle。
+         * 影响面：**所有消费方只把 `maxIter` 当不可信**（`teamTimeline.ts:487/:643`、
+         * `pullPlannerEngine.ts:134`、`ResultPage.vue:823`），`cycle` 一律按有效结果接受
+         * ⇒ 该误报**不改任何数值**，只改 `outerExit` 标签与 UI 提示。故本笔不动它（超出本任务
+         * 授权，且修它要重定量全库基线），登记在此供后续专项。
+         */
+        const aliceSeq = (out?.resourceResult?.characters ?? [])
+          .map(c => c.aliceSwordWillSource?.sparkCount ?? 0).join(',')
+        const feedbackStable = ultSeq === prevUltSeq && anomalySeq === prevAnomalySeq && topUpSeq === prevTopUpSeq && parrySplitSeq === prevParrySplitSeq && decibelParrySeq === prevDecibelParrySeq && backstageSeq === prevBackstageSeq && buildUpFracSeq === prevBuildUpFracSeq && aliceSeq === prevAliceSeq
         if (lockedStunCount >= 0) {
           if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
         } else {
@@ -247,6 +271,7 @@ export function useResourceCalc() {
         // 其余 = threadsNext（runCalcRound 已按 prev 兜底算好下一轮值）
         threads = { ...t, anomalyDecibelBonus: out?.anomalyPool?.perSlotBonus ?? [] }
         prevDecibelParrySeq = decibelParrySeq
+        prevAliceSeq = aliceSeq
         prevUltSeq = ultSeq
         prevAnomalySeq = anomalySeq
         prevTopUpSeq = topUpSeq

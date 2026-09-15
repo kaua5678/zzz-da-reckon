@@ -253,6 +253,15 @@ export interface CharacterOperationConfig {
   aliceTeamAssaultSwordWill?: number
   /** 爱丽丝紊乱每次回复剑意 = 30 */
   aliceDisorderSwordWill?: number
+  /**
+   * 爱丽丝剑仪：**全队强击次数**（`physical` + `physical_polar_assault` 两键触发数之和）。
+   * 由爱丽丝模块的 `applyTeamConfig` 在 converge 阶段按**上一轮**异常池收敛值写入
+   * （异常池在 `buildExecutions` 之后才算 ⇒ 只能跨轮反馈，同 `teamEnergyConsumed`）。
+   * 对应 spec `alice_team_assault_gain` 的 `countSource: teamAssaultCount`。
+   */
+  aliceTeamAssaultCount?: number
+  /** 爱丽丝剑仪：**全队紊乱次数**（上一轮异常池收敛值）。对应 spec `alice_disorder_gain` */
+  aliceDisorderCount?: number
   /** 洛克茜风炮 move id */
   roxyWindCannonMoveId?: string
   /** 洛克茜风眼 move id */

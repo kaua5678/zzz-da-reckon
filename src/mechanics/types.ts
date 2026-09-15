@@ -113,6 +113,16 @@ export interface AgentTeamConfigInput {
   /** 全队普通能量消耗（莱特影画4 用；build 阶段 0） */
   teamEnergyConsumed: number
 
+  /**
+   * 全队**强击**触发次数（`physical` + `physical_polar_assault` 两键之和；上一轮异常池收敛值）。
+   * 消费方：爱丽丝剑仪的 `alice_team_assault_gain`（`src/specs/agents/1401.json`）。
+   * build 阶段 0（次数还没产出）；这是**跨轮反馈**——异常池在 `buildExecutions` **之后**才算，
+   * 所以只能带上一轮的值进来（与 `teamEnergyConsumed` 同款，都是被这个顺序逼出来的）。
+   */
+  aliceTeamAssaultCount?: number
+  /** 全队**紊乱**次数（上一轮异常池收敛值）。消费方：爱丽丝剑仪的 `alice_disorder_gain`。build 阶段 0 */
+  aliceDisorderCount?: number
+
 }
 
 export interface AgentExSpecialTimeInput {

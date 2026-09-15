@@ -200,6 +200,10 @@ function buildAliceCharConfig({
   // 畏缩机制配置
   cfg.aliceTeamAssaultSwordWill = TEAM_ASSAULT_SWORD_WILL
   cfg.aliceDisorderSwordWill = DISORDER_SWORD_WILL
+  // 全队强击 / 紊乱 的**次数**由 applyTeamConfig 的 converge 阶段按上一轮收敛值写入
+  // （见 `applyTeamConfig` 本模块实现；build 阶段先置 0，语义与莱特 teamEnergyConsumed 同款）
+  cfg.aliceTeamAssaultCount = (cfg as { aliceTeamAssaultCount?: number }).aliceTeamAssaultCount ?? 0
+  cfg.aliceDisorderCount = (cfg as { aliceDisorderCount?: number }).aliceDisorderCount ?? 0
   cfg.aliceCoweringDotRatio = COWERING_DOT_RATIO
   cfg.aliceCoweringDotInterval = COWERING_DOT_INTERVAL
   cfg.aliceCoweringDisorderBonusPerSec = COWERING_DISORDER_BONUS_PER_SEC
@@ -299,11 +303,38 @@ function buildAliceSwordWillSource(
   }
 }
 
+/**
+ * 从 cfg 取两条外部次数源，喂给 `buildAliceSwordWillSource` 的第 3 参。
+ *
+ * 为什么走 cfg 而不是调用点直接传异常池对象：这两个次数由**上一轮**异常池收敛值经
+ * `applyTeamConfig`(converge) 写进 cfg（见模块的 applyTeamConfig 注释），
+ * `buildExecutions` 跑的时机异常池还没算 ⇒ 它拿不到本轮值，只能读这个跨轮字段。
+ *
+ * ⚠ 修复前这里是**三个调用点都不传第 3 参** ⇒ `?? 0` 兜底 ⇒ spec 里声明
+ * `status:"implemented"` 的两条 gain 规则恒产 0（结构性死参数，2026-09-15 实测）。
+ */
+export function cfgExternalCountsProbe(cfg: {
+  aliceTeamAssaultCount?: number
+  aliceDisorderCount?: number
+  aliceAdditionalAbilityActive?: boolean
+}): { assaultTriggerCount: number; disorderCount: number } {
+  return {
+    assaultTriggerCount: Math.max(0, cfg.aliceTeamAssaultCount ?? 0),
+    // ⚠ 紊乱那条规则**带额外能力门控**：原文「队伍中存在另一名[异常]或[支援]角色时触发：
+    // 队伍中任意角色触发[紊乱]效果时，爱丽丝回复30点[剑仪]」。门控未过 → 该收入为 0
+    // （`aliceAdditionalAbilityActive` 由 buildAliceCharConfig 按 isAdditionalAbilityActive 写）。
+    // 不做这道门会把「单爱丽丝队」的剑仪算多。
+    disorderCount: cfg.aliceAdditionalAbilityActive
+      ? Math.max(0, cfg.aliceDisorderCount ?? 0)
+      : 0,
+  }
+}
+
 /** 导出的类型别名，方便其他模块引用 */
 type AliceSwordWillSource = import('@/types/resource').AliceSwordWillSource
 
 function buildAliceExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const smSrc = buildAliceSwordWillSource(cfg, state)
+  const smSrc = buildAliceSwordWillSource(cfg, state, cfgExternalCountsProbe(cfg))
   if (!smSrc || smSrc.sparkCount <= 0) return
 
   const actionTime = cfg.aliceSwordWillActionTime ?? 0
@@ -367,7 +398,7 @@ function transformAliceAnomalyPool(input: AgentAnomalyTransformInput): void {
 }
 
 function buildAliceAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
-  const smSrc = buildAliceSwordWillSource(cfg, state)
+  const smSrc = buildAliceSwordWillSource(cfg, state, cfgExternalCountsProbe(cfg))
   if (!smSrc) return
   const spec = getAgentSpec(ALICE_AGENT_ID)
   if (!spec) return
@@ -378,7 +409,7 @@ function buildAliceAnomalyEvents({ cfg, state, events }: AgentEventInput): void 
 
 function buildAliceResourceResult({ cfg, state }: AgentResourceResultInput): Partial<import('@/types/resource').CharacterResourceResult> {
   return {
-    aliceSwordWillSource: buildAliceSwordWillSource(cfg, state),
+    aliceSwordWillSource: buildAliceSwordWillSource(cfg, state, cfgExternalCountsProbe(cfg)),
   }
 }
 
@@ -428,6 +459,64 @@ export function aliceSparkCountOf(rr: { characters: Array<{ agentId?: string; al
   return rr.characters.find(c => c.agentId === ALICE_AGENT_ID)?.aliceSwordWillSource?.sparkCount ?? 0
 }
 
+/**
+ * 从异常池结果汇总爱丽丝两条外部次数源（剑仪 gain 用）。
+ *
+ * - **全队强击次数** = **只算 `physical`**（属性积蓄条打满触发的那种强击）。
+ * - **紊乱次数** = `disorderCount`（引擎已按 `min(Σ触发−1, 2×(Σ−max))` 算好）。
+ *
+ * ⚠ **`physical_polar_assault` 必须排除（否则双计）**——这条是实测+原文一起定的：
+ *   ① 原文（`data/raw/nanoka_missing/full/1401.json` 核心被动）：
+ *      「爱丽丝**通过属性异常积蓄**触发[强击]时，回复10点[剑仪]」——限定「通过积蓄触发」；
+ *      而极性强击的定义是「**无视属性积蓄进度**造成一次原本[强击]效果X%的伤害」
+ *      ⇒ 极性强击**不走积蓄条**，不属于本规则覆盖的事件。
+ *   ② 极性强击有**自己**的 gain 规则：spec `feedbackGainRules[alice_polarity_feedback]`，
+ *      countSource = `totalSparkCount`（每次星芒圆舞曲#3 触发一次极性强击），
+ *      value = 10（1命后 35）。实测探针：9 次 spark → `polarityAssaultGain = 90`。
+ *   ⇒ 若这里再把 `physical_polar_assault` 的 9 次按 +10 计入，同一批极性强击就拿了两遍剑意。
+ *
+ * ⚠ 注意与 `core/anomalyPool/helpers.ts:976` 的口径区别：那里算**物理失衡次数**时
+ * `physical + physical_polar_assault` 相加是**对的**（两者都是「一次强击事件」，都削韧）；
+ * 本函数算的是**剑仪收入**，规则文本限定「通过积蓄触发」⇒ 只取 `physical`。两处口径不同是
+ * 因为问的问题不同，不是不一致。
+ *
+ * 提取逻辑留在模块侧，避免编排层新增 agentId 分支（规则 6 棘轮）。返回 null = 本队无爱丽丝。
+ */
+export function aliceExternalCountsOf(
+  anomalyPool: {
+    perElement?: Array<{ element: string; triggerCount?: number; perSlotTriggerCounts?: number[] }>
+    disorderCount?: number
+  } | null | undefined,
+  /** 爱丽丝所在槽位（编排层从 rr 里数出来；-1 = 本队无爱丽丝 ⇒ 返回 null） */
+  aliceSlot: number,
+): { assaultCount: number; disorderCount: number } | null {
+  if (aliceSlot < 0 || !anomalyPool) return null
+  let assaultCount = 0
+  for (const prog of anomalyPool.perElement ?? []) {
+    // 只取 physical：极性强击（physical_polar_assault）不走积蓄条、另有 alice_polarity_feedback
+    // 规则（见函数头注释②），此处计入即双计。
+    if (prog.element !== 'physical') continue
+    // 只取**爱丽丝自己**触发的那部分：原文「**爱丽丝**通过属性异常积蓄触发[强击]时，回复10点」
+    // ——主语是她自己，队友触发的强击不给她的剑仪（对比紊乱那条是「队伍中**任意角色**触发」）。
+    // 实测（爱丽丝+柚叶+悠真）：physical 16 次 = 爱丽丝 11 / 柚叶 5 / 悠真 0，
+    // 用 team 口径会多算 45%。perSlotTriggerCounts 缺省（老结果对象）时退回整元素计数。
+    const perSlot = prog.perSlotTriggerCounts
+    assaultCount += perSlot && aliceSlot >= 0 && aliceSlot < perSlot.length
+      ? (perSlot[aliceSlot] ?? 0)
+      : (prog.triggerCount ?? 0)
+  }
+  return { assaultCount, disorderCount: anomalyPool.disorderCount ?? 0 }
+}
+
+/**
+ * 从资源结果里数出爱丽丝的槽位（-1 = 本队无爱丽丝）。
+ * 与 `aliceSparkCountOf` 同款：提取逻辑留模块侧，编排层不写 agentId 字面量（规则 6 棘轮）。
+ */
+export function aliceSlotOf(rr: { characters: Array<{ slot?: number; agentId?: string }> } | null | undefined): number {
+  if (!rr) return -1
+  return rr.characters.find(c => c.agentId === ALICE_AGENT_ID)?.slot ?? -1
+}
+
 export const aliceMechanic: AgentMechanicModule = {
   id: 'agent:alice',
   agentIds: [ALICE_AGENT_ID],
@@ -440,6 +529,42 @@ export const aliceMechanic: AgentMechanicModule = {
   buildAnomalyEvents: buildAliceAnomalyEvents,
   buildResourceResult: buildAliceResourceResult,
   resourceSections: buildAliceResourceSections,
+  /**
+   * 剑仪的两条**外部次数源**注入（全队强击 / 紊乱）。
+   *
+   * 为什么需要这个钩子（2026-09-15 实测的结构性缺口）：spec `1401.json` 的
+   * `alice_team_assault_gain` / `alice_disorder_gain` 两条 gain 规则声明 `status:"implemented"`，
+   * 但 `buildAliceSwordWillSource` 的第 3 参 `anomalyPoolData` 在**三个调用点都没传**
+   * ⇒ 两条收入恒为 0（`?? 0` 兜底），**声明已实现、结构上拿不到数**。
+   *
+   * 口径（与莱特 `teamEnergyConsumed` 同款的三相位纪律）：
+   * - `build`：次数全未知 ⇒ 置 0（等价于修复前的行为，首轮不吃这两条收入）；
+   * - `converge`：带**上一轮**收敛出的异常池次数 ⇒ 写进 cfg，本轮 buildExecutions 消费；
+   * - `postRound`：不动（这两个次数不是本模块产出的，是异常池的产物，由编排层在
+   *   converge 阶段带进来；本模块只做消费者）。
+   *
+   * ⚠ 为什么不用 `buildExecutions` 直接读异常池：`buildExecutions` 在异常池**之前**跑
+   * （异常池要消费执行行），读不到本轮次数——这正是它必须走跨轮反馈的原因（同
+   * `vivianAnomalyTriggers` / `lighterTeamEnergy` 的存在理由）。
+   */
+  applyTeamConfig: ({ characters, phase, aliceTeamAssaultCount, aliceDisorderCount }) => {
+    if (phase === 'build') {
+      for (const c of characters) {
+        if (c.agentId !== ALICE_AGENT_ID) continue
+        const cc = c as { aliceTeamAssaultCount?: number; aliceDisorderCount?: number }
+        cc.aliceTeamAssaultCount = 0
+        cc.aliceDisorderCount = 0
+      }
+      return
+    }
+    if (phase !== 'converge') return
+    for (const c of characters) {
+      if (c.agentId !== ALICE_AGENT_ID) continue
+      const cc = c as { aliceTeamAssaultCount?: number; aliceDisorderCount?: number }
+      cc.aliceTeamAssaultCount = Math.max(0, aliceTeamAssaultCount ?? 0)
+      cc.aliceDisorderCount = Math.max(0, aliceDisorderCount ?? 0)
+    }
+  },
   // 伴随事件：三蓄 SW3(1401012) 末尾赠送极性强击（polar_assault），易伤跟随父动作
   attachedEvents: { '1401012': ['polar_assault'] },
   settings: [

@@ -493,7 +493,7 @@ import { applyTeamMechanics, enrichExecutionPlan } from './helpers'
 
 /** 保底 4 喧响的四舍五入阈值（自 useResourceCalc 顶层随迁；那里改为了 import） */
 export const DECIBEL_ROUND_THRESHOLD = 1500
-import { aliceSparkCountOf } from '@/mechanics/agents/alice'
+import { aliceExternalCountsOf, aliceSlotOf, aliceSparkCountOf } from '@/mechanics/agents/alice'
 import { estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
 import { computeTeamVeilCountTotal } from '@/mechanics/teamVeil'
 
@@ -576,6 +576,8 @@ export function createRunCalcRound(deps: {
       promiaTriggerHits: prevPromiaTriggerHits,
       promiaTeammateReleases: prevPromiaTeammateReleases,
       promiaReleaseDecibel: prevPromiaReleaseDecibel,
+      aliceTeamAssaultCount: prevAliceTeamAssaultCount,
+      aliceDisorderCount: prevAliceDisorderCount,
       inStunWindowTriggers: prevInStunWindowTriggers,
       ellenFreezeCount: prevEllenFreezeCount,
       teamVeilCountTotal: prevTeamVeilCountTotal,
@@ -1230,6 +1232,11 @@ export function createRunCalcRound(deps: {
       combatTime: base.totalTime ?? 180,
       stunCount,
       teamEnergyConsumed: Math.max(0, prevLighterTeamEnergy || 0),
+      // 爱丽丝剑仪的两条外部次数源（上一轮异常池收敛值）：全队强击 = physical +
+      // physical_polar_assault 两键之和；紊乱 = disorderCount。本模块的 applyTeamConfig
+      // 在 converge 阶段把它们写进 cfg，供本轮 buildExecutions 产星芒圆舞曲行时消费。
+      aliceTeamAssaultCount: prevAliceTeamAssaultCount,
+      aliceDisorderCount: prevAliceDisorderCount,
     })
     // 特殊动作喧响奖励（弹刀215/闪反10/连携10/快支20，含伴随50%）：本轮即时结算——
     // 输入只有用户配置的次数与连携数（= chainCountTotalOverride ?? chainCountPerStun × stunCount），无 ultimateCount 反馈环
@@ -1558,6 +1565,8 @@ export function createRunCalcRound(deps: {
       })
     }
 
+    // 爱丽丝剑仪外部次数源（下一轮注入）：口径在模块里（规则 6：编排层不写角色规则）
+    const aliceExternalCounts = aliceExternalCountsOf(ap1, aliceSlotOf(rr))
     // 薇薇安落羽生花双源（下一轮注入）：
     //   源1 = 全队强特命中次数（含薇薇安自己；同一招式至多一次）
     //   源2 = 全队异常触发次数（队友施加属性异常；0.5s CD 折算在模块内）
@@ -1715,6 +1724,10 @@ export function createRunCalcRound(deps: {
         promiaTriggerHits: promiaTriggerHitsNext,
         promiaTeammateReleases: promiaTeammateReleasesNext,
         promiaReleaseDecibel: promiaReleaseDecibelNext,
+        // 爱丽丝剑仪外部次数源（下一轮注入）：口径全部收敛在 aliceExternalCountsOf 里
+        // （只算 physical 且只算爱丽丝自己触发的部分、紊乱带额外能力门控），此处不重写规则。
+        aliceTeamAssaultCount: aliceExternalCounts?.assaultCount ?? 0,
+        aliceDisorderCount: aliceExternalCounts?.disorderCount ?? 0,
         inStunWindowTriggers: inStunWindowTriggersNext,
         ellenFreezeCount: ellenFreezeCountNext,
         teamVeilCountTotal: teamVeilCountTotalNext,
