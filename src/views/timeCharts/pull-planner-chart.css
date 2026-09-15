@@ -4,9 +4,6 @@
 /* ========== Chart 6：抽卡规划器 ========== */
 /* 跑批进度条：行宽填满（`.chart-progress` 基元在全局 charts.css；这条复合规则是本块此前在页面里的
    配套写法，页面侧该块抽走后已无其它消费者 ⇒ 整条随组件走，保持渲染口径逐位不变）。 */
-.chart-progress .n-progress {
-  flex: 1;
-}
 .pp-plot {
   margin-bottom: 8px;
 }
@@ -34,11 +31,7 @@
 .pp-values {
   margin-top: 10px;
 }
-/* VCG 台账选中行底色。原在 TimeChartsPage.css，页面侧只剩 Chart 6 一个消费者 ⇒ 随组件走。
-   ⚠ Chart 5（PullValueChart.vue）模板里也出现 `pv-sel-row`，但走的是 :class 动态表达式、
-   且从未载入本定义文件 ⇒ 那边本就不生效（页面 scoped 打不到子组件元素，判据 16 的动态类豁免
-   使它一直是静默缺口）。本次**原样保持**该现状（把规则放进 chart-blocks.css 会让 Chart 5
-   突然多出高亮 = 真视觉 delta，超出「纯搬迁」范围）；要修属另一件事，见报告。 */
-.pv-sel-row {
-  background: rgba(246, 173, 85, 0.08);
-}
+/* `.pv-sel-row`（选中行底色）已移入 `styles/chart-blocks.css`（2026-09-15 用户裁决「都修」）：
+   它有两个真消费者（本块 + Chart 5 抽卡价值），定义在本文件只会带**本组件**的 scope id
+   ⇒ Chart 5 永远匹配不上（CDP 实测：行有 class 但 backgroundColor 透明）。
+   跨块共享类一律进 chart-blocks.css（该文件由各块 `<style scoped src>` 各自载入，特异性不变）。 */

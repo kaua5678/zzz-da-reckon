@@ -509,7 +509,7 @@ export const HARDCODED_BASELINE = {
   // （lane-cell/lane-text 随 lane-* 共用类进 chart-blocks.css +2；pp-purchase/pp-team-text/pv-sel-row
   //  + 模板 rgba(99,179,237,.13) 随组件走 +4）。三处合计 12+5+4 = 21，与改前 18+3 = 21 **相等 ⇒ 棘轮未放松**。
   // ⚠ pv-sel-row 不换令牌也不搬进共享表：它一搬 = Chart 5 的选中高亮凭空出现 = 真视觉 delta（见该 css 头注释）。
-  'src/components/charts/PullPlannerChart.vue': 4,
+  'src/components/charts/PullPlannerChart.vue': 3,  // 4 → 3（2026-09-15 N2：`.pv-sel-row` 的选中行底色原写在这里、` 只有 Chart 6 一个 scope 生效；迁进 styles/chart-blocks.css 并换成语义令牌 `--c-warning-soft`（双主题各一份）⇒ 该文件的字面色值少一处。
   'src/views/TimeChartsPage.vue': 12,   // 23 → 21（node-note 的两处字面色值随该类迁去 chart-blocks.css）
   // → 20（2026-09-14 修「抽组件后样式留在页面 scoped」失样式面：`.kill-line-ref` 从页面 scoped
   // 搬进 styles/chart-blocks.css 时，那条字面 `rgba(99,226,183,0.35)` 换成语义令牌
@@ -574,7 +574,7 @@ export const WA_REF_BASELINE = 444  /* 443 → 444（2026-09-14 直伤系数图�
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 604  /* 601 → 604（2026-09-15 同页：无专武档的下位件展示条 `<div class="fc-note">` —— 3 处全走语义别名 --fg-3/--fg-2/--line，`--wa-*` 直引仍 444 不变）。 */  /* 582 → 601（2026-09-15 自由对比工作台：`views/FreeComparePage.vue` 全页**零 `--wa-*` 直引**——11 处全走语义别名 --fg-3/--fg-2/--line，纯新增 var() 引用 +19；`--wa-*` 直引保持 444 不变，符合「老代码不动、新代码只用别名」的棘轮方向）。 */  /* 581 → 582（2026-09-14 同上：`.kill-line-ref` 的字面色值换成 var(--c-success)，+1 处 var() 引用）。 */  /* 587 → 581（2026-09-14 第三轮：`.legend` 家族全局化去重）。
+export const VAR_TOTAL_BASELINE = 605  /* 604 → 605（2026-09-15 N2：`.pv-sel-row` 底色由字面 rgba 换成 var(--c-warning-soft)，+1 处 var() 引用；同轮 hardcoded-color 因此 −1）。 */  /* 601 → 604（2026-09-15 同页：无专武档的下位件展示条 `<div class="fc-note">` —— 3 处全走语义别名 --fg-3/--fg-2/--line，`--wa-*` 直引仍 444 不变）。 */  /* 582 → 601（2026-09-15 自由对比工作台：`views/FreeComparePage.vue` 全页**零 `--wa-*` 直引**——11 处全走语义别名 --fg-3/--fg-2/--line，纯新增 var() 引用 +19；`--wa-*` 直引保持 444 不变，符合「老代码不动、新代码只用别名」的棘轮方向）。 */  /* 581 → 582（2026-09-14 同上：`.kill-line-ref` 的字面色值换成 var(--c-success)，+1 处 var() 引用）。 */  /* 587 → 581（2026-09-14 第三轮：`.legend` 家族全局化去重）。
    逐字归因：该家族原本在 4 个文件各写一份（时间图表页 / 血量膨胀页 / 队伍对比页 / 直伤图组件），
    收敛到 src/styles/charts.css 一份后，重复的 var() 引用消失 ⇒ **净 −6**（--fill-hover/--fg-2/--fg-3
    各从 2–4 份变 1 份）。这是去重不是「改回字面量」（--wa-* 直引不变，仍 444）。 */  /* 584 → 587（同上：直伤图抽组件，图例类 var() 引用随组件走，净 +3）。 */  /* 576 → 573（2026-09-14 图表样式收敛去重）→ 577

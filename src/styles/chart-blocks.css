@@ -164,3 +164,34 @@
   color: var(--wa-600);
   margin-bottom: 8px;
 }
+
+/* ============================================================
+ * 跨块共享：无专武/选中行底色 + 进度条撑满
+ *
+ * 为什么搬到这里（2026-09-15，用户裁决「都修」）：这两条原来分别只定义在
+ * `views/timeCharts/pull-planner-chart.css`（= **只有 Chart 6** 载入），
+ * 但各有别的消费者，而 `<style scoped>` 给选择器追加的是**定义方**的 scope id
+ * ⇒ 消费者永远匹配不上，规则静默失效（CDP 实测见下）。
+ *
+ * 实测证据（改前，禁缓存探针读 CSSOM）：
+ *   `.chart-progress .n-progress[data-v-772e64a2]`（只有 Chart 6 的 scope）
+ *   `.pv-sel-row[data-v-772e64a2]`（同上）
+ *   而三个消费者各自的 scope 是 data-v-ac9a1b9e（菲林经济模拟）/
+ *   data-v-3ed99110（同槽位对比）/ data-v-73bb6eeb（抽卡价值）⇒ 全部打不到。
+ *   抽卡价值页实测：行拿到 `pv-sel-row` class，但 backgroundColor = rgba(0,0,0,0)（透明）。
+ *
+ * 放这里的理由与 `.pv-summary` 同：本文件由各块以 `<style scoped src>` **各自载入**
+ * ⇒ 每个消费者得到**自己 scope id 下**的一份，特异性不变（文件头有详述）。
+ * ⚠ 不要再往 `views/timeCharts/*.css` 里加跨块规则 —— 那只对定义它的那个块生效。
+ */
+/* 选中行底色（Chart 5 抽卡价值的行选中 + Chart 6 规划器的高价值行）
+   ⚠ 用语义令牌 `--c-warning-soft` 而不是字面 rgba：原来的字面值只有暗色主题一份
+   ⇒ 亮色主题下同一底色会偏亮/发灰。令牌在 global.css 双主题各定义一次（暗 0.12 / 亮 0.10），
+   顺带把这条规则变成主题感知的（搬进来时一并修，避免把暗色假设扩散到三个消费者）。 */
+.pv-sel-row {
+  background: var(--c-warning-soft);
+}
+/* 跑批进度条填满行宽（菲林经济模拟 / 同槽位对比 / 抽卡规划器 三块共用） */
+.chart-progress .n-progress {
+  flex: 1;
+}
