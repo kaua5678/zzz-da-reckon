@@ -638,26 +638,96 @@ export interface CrossAgentSupplyInput {
 export interface AgentAxisOverlayInput {
   /** 本模块角色所在槽位（编排层按注册表逐模块派发；模块无需自己 findIndex） */
   slot: number
-  /** 生效失衡轴（空数组 = 非轴模式；模块自行决定是否退回覆盖率近似——本钩子只管轴内覆盖） */
+  /** 生效失衡轴（**判模式不要用它**——见 `isAxis`；本钩子只管轴内覆盖与同角色的非轴折算） */
   axes: StunAxis[]
   cinemaLevel: number
   /** 倍率表访问（可琳等需要把普攻段归并到 'basic_attack' 聚合行键时查 basic 段 moveId） */
   getAgentSkills: (agentId: string) => { categories: { id: string; moves: { id: string }[] }[] } | undefined
+  /**
+   * **真·轴模式布尔** = 伤害池 `damagePool.ts` 的同名局部量
+   * （`(configStore.useStunAxis || autoActive) && stunAxisResult`）。
+   *
+   * ⚠ **它不等价于 `axes.length > 0`**（2026-09-16 round 16 实测口径，设计卡 §16）：
+   * `forceNoAxis` 轴退化时对外返回的 `resolvedAxes` 被清空为 `[]`（`convergence.ts:1422`），
+   * 而 `effectiveStunAxes` 回落到 `configStore.stunAxes`（**用户手动轴，可能非空**）⇒
+   * 存在第三态「`axes` 非空但 `isAxis === false`」。**必须用本字段判模式**，用 `axes.length`
+   * 会让轴退化态静默走错支（扫描值 vs 折算值）。
+   *
+   * 反向蕴含成立：`isAxis === true` ⇒ `axes.length > 0`（`stunAxisResult` 在
+   * `axes.length === 0` 时为 null，见 `useResourceCalc.ts` 的 `stunAxisResult` computed）。
+   */
+  isAxis: boolean
+  /**
+   * 本槽角色**额外能力是否触发**（= 该槽 `damagePanels` 上 `additionalAbilityActive > 0`，
+   * 与伤害池原来的 `(execPanel?.additionalAbilityActive ?? 0) > 0` **同源同值**）。
+   *
+   * 存在的理由：迁移前「额外能力未触发 ⇒ 本机制不参与」这条门控与 `agentId` 判据**同级写在伤害池**里。
+   * 判据搬进模块后门控必须一起搬——**漏搬 = 轴内桶/折算值在额外能力未触发时静默生效**
+   * （数值静默变大，既有测试不会红）。
+   */
+  additionalAbilityActive: boolean
+  /**
+   * 本槽的**队伍风化侵染覆盖率**（= `damagePanels` 上盖章的 `windInfectionRate`，队伍无风角色时 0）。
+   *
+   * 为什么不读 `cfg.panel`：`windInfectionRate` **不是** `computePanel` 的产物
+   * （`computePanelPhases` 只写 `infectionZoneBonus`），它只由编排层 `useResourceCalc` 的
+   * `damagePanels` computed 盖章。**2026-09-16 round 16 实测**：`cfg.panel.windInfectionRate`
+   * 与 `computePanel().windInfectionRate` 双双为 `undefined` ⇒ 走 cfg 是**断路**
+   * （R15 分诊把它标为「静态可达，未实测」，实测结论是**不可达**）。
+   */
+  windInfectionRate: number
+  /** 已解析的机制滑块值（与 `AgentPanelInput.settings` 同源；非轴折算臂读它，缺省回落注册 default） */
+  settings: Readonly<Record<string, number>>
 }
 
 /**
- * 轴窗口覆盖结果：字段名与 `DamagePoolContext` 的四个桶 **同名**，编排层按需 1:1 合并
- * （缺省 = 该模块不产出这一桶）。数值语义：
+ * 轴窗口覆盖结果：四个**按 moveId 索引**的桶（与 `DamagePoolContext` 同名）+ 一个**按槽位索引**的标量表。
+ *
+ * 四个桶的数值语义：
  * - `banyueMingwangStacks`：moveId → 明王层数（消费端 × MINGWANG_BASE_PER_STACK）
  * - `yixuanNingshenMap`：moveId → { critDmg, sheerDmg }
  * - `peiluoKagerouMap`：moveId → 阳炎暴伤（0-40）
- * - `corinStunBonusMap`：moveId → 扫除帮手增伤%（恒 CORIN_ADDITIONAL_DMG）
+ * - `corinStunBonusMap`：moveId → 扫除帮手增伤%（轴内恒 CORIN_ADDITIONAL_DMG）
+ *
+ * ⚠ 四个桶**跨模块合并**且**不按槽位分**：它们只靠「moveId 全局唯一」这条既有事实避免串味
+ * （`corinStunBonusMap` 里只有 1061 的 moveId，别的角色查不到自己的键）。**新增字段不要依赖这条**：
+ * 只要值对「全角色全部行」同值（没有 moveId 可索引），就必须走 `scalarBySlot`。
  */
 export interface AgentAxisOverlays {
   banyueMingwangStacks?: Map<string, number>
   yixuanNingshenMap?: Map<string, { critDmg: number; sheerDmg: number }>
   peiluoKagerouMap?: Map<string, number>
   corinStunBonusMap?: Map<string, number>
+  /**
+   * **按槽位索引的标量覆盖**（与四个「按 moveId 索引」的桶并列）。
+   *
+   * 存在的理由：非轴折算臂与「与轴模式无关的标量臂」的值对**该角色的全部行同值**，没有 moveId 可索引；
+   * 若像四个桶那样合并成一个裸标量，**队友行也会读到它**（静默把本角色的增伤泄漏给全队，
+   * 且 `damagePoolAdditionalAbilityGate.test.ts` 的反锁会红 —— 这条是 2026-09-16 round 16 设计时
+   * 发现的真实泄漏面，四个桶不受影响是因为 moveId 全局唯一）。
+   */
+  scalarBySlot?: Map<number, AxisScalarOverlays>
+}
+
+/**
+ * 单槽位的**标量**覆盖（`AgentAxisOverlays.scalarBySlot` 的值类型）。
+ *
+ * 每个字段的**写入方唯一 = 对应角色模块** ⇒ 「字段存在」即蕴含「是本角色」（判据同 T6）。
+ * 所有字段都只在模块自己的参与门控（额外能力/命座/轴模式）通过时才写。
+ */
+export interface AxisScalarOverlays {
+  /** 般岳明王·**非轴折算臂**：百分比 = `MINGWANG_BASE_PER_STACK × 3 × 覆盖率滑块` */
+  banyueMingwangPct?: number
+  /** 可琳扫除帮手·**非轴折算臂**：百分比 = `CORIN_ADDITIONAL_DMG × 覆盖率滑块` */
+  corinStunBonusPct?: number
+  /**
+   * 仪玄凝神·**非轴标量臂**。两个来源共用本字段（消费端同形同义，故不拆）：
+   * - C6 满覆盖：`{ critDmg: round(40×c6滑块), sheerDmg: round(20×c6滑块) }`
+   * - 非 C6 折算：`{ critDmg: round(40×覆盖率滑块), sheerDmg: 0 }`（贯穿只由 C6 给）
+   */
+  yixuanNingshen?: { critDmg: number; sheerDmg: number }
+  /** 希格莉德浸染增伤（**与轴模式无关**）：百分比 = `SIGRID_INFECTION_DMG × 队伍风化侵染覆盖率` */
+  sigridInfectionPct?: number
 }
 
 /** transformAnomalyPool 钩子输入（calcAnomalyPool 内部，perElement 之前） */

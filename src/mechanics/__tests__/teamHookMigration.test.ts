@@ -13,6 +13,7 @@ import { banyueMechanic } from '@/mechanics/agents/banyue'
 import { yixuanMechanic } from '@/mechanics/agents/yixuan'
 import { corinMechanic } from '@/mechanics/agents/corin'
 import { peiluoProminenceMechanic } from '@/mechanics/agents/specPanelBuffs'
+import { sigridMechanic } from '@/mechanics/agents/sigrid'
 
 /** 构造 applyTeamConfig 入参（只填被测逻辑读到的字段） */
 /** 构造 applyTeamConfig 入参（只填被测逻辑读到的字段）。
@@ -123,12 +124,23 @@ describe('卢西娅 4命帷幕 + 回血→伊德海莉（原 luciaCfg 两个内�
 describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
   const axis = (actions: any[]) => [{ name: '轴1', actions }]
   const skills = { categories: [{ id: 'basic', moves: [{ id: 'b1' }, { id: 'b2' }] }] }
+  /**
+   * 钩子入参默认值 = **轴模式 + 额外能力触发 + 覆盖率滑块全默认**。
+   *
+   * 2026-09-16 round 16 契约扩了三个字段（`isAxis` / `additionalAbilityActive` / `windInfectionRate`
+   * / `settings`），本工厂跟着补——否则 `isAxis` 为 `undefined`（falsy）会被模块判成**非轴**，
+   * 让下面所有「轴臂」断言红在错的地方。默认值取「轴模式 + 门控通过」是本 describe 的原意
+   * （它测的一直是轴臂），非轴臂由新增用例显式传 `isAxis: false` 覆盖。
+   */
   const overlayInput = (o: Record<string, unknown>) => ({
-    slot: 0, axes: [], cinemaLevel: 0, getAgentSkills: () => skills, ...o,
+    slot: 0, axes: [], cinemaLevel: 0, getAgentSkills: () => skills,
+    isAxis: true, additionalAbilityActive: true, windInfectionRate: 0, settings: {},
+    ...o,
   } as never)
 
-  it('般岳明王：无轴不参与；有轴按二连块窗口加权；C6 满覆盖 → 空表不参与', () => {
-    expect(banyueMechanic.axisWindowOverlays!(overlayInput({ axes: [] }))).toBeNull()
+  it('般岳明王：额外能力未触发/无轴(非轴)不参与；有轴按二连块窗口加权；C6 满覆盖 → 空表不参与', () => {
+    // 额外能力门控：未触发 ⇒ 整支不参与（原判据在伤害池 `(execPanel?.additionalAbilityActive ?? 0) > 0`）
+    expect(banyueMechanic.axisWindowOverlays!(overlayInput({ additionalAbilityActive: false }))).toBeNull()
     const axes = axis([
       { slot: 0, moveId: 'banyue-combo', count: 1, startTime: 0 },
       { slot: 0, moveId: '1471010', count: 1, startTime: 2 },  // 窗内
@@ -139,8 +151,24 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
     expect(banyueMechanic.axisWindowOverlays!(overlayInput({ axes, cinemaLevel: 6 }))).toBeNull()
   })
 
-  it('仪玄凝神：终结技块开 15s 窗；触发块自身不享受；无轴不参与', () => {
-    expect(yixuanMechanic.axisWindowOverlays!(overlayInput({ axes: [] }))).toBeNull()
+  it('般岳明王·非轴折算臂：桶留空、标量表给「满层3×5%×覆盖率」；滑块可调且精确', () => {
+    // 默认 0.5 ⇒ 5 × 3 × 0.5 = 7.5（精确值；原伤害池 `else` 臂的同一算式）
+    const res: any = banyueMechanic.axisWindowOverlays!(overlayInput({ isAxis: false }))
+    expect(res.banyueMingwangStacks).toBeUndefined()
+    expect(res.scalarBySlot.get(0).banyueMingwangPct).toBe(7.5)
+    // 滑块 1 ⇒ 15；滑块 0 ⇒ 0（精确值，不是 `> 0`）
+    expect(banyueMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'banyue.mingwangCoverage': 1 } }))!
+      .scalarBySlot!.get(0)!.banyueMingwangPct).toBe(15)
+    expect(banyueMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'banyue.mingwangCoverage': 0 } }))!
+      .scalarBySlot!.get(0)!.banyueMingwangPct).toBe(0)
+    // 6 命不走折算（满覆盖由 applyPanel 全局 +39% 承担）
+    expect(banyueMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, cinemaLevel: 6 }))).toBeNull()
+    // 额外能力未触发不走折算
+    expect(banyueMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, additionalAbilityActive: false }))).toBeNull()
+  })
+
+  it('仪玄凝神：终结技块开 15s 窗；触发块自身不享受；非轴不参与（非轴臂仍在伤害池）', () => {
+    expect(yixuanMechanic.axisWindowOverlays!(overlayInput({ isAxis: false }))).toBeNull()
     const axes = axis([
       { slot: 0, moveId: '1371014', count: 1, startTime: 0 },
       { slot: 0, moveId: '1371009', count: 1, startTime: 3 },
@@ -150,8 +178,8 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
     expect(res.yixuanNingshenMap.has('1371014')).toBe(false)
   })
 
-  it('佩洛伊斯阳炎：上分支开 21s 窗，仅上分支/决算受益；无轴不参与', () => {
-    expect(peiluoProminenceMechanic.axisWindowOverlays!(overlayInput({ axes: [] }))).toBeNull()
+  it('佩洛伊斯阳炎：上分支开 21s 窗，仅上分支/决算受益；非轴不参与（非轴臂仍在伤害池）', () => {
+    expect(peiluoProminenceMechanic.axisWindowOverlays!(overlayInput({ isAxis: false }))).toBeNull()
     const axes = axis([
       { slot: 0, moveId: '1551015', count: 1, startTime: 0 },
       { slot: 0, moveId: '1551016', count: 1, startTime: 5 },
@@ -160,8 +188,8 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
     expect(res.peiluoKagerouMap.get('1551016')).toBe(40)
   })
 
-  it('可琳扫除帮手：轴内招式 +35%，普攻段归并到 basic_attack 聚合行键；无轴不参与', () => {
-    expect(corinMechanic.axisWindowOverlays!(overlayInput({ axes: [] }))).toBeNull()
+  it('可琳扫除帮手：轴内招式 +35%，普攻段归并到 basic_attack 聚合行键；额外能力未触发不参与', () => {
+    expect(corinMechanic.axisWindowOverlays!(overlayInput({ additionalAbilityActive: false }))).toBeNull()
     const axes = axis([
       { slot: 0, moveId: 'b1', count: 1, startTime: 0 },       // 倍率表 basic 段 → 归并
       { slot: 0, moveId: '1061009', count: 1, startTime: 1 },  // 非 basic → 原键
@@ -170,5 +198,27 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
     expect(res.corinStunBonusMap.get('basic_attack')).toBe(35)
     expect(res.corinStunBonusMap.get('1061009')).toBe(35)
     expect(res.corinStunBonusMap.has('b1')).toBe(false)
+  })
+
+  it('可琳扫除帮手·非轴折算臂：桶留空、标量表 = 35×覆盖率（精确值）；桶值恒 35 的不变量不受污染', () => {
+    const res: any = corinMechanic.axisWindowOverlays!(overlayInput({ isAxis: false }))
+    expect(res.corinStunBonusMap).toBeUndefined()   // 折算值**不许**进桶（桶值恒 35 是被断言的语义）
+    expect(res.scalarBySlot.get(0).corinStunBonusPct).toBe(17.5)
+    expect(corinMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'corin.additionalStunCoverage': 1 } }))!
+      .scalarBySlot!.get(0)!.corinStunBonusPct).toBe(35)
+    expect(corinMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'corin.additionalStunCoverage': 0 } }))!
+      .scalarBySlot!.get(0)!.corinStunBonusPct).toBe(0)
+  })
+
+  it('希格莉德浸染：15×风化覆盖率（精确值）；无风/门控关不产出', () => {
+    // windInfectionRate 由编排层从 damagePanels 盖章递入（**不是** cfg.panel —— round 16 实测为 undefined）
+    const res: any = sigridMechanic.axisWindowOverlays!(overlayInput({ windInfectionRate: 0.5 }))
+    expect(res.scalarBySlot.get(0).sigridInfectionPct).toBe(7.5)
+    expect(sigridMechanic.axisWindowOverlays!(overlayInput({ windInfectionRate: 1 }))!
+      .scalarBySlot!.get(0)!.sigridInfectionPct).toBe(15)
+    // 覆盖率为 0（队伍无风角色）⇒ 不产出（与原式 15×0 后 note 段不出现等价）
+    expect(sigridMechanic.axisWindowOverlays!(overlayInput({ windInfectionRate: 0 }))).toBeNull()
+    // 额外能力未触发 ⇒ 不产出
+    expect(sigridMechanic.axisWindowOverlays!(overlayInput({ windInfectionRate: 1, additionalAbilityActive: false }))).toBeNull()
   })
 })

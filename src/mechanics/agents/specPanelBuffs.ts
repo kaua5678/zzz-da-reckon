@@ -159,10 +159,16 @@ peiluoProminenceMechanic.settings = [{
 /**
  * 阳炎轴窗口覆盖（规则 6 迁入，棘轮站点 6/8，2026-09-12 #10 真清偿）：
  * 原本由 `useResourceCalc` 的 `peiluoKagerouMap` computed 按 agentId '1551' 找槽位后直调。
- * 迁入后槽位/轴由派发器给；非轴模式仍走伤害池的 `peiluo.kagerouCoverage` 滑块分支。
+ * 迁入后槽位/轴由派发器给。
+ *
+ * ⚠ 2026-09-16 round 16：早退判据从 `axes.length === 0` 改成 `!isAxis`（真轴模式布尔）。
+ * 派发器不再在非轴时早退（否则别的模块的非轴折算臂物理不可达），故此处必须自己按 `isAxis` 分臂。
+ * **佩洛伊斯的非轴臂仍在伤害池**（`peiluo.kagerouCoverage` 滑块 + 决算配对折算）——本模块
+ * 本轮只把「轴臂」的进入条件对齐，**不接管**非轴臂（那需要 `peiluoKagerouPairRatio` 等
+ * 只有伤害池才有的输入，属另一批）。
  */
-peiluoProminenceMechanic.axisWindowOverlays = ({ slot, axes }) => {
-  if (axes.length === 0) return null
+peiluoProminenceMechanic.axisWindowOverlays = ({ slot, axes, isAxis }) => {
+  if (!isAxis) return null
   const map = computePeiluoKagerouBonus(slot, axes)
   return map.size > 0 ? { peiluoKagerouMap: map } : null
 }

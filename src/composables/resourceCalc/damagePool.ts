@@ -18,12 +18,11 @@ import { attributeCountByStateChain } from '@/core/stunAxis/inStunAnomaly'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, resolveStatElement, getMainApplierSlot, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
 import { getAgentMechanic } from '@/mechanics'
+import type { AxisScalarOverlays } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
 import { YESHUGUANG_FULL_STUN_MOVES, veilStunMultiplier } from '@/mechanics/agents/yeshuguang'
 import { HUGO_FULL_STUN_MOVES } from '@/mechanics/agents/hugo'
 import { MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
-import { CORIN_ADDITIONAL_DMG } from '@/mechanics/agents/corin'
-import { SIGRID_INFECTION_DMG } from '@/mechanics/agents/sigrid'
 import { PEILUO_KAGEROU_CRIT } from '@/mechanics/agents/specPanelBuffs'
 import type { TeamResourceResult, StunPoolResult, AnomalyPoolResult, InStunAnomalySummary } from '@/types/resource'
 import type { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
@@ -81,6 +80,12 @@ export interface DamagePoolContext {
   yixuanNingshenMap: Map<string, { critDmg: number; sheerDmg: number }>
   peiluoKagerouMap: Map<string, number>
   corinStunBonusMap: Map<string, number>
+  /**
+   * 按**槽位**索引的标量覆盖（非轴折算臂 + 与轴无关的标量臂；见 `AxisScalarOverlays`）。
+   * 与四个 moveId 索引的桶并列：那些只靠「moveId 全局唯一」避免串味，而标量对全角色全部行同值，
+   * 没有 moveId 可索引 ⇒ 必须按槽位键控，否则会泄漏给队友行。
+   */
+  axisScalarBySlot: Map<number, AxisScalarOverlays>
   /** 当前窗口时长（秒）：函数注入（读 configStore 失衡延时等实时口径） */
   computeWindowDuration: () => number
 }
@@ -93,6 +98,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     anomalyPoolResult, inStunAnomalyState, bossAnomalyState, stunPoolResult, effectiveStunAxes,
     remielleEntryPanels, remielleAnomalyMultiplier, liuyinPromoteCount, agentNames, autoActive,
     stunAxisResult, banyueMingwangStacks, yixuanNingshenMap, peiluoKagerouMap, corinStunBonusMap,
+    axisScalarBySlot,
     computeWindowDuration,
   } = ctx
   if (!adjustedResourceResult || damagePanels.length === 0) return []
@@ -437,39 +443,39 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         const baseNote = `${resolved?.note ?? exec.skillTableNote ?? ''}${isPerSecondRow ? '（平A：秒均倍率 × 时间）' : ''}${execSkillLevelBonus > 0 ? ` · 技能等级系数×${execDamageCoef.toFixed(4)}` : ''}`
         const emitExecDirect = (units: number, stunOverride: number, idSuffix: string, extraNote: string, sourceTag?: 'gift' | 'stun' | 'self') => {
           if (units <= 0 || unitMultiplier <= 0) return
+          // 本槽的标量覆盖（非轴折算臂 + 与轴无关的标量臂）。**按槽位取**——这些值对全角色全部行同值，
+          // 没有 moveId 可索引，合并成裸标量会泄漏给队友行（见 `AxisScalarOverlays` 头注释）。
+          const overlayScalar = axisScalarBySlot.get(slot)
           // 般岳明王：6命满覆盖（applyPanel 全局 +39%）；非6命轴模式按时间轴扫描层数（8s 窗口，怒相二连触发）；
-          // 非6命非轴模式按覆盖率滑块近似（满层3×5%×覆盖率）
+          // 非6命非轴模式按覆盖率滑块近似（满层3×5%×覆盖率）。
+          // 2026-09-16 round 16 编排层棘轮：原 `charResult.agentId === '1471'` + `additionalAbilityActive` +
+          // `cinemaLevel < 6` 三重门控已迁进 `banyue.ts#axisWindowOverlays`（两臂都由模块给：
+          // 轴臂 → 桶（层数）/ 非轴臂 → `banyueMingwangPct` 标量）。此处只剩「轴/非轴选哪条臂」。
           let mingwangDmgBonus = 0
-          const banyueCinema = configStore.team[slot]?.cinemaLevel ?? 0
-          if (charResult.agentId === '1471' && (execPanel?.additionalAbilityActive ?? 0) > 0 && banyueCinema < 6) {
-            if (isAxis) {
-              const stacks = banyueMingwangStacks.get(exec.moveId ?? '') ?? 0
-              if (stacks > 0) mingwangDmgBonus = stacks * MINGWANG_BASE_PER_STACK
-            } else {
-              const cov = Math.max(0, Math.min(1, configStore.getMechanicSetting('banyue.mingwangCoverage', 0.5)))
-              mingwangDmgBonus = MINGWANG_BASE_PER_STACK * 3 * cov
-            }
+          if (isAxis) {
+            const stacks = banyueMingwangStacks.get(exec.moveId ?? '') ?? 0
+            if (stacks > 0) mingwangDmgBonus = stacks * MINGWANG_BASE_PER_STACK
+          } else {
+            mingwangDmgBonus = overlayScalar?.banyueMingwangPct ?? 0
           }
           // 可琳额外能力扫除帮手：命中失衡敌人自身伤害+35%。
           // 轴模式按 buff 轴扫描（轴内所有招式都在失衡窗口内，普攻段归并 basic_attack 聚合行键），
           // 且只吃轴内段（stunOverride=0 的轴外段敌人未失衡，不符合「命中失衡敌人」条件）；
-          // 非轴模式按覆盖率滑块近似（默认 0.5，用户口径）
+          // 非轴模式按覆盖率滑块近似（默认 0.5，用户口径）。
+          // 2026-09-16 round 16 编排层棘轮：原 `charResult.agentId === '1061'` + `additionalAbilityActive`
+          // 门控已迁进 `corin.ts#axisWindowOverlays`；此处保留 `stunOverride > 0` 的**段级**门控
+          // （轴外段不吃，与角色判据无关）。
           let corinStunBonus = 0
-          if (charResult.agentId === '1061' && (execPanel?.additionalAbilityActive ?? 0) > 0) {
-            if (isAxis) {
-              corinStunBonus = stunOverride > 0 ? (corinStunBonusMap.get(exec.moveId ?? '') ?? 0) : 0
-            } else {
-              const cov = Math.max(0, Math.min(1, configStore.getMechanicSetting('corin.additionalStunCoverage', 0.5)))
-              corinStunBonus = CORIN_ADDITIONAL_DMG * cov
-            }
+          if (isAxis) {
+            corinStunBonus = stunOverride > 0 ? (corinStunBonusMap.get(exec.moveId ?? '') ?? 0) : 0
+          } else {
+            corinStunBonus = overlayScalar?.corinStunBonusPct ?? 0
           }
           // 希格莉德额外能力·天际联军：命中[浸染]敌人伤害+15% × 风化侵染覆盖率
-          // （用户口径 2026-02：直接读风化覆盖率；damagePanels 已盖章 windInfectionRate，无风角色=0）
-          let sigridInfectionBonus = 0
-          if (charResult.agentId === '1591' && (execPanel?.additionalAbilityActive ?? 0) > 0) {
-            const rate = Math.max(0, Math.min(1, Number(execPanel?.windInfectionRate ?? 0)))
-            sigridInfectionBonus = SIGRID_INFECTION_DMG * rate
-          }
+          // （用户口径 2026-02：直接读风化覆盖率；无风角色=0）。
+          // 2026-09-16 round 16 编排层棘轮：**与轴模式无关**（原分支里 `isAxis` 不出现）⇒
+          // 整支迁进 `sigrid.ts#axisWindowOverlays`，此处只剩取值。
+          const sigridInfectionBonus = overlayScalar?.sigridInfectionPct ?? 0
           // 悠真额外能力（失衡/异常并集 +40%）：轴模式「失衡专属 buff 轴内直加」（2026-09-03，
           // 可琳扫除帮手同款分段通道）——patchHarumasaExecutions 已把公共异常部分（40×异常覆盖率）
           // 摊入全部行，这里只补失衡独有部分 40×(1−异常覆盖)，且仅轴内段（stunOverride>0，敌人失衡）加；

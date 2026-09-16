@@ -116,7 +116,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 23,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）→ **55**（2026-09-15 同批第 3 小簇：轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽 `cfg.ultimateCost`）→ **53**（2026-09-15 同批第 4 小簇：`nomra 1571` 的 normaStunCount/Coverage/BattleTime 与 `qingyi 1251` 的 qingyiStunCount 注入迁进各自模块的 applyTeamConfig——消费方只有本模块，且 hook 入参已含 stunCount/combatTime；timeGolden 0 delta，反向验证删注入 ⇒ 精确红）→ **47**（2026-09-15 `damagePool.ts` 五处「模块 source 字段 ⇒ 角色标识」去冗余）→ **34**（2026-09-16 最大单簇 −13：`convergence.ts` 5 个 `compute*NextRoundFeedback` 纯函数（1541/1381/1151/1331/1191）迁进各模块新的 `nextRoundFeedback` 钩子，契约递整份本轮结果 + 上一轮线程快照，返回 `Partial<CalcRoundThreads>`；timeGolden 0 delta（含 dmg 信息项），逐站点反向验证见 AGENT_BRANCH_BASELINE 注释）→ **32**（2026-09-16 round 11 批次 1 −2：1201 悠真 + 1241 朱鸢的轴内块计数迁进各自模块的 `applyTeamConfig`，新增 `AgentTeamConfigInput.axis` 轴上下文契约（设计卡 §3 方案 A，零新通道——`characters` 本就带 axisInSeconds/axisActionCounts/axisUltimateTotal，本契约只是把散落字段收成显式快照）；timeGolden `grep -c dmg:` == 0，反向验证 6 组见 AGENT_BRANCH_BASELINE 注释）→ **29**（2026-09-16 round 12 批次 2 −3：1531 星徽·比利（**combo 展开**）+ 1591 希格莉德（非 C6 封顶 = Σwindows）+ 1511 南宫羽（单 moveId `1511013` 走 `axis`；同分支的 `inStunWindowTriggers` 走 `threads`）三个分支迁进各自模块的 `applyTeamConfig`；1141 莱卡恩本轮只迁 `lycaonWindowDuration`（分支仍在 ⇒ **−0**，`lycaonC2Energy` 实测仍缺 C7 计数投影契约、`lycaonBackstageDodgeCount` 仍缺未缩放交互次数）。timeGolden `grep -c dmg:` == 0，反向验证 6 组逐处精确红——沿革详见 AGENT_BRANCH_BASELINE 注释）→ **27**（2026-09-16 round 13 批次 3 −2：1051 伊德海莉的 `yidhariStunCount` + 轴内连段反推 `yidhariInStunExCount`/`yidhariInStunEnergyCost` 迁进 `yidhari.ts#applyYidhariTeamConfig`（**条件写形态**逐位保留：只在 `axis.active && 合计>0` 时写，消费端按 `!== undefined` 选通路），**外加删掉 round 12 判死但超授权面的 1511 死写块 −1**；⚠ **1371 仪玄未迁**——设计卡 §6 证伪闸门触发（剥分支后 `yixuanSmoke` 9 failed），受控两臂实验定位到**唯一**缺口 = `yixuanExtremeAssistCap` 需「未缩放队友弹刀和」（`characters` 上那份已被 interactionScale缩放/parrySplit 改写，6 个 1371 预设实测 3~5 队分化）；把该量按 store 口径递入后 `yixuanSmoke` 13 passed全绿 ⇒ 其余 7 字段迁移逐位等价、缺口即 T5 登记的「未缩放交互次数」（与 1141 同族）⇒ 保留分支、如实挂账。`timeGolden` 对 1051 结构性盲（7 预设全 0 命 ⇒ chapter-0 轴用裸 id、无 combo 键 ⇒ 反推恒 0），判据由 `axisContext.test.ts` 24→29 例承担，反向验证 4 组精确红）→ **25**（2026-09-16 round 14 批次 4 **−2**：**补「未缩放交互次数」契约**（`AgentTeamConfigInput.interactions` = `AgentInteractionContext`，store 口径逐槽快照；`characters` 上那份已被 `interactionScale` 缩放/被 `parrySplit` 改写）⇒ **1371 仪玄整条分支迁进 `yixuan.ts#applyYixuanTeamConfig`**（8 字段分五通道：轴内量走 `axis`、`yixuanC1LightningCount` 的两臂走**算出来的** `axisInSeconds > 0`（非 `axis.active`）、线程量走 `threads`、橘福福 `+=` 项按身份 `characters.some`、缺口量 `yixuanExtremeAssistCap` 与 `yixuanFlashBonus` 走 `interactions`）。⚠ **−2 不是 −1**：该分支含两行计数（`'1371'` + 其中的 `'1391'` 橘福福判据），后者改成模块内常量比较。**同一契约顺收 1141 的 `lycaonBackstageDodgeCount`**（过滤口径刻意不同：带 `agentId` 判据 ⇒ 排除空槽），但 `lycaonC2Energy` 仍缺 C7 ⇒ 1141 分支保留 ⇒ **−0**。core 保持 **6**（本批未触 `src/core/**`）。`timeGolden` `grep -c dmg:` 实测 **== 0**；`yixuanSmoke` **13 passed**（证伪闸门）；`axisContext.test.ts` **29 → 48 例**；反向验证 **6 组**逐处精确红（含「数据源换成 `characters`」⇒ `yixuanSmoke` 精确 1 例红 `expected 8 to be 9`），逐组还原 + md5 自证——沿革详见 AGENT_BRANCH_BASELINE 注释）→ **23**（2026-09-16 round 15 **R15-a −2**：`damagePool.ts` 分诊切批第一批，零新契约——**:408 柏妮思影画4/6** 迁进 `burnice.ts#patchBurniceExecutions`（读模块自己 cfg 的 `burniceCinemaLevel`，写既有行级通道 `exec.critRateBonus`/`exec.resIgnore`）、**:970 般岳影画6 摧岳附伤** 改读倾山行上的模块标记 `banyueC6CrushAttach`（唯一写入方 = `banyue.ts#patchBanyueExecutions`，仅 C6 写 —— 判据同 T6）。新增判据 `damagePoolBatchR15a.test.ts` **13 例全精确值**（跳③四条行级分支 + 跳①三档命座 + 正控/反锁成对）；`timeGolden` `grep -c "dmg:"` 实测 **== 0**；反向验证 **5 组**精确红（C4 臂短路⇒5 例 / C6 只留 1171012⇒2 例 / 标记不写⇒3 例 / 标记值硬编码 999⇒2 例 / 消费块短路⇒1 例），逐组还原 + md5 自证——沿革详见 AGENT_BRANCH_BASELINE 注释）。见 AGENT_BRANCH_BASELINE 注释
+    frozen: 20,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）→ **55**（2026-09-15 同批第 3 小簇：轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽 `cfg.ultimateCost`）→ **53**（2026-09-15 同批第 4 小簇：`nomra 1571` 的 normaStunCount/Coverage/BattleTime 与 `qingyi 1251` 的 qingyiStunCount 注入迁进各自模块的 applyTeamConfig——消费方只有本模块，且 hook 入参已含 stunCount/combatTime；timeGolden 0 delta，反向验证删注入 ⇒ 精确红）→ **47**（2026-09-15 `damagePool.ts` 五处「模块 source 字段 ⇒ 角色标识」去冗余）→ **34**（2026-09-16 最大单簇 −13：`convergence.ts` 5 个 `compute*NextRoundFeedback` 纯函数（1541/1381/1151/1331/1191）迁进各模块新的 `nextRoundFeedback` 钩子，契约递整份本轮结果 + 上一轮线程快照，返回 `Partial<CalcRoundThreads>`；timeGolden 0 delta（含 dmg 信息项），逐站点反向验证见 AGENT_BRANCH_BASELINE 注释）→ **32**（2026-09-16 round 11 批次 1 −2：1201 悠真 + 1241 朱鸢的轴内块计数迁进各自模块的 `applyTeamConfig`，新增 `AgentTeamConfigInput.axis` 轴上下文契约（设计卡 §3 方案 A，零新通道——`characters` 本就带 axisInSeconds/axisActionCounts/axisUltimateTotal，本契约只是把散落字段收成显式快照）；timeGolden `grep -c dmg:` == 0，反向验证 6 组见 AGENT_BRANCH_BASELINE 注释）→ **29**（2026-09-16 round 12 批次 2 −3：1531 星徽·比利（**combo 展开**）+ 1591 希格莉德（非 C6 封顶 = Σwindows）+ 1511 南宫羽（单 moveId `1511013` 走 `axis`；同分支的 `inStunWindowTriggers` 走 `threads`）三个分支迁进各自模块的 `applyTeamConfig`；1141 莱卡恩本轮只迁 `lycaonWindowDuration`（分支仍在 ⇒ **−0**，`lycaonC2Energy` 实测仍缺 C7 计数投影契约、`lycaonBackstageDodgeCount` 仍缺未缩放交互次数）。timeGolden `grep -c dmg:` == 0，反向验证 6 组逐处精确红——沿革详见 AGENT_BRANCH_BASELINE 注释）→ **27**（2026-09-16 round 13 批次 3 −2：1051 伊德海莉的 `yidhariStunCount` + 轴内连段反推 `yidhariInStunExCount`/`yidhariInStunEnergyCost` 迁进 `yidhari.ts#applyYidhariTeamConfig`（**条件写形态**逐位保留：只在 `axis.active && 合计>0` 时写，消费端按 `!== undefined` 选通路），**外加删掉 round 12 判死但超授权面的 1511 死写块 −1**；⚠ **1371 仪玄未迁**——设计卡 §6 证伪闸门触发（剥分支后 `yixuanSmoke` 9 failed），受控两臂实验定位到**唯一**缺口 = `yixuanExtremeAssistCap` 需「未缩放队友弹刀和」（`characters` 上那份已被 interactionScale缩放/parrySplit 改写，6 个 1371 预设实测 3~5 队分化）；把该量按 store 口径递入后 `yixuanSmoke` 13 passed全绿 ⇒ 其余 7 字段迁移逐位等价、缺口即 T5 登记的「未缩放交互次数」（与 1141 同族）⇒ 保留分支、如实挂账。`timeGolden` 对 1051 结构性盲（7 预设全 0 命 ⇒ chapter-0 轴用裸 id、无 combo 键 ⇒ 反推恒 0），判据由 `axisContext.test.ts` 24→29 例承担，反向验证 4 组精确红）→ **25**（2026-09-16 round 14 批次 4 **−2**：**补「未缩放交互次数」契约**（`AgentTeamConfigInput.interactions` = `AgentInteractionContext`，store 口径逐槽快照；`characters` 上那份已被 `interactionScale` 缩放/被 `parrySplit` 改写）⇒ **1371 仪玄整条分支迁进 `yixuan.ts#applyYixuanTeamConfig`**（8 字段分五通道：轴内量走 `axis`、`yixuanC1LightningCount` 的两臂走**算出来的** `axisInSeconds > 0`（非 `axis.active`）、线程量走 `threads`、橘福福 `+=` 项按身份 `characters.some`、缺口量 `yixuanExtremeAssistCap` 与 `yixuanFlashBonus` 走 `interactions`）。⚠ **−2 不是 −1**：该分支含两行计数（`'1371'` + 其中的 `'1391'` 橘福福判据），后者改成模块内常量比较。**同一契约顺收 1141 的 `lycaonBackstageDodgeCount`**（过滤口径刻意不同：带 `agentId` 判据 ⇒ 排除空槽），但 `lycaonC2Energy` 仍缺 C7 ⇒ 1141 分支保留 ⇒ **−0**。core 保持 **6**（本批未触 `src/core/**`）。`timeGolden` `grep -c dmg:` 实测 **== 0**；`yixuanSmoke` **13 passed**（证伪闸门）；`axisContext.test.ts` **29 → 48 例**；反向验证 **6 组**逐处精确红（含「数据源换成 `characters`」⇒ `yixuanSmoke` 精确 1 例红 `expected 8 to be 9`），逐组还原 + md5 自证——沿革详见 AGENT_BRANCH_BASELINE 注释）→ **23**（2026-09-16 round 15 **R15-a −2**：`damagePool.ts` 分诊切批第一批，零新契约——**:408 柏妮思影画4/6** 迁进 `burnice.ts#patchBurniceExecutions`（读模块自己 cfg 的 `burniceCinemaLevel`，写既有行级通道 `exec.critRateBonus`/`exec.resIgnore`）、**:970 般岳影画6 摧岳附伤** 改读倾山行上的模块标记 `banyueC6CrushAttach`（唯一写入方 = `banyue.ts#patchBanyueExecutions`，仅 C6 写 —— 判据同 T6）。新增判据 `damagePoolBatchR15a.test.ts` **13 例全精确值**（跳③四条行级分支 + 跳①三档命座 + 正控/反锁成对）；`timeGolden` `grep -c "dmg:"` 实测 **== 0**；反向验证 **5 组**精确红（C4 臂短路⇒5 例 / C6 只留 1171012⇒2 例 / 标记不写⇒3 例 / 标记值硬编码 999⇒2 例 / 消费块短路⇒1 例），逐组还原 + md5 自证——沿革详见 AGENT_BRANCH_BASELINE 注释）→ **20**（2026-09-16 round 16 **R15-b −3**：`axisWindowOverlays` 契约扩三个入参（`isAxis` 真轴模式布尔 / `additionalAbilityActive` / `windInfectionRate`）+ `settings`，并把**派发器的 `axes.length === 0` 早退删掉**（那行让「非轴折算臂」物理不可达）——`:441` 般岳明王（非轴臂 → 标量 `banyueMingwangPct`，桶仍只装**层数**）· `:455` 可琳扫除帮手（非轴臂 → 标量 `corinStunBonusPct`；桶值恒 `CORIN_ADDITIONAL_DMG` 的不变量不许被污染）· `:466` 希格莉德浸染（**与轴模式无关**，整支迁入 `sigrid.ts`，走新契约的 `windInfectionRate`）三处 `charResult.agentId` 判据迁进各自模块。⚠ **实测纠正 R15 分诊一处前提**：它建议 `:466` 从 `cfg.panel.windInfectionRate` 取 rate，探针实测该字段在 `patchExecutions` 时点恒 `undefined`（`computePanelPhases` 只写 `infectionZoneBonus`）⇒ 走 cfg 是断路（浸染增伤静默恒 0），改由编排层从 `damagePanels` 盖章值递入。⚠ **`:484` 仪玄凝神未迁**（**−0**）：实测发现注册 default `yixuan.ningshenCoverage = 0` 与伤害池原式 fallback **0.5** 分裂，迁移会把 0.5 静默改成 0（−20% 暴伤）⇒ 属产品级口径，保留分支待裁决。`timeGolden` `grep -c "dmg:"` 实测 **== 0**；反向验证 **6 组**精确红（含「标量表按错槽位取」⇒ 精确 1 例红）。见 AGENT_BRANCH_BASELINE 注释
     target: 0,
     due: '2026-12-31',
     plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。跨轮反馈走 `AgentTeamConfigInput.threads`（2026-09-15 新增的通用通道，别再逐字段铺开契约）；「读本轮结果算下一轮」类走 `nextRoundFeedback`（2026-09-16 新增，递整份本轮结果 + `prevThreads`，返回 `Partial<CalcRoundThreads>`）；**轴内计数/窗口量走 `axis` 契约**（2026-09-16 round 11 落地：“active / axes / windows / windowSeconds / actionCountsBySlot / ultimateTotalBySlot / chainTotalBySlot”，只读快照、只在 converge 相位有值 ⇒ 模块侧 `phase !== \'converge\' || !axis` 双判据门控）。hot spot：convergence.ts(10) > damagePool.ts(9) > helpers.ts(4)（2026-09-16 round 15 R15-a 实测；此前 damagePool 11 居首）。**下一批候选（按价值）**：批次 3 已做一半——1051 伊德海莉**已迁**（2026-09-16 round 13）；**1371 仪玄仍留**（设计卡 §6 证伪闸门**已触发**：唯一缺口 = `yixuanExtremeAssistCap` 需「未缩放队友弹刀和」= T5 的「未缩放交互次数」契约缺口，与 1141 的 `lycaonBackstageDodgeCount` 同族 ⇒ 先补契约再迁，两处一起解锁）。⚠ **任务卡曾预期 1051 迁完解锁 core 棘轮 2 处（`helpers.ts:1271` + `resource.ts:595`）——该前提实测已证伪**：那两处守卫早在 `0bb2611`（16→12）与 `97cc65c`（8→6）就已按 T6 判据删除，均**早于** round 11；core 当前 6 行的逐行清单见 `CORE_AGENT_BRANCH_BASELINE` 头注释。故本轮 core 保持 6 不变。✅ 1511 的 `if (prevInStunWindowTriggers <= 0) { … if (c.agentId === \'1511\') … }` 死写块**已于 round 13 删除**（−1，静态判死依据见 `AGENT_BRANCH_BASELINE` 沿革），同时删掉因此未使用的解构 `prevInStunWindowTriggers`。⚠ 已知**契约缺口**（迁移前先补，别硬迁）：C7「计数投影失衡次数」`countStun`（阻碍 1141 的 `lycaonC2Energy`）、「未缩放交互次数」（阻碍 1141 的 `lycaonBackstageDodgeCount`，`characters` 上已被 interactionScale 缩放）。架构评审 #10 → #2',
@@ -714,12 +714,63 @@ export function countAgentBranchLines(root = ROOT) {
  *   ③ 般岳标记不写 ⇒ 3 例红（`expected undefined to be 600`）；
  *   ④ 标记值硬编码 999 ⇒ 2 例红（`expected 999 to be 600`）——证明消费端真的读标记值；
  *   ⑤ damagePool 消费块短路（标记在但没人消费）⇒ 1 例红（附伤行整行消失）。
- * · **剩余分布**：`damagePool.ts` **11 → 9** · `convergence.ts` 10 · `helpers.ts` 4。
- *   下一批候选（分诊 §3.3）：R15-b（`axisWindowOverlays` 入参补 settings/轴模式布尔 ⇒ :441+:455 两臂
- *   + 顺收 :466，预期 −3）· R15-c（行级 `stunOverride` 自报 ⇒ :558/:561，−2）· R15-d（`enemy.stunVuln`
- *   快照 ⇒ :155，−1）· 1141 收尾（C7 计数投影 ⇒ −1）。
+ * · **剩余分布（R15-a 后）**：`damagePool.ts` **11 → 9** · `convergence.ts` 10 · `helpers.ts` 4。
+ *
+ * ── 2026-09-16 round 16 **R15-b（−3，编排 23 → 20）**：`axisWindowOverlays` 契约扩容 ──────────
+ * 迁走 `damagePool.ts` 三处 `charResult.agentId` 判据，落到模块自己的 `axisWindowOverlays` 钩子：
+ *  · **:441 般岳明王**（原 `=== '1471' && (execPanel?.additionalAbilityActive ?? 0) > 0 && cinemaLevel < 6`，
+ *    内层 `if (isAxis) 扫描层数 / else 覆盖率折算`）→ `banyue.ts#axisWindowOverlays`。
+ *    轴臂仍给 `banyueMingwangStacks`（**层数**，消费端 ×`MINGWANG_BASE_PER_STACK`）；非轴臂给
+ *    **标量** `banyueMingwangPct = 5 × 3 × cov` —— ⚠ 折算结果**不是层数**，塞进桶会让消费端再乘一次每层 5%。
+ *  · **:455 可琳扫除帮手**（原 `=== '1061' && aaActive > 0`，内层 `if (isAxis) … else …`）→ `corin.ts`。
+ *    非轴臂给标量 `corinStunBonusPct = CORIN_ADDITIONAL_DMG × cov`。**刻意不复用桶**：桶值恒
+ *    `CORIN_ADDITIONAL_DMG`(35) 是模块与 `types.ts` 双重文档化、且 `teamHookMigration.test.ts`
+ *    **精确断言**的不变量（`get('basic_attack') === 35`），写 `35×cov` 会让它失真。
+ *    轴臂的**段级**门控 `stunOverride > 0`（轴外段敌人未失衡）留在伤害池——它与角色判据无关。
+ *  · **:466 希格莉德浸染**（原 `=== '1591' && aaActive > 0`，**`isAxis` 不出现** ⇒ 与轴模式无关）
+ *    → `sigrid.ts`，整支迁走，走新契约的 `windInfectionRate`。
+ *
+ * **契约面（本批的核心改动）**：`AgentAxisOverlayInput` 补 4 个字段 —— `isAxis`（真轴模式布尔）/
+ * `additionalAbilityActive` / `windInfectionRate` / `settings`；`AgentAxisOverlays` 新增
+ * `scalarBySlot: Map<number, AxisScalarOverlays>`。
+ *  · ⚠ **`isAxis` 不能等价成 `axes.length > 0`**：`forceNoAxis` 轴退化时对外 `resolvedAxes` 被清空
+ *    为 `[]`（`convergence.ts:1422`），而 `effectiveStunAxes` 回落到 `configStore.stunAxes`
+ *    （用户手动轴，**可能非空**）⇒ 存在第三态「`axes` 非空但 `isAxis === false`」。故递的是
+ *    **伤害池 `:101` 那个表达式本身**（`(configStore.useStunAxis || autoActive) && stunAxisResult`）。
+ *  · ⚠ **派发器的 `if (axes.length === 0) return out` 已删**：留任一个早退（派发器那行、或模块内的
+ *    `if (axes.length === 0) return null`）都会让非轴折算臂**物理不可达**（钩子根本不被调用）——
+ *    那正是 R14/R15 分诊反复点名的「契约缺口」。现由各模块按 `isAxis` 自己分臂。
+ *  · ⚠ **标量表必须按槽位键控**：四个既有桶只靠「moveId 全局唯一」避免串味（`corinStunBonusMap`
+ *    里只有 1061 的键，别人查不到自己），而标量对**全角色全部行同值**、没有 moveId 可索引 ⇒
+ *    合并成裸标量会把本角色的增伤**泄漏给队友行**（`damagePoolAdditionalAbilityGate.test.ts`
+ *    的反锁就是拦这个）。
+ *
+ * **⚠ 实测纠正 R15 分诊一处前提（这就是本批最有价值的产出）**：分诊 §2.2 建议 `:466` 用
+ * `cfg.panel.windInfectionRate`，并自标「静态可达，**未实测**」。round 16 探针实测：
+ * `cfg.panel.windInfectionRate === undefined` **且** `computePanel().windInfectionRate === undefined`
+ * —— 该字段**不是** `computePanelPhases` 的产物（那里只写 `infectionZoneBonus`，见 `helpers.ts:885` 附近），
+ * 只由编排层 `damagePanels` computed 盖章（`useResourceCalc.ts:508`）⇒ **走 cfg 是断路**，
+ * 浸染增伤会静默恒 0（无测试会红）。故契约递的是**盖章后**的值。
+ *
+ * **⚠ `:484` 仪玄凝神未迁（−0，刻意留分支）**：它本是**三臂**（C6 / 非C6轴 / 非C6非轴），
+ * 迁移前实测发现一处**默认值分裂**——注册 default `yixuan.ningshenCoverage = 0`
+ * （`yixuan.ts` settings 表）vs 伤害池原式 fallback **0.5**（`:502`）。`resolveMechanicSettings`
+ * 恒以**注册 default 铺满**（`helpers.ts:239-247`）⇒ 模块侧读 `settings` 会拿到 **0**，
+ * 而现网行为是 **0.5** ⇒ 迁移会把非轴凝神暴伤从 `round(40×0.5)=20` 静默改成 **0**。
+ * 这是**产品级口径**（哪份默认值对）⇒ 按任务卡「需要改产品级口径就停下来找人」保留分支，
+ * 挂到 round 17 裁决。**没有实测就不要按分诊的「三臂可迁」直接搬**——分诊只做了静态分析。
+ *
+ * · **判据面**：`teamHookMigration.test.ts` 的轴窗口覆盖段 **10 → 13 例**（补三条非轴折算臂 +
+ *   希格莉德浸染 + 门控边界，全**精确值**）；既有 `banyue.test.ts`(54) / `corin.test.ts`(20) /
+ *   `sigrid.test.ts`(27) / `damagePoolAdditionalAbilityGate.test.ts`(4) **未改一行即全绿**
+ *   —— 这是「迁移逐位等价」最强的证据（它们走真管线读 note 精确串）。
+ * · **反向验证 6 组（全精确红，逐组还原 + `md5sum -c` 自证）**：见下批报告。
+ * · **剩余分布（R15-b 后）**：`damagePool.ts` **9 → 6** · `convergence.ts` 10 · `helpers.ts` 4。
+ *   下一批候选：R15-c（行级 `stunOverride` 自报 ⇒ `:558`/`:561`，−2；⚠ 那两处 `isAxis` 口径**不对称**，
+ *   必须逐位保留）· R15-d（`enemy.stunVuln` 快照 ⇒ `:155`，−1）· 1141 收尾（C7 计数投影 ⇒ −1）·
+ *   `:484` 仪玄（**先裁决默认值分裂**，再迁，−1）。
  */
-export const AGENT_BRANCH_BASELINE = 23
+export const AGENT_BRANCH_BASELINE = 20
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。

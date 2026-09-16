@@ -906,16 +906,35 @@ export const banyueMechanic: AgentMechanicModule = {
   // 此前未在 attachedEvents 登记 → 轴内附伤恒无易伤）
   attachedEvents: { [MOVE.qingShan]: ['banyue_c6_crush_attach'] },
   /**
-   * 明王轴窗口覆盖（规则 6 迁入，棘轮站点 4/8，2026-09-12 #10 真清偿）：
+   * 明王轴窗口覆盖（规则 6 迁入，棘轮站点 4/8，2026-09-12 #10 真清偿；
+   * **非轴折算臂** 2026-09-16 round 16 自 `damagePool.ts` 迁入）：
    * 原本由 `useResourceCalc` 的 `banyueMingwangStacks` computed 按 agentId '1471' 找槽位后直调
-   * `computeBanyueMingwangStacks`——编排层替角色找槽位+判空+判轴，正是规则 6 要消灭的形状。
-   * 迁入后：槽位/命座/轴由派发器给，模块自己决定何时不参与（6命满覆盖 → 不扫描返回 null）。
-   * 消费端仍读 DamagePoolContext.banyueMingwangStacks（桶名不变，数值逐位不变）。
+   * `computeBanyueMingwangStacks`；非轴折算臂原在伤害池的
+   * `charResult.agentId === '1471' && (execPanel?.additionalAbilityActive ?? 0) > 0 && banyueCinema < 6`
+   * 分支里（`if (isAxis) 扫描 / else 覆盖率折算` 两臂）。
+   *
+   * 两臂与门控**逐位保留**：
+   * - 门控 = 额外能力触发 **且非 6 命**（6 命走 `applyBanyuePanel` 的全局 +39%，不在此产出）。
+   * - `isAxis` 真 → 轴内时间轴扫描，桶值仍是**层数**（消费端 × `MINGWANG_BASE_PER_STACK`）。
+   * - `isAxis` 假 → 覆盖率折算（**标量**，本槽全部行同值）。⚠ 折算结果是**百分比**
+   *   （`每层 × 满层 3 × 覆盖率`），**不是层数** ⇒ 必须走 `scalarBySlot`，复用桶会让消费端
+   *   再乘一次每层 5%（数值静默变大）。
+   * - 滑块缺省回落 **0.5**（与 `settings` 表里 `banyue.mingwangCoverage` 的 default 同值，
+   *   也与伤害池原式的 `getMechanicSetting(…, 0.5)` 同值）。
    */
-  axisWindowOverlays: ({ slot, axes, cinemaLevel }) => {
-    if (axes.length === 0) return null
-    const map = computeBanyueMingwangStacks(slot, axes, cinemaLevel)
-    return map.size > 0 ? { banyueMingwangStacks: map } : null
+  axisWindowOverlays: ({ slot, axes, cinemaLevel, isAxis, additionalAbilityActive, settings }) => {
+    if (!additionalAbilityActive) return null
+    if (cinemaLevel >= 6) return null
+    if (isAxis) {
+      const map = computeBanyueMingwangStacks(slot, axes, cinemaLevel)
+      return map.size > 0 ? { banyueMingwangStacks: map } : null
+    }
+    const cov = Math.max(0, Math.min(1, Number(settings['banyue.mingwangCoverage'] ?? 0.5)))
+    return {
+      scalarBySlot: new Map([[slot, {
+        banyueMingwangPct: MINGWANG_BASE_PER_STACK * MINGWANG_MAX_STACKS * cov,
+      }]]),
+    }
   },
   /**
    * 交互栏「轴模式自动补齐」的槽位归属声明（规则 6 迁入，棘轮站点 8/8，2026-09-12 #10 真清偿）：

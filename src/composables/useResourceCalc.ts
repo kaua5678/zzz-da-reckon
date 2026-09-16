@@ -476,15 +476,29 @@ export function useResourceCalc() {
   const effectiveStunAxes = computed<StunAxis[]>(() => calcOutput.value?.resolvedAxes ?? configStore.stunAxes)
 
   /**
-   * 失衡轴窗口覆盖四桶（般岳明王 / 仪玄凝神 / 佩洛伊斯阳炎 / 可琳扫除帮手）。
+   * 失衡轴窗口覆盖四桶 + 标量表（般岳明王 / 仪玄凝神 / 佩洛伊斯阳炎 / 可琳扫除帮手 / 希格莉德浸染）。
    *
    * 2026-09-12 #10 真清偿（棘轮站点 4-7/8）：原本是四个各自
    * `configStore.team.findIndex(...)` 按角色 id 找槽位的 computed——编排层替角色找槽位、
    * 判空、判轴，每加一个轴覆盖角色都要再改本文件。现在统一走注册表派发
    * （`collectAxisWindowOverlays` → 模块自己的 `axisWindowOverlays` 钩子），
    * 本文件不再出现任何角色 id。桶名与 DamagePoolContext 同名，下游零改动。
+   *
+   * 2026-09-16 round 16：入参补 `isAxis`（真轴模式布尔，**不是** `axes.length > 0`）与
+   * `damagePanels`（提供 `additionalAbilityActive` / `windInfectionRate` 两个门控值，
+   * 与伤害池 `execPanel` 同源同值 ⇒ 迁移前后逐位一致）。
+   * ⚠ `isAxis` 必须与伤害池**同一个表达式**——`configStore.useStunAxis || autoActive` 与
+   * `stunAxisResult` 都已在下方/上方就绪；用 `effectiveStunAxes.length > 0` 代替会让
+   * `forceNoAxis` 轴退化态（`resolvedAxes` 清空、但 `effectiveStunAxes` 回落到手动轴）
+   * 静默走错支。
    */
-  const axisOverlays = computed(() => collectAxisWindowOverlays(effectiveStunAxes.value, configStore, catalogStore))
+  const axisOverlays = computed(() => collectAxisWindowOverlays(
+    effectiveStunAxes.value,
+    configStore,
+    catalogStore,
+    (configStore.useStunAxis || autoActive.value) && !!stunAxisResult.value,
+    damagePanels.value,
+  ))
 
   /** 当前命中的轴方案名（条件轴模式用于 UI 展示；无方案 = null） */
   const matchedPlanName = computed<string | null>(() => calcOutput.value?.matchedPlanName ?? null)
@@ -779,6 +793,7 @@ export function useResourceCalc() {
     yixuanNingshenMap: axisOverlays.value.yixuanNingshenMap,
     peiluoKagerouMap: axisOverlays.value.peiluoKagerouMap,
     corinStunBonusMap: axisOverlays.value.corinStunBonusMap,
+    axisScalarBySlot: axisOverlays.value.scalarBySlot,
     computeWindowDuration,
   }))
 

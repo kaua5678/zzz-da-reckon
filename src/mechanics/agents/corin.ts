@@ -296,18 +296,35 @@ export const corinMechanic: AgentMechanicModule = {
   buildCharConfig: buildCorinCharConfig,
   applyTeamConfig: applyCorinTeamConfig,
   /**
-   * 扫除帮手轴窗口覆盖（规则 6 迁入，棘轮站点 7/8，2026-09-12 #10 真清偿）：
+   * 扫除帮手轴窗口覆盖（规则 6 迁入，棘轮站点 7/8，2026-09-12 #10 真清偿；
+   * **非轴折算臂** 2026-09-16 round 16 自 `damagePool.ts` 迁入）：
    * 原本由 `useResourceCalc` 的 `corinStunBonusMap` computed 按 agentId '1061' 找槽位、
    * 自己查 catalog 取 basic 段 moveId 后直调。迁入后槽位/轴/倍率表访问都由派发器给。
-   * 非轴模式仍走伤害池的 `corin.additionalStunCoverage` 滑块分支。
+   *
+   * 两臂与门控**逐位保留**（原伤害池分支：`charResult.agentId === '1061' &&
+   * (execPanel?.additionalAbilityActive ?? 0) > 0`，内层 `if (isAxis) … else …`）：
+   * - 门控 = 额外能力触发（`additionalAbilityActive`，与伤害池 `execPanel` 同源同值）。
+   * - `isAxis` 真 → 扫描桶（值**恒** `CORIN_ADDITIONAL_DMG`，由 `computeCorinStunBonusMoves` 写死）。
+   * - `isAxis` 假 → 覆盖率折算（**标量百分比** = `CORIN_ADDITIONAL_DMG × 覆盖率`）。
+   *   ⚠ **不能复用 `corinStunBonusMap`**：桶的数值语义是「恒 35」这条**被模块与
+   *   `types.ts` 双重文档化的不变量**，往里写 `35×cov` 会让「桶值恒 35」这个已断言的性质失真
+   *   （`teamHookMigration.test.ts` 精确断言 `beam.get(...) === 35`）⇒ 必须走 `scalarBySlot`。
+   * - 滑块缺省回落 **0.5**（与 `settings` 表 `corin.additionalStunCoverage` 的 default 同值，
+   *   也与伤害池原式 `getMechanicSetting(…, 0.5)` 同值）。
    */
-  axisWindowOverlays: ({ slot, axes, getAgentSkills }) => {
-    if (axes.length === 0) return null
-    const basicMoveIds = new Set(
-      (getAgentSkills(CORIN_ID)?.categories ?? []).find(c => c.id === 'basic')?.moves.map(m => m.id) ?? [],
-    )
-    const map = computeCorinStunBonusMoves(slot, axes, basicMoveIds)
-    return map.size > 0 ? { corinStunBonusMap: map } : null
+  axisWindowOverlays: ({ slot, axes, getAgentSkills, isAxis, additionalAbilityActive, settings }) => {
+    if (!additionalAbilityActive) return null
+    if (isAxis) {
+      const basicMoveIds = new Set(
+        (getAgentSkills(CORIN_ID)?.categories ?? []).find(c => c.id === 'basic')?.moves.map(m => m.id) ?? [],
+      )
+      const map = computeCorinStunBonusMoves(slot, axes, basicMoveIds)
+      return map.size > 0 ? { corinStunBonusMap: map } : null
+    }
+    const cov = clampRatio(Number(settings['corin.additionalStunCoverage'] ?? 0.5))
+    return {
+      scalarBySlot: new Map([[slot, { corinStunBonusPct: CORIN_ADDITIONAL_DMG * cov }]]),
+    }
   },
   buildExecutions: buildCorinExecutions,
   applyPanel: applyCorinPanel,

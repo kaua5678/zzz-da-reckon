@@ -1019,10 +1019,18 @@ export const yixuanMechanic: AgentMechanicModule = {
    * 原本由 `useResourceCalc` 的 `yixuanNingshenMap` computed 按 agentId '1371' 找槽位后直调。
    * 与原逻辑逐位一致：只看「在队 + 有轴」；6 命满覆盖分支由**伤害池**判（读 c6 滑块，不读本表），
    * 故此处不重复判命座——覆盖层保持纯数据，消费端继续拥有口径。
+   *
+   * ⚠ 2026-09-16 round 16：派发器不再在非轴时早退（`axes.length === 0` 那行已删——它让别的模块的
+   * 非轴折算臂物理不可达），故进入条件改判 `isAxis`。**非轴臂仍在伤害池**
+   * （`:484` 的三臂：C6 / 非C6轴 / 非C6非轴），本轮 R15-b 未纳入该处——
+   * 实测到一处**必须先裁决的默认值分裂**：注册 default `yixuan.ningshenCoverage = 0`
+   * （`settings` 表）vs 伤害池原式 fallback **0.5**，二者在「用户从未调过该滑块」时给出不同数值
+   * （`resolveMechanicSettings` 恒以注册 default 铺满 ⇒ 模块侧读 `settings` 会拿到 0，
+   * 而现网行为是 0.5）。**迁移会把 0.5 静默改成 0**（−20% 暴伤）⇒ 保留原分支，待 round 17 裁决。
    */
-  axisWindowOverlays: ({ slot, axes, cinemaLevel }) => {
-    if (axes.length === 0) return null
-    const map = computeYixuanNingshenBonus(slot, axes, cinemaLevel)
+  axisWindowOverlays: ({ slot, axes, isAxis }) => {
+    if (!isAxis) return null
+    const map = computeYixuanNingshenBonus(slot, axes, 0)
     return map.size > 0 ? { yixuanNingshenMap: map } : null
   },
   settings,

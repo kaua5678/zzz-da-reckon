@@ -35,7 +35,7 @@ import { counterAssistOf } from '@/data/counterAssists'
 
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { CalcRoundThreads } from './roundThreads'
-import { getAgentMechanic, getRegisteredMechanicSettings, type AgentAxisContext, type AgentInteractionContext, type AgentTeamPhase, type MechanicTeamMember } from '@/mechanics'
+import { getAgentMechanic, getRegisteredMechanicSettings, type AgentAxisContext, type AgentInteractionContext, type AgentTeamPhase, type AxisScalarOverlays, type MechanicTeamMember } from '@/mechanics'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import type {
@@ -418,36 +418,69 @@ export function collectNextRoundFeedback(params: {
  * ——编排层替角色找槽位，每加一个轴覆盖角色就要再改一次编排层。
  *
  * 派发顺序 = 注册表顺序（取值式无写入，顺序不影响结果；与 applyTeamMechanics 的槽位序不同不需要）。
- * 返回扁平化后的四桶（与 `DamagePoolContext` 同名，调用方直接展开）。
+ * 返回扁平化后的四桶（与 `DamagePoolContext` 同名，调用方直接展开）+ 按槽位索引的标量表。
+ *
+ * ⚠ **这里没有「`axes.length === 0` 就早退」**（2026-09-16 round 16 删）。原来那行早退让
+ * 「非轴折算臂」**物理不可达**（钩子根本不被调用）——非轴模式没有轴可扫描，但**有覆盖率滑块**，
+ * 折算值正是要在非轴时算的。删掉后每个模块自己按 `isAxis` 分臂（轴 → 扫描桶 / 非轴 → 折算标量），
+ * 与 `damagePool.ts` 原来的 `if (isAxis) {…} else {…}` 两臂一一对应。
+ * 早退的另一半（模块内的 `if (axes.length === 0) return null`）同样已被 `isAxis` 取代
+ * ——**别把任何一方加回来**：留任一个都会让非轴支静默死掉（数值偏小、无测试会红）。
+ *
+ * 门控值（`additionalAbilityActive` / `windInfectionRate`）与伤害池 `execPanel` **同源同值**：
+ * 两者都取自 `damagePanels` 的同一槽（`panelAt` 按身份取），故迁移前后逐位一致。
+ * ⚠ `windInfectionRate` **不在 `cfg.panel` 上**（`computePanelPhases` 只写 `infectionZoneBonus`）
+ * ——2026-09-16 round 16 实测 `cfg.panel.windInfectionRate === undefined`，所以只能从 `damagePanels` 递。
  */
 export function collectAxisWindowOverlays(
   axes: StunAxis[],
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
+  isAxis: boolean,
+  damagePanels: readonly PanelValues[],
 ): {
   banyueMingwangStacks: Map<string, number>
   yixuanNingshenMap: Map<string, { critDmg: number; sheerDmg: number }>
   peiluoKagerouMap: Map<string, number>
   corinStunBonusMap: Map<string, number>
+  scalarBySlot: Map<number, AxisScalarOverlays>
 } {
   const out = {
     banyueMingwangStacks: new Map<string, number>(),
     yixuanNingshenMap: new Map<string, { critDmg: number; sheerDmg: number }>(),
     peiluoKagerouMap: new Map<string, number>(),
     corinStunBonusMap: new Map<string, number>(),
+    scalarBySlot: new Map<number, AxisScalarOverlays>(),
   }
-  if (axes.length === 0) return out
   const getAgentSkills = (agentId: string) => catalogStore.getAgentSkills(agentId) as
     { categories: { id: string; moves: { id: string }[] }[] } | undefined
+  // 滑块：与 `AgentPanelInput.settings` 同源（模块的非轴折算臂读它，缺省由模块回落注册 default）
+  const settings = resolveMechanicSettings(configStore)
   for (const member of buildMechanicTeamMembers(configStore, catalogStore)) {
     const hook = getAgentMechanic(member.agentId)?.axisWindowOverlays
     if (!hook) continue
-    const res = hook({ slot: member.slot, axes, cinemaLevel: member.cinemaLevel, getAgentSkills })
+    // 门控值按身份取本槽面板（槽位号 ≠ 下标 ⇒ 走 panelAt，禁 `damagePanels[slot]`）。
+    // 缺面板时 `additionalAbilityActive` 为 false、`windInfectionRate` 为 0——与伤害池原来的
+    // `?? 0` 兜底同义（那时 `execPanel` 缺省同样落 0）。
+    const memberPanel = panelAt(damagePanels as PanelValues[], member.slot)
+    const res = hook({
+      slot: member.slot,
+      axes,
+      cinemaLevel: member.cinemaLevel,
+      getAgentSkills,
+      isAxis,
+      additionalAbilityActive: (memberPanel?.additionalAbilityActive ?? 0) > 0,
+      windInfectionRate: Number(memberPanel?.windInfectionRate ?? 0),
+      settings,
+    })
     if (!res) continue
     if (res.banyueMingwangStacks) out.banyueMingwangStacks = res.banyueMingwangStacks
     if (res.yixuanNingshenMap) out.yixuanNingshenMap = res.yixuanNingshenMap
     if (res.peiluoKagerouMap) out.peiluoKagerouMap = res.peiluoKagerouMap
     if (res.corinStunBonusMap) out.corinStunBonusMap = res.corinStunBonusMap
+    if (res.scalarBySlot) {
+      for (const [slot, scalar] of res.scalarBySlot) out.scalarBySlot.set(slot, scalar)
+    }
   }
   return out
 }

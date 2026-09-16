@@ -634,6 +634,28 @@ export const sigridMechanic: AgentMechanicModule = {
   estimateExSpecialTime: sigridExSpecialTime,
   buildExecutions: buildSigridExecutions,
   patchExecutions: patchSigridExecutions,
+  /**
+   * 浸染增伤（**与轴模式无关的标量臂**，2026-09-16 round 16 自 `damagePool.ts` 迁入）：
+   * 原伤害池分支 `charResult.agentId === '1591' && (execPanel?.additionalAbilityActive ?? 0) > 0`
+   * → `SIGRID_INFECTION_DMG × clamp(windInfectionRate)`。
+   *
+   * ⚠ **迁移前提实测纠正（R15 分诊标「静态可达，未实测」⇒ round 16 实测为不可达）**：
+   * 分诊建议「rate 从 `cfg.panel.windInfectionRate` 读」，但探针实测
+   * `cfg.panel.windInfectionRate === undefined` 且 `computePanel().windInfectionRate === undefined`
+   * —— 该字段**不是** `computePanelPhases` 的产物（那里只写 `infectionZoneBonus`），
+   * 只由编排层 `damagePanels` computed 盖章。⇒ 走 `cfg.panel` 是**断路**（恒 `?? 0`
+   * ⇒ 浸染增伤恒 0，数值静默消失、无测试会红）。故契约递的是**盖章后的** `windInfectionRate`
+   * （见 `AgentAxisOverlayInput.windInfectionRate`）。
+   *
+   * 值与门控**逐位保留**：额外能力触发才写；`clamp01(rate)` 与消费端原式同口径；
+   * 队伍无风角色时编排层已盖章 0 ⇒ 不产出（与原式 `15 × 0 = 0` 后 note 段不出现等价）。
+   */
+  axisWindowOverlays: ({ slot, additionalAbilityActive, windInfectionRate }) => {
+    if (!additionalAbilityActive) return null
+    const pct = SIGRID_INFECTION_DMG * clamp01(Number(windInfectionRate))
+    if (pct <= 0) return null
+    return { scalarBySlot: new Map([[slot, { sigridInfectionPct: pct }]]) }
+  },
   // spec 资源（敛枪式发动机会）与资源卡沿用 spec 解释器
   buildResourceResult: ({ cfg, state }: AgentResourceResultInput) => ({
     specResources: (() => {
