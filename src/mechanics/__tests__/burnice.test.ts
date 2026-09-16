@@ -222,3 +222,18 @@ describe('柏妮思面板与执行计划', () => {
     expect(p.additionalAbilityActive ?? 1).toBeGreaterThanOrEqual(0)
   })
 })
+
+// 2026-09-15 补「伤害池落地」断言（反向验证暴露的既存缺口，见 task-ledger Next#6）：
+// 本文件此前只断言 `computeBurniceMechanic` 的**产出**，没断言「这些行进到了伤害池」——
+// 把 `damagePool.ts` 的 `if (burniceSrc) {` 短路成 `false`，全库无测试变红。
+// ⇒ 下面这条是 `51ad72c` 删掉该分支上冗余 `charResult.agentId === '1171'` 合取项的自证锚点。
+describe('柏妮思余烬/翻烤伤害池落地（damagePool 集成）', () => {
+  it('普通余烬行 burnice-ember 进伤害池且次数 > 0', async () => {
+    await setupHarness([{ agentId: '1171' }, { agentId: '1101' }, { agentId: '1041' }])
+    const calc = useResourceCalc()
+    const ember = calc.damagePoolRows.value.find(r => r.id === 'burnice-ember')
+    expect(ember, '柏妮思余烬行未进伤害池（damagePool 的 burniceSrc 分支断了）').toBeTruthy()
+    expect((ember as any).count, '余烬次数应为正').toBeGreaterThan(0)
+    expect((ember as any).agentId, '该行归属必须是柏妮思').toBe('1171')
+  })
+})

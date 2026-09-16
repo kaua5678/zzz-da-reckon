@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { setupHarness } from '@/test/harness'
+import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeLiuyinSource, computeLiuyinHugCounts, liuyinMechanic } from '@/mechanics/agents/liuyin'
 
 describe('琉音好评/等效规则（用户确认）', () => {
@@ -189,5 +191,42 @@ describe('★ 琉音跨层一致性：通用公式 vs 轴预设声明', () => {
       g.hug60 + g.hug90,
       `通用公式算 ${g.hug60 + g.hug90} 窗，轴预设声明 ${declared60 + declared90} 窗 —— 两口径必须一致（原缺口见本用例头注释）`,
     ).toBe(declared60 + declared90)
+  })
+})
+
+// 2026-09-15 补「伤害池落地」断言（反向验证暴露的既存缺口，见 task-ledger Next#6）：
+// 本文件此前只断言 `computeLiuyinSource` 的**产出**，没断言两类行进到伤害池——
+// 把 `damagePool.ts` 的 `liuyinSrc && extraAbilityActive` / `liuyinSrc && !isAxis` 两条 if
+// 短路成 `false`，全库无测试变红。⇒ 下面两条是 `51ad72c` 删掉其上冗余
+// `charResult.agentId === '1481'` 合取项的自证锚点（琉音 C6 余音行已由
+// `inStunAttribution.test.ts` 覆盖，不重复）。
+describe('琉音伤害池落地（damagePool 集成，非纯函数）', () => {
+  // 琉音在槽0 ⇒ 上一位 = 槽2；额外能力需队里有强攻/命破（1101 满足）
+  const setup = async () => {
+    await setupHarness([{ agentId: '1481' }, { agentId: '1101' }, { agentId: '1041' }])
+    return useResourceCalc()
+  }
+
+  it('额外能力重击附加伤害 = 独立直伤行进池，基底取上一位队友特性', async () => {
+    const calc = await setup()
+    const row = calc.damagePoolRows.value.find(r => r.id === 'liuyin-ex-direct-2')
+    expect(row, '琉音额外能力直伤行未进伤害池（damagePool 的 extraAbilityActive 分支断了）').toBeTruthy()
+    expect((row as any).count, '重击次数应为正').toBeGreaterThan(0)
+    expect((row as any).agentId).toBe('1481')
+  })
+
+  it('非轴强特拆成「失衡内吃满易伤」+「非失衡 1→3 连打」两组行，且前者优先级更高', async () => {
+    const calc = await setup()
+    const rows = calc.damagePoolRows.value
+    const stun = rows.find(r => r.id === 'liuyin-ex-1481011-stun')
+    const nonstun = rows.find(r => r.id === 'liuyin-ex-1481011-nonstun')
+    expect(stun, '失衡内强特拆分行未进伤害池（damagePool 的 !isAxis 分支断了）').toBeTruthy()
+    expect(nonstun, '非失衡强特拆分行未进伤害池').toBeTruthy()
+    // 拆分语义的本体：同一 moveId 被按「是否失衡」拆成两行，且失衡那行确实吃到易伤
+    expect((stun as any).stunMult ?? 1, '失衡内行应吃到易伤').toBeGreaterThan((nonstun as any).stunMult ?? 1)
+    // 同一 moveId 拆两行 ⇒ 倍率必相同（不同技能行不可能同倍率），且两组次数都为正
+    expect((nonstun as any).multiplier, '拆分行应同倍率（同一招式的两组）').toBe((stun as any).multiplier)
+    expect((stun as any).count).toBeGreaterThan(0)
+    expect((nonstun as any).count).toBeGreaterThan(0)
   })
 })
