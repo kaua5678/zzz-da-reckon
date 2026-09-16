@@ -453,7 +453,9 @@ export function createRunCalcRound(deps: {
       lighterTeamEnergy: prevLighterTeamEnergy,
       aliceTeamAssaultCount: prevAliceTeamAssaultCount,
       aliceDisorderCount: prevAliceDisorderCount,
-      inStunWindowTriggers: prevInStunWindowTriggers,
+      // 2026-09-16 round 13：`inStunWindowTriggers` 也不再在此解构——它最后一个读点
+      // （`:1414` 的 `prevInStunWindowTriggers <= 0` 守卫 + 对 `characters` 局部克隆的死写）
+      // 已作为死写删除（判死依据见该处注释）；1511 模块经 `threads` 契约自取（round 12 批次 2）。
       teamVeilCountTotal: prevTeamVeilCountTotal,
       decibelParry: prevDecibelParry,
       decibelRegenBySlot: prevDecibelRegenBySlot,
@@ -656,29 +658,10 @@ export function createRunCalcRound(deps: {
         }
       }
     }
-    // 伊德海莉失衡内强特：从轴里连段块反推（单次=1重碾/50闪能，双次=2重碾/85闪能），
-    // 剩下的闪能在非失衡打 50 闪能强特（回15闪能）。无轴时走资源池 yidhariExPerStun 兜底。
-    let yidhariInStunEx = 0
-    let yidhariInStunEnergy = 0
-    if (axisActive) {
-      const cinema0 = configStore.team[0]?.cinemaLevel ?? 0
-      const singleCost = cinema0 >= 1 ? 50 : 60
-      const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
-      resolvedAxes.forEach((axis, ai) => {
-        const wins = winAlloc[ai] ?? 0
-        for (const act of axis.actions) {
-          if (act.slot !== 0) continue
-          const times = act.count * wins
-          if (act.moveId === 'yidhari-heavy-single') {
-            yidhariInStunEx += 1 * times
-            yidhariInStunEnergy += singleCost * times
-          } else if (act.moveId === 'yidhari-heavy-double') {
-            yidhariInStunEx += 2 * times
-            yidhariInStunEnergy += 85 * times
-          }
-        }
-      })
-    }
+    // 伊德海莉失衡内强特（`yidhariInStunEx` / `yidhariInStunEnergy`）的轴内连段反推已迁进
+    // `yidhari.ts#applyYidhariTeamConfig`（round 13 批次 3）——模块自己按 `axis.axes × axis.windows`
+    // 数 `yidhari-heavy-single` / `yidhari-heavy-double` 两个连段块，与本文件原先在此处的算法同源
+    // （连段块 id 与成本档常量已回收进模块，规则 11 单一事实源）。
     // 轴内总时间（CD 自动动作用：仪玄C1落雷 6s / 卢西娅追击 8s 按轴内时间折算次数）
     const axisInSeconds = axisActive
       ? allocateAxisWindows(resolvedAxes, stunCount).reduce((a, b) => a + b, 0) * computeWindowDuration()
@@ -827,12 +810,13 @@ export function createRunCalcRound(deps: {
           hugoAxisUltVerdictCount: hugoAxisUltVerdictCount ?? 0,
         }
       }
-      if (merged.agentId === '1051') {
-        const exOverride = axisActive && yidhariInStunEx > 0
-          ? { yidhariInStunExCount: yidhariInStunEx, yidhariInStunEnergyCost: yidhariInStunEnergy }
-          : {}
-        return { ...merged, yidhariStunCount: stunCount, ...exOverride }
-      }
+    // 伊德海莉 1051 的 `yidhariStunCount` / `yidhariInStunExCount` / `yidhariInStunEnergyCost`
+    // （轴内连段反推：单次碾 1 重碾/50-60 闪能、双次碾 2 重碾/85 闪能）已迁进 `yidhari.ts` 的
+    // `applyTeamConfig`（round 13 批次 3）：前者读 `stunCount`（轴无关），后两者读下面 dispatch 的
+    // `axis` 契约快照（`axis.axes × axis.windows` 现算，与原先在此处 `:661-681` 的算法逐位等价）。
+    // ⚠ 迁移的**关键约束是条件写形态**：`yidhariInStunExCount` 只在 `axis.active && 合计>0` 时写
+    // ——`core/resource/helpers.ts#resolveExSpecialCount` 用 `!== undefined` 选通路，恒写 0 会改语义
+    // （详见模块钩子注释）。core 侧那两条「字段即蕴含角色」的守卫因此仍然成立。
       // 2026-09-15 arch 棘轮：佩洛伊斯(1551) 的 peiluoVerdictCount / extraSelfDecibelReward 注入
       // 已迁进 specPanelBuffs 的 peiluoProminenceMechanic.applyTeamConfig（规则 6）。
       if (merged.agentId === '1471') {
@@ -1429,11 +1413,18 @@ export function createRunCalcRound(deps: {
             .map(t => ({ windowIndex: t.windowIndex, moveId: t.moveId!, element: getBaseElement(t.element), offsetSeconds: t.offsetSeconds, id: t.id!, srcIndex: t.srcIndex })),
           note: `轴内逐窗积蓄槽模拟（${windows.length} 窗）：进窗继承上一窗余量，积蓄超阈值即触发对应异常；覆盖=异常激活时长占窗口比例。`,
         }
-        if (prevInStunWindowTriggers <= 0) {
-          for (const c of characters) {
-            if (c.agentId === '1511') (c as any).inStunWindowTriggers = inStunWindowTriggersNext
-          }
-        }
+        // ⚠ 2026-09-16 round 12 复核、round 13 删除的死写（规则 16①）：
+        //   `if (prevInStunWindowTriggers <= 0) { for (const c of characters) if (c.agentId === '1511')
+        //    (c as any).inStunWindowTriggers = inStunWindowTriggersNext }`
+        // 判死依据 = **静态**（死写不可能有测试变红，故不能用「短路不红」推断）：
+        //   · `characters` 是 `:715` `base.characters.map(...)` 产出的**本轮局部克隆数组**，
+        //     既不写回 `base.characters` 也不跨轮留存；
+        //   · 该数组在本次写入（原 `:1415`）之后**零引用**（`awk NR>1418` 实测无命中；其后的
+        //     `characters` 全是 `rr.characters` / `base.characters`）；
+        //   · 其间唯一的闭包 `inAxisFractionProvider`（`:1111`）只捕获 `rr.characters`，
+        //     且其调用点（`:1149/:1157`）在此写入**之前**。
+        // ⇒ 写入一个此后无人读的对象。真正的消费路是 1511 模块的 `applyTeamConfig` 读 `threads`
+        //   契约（round 12 批次 2 已迁），与这里的副本无关。
         const bossWindowDur = computeWindowDuration()
         bossAnomalyStateNext = {
           ...computeBossAnomalyStateTimeline({

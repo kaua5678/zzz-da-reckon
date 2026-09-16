@@ -5,6 +5,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentTeamConfigInput,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, IterationState, YidhariHpSource, YidhariLoopMove } from '@/types/resource'
@@ -26,6 +27,13 @@ const FULL_CHARGE_BONUS_PCT = 30 // 满蓄力段数：碎惘沉击 +30% 伤害
 const BASIC_FOLLOW_HEAL_PCT = 10 // 碎惘沉击命中回复 10% 最大生命值（固定）
 const EX_HEAL_RATIO_PCT = 33     // 极寒重碾回血 = 已损失生命值 × 33%
 const OUT_STUN_REFUND = 15       // 非失衡（溯寒后）极寒重碾额外回复 15 闪能
+// 轴连段块 id（= 本模块 `combos` 的两把键，单一事实源；轴编辑器/预设按它放置）
+const HEAVY_SINGLE = 'yidhari-heavy-single'
+const HEAVY_DOUBLE = 'yidhari-heavy-double'
+// 单次碾的闪能成本：0 命 60 / 1 命 50（与 buildYidhariCharConfig 的 exSpecialEnergyConsume 同一表达式）
+const HEAVY_SINGLE_COST_0 = 60
+const HEAVY_SINGLE_COST_1 = 50
+const HEAVY_DOUBLE_COST = 85     // 50 + 35（C1 连续重碾）
 
 function yidhariProps() {
   const resource = getAgentSpec(YIDHARI_AGENT_ID)?.resources?.find(item => item.id === 'yidhari_hp_burn')
@@ -375,6 +383,58 @@ function buildYidhariResourceSections({ result }: AgentResourceSectionsInput) {
   }]
 }
 
+/**
+ * `applyTeamConfig` · converge：把本轮失衡次数与**轴内连段反推的强特次数/闪能成本**写进自己那份 cfg。
+ *
+ * 迁入前它们是 `convergence.ts` 的 `merged.agentId === '1051'` 分支 + `:661-681` 的轴内连段反推
+ * （2026-09-16 round 13 批次 3，规则 6）。两条路刻意分开：
+ *  · `yidhariStunCount` ← `stunCount`（**与轴无关**，轴/非轴恒写——`computeYidhariHpSource` 用它
+ *    算「每次失衡 `yidhariExPerStun` 次」的非轴拆分上限）；
+ *  · `yidhariInStunExCount` / `yidhariInStunEnergyCost` ← `axis`（**轴内连段反推**：单次碾 = 1 重碾 /
+ *    50 或 60 闪能，双次碾 = 2 重碾 / 85 闪能，各自 × 块数 × 窗口数）。
+ *
+ * ⚠ **条件写形态逐位保留**：`yidhariInStunExCount` 只在 `axis.active && 合计 > 0` 时写，**不是**恒写
+ * 0——`core/resource/helpers.ts#resolveExSpecialCount` 用 `!== undefined` 判「走哪条通路」
+ * （有该字段 = 失衡内次数已知、按 `(总闪能 − 失衡内成本)/消耗` 反推非失衡次数；缺 = 纯能量预算口径）。
+ * 恒写 0 会把「本队没有轴内重碾」错判成「失衡内 0 次」而改掉非失衡次数的求解路径。
+ *
+ * ⚠ 成本档读的是**槽 0** 的命座（原实现逐字为 `configStore.team[0]?.cinemaLevel ?? 0`，非本槽）：
+ * 轴预设把伊德海莉钉在槽 0（`1章-琉`/`1章其他` 的 `team[0] === '1051'`，且全部章鱼轴块的 `slot`
+ * 实测恒为 0），故两者在全部可命中路径上同值。此处**逐位保留**原读法，不顺手改成自己槽位
+ * （那属口径变更，不在本次迁移授权面内；`input.team` 与 `configStore.team` 同为**槽位对齐**数组
+ * ——见 `buildMechanicTeamMembers` 的 `configStore.team.map`，故 `team[0]` 与原表达式同源同值）。
+ */
+function applyYidhariTeamConfig({ cfg, phase, stunCount, team, axis }: AgentTeamConfigInput): void {
+  if (phase !== 'converge') return
+  const record = cfg as unknown as Record<string, unknown>
+  record.yidhariStunCount = stunCount
+  if (!axis) return
+  let inStunEx = 0
+  let inStunEnergy = 0
+  if (axis.active) {
+    const singleCost = Number(team[0]?.cinemaLevel ?? 0) >= 1 ? HEAVY_SINGLE_COST_1 : HEAVY_SINGLE_COST_0
+    const slot = Number(cfg.slot)
+    axis.axes.forEach((ax, ai) => {
+      const wins = axis.windows[ai] ?? 0
+      for (const act of ax.actions) {
+        if (act.slot !== slot) continue
+        const times = act.count * wins
+        if (act.moveId === HEAVY_SINGLE) {
+          inStunEx += times
+          inStunEnergy += singleCost * times
+        } else if (act.moveId === HEAVY_DOUBLE) {
+          inStunEx += 2 * times
+          inStunEnergy += HEAVY_DOUBLE_COST * times
+        }
+      }
+    })
+  }
+  if (inStunEx > 0) {
+    record.yidhariInStunExCount = inStunEx
+    record.yidhariInStunEnergyCost = inStunEnergy
+  }
+}
+
 export const yidhariMechanic: AgentMechanicModule = {
   id: 'agent:yidhari',
   agentIds: [YIDHARI_AGENT_ID],
@@ -382,18 +442,19 @@ export const yidhariMechanic: AgentMechanicModule = {
   description: '蓄力循环（1s烧血→霜寒拥覆#3→碎惘沉击#4）+ 极寒重碾（失衡内2/非失衡回15闪能）+ 低血增伤100%覆盖。',
   applyPanel: applyYidhariPanel,
   buildCharConfig: buildYidhariCharConfig,
+  applyTeamConfig: applyYidhariTeamConfig,
   buildExecutions: buildYidhariExecutions,
   buildResourceResult: buildYidhariResourceResult,
   resourceSections: buildYidhariResourceSections,
   combos: {
-    'yidhari-heavy-single': {
+    [HEAVY_SINGLE]: {
       label: '单次碾（溯寒+极寒重碾）',
-      energyCost: 60, // 0命；1命时栈遍历按 50 覆盖
+      energyCost: HEAVY_SINGLE_COST_0, // 0命；1命时栈遍历按 50 覆盖（HEAVY_SINGLE_COST_1）
       moves: [{ moveId: '1051011', count: 1 }, { moveId: '1051012', count: 1 }],
     },
-    'yidhari-heavy-double': {
+    [HEAVY_DOUBLE]: {
       label: '双次碾（溯寒+极寒重碾×2）',
-      energyCost: 85, // 50 + 35（C1 连续重碾）
+      energyCost: HEAVY_DOUBLE_COST, // 50 + 35（C1 连续重碾）
       moves: [{ moveId: '1051011', count: 1 }, { moveId: '1051012', count: 2 }],
     },
   },
