@@ -816,12 +816,15 @@ export function createRunCalcRound(deps: {
       if (merged.agentId === '1291' && hugoAxisRemainingStunSeconds !== undefined) {
         // 雨果轴模式：决算剩余失衡时间 + 决算次数由轴内块反推（覆盖滑块）；非轴回落 buildCharConfig 的滑块值。
         // 次数口径：轴内 1291_ex_verdict_final 块 = 强特决算、轴内 1291018 块 = 终结技决算（合法轴 C2=Q→E；E→E 非法不建模）。
+        // ⚠ 曾在此写 `hugoAxisActive: true`——2026-09-16 T26 批次 0a 判死并删除（全仓零读点，
+        // 唯一「反射面」是 `core/resource.ts#sanitizeWarmKeyCfg` 的 JSON 序列化，但该字段是
+        // `hugoAxisExVerdictCount` 是否存在的纯函数（只会是 `true`、只在本分支出现）⇒ 删它不改变
+        // 热启动 key 的等价类划分，见 `.claude/task-card-round10-axis-context-contract.md` §10.1）。
         return {
           ...merged,
           hugoRemainingStunSeconds: hugoAxisRemainingStunSeconds,
           hugoAxisExVerdictCount: hugoAxisExVerdictCount ?? 0,
           hugoAxisUltVerdictCount: hugoAxisUltVerdictCount ?? 0,
-          hugoAxisActive: true,
         }
       }
       if (merged.agentId === '1051') {
@@ -953,6 +956,15 @@ export function createRunCalcRound(deps: {
       if (merged.agentId === '1141') {
         // 莱卡恩围猎（2.6 潜能激发）：次数 = 失衡次数；后台跟随闪反 = 队伍其他角色闪反次数之和；
         // 围猎平A时间 = 后台时间预算（总-无敌-失衡时长-莱卡恩前台）− 闪反时间（用户口径）
+        //
+        // 2026-09-16 T26 批次 0c：`lycaonStunCount` / `lycaonTotalTime` / `lycaonInvincibleTime`
+        // 已迁进 lycaon.ts 的 applyTeamConfig（converge 相位，逐位等价，对账见模块注释）。
+        // ⚠ **本分支保留**——剩下三个字段都还不能用现有契约等价表达，逐条原因钉在模块注释里：
+        //   · `lycaonWindowDuration` 需 `enemy.stunTime`（契约上无此标量，= 设计卡缺口 G4）
+        //   · `lycaonBackstageDodgeCount` 需**未缩放**的队友交互次数——`characters` 上的
+        //     `dodgeCounterCount` 已被上方 `interactionScale` 缩放（实测 scale=0.125 时 store 10 → cfg 0），
+        //     而原实现读 `configStore.team`（store 原值）⇒ 迁过去是**静默改语义**，不做。
+        //   · `lycaonC2Energy` 需 `axisActive` / `axisChainTotal`（批次 1+ 的 axis 契约）
         const backstageDodgeCount = configStore.team.reduce((sum, c, ci) =>
           ci !== cfg.slot && c?.agentId ? sum + (c.dodgeCounterCount ?? 0) : sum, 0)
         // 影画2·能量回馈：次数 = 失衡次数 + 队友连携总次数（用户确认：排除莱卡恩自己，只算队友的连携）；
@@ -964,10 +976,7 @@ export function createRunCalcRound(deps: {
         const c2Per = merged.lycaonC2EnergyPerTrigger ?? 0
         return {
           ...merged,
-          lycaonStunCount: stunCount,
           lycaonWindowDuration: computeWindowDuration(),
-          lycaonTotalTime: base.totalTime,
-          lycaonInvincibleTime: base.invincibleTime ?? 0,
           lycaonBackstageDodgeCount: backstageDodgeCount,
           lycaonC2Energy: c2Per > 0 ? (stunCount + teamChainTotal) * c2Per : 0,
         }

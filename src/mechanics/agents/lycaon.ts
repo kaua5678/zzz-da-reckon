@@ -3,6 +3,7 @@ import type {
   AgentCharConfigInput,
   AgentResourceInput,
   AgentPanelInput,
+  AgentTeamConfigInput,
 } from '../types'
 import type { SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, CharacterResourceResult } from '@/types/resource'
@@ -116,6 +117,37 @@ export const lycaonMechanic: AgentMechanicModule = {
     cfg.lycaonC1Coverage = clamp01(cfgNum(cfg, 'lycaon.c1Coverage', 1))
     // C2 回能（5 能量/次；次数 = 失衡次数 + 队伍连携总次数，由 useResourceCalc 注入 lycaonC2Energy）
     cfg.lycaonC2EnergyPerTrigger = cinemaLevel >= 2 ? 5 : 0
+  },
+
+  /**
+   * 围猎输入注入（规则 6 落点，2026-09-16 T26 批次 0c 自 `convergence.ts` 的
+   * `merged.agentId === '1141'` 分支迁入；数值逐位保留——三处来源逐条对账见下）。
+   *
+   * 迁入的是「**不需要轴上下文**」的三个字段（原分支 6 个字段里）：
+   * - `lycaonStunCount` ← `stunCount`（原：`stunCount`，同一变量）
+   * - `lycaonTotalTime` ← `combatTime`（原：`base.totalTime`；派发点传的正是 `base.totalTime ?? 180`
+   *   而 `ResourceCalcConfig.totalTime` 是必填 number ⇒ `??` 不触发，逐位等价）
+   * - `lycaonInvincibleTime` ← `cfg.invincibleTime`（原：`base.invincibleTime ?? 0`；两者同源于
+   *   `configStore.enemy.invincibleTime`——`base` 在 `convergence.ts:98` 未加 `?? 0`，
+   *   `cfg` 在 `resourceCalc/helpers.ts:1830` 加了 `?? 0` ⇒ `base.invincibleTime ?? 0` ≡ `cfg.invincibleTime`）
+   *
+   * ⚠ **未迁的三项，原因必须留痕**（不是遗漏）：
+   * - `lycaonWindowDuration`（= `stunTime + 4 + 全队失衡延时`）需要 `enemy.stunTime`，**不在本契约上**
+   *   （`grep -rn stunTime src/mechanics/` 零命中；`cfg.panel` 只有本槽 `stunDurationBonusSeconds`）。
+   *   属设计卡 §2.2 缺口 G4，等 `axis.windowSeconds`（批次 1+）。
+   * - `lycaonBackstageDodgeCount`（= 队伍**其他**槽位 `dodgeCounterCount` 之和）在契约上只有两个候选来源，
+   *   而**两个都不等价**：`characters` 是已被 `interactionScale` 缩放的 round cfg（`Math.round(x*scale)`，
+   *   实测 scale=0.125 时 store 10 → cfg 0），`team: MechanicTeamMember[]` 不含次数。原实现读的是
+   *   **store 原值**（未缩放）⇒ 迁过去是静默改语义。需要契约补「未缩放的交互次数」（或把它并入 axis 上下文批）。
+   * - `lycaonC2Energy`（需要 `axisActive` / `axisChainTotal` / `countStun`）——本批 brief 明确排除，
+   *   留到批次 1+ 的 `axis` 契约。故 `convergence.ts` 的 `1141` 分支**仍然存在**（棘轮不减），
+   *   见设计卡 §4.1「拆出来先做」。
+   */
+  applyTeamConfig: ({ cfg, phase, stunCount, combatTime }: AgentTeamConfigInput) => {
+    if (phase !== 'converge') return
+    cfg.lycaonStunCount = stunCount
+    cfg.lycaonTotalTime = combatTime
+    cfg.lycaonInvincibleTime = cfg.invincibleTime ?? 0
   },
 
   buildExecutions({ cfg, state, executions }: AgentResourceInput) {
