@@ -35,7 +35,7 @@ import { counterAssistOf } from '@/data/counterAssists'
 
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { CalcRoundThreads } from './roundThreads'
-import { getAgentMechanic, getRegisteredMechanicSettings, type AgentAxisContext, type AgentTeamPhase, type MechanicTeamMember } from '@/mechanics'
+import { getAgentMechanic, getRegisteredMechanicSettings, type AgentAxisContext, type AgentInteractionContext, type AgentTeamPhase, type MechanicTeamMember } from '@/mechanics'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import type {
@@ -275,6 +275,13 @@ export function applyTeamMechanics(params: {
    * 消费先例：朱鸢 1241 / 悠真 1201 的轴内块计数（round 11 批次 1，原为 convergence.ts 的 agentId 分支）。
    */
   axis?: Readonly<AgentAxisContext>
+  /**
+   * 全队**未缩放**交互次数快照（只读）。**只有 converge 相位该传**——语义与理由见
+   * `AgentInteractionContext` 头注释（`characters` 上那份已被 interactionScale/parrySplit 改过）。
+   * 消费先例：仪玄 1371 的 `yixuanExtremeAssistCap` + 莱卡恩 1141 的 `lycaonBackstageDodgeCount`
+   * （round 14，原为 convergence.ts 的 agentId 分支）。
+   */
+  interactions?: Readonly<AgentInteractionContext>
 }): void {
   const { characters, configStore, catalogStore, phase } = params
   if (characters.length === 0) return
@@ -291,6 +298,8 @@ export function applyTeamMechanics(params: {
   // 轴上下文：**不做 `?? {}` 兜底**——缺省即 undefined 递给模块，模块用
   // `phase !== 'converge' || !axis` 双判据门控（缺了就是缺了，不许静默降级成空快照）。
   const axis = params.axis
+  // 未缩放交互次数：同样**不做 `?? {}` 兜底**（理由同上）。
+  const interactions = params.interactions
 
 
   // 各槽位「异常积储主元素」（2026-09-02）：优先模块声明（雅模块把积蓄归并为 frostfire；
@@ -341,6 +350,7 @@ export function applyTeamMechanics(params: {
       aliceDisorderCount,
       threads,
       axis,
+      interactions,
     })
   }
 }

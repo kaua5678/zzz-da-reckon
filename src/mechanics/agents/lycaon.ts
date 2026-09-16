@@ -140,12 +140,7 @@ export const lycaonMechanic: AgentMechanicModule = {
    *   「字段 undefined」唯一编码「契约没接上」，由 `axisContext.test.ts` 精确断言分辨，
    *   而不是写一个看着合法的默认值把断路掩盖掉（消费端 `?? 16` 是既存兜底，不是新通道）。
    *
-   * ⚠ **仍未迁的两项，原因必须留痕**（不是遗漏）：
-   * - `lycaonBackstageDodgeCount`（= 队伍**其他**槽位 `dodgeCounterCount` 之和）在契约上只有两个
-   *   候选来源，而**两个都不等价**：`characters` 是已被 `interactionScale` 缩放的 round cfg
-   *   （`Math.round(x*scale)`，实测 scale=0.125 时 store 10 → cfg 0），`team: MechanicTeamMember[]`
-   *   不含次数。原实现读的是 **store 原值**（未缩放）⇒ 迁过去是静默改语义。需要契约补
-   *   「未缩放的交互次数」（或把它并入 axis 上下文批）。
+   * ⚠ **仍未迁的一项，原因必须留痕**（不是遗漏）：
    * - `lycaonC2Energy`（round 12 批次 2 实测**仍不可迁**——与任务卡的「契约已解锁」预期不符，
    *   证据如下）：字段值 = `c2Per > 0 ? (stunCount + teamChainTotal) * c2Per : 0`，其中
    *   `teamChainTotal` 分两臂：
@@ -161,14 +156,35 @@ export const lycaonMechanic: AgentMechanicModule = {
    *     （`difficultyLadder.ts` 置 `time.stunPlanProjection = 2`）会把它打开 ⇒ 用 `stunCount`
    *     迁移就是**静默改语义**（非轴 + 投影打开时队友连携数会算成未投影值）。⇒ 不迁，
    *     等契约补「计数通道失衡次数」（C7 量）后再收。
-   *   ⇒ 故 `convergence.ts` 的 `1141` 分支**仍然存在**（剩这 2 个字段）⇒ 本处迁移**棘轮 −0**。
+   *   ⇒ 故 `convergence.ts` 的 `1141` 分支**仍然存在**（只剩这 1 个字段）⇒ 本处迁移**棘轮 −0**。
+   *
+   * ✅ `lycaonBackstageDodgeCount` **已于 round 14（2026-09-16 批次 4）迁入**——本轮新增的
+   * `interactions` 契约（store 口径**未缩放**交互次数）正是为它和仪玄 1371 的 `yixuanExtremeAssistCap`
+   * 补的（两处需要同一个量：`characters` 上那份已被 `interactionScale` 缩放、被 `parrySplit` 改写）。
    */
-  applyTeamConfig: ({ cfg, phase, stunCount, combatTime, axis }: AgentTeamConfigInput) => {
+  applyTeamConfig: ({ cfg, phase, stunCount, combatTime, axis, interactions }: AgentTeamConfigInput) => {
     if (phase !== 'converge') return
     cfg.lycaonStunCount = stunCount
     cfg.lycaonTotalTime = combatTime
     cfg.lycaonInvincibleTime = cfg.invincibleTime ?? 0
     if (axis) cfg.lycaonWindowDuration = axis.windowSeconds
+    // `lycaonBackstageDodgeCount` = 队伍**其他**槽位的**未缩放**闪反次数之和（round 14 批次 4 迁入，
+    // 用本轮新增的 `interactions` 契约）。⚠ 原实现读 `configStore.team` **store 原值**——
+    // `characters` 上那份已被 `interactionScale` 缩放（实测 scale=0.125 时 store 10 → cfg 0）
+    // ⇒ 读 `characters` 是**静默改语义**，故必须走本契约（理由见 `AgentInteractionContext`）。
+    // ⚠ 过滤口径**逐位保留**：原式是 `ci !== cfg.slot && c?.agentId ? …`——**带 `agentId` 存在判据**
+    // （与仪玄那条只看槽位号的不同！两条口径刻意不统一：空槽残留计数在本条被排除）。
+    // ⚠ 双判据门控：缺 `interactions` 即不写（`undefined` 唯一编码「契约没接上」，
+    // 消费端 `?? 0` 是既存兜底、不是本通道的默认值）。
+    if (interactions) {
+      const ownSlot = Number(cfg.slot)
+      let backstageDodgeCount = 0
+      for (const [slotKey, snap] of Object.entries(interactions.bySlot)) {
+        if (Number(slotKey) === ownSlot || !snap?.agentId) continue
+        backstageDodgeCount += snap.dodgeCounterCount ?? 0
+      }
+      cfg.lycaonBackstageDodgeCount = backstageDodgeCount
+    }
   },
 
   buildExecutions({ cfg, state, executions }: AgentResourceInput) {

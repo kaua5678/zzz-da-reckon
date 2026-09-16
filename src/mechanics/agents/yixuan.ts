@@ -1,4 +1,4 @@
-import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput } from '../types'
+import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import type { CharacterResourceResult, MechanicSetting, YixuanExChain } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
@@ -80,6 +80,11 @@ const NINGSHEN_CRIT_DMG = 40 // 额外能力：终结技后凝神 15s 暴伤+40%
 const NINGSHEN_SECONDS = 15 // 凝神持续
 const ANOMALY_TRIGGER_FLASH = 10 // 玄墨异常触发回闪能（10s 最多一次）
 const ANOMALY_TRIGGER_MAX = Math.floor(180 / 10) // 10s CD 封顶次数（180s 战斗）
+const C1_LIGHTNING_CD = 6 // 影画1 落雷 CD（秒）
+const C1_LIGHTNING_FLASH = 5 // 落雷回闪能（/次）
+const EXTREME_ASSIST_FLASH = 5 // 极限支援换场落雷回闪能（/次）
+const JUFUFU_AGENT_ID = '1391' // 橘福福（额外能力：仪玄终结技类 +300 喧响/次）
+const JUFUFU_FUFA_DECIBEL = 300 // 符法千重/调息赠送每次的额外喧响
 
 // 核心被动 Lv.7 增伤目标 moveId（用户确认招式限定范围）
 const CORE_DMG_MOVE_IDS = new Set<string>([
@@ -371,6 +376,152 @@ function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg }: AgentCharConf
 
   // spec 侧：mechanicRowValues 预存（术法值事件倍率行；符法千重实际执行由本模块按次数生成）
   specBase.buildCharConfig?.({ skills, cinemaLevel, cfg } as AgentCharConfigInput)
+}
+
+/**
+ * 仪玄队伍级输入注入（规则 6 落点，2026-09-16 round 14 自 `convergence.ts` 的
+ * `merged.agentId === '1371'` 分支迁入 + 顺收 `convergence.ts` 里唯一一处
+ * `if (ch.agentId === '1371')` 的**读取点**——它读的是上一轮结果，属 `threads` 契约面）。
+ *
+ * 逐字段口径（**照抄原分支**，逐位核对过 `3679441^:src/composables/resourceCalc/convergence.ts:844-896`）：
+ *
+ * | cfg 字段 | 来源 | 原式要点 |
+ * |---|---|---|
+ * | `yixuanAxisEx` | `axis` | 轴内块 × 窗口数（**本槽**，全 moveId） |
+ * | `yixuanAxisCloudSeconds` | `axis` | `1371022` 的 `duration` 加权；**无权重写 2**（不是 0） |
+ * | `yixuanAxisActive` | `axis` | = `axis.active`，**恒写含 false** |
+ * | `yixuanAnomalyTriggerFlash` | `threads` | `min(18, max(0, floor(auricInkFlash)))` |
+ * | `yixuanExtremeAssistCap` | `interactions` | Σ**队友** store 口径弹刀（**未缩放**——本轮的契约缺口） |
+ * | `yixuanC1LightningCount` | `axis` + `cfg` | 轴/非轴**两臂**，判据是 `axisInSeconds > 0` |
+ * | `yixuanFlashBonus` | `+=` | `auric*10 + extremeAssists*5 + c1*5`（**累加**，不是覆盖） |
+ * | `extraSelfDecibelReward` | `+=` | 橘福福在队且上一轮符法千重 > 0 ⇒ `×300`（**累加**） |
+ *
+ * ⚠ 三处**逐位保留**的形态（改了就是静默改语义）：
+ *  ① `yixuanFlashBonus` / `extraSelfDecibelReward` 都是 **`+=`** 累加通道——`yixuanFlashBonus` 由
+ *     `buildCharConfig` 先写「完美格挡/极限闪避/玄墨异常」三项，`extraSelfDecibelReward` 更是跨角色
+ *     共享（另有 specPanelBuffs 佩洛伊斯/橘福福、蕾米埃尔、orphie）。写成覆盖会静默丢掉前面那几份。
+ *  ② `yixuanC1LightningCount` 的**轴判据是算出来的 `axisInSeconds`**（`Σwindows × windowSeconds`），
+ *     **不是** `axis.active`：`forceNoAxis` 退化时 `active === false` 但轴仍解析过 ⇒ 两者不同值。
+ *     故此处用 `axis.active ? Σwindows×windowSeconds : 0` 复现原局部量，**不直接读 `active`**。
+ *  ③ `yixuanAxisCloudSeconds` 在**无权重时写 2**（`cloudSecWeight > 0 ? total/weight : 2`）——
+ *     消费端 `resolveYixuanChain` 读 `?? CLOUD_MAX_SECONDS`(=2)，故写 2 与不写在**该消费点**同值；
+ *     仍照抄写 2，以免将来多一个消费点时语义悄悄分叉。
+ *
+ * ⚠ **门控是双判据**：`phase !== 'converge'` 直接 return（build/postRound 相位这些量还没意义）；
+ * 三个通道各自再判字段存在性（`axis` / `threads` / `interactions` 谁缺谁不写），**不做兜底**——
+ * 「字段 undefined」唯一编码「契约没接上」，由 `axisContext.test.ts` 精确断言分辨。
+ * 注意 `threads` 与 `interactions` 的缺失是**独立**的：两者都缺时仍要写 `yixuanAxisActive`
+ * 等轴字段（契约缺一个不等于全契约不可用）。
+ */
+function applyYixuanTeamConfig(
+  { cfg, phase, slot, characters, threads, axis, interactions }: AgentTeamConfigInput,
+): void {
+  if (phase !== 'converge') return
+  const record = cfg as unknown as Record<string, unknown>
+  const ownSlot = Number(slot ?? cfg.slot)
+
+  // 轴内总时间：原局部量 `axisInSeconds`（`convergence.ts` 的
+  // `axisActive ? ΣallocateAxisWindows(...) × computeWindowDuration() : 0`）。
+  // ⚠ 它与 `axis.active` **不等价**（见上方注②）：`forceNoAxis` 退化时 active=false
+  // 但轴仍解析过；`Σ windows × windowSeconds` 才是原值。
+  let axisInSeconds = 0
+
+  // ── 通道① 轴内量（`axis` 契约）────────────────────────────────────────────
+  if (axis) {
+    const axisEx: Record<string, number> = {}
+    let cloudSecTotal = 0
+    let cloudSecWeight = 0
+    if (axis.active) {
+      axisInSeconds = axis.windows.reduce((a, b) => a + b, 0) * axis.windowSeconds
+      axis.axes.forEach((ax, ai) => {
+        const wins = axis.windows[ai] ?? 0
+        for (const act of ax.actions) {
+          if (act.slot !== ownSlot) continue
+          axisEx[act.moveId] = (axisEx[act.moveId] ?? 0) + act.count * wins
+          // 凝云术块：duration 字段覆盖倍率表 actionTime（轴内凝云可延长缩短）
+          if (act.moveId === MOVE.cloud) {
+            const dur = typeof act.duration === 'number' ? act.duration : CLOUD_MAX_SECONDS
+            cloudSecTotal += dur * act.count * wins
+            cloudSecWeight += act.count * wins
+          }
+        }
+      })
+    }
+    record.yixuanAxisEx = axisEx
+    // ⚠ 无权重时写 2（不是 0）——照抄原式，见上方注③
+    record.yixuanAxisCloudSeconds = cloudSecWeight > 0 ? cloudSecTotal / cloudSecWeight : CLOUD_MAX_SECONDS
+    record.yixuanAxisActive = axis.active
+  }
+
+  // ── 通道② 影画1·落雷次数（只需本槽 cfg + 上面的 `axisInSeconds`）──────────────
+  // 用户口径：按 CD 自动算次数——轴模式 `floor(轴内时间/6)`，非轴 `floor(有效战斗时间/6)`
+  // （战斗时间扣 boss 无敌，落雷不在无敌期间结算）。
+  // ⚠ 二分点是算出来的 `axisInSeconds > 0`（= 轴生效且至少一个窗口），**不是** `axis.active`。
+  // ⚠ 原实现**无条件**写该字段（分支内无门控）⇒ 此处也不挂任何通道门控。
+  const yixuanCinema = Math.max(0, Math.floor(Number(record.yixuanCinemaLevel ?? 0)))
+  const battleTime = Math.max(0, (cfg.battleTime ?? 180) - (cfg.invincibleTime ?? 0))
+  const c1Lightnings = yixuanCinema >= 1
+    ? Math.max(0, Math.floor((axisInSeconds > 0 ? axisInSeconds : battleTime) / C1_LIGHTNING_CD))
+    : 0
+  record.yixuanC1LightningCount = c1Lightnings
+
+  // ── 通道③ 线程量（`threads` 契约：轴无关的跨轮标量）──────────────────────
+  // 原实现解构的是 `threads` 里已解构出的局部量（恒有值）⇒ 这里同样按「对象在就写」，
+  // 缺失的**单个字段**按 0 计（`?? 0` 与原式 `Math.floor(prevAuricInkFlash)` 的取值面一致）。
+  if (threads) {
+    record.yixuanAnomalyTriggerFlash =
+      Math.min(ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(threads.auricInkFlash ?? 0))))
+  }
+  const auricInkTriggers = Math.min(
+    ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(threads?.auricInkFlash ?? 0))),
+  )
+
+  // ── 通道④ 橘福福额外喧响（只依赖 threads + characters，**不依赖 interactions**）──
+  // 橘福福额外能力：仪玄符法千重/调息赠送也算终结技，上一轮次数 ×300 喧响
+  // （青溟云影走 extraSelfDecibelPerUltimate）。`jufufuOn` 是**按身份**判队伍是否含橘福福
+  // （B 类真特判：`characters` 按位置压缩，槽位号 ≠ 下标 ⇒ 只许 `.some`/`.find(身份)`）。
+  //
+  // ⚠ 原实现**无条件**写该字段 ⇒ 这里也写在 `interactions` 门控**之前**：把它挂在
+  // `interactions` 后面会让「契约漏传」静默吞掉这 300/次的喧响（新静默路径，禁止）。
+  // ⚠ `+=`：`extraSelfDecibelReward` 是**跨角色共享累加通道**（佩洛伊斯/橘福福/蕾米埃尔/
+  // orphie 各自 +=，`core/resource.ts:251` 汇总）——覆盖会静默清零别人那几份。
+  const jufufuOn = characters.some(
+    c => c.agentId === JUFUFU_AGENT_ID && (c.panel?.additionalAbilityActive ?? 0) > 0,
+  )
+  const prevFuFa = Number(threads?.yixuanFuFaForJufufu ?? 0)
+  const fufaDecibel = jufufuOn && prevFuFa > 0 ? prevFuFa * JUFUFU_FUFA_DECIBEL : 0
+  record.extraSelfDecibelReward = Number(record.extraSelfDecibelReward ?? 0) + fufaDecibel
+
+  // ── 通道⑤ 未缩放交互次数（`interactions` 契约；本轮的契约缺口）──────────────
+  // ⚠ 双判据门控：走到这里 `phase === 'converge'` 已满足，缺 `interactions` 即**直接 return、
+  // 不写依赖它的两个字段**（`undefined` 唯一编码「契约没接上」；消费端 `?? 0`/`?? 16` 是既存兜底、
+  // 不是本通道的默认值）——**不许**用空快照把断路伪装成零值。
+  // 门控**只覆盖真正依赖它的字段**（`yixuanExtremeAssistCap` 与由它参与求和的 `yixuanFlashBonus`）；
+  // 上方各通道的字段已在 return 之前落盘，不受本门控牵连。
+  if (!interactions) return
+  // ⚠ 过滤口径**逐位保留**：原式读 `configStore.team`，`ci !== cfg.slot` 时**不过滤空槽**
+  // （与 1141 那条带 `c?.agentId` 的不同）⇒ 这里也只看槽位号。理由见 `AgentInteractionContext`。
+  let assistCap = 0
+  for (const [slotKey, snap] of Object.entries(interactions.bySlot)) {
+    if (Number(slotKey) === ownSlot) continue
+    assistCap += snap?.parryCount ?? 0
+  }
+  record.yixuanExtremeAssistCap = assistCap
+
+  // 极限支援换场落雷（用户口径）：次数上限 = 队友正常弹刀次数求和；默认次数 = 上限（主页可录入）。
+  // 输入读 `cfg` 上的 `yixuanExtremeAssistCount`——**与原式同一字段**（`merged.yixuanExtremeAssistCount ?? -1`）。
+  const assistInput = Math.max(-1, Math.floor(Number(record.yixuanExtremeAssistCount ?? -1)))
+  const extremeAssists = (cfg.teamUltimateFlashBonus ?? 0) > 0
+    ? Math.min(assistInput >= 0 ? assistInput : assistCap, assistCap)
+    : 0
+
+  // 玄墨异常触发回闪能（10s CD 封顶 18 次）+ 极限支援落雷闪能（5/次）+ C1 落雷闪能（5/次）。
+  // ⚠ **`+=`（不是覆盖）**：`buildCharConfig` 已写「完美格挡/极限闪避/玄墨异常」三项，
+  // 覆盖会静默丢掉它们（见上方注①）。
+  record.yixuanFlashBonus = Number(record.yixuanFlashBonus ?? 0)
+    + auricInkTriggers * ANOMALY_TRIGGER_FLASH
+    + extremeAssists * EXTREME_ASSIST_FLASH
+    + c1Lightnings * C1_LIGHTNING_FLASH
 }
 
 function applyYixuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
@@ -839,6 +990,7 @@ export const yixuanMechanic: AgentMechanicModule = {
   description: '进场全回闪能(120)、交互式强特链（2连/3连墨痕化形 + 完美格挡 + 剩余全凝云，轴内凝云时长可调）、玄墨异常独立积蓄槽、失衡强特+30%、凝神 buff 轴、核心被动 60% 招式限定增伤、术法值/玄墨值 spec 资源与符法千重/玄墨极阵事件。',
   applyPanel: applyYixuanPanel,
   buildCharConfig: buildYixuanCharConfig,
+  applyTeamConfig: applyYixuanTeamConfig,
   estimateExSpecialTime: ({ cfg, exSpecialCount }) => {
     const chain = resolveYixuanChain(cfg, exSpecialCount ?? 0)
     return { necessaryTime: chain.chainSeconds, comboAlignTime: 0 }

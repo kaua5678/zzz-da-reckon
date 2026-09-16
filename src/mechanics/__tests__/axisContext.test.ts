@@ -28,7 +28,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { applyTeamMechanics, buildCharConfig } from '@/composables/resourceCalc/helpers'
 import { getAgentMechanic } from '@/mechanics'
-import type { AgentAxisContext, AgentTeamConfigInput } from '@/mechanics/types'
+import type { AgentAxisContext, AgentInteractionContext, AgentTeamConfigInput } from '@/mechanics/types'
 import type { StunAxis } from '@/types/resource'
 
 type Cfg = Record<string, unknown> & { slot: number }
@@ -48,6 +48,26 @@ function axisOf(o: {
     actionCountsBySlot: {},
     ultimateTotalBySlot: {},
     chainTotalBySlot: {},
+  }
+}
+
+/**
+ * 合成「未缩放交互次数」快照。`rows` 按槽位数组给，`''` = 空槽。
+ * ⚠ 空槽也要给计数（`setAgent` 清人时**不重置**计数）——两条消费点的过滤口径**不同**，
+ * 这正是本契约把 `agentId` 一并递过去的原因（见 `AgentInteractionContext` 头注释）。
+ */
+function interactionsOf(
+  rows: Array<{ agentId: string; parry?: number; block?: number; dodge?: number; dual?: number; quick?: number }>,
+): AgentInteractionContext {
+  return {
+    bySlot: Object.fromEntries(rows.map((r, i) => [i, {
+      agentId: r.agentId,
+      parryCount: r.parry ?? 0,
+      blockCount: r.block ?? 0,
+      dodgeCounterCount: r.dodge ?? 0,
+      dualCounterCount: r.dual ?? 0,
+      quickAssistCount: r.quick ?? 0,
+    }])),
   }
 }
 
@@ -554,6 +574,267 @@ describe('1511 南宫羽：轴内 1511013 快支块计数（axis）+ inStunWindo
   })
 })
 
+// ── 批次 4：1371 仪玄 —— 8 字段整条迁移（interactions 契约的解锁点） ────────────────
+describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interactions 复合 1）', () => {
+  const axes: StunAxis[] = [{
+    name: '仪玄轴',
+    count: 2,
+    actions: [
+      { slot: 0, moveId: '1371022', count: 1, duration: 1.2 },  // 凝云术（带 duration 覆盖）
+      { slot: 0, moveId: '1371022', count: 1 },                 // 凝云术（无 duration ⇒ 默认 2）
+      { slot: 0, moveId: '1371009', count: 3 },                 // 墨痕化形#1
+      { slot: 1, moveId: '1371022', count: 9, duration: 5 },    // 别的槽位（不计）
+    ],
+  }]
+
+  it('轴内：yixuanAxisEx / CloudSeconds（duration 加权，无权重写 2）/ AxisActive', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 0 }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
+      axis: axisOf({ axes, windows: [2] }),
+    }))
+    // 块 × 窗口数：凝云 2 块 × 2 窗 = 4；墨痕#1 3 × 2 = 6；槽 1 的 9×2 不计
+    expect(cfg.yixuanAxisEx).toEqual({ '1371022': 4, '1371009': 6 })
+    // duration 加权 = (1.2×1×2 + 2×1×2) / (1×2 + 1×2) = (2.4 + 4) / 4 = 1.6
+    expect(cfg.yixuanAxisCloudSeconds).toBe(1.6)
+    expect(cfg.yixuanAxisActive).toBe(true)
+  })
+
+  it('★ 凝云术无任何 weight 时写 2（**不是 0**）——「无权重写 2」这条口径的精确编码', () => {
+    const noCloud: StunAxis[] = [{
+      name: '无凝云轴', count: 1,
+      actions: [{ slot: 0, moveId: '1371009', count: 1 }],
+    }]
+    const cfg: Cfg = { slot: 0, agentId: '1371' }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
+      axis: axisOf({ axes: noCloud, windows: [1] }),
+    }))
+    // 权重为 0 ⇒ 走 `: 2` 分支（写 0 会让消费端 `?? CLOUD_MAX_SECONDS` 之外的口径分叉）
+    expect(cfg.yixuanAxisCloudSeconds).toBe(2)
+  })
+
+  it('非轴臂：axis.active=false ⇒ AxisEx 空、CloudSeconds 仍写 2、AxisActive=false（恒写）', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 0 }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
+      axis: axisOf({ axes, windows: [2], active: false }),
+      interactions: interactionsOf([{ agentId: '1371' }]),
+    }))
+    expect(cfg.yixuanAxisEx).toEqual({})
+    expect(cfg.yixuanAxisCloudSeconds).toBe(2)
+    expect(cfg.yixuanAxisActive).toBe(false)
+  })
+
+  it('threads：yixuanAnomalyTriggerFlash = min(18, max(0, floor(auricInkFlash)))', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1371' }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
+      axis: axisOf({ axes: [], windows: [] }),
+      threads: { auricInkFlash: 25.7 } as never,
+      interactions: interactionsOf([{ agentId: '1371' }]),
+    }))
+    expect(cfg.yixuanAnomalyTriggerFlash).toBe(18) // floor(25.7)=25 → 封顶 18（不是 25）
+    const cfg2: Cfg = { slot: 0, agentId: '1371' }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg2, {
+      axis: axisOf({ axes: [], windows: [] }),
+      threads: { auricInkFlash: -3 } as never,
+      interactions: interactionsOf([{ agentId: '1371' }]),
+    }))
+    expect(cfg2.yixuanAnomalyTriggerFlash).toBe(0) // 负值钳 0
+  })
+
+  it('★ interactions：yixuanExtremeAssistCap = Σ**队友**弹刀（未缩放、**不过滤空槽**）', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1371' }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
+      axis: axisOf({ axes: [], windows: [] }),
+      interactions: interactionsOf([
+        { agentId: '1371', parry: 99 },  // 本槽（不计）
+        { agentId: '1481', parry: 4 },   // 队友
+        { agentId: '', parry: 2 },       // 空槽**也算**（原式只看 `ci !== cfg.slot`）
+      ]),
+    }))
+    expect(cfg.yixuanExtremeAssistCap).toBe(6) // 4 + 2（99 不计）
+  })
+
+  it('★ yixuanFlashBonus 是 `+=`：在 buildCharConfig 已写值之上累加（不是覆盖）', () => {
+    // ⚠ `teamUltimateFlashBonus` 读的是**本槽 cfg**（buildCharConfig 按队伍职业写），不是 characters
+    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 70, battleTime: 60, invincibleTime: 0, teamUltimateFlashBonus: 20 }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
+      axis: axisOf({ axes: [], windows: [] }),          // 轴内时间 0 ⇒ 非轴臂
+      threads: { auricInkFlash: 4 } as never,
+      interactions: interactionsOf([{ agentId: '1371' }, { agentId: '1481', parry: 3 }]),
+    }))
+    // 落雷 = floor((60 − 0)/6) = 10；极限支援 = min(默认取上限 3, 3) = 3
+    // += 4×10(玄墨) + 3×5(极限支援) + 10×5(C1) = 40 + 15 + 50 = 105 ⇒ 70 + 105 = 175
+    expect(cfg.yixuanC1LightningCount).toBe(10)
+    expect(cfg.yixuanFlashBonus).toBe(175)
+  })
+
+  it('★ yixuanFlashBonus 的轴/非轴两臂：轴内时间 vs 有效战斗时间（60/6=10 ⇒ 轴内 24/6=4）', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 0, battleTime: 60, invincibleTime: 12, teamUltimateFlashBonus: 20 }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
+      // 轴内时间 = Σwindows(2) × windowSeconds(12) = 24 ⇒ floor(24/6) = 4
+      axis: axisOf({ axes: [], windows: [2], windowSeconds: 12 }),
+      threads: { auricInkFlash: 0 } as never,
+      interactions: interactionsOf([{ agentId: '1371' }, { agentId: '1481', parry: 2 }]),
+    }))
+    // 轴臂 = floor(24/6) = 4（**不是**非轴臂 floor((60−12)/6) = 8）
+    expect(cfg.yixuanC1LightningCount).toBe(4)
+    // 0 + 0 + 2×5(极限支援) + 4×5(C1) = 30
+    expect(cfg.yixuanFlashBonus).toBe(30)
+  })
+
+  it('★ yixuanCinemaLevel < 1 ⇒ C1 落雷恒 0（即使轴内时间很长）', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 0, yixuanFlashBonus: 0, battleTime: 180 }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
+      axis: axisOf({ axes: [], windows: [10], windowSeconds: 20 }),
+      threads: { auricInkFlash: 0 } as never,
+      interactions: interactionsOf([{ agentId: '1371' }]),
+      characters: [{ slot: 0, agentId: '1371' } as never],
+    }))
+    expect(cfg.yixuanC1LightningCount).toBe(0)
+    expect(cfg.yixuanFlashBonus).toBe(0)
+  })
+
+  it('★ extraSelfDecibelReward 是 `+=`：橘福福在队（额外能力开启）+ 上一轮符法千重>0 才加', () => {
+    const withJufufu: Cfg = { slot: 0, agentId: '1371', extraSelfDecibelReward: 1500 }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(withJufufu, {
+      axis: axisOf({ axes: [], windows: [] }),
+      threads: { auricInkFlash: 0, yixuanFuFaForJufufu: 3 } as never,
+      interactions: interactionsOf([{ agentId: '1371' }]),
+      // 橘福福 1391 且额外能力开启（`additionalAbilityActive > 0`）
+      characters: [{ slot: 0, agentId: '1371' }, { slot: 1, agentId: '1391', panel: { additionalAbilityActive: 1 } }] as never,
+    }))
+    expect(withJufufu.extraSelfDecibelReward).toBe(1500 + 3 * 300) // 累加，不是覆盖成 900
+  })
+
+  it('★ 橘福福不在队 / 额外能力关 / 上一轮次数为 0 ⇒ 一项都不加（但字段仍写回原值）', () => {
+    const cases: Array<[string, Array<Record<string, unknown>>, number]> = [
+      ['无橘福福', [{ slot: 0, agentId: '1371' }], 0],
+      ['橘福福额外能力关', [{ slot: 0, agentId: '1371' }, { slot: 1, agentId: '1391', panel: { additionalAbilityActive: 0 } }], 0],
+    ]
+    for (const [label, chars, prev] of cases) {
+      const cfg: Cfg = { slot: 0, agentId: '1371', extraSelfDecibelReward: 40 }
+      getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
+        axis: axisOf({ axes: [], windows: [] }),
+        threads: { auricInkFlash: 0, yixuanFuFaForJufufu: prev } as never,
+        interactions: interactionsOf([{ agentId: '1371' }]),
+        characters: chars as never,
+      }))
+      expect(cfg.extraSelfDecibelReward, `${label}：不该加`).toBe(40)
+    }
+    // 橘福福在队且开启，但上一轮符法千重 = 0 ⇒ 同样不加
+    const cfg: Cfg = { slot: 0, agentId: '1371', extraSelfDecibelReward: 40 }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
+      axis: axisOf({ axes: [], windows: [] }),
+      threads: { auricInkFlash: 0, yixuanFuFaForJufufu: 0 } as never,
+      interactions: interactionsOf([{ agentId: '1371' }]),
+      characters: [{ slot: 0, agentId: '1371' }, { slot: 1, agentId: '1391', panel: { additionalAbilityActive: 1 } }] as never,
+    }))
+    expect(cfg.extraSelfDecibelReward).toBe(40)
+  })
+
+  it('★ 相位门控：build/postRound 一个字段都不写（含 AxisActive 与线程值）', () => {
+    for (const phase of ['build', 'postRound'] as const) {
+      const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 6, battleTime: 180 }
+      getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
+        phase,
+        axis: axisOf({ axes, windows: [2] }),
+        threads: { auricInkFlash: 5, yixuanFuFaForJufufu: 2 } as never,
+        interactions: interactionsOf([{ agentId: '1371' }, { agentId: '1481', parry: 4 }]),
+        characters: [{ slot: 0, agentId: '1371' }, { slot: 1, agentId: '1391', panel: { additionalAbilityActive: 1 } }] as never,
+      }))
+      for (const f of [
+        'yixuanAxisEx', 'yixuanAxisCloudSeconds', 'yixuanAxisActive', 'yixuanAnomalyTriggerFlash',
+        'yixuanExtremeAssistCap', 'yixuanC1LightningCount', 'yixuanFlashBonus', 'extraSelfDecibelReward',
+      ]) {
+        expect(cfg[f], `${phase} 相位不该写 ${f}`).toBeUndefined()
+      }
+    }
+  })
+
+  it('★ 缺 interactions ⇒ 依赖它的两字段不写（缺就是缺，不伪造 0）；但不依赖它的字段照写', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 70, battleTime: 60 }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
+      axis: axisOf({ axes, windows: [2] }),
+      threads: { auricInkFlash: 4 } as never,
+      // 不传 interactions
+    }))
+    // ⚠ 这两个字段是**整条链唯一**依赖 `interactions` 的：缺契约 ⇒ 钩子提前 return、
+    // 它们停在 `buildCharConfig` 写下的基线值上（`extremeAssists` 无法求值 ⇒ 不许伪造 0 参与求和）。
+    // 注：`yixuanFlashBonus` 的 build 基线非 0（完美格挡/极限闪避/玄墨三项），故断言的是
+    // **「基线 70 原样保留」**而不是 undefined——即增量项一个都没加（不是「加了 0」）。
+    expect(cfg.yixuanExtremeAssistCap, '缺 interactions ⇒ 不许写（否则断路伪装成 0）').toBeUndefined()
+    expect(cfg.yixuanFlashBonus, '缺 interactions ⇒ 增量项不许加（基线原样保留）').toBe(70)
+    expect(cfg.extraSelfDecibelReward, 'extraSelfDecibelReward 只依赖 threads+characters ⇒ 照写').toBe(0)
+    // 不依赖 interactions 的字段必须仍然落盘（证明钩子跑了，不是「什么都没跑」）
+    expect(cfg.yixuanAxisActive).toBe(true)
+    expect(cfg.yixuanAnomalyTriggerFlash).toBe(4)
+    // 本用例传了 `axis`（windows=[2]、默认 windowSeconds=16）⇒ 走**轴臂**：
+    // floor(2×16/6) = floor(5.33) = 5（不是非轴臂的 floor(60/6)=10）
+    expect(cfg.yixuanC1LightningCount, 'C1 落雷只需 axis+cfg ⇒ 缺 interactions 也要写').toBe(5)
+  })
+
+  it('★ 缺 axis ⇒ 轴字段不写；缺 threads ⇒ 线程字段与非轴 C1 照算（三通道各自独立门控）', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 70, battleTime: 60 }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
+      // **不传 threads**（也不传 axis）
+      interactions: interactionsOf([{ agentId: '1371' }, { agentId: '1481', parry: 3 }]),
+      characters: [{ slot: 0, agentId: '1371' }] as never,
+    }))
+    expect(cfg.yixuanAxisEx).toBeUndefined()
+    expect(cfg.yixuanAxisCloudSeconds).toBeUndefined()
+    expect(cfg.yixuanAxisActive).toBeUndefined()
+    expect(cfg.yixuanAnomalyTriggerFlash).toBeUndefined()
+    // 缺 threads ⇒ 玄墨项按 0 计（`?? 0`）；本槽未设 `teamUltimateFlashBonus` ⇒ 极限支援恒 0。
+    // ⇒ flashBonus = 70(基线) + 0(玄墨) + 0(极限支援) + floor(60/6)×5(C1 非轴臂) = 70 + 50 = 120
+    expect(cfg.yixuanC1LightningCount, '缺 axis ⇒ 非轴臂 floor(有效战斗时间/6)').toBe(10)
+    expect(cfg.yixuanFlashBonus).toBe(120)
+  })
+})
+
+// ── 批次 4：1141 莱卡恩 —— lycaonBackstageDodgeCount ← interactions（未缩放） ────────
+describe('1141 莱卡恩：lycaonBackstageDodgeCount ← interactions（未缩放闪反）', () => {
+  it('★ Σ**队友**闪反（未缩放）；**过滤空槽**（带 agentId 判据，与仪玄那条刻意不同）', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1141', invincibleTime: 0 }
+    getAgentMechanic('1141')!.applyTeamConfig!(hookInput(cfg, {
+      axis: axisOf({ axes: [], windows: [], windowSeconds: 16 }),
+      interactions: interactionsOf([
+        { agentId: '1141', dodge: 99 },  // 本槽（不计）
+        { agentId: '1011', dodge: 6 },   // 队友
+        { agentId: '', dodge: 5 },       // 空槽（**不计**——本条带 agentId 判据）
+      ]),
+    }))
+    expect(cfg.lycaonBackstageDodgeCount).toBe(6) // 6（99 与空槽的 5 都不计）
+  })
+
+  it('★ 与仪玄的口径差异是**有意**的：同一份快照两条消费点得不同值', () => {
+    const snap = interactionsOf([
+      { agentId: '1371', parry: 3, dodge: 7 },
+      { agentId: '', parry: 2, dodge: 5 },
+    ])
+    // 仪玄（slot 0，只看槽位号）⇒ 队友 = 槽 1 空槽：parry 2
+    const yx: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 0 }
+    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(yx, {
+      axis: axisOf({ axes: [], windows: [] }), threads: { auricInkFlash: 0 } as never, interactions: snap,
+    }))
+    expect(yx.yixuanExtremeAssistCap).toBe(2)
+    // 莱卡恩（slot 0，带 agentId 判据）⇒ 队友 = 槽 1 但空槽被排除：0
+    const ly: Cfg = { slot: 0, agentId: '1141', invincibleTime: 0 }
+    getAgentMechanic('1141')!.applyTeamConfig!(hookInput(ly, {
+      axis: axisOf({ axes: [], windows: [] }), interactions: snap,
+    }))
+    expect(ly.lycaonBackstageDodgeCount).toBe(0)
+  })
+
+  it('★ 缺 interactions ⇒ 不写（不伪造 0）；其余围猎字段照写', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1141', invincibleTime: 0 }
+    getAgentMechanic('1141')!.applyTeamConfig!(hookInput(cfg, {
+      axis: axisOf({ axes: [], windows: [], windowSeconds: 19.5 }),
+    }))
+    expect(cfg.lycaonBackstageDodgeCount, '缺 interactions ⇒ 不许写').toBeUndefined()
+    expect(cfg.lycaonWindowDuration).toBe(19.5)
+    expect(cfg.lycaonStunCount).toBe(3)
+  })
+})
+
 // ── 跳②：派发器真的把 axis 递给钩子（真 cfg + 真 store，只有 axis 是合成的） ──────────
 describe('applyTeamMechanics 透传 axis（跳②）', () => {
   it('轴内以太计数经派发器落到本槽 cfg；非本槽角色不受影响', async () => {
@@ -578,6 +859,48 @@ describe('applyTeamMechanics 透传 axis（跳②）', () => {
     })
     expect(characters[0].zhuYuanAxisEther, '派发器没把 axis 递给钩子').toBe(6) // 3 × 2
     expect(characters[1].zhuYuanAxisEther).toBeUndefined() // 1201 那份 cfg 不该被写朱鸢字段
+  })
+
+  it('★ 派发器透传 interactions：store 口径**未缩放**值落到本槽 cfg（跳②）', async () => {
+    const { catalog, config } = await setupHarness([
+      { agentId: '1371' }, { agentId: '1481', parryCount: 4 }, { agentId: '1451', parryCount: 3 },
+    ])
+    const characters = [
+      buildCharConfig(0, config, catalog) as unknown as Cfg,
+      buildCharConfig(1, config, catalog) as unknown as Cfg,
+      buildCharConfig(2, config, catalog) as unknown as Cfg,
+    ]
+    applyTeamMechanics({
+      characters: characters as never,
+      configStore: config,
+      catalogStore: catalog,
+      phase: 'converge',
+      combatTime: 180,
+      stunCount: 2,
+      axis: axisOf({ axes: [], windows: [] }),
+      interactions: interactionsOf([
+        { agentId: '1371', parry: 9 }, { agentId: '1481', parry: 4 }, { agentId: '1451', parry: 3 },
+      ]),
+    })
+    // 队友 Σ = 4 + 3 = 7（本槽 9 不计）
+    expect(characters[0].yixuanExtremeAssistCap, '派发器没把 interactions 递给钩子').toBe(7)
+  })
+
+  it('派发器不做 `?? {}` 兜底：缺 interactions 时钩子收到的是 undefined（可被测试分辨）', async () => {
+    const { catalog, config } = await setupHarness([{ agentId: '1371' }])
+    const characters = [buildCharConfig(0, config, catalog) as unknown as Cfg]
+    applyTeamMechanics({
+      characters: characters as never,
+      configStore: config,
+      catalogStore: catalog,
+      phase: 'converge',
+      combatTime: 180,
+      stunCount: 2,
+      axis: axisOf({ axes: [], windows: [] }),
+    })
+    expect(characters[0].yixuanExtremeAssistCap).toBeUndefined()
+    // 同一调用的轴字段仍照常写入（证明钩子确实被派发了，不是「什么都没跑」）
+    expect(characters[0].yixuanAxisActive).toBe(true)
   })
 
   it('派发器不做 `?? {}` 兜底：缺 axis 时钩子收到的是 undefined（可被测试分辨）', async () => {
@@ -678,6 +1001,36 @@ describe('真管线：converge 有值、build/postRound 为 undefined（跳①�
     expect(cyc.axisActive, '轴模式没接上 ⇒ 逐雷/影画6电抗会静默回落到并集近似').toBe(true)
     // 逐雷 = min(平A池刀数, 轴内飞弦·斩 10)。轴内计数为 0 时 = 0（实测非轴口径 = 0）
     expect(cyc.thunderCount, '逐雷没吃轴内飞弦·斩计数（axis 通路断了）').toBe(10)
+  })
+
+
+  /**
+   * ★ 端到端（跳①）：`interactions` 契约经**真 convergence 派发点**落到仪玄的极限支援落雷次数。
+   *
+   * 这是本处迁移**唯一**能把「契约真接上了」与「静默回落」分开的断言：
+   * `yixuanExtremeAssistCap` 的消费端是 `Math.floor(Number(record.yixuanExtremeAssistCap ?? 0))`
+   * ⇒ 契约漏传时落到 **0**（落雷行整个消失），是个**看着合法**的值（正是任务卡反复强调的
+   * 「断路值伪装成合法值」形态）。
+   *
+   * ⚠ 为什么用 `dodgeCounterCount` 造分化而不靠预设：`interactionScale` 只缩放
+   * parry/block/dual/**dodge** —— 本用例显式传 `interactionScale` 之外还让队友**只有闪反**，
+   * 于是「store Σ = 7」与「缩放后 characters Σ」可被同时观测。
+   */
+  it('★ 端到端：未缩放队友弹刀 → 仪玄极限支援落雷次数（短路 ⇒ 恒 0，不是别的值）', async () => {
+    await setupHarness([
+      { agentId: '1371', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1481', parryCount: 4 },
+      { agentId: '1451', parryCount: 3 },
+    ])
+    const config = useConfigStore()
+    config.enemy.stunCountLock = 2
+    const calc = useResourceCalc()
+    const yx = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!
+    // 极限支援换场落雷 = 独立假 id 行（不进失衡/异常池）
+    const lightning = yx.executions.find(e => e.moveId === '1371_extreme_assist_lightning')
+    expect(lightning, '极限支援落雷行必须存在（默认次数 = 队友弹刀和上限）').toBeTruthy()
+    // store Σ 队友弹刀 = 4 + 3 = 7；契约短路 ⇒ 0（行消失）
+    expect(lightning!.count, '队友弹刀和没经 interactions 契约递进来（短路 ⇒ 恒 0）').toBe(7)
   })
 
   it('★ 朱鸢：轴内以太占比喂进核心被动增伤（端到端可观测的唯一口）', async () => {

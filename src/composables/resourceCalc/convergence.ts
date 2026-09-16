@@ -437,11 +437,12 @@ export function createRunCalcRound(deps: {
     const {
       goodReview: prevGoodReview,
       energyBySlot: prevEnergyBySlot,
-      auricInkFlash: prevAuricInkFlash,
+      // 2026-09-16 round 14：`auricInkFlash` 也不再在此解构——仪玄 1371 整条分支已迁进
+      // `yixuan.ts#applyYixuanTeamConfig`（该模块经 `threads` 契约自取，规则 6）。
       anomalyDecibelBonus: prevAnomalyDecibelBonus,
       banyueTopUp: prevBanyueTopUp,
       parrySplit: prevParrySplit,
-      yixuanFuFaForJufufu: prevYixuanFuFaForJufufu,
+      // `yixuanFuFaForJufufu` 同上：读点已迁进 1371 模块（本文件仍是它的**写回** owner）。
       // 2026-09-15 arch 棘轮第 2 批：teamUltimateForJufufu / yeshuguangGiftUlt / lucyTeammateEx /
       // graceC1Cycles / anbyZeroTeammateWl / vivianAnomalyTriggers / promiaReleaseDecibel 这 7 条
       // 不再在此解构——它们已改由各模块的 applyTeamConfig 从 `threads` 快照直接读（规则 6），
@@ -841,77 +842,28 @@ export function createRunCalcRound(deps: {
         }
         return banyueMerged
       }
-      if (merged.agentId === '1371') {
-        // 仪玄：轴内强特（凝云术块）次数与凝云蓄力时长（轴 action.duration 加权）→ 模块分配；
-        // 玄墨异常触发回闪能（外层收敛反馈，10s CD 封顶 18 次）→ 计入闪能总账
-        const yixuanAxisEx: Record<string, number> = {}
-        let cloudSecTotal = 0
-        let cloudSecWeight = 0
-        if (axisActive) {
-          const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
-          resolvedAxes.forEach((axis, ai) => {
-            const wins = winAlloc[ai] ?? 0
-            for (const act of axis.actions) {
-              if (act.slot !== cfg.slot) continue
-              yixuanAxisEx[act.moveId] = (yixuanAxisEx[act.moveId] ?? 0) + act.count * wins
-              // 凝云术块：duration 字段覆盖倍率表 actionTime（新机制：轴内凝云可延长缩短）
-              if (act.moveId === '1371022') {
-                const dur = typeof (act as any).duration === 'number' ? (act as any).duration : 2
-                cloudSecTotal += dur * act.count * wins
-                cloudSecWeight += act.count * wins
-              }
-            }
-          })
-        }
-        const auricInkTriggers = Math.min(18, Math.max(0, Math.floor(prevAuricInkFlash)))
-        // 极限支援换场落雷（用户口径）：次数上限 = 队友正常弹刀次数求和；默认次数 = 上限（主页可录入）
-        const assistCap = configStore.team.reduce((sum, c, ci) => ci !== cfg.slot ? sum + (c.parryCount ?? 0) : sum, 0)
-        const assistInput = Math.max(-1, Math.floor(Number((merged as unknown as Record<string, unknown>).yixuanExtremeAssistCount ?? -1)))
-        const extremeAssists = (merged.teamUltimateFlashBonus ?? 0) > 0
-          ? Math.min(assistInput >= 0 ? assistInput : assistCap, assistCap)
-          : 0
-        // 影画1·追加落雷（用户口径）：按 CD 自动算次数——轴模式 floor(轴内时间/6)，
-        // 非轴 floor(有效战斗时间/6)（战斗时间扣 boss 无敌，落雷不在无敌期间结算）
-        const yixuanCinema = Math.max(0, Math.floor(Number((merged as unknown as Record<string, unknown>).yixuanCinemaLevel ?? 0)))
-        const battleTime = Math.max(0, (merged.battleTime ?? 180) - (configStore.enemy.invincibleTime ?? 0))
-        const c1Lightnings = yixuanCinema >= 1
-          ? Math.max(0, Math.floor((axisInSeconds > 0 ? axisInSeconds : battleTime) / 6))
-          : 0
-        // 橘福福额外能力：仪玄符法千重/调息赠送也算终结技，上一轮次数 ×300 喧响（青溟云影走 extraSelfDecibelPerUltimate）
-        const jufufuOn = base.characters.some(c => c.agentId === '1391' && (c.panel?.additionalAbilityActive ?? 0) > 0)
-        const fufaDecibel = jufufuOn && prevYixuanFuFaForJufufu > 0 ? prevYixuanFuFaForJufufu * 300 : 0
-        const yixuanMerged = {
-          ...merged,
-          yixuanAxisEx,
-          yixuanAxisCloudSeconds: cloudSecWeight > 0 ? cloudSecTotal / cloudSecWeight : 2,
-          yixuanAxisActive: axisActive,
-          yixuanAnomalyTriggerFlash: auricInkTriggers,
-          yixuanExtremeAssistCap: assistCap,
-          yixuanC1LightningCount: c1Lightnings,
-          // 玄墨异常触发回闪能（10s CD 封顶 18 次）+ 极限支援落雷闪能（5/次）+ C1 落雷闪能（5/次）计入总账（外层收敛）
-          yixuanFlashBonus: (merged.yixuanFlashBonus ?? 0) + auricInkTriggers * 10 + extremeAssists * 5 + c1Lightnings * 5,
-          extraSelfDecibelReward: (merged.extraSelfDecibelReward ?? 0) + fufaDecibel,
-        }
-        return yixuanMerged
-      }
+      // 仪玄 1371 的 8 个字段已整条迁进 `yixuan.ts#applyYixuanTeamConfig`（round 14 批次 4）：
+      // 轴内量（`yixuanAxisEx`/`yixuanAxisCloudSeconds`/`yixuanAxisActive`/`yixuanC1LightningCount` 的轴臂）
+      // 走 `axis` 契约、线程量（`yixuanAnomalyTriggerFlash`/`extraSelfDecibelReward` 的橘福福项）
+      // 走 `threads` 契约、缺口量（`yixuanExtremeAssistCap` + `yixuanC1LightningCount` 非轴臂需要的
+      // 有效战斗时间）走本轮新增的 `interactions` 契约（store 口径**未缩放**交互次数）。
+      // ⚠ 迁移的地基是 round 13 的受控两臂实验：用 `characters` 上那份合并值（被 `interactionScale`
+      // 缩放 / 被 `parrySplit` 改写）⇒ `yixuanSmoke` **9 failed**；按 store 口径递入 ⇒ **13 passed**。
+      // 另：本文件原先那处 `if (ch.agentId === '1371')`（读上一轮 `rr.characters` 的执行行统计
+      // 符法千重次数）是**读点不是写点**，它消费的是 `threads.yixuanFuFaForJufufu` 的**产出侧**，
+      // 保留在下方（模块读该线程值，写回仍由本文件统一 owner）。
       if (merged.agentId === '1141') {
         // 莱卡恩围猎（2.6 潜能激发）：次数 = 失衡次数；后台跟随闪反 = 队伍其他角色闪反次数之和；
         // 围猎平A时间 = 后台时间预算（总-无敌-失衡时长-莱卡恩前台）− 闪反时间（用户口径）
         //
         // 2026-09-16 T26 批次 0c：`lycaonStunCount` / `lycaonTotalTime` / `lycaonInvincibleTime`
         // 已迁进 lycaon.ts 的 applyTeamConfig（converge 相位，逐位等价，对账见模块注释）。
-        // 2026-09-16 round 12 批次 2：`lycaonWindowDuration` ← `axis.windowSeconds` 也已迁入
-        // 同一钩子（= 同一个 `computeWindowDuration()` 返回值，逐位等价）。
-        // ⚠ **本分支保留**——剩下两个字段仍不能用现有契约等价表达，逐条原因钉在模块注释里：
-        //   · `lycaonBackstageDodgeCount` 需**未缩放**的队友交互次数——`characters` 上的
-        //     `dodgeCounterCount` 已被上方 `interactionScale` 缩放（实测 scale=0.125 时 store 10 → cfg 0），
-        //     而原实现读 `configStore.team`（store 原值）⇒ 迁过去是**静默改语义**，不做。
-        //   · `lycaonC2Energy` 的非轴臂需 `countStun`（C7 计数投影版失衡次数，
-        //     `projectStunPlanForCounts(stunCount, base.stunPlanProjection)`）——该全局量
-        //     既不在 `AgentTeamConfigInput` 上、也不是注册的 MechanicSetting（模块读不到）⇒
-        //     round 12 实测**契约未解锁**（与任务卡预期不符，证据见模块注释）。
-        const backstageDodgeCount = configStore.team.reduce((sum, c, ci) =>
-          ci !== cfg.slot && c?.agentId ? sum + (c.dodgeCounterCount ?? 0) : sum, 0)
+        // 2026-09-16 round 12 批次 2：`lycaonWindowDuration` ← `axis.windowSeconds` 也已迁入同一钩子。
+        // 2026-09-16 round 14 批次 4：`lycaonBackstageDodgeCount` ← 本轮新增的 `interactions`
+        // 契约（store 口径**未缩放**交互次数）也已迁入同一钩子。
+        // ⚠ **本分支保留**——只剩 `lycaonC2Energy` 一个字段仍不能用现有契约等价表达，
+        // 原因（非轴臂需 C7 计数投影版失衡次数 `countStun`，模块拿不到 `stunPlanProjection`）
+        // 逐条钉在模块注释里 ⇒ 本处迁移**棘轮 −0**。
         // 影画2·能量回馈：次数 = 失衡次数 + 队友连携总次数（用户确认：排除莱卡恩自己，只算队友的连携）；
         // 轴模式用轴内连携块加权和，非轴用 chainCountPerStun × 次数
         const teamChainTotal = axisActive
@@ -921,9 +873,6 @@ export function createRunCalcRound(deps: {
         const c2Per = merged.lycaonC2EnergyPerTrigger ?? 0
         return {
           ...merged,
-          // `lycaonWindowDuration` 已由 lycaon.ts 的 applyTeamConfig 从 `axis.windowSeconds` 写入
-          // （round 12 批次 2）⇒ 本分支只留下面两个契约仍表达不了的字段。
-          lycaonBackstageDodgeCount: backstageDodgeCount,
           lycaonC2Energy: c2Per > 0 ? (stunCount + teamChainTotal) * c2Per : 0,
         }
       }
@@ -979,6 +928,24 @@ export function createRunCalcRound(deps: {
         actionCountsBySlot: axisActionCountsBySlot,
         ultimateTotalBySlot: axisUltimateTotal,
         chainTotalBySlot: axisChainTotal,
+      },
+      // 全队**未缩放**交互次数快照（round 14 新增的只读通道）。数据源 = `configStore.team`
+      // （**store 原值**），**不是**上面的 `characters`——后者已被 `interactionScale` 缩放
+      // （`Math.round(x × scale)`，实测 scale=0.125 时 store 10 → cfg 0）且被 `parrySplit`
+      // 改写击破位/主C 的 `parryCount`（实测带叶释渊 `parryTotal=13` 时 5/6 队 mergedΣ 变 13/9，
+      // 而 storeΣ 恒 6）。形状/理由/两条消费点的**不同过滤口径**见 `AgentInteractionContext`。
+      //
+      // ⚠ 只有 converge 相位该传（与 `axis` 同款语义）；`applyTeamMechanics` 对缺省
+      // `params.interactions` **不做 `?? {}` 兜底**，模块侧用 `!interactions` 判据分辨断路。
+      interactions: {
+        bySlot: Object.fromEntries(configStore.team.map((c, i) => [i, {
+          agentId: c.agentId,
+          parryCount: c.parryCount ?? 0,
+          blockCount: c.blockCount ?? 0,
+          dodgeCounterCount: c.dodgeCounterCount ?? 0,
+          dualCounterCount: c.dualCounterCount ?? 0,
+          quickAssistCount: c.quickAssistCount ?? 0,
+        }])),
       },
     })
     // 特殊动作喧响奖励（弹刀215/闪反10/连携10/快支20，含伴随50%）：本轮即时结算——
