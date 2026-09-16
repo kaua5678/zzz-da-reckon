@@ -115,10 +115,10 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 47,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）→ **55**（2026-09-15 同批第 3 小簇：轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽 `cfg.ultimateCost`）→ **53**（2026-09-15 同批第 4 小簇：`nomra 1571` 的 normaStunCount/Coverage/BattleTime 与 `qingyi 1251` 的 qingyiStunCount 注入迁进各自模块的 applyTeamConfig——消费方只有本模块，且 hook 入参已含 stunCount/combatTime；timeGolden 0 delta，反向验证删注入 ⇒ 精确红）。见 AGENT_BRANCH_BASELINE 注释
+    frozen: 34,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）→ **55**（2026-09-15 同批第 3 小簇：轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽 `cfg.ultimateCost`）→ **53**（2026-09-15 同批第 4 小簇：`nomra 1571` 的 normaStunCount/Coverage/BattleTime 与 `qingyi 1251` 的 qingyiStunCount 注入迁进各自模块的 applyTeamConfig——消费方只有本模块，且 hook 入参已含 stunCount/combatTime；timeGolden 0 delta，反向验证删注入 ⇒ 精确红）→ **47**（2026-09-15 `damagePool.ts` 五处「模块 source 字段 ⇒ 角色标识」去冗余）→ **34**（2026-09-16 最大单簇 −13：`convergence.ts` 5 个 `compute*NextRoundFeedback` 纯函数（1541/1381/1151/1331/1191）迁进各模块新的 `nextRoundFeedback` 钩子，契约递整份本轮结果 + 上一轮线程快照，返回 `Partial<CalcRoundThreads>`；timeGolden 0 delta（含 dmg 信息项），逐站点反向验证见 AGENT_BRANCH_BASELINE 注释）。见 AGENT_BRANCH_BASELINE 注释
     target: 0,
     due: '2026-12-31',
-    plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。跨轮反馈走 `AgentTeamConfigInput.threads`（2026-09-15 新增的通用通道，别再逐字段铺开契约）。hot spot：convergence.ts(35) > damagePool.ts(16) > helpers.ts(4)。架构评审 #10 → #2',
+    plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。跨轮反馈走 `AgentTeamConfigInput.threads`（2026-09-15 新增的通用通道，别再逐字段铺开契约）；「读本轮结果算下一轮」类走 `nextRoundFeedback`（2026-09-16 新增，递整份本轮结果 + `prevThreads`，返回 `Partial<CalcRoundThreads>`）。hot spot：convergence.ts(19) > damagePool.ts(11) > helpers.ts(4)。架构评审 #10 → #2',
   },
   {
     id: 'core agentId 分支',
@@ -517,8 +517,38 @@ export function countAgentBranchLines(root = ROOT) {
  * ① `extraSelfDecibelReward` 是**跨角色共享累加通道**（橘福福/蕾米埃尔/orphie 各自 `+=`）⇒ 必须累加不可覆盖；
  * ② `peiluoVerdictCount` **无条件**写（含轴模式，原分支无门控）——加 `axisMode` 门控 = 行为静默改变，
  *    而该路径 `timeGolden` 覆盖不到（实测不红），靠 `teamHook.test.ts` 的 hook 级用例钉住。
+ * 2026-09-15 −5：52→47 = `damagePool.ts` 五处「模块 source 字段 ⇒ 角色标识」去冗余（见上方同批注释）。
+ * 2026-09-16 −13：47→**34** = `nextRoundFeedback` 钩子（新契约，本批最大单簇）。
+ *
+ * `convergence.ts` 原有 5 个导出纯函数 `compute{Promia,Anby,Lucy,Vivian,Ellen}NextRoundFeedback`
+ * （普罗米娅 1541 / 零号·安比 1381 / 露西 1151 / 薇薇安 1331 / 艾莲 1191），每个都在自己函数体里
+ * `characters.some(c => c.agentId === '<id>')` 认人 + 逐处 `filter/find(c => c.agentId …)` 排除自身，
+ * 共 **13 处** agentId 判断（= 本批降幅）。现整体迁进各角色模块的 `nextRoundFeedback` 钩子。
+ *
+ * 契约面（照 `crossAgentSupply`（`27918d1`）/ `threads` 快照的既有范式，未另起设计）：
+ * `AgentMechanicModule.nextRoundFeedback?(input: AgentNextRoundFeedbackInput)`，入参递**整份本轮结果**
+ * （`teamResult` + `displayResult` + `adjustedResult` + `anomalyPool` + `prevThreads` 快照 + `combatTime`
+ * + `getAgentSkills`）**与 `cfg`**（模块自己那份，**可写**）；返回 = 本模块的下一轮线程值
+ * （`Partial<CalcRoundThreads>`），由编排层 merge 进 `threadsNext`（单一 owner，模块不写 threads）。
+ * 派发器 = `collectNextRoundFeedback`（`composables/resourceCalc/helpers.ts`，槽位序 0→1→2、零 agentId）。
+ *
+ * ⚠ 三条实测纪律（抄本范式前必读）：
+ * ① **首轮守卫语义各不相同，逐位保留**：普罗米娅/薇薇安/艾莲 = `prevThreads.<字段> <= 0` 才写回 cfg；
+ *    **露西 = 每轮无条件写**（消费端 `crossAgentSupply.perTargetAmounts` 读的就是本轮估计值）。
+ *    统一成一种写法 = 静默改行为（单测 `nextRoundFeedback.test.ts` 两种都有断言）。
+ * ② **`timeGolden` 对本簇部分站点是盲的**（交接文档纪律 4 的实证）：逐个摘掉模块注册表里的钩子后跑
+ *    `timeGolden`，普罗米娅(−7.4%…−13.4%) / 零号·安比 / 薇薇安(−25.8%…−42.3%) / 艾莲(`agent:1191:c6`) 变红，
+ *    但 **露西全绿**——它唯一的预设 `auto-1041-1571-1151` 是 0 命，而露西反馈只在 C1/C6 生效。
+ *    ⇒ 本批另加 hook 级单测 `src/mechanics/__tests__/nextRoundFeedback.test.ts`（20 例），
+ *    其中两条**管线级**用例专补盲区（露西 C6：`crossAgent.lucyEnergy` 58 vs 摘钩子 30；
+ *    艾莲影画4：`ellen_cycle.c4EnergyTotal` 16 vs 摘钩子 0）。
+ * ③ **不要用 `characters[slot]` 取自己那份 cfg**：`characters` 是**按位置压缩**的数组
+ *    （`buildCharConfig` 跳过空槽），槽位号 ≠ 下标；前导空槽时 `characters[slot]` 是 `undefined`
+ *    （2026-09-16 实测：`['', 1041, 1191]` 下艾莲影画4 冻结数 4→0 静默失效）。
+ *    故 `AgentNextRoundFeedbackInput` 显式给 `cfg`。⚠ 存量另有 19 处 `characters[slot]`
+ *    （`applyTeamConfig` 等，含 `7e377cb` 引入的那批）有同一缺陷，属**既存问题、本批未动**。
  */
-export const AGENT_BRANCH_BASELINE = 47
+export const AGENT_BRANCH_BASELINE = 34
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。

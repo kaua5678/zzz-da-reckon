@@ -11,10 +11,12 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentNextRoundFeedbackInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
+import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
 
@@ -300,6 +302,40 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
   }]
 }
 
+/**
+ * 露西 C6「下一轮反馈」（`nextRoundFeedback` 钩子，2026-09-16 arch 棘轮第 6 批自
+ * `convergence.ts#computeLucyNextRoundFeedback` 逐字搬入，规则 6）：队友强特合计 + 回旋预估。
+ *
+ * ⚠ **与普罗米娅/薇薇安/艾莲不同：写回 `characters` 每轮都做**（无首轮守卫——消费端
+ * `crossAgentSupply.perTargetAmounts` 读的就是本轮估计值）。这是口径差异不是疏忽，
+ * 迁移时逐位保留；对应单测在 `src/mechanics/__tests__/nextRoundFeedback.test.ts`。
+ *
+ * ⚠ 写回目标是**全队每一份 cfg**（`lucyCheerSpinsEstimate`/`lucyTeammateExTotal`），
+ * 不只是露西自己那份——`crossAgentSupply` 的 `targetCfgOf` 会读**落点**那份 cfg。
+ */
+function lucyNextRoundFeedback({ cfg, characters, teamResult }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+  let mateEx = 0
+  for (const ch of teamResult.characters) {
+    if (ch.agentId !== LUCY_ID) mateEx += ch.exSpecialCount ?? 0
+  }
+  const lucyTeammateExNext = mateEx
+  const lucyCh = teamResult.characters.find(c => c.agentId === LUCY_ID)
+  if (lucyCh) {
+    // console 取自**露西自己那份 cfg**（迁移前是 `characters.find(c => c.agentId === '1151')`，
+    // 同对象；⚠ 不用 `characters[slot]`——该数组按位置压缩，槽位号 ≠ 下标）。
+    const cinema = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>)?.lucyCinemaLevel ?? 0)))
+    const spins = Math.max(0, Math.floor(lucyCh.exSpecialCount ?? 0))
+      + (cinema >= 2 ? Math.max(0, Math.floor(lucyCh.chainCountTotal ?? 0)) + Math.max(0, Math.floor(lucyCh.ultimateCount ?? 0)) : 0)
+      + (cinema >= 6 ? mateEx : 0)
+    for (const c of characters) {
+      const record = c as unknown as Record<string, unknown>
+      record.lucyCheerSpinsEstimate = spins
+      record.lucyTeammateExTotal = mateEx
+    }
+  }
+  return { lucyTeammateEx: lucyTeammateExNext }
+}
+
 export const lucyMechanic: AgentMechanicModule = {
   // 队伍级机制（原先由 useResourceCalc 手工 import + 调用 applyLucyTeamEnergyFlags）：
   // 露西终结邻位回能 + 影画1 回旋全队回能标记。只在 build 阶段动手，与迁移前的调用时机一致。
@@ -374,6 +410,7 @@ export const lucyMechanic: AgentMechanicModule = {
   buildExecutions,
   buildResourceResult,
   resourceSections,
+  nextRoundFeedback: lucyNextRoundFeedback,
 }
 
 /** 组队后写入各槽位：每大从露西获得的能量、C1 标记 */

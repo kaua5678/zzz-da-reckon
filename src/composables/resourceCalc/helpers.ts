@@ -43,6 +43,7 @@ import type {
   TeamResourceResult,
   SkillExecution,
   AnomalyProgress,
+  AnomalyPoolResult,
   StunAxis,
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
@@ -329,6 +330,60 @@ export function applyTeamMechanics(params: {
       threads,
     })
   }
+}
+
+/**
+ * 派发「下一轮反馈」钩子（`nextRoundFeedback`，规则 6 在编排层的落点，2026-09-16）。
+ *
+ * 与 `applyTeamMechanics` 的区别：那个按**相位**派发、入参是次数类标量、只写 cfg；
+ * 本函数在**本轮结果已出**之后派发一次，入参是本轮结果快照（资源结果 + 异常池 + 上一轮线程），
+ * **取回**各模块算出的下一轮线程值并 merge 成 `Partial<CalcRoundThreads>`，交给编排层统一
+ * 写进 `threadsNext`（单一 owner，模块不写 threads——见 `roundThreads.ts` 头注释）。
+ *
+ * 为什么是「按槽位序逐模块派发」而不是「按 agentId 找函数」：后者正是本钩子要消灭的形状——
+ * 迁移前 `convergence.ts` 里有 5 个 `compute*NextRoundFeedback` 纯函数 + 13 处 `agentId` 判断。
+ * 现在编排层只知道「遍历本队 cfg，问每个模块要不要反馈」，认人的责任回到模块自己。
+ *
+ * 顺序 = 槽位 0→1→2（确定、可复现；与 `applyTeamMechanics` 同口径）。**只一队一个同名角色时
+ * 才有意义**——同队重复角色在 UI 侧已被 `usedAgentIds` 过滤，此处不再防御（与既有钩子一致）。
+ */
+export function collectNextRoundFeedback(params: {
+  characters: CharacterOperationConfig[]
+  /** 本轮装配后的全队资源结果 */
+  teamResult: TeamResourceResult
+  /** 展示口径结果（缺省 = teamResult） */
+  displayResult?: TeamResourceResult
+  /** 调整后结果（诺姆赠链 / 琉音转大落地后）；null/缺省 = 本轮无调整 */
+  adjustedResult?: TeamResourceResult | null
+  anomalyPool: AnomalyPoolResult | null
+  /** 上一轮收敛线程快照（首轮守卫与自身反馈输入） */
+  prevThreads: Readonly<CalcRoundThreads>
+  catalogStore: ReturnType<typeof useCatalogStore>
+  combatTime?: number
+}): Partial<CalcRoundThreads> {
+  const { characters, teamResult, displayResult, adjustedResult, anomalyPool, prevThreads, catalogStore } = params
+  const out: Partial<CalcRoundThreads> = {}
+  if (characters.length === 0) return out
+  const combatTime = params.combatTime ?? 180
+  const getAgentSkills = (agentId: string) => catalogStore.getAgentSkills(agentId)
+  for (const cfg of [...characters].sort((a, b) => a.slot - b.slot)) {
+    const hook = getAgentMechanic(cfg.agentId)?.nextRoundFeedback
+    if (!hook) continue
+    const res = hook({
+      slot: cfg.slot,
+      cfg,
+      characters,
+      teamResult,
+      displayResult,
+      adjustedResult,
+      anomalyPool,
+      prevThreads,
+      combatTime,
+      getAgentSkills,
+    })
+    if (res) Object.assign(out, res)
+  }
+  return out
 }
 
 /**

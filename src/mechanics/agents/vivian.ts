@@ -23,6 +23,7 @@ import type {
   AgentCharConfigInput,
   AgentEventInput,
   AgentMechanicModule,
+  AgentNextRoundFeedbackInput,
   AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
@@ -30,6 +31,7 @@ import type {
   ReleaseModifierInput,
   AgentTeamConfigInput,
 } from '../types'
+import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 
 export const VIVIAN_ID = '1331'
@@ -419,6 +421,34 @@ function vivianReleaseModifier({ panels }: ReleaseModifierInput): { enemyResRedu
     : { enemyResReduction: 0, note: '' }
 }
 
+/**
+ * 薇薇安落羽生花双源「下一轮注入」（`nextRoundFeedback` 钩子，2026-09-16 arch 棘轮第 6 批自
+ * `convergence.ts#computeVivianNextRoundFeedback` 逐字搬入，规则 6）：
+ * 源1 = 全队强特命中（含自己，同一招式至多一次由行计数保证）；源2 = 全队异常触发次数。首轮直接写回。
+ *
+ * ⚠ 首轮守卫逐位保留：只在 `prevThreads.vivianTeamEx <= 0` 时写回 cfg（同族里露西**没有**这个守卫）。
+ */
+function vivianNextRoundFeedback({ cfg, characters, teamResult, anomalyPool, prevThreads }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+  let vivianTeamExNext = 0
+  let vivianAnomalyTriggersNext = 0
+  // 迁移前判据 =「队里有 1331」；迁进模块后即「本模块被派发」。⚠ 用派发器给的 `cfg`，不用
+  // `characters[slot]`（该数组按位置压缩，前导空槽时槽位号 ≠ 下标 ⇒ 会取到别人那份）。
+  if (cfg && characters.some(c => c.agentId === VIVIAN_ID)) {
+    vivianTeamExNext = teamResult.characters.reduce((sum, ch) => sum + (ch.exSpecialCount ?? 0), 0)
+    vivianAnomalyTriggersNext = (anomalyPool?.perElement ?? []).reduce(
+      (sum, prog) => sum + (prog.triggerCount ?? 0),
+      0,
+    )
+    // 首轮无 prev → 用本轮值直接注入（buildExecutions 读 cfg）
+    if (prevThreads.vivianTeamEx <= 0) {
+      const record = cfg as unknown as Record<string, unknown>
+      record.vivianTeamExTotal = vivianTeamExNext
+      record.vivianAnomalyTriggerTotal = vivianAnomalyTriggersNext
+    }
+  }
+  return { vivianTeamEx: vivianTeamExNext, vivianAnomalyTriggers: vivianAnomalyTriggersNext }
+}
+
 export const vivianMechanic: AgentMechanicModule = {
   id: 'agent:vivian',
   agentIds: [VIVIAN_ID],
@@ -450,6 +480,7 @@ export const vivianMechanic: AgentMechanicModule = {
   resourceSections: buildVivianResourceSections,
   buildAnomalyEvents: buildVivianAnomalyEvents,
   releaseModifier: vivianReleaseModifier,
+  nextRoundFeedback: vivianNextRoundFeedback,
 }
 
 export default vivianMechanic

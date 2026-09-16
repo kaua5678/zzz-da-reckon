@@ -19,6 +19,7 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentNextRoundFeedbackInput,
   AgentPanelInput,
   AgentResourceResultInput,
   AgentEventInput,
@@ -27,6 +28,7 @@ import type {
   ReleaseModifierInput,
   AgentTeamConfigInput,
 } from '../types'
+import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 
 export const PROMIA_ID = '1541'
 export const PROMIA_MASTERY_THRESHOLD = 150
@@ -333,6 +335,51 @@ function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number)
   return Number.isFinite(v) ? v : fallback
 }
 
+/**
+ * 普罗米娅·霜刑「下一轮反馈」（`nextRoundFeedback` 钩子，2026-09-16 arch 棘轮第 6 批自
+ * `convergence.ts#computePromiaNextRoundFeedback` 逐字搬入，规则 6）。
+ *
+ * 数据流刻意收纯：输入 = 本轮池结果 + 装配后行 + 上一轮两条线程值；输出 = 下一轮 threads 三值。
+ * **唯一保留的副作用** = 首轮（上轮两线程皆 0）把触发/队友异放计数写回 `characters` 元素
+ * ——展示端直接读那些字段，迁移前就在此处写，原地语义不变（同数组对象引用传入）。
+ *
+ * ⚠ 首轮守卫语义是本角色口径（同族里露西**没有**这个守卫），逐位保留：
+ * 只在 `prevThreads.promiaTriggerHits <= 0 && prevThreads.promiaTeammateReleases <= 0` 时写回。
+ */
+function promiaNextRoundFeedback({ cfg, characters, teamResult, displayResult, anomalyPool, prevThreads }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+  // 展示口径行集优先（displayResult = rrShown），缺失回退装配结果——迁移前语义。
+  const shown = displayResult ?? teamResult
+  const prevPromiaTriggerHits = prevThreads.promiaTriggerHits
+  const prevPromiaTeammateReleases = prevThreads.promiaTeammateReleases
+  let promiaTriggerHitsNext = 0
+  let promiaTeammateReleasesNext = 0
+  let promiaReleaseDecibelNext = 0
+  // 迁移前判据是「队里有没有 1541」；迁进模块后「本模块就是 1541」，等价条件 = 本槽 cfg 存在
+  // （编排层按 cfg 遍历派发，空槽不会被派到）。⚠ 用派发器给的 `cfg`，不用 `characters[slot]`
+  // ——后者在「前导空槽」时会取错对象（数组按位置压缩，槽位号 ≠ 下标）。
+  if (cfg && characters.some(c => c.agentId === PROMIA_ID)) {
+    promiaTriggerHitsNext = anomalyPool?.totalTriggerCount ?? 0
+    // 队友异放 = 除普罗米娅自身外的全队 release 事件（原文「队友触发异放」，自身异放回喧响另走 promiaReleaseDecibel）
+    promiaTeammateReleasesNext = shown.characters
+      .filter(ch => ch.agentId !== PROMIA_ID)
+      .flatMap(ch => ch.anomalyEventExecutions ?? [])
+      .filter(e => e.eventType === 'release' && e.count > 0)
+      .reduce((sum, e) => sum + Math.floor(e.count), 0)
+    // 普罗米娅自身异放回喧响（绝裁异放 + 影画6特殊异放）各 +100（0.5s CD 但异放次数远低于上限，不钳制）
+    const promiaCh = shown.characters.find(c => c.agentId === PROMIA_ID)
+    const promiaReleaseTotal = (promiaCh?.anomalyEventExecutions ?? [])
+      .filter(e => e.eventType === 'release' && e.count > 0 && (e.eventId === 'promia_execution_release' || e.eventId === 'promia_c6_special_release'))
+      .reduce((sum, e) => sum + Math.floor(e.count), 0)
+    promiaReleaseDecibelNext = promiaReleaseTotal * 100
+    if (prevPromiaTriggerHits <= 0 && prevPromiaTeammateReleases <= 0) {
+      const record = cfg as unknown as Record<string, unknown>
+      record.promiaTriggerHitCount = promiaTriggerHitsNext
+      record.promiaTeammateReleaseCount = promiaTeammateReleasesNext
+    }
+  }
+  return { promiaTriggerHits: promiaTriggerHitsNext, promiaTeammateReleases: promiaTeammateReleasesNext, promiaReleaseDecibel: promiaReleaseDecibelNext }
+}
+
 export const promiaMechanic: AgentMechanicModule = {
   id: 'agent:promia',
   agentIds: [PROMIA_ID],
@@ -360,6 +407,7 @@ export const promiaMechanic: AgentMechanicModule = {
   buildResourceResult: buildPromiaResourceResult,
   resourceSections: buildPromiaResourceSections,
   releaseModifier: promiaReleaseModifier,
+  nextRoundFeedback: promiaNextRoundFeedback,
   settings: [
     {
       id: 'promia.releaseCountOverride',

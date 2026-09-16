@@ -10,6 +10,7 @@ import type {
   SkillExecution,
   SpecialResourceSection,
   StunAxis,
+  TeamResourceResult,
 } from '@/types/resource'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
@@ -364,6 +365,28 @@ export interface AgentMechanicModule {
    */
   transformAnomalyPool?(input: AgentAnomalyTransformInput): void
   /**
+   * **本轮已收敛 → 算出「下一轮反馈」**（规则 6 在编排层的落点，2026-09-16 立项）。
+   *
+   * 存在的理由：`convergence.ts` 曾住着 5 个 `compute*NextRoundFeedback` 纯函数
+   * （普罗米娅 1541 / 零号·安比 1381 / 露西 1151 / 薇薇安 1331 / 艾莲 1191，共 13 处
+   * `agentId ===/!==`）——它们读**全队本轮结果**（`TeamResourceResult` + 异常池）算出下一轮
+   * 线程值，一部分**写回自己那份 cfg**（展示端与 module 自读），一部分交给编排层线程化。
+   * 这正是规则 6 要消灭的形状：编排层替每个角色认人。
+   *
+   * 与 `applyTeamConfig({phase:'postRound'})` 的分工：那个是**写 cfg 字段**的通用相位，入参是
+   * 次数类标量；本钩子是**读本轮全队结果、返回下一轮线程值**的相位——两者都在 postRound 附近
+   * 派发，但本钩子的输入是「本轮收敛结果快照」而不是「次数」，且**返回值**要参与 `threadsNext`。
+   * 返回值由编排层统一线程化（单一 owner，模块不写 threads，见 `roundThreads.ts` 头注释）。
+   *
+   * ⚠ **写回 cfg 的首轮守卫逐位保留在模块里**：「首轮才写」与「每轮都写」是口径差异不是疏忽
+   * （普罗米娅/薇薇安/艾莲 = 上一轮线程值 ≤0 才写；**露西 = 每轮无条件写**——消费端读的就是
+   * 本轮估计值）。判据见 `prevThreads`（上一轮线程快照）与各模块自己的注释。
+   *
+   * 返回 = 本模块的**下一轮线程值**（`CalcRoundThreads` 的字段子集），由编排层 merge 后统一
+   * 线程化。返回缺省/`undefined` 的字段保持编排层的 0 初值（与迁移前各函数「守卫不成立就返回 0」等价）。
+   */
+  nextRoundFeedback?(input: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> | void
+  /**
    * **跨槽位供给声明**（规则 6 在引擎层的落点，2026-09-13 立项）。
    *
    * 存在的理由：引擎里长期住着「某角色怎么把资源送给队友」的角色专属数学——赠链族
@@ -529,4 +552,51 @@ export interface AgentAnomalyTransformInput {
   calcPerHitBuildUp(baseBuildUp: number, panel: PanelValues, elementRes: number, element: string): number
   /** 跨阶段状态存储：模块写入，引擎在读 velinaCorrosionSource 等时消费 */
   store: Record<string, unknown>
+}
+
+/**
+ * `nextRoundFeedback` 钩子输入 —— 本轮已收敛的**结果快照** + 上一轮线程 + 可写的 cfg 数组。
+ *
+ * 与 `AgentTeamConfigInput` 的关系（为什么不能复用）：那个钩子的语义是「按相位写 cfg」，
+ * 入参是**次数类标量**（exCounts/stunCount/combatTime）；本钩子的语义是「读本轮全队结果、
+ * 算下一轮反馈」，入参必须是**本轮收敛结果本体**（资源结果 + 异常池），返回值还要参与
+ * `threadsNext`。逐字段铺开会让契约随每个新反馈线性增长（同 `threads` 快照的理由），
+ * 故这里递整份结果对象，模块自取。
+ */
+export interface AgentNextRoundFeedbackInput {
+  /** 本模块角色所在槽位（编排层按槽位序逐模块派发；模块无需自己 findIndex） */
+  slot: number
+  /**
+   * **本模块自己那份 cfg**（可写）。由派发器直接给（它正在遍历这个对象），模块**不要**用
+   * `characters[slot]` 反查——`characters` 是**按位置压缩**的数组（`buildCharConfig` 跳过空槽），
+   * 槽位号 ≠ 下标：前导空槽时 `characters[slot]` 会取到 `undefined` 或**别人那份 cfg**
+   * （2026-09-16 实测：`['', 1041, 1191]` 时 1191 的 `characters[2]` 为 undefined）。
+   */
+  cfg: CharacterOperationConfig
+  /**
+   * 本轮全队 cfg（**可写**：写自己那份正是「模块自读字段」的通道）。
+   *
+   * ⚠ 实测语义（2026-09-16 迁移时探明）：`runCalcRound` 每轮从 `base.characters` **重新
+   * spread** 出这份数组，故写回**不会**跨轮留存——跨轮真正生效的通道是返回值 →
+   * `threadsNext` → 下一轮 `applyTeamConfig(converge)` 读 `threads` 写 cfg。写回仍逐位保留
+   * （原实现如此，且有单测断言其守卫差异），但它**不是**反馈生效路径。
+   */
+  characters: CharacterOperationConfig[]
+  /** 本轮装配后（`calcTeamResources` + `enrichExecutionPlan`）的全队资源结果 */
+  teamResult: TeamResourceResult
+  /** 展示口径结果（`normalizeDisplayTime` 后，含赠链/赠大行）；缺省 = 与 teamResult 同源 */
+  displayResult?: TeamResourceResult
+  /** 调整后结果（诺姆赠链 / 琉音转大落地后，伤害池与执行计划口径）；null = 本轮无调整 */
+  adjustedResult?: TeamResourceResult | null
+  /** 本轮异常池结果（无异常行队伍为 null） */
+  anomalyPool: AnomalyPoolResult | null
+  /**
+   * **上一轮**收敛线程快照（只读）。两个用途：① 首轮守卫（`prev* <= 0` 才写 cfg）；
+   * ② 自身反馈输入（如上一轮队友强特合计）。
+   */
+  prevThreads: Readonly<CalcRoundThreads>
+  /** 战斗时间（秒；已含 `?? 180` 兜底，与 `applyTeamConfig` 的 combatTime 同源） */
+  combatTime: number
+  /** 倍率表访问（零号·安比按 moveId 现场推断 `additionalAttack`，与伤害池 infer 同口径） */
+  getAgentSkills: (agentId: string) => AgentSkills | undefined
 }

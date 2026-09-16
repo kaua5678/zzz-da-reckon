@@ -31,12 +31,14 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentNextRoundFeedbackInput,
   AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
+import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 
 export const ELLEN_ID = '1191'
 export const ELLEN_FROST_TRIM_MOVE_IDS = ['1191006'] as const
@@ -464,6 +466,28 @@ function buildEllenResourceSections({ result }: AgentResourceSectionsInput) {
   }]
 }
 
+/**
+ * 艾莲影画4 冻结次数「下一轮反馈」（`nextRoundFeedback` 钩子，2026-09-16 arch 棘轮第 6 批自
+ * `convergence.ts#computeEllenNextRoundFeedback` 逐字搬入，规则 6）：读异常池 ice 触发数；
+ * 薇薇安同款首轮守卫。
+ *
+ * ⚠ 首轮守卫逐位保留：只在 `prevThreads.ellenFreezeCount <= 0` 时写回 cfg（同族里露西**没有**）。
+ * 跨轮真正生效路径 = 返回值 → `threadsNext.ellenFreezeCount` → 下一轮 `applyEllenTeamConfig`
+ * 的 converge 分支（`threads.ellenFreezeCount` 地板后写 cfg，供影画4 回能消费）。
+ */
+function ellenNextRoundFeedback({ cfg, characters, anomalyPool, prevThreads }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+  let ellenFreezeCountNext = 0
+  // 迁移前判据 =「队里有 1191」。⚠ 用派发器给的 `cfg`，不用 `characters[slot]`
+  // （该数组按位置压缩，前导空槽时槽位号 ≠ 下标 ⇒ 会写错对象）。
+  if (cfg && characters.some(c => c.agentId === ELLEN_ID)) {
+    ellenFreezeCountNext = anomalyPool?.perElement?.find(p => p.element === 'ice')?.triggerCount ?? 0
+    if (prevThreads.ellenFreezeCount <= 0) {
+      ;(cfg as unknown as Record<string, unknown>).ellenFreezeCount = ellenFreezeCountNext
+    }
+  }
+  return { ellenFreezeCount: ellenFreezeCountNext }
+}
+
 export const ellenMechanic: AgentMechanicModule = {
   id: 'agent:ellen',
   agentIds: [ELLEN_ID],
@@ -484,6 +508,7 @@ export const ellenMechanic: AgentMechanicModule = {
   patchExecutions: patchEllenExecutions,
   buildResourceResult: buildEllenResourceResult,
   resourceSections: buildEllenResourceSections,
+  nextRoundFeedback: ellenNextRoundFeedback,
 }
 
 export default ellenMechanic

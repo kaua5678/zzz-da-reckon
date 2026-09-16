@@ -25,7 +25,6 @@ import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { SIGRID_LANCE_SEGMENT_IDS } from '@/mechanics/agents/sigrid'
 import { HUGO_EX_VERDICT_MOVE_ID, HUGO_ULT_MOVE_ID, HUGO_EX_FINAL_ACTION_TIME } from '@/mechanics/agents/hugo'
 import { extractSkillExecutions, findMoveById } from './helpers'
-import { inferSkillDamageTarget } from '@/core/damage'
 
 export function createConvergenceRoundInputs(deps: {
   configStore: ReturnType<typeof useConfigStore>
@@ -327,167 +326,17 @@ export function resolveAxisUltimateDecibelCost(
 }
 
 /**
- * 普罗米娅·霜刑「下一轮反馈」（#10 第 2 批租户，2026-09-12 自 `useResourceCalc#runCalcRound` 逐字搬出）。
+ * 5 个 `compute*NextRoundFeedback` 纯函数已整体迁出（2026-09-16 arch 棘轮第 6 批）。
  *
- * 数据流刻意收纯：输入 = 本轮池结果 + 装配后行 + 上一轮两条线程值；输出 = 下一轮 threads 三值。
- * **唯一保留的副作用** = 首轮（上轮两线程皆 0）把触发/队友异放计数写回 `characters` 元素
- * ——展示端直接读那些字段，迁移前就在此处写，原地语义不变（同数组对象引用传入）。
+ * 普罗米娅(1541) / 零号·安比(1381) / 露西(1151) / 薇薇安(1331) / 艾莲(1191) 的「下一轮反馈」
+ * 现由各角色模块的 `nextRoundFeedback` 钩子实现（规则 6：编排层不写角色规则），本文件只调一次
+ * 通用派发器 `collectNextRoundFeedback`（`./helpers`），把返回值 merge 进 `threadsNext`。
+ *
+ * ⚠ 首轮守卫语义各不相同，已逐位保留在模块里：普罗米娅/薇薇安/艾莲 = 上一轮线程值 ≤0 才写回
+ * cfg；**露西 = 每轮无条件写**（消费端读的就是本轮估计值）。
+ * 行为契约见 `src/mechanics/__tests__/nextRoundFeedback.test.ts`；沿革见 `check-guards.mjs` 的
+ * `AGENT_BRANCH_BASELINE` 头注释。
  */
-export function computePromiaNextRoundFeedback(deps: {
-  /** runCalcRound 本地的加工态数组（merged 对象）——本函数只读 agentId + 条件写回两个 promia 字段 */
-  characters: ReadonlyArray<{ agentId: string }>
-  ap1: AnomalyPoolResult | null
-  rrShown: TeamResourceResult | null
-  rr: TeamResourceResult
-  prevPromiaTriggerHits: number
-  prevPromiaTeammateReleases: number
-}): { promiaTriggerHitsNext: number; promiaTeammateReleasesNext: number; promiaReleaseDecibelNext: number } {
-  const { characters, ap1, rrShown, rr, prevPromiaTriggerHits, prevPromiaTeammateReleases } = deps
-  let promiaTriggerHitsNext = 0
-  let promiaTeammateReleasesNext = 0
-  let promiaReleaseDecibelNext = 0
-  if (characters.some(c => c.agentId === '1541')) {
-    promiaTriggerHitsNext = ap1?.totalTriggerCount ?? 0
-    // 队友异放 = 除普罗米娅自身外的全队 release 事件（原文「队友触发异放」，自身异放回喧响另走 promiaReleaseDecibel）
-    promiaTeammateReleasesNext = (rrShown?.characters ?? rr.characters)
-      .filter(ch => ch.agentId !== '1541')
-      .flatMap(ch => ch.anomalyEventExecutions ?? [])
-      .filter(e => e.eventType === 'release' && e.count > 0)
-      .reduce((sum, e) => sum + Math.floor(e.count), 0)
-    // 普罗米娅自身异放回喧响（绝裁异放 + 影画6特殊异放）各 +100（0.5s CD 但异放次数远低于上限，不钳制）
-    const promiaCh = (rrShown?.characters ?? rr.characters).find(c => c.agentId === '1541')
-    const promiaReleaseTotal = (promiaCh?.anomalyEventExecutions ?? [])
-      .filter(e => e.eventType === 'release' && e.count > 0 && (e.eventId === 'promia_execution_release' || e.eventId === 'promia_c6_special_release'))
-      .reduce((sum, e) => sum + Math.floor(e.count), 0)
-    promiaReleaseDecibelNext = promiaReleaseTotal * 100
-    if (prevPromiaTriggerHits <= 0 && prevPromiaTeammateReleases <= 0) {
-      for (const c of characters) {
-        if (c.agentId === '1541') {
-          ;(c as any).promiaTriggerHitCount = promiaTriggerHitsNext
-          ;(c as any).promiaTeammateReleaseCount = promiaTeammateReleasesNext
-        }
-      }
-    }
-  }
-  return { promiaTriggerHitsNext, promiaTeammateReleasesNext, promiaReleaseDecibelNext }
-}
-
-/**
- * 零号·安比「下一轮反馈」（#10 第 3 批租户，自 runCalcRound 逐字搬）：
- * 队友追加攻击命中 → 白雷层数（16.667/次、33.333 折 1 层、ICD=floor(战斗/5)、默认计 75%）。
- */
-export function computeAnbyNextRoundFeedback(deps: {
-  az: TeamResourceResult
-  catalogStore: ReturnType<typeof useCatalogStore>
-  battleTime: number | undefined
-}): { anbyZeroTeammateWlNext: number } {
-  const { az, catalogStore, battleTime } = deps
-  let anbyZeroTeammateWlNext = 0
-  const hits = az.characters
-    .filter(c => c.agentId !== '1381')
-    .reduce((sum, c) => {
-      const skills = catalogStore.getAgentSkills(c.agentId)
-      return sum + (c.executions ?? []).reduce((a, e) => {
-        if ((e as any).skillDamageTarget === 'additionalAttack') return a + (e.count ?? 0)
-        // resourceResult 行上没有现成标记：按 catalog moveId 现场推断（同伤害池 infer 口径）
-        for (const cat of skills?.categories ?? []) {
-          const mv = (cat.moves ?? []).find(m => String(m.id) === String(e.moveId))
-          if (mv && inferSkillDamageTarget(cat, mv) === 'additionalAttack') return a + (e.count ?? 0)
-        }
-        return a
-      }, 0)
-    }, 0)
-  const icdCap = Math.floor((battleTime ?? 180) / 5)
-  const triggers = Math.min(hits, icdCap)
-  if (az.characters.some(c => c.agentId === '1381')) {
-    anbyZeroTeammateWlNext = Math.floor(triggers * (16.667 / 33.333) * 0.75)
-  }
-  return { anbyZeroTeammateWlNext }
-}
-
-/**
- * 露西 C6「下一轮反馈」（#10 第 3 批租户）：队友强特合计 + 回旋预估。
- * 与普罗米娅不同：写回 characters **每轮都做**（无首轮守卫——消费端读的就是本轮估计值）。
- */
-export function computeLucyNextRoundFeedback(deps: {
-  /** runCalcRound 本地加工态数组（merged 对象；本函数读 lucyCinemaLevel + 无条件写回两个估计字段） */
-  characters: Array<{ agentId: string }>
-  rr: TeamResourceResult
-}): { lucyTeammateExNext: number } {
-  const { characters, rr } = deps
-  let lucyTeammateExNext = 0
-  let mateEx = 0
-  for (const ch of rr.characters) {
-    if (ch.agentId !== '1151') mateEx += ch.exSpecialCount ?? 0
-  }
-  lucyTeammateExNext = mateEx
-  const lucyCh = rr.characters.find(c => c.agentId === '1151')
-  if (lucyCh) {
-    const cinema = Math.max(0, Math.floor(Number((characters.find(c => c.agentId === '1151') as any)?.lucyCinemaLevel ?? 0)))
-    const spins = Math.max(0, Math.floor(lucyCh.exSpecialCount ?? 0))
-      + (cinema >= 2 ? Math.max(0, Math.floor(lucyCh.chainCountTotal ?? 0)) + Math.max(0, Math.floor(lucyCh.ultimateCount ?? 0)) : 0)
-      + (cinema >= 6 ? mateEx : 0)
-    for (const c of characters) {
-      ;(c as any).lucyCheerSpinsEstimate = spins
-      ;(c as any).lucyTeammateExTotal = mateEx
-    }
-  }
-  return { lucyTeammateExNext }
-}
-
-/**
- * 薇薇安落羽生花双源「下一轮注入」（#10 第 3 批租户）：
- * 源1 = 全队强特命中（含自己，同一招式至多一次由行计数保证）；源2 = 全队异常触发次数。首轮直接写回。
- */
-export function computeVivianNextRoundFeedback(deps: {
-  characters: Array<{ agentId: string }>
-  rr: TeamResourceResult
-  ap1: AnomalyPoolResult | null
-  prevVivianTeamEx: number
-}): { vivianTeamExNext: number; vivianAnomalyTriggersNext: number } {
-  const { characters, rr, ap1, prevVivianTeamEx } = deps
-  let vivianTeamExNext = 0
-  let vivianAnomalyTriggersNext = 0
-  if (characters.some(c => c.agentId === '1331')) {
-    vivianTeamExNext = rr.characters.reduce((sum, ch) => sum + (ch.exSpecialCount ?? 0), 0)
-    vivianAnomalyTriggersNext = (ap1?.perElement ?? []).reduce(
-      (sum, prog) => sum + (prog.triggerCount ?? 0),
-      0,
-    )
-    // 首轮无 prev → 用本轮值直接注入（buildExecutions 读 cfg）
-    if (prevVivianTeamEx <= 0) {
-      for (const c of characters) {
-        if (c.agentId === '1331') {
-          ;(c as any).vivianTeamExTotal = vivianTeamExNext
-          ;(c as any).vivianAnomalyTriggerTotal = vivianAnomalyTriggersNext
-        }
-      }
-    }
-  }
-  return { vivianTeamExNext, vivianAnomalyTriggersNext }
-}
-
-/** 艾莲影画4 冻结次数「下一轮反馈」（#10 第 3 批租户）：读异常池 ice 触发数；薇薇安同款首轮守卫。 */
-export function computeEllenNextRoundFeedback(deps: {
-  characters: Array<{ agentId: string }>
-  ap1: AnomalyPoolResult | null
-  prevEllenFreezeCount: number
-}): { ellenFreezeCountNext: number } {
-  const { characters, ap1, prevEllenFreezeCount } = deps
-  let ellenFreezeCountNext = 0
-  if (characters.some(c => c.agentId === '1191')) {
-    ellenFreezeCountNext = ap1?.perElement?.find(p => p.element === 'ice')?.triggerCount ?? 0
-    if (prevEllenFreezeCount <= 0) {
-      for (const c of characters) {
-        if (c.agentId === '1191') {
-          ;(c as any).ellenFreezeCount = ellenFreezeCountNext
-        }
-      }
-    }
-  }
-  return { ellenFreezeCountNext }
-}
-
 import {
   applyLiuyinPromote,
   buildPromoteParams,
@@ -514,7 +363,7 @@ import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import { computeBanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import { isHugoEndsWindowMove, hugoMoveActionTime } from '@/mechanics/agents/hugo'
-import { applyTeamMechanics, enrichExecutionPlan } from './helpers'
+import { applyTeamMechanics, collectNextRoundFeedback, enrichExecutionPlan } from './helpers'
 
 /** 保底 4 喧响的四舍五入阈值（自 useResourceCalc 顶层随迁；那里改为了 import） */
 export const DECIBEL_ROUND_THRESHOLD = 1500
@@ -594,14 +443,14 @@ export function createRunCalcRound(deps: {
       // graceC1Cycles / anbyZeroTeammateWl / vivianAnomalyTriggers / promiaReleaseDecibel 这 7 条
       // 不再在此解构——它们已改由各模块的 applyTeamConfig 从 `threads` 快照直接读（规则 6），
       // 编排层不再逐 agentId 分支写 cfg。
+      // 2026-09-16 arch 棘轮第 6 批追加：vivianTeamEx / promiaTriggerHits / promiaTeammateReleases /
+      // ellenFreezeCount 这 4 条也不再在此解构——5 个 compute*NextRoundFeedback 已迁为模块
+      // `nextRoundFeedback` 钩子，它们只作为 `prevThreads` 整份快照递入（首轮守卫用），
+      // 编排层不再逐条取值。
       lighterTeamEnergy: prevLighterTeamEnergy,
-      vivianTeamEx: prevVivianTeamEx,
-      promiaTriggerHits: prevPromiaTriggerHits,
-      promiaTeammateReleases: prevPromiaTeammateReleases,
       aliceTeamAssaultCount: prevAliceTeamAssaultCount,
       aliceDisorderCount: prevAliceDisorderCount,
       inStunWindowTriggers: prevInStunWindowTriggers,
-      ellenFreezeCount: prevEllenFreezeCount,
       teamVeilCountTotal: prevTeamVeilCountTotal,
       decibelParry: prevDecibelParry,
       decibelRegenBySlot: prevDecibelRegenBySlot,
@@ -1478,15 +1327,25 @@ export function createRunCalcRound(deps: {
       }
     }
 
-    // 零号·安比：队友追加攻击命中 → 银星充能（每次 16.667；每满 1/3=33.333 得 1 层白雷）；
-    // 5 秒内最多触发一次（ICD 上限 = floor(战斗时长/5)）；默认只计 75%
-    const { anbyZeroTeammateWlNext } = computeAnbyNextRoundFeedback({ az: adj2 ?? rr, catalogStore, battleTime: configStore.enemy.battleTime })
-
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
     const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly, aliceSparkThisRound)
 
-    // 露西 C6：队友强特合计 + 回旋预估（供下一轮 C1 回能）
-    const { lucyTeammateExNext } = computeLucyNextRoundFeedback({ characters, rr })
+    // 「下一轮反馈」统一派发（2026-09-16 arch 棘轮第 6 批）：普罗米娅(1541)/零号·安比(1381)/
+    // 露西(1151)/薇薇安(1331)/艾莲(1191) 的算法已迁进各自模块的 `nextRoundFeedback` 钩子
+    // （规则 6：编排层不认人）。编排层只调一次通用派发器，模块按需读本轮结果 + 上一轮线程快照，
+    // 返回下一轮线程值；下方 merge 进 threadsNext。
+    // ⚠ 派发点必须在 ap1 之后（钩子入参含异常池）。迁移前安比那处在 ap1 之前，但两者既不读对方
+    // 写的 cfg 字段、也无其它共享可变状态（钩子之间彼此独立）⇒ 合并为一次派发逐位等价。
+    const feedbackNext = collectNextRoundFeedback({
+      characters,
+      teamResult: rr,
+      displayResult: rrShown,
+      adjustedResult: adj2,
+      anomalyPool: ap1,
+      prevThreads: threads,
+      catalogStore,
+      combatTime: base.totalTime ?? 180,
+    })
 
     // 队伍级机制·postRound 阶段：本轮次数已收敛 → 为下一轮注入派生量。
     // `lighterTeamEnergyNext` 仍需在编排层线程化（作为下一轮 converge 的输入），
@@ -1520,13 +1379,8 @@ export function createRunCalcRound(deps: {
 
     // 爱丽丝剑仪外部次数源（下一轮注入）：口径在模块里（规则 6：编排层不写角色规则）
     const aliceExternalCounts = aliceExternalCountsOf(ap1, aliceSlotOf(rr))
-    // 薇薇安落羽生花双源（下一轮注入）：
-    //   源1 = 全队强特命中次数（含薇薇安自己；同一招式至多一次）
-    //   源2 = 全队异常触发次数（队友施加属性异常；0.5s CD 折算在模块内）
-    // 普罗米娅·霜刑回复端（下一轮注入）：触发命中数 + 队友异放次数
-    // 普罗米娅·霜刑回复端（下一轮注入）本体在 convergence.ts（#10 第 2 批租户，逐字搬）
-    const { promiaTriggerHitsNext, promiaTeammateReleasesNext, promiaReleaseDecibelNext } =
-      computePromiaNextRoundFeedback({ characters, ap1, rrShown, rr, prevPromiaTriggerHits, prevPromiaTeammateReleases })
+    // 薇薇安落羽生花双源 / 普罗米娅·霜刑回复端的「下一轮注入」已迁进各自模块的
+    // `nextRoundFeedback` 钩子（2026-09-16 arch 棘轮第 6 批）⇒ 统一由上方 feedbackNext 承载。
     // 失衡内异常系统 v2：轴内逐窗积蓄槽时间线 → 平均每窗触发次数 + 逐元素活跃覆盖。
     // 全部异常角色通用（不限定南宫羽）：消费方=异放/极性紊乱 dominant 归因、南宫羽颤音自动层数、UI「失衡内异常状态」栏
     let inStunAnomalyStateNext: InStunAnomalySummary | null = null
@@ -1638,10 +1492,8 @@ export function createRunCalcRound(deps: {
         }
       }
     }
-    const { vivianTeamExNext, vivianAnomalyTriggersNext } = computeVivianNextRoundFeedback({ characters, rr, ap1, prevVivianTeamEx })
-
-    // 艾莲影画4 冻结次数：读异常池 ice 触发数（下一轮 cfg 生效，薇薇安同款反馈）
-    const { ellenFreezeCountNext } = computeEllenNextRoundFeedback({ characters, ap1, prevEllenFreezeCount })
+    // 薇薇安双源 / 艾莲影画4 冻结次数的「下一轮反馈」已迁进各自模块的 `nextRoundFeedback`
+    // 钩子（2026-09-16 arch 棘轮第 6 批）；本轮返回值统一在 feedbackNext 里，见上方派发点。
 
     return {
       resourceResult: rrShown,
@@ -1668,21 +1520,23 @@ export function createRunCalcRound(deps: {
         yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
         teamUltimateForJufufu: teamUltimateForJufufuNext,
         yeshuguangGiftUlt: yeshuguangGiftUltNext,
-        lucyTeammateEx: lucyTeammateExNext,
+        // 5 条「下一轮反馈」线程：由各模块 nextRoundFeedback 钩子算出（缺省 0 = 该角色不在队
+        // 或守卫不成立，与迁移前各函数返回 0 逐位等价；露西无守卫恒写）。
+        lucyTeammateEx: feedbackNext.lucyTeammateEx ?? 0,
         lighterTeamEnergy: lighterTeamEnergyNext,
         graceC1Cycles: graceC1CyclesNext,
-        anbyZeroTeammateWl: anbyZeroTeammateWlNext,
-        vivianTeamEx: vivianTeamExNext,
-        vivianAnomalyTriggers: vivianAnomalyTriggersNext,
-        promiaTriggerHits: promiaTriggerHitsNext,
-        promiaTeammateReleases: promiaTeammateReleasesNext,
-        promiaReleaseDecibel: promiaReleaseDecibelNext,
+        anbyZeroTeammateWl: feedbackNext.anbyZeroTeammateWl ?? 0,
+        vivianTeamEx: feedbackNext.vivianTeamEx ?? 0,
+        vivianAnomalyTriggers: feedbackNext.vivianAnomalyTriggers ?? 0,
+        promiaTriggerHits: feedbackNext.promiaTriggerHits ?? 0,
+        promiaTeammateReleases: feedbackNext.promiaTeammateReleases ?? 0,
+        promiaReleaseDecibel: feedbackNext.promiaReleaseDecibel ?? 0,
         // 爱丽丝剑仪外部次数源（下一轮注入）：口径全部收敛在 aliceExternalCountsOf 里
         // （只算 physical 且只算爱丽丝自己触发的部分、紊乱带额外能力门控），此处不重写规则。
         aliceTeamAssaultCount: aliceExternalCounts?.assaultCount ?? 0,
         aliceDisorderCount: aliceExternalCounts?.disorderCount ?? 0,
         inStunWindowTriggers: inStunWindowTriggersNext,
-        ellenFreezeCount: ellenFreezeCountNext,
+        ellenFreezeCount: feedbackNext.ellenFreezeCount ?? 0,
         teamVeilCountTotal: teamVeilCountTotalNext,
         decibelParry: decibelParryNext,
         // 轨推演输入（喧响产出）单调不减：轨削减大招 → 大招回响数据行减少 → 产出下滑

@@ -31,7 +31,10 @@ import type {
   AgentResourceSectionsInput,
   AgentSkillTransformInput,
   AgentTeamConfigInput,
+  AgentNextRoundFeedbackInput,
 } from '../types'
+import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
+import { inferSkillDamageTarget } from '@/core/damage'
 
 export const ANBY_ZERO_ID = '1381'
 export const ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID = '1381007'
@@ -292,6 +295,44 @@ function buildAnbyZeroResourceSections({ result }: AgentResourceSectionsInput) {
   }]
 }
 
+/**
+ * 零号·安比「下一轮反馈」（`nextRoundFeedback` 钩子，2026-09-16 arch 棘轮第 6 批自
+ * `convergence.ts#computeAnbyNextRoundFeedback` 逐字搬入，规则 6）：
+ * 队友追加攻击命中 → 白雷层数（16.667/次、33.333 折 1 层、ICD=floor(战斗/5)、默认计 75%）。
+ *
+ * ⚠ 战斗时间口径逐位保留：迁移前传的是 `configStore.enemy.battleTime`（**可能 undefined**，
+ * 由算式里的 `?? 180` 兜底），不是 `base.totalTime`；二者通常同源但缺省路径不同，不合并。
+ * 输入侧用调整后结果（诺姆赠链/琉音转大落地后）优先，`adjustedResult` 为 null 时回退本轮装配结果。
+ */
+function anbyNextRoundFeedback({ cfg, teamResult, adjustedResult, combatTime, getAgentSkills }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+  if (!cfg) return {}
+  const az = adjustedResult ?? teamResult
+  let anbyZeroTeammateWlNext = 0
+  const hits = az.characters
+    .filter(c => c.agentId !== ANBY_ZERO_ID)
+    .reduce((sum, c) => {
+      const skills = getAgentSkills(c.agentId)
+      return sum + (c.executions ?? []).reduce((a, e) => {
+        if ((e as unknown as { skillDamageTarget?: string }).skillDamageTarget === 'additionalAttack') return a + (e.count ?? 0)
+        // resourceResult 行上没有现成标记：按 catalog moveId 现场推断（同伤害池 infer 口径）
+        for (const cat of skills?.categories ?? []) {
+          const mv = (cat.moves ?? []).find(m => String(m.id) === String(e.moveId))
+          if (mv && inferSkillDamageTarget(cat, mv) === 'additionalAttack') return a + (e.count ?? 0)
+        }
+        return a
+      }, 0)
+    }, 0)
+  // ⚠ 原实现读 configStore.enemy.battleTime（可 undefined）⇒ `?? 180`；钩子入参已含同源值。
+  const icdCap = Math.floor(Number(combatTime ?? 180) / 5)
+  const triggers = Math.min(hits, icdCap)
+  // 原判据 =「结果行集里有 1381」；迁进模块后仍按**结果行集**判（不是 cfg 存在），
+  // 逐位保留「无 1381 结果行 ⇒ 不产层数」这一条（cfg 存在而结果缺失时原实现也返回 0）。
+  if (az.characters.some(c => c.agentId === ANBY_ZERO_ID)) {
+    anbyZeroTeammateWlNext = Math.floor(triggers * (16.667 / 33.333) * 0.75)
+  }
+  return { anbyZeroTeammateWl: anbyZeroTeammateWlNext }
+}
+
 export const anbyZeroMechanic: AgentMechanicModule = {
   id: 'agent:anby_zero',
   agentIds: [ANBY_ZERO_ID],
@@ -318,6 +359,7 @@ export const anbyZeroMechanic: AgentMechanicModule = {
   transformSkillExecutions: markAnbyZeroChainTarget,
   buildResourceResult: buildAnbyZeroResourceResult,
   resourceSections: buildAnbyZeroResourceSections,
+  nextRoundFeedback: anbyNextRoundFeedback,
 }
 
 export default anbyZeroMechanic
