@@ -1,7 +1,8 @@
 /**
  * 死通道扫描 · **LanguageService 精粒度版**（判据 14 的补充面；挂 vitest，不进 `npm run check` 链）。
  *
- * 立项：`.claude/task-ledger-silent-gaps.md` Open O2——现有判据 14 是**字段名级正则**（check-guards.mjs），
+ * 立项：现有判据 14 是**字段名级正则**（check-guards.mjs）——完整立项叙事见 git log（原
+ * `.claude/task-ledger-silent-gaps.md` 已随账本瘦身删除；待办在 `.claude/OPEN-ITEMS.md` T2），
  * 已实测两类盲区：① 扫不到**内联 opts**（`function f(o: { bar?: T })`）与 `stores/types` 面；
  * ② 同名无关字段误报（归档 DTO 的抗性字段：21 个「读取点」全是 `stores/config.ts`
  * 同名字段）。本模块用 TypeScript LanguageService（`ls.findReferences`，精确到属性符号）+

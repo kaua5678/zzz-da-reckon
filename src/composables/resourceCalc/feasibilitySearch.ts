@@ -1,8 +1,8 @@
 /**
  * 非轴降配的候选 scale 搜索策略（从 `useResourceCalc#stageResolveFeasibility` 抽出，纯函数、无 store/pinia 依赖）。
  *
- * 背景（2026-09-13 复现定性，完整数字见 `.claude/task-ledger-calc-core.md` round 13 与
- * `docs/ENGINE_PIPELINE_GUIDE.md` 坑19 判据⑤）：降配要在「缩交互次数」的若干档里挑**最大可行**档
+ * 背景（2026-09-13 复现定性，完整数字见 `docs/ENGINE_PIPELINE_GUIDE.md` 坑19 判据⑤）：
+ * 降配要在「缩交互次数」的若干档里挑**最大可行**档
  * （保留最多交互）。这里只放**纯策略**，试算本身（`runOuterLoop`）由调用方经 `evaluate` 注入。
  *
  * @fact engine:降配搜索/非下闭可行集 口径: 候选 scale 必须**由大到小逐个试**、首个「三臂不比基线更差且截断≤1s」者采纳（= 该网格上的最大可行档）；不得改「先探最小档、失败即跳过」的成本闸门——实测可行集**非 scale 下闭**（全库进入枚举 21 队中 7 队「存在可行 x 且存在 y<x 不可行」，3 队最小档不可行但更大档可行），该闸门前提为假、会漏掉更大档 | 据 实测@2026-09-13（受控：同配置只变候选集/顺序；单跑 vs 混跑逐位相同 ⇒ 非状态泄漏） | 验 src/composables/__tests__/feasibilitySearch.test.ts | 锚 src/composables/resourceCalc/feasibilitySearch.ts#selectDownscaleScale | 信 确认

@@ -1,5 +1,5 @@
 /**
- * 失衡易伤可见化（.claude/task-ledger-stun-vuln.md Open #2）：行级生效易伤换算 + 加权汇总。
+ * 失衡易伤可见化：行级生效易伤换算 + 加权汇总。
  *
  * 口径：行级 `stunMult` = Boss 失衡易伤分量（vuln=1.5 满额行 1.5 / 零行 1.0 / 部分行中间值），
  * 生效易伤 = calcStunMultiplier(vuln, 面板加成, frac)；加权信用 = Σ(d×生效)/Σd − 1

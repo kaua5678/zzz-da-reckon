@@ -122,14 +122,16 @@ node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --cli
 
 ## 4. 长任务账本（loop 档）
 
-`loop` 档任务开工时，在当前工作区维护 `.claude/task-ledger.md`（已 gitignore，不提交；属于工作状态，不是项目知识）。固定四段：
+`loop` 档任务开工时，**工作状态写 `.claude/OPEN-ITEMS.md`**（已 gitignore，不提交；属于工作状态，不是项目知识）：
 
-- `Goal`：完成定义（用户可验证的结果）
-- `Next`：当前唯一的下一个动作
-- `Checkpoint`：已完成且已通过验证的步骤（每条写 verifier + coverage）
-- `Open`：未决问题与待确认口径 + 代码 `debt:` 标记回收（`grep -rn 'debt:' src scripts`，防「later = never」）；候选想法（尚未决定做的方案）须带**证伪闸门**两行——依赖的**前提假设** + 假设为假时的**可观察失败**（AI 是论证机器不是检验机器，防「精致的垃圾」），过不了闸门不进 `Next`
-
-每完成一个文件/模块，更新一次 `Next`；跨会话/长间隔恢复时先读账本再接续。短任务不建账本。
+- **不要建编年账本**（2026-09-16 用户裁决：`task-ledger.md` 曾累积到 4404 行，
+  多份互相矛盾的「盘上实测」并存，实测误导过后继会话 ⇒ 已瘦身为索引并**删除全部分线账本**）。
+- `OPEN-ITEMS.md` 只收**仍然活着**的条目（未决口径 / 待开工 / 已裁决不做），**做完一条删一条**；
+  编年叙事（逐轮对账、逐队归因、实验过程）进 **git log 与提交说明**，不进这里。
+- 机器面状态（分支/租约/债务/待办/最近验证）**不要手抄**——`node scripts/zc.mjs status` 实时给。
+- 候选想法（尚未决定做的方案）须带**证伪闸门**两行——依赖的**前提假设** + 假设为假时的**可观察失败**
+  （AI 是论证机器不是检验机器，防「精致的垃圾」），过不了闸门不进「可开工」段。
+- 跨会话/长间隔恢复时先读 `OPEN-ITEMS.md` + `zc status` 再接续。短任务不写。
 
 ## 5. 多工人协作（把活派给别的会话时，派活方与接活方都读这段）
 
@@ -185,15 +187,14 @@ node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --cli
   别把 `max` 当"更聪明"用；hy4-preview-f 另有下限（思考预算 3k 会截断失败、12k OK）。
 - 档内 candidates 按序优先，失败（402 / 余额不足 / UNSUPPORTED / 连接失败）顺延下一个；全失败降级 default 并写明原因。
 - `wb`(7863,wb2api) 与 `wba`(7865,wbai-server) 是两个不同网关；hy4-preview-f 仅 wba 有。
-- ⚠ **子代理实际路由可能被 `@snowamberx/dsh-role-router` 改写**（它优先级**高于** `model-routing.yaml`：
-  前者是宿主层强制改写，后者只是"派发时的选择"）。**当前状态（2026-09-16 实测）= 不生效**：
-  settings 层是 `subagent: follow-official`（显式透传标记），源码 `routeFor` 里
-  `if (fromSettings === 'follow-official') return void 0`，且 settings 优先于 composition（`fromSettings ?? composition[role]`）。
-  **实测**：派子代理指定 `wb/deepseek-v4.1-flash@max` ⇒ 其 session log 的 `request/header.config`
-  = `{provider:'wb', model:'deepseek-v4.1-flash', reasoningEffort:'max'}`，**未被改写**。
-  ⇒ **子代理可正常使用**（此前"派子代理会被强制改路由到 mimo 并夭折"的结论**已过时**）。
-  若将来又被改写：查 `~/.dsh/profiles/web/cordis.patch.yml` 的 `model-router` 段，
-  或 `DSH_ROLE_ROUTER_OFF=1 dsh web` 整体关掉。
+- ⚠ **`@snowamberx/dsh-role-router` 已彻底移除（2026-09-16，用户裁决"整体关掉也行"）**。
+  它曾按角色强制改写路由（`subagent` 角色被写死为 mimo-pro@high），由此产生的
+  「派子代理会被强制改路由到 mimo 并夭折」**已彻底失效** ⇒ **子代理现在完全按你指定的 provider/model 跑**。
+  移除面（4 处，全部已清）：`~/.dsh/profiles/web/` 的 `package.json`（依赖 + `dsh.profile.bundles`）、
+  `cordis.yml`（composition 条目）、`cordis.patch.yml`（patch 段，现为合法空数组 `[]`）、
+  `pnpm-lock.yaml`、`node_modules/@snowamberx/`。
+  （顺带清掉了 `dsh-codearts-auth` 的卸载残留条目。）
+  **若将来又想按角色分流**：装回该插件即可，但记住它的优先级**高于** `model-routing.yaml`。
 - **怎么知道子代理实际跑了哪个模型**（前端不显示）：① 工具 `_dsh_external_subagent_model_badge_status`
   （badge 插件账本，权威）；② 直接读子代理 session log 的 `request/header.data.header.config`。
   实测 badge 账本可能不含最新记录（按需拉取非轮询）⇒ 要精确值就读 log。
