@@ -129,18 +129,46 @@ function buildNangongCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInp
 }
 
 function buildNangongTeamConfig(input: AgentTeamConfigInput): void {
-  // converge 阶段把收敛的失衡次数写进自己槽位 cfg：
-  // - nangongStunCount：颤音异放的窗口数上界
-  // - freeExSpecialCount：天使队长「任意角色使敌人失衡 → 下一次强特免能」，用户口径简化为
-  //   每次失衡白送一次E（不区分轴内首次/15s CD），轴/非轴通用直接加总E数
-  // ⚠ 用派发器直给的 `cfg`，不用 `input.characters[input.slot]`——该数组**按位置压缩**
-  // （`buildCharConfig` 跳过空槽），槽位号 ≠ 下标：前导/中间空槽时会取到 undefined 或别人那份。
+  // converge 阶段把收敛量写进自己槽位 cfg。⚠ 用派发器直给的 `cfg`，不用 `input.characters[input.slot]`
+  // ——该数组**按位置压缩**（`buildCharConfig` 跳过空槽），槽位号 ≠ 下标：前导/中间空槽时会取到
+  // undefined 或别人那份。
   const own = input.cfg as unknown as Record<string, unknown> | undefined
-  if (own && input.phase === 'converge') {
-    const stuns = Math.max(0, Math.floor(input.stunCount))
-    own.nangongStunCount = stuns
-    own.freeExSpecialCount = stuns
+  if (!own || input.phase !== 'converge') return
+
+  // ── 路径①：标量（与轴无关）────────────────────────────────────────────────
+  // - `nangongStunCount`：颤音异放的窗口数上界
+  // - `freeExSpecialCount`：天使队长「任意角色使敌人失衡 → 下一次强特免能」，用户口径简化为
+  //   每次失衡白送一次E（不区分轴内首次/15s CD），轴/非轴通用直接加总E数
+  const stuns = Math.max(0, Math.floor(input.stunCount))
+  own.nangongStunCount = stuns
+  own.freeExSpecialCount = stuns
+
+  // ── 路径②：**线程值** → cfg 副本（走 `threads` 契约，**不走 axis**）────────────────
+  // `inStunWindowTriggers` = 上一轮失衡内异常系统 v2 的「平均每窗触发数」（`:1446` 算出、
+  // 写回 `threadsNext`），供 `buildNangongAnomalyEvents` 定颤音自动层数。原实现
+  // （2026-09-16 round 12 批次 2 自 `convergence.ts` 的 `merged.agentId === '1511'` 分支迁入）
+  // 读的是 `threads` 解构出的 `prevInStunWindowTriggers` ⇒ 与 `threads.inStunWindowTriggers`
+  // **同一对象同一字段**，逐位等价；`Math.max(0, …)` 保留（原式的钳制）。
+  // ⚠ 该字段**不判 axis**：原实现在轴/非轴都写（非轴时线程值恒 0，模块侧回落满层 4）。
+  if (input.threads) {
+    own.inStunWindowTriggers = Math.max(0, Number(input.threads.inStunWindowTriggers ?? 0))
   }
+
+  // ── 路径③：**轴内单 moveId 计数**（走 `axis` 契约）──────────────────────────
+  // 轴内「快速支援」（`1511013`）放置块数 → 模块按块数生成快支行（极性载体 + 窗内伤害吃易伤）。
+  // 门控双判据：契约缺 axis 时不写（`undefined` 唯一编码「契约没接上」，消费端 `?? 0` 兜底）。
+  if (!input.axis) return
+  let quickAssistPlaced = 0
+  if (input.axis.active) {
+    input.axis.axes.forEach((ax, ai) => {
+      const wins = input.axis!.windows[ai] ?? 0
+      for (const act of ax.actions) {
+        if (act.slot !== Number(input.slot) || act.moveId !== NANGONG_QUICK_ASSIST_MOVE_ID) continue
+        quickAssistPlaced += act.count * wins
+      }
+    })
+  }
+  own.nangongQuickAssistPlaced = quickAssistPlaced
 }
 
 /** 重拍账本 → 地雷撞 #2/#3 双击套数（时间从平A池划拨，真实 moveId 行进失衡/伤害池） */

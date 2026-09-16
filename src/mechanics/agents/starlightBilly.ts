@@ -5,6 +5,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentTeamConfigInput,
 } from '../types'
 import type { BillyChain, CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
@@ -233,6 +234,72 @@ function rowValue(move: SkillMove | null, rowId: string): number {
   if (!move) return 0
   const row = move.rows.find(r => r.id === rowId)
   return row?.values?.[0] ?? 0
+}
+
+/**
+ * 连段（打包招式）表：单一事实源。
+ *
+ * 两处消费：① 模块 `combos` 声明（轴编辑器按它列出可放置的连段块 + 能量打包口径）；
+ * ② `applyBillyTeamConfig` 的**轴内 combo 展开**（轴块命中 combo id ⇒ 展开成子招式计数）。
+ * 二者必须同源——各写一份会在改白名单时静默脱钩（round 11 批次 1 的同款收益）。
+ */
+const BILLY_COMBOS: NonNullable<AgentMechanicModule['combos']> = {
+  'billy-ex-chain': {
+    label: '动力压制链',
+    energyCost: EX_FLASH_COST, // 只有摇曳步伐付费（动力压制/孤轮免费衔接）
+    moves: [
+      { moveId: MOVE.driveSuppression, count: 1 },
+      { moveId: MOVE.coolWheelie, count: 1 },
+      { moveId: MOVE.rockingFootwork, count: 1 },
+    ],
+  },
+}
+
+/**
+ * applyTeamConfig · converge：轴内捏块 → `billyAxisEx` 次数表（含 **combo 展开**）。
+ *
+ * 2026-09-16 round 12 批次 2 自 `convergence.ts` 的 `merged.agentId === '1531'` 分支迁入
+ * （原实现逐行等价搬移，唯一差异是取数改走 `axis` 契约）：
+ * - 原读 `axisActive` / `resolvedAxes` / `allocateAxisWindows(resolvedAxes, stunCount)` / `provStunCoverage`
+ *   ⇒ 现读 `axis.active` / `axis.axes` / `axis.windows` / 派发器通用注入的 `teamStunCoverage`。
+ *   ⚠ `axis.windows` 就是 `allocateAxisWindows(...)` 的返回值本身（同一函数、同一入参），不是重新推导。
+ * - `billyStunCoverage` 原写 `provStunCoverage`（= `computeStunCoverage(...)`）；派发器对**所有**角色
+ *   通用注入的 `teamStunCoverage` 与之同源同值（`convergence.ts` 的 `merged` 字面量），
+ *   且注入发生在本钩子之前 ⇒ 读 `cfg.teamStunCoverage` 逐位等价（不需要轴上下文）。
+ * - **combo 展开**（本处最容易写错的地方）：轴块 moveId 若命中本模块 `combos`（`billy-ex-chain`），
+ *   展开成该 combo 的 `moves`——每个子招式累加 `act.count × mv.count × wins`，而不是整块记一次。
+ *   combo 表直接从 `starlightBillyMechanic.combos` 取（规则 11：单一事实源，不在两处各写一份）。
+ * - 门控双判据：`phase !== 'converge' || !axis` ⇒ 非 converge 不写；converge 但契约缺 axis 时
+ *   **连非轴字段也不写**（与 `billyAxisEx` 同族，保证「字段 undefined」唯一编码「契约没接上」）。
+ */
+function applyBillyTeamConfig({ cfg, phase, axis }: AgentTeamConfigInput): void {
+  if (phase !== 'converge' || !axis) return
+  const record = cfg as unknown as Record<string, unknown>
+  const slot = Number(cfg.slot)
+  const billyAxisEx: Record<string, number> = {}
+  if (axis.active) {
+    const billyCombos = BILLY_COMBOS
+    axis.axes.forEach((ax, ai) => {
+      const wins = axis.windows[ai] ?? 0
+      // ⚠ 原实现**没有** `wins <= 0` 提前返回：0 窗时仍会写 `键 = 0`（键集不空）。
+      // 本函数产出的是 **Record**，键集经 `sanitizeWarmKeyCfg` 进热启动 key ⇒ 加个「跳过 0 窗」
+      // 优化会改键集（虽 `readAxisEx` 过滤 >0 后数值相同）⇒ 逐位等价要求保留该形态，不优化。
+      for (const act of ax.actions) {
+        if (act.slot !== slot) continue
+        const combo = billyCombos[act.moveId]
+        if (combo) {
+          for (const mv of combo.moves) {
+            billyAxisEx[mv.moveId] = (billyAxisEx[mv.moveId] ?? 0) + act.count * mv.count * wins
+          }
+        } else {
+          billyAxisEx[act.moveId] = (billyAxisEx[act.moveId] ?? 0) + act.count * wins
+        }
+      }
+    })
+  }
+  record.billyAxisEx = billyAxisEx
+  record.billyAxisActive = axis.active
+  record.billyStunCoverage = cfg.teamStunCoverage ?? 0
 }
 
 function readAxisEx(cfg: AgentCharConfigInput['cfg']): Record<string, number> {
@@ -771,22 +838,13 @@ export const starlightBillyMechanic: AgentMechanicModule = {
   description: '主循环（动力压制→孤轮，烧血刷决意）、HP 池约束、付费强特（摇曳/抓地 60 闪能）、决意→最高马力星光、星辉、影画1/2/4/6。',
   applyPanel: input => specBase.applyPanel?.(input),
   buildCharConfig: buildBillyCharConfig,
+  applyTeamConfig: applyBillyTeamConfig,
   estimateExSpecialTime: billyExSpecialTime,
   buildExecutions: buildBillyExecutions,
   patchExecutions: patchBillyExecutions,
   buildResourceResult: buildBillyResourceResult,
   resourceSections: buildBillyResourceSections,
   buildAnomalyEvents: input => specBase.buildAnomalyEvents?.(input),
-  combos: {
-    'billy-ex-chain': {
-      label: '动力压制链',
-      energyCost: EX_FLASH_COST, // 只有摇曳步伐付费（动力压制/孤轮免费衔接）
-      moves: [
-        { moveId: MOVE.driveSuppression, count: 1 },
-        { moveId: MOVE.coolWheelie, count: 1 },
-        { moveId: MOVE.rockingFootwork, count: 1 },
-      ],
-    },
-  },
+  combos: BILLY_COMBOS,
   settings,
 }

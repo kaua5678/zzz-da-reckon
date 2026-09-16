@@ -116,10 +116,10 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 32,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）→ **55**（2026-09-15 同批第 3 小簇：轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽 `cfg.ultimateCost`）→ **53**（2026-09-15 同批第 4 小簇：`nomra 1571` 的 normaStunCount/Coverage/BattleTime 与 `qingyi 1251` 的 qingyiStunCount 注入迁进各自模块的 applyTeamConfig——消费方只有本模块，且 hook 入参已含 stunCount/combatTime；timeGolden 0 delta，反向验证删注入 ⇒ 精确红）→ **47**（2026-09-15 `damagePool.ts` 五处「模块 source 字段 ⇒ 角色标识」去冗余）→ **34**（2026-09-16 最大单簇 −13：`convergence.ts` 5 个 `compute*NextRoundFeedback` 纯函数（1541/1381/1151/1331/1191）迁进各模块新的 `nextRoundFeedback` 钩子，契约递整份本轮结果 + 上一轮线程快照，返回 `Partial<CalcRoundThreads>`；timeGolden 0 delta（含 dmg 信息项），逐站点反向验证见 AGENT_BRANCH_BASELINE 注释）→ **32**（2026-09-16 round 11 批次 1 −2：1201 悠真 + 1241 朱鸢的轴内块计数迁进各自模块的 `applyTeamConfig`，新增 `AgentTeamConfigInput.axis` 轴上下文契约（设计卡 §3 方案 A，零新通道——`characters` 本就带 axisInSeconds/axisActionCounts/axisUltimateTotal，本契约只是把散落字段收成显式快照）；timeGolden `grep -c dmg:` == 0，反向验证 6 组见 AGENT_BRANCH_BASELINE 注释）。见 AGENT_BRANCH_BASELINE 注释
+    frozen: 29,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）→ **55**（2026-09-15 同批第 3 小簇：轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽 `cfg.ultimateCost`）→ **53**（2026-09-15 同批第 4 小簇：`nomra 1571` 的 normaStunCount/Coverage/BattleTime 与 `qingyi 1251` 的 qingyiStunCount 注入迁进各自模块的 applyTeamConfig——消费方只有本模块，且 hook 入参已含 stunCount/combatTime；timeGolden 0 delta，反向验证删注入 ⇒ 精确红）→ **47**（2026-09-15 `damagePool.ts` 五处「模块 source 字段 ⇒ 角色标识」去冗余）→ **34**（2026-09-16 最大单簇 −13：`convergence.ts` 5 个 `compute*NextRoundFeedback` 纯函数（1541/1381/1151/1331/1191）迁进各模块新的 `nextRoundFeedback` 钩子，契约递整份本轮结果 + 上一轮线程快照，返回 `Partial<CalcRoundThreads>`；timeGolden 0 delta（含 dmg 信息项），逐站点反向验证见 AGENT_BRANCH_BASELINE 注释）→ **32**（2026-09-16 round 11 批次 1 −2：1201 悠真 + 1241 朱鸢的轴内块计数迁进各自模块的 `applyTeamConfig`，新增 `AgentTeamConfigInput.axis` 轴上下文契约（设计卡 §3 方案 A，零新通道——`characters` 本就带 axisInSeconds/axisActionCounts/axisUltimateTotal，本契约只是把散落字段收成显式快照）；timeGolden `grep -c dmg:` == 0，反向验证 6 组见 AGENT_BRANCH_BASELINE 注释）→ **29**（2026-09-16 round 12 批次 2 −3：1531 星徽·比利（**combo 展开**）+ 1591 希格莉德（非 C6 封顶 = Σwindows）+ 1511 南宫羽（单 moveId `1511013` 走 `axis`；同分支的 `inStunWindowTriggers` 走 `threads`）三个分支迁进各自模块的 `applyTeamConfig`；1141 莱卡恩本轮只迁 `lycaonWindowDuration`（分支仍在 ⇒ **−0**，`lycaonC2Energy` 实测仍缺 C7 计数投影契约、`lycaonBackstageDodgeCount` 仍缺未缩放交互次数）。timeGolden `grep -c dmg:` == 0，反向验证 6 组逐处精确红——沿革详见 AGENT_BRANCH_BASELINE 注释）。见 AGENT_BRANCH_BASELINE 注释
     target: 0,
     due: '2026-12-31',
-    plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。跨轮反馈走 `AgentTeamConfigInput.threads`（2026-09-15 新增的通用通道，别再逐字段铺开契约）；「读本轮结果算下一轮」类走 `nextRoundFeedback`（2026-09-16 新增，递整份本轮结果 + `prevThreads`，返回 `Partial<CalcRoundThreads>`）。hot spot：convergence.ts(19) > damagePool.ts(11) > helpers.ts(4)。架构评审 #10 → #2',
+    plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。跨轮反馈走 `AgentTeamConfigInput.threads`（2026-09-15 新增的通用通道，别再逐字段铺开契约）；「读本轮结果算下一轮」类走 `nextRoundFeedback`（2026-09-16 新增，递整份本轮结果 + `prevThreads`，返回 `Partial<CalcRoundThreads>`）；**轴内计数/窗口量走 `axis` 契约**（2026-09-16 round 11 落地：“active / axes / windows / windowSeconds / actionCountsBySlot / ultimateTotalBySlot / chainTotalBySlot”，只读快照、只在 converge 相位有值 ⇒ 模块侧 `phase !== \'converge\' || !axis` 双判据门控）。hot spot：convergence.ts(14) > damagePool.ts(11) > helpers.ts(4)。**下一批候选（按价值）**：批次 3 = 1051 伊德海莉（迁完同时解锁 core 棘轮 2 处：`helpers.ts:1271` + `resource.ts:595`）+ 1371 仪玄（契约完整性试金石，设计卡 §6 证伪闸门：任一条 `yixuanSmoke` 断言红 ⇒ 需扩契约）。⚠ 1511 已于 round 12 迁完；其同批**顺带实测**：`convergence.ts` 的 `if (prevInStunWindowTriggers <= 0) { … if (c.agentId === \'1511\') … }` 写回块**确为死写**（该局部 `characters` 数组在其后除 `rr.characters` 外零引用）——round 12 未删（超授权面），留给下一批。⚠ 已知**契约缺口**（迁移前先补，别硬迁）：C7「计数投影失衡次数」`countStun`（阻碍 1141 的 `lycaonC2Energy`）、「未缩放交互次数」（阻碍 1141 的 `lycaonBackstageDodgeCount`，`characters` 上已被 interactionScale 缩放）。架构评审 #10 → #2',
   },
   {
     id: 'core agentId 分支',
@@ -566,8 +566,36 @@ export function countAgentBranchLines(root = ROOT) {
  *    （2026-09-16 实测：`['', 1041, 1191]` 下艾莲影画4 冻结数 4→0 静默失效）。
  *    故 `AgentNextRoundFeedbackInput` 显式给 `cfg`。⚠ 存量另有 19 处 `characters[slot]`
  *    （`applyTeamConfig` 等，含 `7e377cb` 引入的那批）有同一缺陷，属**既存问题、本批未动**。
+ *
+ * **32 → 29 沿革（2026-09-16 round 12 批次 2，设计卡 §5 批次 2 + 可选第三处）**：`convergence.ts` 的
+ * `characters.map` 里再迁走三个 `merged.agentId === '…'` 分支，均改读 `AgentTeamConfigInput` 的
+ * 既有契约（`axis` / `threads`，round 11 落地的整份快照，零新通道）：
+ *  · **1531 星徽·比利** → `starlightBilly.ts#applyBillyTeamConfig`：`billyAxisEx`（轴内捏块，
+ *    含 **combo 展开**——轴块命中 `combos['billy-ex-chain']` 时展开成 动力压制/孤轮/摇曳 三子招式
+ *    各 `count × mv.count × wins`；整块只记一次会少一个量级）+ `billyAxisActive` + `billyStunCoverage`
+ *    （后者 = 派发器对所有角色通用注入的 `teamStunCoverage`，与旧 `provStunCoverage` 同源同值）。
+ *    ⚠ 未顺手删 `core/resource.ts:523`——core 侧已明确记载试过改字段判据并**否决**（见
+ *    `CORE_AGENT_BRANCH_BASELINE` 沿革）。
+ *  · **1591 希格莉德** → `sigrid.ts#applySigridTeamConfig`：`sigridAxisPozhenSets`（`sigrid-pozhen`
+ *    块 × 窗口数 + C6 的 gift 连携块）+ `sigridAxisActive`；**非 C6 前封顶 = Σ`axis.windows`**
+ *    （= 已分配窗口总数，**不是 `windows.length`**——多轴且某轴 0 窗时后者会高估）。
+ *  · **1511 南宫羽** → `nangong.ts#buildNangongTeamConfig`（**可选第三处**）：`nangongQuickAssistPlaced`
+ *    （轴内**单** moveId `1511013` 块 × 窗口数，走 `axis`）**+** `inStunWindowTriggers`（走 `threads`
+ *    ——它是上一轮「失衡内异常 v2 平均每窗触发数」的**线程值副本**，原实现读的 `prevInStunWindowTriggers`
+ *    与 `threads.inStunWindowTriggers` 是同一对象同一字段）。⚠ 两条路刻意分开：**读线程**与**写 cfg**
+ *    是两个不同动作，混成一条会把「为下一轮」的语义写进本轮 cfg。
+ *  · **1141 莱卡恩（棘轮 −0，分支仍在）**：只迁走 `lycaonWindowDuration` ← `axis.windowSeconds`
+ *    （= 同一个 `computeWindowDuration()` 返回值）。⚠ 任务卡预期「契约已解锁 2 字段 ⇒ 1141 −1」
+ *    **实测不成立**：`lycaonC2Energy` 的非轴臂需 `countStun`（C7 计数投影版失衡次数，
+ *    `projectStunPlanForCounts(stunCount, base.stunPlanProjection)`），而该全局量**不在契约上、
+ *    也不是注册的 `MechanicSetting`**（`grep -rn stunPlanProjection src/mechanics/ src/specs/` = 0 命中）
+ *    ⇒ 用未投影的 `stunCount` 迁移是静默改语义（难度阶梯 G4「取整」会打开该开关）。故 1141 分支保留。
+ * 测试：`src/mechanics/__tests__/axisContext.test.ts` 自 11 例扩到 **24 例**（combo 展开逐键精确值 /
+ * Σwindows 封顶与 `windows.length` 的可分辨反例 / C6 gift 门槛 / windowSeconds 取值 + C2 不得由钩子写 /
+ * 1511 双路分离 / ★1141 端到端精确值 `21.2465` vs 短路回落 `?? 16` 的 `24`），全精确值、不用 `> 0`。
+ * 验收：`timeGolden` `grep -c "dmg:"` == **0**；`check-guards` 17/17；反向验证 6 组逐处精确红（见提交说明）。
  */
-export const AGENT_BRANCH_BASELINE = 32
+export const AGENT_BRANCH_BASELINE = 29
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。

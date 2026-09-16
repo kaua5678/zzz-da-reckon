@@ -61,6 +61,17 @@ const SIGRID_AGENT_ID = '1591'
 export const SIGRID_LANCE_SEGMENT_IDS: readonly string[] = ['1591007', '1591008', '1591022']
 
 /**
+ * 轴内「破阵连段」伪块 id（**不是**倍率表 id）：`buildStackAxes` 展开成
+ * `SIGRID_LANCE_SEGMENT_IDS` 三段真实 id 进窗口时间门控（窗内放得下几套就几套 ⇒ 易伤归属自然成立）；
+ * 轴编辑器/预设按它放置；`applySigridTeamConfig` 数它得出轴内破阵套数。
+ * ⚠ 单一事实源：编排层（展开）与轴编辑器（展示）都从这里取，不要再写第二份字面量（规则 11）。
+ */
+export const SIGRID_POZHEN_MOVE_ID = 'sigrid-pozhen'
+
+/** 连携技：冰凌卷地（诺姆 gift 块走这个 id；C6 下命中失衡敌人触发一次破阵） */
+export const SIGRID_CHAIN_MOVE_ID = '1591015'
+
+/**
  * 凛冽枪尖 #1-#4（平A池按段物化的执行行，2026-09-03）。这些行的次数由
  * `countBasicSegments(basicAttackTime, …)` 从平A池推出，**不是独立动作**——机会计数
  * （patchSigridExecutions 行循环）必须跳过它们，否则 #4 会被段行与 countBasicFinisherHits
@@ -223,12 +234,49 @@ export function countBasicSegments(
 }
 
 /**
- * applyTeamConfig · converge：记录上一轮收敛的失衡次数。
- * 破阵口径（用户 2026-02）：每次失衡送一套敛枪式三段（免费，不耗机会）→ 触发次数 = 失衡次数。
+ * applyTeamConfig · converge：记录上一轮收敛的失衡次数 + 轴内破阵套数。
+ *
+ * `sigridStunCount`（非轴口径用）：每次失衡送一套敛枪式三段（免费，不耗机会）。
+ *
+ * 轴内口径（2026-09-16 round 12 批次 2 自 `convergence.ts` 的 `merged.agentId === '1591'`
+ * 分支迁入，逐行等价搬移，取数改走 `axis` 契约）：
+ * - `sigrid-pozhen` 块（buildStackAxes 展开成三段真实 id 进窗口时间门控）⇒ 破阵套数 += 块数 × 窗口数。
+ * - 诺姆赠送的希格连携（`sourceTag === 'gift'` 且 moveId `1591015`）命中失衡敌人也触发一次破阵，
+ *   **仅 C6**（解锁「破阵按连携计」的次数限制）。
+ * - **非 C6 前封顶 = Σ`axis.windows`**（= 已分配窗口总数 = `allocateAxisWindows(...).reduce(...)`），
+ *   **不是 `windows.length`**（那是轴条数，多轴且某轴 0 窗时会高估）。设计卡 §1.6 点名此处。
+ * - 影画等级取**派发器直给的 `cinemaLevel`**——它与原实现读的
+ *   `configStore.team[cfg.slot]?.cinemaLevel ?? 0` 是**同一表达式同一来源**
+ *   （`resourceCalc/helpers.ts` 派发钩子时正是这么算的），逐位等价且不依赖 build 相位是否已写 cfg。
  */
-function applySigridTeamConfig({ cfg, phase, stunCount }: AgentTeamConfigInput): void {
+function applySigridTeamConfig({ cfg, phase, stunCount, axis, cinemaLevel }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  ;(cfg as unknown as Record<string, unknown>).sigridStunCount = stunCount
+  const record = cfg as unknown as Record<string, unknown>
+  record.sigridStunCount = stunCount
+  if (!axis) return
+  const slot = Number(cfg.slot)
+  // 不 floor / 不 clamp：原实现直接比较 `configStore.team[cfg.slot]?.cinemaLevel ?? 0`，
+  // 逐位等价要求保留原比较语义（影院等级是 0..6 整数，floor 只会掩盖口径差异）。
+  const cinema = Number(cinemaLevel) || 0
+  let sigridAxisPozhenSets = 0
+  if (axis.active) {
+    axis.axes.forEach((ax, ai) => {
+      const wins = axis.windows[ai] ?? 0
+      for (const act of ax.actions) {
+        if (act.slot !== slot) continue
+        if (act.moveId === SIGRID_POZHEN_MOVE_ID) sigridAxisPozhenSets += act.count * wins
+        // 诺姆赠送的希格连携（gift 块）命中失衡敌人也触发一次破阵（C6 解锁限制后）
+        else if (cinema >= 6 && act.sourceTag === 'gift' && act.moveId === SIGRID_CHAIN_MOVE_ID) {
+          sigridAxisPozhenSets += act.count * wins
+        }
+      }
+    })
+    if (cinema < 6) {
+      sigridAxisPozhenSets = Math.min(sigridAxisPozhenSets, axis.windows.reduce((a, b) => a + b, 0))
+    }
+  }
+  record.sigridAxisPozhenSets = sigridAxisPozhenSets
+  record.sigridAxisActive = axis.active
 }
 
 /** N 次轮转（一→二→三循环）各段次数：N=4 → (2,1,1) */

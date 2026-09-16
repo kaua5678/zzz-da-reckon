@@ -121,33 +121,54 @@ export const lycaonMechanic: AgentMechanicModule = {
 
   /**
    * 围猎输入注入（规则 6 落点，2026-09-16 T26 批次 0c 自 `convergence.ts` 的
-   * `merged.agentId === '1141'` 分支迁入；数值逐位保留——三处来源逐条对账见下）。
+   * `merged.agentId === '1141'` 分支迁入；round 12 批次 2 追加第 4 个字段）。
    *
-   * 迁入的是「**不需要轴上下文**」的三个字段（原分支 6 个字段里）：
-   * - `lycaonStunCount` ← `stunCount`（原：`stunCount`，同一变量）
-   * - `lycaonTotalTime` ← `combatTime`（原：`base.totalTime`；派发点传的正是 `base.totalTime ?? 180`
+   * **不需要轴上下文**的三个字段（原：`stunCount` / `base.totalTime` / `base.invincibleTime`）：
+   * - `lycaonStunCount` ← `stunCount`（同一变量）
+   * - `lycaonTotalTime` ← `combatTime`（派发点传的正是 `base.totalTime ?? 180`，
    *   而 `ResourceCalcConfig.totalTime` 是必填 number ⇒ `??` 不触发，逐位等价）
-   * - `lycaonInvincibleTime` ← `cfg.invincibleTime`（原：`base.invincibleTime ?? 0`；两者同源于
-   *   `configStore.enemy.invincibleTime`——`base` 在 `convergence.ts:98` 未加 `?? 0`，
-   *   `cfg` 在 `resourceCalc/helpers.ts:1830` 加了 `?? 0` ⇒ `base.invincibleTime ?? 0` ≡ `cfg.invincibleTime`）
+   * - `lycaonInvincibleTime` ← `cfg.invincibleTime`（两者同源于 `configStore.enemy.invincibleTime`——
+   *   `base` 在 `convergence.ts` 未加 `?? 0`，`cfg` 在 `resourceCalc/helpers.ts` 加了 `?? 0`）
    *
-   * ⚠ **未迁的三项，原因必须留痕**（不是遗漏）：
-   * - `lycaonWindowDuration`（= `stunTime + 4 + 全队失衡延时`）需要 `enemy.stunTime`，**不在本契约上**
-   *   （`grep -rn stunTime src/mechanics/` 零命中；`cfg.panel` 只有本槽 `stunDurationBonusSeconds`）。
-   *   属设计卡 §2.2 缺口 G4，等 `axis.windowSeconds`（批次 1+）。
-   * - `lycaonBackstageDodgeCount`（= 队伍**其他**槽位 `dodgeCounterCount` 之和）在契约上只有两个候选来源，
-   *   而**两个都不等价**：`characters` 是已被 `interactionScale` 缩放的 round cfg（`Math.round(x*scale)`，
-   *   实测 scale=0.125 时 store 10 → cfg 0），`team: MechanicTeamMember[]` 不含次数。原实现读的是
-   *   **store 原值**（未缩放）⇒ 迁过去是静默改语义。需要契约补「未缩放的交互次数」（或把它并入 axis 上下文批）。
-   * - `lycaonC2Energy`（需要 `axisActive` / `axisChainTotal` / `countStun`）——本批 brief 明确排除，
-   *   留到批次 1+ 的 `axis` 契约。故 `convergence.ts` 的 `1141` 分支**仍然存在**（棘轮不减），
-   *   见设计卡 §4.1「拆出来先做」。
+   * **需要轴上下文**的一个字段（round 12 批次 2 迁入，用 `axis.windowSeconds`）：
+   * - `lycaonWindowDuration` ← `axis.windowSeconds`。原实现写 `computeWindowDuration()`
+   *   （= `enemy.stunTime + 4 + 全队 stunDurationBonusSeconds`），而契约的 `windowSeconds`
+   *   就是**同一个函数的返回值**（`convergence.ts` 派发点：`windowSeconds: computeWindowDuration()`）
+   *   ⇒ 逐位等价。⚠ 该字段**不判 `axis.active`**：原实现在轴/非轴**都**写同一个窗口时长，
+   *   等价要求保留（`forceNoAxis` 退化时轴仍解析过，窗口时长与轴开关无关）。
+   *   ⚠ 契约缺 `axis` 时**不写**（`undefined`）——与批次 1（1201/1241）同款约定：
+   *   「字段 undefined」唯一编码「契约没接上」，由 `axisContext.test.ts` 精确断言分辨，
+   *   而不是写一个看着合法的默认值把断路掩盖掉（消费端 `?? 16` 是既存兜底，不是新通道）。
+   *
+   * ⚠ **仍未迁的两项，原因必须留痕**（不是遗漏）：
+   * - `lycaonBackstageDodgeCount`（= 队伍**其他**槽位 `dodgeCounterCount` 之和）在契约上只有两个
+   *   候选来源，而**两个都不等价**：`characters` 是已被 `interactionScale` 缩放的 round cfg
+   *   （`Math.round(x*scale)`，实测 scale=0.125 时 store 10 → cfg 0），`team: MechanicTeamMember[]`
+   *   不含次数。原实现读的是 **store 原值**（未缩放）⇒ 迁过去是静默改语义。需要契约补
+   *   「未缩放的交互次数」（或把它并入 axis 上下文批）。
+   * - `lycaonC2Energy`（round 12 批次 2 实测**仍不可迁**——与任务卡的「契约已解锁」预期不符，
+   *   证据如下）：字段值 = `c2Per > 0 ? (stunCount + teamChainTotal) * c2Per : 0`，其中
+   *   `teamChainTotal` 分两臂：
+   *   · **轴臂**（`axisActive`）：`Σ_slots chainTotalBySlot − chainTotalBySlot[本槽]`
+   *     ⇒ 契约**够**（`axis.chainTotalBySlot`）；
+   *   · **非轴臂**：`Σ_{队友} chainCountPerStun × countStun`，而
+   *     `countStun = projectStunPlanForCounts(stunCount, base.stunPlanProjection ?? 'off')`
+   *     （`convergence.ts` 的 C7 计数投影）——`stunPlanProjection` 是**全局 cfg 字段**，
+   *     实测 `grep -rn stunPlanProjection src/mechanics/ src/specs/` = **0 命中**
+   *     （它既不在 `AgentTeamConfigInput` 上、也不是注册的 `MechanicSetting`，
+   *     `resolveMechanicSettings` 填的 `settings` 里没有它）⇒ 模块拿不到，只能拿未经投影的
+   *     `stunCount`。默认 `'off'` 时二者恒等（0 delta），但**难度阶梯 G4「取整（失衡→计数投影）」**
+   *     （`difficultyLadder.ts` 置 `time.stunPlanProjection = 2`）会把它打开 ⇒ 用 `stunCount`
+   *     迁移就是**静默改语义**（非轴 + 投影打开时队友连携数会算成未投影值）。⇒ 不迁，
+   *     等契约补「计数通道失衡次数」（C7 量）后再收。
+   *   ⇒ 故 `convergence.ts` 的 `1141` 分支**仍然存在**（剩这 2 个字段）⇒ 本处迁移**棘轮 −0**。
    */
-  applyTeamConfig: ({ cfg, phase, stunCount, combatTime }: AgentTeamConfigInput) => {
+  applyTeamConfig: ({ cfg, phase, stunCount, combatTime, axis }: AgentTeamConfigInput) => {
     if (phase !== 'converge') return
     cfg.lycaonStunCount = stunCount
     cfg.lycaonTotalTime = combatTime
     cfg.lycaonInvincibleTime = cfg.invincibleTime ?? 0
+    if (axis) cfg.lycaonWindowDuration = axis.windowSeconds
   },
 
   buildExecutions({ cfg, state, executions }: AgentResourceInput) {

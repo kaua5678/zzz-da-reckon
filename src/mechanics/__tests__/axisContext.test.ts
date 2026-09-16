@@ -73,8 +73,10 @@ function hookInput(
 
 // ── 接线：两个角色都必须挂 applyTeamConfig（防「迁完忘了挂」） ────────────────────────
 describe('axis 契约接线', () => {
-  it('★ 1201/1241 都声明了 applyTeamConfig（迁完忘挂钩子 ⇒ 轴内计数静默归零）', () => {
-    for (const [agentId, name] of [['1201', '悠真'], ['1241', '朱鸢']] as const) {
+  it('★ 1201/1241/1531/1591 都声明了 applyTeamConfig（迁完忘挂钩子 ⇒ 轴内计数静默归零）', () => {
+    for (const [agentId, name] of [
+      ['1201', '悠真'], ['1241', '朱鸢'], ['1531', '星徽·比利'], ['1591', '希格莉德'],
+    ] as const) {
       expect(
         typeof getAgentMechanic(agentId)?.applyTeamConfig,
         `${name}(${agentId}) 未声明 applyTeamConfig —— 轴内计数会静默归零`,
@@ -183,6 +185,272 @@ describe('1241 朱鸢：轴内压制以太计数 = 轴块数 × 窗口数', () =
     const cfg: Cfg = { slot: 0, agentId: '1241' }
     getAgentMechanic('1241')!.applyTeamConfig!(hookInput(cfg))
     expect(cfg.zhuYuanAxisEther).toBeUndefined()
+  })
+})
+
+// ── 跳③（批次 2）：1531 星徽·比利 —— 轴内捏块含 **combo 展开** ────────────────────────
+describe('1531 星徽·比利：轴内 combo 展开（billy-ex-chain → 三子招式）+ 逐键累加', () => {
+  /**
+   * `billy-ex-chain` = 动力压制(1531006) + 孤轮特技(1531008) + 摇曳步伐(1531011)。
+   * 轴编辑器放置的是 **combo 块 id**，轴块计数按 combo 的 `moves[].count` 展开
+   * （设计卡 §1.5 点名的「本批最容易写错处」：整块记一次 = 次数少一个量级）。
+   */
+  const axes: StunAxis[] = [{
+    name: '合成轴',
+    count: 2,
+    actions: [
+      { slot: 0, moveId: 'billy-ex-chain', count: 2 },  // combo 块：×2 窗 → 三子招式各 2×1×2 = 4
+      { slot: 0, moveId: '1531009', count: 3 },         // 抓地轮毂（真实 id，非 combo）
+      { slot: 1, moveId: 'billy-ex-chain', count: 5 },  // 别的槽位（不计）
+    ],
+  }]
+
+  it('combo 块展开成子招式（×mv.count×窗口数），非 combo 块按原 id 计，别的槽位不计', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1531', teamStunCoverage: 0.42 }
+    getAgentMechanic('1531')!.applyTeamConfig!(
+      hookInput(cfg, { axis: axisOf({ axes, windows: [3] }) }),
+    )
+    const ex = cfg.billyAxisEx as Record<string, number>
+    // combo 块 2 次 × 3 窗 = 6 块 → 展开后每个子招式 6
+    expect(ex['1531006']).toBe(6)
+    expect(ex['1531008']).toBe(6)
+    expect(ex['1531011']).toBe(6)
+    // 非 combo 块：3 × 3 = 9
+    expect(ex['1531009']).toBe(9)
+    // combo 块 id 本身**不出现**（展开而非原样记录）
+    expect(ex['billy-ex-chain']).toBeUndefined()
+    // 别的槽位的 combo 块完全不计（否则 1531006 会是 6 + 15 = 21）
+    expect(ex['1531006']).toBe(6)
+    expect(cfg.billyAxisActive).toBe(true)
+    // billyStunCoverage 取派发器通用注入的 teamStunCoverage（与旧 provStunCoverage 同源同值）
+    expect(cfg.billyStunCoverage).toBe(0.42)
+  })
+
+  it('相位门控：build/postRound 不写；converge 缺 axis 时连非轴字段都不写（缺就是缺）', () => {
+    for (const phase of ['build', 'postRound'] as const) {
+      const cfg: Cfg = { slot: 0, agentId: '1531' }
+      getAgentMechanic('1531')!.applyTeamConfig!(
+        hookInput(cfg, { phase, axis: axisOf({ axes, windows: [3] }) }),
+      )
+      expect(cfg.billyAxisEx, `${phase} 相位不该写轴内计数`).toBeUndefined()
+      expect(cfg.billyAxisActive, `${phase} 相位不该写轴模式标志`).toBeUndefined()
+      expect(cfg.billyStunCoverage, `${phase} 相位不该写覆盖率`).toBeUndefined()
+    }
+    const cfg: Cfg = { slot: 0, agentId: '1531' }
+    getAgentMechanic('1531')!.applyTeamConfig!(hookInput(cfg))
+    expect(cfg.billyAxisEx).toBeUndefined()
+    // 同一相位下「非轴模式」是**有值**的：active=false ⇒ 空表 + 标志 false
+    const cfgOff: Cfg = { slot: 0, agentId: '1531', teamStunCoverage: 0.1 }
+    getAgentMechanic('1531')!.applyTeamConfig!(
+      hookInput(cfgOff, { axis: axisOf({ axes: [], windows: [], active: false }) }),
+    )
+    expect(cfgOff.billyAxisActive).toBe(false)
+    expect(cfgOff.billyAxisEx).toEqual({})
+  })
+})
+
+// ── 跳③（批次 2）：1591 希格莉德 —— 破阵套数 + **Σwindows 前封顶** ────────────────────
+describe('1591 希格莉德：轴内破阵套数（含 gift 块，C6 门槛）+ Σwindows 封顶', () => {
+  const pz = (slot: number, count: number): StunAxis['actions'][number] =>
+    ({ slot, moveId: 'sigrid-pozhen', count })
+  const gift = (slot: number, count: number): StunAxis['actions'][number] =>
+    ({ slot, moveId: '1591015', count, sourceTag: 'gift' })
+
+  it('非 C6：破阵块 × 窗口数，且**封顶 Σwindows**（不是 windows.length）', () => {
+    // 故意让块数（4×2=8）超过窗口总数（2+1=3）⇒ 封顶生效后必须是 3
+    const axes: StunAxis[] = [{
+      name: '双轴', count: 2,
+      actions: [pz(0, 4)],
+    }, {
+      name: '轴2', count: 1,
+      actions: [],
+    }]
+    const cfg: Cfg = { slot: 0, agentId: '1591' }
+    getAgentMechanic('1591')!.applyTeamConfig!(
+      hookInput(cfg, { axis: axisOf({ axes, windows: [2, 1] }), cinemaLevel: 0 }),
+    )
+    // Σwindows = 3；若误用 windows.length = 2 ⇒ 得 2（精确红）
+    expect(cfg.sigridAxisPozhenSets).toBe(3)
+    expect(cfg.sigridAxisActive).toBe(true)
+    // 破阵前的 stunCount 仍照写（非轴口径字段，与轴无关）
+    expect(cfg.sigridStunCount).toBe(3)
+  })
+
+  it('非 C6：未超封顶时按块数×窗口数原样（封顶不得顺手压小正常值）', () => {
+    const axes: StunAxis[] = [{ name: '轴', count: 2, actions: [pz(0, 1)] }]
+    const cfg: Cfg = { slot: 0, agentId: '1591' }
+    getAgentMechanic('1591')!.applyTeamConfig!(
+      hookInput(cfg, { axis: axisOf({ axes, windows: [2] }), cinemaLevel: 0 }),
+    )
+    expect(cfg.sigridAxisPozhenSets).toBe(2) // 1 × 2 窗 ≤ Σwindows 2
+  })
+
+  it('C6：gift 连携块（1591015）也算一套破阵，且**不封顶**（可超 Σwindows）', () => {
+    const axes: StunAxis[] = [{
+      name: '轴', count: 2,
+      actions: [pz(0, 1), gift(0, 2)],
+    }]
+    const cfg: Cfg = { slot: 0, agentId: '1591' }
+    getAgentMechanic('1591')!.applyTeamConfig!(
+      hookInput(cfg, { axis: axisOf({ axes, windows: [2] }), cinemaLevel: 6 }),
+    )
+    // 破阵 1×2 + gift 2×2 = 6 ⇒ C6 不封顶（Σwindows = 2）；封顶若误留 ⇒ 得 2
+    expect(cfg.sigridAxisPozhenSets).toBe(6)
+  })
+
+  it('C5（<C6）：gift 块**不计**（C6 才解锁「破阵按连携计」）', () => {
+    const axes: StunAxis[] = [{
+      name: '轴', count: 2,
+      actions: [pz(0, 1), gift(0, 2)],
+    }]
+    const cfg: Cfg = { slot: 0, agentId: '1591' }
+    getAgentMechanic('1591')!.applyTeamConfig!(
+      hookInput(cfg, { axis: axisOf({ axes, windows: [2] }), cinemaLevel: 5 }),
+    )
+    expect(cfg.sigridAxisPozhenSets).toBe(2) // 只破阵块 1×2；gift 不计
+  })
+
+  it('相位门控：build/postRound 不写；converge 缺 axis 时不写轴字段但 stunCount 照写', () => {
+    for (const phase of ['build', 'postRound'] as const) {
+      const cfg: Cfg = { slot: 0, agentId: '1591' }
+      getAgentMechanic('1591')!.applyTeamConfig!(
+        hookInput(cfg, { phase, axis: axisOf({ axes: [{ name: 'a', actions: [pz(0, 1)] }], windows: [1] }) }),
+      )
+      expect(cfg.sigridAxisPozhenSets, `${phase} 相位不该写轴内套数`).toBeUndefined()
+      expect(cfg.sigridAxisActive).toBeUndefined()
+      expect(cfg.sigridStunCount, `${phase} 相位不该写失衡次数`).toBeUndefined()
+    }
+    // converge 缺 axis ⇒ 轴字段保持 undefined（唯一编码「契约没接上」）
+    const cfg: Cfg = { slot: 0, agentId: '1591' }
+    getAgentMechanic('1591')!.applyTeamConfig!(hookInput(cfg))
+    expect(cfg.sigridAxisPozhenSets).toBeUndefined()
+    expect(cfg.sigridAxisActive).toBeUndefined()
+    expect(cfg.sigridStunCount).toBe(3) // 非轴字段照常
+  })
+})
+
+// ── 跳③（批次 2）：1141 莱卡恩 —— windowSeconds（C2 仍不可迁，见模块注释） ────────────
+describe('1141 莱卡恩：lycaonWindowDuration ← axis.windowSeconds（棘轮 −0，分支仍在）', () => {
+  it('窗口时长取契约值（不是本槽可自行推导的量）；C2 字段**不再**由本钩子写', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1141', invincibleTime: 0 }
+    getAgentMechanic('1141')!.applyTeamConfig!(
+      hookInput(cfg, { axis: axisOf({ axes: [], windows: [], windowSeconds: 19.5 }) }),
+    )
+    expect(cfg.lycaonWindowDuration).toBe(19.5)
+    expect(cfg.lycaonStunCount).toBe(3)
+    expect(cfg.lycaonTotalTime).toBe(180)
+    // C2 回能仍留在编排层（非轴臂需 C7 计数投影量）⇒ 本钩子不得写它
+    expect(cfg.lycaonC2Energy).toBeUndefined()
+    expect(cfg.lycaonBackstageDodgeCount).toBeUndefined()
+  })
+
+  it('相位门控：build/postRound 不写本轮围猎字段；converge 缺 axis 时 windowDuration 不写', () => {
+    for (const phase of ['build', 'postRound'] as const) {
+      const cfg: Cfg = { slot: 0, agentId: '1141' }
+      getAgentMechanic('1141')!.applyTeamConfig!(
+        hookInput(cfg, { phase, axis: axisOf({ axes: [], windows: [], windowSeconds: 19.5 }) }),
+      )
+      expect(cfg.lycaonWindowDuration, `${phase} 相位不该写窗口时长`).toBeUndefined()
+      expect(cfg.lycaonStunCount).toBeUndefined()
+    }
+    // converge 但缺 axis：非轴三字段照写，windowDuration 不写（缺就是缺，不伪造默认 16）
+    const cfg: Cfg = { slot: 0, agentId: '1141' }
+    getAgentMechanic('1141')!.applyTeamConfig!(hookInput(cfg))
+    expect(cfg.lycaonWindowDuration).toBeUndefined()
+    expect(cfg.lycaonStunCount).toBe(3)
+  })
+
+  /**
+   * 端到端可观测口（⚠ 这条是本处迁移**唯一**能把「接上了」与「静默回落」分开的断言）。
+   *
+   * 为什么必须写精确值：`lycaon.ts` 的消费端是 `cfg.lycaonWindowDuration ?? 16`，而
+   * 战斗默认 `enemy.stunTime = 12` ⇒ `windowSeconds = 12 + 4 = 16`，**恰好等于兜底值**
+   * ⇒ 实测：短路 `axis.windowSeconds` 后 `lycaonSmoke.test.ts` **13 passed 全绿**
+   * （假阴性，不是分支死的；这正是任务卡说的「短路后不红 ⇒ 先怀疑选错覆盖文件」的反例：
+   *   文件选对了，是**数值巧合**掩盖了断路）。
+   * 故本用例把 `stunTime` 抬到 20（`windowSeconds = 24`），并锁 3 次失衡：
+   * 围猎可用后台时间 = 180 − 3×24(失衡) − 莱卡恩前台 − 闪反时间(6×0.6s) ⇒ 平A被压到 **21.2465s**。
+   * 实测两态：**接上 = 21.2465…**；短路（回落 `?? 16` ⇒ 只扣 3×16）= **24**（= 每次围猎 8s 封顶全用满）。
+   * ⇒ 两者相差 2.7535s，且都不是 0（`?? 16` 兜底把断路伪装成合法值——正是本批反复强调的形态）。
+   */
+  it('★ 端到端：窗口时长经真管线落到围猎平A预算（短路 ⇒ 回落 ?? 16 得 24，不是 0）', async () => {
+    await setupHarness([
+      { agentId: '1141', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1011', dodgeCounterCount: 6 },
+      '',
+    ])
+    const config = useConfigStore()
+    config.enemy.stunCountLock = 3
+    config.enemy.stunTime = 20 // windowSeconds = 20 + 4 = 24（≠ 兜底 16）
+    const calc = useResourceCalc()
+    const lycaon = calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
+    const huntBasic = lycaon.executions.find(e => e.moveId === 'basic_attack' && e.moveName?.includes('围猎'))
+    expect(huntBasic, '围猎后台平A行必须存在').toBeTruthy()
+    // 精确值（实测）：180 − 3×24(失衡) − 前台 − 闪反 ⇒ 平A预算 21.2465s
+    expect(huntBasic!.totalTime, '围猎平A预算没吃 axis.windowSeconds（短路 ⇒ 回落 ?? 16 得 24）')
+      .toBeCloseTo(21.2465, 4)
+  })
+})
+
+// ── 跳③（批次 2 可选第三处）：1511 南宫羽 —— 单 moveId 轴内计数 + 线程值双路 ─────────
+describe('1511 南宫羽：轴内 1511013 快支块计数（axis）+ inStunWindowTriggers（threads）', () => {
+  const axes: StunAxis[] = [{
+    name: '合成轴',
+    count: 2,
+    actions: [
+      { slot: 0, moveId: '1511013', count: 2 },  // 快速支援（白名单）
+      { slot: 0, moveId: '1511006', count: 9 },  // 地雷撞（**不计**）
+      { slot: 1, moveId: '1511013', count: 5 },  // 别的槽位（不计）
+    ],
+  }]
+
+  it('只数本槽 1511013 × 窗口数；别的 moveId 与别的槽位不计', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1511' }
+    getAgentMechanic('1511')!.applyTeamConfig!(
+      hookInput(cfg, { axis: axisOf({ axes, windows: [3] }) }),
+    )
+    expect(cfg.nangongQuickAssistPlaced).toBe(6) // 2 × 3 窗
+    // 非轴：写 0（不是 undefined——契约已接上）
+    const cfgOff: Cfg = { slot: 0, agentId: '1511' }
+    getAgentMechanic('1511')!.applyTeamConfig!(
+      hookInput(cfgOff, { axis: axisOf({ axes: [], windows: [], active: false }) }),
+    )
+    expect(cfgOff.nangongQuickAssistPlaced).toBe(0)
+  })
+
+  it('inStunWindowTriggers 走 `threads` 契约（不是 axis）：有线程值即写、负值钳 0', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1511' }
+    getAgentMechanic('1511')!.applyTeamConfig!(hookInput(cfg, {
+      axis: axisOf({ axes, windows: [3] }),
+      threads: { inStunWindowTriggers: 2.5 } as never,
+    }))
+    expect(cfg.inStunWindowTriggers).toBe(2.5)
+    // 负值钳到 0（原式 `Math.max(0, …)`）
+    const cfgNeg: Cfg = { slot: 0, agentId: '1511' }
+    getAgentMechanic('1511')!.applyTeamConfig!(hookInput(cfgNeg, {
+      axis: axisOf({ axes, windows: [3] }),
+      threads: { inStunWindowTriggers: -3 } as never,
+    }))
+    expect(cfgNeg.inStunWindowTriggers).toBe(0)
+  })
+
+  it('相位门控：build/postRound 不写；converge 缺 axis 时快支计数不写（但线程值仍写）', () => {
+    for (const phase of ['build', 'postRound'] as const) {
+      const cfg: Cfg = { slot: 0, agentId: '1511' }
+      getAgentMechanic('1511')!.applyTeamConfig!(hookInput(cfg, {
+        phase, axis: axisOf({ axes, windows: [3] }), threads: { inStunWindowTriggers: 2 } as never,
+      }))
+      expect(cfg.nangongQuickAssistPlaced, `${phase} 相位不该写轴内计数`).toBeUndefined()
+      expect(cfg.nangongStunCount).toBeUndefined()
+    }
+    // converge 缺 axis：轴字段不写（唯一编码「契约没接上」），线程字段照写
+    const cfg: Cfg = { slot: 0, agentId: '1511' }
+    getAgentMechanic('1511')!.applyTeamConfig!(hookInput(cfg, {
+      threads: { inStunWindowTriggers: 2 } as never,
+    }))
+    expect(cfg.nangongQuickAssistPlaced).toBeUndefined()
+    expect(cfg.inStunWindowTriggers).toBe(2)
+    expect(cfg.nangongStunCount).toBe(3)
   })
 })
 

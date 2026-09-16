@@ -910,61 +910,22 @@ export function createRunCalcRound(deps: {
         }
         return yixuanMerged
       }
-      if (merged.agentId === '1531') {
-        // 星徽·比利：轴内捏的动作（含组合块展开）→ 次数反馈给模块；轴外剩余闪能模块自动打抓地轮毂
-        const billyAxisEx: Record<string, number> = {}
-        if (axisActive) {
-          const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
-          const billyCombos = getAgentMechanic('1531')?.combos ?? {}
-          resolvedAxes.forEach((axis, ai) => {
-            const wins = winAlloc[ai] ?? 0
-            for (const act of axis.actions) {
-              if (act.slot !== cfg.slot) continue
-              const combo = billyCombos[act.moveId]
-              if (combo) {
-                for (const mv of combo.moves) {
-                  billyAxisEx[mv.moveId] = (billyAxisEx[mv.moveId] ?? 0) + act.count * mv.count * wins
-                }
-              } else {
-                billyAxisEx[act.moveId] = (billyAxisEx[act.moveId] ?? 0) + act.count * wins
-              }
-            }
-          })
-        }
-        return { ...merged, billyAxisEx, billyAxisActive: axisActive, billyStunCoverage: provStunCoverage }
-      }
-      if (merged.agentId === '1591') {
-        // 希格莉德：轴内「破阵连段」块数（含诺姆赠送连携触发的破阵）→ 模块按套数生成三段行。
-        // C6 解锁次数限制后破阵按连携计（每次连携/赠送连携一次）；非 C6 每个失衡窗口一次，由模块自行处理。
-        let sigridAxisPozhenSets = 0
-        if (axisActive) {
-          const pzCinema = configStore.team[cfg.slot]?.cinemaLevel ?? 0
-          const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
-          resolvedAxes.forEach((axis, ai) => {
-            const wins = winAlloc[ai] ?? 0
-            for (const act of axis.actions) {
-              if (act.slot !== cfg.slot) continue
-              if (act.moveId === 'sigrid-pozhen') sigridAxisPozhenSets += act.count * wins
-              // 诺姆赠送的希格连携（gift 块）命中失衡敌人也触发一次破阵（C6 解锁限制后）
-              else if (pzCinema >= 6 && act.sourceTag === 'gift' && act.moveId === '1591015') sigridAxisPozhenSets += act.count * wins
-            }
-          })
-          if (pzCinema < 6) sigridAxisPozhenSets = Math.min(sigridAxisPozhenSets, winAlloc.reduce((a, b) => a + b, 0))
-        }
-        return { ...merged, sigridAxisPozhenSets, sigridAxisActive: axisActive }
-      }
       if (merged.agentId === '1141') {
         // 莱卡恩围猎（2.6 潜能激发）：次数 = 失衡次数；后台跟随闪反 = 队伍其他角色闪反次数之和；
         // 围猎平A时间 = 后台时间预算（总-无敌-失衡时长-莱卡恩前台）− 闪反时间（用户口径）
         //
         // 2026-09-16 T26 批次 0c：`lycaonStunCount` / `lycaonTotalTime` / `lycaonInvincibleTime`
         // 已迁进 lycaon.ts 的 applyTeamConfig（converge 相位，逐位等价，对账见模块注释）。
-        // ⚠ **本分支保留**——剩下三个字段都还不能用现有契约等价表达，逐条原因钉在模块注释里：
-        //   · `lycaonWindowDuration` 需 `enemy.stunTime`（契约上无此标量，= 设计卡缺口 G4）
+        // 2026-09-16 round 12 批次 2：`lycaonWindowDuration` ← `axis.windowSeconds` 也已迁入
+        // 同一钩子（= 同一个 `computeWindowDuration()` 返回值，逐位等价）。
+        // ⚠ **本分支保留**——剩下两个字段仍不能用现有契约等价表达，逐条原因钉在模块注释里：
         //   · `lycaonBackstageDodgeCount` 需**未缩放**的队友交互次数——`characters` 上的
         //     `dodgeCounterCount` 已被上方 `interactionScale` 缩放（实测 scale=0.125 时 store 10 → cfg 0），
         //     而原实现读 `configStore.team`（store 原值）⇒ 迁过去是**静默改语义**，不做。
-        //   · `lycaonC2Energy` 需 `axisActive` / `axisChainTotal`（批次 1+ 的 axis 契约）
+        //   · `lycaonC2Energy` 的非轴臂需 `countStun`（C7 计数投影版失衡次数，
+        //     `projectStunPlanForCounts(stunCount, base.stunPlanProjection)`）——该全局量
+        //     既不在 `AgentTeamConfigInput` 上、也不是注册的 MechanicSetting（模块读不到）⇒
+        //     round 12 实测**契约未解锁**（与任务卡预期不符，证据见模块注释）。
         const backstageDodgeCount = configStore.team.reduce((sum, c, ci) =>
           ci !== cfg.slot && c?.agentId ? sum + (c.dodgeCounterCount ?? 0) : sum, 0)
         // 影画2·能量回馈：次数 = 失衡次数 + 队友连携总次数（用户确认：排除莱卡恩自己，只算队友的连携）；
@@ -976,30 +937,23 @@ export function createRunCalcRound(deps: {
         const c2Per = merged.lycaonC2EnergyPerTrigger ?? 0
         return {
           ...merged,
-          lycaonWindowDuration: computeWindowDuration(),
+          // `lycaonWindowDuration` 已由 lycaon.ts 的 applyTeamConfig 从 `axis.windowSeconds` 写入
+          // （round 12 批次 2）⇒ 本分支只留下面两个契约仍表达不了的字段。
           lycaonBackstageDodgeCount: backstageDodgeCount,
           lycaonC2Energy: c2Per > 0 ? (stunCount + teamChainTotal) * c2Per : 0,
         }
       }
-      if (merged.agentId === '1511') {
-        // 失衡内异常系统 v2（上一轮时间线）：每窗轴内异常触发数 → 颤音自动层数；
-        // 轴内「快速支援」放置块数 → 模块按块数生成快支行（极性载体+窗内伤害吃易伤）
-        let nangongQuickAssistPlaced = 0
-        if (axisActive) {
-          const qaWinAlloc = allocateAxisWindows(resolvedAxes, stunCount)
-          resolvedAxes.forEach((axis, ai) => {
-            const wins = qaWinAlloc[ai] ?? 0
-            for (const act of axis.actions) {
-              if (act.slot !== cfg.slot || act.moveId !== '1511013') continue
-              nangongQuickAssistPlaced += act.count * wins
-            }
-          })
-        }
-        return { ...merged, inStunWindowTriggers: Math.max(0, prevInStunWindowTriggers), nangongQuickAssistPlaced }
-      }
+      // 南宫羽 1511 的 `nangongQuickAssistPlaced`（轴内 `1511013` 放置块计数）与
+      // `inStunWindowTriggers`（线程值副本）已迁进 nangong.ts 的 `applyTeamConfig`
+      // （round 12 批次 2）——前者读下面的 `axis` 契约、后者读 `threads` 契约 ⇒
+      // 本 map 里不再有该分支（棘轮 32 → 30 → **29**）。
       // 悠真 1201 / 朱鸢 1241 的轴内块计数（`harumasaAxisSlash`/`harumasaAxisArrow`、
-      // `zhuYuanAxisEther`/`zhuYuanAxisActive`）已迁进各自模块的 `applyTeamConfig`（round 11 批次 1），
-      // 经下面 dispatch 的 `axis` 契约快照读取 ⇒ 本 map 里不再有它们的分支（棘轮 34 → 32）。
+      // `zhuYuanAxisEther`/`zhuYuanAxisActive`）已迁进各自模块的 `applyTeamConfig`（round 11 批次 1）；
+      // 星徽·比利 1531（`billyAxisEx` 含 **combo 展开** / `billyAxisActive` / `billyStunCoverage`）、
+      // 希格莉德 1591（`sigridAxisPozhenSets` / `sigridAxisActive`）、南宫羽 1511
+      // （`nangongQuickAssistPlaced` / `inStunWindowTriggers`）同样已迁进各自模块（round 12 批次 2）
+      // ——经下面 dispatch 的 `axis` / `threads` 契约快照读取 ⇒ 本 map 里不再有这些分支
+      // （棘轮 34 → 32 → **29**）。1141 的 `lycaonWindowDuration` 也走同一 `axis` 契约（分支未变空、棘轮 −0）。
       return merged
     })
     // 队伍级机制·converge 阶段：带上一轮收敛量（莱特按上一轮全队能量消耗重算喷发回能；
