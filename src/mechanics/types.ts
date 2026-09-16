@@ -446,6 +446,19 @@ export interface AgentMechanicModule {
   transformSkillExecutions?(input: AgentSkillTransformInput): void
   /** 直伤行元素/来源解析，返回 null 时走通用规则 */
   resolveExecutionDamage?(input: AgentDamageResolutionInput): { element: string; source?: string; note?: string } | null
+  /**
+   * **行级失衡易伤自报**（规则 6 落点，2026-09-16 round 17 / R15-c）。
+   *
+   * 返回 `{ stunOverride, note }` = 本模块认领本行的易伤口径；
+   * 返回 `null`/缺省 = **不认领**（伤害池回落全局失衡覆盖率）。
+   * ⚠ `stunOverride: 0` 是**认领且明确不吃**，与 `null` 语义不同（见 `AgentStunOverride`）。
+   *
+   * 为什么单列声明而不是让编排层按 agentId 分支算：这条口径（叶瞬光明心境关键招满易伤 /
+   * 雨果只有连携与决算吃易伤）是**角色自己的**战斗语义，且两处的 `isAxis` 门控**刻意不对称**
+   * （详见 `AgentStunOverrideInput` 头注释）——写死在伤害池里每加一个角色都要再改编排层，
+   * 正是规则 6 要消灭的形状。
+   */
+  stunOverrideForMove?(input: AgentStunOverrideInput): AgentStunOverride | null
   /** 异常积储主元素（模块把招式积蓄归并为独立元素时声明，如星见雅 frostfire）；
    *  供跨角色转积蓄机制（柚叶十人十色）定位目标——缺省时派发器按倍率表 anomaly_buildup
    *  之和最大的 move.damageElement 兜底；agent.damageElement 可能与二者不一致（雅 agent=ice）。 */
@@ -633,6 +646,50 @@ export interface CrossAgentSupplyInput {
   totalTime: number
   /** 队伍槽位数（含空槽，与编排层 `configStore.team.length` 同源；缺省用 configs.length） */
   teamSize: number
+}
+
+/**
+ * 行级失衡易伤自报钩子入参（规则 6 落点，2026-09-16 round 17 / R15-c）。
+ *
+ * 存在的理由：`damagePool.ts` 的「未进轴槽位」兜底臂里曾住着两条 `charResult.agentId` 判据
+ * （`:567` 叶瞬光 / `:570` 雨果），它们否决的是**同一件事**——「本行吃多少失衡易伤」，
+ * 而这正是角色自己的战斗口径（明心境满易伤 / 雨果非轴白名单），却写死在编排层。
+ *
+ * ⚠ **两处的 `isAxis` 口径刻意不对称，不许顺手统一**（R14 分诊 §4.1 实测）：
+ * `:567`（叶瞬光）**没有** `!isAxis` 项、`:570`（雨果）**有**。因为伤害池的
+ * `else if (isAxis && axisSlots.has(slot))` 可能为假（轴模式下**未进轴的槽位**），
+ * 此时 `isAxis === true` 也会落到本兜底臂 ⇒ 叶瞬光那一支在轴模式下仍会生效。
+ * 统一两者 = 静默改行为。
+ */
+export interface AgentStunOverrideInput {
+  /** 本模块角色所在槽位（编排层按注册表逐模块派发；槽位号 ≠ 数组下标，见规则 17） */
+  slot: number
+  /** 本行执行行的 moveId */
+  moveId: string
+  /**
+   * **真·轴模式布尔** = 伤害池 `damagePool.ts` 的同名局部量
+   * （`(configStore.useStunAxis || autoActive) && stunAxisResult`），口径与
+   * `AgentAxisOverlayInput.isAxis` **逐字相同**（那边的不等价于 `axes.length > 0` 的论证同样适用）。
+   *
+   * ⚠ 它只说明「本帧是轴模式」，**不说明本行有没有被轴认领**——认领与否由伤害池的
+   * `axisSlots` 链先判，本钩子只在链尾被问。故模块**不要**用 `isAxis` 反推「本行在轴内」。
+   */
+  isAxis: boolean
+}
+
+/**
+ * 行级失衡易伤自报结果（`AgentMechanicModule.stunOverrideForMove` 的返回类型）。
+ *
+ * ⚠ `stunOverride: 0` 与「不认领（返回 null）」**语义不同**、不许互相代替：
+ * 前者是明确声明「本行不吃失衡易伤」（雨果非白名单招），后者是「本模块不管本行，
+ * 请伤害池回落全局覆盖率」。伤害池消费端据此分流（`stunOverride !== undefined` 三元，
+ * `damagePool.ts:148-156`）——把 0 折成 null 会让雨果的非白名单行静默吃上覆盖率。
+ */
+export interface AgentStunOverride {
+  /** 本行吃失衡易伤的比例 0-1（0 = 明确不吃、1 = 吃满） */
+  stunOverride: number
+  /** 行 note 追加段（空串 = 不加）。模块负责逐字给出，伤害池不做文案映射 */
+  note: string
 }
 
 export interface AgentAxisOverlayInput {

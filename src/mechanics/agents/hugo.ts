@@ -17,6 +17,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentStunOverrideInput,
 } from '../types'
 
 export const HUGO_ID = '1291'
@@ -356,6 +357,23 @@ export const hugoMechanic: AgentMechanicModule = {
   buildCharConfig: buildHugoCharConfig,
   buildExecutions: buildHugoExecutions,
   patchExecutions: patchHugoExecutions,
+  /**
+   * 行级失衡易伤自报（规则 6 落点，2026-09-16 round 17 / R15-c）：非轴精确口径 ——
+   * 只有失衡赠送连携 + 决算招式（`HUGO_FULL_STUN_MOVES`）吃满易伤，**其余招式明确吃 0**
+   * （不是「不认领」：不认领会让它们回落全局覆盖率，数值静默变大）。
+   *
+   * ⚠ **`!isAxis` 项必须保留**——轴模式走伤害池上方的 `axisSplitFor`（按捏轴内/外切段），
+   * 本钩子在轴模式下**不认领**（返回 null）。叶瞬光那边刻意相反（它没有 `isAxis` 项），
+   * 两处口径**不对称是设计**，不许顺手统一（R14 分诊 §4.1）。
+   */
+  stunOverrideForMove: ({ moveId, isAxis }: AgentStunOverrideInput) => {
+    if (isAxis) return null
+    const fullStun = HUGO_FULL_STUN_MOVES.has(moveId)
+    return {
+      stunOverride: fullStun ? 1 : 0,
+      note: fullStun ? ' · 失衡内（连携/决算满易伤）' : ' · 失衡外（无易伤）',
+    }
+  },
   buildResourceResult: buildHugoResourceResult,
   resourceSections: buildHugoResourceSections,
 }

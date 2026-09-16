@@ -29,6 +29,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentStunOverrideInput,
   AgentTeamConfigInput,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
@@ -694,6 +695,20 @@ export const yeshuguangMechanic: AgentMechanicModule = {
   },
   patchExecutions,
   estimateExSpecialTime,
+  /**
+   * 行级失衡易伤自报（规则 6 落点，2026-09-16 round 17 / R15-c）：
+   * 关键招（`YESHUGUANG_FULL_STUN_MOVES`）走「明心境满易伤」，吃满 `stunOverride = 1`。
+   *
+   * ⚠ **刻意没有 `isAxis` 项**——这不是漏写：伤害池的轴内分段链是
+   * `else if (isAxis && axisSlots.has(slot))`，而 `axisSlots.has(slot)` 在「轴模式下本槽没进轴」
+   * 时为假 ⇒ 兜底臂**在轴模式下也会被问到**（R14 分诊 §4.1 实测）。加 `!isAxis` = 静默改行为
+   * （未进轴槽位的关键招会从「满易伤」掉回全局覆盖率）。
+   * 上限 210%/300%（影画4）仍由 `pushDirect` 的帷幕封顶路径处理，不在本钩子内。
+   */
+  stunOverrideForMove: ({ moveId }: AgentStunOverrideInput) => {
+    if (!YESHUGUANG_FULL_STUN_MOVES.has(moveId)) return null
+    return { stunOverride: 1, note: ' · 明心境满易伤' }
+  },
   buildResourceResult,
   resourceSections,
 }

@@ -20,8 +20,9 @@ import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, resolveStatElement, getM
 import { getAgentMechanic } from '@/mechanics'
 import type { AxisScalarOverlays } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
-import { YESHUGUANG_FULL_STUN_MOVES, veilStunMultiplier } from '@/mechanics/agents/yeshuguang'
-import { HUGO_FULL_STUN_MOVES } from '@/mechanics/agents/hugo'
+// 2026-09-16 round 17（R15-c）：`YESHUGUANG_FULL_STUN_MOVES` 与 `HUGO_FULL_STUN_MOVES` 的 import
+// 已删——两处白名单判据迁进各自模块的 `stunOverrideForMove` 钩子；本色只剩帷幕封顶算式。
+import { veilStunMultiplier } from '@/mechanics/agents/yeshuguang'
 import { MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
 import { PEILUO_KAGEROU_CRIT } from '@/mechanics/agents/specPanelBuffs'
 import type { TeamResourceResult, StunPoolResult, AnomalyPoolResult, InStunAnomalySummary } from '@/types/resource'
@@ -564,17 +565,21 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           const split = axisSplitFor(slot, exec.moveId, totalUnits)
           emitExecDirect(split.inUnits, 1, '', '', exec.source)
           emitExecDirect(split.outUnits, 0, '-out', ' · 轴外（无失衡易伤）')
-        } else if (charResult.agentId === '1431' && YESHUGUANG_FULL_STUN_MOVES.has(exec.moveId)) {
-          // 叶瞬光白毛：关键伤害一律满易伤（帷幕易伤），真失衡只送连携；上限 210%/300% 在 pushDirect 处理
-          emitExecDirect(totalUnits, 1, '', ' · 明心境满易伤', exec.source)
-        } else if (!isAxis && charResult.agentId === '1291') {
-          // 雨果（非轴精确口径）：只有失衡赠送连携 + 决算招式吃满易伤，其余招式都在失衡外、无易伤。
-          // 轴模式走上方 axisSplit（按捏轴内/外拆分），不在此兜底。
-          const fullStun = HUGO_FULL_STUN_MOVES.has(exec.moveId)
-          emitExecDirect(totalUnits, fullStun ? 1 : 0, '', fullStun ? ' · 失衡内（连携/决算满易伤）' : ' · 失衡外（无易伤）', exec.source)
         } else {
-          // 未进轴的槽位（如换的辅助、没捏进轴）按全局覆盖率单独算
-          emitExecDirect(totalUnits, stunCoverage, '', '', exec.source)
+          // 兜底臂 = **轴模式下未进轴的槽位**（如换的辅助、没捏进轴）或**非轴模式**。
+          // 2026-09-16 round 17 编排层棘轮（R15-c）：原来这里住着两条 `charResult.agentId` 判据
+          // （`:567` 叶瞬光关键招满易伤 / `:570` 雨果非轴白名单），现已迁进各自模块的
+          // `stunOverrideForMove`（唯一写入方 = 本角色模块 ⇒ 判据同 T6）。此处只做「认领 / 不认领」分流。
+          // ⚠ 两处的 `isAxis` 口径**刻意不对称**（叶瞬光无 `!isAxis` 项、雨果有）：叶瞬光那一支在
+          // 轴模式下**未进轴槽位**也会命中（`axisSlots.has(slot)` 为假 ⇒ 外层链落到这里），
+          // 故 `isAxis` 必须原样递进模块、不能在本层先判 —— 顺手统一 = 静默改行为。
+          const claimed = mechanic?.stunOverrideForMove?.({ slot, moveId: exec.moveId, isAxis: !!isAxis })
+          if (claimed) {
+            emitExecDirect(totalUnits, claimed.stunOverride, '', claimed.note, exec.source)
+          } else {
+            // 未进轴的槽位（如换的辅助、没捏进轴）按全局覆盖率单独算
+            emitExecDirect(totalUnits, stunCoverage, '', '', exec.source)
+          }
         }
       }
 
