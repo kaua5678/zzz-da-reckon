@@ -95,9 +95,8 @@ function buildAnbyCharConfig({ cfg, cinemaLevel, panel }: AgentCharConfigInput):
 }
 
 /** 并联电路（converge）+ 影画4 电荷传导（postRound）回能，幂等并入各槽初始能量礼物 */
-function applyAnbyTeamConfig({ slot, cinemaLevel, characters, team, phase, combatTime, stunCount, ultimateCounts }: AgentTeamConfigInput): void {
-  const cfg = characters[slot]
-  if (!cfg) return
+// 本模块那份 cfg 由派发器直给（`characters` 按位置压缩，`characters[slot]` 在空槽时取错对象）。
+function applyAnbyTeamConfig({ cfg, slot, cinemaLevel, characters, team, phase, combatTime, stunCount, ultimateCounts }: AgentTeamConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
 
   if (phase === 'converge') {
@@ -121,7 +120,9 @@ function applyAnbyTeamConfig({ slot, cinemaLevel, characters, team, phase, comba
     for (const mate of team) {
       if (mate.slot === slot) continue
       if (mate.agent?.damageElement !== 'electric') continue
-      const mateCfg = characters[mate.slot]
+      // ⚠ 队友那份 cfg 按**身份**查，不按 `characters[mate.slot]` 下标——`characters` 按位置
+      // 压缩（空槽被跳过），槽位号 ≠ 下标：前导/中间空槽时会把能量写进**别人那份 cfg**。
+      const mateCfg = characters.find(c => c.slot === mate.slot)
       if (!mateCfg) continue
       const mateRecord = mateCfg as unknown as Record<string, unknown>
       const prevC4 = Math.max(0, Number(mateRecord.anbyC4EnergyTotal ?? 0))

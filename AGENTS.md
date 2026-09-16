@@ -85,6 +85,7 @@
 | 任务 | 改哪 |
 |---|---|
 | **改抽卡价值 / 抽卡成本** | **只用期望值口径**（用户裁决 2026-09-01：宏观研究期望足够，模拟抽卡运气已删）：`src/composables/pullValue.ts`（每万菲林兑现 ROI，单一事实源 = `data/filmEconomy.ts`）+ `src/composables/pullPlannerEngine.ts`（规划器，TIER_COSTS 常量价）；gachaCost / acquisitionValue 引擎已整体删除，**不要再引入抽卡随机模拟** |
+| **队伍有空槽（用户先填槽2 一类）时数值静默偏小 / 报 TypeError** | `characters`/`panels`/`damagePanels`/`remielleEntryPanels` **按位置压缩**（producer 跳过空槽）⇒ **槽位号 ≠ 下标**，一律禁 `arr[slot]`：自己那份 cfg 用派发器直给的 `AgentTeamConfigInput.cfg` / `AgentNextRoundFeedbackInput.cfg`，队友那份用 `.find(c => c.slot === slot)`，面板用 `panelAt(panels, slot)`（`core/panel.ts`）。扫描器 = `scripts/lib/compacted-slot-index.mjs`（判据 17，口径与实测证据在其头注释）。⚠ 本类缺陷 `timeGolden` **全盲**（105 预设全满槽）⇒ 只能手组队测（`compactedSlotIndex.test.ts`） |
 
 ## 3. 验收命令
 

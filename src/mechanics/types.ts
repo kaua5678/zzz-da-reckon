@@ -91,10 +91,29 @@ export type AgentTeamPhase = 'build' | 'converge' | 'postRound'
 export interface AgentTeamConfigInput {
   /** 本模块角色所在槽位 */
   slot: number
+  /**
+   * **本模块自己那份 cfg**（可写）。由派发器直接给（它正在遍历这个对象）。
+   *
+   * ⚠ 模块**不要**用 `characters[slot]` 反查自己——`characters` 是**按位置压缩**的数组
+   * （`buildCharConfig` 跳过空槽），**槽位号 ≠ 下标**：前导/中间空槽时 `characters[slot]`
+   * 会取到 `undefined` 或**别人那份 cfg**（2026-09-16 实测：队 `['', 1041, 1191]` 时
+   * 艾莲（槽2）的 `characters[2]` 为 `undefined` ⇒ `applyEllenTeamConfig` 的 converge 分支
+   * 把影画4 冻结数写进空气：冻结次数 4→0、回能 16→0，**静默失效、无测试变红**）。
+   * 要**队友**那份 cfg 时也别按下标取，用 `characters.find(c => c.slot === …)`。
+   *
+   * 为什么是「给对象」而不是「给下标」：派发器（`applyTeamMechanics`）本来就是
+   * `for (const cfg of characters)`，它手上就是那个对象；给下标等于让每个模块各自重做一次
+   * 有损反查。与 `AgentNextRoundFeedbackInput.cfg`（2026-09-16 round 8）同款契约。
+   */
+  cfg: CharacterOperationConfig
   agent: Agent | null
   cinemaLevel: number
   potentialLevel: number
-  /** 全队 cfg（**可写**：写任意槽位的字段正是队伍级联动的目的） */
+  /**
+   * 全队 cfg（**可写**：写任意槽位的字段正是队伍级联动的目的）。
+   * ⚠ **按位置压缩**（空槽被跳过）⇒ 只许用 `.find(c => c.slot === …)`/`.map`/`.some` 等
+   * 身份判据访问，**禁止** `characters[槽位号]` 下标索引（槽位号 ≠ 下标）。
+   */
   characters: CharacterOperationConfig[]
   team: MechanicTeamMember[]
   /** 已解析的机制滑块值（与 AgentPanelInput.settings 同源） */

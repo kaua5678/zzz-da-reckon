@@ -95,10 +95,8 @@ function buildZhuYuanCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): voi
 }
 
 /** 失衡覆盖率由收敛后的失衡次数反推（轴内行直加同源：失衡窗口 = 失衡次数 × 窗口时长 / 战斗时间） */
-function applyZhuYuanTeamConfig({ slot, characters, phase, stunCount, combatTime }: AgentTeamConfigInput): void {
+function applyZhuYuanTeamConfig({ cfg, phase, stunCount, combatTime }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const cfg = characters[slot]
-  if (!cfg) return
   const record = cfg as unknown as Record<string, unknown>
   const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))
   const battle = Math.max(1, Number(combatTime) || 180)

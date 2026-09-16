@@ -165,10 +165,9 @@ function buildCorinCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput)
  * converge 每轮重入且带上一轮收敛的 stunCount，写入在 iterate 能量结算前生效（莱特 C4 同阶段）。
  * 幂等：先扣上一轮本模块写入量再写新值（合并 cfg 每轮从 base 重建，prev 通常为 0）。
  */
-function applyCorinTeamConfig({ slot, cinemaLevel, characters, phase, combatTime, stunCount }: AgentTeamConfigInput): void {
+function applyCorinTeamConfig({ cfg, cinemaLevel, phase, combatTime, stunCount }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const cfg = characters[slot]
-  if (!cfg || cinemaLevel < 4) return
+  if (cinemaLevel < 4) return
   const record = cfg as unknown as Record<string, unknown>
   const chainTotal = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * stunCount
   const triggers = computeCorinC4Triggers({

@@ -11,6 +11,7 @@ import { simulateVelinaCorrosionState } from '@/mechanics/agents/velina'
 
 // ============ 喧响奖励常量 ============
 
+import { panelAt, emptyPanel } from './panel'
 import * as AnomalyPoolHelpers from './anomalyPool/helpers'
 import type { AnomalyPoolInput, DamageCalcConfig } from './anomalyPool/helpers'
 export type { AnomalySkillExecution, AnomalyPoolInput, AliceCoweringConfig } from './anomalyPool/helpers'
@@ -46,7 +47,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     if (exec.count <= 0 || exec.baseBuildUp <= 0) continue
     if (!exec.element) continue
 
-    const panel = panels[exec.slot] ?? panels[0]
+    const panel = panelAt(panels, exec.slot) ?? emptyPanel()
     // 按属性口径元素取抗性（变种与基础共享抗性；frostfire 经 resolveStatElement 按冰）
     const elementRes = enemyAnomalyResistances[resolveStatElement(exec.element) ?? ''] ?? 0
     const onStunEff = ((panel.anomalyBuildUpEfficiencyOnStunBonus ?? 0)
@@ -281,7 +282,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   }
   const elementDurations: Record<string, number> = {}
   for (const { element, applierSlot } of activeElements) {
-    elementDurations[element] = getAnomalyDuration(panels[applierSlot] ?? panels[0], element)
+    elementDurations[element] = getAnomalyDuration(panelAt(panels, applierSlot) ?? emptyPanel(), element)
   }
   const coverage = calcCoverage(coverageTriggerCounts, totalTime, invincibleTime, elementDurations, hasWindChar)
 
@@ -324,7 +325,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
       turbulenceCap,
     )
     // 风蚀状态机按最终乱流次数重新结算（注入积蓄仍基于预构建的 preTurbulenceCount）
-    const windPanel = panels[windCharSlot] ?? panels[0]
+    const windPanel = panelAt(panels, windCharSlot) ?? emptyPanel()
     velinaCorrosionSource = simulateVelinaCorrosionState(
       turbulenceCount,
       windTriggerCount,

@@ -179,10 +179,9 @@ peiluoProminenceMechanic.axisWindowOverlays = ({ slot, axes }) => {
  *    而不是覆盖——原分支写的也是 `(merged.extraSelfDecibelReward ?? 0) + …`。
  *    因为共享，本钩子的 phase 门只按 converge（与其它角色的写入时机一致）。
  */
-peiluoProminenceMechanic.applyTeamConfig = ({ phase, slot, characters, cinemaLevel, stunCount }: AgentTeamConfigInput) => {
+peiluoProminenceMechanic.applyTeamConfig = ({ cfg: cfgIn, phase, cinemaLevel, stunCount }: AgentTeamConfigInput) => {
   if (phase !== 'converge') return
-  const cfg = characters[slot] as (typeof characters)[number] & Record<string, unknown>
-  if (!cfg) return
+  const cfg = cfgIn as typeof cfgIn & Record<string, unknown>
   const cinema = cinemaLevel ?? 0
   // 连携总次数：轴模式用轴内加权后的覆盖值（由编排层通用注入 cfg），否则 chainCountPerStun × 失衡次数
   const chainTotal = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * stunCount
@@ -595,12 +594,11 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
    * 判定读本槽 cfg.panel.additionalAbilityActive（build 阶段面板已随 cfg 建好），
    * 受益角色的 specialty 从 team 快照读，不再由编排层 import 本模块的常量。
    */
-  applyTeamConfig: ({ slot, characters, team, phase, threads }) => {
+  applyTeamConfig: ({ cfg, characters, team, phase, threads }) => {
     if (phase === 'converge') {
       // 2026-09-15 arch 棘轮第 2 批：注入上一轮收敛的「全队终结总次数」（橘福福影画2 威势）。
       // 自 `convergence.ts` 的 `merged.agentId === '1391'` 分支搬入（规则 6）。语义与原分支逐位一致：
       // 上一轮值 ≤0 时写 undefined（= 不覆盖 build 阶段的初值），>0 才注入。
-      const cfg = characters[slot]
       if (cfg && threads) {
         ;(cfg as unknown as Record<string, unknown>).jufufuTeamUltimateCount =
           threads.teamUltimateForJufufu > 0 ? threads.teamUltimateForJufufu : undefined
@@ -608,7 +606,7 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
       return
     }
     if (phase !== 'build') return
-    const self = characters.find(c => c.slot === slot)
+    const self = cfg
     if (!self || (self.panel?.additionalAbilityActive ?? 0) <= 0) return
     for (const cfg of characters) {
       const specialty = team.find(m => m.slot === cfg.slot)?.agent?.specialty

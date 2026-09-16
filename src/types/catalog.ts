@@ -173,6 +173,13 @@ export interface PanelValues {
   additionalAbilityActive: number
   /** 失衡持续时间延长（秒）：角色级，敌人进入失衡后的持续时间 +N 秒（琉音恶意投诉、诺姆技术鸿沟等） */
   stunDurationBonusSeconds: number
+  /**
+   * 槽位号（0/1/2）**印章** —— 面板数组是**按位置压缩**的（`computePanel` 跳过空槽），
+   * 故 `panels[i]` 的下标 i ≠ 槽位号。凡按槽位取面板一律走 `core/panel.ts#panelAt`
+   * （或 `.find(p => p.slot === slot)`），**不要**用下标。producer 在 push 前盖章；
+   * 测试手工构造的密集数组（下标 == 槽位号）可缺省，`panelAt` 对「整体无章」的数组按下标兜底。
+   */
+  slot: number
   // 其他
   [key: string]: number
 }

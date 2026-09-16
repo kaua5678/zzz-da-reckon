@@ -26,6 +26,7 @@ import { auditAuthoredFacts, resolveAnchor, scanAuthoredFacts } from './zc.mjs'
 // level60 字段映射规则表（审计/修复/导入脚本三方共用，规则 11）
 import { FIELD_RULES } from './lib/level60-rules.mjs'
 import { scanScopedStyleReach } from './lib/scoped-style-reach.mjs'
+import { scanCompactedSlotIndex, IDX_SAFE_ALLOWLIST } from './lib/compacted-slot-index.mjs'
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 
@@ -2055,6 +2056,30 @@ export function runAllChecks(root = ROOT) {
           '     **特异性不变**、源码一份）；② 只有该组件用 ⇒ 搬进组件自己的 css（或全局 charts.css）；',
           '     ③ 消费组件确实要用 ⇒ 补 `<style scoped src>` 载入定义文件，或在自己内联 scoped 里补一份（注明出自定义方）。',
           '  → 别无出处地「复制一份到组件里」了事（规则 11 双份必漂移；实测 dd-caption 两份已漂 11 vs 11.5px）。',
+        ] : []),
+      ],
+    })
+  }
+
+  // ---- 判据 17：压缩数组按槽位号索引（防「槽位号 ≠ 下标」整类静默缺陷回来） ----
+  {
+    const scan = scanCompactedSlotIndex(root)
+    results.push({
+      name: `压缩数组槽位索引 (规则 17: characters/panels/damagePanels/remielleEntryPanels 的下标 ≠ 槽位号) 违规 ${scan.violations.length} 处`
+        + `（豁免 ${IDX_SAFE_ALLOWLIST.length} 条 / 扫 ${scan.scanned} 行）`,
+      ok: scan.violations.length === 0,
+      detail: [
+        ...scan.violations.slice(0, 15).map(v => `  ✗ ${v.file}:${v.line}  ${v.array}[${v.key}] → ${v.text}`),
+        ...(scan.violations.length > 15 ? [`  …另有 ${scan.violations.length - 15} 处`] : []),
+        ...(scan.violations.length > 0 ? [
+          '  → 四数组按**位置压缩**（buildCharConfig/computePanel 跳过空槽）⇒ 槽位号 ≠ 下标；',
+          '     前导/中间空槽时静默取到 undefined 或**别人那份对象**（实测：艾莲影画4 冻结 4→0、回能 16→0，',
+          '     格雷丝写进队友 cfg，奥菲丝/薇薇安/蕾米埃尔直接抛 TypeError），且**无任何既有测试会变红**。',
+          '  → 修法：① 模块内取自己那份 ⇒ 用派发器直给的 `cfg`（AgentTeamConfigInput.cfg /',
+          '     AgentNextRoundFeedbackInput.cfg）；② 取队友那份 / 任何面板 ⇒ `.find(x => x.slot === slot)`，',
+          '     面板族还可用 `panelAt(panels, slot)`（src/core/panel.ts，带未盖章密集数组兜底）。',
+          '  → 确属**下标语义**（非槽位号）的用法走 scripts/lib/compacted-slot-index.mjs 的 IDX_SAFE_ALLOWLIST，',
+          '     每条必须写明理由（棘轮只减不增；理由不成立就该改代码而不是加豁免）。',
         ] : []),
       ],
     })

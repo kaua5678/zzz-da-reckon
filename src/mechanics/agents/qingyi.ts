@@ -382,10 +382,8 @@ export const qingyiMechanic: AgentMechanicModule = {
    * 2026-09-15 arch 棘轮自 `convergence.ts` 的 `merged.agentId === '1251'` 分支搬入（规则 6）。
    * 消费方只有本模块（`qingyi.ts:189`），故 agentId 判断冗余。
    */
-  applyTeamConfig: ({ phase, slot, characters, stunCount }: AgentTeamConfigInput) => {
+  applyTeamConfig: ({ cfg, phase, stunCount }: AgentTeamConfigInput) => {
     if (phase !== 'converge') return
-    const cfg = characters[slot]
-    if (!cfg) return
     ;(cfg as unknown as Record<string, unknown>).qingyiStunCount = stunCount
   },
   buildExecutions: buildQingyiExecutions,

@@ -78,7 +78,10 @@ export function createConvergenceRoundInputs(deps: {
   const aliceInfo = computed(() => {
     const slot = configStore.team.findIndex(c => c.agentId && (catalogStore.getAgent(c.agentId)?.id === '1401' || catalogStore.getAgent(c.agentId)?.teammateBuffId === '1401'))
     if (slot < 0) return null
-    const cfg = resourceConfig.value?.characters[slot]
+    // ⚠ 按**身份**查（`.find(c => c.slot === …)`），不用 `characters[slot]` 下标：该数组按位置
+    // 压缩（`buildCharConfig` 跳过空槽），前导/中间空槽时 `characters[slot]` 取到 undefined
+    // ⇒ `aliceEnabled` 读不到 ⇒ 整个 aliceInfo 静默返回 null（畏缩 DOT 配置整块丢失）。
+    const cfg = resourceConfig.value?.characters.find(c => c.slot === slot)
     if (!cfg?.aliceEnabled) return null
     return { slot, coweringConfig: { dotRatio: cfg.aliceCoweringDotRatio ?? 2.5, dotInterval: cfg.aliceCoweringDotInterval ?? 0.95, disorderBonusPerSec: cfg.aliceCoweringDisorderBonusPerSec ?? 18, disorderBonusMax: cfg.aliceCoweringDisorderBonusMax ?? 180, assaultBaseMultiplier: 853 } }
   })
@@ -1116,12 +1119,13 @@ export function createRunCalcRound(deps: {
         axisEx: axisActionCountsBySlot[banyueSlot] ?? {},
         ultimateCountNeeded: Math.max(ultNeed, guaranteeUltimate ? 4 : 0),
         minRageCount: guaranteeFury ? 4 : 0,
-        ultimateCost: base.characters[banyueSlot]?.ultimateCost ?? ULTIMATE_COST_DEFAULT,
+        ultimateCost: base.characters.find(c => c.slot === banyueSlot)?.ultimateCost ?? ULTIMATE_COST_DEFAULT,
         decibelHave,
         // 单次补齐弹刀的原始动作时间 = 招架支援 + 支援突击（未扣合轴）：
         // 用来判「这次补齐是不是根本打不出来」（>200s = 非法，见 banyue.ts#AUTO_TOPUP_TIME_LIMIT_SEC）
-        perParrySeconds: (base.characters[banyueSlot]?.defensiveAssistActionTime ?? 0)
-          + (base.characters[banyueSlot]?.assistFollowUpActionTime ?? 0),
+        // ⚠ 按身份查（同 :1119；压缩数组下 `base.characters[banyueSlot]` 在空槽时会取错对象）
+        perParrySeconds: (base.characters.find(c => c.slot === banyueSlot)?.defensiveAssistActionTime ?? 0)
+          + (base.characters.find(c => c.slot === banyueSlot)?.assistFollowUpActionTime ?? 0),
       })
     }
 

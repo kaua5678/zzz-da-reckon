@@ -132,7 +132,38 @@ export function emptyPanel(): PanelValues {
     disorderDamageBonus: 0,
     disorderBaseMultiplierBonus: 0,
     anomalyDurationBonusSeconds: 0,
+    // -1 = **未盖章**（见 `panelAt`）：真实槽位号由 `computePanel(slot, …)` 的调用方盖上。
+    // 不写 0——那会让「槽1/槽2 的空面板」冒充槽0，`panelAt` 的身份查找随即失真。
+    slot: -1,
   }
+}
+
+/**
+ * 按**槽位号**取面板 —— 数组是**按位置压缩**的（`computePanel` 跳过空槽），故**不能**用
+ * `panels[slot]` 下标（槽位号 ≠ 下标）。
+ *
+ * 为什么需要它（2026-09-16 实测的整类缺陷）：`panels` / `damagePanels` / `remielleEntryPanels`
+ * 都由 `for (let i = 0; i < 3; i++) { const p = computeX(i); if (p) result.push(p) }` 产出——
+ * 空槽不 push ⇒ 长度 = 有角色的槽数。下游 `panels[slot]` 在**前导/中间空槽**时静默错位：
+ * 轻则取到 `undefined`、重则取到**别人那份面板**（跨角色污染），实测 3 个角色直接抛 TypeError。
+ * 三个数组的 producer 都盖了 `slot` 章，故这里按身份查。
+ *
+ * 兼容**未盖章**的入参（单元测试常手工构造密集数组 `[{…}, {…}, {…}]`，下标 == 槽位号）：
+ * 仅当整个数组**没有任何一个面板盖过章**时才断定「这是未盖章的密集数组」并回落到下标；
+ * 只要数组里出现过章，就认定它是生产侧产出的压缩数组——此时 find 未命中 = 该槽**确实没有角色**
+ * （空槽本就不该有面板），返回 `undefined`（调用方沿用既有 `?? emptyPanel()` 等兜底）。
+ * 这条判据是防「producer 漏盖章 ⇒ 静默按错下标取值」的关键：宁返回 undefined 也不猜。
+ *
+ * ⚠ 本函数**不得有副作用**（曾写过「回落到下标时顺手盖章」，实测自伤：第一次查找盖了其中一个
+ * 元素的章，数组随即「看起来已盖章」，下一次查别的槽就判成压缩数组而返回 undefined ⇒
+ * `anomalyPool.test.ts` 的维琳娜风蚀替换用例变红）。回落分支必须保持只读。
+ */
+export function panelAt(panels: readonly PanelValues[], slot: number): PanelValues | undefined {
+  const found = panels.find(p => p.slot === slot)
+  if (found) return found
+  // 「已盖章」= slot >= 0（`emptyPanel()` 的 -1 与手工构造对象的 undefined 都算未盖章）。
+  if (panels.some(p => (p.slot ?? -1) >= 0)) return undefined // 压缩数组：该槽确实无角色
+  return panels[slot] // 整体未盖章的密集数组（测试手工构造）：下标 == 槽位号
 }
 
 /** 计算基础面板（角色 + 音擎基础属性） */

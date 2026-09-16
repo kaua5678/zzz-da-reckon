@@ -146,7 +146,7 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     const probe = (agentId: string, field: string, expectVal: unknown) => {
       const characters = [mk(agentId)]
       getAgentMechanic(agentId)!.applyTeamConfig!({
-        slot: 0, agent: null, cinemaLevel: 6, potentialLevel: 6, characters,
+        slot: 0, cfg: characters[0], agent: null, cinemaLevel: 6, potentialLevel: 6, characters,
         team: [{ slot: 0, agentId, agent: null, cinemaLevel: 6, potentialLevel: 6, wEngineId: '', wEngineModLevel: 1 }],
         settings: {}, phase: 'converge', combatTime: 180, exCounts: [0], stunCount: 0,
         teamEnergyConsumed: 0, threads: sentinel,
@@ -166,7 +166,7 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     const mkProbe = (agentId: string) => {
       const characters = [{ agentId, slot: 0, teamStunCoverage: 0.42 } as any]
       getAgentMechanic(agentId)!.applyTeamConfig!({
-        slot: 0, agent: null, cinemaLevel: 0, potentialLevel: 6, characters,
+        slot: 0, cfg: characters[0], agent: null, cinemaLevel: 0, potentialLevel: 6, characters,
         team: [{ slot: 0, agentId, agent: null, cinemaLevel: 0, potentialLevel: 6, wEngineId: '', wEngineModLevel: 1 }],
         settings: {}, phase: 'converge', combatTime: 210, exCounts: [0], stunCount: 7,
         teamEnergyConsumed: 0,
@@ -192,7 +192,7 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
         ...(opts.extra !== undefined ? { extraSelfDecibelReward: opts.extra } : {}),
       } as any]
       getAgentMechanic('1551')!.applyTeamConfig!({
-        slot: 0, agent: null, cinemaLevel: opts.cinema, potentialLevel: 6, characters,
+        slot: 0, cfg: characters[0], agent: null, cinemaLevel: opts.cinema, potentialLevel: 6, characters,
         team: [{ slot: 0, agentId: '1551', agent: null, cinemaLevel: opts.cinema, potentialLevel: 6, wEngineId: '', wEngineModLevel: 1 }],
         settings: {}, phase: 'converge', combatTime: 180, exCounts: [0], stunCount: 5,
         teamEnergyConsumed: 0,
@@ -214,7 +214,7 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
       agentId: '1551', slot: 0, chainCountPerStun: 2, axisMode: true,
     } as any
     getAgentMechanic('1551')!.applyTeamConfig!({
-      slot: 0, agent: null, cinemaLevel: 0, potentialLevel: 6, characters: [axisCfg],
+      slot: 0, cfg: axisCfg, agent: null, cinemaLevel: 0, potentialLevel: 6, characters: [axisCfg],
       team: [{ slot: 0, agentId: '1551', agent: null, cinemaLevel: 0, potentialLevel: 6, wEngineId: '', wEngineModLevel: 1 }],
       settings: {}, phase: 'converge', combatTime: 180, exCounts: [0], stunCount: 5,
       teamEnergyConsumed: 0,

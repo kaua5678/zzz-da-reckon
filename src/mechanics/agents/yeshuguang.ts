@@ -680,10 +680,8 @@ export const yeshuguangMechanic: AgentMechanicModule = {
    * converge 阶段：注入上一轮「琉音转大赠送的叶瞬光逐云次数」（跨轮反馈）。
    * 2026-09-15 arch 棘轮第 2 批自 `convergence.ts` 的 `merged.agentId === '1431'` 分支搬入（规则 6）。
    */
-  applyTeamConfig: ({ phase, slot, characters, threads }: AgentTeamConfigInput) => {
+  applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
-    const cfg = characters[slot]
-    if (!cfg) return
     ;(cfg as unknown as Record<string, unknown>).yeshuguangGiftUltCount = threads.yeshuguangGiftUlt
   },
   buildExecutions,

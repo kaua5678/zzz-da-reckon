@@ -201,7 +201,7 @@ describe('奥菲丝后台自动招式（2026-08-27 口径补录）', () => {
     }
     // 真实流：CharacterOperationConfig 同时是 applyTeamConfig.characters[slot] 与 buildExecutions.cfg
     ;(orphieMechanic.applyTeamConfig as any)!({
-      phase: 'build', slot: 0, characters: [cfg],
+      phase: 'build', slot: 0, cfg, characters: [cfg],
       team: team.map((t, i) => ({ slot: i, agentId: t.agentId, agent: { id: t.agentId, specialty: t.specialty } })),
     })
     const executions: any[] = [...presetExecutions]

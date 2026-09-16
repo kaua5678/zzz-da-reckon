@@ -85,7 +85,9 @@ export function useResourceCalc() {
     const result: PanelValues[] = []
     for (let i = 0; i < 3; i++) {
       const p = computePanel(i, configStore, catalogStore)
-      if (p) result.push(p)
+      // 盖章槽位号：本数组**按位置压缩**（空槽不 push）⇒ 下标 ≠ 槽位号，
+      // 下游一律经 `panelAt(panels, slot)` 按身份取（见 core/panel.ts 头注释）。
+      if (p) result.push({ ...p, slot: i })
     }
     return result
   })
@@ -95,7 +97,7 @@ export function useResourceCalc() {
     const result: PanelValues[] = []
     for (let i = 0; i < 3; i++) {
       const p = computeRemielleEntryPanel(i, configStore, catalogStore)
-      if (p) result.push(p)
+      if (p) result.push({ ...p, slot: i })
     }
     return result
   })
@@ -498,6 +500,7 @@ export function useResourceCalc() {
     })
     const infectionBonus = hasWindChar ? 10 * infectionCoverage : 0
     // windInfectionRate：风化侵染覆盖率原值盖章（队伍无风角色时 0）——角色模块按自身口径消费（如希格莉德浸染增伤 15%×覆盖率）
+    // 注：`panels` 已在自己那份 producer 里盖过槽位章，`.map` 保序展开 ⇒ 印章自然带到 damagePanels。
     return panels.value.map(p => ({
       ...p,
       enemyCritDmgTakenBonus: (p.enemyCritDmgTakenBonus ?? 0) + frostBonus,
@@ -588,7 +591,8 @@ export function useResourceCalc() {
       if (!mid) continue
       const key = `${c.slot}:${mid}`
       if (mid === 'basic') {
-        const basicTime = resRes.characters[c.slot]?.timeAllocation.basicAttackTime ?? 0
+        // ⚠ 按身份查（`resRes.characters` 由 `configs.map` 产、根因同上：压缩数组下标 ≠ 槽位号）
+        const basicTime = resRes.characters.find(ch => ch.slot === c.slot)?.timeAllocation.basicAttackTime ?? 0
         perActionStun[key] = basicTime > 0 ? c.totalStun / basicTime : 0
       } else {
         const perHit = c.count > 0 ? c.totalStun / c.count : 0

@@ -173,8 +173,11 @@ function applyOrphieTeamConfig(input: AgentTeamConfigInput): void {
   if (input.phase !== 'build') return
   const others = input.team.filter(t => t.slot !== input.slot)
   const hasXide = others.some(t => t.agentId === '1461' || t.agent?.id === '1461')
-  const me = input.characters[input.slot]
-  ;(me as any).orphieAutoFrontRatio = hasXide ? 0.8 : 0 // 席德队 80% 前台小心脚下；通用副C 全后台
+  // ⚠ 用派发器直给的 `input.cfg`，不用 `input.characters[input.slot]`——该数组**按位置压缩**
+  // （`buildCharConfig` 跳过空槽），槽位号 ≠ 下标。此处曾是**硬崩点**：队 `['', 1041, 1301]`
+  // （奥菲丝在槽2）时 `characters[2]` 为 undefined，且本行无 `if` 守卫 ⇒
+  // `Cannot set properties of undefined (setting 'orphieAutoFrontRatio')`（2026-09-16 实测）。
+  ;(input.cfg as any).orphieAutoFrontRatio = hasXide ? 0.8 : 0 // 席德队 80% 前台小心脚下；通用副C 全后台
 }
 
 /** 后台自动招式：蚀光一闪（基础） + 灼红旋涡（能量替换）；席德队额外前台小心脚下；影画6 火刀衔接灼红旋涡 */

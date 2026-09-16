@@ -12,6 +12,8 @@
  * computeWindowDuration 为例外（需要 configStore 实时窗口时长，函数注入保持单一职责）。
  */
 import { calcDirectDamage, calcAnomalyDamage, resolveSpecialDamageProfile } from '@/core/damage'
+// 面板数组按位置压缩（下标 ≠ 槽位号）⇒ 一律 panelAt 按身份取，不用 damagePanels[slot]（见 core/panel.ts）。
+import { panelAt } from '@/core/panel'
 import { attributeCountByStateChain } from '@/core/stunAxis/inStunAnomaly'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, resolveStatElement, getMainApplierSlot, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
@@ -137,7 +139,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       id: string; slot: number; agentId: string; name: string; element: string; source: string; count: number; multiplier: number; note?: string; skillDamageTarget?: any; moveId?: string; critRateBonus?: number; critDmgBonus?: number; dmgBonus?: number; sheerDmgBonus?: number; flatDamageBonus?: number; resIgnore?: number; basisValueOverride?: number; basisLabelOverride?: string; stunOverride?: number; defIgnore?: number; penRatioBonus?: number; sourceTag?: 'gift' | 'stun' | 'self'
     }) {
       if (row.count <= 0 || row.multiplier <= 0) return
-      const basePanel = damagePanels[row.slot]
+      const basePanel = panelAt(damagePanels, row.slot)
       if (!basePanel) return
       // 行级穿透率（如希格莉德影画2 出枪式/敛枪式 +24%）：浅克隆面板叠加 penRatio，其余字段不变
       const panel = row.penRatioBonus
@@ -213,7 +215,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
 
     function pushRelease(row: { id: string; slot: number; agentId: string; name: string; count: number; multiplier: number; source: string; note?: string; element?: string; panel?: PanelValues; settlementPanel?: PanelValues; releaseCrit?: AnomalyEventExecution['releaseCrit']; stunnedOverride?: number }) {
       if (row.count <= 0 || row.multiplier <= 0) return
-      const basePanel = row.panel ?? damagePanels[row.slot]
+      const basePanel = row.panel ?? panelAt(damagePanels, row.slot)
       const settlementPanel = row.settlementPanel ?? basePanel
       if (!basePanel) return
       const element = row.element ?? 'wind'
@@ -419,7 +421,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           potentialLevel: configStore.team[slot]?.potentialLevel ?? 6,
         })
         const element = resolved?.element ?? move?.damageElement ?? agent?.damageElement ?? 'physical'
-        const execPanel = damagePanels[slot]
+        const execPanel = panelAt(damagePanels, slot)
         const execSkillLevelBonus = execPanel?.skillLevelBonus ?? 0
         const execDamageCoef = execSkillLevelBonus > 0 ? getSkillLevelCoef(execSkillLevelBonus).damageCoef : 1
         // 同 slot 同 moveId 多行（如诺姆膛温替换连携 vs 通用连携）id 加序号去重
@@ -606,7 +608,11 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       for (const event of charResult.anomalyEventExecutions ?? []) {
         if (event.count <= 0) continue
         if (event.eventType === 'release') {
-          const triggerPanel = damagePanels[slot]
+          // 不变量：**有 cfg 必有面板**（`buildCharConfig` 里 `computePanel` 是它 return 的前置，
+          // 见 helpers.ts:1674）⇒ 能走到这里（charResult 存在）的槽必然 panelAt 命中。
+          // 故这里**不**做 `?? 兜底/continue`：命中失败 = 压缩数组/盖章契约被破坏，应**响亮失败**
+          // 而不是静默少几行伤害（静默正是本类缺陷最难查之处，见 scripts/lib/compacted-slot-index.mjs）。
+          const triggerPanel = panelAt(damagePanels, slot)!
           // 异放跟随载体招式（前台绑定，玩家捏轴可精确控制）：失衡内占比 = 载体块轴内单位 / 载体总数
           const carrierInAxisFraction = event.followCarrierInStun && event.carrierMoveId
             ? (() => {
@@ -670,7 +676,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
                       source: event.carrierMoveName || event.carrierMoveId || event.eventId,
                       note: `${event.note ?? ''}；${element}·Boss异常状态轴·按触发时刻状态归因${seg.tag ? `；${seg.tag}` : ''}`,
                       element,
-                      panel: damagePanels[baseSlot] ?? triggerPanel,
+                      panel: panelAt(damagePanels, baseSlot) ?? triggerPanel,
                       settlementPanel: triggerPanel,
                       releaseCrit: event.releaseCrit,
                       stunnedOverride: seg.stunned < 0 ? undefined : seg.stunned,
@@ -722,7 +728,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
                   source: event.carrierMoveName || event.carrierMoveId || event.eventId,
                   note: `${event.note ?? ''}；${element}·${attributionLabel}${seg.tag ? `；${seg.tag}` : ''}`,
                   element,
-                  panel: damagePanels[baseSlot] ?? triggerPanel,
+                  panel: panelAt(damagePanels, baseSlot) ?? triggerPanel,
                   settlementPanel: triggerPanel,
                   releaseCrit: event.releaseCrit,
                   stunnedOverride: seg.stunned < 0 ? undefined : seg.stunned,
@@ -860,7 +866,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       // 的唯一写入方 = `burnice.ts:312` 的 buildResourceResult ⇒ 字段存在即蕴含是该角色（判据同 T6）。
       if (burniceSrc) {
         const burniceSkillCoef = (() => {
-          const bonus = damagePanels[slot]?.skillLevelBonus ?? 0
+          const bonus = panelAt(damagePanels, slot)?.skillLevelBonus ?? 0
           return bonus > 0 ? getSkillLevelCoef(bonus).damageCoef : 1
         })()
         if (burniceSrc.emberTotalTriggerCount > 0 && burniceSrc.emberDamageRatioWithMastery > 0) {
@@ -934,7 +940,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       // 唯一写入方 = `liuyin.ts:387` ⇒ 字段存在即蕴含是该角色（判据同 T6）。
       if (liuyinSrc && liuyinSrc.extraAbilityActive && liuyinSrc.exHeavyCount > 0) {
         const prevSlot = liuyinSrc.previousTeammateSlot
-        const prevPanel = damagePanels[prevSlot]
+        const prevPanel = panelAt(damagePanels, prevSlot)
         const prevAgent = prevSlot >= 0 ? (configStore.team[prevSlot]?.agentId ? catalogStore.getAgent(configStore.team[prevSlot].agentId) : null) : null
         const isRupture = prevAgent?.specialty === 'rupture'
         const basisValue = prevPanel ? (isRupture ? prevPanel.atk * 0.3 + prevPanel.hp * 0.1 : prevPanel.atk) : 0
@@ -965,7 +971,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         const qingShanExec = charResult.executions.find(e => e.moveId === '1471009')
         const attachCount = Math.max(0, Math.floor(qingShanExec?.count ?? 0))
         if (attachCount > 0) {
-          const panel = damagePanels[slot]
+          // 不变量同 :609 —— 有 cfg 必有面板，缺失即契约破坏，响亮失败。
+          const panel = panelAt(damagePanels, slot)!
           pushDirect({
             id: 'banyue-c6-crush-attach',
             slot,
@@ -1182,7 +1189,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
 
       // 维琳娜6命：对风化状态敌人再次施加风化，按平均剩余时长给风化事件增伤（每1s +2.5%，上限40%）
       if (prog.element === 'wind') {
-        const windPanel = damagePanels[windSlot]
+        const windPanel = panelAt(damagePanels, windSlot)
         const velinaC6 = (windPanel as any)?.velinaCinema6 ?? 0
         const windCount = prog.triggerCount
         if (velinaC6 && windCount > 1) {
@@ -1303,8 +1310,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
       return a?.id === '1401' || a?.teammateBuffId === '1401'
     })
-    if (polarAssaultProg && polarAssaultProg.triggerCount > 0 && polarAssaultSlot >= 0 && damagePanels[polarAssaultSlot]) {
-      const alicePanel = damagePanels[polarAssaultSlot]
+    const polarAlicePanel = polarAssaultSlot >= 0 ? panelAt(damagePanels, polarAssaultSlot) : undefined
+    if (polarAssaultProg && polarAssaultProg.triggerCount > 0 && polarAlicePanel) {
       // 轴模式：极性强击易伤跟随父动作 SW3(1401012) 的轴内占比；影画2 终结技额外触发的
       // 极性强击（c2UltSparkCount）跟随终结技轴内占比——按次数加权（2026-08 审计补接）
       const sw3Frac = axisStunFor('polar_assault')
@@ -1315,8 +1322,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         ? (sw3Count * sw3Frac + ultExtra * ultimateInAxisFraction(polarAssaultSlot)) / polarAssaultProg.triggerCount
         : stunCoverage
       const result = calcAnomalyDamage({
-        panel: alicePanel,
-        settlementPanel: alicePanel,
+        panel: polarAlicePanel,
+        settlementPanel: polarAlicePanel,
         baseMultiplier: 713,
         element: 'physical' as any,
         enemyDefense: configStore.enemy.defense,
@@ -1324,7 +1331,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         enemyDefFlatReduction: 0,
         enemyLevel: configStore.enemy.level,
         enemyResistance: enemyDamageRes.physical ?? 0,
-        enemyResReduction: alicePanel?.enemyResReduction ?? 0,
+        enemyResReduction: polarAlicePanel?.enemyResReduction ?? 0,
         stunned: polarStunFor,
         stunMultiplier: configStore.enemy.stunVuln,
         critMode: 'expect',
@@ -1354,8 +1361,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       return agent?.id === '1261' || agent?.teammateBuffId === '1261'
     })
     const janeCinema = configStore.team[janeSlot]?.cinemaLevel ?? 0
-    if (janeSlot >= 0 && janeCinema >= 6 && damagePanels[janeSlot]) {
-      const janePanel = damagePanels[janeSlot]
+    const janePanel = janeSlot >= 0 ? panelAt(damagePanels, janeSlot) : undefined
+    if (janeCinema >= 6 && janePanel) {
       const physicalProg = anomalyPoolResult?.perElement.find(prog => prog.element === 'physical')
       const assaultCritRate = Math.min(100, Math.max(0, janePanel.assaultCritRate ?? 0))
       const critCount = (physicalProg?.triggerCount ?? 0) * (assaultCritRate / 100)
@@ -1406,8 +1413,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       return agent?.id === '1401' || agent?.teammateBuffId === '1401'
     })
     const aliceCinema = configStore.team[aliceSlot]?.cinemaLevel ?? 0
-    if (aliceSlot >= 0 && aliceCinema >= 6 && damagePanels[aliceSlot]) {
-      const alicePanel = damagePanels[aliceSlot]
+    const alicePanel = aliceSlot >= 0 ? panelAt(damagePanels, aliceSlot) : undefined
+    if (aliceCinema >= 6 && alicePanel) {
       const aliceResult = adjustedResourceResult?.characters.find(c => c.slot === aliceSlot)
       const smSrc = aliceResult?.aliceSwordWillSource
 
@@ -1496,9 +1503,9 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
       return agent?.id === '1581' || agent?.teammateBuffId === '1581'
     })
-    if (remielleSlot >= 0 && damagePanels[remielleSlot] && remielleEntryPanels[remielleSlot]) {
-      const remiellePanel = damagePanels[remielleSlot]
-      const remielleEntryPanel = remielleEntryPanels[remielleSlot]
+    const remiellePanel = remielleSlot >= 0 ? panelAt(damagePanels, remielleSlot) : undefined
+    const remielleEntryPanel = remielleSlot >= 0 ? panelAt(remielleEntryPanels, remielleSlot) : undefined
+    if (remiellePanel && remielleEntryPanel) {
       const remielleSkills = catalogStore.getAgentSkills(configStore.team[remielleSlot]?.agentId ?? '')
       const otherSlots = [0, 1, 2].filter(slot => slot !== remielleSlot)
       const perSlotAnomaly = anomalyPoolResult?.perSlotAnomalyTriggers ?? []
@@ -1507,7 +1514,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           slot,
           count: Math.max(0, Math.floor(perSlotAnomaly[slot] ?? 0)),
           element: catalogStore.getAgent(configStore.team[slot]?.agentId ?? '')?.damageElement ?? 'physical',
-          panel: damagePanels[slot],
+          panel: panelAt(damagePanels, slot),
         }))
         .filter(item => item.count > 0 && item.panel)
       const voidflareTotal = voidflareBySlot.reduce((sum, item) => sum + item.count, 0)

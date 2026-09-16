@@ -120,10 +120,8 @@ function patchZhendouExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 /** converge 阶段：写 cfg.zhendouChargeCount（蓄力次数反推）+ cfg.zhendouC6StunFuryCount（影画6 失衡次数） */
-function applyZhendouTeamConfig({ slot, cinemaLevel, characters, phase, combatTime, stunCount }: AgentTeamConfigInput): void {
+function applyZhendouTeamConfig({ cfg, cinemaLevel, phase, combatTime, stunCount }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const cfg = characters[slot]
-  if (!cfg) return
   const record = cfg as unknown as Record<string, unknown>
   record.zhendouChargeCount = computeZhendouChargeCount({
     combatTime,

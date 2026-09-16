@@ -246,10 +246,8 @@ function buildEllenCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: Agent
  * 失衡次数 = 收敛后的 stunCount；冻结次数由 useResourceCalc 从异常池 ice 触发数注入 cfg。回能幂等并入
  * initialEnergyGift（可琳影画4 同款）。
  */
-function applyEllenTeamConfig({ slot, cinemaLevel, characters, phase, stunCount, threads }: AgentTeamConfigInput): void {
+function applyEllenTeamConfig({ cfg, cinemaLevel, phase, stunCount, threads }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const cfg = characters[slot]
-  if (!cfg) return
   const record = cfg as unknown as Record<string, unknown>
   // 2026-09-15 arch 棘轮第 2 批：先写上一轮异常池 ice 触发数（下方 freezeCount 消费）。
   // 语义 = `convergence.ts` 原 `merged.agentId === '1191'` 分支（规则 6），地板逐位保留。

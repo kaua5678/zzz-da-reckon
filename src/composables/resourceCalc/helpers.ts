@@ -14,7 +14,7 @@
  */
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { calcPanel, emptyPanel } from '@/core/panel'
+import { calcPanel, emptyPanel, panelAt } from '@/core/panel'
 import { inferSkillDamageTarget } from '@/core/damage'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import type { StunSkillExecution } from '@/core/stunPool'
@@ -312,6 +312,9 @@ export function applyTeamMechanics(params: {
     if (!hook) continue
     hook({
       slot: cfg.slot,
+      // 本模块自己那份 cfg：派发器正在遍历它，直接递进去。压缩数组（空槽被跳过）下
+      // `characters[slot]` 在「前导/中间空槽」时会取到 undefined 或别人那份（规则见类型注释）。
+      cfg,
       agent: catalogStore.getAgent(cfg.agentId) ?? null,
       cinemaLevel: configStore.team[cfg.slot]?.cinemaLevel ?? 0,
       potentialLevel: configStore.team[cfg.slot]?.potentialLevel ?? 6,
@@ -1090,7 +1093,7 @@ export function buildAnomalyVirtualPanel(
 
   const rows: AnomalyVirtualPanelRow[] = [...slotBuildUp.entries()]
     .map(([slot, buildup]) => {
-      const panel = panels[slot] ?? emptyPanel()
+      const panel = panelAt(panels, slot) ?? emptyPanel()
       const agentId = configStore.team[slot]?.agentId ?? ''
       const agent = agentId ? catalogStore.getAgent(agentId) : null
       const dmgBonus = (panel.dmgBonus ?? 0) + (panel[ELEMENT_DMG_KEYS[prog.element]] ?? 0)
@@ -1238,7 +1241,7 @@ export function buildAnomalySettlementEntries(
       slot: row.slot,
       share: shares[i] / shareTotal,
       triggerCount: Math.max(0, rawCounts[i] ?? 0),
-      panel: panels[row.slot] ?? emptyPanel(),
+      panel: panelAt(panels, row.slot) ?? emptyPanel(),
       name: agent?.name?.zhCN || `槽${row.slot + 1}`,
     }
   }).filter(e => e.triggerCount > 0)

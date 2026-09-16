@@ -16,6 +16,7 @@
  */
 import type { PanelValues } from '@/types/catalog'
 import { getStunBuildUpBonus, getTargetedStat } from './buff'
+import { panelAt, emptyPanel } from './panel'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
 import { resolveStatElement } from './anomalyPool/helpers'
 import type {
@@ -155,7 +156,7 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
   for (const exec of executions) {
     if (exec.count <= 0 || exec.baseDaze <= 0) continue
 
-    const panel = input.panels[exec.slot] ?? input.panels[0]
+    const panel = panelAt(input.panels, exec.slot) ?? emptyPanel()
     const element = exec.element ?? 'physical'
     const baseStunRes = enemyStunResistances[element] ?? enemyStunResistance
     const perHit = calcPerHitStun(exec.baseDaze, panel, baseStunRes, physicalFlinchCoverageRate, element, exec.skillType, exec.stunBuildUpBonus)

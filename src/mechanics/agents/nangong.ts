@@ -133,7 +133,9 @@ function buildNangongTeamConfig(input: AgentTeamConfigInput): void {
   // - nangongStunCount：颤音异放的窗口数上界
   // - freeExSpecialCount：天使队长「任意角色使敌人失衡 → 下一次强特免能」，用户口径简化为
   //   每次失衡白送一次E（不区分轴内首次/15s CD），轴/非轴通用直接加总E数
-  const own = input.characters[input.slot] as unknown as Record<string, unknown> | undefined
+  // ⚠ 用派发器直给的 `cfg`，不用 `input.characters[input.slot]`——该数组**按位置压缩**
+  // （`buildCharConfig` 跳过空槽），槽位号 ≠ 下标：前导/中间空槽时会取到 undefined 或别人那份。
+  const own = input.cfg as unknown as Record<string, unknown> | undefined
   if (own && input.phase === 'converge') {
     const stuns = Math.max(0, Math.floor(input.stunCount))
     own.nangongStunCount = stuns

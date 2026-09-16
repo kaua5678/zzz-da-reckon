@@ -591,10 +591,8 @@ export const normaMechanic: AgentMechanicModule = {
    * ⚠ `stunCoverage` 取 `teamStunCoverage`（编排层对**所有**角色通用注入的同一个量），
    * 与原分支的 `provStunCoverage` 同源同值。
    */
-  applyTeamConfig: ({ phase, slot, characters, stunCount, combatTime }: AgentTeamConfigInput) => {
+  applyTeamConfig: ({ cfg, phase, stunCount, combatTime }: AgentTeamConfigInput) => {
     if (phase !== 'converge') return
-    const cfg = characters[slot]
-    if (!cfg) return
     const record = cfg as unknown as Record<string, unknown>
     record.normaStunCount = stunCount
     record.normaStunCoverage = (cfg as unknown as { teamStunCoverage?: number }).teamStunCoverage ?? 0

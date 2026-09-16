@@ -49,6 +49,7 @@ import type {
   StandardDotDamageResult, StandardDotDamageDetail,
   AliceCoweringDotResult,
 } from '@/types/resource'
+import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
 import { simulateVelinaCorrosionState } from '@/mechanics/agents/velina'
@@ -1069,7 +1070,7 @@ export function calcDisorderDamage(
 
   for (let i = 0; i < elements.length; i++) {
     const { element, applierSlot } = elements[i]
-    const applierPanel = panels[applierSlot] ?? panels[0]
+    const applierPanel = panelAt(panels, applierSlot) ?? emptyPanel()
 
     // 触发者 = 另一个元素的施加者（覆盖当前元素的元素）
     // 对于2种元素，取另一个；对于3+种，取触发次数最多的其他元素
@@ -1082,7 +1083,7 @@ export function calcDisorderDamage(
         triggerSlot = elements[j].applierSlot
       }
     }
-    const triggerPanel = panels[triggerSlot] ?? panels[0]
+    const triggerPanel = panelAt(panels, triggerSlot) ?? emptyPanel()
 
     // T = 该元素异常在施加者身上的剩余时间；异常持续时间加成只影响这里，不影响积蓄
     const T = getAnomalyDuration(applierPanel, element)
@@ -1191,7 +1192,7 @@ export function calcTurbulenceDamage(
 
   if (turbulenceCount <= 0) return undefined
 
-  const windPanel = panels[windSlot] ?? panels[0]
+  const windPanel = panelAt(panels, windSlot) ?? emptyPanel()
   const corrosionState = simulateVelinaCorrosionState(
     turbulenceCount,
     windTriggerCount,
@@ -1210,7 +1211,7 @@ export function calcTurbulenceDamage(
   let processedTurbulenceEvents = 0
 
   for (const { element, triggerCount, applierSlot } of nonWindElements) {
-    const applierPanel = panels[applierSlot] ?? panels[0]
+    const applierPanel = panelAt(panels, applierSlot) ?? emptyPanel()
 
     // T = 非风异常剩余时间；异常持续时间加成只影响这里，不影响积蓄
     const T = getAnomalyDuration(applierPanel, element)
@@ -1360,7 +1361,7 @@ export function calcStandardDotDamage(
     const dotConfig = STANDARD_DOT_CONFIG[element]
     if (!dotConfig) continue
 
-    const applierPanel = panels[applierSlot] ?? panels[0]
+    const applierPanel = panelAt(panels, applierSlot) ?? emptyPanel()
 
     // 异常质量（每 tick 的基础伤害，含异常增伤）
     const anomalyMass = calcAnomalyMass(
@@ -1435,7 +1436,7 @@ export function calcAliceCoweringDot(
 
   // 找到主要物理施加者
   const applierSlot = getMainApplierSlot(physicalContribs)
-  const applierPanel = panels[applierSlot] ?? panels[0]
+  const applierPanel = panelAt(panels, applierSlot) ?? emptyPanel()
 
   // 计算单次强击（物理异常）伤害
   const assaultDamage = calcAnomalyMass(

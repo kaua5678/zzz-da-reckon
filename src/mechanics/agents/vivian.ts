@@ -465,10 +465,8 @@ export const vivianMechanic: AgentMechanicModule = {
    * converge 阶段：注入落羽生花「双源」的上一轮收敛值（源1 全队强特命中 / 源2 全队异常触发）。
    * 2026-09-15 arch 棘轮第 2 批自 `convergence.ts` 的 `merged.agentId === '1331'` 分支搬入（规则 6）。
    */
-  applyTeamConfig: ({ phase, slot, characters, threads }: AgentTeamConfigInput) => {
+  applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
-    const cfg = characters[slot]
-    if (!cfg) return
     const record = cfg as unknown as Record<string, unknown>
     record.vivianTeamExTotal = threads.vivianTeamEx
     record.vivianAnomalyTriggerTotal = threads.vivianAnomalyTriggers

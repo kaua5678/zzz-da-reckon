@@ -226,10 +226,8 @@ export function countBasicSegments(
  * applyTeamConfig · converge：记录上一轮收敛的失衡次数。
  * 破阵口径（用户 2026-02）：每次失衡送一套敛枪式三段（免费，不耗机会）→ 触发次数 = 失衡次数。
  */
-function applySigridTeamConfig({ slot, characters, phase, stunCount }: AgentTeamConfigInput): void {
+function applySigridTeamConfig({ cfg, phase, stunCount }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const cfg = characters[slot]
-  if (!cfg) return
   ;(cfg as unknown as Record<string, unknown>).sigridStunCount = stunCount
 }
 

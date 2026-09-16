@@ -20,6 +20,7 @@ import type {
   VelinaCorrosionSource,
   VelinaFloriaSource,
 } from '@/types/resource'
+import { panelAt, emptyPanel } from '@/core/panel'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecAnomalyEvents } from '@/specs/mechanics'
@@ -265,7 +266,7 @@ function buildVelinaAnomalyEvents({ cfg, state, events }: AgentEventInput): void
  */
 function transformVelinaAnomalyPool(input: AgentAnomalyTransformInput): void {
   if (!input.hasWindChar) return
-  const windPanel = input.panels[input.windCharSlot] ?? input.panels[0]
+  const windPanel = panelAt(input.panels, input.windCharSlot) ?? emptyPanel()
   const corrosion = simulateVelinaCorrosionState(
     input.preTurbulenceCount,
     input.preWindTriggerCount,

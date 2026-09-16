@@ -392,10 +392,8 @@ export const promiaMechanic: AgentMechanicModule = {
    * 2026-09-15 arch 棘轮第 2 批自 `convergence.ts` 的 `merged.agentId === '1541'` 分支搬入（规则 6）。
    * 缩放与取整逐位保留原分支语义。
    */
-  applyTeamConfig: ({ phase, slot, characters, threads }: AgentTeamConfigInput) => {
+  applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
-    const cfg = characters[slot]
-    if (!cfg) return
     const record = cfg as unknown as Record<string, unknown>
     record.promiaTriggerHitCount = Math.max(0, Math.floor(threads.promiaTriggerHits))
     record.promiaTeammateReleaseCount = Math.max(0, Math.floor(threads.promiaTeammateReleases))

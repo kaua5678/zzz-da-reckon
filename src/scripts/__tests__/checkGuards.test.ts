@@ -413,11 +413,11 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('十六条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性**)', () => {
+  it('十七条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引**)', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(16)
+    expect(results).toHaveLength(17)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
     expect(results.map(r => r.name.split(' ')[0])).toContain('exhibition-layer')
     // core 棘轮必须在列（规则 6 的引擎层延伸——此前 core 是豁免区）
@@ -437,6 +437,11 @@ describe('仓库级自洽（真实扫描）', () => {
     // 判据 16：scoped 样式可达性（2026-09-14）——同族第四类静默缺口，但症状在**渲染**不在数据：
     // 抽组件把 DOM 搬进子组件、规则留在页面 scoped ⇒ 编译过 / 测试绿 / ui-check 也不报。
     expect(results.some(r => r.name.includes('scoped 样式可达性'))).toBe(true)
+    // 判据 17：压缩数组槽位索引（2026-09-16 round 9）——同族第五类静默缺口，症状在**取值**：
+    // 四数组按位置压缩 ⇒ 槽位号 ≠ 下标；前导/中间空槽时静默取到 undefined 或**别人那份对象**
+    // （实测艾莲影画4 冻结 4→0、格雷丝写进队友 cfg、奥菲丝/薇薇安/蕾米埃尔抛 TypeError）。
+    // 它与判据 16 的区别：16 的症状在渲染、本判据在数值；共同点是**既有测试零覆盖**。
+    expect(results.some(r => r.name.includes('压缩数组槽位索引'))).toBe(true)
   })
 })
 

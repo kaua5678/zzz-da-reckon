@@ -349,10 +349,8 @@ export const anbyZeroMechanic: AgentMechanicModule = {
    * 2026-09-15 arch 棘轮第 2 批自 `convergence.ts` 的 `merged.agentId === '1381'` 分支搬入
    * （规则 6：编排层不写角色规则）。线程由编排层在 postRound 线程化，此处只读。
    */
-  applyTeamConfig: ({ phase, slot, characters, threads }: AgentTeamConfigInput) => {
+  applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
-    const cfg = characters[slot]
-    if (!cfg) return
     ;(cfg as unknown as Record<string, unknown>).anbyZeroTeammateWhiteLightning = threads.anbyZeroTeammateWl
   },
   buildExecutions: buildAnbyZeroExecutions,

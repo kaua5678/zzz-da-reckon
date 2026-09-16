@@ -253,7 +253,7 @@ describe('艾莲招式定向与执行行', () => {
     const characters: any[] = [
       { slot: 0, agentId: '1191', initialEnergyGift: 40, ellenFreezeCount: 2, ellenC4CdRate: 1 },
     ]
-    const input: any = { slot: 0, cinemaLevel: 4, characters, phase: 'converge', stunCount: 3 }
+    const input: any = { slot: 0, cfg: characters[0], cinemaLevel: 4, characters, phase: 'converge', stunCount: 3 }
     ellenMechanic.applyTeamConfig!(input)
     expect(characters[0].initialEnergyGift).toBe(60)
     expect(characters[0].ellenC4EnergyTotal).toBe(20)
@@ -263,7 +263,7 @@ describe('艾莲招式定向与执行行', () => {
     ellenMechanic.applyTeamConfig!({ ...input, phase: 'build' })
     expect(characters[0].initialEnergyGift).toBe(60)
     const c0: any[] = [{ slot: 0, agentId: '1191', initialEnergyGift: 40 }]
-    ellenMechanic.applyTeamConfig!({ slot: 0, cinemaLevel: 0, characters: c0, phase: 'converge', stunCount: 3 } as any)
+    ellenMechanic.applyTeamConfig!({ slot: 0, cfg: c0[0], cinemaLevel: 0, characters: c0, phase: 'converge', stunCount: 3 } as any)
     expect(c0[0].initialEnergyGift).toBe(40)
   })
 })
@@ -377,7 +377,7 @@ describe('艾莲滑块生效差分（防守卫冻结，SOP §3.5：改滑块→�
   it('ellen.c4CdRate → 影画4充能差分（applyTeamConfig 读 cfg.ellenC4CdRate，随覆盖率线性缩放）', () => {
     const mk = (cdRate: number) => {
       const c: any = { slot: 0, agentId: '1191', cinemaLevel: 4, initialEnergyGift: 40, ellenC4EnergyTotal: 0, ellenC4CdRate: cdRate, ellenFreezeCount: 0 }
-      ellenMechanic.applyTeamConfig!({ slot: 0, cinemaLevel: 4, characters: [c], phase: 'converge', stunCount: 3 } as never)
+      ellenMechanic.applyTeamConfig!({ slot: 0, cfg: c, cinemaLevel: 4, characters: [c], phase: 'converge', stunCount: 3 } as never)
       return c
     }
     const half = mk(0.5)

@@ -191,7 +191,8 @@ describe('朱鸢强化霰弹资源循环', () => {
 
   it('失衡覆盖率由失衡次数反推（applyTeamConfig converge）', () => {
     const characters: any[] = [{ slot: 0, agentId: '1241', zhuYuanStunCoverage: 0 }]
-    zhuYuanMechanic.applyTeamConfig!({ slot: 0, characters, phase: 'converge', stunCount: 3, combatTime: 180 } as any)
+    // cfg = 本模块自己那份（派发器直给）；压缩数组下它**不一定**等于 characters[slot]。
+    zhuYuanMechanic.applyTeamConfig!({ slot: 0, cfg: characters[0], characters, phase: 'converge', stunCount: 3, combatTime: 180 } as any)
     expect(characters[0].zhuYuanStunCoverage).toBeCloseTo(3 * 16 / 180, 5)
   })
 

@@ -114,10 +114,11 @@ describe('悠真（1201）电壶→电囚→飞弦·斩资源循环', () => {
 
   it('失衡覆盖率由失衡次数反推（applyTeamConfig converge，轴内行直加同源）', () => {
     const characters: any[] = [{ slot: 0, agentId: '1201', harumasaStunCoverage: 0.5 }]
-    harumasaMechanic.applyTeamConfig!({ slot: 0, characters, phase: 'converge', stunCount: 3, combatTime: 180 } as any)
+    // cfg = 本模块自己那份（派发器直给）
+    harumasaMechanic.applyTeamConfig!({ slot: 0, cfg: characters[0], characters, phase: 'converge', stunCount: 3, combatTime: 180 } as any)
     expect(characters[0].harumasaStunCoverage).toBeCloseTo(3 * 16 / 180, 5)
     // 非 converge 阶段不动作
-    harumasaMechanic.applyTeamConfig!({ slot: 0, characters, phase: 'build', stunCount: 3, combatTime: 180 } as any)
+    harumasaMechanic.applyTeamConfig!({ slot: 0, cfg: characters[0], characters, phase: 'build', stunCount: 3, combatTime: 180 } as any)
     expect(characters[0].harumasaStunCoverage).toBeCloseTo(3 * 16 / 180, 5)
   })
 

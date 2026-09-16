@@ -15,12 +15,20 @@ import { corinMechanic } from '@/mechanics/agents/corin'
 import { peiluoProminenceMechanic } from '@/mechanics/agents/specPanelBuffs'
 
 /** 构造 applyTeamConfig 入参（只填被测逻辑读到的字段） */
-const teamInput = (o: Record<string, unknown>) => ({
-  characters: [], team: [], settings: {}, phase: 'build', combatTime: 180,
-  exCounts: [], ultimateCounts: [], stunCount: 0, teamEnergyConsumed: 0,
-  cinemaLevel: 0, potentialLevel: 6, agent: null, slot: 0,
-  ...o,
-} as never)
+/** 构造 applyTeamConfig 入参（只填被测逻辑读到的字段）。
+ *  `cfg` 缺省从 `characters` 里按 `slot` 派生 —— 与真实派发器同款（它遍历到哪个 cfg 就递哪个）。
+ *  压缩数组下这两者**语义不同**（槽位号 ≠ 下标），故这里是**按身份查**、不是 `characters[slot]`。 */
+const teamInput = (o: Record<string, unknown>) => {
+  const characters = (o.characters ?? []) as Array<{ slot?: number }>
+  const slot = (o.slot ?? 0) as number
+  return {
+    characters: [], team: [], settings: {}, phase: 'build', combatTime: 180,
+    exCounts: [], ultimateCounts: [], stunCount: 0, teamEnergyConsumed: 0,
+    cinemaLevel: 0, potentialLevel: 6, agent: null, slot,
+    ...o,
+    cfg: o.cfg ?? characters.find(c => c.slot === slot) ?? characters[0],
+  } as never
+}
 
 const member = (slot: number, agentId: string, specialty?: string) => ({
   slot, agentId, agent: specialty ? { specialty } : null,
