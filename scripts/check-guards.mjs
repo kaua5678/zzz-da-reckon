@@ -115,7 +115,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 52,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）→ **55**（2026-09-15 同批第 3 小簇：轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽 `cfg.ultimateCost`）→ **53**（2026-09-15 同批第 4 小簇：`nomra 1571` 的 normaStunCount/Coverage/BattleTime 与 `qingyi 1251` 的 qingyiStunCount 注入迁进各自模块的 applyTeamConfig——消费方只有本模块，且 hook 入参已含 stunCount/combatTime；timeGolden 0 delta，反向验证删注入 ⇒ 精确红）。见 AGENT_BRANCH_BASELINE 注释
+    frozen: 47,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）→ **55**（2026-09-15 同批第 3 小簇：轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽 `cfg.ultimateCost`）→ **53**（2026-09-15 同批第 4 小簇：`nomra 1571` 的 normaStunCount/Coverage/BattleTime 与 `qingyi 1251` 的 qingyiStunCount 注入迁进各自模块的 applyTeamConfig——消费方只有本模块，且 hook 入参已含 stunCount/combatTime；timeGolden 0 delta，反向验证删注入 ⇒ 精确红）。见 AGENT_BRANCH_BASELINE 注释
     target: 0,
     due: '2026-12-31',
     plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。跨轮反馈走 `AgentTeamConfigInput.threads`（2026-09-15 新增的通用通道，别再逐字段铺开契约）。hot spot：convergence.ts(35) > damagePool.ts(16) > helpers.ts(4)。架构评审 #10 → #2',
@@ -501,13 +501,24 @@ export function countAgentBranchLines(root = ROOT) {
  * 判据同 T6：字段消费方**只有本模块**（`config.ts` 声明、模块内读），且 hook 入参已含
  * `stunCount`/`combatTime` ⇒ 不需要在编排层认人。实测：timeGolden 0 delta；
  * 反向验证（停掉 norma 的注入）⇒ `agent:1571:c6.slot0` 时间账精确变化 = 注入是活反馈。
+ * 2026-09-15 −4：51→47（同批「模块 source 字段即角色标识」簇，全在 `damagePool.ts`）= 去掉
+ * 5 处 `charResult.agentId === '<id>'` 判断，因为同条件的**模块产物字段**已经蕴含角色：
+ *   · 悠真 `harumasaStunOnly`（唯一写入方 harumasa.ts，且只在轴模式写）
+ *   · 柏妮思 `burniceMechanicSource`（burnice.ts:312）×1、琉音 `liuyinMechanicSource`（liuyin.ts:387）×3
+ * 判据同 T6：字段唯一写入方 = 该角色模块 ⇒ 字段存在即蕴含是该角色。timeGolden 0 delta。
+ * ⚠ **同批明确保留的**：`damagePool.ts:406` 的 `charResult.agentId === '1171' ? cinema : 0` **不是冗余**——
+ * 它限制的是「只有柏妮思才吃自己 C4 的暴击 30%」，`cinema>=4` 对所有角色都成立，去掉会误伤全队。
+ * 2026-09-15 −1：52→51 = `damagePool.ts` 的悠真失衡专属直加
+ * `charResult.agentId === '1201' && isAxis && exec.harumasaStunOnly !== undefined`
+ * → 去掉 agentId 与 isAxis（`harumasaStunOnly` 的唯一写入方 = `harumasa.ts:329` 的 patchExecutions，
+ * 且只在 `cycle.axisActive` 时写 ⇒ 字段存在即蕴含「是悠真且轴模式」，判据同 T6）。timeGolden 0 delta。
  * 2026-09-15 −1：53→52 = `peiluo 1551`（peiluoVerdictCount + extraSelfDecibelReward）迁进
  * `specPanelBuffs` 的 `peiluoProminenceMechanic.applyTeamConfig`。⚠ 两处等价性要点：
  * ① `extraSelfDecibelReward` 是**跨角色共享累加通道**（橘福福/蕾米埃尔/orphie 各自 `+=`）⇒ 必须累加不可覆盖；
  * ② `peiluoVerdictCount` **无条件**写（含轴模式，原分支无门控）——加 `axisMode` 门控 = 行为静默改变，
  *    而该路径 `timeGolden` 覆盖不到（实测不红），靠 `teamHook.test.ts` 的 hook 级用例钉住。
  */
-export const AGENT_BRANCH_BASELINE = 52
+export const AGENT_BRANCH_BASELINE = 47
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。

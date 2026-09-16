@@ -470,7 +470,10 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           // 摊入全部行，这里只补失衡独有部分 40×(1−异常覆盖)，且仅轴内段（stunOverride>0，敌人失衡）加；
           // 轴外段敌人未失衡、只吃异常部分。非轴走 patch 并集口径（不加此处）。
           let harumasaStunOnlyBonus = 0
-          if (charResult.agentId === '1201' && isAxis && (exec as any).harumasaStunOnly !== undefined) {
+          // 2026-09-15 编排层棘轮：原判据 `charResult.agentId === '1201' && isAxis && exec.harumasaStunOnly !== undefined`。
+          // agentId 判断**冗余**——该字段的唯一写入方 = `harumasa.ts:329` 的 patchExecutions
+          // （只在 `cycle.axisActive` 时写自己的行）⇒ 字段存在即蕴含「是悠真且轴模式」（判据同 T6）。
+          if ((exec as any).harumasaStunOnly !== undefined) {
             harumasaStunOnlyBonus = stunOverride > 0 ? Math.max(0, Number((exec as any).harumasaStunOnly)) : 0
           }
           // 仪玄凝神：6 命默认满覆盖（调息送大量符法千重，用户口径：暴伤+40% + 贯穿+20%，不走轴扫描），
@@ -853,7 +856,9 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       }
 
       const burniceSrc = charResult.burniceMechanicSource
-      if (charResult.agentId === '1171' && burniceSrc) {
+      // 2026-09-15 编排层棘轮：去掉 `charResult.agentId === '1171'`——`burniceMechanicSource`
+      // 的唯一写入方 = `burnice.ts:312` 的 buildResourceResult ⇒ 字段存在即蕴含是该角色（判据同 T6）。
+      if (burniceSrc) {
         const burniceSkillCoef = (() => {
           const bonus = damagePanels[slot]?.skillLevelBonus ?? 0
           return bonus > 0 ? getSkillLevelCoef(bonus).damageCoef : 1
@@ -925,7 +930,9 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
 
       // 琉音专属直伤（额外能力）：石头/剪刀/布重击命中时，按上一位队友特性追加伤害。
       const liuyinSrc = charResult.liuyinMechanicSource
-      if (charResult.agentId === '1481' && liuyinSrc && liuyinSrc.extraAbilityActive && liuyinSrc.exHeavyCount > 0) {
+      // 2026-09-15 编排层棘轮：去掉 `charResult.agentId === '1481'`——`liuyinMechanicSource` 的
+      // 唯一写入方 = `liuyin.ts:387` ⇒ 字段存在即蕴含是该角色（判据同 T6）。
+      if (liuyinSrc && liuyinSrc.extraAbilityActive && liuyinSrc.exHeavyCount > 0) {
         const prevSlot = liuyinSrc.previousTeammateSlot
         const prevPanel = damagePanels[prevSlot]
         const prevAgent = prevSlot >= 0 ? (configStore.team[prevSlot]?.agentId ? catalogStore.getAgent(configStore.team[prevSlot].agentId) : null) : null
@@ -977,7 +984,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         }
       }
 
-      if (charResult.agentId === '1481' && liuyinSrc && !isAxis) {
+      // 2026-09-15 编排层棘轮：去掉 agentId 判断（`liuyinMechanicSource` 唯一写入方 = liuyin.ts:387）。
+      if (liuyinSrc && !isAxis) {
         const stunCount = stunPoolResult?.stunCount ?? 0
         const exTotal = Math.max(0, Math.floor(liuyinSrc.exHeavyCount))
         const exMult = new Map<string, number>()
@@ -1014,7 +1022,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       }
 
       // 琉音影画6·余音：独立直伤，轴模式同样生效（非失衡轴模式下与强特拆分无关，不能包在 !isAxis 内）
-      if (charResult.agentId === '1481' && liuyinSrc && liuyinSrc.cinemaLevel >= 6) {
+      // 2026-09-15 编排层棘轮：同上（字段即角色标识）。
+      if (liuyinSrc && liuyinSrc.cinemaLevel >= 6) {
         const promoteCount = liuyinPromoteCount
         const c6EchoMax = Math.max(0, Math.floor(configStore.getMechanicSetting('liuyin.c6EchoMax', CINEMA6_ECHO_MAX)))
         if (promoteCount > 0 && c6EchoMax > 0) {
