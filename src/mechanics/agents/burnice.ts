@@ -8,7 +8,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { AgentSkills, PanelValues, SkillMove } from '@/types/catalog'
-import type { BurniceMechanicSource, CharacterResourceResult, MechanicSetting } from '@/types/resource'
+import type { BurniceMechanicSource, CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 
@@ -357,8 +357,10 @@ function pushEx(
   })
 }
 
-function buildBurniceExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const source = computeBurniceMechanic({
+/** `computeBurniceMechanic` 的**模块内唯一入口**：把 cfg/state 解包集中在一处
+ *  （buildExecutions / buildAnomalyEvents 原本各写一份同样的 15 行入参，漂移风险）。 */
+function burniceMechanicSourceOf(cfg: CharacterOperationConfig, state: IterationState): BurniceMechanicSource {
+  return computeBurniceMechanic({
     exSpecialCount: state.exSpecialCount,
     totalTime: minusInvincibleTime(state.frontlineTime + state.backstageTime, cfg),
     atk: cfg.panel.atk ?? 0,
@@ -367,14 +369,18 @@ function buildBurniceExecutions({ cfg, state, executions }: AgentResourceInput):
     energyRegen: resolveEnergyRegenTotal(cfg.panel),
     ultimateCount: state.ultimateCount,
     singleSpraySeconds: cfg.burniceSingleSpraySeconds ?? SINGLE_SPRAY_MAX_SECONDS,
-      doubleSpraySeconds: cfg.burniceDoubleSpraySeconds ?? DOUBLE_SPRAY_MAX_SECONDS,
-      stirringCount: cfg.burniceStirringCount ?? 0,
-      stirringActionTime: cfg.burniceStirringActionTimeSeconds ?? 0,
-      flowCountUtilization: cfg.burniceFlowCountUtilization ?? 1,
-      stirringDamageRatio: cfg.burniceStirringDamageRatio ?? STIRRING_DAMAGE_FALLBACK,
-      tossingDamageRatio: cfg.burniceTossingDamageRatio ?? TOSSING_DAMAGE_FALLBACK,
-      tossingActionTime: cfg.burniceTossingActionTimeSeconds ?? 0,
+    doubleSpraySeconds: cfg.burniceDoubleSpraySeconds ?? DOUBLE_SPRAY_MAX_SECONDS,
+    stirringCount: cfg.burniceStirringCount ?? 0,
+    stirringActionTime: cfg.burniceStirringActionTimeSeconds ?? 0,
+    flowCountUtilization: cfg.burniceFlowCountUtilization ?? 1,
+    stirringDamageRatio: cfg.burniceStirringDamageRatio ?? STIRRING_DAMAGE_FALLBACK,
+    tossingDamageRatio: cfg.burniceTossingDamageRatio ?? TOSSING_DAMAGE_FALLBACK,
+    tossingActionTime: cfg.burniceTossingActionTimeSeconds ?? 0,
   })
+}
+
+function buildBurniceExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const source = burniceMechanicSourceOf(cfg, state)
   const row = cfg.mechanicRowValues ?? {}
   pushEx(executions, SINGLE_SUSTAINED_MOVE, source.singleCastCount, source.singleSpraySeconds, source.singleSustainedMultiplier, true, source.singleCastCount > 0 ? source.singleSpraySeconds * SINGLE_SPRAY_PER_SECOND : 0)
   pushEx(executions, SINGLE_EXPLOSION_MOVE, source.singleCastCount, SINGLE_EXPLOSION_TIME, row[SINGLE_EXPLOSION_MOVE] ?? SINGLE_EXPLOSION_BASE, false, SINGLE_EXPLOSION_COST)
@@ -383,23 +389,7 @@ function buildBurniceExecutions({ cfg, state, executions }: AgentResourceInput):
 }
 
 function buildBurniceAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
-  const source = computeBurniceMechanic({
-    exSpecialCount: state.exSpecialCount,
-    totalTime: minusInvincibleTime(state.frontlineTime + state.backstageTime, cfg),
-    atk: cfg.panel.atk ?? 0,
-    anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
-    cinemaLevel: cfg.burniceCinemaLevel ?? 0,
-    energyRegen: resolveEnergyRegenTotal(cfg.panel),
-    ultimateCount: state.ultimateCount,
-    singleSpraySeconds: cfg.burniceSingleSpraySeconds ?? SINGLE_SPRAY_MAX_SECONDS,
-      doubleSpraySeconds: cfg.burniceDoubleSpraySeconds ?? DOUBLE_SPRAY_MAX_SECONDS,
-      stirringCount: cfg.burniceStirringCount ?? 0,
-      stirringActionTime: cfg.burniceStirringActionTimeSeconds ?? 0,
-      flowCountUtilization: cfg.burniceFlowCountUtilization ?? 1,
-      stirringDamageRatio: cfg.burniceStirringDamageRatio ?? STIRRING_DAMAGE_FALLBACK,
-      tossingDamageRatio: cfg.burniceTossingDamageRatio ?? TOSSING_DAMAGE_FALLBACK,
-      tossingActionTime: cfg.burniceTossingActionTimeSeconds ?? 0,
-  })
+  const source = burniceMechanicSourceOf(cfg, state)
   if (source.releaseCount <= 0) return
   events.push({
     eventId: 'burnice_flowfire_release',
@@ -551,6 +541,37 @@ const settings: MechanicSetting[] = [
   },
 ]
 
+/**
+ * 柏妮思影画4/6 的**行级**落点（规则 6 迁移，2026-09-16 round 15 R15-a）。
+ *
+ * 迁移前这两条住在 `damagePool.ts:408-412`：
+ * ```
+ * const burniceCinema = charResult.agentId === '1171' ? configStore.team[slot]?.cinemaLevel ?? 0 : 0
+ * const critRateBonus = (burniceCinema >= 4 && (exec.category === 'special' || exec.category === 'assist') ? 30 : 0) + (exec.critRateBonus ?? 0)
+ * const resIgnore = (exec.resIgnore ?? 0) + (burniceCinema >= 6 && (exec.moveId === '1171012' || exec.moveId === '1171013') ? 25 : 0)
+ * ```
+ * 两条消费的都是**通用行级通道**（`exec.critRateBonus` / `exec.resIgnore`，damagePool 只做
+ * `?? 0` 加算后透传）⇒ 搬进模块后通道不变、语义逐位保留：
+ * - C4：`category === 'special' || category === 'assist'` 的行 +30%（**不是**按 moveId 白名单，
+ *   与模块自己 push 的 sustained/explosion 行 `category: 'special'` 对得上）；
+ * - C6：仅 `1171012`（双喷持续）/`1171013`（双喷爆炸）无视火抗 25%。
+ *
+ * ⚠ 命座读**模块自己那份 cfg 的** `burniceCinemaLevel`（`buildCharConfig` 无条件写，先例 4 处），
+ * 不再回编排层 `configStore.team[slot]` 取——这正是本批要消灭的「编排层替角色认人」。
+ */
+function patchBurniceExecutions({ cfg, executions }: AgentResourceInput): void {
+  const cinemaLevel = cfg.burniceCinemaLevel ?? 0
+  if (cinemaLevel < 4) return
+  for (const exec of executions) {
+    if (cinemaLevel >= 4 && (exec.category === 'special' || exec.category === 'assist')) {
+      exec.critRateBonus = (exec.critRateBonus ?? 0) + CINEMA4_CRIT_RATE_BONUS
+    }
+    if (cinemaLevel >= 6 && (exec.moveId === DOUBLE_SUSTAINED_MOVE || exec.moveId === DOUBLE_EXPLOSION_MOVE)) {
+      exec.resIgnore = (exec.resIgnore ?? 0) + CINEMA6_FIRE_RES_IGNORE
+    }
+  }
+}
+
 export const burniceMechanic: AgentMechanicModule = {
   id: 'agent:burnice',
   agentIds: [BURNICE_AGENT_ID],
@@ -559,6 +580,7 @@ export const burniceMechanic: AgentMechanicModule = {
   applyPanel: applyBurnicePanel,
   buildCharConfig: buildBurniceCharConfig,
   buildExecutions: buildBurniceExecutions,
+  patchExecutions: patchBurniceExecutions,
   buildAnomalyEvents: buildBurniceAnomalyEvents,
   buildResourceResult: buildBurniceResourceResult,
   resourceSections: buildBurniceResourceSections,

@@ -21,7 +21,7 @@ import { getAgentMechanic } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
 import { YESHUGUANG_FULL_STUN_MOVES, veilStunMultiplier } from '@/mechanics/agents/yeshuguang'
 import { HUGO_FULL_STUN_MOVES } from '@/mechanics/agents/hugo'
-import { C6_ATTACH_RATIO, MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
+import { MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
 import { CORIN_ADDITIONAL_DMG } from '@/mechanics/agents/corin'
 import { SIGRID_INFECTION_DMG } from '@/mechanics/agents/sigrid'
 import { PEILUO_KAGEROU_CRIT } from '@/mechanics/agents/specPanelBuffs'
@@ -405,11 +405,14 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         if (charResult.agentId === '1481' && !isAxis && LIUYIN_EX_MOVE_IDS.has(exec.moveId)) continue
         const move = findMoveById(skills, exec.moveId)
         const mechanic = getAgentMechanic(charResult.agentId)
-        const burniceCinema = charResult.agentId === '1171' ? configStore.team[slot]?.cinemaLevel ?? 0 : 0
-        const critRateBonus = (burniceCinema >= 4 && (exec.category === 'special' || exec.category === 'assist') ? 30 : 0) + (exec.critRateBonus ?? 0)
+        // 2026-09-16 编排层棘轮（R15-a）：柏妮思影画4/6 原在此处按 `charResult.agentId === '1171'`
+        // 取本槽命座并写行级 `exec.critRateBonus`/`exec.resIgnore` —— 已迁进
+        // `burnice.ts#patchBurniceExecutions`（读模块自己 cfg 的 burniceCinemaLevel，通道不变）。
+        const critRateBonus = exec.critRateBonus ?? 0
         const critDmgBonus = exec.critDmgBonus ?? 0
-        // 招式限定抗性无视：执行字段（模块 patchExecutions 写入，如仪玄影画2 终/强特 15% 以太减抗）+ 柏妮思 C6 特判
-        const resIgnore = (exec.resIgnore ?? 0) + (burniceCinema >= 6 && (exec.moveId === '1171012' || exec.moveId === '1171013') ? 25 : 0)
+        // 招式限定抗性无视：执行字段（各模块 patchExecutions 写入，如仪玄影画2 终/强特 15% 以太减抗、
+        // 柏妮思 C6 双喷 25% 火抗无视）
+        const resIgnore = exec.resIgnore ?? 0
         const resolved = mechanic?.resolveExecutionDamage?.({
           slot,
           agent: agent ?? null,
@@ -967,10 +970,17 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       // 琉音三个强特（石头→剪刀→布）按“失衡次数×25 能量留给失衡内第一个强特，剩余非失衡按 1→3 连打”拆分易伤。
       // 非失衡轴模式下通用强特行已跳过，这里重放并拆失衡/非失衡；失衡轴模式仍走轴内易伤归属。
       // 般岳影画6：600% 贯穿力火伤附伤是倾山的自动触发事件，次数 = 倾山次数（不可调，不产生资源利用率行）
-      if (charResult.agentId === '1471' && (configStore.team[slot]?.cinemaLevel ?? 0) >= 6) {
-        const qingShanExec = charResult.executions.find(e => e.moveId === '1471009')
-        const attachCount = Math.max(0, Math.floor(qingShanExec?.count ?? 0))
-        if (attachCount > 0) {
+      // 2026-09-16 编排层棘轮（R15-a）：原判据 `charResult.agentId === '1471' && cinemaLevel >= 6` +
+      // 自己去找 `1471009` 行 —— 已改为读**倾山行上的模块标记** `banyueC6CrushAttach`（= 附伤倍率）。
+      // 标记的唯一写入方 = `banyue.ts#patchBanyueExecutions`（仅 C6 写自己的倾山行）⇒ 字段存在即蕴含
+      // 「是般岳且 C6」（判据同 T6，与本文件 :867 burniceMechanicSource / :941 liuyinMechanicSource 同族）。
+      // ⚠ 刻意**不**改成读 `banyueRageCycle.rageCount`：那份是**截断前**的循环次数，而本处口径是
+      // 截断后的倾山行 count（原 `executions.find(...)` 读的就是同一行）——换源 = 静默改语义。
+      const crushAttachExec = charResult.executions.find(e => (e as any).banyueC6CrushAttach !== undefined)
+      if (crushAttachExec) {
+        const attachCount = Math.max(0, Math.floor(crushAttachExec.count))
+        const attachRatio = Number((crushAttachExec as any).banyueC6CrushAttach)
+        if (attachCount > 0 && attachRatio > 0) {
           // 不变量同 :609 —— 有 cfg 必有面板，缺失即契约破坏，响亮失败。
           const panel = panelAt(damagePanels, slot)!
           pushDirect({
@@ -981,7 +991,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
             element: 'fire',
             source: '倾山自动触发',
             count: attachCount,
-            multiplier: C6_ATTACH_RATIO,
+            multiplier: attachRatio,
             note: `影画6：倾山命中时对周身造成 600% 贯穿力火伤；次数=倾山次数 ×${attachCount}（自动，不可调）`,
             basisValueOverride: panel.atk * 0.3 + (panel.hp ?? 0) * 0.1 + (panel.sheerForceFlat ?? 0),
             basisLabelOverride: '贯穿力（600%附伤）',

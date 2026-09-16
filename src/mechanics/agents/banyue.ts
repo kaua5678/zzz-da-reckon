@@ -678,6 +678,18 @@ function patchBanyueExecutions({ cfg, executions }: AgentResourceInput): void {
       exec.dmgBonus = (exec.dmgBonus ?? 0) + C4_DMG_BONUS
     }
   }
+  // 影画6·摧岳附伤（`banyue_c6_crush_attach`）：**标记**在倾山行上，伤害行仍由 damagePool 构建。
+  // 为什么是「标记」而不是「模块直接产行」：这条附伤是倾山的**自动触发事件**，不占前台时间、
+  // 不进资源账本、不产资源利用率行（原 damagePool 注释：次数 = 倾山次数，不可调）——若模块
+  // 把它 push 成执行行，会连带改变时间预算/失衡值/异常积蓄三本账。故这里只写**身份 + 倍率**
+  // （`agentId` 判据已由「字段唯一写入方 = 本函数」覆盖，判据同 T6），次数由消费端读**同一行**的
+  // `count`（= 截断后的倾山次数，与迁移前 `executions.find('1471009').count` 逐位一致）。
+  if (cinemaLevel < 6) return
+  for (const exec of executions) {
+    if (exec.moveId === MOVE.qingShan) {
+      ;(exec as unknown as Record<string, unknown>).banyueC6CrushAttach = C6_ATTACH_RATIO
+    }
+  }
 }
 
 function buildBanyueResourceResult({ cfg, state: _state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
