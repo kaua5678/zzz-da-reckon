@@ -1265,6 +1265,35 @@ export function stripCommentsAndStrings(text) {
 }
 
 /**
+ * 按 `root` 键控的记忆化（判据 14 两个扫描器的性能修复，2026-09-16）。
+ *
+ * ## 为什么要（实测）
+ * `scanDeadOptionalProps` / `scanReadOnlyOptionalProps` 是**纯函数**：同一 root 在同一次
+ * 运行内结果恒定。但它们的实现是「对**每条候选声明**都遍历全部源文件」——
+ * 实测 A 段：309 条声明 × 4 条正则 × 457 个文件 ≈ **565 万次正则匹配**，
+ * 且每条声明都把 1.2MB 语料**重新 `stripCommentsAndStrings` 一遍**（实测该步单独 ≈ 20s）。
+ * 而 `checkGuards.test.ts` 里三条用例会**重复调用**同一扫描器 ⇒ 重复序列实测 **37.1s**。
+ *
+ * ## ⚠ 为什么缓存键**必须含 root**（这是本修复唯一的风险点）
+ * 测试用 `mkdtempSync` 造**各自的 fixture root** 调同一函数（`checkGuards.test.ts` 的
+ * 「零读零写 = 死」等一组用例）。实测：fixture root 返回 `[]`、真实 root 返回 2 条 ——
+ * 若只按函数名缓存，第二次调用就会**拿到另一个 root 的结果**，把死通道判据变成
+ * 「第一个 root 说了算」的假绿。故键 = `函数名 + root`。
+ * （fixture 用 `mkdtempSync` 保证路径唯一 ⇒ 不会两个不同内容共用同一键。）
+ *
+ * ⚠ 仅在同一次进程内有效；测试若改动 fixture 后**重新扫描同一 root**，须自行失效
+ * （当前无此用法：每个 fixture 都是新 root）。
+ */
+const scanCache = new Map()
+function memoScan(key, root, compute) {
+  const k = key + '\u0000' + root
+  if (scanCache.has(k)) return scanCache.get(k)
+  const v = compute()
+  scanCache.set(k, v)
+  return v
+}
+
+/**
  * 去掉**字符串字面量**（模板串 / 单引号串 / 双引号串）。
  * 见 `stripCommentsAndStrings` 的说明——判据 14 用前者，本函数保留为可单测的最小单元。
  */
@@ -1295,8 +1324,14 @@ export function stripStringLiterals(text) {
  * 且右侧**不是单冒号**（排除 `name:` 对象字面量写入 = 写、以及 `name?:` 声明）。
  */
 export function scanDeadOptionalProps(root = ROOT) {
+  return memoScan('A', root, () => scanDeadOptionalPropsUncached(root))
+}
+
+function scanDeadOptionalPropsUncached(root) {
   const files = walkSrcFiles(root)
   const texts = files.map(f => [relPosix(root, f), readFileSync(f, 'utf8')])
+  // strip 一次、全声明复用（见 memoScan 头注释：原先每条声明都重 strip 全语料，实测 ≈20s）
+  const stripped = texts.map(([rel, text]) => [rel, stripCommentsAndStrings(text)])
   const decls = []
   for (const [rel, text] of texts) {
     if (rel.includes('__tests__')) continue
@@ -1315,9 +1350,9 @@ export function scanDeadOptionalProps(root = ROOT) {
     const reWrite = new RegExp('(^|[\\s{,(])' + name + '\\s*:(?!:)', 'g')
     const reAssign = new RegExp('\\.' + name + '\\s*(?:\\?\\?|\\|\\||&&)?=(?!=)', 'g')
     let reads = 0, writes = 0
-    for (const [rel, text] of texts) {
-      // 去注释与字符串：夹具串/待办注释不该被算成写入点（见 stripCommentsAndStrings）
-      let t = stripCommentsAndStrings(text)
+    // 复用预先 strip 好的语料（原先在此对每条声明重 strip 全部文件）
+    for (const [rel, strippedText] of stripped) {
+      let t = strippedText
       if (rel === excludeFile) {
         const lines = t.split('\n')
         lines.splice(excludeLine - 1, 1)
@@ -1350,8 +1385,14 @@ export function scanDeadOptionalProps(root = ROOT) {
  * 只看 TS 会把「数据驱动」误判成「通道空转」。
  */
 export function scanReadOnlyOptionalProps(root = ROOT) {
+  return memoScan('B', root, () => scanReadOnlyOptionalPropsUncached(root))
+}
+
+function scanReadOnlyOptionalPropsUncached(root) {
   const files = walkSrcFiles(root)
   const texts = files.map(f => [relPosix(root, f), readFileSync(f, 'utf8')])
+  // strip 一次、全声明复用（同 A 段；原先每条声明重 strip 全语料）
+  const stripped = texts.map(([rel, text]) => [rel, stripCommentsAndStrings(text)])
   // 数据语料（2026-09-15 补）：JSON 里的 `"name":` 即「有人供给这个字段」。
   const jsonTexts = []
   for (const dir of ['src', 'public/static']) {
@@ -1393,9 +1434,10 @@ export function scanReadOnlyOptionalProps(root = ROOT) {
     // 否则 match.index 落在前一个空白上、前缀切错（第一版即此 bug，`zeroEnergyRow,` 未被识别）。
     const reShorthand = new RegExp('(?<![.\\w$])' + name + '\\s*(?=[,}])', 'g')
     let reads = 0, writes = 0
-    for (const [rel, text] of texts) {
-      // 同段 A：夹具串/注释里的 `resistances:` 曾把本条真实的死通道抹掉（见 stripCommentsAndStrings）
-      let t = stripCommentsAndStrings(text)
+    // 复用预先 strip 好的语料（原先对每条声明重 strip 全部文件）
+    // 同段 A：夹具串/注释里的 `resistances:` 曾把本条真实的死通道抹掉（见 stripCommentsAndStrings）
+    for (const [rel, strippedText] of stripped) {
+      let t = strippedText
       if (rel === excludeFile) {
         const lines = t.split('\n')
         lines.splice(excludeLine - 1, 1)

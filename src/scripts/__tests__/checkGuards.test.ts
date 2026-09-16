@@ -443,7 +443,79 @@ describe('仓库级自洽（真实扫描）', () => {
     // 它与判据 16 的区别：16 的症状在渲染、本判据在数值；共同点是**既有测试零覆盖**。
     expect(results.some(r => r.name.includes('压缩数组槽位索引'))).toBe(true)
   })
+
+  // 快速环（`npm run check:fast` / `test:fast`）的**诚实性**护栏（2026-09-16 加）。
+  //
+  // 为什么需要：`check:fast` 排除 11 个重型用例（teamTimeline/difficultyCurve/timeGolden 等，
+  // 各自 30~70s；端到端 63s → 28s），代价是**它不是验收面**。本护栏防两件事：
+  //  ① **排除集腐坏**：exclude 列表被越改越宽（"慢的都排掉"）⇒ 快环逐渐变成假安全网。
+  //     同族实测教训：本仓库 `--changed` **不可用** —— 114/228 个测试经 `setupHarness` 走全管线、
+      //     不 import 被测源码，import 图不成立（实测 `--changed HEAD` 只选中 1 个文件，
+  //     漏掉真正覆盖 damagePool 的 timeGolden/allAgentsSweep）。所以快环只能靠**显式名单**，
+  //     而显式名单必须有棘轮守着。
+  //  ② **被误当验收**：`check`/`verify` 不许引用快环。
+  it('★ 快速环的排除集不许腐坏，且 check/verify 不得依赖它', () => {
+    const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as {
+      scripts: Record<string, string>
+    }
+    const fast = pkg.scripts['test:fast'] ?? ''
+    // ① 排除项必须与本清单逐字一致（加/删都要显式改这里 ⇒ 强制复核，而不是顺手放宽）
+    const excludes = [...fast.matchAll(/--exclude='\*\*\/([^']+)'/g)].map(m => m[1])
+    expect(
+      [...excludes].sort(),
+      '排除集变了：`test:fast` 的 --exclude 与 EXPECTED_FAST_EXCLUDES 不一致。加/删排除项必须同时'
+      + '改本清单（它是防"快环越来越空"的棘轮），并确认被排除的确实是重型全库扫描/搜索类用例。',
+    ).toEqual([...EXPECTED_FAST_EXCLUDES].sort())
+    // ② 排除项必须真实存在（防重命名后静默失效 ⇒ 快环退化成全量而无人察觉）
+    const allTests = listTestFiles(join(process.cwd(), 'src'))
+    for (const f of excludes) {
+      expect(
+        allTests.filter(p => p.endsWith('/' + f)).length,
+        `test:fast 排除的 ${f} 不存在（改名后快环静默退化成全量，收益消失且无人察觉）`,
+      ).toBe(1)
+    }
+    // ③ 验收链不许引用快环（否则"快"会悄悄变成"验收"）
+    expect(pkg.scripts['check'], 'check 不得用 test:fast 代替验收').not.toContain('test:fast')
+    expect(pkg.scripts['verify'], 'verify 不得用 test:fast 代替验收').not.toContain('test:fast')
+    expect(pkg.scripts['verify']).toContain('npm test')
+  })
 })
+
+/**
+ * `test:fast` 允许排除的**重型用例**名单（棘轮：加/删都要显式改这里，见上方用例）。
+ *
+ * 入选标准（三条同时满足）：① 单文件 ≥ 30s；② 全库扫描/搜索类（与单文件改动弱相关）；
+ * ③ **在 `npm test` / `verify` 里仍会被跑**（快环只是延后，不是跳过）。
+ * ⚠ 排除它 ≠ 它不重要：timeGolden 是时间账权威、difficultyCurve/teamTimeline 是图表搜索，
+ * 改引擎/时间/图表时必须跑全量 `npm run check` 或 `npm test`。
+ */
+const EXPECTED_FAST_EXCLUDES = [
+  'charIncrementInt.test.ts',
+  'cinemaUplift.test.ts',
+  'difficultyCurve.test.ts',
+  'difficultyLadder.test.ts',
+  'moveFusion.test.ts',
+  'pullPlannerEngine.test.ts',
+  'teamTimeline.test.ts',
+  'timeFillRatchet.test.ts',
+  'timeGolden.test.ts',
+  'timeLedgerInvariants.test.ts',
+  'timeWeightAllocation.test.ts',
+] as const
+
+/** 列出 src 下所有测试文件（快环排除项的存在性核验用；不引 vitest 配置，保持独立） */
+function listTestFiles(dir: string): string[] {
+  const out: string[] = []
+  const walk = (d: string) => {
+    for (const n of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, n.name)
+      if (n.isDirectory()) walk(p)
+      else if (n.name.endsWith('.test.ts')) out.push(p.replace(/\\/g, '/'))
+    }
+  }
+  walk(dir)
+  return out
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 判据 13：名词表三态对账（防「数据在源里但没人消费」）
