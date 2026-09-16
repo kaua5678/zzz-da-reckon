@@ -116,7 +116,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 34,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）→ **55**（2026-09-15 同批第 3 小簇：轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽 `cfg.ultimateCost`）→ **53**（2026-09-15 同批第 4 小簇：`nomra 1571` 的 normaStunCount/Coverage/BattleTime 与 `qingyi 1251` 的 qingyiStunCount 注入迁进各自模块的 applyTeamConfig——消费方只有本模块，且 hook 入参已含 stunCount/combatTime；timeGolden 0 delta，反向验证删注入 ⇒ 精确红）→ **47**（2026-09-15 `damagePool.ts` 五处「模块 source 字段 ⇒ 角色标识」去冗余）→ **34**（2026-09-16 最大单簇 −13：`convergence.ts` 5 个 `compute*NextRoundFeedback` 纯函数（1541/1381/1151/1331/1191）迁进各模块新的 `nextRoundFeedback` 钩子，契约递整份本轮结果 + 上一轮线程快照，返回 `Partial<CalcRoundThreads>`；timeGolden 0 delta（含 dmg 信息项），逐站点反向验证见 AGENT_BRANCH_BASELINE 注释）。见 AGENT_BRANCH_BASELINE 注释
+    frozen: 32,  // 79（2026-09-12 口径纠正后按**提交态**实测）→ 65（2026-09-13 T2：helpers.ts 额外能力门控簇 14 处收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates，SOP §6.2 语义逐位保留，生效回归见 additionalGate.test.ts）→ **56**（2026-09-15 arch 棘轮第 2 批：convergence.ts 的 cfg-merge 簇 9 处 `merged.agentId === '…'` 跨轮反馈注入改由各模块 `applyTeamConfig` 读 `AgentTeamConfigInput.threads` 快照写自己那份 cfg；timeGolden 16 键 0 delta）→ **55**（2026-09-15 同批第 3 小簇：轴内终结技喧响消耗 `agentId === '1551' ? 2000 : 3000` → 读本槽 `cfg.ultimateCost`）→ **53**（2026-09-15 同批第 4 小簇：`nomra 1571` 的 normaStunCount/Coverage/BattleTime 与 `qingyi 1251` 的 qingyiStunCount 注入迁进各自模块的 applyTeamConfig——消费方只有本模块，且 hook 入参已含 stunCount/combatTime；timeGolden 0 delta，反向验证删注入 ⇒ 精确红）→ **47**（2026-09-15 `damagePool.ts` 五处「模块 source 字段 ⇒ 角色标识」去冗余）→ **34**（2026-09-16 最大单簇 −13：`convergence.ts` 5 个 `compute*NextRoundFeedback` 纯函数（1541/1381/1151/1331/1191）迁进各模块新的 `nextRoundFeedback` 钩子，契约递整份本轮结果 + 上一轮线程快照，返回 `Partial<CalcRoundThreads>`；timeGolden 0 delta（含 dmg 信息项），逐站点反向验证见 AGENT_BRANCH_BASELINE 注释）→ **32**（2026-09-16 round 11 批次 1 −2：1201 悠真 + 1241 朱鸢的轴内块计数迁进各自模块的 `applyTeamConfig`，新增 `AgentTeamConfigInput.axis` 轴上下文契约（设计卡 §3 方案 A，零新通道——`characters` 本就带 axisInSeconds/axisActionCounts/axisUltimateTotal，本契约只是把散落字段收成显式快照）；timeGolden `grep -c dmg:` == 0，反向验证 6 组见 AGENT_BRANCH_BASELINE 注释）。见 AGENT_BRANCH_BASELINE 注释
     target: 0,
     due: '2026-12-31',
     plan: '逐角色把编排层特判迁进模块：applyTeamConfig 三阶段钩子，或声明式钩子（axisWindowOverlays / backstageAutoFill / producesInteractionTopUp 等有先例）。跨轮反馈走 `AgentTeamConfigInput.threads`（2026-09-15 新增的通用通道，别再逐字段铺开契约）；「读本轮结果算下一轮」类走 `nextRoundFeedback`（2026-09-16 新增，递整份本轮结果 + `prevThreads`，返回 `Partial<CalcRoundThreads>`）。hot spot：convergence.ts(19) > damagePool.ts(11) > helpers.ts(4)。架构评审 #10 → #2',
@@ -520,6 +520,24 @@ export function countAgentBranchLines(root = ROOT) {
  *    而该路径 `timeGolden` 覆盖不到（实测不红），靠 `teamHook.test.ts` 的 hook 级用例钉住。
  * 2026-09-15 −5：52→47 = `damagePool.ts` 五处「模块 source 字段 ⇒ 角色标识」去冗余（见上方同批注释）。
  * 2026-09-16 −13：47→**34** = `nextRoundFeedback` 钩子（新契约，本批最大单簇）。
+ * 2026-09-16 −2：34→**32** = 轴上下文契约 `AgentTeamConfigInput.axis`（round 11 批次 1，设计卡 §3 方案 A）。
+ *   迁走 `convergence.ts` 两处轴内块计数分支：1201 悠真（`harumasaAxisSlash`/`harumasaAxisArrow`/
+ *   `harumasaAxisActive`，白名单 = 模块自己的 `HARUMASA_SLASH_MOVE_IDS`/`HARUMASA_ARROW_MOVE_ID`）
+ *   与 1241 朱鸢（`zhuYuanAxisEther`/`zhuYuanAxisActive`，白名单 = `ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS`）
+ *   ⇒ 计数逻辑回模块，**moveId 白名单从编排层硬编码搬回模块常量**（此前两处各写一份、改一处即静默脱钩）。
+ *   契约形状：`axis.active/axes/windows/windowSeconds/actionCountsBySlot/ultimateTotalBySlot/chainTotalBySlot`
+ *   （**零新通道**：`characters` 本就带 `axisInSeconds`/`axisActionCounts`/`axisUltimateTotal`，本契约只是把
+ *   散落在数组元素上的轴态字段收成一份显式快照；派发点唯一 = `convergence.ts` 的 converge 那次调用）。
+ *   相位语义：**只在 converge 有值**（build 相位轴还没解析、postRound 相位语义是「为下一轮」）。
+ *   ⚠ 门控是**双判据**（`phase !== 'converge' || !axis`）：只判相位时「派发器忘传 axis」会退化成
+ *   静默零值——而 `timeGolden` 对本簇**全盲**（105 预设里 1201/1241 的轴覆盖各 **0 队**；
+ *   实测 1241 删掉原分支 `npm run check` 与 `timeGolden` 双双全绿）⇒ 本批新建
+ *   `src/mechanics/__tests__/axisContext.test.ts`（11 例）把三跳分别钉死（模块消费 / 派发器透传 / 真管线相位）。
+ *   反向验证 6 组，逐组精确红、跑完即还原并 md5 自证：①converge 不传 axis ⇒ 3 例红（axisContext）
+ *   +`harumasa.test.ts` 1 例红；②1201 模块短路读 axis ⇒ `harumasa.test.ts`「轴模式失衡专属 buff 行级直加」红；
+ *   ③1241 模块短路读 axis ⇒ `zhuYuan.test.ts` **16 passed 不红**（实证该角色零覆盖、正是本批要补的洞）
+ *   而 axisContext 3 例红；④postRound 也传 axis ⇒ 相位用例红；⑤派发器丢 axis ⇒ 4 例红；⑥白名单污染 ⇒ 计数用例红。
+ *   `timeGolden` 3 passed 且 `grep -c "dmg:"` == **0**。
  *
  * `convergence.ts` 原有 5 个导出纯函数 `compute{Promia,Anby,Lucy,Vivian,Ellen}NextRoundFeedback`
  * （普罗米娅 1541 / 零号·安比 1381 / 露西 1151 / 薇薇安 1331 / 艾莲 1191），每个都在自己函数体里
@@ -549,7 +567,7 @@ export function countAgentBranchLines(root = ROOT) {
  *    故 `AgentNextRoundFeedbackInput` 显式给 `cfg`。⚠ 存量另有 19 处 `characters[slot]`
  *    （`applyTeamConfig` 等，含 `7e377cb` 引入的那批）有同一缺陷，属**既存问题、本批未动**。
  */
-export const AGENT_BRANCH_BASELINE = 34
+export const AGENT_BRANCH_BASELINE = 32
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。

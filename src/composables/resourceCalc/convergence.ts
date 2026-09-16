@@ -997,38 +997,9 @@ export function createRunCalcRound(deps: {
         }
         return { ...merged, inStunWindowTriggers: Math.max(0, prevInStunWindowTriggers), nangongQuickAssistPlaced }
       }
-      if (merged.agentId === '1201') {
-        // 悠真：轴内飞弦·斩/甲乙矢次数（失衡轴块，捏轴精度，仪玄 yixuanAxisEx 同款）→ 模块分轴内/轴外
-        let harumasaAxisSlash = 0
-        let harumasaAxisArrow = 0
-        if (axisActive) {
-          const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
-          resolvedAxes.forEach((axis, ai) => {
-            const wins = winAlloc[ai] ?? 0
-            for (const act of axis.actions) {
-              if (act.slot !== cfg.slot) continue
-              if (act.moveId === '1201020' || act.moveId === '1201021' || act.moveId === '1201022') harumasaAxisSlash += act.count * wins
-              else if (act.moveId === '1201008') harumasaAxisArrow += act.count * wins
-            }
-          })
-        }
-        return { ...merged, harumasaAxisActive: axisActive, harumasaAxisSlash, harumasaAxisArrow }
-      }
-      if (merged.agentId === '1241') {
-        // 朱鸢：轴内压制以太次数（失衡轴块）→ 模块分轴内/轴外
-        let zhuYuanAxisEther = 0
-        if (axisActive) {
-          const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
-          resolvedAxes.forEach((axis, ai) => {
-            const wins = winAlloc[ai] ?? 0
-            for (const act of axis.actions) {
-              if (act.slot !== cfg.slot) continue
-              if (act.moveId === '1241010' || act.moveId === '1241011' || act.moveId === '1241012') zhuYuanAxisEther += act.count * wins
-            }
-          })
-        }
-        return { ...merged, zhuYuanAxisActive: axisActive, zhuYuanAxisEther }
-      }
+      // 悠真 1201 / 朱鸢 1241 的轴内块计数（`harumasaAxisSlash`/`harumasaAxisArrow`、
+      // `zhuYuanAxisEther`/`zhuYuanAxisActive`）已迁进各自模块的 `applyTeamConfig`（round 11 批次 1），
+      // 经下面 dispatch 的 `axis` 契约快照读取 ⇒ 本 map 里不再有它们的分支（棘轮 34 → 32）。
       return merged
     })
     // 队伍级机制·converge 阶段：带上一轮收敛量（莱特按上一轮全队能量消耗重算喷发回能；
@@ -1051,6 +1022,26 @@ export function createRunCalcRound(deps: {
       // characters.map 里逐 `merged.agentId === '…'` 分支写进 cfg 的；现由各模块自己的
       // applyTeamConfig 按需读取并写进自己那份 cfg（规则 6：编排层不写角色规则）。
       threads,
+      // 本轮失衡轴上下文（2026-09-16 round 11，设计卡 §3 方案 A）：**只在 converge 相位传**
+      // （dispatch 点唯一）。原先 1201/1241 等角色的「轴内 moveId 计数」是在上面 characters.map
+      // 里逐 `merged.agentId === '…'` 分支算的；现在模块自己按 `axis.axes × axis.windows` 数。
+      //
+      // ⚠ 门控（round 7 实测踩过「门控写错时 timeGolden 照样绿」）：本对象只在 converge 出现是
+      // **结构性**的——它写在 converge 这次调用里，`applyTeamMechanics` 对缺省 `params.axis`
+      // **不做 `?? {}` 兜底**（helpers.ts）。模块侧另需 `!axis` 字段判据：只判相位不判字段时，
+      // 「派发器漏传」会退化成静默零值而不是响亮失败（`axisContext.test.ts` 钉住这两条）。
+      axis: {
+        active: axisActive,
+        // ⚠ 递的是**局部未清空**的 `resolvedAxes`（带 `active` 标志让模块自己判）——与对外返回值
+        // `CalcRoundResult.resolvedAxes`（`forceNoAxis` 退化时被清空）语义不同，这是设计卡 §7-E7
+        // 的待定点，本批选定「递局部 + active 标志」。
+        axes: resolvedAxes,
+        windows: allocateAxisWindows(resolvedAxes, stunCount),
+        windowSeconds: computeWindowDuration(),
+        actionCountsBySlot: axisActionCountsBySlot,
+        ultimateTotalBySlot: axisUltimateTotal,
+        chainTotalBySlot: axisChainTotal,
+      },
     })
     // 特殊动作喧响奖励（弹刀215/闪反10/连携10/快支20，含伴随50%）：本轮即时结算——
     // 输入只有用户配置的次数与连携数（= chainCountTotalOverride ?? chainCountPerStun × stunCount），无 ultimateCount 反馈环

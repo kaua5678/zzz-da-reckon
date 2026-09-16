@@ -94,13 +94,38 @@ function buildZhuYuanCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): voi
   record.defAssistCount = Math.max(0, Math.floor(Number(cfg.parryCount ?? 0)))
 }
 
-/** 失衡覆盖率由收敛后的失衡次数反推（轴内行直加同源：失衡窗口 = 失衡次数 × 窗口时长 / 战斗时间） */
-function applyZhuYuanTeamConfig({ cfg, phase, stunCount, combatTime }: AgentTeamConfigInput): void {
+/**
+ * 失衡覆盖率由收敛后的失衡次数反推（轴内行直加同源：失衡窗口 = 失衡次数 × 窗口时长 / 战斗时间）；
+ * 轴内压制以太块计数（round 11 批次 1，原 `convergence.ts` 的 `agentId === '1241'` 分支）：
+ * 轴内 `ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS`（1241010/11/12 三段轮转）× 窗口数
+ * —— moveId 白名单从编排层硬编码搬回本模块的既有常量（单一事实源，此前同一组字面量写两份）。
+ *
+ * ⚠ **双判据门控**（`phase !== 'converge' || !axis`）：只判相位不判 `axis` 时，「派发器忘传 axis」
+ * 退化成「`zhuYuanAxisEther` 恒 0」= 轴内压制以太占比 0 ⇒ 核心被动失衡增伤静默蒸发；
+ * 而 1241 **原本零测试覆盖**（设计卡 §4.2 实测：删该分支 `npm run check` 全绿、`timeGolden` 也全绿
+ * ——105 预设里 1241 轴覆盖 = 0 队）⇒ 该静默失效此前无任何护栏，本批靠 `axisContext.test.ts` 补上。
+ * 原实现取 `axisActive ? count : 0`：非轴时 `active === false` ⇒ `axisEther` 恒 0 且
+ * `zhuYuanAxisActive` 恒 false，逐位等价。
+ */
+function applyZhuYuanTeamConfig({ cfg, phase, stunCount, combatTime, axis }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
   const record = cfg as unknown as Record<string, unknown>
   const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))
   const battle = Math.max(1, Number(combatTime) || 180)
   record.zhuYuanStunCoverage = Math.min(1, resolvedStun * ZHUYUAN_STUN_WINDOW_SECONDS / battle)
+  if (!axis) return
+  const slot = Number(cfg.slot)
+  let axisEther = 0
+  axis.axes.forEach((ax, ai) => {
+    const wins = axis.windows[ai] ?? 0
+    if (wins <= 0) return
+    for (const act of ax.actions) {
+      if (act.slot !== slot) continue
+      if ((ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS as readonly string[]).includes(act.moveId)) axisEther += act.count * wins
+    }
+  })
+  record.zhuYuanAxisActive = axis.active
+  record.zhuYuanAxisEther = axisEther
 }
 
 function computeZhuYuanShellsTotal(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): number {

@@ -204,13 +204,40 @@ function buildHarumasaCharConfig({ cinemaLevel, potentialLevel, cfg }: AgentChar
     Math.max(0, setting(cfg, 'harumasa.edgeAverageStacks', 6)))
 }
 
-/** 失衡覆盖率由收敛后的失衡次数反推（轴内行直加同源：失衡窗口 = 失衡次数 × 窗口时长 / 战斗时间） */
-function applyHarumasaTeamConfig({ cfg, phase, stunCount, combatTime }: AgentTeamConfigInput): void {
+/**
+ * 失衡覆盖率由收敛后的失衡次数反推（轴内行直加同源：失衡窗口 = 失衡次数 × 窗口时长 / 战斗时间）；
+ * 轴内飞弦·斩/甲乙矢块计数（round 11 批次 1，原 `convergence.ts` 的 `agentId === '1201'` 分支）：
+ * 轴内 moveId 白名单 × 窗口数，白名单来源 = 本模块的 `HARUMASA_SLASH_MOVE_IDS` / `HARUMASA_ARROW_MOVE_ID`
+ * （单一事实源，此前编排层硬编码同一组字面量 —— 两处各写一份，改一处就静默脱钩）。
+ *
+ * ⚠ **双判据门控**（`phase !== 'converge' || !axis`）：只判相位不判 `axis` 时，「派发器忘传 axis」
+ * 会退化成「轴内计数恒 0」的**静默错值**（轴内段少了逐雷/电抗无视），而 `timeGolden` 对轴模式大面积
+ * 盲（实测 105 预设里 1201 轴覆盖 = 0 队）⇒ 必须靠 `axisContext.test.ts` 的可红锁。
+ * 原实现取 `axisActive ? count : 0`：轴内计数只在轴模式累加，非轴时 `active === false` ⇒ `axisSlash`
+ * 与 `axisArrow` 恒 0、`harumasaAxisActive` 恒 false，逐位等价（见 `zhuYuan.ts` 同款注释）。
+ */
+function applyHarumasaTeamConfig({ cfg, phase, stunCount, combatTime, axis }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
   const record = cfg as unknown as Record<string, unknown>
   const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))
   const battle = Math.max(1, Number(combatTime) || 180)
   record.harumasaStunCoverage = Math.min(1, resolvedStun * HARUMASA_STUN_WINDOW_SECONDS / battle)
+  if (!axis) return
+  const slot = Number(cfg.slot)
+  let axisSlash = 0
+  let axisArrow = 0
+  axis.axes.forEach((ax, ai) => {
+    const wins = axis.windows[ai] ?? 0
+    if (wins <= 0) return
+    for (const act of ax.actions) {
+      if (act.slot !== slot) continue
+      if (SLASH_SET.has(act.moveId)) axisSlash += act.count * wins
+      else if (act.moveId === HARUMASA_ARROW_MOVE_ID) axisArrow += act.count * wins
+    }
+  })
+  record.harumasaAxisActive = axis.active
+  record.harumasaAxisSlash = axisSlash
+  record.harumasaAxisArrow = axisArrow
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): HarumasaCycle {

@@ -35,7 +35,7 @@ import { counterAssistOf } from '@/data/counterAssists'
 
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { CalcRoundThreads } from './roundThreads'
-import { getAgentMechanic, getRegisteredMechanicSettings, type AgentTeamPhase, type MechanicTeamMember } from '@/mechanics'
+import { getAgentMechanic, getRegisteredMechanicSettings, type AgentAxisContext, type AgentTeamPhase, type MechanicTeamMember } from '@/mechanics'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import type {
@@ -269,6 +269,12 @@ export function applyTeamMechanics(params: {
   aliceDisorderCount?: number
   /** 上一轮收敛线程快照（跨轮反馈通用通道；模块按需读并写进自己那份 cfg，规则 6） */
   threads?: Readonly<CalcRoundThreads>
+  /**
+   * 本轮失衡轴上下文（只读快照）。**只有 converge 相位该传**——build 相位轴还没解析、
+   * postRound 相位语义是「为下一轮」；传了就等于给模块一个错的相位信号。
+   * 消费先例：朱鸢 1241 / 悠真 1201 的轴内块计数（round 11 批次 1，原为 convergence.ts 的 agentId 分支）。
+   */
+  axis?: Readonly<AgentAxisContext>
 }): void {
   const { characters, configStore, catalogStore, phase } = params
   if (characters.length === 0) return
@@ -282,6 +288,9 @@ export function applyTeamMechanics(params: {
   const aliceTeamAssaultCount = params.aliceTeamAssaultCount ?? 0
   const aliceDisorderCount = params.aliceDisorderCount ?? 0
   const threads = params.threads
+  // 轴上下文：**不做 `?? {}` 兜底**——缺省即 undefined 递给模块，模块用
+  // `phase !== 'converge' || !axis` 双判据门控（缺了就是缺了，不许静默降级成空快照）。
+  const axis = params.axis
 
 
   // 各槽位「异常积储主元素」（2026-09-02）：优先模块声明（雅模块把积蓄归并为 frostfire；
@@ -331,6 +340,7 @@ export function applyTeamMechanics(params: {
       aliceTeamAssaultCount,
       aliceDisorderCount,
       threads,
+      axis,
     })
   }
 }

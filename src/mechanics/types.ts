@@ -80,6 +80,40 @@ export interface AgentResourceInput {
 export type AgentTeamPhase = 'build' | 'converge' | 'postRound'
 
 /**
+ * 本轮生效的**失衡轴上下文**（只读快照；`applyTeamConfig` 的 converge 相位之外为 `undefined`）。
+ *
+ * 存在的理由（2026-09-16 round 11，设计卡 §3 方案 A）：编排层 `convergence.ts` 里曾有一簇
+ * 形状相同的 `merged.agentId === '…'` 分支，做的事都是「按轴内 moveId 白名单 × 窗口数数块数，
+ * 写进本槽 cfg」。它们需要三样契约上没有的东西：轴模式布尔、生效轴本体、窗口时长；
+ * 而 `characters`（cfg 数组）已经带着 `axisActionCounts` / `axisInSeconds` / `axisUltimateTotal`
+ * ⇒ 本接口只是把**散落在数组元素上的轴态字段收成一份显式快照**，不新造通道。
+ * 先例：猫又（1211）早就在读 `cfg.axisInSeconds` / `cfg.axisActionCounts`（`nekomata.ts`）。
+ *
+ * 语义边界（**只读**）：`axis` 由编排层打包传递，模块**只许读**；写它不报错但不会被任何东西看见
+ * （与 `threads` 同款纪律——单一时序 owner 在编排层）。模块仍只写**自己那份 cfg**（规则 6）。
+ *
+ * ⚠ 相位：只有 `phase === 'converge'` 时存在。build 相位轴还没解析（`resolveAxes` 在
+ * `runCalcRound` 内）；postRound 相位的语义是「为下一轮」，本轮轴已用过 ⇒ 一律 `undefined`
+ * （不是空快照——空快照会让「漏传」与「本轮无轴」不可区分，见测试 `axisContext.test.ts`）。
+ */
+export interface AgentAxisContext {
+  /** 轴模式是否生效（= `runCalcRound` 的 `axisActive`，含 `forceNoAxis` 退化判据：退化时为 false） */
+  active: boolean
+  /** 本轮生效轴本体（= `resolveAxes` 的返回值；与 `CalcRoundResult.resolvedAxes` 同源） */
+  axes: readonly StunAxis[]
+  /** 各轴分配的窗口数（= `allocateAxisWindows(axes, stunCount)`；长度与 `axes` 对齐） */
+  windows: readonly number[]
+  /** 单次失衡窗口时长（秒；= `computeWindowDuration()` = `enemy.stunTime + 4 + 全队 stunDurationBonusSeconds`） */
+  windowSeconds: number
+  /** 各槽位轴内捏块总次数（= `characters[i].axisActionCounts` 的同源快照，按 slot 键控） */
+  actionCountsBySlot: Readonly<Record<number, Readonly<Record<string, number>>>>
+  /** 各槽位轴内终结技块总次数（= `axisUltimateTotal`；按实际执行集合，含赠送块） */
+  ultimateTotalBySlot: Readonly<Record<number, number>>
+  /** 各槽位轴内连携块总次数（= `runCalcRound` 的 `axisChainTotal`；供「队友连携」类读） */
+  chainTotalBySlot: Readonly<Record<number, number>>
+}
+
+/**
  * 队伍级机制输入（`applyTeamConfig` 钩子）。
  *
  * 存在的理由：其余钩子都只能改**自己**那一份 cfg，而「我的终结技给邻位回能」「我在后场时
@@ -160,6 +194,15 @@ export interface AgentTeamConfigInput {
    * ⚠ **只许读**：线程的写回由编排层在 postRound 统一线程化（单一 owner），模块写它会破坏收敛性。
    */
   threads?: Readonly<CalcRoundThreads>
+
+  /**
+   * 本轮生效的失衡轴上下文（只读快照）。
+   *
+   * **只有 `phase === 'converge'` 时有值**（build 相位轴还没解析、postRound 相位语义是「为下一轮」）
+   * ⇒ 模块若需要它，必须先 `if (phase !== 'converge' || !axis) return` 双判据门控
+   * （只判相位不判字段会让「派发器漏传」退化成静默错值）。形状见 `AgentAxisContext`。
+   */
+  axis?: Readonly<AgentAxisContext>
 }
 
 /** 上一轮收敛线程的快照类型（结构定义在 `composables/resourceCalc/roundThreads.ts`） */
