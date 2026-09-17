@@ -181,8 +181,16 @@ const c = team.find(x => x.id === '1581')`)
     const resolvedIds = first.byIdentity.filter(i => i.resolves === 'agent.id').map(i => i.identity)
     expect(resolvedIds.length).toBeGreaterThan(0)
     for (const id of resolvedIds) expect(id).toMatch(/^\d{4}$/)
-    // 解析不到的必须逐个露出，不能被静默并进「已解析」
-    expect(first.byIdentity.filter(i => i.resolves === 'unresolved').map(i => i.identity)).toEqual(['remielle'])
+    // 解析不到的必须逐个露出，不能被静默并进「已解析」。
+    // ⚠ 2026-09-17 round 21 夜三批后本断言**按新事实收紧**：编排层曾遍布
+    // `a.teammateBuffId === 'remielle'` 这种**死别名**（`remielle` 不是任何角色的
+    // teammateBuffId，只是 catalog 里 `remielleRefringeCoefficient` 等 stat/effect 名的前缀），
+    // 那批迁移把这些死分支连同身份判定一起迁进模块/helper（`findSlotByIdentity` 按
+    // `ids.some(...)` 泛化），故**本测量面上已无 unresolved 字面量**。
+    // ⇒ 断言从「恰好 ['remielle']」改为「**为空**」——若将来又有人写进解析不到的字面量，
+    //    这里立刻红并逐个列出（比钉死某个具体死值更耐久）。
+    expect(first.byIdentity.filter(i => i.resolves === 'unresolved').map(i => i.identity),
+      '编排层不应再有 catalog 解析不到的身份字面量（若有 ⇒ 逐个列出）').toEqual([])
     // 动态值（`c.agentId === targetId`）只在 `agentId`/`teammateBuffId` 形态下存在：
     // `.id` 动态比较已改判为观察项（招式/数据行查找）⇒ 它们**不得**出现在 byIdentity 里
     if (first.byIdentity.some(i => i.identity === '<dynamic>')) {
@@ -295,7 +303,15 @@ const flag = a.id === '1481'`)
     expect(md).toContain(`**执行尺（AST 三形态，= \`AGENT_BRANCH_BASELINE\`）：${first.summary.lines} 行**`)
     expect(md).toContain(`旧尺之外的新增业务判定：**${first.summary.deltaVsLegacy.businessLinesBeyondLegacyRuler}** 行`)
     expect(md).toContain('## 纯身份定义（0 表达式 / 0 行）')
-    expect(md).toContain('## ⚠ 数据面解析不到的身份字面量（1 个，只报不判，不进计数）')
+    // ⚠ 2026-09-17 round 21 夜三批后：编排层已无 `unresolved` 字面量（死别名 remielle 随之迁走）
+    // ⇒ 该小节**按条件渲染**，此处改为「与数据面一致」的双向断言（有则必须列出、无则不应出现），
+    // 而不是钉死「1 个」。这样将来真出现解析不到的字面量时，本节会出现 → 仍被本断言覆盖。
+    const unresolvedCount = first.byIdentity.filter(i => i.resolves === 'unresolved').length
+    if (unresolvedCount > 0) {
+      expect(md).toContain(`## ⚠ 数据面解析不到的身份字面量（${unresolvedCount} 个，只报不判，不进计数）`)
+    } else {
+      expect(md).not.toContain('数据面解析不到的身份字面量')
+    }
     expect(md).toContain(`**角色判定合计 ${first.summary.characterJudgment.lines} 行**`)
     expect(md).toContain(`非角色 \`.id\` 比较（moveId/dataId/overrideId/rowId 族）`
       + `${first.summary.characterJudgment.nonCharacterUnknownLines} 条`)
