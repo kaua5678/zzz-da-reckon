@@ -9,7 +9,7 @@ import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import type { TeamResourceResult } from '@/types/resource'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-import { findMoveById, fusedRowValue } from './helpers'
+import { findMoveById, fusedRowValue, findSlotByIdentity } from './helpers'
 import { buildGiftRow } from '@/core/resource/giftRows'
 
 /**
@@ -22,10 +22,8 @@ export function applyNormaHatChain(
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): TeamResourceResult | null {
   if (!base) return null
-  const normaIdx = configStore.team.findIndex(char => {
-    const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
-    return a?.id === '1571' || a?.teammateBuffId === '1571'
-  })
+  // 按身份找槽位（单一事实源 `findSlotByIdentity`，规则 11；2026-09-18 round 21 夜）
+  const normaIdx = findSlotByIdentity(configStore, catalogStore, ['1571'])
   if (normaIdx < 0) return base
   const normaResult = base.characters.find(c => c.slot === normaIdx)
   const normaSrc = normaResult?.normaMechanicSource

@@ -118,7 +118,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 9,  // R21 夜 A **damagePool.ts 最后 3 处** 12→**9**（本批 **−3**，按**工作树实测**归因：
+    frozen: 7,  // R21 夜 A **damagePool.ts 最后 3 处** 12→**9**（本批 **−3**，按**工作树实测**归因：
     // 落地时另有并行会话在改 convergence.ts/helpers.ts（租约 session-c0a1/session-6f61），
     // 剥离本批四文件后实测为 **12** ⇒ 24→9 的 −15 里只有 −3 属本批，一一对应三个站点：
     // `:428` 琉音强特跳过通用行（删 agentId 项、`liuyinSrc` 上提到槽位循环头与专用块共用判据；
@@ -908,6 +908,27 @@ export function countAgentBranchLinesLegacy(root = ROOT) {
  * （它只是 catalog 里 `remielleRefringeCoefficient` 之类 stat/effect 名的前缀）⇒ 那些
  * `a.teammateBuffId === 'remielle'` 是**当前数据面下的死分支**。**未删**（判死需引擎实测背书 + 独立批次）；
  * 由 `findSlotByIdentity.test.ts` 把该事实钉住：remielle 若真成为别名，那里立刻红。
+ *
+ * **=== 2026-09-18 R21 夜批（24 → 9 → 7）===**
+ * 派活方预批 + 三批并行工人（T61/T62/T63）+ 派活方收尾：
+ * · `findSlotByIdentity` 抽出后，`damagePool.ts` 5 处内联 findIndex → 1 行调用（该文件清零）；
+ * · 夜 A 把该文件最后 3 处（琉音强特跳过 / 仪玄凝神三臂 / 佩洛伊斯阳炎两臂）迁进各模块
+ *   `axisWindowOverlays`（T7 裁决归一默认值后仪玄 0 delta；佩洛伊斯无需新契约——行级配对比例
+ *   的唯一写入方本来就是本模块 `patchExecutions`）；
+ * · 夜 B `convergence.ts` 8→2、夜 C `helpers.ts` 8→2；
+ * · 收尾 `liuyinPromote.ts` / `normaHatChain.ts` 各 1 处 → 复用 helper（本轮 9→7）。
+ * ⚠ **剩 7 行中已查明 2 行不是 DRY 机会**（`convergence.ts` 雨果/般岳 cfg-merge）：
+ * 字段契约与消费端都就位，但迁移所需输入通道缺失——`autoTopUp` 依赖 `guarantee.fury` /
+ * `guarantee.ultimate` / `banyue.autoTopUpInteractions` 与 `appliedBoss`，其中 **`guarantee.*`
+ * 未注册 MechanicSetting**（实测）⇒ 不在 `AgentTeamConfigInput.settings` 里、模块侧读不到。
+ * 补该契约 = 改 `types.ts` + 冻结面 ⇒ 独立批次（已派 T65）。
+ * ⚠ 另 3 行在 `useResourceCalc.ts`（蕾米 ×2 + 简 ×1），待分诊。
+ *
+ * **=== 同夜：判据 17 扫描器盲区修复（与棘轮无关，但同属「护栏对真实写法失明」类）===**
+ * `compacted-slot-index.mjs` 原正则只认 `panels[slot]`，漏掉真实形态 `panels.value[slot]`
+ * （实测盲区 8 处）⇒ 补齐 `(?:\.value)?` 后抓出 `useResourceCalc.ts` **4 处真缺陷**
+ * （用 team 下标索引压缩面板数组；实测 `[空,1581,1031]` 时读到槽位 2 那个角色的面板）。
+ * 4 处改 `panelAt`，判据 17 违规 4 → **0**。反向验证：盲区版对注入违规报 0 处、修复版报 1 处。
  * 沿革（换尺前，旧尺口径）：17（2026-09-17 round 18 **R15-d −1**）→ 15（C-α −2）
  *
  * **=== 2026-09-17 round 20 C-β 批（新尺 42 → 40，−2）===**
@@ -1049,7 +1070,7 @@ export function countAgentBranchLinesLegacy(root = ROOT) {
  * ⚠ 真管线判据（含「行级配对比例**真被消费端乘上**」——该点**只能**在真管线测，
  * 单测 `patchExecutions` 再断言字段值**证明不了**消费端乘了它）在 `damagePoolNightA.test.ts`。
  */
-export const AGENT_BRANCH_BASELINE = 9
+export const AGENT_BRANCH_BASELINE = 7
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。

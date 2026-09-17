@@ -15,7 +15,7 @@ import type { TeamResourceResult, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-import { findMoveById, fusedRowValue } from './helpers'
+import { findMoveById, fusedRowValue, findSlotByIdentity } from './helpers'
 import { buildGiftRow } from '@/core/resource/giftRows'
 
 /** 琉音好评转大不动点迭代上限（好评≥90 开窗次数有界，正反馈单调收敛，8 轮兜底极端情况） */
@@ -151,10 +151,8 @@ export function buildPromoteParams(
   catalogStore: ReturnType<typeof useCatalogStore>,
   rr: TeamResourceResult,
 ): LiuyinPromoteParams | null {
-  const liuyinIdx = configStore.team.findIndex(char => {
-    const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
-    return a?.id === '1481' || a?.teammateBuffId === '1481'
-  })
+  // 按身份找槽位（单一事实源 `findSlotByIdentity`，规则 11；2026-09-18 round 21 夜）
+  const liuyinIdx = findSlotByIdentity(configStore, catalogStore, ['1481'])
   if (liuyinIdx < 0) return null
   const liuyinSrc = rr.characters.find(c => c.slot === liuyinIdx)?.liuyinMechanicSource
   if (!liuyinSrc) return null
