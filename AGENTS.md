@@ -28,11 +28,11 @@
 
 ### 录入角色 / 补机制：五步（仅此类任务）
 
-1. **读 nanoka 原文自主分析**（`data/raw/nanoka_missing/full/<id>.json`）：逻辑/资源/字段/数值原文都给了，只把「原文没数值 / 口径歧义 / 引擎缺通道」列清单一次问用户——`AGENT_RECORDING_SOP.md` §0.5。
+1. **先建原文证据契约再实现**：运行 `node scripts/record-agent.mjs init <id>`，按 `AGENT_RECORDING_SOP.md` §0.5 逐段理解并填契约；`check <id> plan` 通过才写机制函数。已有契约先检查来源漂移；只把「原文没数值 / 口径歧义 / 引擎缺通道」一次问用户。
 2. **检索角色档案段**（`grep -n "角色名\|agentId" docs/MECHANICS_IMPLEMENTATION.md`）：读该段已确认口径 + 未建模项。无状态行 = 段未核对，先核现状再补状态行。
 3. **模式匹配**：`MECHANIC_PATTERNS.md` §2 定位 1 个维度（D1–D9），按该维度既有做法实现，不造新乘区。
 4. **实现**：卡住/数值不对/报错才按症状查 `ENGINE_PIPELINE_GUIDE.md` §4、`AGENT_RECORDING_SOP.md` §3.5。
-5. **交付**：过 `AGENT_RECORDING_SOP.md` §6.10 完成清单 → `npm run verify` + `docs:status`；同步档案段与状态表。
+5. **交付**：`node scripts/record-agent.mjs check <id> complete` → `AGENT_RECORDING_SOP.md` §6.10 → `npm run verify` + `docs:status`；同步档案段与状态表，历史角色补录完成后移除 `data/recordings/legacy.json` 对应豁免。
 
 其他任务（改引擎/排查/UI）不需读原文/档案。未收录的新角色以 spec notes + raw 数据为准。
 
@@ -124,7 +124,7 @@ node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --cli
 
 （无 root 环境缺 `libnspr4/libnss3` 时，按脚本文件头的「用户态 `apt-get download` + `dpkg-deb -x` 解包」补齐，脚本会自动探测 `~/.local/chrome-deps`。）
 
-**`verify:recording` 是机器判据**——防"写了代码改了 spec 就声称完成"：对每个 `status ∈ implemented*` 的角色查①测试文件引用 agentId（无=FAIL）②有 expect 断言（无=WARN）③档案段有状态行（无=WARN）。录入后跑它确认无 FAIL；WARN 按 SOP §6.10 第 3 项补状态行消除。
+**`verify:recording` 是机器判据**——防"写了代码改了 spec 就声称完成"：对每个 `status ∈ implemented*` 的角色查①测试文件引用 agentId（无=FAIL）②有 expect 断言（无=WARN）③档案段有状态行（无=WARN）。并校验 `data/recordings/*.json` 的原文覆盖、来源漂移与实现/测试引用；历史未复核角色在 `legacy.json` 显式列出，新增角色不享有豁免。录入后跑它确认无 FAIL；WARN 按 SOP §6.10 第 3 项补状态行消除。
 
 **新测试一律用 `src/test/harness.ts`**（`setupHarness` / `mockStaticFetch` / `setTeam`），禁止复制三文件 fetch stub（存量 stub 已冻结在 `check-guards` 清单里，新增即红；迁移一个就删一行）；全局回归网 = `src/composables/__tests__/allAgentsSweep.test.ts`（全角色 × 命座 0/6 不变量）。
 

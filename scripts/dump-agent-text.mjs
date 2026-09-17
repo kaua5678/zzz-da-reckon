@@ -22,6 +22,7 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { cleanRecordingText } from './lib/recording.mjs'
 
 const RAW = join(dirname(fileURLToPath(import.meta.url)), '..', 'data', 'raw', 'nanoka_missing')
 const CATALOG = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'static', 'catalog.json')
@@ -41,7 +42,7 @@ if (!token) {
 
 /** 术语表：取 data/raw/nanoka_missing/noun_*.json 里版本号最大的那份 */
 function loadNouns() {
-  const files = readdirSync(RAW).filter(f => /^noun_.*\.json$/.test(f)).sort()
+  const files = readdirSync(RAW).filter(f => /^noun_[\d.]+\.json$/.test(f)).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
   if (files.length === 0) return { map: {}, file: '(无 noun_*.json —— 术语无法还原！)' }
   const file = files[files.length - 1]
   return { map: JSON.parse(readFileSync(join(RAW, file), 'utf8')), file }
@@ -50,23 +51,10 @@ const { map: NOUNS, file: NOUN_FILE } = loadNouns()
 
 /**
  * 清洗 raw 文本：术语还原 → 图标具名 → 去颜色标签 → 压空白。
- * ⚠️ 未命中术语**保留占位并标红**，绝不静默抹掉（抹掉就是本次事故的成因）。
+ * 未知术语/标签直接失败，与录入证据包共用还原器；保留 Skill/Prop 证据。
  */
 function clean(text) {
-  return String(text ?? '')
-    .replace(/<Term:(\d+)><\/Term>/g, (_m, id) => {
-      const hit = NOUNS[id]
-      return hit ? hit.name : `【术语${id}未命中noun表】`
-    })
-    .replace(/<IconMap:([^>]+)>/g, (_m, k) => {
-      const map = { Icon_Normal: '[普攻键]', Icon_Special: '[特技键]', Icon_Dodge: '[闪避键]', Icon_Ultimate: '[终结键]', Icon_Assist: '[支援键]' }
-      return map[k] ?? `[${k}]`
-    })
-    .replace(/\{Skill:(\d+),\s*Prop:(\d+)\}/g, '[倍率:$1]')
-    .replace(/<[^>]+>/g, '')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{2,}/g, '\n')
-    .trim()
+  return cleanRecordingText(text, NOUNS)
 }
 
 /** 角色解析：id 精确 → 名字精确 → 名字唯一子串；歧义 exit 1 */
@@ -124,7 +112,7 @@ if (!want || want === 'passive') {
   // 被动等级键形如 1591501 = <agentId> + 5 + 等级序号；按尾号匹配，不硬编码角色
   const pick = flags.lv
     ? levels.filter(k => k.endsWith(String(flags.lv).padStart(2, '0')))
-    : levels.slice(-1)
+    : levels.sort((a, b) => Number(a) - Number(b)).slice(-1)
   if (flags.lv && pick.length === 0) console.error(`⚠ 被动等级 ${flags.lv} 不存在，可用尾号：${levels.map(k => k.slice(-2)).join(', ')}`)
   for (const key of pick) {
     const e = d.passive.level[key]

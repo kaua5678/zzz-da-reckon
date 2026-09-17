@@ -58,7 +58,8 @@ useResourceCalc()                      编排层入口（composables/useResource
 
 | 任务 | 先读 | 再改 |
 |---|---|---|
-| 录新角色 / 补机制 | README §3 → `AGENT_RECORDING_SOP.md` → `ENGINE_PIPELINE_GUIDE.md` | `src/specs/agents/<agentId>.json`（**文件名必须 = agentId**，validate:specs 强制）+ `src/mechanics/agents/<id>.ts`（注册进 `mechanics/index.ts`） |
+| **优化角色自动理解 / 原文录入流程 / 证据契约** | `AGENT_RECORDING_SOP.md` §0.5；`node scripts/record-agent.mjs --help` | `scripts/lib/recording.mjs`（固定来源与校验接口）+ `scripts/record-agent.mjs`（工作台）+ `scripts/verify-recording.mjs`（交付闸门）；测试 `src/scripts/__tests__/recording.test.ts` |
+| 录新角色 / 补机制 | `AGENT_RECORDING_SOP.md` §0.5 先建 `data/recordings/<id>.json`，plan 校验后 → `ENGINE_PIPELINE_GUIDE.md` | `src/specs/agents/<agentId>.json`（**文件名必须 = agentId**，validate:specs 强制）+ `src/mechanics/agents/<id>.ts`（注册进 `mechanics/index.ts`） |
 | **跨角色 / 队伍级联动**（邻位回能、后场全队增益、入场次数汇总） | `ENGINE_PIPELINE_GUIDE.md` §2 的 `applyTeamConfig` 三阶段表 | **只改角色模块自己的 `applyTeamConfig`**；派发器 `applyTeamMechanics`（composables/resourceCalc/helpers.ts）无需改。禁止往 `useResourceCalc` 加 agentId 分支 |
 | **引擎内热循环要用到角色专属量**（赠链时间、跨槽回能等——`iterate`/折叠环每 pass 重算，**钩子派发不进去**） | `src/mechanics/types.ts` 的 `crossAgentSupply` 契约（字段与语义单源）+ `docs/ENGINE_PIPELINE_GUIDE.md` §2 | **模块声明能力，引擎按能力查询**：模块写 `crossAgentSupply`，引擎调 `crossAgentSupplyAt`/`crossAgentSuppliesOf`（`core/resource/crossAgentSupply.ts`）与 `findCrossAgentSupplySlots`。**禁止**在 `core/**` 写 `c.agentId === '<id>'` 或 import 角色模块（两条棘轮盯着，见 `scripts/check-guards.mjs`） |
 | **加一个可调滑块（覆盖率/次数近似）** | `src/mechanics/types.ts` 的 `MechanicSetting`；面板阶段读法见 `AgentPanelInput.settings` | 模块 `settings: [...]` 声明 → 面板阶段 `input.settings['<id>']`、cfg 阶段 `configStore.getMechanicSetting`。**必须补一条「滑块改了面板/结果确实变」的生效测试**（般岳 rageGainCoverage 曾静默失效） |

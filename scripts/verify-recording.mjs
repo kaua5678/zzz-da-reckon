@@ -12,9 +12,11 @@
  *      （无状态行 = 未核对现状 → WARN，提示录入时补）
  *
  * 不检查"差分断言"形态（形态太杂会漏报），以"有测试文件 + 有 expect"作为客观完成信号。
- * 纯文本 grep，无运行时开销；接入 `npm run verify` 或单独 `npm run verify:recording`。
+ * 历史检查为纯文本；新录入另验 evidence contract（来源/逐条覆盖/AST 引用）。
+ * 静态追踪不等于语义正确或测试通过；接入 `npm run verify` 的实际 Vitest 仍是必要条件。
  */
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { loadPacket, validateRecording, repositoryReader } from './lib/recording.mjs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -99,6 +101,30 @@ for (const file of specs) {
     }
   }
 }
+
+// Evidence contracts are mandatory for new implemented agents. Historical exemptions
+// are explicit, printed, and removed when migrated; existing legacy checks still apply.
+const recordingDir = join(root, 'data', 'recordings')
+const legacy = JSON.parse(readFileSync(join(recordingDir, 'legacy.json'), 'utf8')).agentIds
+const contracts = readdirSync(recordingDir).filter(f => /^\d{4}\.json$/.test(f))
+for (const file of contracts) {
+  checked++
+  const id = file.slice(0, 4)
+  try {
+    const doc = JSON.parse(readFileSync(join(recordingDir, file), 'utf8'))
+    const errors = validateRecording(doc, loadPacket(root, id), { stage: 'complete', readText: repositoryReader(root) })
+    if (errors.length) throw new Error(errors.join('\n    '))
+    if (legacy.includes(id)) throw new Error('契约已完成，请移除 legacy 豁免')
+  } catch (e) { failed++; console.log(`  FAIL ${id} recording contract: ${e.message}`) }
+}
+for (const file of specs) {
+  const spec = JSON.parse(readFileSync(join(specDir, file), 'utf8'))
+  const id = spec.agentIds?.[0]
+  if (implementedStatuses.has(spec.status) && !legacy.includes(id) && !existsSync(join(recordingDir, `${id}.json`))) {
+    failed++; console.log(`  FAIL ${id}: 新录入缺 data/recordings/${id}.json 原文契约`)
+  }
+}
+console.log(`  Evidence contracts: ${contracts.length}; legacy unreviewed: ${legacy.length}（不代表已通过逐条语义验收）`)
 
 console.log(
   failed === 0
