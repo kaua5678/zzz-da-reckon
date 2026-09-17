@@ -123,9 +123,22 @@ const C1_SHUFA_INITIAL = 120 // 影画1 进场 +120 术法值
 const EXTREME_ASSIST_LIGHTNING_RATIO = 225 // 225% 贯穿力伤害
 const EXTREME_ASSIST_MOVE_ID = '1371_extreme_assist_lightning' // 假 id（不进失衡/异常池）
 
-// 非轴模式（用户口径：弃用自动近似，默认 0；滑块保留供用户自行调节兜底）
+// 非轴模式（用户口径 2026-09-17 裁决：**以现网生效值 0.5 为准**）
 const DEFAULT_STUN_EX_COVERAGE = 0 // 失衡强特 +30% 覆盖率（非轴模式，默认不算）
-const DEFAULT_NINGSHEN_COVERAGE = 0 // 凝神暴伤覆盖率（非轴模式，默认不算）
+/**
+ * 凝神暴伤覆盖率（非轴模式）。
+ *
+ * ⚠ **2026-09-17 用户裁决：0.5，不是 0**。此前存在**默认值分裂**：
+ * 本常量（注册 default）曾为 `0`，而 `damagePool.ts` 原式的 fallback 是 `0.5`
+ * ——用户从未动过该滑块时，`resolveMechanicSettings` 恒以注册 default 铺满 ⇒
+ * 模块侧读 `settings` 得 0，而**现网实际生效**的是伤害池那份 0.5。
+ *
+ * 引擎实测差（1371 C0 + 1181 + 1011、非轴）：cov=0 总伤 21,254,219 vs cov=0.5 总伤
+ * 22,495,302（**+5.84%**，1371 自身 +1,241,082，15 行 note 显示「凝神暴伤+20%（覆盖率近似）」）
+ * ⇒ 若按 0 迁移会把现网数值静默下调 5.8%。用户裁决以 0.5 为准 ⇒ 本常量改为 0.5，
+ * 与伤害池 fallback 归一（迁移该分支时 **0 delta**）。
+ */
+const DEFAULT_NINGSHEN_COVERAGE = 0.5
 
 // 影画2·消灾渡厄（用户确认）
 const C2_RES_IGNORE = 15 // [终结技]或[强化特殊技]无视 15% 以太伤害抗性（招式限定）
@@ -955,7 +968,7 @@ const settings: MechanicSetting[] = [
   {
     id: 'yixuan.ningshenCoverage',
     label: '仪玄·凝神暴伤覆盖率（非轴模式）',
-    description: '额外能力：发动终结技后[凝神]15s 暴击伤害+40%；失衡轴模式按 buff 轴扫描（大招触发后 15s 窗口），非轴模式已弃用（默认 0，需要近似可自行调高）。',
+    description: '额外能力：发动终结技后[凝神]15s 暴击伤害+40%；失衡轴模式按 buff 轴扫描（大招触发后 15s 窗口），非轴模式按本覆盖率近似（**默认 0.5**，用户裁决 2026-09-17；原注册 default 0 与伤害池 fallback 0.5 分裂，已归一为 0.5 以保持现网数值）。',
     default: DEFAULT_NINGSHEN_COVERAGE,
     min: 0,
     max: 1,
@@ -1056,11 +1069,11 @@ export const yixuanMechanic: AgentMechanicModule = {
    *
    * ⚠ 2026-09-16 round 16：派发器不再在非轴时早退（`axes.length === 0` 那行已删——它让别的模块的
    * 非轴折算臂物理不可达），故进入条件改判 `isAxis`。**非轴臂仍在伤害池**
-   * （`:484` 的三臂：C6 / 非C6轴 / 非C6非轴），本轮 R15-b 未纳入该处——
-   * 实测到一处**必须先裁决的默认值分裂**：注册 default `yixuan.ningshenCoverage = 0`
-   * （`settings` 表）vs 伤害池原式 fallback **0.5**，二者在「用户从未调过该滑块」时给出不同数值
-   * （`resolveMechanicSettings` 恒以注册 default 铺满 ⇒ 模块侧读 `settings` 会拿到 0，
-   * 而现网行为是 0.5）。**迁移会把 0.5 静默改成 0**（−20% 暴伤）⇒ 保留原分支，待 round 17 裁决。
+   * （三臂：C6 / 非C6轴 / 非C6非轴）。
+   *
+   * ✅ **2026-09-17 用户裁决：默认值分裂已归一为 0.5**（裁决与实测差见
+   * `DEFAULT_NINGSHEN_COVERAGE` 头注释）⇒ 伤害池那处已可安全迁进本模块
+   * （迁移时 0 delta）。本条不再阻塞迁移。
    */
   axisWindowOverlays: ({ slot, axes, isAxis }) => {
     if (!isAxis) return null
