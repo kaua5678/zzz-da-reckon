@@ -320,6 +320,63 @@ export interface AgentTeamConfigInput {
    * 形状与 `threads`/`axis` 同款：递整份快照、模块自取（不逐字段铺开）。
    */
   interactions?: Readonly<AgentInteractionContext>
+
+  /**
+   * **配装页「保底目标」三开关**的只读快照（round 21 夜D 新增）。
+   *
+   * 三个值 = `configStore.getMechanicSetting('guarantee.<k>', 0) !== 0`（`convergence.ts` 原文口径），
+   * 键为 `stun` / `fury` / `ultimate`。
+   *
+   * **只有 `phase === 'converge'` 时有值**（与 `axis`/`interactions`/`countStun` 同款相位语义）
+   * ⇒ 模块若需要它，必须先 `if (phase !== 'converge' || !guarantee) return` **双判据门控**
+   * （只判相位不判字段会让「派发器漏传」退化成静默 false = 静默关掉保底，那正是要修的形态）。
+   *
+   * ⚠ **缺省即缺省，派发器不做 `?? {…}` 兜底**（与 `axis`/`interactions` 同款纪律）：
+   * 伪造一份全 false 的快照会让「契约没接上」与「用户三个开关都没勾」不可分辨——
+   * 前者是断路缺陷、后者是合法业务态，混淆二者正是本契约要消灭的形态。
+   *
+   * **为什么是快照而不是注册 `MechanicSetting`**（本字段存在的全部理由，别重新论证）：
+   * `resolveMechanicSettings()` 只遍历 `getRegisteredMechanicSettings()`，而 `guarantee.*`
+   * **从未注册**（实测 `getRegisteredMechanicSettings()` 的 id 集合不含它）⇒ 它不在
+   * `AgentTeamConfigInput.settings` 里、模块侧读不到。**补注册是错的**：`guarantee.*` 虽由
+   * 配装页开关驱动（`TeamConfigPage.vue#setGuarantee`），但它同时被难度阶梯（`difficultyLadder.ts`
+   * 的 `GUARANTEE_KEYS`）与归档部署（`runArchiveDeploy.ts`）**程序化改写**——那是内部实验旋钮，
+   * 注册进注册表会让它变成资源利用率页面的用户可见滑块（产品级口径，用户未裁决）。
+   * ⇒ 只递**当时算好的布尔结果**，不把「怎么算 / 谁在改」暴露给模块（与 `countStun` 同款论证）。
+   *
+   * 消费先例：般岳 1471 的 `autoTopUp` 系列字段（原为 `convergence.ts` 的
+   * `if (merged.agentId === '1471')` 块，round 21 夜D 迁入 `banyue.ts#applyTeamConfig`）。
+   */
+  guarantee?: Readonly<{ stun: boolean; fury: boolean; ultimate: boolean }>
+
+  /**
+   * 本局生效 Boss 预设里**参与弹刀反推**的三项只读快照（round 21 夜D 新增；与 `guarantee` 同族）。
+   *
+   * 三个值 = `configStore.appliedBoss?.<k> ?? 0`（`convergence.ts` 原文口径）。语义与依据见
+   * `core/parrySplit.ts` 头注释与 `convergence.ts` 的「Boss 预设弹刀反推」注释块；
+   * `parrySplit` 的**本轮拆分结果**不在这里（那是 `threads.parrySplit`，跨轮量），
+   * 本字段只是**输入侧**的 Boss 声明值。
+   *
+   * 同样的相位语义（**只有 converge 有值**）、同样的**不兜底**纪律（缺省即缺省）。
+   *
+   * ⚠ 为什么递这三项而不是 `appliedBoss` 整份：Boss 预设对象是 store 里的**可写**引用，
+   * 递整份等于给模块一个能改用户 Boss 配置的手柄；而本契约的用途只是「读三个数」
+   * （与 `interactions` 递扁平快照而非 store 引用同款最小暴露）。
+   */
+  boss?: Readonly<{ parryTotal: number; parryNoFollowUpTotal: number; parryDecibelOnlyTotal: number }>
+
+  /**
+   * 倍率表访问（`catalogStore.getAgentSkills` 的直通）。
+   *
+   * 为什么本钩子也需要它（round 21 夜D）：雨果 1291 的轴内「窗口终结」时长反推要读
+   * 轴动作的 `actionTime`——`act.duration` 只覆盖仪玄轴内凝云术一类特例，其余动作的时长
+   * 只能查倍率表（合成行 `1291_ex_verdict_final` 无条目 ⇒ 走模块常量兜底）。
+   *
+   * 与 `AgentAxisOverlayInput.getAgentSkills` / `AgentNextRoundFeedbackInput.getAgentSkills`
+   * **同款契约同款理由**（那两处已有先例，本处只是把同一能力补给第三个需要它的钩子）；
+   * 类型按那两处的并集放宽到「能查 move」的最小结构，避免钩子被迫依赖完整 `AgentSkills`。
+   */
+  getAgentSkills?: (agentId: string) => { categories: { id?: string; moves: { id: string; actionTime?: number }[] }[] } | undefined
 }
 
 /** 上一轮收敛线程的快照类型（结构定义在 `composables/resourceCalc/roundThreads.ts`） */

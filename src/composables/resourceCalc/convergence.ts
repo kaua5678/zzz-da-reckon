@@ -481,7 +481,9 @@ export function createRunCalcRound(deps: {
       teamVeilCountTotal: prevTeamVeilCountTotal,
       decibelParry: prevDecibelParry,
       decibelRegenBySlot: prevDecibelRegenBySlot,
-      prevPoolStunCount,
+      // 2026-09-17 round 21 夜D：`prevPoolStunCount` 也不再在此解构——它唯一的读点
+      // （雨果轴内决算块数落地，坑36）已整块迁进 `hugo.ts#applyHugoTeamConfig`，
+      // 该模块经 `threads.prevPoolStunCount` 契约自取（规则 6：编排层不写角色规则）。
     } = threads
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
@@ -529,44 +531,9 @@ export function createRunCalcRound(deps: {
         if (truncEnd >= 0) verdictSecondsLost += Math.max(0, windowDur - truncEnd) * wins
       })
     }
-    // 雨果轴模式剩余失衡时间 + 决算次数：从轴内块反推（合法轴：C2 = Q决算→E决算；E决算后再接 E 为非法轴，不建模）。
-    // 剩余失衡时间覆盖滑块 hugo.remainingStunSeconds；决算次数覆盖滑块 exVerdictRatio/ultimateVerdictRatio。
-    let hugoAxisRemainingStunSeconds: number | undefined
-    let hugoAxisExVerdictCount: number | undefined
-    let hugoAxisUltVerdictCount: number | undefined
-    // @fact engine:轴内块数落地 口径: 雨果轴内决算次数 = 轴内决算块数 × **上一轮失衡池整数次数**（prevPoolStunCount 线程，与池/轴栈同源）；外层不动点的连续小数计划次数只作收敛输入，不得用于轴内块数（曾致 0.82 窗被 Math.floor 归零、轴栈说 5 池只落地 1，坑36） | 据 用户@2026-09-10「失衡易伤为什么静默不算」查证 + 引擎日志实测 0.824 | 验 src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/composables/resourceCalc/convergence.ts#hugoAxisExVerdictCount | 信 确认
-    if (axisActive && hugoSlot >= 0) {
-      const windowDur = computeWindowDuration()
-      // 坑36（2026-09-10 修复）：轴内块数落地必须与失衡池**同源**——外层不动点的计划次数是连续小数
-      // （实测 0.824），池同轮算整数（floor）；对小数块数 Math.floor 后决算次数静默 0/1（轴栈 executed
-      // 说 5、资源池只落地 1）。改读上一轮失衡池的整数次数（与其它线程同款滞后注入；首轮无池 → 0，
-      // 收敛期稳定后与最终池一致；锁定次数路径池 = 锁定值不受影响）。
-      const axisStunCount = prevPoolStunCount ?? 0
-      const winAlloc = allocateAxisWindows(resolvedAxes, axisStunCount)
-      let maxEnd = -1
-      let exVerdictBlocks = 0
-      let ultVerdictBlocks = 0
-      resolvedAxes.forEach((axis, ai) => {
-        const wins = winAlloc[ai] ?? 0
-        if (wins <= 0) return
-        for (const act of axis.actions) {
-          const cinema = configStore.team[act.slot]?.cinemaLevel ?? 0
-          if (act.moveId === HUGO_EX_VERDICT_MOVE_ID) exVerdictBlocks += (act.count ?? 1) * wins
-          if (act.moveId === HUGO_ULT_MOVE_ID) ultVerdictBlocks += (act.count ?? 1) * wins
-          if (!isHugoEndsWindowMove(act.moveId, cinema)) continue
-          const skills = catalogStore.getAgentSkills(configStore.team[act.slot]?.agentId ?? '')
-          const move = findMoveById(skills, act.moveId)
-          let dur = typeof (act as { duration?: number }).duration === 'number'
-            ? (act as { duration: number }).duration
-            : (move?.actionTime ?? 0)
-          dur = hugoMoveActionTime(act.moveId, dur)
-          maxEnd = Math.max(maxEnd, Math.max(0, act.startTime ?? 0) + dur)
-        }
-      })
-      if (maxEnd >= 0) hugoAxisRemainingStunSeconds = Math.max(0, Math.min(15, windowDur - maxEnd))
-      hugoAxisExVerdictCount = exVerdictBlocks
-      hugoAxisUltVerdictCount = ultVerdictBlocks
-    }
+    // 雨果轴模式剩余失衡时间 + 决算次数（原在此从轴内块反推）已于 2026-09-17 round 21 夜D
+    // 整块迁进 `hugo.ts#applyHugoTeamConfig`（converge 相位）——连 `@fact engine:轴内块数落地`
+    // 一起搬走（断锚即红：锚符号没了，口径必须跟着实现走，见规则 8）。
     // 当前轮失衡覆盖率（供诺姆火力实验高爆/破甲按失衡时长拆分；与 computeStunCoverage 同口径，含决算截断）
     const provStunCoverage = computeStunCoverage({ stunCount }, verdictSecondsLost)
     // 般岳轴模式自动补齐（保底语义，方案 A）：轴内怒相/终结技对嗔火/喧响有硬性需求，不足时抬双反（补嗔火）与弹刀（补喧响），
@@ -823,20 +790,17 @@ export function createRunCalcRound(deps: {
       }
       // 2026-09-15 arch 棘轮：norva(1571)/qingyi(1251) 的失衡次数注入已迁进各自模块的
       // applyTeamConfig（converge 阶段读同一组 hook 入参 stunCount/combatTime，规则 6）。
-      if (merged.agentId === '1291' && hugoAxisRemainingStunSeconds !== undefined) {
-        // 雨果轴模式：决算剩余失衡时间 + 决算次数由轴内块反推（覆盖滑块）；非轴回落 buildCharConfig 的滑块值。
-        // 次数口径：轴内 1291_ex_verdict_final 块 = 强特决算、轴内 1291018 块 = 终结技决算（合法轴 C2=Q→E；E→E 非法不建模）。
-        // ⚠ 曾在此写 `hugoAxisActive: true`——2026-09-16 T26 批次 0a 判死并删除（全仓零读点，
-        // 唯一「反射面」是 `core/resource.ts#sanitizeWarmKeyCfg` 的 JSON 序列化，但该字段是
-        // `hugoAxisExVerdictCount` 是否存在的纯函数（只会是 `true`、只在本分支出现）⇒ 删它不改变
-        // 热启动 key 的等价类划分，见 `.claude/task-card-round10-axis-context-contract.md` §10.1）。
-        return {
-          ...merged,
-          hugoRemainingStunSeconds: hugoAxisRemainingStunSeconds,
-          hugoAxisExVerdictCount: hugoAxisExVerdictCount ?? 0,
-          hugoAxisUltVerdictCount: hugoAxisUltVerdictCount ?? 0,
-        }
-      }
+      // 雨果 1291 的轴内决算反推（`hugoRemainingStunSeconds` / `hugoAxisExVerdictCount` /
+      // `hugoAxisUltVerdictCount`，含「非轴不写」与「块内 `?? 0` 但整体 `!== undefined` 门控」
+      // 两条条件写形态）已于 2026-09-17 round 21 夜D 迁进 `hugo.ts#applyHugoTeamConfig`
+      // （converge 相位）：轴本体/窗口数走 `axis` 契约、上一轮失衡池整数次数走
+      // `threads.prevPoolStunCount`（坑36 口径，**不是** `axis.windows`——后者用本轮不动点实数）、
+      // 动作时长查表走本轮新增的 `getAgentSkills` 契约 ⇒ 本 map 里不再有 1291 判据。
+      // ⚠ 曾在此写 `hugoAxisActive: true`——2026-09-16 T26 批次 0a 判死并删除（全仓零读点，
+      // 唯一「反射面」是 `core/resource.ts#sanitizeWarmKeyCfg` 的 JSON 序列化，但该字段是
+      // `hugoAxisExVerdictCount` 是否存在的纯函数（只会是 `true`、只在原分支出现）⇒ 删它不改变
+      // 热启动 key 的等价类划分，见 `.claude/task-card-round10-axis-context-contract.md` §10.1）。
+      // 迁移后同理不再产生该字段（同一纯函数关系在模块内继续成立）。
     // 伊德海莉 1051 的 `yidhariStunCount` / `yidhariInStunExCount` / `yidhariInStunEnergyCost`
     // （轴内连段反推：单次碾 1 重碾/50-60 闪能、双次碾 2 重碾/85 闪能）已迁进 `yidhari.ts` 的
     // `applyTeamConfig`（round 13 批次 3）：前者读 `stunCount`（轴无关），后两者读下面 dispatch 的
@@ -846,28 +810,11 @@ export function createRunCalcRound(deps: {
     // （详见模块钩子注释）。core 侧那两条「字段即蕴含角色」的守卫因此仍然成立。
       // 2026-09-15 arch 棘轮：佩洛伊斯(1551) 的 peiluoVerdictCount / extraSelfDecibelReward 注入
       // 已迁进 specPanelBuffs 的 peiluoProminenceMechanic.applyTeamConfig（规则 6）。
-      if (merged.agentId === '1471') {
-        // 般岳：轴内捏的强特/连段块 → 次数反馈给模块（先扣闪能，剩余自动补连段）；轴模式地动滑块归 0
-        const banyueAxisEx = axisActionCountsBySlot[cfg.slot] ?? {}
-        // 轴模式自动补齐（保底）：在用户输入之上补弹刀/双反，确保轴内怒相/终结技资源足够；
-        // 只注入本轮 cfg（不写回 store），模块嗔火循环/执行计划用有效次数，资源卡片可展示补齐量
-        const topUp = autoTopUp && cfg.slot === banyueSlot ? prevBanyueTopUp : { parry: 0, dual: 0 }
-        // 轴模式：地动由轴内块决定 → 滑块归 0（不 shadow 非轴模式的滑块值）；
-        // banyueAxisActive：轴内/轴外拆分（强特连段后摇：失衡外 = 闪能连段 + 轴内未覆盖怒相组≤2）用
-        const banyueMerged = {
-          ...merged,
-          banyueAxisEx,
-          banyueAxisActive: axisActive,
-          ...(topUp.parry > 0 || topUp.dual > 0
-            ? {
-              parryCount: (merged.parryCount ?? 0) + topUp.parry,
-              dualCounterCount: (merged.dualCounterCount ?? 0) + topUp.dual,
-            }
-            : {}),
-          banyueInteractionTopUp: topUp,
-        }
-        return banyueMerged
-      }
+      // 般岳 1471 的整块（`banyueAxisEx` / `banyueAxisActive` / `banyueInteractionTopUp`
+      // + 弹刀/双反注入）已于 2026-09-17 round 21 夜D 迁进 `banyue.ts#applyBanyueTeamConfig`
+      // （converge 相位）：轴内量走 `axis` 契约、补齐量走 `threads.banyueTopUp`、
+      // 保底开关走本轮新增的 `guarantee` 契约（`guarantee.*` 刻意不注册 MechanicSetting，
+      // 理由见 `AgentTeamConfigInput.guarantee` 头注释）⇒ 本 map 里不再有 1471 判据。
       // 仪玄 1371 的 8 个字段已整条迁进 `yixuan.ts#applyYixuanTeamConfig`（round 14 批次 4）：
       // 轴内量（`yixuanAxisEx`/`yixuanAxisCloudSeconds`/`yixuanAxisActive`/`yixuanC1LightningCount` 的轴臂）
       // 走 `axis` 契约、线程量（`yixuanAnomalyTriggerFlash`/`extraSelfDecibelReward` 的橘福福项）
@@ -972,6 +919,19 @@ export function createRunCalcRound(deps: {
       // （`stunPlanProjection` 不在模块可达面上，且注册成 MechanicSetting 会变产品级口径）。
       // 同样只有 converge 相位该传、同样**不做兜底**（模块侧双判据门控）。
       countStun,
+      // 保底目标三开关（round 21 夜D 新增的只读契约）：由配装页开关驱动
+      // （`TeamConfigPage.vue#setGuarantee`），但**同时**被难度阶梯（`difficultyLadder.ts` 的
+      // `GUARANTEE_KEYS`）与归档部署（`runArchiveDeploy.ts`）程序化改写 ⇒ 刻意**不**注册成
+      // `MechanicSetting`（注册 = 内部实验旋钮变成资源利用率页可见滑块 = 产品级口径，用户未裁决）。
+      // 代价是 `resolveMechanicSettings()` 看不见它 ⇒ 模块侧读不到，故在此递**当时算好的布尔结果**。
+      //
+      // ⚠ 语义与 `axis`/`interactions`/`countStun` 逐条同款：只有 converge 有值、**缺省即缺省**
+      // （不 `?? {}` 兜底）。消费先例：般岳 1471 的 `autoTopUp` 系列（原为本文件
+      // `characters.map` 里的 `agentId === '1471'` 分支）。
+      guarantee: { stun: guaranteeStun, fury: guaranteeFury, ultimate: guaranteeUltimate },
+      // Boss 预设弹刀反推的三项**输入侧**声明值（本轮拆分结果另走 `threads.parrySplit`，
+      // 不在这里重复递——那是跨轮量、这是本局静态输入）。
+      boss: { parryTotal, parryNoFollowUpTotal, parryDecibelOnlyTotal },
     })
     // 特殊动作喧响奖励（弹刀215/闪反10/连携10/快支20，含伴随50%）：本轮即时结算——
     // 输入只有用户配置的次数与连携数（= chainCountTotalOverride ?? chainCountPerStun × stunCount），无 ultimateCount 反馈环

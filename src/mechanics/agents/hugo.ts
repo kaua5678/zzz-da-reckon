@@ -18,7 +18,9 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentStunOverrideInput,
+  AgentTeamConfigInput,
 } from '../types'
+import { allocateAxisWindows } from '@/core/stunAxisStack'
 
 export const HUGO_ID = '1291'
 export const HUGO_EX_OPEN_MOVE_ID = '1291009'
@@ -323,6 +325,95 @@ function buildHugoResourceResult({ cfg, state }: AgentResourceResultInput) {
   return { specResources: { hugo_abyss_echo: cycleFromInput({ cfg, state }) } }
 }
 
+/**
+ * `applyTeamConfig` · converge：轴内决算反推 → 覆盖 `hugo.remainingStunSeconds` 与两处决算次数。
+ *
+ * 2026-09-17 round 21 夜D 自 `convergence.ts` 的
+ * `if (merged.agentId === '1291' && hugoAxisRemainingStunSeconds !== undefined)` 块迁入
+ * （原实现逐行等价搬移，取数改走契约）：
+ * - `axisActive` / `hugoSlot >= 0` ⇒ `axis.active`。原式的 `hugoSlot >= 0` 是「队里有没有雨果」，
+ *   而本钩子**只在雨果模块自己被派发时**执行 ⇒ 恒成立（派发器已按同一身份判据选中本模块）。
+ * - `resolvedAxes` ⇒ `axis.axes`；`computeWindowDuration()` ⇒ `axis.windowSeconds`（同源标量）。
+ * - `winAlloc = allocateAxisWindows(resolvedAxes, prevPoolStunCount)` ⚠ ⇒ **不能**直接用
+ *   `axis.windows`：那个是 `allocateAxisWindows(resolvedAxes, stunCount)`（**本轮不动点实数**），
+ *   而本处按坑36 口径必须用**上一轮失衡池整数次数**（`threads.prevPoolStunCount`，**同一个线程值**，
+ *   不是重新推导）。`allocateAxisWindows` 是 `core/stunAxisStack.ts` 的纯函数 ⇒ 模块直接调用
+ *   （与 `starlightBilly` 读 `axis.windows` 的差异正在于此：那个的入参 stunCount 恰好同源）。
+ * - `configStore.team[act.slot]?.cinemaLevel ?? 0` ⇒ `team.find(m => m.slot === act.slot)?.cinemaLevel ?? 0`
+ *   （`team` 按**全量 `configStore.team`** 逐下标构造 ⇒ 与原式逐位等价；**不是** `characters`，
+ *   后者是按位置压缩数组、槽位号 ≠ 下标）。
+ * - `catalogStore.getAgentSkills(configStore.team[act.slot]?.agentId ?? '')` ⇒ `getAgentSkills` 契约
+ *   （本轮新增，与 `AgentAxisOverlayInput` / `AgentNextRoundFeedbackInput` 同名入参同款）。
+ * - `findMoveById(skills, act.moveId)` + `hugoMoveActionTime(act.moveId, dur)` ⇒ 本模块自身实现
+ *   （前者是 `helpers.ts` 的通用查表，此处按本仓 18 个模块的惯例内联同义实现，避免
+ *   `mechanics → composables/resourceCalc` 的运行时依赖）。
+ * - **条件写形态逐位保留**（⚠ 本批最容易写错的地方）：原式是**整个块**以
+ *   `hugoAxisRemainingStunSeconds !== undefined` 为门控，块内三个字段**一起**写；而
+ *   `hugoAxisExVerdictCount` / `hugoAxisUltVerdictCount` 在块内用 `?? 0`。
+ *   `hugo.ts` 的消费端（`cycleFromInput`）用 `record.hugoAxisExVerdictCount !== undefined`
+ *   **选通路** ⇒ 「写 0」与「不写」语义不同（恒写 0 会让决算次数被 override 成 0 而不是回落滑块比例）。
+ *   故此处门控只认 `maxEnd >= 0`（= 原式给三个标量赋值的那一支），不额外加别的判据。
+ * - `Math.max(0, Math.min(15, windowDur - maxEnd))` 的夹取逐字保留。
+ */
+function applyHugoTeamConfig({ cfg, team, phase, axis, threads, getAgentSkills }: AgentTeamConfigInput): void {
+  if (phase !== 'converge' || !axis) return
+  if (!axis.active) return
+  // 坑36（2026-09-10 修复）：轴内块数落地必须与失衡池**同源**——外层不动点的计划次数是连续小数
+  // （实测 0.824），池同轮算整数（floor）；对小数块数 Math.floor 后决算次数静默 0/1（轴栈 executed
+  // 说 5、资源池只落地 1）。改读上一轮失衡池的整数次数（与其它线程同款滞后注入；首轮无池 → 0，
+  // 收敛期稳定后与最终池一致；锁定次数路径池 = 锁定值不受影响）。
+  const axisStunCount = threads?.prevPoolStunCount ?? 0
+  const winAlloc = allocateAxisWindows([...axis.axes], axisStunCount)
+  const windowDur = axis.windowSeconds
+  // 槽位 → 队伍成员：`team` 是 `buildMechanicTeamMembers(configStore, …)` 的产物，
+  // 按**全量 `configStore.team`** 逐下标构造（slot = 下标，空槽也在）⇒
+  // `team.find(m => m.slot === act.slot)` 与原式的 `configStore.team[act.slot]` 逐位等价。
+  // ⚠ 不要改用 `characters`：那是**按位置压缩**的数组（空槽被跳过），槽位号 ≠ 下标（规则 §2）。
+  const memberAt = (s: number) => team.find(m => m.slot === s)
+  let maxEnd = -1
+  let exVerdictBlocks = 0
+  let ultVerdictBlocks = 0
+  axis.axes.forEach((ax, ai) => {
+    const wins = winAlloc[ai] ?? 0
+    if (wins <= 0) return
+    for (const act of ax.actions) {
+      const cinema = memberAt(act.slot)?.cinemaLevel ?? 0
+      if (act.moveId === HUGO_EX_VERDICT_MOVE_ID) exVerdictBlocks += (act.count ?? 1) * wins
+      if (act.moveId === HUGO_ULT_MOVE_ID) ultVerdictBlocks += (act.count ?? 1) * wins
+      if (!isHugoEndsWindowMove(act.moveId, cinema)) continue
+      const skills = getAgentSkills?.(memberAt(act.slot)?.agentId ?? '')
+      const move = findMove(skills, act.moveId)
+      let dur = typeof (act as { duration?: number }).duration === 'number'
+        ? (act as { duration: number }).duration
+        : (move?.actionTime ?? 0)
+      dur = hugoMoveActionTime(act.moveId, dur)
+      maxEnd = Math.max(maxEnd, Math.max(0, act.startTime ?? 0) + dur)
+    }
+  })
+  if (maxEnd < 0) return
+  const record = cfg as unknown as Record<string, unknown>
+  // @fact engine:轴内块数落地 口径: 雨果轴内决算次数 = 轴内决算块数 × **上一轮失衡池整数次数**（prevPoolStunCount 线程，与池/轴栈同源）；外层不动点的连续小数计划次数只作收敛输入，不得用于轴内块数（曾致 0.82 窗被 Math.floor 归零、轴栈说 5 池只落地 1，坑36） | 据 用户@2026-09-10「失衡易伤为什么静默不算」查证 + 引擎日志实测 0.824 | 验 src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/mechanics/agents/hugo.ts#applyHugoTeamConfig | 信 确认
+  // 轴模式：决算剩余失衡时间覆盖滑块 `hugo.remainingStunSeconds`、决算次数覆盖滑块
+  // `exVerdictRatio` / `ultimateVerdictRatio`（`cycleFromInput` 按 `!== undefined` 选通路）。
+  record.hugoRemainingStunSeconds = Math.max(0, Math.min(15, windowDur - maxEnd))
+  record.hugoAxisExVerdictCount = exVerdictBlocks
+  record.hugoAxisUltVerdictCount = ultVerdictBlocks
+}
+
+/** 倍率表查表（与 `helpers.ts#findMoveById` 同义；本模块内联以避免 mechanics → composables 运行时依赖） */
+function findMove(
+  skills: { categories: { moves: { id: string; actionTime?: number }[] }[] } | undefined,
+  moveId: string,
+): { id: string; actionTime?: number } | null {
+  if (!skills) return null
+  for (const cat of skills.categories) {
+    for (const m of cat.moves) {
+      if (m.id === moveId) return m
+    }
+  }
+  return null
+}
+
 function buildHugoResourceSections({ result }: AgentResourceSectionsInput) {
   const cycle = result.specResources?.hugo_abyss_echo as HugoCycle | undefined
   if (!cycle) return []
@@ -354,6 +445,14 @@ export const hugoMechanic: AgentMechanicModule = {
     { id: 'hugo.c4Coverage', label: '影画4冰抗无视覆盖率', description: '蓄力射击后15秒冰抗无视的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
   ],
   applyPanel: applyHugoPanel,
+  /**
+   * 队伍级机制 · converge（规则 6 迁入，round 21 夜D）：原 `convergence.ts` 的
+   * `if (merged.agentId === '1291' && hugoAxisRemainingStunSeconds !== undefined)` 块已整段
+   * 搬进本模块——轴内决算块反推剩余失衡时间与两处决算次数，覆盖对应滑块。
+   * ⚠ 三个字段的**条件写形态**（`hugoAxis*VerdictCount` 的 `!== undefined` 是消费端选通路判据）
+   * 逐位保留，详见函数头注释。
+   */
+  applyTeamConfig: applyHugoTeamConfig,
   buildCharConfig: buildHugoCharConfig,
   buildExecutions: buildHugoExecutions,
   patchExecutions: patchHugoExecutions,

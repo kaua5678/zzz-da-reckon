@@ -284,6 +284,17 @@ export function applyTeamMechanics(params: {
    * （round 14，原为 convergence.ts 的 agentId 分支）。
    */
   interactions?: Readonly<AgentInteractionContext>
+  /**
+   * 配装页「保底目标」三开关（只读快照）。**只有 converge 相位该传**——语义/理由/门控见
+   * `AgentTeamConfigInput.guarantee` 头注释（`guarantee.*` 刻意**不**注册 `MechanicSetting`）。
+   * 消费先例：般岳 1471 的 `autoTopUp`（round 21 夜D，原为 convergence.ts 的 agentId 分支）。
+   */
+  guarantee?: Readonly<{ stun: boolean; fury: boolean; ultimate: boolean }>
+  /**
+   * 本局 Boss 预设参与弹刀反推的三项（只读快照）。**只有 converge 相位该传**——语义/理由见
+   * `AgentTeamConfigInput.boss` 头注释。消费先例：般岳 1471 的 `autoTopUp`（round 21 夜D）。
+   */
+  boss?: Readonly<{ parryTotal: number; parryNoFollowUpTotal: number; parryDecibelOnlyTotal: number }>
 }): void {
   const { characters, configStore, catalogStore, phase } = params
   if (characters.length === 0) return
@@ -305,6 +316,10 @@ export function applyTeamMechanics(params: {
   const axis = params.axis
   // 未缩放交互次数：同样**不做 `?? {}` 兜底**（理由同上）。
   const interactions = params.interactions
+  // 保底目标三开关 / Boss 弹刀三项：同样**不做 `?? {…}` 兜底**——伪造一份全 false 快照会让
+  // 「契约没接上」与「用户没勾保底」不可分辨（模块侧双判据门控，见类型头注释）。
+  const guarantee = params.guarantee
+  const boss = params.boss
 
 
   // 各槽位「异常积储主元素」（2026-09-02）：优先模块声明（雅模块把积蓄归并为 frostfire；
@@ -357,6 +372,13 @@ export function applyTeamMechanics(params: {
       threads,
       axis,
       interactions,
+      // 保底目标三开关 + Boss 弹刀三项（round 21 夜D）：**原样透传，不兜底**——
+      // 缺省就是 undefined，模块用 `phase !== 'converge' || !guarantee` 双判据分辨断路。
+      guarantee,
+      boss,
+      // 倍率表访问（round 21 夜D）：雨果 1291 的轴内窗口终结时长反推要查动作 actionTime。
+      // 与 `collectNextRoundFeedback` 的同名入参同款（那里也是从 catalogStore 现场构造）。
+      getAgentSkills: (agentId: string) => catalogStore.getAgentSkills(agentId),
     })
   }
 }

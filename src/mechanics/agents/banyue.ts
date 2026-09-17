@@ -1,4 +1,4 @@
-import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput } from '../types'
+import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
 import { fmt } from '@/utils/format'
@@ -447,6 +447,51 @@ function rowValue(move: SkillMove | null, rowId: string): number {
   return row?.values?.[0] ?? 0
 }
 
+/**
+ * `applyTeamConfig` · converge：轴内捏块 → 般岳三字段 + 保底自动补齐注入。
+ *
+ * 2026-09-17 round 21 夜D 自 `convergence.ts` 的 `if (merged.agentId === '1471') { … }` 块迁入
+ * （原实现逐行等价搬移，取数改走契约）：
+ * - `banyueAxisEx` 原读 `axisActionCountsBySlot[cfg.slot] ?? {}`
+ *   ⇒ 现读 `axis.actionCountsBySlot[slot] ?? {}`（`AgentAxisContext` 头注释写明它就是
+ *   `convergence.ts` 的 `axisActionCountsBySlot` **同一对象**，不是重新推导）。
+ * - `banyueAxisActive` 原读 `axisActive` ⇒ 现读 `axis.active`（同源）。
+ * - `autoTopUp` 原读 `(axisActive || guaranteeFury || guaranteeUltimate) && banyueSlot >= 0
+ *   && configStore.getMechanicSetting('banyue.autoTopUpInteractions', 1) !== 0`，四段逐一对应：
+ *   · `axisActive` ⇒ `axis.active`；
+ *   · `guaranteeFury` / `guaranteeUltimate` ⇒ 本轮新增的 `guarantee` 契约快照（`guarantee.*`
+ *     **刻意未注册** `MechanicSetting`：`resolveMechanicSettings()` 只遍历注册表 ⇒ 模块侧读不到，
+ *     注册它又会把内部实验旋钮变成资源利用率页滑块 = 产品级口径。见类型头注释）；
+ *   · `banyueSlot >= 0` ⇒ 本钩子**只在般岳模块自己被派发时**执行 ⇒ 恒成立（派发器已按同一身份
+ *     判据选中本模块，`slot` 即般岳槽位；UI 侧 `usedAgentIds` 保证同一角色不重复进队）；
+ *   · `banyue.autoTopUpInteractions` 是**已注册** setting（本文件 `settings`，default 1）
+ *     ⇒ 从 `settings` 契约读，与 `getMechanicSetting(id, 1)` 同源同值。
+ * - `topUp` 原读 `prevBanyueTopUp`（= `threads.banyueTopUp`）⇒ 现读 `threads.banyueTopUp`。
+ *   ⚠ 非补齐态原式取**字面量** `{ parry: 0, dual: 0 }`（新对象，不是线程对象引用）
+ *   ⇒ 逐位保留该形状，避免把线程对象泄漏进 cfg。
+ * - `parryCount` / `dualCounterCount` 的**条件写**逐位保留（`topUp.parry > 0 || topUp.dual > 0`
+ *   才写；`?? 0` 兜底逐字保留）：`createBanyueCycle` 读 `cfg.parryCount ?? DEFAULT_PARRY`
+ *   ⇒ 恒写 0 会把「未注入」退化成「注入 0」，与 `!== undefined` 门控族同款语义差。
+ * - 门控三判据 `phase !== 'converge' || !axis || !guarantee`：非 converge 不写；
+ *   converge 但契约缺项时**连非保底字段也不写**（与 `billyAxisEx` 同族——让「字段 undefined」
+ *   唯一编码「契约没接上」，而不是静默按「保底全关 + 无轴」算出一组看似正常的零值）。
+ */
+function applyBanyueTeamConfig({ slot, cfg, phase, axis, guarantee, settings, threads }: AgentTeamConfigInput): void {
+  if (phase !== 'converge' || !axis || !guarantee) return
+  const record = cfg as unknown as Record<string, unknown>
+  record.banyueAxisEx = axis.actionCountsBySlot[slot] ?? {}
+  record.banyueAxisActive = axis.active
+  // 轴模式自动补齐（保底）：轴模式之外，保底开关也可独立驱动（非轴亦生效）；设置可整体关闭。
+  const autoTopUp = (axis.active || guarantee.fury || guarantee.ultimate)
+    && Number(settings?.['banyue.autoTopUpInteractions'] ?? 1) !== 0
+  const topUp = autoTopUp ? (threads?.banyueTopUp ?? { parry: 0, dual: 0 }) : { parry: 0, dual: 0 }
+  if (topUp.parry > 0 || topUp.dual > 0) {
+    record.parryCount = (cfg.parryCount ?? 0) + topUp.parry
+    record.dualCounterCount = (cfg.dualCounterCount ?? 0) + topUp.dual
+  }
+  record.banyueInteractionTopUp = topUp
+}
+
 function buildBanyueCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.skipGenericExSpecial = true // 强特全部由模块生成（怒相山威/怒相外论道/地动）
   cfg.exSpecialCountFloor = true
@@ -863,6 +908,13 @@ export const banyueMechanic: AgentMechanicModule = {
   name: '般岳',
   description: '嗔火→怒相循环（山威免费连段）、怒相增益、影画4/6 moveId 级增伤与倾山附伤。',
   applyPanel: applyBanyuePanel,
+  /**
+   * 队伍级机制 · converge（规则 6 迁入，round 21 夜D）：原 `convergence.ts` 的
+   * `if (merged.agentId === '1471')` 整块已整段搬进本模块 —— 轴内捏块 → `banyueAxisEx` /
+   * `banyueAxisActive`，保底自动补齐 → `banyueInteractionTopUp` + 弹刀/双反注入。
+   * 取数与门控的逐条对应见函数头注释。
+   */
+  applyTeamConfig: applyBanyueTeamConfig,
   buildCharConfig: buildBanyueCharConfig,
   estimateExSpecialTime: ({ cfg, exSpecialCount: _exSpecialCount, ultimateCount: _ultimateCount }) => {
     const record = cfg as unknown as Record<string, unknown>
