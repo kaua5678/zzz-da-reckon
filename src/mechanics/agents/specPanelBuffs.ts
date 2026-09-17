@@ -885,5 +885,16 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
       step: 0.05,
     },
   ],
+  /**
+   * 伴随事件：影画6 爆米花附伤（`1391_c6_popcorn`）**由山君鼎戏·威势的旋转（`1391010`）驱动**
+   * （次数 = 旋转次数 × 3，见本文件 `popcornHits`），故其失衡易伤须跟随**旋转**的轴内占比。
+   *
+   * ⚠ 2026-09-17 补注册（同 `banyue.ts` 摧岳附伤的先例）：此前**未登记** ⇒
+   * `attachedInAxisMap` 查不到该 moveId ⇒ 轴模式下 `axisStunFor` 返回 **0**
+   * ⇒ 爆米花**整段不吃失衡易伤**。实测（1391 C6 + 1181 + 1011、手动轴含旋转）：
+   * 父行 `1391010` 轴内段 `stunMult = 1.5` ✓，而爆米花行 `stunMult = 1`（零易伤）
+   * —— 该行 **252 次、占总伤 21.73%**（4,777,434 / 21,980,811）⇒ 漏计相当可观。
+   */
+  attachedEvents: { [JUFUFU_MOVE.spinWeishi]: [JUFUFU_MOVE.popcorn] },
 }
 

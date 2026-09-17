@@ -575,6 +575,21 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           const inUnits = Math.min(totalUnits, Math.round(totalUnits * frac))
           emitExecDirect(inUnits, 1, '', ' · 失衡内毒素爆发')
           emitExecDirect(totalUnits - inUnits, 0, '-out', ' · 轴外毒素（无失衡易伤）')
+        } else if (isAxis && axisSlots.has(slot) && attachedInAxis[exec.moveId] !== undefined) {
+          // **伴随事件**（附伤/异放，注册面 = 模块的 `attachedEvents`）：自身不占轴内块，
+          // 故不能按自己的 moveId 查 `axisSplitFor`（查不到 ⇒ 整段被判轴外、零易伤）。
+          // 改按**父动作的轴内占比**拆段——`attachedInAxisMap` 已把 child → frac 算好
+          // （frac = Σ父动作轴内单位 / Σ父动作全局总单位，与直伤 `axisSplitFor` 同源）。
+          //
+          // ⚠ 2026-09-17 用户口径：「附伤或者异放等事件需要绑定轴内的动作块，以此计算易伤数量」。
+          // 本分支即该口径的通用落点（此前只有 5 处**逐 moveId 硬编码**的 `axisStunFor` 调用，
+          // 模块自己产的附伤行**没有通用通道** ⇒ 未登记的附伤在轴内恒零易伤）。
+          // 实测漏计样本：橘福福影画6 爆米花（`1391_c6_popcorn`，由旋转 `1391010` 驱动）
+          // 252 次、占总伤 **21.73%**，补注册+本分支后才有易伤。
+          const attachFrac = Math.max(0, Math.min(1, attachedInAxis[exec.moveId]!))
+          const inUnits = Math.min(totalUnits, Math.round(totalUnits * attachFrac))
+          emitExecDirect(inUnits, 1, '', ' · 失衡内（伴随事件跟随父动作）')
+          emitExecDirect(totalUnits - inUnits, 0, '-out', ' · 轴外（伴随事件跟随父动作）')
         } else if (isAxis && axisSlots.has(slot)) {
           // 捏轴：把总单位切成轴内（易伤=1）/轴外（易伤=0）两段
           const split = axisSplitFor(slot, exec.moveId, totalUnits)
