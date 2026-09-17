@@ -46,6 +46,7 @@ import {
   remielleSpecialVoidflareCount,
   calcVoidflareDamage,
   findMoveById,
+  findSlotByIdentity,
   type DamagePoolRow,
 } from './helpers'
 
@@ -1301,10 +1302,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     }
 
     // ---- 柏妮思6命：双份火焰冲击命中灼烧敌人时，额外结算一次1800%灼烧伤害 ----
-    const burniceSlot = configStore.team.findIndex(char => {
-      const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return a?.id === '1171' || a?.teammateBuffId === '1171'
-    })
+    const burniceSlot = findSlotByIdentity(configStore, catalogStore, ['1171'])
     const burniceSrc = burniceSlot >= 0
       ? adjustedResourceResult?.characters.find(c => c.slot === burniceSlot)?.burniceMechanicSource
       : undefined
@@ -1357,10 +1355,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
 
     // ---- 极性强击伤害（赠送触发，不走虚拟面板） ----
     const polarAssaultProg = anomalyPoolResult?.perElement.find(prog => prog.element === 'physical_polar_assault')
-    const polarAssaultSlot = configStore.team.findIndex(char => {
-      const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return a?.id === '1401' || a?.teammateBuffId === '1401'
-    })
+    const polarAssaultSlot = findSlotByIdentity(configStore, catalogStore, ['1401'])
     const polarAlicePanel = polarAssaultSlot >= 0 ? panelAt(damagePanels, polarAssaultSlot) : undefined
     if (polarAssaultProg && polarAssaultProg.triggerCount > 0 && polarAlicePanel) {
       // 轴模式：极性强击易伤跟随父动作 SW3(1401012) 的轴内占比；影画2 终结技额外触发的
@@ -1407,10 +1402,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       })
     }
 
-    const janeSlot = configStore.team.findIndex(char => {
-      const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return agent?.id === '1261' || agent?.teammateBuffId === '1261'
-    })
+    const janeSlot = findSlotByIdentity(configStore, catalogStore, ['1261'])
     const janeCinema = configStore.team[janeSlot]?.cinemaLevel ?? 0
     const janePanel = janeSlot >= 0 ? panelAt(damagePanels, janeSlot) : undefined
     if (janeCinema >= 6 && janePanel) {
@@ -1459,10 +1451,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     }
 
     // ---- 爱丽丝六命决胜状态额外攻击 ----
-    const aliceSlot = configStore.team.findIndex(char => {
-      const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return agent?.id === '1401' || agent?.teammateBuffId === '1401'
-    })
+    const aliceSlot = findSlotByIdentity(configStore, catalogStore, ['1401'])
     const aliceCinema = configStore.team[aliceSlot]?.cinemaLevel ?? 0
     const alicePanel = aliceSlot >= 0 ? panelAt(damagePanels, aliceSlot) : undefined
     if (aliceCinema >= 6 && alicePanel) {
@@ -1550,10 +1539,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       })
     }
 
-    const remielleSlot = configStore.team.findIndex(char => {
-      const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return agent?.id === '1581' || agent?.teammateBuffId === '1581'
-    })
+    const remielleSlot = findSlotByIdentity(configStore, catalogStore, ['1581'])
     const remiellePanel = remielleSlot >= 0 ? panelAt(damagePanels, remielleSlot) : undefined
     const remielleEntryPanel = remielleSlot >= 0 ? panelAt(remielleEntryPanels, remielleSlot) : undefined
     if (remiellePanel && remielleEntryPanel) {

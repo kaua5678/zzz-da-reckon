@@ -948,6 +948,33 @@ export function getTeamAnomalyDurationBonus(
   return 0
 }
 
+/**
+ * **按角色身份找槽位**（单一事实源，规则 11）。
+ *
+ * 为什么需要（2026-09-17 round 20 侦察）：`findIndex(char => { const a = …; return a?.id === 'X'
+ * || a?.teammateBuffId === 'Y' })` 这一形状在全仓编排层**重复 18 次**（`damagePool.ts` 5 /
+ * `helpers.ts` 5 / `useResourceCalc.ts` 3 / `convergence.ts` 3 / `normaHatChain.ts` 1 /
+ * `liuyinPromote.ts` 1），且每一处都是角色判定棘轮的计数站点。
+ *
+ * ⚠ **必须查两个字段**：`agent.id`（角色自己的 id）与 `agent.teammateBuffId`（队友 buff 归属别名，
+ * 如蕾米埃尔 `1581` 的别名 `'remielle'`）。漏查后者会让「按 buff 别名引用该角色」的配置找不到人
+ * ——旧正则口径漏计这两种形态正是换尺的理由（见 `check-guards.mjs` 的 2026-09-17 换尺沿革）。
+ *
+ * @param ids 任一匹配即算命中（如 `['1581', 'remielle']`）
+ * @returns 槽位号；找不到返回 **-1**（调用方按 `< 0` 判空，勿用 `?? ` 兜底）
+ */
+export function findSlotByIdentity(
+  configStore: ReturnType<typeof useConfigStore>,
+  catalogStore: ReturnType<typeof useCatalogStore>,
+  ids: readonly string[],
+): number {
+  return configStore.team.findIndex(char => {
+    const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
+    if (!a) return false
+    return ids.some(id => a.id === id || a.teammateBuffId === id)
+  })
+}
+
 /** 风化浸染默认选择：优先非支援/防护、非蕾米埃尔的非风队友属性 */
 export function getWindInfectionTargetSlot(
   configStore: ReturnType<typeof useConfigStore>,
