@@ -262,6 +262,13 @@ export function applyTeamMechanics(params: {
   exCounts?: number[]
   ultimateCounts?: number[]
   stunCount?: number
+  /**
+   * **计数投影版**失衡次数（只读）。**只有 converge 相位该传**——语义/理由/门控见
+   * `AgentTeamConfigInput.countStun` 头注释（`stunCount` 是实数计划值、本字段是计数通道的整数投影，
+   * 难度阶梯 G4 投影打开时二者**不等价**）。
+   * 消费先例：莱卡恩 1141 的 `lycaonC2Energy` 非轴臂（round 20 C-γ，原为 convergence.ts 的 agentId 分支）。
+   */
+  countStun?: number
   teamEnergyConsumed?: number
   /** 全队强击触发次数（上一轮异常池收敛值；爱丽丝剑仪 `alice_team_assault_gain` 用） */
   aliceTeamAssaultCount?: number
@@ -291,6 +298,9 @@ export function applyTeamMechanics(params: {
   const exCounts = params.exCounts ?? characters.map(() => 0)
   const ultimateCounts = params.ultimateCounts ?? characters.map(() => 0)
   const stunCount = params.stunCount ?? 0
+  // 计数投影版失衡次数：**不做 `?? 0` 兜底**——`0` 是合法失衡次数，用它冒充断路会让
+  // 「接口没接上」与「这局真的 0 次失衡」不可分辨（与 axis/interactions 同款纪律）。
+  const countStun = params.countStun
   const teamEnergyConsumed = params.teamEnergyConsumed ?? 0
   const aliceTeamAssaultCount = params.aliceTeamAssaultCount ?? 0
   const aliceDisorderCount = params.aliceDisorderCount ?? 0
@@ -345,6 +355,7 @@ export function applyTeamMechanics(params: {
       exCounts,
       ultimateCounts,
       stunCount,
+      countStun,
       teamEnergyConsumed,
       aliceTeamAssaultCount,
       aliceDisorderCount,

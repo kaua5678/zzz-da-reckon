@@ -57,7 +57,11 @@ function axisOf(o: {
  * 这正是本契约把 `agentId` 一并递过去的原因（见 `AgentInteractionContext` 头注释）。
  */
 function interactionsOf(
-  rows: Array<{ agentId: string; parry?: number; block?: number; dodge?: number; dual?: number; quick?: number }>,
+  rows: Array<{
+    agentId: string; parry?: number; block?: number; dodge?: number; dual?: number; quick?: number
+    /** 每次失衡的连携次数（store 原值；供 1141 `lycaonC2Energy` 非轴臂，round 20 C-γ） */
+    chain?: number
+  }>,
 ): AgentInteractionContext {
   return {
     bySlot: Object.fromEntries(rows.map((r, i) => [i, {
@@ -67,6 +71,7 @@ function interactionsOf(
       dodgeCounterCount: r.dodge ?? 0,
       dualCounterCount: r.dual ?? 0,
       quickAssistCount: r.quick ?? 0,
+      chainCountPerStun: r.chain ?? 0,
     }])),
   }
 }
@@ -349,9 +354,9 @@ describe('1591 希格莉德：轴内破阵套数（含 gift 块，C6 门槛）+ 
   })
 })
 
-// ── 跳③（批次 2）：1141 莱卡恩 —— windowSeconds（C2 仍不可迁，见模块注释） ────────────
-describe('1141 莱卡恩：lycaonWindowDuration ← axis.windowSeconds（棘轮 −0，分支仍在）', () => {
-  it('窗口时长取契约值（不是本槽可自行推导的量）；C2 字段**不再**由本钩子写', () => {
+// ── 跳③（批次 2）：1141 莱卡恩 —— windowSeconds（分支已于 round 20 C-γ 迁空） ────────
+describe('1141 莱卡恩：lycaonWindowDuration ← axis.windowSeconds（棘轮 −1，分支已删）', () => {
+  it('窗口时长取契约值（不是本槽可自行推导的量）', () => {
     const cfg: Cfg = { slot: 0, agentId: '1141', invincibleTime: 0 }
     getAgentMechanic('1141')!.applyTeamConfig!(
       hookInput(cfg, { axis: axisOf({ axes: [], windows: [], windowSeconds: 19.5 }) }),
@@ -359,8 +364,10 @@ describe('1141 莱卡恩：lycaonWindowDuration ← axis.windowSeconds（棘轮 
     expect(cfg.lycaonWindowDuration).toBe(19.5)
     expect(cfg.lycaonStunCount).toBe(3)
     expect(cfg.lycaonTotalTime).toBe(180)
-    // C2 回能仍留在编排层（非轴臂需 C7 计数投影量）⇒ 本钩子不得写它
-    expect(cfg.lycaonC2Energy).toBeUndefined()
+    // ⚠ round 20 C-γ：C2 回能**已迁入本钩子**（见 `lycaonC2Contract.test.ts` 的四层判据）。
+    // 本用例不再断言它「不得写」——那条反锁是迁移前的形态，留着会与新契约自相矛盾。
+    // 缺 `countStun` 时仍不写（契约门控，由 C2 契约文件钉住）。
+    expect(cfg.lycaonC2Energy, '缺 countStun ⇒ 不写').toBeUndefined()
     expect(cfg.lycaonBackstageDodgeCount).toBeUndefined()
   })
 

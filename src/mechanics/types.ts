@@ -182,6 +182,31 @@ export interface AgentTeamConfigInput {
   ultimateCounts?: number[]
   /** 失衡次数（build 阶段 0） */
   stunCount: number
+
+  /**
+   * **计数投影版**失衡次数（= `projectStunPlanForCounts(stunCount, stunPlanProjection)`，只读）。
+   *
+   * ⚠ 与 `stunCount` **在「难度阶梯 G4 投影打开」时不等价**：`stunCount` 是外层不动点的
+   * **实数**计划值（时间账/窗口分配/覆盖率/迭代继续用它，那里实数是对的），而本字段是
+   * **计数通道**用的整数投影（`off`/`floor`/`round`/`ceil`，见 `core/stunPlanProjection.ts`）
+   * ——凡把它**当次数乘**的地方（连携/喧响/能量）必须用本字段，否则 G4（`round`）打开时
+   * 会静默按未投影值算（终局出现「半次连携」正是 C7 要修的东西）。
+   *
+   * **只有 `phase === 'converge'` 时有值**（与 `axis`/`interactions` 同款相位语义）⇒ 模块若需要它，
+   * 必须先 `if (phase !== 'converge' || countStun === undefined) return` **双判据门控**
+   * （只判相位不判字段会让「派发器漏传」退化成静默错值）。
+   *
+   * ⚠ 派发器**不做 `?? 0` 兜底**（缺了就是缺了）：`0` 是一个合法的失衡次数，
+   * 用它冒充断路会让「接口没接上」与「这局真的 0 次失衡」不可分辨。
+   *
+   * 消费先例：莱卡恩 1141 的 `lycaonC2Energy` 非轴臂（round 20 C-γ，原为 `convergence.ts`
+   * 的 `agentId === '1141'` 分支）。为什么递算好的值而不是递 `stunPlanProjection` 让模块自算：
+   * 投影方式是**全局 cfg 字段**、不是注册 `MechanicSetting`（`grep -rn stunPlanProjection
+   * src/mechanics/ src/specs/` = 0 命中），且它会让「只由难度阶梯内部驱动的实验开关」变成
+   * 资源利用率页的用户可见滑块（产品级口径，见 R15 分诊 §1.4 路 (b)）——故只递**结果**。
+   */
+  countStun?: number
+
   /** 全队普通能量消耗（莱特影画4 用；build 阶段 0） */
   teamEnergyConsumed: number
 
@@ -269,6 +294,21 @@ export interface AgentInteractionSnapshot {
   dualCounterCount: number
   /** 快速支援次数（同上：store 原值） */
   quickAssistCount: number
+  /**
+   * 每次失衡的连携次数（store 原值，`?? 0`；与 `ACTION_COUNT_BOUNDS` 同族，`0..3`）。
+   *
+   * 为什么也放进本快照（2026-09-17 round 20 C-γ，莱卡恩 1141 的 `lycaonC2Energy` 非轴臂）：
+   * 原式读的正是 `configStore.team[ci].chainCountPerStun`，而 **`characters` 上那份被
+   * `buildCharConfig` 写过 `?? (isSupport ? 0 : 1)` 兜底**（`helpers.ts`）——store 侧字段**缺失**
+   * （`undefined`）时两份**不同值**（store 侧按 `?? 0` = 0、cfg 侧 = 1）⇒ 读 `characters` 是静默改语义。
+   * ⚠ **实测边界**（本批探针实测，纠正 R18 分诊的「store=0 → cfg=1」说法）：`0 ?? 1 === 0`，
+   * 故 store 显式 `0` 时两份**同值**，分裂只发生在缺失态（判据直接构造缺失态钉住）。
+   * 与第 ①② 道改写（`interactionScale`/`parrySplit`）同族：**本通道的存在理由就是「必须读 store 原值」**。
+   *
+   * ⚠ 保留消费端原本的过滤口径：1141 那条带 `agentId` 存在判据（空槽残留计数被排除），
+   * 与仪玄那条只看槽位号的不同——本快照递 `agentId` 正是为此，不要顺手统一。
+   */
+  chainCountPerStun: number
 }
 
 /**
@@ -284,6 +324,10 @@ export interface AgentInteractionSnapshot {
  *     迁移时若读 `characters` 会静默改语义（round 13 受控两臂实验：臂 A 用合并值 ⇒
  *     `yixuanSmoke` **9 failed**；臂 B 把 store 口径和递入 ⇒ **13 passed 全绿**）；
  *   · 莱卡恩 1141 的 `lycaonBackstageDodgeCount`（后台跟随闪反 = Σ**队友**闪反次数）。
+ * ③ 第三道改写（2026-09-17 round 20 C-γ 补）：`chainCountPerStun` 在 `buildCharConfig` 被写过
+ *    `?? (isSupport ? 0 : 1)` 兜底，而原式读 **store 原值** ⇒ 必须走本快照（见字段注释）。
+ *    ⚠ **实测边界**（本批探针实测，纠正 R18 分诊的「store=0 → cfg=1」说法）：`0 ?? 1 === 0`，
+ *    故分裂**只在 store 侧字段缺失（`undefined`）时**发生——那时 store 侧 `?? 0` 得 0、cfg 侧得 1。
  * ⇒ 本契约是**加法**（新增只读通道）：不读它的模块数值零变化。
  */
 export interface AgentInteractionContext {

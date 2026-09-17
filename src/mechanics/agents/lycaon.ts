@@ -140,29 +140,33 @@ export const lycaonMechanic: AgentMechanicModule = {
    *   「字段 undefined」唯一编码「契约没接上」，由 `axisContext.test.ts` 精确断言分辨，
    *   而不是写一个看着合法的默认值把断路掩盖掉（消费端 `?? 16` 是既存兜底，不是新通道）。
    *
-   * ⚠ **仍未迁的一项，原因必须留痕**（不是遗漏）：
-   * - `lycaonC2Energy`（round 12 批次 2 实测**仍不可迁**——与任务卡的「契约已解锁」预期不符，
-   *   证据如下）：字段值 = `c2Per > 0 ? (stunCount + teamChainTotal) * c2Per : 0`，其中
-   *   `teamChainTotal` 分两臂：
-   *   · **轴臂**（`axisActive`）：`Σ_slots chainTotalBySlot − chainTotalBySlot[本槽]`
-   *     ⇒ 契约**够**（`axis.chainTotalBySlot`）；
-   *   · **非轴臂**：`Σ_{队友} chainCountPerStun × countStun`，而
+   * ⚠ **`lycaonC2Energy` 的契约缺口已在 round 20（2026-09-17 C-γ 收尾批）补齐并迁入**，
+   * 本分支的**最后一个字段**就此消失（`convergence.ts` 的 `agentId === '1141'` 分支整段删除
+   * ⇒ **棘轮 −1**）。原来的「不可迁」理由与现在补齐的两个量必须留在痕里（别再重新论证）：
+   * · 字段值 = `c2Per > 0 ? (stunCount + teamChainTotal) * c2Per : 0`，`teamChainTotal` 分两臂：
+   *   — **轴臂**（`axisActive`）：`Σ_slots chainTotalBySlot − chainTotalBySlot[本槽]`
+   *     ⇒ 契约早够（`axis.chainTotalBySlot`）；
+   *   — **非轴臂**：`Σ_{队友} chainCountPerStun × countStun`，其中
    *     `countStun = projectStunPlanForCounts(stunCount, base.stunPlanProjection ?? 'off')`
-   *     （`convergence.ts` 的 C7 计数投影）——`stunPlanProjection` 是**全局 cfg 字段**，
-   *     实测 `grep -rn stunPlanProjection src/mechanics/ src/specs/` = **0 命中**
-   *     （它既不在 `AgentTeamConfigInput` 上、也不是注册的 `MechanicSetting`，
-   *     `resolveMechanicSettings` 填的 `settings` 里没有它）⇒ 模块拿不到，只能拿未经投影的
-   *     `stunCount`。默认 `'off'` 时二者恒等（0 delta），但**难度阶梯 G4「取整（失衡→计数投影）」**
-   *     （`difficultyLadder.ts` 置 `time.stunPlanProjection = 2`）会把它打开 ⇒ 用 `stunCount`
-   *     迁移就是**静默改语义**（非轴 + 投影打开时队友连携数会算成未投影值）。⇒ 不迁，
-   *     等契约补「计数通道失衡次数」（C7 量）后再收。
-   *   ⇒ 故 `convergence.ts` 的 `1141` 分支**仍然存在**（只剩这 1 个字段）⇒ 本处迁移**棘轮 −0**。
+   *     （`convergence.ts` 的 C7 计数投影）。默认 `'off'` 时它与 `stunCount` **恒等**（0 delta），
+   *     但**难度阶梯 G4「取整（失衡→计数投影）」**（`difficultyLadder.ts` 置
+   *     `time.stunPlanProjection = 2`）会把它打开 ⇒ 用未投影的 `stunCount` 迁移就是**静默改语义**。
+   * · 缺口因此是**两个量**（不是 R15 分诊说的一个）：① C7 计数投影值 `countStun`
+   *   （新契约 `AgentTeamConfigInput.countStun`，派发器递 `:472` 已算好的结果——投影方式本身
+   *   不在模块可达面上，且注册成 `MechanicSetting` 会变资源利用率页的用户可见滑块 = 产品级口径）；
+   *   ② 队友 `chainCountPerStun` 的 **store 原值**（挂进 `interactions` 契约的逐槽快照：
+   *   `characters` 上那份被 `buildCharConfig` 写过 `?? (isSupport ? 0 : 1)` 兜底，而 store 默认 `0`
+   *   ⇒ 没调过滑块时两份不同值，读 cfg 是静默改语义 —— 与 `interactionScale`/`parrySplit`
+   *   同族的「必须读 store」形态）。
+   * · 复刻的**唯一**一处不对称：`countStun` 只出现在**非轴臂**（最终式用的是实数的 `stunCount`），
+   *   但本实现仍把整个字段门控在 `countStun !== undefined` 上 —— 这样「契约没接上」在全臂上
+   *   都编码成 `undefined`（可被测试分辨），而不是半接状态。
    *
-   * ✅ `lycaonBackstageDodgeCount` **已于 round 14（2026-09-16 批次 4）迁入**——本轮新增的
+   * ✅ `lycaonBackstageDodgeCount` **已于 round 14（2026-09-16 批次 4）迁入**——那轮新增的
    * `interactions` 契约（store 口径**未缩放**交互次数）正是为它和仪玄 1371 的 `yixuanExtremeAssistCap`
    * 补的（两处需要同一个量：`characters` 上那份已被 `interactionScale` 缩放、被 `parrySplit` 改写）。
    */
-  applyTeamConfig: ({ cfg, phase, stunCount, combatTime, axis, interactions }: AgentTeamConfigInput) => {
+  applyTeamConfig: ({ cfg, phase, stunCount, countStun, combatTime, axis, interactions }: AgentTeamConfigInput) => {
     if (phase !== 'converge') return
     cfg.lycaonStunCount = stunCount
     cfg.lycaonTotalTime = combatTime
@@ -176,14 +180,47 @@ export const lycaonMechanic: AgentMechanicModule = {
     // （与仪玄那条只看槽位号的不同！两条口径刻意不统一：空槽残留计数在本条被排除）。
     // ⚠ 双判据门控：缺 `interactions` 即不写（`undefined` 唯一编码「契约没接上」，
     // 消费端 `?? 0` 是既存兜底、不是本通道的默认值）。
+    const ownSlot = Number(cfg.slot)
     if (interactions) {
-      const ownSlot = Number(cfg.slot)
       let backstageDodgeCount = 0
       for (const [slotKey, snap] of Object.entries(interactions.bySlot)) {
         if (Number(slotKey) === ownSlot || !snap?.agentId) continue
         backstageDodgeCount += snap.dodgeCounterCount ?? 0
       }
       cfg.lycaonBackstageDodgeCount = backstageDodgeCount
+    }
+
+    // 影画2·能量回馈（`lycaonC2Energy`）= (失衡次数 + 队友连携总次数) × 5（用户确认：
+    // **排除莱卡恩自己**，只算队友的连携）。原实现是 `convergence.ts` 的
+    // `merged.agentId === '1141'` 分支，round 20 C-γ 整段迁入（算式逐位保留）。
+    //
+    // ⚠ **C7 契约门控**：缺 `countStun` 即**不写**（非轴臂要拿投影版次数算队友连携；
+    // `undefined` 唯一编码「契约没接上」，不许写 0 冒充 —— 0 是合法的失衡次数）。
+    if (countStun !== undefined) {
+      // 臂选判据与原实现逐位一致：`axisActive ? 轴臂 : 非轴臂`（`axis.active` 就是派发点的
+      // `axisActive`，含 `forceNoAxis` 退化判据）。
+      // · 轴臂 = Σ 全槽轴内连携块 − 本槽那份（**不是** Σ 队友：原式就是这么写的，逐位保留）。
+      // · 非轴臂 = Σ_{队友} store 原值 `chainCountPerStun` × **countStun**（投影值！不是 stunCount），
+      //   过滤口径逐位保留 `ci !== cfg.slot && c?.agentId`（带 `agentId` 判据 ⇒ 排除空槽残留计数）。
+      // ⚠ 非轴臂的队友连携量必须走 `interactions`（store 原值快照），不许读 `characters`
+      //   上那份被 `?? (isSupport ? 0 : 1)` 兜底过的 cfg——默认值分裂，见上方契约缺口沿革。
+      let teamChainTotal: number | undefined
+      if (axis?.active) {
+        teamChainTotal = Object.values(axis.chainTotalBySlot).reduce((a, b) => a + b, 0)
+          - (axis.chainTotalBySlot[ownSlot] ?? 0)
+      } else if (axis && interactions) {
+        let sum = 0
+        for (const [slotKey, snap] of Object.entries(interactions.bySlot)) {
+          if (Number(slotKey) === ownSlot || !snap?.agentId) continue
+          sum += (snap.chainCountPerStun ?? 0) * countStun
+        }
+        teamChainTotal = sum
+      }
+      // 臂材料缺任何一份都**不写**（`undefined` 可分辨，胜过写一个看着合法的数）。
+      if (teamChainTotal !== undefined) {
+        const c2Per = cfg.lycaonC2EnergyPerTrigger ?? 0
+        cfg.lycaonC2Energy = c2Per > 0 ? (stunCount + teamChainTotal) * c2Per : 0
+      }
     }
   },
 

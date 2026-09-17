@@ -857,43 +857,29 @@ export function createRunCalcRound(deps: {
       // 符法千重次数）已于 2026-09-17 round 20 C-β 迁进 `yixuan.ts#yixuanNextRoundFeedback`
       // （产出线程值 `yixuanFuFaForJufufu`）⇒ 本文件不再有该判据。
       // ⚠ 同批的「全队终结总次数」`teamUltimateForJufufu` **刻意留在本文件**（归属论证见其定义处）。
-      if (merged.agentId === '1141') {
-        // 莱卡恩围猎（2.6 潜能激发）：次数 = 失衡次数；后台跟随闪反 = 队伍其他角色闪反次数之和；
-        // 围猎平A时间 = 后台时间预算（总-无敌-失衡时长-莱卡恩前台）− 闪反时间（用户口径）
-        //
-        // 2026-09-16 T26 批次 0c：`lycaonStunCount` / `lycaonTotalTime` / `lycaonInvincibleTime`
-        // 已迁进 lycaon.ts 的 applyTeamConfig（converge 相位，逐位等价，对账见模块注释）。
-        // 2026-09-16 round 12 批次 2：`lycaonWindowDuration` ← `axis.windowSeconds` 也已迁入同一钩子。
-        // 2026-09-16 round 14 批次 4：`lycaonBackstageDodgeCount` ← 本轮新增的 `interactions`
-        // 契约（store 口径**未缩放**交互次数）也已迁入同一钩子。
-        // ⚠ **本分支保留**——只剩 `lycaonC2Energy` 一个字段仍不能用现有契约等价表达，
-        // 原因（非轴臂需 C7 计数投影版失衡次数 `countStun`，模块拿不到 `stunPlanProjection`）
-        // 逐条钉在模块注释里 ⇒ 本处迁移**棘轮 −0**。
-        // 影画2·能量回馈：次数 = 失衡次数 + 队友连携总次数（用户确认：排除莱卡恩自己，只算队友的连携）；
-        // 轴模式用轴内连携块加权和，非轴用 chainCountPerStun × 次数
-        const teamChainTotal = axisActive
-          ? Object.values(axisChainTotal).reduce((a, b) => a + b, 0) - (axisChainTotal[cfg.slot] ?? 0)
-          : configStore.team.reduce((sum, c, ci) =>
-              ci !== cfg.slot && c?.agentId ? sum + (c.chainCountPerStun ?? 0) * countStun : sum, 0)
-        const c2Per = merged.lycaonC2EnergyPerTrigger ?? 0
-        return {
-          ...merged,
-          lycaonC2Energy: c2Per > 0 ? (stunCount + teamChainTotal) * c2Per : 0,
-        }
-      }
-      // 南宫羽 1511 的 `nangongQuickAssistPlaced`（轴内 `1511013` 放置块计数）与
-      // `inStunWindowTriggers`（线程值副本）已迁进 nangong.ts 的 `applyTeamConfig`
-      // （round 12 批次 2）——前者读下面的 `axis` 契约、后者读 `threads` 契约 ⇒
-      // 本 map 里不再有该分支（棘轮 32 → 30 → **29**）。
-      // 悠真 1201 / 朱鸢 1241 的轴内块计数（`harumasaAxisSlash`/`harumasaAxisArrow`、
-      // `zhuYuanAxisEther`/`zhuYuanAxisActive`）已迁进各自模块的 `applyTeamConfig`（round 11 批次 1）；
-      // 星徽·比利 1531（`billyAxisEx` 含 **combo 展开** / `billyAxisActive` / `billyStunCoverage`）、
-      // 希格莉德 1591（`sigridAxisPozhenSets` / `sigridAxisActive`）、南宫羽 1511
-      // （`nangongQuickAssistPlaced` / `inStunWindowTriggers`）同样已迁进各自模块（round 12 批次 2）
-      // ——经下面 dispatch 的 `axis` / `threads` 契约快照读取 ⇒ 本 map 里不再有这些分支
-      // （棘轮 34 → 32 → **29**）。1141 的 `lycaonWindowDuration` 也走同一 `axis` 契约（分支未变空、棘轮 −0）。
+      // 莱卡恩 1141 的 `lycaonC2Energy`（分支的最后一个字段，**收尾批**）已于 2026-09-17
+      // round 20 C-γ 迁进 `lycaon.ts#applyTeamConfig`：轴臂读 `axis.chainTotalBySlot`、
+      // 非轴臂读本轮新增的 `countStun` 契约（C7 计数投影版失衡次数）+ `interactions` 契约的
+      // `chainCountPerStun`（**store 原值**——`characters` 上那份被 `buildCharConfig` 写过
+      // `?? (isSupport ? 0 : 1)` 兜底，store 默认 0 ⇒ 读 cfg 是静默改语义）。
+      // ⇒ 该分支整段删除、**棘轮 −1**（40 → 39），本文件 `characters.map` 里不再有 1141 判据。
+      // 沿革（逐字段迁出的批次）：`lycaonStunCount`/`lycaonTotalTime`/`lycaonInvincibleTime`
+      // （T26 批次 0c）→ `lycaonWindowDuration`（round 12 批次 2，走 `axis`）→
+      // `lycaonBackstageDodgeCount`（round 14 批次 4，走 `interactions`）→ `lycaonC2Energy`（本批）。
       return merged
     })
+    // 南宫羽 1511 的 `nangongQuickAssistPlaced`（轴内 `1511013` 放置块计数）与
+    // `inStunWindowTriggers`（线程值副本）已迁进 nangong.ts 的 `applyTeamConfig`
+    // （round 12 批次 2）——前者读下面的 `axis` 契约、后者读 `threads` 契约 ⇒
+    // 本 map 里不再有该分支（棘轮 32 → 30 → **29**）。
+    // 悠真 1201 / 朱鸢 1241 的轴内块计数（`harumasaAxisSlash`/`harumasaAxisArrow`、
+    // `zhuYuanAxisEther`/`zhuYuanAxisActive`）已迁进各自模块的 `applyTeamConfig`（round 11 批次 1）；
+    // 星徽·比利 1531（`billyAxisEx` 含 **combo 展开** / `billyAxisActive` / `billyStunCoverage`）、
+    // 希格莉德 1591（`sigridAxisPozhenSets` / `sigridAxisActive`）、南宫羽 1511
+    // （`nangongQuickAssistPlaced` / `inStunWindowTriggers`）同样已迁进各自模块（round 12 批次 2）
+    // ——经下面 dispatch 的 `axis` / `threads` 契约快照读取 ⇒ 本 map 里不再有这些分支
+    // （棘轮 34 → 32 → **29**）。1141 的 `lycaonWindowDuration` 也走同一 `axis` 契约
+    // （该分支已于 round 20 C-γ 整段迁空，见上方沿革）。
     // 队伍级机制·converge 阶段：带上一轮收敛量（莱特按上一轮全队能量消耗重算喷发回能；
     // 耀嘉音按失衡次数汇总全队连携入场）。各角色的具体口径在自己的模块里。
     applyTeamMechanics({
@@ -942,6 +928,10 @@ export function createRunCalcRound(deps: {
       //
       // ⚠ 只有 converge 相位该传（与 `axis` 同款语义）；`applyTeamMechanics` 对缺省
       // `params.interactions` **不做 `?? {}` 兜底**，模块侧用 `!interactions` 判据分辨断路。
+      //
+      // ⚠ `chainCountPerStun` 是 round 20 C-γ 随本契约补的**第三道「必须 store 原值」量**：
+      // `buildCharConfig` 给 cfg 那份写过 `?? (isSupport ? 0 : 1)` 兜底，而 store 默认是 `0`
+      // ⇒ 用户没调过滑块时两份不同值（见 `AgentInteractionSnapshot.chainCountPerStun`）。
       interactions: {
         bySlot: Object.fromEntries(configStore.team.map((c, i) => [i, {
           agentId: c.agentId,
@@ -950,8 +940,16 @@ export function createRunCalcRound(deps: {
           dodgeCounterCount: c.dodgeCounterCount ?? 0,
           dualCounterCount: c.dualCounterCount ?? 0,
           quickAssistCount: c.quickAssistCount ?? 0,
+          chainCountPerStun: c.chainCountPerStun ?? 0,
         }])),
       },
+      // **计数投影版**失衡次数（round 20 C-γ 补的 C7 契约）：本函数 `:472` 已算好的
+      // `countStun`（= `projectStunPlanForCounts(stunCount, base.stunPlanProjection ?? 'off')`）。
+      // ⚠ 与 `stunCount` 在难度阶梯 G4（`round`）打开时**不等价**——原 `agentId === '1141'`
+      // 分支的非轴臂用的正是这个投影值，故必须把**算好的结果**递进去，而不是让模块自己再算
+      // （`stunPlanProjection` 不在模块可达面上，且注册成 MechanicSetting 会变产品级口径）。
+      // 同样只有 converge 相位该传、同样**不做兜底**（模块侧双判据门控）。
+      countStun,
     })
     // 特殊动作喧响奖励（弹刀215/闪反10/连携10/快支20，含伴随50%）：本轮即时结算——
     // 输入只有用户配置的次数与连携数（= chainCountTotalOverride ?? chainCountPerStun × stunCount），无 ultimateCount 反馈环
