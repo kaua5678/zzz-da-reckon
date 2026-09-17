@@ -78,6 +78,15 @@ export interface PanelValues {
   stunDmgMultiplierBonusCapAlways: number // 失衡易伤上限，百分比
   /** 叶瞬光帷幕易伤倍率上限（2.1/3.0；0=未启用） */
   yeshuguangStunCapMult: number
+  /**
+   * 叶瞬光帷幕易伤**基数**（= `veilStunMultiplier(boss基础易伤, 全部失衡易伤加成, cap) − 加成/100`）。
+   *
+   * 伤害池直接把它当本行的 `stunBase`（`calcDirectDamage` 内部还会再加一次
+   * `stunDmgMultiplierBonus/100`，故这里反向扣掉）。唯一写入方 = `yeshuguang.ts#applyPanel`
+   * （判据同 T6：字段非 0 即蕴含是本角色；非本角色恒为 0）。
+   * 2026-09-17 round 18 / R15-d 由伤害池的 `row.agentId === '1431'` 分支迁入模块。
+   */
+  yeshuguangVeilStunBase: number
   // 异常积蓄相关
   anomalyBuildUpEfficiency: number // 异常积蓄效率提升，百分比
   /** 命中失衡状态敌人时的属性异常积蓄效率提升（%），池侧按失衡覆盖折算（南宫羽天使队长：全招式 +30） */

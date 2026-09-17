@@ -47,6 +47,23 @@ export interface AgentPanelInput {
    * 见 AGENT_RECORDING_SOP §3.5「面板 buff 施加点错误」。新代码一律用本字段，勿再走私。
    */
   settings: Readonly<Record<string, number>>
+  /**
+   * Boss **基础失衡易伤倍率**（= `configStore.enemy.stunVuln`，默认 1.5）。
+   *
+   * 存在的理由（2026-09-17 round 18 / R15-d）：叶瞬光「帷幕易伤」口径 = `min(boss基础易伤 +
+   * 队友给的全部失衡易伤加成, 影画封顶 2.1/3.0)`（`veilStunMultiplier`，口径全文见
+   * `yeshuguang.ts` 的 `@fact`）。该算式的**唯一外部输入**就是 boss 基础易伤——它住在
+   * `configStore.enemy` 上，而 `applyPanel` 早于 cfg 构建、拿不到 configStore。
+   * 于是这条角色口径此前写死在伤害池（`damagePool.ts` 的 `row.agentId === '1431'` 分支）。
+   *
+   * ⚠ 它是**静态敌人配置**、不是相位量：每次面板重算都取当时值（与 `damagePool` 原先
+   * 逐行读 `configStore.enemy.stunVuln` 同一份、同一时刻）⇒ 无相位门控、不许做 `?? 0` 兜底
+   * （缺字段 = 派发器漏传，应响亮失败而不是静默按 0 算）。
+   *
+   * ⚠ 与 `AgentAxisOverlayInput` 的教训同款：**不要**改从 `cfg.panel` 读——`cfg.panel` 与
+   * `damagePanels` 是两次 `computePanel` 的不同对象实例（`buildCharConfig` 各算一份）。
+   */
+  enemyStunVuln: number
 }
 
 export interface AgentCharConfigInput {

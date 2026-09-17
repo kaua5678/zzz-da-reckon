@@ -59,7 +59,7 @@ describe('spec mechanics interpreter', () => {
     const panel = emptyPanel()
     panel.anomalyMastery = 150
 
-    module.applyPanel?.({ slot: 0, agent: null as any, cinemaLevel: 0, potentialLevel: 6, team: [], outOfCombatPanel: panel, panel, settings: {} })
+    module.applyPanel?.({ slot: 0, agent: null as any, cinemaLevel: 0, potentialLevel: 6, team: [], outOfCombatPanel: panel, panel, settings: {}, enemyStunVuln: 1.5 })
 
     expect(panel.anomalyProficiency).toBeCloseTo(16)
     expect(module.resourceSections?.({ result: null as any })).toHaveLength(1)

@@ -35,6 +35,7 @@ export function emptyPanel(): PanelValues {
     stunDmgMultiplierBonusAlways: 0,
     stunDmgMultiplierBonusCapAlways: 0,
     yeshuguangStunCapMult: 0,
+    yeshuguangVeilStunBase: 0,
     // 异常积蓄相关
     anomalyBuildUpEfficiency: 0,
     electricAnomalyBuildUpEfficiency: 0,

@@ -26,6 +26,7 @@ import type {
   AgentExSpecialTimeInput,
   AgentExSpecialTimeEstimate,
   AgentMechanicModule,
+  AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
@@ -81,6 +82,30 @@ export const YESHUGUANG_FULL_STUN_MOVES = new Set<string>([
  */
 export function veilStunMultiplier(bossStunVuln: number, bonusPct: number, cap: number): number {
   return Math.min(Math.max(0, bossStunVuln) + Math.max(0, bonusPct) / 100, cap)
+}
+
+/**
+ * 帷幕易伤基数 = 伤害池 `pushDirect` 里本行 `stunBase` 的取值（2026-09-17 round 18 / R15-d）。
+ *
+ * 口径（逐位保留迁移前 `damagePool.ts` 的算式）：
+ *   `veilStunMultiplier(boss基础易伤, 全部失衡易伤加成, cap) − 加成/100`
+ * 减掉 `bonus/100` 是因为 `calcDirectDamage` 内部**还会再加一次**
+ * `stunDmgMultiplierBonus + stunDmgMultiplierBonusAlways`（见 `core/damage.ts` 的
+ * `calcStunMultiplier` 调用），这里先反向扣掉，使最终落到 `veilStunMultiplier` 的值上。
+ *
+ * @param bossStunVuln  Boss 基础失衡易伤倍率（`configStore.enemy.stunVuln`，默认 1.5）
+ * @param rawBonus      面板失衡易伤加成合计（`stunDmgMultiplierBonus + stunDmgMultiplierBonusAlways`，百分点）
+ * @param capAlways     `stunDmgMultiplierBonusCapAlways`（百分点；>0 才钳）
+ * @param cap           影画封顶倍率（C0-3 = 2.1、C4+ = 3.0）
+ */
+export function veilStunBase(
+  bossStunVuln: number,
+  rawBonus: number,
+  capAlways: number,
+  cap: number,
+): number {
+  const bonusPct = capAlways > 0 ? Math.min(rawBonus, capAlways) : rawBonus
+  return veilStunMultiplier(bossStunVuln, bonusPct, cap) - bonusPct / 100
 }
 
 export type YeshuguangFormAxis = 'full' | 'short_pair' | 'short_mie'
@@ -676,6 +701,44 @@ export const yeshuguangMechanic: AgentMechanicModule = {
   name: '叶瞬光·明心境',
   description: '白毛明心境：打满/两条提速短轴；满易伤；C6 明灯愿强化与 1500% 收尾附伤。',
   settings: yeshuguangSettings,
+  /**
+   * 面板阶段：核心被动/影画1 的面板直加 + **帷幕易伤封顶**（2026-09-17 round 18 / R15-d 迁入）。
+   *
+   * 迁移前这段住在 `composables/resourceCalc/helpers.ts#computePanelPhases` 的
+   * `if (agent.id === '1431')` 硬编码块里（历史绕法①：applyPanel 早于 cfg 构建、拿不到
+   * configStore），而**消费**它的帷幕算式又住在伤害池的 `row.agentId === '1431'` 分支里。
+   * 本钩子把两者一并收回模块：`applyPanel` 拿到 `enemyStunVuln`（面板阶段的新只读入参）
+   * 后**当场算出基数**并盖章 `panel.yeshuguangVeilStunBase`，伤害池只做「字段非 0 ⇒ 用该值」，
+   * 不再出现角色 id 判据（判据同 T6：唯一写入方 = 本模块）。
+   *
+   * ⚠ 三项门控**逐位保留**（R14 分诊 §4.2/§4.3 实测）：
+   *  · `capMult` 非 0（= 本钩子只对本角色写，非本角色 `emptyPanel` 恒 0）；
+   *  · `stunForThis > 0`（= 「轴外段不吃帷幕封顶」的**必要**门控，不是冗余）——它依赖**行级**
+   *    `stunOverride`，面板阶段拿不到 ⇒ **刻意留在伤害池**（见 `damagePool.ts` 消费端注释）；
+   *  · `stunDmgMultiplierBonusCapAlways` 全仓零写入（分诊 §4.3）⇒ 算式里原样保留，
+   *    但**不许**把它当成「需要搬运的量」。
+   */
+  applyPanel: ({ panel, cinemaLevel, enemyStunVuln }: AgentPanelInput) => {
+    // 叶瞬光核心被动·合道：进场常驻暴击 +30%、伤害 +25%（Lv.7）。
+    // 影画1：合道额外伤害 +10%、无视防御 20%；影画2：飞光/斩妄 40% 减防走 moveId defIgnore。
+    panel.critRate = (panel.critRate ?? 0) + 30
+    panel.dmgBonus = (panel.dmgBonus ?? 0) + 25
+    if (cinemaLevel >= 1) {
+      panel.dmgBonus = (panel.dmgBonus ?? 0) + 10
+      panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + 20
+    }
+    // 帷幕易伤 = min(boss基础易伤 + 全部失衡易伤加成, 2.1 或 3.0)。
+    // 基数在**面板阶段**算好盖章（此时 bonus/capAlways 已由 buff 通道写入面板），
+    // 伤害池在 `stunOverride > 0` 的行上直接取用。
+    const cap = cinemaLevel >= 4 ? 3.0 : 2.1
+    panel.yeshuguangStunCapMult = cap
+    panel.yeshuguangVeilStunBase = veilStunBase(
+      enemyStunVuln,
+      (panel.stunDmgMultiplierBonus ?? 0) + (panel.stunDmgMultiplierBonusAlways ?? 0),
+      panel.stunDmgMultiplierBonusCapAlways ?? 0,
+      cap,
+    )
+  },
   buildCharConfig,
   /**
    * converge 阶段：注入上一轮「琉音转大赠送的叶瞬光逐云次数」（跨轮反馈）。

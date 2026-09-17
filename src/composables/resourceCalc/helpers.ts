@@ -710,6 +710,10 @@ export function computePanelPhases(
     outOfCombatPanel: result.outOfCombat,
     panel,
     settings: resolveMechanicSettings(configStore),
+    // boss 基础失衡易伤：叶瞬光帷幕封顶算式（veilStunMultiplier）的唯一外部输入，
+    // 原住在 damagePool.ts 的 `row.agentId === '1431'` 分支（2026-09-17 round 18 / R15-d 迁入模块）。
+    // 静态敌人配置、非相位量 ⇒ 每次面板重算取当时值，与原先伤害池逐行读同一份。
+    enemyStunVuln: configStore.enemy.stunVuln,
   })
   // 莱特影画4：莱特位于后场时，前场角色能量获得效率 +10%（按后场时间占比折算；莱特本人不吃）。
   {
@@ -784,28 +788,6 @@ export function computePanelPhases(
     if (cinema >= 2) {
       panel.atk = Math.round(panel.atk * (1 + 0.15))
     }
-  }
-  if (agent.id === '1431') {
-    // 叶瞬光核心被动·合道：进场常驻暴击 +30%、伤害 +25%（Lv.7）。
-    // 影画1：合道额外伤害 +10%、无视防御 20%；影画2：飞光/斩妄 40% 减防走 moveId defIgnore。
-    // 帷幕易伤封顶：对关键伤害走满易伤，上限 210%（影画4 300%）→ 用 stunDmgMultiplierBonusAlways 封顶实现。
-    const cinema = char.cinemaLevel ?? 0
-    panel.critRate = (panel.critRate ?? 0) + 30
-    panel.dmgBonus = (panel.dmgBonus ?? 0) + 25
-    if (cinema >= 1) {
-      panel.dmgBonus = (panel.dmgBonus ?? 0) + 10
-      panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + 20
-    }
-    // 影画2 飞光/斩妄 40% 减防：moveId 限定，见 yeshuguang.ts patchExecutions（defIgnore）
-    // 帷幕易伤 = min(最终易伤, 2.1 或 3.0)。最终易伤 = boss.stunVuln + bonus/100。
-    // 用 always 通道 + cap：bonusAlways 把基础易伤抬到目标，cap 卡住上限。
-    // 在 damage 池对白毛招 stunOverride=1 时生效；非白毛招仍按全局覆盖率。
-    const capMult = cinema >= 4 ? 3.0 : 2.1
-    // always 加成（百分点）= (cap - 1)*100，再设 capAlways=同一值，使 fullMult = min(boss+bonus, 1+cap/100)
-    // 期望 fullMult = min(bossVuln, capMult)。calcStunMultiplier: base + bonus/100，cap 限制 bonus。
-    // 设 bonusAlways = (capMult - bossVuln)*100 若 cap>boss，否则 0；capAlways 很大不截 bonus。
-    // 更简单：bonusAlways=0，改 stunMultiplier 传入 min(boss,cap)——在 damage 池 stunOverride 分支做。
-    panel.yeshuguangStunCapMult = capMult
   }
   if (agent.id === '1391') {
     // 橘福福影画1 超级可怕小老虎：进场暴击率 +12%（进场威风 100 在模块 buildCharConfig 注入）。

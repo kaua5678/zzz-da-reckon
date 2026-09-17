@@ -21,8 +21,9 @@ import { getAgentMechanic } from '@/mechanics'
 import type { AxisScalarOverlays } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
 // 2026-09-16 round 17（R15-c）：`YESHUGUANG_FULL_STUN_MOVES` 与 `HUGO_FULL_STUN_MOVES` 的 import
-// 已删——两处白名单判据迁进各自模块的 `stunOverrideForMove` 钩子；本色只剩帷幕封顶算式。
-import { veilStunMultiplier } from '@/mechanics/agents/yeshuguang'
+// 已删——两处白名单判据迁进各自模块的 `stunOverrideForMove` 钩子。
+// 2026-09-17 round 18（R15-d）：`veilStunMultiplier` 的 import 也已删——帷幕封顶算式整条迁进
+// `yeshuguang.ts#applyPanel`（连面板阶段硬编码块一起），本文件对该角色**零 import**。
 import { MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
 import { PEILUO_KAGEROU_CRIT } from '@/mechanics/agents/specPanelBuffs'
 import type { TeamResourceResult, StunPoolResult, AnomalyPoolResult, InStunAnomalySummary } from '@/types/resource'
@@ -155,16 +156,30 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const stunForThis = row.stunOverride !== undefined
         ? row.stunOverride
         : stunCoverage
-      // 叶瞬光帷幕易伤（口径见 yeshuguang.ts#veilStunMultiplier）：吃满「boss 基础失衡易伤 +
-      // 全部失衡易伤加成」再按影画封顶。calcDirectDamage 内部还会加一次 bonus/100，
-      // 所以这里把 bonus 反向扣掉，使最终落到 veilStunMultiplier 的值上。
+      // 叶瞬光帷幕易伤（口径见 yeshuguang.ts#veilStunBase）：吃满「boss 基础失衡易伤 +
+      // 全部失衡易伤加成」再按影画封顶。基数已在**面板阶段**由 `yeshuguang.ts#applyPanel`
+      // 算好并盖章在 `panel.yeshuguangVeilStunBase` 上（`calcDirectDamage` 内部还会加一次
+      // bonus/100，所以模块侧已把 bonus 反向扣掉，使最终落到 veilStunMultiplier 的值上）。
+      //
+      // 2026-09-17 round 18 / R15-d 编排层棘轮：原判据 `row.agentId === '1431' &&
+      // (panel as any).yeshuguangStunCapMult && stunForThis > 0` 里的 **agentId 项已删**——
+      // `yeshuguangStunCapMult` 的**唯一写入方 = `yeshuguang.ts#applyPanel`**（本批从
+      // `helpers.ts` 的 `agent.id === '1431'` 硬编码块一并迁入）⇒ 字段非 0 即蕴含是本角色
+      // （判据同 T6，与本文件 `:879 burniceMechanicSource` / `:953 liuyinMechanicSource` /
+      // `:985 banyueC6CrushAttach` 同族）。**其余两项逐位保留**：
+      //  · `yeshuguangStunCapMult` 非 0 = 身份判据（非本角色 `emptyPanel()` 恒 0）；
+      //  · `stunForThis > 0` = 「轴外段不吃帷幕封顶」的门控（R14 分诊 §4.2 要求逐位保留）。
+      //    ⚠ **诚实负结果（2026-09-17 round 18 实测，别再重做这个探针）**：把这一项删掉后跑
+      //    10 队 × 3 轴态 × 2 命座 = 60 态（boss 易伤推到 2.5/3.5 让封顶真咬合），对全行原文
+      //    （`id|slot|agentId|moveId|stunMult|count|totalDamage(9位)|note`）取 sha256 ⇒
+      //    **逐字节一致**（`diff` 无输出）。根因：`stunForThis === 0` 时本层已是死路——
+      //    紧接着的 `stunMultVal` 三元 `stunForThis > 0 ? … : 1` 把它压成 1，且
+      //    `calcStunMultiplier` 在 `cov <= 0` 时直接 `return alwaysMult`（**不看 base**）
+      //    ⇒ 即「能走到本行的 stunForThis 恒 > 0」。保留它是为了与 R14 分诊的判据面一致 +
+      //    防未来有人改 `stunMultVal` 的那个三元，**不是因为它现在拦得住东西**。
       let stunBase = configStore.enemy.stunVuln
-      if (row.agentId === '1431' && (panel as any).yeshuguangStunCapMult && stunForThis > 0) {
-        const cap = Number((panel as any).yeshuguangStunCapMult) || 2.1
-        const rawBonus = (panel.stunDmgMultiplierBonus ?? 0) + (panel.stunDmgMultiplierBonusAlways ?? 0)
-        const capAlways = panel.stunDmgMultiplierBonusCapAlways ?? 0
-        const bonusPct = capAlways > 0 ? Math.min(rawBonus, capAlways) : rawBonus
-        stunBase = veilStunMultiplier(configStore.enemy.stunVuln, bonusPct, cap) - bonusPct / 100
+      if (panel.yeshuguangStunCapMult && stunForThis > 0) {
+        stunBase = panel.yeshuguangVeilStunBase
       }
       const stunMultVal = stunForThis > 0
         ? 1 + (stunBase - 1) * stunForThis

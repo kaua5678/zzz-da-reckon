@@ -269,6 +269,7 @@ describe('克拉蕾初始暴伤→暴击率转化（核心被动：每 1% 初始
       outOfCombatPanel: { critDmg: initialCritDmg } as any,
       panel,
       settings: {},
+      enemyStunVuln: 1.5,
     })
     return panel
   }
