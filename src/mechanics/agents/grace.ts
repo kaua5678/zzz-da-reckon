@@ -1,6 +1,7 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentNextRoundFeedbackInput,
   AgentPanelInput,
   AgentResourceInput,
   AgentResourceSectionsInput,
@@ -281,7 +282,13 @@ function buildGraceResourceSections(_input: AgentResourceSectionsInput) {
   return [] // 专属资源卡暂无（电能计划体现在执行行 note）
 }
 
+/** 本轮物化后的轮换数 → 下一轮线程；自身 cfg 由派发器直给，不按压缩数组下标取。 */
+function graceNextRoundFeedback({ cfg }: AgentNextRoundFeedbackInput) {
+  return { graceC1Cycles: Math.max(0, Math.floor(Number((cfg as any).graceC1Cycles ?? 0))) }
+}
+
 export const graceMechanic: AgentMechanicModule = {
+  nextRoundFeedback: graceNextRoundFeedback,
   id: 'agent:grace',
   agentIds: [GRACE_AGENT_ID],
   name: '格莉丝',

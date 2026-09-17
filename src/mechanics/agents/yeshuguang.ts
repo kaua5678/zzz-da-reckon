@@ -26,6 +26,7 @@ import type {
   AgentExSpecialTimeInput,
   AgentExSpecialTimeEstimate,
   AgentMechanicModule,
+  AgentNextRoundFeedbackInput,
   AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
@@ -695,7 +696,20 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
   }
 }
 
+/** 调整后赠大行反馈；兼容既有名称标记，迁移不改变行匹配口径。 */
+function yeshuguangNextRoundFeedback({ adjustedResult, teamResult }: AgentNextRoundFeedbackInput) {
+  let yeshuguangGiftUlt = 0
+  const ye = (adjustedResult ?? teamResult).characters.find(c => c.agentId === YESHUGUANG_ID)
+  for (const e of ye?.executions ?? []) {
+    if (e.source === 'gift' || (e.moveName ?? '').includes('好评转大')) {
+      yeshuguangGiftUlt += e.count ?? 0
+    }
+  }
+  return { yeshuguangGiftUlt }
+}
+
 export const yeshuguangMechanic: AgentMechanicModule = {
+  nextRoundFeedback: yeshuguangNextRoundFeedback,
   id: 'agent:yeshuguang',
   agentIds: [YESHUGUANG_ID],
   name: '叶瞬光·明心境',

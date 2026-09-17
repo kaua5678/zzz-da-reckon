@@ -1223,19 +1223,6 @@ export function createRunCalcRound(deps: {
     const rrShown = ResourceCalcHelpers.normalizeDisplayTime(
       applyNormaHatChain(rrShown0, configStore, catalogStore) ?? rrShown0)
 
-    // 叶瞬光：琉音转大赠送的逐云次数（adj 后 gift 行）
-    let yeshuguangGiftUltNext = 0
-    {
-      const ye = (adj2 ?? rr).characters.find(c => c.agentId === '1431')
-      if (ye) {
-        for (const e of ye.executions ?? []) {
-          if ((e as any).source === 'gift' || (e.moveName ?? '').includes('好评转大')) {
-            yeshuguangGiftUltNext += e.count ?? 0
-          }
-        }
-      }
-    }
-
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
     const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly, aliceSparkThisRound)
 
@@ -1245,6 +1232,7 @@ export function createRunCalcRound(deps: {
     // 返回下一轮线程值；下方 merge 进 threadsNext。
     // ⚠ 派发点必须在 ap1 之后（钩子入参含异常池）。迁移前安比那处在 ap1 之前，但两者既不读对方
     // 写的 cfg 字段、也无其它共享可变状态（钩子之间彼此独立）⇒ 合并为一次派发逐位等价。
+    // 2026-09-17 C-α 批：叶瞬光(1431)/格莉丝(1181) 也迁入该派发，编排层只 merge。
     const feedbackNext = collectNextRoundFeedback({
       characters,
       teamResult: rr,
@@ -1260,7 +1248,6 @@ export function createRunCalcRound(deps: {
     // `lighterTeamEnergyNext` 仍需在编排层线程化（作为下一轮 converge 的输入），
     // 但计算与写入 cfg 的责任已经回到莱特模块自己的 applyTeamConfig。
     let lighterTeamEnergyNext = 0
-    let graceC1CyclesNext = 0
     let teamVeilCountTotalNext = 0
     {
       const exByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.exSpecialCount ?? 0]))
@@ -1270,8 +1257,6 @@ export function createRunCalcRound(deps: {
       if (characters.some(c => c.agentId === '1161')) {
         lighterTeamEnergyNext = estimateTeamNormalEnergyConsumed(characters, exCounts)
       }
-      const graceCfg = characters.find(c => c.agentId === '1181')
-      if (graceCfg) graceC1CyclesNext = Math.max(0, Math.floor(Number((graceCfg as any).graceC1Cycles ?? 0)))
       // 全队帷幕次数（下一轮注入）：照霜寒开帷幕 + 爱芮/叶瞬光终结技 + 千夏强特，按本轮收敛次数算。
       teamVeilCountTotalNext = computeTeamVeilCountTotal(characters, exCounts, ultimateCounts, base.totalTime ?? 180)
       applyTeamMechanics({
@@ -1435,12 +1420,12 @@ export function createRunCalcRound(deps: {
         backstageAuto: backstageAutoNext,
         yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
         teamUltimateForJufufu: teamUltimateForJufufuNext,
-        yeshuguangGiftUlt: yeshuguangGiftUltNext,
+        yeshuguangGiftUlt: feedbackNext.yeshuguangGiftUlt ?? 0,
         // 5 条「下一轮反馈」线程：由各模块 nextRoundFeedback 钩子算出（缺省 0 = 该角色不在队
         // 或守卫不成立，与迁移前各函数返回 0 逐位等价；露西无守卫恒写）。
         lucyTeammateEx: feedbackNext.lucyTeammateEx ?? 0,
         lighterTeamEnergy: lighterTeamEnergyNext,
-        graceC1Cycles: graceC1CyclesNext,
+        graceC1Cycles: feedbackNext.graceC1Cycles ?? 0,
         anbyZeroTeammateWl: feedbackNext.anbyZeroTeammateWl ?? 0,
         vivianTeamEx: feedbackNext.vivianTeamEx ?? 0,
         vivianAnomalyTriggers: feedbackNext.vivianAnomalyTriggers ?? 0,
