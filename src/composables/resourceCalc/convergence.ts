@@ -371,7 +371,6 @@ import { applyTeamMechanics, collectNextRoundFeedback, enrichExecutionPlan } fro
 /** 保底 4 喧响的四舍五入阈值（自 useResourceCalc 顶层随迁；那里改为了 import） */
 export const DECIBEL_ROUND_THRESHOLD = 1500
 import { aliceExternalCountsOf, aliceSlotOf, aliceSparkCountOf } from '@/mechanics/agents/alice'
-import { estimateTeamNormalEnergyConsumed } from '@/mechanics/agents/lighter'
 import { computeTeamVeilCountTotal } from '@/mechanics/teamVeil'
 
 
@@ -442,15 +441,20 @@ export function createRunCalcRound(deps: {
       anomalyDecibelBonus: prevAnomalyDecibelBonus,
       banyueTopUp: prevBanyueTopUp,
       parrySplit: prevParrySplit,
-      // `yixuanFuFaForJufufu` 同上：读点已迁进 1371 模块（本文件仍是它的**写回** owner）。
+      // `yixuanFuFaForJufufu` 同上：读点已迁进 1371 模块；2026-09-17 round 20 C-β 起
+      // **产出侧**（`yixuanNextRoundFeedback`）也迁进 1371 模块 ⇒ 本文件对它只剩 merge。
       // 2026-09-15 arch 棘轮第 2 批：teamUltimateForJufufu / yeshuguangGiftUlt / lucyTeammateEx /
       // graceC1Cycles / anbyZeroTeammateWl / vivianAnomalyTriggers / promiaReleaseDecibel 这 7 条
       // 不再在此解构——它们已改由各模块的 applyTeamConfig 从 `threads` 快照直接读（规则 6），
       // 编排层不再逐 agentId 分支写 cfg。
+      // ⚠ 其中 `teamUltimateForJufufu` 是**例外**：它的产出侧留在本文件（全队汇总、无角色判定），
+      // 归属论证见下方 `teamUltimateBaseNext` 处的注释。
       // 2026-09-16 arch 棘轮第 6 批追加：vivianTeamEx / promiaTriggerHits / promiaTeammateReleases /
       // ellenFreezeCount 这 4 条也不再在此解构——5 个 compute*NextRoundFeedback 已迁为模块
       // `nextRoundFeedback` 钩子，它们只作为 `prevThreads` 整份快照递入（首轮守卫用），
       // 编排层不再逐条取值。
+      // 2026-09-17 round 20 C-β 追加：`lighterTeamEnergy` 的产出侧也迁进 `lighter.ts` 的
+      // `nextRoundFeedback`（仍在下方解构 = converge 相位要把它递给模块，见 `:901`）。
       lighterTeamEnergy: prevLighterTeamEnergy,
       aliceTeamAssaultCount: prevAliceTeamAssaultCount,
       aliceDisorderCount: prevAliceDisorderCount,
@@ -850,8 +854,9 @@ export function createRunCalcRound(deps: {
       // ⚠ 迁移的地基是 round 13 的受控两臂实验：用 `characters` 上那份合并值（被 `interactionScale`
       // 缩放 / 被 `parrySplit` 改写）⇒ `yixuanSmoke` **9 failed**；按 store 口径递入 ⇒ **13 passed**。
       // 另：本文件原先那处 `if (ch.agentId === '1371')`（读上一轮 `rr.characters` 的执行行统计
-      // 符法千重次数）是**读点不是写点**，它消费的是 `threads.yixuanFuFaForJufufu` 的**产出侧**，
-      // 保留在下方（模块读该线程值，写回仍由本文件统一 owner）。
+      // 符法千重次数）已于 2026-09-17 round 20 C-β 迁进 `yixuan.ts#yixuanNextRoundFeedback`
+      // （产出线程值 `yixuanFuFaForJufufu`）⇒ 本文件不再有该判据。
+      // ⚠ 同批的「全队终结总次数」`teamUltimateForJufufu` **刻意留在本文件**（归属论证见其定义处）。
       if (merged.agentId === '1141') {
         // 莱卡恩围猎（2.6 潜能激发）：次数 = 失衡次数；后台跟随闪反 = 队伍其他角色闪反次数之和；
         // 围猎平A时间 = 后台时间预算（总-无敌-失衡时长-莱卡恩前台）− 闪反时间（用户口径）
@@ -983,28 +988,21 @@ export function createRunCalcRound(deps: {
       // 轴态信号（裁决 A 后不再注入次数；大招次数由引擎按槽位喧响总量推导）
       ...(axisActive ? { axisMode: true } : {}),
     }), catalogStore)
-    // 橘福福：收敛仪玄符法千重类终结次数 + 全队终结总次数（供额外能力 +300 / 影画2 威势）
-    let yixuanFuFaForJufufuNext = 0
-    let teamUltimateForJufufuNext = 0
-    {
-      let fufa = 0
-      let teamUlt = 0
-      for (const ch of rr.characters) {
-        teamUlt += ch.ultimateCount ?? 0
-        if (ch.agentId === '1371') {
-          for (const e of ch.executions ?? []) {
-            const mid = e.moveId ?? ''
-            const name = e.moveName ?? ''
-            if (mid === '1371020' || name.includes('符法千重')) {
-              fufa += e.count ?? 0
-            }
-          }
-          teamUlt += fufa // 符法千重不在 ultimateCount 内，补进队伍终结
-        }
-      }
-      yixuanFuFaForJufufuNext = fufa
-      teamUltimateForJufufuNext = teamUlt
-    }
+    // 橘福福：全队终结总次数（供额外能力 +300 / 影画2 威势）。
+    //
+    // ⚠ **本条刻意留在编排层**（2026-09-17 round 20 C-β 的归属判断，实测依据）：它是
+    // 「全队 `ultimateCount` 之和 + 仪玄符法千重分量」，**与 1371 在不在队无关**，且这个求和
+    // **没有任何角色判定**（不属规则 6 的棘轮面）。而 `collectNextRoundFeedback` **按槽位只对
+    // 在队模块派发**：把全队汇总挂进 1371 模块 ⇒「有 1391 无 1371」的队里静默变 0；挂进 1391
+    // 模块 ⇒「有 1371 无 1391」的队里同样静默变 0。编排层是唯一与队伍组成无关的 owner。
+    //
+    // 分量拆分（**与原式逐位等价**，原式 = `Σ ultimateCount` 循环内对 1371 那一次 `+= fufa`）：
+    // ① 全队 `ultimateCount` 之和（下方那行，无角色判定、读点与原式同一处）；
+    // ② 仪玄符法千重分量 = `feedbackNext.yixuanFuFaForJufufu`（1371 模块产出）；
+    //    1371 不在队 ⇒ 该键缺席 ⇒ `?? 0`，与原式 `fufa` 恒 0 等价。
+    // ⚠ 两眼必须**同在 `rr` 上取**（同一次 `enrichExecutionPlan` 结果），且 ② 只能在派发器之后合并。
+    let teamUltimateBaseNext = 0
+    for (const ch of rr.characters) teamUltimateBaseNext += ch.ultimateCount ?? 0
 
     // 轴模式自动补齐下一轮量（保底）：嗔火缺口 → 双反；喧响缺口 → 弹刀。用 store 原始输入 + 本轮实际资源供给计算，
     // 外不动点收敛时 prevBanyueTopUp 稳定（round 0 无补齐 → 本轮算出的下一轮量即最终缺口）。
@@ -1233,6 +1231,8 @@ export function createRunCalcRound(deps: {
     // ⚠ 派发点必须在 ap1 之后（钩子入参含异常池）。迁移前安比那处在 ap1 之前，但两者既不读对方
     // 写的 cfg 字段、也无其它共享可变状态（钩子之间彼此独立）⇒ 合并为一次派发逐位等价。
     // 2026-09-17 C-α 批：叶瞬光(1431)/格莉丝(1181) 也迁入该派发，编排层只 merge。
+    // 2026-09-17 round 20 C-β 批：仪玄(1371) 的 `yixuanFuFaForJufufu` 与莱特(1161) 的
+    // `lighterTeamEnergy` 同样迁入；橘福福的「全队终结总次数」因与队伍组成无关仍留编排层。
     const feedbackNext = collectNextRoundFeedback({
       characters,
       teamResult: rr,
@@ -1245,18 +1245,17 @@ export function createRunCalcRound(deps: {
     })
 
     // 队伍级机制·postRound 阶段：本轮次数已收敛 → 为下一轮注入派生量。
-    // `lighterTeamEnergyNext` 仍需在编排层线程化（作为下一轮 converge 的输入），
-    // 但计算与写入 cfg 的责任已经回到莱特模块自己的 applyTeamConfig。
-    let lighterTeamEnergyNext = 0
+    // `lighterTeamEnergy` 的**计算与写 cfg** 都已回到莱特模块自己的 `applyTeamConfig`（postRound）
+    // 与 `nextRoundFeedback`（返回值 → threadsNext），编排层只 merge。
     let teamVeilCountTotalNext = 0
     {
       const exByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.exSpecialCount ?? 0]))
       const ultByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.ultimateCount ?? 0]))
       const exCounts = characters.map(c => Math.max(0, exByAgent.get(c.agentId) ?? 0))
       const ultimateCounts = characters.map(c => Math.max(0, ultByAgent.get(c.agentId) ?? 0))
-      if (characters.some(c => c.agentId === '1161')) {
-        lighterTeamEnergyNext = estimateTeamNormalEnergyConsumed(characters, exCounts)
-      }
+      // 2026-09-17 round 20 C-β：莱特全队能量消耗的 `if (characters.some(c => c.agentId === '1161'))`
+      // 守卫 + 估计式已迁进 `lighter.ts#lighterNextRoundFeedback`（派发器只对在队模块派发 ⇒ 守卫
+      // 自然满足；估计式同一入参口径，见该钩子注释的逐位等价论证）。
       // 全队帷幕次数（下一轮注入）：照霜寒开帷幕 + 爱芮/叶瞬光终结技 + 千夏强特，按本轮收敛次数算。
       teamVeilCountTotalNext = computeTeamVeilCountTotal(characters, exCounts, ultimateCounts, base.totalTime ?? 180)
       applyTeamMechanics({
@@ -1418,13 +1417,16 @@ export function createRunCalcRound(deps: {
         banyueTopUp: banyueTopUpNext,
         parrySplit: parrySplitNext,
         backstageAuto: backstageAutoNext,
-        yixuanFuFaForJufufu: yixuanFuFaForJufufuNext,
-        teamUltimateForJufufu: teamUltimateForJufufuNext,
+        yixuanFuFaForJufufu: feedbackNext.yixuanFuFaForJufufu ?? 0,
+        // ② 符法千重分量（1371 模块产出）：原式是循环内对 1371 那一次 `teamUlt += fufa`；
+        // 1371 不在队 ⇒ 该键缺席 ⇒ `?? 0`（原式 `fufa` 恒 0）。
+        teamUltimateForJufufu: teamUltimateBaseNext + (feedbackNext.yixuanFuFaForJufufu ?? 0),
         yeshuguangGiftUlt: feedbackNext.yeshuguangGiftUlt ?? 0,
-        // 5 条「下一轮反馈」线程：由各模块 nextRoundFeedback 钩子算出（缺省 0 = 该角色不在队
+        // 「下一轮反馈」线程：由各模块 nextRoundFeedback 钩子算出（缺省 0 = 该角色不在队
         // 或守卫不成立，与迁移前各函数返回 0 逐位等价；露西无守卫恒写）。
+        // ⚠ 例外 = `teamUltimateForJufufu`（上一行）：全队汇总、与队伍组成无关，刻意留编排层。
         lucyTeammateEx: feedbackNext.lucyTeammateEx ?? 0,
-        lighterTeamEnergy: lighterTeamEnergyNext,
+        lighterTeamEnergy: feedbackNext.lighterTeamEnergy ?? 0,
         graceC1Cycles: feedbackNext.graceC1Cycles ?? 0,
         anbyZeroTeammateWl: feedbackNext.anbyZeroTeammateWl ?? 0,
         vivianTeamEx: feedbackNext.vivianTeamEx ?? 0,

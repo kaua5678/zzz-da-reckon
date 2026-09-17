@@ -1,4 +1,5 @@
-import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
+import type { AgentMechanicModule, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
+import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 import type { CharacterResourceResult, MechanicSetting, YixuanExChain } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
@@ -983,6 +984,38 @@ const settings: MechanicSetting[] = [
   },
 ]
 
+/**
+ * 仪玄·符法千重次数「下一轮反馈」（`nextRoundFeedback` 钩子，2026-09-17 round 20 C-β 自
+ * `convergence.ts` 迁入）。产出线程值 `yixuanFuFaForJufufu`——**消费方是橘福福 1391**
+ * （额外能力：仪玄终结技类 +300 喧响/次，见本文件 `applyYixuanTeamConfig` 通道④的读点），
+ * 但**产出侧归属仪玄**：它只数仪玄自己那份结果行。
+ *
+ * ⚠ **为什么不能挂 1391 模块**（本处归属判断的实测依据，不是口味）：橘福福额外能力的另一半
+ * `teamUltimateForJufufu`（全队终结总次数）**与 1371 在不在队无关**，而派发器按槽位只对
+ * **在队**模块派发 ⇒ 把两条一起注册在 1371 会让「有 1391 无 1371」的队把全队汇总静默变成 0
+ * （实测：旧代码该队 `teamUltimateForJufufu` = 全队 `ultimateCount` 之和，`fufa` 恒 0）。
+ * 两条线程值因此分开归属：本条（取决于 1371 自己的行）留在 1371；全队汇总留在编排层。
+ *
+ * 行匹配口径**逐位保留**原实现：`moveId === '1371020' || moveName.includes('符法千重')`
+ * ——是 `||` 不是 `&&`（任一成立即计入；两者都成立也只算一次，因为只有一层 `if`）。
+ * `count ?? 0` 与负值/小数原样透传（不 floor、不 clamp）：原实现直接 `fufa += e.count ?? 0`。
+ *
+ * 数据源 = `teamResult`（== 原式的 `rr`）。⚠ **刻意不读 `adjustedResult`**（与 C-α 的叶瞬光
+ * 不同——那边原式就是 `(adj2 ?? rr)`）：本处原实现读 `rr`，改读 adj 会改语义。
+ */
+function yixuanNextRoundFeedback({ teamResult }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+  let yixuanFuFaForJufufu = 0
+  const self = teamResult.characters.find(c => c.agentId === AGENT_ID)
+  for (const e of self?.executions ?? []) {
+    const mid = e.moveId ?? ''
+    const name = e.moveName ?? ''
+    if (mid === MOVE.extraUlt || name.includes('符法千重')) {
+      yixuanFuFaForJufufu += e.count ?? 0
+    }
+  }
+  return { yixuanFuFaForJufufu }
+}
+
 export const yixuanMechanic: AgentMechanicModule = {
   id: 'agent:yixuan',
   agentIds: [AGENT_ID],
@@ -991,6 +1024,7 @@ export const yixuanMechanic: AgentMechanicModule = {
   applyPanel: applyYixuanPanel,
   buildCharConfig: buildYixuanCharConfig,
   applyTeamConfig: applyYixuanTeamConfig,
+  nextRoundFeedback: yixuanNextRoundFeedback,
   estimateExSpecialTime: ({ cfg, exSpecialCount }) => {
     const chain = resolveYixuanChain(cfg, exSpecialCount ?? 0)
     return { necessaryTime: chain.chainSeconds, comboAlignTime: 0 }

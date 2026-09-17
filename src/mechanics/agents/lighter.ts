@@ -28,11 +28,13 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentNextRoundFeedbackInput,
   AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
+import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
@@ -494,6 +496,41 @@ function applyLighterTeamEnergyFlags(
   }
 }
 
+/**
+ * 莱特「下一轮全队普通能量消耗」反馈（`nextRoundFeedback` 钩子，2026-09-17 round 20 C-β
+ * 自 `convergence.ts` 迁入）。返回线程值 `lighterTeamEnergy` → 下一轮 `converge` 相位由本模块
+ * 的 `applyTeamConfig` 读回（`threads.lighterTeamEnergy` → `cfg.lighterTeamEnergyConsumed`）。
+ *
+ * **逐位等价论证**（原编排层式子：`if (characters.some(c => c.agentId === '1161'))
+ * lighterTeamEnergyNext = estimateTeamNormalEnergyConsumed(characters, exCounts)`）：
+ * ① **守卫**：`collectNextRoundFeedback` 按槽位**只对在队模块**派发 ⇒ 钩子被调到 ⟺ 队里有 1161
+ *    （等价于原 `some`）；不在队 ⇒ 返回值缺席 ⇒ 编排层 `?? 0`（等价于原 `let … = 0`）。
+ * ② **入参**：原式两个实参原样搬入 —— `characters` 是派发器直递的**同一个** cfg 数组
+ *    （本钩子的入参，非压缩下标反查），`exCounts` 仍按**身份**建 Map 再按 `characters` 顺序取
+ *    （逐位保留原式的 `Math.max(0, … ?? 0)` 与 agentId 查找口径，不改成按下标取）。
+ * ③ **时机**：原式在 `collectNextRoundFeedback`（派发点）之后、`applyTeamMechanics(postRound)`
+ *    之前读 cfg；本钩子就在派发点**内部**读同一份 —— 两处之间没有任何写 `exSpecialEnergyConsume`
+ *    / `isFlashUser` 的代码（postRound 相位在两者之后），且收敛相位的写入早于本轮结果装配
+ *    ⇒ 读到的 cfg 状态逐位一致。
+ * ④ **同一个函数**：估计式仍是本模块导出的 `estimateTeamNormalEnergyConsumed`（规则 11 单一事实源）。
+ *
+ * ⚠ **本钩子与 `applyTeamConfig({phase:'postRound'})` 那份调用不是同一通道的重复实现**：
+ * 那一份写**同一轮 cfg** 快照（`lighterTeamEnergyConsumed`），本钩子产**跨轮线程值**
+ * （`threadsNext.lighterTeamEnergy` → 下一轮 converge 读回）。实测两处**都必须在**——删掉本钩子
+ * ⇒ 线程恒 0（下一轮 C4 喷发回能归零）；删掉 postRound 那份 ⇒ 同轮 cfg 快照缺值。
+ * （登记：postRound 写的 `lighterTeamEnergyConsumed` 在本轮内**无读点**——`buildExecutions` /
+ * `buildResourceResult` 都早于 postRound，而下一轮 converge 会用线程值覆盖它 ⇒ 该写当前是
+ * 死写。是否删除属独立决策，本批不动它，只留痕。）
+ */
+function lighterNextRoundFeedback({ characters, teamResult }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+  // 本槽 = 莱特自己那份结果行；`teamResult.characters` 与 `characters` 同序但**只许按身份查**
+  // （按位置压缩，槽位号 ≠ 下标）。
+  if (!teamResult.characters.some(c => c.agentId === LIGHTER_ID)) return { lighterTeamEnergy: 0 }
+  const exByAgent = new Map(teamResult.characters.map(ch => [ch.agentId, ch.exSpecialCount ?? 0]))
+  const exCounts = characters.map(c => Math.max(0, exByAgent.get(c.agentId) ?? 0))
+  return { lighterTeamEnergy: estimateTeamNormalEnergyConsumed(characters, exCounts) }
+}
+
 export const lighterMechanic: AgentMechanicModule = {
   id: 'agent:lighter',
   agentIds: [LIGHTER_ID],
@@ -550,6 +587,7 @@ export const lighterMechanic: AgentMechanicModule = {
   patchExecutions,
   buildResourceResult,
   resourceSections,
+  nextRoundFeedback: lighterNextRoundFeedback,
 }
 
 export default lighterMechanic
