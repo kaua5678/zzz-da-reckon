@@ -2404,7 +2404,7 @@ export function runAllChecks(root = ROOT) {
   {
     const scan = scanCompactedSlotIndex(root)
     results.push({
-      name: `压缩数组槽位索引 (规则 17: characters/panels/damagePanels/remielleEntryPanels 的下标 ≠ 槽位号) 违规 ${scan.violations.length} 处`
+      name: `压缩数组槽位索引 (判据 17: characters/panels/damagePanels/remielleEntryPanels 的下标 ≠ 槽位号) 违规 ${scan.violations.length} 处`
         + `（豁免 ${IDX_SAFE_ALLOWLIST.length} 条 / 扫 ${scan.scanned} 行）`,
       ok: scan.violations.length === 0,
       detail: [
