@@ -71,7 +71,21 @@ export const IDX_SAFE_ALLOWLIST = [
   },
 ]
 
-/** 循环下标变量名（这些名字作键 ⇒ 视为「同序迭代」，安全） */
+/**
+ * 循环下标变量名（这些名字作键 ⇒ 视为「同序迭代」，安全）。
+ *
+ * ⚠ **本豁免的前提是「同序迭代该压缩数组本身」**（`for (let i…) panels[i]`）。
+ * 若循环**迭代的是另一个数组**（如稠密的 `configStore.team`）却拿同一个 `i` 去索引压缩数组，
+ * 前提就**不成立**、会取到别人那份。**实测反例（2026-09-18 round 21 夜）**：
+ * `convergence.ts` 的 `for (let i = 0; i < 3; i++) { const char = team[i]; … panels.value[i] … }`
+ * ——`[空,1581,1031]` 时 `i=1`、`team[1]=1581`，而 `panels.value[1]` 盖章 slot **2** ⇒ 传错面板。
+ * 该处已改 `panelAt(panels.value, i)`。
+ *
+ * ⇒ **本扫描器是行级正则、看不到循环头**，无法自动区分这两种情况。故这是一处
+ * **已知的判据局限**：新增「用 team 下标索引 panels」的写法**不会**被拦（只能靠 review）。
+ * 升级路径（若将来再犯）：把本判据从正则升级为 AST —— 检查 `for` 语句的迭代对象
+ * （`team` vs 压缩数组）与循环体内索引的数组名是否一致。
+ */
 const LOOP_INDEX_NAMES = new Set(['i', 'j', 'k', 'n', 'idx', 'index'])
 
 /**

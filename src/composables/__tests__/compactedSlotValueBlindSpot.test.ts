@@ -90,3 +90,23 @@ describe('判据 17 真缺陷：按索引取面板会读到别人的面板（已
     expect(panelAt(compressed, 0)).toBeUndefined()
   })
 })
+
+describe('判据 17 第二类：循环下标跨数组（扫描器行级正则无法拦，靠本判据）', () => {
+  it('★ 用 team 下标索引压缩数组 ⇒ 前导空槽时错人（已修的 convergence 循环形态）', () => {
+    // `convergence.ts` 曾写：`for (let i…) { const char = team[i]; … panels.value[i] … }`
+    // —— `i` 是 **team**（稠密）下标，却去索引 `panels`（压缩）⇒ 前提「同序迭代」不成立。
+    // 本断言把该形态的错误**钉在数据类型层**（不依赖具体调用点，故不会随重构漂移）：
+    const team = ['', '1581', '1031']            // 稠密：team[i] 就是槽位 i
+    const panels = [{ slot: 1, who: '1581' }, { slot: 2, who: '1031' }] as any  // 压缩：盖章槽位
+    const i = 1
+    expect(team[i], 'team[1] 是 1581').toBe('1581')
+    expect(panels[i].who, '❌ panels[1] 是 1031 —— 按索引取会错人').toBe('1031')
+    expect((panelAt(panels, i) as any)?.who, '✓ panelAt 按盖章取，返回 1581').toBe('1581')
+  })
+
+  it('★ 对照：无空槽时两种取法一致（说明差异只在压缩发生时出现）', () => {
+    const panels = [{ slot: 0, who: '1581' }, { slot: 1, who: '1031' }] as any
+    expect(panels[1].who).toBe('1031')
+    expect((panelAt(panels, 1) as any)?.who).toBe('1031') // 稠密 ⇒ 一致
+  })
+})

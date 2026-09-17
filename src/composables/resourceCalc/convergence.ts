@@ -42,7 +42,11 @@ export function createConvergenceRoundInputs(deps: {
       const char = configStore.team[i]
       if (!char?.agentId) continue
       const skills = catalogStore.getAgentSkills(char.agentId)
-      const { anomalyExecs } = extractSkillExecutions(i, char.agentId, skills ?? undefined, res, catalogStore, panels.value[i] ?? null, configStore, { skipGift })
+      // ⚠ 判据 17：`i` 是 **team** 下标（该数组稠密、按槽位排列），而 `panels.value` **按位置压缩**
+      // （空槽不 push）⇒ `panels.value[i]` 在前导/中间空槽时取到**别人那份**面板
+      // （实测 `[空,1581,1031]`：i=1 时 team[1]=1581，而 panels.value[1] 盖章 slot 2）。
+      // 故必须 `panelAt` 按盖章身份取。2026-09-18 round 21 夜发现并修复。
+      const { anomalyExecs } = extractSkillExecutions(i, char.agentId, skills ?? undefined, res, catalogStore, panelAt(panels.value, i) ?? null, configStore, { skipGift })
       execs.push(...anomalyExecs)
     }
     return execs
@@ -55,7 +59,11 @@ export function createConvergenceRoundInputs(deps: {
       const char = configStore.team[i]
       if (!char?.agentId) continue
       const skills = catalogStore.getAgentSkills(char.agentId)
-      const { stunExecs } = extractSkillExecutions(i, char.agentId, skills ?? undefined, res, catalogStore, panels.value[i] ?? null, configStore, { skipGift })
+      // ⚠ 判据 17：`i` 是 **team** 下标（该数组稠密、按槽位排列），而 `panels.value` **按位置压缩**
+      // （空槽不 push）⇒ `panels.value[i]` 在前导/中间空槽时取到**别人那份**面板
+      // （实测 `[空,1581,1031]`：i=1 时 team[1]=1581，而 panels.value[1] 盖章 slot 2）。
+      // 故必须 `panelAt` 按盖章身份取。2026-09-18 round 21 夜发现并修复。
+      const { stunExecs } = extractSkillExecutions(i, char.agentId, skills ?? undefined, res, catalogStore, panelAt(panels.value, i) ?? null, configStore, { skipGift })
       execs.push(...stunExecs)
     }
     return execs
@@ -374,6 +382,7 @@ import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import { computeBanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import { isHugoEndsWindowMove, hugoMoveActionTime } from '@/mechanics/agents/hugo'
+import { panelAt } from '@/core/panel'
 import { applyTeamMechanics, collectNextRoundFeedback, enrichExecutionPlan } from './helpers'
 
 /** 保底 4 喧响的四舍五入阈值（自 useResourceCalc 顶层随迁；那里改为了 import） */
