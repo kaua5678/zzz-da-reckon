@@ -48,6 +48,11 @@ import { fmt } from '@/utils/format'
 const AGENT_ID = '1371'
 const specBase = specToMechanicModule(getAgentSpec(AGENT_ID)!)
 
+/** 覆盖率类滑块 → [0,1]（非有限值落 0；与各模块同名本地 helper 同形，见 corin.ts:68） */
+function clampRatio(value: number): number {
+  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
+}
+
 // 招式 moveId（catalog 倍率表行）
 const MOVE = {
   ink1: '1371009', // 强化特殊技：墨痕化形 #1 600.6% / 40闪能 / 1.083s
@@ -1062,23 +1067,52 @@ export const yixuanMechanic: AgentMechanicModule = {
   },
   buildAnomalyEvents: input => specBase.buildAnomalyEvents?.(input),
   /**
-   * 凝神轴窗口覆盖（规则 6 迁入，棘轮站点 5/8，2026-09-12 #10 真清偿）：
+   * 凝神轴窗口覆盖（规则 6 迁入，棘轮站点 5/8，2026-09-12 #10 真清偿；
+   * **三臂全迁** 2026-09-17 round 21 夜 A 自 `damagePool.ts:510`）。
    * 原本由 `useResourceCalc` 的 `yixuanNingshenMap` computed 按 agentId '1371' 找槽位后直调。
-   * 与原逻辑逐位一致：只看「在队 + 有轴」；6 命满覆盖分支由**伤害池**判（读 c6 滑块，不读本表），
-   * 故此处不重复判命座——覆盖层保持纯数据，消费端继续拥有口径。
+   *
+   * 三臂与门控**逐位保留**（伤害池原式：
+   * `charResult.agentId === '1371' && (execPanel?.additionalAbilityActive ?? 0) > 0`
+   * 内含 `cinemaLevel >= 6 ? C6臂 : isAxis ? 扫描桶 : 非轴折算臂`）：
+   * - 门控 = 额外能力触发（`additionalAbilityActive`，与伤害池 `execPanel` 同源同值）。
+   * - `cinemaLevel >= 6` → **C6 满覆盖标量** `{critDmg: round(40×c6滑块), sheerDmg: round(20×c6滑块)}`
+   *   （调息送大量符法千重，用户口径：不走轴扫描）。⚠ C6 臂**优先于 `isAxis`**——轴模式下
+   *   6 命也走满覆盖、不查扫描桶（伤害池原式三元顺序即如此，逐位保留）。
+   * - 非 6 命 + `isAxis` → 轴内 15s 窗口扫描桶（值语义 = 实例加权平均暴伤，
+   *   见 `computeYixuanNingshenBonus`）。
+   * - 非 6 命 + 非轴 → **折算标量** `{critDmg: round(40×覆盖率滑块), sheerDmg: 0}`
+   *   （贯穿只由 C6 给）。
+   *
+   * ⚠ **C6 臂与折算臂都是「对本槽全部行同值」的标量**（没有 moveId 可索引）⇒ 必须走
+   * `scalarBySlot`，复用 `yixuanNingshenMap` 桶会让队友行读到（见 `AgentAxisOverlays.scalarBySlot`
+   * 头注释的泄漏论证）；只有非 C6 轴臂走桶。
+   *
+   * 滑块缺省回落与伤害池原式**同值**：C6 臂 `?? 1`（= `yixuan.c6NingshenCoverage` 注册 default）、
+   * 非轴臂 `?? DEFAULT_NINGSHEN_COVERAGE`（= **0.5**，2026-09-17 用户裁决归一，见其头注释）。
    *
    * ⚠ 2026-09-16 round 16：派发器不再在非轴时早退（`axes.length === 0` 那行已删——它让别的模块的
-   * 非轴折算臂物理不可达），故进入条件改判 `isAxis`。**非轴臂仍在伤害池**
-   * （三臂：C6 / 非C6轴 / 非C6非轴）。
-   *
-   * ✅ **2026-09-17 用户裁决：默认值分裂已归一为 0.5**（裁决与实测差见
-   * `DEFAULT_NINGSHEN_COVERAGE` 头注释）⇒ 伤害池那处已可安全迁进本模块
-   * （迁移时 0 delta）。本条不再阻塞迁移。
+   * 非轴折算臂物理不可达），故进入条件用 `isAxis`（不是 `axes.length`）。
    */
-  axisWindowOverlays: ({ slot, axes, isAxis }) => {
-    if (!isAxis) return null
-    const map = computeYixuanNingshenBonus(slot, axes, 0)
-    return map.size > 0 ? { yixuanNingshenMap: map } : null
+  axisWindowOverlays: ({ slot, axes, cinemaLevel, isAxis, additionalAbilityActive, settings }) => {
+    if (!additionalAbilityActive) return null
+    if (cinemaLevel >= 6) {
+      const cov = clampRatio(Number(settings['yixuan.c6NingshenCoverage'] ?? 1))
+      return {
+        scalarBySlot: new Map([[slot, {
+          yixuanNingshen: { critDmg: Math.round(40 * cov), sheerDmg: Math.round(20 * cov) },
+        }]]),
+      }
+    }
+    if (isAxis) {
+      const map = computeYixuanNingshenBonus(slot, axes, 0)
+      return map.size > 0 ? { yixuanNingshenMap: map } : null
+    }
+    const cov = clampRatio(Number(settings['yixuan.ningshenCoverage'] ?? DEFAULT_NINGSHEN_COVERAGE))
+    return {
+      scalarBySlot: new Map([[slot, {
+        yixuanNingshen: { critDmg: Math.round(40 * cov), sheerDmg: 0 },
+      }]]),
+    }
   },
   settings,
 }

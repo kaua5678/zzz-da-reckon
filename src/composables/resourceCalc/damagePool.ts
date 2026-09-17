@@ -25,7 +25,6 @@ import { LIUYIN_EX_MOVE_IDS, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mech
 // 2026-09-17 round 18（R15-d）：`veilStunMultiplier` 的 import 也已删——帷幕封顶算式整条迁进
 // `yeshuguang.ts#applyPanel`（连面板阶段硬编码块一起），本文件对该角色**零 import**。
 import { MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
-import { PEILUO_KAGEROU_CRIT } from '@/mechanics/agents/specPanelBuffs'
 import type { TeamResourceResult, StunPoolResult, AnomalyPoolResult, InStunAnomalySummary } from '@/types/resource'
 import type { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
 import type { StunAxis } from '@/types/resource'
@@ -417,6 +416,9 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const slot = charResult.slot
       const agent = catalogStore.getAgent(charResult.agentId)
       const skills = catalogStore.getAgentSkills(charResult.agentId)
+      // 琉音机制来源（**本槽级**，循环外读一次）：既是身份令牌，也是「强特拆分块会不会重放本行」的判据。
+      // 唯一写入方 = `liuyin.ts#buildLiuyinResourceResult`（无条件写）⇒ 存在即蕴含是该角色（判据同 T6）。
+      const liuyinSrc = charResult.liuyinMechanicSource
 
       for (const exec of charResult.executions) {
         if ((exec.damageMultiplier ?? 0) <= 0) continue
@@ -425,7 +427,23 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         const isPerSecondRow = exec.count <= 0 && (exec.totalTime ?? 0) > 0
         if (!isPerSecondRow && exec.count <= 0) continue
         // 琉音三个强特（石头/剪刀/布）在非失衡轴模式下由下方专用块按“失衡次数”拆分易伤，跳过通用直伤。
-        if (charResult.agentId === '1481' && !isAxis && LIUYIN_EX_MOVE_IDS.has(exec.moveId)) continue
+        // 2026-09-17 round 21 夜 A 编排层棘轮：原判据 `charResult.agentId === '1481' && !isAxis && LIUYIN_EX_MOVE_IDS.has(…)
+        // ⇒ **agentId 项删除**、只留 `liuyinSrc && !isAxis && LIUYIN_EX_MOVE_IDS.has(…)`。
+        // 为什么这不是简单字段门控的「顺手去冗余」：本行的语义是「**跳过通用路径**，把结算权交给下方
+        // 专用块」——故 `liuyinSrc` 在这里必须同时证明「下方专用块确实会重放本行」，否则删掉 agentId
+        // 会让某些行**两边都不算**（静默少伤）。两件事同源，逐一证明：
+        //   ① 行归属：`1481011/12/13` 在 catalog 里**只属于 1481 的 special 段**（`agentSkills` 实测
+        //      62 个角色中 owner 唯一 = 1481，`occurrences === 1`）⇒ 非 1481 槽位不可能存在这三行。
+        //      且 `liuyin.ts` 是它们的**唯一产行方**（`cfg.skipGenericExSpecial = true` 关掉通用强特行，
+        //      故引擎不会按 `exSpecialMoveId` 另发一版；`buildLiuyinExecutions` 按 1→3 连打 push）。
+        //   ② 重放条件：下方专用块 = `if (liuyinSrc && !isAxis) {…}`，**与本行门控的共用项完全一致**
+        //      （同一个 `liuyinSrc`、同一个 `!isAxis`）⇒ 本行 `continue` 时专用块必然执行，且其
+        //      `exMult` 表正是遍历 `charResult.executions` 里 `LIUYIN_EX_MOVE_IDS` 且有倍率的行构建的
+        //      ⇒ 被跳过的行**必然**被重放（`mult(moveId) > 0` 成立）。无「两边都不算」的第三态。
+        //   ③ 赠链/赠大不会把这三行搬到别人槽位：诺姆赠链搬的是**目标队友自己的连携技** moveId
+        //      （`normaHatChain.ts` 取 `findChainAttack(targetSkills)`），琉音赠大搬的是**目标队友的终结技**
+        //      （`liuyinPromote.ts` 取 `ultimateMoveId`）——两者都取「目标自己的招」，不会产生 1481 的强特行。
+        if (liuyinSrc && !isAxis && LIUYIN_EX_MOVE_IDS.has(exec.moveId)) continue
         const move = findMoveById(skills, exec.moveId)
         const mechanic = getAgentMechanic(charResult.agentId)
         // 2026-09-16 编排层棘轮（R15-a）：柏妮思影画4/6 原在此处按 `charResult.agentId === '1171'`
@@ -504,28 +522,29 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
           if ((exec as any).harumasaStunOnly !== undefined) {
             harumasaStunOnlyBonus = stunOverride > 0 ? Math.max(0, Number((exec as any).harumasaStunOnly)) : 0
           }
-          // 仪玄凝神：6 命默认满覆盖（调息送大量符法千重，用户口径：暴伤+40% + 贯穿+20%，不走轴扫描），
-          // yixuan.c6NingshenCoverage 滑块可调；非 6 命轴模式按 buff 轴扫描（大招后 15s 窗口），非轴模式按滑块近似（仅暴伤）
-          const yixuanCinema = configStore.team[slot]?.cinemaLevel ?? 0
-          const yixuanNingshen = charResult.agentId === '1371' && (execPanel?.additionalAbilityActive ?? 0) > 0
-            ? (yixuanCinema >= 6
-              ? {
-                  critDmg: Math.round(40 * Math.max(0, Math.min(1, configStore.getMechanicSetting('yixuan.c6NingshenCoverage', 1)))),
-                  sheerDmg: Math.round(20 * Math.max(0, Math.min(1, configStore.getMechanicSetting('yixuan.c6NingshenCoverage', 1)))),
-                }
-              : isAxis
-                ? (yixuanNingshenMap.get(exec.moveId ?? '') ?? { critDmg: 0, sheerDmg: 0 })
-                : { critDmg: Math.round(40 * Math.max(0, Math.min(1, configStore.getMechanicSetting('yixuan.ningshenCoverage', 0.5)))), sheerDmg: 0 })
-            : { critDmg: 0, sheerDmg: 0 }
-          // 佩洛伊斯阳炎：轴模式按 buff 轴扫描（上分支后 21s 窗口，仅上分支/决算终结吃），非轴按覆盖率滑块（默认满）
-          const peiluoKagerouCoverage = Math.max(0, Math.min(1, configStore.getMechanicSetting('peiluo.kagerouCoverage', 1)))
-          // 非轴模式配对折算：上分支全吃；决算按 min(上分支,决算)/决算 的比例吃（无上分支铺垫的决算不吃）
+          // 仪玄凝神：三臂（C6满覆盖 / 非C6轴内扫描 / 非C6非轴折算）**全在模块**
+          // （`yixuan.ts#axisWindowOverlays`）——C6 臂与非轴臂产「本槽全行同值」的标量
+          // `yixuanNingshen`（走 `scalarBySlot`，避免泄漏给队友行），非 C6 轴臂产 moveId 桶。
+          // 2026-09-17 round 21 夜 A 编排层棘轮：原判据 `charResult.agentId === '1371' &&
+          // (execPanel?.additionalAbilityActive ?? 0) > 0` 三重门控 + 三臂已整段迁进模块
+          // （T7 裁决把注册 default 与伤害池 fallback 归一为 0.5 ⇒ 迁移 0 delta）。
+          // ⚠ 按槽位取标量（这些值对全角色全部行同值，裸标量会泄漏给队友行）。
+          const yixuanNingshen = overlayScalar?.yixuanNingshen
+            ?? (isAxis ? yixuanNingshenMap.get(exec.moveId ?? '') : undefined)
+            ?? { critDmg: 0, sheerDmg: 0 }
+          // 佩洛伊斯阳炎：轴模式按 buff 轴扫描（上分支后 21s 窗口，仅上分支/决算终结吃）；
+          // 非轴模式 = `40 × 覆盖率滑块`（模块标量）× **行级配对比例**。
+          // 2026-09-17 round 21 夜 A 编排层棘轮：原判据 `charResult.agentId === '1551'`
+          // + 两臂已整段迁进 `specPanelBuffs.ts#peiluoProminenceMechanic.axisWindowOverlays`
+          // （轴臂 → `peiluoKagerouMap` 桶 / 非轴臂 → `peiluoKagerouPct` 标量）。
+          // ⚠ 配对比例**留在行上**（`peiluoKagerouPairRatio` 的唯一写入方 = 本角色模块的
+          // `patchExecutions`）——它逐 moveId 不同（只有决算 `1551016` 乘
+          // `min(上分支,决算)/决算`），进不了「全行同值」的标量，故消费端在此乘回：
+          // `标量 × 行级比例` 即原式 `PEILUO_KAGEROU_CRIT × 覆盖率 × 配对比例`，逐位等价。
           const peiluoPairRatio = exec.moveId === '1551016' ? ((exec as any).peiluoKagerouPairRatio ?? 0) : 1
-          const peiluoKagerouCrit = charResult.agentId === '1551'
-            ? (isAxis
-              ? (peiluoKagerouMap.get(exec.moveId ?? '') ?? 0)
-              : PEILUO_KAGEROU_CRIT * peiluoKagerouCoverage * peiluoPairRatio)
-            : 0
+          const peiluoKagerouCrit = isAxis
+            ? (peiluoKagerouMap.get(exec.moveId ?? '') ?? 0)
+            : (overlayScalar?.peiluoKagerouPct ?? 0) * peiluoPairRatio
           pushDirect({
             id: `${rowId}${idSuffix}`,
             slot,
@@ -980,9 +999,11 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       }
 
       // 琉音专属直伤（额外能力）：石头/剪刀/布重击命中时，按上一位队友特性追加伤害。
-      const liuyinSrc = charResult.liuyinMechanicSource
       // 2026-09-15 编排层棘轮：去掉 `charResult.agentId === '1481'`——`liuyinMechanicSource` 的
       // 唯一写入方 = `liuyin.ts:387` ⇒ 字段存在即蕴含是该角色（判据同 T6）。
+      // 2026-09-17 round 21 夜 A：`liuyinSrc` 的声明**上提到槽位循环头**（`damagePool.ts` 的
+      // `for (const charResult of …)` 之后）——本块与「跳过通用强特行」那处共用同一个判据，
+      // 两处各读一次会掩盖「它们必须同源」这条不变量（见上提处的 ①②③ 论证）。
       if (liuyinSrc && liuyinSrc.extraAbilityActive && liuyinSrc.exHeavyCount > 0) {
         const prevSlot = liuyinSrc.previousTeammateSlot
         const prevPanel = panelAt(damagePanels, prevSlot)

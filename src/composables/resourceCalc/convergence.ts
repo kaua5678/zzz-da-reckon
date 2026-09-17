@@ -24,7 +24,7 @@ import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/
 import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { SIGRID_LANCE_SEGMENT_IDS } from '@/mechanics/agents/sigrid'
 import { HUGO_EX_VERDICT_MOVE_ID, HUGO_ULT_MOVE_ID, HUGO_EX_FINAL_ACTION_TIME } from '@/mechanics/agents/hugo'
-import { extractSkillExecutions, findMoveById } from './helpers'
+import { extractSkillExecutions, findMoveById, findSlotByIdentity } from './helpers'
 
 export function createConvergenceRoundInputs(deps: {
   configStore: ReturnType<typeof useConfigStore>
@@ -76,7 +76,13 @@ export function createConvergenceRoundInputs(deps: {
    *  会在 calcOutput 自身求值内构成循环依赖（首算恒读空，曾致极性强击行整行缺失），
    *  由 calcAnomalyPoolInput 的 aliceSparkOverride 注入本轮资源结果。 */
   const aliceInfo = computed(() => {
-    const slot = configStore.team.findIndex(c => c.agentId && (catalogStore.getAgent(c.agentId)?.id === '1401' || catalogStore.getAgent(c.agentId)?.teammateBuffId === '1401'))
+    // ⚠ **本行的「循环依赖」只与读 `resourceResult` 有关，与身份查找无关**（2026-09-17 夜间批 B 实测澄清）：
+    // 头注释那条禁令针对的是 `aliceSlotOf(rr)` / `aliceSparkCountOf(rr)` 那族**读资源结果**的模块 helper
+    // （`aliceSlotOf` 从 `rr.characters` 数槽位 ⇒ 在 `calcOutput` 自身求值内读它会首算恒空）。
+    // 本行的输入只有 `configStore` + `catalogStore` 两个 store（均在本工厂的 deps 里、与 `calcOutput` 无关），
+    // 故走 `findSlotByIdentity` 是**同一表达式**、不引入任何对 `resourceResult` 的读 ⇒ 不成环。
+    // 判据：`convergenceNightB.test.ts` 的等价性 oracle + 前导空槽实算（爱丽丝在槽 2 仍解析出 slot）。
+    const slot = findSlotByIdentity(configStore, catalogStore, ['1401'])
     if (slot < 0) return null
     // ⚠ 按**身份**查（`.find(c => c.slot === …)`），不用 `characters[slot]` 下标：该数组按位置
     // 压缩（`buildCharConfig` 跳过空槽），前导/中间空槽时 `characters[slot]` 取到 undefined
@@ -154,10 +160,12 @@ export function createConvergenceRoundInputs(deps: {
       const axisActions: StackActionCost[] = []
       // 60/90 转大块是琉音（1481）好评赠送终结技的专属机制：队伍无琉音时跳过（不当作普通轴动作执行，
       // 否则无琉音队伍也会打出 promoteVariant 块的终结技——2026-08 修复）
-      const hasLiuyin = configStore.team.some(char => {
-        const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
-        return a?.id === '1481' || a?.teammateBuffId === '1481'
-      })
+      // ⚠ 本判定是「队里有没有琉音」⇒ 同一个身份形状，复用 `findSlotByIdentity`（`>= 0` = 存在，
+      // 与 `some` 同义）。**但「转大块归琉音所有」这条知识仍留在编排层**（只是从内联回调收成实参）——
+      // 真正的 0 判定形态需模块声明「我拥有 promoteVariant 块」（`backstageAutoFill`/
+      // `producesInteractionTopUp` 同族），那要给 `AgentMechanicModule` 加新声明字段 =
+      // 改 `src/mechanics/types.ts`，超出本批授权面 ⇒ 本批只做 DRY、把缺口如实挂账。
+      const hasLiuyin = findSlotByIdentity(configStore, catalogStore, ['1481']) >= 0
       for (const act of axis.actions) {
         if (act.promoteVariant && !hasLiuyin) continue
         // 诺姆转连携块（norma-hat-chain）与赠品连携块（怒焰·赠 sourceTag='gift'）：
@@ -478,6 +486,14 @@ export function createRunCalcRound(deps: {
     const { axes: resolvedAxes, planName } = resolveAxes(stunCount, prevGoodReview, prevEnergyBySlot)
     // forceNoAxis（轴退化）：跳过轴注入（轴块/连携覆盖/自动补齐全关），退回 chainCountPerStun 兜底的一般循环
     const axisActive = !opts?.forceNoAxis && (configStore.useStunAxis || autoActive.value) && resolvedAxes.length > 0
+    /**
+     * 雨果槽位（**单一事实源**，2026-09-17 夜间批 B 收敛）：
+     * 本函数原先把这个身份查了**两次**——`:521` 判「轴模式且队里有雨果」（`team.some(c => c.agentId === '1291')`）、
+     * `:1108` 再算 `hugoSlot` 给决算返还用。两处是同一问题、且都可能各自漂移；
+     * 提到轴解析之后（此处 `catalogStore.ready` 已由上方 `:476` 的就绪门保证 ⇒ 查表安全），
+     * 两处共用一份结果。`findSlotByIdentity` = 前批（`8723329`）抽的「按身份找槽位」helper。
+     */
+    const hugoSlot = findSlotByIdentity(configStore, catalogStore, ['1291'])
     // 决算截断（佩洛伊斯右分支 1551016）：轴内决算做完时清空窗口剩余失衡时间 →
     // 有效失衡时长按截断结束时刻计，损失秒数从覆盖率里扣除（失衡时间/比例重算口径）。
     let verdictSecondsLost = 0
@@ -510,7 +526,7 @@ export function createRunCalcRound(deps: {
     let hugoAxisExVerdictCount: number | undefined
     let hugoAxisUltVerdictCount: number | undefined
     // @fact engine:轴内块数落地 口径: 雨果轴内决算次数 = 轴内决算块数 × **上一轮失衡池整数次数**（prevPoolStunCount 线程，与池/轴栈同源）；外层不动点的连续小数计划次数只作收敛输入，不得用于轴内块数（曾致 0.82 窗被 Math.floor 归零、轴栈说 5 池只落地 1，坑36） | 据 用户@2026-09-10「失衡易伤为什么静默不算」查证 + 引擎日志实测 0.824 | 验 src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/composables/resourceCalc/convergence.ts#hugoAxisExVerdictCount | 信 确认
-    if (axisActive && configStore.team.some(c => c.agentId === '1291')) {
+    if (axisActive && hugoSlot >= 0) {
       const windowDur = computeWindowDuration()
       // 坑36（2026-09-10 修复）：轴内块数落地必须与失衡池**同源**——外层不动点的计划次数是连续小数
       // （实测 0.824），池同轮算整数（floor）；对小数块数 Math.floor 后决算次数静默 0/1（轴栈 executed
@@ -546,7 +562,7 @@ export function createRunCalcRound(deps: {
     const provStunCoverage = computeStunCoverage({ stunCount }, verdictSecondsLost)
     // 般岳轴模式自动补齐（保底语义，方案 A）：轴内怒相/终结技对嗔火/喧响有硬性需求，不足时抬双反（补嗔火）与弹刀（补喧响），
     // 有效次数 = 交互栏输入 + 补齐量（不写回 store，不覆盖用户输入）；计算轮间通过 prevBanyueTopUp 线程收敛。
-    const banyueSlot = configStore.team.findIndex(c => c.agentId === '1471')
+    const banyueSlot = findSlotByIdentity(configStore, catalogStore, ['1471'])
     // Boss 预设弹刀反推（用户口径 2026-08）：appliedBoss 声明 parryTotal/parryNoFollowUpTotal（如 叶释渊 13 / 司祭 15）且
     // 「保底4失衡」勾选时，击破位（队伍首个 stun 特性槽位）弹刀按保底失衡反推补齐、主C 拿剩余
     // （纯函数 core/parrySplit.ts；本轮注入上一轮拆分，收敛判据含 parrySplitSeq）。
@@ -649,10 +665,7 @@ export function createRunCalcRound(deps: {
     // 使试探测量/账本预留与轴栈窗口口径同源（见 core/resource.ts#liuyinGiftTime）。
     let axisLiuyinPromote: { targetSlot: number; count: number } | undefined
     if (axisActive && axisHug) {
-      const liuyinIdx = configStore.team.findIndex(char => {
-        const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
-        return a?.id === '1481' || a?.teammateBuffId === '1481'
-      })
+      const liuyinIdx = findSlotByIdentity(configStore, catalogStore, ['1481'])
       if (liuyinIdx >= 0) {
         axisLiuyinPromote = {
           targetSlot: resolveUltimateTargetSlot(
@@ -1100,7 +1113,6 @@ export function createRunCalcRound(deps: {
 
     // 雨果决算失衡值返还：每次失衡结束返还 min(25%, 剩余秒×5%) × bossStunValue 进下一次失衡条。
     // 返还只由「结束失衡」的决算产生（C2 的 Q 不结束不返还），恒为每窗 1 次；剩余秒非轴取滑块（轴模式待接轴反推）。
-    const hugoSlot = configStore.team.findIndex(c => c.agentId === '1291')
     const hugoHasVerdict = configStore.getMechanicSetting('hugo.exVerdictRatio', 1) > 0
       || configStore.getMechanicSetting('hugo.ultimateVerdictRatio', 1) > 0
     const hugoRefundRatio = hugoSlot >= 0 && hugoHasVerdict

@@ -158,20 +158,36 @@ peiluoProminenceMechanic.settings = [{
 }]
 
 /**
- * 阳炎轴窗口覆盖（规则 6 迁入，棘轮站点 6/8，2026-09-12 #10 真清偿）：
+ * 阳炎轴窗口覆盖（规则 6 迁入，棘轮站点 6/8，2026-09-12 #10 真清偿；
+ * **非轴折算臂** 2026-09-17 round 21 夜 A 自 `damagePool.ts:540` 迁入）：
  * 原本由 `useResourceCalc` 的 `peiluoKagerouMap` computed 按 agentId '1551' 找槽位后直调。
- * 迁入后槽位/轴由派发器给。
+ * 迁入后槽位/轴/滑块由派发器给。
+ *
+ * 两臂与门控**逐位保留**（伤害池原式 `charResult.agentId === '1551' ? (isAxis ? 桶 : 折算) : 0`）：
+ * - 门控 = **仅「本模块被派发」**（= 1551 在队），**无** `additionalAbilityActive` 门控——
+ *   阳炎出自**核心被动**（上分支终结技），不是额外能力（见 `PEILUO_KAGEROU_CRIT` 头注释与
+ *   spec §②「阳炎只给大招」）。⚠ 别照抄般岳/可琳那两支的额外能力门控：那两处是额外能力机制。
+ * - `isAxis` 真 → 轴内 21s 窗口扫描桶（`computePeiluoKagerouBonus`，值 = 实例加权平均暴伤）。
+ * - `isAxis` 假 → **折算标量** `peiluoKagerouPct = PEILUO_KAGEROU_CRIT × 覆盖率滑块`。
+ *   ⚠ 原式还要乘一个**行级**配对比例（决算 `1551016` 的 `peiluoKagerouPairRatio`，
+ *   由本模块 `patchExecutions` 写在该行上）——那一半**留在行上**由消费端乘，
+ *   故本标量只承载「与行无关的那一半」（标量 × 行级比例 = 原式，逐位等价）。
+ *
+ * 滑块缺省回落 **1**（与 `settings` 表 `peiluo.kagerouCoverage` 的 default 同值，
+ * 也与伤害池原式 `getMechanicSetting(…, 1)` 同值）。
  *
  * ⚠ 2026-09-16 round 16：早退判据从 `axes.length === 0` 改成 `!isAxis`（真轴模式布尔）。
  * 派发器不再在非轴时早退（否则别的模块的非轴折算臂物理不可达），故此处必须自己按 `isAxis` 分臂。
- * **佩洛伊斯的非轴臂仍在伤害池**（`peiluo.kagerouCoverage` 滑块 + 决算配对折算）——本模块
- * 本轮只把「轴臂」的进入条件对齐，**不接管**非轴臂（那需要 `peiluoKagerouPairRatio` 等
- * 只有伤害池才有的输入，属另一批）。
  */
-peiluoProminenceMechanic.axisWindowOverlays = ({ slot, axes, isAxis }) => {
-  if (!isAxis) return null
-  const map = computePeiluoKagerouBonus(slot, axes)
-  return map.size > 0 ? { peiluoKagerouMap: map } : null
+peiluoProminenceMechanic.axisWindowOverlays = ({ slot, axes, isAxis, settings }) => {
+  if (isAxis) {
+    const map = computePeiluoKagerouBonus(slot, axes)
+    return map.size > 0 ? { peiluoKagerouMap: map } : null
+  }
+  const cov = Math.max(0, Math.min(1, Number(settings['peiluo.kagerouCoverage'] ?? 1)))
+  return {
+    scalarBySlot: new Map([[slot, { peiluoKagerouPct: PEILUO_KAGEROU_CRIT * cov }]]),
+  }
 }
 /**
  * converge 阶段（2026-09-15 arch 棘轮自 `convergence.ts` 的 `merged.agentId === '1551'` 分支搬入，规则 6）：

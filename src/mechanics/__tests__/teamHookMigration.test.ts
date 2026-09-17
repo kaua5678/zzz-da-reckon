@@ -167,8 +167,25 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
     expect(banyueMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, additionalAbilityActive: false }))).toBeNull()
   })
 
-  it('仪玄凝神：终结技块开 15s 窗；触发块自身不享受；非轴不参与（非轴臂仍在伤害池）', () => {
-    expect(yixuanMechanic.axisWindowOverlays!(overlayInput({ isAxis: false }))).toBeNull()
+  it('仪玄凝神：终结技块开 15s 窗；触发块自身不享受；**非轴臂已迁入本模块**（标量）', () => {
+    // 2026-09-17 round 21 夜 A：非轴臂（原「仍在伤害池」，T7 裁决把注册 default 与伤害池
+    // fallback 归一为 0.5 后已无阻塞）整段迁进本模块 ⇒ 断言从 `toBeNull()` 改为
+    // 「桶留空 + 标量表给折算值」。⚠ 本断言**加强**而非放宽：原来只钉「非轴时什么都不做」，
+    // 现在钉「非轴时给出哪个精确值」，把「分支删掉」与「分支迁走」真正区分开
+    // （删掉会让这里变 null，仍有判据）。
+    expect((yixuanMechanic.axisWindowOverlays!(overlayInput({ isAxis: false })) as any)?.scalarBySlot
+      ?.get(0)?.yixuanNingshen).toEqual({ critDmg: 20, sheerDmg: 0 })  // 40 × 默认 0.5
+    // 非 C6 非轴：滑块两端精确值（0 ⇒ 0；1 ⇒ 40），且**不给贯穿**（贯穿只由 C6 给）
+    expect((yixuanMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'yixuan.ningshenCoverage': 0 } })) as any)
+      ?.scalarBySlot?.get(0)?.yixuanNingshen).toEqual({ critDmg: 0, sheerDmg: 0 })
+    expect((yixuanMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'yixuan.ningshenCoverage': 1 } })) as any)
+      ?.scalarBySlot?.get(0)?.yixuanNingshen).toEqual({ critDmg: 40, sheerDmg: 0 })
+    // C6 非轴：满覆盖 40 暴伤 + 20 贯穿（与非 C6 臂**同字段不同值**，证明命座分支真在模块里）
+    expect((yixuanMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, cinemaLevel: 6 })) as any)
+      ?.scalarBySlot?.get(0)?.yixuanNingshen).toEqual({ critDmg: 40, sheerDmg: 20 })
+    // 额外能力未触发 ⇒ 一律不参与（门控逐位保留）
+    expect(yixuanMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, additionalAbilityActive: false }))).toBeNull()
+    // 轴臂：桶（非 C6 + 轴）
     const axes = axis([
       { slot: 0, moveId: '1371014', count: 1, startTime: 0 },
       { slot: 0, moveId: '1371009', count: 1, startTime: 3 },
@@ -176,16 +193,39 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
     const res: any = yixuanMechanic.axisWindowOverlays!(overlayInput({ axes }))
     expect(res.yixuanNingshenMap.get('1371009').critDmg).toBe(40)
     expect(res.yixuanNingshenMap.has('1371014')).toBe(false)
+    // 轴臂**不产标量**（两臂互斥；若实现把两者同时产出，标量会盖掉桶 ⇒ 这里红）
+    expect(res.scalarBySlot).toBeUndefined()
+    // ★ C6 臂**优先于轴臂**：轴态 + C6 仍走满覆盖标量、不查桶（原伤害池三元顺序逐位保留）
+    const c6Axis: any = yixuanMechanic.axisWindowOverlays!(overlayInput({ axes, cinemaLevel: 6 }))
+    expect(c6Axis.yixuanNingshenMap).toBeUndefined()
+    expect(c6Axis.scalarBySlot.get(0).yixuanNingshen).toEqual({ critDmg: 40, sheerDmg: 20 })
   })
 
-  it('佩洛伊斯阳炎：上分支开 21s 窗，仅上分支/决算受益；非轴不参与（非轴臂仍在伤害池）', () => {
-    expect(peiluoProminenceMechanic.axisWindowOverlays!(overlayInput({ isAxis: false }))).toBeNull()
+  it('佩洛伊斯阳炎：上分支开 21s 窗，仅上分支/决算受益；**非轴臂已迁入本模块**（标量）', () => {
+    // 2026-09-17 round 21 夜 A：非轴臂（原「仍在伤害池」）整段迁进本模块 ⇒ 断言从 `toBeNull()`
+    // 改为「桶留空 + 标量表给 `40 × 覆盖率`」。⚠ 行级配对比例（决算的 `peiluoKagerouPairRatio`）
+    // **不进标量**（逐 moveId 不同 ⇒ 进不了「全行同值」的标量），由消费端乘回
+    // —— 真管线判据在 `damagePoolNightA.test.ts`（那条会因漏乘而红）。
+    const nonAxis: any = peiluoProminenceMechanic.axisWindowOverlays!(overlayInput({ isAxis: false }))
+    expect(nonAxis.peiluoKagerouMap).toBeUndefined()
+    expect(nonAxis.scalarBySlot.get(0).peiluoKagerouPct).toBe(40)   // 默认覆盖率 1
+    expect((peiluoProminenceMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'peiluo.kagerouCoverage': 0.5 } })) as any)
+      .scalarBySlot.get(0).peiluoKagerouPct).toBe(20)
+    expect((peiluoProminenceMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'peiluo.kagerouCoverage': 0 } })) as any)
+      .scalarBySlot.get(0).peiluoKagerouPct).toBe(0)
+    // ⚠ 阳炎出自**核心被动**（上分支终结技）⇒ **无**额外能力门控（别照抄般岳/可琳那两支）；
+    // 下面这行是这条不变量的判据：额外能力关掉，非轴臂**仍然**出标量。
+    expect((peiluoProminenceMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, additionalAbilityActive: false })) as any)
+      .scalarBySlot.get(0).peiluoKagerouPct).toBe(40)
+    // 轴臂：桶
     const axes = axis([
       { slot: 0, moveId: '1551015', count: 1, startTime: 0 },
       { slot: 0, moveId: '1551016', count: 1, startTime: 5 },
     ])
     const res: any = peiluoProminenceMechanic.axisWindowOverlays!(overlayInput({ axes }))
     expect(res.peiluoKagerouMap.get('1551016')).toBe(40)
+    // 轴臂不产标量（两臂互斥）
+    expect(res.scalarBySlot).toBeUndefined()
   })
 
   it('可琳扫除帮手：轴内招式 +35%，普攻段归并到 basic_attack 聚合行键；额外能力未触发不参与', () => {

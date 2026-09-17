@@ -36,6 +36,9 @@ import { counterAssistOf } from '@/data/counterAssists'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { CalcRoundThreads } from './roundThreads'
 import { getAgentMechanic, getRegisteredMechanicSettings, type AgentAxisContext, type AgentInteractionContext, type AgentTeamPhase, type AxisScalarOverlays, type MechanicTeamMember } from '@/mechanics'
+// 蕾米埃尔身份谓词（原 `:996` 内联 `agent?.id === '1581' || agent?.teammateBuffId === 'remielle'`
+// 的两臂收敛点）。⚠ 只 import 谓词、不 import 整个模块的其它数学（规则 6 的语义面）。
+import { isRemielleAgent } from '@/mechanics/agents/remielle'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import type {
@@ -203,25 +206,17 @@ function agentHasCinemaSkillLevelBuff(agent: any): boolean {
   )
 }
 
-export function resolveRemielleDazeBonus(
-  configStore: ReturnType<typeof useConfigStore>,
-  catalogStore: ReturnType<typeof useCatalogStore>,
-  slot: number,
-  agent: Agent,
-): number {
-  const team = buildMechanicTeamMembers(configStore, catalogStore)
-  const faction = agent.faction
-  const active = team.some(member => {
-    if (member.slot === slot || !member.agent) return false
-    return member.agent.specialty === 'anomaly' || (!!faction && member.agent.faction === faction)
-  })
-  const anomalyCount = team.filter(member => member.agent?.specialty === 'anomaly').length
-  const tier = active ? Math.max(1, Math.min(3, anomalyCount)) : 0
-  return [0, 6, 12, 35][tier] ?? 0
-}
+/**
+ * 蕾米埃尔「额外能力三档失衡提升」的算式**已迁进** `src/mechanics/agents/remielle.ts`
+ * （`remielleDazeBonusPct` / `applyRemiellePanel` / `buildRemielleCharConfig`，2026-09-17 round 21 夜间批 C）。
+ *
+ * 原先这里有一个 `resolveRemielleDazeBonus` 导出（唯一调用点就是本条迁移的两个站点）；迁移后全仓
+ * 零调用点 ⇒ 删除，避免规则 16① 的「死口径」。两处调用点各自的语义**逐位保留**：
+ * 面板阶段那条是 `applyPanel`（同槽自面板块），cfg 阶段那条是 `buildCharConfig`（双出口）。
+ * ⚠ 不要再在本文件重建同形函数——「唯一写者 = 角色模块」正是本批要建立的判据（同 T6）。
+ */
 
-/** 计算单个角色的局内面板（复用 TeamConfigPage 同逻辑） */
-export function computePanel(
+/** 计算单个角色的局内面板（复用 TeamConfigPage 同逻辑） */export function computePanel(
   slot: number,
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
@@ -618,7 +613,7 @@ export function computePanelPhases(
 
   // 耀嘉音：咏叹华彩公式用 dynamicSkillLevel（s）；源面板需写入 3/5 命技能等级加成。
   {
-    const yjSlot = configStore.team.findIndex(c => c.agentId === '1311')
+    const yjSlot = findSlotByIdentity(configStore, catalogStore, ['1311'])
     if (yjSlot >= 0) {
       const yjCinema = configStore.team[yjSlot]?.cinemaLevel ?? 0
       const skillBonus = yjCinema >= 5 ? 4 : yjCinema >= 3 ? 2 : 0
@@ -753,9 +748,19 @@ export function computePanelPhases(
       settings: mechanismSettings,
     })
   }
-  if (agent.id === '1581' || agent.teammateBuffId === 'remielle') {
-    panel.remielleRadiantTurnDazeBonusPct = resolveRemielleDazeBonus(configStore, catalogStore, slot, agent)
-  }
+  // 蕾米埃尔「额外能力三档失衡提升」块已迁进 `remielle.ts#applyRemiellePanel`（规则 6，
+  // 2026-09-17 round 21 夜间批 C）；派发点在 `:716` 的 `applyPanel`，早于本行
+  // ⇒ `panel.remielleRadiantTurnDazeBonusPct` 此刻**已写好**，此处不得再写（否则双计）。
+
+  // ⚠ **简专属块保留在编排层（本批实测判定：迁不动，不是没做）**：
+  // 它读的 `jane.passionCoverage` **未注册成 MechanicSetting**（`getRegisteredMechanicSettings()`
+  // 不含它，运行时实证）⇒ **不在 `AgentPanelInput.settings` 里**（`resolveMechanicSettings` 只铺注册项）。
+  // 迁进 `jane.ts#applyJanePanel` 会把用户的滑块值静默丢掉——本批逐位等价对拍实测：
+  // 滑块 0.5 的队伍 `physicalAnomalyBuildUpEfficiency` 由 **47.5 掉到 0**（`?? 0.9` 读不到 → 该项恒 0）。
+  // 迁它**必须先注册 setting** = 多一个用户可见 UI 滑块（该页已有手写卡片 `janePassionSlot`），
+  // 属**产品级口径**、用户未裁决 ⇒ **不注册、不迁、如实挂账**（分诊 §3.3 / §6.4）。
+  // @fact jane:1261/狂热面板块落点 口径: 简的狂热/精通转攻/痛点/影画1/6 面板区**保留在 helpers.ts#computePanelPhases**（不在 jane.ts#applyPanel），因为其唯一输入 `jane.passionCoverage` 未注册为 MechanicSetting（不进 AgentPanelInput.settings），迁移会静默丢滑块值（逐位对拍实测：滑块 0.5 队 physicalAnomalyBuildUpEfficiency 47.5→0） | 据 本批逐位等价对拍@2026-09-17 | 验 src/composables/__tests__/helpersNightC.test.ts | 锚 src/composables/resourceCalc/helpers.ts#computePanelPhases | 信 确认
+  // ⟳复核: 用户裁决「jane.passionCoverage 是否注册成 MechanicSetting」后复核——若注册，本块即可迁进 jane.ts#applyJanePanel（届时 settings 里有值），并删 ResourceUtilizationPage.vue 的手写卡片以避双滑块 | 到期 2026-12-31
   if (agent.id === '1261' || agent.teammateBuffId === '1261') {
     const cinema = char.cinemaLevel ?? 0
     const passionCoverage = configStore.getMechanicSetting('jane.passionCoverage', 0.9)
@@ -793,15 +798,9 @@ export function computePanelPhases(
   }
 
   // 蕾米强特 Radiant Turn 的“相变时流”：全队增伤，按技能等级 12/14/16 对应 18%/21%/24%。
-  const phaseFlowRemielleSlot = configStore.team.findIndex(char => {
-    const member = char.agentId ? catalogStore.getAgent(char.agentId) : null
-    return member?.id === '1581' || member?.teammateBuffId === 'remielle'
-  })
-  if (phaseFlowRemielleSlot >= 0) {
-    const remielleCinema = configStore.team[phaseFlowRemielleSlot]?.cinemaLevel ?? 0
-    const remielleSkillLevelBonus = remielleCinema >= 5 ? 4 : remielleCinema >= 3 ? 2 : 0
-    panel.dmgBonus += (12 + remielleSkillLevelBonus) * 1.5
-  }
+  // 2026-09-17 round 21 夜间批 C 迁进 `remielle.ts#applyRemielleTeamPanelEffects`
+  // （走**队伍级面板效果**钩子，派发点在 `:740` 的 `teamPanelEffects` 循环——该加成**随目标槽
+  // 不同而不同**，写进蕾米自己的 `applyPanel` 只会加到蕾米本人面板，即分诊 §2.1 的 P2 陷阱）。
   // 3命技能等级+2、5命+4，统一进入伤害/失衡倍率系数；角色buff已带此条的跳过通用规则
   const cinema = char.cinemaLevel ?? 0
   if (!agentHasCinemaSkillLevelBuff(agent)) {
@@ -939,7 +938,9 @@ export function getTeamAnomalyDurationBonus(
   if (element === 'fire' && teamHasAgent(configStore, catalogStore, ['1171'])) return 3
   if (element === 'electric' && teamHasAgent(configStore, catalogStore, ['1211'])) {
     const team = buildMechanicTeamMembers(configStore, catalogStore)
-    const rinaSlot = team.find(member => member.agentId === '1211')?.slot ?? -1
+    // 槽位查找收敛为 `findSlotByIdentity`（单一事实源，规则 11）；`?? -1` 兜底逐位保留
+    // ——原式是 `team.find(...)?.slot ?? -1`，`findSlotByIdentity` 未命中同样返回 -1。
+    const rinaSlot = findSlotByIdentity(configStore, catalogStore, ['1211']) ?? -1
     const rina = rinaSlot >= 0 ? catalogStore.getAgent('1211') ?? null : null
     if (rinaSlot >= 0 && evalAdditionalAbility(team, rinaSlot, rina, getAgentSpec('1211')?.additionalAbility)) return 3
   }
@@ -955,6 +956,8 @@ export function getTeamAnomalyDurationBonus(
  * || a?.teammateBuffId === 'Y' })` 这一形状在全仓编排层**重复 18 次**（`damagePool.ts` 5 /
  * `helpers.ts` 5 / `useResourceCalc.ts` 3 / `convergence.ts` 3 / `normaHatChain.ts` 1 /
  * `liuyinPromote.ts` 1），且每一处都是角色判定棘轮的计数站点。
+ * ⚠ **调用点若同时还要「查表/读该成员的其它字段」，请用本函数拿槽位后再按槽位取**（判据 17：
+ * 槽位号 ≠ 下标，`team` 数组索引即槽位号但 `characters`/`panels` 是按位置压缩的）。
  *
  * ⚠ **必须查两个字段**：`agent.id`（角色自己的 id）与 `agent.teammateBuffId`（队友 buff 归属别名，
  * 如蕾米埃尔 `1581` 的别名 `'remielle'`）。漏查后者会让「按 buff 别名引用该角色」的配置找不到人
@@ -975,7 +978,18 @@ export function findSlotByIdentity(
   })
 }
 
-/** 风化浸染默认选择：优先非支援/防护、非蕾米埃尔的非风队友属性 */
+/**
+ * 风化浸染默认选择：优先非支援/防护、非蕾米埃尔的非风队友属性。
+ *
+ * ⚠ **「是不是蕾米埃尔」的判定已收敛为 `isRemielleAgent`（`remielle.ts` 导出，单一事实源）**：
+ * 本函数原先内联 `agent?.id === '1581' || agent?.teammateBuffId === 'remielle'`，2026-09-17 round 21
+ * 夜间批 C 改调该谓词（**本次不迁本函数**：它是「为我挑一个队友槽位」的**跨槽决策**，
+ * `applyPanel` 只服务当前角色，无落点 ⇒ 迁移需新契约，属分诊 §4 批次 3/4）。
+ *
+ * ⚠ **与 UI 口径的分裂仍在（未修，如实挂账）**：`ResourceUtilizationPage.vue:417-423` 的
+ * `janePassionSlot` 用的是 `agent?.id === '1261' || agent?.teammateBuffId === '1261'`——两臂同值
+ * ⇒ **不是分裂**；真正未裁决的是本函数 `isRemielle` 与 UI 之间**没有**对应用户可见开关（分诊 §3.4）。
+ */
 export function getWindInfectionTargetSlot(
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
@@ -993,7 +1007,7 @@ export function getWindInfectionTargetSlot(
       agentId: char.agentId ?? '',
       element: agent?.damageElement ?? '',
       specialty: agent?.specialty ?? '',
-      isRemielle: agent?.id === '1581' || agent?.teammateBuffId === 'remielle',
+      isRemielle: isRemielleAgent(agent),
     }
   }).filter(x => !!x.agentId)
 
@@ -1658,13 +1672,13 @@ export function buildCharConfig(
   const panel = computePanel(slot, configStore, catalogStore)
   if (!panel) return null
 
-  const remielleEnabled = agent.id === '1581' || agent.teammateBuffId === 'remielle'
-  const remielleDazeBonusPct = remielleEnabled
-    ? resolveRemielleDazeBonus(configStore, catalogStore, slot, agent)
-    : 0
-  if (remielleEnabled) {
-    panel.remielleRadiantTurnDazeBonusPct = remielleDazeBonusPct
-  }
+  // 「本槽是不是蕾米埃尔」+ 面板盖章 + cfg 三字段（`remielleEnabled` / `remielleRadiantTurnDazeBonusPct`
+  // / 面板同名字段）**已整块迁进** `remielle.ts#buildRemielleCharConfig`（2026-09-17 round 21 夜间批 C，
+  // 规则 6）。原实现是 `:1661` 的 `agent.id === '1581' || agent.teammateBuffId === 'remielle'` 判据
+  // 加 `:1662-1634` 的**双出口**（panel + cfg 各写一次）；现在**唯一写者 = 该角色模块**，钩子在下文
+  // `charModule?.buildCharConfig?.({ … cfg })` 处被派发（它写的就是本函数刚建好的同一个 cfg 对象）。
+  // ⇒ cfg 字面量里**不再**出现 `remielleEnabled` / `remielleRadiantTurnDazeBonusPct`（未命中时保持
+  // `undefined`，与迁移前 `false`/`0` 在消费端 `if (cfg.remielleEnabled && …)` 下等价）。
 
   // 判断命破角色
   const isFlash = !!(agent.level60.flashEnergyRegen && agent.level60.flashEnergyRegen > 0)
@@ -1743,11 +1757,12 @@ export function buildCharConfig(
     remielleRainbowEndActionTime: remielleRainbowEnd?.actionTime ?? 0,
     remielleRainbowEndDecibelRecovery: remielleRainbowEnd?.decibelRecovery ?? 0,
     remielleRainbowEndComboAlignRatio: remielleRainbowEnd?.comboAlignRatio ?? 0,
-    remielleEnabled,
+    // `remielleEnabled` / `remielleRadiantTurnDazeBonusPct` 由下方
+    // `charModule?.buildCharConfig?.()`（= `remielle.ts#buildRemielleCharConfig`）写入，
+    // 不再在此处按身份判定（2026-09-17 round 21 夜间批 C）。
     remielleRadiantTurnMoveId: remielleRadiantTurn?.moveId ?? '',
     remielleRadiantTurnActionTime: remielleRadiantTurn?.actionTime ?? 0,
     remielleRadiantTurnDecibelRecovery: remielleRadiantTurn?.decibelRecovery ?? 0,
-    remielleRadiantTurnDazeBonusPct: remielleDazeBonusPct,
     exSpecialMoveId: exSpecial?.moveId ?? '',
     exSpecialEnergyConsume: exSpecial?.energyConsume ?? 0,
     exSpecialCostType: exSpecial?.costType ?? (exSpecial?.energyConsume ? 'energy' : 'free'),
