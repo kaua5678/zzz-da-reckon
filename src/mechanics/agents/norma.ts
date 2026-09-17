@@ -203,7 +203,7 @@ function computeNormaSource(input: NormaSourceInput): NormaMechanicSource {
   }
 }
 
-function applyNormaPanel({ slot: _slot, team: _team, panel }: AgentPanelInput): void {
+function applyNormaPanel({ slot: _slot, team: _team, agent, panel }: AgentPanelInput): void {
   // 核心被动：暴击>50% → 暴伤（每1% +1.7，cap 85）
   const critRate = panel.critRate ?? 0
   const over = Math.max(0, critRate - 50)
@@ -228,6 +228,23 @@ function applyNormaPanel({ slot: _slot, team: _team, panel }: AgentPanelInput): 
   // 技术鸿沟失衡易伤/攻击提升由 teammate-buffs.json 与 buildCharConfig 承载（覆盖率滑块在队友 buff 侧）。
   if ((panel.additionalAbilityActive ?? 0) > 0) {
     panel.stunDurationBonusSeconds = (panel.stunDurationBonusSeconds ?? 0) + 2
+  }
+
+  // 额外能力·集群优势：嗯呢弹幕期间攻击 +44~870（Lv7 满级 870）。
+  // 规则 6 迁入（2026-09-17 round 20 R20-h1 批次 1 / A12）：原住在 `helpers.ts#computePanelPhases`
+  // 的 `if (agent.id === '1571' || agent.teammateBuffId === '1571')` 块；同槽自身面板 ⇒ 不触 P2 跨槽陷阱。
+  // `buildCharConfig` 也把该值写进 `cfg.panel`（计算用），此处补进最终展示面板，
+  // 保证「最终面板包含一切实际计算」——迁入后**顺序不变**（仍在 additionalAbilityActive 门控下无条件 +870）。
+  //
+  // ⚠ **右臂 `teammateBuffId === '1571'` 是死分支、逐位保留不删**（分诊报告 §3.2 已证：`'1571'`
+  // 不在 catalog 的 5 个 `teammateBuffId`（1261/1581/1411/1171/1511）里）。删它是语义变更不是清理：
+  // 将来数据面若给某人填上 `teammateBuffId: '1571'`，该臂会复活。故此处**原样保留整条析取**——
+  // 虽然派发点已按 `agent.id` 寻址、右臂当前恒 false，它作为**数据面守卫**继续生效。
+  if (agent.id === '1571' || agent.teammateBuffId === '1571') {
+    if ((panel.additionalAbilityActive ?? 0) > 0) {
+      // 满覆盖（用户确认去弹幕覆盖率滑块，嗯呢弹幕易全程覆盖）
+      panel.atk = (panel.atk ?? 0) + TECH_GAP_ATK_CAP
+    }
   }
 }
 

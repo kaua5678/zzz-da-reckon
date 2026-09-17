@@ -4,8 +4,10 @@
  * - 核心被动：[普通攻击]/[冲刺攻击]触发[火力镇压]时伤害 +70%
  *   → patchExecutions 按火力镇压 moveId 行挂 dmgBonus × 覆盖率滑块 soldier11.fireSuppressCoverage。
  * - 额外能力·燎原（spec.additionalAbility：队伍存在同属性或同阵营角色）：
- *   → 火属性伤害 +10%（无条件部分，computePanelPhases 1041 块）
- *   → 攻击失衡敌人额外 +22.5% × 滑块 soldier11.prairieFireStunCoverage（computePanelPhases 1041 块）
+ *   → 火属性伤害 +10%（无条件部分，本模块 applyPanel）
+ *   → 攻击失衡敌人额外 +22.5% × 滑块 soldier11.prairieFireStunCoverage（本模块 applyPanel；
+ *     2026-09-17 round 20 R20-h1 批次 1 自 `helpers.ts#computePanelPhases` 的 `agent.id === '1041'`
+ *     块迁入，逐位保留 `additionalAbilityActive > 0` 门控）
  *   → 潜能觉醒·绝焰只取最高档：额外能力触发时自身暴伤 +48%（applyPanel）。
  * - 影画1 快速升温：接战时能量不足 40 回满至 80，50s 最多一次
  *   → 整局口径近似：floor(battleTime/50)×40 注入 initialEnergyGift（整局总量口径，不做时间轴）。
@@ -30,6 +32,7 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
@@ -119,6 +122,28 @@ export function patchSoldier11Executions({ cfg, state, executions }: AgentResour
   }
 }
 
+/**
+ * 面板阶段机制（规则 6 迁入，2026-09-17 round 20 R20-h1 批次 1 / A7）。
+ *
+ * 原本住在 `helpers.ts#computePanelPhases` 的 `if (agent.id === '1041')` 硬编码块
+ * （分诊报告 `R20-A-helpers-triage.md` §4 批次 1）。同槽自身面板 ⇒ 不触 P2 跨槽陷阱。
+ *
+ * 顺序逐位保留：原块在燎原火伤之前/之后都与别的块无耦合（各写不同字段），
+ * 但**同一 `fireDmg` 上的两条 `+=` 顺序原样保留**（+10 后 +22.5×覆盖率）。
+ * 覆盖率滑块 default 1 = 原 fallback 1 ⇒ 无默认值分裂。
+ */
+function applySoldier11Panel({ panel, settings }: AgentPanelInput): void {
+  // 潜能觉醒·绝焰（最高档）：额外能力·燎原触发时自身暴伤 +48%
+  if ((panel.additionalAbilityActive ?? 0) > 0) {
+    panel.critDmg = (panel.critDmg ?? 0) + POTENTIAL_CRIT_DMG
+    // 「11号」额外能力·燎原（队伍存在同属性或同阵营角色）：
+    // 火属性伤害 +10%；攻击失衡敌人额外 +22.5% × 覆盖率滑块（非轴模式默认满覆盖）。
+    panel.fireDmg = (panel.fireDmg ?? 0) + 10
+    const stunCov = settings['soldier11.prairieFireStunCoverage'] ?? 1
+    panel.fireDmg = (panel.fireDmg ?? 0) + 22.5 * stunCov
+  }
+}
+
 export const soldier11Mechanic: AgentMechanicModule = {
   id: 'agent:soldier11',
   agentIds: [AGENT_ID],
@@ -165,12 +190,7 @@ export const soldier11Mechanic: AgentMechanicModule = {
     const comboBase = exSpecialCount * (cfg.exSpecialActionTime ?? 0) * (cfg.exSpecialComboAlignRatio ?? 0)
     return { necessaryTime: base + loopTime, comboAlignTime: comboBase }
   },
-  applyPanel: ({ panel }) => {
-    // 潜能觉醒·绝焰（最高档）：额外能力·燎原触发时自身暴伤 +48%
-    if ((panel.additionalAbilityActive ?? 0) > 0) {
-      panel.critDmg = (panel.critDmg ?? 0) + POTENTIAL_CRIT_DMG
-    }
-  },
+  applyPanel: applySoldier11Panel,
   buildCharConfig: buildSoldier11CharConfig,
   // A45 快速循环伤害行：窗口招（强特/连携/终结）后必打，动作时间减半占前台；
   // 倍率走倍率表（#4=火力镇压、#5=结算6段），核心被动/C6 经 patchExecutions 咬合。

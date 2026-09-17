@@ -122,12 +122,15 @@ describe('「11号」快速火刀动作块与层数结算', () => {
 
 describe('「11号」applyPanel / buildCharConfig', () => {
   it('潜能·绝焰（最高档）：额外能力触发时暴伤 +48%，未触发为 0', () => {
+    // 2026-09-17 round 20 R20-h1：燎原火伤块自 computePanelPhases 迁进本模块 applyPanel 后，
+    // 该钩子读派发器直给的 `settings`（覆盖率滑块）。直接调用钩子的测试须补齐该入参
+    // （派发点 computePanelPhases 恒传；同款 fixture 见 piper/hugo 测试）。断言值不变。
     const panelOn: any = { additionalAbilityActive: 1 }
-    soldier11Mechanic.applyPanel!({ panel: panelOn } as any)
+    soldier11Mechanic.applyPanel!({ panel: panelOn, settings: {} } as any)
     expect(panelOn.critDmg).toBe(48)
 
     const panelOff: any = {}
-    soldier11Mechanic.applyPanel!({ panel: panelOff } as any)
+    soldier11Mechanic.applyPanel!({ panel: panelOff, settings: {} } as any)
     expect(panelOff.critDmg ?? 0).toBe(0)
   })
 

@@ -8,7 +8,9 @@
  * - 燎火/燎索点：绞勒式次数显式可调（燎火累积速率原文未给数值，不做臆造）；燎索点=绞勒式+终结技
  *   各+1，每满3点把下一次绞勒式替换为月辉丝·绊，终结技后的焰舞觉醒使消耗降为净2点，按此折算追加连携。
  * - 影画1：进场喧响+1500（180秒一次整局近似）；攻击禁锢敌人无视12%防御按覆盖率折算。
- * - 影画2：攻击力+15% 沿用 computePanelPhases 既有块；燎火返还（25s一次返还50%燎火）按
+ * - 影画2：攻击力+15%（2026-09-17 round 20 R20-h1 自 `computePanelPhases` 块迁入本模块
+ *   `applyEvelynPanel`，乘法位置敏感——迁移前后 atk 逐位相同，证据见 `panelBlocksR20h1.test.ts`）；
+ *   燎火返还（25s一次返还50%燎火）按
  *   「额外绞勒式 floor(battleTime/25)」计入绞勒式与燎索点；打断等级提升（纯霸体）不建模。
  * - 影画4：连携/终结获得护盾时暴伤+40%，按持盾覆盖率折算。
  * - 影画6：弦影绝锋期间普攻/冲刺/特殊/强特命中追加月辉丝·弦追击（375%攻击力火伤，视为连携伤害），
@@ -275,6 +277,19 @@ function applyEvelynPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
   }
   if (cinemaLevel >= 1) {
     panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + EVELYN_C1_DEF_IGNORE * c1DefIgnoreCoverage
+  }
+  // 影画2 赴火之舞：攻击力提升 15%（燎火返还部分未建模，见 status pending）。
+  //
+  // ⚠ **乘法且位置敏感**（2026-09-17 round 20 R20-h1 批次 1 / A8，自 `helpers.ts` 的
+  // `if (agent.id === '1321')` 块迁入）：原块在 `computePanelPhases` 里位于 applyPanel 派发点
+  // **之后**约 80 行；本模块改为在派发点内施加。已核实两者之间**没有任何 `panel.atk` 写入**
+  //（区间内写的是 energyGainEfficiency / dmgBonus / critDmg / anomalyBuildUpEfficiency /
+  // stunBuildUpBonus / enemyPhysicalResReduction；其余 atk 写入块全部带 `agent.id === '<自己>'`
+  // 门控 ⇒ 对本槽不触发）⇒ 上取整前后的 `panel.atk` 基数逐位相同。
+  // 迁移前后逐位等价证据 = `panelBlocksR20h1.test.ts` 的 atk 精确值用例 + 162 行面板指纹对拍。
+  // 算式逐位保留（`1 + 0.15` 不折叠成 `1.15`，虽实测同一 double，但不给未来留改写口子）。
+  if (cinemaLevel >= 2) {
+    panel.atk = Math.round(panel.atk * (1 + 0.15))
   }
 }
 

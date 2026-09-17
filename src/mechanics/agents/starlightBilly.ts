@@ -2,6 +2,7 @@ import type {
   AgentMechanicModule,
   AgentCharConfigInput,
   AgentExSpecialTimeInput,
+  AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
@@ -831,12 +832,42 @@ const settings: MechanicSetting[] = [
   },
 ]
 
+/**
+ * 面板阶段机制（规则 6 迁入，2026-09-17 round 20 R20-h1 批次 1 / A6）。
+ *
+ * 原本住在 `helpers.ts#computePanelPhases` 的 `if (agent.id === '1531')` 硬编码块
+ * （分诊报告 `R20-A-helpers-triage.md` §4 批次 1）。同槽自身面板 ⇒ 不触 P2 跨槽陷阱。
+ *
+ * 覆盖率类滑块改读派发器直给的**已解析** `AgentPanelInput.settings`（applyPanel 阶段拿不到
+ * configStore；见 `mechanics/types.ts` 的 AgentPanelInput 注释——禁再经 panel 字段走私）。
+ * 三个滑块 default 全 = 1 = 原 fallback 1 ⇒ 无默认值分裂（迁移不改数值）。
+ *
+ * 语义逐位保留：
+ * - 核心被动：接战状态每次动力压制后暴伤 +90%（Lv.7，45s 刷新）× 覆盖率（默认 100%）；
+ * - 影画4：动力压制每次暴伤 +8%（至多 2 层 = 16%，45s 刷新）× 覆盖率（默认 100%）；
+ * - 影画1：强化特殊技命中后自身攻击无视 18% 物理抗性（45s 刷新）× 覆盖率（默认 100%）。
+ */
+function applyStarlightBillyPanel(input: AgentPanelInput): void {
+  specBase.applyPanel?.(input)
+  const { panel, cinemaLevel, settings } = input
+  const coreCoverage = settings['1531.driveSuppressionCritDmgCoverage'] ?? 1
+  const c4Coverage = settings['1531.c4CritDmgCoverage'] ?? 1
+  const c1Coverage = settings['1531.c1ResIgnoreCoverage'] ?? 1
+  panel.critDmg = (panel.critDmg ?? 0) + 90 * coreCoverage
+  if (cinemaLevel >= 4) {
+    panel.critDmg = (panel.critDmg ?? 0) + 8 * 2 * c4Coverage
+  }
+  if (cinemaLevel >= 1) {
+    panel.enemyPhysicalResReduction = (panel.enemyPhysicalResReduction ?? 0) + 18 * c1Coverage
+  }
+}
+
 export const starlightBillyMechanic: AgentMechanicModule = {
   id: 'agent:starlight_billy',
   agentIds: [AGENT_ID],
   name: '星徽·比利',
   description: '主循环（动力压制→孤轮，烧血刷决意）、HP 池约束、付费强特（摇曳/抓地 60 闪能）、决意→最高马力星光、星辉、影画1/2/4/6。',
-  applyPanel: input => specBase.applyPanel?.(input),
+  applyPanel: applyStarlightBillyPanel,
   buildCharConfig: buildBillyCharConfig,
   applyTeamConfig: applyBillyTeamConfig,
   estimateExSpecialTime: billyExSpecialTime,

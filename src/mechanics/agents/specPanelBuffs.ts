@@ -1,5 +1,6 @@
 import type {
   AgentMechanicModule,
+  AgentPanelInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentSkillTransformInput,
@@ -206,6 +207,27 @@ peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel }: any) => {
   // 大招口径：2000 喧响/次；通用大招行走上分支 moveId（patchExecutions 拆分三分支）
   cfg.ultimateCost = PEILUO_ULT_COST
   cfg.ultimateMoveId = PEILUO_ULT_UPPER
+}
+/**
+ * 面板阶段机制（规则 6 迁入，2026-09-17 round 20 R20-h1 批次 1 / A10）。
+ *
+ * 原住在 `helpers.ts#computePanelPhases` 的 `if (agent.id === '1551')` 硬编码块；同槽自身面板，
+ * 无覆盖率滑块（纯常量 + `cinemaLevel` + 额外能力标记）。接口 `AgentMechanicModule.applyPanel`
+ * 早已声明（`types.ts:443`），本模块此前**没有**该钩子 ⇒ 纯新增，不动契约。
+ */
+peiluoProminenceMechanic.applyPanel = ({ panel, cinemaLevel }: AgentPanelInput) => {
+  // 影画1 黄昏旧章：暴击率 +8%（进场喧响 1000 在 buildCharConfig 注入）。
+  if (cinemaLevel >= 1) {
+    panel.critRate = (panel.critRate ?? 0) + 8
+  }
+  // 额外能力：队伍存在[击破]/[支援]角色时暴伤 +40%（连携回 300 喧响未建模，见 status pending）。
+  if ((panel.additionalAbilityActive ?? 0) > 0) {
+    panel.critDmg = (panel.critDmg ?? 0) + 40
+  }
+  // 影画4 焚昼孽火：持盾期间失衡值 +10%（护盾不建模，用户口径默认全覆盖）。
+  if (cinemaLevel >= 4) {
+    panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + 10
+  }
 }
 peiluoProminenceMechanic.transformSkillExecutions = (input: any) => {
   const panel = input.panel
@@ -617,6 +639,25 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
     for (const cfg of characters) {
       const specialty = team.find(m => m.slot === cfg.slot)?.agent?.specialty
       if (specialty === 'attack' || specialty === 'rupture') cfg.extraSelfDecibelPerUltimate = 300
+    }
+  },
+  /**
+   * 面板阶段机制（规则 6 迁入，2026-09-17 round 20 R20-h1 批次 1 / A9）。
+   *
+   * 原住在 `helpers.ts#computePanelPhases` 的 `if (agent.id === '1391')` 硬编码块；同槽自身面板，
+   * 无覆盖率滑块（纯常量 + `cinemaLevel`）。接口 `AgentMechanicModule.applyPanel` 早已声明
+   * （`types.ts:443`），本模块此前**没有**该钩子 ⇒ 纯新增，不动契约。
+   *
+   * 语义逐位保留：
+   * - 影画1 超级可怕小老虎：进场暴击率 +12%（进场威风 100 在 buildCharConfig 注入）；
+   * - 影画4 降妖伏魔虎修者：虎啸下自身暴伤 +35%（用户确认虎啸满覆盖）。
+   */
+  applyPanel: ({ panel, cinemaLevel }: AgentPanelInput) => {
+    if (cinemaLevel >= 1) {
+      panel.critRate = (panel.critRate ?? 0) + 12
+    }
+    if (cinemaLevel >= 4) {
+      panel.critDmg = (panel.critDmg ?? 0) + 35
     }
   },
   buildCharConfig: (input) => {

@@ -195,7 +195,7 @@ export function computeLiuyinSource(input: LiuyinSourceInput): LiuyinMechanicSou
   }
 }
 
-function applyLiuyinPanel({ slot, team, cinemaLevel, panel }: AgentPanelInput): void {
+function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, settings }: AgentPanelInput): void {
   // 额外能力触发条件由 spec.additionalAbility 声明式统一判定写入 panel.additionalAbilityActive；
   // 兜底走硬编码（spec 未声明时）。
   const extraAbilityActive = (panel.additionalAbilityActive ?? 0) > 0
@@ -215,9 +215,31 @@ function applyLiuyinPanel({ slot, team, cinemaLevel, panel }: AgentPanelInput): 
     panel.critDmg__exSpecial = (panel.critDmg__exSpecial ?? 0) + EX_SPECIAL_CRIT_DMG_BONUS
   }
 
-  // 影画4：好评如潮状态下琉音攻击力 +500，默认满覆盖（覆盖率在 helpers.ts 读取设置后折算）。
+  // 影画4：好评如潮状态下琉音攻击力 +500，默认满覆盖（覆盖率从已解析滑块折算）。
   if (cinemaLevel >= 4) {
     panel.liuyinGoodReviewAtkBonus = (panel.liuyinGoodReviewAtkBonus ?? 0) + CINEMA4_GOOD_REVIEW_ATK
+  }
+
+  // 影画4 折算（规则 6 迁入，2026-09-17 round 20 R20-h1 批次 1 / A11）。
+  //
+  // 原住在 `helpers.ts#computePanelPhases` 的 `if (agent.id === '1481' || agent.teammateBuffId === '1481')`
+  // 块。同槽自身面板（只在琉音自己面板上折算**她自己**的 `liuyinGoodReviewAtkBonus`）⇒ 不触 P2 跨槽陷阱。
+  //
+  // ⚠ **顺序约束**：本折算必须在上面 `cinemaLevel >= 4` 的 bonus 写入**之后**（同一函数内），
+  // 否则读到的 `liuyinGoodReviewAtkBonus` 恒 0 ⇒ 面板静默少 500×覆盖率（既有判据会红）。
+  //
+  // ⚠ **右臂 `teammateBuffId === '1481'` 是死分支、逐位保留不删**（分诊报告 §3.2 已证：`'1481'`
+  // 不在 catalog 的 5 个 `teammateBuffId` —— 1261/1581/1411/1171/1511 —— 里）。删它是**语义变更**，
+  // 不是清理：将来数据面若给琉音填上 `teammateBuffId`，该臂会复活。为守住这一点，此处**原样保留
+  // 原判据的整条析取**（`agent.id === '1481' || agent.teammateBuffId === '1481'`）——虽然
+  // `applyPanel` 派发点已按 `agent.id` 寻址、右臂当前恒 false，但它作为**数据面守卫**继续生效：
+  // 一旦 catalog 给某角色填上 `teammateBuffId: '1481'`，该角色的面板也会走这段折算（与迁移前一致）。
+  if (agent.id === '1481' || agent.teammateBuffId === '1481') {
+    const atkBonus = panel.liuyinGoodReviewAtkBonus ?? 0
+    if (atkBonus > 0) {
+      const coverage = settings['liuyin.goodReviewAtkCoverage'] ?? 1
+      panel.atk = (panel.atk ?? 0) + atkBonus * coverage
+    }
   }
 }
 
