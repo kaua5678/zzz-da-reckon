@@ -712,6 +712,7 @@ export function computePanelPhases(
   if (aaSpec) {
     panel.additionalAbilityActive = evalAdditionalAbility(team, slot, agent, aaSpec) ? 1 : 0
   }
+  const mechanismSettings = resolveMechanicSettings(configStore)
   getAgentMechanic(agent.id)?.applyPanel?.({
     slot,
     agent,
@@ -720,51 +721,37 @@ export function computePanelPhases(
     team,
     outOfCombatPanel: result.outOfCombat,
     panel,
-    settings: resolveMechanicSettings(configStore),
+    settings: mechanismSettings,
     // boss 基础失衡易伤：叶瞬光帷幕封顶算式（veilStunMultiplier）的唯一外部输入，
     // 原住在 damagePool.ts 的 `row.agentId === '1431'` 分支（2026-09-17 round 18 / R15-d 迁入模块）。
     // 静态敌人配置、非相位量 ⇒ 每次面板重算取当时值，与原先伤害池逐行读同一份。
     enemyStunVuln: configStore.enemy.stunVuln,
   })
-  // 莱特影画4：莱特位于后场时，前场角色能量获得效率 +10%（按后场时间占比折算；莱特本人不吃）。
-  {
-    const lighterTeamSlot = configStore.team.findIndex(c => c.agentId === '1161')
-    if (lighterTeamSlot >= 0 && agent.id !== '1161') {
-      const lighterCinema = configStore.team[lighterTeamSlot]?.cinemaLevel ?? 0
-      if (lighterCinema >= 4) {
-        const ratio = Math.max(0, Math.min(1,
-          configStore.getMechanicSetting('lighter.backstageRatio', 2 / 3),
-        ))
-        panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + 10 * ratio
-      }
-    }
-  }
-  // 耀嘉音：咏叹华彩全队伤害/暴伤（按特殊技等级 12/14/16）+ 影画4职业分支。
-  {
-    const yjSlot = configStore.team.findIndex(c => c.agentId === '1311')
-    if (yjSlot >= 0) {
-      const yjCinema = configStore.team[yjSlot]?.cinemaLevel ?? 0
-      const cov = Math.max(0, Math.min(1,
-        configStore.getMechanicSetting('yaojiayin.ariaCoverage', 1),
-      ))
-      if (cov > 0) {
-        const skillLv = 12 + (yjCinema >= 5 ? 4 : yjCinema >= 3 ? 2 : 0)
-        const dmg = Math.min(24, Math.max(9, skillLv + 8))
-        const crit = Math.min(31, Math.max(8.5, skillLv * 1.5 + 7))
-        panel.dmgBonus = (panel.dmgBonus ?? 0) + dmg * cov
-        panel.critDmg = (panel.critDmg ?? 0) + crit * cov
-      }
-      if (yjCinema >= 4 && agent.id !== '1311') {
-        // 分支 CD 3s → 用 aria 覆盖 ×0.5 近似「下次快支」窗口
-        const branchCov = cov * 0.5
-        if (agent.specialty === 'anomaly') {
-          panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + 50 * branchCov
-        }
-        if (agent.specialty === 'stun') {
-          panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + 50 * branchCov
-        }
-      }
-    }
+
+  // ── 队伍级面板效果（规则 6，2026-09-17 round 20 R20-h3）────────────────────────────
+  // 本槽自己的 `applyPanel` 跑完后，再让**全队每个模块**有机会向本槽面板贡献加成。
+  // 原先这里是两组 `agent.id === '1161' / '1311'` 跨槽硬编码块（棘轮计数的那类）；
+  // 现已收进各来源角色的 `teamPanelEffects`（模块自报「我在队时给谁加什么」）。
+  //
+  // 顺序纪律（契约见 `AgentTeamPanelEffectInput`）：按**槽位序**遍历来源 ⇒ 确定性；
+  // 但多个来源写同一字段时结果仍与顺序有关 ⇒ 本钩子只允许做**可交换的加法**。
+  // 莱特写 `energyGainEfficiency`、耀嘉音写 `dmgBonus`/`critDmg`/`anomalyBuildUpEfficiency`/
+  // `stunBuildUpBonus`（两组字段无交集、全为 `+=`）⇒ 与迁移前逐位等价。
+  for (const src of [...team].sort((a, b) => a.slot - b.slot)) {
+    // 空槽（`agentId` 为空）与 catalog 查不到的 agent 都跳过：本钩子只对**真实在场的角色**派发，
+    // 契约承诺 `agent` 非 null（`AgentTeamPanelEffectInput.agent` 声明为 `Agent`）。
+    if (!src.agentId || !src.agent) continue
+    const srcMechanic = getAgentMechanic(src.agentId)
+    srcMechanic?.teamPanelEffects?.({
+      slot: src.slot,
+      agent: src.agent,
+      cinemaLevel: src.cinemaLevel,
+      team,
+      targetSlot: slot,
+      targetAgent: agent,
+      panel,
+      settings: mechanismSettings,
+    })
   }
   if (agent.id === '1581' || agent.teammateBuffId === 'remielle') {
     panel.remielleRadiantTurnDazeBonusPct = resolveRemielleDazeBonus(configStore, catalogStore, slot, agent)

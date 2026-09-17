@@ -30,6 +30,7 @@ import type {
   AgentMechanicModule,
   AgentNextRoundFeedbackInput,
   AgentPanelInput,
+  AgentTeamPanelEffectInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
@@ -582,6 +583,22 @@ export const lighterMechanic: AgentMechanicModule = {
     })
   },
   applyPanel,
+  /**
+   * 莱特影画4：莱特位于后场时，**前场队友**能量获得效率 +10%（按后场时间占比折算；**莱特本人不吃**）。
+   *
+   * 2026-09-17 round 20 R20-h3 自 `helpers.ts#computePanelPhases` 的
+   * `if (agent.id === '1161')` 跨槽硬编码块迁入（规则 6）。语义逐位保留：
+   * 门控「目标槽 ≠ 莱特」+ 命座 ≥4 + 滑块 `lighter.backstageRatio`（默认 2/3）折算。
+   *
+   * ⚠ 这是**队伍级**效果（加成随目标槽不同而不同）⇒ 只能写在本钩子，不能进自己的 `applyPanel`
+   * （那只会加到莱特本人面板上）。契约见 `AgentTeamPanelEffectInput`。
+   */
+  teamPanelEffects: ({ cinemaLevel, targetAgent, panel, settings }: AgentTeamPanelEffectInput) => {
+    if (targetAgent.id === LIGHTER_ID) return // 莱特本人不吃
+    if ((cinemaLevel ?? 0) < 4) return
+    const ratio = Math.max(0, Math.min(1, settings['lighter.backstageRatio'] ?? 2 / 3))
+    panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + 10 * ratio
+  },
   buildCharConfig,
   buildExecutions,
   patchExecutions,

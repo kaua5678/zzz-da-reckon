@@ -66,6 +66,61 @@ export interface AgentPanelInput {
   enemyStunVuln: number
 }
 
+/**
+ * 「队伍级面板效果」钩子入参 —— 来源角色（**本模块**）向**目标槽位**的面板贡献加成。
+ *
+ * ## 为什么需要它（2026-09-17 round 20 R20-h3，规则 6 收尾）
+ *
+ * `applyPanel` 由 `computePanelPhases(slot, …)` **逐槽位**派发，且只传该槽自己的 `panel`
+ * ⇒ 模块**无法**给别人加面板。于是历史上出现两种绕法，都住在编排层：
+ * ① `if (agent.id === '1161')` 之类**按目标角色 id** 硬编码块（棘轮计数的那类）；
+ * ② 更隐蔽的：在 `computePanelPhases` 里**无条件**给「某个固定 owner 的源面板」写值。
+ *
+ * 本契约把①收进模块：**来源角色声明「我在队时，给满足条件的目标槽位加什么」**。
+ * 编排层只负责「对每个槽位问一遍全队模块」，不再认人（规则 6）。
+ *
+ * ## 与 `applyPanel` 的分工（不要混用）
+ *
+ * | | `applyPanel` | 本钩子 |
+ * |---|---|---|
+ * | 何时 | 目标槽**自己**的面板算完后 | 目标槽面板算完后，**由别的角色**追加 |
+ * | 入参 `panel` | 目标槽自己的（可写） | 目标槽自己的（可写）|
+ * | 入参 `team`/`slot` | `slot`=自己 | `slot`=**来源**槽，`targetSlot`=目标槽 |
+ *
+ * ⚠ **同一模块两个钩子都会跑**：`applyPanel` 负责「改自己的面板」，本钩子负责「改别人的」。
+ * 若两者都写同一字段、且语义重复，就是**双计**（迁移时最易犯的错）——判断标准：
+ * 该加成**是否随目标槽位不同而不同**。是 ⇒ 只能在本钩子里写；否 ⇒ 只能在自己 `applyPanel` 里写。
+ *
+ * ## 契约纪律
+ *
+ * - **顺序**：编排层按**槽位序**遍历来源角色（确定性）。故**多个来源写同一字段时结果与顺序有关**⇒
+ *   本钩子只允许做**可交换的加法**（`+=`）。若某效果对顺序敏感（乘法、取整、封顶），
+ *   **不要用本钩子** —— 那属于目标槽自己的口径，应让目标槽的 `applyPanel` 统一处理。
+ * - **目标槽的 `panel` 已含队友 buff 与自己的 `applyPanel` 结果**：本钩子是最后一层
+ *   （先自己的、再别人的）⇒ 需要读「已算好的基数」时读它是对的。
+ * - **`targetSlot` 是槽位号不是下标**：`team` 是按位置压缩的数组（判据 17）⇒ 要用
+ *   `input.team.find(m => m.slot === input.targetSlot)` 取目标成员，**禁** `team[targetSlot]`。
+ * - 目标槽为空槽时**不会被派发**（编排层跳过空槽）；`targetAgent` 为 `null` 的成员不会出现。
+ */
+export interface AgentTeamPanelEffectInput {
+  /** **来源**角色所在槽位（= 本模块自己那份 cfg 的槽位） */
+  slot: number
+  /** 来源角色 */
+  agent: Agent
+  /** 来源角色的命座等级 */
+  cinemaLevel: number
+  /** 全队成员（按位置压缩：用 `.find(m => m.slot === …)`，禁下标） */
+  team: MechanicTeamMember[]
+  /** 本次要写入的**目标**槽位号 */
+  targetSlot: number
+  /** 目标槽位的角色（`Agent`，供 `specialty` 等静态属性分支） */
+  targetAgent: Agent
+  /** 目标槽位的面板（**可写**；已含队友 buff 与该槽自己 `applyPanel` 的结果） */
+  panel: PanelValues
+  /** 已解析的机制滑块值（同 `AgentPanelInput.settings`） */
+  settings: Readonly<Record<string, number>>
+}
+
 export interface AgentCharConfigInput {
   slot: number
   agent: Agent
@@ -441,6 +496,14 @@ export interface AgentMechanicModule {
   description?: string
   /** 局内面板计算后追加专属属性 */
   applyPanel?(input: AgentPanelInput): void
+  /**
+   * **队伍级面板效果**：本模块角色在队时，向**其它槽位**的面板贡献可加成的修正。
+   *
+   * 与 `applyPanel` 的分工、顺序纪律、`targetSlot ≠ 下标` 陷阱全文见 `AgentTeamPanelEffectInput`。
+   * 典型用途：莱特 C4「后场队友能量效率 +10%」、耀嘉音「咏叹华彩全队增伤」——
+   * 迁走编排层 `computePanelPhases` 里那类 `if (agent.id === '…')` 跨槽硬编码块（规则 6）。
+   */
+  teamPanelEffects?(input: AgentTeamPanelEffectInput): void
   /** 资源池操作配置构建后追加专属字段 */
   buildCharConfig?(input: AgentCharConfigInput): void
   /**

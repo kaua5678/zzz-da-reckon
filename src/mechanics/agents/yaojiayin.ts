@@ -21,6 +21,7 @@ import type {
   AgentCharConfigInput,
   AgentMechanicModule,
   AgentPanelInput,
+  AgentTeamPanelEffectInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
@@ -243,9 +244,47 @@ export function applyYaojiayinTeamHook(input: AgentTeamConfigInput): void {
 }
 
 function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
-  // C4 异常/击破分支的面板加成在 helpers 按队内职业写到对应角色；此处不处理。
+  // C4 异常/击破分支的面板加成是**队伍级**（随目标槽不同）⇒ 见下方 teamPanelEffects；
+  // 此处只处理「给自己面板」的量，目前没有。
   void cinemaLevel
   void panel
+}
+
+/**
+ * 队伍级面板效果（2026-09-17 round 20 R20-h3 自 `helpers.ts#computePanelPhases`
+ * 的 `if (agent.id === '1311')` 跨槽硬编码块迁入，规则 6）。语义逐位保留：
+ *
+ * ① **咏叹华彩**（全队增伤/暴伤，**含耀嘉音自己**）：按特殊技等级 12/14/16
+ *    （= `12 + (C5?4 : C3?2 : 0)`）查公式 `min(24,max(9,lv+8))` / `min(31,max(8.5,lv*1.5+7))`，
+ *    乘覆盖率滑块 `yaojiayin.ariaCoverage`。原块**无自排除** ⇒ 本钩子亦然。
+ * ② **影画4 职业分支**（**排除耀嘉音自己**，原 `agent.id !== '1311'`）：
+ *    强攻分支走执行行（`buildExecutions`，不在面板）；异常 → 异常积蓄效率 +50%、
+ *    击破 → 失衡提升 +50%，均按 `覆盖率 × 0.5`（分支 CD 3s 近似「下次快支」窗口）。
+ *
+ * ⚠ 两者都随**目标槽**变化 ⇒ 只能写在本钩子（写进自己的 `applyPanel` 只会加到耀嘉音本人面板）。
+ * 契约与顺序纪律见 `AgentTeamPanelEffectInput`。
+ */
+function applyYaojiayinTeamPanelEffects({
+  cinemaLevel, targetAgent, panel, settings,
+}: AgentTeamPanelEffectInput): void {
+  const cinema = cinemaLevel ?? 0
+  const cov = Math.max(0, Math.min(1, settings['yaojiayin.ariaCoverage'] ?? 1))
+  if (cov > 0) {
+    // ⚠ 复用本模块既有的单一事实源（`yaojiayinSkillLevel` + `computeAriaBonuses`），
+    // 不在此重写公式——否则与该模块别处的同类折算会漂移（规则 11）。
+    const { dmgBonus, critDmg } = computeAriaBonuses(yaojiayinSkillLevel(cinema))
+    panel.dmgBonus = (panel.dmgBonus ?? 0) + dmgBonus * cov
+    panel.critDmg = (panel.critDmg ?? 0) + critDmg * cov
+  }
+  if (cinema >= 4 && targetAgent.id !== YAOJIAYIN_ID) {
+    const branchCov = cov * 0.5
+    if (targetAgent.specialty === 'anomaly') {
+      panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + 50 * branchCov
+    }
+    if (targetAgent.specialty === 'stun') {
+      panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + 50 * branchCov
+    }
+  }
 }
 
 function buildCharConfig({ skills, cinemaLevel, cfg, panel, team }: AgentCharConfigInput): void {
@@ -421,6 +460,7 @@ export const yaojiayinMechanic: AgentMechanicModule = {
     step: 0.1,
   }],
   applyPanel,
+  teamPanelEffects: applyYaojiayinTeamPanelEffects,
   buildCharConfig,
   buildExecutions,
   buildResourceResult,
