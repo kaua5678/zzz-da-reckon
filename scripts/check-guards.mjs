@@ -118,7 +118,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 7,  // R21 夜 A **damagePool.ts 最后 3 处** 12→**9**（本批 **−3**，按**工作树实测**归因：
+    frozen: 4,  // R21 夜 A **damagePool.ts 最后 3 处** 12→**9**（本批 **−3**，按**工作树实测**归因：
     // 落地时另有并行会话在改 convergence.ts/helpers.ts（租约 session-c0a1/session-6f61），
     // 剥离本批四文件后实测为 **12** ⇒ 24→9 的 −15 里只有 −3 属本批，一一对应三个站点：
     // `:428` 琉音强特跳过通用行（删 agentId 项、`liuyinSrc` 上提到槽位循环头与专用块共用判据；
@@ -922,7 +922,11 @@ export function countAgentBranchLinesLegacy(root = ROOT) {
  * `guarantee.ultimate` / `banyue.autoTopUpInteractions` 与 `appliedBoss`，其中 **`guarantee.*`
  * 未注册 MechanicSetting**（实测）⇒ 不在 `AgentTeamConfigInput.settings` 里、模块侧读不到。
  * 补该契约 = 改 `types.ts` + 冻结面 ⇒ 独立批次（已派 T65）。
- * ⚠ 另 3 行在 `useResourceCalc.ts`（蕾米 ×2 + 简 ×1），待分诊。
+ * · 收尾再迁 `useResourceCalc.ts` 3 处（蕾米倍率 / 蕾米虚耀 / 简 C6）⇒ 本轮 **9 → 7 → 4**。
+ * ⚠ **剩 4 行的逐行定性**：`convergence.ts` 2 = 雨果/般岳 cfg-merge（待 T65 补 `guarantee` 契约）；
+ * `helpers.ts` 2 = ① `findSlotByIdentity` **自身的实现行**（抽象层单一判定点——18 处形状收敛成这一行，
+ * 是投资不是残留）② 简 C6 块（受 `jane.passionCoverage` **未注册**阻塞：注册它会让内部实验开关变成
+ * 资源利用率页的用户可见滑块 = 产品级口径，需用户裁决 ⇒ 夜 C 如实保留未擅自动）。
  *
  * **=== 同夜：判据 17 扫描器盲区修复（与棘轮无关，但同属「护栏对真实写法失明」类）===**
  * `compacted-slot-index.mjs` 原正则只认 `panels[slot]`，漏掉真实形态 `panels.value[slot]`
@@ -1070,7 +1074,7 @@ export function countAgentBranchLinesLegacy(root = ROOT) {
  * ⚠ 真管线判据（含「行级配对比例**真被消费端乘上**」——该点**只能**在真管线测，
  * 单测 `patchExecutions` 再断言字段值**证明不了**消费端乘了它）在 `damagePoolNightA.test.ts`。
  */
-export const AGENT_BRANCH_BASELINE = 7
+export const AGENT_BRANCH_BASELINE = 4
 
 /**
  * 引擎层 agentId 特判棘轮（2026-09-11 评审补的口子）。

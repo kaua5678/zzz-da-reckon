@@ -37,7 +37,7 @@ import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } f
  */
 const MAX_OUTER_ITER = 20
 
-const { computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, remielleSpecialVoidflareCount, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays } = ResourceCalcHelpers
+const { computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, remielleSpecialVoidflareCount, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays, findSlotByIdentity } = ResourceCalcHelpers
 export function useResourceCalc() {
   const configStore = useConfigStore()
   const catalogStore = useCatalogStore()
@@ -105,10 +105,8 @@ export function useResourceCalc() {
 
   /** 蕾米异化系数倍率：1 + (异化度 + 异化度提升) / 100，乘到所有异常相关伤害 */
   const remielleAnomalyMultiplier = computed<number>(() => {
-    const slot = configStore.team.findIndex(char => {
-      const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return agent?.id === '1581' || agent?.teammateBuffId === '1581'
-    })
+    // 按身份找槽位（单一事实源 `findSlotByIdentity`；2026-09-18 round 21 夜）
+    const slot = findSlotByIdentity(configStore, catalogStore, ['1581'])
     // ⚠ 判据 17：`panels` 按位置压缩（下标 ≠ 槽位号）⇒ 必须 `panelAt` 按盖章身份取。
     // 2026-09-18 round 21 夜：原写法 `panels.value[slot]` 在「前导/中间空槽」时取到**别人那份**面板
     // （实测 [空,1581,·] 时 1581 在 team 下标 1、panels 盖章 [1,2] ⇒ panels.value[1] 拿到槽位 2 的角色）。
@@ -803,10 +801,8 @@ export function useResourceCalc() {
 
   /** 蕾米虚耀池与耀变触发事件 */
   const remielleVoidflareEvents = computed<AnomalyEventRecord[]>(() => {
-    const remielleSlot = configStore.team.findIndex(char => {
-      const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return agent?.id === '1581' || agent?.teammateBuffId === '1581'
-    })
+    // 按身份找槽位（单一事实源 `findSlotByIdentity`；2026-09-18 round 21 夜）
+    const remielleSlot = findSlotByIdentity(configStore, catalogStore, ['1581'])
     if (remielleSlot < 0) return []
 
     const otherSlots = [0, 1, 2].filter(slot => slot !== remielleSlot)
@@ -911,10 +907,8 @@ export function useResourceCalc() {
       })
     }
 
-    const janeSlot = configStore.team.findIndex(char => {
-      const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-      return agent?.id === '1261' || agent?.teammateBuffId === '1261'
-    })
+    // 按身份找槽位（单一事实源 `findSlotByIdentity`；2026-09-18 round 21 夜）
+    const janeSlot = findSlotByIdentity(configStore, catalogStore, ['1261'])
     // ⚠ 判据 17：两处都改 `panelAt`（原 `panels.value[janeSlot]` 空槽时错人）
     const janePanel = janeSlot >= 0 ? panelAt(panels.value, janeSlot) : undefined
     if (janeSlot >= 0 && (configStore.team[janeSlot]?.cinemaLevel ?? 0) >= 6 && janePanel) {
