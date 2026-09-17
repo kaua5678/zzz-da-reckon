@@ -82,8 +82,18 @@ export function scanCompactedSlotIndex(root) {
   const violations = []
   let scanned = 0
   const arraysAlt = COMPACTED_ARRAYS.join('|')
-  // 方括号索引 + 变量键（排除纯数字字面量：`arr[0]` 是显式索引语义）
-  const re = new RegExp(`\\b(${arraysAlt})\\s*\\[\\s*([A-Za-z_$][A-Za-z0-9_$.]*)\\s*\\]`, 'g')
+  // 方括号索引 + 变量键（排除纯数字字面量：`arr[0]` 是显式索引语义）。
+  //
+  // ⚠ 2026-09-18 round 21 夜：**补 `.value` 形态**。原正则只认 `panels[slot]`，而本仓库这些数组
+  // 都装在 Vue 的 `ref`/`computed` 里、真实访问一律写作 `panels.value[slot]` ⇒ **原正则漏掉全部
+  // 真实形态**（实测盲区 **8 处**，其中 `useResourceCalc.ts` 4 处是真缺陷，见下）。
+  // 该盲区正是判据要防的 bug 类：`[空槽, 1581, …]` 时 1581 在 team 下标 1、而
+  // `panels.value` 盖章为 `[1, 2]` ⇒ `panels.value[1]` 拿到**槽位 2 的另一个角色**的面板（实测）。
+  // 新正则同时认 `arr[key]` 与 `arr.value[key]`，捕获组 1 仍是数组名（`.value` 可选、不参与捕获）。
+  const re = new RegExp(
+    `\\b(${arraysAlt})(?:\\.value)?\\s*\\[\\s*([A-Za-z_$][A-Za-z0-9_$.]*)\\s*\\]`,
+    'g',
+  )
 
   const walk = (dir) => {
     if (!existsSync(dir)) return

@@ -25,6 +25,7 @@ import type {
   AnomalyEventRecord,
 } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
+import { panelAt } from '@/core/panel'
 import * as ResourceCalcHelpers from './resourceCalc/helpers'
 import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } from './resourceCalc/helpers'
 
@@ -108,7 +109,10 @@ export function useResourceCalc() {
       const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
       return agent?.id === '1581' || agent?.teammateBuffId === '1581'
     })
-    const panel = slot >= 0 ? panels.value[slot] : null
+    // ⚠ 判据 17：`panels` 按位置压缩（下标 ≠ 槽位号）⇒ 必须 `panelAt` 按盖章身份取。
+    // 2026-09-18 round 21 夜：原写法 `panels.value[slot]` 在「前导/中间空槽」时取到**别人那份**面板
+    // （实测 [空,1581,·] 时 1581 在 team 下标 1、panels 盖章 [1,2] ⇒ panels.value[1] 拿到槽位 2 的角色）。
+    const panel = slot >= 0 ? panelAt(panels.value, slot) ?? null : null
     if (!panel) return 1
     const coefficient = (panel.remielleRefringeCoefficient ?? 0) + (panel.remielleRefringeCoefficientBonusPct ?? 0)
     return 1 + coefficient / 100
@@ -810,7 +814,8 @@ export function useResourceCalc() {
     const voidflareTotal = otherSlots.reduce((sum, slot) => sum + Math.max(0, Math.floor(perSlotAnomaly[slot] ?? 0)), 0)
     if (voidflareTotal <= 0) return []
 
-    const remiellePanel = panels.value[remielleSlot]
+    // ⚠ 判据 17：按盖章身份取（原 `panels.value[remielleSlot]` 空槽时错人）
+    const remiellePanel = panelAt(panels.value, remielleSlot)
     if (!remiellePanel) return []
     const qBatches = Math.floor(voidflareTotal / 3)
     const c6LuminizeMultiplier = 1 + Math.max(0, remiellePanel.remielleCinema6LuminizeTriggerMultiplier ?? 0)
@@ -910,9 +915,11 @@ export function useResourceCalc() {
       const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
       return agent?.id === '1261' || agent?.teammateBuffId === '1261'
     })
-    if (janeSlot >= 0 && (configStore.team[janeSlot]?.cinemaLevel ?? 0) >= 6 && panels.value[janeSlot]) {
+    // ⚠ 判据 17：两处都改 `panelAt`（原 `panels.value[janeSlot]` 空槽时错人）
+    const janePanel = janeSlot >= 0 ? panelAt(panels.value, janeSlot) : undefined
+    if (janeSlot >= 0 && (configStore.team[janeSlot]?.cinemaLevel ?? 0) >= 6 && janePanel) {
       const physicalProg = anomalyPoolResult.value?.perElement.find(prog => prog.element === 'physical')
-      const assaultCritRate = Math.min(100, Math.max(0, panels.value[janeSlot].assaultCritRate ?? 0))
+      const assaultCritRate = Math.min(100, Math.max(0, janePanel.assaultCritRate ?? 0))
       const critCount = (physicalProg?.triggerCount ?? 0) * (assaultCritRate / 100)
       if (critCount > 0) {
         events.push({
