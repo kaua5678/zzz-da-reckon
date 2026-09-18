@@ -393,6 +393,7 @@ function applyHugoTeamConfig({ cfg, team, phase, axis, threads, getAgentSkills }
   if (maxEnd < 0) return
   const record = cfg as unknown as Record<string, unknown>
   // @fact engine:轴内块数落地 口径: 雨果轴内决算次数 = 轴内决算块数 × **上一轮失衡池整数次数**（prevPoolStunCount 线程，与池/轴栈同源）；外层不动点的连续小数计划次数只作收敛输入，不得用于轴内块数（曾致 0.82 窗被 Math.floor 归零、轴栈说 5 池只落地 1，坑36） | 据 用户@2026-09-10「失衡易伤为什么静默不算」查证 + 引擎日志实测 0.824 | 验 src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/mechanics/agents/hugo.ts#applyHugoTeamConfig | 信 确认
+  // ⟳复核: 轴内决算块数是否仍按「上一轮失衡池整数次数」重算（失衡池投影改为实数 / 引入新池口径时，本式的 `prevPoolStunCount` 输入需重核；坑36 的分叉形态是否复现） | 到期 2026-12-31
   // 轴模式：决算剩余失衡时间覆盖滑块 `hugo.remainingStunSeconds`、决算次数覆盖滑块
   // `exVerdictRatio` / `ultimateVerdictRatio`（`cycleFromInput` 按 `!== undefined` 选通路）。
   record.hugoRemainingStunSeconds = Math.max(0, Math.min(15, windowDur - maxEnd))

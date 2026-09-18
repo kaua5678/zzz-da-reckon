@@ -2310,7 +2310,6 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   // 已改为钉真正的不变量（`ALLOWLIST.length === game.length` + 两侧非空）；
   // 实测「新增裸奔口径仍被拦」（`missing` 非空 ⇒ 红）⇒ 护栏未变松。
   // ⇒ **现在补这条 `⟳复核` 是安全的**（销号后 `game` 79 不再触发任何断言）。
-  "src/mechanics/agents/hugo.ts engine:轴内块数落地",
   "src/composables/resourceCalc/damagePool.ts engine:damage/减防通道",
   "src/composables/resourceCalc/damagePool.ts engine:damage/非轴失衡易伤",
   "src/composables/resourceCalc/feasibilitySearch.ts engine:降配搜索/非下闭可行集",
