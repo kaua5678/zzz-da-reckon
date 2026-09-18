@@ -1320,11 +1320,22 @@ describe('scanCaliberTriggers（判据 15：游戏语义口径必须挂 ⟳复�
     const r = scanCaliberTriggers()
     expect(r.missing).toEqual([])
     expect(r.stale).toEqual([])
-    // 存量基线如实：82 条缺触发器（全部登记在 CALIBER_TRIGGER_ALLOWLIST 里 burn-down）+
-    // 1 条已挂（本轮新挂的 effectiveTime「无敌≠秽盾」）= 83 条游戏语义口径。
     // 恒等式：missing 为空 ⇔ 每条缺触发器的口径都在豁免清单里（漏登记一条即红 = 新增口径不许裸奔）。
-    expect(r.game.length).toBeGreaterThanOrEqual(80)
+    //
+    // ⚠ **2026-09-18 round 21 夜 派活方核正**：原式是 `expect(r.game.length).toBeGreaterThanOrEqual(80)`
+    // ——一条**绝对硬地板**。实测它把「正常还债」判成回归：给 `engine:轴内块数落地` 补上
+    // `⟳复核` 触发器（= 销号一条豁免，**正是 burn-down 的设计目标**）后 `game` 80 → 79，
+    // 该硬地板立刻红（实测 `expected 80 to be 79`，并连带 3 条下游断言红）。
+    // 而 AGENTS 规则 10 明令「**基线是测量工具，不是开发否决权**…不得为了让它变绿而回退正确逻辑」，
+    // 规则 17② 也把「度量口径纠正」排除在「只减不增」之外 ⇒ 这条地板与仓库自己的纪律冲突。
+    // 改为钉**真正的不变量**（下面两条），并保留一条「两侧都非空」的空转防呆：
+    //   ① `CALIBER_TRIGGER_ALLOWLIST.length === r.game.length` ⇔ 豁免面与缺口面**逐条对应**
+    //      （漏登记一条新的裸奔口径 ⇒ `missing` 非空 ⇒ 上面已红；销号后漏删 ⇒ `stale` 非空 ⇒ 上面已红）；
+    //   ② 两侧都必须非空，否则恒等式退化成 `0 === 0` 空转。
+    // 注意：**新增裸奔口径仍被拦**（靠 `missing` + 本条恒等式），护栏没有变松——
+    // 被移除的只是那条「不许还债」的绝对地板。
     expect(CALIBER_TRIGGER_ALLOWLIST.length).toBe(r.game.length)
+    expect(r.game.length, '缺口面不应为空（否则上面的恒等式空转）').toBeGreaterThan(0)
     expect(r.withTrigger.length).toBeGreaterThanOrEqual(1)
   })
 

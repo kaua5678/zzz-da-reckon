@@ -131,8 +131,14 @@ export const RATCHET_BURNDOWN = [
     // + 62 角色 × 2 命座 + 雨果/般岳 solo 轴态）迁移前后**逐文件 md5 全等、diff 键 0/227**
     // （corpus md5 `778111ae94e820469bfe10c48d0b0d30` 两侧相同）；敏感性自证：雨果值 +0.5 ⇒ 10 键红、
     // 般岳 `autoTopUp` 短路 ⇒ 26 键红。判据 `convergenceNightD.test.ts`；反向验证 5 组精确红。
-    // 另：`@fact engine:轴内块数落地` 锚点随实现迁到 `hugo.ts#applyHugoTeamConfig` 并补 `⟳复核` 到期日，
-    // `CALIBER_TRIGGER_ALLOWLIST` 删旧键（判据 15 棘轮只减不增；漏删即红，本批已实测红过并修正）。
+    // 另：`@fact engine:轴内块数落地` 的**锚点随实现**从 `convergence.ts` 迁到
+    // `hugo.ts#applyHugoTeamConfig`；`CALIBER_TRIGGER_ALLOWLIST` 的**键随之改指**
+    // （判据 15 的豁免面按「文件 + 主体」键控，不改指即红）。
+    // ⚠ **这是路径跟随、不是销号**——该口径的 `⟳复核` 触发器**仍未补**、口径内容一字未改
+    // ⇒ 存量面 `game` 条数不变（80）。⚠ 派活方核正：本行原写「并补 `⟳复核` 到期日」，
+    // 与 `CALIBER_TRIGGER_ALLOWLIST` 处的注释（「触发器仍未补」）**互相矛盾**；实际以后者为准
+    // （`grep -c "⟳复核" src/mechanics/agents/hugo.ts` = **0**）。补它会打穿 `checkGuards.test.ts`
+    // 的 `>= 80` 硬地板（还债反被判红）⇒ 需连同该绝对地板一起裁决，不在该批授权面内。
     // 以下为更早沿革：R21 夜 A **damagePool.ts 最后 3 处** 12→**9**（本批 **−3**，按**工作树实测**归因：
     // 落地时另有并行会话在改 convergence.ts/helpers.ts（租约 session-c0a1/session-6f61），
     // 剥离本批四文件后实测为 **12** ⇒ 24→9 的 −15 里只有 −3 属本批，一一对应三个站点：
@@ -2297,8 +2303,13 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   // 该口径的实现在夜D 从 `convergence.ts` 整块迁进 `hugo.ts#applyHugoTeamConfig`（规则 6），
   // 故豁免键从 `src/composables/resourceCalc/convergence.ts` 改指 `src/mechanics/agents/hugo.ts`。
   // **这是路径跟随、不是销号**：口径内容一字未改、触发器仍未补 ⇒ 存量面（game 条数）不变。
-  // （若改成补 `⟳复核` 销号，`game` 会 80 → 79 而打穿 checkGuards.test.ts 的 `>= 80` 硬地板——
-  //  那属于「还债反被判红」，需连同该测试的绝对地板一起裁决，不在本批授权面内。）
+  // ✅ 2026-09-18 round 21 夜 派活方**已把那条绝对地板换掉**（`checkGuards.test.ts`）：
+  // 原 `expect(r.game.length).toBeGreaterThanOrEqual(80)` 是一条「不许还债」的地板——
+  // 完整还债（补 `⟳复核` + 销号本清单条目）会让 `game` 80 → 79 而精确红
+  // （实测 `expected 79 to be greater than or equal to 80`，其余判据全绿）。
+  // 已改为钉真正的不变量（`ALLOWLIST.length === game.length` + 两侧非空）；
+  // 实测「新增裸奔口径仍被拦」（`missing` 非空 ⇒ 红）⇒ 护栏未变松。
+  // ⇒ **现在补这条 `⟳复核` 是安全的**（销号后 `game` 79 不再触发任何断言）。
   "src/mechanics/agents/hugo.ts engine:轴内块数落地",
   "src/composables/resourceCalc/damagePool.ts engine:damage/减防通道",
   "src/composables/resourceCalc/damagePool.ts engine:damage/非轴失衡易伤",
