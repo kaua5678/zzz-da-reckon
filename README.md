@@ -76,7 +76,7 @@
 76: 76: | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 77: 77: | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 78: 78: 
-## 6. 文档（19 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（20 份，其余知识在代码注释 / spec / 测试里）
 80: 80: 
 81: 81: | 文档 | 定位 |
 82: 82: | --- | --- |
@@ -99,6 +99,7 @@
 | `docs/mcp-agent-development-roadmap.md` | **Agent 全生命周期长远开发体系与演进路线图**：双 Agent 融合架构、角色 6 阶段研发 SOP、契约与 AST 自治、WSL/网络环境实战避坑与四期里程碑 |
 | `docs/mcp-calc-logic-debt1-retirement.md` | **计算逻辑与技术债清偿备忘**：债 1 批 1-3 全局实数化收敛重构核销、全量 105 组队伍预设与 62 位角色全命座计算测试覆盖与黄金快照零漂移验证 |
 | `docs/mcp-guard18-reconcile-and-open-items.md` | **护栏 18 模块化接线与 Backlog 待办消减备忘**：判据 18 与 move-element-reconcile 闭环（反空洞/行级未定义/orphan 对账）、R25-J2 诊断量残留读法防线与坑 42 固化 |
+| `docs/mcp-3d-visualization-and-interaction.md` | **3D 双变量联合响应面与伤害构成立体交互演进备忘**：基于 Canvas 的 3D 双变量响应曲面（光照/网格/等高线/探针）与 3D 团队伤害构成立体环图落地 |
 104: 98: 
 105: 99: > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（19 份），新增文档需同步本表。
+> 文档数量以本表为准（20 份），新增文档需同步本表。

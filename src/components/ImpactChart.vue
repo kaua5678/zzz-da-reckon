@@ -1,8 +1,33 @@
 <template>
   <div v-if="hasTeam" class="impact-chart-card">
     <n-card size="small" :bordered="true">
-      <template #header><span>伤害影响分析</span></template>
+      <template #header>
+        <div class="impact-title-bar">
+          <span>伤害影响与响应面分析</span>
+          <div class="impact-tab-toggle">
+            <n-radio-group v-model:value="dimensionMode" size="small">
+              <n-radio-button value="2d">2D 单变量敏感度</n-radio-button>
+              <n-radio-button value="3d">3D 双变量响应面</n-radio-button>
+            </n-radio-group>
+          </div>
+        </div>
+      </template>
 
+      <!-- 3D 双变量响应面模式 -->
+      <ResponseSurface3D
+        v-if="dimensionMode === '3d'"
+        :all-vars="allVars"
+        :read-var="readVar"
+        :write-var="writeVar"
+        :read-damage-snapshot="readDamageSnapshot"
+        :team-total-damage="teamTotalDamage"
+        :has-team="hasTeam"
+        :var-options="varOptions"
+        :render-var-label="renderVarLabel"
+      />
+
+      <!-- 2D 单变量敏感度模式 -->
+      <div v-else class="impact-2d-container">
       <!-- 控制栏 -->
       <div class="impact-controls">
         <n-select
@@ -86,13 +111,15 @@
           <span v-for="cv in activeSnapCurves" :key="cv.label" class="lchip" :style="{borderColor:cv.color}"><span class="ldot" :style="{background:cv.color}"></span>{{ cv.label }}</span>
         </div>
       </div>
+      </div>
     </n-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { h, ref, computed, watch } from 'vue'
-import { NCard, NSelect, NInputNumber, NButton } from 'naive-ui'
+import { NCard, NSelect, NInputNumber, NButton, NRadioGroup, NRadioButton } from 'naive-ui'
+import ResponseSurface3D from '@/components/charts/ResponseSurface3D.vue'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -109,6 +136,7 @@ const { teamTotalDamage, damagePoolRows, anomalyPoolResult } = useResourceCalc()
 
 const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 const optimizePerPoint = ref(false)
+const dimensionMode = ref<'2d' | '3d'>('2d')
 
 // 进度
 interface Progress { current: number; total: number; pct: number; text: string; startTime: number }
@@ -490,6 +518,9 @@ function exportCSV() {
 
 <style scoped>
 .impact-chart-card { margin-top: 16px; }
+.impact-title-bar { display: flex; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 8px; }
+.impact-tab-toggle { display: flex; align-items: center; }
+.impact-2d-container { display: flex; flex-direction: column; width: 100%; }
 .impact-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .ctl-label { font-size: 12px; color: var(--wa-500); }
 .cur-val { font-size: 12px; color: var(--wa-450); margin-left: auto; }

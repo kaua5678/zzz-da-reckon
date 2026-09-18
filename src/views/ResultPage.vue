@@ -568,8 +568,17 @@
       <!-- 伤害占比 -->
       <n-card v-if="damageShareCategories.length > 0" size="small" class="damage-share-card" :bordered="true">
         <template #header>
-          <span class="pool-title">伤害占比</span>
+          <span class="pool-title">伤害占比与 3D 构成透视</span>
         </template>
+
+        <!-- 3D 团队伤害构成图表 -->
+        <TeamDamage3DChart
+          :total-damage="totalDamageWithDisorder"
+          :categories="damageShareCategories"
+          :characters="characterDamageShares"
+          style="margin-bottom: 14px;"
+        />
+
         <div class="damage-share-summary">
           <span>团队总伤害</span>
           <b>{{ fmt(totalDamageWithDisorder, 0) }}</b>
@@ -783,6 +792,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { fmt } from '@/utils/format'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import FinalPanel from '@/components/FinalPanel.vue'
+import TeamDamage3DChart from '@/components/charts/TeamDamage3DChart.vue'
 import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf, truncationHint as truncationHintOf } from '@/composables/teamTimeSummary'
 import { computeStunVulnSummary, computeStunVulnBySlot, rowAppliedStunMult } from '@/composables/stunVulnSummary'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
