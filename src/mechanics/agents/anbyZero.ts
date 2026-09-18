@@ -52,8 +52,6 @@ export const ANBY_ZERO_CRITICAL_ACTION_TIME = 0.867
 export const ANBY_ZERO_C2_THUNDER_PER_ULT = 6
 /** 影画2：每消耗 3 层电鸣，下一次苍光·临界速度加快 50%（动作时间 ÷1.5） */
 export const ANBY_ZERO_C2_CRITICAL_SPEEDUP = 1.5
-/** 核心被动：银星敌人受到的追加攻击暴伤额外提升 = 自身暴伤 ×（30% + 延伸 5%） */
-export const ANBY_ZERO_FOLLOWUP_CRIT_DMG_RATIO = 0.35
 export const ANBY_ZERO_C6_VORTEX_MULTIPLIER = 1000
 /** 额外能力电极化「全队追加攻击对银星敌人伤害提升」按潜能等级（index 0 占位，1=I=25% … 6=VI=50%） */
 export const ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL = [0, 25, 34, 38, 42, 46, 50] as const

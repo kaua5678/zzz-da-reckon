@@ -41,8 +41,6 @@ export const PROMIA_C1_DEF_IGNORE = 20
 export const PROMIA_C6_ALL_RES_IGNORE = 15
 /** 影画4：触发异放回 5 寒蚀（0.5s CD；异放自身已受 CD 约束，按异放次数计） */
 export const PROMIA_C4_RELEASE_FROST = 5
-/** 核心被动：异放回 100 喧响（0.5s CD） */
-export const PROMIA_RELEASE_DECIBEL = 100
 /** 影画6：特殊异放 200%（15s CD） */
 export const PROMIA_C6_SPECIAL_RELEASE_MULT = 200
 export const PROMIA_C6_SPECIAL_CD_SECONDS = 15

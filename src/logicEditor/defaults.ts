@@ -2,8 +2,6 @@ import { agentSpecs } from '@/specs/registry'
 import type { AgentMechanicSpec, ResourceSpec } from '@/specs/types'
 import type { LogicEditorState, ObjectNature } from './types'
 
-export const LOGIC_EDITOR_STORAGE_KEY = 'zzz-logic-editor:v1'
-
 function resourceNature(nature: ResourceSpec['nature']): ObjectNature {
   if (nature === 'buff') return 'buff'
   if (nature === 'event') return 'event'

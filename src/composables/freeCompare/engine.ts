@@ -55,12 +55,6 @@ export interface FreeCompareSeries {
   downgrades?: string[]
 }
 
-export interface FreeComparePoint {
-  levelIndex: number
-  seriesId: string
-  value: number | null
-}
-
 export interface FreeCompareResult {
   axisId: AxisId
   axisLabel: string

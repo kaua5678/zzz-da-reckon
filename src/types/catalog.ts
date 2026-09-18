@@ -479,30 +479,6 @@ export interface DriveDiscConfig {
   subStatAllocation: Record<StatId, number>  // stat -> 词条数（0~54）
 }
 
-// ============ 异常/紊乱 ============
-
-export interface AnomalyEffect {
-  id: string
-  settlementType: string
-  label: LocalizedString
-  element: DamageElement
-  baseMultiplier: number
-  defaultProcCount: number
-  baseDurationSeconds: number
-  tickIntervalSeconds: number
-}
-
-export interface DisorderEffect {
-  id: string
-  settlementType: string
-  label: LocalizedString
-  element: DamageElement
-  fixedMultiplier: number
-  tickMultiplier: number
-  tickIntervalSeconds: number
-  defaultDurationSeconds: number
-}
-
 // ============ Boss / 敌人 ============
 
 export interface Boss {
@@ -640,35 +616,6 @@ export interface BuildRecommendations {
   }
   drive_disc_sets: Record<string, BuildDriveDiscSet>
   characters: Record<string, CharacterBuildRecommendation>
-}
-
-// ============ 计算配置 ============
-
-export interface CalculatorConfig {
-  // 主C配置
-  mainAgentId: string
-  mainCinemaLevel: number
-  mainWEngineId: string
-  mainWEngineModLevel: number
-  driveDiscConfig: DriveDiscConfig
-  // 队友配置（2个队友）
-  teammates: {
-    agentId: string
-    cinemaLevel: number
-    wEngineId: string
-    wEngineModLevel: number
-    enabled: boolean
-  }[]
-  // 敌人配置
-  bossId: string
-  enemyLevel: number
-  enemyDefense: number
-  enemyResistance: Record<string, number>
-  stunMultiplier: number
-  /** 是否失衡或失衡易伤覆盖率（0-1，期望乘区按覆盖率折算） */
-  stunned: boolean | number
-  // 暴击模式
-  critMode: 'expect' | 'crit' | 'nonCrit'
 }
 
 // ============ 计算结果 ============

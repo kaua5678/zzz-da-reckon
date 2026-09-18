@@ -48,10 +48,6 @@ export const LIGHTER_MORALE_PER_SEC = 2.9
 export const LIGHTER_MORALE_PER_ENERGY = 0.26
 /** 士气上限 */
 export const LIGHTER_MORALE_CAP = 100
-/** 进入士气喷发阈值 */
-export const LIGHTER_MORALE_BURST_THRESHOLD = 80
-/** 满级：每耗 10 士气冲击力 +2%，最多 +20% */
-export const LIGHTER_IMPACT_PER_10_MORALE = 2
 export const LIGHTER_IMPACT_CAP_PCT = 20
 /** 0 命溃败失衡延长（秒） */
 export const LIGHTER_ROUT_STUN_BONUS = 3

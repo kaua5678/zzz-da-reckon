@@ -61,18 +61,6 @@ export const pulchraHuntStepMechanic = makePanelBuffModule(
   },
 )
 
-export const benGuardShieldMechanic = makePanelBuffModule(
-  'agent:ben_guard_shield',
-  ['1121'],
-  '本·守卫护盾',
-  'ben_guard_shield',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) > 0) {
-      panel.critRate = (panel.critRate ?? 0) + 16
-    }
-  },
-)
-
 export const nekomataPurrMechanic = makePanelBuffModule(
   'agent:nekomata_purr',
   ['1021'],

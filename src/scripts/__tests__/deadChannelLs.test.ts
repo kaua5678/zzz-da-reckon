@@ -29,15 +29,25 @@ interface BaselineEntry { since: string; why: string }
 interface ExportHit { key: string; file: string; line: number; name: string; kind: string }
 interface ExportScanResult { dead: ExportHit[]; exports: number; ms: number }
 
+/** R34：非 core 审计入口的返回面（`vueImported` / `textMentioned` 各带归属证据） */
+interface NonCoreAuditResult {
+  dead: ExportHit[]
+  vueImported: Array<ExportHit & { refs: string[] }>
+  textMentioned: Array<ExportHit & { mentions: string[] }>
+  exports: number
+  ms: number
+}
+
 const impl = deadChannelLsNs as {
   scanDeadChannelsLs: (opts?: { root?: string; dirs?: string[] }) => ScanResult
   scanDeadExportsLs: (opts?: { root?: string; dirs?: string[] }) => ExportScanResult
+  auditNonCoreDeadExports: (opts?: { root?: string; dirs?: string[] }) => NonCoreAuditResult
   /** 泛型：两类 hit（DeadHit / ExportHit）都只要求有 `key`，别为第二类复制一份函数签名 */
   diffAgainstBaseline: <T extends { key: string }>(dead: T[], baseline?: Record<string, BaselineEntry>) => { fresh: T[]; resolved: string[] }
   DEAD_CHANNEL_LS_BASELINE: Record<string, BaselineEntry>
   DEAD_EXPORT_BASELINE: Record<string, BaselineEntry>
 }
-const { scanDeadChannelsLs, scanDeadExportsLs, diffAgainstBaseline, DEAD_CHANNEL_LS_BASELINE, DEAD_EXPORT_BASELINE } = impl
+const { scanDeadChannelsLs, scanDeadExportsLs, auditNonCoreDeadExports, diffAgainstBaseline, DEAD_CHANNEL_LS_BASELINE, DEAD_EXPORT_BASELINE } = impl
 
 const roots: string[] = []
 function fixture(files: Record<string, string>): string {
@@ -236,5 +246,70 @@ describe('dead-channel-ls 死导出（符号级，src/core）', () => {
       fresh.map(f => `${f.key} (${f.kind})`),
       '发现基线外的新死导出：接上消费点，或（确认死）在 DEAD_EXPORT_BASELINE 登记（since+why 证据）',
     ).toEqual([])
+  })
+})
+
+/**
+ * ★ R34（2026-09-18）新增：**非 core 层审计入口**的三道兜底（`auditNonCoreDeadExports`）。
+ *
+ * 为什么单列：R33 试过把 `scanDeadExportsLs` 直接扩到全 `src` —— 实测 57 条里 **20 条假阳性（35%）**，
+ * 因为 program **看不见 .vue**。R34 把这个审计面固化成函数并补三道兜底：
+ * ① `.vue` 的 import 是否解析到「声明该符号的模块（含 `export *` 传递可达）」；
+ * ② 全仓 `\bname\b` 文本兜底；③ 剩下的才算真死。
+ *
+ * ⚠ **本入口只用于人工审计，不接进 check-guards**（口径未构造性闭合：动态 import 变量化 /
+ * `ns[name]` 取用两类盲区仍在）。下面三条用例钉的是「分桶逻辑本身可红可绿」，不是仓库现状。
+ */
+describe('dead-channel-ls 非 core 审计入口（三道兜底的分桶逻辑）', () => {
+  it('⑬ .vue 真引用（含 `export *` 传递）⇒ 进 vueImported，不算死', () => {
+    const root = fixture({
+      'src/composables/lib.ts': [
+        `export function barrelReached(): number { return 1 }`,
+        `export function trulyDeadFn(): number { return 2 }`,
+        '',
+      ].join('\n'),
+      'src/composables/barrel.ts': `export * from './lib'\n`,
+      'src/views/Page.vue': `<script setup lang="ts">\nimport { barrelReached } from '@/composables/barrel'\nconst v = barrelReached()\n</script>\n`,
+    })
+    const r = auditNonCoreDeadExports({ root, dirs: ['src/composables'] })
+    expect(r.vueImported.map(d => d.name), '经 barrel 传递的被引用符号不该算死').toContain('barrelReached')
+    expect(r.dead.map(d => d.name), '真零引用仍要报').toContain('trulyDeadFn')
+    expect(r.dead.map(d => d.name)).not.toContain('barrelReached')
+  })
+
+  it('⑭ namesake 反例：.vue 引用了【别的模块】的同名符号 ⇒ 不得压制该符号的死判定', () => {
+    // 这正是 R33 §3.2 警告的形态：「同名 ≠ 同一符号」。`runChart3Compute` 那种名字在 .vue 里
+    // 出现，但若 import 源**不是**声明它的模块，就不构成引用。
+    // ⚠ 首版本用例断言「a 的 sameName 进 dead」——**实测不成立**（红）：它落在 `textMentioned`
+    //   （b.ts + Page.vue 里有同名文本）。这是**设计如此**：第三道兜底刻意保守
+    //   （有名字文本 ⇒ 交人工判，不自动判死），宁可漏报不可误报。
+    //   ⇒ 本用例钉的**关键性质** = 「同名不得把 a 的符号洗成 vueImported（假活）」，
+    //     而不是「它必须进 dead」——后者会逼实现去掉保守兜底（那是放松判据）。
+    const root = fixture({
+      'src/composables/a.ts': `export function sameName(): number { return 1 }\n`,
+      'src/composables/b.ts': `export function sameName(): number { return 2 }\n`,
+      // .vue 只 import b 的 sameName；a 的那份仍然零引用
+      'src/views/Page.vue': `<script setup lang="ts">\nimport { sameName } from '@/composables/b'\nconst v = sameName()\n</script>\n`,
+    })
+    const r = auditNonCoreDeadExports({ root, dirs: ['src/composables'] })
+    expect(r.vueImported.map(d => d.file), 'b 的 sameName 确实被引用 ⇒ 进 vueImported').toContain('src/composables/b.ts')
+    expect(
+      r.vueImported.map(d => d.file),
+      '★ a 的 sameName 只是与 b 同名 ⇒ **不得**因 .vue 里出现该名字被判成活（假活 = 漏报真死）',
+    ).not.toContain('src/composables/a.ts')
+    expect(
+      r.textMentioned.map(d => d.file),
+      'a 的 sameName 落第三道兜底（有同名文本 ⇒ 交人工判），刻意保守',
+    ).toContain('src/composables/a.ts')
+  })
+
+  it('⑮ 无 .vue import 但全仓有名字文本 ⇒ 进 textMentioned（人工判，不混进 dead）', () => {
+    const root = fixture({
+      'src/data/consts.ts': `export const SOME_KNOB = 1\n`,
+      'docs/notes.md': '口径见 SOME_KNOB\n',
+    })
+    const r = auditNonCoreDeadExports({ root, dirs: ['src/data'] })
+    expect(r.dead.map(d => d.name), '有文本提及的不该直接判死').not.toContain('SOME_KNOB')
+    expect(r.textMentioned.map(d => d.name)).toContain('SOME_KNOB')
   })
 })

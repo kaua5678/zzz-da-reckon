@@ -52,8 +52,7 @@ export const PHOENIX_C4_CHARGED_DECIBEL = 200
 export const PHOENIX_C6_RELEASE_DEF_IGNORE = 15
 
 /** moveId（param 空间） */
-export const PHOENIX_CHARGED_MOVE_ID = '1641005' // 普通攻击：普通攻击长按（消耗 90 余火）
-export const PHOENIX_EX1_MOVE_ID = '1641008' // 强化特殊技：第一段
+export const PHOENIX_CHARGED_MOVE_ID = '1641005' // 强化特殊技：第一段
 export const PHOENIX_EX2_MOVE_ID = '1641009' // 强化特殊技：第二段
 export const PHOENIX_ENERGIZE_MOVE_ID = '1641021' // 蓄能附加攻击（视为强化特殊技）
 export const PHOENIX_ULT_MOVE_ID = '1641013' // 终结技

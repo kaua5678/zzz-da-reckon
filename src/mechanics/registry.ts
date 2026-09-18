@@ -50,10 +50,6 @@ export function getRegisteredAgentMechanics(): AgentMechanicModule[] {
   return [...new Set(agentMechanics.values())]
 }
 
-export function getMechanicSetting(id: string): MechanicSetting | undefined {
-  return settingDefaults.get(id)
-}
-
 export function getRegisteredMechanicSettings(): MechanicSetting[] {
   return [...settingDefaults.values()]
 }

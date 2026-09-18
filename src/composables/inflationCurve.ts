@@ -48,7 +48,7 @@
  * 判定用**自校准**口径（`isLowSample`：样本数 < 本序列最大样本数），实测标记 2.4（n=6 < 满编 9）。
  */
 import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
-import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
+import { VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
 import type { DirectDamagePoint } from '@/composables/multiplierCoefficients'
 
 /** 纳入膨胀指数的模式（危局血量量级与防卫战差 3 倍，混算会失真） */
@@ -199,7 +199,9 @@ function avg(xs: ReadonlyArray<number>): number {
  * 这是个纯环境侧事实，与分子口径无关。
  *
  * 口径：
- * - 角色取其**首池节点**（`AGENT_RELEASE_NODE`），节点的 `version` 去膨胀序列里找同版本点；
+ * - 角色取其**首池节点**（节点 id 由调用方给的 `strength` 列表带入），
+ *   节点 id → 版本号走 `VERSION_NODES`（`buildReleaseStrengths` 的 `nodeVersion` 表），
+ *   再拿版本号去膨胀序列里找同版本点；
  * - 找不到同版本（角色实装版本不在 Boss 数据覆盖范围内）→ `environmentIndex = null`，
  *   **不插值也不外推**（外推会给一个没有数据支撑的结论）；
  * - `strengthVsEnvironment` **保留但勿用作结论**（分子口径见上）。
@@ -234,34 +236,9 @@ export function buildReleaseStrengths(
   })
 }
 
-/**
- * ⚠ **不要用本函数下「多少人跑赢膨胀」的结论**（分子口径已证伪，见文件头）。
- * 保留它只为统计「环境已走到哪」这一侧：末版本累计膨胀、以及各角色实装时的环境水位分布。
- */
-
-export function summarizeInflationRace(points: ReadonlyArray<ReleaseStrengthPoint>) {
-  const scored = points.filter(p => p.strengthVsEnvironment != null)
-  const ahead = scored.filter(p => p.strengthVsEnvironment! > 1)
-  return {
-    scored: scored.length,
-    ahead: ahead.length,
-    behind: scored.length - ahead.length,
-    aheadPct: scored.length > 0 ? (ahead.length / scored.length) * 100 : null,
-    /** 跑赢最多的三名（降序） */
-    top: ahead.slice().sort((a, b) => b.strengthVsEnvironment! - a.strengthVsEnvironment!).slice(0, 3),
-  }
-}
-
 /** 便捷入口：直接从 boss-presets.json 的解析结果建序列（页面加载后调一次） */
 export function buildInflationFromFile(file: BossPresetFile | null | undefined, mode: InflationMode = 'defense') {
   return buildInflationSeries(file?.bosses ?? [], mode)
-}
-
-/** 首池节点 id → 该角色实装版本（供页面按版本过滤用；与 AGENT_RELEASE_NODE 同源） */
-export function releaseVersionOf(agentId: string): string | null {
-  const nodeId = AGENT_RELEASE_NODE[agentId]
-  if (!nodeId) return null
-  return VERSION_NODES.find(n => n.id === nodeId)?.version ?? null
 }
 
 // ========== 与「抽卡价值」的连接（目标②后半句） ==========

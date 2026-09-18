@@ -58,8 +58,7 @@ const PULSE_GRENADE_MOVE_ID = '1181019'
 export const PULSE_PER_ULT = 25 // 终结技每次获得 25 层[脉冲]（用户口供）
 export const PULSE_CAP = 25 // [脉冲]上限 25 层：多大都卡在 25，一次大招只能换 floor(25/8)=3 次
 export const PULSE_PER_GRENADE = 8 // 8 层[脉冲] → 下次投掷手雷额外丢一枚脉冲手雷 + 异放事件
-export const GRACE_BUILDUP_BONUS_PCT = 130 // 电属性异常积蓄 +130%：加算进积蓄效率区（非独立乘区）
-export const GRACE_SPECIAL_MOVE_IDS = [SP_MOVE_ID, EX_MOVE_ID]
+export const GRACE_BUILDUP_BONUS_PCT = 130
 /** 影画1 再充能弹膛：一次 A4 命中给全队回复 2 点能量（用户口径 2026-08-27） */
 export const GRACE_C1_TEAM_ENERGY_PER_CYCLE = 2
 /** 影画4 爆破电容：能量获得效率 +20%（6 层充能覆盖 A4/冲刺消耗段） */
@@ -275,7 +274,6 @@ function graceRow(moveId: string, name: string, count: number, actionTime: numbe
     skillTableNote: `消耗全部电能（8层）→ 电属性异常积蓄 +130%（积蓄效率区加算）`,
   }
 }
-
 
 
 function buildGraceResourceSections(_input: AgentResourceSectionsInput) {

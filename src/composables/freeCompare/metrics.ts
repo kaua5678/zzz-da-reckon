@@ -345,9 +345,6 @@ export const METRICS: MetricDef[] = [
 /** id → 定义（UI/参数序列化都走这张表查找，不再各写一条 if） */
 export const METRIC_BY_ID: ReadonlyMap<string, MetricDef> = new Map(METRICS.map(m => [m.id, m]))
 
-/** 默认指标：用户第一次进来工作台时看到的就是队伍总伤（对应用户原话「伤害曲线」） */
-export const DEFAULT_METRIC_ID = 'teamTotalDamage'
-
 export function metricDef(id: string): MetricDef | undefined {
   return METRIC_BY_ID.get(id)
 }

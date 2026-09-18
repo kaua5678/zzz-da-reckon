@@ -28,7 +28,6 @@ import type {
 export const BILLY_ID = '1081'
 export const BILLY_CORE_CROUCH_DMG = 50
 export const BILLY_ADDITIONAL_ULT_PER_STACK = 50
-export const BILLY_ADDITIONAL_ULT_MAX_STACKS = 2
 export const BILLY_C2_DODGE_DMG = 25
 export const BILLY_C4_EX_CRIT_MAX = 32
 export const BILLY_C6_DMG_PER_STACK = 6

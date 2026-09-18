@@ -719,18 +719,6 @@ export interface CharacterResourceResult {
   totalStunBuildUp: number
 }
 
-// ============ 特殊动作喧响奖励 ============
-
-/** 特殊动作喧响奖励配置 */
-export interface SpecialActionBonus {
-  /** 弹刀（招架支援）次数 */
-  parryCount: number
-  /** 闪避反击次数 */
-  dodgeCounterCount: number
-  /** 快速支援次数 */
-  quickAssistCount: number
-}
-
 /** 特殊动作喧响奖励结果 */
 export interface SpecialActionBonusResult {
   /** 弹刀喧响 = parryCount × 215 */

@@ -24,7 +24,6 @@ import { allocateAxisWindows } from '@/core/stunAxisStack'
 
 export const HUGO_ID = '1291'
 export const HUGO_EX_OPEN_MOVE_ID = '1291009'
-export const HUGO_EX_FINAL_MOVE_ID = '1291010'
 export const HUGO_CHAIN_MOVE_ID = '1291015'
 export const HUGO_ULT_MOVE_ID = '1291018'
 // 合成执行行 id（buildExecutions 产出；真实 1291010 由倍率表拆为起手/终结，模块按决算与否拆分结算）

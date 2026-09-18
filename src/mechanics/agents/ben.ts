@@ -35,10 +35,6 @@ export const BEN_ID = '1121'
 
 /** 满级：初始防 → 攻击 80% */
 export const BEN_DEF_TO_ATK = 0.8
-/** 满级护盾：30% 防 + 550（仅记录，不进伤害） */
-export const BEN_SHIELD_DEF_PCT = 30
-export const BEN_SHIELD_FLAT = 550
-export const BEN_SHIELD_CRIT = 16
 
 export const BEN_C2_DEF_MULT = 300
 export const BEN_C4_COUNTER_DMG = 30

@@ -303,6 +303,147 @@ function buildNameOccurrenceIndex(root) {
 }
 
 /**
+ * ★ R34：**非 core 层的审计入口**（不进硬判据，只出报告）。
+ *
+ * 为什么必须单列一个函数（R33 §3.2 的落地建议，R34 实测了它的必要性）：
+ * `scanDeadExportsLs` 的 program **看不见 .vue** ⇒ 直接把它扩到 `src/composables` 等层
+ * 会把「被 .vue import 的导出」大面积误报成死码。R33 实测全 `src` 面 57 条里 **20 条是假阳性
+ * （35%）**——这正是它**不能**当硬判据的原因。
+ *
+ * 本函数在 `scanDeadExportsLs` 之上加**三道 .vue 兜底**，把「真死」与「只是 program 看不见」
+ * 分开。⚠ **只用于人工审计，不要接进 check-guards**（口径未构造性闭合，见返回值各桶）。
+ *
+ * 兜底口径（逐条实测过，见 R34 报告）：
+ * ① **本仓无 auto-import / 无 `import * as` 于候选模块**（已核：vite.config 无 unplugin；
+ *    `src/**` 仅 core 内部与测试用 namespace import）⇒ 「.vue 里出现名字」不必当引用；
+ * ② 但**同名 ≠ 同一符号** ⇒ 不能只看名字。判定 = `.vue` 的 `import { name }` 是否解析到
+ *    **声明该符号的模块（或经 `export *` / `export {x} from` 传递可达它的模块）**；
+ * ③ 再做一次**全仓 `\bname\b` 文本兜底**（含 docs/data/scripts）——零命中才是最硬的「真死」证据。
+ *
+ * @param {{root?: string, dirs?: string[]}} [opts]
+ * @returns {{dead: Array, vueImported: Array, textMentioned: Array, exports: number, ms: number}}
+ *   `dead` = 三道兜底后仍无任何引用（真死，可删）；`vueImported` = 被 .vue 真引用（假阳性）；
+ *   `textMentioned` = 无 .vue import 但全仓有名字文本（需人工判「同名/文档提及/动态取用」）。
+ */
+export function auditNonCoreDeadExports(opts = {}) {
+  const root = opts.root ?? REPO_ROOT
+  const t0 = Date.now()
+  const scan = scanDeadExportsLs({ root, dirs: opts.dirs ?? ['src/composables', 'src/data', 'src/mechanics', 'src/specs', 'src/stores', 'src/types', 'src/utils', 'src/logicEditor'] })
+  const rel = (p) => relative(root, p)
+
+  // ---- .vue import 索引（含路径 → 解析到 .ts 模块） ----
+  const resolveSpec = (fromFile, spec) => {
+    let base
+    if (spec.startsWith('@/')) base = join(root, 'src', spec.slice(2))
+    else if (spec.startsWith('.')) base = join(fromFile, '..', spec)
+    else return null
+    for (const c of [base + '.ts', join(base, 'index.ts'), base + '.vue', base]) {
+      if (existsSync(c) && statSync(c).isFile()) return c
+    }
+    return null
+  }
+  const tsFiles = walkTs(join(root, 'src'))
+  const vueImports = new Map() // vueFile -> Map(name -> Set(resolvedModule))
+  const walkVue = (dir) => {
+    if (!existsSync(dir)) return
+    for (const e of readdirSync(dir)) {
+      const p = join(dir, e)
+      const st = statSync(p)
+      if (st.isDirectory()) { if (e !== '__tests__' && e !== 'node_modules') walkVue(p) }
+      else if (e.endsWith('.vue')) {
+        const text = readFileSync(p, 'utf8')
+        const map = new Map()
+        for (const m of text.matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g)) {
+          const target = resolveSpec(p, m[2])
+          if (!target) continue
+          for (const part of m[1].split(',')) {
+            const s = part.trim(); if (!s) continue
+            const orig = s.split(/\s+as\s+/)[0].trim()
+            if (!map.has(orig)) map.set(orig, new Set())
+            map.get(orig).add(target)
+          }
+        }
+        vueImports.set(p, map)
+      }
+    }
+  }
+  walkVue(join(root, 'src'))
+
+  // ---- 重导出图：哪些模块能「传递地」暴露某模块的符号 ----
+  const starEdges = new Map()
+  const namedEdges = new Map()
+  for (const f of tsFiles) {
+    let t
+    try { t = readFileSync(f, 'utf8') } catch { continue }
+    const stars = []
+    const named = []
+    for (const m of t.matchAll(/export\s+\*\s+from\s*['"]([^'"]+)['"]/g)) {
+      const target = resolveSpec(f, m[1]); if (target) stars.push(target)
+    }
+    for (const m of t.matchAll(/export\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g)) {
+      const target = resolveSpec(f, m[2]); if (!target) continue
+      for (const part of m[1].split(',')) {
+        const s = part.trim(); if (!s) continue
+        const [orig, alias] = s.split(/\s+as\s+/).map((x) => x.trim())
+        named.push({ name: alias ?? orig, target })
+      }
+    }
+    starEdges.set(f, stars)
+    namedEdges.set(f, named)
+  }
+  const modulesExporting = (declFile, name) => {
+    const out = new Set([declFile])
+    let changed = true
+    while (changed) {
+      changed = false
+      for (const [f, stars] of starEdges) for (const s of stars) if (out.has(s) && !out.has(f)) { out.add(f); changed = true }
+      for (const [f, named] of namedEdges) for (const n of named) if (out.has(n.target) && n.name === name && !out.has(f)) { out.add(f); changed = true }
+    }
+    return out
+  }
+
+  // ---- 全仓文本索引（三次兜底） ----
+  const textIdx = new Map()
+  const exts = new Set(['.ts', '.vue', '.mjs', '.js', '.json', '.md'])
+  const walkAll = (dir) => {
+    if (!existsSync(dir)) return
+    for (const e of readdirSync(dir)) {
+      if (e === 'node_modules' || e === '.git' || e === 'dist') continue
+      const p = join(dir, e)
+      const st = statSync(p)
+      if (st.isDirectory()) walkAll(p)
+      else if (exts.has(p.slice(p.lastIndexOf('.')))) {
+        try { textIdx.set(rel(p), readFileSync(p, 'utf8')) } catch { /* ignore */ }
+      }
+    }
+  }
+  walkAll(root)
+
+  const dead = []
+  const vueImported = []
+  const textMentioned = []
+  for (const d of scan.dead) {
+    const reachable = modulesExporting(join(root, d.file), d.name)
+    const refs = []
+    for (const [vf, map] of vueImports) {
+      const srcs = map.get(d.name)
+      if (!srcs) continue
+      for (const s of srcs) if (reachable.has(s)) refs.push(`${rel(vf)} → ${rel(s)}`)
+    }
+    if (refs.length > 0) { vueImported.push({ ...d, refs }); continue }
+    const re = new RegExp(`\\b${d.name.replace(/\$/g, '\\$')}\\b`)
+    const mentions = []
+    for (const [f, text] of textIdx) {
+      if (f === d.file) continue
+      text.split('\n').forEach((l, i) => { if (re.test(l)) mentions.push(`${f}:${i + 1}`) })
+    }
+    if (mentions.length > 0) textMentioned.push({ ...d, mentions })
+    else dead.push(d)
+  }
+  return { dead, vueImported, textMentioned, exports: scan.exports, ms: Date.now() - t0 }
+}
+
+/**
  * 扫描死通道。
  * @param {{root?: string, dirs?: string[], files?: string[]}} [opts] root=仓库根；files 供单测注入自建 program
  * @returns {{dead: Array<{key:string,file:string,line:number,prop:string,container:string,reads:number,confidence:'dead-both'|'dead-input',evidence:string}>, candidates:number, ms:number}}

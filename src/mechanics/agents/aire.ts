@@ -51,8 +51,6 @@ export const AIRE_RELEASE_RATIO_PER_TEN: Record<string, number> = {
 }
 /** 目标失衡时，异放比例额外提升 50% */
 export const AIRE_RELEASE_STUN_BONUS_PCT = 50
-/** 妄想时刻（终极技 buff）单次持续时间（秒），用于估算强化版绝对音准占比 */
-export const AIRE_DELUSION_DURATION = 15
 /** 影画1 异放暴击：基础暴击率/暴伤，掌控>阈值后每点额外加暴击率 */
 export const AIRE_C1_RELEASE_CRIT_RATE = 25
 export const AIRE_C1_RELEASE_CRIT_DMG = 25

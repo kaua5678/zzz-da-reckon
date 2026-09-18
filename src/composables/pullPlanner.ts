@@ -24,7 +24,7 @@
  * 命座/专武档同理：禁用该卡的所有后续档。同一引擎同一算法，成型号与新号起点
  * 会给同一张卡不同估值（持有集条件化，即用户「比利 vs 维琳娜」例子的形式化）。
  */
-import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM, PLANNER_FILM_PER_VERSION } from '@/data/filmEconomy'
+import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM } from '@/data/filmEconomy'
 
 // ========== 类型 ==========
 
@@ -72,12 +72,6 @@ export const TIER_COSTS: Record<Exclude<PurchaseTier, 0>, number> = {
   1: CINEMA_GOLD_FILM,
   2: WEAPON_GOLD_FILM,
   3: CINEMA_GOLD_FILM * 6 + WEAPON_GOLD_FILM * 4,
-}
-export const TIER_LABELS: Record<PurchaseTier, string> = {
-  0: '未持有',
-  1: '本体',
-  2: '本体+专武',
-  3: '满配（本体+专武+6影画+4精炼）',
 }
 
 /** 可购卡（限定 S；首 UP 窗口唯一） */
@@ -441,11 +435,3 @@ export function computeCardValuesVcg(
 
 /** 起点预设（用户口径 1：全做） */
 export type StartPresetKind = 'fresh' | 'established' | 'custom'
-export const START_PRESET_LABELS: Record<StartPresetKind, string> = {
-  fresh: '新号（无任何限定）',
-  established: '成型号（常驻 S + A 可用，0 限定）',
-  custom: '自选持有',
-}
-
-/** 默认每版本免费菲林（用户口径 5：25000） */
-export const PLANNER_DEFAULT_FILM = PLANNER_FILM_PER_VERSION

@@ -81,12 +81,6 @@ export interface SeriesSpec {
   code: SetupCode
 }
 
-/** 系列展示名（图例用）：「柏妮思 21」/「仪青潘 11」 */
-export function seriesLabel(s: SeriesSpec, nameOf: (id: string) => string): string {
-  const who = s.members.map(nameOf).join('+')
-  return `${who} ${formatSetupCode(s.code)}`
-}
-
 // ========== x 轴维度 ==========
 
 export type AxisId = 'setupCode' | 'cinema' | 'wengine' | 'gold' | 'period' | 'difficulty'

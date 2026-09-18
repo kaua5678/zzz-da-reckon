@@ -122,14 +122,6 @@ export interface TeamPresetOption {
   label: string
 }
 
-/** n-select 一级分组选项（Naive UI group options：type='group' + children） */
-export interface TeamPresetOptionGroup {
-  type: 'group'
-  label: string
-  key: string
-  children: TeamPresetOption[]
-}
-
 /**
  * 分组下拉选项（两级：分类 → 队伍；分类名 = 一级分类 + 二级分类合成
  * 「一级 · 二级」——2026-09-03 用户「太多了需要二级分类」）。
@@ -183,15 +175,6 @@ export interface PresetCascadeNode {
   value: string
   children?: PresetCascadeNode[]
 }
-export const teamPresetCascadeOptions: PresetCascadeNode[] = presetGroupLabels.map(group => ({
-  label: group,
-  value: group,
-  children: presetSubgroupLabelsFor(group).map(sub => ({
-    label: sub,
-    value: `${group}::${sub}`,
-    children: presetsForFilter(group, sub).map(p => ({ label: p.name, value: p.id })),
-  })),
-}))
 
 /** 默认筛选：第一个「真的有队伍」的（职业, 属性）——避免初始落到空组显示异常（2026-09-03） */
 export function firstNonEmptyFilter(): { group: string; subgroup: string } {

@@ -19,27 +19,3 @@ export function getAgentSpecsByAgentId(): Map<string, AgentMechanicSpec> {
   }
   return map
 }
-
-export function summarizeAgentSpecs(): Array<{
-  id: string
-  name: string
-  agentIds: string[]
-  status: string
-  conversions: number
-  resources: number
-  fusions: number
-  events: number
-  notes: string[]
-}> {
-  return agentSpecs.map(spec => ({
-    id: spec.id,
-    name: spec.name,
-    agentIds: spec.agentIds,
-    status: spec.status,
-    conversions: spec.attributeConversions.length,
-    resources: spec.resources.length,
-    fusions: spec.rowFusions.length,
-    events: spec.events.length,
-    notes: spec.notes,
-  }))
-}
