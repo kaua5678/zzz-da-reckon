@@ -217,6 +217,45 @@ export function getStatMeta(stat: string): StatMeta {
   }
 }
 
+/**
+ * stat 的**结算口径**（`applyStat` 的 `mode` 实参）——「用户自由选属性」入口（全局 Buff）的唯一事实源。
+ *
+ * @fact utils/statMeta/结算口径 口径: 全局 Buff 等「用户自由选 stat」入口的 applyStat mode 一律读 STAT_META 声明表（未登记字段才回落 isPctStat 名字启发式）；isPctStat 是**展示**口径、不可当结算口径用（实测 39 字段结论相反/34 个 mode 敏感） | 据 实测@2026-09-18·R27 | 验 src/utils/__tests__/statModeParity.test.ts | 锚 src/utils/statMeta.ts#statSettlementMode | 信 高
+ *
+ * 为什么必须有它、且不能拿 `isPctStat` 顶替（2026-09-18 round 27 实测）：
+ * 二者量的**不是同一件事**——`isPctStat` 是**展示口径**（UI 该显示 `%` 还是绝对值，
+ * 消费者见 `discEffectRows.ts` / `FinalPanel.vue` / `StatPanel.vue`），判定面是**字段名后缀**；
+ * 而 `applyStat` 的 `mode` 是**结算口径**（数值进 `pct` 累加器还是 `flat` 累加器）。
+ * 实测两者对本仓 **39 个字段给出相反答案**（对照基线 = `core/panel.ts` 修前的引擎名字启发式），
+ * 其中 **34 个 `mode` 敏感**（各自进不同累加器，数值不同；判据见
+ * `src/utils/__tests__/statModeParity.test.ts`）：
+ *
+ * | 字段 | 声明 `mode` | `isPctStat`（按名字） | 拿 `isPctStat` 当结算口径的后果 |
+ * |---|---|---|---|
+ * | `anomalyMastery` 异常掌控 | `flat`（直接加点，`docs/GAME_TERM_TO_CODE_FIELD.md` §11.2） | `true`（后缀 `Mastery`） | 全局 Buff 填 30 ⇒ 实算 `148×1.3 = 192.4`，而属性配置页预览按 flat 显示 `+30` |
+ * | `energyRegen` 基础回能 | `flat`（点/秒；`statDisplay.display = "number"`） | `true`（后缀 `Regen`） | 填 `0.5` ⇒ 进 `energyRegenBonusPct`（×1.5）而不是 `energyRegenBonusFlat`（+0.5） |
+ * | `enemy*ResReduction` 减抗系列 | `pct` | `false`（`Reduction` 不在其后缀表） | 减抗被当固定值累加 |
+ *
+ * 修前症状 = **同一份「全局 Buff」在两个入口算出两个面板**：属性配置页预览（`TeamConfigPage.vue`
+ * 的 `applyTargetedStat` 调用点）走 `isPctStat`，引擎路径（`panelPhases.ts` 的
+ * `globalAsTeammateBuffs` → `applyEffect`→`applyStat`）走 `panel.ts#inferStatMode` 的同形名字启发式。
+ * 实测 `anomalyMastery=30` 两侧给出 **178 vs 192.4**。
+ *
+ * ⚠ **不要**把本函数用在展示格式化上——展示要的是 `isPctStat`（两者结论相反，见上表）。
+ * ⚠ **也不要**把它接进 `core/panel.ts#inferStatMode`（驱动盘口径）：驱动盘数值的语义由 catalog
+ * 外部数据 `statRules.statDisplay[k].display` 决定（`percent` = 按基础值百分比、`number`/`integer`
+ * = 固定值加点），与 `STAT_META.mode` **不同义**。实测反例：`energyRegen` 的 `display = "percent"`
+ * （6 号位 = +60% 回能），而 `STAT_META.energyRegen.mode = 'flat'` 描述的是**基础回能字段本身**
+ * （1.2 点/秒）⇒ 拿本函数当驱动盘口径会把 `+60%` 变成 `+60 点/秒`（round 27 实测踩到并回退）。
+ * 两条通路各自的口径与证据见 `inferStatMode` 头注释 + `src/utils/__tests__/statModeParity.test.ts`。
+ */
+export function statSettlementMode(stat: string): 'pct' | 'flat' {
+  const direct = STAT_META_MAP.get(stat)
+  if (direct) return direct.mode
+  // 未登记字段：沿用 getStatMeta 合成兜底分支的既有语义（名字启发式）
+  return isPctStat(stat) ? 'pct' : 'flat'
+}
+
 
 const CORE_STAGE_META: Record<string, { base: '攻击' | '生命' | '防御' | '冲击力'; size: '大词条' | '小词条' }> = {
   atkPct: { base: '攻击', size: '大词条' },

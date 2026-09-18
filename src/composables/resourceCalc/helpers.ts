@@ -206,11 +206,11 @@ export function elementLabel(element: string): string {
   return DAMAGE_ELEMENT_LABELS[element] ?? element
 }
 
-export function isPctStat(stat: string): boolean {
-  return stat.endsWith('Pct') || stat.endsWith('Rate') || stat.endsWith('Dmg') ||
-    stat.endsWith('Ratio') || stat.endsWith('Mastery') || stat.endsWith('Regen') ||
-    stat.endsWith('Impact') || stat.endsWith('Efficiency') || stat.endsWith('Bonus')
-}
+// `isPctStat` 的第三份副本已于 2026-09-18 round 27 删除（规则 11 单一事实源）：
+// 它是 `utils/statMeta.ts#isPctStat` 的**逐字漂移副本**（缺 `Reduction`/`Ignore` 两个后缀、
+// 且不剥 `__` 限定段），且当时**全仓零引用**（唯一读者 `panelPhases.ts` 要的是**结算**口径，
+// 已改读 `statSettlementMode`）。留着它就是下一颗「改一处忘一处」的地雷。
+// 展示口径用 `@/utils/statMeta#isPctStat`；结算口径用 `@/utils/statMeta#statSettlementMode`。
 
 // ============================================================================
 // 招式行取值簇（C 簇，14 个符号）已整段迁至 `./skillRows.ts`（R22 熵批 2 / R22-S2 刀 B，纯搬迁）。

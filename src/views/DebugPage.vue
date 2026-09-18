@@ -104,7 +104,8 @@ import { useCatalogStore } from '@/stores/catalog'
 import { computePanel } from '@/composables/resourceCalc/helpers'
 import { SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { fmt, pct, localized } from '@/utils/format'
-import { getStatMeta, isPctStat, phaseStatLabel } from '@/utils/statMeta'
+// `isPctStat` = **展示**口径（lineValue 的格式化），`statSettlementMode` = **结算**口径（全局 Buff 的 mode 实参）
+import { getStatMeta, isPctStat, phaseStatLabel, statSettlementMode } from '@/utils/statMeta'
 import type { BuffEffect, BuffGroup, PanelValues, TeammateBuff } from '@/types/catalog'
 
 interface DebugRow {
@@ -290,7 +291,7 @@ function addGlobalRows(rows: DebugRow[]) {
   for (const buff of configStore.globalBuffs) {
     if (!buff.enabled) continue
     const targetNote = buff.stat === 'skillDmgBonus' ? `；目标招式：${SKILL_DMG_TARGET_LABELS[normalizeSkillDamageTarget(buff.targetSkillType)]}` : ''
-    rows.push(row('全局 Buff', buff.name, buff.stat, buff.value, isPctStat(buff.stat) ? 'pct' : 'flat', `属性配置页手动添加，直接应用到局内面板${targetNote}`, phaseStatLabel(buff.stat, 'inCombat')))
+    rows.push(row('全局 Buff', buff.name, buff.stat, buff.value, statSettlementMode(buff.stat), `属性配置页手动添加，直接应用到局内面板${targetNote}`, phaseStatLabel(buff.stat, 'inCombat')))
   }
 }
 

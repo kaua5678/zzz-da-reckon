@@ -12,9 +12,11 @@
  *
  * ⚠ 落点必须是 `resourceCalc/` **目录直属**的 `.ts`：子目录会整类逃出
  * `listAgentBranchFiles()` 的 agentId 棘轮度量面（`scripts/check-guards.mjs`；R22 分诊 §3 闸门 4 实测）。
- * ⚠ 与 `./helpers` 是**双向 import**（本文件取 `isPctStat` / `getTeamAnomalyDurationBonus` /
- * `findSlotByIdentity`，那边取本文件的 re-export）——两边全是函数声明（提升）且模块初始化期
- * 零互读，故无 TDZ 风险；D 簇后续再拆时把这三个符号一并迁走即可解环。
+ * ✅ **与 `./helpers` 的双向边已解环**（2026-09-18 round 27）：本文件对 `./helpers` 的**唯一**反向依赖
+ * 曾是 `isPctStat`（刀 A 头注释点名的三个符号里的最后一个）；该副本已删（规则 11），本文件改读
+ * `@/utils/statMeta#statSettlementMode`（结算口径的单一事实源）。现本文件**不再 import `./helpers`**，
+ * 反向依赖只剩 `./anomalyPanels`（异常面板簇，非 `./helpers`）。
+ * ⚠ 注意 `./helpers` 仍 re-export 本文件的符号（服务目录外既有消费者），那条边不受影响。
  */
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
@@ -39,8 +41,9 @@ import type {
   StunAxis,
 } from '@/types/resource'
 import type { PanelValues, TeammateBuff, Agent, DriveDiscConfig } from '@/types/catalog'
-// 留在 helpers.ts 的本批反向依赖（B 簇只经 isPctStat 一个符号出边）
-import { isPctStat } from './helpers'
+// 结算口径单一事实源（全局 Buff → TeammateBuff.effect.mode）。**不要**用展示口径 `isPctStat`：
+// 两者对本仓 39 个字段结论相反（其中 34 个 mode 敏感），详见 statMeta.ts#statSettlementMode 头注释。
+import { statSettlementMode } from '@/utils/statMeta'
 // 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { getTeamAnomalyDurationBonus, findSlotByIdentity } from './anomalyPanels'
@@ -533,7 +536,7 @@ export function computePanelPhases(
         type: 'fixed' as const,
         target: { kind: 'default' as const },
         stat: b.stat as TeammateBuff['effects'][number]['stat'],
-        mode: (isPctStat(b.stat) ? 'pct' : 'flat') as 'pct' | 'flat',
+        mode: statSettlementMode(b.stat),
         value: b.value,
         ...(b.targetSkillType && b.targetSkillType !== 'all' ? { targetSkillType: b.targetSkillType } : {}),
       }],

@@ -198,7 +198,23 @@ export function calcBasePanel(agent: Agent, wEngine: WEngine | undefined): Panel
   return finalizeCoreStatBonuses(panel)
 }
 
-/** 应用驱动盘主词条和副词条 */
+/**
+ * 驱动盘主词条/副词条的**结算口径**（`applyStat` 的 `mode` 实参）。
+ *
+ * ⚠⚠ **本函数不是全局 Buff 那条通路的口径，两者不能合并**（2026-09-18 round 27 实测）：
+ * 驱动盘数值的语义由 **catalog 外部数据** 决定（`statRules.statDisplay[k].display`：
+ * `percent` = 按基础值的百分比、`number`/`integer` = 固定值加点）。名字后缀启发式只是它的**近似**，
+ * 且实测对 `anomalyMastery`（`display = "number"`，即 +30 加点）判错成 pct
+ * ⇒ 6 号位掌控主词条把 `94` 算成 `94×1.3 = 122.2`，而本仓四处独立来源都说该是 `94+30 = 124`：
+ * ① `statRules.statDisplay.anomalyMastery.display = "number"`；② `buff.ts#collectAllBuffs` 的
+ * `roughStats`（`level60.anomalyMastery + maxMain`，即 4pc 折枝剑歌门槛用的那套）；
+ * ③ `STAT_META.anomalyMastery.mode = 'flat'`；④ `discSetEffects.test.ts` 注释「94 + 30 主词条 = 124」。
+ * **修这个要走「全库 delta 归因」流程（会动积蓄/异常池 ⇒ timeGolden），属独立批次，别顺手改**——
+ * 本轮实测把它列进 OPEN-ITEMS 候选而不是就地修。
+ * ⚠ 反过来 `energyRegen`：`display = "percent"`（6 号位 = +60% 回能），而 `STAT_META.energyRegen.mode = 'flat'`
+ * 描述的是**基础回能字段本身**（1.2 点/秒）⇒ 拿 `statSettlementMode` 替进来会把 `+60%` 变成 `+60 点/秒`
+ * （本轮实测踩到过，已回退）。**同名不同义**，这就是两条通路不能共用一个函数的原因。
+ */
 function inferStatMode(stat: string): 'pct' | 'flat' {
   return stat.endsWith('Pct') || stat.endsWith('Rate') || stat.endsWith('Dmg')
     || stat.endsWith('Ratio') || stat.endsWith('Mastery') || stat.endsWith('Regen')

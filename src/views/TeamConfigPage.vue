@@ -863,7 +863,10 @@ import { calcPanel } from '@/core/panel'
 import { applyTargetedStat } from '@/core/buff'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { getImageUrl } from '@/utils/image'
-import { isPctStat, phaseStatLabel } from '@/utils/statMeta'
+// ⚠ 两个谓词量的是两件事：`isPctStat` = **展示**口径（UI 显示 % 还是绝对值），
+// `statSettlementMode` = **结算**口径（`applyStat` 的 mode 实参）。全局 Buff 要的是后者——
+// 用展示口径会让同一份 Buff 在预览与引擎算出两个面板（实测 anomalyMastery 178 vs 192.4）。
+import { isPctStat, phaseStatLabel, statSettlementMode } from '@/utils/statMeta'
 import { localized } from '@/utils/format'
 import { discSetGapLabel } from '@/utils/modelingGaps'
 import { buildDiscEffectRows } from '@/utils/discEffectRows'
@@ -1235,7 +1238,7 @@ const currentPanel = computed<PanelValues | null>(() => {
   const panel = { ...result.outOfCombat }
   for (const buff of configStore.globalBuffs) {
     if (!buff.enabled) continue
-    applyTargetedStat(panel, buff.stat, buff.value, isPctStat(buff.stat) ? 'pct' : 'flat', buff.targetSkillType)
+    applyTargetedStat(panel, buff.stat, buff.value, statSettlementMode(buff.stat), buff.targetSkillType)
   }
 
   return panel
