@@ -8,7 +8,9 @@
  *    agentIds: [AGENT_ID] 常量间接没解析 → 12 个模块被误报无覆盖）。
  */
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+import { ROOT } from '../../../scripts/zc.mjs'
 import {
   CONFIDENCE,
   FACT_KINDS,
@@ -377,6 +379,61 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
     expect(fromDocs.every(a => a.fact)).toBe(true)                    // docs 的声明行必须可解析（非散文提及）
     // 反向面：散文里的**提及**（被引号包住的那种）不该被当成事实
     expect(authored.every(a => !a.raw.includes('`@fact'))).toBe(true)
+  })
+
+  // ★ R34（R32-J3 收口）：把「验槽位不设防」这条**已知局限**钉成回归锁。
+  // 为什么要有这条测试（而不是只写在 auditAuthoredFacts 头注释里）：注释会被下一个 agent
+  // 当成"待修的疏漏"重新立项，而 R34 已用全量语料量化证伪了唯一可机器化的形态——
+  // 「验文件必须出现锚符号名」假阳性率 30/91 = 33.0%，且对真实病灶（测试测的是**死副本**、
+  // 符号名 import 全对）判**假阴性**。两个方向都不成立 ⇒ 收口，不许再上硬判据。
+  // 本测试锁两件事：① 语料确实大到让该结论有统计意义（防"扫不到东西"的空洞绿）；
+  // ② 弱启发式在**当前**语料上确实高假阳性（若将来仓库转用字面量断言的风格变了、这个前提
+  // 被推翻，测试会红 ⇒ 提醒后人**重新评估**，而不是让注释里的旧数字骗人）。
+  it('★ 「验」槽位刻意不设防：弱启发式假阳性高，本判据不许加硬校验（R32-J3 收口）', () => {
+    const scanned = scanAuthoredFacts()
+    const withVerifier = scanned.filter(s => s.fact?.verifier)
+    expect(withVerifier.length).toBeGreaterThanOrEqual(50)   // 反空洞下限：语料足够大
+
+    // 「验」的写法有两种：全路径（`src/scripts/__tests__/zc.test.ts`）与**裸文件名**
+    // （`difficultyCurve.test.ts`，实际在 `src/composables/__tests__/` 下）。
+    // 不做 basename 兜底会把 16 条合法条目误判成"路径不存在"——R34 首版探针正是这么踩的。
+    const testFiles = new Map<string, string>()               // basename → 绝对路径
+    const walk = (dir: string): void => {
+      for (const e of readdirSync(dir)) {
+        const p = join(dir, e)
+        if (statSync(p).isDirectory()) { if (!['node_modules', '.git', 'dist'].includes(e)) walk(p) }
+        else if (/\.(test|spec)\.ts$/.test(e)) testFiles.set(e, p)
+      }
+    }
+    walk(join(ROOT, 'src'))
+    walk(join(ROOT, 'scripts'))
+    const resolveVerifier = (v: string): string | null => {
+      const spec = v.split('::')[0].trim()
+      for (const c of [join(ROOT, spec), join(ROOT, 'src', spec), join(ROOT, 'scripts', spec)]) {
+        if (existsSync(c)) return c
+      }
+      return testFiles.get(spec.replace(/^.*\//, '')) ?? null
+    }
+
+    // 弱启发式 = 验文件里出现过锚符号名。逐条跑，统计落空率。
+    let miss = 0
+    let hit = 0
+    for (const s of withVerifier) {
+      const anchor = s.fact!.anchor
+      if (!anchor?.includes('#')) continue
+      const sym = anchor.split('#')[1].split(/[.(]/)[0]
+      if (!sym) continue
+      const file = resolveVerifier(String(s.fact!.verifier))
+      if (!file) continue
+      const src = readFileSync(file, 'utf8')
+      if (new RegExp('\\b' + sym.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(src)) hit++
+      else miss++
+    }
+    const total = hit + miss
+    expect(total).toBeGreaterThanOrEqual(20)                 // 反空洞下限
+    // 落空（= 会被假判红）的比例必须**高**——若这个断言红了，说明该启发式已变得可行，
+    // 应当重新评估 R32-J3 的收口结论（而不是直接改成硬判据：先看落空样本是否真的合法）
+    expect(miss / total).toBeGreaterThan(0.15)
   })
 
   // driftQueue 逐锚跑 git log：全量并行负载下实测超 5s 默认超时（2026-09-10 verify 偶发

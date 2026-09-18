@@ -389,6 +389,35 @@ export function scanAuthoredFacts(root = ROOT) {
 /**
  * 手写事实的完整性判据（判据 6 的判定核心）：语法必须能解析、必须有「据」、
  * 必须有能解析到的「锚」。抽取的散文事实不受此约束——它们是存量，不是新债。
+ *
+ * ══ ★ 已知局限：「验」槽位不设防（R32-J3，R34 收口 —— 刻意不做成判据）══
+ *
+ * 本函数**只**校验 ① 语法 ② 有「据」 ③ **锚**可解析。`fact.verifier`（「验」）被解析
+ * （parseFactLine）也被打印（formatFact），但**从不校验**——既不解析路径、也不检查那个文件
+ * 是否真的测过这条口径；`facts --unverified` 是**另一条**判据（只对 `agent:` 主体按 agentId
+ * 找测试文件），与「验」槽位无关。⇒ 口径可以挂一个**根本不测它**的「验」而永远绿。
+ *
+ * **为什么不补硬判据（R34 实测的量化证伪，不是"嫌麻烦"）**：
+ * 唯一「看起来可机器化」的形态 = 弱启发式「验文件里必须出现过**锚符号名**」。
+ * 在 R34 的**全量语料**（110 条手写事实，其中 107 条带「验」）上实测：
+ *
+ *   - 弱启发式命中 61 / 落空 **30** ⇒ **假阳性率 30/91 = 33.0%**
+ *
+ * 落空的 30 条**全部合法**——它们用**字面量**断言行为、本来就不必引用符号名。实例：
+ * `TIME_FOLD_MAX_PASSES` 的验 `timeGolden.test.ts`、`calcTeamResources` 的验
+ * `decibelRowParity.test.ts`、`applyDriveDiscConfig` 的验 `discSetEffects.test.ts`。
+ * ⇒ 上硬判据**当场制造 30 条假红**（R31 §2.4：假红比漏报更伤，红了会逼人改口径骗判据）。
+ *
+ * ★★ **更强的反证（该启发式不只是假阳性高，还会假阴性）**：R33 实测的真实病灶是
+ * 「测试的 import 与符号名**全都对**，但那个符号**是死的**」——`damage.test.ts` 的
+ * `describe('calcAnomalyBuildUp')` 测的是 `damage.ts` 的死副本，而活实现
+ * `calcPerHitBuildUp` 全仓零测试。这种样本上弱启发式**判绿** ⇒
+ * 它既拦不住真问题、又会误伤 33% 的合法条目。**两个方向都不成立，故收口。**
+ *
+ * **若将来仍要推进**，唯一有希望的形态 = 「验文件引用锚符号 **且** 该符号**不是死的**」
+ * ——需要符号级分析，地基已由 `scripts/lib/dead-channel-ls.mjs#scanDeadExportsLs` 铺好
+ * （⚠ 但它只扫 `src/core`；扩到非 core 层实测假阳性 35%，见 `DEAD_EXPORT_BASELINE` 头注释）。
+ * 届时**必须先过正向对照**（用人工已知非死的符号验证不误报），再谈上线。
  */
 export function auditAuthoredFacts(root = ROOT) {
   const scanned = scanAuthoredFacts(root)
