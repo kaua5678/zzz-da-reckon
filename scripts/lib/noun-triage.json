@@ -227,8 +227,8 @@
       "title": "相变时流",
       "skill": "特殊技：曙色颂·转辉",
       "state": "modeled",
-      "anchor": "src/composables/resourceCalc/helpers.ts#computePanelPhases",
-      "evidence": "相变时流全队增伤按技能等级 12/14/16 → 18%/21%/24%，在 computePanelPhases 内 panel.dmgBonus += (12+技能等级加成)×1.5，helpers.ts:767-775"
+      "anchor": "src/mechanics/agents/remielle.ts#applyRemielleTeamPanelEffects",
+      "evidence": "相变时流全队增伤按技能等级 12/14/16 → 18%/21%/24%，实现 = panel.dmgBonus += (12+技能等级加成)×1.5（remielle.ts:153，2026-09-17 round 21 夜 C 自编排层 computePanelPhases 迁进该模块的 teamPanelEffects 钩子）。⚠ 2026-09-18 round 22 / T67-a1 刀 A **改锚**：本条原锚 `resourceCalc/helpers.ts#computePanelPhases` 在 R21 夜 C 那次迁移后**已语义过期**（该符号还在、公式已走），只是断锚判据看不见——刀 A 把 B 簇搬出 helpers.ts 才让它显形。既然要改锚，就指**真实现**（模块钩子）而非搬过去的壳所在文件。"
     },
     "2000001": {
       "name": "[侵蚀壁垒]",

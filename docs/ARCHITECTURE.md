@@ -10,7 +10,7 @@
 ```
 数据层   public/static/*.json        唯一事实源（倍率/属性/buff/boss/音擎/驱动盘），只经 scripts/ 导入，不手改（中间产物 data/raw/ 的目录约定见 data/raw/README.md）
 状态层   src/stores/                  configStore（队伍/敌人/设置/滑块，可变）· catalogStore（只读数据快照）
-编排层   src/composables/             useResourceCalc.ts（一次计算的总管线，页面与引擎之间的胶水）+ resourceCalc/ 子模块（helpers/roundThreads/liuyinPromote/normaHatChain/damagePool）
+编排层   src/composables/             useResourceCalc.ts（一次计算的总管线，页面与引擎之间的胶水）+ resourceCalc/ 子模块（panelPhases/helpers/roundThreads/liuyinPromote/normaHatChain/damagePool）
 引擎层   src/core/                    纯函数引擎：resource（资源池）/ damage（伤害乘区）/ panel / stunPool / anomalyPool / buff
 录入层   src/specs/ + src/mechanics/  角色机制：声明式 spec（agents/*.json）+ TS 机制模块（agents/*.ts）
 展示层   src/views/ + src/components/ 页面与卡片（读编排层产物）
@@ -60,7 +60,7 @@ useResourceCalc()                      编排层入口（composables/useResource
 |---|---|---|
 | **优化角色自动理解 / 原文录入流程 / 证据契约** | `AGENT_RECORDING_SOP.md` §0.5；`node scripts/record-agent.mjs --help` | `scripts/lib/recording.mjs`（固定来源与校验接口）+ `scripts/record-agent.mjs`（工作台）+ `scripts/verify-recording.mjs`（交付闸门）；测试 `src/scripts/__tests__/recording.test.ts` |
 | 录新角色 / 补机制 | `AGENT_RECORDING_SOP.md` §0.5 先建 `data/recordings/<id>.json`，plan 校验后 → `ENGINE_PIPELINE_GUIDE.md` | `src/specs/agents/<agentId>.json`（**文件名必须 = agentId**，validate:specs 强制）+ `src/mechanics/agents/<id>.ts`（注册进 `mechanics/index.ts`） |
-| **跨角色 / 队伍级联动**（邻位回能、后场全队增益、入场次数汇总） | `ENGINE_PIPELINE_GUIDE.md` §2 的 `applyTeamConfig` 三阶段表 | **只改角色模块自己的 `applyTeamConfig`**；派发器 `applyTeamMechanics`（composables/resourceCalc/helpers.ts）无需改。禁止往 `useResourceCalc` 加 agentId 分支 |
+| **跨角色 / 队伍级联动**（邻位回能、后场全队增益、入场次数汇总） | `ENGINE_PIPELINE_GUIDE.md` §2 的 `applyTeamConfig` 三阶段表 | **只改角色模块自己的 `applyTeamConfig`**；派发器 `applyTeamMechanics`（composables/resourceCalc/panelPhases.ts）无需改。禁止往 `useResourceCalc` 加 agentId 分支 |
 | **引擎内热循环要用到角色专属量**（赠链时间、跨槽回能等——`iterate`/折叠环每 pass 重算，**钩子派发不进去**） | `src/mechanics/types.ts` 的 `crossAgentSupply` 契约（字段与语义单源）+ `docs/ENGINE_PIPELINE_GUIDE.md` §2 | **模块声明能力，引擎按能力查询**：模块写 `crossAgentSupply`，引擎调 `crossAgentSupplyAt`/`crossAgentSuppliesOf`（`core/resource/crossAgentSupply.ts`）与 `findCrossAgentSupplySlots`。**禁止**在 `core/**` 写 `c.agentId === '<id>'` 或 import 角色模块（两条棘轮盯着，见 `scripts/check-guards.mjs`） |
 | **加一个可调滑块（覆盖率/次数近似）** | `src/mechanics/types.ts` 的 `MechanicSetting`；面板阶段读法见 `AgentPanelInput.settings` | 模块 `settings: [...]` 声明 → 面板阶段 `input.settings['<id>']`、cfg 阶段 `configStore.getMechanicSetting`。**必须补一条「滑块改了面板/结果确实变」的生效测试**（般岳 rageGainCoverage 曾静默失效） |
 | 改伤害公式 / 乘区 | `core/damage.ts`（乘区顺序 = 代码顺序，逐项清单见 `core/damage.ts#calcDirectDamage` 的 @fact engine:damage/乘区顺序） | core/damage.ts；执行级字段在 `types/resource/execution.ts` SkillExecution |
@@ -73,7 +73,7 @@ useResourceCalc()                      编排层入口（composables/useResource
 | 排查「界面能量总额和次数不对应」 | `types/resource/energy.ts` 的 `CrossAgentEnergy` / `derivedEnergy` 注释 | 看 `energySource.total`（展示，含 crossAgent）vs `derivedEnergy`（驱动次数）；两口律试已对齐（iterate 连携次数同口径，`timeSliceChainEnergy.test.ts` 锁定），差值 ≠ 0 即回归 |
 | 排查「算出来没收敛 / 数值抖动」 | `types/resource/team.ts` 的 `ConvergenceReport`；结果页计算状态条 | `convergence.timeBudgetConverged` / `outerExit`（`cycle` 正常、`maxIter` 可疑）；全角色断言在 `allAgentsSweep` |
 | 改失衡 / 异常 / 紊乱 | `core/stunPool/`、`core/anomalyPool/` | 同上 |
-| 改面板计算 / 局外局内 / 转模 | `composables/resourceCalc/helpers.ts`（computePanelPhases，applyPanel 调用点在此）→ `core/panel.ts` | 同上 |
+| 改面板计算 / 局外局内 / 转模 | `composables/resourceCalc/panelPhases.ts`（computePanelPhases，applyPanel 调用点在此）→ `core/panel.ts` | 同上 |
 | **压缩数组取值**（队伍有**空槽**时数值静默偏小/直接报 TypeError —— 本类缺陷 `timeGolden` 全盲，105 预设全满槽） | `scripts/lib/compacted-slot-index.mjs` 头注释（判据 17 的口径与全部实测证据） | `characters`/`panels`/`damagePanels`/`remielleEntryPanels` **按位置压缩**（producer 跳过空槽）⇒ **槽位号 ≠ 下标**，一律禁 `arr[slot]`：① 模块内取**自己**那份 ⇒ 用派发器直给的 `AgentTeamConfigInput.cfg` / `AgentNextRoundFeedbackInput.cfg`；② **队友**那份 ⇒ `.find(c => c.slot === slot)`；③ 面板族 ⇒ `panelAt(panels, slot)`（`core/panel.ts`，按 `PanelValues.slot` 印章查）。依不变量「**有 cfg 必有面板**」⇒ 取不到应**响亮失败**，禁止静默 `continue`/`?? 兜底`。生效测试 `src/composables/__tests__/compactedSlotIndex.test.ts`（前导/中间空槽 + 3 个原硬崩角色；**必须手组队**，预设库覆盖不到） |
 | **排查「招式单次时长/喧响比同族小一个量级」（连携显示 0.5s 一类）** | `core/resource.ts` 的 `fusedGroupMetrics`（@fact engine:fusedGroupMetrics/一次动作整段量）+ `channelMetricsOf`（全部 `find*` 的唯一出口）；`data/moveFusions.ts` 登记组 + `countsTime` | 口径见 `ENGINE_PIPELINE_GUIDE.md` §4 坑 31 + 上述 @fact；生效测试 `moveFusion.test.ts`（含双计护栏） |
 | 改页面 / 结果展示 | `views/` + `components/`；伤害行数据源 `calc.damagePoolRows` | 对应 .vue |

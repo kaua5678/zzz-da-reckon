@@ -16,7 +16,7 @@
 //     现状做集合相等校验，漏删即红，防清单变死数据）
 //   - agentId 棘轮：基线只减不增。下调（进步）需在提交说明写明；上调没有合法路径——
 //     角色特例逻辑属于 src/mechanics/agents/<id>.ts 的 applyTeamConfig（派发器在
-//     composables/resourceCalc/helpers.ts，见规则 6 / ARCHITECTURE §3）
+//     composables/resourceCalc/panelPhases.ts，见规则 6 / ARCHITECTURE §3）
 import { execSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
@@ -597,7 +597,7 @@ export function countAgentBranchLinesLegacy(root = ROOT) {
  * （`teamResult` + `displayResult` + `adjustedResult` + `anomalyPool` + `prevThreads` 快照 + `combatTime`
  * + `getAgentSkills`）**与 `cfg`**（模块自己那份，**可写**）；返回 = 本模块的下一轮线程值
  * （`Partial<CalcRoundThreads>`），由编排层 merge 进 `threadsNext`（单一 owner，模块不写 threads）。
- * 派发器 = `collectNextRoundFeedback`（`composables/resourceCalc/helpers.ts`，槽位序 0→1→2、零 agentId）。
+ * 派发器 = `collectNextRoundFeedback`（`composables/resourceCalc/panelPhases.ts`，槽位序 0→1→2、零 agentId）。
  *
  * ⚠ 三条实测纪律（抄本范式前必读）：
  * ① **首轮守卫语义各不相同，逐位保留**：普罗米娅/薇薇安/艾莲 = `prevThreads.<字段> <= 0` 才写回 cfg；
@@ -948,6 +948,9 @@ export function countAgentBranchLinesLegacy(root = ROOT) {
  * `helpers.ts` 2 = ① `findSlotByIdentity` **自身的实现行**（抽象层单一判定点——18 处形状收敛成这一行，
  * 是投资不是残留）② 简 C6 块（受 `jane.passionCoverage` **未注册**阻塞：注册它会让内部实验开关变成
  * 资源利用率页的用户可见滑块 = 产品级口径，需用户裁决 ⇒ 夜 C 如实保留未擅自动）。
+ * ⚠ **2026-09-18 round 22 / T67-a1 刀 A**：那 2 行**随代码分居两文件**（`helpers.ts` 1 =
+ * `findSlotByIdentity` 自身实现行；`panelPhases.ts` 1 = 简 C6 块）——B 簇整段迁出后**总数仍 2/2，
+ * 棘轮零变化**（纯搬迁，不新增也不消解判定；逐位指纹 diff 为空佐证语义未动）。
  *
  * **=== 同夜：判据 17 扫描器盲区修复（与棘轮无关，但同属「护栏对真实写法失明」类）===**
  * `compacted-slot-index.mjs` 原正则只认 `panels[slot]`，漏掉真实形态 `panels.value[slot]`
@@ -2313,7 +2316,11 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   "src/composables/resourceCalc/damagePool.ts engine:damage/减防通道",
   "src/composables/resourceCalc/damagePool.ts engine:damage/非轴失衡易伤",
   "src/composables/resourceCalc/feasibilitySearch.ts engine:降配搜索/非下闭可行集",
-  "src/composables/resourceCalc/helpers.ts disc:覆盖率并入范围",
+  // ⚠ 2026-09-18 round 22 / T67-a1 刀 A：`disc:覆盖率并入范围` 的**键随实现改路径**——
+  // 该口径的实现（`mergeTeamDiscEffectCoverages` 及其头注释 @fact）随 B 簇整段迁进
+  // `resourceCalc/panelPhases.ts`，故豁免键从 `helpers.ts` 改指 `panelPhases.ts`。
+  // **这是路径跟随、不是销号**：口径内容一字未改、触发器仍未补 ⇒ 存量面（game 条数）不变。
+  "src/composables/resourceCalc/panelPhases.ts disc:覆盖率并入范围",
   "src/composables/resourceCalc/liuyinPromote.ts engine:实战档位喧响计数",
   "src/composables/resourceCalc/liuyinPromote.ts engine:失衡次数不动点",
   "src/composables/stunVulnSummary.ts engine:失衡易伤可见化/加权信用",
@@ -2448,7 +2455,7 @@ export function runAllChecks(root = ROOT) {
       + ` [AST 三形态: agentId/.id(四位数字)/teammateBuffId]`,
     ok: branches === AGENT_BRANCH_BASELINE,
     detail: branches > AGENT_BRANCH_BASELINE
-      ? [`  ✗ 角色判定 ${AGENT_BRANCH_BASELINE}→${branches}：角色特例逻辑写进编排层了（度量面 ${branchFiles.length} 个文件）。移到 src/mechanics/agents/<id>.ts 的 applyTeamConfig（三阶段钩子）或声明式钩子（axisWindowOverlays / backstageAutoFill 等），派发器在 composables/resourceCalc/helpers.ts`,
+      ? [`  ✗ 角色判定 ${AGENT_BRANCH_BASELINE}→${branches}：角色特例逻辑写进编排层了（度量面 ${branchFiles.length} 个文件）。移到 src/mechanics/agents/<id>.ts 的 applyTeamConfig（三阶段钩子）或声明式钩子（axisWindowOverlays / backstageAutoFill 等），派发器在 composables/resourceCalc/panelPhases.ts`,
         '  → 度量口径 = AST 三形态（`agentId` / `.id` 四位数字 / `teammateBuffId`），按行去重；',
         '     查当前清单：node scripts/report-agent-identity.mjs --md（分类 + 证据 + 观察项）']
       : branches < AGENT_BRANCH_BASELINE

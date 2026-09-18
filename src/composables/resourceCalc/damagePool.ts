@@ -36,7 +36,6 @@ import {
   parseReleaseMultiplier,
   safeElement,
   elementLabel,
-  buildMechanicTeamMembers,
   getTeamAnomalyDurationBonus,
   getWindInfectionElement,
   buildAnomalyVirtualPanel,
@@ -48,6 +47,9 @@ import {
   findSlotByIdentity,
   type DamagePoolRow,
 } from './helpers'
+// 面板/机制编排簇（B 簇）已迁 `./panelPhases`（R22 熵批 1 / T67-a1 刀 A）——同目录兄弟模块
+// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
+import { buildMechanicTeamMembers } from './panelPhases'
 
 /** 伤害池构建入参：useResourceCalc 侧各 computed 的解包快照 */
 export interface DamagePoolContext {

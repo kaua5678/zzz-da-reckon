@@ -805,7 +805,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     **两个真实成因**（都可能表现为绿）：
     ① **基线已被前人重生成过**（最常见）：`TIME_GOLDEN_UPDATE=1` 跑过一次，基线里**已经是订正后的值**，
        于是「改对了」和「没改」都显示绿。1611 克拉蕾实测：基线里 `856266` 本就是订正后值。
-    ② **改动路径不进该仪器的度量面**：`applyPanel` 钩子在**编排层**（`resourceCalc/helpers.ts` 派发），
+    ② **改动路径不进该仪器的度量面**：`applyPanel` 钩子在**编排层**（`resourceCalc/panelPhases.ts` 派发），
        而 `PROBE_AGENT=<id> npm run probe:panel` 只调 `core/panel#calcPanel` —— 探针**看不到**任何
        `applyPanel` 施加的修正（1611 的 +17.5% 暴击率就不在其中）。
     **判据（照做，别凭绿/红下结论）**：
