@@ -498,7 +498,7 @@ function fmt(n: number): string {
 .k { color: var(--wa-500); font-size: 12px; }
 .v { font-size: 14px; font-weight: 600; }
 .v.big { font-size: 20px; }
-.green { color: #63e2b7; }
+.green { color: var(--c-success); }
 .amber { color: #e6b464; }
 .red { color: #e88080; }
 .team-line { margin: 8px 0 4px; font-size: 13px; color: var(--wa-750); }

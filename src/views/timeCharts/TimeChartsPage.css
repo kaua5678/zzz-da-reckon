@@ -32,8 +32,8 @@
 }
 .swap-chip {
   font-size: 11px;
-  background: rgba(246, 173, 85, 0.12);
-  color: #f6ad55;
+  background: var(--c-warning-soft);
+  color: var(--c-warning-strong);
   border: 1px solid rgba(246, 173, 85, 0.3);
   border-radius: 6px;
   padding: 2px 8px;
@@ -51,7 +51,7 @@
   text-overflow: ellipsis;
 }
 .swap-badge {
-  color: #f6ad55;
+  color: var(--c-warning);
   font-weight: 600;
 }
 .swap-kind {
@@ -70,13 +70,13 @@
   font-size: 11px;
 }
 .boss-hit {
-  color: #f6ad55;
+  color: var(--c-warning);
   font-weight: 700;
 }
 .boss-appearance {
   margin-top: 6px;
   font-size: 11px;
-  color: #f6ad55;
+  color: var(--c-warning);
 }
 .strength-row {
   cursor: default;

@@ -417,15 +417,15 @@ function statLabelOf(stat: string): string {
 
 .effect-tag {
   font-size: 11px;
-  background: rgba(99, 226, 183, 0.12);
-  color: #63e2b7;
+  background: var(--c-success-soft);
+  color: var(--c-success);
   border-radius: 3px;
   padding: 1px 5px;
 }
 
 .effect-tag.unparsed {
   background: rgba(230, 180, 100, 0.1);
-  color: #e6b464;
+  color: var(--c-warning-strong);
 }
 
 .all-bosses {
@@ -463,7 +463,7 @@ function statLabelOf(stat: string): string {
 }
 
 .all-boss-chip:hover {
-  border-color: #63e2b7;
+  border-color: var(--c-success);
 }
 
 .all-boss-chip.no-view {
@@ -483,6 +483,6 @@ function statLabelOf(stat: string): string {
 }
 
 .chip-dot.ca-dot {
-  background: #f6ad55;
+  background: var(--c-warning);
 }
 </style>

@@ -23,7 +23,7 @@
   fill: #ff8f5a;
 }
 .pv-T1 {
-  fill: #f6ad55;
+  fill: var(--c-warning);
 }
 .pv-T2 {
   fill: #a3a3b8;
@@ -83,7 +83,7 @@
   min-height: 2px;
 }
 .pv-detail-bar-fill.pv-pos {
-  background: #f6ad55;
+  background: var(--c-warning);
 }
 .pv-detail-bar-fill.pv-neg {
   background: #63b3ed;

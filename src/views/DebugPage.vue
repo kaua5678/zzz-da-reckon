@@ -542,7 +542,7 @@ const formulaSections = [
   padding: 2px 6px;
   border-radius: 999px;
   background: rgba(59, 130, 246, 0.14);
-  color: #93c5fd;
+  color: var(--c-info);
   white-space: nowrap;
 }
 

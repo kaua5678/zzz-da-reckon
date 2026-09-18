@@ -201,11 +201,11 @@ function collectRows(engine: WEngine, scope?: 'self' | 'team'): FieldRow[] {
 .field-table-wrap { overflow-x: auto; border: 1px solid var(--wa-80); border-radius: 10px; }
 .field-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1080px; }
 .field-table th, .field-table td { padding: 8px 10px; border-bottom: 1px solid var(--wa-60); text-align: left; vertical-align: top; }
-.field-table th { color: var(--wa-550); background: var(--wa-40); font-weight: 600; }
+.field-table th { color: var(--fg-2); background: var(--wa-40); font-weight: 600; }
 .field-table tr:last-child td { border-bottom: none; }
 .stat-id { margin-top: 3px; color: var(--wa-420); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-.zone-pill { display: inline-flex; padding: 2px 8px; border-radius: 999px; background: rgba(59,130,246,.16); color: #9cc1ff; }
+.zone-pill { display: inline-flex; padding: 2px 8px; border-radius: 999px; background: rgba(59,130,246,.16); color: var(--c-info); }
 .value-cell { color: #d6f7a3; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 .note-cell { color: var(--wa-640); line-height: 1.5; }
-.empty-state { padding: 16px; color: var(--wa-460); text-align: center; border: 1px dashed var(--wa-120); border-radius: 10px; background: var(--wa-20); }
+.empty-state { padding: 16px; color: var(--fg-2); text-align: center; border: 1px dashed var(--wa-120); border-radius: 10px; background: var(--wa-20); }
 </style>

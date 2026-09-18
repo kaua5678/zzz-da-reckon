@@ -60,7 +60,7 @@ defineProps<{
 }
 
 .hc-swap {
-  color: #f6ad55;
+  color: var(--c-warning);
   font-weight: 600;
 }
 

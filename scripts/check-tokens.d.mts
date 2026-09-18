@@ -85,6 +85,13 @@ export declare const CONTRAST_EXTRA_PAIRS: ContrastExtraPair[]
 // naive-token-reuse 判据（App.vue 表面色 ↔ global.css 令牌）
 export declare const NAIVE_TOKEN_MAP: ReadonlyArray<[string, string, string]>
 
+/**
+ * tinted-ink-closure 判据（形状面）的豁免表，键 = `file::selector`。
+ * 目前只有一条：3D 曲面的 Z 值色阶图例（色标必须与 getZColor() 数值分段逐位一致的**数据色**）。
+ * 测试用它对豁免做「仍被命中」检查（防豁免腐烂：选择器改名后静默放行）。
+ */
+export declare const TINTED_LITERAL_ALLOW_SET: Map<string, string>
+
 export interface TokenCheckResult {
   name: string
   ok: boolean

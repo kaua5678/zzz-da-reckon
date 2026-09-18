@@ -29,7 +29,7 @@
 }
 .sim-gold-line {
   fill: none;
-  stroke: #f6ad55;
+  stroke: var(--c-warning);
   stroke-width: 1.5;
   stroke-dasharray: 5 4;
   stroke-linejoin: round;

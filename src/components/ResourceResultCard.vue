@@ -830,7 +830,7 @@ const anomalyEventExecutionsData = computed(() => {
 
 .time-seg.backstage {
   background: var(--wa-100);
-  color: var(--wa-500);
+  color: var(--fg-2);
 }
 
 .time-legend {

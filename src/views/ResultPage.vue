@@ -1322,7 +1322,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 
 .slot-chip {
   font-size: 11px;
-  color: var(--wa-400);
+  color: var(--fg-2);
   background: var(--wa-40);
   padding: 2px 8px;
   border-radius: 3px;
@@ -1359,7 +1359,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
   top: 0;
   background: var(--app-tablehead-bg);
   text-align: left;
-  color: var(--wa-550);
+  color: var(--fg-2);
   font-weight: 600;
 }
 
@@ -1396,7 +1396,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .damage-pool-total {
-  color: #fbbf24;
+  color: var(--c-warning);
   font-size: 13px;
   font-weight: 700;
 }
@@ -1421,7 +1421,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 
 .damage-pool-head {
   background: var(--wa-70);
-  color: var(--wa-520);
+  color: var(--fg-2);
   font-weight: 600;
 }
 
@@ -1437,7 +1437,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .damage-type {
-  color: #93c5fd;
+  color: var(--c-info);
   font-weight: 600;
 }
 
@@ -1446,7 +1446,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .damage-total {
-  color: #fbbf24;
+  color: var(--c-warning);
   font-weight: 700;
 }
 
@@ -1527,7 +1527,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .damage-pool-total {
-  color: #fbbf24;
+  color: var(--c-warning);
   font-size: 13px;
   font-weight: 700;
 }
@@ -1552,12 +1552,12 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 
 .damage-pool-head {
   background: var(--wa-70);
-  color: var(--wa-520);
+  color: var(--fg-2);
   font-weight: 600;
 }
 
 .damage-type {
-  color: #93c5fd;
+  color: var(--c-info);
   font-weight: 600;
 }
 
@@ -1566,7 +1566,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .damage-total {
-  color: #fbbf24;
+  color: var(--c-warning);
   font-weight: 700;
 }
 
@@ -1657,7 +1657,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .damage-share-summary b {
-  color: #fbbf24;
+  color: var(--c-warning);
   font-size: 18px;
 }
 
@@ -1701,7 +1701,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 }
 
 .share-character-head b {
-  color: #fbbf24;
+  color: var(--c-warning);
 }
 
 .share-note {
@@ -1733,7 +1733,7 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 
 .team-overview-head {
   background: var(--wa-70);
-  color: var(--wa-500);
+  color: var(--fg-2);
   font-weight: 600;
 }
 
@@ -1770,13 +1770,13 @@ function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
 
 .virtual-panel-head {
   background: var(--wa-70);
-  color: var(--wa-500);
+  color: var(--fg-2);
   font-weight: 600;
 }
 
 .virtual-panel-virtual {
   background: rgba(251, 191, 36, 0.08);
-  color: #fbbf24;
+  color: var(--c-warning);
   font-weight: 700;
 }
 </style>

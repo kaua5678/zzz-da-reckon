@@ -257,11 +257,11 @@ function pct(part: number, total: number): string {
 }
 .intro {
   font-size: 13px;
-  color: #666;
+  color: var(--fg-2);
   line-height: 1.8;
   margin: 0 0 12px;
   padding: 10px 12px;
-  background: rgba(128, 128, 128, 0.06);
+  background: var(--wa-40);
   border-radius: 6px;
 }
 .control {

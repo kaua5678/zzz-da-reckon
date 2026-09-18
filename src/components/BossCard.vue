@@ -365,7 +365,7 @@ function statLabelOf(stat: string): string {
 .effect-tag {
   font-size: 11px;
   background: rgba(230, 180, 100, 0.1);
-  color: #e6b464;
+  color: var(--c-warning-strong);
   border-radius: 3px;
   padding: 1px 5px;
 }

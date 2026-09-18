@@ -352,7 +352,7 @@ const rankRows = computed(() => {
   transition: height 0.2s ease;
 }
 .bar-fill.pos {
-  background: linear-gradient(180deg, #f6ad55, #e8954a);
+  background: linear-gradient(180deg, var(--c-warning), #e8954a);
 }
 .bar-fill.zero {
   background: var(--wa-120);
@@ -408,7 +408,7 @@ const rankRows = computed(() => {
   line-height: 1.6;
 }
 .tip-row.strong {
-  color: #f6ad55;
+  color: var(--c-warning);
   font-weight: 700;
 }
 .tip-row.sub {
@@ -435,7 +435,7 @@ const rankRows = computed(() => {
   white-space: nowrap;
 }
 .rank-table th {
-  color: var(--wa-500);
+  color: var(--fg-2);
   font-weight: 600;
   font-size: 11px;
   position: sticky;
@@ -455,7 +455,7 @@ const rankRows = computed(() => {
   background: rgba(246, 173, 85, 0.1);
 }
 .rank-table td.hot {
-  color: #f6ad55;
+  color: var(--c-warning);
   font-weight: 700;
 }
 </style>

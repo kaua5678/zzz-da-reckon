@@ -183,7 +183,7 @@ const emit = defineEmits<{
 .boss-data-title {
   font-size: 12px;
   font-weight: 700;
-  color: #f6ad55;
+  color: var(--c-warning);
   white-space: nowrap;
 }
 .boss-data-item {

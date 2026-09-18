@@ -569,7 +569,7 @@ const panels = computed(() => {
 .fp-zone-title {
   font-size: 11px;
   font-weight: 700;
-  color: #93c5fd;
+  color: var(--c-info);
   margin-bottom: 4px;
 }
 .fp-zone-main {
@@ -651,7 +651,7 @@ const panels = computed(() => {
   padding: 1px 6px;
   border-radius: 999px;
   background: rgba(59, 130, 246, 0.14);
-  color: #93c5fd;
+  color: var(--c-info);
   font-size: 10px;
   white-space: nowrap;
 }

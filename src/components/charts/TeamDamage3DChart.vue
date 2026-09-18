@@ -735,7 +735,7 @@ watch(
   background: var(--wa-30);
   border: none;
   font-size: 11px;
-  color: var(--wa-500);
+  color: var(--fg-2);
   padding: 3px 8px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -757,7 +757,7 @@ watch(
   border: 1px solid var(--line);
   border-radius: 4px;
   font-size: 11px;
-  color: var(--wa-500);
+  color: var(--fg-2);
   padding: 2px 7px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -769,7 +769,7 @@ watch(
 
 .td3d-icon-btn.active {
   border-color: var(--c-warning);
-  color: var(--c-warning);
+  color: var(--c-warning-strong);
   background: var(--c-warning-soft);
 }
 

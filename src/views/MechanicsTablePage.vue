@@ -356,7 +356,7 @@ function statusType(status: string): 'success' | 'warning' | 'info' | 'default' 
 .section-title {
   font-size: 13px;
   font-weight: 600;
-  color: #a78bfa;
+  color: var(--fg-2);
   margin-bottom: 8px;
 }
 
@@ -377,7 +377,7 @@ function statusType(status: string): 'success' | 'warning' | 'info' | 'default' 
 
 .mech-table th {
   background: var(--wa-50);
-  color: var(--wa-550);
+  color: var(--fg-2);
   font-weight: 600;
 }
 

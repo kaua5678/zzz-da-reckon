@@ -26,6 +26,17 @@
 //      而 3D 场景的底**由组件自己画**（不是页面底）⇒ 两个组件用固定深底 + 跟随主题的 --wa-*
 //      墨色时，判据 5 **全绿**（令牌对页面底确实达标）而场景内实测塌到 **1.01:1**。
 //      即：判据 5 的覆盖面**结构上到不了**自绘场景 —— 这是"护栏全绿但页面不可读"的典型盲区。
+//  10. scene-ink-closure —— **形状面**，与判据 9 成对：场景选择器的 var() 必须落在 --scene-* 白名单
+//  11. tinted-contrast  —— **自带底色贴片**（chip / 表头 / inset 行）的墨对比度达标
+//      ⚠ 与判据 9 同源的**第二类结构盲区**（2026-09-18 round 31-a2 实测）：判据 5 的背景
+//      **固定取 --app-panel**，而这类贴片在页面底上**又加了一层**（--wa-20~100 / 语义 -soft）
+//      ⇒ 判据 5 只验「令牌 vs 页面底」，看不见「贴片上的墨」。实测：**37 条规则**在亮色档
+//      掉到 1.03~3.82:1（23 条连 3.0 都不到），而判据 5 **全绿**。
+//      另一条独立通路：**字面量与 :root 令牌逐位同值**（手抄的产物）⇒ 亮色档完全失效
+//      （如 `#63e2b7` 在白底贴片上 1.49:1，而 `var(--c-success)` 是 4.63）。
+//  12. tinted-ink-closure —— **形状面**，与判据 11 成对：贴片规则里不得写字面量色值
+//      （= 该表面无法跟随主题）。只有行为面 ⇒ 「把 `--fg-2` 换回 `--wa-450`」看不见
+//      （--wa-450 自己没变、仍在白名单外但值合法）；只有形状面 ⇒ 「字面量换成同值的错令牌」看不见。
 //
 // 用法：
 //   node scripts/check-tokens.mjs             # 检查（npm run check / verify 已挂载）
@@ -493,64 +504,64 @@ export const HARDCODED_WHITELIST = [
  */
 export const HARDCODED_BASELINE = {
   'src/components/AppHeader.vue': 3,
-  'src/components/BossCard.vue': 8,
-  'src/components/BossSelectCard.vue': 8,
+  'src/components/BossCard.vue': 7,
+  'src/components/BossSelectCard.vue': 3,
   'src/components/CharacterCard.vue': 3,
-  'src/components/FinalPanel.vue': 5,
-  'src/components/ImpactChart.vue': 5,
+  'src/components/FinalPanel.vue': 3,
+  'src/components/ImpactChart.vue': 4,
   'src/components/MarginalUtilityCard.vue': 1,
   'src/components/ResourceResultCard.vue': 7,
   'src/components/StatPanel.vue': 6,
-  'src/views/AttributeConfigPage.vue': 4,
+  'src/views/AttributeConfigPage.vue': 2,
   'src/views/BossHpInflationPage.vue': 1,
   'src/views/CalculatorView.vue': 1,
-  'src/views/CharIncrementPage.vue': 6,
-  'src/views/DebugPage.vue': 2,
+  'src/views/CharIncrementPage.vue': 3,
+  'src/views/DebugPage.vue': 1,
   'src/views/LogicEditorPage.vue': 1,
-  'src/views/MechanicsTablePage.vue': 1,
-  'src/views/PositionComparePage.vue': 5,
-  'src/views/ResourceUtilizationPage.vue': 3,
-  'src/views/ResultPage.vue': 12,
-  'src/views/RunArchivePage.vue': 5,
-  'src/views/StunAxisPage.vue': 29,
-  'src/views/TeamComparePage.vue': 6,
+  'src/views/MechanicsTablePage.vue': 0,
+  'src/views/PositionComparePage.vue': 3,
+  'src/views/ResourceUtilizationPage.vue': 2,
+  'src/views/ResultPage.vue': 3,
+  'src/views/RunArchivePage.vue': 4,
+  'src/views/StunAxisPage.vue': 17,
+  'src/views/TeamComparePage.vue': 4,
   'src/views/TeamConfigPage.vue': 0,
   // 2026-09-12 评审 #14 第十刀：悬浮卡样式整体搬进 components/ChartHoverCard.vue
   // （scoped 样式不作用到子组件 ⇒ 必须随组件走）。该文件 2 处字面色值是**逐字搬迁**：
   // `.hc-swap` 的 #f6ad55 与 `.hover-card` 的 box-shadow rgba(0,0,0,.4)——本次不改观感，
   // 若将来要令牌化，属独立的视觉调整（需实机比对）。
-  'src/components/ChartHoverCard.vue': 2,
+  'src/components/ChartHoverCard.vue': 1,
   // 2026-09-14 直伤系数图抽组件（components/charts/DirectDamageChart.vue）：2 处字面色值是**逐字搬迁**——
   // 模板里测试服阴影的 rgba(246,173,85,.06) 与 .dd-label 的 paint-order 描边 rgba(10,10,14,.85)。
   // 页面侧同轮下降 33 → 32（删掉了随组件走的 4 条 dd-* 规则里的字面色值）。
   'src/components/charts/DirectDamageChart.vue': 2,
   // 2026-09-14 控制面板抽组件（components/charts/TimeChartsControls.vue）：1 处字面色值是**逐字搬迁**
   // —— .boss-data-title 的 #f6ad55（原在 TimeChartsPage.css）。页面侧同轮 32 → 31。
-  'src/components/charts/TimeChartsControls.vue': 1,
+  'src/components/charts/TimeChartsControls.vue': 0,
   // Chart 4 抽组件（2026-09-14）：这两处字面色值是**逐字搬迁**（`.sim-gold-line` 的 #f6ad55、
   // `.gold-axis-label` 的 rgba(246,173,85,0.75)），原记在 TimeChartsPage.vue 名下 ⇒ 那边 20→18、
   // 这边 +2，**合计 160 不变**（棘轮未放松）。
   // 为什么不顺手换成 var(--c-warning)：暗色主题下 --c-warning == #f6ad55，但**亮色主题是 #b45309**
   //（global.css 双主题对称）⇒ 换令牌 = 亮色主题金线改色 = 真视觉 delta，与「抽组件零 delta」的验收冲突。
   // 正解（单独一轮 + 双主题实机取证）见账本 Open。
-  'src/components/charts/FilmSimChart.vue': 2,
+  'src/components/charts/FilmSimChart.vue': 1,
   // Chart 6 抽组件（2026-09-14，工人 309e86b2 复核数字、派活方登记）：18 → 12，**净 −6 全部是逐字搬迁**
   // （lane-cell/lane-text 随 lane-* 共用类进 chart-blocks.css +2；pp-purchase/pp-team-text/pv-sel-row
   //  + 模板 rgba(99,179,237,.13) 随组件走 +4）。三处合计 12+5+4 = 21，与改前 18+3 = 21 **相等 ⇒ 棘轮未放松**。
   // ⚠ pv-sel-row 不换令牌也不搬进共享表：它一搬 = Chart 5 的选中高亮凭空出现 = 真视觉 delta（见该 css 头注释）。
   'src/components/charts/PullPlannerChart.vue': 3,  // 4 → 3（2026-09-15 N2：`.pv-sel-row` 的选中行底色原写在这里、` 只有 Chart 6 一个 scope 生效；迁进 styles/chart-blocks.css 并换成语义令牌 `--c-warning-soft`（双主题各一份）⇒ 该文件的字面色值少一处。
-  'src/views/TimeChartsPage.vue': 12,   // 23 → 21（node-note 的两处字面色值随该类迁去 chart-blocks.css）
+  'src/views/TimeChartsPage.vue': 7,   // 23 → 21（node-note 的两处字面色值随该类迁去 chart-blocks.css）
   // → 20（2026-09-14 修「抽组件后样式留在页面 scoped」失样式面：`.kill-line-ref` 从页面 scoped
   // 搬进 styles/chart-blocks.css 时，那条字面 `rgba(99,226,183,0.35)` 换成语义令牌
   // `stroke: var(--c-success)` + `stroke-opacity: .35`（暗色主题逐位等价）⇒ 净 −1 处字面色值。
   // 2026-09-14 图表块基元外置（src/styles/chart-blocks.css，经 <style scoped src> 载入）：
   // 1 处字面色值是**逐字搬迁**——`.kill-line` 的 #63e2b7（原在 TimeChartsPage.css）。页面 31 → 30。
-  'src/styles/chart-blocks.css': 5,  // 3 → 5（2026-09-14 Chart 6 抽组件：`.lane-cell`/`.lane-text` 两条 rgba 随 lane-* 共用类**逐字搬迁**进来；
+  'src/styles/chart-blocks.css': 3,  // 3 → 5（2026-09-14 Chart 6 抽组件：`.lane-cell`/`.lane-text` 两条 rgba 随 lane-* 共用类**逐字搬迁**进来；
   //   同轮页面 18→12、新组件 +4，三处合计 12+5+4 = 21 = 改前 18+3 ⇒ **总量不变、棘轮未放松**）   // 1 → 3（+ .node-note 的 #f6ad55 与 rgba(246,173,85,.35)，逐字搬迁）
   // 2026-09-14 Chart 5 抽组件（components/charts/PullValueChart.vue）：7 处字面色值是**整组搬迁**
   // （原在 TimeChartsPage.css 的 .pv-* 规则里）。页面 30 → 23。
-  'src/components/charts/PullValueChart.vue': 7,
-  'src/views/WEngineFieldPage.vue': 3,
+  'src/components/charts/PullValueChart.vue': 5,
+  'src/views/WEngineFieldPage.vue': 2,
   // ---- 2026-09-18 round 29：3D 可视化组件（外部协作者 `310ba51`）——**修红基线，非新增债务** ----
   //
   // ⚠ 背景：`310ba51` 落地两个 3D 组件时**未同步本表**，导致 HEAD 上 `check-tokens` **EXIT=1**
@@ -634,7 +645,19 @@ export const FONT_SIZE_BASELINE = {
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--text-2/--text-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 466  /* ★ 2026-09-18 round 31「3D 场景主题化」：474 → **466**（−8）。
+export const WA_REF_BASELINE = 448  /* ★ 2026-09-18 round 31-a2「贴片墨对比度」：466 → **448**（−18）。
+   方向 = 棘轮要求的方向（只减不增）。逐条归因：12 个文件把「按页面底调」的三级墨
+   （`--wa-350/--wa-400/--wa-450/--wa-500/--wa-520/--wa-550/--wa-600/--wa-460`）
+   换成**既有语义别名 `--fg-2`**（次级文字）——它们原是压在自己**带浅底**的贴片
+   （chip / 表头 / inset 行）上，实测亮色档掉到 2.18~3.82:1（正文门槛 4.5）。
+   `--fg-2` 在全部 22 种贴片底上两侧最差 **4.63** ⇒ 不必另立新档（规则 12：能复用就不新增）。
+   另 +2 处是 `.sap-mw-window.mw-l2/mw-l3` 换成 `--wa-700/--wa-750`（那两条底是
+   自定义半透明 rgba(…,0.35)，`--fg-2` 的 0.75α 在**夜间**只有 4.00~4.76，不够；见下）。
+   ⚠ 净 −18 里含「同值令牌化」的 4 处：`#63e2b7/#93c5fd/#f6ad55` 等字面量与
+   `--c-success/--c-info/--c-warning` **逐位同值**（手抄 :root 的产物）⇒ 改回令牌后
+   夜间逐位不变、亮色档从 1.49~1.79 升到 4.5+。
+   下方 round 31 的原始归因保留（它是 3D 场景那批的历史证据）。 */
+  /* 466（2026-09-18 round 31「3D 场景主题化」）：474 → **466**（−8）。
    方向 = 棘轮要求的方向（只减不增）。逐条归因：两组件把**按页面底调**的 --wa-* 直引
    （在自绘场景里语义就是错的 —— 实测亮色档压到场景底只有 1.01~2.89:1）换成
    `--scene-*` 场景专用令牌；其中 18 处落在场景选择器/Canvas 里（由 --scene-* 接管），
@@ -658,7 +681,13 @@ export const WA_REF_BASELINE = 466  /* ★ 2026-09-18 round 31「3D 场景主题
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 687  /* ★ 2026-09-18 round 31「3D 场景主题化」：648 → **687**（+39）。
+export const VAR_TOTAL_BASELINE = 743  /* ★ 2026-09-18 round 31-a2「贴片墨对比度」：687 → **743**（+56）。
+   这是**棘轮允许的方向**（本键语义 = 「只增不减，防把变量改回字面量」）⇒ 上调即进步登记。
+   逐条归因：12 个文件的贴片墨改成 `var(--fg-2)`（既有别名）+ 4 处逐位同值字面量
+   （`#63e2b7`→`var(--c-success)` 等）改成令牌 + `.sap-mw-window.*` 两条换 `--wa-700/--wa-750`。
+   ⚠ 两个数字一起看：--wa-* 直引 **−18** 而 var() 总数 **+22** ⇒ 说明「换的是语义不是数量」。
+   下方 round 31 的原始归因保留。 */
+  /* 687（2026-09-18 round 31「3D 场景主题化」）：648 → **687**（+39）。
    这是**棘轮允许的方向**（本键语义 = 「只增不减，防把变量改回字面量」）⇒ 上调即进步登记。
    逐文件归因（`--report` 实测）：两组件把 44 处字面色值换成 `var(--scene-*)` /
    `--c-*` 令牌，另加 `--line`/`--fill-hover`/`--fill-active` 既有替换；
@@ -776,6 +805,25 @@ export const CONTRAST_EXTRA_PAIRS = [
   // 用语义别名而非固定档位：明暗两侧需要不同墨色才都能过 3:1。
   { label: 'placeholder', fg: '--fg-placeholder', bg: '--app-panel', min: 3 },
 ]
+
+/**
+ * 形状面（tinted-ink-closure）的**唯一豁免表**（键 = `file::selector`）。
+ *
+ * 为什么必须开口子（2026-09-18 round 31-a2 实测）：`.rs3d-color-spectrum` 是 3D 曲面的
+ * **Z 值色阶图例条** —— 它的色标必须与 JS `getZColor()` 的数值分段**逐位一致**，
+ * 否则「图例说的颜色」与「曲面实际画的颜色」分叉。那是**数据色**
+ * （UI_THEME_GUIDE §5「明暗通吃，不进变量表」），**不该**跟随主题。
+ * `#1e3a8a` 只是**恰好**与 `--c-info-strong` 同值（getZColor 在 t=0 处 r=30,g=58,b=138
+ * = #1e3a8a 深海军蓝）⇒ 换令牌会让图例随主题漂移 = 引入分叉，正是本判据要防的反面。
+ *
+ * ⚠ 纪律（防豁免腐烂）：条目必须**仍被命中** —— 选择器改名/不再是字面量即红，
+ * 见 `checkTokens.test.ts` 的「豁免仍然有效」用例。**不是**永久豁免：该选择器一旦
+ * 不再是数据色阶，条目必须删除。
+ */
+export const TINTED_LITERAL_ALLOW_SET = new Map([
+  ['src/components/charts/ResponseSurface3D.vue::.rs3d-color-spectrum',
+    'Z 值色阶图例：色标必须与 getZColor() 数值分段逐位一致（数据色，不跟随主题）'],
+])
 
 export function runAllChecks(root = ROOT) {
   const results = []
@@ -1164,6 +1212,205 @@ export function runAllChecks(root = ROOT) {
     name: `scene-ink-closure (3D 场景只用 --scene-* 墨: 场景选择器的 var() + Canvas 取色)`,
     ok: closureDetail.length === 0,
     detail: closureDetail,
+  })
+
+  // ---- 11. tinted-contrast（自带底色贴片）----
+  // 为什么必须单列（2026-09-18 round 31-a2）：判据 5 的背景**固定取 --app-panel/--app-bg**，
+  // 于是它只回答「令牌 vs 页面底」。而 chip / 表头 / inset 行这类表面在页面底上**又加了一层**
+  // （`background: var(--wa-40)` / `var(--c-success-soft)`），墨实际坐在**那一层**上。
+  // ⇒ 判据 5 对「贴片上的墨」**结构不可见**：实测 37 条规则亮色档只有 1.03~3.82:1，
+  //   而判据 5 **10/10 全绿**。这与判据 9（自绘场景）是**同一类盲区**（假设背景唯一），
+  //   只是成因不同：判据 9 是「底由组件自己画」，本条是「底在页面底上又叠了一层」。
+  // 算法：把每条规则的 background 先压到页面底取实色，再把 color 压到**该实色**上算对比度。
+  // ⚠ 与判据 9 的分表面纪律一致：只对**同一条规则内**的 bg/color 成对断言（不跨规则猜堆叠），
+  //   避免"宁可错杀"的假红（R31 教训：假红比漏报更伤——后来者会不信任判据）。
+  const tintedDetail = []
+  /** 解析一个 CSS 值 → 颜色（支持 var() 跟随 + 渐变取所有色标；半透明压到 under 上） */
+  const resolveCssValue = (tokens, value, under) => {
+    const one = (v) => {
+      v = v.trim()
+      const vm = v.match(/^var\(\s*(--[\w-]+)\s*\)$/)
+      if (vm) return resolveTokenColor(tokens, vm[1], under)
+      const c = parseColor(v)
+      if (!c) return null
+      return c.a < 1 && under ? flatten(c, under) : c
+    }
+    // 渐变（linear/radial）：取**全部**色标，逐个参与比较（判据 3 的教训：只取首色会漏）
+    if (/gradient\(/i.test(value)) {
+      const inner = value.slice(value.indexOf('(') + 1, value.lastIndexOf(')'))
+      const stops = []
+      let depth = 0, cur = ''
+      for (const ch of inner) {
+        if (ch === '(') depth++
+        if (ch === ')') depth--
+        if (ch === ',' && depth === 0) { stops.push(cur); cur = '' } else cur += ch
+      }
+      stops.push(cur)
+      return stops
+        .map(s => s.trim())
+        .filter(s => !/^(to\s|\d+(deg|turn|rad)|from|at\s|circle|ellipse|linear|radial|conic)/i.test(s))
+        .map(s => s.replace(/\s+[\d.]+%$/, ''))
+        .map(one)
+        .filter(Boolean)
+    }
+    const c = one(value)
+    return c ? [c] : []
+  }
+  /** 该声明值里的**色值字面量**（hex / rgb[a]），用于形状面与"同值令牌"提示 */
+  const colorLiterals = (value) =>
+    [...value.matchAll(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g)].map(m => m[0])
+  /** 累加各主题下的最差对比度命中 */
+  const checkTinted = (tokens, label, hits) => {
+    const pageBg = resolveTokenColor(tokens, '--app-bg', null) ?? { r: 255, g: 255, b: 255, a: 1 }
+    const panel = resolveTokenColor(tokens, '--app-panel', pageBg) ?? pageBg
+    for (const f of scanned) {
+      if (STYLE_SHEET_EXCLUDED.includes(f.path)) continue
+      let cssText
+      try { cssText = extractStyleBlocks(readFileSync(join(root, f.path), 'utf8'), { root, filePath: f.path }).map(b => b.content).join('\n') } catch { continue }
+      for (const m of cssText.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        const selector = m[1].trim().split('\n').pop().trim()
+        const body = m[2]
+        const bgM = body.match(/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/)
+        const fgM = body.match(/(?:^|;)\s*color\s*:\s*([^;]+)/)
+        if (!bgM || !fgM) continue
+        const bgv = bgM[1].trim(), fgv = fgM[1].trim()
+        if (/^(transparent|none|inherit|currentColor|unset|initial)\b/i.test(bgv)) continue
+        const bgs = resolveCssValue(tokens, bgv, panel)
+        if (!bgs.length) continue // 底解析不了（如数据色 var() 组合）⇒ 跳过而非误报
+        const fgs = resolveCssValue(tokens, fgv, null)
+        if (!fgs.length) continue
+        // 墨若半透明，压到**它自己那条规则的底**上（不是页面底）
+        const ratios = []
+        for (const bg of bgs) {
+          for (const fgRaw of resolveCssValue(tokens, fgv, null)) {
+            const fg = fgRaw.a < 1 ? flatten(fgRaw, bg) : fgRaw
+            ratios.push(contrastRatio(fg, bg))
+          }
+        }
+        const worst = Math.min(...ratios)
+        if (worst >= CONTRAST_TEXT_MIN) continue
+        const key = `${f.path}::${selector}`
+        const rec = hits.get(key) ?? { file: f.path, selector, bgv, fgv, worst: {} }
+        rec.worst[label] = worst
+        rec.best = { bgv, fgv }
+        hits.set(key, rec)
+      }
+    }
+  }
+  const tintedHits = new Map()
+  checkTinted(darkTokens, 'dark', tintedHits)
+  checkTinted(lightTokens, 'light', tintedHits)
+  // 只报**两侧都**算得出且至少一侧不达标 —— 单侧缺失说明令牌没双份（theme-parity 会另报）
+  for (const rec of [...tintedHits.values()].sort((a, b) => Math.min(...Object.values(a.worst)) - Math.min(...Object.values(b.worst)))) {
+    const labels = Object.entries(rec.worst).map(([k, v]) => `${k}=${v.toFixed(2)}`)
+    // 若是「字面量逐位等于某 :root 令牌值」，直接给出可执行的替换建议（这是最常见的根因）
+    const lits = [...colorLiterals(rec.bgv), ...colorLiterals(rec.fgv)]
+    const sameTok = []
+    for (const lit of lits) {
+      const c = parseColor(lit)
+      if (!c) continue
+      for (const [k, v] of darkTokens) {
+        if (!/^--(c-|app-|scene-)/.test(k)) continue
+        if (sameValue(lit, v)) { sameTok.push(`${lit} = ${k}（逐位同值，却是字面量）`); break }
+      }
+    }
+    tintedDetail.push(
+      `  ✗ ${rec.file} 「${rec.selector}」墨 ${rec.fgv} 压底 ${rec.bgv} = ${labels.join(' / ')}`
+      + ` < ${CONTRAST_TEXT_MIN} → 贴片的墨要按**贴片底**选（不是页面底）：`
+      + `浅底用 --fg-2/--app-text，语义底用 --c-*-strong`
+      + (sameTok.length ? `；★ ${sameTok.join('；')} ⇒ 换成该令牌即可（夜间逐位不变）` : ''),
+    )
+  }
+  results.push({
+    name: `tinted-contrast (自带底色贴片的墨: chip/表头/inset 行 ≥${CONTRAST_TEXT_MIN})`,
+    ok: tintedDetail.length === 0,
+    detail: tintedDetail,
+  })
+
+  // ---- 12. tinted-ink-closure（**形状面**，与判据 11 成对）----
+  // 为什么判据 11 不够：它断言的是「**当前**这条规则算出来达标」。
+  //   ⇒ **有人把 --fg-2 换回 --wa-450，判据 11 会红（好）**；但**有人把达标的值写死成字面量**
+  //   它**照样绿** —— 那条规则从此**不跟随主题**，亮色档再塌回去（这是"接回错源/写死"盲区）。
+  // ⇒ 本判据钉**结构**：贴片规则的 bg/fg **不得手抄主题令牌的值**。
+  //
+  // ★ 口径为什么是「与某**双主题值不同**的令牌逐位同值」而不是「一律不许有字面量」
+  //   （首版太宽，实测 17 条命中里多数是**合法的主题无关**贴片 ⇒ 假红）：
+  //   反例 = `AppHeader .brand-badge`（`linear-gradient(--app-accent-gold, --app-accent-gold-soft)`
+  //   + 深墨 `#241a03`）—— 那个渐变**双主题逐位相同**（品牌金），深墨压金底两侧都达标
+  //   ⇒ 判据 11 绿、且它**本就不该**跟随主题。一律禁字面量会把它判成违规 = **假红**。
+  //   R31 §2.4 的教训：**假红比漏报更伤**（后来者会不信任判据）⇒ 宁可精细。
+  //   而「手抄令牌值」是**可证明**的根因：该字面量**在另一主题下就是错的**（如 #63e2b7 在
+  //   白底贴片上 1.49:1，而同值的 var(--c-success) 亮色是 4.63）⇒ 零假阳性、可执行建议明确。
+  //   ⚠ 与判据 9/10 的关系：判据 11 已覆盖「对比度」，本条只覆盖「**为什么**它不会跟着主题变」，
+  //     两条缺一不可（注入 A/B 实测见 scripts/check-tokens.d.mts 与交接文档）。
+  const tintedClosure = []
+  /**
+   * 形状面的**唯一豁免**（键 = `file::selector`）。
+   * 为什么必须开口子（2026-09-18 round 31-a2 实测）：`.rs3d-color-spectrum` 是 3D 曲面的
+   * **Z 值色阶图例条** —— 它的色标必须与 JS `getZColor()` 的数值分段**逐位一致**，
+   * 否则「图例说的颜色」与「曲面实际画的颜色」分叉。那是**数据色**
+   * （UI_THEME_GUIDE §5「明暗通吃，不进变量表」），**不该**跟随主题。
+   * `#1e3a8a` 只是**恰好**与 `--c-info-strong` 同值（getZColor 在 t=0 处 r=30,g=58,b=138
+   * = #1e3a8a 深海军蓝）⇒ 换令牌会让图例随主题漂移 = 引入分叉，正是本判据要防的反面。
+   * ⚠ 纪律（防豁免腐烂）：条目必须**仍被命中**（stale 即红，见 checkTokens.test.ts 的
+   * 「豁免仍有效」用例）；一旦该选择器不再是数据色阶，豁免必须删除。
+   */
+  const TINTED_LITERAL_ALLOW = TINTED_LITERAL_ALLOW_SET
+  /** 主题相关令牌：双主题值**不同**（值相同 = 与主题无关，允许字面量）。值 → 令牌名 */
+  const themeDependentByValue = new Map()
+  for (const [k, v] of darkTokens) {
+    if (!/^--(c-|app-|scene-)/.test(k)) continue
+    if (lightTokens.has(k) && sameValue(v, lightTokens.get(k))) continue // 双主题同值 = 主题无关
+    const c = parseColor(v)
+    if (c && !themeDependentByValue.has(`${c.r},${c.g},${c.b},${c.a.toFixed(4)}`)) {
+      themeDependentByValue.set(`${c.r},${c.g},${c.b},${c.a.toFixed(4)}`, k)
+    }
+  }
+  for (const [k, v] of lightTokens) {
+    if (!/^--(c-|app-|scene-)/.test(k)) continue
+    if (darkTokens.has(k) && sameValue(v, darkTokens.get(k))) continue
+    const c = parseColor(v)
+    if (c && !themeDependentByValue.has(`${c.r},${c.g},${c.b},${c.a.toFixed(4)}`)) {
+      themeDependentByValue.set(`${c.r},${c.g},${c.b},${c.a.toFixed(4)}`, k)
+    }
+  }
+  for (const f of scanned) {
+    if (STYLE_SHEET_EXCLUDED.includes(f.path)) continue
+    let cssText
+    try { cssText = extractStyleBlocks(readFileSync(join(root, f.path), 'utf8'), { root, filePath: f.path }).map(b => b.content).join('\n') } catch { continue }
+    for (const m of cssText.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const selector = m[1].trim().split('\n').pop().trim()
+      if (TINTED_LITERAL_ALLOW.has(`${f.path}::${selector}`)) continue
+      const body = m[2]
+      // ★ 扫**全部**声明，不要求同时有 background：
+      //   首版只扫「bg+color 成对」⇒ 漏掉了**只有 color** 的那一类（实测 29 条：
+      //   文字继承父容器/页面底，没有自己的 background）——它们与成对那类是**同一个根因**
+      //   （手抄令牌值 ⇒ 冻在单主题），漏掉等于护栏只覆盖了一半。
+      //   ⚠ 不是过度扩张：判定条件仍是「字面量**逐位等于**某个双主题值不同的令牌」，
+      //   故品牌金那类**主题无关**色值不会被误报（见上文 AppHeader 反例）。
+      const hits = []
+      for (const d of body.matchAll(/([a-z-]+)\s*:\s*([^;]+)/g)) {
+        const prop = d[1]
+        if (!/(color|background|fill|stroke|shadow|border)/.test(prop)) continue
+        for (const lit of colorLiterals(d[2])) {
+          const c = parseColor(lit)
+          if (!c) continue
+          const tok = themeDependentByValue.get(`${c.r},${c.g},${c.b},${c.a.toFixed(4)}`)
+          if (tok) hits.push(`${prop}: ${lit} = ${tok}（逐位同值）`)
+        }
+      }
+      if (!hits.length) continue
+      tintedClosure.push(
+        `  ✗ ${f.path} 「${selector}」的手抄色值 ${hits.join('；')}`
+        + ` → 该令牌**双主题值不同**，抄成字面量后这条规则**不再跟随主题**（亮色档会塌回去）；`
+        + `直接换成 var(<令牌>) —— 夜间逐位不变、亮色档自动生效`,
+      )
+    }
+  }
+  results.push({
+    name: `tinted-ink-closure (贴片不得手抄主题令牌值: 抄了就冻在单主题)`,
+    ok: tintedClosure.length === 0,
+    detail: tintedClosure,
   })
 
   return { results, ok: results.every(r => r.ok), stats: { scanned, varTotal, waRefs, darkTokens, lightTokens } }

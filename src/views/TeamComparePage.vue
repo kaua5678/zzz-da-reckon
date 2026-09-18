@@ -1386,7 +1386,7 @@ function killSeconds(hpRatio: number): number {
 
 .progress-fill {
   height: 100%;
-  background: #63e2b7;
+  background: var(--c-success);
   border-radius: 2px;
   transition: width 0.15s;
 }
@@ -1588,7 +1588,7 @@ function killSeconds(hpRatio: number): number {
 }
 
 .kill {
-  color: #63e2b7;
+  color: var(--c-success);
   font-weight: 700;
 }
 .kill-time {

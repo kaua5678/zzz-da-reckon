@@ -774,12 +774,12 @@ function setCap(slot: number, id: string, value: number | null) {
 
 .util-head {
   background: var(--wa-70);
-  color: var(--wa-550);
+  color: var(--fg-2);
   font-weight: 600;
 }
 
 .kind-chip {
-  color: #93c5fd;
+  color: var(--c-info);
 }
 
 .name-cell {

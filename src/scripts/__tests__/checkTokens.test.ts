@@ -39,6 +39,8 @@ import {
   scanVueFiles,
   stripComments,
   stripJsComments,
+  TINTED_LITERAL_ALLOW_SET,
+  ROOT,
 } from '../../../scripts/check-tokens.mjs'
 
 describe('parseColor（各路色值写法）', () => {
@@ -392,13 +394,14 @@ describe('scanComposableFiles（口径：把 composables 的 .ts 纳入 var() �
 })
 
 describe('仓库级自洽（真实扫描）', () => {
-  it('十条判据全绿（tokens-defined / theme-parity / 硬编码棘轮 / 字号棘轮 / 对比度 / 别名棘轮 / 字体栈一致 / naive-token-reuse / scene-contrast / scene-ink-closure）', () => {
+  it('十二条判据全绿（tokens-defined / theme-parity / 硬编码棘轮 / 字号棘轮 / 对比度 / 别名棘轮 / 字体栈一致 / naive-token-reuse / scene-contrast / scene-ink-closure / tinted-contrast / tinted-ink-closure）', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
     // ⚠ 这条计数是**有意**钉死的：加判据必须同步改这里，逼一次「新判据是否真有断言」的复核
-    // （只看 ok 的话，一个恒真的空判据也能混进来）。历史：8 → 10（round 31 加两条 3D 场景判据）。
-    expect(results).toHaveLength(10)
+    // （只看 ok 的话，一个恒真的空判据也能混进来）。历史：8 → 10（round 31 加两条 3D 场景判据）
+    // → 12（round 31-a2 加两条贴片墨判据）。
+    expect(results).toHaveLength(12)
   })
 
   it('★ 场景判据成对存在（行为面 scene-contrast + 形状面 scene-ink-closure）', () => {
@@ -410,9 +413,44 @@ describe('仓库级自洽（真实扫描）', () => {
     expect(names).toContain('scene-ink-closure')
   })
 
+  it('★ 贴片墨判据成对存在（行为面 tinted-contrast + 形状面 tinted-ink-closure）', () => {
+    // 与上面那条同构（round 31-a2）。实测三条注入把「两面都必要」钉实：
+    //   注入 A/C：行为面红、形状面绿（改了值、引用名没变）⇒ 行为面必要
+    //   注入 D：行为面**绿**（自洽字面量对，双主题都 5.31:1）、形状面红 ⇒ 形状面必要
+    const names = runAllChecks().results.map(r => r.name).join('\n')
+    expect(names).toContain('tinted-contrast')
+    expect(names).toContain('tinted-ink-closure')
+  })
+
   it('--wa-* 引用数不超过冻结基线（别名层推进方向）', () => {
     const { stats } = runAllChecks()
     expect(stats.waRefs).toBeLessThanOrEqual(WA_REF_BASELINE)
+  })
+
+  it('★ 形状面豁免仍然有效（防「豁免腐烂」：被豁免的选择器一旦消失/改名就必须删条目）', () => {
+    // 为什么单列：豁免表是判据唯一的逃生口，条目腐烂后**静默失效**——
+    // 选择器改名后豁免指向空气，判据看起来还在保护，实际已经放行。
+    // 判据 10（scene-ink-closure）的教训同源：白名单条目必须可证明仍被消费。
+    const { results } = runAllChecks()
+    const closure = results.find(r => r.name.includes('tinted-ink-closure'))
+    expect(closure).toBeDefined()
+    for (const [key, reason] of TINTED_LITERAL_ALLOW_SET) {
+      const [file, selector] = key.split('::')
+      // ① 该文件里这个选择器必须真实存在（否则豁免已腐烂）
+      const src = readFileSync(join(ROOT, file), 'utf8')
+      const blocks = extractStyleBlocks(src, { root: ROOT, filePath: file })
+      const cssText = blocks.map(b => b.content).join('\n')
+      expect(cssText, `豁免条目已腐烂：${key} 的选择器在文件中不存在`).toContain(selector)
+      // ② 该选择器必须**仍然**是字面量（否则豁免已无用，应当删除）
+      // ⚠ `.pop()` 返回 `string | undefined`（规则可能是多行选择器）⇒ 必须兜住，
+      //   否则 `vue-tsc -b` 报 TS2532 —— vitest **不做类型检查**，这个坑只有 build 看得见。
+      const lastLine = (s: string) => s.trim().split('\n').pop() ?? ''
+      const rule = [...cssText.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .find(m => lastLine(m[1]) === selector)
+      expect(rule, `豁免条目已无用：${key} 找不到规则体，应删除该豁免`).toBeDefined()
+      expect(/#[0-9a-fA-F]{3,8}\b|rgba?\(/.test(rule?.[2] ?? ''), `豁免已无用：${key} 已不含字面量，删除豁免`).toBe(true)
+      expect(reason.length).toBeGreaterThan(0)
+    }
   })
 })
 

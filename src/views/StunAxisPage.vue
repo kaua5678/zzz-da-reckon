@@ -870,19 +870,19 @@ function agentName(s: number) {
 .sap-topbar { display: flex; align-items: center; margin-bottom: 14px; }
 .sap-top-label { font-size: 12px; color: var(--wa-550); margin-left: 6px; }
 .sap-plan-banner { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 6px 10px; background: rgba(99,226,183,0.07); border: 1px solid rgba(99,226,183,0.2); border-radius: 6px; }
-.sap-plan-label { font-size: 10px; color: #63e2b7; }
-.sap-plan-name { font-size: 12px; color: #63e2b7; font-weight: 600; }
+.sap-plan-label { font-size: 10px; color: var(--c-success); }
+.sap-plan-name { font-size: 12px; color: var(--c-success); font-weight: 600; }
 .sap-plan-note { font-size: 10px; color: var(--wa-450); }
 .sap-pool { margin-bottom: 16px; }
 .sap-section-title { font-size: 11px; color: var(--wa-400); margin-bottom: 4px; }
-.sap-presets { margin-bottom: 16px; padding: 10px; background: rgba(99,226,183,0.04); border: 1px solid rgba(99,226,183,0.12); border-radius: 6px; }
+.sap-presets { margin-bottom: 16px; padding: 10px; background: rgba(99,226,183,0.04); border: 1px solid var(--c-success-soft); border-radius: 6px; }
 .sap-preset-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
-.sap-preset-name { font-size: 12px; color: #63e2b7; }
+.sap-preset-name { font-size: 12px; color: var(--c-success); }
 .sap-preset-note { font-size: 11px; color: var(--wa-500); }
 .sap-slot-row { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; flex-wrap: wrap; }
 .sap-slot-name { font-size: 10px; color: var(--wa-450); min-width: 44px; }
-.sap-chip { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: rgba(99,226,183,0.08); color: #63e2b7; cursor: pointer; }
-.sap-chip.dim { background: var(--wa-30); color: var(--wa-250); }
+.sap-chip { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: rgba(99,226,183,0.08); color: var(--c-success); cursor: pointer; }
+.sap-chip.dim { background: var(--wa-30); color: var(--fg-2); }
 .sap-axes { display: flex; flex-direction: column; gap: 14px; }
 .sap-axis { background: var(--wa-20); border-radius: 8px; padding: 10px; border: 1px solid var(--wa-50); }
 .sap-axis-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
@@ -903,20 +903,20 @@ function agentName(s: number) {
 .sap-block { display: flex; align-items: center; gap: 2px; }
 .sap-block-text { flex: 1; min-width: 0; }
 .sap-mw { flex-shrink: 0; font-size: 7px; line-height: 1; padding: 1px 2px; border-radius: 2px; pointer-events: none; white-space: nowrap; }
-.sap-mw.mw-trigger { color: #f0a020; background: rgba(240,160,32,0.15); }
-.sap-mw.mw-live { color: #63e2b7; background: rgba(99,226,183,0.15); }
+.sap-mw.mw-trigger { color: var(--c-warning-strong); background: rgba(240,160,32,0.15); }
+.sap-mw.mw-live { color: var(--c-success); background: rgba(99,226,183,0.15); }
 /* 明王平行道：触发块处 8s 窗口条（2层黄 / 3层绿），6命满覆盖 */
 .sap-mw-lane { background: rgba(240,160,32,0.03); }
 .sap-mw-window { position: absolute; top: 2px; height: 15px; border-radius: 2px; display: flex; align-items: center; padding: 0 4px; font-size: 8px; white-space: nowrap; overflow: hidden; pointer-events: none; }
-.sap-mw-window.mw-l2 { background: rgba(240,160,32,0.35); border: 1px solid rgba(240,160,32,0.6); color: #ffd591; }
-.sap-mw-window.mw-l3 { background: rgba(99,226,183,0.35); border: 1px solid rgba(99,226,183,0.6); color: #b7f5dd; }
-.sap-mw-window.mw-full { background: rgba(99,226,183,0.12); border: 1px dashed rgba(99,226,183,0.4); color: rgba(99,226,183,0.7); }
+.sap-mw-window.mw-l2 { background: rgba(240,160,32,0.35); border: 1px solid rgba(240,160,32,0.6); color: var(--fg-2); }
+.sap-mw-window.mw-l3 { background: rgba(99,226,183,0.35); border: 1px solid rgba(99,226,183,0.6); color: var(--fg-2); }
+.sap-mw-window.mw-full { background: var(--c-success-soft); border: 1px dashed rgba(99,226,183,0.4); color: var(--c-success); }
 .sap-mw-banner { margin: 6px 0 8px; padding: 5px 8px; font-size: 10px; color: var(--wa-600); background: rgba(99,226,183,0.05); border: 1px solid rgba(99,226,183,0.15); border-radius: 4px; }
 /* 优先级栈 */
 .sap-stack { display: flex; flex-direction: column; gap: 3px; }
 .sap-stack-row { display: flex; align-items: center; gap: 6px; padding: 2px 4px; background: var(--wa-20); border-radius: 3px; flex-wrap: wrap; }
 .sap-prio { width: 22px; font-size: 11px; color: var(--wa-450); text-align: center; }
-.sap-prio.top { color: #63e2b7; font-weight: 600; }
+.sap-prio.top { color: var(--c-success); font-weight: 600; }
 .sap-t { flex: 1; min-width: 130px; font-size: 11px; color: var(--wa-650); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .sap-t .sap-t-time { font-weight: 600; color: var(--wa-850); }
 .sap-ops { display: flex; gap: 2px; }

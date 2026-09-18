@@ -178,6 +178,6 @@ const marginalBySlot = computed(() => {
 .marginal-sub-title { font-size: 12px; color: var(--wa-500); margin-bottom: 8px; }
 .marginal-sub-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 .msr-name { font-size: 11px; color: var(--wa-700); min-width: 60px; }
-.msr-chip { font-size: 10px; color: var(--wa-450); background: var(--wa-40); padding: 1px 6px; border-radius: 3px; }
+.msr-chip { font-size: 10px; color: var(--fg-2); background: var(--wa-40); padding: 1px 6px; border-radius: 3px; }
 .msr-none { font-size: 10px; color: var(--wa-250); }
 </style>

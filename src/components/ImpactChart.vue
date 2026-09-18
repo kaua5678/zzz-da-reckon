@@ -531,8 +531,8 @@ function exportCSV() {
 .progress-fill { position: absolute; left: 0; top: 0; height: 100%; background: rgba(99,226,183,0.3); transition: width .2s; }
 .progress-text { position: relative; display: flex; align-items: center; justify-content: center; height: 100%; font-size: 10px; color: var(--wa-500); }
 .snapshot-bar { display: flex; gap: 6px; margin-bottom: 10px; }
-.snap-chip { font-size: 11px; padding: 2px 8px; border-radius: 3px; background: var(--wa-40); color: var(--wa-500); cursor: pointer; user-select: none; }
-.snap-chip.active { background: rgba(99,226,183,0.15); color: #63e2b7; }
+.snap-chip { font-size: 11px; padding: 2px 8px; border-radius: 3px; background: var(--wa-40); color: var(--fg-2); cursor: pointer; user-select: none; }
+.snap-chip.active { background: rgba(99,226,183,0.15); color: var(--c-success); }
 .snap-del { color: var(--wa-300); margin-left: 4px; }
 .impact-error { font-size: 12px; color: #ef4444; margin-bottom: 8px; }
 .chart-area { width: 100%; overflow-x: auto; }
@@ -546,7 +546,7 @@ function exportCSV() {
 .chart-tooltip-text { fill: var(--app-tooltip-text); }
 .chart-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .type-filter { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
-.tf-chip { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--wa-40); color: var(--wa-350); cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 3px; }
+.tf-chip { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--wa-40); color: var(--fg-2); cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 3px; }
 .tf-chip.on { background: rgba(99,226,183,0.1); color: var(--wa-700); }
 .tf-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
 .tf-all { color: var(--wa-250); font-style: italic; }

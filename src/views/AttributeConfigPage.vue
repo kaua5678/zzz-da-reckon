@@ -667,8 +667,8 @@ function hasCoverage(buff: TeammateBuff): boolean {
 .effect-tag {
   font-size: 11px;
   padding: 2px 6px;
-  background: rgba(34, 197, 94, 0.12);
-  color: rgba(74, 222, 128, 0.9);
+  background: var(--c-success-soft);
+  color: var(--c-success);
   border-radius: 4px;
   line-height: 1.4;
 }
