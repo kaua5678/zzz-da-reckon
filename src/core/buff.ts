@@ -353,8 +353,15 @@ function collectWEngineBuffs(
 /**
  * 收集驱动盘套装 buff
  *
- * requirement 门槛（@fact 驱动盘/requirement 三种判据 | 据 本任务 2026-09-05 | 验 discSetEffects.test.ts | 锚 src/core/buff.ts#collectDriveDiscBuffs | 信 高）：
- *   - outOfCombatStat：局外面板属性 ≥ min（粗算口径：基础值 + 主词条，不含副词条）——荆棘玫瑰 def 1000/1800、折枝剑歌 anomalyMastery 115
+ * requirement 门槛（@fact 驱动盘/requirement 三种判据 | 据 本任务 2026-09-05·复核@2026-09-18 | 验 discSetEffects.test.ts | 锚 src/core/buff.ts#collectDriveDiscBuffs | 信 高）：
+ *   - outOfCombatStat：局外面板属性 ≥ min——**分两条路求值，别混**：
+ *       ① **selfBuff 侧**（本函数）走 `roughStats` 粗算：基础值 + 固定主词条 + 4/5/6 主词条满值
+ *          + **副词条步数**（⚠ 旧注释写「不含副词条」是**错的**：荆棘玫瑰 def≥1000 必须含副词条才可能到）
+ *          ——荆棘玫瑰 def 1000/1800、折枝剑歌 anomalyMastery 115
+ *       ② **teamBuff 侧**（`inCombatBuffs.ts#discTeamRequirementMet`）走**已算好的精确局外面板**
+ *          `wearerPanel`——山大王 critRate 50。
+ *       ⚠ 两路**对同一份配置可能结论相反**（粗算漏音擎副属性与全部局外 buff）⇒ 不得统一
+ *       （2026-09-18 round 30 实测：1481 带专武 14148，精确 67.4 ≥50 达标 / 粗算 43.4 不达标）。
  *   - specialty / attribute：装备者特化 / 属性匹配——拂晓生花 4pc 强攻限定、拂晓行纪 4pc 以太限定
  * stat 模板：`enemy{attribute}AnomalyResReduction` 的 {attribute} 按装备者属性替换（自由蓝调 4pc）。
  */
@@ -541,12 +548,25 @@ export function collectAllBuffs(
     + (maxMain.defFlat ?? 184) // 3号位固定主词条（%作用于白值，固定值后加——与面板累加器同口径）
     + (subStep.defFlat ?? 15) * defFlatSubSteps
   const hasAmMain = discConfig.mainStats?.[6] === 'anomalyMastery'
+  // ⚠ 这里**只有 selfBuff 侧门槛实际用得到的键**。`roughStats` 的消费者是唯一的一条：
+  //   `discRequirementMet`（按 `statReq.stat` 取键）← `collectDriveDiscBuffs` 的 selfBuff 分支。
+  // 穷举 catalog 的 4 条 `outOfCombatStat` 门槛（按求值路径分侧，勿凭印象）：
+  //   · def 1000/1800（34200 荆棘玫瑰 `fourPiece.selfBuff`）→ **本粗算**
+  //   · anomalyMastery 115（32700 折枝剑歌 `fourPiece.selfBuff`）→ **本粗算**
+  //   · critRate 50（33200 山大王 `fourPiece.teamBuff`）→ **另一条路**
+  //     `inCombatBuffs.ts#discTeamRequirementMet`，读 `wearerPanel` 的**精确局外面板**。
+  // ⇒ `critRate` 键**已删除**（2026-09-18 round 30 裁决）。它不仅有零个生产消费者，
+  //   而且**值是错的**：粗算式只算 `level60 + 4号位主词条 + 副词条步数`，漏掉音擎副属性
+  //   与全部局外 buff。实测 1481 琉音 带专武 14148（副属性 critRate +24）+ 4号位暴击主词条、
+  //   0 副词条时：精确局外面板 = 19.4+24+24 = 67.4 ≥50（门槛**已达标**），
+  //   而粗算式 = 19.4+24 = 43.4 <50。**两者对同一份配置结论相反** ⇒ 留着它是"预留"
+  //   等于埋一个静默改门槛的陷阱（任何人把它接回 teamBuff 门槛都会悄悄让山大王二段消失）。
+  //   该陷阱已由 `discSetEffects.test.ts` 的跨阈判据钉死（接错即红）。
+  // ⚠ 两条通路语义不同、求值时机不同（本处收集期面板未算完；`wearerPanel` 是已算好的源面板），
+  //   **不得"统一成一条路"**。
   const roughStats: Record<string, number> = {
     def: roughDef,
     anomalyMastery: agent.level60.anomalyMastery + (hasAmMain ? maxMain.anomalyMastery ?? 30 : 0),
-    critRate: (agent.level60.critRate ?? 5)
-      + (discConfig.mainStats?.[4] === 'critRate' ? maxMain.critRate ?? 24 : 0)
-      + (subStep.critRate ?? 2.4) * (discConfig.subStatAllocation?.critRate ?? 0),
   }
 
   const discBuffs = collectDriveDiscBuffs(driveDiscConfig, setsMap, { agent, roughStats })

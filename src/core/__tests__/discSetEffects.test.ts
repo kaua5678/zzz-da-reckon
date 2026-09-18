@@ -46,19 +46,27 @@ function panelFor(agentId: string, d: any) {
 
 /** 队友面板增量：owner 穿 fourPiece 后，target/owner 面板相对 owner 空盘基线的变化 */
 function teammatePanels(ownerId: string, ownerIdDisc: any) {
+  return teammatePanelsFor(ownerId, undefined, ownerIdDisc)
+}
+
+/**
+ * 同上，但可指定装备者的音擎（round 30 新增：山大王 critRate≥50 门槛要证明它吃**音擎副属性**，
+ * 而精确局外面板把 `level60.advancedStat` 算进去、粗算不算 ⇒ 音擎是这两条路的唯一区分变量）。
+ */
+function teammatePanelsFor(ownerId: string, ownerWEngineId: string | undefined, ownerIdDisc: any) {
   const targetAgent = getAgent('1241')
   const ownerAgent = getAgent(ownerId)
-  const run = (ownerDisc: any) => {
+  const run = (ownerDisc: any, wEngineId: string | undefined) => {
     const team = [
-      { agentId: ownerId, driveDisc: ownerDisc, cinemaLevel: 0, wEngineModLevel: 1 },
-      { agentId: '1241', driveDisc: disc(), cinemaLevel: 0, wEngineModLevel: 1 },
+      { agentId: ownerId, driveDisc: ownerDisc, cinemaLevel: 0, wEngineModLevel: 1, wEngineId },
+      { agentId: '1241', driveDisc: disc(), cinemaLevel: 0, wEngineModLevel: 1, wEngineId: undefined },
     ]
     const ctx = buildTeammateBuffSourceContext(team, {
       teammateBuffGroups: [],
       driveDiscSetsMap: setsMap,
       statRules,
       getAgent,
-      getWEngine: () => undefined,
+      getWEngine: (id: string) => cat.wEngines.find((w: any) => String(w.id) === String(id)),
       isTeammateBuffEnabled: () => false,
     })
     const target = calcPanel(targetAgent, undefined, disc(), setsMap, ctx.enabledTeammateBuffs, statRules, {
@@ -74,8 +82,8 @@ function teammatePanels(ownerId: string, ownerIdDisc: any) {
     })
     return { target, owner }
   }
-  const baseline = run(disc())
-  const withSet = run(ownerIdDisc)
+  const baseline = run(disc(), ownerWEngineId)
+  const withSet = run(ownerIdDisc, ownerWEngineId)
   return { target: withSet.target, owner: withSet.owner, baseline }
 }
 
@@ -446,6 +454,75 @@ describe('teamBuff 装备者门槛', () => {
   it('山大王 4pc：非击破位装备者不传播', () => {
     const r = teammatePanels('1521', disc({ fourPieceSetId: '33200' }))
     expect(r.target.inCombat.critDmg - r.baseline.target.inCombat.critDmg).toBe(0)
+  })
+
+  /**
+   * ★★ round 30：山大王 `critRate ≥50` 门槛**必须走精确局外面板**，不得改读 `roughStats`。
+   *
+   * **为什么需要这条**（round 30 实测）：`buff.ts#collectAllBuffs` 的 `roughStats` 曾有一个
+   * `critRate` 键，**零生产消费者**（round 29 注入「丢掉副词条项」⇒ 全套 2994 例 0 红），
+   * 且**值是错的**——粗算式只看 `level60 + 4号位主词条 + 副词条步数`，
+   * 漏掉**音擎副属性**与全部局外 buff。本用例就是那个「错值 vs 精确值结论相反」的配置：
+   *
+   * | 口径 | 算式 | 结果 | 门槛 ≥50 |
+   * |---|---|---|---|
+   * | 粗算（已删） | `19.4 + 24`（= level60 + 4号位主词条，0 副词条） | **43.4** | ✗ 不达标 |
+   * | 精确局外面板 | `43.4 + 24`（专武 14148 副属性 critRate +24） | **67.4** | ✓ 达标 |
+   *
+   * ⇒ 若有人把 teamBuff 门槛"统一"到 `roughStats`（这正是 OPEN-ITEMS R29-J1 里
+   *   「保留但标注」那一支的陷阱），本用例**必然红**：二段的 +15 会静默消失。
+   * ⇒ 反过来，本用例也是「`roughStats.critRate` 该删」的**直接证据**——它不是无害预留，
+   *   而是一个会把门槛算反的陷阱。
+   *
+   * ⚠ 门槛判据的跨阈纪律（round 29 教训）：下面两条臂让**音擎副属性这一项**直接决定结论，
+   *   不是「达标臂 + 全不达标臂」那种对门槛输入全盲的写怯。
+   */
+  it('★ 山大王 4pc：critRate≥50 门槛吃精确局外面板（含音擎副属性），不是 roughStats', () => {
+    // 1481 琉音(击破)：专武 14148「昨夜来电」副属性 critRate +24。
+    // 4号位暴击主词条(24) + 0 条副词条 ⇒ 精确 19.4+24+24 = 67.4 ≥50 ⇒ 两段 30
+    const withEngine = teammatePanelsFor('1481', '14148', disc({
+      fourPieceSetId: '33200',
+      mainStats: { 4: 'critRate' },
+    }))
+    expect(
+      withEngine.target.inCombat.critDmg - withEngine.baseline.target.inCombat.critDmg,
+      '音擎副属性 +24 让精确面板 67.4 ≥50 ⇒ 二段必须发放（粗算只有 43.4，会误判不达标）',
+    ).toBeCloseTo(30, 5)
+    // 负控：同一配置**摘掉音擎副属性**（换成无 critRate 副属性的音擎）⇒ 精确 19.4+24 = 43.4 <50
+    // ⇒ 只剩第一段 15。这一臂把「音擎副属性」隔离成唯一变量。
+    const noEngine = teammatePanelsFor('1481', '13101', disc({
+      fourPieceSetId: '33200',
+      mainStats: { 4: 'critRate' },
+    }))
+    expect(
+      noEngine.target.inCombat.critDmg - noEngine.baseline.target.inCombat.critDmg,
+      '43.4 <50 ⇒ 二段不发（同时证明上面那条 30 不是恒发放）',
+    ).toBeCloseTo(15, 5)
+  })
+
+  /**
+   * ★ round 30 结构性证明：`buff.ts#collectAllBuffs` 的 `roughStats` 里**不得**再有 `critRate` 键。
+   *
+   * 前一条用例钉的是**行为**（门槛结论正确）；这一条钉的是**形状**（死键没有被"预留"回来）。
+   * 两条缺一不可：形状判据单独存在时，一个「键还在但没人读」的回归仍会绿（那正是 round 29
+   * 的困境——注入丢加数 ⇒ 0 红）；行为判据单独存在时，键被接回 selfBuff 侧（今天无害、
+   * 明天加一个 critRate 主词条门槛就错）也看不出来。
+   *
+   * ⚠ 读源码断言**只针对这一处**（仓库既有先例：`statModeParity.test.ts` 判据②c 断言真实调用点源码）。
+   */
+  it('★ `roughStats` 不得再声明 `critRate` 键（死键 + 错值，接回门槛即陷阱）', () => {
+    const src = readFileSync(new URL('../buff.ts', import.meta.url), 'utf8')
+    const decl = src.match(/const roughStats: Record<string, number> = \{([\s\S]*?)\n {2}\}/)
+    expect(decl, 'roughStats 对象字面量仍在（找不到说明结构变了，本条需同步复核）').toBeTruthy()
+    const body = decl![1]
+    // 只认「键: 值」形态，避免把注释里提到的 critRate 当成键（注释里确实会提到，见上面的裁决说明）
+    expect(
+      /^\s*critRate\s*:/m.test(body),
+      'roughStats 里不应再有 critRate 键：它零消费者，且粗算式漏音擎副属性 ⇒ 值是错的（会算成 43.4 而非 67.4）',
+    ).toBe(false)
+    // 正控：另外两个键必须还在（防「把整个对象删空」也算过）
+    expect(/^\s*def\s*:/m.test(body), 'def 键必须保留（荆棘玫瑰 1000/1800 门槛在用）').toBe(true)
+    expect(/^\s*anomalyMastery\s*:/m.test(body), 'anomalyMastery 键必须保留（折枝剑歌 115 门槛在用）').toBe(true)
   })
 
   it('月光骑士颂 4pc：支援位传播全队伤害+18%，强攻位不传播', () => {
