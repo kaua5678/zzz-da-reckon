@@ -11,6 +11,12 @@
  * 次数落点逐位相等 + 时间账只许「守恒式再分配」。它要回答的是一个**债务前提**问题，不是
  * 「再多一条回归」——详见文件末尾 describe 上方注释（绿 ⇒ 债 1b 前提被证伪；红 ⇒ 违反队即
  * 批 1-2 首批目标）。
+ *
+ * **2026-09-18 round 25 修基准 cfg 口径（R24-J1）**：本文件原来（含前两档）用
+ * `captured[0]`（= 探路轮，`stunCount = 0`）当基准 ⇒ chain 通道**结构性**恒 0。
+ * 现改取**被接受那次调用的 `before` 快照**（`acceptedCall`），并加一条**活性断言**钉住
+ * 基准截面真的激活 chain 通道。依据与实测读数见 `acceptedCall` 与第三档 describe 注释的 ③
+ * （该段同时**证伪了 R24-J1 的第 ② 条主张**：封顶在新旧基准上都激活 10/104）。
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
@@ -20,19 +26,90 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { calcTeamResources, clearWarmStartCache, TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { netFrontlineOccupation } from '@/core/resource/helpers'
 import { teamPresets } from '@/data/teamPresets'
-import type { ResourceCalcConfig, IterationState } from '@/types/resource'
+import type { ResourceCalcConfig, IterationState, TeamResourceResult } from '@/types/resource'
 
-const captured: ResourceCalcConfig[] = []
+// ---------------------------------------------------------------------------
+// 捕获设施（2026-09-18 round 25 重写：**快照时机**与**选取口径**两个假绿源）
+// ---------------------------------------------------------------------------
+
+/**
+ * 一次 `calcTeamResources` 调用的捕获记录。
+ *
+ * `before` / `after` **两个快照都必须留**，它们回答的是不同问题：
+ * - `before` = **调用前**的入参。这是唯一能忠实复现该次调用的截面——引擎会**原地改写**传入的
+ *   cfg（`converged` / `timeFeasibleScale` / `overflowSeconds` 等），且 `calcTeamResources` 在
+ *   装配末尾还会把 `yidhariFinalizeEx` / `billyFinalizeChain` **复位**（见该文件末尾"复位"段）。
+ *   ⇒ R25 实测：拿 `after` 当基准冷跑，**18/104 队复现不出该次调用的输出**（`before` 是 104/104）。
+ * - `after` 只用于读该次调用写回的**读数**（`timeFeasibleScale` 等诊断量）。
+ */
+interface CallCapture {
+  before: ResourceCalcConfig
+  after: ResourceCalcConfig
+  /** 「本队身份 + 次数落点」键 = 编排层**可发布**的面（`ex` 逐位 + 时间账逐位） */
+  key: string
+  /** 更严的完整键（加 chain），仅用于保真度自检，不作为选取键（见 `acceptedCall` 注释） */
+  full: string
+}
+
+const captured: CallCapture[] = []
+
+// 键的构成：`slot/agentId/exSpecialCount` 与 `slot/basic/necessary`。
+// ⚠ **刻意不含 `ultimateCount` / `executions`**：它们会在 `enrichExecutionPlan` 之后被**编排层
+// 覆写**（实测 1321/1371 的 rr.ultimateCount 7 vs 引擎自报 3），拿它当选取键 ⇒ 被接受那一次的签名
+// 与发布结果**永不相等**（实测 31/104 队"找不到被接受调用"）。`exSpecialCount` 与时间账由引擎
+// 独占、无下游改写（实测同批 104/104 可匹配）。
+function exKeyOf(rr: TeamResourceResult): string {
+  return rr.characters.map(c => `${c.slot}/${c.agentId}/${c.exSpecialCount ?? 0}`).join('|')
+}
+function ledgerKeyOf(rr: TeamResourceResult): string {
+  return rr.characters.map(c => `${c.slot}/${c.timeAllocation.basicAttackTime.toFixed(9)}/${c.timeAllocation.necessaryTime.toFixed(9)}`).join('|')
+}
+function chainKeyOf(rr: TeamResourceResult): string {
+  return rr.characters.map(c => `${c.slot}/${(c.chainCountTotal ?? 0).toFixed(9)}`).join('|')
+}
+
 vi.mock('@/core/resource', async () => {
   const actual = await vi.importActual<typeof import('@/core/resource')>('@/core/resource')
   return {
     ...actual,
     calcTeamResources: (config: ResourceCalcConfig) => {
-      if (captured.length < 4) captured.push(JSON.parse(JSON.stringify(config)))
-      return actual.calcTeamResources(config)
+      // 深拷贝**调用前**入参：`actual` 会原地改写它（且无长度上限——缓冲必须由调用方显式清空，
+      // 见用例里的 `captured.length = 0`；旧实现的 `if (captured.length < 4)` 闸门正是假绿源）。
+      const before = JSON.parse(JSON.stringify(config)) as ResourceCalcConfig
+      const out = actual.calcTeamResources(config)
+      captured.push({
+        before,
+        after: JSON.parse(JSON.stringify(config)) as ResourceCalcConfig,
+        key: `${exKeyOf(out)}||${ledgerKeyOf(out)}`,
+        full: `${exKeyOf(out)}||${ledgerKeyOf(out)}||${chainKeyOf(out)}`,
+      })
+      return out
     },
   }
 })
+
+/**
+ * 取**被接受的那次调用**的基准 cfg（= 生产落点截面），取不到返回 `undefined`。
+ *
+ * 为什么不能取 `captured[0]`（2026-09-18 round 25 实测，**旧口径的根因**）：一次预设求值会跑
+ * N 次 `calcTeamResources`（实测 min 2 / max 41 / 均 7.3），第一次是**外层不动点从 0 起步的探路轮**
+ * ⇒ 实测 104/104 队 `stunCount = 0` ⇒ ① `chainCountTotal = chainCountPerStun × stunCount` **恒 0**
+ * （判据① 的 chain 通道根本没被激活）；② `sumNetNecessary ≤ budget ⇒ rawScale = 1` ⇒ **封顶路径
+ * 压根不进入**。即旧基准测的是"另一个截面"，不是生产落点。
+ *
+ * 为什么也不能取 `captured[last]`：末次调用常是**被拒绝的试探**（降配二分 / 轴退化重算），实测
+ * last 口径下有 8/104 队基准 `chainCountTotal` 恒 0、5 队 `stunCount = 0`。
+ *
+ * 选取键 = **发布结果的「次数落点 + 时间账」**（`exKeyOf` + `ledgerKeyOf`）——被接受那次调用的
+ * 输出与管线发布的 `rr` 在这些字段上逐位相等（实测 104/104 命中；取**最后一个**匹配项，
+ * 因为同签名的更早项可能是收敛路径上的中间轮）。取不到 ⇒ 调用方必须**显式红**，不许静默跳过。
+ */
+function acceptedCall(rr: TeamResourceResult): CallCapture | undefined {
+  const key = `${exKeyOf(rr)}||${ledgerKeyOf(rr)}`
+  let hit: CallCapture | undefined
+  for (const rec of captured) if (rec.key === key) hit = rec
+  return hit
+}
 
 beforeEach(() => {
   mockStaticFetch()
@@ -63,6 +140,13 @@ function fingerprint(rr: ReturnType<typeof calcTeamResources>) {
   }
 }
 
+/**
+ * 装配队伍 → 取**生产落点**基准 cfg（被接受那次调用的 `before` 快照，见 `acceptedCall`）。
+ *
+ * ⚠ 2026-09-18 round 25 起不再返回 `captured[0]`：那一版是探路轮（`stunCount = 0`），
+ * 伊德海莉队的 chain 通道在它上面恒 0、封顶路径永不进入（实测旧口径
+ * `baselineChainActiveTeams = 0` / `feasibleActive = 0`，新口径 95/10）。
+ */
 async function setupCapture(team: [string, string, string], engines: [string, string, string]) {
   captured.length = 0
   newPinia()
@@ -75,9 +159,11 @@ async function setupCapture(team: [string, string, string], engines: [string, st
     if (engines[s]) config.setWEngine(s, engines[s])
   }
   const calc = useResourceCalc()
-  void calc.resourceResult.value
-  expect(captured.length).toBeGreaterThan(0)
-  return JSON.parse(JSON.stringify(captured[0])) as ResourceCalcConfig
+  const rr = calc.resourceResult.value
+  expect(rr, `${team.join('+')} 无资源结果`).toBeTruthy()
+  const acc = acceptedCall(rr!)
+  expect(acc, `${team.join('+')} 未捕获到被接受的调用（捕获口径失效？）`).toBeTruthy()
+  return JSON.parse(JSON.stringify(acc!.before)) as ResourceCalcConfig
 }
 
 /**
@@ -171,12 +257,32 @@ describe('连续松弛·落点不变性', () => {
  * 只测种子敏感性。故每个种子调用前 `clearWarmStartCache()`——与 `determinism` / `warmStart`
  * 两个专项测试同一手法（`core/resource.ts` 已导出该函数，无需新造）。
  *
- * ⚠ **两个假绿陷阱（本档实测踩过，已在代码里各钉一道兜底断言）**：
- * ① 文件头 `vi.mock` 的拦截器是 `if (captured.length < 4) push(...)`：**不清空缓冲**的话
- *    `captured[0]` 会永远是第一队的 cfg，「104 队」实际是「同一队跑 104 次」⇒ 循环内
- *    `captured.length = 0` + 身份断言（捕获 cfg 的 agentId 必须 == 预设 team）。
- * ② `captured[0]` 之外的调用是**搜索路径上的 cfg**（降配二分/轴搜索，`converged=false`），
- *    拿它当基准会得到整片错误的读数。
+ * ⚠ **三个假绿陷阱（本档实测踩过，已在代码里各钉一道兜底断言）**：
+ * ① 文件头 `vi.mock` 的拦截器若带长度闸门（旧版是 `if (captured.length < 4) push(...)`）：
+ *    **不清空缓冲**的话 `captured[0]` 会永远是第一队的 cfg，「104 队」实际是「同一队跑 104 次」
+ *    ⇒ 循环内 `captured.length = 0` + 身份断言（捕获 cfg 的 agentId 必须 == 预设 team）。
+ * ② **取到搜索路径上的 cfg**：一次预设求值跑 N 次 `calcTeamResources`（实测 min 2 / **max 41** /
+ *    均 7.3），其中降配二分 / 轴退化重算是**被拒绝的试探**。取 `captured[0]` 或 `captured[last]`
+ *    都错——正解见 ③。
+ * ③ ★ **基准截面取错（R24-J1，2026-09-18 round 25 修）**：旧版取 `captured[0]` = 外层不动点
+ *    从 0 起步的**探路轮**。该截面**结构上**不激活被测量的主通道：实测 **104/104 队 `stunCount = 0`**
+ *    ⇒ `chainCountTotal = chainCountPerStun × stunCount`（或轴预设的 `chainCountTotalOverride`，
+ *    它在 stun=0 时也是 0）**恒 0** ⇒ 判据① 三条主判据里的 **chain 通道根本没被激活**
+ *    （实测基准 chain 激活 **0 槽**）。
+ *    ⇒ 现改取**被接受那次调用**（`acceptedCall`：键 = 发布结果 `rr` 的「ex 次数 + 时间账」，
+ *    快照取**调用前**）——实测 104/104 命中、104/104 保真（用 `after` 快照只有 86/104 保真），
+ *    基准截面 chain 激活 **249 槽**（旧 0）。并由下方的 `baselineChainActiveSlots > 0`
+ *    **活性断言**钉住（0 ⇒ 红；实测把 `acceptedCall` 注回 `captured[0]` ⇒ 该断言精确红）。
+ *    ⚠ 这是**扩大测量面**不是收紧：同一批 104 队 × 4 种子的违反读数由 **0 → 0**（A/B 实测），
+ *    变的只是"这条判据到底测了哪个截面"。
+ *
+ *    ★★ **同批实测证伪了 R24-J1 的第 ② 条主张（"封顶路径基本没进入 / 0/104 队"）——别再引用它**：
+ *    封顶（`timeFeasibleScale ≠ 1`）在**两个基准截面上都激活 10/104 队**（`auto-1431-*` 一族）。
+ *    R24 的 `feasibleScale = 1.000000` 读数是**残留字段读法**的产物：`timeFeasibleScale` 是
+ *    `cfg` 上的**副作用字段**，每次调用取到的 `cfg` 都是新克隆 ⇒ 调用**前**读它恒为
+ *    `undefined ?? 1 = 1`（实测 0/104 队 ≠ 1），只有**冷跑一次再读**才拿到真值（10/104）。
+ *    故 `baselineFeasibleActive` 的语义是"封顶通道仍然可达"的**兜底守卫**，
+ *    **它不区分新旧基准**（两侧都是 10）——真正的判别式是上面的 chain 活性断言。
  */
 describe('全库预设·四种子落点不变性（债 1b 证伪闸门）', () => {
   /**
@@ -264,25 +370,42 @@ describe('全库预设·四种子落点不变性（债 1b 证伪闸门）', () =
     let covered = 0
     /** 未取到 cfg 的预设（正常路径应为 0；非 0 说明捕获口径失效，必须显式红而不是静默跳过） */
     const uncaptured: string[] = []
+    /**
+     * ★ **活性计数（round 25 新增，同 `ledgerExercised` 先例）**——旧版整档之所以"绿得没有信息量"，
+     * 是因为基准 cfg 取自探路轮（`stunCount = 0`）⇒ 三条主判据里的 chain 通道**结构性恒 0**
+     * （104/104 队全空）。判据本身看不出这件事：恒等式自证也是绿。故把"基准截面必须真的激活
+     * chain 通道"钉成机器判据（0 ⇒ 红，见文件末尾自检）。
+     *
+     * ⚠ `baselineFeasibleActive`（封顶激活队数）**不区分新旧基准**——实测两侧都是 10/104，
+     * 详见 describe 注释 ③ 的证伪段（R24 的"0/104"是残留字段读法造成的）。它只作兜底守卫。
+     */
+    let baselineChainActiveSlots = 0
+    let baselineFeasibleActive = 0
+    /** 取不到「被接受调用」的预设（应恒 0；非 0 = 选取口径失效，必须显式红） */
+    const unmatched: string[] = []
 
     for (const p of presets) {
       const team = p.team as [string, string, string]
-      // ⚠ **必须清空捕获缓冲**：文件头 `vi.mock` 的拦截器是 `if (captured.length < 4) push(...)`
-      // ——不清空的话缓冲在第一队之后**永久装满**，`captured[0]` 会一直是**第一队**的 cfg，
+      // ⚠ **必须清空捕获缓冲**：不清空的话缓冲会跨预设累积，取到的 cfg 会属于**别的队**，
       // 于是「104 队」实际是「同一队跑 104 次」（假绿：断言全绿但覆盖面为零；反向验证首轮就是
-      // 这么假绿的——伪造 1591 的 ex+1 却报出另外 4 队的队名）。下面还有一道身份断言兜底。
+      // 这么假绿的——伪造 1591 的 ex+1 却报出另外 4 队的队名）。下面还有两道兜底断言
+      // （身份断言 + `unmatched` 计数）。
       captured.length = 0
       for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
       config.applyTeamPreset(team)
-      // 触发计算并取本轮 cfg：`captured` 由文件头 `vi.mock` 拦截 `calcTeamResources` 抓取。
-      // ⚠ 取 `captured[0]`（与上面两档同法）——预设求值会跑十几次 `calcTeamResources`
-      // （外层不动点 / 降配二分 / 轴搜索），后面的调用带的是**搜索路径上的 cfg**（实测
-      // `captured[last]` 拿到的是 `converged=false` 的降配/轴探针态，落点读数全错）。
+      // 触发计算并取本轮基准 cfg：`captured` 由文件头 `vi.mock` 拦截 `calcTeamResources` 抓取。
+      // ⚠ **取「被接受的调用」的 `before` 快照**（`acceptedCall`，口径与实测依据见其注释）——
+      // 它才是**生产落点**截面（`stunCount` 96/104 队非 0，chain 通道与封顶路径都真实激活）。
       const rr = calc.resourceResult.value
       expect(rr, `${p.name}(${p.id}) 无资源结果`).toBeTruthy()
-      const c = captured[0]
+      const acc = acceptedCall(rr!)
+      if (!acc) {
+        unmatched.push(`${p.name}(${p.id}) calls=${captured.length}`)
+        continue
+      }
+      const c = acc.before
       // 预设是 3 人满槽，cfg 必为 3 槽（空槽压缩口径见 AGENTS §2，本档不覆盖手组队）
-      if (!c || !Array.isArray(c.characters) || c.characters.length !== 3) {
+      if (!Array.isArray(c.characters) || c.characters.length !== 3) {
         uncaptured.push(`${p.name}(${p.id}) 槽数=${c?.characters?.length ?? 'null'}`)
         continue
       }
@@ -293,6 +416,12 @@ describe('全库预设·四种子落点不变性（债 1b 证伪闸门）', () =
         `${p.name}(${p.id}) 捕获到的 cfg 不是本队（captured 缓冲未清空？）`,
       ).toEqual([...team])
       covered++
+
+      // **活性记账**：基准截面上 chain 通道 / 封顶路径是否可达（见上方 `baselineChainActiveSlots`）
+      const baselineChain = c.characters.map(ch =>
+        (ch.chainCountTotalOverride ?? (ch.chainCountPerStun ?? 0) * (c.stunCount ?? 0)) + (ch.chainCountTotalExtra ?? 0))
+      baselineChainActiveSlots += baselineChain.filter(v => v !== 0).length
+      if ((acc.after.timeFeasibleScale ?? 1) !== 1) baselineFeasibleActive++
 
       const run = (seed?: (cfg: ResourceCalcConfig) => IterationState[]) => {
         clearWarmStartCache() // 隔离热启动缓存（见 describe 注释），只留本次注入的种子
@@ -354,9 +483,10 @@ describe('全库预设·四种子落点不变性（债 1b 证伪闸门）', () =
 
     // 覆盖面自检：全库预设必须逐队跑过（少跑 = 假绿；`covered` 与总数不符即红）
     expect(
-      { covered, uncaptured },
-      `覆盖预设数 ${covered} ≠ 全库 ${presets.length}（有队被静默跳过；未捕获：${uncaptured.join(', ') || '无'}）`,
-    ).toEqual({ covered: presets.length, uncaptured: [] })
+      { covered, uncaptured, unmatched },
+      `覆盖预设数 ${covered} ≠ 全库 ${presets.length}（有队被静默跳过；未捕获：${uncaptured.join(', ') || '无'}；`
+      + `未匹配到被接受调用：${unmatched.join(', ') || '无'}）`,
+    ).toEqual({ covered: presets.length, uncaptured: [], unmatched: [] })
 
     // 判据② 的**活性自检**：断言② 是「允许差异面」的判据，若所有槽都恒等（差异集为空），
     // 它就成了永不触发的死判据——将来真出现非守恒再分配时，无法区分「没有违规」与「判据失效」。
@@ -367,13 +497,30 @@ describe('全库预设·四种子落点不变性（债 1b 证伪闸门）', () =
       '断言② 未被任何槽触发（时间账差异集为空）：种子通道可能已失效，本档退化为恒等式自证',
     ).toBeGreaterThan(0)
 
+    // ★ **基准截面活性自检（round 25 新增，R24-J1）**：判据①② 只有落在**生产落点**截面上才有
+    // 覆盖面。旧口径取探路轮（`stunCount = 0`）⇒ chain 通道**结构性**恒 0，而断言仍然全绿
+    // （恒等式自证）。实测：旧口径 chain 激活 **0 槽**，新口径 **249 槽**（104 预设）。
+    // 反向验证：把 `acceptedCall` 注回 `captured[0]` ⇒ **本条精确红**（实测）。
+    // 修法指向 `acceptedCall`（基准 = 被接受那次调用的 `before` 快照），**不要退回 `captured[0]`**。
+    expect(
+      baselineChainActiveSlots,
+      '基准截面 chain 通道恒 0（104/104 队）：基准选取口径已失效 ⇒ 本档退化为在探路轮上跑恒等式（R24-J1 的假绿形态）',
+    ).toBeGreaterThan(0)
+    // ⚠ **第二条只是兜底守卫，它不区分新旧基准**（实测两侧都是 10 队，见 describe 注释 ③ 的证伪段）：
+    // 它的作用是钉住"封顶通道当前确实可达"（若将来数据面变成封顶恒 1，这条会红，
+    // 提示债 1b 的封顶面已消失、本档对该路径的覆盖声明需要改写）。
+    expect(
+      baselineFeasibleActive,
+      '基准截面封顶路径完全未激活（timeFeasibleScale 恒 1）：封顶通道已不可达 ⇒ 本档对债 1b 封顶路径的覆盖面声明需改写',
+    ).toBeGreaterThan(0)
+
     // ---- 判据③：任一队违反 ①② ⇒ 红并列名该队 ----
     expect(
       [...countViolations, ...ledgerViolations],
       [
         `落点随初值变的队：次数 ${countViolations.length} 条 / 时间账 ${ledgerViolations.length} 条`,
         `（覆盖 ${covered} 预设 × 4 种子 = 冷/高/低/校准；容差 TIME_BUDGET_TOLERANCE_SECONDS=${TIME_BUDGET_TOLERANCE_SECONDS}s；`
-        + `允许面实际触发 ${ledgerExercised} 槽）`,
+        + `允许面实际触发 ${ledgerExercised} 槽；基准截面 chain 激活 ${baselineChainActiveSlots} 槽 / 封顶激活 ${baselineFeasibleActive} 队）`,
         '判据① 次数落点（ex/ult/chain）逐位相等；判据② 时间账只许「basicAttackTime 与 necessaryTime 反向等量」的守恒式再分配。',
         '处置：① 次数违反队 = 批 1-2（逐模块实数化）的首批目标，按队归因到 `src/mechanics/agents/<id>.ts` 的落点封顶；',
         '② 时间账违反队 = 封顶/回填在移动落点且不守恒，先查 `core/resource/helpers.ts` 可行性封顶 + 欠打回填门控；',
