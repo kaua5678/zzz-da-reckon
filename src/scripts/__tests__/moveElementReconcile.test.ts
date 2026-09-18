@@ -22,10 +22,13 @@ import { join } from 'node:path'
 
 // @ts-expect-error -- scripts/lib 纯 JS 工具模块（与 compacted-slot-index / dead-channel-ls 同处理）
 import * as recNs from '../../../scripts/lib/move-element-reconcile.mjs'
+// @ts-expect-error -- 同上：解析器本体（仅用于 ③-c 的结构性不变式证明）
+import { buildMoveTextIndex, resolveMoveElements } from '../../../scripts/lib/move-elements.mjs'
 
 const mod = recNs as {
   reconcileMoveElements: (o: { catalog: unknown; fullDir: string; enforceFloors?: boolean }) => {
     rawFiles: number; catalogAgents: number; reconciledAgents: number; scannedMoves: number
+    rawParamMoves: number
     violations: Record<string, unknown>[]
     skippedAgents: Record<string, unknown>[]
     orphans: Record<string, unknown>[]
@@ -165,66 +168,64 @@ describe('reconcileMoveElements（判据 18 对账器：三处补强的可红性
   })
 
   // ---- 缺陷 ③ orphan ----
-  it('③ 注入「解析器输出 catalog 里不存在的 moveId」⇒ orphans 点名（首版零检查）', () => {
+  //
+  // ★★ round 29 实测改正：**旧的两个 orphan 用例都是负控，从未构造过 orphan**。
+  // 实测证据：把 `reconcileMoveElements` 里**整段 orphan 收集删掉** ⇒ 本文件 **10/10 仍全绿**
+  // ⇒ 那两条用例对「orphan 检查存在与否」**完全不可见**（写了但恒不触发 = 与没有等价）。
+  // 根因：旧式 orphan 比较的是 `resolved.keys()` ↔ `catalogMoveIds`，而两者
+  // **是同一个集合**（`resolveMoveElements` 只在入参 moveIds 内 out.set）⇒ 恒空。
+  // 处置：改为检查真实漂移方向（raw param 键 ∉ catalog），并在此补**正控**。
+  it('③ 负控：raw 与 catalog 两侧一致 ⇒ orphan 不误报', () => {
     const f = fixture()
-    // raw 里多给一个 moveId 1101002，但 catalog 只有 1101001 ⇒ 2 是 orphan
-    writeFileSync(join(f.fullDir, '1101.json'), JSON.stringify({
-      skill: {
-        basic: {
-          description: [
-            { name: '普通攻击：测试斩', desc: '对敌人造成电属性伤害。' },
-            { name: '普通攻击：测试斩', param: [{ name: '一段伤害倍率', param: { 1101001: 100, 1101002: 100 } }] },
-          ],
-        },
-      },
-    }), 'utf8')
-    // 解析面（resolveMoveElements 的入参）只在 catalog moveIds 内 ⇒ 需显式传入 1101002 才成 orphan；
-    // 这里改为断言「对账器确实按 catalog moveId 全集做差集」：把 catalog 的一招从 categories 里藏掉。
-    const cats = (f.catalog.agentSkills[0] as { categories: { moves: unknown[] }[] }).categories
-    cats[0].moves.push({
-      id: 1101002,
-      name: { zhCN: '普通攻击：测试斩#2' },
-      damageElement: 'electric',
-      rows: [{ kind: 'damageMultiplier', damageElement: 'electric' }],
-    })
-    // 此时两侧仍有 1101002，orphan=0（负控：不该误报）
     const ok = run(f)
     expect(ok.orphans).toEqual([])
     expect(mod.moveElementReconcileOk(ok)).toBe(true)
   })
 
-  it('③-b orphan 正控：解析结果指向 catalog 之外的 id 时被抓（直接构造解耦输入）', () => {
-    // 用 raw 里两条 **不同名字** 的组：catalog 只声明第二组 ⇒ 第一组解析出的 id 不在 catalog 面内
-    const root = mkdtempSync(join(tmpdir(), 'movereconcile-'))
-    tmpRoots.push(root)
-    const fullDir = join(root, 'full')
-    mkdirSync(fullDir, { recursive: true })
-    writeFileSync(join(fullDir, '1101.json'), JSON.stringify({
+  it('③-b ★ 正控：raw 的 param 表里有 catalog 未声明的 moveId ⇒ orphans 点名且判红', () => {
+    // 真实漂移场景：nanoka raw 换版本后多出一招（或导入器漏招），catalog 还没录。
+    // ⚠ 这条注入必须**真的能红**：把 lib 里 orphan 收集整段删掉 ⇒ 本用例必须失败。
+    const f = fixture()
+    writeFileSync(join(f.fullDir, '1101.json'), JSON.stringify({
       skill: {
         basic: {
           description: [
             { name: '普通攻击：测试斩', desc: '对敌人造成电属性伤害。' },
-            { name: '普通攻击：测试斩', param: [{ name: '一段伤害倍率', param: { 1101001: 100 } }] },
+            // raw 的 param 表里有 1101002，但 catalog 只声明了 1101001
+            { name: '普通攻击：测试斩', param: [{ name: '一段伤害倍率', param: { 1101001: 100, 1101002: 100 } }] },
           ],
         },
       },
     }), 'utf8')
-    const catalog = {
-      agents: [{ id: 1101, name: { zhCN: '测试角色' } }],
-      agentSkills: [{
-        agentId: 1101,
-        categories: [{
-          id: 'basic',
-          moves: [{
-            id: 1101001, name: { zhCN: '普通攻击：测试斩' },
-            damageElement: 'electric',
-            rows: [{ kind: 'damageMultiplier', damageElement: 'electric' }],
-          }],
-        }],
-      }],
-    }
-    // 负控：正常输入下 orphan = 0
-    expect(run({ fullDir, catalog }).orphans).toEqual([])
+    const r = run(f)
+    expect(r.orphans, 'raw 多出的 moveId 必须被点名').toEqual([{ agentId: '1101', moveId: '1101002' }])
+    expect(mod.moveElementReconcileOk(r)).toBe(false)
+    expect(mod.formatMoveElementReconcile(r).join('\n')).toContain('orphan')
+  })
+
+  it('③-c 结构性证明：`resolved.keys() ⊆ 入参 moveIds`（旧 orphan 判据因此恒空）', () => {
+    // 这条把「旧检查为什么是死代码」钉成机器判据——防后人把 orphan 改回旧式比较。
+    const f = fixture()
+    const full = JSON.parse(readFileSync(join(f.fullDir, '1101.json'), 'utf8'))
+    // raw 里故意多给 1101002，但**入参**（= catalog 声明面）只有 1101001
+    full.skill.basic.description[1].param[0].param['1101002'] = 100
+    const moveIds = ['1101001']
+    const resolvedKeys = [...buildMoveTextIndex(full).keys()]
+    // raw 面确实看到了 1101002（证明这不是「raw 里没有」造成的平凡绿）
+    expect(resolvedKeys).toContain('1101002')
+    // 但解析器**只会**输出入参内的 moveId ⇒ 旧式比较 resolved.keys()↔moveIds 恒等
+    const out = [...resolveMoveElements(full, moveIds).keys()].map(String)
+    expect(out, '解析器只会输出入参内的 moveId').toEqual(['1101001'])
+    expect(out.some(k => !moveIds.includes(k))).toBe(false)
+  })
+
+  it('③-d 真实仓库双向漂移现状：raw∉catalog 与 catalog∉raw 都必须是 0（否则点名）', () => {
+    const ROOT = join(__dirname, '..', '..', '..')
+    const catalog = JSON.parse(readFileSync(join(ROOT, 'public/static/catalog.json'), 'utf8'))
+    const r = mod.reconcileMoveElements({ catalog, fullDir: join(ROOT, 'data/raw/nanoka_missing/full'), enforceFloors: true })
+    // 活性断言：raw 键面必须非空（防 buildMoveTextIndex 静默返回空 ⇒ orphan 恒 0 的平凡绿）
+    expect(r.rawParamMoves, 'raw param 表键数必须 > 0，否则 orphan 检查是平凡绿').toBeGreaterThan(0)
+    expect(r.orphans).toEqual([])
   })
 })
 

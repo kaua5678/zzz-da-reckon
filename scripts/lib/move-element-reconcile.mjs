@@ -26,6 +26,12 @@
  *    处置：`undefined` 单独成类（`row-undefined`），且行级违规**打印该行自己的值**（`got` 取行面）。
  * ③ **无 orphan 检查**：解析器输出 catalog 里不存在的 moveId（两侧 id 体系漂移）不报。
  *    处置：`orphans` 显式收集。
+ *    ⚠⚠ **round 29 实测改正（关键）**：首版的 orphan 检查**写了但恒不触发**——
+ *    `resolveMoveElements` 的键集与 catalog 声明面是**同一个集合**（构造性不变式，证明见 `orphans`
+ *    收集处的注释）⇒ 注入「整段删除该检查」后测试 **10/10 仍全绿**。已改为检查**真实漂移方向**
+ *    （raw param 键 ∉ catalog），并补正控注入用例 ③-c。
+ *    ⇒ **教训**：`orphans` 这类「新加的检查」必须配**正控注入**，否则与首版的
+ *      「写了但永假」在判据面上**完全等价**（负控只能证明不误报）。
  *
  * ---------------------------------------------------------------------------
  * ★ 设计纪律（沿用 `move-elements.mjs` 的同一条）：**只在有正面证据时输出**。
@@ -39,7 +45,7 @@
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { ELEMENT_ROW_KINDS, resolveMoveElements } from './move-elements.mjs'
+import { ELEMENT_ROW_KINDS, buildMoveTextIndex, resolveMoveElements } from './move-elements.mjs'
 
 /**
  * 全局「反空洞」下限：真实仓库根上必须至少对账这么多招。
@@ -79,6 +85,8 @@ export function reconcileMoveElements({ catalog, fullDir, enforceFloors = true }
   let scannedMoves = 0
   let reconciledAgents = 0
   let rawFiles = 0
+  /** raw param 表键总数（orphan 检查的**活性**读数：恒 0 则 orphan 判据是平凡绿） */
+  let rawParamMoves = 0
 
   const files = existsSync(fullDir) ? readdirSync(fullDir).filter((f) => f.endsWith('.json')).sort() : []
   rawFiles = files.length
@@ -112,10 +120,26 @@ export function reconcileMoveElements({ catalog, fullDir, enforceFloors = true }
     }
     reconciledAgents++
 
-    // ★ 缺陷 ③：解析器输出的 moveId 不在 catalog 里 ⇒ 两侧 id 体系漂移，显式上报
+    // ★ 缺陷 ③（2026-09-18 round 29 实测**改正**）：**旧 orphan 检查是死代码，永不触发**。
+    //
+    // 旧式：`for (const moveId of resolved.keys()) if (!catalogMoveIds.has(moveId)) orphans.push(...)`
+    // —— 但 `resolveMoveElements` 的 `out.set()` **只出现在 `for (const moveId of moves)` 循环里**
+    // （源码 5 处 `out.set` 全部在 `moves` 内，`moves` 又只从入参 `moveIds` 装填）
+    // ⇒ `resolved.keys() ⊆ moveIds = catalogMoveIds` 是**构造性不变式**，该分支**恒不成立**。
+    // 实测：注入「删掉整段 orphan 检查」后 `moveElementReconcile.test.ts` **10/10 仍全绿**
+    // ⇒ 旧测试只写了**负控**（断言不误报），从未构造过正控 ⇒ 判据面是假的。
+    //
+    // 处置：改为检查**真正会漂移的方向**——raw 的 `param` 表里的 moveId 键
+    // （`buildMoveTextIndex(full).keys()`）∉ catalog 声明面。raw 是**外部输入**（nanoka 数据更新
+    // 会引入新 id），catalog 是**本仓产物** ⇒ 只有这个方向是真实的漂移信号。
+    // ⚠ 现状实测（64 raw / 62 角色）：两侧**双向**都 0 命中 ⇒ 本条**今天仍是恒绿**，
+    //   但它的**恒绿是数据事实、不是构造性不可能**（raw 换了版本就可能命中）。
+    //   ⇒ 这才是可被注入证伪的判据（见测试 ③-c）。
+    const rawMoveIds = buildMoveTextIndex(full).keys()
     const catalogMoveIds = new Set(moveIds)
-    for (const moveId of resolved.keys()) {
-      if (!catalogMoveIds.has(String(moveId))) orphans.push({ agentId: id, moveId: String(moveId) })
+    for (const rawMoveId of rawMoveIds) {
+      rawParamMoves++
+      if (!catalogMoveIds.has(String(rawMoveId))) orphans.push({ agentId: id, moveId: String(rawMoveId) })
     }
 
     for (const cat of sk.categories ?? []) {
@@ -160,6 +184,7 @@ export function reconcileMoveElements({ catalog, fullDir, enforceFloors = true }
     catalogAgents: agents.size,
     reconciledAgents,
     scannedMoves,
+    rawParamMoves,
     violations,
     skippedAgents,
     orphans,
@@ -191,7 +216,7 @@ export function formatMoveElementReconcile(report, limit = 15) {
     lines.push(`  ✗ 空洞 ${s.agentId} ${s.agentName}: ${s.reason}`)
   }
   for (const o of report.orphans) {
-    lines.push(`  ✗ orphan ${o.agentId}: 解析器输出 moveId ${o.moveId}，但 catalog 无此招（两侧 id 体系漂移）`)
+    lines.push(`  ✗ orphan ${o.agentId}: raw 的 param 表里有 moveId ${o.moveId}，但 catalog 未声明该招（两侧 id 体系漂移：raw 换了版本 / 导入器漏招）`)
   }
   if (report.belowFloor) {
     lines.push(`  ✗ 反空洞下限：仅对账 ${report.scannedMoves} 招 < 冻结下限 ${report.minScannedMoves}`)

@@ -304,6 +304,48 @@ describe('requirement 门槛', () => {
   })
 
   /**
+   * ★★ round 29（R28-J1 扫描收口）：**门槛判据必须真的跨过阈值**，否则判据对门槛输入不可见。
+   *
+   * 实测证据（本轮注入法扫描，见 `.claude/PROMPT-handoff-round29.md` §1）：
+   * 上面两条门槛判据（折枝剑歌 / 荆棘玫瑰）**都只用了同侧的臂**——
+   * - 折枝剑歌用 1481（基础 94）：pct 口径 `94×1.3 = 122.2`、flat 口径 `94+30 = 124`，
+   *   **两者都 ≥115** ⇒ 无论门槛输入怎么算，套装都发放 ⇒ 判据看不见。
+   * - 荆棘玫瑰用 1071（基础 753.9）：`753.9` 与 `753.9+184 = 937.9` **都 <1000**；
+   *   双防%臂 `2201.7` 与 `2385.7` **都 ≥1800** ⇒ 两臂都不跨阈 ⇒ 同样看不见。
+   * ⇒ 实测注入 `roughStats.def` 丢掉 3 号位固定主词条 184（`buff.ts`）⇒ **全套 2994 例 0 红**。
+   *
+   * **一条判据要能看见门槛输入，必须至少有一条臂落在「改前不过、改后过」的跨阈区**。
+   * 下面两例就是按这个口径挑的（穷举 62 角色 × 配置后取最近阈值的一对）。
+   */
+  it('★ 荆棘玫瑰 4pc：3号位固定主词条 184 必须计入 `roughStats.def`（用跨阈配置，非达标/非全不达标）', () => {
+    // 1561 维琳娜 defBase=612.6；防%副词条 7 步 ⇒ 无 184 时 818.4 <1000、有 184 时 1002.4 ≥1000。
+    // ⇒ 这一对配置让「184 是否计入」直接决定第一档发放与否。
+    const straddle = { fourPieceSetId: '34200', subStatAllocation: { defPct: 7 } }
+    const withSet = panelFor('1561', disc(straddle)).inCombat
+    const base = panelFor('1561', disc({ subStatAllocation: { defPct: 7 } })).inCombat
+    // 有 184 ⇒ 常规增伤 15 + 1000 档暴击率 8；1800 档仍不达（1002.4 <1800）
+    expect(withSet.critRate - base.critRate, '1000 档必须发放（184 计入后 1002.4）').toBe(8)
+    expect(withSet.dmgBonus - base.dmgBonus, '常驻 15% 增伤段').toBe(15)
+    // 负控：砍掉 1 步副词条 ⇒ 612.6×1.288 = 789.0，即使有 184 也只有 973.0 <1000 ⇒ 零档
+    const below = panelFor('1561', disc({ fourPieceSetId: '34200', subStatAllocation: { defPct: 6 } })).inCombat
+    const belowBase = panelFor('1561', disc({ subStatAllocation: { defPct: 6 } })).inCombat
+    expect(below.critRate - belowBase.critRate, '973.0 <1000 ⇒ 第一档也不发').toBe(0)
+  })
+
+  it('★ 折枝剑歌 4pc：门槛吃 `roughStats`（加点口径），用「pct 不过 / flat 过」的跨阈角色', () => {
+    // 1111 安东基础掌控 86：pct 口径 86×1.3 = 111.8 <115；flat 口径 86+30 = 116 ≥115。
+    // ⇒ 这一例对「门槛用什么口径算掌控」**直接可见**（1481 的 94 在两种口径下都 ≥115，看不见）。
+    const withSet = panelFor('1111', disc({ fourPieceSetId: '32700', mainStats: { 6: 'anomalyMastery' } })).inCombat
+    const base = panelFor('1111', disc({ mainStats: { 6: 'anomalyMastery' } })).inCombat
+    // 4pc 暴伤 30 段必须发放（门槛按 86+30 = 116 ≥115），2pc 暴伤 16 照常
+    expect(withSet.critDmg - base.critDmg, '116 ≥115 ⇒ 4pc 暴伤段发放').toBe(30 + 16)
+    // 负控：不装 6 号位掌控 ⇒ roughStats.anomalyMastery = 86 <115 ⇒ 只有 2pc 的 16
+    const noMain = panelFor('1111', disc({ fourPieceSetId: '32700' })).inCombat
+    const noMainBase = panelFor('1111', EMPTY).inCombat
+    expect(noMain.critDmg - noMainBase.critDmg, '86 <115 ⇒ 4pc 段不发').toBe(16)
+  })
+
+  /**
    * ★ round 28（R27-J2 结案）：6 号位掌控主词条的数值口径 —— **加点（flat）而非乘基础值（pct）**。
    *
    * ⚠⚠ **为什么必须钉**：上面那条断言（`critDmg − critDmg === 46`）**算术上抓不到这个 bug**：
