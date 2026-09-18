@@ -41,13 +41,13 @@ L3 是当前唯一必须人肉的部分，也是未来自动化收益最高的�
 
 | 模式子类 | 角色 | 触发句式 | 实现落点 | 验收 | 等级 |
 |---|---|---|---|---|---|
-| 倍率表行直读 | 通用 | 从 SkillMove.rows 取 damage/daze/anomaly_buildup/decibel_recovery | `getRowValue (composables/resourceCalc/helpers.ts)` | 无 | L0 |
+| 倍率表行直读 | 通用 | 从 SkillMove.rows 取 damage/daze/anomaly_buildup/decibel_recovery | `getRowValue (composables/resourceCalc/skillRows.ts)` | 无 | L0 |
 | 基础属性面板直读 | 通用 | 角色+音擎基础属性进面板（hp/atk/def/暴击/冲击/精通…） | `calcBasePanel (core/panel.ts)` 读 `agent.level60.*Base` | catalogData.test.ts | L0 |
 | 等级成长系数 | 通用 | 技能等级 → 伤害/失衡系数（12 级基准，3 命+2、5 命+4） | `getSkillLevelCoef (core/skillLevel.ts)` `(skillLevel+10)/22` | skillLevel.test.ts | L0 |
 | 倍率表等级分段取值 | 蕾米埃尔 | 倍率表按技能等级索引 levelValues 取分段值 | `pickRemielleLevelValue (core/damage.ts)` | 无 | L0 |
 | 动作时间直读 | 通用 | 强特/终结/连携动作时间从 catalog move.actionTime 读 | `findExSpecial (core/resource.ts)` `move.actionTime ?? 0` | 无 | L0 |
 | catalog 数据加载（唯一事实源） | 通用 | fetch('/static/catalog.json') 脚本导入 | `load (stores/catalog.ts)` | catalogData.test.ts | L0 |
-| 专属资源回复行（attack_data_N） | 席德/希希芙/比利/青衣 | attack_data_0=第一通道（钢能/决意/电压，秒均≈11）；attack_data_1/2=其他通道（回血等），不混和 | `getSpecialResourceRecovery (composables/resourceCalc/helpers.ts)` 取 kind=special **第一行**；多段命中不要 sum 全部 attack_data_N | xide.test.ts | L0 |
+| 专属资源回复行（attack_data_N） | 席德/希希芙/比利/青衣 | attack_data_0=第一通道（钢能/决意/电压，秒均≈11）；attack_data_1/2=其他通道（回血等），不混和 | `getSpecialResourceRecovery (composables/resourceCalc/skillRows.ts)` 取 kind=special **第一行**；多段命中不要 sum 全部 attack_data_N | xide.test.ts | L0 |
 
 ### D2 panel_effect —— 面板字段型（buff/减抗/转模）
 - **指纹**："自身攻击提升X%"、"敌人X抗性降低Y%"、"每点A提高B"、"处于X状态时…"

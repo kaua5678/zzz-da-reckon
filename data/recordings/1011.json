@@ -1,0 +1,2067 @@
+{
+  "version": 1,
+  "packet": {
+    "version": 1,
+    "agentId": "1011",
+    "source": {
+      "raw": "data/raw/nanoka_missing/full/1011.json",
+      "nouns": "data/raw/nanoka_missing/noun_3.2.3.json"
+    },
+    "passiveLevel": 7,
+    "hashes": {
+      "raw": "aead99f957f1dd891c11543304d7db48b08f152d2494a329e7fab52b6f657b66",
+      "nouns": "b515eb2654baf4815768a1997f1f4f12583cf702d0784ac96a6ff2abad8f1e56",
+      "moves": "8197cea314a47df564c121813a1c654b0fdf9de5ee21df5ae99c8f2998af64b7"
+    },
+    "moves": [
+      {
+        "id": "1011",
+        "agentId": "1011",
+        "name": {
+          "zhCN": "安比",
+          "en": "Anby"
+        },
+        "categories": [
+          {
+            "id": "basic",
+            "name": {
+              "zhCN": "basic",
+              "en": "basic"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1011001",
+                "name": {
+                  "zhCN": "普通攻击：伏特速攻 #1",
+                  "en": "Basic Attack: Turbo Volt #1"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      63.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      24.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      0.562
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      4.29
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      15.59
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.156
+              },
+              {
+                "id": "1011002",
+                "name": {
+                  "zhCN": "普通攻击：伏特速攻 #2",
+                  "en": "Basic Attack: Turbo Volt #2"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      67.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      44.1
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.032
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      7.8925
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      28.65
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.287
+              },
+              {
+                "id": "1011003",
+                "name": {
+                  "zhCN": "普通攻击：伏特速攻 #3",
+                  "en": "Basic Attack: Turbo Volt #3"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      228
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      134.7
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      3.226
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      24.64
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      89.59
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.896
+              },
+              {
+                "id": "1011004",
+                "name": {
+                  "zhCN": "普通攻击：伏特速攻 #4",
+                  "en": "Basic Attack: Turbo Volt #4"
+                },
+                "damageElement": "electric",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      478.9
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      282
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      6.745
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      51.535
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      172.47
+                    ],
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      187.35
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.874
+              },
+              {
+                "id": "1011005",
+                "name": {
+                  "zhCN": "普通攻击：落雷",
+                  "en": "Basic Attack: Thunderbolt"
+                },
+                "damageElement": "electric",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      657.5
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      213.9
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      5.126
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      39.16
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      127.5
+                    ],
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      142.38
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.424
+              }
+            ]
+          },
+          {
+            "id": "dodge",
+            "name": {
+              "zhCN": "dodge",
+              "en": "dodge"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1011008",
+                "name": {
+                  "zhCN": "冲刺攻击：电弧斩",
+                  "en": "Dash Attack: Taser Blast"
+                },
+                "damageElement": "physical",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      113.9
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      42.7
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.02
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      7.81
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      28.32
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.283
+              },
+              {
+                "id": "1011009",
+                "name": {
+                  "zhCN": "闪避反击：迅雷",
+                  "en": "Dodge Counter: Thunderclap"
+                },
+                "damageElement": "electric",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      360.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      243.1
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      2.219
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      16.9675
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      61.63
+                    ],
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      211.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.616
+              }
+            ]
+          },
+          {
+            "id": "special",
+            "name": {
+              "zhCN": "special",
+              "en": "special"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1011006",
+                "name": {
+                  "zhCN": "特殊技：电光挥击",
+                  "en": "Special Attack: Fork Lightning"
+                },
+                "damageElement": "electric",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      186.9
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      140.7
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      25.685
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      93.3
+                    ],
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      46.66
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.467
+              },
+              {
+                "id": "1011007",
+                "name": {
+                  "zhCN": "强化特殊技：苍雷斩",
+                  "en": "EX Special Attack: Lightning Bolt"
+                },
+                "damageElement": "electric",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1166
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      722.7
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      188.155
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      532.37
+                    ],
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      178.3
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.783,
+                "energyCost": {
+                  "Energy Cost": "60"
+                }
+              }
+            ]
+          },
+          {
+            "id": "chain",
+            "name": {
+              "zhCN": "chain",
+              "en": "chain"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1011010",
+                "name": {
+                  "zhCN": "连携技：电磁引擎",
+                  "en": "Chain Attack: Electro Engine"
+                },
+                "damageElement": "electric",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1085.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      216
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      222.31
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      342.83
+                    ],
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      143.34
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.433
+              },
+              {
+                "id": "1011011",
+                "name": {
+                  "zhCN": "终结技：过载引擎",
+                  "en": "Ultimate: Overdrive Engine"
+                },
+                "damageElement": "electric",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      3026.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      1487.7
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      210.03
+                    ],
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      710.04
+                    ]
+                  }
+                ],
+                "timeType": "ultimate",
+                "actionTime": 2.1
+              }
+            ]
+          },
+          {
+            "id": "assist",
+            "name": {
+              "zhCN": "assist",
+              "en": "assist"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1011012",
+                "name": {
+                  "zhCN": "快速支援：降雷",
+                  "en": "Quick Assist: Thunderfall"
+                },
+                "damageElement": "electric",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      124.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      93.6
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      2.219
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      16.9675
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      61.63
+                    ],
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      30.82
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.308
+              },
+              {
+                "id": "1011013",
+                "name": {
+                  "zhCN": "招架支援：电光一闪 #1",
+                  "en": "Defensive Assist: Flash #1"
+                },
+                "damageElement": "electric",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      371
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      366.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.166
+              },
+              {
+                "id": "1011014",
+                "name": {
+                  "zhCN": "招架支援：电光一闪 #2",
+                  "en": "Defensive Assist: Flash #2"
+                },
+                "damageElement": "electric",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      467.9
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      416.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.666
+              },
+              {
+                "id": "1011015",
+                "name": {
+                  "zhCN": "招架支援：电光一闪 #3",
+                  "en": "Defensive Assist: Flash #3"
+                },
+                "damageElement": "electric",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      227.6
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      116.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.166
+              },
+              {
+                "id": "1011016",
+                "name": {
+                  "zhCN": "支援突击：回旋闪电",
+                  "en": "Assist Follow-Up: Lightning Whirl"
+                },
+                "damageElement": "electric",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      670.7
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      437.7
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      104.1975
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      313.22
+                    ],
+                    "damageElement": "electric"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      160
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.6
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "units": [
+      {
+        "id": "/skill/assist/description/0/desc:0",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：降雷",
+        "category": "assist",
+        "quote": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动斩击，造成电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:1",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：降雷",
+        "category": "assist",
+        "quote": "对前方敌人发动斩击，造成电属性伤害；",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动斩击，造成电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:2",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：降雷",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动斩击，造成电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:0",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：电光一闪",
+        "category": "assist",
+        "quote": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:1",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：电光一闪",
+        "category": "assist",
+        "quote": "招架敌人的攻击，累积大量失衡值；",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:2",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：电光一闪",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:0",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：回旋闪电",
+        "category": "assist",
+        "quote": "发动[招架支援]后，点按 [普攻键] 发动：",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动回旋斩击，造成电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:1",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：回旋闪电",
+        "category": "assist",
+        "quote": "对前方敌人发动回旋斩击，造成电属性伤害；",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动回旋斩击，造成电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:2",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：回旋闪电",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动回旋斩击，造成电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:0",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：伏特速攻",
+        "category": "basic",
+        "quote": "点按 [普攻键] 发动：",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段的斩击，前三段造成物理伤害，第四段造成电属性伤害。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:1",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：伏特速攻",
+        "category": "basic",
+        "quote": "向前方进行至多四段的斩击，前三段造成物理伤害，第四段造成电属性伤害。",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段的斩击，前三段造成物理伤害，第四段造成电属性伤害。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:0",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：落雷",
+        "category": "basic",
+        "quote": "发动[普通攻击]第三段后，长按或停顿后点按 [普攻键] 发动：",
+        "context": "发动[普通攻击]第三段后，长按或停顿后点按 [普攻键] 发动：\n向前方进行下落打击，造成电属性伤害；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:1",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：落雷",
+        "category": "basic",
+        "quote": "向前方进行下落打击，造成电属性伤害；",
+        "context": "发动[普通攻击]第三段后，长按或停顿后点按 [普攻键] 发动：\n向前方进行下落打击，造成电属性伤害；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:2",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：落雷",
+        "category": "basic",
+        "quote": "招式发动期间抗打断等级提升。",
+        "context": "发动[普通攻击]第三段后，长按或停顿后点按 [普攻键] 发动：\n向前方进行下落打击，造成电属性伤害；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:0",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：电磁引擎",
+        "category": "chain",
+        "quote": "触发[连携技]时，选择对应角色发动：",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方小范围敌人发动强力上挑斩击，造成大量电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:1",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：电磁引擎",
+        "category": "chain",
+        "quote": "对前方小范围敌人发动强力上挑斩击，造成大量电属性伤害；",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方小范围敌人发动强力上挑斩击，造成大量电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:2",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：电磁引擎",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方小范围敌人发动强力上挑斩击，造成大量电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:0",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：过载引擎",
+        "category": "chain",
+        "quote": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方小范围敌人发动强力上挑斩击，并追加下落攻击，造成大量电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:1",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：过载引擎",
+        "category": "chain",
+        "quote": "对前方小范围敌人发动强力上挑斩击，并追加下落攻击，造成大量电属性伤害；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方小范围敌人发动强力上挑斩击，并追加下落攻击，造成大量电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:2",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：过载引擎",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方小范围敌人发动强力上挑斩击，并追加下落攻击，造成大量电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:0",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：滑步",
+        "category": "dodge",
+        "quote": "点按 [Icon_Evade] 发动：",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:1",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：滑步",
+        "category": "dodge",
+        "quote": "快速的冲刺闪避；",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:2",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：滑步",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:0",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：电弧斩",
+        "category": "dodge",
+        "quote": "闪避时，点按 [普攻键] 发动：",
+        "context": "闪避时，点按 [普攻键] 发动：\n向身周进行斩击，造成物理伤害。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:1",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：电弧斩",
+        "category": "dodge",
+        "quote": "向身周进行斩击，造成物理伤害。",
+        "context": "闪避时，点按 [普攻键] 发动：\n向身周进行斩击，造成物理伤害。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:0",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：迅雷",
+        "category": "dodge",
+        "quote": "触发[极限闪避]后，点按 [普攻键] 发动：",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动斩击，造成电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:1",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：迅雷",
+        "category": "dodge",
+        "quote": "对前方敌人发动斩击，造成电属性伤害；",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动斩击，造成电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:2",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：迅雷",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动斩击，造成电属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:0",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：电光挥击",
+        "category": "special",
+        "quote": "点按 [特技键] 发动：",
+        "context": "点按 [特技键] 发动：\n向前方进行上挑斩击，造成电属性伤害；\n若衔接在[普通攻击]第三段或[普通攻击：落雷]之后，则能够以更快的速度发动；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:1",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：电光挥击",
+        "category": "special",
+        "quote": "向前方进行上挑斩击，造成电属性伤害；",
+        "context": "点按 [特技键] 发动：\n向前方进行上挑斩击，造成电属性伤害；\n若衔接在[普通攻击]第三段或[普通攻击：落雷]之后，则能够以更快的速度发动；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:2",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：电光挥击",
+        "category": "special",
+        "quote": "若衔接在[普通攻击]第三段或[普通攻击：落雷]之后，则能够以更快的速度发动；",
+        "context": "点按 [特技键] 发动：\n向前方进行上挑斩击，造成电属性伤害；\n若衔接在[普通攻击]第三段或[普通攻击：落雷]之后，则能够以更快的速度发动；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:3",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：电光挥击",
+        "category": "special",
+        "quote": "招式发动期间抗打断等级提升。",
+        "context": "点按 [特技键] 发动：\n向前方进行上挑斩击，造成电属性伤害；\n若衔接在[普通攻击]第三段或[普通攻击：落雷]之后，则能够以更快的速度发动；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:0",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：苍雷斩",
+        "category": "special",
+        "quote": "能量足够时，点按 [Icon_SpecialReady] 发动：",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方进行强力上挑斩击，造成大量电属性伤害；\n若衔接在[普通攻击]第三段或[普通攻击：落雷]之后，则能够以更快的速度发动；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:1",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：苍雷斩",
+        "category": "special",
+        "quote": "向前方进行强力上挑斩击，造成大量电属性伤害；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方进行强力上挑斩击，造成大量电属性伤害；\n若衔接在[普通攻击]第三段或[普通攻击：落雷]之后，则能够以更快的速度发动；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:2",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：苍雷斩",
+        "category": "special",
+        "quote": "若衔接在[普通攻击]第三段或[普通攻击：落雷]之后，则能够以更快的速度发动；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方进行强力上挑斩击，造成大量电属性伤害；\n若衔接在[普通攻击]第三段或[普通攻击：落雷]之后，则能够以更快的速度发动；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:3",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：苍雷斩",
+        "category": "special",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方进行强力上挑斩击，造成大量电属性伤害；\n若衔接在[普通攻击]第三段或[普通攻击：落雷]之后，则能够以更快的速度发动；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/passive/level/1011507/desc/0:0",
+        "pointer": "/passive/level/1011507/desc/0",
+        "title": "核心被动：波动电压",
+        "category": "passive",
+        "quote": "安比在[普通攻击]第三段后发动[普通攻击：落雷]、[特殊技]或[强化特殊技]时，招式造成的失衡值提升64%。",
+        "context": "安比在[普通攻击]第三段后发动[普通攻击：落雷]、[特殊技]或[强化特殊技]时，招式造成的失衡值提升64%。"
+      },
+      {
+        "id": "/passive/level/1011507/desc/1:0",
+        "pointer": "/passive/level/1011507/desc/1",
+        "title": "额外能力：并联电路",
+        "category": "passive",
+        "quote": "队伍中存在与自身属性或阵营相同的角色时触发：",
+        "context": "队伍中存在与自身属性或阵营相同的角色时触发：\n安比[闪避反击]命中敌人时，额外回复7.2点能量，5秒内最多触发一次。"
+      },
+      {
+        "id": "/passive/level/1011507/desc/1:1",
+        "pointer": "/passive/level/1011507/desc/1",
+        "title": "额外能力：并联电路",
+        "category": "passive",
+        "quote": "安比[闪避反击]命中敌人时，额外回复7.2点能量，5秒内最多触发一次。",
+        "context": "队伍中存在与自身属性或阵营相同的角色时触发：\n安比[闪避反击]命中敌人时，额外回复7.2点能量，5秒内最多触发一次。"
+      },
+      {
+        "id": "/talent/1/desc:0",
+        "pointer": "/talent/1/desc",
+        "title": "快充模式",
+        "category": "talent",
+        "quote": "[普通攻击]第四段斩击命中敌人时，安比的能量获得效率提升12%，持续30秒。",
+        "context": "[普通攻击]第四段斩击命中敌人时，安比的能量获得效率提升12%，持续30秒。"
+      },
+      {
+        "id": "/talent/2/desc:0",
+        "pointer": "/talent/2/desc",
+        "title": "精准放电",
+        "category": "talent",
+        "quote": "[普通攻击：落雷]命中处于失衡状态下的敌人时，招式造成的伤害提升30%；",
+        "context": "[普通攻击：落雷]命中处于失衡状态下的敌人时，招式造成的伤害提升30%；[强化特殊技]命中未处于失衡状态下的敌人时，招式造成的失衡值提升10%。"
+      },
+      {
+        "id": "/talent/2/desc:1",
+        "pointer": "/talent/2/desc",
+        "title": "精准放电",
+        "category": "talent",
+        "quote": "[强化特殊技]命中未处于失衡状态下的敌人时，招式造成的失衡值提升10%。",
+        "context": "[普通攻击：落雷]命中处于失衡状态下的敌人时，招式造成的伤害提升30%；[强化特殊技]命中未处于失衡状态下的敌人时，招式造成的失衡值提升10%。"
+      },
+      {
+        "id": "/talent/3/desc:0",
+        "pointer": "/talent/3/desc",
+        "title": "训练有素",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/4/desc:0",
+        "pointer": "/talent/4/desc",
+        "title": "电荷传导",
+        "category": "talent",
+        "quote": "发动[连携技]或[终结技]时，为后场电属性角色回复3点能量；",
+        "context": "发动[连携技]或[终结技]时，为后场电属性角色回复3点能量；安比每拥有12%能量获得效率，回复量额外提升2点，最多额外提升6点。"
+      },
+      {
+        "id": "/talent/4/desc:1",
+        "pointer": "/talent/4/desc",
+        "title": "电荷传导",
+        "category": "talent",
+        "quote": "安比每拥有12%能量获得效率，回复量额外提升2点，最多额外提升6点。",
+        "context": "发动[连携技]或[终结技]时，为后场电属性角色回复3点能量；安比每拥有12%能量获得效率，回复量额外提升2点，最多额外提升6点。"
+      },
+      {
+        "id": "/talent/5/desc:0",
+        "pointer": "/talent/5/desc",
+        "title": "街头经验",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/6/desc:0",
+        "pointer": "/talent/6/desc",
+        "title": "充能电场",
+        "category": "talent",
+        "quote": "发动[强化特殊技]时，安比获得8层充能（上限8层）；",
+        "context": "发动[强化特殊技]时，安比获得8层充能（上限8层）；[普通攻击]或[冲刺攻击]命中敌人时，消耗1层充能，使当前招式造成的伤害提升45%。"
+      },
+      {
+        "id": "/talent/6/desc:1",
+        "pointer": "/talent/6/desc",
+        "title": "充能电场",
+        "category": "talent",
+        "quote": "[普通攻击]或[冲刺攻击]命中敌人时，消耗1层充能，使当前招式造成的伤害提升45%。",
+        "context": "发动[强化特殊技]时，安比获得8层充能（上限8层）；[普通攻击]或[冲刺攻击]命中敌人时，消耗1层充能，使当前招式造成的伤害提升45%。"
+      }
+    ]
+  },
+  "decisions": [
+    {
+      "sourceId": "/skill/assist/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "快速支援的发动前置（当前操作角色被击飞时点按切换键）：纯发动操作说明（无效果文本、无数值）。影响：不进入伤害/失衡/资源结算，无收益影响。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "快速支援(1011012)的斩击伤害与电属性：招式倍率/属性/失衡/积蓄由 catalog 倍率表直读（D1，导入脚本 + validate:data 覆盖），本模块无专属落点。影响：数值随 catalog 更新自动生效，不进入本契约的机制面。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "无敌帧/抗打断等级为防御向表现，伤害计算器不建模（同 1041 影画4 先例）。影响：不影响伤害/失衡/资源口径。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招架支援的发动前置（前场角色即将被攻击时点按切换键）：纯发动操作说明（无效果文本、无数值）。影响：不进入伤害/失衡/资源结算，无收益影响。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招架支援(1011013~1011015)「累积大量失衡值」的失衡量由 catalog 倍率表 daze 行直读（D1），本模块无专属落点。影响：失衡值随倍率表更新自动生效。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "无敌帧/抗打断等级为防御向表现，伤害计算器不建模（同 1041 影画4 先例）。影响：不影响伤害/失衡/资源口径。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "支援突击的发动前置（发动招架支援后点按普攻键）：纯发动操作说明（无效果文本、无数值）。影响：不进入伤害/失衡/资源结算，无收益影响。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "支援突击(1011016)的伤害与电属性：招式倍率/属性/失衡/积蓄由 catalog 倍率表直读（D1，导入脚本 + validate:data 覆盖），本模块无专属落点。影响：数值随 catalog 更新自动生效，不进入本契约的机制面。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "无敌帧/抗打断等级为防御向表现，伤害计算器不建模（同 1041 影画4 先例）。影响：不影响伤害/失衡/资源口径。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "伏特速攻的发动操作（点按普攻键）：纯发动操作说明（无效果文本、无数值）。影响：不进入伤害/失衡/资源结算，无收益影响。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-basic-segment-element"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-basic-cycle-materialize"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-basic-segment-element"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "落雷发动期间抗打断等级提升：无敌帧/抗打断等级为防御向表现，伤害计算器不建模（同 1041 影画4 先例）。影响：不影响伤害/失衡/资源口径。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "连携技的发动前置（触发连携技时选择对应角色）：纯发动操作说明（无效果文本、无数值）。影响：不进入伤害/失衡/资源结算，无收益影响。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "连携技(1011010)的伤害与电属性：招式倍率/属性/失衡/积蓄由 catalog 倍率表直读（D1，导入脚本 + validate:data 覆盖），本模块无专属落点。影响：数值随 catalog 更新自动生效，不进入本契约的机制面。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "无敌帧/抗打断等级为防御向表现，伤害计算器不建模（同 1041 影画4 先例）。影响：不影响伤害/失衡/资源口径。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "终结技的发动前置（喧响等级达到[极]时点按）：纯发动操作说明（无效果文本、无数值）。影响：不进入伤害/失衡/资源结算，无收益影响。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "终结技(1011011)的伤害与电属性：招式倍率/属性/失衡/积蓄由 catalog 倍率表直读（D1，导入脚本 + validate:data 覆盖），本模块无专属落点。影响：数值随 catalog 更新自动生效，不进入本契约的机制面。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "无敌帧/抗打断等级为防御向表现，伤害计算器不建模（同 1041 影画4 先例）。影响：不影响伤害/失衡/资源口径。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "闪避的发动操作（点按闪避键）：纯发动操作说明（无效果文本、无数值）。影响：不进入伤害/失衡/资源结算，无收益影响。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "「快速的冲刺闪避」是位移表现，无伤害/资源效果。影响：不进入结算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "无敌帧/抗打断等级为防御向表现，伤害计算器不建模（同 1041 影画4 先例）。影响：不影响伤害/失衡/资源口径。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "冲刺攻击的发动操作（闪避时点按普攻键）：纯发动操作说明（无效果文本、无数值）。影响：不进入伤害/失衡/资源结算，无收益影响。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-basic-segment-element"
+      ]
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "闪避反击的发动前置（触发极限闪避后点按普攻键）：纯发动操作说明（无效果文本、无数值）。影响：不进入伤害/失衡/资源结算，无收益影响。 其机制收益（命中回 7.2 能量）由额外能力段承担（见 /passive/level/1011507/desc/1:1）。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "闪避反击(1011009)的伤害与电属性（电 = 角色属性，导入无误）：招式倍率/属性/失衡/积蓄由 catalog 倍率表直读（D1，导入脚本 + validate:data 覆盖），本模块无专属落点。影响：数值随 catalog 更新自动生效，不进入本契约的机制面。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "无敌帧/抗打断等级为防御向表现，伤害计算器不建模（同 1041 影画4 先例）。影响：不影响伤害/失衡/资源口径。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "特殊技的发动操作（点按特技键）：纯发动操作说明（无效果文本、无数值）。影响：不进入伤害/失衡/资源结算，无收益影响。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "特殊技(1011006)的伤害与电属性：招式倍率/属性/失衡/积蓄由 catalog 倍率表直读（D1，导入脚本 + validate:data 覆盖），本模块无专属落点。影响：数值随 catalog 更新自动生效，不进入本契约的机制面。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "「衔接在[普通攻击]第三段或[普通攻击：落雷]之后可更快速发动」是**时序**差异（缩短发动动作），原文未给数值；catalog 只收录单一 actionTime、raw skill_list 的「（快速发动）」条目无时间字段 ⇒ 无数据通道。影响：特殊技前台时间按普通发动计（偏保守），伤害/失衡倍率不受影响；若需建模须先补「快速发动」动作时间数据源。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "特殊技发动期间抗打断等级提升：无敌帧/抗打断等级为防御向表现，伤害计算器不建模（同 1041 影画4 先例）。影响：不影响伤害/失衡/资源口径。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "强化特殊技的发动前置（能量足够时点按）：纯发动操作说明（无效果文本、无数值）。影响：不进入伤害/失衡/资源结算，无收益影响。 能量门槛本身由引擎能量系统承担。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "强化特殊技(1011007)的伤害与电属性：招式倍率/属性/失衡/积蓄由 catalog 倍率表直读（D1，导入脚本 + validate:data 覆盖），本模块无专属落点。影响：数值随 catalog 更新自动生效，不进入本契约的机制面。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "强化特殊技「衔接后更快速发动」：同时序缺口（同 /skill/special/description/0/desc:2）——无快速发动动作时间数据源。影响：强特前台时间按普通发动计（偏保守）。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "无敌帧/抗打断等级为防御向表现，伤害计算器不建模（同 1041 影画4 先例）。影响：不影响伤害/失衡/资源口径。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1011507/desc/0:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-core-voltage-stun"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1011507/desc/1:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-parallel-circuit-energy"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1011507/desc/1:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-parallel-circuit-energy"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-c1-fast-charge"
+      ]
+    },
+    {
+      "sourceId": "/talent/2/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-c2-precise-discharge"
+      ]
+    },
+    {
+      "sourceId": "/talent/2/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-c2-precise-discharge"
+      ]
+    },
+    {
+      "sourceId": "/talent/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "通用命座规则「[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2」由引擎统一实现（panel.skillLevelBonus，3 命 +2 / 5 命 +4，core/skillLevel.ts 的 (skillLevel+10)/22 系数），非本角色模块专属机制，由全库网覆盖（cinemaSkillLevel.test.ts 的 it.each 档 + timeGolden 全角色 c0/c3/c6 档）。影响：本模块不重复声明，避免双计。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/4/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-c4-charge-conduction"
+      ]
+    },
+    {
+      "sourceId": "/talent/4/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-c4-charge-conduction"
+      ]
+    },
+    {
+      "sourceId": "/talent/5/desc:0",
+      "status": "out_of_scope",
+      "reason": "通用命座规则「技能等级+2」（同影画3，5 命 +4 档）：由引擎 panel.skillLevelBonus 统一实现，非本模块专属机制。影响：不重复声明，避免双计。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/6/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-c6-charge-field"
+      ]
+    },
+    {
+      "sourceId": "/talent/6/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "anby-c6-charge-field"
+      ]
+    }
+  ],
+  "mechanics": [
+    {
+      "id": "anby-core-voltage-stun",
+      "sources": [
+        "/passive/level/1011507/desc/0:0"
+      ],
+      "dimension": "D3",
+      "certainty": "L1",
+      "trigger": "安比在[普通攻击]第三段后发动[普通攻击：落雷]、[特殊技]或[强化特殊技]时",
+      "target": "招式自身——落雷(1011005)/特殊技(1011006)/强化特殊技(1011007) 三条执行行；不含伏特速攻 #1~#4(1011001~1011004) 与 basic_attack 聚合行",
+      "gate": "核心被动常驻（无额外门控）；数值取满级 Lv.7 = 64%。门控口径 = **招式名单**（ANBY_CORE_STUN_MOVE_IDS），不检查是否真的衔接在第三段之后",
+      "formula": "该招式失衡值 ×(1 + 64/100)：执行级 `stunBuildUpBonus += 64`（与面板 stunBuildUpBonus 同乘区加算，不新开乘区）",
+      "field": "SkillExecution.stunBuildUpBonus（moveId 级，patchExecutions 写）",
+      "countSource": "不适用（无次数源；每条命中行按自身 count 结算失衡）",
+      "duration": "不适用（核心被动常驻，无时长/刷新）",
+      "cap": "不适用（无层数与上限）",
+      "assumptions": [
+        {
+          "premise": "原文「在[普通攻击]第三段后发动」限定的是**发动时机**、不改 64% 数值本身；实现按招式名单加，不检查该次发动是否真的衔接在第三段后。",
+          "falsifier": "若实战中「非衔接发动」的特殊技/强特不吃 +64%（失衡值实测差约 39%），则当前实现会高估失衡次数；届时需把衔接状态接进门控。"
+        },
+        {
+          "premise": "原文只列落雷/特殊技/强化特殊技三条招式 ⇒ 伏特速攻 #1~#4 不在内（此前经 basic_attack 聚合行整体 +64% 属**过范围**）。",
+          "falsifier": "若实测伏特速攻各段失衡值确实吃 +64%，则本口径过窄、失衡次数被低估；用失衡池逐段对拍可证伪。"
+        }
+      ],
+      "decisionEvidence": "用户 2026-09-17 裁决①（招式限定，此前挂 basic_attack 聚合行 = 过范围）；落点见 src/mechanics/agents/anby.ts 头注释「原文录入修正①」与 ANBY_CORE_STUN_MOVE_IDS；测试 anby.test.ts「核心被动波动电压：落雷/特殊技/强特 失衡 +64；平A聚合行与伏特速攻段不吃」三条断言（强特吃 64 / 聚合行 0 / 伏特速攻段 0）。",
+      "implementation": {
+        "spec": "src/specs/agents/1011.json#/notes/6",
+        "consumer": "src/mechanics/agents/anby.ts#patchAnbyExecutions"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "真实装配 [1011 C0, 1381, 1211]（harness）；读强化特殊技行 1011007 的 stunBuildUpBonus",
+          "expected": "=== ANBY_CORE_STUN_BONUS（64）：招式限定 +64% 生效",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "核心被动波动电压：落雷/特殊技/强特 失衡 +64；平A聚合行与伏特速攻段不吃"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "同装配；读 basic_attack 聚合行 stunBuildUpBonus",
+          "expected": "=== 0（聚合行不吃；旧实现此处为 64 = 过范围）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "核心被动波动电压：落雷/特殊技/强特 失衡 +64；平A聚合行与伏特速攻段不吃"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "同装配；读伏特速攻分段行 1011001/1011002/1011003/1011004 的 stunBuildUpBonus",
+          "expected": "各段 === 0（不在原文招式名单内）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "核心被动波动电压：落雷/特殊技/强特 失衡 +64；平A聚合行与伏特速攻段不吃"
+          }
+        }
+      ]
+    },
+    {
+      "id": "anby-parallel-circuit-energy",
+      "sources": [
+        "/passive/level/1011507/desc/1:0",
+        "/passive/level/1011507/desc/1:1"
+      ],
+      "dimension": "D6",
+      "certainty": "L1",
+      "trigger": "安比[闪避反击]命中敌人时",
+      "target": "安比自身能量池——converge 阶段并入 cfg.initialEnergyGift（安比槽），账本键 anbyParallelEnergyTotal（幂等：先扣旧值再加新值）",
+      "gate": "额外能力门控 = 队伍中存在与自身属性（电）或阵营（狡兔屋）相同的角色（spec additionalAbility.teamConditions；panel.additionalAbilityActive > 0 → cfg.anbyAdditionalActive）",
+      "formula": "整局能量 = min(闪避反击次数, floor(战斗时间 / 5)) × 7.2",
+      "field": "cfg.initialEnergyGift（安比槽；经 energySource 账本进入能量总账）",
+      "countSource": "cfg.dodgeCounterCount（面板交互次数，单一事实源 interactionBaselineFor）与 combatTime（秒）",
+      "duration": "触发间隔 5s（CD 内至多一次）；能量为整局累计值",
+      "cap": "min(闪避反击次数, floor(战斗时间/5)) —— 每 5s 至多触发一次",
+      "assumptions": [
+        {
+          "premise": "CD 上限用 floor(战斗时间/5) 近似，即假定「CD 一到就有闪反可打」；实战闪反间隔可能长于 5s。",
+          "falsifier": "若实战闪反间隔显著 > 5s，则 floor(t/5) 上限不起作用、实际回能低于本式 ⇒ 能量与强特次数被高估；用实战闪反时间戳可证伪。"
+        },
+        {
+          "premise": "闪避反击按 100% 命中计入（原文条件是「命中敌人时」），未引入命中率折减。",
+          "falsifier": "若闪反经常落空，回能高估；表现为能量账本回能项与实战能量曲线不吻合。"
+        }
+      ],
+      "decisionEvidence": "spec additionalAbility.teamConditions（sameAttributeAsSelf / sameFactionAsSelf，引擎 evalAdditionalAbility 消费）；落点见 anby.ts 头注释「其余已实现·额外能力·并联电路」与 applyAnbyTeamConfig converge 分支；测试 anby.test.ts「并联电路：min(闪反次数, floor(t/5)) × 7.2」两点断言（10 次→72；40 次被 36 上限钳制）。⚠ **门控（队友同属性/同阵营）与 initialEnergyGift 接线无独立测试**（已实测记录缺口）。",
+      "implementation": {
+        "spec": "src/specs/agents/1011.json#/additionalAbility/note",
+        "consumer": "src/mechanics/agents/anby.ts#computeAnbyParallelCircuitEnergy"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "computeAnbyParallelCircuitEnergy(10, 180)：180s 内闪反 10 次（上限 floor(180/5)=36，未触顶）",
+          "expected": "=== 72（10 × 7.2）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "并联电路：min(闪反次数, floor(t/5)) × 7.2"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "computeAnbyParallelCircuitEnergy(0, 180)：无闪避反击命中",
+          "expected": "=== 0（无触发 ⇒ 不回能；同函数 Math.max(0,·) 分支）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "并联电路：min(闪反次数, floor(t/5)) × 7.2"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "computeAnbyParallelCircuitEnergy(40, 180)：闪反 40 次 > CD 上限 36",
+          "expected": "=== 36 × 7.2 = 259.2（被 floor(t/5) 钳制，超出部分不产生能量）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "并联电路：min(闪反次数, floor(t/5)) × 7.2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "anby-c1-fast-charge",
+      "sources": [
+        "/talent/1/desc:0"
+      ],
+      "dimension": "D2",
+      "certainty": "L2",
+      "trigger": "[普通攻击]第四段斩击命中敌人时（伏特速攻 #4 = 1011004）",
+      "target": "安比自身面板 energyGainEfficiency",
+      "gate": "影画 ≥ 1；整局覆盖率滑块 anby.fastChargeCoverage（默认 1 = 100%）",
+      "formula": "panel.energyGainEfficiency += 12 × 覆盖率",
+      "field": "panel.energyGainEfficiency（面板字段，applyPanel 阶段）",
+      "countSource": "不按命中次数累计；取覆盖率滑块 anby.fastChargeCoverage（0–1，步长 0.05）",
+      "duration": "单次 30s（刷新式）；整局按覆盖率折算，不逐次刷新建模",
+      "cap": "不适用（无叠加上限；30s 内重复命中只刷新时长）",
+      "assumptions": [
+        {
+          "premise": "原文给了单次时长（30s）但未给整局覆盖率 ⇒ 用滑块暴露该近似，默认 100%（假定第四段几乎每次循环都打）。",
+          "falsifier": "若实战第四段覆盖率显著 < 100%（如常以落雷取消第四段），则 +12% 被高估 ⇒ 回能与强特次数偏高；把滑块调到实测覆盖率即可证伪/校正。"
+        }
+      ],
+      "decisionEvidence": "用户口径 2026-08-27 录入（SOP §3.5 覆盖率滑块模式）；落点见 anby.ts 头注释「已接管·影画1 快充模式」与 applyAnbyPanel；测试 anbyCinema1.test.ts 三条差分（0→1 命 +12 / 滑块 50% → +6 / 0 命滑块不产生变化）。",
+      "implementation": {
+        "spec": "src/specs/agents/1011.json#/notes/8",
+        "consumer": "src/mechanics/agents/anby.ts#applyAnbyPanel"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "computePanelPhases：同配置 0 命 → 1 命，覆盖率默认 1",
+          "expected": "energyGainEfficiency 差分 === 12",
+          "test": {
+            "file": "src/mechanics/__tests__/anbyCinema1.test.ts",
+            "title": "命座差分：0命 → 1命，能量获得效率 +12（覆盖率默认 100%）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "0 命时把 anby.fastChargeCoverage 由 0 调到 1",
+          "expected": "energyGainEfficiency 与 before 完全相等（门控未解锁 ⇒ 滑块无任何面板变化）",
+          "test": {
+            "file": "src/mechanics/__tests__/anbyCinema1.test.ts",
+            "title": "防死数据：0命时覆盖率滑块不产生任何面板变化"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "1 命 + anby.fastChargeCoverage = 0.5",
+          "expected": "差分 === 6（12 × 0.5，覆盖率端点线性折算）",
+          "test": {
+            "file": "src/mechanics/__tests__/anbyCinema1.test.ts",
+            "title": "覆盖率滑块 50%：1命增益折算为 +6"
+          }
+        }
+      ]
+    },
+    {
+      "id": "anby-c2-precise-discharge",
+      "sources": [
+        "/talent/2/desc:0",
+        "/talent/2/desc:1"
+      ],
+      "dimension": "D3",
+      "certainty": "L2",
+      "trigger": "①[普通攻击：落雷]命中处于失衡状态下的敌人时 ②[强化特殊技]命中未处于失衡状态下的敌人时",
+      "target": "①落雷执行行(1011005) ②强化特殊技执行行(1011007)——两条效果**互不叠加到对方招式**（招式限定）",
+      "gate": "影画 ≥ 2；失衡覆盖率滑块 anby.c2StunCoverage（默认 0.5）",
+      "formula": "①落雷 dmgBonus += 30 × 覆盖率 ②强特 stunBuildUpBonus += 10 × (1 − 覆盖率)",
+      "field": "①SkillExecution.dmgBonus（1011005）②SkillExecution.stunBuildUpBonus（1011007）",
+      "countSource": "不按命中次数累计；取失衡覆盖率滑块 anby.c2StunCoverage（0–1，步长 0.05）",
+      "duration": "不适用（命中瞬间判定，无持续时长）",
+      "cap": "不适用（无层数与上限）",
+      "assumptions": [
+        {
+          "premise": "原文未给整局失衡占比 ⇒ 用**单一**失衡覆盖率滑块（默认 0.5）驱动两条互补效果：落雷吃 cov、强特吃 (1−cov)，即假定「命中要么在失衡内、要么在失衡外」。",
+          "falsifier": "若实战失衡覆盖率 ≠ 0.5，两条效果此消彼长（滑块 0/1 端点为可证伪点：cov=0 ⇒ 落雷 +0 而强特 +10；cov=1 ⇒ 落雷 +30 而强特 +0）。"
+        },
+        {
+          "premise": "两条效果的载体是**分段后的真实 moveId 行**（落雷 1011005 / 强特 1011007），而非 basic_attack 聚合行——挂聚合行会连伏特速攻一起加成（过范围）。",
+          "falsifier": "若把载体改回聚合行，basic_attack 的 dmgBonus 会 > 0 而落雷行 = 0；anby.test.ts 已断言聚合行 dmgBonus === 0，改回即红。"
+        }
+      ],
+      "decisionEvidence": "用户 2026-09-17 裁决（招式限定，此前挂 basic 聚合行 = 过范围）；落点见 anby.ts 头注释「其余已实现·影画2 精准放电」与 patchAnbyExecutions 的 MOVE_LIGHTNING / MOVE_EX 分支；测试 anby.test.ts「影画2：0 命无增伤，2 命落雷伤害 +30×覆盖 / 强特失衡 +10×(1-覆盖)」与「anby.c2StunCoverage → 影画2 落雷增伤/强特失衡互补差分（patchExecutions 直调）」。",
+      "implementation": {
+        "spec": "src/specs/agents/1011.json#/notes/5",
+        "consumer": "src/mechanics/agents/anby.ts#patchAnbyExecutions"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "真实装配 C2，默认 cov=0.5；读落雷行 1011005 dmgBonus",
+          "expected": "=== 30 × 0.5 = 15（ANBY_C2_LIGHTNING_DMG × 覆盖率）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "影画2：0 命无增伤，2 命落雷伤害 +30×覆盖 / 强特失衡 +10×(1-覆盖)"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "同装配 C0；读落雷行 1011005 dmgBonus 与聚合行 basic_attack dmgBonus",
+          "expected": "C0 落雷 === 0（命座门控）；C2 时聚合行亦 === 0（不吃，旧值 > 0 = 过范围）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "影画2：0 命无增伤，2 命落雷伤害 +30×覆盖 / 强特失衡 +10×(1-覆盖)"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "patchExecutions 直调：cov=1 与 cov=0 两端点取差",
+          "expected": "落雷 dmgBonus 差 === 30（cov 0→1 线性）；强特 stunBuildUpBonus 差 === −10（互补：(1−cov) 由 1→0）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "anby.c2StunCoverage → 影画2 落雷增伤/强特失衡互补差分（patchExecutions 直调）"
+          }
+        }
+      ]
+    },
+    {
+      "id": "anby-c4-charge-conduction",
+      "sources": [
+        "/talent/4/desc:0",
+        "/talent/4/desc:1"
+      ],
+      "dimension": "D6",
+      "certainty": "L1",
+      "trigger": "安比发动[连携技]或[终结技]时",
+      "target": "后场电属性队友——team 中 damageElement === \"electric\" 且 slot ≠ 安比槽的每一份 cfg",
+      "gate": "影画 ≥ 4（applyTeamConfig postRound 阶段；队友那份 cfg 按**身份** `characters.find(c => c.slot === mate.slot)` 查，不按下标——characters 按位置压缩）",
+      "formula": "单次回能 = 3 + min(6, floor(安比能量获得效率 / 12) × 2)；整局 = (连携总次数 + 安比终结次数) × 单次回能",
+      "field": "队友 cfg.initialEnergyGift（幂等并入；账本键 anbyC4EnergyTotal 存本模块写入量）",
+      "countSource": "cfg.chainCountTotalOverride ?? (chainCountPerStun × stunCount)；ultimateCounts[安比槽]",
+      "duration": "不适用（每次发动即时结算，无持续时长）",
+      "cap": "单次额外回能上限 +6（即单次最多 3 + 6 = 9 点；floor(效率/12) 每档 +2，3 档触顶）",
+      "assumptions": [
+        {
+          "premise": "「后场电属性角色」按队友 damageElement === \"electric\" 判定，不判该队友在安比发动连携/终结的瞬间是否真的处于后场。",
+          "falsifier": "若该电队友在安比连携期间处于前台（前台角色也吃到这份回能），则队友能量被高估；用换人时序/实战能量曲线可证伪。"
+        },
+        {
+          "premise": "触发次数 = 连携总次数 + 安比终结次数（不区分该次连携/终结是否由安比发动）。",
+          "falsifier": "若只有安比本人发动的连携/终结才回能，则触发次数被高估、队友回能偏高。"
+        }
+      ],
+      "decisionEvidence": "原文「发动[连携技]或[终结技]时，为后场电属性角色回复3点能量；安比每拥有12%能量获得效率，回复量额外提升2点，最多额外提升6点」；落点见 anby.ts 头注释「其余已实现·影画4 电荷传导」与 applyAnbyTeamConfig postRound 分支（含空槽压缩的身份查找口径）；测试 anby.test.ts「电荷传导：3 + min(6, floor(能量效率/12)×2)」四点断言（0→3 / 12→5 / 36→9 / 100→9 封顶）。⚠ **postRound 接线（写队友 initialEnergyGift）无独立测试**（已实测记录缺口）。",
+      "implementation": {
+        "spec": "src/specs/agents/1011.json#/notes/1",
+        "consumer": "src/mechanics/agents/anby.ts#computeAnbyC4ChargeEnergy"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "computeAnbyC4ChargeEnergy(12)：能量获得效率 12%（1 档）",
+          "expected": "=== 5（3 + min(6, floor(12/12)×2) = 3+2）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "电荷传导：3 + min(6, floor(能量效率/12)×2)"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "computeAnbyC4ChargeEnergy(100)：效率远超 3 档（floor(100/12)=8 档）",
+          "expected": "=== 9（额外回能封顶 +6，超出的 5 档不产生任何收益）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "电荷传导：3 + min(6, floor(能量效率/12)×2)"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "computeAnbyC4ChargeEnergy(0)：无能量获得效率",
+          "expected": "=== 3（基础值下限；未发动连携/终结时整局为 0，由 postRound 的 triggers 承担）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "电荷传导：3 + min(6, floor(能量效率/12)×2)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "anby-c6-charge-field",
+      "sources": [
+        "/talent/6/desc:0",
+        "/talent/6/desc:1"
+      ],
+      "dimension": "D4",
+      "certainty": "L1",
+      "trigger": "发动[强化特殊技]时获得 8 层充能（上限 8 层）；[普通攻击]或[冲刺攻击]命中敌人时消耗 1 层",
+      "target": "消耗充能的**当前招式**命中行——平A分段行 1011001~1011005（分「吃充能」与「未吃充能」两条同 moveId 行，+45% 只落前者）",
+      "gate": "影画 ≥ 6（buildAnbyExecutions 内 cinema >= 6 才计算可消费次数）",
+      "formula": "可消费次数 = min(8 × 强特次数, 平A命中数 + 冲刺攻击命中数)；每次消耗使当前招式 dmgBonus += 45",
+      "field": "SkillExecution.dmgBonus（仅吃充能的分段行；**面板 dmgBonus 不再 +45**——旧实现面板级全局 +45 = 过范围）",
+      "countSource": "state.exSpecialCount × 8（层数预算）∩ 平A命中数（totalHits = 完整循环数 × 5 段）；冲刺攻击当前不在执行计划内 ⇒ dashHits 传 0",
+      "duration": "不适用（充能层数无时长，仅上限 8 层）",
+      "cap": "每次强特获得 8 层（同时是上限）；整局消耗端封顶 = min(8 × 强特次数, 可消费命中数)",
+      "assumptions": [
+        {
+          "premise": "冲刺攻击(1011008)当前不在执行计划里（无独立行）⇒ dashHits 由调用方给 0，其可消费命中被漏计。属**已有通道缺口**（与「平A池不区分冲刺段」同源），不是本次口径选择。",
+          "falsifier": "若实战中冲刺攻击命中占比显著，则充能消耗数被低估（本配装下 9 次强特 × 8 = 72 层预算 > 平A命中数，缺口暂不体现）；补出冲刺攻击执行行后若 chargedHits 变化即可证伪。"
+        },
+        {
+          "premise": "「上限 8 层」等价于「每次强特恰好灌满 8 层」的预算语义（8 × 强特次数），即假定下次强特前能打满 8 下。",
+          "falsifier": "若实战强特间隔内打不满 8 下（充能溢出浪费），则 8 × 强特次数 高估了可消费层数 ⇒ 吃充能命中数偏高。"
+        }
+      ],
+      "decisionEvidence": "用户 2026-09-17 裁决③（**执行级**，非面板级全局 +45）；落点见 anby.ts 头注释「原文录入修正③」、applyAnbyPanel 注释（面板级已移除）、computeAnbyChargeConsumed JSDoc 与 buildAnbyExecutions；测试 anby.test.ts「执行级：C6 平A分段行吃 +45（按消耗次数），C0 不吃；面板 dmgBonus 不再 +45」与「C0 不吃充能（执行级门控）」。⚠ spec notes/7 仍写「由 specPanelBuffs anbyChargeMechanic 挂 panel.dmgBonus」= **陈旧口径**（该模块已不再注册），已列入报告。",
+      "implementation": {
+        "spec": "src/specs/agents/1011.json#/notes/5",
+        "consumer": "src/mechanics/agents/anby.ts#buildAnbyExecutions"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "真实装配 C6（剔除队伍 globalBuffs 干扰）；收集 dmgBonus >= 45 的执行行",
+          "expected": "吃充能行数 > 0，且**只**含 1011001~1011005（强特/终结/连携/闪反/支援都不吃）；面板 dmgBonus === 0（不再是面板级 +45）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "执行级：C6 平A分段行吃 +45（按消耗次数），C0 不吃；面板 dmgBonus 不再 +45"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "真实装配 C0；遍历全部执行行 dmgBonus",
+          "expected": "每行 === 0（命座门控：C0 无充能增伤）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "C0 不吃充能（执行级门控）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C6 装配：Σ 吃充能行 count 与 Σ 平A分段行 count 比较（层数预算 9 强特 × 8 = 72）",
+          "expected": "chargedHits === totalHits（预算大于命中数 ⇒ 全部平A命中吃充能；封顶 = min(预算, 命中数)）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "执行级：C6 平A分段行吃 +45（按消耗次数），C0 不吃；面板 dmgBonus 不再 +45"
+          }
+        }
+      ]
+    },
+    {
+      "id": "anby-basic-segment-element",
+      "sources": [
+        "/skill/basic/description/0/desc:1",
+        "/skill/basic/description/1/desc:1",
+        "/skill/dodge/description/1/desc:1"
+      ],
+      "dimension": "D1",
+      "certainty": "L0",
+      "trigger": "不适用（数据直读：无触发条件，逐招按原文属性）",
+      "target": "平A分段执行行 1011001~1011005 与冲刺攻击行 1011008 的 element",
+      "gate": "不适用（catalog 数据直读，无门控）",
+      "formula": "按原文逐招属性：伏特速攻 #1~#3 = physical、#4 = electric、落雷 = electric、冲刺攻击 = physical；模块按 catalog `move.damageElement` 逐段写入，**不写死角色元素**",
+      "field": "SkillExecution.element（来源 catalog `agentSkills[].categories[].moves[].damageElement`，经 buildAnbyCharConfig 预存 anbyBasicCycle 后由 pushAnbyBasicSegment 落行）",
+      "countSource": "不适用（每段 1 个属性值，无次数源）",
+      "duration": "不适用（属性为招式固有属性，无时长）",
+      "cap": "不适用（无上限）",
+      "assumptions": [
+        {
+          "premise": "元素值唯一事实源 = catalog（规则 2：脚本按原文重刷，不手改 JSON）；模块只搬运不重算。",
+          "falsifier": "若 catalog 元素被回退成「角色元素铺满」，本模块会把 #1~#3 也标成电。**已实测**：隔离树把 1011001~1011003 翻回 electric 后，58 个提及 1011 的测试文件（794 例）+ timeGolden（105 预设 + 60 角色 × c0/c3/c6）**全绿** ⇒ 当前无任何判据能发现该回退（缺口已记录）。"
+        },
+        {
+          "premise": "落雷与第四段同属一个五段循环（#1→#2→#3→#4→落雷）——原文只说「[普通攻击]第三段后」可发落雷，未说明落雷是否**替代**第四段。",
+          "falsifier": "若实战落雷替代 #4（循环为 4 段），则平A命中数与落雷次数被高估约 25%（5 段 vs 4 段），且 #4 的电属性份额被记到落雷名下。"
+        }
+      ],
+      "decisionEvidence": "用户 2026-09-17 裁决②（普攻元素按原文分段，此前 catalog 五段全 electric）；解析口径单一事实源 = `scripts/lib/move-elements.mjs`（头注释记了三条已实测错路：按 skill_list id 硬套 / 按名字整组铺 / 只认 element_type 漏判）；数据 delta = catalog 1011001/1011002/1011003/1011008 由 electric → physical（`scripts/patch-move-elements.mjs` 按原文重刷）；raw 原文「前三段造成物理伤害，第四段造成电属性伤害」+ 冲刺攻击「造成物理伤害」。",
+      "implementation": {
+        "spec": "src/specs/agents/1011.json#/notes/1",
+        "consumer": "src/mechanics/agents/anby.ts#pushAnbyBasicSegment"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "真实装配 [1011 C0, 1381, 1211]；平A分段行集合",
+          "expected": "1011001~1011005 五条真实 moveId 分段行物化存在（element 由 catalog damageElement 逐段回填；⚠ 本测试不断言元素值本身）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "核心被动波动电压：落雷/特殊技/强特 失衡 +64；平A聚合行与伏特速攻段不吃"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "同装配；读 basic_attack 聚合行",
+          "expected": "stunBuildUpBonus === 0（聚合行已降级为时间/回能载体，不承载招式限定加成与分段属性）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "核心被动波动电压：落雷/特殊技/强特 失衡 +64；平A聚合行与伏特速攻段不吃"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C6 装配；吃充能行集合的 moveId 全集",
+          "expected": "只含 1011001~1011005（证明分段行是伤害/属性载体，聚合行不是）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "执行级：C6 平A分段行吃 +45（按消耗次数），C0 不吃；面板 dmgBonus 不再 +45"
+          }
+        }
+      ]
+    },
+    {
+      "id": "anby-basic-cycle-materialize",
+      "sources": [
+        "/skill/basic/description/1/desc:0"
+      ],
+      "dimension": "D4",
+      "certainty": "L2",
+      "trigger": "平A池时间预算（state.basicAttackTime）驱动的循环计数；原文条件「发动[普通攻击]第三段后，长按或停顿后点按[普攻键]发动落雷」定义循环位置",
+      "target": "平A分段执行行（#1→#2→#3→#4→落雷）与 basic_attack 聚合行（降级为时间/回能/喧响载体）",
+      "gate": "不适用（由时间预算驱动，无命座/门控条件）；cycle.length 必须等于 5 且 basicTime > 0 才物化",
+      "formula": "fullCycles = floor(basicAttackTime / Σ段动作时间)；每段 hits = fullCycles；聚合行 totalTime 减去 Σ段占用时间、damageMultiplier/dazeMultiplier/anomalyBuildUp 归零（damageMultiplierOverride/dazeMultiplierOverride = true）防双算",
+      "field": "SkillExecution.count（分段行）/ SkillExecution.totalTime（聚合行余量）",
+      "countSource": "state.basicAttackTime ÷ 五段循环时长（动作时间来自 catalog，按 note#2 口径推算）",
+      "duration": "不适用（整局时间预算内计数）",
+      "cap": "只计**完整循环**，余量留在聚合行（不产生尾巴行，保证段行总时长不超过平A池）",
+      "assumptions": [
+        {
+          "premise": "只计完整循环（余量留聚合行）——与希格莉德「命中起点在窗内即计」**刻意不同**：那种记法会让段行总时长超过平A池。",
+          "falsifier": "若余量（不足 1 循环的部分）在实战中仍打满若干段，则分段行少计、聚合行多计 ⇒ 分段伤害/失衡偏低；把余量按段拆出后若总时长 > 平A池即证明本口径必要。"
+        },
+        {
+          "premise": "聚合行的回能与喧响不动（由 core 按 basicAttackTime × cfg.basicAttack*PerSec 写在聚合行上），段行 energyRecovery/decibelRecovery 恒 0 ⇒ 缩时间不会丢能量。",
+          "falsifier": "若段行也带回能，则能量被双计（账本 Σ 行级 > 展示层）；energyRowParity 的行级 Σ 判据可证伪。"
+        }
+      ],
+      "decisionEvidence": "落点见 anby.ts 头注释「分段物化（2026-09-17，照希格莉德 countBasicSegments 先例）」与 buildAnbyExecutions 内注释（含「只计完整循环」「聚合行降级」两条口径）；测试 anby.test.ts「核心被动波动电压：…」断言分段行存在、「执行级：C6…」断言吃充能行 ⊂ 分段行。⚠ **余量口径与「落雷是否替代 #4」无独立测试**（缺口已记录）。",
+      "implementation": {
+        "spec": "src/specs/agents/1011.json#/notes/2",
+        "consumer": "src/mechanics/agents/anby.ts#buildAnbyExecutions"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "真实装配 C0；平A分段行集合",
+          "expected": "五段循环（1011001→1011002→1011003→1011004→1011005）按真实 moveId 物化，各段 count = fullCycles ≥ 1",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "核心被动波动电压：落雷/特殊技/强特 失衡 +64；平A聚合行与伏特速攻段不吃"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "同装配；读 basic_attack 聚合行",
+          "expected": "stunBuildUpBonus === 0 且不承载招式限定加成（聚合行已降级；伤害/失衡/积蓄由分段行承担，防双算）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "核心被动波动电压：落雷/特殊技/强特 失衡 +64；平A聚合行与伏特速攻段不吃"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C6 装配；吃充能行（分段行）与 totalHits 的关系",
+          "expected": "chargedHits > 0 且 chargedHits <= totalHits，吃充能行只含分段 moveId（证明分段行是伤害载体、聚合行不是）",
+          "test": {
+            "file": "src/mechanics/__tests__/anby.test.ts",
+            "title": "执行级：C6 平A分段行吃 +45（按消耗次数），C0 不吃；面板 dmgBonus 不再 +45"
+          }
+        }
+      ]
+    }
+  ]
+}

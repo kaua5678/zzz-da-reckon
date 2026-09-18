@@ -8,7 +8,7 @@
  * 用户无从判断「这条效果到底接没接进计算」——实测它们都生效（面板差分可验），
  * 缺的是可见性。本模块把 2pc/4pc 全部效果一律列成行，并如实标出三类状态：
  *   - adjustable：触发/叠层类 → 页面给 uptime 覆盖率滑块（引擎按效果 id 折算，
- *     见 src/composables/resourceCalc/helpers.ts#mergeDiscEffectCoverages）
+ *     见 src/composables/resourceCalc/panelPhases.ts#mergeTeamDiscEffectCoverages）
  *   - gateText：属性/职业/局外属性门槛 → 引擎自动判定，不折算 uptime
  *   - unmodeled：有官方文本但无数值效果（生存向/机制向）→ 明说未建模，不留空白
  */

@@ -18,6 +18,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { writeJsonCompact } from './lib/jsonio.mjs'
+import { resolveMoveElements } from './lib/move-elements.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const agentId = process.argv[2]
@@ -103,6 +104,10 @@ function moveRow(rowId, kind, value, extra = {}) {
 }
 
 const isSharp = agentId === '1611' // 锐化伤害：def 基底
+/** 角色自身属性（`full/<id>.json` 的 `element_type` 反查）——逐 move 解析不到时的兜底（原行为） */
+const fullElement = ELEMENT_BY_ID[Number(Object.keys(full.element_type ?? {})[0] ?? 0)] ?? 'physical'
+/** 逐 move 原文属性（2026-09-18 修正②；单一事实源 = `scripts/lib/move-elements.mjs`） */
+const moveElements = resolveMoveElements(full, skillsRaw.skills.map(s => String(s.id)))
 /** 现有 catalog 条目里的 move（按 id）：v12 之后的爬虫管道（upsert-gachabase-rows.mjs）会补
  *  v12 原表没有的行（克拉蕾 gash_buildup 残痕积累 / sharpness_gain 锐能回复），重建时必须原样保留
  *  ——否则本脚本一跑就把这些消费中的行静默删掉（2026-09-12 实测：1611 全部 28 行掉 gash 行）。 */
@@ -142,7 +147,11 @@ for (const catId of catOrder) {
           zhCN: zhNames[String(skill.id)] || skill.name || String(skill.id),
           en: skill.name || String(skill.id),
         },
-        damageElement: isSharp ? 'electric' : (skill.category === 'assist' ? 'physical' : 'electric'),
+        // ⚠ 2026-09-18 修正②（用户 2026-09-17 裁决）：原实现写死 `assist ? 'physical' : 'electric'`
+        // ——对 1611 克拉蕾（电）恰好对，对 1621 洛克茜（**风**）整表 20 招全错成 electric
+        // （实测 `agent:1621:c0/c3/c6` 伤害 +10.0%/+10.0%/+23.8% 的根因）。
+        // 现按原文解析（`scripts/lib/move-elements.mjs`，单一事实源）；解析不到退回 `full` 的角色元素。
+        damageElement: isSharp ? 'electric' : (moveElements.get(String(skill.id))?.element ?? fullElement),
         skillType: CATEGORY_MAP[skill.category] || skill.category,
         rows,
         timeType: /Ultimate/.test(skill.name || '') ? 'ultimate' : 'normal',

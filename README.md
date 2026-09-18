@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（13 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（14 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -93,6 +93,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mechanism-reference.md` | 游戏底层机制理论（啵啵獭 10 期）：**只留尚未建模的理论存量**（秽盾/接战状态/精英怪档/待实测系数）；已进引擎的公式与倍率表以 `src/core/**` 为唯一事实源，本文只给指针 |
 | `docs/DATA_FETCHING.md` | 数据抓取/导入约定（nanoka 等数据源的管道与字段口径） |
 | `docs/multiplier-record.md` | **自动生成**倍率表系数演算记录（`npm run gen:multiplier-record`），供倍率系数页核对 |
+| `docs/AGENT_ID_BURNDOWN_LOG.md` | **agentId 清偿编年史**（从 `scripts/check-guards.mjs` 搬出的 `AGENT_BRANCH_BASELINE` 沿革：逐轮对账/逐队归因/实验过程）；当前读数与判据仍以该脚本为唯一事实源 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（13 份），新增文档需同步本表。
+> 文档数量以本表为准（14 份），新增文档需同步本表。

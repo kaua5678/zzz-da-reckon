@@ -5,6 +5,7 @@
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { writeJsonCompact } from './lib/jsonio.mjs'
+import { resolveMoveElements } from './lib/move-elements.mjs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -94,14 +95,30 @@ function moveRow(id, kind, values, extra = {}) {
   return row
 }
 
-function buildMove(skill, element) {
+/**
+ * 建一条 move。
+ *
+ * ⚠ **2026-09-18 修正（用户 2026-09-17 裁决②）**：原实现把**角色元素** `element` 铺满每招
+ * （`buildMove(skill, element)`），于是非本属性的段（安比伏特速攻 #1~#3 是物理）白吃本属性
+ * 伤害加成/抗性、异常积蓄也照给。**根因在这里，不在 catalog**（规则 2：改数值走脚本重跑）。
+ *
+ * 现在改为：**逐 move 按原文解析**（`scripts/lib/move-elements.mjs` 是单一事实源，头注释记了
+ * 三条已实测的错路——尤其「skill_list 的 id 与倍率表 moveId 错位」）。解析不到时**退回角色元素**
+ * （= 原行为，属已知近似，不引入新的猜测）。
+ *
+ * @param skill  `data/raw/nanoka_missing/<id>_skills.json` 的一条 skill
+ * @param element 角色元素（兜底）
+ * @param resolvedElement 原文解析出的该 move 元素（`resolveMoveElements` 的产物；可空）
+ */
+function buildMove(skill, element, resolvedElement) {
+  const moveElement = resolvedElement || element
   const rows = []
-  if (num(skill.damage) > 0) rows.push(moveRow('damage', 'damageMultiplier', skill.damage, { damageBasis: 'atk', damageElement: element }))
+  if (num(skill.damage) > 0) rows.push(moveRow('damage', 'damageMultiplier', skill.damage, { damageBasis: 'atk', damageElement: moveElement }))
   if (num(skill.daze) > 0) rows.push(moveRow('daze', 'daze', skill.daze, { damageBasis: 'atk' }))
   if (num(skill.energy_recovery) > 0) rows.push(moveRow('energy_recovery', 'energy', skill.energy_recovery))
   if (num(skill.flash_energy_recovery) > 0) rows.push(moveRow('flash_energy_recovery', 'flashEnergy', skill.flash_energy_recovery))
   if (num(skill.decibel_recovery) > 0) rows.push(moveRow('decibel_recovery', 'decibel', skill.decibel_recovery))
-  if (num(skill.anomaly_buildup) > 0) rows.push(moveRow('anomaly_buildup', 'anomaly', skill.anomaly_buildup, { damageElement: element }))
+  if (num(skill.anomaly_buildup) > 0) rows.push(moveRow('anomaly_buildup', 'anomaly', skill.anomaly_buildup, { damageElement: moveElement }))
   for (let i = 0; i < (skill.attack_data || []).length; i++) {
     rows.push(moveRow(`attack_data_${i}`, 'special', skill.attack_data[i]))
   }
@@ -109,7 +126,7 @@ function buildMove(skill, element) {
   return {
     id: skill.id,
     name: { zhCN: skill.name, en: skill.name },
-    damageElement: element,
+    damageElement: moveElement,
     skillType: CATEGORY_MAP[skill.category] || skill.category,
     rows,
     timeType: /Ultimate/.test(skill.name || '') ? 'ultimate' : 'normal',
@@ -155,10 +172,19 @@ for (const id of missing) {
 
   const categories = []
   const byCat = new Map()
+  // 原文逐 move 属性（2026-09-18 修正②）：从 `full/<id>.json` 解析，按 moveId 取。
+  // 缺 full raw 时整表为空 ⇒ buildMove 退回角色元素（= 原行为，不引入新猜测）。
+  const fullPath = resolve(rawDir, 'full', `${id}.json`)
+  const moveElements = existsSync(fullPath)
+    ? resolveMoveElements(
+        JSON.parse(readFileSync(fullPath, 'utf8')),
+        (skills.skills || []).map(s => String(s.id)),
+      )
+    : new Map()
   for (const s of skills.skills || []) {
     const cat = CATEGORY_MAP[s.category] || s.category
     if (!byCat.has(cat)) byCat.set(cat, [])
-    byCat.get(cat).push(buildMove(s, element))
+    byCat.get(cat).push(buildMove(s, element, moveElements.get(String(s.id))?.element))
   }
   for (const [cat, moves] of byCat) {
     categories.push({ id: cat, name: { zhCN: cat, en: cat }, levelRange: { min: 1, max: 12, default: 12 }, moves })

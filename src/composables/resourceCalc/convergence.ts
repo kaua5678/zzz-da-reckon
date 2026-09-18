@@ -24,7 +24,13 @@ import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/
 import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { SIGRID_LANCE_SEGMENT_IDS } from '@/mechanics/agents/sigrid'
 import { HUGO_EX_VERDICT_MOVE_ID, HUGO_ULT_MOVE_ID, HUGO_EX_FINAL_ACTION_TIME } from '@/mechanics/agents/hugo'
-import { extractSkillExecutions, findMoveById, findSlotByIdentity } from './helpers'
+import { extractSkillExecutions } from './helpers'
+// 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
+// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
+import { findSlotByIdentity } from './anomalyPanels'
+// 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
+// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
+import { findMoveById } from './skillRows'
 
 export function createConvergenceRoundInputs(deps: {
   configStore: ReturnType<typeof useConfigStore>

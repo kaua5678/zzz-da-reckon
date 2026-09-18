@@ -401,7 +401,7 @@ function applyHugoTeamConfig({ cfg, team, phase, axis, threads, getAgentSkills }
   record.hugoAxisUltVerdictCount = ultVerdictBlocks
 }
 
-/** 倍率表查表（与 `helpers.ts#findMoveById` 同义；本模块内联以避免 mechanics → composables 运行时依赖） */
+/** 倍率表查表（与 `skillRows.ts#findMoveById` 同义；本模块内联以避免 mechanics → composables 运行时依赖） */
 function findMove(
   skills: { categories: { moves: { id: string; actionTime?: number }[] }[] } | undefined,
   moveId: string,

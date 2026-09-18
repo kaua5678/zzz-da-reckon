@@ -195,6 +195,10 @@ export function useResourceCalc() {
        * 且与上上轮也相近 ⇒ 才是在两个值之间来回跳。收敛中的单调序列不满足（每轮都在变）。
        */
       let prevStunValue: number | null = null
+      /** 外层反馈签名历史（周期 ≥3 环检测用；见环检测注释）。每轮外层循环独立。 */
+      const outerSigHistory: string[] = []
+      /** 与 `outerSigHistory` 同步的 `stunCount` 历史（同相位比对用）。 */
+      const outerStunHistory: number[] = []
       let outerRounds = 0
       let outerConverged = false
       let outerExit: 'stable' | 'cycle' | 'maxIter' = 'maxIter'
@@ -300,6 +304,48 @@ export function useResourceCalc() {
             && Math.abs(next - prevStunValue) < 0.05
             && Math.abs(next - stunCount) >= 0.05
           if (isTwoCycle) { outerExit = 'cycle'; break }
+          /**
+           * 极限环检测（**周期 ≥ 3** 的补充，2026-09-18 round 23 新增；N=2 仍由上面那条负责）。
+           *
+           * ⚠ **为什么需要它（实测根因）**：上面那条只认周期 2。映射落进**周期 3** 的环时两条
+           * 分支都不命中 ⇒ 跑满 `MAX_OUTER_ITER=20` 报 `outerExit='maxIter'`，而 `maxIter` 被
+           * **全部**消费方当不可信丢弃（`teamTimeline.ts:487/:643`、`pullPlannerEngine.ts:134`、
+           * `ResultPage.vue:823`）⇒ 该队时间线/伤害静默消失。
+           *
+           * 触发实例 = `claret-roxy-rina`（1611/1621/1211）。`PROBE_OUTER_TRACE=1` 轨迹：
+           * 反馈签名（`ultSeq|anomalySeq|…`）**精确三点重复** ——
+           * k=6/9/12 同为 `5.000,8.000,5.000 | 1998,3400,1913 | … | 4.93`，
+           * k=7/10/13 同为 `… | 1700,3060,1700 | …`，k=8/11/14 同为 `…,4.000 | 1913,3230,1828`；
+           * 而 `stunCount` 在三个相位上各自缓慢收敛（2.18372 → 2.20986 → 2.20786，|Δ|≈0.026）
+           * ⇒ 周期 3、且**同相位的 stunCount 互相在容差内**。
+           * 其**数据前提**是 1621 洛克茜招式属性修正（原文=风；旧 catalog 错成 electric，
+           * 见 `scripts/lib/move-elements.mjs`）——即**正确数据暴露了既有引擎缺口**；
+           * 修数据前该队恰好停在 2-循环上，把缺口盖住了。
+           *
+           * ★ **判据形态（三次实测校准的结果，别改松）**：**同时**满足
+           *   ① 反馈签名**精确重复**（就是 `feedbackStable` 用的那组序列，不做任何舍入），且
+           *   ② 该历史轮的 `stunCount` 与本轮**在既有 0.05 容差内**。
+           *
+           * 两条校准记录（都是实测红的，别重犯）：
+           * - **只看 stunCount 历史（加 0.05 邻域）⇒ 假阳性**：`yixuan-jufufu-lucia` 的 stunCount
+           *   每步只动 ~0.01，跨 4 步就落进容差（`0.51015 → 0.51773`）⇒ 该队 `maxIter` 被误报成
+           *   `cycle`、伤害 54197953 → 50442343（**静默改数值**）。
+           * - **加「本步在动」守卫 `|next − stunCount| ≥ 0.05` ⇒ 假阴性**：`claret-roxy-rina`
+           *   自身在环上每步 |Δ| 也可能 < 0.05（实测 k=8 时 `0.36965` vs 历史 `0.53084`，
+           *   而 k=9 相邻步只差 0.12 却仍属环）⇒ 该守卫会漏掉真环。**故本轮不用该守卫**，
+           *   仅靠 ①∧②（签名精确重复是强证据，stunCount 容差只作辅助）。
+           * 与内环 `runInnerLoop` 的环检测同源（那里也是「签名重复」判入环）。
+           *
+           * ⚠ **实测命中面（本轮全库扫描）**：两条队被判 `cycle`，且**两条都是真的周期 3 环**
+           * （签名在 lag 3 上精确复现，`stunCount` 同相位值互相在容差内）——
+           * `claret-roxy-rina`（本轮数据修正暴露）与 `yixuan-jufufu-lucia`（**HEAD 上就已 `maxIter`**，
+           * 即本判据顺带修好了一条既有的静默丢弃）。其余预设无变化。
+           */
+          // 记录本轮反馈签名 + stunCount（**只记录不判环**）——周期 ≥3 的环在循环耗尽后统一重标注
+          // （见函数末尾）。**不在循环里提前 break** 是关键：任何提前 break 都会改动「原本会收敛到
+          // stable」的队的停点（实测缺 stun 容差条件时 5 支队 stable→cycle、数值被静默改写）。
+          outerSigHistory.push(`${ultSeq}|${anomalySeq}|${topUpSeq}|${parrySplitSeq}|${decibelParrySeq}|${backstageSeq}|${buildUpFracSeq}|${aliceSeq}`)
+          outerStunHistory.push(stunCount)
           prevStunValue = stunCount
           stunCount = next
         }
@@ -314,6 +360,35 @@ export function useResourceCalc() {
         prevParrySplitSeq = parrySplitSeq
         prevBackstageSeq = backstageSeq
         prevBuildUpFracSeq = buildUpFracSeq
+      }
+      /**
+       * ★ **周期 ≥3 的极限环重标注（2026-09-18 round 23）**——只改 `outerExit` 标签，**不改任何数值**。
+       *
+       * 背景：上面的循环只认周期 2（`next ≈ 上上轮`）。映射落进**周期 3** 的环时两条分支都不命中
+       * ⇒ 跑满 `MAX_OUTER_ITER` 报 `outerExit='maxIter'`，而 `maxIter` 被**全部**消费方当不可信
+       * 丢弃（`teamTimeline.ts:487/:643`、`pullPlannerEngine.ts:134`、`ResultPage.vue:823`）
+       * ⇒ 该队时间线/伤害**静默消失**。
+       *
+       * 判据（穷尽扫描已记录的历史，不是逐轮提前 break —— 这样对原本 stable / 原本 2-循环的队
+       * **逐位零影响**，实测 104 预设的 `outerExit` 表只在下面点名的队上变化）：
+       * 存在 lag ≥ 3 使 `sig[k] === sig[k-lag]` **且** `|stun[k] − stun[k-lag]| < 0.05`
+       * （后者 = 同相位的失衡次数已互相在既有容差内；只用签名相等会把「签名偶然重复但仍在推进」
+       * 的队误判——实测 `billy-qingyi-lucia` / `banyue-qingyi-lucia` 的签名在**相邻轮**就重复，
+       * 而 stunCount 仍在单调收敛）。
+       *
+       * ⚠ **为什么不放在循环里提前 break（四次实测校准的结论）**：任何「提前 break」都会改变
+       * **原本会收敛到 stable** 的队的停点（实测缺 stun 容差条件时 5 支队 `stable` → `cycle`，
+       * 数值被静默改写）。放到循环**耗尽之后**只重标注，则不可能影响任何已收敛的队。
+       */
+      if (outerExit === 'maxIter') {
+        outer: for (let lag = 3; lag < outerSigHistory.length; lag++) {
+          for (let k = lag; k < outerSigHistory.length; k++) {
+            if (outerSigHistory[k] !== outerSigHistory[k - lag]) continue
+            if (Math.abs(outerStunHistory[k] - outerStunHistory[k - lag]) >= 0.05) continue
+            outerExit = 'cycle'
+            break outer
+          }
+        }
       }
       return { out, outerRounds, outerConverged, outerExit }
     }

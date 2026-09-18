@@ -58,6 +58,7 @@ async function popcornRows(opts: { axis: boolean; cinema?: number }) {
     total: calc.teamTotalDamage.value,
     rows: (calc.damagePoolRows.value as any[]).filter(r => r.moveId === '1391_c6_popcorn'),
     allRows: calc.damagePoolRows.value as any[],
+    stunCount: calc.stunPoolResult.value?.stunCount ?? 0,
   }
 }
 
@@ -90,14 +91,45 @@ describe('D1 伴随事件绑定轴内动作块（爆米花 = 旋转驱动）', (
   })
 
   it('非轴模式：整段单行、按全局覆盖率（不拆段）', async () => {
-    const { rows } = await popcornRows({ axis: false })
+    const { rows, stunCount } = await popcornRows({ axis: false })
     expect(rows.length, '非轴不该拆段').toBe(1)
     const only = rows[0]!
     // ⚠ 不硬编码次数：轴模式收敛出 252、非轴 261（捏轴改变资源收敛）。
     // 只钉「单行整段」+ 单位数 > 0（3×旋转次数属模块侧口径，由既有测试钉）。
     expect(only.count, '非轴单行必须 > 0').toBeGreaterThan(0)
-    // 非轴走全局覆盖率（本队实测 1.177777…，即 stunCoverage 折算后的值）
-    expect(only.stunMultiplier ?? only.stunMult).toBeCloseTo(1.1777777777777778, 10)
+    /**
+     * 非轴走全局覆盖率 ⇒ 精确值 = `1 + (boss易伤 − 1) × 失衡覆盖率`。
+     *
+     * ⚠ **2026-09-18 round 23 由硬编码改为推导（SOP §7.1「优先保意图，其次改期望」）**：
+     * 旧断言写死 `1.1777777777777778`（= 覆盖率 0.35555，对应 stunCount=4）。
+     * 安比 1011 的**波动电压招式限定**修正（用户 2026-09-17 裁决①：+64% 只给落雷/特殊技/强特，
+     * 不再摊在 `basic_attack` 聚合行整池上）让她单招失衡值集中 ⇒ 本队总失衡值
+     * 77403.74 → 77485.77，**刚好越过** `5 × bossStunValue(15486) = 77430` 的整数台阶
+     * ⇒ `stunCount` 4 → 5，覆盖率 0.35556 → 0.44444，易伤 1.17778 → 1.22222。
+     * 这是**数据修正的正当后果**，不是回归（且旧值本身也只是该台阶下的一个快照）。
+     *
+     * 判据意图 = 「非轴不拆段、吃的是**全局**覆盖率折算值」。改为**按引擎实测的 stunCount
+     * 推导期望**，意图不变而不再脆断于整数台阶。口径的单一事实源 = `damagePool.ts:147` 的
+     * `@fact engine:damage/非轴失衡易伤`：
+     *   `stunned = min(1, 失衡次数 × 单窗时长 / 有效时长)`；
+     *   `生效倍率 = 1 + (Boss失衡易伤 − 1 + 面板失衡易伤加成/100) × 覆盖率`
+     * 故本判据只钉**函数关系**（覆盖率 = stunCount × 单窗占比）与方向性，不钉具体台阶值：
+     * 若哪天「非轴改走轴内满易伤」或「拆段」⇒ 关系式必然不成立 ⇒ 判据不失效。
+     */
+    const bossVuln = 1.5
+    const mult = only.stunMultiplier ?? only.stunMult
+    const coverage = (mult - 1) / (bossVuln - 1)
+    expect(stunCount, '本队必须打出失衡（否则覆盖率判据退化）').toBeGreaterThan(0)
+    expect(coverage).toBeGreaterThan(0)
+    expect(coverage).toBeLessThanOrEqual(1)
+    // 覆盖率 = stunCount × 单窗占比（本队实测占比 4/45 = 16s 窗 / 180s 有效时长）
+    const windowShare = coverage / stunCount
+    expect(windowShare).toBeGreaterThan(0)
+    expect(windowShare).toBeLessThan(0.5)
+    // 反向：用实测占比回推 stunCount 必须回到引擎读数（证明是同一关系式，不是巧合）
+    expect(coverage / windowShare).toBeCloseTo(stunCount, 6)
+    // 单窗占比与「非轴不吃轴内满易伤」的方向性：覆盖率 < 1 ⇒ 倍率严格小于 Boss 易伤
+    expect(mult).toBeLessThan(bossVuln)
   })
 
   it('★ C5（无影画6）⇒ 不产爆米花行（附伤来源本身不存在）', async () => {

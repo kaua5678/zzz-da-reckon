@@ -6,6 +6,7 @@ import {
   computeAnbyC4ChargeEnergy,
   ANBY_C2_EX_STUN,
   ANBY_C2_LIGHTNING_DMG,
+  ANBY_C6_CHARGE_DMG,
   ANBY_CORE_STUN_BONUS,
   anbyMechanic,
 } from '../agents/anby'
@@ -27,7 +28,11 @@ describe('安比（1011）并联电路/电荷传导 纯函数', () => {
 })
 
 describe('安比（1011）波动电压/影画2 招式限定（patchExecutions）', () => {
-  it('核心被动波动电压：强特 + 落雷所在 basic 聚合行 失衡值 +64（招式限定全覆盖）', async () => {
+  // ⚠ 2026-09-17 用户裁决（契约 data/recordings/1011.json）：波动电压是**招式限定**——
+  // 原文「安比在[普通攻击]第三段后发动[普通攻击：落雷]、[特殊技]或[强化特殊技]时，招式造成的
+  // 失衡值提升64%」。旧断言把 `basic_attack` 聚合行也算作吃 +64% 的载体（旧值 64），
+  // 那是**过范围**（伏特速攻 #1~#4 不在原文名单里）⇒ 现改为断 落雷/特殊技/强特 三条 + 聚合行 0。
+  it('核心被动波动电压：落雷/特殊技/强特 失衡 +64；平A聚合行与伏特速攻段不吃', async () => {
     await setupHarness([
       { agentId: '1011', cinemaLevel: 0, dodgeCounterCount: 6, parryCount: 10 },
       { agentId: '1381' }, // 零号·安比（电，同属性 → 触发并联电路）
@@ -40,7 +45,14 @@ describe('安比（1011）波动电压/影画2 招式限定（patchExecutions）
     expect(ex).toBeTruthy()
     expect(basic).toBeTruthy()
     expect(ex!.stunBuildUpBonus ?? 0).toBe(ANBY_CORE_STUN_BONUS)
-    expect(basic!.stunBuildUpBonus ?? 0).toBe(ANBY_CORE_STUN_BONUS)
+    // 旧值 64（聚合行整体）→ 新值 0：聚合行已降级为时间/回能载体，且不在原文招式名单内
+    expect(basic!.stunBuildUpBonus ?? 0).toBe(0)
+    // 伏特速攻 #1~#4（分段行）同样不吃
+    for (const id of ['1011001', '1011002', '1011003', '1011004']) {
+      const seg = anby.executions.find(e => e.moveId === id)
+      expect(seg, `${id} 分段行应存在`).toBeTruthy()
+      expect(seg!.stunBuildUpBonus ?? 0, `${id} 不该吃波动电压`).toBe(0)
+    }
   })
 
   it('影画2：0 命无增伤，2 命落雷伤害 +30×覆盖 / 强特失衡 +10×(1-覆盖)', async () => {
@@ -51,8 +63,8 @@ describe('安比（1011）波动电压/影画2 招式限定（patchExecutions）
     ])
     let calc = useResourceCalc()
     const c0 = calc.resourceResult.value!.characters.find(c => c.agentId === '1011')!
-    const basic0 = c0.executions.find(e => e.moveId === 'basic_attack')
-    expect((basic0?.dmgBonus ?? 0)).toBe(0)
+    const lightning0 = c0.executions.find(e => e.moveId === '1011005')
+    expect((lightning0?.dmgBonus ?? 0)).toBe(0)
 
     await setupHarness([
       { agentId: '1011', cinemaLevel: 2, dodgeCounterCount: 6 },
@@ -61,9 +73,14 @@ describe('安比（1011）波动电压/影画2 招式限定（patchExecutions）
     ])
     calc = useResourceCalc()
     const c2 = calc.resourceResult.value!.characters.find(c => c.agentId === '1011')!
-    const basic2 = c2.executions.find(e => e.moveId === 'basic_attack')
-    // 默认覆盖率 0.5 → +15
-    expect((basic2?.dmgBonus ?? 0)).toBeGreaterThan(0)
+    // 旧断言读 basic_attack 聚合行（旧值 >0）→ 现读**落雷分段行**：影画2 原文限定「[普通攻击：落雷]
+    // 命中…伤害提升30%」，挂在聚合行上会连伏特速攻一起加成（过范围）。
+    // 默认覆盖率 0.5 → 30 × 0.5 = +15
+    const lightning2 = c2.executions.find(e => e.moveId === '1011005')
+    expect(lightning2).toBeTruthy()
+    expect(lightning2!.dmgBonus ?? 0).toBeCloseTo(ANBY_C2_LIGHTNING_DMG * 0.5, 5)
+    // 聚合行不吃（旧值 >0）
+    expect(c2.executions.find(e => e.moveId === 'basic_attack')!.dmgBonus ?? 0).toBe(0)
   })
 })
 
@@ -72,6 +89,7 @@ describe('安比滑块生效差分（防守卫冻结，SOP §3.5）', () => {
     const mk = (cov: number) => {
       const executions: any[] = [
         { moveId: 'basic_attack', dmgBonus: 0, stunBuildUpBonus: 0 },
+        { moveId: '1011005', dmgBonus: 0, stunBuildUpBonus: 0 }, // 落雷（影画2 增伤载体）
         { moveId: '1011007', dmgBonus: 0, stunBuildUpBonus: 0 },
       ]
       anbyMechanic.patchExecutions!({
@@ -80,8 +98,10 @@ describe('安比滑块生效差分（防守卫冻结，SOP §3.5）', () => {
         executions,
       } as never)
       return {
-        basicDmg: executions[0].dmgBonus ?? 0,
-        exStun: (executions[1].stunBuildUpBonus ?? 0) - 64, // 波动电压 +64 恒定，扣除本底
+        // 旧断言读 executions[0]（basic_attack 聚合行）→ 现读落雷分段行：
+        // 影画2 原文限定「[普通攻击：落雷]命中失衡敌伤害+30%」，挂聚合行是过范围（见文件头）
+        basicDmg: executions[1].dmgBonus ?? 0,
+        exStun: (executions[2].stunBuildUpBonus ?? 0) - 64, // 波动电压 +64 恒定，扣除本底
       }
     }
     const on = mk(1)
@@ -92,8 +112,12 @@ describe('安比滑块生效差分（防守卫冻结，SOP §3.5）', () => {
   })
 })
 
-describe('安比充能电场面板（transform 累积回归，2026-09-01）', () => {
-  it('dmgBonus = 45 单次贡献（收敛轮间不累积成 720）', async () => {
+describe('安比影画6 充能电场（执行级，2026-09-17 用户裁决③）', () => {
+  // ⚠ 旧口径 = **面板级**全局 +45（`applyPanel` 里 `panel.dmgBonus += 45`），旧断言读
+  // `calc.panels.value[0].dmgBonus === 45`。用户裁决原文「发动[强化特殊技]时…消耗1层充能，
+  // 使**当前招式**造成的伤害提升45%」⇒ 只有消耗了充能的**命中行**吃 +45，面板级会让强特/终结/
+  // 连携/异常全部吃满（过范围）。旧断言已随之失效（面板 dmgBonus 现为 0），改为执行级断言。
+  it('执行级：C6 平A分段行吃 +45（按消耗次数），C0 不吃；面板 dmgBonus 不再 +45', async () => {
     const { config } = await setupHarness([
       { agentId: '1011', cinemaLevel: 6, dodgeCounterCount: 6 },
       { agentId: '1381' },
@@ -101,9 +125,39 @@ describe('安比充能电场面板（transform 累积回归，2026-09-01）', ()
     ])
     for (const buff of config.globalBuffs) buff.enabled = false // 剔除队伍 buff 干扰，只看充能贡献
     const calc = useResourceCalc()
-    void calc.damagePoolRows.value // 触发 calcOutput → transform 跑完
-    // 曾因 transform 在收敛轮间对同一缓存面板对象 `+=`，充能 45 叠成 45×16=720；
-    // anby_charge 资源 C0 也生成（gainRule 无命座门控，既有口径）→ 这里断言单次贡献不翻倍
-    expect(calc.panels.value?.[0]?.dmgBonus ?? 0).toBe(45)
+    void calc.damagePoolRows.value // 触发 calcOutput
+    // 面板级不再 +45（旧值 45）
+    expect(calc.panels.value?.[0]?.dmgBonus ?? 0).toBe(0)
+    const anby = calc.resourceResult.value!.characters.find(c => c.agentId === '1011')!
+    const charged = anby.executions.filter(e => (e.dmgBonus ?? 0) >= ANBY_C6_CHARGE_DMG)
+    expect(charged.length, 'C6 应有吃充能的命中行').toBeGreaterThan(0)
+    // 吃充能的行必须**只**是平A分段（#1~#4/落雷）——强特/终结/连携/闪反/支援都不该吃
+    for (const e of charged) {
+      expect(['1011001', '1011002', '1011003', '1011004', '1011005'], `${e.moveId} 不该吃充能`).toContain(e.moveId)
+    }
+    // 消耗次数 = Σ 吃充能行的 count，封顶 min(8×强特次数, 平A命中数)。
+    // ⚠ 不能读 `cfg.anbyBasicChargedHits`——`materializeRows` 对 cfg 快照/恢复（该写入被丢弃），
+    //   且这里是 CharacterResourceResult 不是 cfg。直接数行才是真判据。
+    const chargedHits = charged.reduce((sum, e) => sum + (e.count ?? 0), 0)
+    const totalHits = anby.executions
+      .filter(e => ['1011001', '1011002', '1011003', '1011004', '1011005'].includes(e.moveId ?? ''))
+      .reduce((sum, e) => sum + (e.count ?? 0), 0)
+    expect(chargedHits).toBeGreaterThan(0)
+    expect(chargedHits).toBeLessThanOrEqual(totalHits)
+    // 强特 9 次 × 8 层 = 72 层预算 > 平A命中数 ⇒ 本配装下**全部**平A命中都吃充能
+    expect(chargedHits).toBe(totalHits)
+  })
+
+  it('C0 不吃充能（执行级门控）', async () => {
+    await setupHarness([
+      { agentId: '1011', cinemaLevel: 0, dodgeCounterCount: 6 },
+      { agentId: '1381' },
+      { agentId: '1211' },
+    ])
+    const calc = useResourceCalc()
+    const anby = calc.resourceResult.value!.characters.find(c => c.agentId === '1011')!
+    for (const e of anby.executions) {
+      expect(e.dmgBonus ?? 0, `${e.moveId} C0 不该有充能增伤`).toBe(0)
+    }
   })
 })

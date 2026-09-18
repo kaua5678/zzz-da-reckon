@@ -39,8 +39,11 @@ import type {
   StunAxis,
 } from '@/types/resource'
 import type { PanelValues, TeammateBuff, Agent, DriveDiscConfig } from '@/types/catalog'
-// 留在 helpers.ts 的本批反向依赖（B 簇只经这三个符号出边）
-import { isPctStat, getTeamAnomalyDurationBonus, findSlotByIdentity } from './helpers'
+// 留在 helpers.ts 的本批反向依赖（B 簇只经 isPctStat 一个符号出边）
+import { isPctStat } from './helpers'
+// 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
+// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
+import { getTeamAnomalyDurationBonus, findSlotByIdentity } from './anomalyPanels'
 
 export function buildMechanicTeamMembers(
   configStore: ReturnType<typeof useConfigStore>,

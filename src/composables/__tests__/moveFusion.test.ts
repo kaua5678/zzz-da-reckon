@@ -1,5 +1,5 @@
 /**
- * 倍率融合（src/data/moveFusions.ts + resourceCalc/helpers.ts fusedRowValue）护栏。
+ * 倍率融合（src/data/moveFusions.ts + resourceCalc/skillRows.ts fusedRowValue）护栏。
  *
  * 口径（用户 2026-09）：nanoka 原文 param.desc 用 `{Skill:A}+{Skill:B}*n` 编码
  * 「哪些段属于同一次动作」。同一招式名下多个 param = 多个独立动作，不能混加。
