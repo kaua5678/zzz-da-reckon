@@ -20,7 +20,9 @@
  *   只看某队：TIME_GOLDEN_FILTER=1591 npx vitest run ...
  * **重生成前必须先跑一次比对**，把 delta 表贴进提交说明/账本（本仓纪律：先归因再改基线）。
  */
+import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -100,19 +102,37 @@ function slotSig(c: {
 
 /**
  * 逐字段比较两条快照。
- * **判据分级（2026-09-08 实测教训）**：时间/次数（stun/slack/over/逐槽 7 字段）是**硬判据**——
- * 时间系统重构必然动它们，必须逐条解释；`dmg` 是**信息项**——别的会话改倍率/数据（实测
- * 克拉蕾 1611 数据更新）会让它变而时间账不动，那不是时间重构的回归，只报不拦。
+ *
+ * **判据分级（2026-09-08 实测教训，2026-09-18 round 26 修订）**：
+ * - 时间/次数（`stun`/`slack`/`over`/逐槽 7 字段）恒为**硬判据**——时间系统重构必然动它们，必须逐条解释。
+ * - `dmg` 的变化**分级**（R23-N2 实测口径，见下方 `dmgFailEligible`）：
+ *   - 若同一快照的**时间账也变了**（`stun`/`slack`/`over`/`slots` 任一）⇒ `dmg` 仍是 **info**。
+ *     理由：这类变化本就会因时间字段判红，把 dmg 也塞进 fail 只是把同一批 delta 打两遍
+ *     （实测历史 348/484 行 = 72%，对「是否红」零增量）。
+ *   - 若**只有 dmg 变**（时间账逐位相同）**且 `public/static/catalog.json` 相对 HEAD 未变**
+ *     ⇒ 升级为 **fail**。这正是「只改伤害不改时间账」的静默回归形态（实测 1111/1241 元素翻回时
+ *     全库 300+ 例零红）。
+ *   - 若**只有 dmg 变**但本次改动**确实改了 catalog** ⇒ 仍是 **info**（有意的数据订正；
+ *     实测历史 136 行 A 类里 119 行属改 catalog 的提交，逐条都在提交说明里归因过）。
+ *
+ * ⚠ **已知残留盲区（结构性代价，不是缺陷）**：`catalog.json` 是**整文件**判据，
+ * 分不清「这次提交改的是哪个角色」。故「同一次既改 catalog 又引入真实伤害回归」会被放过。
+ * 完备解在 **catalog 侧字段级判据**（如判据 18 招式属性对账），不在本文件。
+ *
+ * ⚠ **为什么用 git 判 catalog 而不是文件 mtime/内容 hash**：`catalog.json` 在两个隔离面上
+ * 本来就与 HEAD 不同（重生成产物、行尾/紧凑写），用内容比对会**恒判"变了"⇒ 判据永久失效**
+ * （这是本仓反复踩过的"假绿反面：恒红即等于关掉"）。故判据 = **该文件相对 HEAD 是否 dirty**。
  */
-function diffEntry(key: string, a: GoldenEntry | undefined, b: GoldenEntry): { fail: string[]; info: string[] } {
+export function diffEntry(
+  key: string,
+  a: GoldenEntry | undefined,
+  b: GoldenEntry,
+  dmgFailEligible = false,
+): { fail: string[]; info: string[] } {
   if (!a) return { fail: [`${key}: 新增（baseline 无此条）→ dmg=${b.dmg} slack=${b.slack} over=${b.over} stun=${b.stun}`], info: [] }
   const out: string[] = []
   const info: string[] = []
   const num = (x: string) => Number(x)
-  if (a.dmg !== b.dmg) {
-    const d = num(b.dmg) - num(a.dmg)
-    info.push(`${key}.dmg: ${a.dmg} → ${b.dmg} (${d > 0 ? '+' : ''}${(d / Math.max(1, num(a.dmg)) * 100).toFixed(3)}%)`)
-  }
   if (a.stun !== b.stun) out.push(`${key}.stun: ${a.stun} → ${b.stun}`)
   if (a.slack !== b.slack) out.push(`${key}.slack: ${a.slack} → ${b.slack} (${(num(b.slack) - num(a.slack)).toFixed(3)})`)
   if (a.over !== b.over) out.push(`${key}.over: ${a.over} → ${b.over} (${(num(b.over) - num(a.over)).toFixed(3)})`)
@@ -130,12 +150,45 @@ function diffEntry(key: string, a: GoldenEntry | undefined, b: GoldenEntry): { f
       out.push(`${key}.slot${i}: ${parts.join(', ')}`)
     }
   }
+  if (a.dmg !== b.dmg) {
+    const d = num(b.dmg) - num(a.dmg)
+    const line = `${key}.dmg: ${a.dmg} → ${b.dmg} (${d > 0 ? '+' : ''}${(d / Math.max(1, num(a.dmg)) * 100).toFixed(3)}%)`
+    // 时间账逐位相同（out 为空）且本次未动 catalog ⇒ 纯伤害回归，判红
+    if (dmgFailEligible && out.length === 0) {
+      out.push(`${line} ← 时间账零变化且 catalog.json 未改动 ⇒ 纯伤害回归（R23-N2 口径）`)
+    } else {
+      info.push(line)
+    }
+  }
   return { fail: out, info }
 }
 
 const baseline: Record<string, GoldenEntry> = (() => {
   try { return JSON.parse(readFileSync(BASELINE_FILE, 'utf8')) } catch { return {} }
 })()
+
+/**
+ * 本次改动是否动过 `public/static/catalog.json`（相对 HEAD 是否 dirty）。
+ *
+ * 这是 R23-N2 口径的第二个合取项：只有「dmg 变 ∧ 时间账未变 ∧ **未改 catalog**」才判红
+ * （实测把历史噪声 136 行压到 17 行，−87.5%，且放过的全是提交说明里已归因的有意数据订正）。
+ *
+ * ⚠ **非 git 环境（zip 解包 / 无 .git）**：`git status` 会抛 ⇒ 返回 `true`（**偏向不判红**）。
+ * 诚实性：这条判据的价值是「在真实开发/CI 流程里拦住纯伤害回归」，而 CI 一定是 git checkout
+ * ⇒ 降级只影响"把仓库打包后手动跑测试"这种非判据场景。**方向是保守的**（宁可不红也不误报），
+ * 且 `dmg` 仍以 info 打印、时间账判据完全不受影响。
+ */
+export function catalogDirtyVsHead(): boolean {
+  try {
+    const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
+    const out = execFileSync('git', ['status', '--porcelain', '--', 'public/static/catalog.json'], {
+      cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    return out.trim().length > 0
+  } catch {
+    return true // 非 git 环境 ⇒ 不启用纯伤害 fail（保守）
+  }
+}
 
 const measured: Record<string, GoldenEntry> = {}
 
@@ -206,8 +259,13 @@ describe('时间系统 golden 快照（重构等价性验收面）', () => {
     }
     const deltas: string[] = []
     const infos: string[] = []
+    // R23-N2：仅当本次未改 catalog 时，才把「纯 dmg 变化（时间账零变化）」升级为 fail。
+    const catalogDirty = catalogDirtyVsHead()
+    if (!catalogDirty) {
+      console.log('[golden] catalog.json 未改动 ⇒ 启用 R23-N2 纯伤害回归判据（dmg 变 ∧ 时间账零变化 ⇒ fail）')
+    }
     for (const k of keys) {
-      const d = diffEntry(k, baseline[k], measured[k])
+      const d = diffEntry(k, baseline[k], measured[k], !catalogDirty)
       deltas.push(...d.fail)
       infos.push(...d.info)
     }
@@ -226,4 +284,58 @@ describe('时间系统 golden 快照（重构等价性验收面）', () => {
       deltas.length > 60 ? `…（另有 ${deltas.length - 60} 条，见上方口径）` : '',
     ].filter(Boolean).join('\n')).toEqual([])
   }, 120_000)
+})
+
+/**
+ * `diffEntry` 的归类判据单测（R23-N2）。
+ * 这些是**纯函数**用例：不跑引擎、不依赖 goldens，专门钉住「哪一侧判红」这件事。
+ * ⚠ 存在理由：本判据的失效形态是**静默的**——若 `dmgFailEligible` 被写反/被短路，
+ * 端到端跑仍是绿的（因为当前 HEAD 上 dmg delta 恰好为 0），没有任何测试会红。
+ */
+describe('diffEntry 归类（R23-N2：dmg → fail 的两侧判据）', () => {
+  const base: GoldenEntry = {
+    dmg: '1000', stun: 3, slack: '1.000', over: '0.000',
+    slots: ['1.0000|2.0000|0.0000|10.000|20.000|30.000|40.000'],
+  }
+  const onlyDmg: GoldenEntry = { ...base, dmg: '1200' }
+  const dmgAndTime: GoldenEntry = { ...base, dmg: '1200', stun: 4 }
+
+  it('① 纯 dmg 变化 + 未改 catalog ⇒ fail（这就是要拦的静默回归）', () => {
+    const r = diffEntry('k', base, onlyDmg, true)
+    expect(r.fail.join('\n')).toContain('k.dmg')
+    expect(r.info).toEqual([])
+  })
+
+  it('② 纯 dmg 变化 + 改了 catalog ⇒ info（有意的数据订正，不拦）', () => {
+    const r = diffEntry('k', base, onlyDmg, false)
+    expect(r.fail).toEqual([])
+    expect(r.info.join('\n')).toContain('k.dmg')
+  })
+
+  it('③ dmg 变 + 时间账也变 + 未改 catalog ⇒ dmg 仍走 info（不重复判红）', () => {
+    const r = diffEntry('k', base, dmgAndTime, true)
+    expect(r.fail.join('\n')).toContain('k.stun')
+    expect(r.fail.join('\n')).not.toContain('.dmg')
+    expect(r.info.join('\n')).toContain('k.dmg')
+  })
+
+  it('④ 时间账变化恒为 fail（与 dmg 口径无关）——防止改造削弱既有判据', () => {
+    const r = diffEntry('k', base, { ...base, stun: 5 }, false)
+    expect(r.fail.join('\n')).toContain('k.stun')
+  })
+
+  it('⑤ 新增条目恒为 fail（不加门控，原有语义不退化）', () => {
+    expect(diffEntry('k', undefined, onlyDmg, false).fail.join('\n')).toContain('新增')
+    expect(diffEntry('k', undefined, onlyDmg, true).fail.join('\n')).toContain('新增')
+  })
+
+  it('⑥ 逐槽时间变化也算「时间账变了」⇒ dmg 不升级为 fail', () => {
+    const slotMoved: GoldenEntry = {
+      ...base, dmg: '1200',
+      slots: ['1.0000|2.0000|0.0000|11.000|20.000|30.000|40.000'],
+    }
+    const r = diffEntry('k', base, slotMoved, true)
+    expect(r.fail.join('\n')).toContain('.slot0')
+    expect(r.fail.join('\n')).not.toContain('.dmg')
+  })
 })
