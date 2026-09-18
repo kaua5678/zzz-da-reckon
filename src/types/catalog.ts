@@ -518,7 +518,16 @@ export interface Boss {
 // ============ StatRules ============
 
 export interface StatRules {
-  statDisplay: Record<string, { label: LocalizedString; format?: string }>
+  /**
+   * 属性展示元数据（catalog 外部数据，**驱动盘数值语义的权威面**）。
+   *
+   * `display` = 该 stat 的数值语义，`core/panel.ts#inferStatMode` 直接读它决定 `applyStat` 的 `mode`：
+   * `percent` ⇒ 按基础值的百分比（进 pct 累加器）、`number`/`integer` ⇒ 固定值加点（进 flat 累加器）。
+   * ⚠ 实测存在「名字后缀与语义相反」的字段：`anomalyMastery`（异常掌控）名字带 `Mastery` 却是
+   * `number`（+30 加点）⇒ 名字启发式必错（2026-09-18 round 28 修，见 `inferStatMode` 头注释）。
+   * ⚠ 真实数据里 `label` 是 **string**（类型声明为 `LocalizedString` 是历史宽化，`useStatLabel` 兼容两形态）。
+   */
+  statDisplay: Record<string, { label: LocalizedString; display?: 'percent' | 'number' | 'integer'; format?: string }>
   driveDisc: {
     rarityMaxLevel: Record<Rarity, number>
     mainStatPools: Record<string, StatId[]>

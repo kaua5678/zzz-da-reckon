@@ -303,6 +303,62 @@ describe('requirement 门槛', () => {
     expect(noAm.critRate - baseNoAm.critRate).toBe(12)
   })
 
+  /**
+   * ★ round 28（R27-J2 结案）：6 号位掌控主词条的数值口径 —— **加点（flat）而非乘基础值（pct）**。
+   *
+   * ⚠⚠ **为什么必须钉**：上面那条断言（`critDmg − critDmg === 46`）**算术上抓不到这个 bug**：
+   * 4pc 门槛吃的是 `buff.ts#collectAllBuffs` 的 `roughStats`（口径恒为 `level60.anomalyMastery + maxMain`，
+   * **无论 `inferStatMode` 怎么判**），而 1481 基础 94 在**两种口径下都 ≥115**
+   * （pct: `94×1.3 = 122.2` / flat: `94+30 = 124`）⇒ 套装照常发放、断言照常绿。
+   * 修前实测：`inferStatMode` 把 `display = "number"` 的 `anomalyMastery` 当 pct ⇒ **全仓无一条测试断言过面板绝对值**
+   * ⇒ 「已发放的基线」在修前是**假绿**的（口径错但判据全绿）。
+   * ⇒ 本条直接钉**面板绝对值**，与 `statDisplay.display` 的语义绑定。
+   *
+   * 四个独立来源一致指向 `94 + 30 = 124`：
+   * ① `statDisplay.anomalyMastery.display = "number"`（＝加点）；② 上面的 `roughStats`；
+   * ③ `STAT_META.anomalyMastery.mode = 'flat'`；④ `docs/GAME_TERM_TO_CODE_FIELD.md` §11.2。
+   */
+  it('6号位掌控主词条 = 加点（+30）而非乘基础值（×1.3）—— 与 statDisplay.display="number" 同口径', () => {
+    // 1481 琉音：基础 94 → 94 + 30 = 124（pct 口径会得 94×1.3 = 122.2）
+    const am = panelFor('1481', disc({ mainStats: { 6: 'anomalyMastery' } })).inCombat
+    expect(am.anomalyMastery).toBe(124)
+    expect(am.anomalyMastery).not.toBeCloseTo(94 * 1.3, 5)
+    // 低掌控侧：基础 86 → 86 + 30 = 116（**≥115 门槛**；pct 口径的 111.8 会让面板与 4pc 门槛自相矛盾）
+    for (const id of ['1111', '1121', '1271', '1291']) {
+      const a = getAgent(id)
+      expect(a.level60.anomalyMastery, `${id} 基础掌控应为 86`).toBe(86)
+      const p = panelFor(id, disc({ mainStats: { 6: 'anomalyMastery' } })).inCombat
+      expect(p.anomalyMastery, `${id} 6号位掌控主词条`).toBe(116)
+    }
+    // 2pc 异常掌控 +8% 仍是 **pct**（display="percent"）⇒ 两处口径在同一面板上并存且互不干扰
+    const amPct = panelFor('1481', disc({ mainStats: { 6: 'anomalyMastery' } })).withDiscs
+    expect(amPct.anomalyMastery).toBe(124)
+  })
+
+  /**
+   * ★ round 28：**反向**钉住 `inferStatMode` 不得改读 `STAT_META.mode`（防后人「统一口径」时把
+   * `energyRegen` 的 6 号位 `+60%` 变成 `+60 点/秒`）。
+   *
+   * ⚠ 这里必须读 `statDisplay.display`（catalog），**不能**读 `STAT_META`：
+   * 两者对 `energyRegen` 结论相反（display=percent / STAT_META.mode=flat）。
+   * ⚠⚠ 注意 `energyRegen` 的口径错**在面板字段上看不见**（`energyRegenBonusPct` vs `BonusFlat`
+   * 是两个不同的字段），所以本判据直接钉**字段落点**，而不是钉 `panel.energyRegen`。
+   */
+  it('6号位能量回复主词条 = percent 口径（落 BonusPct 字段），未与 STAT_META.flat 合并', () => {
+    const pct = panelFor('1481', disc({ mainStats: { 6: 'energyRegen' } })).inCombat
+    const none = panelFor('1481', EMPTY).inCombat
+    // display="percent" ⇒ maxMain.energyRegen = 60 走 pct 累加器
+    expect(pct.energyRegenBonusPct - none.energyRegenBonusPct).toBe(60)
+    expect(pct.energyRegenBonusFlat - none.energyRegenBonusFlat).toBe(0)
+  })
+
+  it('6号位冲击力/异常精通 = 固定值加点（display="number"/"integer"）', () => {
+    const impact = panelFor('1481', disc({ mainStats: { 6: 'impact' } })).withDiscs
+    expect(impact.impact - panelFor('1481', EMPTY).withDiscs.impact).toBe(18)
+    const prof = panelFor('1481', disc({ mainStats: { 4: 'anomalyProficiency' } })).withDiscs
+    expect(prof.anomalyProficiency - panelFor('1481', EMPTY).withDiscs.anomalyProficiency).toBe(92)
+  })
+
   it('拂晓生花 4pc：非强攻角色只拿第一段（要求 specialty=attack）', () => {
     const attack = panelFor('1521', disc({ fourPieceSetId: '33300' })).inCombat
     expect(getTargetedStat(attack, 'dmgBonus', 'basic')).toBe(15 + 40)

@@ -201,21 +201,38 @@ export function calcBasePanel(agent: Agent, wEngine: WEngine | undefined): Panel
 /**
  * 驱动盘主词条/副词条的**结算口径**（`applyStat` 的 `mode` 实参）。
  *
- * ⚠⚠ **本函数不是全局 Buff 那条通路的口径，两者不能合并**（2026-09-18 round 27 实测）：
- * 驱动盘数值的语义由 **catalog 外部数据** 决定（`statRules.statDisplay[k].display`：
- * `percent` = 按基础值的百分比、`number`/`integer` = 固定值加点）。名字后缀启发式只是它的**近似**，
- * 且实测对 `anomalyMastery`（`display = "number"`，即 +30 加点）判错成 pct
- * ⇒ 6 号位掌控主词条把 `94` 算成 `94×1.3 = 122.2`，而本仓四处独立来源都说该是 `94+30 = 124`：
- * ① `statRules.statDisplay.anomalyMastery.display = "number"`；② `buff.ts#collectAllBuffs` 的
- * `roughStats`（`level60.anomalyMastery + maxMain`，即 4pc 折枝剑歌门槛用的那套）；
- * ③ `STAT_META.anomalyMastery.mode = 'flat'`；④ `discSetEffects.test.ts` 注释「94 + 30 主词条 = 124」。
- * **修这个要走「全库 delta 归因」流程（会动积蓄/异常池 ⇒ timeGolden），属独立批次，别顺手改**——
- * 本轮实测把它列进 OPEN-ITEMS 候选而不是就地修。
- * ⚠ 反过来 `energyRegen`：`display = "percent"`（6 号位 = +60% 回能），而 `STAT_META.energyRegen.mode = 'flat'`
- * 描述的是**基础回能字段本身**（1.2 点/秒）⇒ 拿 `statSettlementMode` 替进来会把 `+60%` 变成 `+60 点/秒`
- * （本轮实测踩到过，已回退）。**同名不同义**，这就是两条通路不能共用一个函数的原因。
+ * 驱动盘数值的语义由 **catalog 外部数据** 决定：`statRules.statDisplay[k].display`
+ * （`percent` ⇒ 按基础值的百分比、`number`/`integer` ⇒ 固定值加点）。名字后缀启发式**只作未登记字段的兜底**
+ * （与 `utils/statMeta.ts#statSettlementMode` 同形），不再对已登记字段生效。
+ *
+ * **为什么必须读 catalog 而不是猜名字**（2026-09-18 round 28 实测，R27-J2 结案）：
+ * 名字启发式对 `anomalyMastery`（`display = "number"`，即 +30 加点）判错成 pct
+ * ⇒ 6 号位掌控主词条把 `94` 算成 `94×1.3 = 122.2`，而四处独立来源都说该是 `94 + 30 = 124`：
+ * ① `statDisplay.anomalyMastery.display = "number"`；② `buff.ts#collectAllBuffs` 的 `roughStats`
+ * （`level60.anomalyMastery + maxMain`，即 4pc 折枝剑歌门槛用的那套）；③ `STAT_META.anomalyMastery.mode = 'flat'`；
+ * ④ `discSetEffects.test.ts` 注释「94 + 30 主词条 = 124」。
+ * 用户可见后果（修前实测）：低掌控角色（1111/1121/1271/1291，基础 86）带 6 号位掌控 ⇒ 面板 `86×1.3 = 111.8`
+ * **< 115**，但 4pc 折枝剑歌门槛按 `roughStats` 的 `86+30 = 116 ≥ 115` 判达标 ⇒ 套装已发放、面板却不到门槛，
+ * **两个口径在同一份数据上互相矛盾**。修后两处一致（`116`）。
+ *
+ * ⚠ **可达面已实测穷举**：驱动盘 4/5/6 号位主词条池 + 副词条池共 **21 个 statId 全部登记**
+ * （`statDisplay` 无缺失键）⇒ 兜底分支在**生产数据下不可达**（`mainStats` 由 `REC_MAIN_STAT_MAP`
+ * 从 `build-recommendations.json` 映射，而该文件的 `main_stats.name` 全集（16 个）100% 命中该映射表）。
+ * 两个池子里**唯一**会翻面的字段就是 `anomalyMastery`（`impact` 因小写 `i` 早已落在启发式的 flat 侧）。
+ *
+ * ⚠⚠ **本函数仍不是全局 Buff 那条通路的口径，两者不能合并**（2026-09-18 round 27 实测）：
+ * 全局 Buff 走 `utils/statMeta.ts#statSettlementMode`（读 `STAT_META.mode`），与 `display` **不同义**。
+ * 实测反例：`energyRegen` 的 `display = "percent"`（6 号位 = **+60%** 回能，本函数按 pct 处理 ✅），
+ * 而 `STAT_META.energyRegen.mode = 'flat'` 描述的是**基础回能字段本身**（1.2 点/秒）
+ * ⇒ 把两者合并会把 `+60%` 变成 `+60 点/秒`（round 27 实测踩到并回退）。
+ * 反向同理：本函数**不得**改读 `STAT_META.mode`。两条通路各自的口径与证据见
+ * `statSettlementMode` 头注释 + `src/utils/__tests__/statModeParity.test.ts` 判据 ②。
  */
-function inferStatMode(stat: string): 'pct' | 'flat' {
+function inferStatMode(stat: string, statRules: StatRules | null): 'pct' | 'flat' {
+  const display = statRules?.statDisplay?.[stat]?.display
+  if (display === 'percent') return 'pct'
+  if (display === 'number' || display === 'integer') return 'flat'
+  // 未登记字段（生产数据不可达，见上）兜底：沿用历史名字后缀启发式
   return stat.endsWith('Pct') || stat.endsWith('Rate') || stat.endsWith('Dmg')
     || stat.endsWith('Ratio') || stat.endsWith('Mastery') || stat.endsWith('Regen')
     || stat.endsWith('Impact') || stat.endsWith('Efficiency') || stat.endsWith('Bonus')
@@ -249,7 +266,7 @@ export function applyDriveDiscConfig(
   for (const slot of [4, 5, 6] as const) {
     const stat = config.mainStats?.[slot]
     if (stat && maxMain[stat] != null) {
-      applyStat(result, stat, maxMain[stat], inferStatMode(stat))
+      applyStat(result, stat, maxMain[stat], inferStatMode(stat, statRules))
     }
   }
 
@@ -269,7 +286,7 @@ export function applyDriveDiscConfig(
       const step = subStep[stat] ?? 0
       if (!step) continue
       const value = step * count // count即升级步数，不再乘2.25
-      applyStat(result, stat, value, inferStatMode(stat))
+      applyStat(result, stat, value, inferStatMode(stat, statRules))
     }
   }
 

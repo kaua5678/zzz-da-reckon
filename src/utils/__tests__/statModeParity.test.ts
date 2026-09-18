@@ -117,10 +117,19 @@ describe('判据 19：stat 结算口径单一事实源（statSettlementMode）',
     // （实测：anomalyMastery display=number 而 STAT_META.mode=flat 一致；energyRegen display=percent
     //  而 STAT_META.mode=flat 描述的是「基础回能字段本身」⇒ 拿后者当驱动盘口径会把 +60% 变成 +60/s）。
     // ⇒ 本判据钉的是「**不要**把 statSettlementMode 接进 inferStatMode」，并保留对该函数的口径注解。
-    expect(src).toMatch(/function inferStatMode\(stat: string\)/)
+    //
+    // ⚠ round 28：签名加了 `statRules` 形参（驱动盘口径改为真读 `display`，见该函数头注释），
+    // 故这里断言的形态同步放宽为「接受第二形参」。**语义未放宽**——下面两条仍然逐字生效：
+    //   ① 权威面必须是 catalog 的 `display`（而不是 STAT_META）；
+    //   ② 仍不得出现 `statSettlementMode(stat)`。
+    expect(src).toMatch(/function inferStatMode\(stat: string(?:, statRules: StatRules \| null)?\)/)
     expect(src).toMatch(/驱动盘数值的语义由 \*\*catalog 外部数据\*\*/)
+    // 只有真读了 catalog 的 display 才允许去掉形参（防「改回纯名字启发式」时本判据静默变绿）
+    if (!/statRules: StatRules \| null/.test(src.match(/function inferStatMode\([^)]*\)/)![0])) {
+      expect(src).toMatch(/statRules\?\.statDisplay\?\.\[stat\]\?\.display/)
+    }
     // 若有人把两个通路合并（无论哪个方向）都会命中下面这条
-    expect(src).not.toMatch(/function inferStatMode\(stat: string\)[\s\S]{0,400}?statSettlementMode\(stat\)/)
+    expect(src).not.toMatch(/function inferStatMode\(stat: string(?:, statRules: StatRules \| null)?\)[\s\S]{0,900}?statSettlementMode\(stat\)/)
   })
 
   it('②b 三份副本只剩一份（resourceCalc/helpers.ts 的 isPctStat 副本已删）', () => {
