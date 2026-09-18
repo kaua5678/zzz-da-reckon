@@ -1,0 +1,2683 @@
+{
+  "version": 1,
+  "packet": {
+    "version": 1,
+    "agentId": "1021",
+    "source": {
+      "raw": "data/raw/nanoka_missing/full/1021.json",
+      "nouns": "data/raw/nanoka_missing/noun_3.2.3.json"
+    },
+    "passiveLevel": 7,
+    "hashes": {
+      "raw": "eb1026517eb6b1015c7f80c1fbdfa77e83cca12062385974859955b91639b3aa",
+      "nouns": "b515eb2654baf4815768a1997f1f4f12583cf702d0784ac96a6ff2abad8f1e56",
+      "moves": "195a6e877297966037fb18fdbb3401d24f2e3a3dab9330d0bde31fe811d99025"
+    },
+    "moves": [
+      {
+        "id": "1021",
+        "agentId": "1021",
+        "name": {
+          "zhCN": "猫又",
+          "en": "Nekomata"
+        },
+        "categories": [
+          {
+            "id": "basic",
+            "name": {
+              "zhCN": "basic",
+              "en": "basic"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1021001",
+                "name": {
+                  "zhCN": "普通攻击：猫猫爪刺 #1",
+                  "en": "Basic Attack: Kitty Slash #1"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      111.3
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      27.9
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      0.616
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      4.7025
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      17.08
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      0.5981
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      17.09
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.171
+              },
+              {
+                "id": "1021002",
+                "name": {
+                  "zhCN": "普通攻击：猫猫爪刺 #2",
+                  "en": "Basic Attack: Kitty Slash #2"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      125.3
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      55.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.269
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      9.7075
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      35.24
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      0.6231
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      35.25
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.353
+              },
+              {
+                "id": "1021003",
+                "name": {
+                  "zhCN": "普通攻击：猫猫爪刺 #3",
+                  "en": "Basic Attack: Kitty Slash #3"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      146.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      70.9
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.599
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      12.2375
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      44.4
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      0.66
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      44.41
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.444
+              },
+              {
+                "id": "1021004",
+                "name": {
+                  "zhCN": "普通攻击：猫猫爪刺 #4",
+                  "en": "Basic Attack: Kitty Slash #4"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      340.7
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      156.5
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      3.555
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      27.17
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      98.73
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      1.5398
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      98.74
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.987
+              },
+              {
+                "id": "1021005",
+                "name": {
+                  "zhCN": "普通攻击：猫猫爪刺 #5",
+                  "en": "Basic Attack: Kitty Slash #5"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      247.9
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      88.6
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      2.017
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      15.4275
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      56.02
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      1.0321
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      58.98
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.59
+              },
+              {
+                "id": "1021006",
+                "name": {
+                  "zhCN": "普通攻击：赤色之刃",
+                  "en": "Basic Attack: Crimson Blade"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      144.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      88.6
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      2.017
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      15.4275
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      56.02
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      1.0321
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      58.98
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.59
+              }
+            ]
+          },
+          {
+            "id": "dodge",
+            "name": {
+              "zhCN": "dodge",
+              "en": "dodge"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1021009",
+                "name": {
+                  "zhCN": "冲刺攻击：你在看哪边？",
+                  "en": "Dash Attack: Over Here!"
+                },
+                "damageElement": "physical",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      70.3
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      26.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      0.601
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      16.06
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      16.68
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      0.292
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      16.69
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.167
+              },
+              {
+                "id": "1021010",
+                "name": {
+                  "zhCN": "闪避反击：虚影双刺",
+                  "en": "Dodge Counter: Phantom Claws"
+                },
+                "damageElement": "physical",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      456.7
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      299.6
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      3.239
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      24.75
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      89.96
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      1.5745
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      239.97
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.9
+              },
+              {
+                "id": "1021019",
+                "name": {
+                  "zhCN": "闪避反击：绒爪穿刺",
+                  "en": "Dodge Counter: Fluffy Piercing Claw"
+                },
+                "damageElement": "physical",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      2527.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      247.1
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      2.641
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      43.0925
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      156.66
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      156.67
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.5666,
+                "energyCost": {
+                  "Purr Energy Cost": "40"
+                }
+              }
+            ]
+          },
+          {
+            "id": "special",
+            "name": {
+              "zhCN": "special",
+              "en": "special"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1021007",
+                "name": {
+                  "zhCN": "特殊技：奇袭",
+                  "en": "Special Attack: Surprise Attack"
+                },
+                "damageElement": "physical",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      94.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      71.5
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      12.4025
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      45.01
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      0.7878
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      45.02
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.45
+              },
+              {
+                "id": "1021008",
+                "name": {
+                  "zhCN": "强化特殊技：超~凶奇袭！",
+                  "en": "EX Special Attack: Super Surprise Attack!"
+                },
+                "damageElement": "physical",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1079.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      683.1
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      148.61
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      430.73
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      175.04
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.75,
+                "energyCost": {
+                  "Energy Cost": "40"
+                }
+              }
+            ]
+          },
+          {
+            "id": "chain",
+            "name": {
+              "zhCN": "chain",
+              "en": "chain"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1021011",
+                "name": {
+                  "zhCN": "连携技：刃爪挥击",
+                  "en": "Chain Attack: Claw Swipe"
+                },
+                "damageElement": "physical",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1073
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      239.5
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      229.185
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      367.86
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      0.9465
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      168.37
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.684
+              },
+              {
+                "id": "1021012",
+                "name": {
+                  "zhCN": "终结技：刃爪强袭",
+                  "en": "Ultimate: Claw Smash"
+                },
+                "damageElement": "physical",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      3143
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      177.5
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      124.96
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      624.97
+                    ]
+                  }
+                ],
+                "timeType": "ultimate",
+                "actionTime": 1.25
+              }
+            ]
+          },
+          {
+            "id": "assist",
+            "name": {
+              "zhCN": "assist",
+              "en": "assist"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1021013",
+                "name": {
+                  "zhCN": "快速支援：借用猫爪",
+                  "en": "Quick Assist: Cat's Paw"
+                },
+                "damageElement": "physical",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      189.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      141.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      3.239
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      24.75
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      89.96
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      0.7873
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      44.99
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.45
+              },
+              {
+                "id": "1021014",
+                "name": {
+                  "zhCN": "招架支援：应激防御 #1",
+                  "en": "Defensive Assist: Desperate Defense #1"
+                },
+                "damageElement": "physical",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      388.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      366.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.166
+              },
+              {
+                "id": "1021015",
+                "name": {
+                  "zhCN": "招架支援：应激防御 #2",
+                  "en": "Defensive Assist: Desperate Defense #2"
+                },
+                "damageElement": "physical",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      491.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      416.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.666
+              },
+              {
+                "id": "1021016",
+                "name": {
+                  "zhCN": "招架支援：应激防御 #3",
+                  "en": "Defensive Assist: Desperate Defense #3"
+                },
+                "damageElement": "physical",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      239.6
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      116.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.166
+              },
+              {
+                "id": "1021017",
+                "name": {
+                  "zhCN": "支援突击：迅影",
+                  "en": "Assist Follow-Up: Shadow Strike"
+                },
+                "damageElement": "physical",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      601.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      387.9
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      89.76
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      265.92
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      2.187
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      124.97
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.25
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "units": [
+      {
+        "id": "/skill/assist/description/0/desc:0",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：借用猫爪",
+        "category": "assist",
+        "quote": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动斩击，造成物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:1",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：借用猫爪",
+        "category": "assist",
+        "quote": "对前方敌人发动斩击，造成物理伤害；",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动斩击，造成物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:2",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：借用猫爪",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动斩击，造成物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:0",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：应激防御",
+        "category": "assist",
+        "quote": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:1",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：应激防御",
+        "category": "assist",
+        "quote": "招架敌人的攻击，累积大量失衡值；",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:2",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：应激防御",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:0",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：迅影",
+        "category": "assist",
+        "quote": "发动[招架支援]后，点按 [普攻键] 发动：",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动突进斩击，造成物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:1",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：迅影",
+        "category": "assist",
+        "quote": "对前方敌人发动突进斩击，造成物理伤害；",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动突进斩击，造成物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:2",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：迅影",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动突进斩击，造成物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:0",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：猫猫爪刺",
+        "category": "basic",
+        "quote": "点按 [普攻键] 发动：",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多五段的斩击，造成物理伤害；\n发动最后一段斩击时，有33.33%的概率重复攻击三次。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:1",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：猫猫爪刺",
+        "category": "basic",
+        "quote": "向前方进行至多五段的斩击，造成物理伤害；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多五段的斩击，造成物理伤害；\n发动最后一段斩击时，有33.33%的概率重复攻击三次。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:2",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：猫猫爪刺",
+        "category": "basic",
+        "quote": "发动最后一段斩击时，有33.33%的概率重复攻击三次。",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多五段的斩击，造成物理伤害；\n发动最后一段斩击时，有33.33%的概率重复攻击三次。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:0",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：猫猫爪刺",
+        "category": "basic",
+        "quote": "点按 [普攻键] 发动：",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多五段的斩击，造成物理伤害；\n发动最后一段斩击时，若命中处于失衡状态下的敌人，则会重复攻击三次。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:1",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：猫猫爪刺",
+        "category": "basic",
+        "quote": "向前方进行至多五段的斩击，造成物理伤害；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多五段的斩击，造成物理伤害；\n发动最后一段斩击时，若命中处于失衡状态下的敌人，则会重复攻击三次。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:2",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：猫猫爪刺",
+        "category": "basic",
+        "quote": "发动最后一段斩击时，若命中处于失衡状态下的敌人，则会重复攻击三次。",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多五段的斩击，造成物理伤害；\n发动最后一段斩击时，若命中处于失衡状态下的敌人，则会重复攻击三次。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:0",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：赤色之刃",
+        "category": "basic",
+        "quote": "在[普通攻击]前三段中，长按 [普攻键] 发动：",
+        "context": "在[普通攻击]前三段中，长按 [普攻键] 发动：\n向前方进行斩击，可穿过前方敌人，并对其造成物理伤害；\n招式发动时，有33.33%的概率重复攻击三次。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:1",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：赤色之刃",
+        "category": "basic",
+        "quote": "向前方进行斩击，可穿过前方敌人，并对其造成物理伤害；",
+        "context": "在[普通攻击]前三段中，长按 [普攻键] 发动：\n向前方进行斩击，可穿过前方敌人，并对其造成物理伤害；\n招式发动时，有33.33%的概率重复攻击三次。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:2",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：赤色之刃",
+        "category": "basic",
+        "quote": "招式发动时，有33.33%的概率重复攻击三次。",
+        "context": "在[普通攻击]前三段中，长按 [普攻键] 发动：\n向前方进行斩击，可穿过前方敌人，并对其造成物理伤害；\n招式发动时，有33.33%的概率重复攻击三次。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:0",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：赤色之刃",
+        "category": "basic",
+        "quote": "在[普通攻击]前三段中，长按 [普攻键] 发动：",
+        "context": "在[普通攻击]前三段中，长按 [普攻键] 发动：\n向前方进行斩击，可穿过前方敌人，并对其造成物理伤害；\n招式发动时，若命中处于失衡状态下的敌人，则会重复攻击三次。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:1",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：赤色之刃",
+        "category": "basic",
+        "quote": "向前方进行斩击，可穿过前方敌人，并对其造成物理伤害；",
+        "context": "在[普通攻击]前三段中，长按 [普攻键] 发动：\n向前方进行斩击，可穿过前方敌人，并对其造成物理伤害；\n招式发动时，若命中处于失衡状态下的敌人，则会重复攻击三次。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:2",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：赤色之刃",
+        "category": "basic",
+        "quote": "招式发动时，若命中处于失衡状态下的敌人，则会重复攻击三次。",
+        "context": "在[普通攻击]前三段中，长按 [普攻键] 发动：\n向前方进行斩击，可穿过前方敌人，并对其造成物理伤害；\n招式发动时，若命中处于失衡状态下的敌人，则会重复攻击三次。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:0",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：刃爪挥击",
+        "category": "chain",
+        "quote": "触发[连携技]时，选择对应角色发动：",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方大范围敌人发动强力斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:1",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：刃爪挥击",
+        "category": "chain",
+        "quote": "对前方大范围敌人发动强力斩击，造成大量物理伤害；",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方大范围敌人发动强力斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:2",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：刃爪挥击",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方大范围敌人发动强力斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:0",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：刃爪强袭",
+        "category": "chain",
+        "quote": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方大范围敌人发动强力斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:1",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：刃爪强袭",
+        "category": "chain",
+        "quote": "对前方大范围敌人发动强力斩击，造成大量物理伤害；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方大范围敌人发动强力斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:2",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：刃爪强袭",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方大范围敌人发动强力斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:0",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：打不着喵~",
+        "category": "dodge",
+        "quote": "点按 [Icon_Evade] 发动：",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:1",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：打不着喵~",
+        "category": "dodge",
+        "quote": "快速的冲刺闪避；",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:2",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：打不着喵~",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:0",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "闪避：尾巴失踪术",
+        "category": "dodge",
+        "quote": "当猫又拥有大于等于40点[呼噜能量]时，触发[极限闪避]后点按 [Icon_Evade] 消耗30点[呼噜能量]发动：",
+        "context": "当猫又拥有大于等于40点[呼噜能量]时，触发[极限闪避]后点按 [Icon_Evade] 消耗30点[呼噜能量]发动：\n猫又进入极限视域，并快速闪身至敌人的身后；\n招式发动期间拥有无敌效果，该招式不消耗闪避次数。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:1",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "闪避：尾巴失踪术",
+        "category": "dodge",
+        "quote": "猫又进入极限视域，并快速闪身至敌人的身后；",
+        "context": "当猫又拥有大于等于40点[呼噜能量]时，触发[极限闪避]后点按 [Icon_Evade] 消耗30点[呼噜能量]发动：\n猫又进入极限视域，并快速闪身至敌人的身后；\n招式发动期间拥有无敌效果，该招式不消耗闪避次数。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:2",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "闪避：尾巴失踪术",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果，该招式不消耗闪避次数。",
+        "context": "当猫又拥有大于等于40点[呼噜能量]时，触发[极限闪避]后点按 [Icon_Evade] 消耗30点[呼噜能量]发动：\n猫又进入极限视域，并快速闪身至敌人的身后；\n招式发动期间拥有无敌效果，该招式不消耗闪避次数。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:0",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "冲刺攻击：你在看哪边？",
+        "category": "dodge",
+        "quote": "闪避时，点按 [普攻键] 发动：",
+        "context": "闪避时，点按 [普攻键] 发动：\n向前方进行斩击，造成物理伤害。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:1",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "冲刺攻击：你在看哪边？",
+        "category": "dodge",
+        "quote": "向前方进行斩击，造成物理伤害。",
+        "context": "闪避时，点按 [普攻键] 发动：\n向前方进行斩击，造成物理伤害。"
+      },
+      {
+        "id": "/skill/dodge/description/3/desc:0",
+        "pointer": "/skill/dodge/description/3/desc",
+        "title": "闪避反击：虚影双刺",
+        "category": "dodge",
+        "quote": "触发[极限闪避]后，点按 [普攻键] 发动：",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动斩击，造成物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/3/desc:1",
+        "pointer": "/skill/dodge/description/3/desc",
+        "title": "闪避反击：虚影双刺",
+        "category": "dodge",
+        "quote": "对前方敌人发动斩击，造成物理伤害；",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动斩击，造成物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/3/desc:2",
+        "pointer": "/skill/dodge/description/3/desc",
+        "title": "闪避反击：虚影双刺",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动斩击，造成物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/4/desc:0",
+        "pointer": "/skill/dodge/description/4/desc",
+        "title": "闪避反击：绒爪穿刺",
+        "category": "dodge",
+        "quote": "发动[闪避：尾巴失踪术]后点按 [普攻键] 或拥有大于等于40点[呼噜能量]时长按 [普攻键] 发动：",
+        "context": "发动[闪避：尾巴失踪术]后点按 [普攻键] 或拥有大于等于40点[呼噜能量]时长按 [普攻键] 发动：\n对前方大范围敌人发动强力斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/4/desc:1",
+        "pointer": "/skill/dodge/description/4/desc",
+        "title": "闪避反击：绒爪穿刺",
+        "category": "dodge",
+        "quote": "对前方大范围敌人发动强力斩击，造成大量物理伤害；",
+        "context": "发动[闪避：尾巴失踪术]后点按 [普攻键] 或拥有大于等于40点[呼噜能量]时长按 [普攻键] 发动：\n对前方大范围敌人发动强力斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/4/desc:2",
+        "pointer": "/skill/dodge/description/4/desc",
+        "title": "闪避反击：绒爪穿刺",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "发动[闪避：尾巴失踪术]后点按 [普攻键] 或拥有大于等于40点[呼噜能量]时长按 [普攻键] 发动：\n对前方大范围敌人发动强力斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:0",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：奇袭",
+        "category": "special",
+        "quote": "点按 [特技键] 发动：",
+        "context": "点按 [特技键] 发动：\n向前方进行下落打击，造成物理伤害；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:1",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：奇袭",
+        "category": "special",
+        "quote": "向前方进行下落打击，造成物理伤害；",
+        "context": "点按 [特技键] 发动：\n向前方进行下落打击，造成物理伤害；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:2",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：奇袭",
+        "category": "special",
+        "quote": "招式发动期间抗打断等级提升。",
+        "context": "点按 [特技键] 发动：\n向前方进行下落打击，造成物理伤害；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:0",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "特殊技：奇袭",
+        "category": "special",
+        "quote": "点按 [特技键] 发动：",
+        "context": "点按 [特技键] 发动：\n向前方进行下落打击，造成物理伤害；\n招式发动期间抗打断等级提升；\n招式的追击效果增强。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:1",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "特殊技：奇袭",
+        "category": "special",
+        "quote": "向前方进行下落打击，造成物理伤害；",
+        "context": "点按 [特技键] 发动：\n向前方进行下落打击，造成物理伤害；\n招式发动期间抗打断等级提升；\n招式的追击效果增强。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:2",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "特殊技：奇袭",
+        "category": "special",
+        "quote": "招式发动期间抗打断等级提升；",
+        "context": "点按 [特技键] 发动：\n向前方进行下落打击，造成物理伤害；\n招式发动期间抗打断等级提升；\n招式的追击效果增强。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:3",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "特殊技：奇袭",
+        "category": "special",
+        "quote": "招式的追击效果增强。",
+        "context": "点按 [特技键] 发动：\n向前方进行下落打击，造成物理伤害；\n招式发动期间抗打断等级提升；\n招式的追击效果增强。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:0",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：超~凶奇袭！",
+        "category": "special",
+        "quote": "能量足够时，点按 [Icon_SpecialReady] 发动：",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方进行强力下落斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:1",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：超~凶奇袭！",
+        "category": "special",
+        "quote": "向前方进行强力下落斩击，造成大量物理伤害；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方进行强力下落斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:2",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：超~凶奇袭！",
+        "category": "special",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方进行强力下落斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/3/desc:0",
+        "pointer": "/skill/special/description/3/desc",
+        "title": "强化特殊技：超~凶奇袭！",
+        "category": "special",
+        "quote": "能量足够时，点按 [Icon_SpecialReady] 发动：",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方进行强力下落斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果；\n招式的追击效果增强。"
+      },
+      {
+        "id": "/skill/special/description/3/desc:1",
+        "pointer": "/skill/special/description/3/desc",
+        "title": "强化特殊技：超~凶奇袭！",
+        "category": "special",
+        "quote": "向前方进行强力下落斩击，造成大量物理伤害；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方进行强力下落斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果；\n招式的追击效果增强。"
+      },
+      {
+        "id": "/skill/special/description/3/desc:2",
+        "pointer": "/skill/special/description/3/desc",
+        "title": "强化特殊技：超~凶奇袭！",
+        "category": "special",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方进行强力下落斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果；\n招式的追击效果增强。"
+      },
+      {
+        "id": "/skill/special/description/3/desc:3",
+        "pointer": "/skill/special/description/3/desc",
+        "title": "强化特殊技：超~凶奇袭！",
+        "category": "special",
+        "quote": "招式的追击效果增强。",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方进行强力下落斩击，造成大量物理伤害；\n招式发动期间拥有无敌效果；\n招式的追击效果增强。"
+      },
+      {
+        "id": "/passive/level/1021514/desc/0:0",
+        "pointer": "/passive/level/1021514/desc/0",
+        "title": "核心被动：猫步诡影",
+        "category": "passive",
+        "quote": "猫又[闪避反击]或[快速支援]命中敌人时，自身造成的伤害提升60%，持续40秒，重复触发时刷新持续时间；",
+        "context": "猫又[闪避反击]或[快速支援]命中敌人时，自身造成的伤害提升60%，持续40秒，重复触发时刷新持续时间；\n猫又进入战场会获得40点[呼噜能量]，该效果在勘域模式中每180秒最多触发一次；\n当猫又处于接战状态时，每秒获得1点[呼噜能量]，最多积累60点，猫又不同招式命中敌人可以回复不同量的[呼噜能量]；\n猫又拥有大于等于40点[呼噜能量]时，触发[极限闪避]后点按 [Icon_Evade] 可以消耗30点[呼噜能量]发动[闪避：尾巴失踪术]，随后点按 [普攻键] 可以发动一次不消耗[呼噜能量]的[闪避反击：绒爪穿刺]；\n猫又拥有大于等于40点[呼噜能量]时，长按 [普攻键] 消耗40点[呼噜能量]可以发动[闪避反击：绒爪穿刺]；\n猫又发动[闪避反击：绒爪穿刺]会进入[肉球突袭]状态，持续40秒，重复触发时刷新持续时间，[肉球突袭]状态下猫又自身的攻击命中时均视为从背后命中；\n处于[肉球突袭]状态时，猫又自身的攻击命中时会触发[超凶爪印]效果，造成一次等同于自身30%攻击力的物理伤害，该效果每1秒最多触发一次；\n猫又发动[终结技]额外回复20点[呼噜能量]，发动[连携技]额外回复10点[呼噜能量]，发动[强化特殊技]额外回复5点[呼噜能量]。"
+      },
+      {
+        "id": "/passive/level/1021514/desc/0:1",
+        "pointer": "/passive/level/1021514/desc/0",
+        "title": "核心被动：猫步诡影",
+        "category": "passive",
+        "quote": "猫又进入战场会获得40点[呼噜能量]，该效果在勘域模式中每180秒最多触发一次；",
+        "context": "猫又[闪避反击]或[快速支援]命中敌人时，自身造成的伤害提升60%，持续40秒，重复触发时刷新持续时间；\n猫又进入战场会获得40点[呼噜能量]，该效果在勘域模式中每180秒最多触发一次；\n当猫又处于接战状态时，每秒获得1点[呼噜能量]，最多积累60点，猫又不同招式命中敌人可以回复不同量的[呼噜能量]；\n猫又拥有大于等于40点[呼噜能量]时，触发[极限闪避]后点按 [Icon_Evade] 可以消耗30点[呼噜能量]发动[闪避：尾巴失踪术]，随后点按 [普攻键] 可以发动一次不消耗[呼噜能量]的[闪避反击：绒爪穿刺]；\n猫又拥有大于等于40点[呼噜能量]时，长按 [普攻键] 消耗40点[呼噜能量]可以发动[闪避反击：绒爪穿刺]；\n猫又发动[闪避反击：绒爪穿刺]会进入[肉球突袭]状态，持续40秒，重复触发时刷新持续时间，[肉球突袭]状态下猫又自身的攻击命中时均视为从背后命中；\n处于[肉球突袭]状态时，猫又自身的攻击命中时会触发[超凶爪印]效果，造成一次等同于自身30%攻击力的物理伤害，该效果每1秒最多触发一次；\n猫又发动[终结技]额外回复20点[呼噜能量]，发动[连携技]额外回复10点[呼噜能量]，发动[强化特殊技]额外回复5点[呼噜能量]。"
+      },
+      {
+        "id": "/passive/level/1021514/desc/0:2",
+        "pointer": "/passive/level/1021514/desc/0",
+        "title": "核心被动：猫步诡影",
+        "category": "passive",
+        "quote": "当猫又处于接战状态时，每秒获得1点[呼噜能量]，最多积累60点，猫又不同招式命中敌人可以回复不同量的[呼噜能量]；",
+        "context": "猫又[闪避反击]或[快速支援]命中敌人时，自身造成的伤害提升60%，持续40秒，重复触发时刷新持续时间；\n猫又进入战场会获得40点[呼噜能量]，该效果在勘域模式中每180秒最多触发一次；\n当猫又处于接战状态时，每秒获得1点[呼噜能量]，最多积累60点，猫又不同招式命中敌人可以回复不同量的[呼噜能量]；\n猫又拥有大于等于40点[呼噜能量]时，触发[极限闪避]后点按 [Icon_Evade] 可以消耗30点[呼噜能量]发动[闪避：尾巴失踪术]，随后点按 [普攻键] 可以发动一次不消耗[呼噜能量]的[闪避反击：绒爪穿刺]；\n猫又拥有大于等于40点[呼噜能量]时，长按 [普攻键] 消耗40点[呼噜能量]可以发动[闪避反击：绒爪穿刺]；\n猫又发动[闪避反击：绒爪穿刺]会进入[肉球突袭]状态，持续40秒，重复触发时刷新持续时间，[肉球突袭]状态下猫又自身的攻击命中时均视为从背后命中；\n处于[肉球突袭]状态时，猫又自身的攻击命中时会触发[超凶爪印]效果，造成一次等同于自身30%攻击力的物理伤害，该效果每1秒最多触发一次；\n猫又发动[终结技]额外回复20点[呼噜能量]，发动[连携技]额外回复10点[呼噜能量]，发动[强化特殊技]额外回复5点[呼噜能量]。"
+      },
+      {
+        "id": "/passive/level/1021514/desc/0:3",
+        "pointer": "/passive/level/1021514/desc/0",
+        "title": "核心被动：猫步诡影",
+        "category": "passive",
+        "quote": "猫又拥有大于等于40点[呼噜能量]时，触发[极限闪避]后点按 [Icon_Evade] 可以消耗30点[呼噜能量]发动[闪避：尾巴失踪术]，随后点按 [普攻键] 可以发动一次不消耗[呼噜能量]的[闪避反击：绒爪穿刺]；",
+        "context": "猫又[闪避反击]或[快速支援]命中敌人时，自身造成的伤害提升60%，持续40秒，重复触发时刷新持续时间；\n猫又进入战场会获得40点[呼噜能量]，该效果在勘域模式中每180秒最多触发一次；\n当猫又处于接战状态时，每秒获得1点[呼噜能量]，最多积累60点，猫又不同招式命中敌人可以回复不同量的[呼噜能量]；\n猫又拥有大于等于40点[呼噜能量]时，触发[极限闪避]后点按 [Icon_Evade] 可以消耗30点[呼噜能量]发动[闪避：尾巴失踪术]，随后点按 [普攻键] 可以发动一次不消耗[呼噜能量]的[闪避反击：绒爪穿刺]；\n猫又拥有大于等于40点[呼噜能量]时，长按 [普攻键] 消耗40点[呼噜能量]可以发动[闪避反击：绒爪穿刺]；\n猫又发动[闪避反击：绒爪穿刺]会进入[肉球突袭]状态，持续40秒，重复触发时刷新持续时间，[肉球突袭]状态下猫又自身的攻击命中时均视为从背后命中；\n处于[肉球突袭]状态时，猫又自身的攻击命中时会触发[超凶爪印]效果，造成一次等同于自身30%攻击力的物理伤害，该效果每1秒最多触发一次；\n猫又发动[终结技]额外回复20点[呼噜能量]，发动[连携技]额外回复10点[呼噜能量]，发动[强化特殊技]额外回复5点[呼噜能量]。"
+      },
+      {
+        "id": "/passive/level/1021514/desc/0:4",
+        "pointer": "/passive/level/1021514/desc/0",
+        "title": "核心被动：猫步诡影",
+        "category": "passive",
+        "quote": "猫又拥有大于等于40点[呼噜能量]时，长按 [普攻键] 消耗40点[呼噜能量]可以发动[闪避反击：绒爪穿刺]；",
+        "context": "猫又[闪避反击]或[快速支援]命中敌人时，自身造成的伤害提升60%，持续40秒，重复触发时刷新持续时间；\n猫又进入战场会获得40点[呼噜能量]，该效果在勘域模式中每180秒最多触发一次；\n当猫又处于接战状态时，每秒获得1点[呼噜能量]，最多积累60点，猫又不同招式命中敌人可以回复不同量的[呼噜能量]；\n猫又拥有大于等于40点[呼噜能量]时，触发[极限闪避]后点按 [Icon_Evade] 可以消耗30点[呼噜能量]发动[闪避：尾巴失踪术]，随后点按 [普攻键] 可以发动一次不消耗[呼噜能量]的[闪避反击：绒爪穿刺]；\n猫又拥有大于等于40点[呼噜能量]时，长按 [普攻键] 消耗40点[呼噜能量]可以发动[闪避反击：绒爪穿刺]；\n猫又发动[闪避反击：绒爪穿刺]会进入[肉球突袭]状态，持续40秒，重复触发时刷新持续时间，[肉球突袭]状态下猫又自身的攻击命中时均视为从背后命中；\n处于[肉球突袭]状态时，猫又自身的攻击命中时会触发[超凶爪印]效果，造成一次等同于自身30%攻击力的物理伤害，该效果每1秒最多触发一次；\n猫又发动[终结技]额外回复20点[呼噜能量]，发动[连携技]额外回复10点[呼噜能量]，发动[强化特殊技]额外回复5点[呼噜能量]。"
+      },
+      {
+        "id": "/passive/level/1021514/desc/0:5",
+        "pointer": "/passive/level/1021514/desc/0",
+        "title": "核心被动：猫步诡影",
+        "category": "passive",
+        "quote": "猫又发动[闪避反击：绒爪穿刺]会进入[肉球突袭]状态，持续40秒，重复触发时刷新持续时间，[肉球突袭]状态下猫又自身的攻击命中时均视为从背后命中；",
+        "context": "猫又[闪避反击]或[快速支援]命中敌人时，自身造成的伤害提升60%，持续40秒，重复触发时刷新持续时间；\n猫又进入战场会获得40点[呼噜能量]，该效果在勘域模式中每180秒最多触发一次；\n当猫又处于接战状态时，每秒获得1点[呼噜能量]，最多积累60点，猫又不同招式命中敌人可以回复不同量的[呼噜能量]；\n猫又拥有大于等于40点[呼噜能量]时，触发[极限闪避]后点按 [Icon_Evade] 可以消耗30点[呼噜能量]发动[闪避：尾巴失踪术]，随后点按 [普攻键] 可以发动一次不消耗[呼噜能量]的[闪避反击：绒爪穿刺]；\n猫又拥有大于等于40点[呼噜能量]时，长按 [普攻键] 消耗40点[呼噜能量]可以发动[闪避反击：绒爪穿刺]；\n猫又发动[闪避反击：绒爪穿刺]会进入[肉球突袭]状态，持续40秒，重复触发时刷新持续时间，[肉球突袭]状态下猫又自身的攻击命中时均视为从背后命中；\n处于[肉球突袭]状态时，猫又自身的攻击命中时会触发[超凶爪印]效果，造成一次等同于自身30%攻击力的物理伤害，该效果每1秒最多触发一次；\n猫又发动[终结技]额外回复20点[呼噜能量]，发动[连携技]额外回复10点[呼噜能量]，发动[强化特殊技]额外回复5点[呼噜能量]。"
+      },
+      {
+        "id": "/passive/level/1021514/desc/0:6",
+        "pointer": "/passive/level/1021514/desc/0",
+        "title": "核心被动：猫步诡影",
+        "category": "passive",
+        "quote": "处于[肉球突袭]状态时，猫又自身的攻击命中时会触发[超凶爪印]效果，造成一次等同于自身30%攻击力的物理伤害，该效果每1秒最多触发一次；",
+        "context": "猫又[闪避反击]或[快速支援]命中敌人时，自身造成的伤害提升60%，持续40秒，重复触发时刷新持续时间；\n猫又进入战场会获得40点[呼噜能量]，该效果在勘域模式中每180秒最多触发一次；\n当猫又处于接战状态时，每秒获得1点[呼噜能量]，最多积累60点，猫又不同招式命中敌人可以回复不同量的[呼噜能量]；\n猫又拥有大于等于40点[呼噜能量]时，触发[极限闪避]后点按 [Icon_Evade] 可以消耗30点[呼噜能量]发动[闪避：尾巴失踪术]，随后点按 [普攻键] 可以发动一次不消耗[呼噜能量]的[闪避反击：绒爪穿刺]；\n猫又拥有大于等于40点[呼噜能量]时，长按 [普攻键] 消耗40点[呼噜能量]可以发动[闪避反击：绒爪穿刺]；\n猫又发动[闪避反击：绒爪穿刺]会进入[肉球突袭]状态，持续40秒，重复触发时刷新持续时间，[肉球突袭]状态下猫又自身的攻击命中时均视为从背后命中；\n处于[肉球突袭]状态时，猫又自身的攻击命中时会触发[超凶爪印]效果，造成一次等同于自身30%攻击力的物理伤害，该效果每1秒最多触发一次；\n猫又发动[终结技]额外回复20点[呼噜能量]，发动[连携技]额外回复10点[呼噜能量]，发动[强化特殊技]额外回复5点[呼噜能量]。"
+      },
+      {
+        "id": "/passive/level/1021514/desc/0:7",
+        "pointer": "/passive/level/1021514/desc/0",
+        "title": "核心被动：猫步诡影",
+        "category": "passive",
+        "quote": "猫又发动[终结技]额外回复20点[呼噜能量]，发动[连携技]额外回复10点[呼噜能量]，发动[强化特殊技]额外回复5点[呼噜能量]。",
+        "context": "猫又[闪避反击]或[快速支援]命中敌人时，自身造成的伤害提升60%，持续40秒，重复触发时刷新持续时间；\n猫又进入战场会获得40点[呼噜能量]，该效果在勘域模式中每180秒最多触发一次；\n当猫又处于接战状态时，每秒获得1点[呼噜能量]，最多积累60点，猫又不同招式命中敌人可以回复不同量的[呼噜能量]；\n猫又拥有大于等于40点[呼噜能量]时，触发[极限闪避]后点按 [Icon_Evade] 可以消耗30点[呼噜能量]发动[闪避：尾巴失踪术]，随后点按 [普攻键] 可以发动一次不消耗[呼噜能量]的[闪避反击：绒爪穿刺]；\n猫又拥有大于等于40点[呼噜能量]时，长按 [普攻键] 消耗40点[呼噜能量]可以发动[闪避反击：绒爪穿刺]；\n猫又发动[闪避反击：绒爪穿刺]会进入[肉球突袭]状态，持续40秒，重复触发时刷新持续时间，[肉球突袭]状态下猫又自身的攻击命中时均视为从背后命中；\n处于[肉球突袭]状态时，猫又自身的攻击命中时会触发[超凶爪印]效果，造成一次等同于自身30%攻击力的物理伤害，该效果每1秒最多触发一次；\n猫又发动[终结技]额外回复20点[呼噜能量]，发动[连携技]额外回复10点[呼噜能量]，发动[强化特殊技]额外回复5点[呼噜能量]。"
+      },
+      {
+        "id": "/passive/level/1021514/desc/1:0",
+        "pointer": "/passive/level/1021514/desc/1",
+        "title": "额外能力：猫步秀",
+        "category": "passive",
+        "quote": "队伍中存在[支援]角色或与自身属性或阵营相同的角色时触发：",
+        "context": "队伍中存在[支援]角色或与自身属性或阵营相同的角色时触发：\n猫又发动[闪避：尾巴失踪术]或队伍中任意角色对敌人施加[强击]效果后，猫又[强化特殊技]或[闪避反击]命中时造成的伤害提升35%，该效果最多可叠加2层，持续30秒，重复触发时刷新持续时间。"
+      },
+      {
+        "id": "/passive/level/1021514/desc/1:1",
+        "pointer": "/passive/level/1021514/desc/1",
+        "title": "额外能力：猫步秀",
+        "category": "passive",
+        "quote": "猫又发动[闪避：尾巴失踪术]或队伍中任意角色对敌人施加[强击]效果后，猫又[强化特殊技]或[闪避反击]命中时造成的伤害提升35%，该效果最多可叠加2层，持续30秒，重复触发时刷新持续时间。",
+        "context": "队伍中存在[支援]角色或与自身属性或阵营相同的角色时触发：\n猫又发动[闪避：尾巴失踪术]或队伍中任意角色对敌人施加[强击]效果后，猫又[强化特殊技]或[闪避反击]命中时造成的伤害提升35%，该效果最多可叠加2层，持续30秒，重复触发时刷新持续时间。"
+      },
+      {
+        "id": "/talent/1/desc:0",
+        "pointer": "/talent/1/desc",
+        "title": "猎鸟技巧",
+        "category": "talent",
+        "quote": "从背后攻击命中敌人时，猫又无视目标16%物理伤害抗性；",
+        "context": "从背后攻击命中敌人时，猫又无视目标16%物理伤害抗性；敌方处于失衡状态时，猫又对其的所有攻击均被视为背后攻击。"
+      },
+      {
+        "id": "/talent/1/desc:1",
+        "pointer": "/talent/1/desc",
+        "title": "猎鸟技巧",
+        "category": "talent",
+        "quote": "敌方处于失衡状态时，猫又对其的所有攻击均被视为背后攻击。",
+        "context": "从背后攻击命中敌人时，猫又无视目标16%物理伤害抗性；敌方处于失衡状态时，猫又对其的所有攻击均被视为背后攻击。"
+      },
+      {
+        "id": "/talent/2/desc:0",
+        "pointer": "/talent/2/desc",
+        "title": "猫鼠游戏",
+        "category": "talent",
+        "quote": "当场上只有一名敌人且自身位于前场时，猫又的能量获得效率提升25%。",
+        "context": "当场上只有一名敌人且自身位于前场时，猫又的能量获得效率提升25%。"
+      },
+      {
+        "id": "/talent/3/desc:0",
+        "pointer": "/talent/3/desc",
+        "title": "好奇的左尾",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/4/desc:0",
+        "pointer": "/talent/4/desc",
+        "title": "磨爪",
+        "category": "talent",
+        "quote": "发动[强化特殊技]时，猫又的暴击率提升7%，最多叠加2层，持续15秒，每层效果单独结算持续时间。",
+        "context": "发动[强化特殊技]时，猫又的暴击率提升7%，最多叠加2层，持续15秒，每层效果单独结算持续时间。"
+      },
+      {
+        "id": "/talent/5/desc:0",
+        "pointer": "/talent/5/desc",
+        "title": "幸运的右尾",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/6/desc:0",
+        "pointer": "/talent/6/desc",
+        "title": "捕食者血统",
+        "category": "talent",
+        "quote": "发动[连携技]或[终结技]时，猫又的暴击伤害提升18%，最多叠加3层，退出接战状态时增益效果结束；",
+        "context": "发动[连携技]或[终结技]时，猫又的暴击伤害提升18%，最多叠加3层，退出接战状态时增益效果结束；猫又击败敌人时，该增益效果直接叠加至层数上限。"
+      },
+      {
+        "id": "/talent/6/desc:1",
+        "pointer": "/talent/6/desc",
+        "title": "捕食者血统",
+        "category": "talent",
+        "quote": "猫又击败敌人时，该增益效果直接叠加至层数上限。",
+        "context": "发动[连携技]或[终结技]时，猫又的暴击伤害提升18%，最多叠加3层，退出接战状态时增益效果结束；猫又击败敌人时，该增益效果直接叠加至层数上限。"
+      },
+      {
+        "id": "/potential_detail/102101/desc:0",
+        "pointer": "/potential_detail/102101/desc",
+        "title": "潜能觉醒：夜行习性",
+        "category": "potential",
+        "quote": "猫又处于[肉球突袭]状态时，暴击伤害提升20%。",
+        "context": "猫又处于[肉球突袭]状态时，暴击伤害提升20%。"
+      },
+      {
+        "id": "/potential_detail/102102/desc:0",
+        "pointer": "/potential_detail/102102/desc",
+        "title": "潜能觉醒：夜行习性",
+        "category": "potential",
+        "quote": "猫又处于[肉球突袭]状态时，暴击伤害提升30%。",
+        "context": "猫又处于[肉球突袭]状态时，暴击伤害提升30%。"
+      },
+      {
+        "id": "/potential_detail/102103/desc:0",
+        "pointer": "/potential_detail/102103/desc",
+        "title": "潜能觉醒：夜行习性",
+        "category": "potential",
+        "quote": "猫又处于[肉球突袭]状态时，暴击伤害提升40%。",
+        "context": "猫又处于[肉球突袭]状态时，暴击伤害提升40%。"
+      },
+      {
+        "id": "/potential_detail/102104/desc:0",
+        "pointer": "/potential_detail/102104/desc",
+        "title": "潜能觉醒：夜行习性",
+        "category": "potential",
+        "quote": "猫又处于[肉球突袭]状态时，暴击伤害提升50%。",
+        "context": "猫又处于[肉球突袭]状态时，暴击伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/102105/desc:0",
+        "pointer": "/potential_detail/102105/desc",
+        "title": "潜能觉醒：夜行习性",
+        "category": "potential",
+        "quote": "猫又处于[肉球突袭]状态时，暴击伤害提升60%。",
+        "context": "猫又处于[肉球突袭]状态时，暴击伤害提升60%。"
+      }
+    ]
+  },
+  "decisions": [
+    {
+      "sourceId": "/skill/assist/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "快速支援：借用猫爪的招式动作与基础伤害/失衡：数据由 catalog 倍率表直读（D1），动作时间按通用规则推算，不单独列入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "快速支援：借用猫爪的招式动作与基础伤害/失衡：数据由 catalog 倍率表直读（D1），动作时间按通用规则推算，不单独列入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "快速支援：借用猫爪的发动期间无敌效果：纯防御保护机制，不影响伤害、失衡或能量数值计算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招架支援：应激防御的招式动作与基础伤害/失衡：数据由 catalog 倍率表直读（D1），动作时间按通用规则推算，不单独列入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招架支援：应激防御的招式动作与基础伤害/失衡：数据由 catalog 倍率表直读（D1），动作时间按通用规则推算，不单独列入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招架支援：应激防御的发动期间无敌效果：纯防御保护机制，不影响伤害、失衡或能量数值计算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "支援突击：迅影的招式动作与基础伤害/失衡：数据由 catalog 倍率表直读（D1），动作时间按通用规则推算，不单独列入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "支援突击：迅影的招式动作与基础伤害/失衡：数据由 catalog 倍率表直读（D1），动作时间按通用规则推算，不单独列入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "支援突击：迅影的发动期间无敌效果：纯防御保护机制，不影响伤害、失衡或能量数值计算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "普通攻击：猫猫爪刺的基础动作与伤害分段：倍率直读 catalog，实战循环由平A聚合行走秒均回能与动作时间覆盖，无额外独立机制分支。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "普通攻击：猫猫爪刺的基础动作与伤害分段：倍率直读 catalog，实战循环由平A聚合行走秒均回能与动作时间覆盖，无额外独立机制分支。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "普通攻击：猫猫爪刺的基础动作与伤害分段：倍率直读 catalog，实战循环由平A聚合行走秒均回能与动作时间覆盖，无额外独立机制分支。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "普通攻击：猫猫爪刺的基础动作与伤害分段：倍率直读 catalog，实战循环由平A聚合行走秒均回能与动作时间覆盖，无额外独立机制分支。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "普通攻击：猫猫爪刺的基础动作与伤害分段：倍率直读 catalog，实战循环由平A聚合行走秒均回能与动作时间覆盖，无额外独立机制分支。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "普通攻击：猫猫爪刺的基础动作与伤害分段：倍率直读 catalog，实战循环由平A聚合行走秒均回能与动作时间覆盖，无额外独立机制分支。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "普通攻击：赤色之刃的基础动作与伤害分段：倍率直读 catalog，实战循环由平A聚合行走秒均回能与动作时间覆盖，无额外独立机制分支。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "普通攻击：赤色之刃的基础动作与伤害分段：倍率直读 catalog，实战循环由平A聚合行走秒均回能与动作时间覆盖，无额外独立机制分支。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "普通攻击：赤色之刃的基础动作与伤害分段：倍率直读 catalog，实战循环由平A聚合行走秒均回能与动作时间覆盖，无额外独立机制分支。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "普通攻击：赤色之刃的基础动作与伤害分段：倍率直读 catalog，实战循环由平A聚合行走秒均回能与动作时间覆盖，无额外独立机制分支。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:1",
+      "status": "out_of_scope",
+      "reason": "普通攻击：赤色之刃的基础动作与伤害分段：倍率直读 catalog，实战循环由平A聚合行走秒均回能与动作时间覆盖，无额外独立机制分支。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:2",
+      "status": "out_of_scope",
+      "reason": "普通攻击：赤色之刃的基础动作与伤害分段：倍率直读 catalog，实战循环由平A聚合行走秒均回能与动作时间覆盖，无额外独立机制分支。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "连携技：刃爪挥击的基础伤害与发动条件：伤害倍率与失衡由 catalog 直读，相关能量产出已在专属资源机制中建模。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "连携技：刃爪挥击的基础伤害与发动条件：伤害倍率与失衡由 catalog 直读，相关能量产出已在专属资源机制中建模。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "连携技：刃爪挥击的发动期间无敌效果：纯防御保护机制，不影响伤害、失衡或能量数值计算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "终结技：刃爪强袭的基础伤害与发动条件：伤害倍率与失衡由 catalog 直读，相关能量产出已在专属资源机制中建模。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "终结技：刃爪强袭的基础伤害与发动条件：伤害倍率与失衡由 catalog 直读，相关能量产出已在专属资源机制中建模。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "终结技：刃爪强袭的发动期间无敌效果：纯防御保护机制，不影响伤害、失衡或能量数值计算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "闪避：打不着喵~的基础闪避/冲刺/基础反击：基础动作由 catalog 直读，高频反击由呼噜能量穿刺接管。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "闪避：打不着喵~的基础闪避/冲刺/基础反击：基础动作由 catalog 直读，高频反击由呼噜能量穿刺接管。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "闪避：打不着喵~的发动期间无敌效果：纯防御保护机制，不影响伤害、失衡或能量数值计算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:0",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-pierce-casts 中建模",
+      "mechanics": [
+        "nekomata-pierce-casts"
+      ]
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:1",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-pierce-casts 中建模",
+      "mechanics": [
+        "nekomata-pierce-casts"
+      ]
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:2",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-pierce-casts 中建模",
+      "mechanics": [
+        "nekomata-pierce-casts"
+      ]
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "冲刺攻击：你在看哪边？的基础闪避/冲刺/基础反击：基础动作由 catalog 直读，高频反击由呼噜能量穿刺接管。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "冲刺攻击：你在看哪边？的基础闪避/冲刺/基础反击：基础动作由 catalog 直读，高频反击由呼噜能量穿刺接管。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "闪避反击：虚影双刺的基础闪避/冲刺/基础反击：基础动作由 catalog 直读，高频反击由呼噜能量穿刺接管。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/3/desc:1",
+      "status": "out_of_scope",
+      "reason": "闪避反击：虚影双刺的基础闪避/冲刺/基础反击：基础动作由 catalog 直读，高频反击由呼噜能量穿刺接管。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/3/desc:2",
+      "status": "out_of_scope",
+      "reason": "闪避反击：虚影双刺的发动期间无敌效果：纯防御保护机制，不影响伤害、失衡或能量数值计算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/4/desc:0",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-pierce-casts 中建模",
+      "mechanics": [
+        "nekomata-pierce-casts"
+      ]
+    },
+    {
+      "sourceId": "/skill/dodge/description/4/desc:1",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-pierce-casts 中建模",
+      "mechanics": [
+        "nekomata-pierce-casts"
+      ]
+    },
+    {
+      "sourceId": "/skill/dodge/description/4/desc:2",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-pierce-casts 中建模",
+      "mechanics": [
+        "nekomata-pierce-casts"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "特殊技：奇袭的基础伤害与能量消耗：倍率与消耗直读 catalog，猫步秀增伤由专属机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "特殊技：奇袭的基础伤害与能量消耗：倍率与消耗直读 catalog，猫步秀增伤由专属机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "特殊技：奇袭的打断抗性或追击判定：动作与手感机制，不改变数值乘区与结算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "特殊技：奇袭的基础伤害与能量消耗：倍率与消耗直读 catalog，猫步秀增伤由专属机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "特殊技：奇袭的基础伤害与能量消耗：倍率与消耗直读 catalog，猫步秀增伤由专属机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "特殊技：奇袭的打断抗性或追击判定：动作与手感机制，不改变数值乘区与结算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "特殊技：奇袭的打断抗性或追击判定：动作与手感机制，不改变数值乘区与结算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "强化特殊技：超~凶奇袭！的基础伤害与能量消耗：倍率与消耗直读 catalog，猫步秀增伤由专属机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "强化特殊技：超~凶奇袭！的基础伤害与能量消耗：倍率与消耗直读 catalog，猫步秀增伤由专属机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "强化特殊技：超~凶奇袭！的发动期间无敌效果：纯防御保护机制，不影响伤害、失衡或能量数值计算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "强化特殊技：超~凶奇袭！的基础伤害与能量消耗：倍率与消耗直读 catalog，猫步秀增伤由专属机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/3/desc:1",
+      "status": "out_of_scope",
+      "reason": "强化特殊技：超~凶奇袭！的基础伤害与能量消耗：倍率与消耗直读 catalog，猫步秀增伤由专属机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/3/desc:2",
+      "status": "out_of_scope",
+      "reason": "强化特殊技：超~凶奇袭！的发动期间无敌效果：纯防御保护机制，不影响伤害、失衡或能量数值计算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/3/desc:3",
+      "status": "out_of_scope",
+      "reason": "强化特殊技：超~凶奇袭！的打断抗性或追击判定：动作与手感机制，不改变数值乘区与结算。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1021514/desc/0:0",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-core-phantom 中建模",
+      "mechanics": [
+        "nekomata-core-phantom"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1021514/desc/0:1",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-purr-resource 中建模",
+      "mechanics": [
+        "nekomata-purr-resource"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1021514/desc/0:2",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-purr-resource 中建模",
+      "mechanics": [
+        "nekomata-purr-resource"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1021514/desc/0:3",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-pierce-casts 中建模",
+      "mechanics": [
+        "nekomata-pierce-casts"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1021514/desc/0:4",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-pierce-casts 中建模",
+      "mechanics": [
+        "nekomata-pierce-casts"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1021514/desc/0:5",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-meatball-raid 中建模",
+      "mechanics": [
+        "nekomata-meatball-raid"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1021514/desc/0:6",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-meatball-raid 中建模",
+      "mechanics": [
+        "nekomata-meatball-raid"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1021514/desc/0:7",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-purr-resource 中建模",
+      "mechanics": [
+        "nekomata-purr-resource"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1021514/desc/1:0",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-catshow 中建模",
+      "mechanics": [
+        "nekomata-catshow"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1021514/desc/1:1",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-catshow 中建模",
+      "mechanics": [
+        "nekomata-catshow"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:0",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-cinemas 中建模",
+      "mechanics": [
+        "nekomata-cinemas"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:1",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-cinemas 中建模",
+      "mechanics": [
+        "nekomata-cinemas"
+      ]
+    },
+    {
+      "sourceId": "/talent/2/desc:0",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-cinemas 中建模",
+      "mechanics": [
+        "nekomata-cinemas"
+      ]
+    },
+    {
+      "sourceId": "/talent/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "好奇的左尾：技能等级提升由系统全局装配统一处理，不作为独立战斗机制代码。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/4/desc:0",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-cinemas 中建模",
+      "mechanics": [
+        "nekomata-cinemas"
+      ]
+    },
+    {
+      "sourceId": "/talent/5/desc:0",
+      "status": "out_of_scope",
+      "reason": "幸运的右尾：技能等级提升由系统全局装配统一处理，不作为独立战斗机制代码。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/6/desc:0",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-cinemas 中建模",
+      "mechanics": [
+        "nekomata-cinemas"
+      ]
+    },
+    {
+      "sourceId": "/talent/6/desc:1",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-cinemas 中建模",
+      "mechanics": [
+        "nekomata-cinemas"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/102101/desc:0",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-cinemas 中建模",
+      "mechanics": [
+        "nekomata-cinemas"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/102102/desc:0",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-cinemas 中建模",
+      "mechanics": [
+        "nekomata-cinemas"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/102103/desc:0",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-cinemas 中建模",
+      "mechanics": [
+        "nekomata-cinemas"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/102104/desc:0",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-cinemas 中建模",
+      "mechanics": [
+        "nekomata-cinemas"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/102105/desc:0",
+      "status": "modeled",
+      "reason": "已在机制 nekomata-cinemas 中建模",
+      "mechanics": [
+        "nekomata-cinemas"
+      ]
+    }
+  ],
+  "mechanics": [
+    {
+      "id": "nekomata-purr-resource",
+      "sources": [
+        "/passive/level/1021514/desc/0:1",
+        "/passive/level/1021514/desc/0:2",
+        "/passive/level/1021514/desc/0:7"
+      ],
+      "dimension": "D4",
+      "certainty": "L2",
+      "trigger": "进场、接战时间、招式命中（catalog attack_data_0）与强特/连携/终结技释放",
+      "target": "猫又自身资源 nekomata_purr（呼噜能量，上限 60）",
+      "gate": "角色登场即激活，按战斗时间与命中动作累计",
+      "formula": "进场 +40，接战每秒 +1（总量白送 60），终结技 +20，连携技 +10，强特 +5，各招式命中按 catalog attack_data_0 累加，平A聚合行走秒均加权",
+      "field": "AgentResourceResult.specResources[\"nekomata_purr\"].total",
+      "countSource": "effectiveBattleTime、ultimateCount、chainCountTotal、exSpecialCount 以及招式执行行命中",
+      "duration": "整场战斗持续生效",
+      "cap": "单次存储上限 60 点，总量预算由产出规则统一累计并由 spendRules 消费",
+      "assumptions": [
+        {
+          "premise": "接战状态下呼噜能量白送 60 总量（接战每秒1点、实战全程贴上限，用户口供 2026-08-23）。",
+          "falsifier": "若实战中切人或脱战导致接战时间低于 60 秒，则白送 60 点高估了呼噜能量产出。"
+        },
+        {
+          "premise": "攻击数据命中回复 attack_data_0 为每次施放固定产出，平A按六段动作时间加权秒均（~1.0695/s）折算。",
+          "falsifier": "若实战中平A未能打满六段循环而提前中断，则秒均加权产出偏高。"
+        }
+      ],
+      "decisionEvidence": "用户口供 2026-08-23 明确规范呼噜能量循环：进场 40 + 接战 60 + 终结 20 + 连携 10 + 强特 5 + catalog attack_data_0 命中回复；落点见 nekomata.ts 头注释与 estimateNekomataHitPurrGain；测试 nekomata.test.ts「攻击数据命中回呼噜（catalog attack_data_0）」。",
+      "implementation": {
+        "spec": "src/specs/agents/1021.json#/resources/0",
+        "consumer": "src/mechanics/agents/nekomata.ts#estimateNekomataHitPurrGain"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "平A聚合行 60s + 闪避反击 10 次 + 支援突击 6 次",
+          "expected": "gain 严格等于 NEKOMATA_BASIC_HIT_PURR_PER_SEC * 60 + 1.5745 * 10 + 2.187 * 6",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "平A聚合行走秒均 × 秒数；招式行按次数 × 单次回复"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "预算不足 30 点（29 点）",
+          "expected": "穿刺产出次数为 0，不发生越界释放",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "低预算按总量除：39 点也能打 1 发 30 档（门控不建模）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "预算 300 点，失衡内占比分别设为 0 与 1",
+          "expected": "占比 0 全打 30 档（10 次，消耗 300）；占比 1 全打 40 档（7 次，消耗 280）",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "占比 0：全部 30 档；占比 1：全部 40 档"
+          }
+        }
+      ]
+    },
+    {
+      "id": "nekomata-pierce-casts",
+      "sources": [
+        "/skill/dodge/description/1/desc:0",
+        "/skill/dodge/description/1/desc:1",
+        "/skill/dodge/description/1/desc:2",
+        "/skill/dodge/description/4/desc:0",
+        "/skill/dodge/description/4/desc:1",
+        "/skill/dodge/description/4/desc:2",
+        "/passive/level/1021514/desc/0:3",
+        "/passive/level/1021514/desc/0:4"
+      ],
+      "dimension": "D4",
+      "certainty": "L2",
+      "trigger": "呼噜能量达到档位单价时触发[闪避：尾巴失踪术]（30档）或长按直接发动[闪避反击：绒爪穿刺]（40档）",
+      "target": "执行行 1021019（闪避反击：绒爪穿刺）物化与次数分摊",
+      "gate": "门控不建模（用户口径：总量除以档位单价，不管单发持有门槛）；失衡内只能长按 40 档，失衡外一律 30 档",
+      "formula": "holdCount = floor(holdBudget / 40)；dodgeCount = floor((total - holdCount * 40) / 30)；totalCount = holdCount + dodgeCount",
+      "field": "SkillExecution.count（carrierMoveId 1021019）",
+      "countSource": "planNekomataPierceCasts 根据呼噜能量预算分配",
+      "duration": "单次动作时间 1.5666s（catalog move 表）",
+      "cap": "受呼噜能量总预算限制，余量不足一档时不释放",
+      "assumptions": [
+        {
+          "premise": "失衡内敌人无法被极限闪避，故失衡内只能打 40 档长按；失衡外一律打 30 档（尾巴失踪术免费接穿刺，净省 10 点）。",
+          "falsifier": "若游戏机制允许在失衡内通过其他方式触发极限视域施放 30 档，则 40 档锁定假设被证伪。"
+        },
+        {
+          "premise": "门控不建模，预算按整场总量折算除以档位单价，不逐帧追踪当前持有量是否达到 40 门槛。",
+          "falsifier": "若实战中能量无法即时积攒到 40 导致卡手无法施放，则总量折算高估了穿刺释放频率。"
+        }
+      ],
+      "decisionEvidence": "用户口供 2026-08-23 明确穿刺释放机制与两档分摊口径；测试 nekomata.test.ts 包含纯函数分配（40/30 档比例）、全管线集成与动作时间断言。",
+      "implementation": {
+        "spec": "src/specs/agents/1021.json#/events/0",
+        "consumer": "src/mechanics/agents/nekomata.ts#planNekomataPierceCasts"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "标准配装单猫又队，滑杆默认 -1（自动按失衡覆盖率）",
+          "expected": "穿刺行 1021019 物化且无任何 1021012 载体行（旧错挂回归护栏生效）",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "非轴模式：滑杆 -1 自动 / 手动覆盖改变穿刺次数与总伤；无任何 1021012 载体行（旧错挂回归护栏）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "检查 1021019 穿刺前台动作时间与伤害倍率来源",
+          "expected": "actionTime 为 1.5666s，damage 倍率直读 catalog 1021019 行",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "穿刺行动作时间按倍率表计入前台（1.5666s/次），伤害倍率取 1021019 的 damage 行"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "预算 400 点，失衡内占比设为 0.5",
+          "expected": "先保 40 档预算 200 点打 5 次，剩余 200 点打 6 次 30 档，总计 11 次，消耗 380 点",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "混合占比：先保 40 档预算，剩余全按 30 档"
+          }
+        }
+      ]
+    },
+    {
+      "id": "nekomata-core-phantom",
+      "sources": [
+        "/passive/level/1021514/desc/0:0"
+      ],
+      "dimension": "D2",
+      "certainty": "L2",
+      "trigger": "[闪避反击]或[快速支援]命中敌人",
+      "target": "猫又自身面板 dmgBonus",
+      "gate": "核心被动激活（Lv.7 满级数值 60%）",
+      "formula": "panel.dmgBonus += 60",
+      "field": "AgentPanelInput.panel.dmgBonus",
+      "countSource": "不适用（单层常驻，重复触发刷新持续时间）",
+      "duration": "单次 40 秒",
+      "cap": "上限 60%（单层不叠加）",
+      "assumptions": [
+        {
+          "premise": "实战中呼噜能量穿刺（闪避反击）施放间隔远小于 40 秒，持续时间几乎永续刷新，故按面板常驻 +60% 近似处理。",
+          "falsifier": "若实战中出现超长真空期（超过 40 秒未打闪反或快支），则增伤出现断档，常驻假设高估了真空期输出。"
+        }
+      ],
+      "decisionEvidence": "用户口供 2026-08-23 明确永续面板项处理；落点见 nekomata.ts applyNekoPanel；测试 nekomata.test.ts「猫步诡影 60% 全档永续...」。",
+      "implementation": {
+        "spec": "src/specs/agents/1021.json#/notes/8",
+        "consumer": "src/mechanics/agents/nekomata.ts#applyNekoPanel"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "C0 猫又进战面板计算",
+          "expected": "inCombat 面板 dmgBonus 包含 +60% 猫步诡影常驻增伤",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "猫步诡影 60% 全档永续；C1 无视物抗16 / C2 能量效率25+夜行暴伤20 / C4 暴击率14 / C6 暴伤再54+夜行60"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "对比 C0 与进阶命座下的猫步诡影基础项",
+          "expected": "猫步诡影 60% 增伤在各命座间保持基准稳定，不被重复叠加",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "猫步诡影 60% 全档永续；C1 无视物抗16 / C2 能量效率25+夜行暴伤20 / C4 暴击率14 / C6 暴伤再54+夜行60"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "跨影画阶段（C0 至 C6）读取面板增伤基底",
+          "expected": "所有档位均恒常享受 +60% 伤害加成",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "猫步诡影 60% 全档永续；C1 无视物抗16 / C2 能量效率25+夜行暴伤20 / C4 暴击率14 / C6 暴伤再54+夜行60"
+          }
+        }
+      ]
+    },
+    {
+      "id": "nekomata-meatball-raid",
+      "sources": [
+        "/passive/level/1021514/desc/0:5",
+        "/passive/level/1021514/desc/0:6"
+      ],
+      "dimension": "D1",
+      "certainty": "L2",
+      "trigger": "发动[闪避反击：绒爪穿刺]进入[肉球突袭]状态后自身攻击命中",
+      "target": "执行行 nekomata_chaoxiong_claw（[超凶爪印]每秒自动物理）",
+      "gate": "处于肉球突袭状态（实战穿刺频繁刷新持续时间 40s，视为全战斗覆盖）",
+      "formula": "clawHits = floor(effectiveBattleTime)；单次固定 30% 攻击力物理伤害，CD 1秒，不占前台动作时间（actionTime=0）",
+      "field": "SkillExecution.damageMultiplier = 30, moveId = \"nekomata_chaoxiong_claw\"",
+      "countSource": "有效战斗时间（effectiveBattleTime(cfg)）向下取整",
+      "duration": "单次触发 CD 1 秒，状态持续 40 秒刷新式",
+      "cap": "每 1 秒最多触发 1 次",
+      "assumptions": [
+        {
+          "premise": "肉球突袭状态通过穿刺循环保持 100% 覆盖，因此爪印按有效战斗时间每秒触发 1 次产出行。",
+          "falsifier": "若穿刺释放中断导致肉球突袭状态消失，则爪印总触发次数被高估。"
+        },
+        {
+          "premise": "爪印属于后台自动触发机制，动作时间 actionTime=0，不占前台时间占用。",
+          "falsifier": "若爪印在游戏内存在微小动作后摇或硬直占用前台，则前台时间预算需扣减。"
+        }
+      ],
+      "decisionEvidence": "用户口供 2026-08-23 明确规范肉球突袭与超凶爪印自动行口径；测试 nekomata.test.ts 验证其每秒产出一行、物理元素结算与 autoSplitByStun 易伤拆分。",
+      "implementation": {
+        "spec": "src/specs/agents/1021.json#/notes/8",
+        "consumer": "src/mechanics/agents/nekomata.ts#buildNekoExecutions"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "标准配装单猫又，战斗时长 180s",
+          "expected": "生成 nekomata_chaoxiong_claw 执行行，count > 150，倍率 30%，actionTime=0，物理属性",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "[超凶爪印]：每秒一行 30% 攻物理（后台不占前台），伤害池按物理元素结算"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "开启轴模式（useStunAxis=true）并配置失衡窗",
+          "expected": "超凶爪印自动拆分为失衡内与轴外两行（autoSplitByStun），失衡内行享受失衡易伤",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "轴模式：CD 自动行（autoSplitByStun）自动按失衡时间占比拆失衡内满易伤/轴外"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "有效战斗时间扣除无敌帧后的边界",
+          "expected": "爪印行 count 随 effectiveBattleTime 波动，无敌期间不结算爪印伤害",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "[超凶爪印]：每秒一行 30% 攻物理（后台不占前台），伤害池按物理元素结算"
+          }
+        }
+      ]
+    },
+    {
+      "id": "nekomata-catshow",
+      "sources": [
+        "/passive/level/1021514/desc/1:0",
+        "/passive/level/1021514/desc/1:1"
+      ],
+      "dimension": "D3",
+      "certainty": "L1",
+      "trigger": "额外能力条件满足（队伍有支援或同属性/阵营角色）且发动尾巴失踪术或施加强击",
+      "target": "招式执行行 {1021008 强特, 1021010 闪反, 1021019 绒爪穿刺} 的 dmgBonus",
+      "gate": "additionalAbilityActive === 1（队伍门控满足）",
+      "formula": "exec.dmgBonus += 70（35% × 2层，实战尾巴失踪术高频释放永续叠满）",
+      "field": "SkillExecution.dmgBonus（限定招式集合）",
+      "countSource": "不适用（2层满层永续）",
+      "duration": "单次 30 秒，重复触发刷新持续时间",
+      "cap": "最多叠加 2 层（+70%）",
+      "assumptions": [
+        {
+          "premise": "实战中尾巴失踪术高频触发，30秒持续时间内稳保 2 层满层永续。",
+          "falsifier": "若战斗中无法施加强击且未使用尾巴失踪术，则增伤无法达到 2 层满层。"
+        }
+      ],
+      "decisionEvidence": "用户口供 2026-08-23 明确规范猫步秀增伤口径；落点见 nekomata.ts patchNekoExecutions；测试 nekomata.test.ts 验证队友门控激活与限定招式加成。",
+      "implementation": {
+        "spec": "src/specs/agents/1021.json#/additionalAbility",
+        "consumer": "src/mechanics/agents/nekomata.ts#patchNekoExecutions"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "配队加入支援角色（如露西 1151），额外能力门控激活",
+          "expected": "1021019 穿刺执行行获得 +70% dmgBonus 加成",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "猫步秀 +70%（AA 门控）：支援队友在队时限定了招式行增伤，不在队则无"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "配队加入非支援且非同属性同阵营角色（如青衣 1251），额外能力门控未激活",
+          "expected": "1021019 穿刺执行行 dmgBonus 不含 +70% 猫步秀增益",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "猫步秀 +70%（AA 门控）：支援队友在队时限定了招式行增伤，不在队则无"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "检查受影响的 moveId 集合",
+          "expected": "严格限定在 {1021008, 1021010, 1021019}，平A与大招不享受猫步秀加成",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "猫步秀 +70%（AA 门控）：支援队友在队时限定了招式行增伤，不在队则无"
+          }
+        }
+      ]
+    },
+    {
+      "id": "nekomata-cinemas",
+      "sources": [
+        "/talent/1/desc:0",
+        "/talent/1/desc:1",
+        "/talent/2/desc:0",
+        "/talent/4/desc:0",
+        "/talent/6/desc:0",
+        "/talent/6/desc:1",
+        "/potential_detail/102101/desc:0",
+        "/potential_detail/102102/desc:0",
+        "/potential_detail/102103/desc:0",
+        "/potential_detail/102104/desc:0",
+        "/potential_detail/102105/desc:0"
+      ],
+      "dimension": "D2",
+      "certainty": "L2",
+      "trigger": "解锁对应影画/潜能等级（C1/C2/C4/C6 及潜能夜行习性）",
+      "target": "猫又自身进战面板（enemyPhysicalResReduction, energyGainEfficiency, critRateBonus, critDmgBonus）",
+      "gate": "cinemaLevel 门控（1~6）与设置项滑块",
+      "formula": "C1: enemyPhysicalResReduction += 16；C2: energyGainEfficiency += 25，critDmgBonus += 20~60（按命座档位）；C4: critRateBonus += 14 * coverage；C6: critDmgBonus += 54",
+      "field": "AgentPanelInput.panel 各进战属性字段",
+      "countSource": "cinemaLevel 与 settings[\"nekomata.c4CritRateCoverage\"]",
+      "duration": "整场战斗常驻生效",
+      "cap": "按各影画独立封顶（C4 封顶 14%，C6 封顶 54%）",
+      "assumptions": [
+        {
+          "premise": "C1 猎鸟技巧：肉球突袭全程覆盖且失衡内全视作背后，故背后 16% 无视抗性按全覆盖常驻生效。",
+          "falsifier": "若实战中怪物正面且非失衡状态下的攻击未被肉球突袭覆盖，则 16% 无视抗性覆盖率被高估。"
+        },
+        {
+          "premise": "C2 单敌前场能量效率 +25% 与 C6 满层暴伤 54% 在 Boss 站桩环境下按永续满层计算。",
+          "falsifier": "若场上存在群怪导致 C2 失效，或连携/终结间隔过长导致 C6 断层，则增益被高估。"
+        }
+      ],
+      "decisionEvidence": "用户口供 2026-08-23 明确规范影画与潜能常驻口径，C4 提供独立覆盖率滑块；落点见 nekomata.ts applyNekoPanel；测试 nekomata.test.ts 覆盖全命座差分与 C4 滑块生效断言。",
+      "implementation": {
+        "spec": "src/specs/agents/1021.json#/notes/5",
+        "consumer": "src/mechanics/agents/nekomata.ts#applyNekoPanel"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "C1/C2/C4/C6 逐步解锁",
+          "expected": "面板属性阶梯提升：C1物抗-16、C2回能+25暴伤+20、C4暴击+14、C6暴伤再+54且夜行升至60",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "猫步诡影 60% 全档永续；C1 无视物抗16 / C2 能量效率25+夜行暴伤20 / C4 暴击率14 / C6 暴伤再54+夜行60"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "C4 覆盖率设为 0（nekomata.c4CritRateCoverage = 0）",
+          "expected": "C4 暴击率增益完全归零（差分精确为 14%）",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "nekomata.c4CritRateCoverage → 影画4暴击率差分（applyNekoPanel settings 通道，+14×覆盖率）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C4 覆盖率滑块从 0 调至 1",
+          "expected": "面板暴击率增加 14%，且调控响应单调递增",
+          "test": {
+            "file": "src/mechanics/__tests__/nekomata.test.ts",
+            "title": "nekomata.c4CritRateCoverage → 影画4暴击率差分（applyNekoPanel settings 通道，+14×覆盖率）"
+          }
+        }
+      ]
+    }
+  ]
+}

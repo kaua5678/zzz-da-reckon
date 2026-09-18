@@ -243,10 +243,10 @@
       "name": "[秽盾]",
       "title": "秽盾",
       "skill": "敌人情报",
-      "state": "deferred",
-      "registeredAt": "src/core/effectiveTime.ts:2",
+      "state": "modeled",
       "since": "2026-09-13",
-      "evidence": "秽盾本体（高额防御/减伤/抗打断 + 不失衡 + 攻击削减 + 破盾净除伤害与回能）未建模；仅有 simplified 代理 shieldCount→破盾次数×60 能量（core/resource/helpers.ts:274）。口径已登记：invincibleTime 刻意不含秽盾"
+      "evidence": "按用户 2026-09-18 裁决，秽盾建模为破盾回能/闪能（core/resource/helpers.ts:246-247 shieldBreakGift/energyShieldBreakGift 通道）；其余削盾/防御减伤乘区等按用户口径不做",
+      "anchor": "src/core/resource/helpers.ts#calcEnergySource"
     },
     "2000003": {
       "name": "[控制技]",

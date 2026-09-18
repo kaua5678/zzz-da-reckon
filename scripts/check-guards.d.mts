@@ -60,6 +60,23 @@ export declare function auditDocTable(root?: string): {
 } | null
 
 // 判据 10：catalog level60 ↔ raw 源对账（防漏加满级突破加成，坑 40）
+
+export interface MoveElementViolation {
+  agentId: string
+  agentName: string
+  moveId: string
+  moveName: string
+  got: string | undefined
+  want: string
+  source: string
+  rowsChanged: boolean
+}
+
+export declare function auditMoveElementsAgainstRaw(root?: string): {
+  scannedMoves: number
+  violations: MoveElementViolation[]
+} | null
+
 export declare function auditCatalogLevel60(root?: string): {
   compared: number
   violations: { id: string; name: string; field: string; got: unknown; want: unknown }[]

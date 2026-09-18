@@ -1438,8 +1438,6 @@ export function createRunCalcRound(deps: {
             c.decibelSource?.total ?? 0,
           )]),
         ),
-        // 轨的失衡次数收敛线程：与本轮 stunCount 相等才启用轨（防早期轮窗口失真螺旋）
-        trackStunCount: sp1.pool?.stunCount ?? 0,
         // 上一轮失衡池整数次数：轴内块数落地（雨果决算 坑36）与池同源的滞后注入
         prevPoolStunCount: sp1.pool?.stunCount ?? 0,
       },

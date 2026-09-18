@@ -1,0 +1,3949 @@
+{
+  "version": 1,
+  "packet": {
+    "version": 1,
+    "agentId": "1031",
+    "source": {
+      "raw": "data/raw/nanoka_missing/full/1031.json",
+      "nouns": "data/raw/nanoka_missing/noun_3.2.3.json"
+    },
+    "passiveLevel": 7,
+    "hashes": {
+      "raw": "7cda15009d22fb2f82688e2313fc1ee25f26b591b934398cd308b092bc05fd8f",
+      "nouns": "b515eb2654baf4815768a1997f1f4f12583cf702d0784ac96a6ff2abad8f1e56",
+      "moves": "275b66d8582778e718441346e98eb41fcb7d8ab65cff278f7a9197906054aa3f"
+    },
+    "moves": [
+      {
+        "id": "1031",
+        "agentId": "1031",
+        "name": {
+          "zhCN": "妮可技能倍率",
+          "en": "Nicole Skill Multipliers"
+        },
+        "categories": [
+          {
+            "id": "basic",
+            "name": {
+              "zhCN": "普通攻击",
+              "en": "Basic Attack"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1031001",
+                "name": {
+                  "zhCN": "普通攻击：狡兔连打 #1",
+                  "en": "Basic Attack: Cunning Combo #1"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "timeType": "normal",
+                "actionTime": 0.194,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      78.5
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      29.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0.7
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      5.3625
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      19.43
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031002",
+                "name": {
+                  "zhCN": "普通攻击：狡兔连打 #2",
+                  "en": "Basic Attack: Cunning Combo #2"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "timeType": "normal",
+                "actionTime": 0.208,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      54.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      31.9
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0.7
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      5.3625
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      20.82
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031004",
+                "name": {
+                  "zhCN": "普通攻击：狡兔连打 #3",
+                  "en": "Basic Attack: Cunning Combo #3"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "timeType": "normal",
+                "actionTime": 0.289,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      71.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      44.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.041
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      7.975
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      28.92
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031005",
+                "name": {
+                  "zhCN": "普通攻击：狡兔连打 #4",
+                  "en": "Basic Attack: Cunning Combo #4"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "timeType": "normal",
+                "actionTime": 0.278,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      72.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      42.1
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.041
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      7.975
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      27.75
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031007",
+                "name": {
+                  "zhCN": "普通攻击：狡兔连打 #5",
+                  "en": "Basic Attack: Cunning Combo #5"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "timeType": "normal",
+                "actionTime": 1.043,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      248.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      157.1
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      3.754
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      28.6825
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      104.27
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031008",
+                "name": {
+                  "zhCN": "普通攻击：狡兔连打 #6",
+                  "en": "Basic Attack: Cunning Combo #6"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "timeType": "normal",
+                "actionTime": 1.041,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      360.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      209.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      3.754
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      28.6825
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      104.06
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031003",
+                "name": {
+                  "zhCN": "普通攻击：为所欲为 #2",
+                  "en": "Basic Attack: Do As I Please #2"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "timeType": "normal",
+                "actionTime": 0.208,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      98.9
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      31.9
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0.7
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      5.3625
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      20.82
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031006",
+                "name": {
+                  "zhCN": "普通攻击：为所欲为 #4",
+                  "en": "Basic Attack: Do As I Please #4"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "timeType": "normal",
+                "actionTime": 0.278,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      131.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      42.1
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.041
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      7.975
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      27.75
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031009",
+                "name": {
+                  "zhCN": "普通攻击：为所欲为 #6",
+                  "en": "Basic Attack: Do As I Please #6"
+                },
+                "damageElement": "physical",
+                "skillType": "basic",
+                "timeType": "normal",
+                "actionTime": 1.041,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      659
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      209.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      3.754
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      28.6825
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      104.06
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "special",
+            "name": {
+              "zhCN": "特殊技",
+              "en": "Special Attack"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1031101",
+                "name": {
+                  "zhCN": "特殊技：糖衣炮弹 #1",
+                  "en": "Special Attack: Sugarcoated Bullet #1"
+                },
+                "damageElement": "ether",
+                "skillType": "special",
+                "timeType": "normal",
+                "actionTime": 0.263,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      52.7
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      38.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      7.2325
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      26.24
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      26.25
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031102",
+                "name": {
+                  "zhCN": "特殊技：糖衣炮弹 #2",
+                  "en": "Special Attack: Sugarcoated Bullet #2"
+                },
+                "damageElement": "ether",
+                "skillType": "special",
+                "timeType": "normal",
+                "actionTime": 0.263,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      52.7
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      38.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      7.2325
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      26.24
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      26.25
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031103",
+                "name": {
+                  "zhCN": "强化特殊技：夹心糖衣炮弹 #1",
+                  "en": "EX Special Attack: Stuffed Sugarcoated Bullet #1"
+                },
+                "damageElement": "ether",
+                "skillType": "special",
+                "timeType": "normal",
+                "actionTime": 0.742,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      430.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      270
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      68.805
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      197.35
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      74.18
+                    ]
+                  }
+                ],
+                "energyCost": {
+                  "Charged Attack Energy Cost": "20 Energy/sec",
+                  "Bombard Energy Cost": "60"
+                }
+              },
+              {
+                "id": "1031104",
+                "name": {
+                  "zhCN": "强化特殊技：夹心糖衣炮弹 #2",
+                  "en": "EX Special Attack: Stuffed Sugarcoated Bullet #2"
+                },
+                "damageElement": "ether",
+                "skillType": "special",
+                "timeType": "normal",
+                "actionTime": 0.371,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      215.3
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      135
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      34.4025
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      98.67
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      37.09
+                    ]
+                  }
+                ],
+                "energyCost": {
+                  "Charged Attack Energy Cost": "20 Energy/sec",
+                  "Bombard Energy Cost": "60"
+                }
+              },
+              {
+                "id": "1031105",
+                "name": {
+                  "zhCN": "强化特殊技：夹心糖衣炮弹 #3",
+                  "en": "EX Special Attack: Stuffed Sugarcoated Bullet #3"
+                },
+                "damageElement": "ether",
+                "skillType": "special",
+                "timeType": "normal",
+                "actionTime": 0.371,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      215.3
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      135
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      34.4025
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      98.67
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      37.09
+                    ]
+                  }
+                ],
+                "energyCost": {
+                  "Charged Attack Energy Cost": "20 Energy/sec",
+                  "Bombard Energy Cost": "60"
+                }
+              },
+              {
+                "id": "1031106",
+                "name": {
+                  "zhCN": "强化特殊技：夹心糖衣炮弹 #4",
+                  "en": "EX Special Attack: Stuffed Sugarcoated Bullet #4"
+                },
+                "damageElement": "ether",
+                "skillType": "special",
+                "timeType": "normal",
+                "actionTime": 1.484,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      774.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      486.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      137.61
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      394.71
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      148.35
+                    ]
+                  }
+                ],
+                "energyCost": {
+                  "Charged Attack Energy Cost": "20 Energy/sec",
+                  "Bombard Energy Cost": "60"
+                }
+              }
+            ]
+          },
+          {
+            "id": "dodge",
+            "name": {
+              "zhCN": "闪避/冲刺",
+              "en": "Dodge/Dash"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1031201",
+                "name": {
+                  "zhCN": "冲刺攻击：惊喜开箱 #1",
+                  "en": "Dash Attack: Jack in the Box #1"
+                },
+                "damageElement": "physical",
+                "skillType": "dodge",
+                "timeType": "normal",
+                "actionTime": 0.289,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      83
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      44.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.02
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      7.81
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      28.91
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031202",
+                "name": {
+                  "zhCN": "冲刺攻击：惊喜开箱 #2",
+                  "en": "Dash Attack: Jack in the Box #2"
+                },
+                "damageElement": "physical",
+                "skillType": "dodge",
+                "timeType": "normal",
+                "actionTime": 0.451,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      235
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      68.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.02
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      7.81
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      45.09
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031204",
+                "name": {
+                  "zhCN": "冲刺攻击：惊喜开箱 #3",
+                  "en": "Dash Attack: Jack in the Box #3"
+                },
+                "damageElement": "physical",
+                "skillType": "dodge",
+                "timeType": "normal",
+                "actionTime": 0.3,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      120.5
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      90.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      2.159
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      8.25
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      29.99
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031203",
+                "name": {
+                  "zhCN": "冲刺攻击：为所欲为 #2",
+                  "en": "Dash Attack: Do As I Please #2"
+                },
+                "damageElement": "ether",
+                "skillType": "dodge",
+                "timeType": "normal",
+                "actionTime": 0.451,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      235
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      68.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.02
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      7.81
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      121.29
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      45.09
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031205",
+                "name": {
+                  "zhCN": "闪避反击：牵制炮击 #1",
+                  "en": "Dodge Counter: Diverted Bombard #1"
+                },
+                "damageElement": "ether",
+                "skillType": "dodge",
+                "timeType": "dodgeCounter",
+                "actionTime": 0.3164,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      182.5
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      123.5
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      2.279
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      8.7175
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      31.64
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      106.65
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031206",
+                "name": {
+                  "zhCN": "闪避反击：牵制炮击 #2",
+                  "en": "Dodge Counter: Diverted Bombard #2"
+                },
+                "damageElement": "ether",
+                "skillType": "dodge",
+                "timeType": "dodgeCounter",
+                "actionTime": 0.3164,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      182.5
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      123.5
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.919
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      8.7175
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      31.64
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      106.65
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "chain",
+            "name": {
+              "zhCN": "连携/终结",
+              "en": "Chain/Ultimate"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1031301",
+                "name": {
+                  "zhCN": "连携技：高价以太爆弹 #1",
+                  "en": "Chain Attack: Ether Shellacking #1"
+                },
+                "damageElement": "ether",
+                "skillType": "chain",
+                "timeType": "normal",
+                "actionTime": 0.25,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      210.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      38.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      43.45
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      64.89
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      25
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031302",
+                "name": {
+                  "zhCN": "连携技：高价以太爆弹 #2",
+                  "en": "Chain Attack: Ether Shellacking #2"
+                },
+                "damageElement": "ether",
+                "skillType": "chain",
+                "timeType": "normal",
+                "actionTime": 0.25,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      210.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      38.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      43.45
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      64.89
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      25
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031303",
+                "name": {
+                  "zhCN": "连携技：高价以太爆弹 #3",
+                  "en": "Chain Attack: Ether Shellacking #3"
+                },
+                "damageElement": "ether",
+                "skillType": "chain",
+                "timeType": "normal",
+                "actionTime": 0.75,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      566.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      101.6
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      130.35
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      194.69
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      75
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031304",
+                "name": {
+                  "zhCN": "终结技：特制以太榴弹 #1",
+                  "en": "Ultimate: Ether Grenade #1"
+                },
+                "damageElement": "ether",
+                "skillType": "chain",
+                "timeType": "ultimate",
+                "actionTime": 0.36,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1293.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      54.7
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      35.99
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      236
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031305",
+                "name": {
+                  "zhCN": "终结技：特制以太榴弹 #2",
+                  "en": "Ultimate: Ether Grenade #2"
+                },
+                "damageElement": "ether",
+                "skillType": "chain",
+                "timeType": "ultimate",
+                "actionTime": 0.54,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1746.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      73.9
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      53.99
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      354
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "assist",
+            "name": {
+              "zhCN": "支援",
+              "en": "Assist"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1031401",
+                "name": {
+                  "zhCN": "快速支援：救急炮击 #1",
+                  "en": "Quick Assist: Emergency Bombard #1"
+                },
+                "damageElement": "ether",
+                "skillType": "assist",
+                "timeType": "normal",
+                "actionTime": 0.158,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      63.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      48.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.14
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      8.7175
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      31.64
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      15.83
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031402",
+                "name": {
+                  "zhCN": "快速支援：救急炮击 #2",
+                  "en": "Quick Assist: Emergency Bombard #2"
+                },
+                "damageElement": "ether",
+                "skillType": "assist",
+                "timeType": "normal",
+                "actionTime": 0.158,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      63.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      48.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.14
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      8.7175
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      31.64
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      15.83
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031403",
+                "name": {
+                  "zhCN": "招架支援：狡兔出手！ #1",
+                  "en": "Defensive Assist: The Hare Strikes Back! #1"
+                },
+                "damageElement": "ether",
+                "skillType": "assist",
+                "timeType": "parry",
+                "actionTime": 1.166,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      0
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      371
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      366.64
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031404",
+                "name": {
+                  "zhCN": "招架支援：狡兔出手！ #2",
+                  "en": "Defensive Assist: The Hare Strikes Back! #2"
+                },
+                "damageElement": "ether",
+                "skillType": "assist",
+                "timeType": "parry",
+                "actionTime": 1.666,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      0
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      467.9
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      416.64
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031405",
+                "name": {
+                  "zhCN": "招架支援：狡兔出手！ #3",
+                  "en": "Defensive Assist: The Hare Strikes Back! #3"
+                },
+                "damageElement": "ether",
+                "skillType": "assist",
+                "timeType": "normal",
+                "actionTime": 1.166,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      0
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      227.6
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      116.64
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1031501",
+                "name": {
+                  "zhCN": "支援突击：趁虚而入",
+                  "en": "Assist Follow-Up: Window of Opportunity"
+                },
+                "damageElement": "ether",
+                "skillType": "assist",
+                "timeType": "normal",
+                "actionTime": 1.9,
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      754.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      496.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      116.5725
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      353.67
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      189.97
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "units": [
+      {
+        "id": "/skill/assist/description/0/desc:0",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：救急炮击",
+        "category": "assist",
+        "quote": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n向后闪避，并对前方敌人发动远程打击，造成以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:1",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：救急炮击",
+        "category": "assist",
+        "quote": "向后闪避，并对前方敌人发动远程打击，造成以太伤害；",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n向后闪避，并对前方敌人发动远程打击，造成以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:2",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：救急炮击",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n向后闪避，并对前方敌人发动远程打击，造成以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:3",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：救急炮击",
+        "category": "assist",
+        "quote": "招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n向后闪避，并对前方敌人发动远程打击，造成以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:0",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：狡兔出手！",
+        "category": "assist",
+        "quote": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:1",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：狡兔出手！",
+        "category": "assist",
+        "quote": "招架敌人的攻击，累积大量失衡值；",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:2",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：狡兔出手！",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:0",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：趁虚而入",
+        "category": "assist",
+        "quote": "发动[招架支援]后，点按 [普攻键] 发动：",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n向前方突进后对敌人发动炮击，造成以太伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:1",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：趁虚而入",
+        "category": "assist",
+        "quote": "向前方突进后对敌人发动炮击，造成以太伤害；",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n向前方突进后对敌人发动炮击，造成以太伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:2",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：趁虚而入",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n向前方突进后对敌人发动炮击，造成以太伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:0",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：狡兔连打",
+        "category": "basic",
+        "quote": "点按 [普攻键] 发动：",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多三段的打击，造成物理伤害。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:1",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：狡兔连打",
+        "category": "basic",
+        "quote": "向前方进行至多三段的打击，造成物理伤害。",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多三段的打击，造成物理伤害。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:0",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：为所欲为",
+        "category": "basic",
+        "quote": "发动[特殊技]、[强化特殊技]、[连携技]、[终结技]等招式后，能够上弹并强化[普通攻击]与[冲刺攻击]，提升子弹的威力。",
+        "context": "发动[特殊技]、[强化特殊技]、[连携技]、[终结技]等招式后，能够上弹并强化[普通攻击]与[冲刺攻击]，提升子弹的威力。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:0",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：高价以太爆弹",
+        "category": "chain",
+        "quote": "触发[连携技]时，选择对应角色发动：",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方小范围敌人发动强力远程打击，并在目标处生成能量场，持续牵引周围敌人，造成以太伤害；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:1",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：高价以太爆弹",
+        "category": "chain",
+        "quote": "对前方小范围敌人发动强力远程打击，并在目标处生成能量场，持续牵引周围敌人，造成以太伤害；",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方小范围敌人发动强力远程打击，并在目标处生成能量场，持续牵引周围敌人，造成以太伤害；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:2",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：高价以太爆弹",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方小范围敌人发动强力远程打击，并在目标处生成能量场，持续牵引周围敌人，造成以太伤害；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:3",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：高价以太爆弹",
+        "category": "chain",
+        "quote": "招式命中敌人时，将触发[快速支援]；",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方小范围敌人发动强力远程打击，并在目标处生成能量场，持续牵引周围敌人，造成以太伤害；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:4",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：高价以太爆弹",
+        "category": "chain",
+        "quote": "招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方小范围敌人发动强力远程打击，并在目标处生成能量场，持续牵引周围敌人，造成以太伤害；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:0",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：特制以太榴弹",
+        "category": "chain",
+        "quote": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方小范围敌人发动强力远程打击，并在目标处生成能量场，持续牵引周围敌人，造成以太伤害；\n招式发动时，队伍中其他角色回复10点能量，下一名换入前场的角色额外回复20点能量；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:1",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：特制以太榴弹",
+        "category": "chain",
+        "quote": "对前方小范围敌人发动强力远程打击，并在目标处生成能量场，持续牵引周围敌人，造成以太伤害；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方小范围敌人发动强力远程打击，并在目标处生成能量场，持续牵引周围敌人，造成以太伤害；\n招式发动时，队伍中其他角色回复10点能量，下一名换入前场的角色额外回复20点能量；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:2",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：特制以太榴弹",
+        "category": "chain",
+        "quote": "招式发动时，队伍中其他角色回复10点能量，下一名换入前场的角色额外回复20点能量；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方小范围敌人发动强力远程打击，并在目标处生成能量场，持续牵引周围敌人，造成以太伤害；\n招式发动时，队伍中其他角色回复10点能量，下一名换入前场的角色额外回复20点能量；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:3",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：特制以太榴弹",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方小范围敌人发动强力远程打击，并在目标处生成能量场，持续牵引周围敌人，造成以太伤害；\n招式发动时，队伍中其他角色回复10点能量，下一名换入前场的角色额外回复20点能量；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:4",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：特制以太榴弹",
+        "category": "chain",
+        "quote": "招式命中敌人时，将触发[快速支援]；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方小范围敌人发动强力远程打击，并在目标处生成能量场，持续牵引周围敌人，造成以太伤害；\n招式发动时，队伍中其他角色回复10点能量，下一名换入前场的角色额外回复20点能量；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:5",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：特制以太榴弹",
+        "category": "chain",
+        "quote": "招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方小范围敌人发动强力远程打击，并在目标处生成能量场，持续牵引周围敌人，造成以太伤害；\n招式发动时，队伍中其他角色回复10点能量，下一名换入前场的角色额外回复20点能量；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:0",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：脱兔",
+        "category": "dodge",
+        "quote": "点按 [Icon_Evade] 发动：",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果；\n拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避时，长按 [Icon_Evade] ，可以在闪避中途上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:1",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：脱兔",
+        "category": "dodge",
+        "quote": "快速的冲刺闪避；",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果；\n拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避时，长按 [Icon_Evade] ，可以在闪避中途上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:2",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：脱兔",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果；\n拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避时，长按 [Icon_Evade] ，可以在闪避中途上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:3",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：脱兔",
+        "category": "dodge",
+        "quote": "拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避时，长按 [Icon_Evade] ，可以在闪避中途上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果；\n拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避时，长按 [Icon_Evade] ，可以在闪避中途上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:0",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：惊喜开箱",
+        "category": "dodge",
+        "quote": "拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避后，点按 [普攻键] 发动：",
+        "context": "拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避后，点按 [普攻键] 发动：\n向对应方向冲刺，并对身周敌人进行打击，造成物理伤害；\n未拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避后，点按 [普攻键] 发动：\n向后躲避，并对前方敌人发动远程打击，造成物理伤害；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:1",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：惊喜开箱",
+        "category": "dodge",
+        "quote": "向对应方向冲刺，并对身周敌人进行打击，造成物理伤害；",
+        "context": "拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避后，点按 [普攻键] 发动：\n向对应方向冲刺，并对身周敌人进行打击，造成物理伤害；\n未拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避后，点按 [普攻键] 发动：\n向后躲避，并对前方敌人发动远程打击，造成物理伤害；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:2",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：惊喜开箱",
+        "category": "dodge",
+        "quote": "未拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避后，点按 [普攻键] 发动：",
+        "context": "拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避后，点按 [普攻键] 发动：\n向对应方向冲刺，并对身周敌人进行打击，造成物理伤害；\n未拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避后，点按 [普攻键] 发动：\n向后躲避，并对前方敌人发动远程打击，造成物理伤害；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:3",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：惊喜开箱",
+        "category": "dodge",
+        "quote": "向后躲避，并对前方敌人发动远程打击，造成物理伤害；",
+        "context": "拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避后，点按 [普攻键] 发动：\n向对应方向冲刺，并对身周敌人进行打击，造成物理伤害；\n未拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避后，点按 [普攻键] 发动：\n向后躲避，并对前方敌人发动远程打击，造成物理伤害；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:4",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：惊喜开箱",
+        "category": "dodge",
+        "quote": "招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。",
+        "context": "拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避后，点按 [普攻键] 发动：\n向对应方向冲刺，并对身周敌人进行打击，造成物理伤害；\n未拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}发动闪避后，点按 [普攻键] 发动：\n向后躲避，并对前方敌人发动远程打击，造成物理伤害；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:0",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：牵制炮击",
+        "category": "dodge",
+        "quote": "触发[极限闪避]后，点按 [普攻键] 发动：",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n向后闪避，并对前方敌人发动远程打击，造成以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:1",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：牵制炮击",
+        "category": "dodge",
+        "quote": "向后闪避，并对前方敌人发动远程打击，造成以太伤害；",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n向后闪避，并对前方敌人发动远程打击，造成以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:2",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：牵制炮击",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n向后闪避，并对前方敌人发动远程打击，造成以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:3",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：牵制炮击",
+        "category": "dodge",
+        "quote": "招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n向后闪避，并对前方敌人发动远程打击，造成以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:0",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：糖衣炮弹",
+        "category": "special",
+        "quote": "点按 [特技键] 发动：",
+        "context": "点按 [特技键] 发动：\n对前方敌人发动远程打击，造成以太伤害；\n招式发动期间抗打断等级提升；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:1",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：糖衣炮弹",
+        "category": "special",
+        "quote": "对前方敌人发动远程打击，造成以太伤害；",
+        "context": "点按 [特技键] 发动：\n对前方敌人发动远程打击，造成以太伤害；\n招式发动期间抗打断等级提升；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:2",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：糖衣炮弹",
+        "category": "special",
+        "quote": "招式发动期间抗打断等级提升；",
+        "context": "点按 [特技键] 发动：\n对前方敌人发动远程打击，造成以太伤害；\n招式发动期间抗打断等级提升；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:3",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：糖衣炮弹",
+        "category": "special",
+        "quote": "招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。",
+        "context": "点按 [特技键] 发动：\n对前方敌人发动远程打击，造成以太伤害；\n招式发动期间抗打断等级提升；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:0",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：夹心糖衣炮弹",
+        "category": "special",
+        "quote": "能量足够时，点按 [Icon_SpecialReady] 发动：",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n对前方敌人发动强力远程打击，并在目标处生成能量场，持续牵引敌人，造成以太伤害；\n长按 [Icon_SpecialReady] 可以进行蓄力，在炮口生成小型能量场，持续消耗能量并对近处的敌人造成额外伤害；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:1",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：夹心糖衣炮弹",
+        "category": "special",
+        "quote": "对前方敌人发动强力远程打击，并在目标处生成能量场，持续牵引敌人，造成以太伤害；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n对前方敌人发动强力远程打击，并在目标处生成能量场，持续牵引敌人，造成以太伤害；\n长按 [Icon_SpecialReady] 可以进行蓄力，在炮口生成小型能量场，持续消耗能量并对近处的敌人造成额外伤害；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:2",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：夹心糖衣炮弹",
+        "category": "special",
+        "quote": "长按 [Icon_SpecialReady] 可以进行蓄力，在炮口生成小型能量场，持续消耗能量并对近处的敌人造成额外伤害；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n对前方敌人发动强力远程打击，并在目标处生成能量场，持续牵引敌人，造成以太伤害；\n长按 [Icon_SpecialReady] 可以进行蓄力，在炮口生成小型能量场，持续消耗能量并对近处的敌人造成额外伤害；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:3",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：夹心糖衣炮弹",
+        "category": "special",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n对前方敌人发动强力远程打击，并在目标处生成能量场，持续牵引敌人，造成以太伤害；\n长按 [Icon_SpecialReady] 可以进行蓄力，在炮口生成小型能量场，持续消耗能量并对近处的敌人造成额外伤害；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:4",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：夹心糖衣炮弹",
+        "category": "special",
+        "quote": "招式命中敌人时，将触发[快速支援]；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n对前方敌人发动强力远程打击，并在目标处生成能量场，持续牵引敌人，造成以太伤害；\n长按 [Icon_SpecialReady] 可以进行蓄力，在炮口生成小型能量场，持续消耗能量并对近处的敌人造成额外伤害；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:5",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：夹心糖衣炮弹",
+        "category": "special",
+        "quote": "招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n对前方敌人发动强力远程打击，并在目标处生成能量场，持续牵引敌人，造成以太伤害；\n长按 [Icon_SpecialReady] 可以进行蓄力，在炮口生成小型能量场，持续消耗能量并对近处的敌人造成额外伤害；\n招式发动期间拥有无敌效果；\n招式命中敌人时，将触发[快速支援]；\n招式发动后自动上弹并强化[普通攻击]与[冲刺攻击]，最多触发8次。"
+      },
+      {
+        "id": "/passive/level/1031507/desc/0:0",
+        "pointer": "/passive/level/1031507/desc/0",
+        "title": "核心被动：机关箱",
+        "category": "passive",
+        "quote": "妮可在[特殊技]、[强化特殊技]、[连携技]、[终结技]等招式中，上弹并强化[普通攻击]与[冲刺攻击]；",
+        "context": "妮可在[特殊技]、[强化特殊技]、[连携技]、[终结技]等招式中，上弹并强化[普通攻击]与[冲刺攻击]；强化子弹或能量场命中敌人时，目标的防御力降低40%，持续3.5秒。"
+      },
+      {
+        "id": "/passive/level/1031507/desc/0:1",
+        "pointer": "/passive/level/1031507/desc/0",
+        "title": "核心被动：机关箱",
+        "category": "passive",
+        "quote": "强化子弹或能量场命中敌人时，目标的防御力降低40%，持续3.5秒。",
+        "context": "妮可在[特殊技]、[强化特殊技]、[连携技]、[终结技]等招式中，上弹并强化[普通攻击]与[冲刺攻击]；强化子弹或能量场命中敌人时，目标的防御力降低40%，持续3.5秒。"
+      },
+      {
+        "id": "/passive/level/1031507/desc/1:0",
+        "pointer": "/passive/level/1031507/desc/1",
+        "title": "额外能力：狡兔三窟",
+        "category": "passive",
+        "quote": "队伍中存在与自身属性或阵营相同的角色时触发：",
+        "context": "队伍中存在与自身属性或阵营相同的角色时触发：\n妮可通过[核心被动：机关箱]对敌人施加减益效果时，所有单位对目标造成的以太伤害额外提升25%，持续3.5秒。"
+      },
+      {
+        "id": "/passive/level/1031507/desc/1:1",
+        "pointer": "/passive/level/1031507/desc/1",
+        "title": "额外能力：狡兔三窟",
+        "category": "passive",
+        "quote": "妮可通过[核心被动：机关箱]对敌人施加减益效果时，所有单位对目标造成的以太伤害额外提升25%，持续3.5秒。",
+        "context": "队伍中存在与自身属性或阵营相同的角色时触发：\n妮可通过[核心被动：机关箱]对敌人施加减益效果时，所有单位对目标造成的以太伤害额外提升25%，持续3.5秒。"
+      },
+      {
+        "id": "/talent/1/desc:0",
+        "pointer": "/talent/1/desc",
+        "title": "增压强化弹",
+        "category": "talent",
+        "quote": "[强化特殊技]造成的伤害和累积的属性异常积蓄值提升16%；",
+        "context": "[强化特殊技]造成的伤害和累积的属性异常积蓄值提升16%；发动[强化特殊技]时，每多蓄力0.1秒，在目标处生成的能量场持续时间提升0.15秒。"
+      },
+      {
+        "id": "/talent/1/desc:1",
+        "pointer": "/talent/1/desc",
+        "title": "增压强化弹",
+        "category": "talent",
+        "quote": "发动[强化特殊技]时，每多蓄力0.1秒，在目标处生成的能量场持续时间提升0.15秒。",
+        "context": "[强化特殊技]造成的伤害和累积的属性异常积蓄值提升16%；发动[强化特殊技]时，每多蓄力0.1秒，在目标处生成的能量场持续时间提升0.15秒。"
+      },
+      {
+        "id": "/talent/2/desc:0",
+        "pointer": "/talent/2/desc",
+        "title": "聚能装置",
+        "category": "talent",
+        "quote": "触发[核心被动：机关箱]的减益效果时，妮可回复5点能量，15秒内最多触发一次。",
+        "context": "触发[核心被动：机关箱]的减益效果时，妮可回复5点能量，15秒内最多触发一次。"
+      },
+      {
+        "id": "/talent/3/desc:0",
+        "pointer": "/talent/3/desc",
+        "title": "狡兔智慧",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/4/desc:0",
+        "pointer": "/talent/4/desc",
+        "title": "领域扩增",
+        "category": "talent",
+        "quote": "妮可发动[强化特殊技]、[连携技]、[终结技]时，在目标处生成的能量场攻击范围提升，直径增加3米。",
+        "context": "妮可发动[强化特殊技]、[连携技]、[终结技]时，在目标处生成的能量场攻击范围提升，直径增加3米。"
+      },
+      {
+        "id": "/talent/5/desc:0",
+        "pointer": "/talent/5/desc",
+        "title": "业界红人",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/6/desc:0",
+        "pointer": "/talent/6/desc",
+        "title": "侵蚀能量场",
+        "category": "talent",
+        "quote": "能量场对敌人造成伤害时，所有单位对该目标的暴击率提升1.5%，最多叠加10层，持续12秒，每层效果单独结算持续时间。",
+        "context": "能量场对敌人造成伤害时，所有单位对该目标的暴击率提升1.5%，最多叠加10层，持续12秒，每层效果单独结算持续时间。"
+      }
+    ]
+  },
+  "decisions": [
+    {
+      "sourceId": "/skill/assist/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "快速支援/招架支援/支援突击的招式基础伤害与失衡倍率由 catalog 直读（D1），动作时间由系统推算，无敌属性属防御机制，不单独进入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "快速支援/招架支援/支援突击的招式基础伤害与失衡倍率由 catalog 直读（D1），动作时间由系统推算，无敌属性属防御机制，不单独进入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "快速支援/招架支援/支援突击的招式基础伤害与失衡倍率由 catalog 直读（D1），动作时间由系统推算，无敌属性属防御机制，不单独进入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "快速支援/招架支援/支援突击的招式基础伤害与失衡倍率由 catalog 直读（D1），动作时间由系统推算，无敌属性属防御机制，不单独进入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "快速支援/招架支援/支援突击的招式基础伤害与失衡倍率由 catalog 直读（D1），动作时间由系统推算，无敌属性属防御机制，不单独进入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "快速支援/招架支援/支援突击的招式基础伤害与失衡倍率由 catalog 直读（D1），动作时间由系统推算，无敌属性属防御机制，不单独进入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "快速支援/招架支援/支援突击的招式基础伤害与失衡倍率由 catalog 直读（D1），动作时间由系统推算，无敌属性属防御机制，不单独进入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "快速支援/招架支援/支援突击的招式基础伤害与失衡倍率由 catalog 直读（D1），动作时间由系统推算，无敌属性属防御机制，不单独进入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "快速支援/招架支援/支援突击的招式基础伤害与失衡倍率由 catalog 直读（D1），动作时间由系统推算，无敌属性属防御机制，不单独进入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "快速支援/招架支援/支援突击的招式基础伤害与失衡倍率由 catalog 直读（D1），动作时间由系统推算，无敌属性属防御机制，不单独进入机制层。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "普通攻击招式倍率由 catalog 直读（D1）；子弹强化普攻细节整局近似未单独分段建模。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "普通攻击招式倍率由 catalog 直读（D1）；子弹强化普攻细节整局近似未单独分段建模。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "普通攻击招式倍率由 catalog 直读（D1）；子弹强化普攻细节整局近似未单独分段建模。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "连携技倍率由 catalog 直读（D1），能量场生成与快速支援触发属于系统轴通用交互逻辑。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "连携技倍率由 catalog 直读（D1），能量场生成与快速支援触发属于系统轴通用交互逻辑。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "连携技倍率由 catalog 直读（D1），能量场生成与快速支援触发属于系统轴通用交互逻辑。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "连携技倍率由 catalog 直读（D1），能量场生成与快速支援触发属于系统轴通用交互逻辑。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:4",
+      "status": "out_of_scope",
+      "reason": "连携技倍率由 catalog 直读（D1），能量场生成与快速支援触发属于系统轴通用交互逻辑。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "终结技倍率由 catalog 直读（D1），全队回能与换入回能属于终结技标准通用附带效果，不单独建立独立机制模型。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "终结技倍率由 catalog 直读（D1），全队回能与换入回能属于终结技标准通用附带效果，不单独建立独立机制模型。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "终结技倍率由 catalog 直读（D1），全队回能与换入回能属于终结技标准通用附带效果，不单独建立独立机制模型。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "终结技倍率由 catalog 直读（D1），全队回能与换入回能属于终结技标准通用附带效果，不单独建立独立机制模型。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:4",
+      "status": "out_of_scope",
+      "reason": "终结技倍率由 catalog 直读（D1），全队回能与换入回能属于终结技标准通用附带效果，不单独建立独立机制模型。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:5",
+      "status": "out_of_scope",
+      "reason": "终结技倍率由 catalog 直读（D1），全队回能与换入回能属于终结技标准通用附带效果，不单独建立独立机制模型。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "闪避/冲刺攻击/闪避反击倍率由 catalog 直读（D1），动作无敌判定不影响宏观数值。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "闪避/冲刺攻击/闪避反击倍率由 catalog 直读（D1），动作无敌判定不影响宏观数值。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "闪避/冲刺攻击/闪避反击倍率由 catalog 直读（D1），动作无敌判定不影响宏观数值。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "闪避/冲刺攻击/闪避反击倍率由 catalog 直读（D1），动作无敌判定不影响宏观数值。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "闪避/冲刺攻击/闪避反击倍率由 catalog 直读（D1），动作无敌判定不影响宏观数值。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "闪避/冲刺攻击/闪避反击倍率由 catalog 直读（D1），动作无敌判定不影响宏观数值。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "闪避/冲刺攻击/闪避反击倍率由 catalog 直读（D1），动作无敌判定不影响宏观数值。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "闪避/冲刺攻击/闪避反击倍率由 catalog 直读（D1），动作无敌判定不影响宏观数值。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:4",
+      "status": "out_of_scope",
+      "reason": "闪避/冲刺攻击/闪避反击倍率由 catalog 直读（D1），动作无敌判定不影响宏观数值。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "闪避/冲刺攻击/闪避反击倍率由 catalog 直读（D1），动作无敌判定不影响宏观数值。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "闪避/冲刺攻击/闪避反击倍率由 catalog 直读（D1），动作无敌判定不影响宏观数值。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "闪避/冲刺攻击/闪避反击倍率由 catalog 直读（D1），动作无敌判定不影响宏观数值。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:3",
+      "status": "out_of_scope",
+      "reason": "闪避/冲刺攻击/闪避反击倍率由 catalog 直读（D1），动作无敌判定不影响宏观数值。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "特殊技倍率由 catalog 直读（D1），强化特殊技发动无敌、快速支援触发与自动上弹属于通用动作属性，伤害与增幅由 D2/D6 机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "特殊技倍率由 catalog 直读（D1），强化特殊技发动无敌、快速支援触发与自动上弹属于通用动作属性，伤害与增幅由 D2/D6 机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "特殊技倍率由 catalog 直读（D1），强化特殊技发动无敌、快速支援触发与自动上弹属于通用动作属性，伤害与增幅由 D2/D6 机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "特殊技倍率由 catalog 直读（D1），强化特殊技发动无敌、快速支援触发与自动上弹属于通用动作属性，伤害与增幅由 D2/D6 机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "特殊技倍率由 catalog 直读（D1），强化特殊技发动无敌、快速支援触发与自动上弹属于通用动作属性，伤害与增幅由 D2/D6 机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:1",
+      "status": "modeled",
+      "reason": null,
+      "mechanics": [
+        "nicole-c1-charge-field"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:2",
+      "status": "modeled",
+      "reason": null,
+      "mechanics": [
+        "nicole-c1-charge-field"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "特殊技倍率由 catalog 直读（D1），强化特殊技发动无敌、快速支援触发与自动上弹属于通用动作属性，伤害与增幅由 D2/D6 机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:4",
+      "status": "out_of_scope",
+      "reason": "特殊技倍率由 catalog 直读（D1），强化特殊技发动无敌、快速支援触发与自动上弹属于通用动作属性，伤害与增幅由 D2/D6 机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:5",
+      "status": "out_of_scope",
+      "reason": "特殊技倍率由 catalog 直读（D1），强化特殊技发动无敌、快速支援触发与自动上弹属于通用动作属性，伤害与增幅由 D2/D6 机制覆盖。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1031507/desc/0:0",
+      "status": "modeled",
+      "reason": null,
+      "mechanics": [
+        "nicole-core-def-shred"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1031507/desc/0:1",
+      "status": "modeled",
+      "reason": null,
+      "mechanics": [
+        "nicole-core-def-shred"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1031507/desc/1:0",
+      "status": "modeled",
+      "reason": null,
+      "mechanics": [
+        "nicole-additional-ether-dmg"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1031507/desc/1:1",
+      "status": "modeled",
+      "reason": null,
+      "mechanics": [
+        "nicole-additional-ether-dmg"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:0",
+      "status": "modeled",
+      "reason": null,
+      "mechanics": [
+        "nicole-c1-ex-bonus"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:1",
+      "status": "modeled",
+      "reason": null,
+      "mechanics": [
+        "nicole-c1-charge-field"
+      ]
+    },
+    {
+      "sourceId": "/talent/2/desc:0",
+      "status": "modeled",
+      "reason": null,
+      "mechanics": [
+        "nicole-c2-energy-refund"
+      ]
+    },
+    {
+      "sourceId": "/talent/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "影画3与影画5为通用技能等级+2，已由 catalog 倍率表与引擎技能等级映射系统统一直读（D1）。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/4/desc:0",
+      "status": "out_of_scope",
+      "reason": "影画4能量场牵引范围扩大 3m，无数值与伤害乘区，属于纯范围机制，整局计算口径不建模。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/5/desc:0",
+      "status": "out_of_scope",
+      "reason": "影画3与影画5为通用技能等级+2，已由 catalog 倍率表与引擎技能等级映射系统统一直读（D1）。",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/6/desc:0",
+      "status": "modeled",
+      "reason": null,
+      "mechanics": [
+        "nicole-c6-crit-rate"
+      ]
+    }
+  ],
+  "mechanics": [
+    {
+      "id": "nicole-core-def-shred",
+      "sources": [
+        "/passive/level/1031507/desc/0:0",
+        "/passive/level/1031507/desc/0:1"
+      ],
+      "dimension": "D3",
+      "certainty": "L1",
+      "trigger": "强化子弹或能量场命中敌人",
+      "target": "目标敌人的防御力降低40%",
+      "gate": "强化子弹或能量场击中目标生效",
+      "formula": "enemyDefReduction = 40（teammate-buffs 1031 组默认满覆盖计算）",
+      "field": "CombatPanel.enemyDefReduction",
+      "countSource": "teammate-buffs 默认开启",
+      "duration": "3.5 秒（整局近似默认满覆盖）",
+      "cap": "40% 减防比例",
+      "assumptions": [
+        {
+          "premise": "实战中妮可强化特殊技与连携技频繁生成能量场，且能量场持续牵引覆盖核心爆发期，整局口径按默认满覆盖 40% 减防处理。",
+          "falsifier": "若实战中能量场覆盖率出现明显断档，全队物理与以太伤害收益将低于预期。"
+        }
+      ],
+      "decisionEvidence": "核心被动减防 40% 为妮可核心全队拐力，已在 public/static/teammate-buffs.json 1031 组声明并由 computePanelPhases 解析入面板，测试位于 src/mechanics/__tests__/nicole.test.ts「核心减防40；同属性触发以太伤25」。",
+      "implementation": {
+        "spec": "src/specs/agents/1031.json#/notes/0",
+        "consumer": "src/mechanics/agents/nicole.ts#nicoleMechanic"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "配置妮可进入队伍，计算战斗内面板",
+          "expected": "enemyDefReduction 为 40",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "核心减防40；同属性触发以太伤25"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "未配置减益或不在场",
+          "expected": "enemyDefReduction 不产生额外削减",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "核心减防40；同属性触发以太伤25"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "减防数值恒定 40%",
+          "expected": "enemyDefReduction 严格等于 40",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "核心减防40；同属性触发以太伤25"
+          }
+        }
+      ]
+    },
+    {
+      "id": "nicole-additional-ether-dmg",
+      "sources": [
+        "/passive/level/1031507/desc/1:0",
+        "/passive/level/1031507/desc/1:1"
+      ],
+      "dimension": "D2",
+      "certainty": "L1",
+      "trigger": "队伍存在与妮可同属性（以太）或同阵营（狡兔屋）角色时触发",
+      "target": "核心减益期间全队对目标造成的以太伤害提升 25%",
+      "gate": "teamConditions: sameAttributeAsSelf 或 sameFactionAsSelf",
+      "formula": "etherDmg = 25",
+      "field": "CombatPanel.etherDmg",
+      "countSource": "队友阵营或属性匹配门控",
+      "duration": "核心减益期间（默认满覆盖）",
+      "cap": "25% 以太增伤",
+      "assumptions": [
+        {
+          "premise": "队伍中存在以太属性（如朱鸢）或狡兔屋队友时，额外能力常驻激活并在核心减益期间生效。",
+          "falsifier": "若队伍无以太亦无狡兔屋队友，以太增伤失效为 0。"
+        }
+      ],
+      "decisionEvidence": "额外能力同属性或同阵营门控在 spec additionalAbility 与 teammate-buffs 1031 组声明，测试位于 src/mechanics/__tests__/nicole.test.ts「核心减防40；同属性触发以太伤25」与「无同属性/同阵营时额外以太伤不生效」。",
+      "implementation": {
+        "spec": "src/specs/agents/1031.json#/additionalAbility",
+        "consumer": "src/mechanics/agents/nicole.ts#nicoleMechanic"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "搭配以太队友 1241 朱鸢",
+          "expected": "以太增伤 etherDmg 提升 25",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "核心减防40；同属性触发以太伤25"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "搭配非同属性非同阵营队友（如 1041 11号）",
+          "expected": "以太增伤差值为 0",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "无同属性/同阵营时额外以太伤不生效"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "仅同阵营或仅同属性单项满足",
+          "expected": "etherDmg 增益稳定为 25",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "核心减防40；同属性触发以太伤25"
+          }
+        }
+      ]
+    },
+    {
+      "id": "nicole-c1-ex-bonus",
+      "sources": [
+        "/talent/1/desc:0"
+      ],
+      "dimension": "D2",
+      "certainty": "L1",
+      "trigger": "影画1解锁且释放强化特殊技",
+      "target": "强化特殊技各段（1031103, 1031104, 1031105, 1031106）伤害与异常积蓄提升 16%",
+      "gate": "cinemaLevel >= 1 且 moveId in NICOLE_EX_MOVE_IDS",
+      "formula": "dmgBonus += 16, anomalyBuildUp *= 1.16",
+      "field": "ExecutionRow.dmgBonus, ExecutionRow.anomalyBuildUp",
+      "countSource": "强化特殊技释放动作序列",
+      "duration": "单次招式判定周期",
+      "cap": "16% 增伤与积蓄提升",
+      "assumptions": [
+        {
+          "premise": "影画1增压强化弹加成作用于 EX 四段全招式，按执行级 patchExecutions 直接修正倍率行增伤与积蓄。",
+          "falsifier": "若某段不属于 EX 编号集合，则不应享受 16% 增益。"
+        }
+      ],
+      "decisionEvidence": "nicole.ts patchExecutions 针对 NICOLE_EX_MOVE_IDS 遍历注入 NICOLE_C1_EX_BONUS (16)，测试位于 src/mechanics/__tests__/nicole.test.ts「影画1：EX 段伤害+16% 与积蓄×1.16」。",
+      "implementation": {
+        "spec": "src/specs/agents/1031.json#/notes/2",
+        "consumer": "src/mechanics/agents/nicole.ts#NICOLE_C1_EX_BONUS"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "影画1下释放强化特殊技持续段 1031103",
+          "expected": "dmgBonus 为 16，anomalyBuildUp 提升为 1.16 倍",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "影画1：EX 段伤害+16% 与积蓄×1.16"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "普通攻击招式（如 1031001）",
+          "expected": "dmgBonus 保持为 0，不享受加成",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "影画1：EX 段伤害+16% 与积蓄×1.16"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "影画 0 状态",
+          "expected": "不触发 patchExecutions 循环，增益为 0",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "影画1：EX 段伤害+16% 与积蓄×1.16"
+          }
+        }
+      ]
+    },
+    {
+      "id": "nicole-c1-charge-field",
+      "sources": [
+        "/talent/1/desc:1",
+        "/skill/special/description/1/desc:1",
+        "/skill/special/description/1/desc:2"
+      ],
+      "dimension": "D6",
+      "certainty": "L2",
+      "trigger": "影画1解锁且强化特殊技长按蓄力",
+      "target": "能量场持续时间按蓄力时长等比延长，伤害/失衡/积蓄倍率行等比放大",
+      "gate": "cinemaLevel >= 1 且 chargeSeconds > 0 且 fieldBaseSeconds > 0",
+      "formula": "scale = 1 + 1.5 * chargeSeconds / fieldBaseSeconds; damage = baseDamage * scale; daze = baseDaze * scale; anomaly = baseAnomaly * scale",
+      "field": "ExecutionRow.damageMultiplier, ExecutionRow.dazeMultiplier, ExecutionRow.anomalyBuildUp",
+      "countSource": "1031103.actionTime 与 1031106.actionTime 比例",
+      "duration": "能量场作用周期",
+      "cap": "等比比例由招式动作时间客观决定",
+      "assumptions": [
+        {
+          "premise": "蓄力秒取持续段 1 段动作时间（1031103.actionTime），能量场基准秒取 1031106.actionTime，持续延长等比线性折算为单次伤害与积蓄倍率放大。",
+          "falsifier": "若实战中蓄力时间为 0 或能量场存在硬性段数上限，线性等比放大将与实战产生偏差。"
+        }
+      ],
+      "decisionEvidence": "fact agent:1031/影画1能量场 明确口径：蓄力秒/基准秒等比缩放倍率行，测试位于 src/mechanics/__tests__/nicole.test.ts「影画1：蓄力延长能量场——倍率行等比放大（1.5×蓄力秒/能量场基准秒）」。",
+      "implementation": {
+        "spec": "src/specs/agents/1031.json#/notes/2",
+        "consumer": "src/mechanics/agents/nicole.ts#NICOLE_C1_FIELD_SECONDS_PER_CHARGE_SECOND"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "影画1下蓄力 0.742s、基准 1.484s",
+          "expected": "scale 为 1.75，倍率行等比扩大 1.75 倍",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "影画1：蓄力延长能量场——倍率行等比放大（1.5×蓄力秒/能量场基准秒）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "影画 0 下",
+          "expected": "scale 为 1，不发生倍率覆盖放大",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "影画1：蓄力延长能量场——倍率行等比放大（1.5×蓄力秒/能量场基准秒）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "蓄力时长极限值",
+          "expected": "scale 严格按照 1 + 1.5 * tCharge / tField 演算",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "影画1：蓄力延长能量场——倍率行等比放大（1.5×蓄力秒/能量场基准秒）"
+          }
+        }
+      ]
+    },
+    {
+      "id": "nicole-c2-energy-refund",
+      "sources": [
+        "/talent/2/desc:0"
+      ],
+      "dimension": "D4",
+      "certainty": "L2",
+      "trigger": "影画2解锁且触发核心被动减益",
+      "target": "妮可自身回复 5 点能量，冷却时间 15 秒",
+      "gate": "cinemaLevel >= 2",
+      "formula": "triggers = floor(battleTime / 15); initialEnergyGift += triggers * 5",
+      "field": "CharConfig.initialEnergyGift",
+      "countSource": "battleTime 战斗时长",
+      "duration": "整场战斗周期",
+      "cap": "floor(battleTime / 15) * 5",
+      "assumptions": [
+        {
+          "premise": "实战中妮可每 15 秒至少能触发一次核心减益，CD 转好即触发，整局总量按 floor(t/15)*5 折算为开局能量赠送以确保能量循环稳态。",
+          "falsifier": "若实战中减益触发间隔大幅超过 15 秒，实际回能将少于估算值。"
+        }
+      ],
+      "decisionEvidence": "nicole.ts buildCharConfig 按 floor(battleTime/15)*5 注入 initialEnergyGift，测试位于 src/mechanics/__tests__/nicole.test.ts「影画2：开局能量赠送 floor(t/15)×5」。",
+      "implementation": {
+        "spec": "src/specs/agents/1031.json#/notes/3",
+        "consumer": "src/mechanics/agents/nicole.ts#NICOLE_C2_ENERGY"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "影画2且战斗时长 180s",
+          "expected": "额外赠送 12 * 5 = 60 点初始能量",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "影画2：开局能量赠送 floor(t/15)×5"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "影画 0 且战斗时长 180s",
+          "expected": "初始能量赠送不增加",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "影画2：开局能量赠送 floor(t/15)×5"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "战斗时长不足 15s（如 14s）",
+          "expected": "triggers 为 0，不增加额外能量",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "影画2：开局能量赠送 floor(t/15)×5"
+          }
+        }
+      ]
+    },
+    {
+      "id": "nicole-c6-crit-rate",
+      "sources": [
+        "/talent/6/desc:0"
+      ],
+      "dimension": "D2",
+      "certainty": "L1",
+      "trigger": "影画6解锁且能量场对敌人造成伤害",
+      "target": "所有单位对该目标的暴击率提升 1.5%，最多叠加 10 层（15%）",
+      "gate": "cinemaLevel >= 6",
+      "formula": "critRate += 15（teammate-buffs 1031 组默认满层 15%）",
+      "field": "CombatPanel.critRate",
+      "countSource": "teammate-buffs 影画6 门控",
+      "duration": "能量场造成伤害期间",
+      "cap": "15% 暴击率",
+      "assumptions": [
+        {
+          "premise": "能量场高频多段命中可在极短时间内叠满 10 层，整局口径按满层 15% 暴击率折算入面板。",
+          "falsifier": "若能量场未能打满 10 次伤害判定，暴击率加成将低于 15%。"
+        }
+      ],
+      "decisionEvidence": "teammate-buffs.json 1031 组配置影画6暴击率 +15%，测试位于 src/mechanics/__tests__/nicole.test.ts「影画6 满层暴击+15」。",
+      "implementation": {
+        "spec": "src/specs/agents/1031.json#/notes/6",
+        "consumer": "src/mechanics/agents/nicole.ts#nicoleMechanic"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "队伍中妮可达到影画 6",
+          "expected": "队友战斗内暴击率提升 15%",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "影画6 满层暴击+15"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "妮可为影画 5",
+          "expected": "不享受影画 6 暴击率加成",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "影画6 满层暴击+15"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "层数达到上限 10 层",
+          "expected": "暴击率增加严格封顶 15%",
+          "test": {
+            "file": "src/mechanics/__tests__/nicole.test.ts",
+            "title": "影画6 满层暴击+15"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1603,6 +1603,8 @@ export function iterate(
   const cappedNecessary = netNecessary.map((x, i) =>
     x * feasibleScale + (comboAlignCredits[i] ?? 0))
   const sumNecessaryCapped = cappedNecessary.reduce((a, b) => a + b, 0)
+  // @fact engine:cfg/诊断量写回 口径: timeFeasibleScale 与 overflowSeconds 是引擎计算中途写回 globalCfg 的诊断量，在新克隆 cfg 上调用前恒为 undefined，严禁在调用前预读作条件判定；读截断秒数必须读 convergence.timeTruncatedSeconds | 据 用户@2026-09-18·R25-J2 | 验 src/composables/__tests__/seedInvariance.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
+  // ⟳复核: 检查是否有外部模块误读 timeFeasibleScale 或 overflowSeconds | 到期 2026-12-31
   globalCfg.timeFeasibleScale = feasibleScale
   globalCfg.overflowSeconds = Math.max(0, sumNecessary - reliefSeconds - budget)
   const availableBasicTime = Math.max(0, budget - sumNecessaryCapped + reliefSeconds

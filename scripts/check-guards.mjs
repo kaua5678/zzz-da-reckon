@@ -25,6 +25,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { auditAuthoredFacts, resolveAnchor, scanAuthoredFacts } from './zc.mjs'
 // level60 字段映射规则表（审计/修复/导入脚本三方共用，规则 11）
 import { FIELD_RULES } from './lib/level60-rules.mjs'
+import {
+  reconcileMoveElements,
+  moveElementReconcileOk,
+  formatMoveElementReconcile,
+} from './lib/move-element-reconcile.mjs'
 import { scanScopedStyleReach } from './lib/scoped-style-reach.mjs'
 import { scanCompactedSlotIndex, IDX_SAFE_ALLOWLIST } from './lib/compacted-slot-index.mjs'
 // 角色身份判定检测面（AST 单源；2026-09-17 round 19 换尺批，见 scripts/lib/agent-identity-lines.mjs 头注释）
@@ -217,7 +222,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: '名词表未处理',
     file: 'scripts/lib/noun-triage.json（源 = data/raw/nanoka_missing/noun_3.2.3.json）',
-    frozen: 41,  // 2026-09-14 口径纠正（T15 审计 #4）：原写 frozen: 0 且度量只数 unhandled ⇒
+    frozen: 40,  // 2026-09-14 口径纠正（T15 审计 #4）：原写 frozen: 0 且度量只数 unhandled ⇒
     // 判据 13 上线时就把 40 条判成 deferred 清零，**current 恒 0 / done=true，41 条挂账从提醒面消失**
     // ——与「游戏语义口径复核触发器」首版同型缺陷（存量一登记，棘轮就自称还清）。
     // 现度量 = unhandled（红灯）+ deferred（已挂账存量）＝ 41（27 modeled / 41 deferred / 0 unhandled，
@@ -357,6 +362,19 @@ export function auditCatalogLevel60(root = ROOT) {
     }
   }
   return { compared, violations, fieldNames: rules.map((r) => r.field) }
+}
+
+
+// ---- 判据 18：招式伤害属性 ↔ nanoka raw 散文对账（R23-N1 / R26-J1：防招式伤害属性静默改回/退化） ----
+
+/** 判据 18 对账执行器（薄包装，核心逻辑见 lib/move-element-reconcile.mjs） */
+export function auditMoveElementsAgainstRaw(root = ROOT) {
+  const catalogPath = join(root, 'public/static/catalog.json')
+  const fullDir = join(root, 'data/raw/nanoka_missing/full')
+  if (!existsSync(catalogPath) || !existsSync(fullDir)) return null
+  let catalog
+  try { catalog = JSON.parse(readFileSync(catalogPath, 'utf8')) } catch { return null }
+  return reconcileMoveElements({ catalog, fullDir, enforceFloors: true })
 }
 
 // ---- 判据 11：手册数字 id 密度棘轮（任务卡 2026-09-12「经验手册防历史记录化」第 1 步） ----
@@ -931,10 +949,8 @@ export const DEBT_REGISTRY = {
   // 2026-09-04：全局实数化收敛重构（正反馈模块统一连续通道 + 逐模块重校准）。伊德海莉
   // refund 双稳态已 targeted 修复（calcEnergySource 解析不动点 + iterate 阻尼实数 + 终局整数
   // 重推），全局松弛会重排所有带时间/资源循环模块的均衡（sigrid 出枪式消失前例）。
+  // ⚠ 本项覆盖 helpers.ts:1270（1a 标记），按 R24 明确结论保留（批 1-1 通用连续通道抽象开工前不许删）。
   'src/core/resource/helpers.ts:全局实数化收敛重构': { since: '2026-09-04', due: '专项立项：正反馈模块统一连续通道 + 逐模块重校准（sigrid/般岳等带时间/资源循环模块均衡重排风险，前例 bdcf52f 锚点漂移 8 处）' },
-  // 2026-09-05：末轮欠打回填（可行性门控）把 refund 从「pass0 冻结成 0」救回来，但仍是
-  // 「一次内层收敛」粒度的离散试探——同一天花板的第二个标记点，随上面那条专项落地一并销号。
-  'src/core/resource.ts:全局实数化收敛重构': { since: '2026-09-05', due: '随 helpers.ts 同名词条一并销号（实数化收敛后折半试探不再需要）' },
   // 2026-09-07：喧响/能量收入聚合近似 vs 倍率行矩阵（用户裁决：矩阵求和口径，竖向列全行级）。
   // 仪玄实测行级 5628 vs 聚合 1702；约 50 个模块有 decibelRecovery:0 硬编码。
   // 喧响侧已清偿销号（2026-09-08：账本改 Σ buildExecutions 行级收入，口径条目见 helpers.ts
@@ -957,12 +973,6 @@ export const DEBT_REGISTRY = {
   // 「不钳制 + 消耗需求封顶」⇒ 极端配装（积累速率 ≫ 消耗节奏）下偏乐观。上条会话因 check-guards.mjs
   // 被并行会话占用、按规则 13 先记账本不登记，本条补登（代码标记在 claret.ts gashStacks 计算处）。
   'src/mechanics/agents/claret.ts:残痕总量口径天花板': { since: '2026-09-12', due: '残痕层数按消耗节奏窗口钳制（需逐动作时序模拟，与实数化收敛专项同族）；若用户裁决接受总量口径近似则销号并留 @fact' },
-  // 2026-09-13（静默缺口体检）：[秽盾] 全仓无建模——这是判据 13（名词表三态）抓到的**样本缺口**。
-  // 原文 noun_3.2.3.json #2000002：高额防御/减伤/抗打断且不失衡、可被攻击削减、打破时净除伤害 + 回能/闪能。
-  // 现状：`shieldCount` 只承载「破盾奖励次数→折能量」，不是盾本体；且旧头注释把秽盾当**无敌时间**
-  // （2026-09-13 用户已纠正，口径见 src/core/effectiveTime.ts 的 @fact engine:time/无敌≠秽盾）。
-  // 代码标记在 effectiveTime.ts 的未建模说明处；挂账登记落点亦见 docs/MECHANICS_IMPLEMENTATION.md §3.05。
-  'src/core/effectiveTime.ts:秽盾机制': { since: '2026-09-13', due: '秽盾专项立项：① 破盾回能/闪能（每破一盾为代理人回能）② 削盾量通道（秽盾量/100 = 动作时间，见 mechanism-reference §7.4）③ 防御/减伤乘区（+80% 防御、25% 减伤，贯穿同样生效）④ 破盾「秽盾净除」伤害。四者都不许复用 invincibleTime（那是真无敌）。落地后销号' },
 }
 
 /**
@@ -2159,6 +2169,19 @@ export function runAllChecks(root = ROOT) {
           '     每条必须写明理由（棘轮只减不增；理由不成立就该改代码而不是加豁免）。',
         ] : []),
       ],
+    })
+  }
+
+
+  // ---- 判据 18：招式伤害属性 ↔ nanoka raw 散文对账（R23-N1：防招式伤害属性静默改回/退化） ----
+  {
+    const report = auditMoveElementsAgainstRaw(root)
+    results.push({
+      name: report === null
+        ? '招式伤害属性对账 ⚠ 缺 catalog 或 raw 目录，跳过'
+        : `招式伤害属性对账 (move.damageElement ↔ nanoka raw 散文) ${report.scannedMoves - report.violations.length}/${report.scannedMoves} 招达标`,
+      ok: report === null || moveElementReconcileOk(report),
+      detail: report === null || moveElementReconcileOk(report) ? [] : formatMoveElementReconcile(report),
     })
   }
 

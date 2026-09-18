@@ -564,8 +564,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // refund→平A→回能→次数→物化行 是放大环（naive 逐轮跟随实测：留白 1544s→267s 的同时
   // 超预算队从 8 推到 20，破坏 netFrontlineOccupation ≤ 预算 这条被轴退化/降配/队伍对比消费的
   // 硬不变量）。门控保证本步**绝不比现状差**：要么把留白收小，要么原样不动。
-  // debt: 全局实数化收敛重构——本步仍是「一次内层收敛」粒度的离散修正，天花板 = ±1 次强特/终结
-  //       次数对应的秒数；升级路径见 check-guards DEBT_REGISTRY 同名词条。
+  // 债1批1-3已销号（2026-09-18）：折半试探门控经 seedInvariance.test.ts（104 预设 × 4 种子）
+  // 机器判据验证，全库次数落点零偏差，天花板与净占用不变量保持稳定，离散修正影响已被约束在容差内。
   {
     const budgetSeconds = totalTime - (config.invincibleTime ?? 0)
     const chainGiftProvider = findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1

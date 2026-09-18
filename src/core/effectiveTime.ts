@@ -18,9 +18,9 @@
  *
  * **未建模（已挂账）**：秽盾的防御/减伤乘区、削盾量、破盾回能/净除伤害全仓无消费锚点——
  * `shieldCount` 只承载「破盾奖励次数」折能量，不是盾本体（见 `src/core/resource/helpers.ts`）。
- * debt: 秽盾机制（四通道：破盾回能/削盾量/防御减伤乘区/破盾净除伤害）——登记见 check-guards 的
- * DEBT_REGISTRY `src/core/effectiveTime.ts:秽盾机制`（since 2026-09-13），挂账落点
- * `docs/MECHANICS_IMPLEMENTATION.md` §3.05。**不许复用 `invincibleTime` 承载秽盾**（语义不同）。
+ * 秽盾机制（2026-09-18 用户裁决结案销号）：按用户口径，秽盾仅为破盾后代理人获得额外能量与闪能，
+ * 该通道已在 `src/core/resource/helpers.ts`（`shieldBreakGift` / `energyShieldBreakGift`）实现；
+ * 削盾量/防御减伤乘区/净除伤害等三通道按用户口径明确不做。**不许复用 `invincibleTime` 承载秽盾**（语义不同）。
  */
 import { isFrontlineExecution } from '@/types/resource'
 

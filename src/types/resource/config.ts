@@ -788,11 +788,15 @@ export interface ResourceCalcConfig {
   /**
    * 全队必要前台的可行比例（引擎 iterate 每轮写入，装配阶段消费）：
    * `预算 ÷ Σ必要净占用`，<1 = 想打的必做动作装不进战斗时间 ⇒ 执行计划按时间线截断。
+   * ⚠ 诊断量副作用（坑 42 / R25-J2）：由引擎计算中途写回 cfg，调用前在新克隆对象上恒为 undefined，
+   * 严禁在调用前预读其值作为前置条件判定（全仓零生产读取点）。
    */
   timeFeasibleScale?: number
   /**
    * 合轴溢出（秒，输出）：合轴抵扣后的必做前台净占用超出「战斗时间 − 无敌」的量
    * （iterate 每轮写入；轴模式抵扣与栈引擎节省取 max，不叠加）。
+   * ⚠ 诊断量副作用（坑 42 / R25-J2）：计算中途写回 cfg，外部消费者读截断秒数必须读
+   * convergence.timeTruncatedSeconds 而不是未收敛的 rr.overflowSeconds。
    */
   overflowSeconds?: number
   /** 迭代初值注入（测试/热启动用）：连续松弛下收敛态与初值无关，任意种子应得同解；长度不符时忽略 */
