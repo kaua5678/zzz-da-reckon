@@ -38,6 +38,7 @@ import {
   scanComposableFiles,
   scanVueFiles,
   stripComments,
+  stripJsComments,
 } from '../../../scripts/check-tokens.mjs'
 
 describe('parseColor（各路色值写法）', () => {
@@ -96,6 +97,47 @@ describe('stripComments（注释里的引用不是活引用）', () => {
 
   it('不误伤 URL 里的双斜杠', () => {
     expect(stripComments('url("https://a.b/c")')).toBe('url("https://a.b/c")')
+  })
+})
+
+/**
+ * stripJsComments 是判据 10（scene-ink-closure）的地基：
+ * 它要抓 `ctx.fillStyle = 'var(--x)'` 这个「Canvas 静默忽略」的写法，
+ * 而两个 3D 组件的**反面教材注释里逐字引用了它** ⇒ 不剥注释 = 把自己的文档判成违规
+ * （2026-09-18 round 31 首版实测正是 2 条假红）。
+ */
+describe('stripJsComments（JS 注释不是活代码）', () => {
+  it('块注释与行注释都去掉（JS 口径，与 CSS 版分开）', () => {
+    // ⚠ 不断言逐字空白：本函数先把字符串字面量换成占位符再剥注释，
+    // 占位符回填后块注释位置会多出空格（`a   b` 而非 CSS 版的 `a  b`）。
+    // 判据只关心「注释内容不再出现在结果里」，钉空白 = 钉实现细节（会让无害重构假红）。
+    expect(stripJsComments('a /* x */ b').replace(/\s+/g, ' ')).toBe('a b')
+    expect(stripJsComments('a // x\nb')).toBe('a \nb')
+  })
+
+  it('★ 剥掉注释里引用的错误写法（否则判据 10 假红）', () => {
+    // 这正是两个 3D 组件注释里的形态——注释里的 `ctx.fillStyle = 'var(...)'` 不是活代码
+    const src = "// ⚠ 不要写 ctx.fillStyle = 'var(--wa-450)'：Canvas 静默忽略\nctx.fillStyle = sceneInk()"
+    const code = stripJsComments(src)
+    expect(code).not.toContain("'var(--wa-450)'")
+    expect(code).toContain('sceneInk()')
+  })
+
+  it('★ 保留字符串字面量里的 // 与 /*（不误伤 URL / 正则相邻文本）', () => {
+    expect(stripJsComments('const u = "https://a.b/c"')).toBe('const u = "https://a.b/c"')
+    expect(stripJsComments("const t = 'a // b'")).toBe("const t = 'a // b'")
+    expect(stripJsComments('const s = `x /* y */ z`')).toBe('const s = `x /* y */ z`')
+  })
+
+  it('★ 行注释里带引号也不会吃掉后面的活代码', () => {
+    const src = "// 它写着 'var(--x)' 这个坑\nconst a = 1"
+    const code = stripJsComments(src)
+    expect(code).toContain('const a = 1')
+    expect(code).not.toContain('var(--x)')
+  })
+
+  it('未闭合的模板串不抛、不吞（防御性）', () => {
+    expect(() => stripJsComments('const a = `unterminated')).not.toThrow()
   })
 })
 
@@ -350,11 +392,22 @@ describe('scanComposableFiles（口径：把 composables 的 .ts 纳入 var() �
 })
 
 describe('仓库级自洽（真实扫描）', () => {
-  it('八条判据全绿（tokens-defined / theme-parity / 硬编码棘轮 / 字号棘轮 / 对比度 / 别名棘轮 / 字体栈一致 / naive-token-reuse）', () => {
+  it('十条判据全绿（tokens-defined / theme-parity / 硬编码棘轮 / 字号棘轮 / 对比度 / 别名棘轮 / 字体栈一致 / naive-token-reuse / scene-contrast / scene-ink-closure）', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(8)
+    // ⚠ 这条计数是**有意**钉死的：加判据必须同步改这里，逼一次「新判据是否真有断言」的复核
+    // （只看 ok 的话，一个恒真的空判据也能混进来）。历史：8 → 10（round 31 加两条 3D 场景判据）。
+    expect(results).toHaveLength(10)
+  })
+
+  it('★ 场景判据成对存在（行为面 scene-contrast + 形状面 scene-ink-closure）', () => {
+    // 为什么单列一条：R30 §2.3 的教训是「单写任一面都有盲区」——
+    // 只有行为面 ⇒ 把场景文字改回 --wa-450 看不出来（该令牌自己没变）；
+    // 只有形状面 ⇒ 场景底改回固定深色看不出来（引用名没变）。两者必须同时在册。
+    const names = runAllChecks().results.map(r => r.name).join('\n')
+    expect(names).toContain('scene-contrast')
+    expect(names).toContain('scene-ink-closure')
   })
 
   it('--wa-* 引用数不超过冻结基线（别名层推进方向）', () => {

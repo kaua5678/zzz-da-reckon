@@ -39,7 +39,20 @@
 | `--app-tooltip-bg/text` | `rgba(30,41,59,0.96)`/白 | `rgba(255,255,255,0.97)`/墨 | SVG 图表 tooltip |
 | `--scrollbar-thumb(-hover)` | 蓝灰 0.28/0.42 | 蓝灰 0.22/0.34 | 滚动条 |
 | `--link-color` | `#6cb2ff` | `#2f6ee0` | 链接 |
+| `--scene-bg-inner/outer` | `rgba(26,32,52,.6)` / `rgba(13,16,24,.95)` | `#ffffff` / `#dde5f0` | **3D 自绘 Canvas 场景底**（渐变两端） |
+| `--scene-ink-rgb` | `255,255,255` | `23,26,31` | 场景墨**裸三元组**（JS 侧 `rgba(<三元组>, α)` 派生网格/描边） |
+| `--scene-ink-dim` | `rgba(255,255,255,.55)` | `rgba(23,26,31,.66)` | 场景次级文字（HUD/图例/柱阵标签/空态） |
+| `--scene-panel(-line)` / `--scene-shadow` | 深浮层 / 白描边 / 黑投影 | 浅浮层 / 灰描边 / 冷灰投影 | 场景内浮层（HUD/图例/空态） |
+| `--scene-axis-{x,y,z}` | `#38bdf8`/`#a78bfa`/`#63e2b7` | `#0369a1`/`#6d28d9`/`#0b6b4e` | 3D 坐标轴与轴标文字 |
+| `--scene-mark-{cur,max}` | `#63e2b7`/`#fbbf24` | `#0b6b4e`/`#b45309` | 3D 落点/峰值标记（图形） |
 | `--wa-15..900`（47 档） | `rgba(255,255,255,α)` | `rgba(23,26,31,α)` | 次要字/描边/浅底（α=档位/1000） |
+
+> ⚠ **`--scene-*` 是唯一一类「底与墨必须成对」的令牌**（其余令牌都默认坐在页面底上）。
+> 3D 组件是**自绘 Canvas 场景**：底色由组件自己画，不是 `--app-panel`。若只换墨不换底
+> （或反之），亮色主题下对比度会塌到 **1.01:1**（实测）——而 `contrast` 判据**结构上看不见**
+> （它固定拿 `--app-panel/--app-bg` 当背景）。机器兜底 = `check-tokens` 的
+> **判据 9 scene-contrast**（行为面：场景三表面 × 墨色对比度）+ **判据 10 scene-ink-closure**
+> （形状面：场景选择器只许引用 `--scene-*`，且 Canvas 不得写 `var()`）。
 
 > 色温锚点：暗色 = Tailwind slate-900 `#0f172a`（蓝调肉眼可辨，不是黑）；明亮 = slate-100/200 之间的 `#edf1f7`（冷灰蓝，不是白）。surface 各提一层：暗色提 slate-800、明亮压 slate-200 系。
 
@@ -81,6 +94,10 @@ SVG presentation attribute（`fill="var(...)"` / `stroke="var(...)"`）**不可�
 - **主色夜间亮、明亮深**：`#4493f8` vs `#2f6ee0`——亮色下白字按钮对比度要 ≥4.5:1（WCAG AA）。
 - **S级金做品牌锚点**：ZZZ 最有辨识度的颜色（抽卡金），只用在徽章级别的小面积，大面积会腻。
 - **dev tabs 紫色 `#a855f7`**：与主 tab 蓝区分"开发/计算器"两个区域，两主题通吃。
+- **3D 场景明亮档用「冷白纸面」而非继续用深底**（2026-09-18 round 31）：两个 3D 组件原为**固定深空底**，
+  亮色主题下墨色跟着主题变深墨 ⇒ 实测 1.01:1。改成跟随主题后**必须**同时换底与墨；
+  深色档保持原霓虹色值（**逐位不变**，实机 A/B 已验证：`#63e2b7` 像素数 11→0 / `#0b6b4e` 0→11）。
+  ⚠ 不要把 `--scene-*` 换成 `--c-*`/`--wa-*` —— 后两者按**页面底**调，在自绘场景里语义就是错的。
 
 ## 7. 常见 UI 任务速查
 
@@ -91,6 +108,7 @@ SVG presentation attribute（`fill="var(...)"` / `stroke="var(...)"`）**不可�
 | 加第三个主题（如跟随系统） | `stores/theme.ts` 加 mode + `global.css` 加 `html.<name>` 块 + App.vue 加 overrides 分支 + index.html 脚本 |
 | 改亮暗切换动画 | `global.css` body 的 transition + `.n-card` 过渡 |
 | 新 SVG 图表颜色 | §4 三种写法，禁止 presentation attribute 写 var() |
+| **新 Canvas（自绘）图表颜色** | 走 `--scene-*`（§2 表末）；**禁止** `ctx.fillStyle = 'var(--x)'`（静默忽略）⇒ 用 `getComputedStyle` 读回真实值（先例 `TeamDamage3DChart.cssVarColor` / `ResponseSurface3D.sceneInk`），由 `check-tokens` 判据 10 机器兜底 |
 | 检查明亮模式漏色 | grep 新改动文件里的 `rgba(255` / `#fff` / `#0f0f` 等字面值 |
 
 ## 8. 历史决策记录（Changelog）

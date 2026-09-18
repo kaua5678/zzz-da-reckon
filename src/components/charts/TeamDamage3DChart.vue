@@ -198,7 +198,7 @@ const currentSlices = computed<SliceData[]>(() => {
     for (const c of list) {
       const pct = (c.damage / sum) * 100
       const span = (pct / 100) * Math.PI * 2
-      const color = TYPE_COLOR_MAP[c.key] ?? TYPE_COLOR_MAP[c.label] ?? '#63e2b7'
+      const color = TYPE_COLOR_MAP[c.key] ?? TYPE_COLOR_MAP[c.label] ?? SCENE_INK_FALLBACK.markCur
       slices.push({
         key: c.key,
         label: c.label,
@@ -320,7 +320,7 @@ function draw3DDonut(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
   ctx.save()
   ctx.beginPath()
   ctx.ellipse(cx, cy + depth + 10, rx * 1.05, ry * 1.05, 0, 0, Math.PI * 2)
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
+  ctx.fillStyle = sceneShadowFill()
   ctx.filter = 'blur(10px)'
   ctx.fill()
   ctx.restore()
@@ -364,7 +364,7 @@ function draw3DDonut(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
     const lightFactor = Math.max(0.45, Math.min(0.95, 0.7 + 0.3 * Math.sin(midAngle)))
     ctx.fillStyle = shadeColor(s.color, -30 * (1 - lightFactor))
     ctx.fill()
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
+    ctx.strokeStyle = sceneInkAlpha(0.12)
     ctx.lineWidth = 0.8
     ctx.stroke()
   }
@@ -393,7 +393,7 @@ function draw3DDonut(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
     ctx.fillStyle = grad
     ctx.fill()
 
-    ctx.strokeStyle = isHovered ? '#ffffff' : 'rgba(255, 255, 255, 0.22)'
+    ctx.strokeStyle = isHovered ? sceneStrong() : sceneInkAlpha(0.22)
     ctx.lineWidth = isHovered ? 2 : 1
     ctx.stroke()
   }
@@ -422,7 +422,7 @@ function draw3DBars(ctx: CanvasRenderingContext2D, w: number, h: number) {
     // 1. 柱体正面
     ctx.fillStyle = s.color
     ctx.fillRect(x, y, barW, barH)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'
+    ctx.strokeStyle = sceneInkAlpha(0.2)
     ctx.strokeRect(x, y, barW, barH)
 
     // 2. 柱体顶面 (Isometric Top)
@@ -448,7 +448,7 @@ function draw3DBars(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.stroke()
 
     // 标签与数值（⚠ Canvas 不解析 var() ⇒ 必须读回真实色值，见 cssVarColor 注释）
-    ctx.fillStyle = isHover ? '#ffffff' : cssVarColor('--fg-3', 'rgba(255,255,255,0.55)')
+    ctx.fillStyle = isHover ? sceneStrong() : sceneMuted()
     ctx.font = '10px Inter, system-ui, sans-serif'
     ctx.textAlign = 'center'
     ctx.fillText(s.label, x + barW / 2, baseY + 18)
@@ -477,7 +477,7 @@ function draw2DDonut(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
 
     ctx.fillStyle = s.color
     ctx.fill()
-    ctx.strokeStyle = isHover ? '#ffffff' : 'rgba(255, 255, 255, 0.18)'
+    ctx.strokeStyle = isHover ? sceneStrong() : sceneInkAlpha(0.18)
     ctx.lineWidth = isHover ? 2 : 1
     ctx.stroke()
   }
@@ -508,6 +508,57 @@ function cssVarColor(name: string, fallback: string): string {
   if (typeof window === 'undefined' || typeof document === 'undefined') return fallback
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
   return v || fallback
+}
+
+/**
+ * 场景墨色/标记的**夜间兜底**（与 global.css `:root` 的 `--scene-*` 逐字同值）。
+ * 只在无 DOM 时用到；有 DOM 时一律走下面的 scene* 读取函数。
+ */
+const SCENE_INK_FALLBACK = {
+  rgb: '255, 255, 255',
+  strong: '#ffffff',
+  markCur: '#63e2b7',
+  muted: 'rgba(255, 255, 255, 0.55)',
+  shadowFill: 'rgba(0, 0, 0, 0.35)',
+}
+
+/**
+ * 场景墨色读取（跟随主题）。
+ *
+ * 与 `cssVarColor` 的分工：那个读**任意**令牌（本文件用在柱阵标签的 `--fg-3`），
+ * 这一组读 `--scene-*` 场景专用令牌，把「裸三元组 → 任意 α」的派生收在一处
+ * ——本文件原有 5 处 `rgba(255,255,255,<α>)` 字面量 + 3 处 `#ffffff`，
+ * 若不收拢则明亮主题下**每处都要单独判断**，漏一处就是一处「深底墨画在白底上」。
+ *
+ * ⚠ 这些函数在**每帧**的绘制循环里被调用（strokeStyle 每片切片一次）⇒ 必须廉价。
+ * 故 `rgba` 由**已读回的裸三元组**拼接（一次 getComputedStyle，见 sceneInkRgb），
+ * 而不是每次调用都 getComputedStyle。
+ */
+function sceneInkRgb(): string {
+  return cssVarColor('--scene-ink-rgb', SCENE_INK_FALLBACK.rgb)
+}
+function sceneInkAlpha(alpha: number): string {
+  return `rgba(${sceneInkRgb()}, ${alpha})`
+}
+function sceneStrong(): string {
+  return cssVarColor('--app-text-solid', SCENE_INK_FALLBACK.strong)
+}
+/**
+ * 次级标签墨色 —— 走**场景专用**令牌 `--scene-ink-dim`，**不借** `--fg-3`。
+ * 为什么不借（实测）：`--fg-3`/`--wa-450` 是按**页面底**调的，压到自绘场景底上
+ * 明亮档只有 3.64 / 2.75（正文门槛 4.5）⇒ 借一次就在亮色下留下一处读不出的标签。
+ * 这条不是推断——check-tokens 判据 9（scene-contrast）就是这么把首版实现判红的。
+ */
+function sceneMuted(): string {
+  return cssVarColor('--scene-ink-dim', SCENE_INK_FALLBACK.muted)
+}
+/** 场景投影：夜间纯黑（深底上"浮"起来），明亮用冷灰（纯黑在白底上会脏） */
+function sceneShadowFill(): string {
+  return darkMode() ? 'rgba(0, 0, 0, 0.35)' : 'rgba(16, 24, 40, 0.12)'
+}
+function darkMode(): boolean {
+  if (typeof document === 'undefined') return true
+  return !document.documentElement.classList.contains('light')
 }
 
 // ========== 鼠标交互与射线判定 ==========
@@ -655,8 +706,8 @@ watch(
 
 .td3d-subtitle {
   font-size: 11px;
-  color: #63e2b7;
-  background: rgba(99, 226, 183, 0.12);
+  color: var(--c-success);
+  background: var(--c-success-soft);
   padding: 1px 6px;
   border-radius: 4px;
 }
@@ -696,8 +747,8 @@ watch(
 }
 
 .td3d-tab-btn.active {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
+  background: var(--c-info-soft);
+  color: var(--c-info);
   font-weight: 500;
 }
 
@@ -717,16 +768,16 @@ watch(
 }
 
 .td3d-icon-btn.active {
-  border-color: #f59e0b;
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.15);
+  border-color: var(--c-warning);
+  color: var(--c-warning);
+  background: var(--c-warning-soft);
 }
 
 .td3d-canvas-wrap {
   position: relative;
   width: 100%;
   height: 340px;
-  background: radial-gradient(circle at 50% 45%, rgba(26, 32, 54, 0.5) 0%, rgba(12, 16, 24, 0.9) 100%);
+  background: radial-gradient(circle at 50% 45%, var(--scene-bg-inner) 0%, var(--scene-bg-outer) 100%);
   border: 1px solid var(--fill-active);
   border-radius: 8px;
   overflow: hidden;
@@ -746,14 +797,14 @@ watch(
 .td3d-hud {
   position: absolute;
   pointer-events: none;
-  background: rgba(14, 18, 28, 0.9);
+  background: var(--scene-panel);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--scene-panel-line);
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 11px;
   z-index: 10;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--scene-shadow);
 }
 
 .td3d-hud-header {
@@ -762,7 +813,7 @@ watch(
   gap: 6px;
   margin-bottom: 4px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--app-text-solid);
 }
 
 .td3d-hud-dot {
@@ -775,7 +826,7 @@ watch(
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  color: var(--wa-450);
+  color: var(--scene-ink-dim);
   margin-bottom: 2px;
 }
 
@@ -790,20 +841,20 @@ watch(
 
 .td3d-kpi-sub {
   font-size: 10px;
-  color: var(--wa-400);
+  color: var(--scene-ink-dim);
   letter-spacing: 0.5px;
 }
 
 .td3d-kpi-val {
   font-size: 16px;
   font-weight: 700;
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  color: var(--app-text-solid);
+  text-shadow: 0 2px 8px var(--scene-shadow);
 }
 
 .td3d-kpi-hint {
   font-size: 10px;
-  color: var(--wa-400);
+  color: var(--scene-ink-dim);
 }
 
 .td3d-legend {
@@ -830,7 +881,7 @@ watch(
 .td3d-legend-chip:hover,
 .td3d-legend-chip.active {
   border-color: var(--app-primary);
-  background: rgba(99, 226, 183, 0.12);
+  background: var(--c-success-soft);
 }
 
 .td3d-chip-color {

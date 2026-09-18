@@ -153,7 +153,7 @@
           </div>
           <div class="rs3d-hud-row">
             <span class="rs3d-hud-lbl">相对当前落点:</span>
-            <b :style="{ color: hoverInfo.deltaPct >= 0 ? '#63e2b7' : '#ef4444' }">
+            <b :style="{ color: hoverInfo.deltaPct >= 0 ? 'var(--c-success)' : 'var(--c-danger)' }">
               {{ hoverInfo.deltaPct >= 0 ? '+' : '' }}{{ hoverInfo.deltaPct.toFixed(2) }}%
             </b>
           </div>
@@ -434,6 +434,103 @@ async function runCompute() {
 // ========== 3D Canvas 渲染引擎 ==========
 let animationFrameId: number | null = null
 
+/**
+ * Canvas 主题色桥（`--scene-*` → 真实色值）。
+ *
+ * 为什么必须有它（AGENTS 规则 8「知识单一事实源在代码」+ 规则 11）：
+ * Canvas 的 fillStyle/strokeStyle **不是 CSS 属性**，`ctx.fillStyle = 'var(--x)'` 会被
+ * **静默忽略**（R29 实测踩到：标签继承了上一笔颜色且不报错，见 TeamDamage3DChart 同款注释）。
+ * ⇒ 主题由 CSS 变量承载，但 Canvas 必须**读回**真实值。
+ *
+ * `--scene-ink-rgb` 存的是**裸三元组**（`255, 255, 255`）而不是颜色：
+ * 本文件有 10 处 `rgba(255,255,255,<α>)` 的字面量（网格渐变 α 从 0.05 到 0.45），
+ * 若逐条建令牌＝同一语义炸成 10 个键；存三元组则 `rgba(${inkRgb}, α)` 一处覆盖全部，
+ * 且 α 仍可读、可调。**这正是「单一事实源 = 墨基色」而非「单一事实源 = 每个 α」。**
+ */
+interface SceneInk {
+  /** 裸 RGB 三元组，用于 `rgba(${rgb}, α)` 派生 */
+  rgb: string
+  /** 场景浮层底/描边/阴影（CSS 与 Canvas 共用同一批令牌） */
+  panel: string
+  panelLine: string
+  shadow: string
+  /** 正文层墨色（`--app-text-solid`，两主题都 ≥12:1） */
+  strong: string
+  /** 坐标轴与关键点标记（数据色） */
+  axisX: string
+  axisY: string
+  axisZ: string
+  markCur: string
+  markMax: string
+}
+
+/** 无 DOM（SSR/测试）时的兜底 = 夜间档（与 :root 的 --scene-* 同值，保证不回归） */
+const SCENE_INK_FALLBACK: SceneInk = {
+  rgb: '255, 255, 255',
+  panel: 'rgba(15, 20, 32, 0.88)',
+  panelLine: 'rgba(255, 255, 255, 0.18)',
+  shadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
+  strong: '#ffffff',
+  axisX: '#38bdf8',
+  axisY: '#a78bfa',
+  axisZ: '#63e2b7',
+  markCur: '#63e2b7',
+  markMax: '#fbbf24',
+}
+
+/**
+ * 每帧读一次计算样式（`drawScene` 开头调用）。
+ * 为什么不缓存 + 监听主题变化：① `drawScene` 本来就是 rAF 合帧后的热路径，一次
+ * `getComputedStyle` 相对整棵曲面的投影+多边形填充可忽略；② 缓存就必须自己接主题
+ * 切换事件，而本仓库的取色先例（TeamDamage3DChart.cssVarColor）就是**不缓存**——
+ * 遵循既有约定，避免两组件两套主题失效语义。实测校准：13×13 曲面整帧 < 8ms。
+ */
+function sceneInk(): SceneInk {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return SCENE_INK_FALLBACK
+  const cs = getComputedStyle(document.documentElement)
+  const read = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback
+  return {
+    rgb: read('--scene-ink-rgb', SCENE_INK_FALLBACK.rgb),
+    panel: read('--scene-panel', SCENE_INK_FALLBACK.panel),
+    panelLine: read('--scene-panel-line', SCENE_INK_FALLBACK.panelLine),
+    shadow: read('--scene-shadow', SCENE_INK_FALLBACK.shadow),
+    strong: read('--app-text-solid', SCENE_INK_FALLBACK.strong),
+    axisX: read('--scene-axis-x', SCENE_INK_FALLBACK.axisX),
+    axisY: read('--scene-axis-y', SCENE_INK_FALLBACK.axisY),
+    axisZ: read('--scene-axis-z', SCENE_INK_FALLBACK.axisZ),
+    markCur: read('--scene-mark-cur', SCENE_INK_FALLBACK.markCur),
+    markMax: read('--scene-mark-max', SCENE_INK_FALLBACK.markMax),
+  }
+}
+
+/** 当前墨基色三元组 + 主题态（`drawScene` 每帧刷新，供各绘制函数派生任意 α / 选档） */
+let inkRgb = SCENE_INK_FALLBACK.rgb
+let ink: SceneInk = SCENE_INK_FALLBACK
+let isLight = false
+
+/**
+ * 给一个**不透明**色值加 α —— 只用于场景标记的柔光（如 `--scene-mark-cur` 的 0.4 光晕）。
+ *
+ * 为什么不直接写 `rgba(99, 226, 183, 0.4)`：那在夜间成立（== #63e2b7），但明亮档
+ * `--scene-mark-cur` 已是压深的 #0f7a5a ⇒ 固定字面值会在亮色下**变成另一个色相的光晕**。
+ * 也不走 `color-mix()`：仓库未用过该函数，且 Canvas 只认**已解析**的色值字符串
+ * （不解析 CSS 函数式颜色语法）——同 `var()` 静默失效那条坑。
+ * 非 hex/rgb 输入（如已是 `rgba(...)`）原样返回：**不猜、不抛**。
+ */
+function withAlpha(color: string, alpha: number): string {
+  const s = color.trim()
+  const hex = s.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+  if (hex) {
+    let h = hex[1]
+    if (h.length === 3) h = h.split('').map(c => c + c).join('')
+    const n = parseInt(h, 16)
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
+  }
+  const rgb = s.match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/)
+  if (rgb) return `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, ${alpha})`
+  return s
+}
+
 function requestRender() {
   if (animationFrameId !== null) return
   animationFrameId = requestAnimationFrame(() => {
@@ -552,14 +649,19 @@ function drawScene() {
   ctx.scale(dpr, dpr)
   ctx.clearRect(0, 0, w, h)
 
+  // 主题墨色每帧读一次（见 sceneInk 注释）；浅色主题下网格/描边/文字全部换成深墨
+  ink = sceneInk()
+  inkRgb = ink.rgb
+  isLight = document.documentElement.classList.contains('light')
+
   const midX = w / 2
   const midY = h / 2
   const baseScale = Math.min(w, h) * 0.42
 
-  // 绘制深空背景微光与网格底盘
+  // 场景微光（中心提亮、边缘透出容器渐变底）——α 按主题给，深浅两侧观感同构
   const bgGrad = ctx.createRadialGradient(midX, midY, 20, midX, midY, w * 0.7)
-  bgGrad.addColorStop(0, 'rgba(20, 24, 38, 0.4)')
-  bgGrad.addColorStop(1, 'rgba(12, 14, 20, 0)')
+  bgGrad.addColorStop(0, isLight ? 'rgba(255, 255, 255, 0.35)' : 'rgba(20, 24, 38, 0.4)')
+  bgGrad.addColorStop(1, isLight ? 'rgba(255, 255, 255, 0)' : 'rgba(12, 14, 20, 0)')
   ctx.fillStyle = bgGrad
   ctx.fillRect(0, 0, w, h)
 
@@ -590,7 +692,7 @@ function drawFloorGrid(ctx: CanvasRenderingContext2D, cx: number, cy: number, sc
     const t = -1 + (2 / N) * i
     const pX1 = projectPoint(t, -1, 0, cx, cy, scale)
     const pX2 = projectPoint(t, 1, 0, cx, cy, scale)
-    ctx.strokeStyle = i === 0 || i === N ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.05)'
+    ctx.strokeStyle = i === 0 || i === N ? `rgba(${inkRgb}, 0.18)` : `rgba(${inkRgb}, 0.05)`
     ctx.beginPath()
     ctx.moveTo(pX1.screenX, pX1.screenY)
     ctx.lineTo(pX2.screenX, pX2.screenY)
@@ -611,31 +713,31 @@ function drawFloorGrid(ctx: CanvasRenderingContext2D, cx: number, cy: number, sc
   const pZEnd = projectPoint(-1, -1, 1.15, cx, cy, scale)
 
   // X 轴
-  ctx.strokeStyle = '#38bdf8'
+  ctx.strokeStyle = ink.axisX
   ctx.beginPath()
   ctx.moveTo(pOrigin.screenX, pOrigin.screenY)
   ctx.lineTo(pXEnd.screenX, pXEnd.screenY)
   ctx.stroke()
-  ctx.fillStyle = '#38bdf8'
+  ctx.fillStyle = ink.axisX
   ctx.font = '10px Inter, system-ui, sans-serif'
   ctx.fillText(`X: ${selVarX.value?.label ?? ''}`, pXEnd.screenX + 4, pXEnd.screenY)
 
   // Y 轴
-  ctx.strokeStyle = '#a78bfa'
+  ctx.strokeStyle = ink.axisY
   ctx.beginPath()
   ctx.moveTo(pOrigin.screenX, pOrigin.screenY)
   ctx.lineTo(pYEnd.screenX, pYEnd.screenY)
   ctx.stroke()
-  ctx.fillStyle = '#a78bfa'
+  ctx.fillStyle = ink.axisY
   ctx.fillText(`Y: ${selVarY.value?.label ?? ''}`, pYEnd.screenX + 4, pYEnd.screenY)
 
   // Z 轴
-  ctx.strokeStyle = '#63e2b7'
+  ctx.strokeStyle = ink.axisZ
   ctx.beginPath()
   ctx.moveTo(pOrigin.screenX, pOrigin.screenY)
   ctx.lineTo(pZEnd.screenX, pZEnd.screenY)
   ctx.stroke()
-  ctx.fillStyle = '#63e2b7'
+  ctx.fillStyle = ink.axisZ
   ctx.fillText('Z: 伤害', pZEnd.screenX - 10, pZEnd.screenY - 8)
 }
 
@@ -725,11 +827,11 @@ function drawSurfaceMesh(ctx: CanvasRenderingContext2D, cx: number, cy: number, 
     if (renderStyle.value === 'surface') {
       ctx.fillStyle = color.css
       ctx.fill()
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
+      ctx.strokeStyle = `rgba(${inkRgb}, 0.12)`
       ctx.lineWidth = 0.5
       ctx.stroke()
     } else {
-      ctx.fillStyle = 'rgba(10, 16, 28, 0.8)'
+      ctx.fillStyle = isLight ? 'rgba(226, 232, 240, 0.92)' : 'rgba(10, 16, 28, 0.8)'
       ctx.fill()
       ctx.strokeStyle = color.css
       ctx.lineWidth = 1.2
@@ -751,7 +853,7 @@ function drawSurfaceMesh(ctx: CanvasRenderingContext2D, cx: number, cy: number, 
 // 单面元内等高线生成 (Marching linear cuts)
 function drawQuadContour(ctx: CanvasRenderingContext2D, q: any) {
   const levels = [0.2, 0.4, 0.6, 0.8]
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)'
+  ctx.strokeStyle = `rgba(${inkRgb}, 0.45)`
   ctx.lineWidth = 0.8
 
   for (const lvl of levels) {
@@ -857,7 +959,7 @@ function drawKeyMarkers(ctx: CanvasRenderingContext2D, cx: number, cy: number, s
 
   // 垂直投影虚线
   ctx.setLineDash([4, 3])
-  ctx.strokeStyle = '#63e2b7'
+  ctx.strokeStyle = ink.markCur
   ctx.lineWidth = 1.2
   ctx.beginPath()
   ctx.moveTo(pCurTop.screenX, pCurTop.screenY)
@@ -866,21 +968,21 @@ function drawKeyMarkers(ctx: CanvasRenderingContext2D, cx: number, cy: number, s
   ctx.setLineDash([])
 
   // 底面投影光晕
-  ctx.fillStyle = 'rgba(99, 226, 183, 0.4)'
+  ctx.fillStyle = withAlpha(ink.markCur, 0.4)
   ctx.beginPath()
   ctx.arc(pCurBase.screenX, pCurBase.screenY, 5, 0, Math.PI * 2)
   ctx.fill()
 
   // 顶部实战点光球
-  ctx.fillStyle = '#63e2b7'
+  ctx.fillStyle = ink.markCur
   ctx.beginPath()
   ctx.arc(pCurTop.screenX, pCurTop.screenY, 5.5, 0, Math.PI * 2)
   ctx.fill()
-  ctx.strokeStyle = '#ffffff'
+  ctx.strokeStyle = ink.strong
   ctx.lineWidth = 1.5
   ctx.stroke()
 
-  ctx.fillStyle = '#63e2b7'
+  ctx.fillStyle = ink.markCur
   ctx.font = 'bold 10px Inter, system-ui, sans-serif'
   ctx.fillText('★ 当前落点', pCurTop.screenX + 8, pCurTop.screenY + 3)
 
@@ -894,7 +996,7 @@ function drawKeyMarkers(ctx: CanvasRenderingContext2D, cx: number, cy: number, s
   const pMaxBase = projectPoint(normMaxX, normMaxY, 0, cx, cy, scale)
 
   ctx.setLineDash([3, 3])
-  ctx.strokeStyle = '#fbbf24'
+  ctx.strokeStyle = ink.markMax
   ctx.lineWidth = 1
   ctx.beginPath()
   ctx.moveTo(pMaxTop.screenX, pMaxTop.screenY)
@@ -902,14 +1004,14 @@ function drawKeyMarkers(ctx: CanvasRenderingContext2D, cx: number, cy: number, s
   ctx.stroke()
   ctx.setLineDash([])
 
-  ctx.fillStyle = '#fbbf24'
+  ctx.fillStyle = ink.markMax
   ctx.beginPath()
   ctx.arc(pMaxTop.screenX, pMaxTop.screenY, 5, 0, Math.PI * 2)
   ctx.fill()
-  ctx.strokeStyle = '#ffffff'
+  ctx.strokeStyle = ink.strong
   ctx.stroke()
 
-  ctx.fillStyle = '#fbbf24'
+  ctx.fillStyle = ink.markMax
   ctx.font = 'bold 10px Inter, system-ui, sans-serif'
   ctx.fillText('👑 理论峰值', pMaxTop.screenX + 8, pMaxTop.screenY + 3)
 }
@@ -1093,8 +1195,8 @@ watch(
 
 .rs3d-cur-badge {
   font-size: 11px;
-  color: #63e2b7;
-  background: rgba(99, 226, 183, 0.12);
+  color: var(--c-success);
+  background: var(--c-success-soft);
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -1129,8 +1231,8 @@ watch(
 
 .rs3d-preset-chip.active {
   border-color: var(--app-primary);
-  background: rgba(99, 226, 183, 0.15);
-  color: #63e2b7;
+  background: var(--c-success-soft);
+  color: var(--c-success);
 }
 
 .rs3d-progress-wrap {
@@ -1187,16 +1289,16 @@ watch(
 }
 
 .rs3d-chip-toggle.on {
-  border-color: #38bdf8;
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.12);
+  border-color: var(--c-info);
+  color: var(--c-info);
+  background: var(--c-info-soft);
 }
 
 .rs3d-canvas-container {
   position: relative;
   width: 100%;
   height: 480px;
-  background: radial-gradient(circle at 50% 50%, rgba(26, 32, 52, 0.6) 0%, rgba(13, 16, 24, 0.95) 100%);
+  background: radial-gradient(circle at 50% 50%, var(--scene-bg-inner) 0%, var(--scene-bg-outer) 100%);
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
@@ -1216,12 +1318,12 @@ watch(
 .rs3d-hud {
   position: absolute;
   pointer-events: none;
-  background: rgba(15, 20, 32, 0.88);
+  background: var(--scene-panel);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--scene-panel-line);
   border-radius: 6px;
   padding: 8px 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--scene-shadow);
   font-size: 11px;
   z-index: 10;
   min-width: 160px;
@@ -1230,9 +1332,9 @@ watch(
 .rs3d-hud-title {
   font-size: 11px;
   font-weight: 600;
-  color: var(--wa-450);
+  color: var(--scene-ink-dim);
   margin-bottom: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--line);
   padding-bottom: 3px;
 }
 
@@ -1244,11 +1346,11 @@ watch(
 }
 
 .rs3d-hud-lbl {
-  color: var(--wa-400);
+  color: var(--scene-ink-dim);
 }
 
 .rs3d-hud-highlight {
-  color: #38bdf8;
+  color: var(--c-info);
   font-weight: 600;
   margin-top: 2px;
 }
@@ -1261,13 +1363,13 @@ watch(
   align-items: center;
   flex-wrap: wrap;
   gap: 14px;
-  background: rgba(12, 16, 26, 0.75);
+  background: var(--scene-panel);
   backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--scene-panel-line);
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 11px;
-  color: var(--wa-500);
+  color: var(--scene-ink-dim);
   pointer-events: none;
 }
 
@@ -1284,13 +1386,13 @@ watch(
 }
 
 .dot-cur {
-  background: #63e2b7;
-  box-shadow: 0 0 6px #63e2b7;
+  background: var(--scene-mark-cur);
+  box-shadow: 0 0 6px var(--scene-mark-cur);
 }
 
 .dot-max {
-  background: #fbbf24;
-  box-shadow: 0 0 6px #fbbf24;
+  background: var(--scene-mark-max);
+  box-shadow: 0 0 6px var(--scene-mark-max);
 }
 
 .rs3d-color-spectrum {
@@ -1302,7 +1404,7 @@ watch(
 
 .rs3d-spectrum-labels {
   font-size: 10px;
-  color: var(--wa-400);
+  color: var(--scene-ink-dim);
 }
 
 .rs3d-empty-overlay {
@@ -1316,18 +1418,17 @@ watch(
   justify-content: center;
   align-items: center;
   gap: 12px;
-  background: rgba(14, 18, 28, 0.7);
+  background: var(--scene-panel);
   backdrop-filter: blur(4px);
   z-index: 5;
 }
-
 .rs3d-empty-icon {
   font-size: 36px;
 }
 
 .rs3d-empty-text {
   font-size: 13px;
-  color: var(--wa-450);
+  color: var(--scene-ink-dim);
   max-width: 380px;
   text-align: center;
 }

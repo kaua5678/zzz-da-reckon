@@ -7,6 +7,11 @@ export declare const STYLE_SHEET_EXCLUDED: string[]
 
 // 文本解析
 export declare function stripComments(text: string): string
+/**
+ * 去掉 JS/TS 注释（判据 10 scene-ink-closure 用：两文件的反面教材注释里
+ * **逐字写着** `ctx.fillStyle = 'var(--wa-450)'` 这个错误写法，不剥注释就把文档本身判成违规）。
+ */
+export declare function stripJsComments(text: string): string
 export declare function extractStyleBlocks(
   source: string,
   opts?: { root?: string | null; filePath?: string | null },

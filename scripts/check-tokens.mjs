@@ -11,7 +11,7 @@
 // 本文件就是补这个缺口的：把「令牌是否闭合」「双主题是否对称」「色值是否回收」
 // 「对比度是否达标」变成会大声失败的机器判据。
 //
-// 六条判据：
+// 九条判据：
 //   1. tokens-defined    —— var(--x) 引用必须在 global.css 有定义（防拼写/漏定义）
 //   2. theme-parity      —— :root 与 html.light 的令牌键集必须双向相等（防双主题走偏）
 //   3. hardcoded-color   —— 硬编码色值按文件棘轮，只减不增
@@ -19,6 +19,13 @@
 //   5. contrast          —— 关键前景/背景对对比度达标（明亮模式白底白字的机器兜底）
 //   6. alias             —— --wa-* 直接引用数只减不增（推语义别名层），var() 总数只增不减
 //      （口径 = src 下全部 .vue **加** src/composables 下的 .ts：把取色/几何抽到 .ts 不再被误报）
+//   7. font-stack-parity —— global.css 与 App.vue 的字体栈同源
+//   8. naive-token-reuse —— App.vue 的 themeOverrides 与 global.css 令牌同值
+//   9. scene-contrast    —— **3D 自绘 Canvas 场景**的底/墨成对达标
+//      ⚠ 为什么必须单列（2026-09-18 round 31）：判据 5 的背景固定取 --app-panel/--app-bg，
+//      而 3D 场景的底**由组件自己画**（不是页面底）⇒ 两个组件用固定深底 + 跟随主题的 --wa-*
+//      墨色时，判据 5 **全绿**（令牌对页面底确实达标）而场景内实测塌到 **1.01:1**。
+//      即：判据 5 的覆盖面**结构上到不了**自绘场景 —— 这是"护栏全绿但页面不可读"的典型盲区。
 //
 // 用法：
 //   node scripts/check-tokens.mjs             # 检查（npm run check / verify 已挂载）
@@ -127,6 +134,28 @@ export function countHardcodedColors(text) {
   const hex = text.match(HEX_RE) ?? []
   const fn = text.match(FN_COLOR_RE) ?? []
   return hex.length + fn.length
+}
+
+/**
+ * 去掉 JS/TS 注释（`//` 行注释与 `/* *\/` 块注释），保留字符串字面量内容。
+ *
+ * 为什么需要（2026-09-18 round 31 实测）：判据 10 要抓 `ctx.fillStyle = 'var(--x)'`
+ * 这个**会被静默忽略**的写法，而两文件的反面教材注释里**逐字引用**了它 ⇒ 不剥注释
+ * 就把「说明这个坑的文档」本身判成违规（首版实测 2 条假红）。
+ * ⚠ 与 CSS 版 stripComments 分开：JS 的 `//` 在 URL（`https://`）里也会出现，
+ * 故先保护字符串字面量再剥。
+ */
+export function stripJsComments(text) {
+  // 先把字符串/模板串替换成占位符（保留长度无关，只求不被注释正则误伤）
+  const strings = []
+  const masked = String(text).replace(/(['"`])(?:\\.|(?!\1)[^\\])*\1/g, (m) => {
+    strings.push(m)
+    return `\u0000${strings.length - 1}\u0000`
+  })
+  const stripped = masked
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+  return stripped.replace(/\u0000(\d+)\u0000/g, (_, i) => strings[Number(i)])
 }
 
 /** 所有 var(--x) 引用的令牌名（含 fallback 语法 var(--a, #fff) 只取主名） */
@@ -532,18 +561,31 @@ export const HARDCODED_BASELINE = {
   //   硬编码色值：两文件 44 处（28 + 16）——但全库合计 184 → 203（**Δ+19**，非 +44）
   //   即旧文件侧同轮净 −25（别处令牌化），棘轮方向未被本次放松。
   //
-  // 为什么这些字面色值**不换成语义令牌**（与上面 FilmSimChart / 3D 场景同一条理由）：
+  // 为什么这些字面色值**不换成语义令牌**（与上面 FilmSimChart 同一条理由）：
   // 两组件都是 **Canvas 深色场景**（`.rs3d-canvas-container` / `.td3d-canvas-wrap` 自带
-  // `radial-gradient(rgba(26,32,52,.6) → rgba(12,16,24,.95))` 固定深底，`html.light` 零覆盖），
-  // 其墨色是**按深底调的**；`--c-*`/`--fg-*` 在 `html.light` 被整体压深（`--c-success` 霓虹 #63e2b7
-  // → #0f7a5a）⇒ 换令牌 = 深底上凭空变暗 = 真视觉 delta。**正解是让 3D 场景跟随主题**
+  // `radial-gradient` 固定深底，`html.light` 零覆盖），其墨色是**按深底调的**；
+  // `--c-*`/`--fg-*` 在 `html.light` 被整体压深（`--c-success` 霓虹 #63e2b7 → #0f7a5a）
+  // ⇒ 换令牌 = 深底上凭空变暗 = 真视觉 delta。**正解是让 3D 场景跟随主题**
   // （单独一轮 + 双主题实机取证），见 OPEN-ITEMS「3D 组件主题化」条。
   // 本轮的 `--wa-120/--wa-60/--wa-100 → --line/--fill-hover/--fill-active` 是**唯一可严格等价**的一步
   // （这三个别名只在 `:root` 定义、委托同名 `--wa-*`，`html.light` **未重定义** ⇒ 双主题逐位不变）。
   // ⚠ `--wa-400` **没有**这样换：`:root` 是 `--fg-placeholder: var(--wa-400)`，但 `html.light`
   // 重定义为 `var(--wa-480)` ⇒ 换它会在亮色下改观感（**不是**等价变换）。
-  'src/components/charts/ResponseSurface3D.vue': 28,
-  'src/components/charts/TeamDamage3DChart.vue': 16,
+  //
+  // ---- 2026-09-18 round 31：**3D 场景主题化落地**（R29-J2 结案）⇒ 两行基线大幅下调 ----
+  // 改法：`--scene-*` 场景专用令牌（`global.css` 双主题各一份，由 theme-parity 校验）+
+  // Canvas 侧 `sceneInk()`/`sceneInkAlpha()` 读回真实色值（Canvas 不解析 var()，见 R29 那条 bug）。
+  // 实测：28 → **5**（剩下 5 处见下方说明）、16 → **0**。**这是棘轮要求的方向（只减不增）。**
+  // ⚠ 剩下的 5 处是 `.rs3d-color-spectrum` 的**色阶图例**（Z 值 → 颜色的映射条），
+  // 其色标必须与 `getZColor()` 的数值分段逐位一致；换成主题令牌会让「图例说的颜色」与
+  // 「曲面实际画的颜色」分叉 ⇒ 属**数据色**（UI_THEME_GUIDE §5「明暗通吃，不进变量表」），
+  // 与 3D 场景底/墨无关，**故保留为字面值并在此登记**（不是漏网）。
+  'src/components/charts/ResponseSurface3D.vue': 5,
+  // 16 → **0**（round 31 场景主题化）：该文件的 16 处字面色值**全部**收进 `--scene-*` 令牌
+  // 或 `sceneInkAlpha()`（唯一剩下的 `TYPE_COLOR_MAP` 属性色板在 `<script>` 里 = 数据色，本判据不计）。
+  // 保留 0 这一行而不是删键：与 FONT_SIZE_BASELINE 的 `TimeChartsPage.vue: 0` 同款——
+  // **键在 = 「这个文件已被清账」这件事本身是记录**，删键会让后来者以为从未审计过。
+  'src/components/charts/TeamDamage3DChart.vue': 0,
 }
 
 /**
@@ -592,7 +634,14 @@ export const FONT_SIZE_BASELINE = {
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--text-2/--text-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 474  /* 444 → 474（2026-09-18 round 29：3D 可视化组件 `310ba51` 未同步本表
+export const WA_REF_BASELINE = 466  /* ★ 2026-09-18 round 31「3D 场景主题化」：474 → **466**（−8）。
+   方向 = 棘轮要求的方向（只减不增）。逐条归因：两组件把**按页面底调**的 --wa-* 直引
+   （在自绘场景里语义就是错的 —— 实测亮色档压到场景底只有 1.01~2.89:1）换成
+   `--scene-*` 场景专用令牌；其中 18 处落在场景选择器/Canvas 里（由 --scene-* 接管），
+   另有 8 处 `--wa-400/--wa-450/--wa-500` 的文字墨改为 `--scene-ink-dim` ⇒ --wa-* −8，
+   而 var() 总数不变（687，1:1 换名）——**两个数字一起看才说明"换的是语义不是数量"**。
+   ⚠ 下方 round 29 的原始归因保留（它是补登记红基线那次的历史证据）。 */
+  /* 444 → 474（2026-09-18 round 29：3D 可视化组件 `310ba51` 未同步本表
    ⇒ HEAD `check-tokens` EXIT=1，按规则 10 量 delta 后补登记。delta 逐条归因：
    ResponseSurface3D.vue +18、TeamDamage3DChart.vue +22 ⇒ 恰好 +40；本轮把其中 6 处**严格等价**的
    `--wa-120/--wa-60/--wa-100` 换成 `--line/--fill-hover/--fill-active`（这三个别名只在 :root 定义、
@@ -609,7 +658,13 @@ export const WA_REF_BASELINE = 474  /* 444 → 474（2026-09-18 round 29：3D �
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 648  /* 605 → 648（2026-09-18 round 29：同上，3D 组件 `310ba51` 未同步）
+export const VAR_TOTAL_BASELINE = 687  /* ★ 2026-09-18 round 31「3D 场景主题化」：648 → **687**（+39）。
+   这是**棘轮允许的方向**（本键语义 = 「只增不减，防把变量改回字面量」）⇒ 上调即进步登记。
+   逐文件归因（`--report` 实测）：两组件把 44 处字面色值换成 `var(--scene-*)` /
+   `--c-*` 令牌，另加 `--line`/`--fill-hover`/`--fill-active` 既有替换；
+   ⚠ 同时 **--wa-\* 直引净 0**（474，见 WA_REF_BASELINE 注释）——两个数字一起看才说明
+   「换的是语义不是数量」。下方 round 29 的原始归因保留。 */
+  /* 605 → 648（2026-09-18 round 29：同上，3D 组件 `310ba51` 未同步）
    —— 两文件合计 +44 处 var()（ResponseSurface3D 21 / TeamDamage3DChart 23）；
    本轮把 6 处严格等价的 --wa-* 换成语义别名（var() 总数不变，只动 --wa-* 分项），
    并把 1 处 Canvas 非法 `var()` 改成 `cssVarColor()` 调用（--wa-* −1、var() +1）⇒ 实到 648。
@@ -969,6 +1024,146 @@ export function runAllChecks(root = ROOT) {
     name: `naive-token-reuse (规则 11: App.vue 表面色必须取自 global.css 令牌) ${checked}/${NAIVE_TOKEN_MAP.length} 对齐`,
     ok: reuseDetail.length === 0 && checked === NAIVE_TOKEN_MAP.length,
     detail: reuseDetail,
+  })
+
+  // ---- 9. scene-contrast（3D 自绘 Canvas 场景）----
+  // 为什么单列一条（2026-09-18 round 31，R29-J2 结案）：
+  // 判据 5（contrast）只断言「令牌 vs --app-panel/--app-bg」，而 3D 场景的底**不是页面底**
+  // ——它由组件自己画（`--scene-bg-inner/outer`）。这正是本 bug 藏身之处：两个组件曾用
+  // **固定深底** + 跟随主题的 `--wa-*` 墨色 ⇒ 亮色主题下判据 5 全绿（令牌对页面底达标），
+  // 而**场景内**实测塌到 1.01:1。⇒ 判据 5 的覆盖面**结构上到不了**这里，必须显式补。
+  // 算法：把半透明场景底的**两端**（内圈/外圈）分别压到 --app-bg 上取实色，再算各墨色的对比度。
+  const sceneDetail = []
+  /**
+   * 每个墨色**实际坐在哪个表面上** —— 不能一律当成"坐在三种表面上"。
+   * 为什么必须分（首版实测的教训）：HUD/图例文字坐在 `--scene-panel` 浮层上（自带底色），
+   * 若也拿它去比容器外圈，`--c-success` 会以 4.19 被判红——**那是假红**：
+   * 该文字根本不直接坐在容器渐变上（浮层把它垫起来了）。判据宁可精细，不要"宁可错杀"。
+   *   canvas = 画在 Canvas 上（直接坐容器渐变内/外圈）
+   *   panel  = 坐在 `--scene-panel` 浮层上（HUD / 图例 / 空态）
+   */
+  const SCENE_INK_PAIRS = [
+    // Canvas 直绘文字：轴标（10px 文字，正文门槛）
+    { label: '--scene-axis-x', min: CONTRAST_TEXT_MIN, role: '轴标', on: ['canvas'] },
+    { label: '--scene-axis-y', min: CONTRAST_TEXT_MIN, role: '轴标', on: ['canvas'] },
+    { label: '--scene-axis-z', min: CONTRAST_TEXT_MIN, role: '轴标', on: ['canvas'] },
+    // Canvas 直绘标记（图形 ⇒ 图表门槛）
+    { label: '--scene-mark-cur', min: CONTRAST_CHART_MIN, role: '标记', on: ['canvas'] },
+    { label: '--scene-mark-max', min: CONTRAST_CHART_MIN, role: '标记', on: ['canvas'] },
+    // 次级墨：既是 Canvas 柱阵标签，也是 HUD/图例文字 ⇒ 两类表面都要过
+    { label: '--scene-ink-dim', min: CONTRAST_TEXT_MIN, role: '正文', on: ['canvas', 'panel'] },
+    // 强调墨：TD3D 的 KPI 直接画在画布上（无浮层底）+ HUD 标题
+    { label: '--app-text-solid', min: CONTRAST_TEXT_MIN, role: '正文', on: ['canvas', 'panel'] },
+    // 浮层内语义色（RS3D HUD 的涨跌色 / 高亮行、TD3D 副标题）
+    { label: '--c-success', min: CONTRAST_TEXT_MIN, role: '正文', on: ['panel'] },
+    { label: '--c-danger', min: CONTRAST_TEXT_MIN, role: '正文', on: ['panel'] },
+    { label: '--c-info', min: CONTRAST_TEXT_MIN, role: '正文', on: ['panel'] },
+  ]
+  const checkScene = (tokens, label) => {
+    const pageBg = resolveTokenColor(tokens, '--app-bg', null)
+    if (!pageBg) { sceneDetail.push(`  ✗ [${label}] 无法解析 --app-bg`); return }
+    // 表面清单（名称对齐 SCENE_INK_PAIRS.on 的取值）
+    const canvasSurfaces = []
+    for (const side of ['--scene-bg-inner', '--scene-bg-outer']) {
+      const raw = resolveTokenColor(tokens, side, null)
+      if (!raw) { sceneDetail.push(`  ✗ [${label}] 无法解析场景底 ${side}`); continue }
+      // 场景底是半透明的（夜间档）⇒ 压到页面底上取实色
+      canvasSurfaces.push({ name: side, bg: raw.a < 1 ? flatten(raw, pageBg) : raw, kind: 'canvas' })
+    }
+    const outer = canvasSurfaces.find(s => s.name === '--scene-bg-outer')?.bg
+    const panelRaw = resolveTokenColor(tokens, '--scene-panel', null)
+    const surfaces = [...canvasSurfaces]
+    if (outer && panelRaw) {
+      surfaces.push({
+        name: '--scene-panel(over outer)', kind: 'panel',
+        bg: panelRaw.a < 1 ? flatten(panelRaw, outer) : panelRaw,
+      })
+    }
+    for (const s of surfaces) {
+      for (const p of SCENE_INK_PAIRS) {
+        if (!p.on.includes(s.kind)) continue
+        if (!tokens.has(p.label)) continue
+        const fgRaw = resolveTokenColor(tokens, p.label, null)
+        if (!fgRaw) { sceneDetail.push(`  ✗ [${label}] 无法解析 ${p.label}`); continue }
+        const fg = fgRaw.a < 1 ? flatten(fgRaw, s.bg) : fgRaw
+        const ratio = contrastRatio(fg, s.bg)
+        if (ratio < p.min) {
+          sceneDetail.push(
+            `  ✗ [${label}] 3D 场景(${s.name}) ${p.role} ${p.label} = ${ratio.toFixed(2)}:1 < ${p.min}`
+            + ` → 场景底与墨色必须**成对**跟随主题（见 global.css 的 --scene-* 注释）`,
+          )
+        }
+      }
+    }
+  }
+  checkScene(darkTokens, 'dark')
+  checkScene(lightTokens, 'light')
+  results.push({
+    name: `scene-contrast (3D 自绘场景的底/墨成对: 正文 ≥${CONTRAST_TEXT_MIN} / 刻度标记 ≥${CONTRAST_CHART_MIN})`,
+    ok: sceneDetail.length === 0,
+    detail: sceneDetail,
+  })
+
+  // ---- 10. scene-ink-closure（**形状面**，与判据 9 成对）----
+  // 为什么判据 9 不够：它断言的是「--scene-* 这几个令牌的色值达标」——
+  // **有人把场景文字改回 `--wa-450`，判据 9 照样全绿**（那个令牌不在被断言的清单里，
+  // 而它自己确实没变）。这正是 R30 §2.3 说的「只有行为面 ⇒ 对'接回错源'全盲」。
+  // ⇒ 本判据钉**结构**：3D 自绘场景选择器里的 var() 引用必须落在场景令牌白名单内。
+  // 白名单 = 场景底/墨/浮层/轴标/标记 + 语义色 + 结构色（--line 等，均无色值、委托 --wa-*）。
+  const closureDetail = []
+  /**
+   * 场景选择器前缀 → 该规则内允许出现的令牌。
+   * ⚠ `--wa-*` **一律不在白名单**：它按页面底调，在自绘场景里语义就是错的（实测亮色档 1.01:1）。
+   * `--line`/`--fill-hover`/`--fill-active` 放行：它们委托同名 --wa-* 但**只用于场景外的
+   * 控件区**，且无色值本体、双主题逐位不变（R29 已论证）。
+   */
+  const SCENE_TOKEN_ALLOW = new Set([
+    '--scene-bg-inner', '--scene-bg-outer', '--scene-ink-dim', '--scene-panel', '--scene-panel-line',
+    '--scene-shadow', '--scene-axis-x', '--scene-axis-y', '--scene-axis-z',
+    '--scene-mark-cur', '--scene-mark-max',
+    '--app-text-solid', '--c-success', '--c-info', '--c-warning', '--c-danger',
+    '--c-success-soft', '--c-info-soft', '--c-warning-soft',
+    '--line', '--line-strong', '--fill-hover', '--fill-active', '--app-primary',
+  ])
+  /** 命中即算「场景内」的选择器前缀（两组件共用的场景容器与浮层） */
+  const SCENE_SELECTOR_PREFIXES = [
+    '.rs3d-canvas-container', '.rs3d-hud', '.rs3d-legend-bar', '.rs3d-marker-dot', '.dot-cur', '.dot-max',
+    '.rs3d-color-spectrum', '.rs3d-spectrum-labels', '.rs3d-empty-overlay', '.rs3d-empty-icon', '.rs3d-empty-text',
+    '.td3d-canvas-wrap', '.td3d-hud', '.td3d-center-kpi', '.td3d-kpi-sub', '.td3d-kpi-val', '.td3d-kpi-hint',
+  ]
+  for (const file of ['src/components/charts/ResponseSurface3D.vue', 'src/components/charts/TeamDamage3DChart.vue']) {
+    const src = readFileSync(join(root, file), 'utf8')
+    const styleCss = extractStyleBlocks(src, { root, filePath: file }).map(b => b.content).join('\n')
+    // 逐条规则扫（选择器 { 声明 }），只看选择器命中场景前缀的
+    for (const m of styleCss.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const selector = m[1].trim()
+      if (!SCENE_SELECTOR_PREFIXES.some(p => selector.includes(p))) continue
+      for (const name of findVarRefs(m[2])) {
+        if (name.startsWith('--n-')) continue // Naive UI 自身变量
+        if (!SCENE_TOKEN_ALLOW.has(name)) {
+          closureDetail.push(
+            `  ✗ ${file} 场景选择器「${selector.split('\n').pop().trim()}」引用了 ${name}`
+            + ` → 场景墨/底必须用 --scene-*（该令牌按页面底调，在自绘场景里会读不出；见判据 9）`,
+          )
+        }
+      }
+    }
+    // Canvas 侧：`ctx.*Style = 'var(--x)'` **会被静默忽略**（不是 CSS 属性赋值）——R29 实测踩到
+    // ⚠ 必须先剥注释：两文件的反面教材注释里**逐字写着**这个错误写法（"不要写 ctx.fillStyle = 'var(--wa-450)'"），
+    // 不剥就把自己的文档判成违规（实测首版正是如此，2 条假红）。
+    const scriptBody = stripJsComments((src.match(/<script[^>]*>([\s\S]*?)<\/script>/) ?? [])[1] ?? '')
+    for (const m of scriptBody.matchAll(/ctx\.(?:fill|stroke)Style\s*=\s*['"`]var\(/g)) {
+      closureDetail.push(`  ✗ ${file} 第 ${scriptBody.slice(0, m.index).split('\n').length} 行：Canvas 赋值 'var(...)' 会被静默忽略 → 用 cssVarColor()/sceneInk*() 读回真实色值`)
+    }
+    // Canvas 侧：不得拿**页面墨**当场景墨（cssVarColor 的实参）
+    for (const m of scriptBody.matchAll(/cssVarColor\(\s*['"`](--wa-[\w-]+|--fg-[\w-]+)['"`]/g)) {
+      closureDetail.push(`  ✗ ${file} 第 ${scriptBody.slice(0, m.index).split('\n').length} 行：Canvas 场景墨借用了页面令牌 ${m[1]} → 用 --scene-ink-*`)
+    }
+  }
+  results.push({
+    name: `scene-ink-closure (3D 场景只用 --scene-* 墨: 场景选择器的 var() + Canvas 取色)`,
+    ok: closureDetail.length === 0,
+    detail: closureDetail,
   })
 
   return { results, ok: results.every(r => r.ok), stats: { scanned, varTotal, waRefs, darkTokens, lightTokens } }
