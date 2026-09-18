@@ -447,8 +447,8 @@ function draw3DBars(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.fill()
     ctx.stroke()
 
-    // 标签与数值
-    ctx.fillStyle = isHover ? '#ffffff' : 'var(--wa-450)'
+    // 标签与数值（⚠ Canvas 不解析 var() ⇒ 必须读回真实色值，见 cssVarColor 注释）
+    ctx.fillStyle = isHover ? '#ffffff' : cssVarColor('--fg-3', 'rgba(255,255,255,0.55)')
     ctx.font = '10px Inter, system-ui, sans-serif'
     ctx.textAlign = 'center'
     ctx.fillText(s.label, x + barW / 2, baseY + 18)
@@ -493,6 +493,21 @@ function shadeColor(hex: string, percent: number): string {
   const G = Math.min(255, Math.max(0, ((num >> 8) & 0x00ff) + amt))
   const B = Math.min(255, Math.max(0, (num & 0x0000ff) + amt))
   return `rgb(${R},${G},${B})`
+}
+
+/**
+ * Canvas 用的主题色取值。
+ *
+ * ⚠ **不要写 `ctx.fillStyle = 'var(--wa-450)'`**：Canvas 的 fillStyle **不解析 CSS 变量**
+ * （它不是 CSS 属性赋值，而是 CanvasRenderingContext2D 的 IDL 属性）⇒ 浏览器**静默忽略**该赋值，
+ * 画布继续用**上一次**的颜色 ⇒ 观感错乱且不报错。实测（2026-09-18 round 29）本文件
+ * 的 3D 柱阵标签就是这样：非 hover 时继承了上一笔的 `shadeColor(s.color, -25)`。
+ * 正解 = 从计算样式读回真实色值（跟随主题），取不到再回落。
+ */
+function cssVarColor(name: string, fallback: string): string {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return fallback
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return v || fallback
 }
 
 // ========== 鼠标交互与射线判定 ==========
@@ -621,7 +636,7 @@ watch(
   flex-wrap: wrap;
   gap: 10px;
   background: var(--wa-30);
-  border: 1px solid var(--wa-100);
+  border: 1px solid var(--fill-active);
   border-radius: 6px;
   padding: 8px 12px;
 }
@@ -660,7 +675,7 @@ watch(
 
 .td3d-btn-group {
   display: inline-flex;
-  border: 1px solid var(--wa-120);
+  border: 1px solid var(--line);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -676,7 +691,7 @@ watch(
 }
 
 .td3d-tab-btn:hover {
-  background: var(--wa-60);
+  background: var(--fill-hover);
   color: var(--wa-800);
 }
 
@@ -688,7 +703,7 @@ watch(
 
 .td3d-icon-btn {
   background: var(--wa-40);
-  border: 1px solid var(--wa-120);
+  border: 1px solid var(--line);
   border-radius: 4px;
   font-size: 11px;
   color: var(--wa-500);
@@ -712,7 +727,7 @@ watch(
   width: 100%;
   height: 340px;
   background: radial-gradient(circle at 50% 45%, rgba(26, 32, 54, 0.5) 0%, rgba(12, 16, 24, 0.9) 100%);
-  border: 1px solid var(--wa-100);
+  border: 1px solid var(--fill-active);
   border-radius: 8px;
   overflow: hidden;
   cursor: grab;
@@ -805,7 +820,7 @@ watch(
   font-size: 11px;
   padding: 3px 8px;
   background: var(--wa-30);
-  border: 1px solid var(--wa-100);
+  border: 1px solid var(--fill-active);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.15s ease;

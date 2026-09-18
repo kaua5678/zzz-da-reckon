@@ -522,6 +522,28 @@ export const HARDCODED_BASELINE = {
   // （原在 TimeChartsPage.css 的 .pv-* 规则里）。页面 30 → 23。
   'src/components/charts/PullValueChart.vue': 7,
   'src/views/WEngineFieldPage.vue': 3,
+  // ---- 2026-09-18 round 29：3D 可视化组件（外部协作者 `310ba51`）——**修红基线，非新增债务** ----
+  //
+  // ⚠ 背景：`310ba51` 落地两个 3D 组件时**未同步本表**，导致 HEAD 上 `check-tokens` **EXIT=1**
+  // （3 条判据红）。因 `npm run verify` 是 `&&` 链，这一红**吞掉了后面 5 步**（validate:data /
+  // validate:specs / verify:recording / vitest / build 全程不跑）——正是判据 10「红基线不允许过夜」
+  // 描述的那类失效（历史上有 job 因同样的原因整张护栏哑掉）。本表按**规则 10**（先量 delta → 逐条
+  // 归因 → 确认有意才登记）补登记。**实测归因 = 两文件贡献，逐项可被单一变量解释**：
+  //   硬编码色值：两文件 44 处（28 + 16）——但全库合计 184 → 203（**Δ+19**，非 +44）
+  //   即旧文件侧同轮净 −25（别处令牌化），棘轮方向未被本次放松。
+  //
+  // 为什么这些字面色值**不换成语义令牌**（与上面 FilmSimChart / 3D 场景同一条理由）：
+  // 两组件都是 **Canvas 深色场景**（`.rs3d-canvas-container` / `.td3d-canvas-wrap` 自带
+  // `radial-gradient(rgba(26,32,52,.6) → rgba(12,16,24,.95))` 固定深底，`html.light` 零覆盖），
+  // 其墨色是**按深底调的**；`--c-*`/`--fg-*` 在 `html.light` 被整体压深（`--c-success` 霓虹 #63e2b7
+  // → #0f7a5a）⇒ 换令牌 = 深底上凭空变暗 = 真视觉 delta。**正解是让 3D 场景跟随主题**
+  // （单独一轮 + 双主题实机取证），见 OPEN-ITEMS「3D 组件主题化」条。
+  // 本轮的 `--wa-120/--wa-60/--wa-100 → --line/--fill-hover/--fill-active` 是**唯一可严格等价**的一步
+  // （这三个别名只在 `:root` 定义、委托同名 `--wa-*`，`html.light` **未重定义** ⇒ 双主题逐位不变）。
+  // ⚠ `--wa-400` **没有**这样换：`:root` 是 `--fg-placeholder: var(--wa-400)`，但 `html.light`
+  // 重定义为 `var(--wa-480)` ⇒ 换它会在亮色下改观感（**不是**等价变换）。
+  'src/components/charts/ResponseSurface3D.vue': 28,
+  'src/components/charts/TeamDamage3DChart.vue': 16,
 }
 
 /**
@@ -556,6 +578,11 @@ export const FONT_SIZE_BASELINE = {
   // src/styles/charts.css ⇒ `.ctl-note` 的 10.5px 从页面基线**平移**到本表（页面 7→6、本表 0→1），
   // 合计不变。是归属变化不是新增债务。
   'src/styles/charts.css': 1,
+  // 2026-09-18 round 29：3D 响应面的空态图标 36px（外部协作者 `310ba51`）。
+  // 36 不在 FONT_SCALE 档位里；但它是**空态占位图标**（`.rs3d-empty-icon`，一个 📊 类的装饰字符），
+  // 不是正文字号 ⇒ 归到档位 24 会显著改版式。按既有先例（PullValueChart 的 8.5/10.5px 同样登记在册）
+  // 冻结一行，**不动档位表**。若要清零，属独立的视觉调整（需实机比对空态观感）。
+  'src/components/charts/ResponseSurface3D.vue': 1,
 }
 
 /**
@@ -565,7 +592,15 @@ export const FONT_SIZE_BASELINE = {
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--text-2/--text-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 444  /* 443 → 444（2026-09-14 直伤系数图抽组件：图例类随组件走，
+export const WA_REF_BASELINE = 474  /* 444 → 474（2026-09-18 round 29：3D 可视化组件 `310ba51` 未同步本表
+   ⇒ HEAD `check-tokens` EXIT=1，按规则 10 量 delta 后补登记。delta 逐条归因：
+   ResponseSurface3D.vue +18、TeamDamage3DChart.vue +22 ⇒ 恰好 +40；本轮把其中 6 处**严格等价**的
+   `--wa-120/--wa-60/--wa-100` 换成 `--line/--fill-hover/--fill-active`（这三个别名只在 :root 定义、
+   委托同名 --wa-*，html.light 未重定义 ⇒ 双主题逐位不变）⇒ 484 − 6 − 4(见下) = **474**。
+   ⚠ 同轮修了一个**真 bug**：`TeamDamage3DChart.vue` 的 3D 柱阵标签写
+   `ctx.fillStyle = 'var(--wa-450)'` —— Canvas **不解析 CSS 变量**且**静默忽略**该赋值
+   ⇒ 非 hover 标签继承了上一笔的 `shadeColor(s.color,-25)`。已改为 `cssVarColor('--fg-3')`
+   （getComputedStyle 读回真实色值，跟随主题）。该处同时使 --wa-* 再 −1、var() 再 +1。 */  /* 443 → 444（2026-09-14 直伤系数图抽组件：图例类随组件走，
    组件内多出 6 处 --wa-* 引用，页面侧同步减少 ⇒ 净 +1）。 */
   /* 446 → 443（2026-09-14 图表样式收敛）：6 个跨页同名类
    （grid-line/axis-label/x-label/hover-line/trend-line/trend-point）从两页各自 scoped 定义
@@ -574,7 +609,12 @@ export const WA_REF_BASELINE = 444  /* 443 → 444（2026-09-14 直伤系数图�
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 605  /* 604 → 605（2026-09-15 N2：`.pv-sel-row` 底色由字面 rgba 换成 var(--c-warning-soft)，+1 处 var() 引用；同轮 hardcoded-color 因此 −1）。 */  /* 601 → 604（2026-09-15 同页：无专武档的下位件展示条 `<div class="fc-note">` —— 3 处全走语义别名 --fg-3/--fg-2/--line，`--wa-*` 直引仍 444 不变）。 */  /* 582 → 601（2026-09-15 自由对比工作台：`views/FreeComparePage.vue` 全页**零 `--wa-*` 直引**——11 处全走语义别名 --fg-3/--fg-2/--line，纯新增 var() 引用 +19；`--wa-*` 直引保持 444 不变，符合「老代码不动、新代码只用别名」的棘轮方向）。 */  /* 581 → 582（2026-09-14 同上：`.kill-line-ref` 的字面色值换成 var(--c-success)，+1 处 var() 引用）。 */  /* 587 → 581（2026-09-14 第三轮：`.legend` 家族全局化去重）。
+export const VAR_TOTAL_BASELINE = 648  /* 605 → 648（2026-09-18 round 29：同上，3D 组件 `310ba51` 未同步）
+   —— 两文件合计 +44 处 var()（ResponseSurface3D 21 / TeamDamage3DChart 23）；
+   本轮把 6 处严格等价的 --wa-* 换成语义别名（var() 总数不变，只动 --wa-* 分项），
+   并把 1 处 Canvas 非法 `var()` 改成 `cssVarColor()` 调用（--wa-* −1、var() +1）⇒ 实到 648。
+   ⚠ 这是**补登记既有红基线**（同轮 check-tokens 由 EXIT=1 转 EXIT=0），不是新增债务：
+   棘轮方向未被本次放松——本轮自己的改动只让 --wa-* **下降**（474 < 484）。 */  /* 604 → 605（2026-09-15 N2：`.pv-sel-row` 底色由字面 rgba 换成 var(--c-warning-soft)，+1 处 var() 引用；同轮 hardcoded-color 因此 −1）。 */  /* 601 → 604（2026-09-15 同页：无专武档的下位件展示条 `<div class="fc-note">` —— 3 处全走语义别名 --fg-3/--fg-2/--line，`--wa-*` 直引仍 444 不变）。 */  /* 582 → 601（2026-09-15 自由对比工作台：`views/FreeComparePage.vue` 全页**零 `--wa-*` 直引**——11 处全走语义别名 --fg-3/--fg-2/--line，纯新增 var() 引用 +19；`--wa-*` 直引保持 444 不变，符合「老代码不动、新代码只用别名」的棘轮方向）。 */  /* 581 → 582（2026-09-14 同上：`.kill-line-ref` 的字面色值换成 var(--c-success)，+1 处 var() 引用）。 */  /* 587 → 581（2026-09-14 第三轮：`.legend` 家族全局化去重）。
    逐字归因：该家族原本在 4 个文件各写一份（时间图表页 / 血量膨胀页 / 队伍对比页 / 直伤图组件），
    收敛到 src/styles/charts.css 一份后，重复的 var() 引用消失 ⇒ **净 −6**（--fill-hover/--fg-2/--fg-3
    各从 2–4 份变 1 份）。这是去重不是「改回字面量」（--wa-* 直引不变，仍 444）。 */  /* 584 → 587（同上：直伤图抽组件，图例类 var() 引用随组件走，净 +3）。 */  /* 576 → 573（2026-09-14 图表样式收敛去重）→ 577

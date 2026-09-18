@@ -1067,7 +1067,7 @@ watch(
   flex-direction: column;
   gap: 10px;
   background: var(--wa-40);
-  border: 1px solid var(--wa-120);
+  border: 1px solid var(--line);
   border-radius: 6px;
   padding: 10px 14px;
 }
@@ -1175,7 +1175,7 @@ watch(
   font-size: 11px;
   padding: 1px 7px;
   border-radius: 4px;
-  border: 1px solid var(--wa-120);
+  border: 1px solid var(--line);
   color: var(--wa-450);
   cursor: pointer;
   user-select: none;
@@ -1197,7 +1197,7 @@ watch(
   width: 100%;
   height: 480px;
   background: radial-gradient(circle at 50% 50%, rgba(26, 32, 52, 0.6) 0%, rgba(13, 16, 24, 0.95) 100%);
-  border: 1px solid var(--wa-120);
+  border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
   cursor: grab;
