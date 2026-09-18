@@ -538,8 +538,13 @@ export function scanStructureEntropy(root = ROOT) {
   rec(join(root, 'scripts'))
   over.sort((a, b) => b.lines - a.lines)
   // 不写 `--format=%(refname:short)`：execSync 走 /bin/sh，`%(...)` 会被 shell 当语法报错（实测）。
-  // 用 `--no-color` 的默认输出，剥掉当前分支的 `* ` 前缀即可。
-  const branches = git('branch --no-color', root).split('\n').map(l => l.replace(/^\*\s*/, '').trim()).filter(Boolean)
+  // ⚠ 剥前缀必须同时认**两种**标记（2026-09-18 round 24 实测）：`* ` = 当前分支，
+  // `+ ` = **在别的 worktree 里被 checkout** 的分支。旧实现只剥 `* ` ⇒ 从任何非 master 的
+  // worktree 里跑（`git worktree add` 是本仓验收的标准手法）时，master 会带着 `+ ` 出现，
+  // 于是 `zc.test.ts` 的结构熵断言「branches 含 master」假红——那是**环境性**的，不是回归。
+  // 判据若要「排除被别处占用的分支」应显式表达，不能靠前缀字符串意外实现。
+  const branches = git('branch --no-color', root).split('\n')
+    .map(l => l.replace(/^[*+]\s*/, '').trim()).filter(Boolean)
   return { maxFileLines: MAX_FILE_LINES, overThreshold: over, branches }
 }
 

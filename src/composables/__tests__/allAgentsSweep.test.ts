@@ -38,7 +38,16 @@ for (const skills of catalogData.agentSkills ?? []) {
 // ⚠ c4 的结构性证明（R23 实测）：只影响 `cinema==4` 的注入
 // （`cinema>=5?4:cinema>=4?3:cinema>=3?2:0`）在**旧口径**下本 sweep **187 passed**——
 // 它结构上看不见单档数值改动；加上 c4 后同一条注入 ⇒ `timeGolden` 15 条红。
-const CINEMA_LEVELS = [0, 3, 4, 6] as const
+// ⚠ **2026-09-18 round 24：`[0, 3, 4, 6]` → `[0, 3, 4, 5, 6]`**（补 c5，同批同因）。
+// 结构性证明（R24 实测，与 c4 同法）：通用命座式是 `cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0`
+// ⇒ 只影响 `cinema==5` 的注入（改成 `cinema >= 6 ? 4 : …`）在**旧口径**下
+// `timeGolden` 3 passed + 本 sweep 252 passed **全绿**（`{0,3,4,6}` 的 c4 与 c6 都跨过 5 命，
+// 结构上看不见它）；加上 c5 后同一条注入 ⇒ `timeGolden` **30 条红**
+// （15 条 stun/slack + 15 条逐槽时间账，c5 档 62 条里 30 条有差异）。
+// 反向再验 c4（`>=4?3` 注入）⇒ **15 条红**、c3（`2→2.5`）⇒ **26 条红**，两级覆盖未被削弱。
+// 口径纠正备注（规则 17②）：**扩大测量面**不是放宽判据；baseline delta = 352 → 414 条**纯新增**
+// （62 条 `:c5`，`git diff --numstat` = 558 插入 / 0 删除 ⇒ 已有条目零改动零漂移）。
+const CINEMA_LEVELS = [0, 3, 4, 5, 6] as const
 
 /** 逐 (角色, 命座) 记录全队伤害，供末尾的「命座必须有效果」不变量比对（零额外算力）。 */
 const damageByAgentCinema = new Map<string, number>()
