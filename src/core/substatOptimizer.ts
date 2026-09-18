@@ -2,6 +2,9 @@
  * 套装等效词条 + 副词条融合贪心优化器
  *
  * 替代 substatAlloc.ts 的固定步数启发式（computeRecommendedSubStats）。
+ * ⚠ R34：`substatAlloc.ts` 已**整文件删除**（旧启发式「100% 暴击封顶」已过期；
+ * 本文件是唯一活实现，暴击封顶走 `critRateCap`，锋御锐暴 200%）。
+ * ⇒ 本条已从「替代 X」改写成「X 已删」留痕，别再按旧指针去找那个文件（规则 16）。
  * 将套装效果拆分为等效词条和独立乘区，然后用融合贪心在 39 步词条预算下
  * 最大化伤害期望。
  *
@@ -846,7 +849,7 @@ function computeNoSubstatPanel(input: OptimizeSubstatsInput): PanelValues {
 /**
  * 套装等效词条 + 副词条融合贪心优化主入口。
  *
- * 替代 computeRecommendedSubStats。
+ * 替代 computeRecommendedSubStats（该函数与其所在文件 `substatAlloc.ts` 已于 R34 删除）。
  *
  * 流程：
  * 1. 获取角色词条模板

@@ -106,12 +106,6 @@ export function getBaseElement(element: string): string {
   return VARIANT_ELEMENT_TO_BASE[element] ?? element
 }
 
-/** 判断两个元素是否为变种关系（即基础元素相同但变种 ID 不同的两个元素） */
-export function isVariantPair(a: string, b: string): boolean {
-  if (a === b) return false
-  return getBaseElement(a) === getBaseElement(b)
-}
-
 // ============ 积蓄上限表（原有，保持不变） ============
 
 /**

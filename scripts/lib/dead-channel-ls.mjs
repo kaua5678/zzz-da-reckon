@@ -24,7 +24,7 @@
  * 由下任从基线删掉（棘轮只减不增，与 DEAD_CHANNEL_ALLOWLIST 同款纪律：不许为绿而登记）。
  *
  * @fact engine:guards/死通道LS 口径: 死通道=导出可选属性/内联opts可选属性 全仓零写入点（AST PropertyAssignment∪LS write-access∪vue `foo:` 三重交叉，namesake 同名写入保守压制不报）；reads=0 记 dead-both、reads>0 记 dead-input；基线棘轮新增即红；**基线键行号无关**（`文件 符号`，带行号的旧键经 normalizeBaseKey 兼容——2026-09-15 实测：无关改动给 types/resource/config.ts 插 9 行致 9 条冻结基线条目假红） | 据 实测@2026-09-15 | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadChannelsLs | 信 高
- * @fact engine:guards/死导出LS 口径: 死导出=**导出函数/const/interface/type/class/enum** 在 LS 符号级 `findReferences` 下零引用（定义本身不计，program 含 __tests__）——与上一条候选面**正交**（上一条只认「可选属性」⇒ 对 calcDamage 这类死函数结构性全盲，因它签名里没有可选属性）；**只扫 src/core**（引擎层不被 .vue 直接消费；其它层 program 看不见 .vue 会有噪声）；棘轮 DEAD_EXPORT_BASELINE 新增即红；已知盲区=动态 import 变量化 / .vue 直引（判据 7 越层基线归零前未构造性排除）/ `ns[name]` 动态取用 | 据 实测@2026-09-18（R33：符号级实测 calcDamage 全仓仅 1 处=定义本身，无动态/字符串引用 ⇒ 删；同批删 3 死函数 + 1 死 helper，damage.ts −343 行） | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadExportsLs | 信 高
+ * @fact engine:guards/死导出LS 口径: 死导出=**导出函数/const/interface/type/class/enum** 在 LS 符号级 `findReferences` 下零引用（定义本身不计，program 含 __tests__）——与上一条候选面**正交**（上一条只认「可选属性」⇒ 对 calcDamage 这类死函数结构性全盲，因它签名里没有可选属性）；**只扫 src/core**（引擎层不被 .vue 直接消费；其它层 program 看不见 .vue 会有噪声）；棘轮 DEAD_EXPORT_BASELINE **R34 起为空对象**（新增即红；空基线必须配反空洞下限，否则「扫不到东西」与「真的零死导出」读数不可区分）；已知盲区=动态 import 变量化 / .vue 直引（判据 7 越层基线归零前未构造性排除）/ `ns[name]` 动态取用 | 据 实测@2026-09-18（R33：符号级实测 calcDamage 全仓仅 1 处=定义本身，无动态/字符串引用 ⇒ 删；同批删 3 死函数 + 1 死 helper，damage.ts −343 行。R34：首轮 3 条同法裁决为删并落地 ⇒ 基线归零） | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadExportsLs | 信 高
  */
 import { createRequire } from 'node:module'
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
@@ -111,21 +111,21 @@ export const DEAD_CHANNEL_LS_BASELINE = {
  * ⚠ 同批删掉的 4 个（`damage.ts` 的 calcDamage / calcStunBuildUp / calcDisorderDamage +
  *   旧 `pickRemielleLevelValue`）**一律不进基线**——它们当轮就没
  *   （棘轮语义 = 「现在是死的」；改进项应表现为 resolved，而不是留一条永不命中的键）。
+ *
+ * ★ R34（2026-09-18）**归零**：首轮那 3 条已全部裁决为删并落地（见各条原 why 的历史结论）——
+ *   · `isVariantPair`：**陷阱**（不是无害死码）。它把「基础元素相同」当作「同一个异常」，
+ *     而活口径恰好相反：变种元素是**独立积蓄槽**、**可互相紊乱**（`anomalyPool.ts` 覆盖率
+ *     `coverageTriggerCounts` 按变体自身元素统计，`helpers.ts` 头注释原文「变种元素之间在紊乱
+ *     系统中视为不同元素」）。⇒ 读它的人会得出**与活实现相反**的紊乱资格结论。
+ *   · `substatAlloc.ts` 两条 + 整个文件：旧固定步数启发式（100% 暴击封顶），活实现是
+ *     `substatOptimizer.ts#computeOptimalSubStats`（`critRateCap` 200%，锋御锐暴）；
+ *     其 `computeBaseCritRate` 与活 `computeNoSubstatPanel` **同形但分叉**（后者不读 globalBuffs、
+ *     不吃 `critRate` 特判）⇒ 同 `roughStats.critRate` 型陷阱：值会算偏。
+ *   ⇒ 基线现在是**空对象**（这是目标态，不是失败）：任何**新**死导出都会被判 fresh 而红。
+ *   ⚠ 空基线必须配**反空洞下限**（见 deadChannelLs.test.ts ⑫ 的 `exports > 100`）——
+ *     否则「扫描器静默扫不到东西」与「仓库真的零死导出」在读数上不可区分。
  */
-export const DEAD_EXPORT_BASELINE = {
-  'src/core/anomalyPool/helpers.ts isVariantPair': {
-    since: '2026-09-18',
-    why: 'LS 符号级零引用：全仓（src+scripts，含 __tests__）仅 1 处 = 定义本身；grep -w 复核一致',
-  },
-  'src/core/substatAlloc.ts computeRecommendedSubStats': {
-    since: '2026-09-18',
-    why: 'LS 符号级零引用；已被 core/substatOptimizer.ts 取代（该文件注释自述「替代 substatAlloc.ts 的固定步数启发式」）⇒ 待删',
-  },
-  'src/core/substatAlloc.ts computeBaseCritRate': {
-    since: '2026-09-18',
-    why: 'LS 符号级零引用；同 substatAlloc 族旧启发式残留 ⇒ 待删（与上一条同文件同批处置）',
-  },
-}
+export const DEAD_EXPORT_BASELINE = {}
 
 /** 走目录收 .ts（跳过 __tests__ 与 .d.ts——测试写入也算写入，故测试文件进 program 但不进候选面） */
 function walkTs(dir, out = []) {
