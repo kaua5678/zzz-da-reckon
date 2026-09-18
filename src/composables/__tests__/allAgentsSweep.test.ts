@@ -28,7 +28,13 @@ for (const skills of catalogData.agentSkills ?? []) {
   }
 }
 
-const CINEMA_LEVELS = [0, 6] as const
+// ⚠ **2026-09-18 round 22：`[0, 6]` → `[0, 3, 6]`**（补盲区，与 `timeGolden.test.ts` 同批同因）。
+// 通用命座规则「3 命技能等级 +2」此前从未被本 sweep 覆盖。**本 sweep 的增益与 timeGolden 不同**：
+// 它逐条断言**不变量**（时间不溢出 / moveId 有效 / 次数非负 / 伤害有限 / 三层收敛），
+// 故 c3 这一列加的是「c3 下这些不变量也成立」；**值回归**由 timeGolden 的 c3 快照负责判红
+// （实测：把 `cinema>=3?2:0` 改成 `2.5` ⇒ timeGolden 红（1 failed）、本 sweep 187 passed 仍绿
+//  —— 两条网分工不同，别把本 sweep 当数值判据用）。
+const CINEMA_LEVELS = [0, 3, 6] as const
 
 /** 逐 (角色, 命座) 记录全队伤害，供末尾的「命座必须有效果」不变量比对（零额外算力）。 */
 const damageByAgentCinema = new Map<string, number>()

@@ -33,7 +33,23 @@ const FILTER = process.env.TIME_GOLDEN_FILTER ?? ''
 
 const catalogData = JSON.parse(readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8'))
 const agentIds: string[] = (catalogData.agents ?? []).map((a: { id: number | string }) => String(a.id))
-const CINEMA_LEVELS = [0, 6] as const
+// ⚠ **2026-09-18 round 22：`[0, 6]` → `[0, 3, 6]`**（补真实盲区；R22 熵分诊发现，派活方复现+验收）。
+//
+// 为什么必须加 c3：通用命座规则是「**3 命技能等级 +2、5 命 +4**」
+// （`helpers.ts` 两处 `panel.skillLevelBonus = … cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0`），
+// 而旧口径只取 `{0, 6}` ⇒ **c3/c4 这两级从未进过任何全局网**。实测（隔离 worktree）：
+// 把该式改成 `cinema >= 3 ? 2.5 : 0`（静默数值改动，无类型错误、无 API 变化）⇒ 旧口径下
+// `timeGolden` 3 passed + `allAgentsSweep` 125 passed + `cinemaSkillLevel` 12 passed，**三条全绿零告警**。
+//
+// 口径纠正备注（规则 17②）：这是**扩大测量面**不是放宽判据；baseline delta 已逐条归因 ——
+// 228 → 290 条**纯新增**（62 条 `:c3`），已有条目 **0 改动 0 删除**（delta 表见提交说明）。
+//
+// ⚠ **两条残留盲区**（本轮实测，留给后继，别误以为加了 c3 就万事大吉）：
+// ① c4 仍未被覆盖（`{0,3,6}` 不含 4）；
+// ② 本文件的 `diffEntry` 把 `dmg` 差异归入 **info（不判红）**，只有 `stun`/`slack`/`over`/`slots`
+//    也变了才进 `fail` ⇒ **纯伤害型**回归仍可能静默。上例中被抓到正是因为时间账同时变了。
+//    （若要让纯伤害回归也红，需改 `diffEntry` 的归类口径——那是独立决策，不在本批。）
+const CINEMA_LEVELS = [0, 3, 6] as const
 
 /** 一条快照：伤害 + 时间账 + 逐槽签名（字符串化的定点数，diff 稳定） */
 interface GoldenEntry {
