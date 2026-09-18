@@ -84,6 +84,49 @@ describe('安比（1011）波动电压/影画2 招式限定（patchExecutions）
   })
 })
 
+describe('安比（1011）普攻元素分段（原文口径，用户 2026-09-17 裁决②）', () => {
+  /**
+   * ★ **本条补的是一个已实测的判据缺口**（2026-09-18 round 23 契约批的证伪结论）：
+   * 裁决②落地后，把 1011001/2/3 的元素**翻回 electric** ⇒ 58 个提及 1011 的测试文件（794 例）
+   * 全绿 + `timeGolden` 全绿 + 探针伤害**逐位不变**。根因：`timeGolden.diffEntry` 把**纯 dmg
+   * 差异归 info 不判红**（该文件头自陈的盲区），而 1011 单独跑时元素只进伤害、不改时间账。
+   * ⇒ 该机制此前**没有任何判据能发现回退**。本条就是那个缺失的判据。
+   *
+   * 原文（`data/raw/nanoka_missing/full/1011.json` basic 段）：
+   * 「向前方进行至多四段的斩击，**前三段**造成物理伤害，**第四段**造成电属性伤害」；
+   * 落雷「造成电属性伤害」；冲刺攻击「造成物理伤害」。
+   *
+   * ⚠ 断言读的是**真管线**的伤害池行（`calc.damagePoolRows`），不是 catalog 字段——
+   * 只有这样才能同时抓住「catalog 被改回去」与「模块把 element 写死」两种回退
+   * （契约批实测：模块侧 `pushAnbyBasicSegment` 写死 `element:'electric'` 同样 794 例全绿）。
+   */
+  it('真管线：伏特速攻 #1~#3 物理 / #4 电 / 落雷电（伤害池行 element）', async () => {
+    await setupHarness([
+      { agentId: '1011', cinemaLevel: 0 },
+      { agentId: '1381' },
+      { agentId: '1211' },
+    ])
+    const calc = useResourceCalc()
+    const rows = calc.damagePoolRows.value as { moveId?: string; element?: string }[]
+    const elementsOf = (moveId: string) =>
+      [...new Set(rows.filter(r => r.moveId === moveId).map(r => String(r.element)))].sort()
+    // 前三段：物理（旧值 electric —— 导入器把角色元素铺满每招）
+    expect(elementsOf('1011001'), '伏特速攻 #1').toEqual(['physical'])
+    expect(elementsOf('1011002'), '伏特速攻 #2').toEqual(['physical'])
+    expect(elementsOf('1011003'), '伏特速攻 #3').toEqual(['physical'])
+    // 第四段与落雷：电
+    expect(elementsOf('1011004'), '伏特速攻 #4').toEqual(['electric'])
+    expect(elementsOf('1011005'), '落雷').toEqual(['electric'])
+    // ⚠ 冲刺攻击（1011008）**不在执行计划里**（无独立行）⇒ 伤害池无其行，本测试无法覆盖它。
+    // 这是**已知通道缺口**（与「平A池不区分冲刺段」同源，见 `anby.ts#computeAnbyChargeConsumed`
+    // 头注释），不是本测试的疏漏。它的 catalog 元素由 `scripts/patch-move-elements.mjs` 覆盖
+    // （该脚本的 delta 表里 1011008 electric→physical 有记录），但**没有真管线判据**。
+    // 至少要有伤害行落进池子，否则上面的断言会因「空数组」假绿
+    expect(rows.filter(r => r.moveId === '1011001').length, '分段行必须真的进伤害池').toBeGreaterThan(0)
+    // 反向哨兵：若模块把 element 写死成 electric（契约批实测过的回退形态），上面 #1~#3 会红。
+  })
+})
+
 describe('安比滑块生效差分（防守卫冻结，SOP §3.5）', () => {
   it('anby.c2StunCoverage → 影画2 落雷增伤/强特失衡互补差分（patchExecutions 直调）', () => {
     const mk = (cov: number) => {

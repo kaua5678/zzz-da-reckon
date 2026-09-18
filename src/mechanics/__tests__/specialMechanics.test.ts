@@ -16,7 +16,6 @@ import { computeSpecResources } from '@/specs/resources'
 import {
   pulchraHuntStepMechanic,
   nekomataPurrMechanic,
-  anbyChargeMechanic,
   zhendouHeartfireMechanic,
   yeshuguangMingxinMechanic,
   peiluoProminenceMechanic,
@@ -110,10 +109,18 @@ describe('spec resource panel buffs', () => {
   })
 
   it('applies Anby, Grace, Banyue and Jufufu panel buffs', () => {
-    const anbyMap = resources('1011', {}, { exSpecialCount: 1 })
-    const anbyPanel = emptyPanel()
-    transform(anbyChargeMechanic, '1011', anbyPanel, anbyMap)
-    expect(anbyPanel.dmgBonus).toBe(45)
+    // ⚠ 2026-09-18 round 23：**旧的 `anbyChargeMechanic` 已删除**（本行原为
+    // `transform(anbyChargeMechanic, …)` ⇒ `expect(anbyPanel.dmgBonus).toBe(45)`）。
+    // 删除理由两条，都是硬事实：
+    // ① 它**从未被注册**（`mechanics/index.ts` 只有一行「已由 agents/anby.ts 取代」的注释），
+    //    故那条断言是**直调一个死模块**，对真管线零覆盖；
+    // ② 它编码的语义已被**用户 2026-09-17 裁决③推翻**——原文限定「消耗充能的**当前招式** +45%」，
+    //    面板级全局 +45 是**过范围**（会让强特/终结/连携/异常全吃满）。真实现已迁到
+    //    `anby.ts#buildAnbyExecutions` 的**执行级** `exec.dmgBonus`。
+    // ⇒ 留着它会让下一个 agent 以为「面板 +45」仍是活口径（规则 16：死口径比没口径更危险）。
+    // 现行判据（执行级 +45、面板不再 +45、C0 不吃）见 `__tests__/anby.test.ts` 的
+    // 「安比影画6 充能电场（执行级）」describe。
+    expect(getAgentMechanic('1011')?.id).toBe('agent:1011')
 
     // 可琳专注电锯已迁移到 agents/corin.ts 模块，见 __tests__/corin.test.ts
 
