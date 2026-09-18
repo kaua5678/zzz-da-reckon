@@ -24,6 +24,7 @@
  * 由下任从基线删掉（棘轮只减不增，与 DEAD_CHANNEL_ALLOWLIST 同款纪律：不许为绿而登记）。
  *
  * @fact engine:guards/死通道LS 口径: 死通道=导出可选属性/内联opts可选属性 全仓零写入点（AST PropertyAssignment∪LS write-access∪vue `foo:` 三重交叉，namesake 同名写入保守压制不报）；reads=0 记 dead-both、reads>0 记 dead-input；基线棘轮新增即红；**基线键行号无关**（`文件 符号`，带行号的旧键经 normalizeBaseKey 兼容——2026-09-15 实测：无关改动给 types/resource/config.ts 插 9 行致 9 条冻结基线条目假红） | 据 实测@2026-09-15 | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadChannelsLs | 信 高
+ * @fact engine:guards/死导出LS 口径: 死导出=**导出函数/const/interface/type/class/enum** 在 LS 符号级 `findReferences` 下零引用（定义本身不计，program 含 __tests__）——与上一条候选面**正交**（上一条只认「可选属性」⇒ 对 calcDamage 这类死函数结构性全盲，因它签名里没有可选属性）；**只扫 src/core**（引擎层不被 .vue 直接消费；其它层 program 看不见 .vue 会有噪声）；棘轮 DEAD_EXPORT_BASELINE 新增即红；已知盲区=动态 import 变量化 / .vue 直引（判据 7 越层基线归零前未构造性排除）/ `ns[name]` 动态取用 | 据 实测@2026-09-18（R33：符号级实测 calcDamage 全仓仅 1 处=定义本身，无动态/字符串引用 ⇒ 删；同批删 3 死函数 + 1 死 helper，damage.ts −343 行） | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadExportsLs | 信 高
  */
 import { createRequire } from 'node:module'
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
@@ -95,6 +96,37 @@ export const DEAD_CHANNEL_LS_BASELINE = {
   },
 }
 
+/**
+ * 冻结基线：**`src/core` 的零引用导出函数**（棘轮，只许减少）。
+ *
+ * 为什么只扫 `src/core`（口径，别扩面）：
+ * - `src/core` 是**引擎层**，按 ARCHITECTURE §0 依赖方向（展示 → 编排 → 引擎）**不被 .vue 直接消费**
+ *   ⇒ 不需要 `.vue` 文本兜底，误报面最小。⚠ 判据 7 的越层棘轮基线仍是 **15**（非 0）
+ *   ⇒ 「core 不被 .vue 引用」**不是**构造性保证，只是当前状态；若越层数变化需复核本判据。
+ * - 其它层（`src/composables` / `src/data` / `src/mechanics`）**大量**被 .vue 消费，而 TS program
+ *   **看不见 .vue** ⇒ 必须靠文本兜底，实测仍有噪声（见 R33 报告）⇒ 不纳入硬判据，只报不红。
+ *
+ * 每条 why 必须写「怎么证明它是死的」——不许为绿而登记（同 DEAD_CHANNEL_ALLOWLIST 纪律）。
+ * R33（2026-09-18）首轮实测：**3 条**（`isVariantPair` + substatAlloc 两条）。
+ * ⚠ 同批删掉的 4 个（`damage.ts` 的 calcDamage / calcStunBuildUp / calcDisorderDamage +
+ *   旧 `pickRemielleLevelValue`）**一律不进基线**——它们当轮就没
+ *   （棘轮语义 = 「现在是死的」；改进项应表现为 resolved，而不是留一条永不命中的键）。
+ */
+export const DEAD_EXPORT_BASELINE = {
+  'src/core/anomalyPool/helpers.ts isVariantPair': {
+    since: '2026-09-18',
+    why: 'LS 符号级零引用：全仓（src+scripts，含 __tests__）仅 1 处 = 定义本身；grep -w 复核一致',
+  },
+  'src/core/substatAlloc.ts computeRecommendedSubStats': {
+    since: '2026-09-18',
+    why: 'LS 符号级零引用；已被 core/substatOptimizer.ts 取代（该文件注释自述「替代 substatAlloc.ts 的固定步数启发式」）⇒ 待删',
+  },
+  'src/core/substatAlloc.ts computeBaseCritRate': {
+    since: '2026-09-18',
+    why: 'LS 符号级零引用；同 substatAlloc 族旧启发式残留 ⇒ 待删（与上一条同文件同批处置）',
+  },
+}
+
 /** 走目录收 .ts（跳过 __tests__ 与 .d.ts——测试写入也算写入，故测试文件进 program 但不进候选面） */
 function walkTs(dir, out = []) {
   if (!existsSync(dir)) return out
@@ -138,6 +170,11 @@ export function createLsHost(files, root) {
       skipLibCheck: true,
       allowImportingTsExtensions: true,
       resolveJsonModule: true,
+      // ★ 必须配 paths：否则 `@/core/x` 形式的 import **整个解析不到**，LS 会把被引用符号
+      //   报成零引用。R33 实测：漏配时 `calcAnomalyBuildUp` / `calcDirectDamage` 等被误报为死
+      //   （假阳性方向），补上后引用数从 0 → 真实值。改这一项等于改判据灵敏度，勿删。
+      baseUrl: root,
+      paths: { '@/*': ['src/*'] },
     }),
     getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
     fileExists: (f) => read(f) != null,
@@ -371,3 +408,76 @@ export function diffAgainstBaseline(dead, baseline = DEAD_CHANNEL_LS_BASELINE) {
 
 // 基线生成记录（2026-09-14 首轮）：`node -e "import('./scripts/lib/dead-channel-ls.mjs').then(m=>console.log(JSON.stringify(m.scanDeadChannelsLs().dead,null,1)))"`
 // → 逐条人工复核后钉进 DEAD_CHANNEL_LS_BASELINE（每条 why 带证据行号）；复核过程与 T10 对账见夜班报告 T14-a1。
+//
+// 死导出基线生成记录（2026-09-18 R33 首轮，同样逐条人工复核）：
+// `node -e "import('./scripts/lib/dead-channel-ls.mjs').then(m=>console.log(JSON.stringify(m.scanDeadExportsLs().dead,null,1)))"`
+
+/**
+ * **符号级死导出扫描**（R32-J2 的直接产物，补 DEAD_CHANNEL_LS_BASELINE 的**函数面**盲区）。
+ *
+ * 与 `scanDeadChannelsLs` 的区别（两者互补，都要）：
+ * - 旧扫描：候选 = 导出 **interface 的可选属性** / 内联 opts 可选属性 ⇒ 找的是「**死旋钮**」；
+ * - 本扫描：候选 = 导出 **函数/const/interface/type/class/enum** ⇒ 找的是「**死函数**」。
+ *   ⇒ 旧扫描对 `calcDamage`（一个 200 行的死函数，**不是**可选属性）**结构性全盲**：
+ *     它的签名里没有一个可选属性，扫描器连看都不会看它一眼。这才是 R32-J2 能藏那么久的机器面原因。
+ *
+ * 判定 = **LS 符号级零引用**（`findReferences` 在整个 program 上，含 __tests__；定义本身不计）。
+ * 零引用 ⇒ 连测试都没碰过它 —— 比「字段名级 grep」强得多（grep 看不见 `import { a as b }`）。
+ *
+ * ⚠ **只扫 `src/core`**（理由见 DEAD_EXPORT_BASELINE 头注释）：其它层被 .vue 消费而 program 看不见 .vue。
+ * ⚠ 已知盲区（如实登记，不假装覆盖）：① 动态 `import()` 变量化 / 字符串拼接引用；② .vue 直接引用
+ *   （仅当判据 7 越层棘轮归零后才构造性排除，当前基线 15 ⇒ 未排除）；③ `import * as ns` 后
+ *   `ns[name]` 动态取用（LS 记为 write/read 但符号可能是 any）。
+ *
+ * @param {{root?: string, dirs?: string[], files?: string[]}} [opts]
+ * @returns {{dead: Array<{key:string,file:string,line:number,name:string,kind:string}>, exports:number, ms:number}}
+ */
+export function scanDeadExportsLs(opts = {}) {
+  const root = opts.root ?? REPO_ROOT
+  const dirs = opts.dirs ?? ['src/core']
+  const t0 = Date.now()
+  const files = opts.files ?? collectProgramFiles(root)
+  const ls = ts.createLanguageService(createLsHost(files, root))
+  const program = ls.getProgram()
+  const checker = program.getTypeChecker()
+  const inScan = (f) => dirs.some((d) => f.startsWith(join(root, d)))
+  const dead = []
+  let exportCount = 0
+  for (const sf of program.getSourceFiles()) {
+    if (sf.isDeclarationFile || !inScan(sf.fileName)) continue
+    const rel = relative(root, sf.fileName)
+    const modSym = checker.getSymbolAtLocation(sf)
+    if (!modSym) continue
+    let exports = []
+    try { exports = checker.getExportsOfModule(modSym) } catch { continue }
+    for (const sym of exports) {
+      const decls = sym.getDeclarations() ?? []
+      const d = decls[0]
+      // 只认「在本文件里声明」的导出（跳过 `export { x } from './y'` 的转出口，避免重复计数）
+      if (!d || !d.getSourceFile || d.getSourceFile() !== sf) continue
+      exportCount++
+      const name = sym.getName()
+      const pos = d.name && d.name.getStart ? d.name.getStart() : d.getStart()
+      let refs = []
+      try { refs = ls.findReferences(sf.fileName, pos) ?? [] } catch { refs = [] }
+      let n = 0
+      for (const g of refs) for (const r of g.references) if (!r.isDefinition) n++
+      if (n > 0) continue
+      const kind = ts.isFunctionDeclaration(d) ? 'function'
+        : ts.isVariableDeclaration(d) ? 'const'
+          : ts.isInterfaceDeclaration(d) ? 'interface'
+            : ts.isTypeAliasDeclaration(d) ? 'type'
+              : ts.isClassDeclaration(d) ? 'class'
+                : ts.isEnumDeclaration(d) ? 'enum' : 'other'
+      dead.push({
+        key: `${rel} ${name}`,
+        file: rel,
+        line: sf.getLineAndCharacterOfPosition(d.getStart()).line + 1,
+        name,
+        kind,
+      })
+    }
+  }
+  dead.sort((a, b) => a.key.localeCompare(b.key))
+  return { dead, exports: exportCount, ms: Date.now() - t0 }
+}

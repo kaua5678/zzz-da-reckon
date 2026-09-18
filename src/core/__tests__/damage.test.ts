@@ -1,14 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import { emptyPanel } from '@/core/panel'
+import { calcPerHitBuildUp } from '@/core/anomalyPool/helpers'
 import {
-  calcAnomalyBuildUp,
   calcAnomalyDamage,
   calcDirectDamage,
   sharpCritMultiplier,
   type SpecialDamageProfile,
 } from '@/core/damage'
 
-describe('calcAnomalyBuildUp', () => {
+/**
+ * ★ R33（2026-09-18）：本条原先是 `describe('calcAnomalyBuildUp')`，测的是 `damage.ts` 里
+ * 那个**零引用的同名死函数**——它与异常积蓄的**唯一活实现** `calcPerHitBuildUp`
+ * （`core/anomalyPool/helpers.ts`）口径已**分叉**（活实现多 rowEfficiencyBonusPct、
+ * `Math.floor(mastery)`）。⇒ 那条测试**看着像覆盖了异常积蓄口径，实际测的是一份没人跑的副本**。
+ * 死函数已删；本用例改为调用**活实现**，期望值口径不变（两者在本输入下同值：
+ * `floor(100)/100 × (1+(10+5)/100) × (1-(20-5)/100)`）。⚠ 改前此处是活实现的**零直接覆盖**。
+ */
+describe('calcPerHitBuildUp（异常积蓄唯一活实现）', () => {
   it('applies mastery, efficiency, and anomaly resistance', () => {
     const panel = emptyPanel()
     panel.anomalyMastery = 100
@@ -16,14 +24,9 @@ describe('calcAnomalyBuildUp', () => {
     panel.electricAnomalyBuildUpEfficiency = 5
     panel.enemyElectricAnomalyResReduction = 5
 
-    const result = calcAnomalyBuildUp({
-      panel,
-      buildUpValue: 100,
-      element: 'electric',
-      enemyAnomalyResistance: 20,
-    })
+    const value = calcPerHitBuildUp(100, panel, 20, 'electric')
 
-    expect(result.value).toBeCloseTo(100 * 1.15 * 0.85)
+    expect(value).toBeCloseTo(100 * 1.15 * 0.85)
   })
 })
 

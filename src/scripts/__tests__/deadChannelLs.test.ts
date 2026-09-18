@@ -26,12 +26,18 @@ interface DeadHit {
 interface ScanResult { dead: DeadHit[]; candidates: number; ms: number }
 interface BaselineEntry { since: string; why: string }
 
+interface ExportHit { key: string; file: string; line: number; name: string; kind: string }
+interface ExportScanResult { dead: ExportHit[]; exports: number; ms: number }
+
 const impl = deadChannelLsNs as {
   scanDeadChannelsLs: (opts?: { root?: string; dirs?: string[] }) => ScanResult
-  diffAgainstBaseline: (dead: DeadHit[], baseline?: Record<string, BaselineEntry>) => { fresh: DeadHit[]; resolved: string[] }
+  scanDeadExportsLs: (opts?: { root?: string; dirs?: string[] }) => ExportScanResult
+  /** 泛型：两类 hit（DeadHit / ExportHit）都只要求有 `key`，别为第二类复制一份函数签名 */
+  diffAgainstBaseline: <T extends { key: string }>(dead: T[], baseline?: Record<string, BaselineEntry>) => { fresh: T[]; resolved: string[] }
   DEAD_CHANNEL_LS_BASELINE: Record<string, BaselineEntry>
+  DEAD_EXPORT_BASELINE: Record<string, BaselineEntry>
 }
-const { scanDeadChannelsLs, diffAgainstBaseline, DEAD_CHANNEL_LS_BASELINE } = impl
+const { scanDeadChannelsLs, scanDeadExportsLs, diffAgainstBaseline, DEAD_CHANNEL_LS_BASELINE, DEAD_EXPORT_BASELINE } = impl
 
 const roots: string[] = []
 function fixture(files: Record<string, string>): string {
@@ -171,5 +177,64 @@ describe('dead-channel-ls 棘轮（仓库级现状断言）', () => {
     // 棘轮未被削弱：真·新字段必须仍判 fresh
     const trulyNew = [...shifted, hit(200, 'brandNewKnob')]
     expect(diffAgainstBaseline(trulyNew, base).fresh.map(f => f.prop)).toEqual(['brandNewKnob'])
+  })
+})
+
+/**
+ * ★ R33（2026-09-18）新增：**符号级死导出判据**（R32-J2 的直接产物）。
+ *
+ * 立项依据（可复现）：R32 发现 `core/damage.ts#calcDamage` 是**零调用者的死函数**，
+ * 却**看着像主管线**（名字就叫 calcDamage）⇒ 规则 16「命名骗 agent」。
+ * 而既有两条判据对它**结构性全盲**：
+ * - 判据 14（字段名级正则）与 `scanDeadChannelsLs`（可选属性级）：候选面**只有可选属性**，
+ *   而 `calcDamage` 的签名里一个可选属性都没有 ⇒ **连看都不看它一眼**；
+ * - 出口：`grep` 看得见文本，但看不见 `import { a as b }` 这类改名引用。
+ *
+ * ⇒ 本判据用 **LanguageService 符号级**零引用（`findReferences` 覆盖整个 program，含 __tests__）
+ * 来判「死函数」。⚠ 只扫 `src/core`（理由见 DEAD_EXPORT_BASELINE 头注释）。
+ */
+describe('dead-channel-ls 死导出（符号级，src/core）', () => {
+  it('⑩ 导出函数零引用 → 报；被改名 import 引用 → 不报（grep 型判据的盲区）', () => {
+    const root = fixture({
+      'src/core/lib.ts': [
+        `export function deadFn(): number { return 1 }`,
+        `export function liveFn(): number { return 2 }`,
+        `export function aliasedFn(): number { return 3 }`,
+        '',
+      ].join('\n'),
+      // 关键：**改名引用**（`as`）——纯 grep 找 `liveFn` 找得到，但「按名字计数」型启发式会漏；
+      // 更关键的是下面 aliasedFn 的形态：grep `aliasedFn` 只在定义行命中 ⇒ 会被误判为死。
+      'src/core/user.ts': `import { liveFn, aliasedFn as renamed } from './lib'\nexport const v = liveFn() + renamed()\n`,
+    })
+    const { dead } = scanDeadExportsLs({ root, dirs: ['src/core'] })
+    const names = dead.map(d => d.name)
+    expect(names).toContain('deadFn')
+    expect(names, '被引用的导出不该报').not.toContain('liveFn')
+    expect(names, '改名 import（as）仍算引用 —— 这正是符号级相对 grep 的价值').not.toContain('aliasedFn')
+  })
+
+  it('⑪ 可红性自证：新死导出不在基线里 ⇒ 判 fresh（= 真实红路径）', () => {
+    const root = fixture({
+      'src/core/lib.ts': `export function brandNewDeadFn(): number { return 1 }\n`,
+    })
+    const { dead } = scanDeadExportsLs({ root, dirs: ['src/core'] })
+    expect(dead.map(d => d.name)).toEqual(['brandNewDeadFn'])
+    const { fresh } = diffAgainstBaseline(dead, DEAD_EXPORT_BASELINE)
+    expect(fresh.map(f => f.key)).toContain('src/core/lib.ts brandNewDeadFn')
+  })
+
+  it('⑫ 仓库级棘轮：实测死导出 ⊆ 冻结基线（新增即红；改善只提示不红）', () => {
+    const { dead, exports, ms } = scanDeadExportsLs()
+    const { fresh, resolved } = diffAgainstBaseline(dead, DEAD_EXPORT_BASELINE)
+    // 反空洞下限：src/core 的导出面不可能这么小（防「扫描器静默扫不到任何东西 ⇒ 恒绿」）
+    expect(exports, 'src/core 导出面异常小 ⇒ 扫描器可能失效（恒绿风险）').toBeGreaterThan(100)
+    expect(ms).toBeLessThan(120_000)
+    if (resolved.length > 0) {
+      console.log('[dead-export] 基线已过期（实测不再命中，可销账）：', resolved)
+    }
+    expect(
+      fresh.map(f => `${f.key} (${f.kind})`),
+      '发现基线外的新死导出：接上消费点，或（确认死）在 DEAD_EXPORT_BASELINE 登记（since+why 证据）',
+    ).toEqual([])
   })
 })

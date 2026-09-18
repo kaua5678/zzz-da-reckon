@@ -679,22 +679,3 @@ export interface DamageBreakdownItem {
   value: number
   displayValue: string
 }
-
-export interface SkillDamageResult {
-  moveId: string
-  moveName: string
-  category: string
-  directDamage: number       // 直伤
-  stunBuildUp: number        // 失衡积蓄
-  anomalyBuildUp: number     // 异常积蓄
-  energyRegen: number        // 能量回复
-  breakdown: DamageBreakdownItem[]
-}
-
-export interface DamageResult {
-  totalDamage: number
-  skillResults: SkillDamageResult[]
-  panelValues: PanelValues
-  inCombatPanelValues: PanelValues
-  breakdown: DamageBreakdownItem[]
-}

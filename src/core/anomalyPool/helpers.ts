@@ -475,7 +475,10 @@ export function getElementAnomalyBuildUpEfficiency(panel: PanelValues, element: 
 
 /**
  * 计算单次招式的实际异常积蓄值
- * 复用 damage.ts 的 calcAnomalyBuildUp 逻辑
+ *
+ * 本函数是异常积蓄的**唯一活实现**。`damage.ts` 曾有一个同名的 `calcAnomalyBuildUp`，
+ * 于 R33（2026-09-18）删除——它全仓零引用，且口径已与本函数**分叉**（本函数含行级
+ * `rowEfficiencyBonusPct`、`Math.floor(mastery)` 等，见下），留着会让人以为它才是权威。
  */
 export function calcPerHitBuildUp(
   baseBuildUp: number,

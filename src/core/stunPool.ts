@@ -99,7 +99,10 @@ export interface StunPoolInput {
 }
 
 /** 计算单次招式的实际失衡值
- *  复用 damage.ts 的 calcStunBuildUp 逻辑，但简化为内联计算
+ *  本函数是失衡积蓄的**唯一活实现**（简化内联计算）。`damage.ts` 曾有一个更完整的
+ *  `calcStunBuildUp`（带 breakdown 逐区），于 R33（2026-09-18）删除——它全仓零引用，
+ *  且口径已与本函数**分叉**（本函数多出 `physicalFlinchCoverageRate` 畏缩项与行级
+ *  `execStunBonus`），留着会让人以为改的是那一份。
  *
  *  受到失衡值提升区说明：
  *  - panel.enemyStunTakenBonus：来自其他buff的受到失衡提升

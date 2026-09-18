@@ -3,17 +3,13 @@
  * 完整乘区公式
  */
 import type {
-  Agent, WEngine, DriveDiscSet, PanelValues,
-  DamageResult, DamageBreakdownItem, SkillDamageResult,
-  SkillMove, SkillCategory, AgentSkills, DamageElement,
-  CalculatorConfig, SkillDamageTarget,
+  Agent, PanelValues, DamageBreakdownItem,
+  SkillMove, SkillCategory, DamageElement, SkillDamageTarget,
 } from '@/types/catalog'
-import { calcPanel } from './panel'
 import { calcStunMultiplier, resolveStatElement } from './anomalyPool/helpers'
-import { getSkillDmgBonus, getStunBuildUpBonus, getTargetedStat, getTargetedStatExtra, normalizeSkillDamageTarget } from './buff'
+import { getSkillDmgBonus, getTargetedStat, getTargetedStatExtra, normalizeSkillDamageTarget } from './buff'
 import { fmt } from '@/utils/format'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
-import { getSkillLevelCoef } from './skillLevel'
 
 /** 获取元素伤害加成（属性数值口径经 resolveStatElement：frostfire 按冰） */
 function getElementDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
@@ -40,17 +36,6 @@ function getElementEnemyDefReduction(panel: PanelValues, element: DamageElement 
   const stat = enemyDebuffElementStatId('def', resolveStatElement(element))
   return stat ? getTargetedStat(panel, stat, targetSkillType) : 0
 }
-
-function getElementEnemyStunResReduction(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
-  const stat = enemyDebuffElementStatId('stunRes', resolveStatElement(element))
-  return stat ? getTargetedStat(panel, stat, targetSkillType) : 0
-}
-
-function getElementEnemyAnomalyResReduction(panel: PanelValues, element: DamageElement | undefined): number {
-  const stat = enemyDebuffElementStatId('anomalyRes', resolveStatElement(element))
-  return stat ? panel[stat] ?? 0 : 0
-}
-
 
 
 export function inferSkillDamageTarget(category: SkillCategory, move: SkillMove): SkillDamageTarget {
@@ -259,21 +244,6 @@ export function resolveSpecialDamageProfile(agent: Agent): SpecialDamageProfile 
   return NORMAL_DAMAGE_PROFILE
 }
 
-function pickRemielleLevelValue(row: any, skillLevelBonus: number): number {
-  const values = row?.values ?? []
-  if (!values.length) return 0
-  const skillLevel = getSkillLevelCoef(skillLevelBonus).skillLevel
-  const levelValues = row?.levelValues ?? row?.luminizeLevelValues
-  if (Array.isArray(levelValues)) {
-    const idx = levelValues.indexOf(skillLevel)
-    if (idx >= 0) return values[idx] ?? values[0] ?? 0
-  }
-  if (values.length === 3) {
-    return values[skillLevel >= 16 ? 2 : skillLevel >= 14 ? 1 : 0] ?? values[0] ?? 0
-  }
-  return values[0] ?? 0
-}
-
 /** 计算单次直伤 */
 export interface DirectDamageInput {
   panel: PanelValues
@@ -315,11 +285,15 @@ export interface DirectDamageInput {
 }
 
 // @fact engine:damage/乘区顺序 口径: 乘区顺序=代码顺序（基底→技能倍率→固定附加→增伤→锐化→贯穿→防御→抗性→易伤→失衡→侵染→暴击/锐暴→次数），调换 breakdown.push 顺序即改口径；两处**非可交换**落点必须保持不变——① 固定附加在**各乘区之前**进基础区（放到最后加 = 少乘增伤…暴击全链）② 抗性在易伤**之前** | 据 实测@2026-09-01复核·复核@2026-09-08·复核@2026-09-09（锐暴 200% 封顶+乘算改动后顺序未变）·复核@2026-09-18（R32 假绿扫描：旧 `驗` 只断言 `result.damage`，纯换序 0 红 ⇒ 已补行为面+形状面成对判据） | 验 src/core/__tests__/damage.test.ts | 锚 src/core/damage.ts#calcDirectDamage | 信 确认
-// ⚠ 上面这条口径的 `breakdown` **只有 `calcDirectDamage` 的调用方读得到 `damage`**——
-//   全仓 `breakdown` 的两条读取点（`pushSkillDamageResult`，:952/:992）都在**零调用者的
-//   `calcDamage`（:843）**里；活管线（`resourceCalc/damagePool.ts:196`）只读 `result.damage`、
-//   把 `breakdown` 丢弃 ⇒ 顺序错误在当前版本**只由本节的两条成对判据守护**，不由任何页面暴露。
-//   若将来接上 breakdown 展示，这两条判据即为该面板的口径基线（别删）。
+// ⚠ 上面这条口径的 `breakdown` **在本文件内零消费者**——`calcDirectDamage` 只被活管线
+//   （`resourceCalc/damagePool.ts`）调用，而它**只读 `result.damage`**、把 `breakdown` 丢弃
+//   ⇒ 顺序错误在当前版本**只由下面那条行为面 + 形状面成对判据守护**，不由任何页面暴露。
+//   若将来接上 breakdown 展示，那两条判据即为该面板的口径基线（别删）。
+//   ★ R33（2026-09-18）已删除旧 `calcDamage` 及其 `pushSkillDamageResult`（曾在此处点名）：
+//     该函数全仓零引用（LanguageService 符号级实测：全仓仅 1 处 = 定义本身，无动态 import /
+//     字符串引用），而它**看着像主管线**（名字就叫 calcDamage）⇒ 规则 16「命名骗 agent」样本。
+//     删除面 = 3 个同样零引用的导出（calcAnomalyBuildUp / calcStunBuildUp / calcDisorderDamage）
+//     + calcDamage，共 −343 行（996 → 665）。
 export function calcDirectDamage(input: DirectDamageInput): { damage: number; breakdown: DamageBreakdownItem[] } {
   const p = input.panel
   const breakdown: DamageBreakdownItem[] = []
@@ -485,139 +459,6 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
   })
 
   return { damage: finalDamage, breakdown }
-}
-
-function getElementAnomalyBuildUpEfficiency(panel: PanelValues, element: DamageElement | undefined): number {
-  if (element === 'electric') return panel.electricAnomalyBuildUpEfficiency ?? 0
-  if (element === 'physical') return panel.physicalAnomalyBuildUpEfficiency ?? 0
-  if (element === 'ether') return panel.etherAnomalyBuildUpEfficiency ?? 0
-  return 0
-}
-
-/** 计算异常积蓄值 */
-export interface AnomalyBuildUpInput {
-  panel: PanelValues
-  buildUpValue: number
-  element: DamageElement | undefined
-  /** 敌方异常积蓄抗性（百分比，如 10 表示 10%） */
-  enemyAnomalyResistance?: number
-}
-
-export function calcAnomalyBuildUp(
-  input: AnomalyBuildUpInput
-): { value: number; breakdown: DamageBreakdownItem[] } {
-  const { panel: p, buildUpValue, enemyAnomalyResistance = 0 } = input
-  const breakdown: DamageBreakdownItem[] = []
-
-  // 1. 基础积蓄值
-  breakdown.push({
-    label: '基础积蓄', formula: fmt(buildUpValue),
-    value: buildUpValue, displayValue: fmt(buildUpValue),
-  })
-
-  // 2. 异常掌控区（floor(anomalyMastery) / 100，无上限）
-  const mastery = Math.floor(p.anomalyMastery ?? 0)
-  const masteryMult = mastery / 100
-  const afterMastery = buildUpValue * masteryMult
-  breakdown.push({
-    label: '异常掌控', formula: `${mastery} / 100 = ${fmt(masteryMult, 4)}`,
-    value: afterMastery, displayValue: fmt(afterMastery),
-  })
-
-  // 3. 异常积蓄效率区
-  const buildUpEff = (p.anomalyBuildUpEfficiency ?? 0) + getElementAnomalyBuildUpEfficiency(p, input.element)
-  const effMult = 1 + buildUpEff / 100
-  const afterEff = afterMastery * effMult
-  if (buildUpEff !== 0) {
-    breakdown.push({
-      label: '积蓄效率', formula: `1 + ${fmt(buildUpEff)}%`,
-      value: afterEff, displayValue: fmt(afterEff),
-    })
-  }
-
-  // 4. 异常积蓄抗性区
-  const anomalyResRed = (p.enemyAnomalyResReduction ?? 0) + getElementEnemyAnomalyResReduction(p, input.element)
-  const effectiveRes = enemyAnomalyResistance - anomalyResRed
-  const resMult = 1 - effectiveRes / 100
-  const afterRes = afterEff * resMult
-  if (enemyAnomalyResistance !== 0 || anomalyResRed !== 0) {
-    breakdown.push({
-      label: '积蓄抗性', formula: `1 - ${fmt(effectiveRes)}% = ${fmt(resMult, 4)}`,
-      value: afterRes, displayValue: fmt(afterRes),
-    })
-  }
-
-  return { value: afterRes, breakdown }
-}
-
-/** 计算失衡积蓄值 */
-export interface StunBuildUpInput {
-  panel: PanelValues
-  buildUpValue: number
-  /** 敌方失衡抗性（百分比，如 10 表示 10%） */
-  enemyStunResistance?: number
-  /** 招式元素，用于读取元素专属失衡减抗 */
-  element?: DamageElement
-  /** 招式类型，用于读取普攻/强特等定向失衡加成 */
-  skillDamageTarget?: string
-}
-
-export function calcStunBuildUp(
-  input: StunBuildUpInput
-): { value: number; breakdown: DamageBreakdownItem[] } {
-  const { panel: p, buildUpValue, enemyStunResistance = 0 } = input
-  const breakdown: DamageBreakdownItem[] = []
-
-  // 1. 基础失衡值
-  breakdown.push({
-    label: '基础失衡', formula: fmt(buildUpValue),
-    value: buildUpValue, displayValue: fmt(buildUpValue),
-  })
-
-  // 2. 冲击力加成
-  const impact = p.impact ?? 0
-  const impactMult = impact / 100
-  const afterImpact = buildUpValue * impactMult
-  breakdown.push({
-    label: '冲击力', formula: `${fmt(impact)} / 100 = ${fmt(impactMult, 4)}`,
-    value: afterImpact, displayValue: fmt(afterImpact),
-  })
-
-  // 3. 失衡值提升区
-  const stunBuildUpBonus = getStunBuildUpBonus(p, input.skillDamageTarget)
-  const buildUpMult = 1 + stunBuildUpBonus / 100
-  const afterBuildUp = afterImpact * buildUpMult
-  if (stunBuildUpBonus !== 0) {
-    breakdown.push({
-      label: '失衡值提升', formula: `1 + ${fmt(stunBuildUpBonus)}%`,
-      value: afterBuildUp, displayValue: fmt(afterBuildUp),
-    })
-  }
-
-  // 4. 敌方受到失衡值提升区
-  const enemyStunTaken = p.enemyStunTakenBonus ?? 0
-  const takenMult = 1 + enemyStunTaken / 100
-  const afterTaken = afterBuildUp * takenMult
-  if (enemyStunTaken !== 0) {
-    breakdown.push({
-      label: '受到失衡提升', formula: `1 + ${fmt(enemyStunTaken)}%`,
-      value: afterTaken, displayValue: fmt(afterTaken),
-    })
-  }
-
-  // 5. 失衡抗性区
-  const stunResRed = getTargetedStat(p, 'enemyStunResReduction', input.skillDamageTarget) + getElementEnemyStunResReduction(p, input.element, input.skillDamageTarget)
-  const effectiveRes = enemyStunResistance - stunResRed
-  const resMult = 1 - effectiveRes / 100
-  const afterRes = afterTaken * resMult
-  if (enemyStunResistance !== 0 || stunResRed !== 0) {
-    breakdown.push({
-      label: '失衡抗性', formula: `1 - ${fmt(effectiveRes)}% = ${fmt(resMult, 4)}`,
-      value: afterRes, displayValue: fmt(afterRes),
-    })
-  }
-
-  return { value: afterRes, breakdown }
 }
 
 /** 计算异常爆发伤害（异放） */
@@ -805,207 +646,4 @@ export function calcAnomalyDamage(
   }
 
   return { damage: afterCrit * (input.anomalyMultiplier ?? 1), breakdown }
-}
-
-/** 计算紊乱伤害 */
-export function calcDisorderDamage(
-  panel: PanelValues,
-  fixedMultiplier: number,
-  tickMultiplier: number,
-  tickCount: number,
-  element: DamageElement,
-  input: {
-    enemyDefense: number
-    enemyDefReduction: number
-    enemyDefFlatReduction: number
-    enemyLevel: number
-    enemyResistance: number
-    enemyResReduction: number
-    stunned?: boolean | number | number
-    stunMultiplier?: number
-    critMode?: 'expect' | 'crit' | 'nonCrit'
-  },
-): { damage: number; breakdown: DamageBreakdownItem[] } {
-  const totalMult = fixedMultiplier + tickCount * tickMultiplier
-  return calcAnomalyDamage({
-    panel,
-    baseMultiplier: totalMult,
-    element,
-    enemyDefense: input.enemyDefense,
-    enemyDefReduction: input.enemyDefReduction,
-    enemyDefFlatReduction: input.enemyDefFlatReduction,
-    enemyLevel: input.enemyLevel,
-    enemyResistance: input.enemyResistance,
-    enemyResReduction: input.enemyResReduction,
-    stunned: input.stunned,
-    stunMultiplier: input.stunMultiplier,
-    critMode: input.critMode,
-    damageKind: 'disorder',
-  })
-}
-
-/** 主计算函数：计算伤害结果 */
-export function calcDamage(
-  agent: Agent,
-  wEngine: WEngine | undefined,
-  driveDiscConfig: any,
-  setsMap: Map<string, DriveDiscSet>,
-  teammateBuffs: any[],
-  statRules: any,
-  config: CalculatorConfig,
-  agentSkills: AgentSkills | undefined,
-): DamageResult {
-  // 1. 计算面板
-  const panelResult = calcPanel(agent, wEngine, driveDiscConfig, setsMap, teammateBuffs, statRules, {
-    cinemaLevel: config.mainCinemaLevel,
-    wEngineModLevel: config.mainWEngineModLevel,
-  })
-  const p = panelResult.inCombat
-
-  // 2. 如果没有技能数据，返回面板
-  if (!agentSkills) {
-    return {
-      totalDamage: 0,
-      skillResults: [],
-      panelValues: panelResult.outOfCombat,
-      inCombatPanelValues: panelResult.inCombat,
-      breakdown: [],
-    }
-  }
-
-  // 3. 计算各技能结果
-  const skillResults: SkillDamageResult[] = []
-  let totalDamage = 0
-  const allBreakdown: DamageBreakdownItem[] = []
-
-  const pushSkillDamageResult = (
-    moveId: string,
-    moveName: string,
-    categoryName: string,
-    damage: number,
-    breakdown: DamageBreakdownItem[],
-  ) => {
-    totalDamage += damage
-    skillResults.push({
-      moveId,
-      moveName,
-      category: categoryName,
-      directDamage: damage,
-      stunBuildUp: 0,
-      anomalyBuildUp: 0,
-      energyRegen: 0,
-      breakdown,
-    })
-  }
-
-  // 默认计算所有类别的第一个技能（展示用）
-  for (const category of agentSkills.categories) {
-    if (!category.moves?.length) continue
-    const move = category.moves[0]
-    const dmgRow = move.rows.find(r => r.kind === 'damageMultiplier')
-    if (!dmgRow) continue
-
-    // 获取技能等级
-    const levelRange = category.levelRange
-    const skillLevel = Array.isArray((levelRange as any).levels)
-      ? (levelRange as any).default
-      : (levelRange as any).default ?? 12
-
-    const values = dmgRow.values
-    const levelIdx = Array.isArray((levelRange as any).levels)
-      ? ((levelRange as any).levels as string[]).indexOf(String(skillLevel))
-      : skillLevel - ((levelRange as any).min ?? 1)
-    const skillMultiplier = values[Math.max(0, Math.min(values.length - 1, levelIdx))] ?? 0
-
-    // 命座技能等级系数（3命+2级，5命+4级，线性成长，乘到12级倍率表上）
-    const skillLevelBonus = p.skillLevelBonus ?? 0
-    const { damageCoef } = getSkillLevelCoef(skillLevelBonus)
-    const adjustedSkillMultiplier = skillMultiplier * damageCoef
-
-    const skillDamageTarget = inferSkillDamageTarget(category, move)
-
-    // 计算直伤
-    const result = calcDirectDamage({
-      panel: p,
-      skillMultiplier: adjustedSkillMultiplier,
-      damageElement: move.damageElement ?? agent.damageElement,
-      damageBasis: (dmgRow as any).damageBasis ?? 'atk',
-      enemyDefense: config.enemyDefense,
-      enemyDefReduction: p.enemyDefReduction,
-      enemyDefFlatReduction: p.enemyDefFlatReduction,
-      enemyLevel: config.enemyLevel,
-      enemyResistance: config.enemyResistance[move.damageElement ?? agent.damageElement ?? 'physical'] ?? 0,
-      enemyResReduction: p.enemyResReduction,
-      stunMultiplier: config.stunMultiplier,
-      stunned: config.stunned,
-      critMode: config.critMode,
-      count: 1,
-      specialDamageProfile: resolveSpecialDamageProfile(agent),
-      skillDamageTarget,
-    })
-
-    allBreakdown.push({
-      label: `${category.name?.zhCN ?? category.id} · ${move.name?.zhCN ?? move.id}`,
-      formula: `倍率 ${fmt(adjustedSkillMultiplier)}%${skillLevelBonus > 0 ? ` (12级${fmt(skillMultiplier)}% × 命座系数${fmt(damageCoef, 4)})` : ''} · ${skillDamageTarget}`, 
-      value: result.damage, displayValue: fmt(result.damage),
-    })
-    pushSkillDamageResult(
-      move.id,
-      move.name?.zhCN ?? move.id,
-      category.name?.zhCN ?? category.id,
-      result.damage,
-      result.breakdown,
-    )
-
-    const luminizeRow = move.rows.find(r => r.kind === 'luminizeMultiplier' || r.id === 'luminize_multiplier')
-    if (luminizeRow) {
-      const baseLuminizeMultiplier = pickRemielleLevelValue(luminizeRow, skillLevelBonus)
-      const passiveMultiplier = 1 + ((p.remielleLuminizeMultiplierBonus ?? 0) / 100)
-      const cinema4Multiplier = 1 + ((p.remielleCinema4LuminizeMultiplierBonus ?? 0) / 100)
-      const triggerMultiplier = 1 + Math.max(0, p.remielleCinema6LuminizeTriggerMultiplier ?? 0)
-      const finalLuminizeMultiplier = baseLuminizeMultiplier * passiveMultiplier * cinema4Multiplier
-      const luminizeResult = calcDirectDamage({
-        panel: p,
-        skillMultiplier: finalLuminizeMultiplier,
-        damageElement: 'lumiflux',
-        damageBasis: (luminizeRow as any).damageBasis ?? 'atk',
-        enemyDefense: config.enemyDefense,
-        enemyDefReduction: p.enemyDefReduction,
-        enemyDefFlatReduction: p.enemyDefFlatReduction,
-        enemyLevel: config.enemyLevel,
-        enemyResistance: config.enemyResistance.lumiflux ?? config.enemyResistance[move.damageElement ?? agent.damageElement ?? 'physical'] ?? 0,
-        enemyResReduction: p.enemyResReduction,
-        stunMultiplier: config.stunMultiplier,
-        stunned: config.stunned,
-        critMode: config.critMode,
-        count: triggerMultiplier,
-        specialDamageProfile: resolveSpecialDamageProfile(agent),
-        skillDamageTarget,
-      })
-      const luminizeLabel = `${category.name?.zhCN ?? category.id} · ${move.name?.zhCN ?? move.id} · 耀变`
-      allBreakdown.push({
-        label: luminizeLabel,
-        formula: `基础${fmt(baseLuminizeMultiplier)}% × 被动${fmt(passiveMultiplier * 100)}% × 四命${fmt(cinema4Multiplier * 100)}%${triggerMultiplier > 1 ? ` × 触发${fmt(triggerMultiplier)}次` : ''}`,
-        value: luminizeResult.damage,
-        displayValue: fmt(luminizeResult.damage),
-      })
-      pushSkillDamageResult(
-        `${move.id}_luminize`,
-        `${move.name?.zhCN ?? move.id} · 耀变`,
-        category.name?.zhCN ?? category.id,
-        luminizeResult.damage,
-        luminizeResult.breakdown,
-      )
-    }
-  }
-
-  // 特殊虚耀属于异常事件，不走直伤公式；这里只保留资源池中的事件次数记录。
-
-  return {
-    totalDamage,
-    skillResults,
-    panelValues: panelResult.outOfCombat,
-    inCombatPanelValues: panelResult.inCombat,
-    breakdown: allBreakdown,
-  }
 }
