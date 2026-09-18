@@ -34,22 +34,30 @@ const FILTER = process.env.TIME_GOLDEN_FILTER ?? ''
 const catalogData = JSON.parse(readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8'))
 const agentIds: string[] = (catalogData.agents ?? []).map((a: { id: number | string }) => String(a.id))
 // ⚠ **2026-09-18 round 22：`[0, 6]` → `[0, 3, 6]`**（补真实盲区；R22 熵分诊发现，派活方复现+验收）。
+// ⚠ **2026-09-18 round 23：`[0, 3, 6]` → `[0, 3, 4, 6]`**（补 c4；R23 复现 + 反向验证）。
 //
 // 为什么必须加 c3：通用命座规则是「**3 命技能等级 +2、5 命 +4**」
-// （`helpers.ts` 两处 `panel.skillLevelBonus = … cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0`），
+// （`panelPhases.ts` 两处 `panel.skillLevelBonus = … cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0`），
 // 而旧口径只取 `{0, 6}` ⇒ **c3/c4 这两级从未进过任何全局网**。实测（隔离 worktree）：
 // 把该式改成 `cinema >= 3 ? 2.5 : 0`（静默数值改动，无类型错误、无 API 变化）⇒ 旧口径下
 // `timeGolden` 3 passed + `allAgentsSweep` 125 passed + `cinemaSkillLevel` 12 passed，**三条全绿零告警**。
 //
-// 口径纠正备注（规则 17②）：这是**扩大测量面**不是放宽判据；baseline delta 已逐条归因 ——
-// 228 → 290 条**纯新增**（62 条 `:c3`），已有条目 **0 改动 0 删除**（delta 表见提交说明）。
+// 为什么还要加 c4（**本轮 R23 实测的结构性证明**）：`{0,3,6}` 的 c3 与 c6 都**跨过**了 4 命，
+// 故「只影响 cinema==4」的改动对旧网**完全不可见**。实测：把该式注入成
+// `cinema >= 5 ? 4 : cinema >= 4 ? 3 : cinema >= 3 ? 2 : 0`（只改 c4 一档）
+// ⇒ 旧口径 `allAgentsSweep` **187 passed**（sweep 只断言不变量，结构上不可能看见它）。
+// 加上 c4 后同一条注入 ⇒ `timeGolden` **15 条红**；反向再验 c3（`2 → 2.5`）⇒ **26 条红**。
 //
-// ⚠ **两条残留盲区**（本轮实测，留给后继，别误以为加了 c3 就万事大吉）：
-// ① c4 仍未被覆盖（`{0,3,6}` 不含 4）；
-// ② 本文件的 `diffEntry` 把 `dmg` 差异归入 **info（不判红）**，只有 `stun`/`slack`/`over`/`slots`
-//    也变了才进 `fail` ⇒ **纯伤害型**回归仍可能静默。上例中被抓到正是因为时间账同时变了。
-//    （若要让纯伤害回归也红，需改 `diffEntry` 的归类口径——那是独立决策，不在本批。）
-const CINEMA_LEVELS = [0, 3, 6] as const
+// 口径纠正备注（规则 17②）：这是**扩大测量面**不是放宽判据；两次 baseline delta 都已逐条归因 ——
+// c3：228 → 290 条**纯新增**（62 条 `:c3`）；c4：290 → 352 条**纯新增**（62 条 `:c4`，
+// `git diff --numstat` = **558 插入 / 0 删除** ⇒ 已有条目零改动零漂移）。
+//
+// ⚠ **一条残留盲区**（本轮实测，留给后继，别误以为加满命座档就万事大吉）：
+// 本文件的 `diffEntry` 把 `dmg` 差异归入 **info（不判红）**，只有 `stun`/`slack`/`over`/`slots`
+// 也变了才进 `fail` ⇒ **纯伤害型**回归仍可能静默（上例被抓到正因为时间账同时变了）。
+// （若要让纯伤害回归也红，需改 `diffEntry` 的归类口径——那是独立决策，不在本批。）
+// ⚠ **c4 的覆盖是「档位采样」不是「全档」**：5 命（`+4`）仍未被单独采样（c6 ≥ 5 会掩盖它）。
+const CINEMA_LEVELS = [0, 3, 4, 6] as const
 
 /** 一条快照：伤害 + 时间账 + 逐槽签名（字符串化的定点数，diff 稳定） */
 interface GoldenEntry {
