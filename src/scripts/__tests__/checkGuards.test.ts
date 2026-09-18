@@ -662,10 +662,54 @@ describe('auditNounTriage（判据 13：名词表三态）', () => {
     expect(r.brokenAnchor).toEqual([])
     expect(r.missing).toEqual([])
     expect(r.extra).toEqual([])
-    // 三态分布如实：modeled 27 / deferred 41（40 条 unhandled 按挂账处置后的终态）
+    // 三态分布如实：modeled 27 / deferred 41 / unhandled 0（40 条 unhandled 按挂账处置后的终态）
     const states = Object.values(r.triage.entries!)
-    expect(states.filter(e => e.state === 'modeled').length).toBeGreaterThanOrEqual(25)
-    expect(states.filter(e => e.state === 'deferred').length).toBeGreaterThanOrEqual(40)
+    const modeled = states.filter(e => e.state === 'modeled').length
+    const deferred = states.filter(e => e.state === 'deferred').length
+    // ⚠ **2026-09-18 round 22 派活方核正 = R21-N3 第 2 条**：原式是
+    //   `expect(states.filter(e => e.state === 'deferred').length).toBeGreaterThanOrEqual(40)`
+    // ——一条**「禁止还债」的绝对地板**。`deferred` 正是 burn-down 要**减少**的那个量
+    // （`RATCHET_BURNDOWN` 的 `名词表未处理`：plan = 「41 条 deferred 逐条处置——能建模的转 modeled」，
+    // frozen = unhandled + deferred，见本文件「名词表棘轮的剩余量含 deferred 存量」那条），
+    // 而地板却要求它 ≥ 40 ⇒ 与 burn-down 的设计目标直接冲突。
+    //
+    // **实测证实它把「正常建模」判成回归**（双向复现，隔离工作区）：
+    //   ① 真正建模 2 个名词（deferred 41 → 39）并把 `RATCHET_BURNDOWN.frozen` 同步改成 39
+    //      ⇒ 其余 112 条**全绿**，唯独本行精确红：`expected 39 to be greater than or equal to 40`；
+    //   ② 反向：改判 3 条 modeled → deferred（deferred 41 → 44）⇒ 本行绿、上面那条 `modeled` 地板红。
+    //   ⇒ 算术上等价于「**禁止建模 ≥2 个名词**」，与规则 10「基线是测量工具，不是开发否决权」
+    //      及规则 17②（度量口径纠正不适用「只减不增」）冲突 ⇒ 按 `ed3c324`（判据 15 同型地板，
+    //      `game.length >= 80`）的先例修正。
+    //
+    // **同批复核了同族的那一条 `expect(modeled).toBeGreaterThanOrEqual(25)`，判定「保留」**：
+    // 它钉的是**好数**（modeled = 已建模量，burn-down 的进步方向是**上升**），
+    // 故它是方向正确的棘轮（防「把已建模的悄悄改判回挂账」），不是「禁止还债」。
+    // 已知的**有界**副作用：若一次重命名让 ≥4 个 modeled 条目的锚同时失效，`brokenAnchor` 红，
+    // 而「改判回 deferred」这条修法会被它拦（实测：改判 3 条 ⇒ `expected 24 to be greater than or equal to 25`，
+    // 4 条才真正打穿 25 的下限）；但**锚重指**（另一条修法）仍然畅通 ⇒ 不是无绿路径，不动。
+    expect(modeled).toBeGreaterThanOrEqual(25)
+    // ⚠ **2026-09-18 round 22 派活方核正 = R21-N3 第 2 条**：原式是
+    //   `expect(states.filter(e => e.state === 'deferred').length).toBeGreaterThanOrEqual(40)`
+    // ——一条**「禁止还债」的绝对地板**。`deferred` 正是 burn-down 要**减少**的那个量
+    // （`RATCHET_BURNDOWN` 的 `名词表未处理`：plan = 「41 条 deferred 逐条处置——能建模的转 modeled」，
+    // frozen = unhandled + deferred，见本文件「名词表棘轮的剩余量含 deferred 存量」那条），
+    // 而地板却要求它 ≥ 40 ⇒ 与 burn-down 的设计目标直接冲突。
+    //
+    // **实测证实它把「正常建模」判成回归**（双向复现，隔离工作区 `/tmp/wt-head`）：
+    //   ① 真正建模 2 个名词（deferred 41 → 39）并把 `RATCHET_BURNDOWN.frozen` 同步改成 39
+    //      ⇒ 其余 112 条**全绿**，唯独本行精确红：`expected 39 to be greater than or equal to 40`；
+    //   ② 反向：改判 3 条 modeled → deferred（deferred 41 → 44）⇒ 本行绿、上面那条 `modeled` 地板红
+    //      （证明两条地板各自独立，且方向相反）。
+    //   ⇒ 算术上等价于「**禁止建模 ≥2 个名词**」，与规则 10「基线是测量工具，不是开发否决权」
+    //      及规则 17②（度量口径纠正不适用「只减不增」）冲突 ⇒ 按 `ed3c324`（判据 15 同型地板，
+    //      `game.length >= 80`）的先例修正。
+    //
+    // **改为钉真正的不变量** = 三态是源键集的**一个划分**（`modeled + deferred + unhandled === sourceKeys.length`）。
+    // 它保留了原断言的「分布要如实交代」意图，却**不禁止任何方向**（建模、挂账、改判都合法，只要账同步）。
+    // **不是「删断言换绿」**：实测它比原地板**更严**——注入 `state: 'modelled'`（拼写错；
+    // 旧地板看不见它，因为 `missing`/`extra`/`brokenAnchor` 都不认这个值）⇒ 旧版 2 红、新版 **3 红**
+    // （精确红在本行：`三态必须是源键集的一个划分: expected 67 to be 68`）。
+    expect(modeled + deferred + r.unhandled.length, '三态必须是源键集的一个划分').toBe(r.sourceKeys.length)
   })
 })
 
