@@ -314,7 +314,12 @@ export interface DirectDamageInput {
   basisLabelOverride?: string
 }
 
-// @fact engine:damage/乘区顺序 口径: 乘区顺序=代码顺序（基底→技能倍率→固定附加→增伤→锐化→贯穿→防御→抗性→易伤→失衡→侵染→暴击/锐暴→次数），调换 breakdown.push 顺序即改口径 | 据 实测@2026-09-01复核·复核@2026-09-08·复核@2026-09-09（锐暴 200% 封顶+乘算改动后顺序未变） | 验 src/core/__tests__/damage.test.ts | 锚 src/core/damage.ts#calcDirectDamage | 信 确认
+// @fact engine:damage/乘区顺序 口径: 乘区顺序=代码顺序（基底→技能倍率→固定附加→增伤→锐化→贯穿→防御→抗性→易伤→失衡→侵染→暴击/锐暴→次数），调换 breakdown.push 顺序即改口径；两处**非可交换**落点必须保持不变——① 固定附加在**各乘区之前**进基础区（放到最后加 = 少乘增伤…暴击全链）② 抗性在易伤**之前** | 据 实测@2026-09-01复核·复核@2026-09-08·复核@2026-09-09（锐暴 200% 封顶+乘算改动后顺序未变）·复核@2026-09-18（R32 假绿扫描：旧 `驗` 只断言 `result.damage`，纯换序 0 红 ⇒ 已补行为面+形状面成对判据） | 验 src/core/__tests__/damage.test.ts | 锚 src/core/damage.ts#calcDirectDamage | 信 确认
+// ⚠ 上面这条口径的 `breakdown` **只有 `calcDirectDamage` 的调用方读得到 `damage`**——
+//   全仓 `breakdown` 的两条读取点（`pushSkillDamageResult`，:952/:992）都在**零调用者的
+//   `calcDamage`（:843）**里；活管线（`resourceCalc/damagePool.ts:196`）只读 `result.damage`、
+//   把 `breakdown` 丢弃 ⇒ 顺序错误在当前版本**只由本节的两条成对判据守护**，不由任何页面暴露。
+//   若将来接上 breakdown 展示，这两条判据即为该面板的口径基线（别删）。
 export function calcDirectDamage(input: DirectDamageInput): { damage: number; breakdown: DamageBreakdownItem[] } {
   const p = input.panel
   const breakdown: DamageBreakdownItem[] = []
