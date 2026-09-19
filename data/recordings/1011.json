@@ -1784,7 +1784,7 @@
           "falsifier": "若把载体改回聚合行，basic_attack 的 dmgBonus 会 > 0 而落雷行 = 0；anby.test.ts 已断言聚合行 dmgBonus === 0，改回即红。"
         }
       ],
-      "decisionEvidence": "用户 2026-09-17 裁决（招式限定，此前挂 basic 聚合行 = 过范围）；落点见 anby.ts 头注释「其余已实现·影画2 精准放电」与 patchAnbyExecutions 的 MOVE_LIGHTNING / MOVE_EX 分支；测试 anby.test.ts「影画2：0 命无增伤，2 命落雷伤害 +30×覆盖 / 强特失衡 +10×(1-覆盖)」与「anby.c2StunCoverage → 影画2 落雷增伤/强特失衡互补差分（patchExecutions 直调）」。",
+      "decisionEvidence": "用户 2026-09-17 裁决（招式限定，此前挂 basic 聚合行 = 过范围）；落点见 anby.ts 头注释「其余已实现·影画2 精准放电」与 patchAnbyExecutions 的 MOVE_LIGHTNING / MOVE_EX 分支；测试 anby.test.ts「影画2：0 命无增伤，2 命落雷伤害 +30×覆盖 / 强特失衡 +10×(1-覆盖)」与「anby.c2StunCoverage 经真管线生效：滑块 0 → 落雷 +0 / 强特失衡 +10；滑块 1 → +30 / +0」。",
       "implementation": {
         "spec": "src/specs/agents/1011.json#/notes/5",
         "consumer": "src/mechanics/agents/anby.ts#patchAnbyExecutions"
@@ -1810,11 +1810,11 @@
         },
         {
           "kind": "boundary",
-          "input": "patchExecutions 直调：cov=1 与 cov=0 两端点取差",
-          "expected": "落雷 dmgBonus 差 === 30（cov 0→1 线性）；强特 stunBuildUpBonus 差 === −10（互补：(1−cov) 由 1→0）",
+          "input": "真管线：装配 C2 安比 + 电属性队友，config.setMechanicSetting 设滑块 0 / 0.5 / 1，读 resourceResult 里落雷(1011005) 的 dmgBonus 与强特(1011007) 的 stunBuildUpBonus（扣除波动电压 +64 本底）",
+          "expected": "滑块 0 → 落雷 +0、强特失衡 +10；滑块 1 → 落雷 +30、强特失衡 +0；滑块 0.5 → 落雷 +15、强特 +5（线性折算）",
           "test": {
             "file": "src/mechanics/__tests__/anby.test.ts",
-            "title": "anby.c2StunCoverage → 影画2 落雷增伤/强特失衡互补差分（patchExecutions 直调）"
+            "title": "anby.c2StunCoverage 经真管线生效：滑块 0 → 落雷 +0 / 强特失衡 +10；滑块 1 → +30 / +0"
           }
         }
       ]

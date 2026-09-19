@@ -214,6 +214,17 @@ function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharC
   record.severianLiexuanMeta = metaOf(SEVERIAN_LIEXUAN_MOVE_ID)
   record.severianWindBladeMeta = metaOf(SEVERIAN_WIND_BLADE_MOVE_ID)
   record.severianBasicCycle = SEVERIAN_BASIC_SEGMENT_IDS.map(metaOf)
+  // 凭风层数 / 影画4 覆盖率：滑块 → cfg 的**唯一**通道。
+  // ⚠ 历史缺陷（2026-09-20 round 48 管理员AA 分诊实测，与般岳 `rageGainCoverage`、安比
+  // `c2StunCoverage` 同源）：`cycleFromCfg`（:224-225）读的是 `severianFengfengStacks` /
+  // `severianC4Coverage`，而这两个字段**全仓无人写入** ⇒ 永远回落 `?? 1`
+  // ⇒ `buildSeverianResourceResult` 产出的 `severian_flow` 里 `fengfengStacks` 恒 1、
+  // `c4DefIgnore` 恒 = `SEVERIAN_C4_DEF_IGNORE × 1`（实测把 `severian.c4Coverage` 设为 0，
+  // 资源区块仍报 `c4DefIgnore: 16`）。
+  // 注意执行行路径（`patchSeverianExecutions` :333）走的是 `setting(cfg, 'severian.fengfengStacks')`
+  // **正确读法** ⇒ 同一滑块在"执行行"生效、在"资源区块"失效（两路读数不一致，用户看到的区块骗人）。
+  record.severianFengfengStacks = whole(setting(cfg, 'severian.fengfengStacks', 1))
+  record.severianC4Coverage = clamp01(setting(cfg, 'severian.c4Coverage', 1))
 }
 
 function cycleFromCfg(cfg: unknown): SeverianCycle {

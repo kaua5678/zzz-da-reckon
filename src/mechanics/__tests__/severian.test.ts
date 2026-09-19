@@ -196,4 +196,38 @@ describe('赛维里安（1631）⚠️3.3 测试服临时录入', () => {
       .executions.find(e => e.moveId === '1631006')!
     expect(shadow.count).toBe(7)
   })
+
+  // ⚠ 2026-09-20 round 48 管理员AA 分诊：`buildSeverianResourceResult` 的 `severian_flow` 走
+  // `cycleFromCfg`，它读 `severianFengfengStacks` / `severianC4Coverage`——这两个字段**当时全仓
+  // 无人写入** ⇒ 恒回落 `?? 1`。后果：滑块 `severian.c4Coverage` 设 0，资源区块仍报
+  // `c4DefIgnore: 16`（= 常量 ×1）。同一滑块的**执行行**路径（`patchSeverianExecutions` 走
+  // `setting(cfg, …)`）却是对的 ⇒ 两路读数不一致（"区块骗人"）。本用例锁死资源区块侧。
+  it('滑块经真管线生效：sev 凭风层数 / 影画4 覆盖率必须进 `severian_flow` 资源区块', async () => {
+    const readCycle = async (fengfeng: number, c4: number, cinemaLevel: number) => {
+      const { config } = await setup(['1631', '1251', ''], cinemaLevel)
+      config.setMechanicSetting('severian.fengfengStacks', fengfeng)
+      config.setMechanicSetting('severian.c4Coverage', c4)
+      const calc = useResourceCalc()
+      const ch = calc.resourceResult.value!.characters.find(c => c.agentId === '1631')!
+      return (ch.specResources as any).severian_flow as { fengfengStacks: number; fengfengMultBonus: number; c4DefIgnore: number }
+    }
+    // 凭风：0 层 → 0 加成；2 层 → 满值（SEVERIAN_FENGFENG_MULT[2]）
+    const f0 = await readCycle(0, 1, 0)
+    const f2 = await readCycle(2, 1, 0)
+    expect(f0.fengfengStacks, '凭风 0 层必须原样进资源区块').toBe(0)
+    expect(f0.fengfengMultBonus).toBe(0)
+    expect(f2.fengfengStacks).toBe(2)
+    expect(f2.fengfengMultBonus).toBe(SEVERIAN_FENGFENG_MULT[2])
+    // 影画4 覆盖率：C4 下覆盖率 0 → 无视防御 0；覆盖率 1 → 满值 16
+    const c4off = await readCycle(1, 0, 4)
+    const c4on = await readCycle(1, 1, 4)
+    expect(c4off.c4DefIgnore, '覆盖率滑块=0 时资源区块不该报无视防御').toBe(0)
+    expect(c4on.c4DefIgnore).toBe(16)
+    // 半覆盖 = 线性折算（证明滑块按比例进算式，而不是 0/1 开关）
+    const c4half = await readCycle(1, 0.5, 4)
+    expect(c4half.c4DefIgnore).toBeCloseTo(8, 5)
+    // 反向哨兵：C0 不该有无视防御（防"把覆盖率当常数塞进去"也能过上面几条）
+    const c0 = await readCycle(1, 1, 0)
+    expect(c0.c4DefIgnore, 'C0 无影画4 效果').toBe(0)
+  })
 })

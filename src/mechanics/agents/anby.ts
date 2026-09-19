@@ -126,11 +126,27 @@ function applyAnbyPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void
   // 改为 `buildAnbyExecutions` 按可消费命中数挂**执行级** dmgBonus（见下）。
 }
 
+/** 读机制滑块（`helpers.ts:632` 已把已注册滑块按 `setting:<id>` 写进 cfg）。
+ *
+ * ⚠ 历史缺陷（2026-09-20 round 48 管理员AA 分诊实测，与般岳 `rageGainCoverage` 同源）：
+ * `patchAnbyExecutions` 读的是 `record.anbyC2StunCoverage`——该字段**全仓无人写入**
+ * （`buildAnbyCharConfig` 不写、派发器也不写）⇒ 永远回落 `?? 0.5`，
+ * 滑块 `anby.c2StunCoverage` 在 UI 上可拖但**恒等于 0.5**：实测滑块 0 与 1 的
+ * 落雷 `dmgBonus` **都是 15**（真管线 `computePanelPhases` 与执行级双证）。
+ * 修法按 `evelyn.ts`/`koleda.ts`/`soldier11.ts` 同款：走 `setting:` 前缀读**已注册**的滑块 id。
+ */
+function cfgNum(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
+  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
+  return Number.isFinite(value) ? value : fallback
+}
+
 function buildAnbyCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   record.anbyCinemaLevel = Math.max(0, Math.floor(Number(cinemaLevel ?? 0)))
   record.anbyAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
   record.anbyEnergyGainEfficiency = panel.energyGainEfficiency ?? 0
+  // 影画2 失衡覆盖率：滑块 → cfg 的**唯一**通道（读法见 cfgNum 头注释）
+  record.anbyC2StunCoverage = cfgNum(cfg, 'anby.c2StunCoverage', 0.5)
   // 平A循环分段元数据预存（buildExecutions 输入无 skills；单一事实源仍是倍率表）。
   // 元素取 catalog 的 move.damageElement——#1~#3 物理 / #4、落雷 电（原文口径，见文件头②）。
   const basicMoves = skills?.categories?.find(c => c.id === 'basic')?.moves ?? []

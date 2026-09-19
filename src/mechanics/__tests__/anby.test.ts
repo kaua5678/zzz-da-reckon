@@ -8,7 +8,6 @@ import {
   ANBY_C2_LIGHTNING_DMG,
   ANBY_C6_CHARGE_DMG,
   ANBY_CORE_STUN_BONUS,
-  anbyMechanic,
 } from '../agents/anby'
 
 describe('安比（1011）并联电路/电荷传导 纯函数', () => {
@@ -128,30 +127,43 @@ describe('安比（1011）普攻元素分段（原文口径，用户 2026-09-17 
 })
 
 describe('安比滑块生效差分（防守卫冻结，SOP §3.5）', () => {
-  it('anby.c2StunCoverage → 影画2 落雷增伤/强特失衡互补差分（patchExecutions 直调）', () => {
-    const mk = (cov: number) => {
-      const executions: any[] = [
-        { moveId: 'basic_attack', dmgBonus: 0, stunBuildUpBonus: 0 },
-        { moveId: '1011005', dmgBonus: 0, stunBuildUpBonus: 0 }, // 落雷（影画2 增伤载体）
-        { moveId: '1011007', dmgBonus: 0, stunBuildUpBonus: 0 },
-      ]
-      anbyMechanic.patchExecutions!({
-        cfg: { anbyCinemaLevel: 2, anbyC2StunCoverage: cov },
-        state: {},
-        executions,
-      } as never)
+  // ⚠ 2026-09-20 round 48 管理员AA 分诊：本用例**旧版是直调 `patchExecutions` 并手写
+  // `cfg: { anbyCinemaLevel: 2, anbyC2StunCoverage: cov }`** —— 它手工填了一个**生产代码从不写入**
+  // 的字段，于是"滑块生效"被证明成了假象：真管线里 `buildAnbyCharConfig` 不写 `anbyC2StunCoverage`，
+  // `patchAnbyExecutions` 的 `?? 0.5` 永远生效 ⇒ 滑块在 UI 上可拖但**恒等 0.5**
+  // （实测滑块 0 与 1 的落雷 `dmgBonus` 都是 15）。修法 = 走真管线断言，让"手写 cfg"再也不能
+  // 掩盖断链：滑块值必须经 `setting:` 通道流到执行行。
+  it('anby.c2StunCoverage 经真管线生效：滑块 0 → 落雷 +0 / 强特失衡 +10；滑块 1 → +30 / +0', async () => {
+    const team = () => [
+      { agentId: '1011', cinemaLevel: 2, dodgeCounterCount: 6 },
+      { agentId: '1381' }, // 零号·安比（电，同属性 → 触发并联电路）
+      { agentId: '1211' }, // 丽娜（电，同属性）
+    ]
+    const readRows = async (cov: number) => {
+      const { config } = await setupHarness(team())
+      for (const buff of config.globalBuffs) buff.enabled = false // 剔除队伍 buff 干扰
+      config.setMechanicSetting('anby.c2StunCoverage', cov)
+      const calc = useResourceCalc()
+      const anby = calc.resourceResult.value!.characters.find(c => c.agentId === '1011')!
+      const lightning = anby.executions.find(e => e.moveId === '1011005')!   // 落雷（影画2 增伤载体）
+      const exSpecial = anby.executions.find(e => e.moveId === '1011007')!   // 强特（互补项载体）
       return {
-        // 旧断言读 executions[0]（basic_attack 聚合行）→ 现读落雷分段行：
-        // 影画2 原文限定「[普通攻击：落雷]命中失衡敌伤害+30%」，挂聚合行是过范围（见文件头）
-        basicDmg: executions[1].dmgBonus ?? 0,
-        exStun: (executions[2].stunBuildUpBonus ?? 0) - 64, // 波动电压 +64 恒定，扣除本底
+        lightningDmg: lightning.dmgBonus ?? 0,
+        exStun: (exSpecial.stunBuildUpBonus ?? 0) - ANBY_CORE_STUN_BONUS, // 扣除波动电压 +64 本底
       }
     }
-    const on = mk(1)
-    const off = mk(0)
-    // 落雷增伤随覆盖率 0→1：+0 → +30；强特失衡互补：+10 → +0
-    expect(on.basicDmg - off.basicDmg).toBeCloseTo(ANBY_C2_LIGHTNING_DMG, 1)
-    expect(off.exStun - on.exStun).toBeCloseTo(ANBY_C2_EX_STUN, 1)
+    const off = await readRows(0)
+    const on = await readRows(1)
+    // 落雷增伤随覆盖率 0→1：+0 → +30
+    expect(off.lightningDmg, '滑块=0 时落雷不该吃影画2 增伤').toBeCloseTo(0, 1)
+    expect(on.lightningDmg, '滑块=1 时落雷吃满 +30').toBeCloseTo(ANBY_C2_LIGHTNING_DMG, 1)
+    // 强特失衡互补：+10 → +0
+    expect(off.exStun, '滑块=0 时强特吃满互补 +10').toBeCloseTo(ANBY_C2_EX_STUN, 1)
+    expect(on.exStun, '滑块=1 时强特不吃互补').toBeCloseTo(0, 1)
+    // 半覆盖 = 线性折算（证明滑块是按比例进算式，而不是 0/1 开关）
+    const half = await readRows(0.5)
+    expect(half.lightningDmg).toBeCloseTo(ANBY_C2_LIGHTNING_DMG * 0.5, 1)
+    expect(half.exStun).toBeCloseTo(ANBY_C2_EX_STUN * 0.5, 1)
   })
 })
 
