@@ -76,6 +76,7 @@ export function resolveUltimateTargetSlot(ownSlot: number, teamLength: number, s
  * 好评 60/90 抱拳次数拆分（抱拳→转大因果链）：
  * 抱拳（消耗客诉的送客长按）命中后检查好评是否 ≥90，达到才能打开大招选择窗口。
  * - 60 转大：目标队友有连携窗口（可连携的敌人）时，只消耗 60 好评把这次连携升级为终结技（连携 -1、终结 +1）。
+ *   默认 = **每次失衡 1 次**（用户口径 2026-09-19，原「默认 = 连携总数」废止：每失衡 2 连携的队默认 2 次是错的）。
  * - 90 转大：没有连携窗口时，直接消耗 90 好评打出终结技（终结 +1）。
  * **开窗次数 = 阈值结转口径**（原文逐字：「当[好评]**满90点**且琉音…打开[连携技]窗口时…消耗60点」/
  * 「当[好评]**满90点**且…命中未打开[连携技]窗口的敌人时，将消耗90点」）——
@@ -87,10 +88,10 @@ export function resolveUltimateTargetSlot(ownSlot: number, teamLength: number, s
  * 好评≥390=90+60×5 阈值结转口径」的算式）。旧模型把「预算」当成了「次数」，
  * 在好评落在 [90+60k, 90(k+1)) 区间时少算。**无连携窗口时两者一致**（全走 90 ⇒ floor(G/90)），
  * 故差异只出现在有连携窗口的队。
- * 60 转大默认 = 连携次数（每次连携 1 次，连携本身保留），上限每次失衡 2 次（用户口径 2026-09），可调。
+ * 60 转大默认 = 每次失衡 1 次（用户口径 2026-09-19），上限每次失衡 2 次（用户口径 2026-09），可调。
  * 返回的 hug60 即"被替换掉的连携数"，也是影画6 余音的触发次数来源之一。
  */
-// @fact agent:1481/60转大上限 口径: 60 转大默认=连携次数(每次连携1次、连携保留)，上限每次失衡 2 次，liuyin.hug60Count 可调总转大数 | 据 用户@2026-09 | 验 src/mechanics/__tests__/liuyin.test.ts | 锚 src/mechanics/agents/liuyin.ts#computeLiuyinHugCounts | 信 确认
+// @fact agent:1481/60转大上限 口径: 60 转大默认=每次失衡 1 次（2026-09-19 修正；原「默认=连携总数」废止），上限每次失衡 2 次，liuyin.hug60Count 可调总转大数 | 据 用户@2026-09-19「该默认1失衡提供一次连携转大的机会」 | 验 src/mechanics/__tests__/liuyin.test.ts | 锚 src/mechanics/agents/liuyin.ts#computeLiuyinHugCounts | 信 确认
 // @fact agent:1481/开窗次数 口径: 阈值结转——每次开窗要求当刻好评≥90，有连携窗口扣60/无窗口扣90，余额结转；故计数为贪心推进（好评390+连携窗口⇒6窗=90+60×5），**不是** floor(总量/90) 的预算上限模型（后者在好评落在 [90+60k,90(k+1)) 区间时少算；无连携窗口时两者一致） | 据 原文核心被动「当[好评]满90点且…」+ 用户需求链③@2026-09-13 | 验 src/mechanics/__tests__/liuyin.test.ts | 锚 src/mechanics/agents/liuyin.ts#computeLiuyinHugCounts | 信 确认
 // ⟳复核: 若琉音原文改版（好评消耗值 60/90 或开窗条件变动）则复核本口径；另「连携/破阵按实际失衡次数」改造（坑19未落地·有裁决A）开工时一并复核 | 到期 2026-12-31
 export function computeLiuyinHugCounts(
@@ -100,15 +101,17 @@ export function computeLiuyinHugCounts(
   targetChainCountTotal = Number.POSITIVE_INFINITY,
 ) {
   const G = Math.max(0, goodReviewTotal)
-  // 60 转大：默认每次连携 1 次（连携本身保留），上限每次失衡 2 次（用户口径 2026-09）。
-  // 消耗失衡赠送的连携窗口（有轴时由轴内连携块决定；无轴兜底 = 每失衡 1 次）。
-  const auto60 = Number.isFinite(targetChainCountTotal)
+  // 60 转大：默认**每次失衡 1 次**转大机会（用户口径 2026-09-19「该默认1失衡提供一次连携转大的机会」；
+  // 原「默认 = 连携总数」废止——每失衡 2 连携的队连携窗口是它的 2 倍，但用户确认的舞台分配仍按 1 次/失衡）。
+  // 消耗失衡赠送的连携窗口（有轴时由轴内连携块决定；无轴兜底 = 每失衡 1 次）；上限仍每失衡 2 次（用户口径 2026-09）。
+  const chainWindows = Number.isFinite(targetChainCountTotal)
     ? Math.max(0, Math.floor(targetChainCountTotal))
     : Math.max(0, Math.floor(stunCount))
+  const auto60 = Math.min(Math.max(0, Math.floor(stunCount)), chainWindows)
   // 本次可用的 60 档次数上限（三重夹紧：设置值 / 连携窗口数 / 每失衡 2 次）
   const cap60 = Math.min(
     hug60Setting >= 0 ? Math.floor(hug60Setting) : auto60,
-    Math.max(0, Math.floor(targetChainCountTotal)),
+    chainWindows,
     2 * Math.max(0, Math.floor(stunCount)),
   )
   /**

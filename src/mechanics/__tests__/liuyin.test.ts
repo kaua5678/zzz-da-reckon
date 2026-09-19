@@ -64,16 +64,16 @@ describe('琉音好评/等效规则（用户确认）', () => {
     expect(h3.hug60).toBe(0)
     expect(h3.hug90).toBe(0)
 
-    // 好评 450、连携窗口 3 → 结转口径（2026-09-15 修）：60×3（余 270）→ 90×3（余 0）⇒ 共 6 窗
-    // ⚠ 旧断言是 5（= floor(450/90) 预算上限模型）；两者差在「60 档省下的 30 点是否结转」，
-    // 原文是「当[好评]**满90点**且…」逐次判定 ⇒ 结转，故 6。详见 computeLiuyinHugCounts 头注释。
+    // 好评 450、连携窗口 3、失衡 2 → 2026-09-19 新默认「每失衡 1 次 60 机会」：auto60 = min(2, 3) = 2，
+    // 450 − 2×60 = 330 → 90×3（余 60）⇒ 共 5 窗（旧默认跟连携走是 3+3=6 窗；只有默认一变，结转/上限口径未动）。
     const h4 = computeLiuyinHugCounts(450, 2, -1, 3)
-    expect(h4.hug60).toBe(3)
+    expect(h4.hug60).toBe(2)
     expect(h4.hug90).toBe(3)
 
-    // 上限：每次失衡最多 2 次 60 转大（用户口径 2026-09）——连携 10、失衡 2 → 60 转大被 2×2 封顶到 4
+    // 上限：每次失衡最多 2 次 60 转大（用户口径 2026-09）——设置 10、失衡 2 → 60 转大被 2×2 封顶到 4
+    // （2026-09-19 起默认已是「每失衡 1 次」，上限只在设置值高于默认时咬人，故本条用 hug60Setting=10 驱动）
     // 结转口径下剩余 450−4×60=210 → 90×2=180，余 30 ⇒ 共 6 窗（旧断言 hug90=1/共 5）
-    const h5 = computeLiuyinHugCounts(450, 2, -1, 10)
+    const h5 = computeLiuyinHugCounts(450, 2, 10, 10)
     expect(h5.hug60).toBe(4)
     expect(h5.hug90).toBe(2)
     expect(h5.remainingGoodReview).toBe(30)
@@ -132,11 +132,13 @@ describe('琉音强特计划估时（2026-09-06 补）', () => {
  */
 describe('琉音阈值结转口径（好评 → 开窗次数）', () => {
   it('★ 好评 390 + 连携窗口 ⇒ 6 窗（= 90 + 60×5，需求链③的算式）', () => {
-    const r = computeLiuyinHugCounts(390, 4, -1, 6)
-    expect(r.hug60 + r.hug90, '390 应开 6 窗').toBe(6)
-    expect(r.hug60).toBe(6)          // 6×60 = 360 ≤ 390，余 30
-    expect(r.hug90).toBe(0)
-    expect(r.remainingGoodReview).toBe(30)
+    // 2026-09-19 新默认「每失衡 1 次 60 机会」：6 窗 = 60×5 + 90×1 要求 5 次失衡（5 窗口）+ 结转吃满。
+    // （旧默认跟连携窗口数是 4 失衡 / 6 窗口也能 6 窗——两默认差异只在这一档体现。）
+    const r = computeLiuyinHugCounts(390, 5, -1, 6)
+    expect(r.hug60 + r.hug90, '390 + 5 失衡应开 6 窗').toBe(6)
+    expect(r.hug60).toBe(5)          // 5×60 = 300 ≤ 390，余 90 → 再开一窗 90
+    expect(r.hug90).toBe(1)
+    expect(r.remainingGoodReview).toBe(0)
   })
 
   it('★ 无连携窗口时与旧口径一致（全走 90 ⇒ floor(G/90)）——防一律放大', () => {
