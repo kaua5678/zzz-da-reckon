@@ -977,12 +977,16 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 账本 > 展示层（般+诺+卢实测槽0 回能账本 200 vs 截断后行 Σ 140）。修法（用户 2026-09-11 给定语义「装不下就重收敛」）：
   // 初装截断 > 容差时，把每槽装配 kept（招式行真兑现的秒数）作为 cfg.rowTimeLimit 注入，回到 S2 入口重跑
   // 折叠 → 比利终推 → 尾段（欠打回填 → 伊德海莉终推 → 装配）；账本收入经 feasibleRows 只数装得下的行。
-  // 接受判据 = Σcut **严格变小**（1e-6）；否则整体回滚到上一次接受态并停。最多 3 轮（rowTimeLimit 单调收紧）。
+  // 接受判据 = Σcut **不增**（≤ 上次 + 1e-6；相等也接受——那正是「账本按真装得下的行计」的不动点态）；变大则整体回滚到
+  // 上一次接受态并停。停机 = 本轮 kept 与上一轮写入的 rowTimeLimit 逐槽一致（|Δ| ≤ 1e-3，账本 == 展示层，无需再跑）或 3 轮用尽。
   // 默认路径（cut ≤ 1s 的队，刀 1 后 103/105 预设）：零分支零写入 ⇒ 逐位 0 delta；结构性溢出（必要行本身 > 预算，1431 簇）
   // 若一轮后 cut 不降 ⇒ 回滚初装态、如实上报（overflowSeconds / truncationCuts），交给外层降配 / 逐模块退化。
   // ⚠ 三条纪律：① cfg 对象保持同一性（闭包/外层不动点持有引用）⇒ 还原用「清键 + assign」；② rowTimeLimit 返回前恒删除
   //   （cfg 被外层不动点/热启动复用，WARM_KEY_OMIT_CFG 也已排除）；③ 函数级诊断量随每次重跑归零，报告的是被接受那一跑的读数。
   const ROW_REFOLD_MAX_PASSES = 3
+  let truncationRefoldPasses = 0
+  let truncationRefoldRejected = false
+  let lastLimits: Map<number, number> | null = null
   const restoreCfgs = (snap: Record<string, unknown>[]) => {
     configs.forEach((c, i) => {
       const rec = c as unknown as Record<string, unknown>
@@ -1009,6 +1013,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       if (e.cutSeconds > TIME_BUDGET_TOLERANCE_SECONDS) keptBySlot.set(e.slot, Math.max(0, e.kept))
     }
     if (keptBySlot.size === 0) break
+    // 不动点：本轮装配 kept 与上一轮写入的 rowTimeLimit 逐槽一致 ⇒ 账本已按真装得下的行计，停
+    if (lastLimits && lastLimits.size === keptBySlot.size
+      && [...keptBySlot].every(([slot, k]) => Math.abs((lastLimits!.get(slot) ?? Infinity) - k) <= 1e-3)) break
     // 上一次接受态的快照（拒绝时整体还原）
     const accepted = {
       cfgs: configs.map(c => ({ ...c })) as Record<string, unknown>[],
@@ -1031,10 +1038,13 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     states = runFoldLoop(s2EntrySeedStates.map(s => ({ ...s })))
     states = runBillyFinalize(states)
     const trial = runTailPipeline()
-    if (trial.timeTruncatedSeconds < accepted.tail.timeTruncatedSeconds - 1e-6) {
+    if (trial.timeTruncatedSeconds <= accepted.tail.timeTruncatedSeconds + 1e-6) {
       tail = trial
+      lastLimits = keptBySlot
+      truncationRefoldPasses += 1
       continue
     }
+    truncationRefoldRejected = true
     // 拒绝：整体还原到上一次接受态（cfg 同一性保持），停止重折
     restoreCfgs(accepted.cfgs)
     states = accepted.states
@@ -1122,6 +1132,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       timeBudgetRefundedSeconds,
       timeTruncatedSeconds,
       truncationBySlot: truncationBySlot.length > 0 ? truncationBySlot : undefined,
+      truncationRefoldPasses: truncationRefoldPasses > 0 ? truncationRefoldPasses : undefined,
+      truncationRefoldRejected: truncationRefoldRejected || undefined,
     },
   }
 }

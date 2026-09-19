@@ -101,3 +101,16 @@
 - 读数：两条 1431 预设 dmg +1.6% / +4.4%（重折收敛点微移）；`agent:1051:c3` slack 1.41→3.50（虚的 0.x 次去掉后 2.1s 未被欠打回填吃满）；
   ratchet 默认口径 `auto-1431-1481-1341` 留白 1.6→3.1（77.5s 截断归零的粗粒度残余）、`auto-1431-1481-1491` 3.5→1.3。
 
+## 8. 后记 3：重折接受判据从「严格变小」放宽到「不增」+ 不动点停机 + 诊断量
+
+- 动机：批 2-1 的终点是「账本 == 展示层」。探针（`PROBE7`：逐槽账本 skillRegen vs 保住行 Σ）显示 `auto-1431-1481-1341`
+  两轮后**逐槽精确相等**，而 `auto-1431-1481-1491` 停在账本 < 保住行（1481 喧响 2072 vs 2446）——第二轮 Σcut 相等就被「严格变小」拒掉，
+  账本再也没机会按真 kept 重算。般岳保底队（nightD）同理：72.8→68.1 后一轮等值被拒，放宽后第三轮到 64.9。
+- 改法（`resource.ts` 重折环）：接受 = Σcut ≤ 上次 + 1e-6；停机 = 本轮 kept 与上一轮写入的 rowTimeLimit 逐槽 |Δ| ≤ 1e-3（不动点）
+  或 3 轮用尽；Σcut 变大仍整体回滚。新增 `convergence.truncationRefoldPasses` / `truncationRefoldRejected`（如实上报振荡队）。
+- 否决：折半阻尼（limit ← last + ½(kept − last)）实测对 1491 队不改变最终装配、只多跑一轮，删。
+- 读数：两条 1431 预设不变（1341 两轮到不动点；1491 第三轮反弹被拒 → `rejected=true`，账本与保住行仍差一截，如实上报）；
+  `agent:1051:c4/c5/c6` 槽0 basic/nec 各移 0.097s（等值轮被接受后账本按 kept 重算，伤害不变）；nightD 般岳补齐量 4→3 弹刀。
+- 判据：`truncationRefold.test.ts` ④（不动点队账本 == 保住行 Σ，能量按 energyRowParity 同款规格锁、喧响按 Σ totalDecibelRecovery；
+  振荡队断言 rejected=true）；`timeTruncation.test.ts` 新增加回不越次数的 discriminating pair（a=8.249 次：旧条件给 9）。
+

@@ -55,6 +55,13 @@ export interface ConvergenceReport {
    */
   truncationBySlot?: { slot: number; requested: number; kept: number; cutSeconds: number }[]
   /**
+   * 截断外环回灌（债 2 批 2-1，2026-09-19）：被接受的重折轮数。0/undefined = 初装截断 ≤ 容差，重折环没进；
+   * ≥1 = 账本收入已按「上一轮装配 kept」的可行行重算过。`truncationRefoldRejected` = 最后一次尝试因 Σcut 变大被整体回滚
+   * （此时账本按上一次接受态的 kept 计，与最终装配 kept 可能还差一截——如实上报，不硬做）。
+   */
+  truncationRefoldPasses?: number
+  truncationRefoldRejected?: boolean
+  /**
    * 失衡外层不动点（runCalcRound 环）是否真收敛。
    * 由编排层回填；`calcTeamResources` 单独调用时保持 false（它看不到外层）。
    */

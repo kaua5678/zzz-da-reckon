@@ -141,4 +141,29 @@ describe('时间线截断', () => {
     expect(8 <= legacyRoom + 1e-9).toBe(false)
     expect(8 <= legacyRoom + TIME_FOLD_CONVERGENCE_SECONDS).toBe(true)
   })
+
+  /**
+   * 加回不得越过原次数（2026-09-19 R37 修正，6a64278）：小数次数行 floor 后若还有剩余时间，旧条件 `u.count < u.e.count`
+   * 会把 8.249 次的行加回到 9 次——截断后的计划比截断前**多打** 0.751 次，kept 虚高、该行不进 cuts、
+   * 「Σ 逐行 cutSeconds == cutSeconds」恒等式破（HEAD 上 0.244s 残差被 teamTimeSummary 当量化噪声容忍多时，
+   * 债 2 批 2-1 重折后 1431 队放大到 1.9s 才暴露）。
+   * 构造：a = 8.249 次 × 1s、b = 10 次 × 3s，可用 37s ⇒ floor 后剩 3s，a 小数部分最大先加回到 8，再加回 1 次就越过 8.249。
+   */
+  it('★ 加回不越过原次数：小数次数行最多回到 floor(原次数)，Σ逐行 cutSeconds == cutSeconds 精确成立', () => {
+    const a = row({ moveId: 'a', count: 8.249, actionTime: 1, totalTime: 8.249 })
+    const b = row({ moveId: 'b', count: 10, actionTime: 3, totalTime: 30 })
+    const r = truncateExecutionsToFrontline([a, b], 37)
+    const outA = r.executions.find(e => e.moveId === 'a')!
+    const outB = r.executions.find(e => e.moveId === 'b')!
+    expect(outA.count).toBe(8)            // 旧条件会给 9（> 8.249）
+    expect(outB.count).toBe(9)
+    for (const e of r.executions) {
+      const before = e.moveId === 'a' ? a.count : b.count
+      expect(e.count, `${e.moveId} 截断后次数不得超过截断前`).toBeLessThanOrEqual(before + 1e-9)
+    }
+    // 恒等式精确：cut = used − kept = 38.249 − 35 = 3.249 = a 的 0.249 + b 的 3.0
+    expect(r.cutSeconds).toBeCloseTo(3.249, 9)
+    expect(r.cuts.reduce((s, c) => s + c.cutSeconds, 0)).toBeCloseTo(r.cutSeconds, 9)
+    expect(r.cuts.map(c => c.moveId).sort()).toEqual(['a', 'b'])
+  })
 })
