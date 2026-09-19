@@ -35,6 +35,10 @@ import {
   findForbiddenTracked,
   countAgentIdBranchLines,
   extractSettingIds,
+  scanSettingsCoverage,
+  settingsCoverageOk,
+  formatSettingsCoverage,
+  SETTINGS_COVERAGE_MIN_MODULES,
   matchDebtRegistry,
   auditCatalogLevel60,
   auditMoveElementsAgainstRaw,
@@ -167,6 +171,54 @@ describe('extractSettingIds（settings 块抽取）', () => {
 
   it('无 settings 块返回空', () => {
     expect(extractSettingIds('const a = 1')).toEqual([])
+  })
+})
+
+describe('settingsCoverageOk（判据 4 的反空洞下限，2026-09-20 round 47）', () => {
+  // 背景：原判据 `ok = newGaps.length === 0` 在**抽取器整体失效**时仍绿——把 extractSettingIds
+  // 注入成恒 `return []` ⇒ 打印「已测 0/0」并 `19 guard checks passed`（EXIT=0），
+  // 与「真的 84/84 全测」在退出码上不可区分（R47 闸门实测：pristine 上同样复现 ⇒ 存量缺陷）。
+  // 修法 = 加一条「扫到的**模块数** ≥ 冻结实测值」的下限（口径选模块数而非滑块数：滑块数随录入
+  // 进展自然增减，拿它当下限 = 把判据强度绑在业务量上）。同族先例：判据 13 `NOUN_SOURCE_MIN_KEYS`、
+  // 判据 19 `LAYER_INVERSION_MIN_TOTAL_SITES`。
+  const mkReport = (moduleCount: number) =>
+    ({ declared: new Map(Array.from({ length: moduleCount }, (_, i) => [`m${i}.ts`, ['a.b']])), untested: [], stale: [] })
+
+  it('可红性自证：扫描面空洞（0 模块）⇒ 判红，且不是「平凡绿」', () => {
+    // 这是**核心判别力**断言：闸门原文的收口条件是「任何下限都只把 0/0 变成另一种平凡绿」。
+    // 恒空注入的读数正是 0 模块 ⇒ 下限必须在这里判红，否则本改动毫无价值。
+    expect(settingsCoverageOk(mkReport(0), [], SETTINGS_COVERAGE_MIN_MODULES)).toBe(false)
+    // 逐字钉住失败归因（防「红了但红在别处」）
+    const out = formatSettingsCoverage(mkReport(0), [], SETTINGS_COVERAGE_MIN_MODULES).join('\n')
+    expect(out).toContain('反空洞下限')
+  })
+
+  it('★ 下限不得写成 0 / 恒真（闸门收口条件的形式化锁）', () => {
+    // 若有人把常量改成 0（或把 ok 改成恒真），上面那条会**静默失效** —— 这条专门拦它。
+    expect(SETTINGS_COVERAGE_MIN_MODULES).toBeGreaterThan(0)
+    // 0 模块 + 下限 0 ⇒ 正是「平凡绿」形态；断言它此刻仍被判定为绿，从而证明上面那条
+    // 是靠**常量 >0** 才成立的（常量归零 ⇒ 判别力消失，本断言会跟着上面那条一起红）。
+    expect(settingsCoverageOk(mkReport(0), [], 0)).toBe(true)
+  })
+
+  it('边界：恰好等于下限 ⇒ 绿；差一个 ⇒ 红（防「>= 写成 >」的静默偏移）', () => {
+    const M = SETTINGS_COVERAGE_MIN_MODULES
+    expect(settingsCoverageOk(mkReport(M), [], M)).toBe(true)
+    expect(settingsCoverageOk(mkReport(M - 1), [], M)).toBe(false)
+  })
+
+  it('下限不掩盖原有职责：有未测缺口 ⇒ 即使模块数达标也红', () => {
+    expect(settingsCoverageOk(mkReport(SETTINGS_COVERAGE_MIN_MODULES), ['x.ts::y.z'], SETTINGS_COVERAGE_MIN_MODULES)).toBe(false)
+    expect(formatSettingsCoverage(mkReport(SETTINGS_COVERAGE_MIN_MODULES), ['x.ts::y.z'], SETTINGS_COVERAGE_MIN_MODULES).join('\n'))
+      .toContain('新滑块无测试引用')
+  })
+
+  it('下限已按实测标定：当前仓库扫到的模块数 ≥ 常量（常量不得高于实测，否则假红）', () => {
+    const { declared } = scanSettingsCoverage()
+    expect(declared.size).toBeGreaterThanOrEqual(SETTINGS_COVERAGE_MIN_MODULES)
+    // 反向上界：常量也不该低到失去意义（恒空注入实测 0 ⇒ 只要 >0 就有判别力；
+    // 但按同族纪律它应≈实测值，故钉「不得低于实测的一半」防有人随手改小）
+    expect(SETTINGS_COVERAGE_MIN_MODULES).toBeGreaterThanOrEqual(Math.floor(declared.size / 2))
   })
 })
 

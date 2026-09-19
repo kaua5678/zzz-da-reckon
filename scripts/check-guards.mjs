@@ -530,8 +530,8 @@ export { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMP
 // ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**
 // （R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
 // ⚠ 改判据口径请改 `./lib/settings-coverage.mjs`，**不要在本文件重建同形函数**。
-import { UNTESTED_SETTINGS_ALLOWLIST, extractSettingIds, scanSettingsCoverage } from './lib/settings-coverage.mjs'
-export { UNTESTED_SETTINGS_ALLOWLIST, extractSettingIds, scanSettingsCoverage } from './lib/settings-coverage.mjs'
+import { UNTESTED_SETTINGS_ALLOWLIST, extractSettingIds, scanSettingsCoverage, settingsCoverageOk, formatSettingsCoverage, SETTINGS_COVERAGE_MIN_MODULES } from './lib/settings-coverage.mjs'
+export { UNTESTED_SETTINGS_ALLOWLIST, extractSettingIds, scanSettingsCoverage, settingsCoverageOk, formatSettingsCoverage, SETTINGS_COVERAGE_MIN_MODULES } from './lib/settings-coverage.mjs'
 
 // ---- 判据 5：debt: 标记注册表（防「later = never」） ----
 
@@ -1040,13 +1040,19 @@ export function runAllChecks(root = ROOT) {
 
   const settings = scanSettingsCoverage(root)
   const newGaps = settings.untested.filter(e => !UNTESTED_SETTINGS_ALLOWLIST.includes(e))
+  const settingsMin = root === ROOT ? SETTINGS_COVERAGE_MIN_MODULES : 0
+  // ⚠ `name` 与加下限前**逐字节相同**（反空洞下限只在 `ok` 与红时 detail 里体现）——这是**有意**的：
+  // ① 绿基线输出可 `cmp` 逐字节对拍 ⇒ 证明本改动**零意外扰动**其它 18 条判据（最强保真仪器）；
+  // ② 下限口径与 `NOUN_SOURCE_MIN_KEYS`（判据 13，同样不打进绿行）一致，而**不是**
+  //    `LAYER_INVERSION_MIN_TOTAL_SITES`（判据 19 那种打进绿行的写法）——两者都是既有先例，此处选前者
+  //    是为了拿到 ① 这条保真证明。⚠ 不要为了「让下限更显眼」改这一行：那会牺牲 ①，而可见性已由
+  //    `settingsCoverage.test` 的回归锁（常量 >0 + 可红性自证）覆盖。
   results.push({
     name: `settings coverage (规则 12/§2: 滑块声明必须有「改了确实变」测试) 已测 ${[...settings.declared.values()].flat().length - settings.untested.length}/${[...settings.declared.values()].flat().length}`,
-    ok: newGaps.length === 0,
-    detail: [
-      ...newGaps.map(e => `  ✗ 新滑块无测试引用：${e} → 补「改滑块→面板/结果确实变」的生效测试（ARCHITECTURE.md §3 滑块行，般岳 rageGainCoverage 曾静默失效）`),
-      ...settings.stale.map(e => `  ⚠ 清单可回收：${e} 已有测试，从 UNTESTED_SETTINGS_ALLOWLIST 删掉该行`),
-    ],
+    ok: settingsCoverageOk(settings, newGaps, settingsMin),
+    // ⚠ detail **恒**由 formatSettingsCoverage 产出（不是只在红时）——`stale` 的「清单可回收」
+    // 是**绿也要打印**的 warn（原实现如此，别改成条件输出而静默掉回收提醒）。
+    detail: formatSettingsCoverage(settings, newGaps, settingsMin),
   })
 
   const markers = scanDebtMarkers(root)

@@ -33,12 +33,16 @@ export declare function findForbiddenTracked(trackedPaths: string[]): string[]
 
 // 判据 4：滑块生效测试
 export declare const UNTESTED_SETTINGS_ALLOWLIST: string[]
+/** 反空洞下限：扫到的「声明 settings 块的模块数」低于此值 ⇒ 抽取器疑似失效（R47） */
+export declare const SETTINGS_COVERAGE_MIN_MODULES: number
 export declare function extractSettingIds(moduleSource: string): string[]
 export declare function scanSettingsCoverage(root?: string): {
   declared: Map<string, string[]>
   untested: string[]
   stale: string[]
 }
+export declare function settingsCoverageOk(report: { declared: Map<string, string[]>; stale: string[] }, newGaps: string[], minModules?: number): boolean
+export declare function formatSettingsCoverage(report: { declared: Map<string, string[]>; stale: string[] }, newGaps: string[], minModules?: number): string[]
 
 // 判据 5：debt: 标记注册表
 export interface DebtMarker { file: string; text: string }
