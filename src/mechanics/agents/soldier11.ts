@@ -181,6 +181,8 @@ export const soldier11Mechanic: AgentMechanicModule = {
   estimateExSpecialTime: ({ cfg, exSpecialCount, ultimateCount }) => {
     // A45 循环计入必要时间（窗口数 = 强特+终结+连携；受平A池约束由折叠循环收敛；
     // 2026-09-03 层数结算：套数 ≤ 强特次数，每发强特 8 层 = 1 套快速火刀）
+    // @fact agent:1041/A45循环行时间归属 口径: A45 快速火刀行（1041008/1041025）的时间由本钩子计入 necessaryTime（账本侧），**不占**通用 basic_attack 聚合行的平A池 ⇒ 与艾莲 1191 的「等式解出平A池」形态不同，**不得 carve 聚合行**（carve 即二次减法：账本与池各减一次，守恒撑破实测 9.6~11.2s/队、单人 17.7s）；buildExecutions 里的 `⌊pool/CYCLE_TIME⌋` 只是自洽 cap，绑定项在真实配置里恒为 exTotal（层数预算），binding 需回能 > exConsume/CYCLE ≈ 49.8/s 而实测 4.8~5.5/s（差 9~10×） | 据 闸门实测@2026-09-20（6 预设队 + 单人 c0~c6 全 13 配置 cap 不绑；反向注入 carve ⇒ 守恒破）+ 分类判据改按「行时间记在哪一侧」而非「式子里有没有 basicAttackTime」 | 验 src/mechanics/__tests__/soldier11.test.ts#A45 循环行不重复占用平A池 | 锚 src/mechanics/agents/soldier11.ts#estimateExSpecialTime | 信 确认
+    // ⟳复核: A45 循环时间方程、estimate 侧 loopTime 口径、或回能/强特能耗量级改动时，复核「necessary+pool==frontline 守恒」（soldier11.test）+「cap 绑定项仍为 exTotal」+ 能量侧是否出现 ≥3× 回能手段 | 到期 2026-12-31
     const chainOverride = cfg.chainCountTotalOverride
     const chain = chainOverride ?? 0
     const windows = Math.max(0, Math.floor(exSpecialCount) + Math.floor(ultimateCount) + Math.floor(chain))

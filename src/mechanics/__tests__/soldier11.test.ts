@@ -5,6 +5,8 @@ import { useConfigStore } from '@/stores/config'
 import { soldier11Mechanic, patchSoldier11Executions } from '@/mechanics/agents/soldier11'
 import { setupHarness } from '@/test/harness'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { useResourceCalc } from '@/composables/useResourceCalc'
+import { teamPresets } from '@/data/teamPresets'
 
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
@@ -222,5 +224,105 @@ describe('「11号」燎原火滑块生效差分（防守卫冻结，SOP §3.5�
     const off = read()
     expect(on - off).toBeCloseTo(22.5, 1)
     expect(on).toBeGreaterThan(off)
+  })
+})
+
+/**
+ * §19.6-2 收口判据（R40）：**A45 循环行不占平A池那份时间**（不是艾莲式双计）。
+ *
+ * 背景：`f70a402` 修好艾莲 1191 —— 她的 `computeEllenCycle` 把平A池**解成**循环行
+ * （`dashCount×dashTime + iceWaveCount×burstTime + sharkTime = basicAttackTime`，等式解出），
+ * 而聚合行仍 = 池 ⇒ 同一段时间两份。R38 扫描出 8 个「模块 basic 类行 ≥ 20s 且聚合行 = 池」，
+ * 7 个已判资源驱动合法；1041 是最后一个（含直接 `⌊basicAttackTime / CYCLE_TIME⌋` 项）。
+ *
+ * **实测判定 = 合法，不挤出**，两条独立证据：
+ * ① **行时间走的是 estimate 钩子，不住在池里**：`estimateExSpecialTime` 把 `cycles × CYCLE_TIME`
+ *    加进 `necessaryTime`（= 账本），池 = `预算 − 账本` ⇒ 池**已经**不含 A45 时间。
+ *    恒等式 `necessaryTime + basicAttackTime == frontlineTime` 在 6 个预设队 + 单人 c0/c6 上逐位成立
+ *    （**恒等**，非近似）；若 A45 真重复占用，该式会被撑破。
+ * ② **cap 在真实配置里从不绑**（闸门实测）：`⌊pool / CYCLE_TIME⌋` 需 pool < `exTotal×CYCLE_TIME`，
+ *    而绑定的充要条件是回能速率 > `exConsume / CYCLE_TIME` ≈ **49.8 能量/秒**，实测 1041 回能
+ *    ≈ 4.8（c0）/ 5.5（c6）能量/秒 ⇒ 差 **9~10 倍**。6 预设队 + 单人 c0~c6 共 13 个配置**全部**
+ *    绑在 `exTotal`（层数预算）这一项上，cap 余量最少 +6 轮。
+ *
+ * **反向验证（本用例的负控，实测过会红）**：把艾莲式 carve 注入 `buildExecutions`
+ * （循环行时长从聚合行挤出，只改这一个自由度）⇒ 判据②断言
+ * `|necessary + pool − frontline| < 1e-6` 立刻被撑破：6 预设队破 9.6~11.2s，单人 c0 破 17.7s
+ * —— 因为 estimate 已经把 A45 计进账本，再挤出一次就是**二次减法**（净占用凭空蒸发）。
+ * ⚠ 这正是「按 §19.6 字面『由 basicAttackTime 解出 ⇒ 必须挤出』照抄会做错」的形态：
+ * 判据要看**行时间记在哪一侧**（estimate 账本 / 聚合行池），不是看式子里有没有 `basicAttackTime`。
+ */
+describe('「11号」A45 循环行不重复占用平A池（§19.6-2 收口判据）', () => {
+  const CYCLE_TIME = 1.828 * 0.5 + 1.383 * 0.5
+
+  it('守恒恒等式：necessaryTime + basicAttackTime == frontlineTime（实时引擎，逐位）', async () => {
+    const presets = teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3 && p.team.includes('1041'))
+    expect(presets.length, '1041 预设队缺失——本判据的覆盖面归零，必须补样').toBeGreaterThan(0)
+    const broken: string[] = []
+    for (const p of presets) {
+      const { catalog, config } = await setupHarness(['', '', ''])
+      await catalog.loadBuildRecommendations()
+      for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+      config.applyTeamPreset(p.team as [string, string, string])
+      const rr = useResourceCalc().resourceResult.value
+      const ch = rr?.characters.find(c => c.agentId === '1041')
+      expect(ch, `${p.id} 无 1041 资源结果`).toBeTruthy()
+      const { necessaryTime, basicAttackTime, frontlineTime } = ch!.timeAllocation
+      const gap = necessaryTime + basicAttackTime - frontlineTime
+      if (Math.abs(gap) > 1e-6) {
+        broken.push(`${p.id} nec ${necessaryTime.toFixed(3)} + pool ${basicAttackTime.toFixed(3)} `
+          + `= ${(necessaryTime + basicAttackTime).toFixed(3)} ≠ front ${frontlineTime.toFixed(3)}（差 ${gap.toFixed(3)}）`)
+      }
+    }
+    expect(broken, [
+      'A45 循环行重复占用平A池（艾莲式双计）—— 守恒被撑破：',
+      ...broken.map(b => '  · ' + b),
+      '修法见 f70a402（从 basic_attack 聚合行挤出循环行时长），但先确认 estimate 侧是否也已计入',
+      '（都计入 ⇒ 挤出是二次减法，实测反而破守恒，见本 describe 头注释的反向验证）。',
+    ].join('\n')).toEqual([])
+  })
+
+  it('cap 不绑：真实配置里绑定项恒为 exTotal（层数预算），cap 余量 ≥ 1 轮', async () => {
+    const weak: string[] = []
+    for (const [tag, team] of [
+      ...teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3 && p.team.includes('1041'))
+        .map(p => [p.id, p.team as string[]] as const),
+      ['single-c0', ['1041']] as const,
+      ['single-c6', ['1041']] as const,
+    ] as ReadonlyArray<readonly [string, string[]]>) {
+      const { catalog, config } = await setupHarness(['', '', ''])
+      await catalog.loadBuildRecommendations()
+      for (const [i, agentId] of team.entries()) config.setAgent(i, agentId)
+      const rr = useResourceCalc().resourceResult.value
+      const ch = rr?.characters.find(c => c.agentId === '1041')
+      expect(ch, `${tag} 无 1041 资源结果`).toBeTruthy()
+      const pool = ch!.timeAllocation.basicAttackTime
+      const ex = Math.floor(ch!.exSpecialCount ?? 0)
+      const windows = ex + Math.floor(ch!.chainCountTotal ?? 0) + Math.floor(ch!.ultimateCount ?? 0)
+      const cap = Math.floor(pool / CYCLE_TIME)
+      // 绑定项 = min 的胜出者。真实配置里必须是 exTotal 或 windows（计数/资源驱动），
+      // 绝不能是 pool cap —— 后者意味着 A45 行数由平A池解出（艾莲式判据的前提）。
+      if (cap <= Math.min(windows, ex)) {
+        weak.push(`${tag} pool=${pool.toFixed(3)} ex=${ex} windows=${windows} cap=${cap} ⇒ cap 绑（§19.6-2 前提成立，须改判）`)
+      }
+    }
+    expect(weak, [
+      'A45 的 ⌊pool/CYCLE_TIME⌋ cap 在真实配置里绑上了 —— §19.6-2 的前提假设成立，',
+      '判定须从「合法」改判为「艾莲式双计」，并按 f70a402 形态挤出 + 补齐归因：',
+      ...weak.map(w => '  · ' + w),
+    ].join('\n')).toEqual([])
+  })
+
+  it('保守阈值：cap 绑定需要回能 > exConsume/CYCLE ≫ 实测回能（结构性差距，非采样巧合）', async () => {
+    await setupHarness([{ agentId: '1041', cinemaLevel: 0 }])
+    const ch = useResourceCalc().resourceResult.value?.characters.find(c => c.agentId === '1041')
+    expect(ch).toBeTruthy()
+    const consume = ch!.exSpecialEnergyConsume ?? 80
+    const rateNeeded = consume / CYCLE_TIME  // 能量/秒：把 ex 推到 pool/CYCLE 所需
+    const rateActual = (ch!.derivedEnergy ?? 0) / 180
+    // 实测 c0：49.83 vs 4.82 ⇒ 10.35×。留 3× 余量作为「结构性差距」的保守断言
+    //（若将来真有 +400% 回能手段把它推近，这条会红 ⇒ 正是该复核 §19.6-2 的时候）。
+    expect(rateNeeded / rateActual, `cap 绑定所需回能 ${rateNeeded.toFixed(2)} /s vs 实测 ${rateActual.toFixed(2)} /s`)
+      .toBeGreaterThan(3)
   })
 })
