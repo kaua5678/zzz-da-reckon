@@ -18,7 +18,12 @@
  * - **存量冻结、只拦新增/变差**（与 check-guards 的 useResourceCalc agentId 棘轮同一手法）；
  * - 修好之后跑 `TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts`
  *   重生成基线（diff 即「这次改动买回多少秒」的度量）；
- * - 新预设没有基线条目 → 红，逼你显式认领（而不是悄悄引入新的留白）。
+ * - 新预设没有基线条目 → 红，逼你显式认领（而不是悄悄引入新的留白）；
+ * - **基线自洽（零容差，双向）**：棘轮是**单向**的（只拦变差）⇒ 单独用它会漏掉
+ *   「改了读数却没重生成基线」这类提交（实测 `70d7dc0` 改 2 队读数、未重生成，`npm run verify`
+ *   全绿、潜伏 2 天跨 3 个提交）。故第三条断言按 `measure() == baseline` **零容差**比对，
+ *   把「基线 = 现实的真快照」也变成判据。**零额外耗时**：复用上面同一次扫描的 cache；
+ *   覆盖**全 104 队**而非抽样（子集 ⊂ 全集，同价）。
  *
  * 口径：队伍用**手动队默认**（`config.setAgent` → 角色专属默认 > 正反馈排除 > 职业基准），
  * 不套预设的 interactions/命座——本护栏量的是引擎时间系统，不是预设保真度。
@@ -129,6 +134,61 @@ describe('时间系统不变量与留白棘轮', () => {
       '  2) 确属你的有意改动才重生成，并在提交说明里写清每队 delta。',
       '  3) 赶时间用 SKIP_TIME_RATCHET=1 跳过本条（绝对不变量那条仍会跑），**不要改基线**。',
       ...regressions.map(r => '  · ' + r),
+    ].join('\n')).toEqual([])
+  }, 600_000)
+
+  /**
+   * 第三条：**基线自洽（零容差、双向）**。
+   *
+   * 为什么需要它（结构性缺口，非理论担忧）：上面那条棘轮是**单向**的 —— 只在
+   * `实测 > 基线 + TOLERANCE` 时红。于是「改了引擎读数、却没重生成基线」的提交：
+   *   · 变好（读数下降）⇒ 差值再大也不红；
+   *   · 变差但落在 1.0s 容差内 ⇒ 也不红。
+   * 实测 `70d7dc0` 就是这么过的（改 2 队读数、未重生成，`npm run verify` 全绿，
+   * 潜伏 2 天、跨 3 个提交才被下一次滚动重生成的 diff 偶然暴露）—— 而那个 diff 本身没有判据。
+   *
+   * 本断言把「基线 == 现实」变成判据：**零容差**比对（容差会让缺口原样复活），
+   * 且检查基线里**存着却从未被比较过**的 `stun` / `outerExit`（棘轮只读 slack/over）。
+   *
+   * **成本 = 零**：复用 `measureAll()` 的同一次 cache；**覆盖全 104 队**，
+   * 不做抽样 —— 抽样只会更省不了时间（每个 `measure()` 都要重跑一次 180s 收敛，
+   * 而整轮扫描本就被上面两条断言跑满），却会留下「没被抽样到的队」这个新缺口。
+   *
+   * ⚠ 与棘轮的分工：**棘轮拦「变差」，本断言拦「基线漂移」**。红了先归因再重生成，
+   * 别把本条当成"重生成就好"的信号（那正是它要拦的动作）。
+   *
+   * @fact engine:guards/基线自洽 口径: 时间留白棘轮是**单向**判据（只拦「变差」）⇒ 必须配一条**零容差双向**自洽断言补对侧（棘轮拦变差、自洽拦基线漂移）；两侧缺一，则「改读数不重生成」类提交可全绿（容差一加缺口即原样复活） | 据 实测@2026-09-20（`70d7dc0` 改 2 队读数未重生成、`npm run verify` 全绿、潜伏 2 天跨 3 提交） | 验 src/composables/__tests__/timeFillRatchet.test.ts | 锚 src/composables/__tests__/timeFillRatchet.test.ts#基线自洽：逐队 measure() | 信 确认
+   * ⟳复核: 引擎量化地板/`TOLERANCE` 口径变更时，确认本断言仍为零容差且覆盖全库 104 队 | 到期 2026-12-31
+   */
+  it('基线自洽：逐队 measure() 与基线**零容差**双向一致（拦「改读数不重生成」）', async () => {
+    // ⚠ 必须**重读磁盘**：`TIME_RATCHET_UPDATE=1` 时上一条已把新基线写回文件，
+    // 而模块顶部的 `baseline` const 是 import 期读的（陈旧）⇒ 用陈旧副本比会假红。
+    const fresh = JSON.parse(readFileSync(BASELINE_FILE, 'utf8')) as RatchetBaseline
+    const measured = await measureAll()
+    const drift: string[] = []
+    for (const p of presets) {
+      const m = measured[p.id]
+      const b = fresh[p.id]
+      if (!b) { drift.push(`${p.id} 实测有、基线缺条目（跑 TIME_RATCHET_UPDATE=1 认领）`); continue }
+      // 逐字段零容差。数值字段用 !== 而非 > ：**双向**都算漂移。
+      if (m.slack !== b.slack) drift.push(`${p.id} slack 基线 ${b.slack} ≠ 实测 ${m.slack}`)
+      if (m.over !== b.over) drift.push(`${p.id} over 基线 ${b.over} ≠ 实测 ${m.over}`)
+      if (m.stun !== b.stun) drift.push(`${p.id} stun 基线 ${b.stun} ≠ 实测 ${m.stun}`)
+      if (m.outerExit !== b.outerExit) drift.push(`${p.id} outerExit 基线 ${b.outerExit} ≠ 实测 ${m.outerExit}`)
+    }
+    for (const k of Object.keys(fresh)) {
+      if (k.startsWith('_')) continue
+      if (!(k in measured)) drift.push(`${k} 基线有、本次未采集（预设被删/改名？基线条目已陈旧）`)
+    }
+    expect(drift, [
+      `基线与现实不符（零容差）—— 共 ${drift.length} 条：`,
+      '  这说明**基线没跟上读数**，而不是"读数变差了"（变差归上面那条棘轮管）。两种可能：',
+      '  1) 你改了引擎/数据却**没重生成基线** ⇒ 确认 delta 属你所有后重生成：',
+      '     `TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts`',
+      '     并在提交说明里逐队写明 delta 与归因（规则 10）。',
+      '  2) 不是你的改动（别人的 catalog/面板改动漂到你头上）⇒ 交给那条改动认领，别替它重生成。',
+      '  ⚠ 不许为了变绿改本断言或加回容差 —— 容差一加，这个缺口就原样复活。',
+      ...drift.map(d => '  · ' + d),
     ].join('\n')).toEqual([])
   }, 600_000)
 })
