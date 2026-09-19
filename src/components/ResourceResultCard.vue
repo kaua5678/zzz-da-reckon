@@ -32,11 +32,13 @@
         <div class="action-time-row action-time-head">
           <span>动作</span>
           <span>占用操作</span>
+          <span>次数</span>
           <span>计算</span>
         </div>
         <div v-for="row in actionOperationRows" :key="row.key" class="action-time-row">
           <span class="action-time-name">{{ row.name }}</span>
           <span class="action-time-value">{{ fmt(row.operationTime, 1) }}s</span>
+          <span class="action-time-count">{{ countText(row.count) }}</span>
           <span v-if="row.comboAlignTime > 0" class="action-time-detail">
             {{ fmt(row.frontlineTime, 1) }}s - {{ fmt(row.comboAlignTime, 1) }}s 合轴
           </span>
@@ -321,6 +323,10 @@ const props = defineProps<{
   stunPoolResult?: StunPoolResult | null
   /** 队伍积蓄池结果（团队级，用于提取本角色的贡献和团队触发次数） */
   anomalyPoolResult?: AnomalyPoolResult | null
+  /** 琉音好评转大收敛拆分（结果页注入；归档页缺省 → 60/90 行隐藏。纯展示载荷） */
+  liuyinHug?: { hug60: number; hug90: number } | null
+  /** 全队 agentId→展示名（卢西娅帷幕队友来源行用；缺省回退显示 agentId） */
+  agentNames?: Record<string, string>
 }>()
 
 // 特性标签
@@ -343,6 +349,8 @@ const specialResourceSections = computed(() =>
   getAgentMechanic(props.result.agentId)?.resourceSections?.({
     result: props.result,
     anomalyPoolResult: props.anomalyPoolResult,
+    liuyinHug: props.liuyinHug ?? null,
+    agentNames: props.agentNames ?? {},
   }) ?? [],
 )
 
@@ -350,6 +358,13 @@ const specialResourceSections = computed(() =>
 function pct(time: number): string {
   const total = 180 // totalTime
   return `${(time / total * 100).toFixed(1)}%`
+}
+
+/** 释放次数文本（时间分配行）：接近整数取整、零次显示 —（如合轴 0 秒的计划外强特） */
+function countText(count: number): string {
+  const n = Number(count) || 0
+  if (n < 0.05) return '—'
+  return `×${Math.abs(n - Math.round(n)) < 0.05 ? Math.round(n) : fmt(n, 1)}`
 }
 
 
@@ -361,6 +376,8 @@ type ActionOperationRow = {
   frontlineTime: number
   comboAlignTime: number
   operationTime: number
+  /** 该动作计划释放次数（执行计划行 count；用户口径 2026-09-19「资源池时间分配显示每个动作释放次数」） */
+  count: number
 }
 
 const ACTION_ROW_DEFS: Array<Pick<ActionOperationRow, 'key' | 'name' | 'color' | 'match'>> = [
@@ -396,6 +413,7 @@ const actionOperationRows = computed<ActionOperationRow[]>(() => {
       frontlineTime,
       comboAlignTime,
       operationTime: Math.max(0, frontlineTime - comboAlignTime),
+      count: Number(exec.count) || 0,
     })
   }
 
@@ -412,6 +430,7 @@ const actionOperationRows = computed<ActionOperationRow[]>(() => {
         frontlineTime: stirringTime,
         comboAlignTime: 0,
         operationTime: stirringTime,
+        count: Number(burniceSource.stirringCount ?? 0) || 0,
       })
     }
     const tossingTime = (burniceSource.tossingCount ?? 0) * (burniceSource.tossingActionTimeSeconds ?? 0)
@@ -424,6 +443,7 @@ const actionOperationRows = computed<ActionOperationRow[]>(() => {
         frontlineTime: tossingTime,
         comboAlignTime: 0,
         operationTime: tossingTime,
+        count: Number(burniceSource.tossingCount ?? 0) || 0,
       })
     }
   }
@@ -876,7 +896,7 @@ const anomalyEventExecutionsData = computed(() => {
 
 .action-time-row {
   display: grid;
-  grid-template-columns: 82px 56px 1fr;
+  grid-template-columns: 82px 56px 40px 1fr;
   align-items: center;
   gap: 8px;
   font-size: 12px;

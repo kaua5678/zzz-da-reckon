@@ -648,6 +648,10 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
     { label: '轴类型', value: axisLabel, detail: '时间不足时可换 short_pair / short_mie' },
     { label: '局外剑势', value: fmt(cycle.outsideSword, 1), detail: 'attack_data_0 + 帷幕×3 + 影画1' },
     { label: '明心境轮次', value: String(cycle.totalForms), detail: `逐云${cycle.decibelForms}+转大${cycle.giftForms}+照影${cycle.zhaoyingForms}` },
+    // 白毛启动按触发拆分（用户口径 2026-09-19「白毛启动了几次按启动方式分」）；`N 次` 格式进难度曲线关键次数
+    { label: '白毛·喧响触发（逐云）', value: `${cycle.decibelForms} 次`, detail: '自攒喧响终结技进白毛；收尾=斩妄' },
+    { label: '白毛·转大触发', value: `${cycle.giftForms} 次`, detail: '队友赠大（琉音好评转大等）触发白毛；收尾=归尘' },
+    { label: '白毛·照影触发', value: `${cycle.zhaoyingForms} 次`, detail: `快速支援进白毛，耗局外剑势 6/次；收尾=归尘` },
     { label: '每轮结构', value: `灭${cycle.miePerForm}/极${cycle.jiPerForm}/扶摇${cycle.fuyaoPerForm}`, detail: `耗剑势 ${cycle.swordSpentPerForm} · 观止 ${cycle.guanzhiPerForm}` },
     { label: '飞光', value: `${fmt(cycle.feiguangFullCasts, 3)} 满档当量`, detail: `总观止/6 × 倍率行` },
     { label: '收尾', value: `斩妄${cycle.finisherZhanwang}/归尘${cycle.finisherGuichen}`, detail: cycle.mingdengUpgrade > 0 ? `明灯愿强化 ${cycle.mingdengUpgrade}` : '喧响进斩妄，其余归尘' },

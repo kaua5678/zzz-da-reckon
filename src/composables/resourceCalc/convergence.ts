@@ -407,6 +407,8 @@ export interface CalcRoundResult {
     anomalyPool: AnomalyPoolResult | null
     adjustedResourceResult: TeamResourceResult | null
     promote: number
+    /** 琉音好评转大 60 档（吃连携窗口）收敛终值（90 档 = promote − promoteHug60）。纯展示载荷，零求值影响。 */
+    promoteHug60: number
     stunCoverage: number
     resolvedAxes: StunAxis[]
     matchedPlanName: string | null
@@ -1389,6 +1391,7 @@ export function createRunCalcRound(deps: {
       anomalyPool: ap1,
       adjustedResourceResult: adj2,
       promote: sp1.promote,
+      promoteHug60: sp1.hug60,
       stunCoverage: cov1,
       // 轴退化时生效轴 = 无（诚实反映：轴定义仍解析，但没有注入计算）
       resolvedAxes: opts?.forceNoAxis ? [] : resolvedAxes,

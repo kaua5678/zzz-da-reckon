@@ -530,6 +530,11 @@ export interface ReleaseModifierInput {
 export interface AgentResourceSectionsInput {
   result: CharacterResourceResult
   anomalyPoolResult?: AnomalyPoolResult | null
+  /** 琉音好评转大收敛拆分（60=吃连携窗口 / 90=白送终结技，来自 promoteFixpoint 终值）；
+   *  仅结果页注入——归档/难度曲线拿不到不动点终值，缺省时 60/90 拆分行不显示。纯展示载荷。 */
+  liuyinHug?: { hug60: number; hug90: number } | null
+  /** 全队 agentId→展示名，多角色归因行用（如卢西娅帷幕队友来源）；缺省回退显示 agentId */
+  agentNames?: Readonly<Record<string, string>>
 }
 
 /**

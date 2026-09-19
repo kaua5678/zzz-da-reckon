@@ -875,6 +875,24 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       // 卢西娅4命帷幕触发总次数写回 cfg（供模块资源卡展示）
       if (i === luciaSlot) {
         cfg.luciaCurtainTriggerCount = curtainTriggers
+        // 展示拆分（2026-09-19，零求值改动）：自开部分 + 队友来源归因（边际法：队友份额 = 总 − 自开，
+        // 15s CD 封顶与覆盖滑块折算效应按比例落到两边）。引擎当前只把伊德海莉终结技计作队友开帷幕
+        // （yidhariSlot 由 yidhariDecibelPerHpPct 判，见本函数前段——将来加队友源只需在此数组追加条目）。
+        cfg.luciaCurtainSelfCount = computeLuciaCurtainTriggers(
+          states[luciaSlot]?.exSpecialCount ?? 0,
+          states[luciaSlot]?.ultimateCount ?? 0,
+          0,
+          curtainCoverage,
+          totalTime,
+        )
+        const curtainMateRaw = Math.max(0, Math.floor(states[yidhariSlot]?.ultimateCount ?? 0))
+        cfg.luciaCurtainTeammates = yidhariSlot >= 0 && curtainMateRaw > 0
+          ? [{
+            agentId: configs[yidhariSlot]?.agentId ?? '',
+            rawCount: curtainMateRaw,
+            triggers: Math.max(0, curtainTriggers - cfg.luciaCurtainSelfCount),
+          }]
+          : []
       }
 
       // Σ 队友前台秒（行级能量/喧响与装配 buildExecutions 同语义：不含自己）

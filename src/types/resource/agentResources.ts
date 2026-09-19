@@ -491,6 +491,14 @@ export interface LuciaMechanicSource {
   healTotalHpPct: number
   /** 4命帷幕触发次数（开启/延长，含队友如伊德海莉大招开帷幕；15s CD 封顶 × 利用率滑块） */
   curtainTriggerCount: number
+  /** 4命帷幕触发中卢西娅**自开/自延**部分（边际拆分；缺写入方时回退 = 总次数） */
+  curtainSelfCount: number
+  /** 4命帷幕开启次数（原始，未受 CD 封顶/覆盖率折算）：开局1 + 入场1（有梦境E）+ Q 退出再入梦 ×Q */
+  curtainOpens: number
+  /** 4命帷幕延长次数（原始）：梦境内强特 + 梦境内终结技 */
+  curtainExtends: number
+  /** 4命帷幕队友来源分摊（展示用；triggers=边际法计入总次数的份额） */
+  curtainTeammates: { agentId: string; rawCount: number; triggers: number }[]
   /** 4命每次触发给全队每人的喧响（100；未开4命为 0） */
   c4DecibelPerTrigger: number
   /** 4命全队每人喧响合计 = curtainTriggerCount × c4DecibelPerTrigger */

@@ -261,6 +261,8 @@
           :specialty="getSpecialty(charResult.agentId)"
           :stun-pool-result="stunPoolResult"
           :anomaly-pool-result="anomalyPoolResult"
+          :liuyin-hug="liuyinHugSplit"
+          :agent-names="agentNames"
         />
       </div>
       <div v-else class="placeholder">
@@ -813,7 +815,15 @@ const {
   anomalyVirtualPanels,
   agentNames,
   panels,
+  liuyinPromoteCount,
+  liuyinPromoteHug60,
 } = useResourceCalc()
+
+/** 琉音好评转大收敛拆分（60=吃连携窗口 / 90=无窗口白送；90 = 总转大 − 60），注入结果卡展示（零求值影响） */
+const liuyinHugSplit = computed(() => ({
+  hug60: liuyinPromoteHug60.value,
+  hug90: Math.max(0, liuyinPromoteCount.value - liuyinPromoteHug60.value),
+}))
 
 // 是否有队伍数据
 const hasTeam = computed(() => {

@@ -390,6 +390,10 @@ export interface CharacterOperationConfig {
   luciaC4CurtainCoverage?: number
   /** 卢西娅4命本局帷幕触发总次数（收敛后由资源池按最终终结技次数写入，供模块展示） */
   luciaCurtainTriggerCount?: number
+  /** 卢西娅4命帷幕触发中**自开/自延**部分（同点写入，供卡片按来源拆分；零求值影响） */
+  luciaCurtainSelfCount?: number
+  /** 卢西娅4命帷幕的队友来源分摊（展示用）：rawCount=队友原始触发次数，triggers=边际法计入总次数的份额（总 − 自开） */
+  luciaCurtainTeammates?: { agentId: string; rawCount: number; triggers: number }[]
   /** 伊德海莉蓄力循环招式（buildExecutions 消费） */
   yidhariChargeSlam?: YidhariLoopMove
   yidhariBasicFollow?: YidhariLoopMove

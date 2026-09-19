@@ -279,6 +279,23 @@ function computeLuciaSource(
     ? Math.max(0, Number(cfg.luciaCurtainTriggerCount))
     : computeLuciaCurtainTriggers(state.exSpecialCount, state.ultimateCount, 0)
   const c4PerTrigger = Math.max(0, Number(cfg.luciaC4DecibelPerTrigger ?? 0))
+  // 帷幕来源拆分（展示用）：引擎同点写入自开/队友归因；外部直调（缺写入）时自开回退 = 总次数。
+  const curtainSelfRaw = Number(cfg.luciaCurtainSelfCount)
+  const curtainSelfCount = Number.isFinite(curtainSelfRaw) ? Math.max(0, curtainSelfRaw) : curtainTriggerCount
+  const totalEForCurtain = Math.max(0, Math.floor(state.exSpecialCount))
+  const dreamEForCurtain = Math.min(totalEForCurtain, Math.max(0, 4 - q))
+  const curtainOpens = 1 + (dreamEForCurtain > 0 ? 1 : 0) + q
+  const curtainExtends = dreamEForCurtain + q
+  const curtainTeammatesRaw = Array.isArray(cfg.luciaCurtainTeammates)
+    ? cfg.luciaCurtainTeammates as { agentId: string; rawCount: number; triggers: number }[]
+    : []
+  const curtainTeammates = curtainTeammatesRaw
+    .map(m => ({
+      agentId: String(m?.agentId ?? ''),
+      rawCount: Math.max(0, Math.floor(Number(m?.rawCount) || 0)),
+      triggers: Math.max(0, Number(m?.triggers) || 0),
+    }))
+    .filter(m => m.agentId && m.rawCount > 0)
   return {
     dreamTarget: DREAM_TARGET,
     dreamExSpecialCount: plan.dreamExSpecialCount,
@@ -291,6 +308,10 @@ function computeLuciaSource(
     healPctPerUlt,
     healTotalHpPct: q * healPctPerUlt * Math.max(0, Math.min(1, healingCoverage)),
     curtainTriggerCount,
+    curtainSelfCount,
+    curtainOpens,
+    curtainExtends,
+    curtainTeammates,
     c4DecibelPerTrigger: c4PerTrigger,
     c4TeamDecibelPerChar: curtainTriggerCount * c4PerTrigger,
     note: '追加攻击默认20次（CD 8s 全球性、队友命中触发，不受失衡轴窗口限制；按有效战斗时间/8 封顶，无敌期间不结算）；计划外强特合轴0秒；回血按终结技等级公式（12级12.8%/大）×覆盖滑块折算；4命帷幕触发次数含15s CD封顶。',
@@ -317,7 +338,7 @@ function buildLuciaResourceResult({ cfg, state, preModuleExecutions }: AgentReso
   }
 }
 
-function buildLuciaResourceSections({ result }: AgentResourceSectionsInput) {
+function buildLuciaResourceSections({ result, agentNames }: AgentResourceSectionsInput) {
   const source = result.luciaMechanicSource
   if (!source) return []
   const rows = [
@@ -331,6 +352,21 @@ function buildLuciaResourceSections({ result }: AgentResourceSectionsInput) {
       value: `${fmt(source.curtainTriggerCount)} 次`,
       detail: `每次开启/延长全队每人 +${fmt(source.c4DecibelPerTrigger)} 喧响 = 每人 +${fmt(source.c4TeamDecibelPerChar)}（含伊德海莉大招开帷幕，15s CD 封顶）`,
     })
+    // 来源拆分（用户口径 2026-09-19「全队的帷幕次数，分别是谁给的」）：≈ 前缀使该行不进难度曲线关键次数
+    // 解析器（拆分=边际法，受 CD 封顶/覆盖滑块影响，非精确整数）。总数行保持精确 `N 次` 格式。
+    rows.push({
+      label: '　├ 卢西娅自开/自延',
+      value: `≈${fmt(source.curtainSelfCount)} 次`,
+      detail: `原始 开启${fmt(source.curtainOpens)}（开局1+入场1+Q退出再入梦×${Math.max(0, Math.floor(source.ultimateCount))}）+ 延长${fmt(source.curtainExtends)}（梦境E+Q）`,
+    })
+    for (const mate of source.curtainTeammates) {
+      const who = agentNames?.[mate.agentId] || `槽位角色 ${mate.agentId}`
+      rows.push({
+        label: `　└ ${who}开帷幕`,
+        value: `≈${fmt(mate.triggers)} 次`,
+        detail: `终结技 ×${mate.rawCount}（每次 +1）；与自开共享 15s CD 封顶/覆盖滑块，计入 ${fmt(mate.triggers)}`,
+      })
+    }
   }
   return [
     {
@@ -338,7 +374,7 @@ function buildLuciaResourceSections({ result }: AgentResourceSectionsInput) {
       title: '卢西娅·梦境值计划（500点）',
       summary: `梦境值 ${fmt(source.dreamTotal)} · 追加攻击 ${source.additionalAttackCount} 次 · 计划内强特 ${source.dreamExSpecialCount} 次 · 合轴强特 ${source.excessExSpecialCount} 次`,
       rows,
-      footer: '计划外强特直接合轴耗时0秒；A5为随想1451005（合唱升级未单独拆分）；[合唱]行已按最大生命值附加最后一段固定伤害，2命+15%增伤，6命必暴+暴伤30%。',
+      footer: '计划外强特直接合轴耗时0秒；A5为随想1451005（合唱升级未单独拆分）；[合唱]行已按最大生命值附加最后一段固定伤害，2命+15%增伤，6命必暴+暴伤30%。帷幕来源拆分=边际法（总 − 自开归因给队友），总数精确、拆分≈。',
     },
   ]
 }

@@ -417,7 +417,7 @@ function buildLiuyinResourceResult({ cfg, state }: AgentResourceResultInput): Pa
   }
 }
 
-function buildLiuyinResourceSections({ result }: AgentResourceSectionsInput) {
+function buildLiuyinResourceSections({ result, liuyinHug }: AgentResourceSectionsInput) {
   const source = result.liuyinMechanicSource
   if (!source) return []
   return [
@@ -439,6 +439,11 @@ function buildLiuyinResourceSections({ result }: AgentResourceSectionsInput) {
       summary: `抱拳 ${fmt(source.farewellCount)} 次（转大 ${fmt(source.promoteWindows)} + 终结技 ${fmt(source.ownUltimateCount)}）`,
       rows: [
         { label: '转大次数', value: `+${fmt(source.promoteWindows)}`, detail: '阈值结转：每次开窗当刻需满90好评，扣60（有连携窗口）/90（无窗口）后余额结转' },
+        // 收敛后的 60/90 拆分（不动点终值，仅结果页注入 liuyinHug 时显示；`N 次` 格式同时进难度曲线关键次数解析器）
+        ...(liuyinHug ? [
+          { label: '　├ 60转大（吃连携窗口）', value: `${fmt(liuyinHug.hug60)} 次`, detail: '好评满90后经连携窗口：目标队友连携−1、终结技+1；也是影画6余音触发次数来源之一' },
+          { label: '　└ 90转大（白送终结技）', value: `${fmt(liuyinHug.hug90)} 次`, detail: '无连携窗口：送客命中未开窗敌人，直接释放目标队友终结技' },
+        ] : []),
         { label: '终结技送客诉', value: `+${fmt(source.ownUltimateCount)}`, detail: '琉音终结技每次送 1 客诉 → 抱拳不转大（纯伤害）' },
         { label: '抱拳总数', value: `${fmt(source.farewellCount)} 次 × 1481009`, detail: '转大次数 + 终结技次数；每次造成物理伤害并触发上一位角色快速支援' },
       ],
