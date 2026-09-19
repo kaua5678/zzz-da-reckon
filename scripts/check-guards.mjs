@@ -1771,7 +1771,10 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   "src/core/damage.ts engine:damage/乘区顺序",
   "src/core/effectiveTime.ts engine:stun/时间守恒",
   "src/core/panel.ts engine:driveDisc/固定主词条",
-  "src/core/resource/helpers.ts engine:时间线截断",
+  // ⚠ R43 结构熵切面：`engine:时间线截断` 的实现与 @fact 随截断族整段迁进
+  // `core/resource/timeTruncation.ts`，故豁免键**随之改指**。**这是路径跟随、不是销号**：
+  // 口径内容一字未改、触发器仍未补 ⇒ 存量面（game 条数）不变。
+  "src/core/resource/timeTruncation.ts engine:时间线截断",
   "src/core/resource/helpers.ts yidhari:refund不动点",
   "src/core/resource/helpers.ts engine:合轴预算抵扣",
   "src/core/resource/helpers.ts engine:单角色前线上限",

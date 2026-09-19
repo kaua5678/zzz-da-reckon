@@ -11,17 +11,12 @@
  */
 import type {
   ResourceCalcConfig, CharacterOperationConfig,
-  EnergySource, CrossAgentEnergy, DecibelSource, TimeAllocation,
-  SkillExecution, IterationState, AnomalyEventExecution, TeamResourceResult, TruncationCut,
+  EnergySource, IterationState,
 } from '@/types/resource'
-import { isFrontlineExecution } from '@/types/resource'
-import { getAgentMechanic } from '@/mechanics'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueCycleFromCfg, readAxisExCounts } from '@/mechanics/agents/banyue'
-import { crossAgentSupplyAt, findCrossAgentSupplySlots, giftDecibelForCfg, neighborUltEnergyByProvider } from './crossAgentSupply'
-import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
-import { resolveExtraExCount } from '@/data/exSpecialPlans'
-import { DEFAULT_COMBO_ALIGN_ABSORB_RATIO, EVADE_ASSIST_ACTION_TIME_SECONDS, EVADE_ASSIST_MOVE_ID } from '@/data/resourceDefaults'
+import { crossAgentSupplyAt, findCrossAgentSupplySlots, giftDecibelForCfg } from './crossAgentSupply'
+import { DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 
 /**
@@ -33,1258 +28,114 @@ function countStunOf(globalCfg: ResourceCalcConfig): number {
   return projectStunPlanForCounts(globalCfg.stunCount ?? 0, globalCfg.stunPlanProjection ?? 'off')
 }
 
-// ============ 单角色能量计算 ============
+// ============================================================================
+// 跨角色联动回能族（`calcCrossAgentEnergy` / `emptyCrossAgentEnergy`）已整段迁至
+// `./crossAgentEnergy.ts`（R43 结构熵切面，纯搬运）。
+// 本块是 **re-export 壳**：既有消费者（`core/resource.ts` / `iterate` /
+// `mechanics/__tests__` / `composables/__tests__`）的 import 路径零改动。
+// ⚠ 必须写成「import + export」两行——`export { … } from './crossAgentEnergy'`
+// **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
+// ⚠ 改跨角色回能口径请改 `./crossAgentEnergy.ts`，**不要在本文件重建同形函数**。
+// ============================================================================
+import { calcCrossAgentEnergy, emptyCrossAgentEnergy } from './crossAgentEnergy'
+export { calcCrossAgentEnergy, emptyCrossAgentEnergy }
 
-/**
- * 队友联动回能（跨角色能量来源的单一事实源）。
- *
- * 全部来源都依赖「其他槽位的次数」，因此必须同时被两处消费：
- * ① `iterate` —— 参与强特次数推导（收敛项）；
- * ② `calcTeamResources` 最终装配 —— 写进 `energySource.crossAgent` 与 `total`，让界面总览
- *    与真正驱动次数的能量同口径。
- *
- * 历史事故：两处各写一份，最终装配只补回 supportUltimateRegen，其余 5 项（仪玄队友终结闪能/
- * 丽娜/苍角/露西/莱特C4）在界面上不可见 —— 仪玄实测 energySource.total 720 而实际驱动 840，
- * 导致测试注释里的手算账本无法与界面对账、并在 f20b2d5 失衡提取语义修正后静默漂移。
- * 新增跨角色回能来源请只改本函数（并在 CrossAgentEnergy 上加字段）。
- */
-export function calcCrossAgentEnergy(
-  slotIndex: number,
-  configs: CharacterOperationConfig[],
-  states: IterationState[],
-): CrossAgentEnergy {
-  const cfg = configs[slotIndex]
-  const num = (v: unknown) => {
-    const x = Number(v)
-    return Number.isFinite(x) ? x : 0
-  }
+// ============================================================================
+// 单角色资源收入账本族（`calcEnergySource` / `calcRawDecibelParts` / `calcDecibelSource`）
+// 已整段迁至 `./resourceIncome.ts`（R43 结构熵切面，纯搬运）。
+// 本块是 **re-export 壳**：既有消费者（`core/resource.ts` 装配 / `iterate` /
+// `core/__tests__` / `mechanics/__tests__`）的 import 路径零改动。
+// ⚠ 必须写成「import + export」两行——`export { … } from './resourceIncome'`
+// **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
+// ⚠ 改收入账本口径请改 `./resourceIncome.ts`，**不要在本文件重建同形函数**。
+// ============================================================================
+import { calcEnergySource, calcRawDecibelParts, calcDecibelSource } from './resourceIncome'
+export { calcEnergySource, calcRawDecibelParts, calcDecibelSource }
 
-  let supportUltimateRegen = 0
-  let teamUltimateFlash = 0
-  for (let j = 0; j < configs.length; j++) {
-    if (j === slotIndex) continue
-    const other = configs[j]
-    if (other.supportUltimateEnergyRegen > 0) {
-      supportUltimateRegen += states[j].ultimateCount * other.supportUltimateEnergyRegen
-    }
-    // 模块声明：队友终结技每次回闪能（如仪玄额外能力·队友释放终结技回 2/s×10s=20）
-    if ((cfg.teamUltimateFlashBonus ?? 0) > 0) {
-      teamUltimateFlash += states[j].ultimateCount * (cfg.teamUltimateFlashBonus ?? 0)
-    }
-  }
-
-  // 支援角色终结技**邻位回能**（丽娜/苍角/露西；次数使用传入状态参与收敛）。
-  // 2026-09-15 core 棘轮批次3：原为三段各自 `findIndex(c => c.agentId === '<id>')` 的角色专属数学
-  // （丽娜/苍角的 calcXxxUltEnergy + 露西的内联块），现引擎只按**能力类别**查询：
-  // 各模块用 `crossAgentSupply.kind = 'neighbor-ult-energy'` 声明自己、用 `perTargetAmounts()`
-  // 报「送给每个落点多少能量」（邻位 30/10 分配、影画1 回旋回能、乘自己终结技次数都在模块内）。
-  // 新角色接邻位回能不必再改引擎（规则 6）。
-  //
-  // ⚠ 明细字段（rina/soukaku/lucy 三个来源）由 `byProvider` 按**提供者槽位**拆分，
-  // 供 `ResourceResultCard.vue` 逐条展示；`total` 用合计值（同一落点可同时被多名提供者回能，
-  // 明细相加 = total，不会漏也不会重）。
-  const neighborUlt = neighborUltEnergyByProvider(configs, states, slotIndex, {
-    totalTime: 180, stunCount: 0,
-  })
-  const byKey = neighborUlt.byDisplayKey
-  const rinaUltEnergy = byKey.rinaUltEnergy ?? 0
-  const soukakuUltEnergy = byKey.soukakuUltEnergy ?? 0
-  const lucyEnergy = byKey.lucyEnergy ?? 0
-
-  // 莱特影画4：进士气喷发时后场角色 +4 能量（18s CD，总额预写入 cfg.lighterC4BurstEnergy）
-  const lighterC4Raw = num((cfg as any).lighterC4BurstEnergy)
-  const lighterC4Energy = lighterC4Raw > 0 ? lighterC4Raw : 0
-
-  // 席德（1461）额外能力：作为操作角色造成伤害时为正兵回 2 能量/秒（1秒至多1次）。
-  // 操作时间 = 前台时间 − 合轴时间（后台与自动追加攻击不计）。
-  // 正兵槽位由席德模块 applyTeamConfig（build）写入 cfg.xideVanguardSlot（初始攻击最高的强攻队友）。
-  let xideVanguardEnergy = 0
-  // 2026-09-15 core 棘轮批次2：原 `configs.findIndex(c => c.agentId === '1461')` 改为**按字段找槽**
-  // ——`xideVanguardSlot` 的唯一写入方 = `xide.ts` 的 applyTeamConfig（build 阶段，早于本函数）
-  // ⇒ 该字段存在即蕴含「是席德的 cfg」（判据同 T6；规则 6：引擎按能力/字段查询，不按角色名查询）。
-  const xideIdx = configs.findIndex(c => (c as unknown as Record<string, unknown>).xideVanguardSlot !== undefined)
-  if (xideIdx >= 0) {
-    const xideCfg = configs[xideIdx]
-    const vanguardSlot = Math.floor(num((xideCfg as any).xideVanguardSlot))
-    if (xideIdx !== slotIndex && vanguardSlot === slotIndex) {
-      xideVanguardEnergy = Math.max(0, num(states[xideIdx].frontlineTime) - num(states[xideIdx].comboAlignTime)) * 2
-    }
-    // 正兵实际耗能 → 席德钢能（严格读正兵，非按席德强特耗能近似）：算席德自己能量时写入。
-    // 层级关系：席德为正兵回能 → 正兵能量变多 → 正兵强特次数变多 → 正兵耗能 → 席德钢能。
-    if (slotIndex === xideIdx) {
-      const vanguardEnergySpent = vanguardSlot >= 0 && vanguardSlot < configs.length && vanguardSlot !== xideIdx
-        ? Math.max(0, Math.floor(states[vanguardSlot].exSpecialCount ?? 0)) * Math.max(0, configs[vanguardSlot].exSpecialEnergyConsume ?? 0)
-        : 0
-      ;(xideCfg as any).xideVanguardEnergySpent = vanguardEnergySpent
-    }
-  }
-
-  return {
-    supportUltimateRegen,
-    teamUltimateFlash,
-    rinaUltEnergy,
-    soukakuUltEnergy,
-    lucyEnergy,
-    lighterC4Energy,
-    xideVanguardEnergy,
-    total: supportUltimateRegen + teamUltimateFlash + neighborUlt.total
-      + lighterC4Energy + xideVanguardEnergy,
-  }
+// ============================================================================
+// 行级收入账本 + 利用率/冷却切片族（`decibelEfficiencyMultiplier` /
+// `remielleSpecialVoidflareUseCount` / `cappedCooldownTriggers` / `getUtilizedCount` /
+// `applyExecutionUtilization` / `applyEventUtilization` / `timeSliceTriggerCounts`）
+// 已整段迁至 `./rowAccounting.ts`（R43 结构熵切面，纯搬运）。
+// 本块是 **re-export 壳**：既有消费者（`core/resource.ts` / `iterate` /
+// `./rowBuild.ts` / 各测试）的 import 路径零改动。
+// ⚠ 必须写成「import + export」两行——`export { … } from './rowAccounting'`
+// **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
+// ⚠ 改行级收入/利用率口径请改 `./rowAccounting.ts`，**不要在本文件重建同形函数**。
+// ============================================================================
+import {
+  decibelEfficiencyMultiplier,
+  remielleSpecialVoidflareUseCount,
+  cappedCooldownTriggers,
+  getUtilizedCount,
+  applyExecutionUtilization,
+  applyEventUtilization,
+  timeSliceTriggerCounts,
+} from './rowAccounting'
+import {
+  // 私有符号：跨缝被 iterate 消费。本文件 **import 但不 re-export**（公开面零增零减）。
+  exSpecialNecessaryTime,
+  exSpecialComboAlignTime,
+  exSpecialComboAlignCredit,
+} from './rowAccounting'
+export {
+  decibelEfficiencyMultiplier,
+  remielleSpecialVoidflareUseCount,
+  cappedCooldownTriggers,
+  getUtilizedCount,
+  applyExecutionUtilization,
+  applyEventUtilization,
+  timeSliceTriggerCounts,
 }
 
-/** 空的队友联动明细（calcEnergySource 单角色阶段用，由调用方按 calcCrossAgentEnergy 回填）。 */
-export function emptyCrossAgentEnergy(): CrossAgentEnergy {
-  return {
-    supportUltimateRegen: 0,
-    teamUltimateFlash: 0,
-    rinaUltEnergy: 0,
-    soukakuUltEnergy: 0,
-    lucyEnergy: 0,
-    lighterC4Energy: 0,
-    xideVanguardEnergy: 0,
-    total: 0,
-  }
+// ============================================================================
+// 时间分配 + 前台占用拆解族（`calcTimeAllocation` / `FrontlineOccupationBreakdown` /
+// `frontlineOccupationBreakdown` / `netFrontlineOccupation`）已整段迁至
+// `./timeOccupation.ts`（R43 结构熵切面，纯搬运）。
+// 本块是 **re-export 壳**：既有消费者（`useResourceCalc` / `teamCompare` /
+// `difficultyCurve` / `teamTimeSummary` / `iterate` 与各测试）的 import 路径零改动。
+// ⚠ 必须写成「import + export」两行——`export { … } from './timeOccupation'`
+// **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
+// ⚠ 改前台占用/时间分配口径请改 `./timeOccupation.ts`，**不要在本文件重建同形函数**。
+// ============================================================================
+import {
+  calcTimeAllocation,
+  frontlineOccupationBreakdown,
+  netFrontlineOccupation,
+} from './timeOccupation'
+import type { FrontlineOccupationBreakdown } from './timeOccupation'
+export {
+  calcTimeAllocation,
+  frontlineOccupationBreakdown,
+  netFrontlineOccupation,
 }
-
-/** 计算单角色能量回复（单次迭代，基于当前时间分配） */
-export function calcEnergySource(
-  cfg: CharacterOperationConfig,
-  state: IterationState,
-  teamCfg: CharacterOperationConfig[],
-  shieldCount: number,
-  energyShieldCount: number,
-  chainCountTotal = 0,
-  totalTime = 180,
-  /** Σ 队友前台秒（行级能量 buildExecutions 需要，与装配层同语义：不含自己） */
-  teamFrontlineSeconds = 0,
-): EnergySource {
-  const p = cfg.panel
-  const n = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : 0
-
-  // 普通能量/闪能共用同一套公式：
-  // (基础 × (1 + 百分比加成) + 固定加成) × (1 + 获得效率)。
-  // 命破（闪能）：基础自动回复 = flashEnergyRegen（如 2/s）；固定/百分比回能加成只作用于能量，
-  // 闪能自己的固定/百分比走 flashEnergyRegenBonusFlat/flashEnergyRegenBonusPct（目前只有影画2 的 0.5/s 闪能回复）。
-  const isFlash = cfg.isFlashUser
-  const baseRegen = isFlash ? n(p.flashEnergyRegen) : n(p.energyRegen)
-  const pctBonus = (isFlash ? n(p.flashEnergyRegenBonusPct) : n(p.energyRegenBonusPct)) / 100
-  const flatBonusRate = isFlash ? n(p.flashEnergyRegenBonusFlat) : n(p.energyRegenBonusFlat)
-  const normalGainEfficiency = (isFlash ? n(p.flashEnergyGainEfficiency) : n(p.energyGainEfficiency)) / 100
-
-  // 条件固定回能：灼心摇壶按后台时间，思络成歌按非操作/合轴时间。这些是能量回能，命破（闪能）不吃。
-  const backstageFlatRate = isFlash ? 0 : n(cfg.backstageRegenBonus) + n(p.backstageEnergyRegenFlat) + n(p.roaringRideBackstageEnergyRegen)
-  const nonOperatingFlatRate = isFlash ? 0 : n(cfg.comboAlignRegenBonus) + n(p.nonOperatingEnergyRegenFlat)
-
-  const autoRegen = baseRegen * totalTime
-  const pctRegenBonus = baseRegen * pctBonus * totalTime
-  const flatRegenBonus = flatBonusRate * totalTime
-  const backstageBonus = state.backstageTime * backstageFlatRate
-  const comboAlignBonus = state.comboAlignTime * nonOperatingFlatRate
-
-  const preEfficiencyAuto = autoRegen + pctRegenBonus + flatRegenBonus + backstageBonus + comboAlignBonus
-  const demaraTriggerCount = cfg.dodgeCounterCount + cfg.quickAssistCount + cfg.parryCount
-  const demaraCoverageSeconds = Math.min(totalTime, Math.max(0, demaraTriggerCount * 8))
-  const demaraCoverageRate = totalTime > 0 ? demaraCoverageSeconds / totalTime : 0
-  const demaraEfficiency = n(p.demaraEnergyGainEfficiency) / 100
-  const averageAutoRate = totalTime > 0 ? preEfficiencyAuto / totalTime : 0
-  const gainEfficiencyBonus = preEfficiencyAuto * normalGainEfficiency
-    + averageAutoRate * demaraCoverageSeconds * demaraEfficiency
-
-  // 招式回复（行级 Σ，记账层 == 展示层，calcRawDecibelParts.skillRegen 同构，2026-09-09 债务清偿）。
-  // 旧「平A时间 × 秒均回能」聚合通道删除：平A聚合行 totalEnergyRecovery 本就是同一常量的载体
-  // （core buildExecutions：state.basicAttackTime × basicAttackRegenPerSec），恒等部分不变；差异全部
-  // 来自模块行与表值回填行——专属链角色行级能量曾系统性漏计（第一段清账后 89 行回填 + 模块预计算行，
-  // 如伊德海莉蓄力循环把平A载体置 0、由 slam/follow 行承载闪能，旧聚合按全额平A时间计 = 口径分裂）。
-  // 相位隔离复用 materializeRows（cfg 快照 + 恢复，喧响通道同款）；行值语义见 rowEnergyTotal。
-  // @fact engine:能量收入行级Σ 口径: skillRegen = Σ 可行行的行级能量收入（rowEnergyTotal，与喧响收入行级Σ 同构；记账层==展示层）。teamFrontlineSeconds 语义 == 装配层（Σ 队友前台秒）。cfg.rowTimeLimit 缺省 = 未截断行（默认路径走 materializeRows，零 delta）；被 calcTeamResources 重折环按上一轮装配 kept 写入时按 feasibleRows（招式行 ≤ kept，与装配同一截断算法）计——债 2「截断不回灌」由外环收敛吸收，账本与展示层同源 | 据 债务审计 07481b8 + 引擎探针@2026-09-09 · 债2批2-1@2026-09-19 R37 | 验 src/core/__tests__/energyRowParity.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource/helpers.ts#feasibleRows | 信 确认
-  // ⟳复核: 账本行级收入口径再动、或重折环上限/容差/kept 口径再动时，复核「无 rowTimeLimit 的队 skillRegen 逐位不变」+「重折队 Σcut 只减不增」（truncationRefold.test.ts） | 到期 2026-12-31
-  const skillRegen = feasibleRows(cfg, state, chainCountTotal, teamFrontlineSeconds, cfg.rowTimeLimit)
-    .reduce((sum, row) => sum + rowEnergyTotal(cfg, row), 0)
-
-  // 辅助大招回复由上层根据其他角色最终终结技次数补入。
-  let supportUltimateRegen = 0
-  for (const other of teamCfg) {
-    if (other.slot === cfg.slot) continue
-    if (other.supportUltimateEnergyRegen > 0) {
-      // 上层补算，保留循环以便后续接入更细的辅助终结技时间轴。
-    }
-  }
-
-  const timeSliceTriggers = timeSliceTriggerCounts(cfg, state, chainCountTotal, totalTime)
-  const timeSliceEnergy = n(cfg.panel.timeSliceEnergyPerTrigger) * timeSliceTriggers.total
-  const zhenyuanEnergy = n(cfg.panel.zhenyuanEnergyPerTrigger) * n(cfg.zhenyuanTriggerCount)
-
-  // 诺姆影画2·帽子把戏：战斗中触发回 25 能量，20 秒冷却；按战斗时间驱动（默认 180s → floor(180/20)=9 次）。
-  const hatTrickInterval = n(cfg.normaC2TriggerInterval)
-  const hatTrickEnergy = n(cfg.normaC2EnergyPerTrigger) > 0 && hatTrickInterval > 0
-    ? Math.max(0, Math.floor(totalTime / hatTrickInterval)) * n(cfg.normaC2EnergyPerTrigger)
-    : 0
-
-  // 青衣影画4·稳态电弧屏障：护盾刷新回 5 能量，10 秒冷却；按战斗时间驱动（默认 180s → floor(180/10)=18 次）。
-  const qingyiC4Interval = n(cfg.qingyiC4TriggerInterval)
-  const qingyiC4Energy = n(cfg.qingyiC4EnergyPerTrigger) > 0 && qingyiC4Interval > 0
-    ? Math.max(0, Math.floor(totalTime / qingyiC4Interval)) * n(cfg.qingyiC4EnergyPerTrigger)
-    : 0
-
-  // 莱卡恩影画2·能量回馈：使敌人失衡或触发队友[连携技]时回 5 能量；次数 = 失衡次数 + 队伍连携总次数（外层注入总额）
-  const lycaonC2Energy = n(cfg.lycaonC2Energy)
-
-  // 比利影画1·闪亮登场：冲刺/闪反原始命中次数合并后按5秒ICD封顶，由模块预计算总额。
-  const billyC1Energy = n(cfg.billyC1Energy)
-
-  // 般岳山威回闪能不再走这里：那是**招式级回能**（每发山威强特回 10，C2 +5），已由模块
-  // `mechanics/agents/banyue#patchExecutions` 落在执行行 `energyRecovery` 上 ⇒ 经 `skillRegen`
-  // （Σ 行级能量收入）进总账。此前用 `banyueSwayRefund` 平行字段加总，导致卡片「闪能·招式回复」
-  // 显示 0 而总账里却含这笔（2026-09-11 用户发现；规则 11 单一事实源 + 规则 16 挂活代码）。
-  // 仪玄：额外闪能总账（模块在 buildCharConfig 汇总：完美格挡+10/次、极限闪避+5/次、影画1落雷+5/次）
-  const yixuanFlashBonus = n(cfg.yixuanFlashBonus)
-  // agentId 判断冗余已删：antonC1EnergyGift 唯一写入方 = src/mechanics/agents/anton.ts:53
-  // （setRecord 只写本模块自己的 cfg）；n() 把 undefined 映射为 0，与原三元的 else 分支同值
-  // ——与上一行 yixuanFlashBonus 的无守卫写法同款。
-  const antonC1EnergyGift = n((cfg as any).antonC1EnergyGift)
-
-  const initialGift = cfg.initialEnergyGift
-  const shieldBreakGift = shieldCount * 60
-  const energyShieldBreakGift = cfg.isFlashUser ? 0 : energyShieldCount * 30
-
-  // 不含伊德海莉 refund 的固定源能量 E0（唯一来源：加一项固定源就补进这里，防两处漂移）
-  const e0 = preEfficiencyAuto + gainEfficiencyBonus
-    + skillRegen + supportUltimateRegen + timeSliceEnergy + zhenyuanEnergy
-    + hatTrickEnergy
-    + qingyiC4Energy
-    + lycaonC2Energy
-    + billyC1Energy
-    + yixuanFlashBonus
-    + antonC1EnergyGift
-    + initialGift + shieldBreakGift + energyShieldBreakGift
-
-  // 伊德海莉：非失衡（溯寒后）极寒重碾每次回闪能；失衡内 = 轴连段反推（有轴）或 每次失衡次数 × 失衡次数，剩余为非失衡。
-  // 自指反馈解析求解（2026-09-04 修复 19/20 双稳态）：refund 不回读上一轮整数强特次数
-  // （floor 在迭代中途截断反馈 → 同一输入多个不动点，种子相关）。对 50·O = E0 − inStunCost + 15·O
-  // 解析求解 O* = (E0 − inStunCost)/35；迭代期用实数 O*（强特次数同实数化 → 唯一不动点），
-  // 终局整数重推（yidhariFinalizeEx）才 floor——floor 只发生一次，不在收敛中途截断资源循环。
-  const yidhariRefundPer = cfg.yidhariRefundPerOutStunEx !== undefined ? n(cfg.yidhariRefundPerOutStunEx) : 0
-  const yidhariRefund = (() => {
-    // 原判据 `cfg.agentId !== '1051' || yidhariRefundPer <= 0`：左侧 agentId 判断**冗余**——
-    // `yidhariRefundPer` 派生自 `yidhariRefundPerOutStunEx`，其唯一写入方 = `yidhari.ts:145`
-    // （模块只写自己那份 cfg）⇒ 该值为 0 即蕴含「不是该角色或未启用」，短路语义由右操作数完全覆盖。
-    // 2026-09-15 core 棘轮批次2（T6 冗余判据），timeGolden 0 delta。
-    if (yidhariRefundPer <= 0) return 0
-    const consume = n(cfg.exSpecialEnergyConsume)
-    if (consume <= yidhariRefundPer) return 0
-    const finalize = cfg.yidhariFinalizeEx === true
-    const quant = (o: number) => (finalize ? Math.floor(o) : o)
-    if (cfg.yidhariInStunExCount !== undefined) {
-      // 轴模式：失衡内次数固定（轴连段反推），refund 只作用于失衡外强特
-      const inStun = n(cfg.yidhariInStunExCount)
-      const inStunCost = n(cfg.yidhariInStunEnergyCost ?? inStun * consume)
-      const outStar = Math.max(0, (e0 - inStunCost) / (consume - yidhariRefundPer))
-      return quant(outStar) * yidhariRefundPer
-    }
-    // 非轴：失衡内 = min(ex, cap)；ex ≤ cap 无 refund，ex > cap 的溢出部分每发回 refundPer
-    const cap = n(cfg.yidhariExPerStun ?? 2) * n(cfg.yidhariStunCount ?? 0)
-    if (e0 / consume <= cap) return 0
-    const outStar = Math.max(0, (e0 - cap * consume) / (consume - yidhariRefundPer))
-    return quant(outStar) * yidhariRefundPer
-  })()
-
-  const total = e0 + yidhariRefund
-
-  return {
-    autoRegen,
-    pctRegenBonus,
-    flatRegenBonus,
-    backstageBonus,
-    comboAlignBonus,
-    gainEfficiencyBonus,
-    demaraCoverageSeconds,
-    demaraCoverageRate,
-    skillRegen,
-    timeSliceEnergy,
-    zhenyuanEnergy,
-    hatTrickEnergy,
-    qingyiC4Energy,
-    lycaonC2Energy,
-    billyC1Energy,
-    yidhariRefund,
-    yixuanFlashBonus,
-    antonC1EnergyGift,
-    supportUltimateRegen,
-    // 队友联动明细在此阶段拿不到其他槽位的收敛次数，由调用方用 calcCrossAgentEnergy 回填
-    crossAgent: emptyCrossAgentEnergy(),
-    initialGift,
-    shieldBreakGift,
-    energyShieldBreakGift,
-    total,
-  }
-}
-
-// ============ 单角色喧响计算 ============
-
-export function decibelEfficiencyMultiplier(cfg: CharacterOperationConfig): number {
-  return 1 + ((cfg.panel.decibelGainEfficiency ?? 0) / 100)
-}
-
-export function remielleSpecialVoidflareUseCount(cfg: CharacterOperationConfig): number {
-  const firstRound = cfg.panel.remielleCinema1SpecialVoidflareCount ?? 0
-  if (firstRound <= 0) return 0
-  const refillRound = cfg.panel.remielleCinema4SpecialVoidflareRefillCount ?? 0
-  const c6Multiplier = 1 + Math.max(0, cfg.panel.remielleCinema6SpecialVoidflareTriggerMultiplier ?? 0)
-  return (firstRound + Math.max(0, refillRound)) * c6Multiplier
-}
-
-/** 强化特殊技（及模块专属必做动作）前台时间：优先走角色机制模块覆盖（如卢西娅计划内E+A5），否则按通用公式 */
-function exSpecialNecessaryTime(cfg: CharacterOperationConfig, exSpecialCount: number, ultimateCount: number, prevState?: IterationState): number {
-  const estimate = getAgentMechanic(cfg.agentId)?.estimateExSpecialTime?.({ cfg, exSpecialCount, ultimateCount, state: prevState })
-  if (estimate) return estimate.necessaryTime
-  return exSpecialCount * cfg.exSpecialActionTime
-}
-
-/** 强化特殊技（及模块专属必做动作）合轴时间：优先走角色机制模块覆盖，否则按通用公式 */
-function exSpecialComboAlignTime(cfg: CharacterOperationConfig, exSpecialCount: number, ultimateCount: number, prevState?: IterationState): number {
-  const estimate = getAgentMechanic(cfg.agentId)?.estimateExSpecialTime?.({ cfg, exSpecialCount, ultimateCount, state: prevState })
-  if (estimate) return estimate.comboAlignTime
-  return exSpecialCount * cfg.exSpecialActionTime * cfg.exSpecialComboAlignRatio
-}
-
-/**
- * 强化特殊技合轴的**预算抵扣**部分：只有含在 necessaryTime 内的合轴（GROSS 约定，缺省）
- * 才能抵扣团队时间预算；NET 约定模块（照/卢西娅：合轴动作已从 necessaryTime 剔除、
- * 物化行不占前台）返回 0，防止同一重叠双重抵扣。通用公式路径全额可抵扣。
- */
-function exSpecialComboAlignCredit(cfg: CharacterOperationConfig, exSpecialCount: number, ultimateCount: number, prevState?: IterationState): number {
-  const estimate = getAgentMechanic(cfg.agentId)?.estimateExSpecialTime?.({ cfg, exSpecialCount, ultimateCount, state: prevState })
-  if (estimate) return estimate.comboAlignIncludedInNecessary === false ? 0 : estimate.comboAlignTime
-  return exSpecialCount * cfg.exSpecialActionTime * cfg.exSpecialComboAlignRatio
-}
-
-export function cappedCooldownTriggers(rawCount: number, totalTime: number, cooldownSeconds: number): number {
-  const raw = Math.max(0, Math.floor(rawCount))
-  if (raw <= 0) return 0
-  if (cooldownSeconds <= 0 || totalTime <= 0) return raw
-  return Math.min(raw, Math.ceil(totalTime / cooldownSeconds))
-}
-
-export function getUtilizedCount(cfg: CharacterOperationConfig, actionId: string | undefined, rawCount: number): number {
-  if (!actionId || rawCount <= 0) return rawCount
-  const rule = cfg.resourceUtilization?.[actionId]
-  if (!rule) return rawCount
-  const rate = Math.max(0, Math.min(1, Number.isFinite(rule.rate) ? rule.rate : 1))
-  let count = rawCount * rate
-  if (rule.cap !== undefined && rule.cap !== null && Number.isFinite(Number(rule.cap))) {
-    count = Math.min(count, Math.max(0, Number(rule.cap)))
-  }
-  return count
-}
-
-export function applyExecutionUtilization(cfg: CharacterOperationConfig, exec: SkillExecution): SkillExecution {
-  if (exec.count <= 0) return exec
-  const count = getUtilizedCount(cfg, exec.moveId, exec.count)
-  if (count === exec.count) return exec
-  const scale = exec.count > 0 ? count / exec.count : 1
-  return {
-    ...exec,
-    count,
-    totalTime: exec.totalTime * scale,
-    totalComboAlignTime: exec.totalComboAlignTime * scale,
-    totalEnergyConsume: exec.totalEnergyConsume * scale,
-    totalDecibelRecovery: (exec.totalDecibelRecovery ?? 0) * scale,
-    totalEnergyRecovery: (exec.totalEnergyRecovery ?? 0) * scale,
-    totalSpecialResourceRecovery: exec.totalSpecialResourceRecovery !== undefined ? exec.totalSpecialResourceRecovery * scale : undefined,
-    totalHealingAmount: exec.totalHealingAmount !== undefined ? exec.totalHealingAmount * scale : undefined,
-  }
-}
-
-export function applyEventUtilization(cfg: CharacterOperationConfig, event: AnomalyEventExecution): AnomalyEventExecution {
-  if (event.count <= 0) return event
-  const directRule = cfg.resourceUtilization?.[event.eventId]
-  const actionId = directRule ? event.eventId : (event.carrierMoveId ?? event.eventId)
-  const count = getUtilizedCount(cfg, actionId, event.count)
-  return count === event.count ? event : { ...event, count }
-}
-
-export function timeSliceTriggerCounts(
-  cfg: CharacterOperationConfig,
-  state: IterationState,
-  chainCountTotal: number,
-  totalTime: number,
-  exSpecialCount = state.exSpecialCount,
-): { dodgeCounter: number; exSpecial: number; assist: number; chain: number; total: number } {
-  const cooldown = 12
-  const dodgeCounter = cappedCooldownTriggers(cfg.dodgeCounterCount, totalTime, cooldown)
-  const exSpecial = cappedCooldownTriggers(exSpecialCount, totalTime, cooldown)
-  const assist = cappedCooldownTriggers(cfg.quickAssistCount + cfg.parryCount, totalTime, cooldown)
-  const chain = cappedCooldownTriggers(chainCountTotal, totalTime, cooldown)
-  return { dodgeCounter, exSpecial, assist, chain, total: dodgeCounter + exSpecial + assist + chain }
-}
-
-/**
- * 行级喧响收入——与 enrichExecutionPlan 的 decibel 分支逐分支同语义（记账层 == 展示层）：
- * - basic_attack 行：时间通道原值（enrich 不回填其 decibel，模块可改写 total，如伊德海莉蓄力置 0）；
- * - moveId 在 cfg.decibelRecoveryByMoveId（倍率表预存，键存在 = 表中找到）：
- *   decibelRecoveryOverride = 模块口径换算行值（洛克茜自旋每秒×秒数）；显式 0 = 模块禁用；
- *   缺省 = 表值 || 行值 || 0；总收入 = 单次值 × max(0,count)（利用率缩放已在 count 里）；
- * - 假 id / 表中未找到：行 total 原值（enrich 同分支不 patch decibel）。
- * - 非有限值防线：畸形/不完整配置（测试合成 cfg 缺字段等）可让行值成 NaN——账本绝不带 NaN
- *   （NaN 会毒化次数迭代并被环检测的 JSON 签名物化成 null，实测合成队 ex/ult 全 null）。
- */
-const finiteOr0 = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
-
-function rowDecibelTotal(cfg: CharacterOperationConfig, row: SkillExecution): number {
-  if (row.moveId === 'basic_attack') return finiteOr0(row.totalDecibelRecovery)
-  const table = cfg.decibelRecoveryByMoveId
-  if (!table || !Object.prototype.hasOwnProperty.call(table, row.moveId)) return finiteOr0(row.totalDecibelRecovery)
-  const perCount = row.decibelRecoveryOverride
-    ? finiteOr0(row.decibelRecovery)
-    : row.decibelRecovery === 0
-      ? 0
-      : (finiteOr0(table[row.moveId]) || finiteOr0(row.decibelRecovery) || 0)
-  return finiteOr0(perCount * Math.max(0, finiteOr0(row.count)))
-}
-
-/**
- * 行级能量收入——与 enrichExecutionPlan 的 energy 分支逐分支同语义（记账层 == 展示层，rowDecibelTotal 同构）：
- * - basic_attack 行：时间通道原值（state.basicAttackTime × basicAttackRegenPerSec 的载体，enrich 不回填
- *   其 energy，模块可改写 total——伊德海莉蓄力置 0、朱鸢以太弹 carve 按比例缩）；
- * - moveId 在 cfg.energyRecoveryByMoveId（倍率表预存，键存在 = 表中找到）：
- *   显式 0 = 模块禁用（衍生行口径保留：回能留在平A聚合行防双计——sigrid 平A分段/liuyin 猜拳/
- *   nangong 地雷/jane 萨霍夫跳/alice 星仪序曲）；缺省 = 表值 || 行值 || 0（模块预计算行——
- *   伊德海莉蓄力循环 slam/follow 闪能——表值 0 落行值）；总收入 = 单次值 × max(0,count)
- *   （利用率缩放已在 count 里）；能量侧暂无口径冲突行（债务审计 MODULE_VALUE_DIFF=0），
- *   不设 override 通道——将来出现洛克茜自旋式每秒口径再按 decibelRecoveryOverride 同构补。
- * - 假 id / 表中未找到：行 total 原值（enrich 同分支不 patch energy）。
- * - 非有限值防线：同 rowDecibelTotal（NaN 会毒化次数迭代并被环检测的 JSON 签名物化成 null）。
- */
-function rowEnergyTotal(cfg: CharacterOperationConfig, row: SkillExecution): number {
-  if (row.moveId === 'basic_attack') return finiteOr0(row.totalEnergyRecovery)
-  const table = cfg.energyRecoveryByMoveId
-  if (!table || !Object.prototype.hasOwnProperty.call(table, row.moveId)) return finiteOr0(row.totalEnergyRecovery)
-  const perCount = row.energyRecovery === 0
-    ? 0
-    : (finiteOr0(table[row.moveId]) || finiteOr0(row.energyRecovery) || 0)
-  return finiteOr0(perCount * Math.max(0, finiteOr0(row.count)))
-}
-
-export function calcRawDecibelParts(
-  cfg: CharacterOperationConfig,
-  state: IterationState,
-  chainCountTotal = 0,
-  exSpecialCount = state.exSpecialCount,
-  ultimateCount = state.ultimateCount,
-  totalTime = 180,
-  teamFrontlineSeconds = 0,
-): { skillRegen: number; bonusRegen: number; timeSliceDecibel: number; shareableTotal: number } {
-  // @fact engine:喧响收入行级Σ 口径: skillRegen = Σ 可行行的行级喧响收入（rowDecibelTotal，与伤害/失衡/异常「倍率列逐行进账」同构）。旧「次数×常量」聚合通道删除：聚合行与 buildExecutions 常量同源故恒等，差异全部来自模块行（债务清偿——专属链角色曾系统性低估，仪玄行级 5628 vs 聚合 1702；yixuanBackstageDecibel 聚合项曾把 4 招全加而合轴语义是二选一替换对，行级即修复）。迭代期用本次调用的 exSpecialCount/ultimateCount 覆盖进 rowState（伊德海莉 decibel 通道 floor 口径、实数松弛口径均不变）；teamFrontlineSeconds 语义 == 装配层（Σ 队友前台秒）。cfg.rowTimeLimit 缺省 = 未截断行（默认路径零 delta）；重折环写入时按 feasibleRows 计，与能量行级Σ 同一分支 | 据 债务审计 5761e02 + 引擎探针@2026-09-08 · 债2批2-1@2026-09-19 R37 | 验 src/core/__tests__/decibelRowParity.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource/helpers.ts#feasibleRows | 信 确认
-  // ⟳复核: 与能量收入行级Σ 的 ⟳复核 联动（同一分支、同一测试） | 到期 2026-12-31
-  const rowState: IterationState = (exSpecialCount !== state.exSpecialCount || ultimateCount !== state.ultimateCount)
-    ? { ...state, exSpecialCount, ultimateCount }
-    : state
-  // 相位隔离（2026-09-08，2026-09-09 收口）：buildExecutions 里仍有多模块写 cfg 缓存字段，本通道
-  // 每轮每角色额外调用它（迭代 Step1 + 装配队友分享 n×(n−1) 次），不隔离就会在错误相位覆写。
-  // **跨相位写入已全部拆出**（阶段1 第二刀：格莉丝 5 字段 / 叶瞬光 cycle → `materializePhaseState`
-  // 引擎侧显式补写；卢西娅 cap 走 `preModuleExecutions` 行基准；仪玄死回写已删）——本快照现在
-  // 只兜住「同调用内消费者」的缓存字段。实测格莉丝队 nt −7.14s → 平A池 +5.12s → 轴 frontTotal
-  // 180.55→190.66 → 误触轴回退（inStunAttribution 全队红）就是缺这层隔离的样子。
-  const rows = feasibleRows(cfg, rowState, chainCountTotal, teamFrontlineSeconds, cfg.rowTimeLimit)
-  const skillRegen = rows.reduce((sum, row) => sum + rowDecibelTotal(cfg, row), 0)
-
-  // 奖励回复：池内效果（时光切片）。弹刀/闪反/连携/快支的固定奖励与异常奖励由外部按槽位注入
-  // （specialActionDecibelBonusPerSlot / anomalyDecibelBonusPerSlot），避免与展示层双算。
-  const timeSliceTriggers = timeSliceTriggerCounts(cfg, state, chainCountTotal, totalTime, exSpecialCount)
-  const timeSliceDecibel = (cfg.panel.timeSliceDodgeCounterDecibel ?? 0) * timeSliceTriggers.dodgeCounter
-    + (cfg.panel.timeSliceExSpecialDecibel ?? 0) * timeSliceTriggers.exSpecial
-    + (cfg.panel.timeSliceAssistDecibel ?? 0) * timeSliceTriggers.assist
-    + (cfg.panel.timeSliceChainDecibel ?? 0) * timeSliceTriggers.chain
-  const bonusRegen = timeSliceDecibel
-
-  return {
-    skillRegen,
-    bonusRegen,
-    timeSliceDecibel,
-    shareableTotal: skillRegen + bonusRegen,
-  }
-}
-
-/** 计算单角色喧响回复（单次迭代，基于当前招式执行计划） */
-export function calcDecibelSource(
-  cfg: CharacterOperationConfig,
-  state: IterationState,
-  teammateShare: number,
-  chainCountTotal = 0,
-  totalTime = 180,
-  /** 额外的不可分享喧响（如卢西娅4命帷幕触发全队每人 +100/次），由调用方按收敛后次数注入 */
-  extraUnshareableDecibel = 0,
-  /** 特殊动作奖励（弹刀215/闪反10/连携10/快支20，含伴随50%），由全局配置按槽位注入 */
-  specialActionBonus = 0,
-  /** 异常/紊乱/乱流奖励（含伴随50%），由全局配置按槽位注入（上一轮异常池结果） */
-  anomalyBonus = 0,
-  /** Σ 队友前台秒（行级喧响 buildExecutions 需要，与装配层同语义：不含自己） */
-  teamFrontlineSeconds = 0,
-): DecibelSource {
-  const efficiency = decibelEfficiencyMultiplier(cfg)
-  const raw = calcRawDecibelParts(cfg, state, chainCountTotal, state.exSpecialCount, state.ultimateCount, totalTime, teamFrontlineSeconds)
-
-  // 喧响获得效率完整作用于所有获得来源：开局、招式、奖励、队友伴随。
-  const initialGift = cfg.initialDecibelGift * efficiency
-  const skillRegen = raw.skillRegen * efficiency
-  const bonusRegen = raw.bonusRegen * efficiency
-  const timeSliceDecibel = raw.timeSliceDecibel * efficiency
-  const teammateShareWithEfficiency = teammateShare * efficiency
-  // 伊德海莉烧血喧响：开局场外烧 75% 至 25% + 战斗中把全部回复量烧掉；固定不可分享
-  const yidhariBurnDecibel = (() => {
-    // 原判据 `cfg.agentId !== '1051'`：改用**模块专属字段**判别（2026-09-15 core 棘轮批次2）。
-    // `yidhariDecibelPerHpPct` 的唯一写入方 = `yidhari.ts:113`（模块无条件写自己那份 cfg）⇒
-    // 非该角色 cfg 恒 undefined。不能用下面带 `?? 默认` 的两个字段做判据（它们对任意 cfg 都有值），
-    // 故显式取这个无默认的字段（判据同 T6；规则 6：引擎按能力/字段查询，不按角色名查询）。
-    // timeGolden 0 delta。
-    if (cfg.yidhariDecibelPerHpPct === undefined) return 0
-    const missing = Math.max(0, Math.min(1, cfg.yidhariExHealMissingHpPct ?? 0.75))
-    const decibelPerHp = cfg.yidhariDecibelPerHpPct ?? 10
-    const external = Math.max(0, cfg.yidhariExternalHealPct ?? 0)
-    const cycleTime = 1 + (cfg.yidhariChargeSlam?.actionTime ?? 0) + (cfg.yidhariBasicFollow?.actionTime ?? 0)
-    const cycles = cycleTime > 0 ? Math.floor((state.basicAttackTime ?? 0) / cycleTime) : 0
-    const exHeal = (state.exSpecialCount ?? 0) * 33 * missing
-    const followHeal = cycles * 10
-    return (75 + exHeal + followHeal + external) * decibelPerHp
-  })()
-  const unshareableBonus = (
-    (cfg.extraSelfDecibelReward ?? 0)
-    + (cfg.extraSelfDecibelPerUltimate ?? 0) * state.ultimateCount
-    + yidhariBurnDecibel
-    + extraUnshareableDecibel
-  ) * efficiency
-  const specialActionBonusWithEfficiency = specialActionBonus * efficiency
-  const anomalyBonusWithEfficiency = anomalyBonus * efficiency
-  const shareableTotal = skillRegen + bonusRegen
-  const total = initialGift + shareableTotal + teammateShareWithEfficiency + unshareableBonus
-    + specialActionBonusWithEfficiency + anomalyBonusWithEfficiency
-
-  return {
-    initialGift,
-    skillRegen,
-    bonusRegen,
-    timeSliceDecibel,
-    specialActionBonus: specialActionBonusWithEfficiency,
-    anomalyBonus: anomalyBonusWithEfficiency,
-    teammateShare: teammateShareWithEfficiency,
-    unshareableBonus,
-    yidhariBurnDecibel,
-    shareableTotal,
-    total,
-  }
-}
-
-// ============ 时间计算 ============
-
-/** 计算单角色时间分配 */
-export function calcTimeAllocation(
-  _cfg: CharacterOperationConfig,
-  state: IterationState,
-  totalTime: number,
-): TimeAllocation {
-  // 必做动作前台时间 = 强特 + 终结技 + 连携等动作的 actionTime，未扣除合轴
-  const necessaryTime = state.necessaryTime
-
-  // 单角色前台时间 = 必做动作前台时间 + 平A时间
-  const frontlineTime = necessaryTime + state.basicAttackTime
-
-  // 后台时间 = 总时间 - 前台时间
-  const backstageTime = Math.max(0, totalTime - frontlineTime)
-
-  // 合轴时间 = 终结技等长动作的合轴部分（由 state 传入）
-  const comboAlignTime = state.comboAlignTime
-
-  return {
-    frontlineTime,
-    backstageTime,
-    comboAlignTime,
-    comboAlignCredit: state.comboAlignCredit,
-    dynamicComboAlignSeconds: state.dynamicComboAlignSeconds,
-    basicAttackTime: state.basicAttackTime,
-    necessaryTime,
-  }
-}
-
-/** 前台占用拆解（见 `frontlineOccupationBreakdown`） */
-export interface FrontlineOccupationBreakdown {
-  /** Σ物化前台行（含轴内重叠，未扣任何抵扣） */
-  grossFrontline: number
-  /** 轴内合轴节省（轴模式 = 栈引擎实际区间；非轴 = 0） */
-  axisOverlap: number
-  /** 实际生效的**合轴抵扣秒**（招式合轴率口径；max 口径防与轴内节省双扣） */
-  creditApplied: number
-  /** 净占用（超时判定口径） */
-  net: number
-  /**
-   * **合轴解放出来的前台时间（秒）** = grossFrontline − net。
-   * 用户 2026-09-10 口径：「这次新合轴就是把队友的前台时间进行合轴率的优化，再次解放出来部分
-   * 可使用的前台时间…合轴节约出来的时间越多，难度越高，总伤越多」⇒ 难度口径拿它当自变量。
-   */
-  saved: number
-}
-
-/**
- * 队伍前台占用的**唯一拆解函数**：Σ物化前台行 / 轴内合轴节省 / 合轴抵扣 / 净占用 / 解放出来的时间。
- * 抵扣 = 每槽 max(招式合轴抵扣 comboAlignCredit, 轴内合轴节省 axisOverlapByAction)——
- * 同一物理并行（轴模式=栈引擎实际区间、非轴=合轴率均值）的两种模型，不叠加。
- * 与 iterate 平A池的 relief 同口径：超时判定（轴退化/降配、队伍对比）必须用 `net`，
- * 否则合轴抵扣放宽后的平A池会被误判超时（2026-09-04 合轴口径）。
- */
-export function frontlineOccupationBreakdown(rr: TeamResourceResult): FrontlineOccupationBreakdown {
-  const overlap = rr.axisOverlapByAction ?? {}
-  const overlapBySlot: Record<number, number> = {}
-  for (const [key, sec] of Object.entries(overlap)) {
-    const slot = Number(key.slice(0, key.indexOf(':')))
-    if (Number.isFinite(slot)) overlapBySlot[slot] = (overlapBySlot[slot] ?? 0) + sec
-  }
-  let total = 0
-  let totalCredit = 0
-  let totalRowNet = 0
-  let gross = 0
-  let axisOverlap = 0
-  for (const ch of rr.characters) {
-    let rowNet = 0
-    for (const exec of ch.executions) {
-      if (!isFrontlineExecution(exec)) continue
-      const t = exec.totalTime ?? 0
-      gross += t
-      const cut = overlap[`${ch.slot}:${exec.moveId}`] ?? 0
-      axisOverlap += cut
-      rowNet += Math.max(0, t - cut)
-    }
-    // 合轴抵扣只再扣超出轴内节省的增量（max 口径，防双重扣减）
-    const extraCredit = Math.max(0, (ch.timeAllocation.comboAlignCredit ?? 0) - (overlapBySlot[ch.slot] ?? 0))
-    total += Math.max(0, rowNet - extraCredit)
-    totalCredit += ch.timeAllocation.comboAlignCredit ?? 0
-    totalRowNet += rowNet
-  }
-  // 兜底：只有团队级 axisOverlapSeconds、无按块分摊（老注入路径/测试）→ 团队级 max 口径
-  const teamLevel = Object.keys(overlap).length === 0 && (rr.axisOverlapSeconds ?? 0) > 0
-  const net = teamLevel ? Math.max(0, totalRowNet - Math.max(totalCredit, rr.axisOverlapSeconds ?? 0)) : total
-  return {
-    grossFrontline: gross,
-    axisOverlap: teamLevel ? Math.max(0, gross - totalRowNet) : axisOverlap,
-    creditApplied: teamLevel ? Math.max(0, totalRowNet - net) : Math.max(0, totalRowNet - total),
-    net,
-    saved: Math.max(0, gross - net),
-  }
-}
-
-/** 队伍前台净占用（秒，单一事实源）：见 `frontlineOccupationBreakdown`，本函数只取 `net`（逐位等价）。 */
-export function netFrontlineOccupation(rr: TeamResourceResult): number {
-  return frontlineOccupationBreakdown(rr).net
-}
-
-// @fact engine:时间线截断 口径: 资源允许的动作量超过可用前台时按时间线截断（实战 180s 到点结算，不管这套连段打没打完），次数必须整数（floor+小数降序加回装包）、平A填充行先占位不参与截断、砍到0次的行整行消失；overflowSeconds 语义=被截断的秒数 | 据 用户@2026-09-05·复核@2026-09-08 | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/helpers.ts#truncateExecutionsToFrontline | 信 确认
-/**
- * 折叠环收敛容差（秒）= 截断入口容差（秒）——**同一个数，只此一处**。
- *
- * 为什么必须同源（债 2 分诊 R32 实测，2026-09-18）：S2 折叠环按 `maxExcess ≤ 1e-3` 判「账本与物化行已自洽」
- * 停轮，即上游**允许 1 毫秒残差**；S4 截断入口原用 `used <= room + 1e-9` 判「装不装得下」——
- * 上游放行的毫秒残差到了下游就是「装不下」，随后**整数装包**把 0.3 毫秒的超出放大成砍掉一整次动作
- * （实测 3 队：`auto-1591-1481-1311` s0 超 5.9e-4s → 砍连携 0.906s；`auto-1591-1161-1211` s0 超
- * 1.3e-3s → 砍 0.580s；`auto-1461-1521-1031` s1/s2 超 3.3e-4/9.3e-5s → 砍 5 行 0.434s）。
- * 这 3 队的「截断」不是资源装不下，是两级容差不一致制造的假截断——它们的账本/行能量落差也随之为假。
- * 结构性溢出（1431 簇，超 4~71s）不受本容差影响。
- */
-// @fact engine:时间线截断/入口容差 口径: 截断入口判「装不下」的容差与折叠环收敛判据同一常量 TIME_FOLD_CONVERGENCE_SECONDS=1e-3（上游放行的残差下游不得再当溢出截断；两级容差不一致曾把 ≤1.3ms 超出放大成砍 0.43~0.91s 整次动作，3/104 队假截断） | 据 债2分诊·R32 实测@2026-09-18 | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/helpers.ts#TIME_FOLD_CONVERGENCE_SECONDS | 信 确认
-// ⟳复核: S2 折叠环收敛判据或本入口容差再动时，复核「假截断队数仍为 0」（R32 实测 3/104 队：auto-1591-1481-1311 / auto-1591-1161-1211 / auto-1461-1521-1031 的 cut 应恒为 0）并按 timeGolden 逐队归因；债 2 批 2-1（rowTimeLimit 外环回灌）**未落地**，停在 runAssemble 抽取前（分支 collab/wip-snapshot-20260919）| 到期 2026-12-31
-export const TIME_FOLD_CONVERGENCE_SECONDS = 1e-3
-/**
- * 按可用前台时间**截断**执行计划（通用资源循环规则，2026-09-05 用户口径）。
- *
- * 规则：资源允许的动作量 > 本槽可用前台 ⇒ 在时间线处截断，多余资源不兑现成动作——
- * 实战 180s 到点直接结算，不管你这一轮明心境/这套连段打没打完。旧实现没有这一层：
- * 装不下时只能靠折叠循环把超出量折进 `necessaryTime`（账本虚高）→ 平A池被挤成 0 →
- * 物化行反而打不满（实测朱鸢队留白 93.7s、叶瞬光队 18~58s），既不准也解释不了。
- *
- * **整数装包截断**（复用坑17 的终局口径，不是等比缩小数）：次数必须是整数——等比缩会产出
- * 「强化特殊技 ×2.78 次」这种不存在的动作（实测红 11 条：12.27/2.78/5.76/31.97 次）。
- * 做法：① 每行按可用比例 floor 次数；② 剩余时间按**小数部分降序**逐个加回 1 次，
- * 直到装不下为止。装配顺序不代表实战出招顺序，所以不按尾部整行丢（实测会把排在最后的
- * 模块行——叶瞬光架势段、琉音抱拳——连伤害带失衡整类删光，直接让 calcOutput 返回 null）。
- * 平A行是填充项（占剩余时间），不参与截断；后台行不占前台，自然也不参与。
- *
- * @returns 截断后的行 + 被砍掉的秒数（= 该槽真实的时间压力，供 overflowSeconds/操作难度消费）
- *   + 截断前的招式行秒数（`usedSeconds`，存活率 = 1 − cutSeconds/usedSeconds）
- *   + **逐行明细** `cuts`（Σ cutSeconds == cutSeconds；资源池「被砍招式」清单与难度轴交互缩放的输入）
- */
-export function truncateExecutionsToFrontline(
-  executions: SkillExecution[],
-  availableSeconds: number,
-): { executions: SkillExecution[]; cutSeconds: number; usedSeconds: number; cuts: Omit<TruncationCut, 'slot'>[] } {
-  /** 可截断行：占前台且不是平A填充行 */
-  const isTruncatable = (e: SkillExecution) => isFrontlineExecution(e) && e.moveId !== 'basic_attack'
-  let used = 0
-  let basicTime = 0
-  for (const e of executions) {
-    if (!isFrontlineExecution(e)) continue
-    if (e.moveId === 'basic_attack') basicTime += e.totalTime ?? 0
-    else used += e.totalTime ?? 0
-  }
-  // 平A是填充项先占位：招式行能用的只剩「可用前台 − 平A」
-  const room = Math.max(0, availableSeconds - basicTime)
-  // 入口容差与折叠环收敛判据同源（见 TIME_FOLD_CONVERGENCE_SECONDS 头注释）：上游已判「自洽」的
-  // 毫秒残差在这里不是溢出。真溢出（结构性，秒级）照常进入整数装包。
-  if (used <= room + TIME_FOLD_CONVERGENCE_SECONDS) return { executions, cutSeconds: 0, usedSeconds: used, cuts: [] }
-
-  // 每行的「单位时长」：totalTime / count（count=1 但 totalTime 是聚合量的行，如飞光当量，
-  // 也能正确处理）；count=0 的行（纯时间聚合）按整行一个单位处理。
-  const units = executions.filter(isTruncatable).map(e => {
-    const t = e.totalTime ?? 0
-    const perUnit = e.count > 0 ? t / e.count : t
-    return { e, count: e.count, perUnit, frac: 0 }
-  })
-  let remaining = room
-  // ① 按比例 floor
-  const scale = room > 0 ? room / used : 0
-  for (const u of units) {
-    const target = u.count * scale
-    const keep = u.count > 0 ? Math.floor(target) : (target >= 0.5 ? 1 : 0)
-    u.frac = u.count > 0 ? target - keep : 0
-    u.count = keep
-    remaining -= keep * u.perUnit
-  }
-  // ② 剩余时间按小数部分降序加回整次（装不下就停）
-  // ⚠ 加回**不得越过原次数**（2026-09-19 R37 实测修正）：小数次数行（如 8.249 次）floor 到 8 后若再加回 1 次 = 9 > 8.249，
-  // 截断后的计划反而比截断前多打 0.751 次、kept 虚高 1.9s，且该行既不在 cuts 里、cutSeconds 又被冲小 ⇒ 「Σ 逐行 cutSeconds == overflow」
-  // 恒等式破（teamTimeSummary 曾把 0.244s 残差当量化噪声容忍；批 2-1 重折后 1431 队放大到 1.9s 才暴露根因）。
-  // 小数余量本就装不下一整次，按整数装包纪律留在 cut 里如实上报。
-  const order = units.map((_u, i) => i).sort((a, b) => units[b].frac - units[a].frac)
-  let cursor = 0
-  while (cursor < order.length) {
-    const u = units[order[cursor]]
-    if (u.count + 1 <= u.e.count + 1e-9 && u.perUnit <= remaining + 1e-9) {
-      u.count += 1
-      remaining -= u.perUnit
-      cursor = 0
-    } else {
-      cursor += 1
-    }
-  }
-
-  const idx = new Map<SkillExecution, number>()
-  let k = 0
-  for (const e of executions) if (isTruncatable(e)) idx.set(e, k++)
-  const req = (v: number | undefined, r: number) => (typeof v === 'number' ? v * r : 0)
-  const opt = (v: number | undefined, r: number) => (typeof v === 'number' ? v * r : v)
-  const out = executions.map(e => {
-    if (!isTruncatable(e)) return e
-    const u = units[idx.get(e)!]
-    if (u.count === u.e.count) return e
-    const ratio = u.e.count > 0 ? u.count / u.e.count : 0
-    if (u.count === 0) return null // 整行不再发生
-    return {
-      ...e,
-      count: u.count,
-      totalTime: u.count * u.perUnit,
-      totalComboAlignTime: req(e.totalComboAlignTime, ratio),
-      totalEnergyConsume: req(e.totalEnergyConsume, ratio),
-      totalDecibelRecovery: req(e.totalDecibelRecovery, ratio),
-      totalEnergyRecovery: req(e.totalEnergyRecovery, ratio),
-      totalAnomalyBuildUp: opt(e.totalAnomalyBuildUp, ratio),
-      totalSpecialResourceRecovery: opt(e.totalSpecialResourceRecovery, ratio),
-      totalHealingAmount: opt(e.totalHealingAmount, ratio),
-      truncatedRatio: ratio,
-    }
-  }).filter((e): e is SkillExecution => e !== null)
-  // 逐行截断明细（Σ cutSeconds == used − kept）：资源池「被砍招式」清单 + 难度轴交互缩放的输入
-  // （用户 2026-09-11：截断只报总量时，界面看不出砍了什么、交互还按全量计）。整行砍到 0 的也记。
-  const cuts: Omit<TruncationCut, 'slot'>[] = units
-    .filter(u => u.e.count > 0 && u.count < u.e.count)
-    .map(u => {
-      const ratio = u.count / u.e.count
-      return {
-        moveId: u.e.moveId,
-        moveName: u.e.moveName ?? u.e.moveId,
-        countBefore: u.e.count,
-        countAfter: u.count,
-        cutSeconds: (u.e.count - u.count) * u.perUnit,
-        cutEnergyRecovery: (u.e.totalEnergyRecovery ?? 0) * (1 - ratio),
-        cutDecibelRecovery: (u.e.totalDecibelRecovery ?? 0) * (1 - ratio),
-      }
-    })
-  let kept = 0
-  for (const e of out) if (isTruncatable(e)) kept += e.totalTime ?? 0
-  return { executions: out, cutSeconds: Math.max(0, used - kept), usedSeconds: used, cuts }
-}
-
-
-// ============ 招式执行计划 ============
-
-/**
- * 行物化的**唯一入口**（自顶向下重构·阶段1，2026-09-08）。
- *
- * 为什么必须有它：`buildExecutions` 里仍有多模块写 cfg 缓存字段（同调用内消费者）。**跨相位**的
- * 相位写入已全部拆到 `materializePhaseState`（引擎侧显式补写，2026-09-09 阶段1 第二刀）——
- * 本函数的快照/恢复只兜住剩下的「同调用内」缓存，试探测量（`materializeRows`）因此与装配行同源。
- * 历史：相位写入留在钩子里时「同一 (cfg, state) 在不同调用点/不同相位得到不同行」，正是
- * 「试探测量 ≠ 装配行」的一类根因（实测 1591 队 s0：同一 state 下通用段行 count 10 vs 装配 11，少算 3.08s）。
- *
- * 纪律：调用前快照 cfg 顶层、调用后恢复——**任何**调用点都不再污染相位；对「只读 cfg」的通道
- * 无影响。后续阶段（赠行收进物化、统一残差、单调求解）一律以本函数为唯一扩展点。
- */
-export function materializeRows(
-  cfg: CharacterOperationConfig,
-  state: IterationState,
-  chainCountTotal: number,
-  teamFrontlineSeconds = 0,
-): SkillExecution[] {
-  const cfgRecord = cfg as unknown as Record<string, unknown>
-  const cfgSnapshot = { ...cfgRecord }
-  const rows = buildExecutions(cfg, state, chainCountTotal, teamFrontlineSeconds)
-  for (const k of Object.keys(cfgRecord)) {
-    if (!Object.prototype.hasOwnProperty.call(cfgSnapshot, k)) delete cfgRecord[k]
-  }
-  Object.assign(cfgRecord, cfgSnapshot)
-  return rows
-}
-
-/**
- * 账本侧「可行行」物化（债 2 批 2-1 截断外环回灌，2026-09-19 R37-J2）。
- *
- * = `materializeRows`（同产行、同 cfg 快照/恢复语义）+ 当 `rowTimeLimit` 是有限非负数时，按装配同一算法
- * `truncateExecutionsToFrontline` 把**招式行**截到 ≤ rowTimeLimit 秒（平A填充行先占位、不参与截断，与 S4 装配同源：
- * 传 available = 平A秒 + rowTimeLimit）。rowTimeLimit 缺省/非有限/负数 ⇒ 原样返回 materializeRows 的数组（默认路径
- * 零分支零 delta，引用同一数组）。
- *
- * 为什么放 helpers：与 buildExecutions / materializeRows / truncateExecutionsToFrontline 同族，读写双方都在判据 14 死通道
- * 扫描面内；写入方只有 `core/resource.ts#calcTeamResources` 的重折环（返回前恒删除 cfg.rowTimeLimit）。
- */
-export function feasibleRows(
-  cfg: CharacterOperationConfig,
-  state: IterationState,
-  chainCountTotal: number,
-  teamFrontlineSeconds = 0,
-  rowTimeLimit?: number,
-): SkillExecution[] {
-  const rows = materializeRows(cfg, state, chainCountTotal, teamFrontlineSeconds)
-  if (rowTimeLimit == null || !Number.isFinite(rowTimeLimit) || rowTimeLimit < 0) return rows
-  let basicTime = 0
-  for (const e of rows) {
-    if (e.moveId === 'basic_attack' && isFrontlineExecution(e)) basicTime += e.totalTime ?? 0
-  }
-  return truncateExecutionsToFrontline(rows, basicTime + rowTimeLimit).executions
-}
-
-/** 构建招式执行记录。`moduleInputRows`（可选出参）：接收**物化钩子派发前**的引擎行快照——
- *  供 buildResourceResult 复现钩子当时看到的行基准（阶段1 第二刀，见 AgentResourceResultInput）。 */
-export function buildExecutions(
-  cfg: CharacterOperationConfig,
-  state: IterationState,
-  chainCountTotal: number,
-  teamFrontlineSeconds = 0,
-  moduleInputRows?: SkillExecution[],
-): SkillExecution[] {
-  const executions: SkillExecution[] = []
-
-  // 平A（用秒均数据汇总，不单独列每段）
-  if (state.basicAttackTime > 0) {
-    executions.push({
-      moveId: 'basic_attack',
-      moveName: '普通攻击（平A汇总）',
-      category: 'basic',
-      count: 0, // 平A用时间，不按次数
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: state.basicAttackTime,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
-      decibelRecovery: cfg.basicAttackDecibelPerSec,
-      totalDecibelRecovery: state.basicAttackTime * cfg.basicAttackDecibelPerSec,
-      energyRecovery: cfg.basicAttackRegenPerSec,
-      totalEnergyRecovery: state.basicAttackTime * cfg.basicAttackRegenPerSec,
-      timeBucket: 'basic',
-    })
-  }
-
-  // 蕾米一/四命：特殊虚耀跟随「普通攻击：垂虹」触发，需要补入垂虹动作
-  const remielleRainbowEndCount = remielleSpecialVoidflareUseCount(cfg)
-  if (remielleRainbowEndCount > 0 && cfg.remielleRainbowEndMoveId) {
-    const car = cfg.remielleRainbowEndComboAlignRatio
-    executions.push({
-      moveId: cfg.remielleRainbowEndMoveId,
-      moveName: '普通攻击：垂虹（特殊虚耀载体）',
-      category: 'basic',
-      count: remielleRainbowEndCount,
-      actionTime: cfg.remielleRainbowEndActionTime,
-      comboAlignRatio: car,
-      totalTime: remielleRainbowEndCount * cfg.remielleRainbowEndActionTime,
-      totalComboAlignTime: remielleRainbowEndCount * cfg.remielleRainbowEndActionTime * car,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
-      decibelRecovery: cfg.remielleRainbowEndDecibelRecovery,
-      totalDecibelRecovery: remielleRainbowEndCount * cfg.remielleRainbowEndDecibelRecovery,
-      timeBucket: 'necessary',
-    })
-  }
-
-  // 强特
-  if (state.exSpecialCount > 0 && !cfg.skipGenericExSpecial) {
-    const car = cfg.exSpecialComboAlignRatio
-    const freeEx = Math.max(0, Math.floor(cfg.freeExSpecialCount ?? 0))
-    const paidEx = Math.max(0, state.exSpecialCount - freeEx)
-    executions.push({
-      moveId: cfg.exSpecialMoveId,
-      moveName: '强化特殊技（EX Special）',
-      category: 'special',
-      count: state.exSpecialCount,
-      actionTime: cfg.exSpecialActionTime,
-      comboAlignRatio: car,
-      totalTime: state.exSpecialCount * cfg.exSpecialActionTime,
-      totalComboAlignTime: state.exSpecialCount * cfg.exSpecialActionTime * car,
-      energyConsume: cfg.exSpecialEnergyConsume,
-      // 免费强特不扣能量（只对付费部分收费）
-      totalEnergyConsume: paidEx * cfg.exSpecialEnergyConsume,
-      decibelRecovery: cfg.exSpecialDecibelRecovery,
-      totalDecibelRecovery: state.exSpecialCount * cfg.exSpecialDecibelRecovery,
-      timeBucket: 'necessary',
-    })
-  }
-
-  // 终结技
-  if (state.ultimateCount > 0) {
-    const car = cfg.ultimateComboAlignRatio
-    executions.push({
-      moveId: cfg.ultimateMoveId,
-      moveName: '终结技（Ultimate）',
-      category: 'chain',
-      count: state.ultimateCount,
-      actionTime: cfg.ultimateActionTime,
-      comboAlignRatio: car,
-      totalTime: state.ultimateCount * cfg.ultimateActionTime,
-      totalComboAlignTime: state.ultimateCount * cfg.ultimateActionTime * car,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
-      decibelRecovery: cfg.ultimateDecibelRecovery,
-      totalDecibelRecovery: state.ultimateCount * cfg.ultimateDecibelRecovery,
-      timeBucket: 'necessary',
-    })
-  }
-
-  // 连携（始终生成，即使次数为 0 也进执行计划，供失衡轴动作池放置）
-  {
-    const car = cfg.chainComboAlignRatio
-    executions.push({
-      moveId: cfg.chainMoveId,
-      moveName: '连携技（Chain Attack）',
-      category: 'chain',
-      count: chainCountTotal,
-      actionTime: cfg.chainActionTime,
-      comboAlignRatio: car,
-      totalTime: chainCountTotal * cfg.chainActionTime,
-      totalComboAlignTime: chainCountTotal * cfg.chainActionTime * car,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
-      decibelRecovery: cfg.chainDecibelRecovery,
-      totalDecibelRecovery: chainCountTotal * cfg.chainDecibelRecovery,
-      source: 'stun',
-      timeBucket: 'necessary',
-    })
-  }
-
-  // 角色机制模块追加专属动作，如维琳娜风华/广域气旋。
-  if (moduleInputRows) {
-    moduleInputRows.length = 0
-    moduleInputRows.push(...executions)
-  }
-  getAgentMechanic(cfg.agentId)?.buildExecutions?.({ cfg, state, executions, teamFrontlineSeconds })
-
-  // 通用「单次释放必打招 + 可持续招」强特（buildCharConfig 已 skipGenericExSpecial + 预存缩放倍率）。
-  const sustainedEx = (cfg as unknown as Record<string, unknown>).sustainedEx as
-    | {
-        opener: { moveId: string; actionTime: number }[]
-        sustain: { moveId: string; actionTime: number; damageMultiplier: number; dazeMultiplier: number; anomalyBuildUp: number }
-        finisher: { moveId: string; actionTime: number }[]
-      }
-    | undefined
-  if (sustainedEx) {
-    const count = Math.max(0, state.exSpecialCount)
-    const pushSeg = (moveId: string, actionTime: number) => {
-      if (count <= 0) return
-      executions.push({
-        moveId,
-        moveName: moveId,
-        category: 'special',
-        count,
-        actionTime,
-        comboAlignRatio: 0,
-        totalTime: count * actionTime,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
-        decibelRecovery: 0,
-        totalDecibelRecovery: 0,
-        energyRecovery: 0,
-        totalEnergyRecovery: 0,
-        timeBucket: 'necessary',
-      })
-    }
-    for (const o of sustainedEx.opener) pushSeg(o.moveId, o.actionTime)
-    if (count > 0) {
-      const s = sustainedEx.sustain
-      executions.push({
-        moveId: s.moveId,
-        moveName: s.moveId,
-        category: 'special',
-        count,
-        actionTime: s.actionTime,
-        comboAlignRatio: 0,
-        totalTime: count * s.actionTime,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
-        decibelRecovery: 0,
-        totalDecibelRecovery: 0,
-        energyRecovery: 0,
-        totalEnergyRecovery: 0,
-        damageMultiplier: s.damageMultiplier,
-        damageMultiplierOverride: true,
-        dazeMultiplier: s.dazeMultiplier,
-        dazeMultiplierOverride: true,
-        anomalyBuildUp: s.anomalyBuildUp,
-        anomalyBuildUpOverride: true,
-        timeBucket: 'necessary',
-      })
-    }
-    for (const f of sustainedEx.finisher) pushSeg(f.moveId, f.actionTime)
-  }
-
-  // 额外强特行（免费/窗口门控，2026-09 用户裁决「引擎别太窄」）：注册表 src/data/exSpecialPlans.ts，
-  // buildCharConfig 预存进 cfg.extraExPlans；行值由 enrichExecutionPlan 按 moveId 回填
-  // （多段动作经 moveFusions 融合），能量成本 0（免费/替代资源由模块账本记）。
-  for (const plan of cfg.extraExPlans ?? []) {
-    const count = resolveExtraExCount(plan, {
-      battleSeconds: Math.max(0, cfg.battleTime ?? 0),
-      exCount: Math.max(0, Math.floor(state.exSpecialCount ?? 0)),
-    })
-    if (count <= 0) continue
-    executions.push({
-      moveId: plan.moveId,
-      moveName: plan.label,
-      category: 'special',
-      count,
-      actionTime: plan.actionTime,
-      comboAlignRatio: 0,
-      totalTime: count * plan.actionTime,
-      totalComboAlignTime: 0,
-      energyConsume: plan.energyCost,
-      totalEnergyConsume: count * plan.energyCost,
-      decibelRecovery: plan.decibelRecovery,
-      totalDecibelRecovery: count * plan.decibelRecovery,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
-      timeBucket: 'necessary',
-    })
-  }
-
-  // 蕾米后台飞行状态：每5秒自动释放一次 Radiant Turn；合轴100%，不占前台时间。
-  // 后台时间含无敌秒（先扣）；CD 被蕾米本人前台时间插进循环造成相位延后 → 等效使用 CD（core/effectiveTime.ts）；
-  // 前台块长 = 前台时间 / 切上次数（切上前台频率 × 非平A前台动作次数；蕾米暂无滑块声明，频率缺省 1，
-  // 可经 cfg['setting:remielle.frontSwitchRatio'] 覆盖）。
-  if (cfg.remielleEnabled && cfg.remielleRadiantTurnMoveId) {
-    const block = frontBlockSeconds(
-      state.frontlineTime ?? 0,
-      countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
-      Number((cfg as unknown as Record<string, unknown>)['setting:remielle.frontSwitchRatio'] ?? 1),
-      5,
-    )
-    const radiantInterval = phaseDelayedCooldown(5, state.frontlineTime, effectiveBattleTime(cfg), block)
-    const radiantTurnCount = Math.floor(effectiveBackstageTime(state.backstageTime, cfg) / radiantInterval)
-    if (radiantTurnCount > 0) {
-      executions.push({
-        moveId: cfg.remielleRadiantTurnMoveId,
-        moveName: 'Special Attack: Ode to Dawn - Radiant Turn（后台）',
-        category: 'special',
-        count: radiantTurnCount,
-        actionTime: cfg.remielleRadiantTurnActionTime ?? 0,
-        comboAlignRatio: 1,
-        totalTime: 0,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
-      decibelRecovery: cfg.remielleRadiantTurnDecibelRecovery ?? 0,
-      totalDecibelRecovery: radiantTurnCount * (cfg.remielleRadiantTurnDecibelRecovery ?? 0),
-      timeBucket: 'backstage',
-    })
-    }
-  }
-
-  // 闪避反击（Dodge Counter）
-  if (cfg.dodgeCounterCount > 0 && cfg.dodgeCounterActionTime > 0) {
-    const car = cfg.dodgeCounterComboAlignRatio
-    executions.push({
-      moveId: cfg.dodgeCounterMoveId,
-      moveName: '闪避反击（Dodge Counter）',
-      category: 'dodge',
-      count: cfg.dodgeCounterCount,
-      actionTime: cfg.dodgeCounterActionTime,
-      comboAlignRatio: car,
-      totalTime: cfg.dodgeCounterCount * cfg.dodgeCounterActionTime,
-      totalComboAlignTime: cfg.dodgeCounterCount * cfg.dodgeCounterActionTime * car,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
-      decibelRecovery: cfg.dodgeCounterDecibelRecovery,
-      totalDecibelRecovery: cfg.dodgeCounterCount * cfg.dodgeCounterDecibelRecovery,
-      timeBucket: 'necessary',
-    })
-  }
-
-  // 轻弹刀（Defensive Assist #1）：count = 正常弹刀 + 不带支援突击弹刀
-  const totalDefensiveAssist = (cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)
-  if (totalDefensiveAssist > 0 && cfg.defensiveAssistActionTime > 0) {
-    const car = cfg.defensiveAssistComboAlignRatio
-    // x弹刀时间豁免（2026-09-02 用户口径）：非主弹窗位这 N 次弹刀行不占前台时间（喧响/失衡照计）
-    const freeN = Math.min(totalDefensiveAssist, Math.max(0, Math.floor(cfg.parryTimeFreeCount ?? 0)))
-    const charged = Math.max(0, totalDefensiveAssist - freeN)
-    executions.push({
-      moveId: cfg.defensiveAssistMoveId,
-      moveName: '轻弹刀（Defensive Assist #1）',
-      category: 'assist',
-      count: totalDefensiveAssist,
-      actionTime: cfg.defensiveAssistActionTime,
-      comboAlignRatio: car,
-      totalTime: charged * cfg.defensiveAssistActionTime,
-      totalComboAlignTime: charged * cfg.defensiveAssistActionTime * car,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
-      decibelRecovery: cfg.defensiveAssistDecibelRecovery,
-      totalDecibelRecovery: totalDefensiveAssist * cfg.defensiveAssistDecibelRecovery,
-      timeBucket: 'necessary',
-    })
-  }
-
-  // @fact engine:time/回避支援 口径: 无招架支援的角色，一次黄光交互产「回避支援」行 = 1.166s 必要前台 + 零伤害零失衡（时停＝纯亏时间）；判据用 `!defensiveAssistMoveId`（数据驱动、不列角色名单，真斗 1441 那种「有 moveId 但 actionTime=0」不会被误判）；215 喧响走 calcSpecialActionBonus 的 parry 通道按 parryCount 计、行内 decibel 给 0 不重复计；不套 parryTimeFreeCount 豁免 | 据 用户@2026-09-15「弹刀和回避支援本身都是对黄光的一次交互…一个角色要么只能弹刀，要么只能回避…只是前面弹刀的1.16秒换成了1.16秒的时停效果，纯亏时间」+「按照真实的模拟来，老测试不通过就修改老测试」 | 验 src/core/__tests__/evadeAssist.test.ts | 锚 src/core/resource/helpers.ts#buildExecutions | 信 确认
-  // ⟳复核: raw 里「回避支援」若补出倍率/失衡数据（当前 param 块完全缺失）或弹刀侧 1.166 众数口径变了，须重对 | 到期 2026-12-15
-  // 回避支援（Evade Assist）：**没有招架支援的角色**对黄光的那一次交互。
-  // 口径（用户 2026-09-15）：「弹刀和回避支援本身都是对黄光的一次交互…一个角色要么只能弹刀，
-  // 要么只能回避」「回避支援和支援突击用的公式是一样的，而且也有215喧响奖励，只是前面弹刀的
-  // 1.16秒换成了1.16秒的时停效果，纯亏时间」⇒ 与轻弹刀同长同 215，但**不产伤害/失衡**。
-  // 判据走数据、不列角色名单（规则 6）：`defensiveAssistMoveId` 为空 = 该角色没有招架支援。
-  // 实测命中 6 个：1081 比利 / 1181 格莉丝 / 1211 丽娜 / 1241 朱鸢 / 1311 耀嘉音 / 1351 波可娜。
-  // ⚠ 必须用 `defensiveAssistMoveId`（而非 `defensiveAssistActionTime > 0`）分派：真斗 1441
-  //   **有** moveId 但 actionTime=0（既存数据缺口，见账本 Open），它是招架型，不能被误判成回避。
-  // ⚠ 不套 `parryTimeFreeCount`（x 弹刀时间豁免）：那条豁免的语义是「非主弹窗位的弹刀不占前台」，
-  //   回避按用户口径**照扣**（时停期间自己也没输出 = 纯亏）。215 喧响走 `calcSpecialActionBonus`
-  //   的 parry 通道（按 parryCount 计），与弹刀同，故此处行内 decibel 给 0、不重复计。
-  // 本体在原文里没有任何倍率（raw 无 param 块）⇒ 零倍率、只占时间的合成行（先例：般岳后摇）。
-  if (!cfg.defensiveAssistMoveId && cfg.parryCount > 0 && cfg.assistFollowUpMoveId) {
-    executions.push({
-      moveId: EVADE_ASSIST_MOVE_ID,
-      moveName: '回避支援（Evade Assist）',
-      category: 'assist',
-      count: cfg.parryCount,
-      actionTime: EVADE_ASSIST_ACTION_TIME_SECONDS,
-      comboAlignRatio: 0,
-      totalTime: cfg.parryCount * EVADE_ASSIST_ACTION_TIME_SECONDS,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      damageMultiplier: 0,
-      damageMultiplierOverride: true,
-      timeBucket: 'necessary',
-      skillTableNote: '回避支援 = 该角色对黄光的一次交互（无招架支援）；时停 1.166s/次，不产伤害与失衡',
-    })
-  }
-
-  // 支援突击（Assist Follow-Up）：只随正常弹刀（不带支援突击弹刀无此段）
-  if (cfg.parryCount > 0 && cfg.assistFollowUpActionTime > 0) {
-    const car = cfg.assistFollowUpComboAlignRatio
-    const freeN = Math.min(cfg.parryCount, Math.max(0, Math.floor(cfg.parryTimeFreeCount ?? 0)))
-    const charged = Math.max(0, cfg.parryCount - freeN)
-    executions.push({
-      moveId: cfg.assistFollowUpMoveId,
-      moveName: '支援突击（Assist Follow-Up）',
-      category: 'assist',
-      count: cfg.parryCount,
-      actionTime: cfg.assistFollowUpActionTime,
-      comboAlignRatio: car,
-      totalTime: charged * cfg.assistFollowUpActionTime,
-      totalComboAlignTime: charged * cfg.assistFollowUpActionTime * car,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
-      decibelRecovery: cfg.assistFollowUpDecibelRecovery,
-      totalDecibelRecovery: cfg.parryCount * cfg.assistFollowUpDecibelRecovery,
-      timeBucket: 'necessary',
-    })
-  }
-
-  // 反制支援（Counter Assist）：boss 控制技（紫光技）**整组化解**——一组 = 一次动作
-  // （本体 + 紧随的专属支援突击，两行由 data/moveFusions.ts#CLARET_COUNTER_ASSIST 融合）。
-  // 刻意不并进 parryCount：不产轻弹刀/支援突击行、不拿弹刀 215 特殊动作奖励、不参与
-  // 「保底4失衡」的每次弹刀失衡反推（用户口径 2026-09-12「完全不拿 215，只算行内喧响」）。
-  const counterAssistCount = Math.max(0, Math.floor(cfg.counterAssistCount ?? 0))
-  const counterAssistActionTime = cfg.counterAssistActionTime ?? 0
-  if (counterAssistCount > 0 && cfg.counterAssistMoveId && counterAssistActionTime > 0) {
-    const car = cfg.counterAssistComboAlignRatio ?? 0
-    const decibel = cfg.counterAssistDecibelRecovery ?? 0
-    executions.push({
-      moveId: cfg.counterAssistMoveId,
-      moveName: '反制支援（Counter Assist）',
-      category: 'assist',
-      count: counterAssistCount,
-      actionTime: counterAssistActionTime,
-      comboAlignRatio: car,
-      totalTime: counterAssistCount * counterAssistActionTime,
-      totalComboAlignTime: counterAssistCount * counterAssistActionTime * car,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
-      decibelRecovery: decibel,
-      totalDecibelRecovery: counterAssistCount * decibel,
-      timeBucket: 'necessary',
-    })
-  }
-
-  // 招式执行计划完全构建后，模块可做最终修正（如按招式标签补增伤/暴击/固定附加伤害）。
-  getAgentMechanic(cfg.agentId)?.patchExecutions?.({ cfg, state, executions, teamFrontlineSeconds })
-
-  return executions.map(exec => applyExecutionUtilization(cfg, exec))
-}
-
-export function buildAnomalyEventExecutions(cfg: CharacterOperationConfig, state: IterationState, totalTime = 180): AnomalyEventExecution[] {
-  const events: AnomalyEventExecution[] = []
-  getAgentMechanic(cfg.agentId)?.buildAnomalyEvents?.({ cfg, state, events, totalTime })
-
-  const remielleRainbowEndCount = remielleSpecialVoidflareUseCount(cfg)
-  const cannonRotorMultiplier = cfg.cannonRotorDamageMultiplier ?? 0
-  const cannonRotorCooldown = cfg.cannonRotorCooldownSeconds ?? 0
-  if (cannonRotorMultiplier > 0 && cannonRotorCooldown > 0) {
-    const count = Math.ceil(effectiveBattleTime({ battleTime: totalTime, invincibleTime: cfg.invincibleTime }) / cannonRotorCooldown)
-    events.push({
-      eventId: 'cannon_rotor_crit_proc',
-      eventName: '加农转子额外伤害',
-      eventType: 'direct_damage',
-      count,
-      damageMultiplier: cannonRotorMultiplier,
-      formula: `count = ceil(有效战斗时长 / ${cannonRotorCooldown})；damage = 攻击力 × ${cannonRotorMultiplier}% × 装备者直伤乘区`,
-      fields: ['cannonRotorDamageMultiplier', 'cannonRotorCooldownSeconds', 'atk', 'crit/directDamageZones'],
-      note: '按命中并暴击可稳定触发处理；次数受精修 CD 封顶（战斗时长扣 boss 无敌），伤害应按装备者当前直伤乘区结算。',
-    })
-  }
-
-  if (remielleRainbowEndCount > 0 && cfg.remielleRainbowEndMoveId) {
-    events.push({
-      eventId: 'remielle_special_voidflare_event',
-      eventName: '特殊虚耀',
-      eventType: 'special_voidflare',
-      carrierMoveId: cfg.remielleRainbowEndMoveId,
-      carrierMoveName: '普通攻击：垂虹',
-      count: remielleRainbowEndCount,
-      formula: 'count = (remielleCinema1SpecialVoidflareCount + remielleCinema4SpecialVoidflareRefillCount) × remielleCinema6SpecialVoidflareTriggerMultiplier',
-      fields: [
-        'remielleCinema1SpecialVoidflareCount',
-        'remielleCinema4SpecialVoidflareRefillCount',
-        'remielleCinema6SpecialVoidflareTriggerMultiplier',
-        'remielleRainbowEndMoveId',
-      ],
-      note: '异常事件只记录次数和载体动作；不进入普通招式执行计划，不读取 damageMultiplier。',
-    })
-  }
-  return events.map(event => applyEventUtilization(cfg, event))
-}
+export type { FrontlineOccupationBreakdown }
+
+// ============================================================================
+// 时间线截断族（`TIME_FOLD_CONVERGENCE_SECONDS` / `truncateExecutionsToFrontline`）
+// 已整段迁至 `./timeTruncation.ts`（R43 结构熵切面，纯搬运）。
+// 本块是 **re-export 壳**：既有消费者（`core/resource.ts` 装配截断 / `./rowBuild.ts` /
+// `composables/__tests__/timeTruncation.test.ts`）的 import 路径零改动。
+// ⚠ 必须写成「import + export」两行——`export { … } from './timeTruncation'`
+// **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
+// ⚠ 改截断口径请改 `./timeTruncation.ts`，**不要在本文件重建同形函数**。
+// ============================================================================
+import { TIME_FOLD_CONVERGENCE_SECONDS, truncateExecutionsToFrontline } from './timeTruncation'
+export { TIME_FOLD_CONVERGENCE_SECONDS, truncateExecutionsToFrontline }
+
+
+// ============================================================================
+// 招式执行行构建族（`materializeRows` / `feasibleRows` / `buildExecutions` /
+// `buildAnomalyEventExecutions`）已整段迁至 `./rowBuild.ts`
+// （R43 结构熵切面，纯搬运）。
+// 本块是 **re-export 壳**：既有消费者（`core/resource.ts` 装配 / `./resourceIncome.ts` /
+// `core/__tests__`）的 import 路径零改动。
+// ⚠ 必须写成「import + export」两行——`export { … } from './rowBuild'`
+// **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
+// ⚠ 改行构建口径请改 `./rowBuild.ts`，**不要在本文件重建同形函数**。
+// ============================================================================
+import { materializeRows, feasibleRows, buildExecutions, buildAnomalyEventExecutions } from './rowBuild'
+export { materializeRows, feasibleRows, buildExecutions, buildAnomalyEventExecutions }
 
 // ============ 单次迭代 ============
 
@@ -1592,7 +443,7 @@ export function iterate(
   // Σnecessary 允许 > 战斗时间（Σ>180），只要合轴抵扣后的净占用装得下。
   // 轴模式下栈引擎节省（axisOverlapByAction）与招式合轴率是同一物理并行的两种模型，
   // 按槽位取 max 不叠加（防同时设置时超扣；缺省合轴率全 0，退化为原口径）。
-  // @fact engine:合轴预算抵扣 口径: 必做动作合轴段与其他角色动作并行、抵扣团队时间预算（Σnecessary 允许>战斗时间）；轴模式与栈引擎节省按槽取 max 不叠加；只抵扣含在 necessary 内的部分（GROSS 缺省，NET 模块照/卢西娅不重复抵） | 据 用户@2026-09-04·复核@2026-09-08 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#netFrontlineOccupation | 信 确认
+  // @fact engine:合轴预算抵扣 口径: 必做动作合轴段与其他角色动作并行、抵扣团队时间预算（Σnecessary 允许>战斗时间）；轴模式与栈引擎节省按槽取 max 不叠加；只抵扣含在 necessary 内的部分（GROSS 缺省，NET 模块照/卢西娅不重复抵） | 据 用户@2026-09-04·复核@2026-09-08 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/timeOccupation.ts#netFrontlineOccupation | 信 确认
   // @fact engine:单角色前线上限 口径: 单角色前台（必要+平A）≤ 战斗总时间——合轴抵扣放宽团队预算不放宽单人物理时间轴；贴顶截断的份额按剩余权重水填回流给还有余量的队友，不留池蒸发 | 据 用户@2026-09-05（改 09-04「留池不重分配」）·复核@2026-09-08 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
   const overlapBySlot: number[] = configs.map(() => 0)
   let hasByAction = false
@@ -1637,7 +488,7 @@ export function iterate(
   // **吸收上限**（v3，用户口径 2026-09-19「全部吸收比较难，默认队友的 40% 可以被吸收（合轴率），超过了就无力合轴了」）：
   // 每名非操作角色的容量 = `comboAlignAbsorbRatio` × 其净必要（缺省 0.4，全局变量、可调、0 = 不吸收）；
   // 吸收不完的溢出**不再**被队友兜住 ⇒ 回到封顶 / 装配截断——结构性溢出队（1431 簇）在自由口径下重新可见。
-  // @fact engine:动态合轴吸收上限 口径: 非操作角色可被合轴吸收的前台 ≤ comboAlignAbsorbRatio × 其净必要前台（全局变量，缺省 0.4，0 = 不吸收）；吸收总量 = min(溢出, Σ容量)，超出部分照旧封顶/截断 | 据 用户@2026-09-19「全部吸收比较难…默认队友的40%可以被吸收（合轴率），超过了就无力合轴了」 | 验 src/core/__tests__/dynamicComboAlign.test.ts | 锚 src/core/resource/helpers.ts#calcTimeAllocation | 信 确认
+  // @fact engine:动态合轴吸收上限 口径: 非操作角色可被合轴吸收的前台 ≤ comboAlignAbsorbRatio × 其净必要前台（全局变量，缺省 0.4，0 = 不吸收）；吸收总量 = min(溢出, Σ容量)，超出部分照旧封顶/截断 | 据 用户@2026-09-19「全部吸收比较难…默认队友的40%可以被吸收（合轴率），超过了就无力合轴了」 | 验 src/core/__tests__/dynamicComboAlign.test.ts | 锚 src/core/resource/timeOccupation.ts#calcTimeAllocation | 信 确认
   // ⟳复核: 用户再调缺省比例或改为按角色/按招式的上限时，复核「吸收总量 == min(溢出, Σ 0.4×净必要)」恒等式（dynamicComboAlign.test ①）+ 1431 簇预设口径截断量（timeGolden over 字段）| 到期 2026-12-31
   const absorbRatioRaw = globalCfg.comboAlignAbsorbRatio ?? DEFAULT_COMBO_ALIGN_ABSORB_RATIO
   const absorbRatio = Number.isFinite(absorbRatioRaw) ? Math.min(1, Math.max(0, absorbRatioRaw)) : DEFAULT_COMBO_ALIGN_ABSORB_RATIO
