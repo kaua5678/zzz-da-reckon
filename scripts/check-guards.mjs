@@ -247,9 +247,11 @@ export const RATCHET_BURNDOWN = [
   {
     id: '滑块生效测试存量',
     file: 'scripts/lib/settings-coverage.mjs SETTINGS_UNTESTED_BACKLOG（扫描面 = 运行时 getRegisteredMechanicSettings）',
-    frozen: 60,  // 2026-09-20 round 49 **换尺时实测**（口径纠正，不是退步；规则 17②）：
-    // 扫描面从「agents/*.ts 的 `settings: [` 块起始正则」（35 模块 / 84 id）换成**运行时注册表**
-    // （55 模块 / **180 id**）后，实测 **60 条**注册了但无任何测试引用。
+    frozen: 44,  // 2026-09-20 round 49 **换尺时实测 60**（口径纠正，不是退步；规则 17②），
+    // 同批**第二批**补了 16 条 spec adjustable（Form-E）的真管线生效测试后 **60 → 44**
+    // （与 `SETTINGS_UNTESTED_BACKLOG.length` 同步改，两处一致 —— 同 `AGENT_BRANCH_BASELINE` 纪律）。
+    // 换尺读数：扫描面从「agents/*.ts 的 `settings: [` 块起始正则」（35 模块 / 84 id）换成
+    // **运行时注册表**（55 模块 / **180 id**）后，实测 **60 条**注册了但无任何测试引用。
     // ⚠ 换尺前这 60 条**零可问责性**（旧面看不见它们，既不红也不点名）；换尺后逐条具名在册 + 本行 due
     // ⇒ 可问责性**上升**。`newGaps` 判红逻辑未动 ⇒ 新增滑块仍然红（棘轮的防变差职责完整保留）。
     // 分型：**Form-E 38 条**（`<四位数>.<resource>.<rule>.rate` = spec `adjustable`，经
@@ -258,10 +260,12 @@ export const RATCHET_BURNDOWN = [
     // （旧面 84 → 新面 180，其中 120 条已有测试引用）。
     target: 0,
     due: '2027-03-31',
-    plan: '按型分批补「改滑块→面板/结果确实变」的生效测试，每补一条从 SETTINGS_UNTESTED_BACKLOG 删一行：'
+    plan: '按型分批补「改滑块→面板/结果确实变」的生效测试，每补一条从 SETTINGS_UNTESTED_BACKLOG 删一行'
+      + '**并把本行 frozen 同步下调**：'
       + '① **Form-E（38 条）优先**——正解是**一条通用 registry 驱动测试**（遍历注册表，min/max 各跑一次'
-      + '真管线比 delta），R49 实测**一条 sweep 就覆盖 27/39**；余 12 条需更贴的 fixture（countSource 是'
-      + '`perfectBlockCount`/`parryCount`/`chainCountTotal` 等默认队伍没触发的量，如 peiluo/jufufu/zhendou）。'
+      + '真管线比 delta）。✅ **已做第一批 16 条**（`src/specs/__tests__/adjustableEffect.test.ts` 表驱动，'
+      + 'rate 0/1/2 三点线性 + 基准绝对值）；余 22 条里 12 条已查明是**覆盖导致的真失效**（§见 R49-J1），'
+      + '另 10 条需更贴的 fixture（countSource 靠默认队伍没触发的量，如 `perfectBlockCount`/`frostburnBreakCount`）。'
       + '② **Form-B/C/D（22 条）**逐条写角色级断言。'
       + '⚠ 必须**走真管线**（`setMechanicSetting` → `resourceResult`/`computePanelPhases`），**不许**直调钩子'
       + '+ 手写 cfg —— R48 实测：手写 cfg 会抹掉「生产代码写不写这个字段」这个自由度，让断链「通过」'

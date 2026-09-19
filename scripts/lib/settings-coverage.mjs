@@ -103,39 +103,23 @@ export const SETTINGS_COVERAGE_MIN_MODULES = 55
  * · **B/C/D（22 条）**＝ 模块自己 `setting()` 读的覆盖率/次数滑块 ⇒ 逐条写角色级真管线断言。
  */
 export const SETTINGS_UNTESTED_BACKLOG = [
-  '1011.anby_charge.anby_ex_charge_gain.rate', // 1011
   '1021.nekomata_purr.nekomata_chain_gain.rate', // nekomata
   '1021.nekomata_purr.nekomata_ex_gain.rate', // nekomata
   '1021.nekomata_purr.nekomata_ultimate_gain.rate', // nekomata
   '1041.soldier11_charge.soldier11_chain_charge_gain.rate', // soldier11
-  '1041.soldier11_charge.soldier11_ex_charge_gain.rate', // soldier11
-  '1041.soldier11_charge.soldier11_ult_charge_gain.rate', // soldier11
   '1091.miyabi_frost_fall.miyabi_c2_flower_basic_frost_fall_gain.rate', // miyabi
   '1091.miyabi_frost_fall.miyabi_disorder_frost_fall_gain.rate', // miyabi
   '1091.miyabi_frost_fall.miyabi_frostburn_break_frost_fall_gain.rate', // miyabi
   '1301.orphie_xuyan.xuyan_ex_special_gain.rate', // orphie_magusa
   '1301.orphie_xuyan.xuyan_shiguang_gain.rate', // orphie_magusa
-  '1351.pulchra_hunt_step.pulchra_assist_hunt_gain.rate', // 1351
-  '1351.pulchra_hunt_step.pulchra_ex_hunt_gain.rate', // 1351
   '1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate', // jufufu_tiger_roar
   '1391.jufufu_weishi.jufufu_weishi_assist.rate', // jufufu_tiger_roar
-  '1441.zhendou_heartfire.zhendou_parry_heartfire_gain.rate', // 1441
   '1441.zhendou_heartfire.zhendou_special_heartfire_gain.rate', // 1441
-  '1441.zhendou_remnant_flame.zhendou_chain_remnant_gain.rate', // 1441
-  '1441.zhendou_remnant_flame.zhendou_ult_remnant_gain.rate', // 1441
   '1521.xixifu_toxin.toxin_duya_hold.rate', // xixifu
-  '1521.xixifu_toxin.toxin_tuxin_stage4.rate', // xixifu
   '1521.xixifu_toxin.toxin_tuxin_stunned_bonus.rate', // xixifu
-  '1531.billy_radiant_star.billy_radiant_basic4_gain.rate', // starlight_billy
   '1531.billy_radiant_star.billy_radiant_chain_gain.rate', // starlight_billy
-  '1531.billy_radiant_star.billy_radiant_ex_gain.rate', // starlight_billy
-  '1531.billy_star_glow.billy_star_basic4_gain.rate', // starlight_billy
   '1531.billy_star_glow.billy_star_chain_gain.rate', // starlight_billy
-  '1531.billy_star_glow.billy_star_ex_gain.rate', // starlight_billy
-  '1531.billy_star_glow.billy_star_ultimate_gain.rate', // starlight_billy
-  '1551.peiluo_prominence.peiluo_frontline_gain.rate', // peiluo_prominence
   '1551.peiluo_prominence.peiluo_perfect_block_gain.rate', // peiluo_prominence
-  '1551.peiluo_prominence.peiluo_upper_ult_gain.rate', // peiluo_prominence
   '1561.velina_corrosion.2 命风化获得.rate', // velina
   '1591.sigrid_lance_opportunity.sigrid_hit_opportunity_gain.rate', // sigrid
   '1611.claret_gash.gash_gain_from_sharp_dmg.rate', // claret

@@ -231,6 +231,19 @@ describe('判据 4 扫描面接运行时注册表（2026-09-20 round 49 换尺�
     expect(newGaps).toEqual(['agent:zzz::brand.newSlider'])
     expect(settingsCoverageOk(fake, newGaps, SETTINGS_COVERAGE_MIN_MODULES)).toBe(false)
   })
+
+  it('★ 棘轮 frozen 与冻结清单长度同步（R44 教训：只改一处 ⇒ check-guards 全绿而 verify 红）', () => {
+    // R44 实测踩过：改了棘轮基线常量却漏改 `RATCHET_BURNDOWN.frozen` ⇒ `check-guards` 19/19 全绿，
+    // 而 vitest 里 computeBurndown 的断言红（`expected 15 to be 14`）。⇒ 两处必须成对锁。
+    const e = RATCHET_BURNDOWN.find(x => x.id === '滑块生效测试存量')!
+    expect(e, '棘轮登记表缺「滑块生效测试存量」条目').toBeDefined()
+    expect(e.frozen, 'frozen 必须等于 SETTINGS_UNTESTED_BACKLOG.length').toBe(SETTINGS_UNTESTED_BACKLOG.length)
+    expect(e.target).toBe(0)
+    expect(e.due).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(e.plan.length).toBeGreaterThan(50)   // 防「冻结 = 永久豁免」：必须有可执行的降法
+    // 剩余量口径：不得写成 newGaps.length（那会恒 0、done=true，让存量从提醒面消失）
+    expect(e.frozen).toBeGreaterThan(0)
+  })
 })
 
 describe('settingsCoverageOk（判据 4 的反空洞下限，2026-09-20 round 47）', () => {
