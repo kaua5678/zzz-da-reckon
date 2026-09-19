@@ -53,6 +53,12 @@ const props = defineProps<{
   goalLabel: (id: string | null) => string
   /** 版本轴标题（如「版本 = 击破位」） */
   axisLabel: string
+  /** z 值口径：血量%（缺省，带击杀线平面）/ 绝对伤害（画选中 Boss 的 HP 膨胀曲线，替代平面） */
+  zMode?: 'percent' | 'absolute'
+  /** 绝对伤害模式的 z 上限（全道 dmg 与 Boss 血量的共同最大值） */
+  absMax?: number
+  /** 选中 Boss 的 HP 膨胀点（absolute 模式才画；与 VersionLane.frac 同一坐标） */
+  bossCurve?: { name: string; points: { frac: number; value: number; version: string; samples: number }[] }
 }>()
 
 const wrapRef = ref<HTMLDivElement | null>(null)
@@ -102,7 +108,11 @@ function draw() {
   ctx.clearRect(0, 0, size.w, size.h)
   projectedPts = []
   const costMax = Math.max(1, props.costMax)
-  const ratioMax = Math.max(1, props.ratioMax)
+  const absMode = props.zMode === 'absolute'
+  // z 上限：比例模式 = ratioMax；绝对模式 = 全道伤害与 Boss 血量共同最大值（同一坐标系开关比较增速）
+  const zMax = Math.max(1, absMode ? (props.absMax ?? 1) : props.ratioMax)
+  const zOf = (p: { ratio: number; dmg: number }) => (absMode ? p.dmg : p.ratio)
+  const fmtZTick = (v: number) => absMode ? (v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)}M` : `${(v / 1e3).toFixed(0)}K`) : `${fmt(v, 0)}%`
 
   // ---- 地板网格：难度刻度 × 版本道 ----
   ctx.lineWidth = 1
@@ -122,22 +132,39 @@ function draw() {
     ctx.strokeStyle = sceneInk(0.2)
     ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke()
   }
-  // 击杀线平面（z = 100%）
-  if (ratioMax >= 100) {
-    const z = 100 / ratioMax
+  // 击杀线平面（z = 100%）：仅血量%模式——绝对伤害模式下击杀参考就是 Boss HP 膨胀曲线本身
+  if (!absMode && zMax >= 100) {
+    const z = 100 / zMax
     const c = [toScreen(0, 0, z), toScreen(1, 0, z), toScreen(1, 1, z), toScreen(0, 1, z)]
     ctx.strokeStyle = sceneDanger(); ctx.globalAlpha = 0.7; ctx.setLineDash([6, 4])
     ctx.beginPath(); ctx.moveTo(c[0]!.sx, c[0]!.sy); for (const p of c.slice(1)) ctx.lineTo(p.sx, p.sy); ctx.closePath(); ctx.stroke()
     ctx.setLineDash([]); ctx.globalAlpha = 1
     ctx.fillStyle = sceneDanger(); ctx.textAlign = 'left'; ctx.fillText('击杀线 100%', c[0]!.sx + 4, c[0]!.sy - 4)
   }
-  // 竖轴刻度（伤害/血量%）在左前角
-  const zTicks = ratioMax <= 100 ? 5 : Math.min(6, Math.ceil(ratioMax / 50))
+  // 选中 Boss 的 HP 膨胀曲线（绝对伤害模式；画在难度盒背缘 x=1 的版本×伤害垂面上）
+  const bossCurve = absMode ? props.bossCurve : undefined
+  if (bossCurve && bossCurve.points.length > 0) {
+    const bp = bossCurve.points.map(q => ({
+      sc: toScreen(1, Math.min(1, Math.max(0, q.frac)), Math.min(1, q.value / zMax)),
+      v: q.version,
+    }))
+    ctx.strokeStyle = sceneDanger(); ctx.lineWidth = 1.5; ctx.setLineDash([8, 4])
+    ctx.beginPath(); ctx.moveTo(bp[0]!.sc.sx, bp[0]!.sc.sy)
+    for (const p of bp.slice(1)) ctx.lineTo(p.sc.sx, p.sc.sy)
+    ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1
+    ctx.fillStyle = sceneDanger()
+    for (const p of bp) { ctx.beginPath(); ctx.arc(p.sc.sx, p.sc.sy, 2.5, 0, Math.PI * 2); ctx.fill() }
+    ctx.textAlign = 'right'; ctx.font = '10px sans-serif'
+    ctx.fillText(`${bossCurve.name}`, bp[bp.length - 1]!.sc.sx - 6, bp[bp.length - 1]!.sc.sy - 6)
+    ctx.textAlign = 'left'
+  }
+  // 竖轴刻度在左前角
+  const zTicks = absMode ? 5 : (zMax <= 100 ? 5 : Math.min(6, Math.ceil(zMax / 50)))
   for (let i = 0; i <= zTicks; i++) {
-    const v = (i / zTicks) * ratioMax
+    const v = (i / zTicks) * zMax
     const p = toScreen(0, 0, i / zTicks)
     ctx.fillStyle = sceneDim(); ctx.textAlign = 'right'; ctx.font = '10px sans-serif'
-    ctx.fillText(`${fmt(v, 0)}%`, p.sx - 6, p.sy + 3)
+    ctx.fillText(fmtZTick(v), p.sx - 6, p.sy + 3)
   }
   const zAxisTop = toScreen(0, 0, 1); const zAxisBottom = toScreen(0, 0, 0)
   ctx.strokeStyle = sceneInk(0.5)
@@ -146,7 +173,8 @@ function draw() {
   ctx.fillStyle = sceneDim(); ctx.font = '11px sans-serif'
   const xl = toScreen(0.5, -0.08, 0); ctx.textAlign = 'center'; ctx.fillText('操作难度绝对值 →', xl.sx, xl.sy + 24)
   const yl = toScreen(1.06, 0.5, 0); ctx.textAlign = 'left'; ctx.fillText(`${props.axisLabel} →`, yl.sx, yl.sy)
-  ctx.textAlign = 'left'; ctx.fillText('伤害/血量 % ↑', zAxisTop.sx - 30, zAxisTop.sy - 8)
+  ctx.textAlign = 'left'
+  ctx.fillText(absMode ? '绝对伤害 ↑（虚线 = Boss 血量）' : '伤害/血量 % ↑', zAxisTop.sx - 70, zAxisTop.sy - 8)
 
   // ---- 各道：由远到近 ----
   const order = props.lanes
@@ -158,7 +186,7 @@ function draw() {
     const color = props.colorOf(lane.presetId)
     const y = laneY(idx)
     const pts = s.points.map((p, pi) => {
-      const sc = toScreen(Math.min(1, p.cost / costMax), y, Math.min(1, p.ratio / ratioMax))
+      const sc = toScreen(Math.min(1, p.cost / costMax), y, Math.min(1, zOf(p) / zMax))
       projectedPts.push({ ...sc, laneIdx: idx, ptIdx: pi })
       return sc
     })
@@ -202,7 +230,8 @@ function draw() {
     ctx.fillText(lane.label, start.sx, start.sy + 4)
     const last = pts[pts.length - 1]!
     ctx.font = '10px sans-serif'; ctx.textAlign = 'left'
-    ctx.fillText(`${fmt(s.points[s.points.length - 1]!.ratio, 0)}%`, last.sx + 6, last.sy + 3)
+    const lastPt = s.points[s.points.length - 1]!
+    ctx.fillText(absMode ? `${(lastPt.dmg / 1e6).toFixed(1)}M` : `${fmt(lastPt.ratio, 0)}%`, last.sx + 6, last.sy + 3)
   }
 }
 
@@ -273,7 +302,7 @@ onMounted(() => {
   }
 })
 onBeforeUnmount(() => { ro?.disconnect(); ro = null; window.removeEventListener('mouseup', onGlobalUp) })
-watch(() => [props.series, props.lanes, props.costMax, props.ratioMax, cam.value, ribbons.value], () => draw(), { deep: true })
+watch(() => [props.series, props.lanes, props.costMax, props.ratioMax, props.zMode, props.absMax, props.bossCurve, cam.value, ribbons.value], () => draw(), { deep: true })
 </script>
 
 <style scoped>

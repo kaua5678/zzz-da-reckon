@@ -421,6 +421,16 @@
             />
           </span>
         </div>
+        <div class="version-picks" style="margin-bottom: 4px">
+          <span>z 口径：</span>
+          <n-radio-group v-model:value="curveZMode" size="small">
+            <n-radio-button value="percent">伤害/血量%（击杀线平面）</n-radio-button>
+            <n-radio-button value="absolute">绝对伤害 + Boss 血量膨胀</n-radio-button>
+          </n-radio-group>
+          <span v-if="curveZMode === 'absolute' && bossHpOverlay.length === 0" style="opacity: 0.7">
+            （{{ selectedBoss?.name }} 在当前版本道里没有血量记录——折线不出，绝对伤害仍可比）
+          </span>
+        </div>
         <DifficultyCurve3DChart
           :series="curveData.series"
           :lanes="versionAxis.lanes"
@@ -429,6 +439,9 @@
           :color-of="colorOf"
           :goal-label="goalLabel"
           :axis-label="`版本（${slotName(versionAxis.defaultSlot)}）`"
+          :z-mode="curveZMode"
+          :abs-max="curveZAbsMax"
+          :boss-curve="{ name: `${selectedBoss?.name ?? ''} HP 膨胀`, points: bossHpOverlay }"
         />
       </div>
       <div v-else class="chart-area">
@@ -611,11 +624,11 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NSelect, NInputNumber, NButton, NCheckbox, NPopover, NRadioGroup, NRadioButton } from 'naive-ui'
 import DifficultyCurve3DChart from '@/components/charts/DifficultyCurve3DChart.vue'
-import { deriveVersionAxis } from '@/composables/difficultyCurve3d'
+import { deriveVersionAxis, buildBossHpOverlay } from '@/composables/difficultyCurve3d'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computeTeamComparePoints, goldAlternativesOfPoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, type GoldAllocationAlternative } from '@/composables/teamCompare'
+import { computeTeamComparePoints, goldAlternativesOfPoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, snapshotStore, type GoldAllocationAlternative } from '@/composables/teamCompare'
 import { computeSlotSweepPoints, type SlotCompareSlot, type SlotSweepResult } from '@/composables/teamTimeline'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
@@ -624,7 +637,7 @@ import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilt
 import { fmt, compact } from '@/utils/format'
 import { encodePointTimes, timeLegendRows } from '@/composables/pointTimeAxis'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
-import { releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
+import { releaseNodeOf, nodeIndexOf, VERSION_NODES } from '@/data/versionTimeline'
 import type { Specialty } from '@/types/catalog'
 import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
 import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
@@ -911,6 +924,37 @@ function versionSlotOptions(presetId: string) {
 /** 曲线模式的中止标志（粒度 = 一队：单队阶梯是原子的；已算部分保留） */
 const curveAbort = ref(false)
 
+/** ③ 会话级曲线缓存（2026-09-19 性能）：同一份输入（Boss/期数/难度权重/机制开关/权重策略/store 快照/预设内容）
+ *  切来切去重跑时**零秒出图**。store 快照 = 数值类全量输入的确定性刻画，命中即数学等价；LRU 上限 24。 */
+const curveRunCache = new Map<string, { rows: DifficultyCurveRow[] }>()
+const CURVE_RUN_CACHE_MAX = 24
+
+/** 3D z 口径（用户 2026-09-19②）：血量%（击杀线平面）/ 绝对伤害 + 选中 Boss 的 HP 膨胀曲线 */
+const curveZMode = ref<'percent' | 'absolute'>('percent')
+
+/** 选中 Boss 的 HP 膨胀点（对齐到当前版本道；只在绝对模式与 3D 下消费） */
+const bossHpOverlay = computed(() => {
+  const boss = selectedBoss.value
+  if (!boss) return []
+  const mode = selectedPhase.value?.modeType ?? 'defense'
+  return buildBossHpOverlay(
+    versionAxis.value.lanes,
+    boss.phases ?? [],
+    mode,
+    idx => VERSION_NODES[idx]?.version ?? null,
+  )
+})
+
+/** 绝对模式的 z 上限：可见各道所有档的绝对伤害 × Boss 血量样本的共同最大值（同一开关下比增速） */
+const curveZAbsMax = computed(() => {
+  let m = 1
+  for (const s of curveData.value?.series ?? []) {
+    for (const p of s.points) m = Math.max(m, p.dmg)
+  }
+  for (const q of bossHpOverlay.value) m = Math.max(m, q.value)
+  return m
+})
+
 // ========== 图例筛选（点图例显隐某队；两个图型各一份独立状态） ==========
 // 隐藏必须传导到派生量：轴上限（yMax/xMax/costMax/ratioMax）、明细表、关键变化、曲线摘要
 // 全部读「可见集合」，否则轴按隐藏数据缩放 ⇒ 筛选看着没生效（见 seriesFilter.ts 文件头 ②）。
@@ -986,6 +1030,24 @@ async function runCurves() {
   const boss = selectedBoss.value
   const phase = selectedPhase.value
   if (presets.length === 0 || !boss || !phase) return
+  // ③ 会话缓存：输入逐字节相同 ⇒ 上次的结果数学等价，直接回放
+  const cacheKey = JSON.stringify({
+    boss: boss.id,
+    phase,
+    snap: snapshotStore(configStore),
+    extra: { strategy: configStore.timeWeightStrategy, mechanics: configStore.mechanicSettings },
+    weights: diffWeights.value,
+    presets,
+  })
+  const hit = curveRunCache.get(cacheKey)
+  if (hit) {
+    curveRunCache.delete(cacheKey)
+    curveRunCache.set(cacheKey, hit) // LRU touch
+    curveRows.value = hit.rows
+    progress.value = { pct: 1, text: `缓存命中：输入与上次完全相同（${hit.rows.length} 条曲线，0 秒出图）` }
+    setTimeout(() => { progress.value = null }, 2500)
+    return
+  }
   computing.value = true
   curveAbort.value = false
   progress.value = { pct: 0, text: '' }
@@ -1004,6 +1066,14 @@ async function runCurves() {
     }))
   }
   curveRows.value = all
+  if (!curveAbort.value) {
+    curveRunCache.set(cacheKey, { rows: all })
+    while (curveRunCache.size > CURVE_RUN_CACHE_MAX) {
+      const oldest = curveRunCache.keys().next().value
+      if (!oldest) break
+      curveRunCache.delete(oldest)
+    }
+  }
   progress.value = { pct: 1, text: curveAbort.value ? `已中止：保留已算的 ${all.length} 条曲线` : `完成：${all.length} 条曲线` }
   curveAbort.value = false
   computing.value = false

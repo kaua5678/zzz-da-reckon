@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveVersionAxis, project3d } from '@/composables/difficultyCurve3d'
+import { deriveVersionAxis, project3d, buildBossHpOverlay, type VersionLane } from '@/composables/difficultyCurve3d'
 
 const names: Record<string, string> = { '1431': '叶瞬光', '1371': '仪玄', '1481': '琉音', '1491': '柳', '1311': '耀嘉音', '1341': '丽娜' }
 const nameOf = (id: string) => names[id] ?? id
@@ -92,6 +92,35 @@ describe('难度曲线 3D · 版本轴推导（用户 2026-09-19：在变化的�
     const axisS = deriveVersionAxis(teams, {}, nameOf, () => 7)
     expect(axisS.gapped).toBe(false)
     expect(axisS.lanes.map(l => l.frac)).toEqual([0, 1])
+  })
+})
+
+describe('② buildBossHpOverlay：选中 Boss 血量对齐版本道（用户 2026-09-19）', () => {
+  const lane = (i: number, frac: number, versionIndex: number | null): VersionLane =>
+    ({ presetId: `p${i}`, name: `p${i}`, slot: 0, agentId: `a${i}`, label: `a${i}`, y: i, frac, versionIndex })
+  const nodeVersion: Record<number, string> = { 0: '2.0', 5: '2.3', 9: '2.7' }
+  const phases = [
+    { version: '2.0', hp: 100, modeType: 'defense' },
+    { version: '2.0', hp: 140, modeType: 'defense' },   // 同版本两期 ⇒ 平均 120、样本 2
+    { version: '2.3', hp: 200, modeType: 'defense' },
+    { version: '2.0', hp: 999, modeType: 'critical_assault' }, // 模式过滤：不进 defense 桶
+  ]
+
+  it('同版本多期平均 + 模式过滤 + 按道位排序；没上岗的版本与未解析道跳过', () => {
+    const pts = buildBossHpOverlay(
+      [lane(0, 0, 0), lane(1, 0.6, 5), lane(2, 1, 9), lane(3, 0.3, null)],
+      phases, 'defense', i => nodeVersion[i] ?? null,
+    )
+    expect(pts).toEqual([
+      { frac: 0, value: 120, version: '2.0', samples: 2 },
+      { frac: 0.6, value: 200, version: '2.3', samples: 1 },
+    ])
+  })
+
+  it('空 phases / 全被模式过滤 ⇒ 空数组（页面注明「无血量记录」，不影响绝对伤害比对）', () => {
+    expect(buildBossHpOverlay([lane(0, 0, 0)], [], 'defense', i => nodeVersion[i] ?? null)).toEqual([])
+    expect(buildBossHpOverlay([lane(0, 0, 0)], phases, 'critical_assault', i => nodeVersion[i] ?? null))
+      .toEqual([{ frac: 0, value: 999, version: '2.0', samples: 1 }])
   })
 })
 

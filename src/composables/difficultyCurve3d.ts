@@ -106,6 +106,62 @@ export function deriveVersionAxis(
   return { lanes, varyingSlots, defaultSlot, ambiguous: varyingSlots.length > 1, gapped }
 }
 
+// ============ Boss 血量膨胀层（用户口径 2026-09-19②）============
+
+export interface BossPhaseLike {
+  version?: string
+  hp?: number
+  modeType?: string
+}
+
+export interface BossHpOverlayPoint {
+  /** 道位置（与 VersionLane.frac 同一坐标） */
+  frac: number
+  /** 该版本（该模式）的平均血量（绝对值，与 CurveDatum.dmg 同单位） */
+  value: number
+  version: string
+  /** 该版本进入平均的期数（样本极少时页面注明「数据稀疏」） */
+  samples: number
+}
+
+/**
+ * 把「选中 Boss 的血量」对齐到版本道上：按 version 聚合（模式过滤 + 多期平均），用车道 versionIndex 经
+ * `versionByIndex`（= VERSION_NODES[idx].version）对上。该 Boss 某版本没上岗 ⇒ 跳过（折线跨空档直连，
+ * 样本情况在点上自带，页面在 tooltip/脚注如实注明）。同名角色多支队 ⇒ 同 frac 同值，过两次无妨。
+ * 用户口径：在版本×伤害（绝对伤害）空间里画**具体 Boss** 的 HP 膨胀曲线，而不是永远只有一个共享的击杀线平面。
+ */
+export function buildBossHpOverlay(
+  lanes: readonly VersionLane[],
+  phases: readonly BossPhaseLike[],
+  modeType: string,
+  versionByIndex: (nodeIndex: number) => string | null,
+): BossHpOverlayPoint[] {
+  const buckets = new Map<string, number[]>()
+  for (const p of phases) {
+    if (p.modeType !== modeType) continue
+    const hp = Number(p.hp)
+    if (!Number.isFinite(hp) || hp <= 0 || !p.version) continue
+    const arr = buckets.get(p.version) ?? []
+    arr.push(hp)
+    buckets.set(p.version, arr)
+  }
+  const out: BossHpOverlayPoint[] = []
+  for (const lane of lanes) {
+    if (lane.versionIndex === null) continue
+    const version = versionByIndex(lane.versionIndex)
+    if (!version) continue
+    const xs = buckets.get(version)
+    if (!xs || xs.length === 0) continue
+    out.push({
+      frac: lane.frac,
+      value: xs.reduce((a, b) => a + b, 0) / xs.length,
+      version,
+      samples: xs.length,
+    })
+  }
+  return out.sort((a, b) => a.frac - b.frac)
+}
+
 // ============ 3D 投影（正交 + 偏航/俯仰，画布 2D 自绘；与 TeamDamage3DChart 同款做法、不引 WebGL） ============
 
 export interface Camera3D {
