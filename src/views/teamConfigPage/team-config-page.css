@@ -1,0 +1,426 @@
+.team-config-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preset-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preset-label {
+  font-size: 13px;
+  color: var(--wa-850);
+  white-space: nowrap;
+}
+
+/* 预设金数弹窗 */
+.gold-tiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gold-slot-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--wa-80);
+  border-radius: 6px;
+  background: var(--wa-30);
+}
+
+.gold-slot-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.gold-slot-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--wa-700);
+}
+
+.gold-slot-agent {
+  font-size: 12px;
+  color: var(--wa-900);
+}
+
+.gold-slot-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gold-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gold-field-label {
+  font-size: 11px;
+  color: var(--wa-500);
+  width: 28px;
+  flex-shrink: 0;
+}
+
+.gold-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.gold-save-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--wa-80);
+}
+
+.gold-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.gold-save-label {
+  font-size: 12px;
+  color: var(--wa-700);
+  white-space: nowrap;
+}
+
+.card-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.detail-section {
+  margin-top: 4px;
+}
+
+.detail-card {
+  width: 100%;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wa-850);
+  margin-bottom: 2px;
+}
+
+.row-item {
+  display: flex;
+  align-items: center;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-label {
+  font-size: 11px;
+  color: var(--wa-500);
+}
+
+.field-hint {
+  margin-left: 4px;
+  /* 原 var(--color-warning, #f0a020)：令牌从未定义，一直是 fallback 硬编码色生效。
+     先接 --app-accent-gold（语义最接近且亮暗都成立）；B2 引入 --c-warning 后再换成它。 */
+  color: var(--app-accent-gold);
+  font-weight: 600;
+}
+
+.wengine-stats {
+  background: var(--wa-30);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.wengine-icon-wrapper {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--wa-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wengine-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.wengine-stats-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wengine-logic-dev {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--app-inset);
+  border: 1px solid var(--wa-80);
+}
+
+.dev-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-warning);
+  margin-bottom: 4px;
+}
+
+.dev-line {
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  color: var(--wa-580);
+  line-height: 1.5;
+}
+
+.wengine-effect-row {
+  padding: 6px 0;
+  border-top: 1px solid var(--wa-60);
+}
+
+.effect-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.disc-coverage-section { margin-top: 8px; }
+.disc-coverage-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.wengine-coverage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.coverage-label,
+.coverage-value {
+  font-size: 11px;
+  color: var(--wa-450);
+}
+
+.set-icons-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.set-icon-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.set-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.set-icon-label {
+  font-size: 10px;
+  color: var(--wa-400);
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.stat-name {
+  color: var(--wa-600);
+}
+
+.stat-value {
+  color: var(--wa-900);
+  font-weight: 500;
+}
+
+.effect-desc {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--wa-60);
+}
+
+.effect-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-warning);
+  margin-bottom: 4px;
+}
+
+.effect-text {
+  font-size: 11px;
+  color: var(--wa-500);
+  line-height: 1.5;
+}
+
+.sub-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+
+.sub-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.sub-stat-name {
+  flex: 1;
+  color: var(--wa-700);
+  font-size: 12px;
+}
+
+/* 面板预览卡片 */
+.panel-card {
+  height: 100%;
+  min-height: 500px;
+}
+
+.panel-content {
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.panel-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.panel-content::-webkit-scrollbar-thumb {
+  background: var(--wa-100);
+  border-radius: 2px;
+}
+
+.panel-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--wa-300);
+  font-size: 13px;
+}
+
+/* 配装推荐 */
+.build-rec-section {
+  margin-top: 4px;
+}
+
+.rec-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rec-block-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--wa-700);
+  margin-bottom: 4px;
+}
+
+.rec-wengine-name {
+  font-size: 13px;
+  color: var(--wa-900);
+  font-weight: 500;
+}
+
+.rec-set-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.rec-set-name {
+  color: var(--wa-800);
+}
+
+.rec-mainstat-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.rec-mainstat-slot {
+  color: var(--wa-400);
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.rec-mainstat-name {
+  color: var(--wa-800);
+}
+
+.rec-substat-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.rec-substat-priority {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--c-success-soft);
+  color: var(--c-success);
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.rec-substat-name {
+  color: var(--wa-700);
+}
+
+.rec-strategy {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--wa-60);
+}
