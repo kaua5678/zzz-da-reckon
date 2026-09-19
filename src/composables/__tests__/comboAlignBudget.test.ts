@@ -58,6 +58,9 @@ const sumNecessary = (states: IterationState[]) =>
 /** 净占用（扣合轴抵扣）——可行性封顶约束的是这个量，毛值允许 >180 */
 const sumNecessaryNet = (states: IterationState[]) =>
   states.reduce((a, s) => a + Math.max(0, s.necessaryTime - (s.comboAlignCredit ?? 0)), 0)
+/** 动态合轴吸收（R37-J5 v2，2026-09-19）：溢出时队友前台被合轴吸收的秒数，已含在 comboAlignCredit 内 */
+const sumDynamic = (states: IterationState[]) =>
+  states.reduce((a, s) => a + (s.dynamicComboAlignSeconds ?? 0), 0)
 
 describe('合轴率抵扣团队时间预算', () => {
   it('Σnecessary>180 可行：合轴抵扣后净占用装得下 → 平A池扩大、overflow 归零', async () => {
@@ -70,13 +73,17 @@ describe('合轴率抵扣团队时间预算', () => {
 
     const cold = deepCopy(cfg)
     const s0 = iterate(cold.characters, zeroStates(cold), cold)
-    // 无合轴抵扣：想打的必做动作超预算 ⇒ **账本被可行性封顶到预算**（2026-09-05 新口径，
-    // 不再虚高到 180 以上），池被挤光，压力记在 overflowSeconds（= 想打却装不下的量）。
-    // 封顶的是**净占用**（合轴抵扣不占预算，原样保留），所以毛值可以 >180
+    // 无静态合轴率：想打的必做动作超预算 ⇒ **净占用被可行性封顶到预算**（2026-09-05 口径），池被挤光；
+    // 封顶的是**净占用**（合轴抵扣不占预算，原样保留），所以毛值可以 >180。
+    // 压力的记法自 R37-J5 v2（动态合轴，用户口径 2026-09-19）起变了：非轴多人队的溢出先由**队友前台按溢出量被合轴吸收**
+    // （dynamicComboAlignSeconds，已计入 comboAlignCredit），吸收得下就不再是「想打却装不下」的 overflowSeconds
+    // ⇒ 对照组 overflow = 0、动态吸收 > 0（v2 之前这里是 overflow > 0）。
     expect(sumNecessaryNet(s0)).toBeLessThanOrEqual(cold.totalTime + 1e-6)
     expect(sumNecessaryNet(s0)).toBeGreaterThan(cold.totalTime - 1)
+    expect(sumNecessary(s0)).toBeGreaterThan(cold.totalTime)
     expect(sumBasics(s0)).toBeCloseTo(0, 6)
-    expect(cold.overflowSeconds).toBeGreaterThan(0)
+    expect(cold.overflowSeconds).toBe(0)
+    expect(sumDynamic(s0)).toBeGreaterThan(0)
 
     const warm = deepCopy(cfg)
     for (const c of warm.characters) c.chainComboAlignRatio = 1
@@ -89,6 +96,8 @@ describe('合轴率抵扣团队时间预算', () => {
     // overflow 净额口径 = Σnecessary − 抵扣 − 预算
     const relief = s1.reduce((a, s) => a + (s.comboAlignCredit ?? 0), 0)
     expect(relief).toBeGreaterThan(0)
+    // 静态合轴率先抵扣、动态吸收只管剩下的溢出：全额抵扣后净占用已装得下（池打开）⇒ 动态吸收归零，credit 全是静态的
+    expect(sumDynamic(s1)).toBe(0)
   })
 
   it('单角色前台硬顶：平A份额超「总时间−必要」时截断到 180；无队友可接时留在池里', async () => {
@@ -229,12 +238,15 @@ describe('端到端（折叠循环 + 超时判定同口径）', () => {
 
     const base = deepCopy(cfg)
     const rr0 = calcTeamResources(base)
-    // 无合轴抵扣：账本被可行性封顶到预算（不再虚高），平A池被挤光 ⇒ 压力体现在 overflowSeconds
-    // （= 想打却装不下、被截断的秒数），而不是"账本 > 180"这种虚高可观测。
+    // 无静态合轴率：净占用被可行性封顶到预算（不再虚高），平A池被挤光。压力自 R37-J5 v2（动态合轴，2026-09-19）起
+    // 体现在 timeAllocation.dynamicComboAlignSeconds（队友前台按溢出量被合轴吸收），吸收得下就没有装配截断
+    // ⇒ overflowSeconds = 0（v2 之前是 > 0），而不是"账本 > 180"这种虚高可观测。
     const necNet0 = rr0.characters.reduce(
       (a, c) => a + Math.max(0, c.timeAllocation.necessaryTime - (c.timeAllocation.comboAlignCredit ?? 0)), 0)
     expect(necNet0).toBeLessThanOrEqual(rr0.totalTime + 1e-6)
-    expect(rr0.overflowSeconds ?? 0).toBeGreaterThan(0)
+    expect(rr0.overflowSeconds ?? 0).toBe(0)
+    const dynamic0 = rr0.characters.reduce((a, c) => a + (c.timeAllocation.dynamicComboAlignSeconds ?? 0), 0)
+    expect(dynamic0).toBeGreaterThan(0)
     expect(rr0.characters.reduce((a, c) => a + c.timeAllocation.basicAttackTime, 0))
       .toBeLessThan(1e-6)
 
@@ -252,6 +264,8 @@ describe('端到端（折叠循环 + 超时判定同口径）', () => {
     // 账本全额不缩（合轴只改重叠记账）：Σnecessary 仍 > 战斗时间
     expect(rr1.characters.reduce((a, c) => a + c.timeAllocation.necessaryTime, 0))
       .toBeGreaterThan(aligned.totalTime)
+    // 静态抵扣先于动态吸收：池打开 = 净占用装得下 ⇒ 抵扣队不再发生动态吸收
+    expect(rr1.characters.reduce((a, c) => a + (c.timeAllocation.dynamicComboAlignSeconds ?? 0), 0)).toBe(0)
   })
 
   it('回归守卫：不设合轴率（缺省全 0）时与旧口径逐位一致', async () => {

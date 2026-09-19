@@ -290,9 +290,11 @@ describe('C-β next-round feedback', () => {
     const withYixuanOnly = await build([{ agentId: '1371', cinemaLevel: 6 }, { agentId: '1041' }, { agentId: '1151' }])
     const baseOnlyYixuan = withYixuanOnly.resourceResult.characters.reduce((a, c) => a + (c.ultimateCount ?? 0), 0)
     // 同夹具换 1371 C6：符法千重 14 次（探针实测），Σ ultimateCount 仍 8 ⇒ 汇总 = 22。
-    expect(withYixuanOnly.threadsNext.yixuanFuFaForJufufu).toBe(14)
-    expect(withYixuanOnly.threadsNext.teamUltimateForJufufu).toBe(baseOnlyYixuan + 14)
-    expect(withYixuanOnly.threadsNext.teamUltimateForJufufu).toBe(22)
+    // 2026-09-19 R37-J5 v2（动态合轴）：该非轴队 Σ净必要 > 预算，队友前台按溢出量被合轴吸收、不再降配 ⇒ 仪玄时间/闪能
+    // 收入上升 → 符法千重 14→18（探针实测）；Σ ultimateCount 与汇总按同一恒等式重锚（下两条）。
+    expect(withYixuanOnly.threadsNext.yixuanFuFaForJufufu).toBe(18)
+    expect(withYixuanOnly.threadsNext.teamUltimateForJufufu).toBe(baseOnlyYixuan + 18)
+    expect(withYixuanOnly.threadsNext.teamUltimateForJufufu).toBe(26) // Σ ultimateCount 仍 8
     // ★ 两条线程值**各自独立**：无 1371 时汇总非零（8）、有 1371 时分量非零（14）
     //   ⇒ 任一「挂错模块」的迁法都会打红上面某一条。
     expect(withJufufuOnly.threadsNext.teamUltimateForJufufu).toBeGreaterThan(0)

@@ -138,7 +138,13 @@ describe('平A池权重·分配策略', () => {
   // 制造的假截断（毫秒残差被整数装包放大），刀 1（截断入口容差与折叠环同源 1e-3）后归零 ⇒ 不再是「基线本身就超时」
   // 的样本。换成 1431 簇的结构性溢出队 auto-1431-1481-1491（预设配置下基线截断 ~108.8s、降配 8 档全不可行、scale=1），
   // 它才是「真装不下」的形态——本用例要锁的相对门 / 可行性优先语义正是为这类队写的。
+  // ⚠ 2026-09-19 R37-J5 v2（动态合轴）后再补一刀：非轴多人队的溢出先由队友前台按溢出量被合轴吸收，该队自由口径下
+  // 琉音/柳的前台被整段吸收 + 降配 0.875 ⇒ 装配截断归零，不再是超时样本。v2 下唯一装不下的是**操作角色自己的前台 > 180s**，
+  // 而降配/弃轴机制会把它收进可行域——只有**锁窗**（用户明确意图「操作够就能打 N 次失衡」，编排层一律不动、超时如实上报）
+  // 能保留这条结构性溢出：锁在该队自身的失衡次数 3（golden 同值）时基线截断 ≈23.4s（仪玄自己的必要行 > 预算）。
   const OVERTIME_SAMPLE_ID = 'auto-1431-1481-1491'
+  /** 锁窗次数 = 该队自由口径的失衡次数（timeGolden preset:auto-1431-1481-1491.stun），不是抬高需求 */
+  const OVERTIME_SAMPLE_STUN_LOCK = 3
 
   it('⑥b 基线已超时的队也照常优化（相对门：只保证不更差，不再拒绝）', async () => {
     const { catalog } = await setupHarness(['', '', ''])
@@ -148,6 +154,7 @@ describe('平A池权重·分配策略', () => {
     const p = teamPresets.find(x => x.id === OVERTIME_SAMPLE_ID)!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
+    config.setEnemy({ stunCountLock: OVERTIME_SAMPLE_STUN_LOCK })
     const truncated = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
     expect(truncated, '该队列为「基线本身就超时」的样本').toBeGreaterThan(0)
     const dmgBefore = calc.teamTotalDamage.value
@@ -168,6 +175,7 @@ describe('平A池权重·分配策略', () => {
     const p = teamPresets.find(x => x.id === OVERTIME_SAMPLE_ID)!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
+    config.setEnemy({ stunCountLock: OVERTIME_SAMPLE_STUN_LOCK })
     const truncated = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
     expect(truncated).toBeGreaterThan(0)
     const dmgBefore = calc.teamTotalDamage.value
@@ -276,8 +284,12 @@ describe('平A池权重·分配策略', () => {
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     config.setParryCount(0, 99)
-    const overflow = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
-    expect(overflow, '弹刀 99 次应当装不下（装配截断 > 0）——搜索不得在此基础上再增加弹刀').toBeGreaterThan(0)
+    const conv0 = calc.resourceResult.value!.convergence
+    const overflow = conv0?.timeTruncatedSeconds ?? 0
+    // 越界信号两种形态都算「硬门已挡」：装配截断 > 0（v2 前的形态），或被编排层降配收进可行域（interactionScale < 1）。
+    // R37-J5 v2（动态合轴，2026-09-19）后本队 99 弹刀被降配到 0.25 档（25 次）装进 180s、截断归零——越界仍被挡住，
+    // 只是挡法从「砍行」变成「降配」；搜索不得在此基础上再增加弹刀。
+    expect(overflow > 0 || (conv0?.interactionScale ?? 1) < 1, '弹刀 99 次应当装不下（装配截断 > 0 或已被降配）——搜索不得在此基础上再增加弹刀').toBe(true)
     const before = [0, 1, 2].map(s => config.team[s]!.parryCount)
     applyTimeWeightAllocation({ calc, configStore: config })
     const after = [0, 1, 2].map(s => config.team[s]!.parryCount)
