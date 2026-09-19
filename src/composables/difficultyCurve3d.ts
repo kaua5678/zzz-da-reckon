@@ -10,6 +10,10 @@
  *  ③ 多个槽位在变时 `ambiguous = true`，页面给每队一个「版本角色」选择器，`overrides[presetId] = slot` 逐队覆盖；
  *  ④ 每队一条道（lane）：版本键 = 该队版本槽上的 agentId，道序按 agentId 数值升序（游戏 id 大致 = 发布序）再按队名；
  *     版本标签 = agent 名；同名（同一版本角色出现在多支队）时追加其余两名成员消歧，保证标签唯一。
+ *  ⑤ 道**位置**（用户口径 2026-09-19「不是一前一后贴着的，按首次 up 时间留空档」）：经可选的
+ *     `releaseIndexOf`（= versionTimeline 的 nodeIndexOf(AGENT_RELEASE_NODE[agentId])）把道位放在
+ *     **版本节点序号的真实间距**上（中间空出的节点 = 留白的版本）。全字段解析失败（未收录角色）或
+ *     不同节点不足 2 个时回退等距（gapped = false）。
  */
 
 export interface VersionAxisInput {
@@ -29,6 +33,10 @@ export interface VersionLane {
   label: string
   /** 道序（0 = 最前） */
   y: number
+  /** 首次 UP 的版本节点序号（版本时间线表；未收录 → null） */
+  versionIndex: number | null
+  /** 道位置（0..1）：留空档模式 = 按节点序号的真实间距；回退模式 = 等距 y/(n−1) */
+  frac: number
 }
 
 export interface VersionAxis {
@@ -39,6 +47,8 @@ export interface VersionAxis {
   defaultSlot: number
   /** 多个槽位在变 ⇒ 需要用户按队指定 */
   ambiguous: boolean
+  /** 道位是否按版本节点序号留了空档（false = 等距回退） */
+  gapped: boolean
 }
 
 const SLOTS = [0, 1, 2] as const
@@ -52,6 +62,8 @@ export function deriveVersionAxis(
   teams: readonly VersionAxisInput[],
   overrides: Readonly<Record<string, number>> = {},
   nameOf: (agentId: string) => string = id => id,
+  /** 版本节点序号解析（缺省 = 永远回退等距；页面侧喂 versionTimeline 的 nodeIndexOf 复合） */
+  releaseIndexOf: (agentId: string) => number | null = () => null,
 ): VersionAxis {
   const distinct = SLOTS.map(s => new Set(teams.map(t => t.team[s] ?? '')).size)
   const varyingSlots = SLOTS.filter(s => distinct[s] > 1)
@@ -74,9 +86,24 @@ export function deriveVersionAxis(
     const base = r.agentId ? nameOf(r.agentId) : '—'
     const dup = (labelCount.get(r.agentId) ?? 0) > 1
     const label = dup ? `${base}（${r.others.filter(Boolean).map(nameOf).join('+') || r.name}）` : base
-    return { presetId: r.presetId, name: r.name, slot: r.slot, agentId: r.agentId, label, y }
+    return { presetId: r.presetId, name: r.name, slot: r.slot, agentId: r.agentId, label, y, versionIndex: null, frac: 0 }
   })
-  return { lanes, varyingSlots, defaultSlot, ambiguous: varyingSlots.length > 1 }
+  // ⑤ 道位：版本节点序号真实间距（留空档）。全解析 + ≥2 个不同节点才启用，否则等距回退。
+  for (const lane of lanes) lane.versionIndex = lane.agentId ? releaseIndexOf(lane.agentId) : null
+  const resolved = lanes.map(l => l.versionIndex)
+  const allResolved = resolved.every(i => i !== null)
+  const distinctIdx = new Set(resolved)
+  const gapped = lanes.length > 0 && allResolved && distinctIdx.size >= 2
+  if (gapped) {
+    const idx = resolved as number[]
+    const lo = Math.min(...idx)
+    const hi = Math.max(...idx)
+    for (let i = 0; i < lanes.length; i++) lanes[i]!.frac = hi === lo ? 0.5 : (idx[i]! - lo) / (hi - lo)
+  } else {
+    const n = lanes.length
+    for (let i = 0; i < lanes.length; i++) lanes[i]!.frac = n <= 1 ? 0.5 : i / (n - 1)
+  }
+  return { lanes, varyingSlots, defaultSlot, ambiguous: varyingSlots.length > 1, gapped }
 }
 
 // ============ 3D 投影（正交 + 偏航/俯仰，画布 2D 自绘；与 TeamDamage3DChart 同款做法、不引 WebGL） ============

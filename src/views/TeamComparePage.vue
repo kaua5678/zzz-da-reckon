@@ -624,6 +624,7 @@ import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilt
 import { fmt, compact } from '@/utils/format'
 import { encodePointTimes, timeLegendRows } from '@/composables/pointTimeAxis'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
+import { releaseNodeOf, nodeIndexOf } from '@/data/versionTimeline'
 import type { Specialty } from '@/types/catalog'
 import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
 import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
@@ -892,7 +893,14 @@ const versionAxis = computed(() => deriveVersionAxis(
   }),
   versionOverrides.value,
   id => agentNameOf(id),
+  // ⑤ 道位按首次 UP 的版本节点序号留空档（未收录角色 → null → 全轴回退等距）
+  id => releaseNodeIndexOf(id),
 ))
+/** 版本节点序号解析（versionTimeline）：agent → 首次 UP 节点 → 节点序号（未收录 → null） */
+function releaseNodeIndexOf(agentId: string): number | null {
+  const nodeId = releaseNodeOf(agentId)
+  return nodeId ? nodeIndexOf(nodeId) : null
+}
 function slotName(slot: number): string {
   return ['主 C 位（槽 1）', '第二位（槽 2）', '第三位（槽 3）'][slot] ?? `槽 ${slot + 1}`
 }

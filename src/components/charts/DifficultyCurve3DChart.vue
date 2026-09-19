@@ -79,6 +79,9 @@ function toScreen(x: number, y: number, z: number) {
   return { sx: size.w / 2 + p.sx * scale, sy: size.h / 2 + 14 + p.sy * scale, depth: p.depth }
 }
 function laneY(idx: number): number {
+  // 道位 = deriveVersionAxis 预计算：版本节点序号留空档（gapped）或等距回退
+  const lane = props.lanes[idx]
+  if (lane && Number.isFinite(lane.frac)) return lane.frac
   return laneCount.value <= 1 ? 0.5 : idx / (laneCount.value - 1)
 }
 

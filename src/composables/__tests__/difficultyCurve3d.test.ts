@@ -51,6 +51,48 @@ describe('难度曲线 3D · 版本轴推导（用户 2026-09-19：在变化的�
     expect(axis.lanes).toHaveLength(1)
     expect(axis.lanes[0]!.label).toBe('叶瞬光')
   })
+
+  it('⑤ 道位按首次 UP 版本节点序号留空档（用户 2026-09-19）；未收录/同点回退等距', () => {
+    // 模拟版本节点表：1481=8、1491=4、1431=9、9999 未收录（三节点 4/8/9 ⇒ 留空档时的中点 = 4/5 = 0.8 ≠ 等距 0.5）
+    const idx: Record<string, number> = { '1481': 8, '1491': 4, '1431': 9 }
+    const releaseIndexOf = (id: string) => idx[id] ?? null
+    const teams = [
+      { presetId: 'a', name: '叶+柳+耀', team: ['1431', '1491', '1311'] },
+      { presetId: 'b', name: '叶+琉+耀', team: ['1431', '1481', '1311'] },
+    ]
+    // 两队道位 = 节点间距归一：柳 4 → 0，琉音 8 → 1（两端；，中间空节点无声但真实在轴上）
+    const axis2 = deriveVersionAxis(teams, {}, nameOf, releaseIndexOf)
+    expect(axis2.gapped).toBe(true)
+    // 道序仍按 agentId 数值升序（1481 < 1491），但道**位置**按节点序号
+    expect(axis2.lanes.map(l => [l.agentId, l.versionIndex, l.frac])).toEqual([
+      ['1481', 8, 1],
+      ['1491', 4, 0],
+    ])
+    // 三队同版本对面时按真实间距：柳 4 → 0、琉音 8 → 0.8、叶 9 → 1——0.8 ≠ 等距的 0.5，
+    // 正是「留空档」与「一前一后贴着」的可观测差
+    const axis3 = deriveVersionAxis([
+      ...teams,
+      { presetId: 'c', name: '仪+琉+耀', team: ['1431', '1481', '1311'] },
+      { presetId: 'd', name: '叶主C', team: ['1431', '1311', '1491'] },
+    ], { c: 0, d: 0 }, nameOf, releaseIndexOf)
+    expect(axis3.gapped).toBe(true)
+    const byId = Object.fromEntries(axis3.lanes.map(l => [l.presetId, l.frac]))
+    expect(byId['a']).toBe(0)          // 柳 4 = 最小
+    expect(byId['b']).toBeCloseTo(0.8) // 琉音 8 = (8−4)/(9−4)；等距是 0.5，0.8 只能来自节点间距
+    expect(byId['c']).toBe(1)          // 叶 9 = 最大
+    expect(byId['d']).toBe(1)          // 叶 9 = 最大
+    // 未收录角色混进 ⇒ 全轴回退等距（不让猜的间距污染真间距）
+    const axisU = deriveVersionAxis([
+      { presetId: 'a', name: 'A', team: ['9999', '1491', '1311'] },
+      { presetId: 'b', name: 'B', team: ['1431', '1481', '1311'] },
+    ], { b: 1 }, nameOf, releaseIndexOf)
+    expect(axisU.gapped).toBe(false)
+    expect(axisU.lanes.map(l => l.frac)).toEqual([0, 1])
+    // 不同节点不足 2 个（同版本角色）⇒ 等距回退，不是叠在一条道上
+    const axisS = deriveVersionAxis(teams, {}, nameOf, () => 7)
+    expect(axisS.gapped).toBe(false)
+    expect(axisS.lanes.map(l => l.frac)).toEqual([0, 1])
+  })
 })
 
 describe('难度曲线 3D · 投影', () => {
