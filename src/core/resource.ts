@@ -101,6 +101,7 @@ const WARM_KEY_OMIT_CFG = new Set([
   'luciaCurtainTriggerCount',
   'yidhariExternalHealPct',
   'normaHatToChainCount',
+  'rowTimeLimit',
 ])
 const warmStartCache: WarmStartEntry[] = []
 const warmStartStats = { stored: 0, seeded: 0 }
@@ -551,6 +552,10 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   }
 
   // 正常轨迹：折叠 + 比利重推
+  // S2 入口快照（债 2 批 2-1 重折环用）：cfg 浅拷贝 + 规范种子副本。重折 = 「假如一开始就带 rowTimeLimit」从这里重跑，
+  // 而不是在被第一遍尾段改写过的 cfg（yidhariExternalHealPct 累加、终局旗标、refund 试探）上叠着跑。
+  const s2EntryCfgs = configs.map(c => ({ ...c }))
+  const s2EntrySeedStates = states.map(s => ({ ...s }))
   states = runFoldLoop(states)
   states = runBillyFinalize(states)
 
@@ -965,7 +970,91 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       chainGiftTime: chainGiftFinal.time, liuyinGiftTimeTotal: ultimateGiftFinal.time,
     }
   }
-  const tail = runTailPipeline()
+  let tail = runTailPipeline()
+
+  // ===== 债 2 批 2-1：截断外环回灌（rowTimeLimit 重折环，2026-09-19 R37-J2 ②）=====
+  // 病灶：S1 迭代按**未截断行**计回能/喧响 ⇒ 强特/终结次数被 180s 装不下的行推高 ⇒ 招式行塞爆前台被 S4 截断 ⇒
+  // 账本 > 展示层（般+诺+卢实测槽0 回能账本 200 vs 截断后行 Σ 140）。修法（用户 2026-09-11 给定语义「装不下就重收敛」）：
+  // 初装截断 > 容差时，把每槽装配 kept（招式行真兑现的秒数）作为 cfg.rowTimeLimit 注入，回到 S2 入口重跑
+  // 折叠 → 比利终推 → 尾段（欠打回填 → 伊德海莉终推 → 装配）；账本收入经 feasibleRows 只数装得下的行。
+  // 接受判据 = Σcut **严格变小**（1e-6）；否则整体回滚到上一次接受态并停。最多 3 轮（rowTimeLimit 单调收紧）。
+  // 默认路径（cut ≤ 1s 的队，刀 1 后 103/105 预设）：零分支零写入 ⇒ 逐位 0 delta；结构性溢出（必要行本身 > 预算，1431 簇）
+  // 若一轮后 cut 不降 ⇒ 回滚初装态、如实上报（overflowSeconds / truncationCuts），交给外层降配 / 逐模块退化。
+  // ⚠ 三条纪律：① cfg 对象保持同一性（闭包/外层不动点持有引用）⇒ 还原用「清键 + assign」；② rowTimeLimit 返回前恒删除
+  //   （cfg 被外层不动点/热启动复用，WARM_KEY_OMIT_CFG 也已排除）；③ 函数级诊断量随每次重跑归零，报告的是被接受那一跑的读数。
+  const ROW_REFOLD_MAX_PASSES = 3
+  const restoreCfgs = (snap: Record<string, unknown>[]) => {
+    configs.forEach((c, i) => {
+      const rec = c as unknown as Record<string, unknown>
+      for (const k of Object.keys(rec)) delete rec[k]
+      Object.assign(rec, snap[i])
+    })
+  }
+  const resetDiagnostics = () => {
+    converged = false
+    iter = 0
+    timeBudgetPasses = 0
+    timeBudgetConverged = false
+    timeBudgetResidualSeconds = 0
+    timeBudgetIdleSeconds = 0
+    timeBudgetRefundedSeconds = 0
+    refundFrozen = false
+    bestExcess = undefined
+    stagnantPasses = undefined
+  }
+  for (let refoldPass = 0; refoldPass < ROW_REFOLD_MAX_PASSES; refoldPass++) {
+    if (tail.timeTruncatedSeconds <= TIME_BUDGET_TOLERANCE_SECONDS) break
+    const keptBySlot = new Map<number, number>()
+    for (const e of tail.truncationBySlot) {
+      if (e.cutSeconds > TIME_BUDGET_TOLERANCE_SECONDS) keptBySlot.set(e.slot, Math.max(0, e.kept))
+    }
+    if (keptBySlot.size === 0) break
+    // 上一次接受态的快照（拒绝时整体还原）
+    const accepted = {
+      cfgs: configs.map(c => ({ ...c })) as Record<string, unknown>[],
+      states,
+      converged, iter, timeBudgetPasses, timeBudgetConverged, timeBudgetResidualSeconds,
+      timeBudgetIdleSeconds, timeBudgetRefundedSeconds, refundFrozen, bestExcess, stagnantPasses,
+      timeBudgetRefund: config.timeBudgetRefund,
+      overflowSeconds: config.overflowSeconds,
+      tail,
+    }
+    // 回到 S2 入口：cfg 还原为入口态 + 本轮 rowTimeLimit（其余槽不写），种子同规范种子，诊断量归零
+    restoreCfgs(s2EntryCfgs)
+    for (const cfg of configs) {
+      const k = keptBySlot.get(cfg.slot)
+      if (k !== undefined) cfg.rowTimeLimit = k
+    }
+    for (const cfg of configs) cfg.timeBudgetExcess = 0
+    config.timeBudgetRefund = 0
+    resetDiagnostics()
+    states = runFoldLoop(s2EntrySeedStates.map(s => ({ ...s })))
+    states = runBillyFinalize(states)
+    const trial = runTailPipeline()
+    if (trial.timeTruncatedSeconds < accepted.tail.timeTruncatedSeconds - 1e-6) {
+      tail = trial
+      continue
+    }
+    // 拒绝：整体还原到上一次接受态（cfg 同一性保持），停止重折
+    restoreCfgs(accepted.cfgs)
+    states = accepted.states
+    converged = accepted.converged
+    iter = accepted.iter
+    timeBudgetPasses = accepted.timeBudgetPasses
+    timeBudgetConverged = accepted.timeBudgetConverged
+    timeBudgetResidualSeconds = accepted.timeBudgetResidualSeconds
+    timeBudgetIdleSeconds = accepted.timeBudgetIdleSeconds
+    timeBudgetRefundedSeconds = accepted.timeBudgetRefundedSeconds
+    refundFrozen = accepted.refundFrozen
+    bestExcess = accepted.bestExcess
+    stagnantPasses = accepted.stagnantPasses
+    config.timeBudgetRefund = accepted.timeBudgetRefund
+    config.overflowSeconds = accepted.overflowSeconds
+    tail = accepted.tail
+    break
+  }
+  // rowTimeLimit 是本函数内部的迭代量：返回前恒删除（cfg 被外层不动点 / 热启动复用）
+  for (const cfg of configs) delete cfg.rowTimeLimit
   const { characters, timeTruncatedSeconds, truncationCuts, truncationBySlot, inputStunCount } = tail
 
   // 溢出 = **被时间线截断掉的秒数**（装配阶段实测）：为了塞进战斗时间砍掉了多少动作。
@@ -976,7 +1065,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   //       （如强特 40 次）比 180s 计划实际兑现的高（实测般+诺+卢全关档：槽0 回能账本 200 vs 截断后行 Σ 140）。
   //       修法（用户给定语义）：先按预算重分配平A池、交互只取「达成目标的最少要求」，装不下就重收敛，
   //       直到截断为 0（A 项 = 截断后行重收敛）。due: A 项落地（含全库 delta 归因）时销号。
-  // @fact engine:资源账本/截断 口径: 资源池显示的能量/喧响/次数取**未截断**的收敛账本，装配期截断只削行（伤害/失衡随之降）⇒ 有截断时资源池总量与 180s 计划不自洽（截断秒数与逐行清单见 overflowSeconds/truncationCuts） | 据 用户@2026-09-11·实测般+诺+卢 | 验 src/composables/__tests__/teamTimeSummary.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
+  //       进度（2026-09-19 R37-J2，批 2-1）：上方 rowTimeLimit 重折环已落地「装不下就重收敛」的外环形态（只接受 Σcut 严格变小，
+  //       ≤3 轮）；刀 1 后全库仅 1431 簇两队有初装截断，其余 103 队默认路径逐位 0 delta。**未销号**：结构性溢出队重折后
+  //       仍可能残留截断（如实上报），「直到截断为 0」要等实数化专项 + 用户终验。
+  // @fact engine:资源账本/截断 口径: 资源池能量/喧响收入按 feasibleRows 计（cfg.rowTimeLimit 缺省 = 未截断行；初装截断 > 容差时重折环按每槽装配 kept 注入、从 S2 入口重跑到装配，只接受 Σcut 严格变小、≤3 轮、拒绝即整体回滚、返回前删键），装配期截断只削招式行（伤害/失衡随之降）；残留截断如实上报（overflowSeconds/truncationCuts） | 据 用户@2026-09-11·实测般+诺+卢 · 债2批2-1@2026-09-19 R37 | 验 src/composables/__tests__/teamTimeSummary.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
+  // ⟳复核: 重折环上限 / 接受判据 / kept 口径再动时，复核「默认路径（cut ≤ 1s 队）逐位 0 delta」+「1431 簇两队 Σcut 只减不增、cfg 无 rowTimeLimit 残留」（truncationRefold.test.ts + timeGolden） | 到期 2026-12-31
   config.overflowSeconds = timeTruncatedSeconds
 
   // 比利/伊德海莉终局旗标复位：cfg 对象被外层不动点/热启动复用，下轮调用必须回到实数迭代期

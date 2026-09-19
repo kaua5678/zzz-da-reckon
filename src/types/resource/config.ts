@@ -418,6 +418,14 @@ export interface CharacterOperationConfig {
    * 模块按它封顶自己的动作量（叶瞬光按它砍明心境轮数），比"超了多少"更好用。
    */
   timeAvailableFrontlineSeconds?: number
+  /**
+   * 行级收入可行上限（秒，**招式行**、不含平A填充；债 2 批 2-1 截断外环回灌，2026-09-19 R37-J2）。
+   * 缺省 undefined ⇒ 账本收入按未截断行计（默认路径零分支零写入）。只由 `calcTeamResources` 的重折环在
+   * 「初装截断 > 容差」时按上一轮装配的每槽 `kept` 写入，`calcEnergySource` / `calcRawDecibelParts` 经 `feasibleRows`
+   * 消费（= 180s 真能兑现的行才进账本）；**返回前恒删除**，不会随 cfg 复用/热启动键泄漏到下一轮。
+   * ⚠ 诊断/迭代量（坑 42 / R25-J2 同族）：不读自外部、模块不得写、外部不得当前置条件读。
+   */
+  rowTimeLimit?: number
   /** 嘲讽取消次数（般岳专属：失衡外强特连段末尾后摇的嘲讽取消，每次取消一次后摇；缺省 0） */
   tauntCancelCount?: number
   /** 资源利用率覆盖：actionId/eventId -> 释放率/上限 */
