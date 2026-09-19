@@ -451,8 +451,19 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         // 负溢出（该角色账本 > 物化行，idle_i = estimate 高估量，与 basicAttackTime 无关）：
         // 单角色不折回（necessaryTime 变负、平A池膨胀），团队层面累计成 refund 回填平A池
         // ——回填后 Σ前台行 = Σ物化必要行 + 平A池 ≈ 预算，时间打满。
-        teamRefund += -excess
-        if (-excess > maxIdle) maxIdle = -excess
+        // ⚠ 例外（R37-J5 动态合轴配套，2026-09-19）：该槽已贴满**单角色上限**（必要+平A ≥ 战斗时间）时，团队级 refund
+        //   到不了它——cap 让它一秒平A都拿不到，refund 只能流向队友并把次数收敛搅乱（实测 auto-1431-1491-1341：操作角色账本
+        //   180 / 物化行 167.2，欠打回填 4 次试探全部 stable=false 被拒，留白 12.8s）。此时按物化行把**本槽**账本折回
+        //   （累加负 excess，与正向折叠同一口径），省下的时间下一轮由它自己的平A池吸收；仍记入 maxExcess 视为未自洽、继续折叠。
+        //   用户口径：最后一点时间给平A；留白太多 = 引擎没把资源回复消耗算完备，不是可容忍残差。
+        const atSingleCap = state.necessaryTime + state.basicAttackTime >= (totalTime - (config.invincibleTime ?? 0)) - 1e-6
+        if (atSingleCap) {
+          cfg.timeBudgetExcess = (cfg.timeBudgetExcess ?? 0) + excess
+          if (-excess > maxExcess) maxExcess = -excess
+        } else {
+          teamRefund += -excess
+          if (-excess > maxIdle) maxIdle = -excess
+        }
       }
     }
     timeBudgetResidualSeconds = maxExcess
