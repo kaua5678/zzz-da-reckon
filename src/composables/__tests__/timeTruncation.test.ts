@@ -7,7 +7,7 @@
  * ② 平A是填充行、不参与截断，后台行不占前台。
  */
 import { describe, it, expect } from 'vitest'
-import { truncateExecutionsToFrontline } from '@/core/resource/helpers'
+import { truncateExecutionsToFrontline, TIME_FOLD_CONVERGENCE_SECONDS } from '@/core/resource/helpers'
 import type { SkillExecution } from '@/types/resource'
 
 const row = (over: Partial<SkillExecution>): SkillExecution => ({
@@ -115,5 +115,30 @@ describe('时间线截断', () => {
     expect(e.totalDecibelRecovery).toBeCloseTo(400, 6)
     expect(e.totalEnergyConsume).toBeCloseTo(80, 6)
     expect(e.totalAnomalyBuildUp).toBeCloseTo(20, 6)
+  })
+
+  /**
+   * 入口容差与 S2 折叠环收敛判据同源（`TIME_FOLD_CONVERGENCE_SECONDS` = 1e-3；债 2 分诊 R32 刀 1，2026-09-18）。
+   * 折叠环按 maxExcess ≤ 1e-3 判「账本与物化行已自洽」停轮 ⇒ 上游放行的毫秒残差到了截断入口不得再当「装不下」，
+   * 否则整数装包会把 0.3 毫秒的超出放大成砍掉一整次动作（实测 3/104 队假截断 0.43~0.91s：
+   * auto-1591-1481-1311 / auto-1591-1161-1211 / auto-1461-1521-1031）。
+   * discriminating pair：超出 < 容差 ⇒ 零截断原样返回；超出 > 容差 ⇒ 照常整数装包。
+   */
+  it('★ 入口容差 = 折叠环收敛容差（1e-3）：毫秒残差不截断，真溢出照砍（刀 1 假截断根因）', () => {
+    expect(TIME_FOLD_CONVERGENCE_SECONDS).toBe(1e-3)
+    const rows = [row({ count: 4, actionTime: 2, totalTime: 8 })]
+    // 超出 0.5 毫秒（折叠环会放行的量级）⇒ 不截断，原样返回、无明细
+    const fits = truncateExecutionsToFrontline(rows, 8 - 5e-4)
+    expect(fits.cutSeconds).toBe(0)
+    expect(fits.executions).toBe(rows)
+    expect(fits.cuts).toEqual([])
+    // 超出 2 毫秒（> 容差）⇒ 走整数装包：砍掉一整次动作 2s（不是 2 毫秒）——真溢出照砍
+    const cut = truncateExecutionsToFrontline(rows, 8 - 2e-3)
+    expect(cut.executions[0].count).toBe(3)
+    expect(cut.cutSeconds).toBeCloseTo(2, 6)
+    // 反例锁死：旧口径（1e-9）会把 0.5 毫秒也判成装不下 ⇒ 同样砍 2s，这正是被消灭的假截断形态
+    const legacyRoom = 8 - 5e-4
+    expect(8 <= legacyRoom + 1e-9).toBe(false)
+    expect(8 <= legacyRoom + TIME_FOLD_CONVERGENCE_SECONDS).toBe(true)
   })
 })

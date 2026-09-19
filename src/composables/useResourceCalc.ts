@@ -14,7 +14,7 @@ import { getAgentMechanic } from '@/mechanics'
 import { initialCalcRoundThreads, threadsAfterNullRound } from './resourceCalc/roundThreads'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
 import { createConvergenceRoundInputs, createRunCalcRound, type CalcRoundResult } from './resourceCalc/convergence'
-import { DOWNSCALE_SCALES, selectDownscaleScale, downscaleTrialAccepted } from './resourceCalc/feasibilitySearch'
+import { DOWNSCALE_SCALES, selectDownscaleScale, downscaleTrialAccepted, downscaleTrialFeasible } from './resourceCalc/feasibilitySearch'
 import type {
   CharacterOperationConfig,
   ResourceCalcConfig,
@@ -481,8 +481,11 @@ export function useResourceCalc() {
           // 前两版教训：① 二分假定"可行域是 scale 的下闭区间"，把「截断 ≤1s」并进验收后会在
           // `yixuan-roxy-lucia` 上把好试算全拒（基线 3.78s 超预算）；② "最小截断优先"会把结构性溢出队压到
           // scale=0.0625（交互几乎清零）只为少几秒截断 —— 与「交互只取达成目标的**最少要求**」相反。
-          // 本版：SCALES 由大到小扫，**首个同时满足「三臂不比基线更差」且「截断 ≤1s」**者即采纳
-          // （= 最大可行 scale、保留最多交互）；**无人满足 ⇒ 不动**（保基线态、截断如实上报 → 逐模块退化）。
+          // 本版：SCALES 由大到小扫，**首个「绝对可行」（截断 ≤1s 且净占用超预算 ≤1s）者即采纳**
+          // （= 真装进 180s 的最大 scale、保留最多交互）；无绝对可行档 ⇒ 退回首个「三臂不比基线更差且
+          // 截断 ≤1s」的相对档（第四版，2026-09-18 R32：相对臂降为兜底——旧版把「比基线好」当终点，
+          // yixuan-roxy-lucia 在 0.875 档超预算 1.74s 就停了，真可行的 0.625 档试不到）；
+          // **无人满足 ⇒ 不动**（保基线态、截断如实上报 → 逐模块退化）。
           // **策略的单一事实源 = `resourceCalc/feasibilitySearch.ts`**（纯函数 + 回归测试；判据⑤的`@fact`在那里）。
           // **否决记录（2026-09-13 复现定性）**：曾试过「先用最小候选探一次、失败即跳过扫描」的成本闸门，实测改结果。
           // **根因不是"试算不纯/状态泄漏"**——受控实验证明每个 scale 的试算结果与它前面跑过哪些试算**无关**
@@ -500,9 +503,15 @@ export function useResourceCalc() {
           })
           const best = selectDownscaleScale(DOWNSCALE_SCALES, scale => {
             const trial = runOuterLoop(true, scale)
-            const accepted = acceptsTrial(trial.out)
-              && (trial.out?.resourceResult?.overflowSeconds ?? 0) <= TIME_BUDGET_TOLERANCE_SECONDS
-            return { accepted, value: { ...trial, scale } }
+            const trialTruncation = trial.out?.resourceResult?.overflowSeconds ?? 0
+            const accepted = acceptsTrial(trial.out) && trialTruncation <= TIME_BUDGET_TOLERANCE_SECONDS
+            const feasible = accepted && downscaleTrialFeasible({
+              trialNet: frontlineTotalOf(trial.out),
+              trialTruncation,
+              stunEffTime,
+              toleranceSeconds: TIME_BUDGET_TOLERANCE_SECONDS,
+            })
+            return { accepted, feasible, value: { ...trial, scale } }
           })
           if (best) {
             r = best.value

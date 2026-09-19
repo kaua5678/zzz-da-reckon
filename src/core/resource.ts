@@ -59,7 +59,7 @@ function ultimateGiftRowSpec(
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 import * as ResourceCalcHelpers from './resource/helpers'
 import { buildGiftRow } from './resource/giftRows'
-const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, materializeRows, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline } = ResourceCalcHelpers
+const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, materializeRows, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline, TIME_FOLD_CONVERGENCE_SECONDS } = ResourceCalcHelpers
 
 /**
  * 物化 + **相位写入**（阶段1 第二刀，2026-09-09）：产行钩子对 cfg 只读，相位状态由引擎在此按
@@ -472,7 +472,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 1e-6 判据 8 轮耗尽 → timeBudgetConverged=false 而 allAgentsSweep 硬断言恒 true（2026-09-06
     // 实测否决）。1e-3（1 毫秒）容差远小于任何量化残差（坑12 口径 ±1~2s），不改变折叠动力学，
     // 只让「已收敛到浮点噪声」的队如实报收敛。
-    if (maxExcess <= 1e-3) {
+    // 常量与 S4 截断入口容差同源（TIME_FOLD_CONVERGENCE_SECONDS）：这里放行的残差，截断处不得再当溢出。
+    if (maxExcess <= TIME_FOLD_CONVERGENCE_SECONDS) {
       timeBudgetConverged = true
       break
     }

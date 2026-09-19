@@ -674,6 +674,20 @@ export function netFrontlineOccupation(rr: TeamResourceResult): number {
 
 // @fact engine:时间线截断 口径: 资源允许的动作量超过可用前台时按时间线截断（实战 180s 到点结算，不管这套连段打没打完），次数必须整数（floor+小数降序加回装包）、平A填充行先占位不参与截断、砍到0次的行整行消失；overflowSeconds 语义=被截断的秒数 | 据 用户@2026-09-05·复核@2026-09-08 | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/helpers.ts#truncateExecutionsToFrontline | 信 确认
 /**
+ * 折叠环收敛容差（秒）= 截断入口容差（秒）——**同一个数，只此一处**。
+ *
+ * 为什么必须同源（债 2 分诊 R32 实测，2026-09-18）：S2 折叠环按 `maxExcess ≤ 1e-3` 判「账本与物化行已自洽」
+ * 停轮，即上游**允许 1 毫秒残差**；S4 截断入口原用 `used <= room + 1e-9` 判「装不装得下」——
+ * 上游放行的毫秒残差到了下游就是「装不下」，随后**整数装包**把 0.3 毫秒的超出放大成砍掉一整次动作
+ * （实测 3 队：`auto-1591-1481-1311` s0 超 5.9e-4s → 砍连携 0.906s；`auto-1591-1161-1211` s0 超
+ * 1.3e-3s → 砍 0.580s；`auto-1461-1521-1031` s1/s2 超 3.3e-4/9.3e-5s → 砍 5 行 0.434s）。
+ * 这 3 队的「截断」不是资源装不下，是两级容差不一致制造的假截断——它们的账本/行能量落差也随之为假。
+ * 结构性溢出（1431 簇，超 4~71s）不受本容差影响。
+ */
+// @fact engine:时间线截断/入口容差 口径: 截断入口判「装不下」的容差与折叠环收敛判据同一常量 TIME_FOLD_CONVERGENCE_SECONDS=1e-3（上游放行的残差下游不得再当溢出截断；两级容差不一致曾把 ≤1.3ms 超出放大成砍 0.43~0.91s 整次动作，3/104 队假截断） | 据 债2分诊·R32 实测@2026-09-18 | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/helpers.ts#TIME_FOLD_CONVERGENCE_SECONDS | 信 确认
+// ⟳复核: S2 折叠环收敛判据或本入口容差再动时，复核「假截断队数仍为 0」（R32 实测 3/104 队：auto-1591-1481-1311 / auto-1591-1161-1211 / auto-1461-1521-1031 的 cut 应恒为 0）并按 timeGolden 逐队归因；债 2 批 2-1（rowTimeLimit 外环回灌）**未落地**，停在 runAssemble 抽取前（分支 collab/wip-snapshot-20260919）| 到期 2026-12-31
+export const TIME_FOLD_CONVERGENCE_SECONDS = 1e-3
+/**
  * 按可用前台时间**截断**执行计划（通用资源循环规则，2026-09-05 用户口径）。
  *
  * 规则：资源允许的动作量 > 本槽可用前台 ⇒ 在时间线处截断，多余资源不兑现成动作——
@@ -707,7 +721,9 @@ export function truncateExecutionsToFrontline(
   }
   // 平A是填充项先占位：招式行能用的只剩「可用前台 − 平A」
   const room = Math.max(0, availableSeconds - basicTime)
-  if (used <= room + 1e-9) return { executions, cutSeconds: 0, usedSeconds: used, cuts: [] }
+  // 入口容差与折叠环收敛判据同源（见 TIME_FOLD_CONVERGENCE_SECONDS 头注释）：上游已判「自洽」的
+  // 毫秒残差在这里不是溢出。真溢出（结构性，秒级）照常进入整数装包。
+  if (used <= room + TIME_FOLD_CONVERGENCE_SECONDS) return { executions, cutSeconds: 0, usedSeconds: used, cuts: [] }
 
   // 每行的「单位时长」：totalTime / count（count=1 但 totalTime 是聚合量的行，如飞光当量，
   // 也能正确处理）；count=0 的行（纯时间聚合）按整行一个单位处理。
