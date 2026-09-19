@@ -351,7 +351,7 @@
  },
  "auto-1431-1481-1341": {
   "slack": 0,
-  "over": 0,
+  "over": 0.7,
   "stun": 2,
   "outerExit": "cycle"
  },
@@ -368,7 +368,7 @@
   "outerExit": "stable"
  },
  "auto-1431-1491-1341": {
-  "slack": 0,
+  "slack": 1.5,
   "over": 0,
   "stun": 1,
   "outerExit": "cycle"
@@ -520,7 +520,7 @@
  "banyue-liuyin-lucia": {
   "slack": 0,
   "over": 0,
-  "stun": 3,
+  "stun": 2,
   "outerExit": "stable"
  },
  "banyue-qingyi-lucia": {

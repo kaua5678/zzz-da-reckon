@@ -2,6 +2,7 @@ import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { INNER_LOOP_MAX_ITERATIONS, TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
+import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { stunPlanProjectionFromCode } from '@/core/stunPlanProjection'
 import { calcStunAxis } from '@/core/stunAxis'
 import type { InStunAnomalySummary } from '@/types/resource'
@@ -82,6 +83,8 @@ export function useResourceCalc() {
       maxIterations: INNER_LOOP_MAX_ITERATIONS,
       // 失衡计划值 → 计数的投影方式（C7 实验开关，默认 off = 现行口径；见 core/stunPlanProjection.ts）
       stunPlanProjection: stunPlanProjectionFromCode(configStore.getMechanicSetting('time.stunPlanProjection', 0)),
+      // 动态合轴吸收上限（全局变量，用户口径 2026-09-19 v3；见 data/resourceDefaults#DEFAULT_COMBO_ALIGN_ABSORB_RATIO）
+      comboAlignAbsorbRatio: configStore.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO),
       characters,
     }
   })
@@ -168,11 +171,20 @@ export function useResourceCalc() {
       return netFrontlineOccupation(r.resourceResult)
     }
     /**
+     * **待装补齐**（⑥″，2026-09-19）：般岳补齐（轴自动补齐 / 保底4喧响补弹刀）是反馈线程——本轮算出的 `banyueTopUp`
+     * 要到**下一轮**才装进计划。外层落进环时，「输入补齐 = 0、本轮才算出要补 N 次」的成员计划看似最贴预算，实则少装了它自己
+     * 声明的补齐（般岳厚轴 4-环实测：179.2s 的计划装上 46.66s 补齐是 225.9s；保底4喧响 2-环：180.0s 的计划少装 7 弹刀 16.3s）。
+     * 待装 = 本轮补齐时长 − 上一轮（= 本轮输入）补齐时长，取正；stable 停点两轮相等 ⇒ 0，对已收敛的队零影响。
+     * 环内选点、轴退化判据、非轴降配的净占用**都**按「计划 + 待装」算。
+     */
+    const pendingTopUpSeconds = (x: CalcRoundResult | null, prev: CalcRoundResult | null): number =>
+      Math.max(0, (x?.banyueTopUp?.requiredSeconds ?? 0) - (prev?.banyueTopUp?.requiredSeconds ?? 0))
+    /**
      * 跑完整外层不动点。forceNoAxis = 轴退化重算（用户口径 2026-08：轴的资源需求
      * （喧响/嗔火/轴内块 × 窗口数）超出时间预算 → 必要时间 > 战斗时间 → 该轴不可操作
      * （需 boss 秽盾等外界环境才打得成）→ 退化为一般轴（不注入轴块/连携覆盖/自动补齐）重算）。
      */
-    function runOuterLoop(forceNoAxis: boolean, interactionScale?: number): { out: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter'; outerCyclePickedEarlier: boolean } {
+    function runOuterLoop(forceNoAxis: boolean, interactionScale?: number): { out: CalcRoundResult | null; outPrev: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter'; outerCyclePickedEarlier: boolean } {
       let stunCount = lockedStunCount >= 0 ? lockedStunCount : 0
       let out: CalcRoundResult | null = null
       let threads = initialCalcRoundThreads()
@@ -226,21 +238,36 @@ export function useResourceCalc() {
        *      成员间时间差常落在 1e-3 量级，⑥ 首版的 1e-9 容差等于重新掷骰子；
        *   ③ 同级取最后一轮（与旧行为一致 ⇒ 对既有 stable / 未分出高下的 cycle 队逐位零影响）。
        */
-      type OuterCycleMember = { out: CalcRoundResult | null; stunIn: number; next: number }
-      const timeInconsistencyOf = (r: CalcRoundResult | null): number => {
+      type OuterCycleMember = { out: CalcRoundResult | null; prev: CalcRoundResult | null; stunIn: number; next: number }
+      const timeInconsistencyOf = (m: OuterCycleMember): number => {
+        const r = m.out
         if (!r?.resourceResult) return Number.POSITIVE_INFINITY
-        return Math.abs(stunEffTime - frontlineTotalOf(r)) + (r.resourceResult.convergence?.timeTruncatedSeconds ?? 0)
+        return Math.abs(stunEffTime - (frontlineTotalOf(r) + pendingTopUpSeconds(r, m.prev))) + (r.resourceResult.convergence?.timeTruncatedSeconds ?? 0)
       }
       const stunInconsistencyOf = (m: OuterCycleMember): number => Math.abs(m.next - m.stunIn)
-      const pickCanonical = (candidates: OuterCycleMember[]): CalcRoundResult | null => {
+      /** 选中成员的前一轮结果（= 它的输入线程来源；轴退化判据用它算「还没装进计划的补齐量」） */
+      let outPrev: CalcRoundResult | null = null
+      const pickCanonical = (all: OuterCycleMember[]): CalcRoundResult | null => {
+        /**
+         * ⓪ **零窗成员不参选**（⑥″，2026-09-19 吸收上限落地时实测）：输入 stunCount ≈ 0（冷启动首轮 / 时间充足性约束把
+         * 次数钳到 0 的那轮，计划里一个失衡窗都没有）的成员是瞬态——失衡是积蓄的结果不是玩家的选择，只要环里还有带窗成员，
+         * 零窗成员就不能当规范停点。反例：1431/1481/1311 默认口径 0 ↔ 1.02 的 2-环，上限 0.4 后 1 窗成员截断 4.4s
+         * （时间自洽度 8.6 vs 0.001）⇒ 光看时间会再次落到「没有失衡窗」的计划（1431013 次数 16.6→7.3）。
+         * 门槛 = 判稳容差（≈0），**不是** 1：小数失衡（如 0.84 窗）是合法状态，按 1 划线会把 agent:1301 一类 0.84 ↔ 1.82 的环
+         * 误判成「零窗 vs 带窗」而改落点。全员零窗（真 0 失衡队）时照旧全体参选。
+         */
+        const windowed = all.filter(c => c.stunIn >= OUTER_STUN_TOLERANCE)
+        const candidates = windowed.length > 0 ? windowed : all
+        if (candidates.length < all.length) outerCyclePickedEarlier = true
         let best = candidates[candidates.length - 1]
         for (let i = candidates.length - 2; i >= 0; i--) {
           const c = candidates[i]
           const dStun = stunInconsistencyOf(c) - stunInconsistencyOf(best)
           const better = dStun < -OUTER_STUN_TOLERANCE
-            || (dStun <= OUTER_STUN_TOLERANCE && timeInconsistencyOf(c.out) < timeInconsistencyOf(best.out) - AXIS_FALLBACK_TOLERANCE_SEC)
+            || (dStun <= OUTER_STUN_TOLERANCE && timeInconsistencyOf(c) < timeInconsistencyOf(best) - AXIS_FALLBACK_TOLERANCE_SEC)
           if (better) { best = c; outerCyclePickedEarlier = true }
         }
+        outPrev = best.prev
         return best.out
       }
       let outerRounds = 0
@@ -351,8 +378,8 @@ export function useResourceCalc() {
             outerExit = 'cycle'
             // 2-循环两个成员 = 上一轮（输入 prevStunValue → 输出 stunCount）与本轮（输入 stunCount → 输出 next）；按环内判据取点
             out = pickCanonical([
-              { out: outerOutHistory[outerOutHistory.length - 1] ?? null, stunIn: prevStunValue ?? stunCount, next: stunCount },
-              { out, stunIn: stunCount, next },
+              { out: outerOutHistory[outerOutHistory.length - 1] ?? null, prev: outerOutHistory[outerOutHistory.length - 2] ?? null, stunIn: prevStunValue ?? stunCount, next: stunCount },
+              { out, prev: outerOutHistory[outerOutHistory.length - 1] ?? null, stunIn: stunCount, next },
             ])
             break
           }
@@ -442,12 +469,15 @@ export function useResourceCalc() {
             outerExit = 'cycle'
             // 长环（周期 lag）：成员 = 最近一个周期内的各轮结果，按环内判据取点
             const from = Math.max(0, outerOutHistory.length - lag)
-            out = pickCanonical(outerOutHistory.slice(from).map((o, j) => ({ out: o, stunIn: outerStunHistory[from + j], next: outerNextHistory[from + j] })))
+            out = pickCanonical(outerOutHistory.slice(from).map((o, j) => ({ out: o, prev: outerOutHistory[from + j - 1] ?? null, stunIn: outerStunHistory[from + j], next: outerNextHistory[from + j] })))
             break outer
           }
         }
       }
-      return { out, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier }
+      // 非环停点（stable / 真 maxIter）：前一轮 = 历史末项（stable 的本轮未入历史；maxIter 的本轮是历史末项，取其前一项）
+      if (outerExit === 'stable') outPrev = outerOutHistory[outerOutHistory.length - 1] ?? null
+      else if (outerExit === 'maxIter') outPrev = outerOutHistory[outerOutHistory.length - 2] ?? null
+      return { out, outPrev, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier }
     }
 
     let r = runOuterLoop(false)
@@ -499,8 +529,10 @@ export function useResourceCalc() {
        * 可行集的必然产物**，不是状态泄漏：每个 scale 的试算结果与试算次序无关（实测 0.25 单独 vs 跟在
        * 0.0625 后，net 均 180.191/计数均 16/6）；次序只改「哪个 scale 先被采纳」。要动这条得先证可行集下闭。
        */
-      const overBudgetNet = (x: CalcRoundResult | null) =>
-        stunEffTime > 0 && x != null && frontlineTotalOf(x) > stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
+      /** 净占用（计划 + 待装补齐，见 pendingTopUpSeconds） */
+      const netOf = (x: RoundOut) => frontlineTotalOf(x.out) + pendingTopUpSeconds(x.out, x.outPrev)
+      const overBudgetNet = (x: RoundOut) =>
+        stunEffTime > 0 && x.out != null && netOf(x) > stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
       const truncatedToo = (x: CalcRoundResult | null) =>
         (x?.resourceResult?.overflowSeconds ?? 0) > TIME_BUDGET_TOLERANCE_SECONDS
       const overBudget = overBudgetNet
@@ -513,10 +545,11 @@ export function useResourceCalc() {
         // 非法补齐（自动填充交互 > 200s，用户口径 2026-09-01）与超预算同等对待：
         // 轴要的资源根本填不出来 ⇒ 轴不可操作 ⇒ 走同一条退化路径（补齐次数已在源头清零）
         const topUpIllegal = (x: CalcRoundResult | null) => x?.banyueTopUp?.illegal === true
-        if ((overBudget(r.out) || topUpIllegal(r.out)) && r.out?.resolvedAxes?.length) {
+        // 轴太厚判据按「计划 + 待装补齐」算（见 pendingTopUpSeconds 注释）
+        if ((overBudget(r) || topUpIllegal(r.out)) && r.out?.resolvedAxes?.length) {
           hadAxis = true
           const noAxis = runOuterLoop(true)
-          if (!overBudget(noAxis.out) && !topUpIllegal(noAxis.out)) axisFallback = true
+          if (!overBudget(noAxis) && !topUpIllegal(noAxis.out)) axisFallback = true
           r = noAxis // 可行与否都进入非轴态：不可行则走下方降配
         }
         // 非轴降配（用户口径 2026-08-30 + 2026-09-11「必须溢出才能达成目标，就不会强行往上加交互次数」）：
@@ -533,7 +566,7 @@ export function useResourceCalc() {
         //   ③ `slack(trial) ≤ slack(base) + 1s` —— 不许把省下的时间变成留白/发呆（用户：「不搞表面工程」）。
         // 这三条一起 = 「**不比改动前更差**，且尽量消掉截断」⇒ 相对棘轮（只拦变差）**构造上不可能变红**，
         // 变红的只可能是 timeGolden 的硬字段（那是有意的改进，按规则 10 归因后重生）。
-        if ((overBudget(r.out) || truncatedToo(r.out)) && !r.out?.resolvedAxes?.length) {
+        if ((overBudget(r) || truncatedToo(r.out)) && !r.out?.resolvedAxes?.length) {
           // 搜索策略（2026-09-11 第三版，用户裁决）：**枚举候选 scale + 硬约束「真撑得下」取最大可行**。
           // 前两版教训：① 二分假定"可行域是 scale 的下闭区间"，把「截断 ≤1s」并进验收后会在
           // `yixuan-roxy-lucia` 上把好试算全拒（基线 3.78s 超预算）；② "最小截断优先"会把结构性溢出队压到
@@ -548,11 +581,11 @@ export function useResourceCalc() {
           // **根因不是"试算不纯/状态泄漏"**——受控实验证明每个 scale 的试算结果与它前面跑过哪些试算**无关**
           // （0.25 单独跑与跟在 0.0625 后跑，net 均 180.191）；真因是**可行集非下闭**（全库 21 队中 7 队
           // 「存在可行 x 且存在 y<x 不可行」，3 队最小档不可行但更大档可行）⇒「最小档不行 ⇒ 全体不行」的前提为假。
-          const baseNet = frontlineTotalOf(r.out)
+          const baseNet = netOf(r)
           const baseTruncation = r.out?.resourceResult?.overflowSeconds ?? 0
-          const acceptsTrial = (x: CalcRoundResult | null): boolean => x != null && downscaleTrialAccepted({
-            trialNet: frontlineTotalOf(x),
-            trialTruncation: x.resourceResult?.overflowSeconds ?? 0,
+          const acceptsTrial = (x: RoundOut): boolean => x.out != null && downscaleTrialAccepted({
+            trialNet: netOf(x),
+            trialTruncation: x.out.resourceResult?.overflowSeconds ?? 0,
             baseNet,
             baseTruncation,
             stunEffTime,
@@ -561,9 +594,9 @@ export function useResourceCalc() {
           const best = selectDownscaleScale(DOWNSCALE_SCALES, scale => {
             const trial = runOuterLoop(true, scale)
             const trialTruncation = trial.out?.resourceResult?.overflowSeconds ?? 0
-            const accepted = acceptsTrial(trial.out) && trialTruncation <= TIME_BUDGET_TOLERANCE_SECONDS
+            const accepted = acceptsTrial(trial) && trialTruncation <= TIME_BUDGET_TOLERANCE_SECONDS
             const feasible = accepted && downscaleTrialFeasible({
-              trialNet: frontlineTotalOf(trial.out),
+              trialNet: netOf(trial),
               trialTruncation,
               stunEffTime,
               toleranceSeconds: TIME_BUDGET_TOLERANCE_SECONDS,

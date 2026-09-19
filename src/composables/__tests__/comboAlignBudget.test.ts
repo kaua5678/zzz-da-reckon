@@ -15,6 +15,7 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { iterate, netFrontlineOccupation } from '@/core/resource/helpers'
 import { calcTeamResources, clearWarmStartCache } from '@/core/resource'
+import { DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import type { ResourceCalcConfig, IterationState, TeamResourceResult } from '@/types/resource'
 
 beforeEach(() => {
@@ -76,14 +77,17 @@ describe('合轴率抵扣团队时间预算', () => {
     // 无静态合轴率：想打的必做动作超预算 ⇒ **净占用被可行性封顶到预算**（2026-09-05 口径），池被挤光；
     // 封顶的是**净占用**（合轴抵扣不占预算，原样保留），所以毛值可以 >180。
     // 压力的记法自 R37-J5 v2（动态合轴，用户口径 2026-09-19）起变了：非轴多人队的溢出先由**队友前台按溢出量被合轴吸收**
-    // （dynamicComboAlignSeconds，已计入 comboAlignCredit），吸收得下就不再是「想打却装不下」的 overflowSeconds
-    // ⇒ 对照组 overflow = 0、动态吸收 > 0（v2 之前这里是 overflow > 0）。
+    // （dynamicComboAlignSeconds，已计入 comboAlignCredit）；v3（同日）加了**吸收上限**：每名队友最多被吸收其净必要的 40%
+    // （`DEFAULT_COMBO_ALIGN_ABSORB_RATIO`），「超过了就无力合轴」⇒ 本夹具溢出远超容量：对照组 动态吸收 > 0 **且** overflow > 0
+    // （吸收到上限、剩余装不下如实上报），吸收总量 ≤ 0.4 × Σ非操作角色净必要。
     expect(sumNecessaryNet(s0)).toBeLessThanOrEqual(cold.totalTime + 1e-6)
     expect(sumNecessaryNet(s0)).toBeGreaterThan(cold.totalTime - 1)
     expect(sumNecessary(s0)).toBeGreaterThan(cold.totalTime)
     expect(sumBasics(s0)).toBeCloseTo(0, 6)
-    expect(cold.overflowSeconds).toBe(0)
+    expect(cold.overflowSeconds).toBeGreaterThan(0)
     expect(sumDynamic(s0)).toBeGreaterThan(0)
+    // 「吸收 ≤ 上限×净必要」的恒等式在 dynamicComboAlign.test（scale=1 的终态）钉；这里封顶后 necessaryTime 已乘 feasibleScale，
+    // 从输出态反推不出吸收前净必要，不重复钉
 
     const warm = deepCopy(cfg)
     for (const c of warm.characters) c.chainComboAlignRatio = 1
@@ -239,14 +243,16 @@ describe('端到端（折叠循环 + 超时判定同口径）', () => {
     const base = deepCopy(cfg)
     const rr0 = calcTeamResources(base)
     // 无静态合轴率：净占用被可行性封顶到预算（不再虚高），平A池被挤光。压力自 R37-J5 v2（动态合轴，2026-09-19）起
-    // 体现在 timeAllocation.dynamicComboAlignSeconds（队友前台按溢出量被合轴吸收），吸收得下就没有装配截断
-    // ⇒ overflowSeconds = 0（v2 之前是 > 0），而不是"账本 > 180"这种虚高可观测。
+    // 先体现在 timeAllocation.dynamicComboAlignSeconds（队友前台按溢出量被合轴吸收），v3 吸收上限 40% 之后吸收不完的部分
+    // 仍是装配截断 ⇒ 本夹具 overflowSeconds > 0（v2 无上限时曾为 0），而不是"账本 > 180"这种虚高可观测。
     const necNet0 = rr0.characters.reduce(
       (a, c) => a + Math.max(0, c.timeAllocation.necessaryTime - (c.timeAllocation.comboAlignCredit ?? 0)), 0)
     expect(necNet0).toBeLessThanOrEqual(rr0.totalTime + 1e-6)
-    expect(rr0.overflowSeconds ?? 0).toBe(0)
+    expect(rr0.overflowSeconds ?? 0).toBeGreaterThan(0)
     const dynamic0 = rr0.characters.reduce((a, c) => a + (c.timeAllocation.dynamicComboAlignSeconds ?? 0), 0)
-    expect(dynamic0).toBeGreaterThan(0)
+    const cap0 = rr0.characters.reduce((a, c) => a + DEFAULT_COMBO_ALIGN_ABSORB_RATIO * Math.max(0, c.timeAllocation.necessaryTime - (c.timeAllocation.comboAlignCredit ?? 0) + (c.timeAllocation.dynamicComboAlignSeconds ?? 0)), 0)
+    expect(dynamic0).toBeGreaterThanOrEqual(0)
+    expect(dynamic0).toBeLessThanOrEqual(cap0 + 1e-6)
     expect(rr0.characters.reduce((a, c) => a + c.timeAllocation.basicAttackTime, 0))
       .toBeLessThan(1e-6)
 

@@ -1025,6 +1025,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     }
   }
   let tail = runTailPipeline()
+  /** 重折环之前的初装截断（同一次运行内的读数；诊断量 `truncationBeforeRefoldSeconds`，只在进了重折环时上报） */
+  const truncationBeforeRefold = tail.timeTruncatedSeconds
 
   // ===== 债 2 批 2-1：截断外环回灌（rowTimeLimit 重折环，2026-09-19 R37-J2 ②）=====
   // 病灶：S1 迭代按**未截断行**计回能/喧响 ⇒ 强特/终结次数被 180s 装不下的行推高 ⇒ 招式行塞爆前台被 S4 截断 ⇒
@@ -1188,6 +1190,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       truncationBySlot: truncationBySlot.length > 0 ? truncationBySlot : undefined,
       truncationRefoldPasses: truncationRefoldPasses > 0 ? truncationRefoldPasses : undefined,
       truncationRefoldRejected: truncationRefoldRejected || undefined,
+      truncationBeforeRefoldSeconds: truncationRefoldPasses > 0 ? truncationBeforeRefold : undefined,
     },
   }
 }

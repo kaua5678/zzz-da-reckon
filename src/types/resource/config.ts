@@ -823,6 +823,12 @@ export interface ResourceCalcConfig {
    * 本字段只作**轴态判定**（赠行预留/行口径、必要前台封顶豁免等），不再携带次数。
    */
   axisMode?: boolean
+  /**
+   * 动态合轴吸收上限（0..1；用户口径 2026-09-19 v3「默认队友的 40% 可以被吸收，超过了就无力合轴」）：
+   * 非操作角色的吸收容量 = 本值 × 其净必要前台。缺省 `DEFAULT_COMBO_ALIGN_ABSORB_RATIO`（0.4）；0 = 不吸收。
+   * 编排层从机制参数 `time.comboAlignAbsorbRatio` 注入；难度阶梯的「全关」置 0、G5 分档推进到用户上限。
+   */
+  comboAlignAbsorbRatio?: number
   /** 特殊动作喧响奖励（弹刀/闪反/连携/快支，含伴随50%）按槽位注入；参与终结技次数推导 */
   specialActionDecibelBonusPerSlot?: number[]
   /** 异常/紊乱/乱流喧响奖励（含伴随50%）按槽位注入，由上一轮异常池结果回填；参与终结技次数推导 */

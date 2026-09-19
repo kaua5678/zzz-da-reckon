@@ -23,13 +23,25 @@
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
+import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 
 export interface LadderCtx {
   config: ReturnType<typeof useConfigStore>
   calc: ReturnType<typeof useResourceCalc>
+  /**
+   * 用户的动态合轴吸收上限（机制参数 `time.comboAlignAbsorbRatio` 在「全关」之前的值）。
+   * `clearDifficultyLevers` 把上限置 0（全关 = 不吸收）前记在这里，G5 分档推进到它为止；缺省 = 引擎缺省 0.4。
+   */
+  absorbCap?: number
 }
 
 const GUARANTEE_KEYS = ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate'] as const
+
+/** G5 每档推进量 = 用户上限的一半（0 → cap/2 → cap，两档；与旧「50% → 100%」的两档节奏同构） */
+function absorbCapOf(ctx: LadderCtx): number {
+  const cap = ctx.absorbCap ?? ctx.config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
+  return Number.isFinite(cap) ? Math.min(1, Math.max(0, cap)) : DEFAULT_COMBO_ALIGN_ABSORB_RATIO
+}
 
 export interface DifficultyGoal {
   id: string
@@ -67,30 +79,25 @@ export const DIFFICULTY_GOALS: DifficultyGoal[] = [
   },
   {
     /**
-     * **合轴率优化（自动）** —— 用户 2026-09-10 口径：「合轴率在资源利用率处修改，但那是手动的，
+     * **合轴吸收（自动）** —— 用户 2026-09-10 口径：「合轴率在资源利用率处修改，但那是手动的，
      * 之前没考虑自动修改」+「把队友的前台时间进行合轴率的优化，再次解放出来部分可使用的前台时间，
      * 进而让主c的资源回复和平a时间更多，导致总伤增加」。
      *
-     * 手填入口在结果页「合轴率调节」弹窗（slot × moveId，缺省 0）；这里把它变成**可自动推进的杠杆**：
-     * 每档把**该队执行计划里**每个招式的合轴率 +50%（上限 100%），由阶梯按 Δ伤害/Δ难度 决定值不值得做。
-     * 引擎只对 6 类招式消费合轴率（强特/终结技/连携技/闪避反击/轻弹刀/支援突击，见
-     * `resourceCalc/helpers#buildCharConfig` 的 `ov(...)`），其余 moveId 写进去是无害空操作。
-     * `repeatable`：50% → 100% 两档，边际收益掉到门槛以下就自动停。
+     * **v2/v3 口径（用户 2026-09-19）**：合轴不是录死的招式合轴率，而是引擎在溢出时按溢出量动态吸收队友前台
+     * （`calcTimeAllocation` 动态合轴），且**队友前台最多被吸收上限比例**（全局变量，缺省 40%；「超过了就无力合轴了」）。
+     * 于是杠杆 = 机制参数 `time.comboAlignAbsorbRatio`：全关 = 0（不吸收），每档 +上限/2，到上限为止
+     * （0 → 20% → 40%）——曲线上因此有「不吸收 / 吸收」两种强度（用户：「设置上限后，强度在难度曲线上就有不吸收和吸收的区分了」）。
+     * 没有溢出的队吸收量恒 0 ⇒ 增益 0 ⇒ 阶梯自然丢弃（不像旧的静态合轴率会给任何队白送 credit）。
+     * 手填的招式合轴率覆盖（结果页「合轴率调节」弹窗）仍是独立的手动通道，全关照旧清掉。
+     * `repeatable`：两档，边际收益掉到门槛以下就自动停。
      */
-    id: 'G5', label: '合轴率优化（自动：把队友前台压成并行）', cost: 1, mutates: true, repeatable: true,
+    id: 'G5', label: '合轴吸收（自动：队友前台按上限分档压成并行）', cost: 1, mutates: true, repeatable: true,
     apply: ctx => {
-      const rr = ctx.calc.resourceResult.value
-      if (!rr) return
-      const STEP = 0.5
-      for (const ch of rr.characters) {
-        for (const exec of ch.executions ?? []) {
-          const moveId = exec.moveId
-          if (!moveId || (exec.totalTime ?? 0) <= 0) continue
-          const cur = ctx.config.getComboAlignOverride(ch.slot, moveId, 0)
-          if (cur >= 1) continue
-          ctx.config.setComboAlignOverride(ch.slot, moveId, Math.min(1, Math.round((cur + STEP) * 100) / 100))
-        }
-      }
+      const cap = absorbCapOf(ctx)
+      if (cap <= 0) return
+      const cur = ctx.config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
+      if (cur >= cap - 1e-9) return
+      ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, Math.min(cap, Math.round((cur + cap / 2) * 1e4) / 1e4))
     },
   },
 ]
@@ -104,6 +111,9 @@ export function clearDifficultyLevers(ctx: LadderCtx) {
   ctx.config.setMechanicSetting('time.stunPlanProjection', 0)
   // 合轴率优化也是「优化目标」：全关 = 不动手动/表格给的合轴率（用户手填值由调用方快照还原）
   for (let s = 0; s < 3; s++) ctx.config.clearComboAlignOverrides(s)
+  // 动态合轴吸收：全关 = 不吸收（0）；用户上限先记进 ctx，G5 分档推进到它（调用方快照/还原 mechanicSettings）
+  if (ctx.absorbCap === undefined) ctx.absorbCap = absorbCapOf(ctx)
+  ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0)
 }
 
 /**
@@ -123,6 +133,8 @@ interface LadderMutSnap {
   p: number[]
   /** 合轴率覆盖（slot → moveId → ratio）；G5 会写它，试开回滚必须一起还原 */
   align: Record<number, Record<string, number>>
+  /** 动态合轴吸收上限（机制参数）；G5 写它，试开回滚必须一起还原 */
+  absorb: number
   /** 轴状态（切轴档会写 stunAxes/stunAxisPlans/useStunAxis，试开回滚必须一起还原） */
   axes: unknown[]
   axisPlans: unknown[]
@@ -133,6 +145,7 @@ function snapshot(ctx: LadderCtx): LadderMutSnap {
     w: [0, 1, 2].map(s => ctx.config.team[s]!.basicAttackTimeWeight),
     p: [0, 1, 2].map(s => ctx.config.team[s]!.parryCount ?? 0),
     align: JSON.parse(JSON.stringify(ctx.config.comboAlignOverrides ?? {})),
+    absorb: ctx.config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO),
     axes: JSON.parse(JSON.stringify(ctx.config.stunAxes)),
     axisPlans: JSON.parse(JSON.stringify(ctx.config.stunAxisPlans)),
     useStunAxis: ctx.config.useStunAxis,
@@ -149,6 +162,7 @@ function restore(ctx: LadderCtx, snap: LadderMutSnap) {
       ctx.config.setComboAlignOverride(s, moveId, ratio)
     }
   }
+  ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, snap.absorb)
   ctx.config.stunAxes.splice(0, ctx.config.stunAxes.length, ...(snap.axes as never[]))
   ctx.config.stunAxisPlans.splice(0, ctx.config.stunAxisPlans.length, ...(snap.axisPlans as never[]))
   ctx.config.useStunAxis = snap.useStunAxis

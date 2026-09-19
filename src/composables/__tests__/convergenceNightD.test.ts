@@ -445,7 +445,10 @@ describe('夜D · 层③ 真管线端到端', () => {
     // 才降到 64.9）、终结 8/3/3 → 7/3/2，般岳保底补齐量在新账本/新时间面下算得 3 次弹刀（6.999s），此前 6 次（13.998s）。
     // 本用例锁的是「模块写入 → 结果 cfg 可见」这层，数值随口径变化按规则 10 归因后更新
     // （探针三态见 docs/mcp-debt2-blade1-feasibility-v4.md §7/§8）。
-    expect(await readBanyueCfg(1)).toEqual({ parry: 3, dual: 0, requiredSeconds: 6.9990000000000006, illegal: false })
+    // 2026-09-19 动态合轴吸收上限 40%（用户 v3）+ ⑥″（环内选点计「待装补齐」）：该队自由口径不再被队友全额吸收，降配 0.75 后
+    // 保底补齐线程在「0 ↔ 7 弹刀」间 2-环；⑥″ 把「本轮才算出要补、计划里还没装」的补齐算进时间自洽度 ⇒ 落点 = 装了补齐的那轮，
+    // 新账本/新时间面下算得 4 次弹刀（9.332s）；ratio=1 时仍是 3 次（6.999s）。
+    expect(await readBanyueCfg(1)).toEqual({ parry: 4, dual: 0, requiredSeconds: 9.332, illegal: false })
   })
 
   it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 6 不是恒写）', async () => {

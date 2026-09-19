@@ -17,6 +17,7 @@ import { DIFFICULTY_GOALS, clearDifficultyLevers, climbDifficultyLadder, type La
 import { applyTeamToStore, computeDifficulty } from '@/composables/teamCompare'
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/helpers'
 import { teamPresets } from '@/data/teamPresets'
+import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
 beforeEach(() => {
@@ -256,36 +257,44 @@ describe('时间压力 = 硬溢出 + 合轴抵扣（用户 2026-09-11：合轴�
   }, 300_000)
 })
 
-describe('G5 合轴率优化（自动杠杆，用户 2026-09-10：手填→自动）', () => {
-  it('套用 G5 ⇒ 合轴率覆盖被写入、saved 变大、伤害不降（自动优化真的省出前台时间）', async () => {
+describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动；v3 2026-09-19：动态吸收 + 上限分档）', () => {
+  it('套用 G5 ⇒ 吸收上限 0 → cap/2 → cap 分档推进、saved 变大、伤害不降（自动吸收真的省出前台时间）', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
+    // v3 下合轴只在**溢出队**发生（没有溢出就没有可吸收的东西，静态合轴率那种「白送 credit」已停用）
+    // ⇒ 样例换成时间压力队 auto-1371-1481-1451（实测 缺省 0.4：溢出 25.4s ≤ 容量，全额吸收；0 → 0.2 → 0.4 时 dmg 70.9M → 72.9M → 76.9M）
+    const preset = teamPresets.find(p => p.id === 'auto-1371-1481-1451')!
     const ctx = { config, calc }
-    clearDifficultyLevers(ctx)                 // 全关基线（会清掉合轴率覆盖）
+    clearDifficultyLevers(ctx)                 // 全关基线（会清掉合轴率覆盖、吸收上限置 0 并记下用户上限）
     applyTeamToStore(config, preset)
     const d0 = calc.teamTotalDamage.value
     const saved0 = frontlineOccupationBreakdown(calc.resourceResult.value!).saved
-    expect(saved0).toBeCloseTo(0, 6)           // 缺省合轴率全 0（opt-in）⇒ 全关 saved = 0
+    expect(saved0).toBeCloseTo(0, 6)           // 全关 = 不吸收 ⇒ saved = 0
+    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0)
 
     const g5 = DIFFICULTY_GOALS.find(g => g.id === 'G5')!
     g5.apply(ctx)
     const d1 = calc.teamTotalDamage.value
     const saved1 = frontlineOccupationBreakdown(calc.resourceResult.value!).saved
-    expect(Object.keys(config.comboAlignOverrides ?? {}).length).toBeGreaterThan(0) // 覆盖写进去了
-    expect(saved1).toBeGreaterThan(0.5)        // 解放出前台时间
-    expect(d1).toBeGreaterThanOrEqual(d0)      // 伤害不降（自动合轴率的收益）
-    // 可重复：再套一次 ⇒ 合轴率到 100%，saved 更大
+    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO / 2, 6) // 第一档 = 上限一半
+    expect(Object.keys(config.comboAlignOverrides ?? {}).length).toBe(0) // 不再写静态合轴率覆盖
+    expect(saved1).toBeGreaterThan(0.5)        // 解放出前台时间（队友前台被吸收）
+    expect(d1).toBeGreaterThanOrEqual(d0)      // 伤害不降
+    // 可重复：再套一次 ⇒ 到用户上限（缺省 0.4），saved 更大；第三次 = 空操作（已到上限）
     g5.apply(ctx)
+    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 6)
     expect(frontlineOccupationBreakdown(calc.resourceResult.value!).saved).toBeGreaterThan(saved1)
+    expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(d1)
+    g5.apply(ctx)
+    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 6)
   }, 300_000)
 
-  it('试开回滚不留痕：G5 没被录取时，合轴率覆盖必须还原（阶梯快照含 comboAlignOverrides）', async () => {
+  it('试开回滚不留痕：G5 没被录取时，吸收上限与合轴率覆盖必须还原（阶梯快照含两者）', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
+    const preset = teamPresets.find(p => p.id === 'auto-1371-1481-1451')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
@@ -299,6 +308,7 @@ describe('G5 合轴率优化（自动杠杆，用户 2026-09-10：手填→自�
     expect(r.opened).toEqual([])
     expect(r.dropped.map(d => d.id)).toEqual(['G5'])
     expect(JSON.stringify(config.comboAlignOverrides ?? {})).toBe(before) // 没留痕
+    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0) // 吸收上限也还原到全关的 0
     expect(frontlineOccupationBreakdown(calc.resourceResult.value!).saved).toBeCloseTo(0, 6)
   }, 300_000)
 })
@@ -308,12 +318,12 @@ describe('合轴节省秒数上曲线（用户：只需管合轴了多少时间�
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
+    const preset = teamPresets.find(p => p.id === 'auto-1371-1481-1451')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
     const p0 = captureKeyCounts(calc)
-    expect(p0['合轴节省']).toBeCloseTo(0, 6)              // 全关：没做合轴率优化
+    expect(p0['合轴节省']).toBeCloseTo(0, 6)              // 全关：不吸收
     DIFFICULTY_GOALS.find(g => g.id === 'G5')!.apply(ctx)
     const p1 = captureKeyCounts(calc)
     const d = diffKeyCounts(p0, p1).find(c => c.label === '合轴节省')

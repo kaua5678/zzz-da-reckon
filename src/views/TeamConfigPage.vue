@@ -165,6 +165,20 @@
                         <n-checkbox :checked="guaranteeUltimate" @update:checked="v => setGuarantee('ultimate', v)">保底4喧响</n-checkbox>
                         <span class="muted" style="font-size: 12px; margin-left: 4px">{{ guaranteeUltimateHint }}</span>
                       </div>
+                      <!-- 动态合轴吸收上限（全局变量，用户口径 2026-09-19：默认队友的 40% 可以被吸收，超过了就无力合轴） -->
+                      <div class="guarantee-row" title="Σ必要前台超预算时，队友前台按溢出量被合轴吸收（与操作角色并行），每名队友最多被吸收其净必要前台的这个比例；超过就无力合轴，剩余溢出照旧封顶/装配截断。难度曲线的「全关」按 0 算，G5 分档推进到此上限。">
+                        <span class="section-title" style="margin-right: 12px">合轴吸收上限</span>
+                        <n-input-number
+                          :value="comboAlignAbsorbPct"
+                          :min="0"
+                          :max="100"
+                          :step="5"
+                          size="small"
+                          style="width: 100px"
+                          @update:value="v => setComboAlignAbsorbPct(v ?? 40)"
+                        />
+                        <span class="muted" style="font-size: 12px; margin-left: 8px">% 队友前台可被吸收（0 = 不吸收；缺省 40）</span>
+                      </div>
                       <div class="section-title">战斗动作次数</div>
                       <n-grid cols="6" :x-gap="8">
                       <n-gi>
@@ -856,7 +870,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useStatLabel } from '@/composables/useStatLabel'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanel } from '@/composables/resourceCalc/helpers'
-import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
+import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO, ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 import CharacterCard from '@/components/CharacterCard.vue'
 import StatPanel from '@/components/StatPanel.vue'
 import { calcPanel } from '@/core/panel'
@@ -1103,6 +1117,13 @@ const guaranteeUltimateHint = computed(() => {
 })
 function setGuarantee(kind: 'stun' | 'fury' | 'ultimate', v: boolean) {
   configStore.setMechanicSetting(`guarantee.${kind}`, v ? 1 : 0)
+}
+// 动态合轴吸收上限（机制参数 time.comboAlignAbsorbRatio，0..1；页面按百分比录入）
+const comboAlignAbsorbPct = computed(() =>
+  Math.round(configStore.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO) * 100))
+function setComboAlignAbsorbPct(v: number) {
+  const pct = Number.isFinite(v) ? Math.min(100, Math.max(0, v)) : DEFAULT_COMBO_ALIGN_ABSORB_RATIO * 100
+  configStore.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, Math.round(pct) / 100)
 }
 // 般岳轴模式自动补齐（保底语义）：弹刀/双反在交互栏输入之上补的量（懒计算，仅般岳选中时求值）
 const { banyueInteractionTopUp, autoPreset, parrySplitResult, resourceResult } = useResourceCalc()

@@ -21,7 +21,7 @@ import { computeBanyueCycleFromCfg, readAxisExCounts } from '@/mechanics/agents/
 import { crossAgentSupplyAt, findCrossAgentSupplySlots, giftDecibelForCfg, neighborUltEnergyByProvider } from './crossAgentSupply'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { resolveExtraExCount } from '@/data/exSpecialPlans'
-import { EVADE_ASSIST_ACTION_TIME_SECONDS, EVADE_ASSIST_MOVE_ID } from '@/data/resourceDefaults'
+import { DEFAULT_COMBO_ALIGN_ABSORB_RATIO, EVADE_ASSIST_ACTION_TIME_SECONDS, EVADE_ASSIST_MOVE_ID } from '@/data/resourceDefaults'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 
 /**
@@ -1634,15 +1634,36 @@ export function iterate(
   // 只有吸收不完的剩余才走下面的 feasibleScale 封顶 / 装配截断。单人 ≤ 战斗时间的上限不变（iterate 单角色前线上限）。
   // 实测（预设口径）只有 5/104 队会进这里（Σ必要 ≈ 预算、Σcredit = 0 的 1431 簇等），其余 99 队 excess ≤ 0 ⇒ 零分支。
   // 验：src/core/__tests__/dynamicComboAlign.test.ts；轴模式不做（轴预设自带 axisOverlap 口径）。
+  // **吸收上限**（v3，用户口径 2026-09-19「全部吸收比较难，默认队友的 40% 可以被吸收（合轴率），超过了就无力合轴了」）：
+  // 每名非操作角色的容量 = `comboAlignAbsorbRatio` × 其净必要（缺省 0.4，全局变量、可调、0 = 不吸收）；
+  // 吸收不完的溢出**不再**被队友兜住 ⇒ 回到封顶 / 装配截断——结构性溢出队（1431 簇）在自由口径下重新可见。
+  // @fact engine:动态合轴吸收上限 口径: 非操作角色可被合轴吸收的前台 ≤ comboAlignAbsorbRatio × 其净必要前台（全局变量，缺省 0.4，0 = 不吸收）；吸收总量 = min(溢出, Σ容量)，超出部分照旧封顶/截断 | 据 用户@2026-09-19「全部吸收比较难…默认队友的40%可以被吸收（合轴率），超过了就无力合轴了」 | 验 src/core/__tests__/dynamicComboAlign.test.ts | 锚 src/core/resource/helpers.ts#calcTimeAllocation | 信 确认
+  // ⟳复核: 用户再调缺省比例或改为按角色/按招式的上限时，复核「吸收总量 == min(溢出, Σ 0.4×净必要)」恒等式（dynamicComboAlign.test ①）+ 1431 簇预设口径截断量（timeGolden over 字段）| 到期 2026-12-31
+  const absorbRatioRaw = globalCfg.comboAlignAbsorbRatio ?? DEFAULT_COMBO_ALIGN_ABSORB_RATIO
+  const absorbRatio = Number.isFinite(absorbRatioRaw) ? Math.min(1, Math.max(0, absorbRatioRaw)) : DEFAULT_COMBO_ALIGN_ABSORB_RATIO
   const dynamicComboAlign: number[] = configs.map(() => 0)
-  if (!axisMode && sumNetNecessary > budget + 1e-9 && configs.length > 1) {
+  if (!axisMode && absorbRatio > 0 && sumNetNecessary > budget + 1e-9 && configs.length > 1) {
     let operator = 0
     for (let i = 1; i < netNecessary.length; i++) if (netNecessary[i] > netNecessary[operator]) operator = i
-    const capacity = netNecessary.map((n, i) => (i === operator ? 0 : Math.max(0, n)))
-    const capTotal = capacity.reduce((a, b) => a + b, 0)
-    if (capTotal > 1e-9) {
-      const take = Math.min(sumNetNecessary - budget, capTotal)
-      for (let i = 0; i < capacity.length; i++) dynamicComboAlign[i] = capacity[i] / capTotal * take
+    // 上限按**封顶后的最终前台**算，不是按吸收前的净必要：吸收不完的溢出会让下方 feasibleScale 把「未被吸收的部分」等比压缩，
+    // 而被吸收的部分不压 ⇒ 若按吸收前净必要取 40%，队友终态前台里被并行的份额会远超 40%（实测 auto-1431-1481-1491：
+    // 1481 终态 67.8s 里 57.1s 被判并行 = 84%）。令 s = 封顶比例、r = 上限，则约束 dyn_i ≤ r·[(net_i − dyn_i)·s + dyn_i]
+    // ⇔ dyn_i ≤ net_i · g(s)，g(s) = r·s / (1 − r + r·s)；s 又由吸收量决定（s = 预算 / (Σ净必要 − Σdyn)）⇒ 小不动点迭代
+    // （g 单调递减、有下界，实测 ≤ 5 轮到 1e-9）。溢出 ≤ 容量时 s = 1、g = r，一轮即收敛，与无上限时的分摊公式逐位一致。
+    const teammateNet = netNecessary.map((n, i) => (i === operator ? 0 : Math.max(0, n)))
+    const teammateTotal = teammateNet.reduce((a, b) => a + b, 0)
+    if (teammateTotal > 1e-9) {
+      let g = absorbRatio
+      let take = 0
+      for (let it = 0; it < 8; it++) {
+        take = Math.min(sumNetNecessary - budget, g * teammateTotal)
+        const remain = sumNetNecessary - take
+        const s = remain > budget ? budget / remain : 1
+        const gNext = absorbRatio * s / (1 - absorbRatio + absorbRatio * s)
+        if (Math.abs(gNext - g) < 1e-9) break
+        g = gNext
+      }
+      for (let i = 0; i < teammateNet.length; i++) dynamicComboAlign[i] = teammateNet[i] / teammateTotal * take
     }
   }
   const dynamicTotal = dynamicComboAlign.reduce((a, b) => a + b, 0)

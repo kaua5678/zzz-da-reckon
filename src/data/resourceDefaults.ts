@@ -19,6 +19,15 @@ export const ULTIMATE_COST_DEFAULT = 3000
  */
 export const EVADE_ASSIST_ACTION_TIME_SECONDS = 1.166
 /**
+ * 动态合轴吸收上限（队友前台可被合轴吸收的比例，全局变量；用户口径 2026-09-19 v3）：
+ * 「全部吸收比较难——默认队友的 40% 可以被吸收（合轴率），超过了就无力合轴了。」
+ * 引擎侧每名非操作角色的吸收容量 = 本值 × 其净必要前台；吸收不完的溢出照旧走封顶 / 装配截断。
+ * 用户可在队伍配置页改（机制参数 `time.comboAlignAbsorbRatio`，0 = 不吸收）；难度阶梯把它当杠杆分档推进（G5）。
+ */
+export const DEFAULT_COMBO_ALIGN_ABSORB_RATIO = 0.4
+/** 机制参数键：动态合轴吸收上限（0..1），缺省 DEFAULT_COMBO_ALIGN_ABSORB_RATIO */
+export const COMBO_ALIGN_ABSORB_RATIO_SETTING = 'time.comboAlignAbsorbRatio'
+/**
  * 回避支援合成执行行的 moveId。catalog 里**不存在**这个 move（raw 无倍率块），故走
  * 「零倍率、只占时间」的合成行写法（先例：般岳后摇 / 猫又超凶爪印 `damageMultiplierOverride`）。
  */

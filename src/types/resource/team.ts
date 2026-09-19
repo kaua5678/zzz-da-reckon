@@ -62,6 +62,11 @@ export interface ConvergenceReport {
   truncationRefoldPasses?: number
   truncationRefoldRejected?: boolean
   /**
+   * 重折环之前的初装截断秒数（**同一次运行**里的读数；只在 `truncationRefoldPasses ≥ 1` 时上报）。
+   * 判「重折有没有把 Σcut 压小」必须拿它比，不能拿「另跑一遍关掉重折」的读数——外层不动点的轨迹会随之不同（2026-09-19 实测）。
+   */
+  truncationBeforeRefoldSeconds?: number
+  /**
    * 失衡外层不动点（runCalcRound 环）是否真收敛。
    * 由编排层回填；`calcTeamResources` 单独调用时保持 false（它看不到外层）。
    */

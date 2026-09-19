@@ -37,14 +37,13 @@ function expectedRowEnergy(cfg: CharacterOperationConfig, row: SkillExecution): 
 }
 
 /**
- * 锁窗夹具（预设配置 + stunCountLock=3）重折环之前的初装截断：2026-09-19 7680ec0 上把 ROW_REFOLD_MAX_PASSES 临时置 0 实测
- * （重折环若失效读数会回到这里）。重折后实测 23.416（1 轮到不动点，整数次数没被能量差撬动 ⇒ 等量接受）/ 26.745（2 轮，−6.6s）。
+ * 锁窗夹具（预设配置 + stunCountLock=3）——结构性溢出队。重折前后的对照读 `convergence.truncationBeforeRefoldSeconds`（同一次运行），
+ * 不再用「关掉重折另跑一遍」的硬编码读数：外层不动点的轨迹会随重折与否不同，两次运行的「初装」不是同一个量
+ * （2026-09-19 实测：吸收上限 40% 后 -1491 关重折读 103.2s，而带重折那次运行的初装是 ~110s，重折后 109.4s ⇒ 假「变大」）。
+ * 数值史（供归因）：7680ec0 全额吸收 23.4→23.4 / 33.3→26.7；上限 40%（按吸收前净必要）39.7→39.7 / 50.2→37.1；上限按终态前台（g(s)）见 ① 断言。
  */
 const OVERFLOW_FIXTURE_STUN_LOCK = 3
-const BEFORE_REFOLD_CUT: Record<string, number> = {
-  'auto-1431-1481-1491': 23.416,
-  'auto-1431-1481-1341': 33.349,
-}
+const OVERFLOW_FIXTURES = ['auto-1431-1481-1491', 'auto-1431-1481-1341'] as const
 
 async function evalPreset(id: string, stunCountLock?: number) {
   const p = teamPresets.find(x => x.id === id)!
@@ -59,6 +58,7 @@ async function evalPreset(id: string, stunCountLock?: number) {
   const cfgs = (calc.resourceConfig.value?.characters ?? []) as unknown as Record<string, unknown>[]
   return {
     cut: rr.convergence?.timeTruncatedSeconds ?? 0,
+    before: rr.convergence?.truncationBeforeRefoldSeconds,
     bySlot: rr.convergence?.truncationBySlot ?? [],
     passes: rr.convergence?.truncationRefoldPasses,
     rejected: rr.convergence?.truncationRefoldRejected,
@@ -72,13 +72,15 @@ async function evalPreset(id: string, stunCountLock?: number) {
 describe('债 2 批 2-1 · 截断外环回灌（rowTimeLimit 重折环）', () => {
   it('① 结构性溢出两队（锁窗夹具）：重折后 Σcut 只减不增、至少一支明显变小（反空洞：机制真的跑了），且仍如实上报残留', async () => {
     let totalGain = 0
-    for (const [id, before] of Object.entries(BEFORE_REFOLD_CUT)) {
+    for (const id of OVERFLOW_FIXTURES) {
       const r = await evalPreset(id, OVERFLOW_FIXTURE_STUN_LOCK)
-      // 接受判据 = Σcut 不增（等量接受属正常：整数次数没被能量差撬动）；具体值不钉（锁窗夹具不进 golden）
-      expect(r.cut, `${id} 重折后截断不得大于初装 ${before}s`).toBeLessThanOrEqual(before + 1e-3)
       expect(r.passes, `${id} 初装截断 > 1s 必须进重折环`).toBeGreaterThanOrEqual(1)
+      const before = r.before
+      expect(before, `${id} 进了重折环必须上报重折前初装截断`).toBeGreaterThan(TIME_BUDGET_TOLERANCE_SECONDS)
+      // 接受判据 = Σcut 不增（等量接受属正常：整数次数没被能量差撬动）；具体值不钉（锁窗夹具不进 golden）
+      expect(r.cut, `${id} 重折后截断不得大于同一次运行的初装 ${before}s`).toBeLessThanOrEqual(before! + 1e-3)
       expect(r.cut, `${id} 是结构性溢出（必要行 > 预算），重折不可能清零；清零 = 口径变了，去看 golden`).toBeGreaterThan(TIME_BUDGET_TOLERANCE_SECONDS)
-      totalGain += before - r.cut
+      totalGain += before! - r.cut
       // 残留截断必须逐槽如实上报，Σ 与总量一致
       const sum = r.bySlot.reduce((a, e) => a + e.cutSeconds, 0)
       expect(sum).toBeCloseTo(r.cut, 6)
@@ -87,7 +89,7 @@ describe('债 2 批 2-1 · 截断外环回灌（rowTimeLimit 重折环）', () =
         expect(Number.isInteger(ch.ultimateCount ?? 0), `${id} ${ch.agentId} ultimateCount 应为整数`).toBe(true)
       }
     }
-    // 反空洞：两支合计至少减 5s（实测 0 + 6.6s）；门槛只拦「机制失效」
+    // 反空洞：两支合计至少减 5s；门槛只拦「机制失效」
     expect(totalGain, '重折环对结构性溢出夹具应有可见收益').toBeGreaterThan(5)
   }, 120_000)
 
@@ -106,10 +108,13 @@ describe('债 2 批 2-1 · 截断外环回灌（rowTimeLimit 重折环）', () =
       if (r.cut > TIME_BUDGET_TOLERANCE_SECONDS) truncated.push(p.id)
       expect(r.leak, `${p.id} 残留 rowTimeLimit`).toEqual([])
       // 诊断量口径：没进重折环的队不报轮数（undefined），进了的 ≥ 1
-      if (r.cut <= TIME_BUDGET_TOLERANCE_SECONDS) expect(r.passes, `${p.id} 不该报重折轮数`).toBeUndefined()
+      // 诊断量自洽：没进重折环 ⇒ 两个量都不报；进了 ⇒ 重折前初装 > 容差（终态可以 ≤ 容差 = 重折把截断折没了，实测 auto-1431-1491-1341）
+      if (r.passes === undefined) expect(r.before, `${p.id} 不该报重折前截断`).toBeUndefined()
+      else expect(r.before, `${p.id} 进了重折环必须报重折前初装截断`).toBeGreaterThan(TIME_BUDGET_TOLERANCE_SECONDS)
     }
-    // R37-J5 v2 前这里恒 = 1431 簇那两队（BEFORE_REFOLD_CUT 的键）；v2 后自由口径的结构性溢出被合轴吸收 + 降配收进可行域 ⇒ 空集
-    expect(truncated.sort()).toEqual([])
+    // R37-J5 v2 前这里恒 = 1431 簇那两队；v2（全额吸收）时空集；v3 吸收上限 40% 后两队超上限的溢出回到装配截断 ⇒ 又是这两队
+    // （-1491-1341 初装也 > 1s 但重折 1 轮折到 ≤ 1s，故不在集合里）
+    expect(truncated.sort()).toEqual([...OVERFLOW_FIXTURES].sort())
   }, 600_000)
 
   /**
@@ -120,16 +125,17 @@ describe('债 2 批 2-1 · 截断外环回灌（rowTimeLimit 重折环）', () =
    *    如实上报 truncationRefoldRejected=true，**不硬做**（折半阻尼实测不改变结果，已否决）。
    *    R37-J5 v2 后改用锁窗夹具：两队都到不动点（-1491 1 轮、-1341 2 轮，rejected 均否）——语料里暂无振荡样本，
    *    「拒绝即整体回滚 + 如实上报 rejected」这条分支由 core/resource.ts 重折环的接受判据保证，本用例只对到达不动点的队查账本恒等式。
-   *    ⚠ 已知残差（锁窗夹具 -1491，2026-09-19 实测）：被砍的行里有**整数次数行**（连携 1431024 3→2）时，账本按 feasibleRows 的
-   *    小数可行份额计（2.4016 次 × 218.9 dB），装配保住行按整数计（2 次）⇒ 喧响账本比保住行 Σ 高 87.92 dB（能量账本仍精确相等）。
-   *    这是债 2「账本 == 展示层」的真残差（整数行的小数份额归属），钉住数值防静默漂移，修法见 docs §19 待办。
+   *    ⚠ 已知残差机制（锁窗夹具 -1491，2026-09-19 实测）：被砍的行里有**整数次数行**（连携 1431024 等）时，账本按 feasibleRows 的
+   *    小数可行份额计，装配保住行按整数计 ⇒ 喧响账本与保住行 Σ 差若干个「小数份额 × 每次喧响」（能量账本仍精确相等）。
+   *    全额吸收时 +87.92 dB（2.4016 vs 2 次 × 218.9）；吸收上限按终态前台后三个槽都被砍、差额 −266.56 dB（账本 < 行）。
+   *    这是债 2「账本 == 展示层」的真残差（整数行的小数份额归属，docs §19/§20），按 `KNOWN_LEDGER_ROW_GAP` 钉数值防静默漂移。
    */
   const KNOWN_LEDGER_ROW_GAP: Record<string, { decibel: number }> = {
-    'auto-1431-1481-1491': { decibel: 87.9175 },
+    'auto-1431-1481-1491': { decibel: -266.5575 },
   }
   it('④ 到达不动点的重折队：账本收入 == 保住行的行级 Σ（振荡队若出现须如实上报 rejected，账本按上一次接受态计）', async () => {
     let fixedPointTeams = 0
-    for (const id of Object.keys(BEFORE_REFOLD_CUT)) {
+    for (const id of OVERFLOW_FIXTURES) {
       const r = await evalPreset(id, OVERFLOW_FIXTURE_STUN_LOCK)
       expect(r.passes, `${id} 应进重折环`).toBeGreaterThanOrEqual(1)
       if (r.rejected) continue // 振荡队：账本按上一次接受态的 kept 计，与最终 kept 差一截，恒等式不适用（如实上报即可）
