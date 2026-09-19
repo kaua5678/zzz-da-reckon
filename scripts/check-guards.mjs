@@ -247,9 +247,10 @@ export const RATCHET_BURNDOWN = [
   {
     id: '滑块生效测试存量',
     file: 'scripts/lib/settings-coverage.mjs SETTINGS_UNTESTED_BACKLOG（扫描面 = 运行时 getRegisteredMechanicSettings）',
-    frozen: 44,  // 2026-09-20 round 49 **换尺时实测 60**（口径纠正，不是退步；规则 17②），
+    frozen: 43,  // 2026-09-20 round 49 **换尺时实测 60**（口径纠正，不是退步；规则 17②），
     // 同批**第二批**补了 16 条 spec adjustable（Form-E）的真管线生效测试后 **60 → 44**
     // （与 `SETTINGS_UNTESTED_BACKLOG.length` 同步改，两处一致 —— 同 `AGENT_BRANCH_BASELINE` 纪律）。
+    // 第三批再 +1（1551 peiluo_perfect_block_gain：fixture 补 `perfectBlockCount` 后三点线性）⇒ **60 → 43**。
     // 换尺读数：扫描面从「agents/*.ts 的 `settings: [` 块起始正则」（35 模块 / 84 id）换成
     // **运行时注册表**（55 模块 / **180 id**）后，实测 **60 条**注册了但无任何测试引用。
     // ⚠ 换尺前这 60 条**零可问责性**（旧面看不见它们，既不红也不点名）；换尺后逐条具名在册 + 本行 due

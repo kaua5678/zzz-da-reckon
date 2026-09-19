@@ -14,9 +14,9 @@ import { getRegisteredMechanicSettings } from '@/mechanics'
  * `settings: [` 正则）**结构性看不见它们**（id 根本不在 .ts 里）⇒ 这 39 条此前**零可问责性**。
  *
  * R49 把判据 4 的扫描面接上运行时注册表后，它们逐条具名进 `SETTINGS_UNTESTED_BACKLOG`。
- * 本文件是同批「补生效测试」的第一批：**一条表驱动测试覆盖 16 条**（其余留在清单里，见下方口径）。
+ * 本文件是同批「补生效测试」的第一批：**一条表驱动测试覆盖 17 条**（其余留在清单里，见下方口径）。
  *
- * ## 口径（三条，别放宽）
+ * ## 口径（四条，别放宽）
  *
  * ① **必须走真管线**：`setupHarness` 装配真队伍 → `config.setMechanicSetting(id, v)` →
  *    真 `useResourceCalc()` 的 `resourceResult`。**不许**直调 `computeSpecResources` 并手写 cfg ——
@@ -24,10 +24,19 @@ import { getRegisteredMechanicSettings } from '@/mechanics'
  *    让断链「通过」（`anbyC2StunCoverage` 曾因此掩盖恒等 0.5 的真缺陷）。
  * ② **断言强度 = 比例性**，不只是「有 delta」：`rate=0 ⇒ 该 gain 恒 0`、`rate=1 ⇒ 基准值`、
  *    `rate=2 ⇒ 恰好 2×基准`（`apps/resources.ts:152` 的钳制区间是 `[min,max]`，此处 max=2 未钳）。
- * ③ **只收实测可证的**：下面 16 条是本任在真管线上逐条实测「0 / 1 / 2 三点线性」的；
- *    其余 Form-E id 要么 countSource 靠默认队伍没触发的量（`perfectBlockCount` / `parryCount`
- *    在特定队伍下才非 0），要么被模块的 `buildResourceResult` 覆盖（**另案**，见
- *    `.claude/OPEN-ITEMS.md` §R49-J1 的 jufufu 覆盖导致滑块失效）⇒ **不在这里假装覆盖**。
+ * ③ **只收实测可证的**：下面 **17 条**是本任在真管线上逐条实测「0 / 1 / 2 三点线性」的。
+ *    其余 Form-E id **不在本表假装覆盖**，它们分属两类真问题（见
+ *    `/home/kaua/r49-scratch/evidence/R49-J1-dead-adjustables.md`）：
+ *    · **甲（模块覆盖，2 条）**：1391 `jufufu_weishi` —— 模块 `buildResourceResult` 自己重建
+ *      同名 `specResources` 键且不读滑块 ⇒ 值被 `...mechanicResult` 丢弃 ⇒ 拖它不改任何数。
+ *    · **乙（资源不可达，4 条）**：1621×2 / 1611×1 / 1561×1 —— 自定义模块接管 agentId ⇒
+ *      `registry.ts:139-141` 不再注册 spec 派生模块 ⇒ `computeSpecResources` 永不被调用，
+ *      而模块自己也不调它（`grep -c` = 0）⇒ 该资源零消费者。实测：`resourceResult` 里没有那个键，
+ *      **但绕开模块直接算得出来**（COMPUTABLE）⇒ 是「没人算」不是「算出来是 0」。
+ *    两类都需**用户裁决**（接线 vs 删声明），故留在冻结清单里如实挂账。
+ * ④ **fixture 要点**：`countSource` 为计数器的条目必须显式喂计数（如
+ *    `perfectBlockCount` 默认 0 ⇒ 不喂则三点恒 0，**会被误判成「滑块失效」**；
+ *    R49 分诊第一版就栽在这，见上引报告 §3）。
  */
 
 /** 表：[settingId, 资源 id, gain 键, rate=1 时的基准获取量] */
@@ -48,6 +57,10 @@ const CASES: Array<[string, string, string, number]> = [
   ['1531.billy_star_glow.billy_star_ultimate_gain.rate', 'billy_star_glow', 'billy_star_ultimate_gain', 3],
   ['1551.peiluo_prominence.peiluo_frontline_gain.rate', 'peiluo_prominence', 'peiluo_frontline_gain', 60],
   ['1551.peiluo_prominence.peiluo_upper_ult_gain.rate', 'peiluo_prominence', 'peiluo_upper_ult_gain', 180],
+  // ⚠ 这一条的 countSource 是 `perfectBlockCount`（`resources.ts:188-190`），
+  // 而 `stores/config.ts:130` 的默认值是 **0** ⇒ 不显式给次数时三点恒 0（**不是**滑块没接线）。
+  // R49 分诊曾把它误判成 no-delta（见 evidence/R49-J1-dead-adjustables.md §3 误报 1）。
+  ['1551.peiluo_prominence.peiluo_perfect_block_gain.rate', 'peiluo_prominence', 'peiluo_perfect_block_gain', 50],
 ]
 
 /** 队伍夹具：主角 + 两个固定队友（同属性以触发出战条件；数值只依赖本槽 cfg 与 state） */
@@ -58,11 +71,11 @@ const ALLY: Record<string, [string, string]> = {
   '1041': ['1531', '1281'],
 }
 
-/** 让 countSource 类的量表非 0（`parryCount` / `chainCountTotal` / `blockCount` 等） */
-const RICH = { cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12, quickAssistCount: 4, chainCountPerStun: 2, blockCount: 4 }
+/** 让 countSource 类的量表非 0（`parryCount` / `chainCountTotal` / `perfectBlockCount` 等） */
+const RICH = { cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12, quickAssistCount: 4, chainCountPerStun: 2, blockCount: 4, perfectBlockCount: 5 }
 
 describe('spec adjustable（Form-E）经真管线生效：rate 0 / 1 / 2 三点线性', () => {
-  it('16 条 adjustable 全部：rate=0 ⇒ 0，rate=1 ⇒ 基准，rate=2 ⇒ 恰好 2×基准', async () => {
+  it('17 条 adjustable 全部：rate=0 ⇒ 0，rate=1 ⇒ 基准，rate=2 ⇒ 恰好 2×基准', async () => {
     // 前提断言（防「夹具失效导致恒 0 假绿」）：这些 id 必须真的在运行时注册表里
     const registered = new Set(getRegisteredMechanicSettings().map(s => s.id))
     for (const [id] of CASES) {

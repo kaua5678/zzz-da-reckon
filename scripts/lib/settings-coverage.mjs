@@ -119,7 +119,6 @@ export const SETTINGS_UNTESTED_BACKLOG = [
   '1521.xixifu_toxin.toxin_tuxin_stunned_bonus.rate', // xixifu
   '1531.billy_radiant_star.billy_radiant_chain_gain.rate', // starlight_billy
   '1531.billy_star_glow.billy_star_chain_gain.rate', // starlight_billy
-  '1551.peiluo_prominence.peiluo_perfect_block_gain.rate', // peiluo_prominence
   '1561.velina_corrosion.2 命风化获得.rate', // velina
   '1591.sigrid_lance_opportunity.sigrid_hit_opportunity_gain.rate', // sigrid
   '1611.claret_gash.gash_gain_from_sharp_dmg.rate', // claret
