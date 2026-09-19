@@ -95,7 +95,7 @@ describe('⑤ 合轴匀出 · 机制传导与集成诚实', () => {
     const moveId = chainMoveId(calc)
     config.setComboAlignOverride(1, moveId, 0.3)
     config.triggerRefresh()
-    const p0 = poolSecs(calc); const t0 = truncOf(calc)
+    const t0 = truncOf(calc)
     const d0 = calc.teamTotalDamage.value; const s0 = calc.stunPoolResult.value?.stunCount ?? 0
     const r = applyTimeWeightAllocation({ calc, configStore: config }, DEEP_TIME_WEIGHT_STRATEGY_ID)
     const note = r.note ?? ''
@@ -103,7 +103,13 @@ describe('⑤ 合轴匀出 · 机制传导与集成诚实', () => {
     const bit = note.includes('合轴匀出')
     if (bit) {
       expect(r.applied, 'note 声称咬合却 applied=false').toBe(true)
-      expect(poolSecs(calc), '声称匀出却没回流').toBeGreaterThan(p0)
+      // 「回流」按 ⑤ 自己的前后对照验（note 里的「平A池 a→b s」）：①～④ 会先合法地搬池（权重转主C、加弹刀），
+      // 拿 joint 入口的 p0 比会把 ①～④ 的搬动误判成 ⑤ 谎报（2026-09-19 艾莲循环行挤出后本队实测：入口 23.8 →
+      // ①②③ 后 17.3 → ⑤ 上调 3 档 → 21.5，⑤ 的声明 17.3→21.5 为真，终态却 < 入口）。
+      const m = note.match(/合轴匀出：[^（]*（平A池 ([\d.]+)→([\d.]+)s/)
+      expect(m, 'note 声称匀出却没给出「平A池 a→b」对照').toBeTruthy()
+      expect(Number(m![2]), '声称匀出却没回流（⑤ 自己的前后对照）').toBeGreaterThan(Number(m![1]))
+      expect(poolSecs(calc)).toBeCloseTo(Number(m![2]), 0)
       expect(ovr).toBeGreaterThan(0.3)
     } else {
       // 拒绝分支：覆盖必须停在种子值（当场回滚，不留半成品突变）

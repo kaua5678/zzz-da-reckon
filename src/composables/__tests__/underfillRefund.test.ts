@@ -50,9 +50,11 @@ describe('末轮欠打回填', () => {
     const t = await summary(['1181', '1511', '1411'])
     expect(t.refund).toBeGreaterThan(0)
     expect(t.slack).toBeLessThanOrEqual(2 * TIME_BUDGET_TOLERANCE_SECONDS + EVADE_ASSIST_ACTION_TIME_SECONDS)
-    // 1191/1481/1451… 取 1191/1481/1311：旧门槛（10s）时代的大欠打样例——refund>0 在两个
-    // 门槛下都必须成立（欠打 8.9s 的放大环使填充不可行是既有物理，门控只保证「可行部分全分」）。
-    const s2 = await summary(['1191', '1481', '1311'])
+    // 第二样例史：1191/1481/1311 曾是旧门槛（10s）时代的大欠打样例（欠打 8.9s）——2026-09-19 查明那 8.9s 是艾莲循环行与
+    // 平A聚合行双计时间（模块行重复占用平A池）制造的假欠打，挤出后该队 refund=0、留白 0.5s，不再是样例。
+    // 换 1401/1411/1031：爱丽丝模块行随平A池增长（正反馈），pass0 冻结的 refund 9.96s 追不上后续 idle（默认口径留白 6.0s）
+    // ——refund>0 在两个门槛下都必须成立（门控只保证「可行部分全分」）。
+    const s2 = await summary(['1401', '1411', '1031'])
     expect(s2.refund).toBeGreaterThan(0)
     // 1431 系单权重 [1,0,0] 队（叶瞬光账本必要贴单人物理顶）：refund 会流入平A池但物化行
     // 吃不下的部分仍留白（棘轮逐队钉），不在本测试断言具体值。

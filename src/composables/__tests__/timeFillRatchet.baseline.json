@@ -128,19 +128,19 @@
   "outerExit": "stable"
  },
  "auto-1191-1161-1311": {
-  "slack": 6.6,
+  "slack": 1.5,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "auto-1191-1361-1311": {
-  "slack": 15,
+  "slack": 1,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "auto-1191-1481-1311": {
-  "slack": 3.3,
+  "slack": 1.5,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"

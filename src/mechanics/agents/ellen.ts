@@ -390,6 +390,35 @@ function buildEllenExecutions({ cfg, state, executions }: AgentResourceInput): v
     category: 'basic',
     actionTime: 0.546,
   })
+
+  // ===== 循环行不再重复占用平A池（2026-09-19 R37-J5 §19.4-3；朱鸢 1241 / 希格莉德 1591 / 安比 1011 同款修复）=====
+  // computeEllenCycle 按「dashCount×dashTime + iceWaveCount×burstTime + sharkTime = basicAttackTime」解出循环行，
+  // 这些行占的**就是平A池那份时间**（本文件头注释：循环战场时间由平A池驱动、剩余平A时间按蓄力剪击→burst 填满、
+  // 急冻修剪法第 1/2 段基本不打）。此前通用 `basic_attack` 聚合行仍 = basicAttackTime，与循环行相加成两份 →
+  // 折叠环把虚增折进 necessaryTime → 平A池被挤到约一半、另一半物化成她本不该打的通用平A（实测单人 c0：聚合行 75.8s
+  // + 循环行 ~50s；1191/1361/1311 默认口径留白 15.0s、账本虚高 19.9s 全在她身上，1191/1161/1311 同 19.9s）。
+  // 时间从聚合行挤出（总前台占用守恒）；喧响按剩余时间比例缩（循环行按表带每次喧响，不缩即双计）；
+  // 能量**不动**（循环行不带回能——表值 0 落行值 0，回能留在聚合行防丢，同 sigrid 平A分段口径）。
+  // @fact agent:1191/循环行时间占用 口径: 蓄力剪击/急冻修剪法#3/冰刃浪/霜锋挥刀行由 basicAttackTime 解出，占的就是平A池那份时间，必须从通用 basic_attack 聚合行挤出（挤出量 = 循环行总时长，封顶聚合行时长），喧响按比例缩、能量不缩 | 据 模块头注释「循环战场时间由平A池驱动」+ 朱鸢 1241 用户口径 2026-08-26 同构·实测@2026-09-19 | 验 src/mechanics/__tests__/ellen.test.ts#循环行占的就是平A池那份时间 | 锚 src/mechanics/agents/ellen.ts#buildEllenExecutions | 信 确认
+  // ⟳复核: 艾莲循环模型（computeEllenCycle 的时间方程）或聚合行回能/喧响载体口径再动时，复核「聚合行 + 循环行时长 == basicAttackTime」守恒（ellen.test）+「1191 系默认口径留白 ≤ 2s」（timeFillRatchet auto-1191-*）+ 循环行喧响不双计（decibelRowParity） | 到期 2026-12-31
+  const cycleTime = cycle.frostTrimSegments * ELLEN_FROST_TRIM_ACTION_TIMES[0]
+    + cycle.dashChargedCount * ELLEN_DASH_TOTAL_ACTION_TIME
+    + cycle.frostEdgeCount * ELLEN_FROST_EDGE_TOTAL_ACTION_TIME
+    + cycle.iceWaveCount * ELLEN_ICE_WAVE_TOTAL_ACTION_TIME
+  if (cycleTime > 0) {
+    const basicIdx = executions.findIndex(e => e.moveId === 'basic_attack')
+    if (basicIdx >= 0) {
+      const basic = executions[basicIdx]
+      const basicTime = basic.totalTime ?? 0
+      const carve = Math.max(0, Math.min(basicTime, cycleTime))
+      const keepRatio = basicTime > 0 ? (basicTime - carve) / basicTime : 0
+      executions[basicIdx] = {
+        ...basic,
+        totalTime: basicTime - carve,
+        totalDecibelRecovery: (basic.totalDecibelRecovery ?? 0) * keepRatio,
+      }
+    }
+  }
 }
 
 function patchEllenExecutions({ cfg, state, executions }: AgentResourceInput): void {

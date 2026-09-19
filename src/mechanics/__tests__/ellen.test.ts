@@ -205,6 +205,40 @@ describe('艾莲招式定向与执行行', () => {
     }
   })
 
+  it('循环行占的就是平A池那份时间：从 basic_attack 聚合行挤出（时间守恒、喧响按比例缩、能量不缩）', () => {
+    // 与 sigrid 平A分段 / 朱鸢以太弹 同款：模块行由 basicAttackTime 解出 ⇒ 聚合行只保留循环行装不下的零头
+    const basic = {
+      moveId: 'basic_attack', moveName: '普通攻击（平A汇总）', category: 'basic', count: 0, actionTime: 0,
+      comboAlignRatio: 0, totalTime: 30, totalComboAlignTime: 0, energyConsume: 0, totalEnergyConsume: 0,
+      decibelRecovery: 2, totalDecibelRecovery: 60, energyRecovery: 1, totalEnergyRecovery: 30, timeBucket: 'basic',
+    }
+    const executions: any[] = [{ ...basic }]
+    ellenMechanic.buildExecutions!({
+      cfg: patchCfg({ ellenCinemaLevel: 0 }),
+      state: { exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0, basicAttackTime: 30 },
+      executions,
+    } as any)
+    const agg = executions.find(r => r.moveId === 'basic_attack')!
+    const cycleTime = executions
+      .filter(r => ['1191006', '1191007', '1191009', '1191027', '1191029', '1191030'].includes(r.moveId))
+      .reduce((s, r) => s + (r.totalTime ?? 0), 0)
+    // 30s → 5 蓄力 + 5 burst：循环行 5×(1.119 + 2.232 + 0.702 + 1.459) = 27.56s，聚合行只剩零头 2.44s
+    expect(cycleTime).toBeGreaterThan(20)
+    expect(agg.totalTime + cycleTime).toBeCloseTo(30, 6)
+    expect(agg.totalTime).toBeGreaterThanOrEqual(0)
+    // 喧响按剩余时间比例缩（循环行按表带每次喧响，不缩即双计）；能量留在聚合行（循环行不带回能）
+    expect(agg.totalDecibelRecovery).toBeCloseTo(60 * agg.totalTime / 30, 6)
+    expect(agg.totalEnergyRecovery).toBe(30)
+    // 循环行时长超过池时封顶（不出负数）：强特多 ⇒ 免费 burst 的行时长可超过 1s 的池
+    const tight: any[] = [{ ...basic, totalTime: 1 }]
+    ellenMechanic.buildExecutions!({
+      cfg: patchCfg({ ellenCinemaLevel: 0 }),
+      state: { exSpecialCount: 6, ultimateCount: 0, chainCountTotal: 0, basicAttackTime: 1 },
+      executions: tight,
+    } as any)
+    expect(tight.find(r => r.moveId === 'basic_attack')!.totalTime).toBeGreaterThanOrEqual(0)
+  })
+
   it('强化特殊技：0命横扫+鲨卷风、影画2全鲨卷风；霜锋免费自动派生', () => {
     const ex0: any[] = []
     ellenMechanic.buildExecutions!({
