@@ -139,7 +139,9 @@ describe('R15-c 跳①：叶瞬光非轴 —— 白名单满易伤 / 非白名�
     expect(full.length).toBe(1)
     expect(full[0].stunMult).toBe(1.5)
     expect(full[0].note).toContain(' · 明心境满易伤')
-    expect(full[0].count).toBe(14)
+    // 次数锚：刀 1（截断入口容差 1e-9 → 1e-3，2026-09-19 接管落地）前该队默认配置下停在 scale 0.625（0.75 档被假截断误拒）
+    // ⇒ 14 次；刀 1 后 0.75 档可行 ⇒ 16.206（同一行、同一口径，只是交互档位变了）。stunMult 成对判据不受影响。
+    expect(full[0].count).toBeCloseTo(16.206, 3)
 
     // 非白名单普攻变体：不认领 ⇒ 回落 stunCoverage（本轮 0.3 ⇒ 1 + 0.5×0.3 = 1.15）
     const plain = rowsOf(calc, 0, '1431', '1431016')

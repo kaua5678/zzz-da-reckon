@@ -134,12 +134,18 @@ describe('平A池权重·分配策略', () => {
     expect(parryAfter.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(parryBefore.reduce((a, b) => a + b, 0))
   })
 
+  // ⑥b/⑥c 的样本队（2026-09-19 接管落地刀 1 后换样）：原样本 auto-1591-1481-1311 的 0.906s「截断」是两级容差不一致
+  // 制造的假截断（毫秒残差被整数装包放大），刀 1（截断入口容差与折叠环同源 1e-3）后归零 ⇒ 不再是「基线本身就超时」
+  // 的样本。换成 1431 簇的结构性溢出队 auto-1431-1481-1491（预设配置下基线截断 ~108.8s、降配 8 档全不可行、scale=1），
+  // 它才是「真装不下」的形态——本用例要锁的相对门 / 可行性优先语义正是为这类队写的。
+  const OVERTIME_SAMPLE_ID = 'auto-1431-1481-1491'
+
   it('⑥b 基线已超时的队也照常优化（相对门：只保证不更差，不再拒绝）', async () => {
     const { catalog } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
     const calc = useResourceCalc()
-    const p = teamPresets.find(x => x.id === 'auto-1591-1481-1311')!
+    const p = teamPresets.find(x => x.id === OVERTIME_SAMPLE_ID)!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     const truncated = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
@@ -159,7 +165,7 @@ describe('平A池权重·分配策略', () => {
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
     const calc = useResourceCalc()
-    const p = teamPresets.find(x => x.id === 'auto-1591-1481-1311')!
+    const p = teamPresets.find(x => x.id === OVERTIME_SAMPLE_ID)!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     const truncated = calc.resourceResult.value!.convergence?.timeTruncatedSeconds ?? 0
@@ -171,9 +177,14 @@ describe('平A池权重·分配策略', () => {
     // 硬不变量：截断不升、总伤不降
     expect(after).toBeLessThanOrEqual(truncated + 1e-6)
     expect(dmgAfter).toBeGreaterThanOrEqual(dmgBefore - 1e-6)
-    // 状态如实上报：拉回可行 → 断言归零；拉不回 → 断言「拉不回来」说明
+    // 状态如实上报三态（与 timeWeightAllocation.ts 阶段 -1 的三个出口一一对应）：
+    //   归零 → 「已拉回可行」；部分拉回（结构性溢出队的常态，实测 auto-1431-1481-1491 108.79→87.41s）→
+    //   「可行性优先：截断 a→b」且**不得**同时报「拉不回来」；零进展 → 「拉不回来」。
     if (after <= 1e-6) {
       expect(r.note ?? '').toContain('已拉回可行')
+    } else if (after < truncated - 1e-6) {
+      expect(r.note ?? '').toContain('可行性优先：截断')
+      expect(r.note ?? '').not.toContain('拉不回来')
     } else {
       expect(r.note ?? '').toContain('拉不回来')
     }
