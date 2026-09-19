@@ -35,10 +35,12 @@ import {
   findForbiddenTracked,
   countAgentIdBranchLines,
   extractSettingIds,
+  loadRegistrySnapshot,
   scanSettingsCoverage,
   settingsCoverageOk,
   formatSettingsCoverage,
   SETTINGS_COVERAGE_MIN_MODULES,
+  SETTINGS_UNTESTED_BACKLOG,
   matchDebtRegistry,
   auditCatalogLevel60,
   auditMoveElementsAgainstRaw,
@@ -171,6 +173,63 @@ describe('extractSettingIds（settings 块抽取）', () => {
 
   it('无 settings 块返回空', () => {
     expect(extractSettingIds('const a = 1')).toEqual([])
+  })
+})
+
+describe('判据 4 扫描面接运行时注册表（2026-09-20 round 49 换尺，规则 17② 口径纠正）', () => {
+  // 背景：R47/R48 两任实测「块起始正则」**结构性漏扫** —— 只认 Form-A（`settings: [ … ]` 内联），
+  // 实测 35 模块 / 84 id，而运行时真值是 55 / 180（**漏扫 96 id / 5 形态**；Form-C 要跨变量解析、
+  // Form-D 要跨语句追踪、Form-E 的 id 根本不在 .ts 里）。⇒ 扫描面改为运行时注册表
+  // （`scripts/dump-mechanic-registry.mjs` 子进程 dump）。
+  // 本组锁的是**换尺本身**：真值面确实接上了、正则面不再定「有哪些滑块」、反空洞下限按新尺标定。
+  it('★ 扫描面 = 运行时注册表（不是 agents/*.ts 的正则面）', () => {
+    const report = scanSettingsCoverage()
+    const snap = loadRegistrySnapshot()
+    // 真值面直接来自注册表：每个模块的 id 集合与 dump 逐字相同
+    expect(report.declared.size).toBe(snap.modules)
+    expect([...report.declared.values()].flat().length).toBe(snap.ids)
+    for (const m of snap.byModule) expect(report.declared.get(m.moduleId)).toEqual(m.ids)
+    // 反空洞：真值面必须**显著大于**旧正则面（R48 实测 84 → 180）；
+    // 若有人把扫描面改回正则，这里立刻红（84 < 180 × 0.75）
+    expect(snap.ids).toBeGreaterThan(120)
+  })
+
+  it('★ 正则面降级为「零假阳性交叉校验」：可见但不在注册表里的 id 必须为空', () => {
+    // R48 实测：旧面扫到的 84 个 id **全部**在注册表里（零假阳性）= 旧面是**纯漏扫**。
+    // 这条把该结论变成常驻守卫：放宽正则（纳入非 settings 的 `id:` 字面量）会让它非空。
+    const report = scanSettingsCoverage()
+    expect(report.regexOnly).toEqual([])
+  })
+
+  it('★ 反空洞下限按新尺标定（55，不是旧尺的 35），且确有判别力', () => {
+    // 判别力实测：`import.meta.glob` 失效 ⇒ 3 个 spec-only 模块消失 ⇒ 模块数 55 → 52 < 55 ⇒ 红。
+    // 若有人把常量退回 35，那条注入就抓不住了（35 < 52）⇒ 这条锁住「不得回调到失去判别力」。
+    const { declared } = scanSettingsCoverage()
+    expect(declared.size).toBeGreaterThanOrEqual(SETTINGS_COVERAGE_MIN_MODULES)
+    expect(SETTINGS_COVERAGE_MIN_MODULES).toBeGreaterThan(52)
+    // 且不得高于实测（否则假红）
+    expect(SETTINGS_COVERAGE_MIN_MODULES).toBeLessThanOrEqual(declared.size)
+  })
+
+  it('★ 存量冻结清单 = 实测的无测试引用集合（不是豁免面的橡皮图章）', () => {
+    const report = scanSettingsCoverage()
+    const untestedIds = report.untested.map(u => u.slice(u.indexOf('::') + 2))
+    // 冻结清单与实测**逐条相等**（顺序无关）：多一条 ⇒ 清单过期（有人补了测试没删行）；
+    // 少一条 ⇒ 有缺口没登记（换尺没做干净）
+    expect([...SETTINGS_UNTESTED_BACKLOG].sort()).toEqual([...untestedIds].sort())
+    // 清单里不得出现「不在注册表面上的 id」（防止拿不存在的条目凑数）
+    const allIds = new Set([...report.declared.values()].flat())
+    for (const id of SETTINGS_UNTESTED_BACKLOG) expect(allIds.has(id)).toBe(true)
+  })
+
+  it('★ 新尺下「新滑块仍然红」：不在冻结清单里的未测 id 会进 newGaps', () => {
+    // 换尺最容易被质疑的一点是「冻结 60 条 = 放宽判据」。这条证明棘轮的防变差职责仍在：
+    // 构造一个不在清单里的未测 id ⇒ 它必须被判成新缺口（即 `ok=false`）。
+    const report = scanSettingsCoverage()
+    const fake = { ...report, untested: [...report.untested, 'agent:zzz::brand.newSlider'], stale: [] }
+    const newGaps = fake.untested.filter(e => !SETTINGS_UNTESTED_BACKLOG.some(b => e.endsWith(`::${b}`)))
+    expect(newGaps).toEqual(['agent:zzz::brand.newSlider'])
+    expect(settingsCoverageOk(fake, newGaps, SETTINGS_COVERAGE_MIN_MODULES)).toBe(false)
   })
 })
 

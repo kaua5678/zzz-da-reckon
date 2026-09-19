@@ -711,6 +711,17 @@ async function verbStatus(root = ROOT) {
         const deferred = Object.values(n.triage.entries ?? {}).filter(e => e?.state === 'deferred').length
         return n.unhandled.length + deferred
       },
+      // ⚠ 同上面两条的坑（R49 换尺时按纪律先查了这一条）：frozen=60 是**存量待办**，
+      // measure 必须是「还剩几条没补测试」。
+      // 若写成 `newGaps.length`（新缺口数）⇒ 换尺时就恒 0、done=true ⇒ 60 条从提醒面消失
+      // （与上面两条同型的「存量一登记就自称还清」）。
+      // 若写成 `SETTINGS_UNTESTED_BACKLOG.length` ⇒ 补了测试也不降，棘轮永远显示零进展。
+      // 正解 = 清单长度 − stale 长度（stale = 清单里**已被测试引用**、待回收的行；
+      // 补测试但漏删行时 stale 也涨 ⇒ 读数照样下降，不会因「忘了删行」而假装没还）。
+      '滑块生效测试存量': () => {
+        const r = g.scanSettingsCoverage(root)
+        return g.SETTINGS_UNTESTED_BACKLOG.length - r.stale.length
+      },
     }
     burndown = g.computeBurndown(id => (measured[id] ? measured[id]() : NaN))
   } catch { /* 护栏不可用时不阻塞 status */ }

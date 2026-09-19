@@ -244,6 +244,31 @@ export const RATCHET_BURNDOWN = [
     due: '2026-12-31',
     plan: '① 硬判据：unhandled 恒 0 + 源/账键集合相等（源新增名词必须同步对账）；② burn-down：41 条 deferred 逐条处置——能建模的转 modeled（补 src 消费锚点），确认范围外的改判并从清单移除。⚠ 不许「为绿而登记」：deferred 必须带 registeredAt（文件:行）+ since（日期）',
   },
+  {
+    id: '滑块生效测试存量',
+    file: 'scripts/lib/settings-coverage.mjs SETTINGS_UNTESTED_BACKLOG（扫描面 = 运行时 getRegisteredMechanicSettings）',
+    frozen: 60,  // 2026-09-20 round 49 **换尺时实测**（口径纠正，不是退步；规则 17②）：
+    // 扫描面从「agents/*.ts 的 `settings: [` 块起始正则」（35 模块 / 84 id）换成**运行时注册表**
+    // （55 模块 / **180 id**）后，实测 **60 条**注册了但无任何测试引用。
+    // ⚠ 换尺前这 60 条**零可问责性**（旧面看不见它们，既不红也不点名）；换尺后逐条具名在册 + 本行 due
+    // ⇒ 可问责性**上升**。`newGaps` 判红逻辑未动 ⇒ 新增滑块仍然红（棘轮的防变差职责完整保留）。
+    // 分型：**Form-E 38 条**（`<四位数>.<resource>.<rule>.rate` = spec `adjustable`，经
+    // `specs/resources.ts:150` 的 `setting:${adjustable.id}` 按构造消费）· **Form-B/C/D 22 条**
+    // （模块自己 `setting()` 读的覆盖率/次数滑块）。全域 180 里另 96 条是**换尺修好的漏扫面**
+    // （旧面 84 → 新面 180，其中 120 条已有测试引用）。
+    target: 0,
+    due: '2027-03-31',
+    plan: '按型分批补「改滑块→面板/结果确实变」的生效测试，每补一条从 SETTINGS_UNTESTED_BACKLOG 删一行：'
+      + '① **Form-E（38 条）优先**——正解是**一条通用 registry 驱动测试**（遍历注册表，min/max 各跑一次'
+      + '真管线比 delta），R49 实测**一条 sweep 就覆盖 27/39**；余 12 条需更贴的 fixture（countSource 是'
+      + '`perfectBlockCount`/`parryCount`/`chainCountTotal` 等默认队伍没触发的量，如 peiluo/jufufu/zhendou）。'
+      + '② **Form-B/C/D（22 条）**逐条写角色级断言。'
+      + '⚠ 必须**走真管线**（`setMechanicSetting` → `resourceResult`/`computePanelPhases`），**不许**直调钩子'
+      + '+ 手写 cfg —— R48 实测：手写 cfg 会抹掉「生产代码写不写这个字段」这个自由度，让断链「通过」'
+      + '（`anbyC2StunCoverage` 曾因此掩盖恒等 0.5 的真缺陷）。'
+      + '⚠ 不许把本清单当豁免面用（那是放宽判据）；`jane.frenzyActive` 一条需**用户裁决**（见 OPEN-ITEMS §R48-J1）'
+      + '——它是真死声明，补测试会红，应先裁决再动。',
+  },
 ]
 
 /**
@@ -530,8 +555,8 @@ export { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMP
 // ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**
 // （R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
 // ⚠ 改判据口径请改 `./lib/settings-coverage.mjs`，**不要在本文件重建同形函数**。
-import { UNTESTED_SETTINGS_ALLOWLIST, extractSettingIds, scanSettingsCoverage, settingsCoverageOk, formatSettingsCoverage, SETTINGS_COVERAGE_MIN_MODULES } from './lib/settings-coverage.mjs'
-export { UNTESTED_SETTINGS_ALLOWLIST, extractSettingIds, scanSettingsCoverage, settingsCoverageOk, formatSettingsCoverage, SETTINGS_COVERAGE_MIN_MODULES } from './lib/settings-coverage.mjs'
+import { SETTINGS_UNTESTED_BACKLOG, extractSettingIds, loadRegistrySnapshot, scanSettingsCoverage, settingsCoverageOk, formatSettingsCoverage, SETTINGS_COVERAGE_MIN_MODULES } from './lib/settings-coverage.mjs'
+export { SETTINGS_UNTESTED_BACKLOG, extractSettingIds, loadRegistrySnapshot, scanSettingsCoverage, settingsCoverageOk, formatSettingsCoverage, SETTINGS_COVERAGE_MIN_MODULES } from './lib/settings-coverage.mjs'
 
 // ---- 判据 5：debt: 标记注册表（防「later = never」） ----
 
@@ -1039,7 +1064,9 @@ export function runAllChecks(root = ROOT) {
   })
 
   const settings = scanSettingsCoverage(root)
-  const newGaps = settings.untested.filter(e => !UNTESTED_SETTINGS_ALLOWLIST.includes(e))
+  // ⚠ 冻结清单按 id 本体匹配（`module::id` 里的 id 部分）——见 settings-coverage.mjs 的注释：
+  // setting id 全局唯一，而模块 id 会随改名/合并漂移。
+  const newGaps = settings.untested.filter(e => !SETTINGS_UNTESTED_BACKLOG.some(b => e.endsWith(`::${b}`)))
   const settingsMin = root === ROOT ? SETTINGS_COVERAGE_MIN_MODULES : 0
   // ⚠ `name` 与加下限前**逐字节相同**（反空洞下限只在 `ok` 与红时 detail 里体现）——这是**有意**的：
   // ① 绿基线输出可 `cmp` 逐字节对拍 ⇒ 证明本改动**零意外扰动**其它 18 条判据（最强保真仪器）；
@@ -1047,6 +1074,8 @@ export function runAllChecks(root = ROOT) {
   //    `LAYER_INVERSION_MIN_TOTAL_SITES`（判据 19 那种打进绿行的写法）——两者都是既有先例，此处选前者
   //    是为了拿到 ① 这条保真证明。⚠ 不要为了「让下限更显眼」改这一行：那会牺牲 ①，而可见性已由
   //    `settingsCoverage.test` 的回归锁（常量 >0 + 可红性自证）覆盖。
+  // ⚠ R49 换尺后 `已测 N/M` 的分母从 84 变 **180**（M = 运行时注册表 id 数）—— 这是**口径纠正的
+  //    可见化**，不是退步：旧读数 84/84 掩盖了 96 个看不见的 id，现读数把真实存量摆上台面。
   results.push({
     name: `settings coverage (规则 12/§2: 滑块声明必须有「改了确实变」测试) 已测 ${[...settings.declared.values()].flat().length - settings.untested.length}/${[...settings.declared.values()].flat().length}`,
     ok: settingsCoverageOk(settings, newGaps, settingsMin),
