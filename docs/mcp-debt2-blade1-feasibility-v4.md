@@ -245,3 +245,60 @@ R37-J5 引擎落地方案（未实施，待用户定「一次」之外是否允�
 ⇒ 合入 master 的门槛没过：先解 warmStart 决定性（怀疑 `runInnerLoop` 的 `injectedStates` 分支 / 重折与吸收对 warm 种子的敏感），再裁决合轴模型语义
 两条测试的口径，最后才重锚。分支保留全部实测，master 不动。
 
+## 18. 后记 13：warmStart「冷/热分叉」是误诊——真病灶是内层不动点在 20 轮上限处撞顶（分支 `4838870`）
+
+§17 把 `warmStart.test` 1431 系的红归为「冷/热启动落点不再一致」。复核（2026-09-19）：该用例只在 `expect(hot.converged).toBe(true)`
+一行红，前一行 `fingerprint(hot) == fingerprint(cold)`（含 `converged`）**通过**——冷/热逐位一致从未被破坏，破坏的是 `converged`。
+
+### 18.1 归因（bisect + iterate 逐轮打表）
+
+| 提交 | 1431/1341/1031 冷算 | 备注 |
+|---|---|---|
+| `078e0b7` ① / `4906484` ② | `converged=true iter=11` | 与 master 同 |
+| **`895b976` ④** | `converged=false iter=20` | 首次出现；⑥ `953214a` 同 |
+
+④ 让叶瞬光估计用 `state.basicAttackTime` 现算 cycle（估计/行单源，本身正确），等于把「平A→局外剑势→明心境轮数→必要时间→平A」这条
+**连续**反馈边搬进了内层。逐轮打表：ρ≈0.17 的几何收缩（bat 残差 16.7→4.4→0.75→0.13→…），第 14 轮起 9 位小数不动，但浮点复合映射
+**没有精确不动点**——第 21 轮起 `bat 25.94937036135673 ↔ …728`（1 ulp）、`nec` 差 2 ulp 的精确 2-循环。`runInnerLoop` 判稳是严格相等、
+上限 20：在进入精确环之前就到顶 ⇒ 停点 = 上限处瞬态、`clean=false`；即使上限更大，旧环检测也会把这个环报成 `clean=false`。
+
+104 预设普查 `converged=false`：master 3 队（`auto-1431-1481-1491` / `auto-1591-1161-1211` / `auto-1331-1561-1411`，都是 iter=3~4
+经真整数环退出、无人断言）；分支 5 队 = 其中 2 队 + **3 支 1431 队 iter=20 撞顶**（`auto-1431-1491-1311` / `-1341-1311` / `-1481-1311`
+——正是 §14–§16「最后一公里」残余那几队）。§15 说的「`convergeCounts` 裸循环把两态翻转判不稳」也是同一病灶：那不是两态翻转，是 ulp 微环。
+
+### 18.2 修法（引擎级、窄范围）与两次反例
+
+1. `INNER_LOOP_MAX_ITERATIONS = 100` 单源（`useResourceCalc` 此前写死 `maxIterations: 20`，`core/resource.ts` 的缺省值形同虚设）。
+2. `core/resource/floatNoiseCycle.ts`：环成员逐槽逐字段相对 1e-9 内 = **浮点噪声环 = 已收敛**（规范停点仍取字典序最小成员、数值一位不差，
+   只改 `clean`）。判稳**不改 ε**：ε 判稳会让不同种子在到达同一浮点不动点之前各自停下，破坏 1051/1531 队 seedInvariance 逐位档。
+3. **两层预算**（`INNER_LOOP_OSCILLATOR_STOP = 20`）：第 20 轮之后只用于收敛尝试，真整数环 / 耗尽 ⇒ **回到第 20 轮状态**，非收敛轨迹与旧口径
+   逐位一致。反例 = 单纯放大上限时单人 `agent:1431:c6`：它是 ex 6↔10 / ult 1↔2 的整数量子振荡器（环增益 >1），走到精确环后取字典序成员，
+   其账本是「本轮次数 + 上轮平A」估出的混相位量，行与账本差 21s，折叠环随之在 84/49/29/78s 间摆、靠停滞规则退出 ⇒ 留白 **0→29.0s**。
+   非收敛轨迹没有「更对」的停点，只有历史已钉的停点；真解仍是 DEBT「全局实数化收敛重构」。
+4. 欠打回填 `convergeCounts` 复用 `runInnerLoop`（原裸循环无环检测）。与 ⑤a 的区别：噪声环才算稳，真整数环仍拒 ⇒ 没有 ⑤a 的 1591 副作用。
+5. `dynamicComboAlign` ①「credit == 净必要」是全额吸收的特例（中间实验里出现过 1431 落 179.12、溢出 90.71 < 容量 91.59 的部分吸收落点，
+   63.77+26.94 = 90.71 精确成立）⇒ 升级为「吸收总量 == min(溢出, 容量)」恒等式，两种落点都过。
+
+### 18.3 实测
+
+- 预设 `converged=false` 5→**2** 队（剩余 = master 既有真整数环）；`warmStart` 4/4、`seedInvariance` 3/3、`floatNoiseCycle` 3/3、`dynamicComboAlign` 3/3、
+  vue-tsc、check-guards 绿。
+- 默认口径 ratchet **绿**且改善：`auto-1431-1341-1031` 留白 4.3→**1.1s**、`auto-1431-1491-1311` 3.6→**1.8s**（⑤a 想要的收益）；
+  `auto-1431-1341-1311` 超预算 1.4s 不变（§16 定性不变）。
+- 预设口径 golden 重生成 14 条 / 5 队：4 支 1431 队 = 停点从 20 轮瞬态移到收敛点（最大 `auto-1431-1491-1341` ex 5→6 / nec +7.2s / dmg +2.2%，
+  其余 ≤0.07s）；`auto-1561-1171-1411` 0.04s 级；**单人 sweep 零变化**。
+- **同一补丁套 master**：golden 3 条（`auto-1561-1171-1411`，同上）+ ratchet `claret-roxy-rina` exit stable→cycle（留白 0.1 不变）/
+  `yidhari-roxy-lucia` 留白 1.6→1.7s；allAgentsSweep 311 / seedInvariance / warmStart 绿 ⇒ 这一修可**独立先落 master**（与 R37-J5 解耦、归因面最小），
+  分支再 rebase。是否这样做待用户拍板。
+- 分支 `4838870` 干净 worktree 满套件（`npx vitest run`）：**19 红 / 10 文件**（3051 用例）= §17 的 20 红去掉 `warmStart`；
+  其余逐条同 §17 分类：合轴模型语义 3（`comboAlignBudget` ×2、`comboAlignRelief` ×1，见 18.4）+ 钉数重锚 15
+  （`damagePoolBatchR17c/R18d`、`teamTimeSummary` ×2、`timeWeightAllocation` ×3、`truncationRefold` ×3、`banyue`、`nextRoundFeedbackR20`、`yixuanSmoke` ×4）。
+
+### 18.4 仍待用户裁决的口径（不代裁）
+
+- `comboAlignBudget.test` ×2：两条都断言「无静态合轴率 ⇒ `overflowSeconds > 0`」的对照组——动态合轴口径下 Σ净必要 > 预算就会被队友吸收，
+  对照组本身不再溢出（overflow 0 是机制生效，不是漏）。若用户确认「自动吸收是缺省语义」，两条重锚为「对照组 dynamicComboAlignSeconds > 0、
+  overflow 0；静态合轴率仍额外产生 credit」；若用户要保留「不设合轴率时不吸收」的可观测面，动态合轴需加 opt-out 开关（口径升级）。
+- `comboAlignRelief.test` 诚实面：`1191/1481/1311` 走 joint 档后 stun 4→3（硬不变量「失衡不降」红）。动态吸收改变了 joint 试探期间的落点，
+  需先归因是「吸收让某轮 stun 落到相邻整数」还是接受判据漏了动态 credit，再决定重锚还是修判据。
+
