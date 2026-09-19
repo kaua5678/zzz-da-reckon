@@ -217,3 +217,53 @@ node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --cli
   （badge 插件账本，权威）；② 直接读子代理 session log 的 `request/header.data.header.config`。
   实测 badge 账本可能不含最新记录（按需拉取非轮询）⇒ 要精确值就读 log。
 - 想换档位模型：改 `~/.dsh/model-routing.yaml`，不要改本节。
+
+
+---
+
+## 开发环境与工具链（Windows ↔ WSL / ShunCode）
+
+本仓库**真身在 WSL**：`/home/kaua/projects/zzz-calculator`。
+Windows 侧存在若干副本（`/f/trae_output/`、`/f/claude code/`、`/f/testfreedawnload/` 等），
+**一律不要用**——它们是历史遗留，改错副本不生效。
+
+### 1. 命令必须走 wsl_exec，不要 run_command
+
+经 UNC（`\\wsl$\...`）访问 Linux 文件系统极慢，实测 `git status` **85s vs 2s**。
+因此 `git / node / npm / 测试 / 构建` 一律用 **`wsl_exec`** 工具
+（位于 `.shuncode/mcp-tools/wsl_exec/`，参数经 `SHUNCODE_TOOL_ARGS` 传入，超时 10min）。
+
+> 根因：ShunCode 的 `run_command` PTY 硬编码为产品内置 Git Bash
+> （`dist/extension.js` L35144 `managedShellSpec()`，pwsh 回退被有意禁用，且不读任何 setting），
+> 所以工作区在 WSL 时它只能是「Windows Git Bash + UNC 访问」。
+> ShunCode **没有** remote-wsl 扩展（96 个扩展里没有，`workbench.desktop.main.js` 中
+> `wsl.localhost` 出现 0 次），装不上也别折腾。
+
+### 2. 写长文件用 apply_patch 分块
+
+Windows 命令行有 **8191 字符上限**，用 `echo` / `base64` 拼长内容会被**静默截断**
+（不报错，文件就是短一截）。长文件一律 `apply_patch` 分块写入。
+
+### 3. ShunCode 设置（`%APPDATA%\ShunCode\User\settings.json`）
+
+```json
+{
+  "shuncode.bridge.persistentMode": true,
+  "shuncode.bridge.tunnelProvider": "ngrok",
+  "shuncode.bridge.ngrokDomain": "paver-deskbound-angles.ngrok-free.dev",
+  "shuncode.bridge.ngrokUseHttpProxy": false,
+  "security.workspace.trust.enabled": false
+}
+```
+
+- `ngrokUseHttpProxy` **必须 false**（免费版走 HTTP 代理会被 `ERR_NGROK_9009` 拒绝）。
+- 固定域名是刚需：扩展宿主堆损坏崩溃（0xC0000374）时桥会停，
+  用 Quick Tunnel 每次重启都换域名，Arena 里存的旧地址全失效；
+  `persistentMode:true` 让 Chat 视图重渲染后自动起桥。
+- `security.workspace.trust.enabled:false` —— 否则受限模式禁用扩展，
+  表现为「打开文件夹后账号/授权消失、命令 not found」。
+
+### 4. 给新对话的提示词要短
+
+ShunCode 握手会**自动下发 3687 字符的 instructions**，重复写规则纯属浪费。
+给新 AI 的提示词只需 MCP URL + 两点环境事实（用 wsl_exec、apply_patch 分块）。
