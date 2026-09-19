@@ -5,20 +5,88 @@
  * - 毁伤：min(层数, 斩金断铁×1+葬血强袭×3+影画6)×覆盖率 + 影画6 直接毁伤；
  * - C2 毁伤倍率 ×130%（执行行 override）与 C1/C6 全管线抬升。
  */
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { setActiveRowFusionRules } from '@/logicEditor/fusion'
+import type { RowFusionRule } from '@/logicEditor/types'
 import {
   claretMechanic,
   computeClaretSharpResource,
   C2_MAIM_MULT,
   INITIAL_CRIT_DMG_TO_CRIT_RATE,
+  INSCRIPTION_BENCHMARK_MOVE_ID,
   SHARPNESS_COST_PER_EX,
   SHARPNESS_ULTIMATE_GAIN,
 } from '@/mechanics/agents/claret'
 
 beforeEach(() => {
   // setupHarness 内部自建 pinia；这里仅保证 fetch stub 隔离
+})
+
+afterEach(() => {
+  // 逻辑编辑器行融合规则是模块级状态（logicEditor/fusion.ts），下方 R37-J1 用例会灌规则，跑完必须清空
+  setActiveRowFusionRules([])
+})
+
+/**
+ * R37-J1（2026-09-19，OPEN-ITEMS）：克拉蕾模块曾有**私有** `findMoveById` / `getRowValue`，后者 = `values[0] ?? 0`，
+ * **缺** `× getRowFusionMultiplier(move.id, rowId)`（逻辑编辑器 `RowFusionRule`）。引擎其余路径（`getBasicComboMoves` /
+ * `averageBasicRows` / `fusedRowValue`）全走带乘数的 `data/moveTableQueries` 版 ⇒ 用户在逻辑编辑器给克拉蕾招式行配
+ * 融合规则时，其余角色吃、克拉蕾的平A两态秒均 / 斩金断铁 / 葬血强袭倍率**不吃**。测试态 `activeRowFusions` 默认空，
+ * 3000+ 条既有测试全看不见这条分裂——本组用例就是分裂的机器判据（修前必红）。
+ *
+ * 行为面：给两套平A基准（血锻#3 1611003 / 锻星#3 1611007）的 damage 行都配 ×2 ⇒ 无论铭刻份额多少，
+ *   `basicDamagePerSec = 2a(1−s) + 2b·s` 恰为原值 2 倍（mix 线性）；残痕行没配规则 ⇒ 不变（反锁：不是整行全乘）。
+ * 形状面：claret.ts 不再有同形私有函数，四个纯查询全部来自 `@/data/moveTableQueries`。
+ */
+describe('R37-J1 · 逻辑编辑器行融合乘数对克拉蕾生效（私有 getRowValue 漏乘的分裂已合并）', () => {
+  const RULE = (moveId: string, multiplier: number, enabled = true): RowFusionRule => ({
+    id: `t-${moveId}`, name: 't', agentId: '1611', moveId, rowId: 'damage', multiplier, enabled, note: '',
+  })
+  async function measure(rules: RowFusionRule[]) {
+    // 规则是模块级状态、不在 Vue 响应式图里 ⇒ 必须在首次求值**之前**灌进去，故每次都新建 harness + calc
+    const { config } = await setupHarness([{ agentId: '1611', cinemaLevel: 0 }, '', ''])
+    setActiveRowFusionRules(rules)
+    const calc = useResourceCalc()
+    const ch = calc.resourceResult.value!.characters.find(c => c.agentId === '1611')!
+    const basic = ch.executions.find(e => e.moveId === 'basic_attack')!
+    const src = ch.claretSharpResourceSource!
+    return {
+      basicDamagePerSec: basic.damageMultiplier ?? 0,
+      basicGashPerSec: src.basicGashPerSec,
+      share: config.getMechanicSetting('claret.inscriptionBasicTimeShare', 0),
+      teamDamage: calc.teamTotalDamage.value,
+    }
+  }
+
+  it('★ 两套平A基准 damage 行 ×2 ⇒ 平A秒均倍率恰为 2 倍、残痕秒均不变、总伤上升（修前：三者全部不动）', async () => {
+    const base = await measure([])
+    const doubled = await measure([RULE('1611003', 2), RULE(INSCRIPTION_BENCHMARK_MOVE_ID, 2)])
+    expect(base.basicDamagePerSec).toBeGreaterThan(0)
+    expect(doubled.basicDamagePerSec).toBeCloseTo(base.basicDamagePerSec * 2, 3)
+    expect(doubled.basicGashPerSec).toBeCloseTo(base.basicGashPerSec, 6)
+    expect(doubled.teamDamage).toBeGreaterThan(base.teamDamage)
+  })
+
+  it('反锁：规则 enabled=false / 只配别人的招式 ⇒ 克拉蕾读数逐位不变', async () => {
+    const base = await measure([])
+    const disabled = await measure([RULE('1611003', 2, false), RULE(INSCRIPTION_BENCHMARK_MOVE_ID, 2, false)])
+    const other = await measure([{ ...RULE('1011001', 2), agentId: '1011' }])
+    expect(disabled.basicDamagePerSec).toBe(base.basicDamagePerSec)
+    expect(disabled.teamDamage).toBe(base.teamDamage)
+    expect(other.basicDamagePerSec).toBe(base.basicDamagePerSec)
+    expect(other.teamDamage).toBe(base.teamDamage)
+  })
+
+  it('形状面：claret.ts 无同形私有 findMoveById / getRowValue，四个纯查询全部 import 自 @/data/moveTableQueries', () => {
+    const src = readFileSync(join(__dirname, '..', 'agents', 'claret.ts'), 'utf8')
+    expect(src).not.toMatch(/^function (findMoveById|getRowValue)\b/m)
+    expect(src).toMatch(/^import \{[^}]*\bgetRowValue\b[^}]*\} from '@\/data\/moveTableQueries'$/m)
+    expect(src).toMatch(/^import \{[^}]*\bfindMoveById\b[^}]*\} from '@\/data\/moveTableQueries'$/m)
+  })
 })
 
 describe('克拉蕾锐能（v12：进场 60 + 终结技 10/次 → 秘血铸锋 60/发）', () => {

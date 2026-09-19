@@ -12,8 +12,11 @@ import type { CharacterResourceResult, ClaretSharpResourceSource } from '@/types
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions } from '@/specs/mechanics'
-// 录入层不得值导入编排层（判据 19 layer-inversion，本文件曾是全仓唯一病灶）：纯查询从 data 层取
-import { pickThirdNamedBasicSegment, fusedRowValue } from '@/data/moveTableQueries'
+// 录入层不得值导入编排层（判据 19 layer-inversion，本文件曾是全仓唯一病灶）：纯查询从 data 层取。
+// R37-J1（2026-09-19）：`findMoveById` / `getRowValue` 也改用 data 层单源——本文件曾各有一份私有同形函数，
+// 其中 `getRowValue` 漏乘逻辑编辑器行融合乘数（getRowFusionMultiplier），与引擎其余路径分裂；
+// 判据 = claretSmoke.test.ts「R37-J1」组（行为面：基准行 ×2 ⇒ 平A秒均 ×2；形状面：本文件不得再有同形私有函数）。
+import { pickThirdNamedBasicSegment, fusedRowValue, findMoveById, getRowValue } from '@/data/moveTableQueries'
 
 /**
  * 克拉蕾（1611）v12 重录（2026-09-03，raw = nanoka 3.2.12+18601660）：
@@ -113,20 +116,6 @@ export const ULTIMATE_MOVE_ID = '1611021'
 const SHARPNESS_PER_ENTRY = SHARPNESS_COST_PER_EX
 /** 循环轮数上限（防病态输入下 while 不收敛；180s/16s 窗口 实测只需 ~8） */
 const MAX_INSCRIPTION_ENTRIES = 60
-
-function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const category of skills.categories) {
-    const move = category.moves.find(item => item.id === moveId)
-    if (move) return move
-  }
-  return null
-}
-
-function getRowValue(move: SkillMove | null | undefined, rowId: string): number {
-  if (!move) return 0
-  return move.rows.find(row => row.id === rowId)?.values[0] ?? 0
-}
 
 /** 招式某行的秒均（行值 / actionTime；无动作时间 → 0）。 */
 function perSeconds(move: SkillMove | null | undefined, rowId: string): number {
