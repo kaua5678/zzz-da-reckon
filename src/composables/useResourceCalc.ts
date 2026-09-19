@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
+import { INNER_LOOP_MAX_ITERATIONS, TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { stunPlanProjectionFromCode } from '@/core/stunPlanProjection'
 import { calcStunAxis } from '@/core/stunAxis'
 import type { InStunAnomalySummary } from '@/types/resource'
@@ -74,7 +74,7 @@ export function useResourceCalc() {
       bossStunValue: configStore.enemy.stunValue,
       shieldCount: configStore.enemy.shieldCount,
       energyShieldCount: configStore.enemy.energyShield,
-      maxIterations: 20,
+      maxIterations: INNER_LOOP_MAX_ITERATIONS,
       // 失衡计划值 → 计数的投影方式（C7 实验开关，默认 off = 现行口径；见 core/stunPlanProjection.ts）
       stunPlanProjection: stunPlanProjectionFromCode(configStore.getMechanicSetting('time.stunPlanProjection', 0)),
       characters,

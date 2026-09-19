@@ -59,6 +59,7 @@ function ultimateGiftRowSpec(
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 import * as ResourceCalcHelpers from './resource/helpers'
 import { buildGiftRow } from './resource/giftRows'
+import { isFloatNoiseCycle } from './resource/floatNoiseCycle'
 const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, materializeRows, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline, TIME_FOLD_CONVERGENCE_SECONDS } = ResourceCalcHelpers
 
 /**
@@ -182,6 +183,35 @@ export const UNDERFILL_PROBE_THRESHOLD_SECONDS = TIME_BUDGET_TOLERANCE_SECONDS
  */
 export const TIME_FOLD_MAX_PASSES = 32
 
+/**
+ * 内层不动点（`runInnerLoop` / 欠打回填 `convergeCounts`）轮数上限缺省值 = **收敛尝试的总预算**。
+ * `ResourceCalcConfig.maxIterations` 可覆写；编排层 `useResourceCalc` 从这里取（规则 11，别再在别处写字面量）。
+ *
+ * 历史值 **20**（1051 伊德海莉连续松弛队单独抬到 100，见 calcTeamResources 头部）。2026-09-19 R37-J5 ④ 把叶瞬光
+ * 「平A→局外剑势→明心境轮数→必要时间→平A」这条**连续**反馈边搬进内层（估计与物化行单源）后，该环是 ρ≈0.17 的
+ * 几何收缩：第 14 轮起 9 位小数不动，但浮点复合映射没有精确不动点，第 21 轮起才进入 1 ulp 的精确 2-循环
+ * （由 `floatNoiseCycle.ts` 判成已收敛）。20 轮上限在它进入精确环之前就到顶 ⇒ 停点 = 上限处瞬态、`converged=false`，
+ * 且欠打回填试探同样因「未稳」被拒。实测 104 预设：master 撞顶 **0** 队；分支 3 支 1431 队全部 iter=20 撞顶
+ * （`auto-1431-1491-1311` / `-1341-1311` / `-1481-1311`，正是「最后一公里」留白/超预算残余那几队）。
+ * 上限只需容得下「收缩到 ulp 级 + 进入精确环」：ρ=0.17 ≈21 轮、ρ=0.5 ≈55 轮、0.5 阻尼的 1051 实测 41 轮 ⇒ 取 **100**
+ * 与 1051 既有口径统一；正常收敛队照旧 ≤15 轮退出，代价只落在本来就要跑满的队。
+ *
+ * **两层语义**（`INNER_LOOP_OSCILLATOR_STOP` 配套）：第 20 轮之后的预算**只用于收敛尝试**——尝试成功（严格判稳 / 浮点
+ * 噪声环）就返回收敛态；尝试失败（真整数环 / 预算耗尽）**回到历史停点 = 第 20 轮状态**，与旧口径逐位一致。
+ * 为什么不直接取环的规范成员：整数量子振荡器（实测单人 1431 命座 6：ex 6↔10 / ult 1↔2 精确 2-循环，环增益 >1）
+ * 的环成员账本是「本轮次数 + 上轮平A」估出来的混相位量，行与账本差 21s，折叠环随之在 84/49/29/78s 之间摆、靠停滞
+ * 规则退出 ⇒ 留白 0 → 29.0s。非收敛轨迹没有「更对」的停点，只有「历史已钉」的停点；真解是 DEBT「全局实数化收敛重构」。
+ * @fact engine:内层上限 口径: 内层不动点轮数预算缺省 100（`INNER_LOOP_MAX_ITERATIONS`，`maxIterations` 可覆写；1051 队原本就 100），第 20 轮（`INNER_LOOP_OSCILLATOR_STOP`，1051 队 = 预算本身）之后只用于收敛尝试：判稳严格相等**不放宽**，浮点噪声环视为收敛；真整数环 / 耗尽 ⇒ 回到第 20 轮状态（非收敛轨迹与旧口径逐位一致）——20 轮曾是分支上 1431 三队 `converged=false` 的唯一来源（连续收缩到 ulp 级要 ≈21 轮） | 据 实测@2026-09-19 R37-J5 内层收敛专项（单人 1431 c6 取环规范成员留白 29s 的反例；先例：折叠环上限 8→32 用户裁决@2026-09-10「以长期利益为主」） | 验 src/core/__tests__/floatNoiseCycle.test.ts + src/core/__tests__/warmStart.test.ts | 锚 src/core/resource.ts#INNER_LOOP_MAX_ITERATIONS | 信 确认
+ * ⟳复核: 「全局实数化收敛重构」（DEBT_REGISTRY）落地或 20 轮停点语义再动时，复核「104 预设 converged=false 只剩真整数环队（当前 2 队）」+「单人 1431 c6 留白仍为 0」+「warmStart 冷/热逐位一致且 converged」（floatNoiseCycle.test + warmStart.test + timeGolden） | 到期 2026-12-31
+ */
+export const INNER_LOOP_MAX_ITERATIONS = 100
+
+/**
+ * 非收敛轨迹（整数量子振荡器）的停点轮次 = 历史内层上限 20：`INNER_LOOP_MAX_ITERATIONS` 里第 20 轮之后的预算只用于
+ * 收敛尝试，失败即返回第 20 轮状态（详见上方两层语义）。1051 连续松弛队的历史上限本就是 100 ⇒ 她的停点轮次 = 预算本身。
+ */
+const INNER_LOOP_OSCILLATOR_STOP = 20
+
 
 /**
  * ===== 计算核心的**阶段顺序**（2026-09-11 显式化；改动前先读这张表，改动只落在对应阶段）=====
@@ -201,12 +231,15 @@ export const TIME_FOLD_MAX_PASSES = 32
  */
 export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResult {
   const totalTime = config.totalTime
-  // 伊德海莉连续松弛（0.5 阻尼）收敛比整数动力学慢：她的队内层迭代上限提到 100
-  // （阻尼残差减半每轮，且判稳用严格相等——浮点不动点约需 40+ 轮；只影响含她的队，其余队维持 20 历史口径）。
+  // 伊德海莉连续松弛（0.5 阻尼）收敛比整数动力学慢：她的队内层迭代上限至少 100
+  // （阻尼残差减半每轮，且判稳用严格相等——浮点不动点约需 40+ 轮）。2026-09-19 起缺省上限也是 100
+  // （`INNER_LOOP_MAX_ITERATIONS`，理由见其注释）；这条 max 只在调用方显式传更小的 `maxIterations` 时仍为她兜底。
   // agentId 判断冗余已删：yidhariContinuousEx 唯一写入方 = src/mechanics/agents/yidhari.ts:148
   // （模块只对自己的 cfg 运行 ⇒ 该字段为 true 即蕴含 agentId === '1051'），引擎层不读 agentId。
   const yidhariContinuousPresent = config.characters.some(c => c.yidhariContinuousEx === true)
-  const maxIter = Math.max(config.maxIterations || 20, yidhariContinuousPresent ? 100 : 0)
+  const maxIter = Math.max(config.maxIterations || INNER_LOOP_MAX_ITERATIONS, yidhariContinuousPresent ? 100 : 0)
+  /** 非收敛轨迹的停点轮次（历史上限；显式传更小的 maxIterations 时以它为准，1051 队 = 预算本身） */
+  const oscillatorStop = yidhariContinuousPresent ? maxIter : Math.min(maxIter, INNER_LOOP_OSCILLATOR_STOP)
   const configs = config.characters
   // 欠打试探排除队（2026-09-08 立 → **2026-09-10 解除，现无任何排除队**）：
   //  · **1591 希格莉德**（当时唯一排除）：试探的物化行测量口径（`buildExecutions` + 赠送行近似）
@@ -305,11 +338,15 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
    * 内层次数收敛 + 停点规范化（环检测 + 字典序规范停点）。
    * 提升到函数级（2026-09-08 重构）：折叠循环与「② 规范重跑」共用。
    */
-  const runInnerLoop = (from: IterationState[]): { end: IterationState[]; clean: boolean } => {
+  const runInnerLoop = (from: IterationState[]): { end: IterationState[]; clean: boolean; iterations: number } => {
     const cycleSigs = new Map<string, number>()
     const cycleSnapshots: IterationState[][] = []
     let cur = from
-    for (iter = 0; iter < maxIter; iter++) {
+    /** 第 oscillatorStop 轮状态快照 = 收敛尝试失败时的停点（与历史上限 20 的「上限处瞬态」逐位一致） */
+    let oscillatorStopStates: IterationState[] | undefined
+    let k = 0
+    for (; k < maxIter; k++) {
+      if (k === oscillatorStop) oscillatorStopStates = structuredClone(cur)
       const newStates = iterate(configs, cur, config)
       // 检查收敛：强特次数、大招次数与**平A时间**是否稳定。伊德海莉连续松弛（阻尼实数次数）同样按
       // 严格相等判稳——阻尼映射收敛到浮点不动点后逐位复现（热启动透明的前提）；ε 判据会留下
@@ -331,7 +368,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       }
 
       cur = newStates
-      if (!changed) return { end: cur, clean: true }
+      if (!changed) return { end: cur, clean: true, iterations: k }
       // 环检测：签名 = 全状态 JSON（含 energySource 快照——iterate 消费的一切）；快照/恢复用
       // structuredClone 而非 JSON roundtrip——JSON 会把 NaN 物化成 null 写回状态（毒路径）
       const sig = JSON.stringify(cur)
@@ -344,12 +381,21 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
           const ms = JSON.stringify(m)
           if (ms < canonicalSig) { canonical = m; canonicalSig = ms }
         }
-        return { end: structuredClone(canonical), clean: false }
+        // 浮点噪声环（成员逐字段相对 1e-9 内，典型 = 连续收缩到 ulp 级后 1 ulp 交替的 2-循环）= 已收敛：
+        // 停点仍是规范成员、数值一位不差，只是不再把收敛标志报成 false（口径与实测见 floatNoiseCycle.ts）。
+        // 真整数环（Δ≥1）照旧 clean=false：历史上限内检出的取字典序规范成员（旧口径），上限后检出的 = 收敛尝试失败，
+        // 回到第 oscillatorStop 轮状态（见 INNER_LOOP_MAX_ITERATIONS 两层语义）。
+        if (isFloatNoiseCycle(members)) return { end: structuredClone(canonical), clean: true, iterations: k }
+        if (oscillatorStopStates) return { end: oscillatorStopStates, clean: false, iterations: oscillatorStop }
+        return { end: structuredClone(canonical), clean: false, iterations: k }
       }
       cycleSigs.set(sig, cycleSnapshots.length)
       cycleSnapshots.push(structuredClone(cur))
     }
-    return { end: cur, clean: false } // 跑满上限：停点=上限处瞬态（起点确定则停点确定）
+    // 预算耗尽：停点 = 第 oscillatorStop 轮瞬态（起点确定则停点确定；与历史上限 20 逐位一致）
+    return oscillatorStopStates
+      ? { end: oscillatorStopStates, clean: false, iterations: oscillatorStop }
+      : { end: cur, clean: false, iterations: k }
   }
   /** 时间预算折叠循环（内层次数收敛 + 停点规范化 + 折叠 excess/refund 冻结）；写函数级诊断量 */
   const runFoldLoop = (from: IterationState[]): IterationState[] => {
@@ -383,6 +429,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       inner = runInnerLoop(defaultSeedStates.map(s => ({ ...s })))
     }
     st = inner.end
+    iter = inner.iterations // 诊断量 `iterations` 只记折叠环的内层轮数（欠打回填试探复用 runInnerLoop 但不覆盖它）
     if (inner.clean) converged = true
 
     // 测量每个角色执行计划的**前台**时间（后台行不占共享轴），对自家账本收敛：
@@ -514,6 +561,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         call: (globalThis as unknown as { __foldTrace?: unknown[] }).__foldTrace?.length ?? 0,
         pass: timePass, maxExcess, best: bestExcess, stagnant: stagnantPasses,
         idle: maxIdle, refund: config.timeBudgetRefund ?? 0, conv: timeBudgetConverged,
+        innerClean: inner.clean, innerIters: inner.iterations,
       })
     }
     }
@@ -650,20 +698,15 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         }
         return total
       }
-      /** 内层次数收敛（与折叠循环同一判据：强特/终结次数 + 平A时间严格相等，见 runInnerLoop 注释）；stable=false = 耗尽上限 */
-      const convergeCounts = (from: IterationState[]) => {      let st = from
-        for (let k = 0; k < maxIter; k++) {
-          const next = iterate(configs, st, config)
-          let changed = false
-          for (let i = 0; i < st.length; i++) {
-            if (next[i].exSpecialCount !== st[i].exSpecialCount
-              || next[i].ultimateCount !== st[i].ultimateCount
-              || next[i].basicAttackTime !== st[i].basicAttackTime) { changed = true; break }
-          }
-          st = next
-          if (!changed) return { states: st, stable: true }
-        }
-        return { states: st, stable: false }
+      /**
+       * 内层次数收敛 = 折叠环同一台机器 `runInnerLoop`（判稳严格相等 + 精确环检测 + 浮点噪声环视为已收敛，规范停点）。
+       * 2026-09-19 前这里是一段**裸循环**（只有严格判稳、无环检测）：连续收缩队（1431 剑势环 / 1531 回血环）的试探
+       * 进入 ulp 级微环后永远「未稳」⇒ 回填一律被拒——单人 1431 命座 6 实测留白 29.0s、`auto-1431-1341-1311`
+       * 留白 1.5s 都是这一处拒出来的。真整数环仍 stable=false（与 ⑤a「规范停点当稳」不同——那次 1591 系变差被否决）。
+       */
+      const convergeCounts = (from: IterationState[]) => {
+        const r = runInnerLoop(from)
+        return { states: r.end, stable: r.clean }
       }
       let rowsFilled = frontlineRowsOf(states)
       let underfill = budgetSeconds - rowsFilled

@@ -51,8 +51,32 @@ async function evalPreset(id: string) {
   }
 }
 
+type Evaluated = Awaited<ReturnType<typeof evalPreset>>
+
+/**
+ * 吸收恒等式（口径「吸收多少由溢出决定、按容量比例分摊，不多不少」）：
+ * 溢出 = Σ吸收前净必要 − 预算；吸收总量 = min(溢出, 队友容量)。用终态字段还原：吸收前净必要 = necessary − (credit − dynamic)
+ * （feasibleScale=1 时精确；全额吸收时队友 necessary == credit，两支恒等式各在自己那支成立）。
+ * 只钉「credit == 净必要」是全额那支的特例：2026-09-19 内层收敛专项里曾出现过 1431 落到 179.12（不贴顶）、溢出 90.71 < 容量 91.59 的
+ * 部分吸收落点（63.77 + 26.94 = 90.71 精确成立），特例断言会误红——机制的定义性质是吸收量 == 溢出量，两种落点都必须过本恒等式。
+ */
+function expectAbsorbedEqualsOverflow(r: Evaluated, op: Evaluated['slots'][number]) {
+  const netBefore = (s: Evaluated['slots'][number]) => s.necessary - (s.credit - s.dynamic)
+  const absorbed = r.slots.reduce((sum, s) => sum + s.dynamic, 0)
+  const capacity = r.slots.reduce((sum, s) => sum + (s === op ? 0 : netBefore(s)), 0)
+  expect(op.dynamic, '操作角色不被吸收').toBe(0)
+  expect(absorbed).toBeGreaterThan(0)
+  if (absorbed < capacity - 1e-6) {
+    const overflow = r.slots.reduce((sum, s) => sum + netBefore(s), 0) - r.budget
+    expect(absorbed, '部分吸收：吸收总量 == 溢出量').toBeCloseTo(overflow, 3)
+  } else {
+    for (const s of r.slots) if (s !== op) expect(s.credit, `${s.agentId} 全额吸收：credit == 净必要`).toBeCloseTo(s.necessary, 3)
+  }
+  for (const s of r.slots) if (s !== op) expect(s.credit, `${s.agentId} credit ≤ 净必要`).toBeLessThanOrEqual(s.necessary + 1e-6)
+}
+
 describe('动态合轴 · 操作角色不动、队友前台按溢出量被合轴吸收', () => {
-  it('① 1431 簇两队：截断从 86.5/81.2s 降到 ≤ 11 / 0，队友前台被全额吸收（credit == 净必要），单人前台 ≤ 战斗时间', async () => {
+  it('① 1431 簇两队：截断从 86.5/81.2s 降到 ≤ 11 / 0，队友前台按溢出量被吸收（吸收总量 == min(溢出, 容量)），单人前台 ≤ 战斗时间', async () => {
     const a = await evalPreset('auto-1431-1481-1491')
     // 剩余 ≤ 11s = 叶瞬光单人 > 180s 的真剩余（操作角色 frontline 贴顶），不是合轴能解的
     expect(a.cut).toBeLessThan(11)
@@ -62,12 +86,13 @@ describe('动态合轴 · 操作角色不动、队友前台按溢出量被合轴
     expect(op.frontline).toBeGreaterThan(a.budget - 1)
     for (const s of a.slots) {
       expect(s.frontline, `${s.agentId} 单人前台 ≤ 战斗时间`).toBeLessThanOrEqual(a.budget + 1e-6)
-      if (s !== op) expect(s.credit, `${s.agentId} 队友前台被全额吸收`).toBeCloseTo(s.necessary, 3)
     }
+    expectAbsorbedEqualsOverflow(a, op)
     expect(a.damage).toBeGreaterThan(BEFORE['auto-1431-1481-1491'].dmg * 1.3)
 
     const b = await evalPreset('auto-1431-1481-1341')
     expect(b.cut).toBeLessThanOrEqual(TIME_BUDGET_TOLERANCE_SECONDS)
+    expectAbsorbedEqualsOverflow(b, b.slots.reduce((m, s) => (s.necessary > m.necessary ? s : m), b.slots[0]))
     expect(b.damage).toBeGreaterThan(BEFORE['auto-1431-1481-1341'].dmg * 1.3)
   }, 180_000)
 

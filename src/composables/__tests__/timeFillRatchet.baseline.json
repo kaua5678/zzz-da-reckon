@@ -332,7 +332,7 @@
   "outerExit": "stable"
  },
  "auto-1431-1341-1031": {
-  "slack": 4.3,
+  "slack": 1.1,
   "over": 0,
   "stun": 1,
   "outerExit": "stable"
@@ -362,7 +362,7 @@
   "outerExit": "cycle"
  },
  "auto-1431-1491-1311": {
-  "slack": 3.6,
+  "slack": 1.8,
   "over": 0,
   "stun": 1,
   "outerExit": "stable"
@@ -575,7 +575,7 @@
   "slack": 0.1,
   "over": 0,
   "stun": 4,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "yidhari-jufufu-lucia": {
   "slack": 1.4,
@@ -596,7 +596,7 @@
   "outerExit": "stable"
  },
  "yidhari-roxy-lucia": {
-  "slack": 1.6,
+  "slack": 1.7,
   "over": 0,
   "stun": 4,
   "outerExit": "stable"
