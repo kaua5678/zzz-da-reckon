@@ -16,10 +16,15 @@ import { fmt } from '@/utils/format'
 
 beforeEach(() => clearWarmStartCache())
 
-async function summaryOf(team: string[], enemy: { invincibleTime?: number } = {}) {
-  await setupHarness(['', '', ''])
+async function summaryOf(team: string[], enemy: { invincibleTime?: number } = {}, opts: { applyPreset?: boolean } = {}) {
+  const { catalog } = await setupHarness(['', '', ''])
   const config = useConfigStore()
   for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
+  if (opts.applyPreset) {
+    // 预设配置口径（与 timeGolden 同源：构筑推荐 + 预设滑块），与默认 setAgent 口径是两套不同场景
+    await catalog.loadBuildRecommendations()
+    config.applyTeamPreset(team as [string, string, string])
+  }
   if (enemy.invincibleTime !== undefined) config.setEnemy({ invincibleTime: enemy.invincibleTime })
   const calc = useResourceCalc()
   const rr = calc.resourceResult.value
@@ -105,13 +110,17 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
     // 降配二分找到一个 overflow=0 的可行档（scale=0.0625）被采纳 ⇒ 该队不再是溢出样例
     // （那是**可行性改善**，见 ENGINE_PIPELINE_GUIDE 坑 41）。本测试要的是「真溢出队的逐行可见性」，
     // 故换成同为 1431 系、仍真溢出的 `1431+1491+1341`。
-    const t = await summaryOf(['1431', '1481', '1341'])
+    // ⚠ 2026-09-19 再换口径（债 2 批 2-1 截断外环回灌，R37-J2）：setAgent 口径下 `1431+1481+1341` 的 77.5s 截断经
+    // rowTimeLimit 重折归零（账本只数装得下的行 ⇒ 次数回落 ⇒ 行装进 180s）——它不再是溢出样例；截断入口 + 加回不越次数
+    // 两处修正后，全库**默认口径**已无 >1s 截断队。仍真溢出的是**预设配置口径**的 1431 簇（`auto-1431-1481-1491` 重折后
+    // 仍 ~85s、`auto-1431-1481-1341` ~80s，必要行本身 > 预算），故本用例改用 applyPreset 的 `1431+1481+1491`。
+    const t = await summaryOf(['1431', '1481', '1491'], {}, { applyPreset: true })
     expect(t.overflow).toBeGreaterThan(1)
     expect(t.truncatedRows.length).toBeGreaterThan(0)
-    // 恒等式带 1s 容差：逐行 cutSeconds = (before−after)×单位时长，与逐槽 used−kept 在小数次数行 +
-    // 整数装包（floor + 小数升序加回）下会差一个量化残差（实测 1431+1481+1491 槽0：50.837 vs 51.081，
-    // 差 0.244s = 0.3%）——与仓库既有「量化残差 ~1s 属合轴可覆盖」同一档。
-    expect(Math.abs(t.truncatedRows.reduce((a, r) => a + r.cutSeconds, 0) - t.overflow)).toBeLessThanOrEqual(1)
+    // 恒等式：逐行 cutSeconds = (before−after)×单位时长 == 逐槽 used−kept。此前带 1s 容差是因为「小数次数行加回会越过原次数」
+    // （8.249 次 floor 到 8 再加回 1 = 9 ⇒ kept 虚高、该行不进 cuts，实测 0.244s；重折后放大到 1.9s 才暴露根因，2026-09-19 修）；
+    // 修后恒等式精确成立，只留浮点噪声。
+    expect(Math.abs(t.truncatedRows.reduce((a, r) => a + r.cutSeconds, 0) - t.overflow)).toBeLessThanOrEqual(1e-6)
     for (const r of t.truncatedRows) {
       expect(r.countAfter).toBeLessThan(r.countBefore)
       expect(r.cutSeconds).toBeGreaterThan(0)

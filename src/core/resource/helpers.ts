@@ -745,11 +745,15 @@ export function truncateExecutionsToFrontline(
     remaining -= keep * u.perUnit
   }
   // ② 剩余时间按小数部分降序加回整次（装不下就停）
+  // ⚠ 加回**不得越过原次数**（2026-09-19 R37 实测修正）：小数次数行（如 8.249 次）floor 到 8 后若再加回 1 次 = 9 > 8.249，
+  // 截断后的计划反而比截断前多打 0.751 次、kept 虚高 1.9s，且该行既不在 cuts 里、cutSeconds 又被冲小 ⇒ 「Σ 逐行 cutSeconds == overflow」
+  // 恒等式破（teamTimeSummary 曾把 0.244s 残差当量化噪声容忍；批 2-1 重折后 1431 队放大到 1.9s 才暴露根因）。
+  // 小数余量本就装不下一整次，按整数装包纪律留在 cut 里如实上报。
   const order = units.map((_u, i) => i).sort((a, b) => units[b].frac - units[a].frac)
   let cursor = 0
   while (cursor < order.length) {
     const u = units[order[cursor]]
-    if (u.count < u.e.count && u.perUnit <= remaining + 1e-9) {
+    if (u.count + 1 <= u.e.count + 1e-9 && u.perUnit <= remaining + 1e-9) {
       u.count += 1
       remaining -= u.perUnit
       cursor = 0
