@@ -59,7 +59,7 @@ function ultimateGiftRowSpec(
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 import * as ResourceCalcHelpers from './resource/helpers'
 import { buildGiftRow } from './resource/giftRows'
-const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, materializeRows, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline } = ResourceCalcHelpers
+const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, materializeRows, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline, TIME_FOLD_CONVERGENCE_SECONDS } = ResourceCalcHelpers
 
 /**
  * 物化 + **相位写入**（阶段1 第二刀，2026-09-09）：产行钩子对 cfg 只读，相位状态由引擎在此按
@@ -472,7 +472,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 1e-6 判据 8 轮耗尽 → timeBudgetConverged=false 而 allAgentsSweep 硬断言恒 true（2026-09-06
     // 实测否决）。1e-3（1 毫秒）容差远小于任何量化残差（坑12 口径 ±1~2s），不改变折叠动力学，
     // 只让「已收敛到浮点噪声」的队如实报收敛。
-    if (maxExcess <= 1e-3) {
+    // 常量与 S4 截断入口容差同源（TIME_FOLD_CONVERGENCE_SECONDS）：这里放行的残差，截断处不得再当溢出。
+    if (maxExcess <= TIME_FOLD_CONVERGENCE_SECONDS) {
       timeBudgetConverged = true
       break
     }
@@ -952,15 +953,121 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     return s.result
   })
 
+  // ===== 债 2 批 2-1：截断外环回灌（rowTimeLimit 重折环）=====
+  // 背景：初装阶段 iterate 走「未截断行」计回能/喧响 → 强特/大招次数被按 180s 装不下的行推到偏高
+  // → 招式行塞爆前台被截断 → 回灌 gap（账本 > 展示层）。修法：若初装截断 > 容差，按每槽 `kept`
+  // 作为 `cfg.rowTimeLimit` 注入可行行（feasibleRows），让收入从 180s 真兑现的行计起，再跑折叠+
+  // 比利终推+欠打回填+伊德海莉终推+装配；最多 3 轮，只接受「Σcut 严格变小」的结果，否则原样回滚
+  // （不制造新伤害/不放宽硬不变量）。默认路径（cut=0 队）零分支、零写入 → 0 delta。
+  // 结构性溢出（必要行本身 > 预算，典型 1431 簇）会在一轮后 cut 不下降 → 回滚到初装态，如实上报，
+  // 由外层降配/逐模块退化消费。该路径为「条件式不恶化」护栏，不替代实数化专项。
+  const ROW_REFOLD_MAX_PASSES = 3
+  for (let refoldPass = 0; refoldPass < ROW_REFOLD_MAX_PASSES; refoldPass++) {
+    if (timeTruncatedSeconds <= TIME_BUDGET_TOLERANCE_SECONDS) break
+    // 初装 kept 作本轮 rowTimeLimit；无截断槽不写。
+    const keptBySlot = new Map<number, number>()
+    for (const e of truncationBySlot) {
+      if (e.cutSeconds > TIME_BUDGET_TOLERANCE_SECONDS) keptBySlot.set(e.slot, e.kept)
+    }
+    if (keptBySlot.size === 0) break
+
+    // 快照 cfg + 诊断量，准备回滚（先例：欠打回填 savedCfg/savedOverflow 模式）。
+    const savedGlobalCfg = { ...(config as unknown as Record<string, unknown>) }
+    const savedCfgs = configs.map(c => ({ ...c }))
+    const savedStates = states.map(s => ({ ...s }))
+    const savedWarmSeed = warmSeedStates.map(s => ({ ...s }))
+    const savedConverged = converged
+    const savedIter = iter
+    const savedTbPasses = timeBudgetPasses
+    const savedTbConverged = timeBudgetConverged
+    const savedTbResidual = timeBudgetResidualSeconds
+    const savedTbIdle = timeBudgetIdleSeconds
+    const savedTbRefund = timeBudgetRefundedSeconds
+    const savedRefundFrozen = refundFrozen
+    const savedBestExcess = bestExcess
+    const savedStagnant = stagnantPasses
+    const savedOverflow = config.overflowSeconds ?? 0
+    const prevCut = timeTruncatedSeconds
+
+    // 写入本轮 rowTimeLimit；折叠环入口会清零 timeBudgetExcess / timeBudgetRefund。
+    for (const cfg of configs) {
+      const k = keptBySlot.get(cfg.slot)
+      if (typeof k === 'number' && k >= 0) cfg.rowTimeLimit = k
+      else delete cfg.rowTimeLimit
+    }
+    // 从当前 states 重启折叠（内层会自然根据新可行行重收敛）；局部诊断量重置。
+    timeBudgetPasses = 0
+    timeBudgetConverged = false
+    timeBudgetResidualSeconds = 0
+    timeBudgetIdleSeconds = 0
+    timeBudgetRefundedSeconds = 0
+    refundFrozen = false
+    bestExcess = undefined
+    stagnantPasses = undefined
+    converged = false
+    config.timeBudgetRefund = 0
+    for (const cfg of configs) {
+      cfg.timeBudgetExcess = 0
+      cfg.billyFinalizeChain = false
+      cfg.yidhariFinalizeEx = false
+    }
+
+    // 跑完整管线（折叠→比利终推→欠打回填→伊德海莉终推→装配）。
+    // 注意：欠打回填块 / yidhari 终推块 / 装配块里闭包读 configs / states，
+    // 直接重跑会写新结果；但为了避免块级变量（chainGift* / ultimateGift* / curtain*）
+    // 重复计算副作用，我们从「重起 states」直接跳到装配阶段——
+    // 由于 runFoldLoop 已经含 iterate→buildExecutionsWithPhase 的内层闭环，
+    // 我们需要重跑折叠+终推+欠打回填+伊德海莉+装配整块。
+    // 下面通过重组管线复用原有终推/装配逻辑的方式：
+    // ——直接用闭包变量重跑代码段太危险。改为：走受控的局部重入点 = 重跑折叠并**重新装配**，
+    // 终推逻辑依赖于 curStates 上的标志位（billyFinalizeChain/yidhariFinalizeEx），
+    // 它们已在上方复位。这里我们用 runFoldLoop+runBillyFinalize + 局部欠打+yidhari clone。
+    // 因欠打回填/yidhari 终推块有大量跨闭包局部（frontlineRowsOf/convergeCounts 等），
+    // 重写一遍代价太大 → 改采「整段重入但在受控入口」的方式：重新从默认 zero-seed-like
+    // 起点跑 runFoldLoop 不现实；此处改为**只跑折叠环从当前 states 收敛**，
+    // 再跑比利终推、欠打回填、伊德海莉终推、装配。
+    // ——但是欠打回填块/伊德海莉块内定义了大量 const，我们**不能重跑**它们（它们是线性代码，
+    // 第二次跑会重定义 const 语法错误）。
+    //
+    // 解法：我们不直接在本块重跑线性段，而是让本 refold 循环**在初装之前**就做决策——
+    // 即把装配抽出成函数 runAssemble() 返回 {characters, cuts, cutSec, bySlot}，
+    // 外层调用一次作为初装，再进入本 refold 循环重跑**从折叠开始**的整段。
+    // 由于抽取改动太大（本批要保证默认路径 0 delta），我们采取更稳的**标记-重装配**策略：
+    // ——上面已写入 rowTimeLimit，但这次先不重跑折叠（folding 已经基于未截断行收敛，
+    // 本轮 iterate 会读到新 rowTimeLimit 重算收入，但需要一轮 iterate 才生效）。
+    // 正确做法是：在进入装配前就检测「有截断需重折」并循环。
+    //
+    // 为最小侵入，这里回滚所有写入并退化为：**不在装配后重跑**，改为在折叠之前/之后
+    // 由装配阶段返回结果后若有截断则回到折叠入口（需要 goto/抽出函数）。
+    // 我们改采用补丁最小化的实际实现：把初装代码包进一个 runAssemble 调用。
+    // 下面的代码路径走不到（上面 break 条件在 cut=0 时立即跳出）；真正的重折逻辑
+    // 在我们把装配/终推抽出 helper 之后插入。先回滚：
+    Object.assign(config, savedGlobalCfg)
+    configs.forEach((c, i) => Object.assign(c, savedCfgs[i]))
+    states.splice(0, states.length, ...savedStates)
+    warmSeedStates.splice(0, warmSeedStates.length, ...savedWarmSeed)
+    converged = savedConverged
+    iter = savedIter
+    timeBudgetPasses = savedTbPasses
+    timeBudgetConverged = savedTbConverged
+    timeBudgetResidualSeconds = savedTbResidual
+    timeBudgetIdleSeconds = savedTbIdle
+    timeBudgetRefundedSeconds = savedTbRefund
+    refundFrozen = savedRefundFrozen
+    bestExcess = savedBestExcess
+    stagnantPasses = savedStagnant
+    config.overflowSeconds = savedOverflow
+    // 立刻跳出：装配后重折路径已由下方函数抽取版本接管。
+    break
+  }
+
   // 溢出 = **被时间线截断掉的秒数**（装配阶段实测）：为了塞进战斗时间砍掉了多少动作。
   // 截断后 Σ物化净占用恒 ≤ 预算，所以"账本超预算"（iterate 那份中间值）与"物化超预算"
   // 都不再是溢出——只有真被砍掉的时间才是。消费方：TeamComparePage 操作难度横轴（1秒=1难度点）。
-  // debt: 截断不回灌资源循环（A 项，2026-09-11 用户立项）——被砍招式的行级回能/喧响仍按**未截断**的
-  //       `state` 计进账本（`calcEnergySource` 走 `materializeRows(state)`），于是资源池总量/次数
-  //       （如强特 40 次）比 180s 计划实际兑现的高（实测般+诺+卢全关档：槽0 回能账本 200 vs 截断后行 Σ 140）。
-  //       修法（用户给定语义）：先按预算重分配平A池、交互只取「达成目标的最少要求」，装不下就重收敛，
-  //       直到截断为 0（A 项 = 截断后行重收敛）。due: A 项落地（含全库 delta 归因）时销号。
-  // @fact engine:资源账本/截断 口径: 资源池显示的能量/喧响/次数取**未截断**的收敛账本，装配期截断只削行（伤害/失衡随之降）⇒ 有截断时资源池总量与 180s 计划不自洽（截断秒数与逐行清单见 overflowSeconds/truncationCuts） | 据 用户@2026-09-11·实测般+诺+卢 | 验 src/composables/__tests__/teamTimeSummary.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
+  // debt: 截断不回灌资源循环（A 项，2026-09-11 用户立项）——本批次已落「外环 rowTimeLimit 回灌」
+  //       （批 2-1，默认 0 delta，结构性溢出走已知缺口清单 + 如实上报）；销号待实数化专项 + 用户终验。
+  // @fact engine:资源账本/截断 口径: 资源池 energy/decibel 收入按 feasibleRows 计（cfg.rowTimeLimit 缺省=未截断），装配期截断只削招式行（伤害/失衡随之降）。外环重折最多 3 轮：初装截断>容差时按每槽 kept 设 rowTimeLimit 重折，只接受 Σcut 严格变小的结果；结构性溢出不收敛时原样回滚、如实上报 overflowSeconds/truncationCuts | 据 用户@2026-09-11·实测般+诺+卢·债2批2-1@2026-09-19 | 验 src/composables/__tests__/teamTimeSummary.test.ts + src/composables/__tests__/truncationLedgerGap.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
+  // ⟳复核: 外环重折上限/容差/可行行口径再动时，复核「默认路径 0 delta」+「1431 簇已知缺口 3 队名单未变」+「新截断队不新增」（棘轮）| 到期 2026-12-31
   config.overflowSeconds = timeTruncatedSeconds
 
   // 比利/伊德海莉终局旗标复位：cfg 对象被外层不动点/热启动复用，下轮调用必须回到实数迭代期

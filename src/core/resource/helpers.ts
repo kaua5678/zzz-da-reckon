@@ -196,8 +196,9 @@ export function calcEnergySource(
   // 来自模块行与表值回填行——专属链角色行级能量曾系统性漏计（第一段清账后 89 行回填 + 模块预计算行，
   // 如伊德海莉蓄力循环把平A载体置 0、由 slam/follow 行承载闪能，旧聚合按全额平A时间计 = 口径分裂）。
   // 相位隔离复用 materializeRows（cfg 快照 + 恢复，喧响通道同款）；行值语义见 rowEnergyTotal。
-  // @fact engine:能量收入行级Σ 口径: skillRegen = Σ buildExecutions 行的行级能量收入（rowEnergyTotal，与喧响收入行级Σ 同构；记账层==展示层）。teamFrontlineSeconds 语义 == 装配层（Σ 队友前台秒）。已知残差：时间线截断（truncateExecutionsToFrontline）只作用于展示行，账本按截断前行计——与旧聚合通道及喧响 Σ 口径一致 | 据 债务审计 07481b8 + 引擎探针@2026-09-09 | 验 src/core/__tests__/energyRowParity.test.ts | 锚 src/core/resource/helpers.ts#rowEnergyTotal | 信 确认
-  const skillRegen = materializeRows(cfg, state, chainCountTotal, teamFrontlineSeconds)
+  // @fact engine:能量收入行级Σ 口径: skillRegen = Σ 可行行的行级能量收入（rowEnergyTotal，与喧响收入行级Σ 同构；记账层==展示层）。teamFrontlineSeconds 语义 == 装配层（Σ 队友前台秒）。cfg.rowTimeLimit 缺省 = 未截断（默认路径 0 delta，走 materializeRows）；被外环重折按上一轮装配 kept 写入时，收入按 feasibleRows（=180s 真能兑现的行）计——截断不回灌资源循环（债 2 根因）由外环收敛吸收，账本与展示层同源 | 据 债务审计 07481b8 + 引擎探针@2026-09-09·债2批2-1@2026-09-19 | 验 src/core/__tests__/energyRowParity.test.ts | 锚 src/core/resource/helpers.ts#feasibleRows | 信 确认
+  // ⟳复核: 账本行级收入口径再动或外环重折上限/容差再动时，复核「默认路径逐位 0 delta」+「无截断队 energy/decibel Σ 与 feasibleRows 前逐位相等」+「重折队收敛后 overflow=0 或回滚到初装截断、Σcut 不增」| 到期 2026-12-31
+  const skillRegen = feasibleRows(cfg, state, chainCountTotal, teamFrontlineSeconds, cfg.rowTimeLimit)
     .reduce((sum, row) => sum + rowEnergyTotal(cfg, row), 0)
 
   // 辅助大招回复由上层根据其他角色最终终结技次数补入。
@@ -473,7 +474,8 @@ export function calcRawDecibelParts(
   totalTime = 180,
   teamFrontlineSeconds = 0,
 ): { skillRegen: number; bonusRegen: number; timeSliceDecibel: number; shareableTotal: number } {
-  // @fact engine:喧响收入行级Σ 口径: skillRegen = Σ buildExecutions 行的行级喧响收入（rowDecibelTotal，与伤害/失衡/异常「倍率列逐行进账」同构）。旧「次数×常量」聚合通道删除：聚合行与 buildExecutions 常量同源故恒等，差异全部来自模块行（债务清偿——专属链角色曾系统性低估，仪玄行级 5628 vs 聚合 1702；yixuanBackstageDecibel 聚合项曾把 4 招全加而合轴语义是二选一替换对，行级即修复）。迭代期用本次调用的 exSpecialCount/ultimateCount 覆盖进 rowState（伊德海莉 decibel 通道 floor 口径、实数松弛口径均不变）；teamFrontlineSeconds 语义 == 装配层（Σ 队友前台秒）。已知残差：时间线截断（truncateExecutionsToFrontline）只作用于展示行，账本按截断前行计——超账本行在实战 180s 结算语义下本就兑现不出，与旧聚合通道口径一致 | 据 债务审计 5761e02 + 引擎探针@2026-09-08 | 验 src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource/helpers.ts#rowDecibelTotal | 信 确认
+  // @fact engine:喧响收入行级Σ 口径: skillRegen = Σ 可行行的行级喧响收入（rowDecibelTotal，与伤害/失衡/异常「倍率列逐行进账」同构）。旧「次数×常量」聚合通道删除：聚合行与 buildExecutions 常量同源故恒等，差异全部来自模块行（债务清偿——专属链角色曾系统性低估，仪玄行级 5628 vs 聚合 1702；yixuanBackstageDecibel 聚合项曾把 4 招全加而合轴语义是二选一替换对，行级即修复）。迭代期用本次调用的 exSpecialCount/ultimateCount 覆盖进 rowState（伊德海莉 decibel 通道 floor 口径、实数松弛口径均不变）；teamFrontlineSeconds 语义 == 装配层（Σ 队友前台秒）。cfg.rowTimeLimit 缺省 = 未截断（默认路径 0 delta，走 materializeRows）；被外环重折按上一轮装配 kept 写入时，收入按 feasibleRows（=180s 真能兑现的行）计——截断不回灌资源循环由外环收敛吸收 | 据 债务审计 5761e02 + 引擎探针@2026-09-08·债2批2-1@2026-09-19 | 验 src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource/helpers.ts#feasibleRows | 信 确认
+  // ⟳复核: 喧响账本行级收入口径再动时与能量行级Σ 复核联动（同上条 ⟳复核） | 到期 2026-12-31
   const rowState: IterationState = (exSpecialCount !== state.exSpecialCount || ultimateCount !== state.ultimateCount)
     ? { ...state, exSpecialCount, ultimateCount }
     : state
@@ -483,7 +485,9 @@ export function calcRawDecibelParts(
   // 引擎侧显式补写；卢西娅 cap 走 `preModuleExecutions` 行基准；仪玄死回写已删）——本快照现在
   // 只兜住「同调用内消费者」的缓存字段。实测格莉丝队 nt −7.14s → 平A池 +5.12s → 轴 frontTotal
   // 180.55→190.66 → 误触轴回退（inStunAttribution 全队红）就是缺这层隔离的样子。
-  const rows = materializeRows(cfg, rowState, chainCountTotal, teamFrontlineSeconds)
+  const rows = (cfg.rowTimeLimit != null && Number.isFinite(cfg.rowTimeLimit))
+    ? feasibleRows(cfg, rowState, chainCountTotal, teamFrontlineSeconds, cfg.rowTimeLimit)
+    : materializeRows(cfg, rowState, chainCountTotal, teamFrontlineSeconds)
   const skillRegen = rows.reduce((sum, row) => sum + rowDecibelTotal(cfg, row), 0)
 
   // 奖励回复：池内效果（时光切片）。弹刀/闪反/连携/快支的固定奖励与异常奖励由外部按槽位注入
@@ -674,6 +678,20 @@ export function netFrontlineOccupation(rr: TeamResourceResult): number {
 
 // @fact engine:时间线截断 口径: 资源允许的动作量超过可用前台时按时间线截断（实战 180s 到点结算，不管这套连段打没打完），次数必须整数（floor+小数降序加回装包）、平A填充行先占位不参与截断、砍到0次的行整行消失；overflowSeconds 语义=被截断的秒数 | 据 用户@2026-09-05·复核@2026-09-08 | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/helpers.ts#truncateExecutionsToFrontline | 信 确认
 /**
+ * 折叠环收敛容差（秒）= 截断入口容差（秒）——**同一个数，只此一处**。
+ *
+ * 为什么必须同源（债 2 分诊 R32 实测，2026-09-18）：S2 折叠环按 `maxExcess ≤ 1e-3` 判「账本与物化行已自洽」
+ * 停轮，即上游**允许 1 毫秒残差**；S4 截断入口原用 `used <= room + 1e-9` 判「装不装得下」——
+ * 上游放行的毫秒残差到了下游就是「装不下」，随后**整数装包**把 0.3 毫秒的超出放大成砍掉一整次动作
+ * （实测 3 队：`auto-1591-1481-1311` s0 超 5.9e-4s → 砍连携 0.906s；`auto-1591-1161-1211` s0 超
+ * 1.3e-3s → 砍 0.580s；`auto-1461-1521-1031` s1/s2 超 3.3e-4/9.3e-5s → 砍 5 行 0.434s）。
+ * 这 3 队的「截断」不是资源装不下，是两级容差不一致制造的假截断——它们的账本/行能量落差也随之为假。
+ * 结构性溢出（1431 簇，超 4~71s）不受本容差影响。
+ */
+// @fact engine:时间线截断/入口容差 口径: 截断入口判「装不下」的容差与折叠环收敛判据同一常量 TIME_FOLD_CONVERGENCE_SECONDS=1e-3（上游放行的残差下游不得再当溢出截断；两级容差不一致曾把 ≤1.3ms 超出放大成砍 0.43~0.91s 整次动作，3/104 队假截断） | 据 债2分诊·R32 实测@2026-09-18 | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/helpers.ts#TIME_FOLD_CONVERGENCE_SECONDS | 信 确认
+// ⟳复核: 债 2 批 2-1（rowTimeLimit 回灌）已落地——入口容差与折叠环同源且外环重折收敛后假截断队数为 0；收敛判据再动时联动复核（债2批2-1⟳复核见能量/喧响行级Σ 头）| 到期 2026-12-31
+export const TIME_FOLD_CONVERGENCE_SECONDS = 1e-3
+/**
  * 按可用前台时间**截断**执行计划（通用资源循环规则，2026-09-05 用户口径）。
  *
  * 规则：资源允许的动作量 > 本槽可用前台 ⇒ 在时间线处截断，多余资源不兑现成动作——
@@ -707,7 +725,9 @@ export function truncateExecutionsToFrontline(
   }
   // 平A是填充项先占位：招式行能用的只剩「可用前台 − 平A」
   const room = Math.max(0, availableSeconds - basicTime)
-  if (used <= room + 1e-9) return { executions, cutSeconds: 0, usedSeconds: used, cuts: [] }
+  // 入口容差与折叠环收敛判据同源（见 TIME_FOLD_CONVERGENCE_SECONDS 头注释）：上游已判「自洽」的
+  // 毫秒残差在这里不是溢出。真溢出（结构性，秒级）照常进入整数装包。
+  if (used <= room + TIME_FOLD_CONVERGENCE_SECONDS) return { executions, cutSeconds: 0, usedSeconds: used, cuts: [] }
 
   // 每行的「单位时长」：totalTime / count（count=1 但 totalTime 是聚合量的行，如飞光当量，
   // 也能正确处理）；count=0 的行（纯时间聚合）按整行一个单位处理。
@@ -815,6 +835,36 @@ export function materializeRows(
   }
   Object.assign(cfgRecord, cfgSnapshot)
   return rows
+}
+
+/**
+ * 装配前可行行物化（债 2 批 2-1 外环重折用）。
+ *
+ * 与 materializeRows 同产行、同快照/恢复语义，但追加「招式行 ≤ rowTimeLimit（秒，招式行）」
+ * 的前台截断，返回 truncateExecutionsToFrontline 处理后的行。平A填充行先占位（与装配同源），
+ * 故传入 rowTimeLimit = 招式行上限、battleTime 上限 = basic + rowTimeLimit。
+ *
+ * ⚠ rowTimeLimit 只取有限正数；缺省/非正/非数走 materializeRows 零截断路径（默认行为 0 delta）。
+ * 为什么放在 helpers 而不是 resource.ts：与 buildExecutions/truncateExecutionsToFrontline/materializeRows
+ * 同族，check-guards 死通道扫描能看见读/写双方。
+ */
+export function feasibleRows(
+  cfg: CharacterOperationConfig,
+  state: IterationState,
+  chainCountTotal: number,
+  teamFrontlineSeconds = 0,
+  rowTimeLimit?: number,
+): SkillExecution[] {
+  const rows = materializeRows(cfg, state, chainCountTotal, teamFrontlineSeconds)
+  if (rowTimeLimit == null || !Number.isFinite(rowTimeLimit) || rowTimeLimit < 0) return rows
+  // 平A填充秒数先占位（与 truncateExecutionsToFrontline 内部计算同源），
+  // 传 available = basic + rowTimeLimit 让它按招式行上限截。
+  let basicTime = 0
+  for (const e of rows) {
+    if (e.moveId === 'basic_attack' && isFrontlineExecution(e)) basicTime += e.totalTime ?? 0
+  }
+  const { executions } = truncateExecutionsToFrontline(rows, basicTime + rowTimeLimit)
+  return executions
 }
 
 /** 构建招式执行记录。`moduleInputRows`（可选出参）：接收**物化钩子派发前**的引擎行快照——

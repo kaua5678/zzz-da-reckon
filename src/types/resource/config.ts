@@ -799,6 +799,13 @@ export interface ResourceCalcConfig {
    * convergence.timeTruncatedSeconds 而不是未收敛的 rr.overflowSeconds。
    */
   overflowSeconds?: number
+  /**
+   * 行级收入截断上限（秒，招式行，不含平A填充；债 2 批 2-1 外环回灌用）。
+   * 缺省 undefined → 收入按未截断行计（默认路径 0 delta）。由 calcTeamResources 外环重折时按
+   * 上一轮装配 kept 写入，iterate/装配消费；返回前恒删除（不污染 cfg）。
+   * ⚠ 诊断/迭代量：不读自外部，不进 WARM_KEY_OMIT_CFG 之外的键。
+   */
+  rowTimeLimit?: number
   /** 迭代初值注入（测试/热启动用）：连续松弛下收敛态与初值无关，任意种子应得同解；长度不符时忽略 */
   initialStates?: IterationState[]
   /** 失衡次数输入（连携次数 = chainCountPerStun × stunCount）；由外部失衡池不动点收敛后回填 */
