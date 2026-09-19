@@ -167,7 +167,7 @@ export function useResourceCalc() {
      * （喧响/嗔火/轴内块 × 窗口数）超出时间预算 → 必要时间 > 战斗时间 → 该轴不可操作
      * （需 boss 秽盾等外界环境才打得成）→ 退化为一般轴（不注入轴块/连携覆盖/自动补齐）重算）。
      */
-    function runOuterLoop(forceNoAxis: boolean, interactionScale?: number): { out: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter' } {
+    function runOuterLoop(forceNoAxis: boolean, interactionScale?: number): { out: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter'; outerCyclePickedEarlier: boolean } {
       let stunCount = lockedStunCount >= 0 ? lockedStunCount : 0
       let out: CalcRoundResult | null = null
       let threads = initialCalcRoundThreads()
@@ -199,6 +199,28 @@ export function useResourceCalc() {
       const outerSigHistory: string[] = []
       /** 与 `outerSigHistory` 同步的 `stunCount` 历史（同相位比对用）。 */
       const outerStunHistory: number[] = []
+      /** 与上面两个历史同步的每轮结果（cycle 规范停点选点用；轮数 ≤ MAX_OUTER_ITER，持有引用不复制） */
+      const outerOutHistory: (CalcRoundResult | null)[] = []
+      let outerCyclePickedEarlier = false
+      /**
+       * 环内停点的时间自洽度（R37-J5 ⑥，用户裁决 2026-09-19「治本」）：|预算 − Σ物化净占用| + 装配截断秒数。
+       * 外层不动点落进 2-循环 / 长环时，成员在失衡次数上互为映射、都「合法」，旧实现返回碰巧最后算的那轮
+       * ⇒ 同一支队默认口径 −1.4s 超预算 / +3.7s 留白两个落点全看运气（auto-1431-1341-1311 实测）。
+       * 用户口径「循环算到最后应只溢出一点或不溢出」⇒ 在环内按时间自洽度取最小者；相等取最后一轮（与旧行为一致）。
+       */
+      const timeInconsistencyOf = (r: CalcRoundResult | null): number => {
+        if (!r?.resourceResult) return Number.POSITIVE_INFINITY
+        return Math.abs(stunEffTime - frontlineTotalOf(r)) + (r.resourceResult.convergence?.timeTruncatedSeconds ?? 0)
+      }
+      const pickCanonical = (candidates: (CalcRoundResult | null)[]): CalcRoundResult | null => {
+        let best = candidates[candidates.length - 1]
+        let bestScore = timeInconsistencyOf(best)
+        for (let i = candidates.length - 2; i >= 0; i--) {
+          const s = timeInconsistencyOf(candidates[i])
+          if (s < bestScore - 1e-9) { best = candidates[i]; bestScore = s; outerCyclePickedEarlier = true }
+        }
+        return best
+      }
       let outerRounds = 0
       let outerConverged = false
       let outerExit: 'stable' | 'cycle' | 'maxIter' = 'maxIter'
@@ -303,7 +325,12 @@ export function useResourceCalc() {
           const isTwoCycle = prevStunValue !== null
             && Math.abs(next - prevStunValue) < 0.05
             && Math.abs(next - stunCount) >= 0.05
-          if (isTwoCycle) { outerExit = 'cycle'; break }
+          if (isTwoCycle) {
+            outerExit = 'cycle'
+            // 2-循环两个成员 = 上一轮结果（outerOutHistory 末项）与本轮结果；按时间自洽度取点
+            out = pickCanonical([outerOutHistory[outerOutHistory.length - 1] ?? null, out])
+            break
+          }
           /**
            * 极限环检测（**周期 ≥ 3** 的补充，2026-09-18 round 23 新增；N=2 仍由上面那条负责）。
            *
@@ -346,6 +373,7 @@ export function useResourceCalc() {
           // stable」的队的停点（实测缺 stun 容差条件时 5 支队 stable→cycle、数值被静默改写）。
           outerSigHistory.push(`${ultSeq}|${anomalySeq}|${topUpSeq}|${parrySplitSeq}|${decibelParrySeq}|${backstageSeq}|${buildUpFracSeq}|${aliceSeq}`)
           outerStunHistory.push(stunCount)
+          outerOutHistory.push(out)
           prevStunValue = stunCount
           stunCount = next
         }
@@ -386,11 +414,13 @@ export function useResourceCalc() {
             if (outerSigHistory[k] !== outerSigHistory[k - lag]) continue
             if (Math.abs(outerStunHistory[k] - outerStunHistory[k - lag]) >= 0.05) continue
             outerExit = 'cycle'
+            // 长环（周期 lag）：成员 = 最近一个周期内的各轮结果，按时间自洽度取点
+            out = pickCanonical(outerOutHistory.slice(Math.max(0, outerOutHistory.length - lag)))
             break outer
           }
         }
       }
-      return { out, outerRounds, outerConverged, outerExit }
+      return { out, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier }
     }
 
     let r = runOuterLoop(false)
@@ -525,7 +555,7 @@ export function useResourceCalc() {
 
     const { r: rAfterFeasibility, axisFallback, interactionScale } = stageResolveFeasibility(r)
     r = rAfterFeasibility
-    const { out: baseOut, outerRounds, outerConverged, outerExit } = r
+    const { out: baseOut, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier } = r
     const out = baseOut?.resourceResult
       ? {
           ...baseOut,
@@ -538,6 +568,7 @@ export function useResourceCalc() {
               outerExit,
               axisFallback,
               interactionScale,
+              outerCyclePickedEarlier: outerCyclePickedEarlier || undefined,
             },
           },
         }
