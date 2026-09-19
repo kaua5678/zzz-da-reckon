@@ -353,8 +353,8 @@ function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg }: AgentCharCon
   record.claretSkills = skills
   record.claretMaimMoveId = findMoveById(skills, MAIM_MOVE_ID)?.id ?? ''
   record.claretBloodBurialMoveId = findMoveById(skills, BLOOD_BURIAL_MOVE_ID)?.id ?? ''
-  record.claretExMoveId = findMoveById(skills, EX_MOVE_ID)?.id ?? ''
-  record.claretExDamageMultiplier = getRowValue(findMoveById(skills, EX_MOVE_ID), 'damage') || 1249.6
+  // （2026-09-19 R37 清理）曾在此写 record.claretExMoveId / claretExDamageMultiplier：全仓零读取点的死诊断键
+  //   （EX 行倍率由 enrichExecutionPlan 按 moveId 从倍率表回填，不经这里），判据 14 看不见 record 动态键 ⇒ 手工核销。
   /**
    * 残痕积累表（moveId → 该招一发的 `gash_buildup` 点数）——**平A 段不入表**：
    * 平A 按两态秒均 × 平A时间 计（见 `computeClaretBasicPerSec`），再按行计就是双计。
