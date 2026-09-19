@@ -247,7 +247,13 @@ export const RATCHET_BURNDOWN = [
   {
     id: '滑块生效测试存量',
     file: 'scripts/lib/settings-coverage.mjs SETTINGS_UNTESTED_BACKLOG（扫描面 = 运行时 getRegisteredMechanicSettings）',
-    frozen: 43,  // 2026-09-20 round 49 **换尺时实测 60**（口径纠正，不是退步；规则 17②），
+    frozen: 28,  // 2026-09-20 round 50 管理员 AC 补完 Form-E 剩余 15 条后 **43 → 28**（与
+    // `SETTINGS_UNTESTED_BACKLOG.length` 同步改，两处一致 —— 同 `AGENT_BRANCH_BASELINE` 纪律；
+    // `checkGuards.test.ts` 的成对锁 `frozen === BACKLOG.length` 也同步）。
+    // ⚠ 剩余 28 = Form-B/C/D 21 条（模块自己 `setting()` 读的覆盖率/次数滑块）+ 7 条**需用户裁决**
+    // （`jane.frenzyActive` 1 条 + §R49-J1 的两类静默失效 6 条：甲 1391 模块覆盖 ×2、乙 1621×2 /
+    // 1611×1 / 1561×1 资源不可达）。后 7 条**既不算已测也不豁免**，等裁决后按「接线」或「删声明」落地。
+    // 2026-09-20 round 49 **换尺时实测 60**（口径纠正，不是退步；规则 17②），
     // 同批**第二批**补了 16 条 spec adjustable（Form-E）的真管线生效测试后 **60 → 44**
     // （与 `SETTINGS_UNTESTED_BACKLOG.length` 同步改，两处一致 —— 同 `AGENT_BRANCH_BASELINE` 纪律）。
     // 第三批再 +1（1551 peiluo_perfect_block_gain：fixture 补 `perfectBlockCount` 后三点线性）⇒ **60 → 43**。
@@ -263,11 +269,13 @@ export const RATCHET_BURNDOWN = [
     due: '2027-03-31',
     plan: '按型分批补「改滑块→面板/结果确实变」的生效测试，每补一条从 SETTINGS_UNTESTED_BACKLOG 删一行'
       + '**并把本行 frozen 同步下调**：'
-      + '① **Form-E（38 条）优先**——正解是**一条通用 registry 驱动测试**（遍历注册表，min/max 各跑一次'
-      + '真管线比 delta）。✅ **已做第一批 16 条**（`src/specs/__tests__/adjustableEffect.test.ts` 表驱动，'
-      + 'rate 0/1/2 三点线性 + 基准绝对值）；余 22 条里 12 条已查明是**覆盖导致的真失效**（§见 R49-J1），'
-      + '另 10 条需更贴的 fixture（countSource 靠默认队伍没触发的量，如 `perfectBlockCount`/`frostburnBreakCount`）。'
-      + '② **Form-B/C/D（22 条）**逐条写角色级断言。'
+      + '① **Form-E（38 条）：✅ 全清**（R49 第一批 16 + R50 第二批 15 = 31 条已测；余 7 条经 R49 分诊证实'
+      + '是**真缺陷**、需用户裁决，见 §R49-J1 与 `jane.frenzyActive`，**不计入本棘轮的可补面**）——'
+      + '`src/specs/__tests__/adjustableEffect.test.ts` 表驱动，全部走真管线 + 三点比例性。'
+      + '★ R50 实测补充三条挑活规律（写进该测试文件头注释）：`chainCountTotal` 型 **必须 `stunCountLock`**'
+      + '（默认队伍失衡次数收敛到 0 ⇒ 光给 `chainCountPerStun` 仍恒 0）；`max: 1` 型的第三点取 0.5 而非 2；'
+      + '收敛反馈型（1591）**不严格成比例**，强断言 = 归零 + 与同一份结果解闭式恒等式。'
+      + '② **Form-B/C/D（21 条）**逐条写角色级断言 —— 本棘轮**唯一剩余的可补面**。'
       + '⚠ 必须**走真管线**（`setMechanicSetting` → `resourceResult`/`computePanelPhases`），**不许**直调钩子'
       + '+ 手写 cfg —— R48 实测：手写 cfg 会抹掉「生产代码写不写这个字段」这个自由度，让断链「通过」'
       + '（`anbyC2StunCoverage` 曾因此掩盖恒等 0.5 的真缺陷）。'
