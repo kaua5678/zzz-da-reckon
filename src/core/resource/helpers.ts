@@ -599,6 +599,7 @@ export function calcTimeAllocation(
     backstageTime,
     comboAlignTime,
     comboAlignCredit: state.comboAlignCredit,
+    dynamicComboAlignSeconds: state.dynamicComboAlignSeconds,
     basicAttackTime: state.basicAttackTime,
     necessaryTime,
   }
