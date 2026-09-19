@@ -1,0 +1,82 @@
+# 协作者 WIP 接管备忘：债 2 刀 1（截断入口容差）+ 降配搜索 v4（绝对可行优先）（2026-09-19 round 37）
+
+> 定位：**决策与实测记录**。口径唯一事实源在代码：`src/core/resource/helpers.ts#TIME_FOLD_CONVERGENCE_SECONDS` 头注释与其 `@fact`、
+> `src/composables/resourceCalc/feasibilitySearch.ts#selectDownscaleScale` 头注释与其 `@fact`。本文只回答「拿到的是什么、为什么拆、
+> 每队 delta 从哪来、没合入的那半去了哪」。
+
+## 1. 拿到的是什么（用户 2026-09-19 授权接管，「你在规则之上」）
+
+主工作区 8 个 tracked 改动（外部协作者 2026-09-18 22:03 – 09-19 00:51 施工，未提交、之后 9.5h 无写入）。先**原样存证**再动刀：
+`git stash create` 得 `0c2f627` → 分支 `collab/wip-snapshot-20260919`（工作树未动）+ `/tmp/r37-collab-backup/`。
+
+按 mtime 与内容分两半：
+
+| 片段 | 文件 | 内容 | 状态 |
+|---|---|---|---|
+| **A**（22:03–22:49） | `feasibilitySearch.ts` / `feasibilitySearch.test.ts` / `useResourceCalc.ts` / 两份基线 + `helpers.ts`/`resource.ts` 里的容差部分 | 刀 1：S4 截断入口容差 `1e-9` → 与 S2 折叠环同一常量 `TIME_FOLD_CONVERGENCE_SECONDS = 1e-3`；降配 v4：`selectDownscaleScale` 两层字典序（绝对可行优先、相对档兜底）+ 6 条测试 + 2 条带 ⟳复核 的 `@fact` | **合入** `1cc08a8`（+ 测试归因更新 `b0f2f5b`） |
+| **B**（00:46–00:51） | `resource.ts` 重折环 / `helpers.ts#feasibleRows` / `types/resource/config.ts#rowTimeLimit` | 债 2 批 2-1「截断外环回灌」 | **不合入**，见 §4 |
+
+## 2. 为什么 B 不能合
+
+1. **代码走不到**：重折环写入 `cfg.rowTimeLimit` 后立刻整体回滚并 `break`，作者注释自述「下面的代码路径走不到 … 真正的重折逻辑在我们把装配/终推抽出 helper 之后插入。先回滚」；
+2. **类型不一致**：`rowTimeLimit` 加在 `ResourceCalcConfig`（全局）上，读的却是 `cfg.rowTimeLimit`（`CharacterOperationConfig`）⇒ 主工作区 `vue-tsc -b` 7 处红（`prevCut` 未使用 + 6 处 TS2339）；
+3. **文档先于实现**（规则 16 的形态）：`engine:能量收入行级Σ` / `engine:喧响收入行级Σ` / `engine:资源账本/截断` 三条 `@fact` 与 debt 标记被改写成「外环重折已落地、最多 3 轮、只接受 Σcut 严格变小」——实现里没有这回事；
+4. **潜在泄漏**：回滚用 `Object.assign(c, savedCfgs[i])` 不会删掉新加的 `rowTimeLimit` 键，被截断槽位的 cfg 会带着它进入下一轮外层不动点（cfg 对象被复用）——一旦重折环真跑起来，默认路径「0 delta」的前提就不成立。
+
+实测：两份基线在干净树上用 A 单独重生成，`timeGolden.baseline.json` 与协作者交来的**逐字节相同** ⇒ B 对基线零贡献，A 可独立成立。
+
+## 3. 逐队归因（规则 10）
+
+方法：`/tmp/wt-base2`（`cb29f1a`）→ 只打 core 容差 hunk（刀 1）→ 再打 composables（v4），三态各跑一次 probe（读
+`convergence.interactionScale` / `timeTruncatedSeconds` / `outerExit`，与 golden、ratchet 各自的 `measure` 语义一致）。
+
+### 3.1 `timeGolden`（预设配置口径：`applyTeamPreset` + 构筑推荐）
+
+| 队 | 归因 | 机制 | 读数 |
+|---|---|---|---|
+| `auto-1591-1481-1311` | 刀 1 | 假截断 0.906s（连携整次）消失，scale 不变 | dmg +0.945%，slack 0.905→0.000，over 0→0.001（毫秒残差如实上报） |
+| `auto-1591-1161-1211` | 刀 1 | 假截断 0.580s 消失，外层不动点微移 | dmg +1.196%，chain 1.464→1.487 |
+| `auto-1461-1521-1031` | 刀 1 | 假截断 0.434s（5 行）消失，scale 0.875 不变 | dmg −0.014%，slack 1.530→1.096 |
+| `auto-1431-1491-1341` | 刀 1 | 基线态 8 档试算**全部**被假截断误拒 ⇒ 停在 scale=1、结构性截断 **40.07s**；刀 1 后 0.0625 档可行（cut 0） | dmg **+17.742%**，slack 2.804→0.920，槽1/2 ult 2→1 |
+| `billy-roxy-lucia` | v4 | 0.75 档「相对更好」但超预算 4.99s；v4 选真装进 180s 的 0.375 档 | over 4.990→0.076，stun 5→4，dmg −2.869% |
+
+`yixuan-roxy-lucia` 在此口径三态恒 scale 0.375、零 delta。
+
+### 3.2 `timeFillRatchet`（默认配置口径：只 `setAgent`，不 apply 预设；容差 1s）
+
+| 队 | 归因 | 机制 | 读数 |
+|---|---|---|---|
+| `auto-1431-1481-1311` | 刀 1 | scale 0.625→0.75 | 留白 2.4→1.9 |
+| `auto-1461-1521-1361` | 刀 1 | scale 0.625→0.75 | 留白 1.7→1.3 |
+| `banyue-roxy-lucia` | 刀 1 | scale 0.5→0.625（cut 0.674s / 超预算 0.375s 均在 1s 量化容差内，v4 判绝对可行故保留） | 超预算 0.1→0.4 |
+| `yixuan-roxy-lucia` | 刀 1 ⟂ v4 | 刀 1 单独：0.625→0.875（超预算 0.2→1.7s，棘轮红）；v4 复位 0.625 | 零 delta（= v4 的立项证据） |
+
+### 3.3 顺手量到：ratchet 基线在 HEAD 已有 2 条存量漂移
+
+`cb29f1a` 干净树 `TIME_RATCHET_UPDATE=1` 重生成即与提交版不同：`claret-roxy-rina` outerExit stable→cycle、`yidhari-roxy-lucia` 留白 1.6→1.7。
+与本刀无关（三态恒定），容差内从未红。本次**沿用协作者版本**（= HEAD + §3.2 三条），不顺手抹平；登记为 OPEN-ITEMS R37-J3。
+
+## 4. 片段 B 的去向与下一步（OPEN-ITEMS R37-J2）
+
+- 原文：分支 `collab/wip-snapshot-20260919`（已推 origin）。`feasibleRows` 的形状（平A先占位、`available = basic + rowTimeLimit`）是可复用的。
+- 作者自己的结论也是正解：**先把装配段抽成 `runAssemble()`**（`calcTeamResources` 内折叠→比利终推→欠打回填→伊德海莉终推→装配是线性 `const` 段，
+  无法二次进入），再在其外做「初装截断 > 容差 ⇒ 按 kept 设 rowTimeLimit ⇒ 重折」的循环。
+- 证伪闸门（写进账本）：前提 =「默认路径（cut ≤ 1s 队）零分支零写入」；若抽 `runAssemble()` 这一步本身让 `timeGolden` 出现任何非零 delta
+  ⇒ 抽取不是纯搬迁，先停下归因；若重折环跑起来后 `rowTimeLimit` 在返回前没被删干净（`allAgentsSweep` 命座对比 / 热启动第二轮读数变）⇒ 泄漏，
+  回滚。
+
+## 5. 验证与「协作者没跑满套件」的代价
+
+- 主工作区：`check-guards` 19 ok（判据 15 已挂 16 / 待补 0，三条豁免行重新生效）、`check-tokens` 12 ok、`vue-tsc -b` **首次转绿**；
+  `feasibilitySearch` / `timeTruncation`（+1 条入口容差 discriminating pair）/ `timeGolden` / `timeFillRatchet` / `teamTimeSummary` /
+  `underfillRefund` / `comboAlignBudget` / `energyRowParity` / `decibelRowParity` 9 文件 66 条全绿。
+- 干净隔离 worktree `/tmp/wt-r37c` @ `1cc08a8` 跑 `npm run verify`：**红 4 条**（协作者交来的 WIP 从未过满套件）。逐条归因后全部是
+  「测试钉住了假截断时代的读数」，以 `b0f2f5b` 收口：
+
+| 用例 | 现象 | 归因 | 处置 |
+|---|---|---|---|
+| `damagePoolBatchR17c` / `R18d`「1431013 → stunMult 1.5」 | 次数锚 `toBe(14)` 实测 16.206 | 默认配置下 `auto-1431-1481-1311` 刀 1 前 scale 0.625（0.75 档被假截断误拒）→ 刀 1 后 0.75 | 锚改 `toBeCloseTo(16.206, 3)` + 注释；stunMult 成对判据未动 |
+| `timeWeightAllocation` ⑥b/⑥c | 前置 `truncated > 0` 失败 | 样本 `auto-1591-1481-1311` 的 0.906s 正是被刀 1 消灭的假截断 | 样本换 1431 簇结构性溢出队 `auto-1431-1481-1491`（108.8s，唯一同类还有 `auto-1431-1481-1341` 100.1s） |
+| `timeWeightAllocation` ⑥c | 新样本走「部分拉回」（108.79→87.41s），原断言只认「归零 / 拉不回来」两态 | 实现有三个出口 | 断言补第三态：含「可行性优先：截断 a→b」且不含「拉不回来」 |
+
+- `/tmp/wt-r37c` @ `b0f2f5b` 复跑 `npm run verify`：读数见 `.claude/PROMPT-handoff-round37.md` §1.4。
