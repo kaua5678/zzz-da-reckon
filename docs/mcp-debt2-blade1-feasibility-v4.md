@@ -114,3 +114,21 @@
 - 判据：`truncationRefold.test.ts` ④（不动点队账本 == 保住行 Σ，能量按 energyRowParity 同款规格锁、喧响按 Σ totalDecibelRecovery；
   振荡队断言 rejected=true）；`timeTruncation.test.ts` 新增加回不越次数的 discriminating pair（a=8.249 次：旧条件给 9）。
 
+## 9. 后记 4：结构性溢出的真根因是「合轴率数据缺位」，用户口径已定（R37-J5 任务书）
+
+用户裁决（2026-09-19）：**必要时间只约束单人 ≤ 180s；三人前台总和可以 > 180s（合轴）**。「最后一点时间先进行合轴包容，有限包容后才截断」：
+时间只剩 2s 时要塞十几秒的必要动作 ⇒ **动态上调队友合轴率**让这次完整打出来（允许一次），而不是丢掉留白。
+
+实测（`PROBE9/11`）：
+- 引擎已有合轴抵扣（团队可 > 180、单人 ≤ 180，`@fact engine:合轴预算抵扣` / `单角色前线上限`），只消费 7 类招式的 `*ComboAlignRatio`；
+- **全库 1352 招只有 1 招 `comboAlignRatio > 0`**，叶瞬光 34 招全 0 ⇒ 1431 队被当纯串行截 86s，这不是「边界一次动作」而是 ~30 次动作；
+- 把队友（1481/1491）合轴率拉满：credit 31.5+11.5s，1431 必要 118.6→139.9，**截断 86.5→44.2s**，伤害 +12.6%；三人全拉满：截断 28.1s、伤害 +48%、
+  单人前台 169.4 ≤ 180 仍守住。⇒ 用户描述的机制通过既有管线成立；今天 UI 已能手动做（结果页「合轴率调节」）或用难度阶梯 G5 自动 +50%/档。
+- 全库 105 预设默认口径 + 单人 sweep 扫描：**没有** 1s < cut ≤ 25s 的「边界一次动作」样本；该规则目前只会在用户自定义场景触发。
+
+R37-J5 引擎落地方案（未实施，待用户定「一次」之外是否允许继续上调）：
+1. `CharacterOperationConfig.comboAlignBoostSeconds?`（迭代量，返回前删）加进 `calcTimeAllocation` 的 `comboAlignCredits[i]` / `comboAlignTimes[i]`；
+2. 重折环之后加「边界包容 pass」：某槽 cut 中整次动作只有 1 次（其余为小数残余）⇒ X = cutSeconds；队友可上调容量 = Σ 7 类招式 count×actionTime×(1−ratio)；
+   容量 ≥ X 则按比例给队友 boost、回 S2 入口重跑；接受 = Σcut ≤ 容差 且各槽 frontline ≤ 战斗时间；否则整体回滚；
+3. 诊断 `convergence.comboAlignBoostSeconds`；判据：合成样本（缩短战斗时间造边界溢出）红/绿对 + 1431 队不受影响（非边界）+ 105 预设零 delta。
+
