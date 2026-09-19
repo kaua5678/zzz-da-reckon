@@ -190,10 +190,10 @@ export const RATCHET_BURNDOWN = [
   {
     id: '展示层越层 import',
     file: 'src/views + src/components',
-    frozen: 15,  // 2026-09-11 评审冻结 23 → 15（2026-09-13 T7 首次真清偿 −8：纯常量/纯函数下沉 src/data，原位置改 re-export + 展示层改 import 路径，vue-tsc 0 错、@fact 锚 93/93 不变）。下沉清单与「剩 15 处为何不能下沉」见 EXHIBITION_LAYER_IMPORT_BASELINE 头注释
+    frozen: 14,  // 2026-09-11 评审冻结 23 → 15（2026-09-13 T7 首次真清偿 −8：纯常量/纯函数下沉 src/data，原位置改 re-export + 展示层改 import 路径，vue-tsc 0 错、@fact 锚 93/93 不变）→ **14**（2026-09-20 round 44：结果页失衡易伤可见化搬进 composables/stunVulnDisplay.ts，calcStunMultiplier 越层 import 随实现上移；同 sharpCritMultiplier 先例）。下沉清单与「剩 14 处为何不能下沉」见 EXHIBITION_LAYER_IMPORT_BASELINE 头注释
     target: 0,
     due: '2026-12-31',
-    plan: '剩 15 处全是**真引擎调用**（getAgentMechanic×4 / buildTeammateBuffSourceContext×2 / calcPanel / applyTargetedStat / calcStunMultiplier / allocateAxisWindows / computeOptimalSubStats+getTemplate / readImpactVar+writeImpactVar / agentSpecs / computeBanyueMingwangBlocks+BANYUE_AXIS_MOVE_META / computeYixuanNingshenBlocks），无纯常量可下沉；正解是经编排层（composables/resourceCalc）透出面板/引擎产物，属架构改动，逐条独立立项。纯函数类已全部下沉完毕（23→15）',
+    plan: '剩 14 处全是**真引擎调用**（getAgentMechanic×4 / buildTeammateBuffSourceContext×2 / calcPanel / applyTargetedStat / allocateAxisWindows / computeOptimalSubStats+getTemplate / readImpactVar+writeImpactVar / agentSpecs / computeBanyueMingwangBlocks+BANYUE_AXIS_MOVE_META / computeYixuanNingshenBlocks），无纯常量可下沉；正解是经编排层（composables/resourceCalc）透出面板/引擎产物，属架构改动，逐条独立立项。纯函数类已全部下沉完毕（23→14）',
   },
   {
     id: '手册 §4 行数',
@@ -763,13 +763,20 @@ export const EXHIBITION_LAYER_FORBIDDEN = /@\/(?:core|mechanics|specs)(?:\/|['"]
  *    （原出处 = 2026-09-11 架构评审快照，快照已删、未落地项迁 .claude 账本）——无需架构改动。如需回退，把该函数搬回 damage.ts +
  *    两个组件 import 改回 `@/core/damage` 即可（棘轮基线同步回调 15→17）。
  *
- * **剩 15 处不能再按本法下沉**（逐处核过，全是真引擎调用或注册表读取，无纯常量）：
+ * **剩 14 处不能再按本法下沉**（逐处核过，全是真引擎调用或注册表读取，无纯常量）：
  * getAgentMechanic×4 / buildTeammateBuffSourceContext×2 / calcPanel / applyTargetedStat /
- * calcStunMultiplier / allocateAxisWindows / computeOptimalSubStats+getTemplate /
+ * allocateAxisWindows / computeOptimalSubStats+getTemplate /
  * readImpactVar+writeImpactVar（收 configStore，非纯）/ agentSpecs / computeBanyueMingwangBlocks+
  * BANYUE_AXIS_MOVE_META / computeYixuanNingshenBlocks。它们要经编排层透出，属架构改动。
+ *
+ * ★ 2026-09-20 round 44：**15 → 14**（`calcStunMultiplier`，进步登记不是放松）。
+ * 结果页「失衡易伤可见化」整族纯展示映射搬进 `composables/stunVulnDisplay.ts`（结构熵切面，
+ * 逐字节保真）⇒ 该越层 import 随实现一起离开展示层。**这是搬运的副产品，不是为降数字而改**：
+ * 判据语义（展示层禁直连引擎）一字未动，只把已经上移的实现从计数里去掉。
+ * ⚠ 与 :763 的 `sharpCritMultiplier` 先例同型——**纯函数搬走后 import 自然消失**，
+ * 无需注册表/编排层透出。下面这 14 处仍是真引擎调用，别照此法硬搬。
  */
-export const EXHIBITION_LAYER_IMPORT_BASELINE = 15
+export const EXHIBITION_LAYER_IMPORT_BASELINE = 14
 
 // ---- 判据 12：引擎层「静态依赖具体角色模块」棘轮 ----
 //

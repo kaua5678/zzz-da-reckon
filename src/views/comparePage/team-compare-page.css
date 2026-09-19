@@ -1,0 +1,300 @@
+.team-compare-page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.compare-controls {
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.ctl-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ctl-label {
+  font-size: 11px;
+  color: var(--wa-550);
+}
+
+.ctl-sep {
+  margin: 0 4px;
+  color: var(--wa-400);
+}
+
+.progress-bar {
+  margin-top: 10px;
+  height: 4px;
+  background: var(--wa-80);
+  border-radius: 2px;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--c-success);
+  border-radius: 2px;
+  transition: width 0.15s;
+}
+
+.progress-text {
+  position: absolute;
+  top: 8px;
+  right: 0;
+  font-size: 11px;
+  color: var(--wa-500);
+}
+
+.compare-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--wa-500);
+}
+
+.diff-weight-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.diff-weight-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.diff-weight-label {
+  font-size: 12px;
+  color: var(--fg-2);
+}
+
+.buff-note {
+  color: rgba(230, 180, 100, 0.8);
+}
+
+.empty-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--wa-600);
+  line-height: 1.7;
+}
+
+.empty-hint code {
+  background: var(--wa-80);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.chart-card,
+.detail-card {
+  margin-top: 0;
+}
+/* 同金分配对比表（最优行高亮 + 落选代价红色） */
+.ga-best {
+  background: var(--fill-hover);
+}
+.ga-loss {
+  color: var(--c-danger);
+}
+
+.compare-svg {
+  width: 100%;
+  height: auto;
+  background: var(--wa-15);
+  border-radius: 4px;
+}
+
+/* SVG 网格/刻度/提示框颜色走主题变量 */
+.chart-grid { stroke: var(--wa-60); }
+.chart-grid-x { stroke: var(--wa-50); }
+.chart-tick { fill: var(--wa-350); }
+.chart-refline { stroke: var(--wa-250); }
+.chart-refline-text { fill: var(--wa-450); }
+.chart-axis-label { fill: var(--wa-500); }
+.scatter-dot { stroke: var(--wa-350); }
+.chart-hover-dot { fill: var(--app-text-solid); }
+.chart-tooltip-box { fill: var(--app-tooltip-bg); stroke: var(--wa-150); }
+.chart-tooltip-text { fill: var(--app-tooltip-text); }
+
+/* 长文本列（关键变化 / 伤害归因 / 录取顺序）：auto 布局下 td 的 max-content 会撑破容器，
+   实测溢出 191~200px ⇒ 单元格内套一个**限宽 block** 才能可靠换行 */
+.cell-clamp {
+  max-width: 300px;
+  white-space: normal;
+  line-height: 1.5;
+}
+
+.td-wrap {
+  white-space: normal;
+  min-width: 150px;
+  line-height: 1.5;
+}
+
+/* 伤害归因里的「被挤掉」行（负贡献）：用语义 danger 令牌，别加字面色值（令牌棘轮） */
+.curve-neg {
+  color: var(--c-danger);
+  font-size: 11px;
+}
+
+/* 关键次数跃迁的图上标注（比刻度亮一档，压过网格线；currentColor 免引 --wa-* 棘轮） */
+.curve-jump-label {
+  fill: currentColor;
+  font-weight: 600;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 8px;
+}
+
+/* 可点图例（筛选）：与「血量膨胀」页同交互——点一下显隐该系列 */
+.lchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--wa-750);
+  border: 1px solid;
+  border-radius: 10px;
+  padding: 1px 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lchip:hover {
+  background: var(--fill-hover);
+}
+
+/* 隐藏态：划掉 + 变灰（一眼看出是「被我关掉了」而不是「这队没数据」） */
+.lchip.off {
+  opacity: 0.38;
+  text-decoration: line-through;
+}
+
+.legend-hint {
+  font-size: 11px;
+  color: var(--fg-3);
+}
+
+
+.ldot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.detail-table-wrap {
+  overflow-x: auto;
+}
+
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.detail-table th,
+.detail-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--wa-60);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.detail-table th {
+  color: var(--wa-500);
+  font-weight: 600;
+}
+
+.detail-table td:first-child,
+.detail-table th:first-child {
+  text-align: left;
+}
+
+.td-team {
+  font-weight: 600;
+}
+
+/* 第三人海选：名字列左对齐（伤害占比背景条从左侧铺，右对齐会「名在条外」） */
+.sweep-name {
+  text-align: left;
+  min-width: 110px;
+}
+
+.td-detail {
+  color: var(--wa-550);
+  font-size: 11px;
+}
+
+.td-standard {
+  color: rgba(230, 180, 100, 0.85);
+  font-size: 11px;
+}
+
+.kill {
+  color: var(--c-success);
+  font-weight: 700;
+}
+.kill-time {
+  color: inherit;
+  font-weight: 400;
+  font-size: 11px;
+  opacity: 0.85;
+  line-height: 1.3;
+}
+
+.time-ok {
+  color: var(--wa-400);
+  font-size: 11px;
+}
+
+.time-exceeded {
+  color: #e88080;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.time-warn {
+  background: rgba(255, 80, 80, 0.06);
+}
+
+/* 难度曲线口径说明（长文案，行高放宽） */
+.curve-note {
+  margin: 0 0 8px;
+  line-height: 1.7;
+}
+.curve-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.version-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 4px 0 8px;
+  font-size: 12px;
+}
+.version-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid;
+  border-radius: 4px;
+}
+
+/* 平台队（四目标均无增益）：弱化整行，提示"没有可优化的空间" */
+.curve-flat {
+  opacity: 0.6;
+}
