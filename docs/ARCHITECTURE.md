@@ -17,6 +17,10 @@
 ```
 
 依赖方向：展示 → 编排 → 引擎；录入层被编排/引擎经 registry 消费；数据层被状态层加载。
+**录入层对编排层只许 `import type`**（值边必成环：R35 实测 `claret → resourceCalc/helpers → mechanics/index → claret`）；
+录入层要用编排层的纯函数一律**下沉 `src/data/`**（`data/moveTableQueries.ts` 先例——招式查找 / 行值 / 融合行值 / 平A 第 3 段；
+`src/data/` 是各层都可依赖的公共底），原位置留 import + export 两行壳。机器面 = 判据 19 `layer-inversion`
+（`scripts/lib/layer-inversion.mjs` 头注释是口径唯一事实源：值导入 0 + 反空洞下限 + `claret.ts` 形状锁）。
 **新 AI 读代码的捷径：从上往下读一遍调用链（页面 → useResourceCalc → core），每个文件头注释就是它的职责声明。**
 
 ## 1. 一次计算的生命周期（点「计算」→ 出图）
@@ -63,6 +67,7 @@ useResourceCalc()                      编排层入口（composables/useResource
 | **跨角色 / 队伍级联动**（邻位回能、后场全队增益、入场次数汇总） | `ENGINE_PIPELINE_GUIDE.md` §2 的 `applyTeamConfig` 三阶段表 | **只改角色模块自己的 `applyTeamConfig`**；派发器 `applyTeamMechanics`（composables/resourceCalc/panelPhases.ts）无需改。禁止往 `useResourceCalc` 加 agentId 分支 |
 | **引擎内热循环要用到角色专属量**（赠链时间、跨槽回能等——`iterate`/折叠环每 pass 重算，**钩子派发不进去**） | `src/mechanics/types.ts` 的 `crossAgentSupply` 契约（字段与语义单源）+ `docs/ENGINE_PIPELINE_GUIDE.md` §2 | **模块声明能力，引擎按能力查询**：模块写 `crossAgentSupply`，引擎调 `crossAgentSupplyAt`/`crossAgentSuppliesOf`（`core/resource/crossAgentSupply.ts`）与 `findCrossAgentSupplySlots`。**禁止**在 `core/**` 写 `c.agentId === '<id>'` 或 import 角色模块（两条棘轮盯着，见 `scripts/check-guards.mjs`） |
 | **加一个可调滑块（覆盖率/次数近似）** | `src/mechanics/types.ts` 的 `MechanicSetting`；面板阶段读法见 `AgentPanelInput.settings` | 模块 `settings: [...]` 声明 → 面板阶段 `input.settings['<id>']`、cfg 阶段 `configStore.getMechanicSetting`。**必须补一条「滑块改了面板/结果确实变」的生效测试**（般岳 rageGainCoverage 曾静默失效） |
+| **角色模块（录入层）要用编排层 `composables/**` 里的函数**（招式查找 / 行值 / 平A基准段一类） | `scripts/lib/layer-inversion.mjs` 头注释（判据 19 口径 + 实测病灶）；落点 `src/data/moveTableQueries.ts` 头注释 | **禁止值导入 `@/composables`**（只许 `import type`，判据 19 即红）：纯函数/常量下沉 `src/data/`，原位置留 import + export 两行壳（`export … from` 不建本地绑定）；**不要**在角色模块重建同形函数（分裂单一事实源）。判据 `src/scripts/__tests__/layerInversion.test.ts` + `skillRowsShell.test.ts` ④ |
 | 改伤害公式 / 乘区 | `core/damage.ts`（乘区顺序 = 代码顺序，逐项清单见 `core/damage.ts#calcDirectDamage` 的 @fact engine:damage/乘区顺序） | core/damage.ts；执行级字段在 `types/resource/execution.ts` SkillExecution |
 | 改资源池（能量/闪能/时间/连携/转大） | `core/resource.ts`（主循环）→ `core/resource/helpers.ts`（calcEnergySource/iterate） | 同上 + `types/resource/config.ts`；**跨角色回能只改 `calcCrossAgentEnergy`**（单一事实源，两处消费与历史事故见 helpers.ts 函数头注释） |
 | **改计算核心的「阶段 / 先后顺序」** | `core/resource.ts#calcTeamResources` 函数头的**阶段表（S0–S5）** 是唯一事实源（每阶段：名字 / 位置 / 输入→输出 / 判据）；S1 四步见 `core/resource/helpers.ts#iterate` 头注释；已抽出的命名阶段 = `runInnerLoop`(S1) / `runFoldLoop`(S2) / `composables/useResourceCalc#stageResolveFeasibility`(S3) | 顺序不可交换（逐阶段语义以阶段表为准，本文不抄副本）；改动只落在对应阶段；与 `ENGINE_PIPELINE_GUIDE.md` §1 数据流同源 |
