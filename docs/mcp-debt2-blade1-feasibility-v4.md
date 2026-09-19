@@ -194,3 +194,12 @@ R37-J5 引擎落地方案（未实施，待用户定「一次」之外是否允�
 行涨/估计再涨），外环折来折去不收敛。**代码已回退，不入分支**。结论不变：先把 1431 模块 `estimateExSpecialTime` 与 `buildExecutions` 单源化
 （估计从同一份行计划推导），再谈动态合轴落 master。
 
+## 14. 后记 9：叶瞬光估计/行单源化（分支 `895b976`）——留白 10.9→3.6s，最后一公里
+
+- 修：`estimateExSpecialTime` 有 `state` 时用与 `buildExecutions` 同一份输入现算 cycle（`AgentExSpecialTimeInput.state` 的设计意图，星徽·比利同款）；
+  此前读相位缓存 / 缺 basicAttackTime 的 `resolveCycle`。
+- 实测：默认口径 ratchet 红 3→2，量级 10.9/8.3/5.7s → **3.6s**（`auto-1431-1491-1311`）+ 超预算 1.4s（`auto-1431-1341-1311`）；预设口径 20 队清单不变，
+  1431 两队 +54.9% / +53.6%。分支上 `src/mechanics/__tests__` 3 红（`nextRoundFeedbackR20` jufufu 团大次数、`yixuanSmoke` 两条钉数）——
+  都是动态合轴改变落点后的钉数重锚项，属落 master 前的第 3 步，未在分支上处理。
+- 剩余：3.6s / 1.4s 已到整数装包残余 + 欠打回填 1s 门的量级，先打表再动；引擎外环对账折回（§13）已否决，别重试。
+
