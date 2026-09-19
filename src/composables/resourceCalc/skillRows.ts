@@ -3,8 +3,10 @@
  *
  * 职责（一个域：**从 `AgentSkills` 的倍率表里取值**）：
  *   ① 行值提取 `getRowValue` + 倍率融合 `fusedRowValue`（`data/moveFusions.ts` 单一事实源）
- *   ② 招式查找 `findMoveById` / `findMoveByEnglishName` + 平A基准段挑选
- *      `pickThirdNamedBasicSegment` / `getBasicComboMoves` / `averageBasicRows`
+ *      —— ⚠ 2026-09-19 round 37 起**定义已下沉 `data/moveTableQueries.ts`**（连同 `findMoveById` /
+ *      `pickThirdNamedBasicSegment`，共 4 个纯查询），本文件只留 import + export 两行壳，见下。
+ *   ② 招式查找 `findMoveById`（壳）/ `findMoveByEnglishName` + 平A基准段挑选
+ *      `pickThirdNamedBasicSegment`（壳）/ `getBasicComboMoves` / `averageBasicRows`
  *   ③ 行分类与派生量 `isHealingRow` / `getHealingAmount` / `getSpecialResourceRecovery`
  *   ④ 元素 → 面板键映射表 `ELEMENT_DMG_KEYS` / `ELEMENT_DEF_REDUCTION_KEYS` / `ELEMENT_RES_REDUCTION_KEYS`
  *
@@ -14,40 +16,26 @@
  *
  * ⚠ 落点必须是 `resourceCalc/` **目录直属**的 `.ts`：子目录会整类逃出
  * `listAgentBranchFiles()` 的 agentId 棘轮度量面（`scripts/check-guards.mjs`；R22 分诊 §3 闸门 4 实测）。
- * ⚠ 与 `./helpers` 是**双向 import**：本文件是 `findMoveById` 的**新家**，而 `./helpers` 经本文件的
- * re-export 壳把 `getRowValue` / `fusedRowValue` / `findMoveById` 等 14 个符号给它的下游
- * （`buildCharConfig` 的平A基准段、`extractSkillExecutions` 的招式查表）用。**本文件对 `./helpers`
- * 零出边**（`findMoveById` 在这里是本地声明，不需要 import）⇒ 无环、无 TDZ 风险。
+ * ⚠ 与 `./helpers` 的关系：`./helpers` 经本文件的 re-export 壳把 `getRowValue` / `fusedRowValue` /
+ * `findMoveById` 等 14 个符号给它的下游（`buildCharConfig` 的平A基准段、`extractSkillExecutions`
+ * 的招式查表）用。**本文件对 `./helpers` 零出边** ⇒ 无环、无 TDZ 风险。
+ *
+ * ⚠ 为什么 4 个纯查询要再下沉一层到 `src/data/`（round 37，OPEN-ITEMS R35-J2）：录入层
+ * `mechanics/agents/claret.ts` 需要 `pickThirdNamedBasicSegment` / `fusedRowValue`，而录入层
+ * **值导入编排层**是全仓唯一一条反向边（8 模块 SCC）。`src/data/` 是三层都可依赖的公共底
+ * （先例 `sharpCritMultiplier`），判据 19 `layer-inversion` 盯着录入层不再值导入 `composables`。
  */
 import type { useCatalogStore } from '@/stores/catalog'
-import { getRowFusionMultiplier } from '@/logicEditor/fusion'
-import { moveFusionByMoveId } from '@/data/moveFusions'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { SkillExecution } from '@/types/resource'
 
-/** 从 SkillMove 的 rows 中提取指定 row 的值 */
-export function getRowValue(move: SkillMove | null | undefined, rowId: string): number {
-  if (!move) return 0
-  const row = move.rows.find(r => r.id === rowId)
-  return (row?.values[0] ?? 0) * getRowFusionMultiplier(move.id, rowId)
-}
-
-/**
- * 倍率融合（src/data/moveFusions.ts 单一事实源）：moveId 登记了融合组时，
- * 该 row 值 = Σ 组内 term.moveId 的同行值 × term.count。
- * 返回 null = 未登记（走原 getRowValue 单段值）；组内缺段时整组回退 null（保守，防半融合）。
- */
-export function fusedRowValue(skills: AgentSkills | undefined, moveId: string, rowId: string): number | null {
-  const group = moveFusionByMoveId.get(moveId)
-  if (!group) return null
-  let sum = 0
-  for (const term of group.terms) {
-    const member = findMoveById(skills, term.moveId)
-    if (!member) return null
-    sum += getRowValue(member, rowId) * term.count
-  }
-  return sum
-}
+// ---- 4 个纯查询的定义在 `data/moveTableQueries.ts`（2026-09-19 round 37 下沉），这里是壳 ----
+// ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**，而下方
+//   `getBasicComboMoves`（调 `pickThirdNamedBasicSegment`）/ `averageBasicRows`（调 `getRowValue`）
+//   需要本地绑定（与 `./helpers` 壳同一教训：刀 A 实测 `ReferenceError` / `vue-tsc` TS2304）。
+// ⚠ 改这 4 个函数请去 `data/moveTableQueries.ts`，不要在本文件重建同形函数。
+import { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment } from '@/data/moveTableQueries'
+export { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment }
 
 export const ELEMENT_DMG_KEYS: Record<string, string> = {
   physical: 'physicalDmg',
@@ -119,15 +107,6 @@ export function getSpecialResourceRecovery(move: SkillMove): number {
   return total
 }
 
-export function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    const move = cat.moves.find(m => m.id === moveId)
-    if (move) return move
-  }
-  return null
-}
-
 export function findMoveByEnglishName(skills: AgentSkills | undefined, englishName: string): SkillMove | null {
   if (!skills) return null
   for (const cat of skills.categories) {
@@ -144,25 +123,6 @@ export function findMoveByEnglishName(skills: AgentSkills | undefined, englishNa
  */
 export const BASIC_BENCHMARK_OVERRIDE: Record<string, string> = {
   // 在此填入需要特殊基准段的角色，如 '1401': '1401003'
-}
-
-/**
- * 平A「第 3 段」挑选（`#N` 段里取 index 2，不足取末段）——**单一事实源**。
- *
- * 引擎默认基准（`getBasicComboMoves` 第 4 步）与需要**多套基准**的角色模块（如克拉蕾 1611
- * 常态/猩红铭刻两态分支）都调本函数，避免两处各写一遍"第 3 段"而在规则变化时漂移。
- */
-export function pickThirdNamedBasicSegment(moves: readonly SkillMove[]): SkillMove | null {
-  const named: SkillMove[] = []
-  for (const move of moves) {
-    const name = move.name?.en || ''
-    if (!name.match(/#\d+/)) continue
-    if (name.toLowerCase().includes('dash') || name.toLowerCase().includes('dodge')) continue
-    if (!move.actionTime || move.actionTime <= 0) continue
-    named.push(move)
-  }
-  if (named.length === 0) return null
-  return named[Math.min(2, named.length - 1)]
 }
 
 /**
@@ -231,9 +191,11 @@ export function averageBasicRows(
 
 // ============================================================================
 // 本簇 14 个公开符号在 `./helpers.ts` 保留 **re-export 壳**（R22 熵批 2 / R22-S2 刀 B）：
-// 目录外的既有消费者（`mechanics/agents/*` / `components` / `views` / 测试）import 路径零改动。
+// 目录外的既有消费者（`components` / `views` / 测试）import 路径零改动。
 // ⚠ 必须写成「import + export」两行——`export { … } from './skillRows'` **不建本地绑定**，
 //   而 `helpers.ts` 下游（`buildCharConfig` / `extractSkillExecutions`）需要本地绑定
 //   （刀 A 实测 `ReferenceError: findForbiddenTracked is not defined` / `vue-tsc` TS2304）。
-// ⚠ 改招式行取值请改本文件，**不要回 `helpers.ts` 重建同形函数**（那会分裂单一事实源）。
+// ⚠ 改招式行取值请改本文件（4 个纯查询改 `data/moveTableQueries.ts`），**不要回 `helpers.ts`
+//   重建同形函数**（那会分裂单一事实源）。录入层（`mechanics/agents/*`）**不得**值导入本目录
+//   （判据 19 `layer-inversion`），要纯查询去 `@/data/moveTableQueries`。
 // ============================================================================

@@ -414,11 +414,11 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('十八条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引**)', () => {
+  it('十九条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置**)', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(18)
+    expect(results).toHaveLength(19)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
     expect(results.map(r => r.name.split(' ')[0])).toContain('exhibition-layer')
     // core 棘轮必须在列（规则 6 的引擎层延伸——此前 core 是豁免区）
@@ -443,6 +443,10 @@ describe('仓库级自洽（真实扫描）', () => {
     // （实测艾莲影画4 冻结 4→0、格雷丝写进队友 cfg、奥菲丝/薇薇安/蕾米埃尔抛 TypeError）。
     // 它与判据 16 的区别：16 的症状在渲染、本判据在数值；共同点是**既有测试零覆盖**。
     expect(results.some(r => r.name.includes('压缩数组槽位索引'))).toBe(true)
+    // 判据 19：录入层 → 编排层值倒置（2026-09-19 round 37，OPEN-ITEMS R35-J2）——判据 7 只盯展示层、
+    // 判据 12 只盯 core→角色模块，「mechanics/specs 值导入 @/composables」这条边此前结构性无人监管；
+    // 实测唯一病灶 claret.ts:15 造成 8 模块 SCC。行为面（值导入 0 + 反空洞下限）与 claret 形状锁成对。
+    expect(results.map(r => r.name.split(' ')[0])).toContain('layer-inversion')
     expect(results.some(r => r.name.includes('招式伤害属性对账'))).toBe(true)
   })
 

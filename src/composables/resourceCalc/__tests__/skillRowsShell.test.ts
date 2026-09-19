@@ -18,7 +18,10 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import * as Helpers from '@/composables/resourceCalc/helpers'
 import * as SkillRows from '@/composables/resourceCalc/skillRows'
+import * as MoveTableQueries from '@/data/moveTableQueries'
 import { buildCharConfig, extractSkillExecutions } from '@/composables/resourceCalc/helpers'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 /** C 簇 14 个公开符号（迁移前 helpers.ts 的导出面，迁移后经壳原样可达） */
 const C_EXPORTS = [
@@ -40,6 +43,13 @@ const C_EXPORTS = [
 
 /** 留在 `helpers.ts` 的真定义（本刀**不该**把它们搬走：D/E 簇与展示归一） */
 const STAYED = ['teamHasAgent', 'findSlotByIdentity', 'normalizeDisplayTime', 'buildCharConfig'] as const
+
+/**
+ * 2026-09-19 round 37（OPEN-ITEMS R35-J2）再下沉一层的 4 个纯查询：定义在 `data/moveTableQueries.ts`，
+ * `skillRows.ts` 与 `helpers.ts` 各留一层 import + export 壳。下沉理由 = 录入层 `claret.ts` 需要其中两个，
+ * 而录入层值导入编排层是全仓唯一反向边（判据 19 `layer-inversion`）。
+ */
+const SUNK_TO_DATA = ['getRowValue', 'fusedRowValue', 'findMoveById', 'pickThirdNamedBasicSegment'] as const
 
 describe('R22 刀 B：skillRows 壳契约', () => {
   it('① C 簇 14 个符号经 ./helpers 壳可达，且与 ./skillRows 是**同一个绑定**', () => {
@@ -75,5 +85,23 @@ describe('R22 刀 B：skillRows 壳契约', () => {
       expect((Helpers as Record<string, unknown>)[name], `helpers.${name} 不该消失`).toBeDefined()
       expect(name in SkillRows, `skillRows.${name} 不该出现`).toBe(false)
     }
+  })
+
+  it('④ 下沉 data 层的 4 个纯查询：三层（data / skillRows 壳 / helpers 壳）是**同一个绑定**，且壳是两行形态', () => {
+    for (const name of SUNK_TO_DATA) {
+      const real = (MoveTableQueries as Record<string, unknown>)[name]
+      expect(real, `data/moveTableQueries.${name} 缺失`).toBeTypeOf('function')
+      expect((SkillRows as Record<string, unknown>)[name], `skillRows.${name} 壳与 data 真实现不是同一绑定`).toBe(real)
+      expect((Helpers as Record<string, unknown>)[name], `helpers.${name} 壳与 data 真实现不是同一绑定`).toBe(real)
+    }
+    // 壳形态：`import { … } from '@/data/moveTableQueries'` + 另起 `export { … }`（建本地绑定，
+    // 供本文件内 getBasicComboMoves / averageBasicRows 调用）；`export { … } from` 在 vitest 下不会红、
+    // 只有 vue-tsc -b 红（R22 刀 B 教训）⇒ 这里读源码钉形态。
+    const src = readFileSync(join(__dirname, '..', 'skillRows.ts'), 'utf8')
+    expect(src).toMatch(/^import \{[^}]*\} from '@\/data\/moveTableQueries'$/m)
+    expect(src).toMatch(/^export \{ getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment \}$/m)
+    expect(src).not.toMatch(/export \{[^}]*\} from '@\/data\/moveTableQueries'/)
+    // 定义确实不在 skillRows.ts 里了（不许两处各一份）
+    for (const name of SUNK_TO_DATA) expect(src).not.toMatch(new RegExp(`^export function ${name}\\b`, 'm'))
   })
 })

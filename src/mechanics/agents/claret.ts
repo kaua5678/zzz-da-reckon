@@ -12,7 +12,8 @@ import type { CharacterResourceResult, ClaretSharpResourceSource } from '@/types
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions } from '@/specs/mechanics'
-import { pickThirdNamedBasicSegment, fusedRowValue } from '@/composables/resourceCalc/helpers'
+// 录入层不得值导入编排层（判据 19 layer-inversion，本文件曾是全仓唯一病灶）：纯查询从 data 层取
+import { pickThirdNamedBasicSegment, fusedRowValue } from '@/data/moveTableQueries'
 
 /**
  * 克拉蕾（1611）v12 重录（2026-09-03，raw = nanoka 3.2.12+18601660）：

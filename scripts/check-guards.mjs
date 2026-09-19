@@ -9,6 +9,9 @@
 //   3. 工作区状态防误提交 —— 规则 13「task-ledger/ledgers 是工作状态不是项目知识」
 //   7. 展示层越层棘轮    —— ARCHITECTURE §0「依赖方向：展示 → 编排 → 引擎」
 //      （views/components 禁 import @/core|@/mechanics|@/specs；存量冻结只减不增）
+//  19. 录入层→编排层值倒置 —— ARCHITECTURE §0「录入层被编排/引擎经 registry 消费」
+//      （mechanics/specs 禁值导入 @/composables，import type 豁免；行为面 + claret 形状锁成对，
+//       实现面 scripts/lib/layer-inversion.mjs）
 //
 // 用法：node scripts/check-guards.mjs（npm run check / npm run verify 已挂载）
 // 逃生口（都要求显式改本文件，让「例外」在 diff 里留痕）：
@@ -32,6 +35,13 @@ import {
 } from './lib/move-element-reconcile.mjs'
 import { scanScopedStyleReach } from './lib/scoped-style-reach.mjs'
 import { scanCompactedSlotIndex, IDX_SAFE_ALLOWLIST } from './lib/compacted-slot-index.mjs'
+// 判据 19：录入层 → 编排层值倒置（2026-09-19 round 37，见 scripts/lib/layer-inversion.mjs 头注释）
+import {
+  scanLayerInversion,
+  layerInversionOk,
+  formatLayerInversion,
+  LAYER_INVERSION_MIN_TOTAL_SITES,
+} from './lib/layer-inversion.mjs'
 // 角色身份判定检测面（AST 单源；2026-09-17 round 19 换尺批，见 scripts/lib/agent-identity-lines.mjs 头注释）
 import { countIdentityBranchLines, countIdentityBranchLinesInFiles } from './lib/agent-identity-lines.mjs'
 
@@ -2182,6 +2192,18 @@ export function runAllChecks(root = ROOT) {
         : `招式伤害属性对账 (move.damageElement ↔ nanoka raw 散文) ${report.scannedMoves - report.violations.length}/${report.scannedMoves} 招达标`,
       ok: report === null || moveElementReconcileOk(report),
       detail: report === null || moveElementReconcileOk(report) ? [] : formatMoveElementReconcile(report),
+    })
+  }
+
+  // ---- 判据 19：录入层 → 编排层值倒置（ARCHITECTURE §0 依赖方向；R35-J2 唯一值边 claret.ts 已下沉 data/） ----
+  {
+    const report = scanLayerInversion(root)
+    results.push({
+      name: `layer-inversion (判据 19: 录入层 mechanics/specs 禁值导入编排层 @/composables) 值导入 ${report.valueCount} 处`
+        + `（type 站点 ${report.typeCount} / 总站点 ${report.total} ≥ ${LAYER_INVERSION_MIN_TOTAL_SITES} 反空洞`
+        + ` / 形状锁 ${report.shapeViolations.length} 处 / 扫 ${report.scannedFiles} 文件）`,
+      ok: layerInversionOk(report),
+      detail: layerInversionOk(report) ? [] : formatLayerInversion(report),
     })
   }
 
