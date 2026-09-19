@@ -1626,8 +1626,31 @@ export function iterate(
   // 不能被静默截断（实测吞掉后 banyue.test「轴退化」判据不再触发）。非轴模式 = 自由循环，
   // 超预算就是"到点结算"，该截断 + 回灌平A。
   const axisMode = !!globalCfg.axisMode
-  const rawScale = !axisMode && sumNetNecessary > budget && sumNetNecessary > 0
-    ? budget / sumNetNecessary
+  // ===== 动态合轴（债 2 R37-J5 v2，用户口径 2026-09-19）=====
+  // 合轴不是录死的 ratio 数据（全库 1352 招只有 1 招有值，录死了下次溢出照样解不了），而是引擎在溢出时的动态吸收：
+  // 多名角色同场时指定**操作角色 = 净必要最大的槽**（溢出发生的那槽），其余队友的前台按**溢出量**被合轴吸收
+  // （与操作角色并行，团队预算不再重复计它们），吸收多少由溢出决定、按各自容量（净必要）比例分摊，不多不少；
+  // 只有吸收不完的剩余才走下面的 feasibleScale 封顶 / 装配截断。单人 ≤ 战斗时间的上限不变（iterate 单角色前线上限）。
+  // 实测（预设口径）只有 5/104 队会进这里（Σ必要 ≈ 预算、Σcredit = 0 的 1431 簇等），其余 99 队 excess ≤ 0 ⇒ 零分支。
+  // 验：src/core/__tests__/dynamicComboAlign.test.ts；轴模式不做（轴预设自带 axisOverlap 口径）。
+  const dynamicComboAlign: number[] = configs.map(() => 0)
+  if (!axisMode && sumNetNecessary > budget + 1e-9 && configs.length > 1) {
+    let operator = 0
+    for (let i = 1; i < netNecessary.length; i++) if (netNecessary[i] > netNecessary[operator]) operator = i
+    const capacity = netNecessary.map((n, i) => (i === operator ? 0 : Math.max(0, n)))
+    const capTotal = capacity.reduce((a, b) => a + b, 0)
+    if (capTotal > 1e-9) {
+      const take = Math.min(sumNetNecessary - budget, capTotal)
+      for (let i = 0; i < capacity.length; i++) dynamicComboAlign[i] = capacity[i] / capTotal * take
+    }
+  }
+  const dynamicTotal = dynamicComboAlign.reduce((a, b) => a + b, 0)
+  const effectiveCredits = comboAlignCredits.map((c, i) => c + dynamicComboAlign[i])
+  const absorbedNetNecessary = netNecessary.map((n, i) => Math.max(0, n - dynamicComboAlign[i]))
+  const sumAbsorbedNet = absorbedNetNecessary.reduce((a, b) => a + b, 0)
+  const reliefWithDynamic = reliefSeconds + dynamicTotal
+  const rawScale = !axisMode && sumAbsorbedNet > budget && sumAbsorbedNet > 0
+    ? budget / sumAbsorbedNet
     : 1
   const feasibleScale = rawScale
   // ⚠ 本封顶处的债务标记已于 2026-09-18（R24 批 1-3）**销号**——原标记称「本封顶让未实数化
@@ -1649,14 +1672,14 @@ export function iterate(
   // 封顶后的必要前台：净占用按可行比例缩回预算（合轴抵扣部分原样保留，它不占预算）。
   // 这个 capped 值**同时**用于平A池计算与 state.necessaryTime ⇒ 省下来的必要时间变成队友
   // 能打的平A填充，而不是"账本说满了、动作没打满"的假满（实测：不回灌留白 393s，回灌 275s）。
-  const cappedNecessary = netNecessary.map((x, i) =>
-    x * feasibleScale + (comboAlignCredits[i] ?? 0))
+  const cappedNecessary = absorbedNetNecessary.map((x, i) =>
+    x * feasibleScale + (effectiveCredits[i] ?? 0))
   const sumNecessaryCapped = cappedNecessary.reduce((a, b) => a + b, 0)
   // @fact engine:cfg/诊断量写回 口径: timeFeasibleScale 与 overflowSeconds 是引擎计算中途写回 globalCfg 的诊断量，在新克隆 cfg 上调用前恒为 undefined，严禁在调用前预读作条件判定；读截断秒数必须读 convergence.timeTruncatedSeconds | 据 用户@2026-09-18·R25-J2 | 验 src/composables/__tests__/seedInvariance.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
   // ⟳复核: 检查是否有外部模块误读 timeFeasibleScale 或 overflowSeconds | 到期 2026-12-31
   globalCfg.timeFeasibleScale = feasibleScale
-  globalCfg.overflowSeconds = Math.max(0, sumNecessary - reliefSeconds - budget)
-  const availableBasicTime = Math.max(0, budget - sumNecessaryCapped + reliefSeconds
+  globalCfg.overflowSeconds = Math.max(0, sumNecessary - reliefWithDynamic - budget)
+  const availableBasicTime = Math.max(0, budget - sumNecessaryCapped + reliefWithDynamic
     + (globalCfg.timeBudgetRefund ?? 0))
 
   // 按权重分配平A时间
@@ -1727,7 +1750,8 @@ export function iterate(
       frontlineTime,
       backstageTime,
       comboAlignTime: comboAlignTimes[i],
-      comboAlignCredit: comboAlignCredits[i],
+      comboAlignCredit: effectiveCredits[i],
+      dynamicComboAlignSeconds: dynamicComboAlign[i] > 0 ? dynamicComboAlign[i] : undefined,
     })
   }
 

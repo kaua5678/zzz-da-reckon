@@ -25,6 +25,11 @@ export interface TimeAllocation {
   comboAlignCredit?: number
   /** 平A时间（可自由分配的战场时间） */
   basicAttackTime: number
+  /**
+   * 动态合轴吸收（秒；债 2 R37-J5 v2，用户口径 2026-09-19）：Σ净必要 > 预算时，非操作角色（操作角色 = 净必要最大的槽）
+   * 的前台按溢出量被合轴吸收的部分——已计入 comboAlignCredit。0/undefined = 本轮没发生吸收。
+   */
+  dynamicComboAlignSeconds?: number
   /** 必做动作前台时间（强特+大招+连携+特殊招式的 actionTime 之和，未扣除合轴） */
   necessaryTime: number
 }
@@ -72,4 +77,6 @@ export interface IterationState {
   comboAlignTime: number
   /** 合轴抵扣时间（comboAlignTime 中含在 necessaryTime 内、计入团队时间预算抵扣的部分；缺省 = 0） */
   comboAlignCredit?: number
+  /** 动态合轴吸收秒数（见 IterationState.dynamicComboAlignSeconds；已含在 comboAlignCredit 内） */
+  dynamicComboAlignSeconds?: number
 }
