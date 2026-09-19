@@ -80,3 +80,24 @@
 | `timeWeightAllocation` ⑥c | 新样本走「部分拉回」（108.79→87.41s），原断言只认「归零 / 拉不回来」两态 | 实现有三个出口 | 断言补第三态：含「可行性优先：截断 a→b」且不含「拉不回来」 |
 
 - `/tmp/wt-r37c` @ `b0f2f5b` 复跑 `npm run verify`：读数见 `.claude/PROMPT-handoff-round37.md` §1.4。
+
+## 6. 后记：批 2-1 已按正解落地（同日，R37-J2）
+
+- ① `703290f`：`calcTeamResources` 尾段（欠打回填 → 伊德海莉终推 → 热启动落缓存 → 赠链/帷幕 → S4 装配）纯搬迁为 `runTailPipeline`
+  （`git diff -w` 仅 17+/2−），timeGolden / timeFillRatchet / allAgentsSweep / seedInvariance 等 337 条零 delta。
+- ② `1b21a16`：重折环 + `feasibleRows`。与 §2 列的四条缺陷逐一对应的设计差异：字段落 `CharacterOperationConfig`（不是全局 config）；
+  重折**回到 S2 入口**重跑（cfg 清键还原 + 规范种子 + 诊断量归零），不在被第一遍尾段改写过的 cfg 上叠跑；回滚用「清键 + assign」
+  （`Object.assign` 删不掉新加键）；返回前恒 `delete cfg.rowTimeLimit`，`WARM_KEY_OMIT_CFG` 亦排除；重折环真的执行且有注入反验
+  （`ROW_REFOLD_MAX_PASSES` 3→0 ⇒ `truncationRefold.test.ts` ① 红）。
+- 读数（timeGolden 重生成仅 2 条变）：`auto-1431-1481-1491` cut 108.79→86.86、dmg −8.72%、每槽少 1 次终结/强特；
+  `auto-1431-1481-1341` cut 100.09→81.62、dmg −14.37%。伤害下降 = 原读数虚高的回吐（靠装不下的行的收入撑起来的次数，180s 里本就打不出）。
+- 未销号：结构性溢出队重折后仍残留 80+s 截断（如实上报），「直到截断为 0」要等实数化专项 + 用户终验；debt 标记保留并追加进度段。
+
+## 7. 后记 2：重折暴露的截断装包老 bug（`6a64278`）
+
+- 现象：`teamTimeSummary`「Σ 逐行 cutSeconds == overflow」在重折态差 1.9s（HEAD 上一直有 0.244s 残差，被当量化噪声容忍）。
+- 根因（探针逐行打表定位）：`truncateExecutionsToFrontline` 第 ② 步加回只判 `u.count < u.e.count`，小数次数行 8.249 floor 到 8 后仍放行 +1 = 9
+  ⇒ 截断后的计划比截断前**多打** 0.751 次、kept 虚高、该行不进 cuts。修：`u.count + 1 <= u.e.count + 1e-9`，恒等式容差 1s → 1e-6。
+- 读数：两条 1431 预设 dmg +1.6% / +4.4%（重折收敛点微移）；`agent:1051:c3` slack 1.41→3.50（虚的 0.x 次去掉后 2.1s 未被欠打回填吃满）；
+  ratchet 默认口径 `auto-1431-1481-1341` 留白 1.6→3.1（77.5s 截断归零的粗粒度残余）、`auto-1431-1481-1491` 3.5→1.3。
+
