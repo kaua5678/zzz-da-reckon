@@ -201,8 +201,10 @@ describe('仪玄 spec 机制（1371）', () => {
     const chain = yixuan.yixuanExChain!
     // 自动完美格挡 = **有效**弹刀次数。2026-09-11 降配验收三臂化（见 useResourceCalc#stageResolveFeasibility）：
     // 本配置弹刀 6 本身撑不下 ⇒ 降配收进可行域 → 有效弹刀 6→5，#2 赠送行同步 5（闪能收入侧按 5 次 +50 计）。
-    expect(chain.perfectBlockCount).toBe(5)
-    expect(chain.ink2).toBe(5)
+    // 2026-09-19 R37-J5 v2（动态合轴）：轴态超预算 → 弃轴后非轴态的溢出由队友前台按溢出量被合轴吸收 ⇒ 净占用装得下、
+    // 不再触发降配 → 有效弹刀回到配置值 6，#2 赠送行同步 6。
+    expect(chain.perfectBlockCount).toBe(6)
+    expect(chain.ink2).toBe(6)
     // 自动 3 连：income（= 循环当量 × 60）打完轴内消耗后剩余全部打 3 连（60/次）→ 轴外凝云清零
     expect(chain.ink2Count).toBe(0)
     // 时间轴喧响轨（2026-08-31）：队友大招削减 → 玄墨暗涌闪能归零 → income 回落。
@@ -468,7 +470,9 @@ describe('仪玄 spec 机制（1371）', () => {
     // 2026-09-11 降配验收三臂化（见同文件「3连墨痕化形/完美格挡」条）：超预算的交互被收进可行域后时间腾出
     // → 术法值增益驱动的 1371020 物化行 9 次，po 行同步 9 ⇒ **相位分裂差值 1→0**（旧的「轨/相位对物化行的
     // 调整不回传 po」不一致在本配置下消失）。
-    expect(po!.count).toBe(9)
+    // 2026-09-19 R37-J5 v2（动态合轴）：弃轴后非轴态不再降配（溢出由队友前台吸收），外层失衡 2→3 次 ⇒ 术法值/闪能收入
+    // 再升一档 → 1371020 物化行 10 次，po 行同步 10（相位分裂差值仍 0）。
+    expect(po!.count).toBe(10)
     expect(totalUlts - po!.count).toBe(0)
     expect(po!.damageMultiplier).toBe(1200)
     expect(po!.dazeMultiplier).toBe(374.055)

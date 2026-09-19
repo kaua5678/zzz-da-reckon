@@ -109,9 +109,14 @@ describe('⑤ 合轴匀出 · 机制传导与集成诚实', () => {
       // 拒绝分支：覆盖必须停在种子值（当场回滚，不留半成品突变）
       expect(ovr, `杠杆未咬合但覆盖被动到 ${ovr}（应回滚到 0.3）`).toBeCloseTo(0.3, 6)
     }
-    // 两分支共守的硬不变量
+    // 两分支共守的硬不变量：总伤不降、截断不升。
+    // 失衡次数**不是** joint 的硬约束（用户口径 2026-09-10：目标函数 = 总伤，次数是分配的结果，如实上报不拦截；
+    // ⑤ 自己的接受门仍拒绝失衡降，见上方纯函数矩阵）。R37-J5 v2（动态合轴，2026-09-19）前本夹具恰好 4→4；
+    // v2 后 ①③ 把权重 1/1/0→2/0/0、弹刀 6/6/0→6/0/2 换来 +15% 总伤、失衡 4→3（琉音/耀嘉音前台 15.0/2.6s 被合轴吸收）
+    // ——允许，但**必须在 note 里如实上报**（这才是诚实面要钉的东西）。
     expect(calc.teamTotalDamage.value, '总伤不降').toBeGreaterThanOrEqual(d0 - 1e-6)
-    expect(calc.stunPoolResult.value?.stunCount ?? 0, '失衡不降').toBeGreaterThanOrEqual(s0)
+    const s1 = calc.stunPoolResult.value?.stunCount ?? 0
+    if (s1 < s0) expect(note, '失衡降了却没上报').toContain(`失衡 ${s0}→${s1} 次（次数是分配的结果，未拦截）`)
     expect(truncOf(calc), '截断不升').toBeLessThanOrEqual(t0 + 1e-6)
   }, 180_000)
 

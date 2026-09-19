@@ -495,7 +495,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   }
 }
 
-function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount }: AgentExSpecialTimeInput): AgentExSpecialTimeEstimate | null {
+function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount, state }: AgentExSpecialTimeInput): AgentExSpecialTimeEstimate | null {
   const record = cfg as unknown as Record<string, unknown>
   // 自动选轴：**真实时间压力**（cfg.timePressureSeconds = 本槽物化行 − 队友占完后可用前台）
   // 超过阈值时逐级退化 full→short_pair→short_mie，并把旧轴的折叠残差清零——否则换轴后 necessary
@@ -520,8 +520,19 @@ function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount }: AgentExSp
   }
 
   const times = (record.yeshuguangMoveTimes ?? {}) as Record<string, number>
-  const cycle = (record.yeshuguangCycle as YeshuguangCycleResult | undefined)
-    ?? resolveCycle(cfg, { ultimateCount })
+  // 估计与物化单源（R37-J5 ④，2026-09-19；与星徽·比利同款——AgentExSpecialTimeInput.state 的设计意图）：
+  // 引擎 iterate 传入上一轮收敛状态时，用**与 buildExecutions 同一份输入**（basicAttackTime / exSpecialCount / chainCountTotal +
+  // 本轮 ultimateCount）现算 cycle；此前读相位缓存 `yeshuguangCycle`（上一 pass 物化时的状态）或缺 basicAttackTime 的
+  // resolveCycle，剑势来自平A时间 ⇒ 两边轮数可以差很多（动态合轴给足 180s 后实测账本 179.8 / 行 125.1，留白 10.9s）。
+  // 外部直调（无 state）仍走缓存/退化路径。
+  const cycle = state
+    ? resolveCycle(cfg, {
+      ultimateCount,
+      exSpecialCount,
+      basicAttackTime: state.basicAttackTime,
+      chainCountTotal: state.chainCountTotal,
+    })
+    : (record.yeshuguangCycle as YeshuguangCycleResult | undefined) ?? resolveCycle(cfg, { ultimateCount })
   if (cycle.totalForms <= 0) return null
 
   const melee =

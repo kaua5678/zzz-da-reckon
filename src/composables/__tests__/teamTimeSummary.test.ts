@@ -16,7 +16,7 @@ import { fmt } from '@/utils/format'
 
 beforeEach(() => clearWarmStartCache())
 
-async function summaryOf(team: string[], enemy: { invincibleTime?: number } = {}, opts: { applyPreset?: boolean } = {}) {
+async function summaryOf(team: string[], enemy: { invincibleTime?: number; stunCountLock?: number } = {}, opts: { applyPreset?: boolean } = {}) {
   const { catalog } = await setupHarness(['', '', ''])
   const config = useConfigStore()
   for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
@@ -26,6 +26,7 @@ async function summaryOf(team: string[], enemy: { invincibleTime?: number } = {}
     config.applyTeamPreset(team as [string, string, string])
   }
   if (enemy.invincibleTime !== undefined) config.setEnemy({ invincibleTime: enemy.invincibleTime })
+  if (enemy.stunCountLock !== undefined) config.setEnemy({ stunCountLock: enemy.stunCountLock })
   const calc = useResourceCalc()
   const rr = calc.resourceResult.value
   expect(rr).toBeTruthy()
@@ -50,12 +51,14 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
   })
 
   it('留白被归因到「账本虚高」，不是「池没分完」', async () => {
-    // 叶瞬光/照/妮可：当前「账本虚高」归因队（2026-09-11 照终结技时长修正后 slack 8.8→4.1、
-    // ledgerInflation 24.2→18.8——照 Q 前台时间 0.2335→0.9168s/次，池被填得更满，留白自然变小）。
-    // 历史样例（朱鸢 30.1s、希格莉德 20.6s）都因 2026-09-05 修掉「模块行重复占用平A池」而归零，
-    // 星徽·比利 2026-09-06 实数化后也打满（slack 0.1）——全库最大留白从 93.7s 一路收到 <10s，
-    // 阈值随引擎现状下调（本样例只用于「归因到账本虚高而非池没分完」，不是留白绝对量判据）。
-    const t = await summaryOf(['1431', '1341', '1031'])
+    // 样例史：叶瞬光/照/妮可曾是「账本虚高」归因队（2026-09-11 照终结技时长修正后 slack 8.8→4.1、ledgerInflation 24.2→18.8），
+    // 2026-09-19 R37-J5（②账本虚高按物化行折回 + ④叶瞬光强特时间单源）把它收到 slack 1.09 / 虚高 4.3s——这正是那轮要修的东西，
+    // 它不再是样例。更早的历史样例（朱鸢 30.1s、希格莉德 20.6s）因 2026-09-05 修掉「模块行重复占用平A池」而归零，
+    // 星徽·比利 2026-09-06 实数化后也打满（slack 0.1）。
+    // 现样例 = 艾莲/丽娜/耀嘉音（默认口径留白棘轮全库最大：slack 15.0s、账本虚高 19.9s、平A行缩水 0）——艾莲强特/连携的
+    // estimate 高于物化行，池按虚高账本收费故分不满。本用例只钉「归因到账本虚高而非池没分完」，不是留白绝对量判据；
+    // 1191 系的这 15s 留白本身是待办（见 docs/mcp-debt2-blade1-feasibility-v4.md §19）。
+    const t = await summaryOf(['1191', '1361', '1311'])
     expect(t.slack).toBeGreaterThan(2)
     // 池确实被分完（平A分配 ≈ 可分配池）→ 留白不来自未分配的秒数
     expect(t.basicTotal).toBeGreaterThan(t.remainingFrontlinePool - 1)
@@ -114,7 +117,11 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
     // rowTimeLimit 重折归零（账本只数装得下的行 ⇒ 次数回落 ⇒ 行装进 180s）——它不再是溢出样例；截断入口 + 加回不越次数
     // 两处修正后，全库**默认口径**已无 >1s 截断队。仍真溢出的是**预设配置口径**的 1431 簇（`auto-1431-1481-1491` 重折后
     // 仍 ~85s、`auto-1431-1481-1341` ~80s，必要行本身 > 预算），故本用例改用 applyPreset 的 `1431+1481+1491`。
-    const t = await summaryOf(['1431', '1481', '1491'], {}, { applyPreset: true })
+    // ⚠ 2026-09-19 R37-J5 v2（动态合轴）后第三次换口径：非轴多人队的溢出先由队友前台按溢出量被合轴吸收，自由口径下该队
+    // 琉音/柳前台整段吸收 + 降配 0.875 ⇒ 截断归零。v2 下唯一装不下的是操作角色自己的前台 > 180s，而降配/弃轴会把它收进
+    // 可行域——只有**锁窗**（用户明确意图，编排层一律不动、超时如实上报）保留这条结构性溢出：锁在该队自身失衡次数 3
+    // （golden 同值）时仪玄自己的必要行仍 > 预算，截断 ≈23.4s / 11 条行，正是「逐行可见」要服务的形态。
+    const t = await summaryOf(['1431', '1481', '1491'], { stunCountLock: 3 }, { applyPreset: true })
     expect(t.overflow).toBeGreaterThan(1)
     expect(t.truncatedRows.length).toBeGreaterThan(0)
     // 恒等式：逐行 cutSeconds = (before−after)×单位时长 == 逐槽 used−kept。此前带 1s 容差是因为「小数次数行加回会越过原次数」
