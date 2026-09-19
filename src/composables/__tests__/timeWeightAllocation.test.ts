@@ -158,7 +158,7 @@ describe('平A池权重·分配策略', () => {
     expect(r.note ?? '').toContain('相对门')
     // 可行性优先（A1）：总伤不得低于基线
     expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(dmgBefore - 1e-6)
-  })
+  }, 120_000)   // 重负载用例：结构性溢出队每次求值都走截断外环重折（≤3 轮全管线，2026-09-19 批 2-1），满套件并发下 30s 不够，与 ⑥c 同款给足
 
   it('⑥c 可行性优先（A1）：基线超时队先拉回可行——截断只降不升、总伤不降；拉回即 0，拉不回如实上报', async () => {
     const { catalog } = await setupHarness(['', '', ''])

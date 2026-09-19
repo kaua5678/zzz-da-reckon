@@ -440,7 +440,11 @@ describe('夜D · 层③ 真管线端到端', () => {
   }
 
   it('★ 保底4喧响 + 般岳队 ⇒ 模块写入的补齐量真的出现在结果 cfg 里（精确值）', async () => {
-    expect(await readBanyueCfg(1)).toEqual({ parry: 6, dual: 0, requiredSeconds: 13.998000000000001, illegal: false })
+    // 精确值锚（2026-09-19 债 2 批 2-1 截断外环回灌后更新）：该队形（推荐构筑）是 72.8s 的结构性溢出队，重折环把账本
+    // 喧响收入改按装得下的行计（13133/11854/10306 → 10284/9338/8088）、截断 72.8→68.1s、终结 8/3/3 → 7/3/2，般岳保底补齐量
+    // 在新账本/新时间面下算得 4 次弹刀（9.332s），此前 6 次（13.998s）。本用例锁的是「模块写入 → 结果 cfg 可见」这层，
+    // 数值随口径变化按规则 10 归因后更新（探针三态见 docs/mcp-debt2-blade1-feasibility-v4.md §7）。
+    expect(await readBanyueCfg(1)).toEqual({ parry: 4, dual: 0, requiredSeconds: 9.332, illegal: false })
   })
 
   it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 6 不是恒写）', async () => {
