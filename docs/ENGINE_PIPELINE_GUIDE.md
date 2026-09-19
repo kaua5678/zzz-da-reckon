@@ -841,7 +841,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     **影响量级参考（供预判）**：critRate +14.4 的伤害涨幅 = `1+r·d` 模型下 **7%（critDmg 50%）～26%（critDmg 200%）**
     —— 暴伤越高收益越大；**且会经 `timeWeightAllocation` 按伤害边际微调平A权重**，故时间账可能出现 0.001–0.01s 的抖动（这是可解释传导，不是回归）。
 41. **「预算上限」被当成「次数」：琉音开窗漏算结转（2026-09-15）**：`computeLiuyinHugCounts` 原用 `floor(好评/90)` 当开窗次数，但原文（`raw/nanoka_missing/full/1481.json`）逐次判定「当[好评]**满90点**且…开窗时消耗**60**点」/「…未打开窗口…消耗**90**点」⇒ 每次开窗当刻需 ≥90、扣 60/90 后**余额结转**（60 档省的 30 点被 floor 丢掉 ⇒ 好评落 `[90+60k,90(k+1))` 时少算；390+连携窗口 ⇒ 6 窗 vs 旧 4；**无窗口时两者一致**）。 修 = 贪心推进（保留三重夹紧，预算安全由循环条件保证）+ 测试 `liuyin.test.ts`「阈值结转口径」3 例。通用：`floor(总量/单价)` 仅在单价唯一时等于次数，混合单价+结转时它是**预算上限**。
-42. **「引擎写回 cfg 的诊断量」的残留读法陷阱（2026-09-18，R25-J2 盘点与口径防线）**：`timeFeasibleScale` 与 `overflowSeconds` 是引擎计算中途写回 `cfg` 的副作用诊断量，而每次调用拿到的 `cfg` 均为新克隆 ⇒ 调用前读取恒为 `undefined ?? 默认值`。全仓实测 `timeFeasibleScale` 零生产读取点，误把「未计算前读取」当作「封顶不激活」是残留读法伪特征；外部消费者需截断/溢出时间时必须读 `convergence.timeTruncatedSeconds` 或物化行统计，严禁预读 `cfg` 残留。
+42. **「引擎写回 cfg 的诊断量」的残留读法陷阱（2026-09-18，R25-J2 盘点与口径防线）**：`timeFeasibleScale` 与 `overflowSeconds` 是引擎计算中途写回 `cfg` 的副作用诊断量，而每次调用拿到的 `cfg` 均为新克隆 ⇒ 调用前读取恒为 `undefined ?? 默认值`。全仓实测 `timeFeasibleScale` 零生产读取点，误把「未计算前读取」当作「封顶不激活」是残留读法伪特征；外部消费者需截断/溢出时间时必须读 `convergence.timeTruncatedSeconds` 或物化行统计，严禁预读 `cfg` 残留。**同族（2026-09-20 R39 补）：`WARM_KEY_OMIT_CFG` 是同一根区分的另一面 —— 它按「收敛后写回 cfg 的反馈字段 + 每次进入先清零的草稿字段」排除键，而 `sanitizeWarmKeyCfg` 走 `Object.entries(cfg)` **整体序列化**⇒ **误收一个真实输入就整队串味**（注入 `exSpecialActionTime` 实测 `getWarmStartStats().seeded` 0→1，而收敛指纹仍逐位一致 ⇒ 拿「结果变没变」当判据会静默放行）。判据 = 命中计数层，已落 `warmStart.test.ts`「精确键负控」；注入 omit 集 ⇒ 该用例红、其余 4 条绿。通用：整体序列化当缓存键 ⇒ 排除表必须与两集合逐字段对账。`docs/mcp-debt2-blade1-feasibility-v4.md:90` 的 `rowTimeLimit` 亦在此列。**
 
 ## 5. 验收命令
 

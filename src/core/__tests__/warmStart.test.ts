@@ -114,6 +114,31 @@ describe('热启动缓存', () => {
       .toEqual(cold.characters.map(c => `${c.exSpecialCount}/${c.ultimateCount}`))
   })
 
+  /**
+   * ★ R39 负控（可红性自证）：精确键必须对**真实输入**敏感。
+   *
+   * 口径：`sanitizeWarmKeyCfg` 走 `Object.entries(cfg)` 整体序列化，键集 = 全部字段 − `WARM_KEY_OMIT_CFG`。
+   * 该 omit 集的语义是「收敛后写回 cfg 的反馈字段 + 每次进入先清零的草稿字段」——**误收一个真实输入**
+   * 就会让「只改那个输入」的第二次计算吃到上一份种子（R39 注入实测：`seeded` 0→1）。
+   *
+   * ⚠ 判据取**命中计数**这一层，不取输出指纹：注入后该队收敛指纹实测仍逐位一致
+   * （内层收缩把种子差异吃掉）⇒ 拿「结果变没变」当判据会在真出问题时静默放行。
+   * 反向验证：把 `exSpecialActionTime` 加进 `WARM_KEY_OMIT_CFG` ⇒ 本用例红（R39 实跑）。
+   *
+   * 与上一条的分工：上一条锁「同输入二次调用**必须**命中」，本条锁「异输入**必须不**命中」——成对。
+   */
+  it('精确键负控：改一个真实输入后不得误命中（种子计数层可见）', async () => {
+    const cfgA = await capturedConfig([{ agentId: '1431' }, { agentId: '1341' }, { agentId: '1031' }])
+    const cfgB = deepCopy(cfgA)
+    // 确凿的真实输入：强特动作时长直接进必要时间，且不是任何写回/草稿字段
+    cfgB.characters[0].exSpecialActionTime = (cfgB.characters[0].exSpecialActionTime ?? 0) + 5
+
+    calcTeamResources(deepCopy(cfgA))                    // 存 A
+    const before = getWarmStartStats().seeded
+    calcTeamResources(deepCopy(cfgB))                    // B：输入不同 ⇒ 不得吃 A 的种子
+    expect(getWarmStartStats().seeded).toBe(before)
+  })
+
   it('1431 系（落点随初值漂移的非实数化队）：同配置二次调用逐位一致', async () => {
     // 2026-09-08 修（用户实测「同一队算两次结果不一样」）：缓存曾存「试探前末态」→ 折叠 pass0 的
     // refund 冻结与内层落点随初值变，注入收敛态等于把本轮落点带进下一轮 → 冷/热分叉
