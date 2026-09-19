@@ -554,404 +554,419 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   states = runFoldLoop(states)
   states = runBillyFinalize(states)
 
-  // ===== 末轮欠打回填（可行性门控，2026-09-05）=====
-  // 上面折叠循环的 refund **冻结在 pass0**，而 pass0 恒测到**正** excess（此时平A池按权重满额发放
-  // → 模块专属行爆量 → 行时间超账本）→ refund 被冻成 0；此后 excess 转负（账本 > 物化行 = 时间
-  // 没打满）就再也拿不到回填。实测 96/125 预设 refund=0、41 队留白 >1s（最大 93.7s = 朱鸢/妮可/苍角
-  // 的 1241 槽：账本必要 138.3s vs 物化必要行 44.6s），而 timeBudgetConverged 仍报 true——
-  // 「收敛健康」掩盖了「动作只打了 86s」。
-  // 修法：折叠循环退出后重测一次欠打量，**折半试探**注入 refund 并重收敛；只有「物化净占用更接近
-  // 预算、且不越过预算」才接受，否则回滚该次注入。必须是可行性门控而不是逐轮跟随——
-  // refund→平A→回能→次数→物化行 是放大环（naive 逐轮跟随实测：留白 1544s→267s 的同时
-  // 超预算队从 8 推到 20，破坏 netFrontlineOccupation ≤ 预算 这条被轴退化/降配/队伍对比消费的
-  // 硬不变量）。门控保证本步**绝不比现状差**：要么把留白收小，要么原样不动。
-  // 债1批1-3已销号（2026-09-18）：折半试探门控经 seedInvariance.test.ts（104 预设 × 4 种子）
-  // 机器判据验证，全库次数落点零偏差，天花板与净占用不变量保持稳定，离散修正影响已被约束在容差内。
-  {
-    const budgetSeconds = totalTime - (config.invincibleTime ?? 0)
-    const chainGiftProvider = findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1
-    const ultimateGiftProvider = findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1
-    /**
-     * Σ物化前台**净**占用：扣轴内合轴分摊 + 每槽超出该分摊的招式合轴抵扣（max 不叠加）——
-     * 与超时判定单一事实源 `netFrontlineOccupation` **完全同口径**，否则试探门控放行、
-     * 装配后仍超预算（实测差出 164s）。
-     */
-    const frontlineRowsOf = (st: IterationState[]): number => {
-      const overlap = config.axisOverlapByAction ?? {}
-      const overlapBySlot: number[] = configs.map(() => 0)
-      for (const [key, sec] of Object.entries(overlap)) {
-        const slot = Number(key.slice(0, key.indexOf(':')))
-        const idx = configs.findIndex(c => c.slot === slot)
-        if (idx >= 0 && Number.isFinite(sec)) overlapBySlot[idx] += sec
-      }
-      let total = 0
-      const chainGiftInfo = crossAgentSupplyAt(configs, st, chainGiftProvider, {
-        totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
-      })
-      // 琉音赠大：轴模式用轴预设计数（`config.axisLiuyinPromote`），非轴用模块供给（跨层统一入口）
-      const giftLiu = crossAgentSupplyAt(configs, st, ultimateGiftProvider, {
-        totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
-        // 轴模式：模块供给被 `axisSuppressed` 跳过，改用轴预设的 promote 计数（跨层统一入口）
-        ...(config.axisMode ? { axisMode: true } : {}),
-      })
-      const giftLiuTime = config.axisMode && config.axisLiuyinPromote && config.axisLiuyinPromote.count > 0
-        ? config.axisLiuyinPromote.count * (configs[config.axisLiuyinPromote.targetSlot]?.ultimateActionTime ?? 0)
-        : giftLiu.time
-      const giftLiuTarget = config.axisMode && config.axisLiuyinPromote && config.axisLiuyinPromote.count > 0
-        ? config.axisLiuyinPromote.targetSlot
-        : giftLiu.targetIdx
-      for (let i = 0; i < configs.length; i++) {
-        const cfg = configs[i]
-        const state = st[i]
-        const teammateFrontline = configs.reduce(
-          (sum, _, j) => (j === i ? sum : sum + st[j].frontlineTime), 0)
-        // 试探测量切 `materializeRows`（阶段1 第二刀收口，2026-09-09）：相位写入已拆到
-        // `materializePhaseState`（引擎侧显式补写），产行钩子对 cfg 只读——试探测量由此与装配同源
-        // （同一 `buildExecutions`）且不再污染相位。**实测否决记录（同日早间）**：当时 3 处相位写入
-        // 仍在钩子里，切换后 golden 多 9 条 delta（全在 1431，c0 留白 57.9→65.4s）——顺序必须是
-        // 「先拆相位写入、再切测量」，否则测出的是相位污染而不是测量口径差异。
-        const probeRows = materializeRows(cfg, state, state.chainCountTotal, teammateFrontline)
-        // 相位写入照旧补写（与折叠/装配同口径）：产行钩子已只读，写入由引擎显式声明。
-        // 不补写 = 下一轮 estimate 读到上一次物化的陈旧值（实测 golden 10 条 delta：1431 c0 留白
-        // 57.9→65.4s、1181:c6 ex −1.29）。
-        getAgentMechanic(cfg.agentId)?.materializePhaseState?.({ cfg, state, executions: probeRows, teamFrontlineSeconds: teammateFrontline })
-        const rowNet = probeRows.reduce(
-          (sum, e) => sum + Math.max(0, (e.totalTime ?? 0)
-            - (overlap[`${cfg.slot}:${e.moveId}`] ?? 0))
-            * (isFrontlineExecution(e) ? 1 : 0),
-          0) + (i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0)
-            + (i === giftLiuTarget ? giftLiuTime : 0)
-        const extraCredit = Math.max(0, (state.comboAlignCredit ?? 0) - overlapBySlot[i])
-        total += Math.max(0, rowNet - extraCredit)
-      }
-      return total
-    }
-    /** 内层次数收敛（与折叠循环同一判据：强特/终结次数 + 平A时间严格相等，见 runInnerLoop 注释）；stable=false = 耗尽上限 */
-    const convergeCounts = (from: IterationState[]) => {      let st = from
-      for (let k = 0; k < maxIter; k++) {
-        const next = iterate(configs, st, config)
-        let changed = false
-        for (let i = 0; i < st.length; i++) {
-          if (next[i].exSpecialCount !== st[i].exSpecialCount
-            || next[i].ultimateCount !== st[i].ultimateCount
-            || next[i].basicAttackTime !== st[i].basicAttackTime) { changed = true; break }
+  // ===== S3–S4 尾段管线函数化（R37-J2 步骤 ①，2026-09-19，零行为搬迁）=====
+  // 末轮欠打回填 → 伊德海莉终推 → 热启动落缓存 → 赠链/终结礼/帷幕次数 → S4 装配（stageAssembleSlot）。
+  // 为什么函数化：债 2 批 2-1「截断外环回灌」要在初装截断 > 容差时按每槽 kept 设 cfg.rowTimeLimit，从 S2 折叠起
+  // **重跑到装配**；本段原是 calcTeamResources 体内的线性代码，不可二次进入——协作者半成品（分支
+  // collab/wip-snapshot-20260919）正是卡在这里。本步只搬不改：块内代码逐字节原样、缩进 +2；读写的外层量
+  // （states / converged / timeBudgetRefundedSeconds / timeBudgetIdleSeconds / config.* / cfg.*）仍经闭包，
+  // 装配产物改为返回值。判据 = timeGolden / timeFillRatchet / allAgentsSweep delta 0（规则 10）；先例 = #8 分刀 stageAssembleSlot。
+  const runTailPipeline = () => {
+    // ===== 末轮欠打回填（可行性门控，2026-09-05）=====
+    // 上面折叠循环的 refund **冻结在 pass0**，而 pass0 恒测到**正** excess（此时平A池按权重满额发放
+    // → 模块专属行爆量 → 行时间超账本）→ refund 被冻成 0；此后 excess 转负（账本 > 物化行 = 时间
+    // 没打满）就再也拿不到回填。实测 96/125 预设 refund=0、41 队留白 >1s（最大 93.7s = 朱鸢/妮可/苍角
+    // 的 1241 槽：账本必要 138.3s vs 物化必要行 44.6s），而 timeBudgetConverged 仍报 true——
+    // 「收敛健康」掩盖了「动作只打了 86s」。
+    // 修法：折叠循环退出后重测一次欠打量，**折半试探**注入 refund 并重收敛；只有「物化净占用更接近
+    // 预算、且不越过预算」才接受，否则回滚该次注入。必须是可行性门控而不是逐轮跟随——
+    // refund→平A→回能→次数→物化行 是放大环（naive 逐轮跟随实测：留白 1544s→267s 的同时
+    // 超预算队从 8 推到 20，破坏 netFrontlineOccupation ≤ 预算 这条被轴退化/降配/队伍对比消费的
+    // 硬不变量）。门控保证本步**绝不比现状差**：要么把留白收小，要么原样不动。
+    // 债1批1-3已销号（2026-09-18）：折半试探门控经 seedInvariance.test.ts（104 预设 × 4 种子）
+    // 机器判据验证，全库次数落点零偏差，天花板与净占用不变量保持稳定，离散修正影响已被约束在容差内。
+    {
+      const budgetSeconds = totalTime - (config.invincibleTime ?? 0)
+      const chainGiftProvider = findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1
+      const ultimateGiftProvider = findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1
+      /**
+       * Σ物化前台**净**占用：扣轴内合轴分摊 + 每槽超出该分摊的招式合轴抵扣（max 不叠加）——
+       * 与超时判定单一事实源 `netFrontlineOccupation` **完全同口径**，否则试探门控放行、
+       * 装配后仍超预算（实测差出 164s）。
+       */
+      const frontlineRowsOf = (st: IterationState[]): number => {
+        const overlap = config.axisOverlapByAction ?? {}
+        const overlapBySlot: number[] = configs.map(() => 0)
+        for (const [key, sec] of Object.entries(overlap)) {
+          const slot = Number(key.slice(0, key.indexOf(':')))
+          const idx = configs.findIndex(c => c.slot === slot)
+          if (idx >= 0 && Number.isFinite(sec)) overlapBySlot[idx] += sec
         }
-        st = next
-        if (!changed) return { states: st, stable: true }
-      }
-      return { states: st, stable: false }
-    }
-    let rowsFilled = frontlineRowsOf(states)
-    let underfill = budgetSeconds - rowsFilled
-    // 门槛 = 1s（量化容差，2026-09-08 用户口径「平A权重与留白不应并存，剩余自由时间按权重
-    // 全部分配」）：欠打 >1s 一律试探回填；≤1s 属量化地板（坑12「不追求精确 0」，合轴可覆盖），
-    // 不试探。历史：09-05 门槛 10s（当时扫描 1s=335/41/2(+2队崩) 5s=353/31/2 10s=391/23/2 20s=421/20/2，
-    // 「+2 队崩」= 近均衡队被推进 stunCount=0 吸引盆：失衡 116k→9.5k，runArchiveDeploy 雅/南宫/柚叶队崩）；
-    // 09-08 引擎（1051/1531 实数化、轴栈资源门控、sigrid 估时钩子、琉音三件套）上 1s 门槛复核：
-    // ratchet 绝对不变量/runArchiveDeploy/allAgentsSweep/yidhariInteractionGrid 全绿，旧盆不复现
-    // （实测数字见 underfillRefund.test.ts 与 docs 坑19① 否决记录）。
-    // **无排除队（2026-09-10 起）**：1591 一族原排除已于本日解除（见 `calcTeamResources` 顶部
-    // 注释的实测依据）；1051/1531 于 2026-09-08 随热启动规范种子修复放回。
-    if (underfill > UNDERFILL_PROBE_THRESHOLD_SECONDS) {
-      let probe = underfill
-      for (let attempt = 0; attempt < 4 && probe > 0.5; attempt++) {
-        const savedRefund: number = config.timeBudgetRefund ?? 0
-        // 试探轮跑 iterate 会触发模块钩子的**写回**（叶瞬光自动选轴在 estimateExSpecialTime 里
-        // 按 timeBudgetExcess 退化并改 record.yeshuguangAutoAxis；般岳补齐同款通道）——被拒的
-        // 试探必须连 cfg 一起回滚，否则结构选择被副作用永久改写（实测 1431 队留白 2.6→11.3s、
-        // 伤害 −13%，就是退化后的轴留在了 cfg 上）。
-        const savedCfg = configs.map(c => ({ ...c }))
-        // overflowSeconds 是 iterate 的副作用输出（编排层拿它判「非轴降配」缩交互次数）：
-        // 试探轮会写下自己的溢出值，被拒后若不回滚，编排层会按一个不存在的溢出把交互缩光
-        // → 失衡归零（实测 runArchiveDeploy 雅/南宫/柚叶队 stunCount 螺旋到 0）。
-        const savedOverflow = config.overflowSeconds ?? 0
-        config.timeBudgetRefund = savedRefund + probe
-        const trial = convergeCounts(states)
-        const trialRows = frontlineRowsOf(trial.states)
-        // 留 1× 容差余量：本步之后还有伊德海莉终局整数重推（实测 +1.3s）与外层不动点再平衡，
-        // 试探测得的行数不是最终装配的行数。margin 扫描（棘轮回归队数）：0=1 队 1=1 队 2=3 队。
-        const fitsBudget = trialRows <= budgetSeconds - TIME_BUDGET_TOLERANCE_SECONDS
-        if (trial.stable && fitsBudget && trialRows > rowsFilled) {
-          states = trial.states
-          rowsFilled = trialRows
-          timeBudgetRefundedSeconds = config.timeBudgetRefund ?? 0
-          underfill = budgetSeconds - trialRows
-          if (underfill <= TIME_BUDGET_TOLERANCE_SECONDS) break
-        } else {
-          config.timeBudgetRefund = savedRefund // 回滚：宁可留白，不制造超预算
-          config.overflowSeconds = savedOverflow
-          configs.forEach((c, i) => Object.assign(c, savedCfg[i]))
-          probe /= 2
+        let total = 0
+        const chainGiftInfo = crossAgentSupplyAt(configs, st, chainGiftProvider, {
+          totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
+        })
+        // 琉音赠大：轴模式用轴预设计数（`config.axisLiuyinPromote`），非轴用模块供给（跨层统一入口）
+        const giftLiu = crossAgentSupplyAt(configs, st, ultimateGiftProvider, {
+          totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
+          // 轴模式：模块供给被 `axisSuppressed` 跳过，改用轴预设的 promote 计数（跨层统一入口）
+          ...(config.axisMode ? { axisMode: true } : {}),
+        })
+        const giftLiuTime = config.axisMode && config.axisLiuyinPromote && config.axisLiuyinPromote.count > 0
+          ? config.axisLiuyinPromote.count * (configs[config.axisLiuyinPromote.targetSlot]?.ultimateActionTime ?? 0)
+          : giftLiu.time
+        const giftLiuTarget = config.axisMode && config.axisLiuyinPromote && config.axisLiuyinPromote.count > 0
+          ? config.axisLiuyinPromote.targetSlot
+          : giftLiu.targetIdx
+        for (let i = 0; i < configs.length; i++) {
+          const cfg = configs[i]
+          const state = st[i]
+          const teammateFrontline = configs.reduce(
+            (sum, _, j) => (j === i ? sum : sum + st[j].frontlineTime), 0)
+          // 试探测量切 `materializeRows`（阶段1 第二刀收口，2026-09-09）：相位写入已拆到
+          // `materializePhaseState`（引擎侧显式补写），产行钩子对 cfg 只读——试探测量由此与装配同源
+          // （同一 `buildExecutions`）且不再污染相位。**实测否决记录（同日早间）**：当时 3 处相位写入
+          // 仍在钩子里，切换后 golden 多 9 条 delta（全在 1431，c0 留白 57.9→65.4s）——顺序必须是
+          // 「先拆相位写入、再切测量」，否则测出的是相位污染而不是测量口径差异。
+          const probeRows = materializeRows(cfg, state, state.chainCountTotal, teammateFrontline)
+          // 相位写入照旧补写（与折叠/装配同口径）：产行钩子已只读，写入由引擎显式声明。
+          // 不补写 = 下一轮 estimate 读到上一次物化的陈旧值（实测 golden 10 条 delta：1431 c0 留白
+          // 57.9→65.4s、1181:c6 ex −1.29）。
+          getAgentMechanic(cfg.agentId)?.materializePhaseState?.({ cfg, state, executions: probeRows, teamFrontlineSeconds: teammateFrontline })
+          const rowNet = probeRows.reduce(
+            (sum, e) => sum + Math.max(0, (e.totalTime ?? 0)
+              - (overlap[`${cfg.slot}:${e.moveId}`] ?? 0))
+              * (isFrontlineExecution(e) ? 1 : 0),
+            0) + (i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0)
+              + (i === giftLiuTarget ? giftLiuTime : 0)
+          const extraCredit = Math.max(0, (state.comboAlignCredit ?? 0) - overlapBySlot[i])
+          total += Math.max(0, rowNet - extraCredit)
         }
+        return total
       }
-      timeBudgetIdleSeconds = Math.max(0, underfill)
-      // 热启动缓存**不存**试探前末态（2026-09-08 修）：折叠 pass0 的 refund 冻结与内层落点随初值变，
-      // 存末态会让同配置第二次计算换结果（1431 系 4 队冷/热 9.20 vs 4.86 等）。缓存存的是本轮的
-      // **规范种子**（见 warmSeedStates 声明处 @fact）——牺牲加速，换「同配置连续计算不许变」。
+      /** 内层次数收敛（与折叠循环同一判据：强特/终结次数 + 平A时间严格相等，见 runInnerLoop 注释）；stable=false = 耗尽上限 */
+      const convergeCounts = (from: IterationState[]) => {      let st = from
+        for (let k = 0; k < maxIter; k++) {
+          const next = iterate(configs, st, config)
+          let changed = false
+          for (let i = 0; i < st.length; i++) {
+            if (next[i].exSpecialCount !== st[i].exSpecialCount
+              || next[i].ultimateCount !== st[i].ultimateCount
+              || next[i].basicAttackTime !== st[i].basicAttackTime) { changed = true; break }
+          }
+          st = next
+          if (!changed) return { states: st, stable: true }
+        }
+        return { states: st, stable: false }
+      }
+      let rowsFilled = frontlineRowsOf(states)
+      let underfill = budgetSeconds - rowsFilled
+      // 门槛 = 1s（量化容差，2026-09-08 用户口径「平A权重与留白不应并存，剩余自由时间按权重
+      // 全部分配」）：欠打 >1s 一律试探回填；≤1s 属量化地板（坑12「不追求精确 0」，合轴可覆盖），
+      // 不试探。历史：09-05 门槛 10s（当时扫描 1s=335/41/2(+2队崩) 5s=353/31/2 10s=391/23/2 20s=421/20/2，
+      // 「+2 队崩」= 近均衡队被推进 stunCount=0 吸引盆：失衡 116k→9.5k，runArchiveDeploy 雅/南宫/柚叶队崩）；
+      // 09-08 引擎（1051/1531 实数化、轴栈资源门控、sigrid 估时钩子、琉音三件套）上 1s 门槛复核：
+      // ratchet 绝对不变量/runArchiveDeploy/allAgentsSweep/yidhariInteractionGrid 全绿，旧盆不复现
+      // （实测数字见 underfillRefund.test.ts 与 docs 坑19① 否决记录）。
+      // **无排除队（2026-09-10 起）**：1591 一族原排除已于本日解除（见 `calcTeamResources` 顶部
+      // 注释的实测依据）；1051/1531 于 2026-09-08 随热启动规范种子修复放回。
+      if (underfill > UNDERFILL_PROBE_THRESHOLD_SECONDS) {
+        let probe = underfill
+        for (let attempt = 0; attempt < 4 && probe > 0.5; attempt++) {
+          const savedRefund: number = config.timeBudgetRefund ?? 0
+          // 试探轮跑 iterate 会触发模块钩子的**写回**（叶瞬光自动选轴在 estimateExSpecialTime 里
+          // 按 timeBudgetExcess 退化并改 record.yeshuguangAutoAxis；般岳补齐同款通道）——被拒的
+          // 试探必须连 cfg 一起回滚，否则结构选择被副作用永久改写（实测 1431 队留白 2.6→11.3s、
+          // 伤害 −13%，就是退化后的轴留在了 cfg 上）。
+          const savedCfg = configs.map(c => ({ ...c }))
+          // overflowSeconds 是 iterate 的副作用输出（编排层拿它判「非轴降配」缩交互次数）：
+          // 试探轮会写下自己的溢出值，被拒后若不回滚，编排层会按一个不存在的溢出把交互缩光
+          // → 失衡归零（实测 runArchiveDeploy 雅/南宫/柚叶队 stunCount 螺旋到 0）。
+          const savedOverflow = config.overflowSeconds ?? 0
+          config.timeBudgetRefund = savedRefund + probe
+          const trial = convergeCounts(states)
+          const trialRows = frontlineRowsOf(trial.states)
+          // 留 1× 容差余量：本步之后还有伊德海莉终局整数重推（实测 +1.3s）与外层不动点再平衡，
+          // 试探测得的行数不是最终装配的行数。margin 扫描（棘轮回归队数）：0=1 队 1=1 队 2=3 队。
+          const fitsBudget = trialRows <= budgetSeconds - TIME_BUDGET_TOLERANCE_SECONDS
+          if (trial.stable && fitsBudget && trialRows > rowsFilled) {
+            states = trial.states
+            rowsFilled = trialRows
+            timeBudgetRefundedSeconds = config.timeBudgetRefund ?? 0
+            underfill = budgetSeconds - trialRows
+            if (underfill <= TIME_BUDGET_TOLERANCE_SECONDS) break
+          } else {
+            config.timeBudgetRefund = savedRefund // 回滚：宁可留白，不制造超预算
+            config.overflowSeconds = savedOverflow
+            configs.forEach((c, i) => Object.assign(c, savedCfg[i]))
+            probe /= 2
+          }
+        }
+        timeBudgetIdleSeconds = Math.max(0, underfill)
+        // 热启动缓存**不存**试探前末态（2026-09-08 修）：折叠 pass0 的 refund 冻结与内层落点随初值变，
+        // 存末态会让同配置第二次计算换结果（1431 系 4 队冷/热 9.20 vs 4.86 等）。缓存存的是本轮的
+        // **规范种子**（见 warmSeedStates 声明处 @fact）——牺牲加速，换「同配置连续计算不许变」。
+      }
     }
-  }
 
-  // 失衡次数由外部失衡池不动点收敛后传入（连携次数 = chainCountPerStun × stunCount，见 iterate）
-  const inputStunCount = config.stunCount ?? 0
+    // 失衡次数由外部失衡池不动点收敛后传入（连携次数 = chainCountPerStun × stunCount，见 iterate）
+    const inputStunCount = config.stunCount ?? 0
 
-  // 伊德海莉终局整数重推（targeted 连续松弛收尾，2026-09-04）：迭代期她的强特次数以实数参与收敛
-  // （refund 反馈解析求解 → 唯一不动点，消除 19/20 双稳态），终局 floor 一次 + 整数态重推 ≤12 轮
-  // 到全状态逐位稳定，让时间预算/能量/喧响账本与整数次数自洽（只作用于 1051，不动其他模块的收敛语义）。
-  // agentId 判断冗余已删（同上：yidhariContinuousEx 唯一写入方 = yidhari.ts:148）；写成 `=== true`
-  // 保持 findIndex 谓词返回 boolean，语义与原式逐位等价。
-  const yidhariFinalizeIdx = configs.findIndex(c => c.yidhariContinuousEx === true)
-  if (yidhariFinalizeIdx >= 0) {
-    const yCfg = configs[yidhariFinalizeIdx]
-    yCfg.yidhariFinalizeEx = true
-    let finalizeStable = false
-    for (let finalizePass = 0; finalizePass < 12; finalizePass++) {
-      const prev = states
-      states = iterate(configs, states, config)
-      // 终局重推要求全状态逐位稳定：她的次数已是整数，队友（如莱卡恩实数次数）在整数池下
-      // 是整数输入的确定性函数——逐位相等才是 determinism.test（伤害逐位一致）的判据；
-      // 只比次数会用 ε 外的平A时间残差破坏逐位一致。
-      let stable = true
-      for (let i = 0; i < states.length; i++) {
-        const a = states[i], b = prev[i]
-        if (a.exSpecialCount !== b.exSpecialCount || a.ultimateCount !== b.ultimateCount ||
-            a.basicAttackTime !== b.basicAttackTime || a.necessaryTime !== b.necessaryTime ||
-            a.frontlineTime !== b.frontlineTime || a.backstageTime !== b.backstageTime ||
-            a.comboAlignTime !== b.comboAlignTime || a.comboAlignCredit !== b.comboAlignCredit ||
-            a.totalEnergy !== b.totalEnergy || a.totalDecibel !== b.totalDecibel) {
-          stable = false
+    // 伊德海莉终局整数重推（targeted 连续松弛收尾，2026-09-04）：迭代期她的强特次数以实数参与收敛
+    // （refund 反馈解析求解 → 唯一不动点，消除 19/20 双稳态），终局 floor 一次 + 整数态重推 ≤12 轮
+    // 到全状态逐位稳定，让时间预算/能量/喧响账本与整数次数自洽（只作用于 1051，不动其他模块的收敛语义）。
+    // agentId 判断冗余已删（同上：yidhariContinuousEx 唯一写入方 = yidhari.ts:148）；写成 `=== true`
+    // 保持 findIndex 谓词返回 boolean，语义与原式逐位等价。
+    const yidhariFinalizeIdx = configs.findIndex(c => c.yidhariContinuousEx === true)
+    if (yidhariFinalizeIdx >= 0) {
+      const yCfg = configs[yidhariFinalizeIdx]
+      yCfg.yidhariFinalizeEx = true
+      let finalizeStable = false
+      for (let finalizePass = 0; finalizePass < 12; finalizePass++) {
+        const prev = states
+        states = iterate(configs, states, config)
+        // 终局重推要求全状态逐位稳定：她的次数已是整数，队友（如莱卡恩实数次数）在整数池下
+        // 是整数输入的确定性函数——逐位相等才是 determinism.test（伤害逐位一致）的判据；
+        // 只比次数会用 ε 外的平A时间残差破坏逐位一致。
+        let stable = true
+        for (let i = 0; i < states.length; i++) {
+          const a = states[i], b = prev[i]
+          if (a.exSpecialCount !== b.exSpecialCount || a.ultimateCount !== b.ultimateCount ||
+              a.basicAttackTime !== b.basicAttackTime || a.necessaryTime !== b.necessaryTime ||
+              a.frontlineTime !== b.frontlineTime || a.backstageTime !== b.backstageTime ||
+              a.comboAlignTime !== b.comboAlignTime || a.comboAlignCredit !== b.comboAlignCredit ||
+              a.totalEnergy !== b.totalEnergy || a.totalDecibel !== b.totalDecibel) {
+            stable = false
+            break
+          }
+        }
+        if (stable) {
+          finalizeStable = true
           break
         }
       }
-      if (stable) {
-        finalizeStable = true
-        break
+      // 旗标复位移到装配之后（2026-09-09，与 billyFinalizeChain 同款）：装配行必须仍按终局语义
+      // floor（yidhari 蓄力 cycles 迭代期实数松弛后，装配期靠本旗标取整数行），复位只服务于
+      // 「cfg 被外层不动点/热启动复用，下轮调用回到实数迭代期」。
+      // 实数迭代期的 2-循环（次数↔喧响↔终结技阈值）被终局整数重推吸收：重推稳定的整数态
+      // 就是终局不动点，收敛标志按重推结果报（重推 ≤3 轮未稳 = 不谎报收敛）。
+      if (finalizeStable) converged = true
+    }
+
+    // 热启动回写：本轮末态（无论是否完全收敛，同配置下次都从它出发）
+    if (!config.initialStates) storeWarmStart(warmExactKey, warmSeedStates)
+
+    // 收敛后按最终状态折算跨角色联动：卢西娅4命帷幕触发次数（含伊德海莉大招开帷幕）、回血按卢西娅大招次数
+    // 2026-09-15 core 棘轮批次4：按模块专属字段找槽（同 helpers.ts 同款判据；见该处注释）。
+    // ⚠ 卢西娅**必须仍按 agentId 找槽**（2026-09-15 实测）：这里读的是 `config.initialStates` 收敛后的
+    // configs，而 `luciaCinemaLevel` 由 luciaElowen 的 buildCharConfig 写在**编排层的另一份 cfg**上，
+    // 到这一步实测为 undefined（探针：hasLucia=[null,null] ⇒ luciaSlot 恒 -1 ⇒ 帷幕触发数归零、
+    // luciaElowen.test.ts 的 yidhariExternalHealPct 12.8 变 0）。伊德海莉的
+    // `yidhariDecibelPerHpPct` 在这一步**有值**（探针 hasYid=[null,10]），故那半可以改字段判据。
+    const luciaSlot = configs.findIndex(c => c.agentId === '1451')
+    const yidhariSlot = configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)
+    const curtainCoverage = configs.find(c => c.luciaC4CurtainCoverage !== undefined)?.luciaC4CurtainCoverage ?? 1
+    const curtainTriggers = luciaSlot >= 0
+      ? computeLuciaCurtainTriggers(
+          states[luciaSlot]?.exSpecialCount ?? 0,
+          states[luciaSlot]?.ultimateCount ?? 0,
+          yidhariSlot >= 0 ? (states[yidhariSlot]?.ultimateCount ?? 0) : 0,
+          curtainCoverage,
+          totalTime,
+        )
+      : 0
+
+    // 构建最终结果
+    /**
+     * 赠送行时间（诺姆膛温赠链 / 琉音好评转大赠大）：由 `applyNormaHatChain` / `applyLiuyinPromote`
+     * 在装配**之后**追加到目标槽执行计划，不在 `buildExecutions` 产物里；其时间已由 iterate 计入
+     * 目标槽必要时间（GROSS 全额，见 helpers.ts Step4 两处预留）。**截断上限与前台展示必须同口径计入**，
+     * 否则：① 其它行按「含赠送时间的账本」截断、再叠加赠送行 → 物化行超账本（守恒破）；
+     * ② 资源卡「总计」= 战斗时间 + 赠送秒数（用户实测 2026-09-08：诺姆入队后主C 180s + 诺姆连携秒数）。
+     * 轴模式不预留（轴内赠块由轴引擎计账，见 helpers.ts `liuyinGiftAxisActive`），故同样不在此计入。
+     */
+    const chainGiftFinal = crossAgentSupplyAt(configs, states, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
+      totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
+    })
+    // 琉音赠大（装配侧：截断上限 + 前台展示）：轴模式维持旧口径「不预留/不计入」（2026-09-10 实测：
+    // 改用轴预设计数会让落点大改——stun 4→6、dmg ±5.8%/+32.5%，属数值重排，须裁决；见 docs 坑19①）。
+    // 轴模式抑制 = 模块的 `axisSuppressed` 声明，引擎不写「有没有该角色」的 flag 判断。
+    const ultimateGiftFinal = crossAgentSupplyAt(configs, states, findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1, {
+      totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize, axisMode: config.axisMode,
+    })
+    const giftTimeOfSlot = (idx: number): number =>
+      (idx === chainGiftFinal.targetIdx ? chainGiftFinal.time : 0)
+      + (idx === ultimateGiftFinal.targetIdx ? ultimateGiftFinal.time : 0)
+    // 赠行**物化口径**（阶段1 ②，2026-09-10）：行由引擎产出（存在/次数单一事实源），倍率由编排层补。
+    // 目标槽按 `config.teamSize`（编排层队长）解析——与账本口径 `configs.length` 解耦，见 giftRowTargetSlot。
+    const chainGiftRow = chainGiftRowSpec(configs, states, totalTime, config.teamSize)
+    const ultimateGiftRow = ultimateGiftRowSpec(
+      configs, states, totalTime, config.stunCount ?? 0,
+      config.axisLiuyinPromote, !!config.axisMode, config.teamSize,
+    )
+    /** 时间线截断总量（装配阶段砍掉的秒数）：= 资源允许但时间装不下的部分，上报为 overflowSeconds */
+    let timeTruncatedSeconds = 0
+    /** 逐行截断明细（团队级汇总，Σ cutSeconds == timeTruncatedSeconds）：资源池清单 + 难度轴交互缩放 */
+    const truncationCuts: TruncationCut[] = []
+    /** 各槽截断秒数账（requested/kept/cutSeconds）：存活率 = kept/requested，难度轴按它缩交互次数 */
+    const truncationBySlot: { slot: number; requested: number; kept: number; cutSeconds: number }[] = []
+    // ===== S4 装配段本体（#8 分刀，2026-09-12 零行为抽出）=====
+    // 自 `configs.map` 回调一比一搬入：累加（timeTruncatedSeconds / truncationCuts / truncationBySlot）
+    // 与 cfg 写回的**每槽执行顺序**、`cuts 非空才 push` 的条件守卫全在循环 wrapper 原样保持；
+    // 判据 = timeGolden / timeFillRatchet delta 0（规则 10）。骨架先例：runFoldLoop / runBillyFinalize。
+    const stageAssembleSlot = (cfg: (typeof configs)[number], i: number) => {
+      const state = states[i]
+      const chainCountTotal = state.chainCountTotal
+
+      // 伊德海莉外部回血按卢西娅最终终结技次数折算后写回 cfg（供喧响/展示共用精确值）
+      if (i === yidhariSlot && luciaSlot >= 0) {
+        cfg.yidhariExternalHealPct = (cfg.yidhariExternalHealPct ?? 0)
+          + (cfg.yidhariExternalHealPerUltPct ?? 0) * (states[luciaSlot]?.ultimateCount ?? 0)
+      }
+      // 卢西娅4命帷幕触发总次数写回 cfg（供模块资源卡展示）
+      if (i === luciaSlot) {
+        cfg.luciaCurtainTriggerCount = curtainTriggers
+      }
+
+      // Σ 队友前台秒（行级能量/喧响与装配 buildExecutions 同语义：不含自己）
+      const teammateFrontlineSeconds = configs.reduce(
+        (sum, _, j) => (j === i ? sum : sum + states[j].frontlineTime),
+        0,
+      )
+
+      // 能量源 = iterate 驱动次数的快照（2026-09-03：展示与驱动同源，Δ 恒 0——
+      // 曾各算各的：iterate 用上轮态、装配重算当前态，雅/莱卡恩 Δ=+55.5）。
+      // 快照缺失（历史状态/热启动）才回退重算 + 跨角色回补。
+      const energySrc = state.energySource
+        ? { ...state.energySource }
+        : calcEnergySource(cfg, state, configs, config.shieldCount, config.energyShieldCount, chainCountTotal, config.totalTime, teammateFrontlineSeconds)
+      if (!state.energySource) {
+        const crossAgent = calcCrossAgentEnergy(i, configs, states)
+        energySrc.crossAgent = crossAgent
+        energySrc.supportUltimateRegen = crossAgent.supportUltimateRegen
+        energySrc.total += crossAgent.total
+      }
+
+
+      // 喧响伴随
+      let teammateShare = 0
+      for (let j = 0; j < configs.length; j++) {
+        if (j === i) continue
+        const otherCfg = configs[j]
+        const otherChainCountTotal = states[j].chainCountTotal
+        // 行级喧响 Σ：j 视角的队友前台秒（Σ k≠j，与装配层 buildExecutions 传参同语义）
+        const otherTeamFrontline = configs.reduce((sum, _, k) => (k === j ? sum : sum + states[k].frontlineTime), 0)
+        const otherShareable = calcRawDecibelParts(otherCfg, states[j], otherChainCountTotal, states[j].exSpecialCount, states[j].ultimateCount, totalTime, otherTeamFrontline).shareableTotal
+        teammateShare += otherShareable * otherCfg.decibelShareRatio
+      }
+
+      // 诺姆影画4·膛温换连携喧响：`giftDecibelForCfg` 已含 `decibelPerUnit × count`
+      // （400 = 诺姆+上一位队友两侧合计，门控在模块内判），引擎**不再**自己乘系数。
+      const normaC4Decibel = giftDecibelForCfg(configs, states, cfg, totalTime)
+
+      const decibelSrc = calcDecibelSource(cfg, state, teammateShare, chainCountTotal, totalTime,
+        (cfg.luciaC4DecibelPerTrigger ?? 0) * curtainTriggers
+        // 诺姆影画4·膛温换连携：诺姆+上一位队友各 +200 不可分享喧响（计入终结技次数）
+        + normaC4Decibel,
+        config.specialActionDecibelBonusPerSlot?.[i] ?? 0,
+        config.anomalyDecibelBonusPerSlot?.[i] ?? 0,
+        teammateFrontlineSeconds)
+      // 物化钩子派发前的引擎行快照：供 buildResourceResult 复现钩子当时看到的行基准
+      // （阶段1 第二刀——卢西娅 cap 等派生量不再经 cfg 回写传递）
+      const preModuleExecutions: SkillExecution[] = []
+      const builtExecutions = buildExecutionsWithPhase(cfg, state, chainCountTotal, teammateFrontlineSeconds, preModuleExecutions)
+      // 本槽赠送行时间（诺姆赠链 / 琉音赠大）：账本已含（necessary 预留），但行不在 builtExecutions 里
+      // ——截断上限先扣掉它，装配后再追加的赠送行才与账本守恒（见上方 giftTimeOfSlot 注释）。
+      const giftTimeThisSlot = giftTimeOfSlot(i)
+      // ===== 时间线截断（通用资源循环规则，2026-09-05 用户口径）=====
+      // 本槽物化行超出账本（必要 + 平A）的部分按时间线尾部截断：平A行是填充项永远保留，
+      // 招式行从后往前整行丢、边界行等比缩（伤害/失衡/积蓄/回能线性缩）。iterate 已把必要时间
+      // 封顶到「预算 − 队友占用」，所以这里的上限就是账本本身。语义 = 实战 180s 到点结算，
+      // 资源攒多了也兑现不出来——旧实现没有这层，只能靠虚高账本挤平A池，结果两头都不准。
+      const truncated = truncateExecutionsToFrontline(
+        builtExecutions, Math.max(0, state.necessaryTime + state.basicAttackTime - giftTimeThisSlot))
+      // 赠行由**引擎**物化（阶段1 ②）：仍追加在截断之后（永不被截），截断上限仍先扣赠行时间
+      const giftRowsHere: SkillExecution[] = []
+      if (i === ultimateGiftRow.targetIdx && ultimateGiftRow.count > 0) {
+        giftRowsHere.push(buildGiftRow({
+          moveId: cfg.ultimateMoveId,
+          moveName: '好评转大·队友终结技',
+          count: ultimateGiftRow.count,
+          actionTime: cfg.ultimateActionTime ?? 0,
+          skillDamageTarget: 'ultimate',
+          skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
+        }))
+      }
+      if (i === chainGiftRow.targetIdx && chainGiftRow.count > 0) {
+        giftRowsHere.push(buildGiftRow({
+          moveId: cfg.chainMoveId,
+          moveName: '诺姆膛温替换·队友连携技',
+          count: chainGiftRow.count,
+          actionTime: cfg.chainActionTime ?? 0,
+          comboAlignRatio: cfg.chainComboAlignRatio ?? 0,
+          skillTableNote: '诺姆预热膛温≥80%帽子把戏：上一位队友的快速支援替换为其本人连携技（招式与倍率取该队友技能表）',
+          normaGiftChain: true,
+        }))
+      }
+      const executions = giftRowsHere.length > 0 ? [...truncated.executions, ...giftRowsHere] : truncated.executions
+      // 显示口径统一：前台时间 = **前台**执行行 ΣtotalTime（后台行不占共享轴，如莱卡恩围猎蓄力；
+      // 含合轴，机制改写行/倍率表行都在内），后台 = 总时间 - 前台。
+      // 装配后追加的赠送行（诺姆赠链/琉音赠大）不在 Σ行里——展示层由 `normalizeDisplayTime`
+      // 在编排层按最终行统一重算（单一口径，新增赠送机制不必各自回扣）。
+      // 赠行已在 `executions` 里（上方物化），故这里不再加 giftTimeThisSlot（否则双计）
+      const execFrontlineTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
+      const timeAlloc = {
+        ...calcTimeAllocation(cfg, state, totalTime),
+        frontlineTime: execFrontlineTime,
+        backstageTime: Math.max(0, totalTime - execFrontlineTime),
+      }
+      const anomalyEventExecutions = buildAnomalyEventExecutions(cfg, state, totalTime)
+      const mechanicResult = getAgentMechanic(cfg.agentId)?.buildResourceResult?.({
+        cfg,
+        state,
+        teamFrontlineSeconds: teammateFrontlineSeconds,
+        preModuleExecutions,
+      }) ?? {}
+
+      const result = {
+        slot: cfg.slot,
+        agentId: cfg.agentId,
+        agentName: cfg.agentId, // 名称由上层填充
+        isFlashUser: cfg.isFlashUser,
+        timeAllocation: timeAlloc,
+        energySource: energySrc,
+        // 真正驱动 exSpecialCount 的收敛后总能量（iterate 末轮 totalEnergy）
+        derivedEnergy: state.totalEnergy,
+        exSpecialCount: state.exSpecialCount,
+        exSpecialMoveId: cfg.exSpecialMoveId,
+        exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
+        decibelSource: decibelSrc,
+        ultimateCost: cfg.ultimateCost,
+        ultimateCount: state.ultimateCount,
+        chainCountPerStun: cfg.chainCountPerStun,
+        chainCountTotal,
+        executions,
+        anomalyEventExecutions,
+        totalStunBuildUp: 0, // 后续由 damage.ts 补充
+        ...mechanicResult,
+      }
+      return {
+        result,
+        cutSeconds: truncated.cutSeconds,
+        // 守卫原样：cut 非空才记 cuts/账（与抽取前 push 条件一致）
+        cuts: truncated.cuts.length > 0 ? truncated.cuts.map(c => ({ slot: cfg.slot, ...c })) : [],
+        bySlotEntry: truncated.cuts.length > 0 ? {
+          slot: cfg.slot,
+          requested: truncated.usedSeconds,
+          kept: Math.max(0, truncated.usedSeconds - truncated.cutSeconds),
+          cutSeconds: truncated.cutSeconds,
+        } : null,
       }
     }
-    // 旗标复位移到装配之后（2026-09-09，与 billyFinalizeChain 同款）：装配行必须仍按终局语义
-    // floor（yidhari 蓄力 cycles 迭代期实数松弛后，装配期靠本旗标取整数行），复位只服务于
-    // 「cfg 被外层不动点/热启动复用，下轮调用回到实数迭代期」。
-    // 实数迭代期的 2-循环（次数↔喧响↔终结技阈值）被终局整数重推吸收：重推稳定的整数态
-    // 就是终局不动点，收敛标志按重推结果报（重推 ≤3 轮未稳 = 不谎报收敛）。
-    if (finalizeStable) converged = true
-  }
-
-  // 热启动回写：本轮末态（无论是否完全收敛，同配置下次都从它出发）
-  if (!config.initialStates) storeWarmStart(warmExactKey, warmSeedStates)
-
-  // 收敛后按最终状态折算跨角色联动：卢西娅4命帷幕触发次数（含伊德海莉大招开帷幕）、回血按卢西娅大招次数
-  // 2026-09-15 core 棘轮批次4：按模块专属字段找槽（同 helpers.ts 同款判据；见该处注释）。
-  // ⚠ 卢西娅**必须仍按 agentId 找槽**（2026-09-15 实测）：这里读的是 `config.initialStates` 收敛后的
-  // configs，而 `luciaCinemaLevel` 由 luciaElowen 的 buildCharConfig 写在**编排层的另一份 cfg**上，
-  // 到这一步实测为 undefined（探针：hasLucia=[null,null] ⇒ luciaSlot 恒 -1 ⇒ 帷幕触发数归零、
-  // luciaElowen.test.ts 的 yidhariExternalHealPct 12.8 变 0）。伊德海莉的
-  // `yidhariDecibelPerHpPct` 在这一步**有值**（探针 hasYid=[null,10]），故那半可以改字段判据。
-  const luciaSlot = configs.findIndex(c => c.agentId === '1451')
-  const yidhariSlot = configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)
-  const curtainCoverage = configs.find(c => c.luciaC4CurtainCoverage !== undefined)?.luciaC4CurtainCoverage ?? 1
-  const curtainTriggers = luciaSlot >= 0
-    ? computeLuciaCurtainTriggers(
-        states[luciaSlot]?.exSpecialCount ?? 0,
-        states[luciaSlot]?.ultimateCount ?? 0,
-        yidhariSlot >= 0 ? (states[yidhariSlot]?.ultimateCount ?? 0) : 0,
-        curtainCoverage,
-        totalTime,
-      )
-    : 0
-
-  // 构建最终结果
-  /**
-   * 赠送行时间（诺姆膛温赠链 / 琉音好评转大赠大）：由 `applyNormaHatChain` / `applyLiuyinPromote`
-   * 在装配**之后**追加到目标槽执行计划，不在 `buildExecutions` 产物里；其时间已由 iterate 计入
-   * 目标槽必要时间（GROSS 全额，见 helpers.ts Step4 两处预留）。**截断上限与前台展示必须同口径计入**，
-   * 否则：① 其它行按「含赠送时间的账本」截断、再叠加赠送行 → 物化行超账本（守恒破）；
-   * ② 资源卡「总计」= 战斗时间 + 赠送秒数（用户实测 2026-09-08：诺姆入队后主C 180s + 诺姆连携秒数）。
-   * 轴模式不预留（轴内赠块由轴引擎计账，见 helpers.ts `liuyinGiftAxisActive`），故同样不在此计入。
-   */
-  const chainGiftFinal = crossAgentSupplyAt(configs, states, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
-    totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
-  })
-  // 琉音赠大（装配侧：截断上限 + 前台展示）：轴模式维持旧口径「不预留/不计入」（2026-09-10 实测：
-  // 改用轴预设计数会让落点大改——stun 4→6、dmg ±5.8%/+32.5%，属数值重排，须裁决；见 docs 坑19①）。
-  // 轴模式抑制 = 模块的 `axisSuppressed` 声明，引擎不写「有没有该角色」的 flag 判断。
-  const ultimateGiftFinal = crossAgentSupplyAt(configs, states, findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1, {
-    totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize, axisMode: config.axisMode,
-  })
-  const giftTimeOfSlot = (idx: number): number =>
-    (idx === chainGiftFinal.targetIdx ? chainGiftFinal.time : 0)
-    + (idx === ultimateGiftFinal.targetIdx ? ultimateGiftFinal.time : 0)
-  // 赠行**物化口径**（阶段1 ②，2026-09-10）：行由引擎产出（存在/次数单一事实源），倍率由编排层补。
-  // 目标槽按 `config.teamSize`（编排层队长）解析——与账本口径 `configs.length` 解耦，见 giftRowTargetSlot。
-  const chainGiftRow = chainGiftRowSpec(configs, states, totalTime, config.teamSize)
-  const ultimateGiftRow = ultimateGiftRowSpec(
-    configs, states, totalTime, config.stunCount ?? 0,
-    config.axisLiuyinPromote, !!config.axisMode, config.teamSize,
-  )
-  /** 时间线截断总量（装配阶段砍掉的秒数）：= 资源允许但时间装不下的部分，上报为 overflowSeconds */
-  let timeTruncatedSeconds = 0
-  /** 逐行截断明细（团队级汇总，Σ cutSeconds == timeTruncatedSeconds）：资源池清单 + 难度轴交互缩放 */
-  const truncationCuts: TruncationCut[] = []
-  /** 各槽截断秒数账（requested/kept/cutSeconds）：存活率 = kept/requested，难度轴按它缩交互次数 */
-  const truncationBySlot: { slot: number; requested: number; kept: number; cutSeconds: number }[] = []
-  // ===== S4 装配段本体（#8 分刀，2026-09-12 零行为抽出）=====
-  // 自 `configs.map` 回调一比一搬入：累加（timeTruncatedSeconds / truncationCuts / truncationBySlot）
-  // 与 cfg 写回的**每槽执行顺序**、`cuts 非空才 push` 的条件守卫全在循环 wrapper 原样保持；
-  // 判据 = timeGolden / timeFillRatchet delta 0（规则 10）。骨架先例：runFoldLoop / runBillyFinalize。
-  const stageAssembleSlot = (cfg: (typeof configs)[number], i: number) => {
-    const state = states[i]
-    const chainCountTotal = state.chainCountTotal
-
-    // 伊德海莉外部回血按卢西娅最终终结技次数折算后写回 cfg（供喧响/展示共用精确值）
-    if (i === yidhariSlot && luciaSlot >= 0) {
-      cfg.yidhariExternalHealPct = (cfg.yidhariExternalHealPct ?? 0)
-        + (cfg.yidhariExternalHealPerUltPct ?? 0) * (states[luciaSlot]?.ultimateCount ?? 0)
-    }
-    // 卢西娅4命帷幕触发总次数写回 cfg（供模块资源卡展示）
-    if (i === luciaSlot) {
-      cfg.luciaCurtainTriggerCount = curtainTriggers
-    }
-
-    // Σ 队友前台秒（行级能量/喧响与装配 buildExecutions 同语义：不含自己）
-    const teammateFrontlineSeconds = configs.reduce(
-      (sum, _, j) => (j === i ? sum : sum + states[j].frontlineTime),
-      0,
-    )
-
-    // 能量源 = iterate 驱动次数的快照（2026-09-03：展示与驱动同源，Δ 恒 0——
-    // 曾各算各的：iterate 用上轮态、装配重算当前态，雅/莱卡恩 Δ=+55.5）。
-    // 快照缺失（历史状态/热启动）才回退重算 + 跨角色回补。
-    const energySrc = state.energySource
-      ? { ...state.energySource }
-      : calcEnergySource(cfg, state, configs, config.shieldCount, config.energyShieldCount, chainCountTotal, config.totalTime, teammateFrontlineSeconds)
-    if (!state.energySource) {
-      const crossAgent = calcCrossAgentEnergy(i, configs, states)
-      energySrc.crossAgent = crossAgent
-      energySrc.supportUltimateRegen = crossAgent.supportUltimateRegen
-      energySrc.total += crossAgent.total
-    }
-
-
-    // 喧响伴随
-    let teammateShare = 0
-    for (let j = 0; j < configs.length; j++) {
-      if (j === i) continue
-      const otherCfg = configs[j]
-      const otherChainCountTotal = states[j].chainCountTotal
-      // 行级喧响 Σ：j 视角的队友前台秒（Σ k≠j，与装配层 buildExecutions 传参同语义）
-      const otherTeamFrontline = configs.reduce((sum, _, k) => (k === j ? sum : sum + states[k].frontlineTime), 0)
-      const otherShareable = calcRawDecibelParts(otherCfg, states[j], otherChainCountTotal, states[j].exSpecialCount, states[j].ultimateCount, totalTime, otherTeamFrontline).shareableTotal
-      teammateShare += otherShareable * otherCfg.decibelShareRatio
-    }
-
-    // 诺姆影画4·膛温换连携喧响：`giftDecibelForCfg` 已含 `decibelPerUnit × count`
-    // （400 = 诺姆+上一位队友两侧合计，门控在模块内判），引擎**不再**自己乘系数。
-    const normaC4Decibel = giftDecibelForCfg(configs, states, cfg, totalTime)
-
-    const decibelSrc = calcDecibelSource(cfg, state, teammateShare, chainCountTotal, totalTime,
-      (cfg.luciaC4DecibelPerTrigger ?? 0) * curtainTriggers
-      // 诺姆影画4·膛温换连携：诺姆+上一位队友各 +200 不可分享喧响（计入终结技次数）
-      + normaC4Decibel,
-      config.specialActionDecibelBonusPerSlot?.[i] ?? 0,
-      config.anomalyDecibelBonusPerSlot?.[i] ?? 0,
-      teammateFrontlineSeconds)
-    // 物化钩子派发前的引擎行快照：供 buildResourceResult 复现钩子当时看到的行基准
-    // （阶段1 第二刀——卢西娅 cap 等派生量不再经 cfg 回写传递）
-    const preModuleExecutions: SkillExecution[] = []
-    const builtExecutions = buildExecutionsWithPhase(cfg, state, chainCountTotal, teammateFrontlineSeconds, preModuleExecutions)
-    // 本槽赠送行时间（诺姆赠链 / 琉音赠大）：账本已含（necessary 预留），但行不在 builtExecutions 里
-    // ——截断上限先扣掉它，装配后再追加的赠送行才与账本守恒（见上方 giftTimeOfSlot 注释）。
-    const giftTimeThisSlot = giftTimeOfSlot(i)
-    // ===== 时间线截断（通用资源循环规则，2026-09-05 用户口径）=====
-    // 本槽物化行超出账本（必要 + 平A）的部分按时间线尾部截断：平A行是填充项永远保留，
-    // 招式行从后往前整行丢、边界行等比缩（伤害/失衡/积蓄/回能线性缩）。iterate 已把必要时间
-    // 封顶到「预算 − 队友占用」，所以这里的上限就是账本本身。语义 = 实战 180s 到点结算，
-    // 资源攒多了也兑现不出来——旧实现没有这层，只能靠虚高账本挤平A池，结果两头都不准。
-    const truncated = truncateExecutionsToFrontline(
-      builtExecutions, Math.max(0, state.necessaryTime + state.basicAttackTime - giftTimeThisSlot))
-    // 赠行由**引擎**物化（阶段1 ②）：仍追加在截断之后（永不被截），截断上限仍先扣赠行时间
-    const giftRowsHere: SkillExecution[] = []
-    if (i === ultimateGiftRow.targetIdx && ultimateGiftRow.count > 0) {
-      giftRowsHere.push(buildGiftRow({
-        moveId: cfg.ultimateMoveId,
-        moveName: '好评转大·队友终结技',
-        count: ultimateGiftRow.count,
-        actionTime: cfg.ultimateActionTime ?? 0,
-        skillDamageTarget: 'ultimate',
-        skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
-      }))
-    }
-    if (i === chainGiftRow.targetIdx && chainGiftRow.count > 0) {
-      giftRowsHere.push(buildGiftRow({
-        moveId: cfg.chainMoveId,
-        moveName: '诺姆膛温替换·队友连携技',
-        count: chainGiftRow.count,
-        actionTime: cfg.chainActionTime ?? 0,
-        comboAlignRatio: cfg.chainComboAlignRatio ?? 0,
-        skillTableNote: '诺姆预热膛温≥80%帽子把戏：上一位队友的快速支援替换为其本人连携技（招式与倍率取该队友技能表）',
-        normaGiftChain: true,
-      }))
-    }
-    const executions = giftRowsHere.length > 0 ? [...truncated.executions, ...giftRowsHere] : truncated.executions
-    // 显示口径统一：前台时间 = **前台**执行行 ΣtotalTime（后台行不占共享轴，如莱卡恩围猎蓄力；
-    // 含合轴，机制改写行/倍率表行都在内），后台 = 总时间 - 前台。
-    // 装配后追加的赠送行（诺姆赠链/琉音赠大）不在 Σ行里——展示层由 `normalizeDisplayTime`
-    // 在编排层按最终行统一重算（单一口径，新增赠送机制不必各自回扣）。
-    // 赠行已在 `executions` 里（上方物化），故这里不再加 giftTimeThisSlot（否则双计）
-    const execFrontlineTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
-    const timeAlloc = {
-      ...calcTimeAllocation(cfg, state, totalTime),
-      frontlineTime: execFrontlineTime,
-      backstageTime: Math.max(0, totalTime - execFrontlineTime),
-    }
-    const anomalyEventExecutions = buildAnomalyEventExecutions(cfg, state, totalTime)
-    const mechanicResult = getAgentMechanic(cfg.agentId)?.buildResourceResult?.({
-      cfg,
-      state,
-      teamFrontlineSeconds: teammateFrontlineSeconds,
-      preModuleExecutions,
-    }) ?? {}
-
-    const result = {
-      slot: cfg.slot,
-      agentId: cfg.agentId,
-      agentName: cfg.agentId, // 名称由上层填充
-      isFlashUser: cfg.isFlashUser,
-      timeAllocation: timeAlloc,
-      energySource: energySrc,
-      // 真正驱动 exSpecialCount 的收敛后总能量（iterate 末轮 totalEnergy）
-      derivedEnergy: state.totalEnergy,
-      exSpecialCount: state.exSpecialCount,
-      exSpecialMoveId: cfg.exSpecialMoveId,
-      exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
-      decibelSource: decibelSrc,
-      ultimateCost: cfg.ultimateCost,
-      ultimateCount: state.ultimateCount,
-      chainCountPerStun: cfg.chainCountPerStun,
-      chainCountTotal,
-      executions,
-      anomalyEventExecutions,
-      totalStunBuildUp: 0, // 后续由 damage.ts 补充
-      ...mechanicResult,
-    }
+    const characters: CharacterResourceResult[] = configs.map((cfg, i) => {
+      const s = stageAssembleSlot(cfg, i)
+      timeTruncatedSeconds += s.cutSeconds
+      for (const c of s.cuts) truncationCuts.push(c)
+      if (s.bySlotEntry) truncationBySlot.push(s.bySlotEntry)
+      return s.result
+    })
     return {
-      result,
-      cutSeconds: truncated.cutSeconds,
-      // 守卫原样：cut 非空才记 cuts/账（与抽取前 push 条件一致）
-      cuts: truncated.cuts.length > 0 ? truncated.cuts.map(c => ({ slot: cfg.slot, ...c })) : [],
-      bySlotEntry: truncated.cuts.length > 0 ? {
-        slot: cfg.slot,
-        requested: truncated.usedSeconds,
-        kept: Math.max(0, truncated.usedSeconds - truncated.cutSeconds),
-        cutSeconds: truncated.cutSeconds,
-      } : null,
+      characters, timeTruncatedSeconds, truncationCuts, truncationBySlot, inputStunCount,
+      chainGiftTime: chainGiftFinal.time, liuyinGiftTimeTotal: ultimateGiftFinal.time,
     }
   }
-  const characters: CharacterResourceResult[] = configs.map((cfg, i) => {
-    const s = stageAssembleSlot(cfg, i)
-    timeTruncatedSeconds += s.cutSeconds
-    for (const c of s.cuts) truncationCuts.push(c)
-    if (s.bySlotEntry) truncationBySlot.push(s.bySlotEntry)
-    return s.result
-  })
+  const tail = runTailPipeline()
+  const { characters, timeTruncatedSeconds, truncationCuts, truncationBySlot, inputStunCount } = tail
 
   // 溢出 = **被时间线截断掉的秒数**（装配阶段实测）：为了塞进战斗时间砍掉了多少动作。
   // 截断后 Σ物化净占用恒 ≤ 预算，所以"账本超预算"（iterate 那份中间值）与"物化超预算"
@@ -971,7 +986,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
 
   // 终局预留量（供 applyLiuyinPromote 判定跳过 post-hoc carve；与 iterate Step4 同一求解）
   // ——与上方 giftTimeOfSlot 同源（同一 helper、同一轴模式条件），不重算。
-  const liuyinGiftTimeTotal = ultimateGiftFinal.time
+  const liuyinGiftTimeTotal = tail.liuyinGiftTimeTotal
 
   // 收敛读数归属设施（2026-09-10 尾巴专项，`PROBE_TRACE_FOLD=1` 打开；不开则零副作用）：
   // **一次预设求值会跑 N 次 `calcTeamResources`**（外层不动点轮 + 非轴对照 + 降配二分 6×2 + 下游重算，
@@ -1005,7 +1020,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 琉音好评转大赠链时间已由引擎预留（非轴）→ applyLiuyinPromote 不再 post-hoc carve 守恒
     liuyinGiftTimeReserved: liuyinGiftTimeTotal > 0 ? liuyinGiftTimeTotal : undefined,
     // 诺姆膛温换连携赠链时间（对称暴露，供「账本预留 == 装配赠行」机器判据核对）
-    normaGiftTimeReserved: chainGiftFinal.time > 0 ? chainGiftFinal.time : undefined,
+    normaGiftTimeReserved: tail.chainGiftTime > 0 ? tail.chainGiftTime : undefined,
     convergence: {
       timeBudgetConverged,
       timeBudgetPasses,
