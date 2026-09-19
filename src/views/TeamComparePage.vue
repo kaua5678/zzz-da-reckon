@@ -379,7 +379,15 @@
 
     <!-- 难度曲线：每队自己的贪心提升路径（x = 自动算的操作难度，各队不对齐是特性） -->
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="chart-card">
-      <template #header>难度曲线（{{ curveData.series.length }} 队可见 · 每队自己的 x）</template>
+      <template #header>
+        <div class="curve-head">
+          <span>难度曲线（{{ curveData.series.length }} 队可见 · 每队自己的 x）</span>
+          <n-radio-group v-model:value="curveView" size="small">
+            <n-radio-button value="2d">2D 折线</n-radio-button>
+            <n-radio-button value="3d">3D 版本轴</n-radio-button>
+          </n-radio-group>
+        </div>
+      </template>
       <div class="compare-note curve-note">
         <b>口径 = 同一支队伍 · 同一个 Boss · 同一套配装</b>（预设基础档：0命1精 + 预设音擎/驱动盘/权重/交互 + 当前期数 Boss）
         ，<b>只让「操作难度」从全关爬到全开</b>——配置不参与曲线（金数提升/换装在散点图型与「角色兑现」看）。
@@ -392,7 +400,38 @@
         所以折线会往左走一段（V 型就是这么来的）。
         每档只录取有实际增益的目标，负收益目标被丢弃并在下表如实列出。每队约 3~4 秒。
       </div>
-      <div class="chart-area">
+      <!-- 3D 版本轴（用户 2026-09-19）：x = 难度、深度 = 版本（预设里在变化的那个角色）、z = 伤害/血量% -->
+      <div v-if="curveView === '3d'" class="chart-area">
+        <div class="compare-note curve-note">
+          <b>版本轴 = 预设队伍里在变化的那个角色</b>（缺省取变化最多的槽位：{{ slotName(versionAxis.defaultSlot) }}），
+          同主 C 比不同击破手、同击破手比不同版本主 C 都用它；道序按角色 id 升序（≈ 发布序）。
+          <template v-if="versionAxis.ambiguous">
+            <b>多个槽位在变</b>（{{ versionAxis.varyingSlots.map(slotName).join(' / ') }}），可逐队指定当版本的角色：
+          </template>
+        </div>
+        <div v-if="versionAxis.ambiguous" class="version-picks">
+          <span v-for="lane in versionAxis.lanes" :key="lane.presetId" class="version-pick" :style="{ borderColor: colorOf(lane.presetId) }">
+            <span class="ldot" :style="{ background: colorOf(lane.presetId) }"></span>{{ lane.name }}：
+            <n-select
+              :value="versionOverrides[lane.presetId] ?? versionAxis.defaultSlot"
+              :options="versionSlotOptions(lane.presetId)"
+              size="tiny"
+              style="width: 150px"
+              @update:value="v => setVersionOverride(lane.presetId, v)"
+            />
+          </span>
+        </div>
+        <DifficultyCurve3DChart
+          :series="curveData.series"
+          :lanes="versionAxis.lanes"
+          :cost-max="curveData.costMax"
+          :ratio-max="curveData.ratioMax"
+          :color-of="colorOf"
+          :goal-label="goalLabel"
+          :axis-label="`版本（${slotName(versionAxis.defaultSlot)}）`"
+        />
+      </div>
+      <div v-else class="chart-area">
         <svg :viewBox="viewBox" class="compare-svg">
           <line v-for="(v, i) in curveYTicks" :key="'cyg' + i" :x1="padL" :y1="curveYOf(v)" :x2="padL + plotW" :y2="curveYOf(v)" class="chart-grid" />
           <text v-for="(v, i) in curveYTicks" :key="'cyt' + i" :x="padL - 6" :y="curveYOf(v) + 4" text-anchor="end" class="chart-tick" font-size="10">{{ v }}%</text>
@@ -571,6 +610,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NSelect, NInputNumber, NButton, NCheckbox, NPopover, NRadioGroup, NRadioButton } from 'naive-ui'
+import DifficultyCurve3DChart from '@/components/charts/DifficultyCurve3DChart.vue'
+import { deriveVersionAxis } from '@/composables/difficultyCurve3d'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -836,6 +877,29 @@ const points = ref<TeamComparePoint[]>([])
 const chartMode = ref<'scatter' | 'curve' | 'sweep'>('scatter')
 /** 曲线结果（原始阶梯，画图与摘要都从它派生） */
 const curveRows = ref<DifficultyCurveRow[]>([])
+/** 难度曲线视图：2D 折线（原图）/ 3D 版本轴（用户 2026-09-19） */
+const curveView = ref<'2d' | '3d'>('2d')
+/** 3D 版本轴：多个槽位在变时逐队指定「当版本的角色」（presetId → slot），只在本页会话内有效 */
+const versionOverrides = ref<Record<string, number>>({})
+function setVersionOverride(presetId: string, slot: number | null) {
+  if (slot === null || slot === undefined) delete versionOverrides.value[presetId]
+  else versionOverrides.value[presetId] = slot
+}
+const versionAxis = computed(() => deriveVersionAxis(
+  visibleCurveRows.value.map(r => {
+    const p = teamPresets.find(t => t.id === r.presetId)
+    return { presetId: r.presetId, name: r.name, team: (p?.team ?? ['', '', '']) as readonly string[] }
+  }),
+  versionOverrides.value,
+  id => agentNameOf(id),
+))
+function slotName(slot: number): string {
+  return ['主 C 位（槽 1）', '第二位（槽 2）', '第三位（槽 3）'][slot] ?? `槽 ${slot + 1}`
+}
+function versionSlotOptions(presetId: string) {
+  const p = teamPresets.find(t => t.id === presetId)
+  return [0, 1, 2].map(slot => ({ value: slot, label: `${slotName(slot)} ${agentNameOf(p?.team[slot])}` }))
+}
 /** 曲线模式的中止标志（粒度 = 一队：单队阶梯是原子的；已算部分保留） */
 const curveAbort = ref(false)
 
@@ -1618,6 +1682,28 @@ function killSeconds(hpRatio: number): number {
 .curve-note {
   margin: 0 0 8px;
   line-height: 1.7;
+}
+.curve-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.version-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 4px 0 8px;
+  font-size: 12px;
+}
+.version-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid;
+  border-radius: 4px;
 }
 
 /* 平台队（四目标均无增益）：弱化整行，提示"没有可优化的空间" */
