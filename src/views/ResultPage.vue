@@ -184,15 +184,34 @@
               <span class="pool-stat-value">{{ fmt(teamTimeSummary.slack, 1) }}s</span>
               <span class="pool-stat-detail">{{ slackHint }}</span>
             </div>
+            <!-- 留白四项分解（精确闭合：slack == 下列四项之和）。「其中」现在是字面成立的，
+                 旧版的「其中平A行缩水」不成立（实测 117.57s 而留白 0.00s）故删除。 -->
             <div v-if="teamTimeSummary.ledgerInflation > 1" class="pool-stat danger">
               <span class="pool-stat-label">其中账本虚高</span>
               <span class="pool-stat-value">{{ fmt(teamTimeSummary.ledgerInflation, 1) }}s</span>
               <span class="pool-stat-detail">必要时间估高（estimate + 折叠残差），无对应动作行</span>
             </div>
-            <div v-if="teamTimeSummary.basicShrink > 1" class="pool-stat">
-              <span class="pool-stat-label">其中平A行缩水</span>
-              <span class="pool-stat-value">{{ fmt(teamTimeSummary.basicShrink, 1) }}s</span>
-              <span class="pool-stat-detail">平A时间被模块改写成专属行/挤给转大赠送行（时间守恒）</span>
+            <div v-if="teamTimeSummary.basicUnspent > 1" class="pool-stat danger">
+              <span class="pool-stat-label">其中池没打出来</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.basicUnspent, 1) }}s</span>
+              <span class="pool-stat-detail">平A池分到了却没物化成任何动作行（真留白）</span>
+            </div>
+            <div v-if="teamTimeSummary.poolResidual < -1" class="pool-stat">
+              <span class="pool-stat-label">其中池超分</span>
+              <span class="pool-stat-value">{{ fmt(-teamTimeSummary.poolResidual, 1) }}s</span>
+              <span class="pool-stat-detail">平A分配超过了可分配池（欠打回填放宽所致），抵掉一部分留白</span>
+            </div>
+            <div v-if="teamTimeSummary.comboAlignDeduction > 1" class="pool-stat">
+              <span class="pool-stat-label">其中合轴抵扣</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.comboAlignDeduction, 1) }}s</span>
+              <span class="pool-stat-detail">被队友合轴吸收掉的前台时间，账本已扣、物化行仍在，故表现为留白</span>
+            </div>
+            <!-- UV 面：池物化成模块行（时间真花掉，非留白）。**故意不挂「其中」**——
+                 它不计入留白分解，列在这里只为回答「我的平A池去哪了」。 -->
+            <div v-if="teamTimeSummary.basicRematerialized > 1" class="pool-stat">
+              <span class="pool-stat-label">平A池改走模块行</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.basicRematerialized, 1) }}s</span>
+              <span class="pool-stat-detail">池没缩水、只是打成了模块专属行（时间守恒，与留白无关）</span>
             </div>
             <div v-if="teamTimeSummary.truncatedRows.length > 0" class="pool-stat danger">
               <span class="pool-stat-label">时间截断</span>
@@ -206,7 +225,7 @@
             </div>
             <div class="pool-per-slot">
               <span v-for="item in teamTimeSummary.perSlot" :key="item.slot" class="slot-chip">
-                {{ item.name }}: 账本 {{ fmt(item.requiredFrontline, 1) }} / 物化 {{ fmt(item.necRows, 1) }} / 平A {{ fmt(item.basic, 1) }}s
+                {{ item.name }}: 账本 {{ fmt(item.requiredFrontline, 1) }} / 物化 {{ fmt(item.necRows, 1) }} / 平A {{ fmt(item.basic, 1) }}s<span v-if="item.basicModuleRows > 1">（其中模块行 {{ fmt(item.basicModuleRows, 1) }}）</span>
               </span>
             </div>
           </div>

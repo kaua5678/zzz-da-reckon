@@ -39,15 +39,49 @@ async function summaryOf(team: string[], enemy: { invincibleTime?: number; stunC
 }
 
 describe('时间分配汇总：两口径并列 + 留白归因', () => {
-  it('恒等式自洽：留白 = 预算 − 物化净占用，且等于账本虚高 + 平A行缩水的净效应', async () => {
+  it('恒等式自洽：留白 = 预算 − 物化净占用，且等于四项分解之和（带符号、精确闭合）', async () => {
     const t = await summaryOf(['1241', '1031', '1311'])
     expect(t.budget).toBe(180)
     expect(t.slack).toBeCloseTo(t.budget - t.rowsNet, 6)
-    expect(t.ledgerInflation).toBeCloseTo(t.requiredFrontline - t.perSlot.reduce((a, s) => a + s.necRows, 0), 6)
     expect(t.basicShrink).toBeCloseTo(t.basicTotal - t.perSlot.reduce((a, s) => a + s.basicRows, 0), 6)
+    // ★ 四项精确闭合（R42）：留白 = 账本虚高 + 池没打出来 + 池余额 + 合轴抵扣。
+    // 这条是**文案的判据**——卡上「时间留白」下面列的那几项必须加起来正好等于留白，
+    // 否则用户会以为哪项算错了（旧文案的「平A行缩水」就不满足，实测差 117.57s）。
+    expect(t.slack).toBeCloseTo(
+      t.ledgerInflation + t.basicUnspent + t.poolResidual + t.comboAlignDeduction, 6)
     // 平A池按账本收费：必要净 + 平A ≤ 预算 + 欠打回填量（refund 是团队级放宽，允许账本超预算）
     expect(t.requiredFrontline + t.basicTotal)
       .toBeLessThanOrEqual(t.budget + t.refund + 1e-6)
+  })
+
+  it('池物化成模块行 ≠ 留白：缩水被拆成「已物化」与「没打出来」两笔（旧文案的误导面）', async () => {
+    // R42 闸门实测（104 队）：`basicShrink` **大不等于有留白**。旧文案把它挂在「时间留白」
+    // 下面当「其中平A行缩水」，而全库 21 队 shrink > 1s 却留白 ≤ 1s。最极端样本如下：
+    // 朱鸢 1241 的以太弹把 117.57s 池搬进模块行，留白是 0.00s —— 用户读到「平A行缩水 117.6s」
+    // 会去查一个根本不存在的留白。拆分后：已物化 117.57 / 没打出来 0。
+    const t = await summaryOf(['1241', '1031', '1311'])
+    expect(t.basicShrink).toBeGreaterThan(100)
+    expect(t.basicUnspent).toBeCloseTo(0, 6)
+    expect(t.basicRematerialized).toBeCloseTo(t.basicShrink, 6)
+    expect(Math.abs(t.slack)).toBeLessThanOrEqual(1)
+    // 模块行确实是她自己的平A行（以太弹），且逐槽可查
+    const zy = t.perSlot.find(s => s.basicModuleRows > 100)
+    expect(zy, '朱鸢槽应有 >100s 的模块 basic 行（压制以太弹）').toBeTruthy()
+  })
+
+  it('账本虚高不被模块行污染：池物化过去的秒数不计入虚高（否则读数是假的）', async () => {
+    // 旧实现把模块 basic 行并进 `necRows` ⇒ ledgerInflation = requiredFrontline − nec 被
+    // 模块行时长直接污染，实测 1191 系 −23.06s / 1241 系 −117.57s（负虚高 = 读数无意义）。
+    const t = await summaryOf(['1191', '1481', '1311'])
+    expect(t.basicRematerialized).toBeGreaterThan(10)
+    // 修正后虚高与「真必要行」对账（模块行被排除在 nec 之外）
+    const nec = t.perSlot.reduce((a, s) => a + s.necRows, 0)
+    expect(t.ledgerInflation).toBeCloseTo(t.requiredFrontline - nec, 6)
+    // 逐槽：模块行**不**计入 necRows（三段互斥）
+    for (const s of t.perSlot) {
+      expect(s.basicModuleRows).toBeGreaterThanOrEqual(0)
+      expect(s.necRows).toBeGreaterThanOrEqual(0)
+    }
   })
 
   it('留白被归因到「账本虚高」，不是「池没分完」', async () => {

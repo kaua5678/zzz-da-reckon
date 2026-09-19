@@ -46,8 +46,21 @@ type RatchetBaseline = Record<string, RatchetEntry>
 
 const baseline = JSON.parse(readFileSync(BASELINE_FILE, 'utf8')) as RatchetBaseline
 
-/** 逐队跑一遍真实资源池，量留白（打不满）与超预算（打太多） */
-async function measure(team: string[]): Promise<RatchetEntry> {
+/**
+ * 留白四项分解的残差（R42）：`|slack − (账本虚高 + 池没打出来 + 池余额 + 合轴抵扣)|`。
+ *
+ * 为什么要全库钉这条：卡上「时间留白」下面列的就是这四项（`slackHint` 与结果页同源），
+ * 用户会拿它们对账 ⇒ 分解必须**逐队精确闭合**。旧文案的「平A行缩水」不满足它——
+ * 实测 `auto-1241-1031-1311` 那一项报 117.57s 而留白是 0.00s（`basicShrink` 把
+ * 「池物化成模块行」与「池没打出来」混成一个数）。本断言量的是**残差**，不是水平：
+ * 引擎怎么改都不会让它变红，只有「分解项与 slack 不同源」才会。
+ */
+function identityResidual(t: ReturnType<typeof buildTeamTimeSummary>): number {
+  return Math.abs(t.slack - (t.ledgerInflation + t.basicUnspent + t.poolResidual + t.comboAlignDeduction))
+}
+
+/** 逐队跑一遍真实资源池：量留白（打不满）与超预算（打太多），并回报四项分解残差 */
+async function measureWithResidual(team: string[]): Promise<{ entry: RatchetEntry; residual: number }> {
   await setupHarness(['', '', ''])
   const config = useConfigStore()
   for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
@@ -61,10 +74,13 @@ async function measure(team: string[]): Promise<RatchetEntry> {
   })
   // 保留一位小数：浮点末位不参与棘轮（同配置两次全新计算逐位一致由 determinism.test 管）
   return {
-    slack: Math.round(Math.max(0, t.slack) * 10) / 10,
-    over: Math.round(Math.max(0, -t.slack) * 10) / 10,
-    stun: calc.stunPoolResult.value?.stunCount ?? 0,
-    outerExit: rr!.convergence?.outerExit ?? '—',
+    entry: {
+      slack: Math.round(Math.max(0, t.slack) * 10) / 10,
+      over: Math.round(Math.max(0, -t.slack) * 10) / 10,
+      stun: calc.stunPoolResult.value?.stunCount ?? 0,
+      outerExit: rr!.convergence?.outerExit ?? '—',
+    },
+    residual: identityResidual(t),
   }
 }
 
@@ -83,16 +99,24 @@ describe('时间系统不变量与留白棘轮', () => {
   const ABSOLUTE_SLACK_FLOOR = 30
   const ABSOLUTE_OVER_FLOOR = 16
 
-  // 一次扫描喂两条断言（否则 125 队要跑两遍，全量时间翻倍）
+  // 一次扫描喂多条断言（否则 125 队要跑多遍，全量时间翻倍）
   let cache: Record<string, RatchetEntry> | null = null
+  let residualCache: Record<string, number> | null = null
   async function measureAll() {
-    if (cache) return cache
+    if (cache && residualCache) return cache
     const out: Record<string, RatchetEntry> = {}
-    for (const p of presets) out[p.id] = await measure(p.team)
+    const res: Record<string, number> = {}
+    for (const p of presets) {
+      const { entry, residual } = await measureWithResidual(p.team)
+      out[p.id] = entry
+      res[p.id] = residual
+    }
     cache = out
+    residualCache = res
     return out
   }
 
+  /** 绝对不变量：不发呆、不超预算、不掉进 0 失衡盆、外层不耗尽（无需基线） */
   it('绝对不变量：不发呆、不超预算、不掉进 0 失衡盆、外层不耗尽（无需基线）', async () => {
     const bad: string[] = []
     const m = await measureAll()
@@ -189,6 +213,42 @@ describe('时间系统不变量与留白棘轮', () => {
       '  2) 不是你的改动（别人的 catalog/面板改动漂到你头上）⇒ 交给那条改动认领，别替它重生成。',
       '  ⚠ 不许为了变绿改本断言或加回容差 —— 容差一加，这个缺口就原样复活。',
       ...drift.map(d => '  · ' + d),
+    ].join('\n')).toEqual([])
+  }, 600_000)
+
+  /**
+   * 第四条：**留白分解恒等式（全库零容差）**。
+   *
+   * 结果页「时间留白」下面列的就是这四项（`slackHint` 与页面同源），用户会拿它们对账 ⇒
+   * 分解必须逐队精确闭合。**本断言拦的是「展示层把不闭合的量当留白的组成部分」**：
+   * 旧文案报的「平A行缩水」= `basicShrink` 同时含「池物化成模块行」（时间真花掉）与
+   * 「池没打出来」两种相反含义，实测 `auto-1241-1031-1311` 它报 **117.57s** 而留白是 **0.00s**
+   * —— 用户会去查一个根本不存在的留白（R42 闸门：全库 **21 队** shrink>1s 而留白 ≤1s）。
+   *
+   * 结构上它和上面三条**失效语义都不同**：棘轮拦「变差」、自洽拦「基线漂移」，本断言拦
+   * 「**分解项与 slack 不同源**」（引擎水平怎么变都不该让它红；只有分解口径被改坏才红）。
+   *
+   * **成本 = 零**：复用 `measureAll()` 同一次扫描（残差在 `measureWithResidual` 里顺手算出）。
+   *
+   * @fact engine:guards/留白四项分解 口径: 结果页留白归因必须是**精确闭合的四项分解** `slack == 账本虚高 + 平A池没打出来 + 池余额 + 合轴抵扣`（零容差、全库 104 队）；**不得**把 `basicShrink`（= basicTotal − 聚合行，含「池物化成模块行」与「池没打出来」两种相反含义）挂到留白之下当「其中」（实测 21 队 shrink>1s 而留白 ≤1s，`auto-1241-1031-1311` 117.57s vs 0.00s） | 据 闸门实测@2026-09-20（104/104 闭合、偏差 5.7e-14；反向注入两项各自独立变红） | 验 src/composables/__tests__/timeFillRatchet.test.ts | 锚 src/composables/teamTimeSummary.ts#slackHint | 信 确认
+   * ⟳复核: 留白分解项增删 / `ledgerInflation` 或 `basicUnspent` 口径变更时，确认本断言仍零容差闭合，且结果页四项与 `slackHint` 同源 | 到期 2026-12-31
+   */
+  it('留白分解恒等式：四项带符号分解逐队零容差闭合（拦「展示层拿不闭合的量当留白」）', async () => {
+    await measureAll()
+    const residual = residualCache ?? {}
+    const broken: string[] = []
+    for (const p of presets) {
+      const r = residual[p.id]
+      if (r == null) { broken.push(`${p.id} 无残差读数（measure 未采集？）`); continue }
+      if (r > 1e-6) broken.push(`${p.id} 残差 ${r}`)
+    }
+    expect(broken, [
+      `留白四项分解不闭合（零容差）—— 共 ${broken.length} 条：`,
+      '  结果页「时间留白」下面列的那几项**必须加起来正好等于留白**，否则用户以为哪项算错了。',
+      '  1) 若你改了分解口径 ⇒ 确认新口径仍闭合（`slack == ledgerInflation + basicUnspent + poolResidual + comboAlignDeduction`）',
+      '  2) 若你只是改了引擎水平 ⇒ 本断言**不该**红，去看是不是某个分解项没跟着同源更新',
+      '  ⚠ 不许为了变绿给本断言加容差 —— 那正是旧文案（117.57s vs 0.00s）能长期存在的问题。',
+      ...broken.map(d => '  · ' + d),
     ].join('\n')).toEqual([])
   }, 600_000)
 })
