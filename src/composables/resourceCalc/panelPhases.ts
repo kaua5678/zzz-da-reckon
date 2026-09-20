@@ -658,11 +658,29 @@ export function computePanelPhases(
     panel.skillLevelBonus = (panel.skillLevelBonus ?? 0) + (cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0)
   }
 
-  // 入队时长加成按元素写入面板，异常池覆盖率/紊乱/乱流统一读取
-  panel.physicalAnomalyDurationBonusSeconds = getTeamAnomalyDurationBonus(configStore, catalogStore, 'physical')
-  panel.fireAnomalyDurationBonusSeconds = getTeamAnomalyDurationBonus(configStore, catalogStore, 'fire')
-  panel.electricAnomalyDurationBonusSeconds = getTeamAnomalyDurationBonus(configStore, catalogStore, 'electric')
-  panel.etherAnomalyDurationBonusSeconds = getTeamAnomalyDurationBonus(configStore, catalogStore, 'ether')
+  // 入队时长加成按元素写入面板，异常池覆盖率/紊乱/乱流统一读取。
+  // ★★ **必须是加法，不能是赋值**（R63，2026-09-20 round 63）：这四个字段**不止一个写者** ——
+  // `calcPanel` 的 buff 通道（`core/buff.ts#applyStat` 的 `default` 分支直接 `panel[stat] += value`）
+  // 也会写它们，spec `teamBuffs` 里声明这四个 stat 的效果即走那条通道（现存一例：
+  // `1501` 爱芮额外能力 `aire_extra_erosion_duration` → `etherAnomalyDurationBonusSeconds` +3）。
+  // 原先用 `=` 逐元素**无条件覆写** ⇒ 把 buff 通道刚写进去的值**静默清零**（面板读数恒 0，
+  // 与「该 buff 未接入」同形）。实测（真管线 `{1561,1501,''}``calcPanel` 前 vs `computePanelPhases` 后）：
+  // `in.etherAnomalyDurationBonusSeconds` 3 → **0**。
+  // 加法与 `:658` 的 `skillLevelBonus`、以及 `:618` 声明的 teamPanelEffects 契约
+  //（「本钩子只允许做**可交换的加法**」）同口径。
+  // ⚠ 每个元素的**唯一**通用来源仍是 `getTeamAnomalyDurationBonus`（规则 11 单一事实源）——
+  // 它只负责 1171/1211/1261 三臂；1501 的以太臂**已删除**（曾写作陈旧别名 `'aria'`，
+  // 全库无任何 `agentId`/`teammateBuffId` 命中 ⇒ 死臂；其语义由 spec teamBuff 单源承载）。
+  // @fact panelPhases:元素异常时长字段 口径: `physical/fire/electric/etherAnomalyDurationBonusSeconds` 由「通用规则 `getTeamAnomalyDurationBonus`」与「buff 通道（spec teamBuffs / applyStat）」**两路相加**写入面板，通用规则侧必须用 `+=`；任一元素的两路若描述同一效果即为双计 | 据 R63 实测 `calcPanel` 前 3 → `computePanelPhases` 后 0（`aire_extra_erosion_duration` 被覆写清零）@2026-09-20 | 验 src/mechanics/__tests__/cinemaAxisBatchR63.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#computePanelPhases | 信 确认
+  // ⟳复核: 跑 `npx vitest run cinemaAxisBatchR63` —— 若 `etherAnomalyDurationBonusSeconds` 在 1501 在场时又变回 0（或通用规则侧被改回 `=`），说明覆写回来了 | 到期 2027-03-31
+  panel.physicalAnomalyDurationBonusSeconds = (panel.physicalAnomalyDurationBonusSeconds ?? 0)
+    + getTeamAnomalyDurationBonus(configStore, catalogStore, 'physical')
+  panel.fireAnomalyDurationBonusSeconds = (panel.fireAnomalyDurationBonusSeconds ?? 0)
+    + getTeamAnomalyDurationBonus(configStore, catalogStore, 'fire')
+  panel.electricAnomalyDurationBonusSeconds = (panel.electricAnomalyDurationBonusSeconds ?? 0)
+    + getTeamAnomalyDurationBonus(configStore, catalogStore, 'electric')
+  panel.etherAnomalyDurationBonusSeconds = (panel.etherAnomalyDurationBonusSeconds ?? 0)
+    + getTeamAnomalyDurationBonus(configStore, catalogStore, 'ether')
 
   // 风化侵染区：10% 独立乘区，仅风属性与染色属性直伤生效
   const windCharInTeam = configStore.team.some(char => {

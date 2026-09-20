@@ -64,7 +64,14 @@ export function getTeamAnomalyDurationBonus(
     const rina = rinaSlot >= 0 ? catalogStore.getAgent('1211') ?? null : null
     if (rinaSlot >= 0 && evalAdditionalAbility(team, rinaSlot, rina, getAgentSpec('1211')?.additionalAbility)) return 3
   }
-  if (element === 'ether' && teamHasAgent(configStore, catalogStore, ['aria'])) return 3
+  // ★ 以太臂**已删除**（R63，2026-09-20 round 63）：原先写作
+  // `element === 'ether' && teamHasAgent(..., ['aria'])`，但 `'aria'` 在本库**没有任何**命中 ——
+  // `teamHasAgent` 只比对 `char.agentId` 与 `agent?.teammateBuffId`，而爱芮的
+  // `agentId === '1501'`、`teammateBuffId === undefined`（实测：全库 `agentId`/`teammateBuffId`
+  // 无一等于 `'aria'`）⇒ **死臂**（恒不命中，`getTeamAnomalyDurationBonus(·,'ether')` 永远 0）。
+  // 该效果的**唯一写者**是 spec `1501.json` 的 `teamBuffs[].aire_extra_erosion_duration`
+  // → `etherAnomalyDurationBonusSeconds` +3，走 `calcPanel` 的 buff 通道（与 1171/1211/1261
+  // 三臂「写在通用规则里」的口径不同）。⚠ 若要把它并回本函数，必须先删 spec 那条，否则**双计**。
   if (element === 'physical' && teamHasAgent(configStore, catalogStore, ['1261'])) return 5
   return 0
 }
