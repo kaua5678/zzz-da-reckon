@@ -245,15 +245,24 @@
                       v-for="buff in group.buffs"
                       :key="buff.id"
                       class="buff-item"
-                      :class="{ enabled: configStore.isTeammateBuffEnabled(buff.id) }"
+                      :class="{
+                        enabled: isInteractive(buff) && configStore.isTeammateBuffEnabled(buff.id),
+                        'declared-only': !isInteractive(buff),
+                      }"
                     >
                       <div class="buff-item-header">
                         <n-checkbox
+                          v-if="isInteractive(buff)"
                           :checked="configStore.isTeammateBuffEnabled(buff.id)"
                           size="small"
                           @update:checked="v => configStore.toggleTeammateBuff(buff.id, v)"
                         />
                         <span class="buff-item-name">{{ buffName(buff) }}</span>
+                        <!-- 仅声明行：数值已由角色模块/helpers 单通道接入，本条不产生独立数值
+                             ⇒ 不给拨不动的 checkbox/滑块（R65 §R64-J1：可点但无任何数值效果 = 缺陷） -->
+                        <n-tag v-if="!isInteractive(buff)" size="tiny" :bordered="false" class="declared-only-tag">
+                          数值已接入
+                        </n-tag>
                       </div>
                       <div class="buff-item-effects">
                         <span
@@ -267,8 +276,11 @@
                       <div v-if="buff.description" class="buff-item-desc">
                         {{ buffDesc(buff) }}
                       </div>
+                      <div v-if="!isInteractive(buff)" class="buff-item-desc declared-only-note">
+                        {{ declaredOnlyReason(buff) }}
+                      </div>
                       <div
-                        v-if="configStore.isTeammateBuffEnabled(buff.id) && hasCoverage(buff)"
+                        v-if="isInteractive(buff) && configStore.isTeammateBuffEnabled(buff.id) && hasCoverage(buff)"
                         class="buff-item-coverage"
                       >
                         <span class="coverage-label">覆盖率</span>
@@ -392,7 +404,7 @@ import { computed, ref, onMounted } from 'vue'
 import {
   NCard, NSpace, NGrid, NGi, NInputNumber, NText, NDivider,
   NButton, NSwitch, NInput, NSelect, NCheckbox, NCollapse, NCollapseItem,
-  NSlider,
+  NSlider, NTag,
 } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -400,6 +412,7 @@ import { useStatLabel } from '@/composables/useStatLabel'
 import { getGlobalBuffStatOptions } from '@/utils/statMeta'
 import { localized } from '@/utils/format'
 import { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
+import { isTeammateBuffInteractive, declaredOnlyReason } from '@/utils/teammateBuffRows'
 import BossSelectCard from '@/components/BossSelectCard.vue'
 import type { TeammateBuffGroup, TeammateBuff, BuffEffect } from '@/types/catalog'
 
@@ -526,6 +539,18 @@ function effectLabel(effect: BuffEffect): string {
 function hasCoverage(buff: TeammateBuff): boolean {
   return buff.effects.some(e => e.coverage && e.coverage.default !== undefined)
 }
+
+/**
+ * 该条是否渲染为**可交互行**（checkbox + 覆盖率滑块）。
+ * 单一事实源 = `src/utils/teammateBuffRows.ts`（纯函数，页面与判据同源）。
+ *
+ * 为什么不再无条件渲染控件：R65 §R64-J1 实测，`hidden`（现 `singleSourced`）条与
+ * `effects: []` 的声明条在页面上都是「可点但拨了没反应」的控件（三态读数逐位相同）
+ * —— 与「机制没做」同形，是面向用户的缺陷。数值既不在这里产生，就不该在这里给控件。
+ */
+function isInteractive(buff: TeammateBuff): boolean {
+  return isTeammateBuffInteractive(buff)
+}
 </script>
 
 <style scoped>
@@ -641,6 +666,22 @@ function hasCoverage(buff: TeammateBuff): boolean {
 .buff-item.enabled {
   background: rgba(59, 130, 246, 0.06);
   border-color: rgba(59, 130, 246, 0.2);
+}
+
+/* 仅声明行（数值由模块单通道接入）：不给控件，样式弱化以示「不可拨」 */
+.buff-item.declared-only {
+  border-style: dashed;
+  background: transparent;
+}
+
+.declared-only-tag {
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+/* 颜色继承自 .buff-item-desc（避免新增 --wa-* 直接引用 —— 令牌棘轮要求新代码优先语义别名） */
+.declared-only-note {
+  font-style: italic;
 }
 
 .buff-item-header {

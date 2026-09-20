@@ -257,7 +257,7 @@ function applyPanel({ cinemaLevel, panel, team, slot, agent }: AgentPanelInput):
 
   if (additionalActive) {
     // 队友增益侧默认 75 会被 C2×1.2；这里若 buff 已启用会双算。
-    // 策略：昂扬改由模块写入，teammate-buffs 额外能力条 hidden 或由 helpers 过滤。
+    // 策略：昂扬改由模块写入，teammate-buffs 额外能力条标记 singleSourced（原字段名 hidden）或由 helpers 过滤。
     // 实际由 helpers 过滤 lighter.additional_* 后在此统一写入（含本人+通过 teammates 循环？）
     // applyPanel 只作用于本人面板。全队昂扬在 helpers 的 lighter 块给每个角色加。
     ;(panel as any).lighterMoraleDmgBonus = computeLighterMoraleDmgBonus({

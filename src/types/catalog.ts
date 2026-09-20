@@ -272,7 +272,17 @@ export interface BuffGroup {
   buffModifiers?: any[]
   appliesToOutOfCombatPanel?: boolean
   condition?: string
-  hidden?: boolean
+  /**
+   * 数值**单源化**标记：true = **不要**把本条的 effects 放进 `collectInCombatTeamBuffs`
+   * （数值由角色模块 / helpers 单独接入），防「同一效果算两遍」。
+   *
+   * ⚠ 与「UI 可见性」**无关**（2026-09-20 R65 改名，原字段名 `hidden` 撒了这个谎：
+   * 全库渲染面零处读它，于是属性配置页渲染出一批拨了没反应的控件）。
+   * 渲染面的可交互性不靠人肉打标，而是从数据派生 —— 见 `src/utils/teammateBuffRows.ts`。
+   * ⚠ 也**不是**「死控件」的修法：死控件的成因是「数值被别的写者覆写」，
+   * 给它加 `singleSourced` 是 no-op（R64 实测三环全断，见 `.claude/PROMPT-handoff-round64.md` §1.1）。
+   */
+  singleSourced?: boolean
   /** 组级生效门槛（驱动盘 teamBuff 的装备者特化限定等），对该组全部 effect 生效 */
   requirement?: EffectRequirement
 }

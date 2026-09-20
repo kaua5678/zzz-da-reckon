@@ -59,8 +59,9 @@ export const useCatalogStore = defineStore('catalog', () => {
       teammateName: { zhCN: agent?.name?.zhCN ?? agentId },
       conditionLabel: { zhCN: tb.description },
       name: { zhCN: nameZh },
-      // SOP §6.4：hidden 条只作 UI 展示，collectInCombatTeamBuffs 按 buff.hidden 过滤
-      ...(tb.hidden ? { hidden: true } : {}),
+      // SOP §6.4：`singleSourced`（原 `hidden`，R65 改名）条不进 collectInCombatTeamBuffs
+      // —— 数值由模块/helpers 单通道接入，防双计（**不是** UI 隐藏，见 src/utils/teammateBuffRows.ts）
+      ...(tb.singleSourced ? { singleSourced: true } : {}),
     }
   }
 

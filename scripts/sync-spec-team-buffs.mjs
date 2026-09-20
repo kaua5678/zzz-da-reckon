@@ -64,6 +64,14 @@ const manualTeamBuffs = {
       coverage: 1,
       effects: [{ stat: 'enemyPhysicalResReduction', value: 10, mode: 'flat' }],
       status: 'implemented_approximation',
+      // ⚠ 数值单源化（2026-09-20 R65：原字段名 `hidden`，那名字撒了谎——它管的是**数值通道**，
+      //   不是 UI 可见性）。数值由 `src/mechanics/agents/corin.ts#applyCorinPanel` 按覆盖率滑块
+      //   折算 panel.enemyPhysicalResReduction 单通道接入；本条的 effects **不进**
+      //   `collectInCombatTeamBuffs`，否则双计（曾双计面板 +20）。
+      //   ⚠ 别删这一行：本表是 spec teamBuffs 的单一事实源，漏了它 = 重跑生成器会**丢掉**单源化
+      //   标记、双计立刻复活（判据 `corin.test.ts`：`enemyPhysicalResReduction` 会从 10 变 20 ⇒ 红）。
+      singleSourced: true,
+      note: '本条 singleSourced（原 hidden）：数值由模块 src/mechanics/agents/corin.ts 单通道接入（带减抗覆盖率滑块）；曾与模块双计（面板+20），已去重。',
     },
   ],
   '1091': [

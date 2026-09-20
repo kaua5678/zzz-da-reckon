@@ -144,10 +144,14 @@ export interface TeamBuffSpec {
   status: SpecStatus
   note?: string
   /**
-   * true = 只作 UI 展示，不进 collectInCombatTeamBuffs（数值由模块/helpers 单通道接入）。
-   * SOP §6.4：hidden 条禁止再在别处重复声明同一 effects 数值。
+   * 数值**单源化**标记：true = 本条的 effects **不进** `collectInCombatTeamBuffs`
+   * （数值由模块 / helpers 单通道接入），防同一效果算两遍。
+   * SOP §6.4：单源化的条禁止再在别处重复声明同一 effects 数值。
+   *
+   * ⚠ 与 UI 可见性无关（原字段名 `hidden` 语义误导 —— 2026-09-20 R65 改名）。
+   * 渲染面的可交互性由 `src/utils/teammateBuffRows.ts` 从数据派生，不读本字段。
    */
-  hidden?: boolean
+  singleSourced?: boolean
 }
 
 export interface CounterStateMachineOutput {

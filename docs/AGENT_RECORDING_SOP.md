@@ -188,7 +188,7 @@ expect(pN.enemyPhysicalResReduction - p0.enemyPhysicalResReduction).toBe(18)
 |---|---|
 | `teammate-buffs.json` 已有该角色完整 buff 组 | **优先修/用现成 buff**（改 description、formula、cap、defaultStacks）；再补门控与薄模块 |
 | 草稿没有 / 错 id / 要新命座拐 | 录 **spec `teamBuffs`**（`source.zhCN` 写「影画X」自动命座门控），由 `mergeSpecTeamBuffs` 合并 |
-| 同一效果两边都有 | **不要双写**；保留一侧，另一侧 `hidden` 或删除 |
+| 同一效果两边都有 | **不要双写**；保留一侧，另一侧 `singleSourced` 或删除 |
 
 `source` 写「影画一」…「影画六」→ `syncTeammateBuffsFromTeam` 按影画等级启停。核心/额外能力不写影画字样。
 
@@ -211,11 +211,14 @@ expect(pN.enemyPhysicalResReduction - p0.enemyPhysicalResReduction).toBe(18)
 - 收集端扫**全部**已启用 buff 的 modifiers（不要写死某个 id）。
 - 测 C2：断言 `c2.field - c0.field` 等于放大后的差分（例：凯撒 1000→1500 差分 +500，不是绝对值 1500）。
 
-### 6.4 `hidden` buff
+### 6.4 `singleSourced` buff（原 `hidden`，2026-09-20 R65 改名）
 
-- `hidden: true` 的条**不得**再进 `collectInCombatTeamBuffs`（已过滤；spec `teamBuffs` 的 hidden 经 `specTeamBuffToTeammateBuff` 透传——2026-02 修复，此前 spec 路径不透传该字段，hidden 形同虚设）。
-- 若改由 `helpers` 手写数值（耀嘉音咏叹随技能等级）：notes 写清「本条 hidden，数值在 helpers」；**禁止** hidden 仍带 effects 又 helpers 再加一遍。
-- 典型场景：同一效果「模块已接入（带滑块）+ spec teamBuffs 又录一条」→ teamBuffs 条改 hidden 保 UI 展示（可琳影画2 曾双计面板 +20）。
+- `singleSourced: true` 的条**不得**再进 `collectInCombatTeamBuffs`（已过滤；spec `teamBuffs` 的该字段经 `specTeamBuffToTeammateBuff` 透传——2026-02 修复，此前 spec 路径不透传，该字段形同虚设）。
+- 若改由 `helpers` 手写数值（耀嘉音咏叹随技能等级）：notes 写清「本条 singleSourced，数值在 helpers」；**禁止**该条仍带 effects 又 helpers 再加一遍。
+- 典型场景：同一效果「模块已接入（带滑块）+ spec teamBuffs 又录一条」→ teamBuffs 条改 singleSourced（防双计；可琳影画2 曾双计面板 +20）。
+- ⚠★ **它管的是数值通道，不是 UI 可见性**（旧名 `hidden` 的语义误导，R64 实测渲染面零处读它 ⇒ 属性配置页渲染出拨了没反应的控件）。渲染面的可交互性**从数据派生**，见 `src/utils/teammateBuffRows.ts`：一条条只有在「会进数值通道 ∧ 有可求值载荷（effects 或 buffModifiers 非空）」时才给 checkbox/覆盖率滑块。
+- ⚠★ **它也不是「死控件」的修法**：死控件的成因是「数值被别的写者覆写」（赋值 vs `+=` vs 编排层覆盖），给一条拨不动的控件加 `singleSourced` 是 **no-op**（R64 实测三环全断）。两条缺陷**正解相反**，先问「这个控件的值被谁读」+「两个写者谁赢」再选修法。
+- ⚠ ★ `effects: []` 且 `buffModifiers: []` 的条（现 5 条：橘福福额外能力 / 格莉丝 C1 / 安比潜能 / 普罗米娅核心+C1）语义与 singleSourced 相同（数值已并入别处），**不需要**再补 `singleSourced`：渲染面按 `effects` 为空自行判定，不会给控件。
 
 ### 6.5 公式读技能等级 `s` / 源面板
 

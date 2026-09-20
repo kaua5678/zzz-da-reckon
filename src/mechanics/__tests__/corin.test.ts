@@ -165,7 +165,7 @@ describe('可琳完整计算链', () => {
     const panel = calc.panels.value[0] as any
     // 电锯 37.5（全招式普通增伤）+ 影画1 12 = 49.5；额外能力不进面板（走伤害行分支）
     expect(panel.dmgBonus).toBeCloseTo(CORIN_CORE_SAW_DMG + CORIN_C1_DMG, 6)
-    // 精确 = 10：锁「单通道」。spec teamBuffs 的 corin_c2_enemy_phys_res 已 hidden，
+    // 精确 = 10：锁「单通道」。spec teamBuffs 的 corin_c2_enemy_phys_res 已 singleSourced（原 hidden），
     // 若有人把它重新打开（或模块重复加一遍），这里会变成 20 → 红。
     expect(panel.enemyPhysicalResReduction).toBeCloseTo(CORIN_C2_RES_PER_STACK * CORIN_C2_MAX_STACKS, 6)
   })

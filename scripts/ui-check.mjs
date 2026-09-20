@@ -31,7 +31,7 @@
  *   --out <目录>       截图与体检结果输出目录，默认 /tmp/zzz-ui
  *   --port <端口>      CDP 端口，默认 9222（脚本自己拉起浏览器，退出时关掉）
  *   --keep-open        跑完不关浏览器
- *   --step <verb:参数> 通用脚本步（可重复，按顺序执行；见下方 stepList 注释）：tab/open/option/click/wait/eval/sleep
+ *   --step <verb:参数> 通用脚本步（可重复，按顺序执行；见下方 stepList 注释）：tab/open/option/click/realclick/wait/eval/sleep
  *                      例：--step "tab:队伍配置" --step "open:选择预设队伍" --step "option:般岳" --step "tab:资源池" --step "wait:时间截断"
  * 退出码：0 = 跑完且**零 JS 错误**；1 = 有错/超时（错误会打印）。
  */
@@ -358,6 +358,13 @@ try {
     } else if (verb === 'click') {
       await step(`[step] 点按钮「${value}」`, () => evaluate(clickText('.n-button', value)))
       await sleep(400)
+    } else if (verb === 'realclick') {
+      // 真·鼠标点击（CDP Input.dispatchMouseEvent）：Naive UI 的 collapse 等组件
+      // 监听的是真实指针事件，`el.click()`（= --click / eval 里手写 click）**不会**展开
+      // —— R65 实测：`h.click()` 与手搓 MouseEvent 序列都不改 item class，只有真指针事件有效。
+      // value = 返回「被点元素」的 JS 表达式（可含 scrollIntoView）。
+      await step(`[step] realclick ${value.slice(0, 50)}`, () => realMouseClick(value))
+      await sleep(600)
     } else if (verb === 'wait') {
       // 选择器（`.cls` / `#id` / `[attr]` / 裸标签名如 `polyline`）→ 命中即真；其余按页面文本包含
       const isSelector = /^[.#[]/.test(value) || /^[a-z][a-z0-9-]*$/.test(value)
@@ -373,7 +380,7 @@ try {
     } else if (verb === 'sleep') {
       await sleep(Number(value) || 500)
     } else {
-      throw new Error(`未知 --step 动词：${raw}（tab/open/option/click/wait/sleep）`)
+      throw new Error(`未知 --step 动词：${raw}（tab/open/option/click/realclick/wait/eval/sleep）`)
     }
   }
 

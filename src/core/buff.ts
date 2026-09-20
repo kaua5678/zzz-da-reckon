@@ -501,7 +501,8 @@ function collectTeammateBuffs(teammateBuffs: TeammateBuff[], sourcePanels?: Sour
   const inCombat: BuffEffect[] = []
 
   for (const buff of teammateBuffs) {
-    if (buff.hidden) continue
+    // `singleSourced`（原 `hidden`，R65 改名）条不进数值通道：数值由模块/helpers 单通道接入，防双计。
+    if (buff.singleSourced === true) continue
     for (const rawEffect of buff.effects) {
       if (isExcludedForTarget(rawEffect, buff, targetAgent)) continue
       const e = cloneEffectWithSourceValue(rawEffect, buff, sourcePanels)

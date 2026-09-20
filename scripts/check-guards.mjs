@@ -42,6 +42,13 @@ import {
   formatLayerInversion,
   LAYER_INVERSION_MIN_TOTAL_SITES,
 } from './lib/layer-inversion.mjs'
+// 判据 20：队友 Buff 控件守卫（2026-09-20 R65-J1，见 scripts/lib/teammate-buff-controls.mjs 头注释）
+import {
+  scanTeammateBuffControls,
+  TEAMMATE_BUFF_VIEW,
+  REGION_START,
+  REGION_END,
+} from './lib/teammate-buff-controls.mjs'
 // 角色身份判定检测面（AST 单源；2026-09-17 round 19 换尺批，见 scripts/lib/agent-identity-lines.mjs 头注释）
 import { countIdentityBranchLines, countIdentityBranchLinesInFiles } from './lib/agent-identity-lines.mjs'
 
@@ -1389,6 +1396,36 @@ export function runAllChecks(root = ROOT) {
         + ` / 形状锁 ${report.shapeViolations.length} 处 / 扫 ${report.scannedFiles} 文件）`,
       ok: layerInversionOk(report),
       detail: layerInversionOk(report) ? [] : formatLayerInversion(report),
+    })
+  }
+
+  // ---- 判据 20：队友 Buff 控件守卫（R65-J1；「可点但拨了没反应」= 面向用户缺陷） ----
+  {
+    const report = scanTeammateBuffControls(root)
+    const detail = []
+    if (report.missing) {
+      detail.push(`  ✗ 渲染面文件不存在：${TEAMMATE_BUFF_VIEW} → 本判据扫描面已失效，检查文件是否改名/搬走`)
+    } else if (!report.regionFound) {
+      detail.push(`  ✗ 队友 Buff 列表区域定位失败（找 ${REGION_START} … ${REGION_END}）`)
+      detail.push('    → 模板结构变了：按新结构更新 scripts/lib/teammate-buff-controls.mjs 的两个 REGION_* 标记')
+    } else if (report.controls.length === 0) {
+      detail.push('  ✗ 区域内零控件 ⇒ 「零违规」不可采信（反空洞：扫不到与修好了不可区分）')
+      detail.push('    → 若控件确实被移除，删除本判据并同步 RATCHET_BURNDOWN；若是选择器写坏，修选择器')
+    } else {
+      for (const v of report.violations) {
+        detail.push(`  ✗ ${v.tag} 无 isInteractive( 渲染门控 ⇒ 用户看见拨了没反应的死控件`)
+        detail.push(`      ${v.opening}`)
+      }
+      if (report.violations.length > 0) {
+        detail.push('    → 给控件（或其祖先）加 `v-if="isInteractive(buff)"`；可交互性单一事实源 =')
+        detail.push('      src/utils/teammateBuffRows.ts（进数值通道 ∧ 有可求值载荷），别在模板里手写条件')
+      }
+    }
+    results.push({
+      name: `队友 Buff 控件守卫 (判据 20: 无 isInteractive 门控的 checkbox/slider) `
+        + `违规 ${report.violations.length} 处 / 扫 ${report.controls.length} 控件`,
+      ok: report.ok,
+      detail,
     })
   }
 

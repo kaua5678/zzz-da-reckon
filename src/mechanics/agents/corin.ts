@@ -10,7 +10,7 @@
  *   非轴模式按 corin.additionalStunCoverage 覆盖率滑块近似（默认 0.5，用户口径）。
  * - 影画1 开放性创伤：连携/终结命中后对目标伤害+12%（15秒），按覆盖率折算面板 dmgBonus（applyPanel）。
  * - 影画2 裂解效应：强特/连携/终结命中使目标物理抗性-0.5%×20层（上限10%），默认全覆盖，
- *   按覆盖率折算面板 enemyPhysicalResReduction（applyPanel；spec teamBuffs 条已 hidden 防双计）。
+ *   按覆盖率折算面板 enemyPhysicalResReduction（applyPanel；spec teamBuffs 条已 singleSourced 防双计（原字段名 hidden，R65 改名：它管数值通道，不是 UI 可见性））。
  * - 影画4 战场随侍：快速支援/招架支援/连携技命中回 7.2 能量，16s 内最多一次。
  *   按已有次数计触发（快支+招架支援+连携总数），CD floor(战斗时长/16) 做上限（用户口径），
  *   并入开局能量赠送（妮可 C2 同款通道）。
