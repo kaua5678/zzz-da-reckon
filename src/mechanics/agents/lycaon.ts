@@ -16,9 +16,10 @@ import type { CharacterOperationConfig, CharacterResourceResult } from '@/types/
  *   [普通攻击]蓄力段 / 闪避反击 / 冲刺攻击的失衡值提升 80%（Lv7 满级）→
  *   面板 stunBuildUpBonus__basic / __dodgeCounter / __dashAttack = 80（加算乘区，
  *   与驱动盘震星迪斯科等通用失衡提升同区加算，不做乘法近似）。
- * - 潜能影像·狩猎的风度（默认潜能满级）：围猎后台普攻/冲刺/闪反期间局内冲击力 +15%
- *   （用户口径：这是局内冲击力，加成到面板看实际）→ applyPanel 局内 impact ×1.15
- *   （面板级近似全覆盖；围猎期间生效）。
+ * - 潜能觉醒·掠冰：围猎后台普攻/冲刺/闪反期间局内冲击力按 `potentialLevel` 取档
+ *   （II~VI = 5/7.5/10/12.5/15%；用户口径：这是局内冲击力，加成到面板看实际）
+ *   → applyPanel 局内 impact ×(1+档位/100)（面板级近似全覆盖；围猎期间生效）。
+ *   ⚠ R59 修复：原实现写死 ×1.15（= VI 满档）⇒ `potentialLevel` 滑块完全不进计算。
  * - 影画6·冷酷猎手（用户确认：莱卡恩自己 50% 增伤全覆盖）：applyPanel 面板 dmgBonus +50。
  * - 影画4·保持风度（护盾）：不建模（用户确认）。
  * - 影画2·能量回馈（用户确认）：使敌人失衡或触发队友[连携技]时回 5 能量 → 次数 =
@@ -42,18 +43,33 @@ import type { CharacterOperationConfig, CharacterResourceResult } from '@/types/
  *   潜能冲击按面板级全覆盖近似（围猎期间生效）；C2 连携次数取队伍连携总次数。
  * - 未建模：前台普攻的蓄力段口径（基础 #3 秒均，蓄力段失衡提升已由面板 basic 区覆盖）。
  */
+/**
+ * 潜能觉醒·掠冰（index 0 占位，1 = I 无觉醒，2..6 = II..VI）：
+ * [围猎]状态持续期间，作为非当前操作中代理人发动普攻/冲刺攻击/闪避反击时，冲击力提升 5/7.5/10/12.5/15%。
+ *
+ * ⚠ 这是**潜能觉醒**轴（raw `potential_detail`），与 `talent.1..6`（影画）是两条独立轴。
+ * R59 修复：原实现写死 `panel.impact *= 1.15`（VI 满档）⇒ `potentialLevel` 滑块完全不进计算
+ * （四臂正交实测 A==B、C==D，见 lycaonCinemaTier.test.ts）。
+ */
+// @fact agent:1141/潜能觉醒冲击力 口径: 潜能觉醒·掠冰按 `potentialLevel` 取档 II~VI = 5/7.5/10/12.5/15%（围猎后台普攻/冲刺/闪反期间局内冲击力），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1141.json `potential_detail` + R59 四臂正交实测@2026-09-20 | 验 src/mechanics/__tests__/lycaonCinemaTier.test.ts | 锚 src/mechanics/agents/lycaon.ts#LYCAON_POTENTIAL_IMPACT_PCT | 信 确认
+// ⟳复核: nanoka 若刷新 1141 的 potential_detail，逐档对账 II~VI 是否仍为 5/7.5/10/12.5/15 | 到期 2027-03-31
+export const LYCAON_POTENTIAL_IMPACT_PCT = [0, 0, 5, 7.5, 10, 12.5, 15] as const
+
 export const lycaonMechanic: AgentMechanicModule = {
   id: 'agent:1141',
   agentIds: ['1141'],
 
-  applyPanel({ cinemaLevel, panel }: AgentPanelInput) {
+  applyPanel({ cinemaLevel, panel, potentialLevel }: AgentPanelInput) {
     // 核心被动·金属狼足：普攻蓄力/闪反/冲刺失衡 +80%（Lv7 满级；增强后含闪反/冲刺）
     const CHARGE_STUN_BONUS = 80
     panel.stunBuildUpBonus__basic = (panel.stunBuildUpBonus__basic ?? 0) + CHARGE_STUN_BONUS
     panel.stunBuildUpBonus__dodgeCounter = (panel.stunBuildUpBonus__dodgeCounter ?? 0) + CHARGE_STUN_BONUS
     panel.stunBuildUpBonus__dashAttack = (panel.stunBuildUpBonus__dashAttack ?? 0) + CHARGE_STUN_BONUS
-    // 潜能影像·狩猎的风度（默认潜能满级）：局内冲击力 +15%（用户口径：加成到面板看实际）
-    panel.impact = (panel.impact ?? 0) * 1.15
+    // 潜能觉醒·掠冰：围猎后台普攻/冲刺/闪反期间**局内冲击力**按 potentialLevel 取档
+    // （II~VI = 5/7.5/10/12.5/15%）。用户口径：这是局内冲击力，加成到面板看实际。
+    // ⚠ R59 修复：原实现写死 `* 1.15`（= VI 满档）⇒ `potentialLevel` 滑块完全不进计算。
+    const potLv = Math.max(1, Math.min(6, Math.floor(Number(potentialLevel ?? 6))))
+    panel.impact = (panel.impact ?? 0) * (1 + LYCAON_POTENTIAL_IMPACT_PCT[potLv] / 100)
     // 影画6·冷酷猎手：莱卡恩自己对目标伤害 +50%（用户口径：全覆盖）
     if (cinemaLevel >= 6) {
       panel.dmgBonus = (panel.dmgBonus ?? 0) + 50

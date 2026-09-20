@@ -114,7 +114,7 @@
 - 实现：`src/mechanics/agents/nekomata.ts`（口径见其头注释）+ spec `src/specs/agents/1021.json` notes。
 
 ### 「11号」（1041）
-- **当前实现状态 [已实现·近似 2026-09-03]**（实现位置：`src/mechanics/agents/soldier11.ts` + `src/composables/resourceCalc/helpers.ts` + spec `1041.json`；测试 `src/mechanics/__tests__/soldier11.test.ts` 16 例）。含：核心被动火力镇压 +70%、额外能力燎原（火伤+10%/失衡+22.5%）、潜能绝焰暴伤+48%、影画1回能/影画2叠层/影画6充能无视火抗、快速火刀循环（层数结算 + 6层爆炸 + 轴内动作块）。影画4（纵情燃烧）纯防御向不建模。此前 spec status 滞后为 partially_implemented，2026-08-26 对账收口。
+- **当前实现状态 [已实现·近似 2026-09-03]**（实现位置：`src/mechanics/agents/soldier11.ts` + `src/composables/resourceCalc/helpers.ts` + spec `1041.json`；测试 `src/mechanics/__tests__/soldier11.test.ts` 16 例）。含：核心被动火力镇压 +70%、额外能力燎原（火伤+10%/失衡+22.5%）、潜能绝焰暴伤+16/24/32/40/48%（**按 `potentialLevel` 取档 II~VI**）、影画1回能/影画2叠层/影画6充能无视火抗、快速火刀循环（层数结算 + 6层爆炸 + 轴内动作块）。影画4（纵情燃烧）纯防御向不建模。此前 spec status 滞后为 partially_implemented，2026-08-26 对账收口。
 - 影画4 纵情燃烧：纯防御向（抗打断/受伤-18%/无敌），伤害计算器不建模。
 - **快速火刀循环（2026-09-03 用户口径，原文「必定触发[火力镇压]」状态）**：强特（`1041011`，80 能量）发动后普攻/冲刺必定触发[火力镇压]，最多 30 秒或触发 8 次（=火刀层数）；标准连招 = 获取层数招（强特 8 层）→ A4 快速取消（`1041008`，1 层，t×0.5）→ A5 快速火刀（`1041025`，1 层，t×0.5）→ 强化A5 结算爆炸（`1041026`，消耗剩余 **6 层**，每层 166.4% 火伤，t=0、无失衡/积蓄/喧响）。**层数结算**：每发强特 8 层恰好 1 套（1+1+6），套数 ≤ 强特次数（`buildExecutions` 封顶，`estimateExSpecialTime` 同源），无层数预算的窗口不跑快速火刀；**失衡内层数结算 = 轴内动作块** `soldier11-fire-knife`（A4+A5+爆炸×6，能耗 80，轴编辑器可捏，展开行落窗口内吃易伤）。爆炸行进火力镇压集合吃核心被动 +70%（patchExecutions 咬合）。格挡反击（火力充能/迸发受击）额外 +3 层为防御向触发，按每强特 8 层计（不单独建模）。
 - 实现：`src/mechanics/agents/soldier11.ts`（口径见其头注释）+ spec `src/specs/agents/1041.json` notes。
@@ -189,7 +189,7 @@
 - **模块**：`src/mechanics/agents/lighter.ts` + `lighter.json`。
 
 ### 莱卡恩（lycaon / 1141）—— 冰击破拐力 + 后台围猎
-- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/lycaon.ts` + `public/static/teammate-buffs.json` 1141 组拐力 + spec `1141.json`；测试 `src/mechanics/__tests__/lycaonSmoke.test.ts` 12 例）。含：核心被动拐力（冰抗 -25 / 非冰六元素增伤 30 / 失衡易伤 35，2.6 潜能激发口径，includeOwner 自身也吃）、围猎后台自动释放（次数=失衡次数，双冰舞×2+后台闪反+蓄力平A，后台时间预算随无敌占用收缩）、面板乘区 basic/dodgeCounter/dashAttack 失衡 +80 与局内冲击 ×1.15、影画1 强特长按组 stunBonus 12/22 与长按占比滑块 exHoldRatio、影画2 回能 =(失衡次数+队友连携总次数)×5 排除自身、影画6 自身 dmgBonus +50 全覆盖。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口；近似与忽略项见下。
+- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/lycaon.ts` + `public/static/teammate-buffs.json` 1141 组拐力 + spec `1141.json`；测试 `src/mechanics/__tests__/lycaonSmoke.test.ts` 12 例）。含：核心被动拐力（冰抗 -25 / 非冰六元素增伤 30 / 失衡易伤 35，2.6 潜能激发口径，includeOwner 自身也吃）、围猎后台自动释放（次数=失衡次数，双冰舞×2+后台闪反+蓄力平A，后台时间预算随无敌占用收缩）、面板乘区 basic/dodgeCounter/dashAttack 失衡 +80 与局内冲击 ×(1+5/7.5/10/12.5/15%)（**潜能觉醒·掠冰按 `potentialLevel` 取档 II~VI**）、影画1 强特长按组 stunBonus 12/22 与长按占比滑块 exHoldRatio、影画2 回能 =(失衡次数+队友连携总次数)×5 排除自身、影画6 自身 dmgBonus +50 全覆盖。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口；近似与忽略项见下。
 - 近似点：狂猎时刻/复仇反扑命中等触发来源未建模为事件，触发类增益按整局总量口径默认覆盖率 100%（结果页可调）；后台闪反次数 = 队友 dodgeCounterCount 之和的整局近似；前台普攻按全蓄力段平均秒均 × 平A 时间（用户口径）。
 - 忽略项（用户确认）：影画4·保持风度护盾不建模；围猎提前结束每剩余 1s → 下次冰舞失衡 +6% 忽略；招架支援强化（黄光弹刀 2→1）不建模。
 - **模块**：`src/mechanics/agents/lycaon.ts` + `lycaon.json`。
@@ -426,7 +426,7 @@
 - 实现：`src/mechanics/agents/trigger.ts`（口径见其头注释）+ spec `src/specs/agents/1361.json` notes。
 
 ### 简（1261）—— 物理异常：啮咬/狂热/强击暴击
-- **当前实现状态 [已实现·近似 2026-08-25]**（实现位置：`src/mechanics/agents/jane.ts` 强击暴击账本 + `composables/resourceCalc/helpers.ts` 简**专属分支**承载面板区 + spec `1261.json`；拐力 teammate-buffs 3条含 M2 强击防穿/暴伤、M4 全队异常伤；测试 `src/mechanics/__tests__/jane.test.ts` 5 例）。状态由 not_described_not_implemented 修正。
+- **当前实现状态 [已实现·近似 2026-08-25]**（实现位置：`src/mechanics/agents/jane.ts` 强击暴击账本 + `composables/resourceCalc/helpers.ts` 简**专属分支**承载面板区 + spec `1261.json`；拐力 teammate-buffs 3条含 M2 强击防穿/暴伤、M4 全队异常伤；测试 `src/mechanics/__tests__/jane.test.ts` 5 例 + `potentialAxisBatchB.test.ts`）。状态由 not_described_not_implemented 修正。**潜能觉醒·致命舞步 10/15/20/25/30% 按 `potentialLevel` 取档**（R59 前写死 30 满档 ⇒ 滑块失效；且该值经 `janeAssaultCritDmgBonus` 进 `getAnomalyCritStats` 的通道 R59 前零消费者 ⇒ 直伤强击端到端恒 0）。
 - **未建模项**：影画1「萨霍夫跳+1次」（无执行计划基础次数）。影画6「强击暴击触发1600%精通附加攻击」已实现（damagePool `jane-c6-assault-followup`，次数=强击期望暴击数）；乘区口径（用户 2026-09-03）：附伤占攻击区(异常精通)×倍率区(1600%)两基础区，增伤/防御/抗性/易伤/暴击乘区全吃（calcDirectDamage 标准管线，爱丽丝 6 命附伤同款）——2026-08 审计的失衡易伤通道保留（轴内按物理强击轴内占比 `inWindowFraction('physical')`；非轴全局覆盖率）。生效测试 `jane.test.ts`「附伤走标准直伤管线」+ `inStunAttribution.test.ts`「简6命附伤」。
 - 实现：`src/mechanics/agents/jane.ts`（口径见其头注释）+ spec `src/specs/agents/1261.json` notes。
 

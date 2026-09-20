@@ -55,7 +55,18 @@ const C6_RES_IGNORE = 25 // 影画6：无视 25% 火属性伤害抗性
 const C6_CHARGE_PER_CAST = 8 // 影画6：每次强特/连携/终结获得 8 层充能
 const C1_REFILL_AMOUNT = 40 // 影画1：能量不足 40 回复至 80 ≈ +40/次
 const C1_INTERVAL_SECONDS = 50 // 影画1：50s 最多触发一次
-const POTENTIAL_CRIT_DMG = 48 // 潜能觉醒·绝焰最高档：暴伤 +48%（额外能力门控）
+/**
+ * 潜能觉醒·绝焰（index 0 占位，1 = I 无觉醒，2..6 = II..VI）：
+ * [额外能力：燎原] 中自身暴击伤害 +16/24/32/40/48%。
+ *
+ * ⚠ 这是**潜能觉醒**轴（raw `potential_detail`），与 `talent.1..6`（影画）是两条独立轴。
+ * R59 修复：原实现是 `const POTENTIAL_CRIT_DMG = 48` 硬编码满档 ⇒ `potentialLevel` 滑块
+ * 完全不进计算（四臂正交实测 A==B、C==D，见 soldier11CinemaTier.test.ts）。
+ * raw 子句：「潜能（炽焰行歌 II）潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升16%。」
+ */
+// @fact agent:1041/潜能觉醒暴伤 口径: 潜能觉醒·绝焰按 `potentialLevel` 取档 II~VI = 16/24/32/40/48%（[额外能力：燎原] 门控），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1041.json `potential_detail` + R59 四臂正交实测@2026-09-20 | 验 src/mechanics/__tests__/soldier11CinemaTier.test.ts | 锚 src/mechanics/agents/soldier11.ts#SOLDIER11_POTENTIAL_CRIT_DMG | 信 确认
+// ⟳复核: nanoka 若刷新 1041 的 potential_detail，逐档对账 II~VI 是否仍为 16/24/32/40/48 | 到期 2027-03-31
+export const SOLDIER11_POTENTIAL_CRIT_DMG = [0, 0, 16, 24, 32, 40, 48] as const
 
 /** 火刀层数（必定触发[火力镇压]次数）：每发强特 +8（原文「最多持续30秒或触发8次」） */
 export const SOLDIER11_BLADE_LAYERS_PER_EX = 8
@@ -132,10 +143,11 @@ export function patchSoldier11Executions({ cfg, state, executions }: AgentResour
  * 但**同一 `fireDmg` 上的两条 `+=` 顺序原样保留**（+10 后 +22.5×覆盖率）。
  * 覆盖率滑块 default 1 = 原 fallback 1 ⇒ 无默认值分裂。
  */
-function applySoldier11Panel({ panel, settings }: AgentPanelInput): void {
-  // 潜能觉醒·绝焰（最高档）：额外能力·燎原触发时自身暴伤 +48%
+function applySoldier11Panel({ panel, settings, potentialLevel }: AgentPanelInput): void {
+  // 潜能觉醒·绝焰：额外能力·燎原触发时自身暴伤按 potentialLevel 取档（II~VI = 16/24/32/40/48%）
   if ((panel.additionalAbilityActive ?? 0) > 0) {
-    panel.critDmg = (panel.critDmg ?? 0) + POTENTIAL_CRIT_DMG
+    const potLv = Math.max(1, Math.min(6, Math.floor(Number(potentialLevel ?? 6))))
+    panel.critDmg = (panel.critDmg ?? 0) + SOLDIER11_POTENTIAL_CRIT_DMG[potLv]
     // 「11号」额外能力·燎原（队伍存在同属性或同阵营角色）：
     // 火属性伤害 +10%；攻击失衡敌人额外 +22.5% × 覆盖率滑块（非轴模式默认满覆盖）。
     panel.fireDmg = (panel.fireDmg ?? 0) + 10

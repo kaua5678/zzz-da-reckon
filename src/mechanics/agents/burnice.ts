@@ -44,8 +44,19 @@ const TOSSING_DAMAGE_FALLBACK = 400.1
 const STIRRING_DAMAGE_FALLBACK = 250.8 * 0.5 + 466
 const FLOWFIRE_RELEASE_MULTIPLIER = 300
 const POTENTIAL_ENERGY_REGEN_THRESHOLD = 1.8
-const POTENTIAL_MASTERY_PER_0_1 = 2.5
-const POTENTIAL_DMG_PER_0_1 = 2
+/**
+ * 潜能觉醒·沸点派对（index 0 占位，1 = I 无觉醒，2..6 = II..VI）：
+ * 「初始能量自动回复 ≥1.8 时，超过部分每 0.1 点使异常掌控 +X、造成伤害 +Y%」
+ * ⇒ X = 1/1.3/1.6/2/2.5，Y = 1/1.25/1.5/1.75/2（上限均为 25 点 / 20%）。
+ *
+ * ⚠ 这是**潜能觉醒**轴（raw `potential_detail`），与 `talent.1..6`（影画）是两条独立轴。
+ * R59 修复：原实现把 per-0.1 系数写死为 VI 满档（2.5 / 2）⇒ `potentialLevel` 滑块
+ * 完全不进计算（四臂正交实测 A==B、C==D，见 burniceCinemaTier.test.ts）。
+ */
+// @fact agent:1171/潜能觉醒沸点派对 口径: 潜能觉醒·沸点派对按 `potentialLevel` 取档 II~VI 每 0.1 回能 = 异常掌控 +1/1.3/1.6/2/2.5、伤害 +1/1.25/1.5/1.75/2%（掌控上限 25 / 伤害上限 20%，门控为初始回能 ≥1.8），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1171.json `potential_detail` + R59 四臂正交实测@2026-09-20 | 验 src/mechanics/__tests__/burniceCinemaTier.test.ts | 锚 src/mechanics/agents/burnice.ts#BURNICE_POTENTIAL_MASTERY_PER_0_1 | 信 确认
+// ⟳复核: nanoka 若刷新 1171 的 potential_detail，逐档对账 II~VI 的 per-0.1 系数与上限 | 到期 2027-03-31
+export const BURNICE_POTENTIAL_MASTERY_PER_0_1 = [0, 0, 1, 1.3, 1.6, 2, 2.5] as const
+export const BURNICE_POTENTIAL_DMG_PER_0_1 = [0, 0, 1, 1.25, 1.5, 1.75, 2] as const
 const POTENTIAL_MASTERY_CAP = 25
 const POTENTIAL_DMG_CAP = 20
 const EMBER_COOLDOWN_POTENTIAL_SECONDS = 1.35
@@ -105,6 +116,8 @@ export function computeBurniceMechanic(input: {
   atk: number
   anomalyProficiency: number
   cinemaLevel?: number
+  /** 潜能觉醒档位（1..6）。缺省 6 = 满档，与 UI 滑块默认一致。 */
+  potentialLevel?: number
   energyRegen: number
   ultimateCount: number
   singleSpraySeconds: number
@@ -145,8 +158,10 @@ export function computeBurniceMechanic(input: {
   const energyRegen = Math.max(0, input.energyRegen)
   const potentialActive = energyRegen >= POTENTIAL_ENERGY_REGEN_THRESHOLD
   const overCount = potentialActive ? Math.floor((energyRegen - POTENTIAL_ENERGY_REGEN_THRESHOLD + 1e-9) / 0.1) : 0
-  const potentialAnomalyMasteryBonus = Math.min(POTENTIAL_MASTERY_CAP, overCount * POTENTIAL_MASTERY_PER_0_1)
-  const potentialDmgBonus = Math.min(POTENTIAL_DMG_CAP, overCount * POTENTIAL_DMG_PER_0_1)
+  // 潜能档位决定 per-0.1 系数（上限不随档位变，原文两处上限都是 25 / 20%）。
+  const potLv = Math.max(1, Math.min(6, Math.floor(Number(input.potentialLevel ?? 6))))
+  const potentialAnomalyMasteryBonus = Math.min(POTENTIAL_MASTERY_CAP, overCount * BURNICE_POTENTIAL_MASTERY_PER_0_1[potLv])
+  const potentialDmgBonus = Math.min(POTENTIAL_DMG_CAP, overCount * BURNICE_POTENTIAL_DMG_PER_0_1[potLv])
   const emberCooldownSeconds = potentialActive ? EMBER_COOLDOWN_POTENTIAL_SECONDS : EMBER_COOLDOWN_SECONDS
   const cooldownLimit = Math.floor(Math.max(0, input.totalTime) / emberCooldownSeconds)
   const budgetLimit = Math.floor(totalIgnition / EMBER_COST)
@@ -257,13 +272,14 @@ export function computeBurniceMechanic(input: {
   }
 }
 
-function applyBurnicePanel({ panel }: AgentPanelInput): void {
+function applyBurnicePanel({ panel, potentialLevel }: AgentPanelInput): void {
   const totalRegen = resolveEnergyRegenTotal(panel)
   const over = Math.max(0, totalRegen - POTENTIAL_ENERGY_REGEN_THRESHOLD)
   if (over <= 0) return
   const overCount = Math.floor((over + 1e-9) / 0.1)
-  panel.anomalyMastery = (panel.anomalyMastery ?? 0) + Math.min(POTENTIAL_MASTERY_CAP, overCount * POTENTIAL_MASTERY_PER_0_1)
-  panel.dmgBonus = (panel.dmgBonus ?? 0) + Math.min(POTENTIAL_DMG_CAP, overCount * POTENTIAL_DMG_PER_0_1)
+  const potLv = Math.max(1, Math.min(6, Math.floor(Number(potentialLevel ?? 6))))
+  panel.anomalyMastery = (panel.anomalyMastery ?? 0) + Math.min(POTENTIAL_MASTERY_CAP, overCount * BURNICE_POTENTIAL_MASTERY_PER_0_1[potLv])
+  panel.dmgBonus = (panel.dmgBonus ?? 0) + Math.min(POTENTIAL_DMG_CAP, overCount * BURNICE_POTENTIAL_DMG_PER_0_1[potLv])
 }
 
 function resolveEnergyRegenTotal(panel: PanelValues): number {
@@ -315,6 +331,8 @@ function buildBurniceResourceResult({ cfg, state }: AgentResourceResultInput): P
       atk: cfg.panel.atk ?? 0,
       anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
       cinemaLevel: cfg.burniceCinemaLevel ?? 0,
+      // cfg.panel 是**局内盖章面板**，potentialLevel 由 core/panel.ts 写入（`:353`）。
+      potentialLevel: cfg.panel.potentialLevel ?? 6,
       energyRegen: resolveEnergyRegenTotal(cfg.panel),
       ultimateCount: state.ultimateCount,
       singleSpraySeconds: cfg.burniceSingleSpraySeconds ?? SINGLE_SPRAY_MAX_SECONDS,
@@ -366,6 +384,7 @@ function burniceMechanicSourceOf(cfg: CharacterOperationConfig, state: Iteration
     atk: cfg.panel.atk ?? 0,
     anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
     cinemaLevel: cfg.burniceCinemaLevel ?? 0,
+    potentialLevel: cfg.panel.potentialLevel ?? 6,
     energyRegen: resolveEnergyRegenTotal(cfg.panel),
     ultimateCount: state.ultimateCount,
     singleSpraySeconds: cfg.burniceSingleSpraySeconds ?? SINGLE_SPRAY_MAX_SECONDS,

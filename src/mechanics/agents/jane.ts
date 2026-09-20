@@ -19,7 +19,17 @@ const FRENZY_BUILD_UP_BONUS_CORE = 25
 const MASTERY_ATK_THRESHOLD = 120
 const ATK_PER_MASTERY_OVER = 2
 const ATK_FROM_MASTERY_CAP = 600
-const POTENTIAL_ASSAULT_CRIT_DMG = 30
+/**
+ * 潜能觉醒·致命舞步（index 0 占位，1 = I 无觉醒，2..6 = II..VI）：
+ * 简触发[强击]时，该次[强击]的暴击伤害额外提升 10/15/20/25/30%。
+ *
+ * ⚠ 这是**潜能觉醒**轴（raw `potential_detail`），与 `talent.1..6`（影画）是两条独立轴。
+ * R59 修复：原实现写死 `= 30`（VI 满档）⇒ `potentialLevel` 滑块完全不进计算
+ * （四臂正交实测 A==B、C==D，见 janeCinemaTier.test.ts）。
+ */
+// @fact agent:1261/潜能觉醒强击暴伤 口径: 潜能觉醒·致命舞步按 `potentialLevel` 取档 II~VI = 10/15/20/25/30%（仅简自身触发的强击，乱流不继承），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1261.json `potential_detail` + R59 四臂正交实测@2026-09-20 | 验 src/mechanics/__tests__/janeCinemaTier.test.ts | 锚 src/mechanics/agents/jane.ts#JANE_POTENTIAL_ASSAULT_CRIT_DMG | 信 确认
+// ⟳复核: nanoka 若刷新 1261 的 potential_detail，逐档对账 II~VI 是否仍为 10/15/20/25/30 | 到期 2027-03-31
+export const JANE_POTENTIAL_ASSAULT_CRIT_DMG = [0, 0, 10, 15, 20, 25, 30] as const
 
 /** 覆盖率/开关类滑块统一收敛到 [0,1]；非有限值回退 `fallback`（勿回退 0：会把「未注入」变成「归零」）。 */
 function clamp01(value: unknown, fallback = 1): number {
@@ -27,23 +37,32 @@ function clamp01(value: unknown, fallback = 1): number {
   return Number.isFinite(num) ? Math.max(0, Math.min(1, num)) : fallback
 }
 
+/** 潜能等级收敛到 1..6（缺省 = 6 满档，与 UI 滑块默认一致）。 */
+function clampPotential(value: unknown): number {
+  const num = Number(value)
+  return Number.isFinite(num) ? Math.max(1, Math.min(6, Math.floor(num))) : 6
+}
+
 export function computeJaneMechanic(input: {
   anomalyProficiency: number
   frenzyActive: boolean
   frontlineSeconds: number
+  /** 潜能觉醒档位（1..6）。缺省 6 = 满档，与 UI 滑块默认一致。 */
+  potentialLevel?: number
 }): JaneMechanicSource {
   const mastery = Math.max(0, input.anomalyProficiency)
   const assaultCritRate = ASSAULT_CRIT_BASE + mastery * ASSAULT_CRIT_PER_MASTERY
+  const potentialLevel = clampPotential(input.potentialLevel)
   return {
     assaultCritBaseRate: ASSAULT_CRIT_BASE,
     assaultCritRatePerMastery: ASSAULT_CRIT_PER_MASTERY,
     assaultCritRate,
-    assaultCritDmgBonus: POTENTIAL_ASSAULT_CRIT_DMG,
+    assaultCritDmgBonus: JANE_POTENTIAL_ASSAULT_CRIT_DMG[potentialLevel],
     frenzyBuildUpBonus: FRENZY_BUILD_UP_BONUS_CORE,
     atkFromMastery: Math.min(ATK_FROM_MASTERY_CAP, Math.max(0, mastery - MASTERY_ATK_THRESHOLD) * ATK_PER_MASTERY_OVER),
     frenzyActive: input.frenzyActive,
     biteSeconds: Math.max(0, input.frontlineSeconds),
-    note: '啮咬：攻击命中使敌人进入状态，持续10秒；强击对啮咬目标可暴击（基础20%+精通0.1%/点，暴伤50%），潜能觉醒满级额外+30%强击暴伤；狂热物理积蓄效率与精通转攻、额外能力痛点、影画1/6 面板区见 resourceCalc/helpers 简专属分支（jane.passionCoverage 滑块默认90%）。',
+    note: `啮咬：攻击命中使敌人进入状态，持续10秒；强击对啮咬目标可暴击（基础20%+精通0.1%/点，暴伤50%），潜能觉醒按档位额外+${JANE_POTENTIAL_ASSAULT_CRIT_DMG[potentialLevel]}%强击暴伤（潜能 ${potentialLevel}）；狂热物理积蓄效率与精通转攻、额外能力痛点、影画1/6 面板区见 resourceCalc/helpers 简专属分支（jane.passionCoverage 滑块默认90%）。`,
   }
 }
 
@@ -75,13 +94,14 @@ export function computeJaneMechanic(input: {
  * 指向自己）⇒ 该臂**当前就 true**，但派发点按 `agent.id` 寻址而等价（自己指向自己）。
  * 删它是语义变更不是清理：将来数据面若把别的角色指向 1261，该角色的面板也要走本块。
  */
-function applyJanePanel({ panel, settings, agent, slot, team, cinemaLevel }: AgentPanelInput): void {
+function applyJanePanel({ panel, settings, agent, slot, team, cinemaLevel, potentialLevel }: AgentPanelInput): void {
   const source = computeJaneMechanic({
     anomalyProficiency: panel.anomalyProficiency ?? 0,
     // 传 true：本函数的产物只用于**非狂热门控**字段（强击暴击率/暴伤/精通转攻），
     // 狂热门控在下面 `frenzyFactor` 处统一施加，避免两处各判一次导致口径漂移。
     frenzyActive: true,
     frontlineSeconds: 0,
+    potentialLevel,
   })
   panel.assaultCritRate = (panel.assaultCritRate ?? 0) + source.assaultCritRate
   panel.assaultCritDmg = (panel.assaultCritDmg ?? 0) + ASSAULT_CRIT_DMG
@@ -139,6 +159,9 @@ function buildJaneResourceResult({ cfg, state }: AgentResourceResultInput): Part
       anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
       frenzyActive: true,
       frontlineSeconds: state.frontlineTime,
+      // cfg.panel 是**局内盖章面板**，potentialLevel 由 core/panel.ts 写入（`:353`），
+      // 与 applyPanel 的 `input.potentialLevel` 同源同值。
+      potentialLevel: cfg.panel.potentialLevel ?? 6,
     }),
   }
 }
