@@ -560,11 +560,11 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('十九条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置**)', () => {
+  it('二十条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫**)', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(19)
+    expect(results).toHaveLength(20)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
     expect(results.map(r => r.name.split(' ')[0])).toContain('exhibition-layer')
     // core 棘轮必须在列（规则 6 的引擎层延伸——此前 core 是豁免区）
@@ -594,6 +594,14 @@ describe('仓库级自洽（真实扫描）', () => {
     // 实测唯一病灶 claret.ts:15 造成 8 模块 SCC。行为面（值导入 0 + 反空洞下限）与 claret 形状锁成对。
     expect(results.map(r => r.name.split(' ')[0])).toContain('layer-inversion')
     expect(results.some(r => r.name.includes('招式伤害属性对账'))).toBe(true)
+    // 判据 20：队友 Buff 控件守卫（2026-09-20 R65，OPEN-ITEMS R64-J1）——同族第六类静默缺口，
+    // 症状在**控件面**：条目的数值由模块单通道接入（或根本没有 effects），但属性配置页照样渲染
+    // checkbox/覆盖率滑块 ⇒ 用户「拨了没反应」，与「机制没做」同形。
+    // ⚠ 它为什么必须独立成判据：**.vue 模板不参与单测** —— R65 反验证 A/B 两组
+    // （把 `v-if="isInteractive(buff)"` 删掉 = 退回修复前）实测 `failed=0 passed=5` **全绿**，
+    // 即「谓词 + 行为测试」这条链在模板面上**没有牙**，而模板正是用户唯一看得见的那一面。
+    // ⚠ 它与判据 16 的区别：16 的症状是「样式丢了」，本条是「控件不该在却在」；共同点是渲染面静默。
+    expect(results.some(r => r.name.includes('队友 Buff 控件守卫'))).toBe(true)
   })
 
   // 快速环（`npm run check:fast` / `test:fast`）的**诚实性**护栏（2026-09-16 加）。
