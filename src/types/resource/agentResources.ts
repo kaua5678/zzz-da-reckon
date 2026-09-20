@@ -111,7 +111,7 @@ export interface ClaretSharpResourceSource {
   basicGashValuePct?: number
   /** 其中「其余招式」贡献（%）= Σ 实打次数 × 该招 gash_buildup 表值 × 积蓄效率 */
   moveGashValuePct?: number
-  /** 残痕积蓄效率倍率 = 1 + 核心被动 50%（Lv7，猩红铭刻期间近似常驻）+ 影画2 20%（锐暴命中近似常驻） */
+  /** 残痕积蓄效率倍率 = 1 + 核心被动 50%（Lv7，猩红铭刻期间近似常驻）+ 影画1 20%（锐暴命中近似常驻；★R55 订正，旧写「影画2」是两档互换） */
   gashBuildupMultiplier: number
   /** 残痕层数 = floor(残痕值 / 100)，上限 3 层（溢出浪费） */
   gashStacks: number
@@ -152,8 +152,15 @@ export interface ClaretSharpResourceSource {
   normalAttackSharpnessPerSec: number
   /** 账本推导出的常态平A时间（秒）＝轮数 × 攒能秒数 */
   normalBasicTimeNeeded: number
-  /** 铭刻平A时间（秒）＝轮数 × 窗口时长 */
+  /** 铭刻平A时间（秒）＝轮数 × 单窗时长 + 总延长秒 */
   inscriptionBasicTime: number
+  /**
+   * **单窗**基础时长（秒）：raw 基础 16s；**影画2「最大持续时间延长2秒」⇒ 18s**（★ R55 建模）。
+   * ⚠ 与 `inscriptionWindowSeconds` 区分：那个是**总延长秒**（连携×2s + 停表白送），这个是**每轮窗口本身**。
+   */
+  inscriptionWindowSecondsPerEntry: number
+  /** 本结果的命座档（影画2 起单窗 +2s，展示层据此标注） */
+  cinemaLevel: number
   /** 账本推导出的铭刻平A时间占比（面板未覆盖时的口径，供展示对照） */
   derivedInscriptionTimeShare: number
   /** 平A时间能支撑的进场轮数（常态攒能 → EX 进场 → 铭刻窗口），= EX 发数 */

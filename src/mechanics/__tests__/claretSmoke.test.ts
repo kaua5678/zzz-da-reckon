@@ -1,9 +1,10 @@
 /**
  * 克拉蕾(1611) v12 录入生效测试（2026-09-03，nanoka 3.2.12+18601660）：
  * - 锐能：进场 60 + 终结技 10/次（raw chain.description[1]）→ 秘血铸锋 60/发（旧「毁伤回锐能」口径已废除）；
- * - 残痕值：(平A两态秒均×时间 + 其余全部招式 实打次数×gash_buildup 表值) × 积蓄效率（核心 50% + 影画2 20%）→ 每 600 点 = 1 层；
- * - 毁伤：min(层数, 斩金断铁×1+葬血强袭×3+影画6)×覆盖率 + 影画6 直接毁伤；
- * - C2 毁伤倍率 ×130%（执行行 override）与 C1/C6 全管线抬升。
+ * - 残痕值：(平A两态秒均×时间 + 其余全部招式 实打次数×gash_buildup 表值) × 积蓄效率（核心 50% + 影画1 20%）→ 每 600 点 = 1 层；
+ * - 毁伤：min(层数, 斩金断铁×1+葬血强袭×3)×覆盖率 + 影画6 直接毁伤（层预算不含 C6，R54 修正）；
+ * - ★ R55 订正影画分档：**影画1** = 积蓄 +20% 且毁伤倍率 ×130%；**影画2** = 铭刻 +2s 且无视 18% 电抗
+ *   （旧实现两档互换 + 电抗值 16 过期，见 `claret.ts` `@fact agent:1611/影画分档`）。
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -15,7 +16,10 @@ import type { RowFusionRule } from '@/logicEditor/types'
 import {
   claretMechanic,
   computeClaretSharpResource,
-  C2_MAIM_MULT,
+  C1_MAIM_MULT,
+  C2_RES_IGNORE,
+  GASH_EFF_C1,
+  GASH_EFF_CORE,
   INITIAL_CRIT_DMG_TO_CRIT_RATE,
   INSCRIPTION_BENCHMARK_MOVE_ID,
   SHARPNESS_COST_PER_EX,
@@ -140,9 +144,15 @@ describe('克拉蕾锐能（v12：进场 60 + 终结技 10/次 → 秘血铸锋 
     const full = computeClaretSharpResource({ ...base, basicGashPerSec: 20, basicAttackTime: 60 })
     expect(full.gashValuePct).toBeCloseTo((1200 + 281.97) * 1.5, 2)
     expect(full.gashStacks).toBe(3)
-    // 影画2：积蓄效率 +20% → 1.7
+    // ★ R55 订正：积蓄 +20% 挂在**影画1**（原文 talent.1.desc），旧实现错挂在影画2
+    //   （倍率 = 1 + 核心 50% + 影画1 20% = 1.7；命座**累进** ⇒ C2 也含 C1 的积蓄）
+    const r1 = computeClaretSharpResource({ ...base, cinemaLevel: 1 })
+    expect(r1.gashBuildupMultiplier).toBeCloseTo(1 + GASH_EFF_CORE / 100 + GASH_EFF_C1 / 100, 5)
+    // 反锁：门槛两侧 —— C0 没有积蓄加成（旧实现 `>=2` 会让 C1 也拿不到，本条即其判据）
+    const r0 = computeClaretSharpResource({ ...base, cinemaLevel: 0 })
+    expect(r0.gashBuildupMultiplier).toBeCloseTo(1 + GASH_EFF_CORE / 100, 5)
     const r2 = computeClaretSharpResource({ ...base, cinemaLevel: 2 })
-    expect(r2.gashBuildupMultiplier).toBeCloseTo(1.7, 5)
+    expect(r2.gashBuildupMultiplier).toBeCloseTo(1 + GASH_EFF_CORE / 100 + GASH_EFF_C1 / 100, 5)
   })
 
   it('毁伤：min(层数, 需求) 拆分到斩金断铁/葬血强袭；影画6 直接毁伤不消耗残痕', () => {
@@ -154,7 +164,7 @@ describe('克拉蕾锐能（v12：进场 60 + 终结技 10/次 → 秘血铸锋 
     expect(r.maimFromCleave).toBe(1)
     expect(r.maimFromBurial).toBe(2)
     expect(r.maimCount).toBe(3)
-    // C6：连携/终结各 +1 直接毁伤（不占残痕层数）；影画2 也在（×1.7）→ 2519.35 → 4 层
+    // C6：连携/终结各 +1 直接毁伤（不占残痕层数）；影画1 也在（×1.7）→ 2519.35 → 4 层
     const r6 = computeClaretSharpResource({ ...full, cinemaLevel: 6, chainCountTotal: 2, ultimateCount: 1 })
     expect(r6.maimFromC6).toBe(3)
     expect(r6.maimCount).toBe(7) // 消耗 4 + C6 3（旧实现被「3 层」整局钳制压成 6——用户 2026-09-12 纠正）
@@ -219,13 +229,51 @@ describe('克拉蕾全管线冒烟（v12）', () => {
     expect(d6).toBeGreaterThan(d0)
   })
 
-  it('影画1 电抗无视 16% 确实抬高结果（v12 C1 口径）', async () => {
-    const { config } = await setup()
-    const calc = useResourceCalc()
-    const d0 = calc.teamTotalDamage.value
-    config.team[0].cinemaLevel = 1
-    const d1 = calc.teamTotalDamage.value
-    expect(d1).toBeGreaterThan(d0)
+  /**
+   * ★ R55 订正：影画1/影画2 门槛互换 —— 真管线三档（C0 / C1 / C2）行为判据。
+   *
+   * ⚠ 本条**替换**了旧的代理判据「影画1 电抗无视 16% 确实抬高结果（`toBeGreaterThan(0)`）」：
+   *   那条按错口径写（电抗在 C1、值 16），且 `toBeGreaterThan` 只证明「有变化」不证明「是哪一档给的」
+   *   —— 门槛互换后它**照样绿**（C1 换了别的收益进去），属 R51/R52 踩过两次的代理判据陷阱。
+   * 现判据钉在**可分辨的量**上：电抗削减（C2 才给，且值 = 18）与积蓄倍率（C1 才给，值 = 1.7）。
+   */
+  it('★R55 影画分档：C1 = 积蓄+20% / 毁伤×130%，C2 = 无视18%电抗（门槛两侧三档可分辨）', async () => {
+    async function probe(cinemaLevel: number) {
+      // 每点独立 setupHarness（硬约束：不许复用同一 calc 的响应式快照）
+      await setupHarness([{ agentId: '1611', cinemaLevel }, '', ''])
+      const calc = useResourceCalc()
+      await new Promise(r => setTimeout(r, 0))
+      const ch = calc.resourceResult.value!.characters.find(c => c.agentId === '1611')!
+      const maim = ch.executions.find(e => e.moveId === '1611013' && (e.damageMultiplierOverride ?? false))
+      return {
+        resIgnore: (calc.panels.value[0] as any)?.enemyElectricResReduction ?? 0,
+        buildup: ch.claretSharpResourceSource!.gashBuildupMultiplier,
+        maimMultiplier: maim?.damageMultiplier ?? 0,
+        damage: calc.teamTotalDamage.value,
+      }
+    }
+    const c0 = await probe(0)
+    const c1 = await probe(1)
+    const c2 = await probe(2)
+
+    // ① 积蓄效率：C1 起给（+20%），C0 没有 —— 门槛两侧各断言一次
+    //    ⚠ 命座**累进**：C2 也含 C1 的积蓄加成，故 c2 与 c1 同值（不是「C2 不给」）
+    expect(c0.buildup).toBeCloseTo(1 + GASH_EFF_CORE / 100, 5)
+    expect(c1.buildup).toBeCloseTo(1 + GASH_EFF_CORE / 100 + GASH_EFF_C1 / 100, 5)
+    expect(c2.buildup).toBeCloseTo(c1.buildup, 5)
+    // ② 电抗无视：只有 C2 起给，且值 = 18（旧实现错在 C1 且值 16）
+    expect(c0.resIgnore).toBe(0)
+    expect(c1.resIgnore).toBe(0)
+    expect(c2.resIgnore).toBe(C2_RES_IGNORE)
+    expect(C2_RES_IGNORE).toBe(18)
+    // ③ 毁伤倍率 ×130%：C1 起给（执行行 override 恒存在，C0 = 表值 1625.6%、C1 起 ×1.3）
+    expect(c0.maimMultiplier).toBeCloseTo(1625.6, 1)
+    expect(c1.maimMultiplier).toBeCloseTo(1625.6 * C1_MAIM_MULT, 1)
+    expect(c2.maimMultiplier).toBeCloseTo(c1.maimMultiplier, 1)
+    // ④ 总伤害单调：C1/C2 都严格高于 C0（门槛生效的端到端证据）
+    expect(c0.damage).toBeGreaterThan(0)
+    expect(c1.damage).toBeGreaterThan(c0.damage)
+    expect(c2.damage).toBeGreaterThan(c0.damage)
   })
 
   it('平A双基准：常态血锻 345.21%/s 与铭刻锻星 531.88%/s 按铭刻时间占比加权（改滑块结果确实变）', async () => {
@@ -314,14 +362,14 @@ describe('克拉蕾全管线冒烟（v12）', () => {
     expect(gash('1611003')).toBeCloseTo(100, 2)
   })
 
-  it('影画2 毁伤倍率 ×130%：执行行 override 生效（表值 1625.6% × 1.3 = 2113.28%）', async () => {
+  it('★R55 影画1 毁伤倍率 ×130%：执行行 override 生效（表值 1625.6% × 1.3 = 2113.28%）', async () => {
     const { config } = await setup()
-    config.team[0].cinemaLevel = 2
+    config.team[0].cinemaLevel = 1
     const calc = useResourceCalc()
     const row = calc.resourceResult.value!.characters.find(c => c.agentId === '1611')!
       .executions.find(e => e.moveId === '1611013' && (e.damageMultiplierOverride ?? false))
     expect(row).toBeTruthy()
-    expect(row!.damageMultiplier).toBeCloseTo(1625.6 * C2_MAIM_MULT, 1)
+    expect(row!.damageMultiplier).toBeCloseTo(1625.6 * C1_MAIM_MULT, 1)
   })
 })
 

@@ -30,7 +30,7 @@ import { pickThirdNamedBasicSegment, fusedRowValue, findMoveById, getRowValue } 
  * **`gash_buildup`** 表值（%）——旧口径错写成 `anomaly_buildup`（异常积蓄列，两列在平A 段恰好同值、
  * 在闪反/支援/终结段差很多，见 GAME_TERM_TO_CODE_FIELD §11.1），且只算平A+EX 漏掉其余全部招式；
  * 「上限 3 层」是敌人身上**同时存量**上限，不是整局毁伤次数上限（全局计算器按总量：毁伤 = min(总层数, 消耗需求)）。
- * 积蓄效率 = 1 + 核心 50% + 影画2 20%（状态近似常驻）。
+ * 积蓄效率 = 1 + 核心 50% + 影画1 20%（状态近似常驻）。
  * 锐能：进场 +60（勘域 180s 一次 → 每局一次）；秘血铸锋（EX）消耗 60 → 每局 1 发。
  *   —— 旧「2 毁伤/局 → 2.5 锐能放不出 EX」问题由 v12 文本解决（用户 2026-09 口径确认）。
  * 核心被动（猩红铭刻/连携/终结/无垢熔锋期间）：暴击率 +30%、残痕积蓄效率 +50%（满覆盖近似）。
@@ -38,8 +38,8 @@ import { pickThirdNamedBasicSegment, fusedRowValue, findMoveById, getRowValue } 
  *   局内暴伤拐不转化；旧「未建模，初始暴伤≈0」判断已修正——锋御词条第三优先就是暴伤）。
  * 额外能力·血裔传承：全队触发[浸染]时克拉蕾回 300 喧响（20s CD）；队友/自身触发[毁伤]时
  *   全队[锋御]进入[残锋]（锐暴伤害 +25%，40s 刷新）——残锋按自身面板近似（全队锋御同源）。
- * 影画1：猩红铭刻最大持续 +3s（时长无数值影响）；状态期间攻击命中无视 16% 电抗（满覆盖近似）。
- * 影画2：锐暴命中时残痕积蓄效率 +20%（并入积蓄效率倍率）；毁伤伤害倍率 ×130%（执行行 override）。
+ * 影画1（淋漓古志）：锐暴命中时残痕积蓄效率 +20%（并入积蓄效率倍率）；毁伤伤害倍率 ×130%（执行行 override）。
+ * 影画2（薪火荣冠）：猩红铭刻最大持续 +2s；铭刻/连携/终结/反制支援/支援突击期间无视 18% 电抗（满覆盖近似）。
  * 影画4：锻星第三段（1611007 连续斩击 + 1611029 下砸）/血契共鸣(1611020)/千锤百炼(1611021)
  *   伤害 +20%（patchExecutions dmgBonus）。
  * 影画6：血契共鸣/千锤百炼重击命中不消耗残痕直接触发 1 次单体毁伤（连携+终结次数）。
@@ -103,15 +103,29 @@ export const GASH_PER_LAYER = 600
  * ⟳复核: 官方若给出 [残痕] 的时长/衰减子句，或引擎获得逐事件顺序通道（可落真队列）时，替换本上界并复核 cap 咬合域 | 到期 2027-03-31
  */
 export const GASH_MAX_STACKS = 3
-/** 残余积蓄效率：核心被动 +50%（Lv.7）/ 影画2 锐暴 +20% */
+/** 残余积蓄效率：核心被动 +50%（Lv.7）/ 影画1 锐暴 +20% */
 export const GASH_EFF_CORE = 50
-export const GASH_EFF_C2 = 20
+export const GASH_EFF_C1 = 20
 /** 核心被动（Lv.7）：猩红铭刻/连携/终结/无垢熔锋期间暴击率 +30% */
 export const CORE_CRIT_RATE = 30
-/** 影画1：状态期间攻击命中无视 16% 电抗 */
-export const C1_RES_IGNORE = 16
-/** 影画2：毁伤倍率 ×130% */
-export const C2_MAIM_MULT = 1.3
+/**
+ * 影画1/影画2 效果分档（★ R55 订正 —— 旧实现把两档**互换**了）。
+ *
+ * 原文（`data/raw/nanoka_missing/full/1611.json`，本仓 raw 即可自验）：
+ *   · `talent.1.desc`（淋漓古志 / C1）=「克拉蕾攻击命中敌人并造成锐暴时，**残痕积蓄效率提升20%**；
+ *     克拉蕾触发[毁伤]造成的**伤害倍率提升至原本的130%**。」
+ *   · `talent.2.desc`（薪火荣冠 / C2）=「[猩红铭刻]**最大持续时间延长2秒**；克拉蕾处于[猩红铭刻]，
+ *     或是在发动[连携技]、[终结技]、[反制支援]、[支援突击]期间，攻击命中时**无视目标18%电属性伤害抗性**。」
+ * ⚠ 旧实现是 `>=1` 给「电抗 16%」、`>=2` 给「积蓄 +20% / 毁伤 ×1.3」⇒ **两档完全互换**，
+ *   且电抗数值 16 是过期值 ⇒ 后果 = **C1 玩家少拿、C2 玩家多拿**（R54 外部复核发现，刻意未修；
+ *   R55 单独立项修复，避免与 R54 的「时序口径」混批致 delta 无法归因 —— 规则 17②）。
+ *
+ * @fact agent:1611/影画分档 口径: 影画1（淋漓古志）= 锐暴命中残痕积蓄效率 +20% 且 [毁伤] 伤害倍率 → 130%；影画2（薪火荣冠）= 猩红铭刻最大持续 +2s 且 [猩红铭刻]/[连携技]/[终结技]/[反制支援]/[支援突击] 期间攻击命中无视 **18%** 电属性伤害抗性 | 据 nanoka raw talent.1.desc + talent.2.desc@2026-09-20（外部 6 语言 × 4 版本 + gachabase 四方一致复核） | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#C2_RES_IGNORE | 信 确认
+ * ⟳复核: 若官方改版重排影画顺序或改电抗数值（现 18%），改本组常量并同步 character-constellations.json | 到期 2027-03-31
+ */
+export const C1_MAIM_MULT = 1.3
+/** 影画2：猩红铭刻/连携/终结/反制支援/支援突击期间攻击命中无视 18% 电抗（raw `talent.2.desc`） */
+export const C2_RES_IGNORE = 18
 /** 影画4：锻星第三段/血契共鸣/千锤百炼 伤害 +20% */
 export const M4_DMG_BONUS = 20
 export const M4_MOVE_IDS = new Set(['1611007', '1611029', '1611020', '1611021'])
@@ -135,6 +149,19 @@ export const INSCRIPTION_BENCHMARK_MOVE_ID = '1611007'
 export const DEFAULT_INSCRIPTION_BASIC_TIME_SHARE = 0
 /** 猩红铭刻窗口基础时长（秒）——raw `skill.special.description[1]`「进入[猩红铭刻]，持续16秒」 */
 export const DEFAULT_INSCRIPTION_WINDOW_SECONDS = 16
+/**
+ * 影画2：猩红铭刻**最大持续时间延长 2 秒**（每轮窗口 16s → 18s）。
+ *
+ * 原文 raw `talent.2.desc`：「[猩红铭刻]**最大持续时间延长2秒**」。
+ * ⚠ 旧实现**完全没建模**它，且 `claret.ts` 头注释错写成「影画1 猩红铭刻最大持续 **+3s**（时长无数值影响）」
+ *   —— 两处都错：① 档位是影画2 不是影画1；② **+2 秒不是 +3 秒**；③ 它**有数值影响**
+ *   （`DEFAULT_INSCRIPTION_WINDOW_SECONDS` 直接进两态时间解，见 `deriveClaretTwoStateTime`）。
+ *   R55 实测 delta：建模后 1611 c3~c6 伤害 1.724% → 3.269~3.514%（窗口变长 ⇒ 铭刻态时间份额上升）。
+ *
+ * @fact agent:1611/铭刻窗口·影画2 口径: 影画2 使猩红铭刻单窗基础时长 16s → 18s（+2秒）；该窗口直接进两态时间解（铭刻总时间 = 轮数×窗口 + 连携/停表延长秒） | 据 nanoka raw talent.2.desc@2026-09-20（外部 6 语言 × 4 版本复核一致） | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#C2_INSCRIPTION_WINDOW_BONUS_SECONDS | 信 确认
+ * ⟳复核: 官方若调整影画2 的窗口延长量（现 +2s），改本常量并重跑 timeGolden | 到期 2027-03-31
+ */
+export const C2_INSCRIPTION_WINDOW_BONUS_SECONDS = 2
 /** 连携技延长铭刻窗口（秒/次）——raw 核心被动「发动[连携技]时延长[猩红铭刻]2秒持续时间」 */
 export const INSCRIPTION_CHAIN_EXTENSION_SECONDS = 2
 /** 连携/终结技表 id（窗口停表口径要它们的动作时长） */
@@ -169,9 +196,10 @@ function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelIn
   panel.critRate = (panel.critRate ?? 0) + CORE_CRIT_RATE
   // 残锋：队友/自身触发[毁伤]后全队锋御 锐暴伤害 +25%（40s 刷新；按自身面板近似）
   panel.sharpCritDmg = (panel.sharpCritDmg ?? 0) + RESIDUAL_EDGE_SHARP_CRIT_DMG
-  // 影画1：猩红铭刻/连携/终结/无垢熔锋期间攻击命中无视 16% 电抗（状态高频维持，满覆盖近似）
-  if ((cinemaLevel ?? 0) >= 1) {
-    panel.enemyElectricResReduction = (panel.enemyElectricResReduction ?? 0) + C1_RES_IGNORE
+  // 影画2（薪火荣冠）：猩红铭刻/连携/终结/反制支援/支援突击期间攻击命中无视 18% 电抗
+  //   （状态高频维持，满覆盖近似）——★ R55 订正：旧实现是 `>=1` + 16%，门控与数值双错
+  if ((cinemaLevel ?? 0) >= 2) {
+    panel.enemyElectricResReduction = (panel.enemyElectricResReduction ?? 0) + C2_RES_IGNORE
   }
 }
 
@@ -220,6 +248,8 @@ export function computeClaretSharpResource(input: {
   combatTime?: number
   /** 铭刻平A时间（秒）——与常态时间成对回传 */
   inscriptionBasicTime?: number
+  /** 单窗基础时长（秒）——16s（raw）；影画2 起 18s（+2s） */
+  inscriptionWindowSecondsPerEntry?: number
   /** 反制支援送的**直接残痕层数**（= 化解的控制技组数）：琢形原文「重击命中敌人时，
    *  **直接为目标添加1层[残痕]**」（用户口径 2026-09-12「他的确是送了」）。
    *  直接给层 → **不吃积蓄效率倍率**（不是"积累"，是"添加"），但仍受 3 层上限约束。 */
@@ -244,7 +274,7 @@ export function computeClaretSharpResource(input: {
   // （2026-09-12 用户更正：每招都在实打实积累，旧实现只算平A+EX 且 EX 那项错读了 `anomaly_buildup` 列）
   const moveGashTotal = Math.max(0, Number(input.moveGashTotal ?? 0))
   const baseGash = Math.max(0, input.basicGashPerSec * input.basicAttackTime) + moveGashTotal
-  const buildupMultiplier = 1 + GASH_EFF_CORE / 100 + (cinemaLevel >= 2 ? GASH_EFF_C2 / 100 : 0)
+  const buildupMultiplier = 1 + GASH_EFF_CORE / 100 + (cinemaLevel >= 1 ? GASH_EFF_C1 / 100 : 0)
   // 直接送的层**不进**积蓄效率倍率（原文是「添加1层」，不是「积累残痕值」；
   // 表列 gash_buildup（本体 446 + 琢形 134）按全角色同口径仍不计——只认这一条明写的赠送）。
   //
@@ -306,6 +336,12 @@ export function computeClaretSharpResource(input: {
     normalAttackSharpnessPerSec: Math.max(0, Number(input.normalAttackSharpnessPerSec ?? 0)),
     normalBasicTimeNeeded,
     inscriptionBasicTime: Math.max(0, Number(input.inscriptionBasicTime ?? 0)),
+    inscriptionWindowSecondsPerEntry: Math.max(
+      0,
+      Number(input.inscriptionWindowSecondsPerEntry
+        ?? DEFAULT_INSCRIPTION_WINDOW_SECONDS + (cinemaLevel >= 2 ? C2_INSCRIPTION_WINDOW_BONUS_SECONDS : 0)),
+    ),
+    cinemaLevel,
     derivedInscriptionTimeShare,
     inscriptionEntries: Math.max(0, Number(input.inscriptionEntries ?? 0)),
     inscriptionWindowSeconds: Math.max(0, Number(input.inscriptionWindowSeconds ?? DEFAULT_INSCRIPTION_WINDOW_SECONDS)),
@@ -494,6 +530,8 @@ function deriveClaretTwoStateTime(input: {
   combatTime?: number
   /** 面板滑块值（%）：0 = 由账本推导（默认），1–100 = 手动覆盖 */
   inscriptionTimeShareSetting?: number
+  /** 单窗基础时长（秒）——缺省 `DEFAULT_INSCRIPTION_WINDOW_SECONDS`；影画2 由调用方传入 +2s 后的值 */
+  windowSeconds?: number
 }): {
   normalBasicTimeNeeded: number
   inscriptionTime: number
@@ -502,6 +540,8 @@ function deriveClaretTwoStateTime(input: {
   entries: number
   farmSecondsPerEntry: number
   extensionSeconds: number
+  /** 单窗基础时长（秒）——16s；影画2 起 18s */
+  windowSeconds: number
   sharpnessTotal: number
   /** 该轮数下账本能支撑的进场次数（应 ≥ entries，即自洽） */
   affordableExCountAtSolve: number
@@ -510,13 +550,15 @@ function deriveClaretTwoStateTime(input: {
   const normalPerSec = Math.max(0, Number(input.normalSharpnessPerSec ?? 0))
   const autoPerSec = Math.max(0, Number(input.sharpnessAutoPerSec ?? 0))
   const extensionSeconds = Math.max(0, Number(input.totalExtensionSeconds ?? 0))
+  // 单窗基础时长（秒）：影画2「最大持续时间延长2秒」由调用方在 windowSeconds 里传入（默认 16s）
+  const windowSeconds = Math.max(0, Number(input.windowSeconds ?? DEFAULT_INSCRIPTION_WINDOW_SECONDS))
   // 自动累积按**接战时间**（前后台都回），不是平A时间
   const combatTime = Math.max(0, Number(input.combatTime ?? basicAttackTime))
   // farm 只作「够不够打出下一发」的判据（按常态速率），**不是**常态时间的长度
   const farmSecondsPerEntry = normalPerSec > 0 ? SHARPNESS_PER_ENTRY / normalPerSec : 0
 
   // 铭刻窗口可变长，延长量按**全局总额**计入（用户口径 2026-09-11：不算「每度窗口摊多少连携」）。
-  //  铭刻总时间 = N × 16s + 总延长秒
+  //  铭刻总时间 = N × 窗口(16s；影画2 → 18s) + 总延长秒
   //  常态时间   = 平A总时间 − 铭刻总时间
   //  锐能总量   = 自动累积 × **接战时间**（前后台都回，含铭刻态）+ 血锻增益 × 常态时间
   // 轮数 N 取最大可行解：铭刻时间塞得进平A时间，且锐能总量 ≥ N×60。
@@ -524,14 +566,14 @@ function deriveClaretTwoStateTime(input: {
   let n = 1
   while (n < MAX_INSCRIPTION_ENTRIES) {
     const k = n + 1
-    const inscriptionTime = k * DEFAULT_INSCRIPTION_WINDOW_SECONDS + extensionSeconds
+    const inscriptionTime = k * windowSeconds + extensionSeconds
     if (inscriptionTime > basicAttackTime + 1e-9) break
     const normalTime = basicAttackTime - inscriptionTime
     const available = autoPerSec * combatTime + (normalPerSec - autoPerSec) * normalTime
     if (available + 1e-9 < k * SHARPNESS_PER_ENTRY) break
     n = k
   }
-  const inscriptionTime = Math.min(basicAttackTime, n * DEFAULT_INSCRIPTION_WINDOW_SECONDS + extensionSeconds)
+  const inscriptionTime = Math.min(basicAttackTime, n * windowSeconds + extensionSeconds)
   const ledgerNormalTime = Math.max(0, basicAttackTime - inscriptionTime)
   const ledgerShare = basicAttackTime > 0 ? Math.min(1, inscriptionTime / basicAttackTime) : 0
   const setting = Number(input.inscriptionTimeShareSetting)
@@ -544,9 +586,10 @@ function deriveClaretTwoStateTime(input: {
     inscriptionTime: Math.max(0, basicAttackTime - normalTime),
     share,
     source: manual ? 'manual' : 'ledger',
-    entries: manual ? Math.max(1, Math.max(0, basicAttackTime - normalTime) / DEFAULT_INSCRIPTION_WINDOW_SECONDS) : n,
+    entries: manual ? Math.max(1, Math.max(0, basicAttackTime - normalTime) / windowSeconds) : n,
     farmSecondsPerEntry,
     extensionSeconds,
+    windowSeconds,
     sharpnessTotal,
     affordableExCountAtSolve: Math.floor(sharpnessTotal / SHARPNESS_PER_ENTRY),
   }
@@ -604,6 +647,9 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
     totalExtensionSeconds,
     combatTime,
     inscriptionTimeShareSetting: Number(record.claretInscriptionShareSetting ?? 0),
+    // 影画2「猩红铭刻最大持续时间延长2秒」⇒ 单窗 16s → 18s（★ R55 建模，旧实现整条漏掉）
+    windowSeconds: DEFAULT_INSCRIPTION_WINDOW_SECONDS
+      + (Number(record.claretCinemaLevel ?? 0) >= 2 ? C2_INSCRIPTION_WINDOW_BONUS_SECONDS : 0),
   })
   // EX 发数 = 循环轮数（每轮 = 一次 EX 进场；窗口内也在回锐能，故轮数由上面的双约束解出）
   const affordableExCount = Math.max(0, Math.floor(twoState.entries))
@@ -646,6 +692,7 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
     normalAttackSharpnessPerSec: Number(record.claretNormalAttackSharpnessPerSec ?? 0),
     inscriptionEntries: twoState.entries,
     inscriptionWindowSeconds: twoState.extensionSeconds,
+    inscriptionWindowSecondsPerEntry: twoState.windowSeconds,
     sharpnessPerEntry: SHARPNESS_PER_ENTRY,
     affordableExCountOverride: affordableExCount,
     // 反制支援（boss 控制技整组化解，store 折算注入 cfg）→ 琢形每次直接送 1 层残痕
@@ -715,7 +762,7 @@ function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): 
       claretMaimFromC6: Math.max(0, Math.floor(source.maimFromC6)),
     },
     overrides: {
-      claret_maim: { multiplier: Number(record.claretMaimDamageMultiplier ?? 1625.6) * (cinemaLevel >= 2 ? C2_MAIM_MULT : 1) },
+      claret_maim: { multiplier: Number(record.claretMaimDamageMultiplier ?? 1625.6) * (cinemaLevel >= 1 ? C1_MAIM_MULT : 1) },
       claret_blood_burial: { multiplier: Number(record.claretBloodBurialDamageMultiplier ?? 626.3) },
     },
     getRowValue: (moveId, rowId) => (rowId === 'damage' ? Number((cfg as any).mechanicRowValues?.[moveId] ?? 0) : 0),
@@ -744,7 +791,7 @@ function buildClaretResourceSections({ result }: AgentResourceSectionsInput) {
       summary: `残痕值 ${fmt(source.gashValuePct)}% → ${source.gashStacks} 层 · 消耗 ${Math.floor(source.gashStackConsumed)} 层 · 毁伤 × ${source.maimCount}`,
       rows: [
         { label: '残痕值', value: `${fmt(source.gashValuePct)}%`, detail: `平A ${fmt(source.basicGashValuePct ?? 0)}%（两态基准 ${fmt(source.basicGashPerSec)}%/s × 时间）+ 其余招式积累 ${fmt(source.moveGashValuePct ?? 0)}%（各招实打次数 × 表列 gash_buildup，含强特/闪反/连携/终结/支援突击/反制支援），合计再 × 积蓄效率；每 600 点 = 1 层` },
-        { label: '积蓄效率', value: `×${fmt(source.gashBuildupMultiplier)}`, detail: `1 + 核心 50%（Lv.7）+ 影画2 20%` },
+        { label: '积蓄效率', value: `×${fmt(source.gashBuildupMultiplier)}`, detail: `1 + 核心 50%（Lv.7）+ 影画1 20%` },
         ...(source.counterAssistGashStacks
           ? [{
               label: '反制支援送层',
@@ -768,10 +815,10 @@ function buildClaretResourceSections({ result }: AgentResourceSectionsInput) {
         { label: '循环轮数', value: `${fmt(source.inscriptionEntries)} 轮`, detail: `每轮 = 秘血铸锋进场（60 锐能）→ 打成锻星；常态只在需要补锐能时出现。判据：轮数×60 ≤ 自动累积×平A总时间（铭刻内也回）+ 血锻增益×常态时间` },
         { label: '全局总延长秒', value: `${fmt(source.inscriptionWindowSeconds)}s`, detail: `连携×${INSCRIPTION_CHAIN_EXTENSION_SECONDS}s/次 + 停表白送时长（连携/终结发动期间窗口不减）；总额口径一次性加到铭刻总时间上（不按每窗摊连携）` },
         { label: '常态平A时间', value: `${fmt(source.normalBasicTimeNeeded)}s`, detail: `= 轮数 × 20s；与铭刻时间之和 = 平A总时间（由最大不动点求解）` },
-        { label: '铭刻平A时间', value: `${fmt(source.inscriptionBasicTime)}s`, detail: `= 轮数 × 窗口 ${fmt(source.inscriptionWindowSeconds)}s` },
+        { label: '铭刻平A时间', value: `${fmt(source.inscriptionBasicTime)}s`, detail: `= 轮数 × 单窗 ${fmt(source.inscriptionWindowSecondsPerEntry)}s + 总延长 ${fmt(source.inscriptionWindowSeconds)}s` },
         { label: '平A秒均', value: `${fmt(source.basicDamagePerSec)}%/s`, detail: `常态 345.21（血锻#3）×${fmt((1 - source.inscriptionBasicTimeShare) * 100)}% + 铭刻 531.88（锻星#3）×${fmt(source.inscriptionBasicTimeShare * 100)}%` },
       ],
-      footer: `常态只能打血锻四式、锻星是猩红铭刻专属（用户口径 2026-09-11）；两态平A秒均与残痕积累都不同，按时间占比加权。锐能自动回复按公告列 sharpness_gain（血锻 3.0/s、锻星 0）计入总账。窗口 ${fmt(source.inscriptionWindowSeconds)}s 为 raw 基础时长（连携 +2s/次、击杀延长 3s/ICD 未逐秒建模）。状态符（核心 +30% 暴击/+50% 积蓄/C1 16% 电抗）仍按满覆盖计。`,
+      footer: `常态只能打血锻四式、锻星是猩红铭刻专属（用户口径 2026-09-11）；两态平A秒均与残痕积累都不同，按时间占比加权。锐能自动回复按公告列 sharpness_gain（血锻 3.0/s、锻星 0）计入总账。单窗基础 ${fmt(DEFAULT_INSCRIPTION_WINDOW_SECONDS)}s（raw）${Number(source.cinemaLevel ?? 0) >= 2 ? ` + 影画2 ${fmt(C2_INSCRIPTION_WINDOW_BONUS_SECONDS)}s` : ''}，另有连携 +2s/次；击杀延长 3s/ICD 未逐秒建模。状态符（核心 +30% 暴击/+50% 积蓄/影画2 18% 电抗）仍按满覆盖计。`,
     },
     {
       id: 'claret-sharpness',
