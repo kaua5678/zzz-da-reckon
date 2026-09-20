@@ -222,7 +222,7 @@
 - **模块**：`src/mechanics/agents/ben.ts`（替代旧 `benGuardShieldMechanic`）。
 
 ### 安东（anton / 1111）—— 打桩电钻增伤与回能
-- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/anton.ts` + spec `1111.json`；测试 `src/mechanics/__tests__/anton.test.ts` 4 例）。含：核心被动打桩 +24%/电钻 +40% 按 catalog 精确 moveId 施加、C1 每个实际电钻执行行最多回 5 能量写入能量总账（不按 hit 放大）、C4 全队暴击+10% 按 (连携+终结)×12/战斗时长估算覆盖率、C6 仅爆发普攻与爆发闪反 24% 满层默认全覆盖、额外能力·通力合作感电追加（2026-08-31 接入：爆发状态每 4 次暴击 → release 事件额外结算一次 45% 感电伤害，次数 = 电钻+打桩命中数/4 × 触发率滑块 `anton.additionalShockRatio` 默认 100% 用户口径；0.5s ICD 总量口径不约束）；C2 护盾不进伤害。此前无档案段，2026-08-27 新建。
+- **当前实现状态 [部分实现 2026-09-20 R61 订正]**：模块与单测已就位，但**载体 moveId 集在执行计划里从不出现**（下条「已知缺口」实测坐实）⇒ 影画1 电钻回能与影画6 爆发增伤**端到端恒为 0**，状态表原标 `implemented_approximation` 属虚报，已下调为 `partially_implemented`。（实现位置：`src/mechanics/agents/anton.ts` + spec `1111.json`；测试 `src/mechanics/__tests__/anton.test.ts` 4 例 + `cinemaAxisBatchA.test.ts` 边界反锁 1 例）。含：核心被动打桩 +24%/电钻 +40% 按 catalog 精确 moveId 施加、C1 每个实际电钻执行行最多回 5 能量写入能量总账（不按 hit 放大）、C4 全队暴击+10% 按 (连携+终结)×12/战斗时长估算覆盖率、C6 仅爆发普攻与爆发闪反 24% 满层默认全覆盖、额外能力·通力合作感电追加（2026-08-31 接入：爆发状态每 4 次暴击 → release 事件额外结算一次 45% 感电伤害，次数 = 电钻+打桩命中数/4 × 触发率滑块 `anton.additionalShockRatio` 默认 100% 用户口径；0.5s ICD 总量口径不约束）；C2 护盾不进伤害。此前无档案段，2026-08-27 新建。
 - **已知缺口（2026-08 审计，用户裁决不做）**：爆发状态电钻执行行未建模（执行计划只有常规强特/闪反/招架/支援，无 `1111010/15/19` 行）→ `burstHits=0` → 感电追加 release 事件在全队计算中不生成（模块逻辑有单元测试 `anton.test.ts`，集成链路待爆发状态建模后生效——用户 2026-08 裁决复杂度高暂不做）。
 - 实现：`src/mechanics/agents/anton.ts`（口径见其头注释）+ spec `src/specs/agents/1111.json` notes。
 

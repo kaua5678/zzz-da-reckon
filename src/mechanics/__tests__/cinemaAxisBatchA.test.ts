@@ -23,6 +23,7 @@ import {
   YUZUHA_C4_ASSIST_BUILDUP_PCT,
   YUZUHA_C4_ASSIST_DMG_PCT,
 } from '@/mechanics/agents/yuzuha'
+import { ANTON_C6_MOVE_IDS, ANTON_DRILL_MOVE_IDS, ANTON_PILE_MOVE_IDS } from '@/mechanics/agents/anton'
 
 const rawTalent = (id: string, level: number): string => {
   const raw = JSON.parse(readFileSync(new URL(`../../../data/raw/nanoka_missing/full/${id}.json`, import.meta.url), 'utf8'))
@@ -136,4 +137,63 @@ describe('R61 batchA · 影画轴「档位表类实现」判据', () => {
     expect(cinemaDesc).toContain('支援突击')
     expect(potentialText, '潜能轴出现了影画4 的支援突击子句（轴串了）').not.toContain('支援突击：夹心硬糖射击')
   })
+})
+
+/**
+ * R61 batchB —— 1111 安东 影画1/影画6：**载体集在执行计划里从不出现**（虚报面收口）。
+ *
+ * 形态：模块 `anton.ts#patchExecutions` 按 moveId 集合施加增伤（打桩 +24 / 电钻 +40 /
+ * C6 +24），集合内容与 catalog 一致、单元测试也逐条断言 —— 但**引擎的执行计划从不产出
+ * 这些 moveId**（爆发状态电钻行未建模；实测执行行恒为
+ * `basic_attack / 1111011 / 1111017 / 1111016 / 1111014 / 1111020 / 1111023`）。
+ * ⇒ `patchExecutions` 的三条分支全部落空、`exec.dmgBonus` 恒 0，影画1 回能与影画6 增伤
+ * 端到端 delta 恒为 0（多队实测确认）。这不是「实现写错」，而是**状态表把未接入面
+ * 报成了 implemented** —— 判据的作用是把这条边界钉住：将来爆发状态被建模时，本用例会红，
+ * 提示把状态表改回 implemented* 并补端到端判据。
+ *
+ * ⚠ 本条**不断言「应该实现」**（用户 2026-08 已裁决不做，见 docs/MECHANICS_IMPLEMENTATION.md
+ * 安东段「已知缺口」）；它断言的是「当前确实没接入」这一事实，防状态表再次漂回虚报。
+ */
+describe('R61 batchB · 1111 影画载体集未接入（状态表边界反锁）', () => {
+  it('1111 C6：载体集与执行行的交集恒为空 ⇒ dmgBonus 全 0（爆发状态未建模）', async () => {
+    const { config } = await setupHarness([{ agentId: '1111', cinemaLevel: 6 }])
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 0))
+    const self = calc.resourceResult.value?.characters?.find(c => c.agentId === '1111')
+    const used = (self?.executions ?? []).map(e => String(e.moveId)).filter(m => /^\d+$/.test(m))
+
+    // 反空洞：执行计划确实非空（否则「零交集」是废话）
+    expect(used.length, '1111 执行计划为空 ⇒ 断言前提不成立').toBeGreaterThan(3)
+
+    const carriers = new Set([...ANTON_PILE_MOVE_IDS, ...ANTON_DRILL_MOVE_IDS, ...ANTON_C6_MOVE_IDS])
+    const hit = used.filter(m => carriers.has(m))
+    expect(
+      hit,
+      `1111 的影画载体 moveId 出现了（爆发状态已被建模？）⇒ 应把状态表改回 implemented* 并补端到端判据：${hit.join(', ')}`,
+    ).toHaveLength(0)
+
+    // 通道量直接反锁：所有执行行的 dmgBonus 恒 0（三条 patch 分支全落空）
+    const withBonus = (self?.executions ?? []).filter(e => (e.dmgBonus ?? 0) !== 0).map(e => `${e.moveId}(+${e.dmgBonus})`)
+    expect(withBonus, `1111 有执行行吃到了影画增伤（与「载体集零交集」矛盾）：${withBonus.join(', ')}`).toHaveLength(0)
+
+    // 状态表必须与此事实一致：C1/C6 不得再标 implemented*
+    const constellations = JSON.parse(readFileSync(new URL('../../../public/static/character-constellations.json', import.meta.url), 'utf8')).characters
+    for (const lv of [1, 6]) {
+      const entry = (constellations['1111']?.cinemas ?? []).find((x: { cinema: number }) => x.cinema === lv)
+      expect(
+        String(entry?.status ?? ''),
+        `1111 影画${lv} 又被标成 implemented*，但载体集仍零交集（状态表虚报）`,
+      ).not.toMatch(/^implemented/)
+    }
+
+    // 确认这确实是「未建模」而非「本次装配偶然」：显式轴模式同样零交集
+    config.useStunAxis = true
+    ;(config as unknown as { stunAxes: unknown }).stunAxes =
+      [{ name: 'a', count: 3, actions: [{ slot: 0, moveId: '1111006', count: 1 }], basicFillerSlot: 0 }]
+    const calc2 = useResourceCalc()
+    await new Promise(r => setTimeout(r, 0))
+    const self2 = calc2.resourceResult.value?.characters?.find(c => c.agentId === '1111')
+    const used2 = (self2?.executions ?? []).map(e => String(e.moveId))
+    expect(used2.filter(m => carriers.has(m)), '轴模式下也不应出现载体 moveId').toHaveLength(0)
+  }, 300_000)
 })
