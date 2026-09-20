@@ -801,23 +801,23 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
       实测 3 条真回归与**唯一合法修法**（跨块共享类进 `styles/chart-blocks.css`，各块 `<style scoped src>` 载入 ⇒ 特异性不变、源码一份；复制两份必漂：`.dd-caption` 已漂 11 vs 11.5px）在判据 16 头注释 + `scopedStyleReach.test.ts`（含两条反向闸门：注释里的 `<style scoped src>` 字样、嵌套 `<template #slot>` 截断）。
 
 39. **「基线绿」不等于「改动生效」：数据订正类改动必须反向 A/B 证伪（2026-09-12 两条实测）**：
-    **症状**：改了 catalog 数值，`timeGolden` 全绿零 delta → 极易被读成「改动没生效 / 漏改了」。
-    **两个真实成因**（都可能表现为绿）：
-    ① **基线已被前人重生成过**（最常见）：`TIME_GOLDEN_UPDATE=1` 跑过一次，基线里**已经是订正后的值**，
-       于是「改对了」和「没改」都显示绿。1611 克拉蕾实测：基线里 `856266` 本就是订正后值。
-    ② **改动路径不进该仪器的度量面**：`applyPanel` 钩子在**编排层**（`resourceCalc/panelPhases.ts` 派发），
-       而 `PROBE_AGENT=<id> npm run probe:panel` 只调 `core/panel#calcPanel` —— 探针**看不到**任何
-       `applyPanel` 施加的修正（1611 的 +17.5% 暴击率就不在其中）。
-    **判据（照做，别凭绿/红下结论）**：
-    1. **反向 A/B**：临时把值改回旧值重跑，看 delta 是否如预期出现。1611 实测改回 critDmg=0 →
-       c0 **−21.569%** / c6 **−21.970%**（改完立刻用备份还原）。**出现预期 delta 才证明通道打通**。
-    2. **选对仪器**：判断你要验的东西在不在该仪器的路径上（探针 = 只有 calcPanel；`useResourceCalc`
-       的 `damagePanels` = 含 applyPanel 的权威面板）。不确定就两个都跑，对不上的差就是钩子贡献。
-    3. **单变量归因**：多处同时改时，逐个回退定位到**唯一**诱因（本批 20 处订正里，只有 1051 引起
-       时间账抖动、只有 1291 引起加权易伤快照漂移 —— 都是逐个回退实证出来的，不是猜的）。
-    **复算/工具**：`node scripts/audit-catalog-level60.mjs`（catalog ↔ raw 对账，见坑 40）。
-    **否决记录**：❌「测试绿了所以改动生效了」——这是本坑的全部代价；❌ 用探针读数当面板唯一权威
-    （不含 applyPanel）；❌ 多处一起改后靠 delta 猜归因（必须单变量回退）。
+    **症状**：改了 catalog 数值，`timeGolden` 全绿零 delta → 极易被读成「改动没生效 / 漏改了」。三个成因：
+    ① **基线已被前人重生成过**（最常见）：`TIME_GOLDEN_UPDATE=1` 跑过一次，基线里**已经是订正后的值**
+       ⇒「改对了」和「没改」都显示绿（1611 实测：基线里 `856266` 本就是订正后值）。② **改动路径不进该
+       仪器的度量面**：`applyPanel` 钩子在**编排层**（`resourceCalc/panelPhases.ts` 派发），而
+       `PROBE_AGENT=<id> npm run probe:panel` 只调 `core/panel#calcPanel` ⇒ 看不到任何 `applyPanel` 修正
+       （1611 的 +17.5% 暴击率就不在其中）。③ **该量在此夹具下不 binding**（2026-09-20 R57，§R55-J1 收口）：
+       补 `CINEMA_LEVELS` 到全档（414→538 条，`drifted=0`，代价 33s→42s）后 `GASH_EFF_C1 20→22`（两倍于
+       R55 的 +1pp）**仍全绿** —— 根因不是采样档缺失而是**通道被钳**：`maimCount = floor(min(gashStacks,
+       maimStackBudget)×coverage)+c6Extra`，`maimStackBudget` 由**招式次数**驱动（默认夹具 ≈4），
+       `gashStacks` 48/55/56 恒 **>>** budget ⇒ `min()` 永远取 budget ⇒ 非绑定通道加多少档都是零信息。
+    **判据**（别凭绿/红下结论）：① **反向 A/B**：临时把值改回旧值重跑，看 delta 是否如预期出现（1611
+    实测改回 critDmg=0 → c0 **−21.569%** / c6 **−21.970%**，改完立刻还原）——**出现预期 delta 才证明
+    通道打通**。② **选对仪器**：探针 = 只有 calcPanel；`useResourceCalc` 的 `damagePanels` = 含 applyPanel
+    的权威面板；不确定就两个都跑。③ **单变量归因**：多处同时改时逐个回退定位到**唯一**诱因（本批 20 处
+    订正里只有 1051 引起时间账抖动、只有 1291 引起加权易伤快照漂移）。**复算**：`audit-catalog-level60.mjs`。
+    **否决记录**：❌「测试绿了所以改动生效了」；❌ 用探针读数当面板唯一权威（不含 applyPanel）；❌ 多处一起
+    改后靠 delta 猜归因；❌ 补采样档当万能解（非绑定通道 / 逐角色独立判据严格支配，见成因 ③）。
 
 40. **catalog 落库值必须与 raw 源可对账：漏加「突破加成」是最安静的一类数据错误（2026-09-12）**：
     **症状**：某角色的 level60 字段 = **全库通用裸基值**（如暴击率全部恰好 5、暴伤全部恰好 50）。
