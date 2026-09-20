@@ -308,6 +308,8 @@ export interface CharacterOperationConfig {
   yuzuhaTransferElement?: string
   /** 柚叶命座等级（影画6） */
   yuzuhaCinemaLevel?: number
+  /** 柚叶影画4：支援突击行预存的缩放后异常积蓄（buildCharConfig 从倍率表 ×1.2，patchExecutions 消费） */
+  yuzuhaC4AssistBuildUp?: number
   /** 柏妮思搅拌式次数：0 表示自动按溢出燃点取上限 */
   burniceStirringCount?: number
   /** 柏妮思搅拌式（1171007 融合）单次动作时长（秒） */

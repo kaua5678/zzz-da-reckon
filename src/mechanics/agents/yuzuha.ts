@@ -32,6 +32,22 @@ export const YUZUHA_ULT_TEAM_ENERGY = 25
 export const YUZUHA_C1_ENTER_ENERGY = 30
 /** 影画2 强制连携 CD：20 秒最多一次（重击命中非失衡敌） */
 export const YUZUHA_C2_CHAIN_CD = 20
+/**
+ * 影画4·恶作剧开始：支援突击（来块曲奇 1411017 / 夹心硬糖射击 1411024）伤害 +30%、属性异常积蓄效率 +20%。
+ *
+ * R61 修复（轴 = 影画，非潜能）：状态表把本条声明为 `implemented_approximation` 并**指名**
+ * 「已由 teammate-buffs 接入」，但该条在全库**并不存在** —— catalog `teammate-buffs.json` 的
+ * 1411 组只有核心被动/额外能力/影画一/影画二/影画六五条（无 C4），spec `teamBuffs` 为空数组，
+ * 且 `grep -rn "1411017|1411024" src/` 零命中 ⇒ 影画4 整条从未进计算。
+ * 多队实测（solo / 1181 / 1051 / 1181+1051）：C3→C4 的 `dmgDelta` 与面板 diff **恒为 0**。
+ * 承载 = 模块 `patchExecutions` 行级改写（与妮可 C1 `nicole.ts:92-108` 同款先例）：D4 是
+ * **招式限定**效果（只给支援突击两行），走 `exec.dmgBonus` 而非全局面板 —— 写面板会外溢到
+ * 其他招式。积蓄侧按行级 ×(1+20%) 并同步 `totalAnomalyBuildUp`（enrich 会回填覆盖，需 override）。
+ */
+// @fact agent:1411/影画4支援突击 口径: 影画4（talent.4）支援突击伤害 +30% / 属性异常积蓄效率 +20%，招式限定到两行支援突击（来块曲奇 1411017 / 夹心硬糖射击 1411024），与潜能（potentialLevel）无关 | 据 raw nanoka_missing/full/1411.json `talent.4` + R61 三队正交实测@2026-09-20 | 验 src/mechanics/__tests__/cinemaAxisBatchA.test.ts | 锚 src/mechanics/agents/yuzuha.ts#YUZUHA_C4_ASSIST_DMG_PCT | 信 确认
+// ⟳复核: nanoka 若刷新 1411 的 talent.4，逐条对账「支援突击伤害+30%/积蓄+20%」是否仍为影画4 且仍只作用于支援突击两行 | 到期 2027-03-31
+export const YUZUHA_C4_ASSIST_DMG_PCT = 30
+export const YUZUHA_C4_ASSIST_BUILDUP_PCT = 20
 
 export function computeYuzuhaMechanic(input: {
   initialAtk: number
@@ -85,10 +101,24 @@ function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: numb
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
-function buildYuzuhaCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
+/** 按 moveId 在 assist 分类里取支援突击行（本模块单独用；`core/resource.ts#findAssistFollowUp`
+ *  是同义实现但返回派生的 actionTime/decibel，这里需要整行以读 `anomaly_buildup` 表值）。 */
+function findAssistFollowUpMove(skills: AgentCharConfigInput['skills'], moveId: string) {
+  const assist = skills?.categories?.find(c => c.id === 'assist')
+  return assist?.moves?.find(m => String(m.id) === String(moveId)) ?? null
+}
+
+function buildYuzuhaCharConfig({ cinemaLevel, cfg, skills, getRowValue }: AgentCharConfigInput): void {
   // 滑块必须经 buildCharConfig 落到 cfg，buildResourceResult 阶段才读得到（applyPanel 早于 cfg 构建拿不到 settings）
   cfg.yuzuhaChainEntryCount = Math.max(0, Math.floor(cfgSetting(cfg, 'yuzuha.chainEntryCount', 0)))
   cfg.yuzuhaCinemaLevel = cinemaLevel
+  // 影画4：支援突击行的**表值积蓄**在此预存（积蓄会被 enrich 从倍率表回填 ⇒ patchExecutions
+  // 阶段读不到；先例：seth.ts:98 预存 daze）。仅在 C4 且该角色确有支援突击行时预存。
+  if ((cinemaLevel ?? 0) >= 4 && cfg.assistFollowUpMoveId) {
+    const move = findAssistFollowUpMove(skills, cfg.assistFollowUpMoveId)
+    const base = getRowValue(move, 'anomaly_buildup')
+    if (base > 0) cfg.yuzuhaC4AssistBuildUp = base * (1 + YUZUHA_C4_ASSIST_BUILDUP_PCT / 100)
+  }
   // 终结技队友回能（calcCrossAgentEnergy 泛型通道，类型注释预留的「如柚叶25」）：满级12级 7+1.5×12
   cfg.supportUltimateEnergyRegen = YUZUHA_ULT_TEAM_ENERGY
   // 影画1 进场回 30 能量（勘域模式 180s 一次 → 每局一次，克拉蕾锐能/佩洛伊斯喧响同款口径）
@@ -186,6 +216,36 @@ function buildYuzuhaExecutions({ cfg, executions }: AgentResourceInput): void {
   }
 }
 
+/**
+ * 影画4·恶作剧开始：**招式限定**到两行支援突击（1411017 来块曲奇 / 1411024 夹心硬糖射击）。
+ *
+ * 为什么走 `patchExecutions` 而不是 `applyPanel`：D4 只抬支援突击，写 `panel.dmgBonus` 会让
+ * 柚叶的全部招式（强特/终结/彩糖花火…）一起吃到 —— 那是把「招式限定」做成「全伤害」，
+ * 与原文不符。行级改写与妮可 C1（`nicole.ts:92`）同款，且 `patchExecutions` 的调用点在
+ * `rowBuild.ts:453`（**全部行构建之后**）⇒ 支援突击行此时已存在、可直接改。
+ *
+ * 积蓄侧：`anomalyBuildUp` 会被 enrich 从倍率表回填 ⇒ 必须同时置 `anomalyBuildUpOverride`
+ * 并同步 `totalAnomalyBuildUp`（先例 `phoenix.ts:358`、`nicole.ts:104`）。
+ */
+function patchYuzuhaExecutions({ cfg, executions }: AgentResourceInput): void {
+  const cinema = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).yuzuhaCinemaLevel ?? 0)))
+  if (cinema < 4) return
+  const assistId = cfg.assistFollowUpMoveId
+  if (!assistId) return
+  // 积蓄预存值（buildCharConfig 从倍率表读，含 ×1.2）；enrich 会用表值覆盖 ⇒ 需 override。
+  const preBuilt = Number((cfg as unknown as Record<string, unknown>).yuzuhaC4AssistBuildUp ?? 0)
+  for (const exec of executions) {
+    if (exec.moveId !== assistId) continue
+    exec.dmgBonus = (exec.dmgBonus ?? 0) + YUZUHA_C4_ASSIST_DMG_PCT
+    if (preBuilt > 0) {
+      exec.anomalyBuildUp = preBuilt
+      exec.anomalyBuildUpOverride = true
+      exec.totalAnomalyBuildUp = preBuilt * Math.max(0, exec.count ?? 0)
+    }
+    exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画4 支援突击伤害+${YUZUHA_C4_ASSIST_DMG_PCT}%/积蓄+${YUZUHA_C4_ASSIST_BUILDUP_PCT}%`
+  }
+}
+
 function buildYuzuhaResourceSections({ result }: AgentResourceSectionsInput) {
   const source = result.yuzuhaMechanicSource
   if (!source) return []
@@ -258,6 +318,7 @@ export const yuzuhaMechanic: AgentMechanicModule = {
   buildCharConfig: buildYuzuhaCharConfig,
   applyTeamConfig: buildYuzuhaTeamConfig,
   buildExecutions: buildYuzuhaExecutions,
+  patchExecutions: patchYuzuhaExecutions,
   buildResourceResult: buildYuzuhaResourceResult,
   resourceSections: buildYuzuhaResourceSections,
   settings,
