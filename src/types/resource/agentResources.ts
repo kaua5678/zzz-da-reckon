@@ -86,7 +86,7 @@ export interface RoxyWindEnergySource {
   windEnergyCap: number
   /** 敬请安息消耗风能 = min(总获得, 强特次数 × 3)（存量上限 3/发） */
   windEnergyConsumed: number
-  /** 敬请安息每消耗 1 点风能生成的风眼数（上限 9，30s 自动引爆） */
+  /** 敬请安息每消耗 1 点风能生成的风眼数（同时存在上限 9、30s 自爆；默认手法单发 ≤3 ⇒ 两约束不可达） */
   windEyeGenerated: number
   /** 被引爆的风眼数（全部，爆鸣结算） */
   windEyeDestroyed: number

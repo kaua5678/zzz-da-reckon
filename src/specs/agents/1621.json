@@ -64,7 +64,7 @@
           "amountPerCount": 1,
           "coverage": 1,
           "status": "implemented_approximation",
-          "note": "[已确认·数据] 风眼生成数 = **消耗的风能点数**（原文 special.description[3]「每消耗1点[风能]，在攻击后额外造成一次风属性伤害，并在原地生成1个[风眼]」）；「风炮」是敬请安息招式的动画描述，无独立条目 ⇒ 风炮次数 = 强特次数。恕不远送/大小旋风均从**风眼数**推（不再从风能消耗推）。实现位置：src/mechanics/agents/roxy.ts#computeRoxyWindEnergy。⚠ 「同时存量≤9 / 30s 自然引爆 / 超限最早引爆」是时序 FIFO，未建模（总量口径近似）——登记在 check-guards DEBT_REGISTRY，代码标记在模块风眼账本处。",
+          "note": "[已确认·数据] 风眼生成数 = **消耗的风能点数**（原文 special.description[3]「每消耗1点[风能]，在攻击后额外造成一次风属性伤害，并在原地生成1个[风眼]」）；「风炮」是敬请安息招式的动画描述，无独立条目 ⇒ 风炮次数 = 强特次数。恕不远送/大小旋风均从**风眼数**推（不再从风能消耗推）。实现位置：src/mechanics/agents/roxy.ts#computeRoxyWindEnergy。⚠ 「同时存量≤9 / 30s 自然引爆 / 超限最早引爆」是时序 FIFO：R52 把逐事件队列真建出来跑闸门（全库 5702 次引擎求值零 delta）⇒ 默认手法下**结构性不可达**（单发风眼 ≤3 < 9 且每发恕不远送清空队列），现行式即精确解——口径与天花板见 `src/mechanics/agents/roxy.ts#computeRoxyWindEnergy` 的 `@fact agent:1621/风眼时序`。",
           "adjustable": {
             "id": "1621.roxy_wind_eye.wind_eye_from_cannon.rate",
             "label": "洛克茜·风眼·风炮消耗风能",

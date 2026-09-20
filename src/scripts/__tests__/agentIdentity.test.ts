@@ -10,11 +10,14 @@
  *   在 check-guards 定义新形态并单独换尺，不许在报告脚本里悄悄加宽尺度。
  */
 import { describe, expect, it } from 'vitest'
+import { fileURLToPath } from 'node:url'
 import {
   formatMarkdown,
   groupByIdentity,
+  loadCatalogIdentities,
   readIdentitySources,
   reportIdentity,
+  resolveIdentityValue,
   scanIdentitySource,
   summarizeIdentity,
 } from '../../../scripts/report-agent-identity.mjs'
@@ -28,6 +31,8 @@ import {
 } from '../../../scripts/lib/agent-identity-lines.mjs'
 
 type Entry = ReturnType<typeof scanIdentitySource>['entries'][number]
+/** 仓库根（本文件在 `src/scripts/__tests__/` ⇒ 上溯三层） */
+const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
 /** 缩短断言：只扫 fixture 源码，返回逐条比较 */
 const scan = (code: string): Entry[] => scanIdentitySource(code).entries
 
@@ -177,9 +182,25 @@ const c = team.find(x => x.id === '1581')`)
     for (const i of first.byIdentity) {
       expect(['agent.id', 'teammateBuffId', 'dynamic', 'unresolved']).toContain(i.resolves)
     }
-    // 解析口径可证伪：catalog 里真实存在的 id 必须解析成功（不是「全都 unresolved」的假绿）
+    // 解析口径可证伪：**直接驱动解析器**证明它有判别力（真 id → agent.id、假值 → unresolved）。
+    //
+    // ⚠ 2026-09-20 round 52：原断言是 `byIdentity.filter(resolves==='agent.id').length > 0`
+    // —— 那是**代理判据**，成立与否取决于「仓库里恰好还剩至少一条角色字面量」这个**偶然事实**。
+    // R51 把编排层最后一条（`panelPhases.ts` 的 `agent.id === '1261'`）**合法迁走后它反转假红**
+    // （`expected 0 to be greater than 0`）——与 R51 在 `checkGuards.test.ts` 修的
+    // `expect(e.frozen).toBeGreaterThan(0)` 是**同款陷阱**（把「还没还完债」当成判据活着的前提）。
+    // 正解 = 换成**行为断言**：解析器对构造输入必须给出可分辨三态，不再依赖存量字面量。
+    // （该红在 R51 的 verify 里**没被抓到**，因为那次 verify 的 worktree 停在父提交
+    //   `69a3601`，而本报告读的是 `git show HEAD:` ⇒ 见 round52 交接 §1.4。）
+    const catalogIds = loadCatalogIdentities(repoRoot)
+    expect(catalogIds, 'catalog.json 缺席 ⇒ 本断言无法进行（不应发生）').toBeTruthy()
+    const realId = [...catalogIds!.ids][0]
+    expect(realId, 'catalog 里必须至少有一个 agent.id').toBeTruthy()
+    expect(resolveIdentityValue(catalogIds!, realId!)).toBe('agent.id')
+    expect(resolveIdentityValue(catalogIds!, '不是任何角色')).toBe('unresolved')
+    expect(resolveIdentityValue(catalogIds!, '<dynamic>')).toBe('dynamic')
+    // 存量面：解析出来的 id 必须都是四位数字（形态正确性）——**允许为空**（还债到底即空，不是红）
     const resolvedIds = first.byIdentity.filter(i => i.resolves === 'agent.id').map(i => i.identity)
-    expect(resolvedIds.length).toBeGreaterThan(0)
     for (const id of resolvedIds) expect(id).toMatch(/^\d{4}$/)
     // 解析不到的必须逐个露出，不能被静默并进「已解析」。
     // ⚠ 2026-09-17 round 21 夜三批后本断言**按新事实收紧**：编排层曾遍布

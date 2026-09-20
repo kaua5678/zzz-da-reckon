@@ -23,7 +23,7 @@ import { buildSpecEventExecutions } from '@/specs/mechanics'
  *   敌方[风化]时风/浸染直伤 +8%（按风化覆盖率近似全伤通道）；进场回 40 能量（勘域 180s）；
  *   风化延长 20s（无数值）；强特后异常积蓄效率 +30%（50s，满覆盖近似，未接）。
  * - 资源循环（v12）：小心风寒（1621007，10 能量启动 +30/s 自旋）→ 结束自动 敬请安息（1621023）
- *   消耗全部[风能]（每 1 点 = 额外 1621021 一段 + 生成 1 个[风眼]，上限 9、30s 自爆/超限最早引爆）；
+ *   消耗全部[风能]（每 1 点 = 额外 1621021 一段 + 生成 1 个[风眼]，上限 9 同时存在、30s 自爆/超限最早引爆）；
  *   风眼爆鸣 1621022；敬请安息后场上+自身≥3 → 自动 恕不远送（1621005，引爆至多 3 个风眼：
  *   3 个同命中 → 巨旋风 1621020（1s）；不足 → 小旋风 1621019（1s/个，v12 = 1 秒）；终结技 +1 点[风能]。
  * - 影画：C1 敬请安息命中 → 全抗-15%（50s）+ 自身暴伤+40%；C2 小心风寒失衡易伤 +30%（v12：旧 25% → 30%）
@@ -156,16 +156,29 @@ export function computeRoxyWindEnergy(input: {
   // 的触发条件是「场上[风眼]和自身[风能]共计至少3个」⇒ 消耗侧是**风眼**。
   // 默认 `eyeRate=1` 且 `WIND_EYE_PER_ENERGY=1` 时 `windEyeGenerated === windEnergyConsumed`
   // ⇒ 本式与旧式 `floor(windEnergyConsumed / 3)` **逐位相同**（改的是口径来源不是数值）。
+  // ── 风眼「同时存量≤9 / 30s 自然引爆 / 超限最早引爆」时序口径（R52 收口，原 debt 销号）──────
+  // 原文 `special.description[4]`：「持续30秒后自动引爆；最多同时存在9个，超出上限后**最早生成**的
+  // 会自动引爆」= FIFO 队列 + 逐事件计时。R52 把逐事件队列**真建出来**跑闸门（全库 5702 次引擎求值：
+  // 105 预设 + 60 角色 × 命座 0/3/4/5/6），结论 = **默认手法下本式与真队列逐位相同**，理由是结构性的：
+  //   单发风眼上界 = `min(WIND_ENERGY_MAX=3, floor(单轮耗能/25))` ≤ 3；
+  //   而每次恕不远送恰引爆 `SEND_OFF_BURST_MAX`=3 ⇒ 队**每发清空**，队列长度恒 ≤ 3 < 9
+  //   ⇒ 9 上限与 30s 自爆**结构性不可达**（不是「影响小」，是「到不了」）。
+  // 默认 `spinSeconds=2.5` ⇒ 单轮耗能 10+75=85 ⇒ `floor(85/25)`=3 ⇒ 风眼数恒为 3 的倍数
+  // ⇒ 连余数项都恒 0 ⇒ 本式**就是**原文语义的精确解，不是近似。
+  // ⚠ 两个**滑块域**边界（默认域之外仍是近似；逐事件真值需要引擎没有的「逐发绝对时刻」）：
+  //   ① `eyeRate > 4/3`（spec `adjustable` 上限 2）⇒ 单发可 > 3 ⇒ 9 上限真的咬合，本式**高估**
+  //      （本文件夹具实测 `rate=2`：本式 so=86 / FIFO so=43）；
+  //   ② `spinSeconds < 65/30`（≈2.1667）⇒ 单发 1~2 ⇒ 局末留 1~2 个未触发的眼，本式把余数计成
+  //      小旋风而 FIFO 判其未发动 ⇒ 小旋风偏乐观（本文件夹具实测 `spin=0.5`：本式 mini=2 / FIFO=0）。
+  // ⚠ 为什么不把真队列落进引擎：`buildExecutions`/`buildResourceResult` 的入参只有**整局总量**
+  // （`IterationState` 无逐动作时刻、`SkillExecution` 无时间戳），轴内 `StunAxisAction.startTime`
+  // 也只是**相对窗口起点**、窗口绝对时刻全仓无生产者 ⇒ 落真队列必须**编造**发次间隔，那等于把
+  // 未建模假设写进伤害数（R52 侦察的实测证据，见 `.claude/PROMPT-handoff-round52.md` §3）。
+  // ⚠ 同样刻意**不**把 `WIND_EYE_MAX` 当总量上限用：那是「同时存在」上限，按总量钳会让
+  // `sendOffCount` 从 38 塌成 3（R51 侦察实测）——属把时序约束误当总量约束，比不建模更错。
+  // @fact agent:1621/风眼时序 近似: 「同时存量≤9 / 30s 自然引爆」在默认手法下**结构性不可达**（单发风眼 ≤ WIND_ENERGY_MAX=3 < 9，且每发恕不远送清空队列）⇒ `sendOffCount = floor(windEyeGenerated/SEND_OFF_BURST_MAX)` 是精确解而非近似；天花板 = 滑块域 `eyeRate>4/3`（单发>3 ⇒ 9 上限咬合，本式高估）与 `spinSeconds<65/30`（局末余留眼被本式计成小旋风） | 据 nanoka 3.2 raw special.description[4]@2026-09-20·R52 全库 5702 次引擎求值零 delta@2026-09-20 | 验 src/mechanics/__tests__/roxyWindEyeTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 确认
+  // ⟳复核: 引擎若获得「逐发绝对时刻」通道（或在 eyeRate>1 滑块域落地真 FIFO 队列）时复核本近似边界 | 到期 2027-03-31
   const sendOffCount = Math.floor(windEyeGenerated / SEND_OFF_BURST_MAX)
-  // debt: 风眼「同时存量≤9 / 30s 自然引爆」是**时序**约束 原文 `description[4]`「持续30秒后自动引爆；
-  // 最多同时存在9个，超出上限后**最早生成**的会自动引爆」= FIFO 队列 + 逐事件计时，整局总量口径
-  // 表达不了：`WIND_EYE_MAX` 因此在计算面**无钳制**（唯一消费者曾是展示文案），
-  // 且 `windEyeDestroyed ≡ windEyeGenerated`（生成即引爆）。快节奏手法下「生成即引爆」会**高估**
-  // 恕不远送可用次数（真实的 9 眼 FIFO 会让超限的眼提前爆掉、减少可用引爆）。
-  // ⚠ 刻意**不**把 `WIND_EYE_MAX` 当总量上限用：那是「同时存在」上限，按总量钳会让 `sendOffCount`
-  // 从 38 塌成 3（R51 侦察实测该读数）——属于把时序约束误当总量约束，比不建模更错。
-  // 升级路径 = 逐事件时序队列（生成/引爆双事件按时间轴排序）或按 30s 窗口钳制
-  // （登记于 check-guards DEBT_REGISTRY）。
   // 影画6 余响：每次恕不远送给主目标加[余响]，每 3 秒生成 1 次巨旋风、共 2 次（重复触发叠加）
   // → 总量近似 = 每次引爆额外 2 次（引爆间隔 > 6s 时逐次完整；叠加刷新按 2×引爆计）
   const megaTornadoCount = sendOffCount + (cinema >= 6 ? sendOffCount * ROXY_C6_ECHO_BURSTS : 0)
@@ -390,7 +403,7 @@ function buildRoxyResourceSections({ result }: AgentResourceSectionsInput) {
       title: '洛克茜风眼·恕不远送',
       summary: `风眼 ${source.windEyeGenerated} · 恕不远送 × ${source.sendOffCount} · 巨旋风 ${source.megaTornadoCount} · 小旋风 ${source.miniTornadoSeconds}s`,
       rows: [
-        { label: '风眼生成', value: `${source.windEyeGenerated} 个`, detail: `上限 ${WIND_EYE_MAX}、30s 自爆/超限最早引爆（爆鸣 1621022 × ${source.windEyeDestroyed}）` },
+        { label: '风眼生成', value: `${source.windEyeGenerated} 个`, detail: `同时存在上限 ${WIND_EYE_MAX}（默认手法下单发 ≤ 3 ⇒ 结构性不可达）、30s 自爆/超限最早引爆（爆鸣 1621022 × ${source.windEyeDestroyed}）` },
         { label: '恕不远送', value: `${source.sendOffCount} 次`, detail: '敬请安息后场上+自身≥3 → 自动发动（引爆至多 3 个风眼）' },
         { label: '巨型风旋', value: `${source.megaTornadoCount} 次`, detail: '3 个风眼同时命中 → 巨旋风（1621020）持续 1 秒；影画6 ×250%' },
         { label: '微型风旋', value: `${fmt(source.miniTornadoSeconds)}s`, detail: '不足 3 个的余数 → 小旋风（1621019）1s/个' },

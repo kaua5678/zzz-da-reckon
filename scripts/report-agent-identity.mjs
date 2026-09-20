@@ -258,7 +258,7 @@ export function reportIdentity(root = resolve(dirname(fileURLToPath(import.meta.
   return { measuredAt, fellBack, legacyLines, summary, byIdentity: identityValues, entries, blindSpots, nonCharacterIds }
 }
 /** catalog 里的可解析身份值（agent.id + agent.teammateBuffId）；缺文件返回 null（只报不红） */
-function loadCatalogIdentities(root) {
+export function loadCatalogIdentities(root) {
   const path = resolve(root, 'public/static/catalog.json')
   if (!existsSync(path)) return null
   const agents = JSON.parse(readFileSync(path, 'utf8')).agents ?? []
@@ -269,7 +269,19 @@ function loadCatalogIdentities(root) {
   }
   return { ids, buffIds }
 }
-function resolveIdentityValue({ ids, buffIds }, value) {
+/**
+ * 身份字面量 → catalog 数据面结论。
+ *
+ * ⚠ **导出面（2026-09-20 round 52）**：本函数与 `loadCatalogIdentities` 从模块私有改为导出，
+ * 专供 `src/scripts/__tests__/agentIdentity.test.ts` 做**行为断言**。原因 = 该文件原用
+ * 「`byIdentity` 里至少有一条 `resolves === 'agent.id'`」作为「解析口径没退化成恒 unresolved」
+ * 的**代理判据**，而 R51 把编排层最后一条角色字面量（`panelPhases.ts` 的 `agent.id === '1261'`）
+ * 合法迁走后，该代理判据**反转假红**（`expected 0 to be greater than 0`）——
+ * 与 R51 在 `checkGuards.test.ts` 修的 `frozen > 0` 是**同款陷阱**。
+ * 正解 = 直接驱动解析器证明它有**判别力**（真 id → agent.id、假值 → unresolved），
+ * 不再依赖「仓库里恰好还剩一条字面量」这种会随还债消失的偶然事实。
+ */
+export function resolveIdentityValue({ ids, buffIds }, value) {
   if (value === '<dynamic>') return 'dynamic'
   if (ids.has(value)) return 'agent.id'
   if (buffIds.has(value)) return 'teammateBuffId'

@@ -92,3 +92,11 @@ export declare function groupByIdentity(entries: IdentityEntry[]): IdentityByIde
 export declare function readIdentitySources(root?: string, options?: { atHead?: boolean }): { file: string; content: string; source: 'HEAD' | 'worktree' | 'worktree-fallback' }[]
 export declare function reportIdentity(root?: string, options?: { atHead?: boolean }): IdentityReport
 export declare function formatMarkdown(report: IdentityReport): string
+/**
+ * catalog 可解析身份值集合（agent.id + teammateBuffId）；缺 catalog 文件返回 null（只报不红）。
+ * 2026-09-20 round 52 导出：供 `agentIdentity.test.ts` 直接驱动解析器做**行为断言**，
+ * 替代会随「最后一条角色字面量被合法迁走」而反转假红的代理判据（`resolvedIds.length > 0`）。
+ */
+export declare function loadCatalogIdentities(root?: string): { ids: Set<string>; buffIds: Set<string> } | null
+/** 身份字面量 → 数据面结论（agent.id / teammateBuffId / dynamic / unresolved）——同上，R52 导出 */
+export declare function resolveIdentityValue(catalog: { ids: Set<string>; buffIds: Set<string> }, value: string): 'agent.id' | 'teammateBuffId' | 'dynamic' | 'unresolved'
