@@ -71,7 +71,36 @@ export const GASH_PER_LAYER = 600
  * **同时存量**上限 3 层（敌人身上最多挂 3 层，超出部分溢出浪费）。
  * ⚠️ 这**不是整局毁伤次数上限**（用户口径 2026-09-12：「3层限制这个是单次，我们全局计算器怎么可能一局只有3次毁伤呢」）——
  * 本计算器走整局总量口径：攒够就消耗、消耗完继续攒，故整局可用层数 = floor(总残痕值/600) 不设 3 的钳制，
- * 真正的上限是**消耗需求**（斩金断铁/葬血强袭/影画6 能打几次）。此常量只用于展示与「单次存量」文案。
+ * 真正的上限是**消耗需求**（斩金断铁/葬血强袭能打几次）。此常量只用于展示与「单次存量」文案。
+ *
+ * ## ★★ 残痕时序分诊（R54 结清 §R52-J2；**与风眼/余响都不同族，别互相照抄**）
+ *
+ * 原文（`data/raw/nanoka_missing/full/1611.json` `passive.level.1611501.desc[0]`）：
+ * 「部分锐化伤害会积累残痕值，残痕值满时，敌人会进入[残痕]，**[残痕]最多叠加3层**，
+ *   发动[斩金断铁]、[葬血强袭]命中处于[残痕]状态下的敌人时，**会消耗一层[残痕]**」
+ * ⚠ **原文没有任何时长/衰减/自然消失子句**（外部 6 语言 × 4 版本独立复核：nanoka zh/en/ja/ko
+ * 3.2 与 3.3.3 逐字符串零差异，官方名词表 `3000038` 亦只写「最多叠加3层」；同段落对猩红铭刻
+ * 16s / 残锋 40s / 进场锐能 180s / 喧响 18s **都明写秒数** ⇒ 残痕的省略是刻意的）。
+ *   ⇒ 层**只会被毁伤消耗**，上限是**纯计数**约束 ⇒ **只需事件顺序，不需绝对时刻**。
+ *   ⇒ R52 对风眼成立的那条否决理由（「引擎无逐发绝对时刻 ⇒ 必须编造发次间隔」）**对本条不成立**：
+ *     本条不需要时刻，只需要顺序，而顺序可以由「积累是速率×时间（连续）」这一事实定性。
+ *
+ * 记号：`L` = 整局可造层数 = `floor(P/600)`；`Ds` = **可消耗**层预算 = `cleave + 3·burial`
+ *      （★ 不含影画6 —— C6 原文「**不消耗[残痕]**直接触发1次单体[毁伤]」）；`cap` = 3。
+ *
+ * ★【定理】现行式 `consumed = min(L, Ds)` 是**所有自洽读法的共同上界**，且**是紧的**：
+ *   · 上界（穷举证明）：`L ∈ 0..12 × Ds ∈ 0..12 × 全部交错` = **10 400 599 个交错零越界**
+ *     ⇒ **单向高估、不可能低估**。
+ *   · 紧性（可达）：细粒度交错（积累与消耗交替）取到 `min(L, Ds)` —— 而 `平A` 项**按定义**
+ *     就是 `秒均 × 时间`（连续），故细粒度交错正是本式自身隐含的读法。
+ * ⚠【天花板】病态读法（先攒满再消耗）取到 `min(L, Ds, cap)` ⇒ 高估幅度 = `max(0, min(L,Ds) − cap)`，
+ *   且 **cap 咬合的充要条件是 `L > cap 且 Ds > cap`**（二者任一 ≤ 3 则本式精确）。
+ *   实测默认夹具：`L`=24~26 / `Ds`=4 ⇒ 幅度 **≤ 1 层**；滑块推满（`Ds`=80）⇒ 幅度可达 53 层。
+ *   ⚠ 本条**纠正**原债务记的「极端配装（积累远快于消耗节奏）下偏乐观」：误差**不随积累速率 `L` 单调放大**，
+ *     而是被 `Ds` 与 `cap` 夹住（`L` 再大，幅度也 ≤ `Ds − cap`）——原表述把两个因子说成了一个。
+ *
+ * @fact agent:1611/残痕时序 近似: 「同时存量≤3层」是时序约束，总量口径下 `consumed = min(L, Ds)` 是**所有自洽读法的共同上界且紧**（10 400 599 个交错穷举零越界；细粒度交错可达该界，而平A项按定义即「秒均×时间」= 连续）；天花板 = 病态「先攒满再消耗」读法取 `min(L,Ds,cap)`，幅度 `max(0, min(L,Ds)−cap)`，cap 咬合充要条件 `L>3 且 Ds>3`（实测默认夹具 ≤1 层、滑块推满 ≤53 层） | 据 nanoka 3.2 raw passive.level.1611501.desc[0]@2026-09-20·外部 6 语言×4 版本复核零差异@2026-09-20·R54 穷举 10400599 交错@2026-09-20 | 验 src/mechanics/__tests__/claretGashTiming.test.ts | 锚 src/mechanics/agents/claret.ts#computeClaretSharpResource | 信 高
+ * ⟳复核: 官方若给出 [残痕] 的时长/衰减子句，或引擎获得逐事件顺序通道（可落真队列）时，替换本上界并复核 cap 咬合域 | 到期 2027-03-31
  */
 export const GASH_MAX_STACKS = 3
 /** 残余积蓄效率：核心被动 +50%（Lv.7）/ 影画2 锐暴 +20% */
@@ -154,7 +183,8 @@ function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelIn
  * 每 600 点 = 1 层；**`GASH_MAX_STACKS=3` 是敌人身上同时存量的上限，不是整局次数上限**
  *   （全局计算器按总量走：攒够就消耗，一局毁伤次数 = min(总层数, 消耗需求)，不被 3 钳死）；
  * 反制支援整组化解控制技时，琢形「直接添加1层」= 每组 +600 点、**不吃积蓄效率倍率**（送层不是积累）；
- * 毁伤需求 = 斩金断铁×1 + 葬血强袭×3 + 影画6(连携+终结)；毁伤 = min(层数, 需求) × 覆盖率 + 影画6 直接毁伤；
+ * 毁伤需求 = 斩金断铁×1 + 葬血强袭×3 + 影画6(连携+终结)；**层预算**只含真正消耗层的斩金断铁/葬血强袭
+ *   （影画6 原文「不消耗[残痕]」⇒ 不进层预算，R54 修正），毁伤 = min(层数, 层预算) × 覆盖率 + 影画6 直接毁伤；
  * 锐能 = 进场 60 + 终结技 10/次（raw chain.description[1]），秘血铸锋 60/发。
  */
 export function computeClaretSharpResource(input: {
@@ -222,19 +252,27 @@ export function computeClaretSharpResource(input: {
   const counterAssistGashStacks = Math.max(0, Math.floor(input.counterAssistCount ?? 0))
   const gashValuePct = baseGash * buildupMultiplier + counterAssistGashStacks * GASH_PER_LAYER
   // 整局可用层数**不设 3 钳制**：3 层是敌人身上的同时存量上限（见 GASH_MAX_STACKS 注释），
-  // 总量口径下攒够就消耗、消耗完继续攒，真正的上限是下面的消耗需求次数（斩金断铁/葬血强袭/影画6）。
-  // debt: 残痕总量口径天花板 「同时存量≤3层」本质是时序约束，总量口径只能表达为「不钳制+消耗需求封顶」，
-  // 极端配装（积累远快于消耗节奏）下溢出浪费未建模 ⇒ 偏乐观；升级路径 = 逐动作时序模拟或按消耗节奏窗口钳制
-  // （账本 task-ledger.md 2026-09-12 交接，登记于 check-guards DEBT_REGISTRY）。
+  // 总量口径下攒够就消耗、消耗完继续攒，真正的上限是下面的消耗需求次数（斩金断铁/葬血强袭）。
+  // debt: 残痕总量口径天花板 「同时存量≤3层」是时序约束，总量口径只能给出 `min(L, Ds)`（已证为**紧上界**：
+  // 10400599 交错零越界且细粒度交错可达，见 GASH_MAX_STACKS 上方 @fact）。病态「先攒满再消耗」读法取
+  // `min(L, Ds, cap)` ⇒ 高估幅度 `max(0, min(L,Ds) − cap)`，充要条件 `L>cap 且 Ds>cap`；实测默认夹具 ≤1 层、
+  // 滑块推满（Ds=80）≤53 层。升级路径 = 引擎获得逐事件顺序通道后落真队列（**不需要绝对时刻**，只需顺序）。
   const gashStacks = Math.max(0, Math.floor(gashValuePct / GASH_PER_LAYER))
   const cleaveCount = Math.max(0, Math.floor(input.cleaveSpecialCount))
   const burialCount = Math.max(0, Math.floor(input.bloodBurialCount))
   const c6Extra = cinemaLevel >= 6
     ? Math.max(0, Math.floor(Number(input.chainCountTotal ?? 0))) + Math.max(0, Math.floor(Number(input.ultimateCount ?? 0)))
     : 0
-  const maimDemand = cleaveCount + burialCount * BURIAL_MAIM_PER_CAST + c6Extra
+  // ★ R54 修正：影画6 的毁伤**不进层预算**。原文 `talent.6.desc`：「发动[连携技：血华誓·血契共鸣]、
+  // [终结技：血华誓·千锤百炼]重击命中敌人时，**不消耗[残痕]**直接触发1次单体[毁伤]」。
+  // 旧实现把它并进 `maimDemand` 后**又拿 demand 当层预算**（`consumed = min(stacks, demand)`）
+  // ⇒ 白白抬高钳位上限，让**本来无层可消耗**的连携/终结把 cleave/burial 的层"腾"出来
+  // ⇒ `maimCount` 虚高（实测 62/253 夹具越界、最大 +8 次）。
+  // 正解 = 两个量分开：`maimStackBudget`（**真正消耗层**的招式）管消耗，`maimDemand`（总需求）管展示。
+  const maimStackBudget = cleaveCount + burialCount * BURIAL_MAIM_PER_CAST
+  const maimDemand = maimStackBudget + c6Extra
   const coverage = Math.max(0, Math.min(1, input.gashCoverage))
-  const gashStackConsumed = Math.min(gashStacks, Math.max(0, maimDemand)) * coverage
+  const gashStackConsumed = Math.min(gashStacks, Math.max(0, maimStackBudget)) * coverage
   const maimFromCleave = Math.min(gashStackConsumed, cleaveCount)
   const maimFromBurial = Math.min(gashStackConsumed - maimFromCleave, burialCount * BURIAL_MAIM_PER_CAST)
   const maimCount = Math.floor(gashStackConsumed) + c6Extra
@@ -714,7 +752,7 @@ function buildClaretResourceSections({ result }: AgentResourceSectionsInput) {
               detail: `整组化解 ${source.counterAssistGashStacks} 组控制技，琢形「重击命中直接添加 1 层[残痕]」（不吃积蓄效率倍率）`,
             }]
           : []),
-        { label: '毁伤需求', value: `${source.maimDemand} 次`, detail: '斩金断铁×1 + 葬血强袭×3 + 影画6(连携+终结)×1' },
+        { label: '毁伤需求', value: `${source.maimDemand} 次`, detail: `斩金断铁×1 + 葬血强袭×3 + 影画6(连携+终结)×1；其中影画6 **不消耗残痕**，故层预算只算前两项` },
         { label: '残痕消耗', value: `-${Math.floor(source.gashStackConsumed)} 层`, detail: '命中残痕状态敌人，每层一次毁伤（覆盖率折算）' },
         { label: '毁伤触发', value: `${source.maimCount} 次`, detail: `斩金断铁 ${source.maimFromCleave} + 葬血强袭 ${source.maimFromBurial} + 影画6 ${source.maimFromC6}` },
       ],

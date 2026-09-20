@@ -118,9 +118,11 @@ export interface ClaretSharpResourceSource {
   /** 反制支援送层数（= 整组化解的控制技组数）：琢形「重击命中**直接**添加1层[残痕]」，
    *  每组 +600 点且**不吃积蓄效率倍率**（用户口径 2026-09-12）；0 = 本次计算没有反制支援。 */
   counterAssistGashStacks?: number
-  /** 血华誓毁伤需求次数（斩金断铁×1 + 葬血强袭×3 + 影画6 连携/终结各1） */
+  /** 血华誓毁伤需求次数（斩金断铁×1 + 葬血强袭×3 + 影画6 连携/终结各1）——**展示用总量**。
+   *  ⚠ 不等于层预算：影画6 原文「不消耗[残痕]」⇒ 层预算只含斩金断铁/葬血强袭（R54 修正）。 */
   maimDemand: number
-  /** 命中残痕状态消耗的层数 = min(残痕层数, 需求) × 残痕覆盖率 */
+  /** 命中残痕状态消耗的层数 = min(残痕层数, **层预算** cleave+3·burial) × 残痕覆盖率
+   *  （★ 层预算**不含**影画6 —— 它不消耗残痕；见 `claret.ts#computeClaretSharpResource` 的 R54 注释） */
   gashStackConsumed: number
   /** 触发毁伤次数 = 消耗残痕层数 + 影画6 不消耗残痕的单体毁伤 */
   maimCount: number

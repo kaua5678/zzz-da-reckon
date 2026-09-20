@@ -313,25 +313,31 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：拆分/消耗次�
   }, 300000)
 
   /**
-   * `claret.cleaveSpecialCount`：`claret.ts:409` 的 `max(0, floor(cfgSetting(…, 1)))` → `:235-239`
-   *   `maimDemand = cleave + 3·burial + c6Extra`；
-   *   `gashStackConsumed = min(gashStacks, max(0, maimDemand)) · coverage`；
+   * `claret.cleaveSpecialCount`：`claret.ts` 的 `max(0, floor(cfgSetting(…, 1)))` →
+   *   `maimStackBudget = cleave + 3·burial`（★ **层预算**，R54 起**不含** c6Extra）；
+   *   `maimDemand = maimStackBudget + c6Extra`（展示用总量）；
+   *   `gashStackConsumed = min(gashStacks, max(0, maimStackBudget)) · coverage`；
    *   `maimFromCleave = min(gashStackConsumed, cleave)`。
    *
+   * ★ **R54（2026-09-20）修正**：旧版把 `c6Extra` 并进 `maimDemand` 后**又拿 demand 当层预算**，
+   *   白白抬高钳位上限 ⇒ `maimCount` 虚高（实测 62/253 夹具、最大 +8 次）。原文依据：
+   *   `talent.6.desc`「重击命中敌人时，**不消耗[残痕]**直接触发1次单体[毁伤]」。
+   *   本测试的闭式随之改为**层预算**口径（用 `maimDemand − maimFromC6` 解出，不硬编 burial）。
+   *
    * 闭式全部用**同一次读数里的字段**解，两条关键项都不硬编：
-   * · `c6Extra` 就是结果里的 `maimFromC6`（`claret.ts:286` 的 `maimFromC6: c6Extra`）——
+   * · `c6Extra` 就是结果里的 `maimFromC6`（`claret.ts` 的 `maimFromC6: c6Extra`）——
    *   R50 侦察实测它在两次运行里分别是 0 与 10（`chainCountTotal`/`ultimateCount` 收敛反馈敏感），
    *   **禁止写死**。
    * · `maimFromCleave === min(consumed, cleave)` 是**带上限的 min 形式**：`gashStacks` 不够时
    *   提前触顶（把 cleave 抬到 6 实测 v=4 ⇒ 10 而非 12）。
    *
-   * ⚠ v=0 **不是零效果点**：只是去掉斩金断铁那一份消耗，葬血强袭（默认 1）与 c6 仍在。
-   * ⚠ 需要 `gashStacks > 0`（本队实测 16，不触顶）；`gashStacks` 本身**不随覆盖率变化**。
+   * ⚠ v=0 **不是零效果点**：只是去掉斩金断铁那一份消耗，葬血强袭（默认 1）仍在。
+   * ⚠ 需要 `gashStacks > 0`（本队实测 6）；`gashStacks` 本身**不随覆盖率变化**。
    */
-  it('claret.cleaveSpecialCount：maimFromCleave === min(consumed, v) 且 maimDemand === v + 3·burial + c6（三点 0 / 1 / 3）', async () => {
+  it('claret.cleaveSpecialCount：maimFromCleave === min(consumed, v) 且 maimDemand === 层预算 + c6（三点 0 / 1 / 3）', async () => {
     const team: HarnessTeamSlot[] = [{ agentId: '1611', ...RICH }, ...mates(['1481', '1371'])]
     const failures: string[] = []
-    const BURIAL_DEFAULT = 1 // `claret.ts:410` 的 cfgSetting fallback（本测试不动 burial）
+    const BURIAL_DEFAULT = 1 // `claret.ts` 的 cfgSetting fallback（本测试不动 burial）
     for (const v of [0, 1, 3]) {
       const src = await probe(team, 'claret.cleaveSpecialCount', v,
         calc => charOf(calc, '1611').claretSharpResourceSource)
@@ -344,13 +350,15 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：拆分/消耗次�
       if (src.maimFromCleave !== expectedFromCleave) {
         failures.push(`v=${v}: maimFromCleave 应为 min(consumed=${src.gashStackConsumed}, ${v})=${expectedFromCleave}，实到 ${src.maimFromCleave}`)
       }
-      const expectedDemand = v + BURIAL_MAIM_PER_CAST * BURIAL_DEFAULT + (src.maimFromC6 ?? 0)
+      // 层预算 = cleave + 3·burial（★ R54：**不含** c6 —— C6 原文「不消耗[残痕]」）
+      const budget = v + BURIAL_MAIM_PER_CAST * BURIAL_DEFAULT
+      const expectedDemand = budget + (src.maimFromC6 ?? 0)
       if (src.maimDemand !== expectedDemand) {
-        failures.push(`v=${v}: maimDemand 应为 v + ${BURIAL_MAIM_PER_CAST}×burial(${BURIAL_DEFAULT}) + c6(${src.maimFromC6})=${expectedDemand}，实到 ${src.maimDemand}`)
+        failures.push(`v=${v}: maimDemand 应为 层预算(${budget}) + c6(${src.maimFromC6})=${expectedDemand}，实到 ${src.maimDemand}`)
       }
-      const expectedConsumed = Math.min(src.gashStacks, Math.max(0, src.maimDemand))
+      const expectedConsumed = Math.min(src.gashStacks, Math.max(0, budget))
       if (src.gashStackConsumed !== expectedConsumed) {
-        failures.push(`v=${v}: gashStackConsumed 应为 min(stacks=${src.gashStacks}, demand=${src.maimDemand})=${expectedConsumed}（覆盖率默认 100），实到 ${src.gashStackConsumed}`)
+        failures.push(`v=${v}: gashStackConsumed 应为 min(stacks=${src.gashStacks}, 层预算=${budget})=${expectedConsumed}（覆盖率默认 100），实到 ${src.gashStackConsumed}`)
       }
     }
     expect(failures, failures.join('\n')).toEqual([])
@@ -364,6 +372,7 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：拆分/消耗次�
    * 把 cleave 抬到 6 会提前触顶（实测 v=4 ⇒ 10 而非 12）⇒ 本测试断言上面那条 **min 形式**。
    * ⚠ 不要用 `maimDemand === cleave + 3v + c6Extra` 里的 `c6Extra` 常数（见上一条备注）；
    * `maimFromBurial` 的 min 形式对 `c6Extra` **不敏感**（c6Extra 只抬高 demand，不抬高上限）。
+   * ★ R54：需求侧闭式改为「层预算 + c6」（层预算不含 c6，见上一条）。
    */
   it('claret.bloodBurialCount：maimFromBurial === min(consumed − fromCleave, 3·v)（三点 0 / 1 / 3）', async () => {
     const team: HarnessTeamSlot[] = [{ agentId: '1611', ...RICH }, ...mates(['1481', '1371'])]
@@ -381,26 +390,28 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：拆分/消耗次�
         failures.push(`v=${v}: maimFromBurial 应为 min(${src.gashStackConsumed} − ${src.maimFromCleave}, ${BURIAL_MAIM_PER_CAST}×${v})=${expected}，实到 ${src.maimFromBurial}`)
       }
       // 同一份读数解出的需求侧恒等式（c6Extra 用结果里的 maimFromC6，不硬编）
-      const expectedDemand = 1 + BURIAL_MAIM_PER_CAST * v + (src.maimFromC6 ?? 0) // cleave 默认 1（本测试不动它）
+      // ★ R54：层预算 = cleave(1) + 3·v，**不含** c6
+      const budget = 1 + BURIAL_MAIM_PER_CAST * v // cleave 默认 1（本测试不动它）
+      const expectedDemand = budget + (src.maimFromC6 ?? 0)
       if (src.maimDemand !== expectedDemand) {
-        failures.push(`v=${v}: maimDemand 应为 cleave(1) + ${BURIAL_MAIM_PER_CAST}×${v} + c6(${src.maimFromC6})=${expectedDemand}，实到 ${src.maimDemand}`)
+        failures.push(`v=${v}: maimDemand 应为 层预算(1 + ${BURIAL_MAIM_PER_CAST}×${v})=${budget} + c6(${src.maimFromC6})=${expectedDemand}，实到 ${src.maimDemand}`)
       }
     }
     expect(failures, failures.join('\n')).toEqual([])
   }, 300000)
 
   /**
-   * `claret.gashCoverage`：`claret.ts:411` 的 `max(0, min(1, min(100, cfgSetting(…, 100))/100))`
-   * → `:237-240` 的 `gashStackConsumed = min(gashStacks, max(0, maimDemand)) · coverage`
+   * `claret.gashCoverage`：`claret.ts` 的 `max(0, min(1, min(100, cfgSetting(…, 100))/100))`
+   * → `gashStackConsumed = min(gashStacks, max(0, **层预算**)) · coverage`
    * 与 `maimCount = floor(gashStackConsumed) + c6Extra`。
    *
-   * 闭式 = `consumed === min(stacks, demand) · (min(100,v)/100)`。
+   * 闭式 = `consumed === min(stacks, 层预算) · (min(100,v)/100)`。
+   * ★ R54：`层预算 = maimDemand − maimFromC6`（不含 c6；旧版误用 `maimDemand`）。
    * ⚠ `floor` 在乘**之后**（`maimCount` 才 floor）⇒ 严格说 `consumed` 不是比例量，
-   * 但 0/50/100 三点上 `14 × 0.5 = 7` 恰好是整数，比例读法与闭式读法同值。
-   * ⚠ 三点要落在「floor 后互不相同的区间」：把 burial/cleave 调大 ⇒ `demand` 变小 ⇒
-   * 覆盖率折出来的三点可能相同（本队 `min(stacks,demand) = 14`，0/7/14 安全）。
+   * 但 0/50/100 三点上 `3 × 0.5 = 1.5` 不是整数 —— 本测试用**实测读数**解闭式，不假设整除。
+   * ⚠ 三点要落在「floor 后互不相同的区间」：本队 `min(stacks, 层预算) = 3`，0/1.5/3 安全。
    */
-  it('claret.gashCoverage：gashStackConsumed === min(stacks, demand)·v/100 且 maimCount === floor(consumed)+c6（三点 0 / 50 / 100）', async () => {
+  it('claret.gashCoverage：gashStackConsumed === min(stacks, 层预算)·v/100 且 maimCount === floor(consumed)+c6（三点 0 / 50 / 100）', async () => {
     const team: HarnessTeamSlot[] = [{ agentId: '1611', ...RICH }, ...mates(['1481', '1371'])]
     const failures: string[] = []
     const seen: number[] = []
@@ -408,11 +419,13 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：拆分/消耗次�
       const src = await probe(team, 'claret.gashCoverage', v,
         calc => charOf(calc, '1611').claretSharpResourceSource)
       if (!src) { failures.push(`v=${v}: claretSharpResourceSource 缺失`); continue }
-      const cap = Math.min(src.gashStacks, Math.max(0, src.maimDemand))
+      // ★ R54：层预算 = maimDemand − maimFromC6（C6 原文「不消耗[残痕]」⇒ 不进层预算）
+      const budget = src.maimDemand - (src.maimFromC6 ?? 0)
+      const cap = Math.min(src.gashStacks, Math.max(0, budget))
       const expected = cap * (Math.min(100, v) / 100)
       seen.push(src.gashStackConsumed)
       if (Math.abs(src.gashStackConsumed - expected) > 1e-9) {
-        failures.push(`v=${v}: gashStackConsumed 应为 min(${src.gashStacks}, ${src.maimDemand})×${v}/100=${expected}，实到 ${src.gashStackConsumed}`)
+        failures.push(`v=${v}: gashStackConsumed 应为 min(${src.gashStacks}, 层预算${budget})×${v}/100=${expected}，实到 ${src.gashStackConsumed}`)
       }
       const expectedMaim = Math.floor(src.gashStackConsumed) + (src.maimFromC6 ?? 0)
       if (src.maimCount !== expectedMaim) {
