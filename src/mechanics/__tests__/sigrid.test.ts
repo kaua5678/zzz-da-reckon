@@ -61,7 +61,14 @@ describe('希格莉德（1591）面板：核心被动 / 额外能力 / 影画', 
     expect(pPos.additionalAbilityActive).toBe(1)
     expect(pNeg.additionalAbilityActive ?? 0).toBe(0)
     // 面板差分：正例比负例多 840 攻击（浸染增伤已移到伤害行，按风化覆盖率折算——见全链用例）
-    expect(pPos.atk - pNeg.atk).toBeCloseTo(840, 0)
+    // ⚠ R60 订正：正例队友 1211 丽娜**自身**带潜能觉醒·完美侍奉②（大扫除，默认 potentialLevel=6）
+    // ——「[核心被动]增益期间基于自身穿透率每 1%，全队攻击 +8 点（上限 576）」⇒ 该差分里
+    // **额外混入 115.2 = 14.4 穿透率 × 8**（实测：把 1211 钉在 potentialLevel=1 时差分精确回到 840）。
+    // 本用例只测 1591 的额外能力 ⇒ 把 1211 的潜能钉到 I，隔离掉这个混淆变量。
+    const pos1 = await setup(['1591', '1211', ''])
+    pos1.config.setPotentialLevel(1, 1)
+    const pPos1 = pos1.computePanelPhases(0, pos1.config, useCatalogStore())!.inCombat as any
+    expect(pPos1.atk - pNeg.atk).toBeCloseTo(840, 0)
   })
 
   it('命座差分：1命攻击 ×1.25、2命喧响获取 +10、4命增伤 +18', async () => {
