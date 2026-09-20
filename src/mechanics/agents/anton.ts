@@ -1,5 +1,5 @@
 /* 安东（1111）机制模块。
- * 用户确认口径：核心打桩+24%、电钻+40%按 catalog 执行 moveId；C1 每个实际电钻招式额外回能最多5点并进入能量总账；C2 护盾不进伤害；C3/C5 通用技能等级；C4 按（连携次数+终结次数）×12/战斗时间估算覆盖率，默认全队暴击+10%；C6 仅爆发普攻与爆发闪反，24%满层增伤默认全覆盖。
+ * 用户确认口径：核心打桩+24%、电钻+40%按 catalog 执行 moveId；C1 每个实际电钻招式额外回能最多5点并进入能量总账；C2 护盾不进伤害；C3/C5 通用技能等级**由通用规则建模、本模块不写**（R62 订正双计，见下方长注释）；C4 全队暴击+10%（spec teamBuffs，source 影画四自动门控）；C6 仅爆发普攻与爆发闪反，24%满层增伤默认全覆盖。
  * 额外能力·通力合作（同属性/同阵营门控，2026-08-31 接入）：爆发状态下每触发4次暴击，下次攻击命中感电敌人额外结算一次 45% 感电伤害（0.5s ICD 总量口径下不约束）。
  *   触发次数 = 爆发状态内暴击次数/4 × 触发率滑块（anton.additionalShockRatio，默认100% 用户口径）；
  *   结算为 release 事件（element=electric 固定 45% 感电倍率，倍率基准=感电施加者的感电伤害）。
@@ -25,10 +25,36 @@ function setRecord(cfg: AgentPanelInput['panel'] | AgentResourceInput['cfg'], ke
   ;(cfg as unknown as Record<string, unknown>)[key] = value
 }
 
-function applyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
-  if (cinemaLevel >= 3) panel.skillLevelBonus = (panel.skillLevelBonus ?? 0) + 2
-  if (cinemaLevel >= 5) panel.skillLevelBonus = (panel.skillLevelBonus ?? 0) + 2
-}
+// ⚠⚠ **R62 订正：本文件原有 `applyPanel` 钩子，只做「3/5 命技能等级 +2/+4」——那是第二写者 ⇒ 双计。**
+//
+// 通用规则 `panelPhases.ts#computePanelPhases:658`（及 `:711` 的第二站点）已**无条件**给所有角色写
+// `panel.skillLevelBonus = cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0`；唯一豁免条件
+// `agentHasCinemaSkillLevelBuff(agent)` **只查 catalog `combatBuffs.cinemaBuffs[].buff.effects[]`
+// 里有没有 `stat === 'skillLevelBonus'`**。安东 catalog 的 C3/C5 两条 cinemaBuffs 的
+// **`effects` 是空数组**（描述文本写了「技能等级+2」，但没有 effect 对象）⇒ 豁免不成立 ⇒ 通用规则照给
+// ⇒ 同一件事被写两遍。
+//
+// 实测（R62 真管线 `{1111, 1211, ''}`；`skillLevelBonus` 读 `computePanelPhases(0).inCombat`，
+// `dmg` 读真 `useResourceCalc().teamTotalDamage`；隔离 worktree @ `3db9b32`）：
+//
+// | 影画 | 修复前 slb | 技能等级 | damageCoef | 正确 slb/等级 | 修复前 dmg | 修复后 dmg | delta |
+// |---|---|---|---|---|---|---|---|
+// | c0/c2 | 0 | 12 | 1.0000 | 0 / 12 | 1,138,683 | 同 | 0 |
+// | c3/c4 | **4** | **16** | **1.1818** | 2 / 14 | 1,211,521 | 1,175,102 | — |
+// | c5/c6 | **8** | **20** | **1.3636** | 4 / 16 | 1,478,935 | 1,264,475 | — |
+//
+// `core/skillLevel.ts` 头注释明确只有三档 **12 / 14 / 16**（「16（5命以上）」是**上界**）
+// ⇒ C3 起就吃到 C5 满档、C5 起技能等级 **20 超上界**。副作用：**C5→C6 伤害 delta 因封顶恒 0**
+//（双计把 C6 顶到上界之上）⇒ **端到端完全看不见这条缺陷** —— 这正是「边界差一」形态的隐蔽处。
+// 时间金标 delta（隔离 worktree，改动前 == pristine 快照）：**4 条全纯伤害、全 1111**
+// （c3 -7.436% / c4 -7.447% / c5 -12.963% / c6 -12.963%），**时间账零变化**。
+//
+// 正解 = **删掉该钩子**（同 `piper.ts` 头注释 ⑤「影画3/5 技能等级 +2/+4 已由通用规则建模，
+// 模块不重复实现」）。**不是**给 catalog 补 `effects` —— 那会让 `collectAgentBuffs` 的 `applyStat`
+// 通道再写一遍，仍然是两个写者。
+//
+// @fact agent:1111/影画3-5 口径: 影画3「技能等级+2」与影画5「技能等级+2」**只由通用规则** `computePanelPhases` 写入 `panel.skillLevelBonus`（c3=2 / c5=4 ⇒ 技能等级 14/16，上界 16）；`anton.ts` **不得**再写该字段（曾双计致 c3=4 / c5=8、技能等级 20 超上界，R62 订正） | 据 raw talent.3/talent.5 desc 逐字「技能等级+2」@2026-09-20 + 用户确认口径@2026-08 | 验 src/mechanics/__tests__/cinemaAxisBatchR62.test.ts | 锚 src/mechanics/agents/anton.ts#ANTON_ID | 信 确认
+// ⟳复核: 跑 `npx vitest run cinemaAxisBatchR62` —— 若 c3/c5 的 skillLevelBonus 又变回 4/8（或 `agentHasCinemaSkillLevelBuff` 被改成认「描述文本」而安东 catalog 补了 effects），说明双计回来了 | 到期 2027-03-31
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).antonCinemaLevel ?? 0)))
@@ -90,11 +116,10 @@ export const antonMechanic: AgentMechanicModule = {
   id: 'agent:anton',
   agentIds: [ANTON_ID],
   name: '安东·兄弟齐心',
-  description: '精确执行行增伤、C1回能总账、C3/C5技能等级、C6爆发招式增伤、额外能力感电追加（release 45% 感电倍率）。',
+  description: '精确执行行增伤、C1回能总账、C6爆发招式增伤、额外能力感电追加（release 45% 感电倍率）。C3/C5 技能等级由通用规则建模，本模块不写（R62 订正双计）。',
   settings: [
     { id: 'anton.additionalShockRatio', label: '感电追加触发率', description: '额外能力·通力合作：爆发状态内每4次暴击触发一次感电追加的触发率（含暴击率折算；安东在感电队默认满触发）', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
   ],
-  applyPanel,
   buildCharConfig: ({ cfg, cinemaLevel }) => setRecord(cfg, 'antonCinemaLevel', cinemaLevel),
   patchExecutions,
   buildAnomalyEvents: buildAntonAnomalyEvents,
