@@ -59,6 +59,16 @@ export const PULSE_PER_ULT = 25 // 终结技每次获得 25 层[脉冲]（用户
 export const PULSE_CAP = 25 // [脉冲]上限 25 层：多大都卡在 25，一次大招只能换 floor(25/8)=3 次
 export const PULSE_PER_GRENADE = 8 // 8 层[脉冲] → 下次投掷手雷额外丢一枚脉冲手雷 + 异放事件
 export const GRACE_BUILDUP_BONUS_PCT = 130
+/**
+ * 潜能觉醒·超频工程引擎（钢械交响曲 II~VI）：消耗[电能]时电属性伤害 +10/15/20/25/30%。
+ *
+ * 索引 = `potentialLevel`（1 = 钢械交响曲 I，无觉醒 ⇒ 0）。**不是命座轴** ——
+ * raw 把它放在 `potential_detail`（与 `talent.1..6` 影画完全独立的另一条轴）。
+ * ⚠ R58 订正：旧实现写成 `[10,15,20,25,30][Math.min(cinemaLevel,6)-2]` 且门控
+ * `cinemaLevel >= 2` ⇒ 潜能等级**完全不影响**电伤（四臂正交实测 A/B 恒等），
+ * 而 0 命满潜能白丢 30%、6 命 0 潜能白拿 30%。
+ */
+export const GRACE_POTENTIAL_ELECTRIC_DMG = [0, 0, 10, 15, 20, 25, 30] as const
 /** 影画1 再充能弹膛：一次 A4 命中给全队回复 2 点能量（用户口径 2026-08-27） */
 export const GRACE_C1_TEAM_ENERGY_PER_CYCLE = 2
 /** 影画4 爆破电容：能量获得效率 +20%（6 层充能覆盖 A4/冲刺消耗段） */
@@ -98,17 +108,19 @@ function buildGraceCharConfig(input: AgentCharConfigInput): void {
   record.graceCinemaLevel = Math.max(0, Math.floor(Number(input.cinemaLevel ?? 0)))
 }
 
-/** 永续面板项：潜能电伤（C2-C6 = 10~30%）+ AA 感电强化层数 */
+// @fact agent:1181/潜能觉醒电伤 口径: 潜能觉醒·超频工程引擎（钢械交响曲 II~VI）按 `potentialLevel` 取档 10/15/20/25/30%，与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1181.json `potential_detail` + R58 四臂正交实测@2026-09-20 | 验 src/mechanics/__tests__/graceCinemaTier.test.ts | 锚 src/mechanics/agents/grace.ts#GRACE_POTENTIAL_ELECTRIC_DMG | 信 确认
+// ⟳复核: nanoka 若刷新 1181 的 potential_detail，逐档对账 II~VI 是否仍为 10/15/20/25/30 | 到期 2027-03-31
+/** 永续面板项：潜能电伤（潜能 II~VI = 10~30%）+ AA 感电强化层数 */
 function applyGracePanel(input: AgentPanelInput): void {
-  const { panel, cinemaLevel, settings } = input
+  const { panel, settings, potentialLevel } = input
   // 积蓄 +130% 不走面板（会波及终结/连携）：行级引擎字段 buildUpEfficiencyBonusPct 仅挂
   // 特殊技/强特两行（transform 钩子），进积蓄效率区与面板/元素效率加算（非独立乘区）
-  if (cinemaLevel >= 2) {
-    const bonus = [10, 15, 20, 25, 30][Math.min(cinemaLevel, 6) - 2]
-    if (bonus != null) {
-      // 潜能觉醒·超频工程引擎：消耗电能获得电伤提升——循环持续消耗 → 永续
-      panel.electricDmg = (panel.electricDmg ?? 0) + bonus
-    }
+  {
+    // 潜能觉醒·超频工程引擎：消耗电能获得电伤提升——循环持续消耗 → 永续。
+    // ⚠ R58 订正：档位**按潜能等级取**（旧实现用 cinemaLevel 索引 + 门控 ⇒ 潜能轴完全失效）。
+    const lv = Math.max(1, Math.min(6, Math.floor(Number(potentialLevel ?? 6))))
+    const bonus = GRACE_POTENTIAL_ELECTRIC_DMG[lv] ?? 0
+    if (bonus > 0) panel.electricDmg = (panel.electricDmg ?? 0) + bonus
   }
   // 额外能力·技术支持班组：感电伤害 +18%/层 ×≤2（AA 门控见 spec additionalAbility；
   // 异常伤害提升乘区——格莉丝唯一异常为感电，走施加者面板 anomalyDmgBonus）

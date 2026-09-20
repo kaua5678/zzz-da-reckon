@@ -113,12 +113,17 @@ describe('猫又全管线集成（harness）', () => {
 
 
 describe('永续面板项与猫步秀（2026-08-23 第二批口供）', () => {
-  async function panelFor(cinemaLevel: number) {
-    const { config, catalog } = await setupHarness([{ agentId: '1021', cinemaLevel }, '', ''])
+  async function panelFor(cinemaLevel: number, potentialLevel = 6) {
+    const { config, catalog } = await setupHarness([{ agentId: '1021', cinemaLevel, potentialLevel }, '', ''])
     return computePanelPhases(0, config, catalog)!.inCombat
   }
 
-  it('猫步诡影 60% 全档永续；C1 无视物抗16 / C2 能量效率25+夜行暴伤20 / C4 暴击率14 / C6 暴伤再54+夜行60', async () => {
+  // ⚠ R58 订正：本用例旧版断言的正是**缺陷本身**（把「潜能·猫的报恩」按 cinemaLevel 取档，
+  // 并写进死通道 panel.critDmgBonus / panel.critRateBonus）。判据两侧都已换成真口径：
+  //   ① 档位跟 **potentialLevel**（不是 cinemaLevel）；
+  //   ② 通道 = panel.critDmg / panel.critRate（`panel.*Bonus` 在 PanelValues 上零消费者）。
+  // 两层判据见 src/mechanics/__tests__/nekomataCinemaTier.test.ts（钉 raw 原文 + 端到端可见性）。
+  it('猫步诡影 60% 全档永续；C1 无视物抗16 / C2 能量效率25 / C4 暴击率14 / C6 暴伤54', async () => {
     const p0 = await panelFor(0)
     expect(p0.dmgBonus).toBeGreaterThanOrEqual(60)
 
@@ -127,14 +132,25 @@ describe('永续面板项与猫步秀（2026-08-23 第二批口供）', () => {
 
     const p2 = await panelFor(2)
     expect((p2.energyGainEfficiency ?? 0) - (p0.energyGainEfficiency ?? 0)).toBeCloseTo(25)
-    expect((p2.critDmgBonus ?? 0) - (p0.critDmgBonus ?? 0)).toBeCloseTo(20)
 
     const p4 = await panelFor(4)
-    expect((p4.critRateBonus ?? 0) - (p2.critRateBonus ?? 0)).toBeCloseTo(14)
-    expect((p4.critDmgBonus ?? 0) - (p2.critDmgBonus ?? 0)).toBeCloseTo(20) // 夜行 40 vs 20
+    expect((p4.critRate ?? 0) - (p2.critRate ?? 0)).toBeCloseTo(14)
 
     const p6 = await panelFor(6)
-    expect((p6.critDmgBonus ?? 0) - (p4.critDmgBonus ?? 0)).toBeCloseTo(74) // 夜行 60−40=20 + C6 满层 54
+    expect((p6.critDmg ?? 0) - (p4.critDmg ?? 0)).toBeCloseTo(54) // C6 满层 54
+  })
+
+  it('★潜能·猫的报恩按 potentialLevel 取档（20/30/40/50/60），与 cinemaLevel 无关', async () => {
+    const base = await panelFor(0, 1)
+    expect(base.critDmg ?? 0).toBeCloseTo(50, 6) // 潜能 I = 无觉醒（基础暴伤 50）
+    for (const [lv, want] of [[2, 20], [3, 30], [4, 40], [5, 50], [6, 60]] as const) {
+      const p = await panelFor(0, lv)
+      expect((p.critDmg ?? 0) - (base.critDmg ?? 0), `潜能 ${lv}`).toBeCloseTo(want)
+    }
+    // 反锁：满命 0 潜能时**不**给潜能暴伤（旧实现给 60 —— 那是「命座轴」的错误证据）
+    const c6p1 = await panelFor(6, 1)
+    const c6p6 = await panelFor(6, 6)
+    expect((c6p6.critDmg ?? 0) - (c6p1.critDmg ?? 0)).toBeCloseTo(60)
   })
 
   it('猫步秀 +70%（AA 门控）：支援队友在队时限定了招式行增伤，不在队则无', async () => {
@@ -190,10 +206,12 @@ describe('永续面板项与猫步秀（2026-08-23 第二批口供）', () => {
 describe('猫又滑块生效差分（防守卫冻结，SOP §3.5）', () => {
   it('nekomata.c4CritRateCoverage → 影画4暴击率差分（applyNekoPanel settings 通道，+14×覆盖率）', async () => {
     const { config } = await setupHarness([{ agentId: '1021', cinemaLevel: 4 }, '', ''])
+    // ⚠ R58：读 panel.critRate（真通道）。旧版读 panel.critRateBonus —— 那是死通道，
+    // 读数会变但**伤害不变**（滑块曾「看起来生效」）。
     const read = () => {
       const calc = useResourceCalc()
       const p = calc.panels.value[0] as any
-      return p?.critRateBonus ?? 0
+      return p?.critRate ?? 0
     }
     config.setMechanicSetting('nekomata.c4CritRateCoverage', 1)
     const on = read()

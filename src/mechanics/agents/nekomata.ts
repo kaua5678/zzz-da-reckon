@@ -23,7 +23,7 @@ import { effectiveBattleTime } from '@/core/effectiveTime'
  * - 回复：进场 40 + 接战白送 60 总量 + 终结 20 + 连携 10 + 强特 5 +
  *   攻击数据命中回复（catalog attack_data_0，每次施放；平A聚合行走秒均 × 秒数）。
  * - 永续面板项：猫步诡影 60% 增伤（Lv.7）；C1 猎鸟技巧背后全覆盖无视 16% 物抗；
- *   C2 猫鼠游戏能量获得效率 +25%；潜能夜行习性暴伤按档位（C2-C6 = 20~60%）；
+ *   C2 猫鼠游戏能量获得效率 +25%；潜能猫的报恩暴伤按**潜能**档位（II-VI = 20~60%）；
  *   C4 磨爪暴击率 14%（2层×7%，覆盖率滑块）；C6 捕食者血统暴伤 54%（3层满层永续）。
  * - 猫步秀（额外能力）：[强化特殊技]/[闪避反击]命中伤害 +35%×2 层永续 = +70%，
  *   moveId 限定 {1021008 强特, 1021010 闪避反击, 1021019 绒爪穿刺}，按 additionalAbility 门控。
@@ -172,9 +172,31 @@ function buildNekoResourceResult({ cfg, state }: AgentResourceResultInput) {
   return { specResources: Object.fromEntries(map) }
 }
 
-/** 全部永续面板项（猫步诡影 / C1 / C2 / 潜能夜行习性 / C4 / C6）——见文件头口供注释 */
+/**
+ * 潜能觉醒·猫的报恩（II~VI）：处于[肉球突袭]时暴击伤害 +20/30/40/50/60%。
+ *
+ * 索引 = `potentialLevel`（1 = 猫的报恩 I，无觉醒 ⇒ 0）。**不是命座轴** —— raw 把它放在
+ * `potential_detail`（与 `talent.1..6` 影画完全独立的另一条轴）。
+ * ⚠ R58 订正：旧实现写成 `[20,30,40,50,60][Math.min(cinemaLevel,6)-2]` 且门控 `cinemaLevel >= 2`。
+ */
+export const NEKOMATA_POTENTIAL_CRIT_DMG = [0, 0, 20, 30, 40, 50, 60] as const
+/** 影画4·磨爪：强化特殊技后暴击率 +7%/层 ×2 层（满层 14%），覆盖率滑块 */
+export const NEKOMATA_C4_CRIT_RATE = 14
+/** 影画6·捕食者血统：连携/终结后暴伤 +18%/层 ×3 层（满层 54%） */
+export const NEKOMATA_C6_CRIT_DMG = 54
+
+/**
+ * 全部永续面板项（猫步诡影 / C1 / C2 / 潜能夜行习性 / C4 / C6）——见文件头口供注释。
+ *
+ * ⚠⚠ **R58 订正 ②：暴击类必须写 `panel.critRate` / `panel.critDmg`，不是 `panel.critRateBonus`
+ * / `panel.critDmgBonus`。** 后两者是**死通道**：全仓只有 `calcDirectDamage` 的**行级入参**
+ * `input.critRateBonus`（来源 = `exec.critRateBonus`）被读，`PanelValues` 上同名字段
+ * **零消费者**（`getTargetedStat(panel,'critRate')` 读的是 `panel.critRate`）。
+ * 实测（R58 端到端）：旧写法下 C4（+14% 暴击率）与 C6（+54% 暴伤）对伤害的 delta **恒为 0**，
+ * 而 C3/C5 的通用技能等级 +2 却各带 +52.6万 / +15.9万 ⇒ 两条影画此前**完全没进计算**。
+ */
 function applyNekoPanel(input: AgentPanelInput): void {
-  const { panel, cinemaLevel, settings } = input
+  const { panel, cinemaLevel, potentialLevel, settings } = input
   // 核心被动·猫步诡影 Lv.7：[闪避反击]/[快速支援]命中 60% 增伤 → 直接永续
   panel.dmgBonus = (panel.dmgBonus ?? 0) + 60
   if (cinemaLevel >= 1) {
@@ -184,18 +206,22 @@ function applyNekoPanel(input: AgentPanelInput): void {
   if (cinemaLevel >= 2) {
     // 影画2·猫鼠游戏：单敌前场能量获得效率 +25%
     panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + 25
-    // 潜能觉醒·夜行习性（潜能 II-VI）：肉球突袭中暴伤 20/30/40/50/60% 永续
-    const nightProwl = [20, 30, 40, 50, 60][Math.min(cinemaLevel, 6) - 2]
-    if (nightProwl != null) panel.critDmgBonus = (panel.critDmgBonus ?? 0) + nightProwl
+  }
+  {
+    // 潜能觉醒·猫的报恩（潜能 II~VI）：肉球突袭中暴伤 20/30/40/50/60% 永续。
+    // ⚠ R58 订正：档位**按潜能等级取**（旧实现用 cinemaLevel 索引 + 门控 ⇒ 潜能轴完全失效）。
+    const lv = Math.max(1, Math.min(6, Math.floor(Number(potentialLevel ?? 6))))
+    const nightProwl = NEKOMATA_POTENTIAL_CRIT_DMG[lv] ?? 0
+    if (nightProwl > 0) panel.critDmg = (panel.critDmg ?? 0) + nightProwl
   }
   if (cinemaLevel >= 4) {
     // 影画4·磨爪：强特暴击率 7%×2 层 → 默认永续，给覆盖率滑块
     const coverage = Math.max(0, Math.min(1, Number(settings?.['nekomata.c4CritRateCoverage'] ?? 1)))
-    panel.critRateBonus = (panel.critRateBonus ?? 0) + 14 * coverage
+    panel.critRate = (panel.critRate ?? 0) + NEKOMATA_C4_CRIT_RATE * coverage
   }
   if (cinemaLevel >= 6) {
     // 影画6·捕食者血统：连携/终结暴伤 18%×3 层满层永续
-    panel.critDmgBonus = (panel.critDmgBonus ?? 0) + 54
+    panel.critDmg = (panel.critDmg ?? 0) + NEKOMATA_C6_CRIT_DMG
   }
 }
 

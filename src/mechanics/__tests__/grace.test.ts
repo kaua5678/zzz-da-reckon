@@ -123,26 +123,33 @@ describe('格莉丝全管线集成（harness）', () => {
     expect(releaseRow!.totalDamage).toBeGreaterThan(0)
   })
 
-  it('面板：潜能电伤逐命座永续；AA 层数滑杆驱动 anomalyDmgBonus', async () => {
-    async function panelFor(cinemaLevel: number, teammate = '') {
+  // ⚠ R58 订正：本用例旧版断言「潜能电伤逐**命座**永续」——那正是缺陷本身（轴误读）。
+  // 潜能觉醒·超频工程引擎在 raw 里属 `potential_detail`（钢械交响曲 II~VI），与影画无关。
+  // 两层判据（钉 raw 原文 + 四臂正交）见 src/mechanics/__tests__/graceCinemaTier.test.ts。
+  it('面板：潜能电伤逐**潜能**档位永续（与命座无关）；AA 层数滑杆驱动 anomalyDmgBonus', async () => {
+    async function panelFor(cinemaLevel: number, potentialLevel = 6, teammate = '') {
       const { config, catalog } = await setupHarness([
-        { agentId: '1181', cinemaLevel },
+        { agentId: '1181', cinemaLevel, potentialLevel },
         ...(teammate ? [{ agentId: teammate }] : []),
         '',
       ] as never)
       return computePanelPhases(0, config, catalog)!.inCombat
     }
-    const p0 = await panelFor(0)
-    expect(p0.electricDmg ?? 0).toBeCloseTo(0, 4) // 无潜能无电伤加成
+    const p0 = await panelFor(0, 1)
+    expect(p0.electricDmg ?? 0).toBeCloseTo(0, 4) // 潜能 I = 无觉醒
 
-    const p2 = await panelFor(2)
+    const p2 = await panelFor(0, 2)
     expect((p2.electricDmg ?? 0) - (p0.electricDmg ?? 0)).toBeCloseTo(10)
-    const p6 = await panelFor(6)
+    const p6 = await panelFor(0, 6)
     expect((p6.electricDmg ?? 0) - (p2.electricDmg ?? 0)).toBeCloseTo(20) // 30 − 10
+
+    // 反锁：满命 0 潜能**不**给电伤（旧实现给 30 —— 那是「命座轴」的错误证据）
+    const c6p1 = await panelFor(6, 1)
+    expect(c6p1.electricDmg ?? 0).toBeCloseTo(0, 4)
 
     // AA：丽娜(支援)在队 → 触发；默认满层 2 → +36 anomalyDmgBonus（对比无队友基线）
     const soloAnomaly = p0.anomalyDmgBonus ?? 0
-    const withLina = await panelFor(0, '1211')
+    const withLina = await panelFor(0, 1, '1211')
     expect((withLina.anomalyDmgBonus ?? 0) - soloAnomaly).toBeCloseTo(36)
   })
 })
