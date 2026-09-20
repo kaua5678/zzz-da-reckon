@@ -103,13 +103,14 @@ export const SETTINGS_COVERAGE_MIN_MODULES = 55
  * · **B/C/D（22 条）**＝ 模块自己 `setting()` 读的覆盖率/次数滑块 ⇒ 逐条写角色级真管线断言。
  */
 export const SETTINGS_UNTESTED_BACKLOG = [
-  '1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate', // jufufu_tiger_roar
-  '1391.jufufu_weishi.jufufu_weishi_assist.rate', // jufufu_tiger_roar
-  '1561.velina_corrosion.2 命风化获得.rate', // velina
-  '1611.claret_gash.gash_gain_from_sharp_dmg.rate', // claret
-  '1621.roxy_wind_energy.wind_energy_per_30_energy.rate', // roxy
-  '1621.roxy_wind_eye.wind_eye_from_cannon.rate', // roxy
-  'jane.frenzyActive', // jane
+  // R51（2026-09-20 round 51）**用户裁决后清空**：R50 收口时余 7 条「注册了但不生效」的滑块，
+  // 全部经用户裁决处置完毕（接线 ⇒ 补 `src/mechanics/__tests__/adminRulingEffect.test.ts`；
+  // 删声明/合并 ⇒ 该 id 不再注册 ⇒ 自动出册）。逐条去向见该测试文件头注释的裁决表。
+  // 冻结存量 **7 → 0**（可补面 + 待裁决面**双清空**）。
+  //
+  // ⚠ 清单**机制保留**（勿删本常量）：它是「注册了但无任何测试引用」的 burn-down 队列，
+  // 新滑块会经 `newGaps` 判红并逐条具名在册；清空 ≠ 判据失效。R50 §2.2 的「别再找可补的滑块」
+  // 说的是**当时面已清**，不是永远清。
 ]
 
 /** 从 mechanics 模块源码抽 settings 块里的 id（字符串字面量 + 常量引用两种形态） */

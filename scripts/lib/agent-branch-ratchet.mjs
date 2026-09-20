@@ -77,9 +77,18 @@ export function countAgentBranchLinesLegacy(root = ROOT) {
 }
 
 /** AGENT_BRANCH_BASELINE 的沿革（编年史）已移至 docs/AGENT_ID_BURNDOWN_LOG.md（规则 8 分层契约：编年叙事不进代码）。
- *  当前读数 = 2；口径与判据见本文件下方注释与 RATCHET_BURNDOWN 登记表。 */
-export const AGENT_BRANCH_BASELINE = 2
-// R21 夜 D（2026-09-17 round 21 夜 D）**convergence.ts 最后 2 行清零：4 → 2**（按**工作树实测**归因）。
+ *  当前读数 = 1；口径与判据见本文件下方注释与 RATCHET_BURNDOWN 登记表。 */
+export const AGENT_BRANCH_BASELINE = 1
+// R51（2026-09-20 round 51）**简狂热块迁出编排层：2 → 1**（按**工作树实测**归因）。
+// 站点 = `panelPhases.ts` 的 `agent.id === '1261' || agent.teammateBuffId === '1261'` 块。
+// **用户裁决**「`jane.passionCoverage` 一并注册成 MechanicSetting」⇒ 其唯一输入进
+// `AgentPanelInput.settings` ⇒ 整块（狂热/精通转攻/额外能力痛点/影画1/影画6）迁进
+// `jane.ts#applyJanePanel`，同批接线 `jane.frenzyActive` 总闸（原两处调用点硬编码 true）。
+// ⚠ **两臂写在同一行** ⇒ 按行去重只降 **1**（不是 2）—— 与 R20-h1 A11/A12 同款的
+// 「行 vs 表达式」陷阱，别按表达式数预期。
+// ⚠ 剩余 1 行 = `anomalyPanels.ts:97` 的 `a.teammateBuffId === id`（**动态比较**，
+// 分类器归「无法自动分类」⇒ 需符号解析）⇒ 不是本轮的迁移面，别误当存量缺陷硬迁。
+// 沿革（R21 夜 D）**convergence.ts 最后 2 行清零：4 → 2**（按**工作树实测**归因）。
 // 两条站点 = 该文件 `characters.map` 里最后两处 cfg-merge 分支，两者都是「缺输入通道」而非 DRY 机会
 // （夜 B 已查明并挂账，本轮**补契约后迁走**）：
 //  · `:826` 雨果 1291（`hugoAxisRemainingStunSeconds !== undefined` 门控的三字段块）

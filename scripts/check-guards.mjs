@@ -133,7 +133,17 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 2,  // R21 夜 D **convergence.ts 最后 2 行清零** 4→**2**（本批 **−2**，按**工作树实测**归因；
+    frozen: 1,  // R51 **简狂热块迁出编排层** 2→**1**（本批 **−1**，按**工作树实测**归因；
+    // 与 `AGENT_BRANCH_BASELINE` 常量同步改，两处一致）。站点 = `panelPhases.ts` 的
+    // `agent.id === '1261' || agent.teammateBuffId === '1261'` 两臂（**同一行** ⇒ 棘轮按行去重只 −1，
+    // 与 R20-h1 A11/A12 同款的「行 vs 表达式」陷阱）：**用户裁决**「jane.passionCoverage 一并注册成
+    // MechanicSetting」⇒ 该块唯一输入进 `AgentPanelInput.settings` ⇒ 整块迁进 `jane.ts#applyJanePanel`
+    // （走模块自己的 `settings` 读，不再需要编排层按 agentId 分支）。**同一批同时接线 `jane.frenzyActive`**
+    // （用户裁决「接线」：原来两处调用点硬编码 `frenzyActive: true` ⇒ 滑块零读值点）。
+    // 判据 `mechanicSettingsEffect.test.ts` + `helpersNightC.test.ts`（该文件原有「未注册」断言按
+    // 它自己预告的方向翻转 = 沿革兑现，不是放宽）。⚠ 剩余 1 行 = `anomalyPanels.ts:97` 的
+    // **动态比较** `a.teammateBuffId === id`（分类器判「无法自动分类」⇒ 需符号解析，非本轮面）。
+    // 沿革（R21 夜 D）：**convergence.ts 最后 2 行清零** 4→**2**（**−2**，按**工作树实测**归因；
     // 与 `AGENT_BRANCH_BASELINE` 常量同步改，两处一致）。两条站点 = 该文件 `characters.map` 里
     // 最后两处 cfg-merge 分支，夜 B 已查明是「缺输入通道」而非 DRY 机会 ⇒ 本轮**先补契约再迁**：
     // `:826` 雨果 1291 ⇒ `hugo.ts#applyHugoTeamConfig`、`:849` 般岳 1471 ⇒ `banyue.ts#applyBanyueTeamConfig`。
@@ -247,16 +257,19 @@ export const RATCHET_BURNDOWN = [
   {
     id: '滑块生效测试存量',
     file: 'scripts/lib/settings-coverage.mjs SETTINGS_UNTESTED_BACKLOG（扫描面 = 运行时 getRegisteredMechanicSettings）',
-    frozen: 7,   // 2026-09-20 round 50 管理员 AC 补完 Form-B/C/D 21 条后 **28 → 7**（与
-    // `SETTINGS_UNTESTED_BACKLOG.length` 同步改，两处一致 —— 同 `AGENT_BRANCH_BASELINE` 纪律；
-    // `checkGuards.test.ts` 的成对锁 `frozen === BACKLOG.length` 也同步）。
-    // ★ 本行**首次降到「全部待裁决」**：余 7 条 = §R50-J1 的三类「注册了但不生效」的滑块
-    // （甲 1391 模块覆盖 ×2 · 乙 1621×2/1611×1/1561×1 资源不可达 ×4 · 丙 `jane.frenzyActive` ×1）。
-    // 它们**既不算已测、也不豁免**，等用户裁决后按「接线」或「删声明」落地（请单：
-    // `/home/kaua/r50-scratch/evidence/R50-RULING-request-dead-sliders.md`）。
-    // ⇒ **本棘轮的可补面已清空**：`target: 0` 只能靠裁决后的「删声明」达成，不再是「补测试」问题。
+    frozen: 0,   // ★ 2026-09-20 round 51 管理员 AD **7 → 0：清单清空**（达成 `target`）。
+    // 与 `SETTINGS_UNTESTED_BACKLOG.length` 同步改，两处一致 —— 同 `AGENT_BRANCH_BASELINE` 纪律；
+    // `checkGuards.test.ts` 的成对锁 `frozen === BACKLOG.length` 也同步。
+    // 余 7 条经**用户 2026-09-20 一轮裁决**全部处置：甲 1391 两条**接线**（模块读 rate）、
+    // 乙 1621 两条**接线**（乘耗能 / 风眼账本）、乙 1611 一条**删化石声明**（模块早已招式计算）、
+    // 乙 1561 一条**合并**到模块既有滑块、丙 `jane.frenzyActive` **接线** + 附 `jane.passionCoverage`
+    // **一并注册**。判据 4 读数 **173/180 → 179/179**。
+    // ★ 机制**不因清零而失效**：新滑块仍走 `newGaps` 判红并逐条具名在册（清零 ≠ 判据关闭）。
+    // 落地测试：`src/mechanics/__tests__/adminRulingEffect.test.ts`（9 例，全走真管线）。
     //
-    // 沿革：round 50 补完 Form-E 剩余 15 条后 43 → 28（与
+    // 沿革：round 50 补完 Form-B/C/D 21 条后 **28 → 7**（当时余 7 条全是「待用户裁决」，
+    // 既不算已测也不豁免；请单 `/home/kaua/r50-scratch/evidence/R50-RULING-request-dead-sliders.md`）。
+    //
     // `SETTINGS_UNTESTED_BACKLOG.length` 同步改，两处一致 —— 同 `AGENT_BRANCH_BASELINE` 纪律；
     // `checkGuards.test.ts` 的成对锁 `frozen === BACKLOG.length` 也同步）。
     // 2026-09-20 round 49 **换尺时实测 60**（口径纠正，不是退步；规则 17②），
@@ -619,6 +632,13 @@ export const DEBT_REGISTRY = {
   // 「不钳制 + 消耗需求封顶」⇒ 极端配装（积累速率 ≫ 消耗节奏）下偏乐观。上条会话因 check-guards.mjs
   // 被并行会话占用、按规则 13 先记账本不登记，本条补登（代码标记在 claret.ts gashStacks 计算处）。
   'src/mechanics/agents/claret.ts:残痕总量口径天花板': { since: '2026-09-12', due: '残痕层数按消耗节奏窗口钳制（需逐动作时序模拟，与实数化收敛专项同族）；若用户裁决接受总量口径近似则销号并留 @fact' },
+  // 2026-09-20（R51 用户裁决 2「在文案挖掘风炮次数，对该资源进行建模，计数，回复和消耗」）：
+  // 洛可茜风眼「同时存量 ≤ 9 / 30s 自然引爆 / 超限时最早生成者引爆」是**时序 FIFO + 逐事件计时**，
+  // 整局总量口径表达不了 ⇒ `windEyeDestroyed ≡ windEyeGenerated`（生成即引爆）、`WIND_EYE_MAX`
+  // 在计算面无钳制（唯一消费者曾是展示文案）。快节奏手法下会**高估**恕不远送可用次数。
+  // ⚠ 刻意**不**把 9 当总量上限（那是「同时存在」上限）：按总量钳会让 sendOffCount 38→3，
+  // 属把时序约束误当总量约束（比不建模更错）。代码标记在 roxy.ts 风眼账本处。
+  'src/mechanics/agents/roxy.ts:风眼「同时存量≤9 / 30s 自然引爆」是**时序**约束': { since: '2026-09-20', due: '逐事件时序队列（生成/引爆双事件按时间轴排序，含 30s 自爆与超限挤爆 FIFO）或按 30s 窗口钳制；若用户裁决接受总量口径近似则销号并留 @fact' },
 }
 
 /**

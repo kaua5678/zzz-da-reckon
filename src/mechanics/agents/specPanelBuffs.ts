@@ -490,6 +490,17 @@ export interface JufufuCycleInput {
    * - 编排层可注入队伍终结总次数（含仪玄符法千重等）
    */
   teamUltimateCount?: number
+  /**
+   * 两条 `adjustable`（spec 近似项）的比例，缺省 1。
+   *
+   * 归属：`1391.jufufu_weishi.jufufu_weishi_assist.rate` ⇒ `assistRate`（支援突击近似项）；
+   * `1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate` ⇒ `teamUltRate`（影画2 队伍终结项）。
+   * ⚠ 必须在本函数（而**不是**只在 `buildResourceResult` 里）生效：`weishiGain` 是
+   * `spinCount` 的唯一来源，而 `spinCount` 驱动威风回填 / 爆米花次数 / 附伤行 ⇒ 只改
+   * `buildResourceResult` 的展示值会让滑块「看起来生效但不算数」（R51 实测的假生效面）。
+   */
+  assistRate?: number
+  teamUltRate?: number
 }
 
 export interface JufufuCycleResult {
@@ -535,7 +546,11 @@ export function computeJufufuCycle(input: JufufuCycleInput): JufufuCycleResult {
     huweiBlock,
   )
   const huweiHits = Math.floor(backstage / huweiInterval)
-  const weishiGain = ex * 3 + ult * 6 + parry * 1 + (cinema >= 2 ? teamUlt * c2Per : 0)
+  // ⚠ 两条近似项各乘自己的 rate（R51 用户裁决「接线」）；缺省 1 ⇒ 与旧口径逐位相同。
+  const assistRate = Number.isFinite(Number(input.assistRate)) ? Math.max(0, Number(input.assistRate)) : 1
+  const teamUltRate = Number.isFinite(Number(input.teamUltRate)) ? Math.max(0, Number(input.teamUltRate)) : 1
+  const weishiGain = ex * 3 + ult * 6 + parry * 1 * assistRate
+    + (cinema >= 2 ? teamUlt * c2Per * teamUltRate : 0)
   // 威势全部投入高速旋转（后台虎釜震煞后进入旋转；整局总量口径）
   const spinCount = weishiGain
   const aweFromHuwei = huweiHits * JUFUFU_HUWEI_AWE
@@ -557,6 +572,20 @@ export function computeJufufuCycle(input: JufufuCycleInput): JufufuCycleResult {
     popcornHits,
   }
 }
+
+/**
+ * 读 spec `adjustable` 注入的 `setting:<id>` 比例（`helpers.ts:630-633` 是唯一注入点）。
+ *
+ * ⚠ 非有限值 ⇒ 回退 `1`（= 旧口径），勿回退 0：0 会让「未注入」静默变成「整项归零」。
+ */
+function jufufuAdjustableRate(cfg: unknown, id: string): number {
+  const raw = Number((cfg as Record<string, unknown>)?.[`setting:${id}`])
+  return Number.isFinite(raw) ? Math.max(0, raw) : 1
+}
+
+/** 两条 `adjustable` 的 id（单一事实源：spec 声明与本模块消费同源引用，规则 11） */
+const JUFUFU_WEISHI_ASSIST_RATE = '1391.jufufu_weishi.jufufu_weishi_assist.rate'
+const JUFUFU_WEISHI_TEAM_ULT_RATE = '1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate'
 
 function jufufuRowValue(skills: any, moveId: string, rowId: string): number {
   for (const cat of skills?.categories ?? []) {
@@ -690,6 +719,8 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
       aweInitial: cfg.jufufuAweInitial ?? 0,
       c2WeishiPerUlt: cfg.jufufuC2WeishiPerUlt ?? 0,
       teamUltimateCount: (cfg as any).jufufuTeamUltimateCount,
+      assistRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_ASSIST_RATE),
+      teamUltRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_TEAM_ULT_RATE),
     })
     cfg.jufufuHuweiHits = cycle.huweiHits
     cfg.jufufuTigerChainCount = cycle.tigerChainCount
@@ -786,6 +817,8 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
       aweInitial: cfg.jufufuAweInitial ?? 0,
       c2WeishiPerUlt: cfg.jufufuC2WeishiPerUlt ?? 0,
       teamUltimateCount: (cfg as any).jufufuTeamUltimateCount,
+      assistRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_ASSIST_RATE),
+      teamUltRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_TEAM_ULT_RATE),
     })
     // 覆盖 spec 资源账本为精确次数模型
     const aweSpend = cycle.tigerChainCount * JUFUFU_CHAIN_AWE_COST
@@ -795,12 +828,23 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
       jufufu_awe_ultimate: Math.max(0, Math.floor(state.ultimateCount ?? 0)) * 100,
       jufufu_awe_spin: cycle.aweFromSpin,
     }
+    // ⚠ 两条 `adjustable` 近似项（R51 用户裁决「接线」）：
+    // spec `1391.json` 把这两条标注为 `implemented_approximation`（近似）并各挂一个 rate 滑块，
+    // 但本模块重建同名 `specResources['jufufu_weishi']` 键 ⇒ 覆盖 spec 侧算出的值
+    // ⇒ 滑块值算出来了却被丢弃（R50/R51 真管线实测 `IDENTICAL(0 vs 2) = true`）。
+    // 裁决：让模块读这两个 rate 并**只乘在各自的近似项**上——精确项（强特×3 / 终结×6）不受影响，
+    // 与 spec 声明的语义（「实际回复量 = 原近似值 × 该比例」）逐字一致。
+    // ★★ 关键：rate **同时**从 `computeJufufuCycle` 走（`spinCount` 的唯一来源，驱动威风
+    // 回填/爆米花/附伤行）。只乘这里 = 只改展示值 ⇒ 滑块「看起来生效但不算数」（R51 实测的假生效面）。
+    // 两条路径共用同一个 `jufufuAdjustableRate(cfg, ID)` ⇒ 天然同源，不会漂移。
     const weishiGains: Record<string, number> = {
       jufufu_weishi_ex_special: Math.max(0, Math.floor(state.exSpecialCount ?? 0)) * 3,
       jufufu_weishi_ultimate: Math.max(0, Math.floor(state.ultimateCount ?? 0)) * 6,
-      jufufu_weishi_assist: Math.max(0, Math.floor(cfg.parryCount ?? 0)) * 1,
+      jufufu_weishi_assist: Math.max(0, Math.floor(cfg.parryCount ?? 0)) * 1
+        * jufufuAdjustableRate(cfg, JUFUFU_WEISHI_ASSIST_RATE),
       jufufu_team_ult_weishi_gain: cinema >= 2
         ? Math.max(0, Math.floor(Number((cfg as any).jufufuTeamUltimateCount ?? state.ultimateCount ?? 0))) * (cfg.jufufuC2WeishiPerUlt ?? 0)
+          * jufufuAdjustableRate(cfg, JUFUFU_WEISHI_TEAM_ULT_RATE)
         : 0,
     }
     const aweTotalGain = Object.values(aweGains).reduce((a, b) => a + b, 0)

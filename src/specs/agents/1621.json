@@ -17,22 +17,23 @@
       "gainRules": [
         {
           "id": "wind_energy_per_30_energy",
-          "trigger": "每消耗30点能量",
+          "trigger": "每消耗25点能量",
           "countSource": "energySpent",
           "amountPerCount": 1,
           "coverage": 1,
           "status": "implemented_approximation",
-          "note": "按强特耗能折算总耗能，floor(总耗能/30)；3只是存量上限，整局总获得不设上限，默认获得多少消耗多少；由机制模块 computeRoxyWindEnergy 执行。",
+          "note": "[已确认·数据] 原文（nanoka 3.2 raw passive Lv.1~7 逐字 7 处，3.3.3 构建同）：「每消耗25点能量，获得1点[风能]，[风能]上限为3点」。⚠ 本条曾写「30」= 早期 scratch 摘要笔误，docs/MECHANICS_IMPLEMENTATION.md:149 已记「旧口径已废除」。模块 computeRoxyWindEnergy 按 25 实现；3 只是存量上限，整局总获得不设上限。比例滑块缩放的是**每轮耗能**（计数源侧），见模块内注释。",
           "adjustable": {
             "id": "1621.roxy_wind_energy.wind_energy_per_30_energy.rate",
-            "label": "洛克茜·风能·每消耗30点能量",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "label": "洛克茜·风能·每消耗25点能量",
+            "description": "按比例缩放「每轮耗能」（本条规则的计数源侧），默认 100%；实际风能获取 = 按缩放后耗能 floor(单轮耗能/25)。",
             "default": 1,
             "min": 0,
             "max": 2,
             "step": 0.05,
             "suffix": "%"
-          }
+          },
+          "formula": "每轮 floor(单轮耗能/25) 累加；单轮耗能 = 自旋秒×30/s + 10 启动"
         }
       ],
       "spendRules": [
@@ -46,7 +47,7 @@
       ],
       "properties": {
         "cap": 3,
-        "energyPerPoint": 30
+        "energyPerPoint": 25
       }
     },
     {
@@ -59,15 +60,15 @@
         {
           "id": "wind_eye_from_cannon",
           "trigger": "风炮消耗风能",
-          "countSource": "exSpecialCount",
+          "countSource": "windEnergyConsumed",
           "amountPerCount": 1,
           "coverage": 1,
           "status": "implemented_approximation",
-          "note": "风眼数由风能模块的风炮次数决定；此处 countSource 仅作展示占位。",
+          "note": "[已确认·数据] 风眼生成数 = **消耗的风能点数**（原文 special.description[3]「每消耗1点[风能]，在攻击后额外造成一次风属性伤害，并在原地生成1个[风眼]」）；「风炮」是敬请安息招式的动画描述，无独立条目 ⇒ 风炮次数 = 强特次数。恕不远送/大小旋风均从**风眼数**推（不再从风能消耗推）。实现位置：src/mechanics/agents/roxy.ts#computeRoxyWindEnergy。⚠ 「同时存量≤9 / 30s 自然引爆 / 超限最早引爆」是时序 FIFO，未建模（总量口径近似）——登记在 check-guards DEBT_REGISTRY，代码标记在模块风眼账本处。",
           "adjustable": {
             "id": "1621.roxy_wind_eye.wind_eye_from_cannon.rate",
             "label": "洛克茜·风眼·风炮消耗风能",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
+            "description": "按比例缩放「风能 → 风眼」的生成数，默认 100%；下游恕不远送/巨旋风/小旋风一并按风眼数重导。",
             "default": 1,
             "min": 0,
             "max": 2,
@@ -93,10 +94,13 @@
         }
       ],
       "properties": {
-        "miniTornadoMoveId": "1621006",
-        "windEyeMoveId": "1621021",
-        "defaultDurationSeconds": 5
-      }
+        "miniTornadoMoveId": "1621019",
+        "megaTornadoMoveId": "1621020",
+        "windEyeBurstMoveId": "1621022",
+        "defaultDurationSeconds": 1,
+        "concurrentCap": 9
+      },
+      "propertiesNote": "[已核对·数据 2026-09-20 round 51] 复核前三条全是错值/陈旧（catalog 逐条查证）：miniTornadoMoveId 原写 1621006 = 特殊技：劳驾（不是小旋风，小旋风=1621019）；windEyeMoveId 原写 1621021 = 敬请安息·额外爆炸伤害倍率（风眼本体是 1621019/1621020 共用名「风眼」、爆鸣=1621022）；defaultDurationSeconds 原写 5 = 旧口径，v12 起为 1s（本 spec :150 自己已写）。duration 与 concurrentCap(9) 的时序 FIFO 未建模，见模块 roxy.ts 的风眼账本注释。"
     }
   ],
   "rowFusions": [],

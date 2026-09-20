@@ -18,21 +18,11 @@
         {
           "id": "gash_gain_from_sharp_dmg",
           "trigger": "锐化伤害命中",
-          "countSource": "exSpecialCount",
-          "amountPerCount": 1,
+          "countSource": "none",
           "coverage": 1,
-          "status": "implemented_approximation",
-          "note": "v12：部分锐化伤害命中积累残痕值（= 招式 **gash_buildup** 表值；2026-09-12 更正，旧记的 anomaly_buildup 是异常积蓄列、两列在闪反/支援/终结段差很多），每 600 点 = 1 层（用户口径 2026-09-03：残痕600点造成一次毁伤；同时存量上限 3 层、溢出浪费——3 不是整局毁伤次数上限，2026-09-12 更正）；积蓄效率 = 1 + 核心 50%（Lv.7）+ 影画2 20%。残痕值 = 平A（两态秒均×时间）+ 其余全部招式（实打次数 × gash_buildup 表值），由模块 computeClaretSharpResource 聚合（旧实现只算平A+铸锋秘术一发）。",
-          "adjustable": {
-            "id": "1611.claret_gash.gash_gain_from_sharp_dmg.rate",
-            "label": "克拉蕾·残痕·锐化伤害命中",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "status": "implemented",
+          "note": "[已确认·数据] 招式级（用户裁决 2026-09-20 round 51「改用招式计算才对，他本来就有每个招式的数据，不可粗算」）。v12：部分锐化伤害命中积累残痕值（= 招式 **gash_buildup** 表值；2026-09-12 更正，旧记的 anomaly_buildup 是异常积蓄列、两列在闪反/支援/终结段差很多），每 600 点 = 1 层（用户口径 2026-09-03：残痕600点造成一次毁伤；同时存量上限 3 层、溢出浪费——3 不是整局毁伤次数上限，2026-09-12 更正）；积蓄效率 = 1 + 核心 50%（Lv.7）+ 影画2 20%。实现位置：src/mechanics/agents/claret.ts#computeClaretSharpResource（七条通道逐招查 gash_buildup 表：EX/闪反/弹防/支援突击/反制支援/终结/连携）；平A 段按两态秒均 × 时间（不吃逐招表，否则双计）。⚠ 本条曾挂 adjustable `1611.claret_gash.gash_gain_from_sharp_dmg.rate` = 化石声明：它是「每强特 1 层」的粗算模型（countSource: exSpecialCount），与模块的招式级实现早就不符 ⇒ R51 删除（接线也无效：唯一可乘量 moveGashTotal 是聚标量，实测三点零 delta——默认队 gashStacks=8 > maimDemand=4 已顶满；且与**活滑块** claret.gashCoverage 双滑块打架）。",
+          "formula": "残痕值 = 平A（两态秒均 × 平A时间）+ Σ 其余招式实打次数 × 该招 gash_buildup 表值；每 600 点 = 1 层"
         }
       ],
       "spendRules": [

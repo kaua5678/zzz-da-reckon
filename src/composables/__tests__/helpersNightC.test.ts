@@ -577,14 +577,19 @@ describe('层⑦：本批**刻意没做**的事（做了会静默改数值）', 
     expect(jane.teammateBuffId).toBe('1261')
   })
 
-  it('★ `jane.passionCoverage` **仍未注册**（本批不许为迁移方便而注册 = 产品级口径待裁决）', async () => {
-    // ⚠ 这是**缺口登记**，不是「应该如此」的背书：注册它会让它进
-    // `ResourceUtilizationPage.vue` 的 `mechanicSettings` v-for ⇒ 与手写卡片（`janePassionSlot`）并存
-    // = 双滑块。用户未裁决该产品口径 ⇒ 本批**不注册**。
-    // 若哪天裁决「注册 + 删手写卡片」，本行会红 ⇒ 届时请同步复核上一条端点判据
-    // （注册后 `settings['jane.passionCoverage']` 就有值，简块即可迁进模块）。
+  it('★ `jane.passionCoverage` **已注册**（R51 用户裁决「一并注册成 MechanicSetting」）', async () => {
+    // 沿革：R20-h1 批次 1 曾把「未注册」当作**缺口登记**（当时注册会与 `ResourceUtilizationPage.vue`
+    // 的手写卡片 `janePassionSlot` 并存 ⇒ 双滑块，属产品级口径待裁决）。
+    // **R51 用户裁决「一并注册成 MechanicSetting」** ⇒ 本行按当时预告的方向翻转（这正是它存在的意义）。
+    // 落地三件套：① 注册（`jane.ts#settings`）② 手写卡片删除（避双滑块）
+    // ③ 简块迁进 `jane.ts#applyJanePanel`（注册后 `settings['jane.passionCoverage']` 有值）。
     const registered = getRegisteredMechanicSettings()
-    expect(registered.some(s => s.id === 'jane.passionCoverage')).toBe(false)
+    expect(registered.some(s => s.id === 'jane.passionCoverage')).toBe(true)
+    // 端点契约：注册项的 default/min/max 必须与迁移前的 `?? 0.9` 兜底一致（否则默认数值静默漂移）。
+    const setting = registered.find(s => s.id === 'jane.passionCoverage')!
+    expect(setting.default).toBe(0.9)
+    expect(setting.min).toBe(0)
+    expect(setting.max).toBe(1)
   })
 
   it('★ 组3 未动：`findSlotByIdentity` 语义保持不变（批 A/批 B 正在 import 它）', async () => {

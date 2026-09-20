@@ -85,16 +85,7 @@
           "coverage": 0.6667,
           "formula": "风化次数 × 2/3 期望",
           "status": "implemented_approximation",
-          "adjustable": {
-            "id": "1561.velina_corrosion.2 命风化获得.rate",
-            "label": "维琳娜·风蚀·2 命风化获得",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "[已确认·数据] 影画2：风化触发时按期望获得 1 点风蚀；期望利用率由**模块滑块** velina.cinema2CorrosionRate（默认 66.67%）统一控制 —— 规则 11 单一事实源：此处不再挂 adjustable（曾挂 1561.velina_corrosion.2 命风化获得.rate，与模块滑块同语义 ⇒ 双滑块，R51 用户裁决合并到模块那条）。"
         }
       ],
       "spendRules": [

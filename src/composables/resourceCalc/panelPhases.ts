@@ -638,50 +638,15 @@ export function computePanelPhases(
   // 2026-09-17 round 21 夜间批 C）；派发点在 `:716` 的 `applyPanel`，早于本行
   // ⇒ `panel.remielleRadiantTurnDazeBonusPct` 此刻**已写好**，此处不得再写（否则双计）。
 
-  // ⚠ **简专属块保留在编排层（本批实测判定：迁不动，不是没做）**：
-  // 它读的 `jane.passionCoverage` **未注册成 MechanicSetting**（`getRegisteredMechanicSettings()`
-  // 不含它，运行时实证）⇒ **不在 `AgentPanelInput.settings` 里**（`resolveMechanicSettings` 只铺注册项）。
-  // 迁进 `jane.ts#applyJanePanel` 会把用户的滑块值静默丢掉——本批逐位等价对拍实测：
-  // 滑块 0.5 的队伍 `physicalAnomalyBuildUpEfficiency` 由 **47.5 掉到 0**（`?? 0.9` 读不到 → 该项恒 0）。
-  // 迁它**必须先注册 setting** = 多一个用户可见 UI 滑块（该页已有手写卡片 `janePassionSlot`），
-  // 属**产品级口径**、用户未裁决 ⇒ **不注册、不迁、如实挂账**（分诊 §3.3 / §6.4）。
-  // @fact jane:1261/狂热面板块落点 口径: 简的狂热/精通转攻/痛点/影画1/6 面板区**保留在 panelPhases.ts#computePanelPhases**（不在 jane.ts#applyPanel），因为其唯一输入 `jane.passionCoverage` 未注册为 MechanicSetting（不进 AgentPanelInput.settings），迁移会静默丢滑块值（逐位对拍实测：滑块 0.5 队 physicalAnomalyBuildUpEfficiency 47.5→0） | 据 本批逐位等价对拍@2026-09-17 | 验 src/composables/__tests__/helpersNightC.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#computePanelPhases | 信 确认
-  // ⟳复核: 用户裁决「jane.passionCoverage 是否注册成 MechanicSetting」后复核——若注册，本块即可迁进 jane.ts#applyJanePanel（届时 settings 里有值），并删 ResourceUtilizationPage.vue 的手写卡片以避双滑块 | 到期 2026-12-31
-  if (agent.id === '1261' || agent.teammateBuffId === '1261') {
-    const cinema = char.cinemaLevel ?? 0
-    const passionCoverage = configStore.getMechanicSetting('jane.passionCoverage', 0.9)
-    const anomalyProficiency = panel.anomalyProficiency ?? 0
-
-    // 狂热：物理积蓄+25%；精通>120时每点+2攻击，最多600。
-    panel.physicalAnomalyBuildUpEfficiency += 25 * passionCoverage
-    if (anomalyProficiency > 120) {
-      panel.atk += Math.min(600, (anomalyProficiency - 120) * 2) * passionCoverage
-    }
-
-    // 额外能力：痛点。物理积蓄+20%；敌人处于异常状态时额外+15%（按100%覆盖）。
-    const team = buildMechanicTeamMembers(configStore, catalogStore)
-    const additionalActive = team.some(member =>
-      member.slot !== slot && member.agent && (
-        member.agent.specialty === 'anomaly' || member.agent.faction === agent.faction
-      ),
-    )
-    if (additionalActive) {
-      panel.physicalAnomalyBuildUpEfficiency += 20
-      panel.physicalAnomalyBuildUpEfficiency += 15
-    }
-
-    // 1命：物理积蓄+15%；每点精通增伤0.1%，最多30%，按狂热覆盖率折算。
-    if (cinema >= 1) {
-      panel.physicalAnomalyBuildUpEfficiency += 15 * passionCoverage
-      panel.dmgBonus += Math.min(30, anomalyProficiency * 0.1) * passionCoverage
-    }
-
-    // 6命：触发强击即狂热，狂热覆盖率按100%；双暴+20/40。
-    if (cinema >= 6) {
-      panel.critRate += 20
-      panel.critDmg += 40
-    }
-  }
+  // ✅ **简专属块已迁出本文件**（2026-09-20 round 51，规则 6，用户裁决）：
+  // R20-h1 批次 1 判定「迁不动」的唯一障碍是 `jane.passionCoverage` **未注册成 MechanicSetting**
+  // ⇒ 不在 `AgentPanelInput.settings` 内。**R51 用户裁决「一并注册成 MechanicSetting」** ⇒ 障碍消失，
+  // 整个块（狂热/精通转攻/额外能力痛点/影画1/影画6）已迁进 `jane.ts#applyJanePanel`。
+  // ★ 原块在本行的位置正是 `applyPanel` 派发点（`:597`）**之后** ⇒ 当时靠「后写覆盖」生效；
+  // 迁入模块后由派发点统一调用，顺序天然一致（本处**不得**再留任何简分支，否则双计）。
+  // 原 `⟳复核 … 到期 2026-12-31`（「jane.passionCoverage 是否注册」）**已兑现**，标记随块删除。
+  // @fact jane:1261/狂热面板块落点 口径: 简的狂热/精通转攻/痛点/影画1/6 面板区在 `jane.ts#applyJanePanel`（走 `AgentPanelInput.settings` 读 `jane.frenzyActive` 总闸与 `jane.passionCoverage` 覆盖率），**不再**在 panelPhases.ts#computePanelPhases 里保留 agentId 分支 | 据 用户裁决@2026-09-20（R51 「一并注册成 MechanicSetting」） | 验 src/mechanics/__tests__/mechanicSettingsEffect.test.ts | 锚 src/mechanics/agents/jane.ts#applyJanePanel | 信 确认
+  // ⟳复核: 用户在面板上拖 `jane.frenzyActive` / `jane.passionCoverage` 看「物理积蓄/攻击/增伤」是否随之变化；若简块又出现在编排层或两个入口同时出控件（双滑块），说明本落点被回退 | 到期 2027-06-30
 
   // 蕾米强特 Radiant Turn 的“相变时流”：全队增伤，按技能等级 12/14/16 对应 18%/21%/24%。
   // 2026-09-17 round 21 夜间批 C 迁进 `remielle.ts#applyRemielleTeamPanelEffects`

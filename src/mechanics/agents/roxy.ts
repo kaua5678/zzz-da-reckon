@@ -95,6 +95,22 @@ function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: numb
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
+/** engine 侧同款读取器（`buildResourceResult` 的入参是 `CharacterOperationConfig`，不是 `AgentCharConfigInput`） */
+function cfgRate(cfg: unknown, id: string, fallback = 1): number {
+  const value = Number((cfg as Record<string, unknown> | undefined)?.[`setting:${id}`])
+  return Number.isFinite(value) ? value : fallback
+}
+
+/** spec `adjustable` 的比例统一钳到 `[0, 2]`（与 spec 声明的 min/max 同源；缺省 1 = 旧口径） */
+function clampRate(value: unknown): number {
+  const num = Number(value)
+  return Number.isFinite(num) ? Math.max(0, Math.min(2, num)) : 1
+}
+
+/** 两条 `adjustable` 的 id（spec 声明与本模块消费同源引用，规则 11 单一事实源） */
+export const ROXY_WIND_ENERGY_RATE_ID = '1621.roxy_wind_energy.wind_energy_per_30_energy.rate'
+export const ROXY_WIND_EYE_RATE_ID = '1621.roxy_wind_eye.wind_eye_from_cannon.rate'
+
 /**
  * 洛克茜风能/风眼资源（v12 + 用户手法 2026-09-03）：
  * 手法：强特长按（小心风寒→自旋）直到获得 3 风能就松手 → 敬请安息消耗全部风能。
@@ -108,22 +124,52 @@ export function computeRoxyWindEnergy(input: {
   ultimateCount?: number
   spinSeconds?: number
   cinemaLevel?: number
+  /** 风能转化率（spec `adjustable`，缺省 1）——缩放「每轮耗能」这一侧，见下 */
+  energyRate?: number
+  /** 风眼转化率（spec `adjustable`，缺省 1）——缩放「风能 → 风眼」的生成数，见下 */
+  eyeRate?: number
 }): RoxyWindEnergySource {
   const exCount = Math.max(0, Math.floor(input.exSpecialCount))
   const spinSeconds = Math.max(0, Number(input.spinSeconds ?? 2.5))
   const cinema = Math.max(0, Math.floor(Number(input.cinemaLevel ?? 0)))
+  const energyRate = clampRate(input.energyRate)
+  const eyeRate = clampRate(input.eyeRate)
   // 每轮自旋耗能 = 自旋秒 × 30/s（+ 10 启动）；风能 = 每 25 能量 +1，手法按 3 点/轮攒满
+  // ⚠ `ENERGY_PER_WIND_ENERGY = 25` 是**原文口径**（nanoka 3.2 raw 的 passive Lv.1~7 逐字 7 处
+  // 「每消耗25点能量，获得1点[风能]」，3.3.3 构建同样 25）。spec `1621.json` 曾写「30」= 2026-08-04
+  // 一份 scratch 摘要（`data/raw/_archive/scratch/spec_notes_1621.txt:4`）的**笔误**，
+  // `docs/MECHANICS_IMPLEMENTATION.md:149` 早已记为「旧口径已废除」⇒ **不要**把 25 改成 30
+  // （R51 隔离 worktree 实测：改成 30 ⇒ `roxy`/`specialMechanics` 5 failed，全管线伤害 −1.59%）。
   const energySpentTotal = exCount * (10 + spinSeconds * 30)
-  const windEnergyGain = exCount * Math.floor((spinSeconds * 30 + 10) / ENERGY_PER_WIND_ENERGY)
+  // `adjustable` 的计数源就是「每消耗 N 点能量」⇒ 比例必须乘在**耗能**这一侧（不是 gain）：
+  // 乘 gain 会让 `energySpentTotal`（有独立执行行 `totalEnergyConsume`）与风能脱钩 ⇒ 双账。
+  const energyPerRound = (spinSeconds * 30 + 10) * energyRate
+  const windEnergyGain = exCount * Math.floor(energyPerRound / ENERGY_PER_WIND_ENERGY)
     + Math.max(0, Math.floor(Number(input.ultimateCount ?? 0)))
   // 存量上限 3：每发敬请安息至多消耗 3 点 → 总消耗 = min(总获得, 强特次数 × 3)
   const windEnergyConsumed = Math.min(windEnergyGain, exCount * WIND_ENERGY_MAX)
-  const windEyeGenerated = windEnergyConsumed * WIND_EYE_PER_ENERGY
-  const sendOffCount = Math.floor(windEnergyConsumed / SEND_OFF_BURST_MAX)
+  // ── 风眼账本（R51 用户裁决「对该资源进行建模，计数，回复和消耗」）──────────────────
+  // 原文 `special.description[3]`：「每消耗1点[风能]，在攻击后额外造成一次风属性伤害，
+  // 并在原地生成1个[风眼]」⇒ 风眼**生成数 = 消耗的风能点数 × WIND_EYE_PER_ENERGY**（本条 = 回复侧）。
+  const windEyeGenerated = Math.floor(windEnergyConsumed * WIND_EYE_PER_ENERGY * eyeRate + 1e-9)
+  // ⚠ **恕不远送与大小旋风必须从「风眼数」推，不能从「风能消耗」推**：原文 `description[1]`
+  // 的触发条件是「场上[风眼]和自身[风能]共计至少3个」⇒ 消耗侧是**风眼**。
+  // 默认 `eyeRate=1` 且 `WIND_EYE_PER_ENERGY=1` 时 `windEyeGenerated === windEnergyConsumed`
+  // ⇒ 本式与旧式 `floor(windEnergyConsumed / 3)` **逐位相同**（改的是口径来源不是数值）。
+  const sendOffCount = Math.floor(windEyeGenerated / SEND_OFF_BURST_MAX)
+  // debt: 风眼「同时存量≤9 / 30s 自然引爆」是**时序**约束 原文 `description[4]`「持续30秒后自动引爆；
+  // 最多同时存在9个，超出上限后**最早生成**的会自动引爆」= FIFO 队列 + 逐事件计时，整局总量口径
+  // 表达不了：`WIND_EYE_MAX` 因此在计算面**无钳制**（唯一消费者曾是展示文案），
+  // 且 `windEyeDestroyed ≡ windEyeGenerated`（生成即引爆）。快节奏手法下「生成即引爆」会**高估**
+  // 恕不远送可用次数（真实的 9 眼 FIFO 会让超限的眼提前爆掉、减少可用引爆）。
+  // ⚠ 刻意**不**把 `WIND_EYE_MAX` 当总量上限用：那是「同时存在」上限，按总量钳会让 `sendOffCount`
+  // 从 38 塌成 3（R51 侦察实测该读数）——属于把时序约束误当总量约束，比不建模更错。
+  // 升级路径 = 逐事件时序队列（生成/引爆双事件按时间轴排序）或按 30s 窗口钳制
+  // （登记于 check-guards DEBT_REGISTRY）。
   // 影画6 余响：每次恕不远送给主目标加[余响]，每 3 秒生成 1 次巨旋风、共 2 次（重复触发叠加）
   // → 总量近似 = 每次引爆额外 2 次（引爆间隔 > 6s 时逐次完整；叠加刷新按 2×引爆计）
   const megaTornadoCount = sendOffCount + (cinema >= 6 ? sendOffCount * ROXY_C6_ECHO_BURSTS : 0)
-  const miniTornadoCount = Math.max(0, windEnergyConsumed - sendOffCount * SEND_OFF_BURST_MAX)
+  const miniTornadoCount = Math.max(0, windEyeGenerated - sendOffCount * SEND_OFF_BURST_MAX)
 
   return {
     energySpentTotal,
@@ -216,6 +262,10 @@ function buildRoxyResourceResult({ cfg, state }: AgentResourceResultInput): Part
       ultimateCount: state.ultimateCount,
       spinSeconds: Number(record.roxySpinSeconds ?? 0),
       cinemaLevel: Number(record.roxyCinemaLevel ?? 0),
+      // ⚠ 两处调用点（buildResourceResult / buildExecutions）都**必须**传这两个 rate：
+      // 只传一处会让「账本」与「执行行」分叉（行数按未缩放生成、账本按缩放生成）。
+      energyRate: cfgRate(cfg, ROXY_WIND_ENERGY_RATE_ID),
+      eyeRate: cfgRate(cfg, ROXY_WIND_EYE_RATE_ID),
     }),
   }
 }
@@ -228,6 +278,8 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
     ultimateCount: state.ultimateCount,
     spinSeconds: Number(record.roxySpinSeconds ?? 0),
     cinemaLevel: Number(record.roxyCinemaLevel ?? 0),
+    energyRate: cfgRate(cfg, ROXY_WIND_ENERGY_RATE_ID),
+    eyeRate: cfgRate(cfg, ROXY_WIND_EYE_RATE_ID),
   })
   const exCount = Math.max(0, Math.floor(state.exSpecialCount))
   if (exCount > 0) {

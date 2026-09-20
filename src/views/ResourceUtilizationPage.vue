@@ -79,24 +79,6 @@
         </div>
       </n-card>
 
-      <n-card v-if="janePassionSlot >= 0" size="small" class="mechanic-card" :bordered="true">
-        <template #header>简·狂热覆盖率</template>
-        <div class="mechanic-row">
-          <div class="mechanic-copy">
-            <div class="field-desc">默认 90%。狂热状态下物理积蓄效率+25%、精通转攻击、1命增伤按该覆盖率折算。</div>
-          </div>
-          <n-input-number
-            :value="configStore.getMechanicSetting('jane.passionCoverage', 0.9) * 100"
-            size="small"
-            :min="0"
-            :max="100"
-            :step="5"
-            suffix="%"
-            @update:value="v => configStore.setMechanicSetting('jane.passionCoverage', (v ?? 90) / 100)"
-          />
-        </div>
-      </n-card>
-
       <n-card v-if="windInfectionConfig" size="small" class="mechanic-card" :bordered="true">
         <template #header>风化浸染（侵染区）</template>
         <div class="mechanic-row">
@@ -414,13 +396,9 @@ const burniceReleaseElements = computed<{
   return { elements }
 })
 
-const janePassionSlot = computed<number>(() => {
-  const slot = configStore.team.findIndex(char => {
-    const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-    return agent?.id === '1261' || agent?.teammateBuffId === '1261'
-  })
-  return slot
-})
+// ⚠ `janePassionSlot` 手写卡片已删（2026-09-20 round 51，用户裁决）：`jane.passionCoverage`
+// 已注册成 MechanicSetting（`jane.ts#settings`）⇒ 上面的 `mechanicSettings` 泛型渲染器
+// 会自动为它出控件。手写卡片 + 泛型控件会**双滑块**（同一 setting 两个入口），故删卡片。
 
 const windCharSlot = computed<number>(() => {
   return configStore.team.findIndex(char => {

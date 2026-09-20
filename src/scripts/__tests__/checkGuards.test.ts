@@ -241,8 +241,30 @@ describe('判据 4 扫描面接运行时注册表（2026-09-20 round 49 换尺�
     expect(e.target).toBe(0)
     expect(e.due).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     expect(e.plan.length).toBeGreaterThan(50)   // 防「冻结 = 永久豁免」：必须有可执行的降法
-    // 剩余量口径：不得写成 newGaps.length（那会恒 0、done=true，让存量从提醒面消失）
-    expect(e.frozen).toBeGreaterThan(0)
+  })
+
+  it('★ 剩余量口径**不得写成 `newGaps.length`**（清零后改成行为断言，不再靠 `frozen > 0` 兜底）', () => {
+    // 沿革：本条原是 `expect(e.frozen).toBeGreaterThan(0)`，作为「measure 没被写成 `newGaps.length`」的
+    // 代理判据（`newGaps` 只在**新**滑块出现时非空 ⇒ 存量从提醒面消失、done 恒 true）。
+    // ⚠ **R51（2026-09-20 round 51）该清单首次合法清零**（7 条经用户裁决全部处置）⇒ `frozen === 0`
+    // 是**达成目标**而不是作弊，那条代理判据会把「真的还清了」误判成「口径坏了」。
+    // ⇒ 换成**行为断言**（本文件 `:1671-1675` 的既有纪律：不断言源码表达式，断言行为）：
+    //   直接驱动 `computeBurndown`，证明「被还清时 done=true」与「未还清时 done=false」**可分辨**。
+    // ⚠ 这条比原来的代理判据**更强**：原来只证明「数字非零」，现在证明「清零语义正确」。
+    const e = RATCHET_BURNDOWN.find(x => x.id === '滑块生效测试存量')!
+    // ⚠ `atFrozen` 是**另一个 describe 块**的局部 fixture ⇒ 这里自己按 id 取（同款写法）
+    const atFrozen = (id: string) => RATCHET_BURNDOWN.find(x => x.id === id)!.frozen
+    // 当前值 ⇒ 已还清（frozen ≤ target）
+    const cleared = computeBurndown(atFrozen, '2028-01-15').find(r => r.id === e.id)!
+    expect(cleared.remaining).toBe(0)
+    expect(cleared.done).toBe(true)
+    // ★★ 反空洞（本条的判别力所在）：把 measure 注入成**虚假的未还清**（+3）⇒ 必须 done=false，
+    // 且 progress 不得被算成「已还」。若哪天 measure 被写成 `newGaps.length`（恒 0），
+    // 这里的 `+3` 注入仍会给出 3 ⇒ 该断言**不靠清单长度**也能守住口径。
+    const faked = computeBurndown(id => e.id === id ? e.frozen + 3 : atFrozen(id), '2028-01-15')
+      .find(r => r.id === e.id)!
+    expect(faked.done, '注入「未还清」后必须 done=false（否则清零语义失效）').toBe(false)
+    expect(faked.remaining).toBe(3)
   })
 })
 
