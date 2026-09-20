@@ -47,7 +47,8 @@ import { normaMechanic } from '@/mechanics/agents/norma'
 
 /** 读某槽 inCombat 面板（走真派发器）。空槽用 `''` 占位（`setupHarness` 的约定） */
 async function panelOf(
-  team: Array<{ agentId: string; cinemaLevel?: number } | ''>,
+  // `potentialLevel` 于 R60 加入：隔离队友的潜能增益（如 1211 大扫除②给全队加攻击）
+  team: Array<{ agentId: string; cinemaLevel?: number; potentialLevel?: number } | ''>,
   slot = 0,
   settings: Record<string, number> = {},
 ) {
