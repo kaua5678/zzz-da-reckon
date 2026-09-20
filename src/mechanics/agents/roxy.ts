@@ -28,7 +28,8 @@ import { buildSpecEventExecutions } from '@/specs/mechanics'
  *   3 个同命中 → 巨旋风 1621020（1s）；不足 → 小旋风 1621019（1s/个，v12 = 1 秒）；终结技 +1 点[风能]。
  * - 影画：C1 敬请安息命中 → 全抗-15%（50s）+ 自身暴伤+40%；C2 小心风寒失衡易伤 +30%（v12：旧 25% → 30%）
  *   + 流势/自旋维持（机动向不建模）；C4 招架+1/闪反+2 能量 + 终结 +20% 伤（失衡+10% 未单接）；
- *   C6 无视 15% 风抗（v12：旧 20% → 15%）+ 巨旋风 ×250%（失衡+20% 未单接）+ [余响]每 3s 额外 2 次巨旋风（逐时序，pending）。
+ *   C6 无视 15% 风抗（v12：旧 20% → 15%）+ 巨旋风 ×250%（失衡+20% 未单接）+ [余响]每次引爆额外 2 次
+ *   巨旋风——该式是**共同上界**（单向高估、不可能低估；精确值受原文未给的时长/节拍参数阻塞，已登记 debt）。
  */
 const ROXY_AGENT_ID = '1621'
 /** 风能：每 25 能量 +1 点（核心被动 Lv.7），存量上限 3；终结技额外 +1 点 */
@@ -61,7 +62,7 @@ export const ROXY_C4_PARRY_ENERGY = 1
 export const ROXY_C4_DODGE_ENERGY = 2
 export const ROXY_C4_ULT_DMG = 20
 export const ROXY_C4_ULT_DAZE_BONUS = 10
-/** 影画6：无视 15% 风抗（v12：旧 20% → 15%）+ 巨旋风倍率 ×250%（失衡值+20%）+ 余响 2 次/引爆 */
+/** 影画6：无视 15% 风抗（v12：旧 20% → 15%）+ 巨旋风倍率 ×250%（失衡值+20%）+ 余响 2 次/引爆（上界） */
 export const ROXY_C6_WIND_RES_REDUCTION = 15
 export const ROXY_C6_MEGA_TORNADO_MULT = 2.5
 export const ROXY_C6_MEGA_DAZE_BONUS = 20
@@ -179,8 +180,38 @@ export function computeRoxyWindEnergy(input: {
   // @fact agent:1621/风眼时序 近似: 「同时存量≤9 / 30s 自然引爆」在默认手法下**结构性不可达**（单发风眼 ≤ WIND_ENERGY_MAX=3 < 9，且每发恕不远送清空队列）⇒ `sendOffCount = floor(windEyeGenerated/SEND_OFF_BURST_MAX)` 是精确解而非近似；天花板 = 滑块域 `eyeRate>4/3`（单发>3 ⇒ 9 上限咬合，本式高估）与 `spinSeconds<65/30`（局末余留眼被本式计成小旋风） | 据 nanoka 3.2 raw special.description[4]@2026-09-20·R52 全库 5702 次引擎求值零 delta@2026-09-20 | 验 src/mechanics/__tests__/roxyWindEyeTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 确认
   // ⟳复核: 引擎若获得「逐发绝对时刻」通道（或在 eyeRate>1 滑块域落地真 FIFO 队列）时复核本近似边界 | 到期 2027-03-31
   const sendOffCount = Math.floor(windEyeGenerated / SEND_OFF_BURST_MAX)
-  // 影画6 余响：每次恕不远送给主目标加[余响]，每 3 秒生成 1 次巨旋风、共 2 次（重复触发叠加）
-  // → 总量近似 = 每次引爆额外 2 次（引爆间隔 > 6s 时逐次完整；叠加刷新按 2×引爆计）
+  // ── 影画6 [余响]：**方向可证 / 幅度不可定**（R53 收口，取代 R52 的「方向未定」）────────────
+  // 原文 `talent.6.desc`（`data/raw/nanoka_missing/full/1621.json:2119`；EN 同构
+  // 「A Giant Windstorm is generated at the target's location every 3s, for a total of 2
+  //  additional Giant Windstorms. Repeated triggers stack the number of additional Giant
+  //  Windstorm **instances** generated and refresh the duration of Afterecho.」）：
+  //   「[特殊技：恕不远送]引爆[风眼]生成巨型风旋时，主目标会被赋予[余响]效果，**每间隔3秒**在目标
+  //     位置生成一次巨型风旋，**共额外生成2次**巨型风旋，重复触发时额外生成次数**叠加**且**刷新**
+  //     [余响]的持续时间」。
+  //
+  // ★【定理·方向已定】「共额外生成2次」= **每次触发至多追加 2 次** ⇒ 无论「叠加/刷新」怎么解释，
+  //   总量恒 ≤ `2 × 引爆数` ⇒ **本式是所有自洽读法的共同上界** ⇒ 本式**只可能高估，不可能低估**。
+  //   （R53 把 4 种读法 × 7 个时长 × 全网格共 4224 次求值全部验过，零越界；见
+  //    `src/mechanics/__tests__/roxyEchoTiming.test.ts` 的 `echoUpperBoundHolds`。）
+  //   ⇒ 这一条**纠正 R52-J1 记的「方向未定」**：方向是定的（单向高估），未定的只是**幅度**。
+  //
+  // ⚠【阻塞·幅度不可定】精确值取决于两个**任何可达源都没给出**的参数：
+  //   ① [余响] **持续时间 D**——原文只说「刷新持续时间」，**从不给秒数**；
+  //   ② 「每间隔3秒」是**每实例各自计时**还是**目标身上单一节拍**——双语只把「叠加」的对象写成
+  //      `instances`、把「刷新」的对象写成 `duration`，**没说节拍归谁**。
+  //   实测分歧（本文件夹具 n=43、跨度 45.86s）：D=6 ⇒ 17 次 / D=12 ⇒ 19 / D=30 ⇒ 25 /
+  //   D=180 ⇒ 60 / 逐实例独立 ⇒ 86 ⇒ **合法区间 [17, 86]，跨度 5.1×**。
+  //   ⇒ 落「精确值」必须**编造 D**，那正是 R52 立下的纪律所禁止的（把未建模假设写进伤害数比
+  //     留着有界近似更坏）⇒ 正解 = **保留上界 + 把幅度登记为 debt + 挂 ⟳复核**。
+  //   ⚠ 与 R52 风眼那条的区别：风眼是**证明到不了**（结构性不可达 ⇒ 销号）；本条是**到得了但算不准**
+  //     （有界高估 ⇒ 登记 debt）。**两者结论不同，别互相照抄。**
+  // @fact agent:1621/余响时序 近似: [余响] 每次恕不远送至多追加 2 次巨型风旋（原文「共额外生成2次」）⇒ `megaTornadoCount = sendOffCount × (1 + 2)` 是**所有自洽读法的共同上界**（4 读法 × 7 时长 × 全网格 4224 次求值零越界）⇒ 本式**单向高估、不可能低估**（纠正 R52-J1 的「方向未定」）；天花板 = 精确值需 [余响] 持续秒数 D 与「3s 节拍归属」（每实例 vs 单状态），二者**原文与全部可达外部源均未给出**（nanoka 中英双语、noun_3.2.3.json、fandom/prydwen/game8/hakush 全查不到）⇒ 合法区间实测 [17, 86]（默认夹具 n=43），落精确值必须编造 D | 据 nanoka 3.2 raw talent.6.desc@2026-09-20·R53 全库对账+4 读法穷举@2026-09-20 | 验 src/mechanics/__tests__/roxyEchoTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 高
+  // ⟳复核: 官方若补充 [余响] 持续秒数或 buff 表（可裁决「3s 节拍归属」）时，用真逐事件时间轴替换本上界并销 debt | 到期 2027-03-31
+  // debt: 余响总量口径天花板 「每间隔3秒生成一次 / 共额外生成2次 / 次数叠加且刷新持续时间」是时序约束，
+  // 总量口径只能给出**共同上界** `2×引爆数`（单向高估，已证不可能低估）；精确值需原文未给出的
+  // 持续秒数 D 与节拍归属，实测合法区间 [17, 86]（5.1×）⇒ 溢出/排队浪费未建模。升级路径 = 拿到
+  // [余响] 的 buff 表定义（D + 节拍归属）或用户裁决该读法后落逐事件时间轴
+  // （登记于 check-guards DEBT_REGISTRY；口径与证据见上方 `@fact agent:1621/余响时序`）。
   const megaTornadoCount = sendOffCount + (cinema >= 6 ? sendOffCount * ROXY_C6_ECHO_BURSTS : 0)
   const miniTornadoCount = Math.max(0, windEyeGenerated - sendOffCount * SEND_OFF_BURST_MAX)
 
@@ -408,7 +439,7 @@ function buildRoxyResourceSections({ result }: AgentResourceSectionsInput) {
         { label: '巨型风旋', value: `${source.megaTornadoCount} 次`, detail: '3 个风眼同时命中 → 巨旋风（1621020）持续 1 秒；影画6 ×250%' },
         { label: '微型风旋', value: `${fmt(source.miniTornadoSeconds)}s`, detail: '不足 3 个的余数 → 小旋风（1621019）1s/个' },
       ],
-      footer: 'v12 口径；余响（影画6 每 3s 额外 2 次巨旋风）逐时序未建模，pending。',
+      footer: 'v12 口径；余响（影画6 每 3s 额外 2 次巨旋风）按「2×引爆数」计——该式是共同上界（单向高估），精确值受原文未给的时长/节拍参数阻塞，见模块 @fact agent:1621/余响时序。',
     },
   ]
 }
