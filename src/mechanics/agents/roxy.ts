@@ -18,7 +18,7 @@ import { buildSpecEventExecutions } from '@/specs/mechanics'
  * - 核心被动·热夜初拥（Lv.7 原文）：每消耗 25 点能量获得 1 点[风能]（上限 3 点）；
  *   初始能量自动回复 >1.2 时，每超过 0.01 攻击 +5（上限 960）、冲击 +0.4（上限 76.8）；
  *   恕不远送命中[风化] → [浸染]还原、队友[浸染]增益按职业等：依赖风化队伍，未建模（note）。
- * - 额外能力·辉金心脏（强攻/命破/锋御队友）：自身伤害 +8%+1.2%/级（Lv.7 = 15.2%）；
+ * - 额外能力·辉金心脏（强攻/命破/锋御队友）：自身伤害 +8%+1.2%/**角色等级**（Lv60 命中上限 80%）；
  *   攻击命中 → 失衡易伤倍率 +30%（至失衡结束，满覆盖近似）+ 失衡时长 +2s；
  *   敌方[风化]时风/浸染直伤 +8%（按风化覆盖率近似全伤通道）；进场回 40 能量（勘域 180s）；
  *   风化延长 20s（无数值）；强特后异常积蓄效率 +30%（50s，满覆盖近似，未接）。
@@ -67,8 +67,10 @@ export const ROXY_C6_WIND_RES_REDUCTION = 15
 export const ROXY_C6_MEGA_TORNADO_MULT = 2.5
 export const ROXY_C6_MEGA_DAZE_BONUS = 20
 export const ROXY_C6_ECHO_BURSTS = 2
-/** 额外能力：自身伤害 +8%+1.2%/级（Lv.7 = 15.2%）；进场回 40 能量 */
-export const ROXY_AA_DMG_BONUS_LV7 = 8 + 1.2 * 6
+/** 额外能力：自身伤害 +8%+1.2%/级（**角色等级**轴，Lv60 命中「最多提升80%」上限）；进场回 40 能量 */
+// @fact agent:1621/额外能力伤害·等级轴 口径: 「洛克茜造成的伤害提升8%，该效果随**角色等级**提升，每级增加1.2%，最多提升80%」的「级」是**角色等级**（60 级满级）而非核心被动等级 ⇒ 取上限 80（8+1.2×60=80 恰等于原文写的上限，自洽）；判据 = 该子句在 raw 的 7 条 passive.level 里**逐字恒定**（8/1.2/80 三级都不随被动等级变），而真正走被动等级轴的子句（如 1611 核心 20→50）在 7 条里**逐级递增** ⇒ 两类轴可用「是否随 passive.level 变化」机械区分；同族三条（1571 44+14/级→870、1591 120+12/级→840、1631 100+10/级→700）同样取各自上限，本条的 15.2（=8+1.2×6，误按被动 Lv.7 读）是**孤例** | 据 nanoka 3.2 raw passive.level.1621501~07@2026-09-20·外部复核（zh/en/ja/ko 四语言 + 3.3.3 构建 + gachabase 均作「角色等级」；ja=エージェントレベル、ko=캐릭터 레벨）@2026-09-20 | 验 src/mechanics/__tests__/roxyAdditionalAbility.test.ts | 锚 src/mechanics/agents/roxy.ts#ROXY_AA_DMG_BONUS_LV60 | 信 高
+// ⟳复核: 官方若给出「随角色等级提升」的等级-数值对照表（或本仓引入角色等级输入）时复核本上限 | 到期 2027-03-31
+export const ROXY_AA_DMG_BONUS_LV60 = 80
 export const ROXY_AA_ENTER_ENERGY = 40
 /** 转模：初始能量回复 >1.2 → 每 0.01：攻击 +5（上限 960）、冲击 +0.4（上限 76.8） */
 export const ROXY_REGEN_ATK_PER_0_01 = 5
@@ -282,8 +284,8 @@ function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   const impactBonus = Math.min(ROXY_REGEN_IMPACT_CAP, (regen / 0.01) * ROXY_REGEN_IMPACT_PER_0_01)
   if (atkBonus > 0) panel.atk = (panel.atk ?? 0) + atkBonus
   if (impactBonus > 0) panel.impact = (panel.impact ?? 0) + impactBonus
-  // 额外能力：自身伤害 +15.2%（Lv.7；门控由团队条件，面板统一施加——无强攻/命破/锋御队略高估，note）
-  panel.dmgBonus = (panel.dmgBonus ?? 0) + ROXY_AA_DMG_BONUS_LV7
+  // 额外能力：自身伤害 +80%（Lv60 上限；门控由团队条件，面板统一施加——无强攻/命破/锋御队略高估，note）
+  panel.dmgBonus = (panel.dmgBonus ?? 0) + ROXY_AA_DMG_BONUS_LV60
   const cinema = cinemaLevel ?? 0
   if (cinema >= 1) {
     panel.critDmg = (panel.critDmg ?? 0) + ROXY_C1_CRIT_DMG

@@ -32,6 +32,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
+import { ROXY_AA_DMG_BONUS_LV60 } from '@/mechanics/agents/roxy'
 import type { Agent } from '@/types/catalog'
 import type { MechanicTeamMember } from '@/mechanics/types'
 
@@ -138,5 +139,43 @@ describe('洛克茜(1621) 额外能力 note —— 数值钉原文（旧版 kit 
     expect(legacy).toMatch(/CRIT DMG increases by 10%/)
     // 而 v12 raw 里已经没有 130%
     expect(strip(rawPassiveText('1621'))).not.toContain('130%')
+  })
+})
+
+describe('洛克茜(1621) 额外能力伤害 —— 「每级」是**角色等级**轴（非核心被动等级）', () => {
+  it('该子句在 7 条 passive.level 里逐字恒定 ⇒ 不是被动等级轴；cap 取 Lv60', () => {
+    const p = resolve(process.cwd(), 'data/raw/nanoka_missing/full/1621.json')
+    const data = JSON.parse(readFileSync(p, 'utf-8')) as {
+      passive?: { level?: Record<string, { desc?: string[] }> }
+    }
+    const levels = Object.keys(data.passive?.level ?? {}).sort()
+    expect(levels.length).toBe(7)
+
+    // 机械判据：真正走被动等级轴的子句会**逐级递增**（如 1611 核心 20→50），
+    // 而本条 8%/1.2%/80% 三级在所有 7 条里完全相同 ⇒ 轴是「角色等级」。
+    const perLevel = levels.map(k => {
+      const t = strip((data.passive!.level![k].desc ?? []).join('\n'))
+      const m = t.match(/造成的伤害提升(\d+)%[^；\n]*每级增加([\d.]+)%，最多提升(\d+)%/)
+      return m ? m.slice(1).join('/') : null
+    })
+    expect(perLevel.filter(Boolean).length).toBe(7)
+    expect(new Set(perLevel).size).toBe(1)
+    expect(perLevel[0]).toBe('8/1.2/80')
+
+    // 对照组（同文件、同格式）：1611 核心被动**逐级递增** ⇒ 证明上面的判据不是恒真
+    const c = JSON.parse(readFileSync(
+      resolve(process.cwd(), 'data/raw/nanoka_missing/full/1611.json'), 'utf-8',
+    )) as { passive?: { level?: Record<string, { desc?: string[] }> } }
+    const claretVals = Object.keys(c.passive!.level!).sort()
+      .map(k => strip((c.passive!.level![k].desc ?? []).join('\n')).match(/残痕积蓄效率提升(\d+)%/)?.[1])
+    expect(new Set(claretVals).size).toBeGreaterThan(1)
+  })
+
+  it('实现常量 == 原文上限 80（8+1.2×60 自洽），且不等于误按被动 Lv.7 读的 15.2', () => {
+    // 一侧钉在原文（上面已断言 80），一侧是实现常量 ⇒ 不是两边同读一个常量
+    expect(ROXY_AA_DMG_BONUS_LV60).toBe(80)
+    expect(ROXY_AA_DMG_BONUS_LV60).not.toBe(8 + 1.2 * 6)
+    // 自洽性：原文「每级增加1.2%，最多提升80%」在角色满级 60 处恰好触顶
+    expect(8 + 1.2 * 60).toBe(80)
   })
 })
