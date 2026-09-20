@@ -477,7 +477,10 @@ function cloneEffectWithSourceValue(effect: BuffEffect, buff: TeammateBuff, sour
     const value = panel ? getPanelSourceStatValue(panel, effect.sourceStat) : undefined
     if (typeof value === 'number' && Number.isFinite(value)) {
       const dynamicSkillLevel = panel ? 12 + Math.max(0, panel.skillLevelBonus ?? 0) : undefined
-      return { ...effect, dynamicSourceValue: value, dynamicSkillLevel }
+      // `p` 变量（公式第三变量）：来源角色的潜能觉醒档位。与 `dynamicSkillLevel` 同源同款
+      // ——`core/panel.ts:353` 把 `potentialLevel` 盖章进源面板，故这里直接读它。
+      const dynamicPotentialLevel = panel?.potentialLevel
+      return { ...effect, dynamicSourceValue: value, dynamicSkillLevel, dynamicPotentialLevel }
     }
   }
   return effect
@@ -575,15 +578,26 @@ export function collectAllBuffs(
   return mergeBuffs(mergeBuffs(mergeBuffs(agentBuffs, wEngineBuffs), discBuffs), teamBuffs)
 }
 
-function evalFormulaExpression(expression: string, x: number, s: number): number {
+/**
+ * `formula` 通道的三个只读变量（**契约**，改签名即改口径）：
+ * - `x` = `effect.sourceStat` 在**来源角色面板**（`sourcePanelPhase` 相位）上的值
+ *   （`dynamicSourceValue` 优先；无源面板时回落 `source.defaultValue`）。特殊名见
+ *   `getPanelSourceStatValue`：`energyRegenTotal` / `flashEnergyRegenTotal` 是算式合成值。
+ * - `s` = 来源角色**技能等级**（12 + `skillLevelBonus`；无源面板时 12）。耀嘉音咏叹华彩用。
+ * - `p` = 来源角色**潜能觉醒档位**（1..6；无源面板时 6 = 满档）。2026-09-20 round 60 新增，
+ *   与 `s` 同款「源面板只读量」——存在的理由：丽娜（1211）大扫除的转模系数**随潜能档位变**
+ *   而基数取**同一来源面板的穿透率** ⇒ 单变量 `x` 表达不了「两轴」。
+ *   ⚠ 与 `sourceStat: 'potentialLevel'`（把档位当 `x`，1381 零号·安比先例）不冲突：那条只用一轴。
+ */
+function evalFormulaExpression(expression: string, x: number, s: number, p: number): number {
   const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
   const floor = Math.floor
   const max = Math.max
   const min = Math.min
   const safeExpression = expression.trim()
-  if (!/^[0-9xXsS+\-*/().,\s_a-zA-Z]+$/.test(safeExpression)) return 0
+  if (!/^[0-9xXsSpP+\-*/().,\s_a-zA-Z]+$/.test(safeExpression)) return 0
   try {
-    return Function('x', 's', 'clamp', 'floor', 'max', 'min', `return (${safeExpression})`)(x, s, clamp, floor, max, min)
+    return Function('x', 's', 'p', 'clamp', 'floor', 'max', 'min', `return (${safeExpression})`)(x, s, p, clamp, floor, max, min)
   } catch {
     return 0
   }
@@ -596,7 +610,12 @@ function getEffectSourceValue(effect: BuffEffect, panel?: PanelValues): number {
 }
 
 function evalFormulaEffect(effect: BuffEffect, panel?: PanelValues): number {
-  return evalFormulaExpression(effect.formula?.expression ?? '0', getEffectSourceValue(effect, panel), effect.dynamicSkillLevel ?? 12)
+  return evalFormulaExpression(
+    effect.formula?.expression ?? '0',
+    getEffectSourceValue(effect, panel),
+    effect.dynamicSkillLevel ?? 12,
+    effect.dynamicPotentialLevel ?? 6,
+  )
 }
 
 /** 应用单个 buff 效果到面板 */

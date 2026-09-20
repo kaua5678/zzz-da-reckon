@@ -29,7 +29,44 @@
     "[已确认·数据] 终结技回能：其他角色各+10，下一位换入额外+20；三人队下一位30、上一位10，两人队另一人30。",
     "[已确认·数据] [一尘不染]：强特/连携/终结后各进入13秒；期间邦布每2.5秒攻击1次（晨间清扫三段倍率之和），每次+1层惊吓；惊吓满6层后下一次攻击改为午夜清扫（每7次转化1次）。总时长按战斗总时长钳制，后台自动不占前台时间。元素口径：晨间一半物理一半电、午夜全电（经 resolveExecutionDamage 覆盖）。实现在 rina.ts buildExecutions。",
     "[近似] 未模拟杜苏拉/安娜塔莎逐秒离场状态与敌人感电逐秒状态，相关增益使用覆盖率表达。",
+    "[已确认·数据] 潜能觉醒·完美侍奉（大扫除 II~VI，2026-09-20 round 60 接入）：① 丽娜自身穿透率 +1.6%（无条件，走 rina.ts#applyRinaPanel）；② **[核心被动：迷你毁灭拍档]增益存在期间**，基于**丽娜自身穿透率**每 1%，全队角色攻击 +3/4.2/5.5/6.7/8 点、防御 +2.5/3.5/4.5/5.5/6.5 点，**上限 576 攻击 / 468 防御**（绝对值封顶）——走 spec teamBuffs `rina_potential_team_atk_def` 的 formula 通道（源面板 `penRatio`/outOfCombat × 档位 `p`）。⚠ 档位系数不是等差：攻击档差 1.2/1.3/1.2/1.3（闭式 = 3 + 1.2k + 0.1·floor(k/2)，k = p−2）、防御档差 1/1/1/1（闭式 = p + 0.5）。出处 raw `data/raw/nanoka_missing/full/1211.json` `potential_detail`（II~VI 逐档），并与 static.nanoka.cc/zzz/3.2/{zh,en} 双语复核一致。",
+    "[近似] 潜能②的源面板 `penRatio` 取自 `buildTeammateBuffSourceContext` 算的**源面板**（只含基础/音擎/驱动盘/自身 combatBuffs，不含任何模块 `applyPanel` 自增益）⇒ **不含潜能①的 +1.6%**，也不含丽娜其它 `applyPanel` 自增益。与既有 `rina.core_pen_ratio` 走**同一条源面板**（同一近似面，非新增偏差）。量级：+1.6% × 8 点/% ≈ +12.8 攻击（潜能 VI），且远在 576 封顶之下。",
     "实现：src/mechanics/agents/rina.ts + teammate-buffs.json 1211 组 + 资源迭代邻位回能接线。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [
+    {
+      "id": "rina_potential_team_atk_def",
+      "name": "丽娜｜潜能觉醒·完美侍奉",
+      "source": "潜能觉醒",
+      "description": "潜能觉醒：完美侍奉（大扫除 II~VI）——[核心被动：迷你毁灭拍档]增益存在期间，基于丽娜自身穿透率每 1%，全队角色攻击力提升 3/4.2/5.5/6.7/8 点、防御力提升 2.5/3.5/4.5/5.5/6.5 点，至多提升 576 点攻击力和 468 点防御力。档位随 `potentialLevel` 取（潜能 I 未觉醒 = 0）。",
+      "target": "team",
+      "coverage": 1,
+      "status": "implemented",
+      "note": "R60 接入（原为**完全未实现**，模块零 `potential` 引用 ⇒ 四臂实测 potential 轴 IGNORED）。闭式由 II~VI 原文逐档反解并逐位验过：攻击 = min(576, x·(3 + 1.2k + 0.1·floor(k/2)))、防御 = min(468, x·(p + 0.5))，k = p−2；门控因子 min(1, max(0, p−1)) 让潜能 I 归零。x = 源面板 `penRatio`（outOfCombat），p = 源面板 `potentialLevel`（`core/panel.ts:353` 盖章）——`p` 是 R60 新增的 formula 第三变量（与既有 `s`=技能等级同款只读源面板量），全库既有 21 条公式零使用裸 `p` ⇒ 零回归面。⚠ 全队含丽娜本人（原文「全队角色」，与核心被动 `rina.core_pen_ratio` 明确排除本人**不同**）。",
+      "effects": [
+        {
+          "type": "formula",
+          "stat": "atkFlat",
+          "mode": "flat",
+          "sourceStat": "penRatio",
+          "sourcePanelPhase": "outOfCombat",
+          "formula": {
+            "expression": "min(1, max(0, p - 1)) * min(576, x * (3 + 1.2 * (p - 2) + 0.1 * floor((p - 2) / 2)))",
+            "valueUnit": "storedValue"
+          }
+        },
+        {
+          "type": "formula",
+          "stat": "defFlat",
+          "mode": "flat",
+          "sourceStat": "penRatio",
+          "sourcePanelPhase": "outOfCombat",
+          "formula": {
+            "expression": "min(1, max(0, p - 1)) * min(468, x * (p + 0.5))",
+            "valueUnit": "storedValue"
+          }
+        }
+      ]
+    }
+  ]
 }

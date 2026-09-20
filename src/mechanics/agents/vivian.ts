@@ -272,12 +272,27 @@ function patchVivianExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
 }
 
-function applyVivianPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
+function applyVivianPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: AgentPanelInput): void {
   // 面板字段与 computeVivianCycle 同源（c6EtherDmg / c4AtkBonus）。
   const c4AtkCoverage = clampRatio(settings['vivian.c4AtkCoverage'] ?? 1)
   if (cinemaLevel >= 6) panel.etherDmg = (panel.etherDmg ?? 0) + VIVIAN_C6_ETHER_DMG
-  // 影画4：攻击力 +12% → 加算进局内百分比攻击乘区（atkPct），非独立乘算
-  if (cinemaLevel >= 4) panel.atkPct = (panel.atkPct ?? 0) + VIVIAN_C4_ATK_PCT * c4AtkCoverage
+  // 影画4：攻击力 +12% → 局内百分比攻击乘区（atkPct），非独立乘算。
+  // ⚠ R60 修复：原写 `panel.atkPct = (panel.atkPct ?? 0) + …` —— `applyPanel` 跑在 `calcPanel`
+  // **之后**（`panelPhases.ts:570` vs `:597`），此时累加器 `__atkAccum` 已被 `finalizeCoreStatBonuses`
+  // 清掉；直写 `atkPct` 只写了个**零消费者**的旁路字段（实测 c3→c4 的 `panel.atk` 逐位不变
+  // = 1436.0342400000002），滑块静默失效 ⇒ C4 只兑现了「必定暴击」，攻击 +12% 整条没算。
+  // ⚠ **不能**改用 `applyStat(panel, 'atkPct', …)`：那会以**当前局内 atk**（已含局内固定加成）为基数
+  // 整体乘 ×1.12 —— 正是 `panelPhases.ts:522` 记录过的「局内固定加成被错误放大」坑
+  //（实测该写法给 1436.0342400000002 × 1.12 = 1608.3583488000004，与「加算进 Σ局内%」不等价）。
+  // 正解 = 与 `harumasa.ts:190` / `zhao.ts:75` 同款：以**局外总攻击**为基数算出**增量**再加进
+  // `panel.atk`。这与 `statMeta` 的「局内百分比攻击：以局外总攻击为基数」口径逐字一致，
+  // 也与 `calcPanel` 内 `applyCoreStatBonus` 的批次基数（`outOfCombat` 副本）等价。
+  if (cinemaLevel >= 4) {
+    const atkPct = VIVIAN_C4_ATK_PCT * c4AtkCoverage
+    const atkBonus = Math.max(0, Number(outOfCombatPanel.atk ?? 0)) * atkPct / 100
+    panel.atk = (panel.atk ?? 0) + atkBonus
+    panel.vivianC4AtkBonus = atkBonus
+  }
   // 影画2 异放精通收益 ×130%（buildAnomalyEvents perTen 放大）；无视15%全抗走 releaseModifier（仅异放结算）
   if (cinemaLevel >= 2) {
     ;(panel as Record<string, unknown>).vivianCinemaLevel = cinemaLevel

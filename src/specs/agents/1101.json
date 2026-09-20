@@ -35,25 +35,37 @@
       "id": "koleda_potential_team_crit",
       "name": "珂蕾妲｜潜能觉醒",
       "source": "潜能觉醒",
-      "description": "潜能觉醒：爆破作业——队伍中锋御代理人锐暴伤害提升（VI 满档 12%），非锋御代理人暴击伤害提升（VI 满档 35%）。",
+      "description": "潜能觉醒：爆破作业——队伍中锋御代理人锐暴伤害提升（潜能 II..VI = 4/6/8/10/12%），非锋御代理人暴击伤害提升（II..VI = 11/17/23/29/35%）。档位随 `potentialLevel` 取，与影画无关。",
       "target": "team",
       "coverage": 1,
       "effects": [
         {
+          "type": "formula",
           "stat": "sharpCritDmg",
-          "value": 12,
           "mode": "flat",
-          "note": "定稿（nanoka live 3.2 == 测试服 3.3.2）：锋御 锐暴伤害 II..VI = 4/6/8/10/12%，默认潜能 VI 满值 12"
+          "sourceStat": "potentialLevel",
+          "sourcePanelPhase": "inCombat",
+          "formula": {
+            "expression": "min(1, max(0, x - 1)) * (2 * x)",
+            "valueUnit": "storedPercent"
+          },
+          "note": "定稿（nanoka live 3.2 == 测试服 3.3.2）：锋御 锐暴伤害 II..VI = 4/6/8/10/12% = 2×潜能档；潜能 I（未觉醒）= 0（门控因子 min(1,max(0,x-1))）。R60 修：原为写死 12（VI 满档）⇒ potentialLevel 滑块静默失效。"
         },
         {
+          "type": "formula",
           "stat": "critDmg",
-          "value": 35,
           "mode": "flat",
-          "note": "定稿：非锋御 暴击伤害 II..VI = 11/17/23/29/35%，默认潜能 VI 满值 35"
+          "sourceStat": "potentialLevel",
+          "sourcePanelPhase": "inCombat",
+          "formula": {
+            "expression": "min(1, max(0, x - 1)) * (6 * x - 1)",
+            "valueUnit": "storedPercent"
+          },
+          "note": "定稿：非锋御 暴击伤害 II..VI = 11/17/23/29/35% = 6×潜能档−1；潜能 I = 0。R60 修：原为写死 35（VI 满档）⇒ potentialLevel 滑块静默失效。"
         }
       ],
-      "status": "implemented_approximation",
-      "note": "定稿 2026-09（nanoka live 3.2 == 测试服 3.3.2+18895034 一致）。锋御/非锋御分流由伤害 profile 天然实现：sharpCritDmg 只作用于锋御锐化伤害（core/damage.ts sharpCritMultiplier），critDmg 对锋御锐化伤害无效——两字段平铺全队等价于分流。旧 (Test1) 占位猜测（锋御暴击率 8~16% / 非锋御暴伤 16~32%）已废。"
+      "status": "implemented",
+      "note": "定稿 2026-09（nanoka live 3.2 == 测试服 3.3.2+18895034 一致；R60 复取 static.nanoka.cc/zzz/3.2/{zh,en}/character/1101.json **双语逐档**复核，II..VI 数值与中文「锐暴伤害 / 暴击伤害」口径均一致 ⇒ 定稿来源已闭合。⚠ 本仓 raw `data/raw/nanoka_missing/full/1101.json` 仍是旧 `(Test1)潜能觉醒：占位`（锋御暴击率 8~16% / 非锋御暴伤 16~32%）、**滞后于 live，不得作为本条出处**）。锋御/非锋御分流由伤害 profile 天然实现：sharpCritDmg 只作用于锋御锐化伤害（core/damage.ts sharpCritMultiplier），critDmg 对锋御锐化伤害无效——两字段平铺全队等价于分流。⚠ 本效果**不受额外能力门控**（原文无条件「队伍中…」，与 1041 燎原不同；R60 四臂实测空槽队伍与带门控队友读数逐位相同）。"
     }
   ],
   "additionalAbility": {

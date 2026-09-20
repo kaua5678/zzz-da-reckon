@@ -202,12 +202,17 @@ describe('薇薇安完整计算链', () => {
 
   it('覆盖率滑块→面板重算（防守卫冻结，SOP §3.5）', async () => {
     const { catalog, config } = await setup('1181', 6)
-    const atkOf = () => (computePanelPhases(0, config, catalog)!.inCombat as any).atkPct ?? 0
+    // ⚠ R60 订正：原断言读 `panel.atkPct` —— 那是**零消费者的旁路字段**（`applyPanel` 在
+    // `calcPanel` 之后 ⇒ 累加器已 finalize）。它恰好让「滑块改了值」看起来成立，但**伤害没变**
+    // （`panel.atk` 逐位不变）⇒ 正是 SOP §3.5 要防的「假生效面」。
+    // 正解：断言**真通道量** `panel.atk` 的差分（= 局外攻击 × 12% × 覆盖率）。
+    const atkOf = () => computePanelPhases(0, config, catalog)!.inCombat.atk
+    const outAtk = () => computePanelPhases(0, config, catalog)!.outOfCombat.atk
     config.setMechanicSetting('vivian.c4AtkCoverage', 1)
     const on = atkOf()
     config.setMechanicSetting('vivian.c4AtkCoverage', 0)
     const off = atkOf()
-    expect(on - off).toBeCloseTo(VIVIAN_C4_ATK_PCT, 1)
+    expect(on - off).toBeCloseTo(outAtk() * VIVIAN_C4_ATK_PCT / 100, 6)
   })
 })
 

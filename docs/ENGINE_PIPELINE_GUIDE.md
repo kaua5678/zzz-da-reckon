@@ -186,12 +186,12 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
 模块侧唯一合法的「时间不够」信号 = `cfg.timePressureSeconds` / `cfg.timeAvailableFrontlineSeconds`（折叠循环每轮
 实测写入）；语义与「不要读累加的 `timeBudgetExcess`」完整口径见坑 22（两处曾逐字重复，2026-09 收口为一处）。
 
-1. **~~面板滑块拿不到 settings~~（已修，2026-08）**：`AgentPanelInput` 现在带 `settings`
-   （已解析：用户值优先、回落 `setting.default`），applyPanel 直接 `input.settings['xxx'] ?? 默认值`。
-   **两条历史绕法都已废弃**，不要再用：① 在 `computePanelPhases` 里写 agentId 硬编码块；
-   ② 把滑块值经 panel 字段走私。走私路径本身就是 bug 温床——般岳 applyPanel 读
-   `panel.banyueRageCoverage`，而该字段从未被任何代码写入 → 怒相增益覆盖率滑块**长期静默失效**
-   （已修 + 补生效测试）。丽娜影画4 的硬编码块也已归位到 `rinaMechanic.applyPanel`。
+1. **~~面板滑块拿不到 settings~~（已修，2026-08）**：`AgentPanelInput` 现在带 `settings`（已解析：用户值优先、回落 `setting.default`）。**三条历史绕法都已废弃**：
+   ① 在 `computePanelPhases` 里写 agentId 硬编码块；② 把滑块值经 panel 字段走私（般岳读 `panel.banyueRageCoverage`，该字段从未被写入 → 怒相覆盖率静默失效；丽娜影画4 已归位模块）；
+   ③ **在 `applyPanel` 里直写核心属性百分比字段（`panel.atkPct`/`hpPct`/`defPct`）**——`applyPanel` 跑在 `calcPanel` **之后**，累加器已被 `finalizeCoreStatBonuses` 清掉
+   ⇒ 直写只落一个**零消费者**旁路字段（`atk`/`hp` 逐位不变）⇒ 命座/潜能静默失效（实测某 C4 的 c3→c4 `panel.atk` 完全相同）。**改法** = 以 `outOfCombatPanel.atk/hp` 为基数算**增量**加进 `panel.atk/hp`
+   （先例 `harumasa.ts`/`zhao.ts`）——⚠ **不要**用 `applyStat(panel,'atkPct',…)`：它以**当前局内值**为基数整体乘，会把局内固定加成放大（与本坑开头同源）。
+   判据 = 断言**通道量** `panel.atk/hp` 差分 == 局外基数 × %，并反锁 `panel.atkPct` 为 `undefined`。
 2. **state.exSpecialCount 由闪能池驱动**：`resolveExSpecialCount` 用 `exSpecialEnergyConsume` 除。
    模块接管 EX 链时设 `skipGenericExSpecial = true` + `exSpecialCountFloor = true` + 一个合理 cost，
    让 state.exSpecialCount 表达"付费强特数"，再在 buildExecutions 里 push 自己的执行（般岳/星徽·比利模式）。

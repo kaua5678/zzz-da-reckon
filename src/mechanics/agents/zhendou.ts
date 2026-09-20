@@ -55,7 +55,7 @@ export const ZHENDOU_C2_FIRE_RES_IGNORE = 8
 export const ZHENDOU_C4_HP_PCT = 8
 export const ZHENDOU_C6_ASSIST_FIRE_DMG = 15
 
-function applyZhendouPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void {
+function applyZhendouPanel({ panel, cinemaLevel, outOfCombatPanel, settings }: AgentPanelInput): void {
   // 熔锋 buff：恒常（炽心获取量足以一直熔锋，用户口径 2026-08-27）
   panel.critRate = (panel.critRate ?? 0) + ZHENDOU_FURY_CRIT_RATE
   panel.fireDmg = (panel.fireDmg ?? 0) + ZHENDOU_FURY_FIRE_DMG
@@ -67,7 +67,17 @@ function applyZhendouPanel({ panel, cinemaLevel, settings }: AgentPanelInput): v
     panel.enemyFireResReduction = (panel.enemyFireResReduction ?? 0) + ZHENDOU_C2_FIRE_RES_IGNORE
   }
   if (cinemaLevel >= 4) {
-    panel.hpPct = (panel.hpPct ?? 0) + ZHENDOU_C4_HP_PCT
+    // ⚠ R60 修复：原写 `panel.hpPct = (panel.hpPct ?? 0) + 8` —— `applyPanel` 跑在 `calcPanel`
+    // **之后**（`panelPhases.ts:570` vs `:597`），累加器 `__hpAccum` 已被 `finalizeCoreStatBonuses`
+    // 清掉；直写 `hpPct` 只写了个**零消费者**的旁路字段（实测 c3→c4 的 `panel.hp` 逐位不变
+    // = 11315.3304）。真斗的贯穿力基底 = `atk×0.3 + hp×0.1 + sheerForceFlat`（`damage.ts:187`）
+    // ⇒ 该字段是**伤害通道**（不是生存向），静默失效会低估 C4。
+    // ⚠ **不能**改用 `applyStat(panel, 'hpPct', …)`：那会以**当前局内 hp**为基数整体乘 —— 与
+    // `panelPhases.ts:522` 记录过的「局内固定加成被错误放大」同坑。
+    // 正解 = 与 `harumasa.ts:190` / `zhao.ts:75` 同款：以**局外总生命**为基数算增量加进 `panel.hp`。
+    const hpBonus = Math.max(0, Number(outOfCombatPanel.hp ?? 0)) * ZHENDOU_C4_HP_PCT / 100
+    panel.hp = (panel.hp ?? 0) + hpBonus
+    panel.zhendouC4HpBonus = hpBonus
   }
 }
 

@@ -126,6 +126,7 @@
 
 ### 丽娜（1211）
 - **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/rina.ts` + spec `1211.json`；测试 `src/mechanics/__tests__/rina.test.ts` 11 例）。含：核心被动穿透（只作用队友，影画1 提升至 130%）、额外能力感电门控与全队电伤覆盖率、终结技邻位回能、[一尘不染] 邦布后台攻击（晨间物理/午夜电，惊吓 6 层转化）、影画2/4/6 覆盖率可调、终结技次数进队友能量收敛。近似点见段末行。spec status 已为 implemented_approximation，本次补状态行。
+- **潜能觉醒·完美侍奉（大扫除 II~VI，R60 接入）**：① 丽娜**自身**穿透率 +1.6%（无条件、各档同值，`rina.ts#applyRinaPanel`）；② **[核心被动：迷你毁灭拍档]增益存在期间**，基于**丽娜自身穿透率**每 1%，**全队**攻击 +3/4.2/5.5/6.7/8 点、防御 +2.5/3.5/4.5/5.5/6.5 点，**上限 576 攻击 / 468 防御**（spec teamBuffs `rina_potential_team_atk_def` 的 formula 通道，源面板 `penRatio`/outOfCombat × 档位变量 `p`）。⚠ **档位系数非等差**（攻击档差 1.2/1.3/1.2/1.3、防御档差 1/1/1/1）⇒ 闭式 = 攻击 `min(576, x·(3 + 1.2k + 0.1·floor(k/2)))`、防御 `min(468, x·(p + 0.5))`，k = p−2。⚠ **R60 修复**：原实现**整条未实现**（模块零 `potential` 引用）⇒ 四臂实测 potential 轴 IGNORED。⚠ 全队**含丽娜本人**（原文「全队角色」，与核心被动 `rina.core_pen_ratio` 明确排除本人**不同**）；②的门控是**核心被动**而非额外能力 ⇒ 与 ① 同按常驻近似。⚠ 源面板取 `buildTeammateBuffSourceContext` 的**只含自身配置**那份 ⇒ 不含潜能①的 +1.6%（与既有 `rina.core_pen_ratio` 同一近似面；量级 ≈ +12.8 攻击，远在封顶下）。判据 `potentialAxisBatchC.test.ts`（含**上限维**单独一臂 —— 反向验证实测：只测系数时「撤掉 576/468 封顶」不咬合）。
 - 未建模：两只邦布与敌人感电的逐秒状态，统一以整局覆盖率表达；[惊吓] 层数跨窗口是否保留按整局累计近似。
 - 实现：`src/mechanics/agents/rina.ts`（口径见其头注释）+ spec `src/specs/agents/1211.json` notes。
 
@@ -302,7 +303,7 @@
 
 ### 珂蕾妲（koleda / 1101）—— 爆破锤失衡与熔炉
 - **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/koleda.ts` + spec `1101.json`；测试 `src/mechanics/__tests__/koleda.test.ts`）。含：核心被动强特失衡 +60%、额外能力连携 +35%×2层、影画 C1/C4/C6（KOLEDA_CORE_STUN/ADDITIONAL/C1/C4/C6_EXPLOSION 常量 + 合成执行行）。未建模见下（影画2 回能通道、强化普攻失衡拆分、熔炉逐时序）。
-- **潜能觉醒：爆破作业（定稿 2026-09，nanoka live 3.2 == 测试服 3.3.2 一致）**：锋御 锐暴伤害 II..VI = 4/6/8/10/12%、非锋御 暴击伤害 = 11/17/23/29/35%；spec teamBuffs `koleda_potential_team_crit` 按潜能 VI 满档承载（sharpCritDmg 12 + critDmg 35，分流由伤害 profile 天然实现——锐暴只作用于锋御锐化伤害、critDmg 对锋御无效）。旧 (Test1) 占位猜测（锋御暴击率 8~16% / 非锋御暴伤 16~32%）已废。生效测试 koleda.test.ts 面板差分。
+- **潜能觉醒：爆破作业（定稿 2026-09，nanoka live 3.2 == 测试服 3.3.2 一致；R60 复取 live `3.2/{zh,en}` 双语逐档复核）**：锋御 锐暴伤害 II..VI = 4/6/8/10/12%、非锋御 暴击伤害 = 11/17/23/29/35%；spec teamBuffs `koleda_potential_team_crit` 走 **formula 通道按 `potentialLevel` 取档**（锐暴 = min(1,max(0,p−1))·2p、暴伤 = min(1,max(0,p−1))·(6p−1)；p=1 未觉醒 = 0），分流由伤害 profile 天然实现——锐暴只作用于锋御锐化伤害、critDmg 对锋御无效。⚠ **R60 修复**：原实现把 **VI 满档写死**（sharpCritDmg 12 + critDmg 35）⇒ `potentialLevel` 滑块静默失效、低潜能玩家被高估。⚠ **本效果不受额外能力门控**（原文无条件「队伍中…」；四臂实测空槽队伍与带门控队友读数逐位相同）——别照抄 1041 燎原的门控形态。⚠ **本仓 raw 该段仍是旧 `(Test1)` 占位（滞后于 live），不得作为出处**。旧 (Test1) 占位猜测（锋御暴击率 8~16% / 非锋御暴伤 16~32%）已废。判据 `potentialAxisBatchC.test.ts`（常量层从 spec 读 expression 跑真求值器 + 四臂正交 + 门控维反向断言）。
 - **明确未建模**：影画2 强化特殊技命中回60能量（无干净回能通道）、强化普攻失衡加成、熔炉升温/充能逐状态时序。
 - **模块**：`src/mechanics/agents/koleda.ts`（替代旧 `koledaFurnaceMechanic`，移除无出处 +25% 增伤占位）。
 

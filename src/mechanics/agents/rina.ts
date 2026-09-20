@@ -40,6 +40,12 @@ export const RINA_SPOTLESS_DURATION = 13
 const RINA_BANGBOO_INTERVAL = 2.5
 /** 惊吓周期：6次普攻攒满 + 第7次消耗为午夜清扫 */
 const RINA_FRIGHT_CYCLE = 7
+/**
+ * 潜能觉醒·完美侍奉①：丽娜自身穿透率 +1.6%（无条件，潜能 II 起；原文每档都是 1.6%）。
+ */
+// @fact agent:1211/潜能觉醒穿透率 口径: 潜能觉醒·完美侍奉①（大扫除 II~VI）丽娜**自身**穿透率 +1.6%（各档同值，无条件；潜能 I 未觉醒 = 0），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1211.json `potential_detail` + static.nanoka.cc/zzz/3.2/{zh,en} 双语复核@2026-09-20 | 验 src/mechanics/__tests__/potentialAxisBatchC.test.ts | 锚 src/mechanics/agents/rina.ts#RINA_POTENTIAL_PEN_RATIO | 信 确认
+// ⟳复核: nanoka 若刷新 1211 的 potential_detail，逐档对账 II~VI 是否仍为「穿透率提升1.6%」 | 到期 2027-03-31
+export const RINA_POTENTIAL_PEN_RATIO = 1.6
 
 function findMove(skills: AgentSkills | undefined, id: string): SkillMove | null {
   if (!skills) return null
@@ -343,7 +349,16 @@ export const rinaMechanic: AgentMechanicModule = {
     max: 1,
     step: 0.1,
   }],
-  applyPanel: ({ cinemaLevel, panel, settings }) => {
+  applyPanel: ({ cinemaLevel, potentialLevel, panel, settings }) => {
+    // 潜能觉醒·完美侍奉①：丽娜自身穿透率 +1.6%（无条件，潜能 II 起）。
+    // R60 接入：本模块此前**零 `potential` 引用** ⇒ 大扫除整条未实现（四臂实测 potential 轴 IGNORED）。
+    // ②（全队攻击/防御按自身穿透率转模）走 spec teamBuffs `rina_potential_team_atk_def`——
+    // 它是**队伍级**效果（给队友），写在这里只会加到丽娜本人面板上（P2 陷阱）。
+    const potLv = Math.max(1, Math.min(6, Math.floor(Number(potentialLevel ?? 6))))
+    if (potLv >= 2) {
+      panel.penRatio = (panel.penRatio ?? 0) + RINA_POTENTIAL_PEN_RATIO
+      panel.rinaPotentialPenRatio = RINA_POTENTIAL_PEN_RATIO
+    }
     if (cinemaLevel >= 2) {
       panel.dmgBonus = (panel.dmgBonus ?? 0) + 15 * C2_COVERAGE
     }

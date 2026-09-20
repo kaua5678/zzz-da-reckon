@@ -251,6 +251,8 @@ export interface BuffEffect {
   dynamicSourceValue?: number
   /** 运行时注入的来源角色技能等级（12 + skillLevelBonus）；公式中可用 s 变量，默认按 12 级 */
   dynamicSkillLevel?: number
+  /** 运行时注入的来源角色潜能觉醒档位（1..6，取自源面板 `potentialLevel` 盖章）；公式中可用 p 变量，默认按 6 满档 */
+  dynamicPotentialLevel?: number
   ratio?: number
   cap?: number
   basis?: string

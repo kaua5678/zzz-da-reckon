@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
-import { computeZhendouChargeCount } from '../agents/zhendou'
+import { computeZhendouChargeCount, ZHENDOU_C4_HP_PCT } from '../agents/zhendou'
 
 describe('真斗（1441）炽心守恒反推蓄力次数', () => {
   it('招架不足时反推蓄力；招架+影画6 足够时蓄力 0', () => {
@@ -35,10 +35,15 @@ describe('真斗（1441）炽心/熔锋 面板', () => {
       { agentId: '1271' },
     ])
     const p0 = computePanelPhases(0, config, catalog)!.inCombat as any
+    const outHp = computePanelPhases(0, config, catalog)!.outOfCombat.hp
     config.team[0].cinemaLevel = 4
     const p4 = computePanelPhases(0, config, catalog)!.inCombat as any
     expect((p4.enemyFireResReduction ?? 0) - (p0.enemyFireResReduction ?? 0)).toBe(8)
-    expect((p4.hpPct ?? 0) - (p0.hpPct ?? 0)).toBe(8)
+    // ⚠ R60 订正：原断言读 `panel.hpPct` —— 那是**零消费者的旁路字段**（`applyPanel` 在
+    // `calcPanel` 之后 ⇒ 累加器已 finalize）⇒ 「字段被写」但 `panel.hp` 逐位不变，
+    // 而 hp 是命破贯穿力基底（`damage.ts:187` 的 hp×0.1）的输入 ⇒ C4 整条没进伤害。
+    // 正解：断言**真通道量** `panel.hp` 的差分（= 局外生命 × 8%）。
+    expect(p4.hp - p0.hp).toBeCloseTo(outHp * ZHENDOU_C4_HP_PCT / 100, 6)
   })
 })
 

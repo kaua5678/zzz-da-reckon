@@ -9,6 +9,7 @@ import {
   assignRinaUltNeighborEnergy,
   computeRinaBangboo,
   computeRinaCorePenRatio,
+  RINA_POTENTIAL_PEN_RATIO,
   RINA_SPOTLESS_DURATION,
   rinaMechanic,
 } from '@/mechanics/agents/rina'
@@ -142,12 +143,33 @@ describe('丽娜面板与资源接线', () => {
     const rinaOut = computePanelPhases(1, config, catalog)!.outOfCombat
     const expected = Math.min(30, rinaOut.penRatio * 0.25 + 12)
     expect(teammateC0.penRatio).toBeCloseTo(expected)
-    expect(rinaC0.penRatio).toBeCloseTo(rinaOut.penRatio)
+    // ⚠ R60 订正：原断言 `rinaC0.penRatio === rinaOut.penRatio`（丽娜本人穿透率局内外相同）
+    // 是**建立在缺陷上**的——潜能觉醒·完美侍奉①（大扫除 II，`potentialLevel` 默认 6）给
+    // **丽娜自身** +1.6% 穿透率，此前整条未实现（模块零 `potential` 引用）⇒ 该断言恰好恒成立。
+    // 正解：丽娜本人 = 局外 + 潜能① 的 1.6（核心被动仍明确排除本人，不受影响）。
+    expect(rinaC0.penRatio).toBeCloseTo(rinaOut.penRatio + RINA_POTENTIAL_PEN_RATIO)
 
     config.team[1].cinemaLevel = 1
     config.syncTeammateBuffsFromTeam()
     const teammateC1 = computePanelPhases(0, config, catalog)!.inCombat
     expect(teammateC1.penRatio).toBeCloseTo(expected * 1.3)
+  })
+
+  it('潜能觉醒·完美侍奉：自身穿透率 +1.6%，全队攻击/防御随档位转模（R60）', async () => {
+    const { catalog, config } = await setup(0)
+    // 潜能 I（未觉醒）⇒ 自身无 +1.6，队友无转模
+    config.setPotentialLevel(1, 1)
+    const p1Self = computePanelPhases(1, config, catalog)!.inCombat
+    const p1SelfOut = computePanelPhases(1, config, catalog)!.outOfCombat
+    const p1Mate = computePanelPhases(0, config, catalog)!.inCombat
+    expect(p1Self.penRatio).toBeCloseTo(p1SelfOut.penRatio)
+    // 潜能 VI ⇒ 自身 +1.6，队友拿到 atk/def 转模
+    config.setPotentialLevel(1, 6)
+    const p6Self = computePanelPhases(1, config, catalog)!.inCombat
+    const p6Mate = computePanelPhases(0, config, catalog)!.inCombat
+    expect(p6Self.penRatio - p1Self.penRatio).toBeCloseTo(RINA_POTENTIAL_PEN_RATIO)
+    expect(p6Mate.atk).toBeGreaterThan(p1Mate.atk)
+    expect(p6Mate.def).toBeGreaterThan(p1Mate.def)
   })
 
   it('额外能力只在同属性或同阵营队友存在时生效', async () => {
