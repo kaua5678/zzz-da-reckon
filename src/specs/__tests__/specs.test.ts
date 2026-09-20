@@ -66,15 +66,23 @@ describe('agent mechanic specs', () => {
   })
 
   it('keeps spec team buffs at full coverage by default', () => {
-    const specs = ['1561', '1401', '1181', '1501']
-      .map(id => getAgentSpec(id))
-      .filter((spec): spec is NonNullable<typeof spec> => Boolean(spec))
+    // ⚠ 2026-09-20 R64：原写法是**硬编码 4 个样本** `['1561','1401','1181','1501']`，其中 `1561`
+    // 已因「侵染区是风队通用机制、不是维琳娜的拐力」而**正确地**撤掉 `teamBuffs`
+    // （见 `src/mechanics/__tests__/specTeamBuffSingleSource.test.ts`）⇒ 该样本恒空、测试恒红。
+    // 修法**不是**把它从样本里删掉（那会顺手削弱判据），而是改成**全库不变量**：
+    // 凡是声明了 `teamBuffs` 的 spec，其每条默认覆盖率必须是 1。全库 20 个 spec 逐条覆盖，
+    // 比原来 4 个样本**更强**，且不会随某个 spec 的 teamBuffs 增删而腐化。
+    const specsWithBuffs = agentSpecs.filter(spec => (spec.teamBuffs?.length ?? 0) > 0)
 
-    expect(specs.length).toBe(4)
-    for (const spec of specs) {
-      expect(spec.teamBuffs?.length ?? 0, `${spec.id} team buffs`).toBeGreaterThan(0)
+    // 反空洞下限（R62 第七句：探针的「绿」可能是「没跑起来」）——
+    // 若哪天过滤条件写错导致集合为空，本断言必须红，而不是让下面的循环空转通过。
+    expect(specsWithBuffs.length,
+      '全库应有多个 spec 声明 teamBuffs；若为 0 说明本判据已空转（不是「全库都合规」）'
+    ).toBeGreaterThanOrEqual(10)
+
+    for (const spec of specsWithBuffs) {
       for (const buff of spec.teamBuffs ?? []) {
-        expect(buff.coverage, `${buff.id} coverage`).toBe(1)
+        expect(buff.coverage, `${spec.id}/${buff.id} coverage`).toBe(1)
       }
     }
   })
