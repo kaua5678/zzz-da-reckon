@@ -247,12 +247,18 @@ export const RATCHET_BURNDOWN = [
   {
     id: '滑块生效测试存量',
     file: 'scripts/lib/settings-coverage.mjs SETTINGS_UNTESTED_BACKLOG（扫描面 = 运行时 getRegisteredMechanicSettings）',
-    frozen: 28,  // 2026-09-20 round 50 管理员 AC 补完 Form-E 剩余 15 条后 **43 → 28**（与
+    frozen: 7,   // 2026-09-20 round 50 管理员 AC 补完 Form-B/C/D 21 条后 **28 → 7**（与
     // `SETTINGS_UNTESTED_BACKLOG.length` 同步改，两处一致 —— 同 `AGENT_BRANCH_BASELINE` 纪律；
     // `checkGuards.test.ts` 的成对锁 `frozen === BACKLOG.length` 也同步）。
-    // ⚠ 剩余 28 = Form-B/C/D 21 条（模块自己 `setting()` 读的覆盖率/次数滑块）+ 7 条**需用户裁决**
-    // （`jane.frenzyActive` 1 条 + §R49-J1 的两类静默失效 6 条：甲 1391 模块覆盖 ×2、乙 1621×2 /
-    // 1611×1 / 1561×1 资源不可达）。后 7 条**既不算已测也不豁免**，等裁决后按「接线」或「删声明」落地。
+    // ★ 本行**首次降到「全部待裁决」**：余 7 条 = §R50-J1 的三类「注册了但不生效」的滑块
+    // （甲 1391 模块覆盖 ×2 · 乙 1621×2/1611×1/1561×1 资源不可达 ×4 · 丙 `jane.frenzyActive` ×1）。
+    // 它们**既不算已测、也不豁免**，等用户裁决后按「接线」或「删声明」落地（请单：
+    // `/home/kaua/r50-scratch/evidence/R50-RULING-request-dead-sliders.md`）。
+    // ⇒ **本棘轮的可补面已清空**：`target: 0` 只能靠裁决后的「删声明」达成，不再是「补测试」问题。
+    //
+    // 沿革：round 50 补完 Form-E 剩余 15 条后 43 → 28（与
+    // `SETTINGS_UNTESTED_BACKLOG.length` 同步改，两处一致 —— 同 `AGENT_BRANCH_BASELINE` 纪律；
+    // `checkGuards.test.ts` 的成对锁 `frozen === BACKLOG.length` 也同步）。
     // 2026-09-20 round 49 **换尺时实测 60**（口径纠正，不是退步；规则 17②），
     // 同批**第二批**补了 16 条 spec adjustable（Form-E）的真管线生效测试后 **60 → 44**
     // （与 `SETTINGS_UNTESTED_BACKLOG.length` 同步改，两处一致 —— 同 `AGENT_BRANCH_BASELINE` 纪律）。
@@ -275,7 +281,14 @@ export const RATCHET_BURNDOWN = [
       + '★ R50 实测补充三条挑活规律（写进该测试文件头注释）：`chainCountTotal` 型 **必须 `stunCountLock`**'
       + '（默认队伍失衡次数收敛到 0 ⇒ 光给 `chainCountPerStun` 仍恒 0）；`max: 1` 型的第三点取 0.5 而非 2；'
       + '收敛反馈型（1591）**不严格成比例**，强断言 = 归零 + 与同一份结果解闭式恒等式。'
-      + '② **Form-B/C/D（21 条）**逐条写角色级断言 —— 本棘轮**唯一剩余的可补面**。'
+      + '② **Form-B/C/D（21 条）：✅ 全清**（R50 一轮补完，`src/mechanics/__tests__/mechanicSettingsEffect.test.ts`'
+      + '22 个 it：18 强比例/精确闭式 + 2 弱单调 + 1 类别判据）。★ 三条挑活大坑（写进该文件头注释）：'
+      + '`config.enemy.battleTime` 才是全局时长（槽位传是静默无效）· `useStunAxis=false` 不足以关轴'
+      + '（通配预设 `仪其他.json` = [\'1371\',\'*\',\'*\'] ⇒ 主 C 仪玄时多数队伍自动进轴 ⇒ '
+      + '`stunExCoverage` 被强制 0，须换无预设命中队伍）· 每点必须独立 `setupHarness`'
+      + '（跨值复用 ⇒ 收敛态污染 ⇒ 假 no-delta）。★ 反向验证：`setMechanicSetting` 恒写 0 ⇒ 21/21 全红。'
+      + '③ **余 7 条 = §R50-J1 的三类「注册了但不生效」**（甲 2 / 乙 4 / 丙 1）——**需用户裁决**'
+      + '（接线 vs 删声明），**本棘轮已无可补面**；请单见 OPEN-ITEMS §R50-J1。'
       + '⚠ 必须**走真管线**（`setMechanicSetting` → `resourceResult`/`computePanelPhases`），**不许**直调钩子'
       + '+ 手写 cfg —— R48 实测：手写 cfg 会抹掉「生产代码写不写这个字段」这个自由度，让断链「通过」'
       + '（`anbyC2StunCoverage` 曾因此掩盖恒等 0.5 的真缺陷）。'

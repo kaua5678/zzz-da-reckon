@@ -109,28 +109,7 @@ export const SETTINGS_UNTESTED_BACKLOG = [
   '1611.claret_gash.gash_gain_from_sharp_dmg.rate', // claret
   '1621.roxy_wind_energy.wind_energy_per_30_energy.rate', // roxy
   '1621.roxy_wind_eye.wind_eye_from_cannon.rate', // roxy
-  'banyue.diDongComboCount', // banyue
-  'burnice.flowCountUtilization', // burnice
-  'burnice.singleSpraySeconds', // burnice
-  'burnice.stirringCount', // burnice
-  'claret.bloodBurialCount', // claret
-  'claret.chainInWindowCoverage', // claret
-  'claret.cleaveSpecialCount', // claret
-  'claret.gashCoverage', // claret
   'jane.frenzyActive', // jane
-  'liuyin.c6EchoMax', // liuyin
-  'liuyin.hug60Count', // liuyin
-  'liuyin.previousTeammateSlot', // liuyin
-  'lucia.additionalAttackCount', // lucia_elowen
-  'lucia.frontSwitchRatio', // lucia_elowen
-  'nangong.releaseCoverage', // nangong
-  'nangong.vibratoStacksPerRelease', // nangong
-  'norma.holdSeconds', // norma
-  'roxy.spinSeconds', // roxy
-  'sigrid.cinema4Coverage', // sigrid
-  'yeshuguang.zhaoyingCount', // yeshuguang
-  'yixuan.c6GiftUltCount', // yixuan
-  'yixuan.stunExCoverage', // yixuan
 ]
 
 /** 从 mechanics 模块源码抽 settings 块里的 id（字符串字面量 + 常量引用两种形态） */
