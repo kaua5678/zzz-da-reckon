@@ -19,10 +19,6 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useCatalogStore } from '@/stores/catalog'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
-import {
-  YUZUHA_C4_ASSIST_BUILDUP_PCT,
-  YUZUHA_C4_ASSIST_DMG_PCT,
-} from '@/mechanics/agents/yuzuha'
 import { ANTON_C6_MOVE_IDS, ANTON_DRILL_MOVE_IDS, ANTON_PILE_MOVE_IDS } from '@/mechanics/agents/anton'
 
 const rawTalent = (id: string, level: number): string => {
@@ -49,10 +45,17 @@ describe('R61 batchA · 影画轴「档位表类实现」判据', () => {
    * spec `teamBuffs` 为空数组、`grep 1411017/1411024` 零命中）⇒ 整条从未进计算。
    */
   it('1411 影画4：原文 +30%/+20% 必须真的落在支援突击行的通道量上（dmgBonus / anomalyBuildUp）', async () => {
-    // ① 原文层：raw talent.4 逐字含这两个数字
+    // ① 原文层：raw talent.4 逐字含这两个数字，★ 并把**数字本身**解析出来当期望值 ——
+    // 期望值必须钉在外部事实上，**不许读被测常量**。
+    // ⚠ R61 实测（本文件首版就是这么错的）：写成 `expect(x).toBe(YUZUHA_C4_ASSIST_DMG_PCT)`
+    //   时，把常量改坏（注入 E 组：20 → 0）后**两边一起变**、断言照样绿 = **同义反复**。
+    //   这是 R60「判据里不许自己重写一遍公式」的**又一个变体**：不是重写公式，而是
+    //   **把期望值取自被测对象自己的常量**。⇒ 下面从 raw 文本正则抽出 30 / 20。
     const desc = rawTalent('1411', 4)
-    expect(desc, 'raw talent.4 未含支援突击伤害 +30%').toContain('伤害提升30%')
-    expect(desc, 'raw talent.4 未含属性异常积蓄效率 +20%').toContain('积蓄效率提升20%')
+    const dmgPct = Number((desc.match(/造成的伤害提升(\d+(?:\.\d+)?)%/) ?? [])[1])
+    const buildupPct = Number((desc.match(/积蓄效率提升(\d+(?:\.\d+)?)%/) ?? [])[1])
+    expect(Number.isFinite(dmgPct) && dmgPct > 0, `raw talent.4 未解析出支援突击伤害百分比：${desc}`).toBe(true)
+    expect(Number.isFinite(buildupPct) && buildupPct > 0, `raw talent.4 未解析出积蓄效率百分比：${desc}`).toBe(true)
 
     // ② 行为层：真管线读通道量（parryCount>0 才有支援突击行）
     const readAssistRows = async (cinemaLevel: number) => {
@@ -78,14 +81,14 @@ describe('R61 batchA · 影画轴「档位表类实现」判据', () => {
     // C3（未到档）：通道量必须是基准值，不带影画4 的加成
     expect(c3.row.dmgBonus ?? 0, 'C3 不应带影画4 增伤').toBe(0)
 
-    // C4：伤害通道 = 基准 + 30（原文数字）
-    expect(c4.row.dmgBonus ?? 0, `C4 支援突击 dmgBonus 应为 +${YUZUHA_C4_ASSIST_DMG_PCT}`).toBe(YUZUHA_C4_ASSIST_DMG_PCT)
+    // C4：伤害通道 = 基准 + raw 原文解析出的 (+30)
+    expect(c4.row.dmgBonus ?? 0, `C4 支援突击 dmgBonus 应为 +${dmgPct}（raw 原文）`).toBe(dmgPct)
 
     // C4：积蓄通道 = C3 基准 × (1 + 20%)（原文数字；含蓄积会被 enrich 回填 ⇒ 必须 override）
     const c3BuildUp = Number(c3.row.anomalyBuildUp ?? 0)
     expect(c3BuildUp, '支援突击行无表值积蓄 ⇒ 测试前提不成立').toBeGreaterThan(0)
-    const expected = c3BuildUp * (1 + YUZUHA_C4_ASSIST_BUILDUP_PCT / 100)
-    expect(Number(c4.row.anomalyBuildUp ?? 0), 'C4 支援突击积蓄未按 +20% 缩放').toBeCloseTo(expected, 6)
+    const expected = c3BuildUp * (1 + buildupPct / 100)
+    expect(Number(c4.row.anomalyBuildUp ?? 0), `C4 支援突击积蓄未按 +${buildupPct}%（raw 原文）缩放`).toBeCloseTo(expected, 6)
     expect(c4.row.anomalyBuildUpOverride, 'C4 积蓄未置 override ⇒ 会被 enrich 回填覆盖').toBe(true)
     expect(Number(c4.row.totalAnomalyBuildUp ?? 0), 'totalAnomalyBuildUp 未同步').toBeCloseTo(expected * Number(c4.row.count ?? 0), 6)
 
