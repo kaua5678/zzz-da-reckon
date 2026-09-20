@@ -238,23 +238,5 @@
     "状态机的 2 命风化获得按 2/3 期望值折算，可在资源利用率页调整。",
     "回能转模按局外回能（energyRegenOutOfCombat）读取：基础回能 × 局外加成 + 局外固定，不含局内回能 buff。"
   ],
-  "teamBuffs": [
-    {
-      "id": "velina_infection_zone",
-      "name": "维琳娜｜风化侵染",
-      "source": "风化/浸染机制",
-      "description": "风化状态下，风属性与被染队友属性的直伤进入独立乘区：风化系数 10%。默认按满覆盖处理，用户可在资源利用率页调整侵染覆盖率。",
-      "target": "team",
-      "coverage": 1,
-      "effects": [
-        {
-          "stat": "infectionZoneBonus",
-          "value": 10,
-          "mode": "pct"
-        }
-      ],
-      "status": "implemented_approximation",
-      "note": "侵染独立乘区只对风属性与被染队友属性直伤生效。"
-    }
-  ]
+  "teamBuffs": []
 }

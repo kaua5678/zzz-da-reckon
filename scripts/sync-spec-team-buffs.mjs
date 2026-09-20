@@ -20,19 +20,13 @@ function plain(value) {
 }
 
 const manualTeamBuffs = {
-  '1561': [
-    {
-      id: 'velina_infection_zone',
-      name: '维琳娜｜风化侵染',
-      source: '风化/浸染机制',
-      description: '风化状态下，风属性与被染队友属性的直伤进入独立乘区：风化系数 10%。默认按满覆盖处理，用户可在资源利用率页调整侵染覆盖率。',
-      target: 'team',
-      coverage: 1,
-      effects: [{ stat: 'infectionZoneBonus', value: 10, mode: 'pct' }],
-      status: 'implemented_approximation',
-      note: '侵染独立乘区只对风属性与被染队友属性直伤生效。',
-    },
-  ],
+  // ⚠ 1561（维琳娜）**刻意不在表内**：`velina_infection_zone` 曾被录成她的 teamBuff，
+  //   但侵染独立乘区是**风队通用机制**（任何 wind 角色在队即给 10，见 `panelPhases.ts:690`）
+  //   —— 与「维琳娜是否在队」**无关**（R64 实测：1621/1631 在队同样给 10）。
+  //   把它挂在她名下会造成三件事：① 归属错误；② 属性配置页多一个**死控件**
+  //   （数值被 `panel.infectionZoneBonus = …` 赋值覆写，拨覆盖率三档恒 10）；
+  //   ③ 与资源利用率页的 `wind.infectionCoverage` 同名不同源。
+  //   ⇒ 数值单源 = 通用规则 W1 + 编排层 W3；不要把这条加回来（判据 `specTeamBuffSingleSource.test.ts`）。
   '1401': [
     {
       id: 'alice_c1_enemy_def_reduction',
