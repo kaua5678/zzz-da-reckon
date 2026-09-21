@@ -655,6 +655,16 @@ export interface CharacterOperationConfig {
   yeshuguangSwordInitial?: number
   /** 叶瞬光：琉音转大赠送逐云次数（编排层注入） */
   yeshuguangGiftUltCount?: number
+  /**
+   * 叶瞬光终局整数化旗标（引擎写入，同 `yidhariFinalizeEx` / `billyFinalizeChain` 骨架）。
+   *
+   * 迭代期明心境轮数以**实数**参与收敛（防「平A↑→剑势↑→轮数+1整轮→必要时间↑→平A↓」正反馈环，
+   * 见 `@fact agent:1431/轮数实数化`）；收敛后置 true ⇒ 模块把**资源推导的触发次数**（照影）
+   * floor 一次，再重推 ≤12 轮到全状态逐位稳定。语义 = 余数剑势留着不打（不足 6 点不能变身），
+   * 「多出的那一轮」由合轴率 + 缩时轴承担，而不是把离散轮数切成小数。
+   * 旗标在最终装配后才复位（与 1531 同款：装配行必须按终局语义出账）。
+   */
+  yeshuguangFinalizeForms?: boolean
   /** 丽娜终结技每次给本槽位的能量（邻位30/10） */
   rinaEnergyPerRinaUlt?: number
   /** 露西终结技每次给本槽位的能量（邻位 30/10） */
@@ -837,6 +847,32 @@ export interface ResourceCalcConfig {
   comboAlignAbsorbRatio?: number
   /** 特殊动作喧响奖励（弹刀/闪反/连携/快支，含伴随50%）按槽位注入；参与终结技次数推导 */
   specialActionDecibelBonusPerSlot?: number[]
+  /**
+   * **降配档的单向闸门**（编排层注入；用户口径 2026-09-20）：
+   * 「合轴率、交互档等正向因子可以单调，不要一个上升一个下降，这样对伤害的计算不确定，
+   * 交互的计算也不确定。合轴降低是难度降低伤害降低，交互升高就是难度升高」。
+   *
+   * **要治的形态**（实测，叶瞬光+琉音+照 C0）：`interactionScale` 由 `stageResolveFeasibility`
+   * 每轮重新求「最大可行档」——合轴率从 0.20 降到 0.10 时时间账变宽，降配档反而从 0.25
+   * **回升**到 0.375、闪反 3→4、伤害 24.21M→24.36M ⇒ 合轴率（正因子）下降却把伤害推上去，
+   * 两个因子互相抵消甚至反转，难度轴与伤害都不再单调。
+   *
+   * **语义**：本值 = 允许自动降配到达的最大 scale（`1` = 不设限 = 历史行为）。
+   * 另配 `interactionScaleMonotone` 开关：开启后引擎在每次采纳 scale = s 时把本值**下调到 s**
+   * （单调不进位）⇒ 下一次求值只允许 ≤ s 的档，正因子继续降时交互档不可能回升。
+   *
+   * ⚠ 与「降配 = 手填交互超预算时的自动缩量」不冲突：本闸门只禁**回升**，不禁下降。
+   * 轴模式/锁窗（`stunCountLock ≥ 0`）不触发降配，故本字段对它们无作用。
+   */
+  interactionScaleCeiling?: number
+  /**
+   * **降配档单调闸门开关**（编排层注入；难度曲线在跑一般化档位时置 true）。
+   *
+   * 为什么需要独立开关（不是「ceiling < 1 即视为开启」）：`ceiling = 1` 同时表达
+   * 「不设限」与「从满档起步」两种含义——难度曲线的第一档就从 1（或 0.875）起步，
+   * 用数值推断会把「起步」误判成「未开启」。显式开关让语义无歧义，且缺省 false ⇒ 普通路径零影响。
+   */
+  interactionScaleMonotone?: boolean
   /** 异常/紊乱/乱流喧响奖励（含伴随50%）按槽位注入，由上一轮异常池结果回填；参与终结技次数推导 */
   anomalyDecibelBonusPerSlot?: number[]
   /** 3个角色的操作配置 */

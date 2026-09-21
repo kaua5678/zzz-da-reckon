@@ -582,8 +582,26 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // `billyFinalizeChain === false` 作判据会把**非比利 cfg**（该字段 undefined）也纳入重推，
     // 而它对非比利 cfg 无意义。⇒ 该处属「写入方是编排/引擎层的按角色复位」，不在 T6 冗余判据范围内。
     const billyFinalizeConfigs = configs.filter(c => c.agentId === '1531' && Number((c as unknown as Record<string, unknown>).billyAxisActive ?? 0) !== 1)
-    if (billyFinalizeConfigs.length > 0) {
+    /**
+     * 叶瞬光（1431）终局整数化（2026-09-20，用户口径「余数剑势本来就该留着不打」）：
+     *
+     * 迭代期明心境轮数（照影/喧响进轮/转大赠轮）以**实数**参与收敛，防「平A↑→剑势↑→轮数+1整轮
+     * →必要时间↑→平A↓」正反馈环（见 `@fact agent:1431/轮数实数化`）。但照影是「攒满 6 点剑势
+     * ⇒ 变身一次」的**离散触发**——30.38 点剑势只能是 5 次照影，余 0.38 点留着不打；小数化会把
+     * 「差一点的轮」直接兑现成 0.9 轮，掩盖掉「多出的那一轮要靠合轴率/缩时轴装下」这条链路。
+     *
+     * 终局 floor 一次 + 整数态重推 ≤12 轮（与比利同骨架），旗标在最终装配后才复位——装配行
+     * 必须按终局整数语义出账（否则行数按实数出、账本按整数出，两边不自洽）。
+     */
+    // 叶瞬光：按**能力字段**找槽（规则 6 / core agentId 棘轮）——模块在 buildCharConfig 里声明
+    // `yeshuguangContinuousForms`，引擎只查询能力，不 import 角色模块、不按 id 判定。
+    const yeshuguangFinalizeConfigs = configs.filter(
+      c => Number((c as unknown as Record<string, unknown>).yeshuguangContinuousForms ?? 0) === 1)
+    if (billyFinalizeConfigs.length > 0 || yeshuguangFinalizeConfigs.length > 0) {
       for (const bCfg of billyFinalizeConfigs) bCfg.billyFinalizeChain = true
+      for (const yCfg of yeshuguangFinalizeConfigs) {
+        ;(yCfg as unknown as Record<string, unknown>).yeshuguangFinalizeForms = true
+      }
       let finalizeStable = false
       for (let finalizePass = 0; finalizePass < 12; finalizePass++) {
         const prev = st
@@ -1156,10 +1174,15 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // ⟳复核: 重折环上限 / 接受判据 / kept 口径再动时，复核「默认路径（cut ≤ 1s 队）逐位 0 delta」+「1431 簇两队 Σcut 只减不增、cfg 无 rowTimeLimit 残留」（truncationRefold.test.ts + timeGolden） | 到期 2026-12-31
   config.overflowSeconds = timeTruncatedSeconds
 
-  // 比利/伊德海莉终局旗标复位：cfg 对象被外层不动点/热启动复用，下轮调用必须回到实数迭代期
+  // 比利/伊德海莉/叶瞬光终局旗标复位：cfg 对象被外层不动点/热启动复用，下轮调用必须回到实数迭代期
   // （伊德海莉复位必须在装配之后：装配行按 finalizeEx=true floor 蓄力 cycles，见 buildYidhariExecutions）
   for (const cfg of configs) if (cfg.agentId === '1531') cfg.billyFinalizeChain = false
   for (const cfg of configs) if (cfg.agentId === '1051') cfg.yidhariFinalizeEx = false
+  for (const cfg of configs) {
+    if (Number((cfg as unknown as Record<string, unknown>).yeshuguangContinuousForms ?? 0) === 1) {
+      ;(cfg as unknown as Record<string, unknown>).yeshuguangFinalizeForms = false
+    }
+  }
 
   // 终局预留量（供 applyLiuyinPromote 判定跳过 post-hoc carve；与 iterate Step4 同一求解）
   // ——与上方 giftTimeOfSlot 同源（同一 helper、同一轴模式条件），不重算。

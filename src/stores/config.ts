@@ -498,6 +498,22 @@ export const useConfigStore = defineStore('config', () => {
   // 章鱼自动轴（队伍含伊德海莉 1051 时按 章×有琉 自动开失衡轴并选预设；手动配置过轴时让路）
   const autoYidhariAxis = ref(true)
   /**
+   * **降配档单向闸门**（用户口径 2026-09-20）：
+   * 「合轴率、交互档等正向因子可以单调，不要一个上升一个下降，这样对伤害的计算不确定，
+   *  交互的计算也不确定。合轴降低是难度降低伤害降低，交互升高就是难度升高」。
+   *
+   * 治的形态（实测 叶瞬光+琉音+照 C0）：`stageResolveFeasibility` 每轮重求「最大可行 scale」——
+   * 合轴率 0.20 → 0.10 时时间账变宽，交互档从 0.25 **回升**到 0.375（闪反 3→4、伤害 24.21M→24.36M）
+   * ⇒ 正因子下降却把伤害推上去，难度轴与伤害都不再单调。
+   *
+   * 语义 = 本轮自动降配允许到达的**最大 scale**（1 = 不设限，历史行为）。难度曲线在跑某一档前
+   * 把它钉成该档的交互系数 ⇒ 「合轴率↓ ⇒ 交互档不回升 ⇒ 伤害同向」。
+   * ⚠ 缺省 1 + monotone=false：普通计算路径逐位不变（降配逻辑与历史完全一致）。
+   */
+  const interactionScaleCeiling = ref(1)
+  /** 降配档单调闸门开关（见上；难度曲线跑一般化档位时置 true，缺省 false = 历史行为） */
+  const interactionScaleMonotone = ref(false)
+  /**
    * 平A池权重·**分配策略三态**（默认 `'balanced'`；用户 2026-09-10 裁决）。
    *
    * · `'static'`   = **不跑策略**：用静态默认权重（强攻/异常/击破=1、支援/防护=0）或用户手填值。
@@ -1390,6 +1406,8 @@ export const useConfigStore = defineStore('config', () => {
     stunAxisPlans,
     useStunAxis,
     autoYidhariAxis,
+    interactionScaleCeiling,
+    interactionScaleMonotone,
     timeWeightStrategy,
     setTimeWeightStrategy,
     getTeamMechanicSetting,

@@ -12,6 +12,8 @@ import {
   computeAutoEnginePicks,
   DEFAULT_AUTO_ENGINE_POOL,
   computeDifficulty,
+  defaultInteractionExponent,
+  BOSS_ATTACK_INTERACTIONS,
   interactionSurvivalBySlot,
   roundInteractionCount,
   shrinkInteractionsByTruncation,
@@ -310,6 +312,108 @@ describe('teamCompare 金数/难度口径', () => {
     expect(more.difficulty - withOverflow.difficulty).toBeCloseTo(5, 2)
   })
 
+  /**
+   * 逐类型难度公式（用户口径 2026-09-20：「仪玄的 e 弹、佩洛伊斯的完美格挡、般岳的金身弹刀和
+   * 双反都需要怪物的一次攻击，所以要算修正。这个我想让用户抉择，哪些是要吃非失衡占比的，
+   * 让他自己编公式」）。
+   *
+   * 判据分四层：
+   *  ① 默认只对 `BOSS_ATTACK_INTERACTIONS` 四类吃修正，其余不吃（旧基线逐位不变）；
+   *  ② 修正形式 = `c*w/max(r,0.05)^k` ⇒ 非失衡占比越低难度越大（用户口径的核心）；
+   *  ③ 用户可**逐项开关**（改成 `c*w` 即关闭）与**自编公式**；
+   *  ④ 非法公式退化为 `c*w`（不修正），**不是 0**（笔误不该静默抹掉难度）。
+   */
+  it('逐类型公式：只对「需怪攻击」的四类吃非失衡占比，其余不吃（旧基线不变）', () => {
+    const I = TEST_PRESET.interactions   // parry 8 / dodge 4 / 快支 3 / 般岳金身 5
+    const T = TEST_PRESET.team
+    // ① 未给 stunWindowRatio（缺省 0）⇒ 与旧口径逐位一致
+    const base = computeDifficulty(I, T, 0)
+    expect(base.difficulty).toBeCloseTo(22.1, 2)
+    expect(base.detail).not.toContain('修正→')
+
+    /**
+     * ② 给了占比：**弹刀/闪避/般岳金身**都被修正（三者都需怪出手），**快支不吃**。
+     *
+     * 逐项对账（r = 非失衡占比 0.5 ⇒ 除数 0.5）：
+     *  · 弹刀 8×1 = 8    → 8/0.5 = 16
+     *  · 闪避 4×1.2 = 4.8 → 4.8/0.5 = 9.6
+     *  · 快支 3×0.6 = 1.8 → 1.8（不吃）
+     *  · 金身 5×1.5 = 7.5 → 7.5/0.5 = 15
+     *  合计 = 16 + 9.6 + 1.8 + 15 = 42.4
+     */
+    const half = computeDifficulty(I, T, 0, {}, 0, 0.5)
+    expect(half.difficulty).toBeCloseTo(42.4, 1)
+    // 明细里的 label 取条目自带的 `label` 字段（'般岳金身弹刀'，无「·」）
+    expect(half.detail).toContain('般岳金身弹刀修正→15')
+    // 弹刀/闪避也带修正项（2026-09-20 二次修正：通用三类也需怪出手）
+    expect(half.detail).toContain('弹刀修正→16')
+    expect(half.detail).toContain('闪避修正→9.6')
+    // 快支不吃修正 ⇒ 不出现它的修正项（救场替换，不依赖 boss 出手）
+    expect(half.detail).not.toContain('快支修正→')
+
+    // ③ 非失衡占比越低（失衡占比越高）⇒ 难度越大
+    const narrow = computeDifficulty(I, T, 0, {}, 0, 0.8)  // 非失衡 20% → 难
+    const wide = computeDifficulty(I, T, 0, {}, 0, 0.2)    // 非失衡 80% → 易
+    expect(narrow.difficulty).toBeGreaterThan(wide.difficulty)
+
+    // ④ 地板保护：全程失衡（占比 1）不得打成 Infinity
+    const allStun = computeDifficulty(I, T, 0, {}, 0, 1)
+    expect(Number.isFinite(allStun.difficulty)).toBe(true)
+    expect(allStun.difficulty).toBeGreaterThan(narrow.difficulty)
+  })
+
+  it('逐类型公式：用户可逐项开关与自编公式；非法公式退化为 c*w（不是 0）', () => {
+    const I = TEST_PRESET.interactions
+    const T = TEST_PRESET.team
+    const r = 0.5
+    // 开关：把**全部**需怪攻击的类型改回 c*w ⇒ 完全不吃修正（= 裸和）
+    const allOff: Record<string, string> = {}
+    for (const t of BOSS_ATTACK_INTERACTIONS) allOff[t] = 'c*w'
+    const off = computeDifficulty(I, T, 0, { interactionFormula: allOff }, 0, r)
+    expect(off.difficulty).toBeCloseTo(22.1, 2)
+
+    // 只关金身：弹刀/闪避仍吃修正 ⇒ (8+4.8)/0.5 + 1.8 + 7.5 = 34.9
+    const goldenOff = computeDifficulty(I, T, 0, { interactionFormula: { banyueGoldenParry: 'c*w' } }, 0, r)
+    expect(goldenOff.difficulty).toBeCloseTo(34.9, 1)
+
+    // 自编公式：只放大一半 ⇒ 金身除数 = 0.5+0.5×0.5 = 0.75
+    const halfPenalty = computeDifficulty(I, T, 0, {
+      interactionFormula: { banyueGoldenParry: 'c*w/(0.5+0.5*r)' },
+    }, 0, r)
+    expect(halfPenalty.difficulty).toBeCloseTo((8 + 4.8) / 0.5 + 1.8 + 7.5 / 0.75, 1)
+
+    // 指数可调：k=2 ⇒ 平方惩罚（比 k=1 更狠）
+    const k2 = computeDifficulty(I, T, 0, { interactionExponent: { banyueGoldenParry: 2 } }, 0, r)
+    const k1 = computeDifficulty(I, T, 0, {}, 0, r)
+    expect(k2.difficulty).toBeGreaterThan(k1.difficulty)
+
+    // 非法公式（含非法字符 / 语法错 / 非数值）⇒ 该项退化为 c*w，**不是 0**
+    // （逐项独立退化：金身非法不影响弹刀/闪避的修正）
+    for (const bad of ['c*w + process', 'c*w+', 'alert(1)', '']) {
+      const got = computeDifficulty(I, T, 0, { interactionFormula: { banyueGoldenParry: bad } }, 0, r)
+      expect(got.difficulty, `非法公式 ${JSON.stringify(bad)} 应让该项退化为不修正`)
+        .toBeCloseTo(goldenOff.difficulty, 2)
+    }
+
+    /**
+     * 名单判据（回归守卫：漏掉任一类即红）。
+     *
+     * 2026-09-20 二次修正：**通用三类也需怪出手**（用户指出「弹刀闪避格挡也需要怪物出手」）——
+     * parry=招架支援挡 boss 攻击、dodge=闪避反击躲 boss 攻击、block=格挡 boss 攻击，
+     * 另 counterAssist=角力化解 boss 控制技连段。初版把它们错分成「玩家主动动作」。
+     */
+    for (const t of [
+      'parry', 'dodge', 'block', 'counterAssist',
+      'yixuanPerfectBlock', 'perfectBlock', 'banyueGoldenParry', 'banyueDualCounter',
+    ]) {
+      expect(defaultInteractionExponent(t), `${t} 应默认吃修正（需怪出手）`).toBe(1)
+    }
+    // 不依赖 boss 出手的两类不吃：快支 = 队友被击飞的救场替换；嘲讽取消 = 自然后摇取消
+    for (const t of ['quickAssist', 'tauntCancel']) {
+      expect(defaultInteractionExponent(t), `${t} 不应默认吃修正`).toBe(0)
+    }
+  })
+
   it('溢出秒与合轴节省秒是**同一笔**时间压力：各挂一半权重=各挂全额（用户 2026-09-11 口径）', () => {
     // 同一份「必做前台超出窗口的秒数」：12.3 全算硬溢出 ≡ 12.3 全算合轴抵扣 ≡ 拆成 10+2.3
     const allHard = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 12.3, {}, 0)
@@ -408,12 +512,24 @@ describe('teamCompare 金数/难度口径', () => {
       interactions: [{ type: 'parry', count: 8 }],
     }
     const opts = { presets: [preset], goldLevels: [0], boss: FAKE_BOSS, phase: FAKE_PHASE }
-    // 默认权重：弹刀 8×1.0 = 8
+    /**
+     * ⚠ 2026-09-20：难度轴新增**非失衡占比修正**（交互项 ÷ 非失衡占比^k，用户口径
+     * 「非失衡占比应该是被除数，越低难度越大」）⇒ 交互项不再等于 `次数 × 权重` 的裸和，
+     * 而要被除数放大。本用例的**接线判据**因此改为「比值」而不是绝对值——
+     * 绝对值随该队的失衡占比浮动（那是数据，不是接线），而**权重透传的倍数关系恒定**：
+     * 弹刀权重 ×2.5 ⇒ 弹刀那部分贡献 ×2.5（占比修正对两项是同一个除数，比值不变）。
+     */
     const def = computeTeamComparePoints(calc, opts)
-    expect(def[0].difficulty).toBeCloseTo(8, 2)
-    // 用户覆盖弹刀权重 2.5 → 8×2.5 = 20（证明弹层填的值真的透传到难度轴）
     const over = computeTeamComparePoints(calc, { ...opts, difficultyWeights: { interaction: { parry: 2.5 } } })
-    expect(over[0].difficulty).toBeCloseTo(20, 2)
+    /**
+     * 本用例只声明了**弹刀**（`parry`）——弹刀**在** `BOSS_ATTACK_INTERACTIONS` 名单里
+     * （招架支援 = 挡 boss 攻击 ⇒ 需怪出手 ⇒ 吃非失衡占比修正，2026-09-20 二次修正）。
+     * 实测 8.78 = 8 ÷ 0.911（该队非失衡占比 91.1%）。
+     */
+    expect(def[0].difficulty, `默认权重实测 ${def[0].difficulty}`).toBeCloseTo(8.78, 1)
+    expect(def[0].difficultyDetail, '弹刀应带修正项').toContain('弹刀修正→8.78')
+    // 权重透传：覆盖弹刀权重 2.5 ⇒ 20 ÷ 0.911 = 21.95（证明弹层填的值真的透传到难度轴）
+    expect(over[0].difficulty, '弹刀权重 2.5 ⇒ 21.95').toBeCloseTo(21.95, 1)
   })
 })
 
@@ -674,7 +790,23 @@ describe('teamCompare 批量计算', () => {
     for (const p of points) {
       expect(p.damage).toBeGreaterThan(0)
       expect(p.hpRatio).toBeGreaterThan(0)
-      expect(p.difficulty).toBeCloseTo(22.1, 1)
+      /**
+       * 难度与金数无关（本用例的判据 = 各金档同值）。
+       *
+       * 2026-09-20 逐类型公式：本队 `TEST_PRESET.interactions` 的四项里
+       * **弹刀 / 闪避 / 般岳金身**都需怪出手 ⇒ 吃修正，**快支不吃**（救场替换）。
+       * 逐项对账（除数 0.911 = 该队非失衡占比）：
+       *  · 弹刀 8 ÷ 0.911 = 8.78
+       *  · 闪避 4.8 ÷ 0.911 = 5.27
+       *  · 快支 1.8（原样）
+       *  · 金身 7.5 ÷ 0.911 = 8.23
+       *  合计 ≈ 24.08
+       */
+      expect(p.difficulty, `实测 ${p.difficulty}`).toBeCloseTo(24.08, 1)
+      // 需怪出手的三项都带修正项；快支不带（逐类型化的直接判据）
+      expect(p.difficultyDetail, '般岳金身应带修正项').toContain('般岳金身弹刀修正→')
+      expect(p.difficultyDetail, '弹刀应带修正项').toContain('弹刀修正→')
+      expect(p.difficultyDetail, '快支不该带修正项').not.toContain('快支修正→')
       expect(p.bossHp).toBe(31900305)
     }
     // 金数越高伤害越高（同队同难度，命座递增应单调不减）

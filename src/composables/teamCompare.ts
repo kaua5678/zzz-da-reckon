@@ -20,6 +20,7 @@
  * 纵轴：伤害 / Boss 血量 × 100%（100 = 击杀，200 = 两倍血量）。
  */
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
+import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { useConfigStore, type CharacterConfig, type EnemyConfig } from '@/stores/config'
 import type { SkillDamageTarget } from '@/types/catalog'
 import { useCatalogStore } from '@/stores/catalog'
@@ -133,7 +134,98 @@ export interface DifficultyWeights {
    * （拆开会把「用合轴换掉溢出」重复计一次，V 型曲线就是那个假象）。
    */
   timePressure?: number
+  /**
+   * ⚠ **已废弃**（2026-09-20 由逐类型公式取代，见 `interactionFormula` / `interactionExponent`）：
+   * 原先这里是「全局一个指数」，无法表达「只有需怪攻击的交互才吃修正」——用户口径
+   * 「仪玄的 e 弹、佩洛伊斯的完美格挡、般岳的金身弹刀和双反都需要怪物的一次攻击……这个我想让
+   * 用户抉择，哪些是要吃非失衡占比的，让他自己编公式」。字段已删除（死通道扫描点名），
+   * 需要全局行为请给所有类型设同一公式。
+   */
+  /**
+   * **逐交互类型的难度公式**（用户口径 2026-09-20：「仪玄的 e 弹、佩洛伊斯的完美格挡、般岳的
+   * 金身弹刀和双反都需要怪物的一次攻击，所以要算金（修正）。这个我想让用户抉择，哪些是要吃
+   * 非失衡占比的，让他自己编公式」）。
+   *
+   * 键 = 交互类型（`INTERACTION_WEIGHTS` 的键）；值 = 公式字符串，缺省用该类型的默认公式。
+   *
+   * **可用变量**（与 `core/buff.ts#evalFormulaExpression` 同款沙箱：字符白名单 +
+   * `clamp/floor/max/min`）：
+   *  · `c` = 该项**次数**
+   *  · `w` = 该项**权重**
+   *  · `r` = **非失衡占比**（0..1，已钳到 ≥ `NON_STUN_RATIO_FLOOR`）
+   *  · `k` = 该类型的指数（见 `interactionExponent`，缺省 1）
+   *
+   * 默认公式（未在表里的类型）= `c*w`（不修正，历史行为）。
+   * 需怪攻击的类型（`BOSS_ATTACK_INTERACTIONS`）默认 = `c*w/pow(max(r,0.05),k)`。
+   *
+   * ⚠ **幂运算写 `pow(a,b)` 或 `a**b`**：JS 的 `^` 是**按位异或**，写成 `r^k` 会静默算出错值
+   * （实测 `max(r,0.05)^k` 在 r=0.2 与 r=0.8 下得同一个数）。
+   *
+   * 例：
+   *  · 只放大一半：`c*w/(0.5+0.5*r)`
+   *  · 完全不吃修正：`c*w`
+   *  · 平方惩罚：`c*w/pow(max(r,0.05),2)`
+   */
+  interactionFormula?: Record<string, string>
+  /**
+   * 逐类型的指数 `k`（公式里的 `k` 变量取值）。缺省：需怪攻击的类型 = 1，其余 = 0。
+   * 单列它的理由 = 让用户在**不改公式**的前提下快速调强度（指数是常用旋钮）。
+   */
+  interactionExponent?: Record<string, number>
 }
+
+/**
+ * **需要怪物出手一次**才能成立的交互类型 —— 它们的难度吃非失衡占比修正。
+ *
+ * 物理依据（用户口径 2026-09-20）：「失衡期怪物不攻击，没有交互机会。非失衡时间越少，
+ * 怪物攻击越少，交互到足够次数的难度越大」——这些交互**吃的是怪物的出手**，
+ * 故非失衡窗口越窄越难凑够同样次数，默认公式带 `÷非失衡占比^k`。
+ *
+ * ⚠ **2026-09-20 二次修正（用户指出）**：初版只列了角色专属的四类（仪玄 e 弹 / 佩洛伊斯完美格挡 /
+ * 般岳金身弹刀 / 般岳双反），把**弹刀/闪避/格挡**错分成「玩家主动动作」。实测语义是：
+ *  · `parry`（招架支援）= 挡 boss 攻击；
+ *  · `dodge`（闪避反击）= 躲 boss 攻击；
+ *  · `block`（格挡）= 格挡 boss 攻击；
+ *  · `counterAssist`（角力/反制支援）= 化解 boss 控制技（一组连段攻击）。
+ * 四者**都要求 boss 先出手** ⇒ 与角色专属那四类同源，一并吃修正。
+ *
+ * **不吃的两类**（语义上不依赖 boss 出手）：
+ *  · `quickAssist`（快速支援）= 队友被击飞时的**救场替换**动作（救的是队友不是躲 boss 攻击）；
+ *  · `tauntCancel`（嘲讽取消）= 般岳自然后摇取消，配置类交互（weight 0）。
+ *
+ * ⚠ 这只是**默认值**：用户在「难度权重」弹层可逐项开关/改公式（用户明确要求可抉择）。
+ */
+export const BOSS_ATTACK_INTERACTIONS: readonly string[] = [
+  // 通用三类：响应 boss 攻击（2026-09-20 二次修正补入）
+  'parry',                // 弹刀（招架支援）
+  'dodge',                // 闪避（闪避反击）
+  'block',                // 格挡
+  'counterAssist',        // 角力（反制支援，化解 boss 控制技连段）
+  // 角色专属四类
+  'yixuanPerfectBlock',   // 仪玄·e 弹（完美格挡）
+  'perfectBlock',         // 佩洛伊斯·完美格挡
+  'banyueGoldenParry',    // 般岳·金身弹刀
+  'banyueDualCounter',    // 般岳·双反
+] as const
+
+/** 逐类型默认指数：需怪攻击的类型 = 1（线性），其余 = 0（不修正） */
+export function defaultInteractionExponent(type: string): number {
+  return BOSS_ATTACK_INTERACTIONS.includes(type) ? 1 : 0
+}
+
+/** 逐类型默认公式（未指定时） */
+export function defaultInteractionFormula(type: string): string {
+  // ⚠ 幂运算必须写 `**` 或 `pow(...)`——JS 的 `^` 是**按位异或**，`max(r,0.05)^k` 会静默算出
+  // 错误值（实测 r=0.2 与 r=0.8 得同一个数）。沙箱已注入 `pow` 供用户书写。
+  return defaultInteractionExponent(type) > 0 ? 'c*w/pow(max(r,0.05),k)' : 'c*w'
+}
+
+/**
+ * 非失衡占比的下限（防 0 除）：占比低于它时按它算。
+ * 取 0.05 = 「180s 里只有 9s 非失衡」——实战极端（长失衡轴）也不会更窄；再窄按地板计，
+ * 避免难度爆到 Infinity 把散点/曲线轴撑坏。
+ */
+export const NON_STUN_RATIO_FLOOR = 0.05
 
 /** 效果是否对当前队伍生效（特性限定 / 特性人数分档）。导出供测试。 */
 export function resolveBuffEffect(eff: PhaseBuffEffect, preset: TeamPreset): PhaseBuffEffect | null {
@@ -172,6 +264,9 @@ export const INTERACTION_LABELS: Record<string, string> = {
   block: '格挡',
   banyueGoldenParry: '般岳·金身弹刀',
   banyueDualCounter: '般岳·双反',
+  // 2026-09-20：需怪攻击的两类补进难度轴（用户口径点名「仪玄的 e 弹、佩洛伊斯的完美格挡」）
+  yixuanPerfectBlock: '仪玄·e 弹（完美格挡）',
+  perfectBlock: '完美格挡',
   tauntCancel: '嘲讽取消',
 }
 
@@ -249,6 +344,52 @@ export function roundInteractionCount(v: number): number {
  * （原「溢出权重 + 合轴权重」两旋钮造成的 V 型假象，2026-09-11 删）。
  * `alignSeconds` 缺省 0 = 只算硬溢出（散点页口径不变）。
  */
+
+/**
+ * 难度公式求值器（逐交互类型，用户可自编）——与 `core/buff.ts#evalFormulaExpression` 同款沙箱：
+ * **字符白名单**（数字/`c r k w`/运算符/括号/逗号/下划线/字母）+ 仅注入
+ * `clamp/floor/max/min/pow/abs/sqrt`（`pow` 必须有：JS 无幂运算符 `^`，见默认公式注释）。
+ *
+ * 为什么用白名单 + `Function` 而不是引第三方表达式库（规则 12 阶梯 ③）：
+ *  · 仓库已有同款先例（`core/buff.ts` 的 spec `formula` 通道，服务几十个角色的录入），
+ *    引库会多一个依赖且与既有口径分裂；
+ *  · 白名单已挡住属性访问（`.` 后跟字母是允许的，但无对象可及）、模板串、注释等逃逸面；
+ *    公式来自**用户自己的浏览器本地配置**（localStorage），不是远端输入。
+ *
+ * 变量（契约，改签名即改口径）：
+ *  · `c` = 该项次数
+ *  · `w` = 该项权重
+ *  · `r` = 非失衡占比（0..1，已钳到 ≥ `NON_STUN_RATIO_FLOOR`）
+ *  · `k` = 该类型指数（`DifficultyWeights.interactionExponent[type]` 或默认）
+ *
+ * 非法表达式/求值异常/结果非有限 ⇒ 返回 `c*w`（**退化为不修正**，不是 0——
+ * 返回 0 会让用户一个笔误就把该项难度抹掉，静默且危险）。
+ */
+// @fact engine:操作难度/逐类型公式 口径: 难度公式**按交互类型逐项配置**（`DifficultyWeights.interactionFormula[type]`，缺省按类型默认）——**需要怪物一次攻击**的四类（仪玄 e 弹 / 佩洛伊斯完美格挡 / 般岳金身弹刀 / 般岳双反）默认 `c*w/pow(max(r,0.05),k)`（吃非失衡占比），其余默认 `c*w`（不吃）；变量 c=次数 w=权重 r=非失衡占比 k=指数；用户可逐项开关（写 `c*w` 即关闭）与自编公式；非法公式退化为 `c*w`（不修正，不是 0）| 据 用户@2026-09-20「仪玄的 e 弹、佩洛伊斯的完美格挡、般岳的金身弹刀和双反都需要怪物的一次攻击……这个我想让用户抉择，哪些是要吃非失衡占比的，让他自己编公式」 | 验 src/composables/__tests__/teamCompare.test.ts::逐类型公式 | 锚 src/composables/teamCompare.ts#evalDifficultyFormula | 信 确认
+// ⟳复核: `BOSS_ATTACK_INTERACTIONS` 名单（新增需怪攻击的角色机制时）、默认公式、或 `NON_STUN_RATIO_FLOOR` 再动时，复核「只对名单内类型修正（其余旧基线逐位不变）」+「非法公式退化不修正」两条 | 到期 2026-12-31
+export function evalDifficultyFormula(
+  expression: string,
+  c: number,
+  w: number,
+  r: number,
+  k: number,
+): number {
+  const fallback = c * w
+  const expr = (expression ?? '').trim()
+  if (expr === '' || expr === 'c*w') return fallback
+  if (!/^[0-9crkwCRKW+\-*/().,\s_a-zA-Z]+$/.test(expr)) return fallback
+  try {
+    const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
+    const out = Function(
+      'c', 'r', 'k', 'w', 'clamp', 'floor', 'max', 'min', 'pow', 'abs', 'sqrt',
+      `return (${expr})`,
+    )(c, r, k, w, clamp, Math.floor, Math.max, Math.min, Math.pow, Math.abs, Math.sqrt) as unknown
+    return typeof out === 'number' && Number.isFinite(out) ? out : fallback
+  } catch {
+    return fallback
+  }
+}
+
 export function computeDifficulty(
   interactions: InteractionItem[],
   team: (string | null | undefined)[] = [],
@@ -256,17 +397,51 @@ export function computeDifficulty(
   weights: DifficultyWeights = {},
   /** 合轴把队友前台压出去、解放成可用前台时间的秒数（`frontlineOccupationBreakdown().saved`）；缺省 0 = 不计 */
   alignSeconds = 0,
+  /**
+   * **失衡窗口占比**（0..1，缺省 0 = 不失衡/未测 ⇒ 不修正）。
+   * 非失衡占比 = 1 − 本值；逐类型公式里的 `r` 变量（见 `DifficultyWeights.interactionFormula`）。
+   * 调用方从 `stunWindowFraction(stunCount, windowDuration, effectiveTime)` 取（单一事实源）。
+   */
+  stunWindowRatio = 0,
 ): { difficulty: number; detail: string } {
   const items = completeInteractionList(interactions, team)
+  /**
+   * 非失衡占比（0..1，钳到地板防 0 除）——逐类型公式里的 `r` 变量。
+   * 用户口径 2026-09-20：「非失衡占比应该是被除数，越低难度越大」。
+   */
+  const nonStunRatio = Math.max(
+    NON_STUN_RATIO_FLOOR,
+    Math.min(1, 1 - Math.max(0, Math.min(1, stunWindowRatio))),
+  )
   let total = 0
+  let interactionTotal = 0
   const parts: string[] = []
   for (const it of items) {
     const weight = it.weight ?? weights.interaction?.[it.type] ?? INTERACTION_WEIGHTS[it.type] ?? 1
-    total += it.count * weight
+    /**
+     * **逐类型公式**（用户口径 2026-09-20：「仪玄的 e 弹、佩洛伊斯的完美格挡、般岳的金身弹刀和
+     * 双反都需要怪物的一次攻击，所以要算修正。这个我想让用户抉择，哪些是要吃非失衡占比的，
+     * 让他自己编公式」）：
+     *  · `weights.interactionFormula[type]` 优先（用户自编）；
+     *  · 否则按类型默认：需怪攻击的四类（`BOSS_ATTACK_INTERACTIONS`）= `c*w/max(r,0.05)^k`，
+     *    其余 = `c*w`（不修正，历史行为）。
+     * 这是「逐项可抉择」的落点——用户既能开关（改成 `c*w`），也能改形式。
+     */
+    const exponent = weights.interactionExponent?.[it.type] ?? defaultInteractionExponent(it.type)
+    const expr = weights.interactionFormula?.[it.type] ?? defaultInteractionFormula(it.type)
+    const value = evalDifficultyFormula(expr, it.count, weight, nonStunRatio, exponent)
+    interactionTotal += value
     if (weight <= 0) continue // 配置类交互（如嘲讽取消，weight 0）不进难度明细
     const label = it.label ?? INTERACTION_LABELS[it.type] ?? it.type
     parts.push(`${label}${it.count}×${weight}`)
+    // 结果与裸和不同（= 公式真的起了作用）才打修正明细，用户看得见自己编的公式生效了。
+    // ⚠ 判据用「值不等」而不是「表达式非默认」：r=0 时非失衡占比钳到 1，公式虽非默认但结果
+    // 与 c*w 相同——那种情况打「修正→7.5」是噪音（实测旧判据在无占比数据时也打）。
+    if (it.count > 0 && Math.abs(value - it.count * weight) > 1e-9) {
+      parts.push(`${label}修正→${Math.round(value * 100) / 100}`)
+    }
   }
+  total += interactionTotal
   // 时间压力 = 硬溢出 + 合轴抵扣（同一笔秒数，见函数头）：默认 1 秒 = 1 难度点，只挂一个权重
   const hard = Math.max(0, overflowSeconds)
   const align = Math.max(0, alignSeconds)
@@ -1112,7 +1287,14 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
           shrinkInteractionsByTruncation(preset.interactions, rrHere), preset.team, rrHere?.overflowSeconds ?? 0,
           options.difficultyWeights,
           // 合轴抵扣掉的那一半（两图同一把尺：难度曲线也用它）
-          rrHere ? frontlineOccupationBreakdown(rrHere).saved : 0)
+          rrHere ? frontlineOccupationBreakdown(rrHere).saved : 0,
+          /**
+           * 非失衡占比修正（用户口径 2026-09-20）——**散点页与难度曲线页必须同一把尺**，
+           * 漏传会让同一支队在两张图上得到不同 x（实机点通抓到：散点明细缺 `÷非失衡占比…` 项）。
+           * 口径 = `calc.stunCoverage`（含决算截断损失秒的权威值）。
+           */
+          stunWindowRatioOf(calc, configStore.enemy),
+        )
         const std = preset.standardSteps ?? []
         let cinemas: [number, number, number]
         let wengineMods: [number, number, number]

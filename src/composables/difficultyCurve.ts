@@ -50,6 +50,8 @@ import {
   restoreStore, roundInteractionCount, snapshotStore, type DifficultyWeights,
 } from '@/composables/teamCompare'
 import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
+import { stunWindowRatioOf } from '@/composables/difficultyRatio'
+export { stunWindowRatioOf }
 import { getAgentMechanic } from '@/mechanics'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult, TeamResourceResult } from '@/types/resource'
@@ -176,11 +178,16 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
  * 只列**有引擎字段**的类型；角色专属类型（如般岳·金身弹刀/双反）不进引擎字段，
  * 由 `liveInteractions` 从预设声明里补回来。
  */
-const ENGINE_INTERACTION_FIELDS: { type: string; field: keyof ReturnType<typeof useConfigStore>['team'][number] }[] = [
+export const ENGINE_INTERACTION_FIELDS: { type: string; field: keyof ReturnType<typeof useConfigStore>['team'][number] }[] = [
   { type: 'parry', field: 'parryCount' },
   { type: 'dodge', field: 'dodgeCounterCount' },
   { type: 'quickAssist', field: 'quickAssistCount' },
   { type: 'block', field: 'blockCount' },
+  // 2026-09-20：需怪攻击的两类（用户口径点名）——它们此前只在角色模块内部消费，没进难度轴，
+  // 于是「仪玄 e 弹 5 次」对操作难度零贡献。补进来后默认吃非失衡占比修正
+  // （见 `teamCompare#BOSS_ATTACK_INTERACTIONS`）。
+  { type: 'yixuanPerfectBlock', field: 'yixuanPerfectBlockCount' },
+  { type: 'perfectBlock', field: 'perfectBlockCount' },
   { type: 'tauntCancel', field: 'tauntCancelCount' },
 ]
 
@@ -248,8 +255,12 @@ export function measureOperationalDifficulty(
   const overflow = rr?.overflowSeconds ?? 0
   // 合轴抵扣出去的秒数：与硬溢出同属「必做前台超出 180s」这一笔，故交给 computeDifficulty 合成一项
   const saved = rr ? frontlineOccupationBreakdown(rr).saved : 0
-  return computeDifficulty(liveInteractions(ctx.config, preset, rr), preset.team, overflow, weights, saved).difficulty
+  return computeDifficulty(
+    liveInteractions(ctx.config, preset, rr), preset.team, overflow, weights, saved,
+    stunWindowRatioOf(ctx.calc, ctx.config.enemy),
+  ).difficulty
 }
+
 
 // ========== 伤害归因：这一档 +N 伤害是谁贡献的（同一份快照里采） ==========
 

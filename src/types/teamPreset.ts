@@ -199,5 +199,10 @@ export const INTERACTION_WEIGHTS: Record<string, number> = {
   block: 1.0, // 格挡（星徽·比利动力压制期间格挡等）
   banyueGoldenParry: 1.5, // 般岳金身弹刀（角色专属交互示例）
   banyueDualCounter: 2.0, // 般岳双反（完美闪避+金身弹刀组合，一次攻击吃两下交互）
+  // 2026-09-20：需怪攻击的两类（用户口径点名）——权重按「一次完美格挡 = 一次弹刀」的
+  // 操作量级估，与 block/parry 同为 1.0；它们与弹刀的区别不在操作量，而在**是否需要怪物出手**
+  // （那只影响非失衡占比修正，见 `BOSS_ATTACK_INTERACTIONS`，不影响权重）。
+  yixuanPerfectBlock: 1.0, // 仪玄·e 弹（完美格挡）
+  perfectBlock: 1.0, // 佩洛伊斯·完美格挡
   tauntCancel: 0, // 嘲讽取消（般岳失衡外连段末尾后摇取消；配置类交互，不计难度）
 }

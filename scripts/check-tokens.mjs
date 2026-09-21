@@ -681,7 +681,13 @@ export const WA_REF_BASELINE = 448  /* ★ 2026-09-18 round 31-a2「贴片墨对
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 753  /* ★ 2026-09-19 难度曲线 3D 版本轴（DifficultyCurve3DChart 场景令牌）：743 → **753**（+10）。
+export const VAR_TOTAL_BASELINE = 778  /* ★ 2026-09-20 难度曲线（降序一般化）面板 + 难度权重弹层逐类型公式：753 → **778**（+25）。
+                                       * 这是**棘轮允许的方向**（本键语义 = 「只增不减，防把变量改回字面量」）⇒ 上调即进步登记。
+                                       * 逐条归因：新增 `DifficultyDescentPanel.vue`（曲线/表格/悬停提示，全部走 `--app-*` / `--fg-*` / `--wa-*` 令牌）
+                                       * + `TeamComparePage.vue` 的逐类型公式 UI（开关/折叠/提示）+ `team-compare-page.css` 新增块
+                                       * （`.diff-weight-boss` / `.diff-weight-tip` 等，用 `--fg-2`/`--fg-3`/`--app-inset`）。
+                                       * ⚠ 同时 **--wa-\* 直引净 0**（448，见 WA_REF_BASELINE 注释）——新代码全部走语义别名，两个数字一起看才说明。
+                                       * ★ 2026-09-19 难度曲线 3D 版本轴（DifficultyCurve3DChart 场景令牌）：743 → **753**（+10）。
                                        * ★ 2026-09-18 round 31-a2「贴片墨对比度」：687 → **743**（+56）。
    这是**棘轮允许的方向**（本键语义 = 「只增不减，防把变量改回字面量」）⇒ 上调即进步登记。
    逐条归因：12 个文件的贴片墨改成 `var(--fg-2)`（既有别名）+ 4 处逐位同值字面量

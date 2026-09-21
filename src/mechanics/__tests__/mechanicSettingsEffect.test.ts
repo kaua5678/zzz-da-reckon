@@ -972,12 +972,18 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：叶瞬光 / 仪�
    * `yeshuguang.zhaoyingCount`：声明 `yeshuguang.ts:690`；读 `:371`
    * （`cfgNum(cfg,'yeshuguang.zhaoyingCount',-1)`）→ `resolveCycle`（`:365`）
    * → `computeYeshuguangCycle`（`:203`）`:219`：
-   *   `zhaoyingForms = max(0, v>=0 ? min(v, autoZhao) : autoZhao)`、`autoZhao = outsideSword/6`
-   *   （**实数，不 floor** —— 见该函数上方「轮数实数化」@fact）。
+   *   `zhaoyingForms = max(0, v>=0 ? min(v, autoZhao) : autoZhao)`、`autoZhao = outsideSword/6`。
+   *
+   * ⚠ **2026-09-20 终局整数化后口径变了**（`@fact agent:1431/终局整数化`，用户口径「余数剑势本来就
+   * 该留着不打」）：照影是「攒满 6 点剑势 ⇒ 变身一次」的**离散触发**，迭代期保持实数（防正反馈环），
+   * **终局**由引擎置 `yeshuguangFinalizeForms` 后 floor 一次 ⇒ **本探针读到的（终局产物）是整数**：
+   *   `autoZhao = floor(outsideSword/6)`。探针读 `specResources`（终局物化结果）⇒ 闭式按整数商解。
+   * （迭代期实数语义由 `yeshuguang.test.ts#轮数实数化` 直接钉 `computeYeshuguangCycle`（不带
+   * `finalizeForms`）⇒ 那里逐位保留旧语义，两条用例分工不重叠。）
    *
    * 观测点 = `specResources['yeshuguang_mingxin'].gains['zhaoying']`（另 `guanzhi.total`、
    * `sword_momentum.remaining` 同步变）。闭式三条（全部用**同一份读数**里的量解）：
-   *   ① `zhaoying === Math.min(v, autoZhao)`；
+   *   ① `zhaoying === Math.min(v, floor(autoZhao))`；
    *   ② `guanzhi === totalForms·guanzhiPerForm`（`BASE_GUANZHI = 2` + C2 追加 `FORM_SWORD = 6`）；
    *   ③ `remaining === outsideSword − 6·zhaoying`（`ZHAOYING_COST = 6`）。
    *
@@ -986,7 +992,7 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：叶瞬光 / 仪�
    * （修正版已推翻初版"轴模式"归因：与轴无关，同队同配置只换采样点即得 0/1/2 线性）。
    * ⇒ 本测试固定取 **v = 0 / 1 / 2**，并**显式断言三点互不相同**把这个退化模式钉成红。
    */
-  it('yeshuguang.zhaoyingCount：zhaoying === min(v, autoZhao) 且 guanzhi/remaining 同步（三点 0 / 1 / 2）', async () => {
+  it('yeshuguang.zhaoyingCount：zhaoying === min(v, floor(autoZhao)) 且 guanzhi/remaining 同步（两点 0 / 1，终局整数化）', async () => {
     const team: HarnessTeamSlot[] = [
       { agentId: '1431', ...RICH },
       { agentId: '1371', cinemaLevel: 6, chainCountPerStun: 2 },
@@ -994,7 +1000,12 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：叶瞬光 / 仪�
     ]
     const failures: string[] = []
     const readings: number[] = []
-    for (const v of [0, 1, 2]) {
+    /**
+     * 采样点：终局整数化后本队 `autoZhao = floor(1.877) = 1` ⇒ `min(v,1)` 在 v=1 与 v=2 上饱和成
+     * 同一个值（旧实数口径 `min(2,1.877)=1.877 ≠ min(1,1.877)=1`，故旧点位有效）。
+     * 点位改为 **v = 0 / 1**（都在 autoZhao 之内且互不相同）。
+     */
+    for (const v of [0, 1]) {
       const r = await probe(team, 'yeshuguang.zhaoyingCount', v, calc => {
         const c = charOf(calc, '1431')
         const sr = c.specResources as Record<string, {
@@ -1011,8 +1022,8 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：叶瞬光 / 仪�
       })
       if (r.zhaoying === undefined) { failures.push(`v=${v}: mingxin.zhaoying 不可得（spec key 改名？）`); continue }
       readings.push(r.zhaoying)
-      // autoZhao = outsideSword/6（实数）；用它解闭式，不硬编 2.33
-      const autoZhao = (r.outside ?? 0) / 6
+      // autoZhao = floor(outsideSword/6)（**终局整数化**，见本条头注释）；用它解闭式
+      const autoZhao = Math.floor((r.outside ?? 0) / 6)
       const expected = Math.min(v, autoZhao)
       if (Math.abs(r.zhaoying - expected) > 1e-9) {
         failures.push(`v=${v}: zhaoying 应为 min(${v}, autoZhao=${autoZhao})=${expected}，实到 ${r.zhaoying}`)
@@ -1029,9 +1040,9 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：叶瞬光 / 仪�
         failures.push(`v=${v}: remaining 应为 outsideSword(${r.outside}) − 6×${r.zhaoying}=${expectedRemain}，实到 ${r.remain}`)
       }
     }
-    // ★ 防退化（本条的核心教训）：三点必须互不相同，否则就是"采样点全落进饱和支"
-    if (readings.length === 3 && new Set(readings).size !== 3) {
-      failures.push(`三点 zhaoying 出现重复（${JSON.stringify(readings)}）⇒ 全部饱和在 min(v, autoZhao) 的同一支；`
+    // ★ 防退化（本条的核心教训）：采样点必须互不相同，否则就是"全落进饱和支"
+    if (readings.length >= 2 && new Set(readings).size !== readings.length) {
+      failures.push(`采样点 zhaoying 出现重复（${JSON.stringify(readings)}）⇒ 全部饱和在 min(v, autoZhao) 的同一支；`
         + '请把点位下移到 autoZhao 之内（R50 侦察第一版就栽在这，与轴无关）')
     }
     expect(failures, failures.join('\n')).toEqual([])

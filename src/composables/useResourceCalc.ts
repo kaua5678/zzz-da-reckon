@@ -85,6 +85,9 @@ export function useResourceCalc() {
       stunPlanProjection: stunPlanProjectionFromCode(configStore.getMechanicSetting('time.stunPlanProjection', 0)),
       // 动态合轴吸收上限（全局变量，用户口径 2026-09-19 v3；见 data/resourceDefaults#DEFAULT_COMBO_ALIGN_ABSORB_RATIO）
       comboAlignAbsorbRatio: configStore.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO),
+      // 降配档单向闸门（用户口径 2026-09-20；缺省 ceiling=1 / monotone=false ⇒ 普通计算路径逐位不变）
+      interactionScaleCeiling: configStore.interactionScaleCeiling,
+      interactionScaleMonotone: configStore.interactionScaleMonotone,
       characters,
     }
   })
@@ -214,6 +217,8 @@ export function useResourceCalc() {
       let prevStunValue: number | null = null
       /** 外层反馈签名历史（周期 ≥3 环检测用；见环检测注释）。每轮外层循环独立。 */
       const outerSigHistory: string[] = []
+      /** 本轮反馈签名（`feedbackStable` 用的同一组序列）——2-循环判据用它判「环成员是否已进入稳态」 */
+      let curSig = ''
       /** 与 `outerSigHistory` 同步的 `stunCount` 历史（同相位比对用）。 */
       const outerStunHistory: number[] = []
       /** 与上面两个历史同步的每轮结果（cycle 规范停点选点用；轮数 ≤ MAX_OUTER_ITER，持有引用不复制） */
@@ -244,6 +249,25 @@ export function useResourceCalc() {
         if (!r?.resourceResult) return Number.POSITIVE_INFINITY
         return Math.abs(stunEffTime - (frontlineTotalOf(r) + pendingTopUpSeconds(r, m.prev))) + (r.resourceResult.convergence?.timeTruncatedSeconds ?? 0)
       }
+      /**
+       * 终局整数化后的环成员离散自洽度（2026-09-20，叶瞬光 integer-finalize 配套）。
+       *
+       * 为什么需要它：终局整数化把「资源推导的离散触发次数」（照影/喧响进轮）在收敛后 floor，
+       * 于是环成员之间差**一整次离散动作**（叶瞬光实测 C1 短轴：`dec=3/tot=12/net=178.24/截断 11.0s`
+       * ↔ `dec=2/tot=11/net=178.84/截断 0`）。两个成员在失衡维度上完全相等（`stunIn` 都是 0、
+       * `next` 都是 0），在时间维度上只差 2.6s —— 而 `timeInconsistencyOf` 的 **2s 同级容差**
+       * （`AXIS_FALLBACK_TOLERANCE_SEC`，为「动态合轴把前台一律吸收到 ≈预算」设计）恰好把这一整次
+       * 动作的差别抹平，取点退回「最后一轮」⇒ 报 12（高估，那 11s 实际装不下被截断）。
+       *
+       * 判据 = **截断秒数为零的成员优先**（装得下 > 装不下），再用截断量本身做次级排序。
+       * 这是「离散动作只兑现装得下的部分」的直接表达，与 `@fact agent:1431/终局整数化` 同源；
+       * 对没有终局整数化的队，环成员通常共享同一截断量（差 ≤ 量化残差）⇒ 逐位零影响。
+       */
+      const discreteInconsistencyOf = (m: OuterCycleMember): number => {
+        const r = m.out
+        if (!r?.resourceResult) return Number.POSITIVE_INFINITY
+        return r.resourceResult.convergence?.timeTruncatedSeconds ?? 0
+      }
       const stunInconsistencyOf = (m: OuterCycleMember): number => Math.abs(m.next - m.stunIn)
       /** 选中成员的前一轮结果（= 它的输入线程来源；轴退化判据用它算「还没装进计划的补齐量」） */
       let outPrev: CalcRoundResult | null = null
@@ -263,8 +287,13 @@ export function useResourceCalc() {
         for (let i = candidates.length - 2; i >= 0; i--) {
           const c = candidates[i]
           const dStun = stunInconsistencyOf(c) - stunInconsistencyOf(best)
+          // ⓪′ 离散自洽优先（见 discreteInconsistencyOf）：截断差 > 容差时，装得下的成员胜出——
+          // 整次离散动作的差别会被 2s 同级容差抹平，这条把它捞回来。
+          const dDisc = discreteInconsistencyOf(c) - discreteInconsistencyOf(best)
           const better = dStun < -OUTER_STUN_TOLERANCE
-            || (dStun <= OUTER_STUN_TOLERANCE && timeInconsistencyOf(c) < timeInconsistencyOf(best) - AXIS_FALLBACK_TOLERANCE_SEC)
+            || (dStun <= OUTER_STUN_TOLERANCE && dDisc < -TIME_BUDGET_TOLERANCE_SECONDS)
+            || (dStun <= OUTER_STUN_TOLERANCE && dDisc <= TIME_BUDGET_TOLERANCE_SECONDS
+              && timeInconsistencyOf(c) < timeInconsistencyOf(best) - AXIS_FALLBACK_TOLERANCE_SEC)
           if (better) { best = c; outerCyclePickedEarlier = true }
         }
         outPrev = best.prev
@@ -370,8 +399,62 @@ export function useResourceCalc() {
           /**
            * 真 2-循环：`next` 回到**上上轮**的值附近（而上一轮是另一个值）。
            * 用 0.05 容差（与上面的判稳容差同源）；收敛中的序列每轮都在动 ⇒ 不会命中。
+           *
+           * ⚠ **冷启动首轮的瞬态要排除**（2026-09-20，两次实测校准后的判据形态）：
+           *
+           * k=1 判环时，`prevStunValue` 是 k=0 的**冷输入**（`initialCalcRoundThreads()`，反馈线程为空）。
+           * 对 `auto-1431-1481-1341`（叶瞬光+琉音+照）这类队，k=0 的冷线程让它的**输出行**不可行
+           * （`total=3.567`），k=1 在热线程下才把真实需求打出来（`total=11.334`，`trunc=59s` 装不下）
+           * ⇒ 此时早停会把 k=1 这个**装不下的瞬态**当规范停点（实测报 9.48 次白毛，应 10.06；
+           * 交互降配被带偏到 0.125，应 0.375~0.5）。
+           *
+           * **判据 = 环成员必须在时间上可行**（与 `discreteInconsistencyOf` 同一把尺）：
+           * 仅当本轮输出（= 候选环成员）**装得下**（`timeTruncatedSeconds ≤ 容差`）时才允许判环。
+           * 对 claret（1611/1481/1371）这类「时间充足性约束每轮都把 next 钳到 0」的队，
+           * k=1 的成员 `trunc=0` 可行 ⇒ 照旧判环（保住窗口计划：连携 0.302、伤害 14.39M；
+           * 若放行会收敛到 0 窗吸引盆 −1.9%）。两类队由此区分，不再互相误伤。
            */
+          /**
+           * **环成员必须已进入稳态**（2026-09-20 第三次校准，最终形态）：要求本轮反馈签名
+           * **与上一轮相同**——与周期 ≥3 检测（`outerSigHistory[k] === outerSigHistory[k-lag]`）
+           * 同一把尺。理由：真 2-循环意味着状态**真正回到同态**，反馈线程（ultSeq/anomalySeq/
+           * 赠行 giftRow/parrySplit 等）必须一起回到；否则只是 stunCount 数值偶然相撞。
+           *
+           * 实测三类队由此一次分清（前两个单条件版本各误伤一类）：
+           *  · **叶瞬光+琉音+照**：k=1 的赠行线程还在 3→4→3 变（未稳）⇒ 签名不同 ⇒ 不判环
+           *    ⇒ 继续迭代到稳定（C0 full/mie 均 10 次，不再报 11）；
+           *  · **claret 1611/1481/1371**：k=0/k=1 的 stun 与线程都已稳（签名相同）⇒ 判环照旧
+           *    ⇒ 保住窗口计划（连携 0.302、伤害 14.39M）；
+           *  · **般岳保底队**：成员带 33s 截断 ⇒ 被可行性闸门拦下 ⇒ 落到装得下的成员。
+           */
+          /**
+           * 真 2-循环的特征 = **状态每 2 轮回到同态** ⇒ `sig[k] === sig[k-2]`（lag=2），
+           * 与周期 ≥3 检测（`outerSigHistory[k] === outerSigHistory[k-lag]`）**同一把尺**。
+           *
+           * ⚠ 别写成 `curSig === prevSig`（k vs k-1）——那是「相邻两轮相同」= 已 stable 的特征，
+           * 不是 2-循环（实测写成 lag=1 后，环成员筛选全乱：C0/mie 报 11 次、三个轴里两个报 cycle）。
+           */
+          /**
+           * 2-循环的**成员稳态判据**（2026-09-20 第 4 次校准，最终形态，逐条实测见下）：
+           *
+           * 要求「本轮的反馈签名与**上一轮**相同」= 反馈线程（ultSeq/anomalySeq/赠行/parrySplit…）
+           * 已经不再变化。理由：`next ≈ x_{k-2}` 的字面判据会把**线程仍在演化的过渡轮**误当环成员。
+           *
+           * 三类队实测（每种单条件都被其中两类打脸过，这是收敛形态）：
+           *  · **叶瞬光+琉音+照**：k=1 赠行线程 3→4→3 还在变 ⇒ 签名不同 ⇒ 不判环 ⇒ 继续迭代到稳定
+           *    （C0 三轴全 10 次、C1 短轴 11 次，与用户口径一致）；
+           *  · **claret 1611/1481/1371**：k=0 起线程就已稳定（lag1=true）⇒ 判环照旧 ⇒ 保住窗口计划
+           *    （连携 0.302、14.39M）；
+           *  · **般岳保底队**：成员带 33s 截断 ⇒ 由 `currentMemberFeasible` 拦下 ⇒ 落到装得下的成员
+           *    （补齐 4→12 次、伤害 56.98M→66.36M）。
+           *
+           * ⚠ 别改用 `sig[k] === sig[k-2]`（lag=2）：那与「周期 ≥3」检测同形，但对**本类 2-循环**
+           * 太严——claret 的 lag2=false（其线程在 k=0/k=1 同态但历史长度不足），会把它的环也放跑
+           * （实测落回 0 窗、连携 0→14.12M）。lag=1 才是「线程已进入稳态」的正确表达。
+           */
+          const sigRepeats = outerSigHistory.length >= 2 && curSig === outerSigHistory[outerSigHistory.length - 2]
           const isTwoCycle = prevStunValue !== null
+            && sigRepeats
             && Math.abs(next - prevStunValue) < OUTER_STUN_TOLERANCE
             && Math.abs(next - stunCount) >= OUTER_STUN_TOLERANCE
           if (isTwoCycle) {
@@ -423,7 +506,8 @@ export function useResourceCalc() {
           // 记录本轮反馈签名 + stunCount（**只记录不判环**）——周期 ≥3 的环在循环耗尽后统一重标注
           // （见函数末尾）。**不在循环里提前 break** 是关键：任何提前 break 都会改动「原本会收敛到
           // stable」的队的停点（实测缺 stun 容差条件时 5 支队 stable→cycle、数值被静默改写）。
-          outerSigHistory.push(`${ultSeq}|${anomalySeq}|${topUpSeq}|${parrySplitSeq}|${decibelParrySeq}|${backstageSeq}|${buildUpFracSeq}|${aliceSeq}`)
+          curSig = `${ultSeq}|${anomalySeq}|${topUpSeq}|${parrySplitSeq}|${decibelParrySeq}|${backstageSeq}|${buildUpFracSeq}|${aliceSeq}`
+          outerSigHistory.push(curSig)
           outerStunHistory.push(stunCount)
           outerNextHistory.push(next)
           outerOutHistory.push(out)
@@ -591,7 +675,19 @@ export function useResourceCalc() {
             stunEffTime,
             toleranceSeconds: TIME_BUDGET_TOLERANCE_SECONDS,
           })
-          const best = selectDownscaleScale(DOWNSCALE_SCALES, scale => {
+          // @fact engine:降配档单调闸门 口径: 闸门开启（`interactionScaleMonotone`）时，自动降配档**只降不升**——① 候选 scale 不得高于 `interactionScaleCeiling`（每次采纳后下调到该档，单调不进位）；② 候选集内无可行解时**继续往下降**（取最小档如实上报截断），**不得退回基线全量交互**（旧行为 = 回升，实测 C0 合轴率 0.10 档：退回 scale=1 ⇒ 闪反 3→10、伤害 24.36→20.99M，单调性换向破坏）。目的 = 「合轴降 ⇒ 难度降 + 伤害降；交互升 ⇒ 难度升」各因子同向（用户口径 2026-09-20）| 据 用户@2026-09-20 | 验 src/composables/__tests__/difficultyDescent.test.ts | 锚 src/composables/useResourceCalc.ts#stageResolveFeasibility | 信 确认
+          // ⟳复核: 闸门默认关闭态（monotone=false）再动、或 `selectDownscaleScale` 的 null 兜底语义再动时，复核「普通计算路径逐位不变」+「闸门开启后合轴率↓ ⇒ 交互档不增」（timeGolden/timeLedgerInvariants + difficultyDescent.test.ts） | 到期 2026-12-31
+          /**
+           * **降配档单向闸门**（用户口径 2026-09-20）：候选 scale 不得高于 `interactionScaleCeiling`。
+           * 治「合轴率↓ 但降配档回升 ⇒ 伤害反而涨」的反转（实测 C0：合轴率 0.20→0.10 时
+           * 交互档 0.25→0.375、闪反 3→4、伤害 24.21M→24.36M）。缺省 ceiling=1 ⇒ 候选集不变。
+           */
+          const monotoneGate = resourceConfig.value?.interactionScaleMonotone === true
+          const scaleCeiling = resourceConfig.value?.interactionScaleCeiling ?? 1
+          const candidates = scaleCeiling >= 1
+            ? DOWNSCALE_SCALES
+            : DOWNSCALE_SCALES.filter(s => s <= scaleCeiling + 1e-9)
+          const best = selectDownscaleScale(candidates, scale => {
             const trial = runOuterLoop(true, scale)
             const trialTruncation = trial.out?.resourceResult?.overflowSeconds ?? 0
             const accepted = acceptsTrial(trial) && trialTruncation <= TIME_BUDGET_TOLERANCE_SECONDS
@@ -607,6 +703,29 @@ export function useResourceCalc() {
             r = best.value
             axisFallback = hadAxis
             interactionScale = best.scale
+          } else if (resourceConfig.value?.interactionScaleMonotone && candidates.length > 0) {
+            /**
+             * **闸门下的退化兜底**（用户口径 2026-09-20：正因子单调）：
+             *
+             * `selectDownscaleScale` 返回 null 时，旧行为是**保基线态**（= 全量交互）。
+             * 但闸门开启后这不是「不变」而是**回升**——实测 C0 合轴率 0.10 档：ceiling 已压到 0.25，
+             * 候选集 {0.25,...,0.0625} 无可行解 ⇒ 退回基线 scale=1 ⇒ 闪反 3→10、伤害 24.36→20.99M，
+             * 难度轴的单调性又被破坏（只是换了个方向）。
+             *
+             * 语义修正 = **继续往下降**：取候选集里最小档（交互最少、最省时间），宁可如实上报截断也不回升。
+             * 这样「合轴率↓ ⇒ 交互档不增 ⇒ 伤害同向」在全区间成立。
+             */
+            const floorScale = candidates[candidates.length - 1]!
+            const trial = runOuterLoop(true, floorScale)
+            if (trial.out) {
+              r = trial
+              axisFallback = hadAxis
+              interactionScale = floorScale
+            }
+          }
+          // 采纳后把闸门下调到本次落点（单调不进位）：下一次求值只允许 ≤ 本次
+          if (monotoneGate && interactionScale !== undefined) {
+            configStore.interactionScaleCeiling = Math.min(configStore.interactionScaleCeiling, interactionScale)
           }
         }
       }
@@ -1154,6 +1273,18 @@ const damageSourceBreakdown = computed<DamageSourceBreakdown[]>(() =>
     autoPreset,
     autoActive,
     windowDuration,
+    /**
+     * **失衡窗口占比（0..1）**——含**决算截断损失秒**的权威口径
+     * （`stunSeconds = 次数 × 窗长 − verdictSecondsLost`，见 `runCalcRound` 的决算段）。
+     *
+     * 为什么暴露它：难度轴的「非失衡占比」修正（`computeDifficulty` 的逐类型公式 `interactionFormula`）要的是
+     * 「真有多少秒在失衡里」。用户口径 2026-09-20 点名的场景 = **雨果多次结算让非失衡时间上升、
+     * 弹刀等交互次数也跟着上升，但那不代表难度高** —— 决算把窗口剩余失衡时间清空，实际失衡时间
+     * 比「次数 × 窗长」少，用近似值会把难度算**高**。
+     * 此前它只在内部消费（伤害池按覆盖率折易伤），展示层若自行重算就拿不到 `verdictSecondsLost`
+     * ⇒ 这里按规则 11（共享量从单一来源引用）暴露，不再让调用方各自近似。
+     */
+    stunCoverage,
     banyueInteractionTopUp,
     parrySplitResult,
     liuyinPromoteCount,

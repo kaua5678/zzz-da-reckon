@@ -231,15 +231,20 @@ export const RATCHET_BURNDOWN = [
   {
     id: '死通道豁免清单',
     file: 'scripts/lib/dead-channel-scan.mjs DEAD_CHANNEL_ALLOWLIST',  // R46 结构熵切面：清单随实现迁走（路径跟随，不是销号）；改动仍须连 frozen 一起
-    frozen: 8,  // 2026-09-13 首轮实测 15（判据 14 上线时冻结）→ 14（2026-09-14 T15 审计 #13：
+    frozen: 7,  // 2026-09-20 **销号 1 条**（`difficultyLadder.maxSteps`：棘轮报「已不再命中」，字段仍在、
+    // 只是 R46 结构熵切面 refactor 后扫描器不再判它为「只读不写」）⇒ 8 → **7** = 现 workload
+    // （allowlist 8 条里含 1 条 namesake 误报样本 `runArchiveImport.resistances`，按 countDeadChannelWorkload
+    // 口径不计入待处置量 ⇒ 8−1 = 7）。棘轮只减不增，销号即下调。
+    // 2026-09-13 首轮实测 15（判据 14 上线时冻结）→ 14（2026-09-14 T15 审计 #13：
     // 扣掉 1 条 kind:'namesake' 的误报记录 runArchiveImport.resistances —— 它的候选永不消失、
     // 永远不会 stale，算进待处置量会让棘轮**永远还不完**。口径见 countDeadChannelWorkload）
     // → **8**（2026-09-15 销号 7 条**假阳性**，三个检测器缺陷，**不是调基线蒙混**）：
     //   · 段 A 3 条（coverageMap / moduleInputRows ×2）—— 读判定漏「裸标识符读 + 位置实参」
     //   · 段 B 4 条（stunAxisPresets 的 chapter / guarantee —— 写判定不扫 JSON；
     //     difficultyLadder 的 minGain / multiplierCoefficients 的 zeroEnergyRow —— 写判定漏对象**简写**）
-    // 现况：A 零读零写 2（runArchiveImport 的 weaknesses/hpTotal，确无消费点）/ B 只读不写 6（含 1 条
-    // namesake 误报样本 runArchiveImport.resistances，已在 why 里如实标注）/
+    // 现况（2026-09-20 销号后）：A 零读零写 2（runArchiveImport 的 weaknesses/hpTotal，确无消费点）/
+    // B 只读不写 5（allowlist 里 B 段 6 条，含 1 条 namesake 误报样本 runArchiveImport.resistances
+    // 不计入 workload，已在 why 里如实标注）/
     // C 手写 d.mts 漂移 **0**（上线即把 16 个漏声明一次补齐 = 判据的正确用法）。
     // 三类（除误报样本外）都是存量：通道在、类型在、编译过，就是没人用
     target: 0,

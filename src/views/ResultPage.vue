@@ -105,6 +105,9 @@
         </n-grid>
       </n-card>
 
+      <!-- 难度曲线（用户 2026-09-20）：勾选后从最优逐级一般化，算出不同操作程度的伤害档位 -->
+      <DifficultyDescentPanel v-if="hasTeam" />
+
       <!-- 计算状态（所有 tab 共用）：三层不动点都要可见，别只报内层 -->
       <div v-if="resourceResult" class="result-summary">
         <n-alert :type="convergenceOk ? 'success' : 'warning'" size="small">
@@ -813,6 +816,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { fmt } from '@/utils/format'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import FinalPanel from '@/components/FinalPanel.vue'
+import DifficultyDescentPanel from '@/components/DifficultyDescentPanel.vue'
 import TeamDamage3DChart from '@/components/charts/TeamDamage3DChart.vue'
 import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf, truncationHint as truncationHintOf } from '@/composables/teamTimeSummary'
 import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'

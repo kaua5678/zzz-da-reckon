@@ -112,9 +112,13 @@ describe('债 2 批 2-1 · 截断外环回灌（rowTimeLimit 重折环）', () =
       if (r.passes === undefined) expect(r.before, `${p.id} 不该报重折前截断`).toBeUndefined()
       else expect(r.before, `${p.id} 进了重折环必须报重折前初装截断`).toBeGreaterThan(TIME_BUDGET_TOLERANCE_SECONDS)
     }
-    // R37-J5 v2 前这里恒 = 1431 簇那两队；v2（全额吸收）时空集；v3 吸收上限 40% 后两队超上限的溢出回到装配截断 ⇒ 又是这两队
-    // （-1491-1341 初装也 > 1s 但重折 1 轮折到 ≤ 1s，故不在集合里）
-    expect(truncated.sort()).toEqual([...OVERFLOW_FIXTURES].sort())
+    // 2026-09-20（冷启动环修复）后这里是**空集**：1431 簇两队（OVERFLOW_FIXTURES）的结构性溢出
+    // 被合轴 + 降配吃掉，自由口径下全库不再有初装截断队。判据随之从「枚举白名单」改为**不变量**：
+    //  ① 自由口径下截断队只能是**极少数**（> 3 队 = 口径退化，去查 golden/合轴）；
+    //  ② 锁窗夹具（①）仍必须重现结构性截断 —— 那才是重折环的作用面，由 ① 的 `totalGain > 5` 保证；
+    //  ③ 任何进重折环的队仍须如实上报初装截断（上面逐队已查）。
+    // 白名单一旦写死，落点一动就红，拦的是「数字变了」而不是「机制坏了」——这正是本次改动的教训。
+    expect(truncated.length, `自由口径截断队 ${truncated.join(', ') || '（空）'}`).toBeLessThanOrEqual(3)
   }, 600_000)
 
   /**
@@ -129,10 +133,14 @@ describe('债 2 批 2-1 · 截断外环回灌（rowTimeLimit 重折环）', () =
    *    小数可行份额计，装配保住行按整数计 ⇒ 喧响账本与保住行 Σ 差若干个「小数份额 × 每次喧响」（能量账本仍精确相等）。
    *    全额吸收时 +87.92 dB（2.4016 vs 2 次 × 218.9）；吸收上限按终态前台后三个槽都被砍、差额 −266.56 dB（账本 < 行）。
    *    这是债 2「账本 == 展示层」的真残差（整数行的小数份额归属，docs §19/§20），按 `KNOWN_LEDGER_ROW_GAP` 钉数值防静默漂移。
+   *
+   * ★ **2026-09-20 残差归零**（`runOuterLoop` 新增环成员可行性闸门，见该函数内 isTwoCycle 注释）：
+   *    旧残差 −266.56 dB 的成因是**落点选在「仍带截断的环成员」上**——账本按该成员的 feasibleRows 计、
+   *    装配却按另一成员的保住行计，两者本来就对不齐。闸门要求环成员**时间上可行**（截断 ≤ 容差）后，
+   *    落点移到装得下的成员 ⇒ `账本 − 保住行 Σ = 0`（本条现在直接断言恒等，不再需要豁免值）。
+   *    ⇒ `KNOWN_LEDGER_ROW_GAP` 已清空（表保留：将来出现新的真残差时按同格式钉值 + 写归因）。
    */
-  const KNOWN_LEDGER_ROW_GAP: Record<string, { decibel: number }> = {
-    'auto-1431-1481-1491': { decibel: -266.5575 },
-  }
+  const KNOWN_LEDGER_ROW_GAP: Record<string, { decibel: number }> = {}
   it('④ 到达不动点的重折队：账本收入 == 保住行的行级 Σ（振荡队若出现须如实上报 rejected，账本按上一次接受态计）', async () => {
     let fixedPointTeams = 0
     for (const id of OVERFLOW_FIXTURES) {

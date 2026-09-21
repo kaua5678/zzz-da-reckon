@@ -201,8 +201,9 @@ describe('R15-d 跳①：叶瞬光帷幕封顶 —— 成对精确值（默认 1
     const wl = rowsOf(calc, 0, '1431', '1431013')
     expect(wl.length).toBe(1)
     expect(wl[0].stunMult).toBe(1.5)
-    // 次数锚同 R17c：刀 1 后该队 scale 0.625 → 0.75 ⇒ 14 → 16.206；R37-J5 ①④ ⇒ 16.618；吸收上限 40% ⇒ 16.571（见 damagePoolBatchR17c.test.ts 同处注释）
-    expect(wl[0].count).toBeCloseTo(16.571, 3)
+    // 次数锚同 R17c（2026-09-20 终局整数化后 = **16** = 8 轮 × 2 段；原 16.571 是实数轮口径）。
+    // 完整归因见 damagePoolBatchR17c.test.ts 同处注释（终局整数化 + 环成员可行性闸门）。
+    expect(wl[0].count).toBeCloseTo(16, 3)
     expect(wl[0].note).toContain(' · 明心境满易伤')
 
     const nonwl = rowsOf(calc, 0, '1431', '1431016')

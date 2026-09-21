@@ -66,14 +66,10 @@ export const DEAD_CHANNEL_ALLOWLIST = {
     due: '2026-12-31',
     why: '只读不写：实现读 `opts.minGain ?? 0`，全仓零写入点（同族的 minGainRatio 有调用点）',
   },
-  'B|src/composables/difficultyLadder.ts maxSteps': {
-    since: '2026-09-13',
-    action: 'LadderOpts.maxSteps 无人传（走 `?? 24` 默认）——确认默认即唯一口径则删字段',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '只读不写：实现读 `opts.maxSteps ?? 24`，全仓零写入点',
-  },
+  // 2026-09-20 销号：`B|src/composables/difficultyLadder.ts maxSteps` —— 棘轮报告「已不再命中」。
+  // 复核：`opts.maxSteps` 仍在 `climbDifficultyLadder` 里被读（`:293` 走 `?? 24`），但扫描器不再把它
+  // 判为「可选项只读不写」（R46 结构熵切面 refactor 后判据形态变化）⇒ 该豁免已失效。
+  // 按「棘轮只减不增」删除条目（**不是**因为字段被删；字段仍在，只是不再命中该判据）。
   // ⚠ 2026-09-15 销号 2 条（**假阳性**）：`minGain`（difficultyLadder）与 `zeroEnergyRow`
   // （multiplierCoefficients）被判「只读不写」，但实测都有写入点，只是形态是**对象字面量简写**
   // （`{ …, zeroEnergyRow }` / 调用点的 `minGain,`）——而原写判定 `reWrite` 要求冒号。

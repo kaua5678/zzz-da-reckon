@@ -82,10 +82,50 @@
                 <span class="diff-weight-label">时间压力（难度点/秒）</span>
                 <n-input-number v-model:value="diffWeights.timePressure" size="tiny" :min="0" :max="20" :step="0.5" style="width: 84px" />
               </div>
-              <div v-for="row in diffWeightRows" :key="row.type" class="diff-weight-row">
+              <div
+                v-for="row in diffWeightRows"
+                :key="row.type"
+                class="diff-weight-row"
+                :title="row.tip"
+              >
                 <span class="diff-weight-label">{{ row.label }}</span>
                 <n-input-number v-model:value="diffWeights.interaction[row.type]" size="tiny" :min="0" :max="20" :step="0.1" style="width: 84px" />
+                <!-- 需怪攻击的交互：可开关是否吃非失衡占比（用户口径 2026-09-20「让用户抉择」） -->
+                <n-checkbox
+                  v-if="row.bossAttack"
+                  :checked="!row.formulaOff"
+                  size="small"
+                  class="diff-weight-boss"
+                  @update:checked="v => setBossAttackFormula(row.type, v)"
+                >吃非失衡占比</n-checkbox>
+                <span v-else class="diff-weight-boss-placeholder" />
               </div>
+              <!-- 自编公式（可折叠；默认公式见行内提示） -->
+              <n-collapse size="small" class="diff-weight-formula">
+                <n-collapse-item title="自编难度公式（进阶）" name="f">
+                  <div class="diff-weight-tip">
+                    变量：<code>c</code>=次数 <code>w</code>=权重 <code>r</code>=非失衡占比(0..1)
+                    <code>k</code>=指数；可用 <code>clamp/floor/max/min/pow/abs/sqrt</code>。
+                    <b>幂运算写 <code>pow(a,b)</code> 或 <code>a**b</code></b>（<code>^</code> 是异或，会算错）。
+                    默认：需怪攻击的 = <code>c*w/pow(max(r,0.05),k)</code>，其余 = <code>c*w</code>。
+                    非法公式自动退化为 <code>c*w</code>。
+                  </div>
+                  <div v-for="row in diffWeightRows" :key="'f' + row.type" class="diff-weight-row">
+                    <span class="diff-weight-label">{{ row.label }}</span>
+                    <n-input
+                      v-model:value="diffWeights.interactionFormula[row.type]"
+                      size="tiny"
+                      :placeholder="row.defaultFormula"
+                      style="width: 200px"
+                    />
+                    <n-input-number
+                      v-if="row.bossAttack"
+                      v-model:value="diffWeights.interactionExponent[row.type]"
+                      size="tiny" :min="0" :max="3" :step="0.25" style="width: 64px"
+                    />
+                  </div>
+                </n-collapse-item>
+              </n-collapse>
               <n-button size="tiny" style="margin-top: 6px" @click="resetDiffWeights">恢复默认权重</n-button>
             </div>
           </n-popover>
@@ -336,7 +376,10 @@
               <td>{{ compact(p.damage) }}</td>
               <td :class="{ kill: p.hpRatio >= 100 }">{{ fmt(p.hpRatio, 1) }}%<template v-if="p.hpRatio > 100"><div class="kill-time">≈{{ killSeconds(p.hpRatio) }}s 击杀</div></template></td>
               <td>{{ fmt(p.difficulty, 1) }}</td>
-              <td class="td-detail">{{ p.difficultyDetail }}</td>
+              <!-- 交互明细：复用既有 `.cell-clamp`（max-width 300px + 换行）——不钳制时该列按最长
+                   明细撑到 ~1874px，把 10 列表格拉出横向滚动条（ui-check 判「表格横向溢出」）。
+                   2026-09-20 实机点通发现；明细文本随难度项增加会继续变长，故按列钳制而不是删内容。 -->
+              <td class="td-detail"><div class="cell-clamp">{{ p.difficultyDetail }}</div></td>
               <td>{{ p.cinemas.join('/') }}</td>
               <td>{{ p.wengineMods.join('/') }}</td>
               <td :class="{ 'time-ok': !p.timeExceeded, 'time-exceeded': p.timeExceeded }">{{ p.timeDetail }}</td>
@@ -628,7 +671,7 @@ import { deriveVersionAxis, buildBossHpOverlay } from '@/composables/difficultyC
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computeTeamComparePoints, goldAlternativesOfPoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, snapshotStore, type GoldAllocationAlternative } from '@/composables/teamCompare'
+import { computeTeamComparePoints, goldAlternativesOfPoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula, snapshotStore, type GoldAllocationAlternative } from '@/composables/teamCompare'
 import { computeSlotSweepPoints, type SlotCompareSlot, type SlotSweepResult } from '@/composables/teamTimeline'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
@@ -842,14 +885,27 @@ watch(autoEnginePool, v => {
 
 // ========== 难度权重（主观量，用户自填；INTERACTION_WEIGHTS 与 1秒=1点只是默认值） ==========
 const DIFF_WEIGHTS_KEY = 'zzz-compare-difficulty-weights'
-interface DiffWeightsState { timePressure: number; interaction: Record<string, number> }
+interface DiffWeightsState {
+  timePressure: number
+  interaction: Record<string, number>
+  /**
+   * 逐交互类型的**自编难度公式**（用户口径 2026-09-20：「仪玄的 e 弹、佩洛伊斯的完美格挡、
+   * 般岳的金身弹刀和双反都需要怪物的一次攻击，所以要算修正。这个我想让用户抉择，哪些是要吃
+   * 非失衡占比的，让他自己编公式」）。空串 = 用该类型默认公式。
+   */
+  interactionFormula: Record<string, string>
+  /** 逐类型的指数 k（公式变量 k 的取值）；仅需怪攻击的类型可调 */
+  interactionExponent: Record<string, number>
+}
 const DEFAULT_DIFF_WEIGHTS: DiffWeightsState = {
   // 时间压力 = 硬溢出 + 合轴抵扣（同一笔秒数）：默认 1 秒 = 1 难度点（只有一个权重，见 teamCompare#computeDifficulty）
   timePressure: 1,
   interaction: { ...INTERACTION_WEIGHTS },
+  interactionFormula: {},
+  interactionExponent: {},
 }
 function loadDiffWeights(): DiffWeightsState {
-  const base: DiffWeightsState = { timePressure: 1, interaction: { ...INTERACTION_WEIGHTS } }
+  const base: DiffWeightsState = { timePressure: 1, interaction: { ...INTERACTION_WEIGHTS }, interactionFormula: {}, interactionExponent: {} }
   try {
     const raw = localStorage.getItem(DIFF_WEIGHTS_KEY)
     if (raw) {
@@ -858,6 +914,18 @@ function loadDiffWeights(): DiffWeightsState {
       const legacy = [obj?.overflow, obj?.align].filter((v: unknown) => typeof v === 'number' && Number.isFinite(v))
       const tp = typeof obj?.timePressure === 'number' && Number.isFinite(obj.timePressure) ? obj.timePressure : legacy[0]
       if (typeof tp === 'number' && Number.isFinite(tp) && tp >= 0) base.timePressure = tp
+      // 旧版存的是单个全局指数（nonStunExponent）——已改为逐类型公式，旧值**不迁移**
+      // （语义不同：旧的是全局乘数，新的是逐项公式；强行映射会造出用户没写过的公式）
+      if (obj?.interactionFormula && typeof obj.interactionFormula === 'object') {
+        for (const [k, v] of Object.entries(obj.interactionFormula)) {
+          if (typeof v === 'string') base.interactionFormula[k] = v
+        }
+      }
+      if (obj?.interactionExponent && typeof obj.interactionExponent === 'object') {
+        for (const [k, v] of Object.entries(obj.interactionExponent)) {
+          if (typeof v === 'number' && Number.isFinite(v)) base.interactionExponent[k] = v
+        }
+      }
       if (obj?.interaction && typeof obj.interaction === 'object') {
         for (const [k, v] of Object.entries(obj.interaction)) {
           if (typeof v === 'number' && Number.isFinite(v) && v >= 0) base.interaction[k] = v
@@ -871,10 +939,41 @@ const diffWeights = ref<DiffWeightsState>(loadDiffWeights())
 watch(diffWeights, v => {
   try { localStorage.setItem(DIFF_WEIGHTS_KEY, JSON.stringify(v)) } catch { /* 忽略 */ }
 }, { deep: true })
+/**
+ * 难度权重弹层的行（每个交互类型一行）：
+ *  · `bossAttack` = 该类型**需要怪物一次攻击**（`BOSS_ATTACK_INTERACTIONS`）⇒ 显示「吃非失衡占比」开关；
+ *  · `formulaOff` = 用户已把它关掉（公式写成 `c*w`）；
+ *  · `defaultFormula` = 该类型的默认公式（公式输入框的 placeholder）；
+ *  · `tip` = 行提示（说清该类型为什么吃/不吃修正）。
+ */
 const diffWeightRows = computed(() =>
-  Object.keys(INTERACTION_WEIGHTS).map(t => ({ type: t, label: INTERACTION_LABELS[t] ?? t })))
+  Object.keys(INTERACTION_WEIGHTS).map(t => {
+    const bossAttack = BOSS_ATTACK_INTERACTIONS.includes(t)
+    const userFormula = diffWeights.value.interactionFormula[t]
+    return {
+      type: t,
+      label: INTERACTION_LABELS[t] ?? t,
+      bossAttack,
+      formulaOff: (userFormula ?? '').trim() === 'c*w',
+      defaultFormula: defaultInteractionFormula(t),
+      tip: bossAttack
+        ? `${INTERACTION_LABELS[t] ?? t}：需要怪物出手一次 ⇒ 失衡期怪物不攻击、没有交互机会 ⇒ 非失衡时间越少越难凑。可关掉（不吃该修正）或自编公式。`
+        : `${INTERACTION_LABELS[t] ?? t}：不依赖怪物出手（救场/后摇取消类），不吃非失衡占比修正。`,
+    }
+  }))
+
+/** 开关某类型的「吃非失衡占比」（用户口径 2026-09-20「让用户抉择」）：关 = 公式写死 `c*w`，开 = 清空用默认 */
+function setBossAttackFormula(type: string, on: boolean) {
+  if (on) delete diffWeights.value.interactionFormula[type]
+  else diffWeights.value.interactionFormula[type] = 'c*w'
+}
 function resetDiffWeights() {
-  diffWeights.value = { timePressure: DEFAULT_DIFF_WEIGHTS.timePressure, interaction: { ...INTERACTION_WEIGHTS } }
+  diffWeights.value = {
+    timePressure: DEFAULT_DIFF_WEIGHTS.timePressure,
+    interaction: { ...INTERACTION_WEIGHTS },
+    interactionFormula: {},
+    interactionExponent: {},
+  }
 }
 const enginePoolOptions = computed(() =>
   (catalogStore.displayWEngines ?? [])
@@ -1011,7 +1110,12 @@ async function runCompare() {
       autoEnginePool: autoEnginePool.value,
       buffs: buffChoice.value === 'none' ? [] : buffs,
       manualBuffTitle: buffChoice.value === '' || buffChoice.value === 'none' ? undefined : buffChoice.value,
-      difficultyWeights: { timePressure: diffWeights.value.timePressure, interaction: diffWeights.value.interaction },
+      difficultyWeights: {
+        timePressure: diffWeights.value.timePressure,
+        interaction: diffWeights.value.interaction,
+        interactionFormula: diffWeights.value.interactionFormula,
+        interactionExponent: diffWeights.value.interactionExponent,
+      },
     })
     all.push(...batch)
     // 同金分配候选经数组属性回传（未开启收集时为空数组）
@@ -1063,7 +1167,12 @@ async function runCurves() {
       presets: [p],
       boss,
       phase,
-      difficultyWeights: { timePressure: diffWeights.value.timePressure, interaction: diffWeights.value.interaction },
+      difficultyWeights: {
+        timePressure: diffWeights.value.timePressure,
+        interaction: diffWeights.value.interaction,
+        interactionFormula: diffWeights.value.interactionFormula,
+        interactionExponent: diffWeights.value.interactionExponent,
+      },
     }))
   }
   curveRows.value = all

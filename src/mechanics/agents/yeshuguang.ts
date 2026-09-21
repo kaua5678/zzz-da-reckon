@@ -168,6 +168,11 @@ export interface YeshuguangCycleInput {
   cinemaLevel: number
   battleTime: number
   formAxis: YeshuguangFormAxis
+  /**
+   * 终局整数化（引擎收敛后置 true；见 `cfg.yeshuguangFinalizeForms`）。
+   * 缺省 false = 迭代期实数，正反馈环的收敛语义逐位不变（既有模块测试直调不带此字段）。
+   */
+  finalizeForms?: boolean
 }
 
 export interface YeshuguangCycleResult {
@@ -214,9 +219,26 @@ export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangC
   let decibelForms = Math.max(0, input.ultimateCount || 0)
   let giftForms = Math.max(0, input.giftUltCount || 0)
   const outside = Math.max(0, Number(input.outsideSwordGain) || 0)
-  const autoZhao = outside / ZHAOYING_COST
+  /**
+   * 照影是「攒满 6 点局外剑势 ⇒ 变身一次」的**离散触发**：不足 6 点的余数只能留着不打。
+   *
+   * 迭代期保持实数（防「平A↑→剑势↑→轮数+1整轮→必要时间↑→平A↓」正反馈环，见上方 `@fact
+   * agent:1431/轮数实数化`）；**终局**（引擎置 `yeshuguangFinalizeForms`，同 1051/1531 骨架）
+   * 才 floor —— 余数剑势留着，多出的那一轮由合轴率 + 缩时轴承担，而不是把离散触发切成小数。
+   * 用户口径 2026-09-20：「余数剑势本来就该留着不打，我解决的问题是如果最后没有时间但是多了1轮，
+   * 这一轮的时间由合轴率和短轴承担。离散轮数被换成短轴分担了」。
+   * 手动滑块（zhaoSetting）本就是用户显式指定的整数次数，不受此影响。
+   */
+  const finalizeForms = input.finalizeForms === true
+  const autoZhaoRaw = outside / ZHAOYING_COST
+  const autoZhao = finalizeForms ? Math.floor(autoZhaoRaw) : autoZhaoRaw
   const zhaoSetting = Math.floor(input.zhaoyingCountSetting)
   let zhaoyingForms = Math.max(0, zhaoSetting >= 0 ? Math.min(zhaoSetting, autoZhao) : autoZhao)
+  // 喧响进轮 / 转大赠轮同样是离散事件（一次终结技 = 一轮），终局一并取整
+  if (finalizeForms) {
+    decibelForms = Math.floor(decibelForms)
+    giftForms = Math.floor(giftForms)
+  }
   let totalForms = decibelForms + giftForms + zhaoyingForms
 
   let miePerForm = 0
@@ -372,6 +394,8 @@ function resolveCycle(cfg: CharacterOperationConfig, state: {
     outsideSwordGain: outside,
     cinemaLevel: cinema,
     battleTime: cfg.battleTime ?? 180,
+    // 终局整数化旗标（引擎在收敛后置位；见 cfg.yeshuguangFinalizeForms 的语义说明）
+    finalizeForms: Number(record.yeshuguangFinalizeForms ?? 0) > 0,
     formAxis: cfgAxis(cfg),
   })
 }
@@ -386,6 +410,12 @@ function buildCharConfig({ skills, cinemaLevel, panel, cfg }: AgentCharConfigInp
   }
 
   cfg.yeshuguangSwordInitial = cinema >= 1 ? 6 : 0
+  /**
+   * 能力声明（规则 6：引擎按**能力**查询，不按 agentId 找槽）——模块声明自己需要
+   * 「迭代期实数 + 终局整数化」的收尾骨架（1051 `yidhariContinuousEx` / 1531 `billyFinalizeChain` 同款）。
+   * 引擎据本字段置 `yeshuguangFinalizeForms` 并做整数态重推；见 `cfg.yeshuguangFinalizeForms` 语义。
+   */
+  record.yeshuguangContinuousForms = true
   if (cinema >= 4) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + 1000
   }

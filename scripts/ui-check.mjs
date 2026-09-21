@@ -31,7 +31,8 @@
  *   --out <目录>       截图与体检结果输出目录，默认 /tmp/zzz-ui
  *   --port <端口>      CDP 端口，默认 9222（脚本自己拉起浏览器，退出时关掉）
  *   --keep-open        跑完不关浏览器
- *   --step <verb:参数> 通用脚本步（可重复，按顺序执行；见下方 stepList 注释）：tab/open/option/click/realclick/wait/eval/sleep
+ *   --step <verb:参数> 通用脚本步（可重复，按顺序执行；见下方 stepList 注释）：tab/open/option/click/realclick/type/wait/eval/sleep
+ *                      `type:` = 向当前聚焦元素键入文本（filterable 下拉按文本过滤用）
  *                      例：--step "tab:队伍配置" --step "open:选择预设队伍" --step "option:般岳" --step "tab:资源池" --step "wait:时间截断"
  * 退出码：0 = 跑完且**零 JS 错误**；1 = 有错/超时（错误会打印）。
  */
@@ -377,10 +378,19 @@ try {
       console.log(`[${String(ms).padStart(7)}ms] 等「${value}」`)
     } else if (verb === 'eval') {
       await step(`[step] eval ${value.slice(0, 60)}`, async () => JSON.stringify(await evaluate(value)))
+    } else if (verb === 'type') {
+      // 向当前聚焦元素键入文本（CDP Input.insertText，走真实输入通道 ⇒ Naive UI 的 filterable
+      // select / 受控 input 都能收到）。用途：虚拟滚动的下拉只渲染前几项，按文本过滤是唯一
+      // 能选中长列表末项的稳定路径（`--option` 只认已渲染项）。
+      await step(`[step] 键入「${value}」`, async () => {
+        await send('Input.insertText', { text: value })
+        return 'ok'
+      })
+      await sleep(400)
     } else if (verb === 'sleep') {
       await sleep(Number(value) || 500)
     } else {
-      throw new Error(`未知 --step 动词：${raw}（tab/open/option/click/realclick/wait/eval/sleep）`)
+      throw new Error(`未知 --step 动词：${raw}（tab/open/option/click/realclick/type/wait/eval/sleep）`)
     }
   }
 

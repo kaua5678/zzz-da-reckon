@@ -72,6 +72,31 @@
   font-size: 12px;
   color: var(--fg-2);
 }
+/* 难度权重弹层：需怪攻击的交互项「吃非失衡占比」开关（2026-09-20 逐类型公式） */
+.diff-weight-boss {
+  font-size: 11px;
+  white-space: nowrap;
+}
+/* 占位：非需怪攻击的行留同宽空位，保持数值输入列对齐 */
+.diff-weight-boss-placeholder {
+  display: inline-block;
+  width: 88px;
+}
+.diff-weight-formula {
+  margin-top: 4px;
+}
+.diff-weight-tip {
+  font-size: 11px;
+  color: var(--fg-3);
+  line-height: 1.6;
+  margin-bottom: 6px;
+}
+.diff-weight-tip code {
+  background: var(--app-inset);
+  padding: 0 3px;
+  border-radius: 3px;
+  font-size: 11px;
+}
 
 .buff-note {
   color: rgba(230, 180, 100, 0.8);

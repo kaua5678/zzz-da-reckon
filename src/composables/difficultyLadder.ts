@@ -33,6 +33,13 @@ export interface LadderCtx {
    * `clearDifficultyLevers` 把上限置 0（全关 = 不吸收）前记在这里，G5 分档推进到它为止；缺省 = 引擎缺省 0.4。
    */
   absorbCap?: number
+  /**
+   * 降序一般化曲线（`difficultyDescent.ts`）的弹刀基准（逐槽用户原值）。
+   * 曲线按比例缩 `parryCount` 时以它为基数——**不用 `team[s].parryCount` 现读**，因为曲线每降一级
+   * 都会写回该字段，现读会把上一级的结果当基准（连续缩三次 = 缩到 0.75³ 而不是 0.75）。
+   * 生命周期 = 单次 `descendDifficultyCurve` 调用（函数自己置位与清空）。
+   */
+  descentParryBase?: number[]
 }
 
 const GUARANTEE_KEYS = ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate'] as const
