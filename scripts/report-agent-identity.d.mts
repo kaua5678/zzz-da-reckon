@@ -67,9 +67,9 @@ export interface IdentityByIdentity {
 }
 
 export interface IdentityReport {
-  /** 取数面：HEAD 提交态（默认，抗并行 WIP）/ worktree / mixed（部分文件回退） */
+  /** 源码取数面：HEAD 提交态（默认，抗并行 WIP）/ worktree / mixed（历史报告兼容） */
   measuredAt: 'HEAD' | 'worktree' | 'mixed'
-  /** 因未提交/无 git 而回退到工作树读取的文件数 */
+  /** 无可用 HEAD 时整面回退到工作树读取的文件数 */
   fellBack: number
   legacyLines: number
   summary: IdentitySummary
@@ -88,7 +88,7 @@ export declare function scanIdentitySource(content: string, file?: string): {
 }
 export declare function summarizeIdentity(entries: IdentityEntry[]): IdentitySummary
 export declare function groupByIdentity(entries: IdentityEntry[]): IdentityByIdentity[]
-/** 度量面源码读取（默认 HEAD 提交态；`{ atHead: false }` 量工作树）——扫面与 check-guards 同源 */
+/** 默认文件清单/内容来自同一 HEAD 快照；仅无可用 HEAD 时回退，显式 atHead:false 量工作树。范围与 check-guards 同源。 */
 export declare function readIdentitySources(root?: string, options?: { atHead?: boolean }): { file: string; content: string; source: 'HEAD' | 'worktree' | 'worktree-fallback' }[]
 export declare function reportIdentity(root?: string, options?: { atHead?: boolean }): IdentityReport
 export declare function formatMarkdown(report: IdentityReport): string

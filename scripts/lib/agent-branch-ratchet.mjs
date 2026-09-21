@@ -44,18 +44,26 @@ export const AGENT_BRANCH_FILE = 'src/composables/useResourceCalc.ts'
  * （2026-09-12 勘误：上一版注释写成「__tests__ 不在该目录下」，实际它在，只是被子目录层级跳过；
  *   结论没错但理由是错的，按规则 16 改正——错理由比没理由更危险。）
  */
-export function listAgentBranchFiles(root = ROOT) {
-  const dir = join(root, AGENT_BRANCH_DIR)
-  const files = [AGENT_BRANCH_FILE]
-  if (existsSync(dir)) {
-    for (const n of readdirSync(dir).sort()) {
-      if (!n.endsWith('.ts')) continue
-      const p = join(dir, n)
-      if (!statSync(p).isFile()) continue      // 显式排除 __tests__/ 等子目录（不递归）
-      files.push(`${AGENT_BRANCH_DIR}/${n}`)
+export function listAgentBranchFiles(root = ROOT, candidateFiles) {
+  // 候选清单可来自 Git tree；范围/顺序仍在此单源定义，不依赖工作树中是否存在该文件。
+  const prefix = `${AGENT_BRANCH_DIR}/`
+  const inScope = file => file === AGENT_BRANCH_FILE
+    || (file.startsWith(prefix) && !file.slice(prefix.length).includes('/') && file.endsWith('.ts'))
+  if (candidateFiles === undefined) {
+    const dir = join(root, AGENT_BRANCH_DIR)
+    candidateFiles = [AGENT_BRANCH_FILE]
+    if (existsSync(dir)) {
+      for (const n of readdirSync(dir).sort()) {
+        const file = `${AGENT_BRANCH_DIR}/${n}`
+        if (!inScope(file) || !statSync(join(dir, n)).isFile()) continue
+        candidateFiles.push(file)
+      }
     }
   }
-  return files
+  return [
+    ...(candidateFiles.includes(AGENT_BRANCH_FILE) ? [AGENT_BRANCH_FILE] : []),
+    ...[...new Set(candidateFiles)].filter(file => file !== AGENT_BRANCH_FILE && inScope(file)).sort(),
+  ]
 }
 
 /** 编排层 agentId 特判总数（跨全部度量文件；判据与 zc status 共用本函数，不各写一份）

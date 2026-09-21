@@ -15,7 +15,8 @@ export declare function scanFetchStubs(root?: string): { violations: string[]; s
 export declare const AGENT_BRANCH_DIR: string
 export declare const AGENT_BRANCH_FILE: string
 export declare const AGENT_BRANCH_BASELINE: number
-export declare function listAgentBranchFiles(root?: string): string[]
+/** 可注入版本化的仓库相对路径清单；缺省扫描工作树，度量范围不变。 */
+export declare function listAgentBranchFiles(root?: string, candidateFiles?: readonly string[]): string[]
 export declare function countAgentBranchLines(root?: string): number
 /** 旧尺（正则 `/agentId\s*(===|!==)/`）：已不作为棘轮判据，仅供沿革对账与报告脚本引用 */
 export declare function countAgentBranchLinesLegacy(root?: string): number

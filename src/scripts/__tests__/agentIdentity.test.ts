@@ -11,6 +11,10 @@
  */
 import { describe, expect, it } from 'vitest'
 import { fileURLToPath } from 'node:url'
+import { execFileSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { tmpdir } from 'node:os'
 import {
   formatMarkdown,
   groupByIdentity,
@@ -35,6 +39,73 @@ type Entry = ReturnType<typeof scanIdentitySource>['entries'][number]
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
 /** 缩短断言：只扫 fixture 源码，返回逐条比较 */
 const scan = (code: string): Entry[] => scanIdentitySource(code).entries
+
+function withIdentityFixture(run: (fixture: {
+  root: string; write: (file: string, content: string) => void; git: (...args: string[]) => string
+}) => void) {
+  const root = mkdtempSync(join(tmpdir(), 'zzz-identity-source-'))
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')))
+  const git = (...args: string[]) => execFileSync('git', [
+    '-c', 'init.templateDir=', '-c', `core.hooksPath=${join(root, 'no-hooks')}`,
+    '-c', 'commit.gpgsign=false', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+    ...args,
+  ], { cwd: root, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+  const write = (file: string, content: string) => {
+    mkdirSync(dirname(join(root, file)), { recursive: true })
+    writeFileSync(join(root, file), content)
+  }
+  try { run({ root, write, git }) } finally { rmSync(root, { recursive: true, force: true }) }
+}
+
+describe('HEAD 文件集合与内容必须同源', () => {
+  it('不混入新增/修改 WIP，也不丢掉工作树已删除的 HEAD 文件', () => withIdentityFixture(({ root, write, git }) => {
+    const main = 'src/composables/useResourceCalc.ts'
+    const dir = 'src/composables/resourceCalc'
+    const content = 'if (c.agentId === "head") act()\n'
+    write(main, content)
+    write(`${dir}/kept.ts`, 'export const kept = 1\n')
+    write(`${dir}/removed.ts`, 'if (c.agentId === "removed") act()\n')
+    write(`${dir}/__tests__/ignored.ts`, 'if (c.agentId === "test-only") act()\n')
+    git('init', '--quiet')
+    git('add', '--', main, `${dir}/kept.ts`, `${dir}/removed.ts`, `${dir}/__tests__/ignored.ts`)
+    git('commit', '--quiet', '-m', 'identity fixture')
+    write(main, 'export const changed = 1\n')
+    write(`${dir}/added.ts`, 'if (c.agentId === "uncommitted") act()\n')
+    rmSync(join(root, dir, 'removed.ts'))
+    const head = readIdentitySources(root)
+    expect(head.map(s => s.file)).toEqual([main, `${dir}/kept.ts`, `${dir}/removed.ts`])
+    expect(head.every(s => s.source === 'HEAD')).toBe(true)
+    expect(head.find(s => s.file === main)!.content).toBe(content)
+    expect(reportIdentity(root).legacyLines).toBe(2)
+    const worktree = readIdentitySources(root, { atHead: false })
+    expect(worktree.map(s => s.file)).toEqual([main, `${dir}/added.ts`, `${dir}/kept.ts`])
+    expect(worktree.every(s => s.source === 'worktree')).toBe(true)
+    expect(worktree.find(s => s.file === main)!.content).toBe('export const changed = 1\n')
+    expect(reportIdentity(root, { atHead: false }).legacyLines).toBe(1)
+  }))
+
+  it('有 HEAD 但度量范围为空时，不得回退到未提交源码', () => withIdentityFixture(({ root, write, git }) => {
+    write('unrelated.txt', 'empty measured tree\n')
+    git('init', '--quiet')
+    git('add', '--', 'unrelated.txt')
+    git('commit', '--quiet', '-m', 'empty scope')
+    write('src/composables/useResourceCalc.ts', 'if (c.agentId === "wip") act()\n')
+    expect(readIdentitySources(root)).toEqual([])
+    expect(reportIdentity(root).measuredAt).toBe('HEAD')
+    expect(reportIdentity(root).fellBack).toBe(0)
+    expect(readIdentitySources(root, { atHead: false })).toHaveLength(1)
+  }))
+
+  it.each([false, true])('无 HEAD 时才整面回退，并如实标注（已 git init=%s）', initialized => withIdentityFixture(({ root, write, git }) => {
+    write('src/composables/useResourceCalc.ts', 'if (c.agentId === "fallback") act()\n')
+    if (initialized) git('init', '--quiet')
+    const sources = readIdentitySources(root)
+    expect(sources).toHaveLength(1)
+    expect(sources[0]!.source).toBe('worktree-fallback')
+    expect(reportIdentity(root).measuredAt).toBe('worktree')
+    expect(reportIdentity(root).fellBack).toBe(1)
+  }))
+})
 
 describe('执行尺（check-guards 棘轮的度量口径，AST 单源）', () => {
   // 为什么单独一组：换尺后**棘轮判据本身**靠这个 lib 计数。它若漏计/多计，

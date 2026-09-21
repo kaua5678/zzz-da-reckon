@@ -187,24 +187,38 @@ export function groupByIdentity(entries) {
  */
 export function readIdentitySources(root = resolve(dirname(fileURLToPath(import.meta.url)), '..'), options = {}) {
   const atHead = options.atHead !== false   // 默认 HEAD；显式 { atHead: false } 才量工作树
-  return listAgentBranchFiles(root).map(file => {
-    if (!atHead) return { file, content: readFileSync(resolve(root, file), 'utf8'), source: 'worktree' }
+  const gitOptions = { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] }
+  let revision = null
+  if (atHead) {
     try {
-      return {
-        file,
-        content: execFileSync('git', ['show', `HEAD:${file}`], { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }),
-        source: 'HEAD',
-      }
+      revision = execFileSync('git', ['rev-parse', '--verify', 'HEAD'], gitOptions).trim()
     } catch {
-      // 新文件（未提交）/ 无 git ⇒ 回退工作树，不静默丢文件；但**如实标注**该文件不是 HEAD 读数
-      return { file, content: readFileSync(resolve(root, file), 'utf8'), source: 'worktree-fallback' }
+      // 无仓库/尚无提交：整面回退并标注，不能把单个未提交文件掺进有效 HEAD。
     }
-  })
+  }
+  if (revision) {
+    // 清单与内容都固定到同一提交，防 WIP 新增/删除文件与读取中 HEAD 前移污染基线。
+    // -z 保留空格/非 ASCII 文件名；只取 blob，不把子模块 gitlink 当作源码。
+    const candidates = execFileSync('git', ['ls-tree', '-r', '-z', '--full-tree', revision], gitOptions)
+      .split('\0').filter(Boolean).flatMap(entry => {
+        const tab = entry.indexOf('\t')
+        return entry.slice(0, tab).split(' ')[1] === 'blob' ? [entry.slice(tab + 1)] : []
+      })
+    return listAgentBranchFiles(root, candidates).map(file => ({
+      file,
+      content: execFileSync('git', ['show', `${revision}:${file}`], gitOptions),
+      source: 'HEAD',
+    })) // HEAD 已确定后的读取错误必须暴露，不能再静默回退工作树。
+  }
+  return listAgentBranchFiles(root).map(file => ({
+    file, content: readFileSync(resolve(root, file), 'utf8'),
+    source: atHead ? 'worktree-fallback' : 'worktree',
+  }))
 }
 export function reportIdentity(root = resolve(dirname(fileURLToPath(import.meta.url)), '..'), options = {}) {
   const requestedHead = options.atHead !== false
   const sources = readIdentitySources(root, { atHead: requestedHead })
-  // 取数面如实上报：只要有一个文件回退了（未提交/无 git），就不能声称「这是 HEAD 读数」
+  // 无可用 HEAD 时如实报告整面回退；mixed 保留作历史报告兼容，不再混入未提交源码。
   const fellBack = sources.filter(s => s.source === 'worktree-fallback').length
   const measuredAt = !requestedHead ? 'worktree' : fellBack === 0 ? 'HEAD' : fellBack === sources.length ? 'worktree' : 'mixed'
   let legacyLines = 0
