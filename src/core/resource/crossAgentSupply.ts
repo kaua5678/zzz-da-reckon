@@ -98,6 +98,46 @@ export function crossAgentSupplyAt(
   return { providerSlot, targetIdx, count, time: count * perUnit }
 }
 
+/**
+ * 「琉音赠大」（`gift-chain:ultimate`）的**轴感知**解析 —— 该量的**单一事实源**。
+ *
+ * 为什么必须单列一个入口（2026-09-20 R67 实测，规则 11）：这个量被**四处**消费，轴模式下
+ * 模块供给被 `axisSuppressed` 跳过 ⇒ 四处若各自决定「轴模式怎么办」，就会漂成两派：
+ *
+ * | 消费点 | 用途 | 轴分支 |
+ * |---|---|---|
+ * | `iterate` 必要时间预留 | 账本要给赠行留秒数 | **必须**用轴计数 |
+ * | S2 折叠环 `rowTime` | 量「这一槽真占了多少前台」 | **必须**用轴计数 |
+ * | `frontlineRowsOf` 试探测量 | 判「试探装不装得下」 | **必须**用轴计数 |
+ * | `giftTimeOfSlot` 截断上限 | 从可截断额度里扣掉赠行 | **必须**用轴计数 |
+ *
+ * 实测漂移形态（雨果 0 命轴 `hugo-c0-e`，2026-09-20）：前三处若漏掉轴分支，账本/折叠都看不见
+ * 赠行的 8.732s，而截断上限扣了它 ⇒ **双重计费**，决算行被整数装包砍掉一整次（5→4）。
+ * 反之（只补账本不补折叠测量）预留会被折叠环读成 idle 再 refund 掉，净额仍是 0。
+ * ⇒ 四处**同源**才守恒：`Σ(非赠行) + 赠行 ≡ 账本`。
+ *
+ * @param query.axisPromote 编排层按「轴声明 promoteVariant 块 + **剩余好评默认 90**」算好的计数
+ *   （用户口径 2026-09-20；`axisMode` 为假时忽略）。缺省/未注入时回落模块供给（非轴口径）。
+ */
+export function ultimateGiftOf(
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+  query: CrossAgentSupplyQuery & { axisPromote?: { targetSlot: number; count: number } },
+): CrossAgentSupplyInfo {
+  const providerSlot = findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1
+  const ov = query.axisPromote
+  if (query.axisMode && ov && ov.count > 0 && configs[ov.targetSlot]) {
+    return {
+      providerSlot,
+      targetIdx: ov.targetSlot,
+      count: ov.count,
+      // 单位耗时 = 落点槽的终结技时长（与模块 `secondsPerUnit` 同口径）
+      time: ov.count * (configs[ov.targetSlot].ultimateActionTime ?? 0),
+    }
+  }
+  return crossAgentSupplyAt(configs, states, providerSlot, query)
+}
+
 /** 解析某类别的**全部**供给（按槽位序，仅含有量的）。 */
 export function crossAgentSuppliesOf(
   configs: CharacterOperationConfig[],

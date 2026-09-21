@@ -384,7 +384,7 @@ import {
 import { getBaseElement, BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/helpers'
 import { calcSpecialActionBonus, PARRY_DECIBEL_BONUS } from '@/core/anomalyPool'
 import { ULTIMATE_COST_DEFAULT, calcTeamResources } from '@/core/resource'
-import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
+import { resolveUltimateTargetSlot, computeLiuyinHugCounts } from '@/mechanics/agents/liuyin'
 import { computeBanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import { isHugoEndsWindowMove, hugoMoveActionTime } from '@/mechanics/agents/hugo'
@@ -633,7 +633,24 @@ export function createRunCalcRound(deps: {
         }
       })
     }
-    // 有轴时：60/90 转大次数直接读轴里 promoteVariant 块（轴即最终次数），同样按窗口数加权
+    /**
+     * 轴模式 60/90 转大次数（**用户口径 2026-09-20**）：
+     *
+     * 「轴模式下显示制定了**部分好评值的用途**（= 轴里的 promoteVariant 块），
+     *   剩余好评应该默认 90。毕竟非失衡没有连携窗口替换，只能直接 90 抱拳。」
+     *
+     * 即：轴声明的是**60 抱拳的计划次数**（吃掉有限个连携窗口），
+     * 好评余额里能凑出的部分**默认全部走 90 抱拳**（非失衡期没有连携窗口可替换，只能 90）。
+     *
+     * 为什么必须补这一步（实测 auto-1591-1481-1311）：该队轴只声明「每窗 60×1」，
+     * 旧实现只累加 promoteVariant 块 ⇒ 好评余额（370.5 − 60×窗数 ≈ 190~310）被**整块丢弃**，
+     * `axisHug.hug90` 恒 0。而装配侧 `promoteFixpoint` 按好评/连携窗口独立算出 5 次（hug60=3/hug90=2）
+     * ⇒ **账本预留（按 axisHug=1~3）与装配赠行（按池=5）不同源**，实测账本越界 0.32s。
+     * 补上 90 余额推导后两层都是 5 ⇒ 同源（这正是用户说的「转大次数应该很明确」）。
+     *
+     * 余额推导与 `computeLiuyinHugCounts` **同一算法**（阈值结转贪心）：
+     * 先花 60（受轴声明的 h60 上限约束——那是玩家计划的连携窗口用量），余额每满 90 记一次 90 抱拳。
+     */
     let axisHug: { hug60: number; hug90: number } | null = null
     if (axisActive) {
       let h60 = 0; let h90 = 0
@@ -645,6 +662,48 @@ export function createRunCalcRound(deps: {
           else if (act.promoteVariant === '90') h90 += act.count * wins
         }
       })
+      /**
+       * 剩余好评 → 默认 90 抱拳（用户口径 2026-09-20「剩余好评应该默认 90，非失衡没有连携窗口
+       * 替换，只能直接 90 抱拳」）。
+       *
+       * ★★ **闸门 = 轴真的声明了 promoteVariant 块**（`declaredBlocks > 0`）——这是用户口径的
+       * **前提**，不是附加条件。用户原话把前提写在第①句：「轴模式下**显示制定了部分好评值的用途**
+       * （= 轴里的 promoteVariant 块），**剩余**好评应该默认 90」——「制定了部分用途」+「剩余」
+       * 都预设了**轴里有声明**。轴一个 promoteVariant 块都没声明（雨果 0 命轴 `hugo-c0-e` 只有
+       * 连携块 + 雨果自己的决算块 `1291_ex_verdict_final`；R17c/R18d 的手组轴同理）时，
+       * 本规则**没有可补的「剩余」**：默认 90 会凭空发明玩家没计划的转大次数（实测把雨果决算
+       * 从 5 砍到 4、并让 R17c 多出一条赠行、R18d 的轴因超出预算被弃）。
+       *
+       * ⚠ 为什么「轴声明块数」必须是**闸门**而不是「优先级」：交接曾提过「轴声明的 promoteVariant
+       * 优先，只在它没声明满时用剩余好评补 90」。**「没声明满」不可判定**——轴声明 60×1 到底是
+       * 「计划只转 1 次」还是「只列了 1 次、其余留给 90」，预设里没有任何字段能区分（`count` 就是
+       * 全部信息）。硬猜「没满 ⇒ 补」正是 ① 覆盖预设意图 ② 让无声明队凭空多出转大的原因。
+       * 可判定的只有「声明了没有」⇒ 闸门落在**存在性**上。
+       *
+       * ⚠ **复用 `computeLiuyinHugCounts` 而不是自己 floor**（第一次写成 `floor(rest/90)` 是错的）：
+       * 轴声明的 `h60` 是**窗口加权后的小数**（实测 1051 队 2.3077），它本身不代表整次抱拳；
+       * 直接按 `G − h60×60` 算余额会少扣/多补一次（实测把 1051 的账本残差从 −1.63 翻成 +0.98）。
+       * `computeLiuyinHugCounts` 的阈值结转贪心正是这条规则的**唯一实现**：
+       * 「每次开窗要求当刻 ≥90，优先用 60 档（受 cap60 = 轴声明的 60 次数上限约束），否则用 90 档」
+       * ⇒ 传 `hug60Setting = floor(轴声明的 h60)`、`stunCount` 给足连携窗口即可。
+       */
+      const declaredBlocks = h60 + h90
+      if (declaredBlocks > 0 && prevGoodReview > 0) {
+        /**
+         * 窗口预算用本轮的 `stunCount`（外层不动点喂进来的**计划值**，与核心侧
+         * `promoteFixpoint` 的入口同源），`targetChainCountTotal` 交给函数自己按
+         * `stunCount` 推导（不传 = 用它内部的 `floor(stunCount)` 口径）。
+         * ⚠ 别用 `Math.max(h60, stunCount)` 之类自造窗口数：实测把 1051 的账本残差从
+         * −1.63 翻成 +0.98（少扣一次 60）再回落到 +0.40，两次都是自造口径的产物。
+         */
+        const hug = computeLiuyinHugCounts(
+          prevGoodReview,
+          stunCount,                 // 连携窗口数（= 本轮失衡计划值，与核心侧同源）
+          Math.floor(h60),           // 60 档上限 = 轴声明的 60 抱拳计划次数（floor 成整数次）
+        )
+        h60 = hug.hug60
+        h90 = hug.hug90
+      }
       if (h60 > 0 || h90 > 0) axisHug = { hug60: h60, hug90: h90 }
     }
     // 轴模式琉音赠大计数（跨层口径统一，2026-09-10）：轴内 60/90 转大次数由轴预设决定，

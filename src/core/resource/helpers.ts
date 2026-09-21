@@ -15,7 +15,7 @@ import type {
 } from '@/types/resource'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { computeBanyueCycleFromCfg, readAxisExCounts } from '@/mechanics/agents/banyue'
-import { crossAgentSupplyAt, findCrossAgentSupplySlots, giftDecibelForCfg } from './crossAgentSupply'
+import { crossAgentSupplyAt, findCrossAgentSupplySlots, ultimateGiftOf, giftDecibelForCfg } from './crossAgentSupply'
 import { DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 
@@ -359,15 +359,29 @@ export function iterate(
   // 旧实现靠 post-hoc carve 目标 basic_attack 聚合行守恒——目标平A时间住在分段行里时（希格莉德
   // 枪尖/般岳焚身/琉音猜拳）聚合行被抠剩 ~0、carve 落空 → 守恒破、净占用 +7.2s（实测
   // auto-1591-1481-1311）。引擎侧按同一求解预留必要时间：赠行时间进目标槽必要（GROSS），
-  // 平A池随之收缩，守恒成立且不再依赖 post-hoc carve。**轴模式除外**：轴内 60/90 转大次数由
-  // 轴预设 promoteVariant 块决定（useResourceCalc 层，iterate 拿不到），保留旧 carve 路径
-  // ——该抑制现由模块的 `axisSuppressed` 声明，引擎不写「有没有该角色」的 flag。
-  const liuyinGift = crossAgentSupplyAt(configs, prevStates, findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1, {
+  // 平A池随之收缩，守恒成立且不再依赖 post-hoc carve。
+  //
+  // **轴模式的次数来源 = `axisLiuyinPromote`（编排层按「轴声明 60 + 剩余好评默认 90」算好）**：
+  // 模块供给带 `axisSuppressed` ⇒ 轴模式下 `crossAgentSupplyAt` 恒返回 count 0。旧口径正是
+  // 「轴模式不预留」（2026-09-10 为避数值重排暂时维持），其代价在 2026-09-20 暴露为**四处口径分裂**
+  // —— 本处与 S2 折叠环 `rowTime` 漏计轴赠大，而 `giftTimeOfSlot`（截断上限）扣了它 ⇒ **双重计费**：
+  // 雨果 0 命轴 slot0 截断额度被扣 8.732s 而账本/折叠都没涨，决算行被整数装包砍掉一整次（5→4，
+  // 实测 `hugoVerdictLanding`/`stunVulnSummary` 案例 B/D 红）。
+  // ⇒ 统一走 `ultimateGiftOf`（该量的**单一事实源**，四处同源才守恒：Σ非赠行 + 赠行 ≡ 账本）。
+  //
+  // 注意 `docs/ENGINE_PIPELINE_GUIDE.md` 坑19① 记的旧实测（「轴模式也在此预留会让 4 队留白变差
+  // +0.27~2.70s」）是**只有本处单方面预留**时的读数：当时折叠环与截断上限的轴分支尚未落地，
+  // 预留挤平A池而赠送行不等量补回（折叠环把它读成 idle 再 refund 掉，净额仍 0）。现四处同源，
+  // 该否决理由的前提已消失（实测见下方 `@fact engine:赠送时间/轴模式四处同源`）。
+  // @fact engine:赠送时间/轴模式四处同源 口径: 琉音赠大（`gift-chain:ultimate`）在轴模式下的**次数与时长必须四处同源**（`ultimateGiftOf` 单一事实源）：① 本处 `iterate` 账本必要时间预留 ② S2 折叠环 `rowTime` 测量 ③ `frontlineRowsOf` 试探测量 ④ `giftTimeOfSlot` 装配截断上限。四处缺任一（尤其①与②）都会破守恒——实测雨果 0 命轴只做④不做①②时，截断额度被扣 8.732s 而账本/折叠都没涨 ⇒ **双重计费**、决算行被整数装包砍掉一整次（5→4）| 据 用户@2026-09-20「同一个量转大次数，在轴模式下显示制定了部分好评值的用途，剩余好评应该默认 90」 | 验 src/composables/__tests__/timeLedgerInvariants.test.ts + src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/core/resource/crossAgentSupply.ts#ultimateGiftOf | 信 确认
+  // ⟳复核: 再增/删琉音赠大的消费点（尤其绕过 `ultimateGiftOf` 直调 `crossAgentSupplyAt`）时，复核「四处同源」覆盖面与 `Σ非赠行 + 赠行 ≡ 账本`（timeLedgerInvariants 全绿）；`axisLiuyinPromote` 的产生改为非编排层时一并重核 | 到期 2027-03-31
+  const liuyinGift = ultimateGiftOf(configs, prevStates, {
     totalTime, stunCount: globalCfg.stunCount ?? 0,
     axisMode: !!globalCfg.axisMode,
+    axisPromote: globalCfg.axisLiuyinPromote,
   })
-  const liuyinGiftTargetIdx = liuyinGift.count > 0 ? liuyinGift.targetIdx : -1
-  const liuyinGiftTime = liuyinGift.time
+  const liuyinGiftTargetIdx = liuyinGift.count > 0 && configs[liuyinGift.targetIdx] ? liuyinGift.targetIdx : -1
+  const liuyinGiftTime = liuyinGiftTargetIdx >= 0 ? liuyinGift.time : 0
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]
     const exSpecialCount = resolveExSpecialCount(cfg, energies[i])

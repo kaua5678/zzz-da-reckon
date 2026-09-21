@@ -13,11 +13,12 @@ import {
   crossAgentSupplyAt,
   crossAgentSuppliesOf,
   findCrossAgentSupplySlots,
+  ultimateGiftOf,
   giftDecibelForCfg,
   type CrossAgentSupplyInfo,
 } from './resource/crossAgentSupply'
 
-export { crossAgentSupplyAt, crossAgentSuppliesOf, findCrossAgentSupplySlots }
+export { crossAgentSupplyAt, crossAgentSuppliesOf, findCrossAgentSupplySlots, ultimateGiftOf }
 export type { CrossAgentSupplyInfo }
 
 // ============ 单角色能量计算 ============
@@ -449,13 +450,13 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     const chainGiftInfo = crossAgentSupplyAt(configs, st, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
       totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
     })
-    // 琉音好评转大赠链行同理（非轴）：装配后 applyLiuyinPromote 追加，行测量计入其时间
-    // 琉音赠大：**只作测量口径统一**（2026-09-10 实测：轴模式也在此预留会让 4 队留白变差
-    // +0.27~2.70s——预留挤平A池而赠行不等量补回，见 docs 坑19①；故 iterate 侧维持旧口径「轴模式不预留」，
-    // 只有 `frontlineRowsOf` 试探测量与 `giftTimeOfSlot` 装配侧按轴预设计数统一）。
-    // 轴模式抑制由模块的 `axisSuppressed` 声明，引擎不写 flag 判断。
-    const ultimateGift = crossAgentSupplyAt(configs, st, findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1, {
-      totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize, axisMode: config.axisMode,
+    // 琉音好评转大赠链行同理：装配后 applyLiuyinPromote 追加，行测量计入其时间。
+    // **轴模式必须用轴计数**（`ultimateGiftOf` = 该量的单一事实源）：模块供给带 `axisSuppressed`
+    // ⇒ 漏掉轴分支就看不见赠行 ⇒ 它占的前台被读成 idle，`timeBudgetRefund` 把它 refund 掉
+    // ⇒ iterate 侧刚补的预留又被打回（2026-09-20 R67 实测：只补 iterate 不补本处，账本净额仍 0）。
+    const ultimateGift = ultimateGiftOf(configs, st, {
+      totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
+      axisMode: config.axisMode, axisPromote: config.axisLiuyinPromote,
     })
     for (let i = 0; i < configs.length; i++) {
       const cfg = configs[i]
@@ -850,16 +851,30 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
      * 目标槽必要时间（GROSS 全额，见 helpers.ts Step4 两处预留）。**截断上限与前台展示必须同口径计入**，
      * 否则：① 其它行按「含赠送时间的账本」截断、再叠加赠送行 → 物化行超账本（守恒破）；
      * ② 资源卡「总计」= 战斗时间 + 赠送秒数（用户实测 2026-09-08：诺姆入队后主C 180s + 诺姆连携秒数）。
-     * 轴模式不预留（轴内赠块由轴引擎计账，见 helpers.ts `liuyinGiftAxisActive`），故同样不在此计入。
+     * 轴模式同样计入（次数走 `ultimateGiftOf` 的轴分支，见下方；旧注释「轴模式不预留」已作废）。
      */
     const chainGiftFinal = crossAgentSupplyAt(configs, states, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
       totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
     })
-    // 琉音赠大（装配侧：截断上限 + 前台展示）：轴模式维持旧口径「不预留/不计入」（2026-09-10 实测：
-    // 改用轴预设计数会让落点大改——stun 4→6、dmg ±5.8%/+32.5%，属数值重排，须裁决；见 docs 坑19①）。
-    // 轴模式抑制 = 模块的 `axisSuppressed` 声明，引擎不写「有没有该角色」的 flag 判断。
-    const ultimateGiftFinal = crossAgentSupplyAt(configs, states, findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1, {
-      totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize, axisMode: config.axisMode,
+    /**
+     * 琉音赠大（装配侧：**截断上限 + 前台展示 + 赠行时间预留**）——四处同源之一（单一事实源 =
+     * `ultimateGiftOf`，见 `@fact engine:赠送时间/轴模式四处同源`）。
+     *
+     * ⚠ **2026-09-20 轴模式改为计入**（用户口径「同一个量转大次数，在轴模式下显示制定了部分好评值的
+     * 用途，剩余好评应该默认 90……所以转大次数应该很明确」）：
+     *
+     * 旧口径「轴模式不预留」（2026-09-10 为避数值重排暂时维持）的代价 = **双重计费**：模块的
+     * `axisSuppressed` 让非轴分支恒返回 count 0，而本处（截断上限）扣掉了轴赠大、`iterate` 账本与
+     * S2 折叠环测量却都没涨 ⇒ 截断额度凭空少 8.732s（雨果 0 命轴），决算行被整数装包砍掉一整次
+     * （5→4，实测 `hugoVerdictLanding`/`stunVulnSummary` 案例 B/D 红）。
+     *
+     * 现改为一律走 `ultimateGiftOf`（轴模式用 `axisLiuyinPromote.count`——编排层已按「轴声明 60 +
+     * 剩余好评默认 90」算好，与 `promoteFixpoint` 同源）⇒ 预留 == 赠行 == 截断扣除，守恒恢复，
+     * `applyLiuyinPromote` 也不再需要 post-hoc carve（`liuyinGiftTimeReserved` 有值即走预留路径）。
+     */
+    const ultimateGiftFinal = ultimateGiftOf(configs, states, {
+      totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
+      axisMode: config.axisMode, axisPromote: config.axisLiuyinPromote,
     })
     const giftTimeOfSlot = (idx: number): number =>
       (idx === chainGiftFinal.targetIdx ? chainGiftFinal.time : 0)

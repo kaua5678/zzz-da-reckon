@@ -28,8 +28,10 @@ const GOOD_REVIEW_INITIAL = 60
 const GOOD_REVIEW_PER_SEC = 0.6
 const GOOD_REVIEW_PER_EX = 7.5
 const GOOD_REVIEW_C1_MULT = 1.16
-const HUG60_COST = 60
-const HUG90_COST = 90
+/** 60 档转大消耗的好评（导出：编排层按「轴声明 60 + 剩余好评默认 90」推导转大次数时同源引用，规则 11） */
+export const HUG60_COST = 60
+/** 90 档转大消耗的好评（导出理由同上） */
+export const HUG90_COST = 90
 
 // —— 核心被动：暴击率转冲击力 ——
 const CRIT_TO_IMPACT_THRESHOLD = 50
@@ -519,9 +521,13 @@ export const liuyinMechanic: AgentMechanicModule = {
    * 跨槽位供给：好评转大 → 送给目标队友的**终结技行**（规则 6 在引擎层的落点）。
    *
    * 迁移自 `core/resource.ts#liuyinGiftChainInfo`（2026-09-13，数值逐位保留）。三处口径要点：
-   * ① **轴模式抑制**（`axisSuppressed`）：轴内 60/90 转大次数由轴预设 `promoteVariant` 块决定，
-   *    通用公式在轴模式会算出另一个数（2026-09-10 实测：预留侧会让 4 队留白变差 +0.27~2.70s）
-   *    ⇒ 轴模式不由本供给出数，改由编排层注入 `axisLiuyinPromote`（见 docs 坑19①）。
+   * ① **轴模式抑制**（`axisSuppressed`）：轴内 60/90 转大次数由轴预设 `promoteVariant` 块决定
+   *    （+ 用户 2026-09-20 口径「剩余好评默认 90」，两者都在编排层算好后经 `axisLiuyinPromote` 注入）
+   *    ⇒ 本供给在轴模式下不出数（恒 0）。引擎的**四处**消费点（`iterate` 账本预留 / S2 折叠环
+   *    `rowTime` 测量 / `frontlineRowsOf` 试探测量 / `giftTimeOfSlot` 截断上限）统一走
+   *    `ultimateGiftOf` 取轴计数（单一事实源，见 `@fact engine:赠送时间/轴模式四处同源`）。
+   *    ⚠ 旧注释「通用公式会算出另一个数 ⇒ 预留会让 4 队留白变差 +0.27~2.70s」已作废：那是
+   *    **只有单处**消费轴计数时的读数；四处同源后守恒成立（实测 `timeLedgerInvariants` 全绿）。
    * ② 落点缺省 = 上一位队友（`resolveUltimateTargetSlot`，用户可经 `liuyin.ultimateTargetSlot` 覆盖）。
    * ③ 单位耗时 = 落点槽的 `ultimateActionTime`（转大是把队友的**连携**升级为**终结技**）。
    */
