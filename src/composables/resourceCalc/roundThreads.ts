@@ -4,11 +4,9 @@
  * 历史形态：runCalcRound 挂 21 个 prev* 位置参数 + 19 个同名字段返回，每加一个跨轮反馈
  * （如薇薇安双源、普罗米娅触发命中）就要在签名/调用点/返回体三处同步加一行——漏一处即
  * 静默断链。结构体化后：新增反馈 = CalcRoundThreads 加一个字段 + 初值 + 轮内读写。
- * ⚠ 收敛判据在 useResourceCalc.runOuterLoop 里**手写**（ultSeq/anomalySeq/topUpSeq/
- * parrySplitSeq/decibelParrySeq/auricInkFlash 六项），不是对整份结构体自动比对——新增线程
- * 字段若会独立震荡（如 lighterTeamEnergy / promia* 这类只影响伤害、不改变终结技/喧响序列
- * 的反馈），记得同步加进收敛判据，否则会提前判 stable（2026-08 曾试图整份指纹比对，
- * 校准 MAE 劣化 ~0.8% 后回退，见 runArchiveCalibration 棘轮）。
+ * ⚠ 反馈签名的显式投影单源 = outerCycle.ts#outerFeedbackSignature；玄墨次数的自由失衡
+ * 判稳仍在 runOuterLoop。这不是对整份结构体自动比对：新增会独立变化的线程时，必须
+ * 同步评估终止判据并补真实管线测试。“字段传到了下一轮”不代表求解器会等到它稳定。
  *
  * 语义约定（与旧位置参数版逐字段等价）：
  * - 轮内持久（null 轮不清零）：goodReview / energyBySlot / banyueTopUp / parrySplit / decibelParry

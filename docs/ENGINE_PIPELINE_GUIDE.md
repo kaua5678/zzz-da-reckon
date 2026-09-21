@@ -232,9 +232,9 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     chainCountTotal 传 0，时光切片（音擎 13002）连携触发的回能只进展示、不参与次数推导——
     已修复对齐；两字段保留在结果上，差值 ≠ 0 即回归信号（`timeSliceChainEnergy.test.ts` 锁定）。
     跨角色回能只改 `calcCrossAgentEnergy` 一处（单一事实源）。
-15. **收敛状态要看三层**：`TeamResourceResult.convergence` 上报时间预算层（converged/轮数/
-    正残差/负残差 idle）与失衡外层（`stable | cycle | maxIter`）。`cycle` = 离散 2-循环兜底，正常；
-    `maxIter` = 反馈量仍在变，结果可疑。`allAgentsSweep` 已对全角色断言这两条。
+15. **收敛状态要看三层**：`ConvergenceReport` 区分预算层与失衡外层；`cycle` 是容差内环代表，非严格固定点；`maxIter` 可疑。
+    快照/二周期单源 `resourceCalc/outerCycle.ts`：本轮快照 → 判稳/判环 → 追加历史，不得混用陈旧签名。
+    判据 `outerCycle.test.ts` / `outerFeedbackRegression.test.ts`；全角色不变量 `allAgentsSweep`。
 16. **异步数据就绪门（2026-08）**：teammate-buffs 由 `useResourceCalc` 工厂**不 await** 地触发加载，
     面板在数据未就绪时照算 → 首算无队友 buff、fetch 返回后数值漂移（曾致同配置两次全新计算
     给出 12/3,9/1 vs 12/4,8/1）；`setAgent → syncTeammateBuffsFromTeam` 同样时机敏感（数据晚到 =

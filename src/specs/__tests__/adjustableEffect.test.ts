@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getRegisteredMechanicSettings } from '@/mechanics'
+import { SIGRID_CHUQIANG_MOVE_IDS } from '@/mechanics/agents/sigrid'
 
 /**
  * spec `adjustable`（判据 4 的 **Form-E**）生效测试。
@@ -89,7 +90,7 @@ const RICH = { cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12, quickAssist
  *      回写，只能靠**收敛后读数**，见下方 §2 的「收敛基准」表。
  * ② **收敛反馈型**：值进算式后**又反馈回输入**（1591 的机会收入 ← 敛枪式段数 ← 机会消耗；
  *    1091 的落霜 → 霜月次数）。⇒ 三点**不严格成比例**，强断言的正确形态是
- *    「`rate=0` ⇒ 恒 0」+「逐点钉实测收敛值」+「读同一份结果解**闭式恒等式**」（见 §3 米卡以）。
+ *    「`rate=0` ⇒ 恒 0」+「从同一结果的独立出口重建输入并验**闭式恒等式**」+「非空/单调反控」（见 §3 希格莉德、§4 米卡以）。
  * ③ **`max: 1` 型**：`1301` / `1521` 的 `adjustable.max = 1`（`applyAdjustable` 的钳制区间
  *    是 `[min, max]`）⇒ 第三点取 **0.5** 而不是 2（取 2 会被钳成 1，与 rate=1 同值 ⇒ 断言退化）。
  * ========================================================================================== */
@@ -135,7 +136,7 @@ const LINEAR_CASES: Array<[string, string, string, [string, string], number[], n
  * 三点，本批实测对 `chainCountTotal` 型会因 `warmStartCache`（`core/resource.ts:125` 按整个 cfg
  * 做 exactKey）串味，故本批一律新夹具）。
  */
-async function readSpecGain(
+async function readSpecGainState(
   id: string,
   resKey: string,
   gainKey: string,
@@ -154,9 +155,14 @@ async function readSpecGain(
   const calc = useResourceCalc()
   config.setMechanicSetting(id, rate)
   await new Promise(r => setTimeout(r, 0))
-  const char = calc.resourceResult.value?.characters?.find(c => c.agentId === agentId) as
-    { specResources?: Record<string, { gains?: Record<string, number> }> } | undefined
-  return char?.specResources?.[resKey]?.gains?.[gainKey]
+  const resourceResult = calc.resourceResult.value
+  const char = resourceResult?.characters.find(c => c.agentId === agentId)
+  const resource = char?.specResources?.[resKey] as { gains?: Record<string, number> } | undefined
+  return { char, resourceResult, gain: resource?.gains?.[gainKey] }
+}
+
+async function readSpecGain(...args: Parameters<typeof readSpecGainState>) {
+  return (await readSpecGainState(...args)).gain
 }
 
 describe('spec adjustable（Form-E）第二批：链式/严格线性', () => {
@@ -210,24 +216,36 @@ describe('spec adjustable（Form-E）第二批：链式/严格线性', () => {
    * §3 收敛反馈型（1591 希格莉德「机会」）：**不能**套「rate=2 ⇒ 恰好 2×基准」——
    * 机会收入 = 基础命中 + 轮转第三段（`sigrid.ts#sigridLanceCounts` 的定点迭代），
    * 提高 rate ⇒ 收入变大 ⇒ 敛枪式段数变多 ⇒ 第三节再送机会 ⇒ **正反馈**。
-   * 实测三点 `0 / 37.81819993141289 / 80`（80 = 2 × 机会收入上限 40，rate=2 时饱和）。
-   * ⇒ 强断言 = 「rate=0 ⇒ 恒 0」+「单调递增」+「逐点钉实测收敛值」（值一漂就红，逼人复核）。
+   * 旧锚点 37.818… 来自瞬态早停，不能作为滑块正确性的恒定定义。
+   * 声明没有“收入上限 40”：40 只是该夹具某档的命中数，不能误称机制上限。
+   * ⇒ 读同一结果的出枪式执行行与截断明细，逐点钉 `gain = 截断前命中次数 × rate`。
+   * 资源卡仍是截断前账本：rate=2 实测 40 次请求 = 21 次保留 + 19 次被截断，不能拿 21 判收入。
+   * 出枪式 #4 已按段物化，直接按声明的 moveId 集合计一次，避免再复制生产侧 cfg 计数器。
    */
-  it('1 条收敛反馈型（1591）：rate=0 ⇒ 0，且三点钉实测收敛值 + 单调', async () => {
+  it('1 条收敛反馈型（1591）：rate×截断前出枪式行计数闭式成立，且四点单调', async () => {
     const id = '1591.sigrid_lance_opportunity.sigrid_hit_opportunity_gain.rate'
-    const g = (r: number) => readSpecGain(id, 'sigrid_lance_opportunity', 'sigrid_hit_opportunity_gain', ['1011', '1211'], r)
-    const r0 = await g(0)
-    const rHalf = await g(0.5)
-    const r1 = await g(1)
-    const r2 = await g(2)
-    expect(r0, 'rate=0 ⇒ 该 gain 分量必然恒 0（消费侧读错字段名会恒走 ?? default）').toBe(0)
-    expect(rHalf!).toBeCloseTo(21.18043619329764, 6)
-    expect(r1!).toBeCloseTo(37.81819993141289, 6)
-    // rate=2 时收入饱和到机会上限 40 ⇒ gain = 2 × 40 = 80（**不是** 2 × 37.8：反馈环所致）
-    expect(r2!).toBeCloseTo(80, 6)
-    expect(r0!).toBeLessThan(rHalf!)
-    expect(rHalf!).toBeLessThan(r1!)
-    expect(r1!).toBeLessThan(r2!)
+    const points: Array<{ rate: number; hits: number; cutHits: number; gain: number }> = []
+    for (const rate of [0, 0.5, 1, 2]) {
+      const { char, resourceResult, gain } = await readSpecGainState(
+        id, 'sigrid_lance_opportunity', 'sigrid_hit_opportunity_gain', ['1011', '1211'], rate,
+      )
+      expect(char, `rate=${rate}: 必须有角色结果`).toBeTruthy()
+      const keptHits = char!.executions
+        .filter(e => e.moveId && SIGRID_CHUQIANG_MOVE_IDS.has(e.moveId))
+        .reduce((sum, e) => sum + e.count, 0)
+      const cutHits = (resourceResult!.truncationCuts ?? [])
+        .filter(cut => cut.slot === char!.slot && SIGRID_CHUQIANG_MOVE_IDS.has(cut.moveId))
+        .reduce((sum, cut) => sum + cut.countBefore - cut.countAfter, 0)
+      const hits = keptHits + cutHits
+      expect(hits, `rate=${rate}: 出枪式输入不能为空`).toBeGreaterThan(0)
+      expect(gain, `rate=${rate}: gain 必须等于请求命中次数 ${hits} × 调节率`).toBeCloseTo(hits * rate, 9)
+      points.push({ rate, hits, cutHits, gain: gain! })
+    }
+    expect(points[0]!.gain, 'rate=0 必须关闭这个来源').toBe(0)
+    for (let i = 1; i < points.length; i++) expect(points[i]!.gain).toBeGreaterThan(points[i - 1]!.gain)
+    expect(points[1]!.hits, '反馈必须实际改变输入，不能退化成固定基准的线性夹具').not.toBe(points[2]!.hits)
+    expect(points[1]!.cutHits, '低档须覆盖无截断口径').toBe(0)
+    expect(points[3]!.cutHits, '高档须覆盖截断前/后口径差异').toBeGreaterThan(0)
   }, 300000)
 })
 

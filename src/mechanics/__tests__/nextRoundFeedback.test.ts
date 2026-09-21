@@ -25,12 +25,13 @@
  * 读 `threads` 写 cfg。所以本文件两条腿都要测：① 返回值（生效路径）；② cfg 写回（展示口径 +
  * 守卫语义，迁移前就在写，逐位保留）。
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getAgentMechanic } from '@/mechanics'
 import { initialCalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 import type { AgentNextRoundFeedbackInput } from '@/mechanics/types'
+import { ELLEN_C4_ENERGY_PER_TRIGGER, type EllenCycle } from '@/mechanics/agents/ellen'
 
 // ── 构造器：只填钩子真正读到的字段，其余用最小代价补齐（真实对象形状见 types/resource） ──
 
@@ -338,19 +339,33 @@ describe('★ 管线级：timeGolden 盲区（露西 C6 / 艾莲影画4 冻结�
   })
 
   it('艾莲影画4：冻结次数反馈真的驱动影画4 回能（ellen_cycle.c4EnergyTotal）', async () => {
-    // 槽位 0（紧凑队伍）：冻结次数唯一来源 = `nextRoundFeedback` 读异常池 ice 触发数。
-    const { catalog, config } = await setupHarness([
-      { agentId: '1191', cinemaLevel: 6 }, { agentId: '1481' }, { agentId: '1311' },
-    ])
-    await catalog.loadBuildRecommendations()
-    for (let i = 0; i < 3; i++) config.applyBuildRecommendationForSlot(i)
-    const calc = useResourceCalc()
-    const rr = calc.resourceResult.value!
-    const cycle = (rr.characters.find(c => c.agentId === '1191') as unknown as {
-      specResources?: { ellen_cycle?: { freezeCount: number; c4EnergyTotal: number } }
-    }).specResources?.ellen_cycle
-    // 实测锚点（2026-09-16）：**有**钩子 freeze=4 / c4=16；**摘掉**钩子 freeze=0 / c4=0。
-    expect(cycle?.freezeCount, '艾莲冻结次数没注入 —— nextRoundFeedback 未把 ice 触发数反馈回来').toBe(4)
-    expect(cycle?.c4EnergyTotal, '影画4 回能没随冻结次数上台阶').toBe(16)
+    // C4 同时吃冻结与失衡；锁 0 只隔离失衡来源，不手写任何反馈 cfg。
+    // 自由求解时 4 冻结 + 1 失衡应回 20 能量，旧固定 16 的断言混入了环内选点。
+    async function readCycle() {
+      const { config } = await setupHarness([
+        { agentId: '1191', cinemaLevel: 6 }, { agentId: '1481' }, { agentId: '1311' },
+      ], { recommendedBuild: true })
+      config.enemy.stunCountLock = 0
+      const rr = useResourceCalc().resourceResult.value!
+      const cycle = rr.characters.find(c => c.agentId === '1191')?.specResources?.ellen_cycle as EllenCycle | undefined
+      expect(cycle, '艾莲循环资源必须存在').toBeTruthy()
+      return cycle!
+    }
+    const enabled = await readCycle()
+    expect(enabled.stunCount).toBe(0)
+    expect(enabled.freezeCount, '必须真的观测到冻结反馈，不能用 0=0 证明生效').toBeGreaterThan(0)
+    expect(enabled.c4EnergyTotal).toBe(enabled.freezeCount * ELLEN_C4_ENERGY_PER_TRIGGER)
+
+    // 反控仍走同一条真实管线，只摘掉这个反馈钩子；恒定回能/旁路注入都必须被抓住。
+    const feedback = vi.spyOn(getAgentMechanic('1191')!, 'nextRoundFeedback')
+      .mockReturnValue({ ellenFreezeCount: 0 })
+    try {
+      const disabled = await readCycle()
+      expect(disabled.stunCount).toBe(0)
+      expect(disabled.freezeCount).toBe(0)
+      expect(disabled.c4EnergyTotal).toBe(0)
+    } finally {
+      feedback.mockRestore()
+    }
   })
 })

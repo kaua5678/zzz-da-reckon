@@ -3,7 +3,7 @@ import { setupHarness, type HarnessTeamSlot } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getRegisteredMechanicSettings } from '@/mechanics'
 // 跨文件常量只从单一来源引用（规则 11）：被断言的两条口径改了就跟着变，不复制字面量。
-import { BURIAL_MAIM_PER_CAST } from '@/mechanics/agents/claret'
+import { BURIAL_MAIM_PER_CAST, INSCRIPTION_CHAIN_EXTENSION_SECONDS } from '@/mechanics/agents/claret'
 import { CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
 
 /**
@@ -455,15 +455,23 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：拆分/消耗次�
    */
   it('claret.chainInWindowCoverage：inscriptionWindowSeconds 对 v/100 严格线性（三点 0 / 50 / 100）', async () => {
     const team: HarnessTeamSlot[] = [{ agentId: '1611', ...RICH }, ...mates(['1481', '1371'])]
+    // 这是覆盖率生效测试，不是自由失衡求解测试。锁定窗口以保证每点都有相同的连携输入；
+    // 旧夹具依赖冷启动瞬态早停，修正判环后会落到零计划窗，无法观测 chains×2s。
+    const lockedStuns = 3
+    const expectedChains = RICH.chainCountPerStun * lockedStuns
     const failures: string[] = []
     const w: Record<number, number> = {}
     for (const v of [0, 50, 100]) {
-      const raw = await probe(team, 'claret.chainInWindowCoverage', v,
-        calc => charOf(calc, '1611').claretSharpResourceSource?.inscriptionWindowSeconds)
+      const char = await probe(team, 'claret.chainInWindowCoverage', v,
+        calc => charOf(calc, '1611'), { lock: lockedStuns })
+      if (char.chainCountTotal !== expectedChains) failures.push(`v=${v}: 锁定窗口应有 ${expectedChains} 次连携，实到 ${char.chainCountTotal}`)
+      const raw = char.claretSharpResourceSource?.inscriptionWindowSeconds
       if (raw === undefined || !Number.isFinite(raw)) { failures.push(`v=${v}: inscriptionWindowSeconds 不可得（${raw}）`); continue }
       w[v] = raw
     }
     if (w[0] !== undefined && w[50] !== undefined && w[100] !== undefined) {
+      const expectedBase = expectedChains * INSCRIPTION_CHAIN_EXTENSION_SECONDS
+      if (Math.abs(w[0] - expectedBase) > 1e-9) failures.push(`w(0) 应为连携赠送的 ${expectedBase}s，实到 ${w[0]}`)
       if (!(w[100] > w[0])) {
         failures.push(`w(100)=${w[100]} 未大于 w(0)=${w[0]} ⇒ 覆盖率完全没生效（或铭刻时间已饱和压平）`)
       }

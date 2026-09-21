@@ -15,6 +15,7 @@ import { getAgentMechanic } from '@/mechanics'
 import { initialCalcRoundThreads, threadsAfterNullRound } from './resourceCalc/roundThreads'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
 import { createConvergenceRoundInputs, createRunCalcRound, type CalcRoundResult } from './resourceCalc/convergence'
+import { isOuterTwoCycle, outerFeedbackSignature } from './resourceCalc/outerCycle'
 import { DOWNSCALE_SCALES, selectDownscaleScale, downscaleTrialAccepted, downscaleTrialFeasible } from './resourceCalc/feasibilitySearch'
 import type {
   CharacterOperationConfig,
@@ -39,7 +40,7 @@ import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } f
 const MAX_OUTER_ITER = 20
 /**
  * 外层失衡次数的量化容差（判稳 / 真 2-循环 / 长环同相位比对 / 环内选点共用）。
- * 小数失衡时代的浮点比较容差，来历见 runOuterLoop 内 isTwoCycle 注释。
+ * 小数失衡的浮点比较容差，同相位判据见 resourceCalc/outerCycle.ts。
  */
 const OUTER_STUN_TOLERANCE = 0.05
 
@@ -156,7 +157,7 @@ export function useResourceCalc() {
 
   /**
    * 外不动点：失衡次数 ↔ 资源池（连携次数 = 每失衡连携数 × 失衡次数）↔ 失衡池 全链路循环收敛。
-   * 计算器就是要循环计算（游戏实时因果，计算器定点迭代）；失衡次数/连携次数/好评转大互为反馈，单调有界必收敛。
+   * 同时追踪失衡次数/连携次数/好评转大等反馈，区分固定点、离散环与耗尽未收敛。
    */
   const calcOutput = computed(() => {
     if (!resourceConfig.value || !catalogStore.ready) return null
@@ -191,34 +192,11 @@ export function useResourceCalc() {
       let stunCount = lockedStunCount >= 0 ? lockedStunCount : 0
       let out: CalcRoundResult | null = null
       let threads = initialCalcRoundThreads()
-      let prevUltSeq = ''
-      let prevAnomalySeq = ''
-      let prevTopUpSeq = ''
-      let prevParrySplitSeq = ''
-      let prevBackstageSeq = ''
-      let prevBuildUpFracSeq = ''
-      let prevDecibelParrySeq = ''
-      /** 爱丽丝剑仪 spark 次数序列（反馈环稳定判据，见下方 aliceSeq 注释） */
-      let prevAliceSeq = ''
-      /**
-       * 上一轮的失衡次数（真 2-循环判定用，2026-09-15 修）。
-       *
-       * ⚠ 原实现是 `Set<number>` + `Math.round(v * 10)` 的 **0.1 粒度桶**，注释自称「2-循环去重键取 0.1 粒度」。
-       * 那个粒度分不清「真的在两值间来回跳」与「正在收敛但两轮落在同一个桶里」——
-       * 实测（爱丽丝+格利丝+11号，探针逐轮打印）：`stunCount` 轨迹
-       * `0 → 1.0 → 0.91111 → 0.91901 → 0.91831`，`|Δ| = 1.0 → 0.089 → 0.0079 → 0.0007`
-       * 是**等比收敛**（且第 4 轮 ultSeq/anomalySeq 已全稳定），但后三轮四舍五入都进「9 号桶」
-       * ⇒ 被误判 `cycle` 提前终止，**再也收敛不到底**。
-       * 本改动前，任何改动只要把这支队推进同一个桶就会触发它（我这次接爱丽丝剑仪次数源就撞上了）。
-       *
-       * 正解 = 记住上一轮的值 `prevStunValue`，用**真 2-循环**条件判定：本轮值与上一轮相近（<容差）
-       * 且与上上轮也相近 ⇒ 才是在两个值之间来回跳。收敛中的单调序列不满足（每轮都在变）。
-       */
+      let prevFeedbackSignature: string | null = null
+      /** 上一轮输入 x[k-1]：与本轮推导的 x[k+1] 比较，首轮没有候选。 */
       let prevStunValue: number | null = null
-      /** 外层反馈签名历史（周期 ≥3 环检测用；见环检测注释）。每轮外层循环独立。 */
+      /** 已完成轮次的反馈快照（二周期/长周期共用），不包含当前轮。 */
       const outerSigHistory: string[] = []
-      /** 本轮反馈签名（`feedbackStable` 用的同一组序列）——2-循环判据用它判「环成员是否已进入稳态」 */
-      let curSig = ''
       /** 与 `outerSigHistory` 同步的 `stunCount` 历史（同相位比对用）。 */
       const outerStunHistory: number[] = []
       /** 与上面两个历史同步的每轮结果（cycle 规范停点选点用；轮数 ≤ MAX_OUTER_ITER，持有引用不复制） */
@@ -312,12 +290,8 @@ export function useResourceCalc() {
         // null 轮（如无失衡行队伍）：反馈线程按 threadsAfterNullRound 规则回退（持久组保留、其余重置）
         if (!out) {
           threads = threadsAfterNullRound(threads)
-          // null 轮重置收敛序列判据：防止下一轮非 null 拿陈旧 prev* 误判 stable（防御性）
-          prevUltSeq = ''
-          prevAnomalySeq = ''
-          prevTopUpSeq = ''
-          prevParrySplitSeq = ''
-          prevDecibelParrySeq = ''
+          // null 轮不能沿用上次非 null 结果的快照。
+          prevFeedbackSignature = null
           continue
         }
         const t = out.threadsNext
@@ -346,117 +320,23 @@ export function useResourceCalc() {
             next = Math.max(0, (stunEffTime - totalNecessary) / stunWindowDur)
           }
         }
-        // 终结技次数与异常喧响奖励序列稳定才收敛（异常奖励 → 终结技次数 → 执行计划/时间分配 → 异常触发次数）
-        /**
-         * ⚠ 终结技次数按**定长定点**入序列，不是裸 `toFixed`/原值。
-         *
-         * 原实现是 `.join(',')` 直接拼原值 ⇒ 只要某槽的 `ultimateCount` 是**收敛中的小数**
-         * （如 4.6666624 → 4.66666752 → 4.666666496…），字符串比较**永远不相等** ⇒
-         * `feedbackStable` 恒 false ⇒ 跑满 20 轮报 `maxIter`（实测 `auto-1051-1481-1451`：
-         * stunCount 早在 k=9 就稳在 1.66667，ultSeq 却一直在第 6 位小数抖）。
-         * 与 stunCount 的 0.05 容差同源问题：**离散量的判稳必须给量化容差**。
-         * 取 3 位小数（次数量级足够；同仓 `timeGolden` 的 slotSig 也用 4 位）。
-         */
-        const ultSeq = (out?.resourceResult?.characters ?? []).map(c => (c.ultimateCount ?? 0).toFixed(3)).join(',')
-        const anomalySeq = (out?.anomalyPool?.perSlotBonus ?? []).map(v => Math.round(v)).join(',')
-        const topUpSeq = `${out?.banyueTopUp?.parry},${out?.banyueTopUp?.dual}`
-        const parrySplitSeq = out?.parrySplit ? `${out.parrySplit.breakerParry},${out.parrySplit.mainDpsParry}` : ''
-        const backstageSeq = JSON.stringify(out?.threadsNext?.backstageAuto ?? {})
-        // 失衡分数序列：合轴自动填充反推以 buildUp 分数收敛（floor 后 stunCount 在 3.0-3.99 区间
-        // 恒为 3，仅按 stunCount 判稳会让 N 没爬完就提前 stable——用户口径：保底4要打满）
-        const buildUpFracSeq = out?.stunPool ? (out.stunPool.totalStunBuildUp / out.stunPool.bossStunValue).toFixed(2) : ''
-        const decibelParrySeq = `${t.decibelParry ?? 0}`
-        /**
-         * 爱丽丝剑仪反馈序列（2026-09-15 加入）：剑仪收入现在接了**全队强击/紊乱次数**
-         * （`alice_team_assault_gain`/`alice_disorder_gain`），于是形成一条新反馈环——
-         * 剑仪↑ → 星芒圆舞曲#3 行↑ → 前排时间↑ → 平A池↓ → 剑仪↓（负反馈）；
-         * 同时多出的行进异常池 → 强击/紊乱次数↑ → 剑仪↑（正反馈）。
-         * 不纳入收敛判据就会**提前判 stable**或落进 2-循环（实测：auto-1401-1261-1411 /
-         * 爱丽丝+格莉丝+11号 两支 A/B 对照从 stable 变 cycle，最终失衡次数相同但路径不同）。
-         * 与 `lighterTeamEnergy`/`promia*` 同类（只影响伤害与执行行、不改终结技序列），
-         * 按 `roundThreads.ts` 头注释的纪律必须显式加进来。
-         *
-         * ⚠ 实测附带发现（2026-09-15，**未修，仅登记**）：这套 `cycle` 检测的 2-循环去重键是
-         * `Math.round(stunCount × 10)`（0.1 粒度），会把**正在收敛**的小数判定成 2-循环。
-         * 轨迹证据（爱丽丝+格莉丝+11号，PROBE_TRACE_CYCLE=1 实测）：
-         *   stunCount 0 → 1.0 → 0.91111 → 0.91901 → 0.91831，|Δ| = 1.0 → 0.089 → 0.0079 → 0.0007
-         *   （等比收敛，且第 4 轮 ultSeq/anomalySeq 已全稳定），但后三轮的键都是 `9` ⇒ 误报 cycle。
-         * 影响面：**所有消费方只把 `maxIter` 当不可信**（`teamTimeline.ts:487/:643`、
-         * `pullPlannerEngine.ts:134`、`ResultPage.vue:823`），`cycle` 一律按有效结果接受
-         * ⇒ 该误报**不改任何数值**，只改 `outerExit` 标签与 UI 提示。故本笔不动它（超出本任务
-         * 授权，且修它要重定量全库基线），登记在此供后续专项。
-         */
-        const aliceSeq = (out?.resourceResult?.characters ?? [])
-          .map(c => c.aliceSwordWillSource?.sparkCount ?? 0).join(',')
-        const feedbackStable = ultSeq === prevUltSeq && anomalySeq === prevAnomalySeq && topUpSeq === prevTopUpSeq && parrySplitSeq === prevParrySplitSeq && decibelParrySeq === prevDecibelParrySeq && backstageSeq === prevBackstageSeq && buildUpFracSeq === prevBuildUpFracSeq && aliceSeq === prevAliceSeq
+        // 本轮测量先成快照，再判 stable/cycle；严禁把上轮签名当成当前签名。
+        const curSig = outerFeedbackSignature(out)
+        const feedbackStable = curSig === prevFeedbackSignature
         if (lockedStunCount >= 0) {
           if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
         } else {
           // 失衡次数与玄墨异常触发次数双稳定才收敛（异常触发 → 回闪能 → 强特 → 积蓄 → 触发）
-          // 小数失衡时代：浮点比较用 0.05 容差；2-循环判定见下方 isTwoCycle（2026-09-15 由
-          // 「0.1 粒度去重桶」改为真 2-循环——旧粒度会把正在收敛的序列误判成循环，详见该处注释）
+          // 失衡值用既有容差；反馈签名的量化与同相位判据见 outerCycle.ts。
           if (Math.abs(next - stunCount) < OUTER_STUN_TOLERANCE && ait === threads.auricInkFlash && feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
-          /**
-           * 真 2-循环：`next` 回到**上上轮**的值附近（而上一轮是另一个值）。
-           * 用 0.05 容差（与上面的判稳容差同源）；收敛中的序列每轮都在动 ⇒ 不会命中。
-           *
-           * ⚠ **冷启动首轮的瞬态要排除**（2026-09-20，两次实测校准后的判据形态）：
-           *
-           * k=1 判环时，`prevStunValue` 是 k=0 的**冷输入**（`initialCalcRoundThreads()`，反馈线程为空）。
-           * 对 `auto-1431-1481-1341`（叶瞬光+琉音+照）这类队，k=0 的冷线程让它的**输出行**不可行
-           * （`total=3.567`），k=1 在热线程下才把真实需求打出来（`total=11.334`，`trunc=59s` 装不下）
-           * ⇒ 此时早停会把 k=1 这个**装不下的瞬态**当规范停点（实测报 9.48 次白毛，应 10.06；
-           * 交互降配被带偏到 0.125，应 0.375~0.5）。
-           *
-           * **判据 = 环成员必须在时间上可行**（与 `discreteInconsistencyOf` 同一把尺）：
-           * 仅当本轮输出（= 候选环成员）**装得下**（`timeTruncatedSeconds ≤ 容差`）时才允许判环。
-           * 对 claret（1611/1481/1371）这类「时间充足性约束每轮都把 next 钳到 0」的队，
-           * k=1 的成员 `trunc=0` 可行 ⇒ 照旧判环（保住窗口计划：连携 0.302、伤害 14.39M；
-           * 若放行会收敛到 0 窗吸引盆 −1.9%）。两类队由此区分，不再互相误伤。
-           */
-          /**
-           * **环成员必须已进入稳态**（2026-09-20 第三次校准，最终形态）：要求本轮反馈签名
-           * **与上一轮相同**——与周期 ≥3 检测（`outerSigHistory[k] === outerSigHistory[k-lag]`）
-           * 同一把尺。理由：真 2-循环意味着状态**真正回到同态**，反馈线程（ultSeq/anomalySeq/
-           * 赠行 giftRow/parrySplit 等）必须一起回到；否则只是 stunCount 数值偶然相撞。
-           *
-           * 实测三类队由此一次分清（前两个单条件版本各误伤一类）：
-           *  · **叶瞬光+琉音+照**：k=1 的赠行线程还在 3→4→3 变（未稳）⇒ 签名不同 ⇒ 不判环
-           *    ⇒ 继续迭代到稳定（C0 full/mie 均 10 次，不再报 11）；
-           *  · **claret 1611/1481/1371**：k=0/k=1 的 stun 与线程都已稳（签名相同）⇒ 判环照旧
-           *    ⇒ 保住窗口计划（连携 0.302、伤害 14.39M）；
-           *  · **般岳保底队**：成员带 33s 截断 ⇒ 被可行性闸门拦下 ⇒ 落到装得下的成员。
-           */
-          /**
-           * 真 2-循环的特征 = **状态每 2 轮回到同态** ⇒ `sig[k] === sig[k-2]`（lag=2），
-           * 与周期 ≥3 检测（`outerSigHistory[k] === outerSigHistory[k-lag]`）**同一把尺**。
-           *
-           * ⚠ 别写成 `curSig === prevSig`（k vs k-1）——那是「相邻两轮相同」= 已 stable 的特征，
-           * 不是 2-循环（实测写成 lag=1 后，环成员筛选全乱：C0/mie 报 11 次、三个轴里两个报 cycle）。
-           */
-          /**
-           * 2-循环的**成员稳态判据**（2026-09-20 第 4 次校准，最终形态，逐条实测见下）：
-           *
-           * 要求「本轮的反馈签名与**上一轮**相同」= 反馈线程（ultSeq/anomalySeq/赠行/parrySplit…）
-           * 已经不再变化。理由：`next ≈ x_{k-2}` 的字面判据会把**线程仍在演化的过渡轮**误当环成员。
-           *
-           * 三类队实测（每种单条件都被其中两类打脸过，这是收敛形态）：
-           *  · **叶瞬光+琉音+照**：k=1 赠行线程 3→4→3 还在变 ⇒ 签名不同 ⇒ 不判环 ⇒ 继续迭代到稳定
-           *    （C0 三轴全 10 次、C1 短轴 11 次，与用户口径一致）；
-           *  · **claret 1611/1481/1371**：k=0 起线程就已稳定（lag1=true）⇒ 判环照旧 ⇒ 保住窗口计划
-           *    （连携 0.302、14.39M）；
-           *  · **般岳保底队**：成员带 33s 截断 ⇒ 由 `currentMemberFeasible` 拦下 ⇒ 落到装得下的成员
-           *    （补齐 4→12 次、伤害 56.98M→66.36M）。
-           *
-           * ⚠ 别改用 `sig[k] === sig[k-2]`（lag=2）：那与「周期 ≥3」检测同形，但对**本类 2-循环**
-           * 太严——claret 的 lag2=false（其线程在 k=0/k=1 同态但历史长度不足），会把它的环也放跑
-           * （实测落回 0 窗、连携 0→14.12M）。lag=1 才是「线程已进入稳态」的正确表达。
-           */
-          const sigRepeats = outerSigHistory.length >= 2 && curSig === outerSigHistory[outerSigHistory.length - 2]
-          const isTwoCycle = prevStunValue !== null
-            && sigRepeats
-            && Math.abs(next - prevStunValue) < OUTER_STUN_TOLERANCE
-            && Math.abs(next - stunCount) >= OUTER_STUN_TOLERANCE
+          const isTwoCycle = isOuterTwoCycle({
+            previousInput: prevStunValue,
+            currentInput: stunCount,
+            nextInput: next,
+            currentSignature: curSig,
+            signatureHistory: outerSigHistory,
+            tolerance: OUTER_STUN_TOLERANCE,
+          })
           if (isTwoCycle) {
             outerExit = 'cycle'
             // 2-循环两个成员 = 上一轮（输入 prevStunValue → 输出 stunCount）与本轮（输入 stunCount → 输出 next）；按环内判据取点
@@ -466,47 +346,8 @@ export function useResourceCalc() {
             ])
             break
           }
-          /**
-           * 极限环检测（**周期 ≥ 3** 的补充，2026-09-18 round 23 新增；N=2 仍由上面那条负责）。
-           *
-           * ⚠ **为什么需要它（实测根因）**：上面那条只认周期 2。映射落进**周期 3** 的环时两条
-           * 分支都不命中 ⇒ 跑满 `MAX_OUTER_ITER=20` 报 `outerExit='maxIter'`，而 `maxIter` 被
-           * **全部**消费方当不可信丢弃（`teamTimeline.ts:487/:643`、`pullPlannerEngine.ts:134`、
-           * `ResultPage.vue:823`）⇒ 该队时间线/伤害静默消失。
-           *
-           * 触发实例 = `claret-roxy-rina`（1611/1621/1211）。`PROBE_OUTER_TRACE=1` 轨迹：
-           * 反馈签名（`ultSeq|anomalySeq|…`）**精确三点重复** ——
-           * k=6/9/12 同为 `5.000,8.000,5.000 | 1998,3400,1913 | … | 4.93`，
-           * k=7/10/13 同为 `… | 1700,3060,1700 | …`，k=8/11/14 同为 `…,4.000 | 1913,3230,1828`；
-           * 而 `stunCount` 在三个相位上各自缓慢收敛（2.18372 → 2.20986 → 2.20786，|Δ|≈0.026）
-           * ⇒ 周期 3、且**同相位的 stunCount 互相在容差内**。
-           * 其**数据前提**是 1621 洛克茜招式属性修正（原文=风；旧 catalog 错成 electric，
-           * 见 `scripts/lib/move-elements.mjs`）——即**正确数据暴露了既有引擎缺口**；
-           * 修数据前该队恰好停在 2-循环上，把缺口盖住了。
-           *
-           * ★ **判据形态（三次实测校准的结果，别改松）**：**同时**满足
-           *   ① 反馈签名**精确重复**（就是 `feedbackStable` 用的那组序列，不做任何舍入），且
-           *   ② 该历史轮的 `stunCount` 与本轮**在既有 0.05 容差内**。
-           *
-           * 两条校准记录（都是实测红的，别重犯）：
-           * - **只看 stunCount 历史（加 0.05 邻域）⇒ 假阳性**：`yixuan-jufufu-lucia` 的 stunCount
-           *   每步只动 ~0.01，跨 4 步就落进容差（`0.51015 → 0.51773`）⇒ 该队 `maxIter` 被误报成
-           *   `cycle`、伤害 54197953 → 50442343（**静默改数值**）。
-           * - **加「本步在动」守卫 `|next − stunCount| ≥ 0.05` ⇒ 假阴性**：`claret-roxy-rina`
-           *   自身在环上每步 |Δ| 也可能 < 0.05（实测 k=8 时 `0.36965` vs 历史 `0.53084`，
-           *   而 k=9 相邻步只差 0.12 却仍属环）⇒ 该守卫会漏掉真环。**故本轮不用该守卫**，
-           *   仅靠 ①∧②（签名精确重复是强证据，stunCount 容差只作辅助）。
-           * 与内环 `runInnerLoop` 的环检测同源（那里也是「签名重复」判入环）。
-           *
-           * ⚠ **实测命中面（本轮全库扫描）**：两条队被判 `cycle`，且**两条都是真的周期 3 环**
-           * （签名在 lag 3 上精确复现，`stunCount` 同相位值互相在容差内）——
-           * `claret-roxy-rina`（本轮数据修正暴露）与 `yixuan-jufufu-lucia`（**HEAD 上就已 `maxIter`**，
-           * 即本判据顺带修好了一条既有的静默丢弃）。其余预设无变化。
-           */
-          // 记录本轮反馈签名 + stunCount（**只记录不判环**）——周期 ≥3 的环在循环耗尽后统一重标注
-          // （见函数末尾）。**不在循环里提前 break** 是关键：任何提前 break 都会改动「原本会收敛到
-          // stable」的队的停点（实测缺 stun 容差条件时 5 支队 stable→cycle、数值被静默改写）。
-          curSig = `${ultSeq}|${anomalySeq}|${topUpSeq}|${parrySplitSeq}|${decibelParrySeq}|${backstageSeq}|${buildUpFracSeq}|${aliceSeq}`
+          // 必须在判据之后追加，保证 history[-1] 是上一轮、history[-2] 是同相位轮。
+          // 周期 ≥3 不在这里提前退出，保留轨迹供耗尽后的判定与规范选点使用。
           outerSigHistory.push(curSig)
           outerStunHistory.push(stunCount)
           outerNextHistory.push(next)
@@ -517,33 +358,11 @@ export function useResourceCalc() {
         // 线程推进：anomalyDecibelBonus 旧版从 out.anomalyPool 现取（threadsNext 内置空数组占位），
         // 其余 = threadsNext（runCalcRound 已按 prev 兜底算好下一轮值）
         threads = { ...t, anomalyDecibelBonus: out?.anomalyPool?.perSlotBonus ?? [] }
-        prevDecibelParrySeq = decibelParrySeq
-        prevAliceSeq = aliceSeq
-        prevUltSeq = ultSeq
-        prevAnomalySeq = anomalySeq
-        prevTopUpSeq = topUpSeq
-        prevParrySplitSeq = parrySplitSeq
-        prevBackstageSeq = backstageSeq
-        prevBuildUpFracSeq = buildUpFracSeq
+        prevFeedbackSignature = curSig
       }
       /**
-       * ★ **周期 ≥3 的极限环重标注（2026-09-18 round 23）**——只改 `outerExit` 标签，**不改任何数值**。
-       *
-       * 背景：上面的循环只认周期 2（`next ≈ 上上轮`）。映射落进**周期 3** 的环时两条分支都不命中
-       * ⇒ 跑满 `MAX_OUTER_ITER` 报 `outerExit='maxIter'`，而 `maxIter` 被**全部**消费方当不可信
-       * 丢弃（`teamTimeline.ts:487/:643`、`pullPlannerEngine.ts:134`、`ResultPage.vue:823`）
-       * ⇒ 该队时间线/伤害**静默消失**。
-       *
-       * 判据（穷尽扫描已记录的历史，不是逐轮提前 break —— 这样对原本 stable / 原本 2-循环的队
-       * **逐位零影响**，实测 104 预设的 `outerExit` 表只在下面点名的队上变化）：
-       * 存在 lag ≥ 3 使 `sig[k] === sig[k-lag]` **且** `|stun[k] − stun[k-lag]| < 0.05`
-       * （后者 = 同相位的失衡次数已互相在既有容差内；只用签名相等会把「签名偶然重复但仍在推进」
-       * 的队误判——实测 `billy-qingyi-lucia` / `banyue-qingyi-lucia` 的签名在**相邻轮**就重复，
-       * 而 stunCount 仍在单调收敛）。
-       *
-       * ⚠ **为什么不放在循环里提前 break（四次实测校准的结论）**：任何「提前 break」都会改变
-       * **原本会收敛到 stable** 的队的停点（实测缺 stun 容差条件时 5 支队 `stable` → `cycle`，
-       * 数值被静默改写）。放到循环**耗尽之后**只重标注，则不可能影响任何已收敛的队。
+       * 周期 ≥3：只在迭代耗尽后查历史重复（签名相等且同相位失衡输入在容差内）。
+       * 命中后复用规范选点，可能替换末轮结果；不是只重标注标签。
        */
       if (outerExit === 'maxIter') {
         outer: for (let lag = 3; lag < outerSigHistory.length; lag++) {
