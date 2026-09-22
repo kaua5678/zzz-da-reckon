@@ -12,6 +12,12 @@
 //  19. 录入层→编排层值倒置 —— ARCHITECTURE §0「录入层被编排/引擎经 registry 消费」
 //      （mechanics/specs 禁值导入 @/composables，import type 豁免；行为面 + claret 形状锁成对，
 //       实现面 scripts/lib/layer-inversion.mjs）
+//  20. 队友 Buff 控件守卫 —— 规则 16/§2「声明了但拨了没反应」的控件面
+//      （实现面 scripts/lib/teammate-buff-controls.mjs；.vue 模板不参与单测 ⇒ 必须有独立判据）
+//  21. JSON 重复键静默覆盖 —— 规则 14「生成产物与数据文件的结构不变量」
+//      （同一对象内同名键 ⇒ JSON.parse 后者覆盖前者、前一份值静默消失；2026-09-22 事故 =
+//       1091.json 重复 teamBuffs 键让「雅 C1 全队积蓄 +20%」失效而全链全绿，
+//       实现面 scripts/lib/json-dup-keys.mjs）
 //
 // 用法：node scripts/check-guards.mjs（npm run check / npm run verify 已挂载）
 // 逃生口（都要求显式改本文件，让「例外」在 diff 里留痕）：
@@ -51,6 +57,8 @@ import {
 } from './lib/teammate-buff-controls.mjs'
 // 角色身份判定检测面（AST 单源；2026-09-17 round 19 换尺批，见 scripts/lib/agent-identity-lines.mjs 头注释）
 import { countIdentityBranchLines, countIdentityBranchLinesInFiles } from './lib/agent-identity-lines.mjs'
+// 判据 21：JSON 重复键静默覆盖（2026-09-22 无人值守班次，见 scripts/lib/json-dup-keys.mjs 头注释）
+import { scanJsonDupKeys, formatJsonDupKeys } from './lib/json-dup-keys.mjs'
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 
@@ -1431,6 +1439,18 @@ export function runAllChecks(root = ROOT) {
         + `违规 ${report.violations.length} 处 / 扫 ${report.controls.length} 控件`,
       ok: report.ok,
       detail,
+    })
+  }
+
+  // ---- 判据 21：JSON 重复键静默覆盖（2026-09-22 无人值守班次；事故 = 1091.json 重复 teamBuffs 键） ----
+  {
+    const report = scanJsonDupKeys(root)
+    results.push({
+      name: `JSON 重复键静默覆盖 (判据 21: 同一对象内同名键 ⇒ JSON.parse 后者覆盖前者) `
+        + `重复 ${report.duplicates.length} 处 / 扫 ${report.scanned} 个 .json`
+        + ` / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
+      ok: report.ok,
+      detail: report.ok ? [] : formatJsonDupKeys(report),
     })
   }
 
