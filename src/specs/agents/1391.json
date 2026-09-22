@@ -171,7 +171,7 @@
         ]
       }
     ],
-    "note": "额外能力·八面威风：队伍存在强攻/命破时触发。终结技 +300 喧响已接（useResourceCalc + 仪玄符法千重）；喧响上限 +1000 不做。"
+    "note": "额外能力·八面威风：队伍存在强攻/命破时触发（自身不算，teamCondition）。终结技 +300 喧响已接：applyTeamConfig 给全体强攻/命破角色（含自身）写 extraSelfDecibelPerUltimate=300，仪玄符法千重走 threads 契约；**喧响上限 +1000 在整局总量口径下零消费者**（2026-09-22 裁决：大招次数 = floor(总喧响/ultimateCost)，无上限项；唯一上限建模 resourceTrack 未接入主管线——不是缺口是正确口径；护栏判据 decibelCapVerdict.test.ts，详见 docs/mcp-r65j1-decibel-cap-verdict.md）。"
   },
   "teamBuffs": [
     {
@@ -197,7 +197,7 @@
     "[已确认·数据] 核心被动·虎虎生威：[虎啸] 全队暴伤+20%（Lv.7）+ 橘福福初始攻击≥2800 每超 100 攻击额外暴伤+5%（最多+30%）+ 虎啸下连携/终结伤害+20%/40%，持续 30s；橘福福自身冲击力+50。拐力已在 teammate-buffs.json jufufu.core_tiger_roar 承载；自身冲击+50 由 specPanelBuffs.ts jufufuTigerRoarMechanic 门控写入。",
     "[已确认·数据] 虎威后台自动：floor(后场时间/4) 次，每次 +20 威风；虎釜震煞 floor(威风总量/100)；高速旋转（山君鼎戏·威势）次数=威势总量，每次 +25 威风。执行由 jufufuTigerRoarMechanic 生成（1391005/1391013/1391010）。",
     "[已确认·数据] 虎啸满覆盖：全队拐力 teammate-buffs jufufu.core_tiger_roar；自身冲击 +50（transformSkillExecutions 无条件）。",
-    "[已确认·数据] 额外能力·八面威风：强攻/命破终结技 +300 喧响（含仪玄青溟云影 ultimateCount + 符法千重执行次数×300）；喧响上限 +1000 不做。",
+    "[已确认·数据] 额外能力·八面威风：强攻/命破终结技 +300 喧响（含仪玄青溟云影 ultimateCount + 符法千重执行次数×300）；喧响上限 +1000 不做（2026-09-22 裁决：整局总量口径零消费者，不是缺口；见 docs/mcp-r65j1-decibel-cap-verdict.md 与护栏判据 decibelCapVerdict.test.ts）",
     "[已确认·数据] 影画1：进场暴击 +12% + 威风 +100；失衡易伤拐力 teammate-buffs。",
     "[已确认·数据] 影画2：虎啸暴伤 +22%（teamBuffs）+ 任意角色终结技 +3 威势（队伍终结次数含符法千重）。",
     "[已确认·数据] 影画3/5：技能等级 +2（通用）。",
