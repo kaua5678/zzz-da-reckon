@@ -51,9 +51,9 @@ const POTENTIAL_ENERGY_REGEN_THRESHOLD = 1.8
  *
  * ⚠ 这是**潜能觉醒**轴（raw `potential_detail`），与 `talent.1..6`（影画）是两条独立轴。
  * R59 修复：原实现把 per-0.1 系数写死为 VI 满档（2.5 / 2）⇒ `potentialLevel` 滑块
- * 完全不进计算（四臂正交实测 A==B、C==D，见 burniceCinemaTier.test.ts）。
+ * 完全不进计算（四臂正交实测 A==B、C==D，见 src/mechanics/__tests__/potentialAxisBatchB.test.ts）。
  */
-// @fact agent:1171/潜能觉醒沸点派对 口径: 潜能觉醒·沸点派对按 `potentialLevel` 取档 II~VI 每 0.1 回能 = 异常掌控 +1/1.3/1.6/2/2.5、伤害 +1/1.25/1.5/1.75/2%（掌控上限 25 / 伤害上限 20%，门控为初始回能 ≥1.8），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1171.json `potential_detail` + R59 四臂正交实测@2026-09-20 | 验 src/mechanics/__tests__/burniceCinemaTier.test.ts | 锚 src/mechanics/agents/burnice.ts#BURNICE_POTENTIAL_MASTERY_PER_0_1 | 信 确认
+// @fact agent:1171/潜能觉醒沸点派对 口径: 潜能觉醒·沸点派对按 `potentialLevel` 取档 II~VI 每 0.1 回能 = 异常掌控 +1/1.3/1.6/2/2.5、伤害 +1/1.25/1.5/1.75/2%（掌控上限 25 / 伤害上限 20%，门控为初始回能 ≥1.8），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1171.json `potential_detail` + R59 四臂正交实测@2026-09-20 | 验 src/mechanics/__tests__/potentialAxisBatchB.test.ts（1171 潜能觉醒·沸点派对，常量层钉 raw 原文 + 行为层门控/档位）+ src/mechanics/__tests__/burnice.test.ts（潜能沸点派对触发阈值与上限） | 锚 src/mechanics/agents/burnice.ts#BURNICE_POTENTIAL_MASTERY_PER_0_1 | 信 确认
 // ⟳复核: nanoka 若刷新 1171 的 potential_detail，逐档对账 II~VI 的 per-0.1 系数与上限 | 到期 2027-03-31
 export const BURNICE_POTENTIAL_MASTERY_PER_0_1 = [0, 0, 1, 1.3, 1.6, 2, 2.5] as const
 export const BURNICE_POTENTIAL_DMG_PER_0_1 = [0, 0, 1, 1.25, 1.5, 1.75, 2] as const
