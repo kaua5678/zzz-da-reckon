@@ -108,10 +108,15 @@ describe('部署 → 资源池结果', () => {
 })
 
 describe('部署 → 失衡次数路径无关（2026-09-08 修复：显示 0 次）', () => {
-  it('同一队重复部署（中间部署别队）失衡次数一致且 ≥3', async () => {
+  it('同一队重复部署（中间部署别队）失衡次数一致且 ≥2', async () => {
     // 根因：非轴失衡不动点 N ↦ floor(G(1−xN)) 是阶梯函数，在两条阶梯间来回跳（雅/南宫/柚叶队
     // 实测 0↔6）；旧实现保留循环里的任意一支 → 冷启动 4 次、热启动（缓存命中）0 次。
     // 现口径 = 连续不动点闭式解，次数与部署历史无关。
+    // ⚠ 下限从 ≥3 改 ≥2（2026-09-22 R2-E）：C1 修复（删 1091.json 重复 teamBuffs 空键，恢复
+    // miyabi_c1_team_buildup 全队积蓄+20% 生效）使该 C6 雅队总失衡值 −554.5，恰跌破 3 次门槛
+    // （刀锋 2.99926<3，差 17.31 点=0.025%）⇒ 失衡 3→2。这是正确口径修正的预期 delta，
+    // 非误差判据（核心断言是下方 second===first 的路径无关性）；下限 ≥2 仍防 stunCount=0 的空洞。
+    // 归因三重 A/B 隔离：唯一变量 = 删 1091.json L143 那一行。
     const { config, catalog } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
@@ -130,7 +135,7 @@ describe('部署 → 失衡次数路径无关（2026-09-08 修复：显示 0 次
 
     applyDeployConfig(config, DEPLOY, presets, phaseViews)
     const first = calc.stunPoolResult.value!.stunCount
-    expect(first, `首次部署失衡次数 ${first}`).toBeGreaterThanOrEqual(3)
+    expect(first, `首次部署失衡次数 ${first}`).toBeGreaterThanOrEqual(2)
 
     applyDeployConfig(config, neko, presets, phaseViews)
     void calc.teamTotalDamage.value // 触发别队计算，写入热启动缓存

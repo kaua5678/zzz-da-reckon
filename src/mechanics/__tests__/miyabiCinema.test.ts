@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest'
 import { miyabiMechanic } from '@/mechanics/agents/miyabi'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { useCatalogStore } from '@/stores/catalog'
+import { panelAt } from '@/core/panel'
 
 describe('星见雅 transform 面板累积回归（2026-09-01：收敛轮间叠成 600 积蓄效率）', () => {
   it('C6 面板 anomalyBuildUpEfficiency 为单次合理值（远小于累积的 600）', async () => {
@@ -90,5 +92,113 @@ describe('星见雅滑块生效差分（防守卫冻结，SOP §3.5：改滑块�
     const base = frostbreakCountOf()
     expect(doubled).toBe(base * 2)
     expect(base).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * ★ C1 全队异常积蓄效率 +20% 的**生效判据**（影画一第二分句）。
+ *
+ * 原文：斩击命中[霜灼]敌人并消除[霜灼]时，全队角色属性异常积蓄效率提升 20%，持续 10 秒。
+ *
+ * ## 为什么需要这条测试（1091.json 重复 `teamBuffs` 键事故）
+ *
+ * `src/specs/agents/1091.json` 曾有**两个** `teamBuffs` 键：L110 的真实声明
+ * （含 `miyabi_c1_team_buildup`）与 L143 的 `[]`。`JSON.parse` 对重复键**后者胜**
+ * ⇒ 运行时读到的 `teamBuffs` 恒为 `[]`，而 L143 在文件里**排在 `notes` 之后**、
+ * 位置隐蔽（紧随命座 notes，看起来像"本角色无拐力"的正常声明）。
+ * 后果：C1 的 +20 在全管线**静默丢失**，而 spec 文件肉眼"明明写着"这条 buff。
+ *
+ * 本用例的断言**只钉 delta、不钉绝对值**——探针跑的是 harness 兜底盘（`recommendedBuild: false`
+ * 时主C也穿 34200 荆棘玫瑰 2件套防御 +16%）且 `globalBuffs` 被显式关闭，绝对值不可移植
+ * （见 harness 头注释）。delta = 同一队伍同配置下**只切这一条 buff 开关**的差。
+ *
+ * 门控链（R2-E 取证已确认自动正确，本用例同时反锁它）：
+ * `deriveTeammateBuffEnabled` 读 `source: '影画一'` → `parseCinemaRequirement` = 1
+ * ⇒ `enabled = 在队 && cinemaLevel >= 1`。
+ *
+ * ⚠ 为什么既有基线全盲（`timeGolden` / `timeFillRatchet` / `allAgentsSweep` 324 tests 零 delta）：
+ * ① 105 预设虽含雅队（`preset:auto-1091-1511-1411` 等 5 条），但预设路径 `cinemaLevel` 全 **0**
+ *    ⇒ 门控关；② 60 角色 × 命座单飞是**单槽无队友**，C6 时 buff 虽活、雅本人面板 +20，
+ *    但总伤/失衡读数不动。⇒ 生效证据只能由本用例这种「C1 + 有队友」的手组队形态提供。
+ */
+describe('星见雅 C1 全队积蓄效率 +20%（影画一第二分句·生效判据）', () => {
+  const BUFF_ID = 'miyabi_c1_team_buildup'
+  const MIYABI_SLOT = 0
+  const TEAMMATE_SLOT = 1
+  // 影画一 → 需 C1 的雅 + 一名队友（队友用于验证"全队"而非仅自身）
+  const C1_TEAM: Parameters<typeof setupHarness>[0] = [{ agentId: '1091', cinemaLevel: 1 }, { agentId: '1131' }, '']
+  const C0_TEAM: Parameters<typeof setupHarness>[0] = [{ agentId: '1091', cinemaLevel: 0 }, { agentId: '1131' }, '']
+  // 不含雅：门控应恒关（"零影响面"对照）
+  const NO_MIYABI_TEAM: Parameters<typeof setupHarness>[0] = [{ agentId: '1131' }, { agentId: '1211' }, '']
+
+  /** 该条在 teammateBuffGroups 里的注册条数（0 = spec 声明根本没进运行时）。 */
+  function registeredCount(): number {
+    const catalog = useCatalogStore()
+    return catalog.teammateBuffGroups
+      .flatMap(g => (g.buffs ?? []).map(b => b.id))
+      .filter(id => id === BUFF_ID).length
+  }
+
+  /**
+   * 同一队独立装配一次，读回「自动门控态 / 雅 / 队友 的积蓄效率 / 总伤」。
+   * `force` 省略 = 用自动门控结果；给了值则显式覆盖开关（用于取**同配置**的对照读数）。
+   */
+  async function probe(team: Parameters<typeof setupHarness>[0], force?: boolean) {
+    const { config } = await setupHarness(team)
+    for (const buff of config.globalBuffs) buff.enabled = false
+    const auto = config.isTeammateBuffEnabled(BUFF_ID)
+    if (force !== undefined) config.toggleTeammateBuff(BUFF_ID, force)
+    const calc = useResourceCalc()
+    void calc.damagePoolRows.value // 触发 transform 跑完（同本文件首条用例）
+    return {
+      auto,
+      enabled: config.isTeammateBuffEnabled(BUFF_ID),
+      miyabiEff: panelAt(calc.panels.value, MIYABI_SLOT)?.anomalyBuildUpEfficiency ?? 0,
+      teammateEff: panelAt(calc.panels.value, TEAMMATE_SLOT)?.anomalyBuildUpEfficiency ?? 0,
+      damage: calc.teamTotalDamage.value,
+    }
+  }
+
+  it('C1 队：队友与雅本人的 anomalyBuildUpEfficiency 各 +20（钉 delta，不钉绝对值）', async () => {
+    const on = await probe(C1_TEAM)
+    const off = await probe(C1_TEAM, false)
+    // ★ 主判据先行：delta 是"这条 buff 有没有进数值通道"的唯一直接读数。
+    // 重复 teamBuffs 键未删时 on 与 off 都是关断态 ⇒ delta 恒 0（先红）。
+    // 「全队角色」：队友（槽1 苍角）与来源角色本人（槽0 雅）同吃 +20（includeOwner: true）
+    expect(on.teammateEff - off.teammateEff, `队友 delta（on=${on.teammateEff} off=${off.teammateEff}）`)
+      .toBeCloseTo(20, 5)
+    expect(on.miyabiEff - off.miyabiEff, `雅本人 delta（on=${on.miyabiEff} off=${off.miyabiEff}）`)
+      .toBeCloseTo(20, 5)
+    // 门控链反锁（R2-E 取证：source '影画一' → parseCinemaRequirement = 1）
+    expect(registeredCount(), `spec 声明的 ${BUFF_ID} 必须进 teammateBuffGroups`).toBe(1)
+    expect(on.auto, 'C1 在队 + 影画一 ⇒ 自动激活').toBe(true)
+    expect(off.enabled, '显式关断后应读到关（证明 delta 不是恒真）').toBe(false)
+  })
+
+  it('C0 队：门控关断且面板/伤害零变化（C1 效果不得泄漏到 0 命）', async () => {
+    const auto = await probe(C0_TEAM)
+    const off = await probe(C0_TEAM, false)
+    expect(auto.auto, 'C0 < 影画一 ⇒ 自动门控必须关').toBe(false)
+    // 反空洞：管线必须真的跑起来（否则「零变化」只是「什么都没算」）
+    expect(auto.damage, 'C0 队应有非零总伤读数').toBeGreaterThan(0)
+    // 「零变化」= C0 的自动态与显式关断态逐位一致 ⇒ 门控确实拦住了
+    expect(auto.teammateEff).toBe(off.teammateEff)
+    expect(auto.miyabiEff).toBe(off.miyabiEff)
+    expect(auto.damage).toBe(off.damage)
+    // ★ 灵敏度反锁（防"零变化"是空转）：同一条 buff 在 C0 队**显式打开**必须仍给出 +20
+    // ⇒ 通道是活的、读数可动，C0 的零变化来自**门控**而非通道坏死。
+    const forced = await probe(C0_TEAM, true)
+    expect(forced.teammateEff - off.teammateEff, '显式打开后队友应 +20（证明通道可动）')
+      .toBeCloseTo(20, 5)
+  })
+
+  it('不含雅的队伍：门控恒关且面板/伤害零变化（零影响面对照）', async () => {
+    const auto = await probe(NO_MIYABI_TEAM)
+    const off = await probe(NO_MIYABI_TEAM, false)
+    expect(auto.auto, '雅不在队 ⇒ 门控必须关').toBe(false)
+    expect(auto.damage, '该队应有非零总伤读数').toBeGreaterThan(0)
+    expect(auto.teammateEff).toBe(off.teammateEff)
+    expect(auto.miyabiEff).toBe(off.miyabiEff)
+    expect(auto.damage).toBe(off.damage)
   })
 })
