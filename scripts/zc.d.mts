@@ -120,6 +120,8 @@ export interface DeadClaimHit { name: string; file: string }
 export declare function scanDeadClaims(root?: string): { dead: DeadClaimHit[]; overExported: DeadClaimHit[] }
 export interface Envelope<T = Record<string, unknown>> { ok: boolean; verb: string; data: T; next: string | null }
 export declare function envelope<T>(verb: string, ok: boolean, data: T, next?: string | null): Envelope<T>
-export declare function parsePorcelain(text: string): { status: string; path: string }[]
+export interface GitChange { status: string; path: string; originalPath?: string }
+export declare function parsePorcelain(text: string): GitChange[]
+export declare function readGitChanges(root?: string): GitChange[]
 export declare function parseArgs(argv: string[]): Record<string, string | boolean | string[]> & { positional: string[] }
 export declare function main(argv: string[]): Promise<Envelope<Record<string, unknown>>>

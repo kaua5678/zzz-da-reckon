@@ -31,7 +31,7 @@
 //   node scripts/zc.mjs lang                      打印事实语法（唯一权威）
 // 状态目录 .zc/（已 gitignore，与 .claude/ledgers 同性质：工作状态，不是项目知识）。
 // 逃生口：租约冲突可用 --force 覆盖（会在 journal 留痕，供事后追责，不静默）。
-import { execSync } from 'node:child_process'
+import { execSync, execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, appendFileSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -653,7 +653,32 @@ function git(cmd, root = ROOT) {
 }
 
 export function parsePorcelain(text) {
-  return text.split('\n').filter(Boolean).map(l => ({ status: l.slice(0, 2).trim(), path: l.slice(3).replace(/^"|"$/g, '') }))
+  // 保留旧换行文本入口；真实 Git 读取统一用 -z，避免 C quoting 与文件名内换行歧义。
+  if (!text.includes('\0')) {
+    return text.split('\n').filter(Boolean).map(l => ({ status: l.slice(0, 2).trim(), path: l.slice(3).replace(/^"|"$/g, '') }))
+  }
+  if (!text.endsWith('\0')) throw new Error('Truncated Git porcelain stream')
+  const fields = text.split('\0')
+  const changes = []
+  for (let i = 0; i < fields.length - 1; i++) {
+    const record = fields[i]
+    if (record.length < 4 || record[2] !== ' ') throw new Error('Invalid Git porcelain record')
+    const change = { status: record.slice(0, 2).trim(), path: record.slice(3) }
+    if (/[RC]/.test(record.slice(0, 2))) {
+      const originalPath = fields[++i]
+      if (!originalPath) throw new Error('Missing original path in Git rename/copy record')
+      change.originalPath = originalPath
+    }
+    changes.push(change)
+  }
+  return changes
+}
+
+/** 路径传输单源：原始输出不能 trim；Git 失败不能伪装成干净工作树。 */
+export function readGitChanges(root = ROOT) {
+  const raw = execFileSync('git', ['status', '--porcelain=v1', '-z', '--untracked-files=all'],
+    { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] })
+  return parsePorcelain(raw)
 }
 
 function mtimeMap(paths, root = ROOT) {
@@ -670,7 +695,7 @@ function mtimeMap(paths, root = ROOT) {
 async function verbStatus(root = ROOT) {
   const branch = git('rev-parse --abbrev-ref HEAD', root)
   const ahead = git('rev-list --count @{u}..HEAD', root) || '0'
-  const changed = parsePorcelain(git('status --porcelain', root))
+  const changed = readGitChanges(root)
   const paths = changed.map(c => c.path)
   const leases = readLeases().filter(l => !isExpired(l))
   const allJournal = existsSync(JOURNAL_FILE)
@@ -896,7 +921,7 @@ function verbDone(args) {
     return envelope('done', false, {}, 'zc done --verifier "<证明它生效的命令/测试>" --coverage "<影响到哪些角色/页面/文件>" [--deps <新增依赖> --risk <可能崩点>]（规则 9）')
   }
   const lane = currentLane(args.as)
-  const changed = parsePorcelain(git('status --porcelain')).map(c => c.path)
+  const changed = readGitChanges().map(c => c.path)
   appendJournal({ kind: 'done', lane, verifier: args.verifier, coverage: args.coverage, deps: args.deps ?? null, risk: args.risk ?? null, note: args.note ?? null, changed })
   return envelope('done', true, { lane, verifier: args.verifier, coverage: args.coverage, deps: args.deps ?? null, risk: args.risk ?? null, changed: changed.length }, '已落盘 .zc/journal.jsonl（下一个 agent 用 zc status 就能看到）')
 }

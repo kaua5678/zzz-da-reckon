@@ -11,10 +11,9 @@
  */
 import { describe, expect, it } from 'vitest'
 import { fileURLToPath } from 'node:url'
-import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { tmpdir } from 'node:os'
+import { rmSync } from 'node:fs'
+import { join } from 'node:path'
+import { withGitFixture as withIdentityFixture } from '@/test/gitHarness'
 import {
   formatMarkdown,
   groupByIdentity,
@@ -40,22 +39,6 @@ const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
 /** 缩短断言：只扫 fixture 源码，返回逐条比较 */
 const scan = (code: string): Entry[] => scanIdentitySource(code).entries
 
-function withIdentityFixture(run: (fixture: {
-  root: string; write: (file: string, content: string) => void; git: (...args: string[]) => string
-}) => void) {
-  const root = mkdtempSync(join(tmpdir(), 'zzz-identity-source-'))
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')))
-  const git = (...args: string[]) => execFileSync('git', [
-    '-c', 'init.templateDir=', '-c', `core.hooksPath=${join(root, 'no-hooks')}`,
-    '-c', 'commit.gpgsign=false', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
-    ...args,
-  ], { cwd: root, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
-  const write = (file: string, content: string) => {
-    mkdirSync(dirname(join(root, file)), { recursive: true })
-    writeFileSync(join(root, file), content)
-  }
-  try { run({ root, write, git }) } finally { rmSync(root, { recursive: true, force: true }) }
-}
 
 describe('HEAD 文件集合与内容必须同源', () => {
   it('不混入新增/修改 WIP，也不丢掉工作树已删除的 HEAD 文件', () => withIdentityFixture(({ root, write, git }) => {
