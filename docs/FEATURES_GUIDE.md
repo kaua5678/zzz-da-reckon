@@ -371,3 +371,11 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 ## 8. 验证命令
 
 验收命令见 `AGENTS.md` §3（`npm run verify` 一条链，本手册不复述其组成）；改动数据后重跑 `scripts/import-nanoka-bosses.mjs` 并 `npm run build`（preview 服务读 dist/）。
+
+## 9. 逻辑编辑：可逆试改
+
+- 「逻辑编辑」页可用 **撤销 / 重做** 回退规则修改、增删、JSON 导入和恢复默认。仅当前会话保留最近 50 步有效配置，刷新清空历史；导出的 JSON 仍只含当前配置。
+- 数值输入暂时不完整时，不保存也不切换有效倍率。点击撤销只恢复最近有效配置，不额外后退；新的有效编辑会结束旧的重做分支。自动保存或手动保存同一配置不会重复记步。
+- 在逻辑页**输入框外**使用 `Ctrl/Cmd+Z` 撤销、`Ctrl/Cmd+Shift+Z` 或 `Ctrl+Y` 重做。输入框/JSON 文本区保留浏览器原生文字撤销；未提交的 JSON 文本不计为规则历史。
+- 浏览器拒绝存储时，撤销和重做仍在内存生效，但警告不会伪装成保存成功。可导出 JSON 备份；存储恢复后点保存重试。
+- 实现与边界测试见 `stores/logicEditor.ts`、`stores/__tests__/logicEditorHistory.test.ts`；构建后执行 `node scripts/ui-logic-editor-check.mjs` 复核按钮、属性文本、快捷键和存储失败场景。

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { createDefaultLogicEditorState } from '@/logicEditor/defaults'
 import { setActiveRowFusionRules } from '@/logicEditor/fusion'
 import { loadLogicEditorState, saveLogicEditorState } from '@/logicEditor/storage'
@@ -16,13 +16,65 @@ function nextId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 }
 
+const HISTORY_LIMIT = 50
+
 export const useLogicEditorStore = defineStore('logicEditor', () => {
   const state = ref<LogicEditorState>(loadLogicEditorState())
   const persistenceError = ref<string | null>(null)
+  const initialSnapshot = parseLogicEditorState(state.value)
+  // Session-only, validated JSON snapshots: no aliases of reactive drafts and no storage quota cost.
+  const history = ref([JSON.stringify(initialSnapshot)])
+  const historyIndex = ref(0)
+  const draftJson = computed(() => {
+    try { return JSON.stringify(parseLogicEditorState(state.value)) }
+    catch { return null }
+  })
+  const hasInvalidDraft = computed(() => draftJson.value === null)
+  const undoCount = computed(() => historyIndex.value)
+  const redoCount = computed(() => history.value.length - historyIndex.value - 1)
+  const canUndo = computed(() => undoCount.value > 0 || draftJson.value !== history.value[historyIndex.value])
+  const canRedo = computed(() => redoCount.value > 0 && draftJson.value === history.value[historyIndex.value])
 
   // Runtime rules are a snapshot, not aliases of a potentially incomplete numeric-input draft.
-  setActiveRowFusionRules(parseLogicEditorState(state.value).rowFusions)
+  setActiveRowFusionRules(initialSnapshot.rowFusions)
   watch(state, () => { saveNow() }, { deep: true })
+
+  function rememberSnapshot(json: string): void {
+    // Saving, identical imports and the watcher echo after navigation are not new edits.
+    if (json === history.value[historyIndex.value]) return
+    history.value = [...history.value.slice(0, historyIndex.value + 1), json].slice(-(HISTORY_LIMIT + 1))
+    historyIndex.value = history.value.length - 1
+  }
+
+  function rememberPendingDraft(): void {
+    if (draftJson.value !== null) rememberSnapshot(draftJson.value)
+  }
+
+  function restoreHistory(): void {
+    state.value = parseLogicEditorState(JSON.parse(history.value[historyIndex.value]))
+    // Activate synchronously; a persistence failure is reported without cancelling navigation.
+    saveNow()
+  }
+
+  function undo(): boolean {
+    if (hasInvalidDraft.value) {
+      // Discard only the invalid draft; do not move the cursor or destroy a valid redo branch.
+      restoreHistory()
+      return true
+    }
+    rememberPendingDraft()
+    if (historyIndex.value === 0) return false
+    historyIndex.value--
+    restoreHistory()
+    return true
+  }
+
+  function redo(): boolean {
+    if (!canRedo.value) return false
+    historyIndex.value++
+    restoreHistory()
+    return true
+  }
 
   function addAttributeConversion(): void {
     const rule: AttributeConversionRule = {
@@ -86,10 +138,13 @@ export const useLogicEditorStore = defineStore('logicEditor', () => {
 
   function importJson(json: string): void {
     // Decode fully before the only write: rejected imports leave state/runtime/storage untouched.
-    state.value = parseLogicEditorState(JSON.parse(json))
+    const snapshot = parseLogicEditorState(JSON.parse(json))
+    rememberPendingDraft()
+    state.value = snapshot
   }
 
   function reset(): void {
+    rememberPendingDraft()
     state.value = createDefaultLogicEditorState()
   }
 
@@ -103,6 +158,7 @@ export const useLogicEditorStore = defineStore('logicEditor', () => {
       return false
     }
     // Valid edits stay usable even if the browser denies persistence.
+    rememberSnapshot(JSON.stringify(snapshot))
     setActiveRowFusionRules(snapshot.rowFusions)
     const saved = saveLogicEditorState(snapshot)
     persistenceError.value = saved ? null : '浏览器本地存储不可用或空间不足。当前修改仅在本次会话生效，请导出 JSON 备份。'
@@ -112,6 +168,14 @@ export const useLogicEditorStore = defineStore('logicEditor', () => {
   return {
     state,
     persistenceError,
+    historyLimit: HISTORY_LIMIT,
+    hasInvalidDraft,
+    canUndo,
+    canRedo,
+    undoCount,
+    redoCount,
+    undo,
+    redo,
     addAttributeConversion,
     removeAttributeConversion,
     addObject,

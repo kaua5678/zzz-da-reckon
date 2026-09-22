@@ -1,5 +1,5 @@
 <template>
-  <div class="logic-editor-page">
+  <div class="logic-editor-page" @keydown="onHistoryKeydown">
     <n-space vertical :size="16">
       <n-card size="small" :bordered="true">
         <template #header>
@@ -20,6 +20,17 @@
         <n-alert type="info" :bordered="false" style="margin-bottom: 12px">
           倍率融合启用后，按 moveId + rowId 在倍率表取值处生效。
         </n-alert>
+        <div class="toolbar-row">
+          <n-space align="center" :size="8" role="group" aria-label="规则操作历史">
+            <n-button size="small" :disabled="!logicStore.canUndo" title="撤销：Ctrl/Cmd+Z（输入框外）" @click="logicStore.undo()">撤销</n-button>
+            <n-button size="small" :disabled="!logicStore.canRedo" title="重做：Ctrl/Cmd+Shift+Z 或 Ctrl+Y（输入框外）" @click="logicStore.redo()">重做</n-button>
+            <span class="history-status" aria-live="polite">
+              <template v-if="logicStore.hasInvalidDraft">草稿未生效 · 撤销可恢复有效配置</template>
+              <template v-else>可撤销 {{ logicStore.undoCount }} 步 · 可重做 {{ logicStore.redoCount }} 步</template>
+              · 仅当前会话（最多 {{ logicStore.historyLimit }} 步）
+            </span>
+          </n-space>
+        </div>
         <input ref="fileInput" type="file" accept="application/json" hidden @change="onImportFile" />
         <n-alert v-if="logicStore.persistenceError" type="warning" :bordered="false" role="alert">
           {{ logicStore.persistenceError }}
@@ -202,7 +213,8 @@ const message = useMessage()
 
 const activeTab = ref('conversion')
 const fileInput = ref<HTMLInputElement | null>(null)
-const propertyTexts = reactive<Record<string, string>>({})
+// Object identity, not editable ids: restored snapshots get fresh text, and special ids are harmless.
+const propertyTexts = reactive(new WeakMap<LogicObject, string>())
 
 const statOptions = STAT_META.map(meta => ({ label: meta.label, value: meta.value }))
 const phaseOptions = [
@@ -291,23 +303,30 @@ function fusionPreview(rule: RowFusionRule): { base: number; result: number } | 
 }
 
 function propertyTextOf(object: LogicObject): string {
-  if (!(object.id in propertyTexts)) {
-    propertyTexts[object.id] = JSON.stringify(object.properties ?? {}, null, 2)
-  }
-  return propertyTexts[object.id]
+  return propertyTexts.get(object) ?? JSON.stringify(object.properties ?? {}, null, 2)
 }
 
 function onPropertyText(object: LogicObject, value: string): void {
-  propertyTexts[object.id] = value
+  propertyTexts.set(object, value)
 }
 
 function commitPropertyText(object: LogicObject): void {
-  const raw = propertyTexts[object.id] ?? '{}'
+  const raw = propertyTextOf(object)
   try {
     object.properties = parseLogicObjectProperties(JSON.parse(raw))
   } catch (error) {
     message.error(error instanceof Error ? `对象属性 JSON 无效：${error.message}` : '对象属性 JSON 无效')
   }
+}
+
+function onHistoryKeydown(event: KeyboardEvent): void {
+  if (event.defaultPrevented || event.isComposing || event.altKey || !(event.ctrlKey || event.metaKey)) return
+  const target = event.target
+  if (target instanceof Element && target.closest('input, textarea, select, [role="textbox"], [contenteditable]:not([contenteditable="false"])')) return
+  const key = event.key.toLowerCase()
+  const action = key === 'z' ? (event.shiftKey ? logicStore.redo : logicStore.undo)
+    : key === 'y' ? logicStore.redo : null
+  if (action?.()) event.preventDefault()
 }
 
 function save(): void {
@@ -343,7 +362,6 @@ async function onImportFile(event: Event): Promise<void> {
   try {
     const text = await file.text()
     logicStore.importJson(text)
-    for (const key of Object.keys(propertyTexts)) delete propertyTexts[key]
     message.success('导入成功')
   } catch (error) {
     message.error(error instanceof Error ? `导入 JSON 失败：${error.message}` : '导入 JSON 失败')
@@ -355,7 +373,6 @@ async function onImportFile(event: Event): Promise<void> {
 function reset(): void {
   if (!window.confirm('确定恢复默认逻辑规则？')) return
   logicStore.reset()
-  for (const key of Object.keys(propertyTexts)) delete propertyTexts[key]
   message.success('已恢复默认')
 }
 </script>
@@ -387,6 +404,11 @@ function reset(): void {
 
 .toolbar-row {
   margin-bottom: 12px;
+}
+
+.history-status {
+  font-size: 12px;
+  color: var(--fg-2);
 }
 
 .logic-table-wrap {

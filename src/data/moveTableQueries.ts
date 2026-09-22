@@ -1,5 +1,5 @@
 /**
- * 倍率表纯查询（招式查找 / 行值 / 融合行值 / 平A 第 3 段挑选）——**定义落点**。
+ * 倍率表只读查询（招式查找 / 行值 / 融合行值 / 平A 第 3 段挑选）——**定义落点**。
  *
  * ⚠ 本文件是「录入层 → 编排层值倒置」的下沉落点（2026-09-19 round 37，OPEN-ITEMS R35-J2）：
  * `src/mechanics/agents/claret.ts` 曾**值导入** `composables/resourceCalc/helpers` 的
@@ -11,9 +11,10 @@
  * 既有测试与 `@fact` 锚零改动；录入层改从这里取。机器面 = 判据 19 `layer-inversion`
  * （`scripts/lib/layer-inversion.mjs`：录入层对编排层值导入必须为 0 + 反空洞下限 + claret 形状锁）。
  *
- * 四个符号的传递依赖闭包全纯（R35 实测）：`getRowFusionMultiplier`（`logicEditor/fusion`，零出边）
- * + `moveFusionByMoveId`（`data/moveFusions`，零 import）+ 类型。`core/resource.ts` 早已 import
- * `@/data/moveFusions` ⇒ 「core → data」有先例，无成环风险。
+ * 四个符号的传递依赖不进入编排层：`getRowFusionMultiplier`（`logicEditor/fusion`）
+ * + `moveFusionByMoveId`（`data/moveFusions`，零 import）+ 类型。fusion 以 Vue shallowRef 发布
+ * 有效快照的失效信号，供 computed 消费者更新；不导入 store/编排层，也不读未生效草稿。
+ * `core/resource.ts` 早已 import `@/data/moveFusions` ⇒ 「core → data」有先例，无应用层成环风险。
  *
  * 只下沉 claret 闭包这 4 个符号（选项 a，规则 12 最小阶梯）；C 簇其余 10 个符号留在 `skillRows.ts`：
  * `getBasicComboMoves` / `averageBasicRows` 收 `catalogStore`（非纯），且 `skillRows.ts` 在
