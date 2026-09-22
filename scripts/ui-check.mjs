@@ -6,6 +6,20 @@
  * 为什么有这个脚本：UI 改动的可信度此前只到 `vue-tsc` 模板检查 + 展示层单测，每次收工都要写一句
  * 「实机点通没做」。本脚本把 C9 那条一次性配方固化成一条命令（用户态、不需要 root、不需要装包管理器依赖）。
  *
+ * ★ 失败判定（A1.b 修复；缺陷由 A1.a 实跑确认，产物 /tmp/zzz-agent-a-repro/）：
+ *   此前**动作类动词「没点到」不会红**——`clickText` 找不到元素返回字符串 `NOT_FOUND(n=..)`、
+ *   `realMouseClick` 找不到元素返回 `null`，调用点只 `console.log` 不判返回值 ⇒ 退出 0 打 PASS；
+ *   原生 `disabled` 吞掉 `click()`、`display:none` 元素上 `click()` 仍真派发 ⇒ 同样报 ok。
+ *   现在**动作类动词必须命中目标**，三类「没点到」全部进 failures：
+ *     ① 找不到元素（NOT_FOUND / null）② 目标 disabled ③ 目标不可见（含祖先 display/visibility/opacity）
+ *   `eval:` 是诊断读回（`false`/`null` 是合法诊断值，不判失败）；`wait:` 允许回落到页面文本包含
+ *   （等状态不是点目标），它的失败路径仍是超时抛异常。
+ *   判定核心在 `scripts/lib/ui-check-runtime.mjs`（可单测，见 `src/scripts/__tests__/uiCheck.test.ts`）。
+ *
+ * 产物：报告/截图写在 **finally** 里 ⇒ 任何 throw（超时、未知动词、页内异常）也留下本轮证据；
+ *   失败轮写 `ui-check-failure.json` / `ui-check-failure.png`（不与通过轮同名，旧绿不会冒充新绿），
+ *   开跑时把上一轮产物改名为 `*.stale.*` 并在本轮报告里记 `staleFrom`。
+ *
  * 前置（本机已就绪，换机器时照做）：
  *   1) 静态服务：`python3 -m http.server 8099 --directory dist`（先 `npm run build`）
  *   2) Chromium：`~/.cache/ms-playwright/` 下 `chromium-…` 里的 `chrome-linux64/chrome`，或 `chrome-headless-shell`；
@@ -34,12 +48,26 @@
  *   --step <verb:参数> 通用脚本步（可重复，按顺序执行；见下方 stepList 注释）：tab/open/option/click/realclick/type/wait/eval/sleep
  *                      `type:` = 向当前聚焦元素键入文本（filterable 下拉按文本过滤用）
  *                      例：--step "tab:队伍配置" --step "open:选择预设队伍" --step "option:般岳" --step "tab:资源池" --step "wait:时间截断"
- * 退出码：0 = 跑完且**零 JS 错误**；1 = 有错/超时（错误会打印）。
+ * 退出码：0 = 跑完且**零 JS 错误**；1 = 有错/超时/动作没命中目标（错误会打印）。
  */
 import { spawn } from 'node:child_process'
-import { mkdirSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
+import { mkdirSync, writeFileSync, existsSync, readdirSync, renameSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import {
+  artifactNames,
+  collectFailures,
+  exitCodeFor,
+  failureBlock,
+  inPageCall,
+  performClick,
+  probeFocusTarget,
+  probeRealClickTarget,
+  realMouseClick,
+  roundId,
+  staleNames,
+  visibleMenuOptions,
+} from './lib/ui-check-runtime.mjs'
 
 const argv = process.argv.slice(2)
 const arg = (name, def = undefined) => {
@@ -54,6 +82,7 @@ const PORT = Number(arg('port', '9222'))
 const OUT = arg('out', '/tmp/zzz-ui')
 const WAIT_TIMEOUT = Number(arg('wait-timeout', '300000'))
 const WAIT_FOR = arg('wait-for', null)
+const ROUND = roundId()
 
 /** 找 Chromium：优先 chrome-headless-shell（依赖更少），其次完整 chrome */
 function findChrome() {
@@ -81,6 +110,18 @@ const defaultLibDir = join(homedir(), '.local', 'chrome-deps')
 const libDir = process.env.CHROME_LIBS || arg('chrome-libs', '') || (existsSync(defaultLibDir) ? defaultLibDir : '')
 const userDataDir = join(OUT, 'chrome-profile')
 mkdirSync(OUT, { recursive: true })
+
+/**
+ * 开跑即把上一轮产物改名成 `*.stale.*`：失败轮写的是 `ui-check-failure.*`，与通过轮不同名，
+ * 但目录里若还留着上一轮的 `ui-check-report.json`（看起来是"本轮"的绿），仍会误导人 —— 改名 + 在本轮
+ * 报告里记 `staleFrom`，让「这是过期产物」在文件系统与报告里都显式可见。
+ */
+const stale = staleNames(OUT)
+const staleRenamed = []
+for (const [from, to] of [[join(OUT, 'ui-check-report.json'), stale.report], [join(OUT, 'ui-check-full.png'), stale.shot]]) {
+  if (!existsSync(from)) continue
+  try { renameSync(from, to); staleRenamed.push(to) } catch { /* 改名失败不阻断本轮（报告里仍会记 staleFrom 为空） */ }
+}
 
 const child = spawn(chrome, [
   '--headless', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage',
@@ -140,14 +181,6 @@ async function waitFor(expr, timeoutMs, label) {
     await sleep(400)
   }
 }
-const clickText = (sel, text, inner = false) => `(() => {
-  const els = [...document.querySelectorAll(${JSON.stringify(sel)})]
-  const el = els.find(e => (e.textContent || '').replace(/\\s+/g, '').includes(${JSON.stringify(text)}))
-  if (!el) return 'NOT_FOUND(n=' + els.length + ')'
-  const target = ${inner} ? (el.querySelector('input') || el) : el
-  target.click()
-  return 'ok'
-})()`
 const step = async (label, fn) => {
   const t0 = Date.now()
   const res = await fn()
@@ -173,42 +206,64 @@ const closeMenus = async () => {
   await sleep(300)
 }
 
-/**
- * 真实鼠标点击（CDP Input 事件）——naive-ui 的 select / option 依赖 document 级 mousedown，
- * 纯 `el.click()` 会「找到元素也点了，但值没变」。expr 求值成一个元素。
- */
-const realMouseClick = async expr => {
-  // 先 scrollIntoView：控件可能在视口外（页面长 / 结果卡插入后布局变化），
-  // 直接按 rect 点会点到窗口外 ⇒ 事件落空、菜单打不开（实测 y=3383 > 视口 1400）。
-  const pt = await evaluate(`(() => {
-    const e = ${expr}; if (!e) return null
-    e.scrollIntoView({ block: 'center', inline: 'center' })
-    const r = e.getBoundingClientRect()
-    return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2), inView: r.top >= 0 && r.bottom <= window.innerHeight }
-  })()`)
-  if (!pt) return null
-  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: pt.x, y: pt.y })
-  await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: pt.x, y: pt.y, button: 'left', clickCount: 1 })
-  await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: pt.x, y: pt.y, button: 'left', clickCount: 1 })
-  return pt
-}
-
-
-/** 求值片段：真正可见（自身+祖先都未隐藏）的**最后一个**下拉菜单里的选项 */
-const visibleMenuOpts = `(() => {
-  const shown = el => {
-    for (let n = el; n; n = n.parentElement) {
-      const st = getComputedStyle(n)
-      if (st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0') return false
-    }
-    return true
-  }
-  const menus = [...document.querySelectorAll('.n-base-select-menu')].filter(shown)
-  const last = menus[menus.length - 1]
-  return last ? [...last.querySelectorAll('.n-base-select-option')] : []
-})()`
+/** 页内表达式：当前**真正可见**的下拉菜单里的选项（判定与筛法在 ui-check-runtime.mjs） */
+const menuOptionsExpr = () => inPageCall(visibleMenuOptions)
+/** 真实鼠标点击（判定在页内完成：禁用/不可见/落点视口外一律 {ok:false}，不发鼠标事件） */
+const realClick = (findExpr, extra = []) => realMouseClick(send, findExpr, probeRealClickTarget, extra)
 
 const failures = []
+let report = null
+let reportPath = null
+let shotPath = null
+let artifactError = null
+
+/**
+ * 统一动作判定入口：**动作类动词的唯一执行路径**——执行 + 记失败。
+ * 「没点到」的三种形态（找不到元素 / 目标 disabled / 目标不可见）都由页内判定返回 `{ok:false,reason}`，
+ * 这里把 reason 收进 `failures`（与既有 JS 错误 / 重叠 / 溢出同列，最终决定退出码）。
+ */
+const recordAction = async (label, verb, fn) => {
+  const res = await step(label, fn)
+  failures.push(...collectFailures(verb, res))
+  return res
+}
+
+/** 写本轮产物（报告 + 截图）。**在 finally 里调用** ⇒ 任何 throw 也留下本轮证据。 */
+const writeArtifacts = async () => {
+  try {
+    mkdirSync(OUT, { recursive: true })
+    const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })
+    shotPath = artifactNames(OUT, failures.length > 0 ? 'fail' : 'pass').shot
+    writeFileSync(shotPath, Buffer.from(shot.data, 'base64'))
+  } catch (e) {
+    artifactError = '截图写入失败：' + String(e?.message ?? e)
+    failures.push(artifactError)
+  }
+  const status = failures.length > 0 ? 'fail' : 'pass'
+  const names = artifactNames(OUT, status)
+  try {
+    writeFileSync(names.report, JSON.stringify({
+      round: ROUND,
+      finishedAt: new Date().toISOString(),
+      status,
+      report,
+      jsErrors,
+      failures,
+      url: URL_APP,
+      outDir: OUT,
+      argv,
+      // 上一轮产物已改名成 *.stale.*（防旧绿冒充本轮）
+      staleFrom: staleRenamed,
+    }, null, 2))
+    reportPath = names.report
+  } catch (e) {
+    artifactError = (artifactError ? artifactError + '；' : '') + '报告写入失败：' + String(e?.message ?? e)
+    failures.push('报告写入失败：' + String(e?.message ?? e))
+  }
+  console.log(`截图: ${shotPath ?? '(未写出)'} · 报告: ${reportPath ?? '(未写出)'} · 本轮 ${ROUND} · ${status.toUpperCase()}`)
+  if (artifactError) console.error('产物写入不完整：' + artifactError)
+}
+
 try {
   await send('Page.enable')
   await send('Runtime.enable')
@@ -224,41 +279,42 @@ try {
 
   const tab = arg('tab')
   if (tab) {
-    await step(`点页签「${tab}」`, () => evaluate(clickText('.n-tabs-tab', tab)))
+    // expectActivate：点完必须真的变成 active 页签（点了个不存在/不可点的东西不能算通过）
+    await recordAction(`点页签「${tab}」`, 'tab', () => evaluate(inPageCall(performClick, '.n-tabs-tab', tab, false, true)))
     await step('等页面渲染（图型控件）', () => waitFor(`document.body.textContent.includes('图型') || document.querySelectorAll('.n-card').length > 1`, 30000, '目标页'))
   }
   const radio = arg('radio')
-  if (radio) await step(`点选项「${radio}」`, () => evaluate(clickText('.n-radio-button', radio, true)))
+  if (radio) await recordAction(`点选项「${radio}」`, 'radio', () => evaluate(inPageCall(performClick, '.n-radio-button', radio, true)))
 
   // 通用下拉选择：--select <ctl-label> --option <选项文本片段>
   const selectLabel = arg('select')
   if (selectLabel) {
     const optText = arg('option', '')
     await closeMenus()
-    await step(`打开「${selectLabel}」下拉`, () => realMouseClick(`(() => {
+    await recordAction(`打开「${selectLabel}」下拉`, 'select', () => realClick(`(() => {
       const field = [...document.querySelectorAll('.ctl-field')].find(f => f.querySelector('.ctl-label')?.textContent?.trim() === ${JSON.stringify(selectLabel)})
       return field?.querySelector('.n-base-selection') ?? null
     })()`))
     // ⚠ naive-ui 把菜单 teleport 到 body，**关掉的菜单仍留在 DOM 里**（父容器还是 visible，
     // 所以 `option.offsetParent` 判不出来）⇒ 必须按「菜单元素自身可见」筛，否则会点到上一个菜单的选项。
-    await step('等下拉选项', () => waitFor(`${visibleMenuOpts}.length > 0`, 10000, '下拉'))
-    await step(`选「${optText}」`, () => realMouseClick(`(() => {
-      const opts = ${visibleMenuOpts}
+    await step('等下拉选项', () => waitFor(`${menuOptionsExpr()}.length > 0`, 10000, '下拉'))
+    await recordAction(`选「${optText}」`, 'option', () => realClick(`(() => {
+      const opts = ${menuOptionsExpr()}
       return opts.find(e => (e.textContent || '').trim().includes(${JSON.stringify(optText)})) ?? null
-    })()`))
+    })()`, [visibleMenuOptions]))
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
   }
 
   if (flag('main-c')) {
     await closeMenus()
-    await step('打开「按主C快选」', () => realMouseClick(`(() => {
+    await recordAction('打开「按主C快选」', 'main-c', () => realClick(`(() => {
       const field = [...document.querySelectorAll('.ctl-field')].find(f => f.querySelector('.ctl-label')?.textContent?.trim() === '预设队伍')
       const sel = field ? [...field.querySelectorAll('.n-select')].pop() : null
       return sel?.querySelector('.n-base-selection') ?? null
     })()`))
-    await step('等下拉选项', () => waitFor(`${visibleMenuOpts}.length > 0`, 10000, '下拉'))
-    await step('选第一个主C', () => realMouseClick(`(() => { const o = ${visibleMenuOpts}[0]; return o ?? null })()`))
+    await step('等下拉选项', () => waitFor(`${menuOptionsExpr()}.length > 0`, 10000, '下拉'))
+    await recordAction('选第一个主C', 'main-c', () => realClick(`(() => { const o = ${menuOptionsExpr()}[0]; return o ?? null })()`, [visibleMenuOptions]))
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
     await step('读已选队数', () => evaluate(`(document.body.textContent.match(/已选\\s*(\\d+)\\s*队/) || [])[1] ?? null`))
@@ -268,7 +324,7 @@ try {
   const popoverText = arg('popover')
   if (popoverText) {
     await closeMenus()
-    await step(`打开弹层「${popoverText}」`, () => realMouseClick(`(() => {
+    await recordAction(`打开弹层「${popoverText}」`, 'popover', () => realClick(`(() => {
       const btns = [...document.querySelectorAll('.n-button')]
       return btns.find(b => (b.textContent || '').trim().includes(${JSON.stringify(popoverText)})) ?? null
     })()`))
@@ -277,7 +333,7 @@ try {
   const inputLabel = arg('input')
   if (inputLabel) {
     const value = arg('value', '')
-    await step(`设置「${inputLabel}」= ${value}`, () => evaluate(`(() => {
+    await recordAction(`设置「${inputLabel}」= ${value}`, 'input', () => evaluate(`(() => {
       const pops = [...document.querySelectorAll('.n-popover')].filter(p => p.offsetParent !== null)
       for (const p of pops) {
         const row = [...p.querySelectorAll('.diff-weight-row')].find(r => (r.querySelector('.diff-weight-label')?.textContent || '').includes(${JSON.stringify(inputLabel)}))
@@ -291,16 +347,16 @@ try {
         input.dispatchEvent(new Event('change', { bubbles: true }))
         input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
         input.dispatchEvent(new Event('blur', { bubbles: true }))
-        return 'ok'
+        return { ok: true, label: ${JSON.stringify(inputLabel)} }
       }
-      return 'NO_ROW:' + pops.length
+      return { ok: false, reason: '未命中目标 NO_ROW：可见弹层里没有含「' + ${JSON.stringify(inputLabel)} + '」的 .diff-weight-row' }
     })()`))
     await closeMenus()
   }
 
   const click = arg('click')
   if (click) {
-    await step(`点按钮「${click}」`, () => evaluate(clickText('.n-button', click)))
+    await recordAction(`点按钮「${click}」`, 'click', () => evaluate(inPageCall(performClick, '.n-button', click)))
     const t0 = Date.now()
     const tick = setInterval(async () => {
       try {
@@ -322,12 +378,14 @@ try {
   /**
    * 通用脚本步（可重复 `--step <verb>:<参数>`，按出现顺序执行）——给「要跨页/跨控件」的流程用
    * （固定 flags 只够单页单动作：一个 --tab / 一个 --click / 一个 --wait-for）：
-   *   `tab:<页签文本>`      点页头页签
+   *   `tab:<页签文本>`      点页头页签（并校验真的切过去了）
    *   `open:<控件文本>`     在含该文本的 `.n-base-selection` 上发真实鼠标事件（打开 naive-ui 下拉）
    *   `option:<选项文本>`   点**当前可见**下拉菜单里含该文本的选项
    *   `click:<按钮文本>`    点 `.n-button`
+   *   `realclick:<JS 表达式>` 真鼠标点击表达式返回的元素
+   *   `type:<文本>`         向当前聚焦元素键入文本（没有聚焦元素 = 失败）
    *   `wait:<选择器|表达式|文本>`  轮询到「选择器命中 / 表达式为真 / 页面文本包含」为止
-   *   `eval:<js>`          直接求值并打印结果（诊断用：可读回任意状态/按钮文本/选中数）
+   *   `eval:<js>`          直接求值并打印结果（诊断用：可读回任意状态/按钮文本/选中数；`false` 是合法结果）
    *   `sleep:<毫秒>`
    * 用途示例（资源池「时间截断」行：需先选预设队伍再切页）：
    *   node scripts/ui-check.mjs --step "tab:队伍配置" --step "open:选择预设队伍" \
@@ -340,34 +398,35 @@ try {
     const verb = cut >= 0 ? raw.slice(0, cut) : raw
     const value = cut >= 0 ? raw.slice(cut + 1) : ''
     if (verb === 'tab') {
-      await step(`[step] 点页签「${value}」`, () => evaluate(clickText('.n-tabs-tab', value)))
+      await recordAction(`[step] 点页签「${value}」`, 'tab', () => evaluate(inPageCall(performClick, '.n-tabs-tab', value, false, true)))
       await sleep(600)
     } else if (verb === 'open') {
       await closeMenus()
-      await step(`[step] 打开「${value}」`, () => realMouseClick(`(() => {
+      await recordAction(`[step] 打开「${value}」`, 'open', () => realClick(`(() => {
         const els = [...document.querySelectorAll('.n-base-selection')]
         const target = els.find(e => (e.textContent || '').includes(${JSON.stringify(value)}))
         return target ?? null
       })()`))
-      await step('[step] 等下拉选项', () => waitFor(`${visibleMenuOpts}.length > 0`, 10000, '下拉'))
+      await step('[step] 等下拉选项', () => waitFor(`${menuOptionsExpr()}.length > 0`, 10000, '下拉'))
     } else if (verb === 'option') {
-      await step(`[step] 选「${value}」`, () => realMouseClick(`(() => {
-        const opts = ${visibleMenuOpts}
+      await recordAction(`[step] 选「${value}」`, 'option', () => realClick(`(() => {
+        const opts = ${menuOptionsExpr()}
         return opts.find(e => (e.textContent || '').trim().includes(${JSON.stringify(value)})) ?? null
-      })()`))
+      })()`, [visibleMenuOptions]))
       await closeMenus()
     } else if (verb === 'click') {
-      await step(`[step] 点按钮「${value}」`, () => evaluate(clickText('.n-button', value)))
+      await recordAction(`[step] 点按钮「${value}」`, 'click', () => evaluate(inPageCall(performClick, '.n-button', value)))
       await sleep(400)
     } else if (verb === 'realclick') {
       // 真·鼠标点击（CDP Input.dispatchMouseEvent）：Naive UI 的 collapse 等组件
       // 监听的是真实指针事件，`el.click()`（= --click / eval 里手写 click）**不会**展开
       // —— R65 实测：`h.click()` 与手搓 MouseEvent 序列都不改 item class，只有真指针事件有效。
       // value = 返回「被点元素」的 JS 表达式（可含 scrollIntoView）。
-      await step(`[step] realclick ${value.slice(0, 50)}`, () => realMouseClick(value))
+      await recordAction(`[step] realclick ${value.slice(0, 50)}`, 'realclick', () => realClick(value))
       await sleep(600)
     } else if (verb === 'wait') {
       // 选择器（`.cls` / `#id` / `[attr]` / 裸标签名如 `polyline`）→ 命中即真；其余按页面文本包含
+      // （`wait:时间截断` 这类「等状态」不判「动作没命中」，失败路径 = 超时抛异常）
       const isSelector = /^[.#[]/.test(value) || /^[a-z][a-z0-9-]*$/.test(value)
       const expr = value.includes('(')
         ? value
@@ -377,14 +436,18 @@ try {
       const ms = await step(`[step] 等「${value}」`, () => waitFor(expr, WAIT_TIMEOUT, value))
       console.log(`[${String(ms).padStart(7)}ms] 等「${value}」`)
     } else if (verb === 'eval') {
+      // 诊断读回：false/null/0 都是合法结果，**不**进失败判定
       await step(`[step] eval ${value.slice(0, 60)}`, async () => JSON.stringify(await evaluate(value)))
     } else if (verb === 'type') {
       // 向当前聚焦元素键入文本（CDP Input.insertText，走真实输入通道 ⇒ Naive UI 的 filterable
       // select / 受控 input 都能收到）。用途：虚拟滚动的下拉只渲染前几项，按文本过滤是唯一
       // 能选中长列表末项的稳定路径（`--option` 只认已渲染项）。
-      await step(`[step] 键入「${value}」`, async () => {
+      // 没有聚焦元素时 insertText 无处落字 ⇒ 判失败（此前照样报 ok）。
+      await recordAction(`[step] 键入「${value}」`, 'type', async () => {
+        const focus = await evaluate(inPageCall(probeFocusTarget))
+        if (!focus.ok) return focus
         await send('Input.insertText', { text: value })
-        return 'ok'
+        return { ok: true, into: focus.tag }
       })
       await sleep(400)
     } else if (verb === 'sleep') {
@@ -395,7 +458,7 @@ try {
   }
 
   await sleep(1200)
-  const report = await step('DOM 体检', () => evaluate(`(() => {
+  report = await step('DOM 体检', () => evaluate(`(() => {
     const labels = [...document.querySelectorAll('.curve-jump-label')].map(e => {
       const r = e.getBoundingClientRect()
       return { t: e.textContent, x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }
@@ -445,11 +508,6 @@ try {
     }
   })()`))
   console.log(JSON.stringify(report, null, 2))
-  mkdirSync(OUT, { recursive: true })
-  const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })
-  writeFileSync(join(OUT, 'ui-check-full.png'), Buffer.from(shot.data, 'base64'))
-  writeFileSync(join(OUT, 'ui-check-report.json'), JSON.stringify({ report, jsErrors }, null, 2))
-  console.log('截图:', join(OUT, 'ui-check-full.png'), '· 报告:', join(OUT, 'ui-check-report.json'))
   const inlineErrs = report?.errs ?? []
   if (jsErrors.length > 0 || inlineErrs.length > 0) {
     failures.push(`JS 错误 ${jsErrors.length + inlineErrs.length} 条`, ...jsErrors, ...inlineErrs)
@@ -459,13 +517,15 @@ try {
 } catch (e) {
   failures.push(String(e?.message ?? e))
 } finally {
+  // 产物写在 finally：任何 throw（waitFor 超时 / 未知动词 / 页内异常）也留下本轮证据，
+  // 不让上一轮的成功产物原地留存冒充本轮（A1.a negC2a/negC2b）。
+  try { await writeArtifacts() } catch (e) { failures.push('产物写入异常：' + String(e?.message ?? e)) }
   if (!flag('keep-open')) { try { child.kill() } catch { /* 已退出 */ } }
 }
 
 if (failures.length > 0) {
-  console.error('\n实机点通 FAIL：')
-  for (const f of failures) console.error('  ✗ ' + f)
-  process.exit(1)
+  console.error(failureBlock(failures))
+  process.exit(exitCodeFor(failures))
 }
-console.log('\n实机点通 PASS（零 JS 错误、无标注重叠、无表格溢出）')
-process.exit(0)
+console.log('\n实机点通 PASS（零 JS 错误、无标注重叠、无表格溢出、动作全部命中目标）')
+process.exit(exitCodeFor(failures))
