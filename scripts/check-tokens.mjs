@@ -503,7 +503,12 @@ export const HARDCODED_WHITELIST = [
  * 必须把数字下调（防止基线变死数据，与 check-guards 的 AGENT_BRANCH_BASELINE 同纪律）。
  */
 export const HARDCODED_BASELINE = {
-  'src/components/AppHeader.vue': 3,
+  // 2026-09-21 UI 外壳打磨：3 → 2。`.brand-badge` 的 `color: #241a03` 与
+  // `box-shadow: rgba(255,181,0,.35)`、`.dev-tabs` 的 `#a855f7` 全部收进
+  // `--brand-ink` / `--brand-glow` / `--dev-accent`（global.css 双主题各一份）。
+  // 剩余 2 处 = `mask-image` / `brand-sheen-sweep` 关键帧里的 `rgba(0,0,0,α)`：
+  // 那是**遮罩通道**不是颜色（alpha 才有意义，RGB 恒被忽略），换令牌无意义。
+  'src/components/AppHeader.vue': 2,
   'src/components/BossCard.vue': 7,
   'src/components/BossSelectCard.vue': 3,
   'src/components/CharacterCard.vue': 3,
@@ -645,7 +650,11 @@ export const FONT_SIZE_BASELINE = {
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--text-2/--text-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 448  /* ★ 2026-09-18 round 31-a2「贴片墨对比度」：466 → **448**（−18）。
+export const WA_REF_BASELINE = 447  /* ★ 2026-09-21 UI 外壳打磨：448 → **447**（−1）。方向 = 棘轮要求的方向。
+   归因：`AppHeader` 的 `.tab-section-label` 从裸文字升级为胶囊贴片后，墨色由 `--wa-420`
+   换成 `--app-text` —— 该元素此后**自带底色**（`--shell-chip-bg`），墨必须按贴片底选，
+   实测 `--app-text-dim` 只有 dark 4.42 / light 3.27（< 4.5，tinted-contrast 判据红）。
+   ★ 2026-09-18 round 31-a2「贴片墨对比度」：466 → **448**（−18）。
    方向 = 棘轮要求的方向（只减不增）。逐条归因：12 个文件把「按页面底调」的三级墨
    （`--wa-350/--wa-400/--wa-450/--wa-500/--wa-520/--wa-550/--wa-600/--wa-460`）
    换成**既有语义别名 `--fg-2`**（次级文字）——它们原是压在自己**带浅底**的贴片
@@ -681,7 +690,12 @@ export const WA_REF_BASELINE = 448  /* ★ 2026-09-18 round 31-a2「贴片墨对
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 778  /* ★ 2026-09-20 难度曲线（降序一般化）面板 + 难度权重弹层逐类型公式：753 → **778**（+25）。
+export const VAR_TOTAL_BASELINE = 800  /* ★ 2026-09-21 UI 外壳打磨：778 → **800**（+22）。
+                                        * 本键语义 = 「只增不减，防把变量改回字面量」⇒ 上调即进步登记。
+                                        * 归因：`global.css` 新增外壳质感层 `--shell-*`/`--brand-*`/`--dev-*`（双主题各一份），
+                                        * `AppHeader` 的顶栏纹理/霓虹导轨/品牌高光/分段胶囊/tab 辉光全部走 var() 引用，
+                                        * 同轮把 `#241a03`/`rgba(255,181,0,.35)`/`#a855f7` 三处字面量收进令牌。
+                                        * ★ 2026-09-20 难度曲线（降序一般化）面板 + 难度权重弹层逐类型公式：753 → **778**（+25）。
                                        * 这是**棘轮允许的方向**（本键语义 = 「只增不减，防把变量改回字面量」）⇒ 上调即进步登记。
                                        * 逐条归因：新增 `DifficultyDescentPanel.vue`（曲线/表格/悬停提示，全部走 `--app-*` / `--fg-*` / `--wa-*` 令牌）
                                        * + `TeamComparePage.vue` 的逐类型公式 UI（开关/折叠/提示）+ `team-compare-page.css` 新增块

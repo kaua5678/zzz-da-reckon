@@ -237,6 +237,35 @@
   --scene-axis-z: #63e2b7;
   --scene-mark-cur: #63e2b7;
   --scene-mark-max: #fbbf24;
+
+  /* ---- 外壳质感层 --shell-* / --brand-* / --dev-*（2026-09-21 UI 外壳打磨）----
+     为什么与 --app-* 分开命名：--app-* 是「页面通用表面」语义（bg/panel/border/text），
+     本层描述的是**应用外壳自身的视觉语言**——顶栏纹理、品牌徽章金属感、导航激活态辉光。
+     页面组件不该引用 --shell-*，外壳也不该被页面配色牵着走。
+     ⚠ 必须定义在**本块内**（不能另起 :root 块）：check-tokens 的 parseGlobalTokens 用
+     `match(/^\s*:root\s*\{/m)` 只取**第一个**块，另起块 = 令牌对判据不可见 ⇒ tokens-defined 红。
+     纪律：含色值的令牌在 html.light 必有一份（theme-parity 校验）；组件侧一律 var() 引用，
+     手抄值会被 tinted-ink-closure 判红（抄了就冻在单主题）。 */
+
+  /* 顶栏斜向扫描纹理：极淡一层，在大面积留白上提供「机械外壳」触感。
+     0.07α 是上限——再浓会在 13px tab 文字后形成可见摩尔纹。 */
+  --shell-grid-line: rgba(148, 163, 184, 0.07);
+  /* 顶栏底部霓虹导轨：电蓝→S级金渐变、两端淡出，替代原单调 1px 描边。
+     全局唯一一条「品牌色横贯屏宽」的元素。 */
+  --shell-rail: linear-gradient(90deg, transparent 0%, rgba(68, 147, 248, 0.55) 18%, rgba(255, 181, 0, 0.75) 50%, rgba(68, 147, 248, 0.55) 82%, transparent 100%);
+  /* 激活 tab 的下划线辉光：夜间可以放肆（深底吃得住光晕） */
+  --shell-tab-glow: 0 0 10px rgba(68, 147, 248, 0.6);
+  /* 区段标签贴片：把「配置/分析/对比」从裸文字升级为可辨识胶囊 */
+  --shell-chip-bg: rgba(148, 163, 184, 0.1);
+  --shell-chip-line: rgba(148, 163, 184, 0.18);
+  /* 品牌徽章金底上的深墨字（亮暗同值——金色黑白通吃，见 UI_THEME_GUIDE §5） */
+  --brand-ink: #241a03;
+  --brand-glow: 0 2px 12px rgba(255, 181, 0, 0.38);
+  /* 徽章掠过的金属高光，动画由 AppHeader 驱动 */
+  --brand-sheen: rgba(255, 255, 255, 0.55);
+  /* 开发区 tab 紫色 bar：与业务区电蓝区分，提示「这里是内部工具」 */
+  --dev-accent: #a855f7;
+  --dev-accent-glow: 0 0 10px rgba(168, 85, 247, 0.55);
 }
 
 html.light {
@@ -378,6 +407,21 @@ html.light {
   /* 标记是**图形**（落点/峰值的光球与虚影线）⇒ 门槛 3.0 */
   --scene-mark-cur: #0b6b4e; /* ← #63e2b7，与 Z 轴同色（夜间两者也是同色） */
   --scene-mark-max: #b45309; /* ← #fbbf24，外圈 3.96 */
+
+  /* ---- 外壳质感层（明亮：与 :root 一一对应，由 theme-parity 校验）----
+     亮色通则是**整体收敛**：白底上的 blur 辉光会糊成脏雾、纹理会变噪点。
+     故 glow 一律换成「实体投影 + 更低透明度」，纹理浓度下调一档。 */
+  --shell-grid-line: rgba(51, 65, 85, 0.05);
+  --shell-rail: linear-gradient(90deg, transparent 0%, rgba(47, 110, 224, 0.5) 18%, rgba(217, 119, 6, 0.7) 50%, rgba(47, 110, 224, 0.5) 82%, transparent 100%);
+  --shell-tab-glow: 0 1px 3px rgba(47, 110, 224, 0.35);
+  --shell-chip-bg: rgba(51, 65, 85, 0.06);
+  --shell-chip-line: rgba(51, 65, 85, 0.12);
+  --brand-ink: #241a03;
+  --brand-glow: 0 2px 8px rgba(255, 181, 0, 0.45);
+  --brand-sheen: rgba(255, 255, 255, 0.7);
+  /* 紫色压深：#a855f7 在白底上只有 3.1:1，作为语义色不够 */
+  --dev-accent: #7c3aed;
+  --dev-accent-glow: 0 1px 3px rgba(124, 58, 237, 0.35);
 }
 
 html,
@@ -423,6 +467,7 @@ table {
   border-radius: 6px;
   border: 2px solid transparent;
   background-clip: padding-box;
+  transition: background-color var(--dur-base) var(--ease-out);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -453,6 +498,38 @@ a:hover {
 /* 统一卡片过渡，避免生硬 */
 .n-card {
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ============================================================
+ * 外壳级交互质感（2026-09-21）
+ * 原则：只加**状态反馈**，不改布局密度。每条都能回答「这告诉了用户什么」。
+ * ============================================================ */
+
+/* 键盘焦点环全局兜底：此前只有 AppHeader 的主题按钮单独处理过，
+   其余可聚焦控件 Tab 过去要么没反馈、要么是浏览器默认的黑色虚线
+   （在深底上几乎不可见）。:focus-visible 只在键盘导航时触发，
+   鼠标点击不会出现——不打扰指针用户。 */
+:where(a, button, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+  border-radius: var(--radius-md);
+}
+
+/* 卡片抬升：hover 时描边提亮 + 阴影加深，给「这块是一个整体」的暗示。
+   ⚠ 不用 transform 位移——本仓库大量卡片内嵌 sticky 表头与 SVG 图表，
+   位移会让 sticky 计算基准漂移、SVG 出现亚像素模糊。只动光影。 */
+.n-card:hover {
+  border-color: var(--wa-200);
+}
+
+html.light .n-card:hover {
+  box-shadow: var(--shadow-3);
+}
+
+/* 文本选中态：原先夜间是 0.32α 的蓝底 + 纯白字，亮色档是 0.16α + 继承色。
+   统一加一档对比，长表格里拖选数字时看得清选了哪些。 */
+::selection {
+  text-shadow: none;
 }
 
 /* 明亮模式卡片：白卡 + 柔和阴影（纸面层次感）；夜间保持扁平描边 */

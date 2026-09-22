@@ -146,6 +146,46 @@ function onTabChange(tab: string) {
   backdrop-filter: blur(10px);
 }
 
+/* 斜向扫描纹理：45° 细线，2px 一循环。铺在顶栏整面但压在内容之下（z-index:0 +
+   子元素 position:relative），提供「机械外壳」触感而不干扰可读性。
+   ⚠ 不用 background-image 叠在 .app-header 自身上：那会与 backdrop-filter 的
+   毛玻璃层叠加顺序打架（实测纹理会被模糊糊掉）。故独立 ::before 层。 */
+.app-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--shell-grid-line) 0,
+    var(--shell-grid-line) 1px,
+    transparent 1px,
+    transparent 7px
+  );
+  /* 纹理向右淡出：左侧品牌区最实、右侧工具区最净，形成视觉重心 */
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.35) 55%, transparent 100%);
+}
+
+/* 底部霓虹导轨：压在 border-bottom 之上，横贯屏宽的品牌色渐变 */
+.app-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  pointer-events: none;
+  background: var(--shell-rail);
+}
+
+/* 纹理/导轨是 absolute，其余内容必须抬到同一层叠上下文之上 */
+.header-left,
+.header-center,
+.header-right {
+  position: relative;
+  z-index: 1;
+}
+
 .header-left {
   flex: 0 0 auto;
   display: flex;
@@ -165,12 +205,51 @@ function onTabChange(tab: string) {
   border-radius: 7px;
   /* ZZZ S级金（#FFB500，游戏 S 抽卡金）：品牌锚点，亮暗两模式同值 */
   background: linear-gradient(135deg, var(--app-accent-gold), var(--app-accent-gold-soft));
-  color: #241a03;
+  color: var(--brand-ink);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 2px;
   line-height: 1;
-  box-shadow: 0 2px 10px rgba(255, 181, 0, 0.35);
+  box-shadow: var(--brand-glow);
+  /* 高光掠过动画需要裁剪边界 */
+  position: relative;
+  overflow: hidden;
+}
+
+/* 金属高光：一道 20° 斜白条，hover 时从左掠到右。
+   静止时停在左侧框外（left:-60%），不产生任何视觉噪声。 */
+.brand-badge::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  bottom: -50%;
+  left: -60%;
+  width: 40%;
+  transform: skewX(-20deg);
+  background: linear-gradient(90deg, transparent, var(--brand-sheen), transparent);
+  opacity: 0;
+}
+
+.brand:hover .brand-badge::after {
+  animation: brand-sheen-sweep var(--dur-slow) var(--ease-out);
+}
+
+@keyframes brand-sheen-sweep {
+  from {
+    left: -60%;
+    opacity: 1;
+  }
+  to {
+    left: 120%;
+    opacity: 0;
+  }
+}
+
+/* 无障碍：尊重系统「减少动效」偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .brand:hover .brand-badge::after {
+    animation: none;
+  }
 }
 
 .brand-title {
@@ -189,6 +268,20 @@ function onTabChange(tab: string) {
 
 .theme-toggle {
   color: var(--fg-2);
+  /* 图标按钮的悬停反馈：原本只有 naive 默认的底色变化，太弱。
+     加一层旋转——日/月图标切换时有「天体运行」的暗示。 */
+  transition: color var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+}
+
+.theme-toggle:hover {
+  color: var(--app-accent-gold);
+  transform: rotate(-18deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle:hover {
+    transform: none;
+  }
 }
 
 /* 键盘可达性：顶栏是纯图标按钮密集区，原本 Tab 过去完全没有视觉反馈 */
@@ -225,8 +318,21 @@ function onTabChange(tab: string) {
 }
 
 .tab-section-label {
-  color: var(--wa-420);
-  font-size: 12px;
+  /* 从裸文字升级为胶囊贴片：原本 12px 灰字与 tab 文字混在一起，
+     扫视时分不清「这是分组名」还是「这是一个可点的 tab」。
+     ⚠ 墨色必须按**贴片底**选而不是页面底（tinted-contrast 判据）：
+     实测 --app-text-dim 压在 --shell-chip-bg 上只有 dark 4.42 / light 3.27，
+     **低于 4.5** ⇒ 上抬到 --app-text（dark 15.2 / light 13.9）。
+     分组名是要被读的文字、不是装饰：视觉层级改由字号(11px)+字距+胶囊底承担，
+     不靠压低墨色——压墨换来的「次要感」代价是可读性，11px 尺寸上尤其不划算。 */
+  color: var(--app-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: 1px;
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--shell-chip-bg);
+  border: 1px solid var(--shell-chip-line);
   white-space: nowrap;
 }
 
@@ -248,8 +354,19 @@ function onTabChange(tab: string) {
   white-space: nowrap;
 }
 
+/* 激活 tab 的下划线加辉光：naive 默认只是一条实色 bar，在密集的 5 段
+   导航里「当前在哪」需要更强的锚点。用 filter 而非 box-shadow——
+   bar 是伪元素，box-shadow 会被裁掉。 */
+.header-tabs :deep(.n-tabs-bar) {
+  filter: drop-shadow(var(--shell-tab-glow));
+}
+
 .dev-tabs {
-  --n-tab-bar-color: #a855f7;
+  --n-tab-bar-color: var(--dev-accent);
+}
+
+.dev-tabs :deep(.n-tabs-bar) {
+  filter: drop-shadow(var(--dev-accent-glow));
 }
 
 @media (max-width: 900px) {
