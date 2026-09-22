@@ -18,6 +18,7 @@ import type {
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
+import { evalAdditionalAbility } from '@/specs/teamCondition'
 
 const MIYABI_AGENT_ID = '1091'
 /** 烈霜元素（独立元素，可在紊乱中与冰互紊） */
@@ -68,14 +69,17 @@ function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMov
   return null
 }
 
-/** 额外能力：队伍中存在「支援」或同阵营或「异常」角色 */
+/**
+ * 额外能力·同沐霜雪：队伍中存在「支援」、与自身**同阵营**或「异常」角色时触发。
+ *
+ * 判定单源 = spec `1091.json` 的 `additionalAbility.teamConditions`（声明式，经 `evalAdditionalAbility`）。
+ * 原手写实现第三臂误写成 `member.agent.id === agent.id`（同**角色 id**）⇒ 与 spec 声明的
+ * `sameFactionAsSelf`（同**阵营**）漂移：悠真(1201，第六课·强攻) 在队时额外能力被漏判
+ * （面板缺 30 冰抗无视 + 60 基本增伤，2026-09-22 取证复现）。收敛到声明式判定后不再有第二份口径。
+ * 返回 `boolean | undefined`（无 spec 声明时 undefined）⇒ 必须 `=== true` 收口。
+ */
 function isAdditionalAbilityActive(team: MechanicTeamMember[], slot: number, agent: Agent): boolean {
-  return team.some(member => {
-    if (member.slot === slot || !member.agent) return false
-    return member.agent.specialty === 'support'
-      || member.agent.specialty === 'anomaly'
-      || member.agent.id === agent.id
-  })
+  return evalAdditionalAbility(team, slot, agent, getAgentSpec(MIYABI_AGENT_ID)?.additionalAbility) === true
 }
 
 /** 队伍中是否有风属性角色（影响霜灼状态覆盖率） */
