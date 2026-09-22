@@ -1,3 +1,5 @@
+import type { ResourceSpec } from '@/specs/types'
+
 export type ObjectNature = 'buff' | 'resource' | 'event' | 'formula' | 'custom'
 
 export interface LogicObject {
@@ -6,7 +8,7 @@ export interface LogicObject {
   name: string
   nature: ObjectNature
   enabled: boolean
-  properties: Record<string, string | number | boolean | null>
+  properties: ResourceSpec['properties']
 }
 
 export interface AttributeConversionRule {

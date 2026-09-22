@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { createDefaultLogicEditorState } from '@/logicEditor/defaults'
 import { setActiveRowFusionRules } from '@/logicEditor/fusion'
 import { loadLogicEditorState, saveLogicEditorState } from '@/logicEditor/storage'
+import { parseLogicEditorState } from '@/logicEditor/validation'
 import type {
   AttributeConversionRule,
   LogicEditorState,
@@ -17,12 +18,11 @@ function nextId(prefix: string): string {
 
 export const useLogicEditorStore = defineStore('logicEditor', () => {
   const state = ref<LogicEditorState>(loadLogicEditorState())
+  const persistenceError = ref<string | null>(null)
 
-  setActiveRowFusionRules(state.value.rowFusions)
-  watch(state, (value) => {
-    saveLogicEditorState(value)
-    setActiveRowFusionRules(value.rowFusions)
-  }, { deep: true })
+  // Runtime rules are a snapshot, not aliases of a potentially incomplete numeric-input draft.
+  setActiveRowFusionRules(parseLogicEditorState(state.value).rowFusions)
+  watch(state, () => { saveNow() }, { deep: true })
 
   function addAttributeConversion(): void {
     const rule: AttributeConversionRule = {
@@ -85,29 +85,33 @@ export const useLogicEditorStore = defineStore('logicEditor', () => {
   }
 
   function importJson(json: string): void {
-    const parsed = JSON.parse(json) as Partial<LogicEditorState>
-    if (!Array.isArray(parsed.attributeConversions) || !Array.isArray(parsed.objects) || !Array.isArray(parsed.rowFusions)) {
-      throw new Error('JSON 缺少 attributeConversions / objects / rowFusions')
-    }
-    state.value = {
-      version: 1,
-      attributeConversions: parsed.attributeConversions,
-      objects: parsed.objects,
-      rowFusions: parsed.rowFusions,
-    }
+    // Decode fully before the only write: rejected imports leave state/runtime/storage untouched.
+    state.value = parseLogicEditorState(JSON.parse(json))
   }
 
   function reset(): void {
     state.value = createDefaultLogicEditorState()
   }
 
-  function saveNow(): void {
-    saveLogicEditorState(state.value)
-    setActiveRowFusionRules(state.value.rowFusions)
+  function saveNow(): boolean {
+    let snapshot: LogicEditorState
+    try {
+      snapshot = parseLogicEditorState(state.value)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : '配置无效'
+      persistenceError.value = `${detail}；当前草稿未保存，仍使用上一次有效倍率。`
+      return false
+    }
+    // Valid edits stay usable even if the browser denies persistence.
+    setActiveRowFusionRules(snapshot.rowFusions)
+    const saved = saveLogicEditorState(snapshot)
+    persistenceError.value = saved ? null : '浏览器本地存储不可用或空间不足。当前修改仅在本次会话生效，请导出 JSON 备份。'
+    return saved
   }
 
   return {
     state,
+    persistenceError,
     addAttributeConversion,
     removeAttributeConversion,
     addObject,

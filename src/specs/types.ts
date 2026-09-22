@@ -55,6 +55,10 @@ export interface ResourceRuleSpec {
   note?: string
 }
 
+/** JSON metadata can include nested stage arrays/maps, not only primitive leaf values. */
+export type ResourcePropertyValue = string | number | boolean | null
+  | ResourcePropertyValue[] | { [key: string]: ResourcePropertyValue }
+
 export interface ResourceSpec {
   id: string
   name: string
@@ -66,7 +70,7 @@ export interface ResourceSpec {
   gainRules: ResourceRuleSpec[]
   spendRules: ResourceRuleSpec[]
   feedbackGainRules?: ResourceRuleSpec[]
-  properties: Record<string, string | number | boolean | null>
+  properties: Record<string, ResourcePropertyValue>
 }
 
 export interface RowFusionSpec {

@@ -21,6 +21,9 @@
           倍率融合启用后，按 moveId + rowId 在倍率表取值处生效。
         </n-alert>
         <input ref="fileInput" type="file" accept="application/json" hidden @change="onImportFile" />
+        <n-alert v-if="logicStore.persistenceError" type="warning" :bordered="false" role="alert">
+          {{ logicStore.persistenceError }}
+        </n-alert>
       </n-card>
 
       <n-card size="small" :bordered="true">
@@ -187,6 +190,7 @@ import {
 import { useCatalogStore } from '@/stores/catalog'
 import { useLogicEditorStore } from '@/stores/logicEditor'
 import { logicEditorStateToSpecs } from '@/logicEditor/toSpec'
+import { parseLogicObjectProperties } from '@/logicEditor/validation'
 import { STAT_META } from '@/utils/statMeta'
 import { localized } from '@/utils/format'
 import type { LogicObject, ObjectNature, RowFusionRule } from '@/logicEditor/types'
@@ -300,19 +304,15 @@ function onPropertyText(object: LogicObject, value: string): void {
 function commitPropertyText(object: LogicObject): void {
   const raw = propertyTexts[object.id] ?? '{}'
   try {
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('not an object')
-    }
-    object.properties = parsed as Record<string, string | number | boolean | null>
-  } catch {
-    message.error('对象属性 JSON 无效')
+    object.properties = parseLogicObjectProperties(JSON.parse(raw))
+  } catch (error) {
+    message.error(error instanceof Error ? `对象属性 JSON 无效：${error.message}` : '对象属性 JSON 无效')
   }
 }
 
 function save(): void {
-  logicStore.saveNow()
-  message.success('已保存到浏览器')
+  if (logicStore.saveNow()) message.success('已保存到浏览器')
+  else message.error(logicStore.persistenceError ?? '保存失败，请导出 JSON 备份')
 }
 
 function exportJson(): void {
@@ -343,9 +343,10 @@ async function onImportFile(event: Event): Promise<void> {
   try {
     const text = await file.text()
     logicStore.importJson(text)
+    for (const key of Object.keys(propertyTexts)) delete propertyTexts[key]
     message.success('导入成功')
-  } catch {
-    message.error('导入 JSON 失败')
+  } catch (error) {
+    message.error(error instanceof Error ? `导入 JSON 失败：${error.message}` : '导入 JSON 失败')
   } finally {
     input.value = ''
   }
