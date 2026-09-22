@@ -39,4 +39,4 @@
 - 全量 check 已通过：3244 passed / 29 既有 skipped；构建发现新测试夹具没有填写 DriveDiscConfig 必需的 4/5/6 号键（TS2739）。修正为显式空字符串槽位，不改数值期望/计算代码，再复验类型与构建。
 - 补齐类型必需键后，15/15 定向复验、`npm run typecheck`、`npm run build` 均通过；数值与规则阈值零改动。
 - R28-J2 已收口：不把合法池的等价 mode 注入当作 bug；真实步长/计数、组合与白名单契约已具备独立正反控。提交后另用干净 HEAD 复验。
-- 提交 `ac4ac53` 的独立 worktree 已实跑 `VITEST_MAX_WORKERS=4 npm run verify`，退出码 0，构建通过；排除了主工作树 UI WIP 对验收的影响。
+- 提交 `ac4ac53` 的独立 worktree 已实跑 `VITEST_MAX_WORKERS=4 npm run verify`：**3244 passed / 29 既有 skipped**，退出码 0，构建通过；排除了主工作树 UI WIP 对验收的影响。

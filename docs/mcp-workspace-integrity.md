@@ -43,4 +43,6 @@ A/B 分开提交；共享 Git 夹具沿用现有安全隔离实现，避免重�
 - 兼容代价：旧 lane 的历史工作可能重新收到“疑似 WIP”提醒；这比静默屏蔽他人改动安全。文件级租约不能区分同一文件的不同 hunks，共享文件仍需显式差异审查。
 - 合并工作树全量 `VITEST_MAX_WORKERS=4 npm run check`：**3253 passed / 29 既有 skipped**；20 guards、12 token checks 通过。类型检查与生产构建通过，快照和数值路径无变化。
 - 当前实际工作区已验证首项为 `README.md`（不再是 EADME.md）；明确本车道仅拥有 mine.ts 的日志不会再吞掉 foreign.ts 提醒。
-- 提交后继续在干净 HEAD 运行完整 verify，避免其它 UI WIP 影响结论。
+- 提交 `b6ba4c7` 的独立 worktree 完整 `VITEST_MAX_WORKERS=4 npm run verify` 已通过：**3253 passed / 29 既有 skipped**；20 guards、12 token checks、录入契约与构建全通过。`docs:status` 再生成无漂移。
+- 当前编辑器诊断为 0 条错误/警告；包体积提示仍存在，未调大阈值掩盖。README 审计证明剩余差异仅是另一会话 UI 文档行及其计数，没有将 UI WIP 混进这两批提交。
+- Coverage：4 条路径/真 Git CLI 回归 + 5 条所有权/租约/历史兼容回归；不声明未测量的行覆盖率百分比。
