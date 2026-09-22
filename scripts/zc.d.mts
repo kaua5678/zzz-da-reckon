@@ -104,7 +104,7 @@ export declare function detectForeignWip(
   ownPaths?: string[],
 ): string[]
 export declare function recentlyOwnedPaths(
-  journal: { lane?: string; at?: string; changed?: string[] }[],
+  journal: { lane?: string; at?: string; changed?: string[]; ownedPaths?: string[] }[],
   lane: string,
   now?: number,
   windowMs?: number,

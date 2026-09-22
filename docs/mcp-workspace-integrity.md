@@ -24,7 +24,7 @@
 
 - `changed` 仍是全工作区快照，不再冒充所有权；另记基于本 lane 活跃租约的明确 `ownedPaths`。
 - 只有 `ownedPaths` 可用于近期归属；旧日志缺少明确归属时采取保守提醒，不从全树 changed 猜主人。
-- 目录租约按路径边界覆盖子文件；其它 lane、过期租约、无效/未来时间都不扩大豁免。
+- 目录租约按路径边界覆盖子文件；其它 lane、过期租约、无效/未来日志时间都不扩大归属豁免。
 - 真 CLI 收工后再释放租约，别人的文件仍应进入 foreign WIP 提示；原有 journal 不改写。
 
 ## 提交与验证
@@ -38,4 +38,9 @@ A/B 分开提交；共享 Git 夹具沿用现有安全隔离实现，避免重�
 - A 的新回归在旧实现 **4/4 failed**；真 CLI journal 实测记录 `EADME.md` 与折叠目录，而不是 README 与实际子文件。
 - A 修复后：zcWorkspace 4 + zc 44 + identity 24 = **72/72 passed**；类型检查通过。既有 Git 隔离夹具抽到 `src/test/gitHarness.ts`，两类测试共用。
 - A 使用 raw NUL 读取，不再通过 trim 的通用 git 文本助手；rename/copy 原路径单独保留，截断记录响亮失败。
-- A 先独立提交；B 所有权修复及最终合并全量验收待完成。
+- A 已独立提交为 `7725feb`；B 新增 5 条归属回归在旧实现全部失败（5 failed / A 的 4 passed）。
+- B 修复后 77/77 定向用例及类型检查通过：全树 `changed` 保留作快照，归属只记活跃本 lane 租约覆盖的 `ownedPaths`；旧日志没有明确归属时只作历史，不改写、不猜主人。
+- 兼容代价：旧 lane 的历史工作可能重新收到“疑似 WIP”提醒；这比静默屏蔽他人改动安全。文件级租约不能区分同一文件的不同 hunks，共享文件仍需显式差异审查。
+- 合并工作树全量 `VITEST_MAX_WORKERS=4 npm run check`：**3253 passed / 29 既有 skipped**；20 guards、12 token checks 通过。类型检查与生产构建通过，快照和数值路径无变化。
+- 当前实际工作区已验证首项为 `README.md`（不再是 EADME.md）；明确本车道仅拥有 mine.ts 的日志不会再吞掉 foreign.ts 提醒。
+- 提交后继续在干净 HEAD 运行完整 verify，避免其它 UI WIP 影响结论。

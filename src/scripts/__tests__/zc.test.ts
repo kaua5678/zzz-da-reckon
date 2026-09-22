@@ -209,9 +209,9 @@ describe('L3 租约（规则 13 的机器化）', () => {
 
   it('journal 只认本车道、且只认时间窗内的认领', () => {
     const journal = [
-      { lane: 'me', at: new Date(now - 60_000).toISOString(), changed: ['a.ts'] },
-      { lane: 'other', at: new Date(now - 60_000).toISOString(), changed: ['b.ts'] },
-      { lane: 'me', at: new Date(now - 48 * 3600_000).toISOString(), changed: ['c.ts'] },
+      { lane: 'me', at: new Date(now - 60_000).toISOString(), ownedPaths: ['a.ts'], changed: ['a.ts', 'foreign.ts'] },
+      { lane: 'other', at: new Date(now - 60_000).toISOString(), ownedPaths: ['b.ts'] },
+      { lane: 'me', at: new Date(now - 48 * 3600_000).toISOString(), ownedPaths: ['c.ts'] },
     ]
     expect(recentlyOwnedPaths(journal, 'me', now)).toEqual(['a.ts'])
   })

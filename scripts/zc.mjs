@@ -596,13 +596,19 @@ export function currentLane(explicit) {
   return explicit || process.env.ZC_LANE || process.env.DSH_SESSION_ID || 'pid-' + process.pid
 }
 
+/** 文件/目录覆盖的单一口径：按路径边界，不把 src-other 当作 src 的子项。 */
+function pathCoveredBy(path, scope) {
+  const prefix = scope.replace(/\/+$/, '')
+  return prefix.length > 0 && (path === prefix || path.startsWith(prefix + '/'))
+}
+
 /** 冲突 = 别的车道持有同一路径（或其目录前缀）的未过期租约 */
 export function findConflicts(leases, paths, lane, now = Date.now()) {
   const live = leases.filter(l => !isExpired(l, now) && l.lane !== lane)
   const out = []
   for (const p of paths) {
     for (const l of live) {
-      if (l.path === p || p.startsWith(l.path.endsWith('/') ? l.path : l.path + '/') || l.path.startsWith(p.endsWith('/') ? p : p + '/')) {
+      if (pathCoveredBy(p, l.path) || pathCoveredBy(l.path, p)) {
         out.push({ path: p, holder: l })
       }
     }
@@ -624,20 +630,21 @@ export function applyRelease(leases, paths, lane) {
  * 这正是本次立项当天踩到的坑——两个会话同改 resourceTrack.ts，靠人肉 ls -l 才发现。
  */
 export function detectForeignWip(changed, leases, mtimes, now = Date.now(), windowMs = 45 * 60 * 1000, ownPaths = []) {
-  const held = new Set(leases.filter(l => !isExpired(l, now)).map(l => l.path))
+  const held = leases.filter(l => !isExpired(l, now)).map(l => l.path)
   // 自己在 journal 里认领过的改动不算陌生 WIP——否则收工 release 之后，
   // 自己刚交付的文件会立刻被自己的 status 报成「别人在改」（实测踩过）
   const mine = new Set(ownPaths)
-  return changed.filter(p => !held.has(p) && !mine.has(p) && mtimes[p] != null && now - mtimes[p] <= windowMs)
+  return changed.filter(p => !held.some(scope => pathCoveredBy(p, scope)) && !mine.has(p) && mtimes[p] != null && now - mtimes[p] <= windowMs)
 }
 
-/** 本车道近期在 journal 里认领过的文件（默认 12 小时内） */
+/** 只接受明确 ownedPaths；旧 changed 是全树快照，不能反推出所有权。 */
 export function recentlyOwnedPaths(journal, lane, now = Date.now(), windowMs = 12 * 60 * 60 * 1000) {
   const out = new Set()
   for (const e of journal) {
     if (e.lane !== lane) continue
-    if (now - Date.parse(e.at ?? '') > windowMs) continue
-    for (const p of e.changed ?? []) out.add(p)
+    const age = now - Date.parse(e.at ?? '')
+    if (!Number.isFinite(age) || age < 0 || age > windowMs || !Array.isArray(e.ownedPaths)) continue
+    for (const p of e.ownedPaths) if (typeof p === 'string' && p.length > 0) out.add(p)
   }
   return [...out]
 }
@@ -922,8 +929,12 @@ function verbDone(args) {
   }
   const lane = currentLane(args.as)
   const changed = readGitChanges().map(c => c.path)
-  appendJournal({ kind: 'done', lane, verifier: args.verifier, coverage: args.coverage, deps: args.deps ?? null, risk: args.risk ?? null, note: args.note ?? null, changed })
-  return envelope('done', true, { lane, verifier: args.verifier, coverage: args.coverage, deps: args.deps ?? null, risk: args.risk ?? null, changed: changed.length }, '已落盘 .zc/journal.jsonl（下一个 agent 用 zc status 就能看到）')
+  const now = Date.now()
+  const scopes = readLeases().filter(l => l.lane === lane && !isExpired(l, now)).map(l => l.path)
+  const ownedPaths = changed.filter(p => scopes.some(scope => pathCoveredBy(p, scope)))
+  // changed 保留全树快照兼容旧报告；归属独立记录，绝不吞掉其它会话的未提交工作。
+  appendJournal({ kind: 'done', lane, verifier: args.verifier, coverage: args.coverage, deps: args.deps ?? null, risk: args.risk ?? null, note: args.note ?? null, changed, ownedPaths })
+  return envelope('done', true, { lane, verifier: args.verifier, coverage: args.coverage, deps: args.deps ?? null, risk: args.risk ?? null, changed: changed.length, owned: ownedPaths.length }, '已落盘 .zc/journal.jsonl（下一个 agent 用 zc status 就能看到）')
 }
 
 // ─────────────────────────────────────────────────────────────────── CLI 装配
