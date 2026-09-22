@@ -4,10 +4,11 @@
  * 滑块生效（coreBuffCoverage 0↔1 面板确实变，防死滑块）、颤音异放事件（anomalyDamageRatio 折叠层数）、
  * 命座差分 C1/C4/C6。
  */
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases, extractSkillExecutions } from '@/composables/resourceCalc/helpers'
 import { computeNangongMinePairs, nangongBeatIncome, nangongMechanic } from '../agents/nangong'
 
 async function setupNangong(cinemaLevel: number) {
@@ -162,5 +163,116 @@ describe('南宫羽三轮收口（C2 每层+10% / 强特免能 / 失衡内积蓄
     const off = inC(without)
     expect((on.anomalyBuildUpEfficiencyOnStunBonus ?? 0) - (off.anomalyBuildUpEfficiencyOnStunBonus ?? 0)).toBeCloseTo(30)
     expect((on.anomalyBuildUpEfficiencyOnStunChainBonus ?? 0) - (off.anomalyBuildUpEfficiencyOnStunChainBonus ?? 0)).toBeCloseTo(30)
+  })
+})
+
+/**
+ * B2 · C4「可爱地雷飞天撞命中 → 属性异常积蓄值 +35%」**一次性**生效判据。
+ *
+ * 缺陷形态（B1 实跑确认，`probe3` 正控）：`transformNangongSkillExecutions` 对**共享 rr 行**
+ * 做 read-modify-write（`anomalyBuildUp *= 1.35`），既无幂等守卫也不置 `anomalyBuildUpOverride`
+ * ⇒ `extractSkillExecutions` 在同一次真管线被调 3~4 次，值按 1.35^N 累积（通道量 ×3.32 = 1.35³、
+ * 显示值 ×4.48 = 1.35⁴），与原文 talent.4 的「提升35%」（= ×1.35 一次性）不符。
+ *
+ * 判定口径（R61 batchA 模板，两侧都钉在外部事实上）：
+ *   ① **原文层**：`data/raw/nanoka_missing/full/1511.json` 的 `talent.4.desc` 逐字正则抽出 35
+ *      ⇒ 期望系数 = 1 + 35/100，**不读被测常量**（同义反复教训：读 `C4_*` 常量会让注入坏值时两边一起变）；
+ *   ② **表值层**：期望绝对值 = catalog 的 `anomaly_buildup` 行值 × 该系数（不硬编码 191.63）；
+ *   ③ **行为层**：真 `setupHarness` → 真 `useResourceCalc()`，读**通道量**（异常池 execs 的
+ *      `baseBuildUp`，不是只看端到端伤害——R57：通道被钳时端到端恒绿）+ rr 行值 + 幂等性
+ *      （对同一 rr 连续提取两次，值必须不变）。
+ */
+describe('南宫羽 C4：地雷撞积蓄 ×1.35 一次性（B2 点修）', () => {
+  const MINE2 = '1511005'
+  const MINE3 = '1511006'
+
+  /** 原文 talent.4 的积蓄百分比（从 raw 文本抽出，期望值不取自被测常量） */
+  const rawC4BuildupPct = (): number => {
+    const raw = JSON.parse(readFileSync(
+      new URL('../../../data/raw/nanoka_missing/full/1511.json', import.meta.url), 'utf8',
+    ))
+    const desc = String(raw?.talent?.['4']?.desc ?? '').replace(/<[^>]+>/g, '')
+    const m = desc.match(/属性异常积蓄值提升(\d+(?:\.\d+)?)%/)
+    expect(m, `raw talent.4 未解析出积蓄百分比：${desc}`).toBeTruthy()
+    return Number(m![1])
+  }
+
+  /** catalog 表值（唯一数值事实源） */
+  const tableBuildUp = (moveId: string): number => {
+    const catalog = JSON.parse(readFileSync(
+      new URL('../../../public/static/catalog.json', import.meta.url), 'utf8',
+    ))
+    const skills = (catalog.agentSkills ?? []).find((s: { agentId?: unknown }) => String(s.agentId) === '1511')
+    for (const cat of skills?.categories ?? []) {
+      for (const mv of cat.moves ?? []) {
+        if (String(mv.id) !== moveId) continue
+        const row = (mv.rows ?? []).find((r: { id?: string }) => r.id === 'anomaly_buildup')
+        return Number(row?.values?.[0] ?? 0)
+      }
+    }
+    return 0
+  }
+
+  it('原文层：talent.4 的 35 与实现系数一致（1+35/100）', () => {
+    const pct = rawC4BuildupPct()
+    expect(pct).toBe(35)
+    expect(1 + pct / 100).toBe(1.35)
+    expect(tableBuildUp(MINE2)).toBeGreaterThan(0)
+    expect(tableBuildUp(MINE3)).toBeGreaterThan(0)
+  })
+
+  it('C4 行：anomalyBuildUp == 表值×1.35（精确 1.35000）+ 置 anomalyBuildUpOverride + 通道量同步', async () => {
+    const factor = 1 + rawC4BuildupPct() / 100
+    const { catalog, config, calc } = await setupNangong(4)
+    const rr = calc.resourceResult.value!
+    const char = rr.characters.find(c => c.agentId === '1511')!
+    for (const id of [MINE2, MINE3]) {
+      const row = char.executions.find(e => String(e.moveId) === id)!
+      expect(row, `${id} 行必须存在（重拍>0）`).toBeTruthy()
+      const table = tableBuildUp(id)
+      // 显示侧（rr 行）：精确 ×1.35 —— 缺陷态为 ×4.48（1.35⁵）
+      expect(row.anomalyBuildUp! / table).toBeCloseTo(factor, 5)
+      // 防 enrich 回填洗回表值（缺陷态未置该旗标）
+      expect(row.anomalyBuildUpOverride).toBe(true)
+      expect(row.totalAnomalyBuildUp! / table).toBeCloseTo(factor * row.count, 4)
+      // 通道量（异常池消费面）：精确 ×1.35 —— 缺陷态为 ×3.32（1.35³）
+      const ch = extractSkillExecutions(0, '1511', catalog.getAgentSkills('1511'), rr, catalog, null, config, { skipGift: true })
+      const anom = ch.anomalyExecs.find(a => String(a.moveId) === id)!
+      expect(anom, `${id} 必须在异常通道 execs 里`).toBeTruthy()
+      expect(anom.baseBuildUp / table).toBeCloseTo(factor, 5)
+    }
+  })
+
+  it('幂等：同一 rr 连续提取两次，通道量与行值逐位不变（缺陷态 ×1.35/次）', async () => {
+    const { catalog, config, calc } = await setupNangong(4)
+    const rr = calc.resourceResult.value!
+    const skills = catalog.getAgentSkills('1511')
+    const grab = () => {
+      const ch = extractSkillExecutions(0, '1511', skills, rr, catalog, null, config, { skipGift: true })
+      const sig = (arr: { moveId?: string; baseBuildUp?: number }[]) =>
+        arr.map(a => `${a.moveId}:${Number(a.baseBuildUp ?? 0).toFixed(6)}`).sort().join('|')
+      return sig(ch.anomalyExecs)
+    }
+    const first = grab()
+    const second = grab()
+    expect(second).toBe(first)
+    // 行侧同样不得被二次改写（共享对象 read-modify-write 的直接证据）
+    const rowAfter = rr.characters.find(c => c.agentId === '1511')!.executions.find(e => String(e.moveId) === MINE2)!
+    const factor = 1 + rawC4BuildupPct() / 100
+    expect(rowAfter.anomalyBuildUp! / tableBuildUp(MINE2)).toBeCloseTo(factor, 5)
+  })
+
+  it('C0 逐位不变：cinemaLevel<4 门控不动（行值=表值、无 override、通道量=表值）', async () => {
+    const { catalog, config, calc } = await setupNangong(0)
+    const rr = calc.resourceResult.value!
+    const char = rr.characters.find(c => c.agentId === '1511')!
+    const ch = extractSkillExecutions(0, '1511', catalog.getAgentSkills('1511'), rr, catalog, null, config, { skipGift: true })
+    for (const id of [MINE2, MINE3]) {
+      const table = tableBuildUp(id)
+      const row = char.executions.find(e => String(e.moveId) === id)!
+      expect(row.anomalyBuildUp).toBe(table)
+      expect(row.anomalyBuildUpOverride ?? false).toBe(false)
+      expect(ch.anomalyExecs.find(a => String(a.moveId) === id)!.baseBuildUp).toBe(table)
+    }
   })
 })

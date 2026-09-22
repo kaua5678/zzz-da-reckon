@@ -6,7 +6,6 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentSkillTransformInput,
   AgentTeamConfigInput,
 } from '../types'
 import type { SkillMove } from '@/types/catalog'
@@ -25,7 +24,8 @@ import { fmt } from '@/utils/format'
  * - 颤音异放：失衡中全队异放/紊乱/进异常叠层（≤4），清除且目标处于异常状态时南宫羽结算一次
  *   异放 = 原属性异常伤害 × 元素比例(以太720/电360/火900/物理63/冰90/风36%) × (1+25%/层)。
  *   层数/次数按滑块近似（异常逐事件系统 pending，SOP §3.8）。
- * - 影画：C1 敌全抗-18% + 重拍初始回满；C4 精通+40 + 地雷撞积蓄值×1.35；C6 失衡值+50%（颤音:改 pending）。
+ * - 影画：C1 敌全抗-18% + 重拍初始回满；C4 精通+40 + 地雷撞积蓄值×1.35（`patchExecutions` 单次写入，
+ *   B2 点修：原 `transformSkillExecutions` 在共享 rr 行上 read-modify-write ⇒ 按 1.35^N 累积）；C6 失衡值+50%（颤音:改 pending）。
  */
 
 const NANGONG_AGENT_ID = '1511'
@@ -46,6 +46,8 @@ const CORE_BUILD_UP_BONUS = 20
 const C6_BUILD_UP_BONUS = 50
 const CORE_EFFICIENCY_BONUS = 35
 const C1_ALL_RES_REDUCTION = 18
+/** C4：可爱地雷飞天撞命中 → 属性异常积蓄值 +35%（原文 talent.4，一次性 ×1.35） */
+const C4_MINE_BUILDUP_PCT = 35
 const VIBRATO_MAX = 4
 const VIBRATO_STACK_PCT = 25
 /** 异放固定倍率：原文以「原属性异常伤害×比例」表达，各元素 DOT 基准(62.5/125/50/713/500/1250)
@@ -120,12 +122,22 @@ function applyNangongPanel({ panel, cinemaLevel, settings }: AgentPanelInput): v
   if (cinemaLevel >= 1) panel.enemyResReduction = (panel.enemyResReduction ?? 0) + C1_ALL_RES_REDUCTION
 }
 
-function buildNangongCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
+function buildNangongCharConfig({ skills, cinemaLevel, cfg, getRowValue }: AgentCharConfigInput): void {
   const t2 = findMoveById(skills, MINE2_MOVE_ID)?.actionTime ?? 0
   const t3 = findMoveById(skills, MINE3_MOVE_ID)?.actionTime ?? 0
   const record = cfg as unknown as Record<string, unknown>
   record.nangongCinemaLevel = cinemaLevel
   record.nangongMinePairSeconds = t2 + t3
+  // 影画4：地雷撞 #2/#3 行的**表值积蓄**在此预存（`enrichExecutionPlan` 会从倍率表回填
+  // `anomalyBuildUp` ⇒ `patchExecutions` 阶段读不到表值；先例 `yuzuha.ts:117` / `seth.ts:98`）。
+  // 仅 C4 且表值 >0 时写（C0 不写 ⇒ 门控语义逐位保留）。
+  if (cinemaLevel >= 4) {
+    const scale = 1 + C4_MINE_BUILDUP_PCT / 100
+    for (const [key, moveId] of [['nangongC4Mine2BuildUp', MINE2_MOVE_ID], ['nangongC4Mine3BuildUp', MINE3_MOVE_ID]] as const) {
+      const base = getRowValue(findMoveById(skills, moveId), 'anomaly_buildup')
+      if (base > 0) record[key] = base * scale
+    }
+  }
 }
 
 function buildNangongTeamConfig(input: AgentTeamConfigInput): void {
@@ -253,13 +265,36 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
   })
 }
 
-/** C4：地雷撞命中积蓄值 ×1.35（transform 在 enrich 回填之后跑，直接放大不被倍率表覆盖） */
-function transformNangongSkillExecutions({ charResult, cinemaLevel }: AgentSkillTransformInput): void {
+/**
+ * 影画4：可爱地雷飞天撞 #2/#3 命中 → 属性异常积蓄值 +35%（**一次性** ×1.35）。
+ *
+ * @fact 1511/影画4·可爱地雷飞天撞 口径: 地雷撞 #2/#3 行 `anomalyBuildUp` = 表值 ×1.35 一次性（原文「造成的属性异常积蓄值提升35%」），由 `patchExecutions` 单次写入并置 `anomalyBuildUpOverride` | 据 原文 data/raw/nanoka_missing/full/1511.json talent.4.desc | 验 src/mechanics/__tests__/nangongSmoke.test.ts | 锚 src/mechanics/agents/nangong.ts#patchNangongExecutions | 信 确认
+ * ⟳复核: nanoka 若刷新 1511 的 talent.4（现「属性异常积蓄值提升35%」）或官方改影画顺序，改 `C4_MINE_BUILDUP_PCT` 并重跑 nangongSmoke 的 C4 组 | 到期 2027-03-31
+ *
+ * 为什么是 `patchExecutions` 而**不是** `transformSkillExecutions`（B2 点修，2026-09-22）：
+ * 后者在真管线里被 `extractSkillExecutions` 调 3~4 次（base/adj0/adj2/ap1），而它拿到的是
+ * **共享的 `charResult.executions` 行对象** ⇒ `exec.anomalyBuildUp *= 1.35` 这种
+ * read-modify-write 会按 1.35^N 累积（B1 实测：通道量 ×3.32 = 1.35³、显示值 ×4.48 = 1.35⁴），
+ * 且不置 `anomalyBuildUpOverride` ⇒ `enrichExecutionPlan` 还会用表值回填覆盖。
+ * `patchExecutions` 在 `rowBuild.ts:453`（**行构建完成、enrich 之前**）只调一次 ⇒ 天然幂等；
+ * 配合 `anomalyBuildUpOverride` 防回填。同款先例：`nicole.ts:92` / `phoenix.ts:349` / `yuzuha.ts:230`。
+ *
+ * ⚠ 不用 `+=`（`buildCharConfig` 预存值已含 ×1.35，`+=` 会双计）。
+ */
+function patchNangongExecutions({ cfg, executions }: AgentResourceInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  const cinemaLevel = Math.max(0, Math.floor(Number(record.nangongCinemaLevel ?? 0)))
   if (cinemaLevel < 4) return
-  for (const exec of charResult.executions ?? []) {
-    if (exec.moveId !== MINE2_MOVE_ID && exec.moveId !== MINE3_MOVE_ID) continue
-    if ((exec.anomalyBuildUp ?? 0) > 0) exec.anomalyBuildUp = Number(exec.anomalyBuildUp) * 1.35
-    if ((exec.totalAnomalyBuildUp ?? 0) > 0) exec.totalAnomalyBuildUp = Number(exec.totalAnomalyBuildUp) * 1.35
+  const preBuilt: Record<string, number> = {
+    [MINE2_MOVE_ID]: Number(record.nangongC4Mine2BuildUp ?? 0),
+    [MINE3_MOVE_ID]: Number(record.nangongC4Mine3BuildUp ?? 0),
+  }
+  for (const exec of executions) {
+    const value = preBuilt[String(exec.moveId)]
+    if (!(value > 0)) continue
+    exec.anomalyBuildUp = value
+    exec.anomalyBuildUpOverride = true
+    exec.totalAnomalyBuildUp = value * Math.max(0, exec.count ?? 0)
   }
 }
 
@@ -431,7 +466,7 @@ export const nangongMechanic: AgentMechanicModule = {
   buildCharConfig: buildNangongCharConfig,
   applyTeamConfig: buildNangongTeamConfig,
   buildExecutions: buildNangongExecutions,
-  transformSkillExecutions: transformNangongSkillExecutions,
+  patchExecutions: patchNangongExecutions,
   buildAnomalyEvents: buildNangongAnomalyEvents,
   buildResourceResult: buildNangongResourceResult,
   resourceSections: buildNangongResourceSections,
