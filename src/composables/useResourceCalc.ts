@@ -15,6 +15,7 @@ import { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
 import { getAgentMechanic } from '@/mechanics'
 import { initialCalcRoundThreads, threadsAfterNullRound } from './resourceCalc/roundThreads'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
+import { freezeCached } from './resourceCalc/freezeCached'
 import { createConvergenceRoundInputs, createRunCalcRound, type CalcRoundResult } from './resourceCalc/convergence'
 import { isOuterTwoCycle, outerFeedbackSignature } from './resourceCalc/outerCycle'
 import { DOWNSCALE_SCALES, selectDownscaleScale, downscaleTrialAccepted, downscaleTrialFeasible } from './resourceCalc/feasibilitySearch'
@@ -152,7 +153,8 @@ export function useResourceCalc() {
       // 下游一律经 `panelAt(panels, slot)` 按身份取（见 core/panel.ts 头注释）。
       if (p) result.push({ ...p, slot: i })
     }
-    return result
+    // 共享缓存 ⇒ 测试环境深冻结（写入即抛错，见 freezeCached.ts）；面板加成只许走 applyPanel
+    return freezeCached(result)
   })
 
   /** 各角色“进场记录面板”（特殊虚耀使用） */
@@ -213,7 +215,7 @@ export function useResourceCalc() {
     if (!resourceConfig.value || !catalogStore.ready) return null
     if (!calcOutputMemoEnabled || configStore.interactionScaleMonotone) {
       calcOutputMemoStats.bypass++
-      return computeCalcOutput()
+      return freezeCached(computeCalcOutput())
     }
     const state = configStore.$state as unknown as Record<string, unknown>
     const stateForKey: Record<string, unknown> = {}
@@ -234,7 +236,8 @@ export function useResourceCalc() {
       return hit
     }
     calcOutputMemoStats.misses++
-    const out = computeCalcOutput()
+    // 记忆化命中会把同一对象交给下一位读者 ⇒ 测试环境深冻结，任何下游原地改写立即抛错
+    const out = freezeCached(computeCalcOutput())
     calcOutputMemo.set(key, out)
     if (calcOutputMemo.size > CALC_OUTPUT_MEMO_MAX) calcOutputMemo.delete(calcOutputMemo.keys().next().value!)
     return out

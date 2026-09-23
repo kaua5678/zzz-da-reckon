@@ -64,7 +64,7 @@ describe('R20-h1 层③：7 块都经真派发器（computePanelPhases → apply
     expect(starlightBillyMechanic.applyPanel).toBeTypeOf('function')
     expect(soldier11Mechanic.applyPanel).toBeTypeOf('function')
     expect(evelynMechanic.applyPanel).toBeTypeOf('function')
-    // A9/A10：specPanelBuffs 由 makePanelBuffModule 工厂生成，本批之前**没有** applyPanel
+    // A9/A10：两模块本批之前**没有** applyPanel（原 makePanelBuffModule 工厂已于 2026-09-24 删除）
     expect(jufufuTigerRoarMechanic.applyPanel).toBeTypeOf('function')
     expect(peiluoProminenceMechanic.applyPanel).toBeTypeOf('function')
     expect(liuyinMechanic.applyPanel).toBeTypeOf('function')

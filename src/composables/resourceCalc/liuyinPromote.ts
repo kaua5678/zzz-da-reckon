@@ -22,6 +22,7 @@ import { findSlotByIdentity } from './anomalyPanels'
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { findMoveById, fusedRowValue } from './skillRows'
 import { buildGiftRow } from '@/core/resource/giftRows'
+import { getAgentMechanic } from '@/mechanics'
 
 /** 琉音好评转大不动点迭代上限（好评≥90 开窗次数有界，正反馈单调收敛，8 轮兜底极端情况） */
 export const MAX_PROMOTE_ITER = 8
@@ -84,6 +85,8 @@ export function applyLiuyinPromote(
       if (char.slot !== targetSlot) return char
       const skills = catalogStore.agentSkillsByAgentMap.get(char.agentId)
       const ultMoveDef = findMoveById(skills, ultimateMoveId)
+      // 赠的是目标自己的终结技 ⇒ 伤害定向随招走：模块声明覆盖优先（零号·安比终结技 = 追加攻击）
+      const ultTarget = getAgentMechanic(char.agentId)?.skillDamageTargetOverrides?.[ultimateMoveId] ?? 'ultimate'
       // 转大送出的是「一次完整终结技」：多段终结技（登记融合组，如照·兔兔连斩 #1+#2、
       // 妮可 特制以太榴弹 炮击+能量场）必须取整段倍率与站场时长，只取主段=赠送了半招。
       const fusedOf = (rowId: string) =>
@@ -126,7 +129,7 @@ export function applyLiuyinPromote(
           damageMultiplierOverride: ultMult > 0,
           anomalyBuildUp: ultBuildUp,
           totalAnomalyBuildUp: ultBuildUp * promote,
-          skillDamageTarget: 'ultimate',
+          skillDamageTarget: ultTarget,
           skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
         }
       })
@@ -142,7 +145,7 @@ export function applyLiuyinPromote(
             actionTime: ultActionTime,
             damageMultiplier: ultMult,
             anomalyBuildUp: ultBuildUp,
-            skillDamageTarget: 'ultimate',
+            skillDamageTarget: ultTarget,
             skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
           })],
       }

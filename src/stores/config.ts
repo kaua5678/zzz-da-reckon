@@ -346,8 +346,16 @@ function parseCinemaRequirement(sourceLabel: string): number {
  * - 返回顺序 = `groups` 遍历顺序（写入端依赖该顺序决定对象键序，positionCompare 会快照该对象）；
  * - 只回答「**应该**启用吗」——用户手动开关与覆盖率由 store 的选择表持有（见 sync 的合并逻辑）。
  */
+/**
+ * `deriveTeammateBuffEnabled` 读取的**全部**槽位字段——入参类型与 store 的重同步 watch 源都由它生成。
+ * 2026-09-24：watch 源曾手写成 `{agentId, cinemaLevel}`，而派生函数还读潜能/音擎（经额外能力判定），
+ * 两边各写一份就会漂。现在新增依赖字段只改这一处，类型与 watch 同时跟上。
+ */
+export const TEAMMATE_BUFF_INPUT_KEYS = ['slot', 'agentId', 'cinemaLevel', 'potentialLevel', 'wEngineId', 'wEngineModLevel'] as const
+type TeammateBuffInput = Pick<CharacterConfig, typeof TEAMMATE_BUFF_INPUT_KEYS[number]>
+
 export function deriveTeammateBuffEnabled(
-  team: ReadonlyArray<Pick<CharacterConfig, 'slot' | 'agentId' | 'cinemaLevel' | 'potentialLevel' | 'wEngineId' | 'wEngineModLevel'>>,
+  team: ReadonlyArray<TeammateBuffInput>,
   groups: readonly TeammateBuffGroup[],
   getAgent: (agentId: string) => Agent | null | undefined,
 ): Array<{ id: string; enabled: boolean }> {
@@ -1296,8 +1304,9 @@ export const useConfigStore = defineStore('config', () => {
   // 难度曲线 / 命座边际）都是「setCinemaLevel → 同一 tick 内读 teamTotalDamage」——读到的是**改命座前**的 buff 选择。
   // 实测：最优加金贪心全程看不到队友命座 buff（般琉卢 12 金选了「般岳 1–4 命」55.7M，正确应为三人各 2 命 81.1M）；
   // 全库 624 场景中 41 个命座 6 场景偏低 1–40%。sync 后 sync 自己只写 teammateBuffSelections，不写 team ⇒ 无回环。
+  // 源 = 派生函数读取的全部字段（`TEAMMATE_BUFF_INPUT_KEYS` 单一事实源），不手写子集。
   watch(
-    () => team.value.map(c => ({ agentId: c.agentId, cinemaLevel: c.cinemaLevel })),
+    () => team.value.map(c => TEAMMATE_BUFF_INPUT_KEYS.map(k => c[k])),
     () => {
       syncTeammateBuffsFromTeam()
     },

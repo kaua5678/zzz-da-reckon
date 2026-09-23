@@ -46,6 +46,16 @@
 
 - 钩子**不得** `+=` 缓存对象（`panels.value[i]` / 行 / cfg）。面板加成放 `applyPanel`（每次新建面板）。
   反例：佩洛伊斯耀斑挂 `transformSkillExecutions`（单次计算调 12–16 次）⇒ 伤害 +480%~+640% 且每次重算继续累加，已修（timeGolden 1551 −73.95% = 1.55/5.95）。
+- **此条已由机制强制，不靠自觉**（第 4 轮）。三层，新角色零声明自动覆盖：
+  1. 编译期：`AgentSkillTransformInput.panel/charResult`、`AgentDamageResolutionInput.exec`、`ReleaseModifierInput.panels` 是 `DeepReadonly`，写入 = tsc 红。
+  2. 运行期（仅测试）：`resourceCalc/freezeCached.ts` 深冻结 `panels` 与 `calcOutput`，写入即抛错、栈指肇事行；生产构建里被 tree-shake 掉。
+     首跑抓到橘福福 `panel.impact += 50`（面板页冲击取决于资源计算有没有先跑过），已迁 `applyPanel`；`__xxxApplied` 防重入标记全部删除。
+  3. 结果：`allAgentsGuards` ③ 历史无关：B→A 与全新直达 A 比面板 / rr / 伤害 / 配置，每个角色在三个槽位各出场一次，外加随机命座/潜能/音擎。
+     变异验证：把 buff 同步改成「只开不关」⇒ 62 队里红 11+ 队。
+- 行上的伤害定向（`skillDamageTarget`）覆盖用模块字段 `skillDamageTargetOverrides` 声明，由 `enrichExecutionPlan` 统一应用，赠行也应用。
+  在钩子里写会被 enrich 的推断值静默冲掉；transform 里写则是改缓存（零号·安比即此，已迁，逐位等价）。
+- 派生函数的依赖字段 = watch 源：`TEAMMATE_BUFF_INPUT_KEYS` 同时生成 `deriveTeammateBuffEnabled` 的入参类型与重同步 watch 源。
+  旧 watch 手写 `{agentId, cinemaLevel}`，漏了潜能/音擎。
 
 ## 剩余热点（第 2 轮后，自耗时 / 14.2s profile；第 3 轮已处理前两项的主要部分）
 

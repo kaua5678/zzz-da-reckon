@@ -136,13 +136,13 @@ describe('橘福福影画1/2/4 面板', () => {
 })
 
 describe('橘福福虎啸冲击满覆盖', () => {
-  it('无条件冲击 +50', () => {
+  it('无条件冲击 +50（applyPanel，0 命即生效）', () => {
     const panel: any = { impact: 120 }
-    jufufuTigerRoarMechanic.transformSkillExecutions!({
-      panel,
-      charResult: { specResources: {} },
-    } as any)
+    jufufuTigerRoarMechanic.applyPanel!({ panel, cinemaLevel: 0 } as any)
     expect(panel.impact).toBe(170)
+  })
+  it('冲击加成不经 transform（transform 输入面板只读）', () => {
+    expect(jufufuTigerRoarMechanic.transformSkillExecutions).toBeUndefined()
   })
 })
 

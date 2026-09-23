@@ -1,107 +1,27 @@
 import type {
   AgentMechanicModule,
   AgentPanelInput,
-  AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentSkillTransformInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { PanelValues } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources, type SpecResourceResult } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 
-function buildResourceResult(agentId: string) {
-  return ({ cfg, state }: AgentResourceResultInput) => ({
-    specResources: (() => {
-      const spec = getAgentSpec(agentId)
-      return spec ? Object.fromEntries(computeSpecResources(spec, cfg, state)) : {}
-    })(),
-  })
-}
-
-function makePanelBuffModule(
-  id: string,
-  agentIds: string[],
-  name: string,
-  resourceId: string,
-  apply: (resource: SpecResourceResult | undefined, panel: PanelValues) => void,
-): AgentMechanicModule {
-  const transform = (input: AgentSkillTransformInput) => {
-    const panel = input.panel
-    if (!panel) return
-    if ((panel as any).__specPanelBuffApplied) return
-    ;(panel as any).__specPanelBuffApplied = true
-    const map = input.charResult.specResources ?? {}
-    apply(map[resourceId], panel)
-  }
-  return {
-    id,
-    agentIds,
-    name,
-    buildResourceResult: buildResourceResult(agentIds[0]),
-    transformSkillExecutions: transform,
-    resourceSections: (input: AgentResourceSectionsInput) => {
-      const spec = getAgentSpec(agentIds[0])
-      return spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
-    },
-  }
-}
-
-export const pulchraHuntStepMechanic = makePanelBuffModule(
-  'agent:pulchra_hunt_step',
-  ['1351'],
-  '波可娜·猎步',
-  'pulchra_hunt_step',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) > 0) {
-      panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + 30
-    }
-  },
-)
-
-export const nekomataPurrMechanic = makePanelBuffModule(
-  'agent:nekomata_purr',
-  ['1021'],
-  '猫又·呼噜能量',
-  'nekomata_purr',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) > 0) {
-      panel.dmgBonus = (panel.dmgBonus ?? 0) + 60
-    }
-  },
-)
-
-// 格莉丝电能（旧全局 electricAnomalyBuildUpEfficiency+130 面板近似）已由 agents/grace.ts
-// 完整模块取代（2026-08-23 口供：行级 ×2.3 精确限定特殊技 + A3/特/A4/特 显式循环）。
-export const zhendouHeartfireMechanic = makePanelBuffModule(
-  'agent:zhendou_heartfire',
-  ['1441'],
-  '真斗·熔锋',
-  'zhendou_heartfire',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) >= 75) {
-      panel.critRate = (panel.critRate ?? 0) + 10
-      panel.fireDmg = (panel.fireDmg ?? 0) + 20
-    }
-  },
-)
-
 /** 叶瞬光完整模块见 agents/yeshuguang.ts；此处保留别名供旧测试 import */
 export { yeshuguangMechanic as yeshuguangMingxinMechanic } from './yeshuguang'
 
-export const peiluoProminenceMechanic = makePanelBuffModule(
-  'agent:peiluo_prominence',
-  ['1551'],
-  '佩洛伊斯·日珥',
-  'peiluo_prominence',
-  (resource, panel) => {
-    if ((resource?.total ?? 0) >= 30) {
-      panel.critDmg = (panel.critDmg ?? 0) + 40
-    }
-  },
-)
+// 2026-09-24：删除 `makePanelBuffModule` 工厂及其三个产物（波可娜猎步 / 猫又呼噜 / 真斗熔锋）。
+// 工厂在 `transformSkillExecutions` 里**原地改缓存面板**、靠 `__specPanelBuffApplied` 标记防重入；
+// 三个产物从未注册（真模块 pulchra.ts / nekomata.ts / zhendou.ts 已在 `applyPanel` 里挂同样的面板项），
+// 唯一注册的产物佩洛伊斯早已覆写全部钩子并删掉 transform。面板加成一律走 `applyPanel`——
+// transform 的输入面板是 `DeepReadonly`（契约见 `types.ts#AgentSkillTransformInput`）。
+export const peiluoProminenceMechanic: AgentMechanicModule = {
+  id: 'agent:peiluo_prominence',
+  agentIds: ['1551'],
+  name: '佩洛伊斯·日珥',
+}
 
 /* 佩洛伊斯终结技分支模型（用户口径）：
  * - 一个大招消耗 2000 喧响（cfg.ultimateCost）；大招行按上分支 moveId 生成，patchExecutions 拆三分支。
@@ -226,8 +146,7 @@ peiluoProminenceMechanic.applyPanel = ({ panel, cinemaLevel }: AgentPanelInput) 
   panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + PEILUO_FLARE_ENERGY
   panel.dmgBonus = (panel.dmgBonus ?? 0) + PEILUO_FLARE_DMG
 }
-// 日珥≥30 暴伤的旧工厂 transform 已由额外能力（applyPanel）取代（d0ecf19）；不再挂任何 transform。
-delete peiluoProminenceMechanic.transformSkillExecutions
+// 日珥≥30 暴伤的旧工厂 transform 已由额外能力（applyPanel）取代（d0ecf19）；不挂任何 transform。
 peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }: any) => {
   const ultCount = Math.max(0, Math.floor(state.ultimateCount ?? 0))
   if (ultCount <= 0) return
@@ -670,9 +589,16 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
    *
    * 语义逐位保留：
    * - 影画1 超级可怕小老虎：进场暴击率 +12%（进场威风 100 在 buildCharConfig 注入）；
-   * - 影画4 降妖伏魔虎修者：虎啸下自身暴伤 +35%（用户确认虎啸满覆盖）。
+   * - 影画4 降妖伏魔虎修者：虎啸下自身暴伤 +35%（用户确认虎啸满覆盖）；
+   * - 虎啸满覆盖（用户确认）：自身冲击 +50（无命座门槛）。
+   *
+   * 冲击 +50 原住在 `transformSkillExecutions` 里直接写 `panel.impact`，靠 `__jufufuTigerRoarApplied`
+   * 标记防重入——那是**原地改缓存面板**：面板页展示的冲击取决于「资源计算有没有先跑过」
+   * （历史相关）。2026-09-24 迁入此处；transform 的输入面板从此是 `DeepReadonly`
+   * （契约见 `types.ts#AgentSkillTransformInput`）。
    */
   applyPanel: ({ panel, cinemaLevel }: AgentPanelInput) => {
+    panel.impact = (panel.impact ?? 0) + 50
     if (cinemaLevel >= 1) {
       panel.critRate = (panel.critRate ?? 0) + 12
     }
@@ -880,14 +806,6 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
         },
       },
     }
-  },
-  transformSkillExecutions: (input: AgentSkillTransformInput) => {
-    const panel = input.panel
-    if (!panel) return
-    if ((panel as any).__jufufuTigerRoarApplied) return
-    ;(panel as any).__jufufuTigerRoarApplied = true
-    // 虎啸满覆盖（用户确认）：自身冲击 +50
-    panel.impact = (panel.impact ?? 0) + 50
   },
   resourceSections: (input: AgentResourceSectionsInput) => {
     const cycle = (input.result as any)?.jufufuCycle as JufufuCycleResult | undefined

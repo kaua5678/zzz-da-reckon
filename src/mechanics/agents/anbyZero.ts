@@ -29,7 +29,6 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentSkillTransformInput,
   AgentTeamConfigInput,
   AgentNextRoundFeedbackInput,
 } from '../types'
@@ -255,16 +254,6 @@ function applyAnbyZeroPanel({ cinemaLevel, panel, settings }: AgentPanelInput): 
   }
 }
 
-function markAnbyZeroChainTarget({ charResult }: AgentSkillTransformInput): void {
-  // 执行级（非面板）：核心被动 Lv7 零号·安比的连携技和终结技视为追加攻击伤害（供限定追击增伤命中）。
-  for (const exec of charResult.executions ?? []) {
-    const mid = String(exec.moveId)
-    if (mid === '1381014' || mid === '1381015') {
-      exec.skillDamageTarget = 'additionalAttack'
-    }
-  }
-}
-
 function buildAnbyZeroResourceResult({ cfg, state }: AgentResourceResultInput) {
   return { specResources: { anby_zero_cycle: cycleFromInput({ cfg, state }) } }
 }
@@ -341,6 +330,9 @@ export const anbyZeroMechanic: AgentMechanicModule = {
     { id: 'anbyZero.silverStarCoverage', label: '银星覆盖率', description: '对银星标记敌人增伤与无视电抗的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
   ],
   applyPanel: applyAnbyZeroPanel,
+  // 核心被动 Lv7：连携技 / 终结技视为追加攻击伤害（供限定追击增伤命中）。
+  // 原在 transformSkillExecutions 里原地改缓存 rr 的行（2026-09-24 改为声明式，逐位等价）。
+  skillDamageTargetOverrides: { '1381014': 'additionalAttack', '1381015': 'additionalAttack' },
   buildCharConfig: buildAnbyZeroCharConfig,
   /**
    * converge 阶段：注入上一轮收敛的「队友追加攻击命中折算白雷层数」（跨轮反馈）。
@@ -352,7 +344,6 @@ export const anbyZeroMechanic: AgentMechanicModule = {
     ;(cfg as unknown as Record<string, unknown>).anbyZeroTeammateWhiteLightning = threads.anbyZeroTeammateWl
   },
   buildExecutions: buildAnbyZeroExecutions,
-  transformSkillExecutions: markAnbyZeroChainTarget,
   buildResourceResult: buildAnbyZeroResourceResult,
   resourceSections: buildAnbyZeroResourceSections,
   nextRoundFeedback: anbyNextRoundFeedback,

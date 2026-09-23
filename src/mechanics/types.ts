@@ -1,4 +1,5 @@
-import type { Agent, AgentSkills, PanelValues, SkillMove } from '@/types/catalog'
+import type { DeepReadonly } from 'vue'
+import type { Agent, AgentSkills, PanelValues, SkillDamageTarget, SkillMove } from '@/types/catalog'
 import type {
   AnomalyEventExecution,
   AnomalyContribution,
@@ -500,8 +501,8 @@ export interface AgentSkillTransformInput {
   slot: number
   agent: Agent | null
   skills: AgentSkills | undefined
-  charResult: CharacterResourceResult
-  panel: PanelValues | null
+  charResult: DeepReadonly<CharacterResourceResult>
+  panel: DeepReadonly<PanelValues> | null
   cinemaLevel: number
   potentialLevel: number
   team: MechanicTeamMember[]
@@ -517,14 +518,16 @@ export interface AgentDamageResolutionInput {
   agent: Agent | null
   skills: AgentSkills | undefined
   move: SkillMove | null
-  exec: SkillExecution
+  /** 缓存资源结果里的行（跨读者共享）⇒ 只读 */
+  exec: DeepReadonly<SkillExecution>
   team: MechanicTeamMember[]
   cinemaLevel: number
   potentialLevel: number
 }
 
 export interface ReleaseModifierInput {
-  panels: PanelValues[]
+  /** 缓存面板（跨读者共享）⇒ 只读 */
+  panels: DeepReadonly<PanelValues[]>
 }
 
 export interface AgentResourceSectionsInput {
@@ -558,6 +561,16 @@ export interface AgentMechanicModule {
   description?: string
   /** 局内面板计算后追加专属属性 */
   applyPanel?(input: AgentPanelInput): void
+  /**
+   * **声明式伤害定向覆盖**（2026-09-24）：本角色某些 catalog 招式的 `skillDamageTarget` 不按
+   * 类别推断（如零号·安比「连携/终结视为追加攻击」）。由 `enrichExecutionPlan` 在补倍率时统一应用
+   * （赠行同样应用），是这类覆盖的**唯一**入口。
+   *
+   * 为什么不能在钩子里写：`enrichExecutionPlan` 会用推断值覆盖行上已有的定向键（`buildExecutions` /
+   * `patchExecutions` 写的会被静默冲掉）；而 `transformSkillExecutions` 在 enrich 之后跑、拿到的是
+   * **缓存的**资源结果——旧实现就在那里原地改行（输入现为 `DeepReadonly`，编译期即拒绝）。
+   */
+  skillDamageTargetOverrides?: Readonly<Record<string, SkillDamageTarget>>
   /**
    * **队伍级面板效果**：本模块角色在队时，向**其它槽位**的面板贡献可加成的修正。
    *
@@ -628,7 +641,14 @@ export interface AgentMechanicModule {
    * 仅在钩子会自行重建全部非普攻失衡/积蓄执行时开启；只做面板后处理时保持 false。
    */
   replaceSkillExecutionExtraction?: boolean
-  /** 倍率表提取阶段，处理专属失衡/积蓄贡献或最终面板后处理 */
+  /**
+   * 倍率表提取阶段：向 `stunExecs` / `anomalyExecs`（本次调用新建的数组）追加或修改专属失衡/积蓄贡献。
+   *
+   * **纯度契约**：只许改 `stunExecs` / `anomalyExecs`。`panel` 与 `charResult` 是跨轮/跨重算
+   * **共享的缓存对象**（类型 `DeepReadonly`；测试环境下运行期深冻结，写入即抛错）。
+   * 面板加成 → `applyPanel`；行字段 → `patchExecutions`；伤害定向 → `skillDamageTargetOverrides`。
+   * 背景：`docs/ENGINE_PIPELINE_GUIDE.md` 坑 20。
+   */
   transformSkillExecutions?(input: AgentSkillTransformInput): void
   /** 直伤行元素/来源解析，返回 null 时走通用规则 */
   resolveExecutionDamage?(input: AgentDamageResolutionInput): { element: string; source?: string; note?: string } | null

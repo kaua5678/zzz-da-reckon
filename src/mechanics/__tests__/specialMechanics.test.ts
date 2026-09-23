@@ -11,12 +11,7 @@ import { computeRemielleMechanic } from '@/mechanics/agents/remielle'
 import { calcAnomalyCritExpect } from '@/core/anomalyPool/helpers'
 import { emptyPanel } from '@/core/panel'
 import { getAgentMechanic } from '@/mechanics'
-import { getAgentSpec } from '@/specs/registry'
-import { computeSpecResources } from '@/specs/resources'
 import {
-  pulchraHuntStepMechanic,
-  nekomataPurrMechanic,
-  zhendouHeartfireMechanic,
   yeshuguangMingxinMechanic,
   peiluoProminenceMechanic,
 } from '@/mechanics/agents/specPanelBuffs'
@@ -61,51 +56,12 @@ describe('Roxy wind energy / wind eye（v12 + 手法）', () => {
 })
 
 describe('spec resource panel buffs', () => {
-  function resources(agentId: string, cfg: any, state: any): Record<string, any> {
-    const spec = getAgentSpec(agentId)!
-    return Object.fromEntries(computeSpecResources(spec, cfg as any, state as any))
-  }
-
-  function transform(module: any, agentId: string, panel: any, resourceMap: Record<string, any>) {
-    delete (panel as any).__specPanelBuffApplied
-    module.transformSkillExecutions?.({
-      slot: 0,
-      agent: { id: agentId },
-      skills: undefined,
-      charResult: { specResources: resourceMap },
-      panel,
-      cinemaLevel: 0,
-      team: [],
-      dazeCoef: 1,
-      stunExecs: [],
-      anomalyExecs: [],
-      getRowValue: () => 0,
-      normalizeResourceSkillType: () => 'special',
-    } as any)
-  }
-
-  it('applies Pulchra hunt step stun bonus', () => {
-    const map = resources('1351', {}, { exSpecialCount: 1, chainCountTotal: 0 })
-    const panel = emptyPanel()
-    transform(pulchraHuntStepMechanic, '1351', panel, map)
-    expect(panel.stunBuildUpBonus).toBe(30)
-  })
-
+  // 2026-09-24：波可娜猎步 / 猫又呼噜 / 真斗熔锋三条旧断言直调的是**从未注册**的工厂死模块
+  // （transform 原地改面板）；真口径在各自模块的 applyPanel，由 allAgentsGuards / 各角色测试覆盖。
   it('applies Ben guard shield via teammate-buffs', () => {
     // 本·守卫护盾暴击改由 teammate-buffs + benMechanic 承担，见 ben.test.ts
     // 比利命中层数已迁移到 agents/billy.ts 模块，见 __tests__/billy.test.ts
     expect(true).toBe(true)
-  })
-
-  it('applies Nekomata panel buffs', () => {
-    const nekoMap = resources('1021', {}, { frontlineTime: 60, exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 })
-    expect(nekoMap.nekomata_purr?.total).toBe(100)
-    const nekoPanel = emptyPanel()
-    transform(nekomataPurrMechanic, '1021', nekoPanel, nekoMap)
-    expect(nekoPanel.dmgBonus).toBe(60)
-
-    // 希格莉德（1591）已迁移到 agents/sigrid.ts 模块，面板差分见 __tests__/sigrid.test.ts
-    // 珂蕾妲爆破锤已迁移到 agents/koleda.ts 模块，见 __tests__/koleda.test.ts
   })
 
   it('applies Anby, Grace, Banyue and Jufufu panel buffs', () => {
@@ -141,14 +97,7 @@ describe('spec resource panel buffs', () => {
     // 普罗米娅有罪推定已迁移到 agents/promia.ts 模块，见 __tests__/promia.test.ts
   })
 
-  it('applies Zhendou heartfire, Yeshuguang mingxin and Aire proficiency', () => {
-    const zhendouMap = resources('1441', { parryCount: 3 }, { exSpecialCount: 3, ultimateCount: 0, chainCountTotal: 0 })
-    const zhendouPanel = emptyPanel()
-    const zhendouBase = emptyPanel()
-    transform(zhendouHeartfireMechanic, '1441', zhendouPanel, zhendouMap)
-    expect(zhendouPanel.critRate - zhendouBase.critRate).toBe(10)
-    expect(zhendouPanel.fireDmg).toBe(20)
-
+  it('applies Yeshuguang mingxin and Aire proficiency', () => {
     // 叶瞬光合道改走 helpers 常驻；模块负责影画1 剑势初始 / 影画4 喧响
     const yeCfg1: any = {}
     yeshuguangMingxinMechanic.buildCharConfig?.({ cfg: yeCfg1, panel: {} as any, cinemaLevel: 1, skills: { categories: [] } as any, team: [], slot: 0, agent: null as any, wEngineId: '', wEngineModLevel: 1, getRowValue: () => 0 } as any)

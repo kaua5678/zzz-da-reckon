@@ -367,7 +367,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     （依赖必须是 settings/cinema/team/AA 等静态量）；transform 只许改 exec/异常 exec。
     已迁移：派派（积蓄效率）、安比（C6 充能 dmgBonus，兼修 C0 泄漏）、雅（冰抗无视/冰焰/霜灼积蓄）、
     雨果（暗渊回响暴击暴伤，兼弃布尔守卫冻结坑）、普罗米娅（额外能力冰积蓄）。**新增面板写入走
-    applyPanel**；transform 里出现 `panel.xxx =` 即红灯信号。
+    applyPanel**；transform 写 panel/charResult 已由 `DeepReadonly` + 测试期深冻结强制拒绝（mcp-engine-perf 红线节）。
 21. **合轴率抵扣团队时间预算（2026-09-04 合轴口径落地）**：必做动作的合轴段与其他角色动作并行，
     `iterate` 平A池按 `Σ(necessary − 抵扣)` 收费——**Σnecessary 允许 > 战斗时间（Σ>180）**，
     只要合轴抵扣后净占用装得下；`overflowSeconds` 按抵扣后净额（不硬截断）。三条铁律：

@@ -332,10 +332,16 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
     ...result,
     characters: result.characters.map(char => {
       const skills = catalogStore.agentSkillsByAgentMap.get(char.agentId)
+      // 模块声明的伤害定向覆盖（`AgentMechanicModule.skillDamageTargetOverrides`，唯一入口）：
+      // 推断值之后应用，赠行也应用（赠的是本角色自己的招，定向口径随招走）。
+      const targetOverrides = getAgentMechanic(char.agentId)?.skillDamageTargetOverrides
       const executions = char.executions.map(exec => {
+        const targetOverride = targetOverrides?.[exec.moveId]
         // 赠行由引擎物化、倍率由编排层在 enrich 之后补：enrich 必须跳过，否则会补上生产侧
         // 刻意留空的字段（实测：琉音赠行凭空多 daze、诺姆赠行凭空多 skillDamageTarget）。
-        if (exec.source === 'gift' || exec.normaGiftChain) return exec
+        if (exec.source === 'gift' || exec.normaGiftChain) {
+          return targetOverride ? { ...exec, skillDamageTarget: targetOverride } : exec
+        }
         let patch: Partial<SkillExecution> = {}
         if (exec.moveId === 'basic_attack') {
           if (exec.damageMultiplierOverride || exec.dazeMultiplierOverride) {
@@ -418,6 +424,7 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
             }
           }
         }
+        if (targetOverride && exec.moveId !== 'basic_attack') patch.skillDamageTarget = targetOverride
         return { ...exec, ...patch }
       })
       return { ...char, executions }
