@@ -160,6 +160,18 @@ export function getWarmStartStats(): { stored: number; seeded: number } {
 export const TIME_BUDGET_TOLERANCE_SECONDS = 1
 
 /**
+ * 内层环检测的**预键**：各槽「强特/终结次数 + 平A时间」按 JSON 的数值编码拼接（非有限数与 null 同记、
+ * −0 与 0 同记、缺失与 undefined 同记）⇒ 两份状态 JSON 相等必然预键相等（必要条件），用来跳过绝大多数轮的全量序列化。
+ */
+function cycleProbeKey(states: IterationState[]): string {
+  const part = (x: unknown): string =>
+    typeof x === 'number' ? (Number.isFinite(x) ? String(x) : 'n') : x == null ? (x === null ? 'n' : 'u') : JSON.stringify(x)
+  let s = String(states.length)
+  for (const st of states) s += `|${part(st.exSpecialCount)},${part(st.ultimateCount)},${part(st.basicAttackTime)}`
+  return s
+}
+
+/**
  * 欠打回填的启动门槛（秒）：平A权重队的剩余自由时间必须按权重全部分配（用户口径 2026-09-08），
  * 故门槛 = 量化容差：欠打 >1s 必试探回填（refund→平A池→按 timeWeight 水填分配）；≤1s 属量化
  * 地板（坑12「不追求精确 0」，合轴可覆盖），不试探。09-05「≤5s 会把近均衡队推进 stunCount=0
@@ -342,7 +354,10 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
    * 提升到函数级（2026-09-08 重构）：折叠循环与「② 规范重跑」共用。
    */
   const runInnerLoop = (from: IterationState[]): { end: IterationState[]; clean: boolean; iterations: number } => {
-    const cycleSigs = new Map<string, number>()
+    // 环检测：预键 → 同预键的快照下标（升序）。全状态 JSON 只在预键撞上时才算（见下方循环注释）
+    const cycleBuckets = new Map<string, number[]>()
+    const cycleSigCache: (string | undefined)[] = []
+    const sigAt = (idx: number): string => (cycleSigCache[idx] ??= JSON.stringify(cycleSnapshots[idx]))
     const cycleSnapshots: IterationState[][] = []
     let cur = from
     /** 第 oscillatorStop 轮状态快照 = 收敛尝试失败时的停点（与历史上限 20 的「上限处瞬态」逐位一致） */
@@ -374,8 +389,17 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       if (!changed) return { end: cur, clean: true, iterations: k }
       // 环检测：签名 = 全状态 JSON（含 energySource 快照——iterate 消费的一切）；快照/恢复用
       // structuredClone 而非 JSON roundtrip——JSON 会把 NaN 物化成 null 写回状态（毒路径）
-      const sig = JSON.stringify(cur)
-      const firstSeen = cycleSigs.get(sig)
+      // 全状态 JSON 按需算（2026-09-23，原为逐轮必算、占 runInnerLoop 自耗时大头）：先比「次数 + 平A时间」预键——
+      // JSON 相等 ⇒ 预键相等（`cycleProbeKey` 按 JSON 的数值编码取值），只在预键撞上时才算两边 JSON 逐字比较，
+      // 取最早的相等者 = 旧 `Map<sig, 首见下标>` 的语义；快照是不被改写的引用，晚算 JSON 与当轮算逐字相同。
+      const probe = cycleProbeKey(cur)
+      const bucket = cycleBuckets.get(probe)
+      let firstSeen: number | undefined
+      if (bucket) {
+        const sig = JSON.stringify(cur)
+        cycleSigCache[cycleSnapshots.length] = sig
+        for (const idx of bucket) if (sigAt(idx) === sig) { firstSeen = idx; break }
+      }
       if (firstSeen !== undefined) {
         const members = cycleSnapshots.slice(firstSeen)
         let canonical = members[0]
@@ -392,7 +416,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         if (oscillatorStopStates) return { end: oscillatorStopStates, clean: false, iterations: oscillatorStop }
         return { end: structuredClone(canonical), clean: false, iterations: k }
       }
-      cycleSigs.set(sig, cycleSnapshots.length)
+      if (bucket) bucket.push(cycleSnapshots.length)
+      else cycleBuckets.set(probe, [cycleSnapshots.length])
       // 快照存**引用**（2026-09-23 mcp-engine-r2，原为逐轮 structuredClone，实测自耗时 ~0.9s/18s）：
       // `cur` 是 iterate 新建的数组，之后只作下一轮 iterate 的只读入参（纯度探针实测 85,779 次调用 0 次改写入参）；
       // 快照只在本函数内比较，出口处的规范成员仍 structuredClone 后返回 ⇒ 调用方拿到的对象与旧版同为独立副本。

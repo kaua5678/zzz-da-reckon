@@ -161,9 +161,8 @@ describe('spec resource panel buffs', () => {
 
   it('applies Peiluo flare and Seth shield panel buffs', () => {
     // 佩洛伊斯耀斑（下分支开局必打，全程覆盖）：能量效率+15%、伤害+40%
-    const peiluoMap = resources('1551', {}, { frontlineTime: 60, exSpecialCount: 0, ultimateCount: 0 })
     const peiluoPanel = emptyPanel()
-    transform(peiluoProminenceMechanic, '1551', peiluoPanel, peiluoMap)
+    peiluoProminenceMechanic.applyPanel!({ panel: peiluoPanel, cinemaLevel: 0 } as any)
     expect(peiluoPanel.energyGainEfficiency).toBe(15)
     expect(peiluoPanel.dmgBonus).toBe(40)
     // 赛斯匪石之盾已迁移到 agents/seth.ts 模块，见 __tests__/seth.test.ts

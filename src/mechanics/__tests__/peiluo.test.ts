@@ -117,11 +117,13 @@ describe('佩洛伊斯大招三分支拆分（patchExecutions）', () => {
 })
 
 describe('佩洛伊斯耀斑 buff（下分支开局必打，全程覆盖）', () => {
-  it('transform：能量获得效率 +15%、伤害 +40%', () => {
+  it('applyPanel：能量获得效率 +15%、伤害 +40%，且重复计算不累加（面板阶段每次新建面板）', () => {
     const panel: any = {}
-    peiluoProminenceMechanic.transformSkillExecutions!({ panel, charResult: {} } as any)
+    peiluoProminenceMechanic.applyPanel!({ panel, cinemaLevel: 0 } as any)
     expect(panel.energyGainEfficiency).toBe(15)
     expect(panel.dmgBonus).toBe(40)
+    // 回归（2026-09-23）：旧实现挂 transformSkillExecutions，直接 += 缓存面板，单次计算 +640% 且逐次累加
+    expect(peiluoProminenceMechanic.transformSkillExecutions).toBeUndefined()
   })
 })
 

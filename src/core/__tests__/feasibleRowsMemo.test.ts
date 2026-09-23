@@ -10,7 +10,7 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
-import { feasibleRows, getFeasibleRowsMemoHits, setFeasibleRowsMemoEnabled, withFeasibleRowsMemo } from '@/core/resource/rowBuild'
+import { feasibleRows, getFeasibleRowsMemoHits, setRowFastPathsEnabled, withFeasibleRowsMemo } from '@/core/resource/rowBuild'
 import { setCalcOutputMemoEnabled, useResourceCalc } from '@/composables/useResourceCalc'
 import { applyTeamToStore } from '@/composables/teamCompare'
 import { resolveMechanicSettings } from '@/composables/resourceCalc/panelPhases'
@@ -85,7 +85,7 @@ describe('feasibleRows 作用域记忆', () => {
     const calc = useResourceCalc()
     setCalcOutputMemoEnabled(false)
     const run = (on: boolean) => {
-      setFeasibleRowsMemoEnabled(on)
+      setRowFastPathsEnabled(on)
       const trail: string[] = []
       for (const id of ['auto-1461-1521-1361', 'banyue-liuyin-lucia', 'auto-1041-1161-1311', 'auto-1431-1481-1491']) {
         const p = teamPresets.find(x => x.id === id)
@@ -117,7 +117,7 @@ describe('feasibleRows 作用域记忆', () => {
       for (let i = 0; i < on.length; i++) expect(on[i], `case ${i}`).toBe(off[i])
     } finally {
       setCalcOutputMemoEnabled(true)
-      setFeasibleRowsMemoEnabled(true)
+      setRowFastPathsEnabled(true)
     }
   }, 300_000)
 })

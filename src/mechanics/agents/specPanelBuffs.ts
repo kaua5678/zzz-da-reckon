@@ -220,15 +220,14 @@ peiluoProminenceMechanic.applyPanel = ({ panel, cinemaLevel }: AgentPanelInput) 
   if (cinemaLevel >= 4) {
     panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + 10
   }
-}
-peiluoProminenceMechanic.transformSkillExecutions = (input: any) => {
-  const panel = input.panel
-  if (!panel) return
-  delete (panel as any).__specPanelBuffApplied
-  // 耀斑（下分支开局必打，200s≈全程覆盖）：无条件挂面板
+  // 耀斑（下分支开局必打，200s≈全程覆盖）：无条件挂面板。必须在面板阶段——伤害与回能读同一面板。
+  // 2026-09-23 修：原挂在 transformSkillExecutions 里直接 += 缓存的 panels.value[i] 且无幂等守卫，
+  // 单次计算被调 16 次 ⇒ 伤害加成 +640%（应 +40%）且每次重算继续累加；能量效率则从未进资源引擎。
   panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + PEILUO_FLARE_ENERGY
   panel.dmgBonus = (panel.dmgBonus ?? 0) + PEILUO_FLARE_DMG
 }
+// 日珥≥30 暴伤的旧工厂 transform 已由额外能力（applyPanel）取代（d0ecf19）；不再挂任何 transform。
+delete peiluoProminenceMechanic.transformSkillExecutions
 peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }: any) => {
   const ultCount = Math.max(0, Math.floor(state.ultimateCount ?? 0))
   if (ultCount <= 0) return

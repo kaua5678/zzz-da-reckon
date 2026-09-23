@@ -1,15 +1,15 @@
 # 引擎性能（活文档：现状 · 手段 · 否决记录）
 
 > 每轮优化**更新本文**，不新开 `-rN` 文档（控制文档膨胀）。每轮细节在 git log；这里只留「下一个人需要知道的」。
-> 最近更新：2026-09-23 第 2 轮。
+> 最近更新：2026-09-23 第 3 轮。
 
 ## 现状读数
 
-| 度量 | 基线 | 第 1 轮后 | 第 2 轮后 |
-|---|---:|---:|---:|
-| 难度曲线 G2 爬梯（般琉卢） | 17.8s | 4.6s | — |
-| `npm run verify` | 296.8s | 131.0s | — |
-| 全库 dump（624 场景，calcOutput 记忆关） | — | 68.2s | 51.0s |
+| 度量 | 基线 | 第 1 轮后 | 第 2 轮后 | 第 3 轮后 |
+|---|---:|---:|---:|---:|
+| 难度曲线 G2 爬梯（般琉卢） | 17.8s | 4.6s | — | — |
+| `npm run verify` | 296.8s | 131.0s | — | — |
+| 全库 dump（624 场景，calcOutput 记忆关） | — | 68.2s | 51.0s | 45.2s（同口径 52.0s 起，含队友 buff 同步修复） |
 
 ## 等价验证手段（改引擎性能前必看）
 
@@ -19,6 +19,8 @@
 - **profile**：`.zc/perf/engine.perf.ts`（`PERF_PROFILE=1`，带调用者归因）。
 - **纯度探针**：先量「重复」是否真是重复，再做记忆（例：`feasibleRows` 同参数重复 35%、行 0 次不同、结果 0 次被改写）。
 - 仓内测试：`calcOutputMemo` / `feasibleRowsMemo`（记忆开/关 A/B 逐位）+ timeGolden / seedInvariance / warmStart。
+- **全角色护栏** `src/core/__tests__/allAgentsGuards.test.ts`：catalog 枚举全部角色（新角色零配置纳入）× 命座 0/6 × 交互加码，
+  验 ① 同配置重算幂等 ② 行物化快路径开/关逐位相同。**dump 只覆盖预设里出现的角色**（首例：1551 不在任何预设，漏检），新快路径一律接进这里。
 
 ## 已落地手段与前提（前提失效 = 静默错值）
 
@@ -26,9 +28,10 @@
 |---|---|---|
 | calcOutput 记忆化（LRU 16） | `useResourceCalc.ts` | 输入 = 键：新增**非 store** 的全局响应式输入必须进键；闸门开启时绕过 |
 | 目录数据 shallowRef | `stores/catalog.ts` | 目录只整体替换，不原地改 |
-| `materializeRows` 快照/恢复只补改动值 | `core/resource/rowBuild.ts` | — |
+| `materializeRows` 快照/恢复只补改动值；模块新增键恢复为 undefined 而非 delete（防 cfg 变字典模式，dump −5%） | `core/resource/rowBuild.ts` | 无人以 `in`/`hasOwnProperty` 判 cfg 键（全角色护栏 ②） |
 | `feasibleRows` 作用域单槽记忆 | `rowBuild.ts#withFeasibleRowsMemo` | 单次 `iterate` 内 cfg/state 与行不被改写（`@fact engine:物化行作用域记忆`，带复核） |
-| 环检测快照存引用 | `core/resource.ts#runInnerLoop` | `iterate` 返回新数组、不改写入参 |
+| 环检测快照存引用 + 预键分桶（仅预键碰撞才算全量 JSON） | `core/resource.ts#runInnerLoop` | `iterate` 返回新数组、不改写入参 |
+| `fmt` 快路径（\|r\|<1000 且 ≤3 位小数 ⇒ `String(r)`） | `utils/format.ts` | 载入时探测 locale 不加分组/小数点即 `.`（de_DE 下自动关）；`format.test.ts` 2 万例对照 |
 | 引擎读 store 绕过 pinia action 包装 | `stores/selectionReads.ts`（读口径单源）+ `catalogStore.xMap.get` | 全仓无 `$onAction` / pinia 插件；新增读口径加进 `selectionReads` 并让 store 方法委托 |
 | 降配闸门兜底复用同档试算 | `useResourceCalc.ts#stageResolveFeasibility` | 同档试算与次序无关（GUIDE 判据⑤受控复现） |
 
@@ -36,9 +39,15 @@
 
 - `materializeRows` 值快照改 `Object.values`：慢 ~5×（105 键对象 4 万次 map 130–155ms vs 790–820ms），dump 52.6→63.8s。
 - `fmt` 缓存 `Intl.NumberFormat`：116 vs 112ms，无收益。
+- 快照改 `for-in` / 手写循环 / push：2021 vs 1528ms、三者无差（微基准），不改。
 - 跨档热启动 / 降配扫描提前终止或成本闸门 / 缩放配置去重：破 seedInvariance、可行集非下闭、`cfgUniq` 8/8（GUIDE 判据⑤）。
 
-## 剩余热点（第 2 轮后，自耗时 / 14.2s profile）
+## 模块写法红线（护栏抓到过的真 bug）
+
+- 钩子**不得** `+=` 缓存对象（`panels.value[i]` / 行 / cfg）。面板加成放 `applyPanel`（每次新建面板）。
+  反例：佩洛伊斯耀斑挂 `transformSkillExecutions`（单次计算调 12–16 次）⇒ 伤害 +480%~+640% 且每次重算继续累加，已修（timeGolden 1551 −73.95% = 1.55/5.95）。
+
+## 剩余热点（第 2 轮后，自耗时 / 14.2s profile；第 3 轮已处理前两项的主要部分）
 
 `materializeRows` 1.53s（约 1/3 走「键集变化」慢路径：模块往 cfg **新增**同调用缓存键、恢复时 delete ⇒ cfg 变形）·
 `runInnerLoop` 0.73s · GC 0.63s · `iterateBody` 0.57s · `buildExecutions` 0.49s · `enrichExecutionPlan` 包含 0.55s · `warmStartExactKey` 0.23s。

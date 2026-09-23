@@ -61,8 +61,17 @@ export function materializeRows(
       if (!Object.is(cfgRecord[k], snapVals[i])) cfgRecord[k] = snapVals[i]
     }
   } else {
+    // 模块本次调用**新增**的缓存键：置 undefined 而不 delete（2026-09-23）——delete 会把 cfg 打进字典模式，
+    // 此后每次物化都走本慢分支、下游属性读全部变慢（实测 13 个角色模块每轮新增键，占 materializeRows 自耗时 ~1/3；
+    // 微基准 1619→897ms、对象保持快模式）。以后新角色往 cfg 写同调用缓存字段**自动**走快路径，无需逐模块预声明。
+    // 语义：键存在且值为 undefined ≡ 键不存在——全仓对 cfg 无 `in`/`hasOwnProperty` 判定，JSON 序列化（热启动键等）
+    // 同样忽略 undefined 值；由 `allAgentsGuards.test.ts` 对全部角色开/关逐位锁定。
     const had = new Set(snapKeys)
-    for (const k of nowKeys) if (!had.has(k)) delete cfgRecord[k]
+    for (const k of nowKeys) {
+      if (had.has(k)) continue
+      if (rowFastPathsEnabled) cfgRecord[k] = undefined
+      else delete cfgRecord[k]
+    }
     for (let i = 0; i < snapKeys.length; i++) {
       const k = snapKeys[i]!
       if (!Object.is(cfgRecord[k], snapVals[i]) || !Object.prototype.hasOwnProperty.call(cfgRecord, k)) cfgRecord[k] = snapVals[i]
@@ -139,7 +148,7 @@ function clearFeasibleRowsMemoSlot(): void {
 
 /** 在作用域内启用 `feasibleRows` 单槽记忆（可重入：嵌套调用沿用外层作用域）。 */
 export function withFeasibleRowsMemo<T>(fn: () => T): T {
-  if (feasibleRowsMemo.active || !feasibleRowsMemoEnabled) return fn()
+  if (feasibleRowsMemo.active || !rowFastPathsEnabled) return fn()
   feasibleRowsMemo.active = true
   try {
     return fn()
@@ -154,10 +163,14 @@ export function getFeasibleRowsMemoHits(): number {
   return feasibleRowsMemo.hits
 }
 
-/** 全局开关（测试做 A/B 逐位对照用；生产恒开）——与 `setCalcOutputMemoEnabled` 同约定 */
-let feasibleRowsMemoEnabled = true
-export function setFeasibleRowsMemoEnabled(on: boolean): void {
-  feasibleRowsMemoEnabled = on
+/**
+ * 行物化快路径总开关（测试做 A/B 逐位对照用；生产恒开）：关 ⇒ `feasibleRows` 不记忆、`materializeRows` 对新增键 delete。
+ * 两条快路径的前提都依赖**角色模块的写法**（同调用缓存字段写 cfg、不改写行），新角色可能打破——
+ * `src/core/__tests__/allAgentsGuards.test.ts` 对 catalog 全部角色自动做开/关逐位对照，新增角色零配置纳入。
+ */
+let rowFastPathsEnabled = true
+export function setRowFastPathsEnabled(on: boolean): void {
+  rowFastPathsEnabled = on
 }
 
 function feasibleRowsUncached(
