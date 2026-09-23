@@ -47,6 +47,8 @@ export function materializeRows(
   // 但常态（模块不写 cfg 或写回同值）零写入 ⇒ cfg 不退化成字典模式、下游属性读保持快路径。
   // 2026-09-23 mcp-engine：旧版在难度曲线 G2 爬梯里自耗时 4.6s / 18s（全引擎第一热点）。
   const snapKeys = Object.keys(cfgRecord)
+  // 否决记录（2026-09-23 mcp-engine-r2）：把本行与下方比对换成原生 `Object.values` 实测**更慢**——微基准 105 键对象
+  // 快/字典模式均 ~5×（map 130–155ms vs values 790–820ms / 4 万次），全库等价 dump 52.6s → 63.8s。别再试。
   const snapVals = snapKeys.map(k => cfgRecord[k])
   const rows = buildExecutions(cfg, state, chainCountTotal, teamFrontlineSeconds)
   const nowKeys = Object.keys(cfgRecord)
@@ -86,6 +88,84 @@ export function feasibleRows(
   chainCountTotal: number,
   teamFrontlineSeconds = 0,
   rowTimeLimit?: number,
+): SkillExecution[] {
+  const memo = feasibleRowsMemo
+  if (memo.active && memo.cfg === cfg && memo.state === state && Object.is(memo.chain, chainCountTotal)
+    && Object.is(memo.teamFrontline, teamFrontlineSeconds) && Object.is(memo.limit, rowTimeLimit)) {
+    memo.hits++
+    return memo.rows!
+  }
+  const rows = feasibleRowsUncached(cfg, state, chainCountTotal, teamFrontlineSeconds, rowTimeLimit)
+  if (memo.active) {
+    memo.cfg = cfg; memo.state = state; memo.chain = chainCountTotal
+    memo.teamFrontline = teamFrontlineSeconds; memo.limit = rowTimeLimit; memo.rows = rows
+  }
+  return rows
+}
+
+/**
+ * `feasibleRows` 的**作用域内单槽记忆**（2026-09-23 mcp-engine-r2）。
+ *
+ * 为什么：`iterate` Step 1 对同一槽先后调 `calcEnergySource` 与 `calcRawDecibelParts`，两者各物化一次行；
+ * 本轮强特次数不变时（收敛尾段的常态）喧响侧的 `rowState` 就是 `prev` **同一对象**，参数五元组逐项同身份
+ * ⇒ 第二次物化是纯重复。实测全库 104 预设 × 3 命座：544,410 次调用中 191,495 次与上一次同参数（35%）。
+ *
+ * **只在 `withFeasibleRowsMemo` 作用域内生效**（`iterate` 包一层），作用域外恒走原路径——
+ * 作用域内不会有别处改写 cfg / state（`iterate` 是纯映射，行由 `materializeRows` 快照/恢复隔离），
+ * 命中返回同一数组：消费者只做 `reduce` 求和、不改写行。
+ * 两条前提的实测证据（`.zc/perf/purity.perf.ts`，104 预设 × 3 命座）：同参数重物化 **191,495 次 0 次行不同**、
+ * 首次结果被消费后 **0 次被改写**；`iterate` 85,779 次调用 **0 次改写入参 states**。
+ * 键用身份比较（cfg/state 对象 + 3 个数值 `Object.is`）：cfg 字段被改写而对象身份不变的情形不可能发生在单次
+ * `iterate` 内（上述隔离）；作用域退出即清空，不跨调用持有引用。
+ * @fact engine:物化行作用域记忆 口径: `feasibleRows` 仅在 `withFeasibleRowsMemo` 作用域（= 单次 `iterate`）内按「cfg/state 同对象 + chain/teamFrontline/rowTimeLimit `Object.is` 相等」复用上一次结果（单槽），作用域外恒重算；前提 = 作用域内 cfg/state 不被改写、消费者不改写行（纯度探针实测 0 违规） | 据 mcp-engine-r2 纯度探针@2026-09-23 | 验 src/core/__tests__/feasibleRowsMemo.test.ts | 锚 src/core/resource/rowBuild.ts#withFeasibleRowsMemo | 信 高
+ * ⟳复核: iterate 内新增「改写 cfg/state」或「就地改写行」的消费者时，重跑 `.zc/perf/purity.perf.ts`（iterMutated / rowsMutated 须仍为 0）+ feasibleRowsMemo.test A/B | 到期 2026-12-31
+ */
+const feasibleRowsMemo: {
+  active: boolean
+  cfg: CharacterOperationConfig | null
+  state: IterationState | null
+  chain: number
+  teamFrontline: number
+  limit: number | undefined
+  rows: SkillExecution[] | null
+  hits: number
+} = { active: false, cfg: null, state: null, chain: NaN, teamFrontline: NaN, limit: undefined, rows: null, hits: 0 }
+
+function clearFeasibleRowsMemoSlot(): void {
+  feasibleRowsMemo.cfg = null
+  feasibleRowsMemo.state = null
+  feasibleRowsMemo.rows = null
+}
+
+/** 在作用域内启用 `feasibleRows` 单槽记忆（可重入：嵌套调用沿用外层作用域）。 */
+export function withFeasibleRowsMemo<T>(fn: () => T): T {
+  if (feasibleRowsMemo.active || !feasibleRowsMemoEnabled) return fn()
+  feasibleRowsMemo.active = true
+  try {
+    return fn()
+  } finally {
+    feasibleRowsMemo.active = false
+    clearFeasibleRowsMemoSlot()
+  }
+}
+
+/** 命中计数（测试/诊断用） */
+export function getFeasibleRowsMemoHits(): number {
+  return feasibleRowsMemo.hits
+}
+
+/** 全局开关（测试做 A/B 逐位对照用；生产恒开）——与 `setCalcOutputMemoEnabled` 同约定 */
+let feasibleRowsMemoEnabled = true
+export function setFeasibleRowsMemoEnabled(on: boolean): void {
+  feasibleRowsMemoEnabled = on
+}
+
+function feasibleRowsUncached(
+  cfg: CharacterOperationConfig,
+  state: IterationState,
+  chainCountTotal: number,
+  teamFrontlineSeconds: number,
+  rowTimeLimit: number | undefined,
 ): SkillExecution[] {
   const rows = materializeRows(cfg, state, chainCountTotal, teamFrontlineSeconds)
   if (rowTimeLimit == null || !Number.isFinite(rowTimeLimit) || rowTimeLimit < 0) return rows

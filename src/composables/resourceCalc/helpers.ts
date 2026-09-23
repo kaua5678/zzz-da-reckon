@@ -331,7 +331,7 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
   return {
     ...result,
     characters: result.characters.map(char => {
-      const skills = catalogStore.getAgentSkills(char.agentId)
+      const skills = catalogStore.agentSkillsByAgentMap.get(char.agentId)
       const executions = char.executions.map(exec => {
         // 赠行由引擎物化、倍率由编排层在 enrich 之后补：enrich 必须跳过，否则会补上生产侧
         // 刻意留空的字段（实测：琉音赠行凭空多 daze、诺姆赠行凭空多 skillDamageTarget）。
@@ -454,8 +454,8 @@ export function buildCharConfig(
   const char = configStore.team[slot]
   if (!char?.agentId) return null
 
-  const agent = catalogStore.getAgent(char.agentId)
-  const skills = catalogStore.getAgentSkills(char.agentId)
+  const agent = catalogStore.agentsMap.get(char.agentId)
+  const skills = catalogStore.agentSkillsByAgentMap.get(char.agentId)
   if (!agent || !skills) return null
 
   const panel = computePanel(slot, configStore, catalogStore)
@@ -514,7 +514,7 @@ export function buildCharConfig(
   const isSupport = agent.specialty === 'support'
 
   // 加农转子（14001）：攻击命中并暴击时触发 200% 攻击力直伤事件，按精修 CD 计算本局上限。
-  const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : null
+  const wEngine = char.wEngineId ? catalogStore.wEnginesMap.get(char.wEngineId) : null
   const wEngineMatchesSpecialty = !!wEngine && wEngine.specialty === agent.specialty
   const cannonRotorCooldowns = [8, 7.5, 7, 6.5, 6]
   const cannonRotorModIndex = Math.max(0, Math.min(4, (char.wEngineModLevel ?? 1) - 1))
@@ -719,7 +719,7 @@ export function extractSkillExecutions(
   const skillLevelBonus = panel?.skillLevelBonus ?? 0
   const dazeCoef = skillLevelBonus > 0 ? getSkillLevelCoef(skillLevelBonus).dazeCoef : 1
 
-  const agent = catalogStore.getAgent(agentId)
+  const agent = catalogStore.agentsMap.get(agentId)
   const fallbackElement = agent?.damageElement
   const charCfg = configStore.team[slot]
   const mechanic = getAgentMechanic(agentId)

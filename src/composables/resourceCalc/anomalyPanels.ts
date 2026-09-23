@@ -45,7 +45,7 @@ export function teamHasAgent(
   agentIds: string[],
 ): boolean {
   return configStore.team.some(char => {
-    const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
+    const agent = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
     return agentIds.includes(char.agentId) || agentIds.includes(agent?.teammateBuffId ?? '')
   })
 }
@@ -61,7 +61,7 @@ export function getTeamAnomalyDurationBonus(
     // 槽位查找收敛为 `findSlotByIdentity`（单一事实源，规则 11）；`?? -1` 兜底逐位保留
     // ——原式是 `team.find(...)?.slot ?? -1`，`findSlotByIdentity` 未命中同样返回 -1。
     const rinaSlot = findSlotByIdentity(configStore, catalogStore, ['1211']) ?? -1
-    const rina = rinaSlot >= 0 ? catalogStore.getAgent('1211') ?? null : null
+    const rina = rinaSlot >= 0 ? catalogStore.agentsMap.get('1211') ?? null : null
     if (rinaSlot >= 0 && evalAdditionalAbility(team, rinaSlot, rina, getAgentSpec('1211')?.additionalAbility)) return 3
   }
   // ★ 以太臂**已删除**（R63，2026-09-20 round 63）：原先写作
@@ -99,7 +99,7 @@ export function findSlotByIdentity(
   ids: readonly string[],
 ): number {
   return configStore.team.findIndex(char => {
-    const a = char.agentId ? catalogStore.getAgent(char.agentId) : null
+    const a = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
     if (!a) return false
     return ids.some(id => a.id === id || a.teammateBuffId === id)
   })
@@ -122,13 +122,13 @@ export function getWindInfectionTargetSlot(
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): number {
   const windSlot = configStore.team.findIndex(char => {
-    const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
+    const agent = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
     return agent?.damageElement === 'wind'
   })
   if (windSlot < 0) return -1
 
   const candidates = configStore.team.map((char, slot) => {
-    const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
+    const agent = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
     return {
       slot,
       agentId: char.agentId ?? '',
@@ -156,7 +156,7 @@ export function getWindInfectionElement(
 ): string {
   const slot = getWindInfectionTargetSlot(configStore, catalogStore)
   const char = configStore.team[slot]
-  const agent = char?.agentId ? catalogStore.getAgent(char.agentId) : null
+  const agent = char?.agentId ? catalogStore.agentsMap.get(char.agentId) : null
   return agent?.damageElement || 'wind'
 }
 
@@ -220,7 +220,7 @@ export function buildAnomalyVirtualPanel(
     .map(([slot, buildup]) => {
       const panel = panelAt(panels, slot) ?? emptyPanel()
       const agentId = configStore.team[slot]?.agentId ?? ''
-      const agent = agentId ? catalogStore.getAgent(agentId) : null
+      const agent = agentId ? catalogStore.agentsMap.get(agentId) : null
       const dmgBonus = (panel.dmgBonus ?? 0) + (panel[ELEMENT_DMG_KEYS[prog.element]] ?? 0)
       // 同属性角色才可参与结算/面板加权
       const settlementEligible = agent?.damageElement === prog.element
@@ -361,7 +361,7 @@ export function buildAnomalySettlementEntries(
   }
 
   return rows.map((row, i) => {
-    const agent = catalogStore.getAgent(configStore.team[row.slot]?.agentId ?? '')
+    const agent = catalogStore.agentsMap.get(configStore.team[row.slot]?.agentId ?? '')
     return {
       slot: row.slot,
       share: shares[i] / shareTotal,

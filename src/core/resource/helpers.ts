@@ -134,7 +134,7 @@ export { TIME_FOLD_CONVERGENCE_SECONDS, truncateExecutionsToFrontline }
 // **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
 // ⚠ 改行构建口径请改 `./rowBuild.ts`，**不要在本文件重建同形函数**。
 // ============================================================================
-import { materializeRows, feasibleRows, buildExecutions, buildAnomalyEventExecutions } from './rowBuild'
+import { materializeRows, feasibleRows, buildExecutions, buildAnomalyEventExecutions, withFeasibleRowsMemo } from './rowBuild'
 export { materializeRows, feasibleRows, buildExecutions, buildAnomalyEventExecutions }
 
 // ============ 单次迭代 ============
@@ -217,8 +217,17 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
  *   3. 终结技次数（喧响总量 ÷ 消耗，依赖 Step2）；
  *   4. 必做动作前台时间 + 合轴抵扣 + 平A池分配 + **可行性封顶**（`timeFeasibleScale`，依赖 Step3 的次数）。
  * 本函数是纯映射（同输入同输出），相位写入由 `materializeRows` 隔离；它的不动点由 `runInnerLoop` 收敛。
+ * 整个函数体跑在 `withFeasibleRowsMemo` 作用域里：同槽能量/喧响两次同参数物化共用一次（口径见其头注释）。
  */
 export function iterate(
+  configs: CharacterOperationConfig[],
+  prevStates: IterationState[],
+  globalCfg: ResourceCalcConfig,
+): IterationState[] {
+  return withFeasibleRowsMemo(() => iterateBody(configs, prevStates, globalCfg))
+}
+
+function iterateBody(
   configs: CharacterOperationConfig[],
   prevStates: IterationState[],
   globalCfg: ResourceCalcConfig,

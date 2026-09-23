@@ -20,6 +20,13 @@
  */
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
+import {
+  discEffectCoverageOf,
+  mechanicSettingOf,
+  teammateBuffCoverageOf,
+  teammateBuffEnabledOf,
+  wEngineEffectCoverageMapOf,
+} from '@/stores/selectionReads'
 import { calcPanel, panelAt } from '@/core/panel'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import type { CalcRoundThreads } from './roundThreads'
@@ -55,7 +62,7 @@ export function buildMechanicTeamMembers(
   return configStore.team.map((char, slot) => ({
     slot,
     agentId: char.agentId,
-    agent: char.agentId ? catalogStore.getAgent(char.agentId) ?? null : null,
+    agent: char.agentId ? catalogStore.agentsMap.get(char.agentId) ?? null : null,
     cinemaLevel: char.cinemaLevel ?? 0,
     potentialLevel: char.potentialLevel ?? 6,
     wEngineId: char.wEngineId ?? '',
@@ -99,8 +106,10 @@ export function resolveMechanicSettings(
   configStore: ReturnType<typeof useConfigStore>,
 ): Readonly<Record<string, number>> {
   const out: Record<string, number> = {}
+  // 直读 state + 共享纯函数，不经 pinia action 包装（原因与口径单一来源见 `@/stores/selectionReads` 头注释）
+  const values = configStore.mechanicSettings
   for (const setting of getRegisteredMechanicSettings()) {
-    out[setting.id] = configStore.getMechanicSetting(setting.id, setting.default)
+    out[setting.id] = mechanicSettingOf(values, setting.id, setting.default)
   }
   return out
 }
@@ -194,7 +203,7 @@ export function applyTeamMechanics(params: {
   for (const cfg of characters) {
     const declared = getAgentMechanic(cfg.agentId)?.anomalyBuildupElement
     if (declared) { anomalyBuildupElementBySlot[cfg.slot] = declared; continue }
-    const skills = catalogStore.getAgentSkills(cfg.agentId)
+    const skills = catalogStore.agentSkillsByAgentMap.get(cfg.agentId)
     const sums = new Map<string, number>()
     for (const cat of skills?.categories ?? []) {
       for (const mv of cat.moves) {
@@ -217,7 +226,7 @@ export function applyTeamMechanics(params: {
       // 本模块自己那份 cfg：派发器正在遍历它，直接递进去。压缩数组（空槽被跳过）下
       // `characters[slot]` 在「前导/中间空槽」时会取到 undefined 或别人那份（规则见类型注释）。
       cfg,
-      agent: catalogStore.getAgent(cfg.agentId) ?? null,
+      agent: catalogStore.agentsMap.get(cfg.agentId) ?? null,
       cinemaLevel: configStore.team[cfg.slot]?.cinemaLevel ?? 0,
       potentialLevel: configStore.team[cfg.slot]?.potentialLevel ?? 6,
       characters,
@@ -242,7 +251,7 @@ export function applyTeamMechanics(params: {
       boss,
       // 倍率表访问（round 21 夜D）：雨果 1291 的轴内窗口终结时长反推要查动作 actionTime。
       // 与 `collectNextRoundFeedback` 的同名入参同款（那里也是从 catalogStore 现场构造）。
-      getAgentSkills: (agentId: string) => catalogStore.getAgentSkills(agentId),
+      getAgentSkills: (agentId: string) => catalogStore.agentSkillsByAgentMap.get(agentId),
     })
   }
 }
@@ -280,7 +289,7 @@ export function collectNextRoundFeedback(params: {
   const out: Partial<CalcRoundThreads> = {}
   if (characters.length === 0) return out
   const combatTime = params.combatTime ?? 180
-  const getAgentSkills = (agentId: string) => catalogStore.getAgentSkills(agentId)
+  const getAgentSkills = (agentId: string) => catalogStore.agentSkillsByAgentMap.get(agentId)
   for (const cfg of [...characters].sort((a, b) => a.slot - b.slot)) {
     const hook = getAgentMechanic(cfg.agentId)?.nextRoundFeedback
     if (!hook) continue
@@ -344,7 +353,7 @@ export function collectAxisWindowOverlays(
     corinStunBonusMap: new Map<string, number>(),
     scalarBySlot: new Map<number, AxisScalarOverlays>(),
   }
-  const getAgentSkills = (agentId: string) => catalogStore.getAgentSkills(agentId) as
+  const getAgentSkills = (agentId: string) => catalogStore.agentSkillsByAgentMap.get(agentId) as
     { categories: { id: string; moves: { id: string }[] }[] } | undefined
   // 滑块：与 `AgentPanelInput.settings` 同源（模块的非轴折算臂读它，缺省由模块回落注册 default）
   const settings = resolveMechanicSettings(configStore)
@@ -474,18 +483,19 @@ export function computePanelPhases(
   const char = configStore.team[slot]
   if (!char?.agentId) return null
 
-  const agent = catalogStore.getAgent(char.agentId)
+  const agent = catalogStore.agentsMap.get(char.agentId)
   if (!agent) return null
 
-  const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
+  const wEngine = char.wEngineId ? catalogStore.wEnginesMap.get(char.wEngineId) : undefined
 
+  const buffSelections = configStore.teammateBuffSelections
   const { enabledTeammateBuffs, sourcePanelsByOwner } = buildTeammateBuffSourceContext(configStore.team, {
     teammateBuffGroups: catalogStore.teammateBuffGroups,
     driveDiscSetsMap: catalogStore.driveDiscSetsMap,
     statRules: catalogStore.statRules,
-    getAgent: (id) => catalogStore.getAgent(id),
-    getWEngine: (id) => catalogStore.getWEngine(id),
-    isTeammateBuffEnabled: (id) => configStore.isTeammateBuffEnabled(id),
+    getAgent: (id) => catalogStore.agentsMap.get(id),
+    getWEngine: (id) => catalogStore.wEnginesMap.get(id),
+    isTeammateBuffEnabled: (id) => teammateBuffEnabledOf(buffSelections, id),
   })
 
   // 莱特：昂扬公式读局内冲击力；喷发耗士气冲击 +20% 需并入 source 面板，否则公式少算一层。
@@ -555,13 +565,13 @@ export function computePanelPhases(
   // 已收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates（规则 6 棘轮 burn-down 第 1 批，
   // 2026-09-13 逐位等价迁移；原 14 个 `xxxAdditionalActive` + 17 条逐 id `.filter`）。语义偏离与注释全部保留在表侧。
   const additionalAbilityBuffGates = evalAdditionalAbilityBuffGates(
-    team, id => catalogStore.getAgent(id) ?? null)
+    team, id => catalogStore.agentsMap.get(id) ?? null)
   const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
     .filter(buff => additionalAbilityBuffGates.get(buff.id) !== false)
 
-  const effectCoverageMap = configStore.getWEngineEffectCoverageMap()
+  const effectCoverageMap = wEngineEffectCoverageMapOf(configStore.wEngineEffectCoverages)
   for (const buff of allTeammateBuffs) {
-    const coverage = configStore.getTeammateBuffCoverage(buff.id) / 100
+    const coverage = teammateBuffCoverageOf(buffSelections, buff.id) / 100
     for (const effect of buff.effects ?? []) effectCoverageMap.set(effect.id, coverage)
   }
   mergeTeamDiscEffectCoverages(effectCoverageMap, configStore, catalogStore, teamDiscs(configStore))
@@ -686,7 +696,7 @@ export function computePanelPhases(
   // @fact panelPhases:侵染区归属 口径: `infectionZoneBonus` 是**风队通用机制**（判据 = 队伍里有 `damageElement === 'wind'` 的角色，任何风角色都触发，**与是不是维琳娜无关**）；系数 10% 的唯一来源 = 本行赋值 + 编排层 `useResourceCalc` 的覆盖率折算，**禁止**再用 spec `teamBuffs` 声明该 stat —— spec 声明会被本行赋值覆写，属性配置页会出现拨不动的**死控件**（R64 实测三档恒 10） | 据 R64 实测：队内换成 1621/1631 同样给 10，故非维琳娜拐力；docs/mechanism-reference.md §8.6 按风属性定义@2026-09-20 | 验 src/mechanics/__tests__/specTeamBuffSingleSource.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#computePanelPhases | 信 确认
   // ⟳复核: 跑 `npx vitest run specTeamBuffSingleSource` —— 若全库又有 spec 用 `teamBuffs` 声明 `infectionZoneBonus`（不变量条红），说明有人把误归属的重复声明加回来了；同时确认 1621/1631 在队仍给 10（归属判据） | 到期 2027-03-31
   const windCharInTeam = configStore.team.some(char => {
-    const member = char.agentId ? catalogStore.getAgent(char.agentId) : null
+    const member = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
     return member?.damageElement === 'wind'
   })
   panel.infectionZoneBonus = windCharInTeam ? 10 : 0
@@ -703,10 +713,10 @@ export function computeRemielleEntryPanel(
   const char = configStore.team[slot]
   if (!char?.agentId) return null
 
-  const agent = catalogStore.getAgent(char.agentId)
+  const agent = catalogStore.agentsMap.get(char.agentId)
   if (!agent) return null
 
-  const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
+  const wEngine = char.wEngineId ? catalogStore.wEnginesMap.get(char.wEngineId) : undefined
 
   const result = calcPanel(
     agent,
@@ -719,7 +729,7 @@ export function computeRemielleEntryPanel(
       cinemaLevel: char.cinemaLevel ?? 0,
       wEngineModLevel: char.wEngineModLevel ?? 1,
       effectCoverageMap: (() => {
-        const map = configStore.getWEngineEffectCoverageMap()
+        const map = wEngineEffectCoverageMapOf(configStore.wEngineEffectCoverages)
         mergeTeamDiscEffectCoverages(map, configStore, catalogStore, teamDiscs(configStore))
         return map
       })(),
@@ -758,13 +768,14 @@ function mergeTeamDiscEffectCoverages(
     for (const id of [disc.fourPieceSetId, disc.twoPieceSetId]) if (id) setIds.add(id)
   }
   for (const setId of setIds) {
+    const discCoverages = configStore.discEffectCoverages
     const set = catalogStore.driveDiscSetsMap.get(setId)
     if (!set) continue
     const groups = [set.fourPiece?.selfBuff, set.fourPiece?.teamBuff, set.twoPiece]
     for (const g of groups) {
       for (const e of (g?.effects ?? []) as Array<{ id?: string }>) {
         if (!e?.id) continue
-        map.set(e.id, configStore.getDiscEffectCoverage(e.id) / 100)
+        map.set(e.id, discEffectCoverageOf(discCoverages, e.id) / 100)
       }
     }
   }

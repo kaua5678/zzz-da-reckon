@@ -150,7 +150,7 @@ export function getBasicComboMoves(
 
   // 2. 数据配置优先（catalog agent.basicBenchmarkMoveId）
   if (agentId && catalogStore) {
-    const dataId = catalogStore.getAgent(agentId)?.basicBenchmarkMoveId
+    const dataId = catalogStore.agentsMap.get(agentId)?.basicBenchmarkMoveId
     if (dataId) {
       const found = all.find(m => m.id === dataId)
       if (found) return found

@@ -57,7 +57,7 @@ export function applyNormaHatChain(
   // 赠送连携行需自带倍率表值（applyNormaHatChain 在 enrich 之后执行，不走 enrich 回填；
   // 缺倍率则伤害池按 damageMultiplier≤0 跳过、失衡池无 baseDaze——带上后伤害/失衡才进池）
   const targetAgentId = configStore.team[targetSlot]?.agentId ?? ''
-  const targetSkills = catalogStore.getAgentSkills(targetAgentId)
+  const targetSkills = catalogStore.agentSkillsByAgentMap.get(targetAgentId)
   const chainInfo = targetSkills ? findChainAttack(targetSkills) : null
   if (!chainInfo) return base
   const giftedMove = findMoveById(targetSkills, chainInfo.moveId)

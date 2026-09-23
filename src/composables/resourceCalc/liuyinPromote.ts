@@ -82,7 +82,7 @@ export function applyLiuyinPromote(
     ...base,
     characters: base.characters.map(char => {
       if (char.slot !== targetSlot) return char
-      const skills = catalogStore.getAgentSkills(char.agentId)
+      const skills = catalogStore.agentSkillsByAgentMap.get(char.agentId)
       const ultMoveDef = findMoveById(skills, ultimateMoveId)
       // 转大送出的是「一次完整终结技」：多段终结技（登记融合组，如照·兔兔连斩 #1+#2、
       // 妮可 特制以太榴弹 炮击+能量场）必须取整段倍率与站场时长，只取主段=赠送了半招。
@@ -166,12 +166,12 @@ export function buildPromoteParams(
   const targetSlot = resolveUltimateTargetSlot(liuyinIdx, configStore.team.length, targetSetting)
   const targetAgentId = configStore.team[targetSlot]?.agentId ?? ''
   const targetChar = rr.characters.find(c => c.slot === targetSlot)
-  const targetSkills = targetAgentId ? catalogStore.getAgentSkills(targetAgentId) : undefined
+  const targetSkills = targetAgentId ? catalogStore.agentSkillsByAgentMap.get(targetAgentId) : undefined
   const ult = targetSkills ? findUltimate(targetSkills) : null
   const ultMove = ult?.moveId ? findMoveById(targetSkills, ult.moveId) : null
   const ultDaze = ultMove?.rows.find(r => r.id === 'daze')?.values[0] ?? 0
   const chain = targetSkills ? findChainAttack(targetSkills) : null
-  const ultElement = (targetAgentId && catalogStore.getAgent(targetAgentId)?.damageElement) || 'physical'
+  const ultElement = (targetAgentId && catalogStore.agentsMap.get(targetAgentId)?.damageElement) || 'physical'
   return {
     goodReviewTotal: liuyinSrc.goodReviewTotal,
     hug60Setting,

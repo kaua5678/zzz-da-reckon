@@ -16,6 +16,13 @@ import type { MechanicTeamMember } from '@/mechanics/types'
 import type { AppliedBossPreset } from '@/types/bossPreset'
 import { counterAssistOf } from '@/data/counterAssists'
 import { localized } from '@/utils/format'
+import {
+  discEffectCoverageOf,
+  mechanicSettingOf,
+  teammateBuffCoverageOf,
+  teammateBuffEnabledOf,
+  wEngineEffectCoverageMapOf,
+} from './selectionReads'
 
 // ========== 类型定义 ==========
 
@@ -465,7 +472,7 @@ export const useConfigStore = defineStore('config', () => {
     discEffectCoverages.value[effectId] = Math.max(0, Math.min(100, coverage))
   }
   function getDiscEffectCoverage(effectId: string): number {
-    return discEffectCoverages.value[effectId] ?? 100
+    return discEffectCoverageOf(discEffectCoverages.value, effectId)
   }
 
   // 资源利用率（slot:actionId -> { rate, cap }），用于把资源池上限折算为实际释放次数
@@ -949,11 +956,7 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   function getWEngineEffectCoverageMap(): Map<string, number> {
-    const map = new Map<string, number>()
-    for (const [id, coverage] of Object.entries(wEngineEffectCoverages.value)) {
-      map.set(id, Math.max(0, Math.min(100, coverage)) / 100)
-    }
-    return map
+    return wEngineEffectCoverageMapOf(wEngineEffectCoverages.value)
   }
 
   function resourceUtilizationKey(slot: number, actionId: string): string {
@@ -991,8 +994,7 @@ export const useConfigStore = defineStore('config', () => {
 
   /** 读取机制模块声明参数的当前值 */
   function getMechanicSetting(id: string, fallback: number): number {
-    const value = mechanicSettings.value[id]
-    return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+    return mechanicSettingOf(mechanicSettings.value, id, fallback)
   }
 
   /** 写入机制模块声明参数 */
@@ -1044,11 +1046,11 @@ export const useConfigStore = defineStore('config', () => {
 
 
   function isTeammateBuffEnabled(buffId: string): boolean {
-    return teammateBuffSelections.value[buffId]?.enabled ?? false
+    return teammateBuffEnabledOf(teammateBuffSelections.value, buffId)
   }
 
   function getTeammateBuffCoverage(buffId: string): number {
-    return teammateBuffSelections.value[buffId]?.coverage ?? 100
+    return teammateBuffCoverageOf(teammateBuffSelections.value, buffId)
   }
 
   /** 根据队伍配置自动同步队友 buff 的启用状态

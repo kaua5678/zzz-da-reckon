@@ -47,7 +47,7 @@ export function createConvergenceRoundInputs(deps: {
     for (let i = 0; i < 3; i++) {
       const char = configStore.team[i]
       if (!char?.agentId) continue
-      const skills = catalogStore.getAgentSkills(char.agentId)
+      const skills = catalogStore.agentSkillsByAgentMap.get(char.agentId)
       // ⚠ 判据 17：`i` 是 **team** 下标（该数组稠密、按槽位排列），而 `panels.value` **按位置压缩**
       // （空槽不 push）⇒ `panels.value[i]` 在前导/中间空槽时取到**别人那份**面板
       // （实测 `[空,1581,1031]`：i=1 时 team[1]=1581，而 panels.value[1] 盖章 slot 2）。
@@ -64,7 +64,7 @@ export function createConvergenceRoundInputs(deps: {
     for (let i = 0; i < 3; i++) {
       const char = configStore.team[i]
       if (!char?.agentId) continue
-      const skills = catalogStore.getAgentSkills(char.agentId)
+      const skills = catalogStore.agentSkillsByAgentMap.get(char.agentId)
       // ⚠ 判据 17：`i` 是 **team** 下标（该数组稠密、按槽位排列），而 `panels.value` **按位置压缩**
       // （空槽不 push）⇒ `panels.value[i]` 在前导/中间空槽时取到**别人那份**面板
       // （实测 `[空,1581,1031]`：i=1 时 team[1]=1581，而 panels.value[1] 盖章 slot 2）。
@@ -79,7 +79,7 @@ export function createConvergenceRoundInputs(deps: {
   const windInfo = computed(() => {
     let hasWind = false; let slot = -1
     for (let i = 0; i < 3; i++) {
-      const a = configStore.team[i]?.agentId ? catalogStore.getAgent(configStore.team[i].agentId) : null
+      const a = configStore.team[i]?.agentId ? catalogStore.agentsMap.get(configStore.team[i].agentId) : null
       if (a?.damageElement === 'wind') { hasWind = true; slot = i; break }
     }
     return { hasWindChar: hasWind, windCharSlot: slot }
@@ -188,7 +188,7 @@ export function createConvergenceRoundInputs(deps: {
           if (act.sourceTag === 'gift') {
             // 赠块 = 真实连携块：占失衡窗口时间（参与时间门控，超窗被跳过=不吃易伤），
             // 但不耗闪能/喧响；moveId 加 ':gift' 后缀独立计数，避免与普通连携块合并。
-            const gSkills = catalogStore.getAgentSkills(configStore.team[act.slot]?.agentId ?? '')
+            const gSkills = catalogStore.agentSkillsByAgentMap.get(configStore.team[act.slot]?.agentId ?? '')
             const gMove = findMoveById(gSkills, act.moveId)
             axisActions.push({ slot: act.slot, moveId: `${act.moveId}:gift`, count: act.count, actionTime: gMove?.actionTime ?? 0, energyCost: 0, decibelCost: 0, startTime: act.startTime ?? 0 })
           } else {
@@ -201,7 +201,7 @@ export function createConvergenceRoundInputs(deps: {
         // 展开成真实三段 id 进时间门控——窗内放得下几套就几套（超窗段被跳过=不吃易伤）；
         // C6 加快 25% → 块时长 ×0.75。免费（不耗闪能/喧响）。
         if (act.moveId === 'sigrid-pozhen') {
-          const pzSkills = catalogStore.getAgentSkills(configStore.team[act.slot]?.agentId ?? '')
+          const pzSkills = catalogStore.agentSkillsByAgentMap.get(configStore.team[act.slot]?.agentId ?? '')
           const pzScale = (configStore.team[act.slot]?.cinemaLevel ?? 0) >= 6 ? 0.75 : 1
           for (const segId of SIGRID_LANCE_SEGMENT_IDS) {
             const segMove = findMoveById(pzSkills, segId)
@@ -210,7 +210,7 @@ export function createConvergenceRoundInputs(deps: {
           continue
         }
         const agentId = configStore.team[act.slot]?.agentId ?? ''
-        const skills = catalogStore.getAgentSkills(agentId)
+        const skills = catalogStore.agentSkillsByAgentMap.get(agentId)
         const cinema = configStore.team[act.slot]?.cinemaLevel ?? 0
         const combo = getAgentMechanic(agentId)?.combos?.[act.moveId]
         let energyCost = 0
@@ -301,7 +301,7 @@ export function createConvergenceRoundInputs(deps: {
       const fillerAgentId = configStore.team[slot]?.agentId ?? ''
       if (fillerAgentId === '1051') {
         // 伊德海莉：basic_attack 已被改写为「蓄力烧血」（无伤害/失衡），兜底平A映射到蓄力循环的 下砸(1051007)+平A(1051003)
-        const skills = catalogStore.getAgentSkills(fillerAgentId)
+        const skills = catalogStore.agentSkillsByAgentMap.get(fillerAgentId)
         const slam = findMoveById(skills, '1051007')
         const follow = findMoveById(skills, '1051003')
         const loopTime = 1 + (slam?.actionTime ?? 0) + (follow?.actionTime ?? 0)
@@ -311,7 +311,7 @@ export function createConvergenceRoundInputs(deps: {
       } else if (fillerAgentId === '1041') {
         // 「11号」可分配平A时间：普通火力镇压连打填充（全额时间；A45 快速循环已计入必要时间）。
         // 以 #4 为代表行按「火力镇压均值 × 时间」口径折算。
-        const skills = catalogStore.getAgentSkills(fillerAgentId)
+        const skills = catalogStore.agentSkillsByAgentMap.get(fillerAgentId)
         const rep = findMoveById(skills, '1041008')
         const repT = rep?.actionTime ?? 1.828
         const reps = repT > 0 ? fillSec / repT : 0
@@ -531,7 +531,7 @@ export function createRunCalcRound(deps: {
           // 佩洛伊斯右分支决算 + 雨果决算（强特终结永远 / 终结技仅 C0/C1）才截断窗口
           const isEnds = act.moveId === '1551016' || isHugoEndsWindowMove(act.moveId, cinema)
           if (!isEnds) continue
-          const skills = catalogStore.getAgentSkills(configStore.team[act.slot]?.agentId ?? '')
+          const skills = catalogStore.agentSkillsByAgentMap.get(configStore.team[act.slot]?.agentId ?? '')
           const move = findMoveById(skills, act.moveId)
           let dur = typeof (act as { duration?: number }).duration === 'number'
             ? (act as { duration: number }).duration
@@ -559,7 +559,7 @@ export function createRunCalcRound(deps: {
     const parryNoFollowUpTotal = configStore.appliedBoss?.parryNoFollowUpTotal ?? 0
     const parryDecibelOnlyTotal = configStore.appliedBoss?.parryDecibelOnlyTotal ?? 0
     const guaranteeStun = configStore.getMechanicSetting('guarantee.stun', 0) !== 0
-    const breakerSlot = configStore.team.findIndex(c => c?.agentId && catalogStore.getAgent(c.agentId)?.specialty === 'stun')
+    const breakerSlot = configStore.team.findIndex(c => c?.agentId && catalogStore.agentsMap.get(c.agentId)?.specialty === 'stun')
     // 无击破位队伍（如 仪玄/琉音/卢西娅：强攻/强攻/支援）：实战弹刀全由主C（槽位 0）承担
     // （归档 72db6dc3 弹刀 8 即此口径）——保底4失衡反推照常，但「剩余给主C」没有第二个角色可分，
     // 有效次数 = max(输入, 反推 T) 封顶 parryTotal（同位语义，2026-09-07）。
@@ -601,7 +601,7 @@ export function createRunCalcRound(deps: {
         const wins = winAlloc[ai] ?? 0
         for (const act of axis.actions) {
           if (act.slot !== slot || act.sourceTag === 'gift') continue
-          const skills = catalogStore.getAgentSkills(configStore.team[slot]?.agentId ?? '')
+          const skills = catalogStore.agentSkillsByAgentMap.get(configStore.team[slot]?.agentId ?? '')
           const mv = findMoveById(skills, act.moveId)
           const en = (mv?.name?.en ?? '').toLowerCase()
           if (en.includes('ultimate') && !en.includes('chain attack')) n += act.count * wins
@@ -622,7 +622,7 @@ export function createRunCalcRound(deps: {
         for (const act of axis.actions) {
           // 赠送连携块（怒焰·赠，sourceTag='gift'）= 诺姆膛温换连携的轴内标记：不占目标自身连携次数
           if (act.sourceTag === 'gift') continue
-          const skills = catalogStore.getAgentSkills(configStore.team[act.slot]?.agentId ?? '')
+          const skills = catalogStore.agentSkillsByAgentMap.get(configStore.team[act.slot]?.agentId ?? '')
           const en = (findMoveById(skills, act.moveId)?.name?.en ?? '').toLowerCase()
           if (en.includes('chain attack') && !en.includes('ultimate')) {
             axisChainTotal[act.slot] = (axisChainTotal[act.slot] ?? 0) + act.count * wins
@@ -1352,7 +1352,7 @@ export function createRunCalcRound(deps: {
               const cm = contribMap.get(a.moveId)!
               // 动作时长：显式 duration（仪玄蓄力）优先，否则技能表 actionTime——
               // 触发事件附着在动作结束点（用户口径），瞬发块才落在起点
-              const skills = catalogStore.getAgentSkills(configStore.team[a.slot]?.agentId ?? '')
+              const skills = catalogStore.agentSkillsByAgentMap.get(configStore.team[a.slot]?.agentId ?? '')
               const move = findMoveById(skills, a.moveId)
               const duration = typeof (a as { duration?: number }).duration === 'number'
                 ? (a as { duration: number }).duration

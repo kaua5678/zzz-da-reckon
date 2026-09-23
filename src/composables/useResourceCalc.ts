@@ -588,8 +588,11 @@ export function useResourceCalc() {
           const candidates = scaleCeiling >= 1
             ? DOWNSCALE_SCALES
             : DOWNSCALE_SCALES.filter(s => s <= scaleCeiling + 1e-9)
+          /** 最近一次候选试算（闸门兜底复用，见下） */
+          let lastCandidateTrial: { scale: number; trial: RoundOut } | null = null
           const best = selectDownscaleScale(candidates, scale => {
             const trial = runOuterLoop(true, scale)
+            lastCandidateTrial = { scale, trial }
             const trialTruncation = trial.out?.resourceResult?.overflowSeconds ?? 0
             const accepted = acceptsTrial(trial) && trialTruncation <= TIME_BUDGET_TOLERANCE_SECONDS
             const feasible = accepted && downscaleTrialFeasible({
@@ -617,7 +620,11 @@ export function useResourceCalc() {
              * 这样「合轴率↓ ⇒ 交互档不增 ⇒ 伤害同向」在全区间成立。
              */
             const floorScale = candidates[candidates.length - 1]!
-            const trial = runOuterLoop(true, floorScale)
+            // 复用扫描里同档那次试算（2026-09-23 mcp-engine-r2）：走到这里 ⇒ `best == null` ⇒ 全部候选都被试过、
+            // 最后一次就是 floorScale；同档试算与次序无关（判据⑤受控复现：0.25 单独 vs 跟在 0.0625 后逐位相同），
+            // 省一次完整外层不动点。防御：档不匹配（将来搜索策略改成惰性跳档）就照旧重跑。
+            const reuse = lastCandidateTrial as { scale: number; trial: RoundOut } | null
+            const trial = reuse && reuse.scale === floorScale ? reuse.trial : runOuterLoop(true, floorScale)
             if (trial.out) {
               r = trial
               axisFallback = hadAxis
@@ -707,7 +714,7 @@ export function useResourceCalc() {
     const windAutoRate = anomalyPoolResult.value?.coverage?.windCoverageRate ?? 0
     const infectionCoverage = getWindInfectionCoverage(configStore, windAutoRate)
     const hasWindChar = configStore.team.some(char => {
-      const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
+      const agent = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
       return agent?.damageElement === 'wind'
     })
     const infectionBonus = hasWindChar ? 10 * infectionCoverage : 0
@@ -749,7 +756,7 @@ export function useResourceCalc() {
   const basicMoveIdsBySlot = computed<Map<number, Set<string>>>(() => {
     const m = new Map<number, Set<string>>()
     for (const c of configStore.team) {
-      const skills = catalogStore.getAgentSkills(c.agentId)
+      const skills = catalogStore.agentSkillsByAgentMap.get(c.agentId)
       const ids = skills?.categories.find(cat => cat.id === 'basic')?.moves.map(mv => mv.id) ?? []
       if (ids.length > 0) m.set(c.slot, new Set(ids))
     }
@@ -854,7 +861,7 @@ export function useResourceCalc() {
     const parryDecibelOnlyTotal = configStore.appliedBoss?.parryDecibelOnlyTotal ?? 0
     if (parryTotal + parryNoFollowUpTotal + parryDecibelOnlyTotal <= 0) return null
     if (configStore.getMechanicSetting('guarantee.stun', 0) === 0) return null
-    const breakerSlot = configStore.team.findIndex(c => c?.agentId && catalogStore.getAgent(c.agentId)?.specialty === 'stun')
+    const breakerSlot = configStore.team.findIndex(c => c?.agentId && catalogStore.agentsMap.get(c.agentId)?.specialty === 'stun')
     // 无击破位队伍：弹刀由主C（槽位 0）承担（noBreakerFallback，见 runCalcRound 同款回落）
     if (breakerSlot < 0 && configStore.team.length === 0) return null
     const split = calcOutput.value?.parrySplit
@@ -1133,7 +1140,7 @@ export function useResourceCalc() {
     for (let i = 0; i < 3; i++) {
       const char = configStore.team[i]
       if (!char?.agentId) continue
-      const agent = catalogStore.getAgent(char.agentId)
+      const agent = catalogStore.agentsMap.get(char.agentId)
       if (agent) {
         map[char.agentId] = agent.name.zhCN || agent.name.en || char.agentId
       }

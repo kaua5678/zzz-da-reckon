@@ -122,11 +122,11 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     const claimedInAxis: Record<string, number> = {}
 
     function agentName(agentId: string, slot: number) {
-      return agentNames[agentId] || catalogStore.getAgent(agentId)?.name?.zhCN || `槽${slot + 1}`
+      return agentNames[agentId] || catalogStore.agentsMap.get(agentId)?.name?.zhCN || `槽${slot + 1}`
     }
     const infectionElement = getWindInfectionElement(configStore, catalogStore)
     const windSlot = configStore.team.findIndex(c => {
-      const agent = c.agentId ? catalogStore.getAgent(c.agentId) : null
+      const agent = c.agentId ? catalogStore.agentsMap.get(c.agentId) : null
       return agent?.damageElement === 'wind'
     })
 
@@ -192,7 +192,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const stunMultVal = stunForThis > 0
         ? 1 + (stunBase - 1) * stunForThis
         : 1
-      const rowAgent = catalogStore.getAgent(row.agentId)
+      const rowAgent = catalogStore.agentsMap.get(row.agentId)
       const result = calcDirectDamage({
         panel,
         skillMultiplier: row.multiplier,
@@ -422,8 +422,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
 
     for (const charResult of adjustedResourceResult.characters) {
       const slot = charResult.slot
-      const agent = catalogStore.getAgent(charResult.agentId)
-      const skills = catalogStore.getAgentSkills(charResult.agentId)
+      const agent = catalogStore.agentsMap.get(charResult.agentId)
+      const skills = catalogStore.agentSkillsByAgentMap.get(charResult.agentId)
       // 琉音机制来源（**本槽级**，循环外读一次）：既是身份令牌，也是「强特拆分块会不会重放本行」的判据。
       // 唯一写入方 = `liuyin.ts#buildLiuyinResourceResult`（无条件写）⇒ 存在即蕴含是该角色（判据同 T6）。
       const liuyinSrc = charResult.liuyinMechanicSource
@@ -656,7 +656,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
             placedTable.set(mid, (placedTable.get(mid) ?? 0) + Math.max(0, Math.floor(act.count || 1)) * wins)
           }
         })
-        const tblSkills = catalogStore.getAgentSkills(configStore.team[slot]?.agentId ?? '')
+        const tblSkills = catalogStore.agentSkillsByAgentMap.get(configStore.team[slot]?.agentId ?? '')
         for (const [mid, count] of placedTable) {
           if (count <= 0) continue
           const move = findMoveById(tblSkills, mid)
@@ -667,7 +667,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
             id: `direct-${slot}-${mid}-table`,
             slot, agentId: charResult.agentId,
             name: `${move.name?.zhCN || mid}（表）`,
-            element: move.damageElement ?? catalogStore.getAgent(charResult.agentId)?.damageElement ?? 'physical',
+            element: move.damageElement ?? catalogStore.agentsMap.get(charResult.agentId)?.damageElement ?? 'physical',
             source: '轴内·技能表直读',
             count, multiplier: mult,
             note: '该招式未单独建模：按技能表倍率直读，吃失衡易伤；不占时间预算、窗内不产失衡值',
@@ -1015,7 +1015,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       if (liuyinSrc && liuyinSrc.extraAbilityActive && liuyinSrc.exHeavyCount > 0) {
         const prevSlot = liuyinSrc.previousTeammateSlot
         const prevPanel = panelAt(damagePanels, prevSlot)
-        const prevAgent = prevSlot >= 0 ? (configStore.team[prevSlot]?.agentId ? catalogStore.getAgent(configStore.team[prevSlot].agentId) : null) : null
+        const prevAgent = prevSlot >= 0 ? (configStore.team[prevSlot]?.agentId ? catalogStore.agentsMap.get(configStore.team[prevSlot].agentId) : null) : null
         const isRupture = prevAgent?.specialty === 'rupture'
         const basisValue = prevPanel ? (isRupture ? prevPanel.atk * 0.3 + prevPanel.hp * 0.1 : prevPanel.atk) : 0
         const ratio = isRupture ? 400 : 320
@@ -1572,14 +1572,14 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     const remiellePanel = remielleSlot >= 0 ? panelAt(damagePanels, remielleSlot) : undefined
     const remielleEntryPanel = remielleSlot >= 0 ? panelAt(remielleEntryPanels, remielleSlot) : undefined
     if (remiellePanel && remielleEntryPanel) {
-      const remielleSkills = catalogStore.getAgentSkills(configStore.team[remielleSlot]?.agentId ?? '')
+      const remielleSkills = catalogStore.agentSkillsByAgentMap.get(configStore.team[remielleSlot]?.agentId ?? '')
       const otherSlots = [0, 1, 2].filter(slot => slot !== remielleSlot)
       const perSlotAnomaly = anomalyPoolResult?.perSlotAnomalyTriggers ?? []
       const voidflareBySlot = otherSlots
         .map(slot => ({
           slot,
           count: Math.max(0, Math.floor(perSlotAnomaly[slot] ?? 0)),
-          element: catalogStore.getAgent(configStore.team[slot]?.agentId ?? '')?.damageElement ?? 'physical',
+          element: catalogStore.agentsMap.get(configStore.team[slot]?.agentId ?? '')?.damageElement ?? 'physical',
           panel: panelAt(damagePanels, slot),
         }))
         .filter(item => item.count > 0 && item.panel)

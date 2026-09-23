@@ -393,7 +393,10 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         return { end: structuredClone(canonical), clean: false, iterations: k }
       }
       cycleSigs.set(sig, cycleSnapshots.length)
-      cycleSnapshots.push(structuredClone(cur))
+      // 快照存**引用**（2026-09-23 mcp-engine-r2，原为逐轮 structuredClone，实测自耗时 ~0.9s/18s）：
+      // `cur` 是 iterate 新建的数组，之后只作下一轮 iterate 的只读入参（纯度探针实测 85,779 次调用 0 次改写入参）；
+      // 快照只在本函数内比较，出口处的规范成员仍 structuredClone 后返回 ⇒ 调用方拿到的对象与旧版同为独立副本。
+      cycleSnapshots.push(cur)
     }
     // 预算耗尽：停点 = 第 oscillatorStop 轮瞬态（起点确定则停点确定；与历史上限 20 逐位一致）
     return oscillatorStopStates
