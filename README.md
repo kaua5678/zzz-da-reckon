@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（36 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（37 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -102,6 +102,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-lead-agent-handoff.md` | **高级总协调模型执行交接**：完整意图、现场与权限、模型路由核验、工人派单模板、证据复核和集成闭环；可直接转交执行 |
 | `docs/mcp-local-subagent-channel.md` | **MCP 本地子代理通道**：Streamable HTTP 客户端、WSL/headless 临时配置、原生 subagent 只读派发契约与实际路由验收 |
 | `docs/mcp-dead-channel-cli.md` | **T2 死通道按需工作台**：既有 LanguageService 判据的 CLI 入口、只读/惰性契约、子代理审查与正反控验收 |
+| `docs/mcp-altaxes-test-budget.md` | **altAxes 慢测试提速**：耗时分解（G2 联合搜索占 2/3）、`baseGoals` 选项、断言收紧与预算回到 300s，不放宽超时 |
 | `docs/round2-intent-charter.md` | **下一轮委托：意图与验收闸门**（云端作者）：为什么做/何时值得做/什么不能做、六条长期意图、证伪闸门两行、权限与升级条件；不含现场操作参数，配套 field-sheet 由首席现场填写 |
 | `docs/round2-field-sheet.md` | **下一轮现场执行单（已填写）**：本轮现场事实与授权、操作能力（workflow 路由现场核验）、现场选题与每条任务证伪闸门/白名单、首席派发回收检查与最终回报 |
 | `docs/cloud-guidance-model-playbook.md` | **云端指导模型协作指南**：astra 类模型的最大贡献点（意图→闸门）与帮倒忙区（现场操作手册）、两轮实测对照、点修 vs 泛化阈值与基线全盲验收等待补闸门、何时需要云端再来一轮 |
@@ -118,4 +119,4 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-r65j1-decibel-cap-verdict.md` | **R65-J1 首案裁决备忘**：橘福福「喧响上限+1000」在整局总量口径下零消费者（不是缺口）；证据链、护栏判据 decibelCapVerdict.test.ts 与未来喧响时间轨接入时的重裁决步骤 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（36 份），新增文档需同步本表。
+> 文档数量以本表为准（37 份），新增文档需同步本表。

@@ -64,8 +64,14 @@ export interface DifficultyCurveOptions {
   boss: BossPreset
   /** 目标期数（与散点页同一入口：`selectedPhase`） */
   phase: BossPresetPhase
-  /** 目标集（缺省 = DIFFICULTY_GOALS） */
+  /** 目标集**完全覆盖**（给了就不再追加 preset.altAxes 切轴档）；缺省 = baseGoals + 切轴档 */
   goals?: DifficultyGoal[]
+  /**
+   * 基础目标集（缺省 = DIFFICULTY_GOALS），**切轴档仍按 preset.altAxes 追加**。
+   * 与 `goals` 的区别：调用方可以换掉基础目标而不必自己复刻切轴档与其起点轴态快照
+   * （复刻漂移 ⇒ 绑错轴仍可能全绿）。2026-09-23 为 altAxes 慢测试去掉 G2 联合搜索而加。
+   */
+  baseGoals?: DifficultyGoal[]
   /** 相对门槛（缺省 1e-4） */
   minGainRatio?: number
   /**
@@ -132,7 +138,7 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
         useStunAxis: configStore.useStunAxis,
       }
       const goals = options.goals ?? [
-        ...DIFFICULTY_GOALS,
+        ...(options.baseGoals ?? DIFFICULTY_GOALS),
         ...(preset.altAxes ?? []).map(a => makeAltAxisGoal(a, baseAxisSnap)),
       ]
       // 配装口径：套该队**预设基础金**的 `applyGoldSteps`（含 standardSteps 常驻步；缺省路径也走它，

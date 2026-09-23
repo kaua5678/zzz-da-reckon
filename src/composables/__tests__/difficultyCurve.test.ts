@@ -535,15 +535,22 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
     const preset = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')
     expect(preset?.altAxes, '般琉卢应带 10大轴切轴档').toHaveLength(1)
 
-    const rows = computeDifficultyCurves(calc, { presets: [preset!], boss: FAKE_BOSS, phase: FAKE_PHASE })
+    // 2026-09-23 提速：基础目标去掉 G2（joint-levers 联合搜索）。实测耗时分解（单跑 299s）：
+    // G2 6 次试开 197s、G1 4 次 56s、其余 < 20s；本条契约（切轴档被裁决 / id 合法 / 录取单调 / 现场恢复）
+    // 与 G2 无关，G2 的真实爬梯已由上一条集成用例（缺省全目标）覆盖。切轴档仍由生产路径
+    // `baseGoals` + preset.altAxes 生成（不在测试里复刻 baseAxisSnap，防绑错轴仍绿）。
+    const baseGoals = DIFFICULTY_GOALS.filter(g => g.id !== 'G2')
+    const rows = computeDifficultyCurves(calc, { presets: [preset!], boss: FAKE_BOSS, phase: FAKE_PHASE, baseGoals })
     const ladder = rows[0]!.ladder
     // 每一档的录取 id ∈ 基础目标集 ∪ AXIS:*；切轴档要么被录取（曲线高难段）、要么如实进 dropped
-    const baseIds = new Set(DIFFICULTY_GOALS.map(g => g.id))
+    const baseIds = new Set(baseGoals.map(g => g.id))
     for (const o of ladder.opened) {
       expect(baseIds.has(o) || o.startsWith('AXIS:'), `录取 id ${o} 必须来自目标集或切轴档`).toBe(true)
     }
-    const axisAccepted = ladder.opened.some(o => o.startsWith('AXIS:'))
-    const axisDropped = ladder.dropped.some(d => d.id.startsWith('AXIS:'))
+    // 切轴档必须是生产路径按 preset.altAxes 生成的那一个（防「目标集覆盖」把它静默吞掉）
+    const axisId = `AXIS:${preset!.altAxes![0]!.id}`
+    const axisAccepted = ladder.opened.includes(axisId)
+    const axisDropped = ladder.dropped.some(d => d.id === axisId)
     expect(axisAccepted || axisDropped, '切轴档必须被裁过决（录取或丢弃），不许静默消失').toBe(true)
     // 若被录取：它必须是高难度端（伤害不低于前一档，单调契约照常成立）
     if (axisAccepted) {
@@ -552,8 +559,7 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
     }
     // 现场恢复：切轴试开会改轴状态，跑完必须还原
     expect(config.useStunAxis).toBe(false) // FAKE_BOSS + 该预设：快照轴态是未启用
-    // 2026-09-22（mcp-r65j1）：预算 300_000 → 420_000。本条是全文件最慢的一条（10 大轴切轴爬梯、
-    // 真引擎 × 多档）：单独跑实测 242.5s，全套并行负载下超 300s 判超时（2026-09-22 基线检查唯一红；
-    // 单独复跑 24/24 绿 ⇒ 负载性超时非逻辑红）。只抬本条：同文件其余 300_000 实测余量充足。
-  }, 420_000)
+    // 预算沿革：2026-09-22 300_000 → 420_000（只抬超时）；2026-09-23 全套 verify 仍超 420s ⇒
+    // 改为去掉与契约无关的 G2 联合搜索（见上），预算回到与同文件一致的 300_000。
+  }, 300_000)
 })
