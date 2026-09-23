@@ -124,3 +124,15 @@ describe('队友 buff 选择：数据晚到（竞态修复的现状）', () => {
     expect(config.isTeammateBuffEnabled(B_CORE)).toBe(true)
   })
 })
+
+describe('队友 buff 选择：改命座后同一 tick 内即生效（批量路径依赖）', () => {
+  it('setCinemaLevel 之后不 await、不手动 sync，读到的就是新命座的 buff 选择', async () => {
+    const { config } = await setupHarness([{ agentId: RINA }, '', ''])
+    expect(config.isTeammateBuffEnabled(B_C6)).toBe(false)
+    config.setCinemaLevel(0, 6)
+    // 回归（2026-09-23）：watch 曾是 pre-flush ⇒ 此处仍为 false，最优加金/难度曲线的同步读全部读到旧 buff
+    expect(config.isTeammateBuffEnabled(B_C6)).toBe(true)
+    config.setCinemaLevel(0, 0)
+    expect(config.isTeammateBuffEnabled(B_C6)).toBe(false)
+  })
+})

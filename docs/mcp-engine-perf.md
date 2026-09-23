@@ -1,66 +1,44 @@
-# 引擎性能优化（calcOutput 记忆化 + 热点修复）
+# 引擎性能（活文档：现状 · 手段 · 否决记录）
 
-> 2026-09-23 · lane `mcp-engine` · 用户批准高风险改动、允许数值变化（实际**数值零变化**）
+> 每轮优化**更新本文**，不新开 `-rN` 文档（控制文档膨胀）。每轮细节在 git log；这里只留「下一个人需要知道的」。
+> 最近更新：2026-09-23 第 2 轮。
 
-## 结论
+## 现状读数
 
-| 场景 | 之前 | 之后 | 倍数 |
+| 度量 | 基线 | 第 1 轮后 | 第 2 轮后 |
 |---|---:|---:|---:|
-| 难度曲线 G2 爬梯（般琉卢，FAKE_BOSS） | 17.8s | 4.6s | 3.9× |
-| 难度曲线 G1/G3/G4/G5 爬梯（同上） | 79.4s | 26.9s | 2.9× |
-| 单次引擎求值（般琉卢，重复读） | 157–233ms | 5–8ms | ≈30× |
-| joint-levers 联合搜索（般琉卢） | 4.1s | 1.3s | 3.2× |
-| altAxes 用例（全套满载） | 213s | 58s | 3.7× |
-| `npm run verify` 全程 | 296.8s | 131.0s | 2.3× |
+| 难度曲线 G2 爬梯（般琉卢） | 17.8s | 4.6s | — |
+| `npm run verify` | 296.8s | 131.0s | — |
+| 全库 dump（624 场景，calcOutput 记忆关） | — | 68.2s | 51.0s |
 
-数值：timeGolden（105 预设 + 60 角色×命座）、seedInvariance、warmStart、行级收入对账、truncationRefold 全部 **0 delta**；
-难度爬梯各档伤害逐位不变（例 G2：`38024346.50665935 → 38688779.63977466`，改前改后相同）。
+## 等价验证手段（改引擎性能前必看）
 
-## 方法（实测，不猜）
+- **全库 dump**：`.zc/perf/dump.perf.ts`（gitignored；104 预设 × {默认, 槽0 C0/C6, 平A权重扰动, 交互加码, 加码+闸门}），
+  每场景记 `teamTotalDamage | hash(resourceResult) | hash(stunPoolResult) | interactionScaleCeiling`。
+  改前跑一次存 A、改后跑 B，**0 差异才算等价**；A 自身重跑 0 差异（dump 确定）。
+- **profile**：`.zc/perf/engine.perf.ts`（`PERF_PROFILE=1`，带调用者归因）。
+- **纯度探针**：先量「重复」是否真是重复，再做记忆（例：`feasibleRows` 同参数重复 35%、行 0 次不同、结果 0 次被改写）。
+- 仓内测试：`calcOutputMemo` / `feasibleRowsMemo`（记忆开/关 A/B 逐位）+ timeGolden / seedInvariance / warmStart。
 
-1. CPU profile（`node:inspector`，200µs 采样）在真实爬梯里取自耗时/包含时间；
-2. V8 precise coverage 数函数调用次数；
-3. 在 `teamTotalDamage` 读点上按 `config.$state` 签名统计「真重算次数 / 不同配置数」。
+## 已落地手段与前提（前提失效 = 静默错值）
 
-关键读数（改前，G2 爬梯）：31 次真重算里只有 **12 个不同配置**；`materializeRows` 自耗时 4.6s/18s；
-Vue `get/track/find` + pinia 包装 >10s/40s（目录数据深响应式）；`warmStartExactKey` ~1s（每个缓存条目重算一次键）。
+| 手段 | 位置 | 前提 |
+|---|---|---|
+| calcOutput 记忆化（LRU 16） | `useResourceCalc.ts` | 输入 = 键：新增**非 store** 的全局响应式输入必须进键；闸门开启时绕过 |
+| 目录数据 shallowRef | `stores/catalog.ts` | 目录只整体替换，不原地改 |
+| `materializeRows` 快照/恢复只补改动值 | `core/resource/rowBuild.ts` | — |
+| `feasibleRows` 作用域单槽记忆 | `rowBuild.ts#withFeasibleRowsMemo` | 单次 `iterate` 内 cfg/state 与行不被改写（`@fact engine:物化行作用域记忆`，带复核） |
+| 环检测快照存引用 | `core/resource.ts#runInnerLoop` | `iterate` 返回新数组、不改写入参 |
+| 引擎读 store 绕过 pinia action 包装 | `stores/selectionReads.ts`（读口径单源）+ `catalogStore.xMap.get` | 全仓无 `$onAction` / pinia 插件；新增读口径加进 `selectionReads` 并让 store 方法委托 |
+| 降配闸门兜底复用同档试算 | `useResourceCalc.ts#stageResolveFeasibility` | 同档试算与次序无关（GUIDE 判据⑤受控复现） |
 
-## 改动
+## 否决记录（量过数字，勿重走）
 
-1. **calcOutput 记忆化**（`src/composables/useResourceCalc.ts`）：calcOutput 是确定性纯函数，以
-   「config 全部 state（排除纯触发器与纯 UI 态）+ 目录对象身份 + teammateBuffsReady + 生效行融合规则」为键，LRU 16。
-   - 降配单调闸门（`interactionScaleMonotone`）开启时**绕过**：该路径在求值内写回 store。
-   - `setCalcOutputMemoEnabled(false)` 可全局关闭（A/B 对照用）；`getCalcOutputMemoStats()` 读命中统计。
-   - `triggerRefresh()` 语义变为「state 未变就复用」：全库调用点均「先改 store 再触发」（已核）。
-2. **目录数据 shallowRef**（`src/stores/catalog.ts`）：`catalog` / `teammateBuffGroups` / `buildRecommendations`。
-   只会整体替换，全库（含 .vue）无原地改写（已核；`mergeSpecTeamBuffs` 赋值前全量拷贝）。
-   ⚠ 将来若要原地改目录，必须整体替换或 `triggerRef`。
-3. **materializeRows 快照/恢复**（`src/core/resource/rowBuild.ts`）：不建中间对象；只补回改过的值，键集合变了才 delete。
-4. **热启动查找**（`src/core/resource.ts`）：复用已算好的 exactKey。
-5. `src/logicEditor/fusion.ts`：新增只读 `activeRowFusionRulesSnapshot()` 供键使用。
+- `materializeRows` 值快照改 `Object.values`：慢 ~5×（105 键对象 4 万次 map 130–155ms vs 790–820ms），dump 52.6→63.8s。
+- `fmt` 缓存 `Intl.NumberFormat`：116 vs 112ms，无收益。
+- 跨档热启动 / 降配扫描提前终止或成本闸门 / 缩放配置去重：破 seedInvariance、可行集非下闭、`cfgUniq` 8/8（GUIDE 判据⑤）。
 
-## 验证
+## 剩余热点（第 2 轮后，自耗时 / 14.2s profile）
 
-- `src/composables/__tests__/calcOutputMemo.test.ts`（新，6 例）：
-  ① 搜索型调用 memo 开/关逐位相同且确有命中；② store 字段 / 深层嵌套字段 / 行融合规则变化都失效；
-  ③ 闸门开启绕过；④ 清热启动缓存后 on/off 对照；⑤ **结果深冻结后命中，全部下游 computed 逐位相同**（证明下游不原地改结果）；
-  ⑥ 目录整体替换失效、切 tab/切槽不失效不改值。
-- `npm run verify`（最终工作树）：**exit 0**，131.0s；280 文件通过 / 16 跳过，3412 passed / 29 skipped（+3 为本次新测试的净增）；
-  recording 189（9 warn，既有）；build 通过；`check-guards` 21/21；`get_diagnostics`（src）0；`git diff --check` 通过。
-- 过程中一次 verify exit 2：`vue-tsc -b` 拒绝 `$state as Record<string, unknown>` 的直接断言（TS2352，纯类型），
-  改 `as unknown as` 后通过；此前用的 `vue-tsc -p tsconfig.app.json` 没拦住——以 `npm run build` 为准。
-
-## 审查（本地子代理，high）
-
-`eng-r1`：`wb/deepseek-v4.1-flash@high`，只读、仅 `[read]`、10 次读，交付终稿（派发器事后 catalog 校验脚本仍 exit 2，已人工复核父子日志）。
-采纳并落地：UI 态误入键导致在同一 cfg 上重跑（→ 排除 `activeTab/selectedSlot/perSlotMarginalGains`，已核引擎零引用）、
-热启动缓存对照、结果不可变、目录替换失效、注释与实现不符（toRaw）——均已补测或修正。
-审查确认：rowBuild / warmStart 两处与旧版等价，未发现静默错值；config state 无 Map/Set。
-未采纳：NaN 键碰撞（需两侧同时 NaN→null 且其余完全相同，未构造出可达反例）。
-
-## 风险（如实）
-
-- 记忆化的正确性依赖「calcOutput 的输入 = 键」。新增**非 store** 的全局响应式输入（类似行融合规则）时必须同步进键。
-- 每个 `useResourceCalc()` 实例额外持有 ≤16 份结果（每份含全队执行行），内存略增。
-- 剩余热点（改后）：`materializeRows` 自身调用量（inner loop × 可行性降配 8 档）、`buildBanyueExecutions`、GC。
-  下一步可做：可行性降配扫描的跨档复用、iterate 内能量/喧响两次 `feasibleRows` 合并。
+`materializeRows` 1.53s（约 1/3 走「键集变化」慢路径：模块往 cfg **新增**同调用缓存键、恢复时 delete ⇒ cfg 变形）·
+`runInnerLoop` 0.73s · GC 0.63s · `iterateBody` 0.57s · `buildExecutions` 0.49s · `enrichExecutionPlan` 包含 0.55s · `warmStartExactKey` 0.23s。

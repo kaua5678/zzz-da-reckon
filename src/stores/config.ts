@@ -1291,13 +1291,17 @@ export const useConfigStore = defineStore('config', () => {
     }
   }
 
-  // 监听队伍变化，自动同步队友 buff 启用状态
+  // 监听队伍变化，自动同步队友 buff 启用状态。
+  // **flush: 'sync'（2026-09-23 修）**：旧的默认 pre-flush 要等下一个 tick 才同步，而批量路径（队伍对比最优加金 /
+  // 难度曲线 / 命座边际）都是「setCinemaLevel → 同一 tick 内读 teamTotalDamage」——读到的是**改命座前**的 buff 选择。
+  // 实测：最优加金贪心全程看不到队友命座 buff（般琉卢 12 金选了「般岳 1–4 命」55.7M，正确应为三人各 2 命 81.1M）；
+  // 全库 624 场景中 41 个命座 6 场景偏低 1–40%。sync 后 sync 自己只写 teammateBuffSelections，不写 team ⇒ 无回环。
   watch(
     () => team.value.map(c => ({ agentId: c.agentId, cinemaLevel: c.cinemaLevel })),
     () => {
       syncTeammateBuffsFromTeam()
     },
-    { deep: true }
+    { deep: true, flush: 'sync' }
   )
 
   // 兼容旧版本保存的 enemy.resistances 单表配置

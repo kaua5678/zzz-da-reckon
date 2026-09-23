@@ -95,7 +95,7 @@ describe('feasibleRows 作用域记忆', () => {
           applyTeamToStore(config, p!)
           config.setCinemaLevel(0, c)
           // 命座→队友 buff 的重同步走异步 watch；同步读之前显式同步，否则会继承上一预设同槽命座的残留 buff
-          // （两臂起点不同 ⇒ 假阳性；2026-09-23 排查实锤，见 docs/mcp-engine-perf-r2.md）
+          // （两臂起点不同 ⇒ 假阳性；2026-09-23 排查实锤，现已改 flush: sync 根治，本行保留作防御）
           config.syncTeammateBuffsFromTeam()
           trail.push(`${calc.teamTotalDamage.value}|${enc(calc.resourceResult.value)}`)
         }
