@@ -18,6 +18,11 @@ export function setActiveRowFusionRules(rules: RowFusionRule[]): void {
   activeRowFusions.value = next
 }
 
+/** 当前生效的行融合规则（只读快照，**响应式读取**）：供计算结果记忆化做键（`useResourceCalc` calcOutput 记忆化）。 */
+export function activeRowFusionRulesSnapshot(): readonly EffectiveFusion[] {
+  return activeRowFusions.value
+}
+
 export function getRowFusionMultiplier(moveId: string | undefined, rowId: string): number {
   if (!moveId) return 1
   let multiplier = 1

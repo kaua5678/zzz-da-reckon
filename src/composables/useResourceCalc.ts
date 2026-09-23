@@ -1,6 +1,7 @@
-import { computed } from 'vue'
+import { computed, toRaw } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
+import { activeRowFusionRulesSnapshot } from '@/logicEditor/fusion'
 import { INNER_LOOP_MAX_ITERATIONS, TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { stunPlanProjectionFromCode } from '@/core/stunPlanProjection'
@@ -43,6 +44,55 @@ const MAX_OUTER_ITER = 20
  * 小数失衡的浮点比较容差，同相位判据见 resourceCalc/outerCycle.ts。
  */
 const OUTER_STUN_TOLERANCE = 0.05
+
+/**
+ * **calcOutput 记忆化**（2026-09-23 mcp-engine，用户批准高风险引擎优化）。
+ *
+ * 背景（实测）：引擎一次完整求值 = 外层不动点 × 可行性降配扫描（最多 8 档，每档又是一整个外层不动点），
+ * 单队 60–230ms；而**搜索型调用方**（权重分配 B/C、难度爬梯试开/回滚、散点页、合轴松弛）反复「改 → 读 → 改回」，
+ * 同一配置被重算多次：难度曲线 G2 爬梯 31 次真重算里只有 12 个不同配置（`.zc/mcp-engine/keys.json`）。
+ *
+ * 做法：calcOutput 是**确定性纯函数**——输入 = config store 全部 state + 目录数据 + 生效的行融合规则。
+ * 以它们为键做小容量 LRU；命中直接返回上次的结果对象（同一引用，下游 computed 正常失效/重算）。
+ *
+ * 正确性护栏：
+ *  - 键 = `config.$state` 的 JSON（**经响应式代理读取**，于是每个字段都建立依赖；不能 toRaw——那样读到的是 ref 对象且不追踪），
+ *    **默认全部 state 进键**（漏字段 = 静默错值，这正是高风险所在；宁可多失效）。store 的 24 个 ref 全部在 `$state` 里（已核）。
+ *    唯一排除的是 `CALC_MEMO_KEY_EXCLUDE`：纯触发器 `refreshTrigger` 与**引擎不读的纯 UI 态**（已 grep 核引擎/编排/机制/数据层零引用）。
+ *    排除项**连读都不读**（不经 replacer），否则会建立依赖、切 tab 也触发重算。
+ *  - `triggerRefresh()`/`refreshTrigger++` 的语义因此从「强制重算」变成「state 没变就复用」：全库调用点都是
+ *    「先改 store 再触发」（setComboAlignOverride / toggleTeammateBuff 等，已核），改动本身已进键。
+ *  - 目录数据按**对象身份**进键（`catalog` / `teammateBuffGroups` / `buildRecommendations` 整体替换才会变；
+ *    全库无原地改目录的生产代码，已核）。
+ *  - **读 `$state` 的每个字段本身就建立了响应式依赖**——键计算让 calcOutput 依赖全部 state，比原来更宽，不会漏失效。
+ *  - 求值有副作用的路径**不记忆**：降配单调闸门（`interactionScaleMonotone`）会在 computed 内写回 `interactionScaleCeiling`，
+ *    命中会跳过这次写回 ⇒ 闸门开启时直接走原路径。
+ *  - 结果对象被视为只读（全库无对 resourceResult/stunPool/anomalyPool 的原地写，已 grep 核）。
+ */
+/** 容量 16：难度爬梯单队 G2 实测 12 个不同配置（8 装不下、命中率掉一半）；每个 useResourceCalc 实例各一份 */
+const CALC_OUTPUT_MEMO_MAX = 16
+/** 不进 calcOutput 记忆化键的 state 字段（见上）。新增字段**默认进键**；只有确认引擎不读的纯 UI 态才可加到这里。 */
+const CALC_MEMO_KEY_EXCLUDE: ReadonlySet<string> = new Set(['refreshTrigger', 'activeTab', 'selectedSlot', 'perSlotMarginalGains'])
+/** 对象身份 → 序号（目录数据进键用；WeakMap 不阻止回收） */
+const memoIdentity = new WeakMap<object, number>()
+let memoIdentitySeq = 0
+function identityOf(o: unknown): number {
+  if (o === null || typeof o !== 'object') return 0
+  const raw = toRaw(o as object)
+  let id = memoIdentity.get(raw)
+  if (id === undefined) { id = ++memoIdentitySeq; memoIdentity.set(raw, id) }
+  return id
+}
+/** 测试/诊断：记忆化命中统计（每个 useResourceCalc 实例各自计数，这里汇总） */
+const calcOutputMemoStats = { hits: 0, misses: 0, bypass: 0 }
+export function getCalcOutputMemoStats(): { hits: number; misses: number; bypass: number } {
+  return { ...calcOutputMemoStats }
+}
+/** 全局开关（测试做 A/B 逐位对照用；生产恒开） */
+let calcOutputMemoEnabled = true
+export function setCalcOutputMemoEnabled(on: boolean): void {
+  calcOutputMemoEnabled = on
+}
 
 const { computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, remielleSpecialVoidflareCount, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays, findSlotByIdentity } = ResourceCalcHelpers
 export function useResourceCalc() {
@@ -161,6 +211,38 @@ export function useResourceCalc() {
    */
   const calcOutput = computed(() => {
     if (!resourceConfig.value || !catalogStore.ready) return null
+    if (!calcOutputMemoEnabled || configStore.interactionScaleMonotone) {
+      calcOutputMemoStats.bypass++
+      return computeCalcOutput()
+    }
+    const state = configStore.$state as unknown as Record<string, unknown>
+    const stateForKey: Record<string, unknown> = {}
+    for (const k of Object.keys(state)) if (!CALC_MEMO_KEY_EXCLUDE.has(k)) stateForKey[k] = state[k]
+    const key = JSON.stringify([
+      stateForKey,
+      identityOf(catalogStore.catalog),
+      identityOf(catalogStore.teammateBuffGroups),
+      identityOf(catalogStore.buildRecommendations),
+      catalogStore.teammateBuffsReady,
+      activeRowFusionRulesSnapshot(),
+    ])
+    const hit = calcOutputMemo.get(key)
+    if (hit !== undefined) {
+      calcOutputMemo.delete(key)
+      calcOutputMemo.set(key, hit)
+      calcOutputMemoStats.hits++
+      return hit
+    }
+    calcOutputMemoStats.misses++
+    const out = computeCalcOutput()
+    calcOutputMemo.set(key, out)
+    if (calcOutputMemo.size > CALC_OUTPUT_MEMO_MAX) calcOutputMemo.delete(calcOutputMemo.keys().next().value!)
+    return out
+  })
+  /** calcOutput 记忆化 LRU（本实例私有；见文件头 CALC_OUTPUT_MEMO_MAX 注释） */
+  const calcOutputMemo = new Map<string, ReturnType<typeof computeCalcOutput>>()
+
+  function computeCalcOutput() {
     // 锁定失衡次数（命座对比固定场景）：stunCount 固定输入不回填（"操作够就能打 N 次失衡"口径），
     // 但异常喧响/终结技次数反馈仍收敛，避免与资源利用率页口径分裂
     const lockedStunCount = configStore.enemy.stunCountLock ?? -1
@@ -572,7 +654,7 @@ export function useResourceCalc() {
         }
       : baseOut
     return out
-  })
+  }
 
   // 下游统一从 calcOutput 取（名称保持，伤害池/结果页等无需改动）
   const resourceResult = computed<TeamResourceResult | null>(() => calcOutput.value?.resourceResult ?? null)

@@ -42,12 +42,30 @@ export function materializeRows(
   teamFrontlineSeconds = 0,
 ): SkillExecution[] {
   const cfgRecord = cfg as unknown as Record<string, unknown>
-  const cfgSnapshot = { ...cfgRecord }
+  // 快照 = 键数组 + 值数组（不建中间对象）；恢复只写「值变了」的键，只在「新增了键」时才 delete。
+  // 语义与旧版 `{...cfg}` + 全量 delete/Object.assign 逐位一致（被删的键按原值补回、多出的键删掉），
+  // 但常态（模块不写 cfg 或写回同值）零写入 ⇒ cfg 不退化成字典模式、下游属性读保持快路径。
+  // 2026-09-23 mcp-engine：旧版在难度曲线 G2 爬梯里自耗时 4.6s / 18s（全引擎第一热点）。
+  const snapKeys = Object.keys(cfgRecord)
+  const snapVals = snapKeys.map(k => cfgRecord[k])
   const rows = buildExecutions(cfg, state, chainCountTotal, teamFrontlineSeconds)
-  for (const k of Object.keys(cfgRecord)) {
-    if (!Object.prototype.hasOwnProperty.call(cfgSnapshot, k)) delete cfgRecord[k]
+  const nowKeys = Object.keys(cfgRecord)
+  let sameKeys = nowKeys.length === snapKeys.length
+  for (let i = 0; sameKeys && i < nowKeys.length; i++) sameKeys = nowKeys[i] === snapKeys[i]
+  if (sameKeys) {
+    // 常态：键集合未变 ⇒ 只补回改过的值
+    for (let i = 0; i < snapKeys.length; i++) {
+      const k = snapKeys[i]!
+      if (!Object.is(cfgRecord[k], snapVals[i])) cfgRecord[k] = snapVals[i]
+    }
+  } else {
+    const had = new Set(snapKeys)
+    for (const k of nowKeys) if (!had.has(k)) delete cfgRecord[k]
+    for (let i = 0; i < snapKeys.length; i++) {
+      const k = snapKeys[i]!
+      if (!Object.is(cfgRecord[k], snapVals[i]) || !Object.prototype.hasOwnProperty.call(cfgRecord, k)) cfgRecord[k] = snapVals[i]
+    }
   }
-  Object.assign(cfgRecord, cfgSnapshot)
   return rows
 }
 

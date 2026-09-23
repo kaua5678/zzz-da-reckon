@@ -123,10 +123,12 @@ function warmStartExactKey(config: ResourceCalcConfig): string {
   return JSON.stringify([globals, config.characters.map(sanitizeWarmKeyCfg)])
 }
 
-/** 命中则返回缓存的收敛态（只读，调用方自行浅拷贝）；显式 initialStates 时返回 null */
-function lookupWarmStart(config: ResourceCalcConfig): WarmStartEntry | null {
+/** 命中则返回缓存的收敛态（只读，调用方自行浅拷贝）；显式 initialStates 时返回 null。
+ *  `exactKey` 由调用方预先算好传入（2026-09-23 mcp-engine：旧版在 find 回调里对**每个缓存条目**
+ *  重算一次 JSON 键，最多 16×序列化/求值，实测 ~1s/18s 自耗时）。 */
+function lookupWarmStart(config: ResourceCalcConfig, exactKey: string): WarmStartEntry | null {
   if (config.initialStates) return null
-  const entry = warmStartCache.find(e => e.exactKey === warmStartExactKey(config)) ?? null
+  const entry = warmStartCache.find(e => e.exactKey === exactKey) ?? null
   if (entry) warmStartStats.seeded++
   return entry
 }
@@ -264,7 +266,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
 
   // 热启动：无显式种子时查缓存，命中则从上次收敛态出发（逐位透明，见块注释）
   const warmExactKey = config.initialStates ? '' : warmStartExactKey(config)
-  const warmSeed = lookupWarmStart(config)
+  const warmSeed = lookupWarmStart(config, warmExactKey)
 
   // 初始 state：平A时间按权重分配，强特/大招次数初始为0（initialStates 注入：测试/热启动用）
   const totalWeight = configs.reduce((a, c) => a + c.timeWeight, 0)

@@ -2,18 +2,27 @@
  * Catalog 数据加载与 Pinia Store
  */
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, shallowRef, computed } from 'vue'
 import type { Catalog, Agent, WEngine, DriveDiscSet, AgentSkills, StatRules, Boss, TeammateBuff, TeammateBuffGroup, BuildRecommendations, CharacterBuildRecommendation } from '@/types/catalog'
 import { getAgentSpecsByAgentId } from '@/specs/registry'
 import type { TeamBuffSpec } from '@/specs/types'
 
 export const useCatalogStore = defineStore('catalog', () => {
-  const catalog = ref<Catalog | null>(null)
+  /**
+   * 目录数据用 **shallowRef**（2026-09-23 mcp-engine，用户批准高风险引擎优化）：目录是加载后只读的静态数据
+   * （1.48MB JSON），只会**整体替换**（load / 测试 harness），全库无原地改写（已 grep 核：生产代码与 .vue 均无）。
+   * 深响应式 `ref` 让引擎每次读倍率表/技能行都走 Proxy get + 依赖追踪——实测难度爬梯里 Vue `get/track/find`
+   * 自耗时 >10s/40s。浅层后读取是裸对象，整体替换照常触发下游重算。
+   * ⚠ 若将来需要原地改目录（热更新单个角色等），必须整体替换 `catalog.value = { ...catalog.value, ... }`，
+   * 或调用 `triggerRef(catalog)`；原地改不会触发任何重算。
+   */
+  const catalog = shallowRef<Catalog | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
   // 队友 Buff 数据
-  const teammateBuffGroups = ref<TeammateBuffGroup[]>([])
+  /** 浅层（同 catalog）：只在加载时整体赋值 */
+  const teammateBuffGroups = shallowRef<TeammateBuffGroup[]>([])
   const teammateBuffsLoading = ref(false)
   const teammateBuffsLoaded = ref(false)
   // in-flight 去重：useResourceCalc 每次实例化都会 fire 一次加载（不 await），
@@ -95,7 +104,8 @@ export const useCatalogStore = defineStore('catalog', () => {
   }
 
   // 配装推荐数据（nanoka.cc 邦布精灵推荐）
-  const buildRecommendations = ref<BuildRecommendations | null>(null)
+  /** 浅层（同 catalog）：只在加载时整体赋值 */
+  const buildRecommendations = shallowRef<BuildRecommendations | null>(null)
   const buildRecsLoading = ref(false)
   const buildRecsLoaded = ref(false)
 
