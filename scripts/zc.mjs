@@ -28,6 +28,7 @@
 //   node scripts/zc.mjs facts <主体|--all|--unparsed|--unverified>      口径索引查询
 //   node scripts/zc.mjs done --verifier <命令> --coverage <范围> [--deps <新增依赖> --risk <可能崩点> --note …]  规则 9 落盘
 //   node scripts/zc.mjs ctx <文件路径> [--json]    摸文件前反查：决策树行 + 钉在文件上的口径 + 头注释职责
+//   node scripts/zc.mjs dead-channels [--json]    按需 LS 死通道扫描（只读；新增/空扫描/失败退出 1，惰性加载）
 //   node scripts/zc.mjs lang                      打印事实语法（唯一权威）
 // 状态目录 .zc/（已 gitignore，与 .claude/ledgers 同性质：工作状态，不是项目知识）。
 // 逃生口：租约冲突可用 --force 覆盖（会在 journal 留痕，供事后追责，不静默）。
@@ -1055,6 +1056,8 @@ function humanize(res) {
   } else if (res.verb === 'lanes') {
     if (!d.live?.length) lines.push('无活跃租约')
     for (const l of d.live ?? []) lines.push(l.path + ' ← ' + l.lane + '（' + l.ageMinutes + ' 分钟前，TTL ' + Math.round(l.ttlMs / 60000) + ' 分）')
+  } else if (res.verb === 'dead-channels') {
+    return res.formatted
   } else {
     lines.push(JSON.stringify(d))
   }
@@ -1076,8 +1079,16 @@ export async function main(argv) {
     case 'drift': res = await verbDrift(); break
     case 'brief': res = await verbBrief(args); break
     case 'ctx': res = await verbCtx(args); break
+    case 'dead-channels': {
+      // 惰性：只有本动词加载 LS 工作台，status/brief 等不付建 program 的代价
+      const m = await import('./zc-dead-channels.mjs')
+      const r = await m.buildDeadChannelReport(ROOT, args)
+      res = envelope('dead-channels', r.ok, r.data, r.next)
+      Object.defineProperty(res, 'formatted', { value: m.formatDeadChannelReport(r), enumerable: false })
+      break
+    }
     case 'lang': res = envelope('lang', true, { grammar: grammar() }, null); break
-    default: res = envelope(verb, false, {}, '未知动词。可用：status / brief / ctx / claim / release / lanes / facts / drift / done / lang')
+    default: res = envelope(verb, false, {}, '未知动词。可用：status / brief / ctx / claim / release / lanes / facts / drift / done / dead-channels / lang')
   }
   if (args.json) console.log(JSON.stringify(res, null, 2))
   else if (verb === 'lang') console.log(res.data.grammar)
