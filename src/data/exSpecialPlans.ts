@@ -42,7 +42,7 @@ export const EXTRA_EX_PLANS: Record<string, ExtraExPlanEntry[]> = {
 }
 
 // @fact engine:exSpecialPlan/千夏拍照 口径: 千夏强特2·特别拍照技巧（协同）=0耗能、每[天使协律]40s窗口1次且≤主强特次数（每次进入限1次）| 据 nanoka full/1491.json + 用户@2026-09 | 验 src/composables/__tests__/exSpecialPlan.test.ts | 锚 src/data/exSpecialPlans.ts#EXTRA_EX_PLANS | 信 确认
-// @fact engine:exSpecialPlan/成本类型化 口径: 强特成本按 energyCost 键语义分类（含 energy 键=能量计费；Sharpness Cost 等=替代资源不扣能量；无键=免费），不再把锐能 60 当能量 60 | 据 findExSpecial 2026-09 重写@2026-09 | 验 src/composables/__tests__/exSpecialPlan.test.ts | 锚 src/core/resource.ts#findExSpecial | 信 确认
+// @fact engine:exSpecialPlan/成本类型化 口径: 强特成本按 energyCost 键语义分类（含 energy 键=能量计费；Sharpness Cost 等=替代资源不扣能量；无键=免费），不再把锐能 60 当能量 60 | 据 findExSpecial 2026-09 重写@2026-09 | 验 src/composables/__tests__/exSpecialPlan.test.ts | 锚 src/core/resource/moveLookup.ts#findExSpecial | 信 确认
 
 /** 窗口门控的额外强特次数：每 windowSeconds 秒 1 次（×maxPerWindow），可选不超过主强特次数 */
 export function resolveExtraExCount(
