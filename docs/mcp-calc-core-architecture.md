@@ -117,10 +117,13 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-0 | — | **done（本会话）** | 删 `createRunCalcRound` 8 个死依赖 + 纠正「在 calcOutput 求值中读它们」的假注释 | convergence.ts / useResourceCalc.ts / 3 个测试 |
 | CC-1 | fast | **done（dsflash 工人 + lead 复核）** | `find*` 招式表查询迁 `core/resource/moveLookup.ts` | core/resource.ts 1288–1705 |
 | CC-2 | fast | **done（dsflash 工人 + lead 复核）** | 热启动缓存迁 `core/resource/warmStart.ts` | core/resource.ts 98–160 |
-| CC-3 | fast | ready | S1 `runInnerLoop` 提为纯函数 `core/resource/innerLoop.ts` | core/resource.ts 356–430 |
+| CC-3 | fast | **done**（lead 复核：dump 624 零差、guards 21、build、§4+floatNoise/miyabiCinema 37 测过；同机 A/B 耗时 HEAD 52.0/53.2s vs CC-3 50.0/52.6s 无退化） | S1 `runInnerLoop` 提为纯函数 `core/resource/innerLoop.ts` | core/resource.ts 356–430 |
 | CC-4 | review | design | `SolveDiagnostics` 累加器 + S2 `runFoldLoop` 外提 | core/resource.ts 329–600 |
 | CC-5 | review | design（依赖 CC-4） | S3a 欠打回填 / S4 `assembleSlot` / 重折环外提；`calcTeamResources` 收成编排器 | core/resource.ts 677–1210 |
-| CC-6 | review | design | 引擎能力接口：1471 `exSpecialCount` → 1451 帷幕 → 1531/1051 `finalizePass` → velina；每迁一个下调对应 `frozen` | mechanics/types.ts、core/resource*.ts、anomalyPool*.ts、4 个角色模块 |
+| CC-6a | review | **ready**（设计已过 lead 审） | 引擎能力 `exSpecialCount`：1471 般岳分支迁模块；core agentId 6→5、core 角色 import 5→4 | mechanics/types.ts、agents/banyue.ts、core/resource/helpers.ts、2 个棘轮基线 + RATCHET_BURNDOWN |
+| CC-6b | review | design（依赖 6a） | 1451 帷幕：`curtainTriggers` 能力 + yidhari 声明 `crossAgentSupply.kind='curtain-open'`；agentId 5→3、import 4→2 | 见 CC-6 设计稿 §3.2 |
+| CC-6c | review | design（依赖 6b） | 1531/1431/1051 终局重推：`finalizePass` 能力 + 通用执行器 `core/resource/finalizePasses.ts`；agentId 3→0 | 见设计稿 §3.3（stage 顺序敏感） |
+| CC-6d | review | design（依赖 CC-D3 裁决） | velina 风蚀状态机：`anomalyStateSim` 能力；import 2→0 | 见设计稿 §3.4 |
 | CC-7 | fast | ready | 贯穿力单一事实源：导出 `calcPenetrationPower`，norma.ts / damagePool.ts:1067 改引用（**不碰 :1020**） | core/damage.ts、norma.ts、damagePool.ts |
 | CC-8 | fast | ready | damagePool 异常常量改引 core：713/500/1250 与 DoT 表改用 `ANOMALY_SINGLE_HIT_MULTIPLIER` / `STANDARD_DOT_CONFIG` | damagePool.ts 1242–1247 / 1402 / 1429 |
 | CC-9 | review | design（依赖 CC-7/8） | damagePool 按簇拆到 `resourceCalc/` 直属文件（`damagePoolDirect.ts`/`damagePoolRelease.ts`/`damagePoolAnomaly.ts`/`damagePoolAxis.ts`），共享可变态 `rows/claimedInAxis/seenDirectIds` 由入口持有的 `RowSink` 注入 | damagePool.ts |
@@ -128,6 +131,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-11 | review | design | `runCalcRound` 引入 `RoundCtx`，按工人 C 的 C4–C10 簇拆；C1/C2/C3（轮输入簇、`resolveAxisUltimateDecibelCost`、`CalcRoundResult`）可先纯搬 | convergence.ts |
 | CC-D1 | — | **decide** | `damagePool.ts:1020` 琉音命破队友分支的贯穿力缺 `sheerForceFlat`：漏写还是有意？ | 需用户口径 |
 | CC-D2 | — | **decide** | core `standardDotDamage` 生产零消费：删掉，还是让 damagePool 消费它（两套算法不同，需先对账） | 需用户口径 |
+| CC-D3 | — | **decide（先探针）** | 风蚀状态机按「队里第一个风属性角色」触发（`convergence.ts:79-85` 只按 `damageElement==='wind'` 找槽，`anomalyPool.ts:329` 无身份判定）⇒ 1621 / 1631 队也跑 velina 的 `simulateVelinaCorrosionState`。是否给非 velina 风队产出了飓风伤害？**预测先行**：先写预测，再用 `PROBE_AGENT` 或一次性 vitest 读 1621 队 `velinaCorrosionSource` 的 cyclone 计数 | 若非零 = 数值缺陷，改法需用户确认 |
+| CC-D4 | — | 待立项 | `transformStore.velinaCorrosionSource` 死写（`anomalyPool.ts:98/111` 建、`velina.ts:277` 写、全仓无读）——接上或删，单独一批 | 与 CC-6d 分批 |
 | CC-12 | 换尺 | ready（单独一批） | 身份扫描器补「本地别名」形态（`convergence.ts:302/311` 的 `fillerAgentId === '1051'/'1041'` 现在量不到），按规则 17② 调 `frozen` 到真实值 | scripts/lib/agent-identity-lines.mjs 等 |
 
 ### CC-1 · 招式表查询迁出（fast）
@@ -186,6 +191,26 @@ DoT 表 `{ 百分比, 间隔, tick 数 }` 逐项与 `STANDARD_DOT_CONFIG` 对照
 ④ **报告**：新旧读数、新增命中的逐行清单。
 
 ### design 卡（CC-4/5/6/9/10/11）——lead 写完设计再放行
+
+**CC-6 设计稿**：dsflash 设计工人产出，lead 审过，全文 `.zc/reports/CC-6-design.md`（gitignored 工作态，56KB，逐行出处）。要点：
+- 能力一律挂 `AgentMechanicModule`，引擎经 `getAgentMechanic(cfg.agentId)?.<能力>` 查询，返回 `undefined` = 不认领、回落通用路径（照 `crossAgentSupply` 先例）。
+- 闸门复核：4 块里只有 1451 需要读别的槽位中间态（yidhari 的 `ultimateCount`）⇒ 必须先收集成标量（`crossAgentSupply` 新 kind），能力函数只吃标量；
+  走 `applyTeamConfig` 拿不到 iterate 的 `prevStates`，会改数值，不可行。
+- **每步必须同批下调棘轮**：`scripts/lib/agent-branch-ratchet.mjs` 的 `CORE_AGENT_BRANCH_BASELINE`、`scripts/lib/layer-import-ratchet.mjs` 的
+  `CORE_ROLE_IMPORT_BASELINE`、`scripts/check-guards.mjs` 的 `RATCHET_BURNDOWN.frozen` 三处一起改（只改基线不改 frozen ⇒ verify 红；计数低于基线 check-guards 也红）。
+- 每步带**反向验证**：临时删掉新能力声明 ⇒ dump 必须精确变红（证明引擎真的在走能力，而不是恰好算出同一个数）。
+
+### CC-6a · 1471 强特次数迁引擎能力（review）
+
+① **先读**：`.zc/reports/CC-6-design.md` §0、§3.1、§4 步骤 1；`src/core/resource/helpers.ts` 140–210；`src/core/resource/crossAgentSupply.ts` 1–60；
+`src/mechanics/types.ts` 中 `crossAgentSupply?` 声明附近；`src/mechanics/agents/banyue.ts` 中 `banyueMechanic` 定义。
+② **硬约束**：能力签名按设计稿 `exSpecialCount?(input: { cfg; totalEnergy }): number | undefined`；引擎查询位置 = 原 1471 分支所在处
+（**在** `exSpecialCostType === 'resource'` 与 `exSpecialEnergyConsume <= 0` 两个早返回**之后**，顺序不变）；1051 分支原样不动。
+动手前跑 `grep -rn "exSpecialCount:" src/mechanics/agents/`，除 banyue 外必须零命中。三处棘轮同批下调（6→5、5→4）并在 `RATCHET_BURNDOWN` 沿革写一行。
+③ **验收**：§4 全套 + `npx vitest run src/mechanics/__tests__/banyue*.test.ts src/composables/__tests__/yidhariInteractionGrid.test.ts`；
+反向验证：临时注释掉 banyue 的 `exSpecialCount` 跑 dump，含 1471 的场景必须非零差异，记下差异条数后**恢复**，再跑一次 dump 确认回到零差异。
+④ **报告**：改动行、三处棘轮新旧值、反向验证差异条数、§4 尾部输出。
+
 
 每张 design 卡放行前，lead 在本节补三样：**接口签名**、**证伪闸门**（前提假设 + 假设为假时的可观察失败）、**切批顺序**。
 已知前提与风险（工人 A/B/C 报告，lead 抽查）：
