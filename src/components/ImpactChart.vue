@@ -380,6 +380,7 @@ function runOptimizerForSlot0() {
     getAgent: (id: string) => catalogStore.getAgent(id),
     getWEngine: (id: string) => catalogStore.getWEngine(id),
     isTeammateBuffEnabled: (id: string) => configStore.isTeammateBuffEnabled(id),
+    enemyWeakness: configStore.enemy.weakness,
   })
   const tmpl = getTemplate(agent)
   const sc = tmpl.stats.length
@@ -393,7 +394,7 @@ function runOptimizerForSlot0() {
       statRules: catalogStore.statRules,
       statCap: configStore.getMechanicSetting('optimizer.substatCap', 20),
       totalSteps: configStore.getMechanicSetting(tsk, 0),
-      config: { cinemaLevel: char.cinemaLevel ?? 0, wEngineModLevel: char.wEngineModLevel ?? 1, sourcePanelsByOwner: setInfo.sourcePanelsByOwner },
+      config: { cinemaLevel: char.cinemaLevel ?? 0, wEngineModLevel: char.wEngineModLevel ?? 1, sourcePanelsByOwner: setInfo.sourcePanelsByOwner, enemyWeakness: configStore.enemy.weakness },
     })
     char.driveDisc.subStatAllocation = {}
     for (const [s, n] of Object.entries(result.subStatAllocation)) {

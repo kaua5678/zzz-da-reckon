@@ -1103,6 +1103,7 @@ function getTeammateBuffSourceContext() {
     getAgent: (id) => catalogStore.getAgent(id),
     getWEngine: (id) => catalogStore.getWEngine(id),
     isTeammateBuffEnabled: (id) => configStore.isTeammateBuffEnabled(id),
+    enemyWeakness: configStore.enemy.weakness,
   })
 }
 
@@ -1175,6 +1176,7 @@ const currentPanel = computed<PanelValues | null>(() => {
       wEngineModLevel: char.wEngineModLevel,
       sourcePanelsByOwner,
       effectCoverageMap: configStore.getWEngineEffectCoverageMap(),
+      enemyWeakness: configStore.enemy.weakness,
     }
   )
 

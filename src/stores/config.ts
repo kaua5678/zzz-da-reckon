@@ -96,6 +96,12 @@ export interface EnemyConfig {
   anomalyResistances: Record<string, number>
   /** 兼容旧配置：旧版单表抗性 */
   resistances?: Record<string, number>
+  /**
+   * 当前敌人弱点（中文，与 Boss 预设 phase.weakness 同口径）。
+   * 缺省或空 = 未声明，音擎 attributeCounter 不拦截。
+   * setEnemy 是合并写入，切 Boss 时必须显式覆盖，否则上一个弱点会粘住。
+   */
+  weakness?: string[]
 }
 
 // ========== 默认配置 ==========
@@ -303,6 +309,7 @@ function defaultEnemy(): EnemyConfig {
     damageResistances: defaultResistanceTable(0),
     stunResistances: defaultResistanceTable(0),
     anomalyResistances: defaultResistanceTable(0),
+    weakness: [],
   }
 }
 
@@ -819,7 +826,7 @@ export const useConfigStore = defineStore('config', () => {
             statCap,
             totalSteps,
             useDefault: true,
-            config: { cinemaLevel: char.cinemaLevel, wEngineModLevel: char.wEngineModLevel },
+            config: { cinemaLevel: char.cinemaLevel, wEngineModLevel: char.wEngineModLevel, enemyWeakness: enemy.value.weakness },
           })
         } else {
           const { enabledTeammateBuffs, sourcePanelsByOwner } = buildTeammateBuffSourceContext(team.value, {
@@ -829,6 +836,7 @@ export const useConfigStore = defineStore('config', () => {
             getAgent: (id) => catalogStore.getAgent(id),
             getWEngine: (id) => catalogStore.getWEngine(id),
             isTeammateBuffEnabled: (id) => isTeammateBuffEnabled(id),
+            enemyWeakness: enemy.value.weakness,
           })
 
           // 构建队友信息（用于拐力计算）
@@ -843,7 +851,7 @@ export const useConfigStore = defineStore('config', () => {
             try {
               const otherPanel = calcPanel(otherAgent, otherWEngine, otherChar.driveDisc,
                 catalogStore.driveDiscSetsMap, enabledTeammateBuffs, catalogStore.statRules,
-                { cinemaLevel: otherChar.cinemaLevel ?? 0, wEngineModLevel: otherChar.wEngineModLevel ?? 1 })
+                { cinemaLevel: otherChar.cinemaLevel ?? 0, wEngineModLevel: otherChar.wEngineModLevel ?? 1, enemyWeakness: enemy.value.weakness })
               const p = otherPanel.inCombat
               const cr = Math.min(100, Math.max(0, p.critRate)) / 100
               const directEst = p.atk * (1 + cr * (p.critDmg / 100)) * (1 + (p.dmgBonus ?? 0) / 100)
@@ -872,6 +880,7 @@ export const useConfigStore = defineStore('config', () => {
               cinemaLevel: char.cinemaLevel,
               wEngineModLevel: char.wEngineModLevel,
               sourcePanelsByOwner,
+              enemyWeakness: enemy.value.weakness,
             },
           })
         }
@@ -1197,6 +1206,7 @@ export const useConfigStore = defineStore('config', () => {
     damageResistances: Record<string, number>
     stunResistances: Record<string, number>
     anomalyResistances: Record<string, number>
+    weakness?: string[]
   }, monster: {
     stunVuln: number
     stunTime: number
@@ -1229,6 +1239,7 @@ export const useConfigStore = defineStore('config', () => {
       stunResistances: { ...phase.stunResistances },
       anomalyResistances: { ...phase.anomalyResistances },
       bossStunGift: Math.round((defaults.stunGiftRatio ?? 0) * phase.stunValue),
+      weakness: [...(phase.weakness ?? [])],
     })
     // 声明了默认弹刀总数（正常/不带支援突击/只喧响）**或控制技组**的 Boss → 自动勾选「保底4失衡」
     // （弹刀反推的开关；用户可手动取消）。控制技组无替换时会并入弹刀总数，故也算弹刀来源；

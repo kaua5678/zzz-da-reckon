@@ -22,6 +22,8 @@ export interface TeammateBuffSourceDeps {
   getAgent: (id: string) => Agent | undefined
   getWEngine: (id: string) => WEngine | undefined
   isTeammateBuffEnabled: (id: string) => boolean
+  /** 当前敌人弱点。缺省 = 不拦截 attributeCounter。 */
+  enemyWeakness?: readonly string[]
 }
 
 export interface TeammateBuffSourceContext {
@@ -64,6 +66,7 @@ export function buildTeammateBuffSourceContext(
         cinemaLevel: char.cinemaLevel,
         wEngineModLevel: char.wEngineModLevel,
         potentialLevel: char.potentialLevel,
+        enemyWeakness: deps.enemyWeakness,
       },
     )
     addSourcePanelAliases(sourcePanelsByOwner, agent, {

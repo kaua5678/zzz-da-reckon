@@ -16,6 +16,7 @@ import type {
 } from '@/types/catalog'
 import { applyWEngineModLevel, parseStatRequirement, resolveAttributeTemplateStat } from './buff'
 import type { SourcePanelsByOwner } from './buff'
+import { wEngineConditionMet } from './wengineConditions'
 
 export interface InCombatTeamBuff extends TeammateBuff {
   includeOwner: boolean
@@ -29,6 +30,8 @@ export interface InCombatBuffSourceDeps {
   isTeammateBuffEnabled(id: string): boolean
   /** 各成员源面板（outOfCombat），供驱动盘 teamBuff 的装备者属性门槛判断（如山大王暴击率≥50%） */
   wearerPanels?: SourcePanelsByOwner
+  /** 当前敌人弱点。缺省 = 不拦截 attributeCounter（未选 Boss）。 */
+  enemyWeakness?: readonly string[]
 }
 
 export interface InCombatBuffTeamMember {
@@ -128,7 +131,13 @@ export function collectInCombatTeamBuffs(
     if (char.wEngineId) {
       const wEngine = deps.getWEngine(char.wEngineId)
       const group = wEngine?.effect?.teamBuff
-      if (wEngine && group?.effects?.length) {
+      if (
+        wEngine && group?.effects?.length
+        && wEngineConditionMet(group.condition, {
+          wearerAttribute: agent.attribute,
+          enemyWeakness: deps.enemyWeakness,
+        })
+      ) {
         buffs.push({
           id: `wengine-team-${wEngine.id}`,
           source: { zhCN: '音擎' },

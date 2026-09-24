@@ -313,7 +313,7 @@ export function calcPanel(
   setsMap: Map<string, DriveDiscSet>,
   teammateBuffs: TeammateBuff[],
   statRules: StatRules | null,
-  config: { cinemaLevel: number; wEngineModLevel: number; potentialLevel?: number; sourcePanelsByOwner?: import('./buff').SourcePanelsByOwner; effectCoverageMap?: Map<string, number> }
+  config: { cinemaLevel: number; wEngineModLevel: number; potentialLevel?: number; sourcePanelsByOwner?: import('./buff').SourcePanelsByOwner; effectCoverageMap?: Map<string, number>; enemyWeakness?: readonly string[] }
 ): PanelResult {
   // 1. 基础面板
   const base = calcBasePanel(agent, wEngine)
@@ -335,6 +335,7 @@ export function calcPanel(
     wEngineModLevel: config.wEngineModLevel,
     sourcePanelsByOwner: config.sourcePanelsByOwner,
     statRules,
+    enemyWeakness: config.enemyWeakness,
   })
 
   // 4. 局外面板 = 基础白值 + 音擎高级词条 + 驱动盘主副词条 + 局外 buff。

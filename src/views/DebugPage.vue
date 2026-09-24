@@ -247,8 +247,13 @@ function addWEngineRows(rows: DebugRow[]) {
     rows.push(row('音擎', `${localized(w.name)} 进阶属性`, adv.stat, adv.value, adv.mode, '音擎 60 级高级词条，属于局外属性', phaseStatLabel(adv.stat, 'outOfCombat')))
   }
   const match = w.specialty === agent.specialty
-  addEffectRows(rows, '音擎', `${localized(w.name)} 自身效果`, w.effect?.selfBuff, char.wEngineModLevel, match ? '职业匹配，当前会生效' : '职业不匹配，当前计算不会生效')
-  addEffectRows(rows, '音擎', `${localized(w.name)} 团队效果`, w.effect?.teamBuff, char.wEngineModLevel, match ? '职业匹配，当前会生效' : '职业不匹配，当前计算不会生效')
+  const note = (condition: string | undefined) => {
+    if (!match) return '职业不匹配，当前计算不会生效'
+    if (condition === 'attributeCounter') return '职业匹配。还要装备者克制当前弱点才生效'
+    return '职业匹配，当前会生效'
+  }
+  addEffectRows(rows, '音擎', `${localized(w.name)} 自身效果`, w.effect?.selfBuff, char.wEngineModLevel, note(w.effect?.selfBuff?.condition))
+  addEffectRows(rows, '音擎', `${localized(w.name)} 团队效果`, w.effect?.teamBuff, char.wEngineModLevel, note(w.effect?.teamBuff?.condition))
 }
 
 function addDriveRows(rows: DebugRow[]) {

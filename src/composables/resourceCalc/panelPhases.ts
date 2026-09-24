@@ -496,6 +496,7 @@ export function computePanelPhases(
     getAgent: (id) => catalogStore.agentsMap.get(id),
     getWEngine: (id) => catalogStore.wEnginesMap.get(id),
     isTeammateBuffEnabled: (id) => teammateBuffEnabledOf(buffSelections, id),
+    enemyWeakness: configStore.enemy.weakness,
   })
 
   // 莱特：昂扬公式读局内冲击力；喷发耗士气冲击 +20% 需并入 source 面板，否则公式少算一层。
@@ -589,6 +590,7 @@ export function computePanelPhases(
       wEngineModLevel: char.wEngineModLevel,
       sourcePanelsByOwner,
       effectCoverageMap,
+      enemyWeakness: configStore.enemy.weakness,
     },
   )
 
@@ -728,6 +730,7 @@ export function computeRemielleEntryPanel(
     {
       cinemaLevel: char.cinemaLevel ?? 0,
       wEngineModLevel: char.wEngineModLevel ?? 1,
+      enemyWeakness: configStore.enemy.weakness,
       effectCoverageMap: (() => {
         const map = wEngineEffectCoverageMapOf(configStore.wEngineEffectCoverages)
         mergeTeamDiscEffectCoverages(map, configStore, catalogStore, teamDiscs(configStore))

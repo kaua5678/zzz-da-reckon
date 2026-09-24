@@ -756,6 +756,7 @@ export interface OptimizeSubstatsInput {
     cinemaLevel: number
     wEngineModLevel: number
     sourcePanelsByOwner?: SourcePanelsByOwner
+    enemyWeakness?: readonly string[]
   }
   /** 队友信息（可选）。提供后攻击词条的拐力收益会计入目标函数。 */
   teammates?: TeammateInfo[]
@@ -841,6 +842,7 @@ function computeNoSubstatPanel(input: OptimizeSubstatsInput): PanelValues {
       cinemaLevel: input.config.cinemaLevel,
       wEngineModLevel: input.config.wEngineModLevel,
       sourcePanelsByOwner: input.config.sourcePanelsByOwner,
+      enemyWeakness: input.config.enemyWeakness,
     },
   )
   return { ...result.inCombat }

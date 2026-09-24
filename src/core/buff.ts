@@ -7,6 +7,7 @@ import type {
   PanelValues, StatId, TeammateBuff, DriveDiscConfig, SkillDamageTarget, BuffScope, EffectRequirement, StatRules
 } from '@/types/catalog'
 import { GENERATED_ENEMY_DEBUFF_STAT_IDS, LEGACY_ENEMY_DEBUFF_STAT_IDS, normalizeEnemyDebuffStatAlias } from '@/utils/enemyDebuffStats'
+import { wEngineConditionMet, type WEngineConditionContext } from '@/core/wengineConditions'
 
 /** 收集的 buff 列表 */
 
@@ -329,7 +330,8 @@ function collectAgentBuffs(agent: Agent, cinemaLevel: number): CollectedBuffs {
 function collectWEngineBuffs(
   wEngine: WEngine,
   modLevel: number,
-  matchSpecialty: boolean
+  matchSpecialty: boolean,
+  gate?: WEngineConditionContext,
 ): CollectedBuffs {
   const out: BuffEffect[] = []
   const inCombat: BuffEffect[] = []
@@ -337,6 +339,7 @@ function collectWEngineBuffs(
   if (!matchSpecialty) return { outOfCombat: out, inCombat }
 
   const addEffects = (group: BuffGroup | null) => {
+    if (!wEngineConditionMet(group?.condition, gate)) return
     for (let e of extractEffects(group)) {
       e = applyWEngineModLevel(e, modLevel)
       if (group?.scope === 'outOfCombat') out.push(e)
@@ -529,12 +532,15 @@ export function collectAllBuffs(
   driveDiscConfig: DriveDiscConfig,
   setsMap: Map<string, DriveDiscSet>,
   teammateBuffs: TeammateBuff[],
-  config: { cinemaLevel: number; wEngineModLevel: number; sourcePanelsByOwner?: SourcePanelsByOwner; statRules?: StatRules | null }
+  config: { cinemaLevel: number; wEngineModLevel: number; sourcePanelsByOwner?: SourcePanelsByOwner; statRules?: StatRules | null; enemyWeakness?: readonly string[] }
 ): CollectedBuffs {
   const matchSpecialty = wEngine ? wEngine.specialty === agent.specialty : false
   const agentBuffs = collectAgentBuffs(agent, config.cinemaLevel)
   const wEngineBuffs = wEngine
-    ? collectWEngineBuffs(wEngine, config.wEngineModLevel, matchSpecialty)
+    ? collectWEngineBuffs(wEngine, config.wEngineModLevel, matchSpecialty, {
+        wearerAttribute: agent.attribute,
+        enemyWeakness: config.enemyWeakness,
+      })
     : { outOfCombat: [] as BuffEffect[], inCombat: [] as BuffEffect[] }
 
   // 粗算局外面板属性，供套装 requirement 门槛判断。口径：基础值 + 固定主词条 + 主词条满值 +
