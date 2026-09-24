@@ -758,6 +758,18 @@ export interface AgentMechanicModule {
    * `backstageAutoFill` / `axisWindowOverlays` 同族。
    */
   crossAgentSupply?: CrossAgentSupplySpec
+  /**
+   * **引擎期强特次数求解**（规则 6 引擎落点，2026-09-24 CC-6a）。
+   *
+   * 存在的理由：`core/resource/helpers.ts#resolveExSpecialCount` 里曾住着「般岳强特总次数由
+   * 嗔火/怒相循环决定」的角色数学——免费强特不耗闪能，不能用通用的 `总能量/强特消耗`；轴内
+   * 连段块不重复计。这正是规则 6 要消灭的形状（引擎替某个角色认人）。
+   *
+   * 契约：**纯函数**（同 `crossAgentSupply.supply`），只读入参与自己 cfg 上的模块写入字段
+   * （如 `banyueAxisEx`），不得依赖 store/DOM/时间。返回 `undefined` = 本模块不认领，
+   * 引擎回落通用公式（`总能量 ÷ 强特消耗`）。同一 agentId 至多一个模块声明。
+   */
+  exSpecialCount?(input: { cfg: CharacterOperationConfig; totalEnergy: number }): number | undefined
 }
 
 /**

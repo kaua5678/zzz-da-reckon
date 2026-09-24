@@ -118,7 +118,12 @@ const CORE_ROLE_IMPORT_RE = /^\s*import\s+(?!type\s)[^'"]*from\s+['"]@\/mechanic
  * `calcTurbulenceDamage` 等签名），不是机械迁移。原计划里「norma/liuyin/velina 可直接删」**已证伪**
  * （norma/liuyin 那两条随赠链族一起迁走了；velina 那条不成立）。
  */
-export const CORE_ROLE_IMPORT_BASELINE = 5
+export const CORE_ROLE_IMPORT_BASELINE = 4
+// 沿革（2026-09-24 CC-6a，5 → 4，−1）：`helpers.ts` 的 `@/mechanics/agents/banyue` 值导入随般岳
+// 强特次数分支迁出而删除（该分支现由模块能力 `exSpecialCount` 认领，引擎经注册表查询——
+// 不是把计算挪进 `buildCharConfig`，故不触发上方「banyueAxisEx 注入时机」的否决理由）。
+// 同批 core agentId 基线 6 → 5；`RATCHET_BURNDOWN.frozen` 同步。剩余 4 处 = luciaElowen×3 / velina×2
+// 的前置契约见上方「剩余 5 处的迁移前提已被实测证伪」段（现为 4 处，banyue 已迁）。
 
 /** 扫 `src/core/**` 里对具体角色模块的值导入 → [{ file, line, text }]（**不含测试**：测试自由引用模块） */
 export function scanCoreRoleImports(root = ROOT) {

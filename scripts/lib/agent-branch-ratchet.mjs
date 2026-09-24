@@ -233,7 +233,14 @@ export const CORE_AGENT_BRANCH_FILES = ['src/core/resource.ts', 'src/core/resour
  *  `helpers.ts:1254`（般岳强特次数分支）· `helpers.ts:1389`（`luciaSlot`）。
  *  ⇒ 「core 6→4」在**当前树**上无可达路径；真要降 core 需先做上方「剩余 4 处的性质」里的能力契约。
  */
-export const CORE_AGENT_BRANCH_BASELINE = 6
+export const CORE_AGENT_BRANCH_BASELINE = 5
+// 沿革（2026-09-24 CC-6a，6 → 5，−1）：`helpers.ts` 般岳（`1471`）强特次数分支已按本注释上方
+// 「剩余 4 处的性质」的既定落点迁出——模块声明能力 `exSpecialCount`（`banyue.ts#banyueMechanic`），
+// 引擎经 `getAgentMechanic(cfg.agentId)?.exSpecialCount?.({ cfg, totalEnergy })` 查询
+// （`helpers.ts#resolveExSpecialCount`，位置在两个早返回之后，顺序不变）。同批删 `helpers.ts` 的
+// `@/mechanics/agents/banyue` 值导入 ⇒ 判据 12 基线 5 → 4。逐位等价证据 = dump A/B 排除 `__ms` 后
+// 零差异（624 场景）+ `banyue.test.ts` 全绿；反向验证：临时注释 banyue 的 `exSpecialCount` 声明 ⇒
+// dump 含 1471 场景精确红。`RATCHET_BURNDOWN.frozen` 同批下调（core agentId 6 → 5）。
 
 /** 跨多个文件计 agentId 分支总行数（与 countAgentIdBranchLines 同口径） */
 export function countAgentIdBranchLinesInFiles(files, root = ROOT) {

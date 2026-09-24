@@ -916,6 +916,23 @@ export const banyueMechanic: AgentMechanicModule = {
    */
   applyTeamConfig: applyBanyueTeamConfig,
   buildCharConfig: buildBanyueCharConfig,
+  /**
+   * 引擎期强特次数求解（规则 6 引擎落点，2026-09-24 CC-6a）：原 `core/resource/helpers.ts` 的
+   * `if (cfg.agentId === '1471')` 分支整段迁入——般岳强特总次数由嗔火/怒相循环决定（怒相内山威
+   * 免费 + 怒相外付费连段 + 地动滑块 + 轴内捏的普通强特），不能用 闪能/20（免费强特不耗闪能）；
+   * 轴内连段块不重复计（认领怒相内/外行，池守恒）。纯函数，只读自己 cfg 的模块写入字段。
+   */
+  exSpecialCount: ({ cfg }) => {
+    const c = computeBanyueCycleFromCfg(cfg)
+    const axisEx = readAxisExCounts(cfg)
+    let axisNormal = 0
+    for (const [k, v] of Object.entries(axisEx)) if (k !== 'banyue-combo' && k !== 'banyue-combo-didong') axisNormal += v
+    return c.lunDaoRageCount + c.shiZiHouNuCount + c.shanYaoRageCount
+      + c.diDongRageCount + c.shanYaoNuRageCount
+      + c.lunDaoOutCount + c.shiZiHouNuOutCount
+      + c.diDongOutCount + c.shanYaoNuOutCount
+      + axisNormal
+  },
   estimateExSpecialTime: ({ cfg, exSpecialCount: _exSpecialCount, ultimateCount: _ultimateCount }) => {
     const record = cfg as unknown as Record<string, unknown>
     const axisEx = readAxisExCounts(cfg)

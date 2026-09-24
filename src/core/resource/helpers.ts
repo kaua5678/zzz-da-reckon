@@ -14,7 +14,7 @@ import type {
   EnergySource, IterationState,
 } from '@/types/resource'
 import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
-import { computeBanyueCycleFromCfg, readAxisExCounts } from '@/mechanics/agents/banyue'
+import { getAgentMechanic } from '@/mechanics'
 import { crossAgentSupplyAt, findCrossAgentSupplySlots, ultimateGiftOf, giftDecibelForCfg } from './crossAgentSupply'
 import { DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
@@ -152,19 +152,12 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
       + Math.max(0, Math.floor(cfg.freeExSpecialCount ?? 0))
   }
   if (cfg.exSpecialEnergyConsume <= 0) return 0
-  if (cfg.agentId === '1471') {
-    // 般岳：强特总次数由嗔火/怒相循环决定（怒相内山威免费 + 怒相外付费连段 + 地动滑块 + 轴内捏的普通强特），
-    // 不能用 闪能/20 —— 免费强特不耗闪能；轴内连段块不重复计（认领怒相内/外行，池守恒）
-    const c = computeBanyueCycleFromCfg(cfg)
-    const axisEx = readAxisExCounts(cfg)
-    let axisNormal = 0
-    for (const [k, v] of Object.entries(axisEx)) if (k !== 'banyue-combo' && k !== 'banyue-combo-didong') axisNormal += v
-    return c.lunDaoRageCount + c.shiZiHouNuCount + c.shanYaoRageCount
-      + c.diDongRageCount + c.shanYaoNuRageCount
-      + c.lunDaoOutCount + c.shiZiHouNuOutCount
-      + c.diDongOutCount + c.shanYaoNuOutCount
-      + axisNormal
-  }
+  // 般岳：强特总次数由嗔火/怒相循环决定（怒相内山威免费 + 怒相外付费连段 + 地动滑块 + 轴内捏的
+  // 普通强特），不能用 闪能/20 —— 免费强特不耗闪能；轴内连段块不重复计（认领怒相内/外行，池守恒）。
+  // 2026-09-24 CC-6a：角色数学迁进 banyue 模块的能力声明，引擎按能力查询（规则 6），
+  // 返回 undefined = 本模块不认领 ⇒ 回落通用公式。
+  const fromModule = getAgentMechanic(cfg.agentId)?.exSpecialCount?.({ cfg, totalEnergy })
+  if (fromModule !== undefined) return fromModule
   // agentId 判断冗余已删：yidhariContinuousEx 唯一写入方 = src/mechanics/agents/yidhari.ts:148
   // （模块只对自己的 cfg 运行 ⇒ 字段为 true 即蕴含 agentId === '1051'），引擎层不读 agentId。
   if (cfg.yidhariContinuousEx === true && (cfg.yidhariRefundPerOutStunEx ?? 0) > 0) {
