@@ -183,7 +183,7 @@ function getAnomalyCritStats(panel: PanelValues, element: DamageElement | undefi
   }
 }
 
-function calcPenetrationPower(panel: PanelValues): number {
+export function calcPenetrationPower(panel: PanelValues): number {
   return panel.atk * 0.3 + panel.hp * 0.1 + (panel.sheerForceFlat ?? 0)
 }
 

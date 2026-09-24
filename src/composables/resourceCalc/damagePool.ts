@@ -11,7 +11,7 @@
  * 依赖注入：全部输入经 DamagePoolContext 快照传入（computed 在 useResourceCalc 侧解包），
  * computeWindowDuration 为例外（需要 configStore 实时窗口时长，函数注入保持单一职责）。
  */
-import { calcDirectDamage, calcAnomalyDamage, resolveSpecialDamageProfile } from '@/core/damage'
+import { calcDirectDamage, calcAnomalyDamage, resolveSpecialDamageProfile, calcPenetrationPower } from '@/core/damage'
 // 面板数组按位置压缩（下标 ≠ 槽位号）⇒ 一律 panelAt 按身份取，不用 damagePanels[slot]（见 core/panel.ts）。
 import { panelAt } from '@/core/panel'
 import { attributeCountByStateChain } from '@/core/stunAxis/inStunAnomaly'
@@ -1064,7 +1064,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
             count: attachCount,
             multiplier: attachRatio,
             note: `影画6：倾山命中时对周身造成 600% 贯穿力火伤；次数=倾山次数 ×${attachCount}（自动，不可调）`,
-            basisValueOverride: panel.atk * 0.3 + (panel.hp ?? 0) * 0.1 + (panel.sheerForceFlat ?? 0),
+            basisValueOverride: calcPenetrationPower(panel),
             basisLabelOverride: '贯穿力（600%附伤）',
             moveId: 'banyue_c6_crush_attach',
             stunOverride: axisStunFor('banyue_c6_crush_attach'),

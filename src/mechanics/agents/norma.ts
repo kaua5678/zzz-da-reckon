@@ -11,6 +11,7 @@ import type {
 import type { AgentSkills, SkillMove, PanelValues } from '@/types/catalog'
 import type { CharacterResourceResult, MechanicSetting, NormaMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
+import { calcPenetrationPower } from '@/core/damage'
 import { resolveUltimateTargetSlot } from './liuyin'
 
 const NORMA_AGENT_ID = '1571'
@@ -94,11 +95,6 @@ function isNormaExtraAbilityActive(panel: PanelValues | undefined, team: Readonl
     || (panel?.additionalAbilityActive === undefined && team.some(m => m.slot !== ownSlot && m.agent && (
       m.agent.specialty === 'attack' || m.agent.specialty === 'rupture' || m.agent.faction === agentFaction
     )))
-}
-
-/** 计算贯穿力（与 damage.ts 口径一致） */
-function calcPenetrationPower(panel: PanelValues): number {
-  return (panel.atk ?? 0) * 0.3 + (panel.hp ?? 0) * 0.1 + (panel.sheerForceFlat ?? 0)
 }
 
 interface NormaSourceInput {
