@@ -7,7 +7,7 @@
  * 单房上限 60000；一期 3 房（每期实际 Boss 数由期轴数据决定）。
  *
  * 性能口径（对齐 Chart 1/4 实测）：每次伤害求值 ~30ms 是唯一大头。缓存 key =
- * (team × phaseId × 金数档 × buff 签名)——同队同 Boss 同期同档只算一次，
+ * (有序 team × bossId/phaseId/HP × 逐人持有档)——同槽序同房同档只算一次，
  * beam 的 VCG 重规划大量命中缓存。规划期内 Boss/buff 逐期应用（同 Chart 4）。
  */
 import { getInteractionDefaults, roleInteractionBaseline, useConfigStore } from '@/stores/config'
@@ -43,6 +43,14 @@ interface OracleState {
   cache: Map<string, Array<{ team: [string, string, string]; score: number }>>
   evaluations: number
   cacheHits: number
+}
+
+/** 既有免费特例口径：赠送 S 与 A 级特例；购买清单、入队及代表剪枝共享。 */
+const FREE_SPECIAL_AGENT_IDS = new Set(['1551', '1421'])
+
+function isFreePlannerMember(id: string, catalog: ReturnType<typeof useCatalogStore>): boolean {
+  const agent = catalog.getAgent(id)
+  return !!agent && (FREE_SPECIAL_AGENT_IDS.has(id) || agent.rarity !== 'S' || STANDARD_S_AGENT_IDS.has(id))
 }
 
 /**
@@ -82,7 +90,7 @@ export function holdingStateFor(
     const id = team[s]
     const agent = catalog.getAgent(id)
     const tier = holdings[id] ?? 0
-    const limited = !!agent && agent.rarity === 'S' && !STANDARD_S_AGENT_IDS.has(id)
+    const limited = !!agent && !isFreePlannerMember(id, catalog)
     const sig = catalog.displayWEngines.find(w => w.ownerAgentId === id)?.id ?? ''
     if (limited && tier >= 2 && isLimitedSWengineId(sig)) {
       cinemas[s] = tier >= 3 ? 6 : 0
@@ -98,21 +106,9 @@ export function holdingStateFor(
   return { cinemas, wengineMods, wEngines }
 }
 
-/** 持有成员过滤：限定 S 未持有（tier 0）不可入队；常驻 S / A 级永远可用（成型号口径） */
+/** 持有成员过滤：限定 S 未持有不可入队；免费成员资格与免费池同源。 */
 function usableMembers(pool: string[], holdings: Record<string, number>, catalog: ReturnType<typeof useCatalogStore>): string[] {
-  const out: string[] = []
-  for (const id of pool) {
-    if (!catalog.getAgent(id)) continue
-    const tier = holdings[id] ?? 0
-    if (tier > 0) {
-      out.push(id)
-      continue
-    }
-    // 限定 S（非常驻名单）未持有不可用；常驻 S 与 A 级免费可用
-    const isLimitedS = catalog.getAgent(id)?.rarity === 'S' && !STANDARD_S_AGENT_IDS.has(id)
-    if (!isLimitedS) out.push(id)
-  }
-  return out
+  return pool.filter(id => !!catalog.getAgent(id) && ((holdings[id] ?? 0) > 0 || isFreePlannerMember(id, catalog)))
 }
 
 /**
@@ -130,6 +126,8 @@ export function createEngineOracle(opts: EngineOracleOptions): {
 } {
   const configStore = useConfigStore()
   const catalog = useCatalogStore()
+  const candidatePool = [...new Set(opts.candidatePool)]
+  const roomKey = (room: PlannerBossRoom) => `${room.bossId}|${room.phaseId}|${room.hp > 0 ? room.hp : 1}`
   const state: OracleState = {
     opts,
     bossById: new Map(opts.bosses.map(b => [b.id, b])),
@@ -152,20 +150,18 @@ export function createEngineOracle(opts: EngineOracleOptions): {
     if (period.bosses.length > 0) applyRoomContext(period.bosses[0])
   }
 
-  /** 队级分数缓存：键 = (bossId|phaseId|队伍成员 tier 签名)。同一支队在「成员 tier
+  /** 队级分数缓存：键 = (bossId|phaseId|HP|有序队伍成员 tier 签名)。同一支队在「槽序与成员 tier
    *  不变」的任何持有集下分数相同——beam 大量持有集只改了池外卡的 tier，队级键不变
    *  → 命中率远高于整持有集键（实测整持有集键 30 hits / 1800 evals，队级键把
    *  「同队跨持有集」全部吸收）。 */
-  const teamScoreCache = new Map<string, number>()
+  const teamScoreCache = new Map<string, number | null>()
   const evalTeamOnce = (
     bossRoom: PlannerBossRoom,
     team: [string, string, string],
     holdings: Record<string, number>,
     configStore: ReturnType<typeof useConfigStore>,
-    isStun: (id: string) => boolean,
   ): number | null => {
-    void isStun
-    const key = `${bossRoom.bossId}|${bossRoom.phaseId}|${team.map(id => `${id}:${holdings[id] ?? 0}`).sort().join(',')}`
+    const key = `${roomKey(bossRoom)}|${team.map(id => `${id}:${holdings[id] ?? 0}`).join(',')}`
     const hit = teamScoreCache.get(key)
     if (hit !== undefined) return hit
     const hp = bossRoom.hp > 0 ? bossRoom.hp : 1
@@ -174,7 +170,7 @@ export function createEngineOracle(opts: EngineOracleOptions): {
     state.evaluations++
     const conv = opts.calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
     if (conv === 'maxIter') {
-      teamScoreCache.set(key, -1) // 未收敛哨兵：同键不再求值
+      teamScoreCache.set(key, null) // 未收敛也缓存；命中时仍返回 null，不能泄漏为负分候选
       return null
     }
     const damage = opts.calc.teamTotalDamage.value
@@ -185,7 +181,7 @@ export function createEngineOracle(opts: EngineOracleOptions): {
 
   const oracle: TeamOracle = {
     candidates(bossRoom: PlannerBossRoom, holdings: Record<string, number>) {
-      const cacheKey = `${bossRoom.bossId}|${bossRoom.phaseId}|${Object.keys(holdings).filter(k => holdings[k] > 0).sort().map(k => `${k}:${holdings[k]}`).join(',')}`
+      const cacheKey = `${roomKey(bossRoom)}|${candidatePool.filter(k => holdings[k] > 0).map(k => `${k}:${holdings[k]}`).join(',')}`
       const cached = state.cache.get(cacheKey)
       if (cached) {
         state.cacheHits++
@@ -197,7 +193,7 @@ export function createEngineOracle(opts: EngineOracleOptions): {
         return [] // Boss 无该期数据（早期数据不全）：房间不可结算
       }
       // 候选队伍 = usableMembers 中任取 3 人（含持有限定 + 免费常驻/A）
-      const members = usableMembers(opts.candidatePool, holdings, catalog)
+      const members = usableMembers(candidatePool, holdings, catalog)
       if (members.length < 3) {
         state.cache.set(cacheKey, [])
         return []
@@ -220,7 +216,7 @@ export function createEngineOracle(opts: EngineOracleOptions): {
           for (let b = a + 1; b < mates.length; b++) {
             const team = [lead, mates[a], mates[b]] as [string, string, string]
             if ((isStun(team[1]) ? 1 : 0) + (isStun(team[2]) ? 1 : 0) > 1) continue // 双队友击破互斥
-            const score = evalTeamOnce(bossRoom, team, holdings, configStore, isStun)
+            const score = evalTeamOnce(bossRoom, team, holdings, configStore)
             if (score == null) continue // 收敛过滤：未收敛伤害虚高，排除
             results.push({ team, score })
           }
@@ -340,8 +336,7 @@ export function buildPlannerCards(
     const date = VERSION_NODES[nodeIndexOf(nodeId)]?.date
     if (!date) continue
     if (STANDARD_S_AGENT_IDS.has(agentId)) continue // 常驻 S 非抽卡对象（免费）
-    if (agentId === '1421') continue // 潘引壶 A 级特例（免费）
-    if (agentId === '1551') continue // 佩洛伊斯 3.0 上半赠送 S 级——永久免费（用户口径 2026-09-02：赠送即永续持有，不受窗口期限制，不进购买清单；freeMemberPool 已含她）
+    if (FREE_SPECIAL_AGENT_IDS.has(agentId)) continue // 潘引壶/佩洛伊斯永久免费，不受购买窗口限制
     let initialTier = 0
     if (preset === 'custom') initialTier = customHoldings[agentId] ?? 0
     out.push({ agentId, windowStart: date, ...(initialTier ? { initialTier: initialTier as never } : {}) })
@@ -351,12 +346,7 @@ export function buildPlannerCards(
 
 /** 免费人池（常驻 S + A 级 + 赠送）：成型号起点永远可用的组队成员 */
 export function freeMemberPool(allAgentIds: string[], catalog: ReturnType<typeof useCatalogStore>): string[] {
-  return allAgentIds.filter(id => {
-    const a = catalog.getAgent(id)
-    if (!a) return false
-    if (id === '1551' || id === '1421') return true // 赠送 S / A 级特例
-    return a.rarity !== 'S' || STANDARD_S_AGENT_IDS.has(id)
-  })
+  return allAgentIds.filter(id => isFreePlannerMember(id, catalog))
 }
 
 /**
@@ -375,6 +365,7 @@ export function freePoolRepresentatives(
   if (perSpecialty <= 0) return free
   const bySpec = new Map<string, string[]>()
   for (const id of free) {
+    if (FREE_SPECIAL_AGENT_IDS.has(id)) continue // 免费特例不参与职业配额竞争
     const spec = catalog.getAgent(id)?.specialty ?? 'unknown'
     const arr = bySpec.get(spec) ?? []
     arr.push(id)
@@ -390,7 +381,7 @@ export function freePoolRepresentatives(
     })
     out.push(...arr.slice(0, perSpecialty))
   }
-  return out
+  return [...out, ...free.filter(id => FREE_SPECIAL_AGENT_IDS.has(id))]
 }
 
 export interface PlannerRunOptions {

@@ -190,11 +190,13 @@ describe('pullPlannerEngine · 用户钉子（VCG 反事实）', () => {
     await boot()
     const catalog = useCatalogStore()
     const calc = useResourceCalc()
-    const res = await runPullPlanner({
+    // 只给两个免费成员：不购买时无法组成三人队，购买窗口卡后才有正分。
+    // 全免费池下卡价值允许为 0，不能把某版本的 meta 排名当作 VCG 契约。
+    const runOpts = {
       calc,
       boss: ALL_BOSSES[0],
       periodViews: [],
-      allAgentIds: catalog.displayAgents.map(a => a.id),
+      allAgentIds: catalog.displayAgents.map(a => a.id).filter(id => ['1021', '1031'].includes(id)),
       allBosses: ALL_BOSSES,
       preset: 'established',
       startDate: '2026-07-29',
@@ -203,15 +205,20 @@ describe('pullPlannerEngine · 用户钉子（VCG 反事实）', () => {
       beamWidth: 2,
       assignmentTopM: 8,
       withVcg: true,
-    })
+    } satisfies Parameters<typeof runPullPlanner>[0]
+    const withoutBudget = await runPullPlanner({ ...runOpts, initialBank: 0, withVcg: false })
+    expect(withoutBudget.plan.totalScore).toBe(0)
+    expect(withoutBudget.plan.totalSpent).toBe(0)
+    const res = await runPullPlanner(runOpts)
     expect(res.plan.totalScore).toBeGreaterThan(0)
     // 1 期窗口窄（2026-07-29 起仅蕾米埃尔窗口开）：归因清单 ≥1 即可
     expect(res.values.length).toBeGreaterThanOrEqual(1)
     for (const v of res.values) {
       expect(v.value).toBeGreaterThanOrEqual(0) // VCG 反事实不等式：禁用不可能让最优更好
     }
-    // 至少有一张窗口内强卡的价值 > 0（规划器确实在买卡且卡有价值）
+    // 正价值必须由真实购买/组队产生，不允许把 VCG 全部硬编码成 0。
     const positive = res.values.filter(v => v.value > 0)
     expect(positive.length).toBeGreaterThan(0)
+    expect(res.plan.totalSpent).toBeGreaterThan(0)
   }, 400000)
 })
