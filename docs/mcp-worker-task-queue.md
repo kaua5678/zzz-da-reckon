@@ -34,41 +34,11 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 | 卡 | 标题 | 类型 | 写入白名单 | 状态 |
 |---|---|---|---|---|
-| W9 | verify:recording ③ 档案段定位修正（9 条 WARN 里 3 条误报、5 条标签错） | 脚本修正 + 测试（S） | `scripts/lib/recording.mjs` · `scripts/lib/recording.d.mts` · `scripts/verify-recording.mjs` · `recording.test.ts` | 可派 |
+
+当前无可派卡。下一批候选在 `.claude/OPEN-ITEMS.md` §2，写卡前先读对应条目：6 个 implemented 角色补档案段（取证类，每卡 ≤ 2 个角色）、
+R62-J3 在当前 HEAD 重生成行为指纹并与 09-20 版 diff（重计算，需隔离 worktree）、R37-J5 §19.6-a 爱丽丝 1401 系留白 6.0s 归因（先写预测再对账）。
 
 ## 2. 任务卡
-
-### W9 · verify:recording ③ 档案段定位修正
-
-<!-- card:W9 -->
-你是执行工人：只完成本任务，不派子代理；禁止运行 npm run check / verify / test / build 与不带文件参数的 npx vitest（全量由主代理统一跑）。
-TASK_ID: W9-recording-archive-locator
-仓库：/home/kaua/projects/zzz-calculator（WSL）。开工先 git rev-parse --short HEAD 记为 BASE，再执行 node scripts/zc.mjs claim scripts/lib/recording.mjs scripts/lib/recording.d.mts scripts/verify-recording.mjs src/scripts/__tests__/recording.test.ts --as W9 占道。
-父目标：npm run verify:recording 长期挂 9 条 WARN，被当成「已知噪音」无人处理。主代理 2026-09-24 实测，它们大多是检查器自己的错：
-- 检查 ③（scripts/verify-recording.mjs 约第 88-101 行）取 agentId 在 docs/MECHANICS_IMPLEMENTATION.md 里**第一次出现**的位置，往后看 800 字符找「当前实现状态」。
-- 1101 珂蕾妲、1401 爱丽丝、1551 佩洛伊斯其实都有档案段（标题分别在第 304 / 435 / 349 行），段首第一条就是状态行；但它们的 id 先在别的段落出现（第 142 / 382 / 71 行）⇒ 看错了位置 ⇒ **3 条误报**。
-- 1391、1451、1471、1481、1531 根本没有档案段（没有任何标题行含这些 id），只是在别处被提到 ⇒ 报成「档案段无状态行」是**标签错**，应为「无该角色档案段」。
-- 1251 青衣全文未出现 ⇒ 「无该角色档案段」是对的。
-- 用「标题行含 id + 段内找状态行」的原型复算：62 个 implemented 角色 = 56 ok、6 无档案段（1251 / 1391 / 1451 / 1471 / 1481 / 1531）、0 有段无状态行。
-前提假设：按标题定位后 WARN 恰为上面 6 条且全是「无该角色档案段」。可观察失败：出现别的 WARN ⇒ 有标题不含 id 的档案段，停下报 blocked 并列出（不要自行放宽匹配）。
-先读：scripts/verify-recording.mjs 全文（134 行）；scripts/lib/recording.mjs 的导出列表与 scripts/lib/recording.d.mts（新增导出必须补声明，check-guards 判据 14 的 C 段会查 .d.mts 漂移）；src/scripts/__tests__/recording.test.ts 的 import 写法与现有用例风格；docs/MECHANICS_IMPLEMENTATION.md 第 1-10 行（档案段格式规则）与第 300-310 行（一个合格档案段的样子）。
-要做：
-1. 在 scripts/lib/recording.mjs 新增导出纯函数 locateArchiveStatus(doc, agentId)，返回 { status: 'ok' | 'no-section' | 'no-status-line', headingLine }（headingLine 为 1 起的行号，无段时为 null）。规则：
-   - 档案段标题 = 匹配 ^#{2,4} 空格 开头、且含独立 token agentId 的行（左边是「（」「(」「/」或空白，右边是「）」「)」或空白；不许把 11011 当成 1101）；
-   - 段体 = 标题之后直到下一个级别 ≤ 本标题级别的标题行（更深的 #### 子标题不结束本段）；
-   - 段体内出现「当前实现状态」⇒ ok；有段但段体没有 ⇒ no-status-line；没有这样的标题 ⇒ no-section。下一段的状态行不算本段的。
-2. scripts/lib/recording.d.mts 补声明。
-3. scripts/verify-recording.mjs 检查 ③ 改用 locateArchiveStatus：no-section ⇒ 「WARN <label>: MECHANICS_IMPLEMENTATION.md 无该角色档案段（标题行须含 agentId）」；no-status-line ⇒ 保留原文案「档案段无「当前实现状态」行（未核对现状，录入时补）」。checked / warned 计数方式不变；同步改文件头注释里 ③ 的描述。
-4. recording.test.ts 新增用例（合成 markdown 字符串即可）：(a) 标题含 id、段首有状态行 ⇒ ok；(b) id 先在前面别的段里出现、自己的段在后面且有状态行 ⇒ ok（本次误报的形状）；(c) id 只在正文出现、无标题 ⇒ no-section；(d) 有标题、段内无状态行、紧跟着的下一段有 ⇒ no-status-line；(e) 段内有 #### 子标题、状态行在子标题之后 ⇒ ok；(f) 查 1101 时标题只含 11011 ⇒ no-section。另加一条仓库现状用例：对真实 docs/MECHANICS_IMPLEMENTATION.md 查 1101 / 1401 / 1551 ⇒ 都是 ok。
-硬约束：只许改白名单 4 个文件；不改 docs/MECHANICS_IMPLEMENTATION.md（补档案段是另一件事，要核对现状，不在本卡）；不改任何 spec / 数据文件；不加依赖；LF 行尾、无行尾空格。
-验收（逐条执行，报告里贴命令、退出码与输出尾部）：
-1. npm run verify:recording → EXIT=0；贴全部 WARN 行，应恰为 6 条、id 集合 = {1251, 1391, 1451, 1471, 1481, 1531}、文案全是「无该角色档案段」；末行 checks 总数与改前相同（改前 189，贴改前改后两行）。
-2. npx vitest run src/scripts/__tests__/recording.test.ts → 全绿。
-3. 负控：临时把 locateArchiveStatus 的段体范围改成「只看标题行本身」，跑验收 2 → (a)(b)(e) 与仓库现状用例必须变红；贴红用例名后改回，重跑验收 2 → 绿。
-4. node scripts/check-guards.mjs → EXIT=0；npx vue-tsc -b → EXIT=0。
-报告：写到 /tmp/worker-W9.report.md，首行 STATUS: done 或 STATUS: blocked。内容：BASE、git diff --stat、完整 git diff（只应含白名单 4 个文件）、4 条验收的原始结果、未证明事项。不要 git add / commit，不要 zc done。最终回复也以 STATUS 行开头。
-停止条件：需要改白名单外的文件，或验收 1 出现 6 条之外的 WARN 时，停下写 blocked 并附证据。
-<!-- /card:W9 -->
 
 ## 3. 本队列的来源：2026-09-24 OPEN-ITEMS 分诊
 
@@ -88,7 +58,7 @@ TASK_ID: W9-recording-archive-locator
 - 工人实测耗时：只读取证 4 条 / 卡用了 19–28 分钟（逐条翻 git 历史与历轮交接），边界清晰的实现卡 W1 约 5 分钟
   ⇒ **卡越窄，低级模型越快越准**；取证类任务宜每卡 ≤ 2 条。
 - 第 2 轮（2026-09-24）实测：只读普查 W2（21 条判据）22 分钟、W3 / W4 / W5 各约 5 分钟；实现卡 W6 约 10 分钟、
-  W7 4 分钟、W8 6.5 分钟。7 张卡全部 `STATUS: done`，复核发现 3 张有瑕疵：W6 缺落点同一性断言（适配层吞掉返回 index 时
+  W7 4 分钟、W8 6.5 分钟、W9 3.5 分钟。8 张卡全部 `STATUS: done`，复核发现 3 张有瑕疵：W6 缺落点同一性断言（适配层吞掉返回 index 时
   原测试全绿，主代理补上并实测可红）、W2 漏判判据 18（lib 层下限测的是空目录，接不住整目录改名，并进 W8 修）、
   W4 越界用 `rm` 清了自建的临时目录（已如实披露，未碰仓库）。
   ⇒ 低级模型能把「写什么」做对，「证明它能红」仍要主代理自己变异一次。
