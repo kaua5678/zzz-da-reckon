@@ -29,15 +29,20 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   再 `git worktree remove --force /tmp/wt-<卡>`（只删软链本身，主仓库依赖不受影响；2026-09-24 W7 实测）。
 - **负控的还原**：在有未提交改动的树上做负控，先 `cp` 备份再改、用备份还原；**不要** `git checkout -- <文件>`
   （会把工人的改动一起抹掉，2026-09-24 复核 W7 时踩过，按工人报告里的 diff 补回）。
+- **派发前先查重（2026-09-25 双 lead 事故）**：开工先 `pgrep -af 'dsh --profile headless' | cut -c1-60`
+  + `tail -3 .zc/journal.jsonl`——同名卡已有工人在跑（**无论是谁派的**）就不再派，改为轮询其
+  `/tmp/worker-<卡>.out` 等首行 `STATUS:`。本日 W10/W11 被两条 lead 会话各派一次：先到者写正文、
+  后到者 force-claim 后只追加独立复核（§10 模式），工人按卡面纪律自洽解决了，但浪费一个并发位、
+  同路径 `/tmp/worker-*.out|.err` 相互覆盖，且若后到者不守纪会覆盖整份报告（`.zc/` 不入 git，丢了就真丢了）。
 
 ## 1. 队列
 
 | 卡 | 标题 | 类型 | 写入白名单 | 状态 |
 |---|---|---|---|---|
 
-| W10 | 青衣(1251) / 橘福福(1391)档案取证与草稿 | 只读取证 | `.zc/reports/W10-dossier.md` | 已派发 09-25 |
-| W11 | 卢西娅·艾洛温(1451) / 般岳(1471)档案取证与草稿 | 只读取证 | `.zc/reports/W11-dossier.md` | 已派发 09-25 |
-| W12 | 琉音(1481) / 星徽·比利(1531)档案取证与草稿 | 只读取证 | `.zc/reports/W12-dossier.md` | 待派发 |
+| W10 | 青衣(1251) / 橘福福(1391)档案取证与草稿 | 只读取证 | `.zc/reports/W10-dossier.md` | 已回收 09-25（双派发自洽，正文+§10 独立复核） |
+| W11 | 卢西娅·艾洛温(1451) / 般岳(1471)档案取证与草稿 | 只读取证 | `.zc/reports/W11-dossier.md` | 已回收 09-25（纯取证，测试未跑） |
+| W12 | 琉音(1481) / 星徽·比利(1531)档案取证与草稿 | 只读取证 | `.zc/reports/W12-dossier.md` | 进行中（09-25 01:19 派发） |
 | W13 | drift 复核批 A：calc-core 热区（锚 core/ + resourceCalc/） | 只读复核 | `.zc/reports/W13-drift.md` | 待派发 |
 | W14 | drift 复核批 B：mechanics 档案事实 | 只读复核 | `.zc/reports/W14-drift.md` | 待派发 |
 | W15 | drift 复核批 C：composables + scripts + 杂项 | 只读复核 | `.zc/reports/W15-drift.md` | 待派发 |
@@ -45,7 +50,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 本批先交证据及草稿，不直接写共享档案；主代理审查后串行合入 `docs/MECHANICS_IMPLEMENTATION.md`。
 R62-J3 当前 HEAD 行为指纹刷新、R37-J5 §19.6-a 留白归因仍是候选，不随本批自动启动。
 
-2026-09-25 lead 会话：W10 / W11 已派发（dsh 工人，日志 `/tmp/worker-W10.out|.err`、`/tmp/worker-W11.out|.err`），W12 待并发空位。同日新增 drift 复核批 W13–W15：CC 批次（e2e8ae5..bbbaaa4）触发 102 条 ⟳ 待复核，成因/判据/分批见 `docs/mcp-drift-triage.md`；工人只交复核报告，「据」/锚落盘修正由主代理按报告分批做。
+2026-09-25 lead 会话：W10 / W11 已回收——W10 = 正文（青衣/橘福福两段草稿 + 27 个定向测试全绿）+ §10 双派发独立复核（两会话取证逐项吻合）；W11 = 纯取证（测试时段给了 W10，**合入前 lead 须自行重放** `luciaElowen.test.ts` + `banyue.test.ts`），其风险栏带真发现：1451 `maxValue 100 vs 500`、1471 `banyueSwayExCount` 死写零读者等口径漂移待裁决。W12 进行中（01:19 派发）。本日两条 lead 会话并行各派了一次 W10/W11（教训进 §0 查重条）。同日新增 drift 复核批 W13–W15：CC 批次（e2e8ae5..bbbaaa4）触发 102 条 ⟳ 待复核，成因/判据/分批见 `docs/mcp-drift-triage.md`；工人只交复核报告，「据」/锚落盘修正由主代理按报告分批做。
 
 ### 本批立项证据与放行边界
 
