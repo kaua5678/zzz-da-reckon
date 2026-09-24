@@ -100,73 +100,106 @@ function findChrome() {
   return candidates.sort((a, b) => (a.includes('headless') ? -1 : 1) - (b.includes('headless') ? -1 : 1))[0] ?? null
 }
 
-const chrome = findChrome()
-if (!chrome) {
-  console.error('找不到 Chromium：设 CHROME_BIN=<path> 或装 playwright 浏览器（见文件头前置说明）')
-  process.exit(1)
-}
-/** 用户态补齐的 Chromium 依赖目录（非 root 解包），缺省探测 ~/.local/chrome-deps */
-const defaultLibDir = join(homedir(), '.local', 'chrome-deps')
-const libDir = process.env.CHROME_LIBS || arg('chrome-libs', '') || (existsSync(defaultLibDir) ? defaultLibDir : '')
-const userDataDir = join(OUT, 'chrome-profile')
-mkdirSync(OUT, { recursive: true })
-
-/**
- * 开跑即把上一轮产物改名成 `*.stale.*`：失败轮写的是 `ui-check-failure.*`，与通过轮不同名，
- * 但目录里若还留着上一轮的 `ui-check-report.json`（看起来是"本轮"的绿），仍会误导人 —— 改名 + 在本轮
- * 报告里记 `staleFrom`，让「这是过期产物」在文件系统与报告里都显式可见。
- */
-const stale = staleNames(OUT)
+// Startup is part of the same failure/report lifecycle as page actions.
+let child = null
+let ws = null
+let browserError = null
+let phase = 'startup'
 const staleRenamed = []
-for (const [from, to] of [[join(OUT, 'ui-check-report.json'), stale.report], [join(OUT, 'ui-check-full.png'), stale.shot]]) {
-  if (!existsSync(from)) continue
-  try { renameSync(from, to); staleRenamed.push(to) } catch { /* 改名失败不阻断本轮（报告里仍会记 staleFrom 为空） */ }
-}
-
-const child = spawn(chrome, [
-  '--headless', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage',
-  `--remote-debugging-port=${PORT}`, '--window-size=1600,1400',
-  `--user-data-dir=${userDataDir}`, 'about:blank',
-], {
-  stdio: ['ignore', 'pipe', 'pipe'],
-  env: libDir ? { ...process.env, LD_LIBRARY_PATH: libDir } : process.env,
-})
-child.stderr.on('data', d => { if (String(d).includes('error while loading')) console.error('[chrome]', String(d).trim()) })
-
-async function cdpReady() {
-  for (let i = 0; i < 60; i++) {
-    try { const r = await fetch(`http://127.0.0.1:${PORT}/json/version`); if (r.ok) return true } catch { /* 还没起来 */ }
-    await sleep(300)
-  }
-  return false
-}
-if (!await cdpReady()) {
-  console.error(`Chromium 起不来（CDP ${PORT} 无响应）。常见原因：缺 libnspr4/libnss3 —— 见文件头用户态补齐说明。`)
-  child.kill()
-  process.exit(1)
-}
-
-let r = await fetch(`http://127.0.0.1:${PORT}/json/new?about:blank`, { method: 'PUT' })
-if (!r.ok) r = await fetch(`http://127.0.0.1:${PORT}/json/new?about:blank`)
-const page = await r.json()
-const ws = new WebSocket(page.webSocketDebuggerUrl)
-await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws 连接失败')) })
-
+const jsErrors = []
 let seq = 0
 const pending = new Map()
-const jsErrors = []
-ws.onmessage = ev => {
-  const m = JSON.parse(ev.data)
-  if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); return }
-  if (m.method === 'Runtime.exceptionThrown') jsErrors.push('exception: ' + String(m.params?.exceptionDetails?.exception?.description ?? '').slice(0, 200))
-  if (m.method === 'Runtime.consoleAPICalled' && m.params?.type === 'error') {
-    jsErrors.push('console.error: ' + (m.params.args ?? []).map(a => a.value ?? a.description ?? '').join(' ').slice(0, 200))
+
+async function startBrowser() {
+  mkdirSync(OUT, { recursive: true })
+  const stale = staleNames(OUT)
+  // Rotate failure artifacts too: a failed screenshot must not expose an older image.
+  for (const [from, to] of [
+    [join(OUT, 'ui-check-report.json'), stale.report],
+    [join(OUT, 'ui-check-full.png'), stale.shot],
+    [join(OUT, 'ui-check-failure.json'), join(OUT, 'ui-check-failure.stale.json')],
+    [join(OUT, 'ui-check-failure.png'), join(OUT, 'ui-check-failure.stale.png')],
+  ]) {
+    if (!existsSync(from)) continue
+    renameSync(from, to) // A rotation failure is a real failure, not a silent PASS.
+    staleRenamed.push(to)
+  }
+  const chrome = findChrome()
+  if (!chrome) throw new Error('找不到 Chromium：设 CHROME_BIN=<path> 或装 playwright 浏览器（见文件头前置说明）')
+  const defaultLibDir = join(homedir(), '.local', 'chrome-deps')
+  const libDir = process.env.CHROME_LIBS || arg('chrome-libs', '') || (existsSync(defaultLibDir) ? defaultLibDir : '')
+  child = spawn(chrome, [
+    '--headless', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage',
+    `--remote-debugging-port=${PORT}`, '--window-size=1600,1400',
+    `--user-data-dir=${join(OUT, 'chrome-profile')}`, 'about:blank',
+  ], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: libDir ? { ...process.env, LD_LIBRARY_PATH: libDir } : process.env,
+  })
+  child.on('error', e => { browserError = e })
+  child.stderr.on('data', d => { if (String(d).includes('error while loading')) console.error('[chrome]', String(d).trim()) })
+  const assertRunning = () => {
+    if (browserError) throw browserError
+    if (child.exitCode !== null || child.signalCode !== null) {
+      throw new Error(`Chromium 提前退出（code=${child.exitCode}, signal=${child.signalCode}）`)
+    }
+  }
+  let ready = false
+  for (let i = 0; i < 60; i++) {
+    assertRunning()
+    try {
+      const r = await fetch(`http://127.0.0.1:${PORT}/json/version`, { signal: AbortSignal.timeout(1000) })
+      if (r.ok) { ready = true; break }
+    } catch { /* 尚未就绪；启动错误由 assertRunning 报出 */ }
+    await sleep(300)
+  }
+  assertRunning()
+  if (!ready) throw new Error(`Chromium 起不来（CDP ${PORT} 无响应）。检查 Chromium 依赖与端口。`)
+  const pageUrl = `http://127.0.0.1:${PORT}/json/new?about:blank`
+  let r = await fetch(pageUrl, { method: 'PUT', signal: AbortSignal.timeout(5000) })
+  if (!r.ok) r = await fetch(pageUrl, { signal: AbortSignal.timeout(5000) })
+  if (!r.ok) throw new Error(`CDP 创建页面失败：HTTP ${r.status}`)
+  const page = await r.json()
+  if (!page.webSocketDebuggerUrl) throw new Error('CDP 页面响应缺少 webSocketDebuggerUrl')
+  ws = new WebSocket(page.webSocketDebuggerUrl)
+  await new Promise((res, rej) => {
+    const timer = setTimeout(() => rej(new Error('ws 连接超时')), 5000)
+    ws.onopen = () => { clearTimeout(timer); res() }
+    ws.onerror = () => { clearTimeout(timer); rej(new Error('ws 连接失败')) }
+    ws.onclose = () => { clearTimeout(timer); rej(new Error('ws 连接提前关闭')) }
+  })
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data)
+    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); return }
+    if (m.method === 'Runtime.exceptionThrown') jsErrors.push('exception: ' + String(m.params?.exceptionDetails?.exception?.description ?? '').slice(0, 200))
+    if (m.method === 'Runtime.consoleAPICalled' && m.params?.type === 'error') {
+      jsErrors.push('console.error: ' + (m.params.args ?? []).map(a => a.value ?? a.description ?? '').join(' ').slice(0, 200))
+    }
+  }
+  ws.onclose = () => {
+    for (const settle of pending.values()) settle({ error: { message: 'CDP 连接已关闭' } })
+    pending.clear()
   }
 }
-const send = (method, params = {}) => {
+
+const send = (method, params = {}, timeoutMs = 0) => {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error('CDP 尚未连接或已关闭'))
   const id = ++seq
-  ws.send(JSON.stringify({ id, method, params }))
-  return new Promise((res, rej) => pending.set(id, m => m.error ? rej(new Error(`${method}: ${JSON.stringify(m.error)}`)) : res(m.result)))
+  return new Promise((res, rej) => {
+    const timer = timeoutMs ? setTimeout(() => {
+      pending.delete(id)
+      rej(new Error(`${method}: 超时(${timeoutMs}ms)`))
+    }, timeoutMs) : null
+    pending.set(id, m => {
+      clearTimeout(timer)
+      m.error ? rej(new Error(`${method}: ${JSON.stringify(m.error)}`)) : res(m.result)
+    })
+    try { ws.send(JSON.stringify({ id, method, params })) } catch (e) {
+      clearTimeout(timer)
+      pending.delete(id)
+      rej(e)
+    }
+  })
 }
 async function evaluate(expression) {
   const res = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })
@@ -232,7 +265,7 @@ const recordAction = async (label, verb, fn) => {
 const writeArtifacts = async () => {
   try {
     mkdirSync(OUT, { recursive: true })
-    const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })
+    const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true }, 5000)
     shotPath = artifactNames(OUT, failures.length > 0 ? 'fail' : 'pass').shot
     writeFileSync(shotPath, Buffer.from(shot.data, 'base64'))
   } catch (e) {
@@ -246,6 +279,9 @@ const writeArtifacts = async () => {
       round: ROUND,
       finishedAt: new Date().toISOString(),
       status,
+      phase,
+      screenshot: shotPath,
+      artifactError,
       report,
       jsErrors,
       failures,
@@ -265,6 +301,8 @@ const writeArtifacts = async () => {
 }
 
 try {
+  await startBrowser()
+  phase = 'page'
   await send('Page.enable')
   await send('Runtime.enable')
   // 关缓存：python http.server 不发 Cache-Control，浏览器会把 index.html 缓存住 ⇒
@@ -520,7 +558,8 @@ try {
   // 产物写在 finally：任何 throw（waitFor 超时 / 未知动词 / 页内异常）也留下本轮证据，
   // 不让上一轮的成功产物原地留存冒充本轮（A1.a negC2a/negC2b）。
   try { await writeArtifacts() } catch (e) { failures.push('产物写入异常：' + String(e?.message ?? e)) }
-  if (!flag('keep-open')) { try { child.kill() } catch { /* 已退出 */ } }
+  try { ws?.close() } catch { /* 未连接或已关闭 */ }
+  if (!flag('keep-open') || phase === 'startup') { try { child?.kill() } catch { /* 已退出 */ } }
 }
 
 if (failures.length > 0) {

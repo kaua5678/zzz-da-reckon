@@ -239,4 +239,31 @@ NEXT: <是否需要新授权、下一步具体建议>
 
 ---
 
-本次只编制工作安排，更新文档索引并检查路径/规则一致性；不启动其他 agent、不创建工作树、不修改运行时代码、不推送。
+本文初版只编制工作安排；以下为后续实际开发的独立范围，不把初版任务状态当作当前现场。
+
+## 7. UI 冒烟启动阶段补漏（2026-09-24）
+
+### 已复现缺口与方案
+
+- 前提：A1.b 已覆盖页面动作失败，但浏览器发现、spawn 和 CDP 握手仍在报告 finally 之外。
+- 实测反例：`node scripts/ui-check.mjs --chrome <不存在的路径> --out <隔离目录>` 退出 1，
+  stderr 为未处理的 spawn ENOENT；目录只剩旧成功报告的 stale 副本，没有本轮失败 JSON。
+  浏览器发现失败直接 process.exit；进程提前退出仍等待 CDP。这些不是页面业务缺陷。
+- 修复：启动移入既有 try/finally；捕获进程 error/早退，连接请求有界；缺浏览器时也建输出目录与写报告。
+  旧成功和失败产物统一改名；报告增加 phase、screenshot、artifactError，保留旧字段与成功文件名。
+  截图请求最多等 5 秒；无法截图时写明失败，不拿旧失败 PNG 充数；启动失败即使 --keep-open 也清理子进程。
+- 证伪闸门：真实 CLI 在缺浏览器、spawn ENOENT、提前退出三种情形都必须非零退出、写本轮 fail JSON、
+  不残留旧的当前文件名；正常浏览器正控必须保持 PASS，页面动作负控仍须 FAIL。
+
+### 验证入口与边界
+
+- `src/scripts/__tests__/uiCheckStartup.test.ts`：不依赖安装 Chromium，直接运行 CLI；新增三例在旧代码下全部失败，修复后通过。
+- `VITEST_MAX_WORKERS=4 npx vitest run src/scripts/__tests__/uiCheckStartup.test.ts src/scripts/__tests__/uiCheck.test.ts`：41/41 通过。
+- 改动前 `VITEST_MAX_WORKERS=4 npm run check`：3472 passed / 29 skipped；原始日志 `.zc/ui-startup/baseline.log`。
+- 改动后同命令：3475 passed / 29 skipped（恰好新增 3 条 CLI 回归），日志 `.zc/ui-startup/final-check.log`；
+  `npm run build` 通过（保留大 chunk 提示）；`npm run verify:recording` 189 passed / 6 warn，未降低档案要求。
+- 真实 Chromium 同目录连续正反控：`--step eval:false` 退出 0 / pass；`--step click:__ARENA_MISSING_BUTTON__`
+  退出 1 / fail，两轮均有对应截图与报告，phase 均为 page；产物 `.zc/ui-startup/browser/`。
+- 两个改动代码文件的 `get_diagnostics` 均无 error/warning；`git diff --check` 通过。
+- 影响范围仅 UI 验收脚本及其测试，不改计算公式、角色数据或页面。输出目录不可写时无法承诺磁盘报告，必须非零退出并报 stderr。
+- 最终集成验证以本轮 `.zc/journal.jsonl` 的 verifier 为准；共享工作区其他车道改动不属于本修复。
