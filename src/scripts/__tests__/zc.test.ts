@@ -450,6 +450,33 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
     expect(violations.map(v => v.file + ':' + v.line + ' ' + v.problem)).toEqual([])
   })
 
+  // ★ 端到端注入（W8 反空洞）：此前 auditAuthoredFacts 只有 resolveAnchor 的单测，
+  // 没有「整条 @fact 走 collect → parse → resolve → violations」的端到端注入 ⇒ 若 collector
+  // 漏收 docs/ 或 problem 归类写错，单测仍全绿。本测试在临时根里真写 @fact 行再对账。
+  it('★ 端到端注入：断锚 ⇒ symbol-missing；缺「据」⇒ no-provenance；scanned = 写入条数', () => {
+    const root = mkdtempSync(join(tmpdir(), 'authored-'))
+    try {
+      mkdirSync(join(root, 'docs'), { recursive: true })
+      mkdirSync(join(root, 'scripts'), { recursive: true })
+      // 锚文件真实存在（否则会先命中 file-missing，测不到 symbol-missing）
+      writeFileSync(join(root, 'scripts/target.mjs'), 'export function realSymbol() {}\n')
+      writeFileSync(join(root, 'docs/x.md'), [
+        '# x',
+        '- @fact agent:1411/c6 口径: 合法锚 | 据 用户@2026-09-24 | 锚 scripts/target.mjs#realSymbol',
+        '- @fact agent:1411/c6 口径: 断锚 | 据 用户@2026-09-24 | 锚 scripts/target.mjs#noSuchSymbol',
+        '- @fact agent:1411/c6 口径: 缺据 | 锚 scripts/target.mjs#realSymbol',
+        '',
+      ].join('\n'))
+      const { scanned, violations } = auditAuthoredFacts(root)
+      expect(scanned.length).toBe(3)                                    // scanned = 写入的 @fact 条数
+      expect(violations).toHaveLength(2)
+      expect(violations.filter(v => v.problem === 'symbol-missing')).toHaveLength(1)
+      expect(violations.filter(v => v.problem === 'no-provenance')).toHaveLength(1)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   // 2026-09-15 术语表 review 实测补的盲区：规则 8 允许手册写「口径」，钉口径的机制就是 @fact，
   // 但原语料只有 src/ 与 scripts/ ⇒ **写进 docs 的 @fact 既不被判据 6（锚）也不被判据 15
   // （⟳复核）看见**，断锚/缺据/缺触发器都不红——正是规则 16「文档骗 agent」的形态。

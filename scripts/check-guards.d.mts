@@ -96,6 +96,32 @@ export declare function auditCatalogLevel60(root?: string): {
   fieldNames: string[]
 } | null
 
+// 反空洞下限（判据 6 / 10 / 18：区分「真干净」与「仪器坏了」）
+/** 判据 10 的 compared 反空洞下限（2026-09-24 实测 372，取 350） */
+export declare const LEVEL60_MIN_COMPARED: number
+/** 判据 6 的 scanned 反空洞下限（2026-09-24 实测 143，取 130） */
+export declare const AUTHORED_FACTS_MIN_SCANNED: number
+/**
+ * git 工作区内 raw 源缺失的判读：root 下有 .git（目录或文件）⇒ `'red'`；否则 `'skip'`。
+ * 与 timeGolden.test.ts#catalogDirtyVsHead 同一降级口径。
+ */
+export declare function rawSourceMissingVerdict(root?: string): 'red' | 'skip'
+/** 判据 10 的 report → { name, ok, detail } 纯函数（null 走 rawSourceMissingVerdict，非 null 追加上限） */
+export declare function level60Verdict(
+  report: { compared: number; violations: { id: string; name: string; field: string; got: unknown; want: unknown }[]; fieldNames: string[] } | null,
+  root?: string,
+): GuardResult
+/** 判据 18 的 report → { name, ok, detail } 纯函数（null 走 rawSourceMissingVerdict，非 null 保持 moveElementReconcileOk） */
+export declare function moveElementVerdict(
+  report: { scannedMoves: number; violations: MoveElementViolation[] } | null,
+  root?: string,
+): GuardResult
+/** 判据 6 的判定纯函数（scanned 反空洞下限 + 违规清单） */
+export declare function authoredFactsVerdict(audited: {
+  scanned: { file: string; line: number; raw: string; fact: unknown }[]
+  violations: { file: string; line: number; problem: string }[]
+}): GuardResult
+
 export interface GuardResult {
   name: string
   ok: boolean

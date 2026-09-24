@@ -471,6 +471,118 @@ export function auditMoveElementsAgainstRaw(root = ROOT) {
   return reconcileMoveElements({ catalog, fullDir, enforceFloors: true })
 }
 
+// ---- 反空洞下限（判据 6 / 10 / 18）：区分「真干净」与「仪器坏了」 ----
+//
+// 三条判据原先都把「扫描面塌了」读成绿：目录缺失 ⇒ report null ⇒ ok:true 跳过；规则表被过滤空
+// ⇒ compared/violations 都是 0 ⇒ 零违规绿。读数与真干净一模一样 = 假绿口子。
+// 下面的下限 + rawSourceMissingVerdict 把「扫不到」与「修好了」分开。
+
+/**
+ * 反空洞下限（判据 10）：`auditCatalogLevel60` 的 compared 低于此数 ⇒ 零违规不可采信。
+ * 2026-09-24 实测 = 62 角色 × 6 字段 = 372（含 critRate/critDmg/anomalyProficiency/
+ * anomalyMastery/impact/energyRegen），取 350 留约 6% 给 raw 刷新时个别角色缺档；
+ * 掉到 350 以下说明规则表被过滤空或 raw 文件名不再匹配，先查扫描面再改这个数。
+ */
+export const LEVEL60_MIN_COMPARED = 350
+
+/**
+ * 反空洞下限（判据 6）：`auditAuthoredFacts` 的 scanned 低于此数 ⇒ 零违规不可采信。
+ * 2026-09-24 实测 = 143 条手写 @fact（src/scripts/docs 三语料）。取 130 留出正常增删余量；
+ * 掉到 130 以下说明目录改名或 collector 写坏（扫描面塌了），不是「口径变干净了」。
+ */
+export const AUTHORED_FACTS_MIN_SCANNED = 130
+
+/**
+ * git 工作区内 raw 源目录缺失的判读（判据 10 / 18 的「报告 → ok」共用纯函数）。
+ *
+ * 方向（与 src/composables/__tests__/timeGolden.test.ts#catalogDirtyVsHead 同一口径）：
+ * - root 下有 `.git`（目录 = 主工作区；**文件** = worktree 的 gitfile，两者都算）⇒ 这是 git
+ *   工作区，而 `data/raw/nanoka_missing/full` 是 git 跟踪目录（64 个文件，CI 全量检出）⇒
+ *   它缺失只可能是**被改名或删除** ⇒ `'red'`；
+ * - 无 `.git`（zip 解包 / 打包分发，非判据场景）⇒ 降级 `'skip'`，调用方保持「跳过」绿。
+ */
+export function rawSourceMissingVerdict(root = ROOT) {
+  return existsSync(join(root, '.git')) ? 'red' : 'skip'
+}
+
+/** 判据 10 的判定纯函数（抽出来让「合成 report → ok」可单测，不必真删 raw） */
+export function level60Verdict(report, root = ROOT) {
+  if (report === null) {
+    if (rawSourceMissingVerdict(root) === 'red') {
+      return {
+        name: 'catalog/raw level60 对账 ✗ raw 目录缺失（git 工作区内 = 被改名/删除）',
+        ok: false,
+        detail: [
+          '  ✗ data/raw/nanoka_missing/full 不存在，但 root 是 git 工作区（有 .git）',
+          '  → git 跟踪目录在 git 工作区内缺失 = 被改名/删除；先 git status 查证并恢复，别用「跳过」掩盖',
+        ],
+      }
+    }
+    return { name: 'catalog/raw level60 对账 ⚠ 缺 catalog 或 raw 目录，跳过', ok: true, detail: [] }
+  }
+  const belowFloor = report.compared < LEVEL60_MIN_COMPARED
+  return {
+    name: `catalog/raw level60 对账 (${report.fieldNames.join('/')}) ${report.compared - report.violations.length}/${report.compared}`,
+    ok: report.violations.length === 0 && !belowFloor,
+    detail: [
+      ...report.violations.slice(0, 20).map(v =>
+        `  ✗ ${v.id} ${v.name} level60.${v.field}: ${v.got} → 应为 ${v.want}（漏加满级突破加成？）`),
+      ...(report.violations.length > 20 ? [`  …另有 ${report.violations.length - 20} 条`] : []),
+      ...(belowFloor ? [`  ✗ 反空洞下限：compared ${report.compared} < ${LEVEL60_MIN_COMPARED} → 规则表被过滤空 / raw 文件名不再匹配`] : []),
+      ...(report.violations.length > 0 ? [
+        `  → 修：node scripts/patch-level60-ascension.mjs --write（改完跑 npm run verify 并量 timeGolden delta）`,
+        `  → 全量报告（含不进本判据的容差/对照组）：node scripts/audit-catalog-level60.mjs`,
+      ] : []),
+    ],
+  }
+}
+
+/** 判据 18 的判定纯函数（与 level60Verdict 同构；非 null 分支口径不变 = moveElementReconcileOk） */
+export function moveElementVerdict(report, root = ROOT) {
+  if (report === null) {
+    if (rawSourceMissingVerdict(root) === 'red') {
+      return {
+        name: '招式伤害属性对账 ✗ raw 目录缺失（git 工作区内 = 被改名/删除）',
+        ok: false,
+        detail: [
+          '  ✗ data/raw/nanoka_missing/full 不存在，但 root 是 git 工作区（有 .git）',
+          '  → git 跟踪目录在 git 工作区内缺失 = 被改名/删除；先 git status 查证并恢复，别用「跳过」掩盖',
+        ],
+      }
+    }
+    return { name: '招式伤害属性对账 ⚠ 缺 catalog 或 raw 目录，跳过', ok: true, detail: [] }
+  }
+  const ok = moveElementReconcileOk(report)
+  return {
+    name: `招式伤害属性对账 (move.damageElement ↔ nanoka raw 散文) ${report.scannedMoves - report.violations.length}/${report.scannedMoves} 招达标`,
+    ok,
+    detail: ok ? [] : formatMoveElementReconcile(report),
+  }
+}
+
+/** 判据 6 的判定纯函数（scanned 反空洞下限 + 违规清单；抽出下限以便单测 129/130 边界） */
+export function authoredFactsVerdict(audited) {
+  const scanned = audited.scanned.length
+  const belowFloor = scanned < AUTHORED_FACTS_MIN_SCANNED
+  return {
+    name: `@fact anchors (语言层: 手写口径必须有据 + 锚得住) ${scanned - audited.violations.length}/${scanned}`,
+    ok: audited.violations.length === 0 && !belowFloor,
+    detail: [
+      ...(belowFloor ? [`  ✗ 反空洞下限：scanned ${scanned} < ${AUTHORED_FACTS_MIN_SCANNED} → 语料扫描面塌了（目录改名 / collector 写坏）`] : []),
+      ...audited.violations.map(v => {
+        const how = {
+          'parse-failed': '语法不合法 → node scripts/zc.mjs lang 看语法',
+          'no-provenance': '缺「据」→ 补 | 据 用户@YYYY-MM-DD 或 实测@YYYY-MM-DD',
+          'anchor-missing': '缺「锚」→ 补 | 锚 <路径>#<符号>（口径实现在哪）',
+          'file-missing': '锚文件不存在 → 口径已过期，改锚或删事实',
+          'symbol-missing': '锚符号不存在 → 实现改名/删除了，复核口径后改锚',
+        }[v.problem] ?? v.problem
+        return `  ✗ ${v.file}:${v.line} ${how}`
+      }),
+    ],
+  }
+}
+
 // ---- 判据 11：手册数字 id 密度棘轮（任务卡 2026-09-12「经验手册防历史记录化」第 1 步） ----
 
 /**
@@ -1214,38 +1326,10 @@ export function runAllChecks(root = ROOT) {
   // 语料含 docs/ 的声明行（2026-09-15 术语表 review 补的盲区）：规则 8 允许手册写「口径」，
   // 若不入语料则手册里的 @fact 断锚/缺据都不红——实测 3 条 docs 事实此前完全不可见。
   const authored = auditAuthoredFacts(root)
-  results.push({
-    name: `@fact anchors (语言层: 手写口径必须有据 + 锚得住) ${authored.scanned.length - authored.violations.length}/${authored.scanned.length}`,
-    ok: authored.violations.length === 0,
-    detail: authored.violations.map(v => {
-      const how = {
-        'parse-failed': '语法不合法 → node scripts/zc.mjs lang 看语法',
-        'no-provenance': '缺「据」→ 补 | 据 用户@YYYY-MM-DD 或 实测@YYYY-MM-DD',
-        'anchor-missing': '缺「锚」→ 补 | 锚 <路径>#<符号>（口径实现在哪）',
-        'file-missing': '锚文件不存在 → 口径已过期，改锚或删事实',
-        'symbol-missing': '锚符号不存在 → 实现改名/删除了，复核口径后改锚',
-      }[v.problem] ?? v.problem
-      return `  ✗ ${v.file}:${v.line} ${how}`
-    }),
-  })
+  results.push(authoredFactsVerdict(authored))
 
   // ---- 判据 10：catalog level60 ↔ raw 源对账（坑 40：漏加突破加成是静默错误） ----
-  const lv60 = auditCatalogLevel60(root)
-  results.push({
-    name: lv60 === null
-      ? 'catalog/raw level60 对账 ⚠ 缺 catalog 或 raw 目录，跳过'
-      : `catalog/raw level60 对账 (${lv60.fieldNames.join('/')}) ${lv60.compared - lv60.violations.length}/${lv60.compared}`,
-    ok: lv60 === null || lv60.violations.length === 0,
-    detail: lv60 === null ? [] : [
-      ...lv60.violations.slice(0, 20).map(v =>
-        `  ✗ ${v.id} ${v.name} level60.${v.field}: ${v.got} → 应为 ${v.want}（漏加满级突破加成？）`),
-      ...(lv60.violations.length > 20 ? [`  …另有 ${lv60.violations.length - 20} 条`] : []),
-      ...(lv60.violations.length > 0 ? [
-        `  → 修：node scripts/patch-level60-ascension.mjs --write（改完跑 npm run verify 并量 timeGolden delta）`,
-        `  → 全量报告（含不进本判据的容差/对照组）：node scripts/audit-catalog-level60.mjs`,
-      ] : []),
-    ],
-  })
+  results.push(level60Verdict(auditCatalogLevel60(root), root))
 
   // ---- 判据 11：手册数字 id 密度棘轮（任务卡 2026-09-12：防手册编年史化） ----
   const density = scanManualDensity(root)
@@ -1390,14 +1474,7 @@ export function runAllChecks(root = ROOT) {
 
   // ---- 判据 18：招式伤害属性 ↔ nanoka raw 散文对账（R23-N1：防招式伤害属性静默改回/退化） ----
   {
-    const report = auditMoveElementsAgainstRaw(root)
-    results.push({
-      name: report === null
-        ? '招式伤害属性对账 ⚠ 缺 catalog 或 raw 目录，跳过'
-        : `招式伤害属性对账 (move.damageElement ↔ nanoka raw 散文) ${report.scannedMoves - report.violations.length}/${report.scannedMoves} 招达标`,
-      ok: report === null || moveElementReconcileOk(report),
-      detail: report === null || moveElementReconcileOk(report) ? [] : formatMoveElementReconcile(report),
-    })
+    results.push(moveElementVerdict(auditMoveElementsAgainstRaw(root), root))
   }
 
   // ---- 判据 19：录入层 → 编排层值倒置（ARCHITECTURE §0 依赖方向；R35-J2 唯一值边 claret.ts 已下沉 data/） ----

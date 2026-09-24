@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   DEBT_REGISTRY,
+  ROOT,
   AGENT_BRANCH_BASELINE,
   AGENT_BRANCH_DIR,
   AGENT_BRANCH_FILE,
@@ -44,6 +45,12 @@ import {
   matchDebtRegistry,
   auditCatalogLevel60,
   auditMoveElementsAgainstRaw,
+  LEVEL60_MIN_COMPARED,
+  AUTHORED_FACTS_MIN_SCANNED,
+  rawSourceMissingVerdict,
+  level60Verdict,
+  moveElementVerdict,
+  authoredFactsVerdict,
   countGuideSection4Lines,
   scanManualDensity,
   scanDocReviewTriggers,
@@ -69,7 +76,7 @@ import {
   scanCaliberTriggerDue,
 } from '../../../scripts/check-guards.mjs'
 // parseFactLine 的单一实现在 zc.mjs（规则 11）——判据 15 的「行尾追加不破坏解析」断言要直接用它
-import { parseFactLine } from '../../../scripts/zc.mjs'
+import { auditAuthoredFacts, parseFactLine } from '../../../scripts/zc.mjs'
 
 describe('detectFetchStub（直接操纵全局 fetch 的写法）', () => {
   it('抓全部四种 stub 形态', () => {
@@ -1651,6 +1658,77 @@ describe('auditMoveElementsAgainstRaw（判据 18：招式伤害属性 ↔ nanok
     const r = auditMoveElementsAgainstRaw()!
     expect(r.violations).toEqual([])
     expect(r.scannedMoves).toBeGreaterThan(1000)
+  })
+})
+
+describe('反空洞下限 + git 工作区 raw 缺失判红（判据 6 / 10 / 18 的「仪器坏了」面）', () => {
+  // 为什么要有这一组：三条判据原先都把「扫描面塌了」读成绿（目录缺失 ⇒ null ⇒ ok:true；
+  // 规则表空 ⇒ compared 0 却零违规）——读数与真干净一模一样。下面把「真干净」与「扫不到」分开。
+  const mkFixtureRoot = (withGit: boolean, gitAsFile = false): string => {
+    const root = mkdtempSync(join(tmpdir(), 'guard-floor-'))
+    if (withGit) {
+      if (gitAsFile) writeFileSync(join(root, '.git'), 'gitdir: /somewhere/.git/worktrees/x\n')
+      else mkdirSync(join(root, '.git'))
+    }
+    return root
+  }
+
+  it('rawSourceMissingVerdict：有 .git（目录）= red；无 .git = skip（非 git 环境降级）', () => {
+    const withGitDir = mkFixtureRoot(true)
+    const withGitFile = mkFixtureRoot(true, true)
+    const noGit = mkFixtureRoot(false)
+    expect(rawSourceMissingVerdict(withGitDir)).toBe('red')
+    // worktree 的 .git 是文件——必须同样判 red（只认目录会漏掉 worktree）
+    expect(rawSourceMissingVerdict(withGitFile)).toBe('red')
+    expect(rawSourceMissingVerdict(noGit)).toBe('skip')
+  })
+
+  it('判据 10 null 分支：git 工作区内 raw 缺失 ⇒ 判红（不是「跳过」绿）', () => {
+    const gitRoot = mkFixtureRoot(true)
+    const v = level60Verdict(null, gitRoot)
+    expect(v.ok).toBe(false)
+    expect(v.name).toContain('raw 目录缺失')
+    // 非 git 环境（zip 解包）⇒ 保持原「跳过」绿（与 catalogDirtyVsHead 同一降级口径）
+    const zipRoot = mkFixtureRoot(false)
+    const skip = level60Verdict(null, zipRoot)
+    expect(skip.ok).toBe(true)
+    expect(skip.name).toContain('跳过')
+  })
+
+  it('判据 18 null 分支：git 工作区内 raw 缺失 ⇒ 判红；非 git ⇒ 跳过绿', () => {
+    expect(moveElementVerdict(null, mkFixtureRoot(true)).ok).toBe(false)
+    expect(moveElementVerdict(null, mkFixtureRoot(true)).name).toContain('raw 目录缺失')
+    expect(moveElementVerdict(null, mkFixtureRoot(false)).ok).toBe(true)
+    expect(moveElementVerdict(null, mkFixtureRoot(false)).name).toContain('跳过')
+  })
+
+  it('判据 10 下限：compared 349 红（合成 report），350 绿', () => {
+    const mkReport = (compared: number) => ({ compared, violations: [], fieldNames: ['critRate', 'critDmg'] })
+    const gitRoot = mkFixtureRoot(true)
+    const red = level60Verdict(mkReport(LEVEL60_MIN_COMPARED - 1), gitRoot)
+    expect(red.ok).toBe(false)
+    expect(red.detail.join('\n')).toContain(`compared ${LEVEL60_MIN_COMPARED - 1} < ${LEVEL60_MIN_COMPARED}`)
+    expect(level60Verdict(mkReport(LEVEL60_MIN_COMPARED), gitRoot).ok).toBe(true)
+  })
+
+  it('判据 6 下限：scanned 129 红，130 绿（violations 为空也不再假绿）', () => {
+    const mkAudited = (scanned: number) => ({
+      scanned: Array.from({ length: scanned }, (_, i) => ({ file: `f${i}.ts`, line: i + 1, raw: '@fact x', fact: {} })),
+      violations: [] as { file: string; line: number; problem: string }[],
+    })
+    const red = authoredFactsVerdict(mkAudited(AUTHORED_FACTS_MIN_SCANNED - 1))
+    expect(red.ok).toBe(false)
+    expect(red.detail.join('\n')).toContain(`scanned ${AUTHORED_FACTS_MIN_SCANNED - 1} < ${AUTHORED_FACTS_MIN_SCANNED}`)
+    expect(authoredFactsVerdict(mkAudited(AUTHORED_FACTS_MIN_SCANNED)).ok).toBe(true)
+  })
+
+  it('仓库现状：三条判据的判定都过下限（下限没定错）', () => {
+    const lv60 = auditCatalogLevel60()!
+    expect(lv60.compared).toBeGreaterThanOrEqual(LEVEL60_MIN_COMPARED)
+    expect(level60Verdict(lv60, ROOT).ok).toBe(true)
+    const authored = auditAuthoredFacts()
+    expect(authored.scanned.length).toBeGreaterThanOrEqual(AUTHORED_FACTS_MIN_SCANNED)
+    expect(authoredFactsVerdict(authored).ok).toBe(true)
   })
 })
 
