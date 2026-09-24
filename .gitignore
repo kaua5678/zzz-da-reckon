@@ -15,6 +15,10 @@ scripts/check.mjs
 # Agent loop-mode task ledgers (working state, not project knowledge)
 .claude/task-ledger*.md
 .claude/ledgers/
+# 其余 .claude/ 工作文件（OPEN-ITEMS / 交接 / 任务卡 / 归档）同属工作状态，不入库（AGENTS §4）；
+# 唯一已跟踪的 settings.local.json 用反向规则保持跟踪
+.claude/*
+!.claude/settings.local.json
 
 # OS / editor noise
 .DS_Store
