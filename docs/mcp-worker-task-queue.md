@@ -35,12 +35,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | 卡 | 标题 | 类型 | 写入白名单 | 状态 |
 |---|---|---|---|---|
 
-| W10 | 青衣(1251) / 橘福福(1391)档案取证与草稿 | 只读取证 | `.zc/reports/W10-dossier.md` | 待派发 |
-| W11 | 卢西娅·艾洛温(1451) / 般岳(1471)档案取证与草稿 | 只读取证 | `.zc/reports/W11-dossier.md` | 待派发 |
+| W10 | 青衣(1251) / 橘福福(1391)档案取证与草稿 | 只读取证 | `.zc/reports/W10-dossier.md` | 已派发 09-25 |
+| W11 | 卢西娅·艾洛温(1451) / 般岳(1471)档案取证与草稿 | 只读取证 | `.zc/reports/W11-dossier.md` | 已派发 09-25 |
 | W12 | 琉音(1481) / 星徽·比利(1531)档案取证与草稿 | 只读取证 | `.zc/reports/W12-dossier.md` | 待派发 |
+| W13 | drift 复核批 A：calc-core 热区（锚 core/ + resourceCalc/） | 只读复核 | `.zc/reports/W13-drift.md` | 待派发 |
+| W14 | drift 复核批 B：mechanics 档案事实 | 只读复核 | `.zc/reports/W14-drift.md` | 待派发 |
+| W15 | drift 复核批 C：composables + scripts + 杂项 | 只读复核 | `.zc/reports/W15-drift.md` | 待派发 |
 
 本批先交证据及草稿，不直接写共享档案；主代理审查后串行合入 `docs/MECHANICS_IMPLEMENTATION.md`。
 R62-J3 当前 HEAD 行为指纹刷新、R37-J5 §19.6-a 留白归因仍是候选，不随本批自动启动。
+
+2026-09-25 lead 会话：W10 / W11 已派发（dsh 工人，日志 `/tmp/worker-W10.out|.err`、`/tmp/worker-W11.out|.err`），W12 待并发空位。同日新增 drift 复核批 W13–W15：CC 批次（e2e8ae5..bbbaaa4）触发 102 条 ⟳ 待复核，成因/判据/分批见 `docs/mcp-drift-triage.md`；工人只交复核报告，「据」/锚落盘修正由主代理按报告分批做。
 
 ### 本批立项证据与放行边界
 
@@ -157,6 +162,70 @@ R62-J3 当前 HEAD 行为指纹刷新、R37-J5 §19.6-a 留白归因仍是候选
 用 `zc done --verifier '<实际运行命令或只读取证>' --coverage '.zc/reports/W12-dossier.md' --risk '<未证明事项>'` 释放本卡租约。
 主代理独立审查后才串行写入共享档案；工人不得自行消 WARN 或删任务卡。
 <!-- /card:W12 -->
+
+<!-- card:W13 -->
+### W13 · drift 复核批 A：calc-core 热区（锚 src/core/ 与 src/composables/resourceCalc/）
+
+你是执行工人，只完成本卡，不继续委派。TASK_ID=W13。
+工作区 `/home/kaua/projects/zzz-calculator`。开工打印真实 HEAD 和 `git status --short`。
+父目标：CC-1…CC-12（e2e8ae5..bbbaaa4）迁移计算核心后，`zc drift` 批量标记了 102 条 @fact 待复核；本卡只负责批 A 的**只读复核**，不修改任何仓库文件、不改「据」日期——落盘修正由主代理按你的报告分批执行。
+
+**先读**：
+1. `docs/mcp-drift-triage.md`（上位文档：成因、四态判据、证伪闸门）。
+2. `AGENTS.md` §1 规则 8/16；`node scripts/zc.mjs lang`（@fact 语法）。
+3. 你的条目全集：`node scripts/zc.mjs drift` 输出中锚路径以 `src/core/` 或 `src/composables/resourceCalc/` 开头的全部行。开工先 `… | grep '^⟳' | grep -E '锚 src/core/\|锚 src/composables/resourceCalc/' | wc -l` 打印条数（09-25 快照为 37）；不符时按实际全集做，报告写明实际数。
+
+**硬约束与证伪闸门**：只可写 `/home/kaua/projects/zzz-calculator/.zc/reports/W13-drift.md`（先 `mkdir -p .zc/reports` 并 `zc claim` 此报告）。其余一律只读。前提 = 每条的事实行（行尾括号内 file:line）与锚符号（`锚 file#symbol`）都还能定位；可观察失败 = 两侧都找不到 ⇒ 该条标 `broken-anchor` 并给候选符号（grep 关键词），不猜新位置。只判「事实是否仍如实描述实现」，不判「机制该不该这样」，不重开已裁决项。
+
+**步骤与验收**（WSL 内执行；纯静态阅读，不跑 vitest / check / build）：
+1. 逐条读事实行与锚实现两侧，按上位文档 §2 判 still-holds / drifted / broken-anchor / needs-user 四态。
+2. still-holds 给出：锚符号现位置（路径:行）+ 一句「为何仍成立」；实现已搬家导致事实行内路径过期时，给出应改成的锚路径。
+3. drifted 给出：两侧 path:line + 关键摘录（各 ≤3 行）+ 你认为哪侧对。疑似业务口径 ⇒ needs-user 并注 OPEN-ITEMS 编号（如有）。
+4. 报告用 markdown 表：条目原名 | 四态 | 证据 path:line | 建议新锚/新据 | 备注；逐条列全，不许抽样。表前给四态统计。
+
+**固定报告与收工**：报告首行及最终回复均为 `STATUS: done|blocked`。正文含 HEAD、实际条数、四态统计、逐条表、未决项清单。用 `node scripts/zc.mjs done --verifier 'node scripts/zc.mjs drift（只读）' --coverage '.zc/reports/W13-drift.md' --risk '<未决项>'` 释放租约。主代理复核后才批量落盘；工人不改任何仓库文件。
+<!-- /card:W13 -->
+
+<!-- card:W14 -->
+### W14 · drift 复核批 B：mechanics 档案事实（锚 src/mechanics/）
+
+你是执行工人，只完成本卡，不继续委派。TASK_ID=W14。
+工作区 `/home/kaua/projects/zzz-calculator`。开工打印真实 HEAD 和 `git status --short`。
+父目标：同 W13（见 `docs/mcp-drift-triage.md`），本卡只负责批 B（锚 `src/mechanics/`，09-25 快照 31 条，多为 `agent:NNNN/*` 角色机制事实）的**只读复核**。
+
+**先读**：
+1. `docs/mcp-drift-triage.md`（上位文档）；`AGENTS.md` §1 规则 8/16；`node scripts/zc.mjs lang`。
+2. 你的条目全集：`node scripts/zc.mjs drift | grep '^⟳' | grep '锚 src/mechanics/'`，开工先 `| wc -l` 打印条数；不符时按实际全集做。
+3. 涉及具体角色机制时只沿该条目的锚文件补读必要消费者，不全仓漫游。
+
+**硬约束与证伪闸门**：只可写 `/home/kaua/projects/zzz-calculator/.zc/reports/W14-drift.md`（先 mkdir -p .zc/reports 并 zc claim）。其余一律只读。前提 = 事实行与锚符号都还能定位；可观察失败 = 找不到 ⇒ 标 `broken-anchor` 并给候选。⚠ 本批部分锚在 09-15…09-21 被真实改动过（非搬家）：语义变了就是 drifted，**别把「日期旧」当成「需要刷日期」**；疑似业务口径（如 yeshuguang formAxis 类，同 OPEN-ITEMS R2-C）⇒ needs-user，不自己裁。
+
+**步骤与验收**：同 W13 第 1–4 步（四态判据、证据格式、逐条列全不许抽样）。
+
+**固定报告与收工**：同 W13，报告路径 `.zc/reports/W14-drift.md`，`zc done --coverage '.zc/reports/W14-drift.md'`。工人不改任何仓库文件。
+<!-- /card:W14 -->
+
+<!-- card:W15 -->
+### W15 · drift 复核批 C：composables（非 resourceCalc）+ scripts + 杂项
+
+你是执行工人，只完成本卡，不继续委派。TASK_ID=W15。
+工作区 `/home/kaua/projects/zzz-calculator`。开工打印真实 HEAD 和 `git status --short`。
+父目标：同 W13（见 `docs/mcp-drift-triage.md`），本卡只负责批 C 的**只读复核**。
+
+**先读**：
+1. `docs/mcp-drift-triage.md`（上位文档）；`AGENTS.md` §1 规则 8/16；`node scripts/zc.mjs lang`。
+2. 你的条目全集 = `node scripts/zc.mjs drift` 输出中满足以下任一条件的行（09-25 快照合计 34 = 15+12+7）：
+   - `grep '锚 src/composables/' | grep -v '锚 src/composables/resourceCalc/'`（15）
+   - `grep '锚 scripts/'`（12）
+   - `grep -E '锚 src/(stores\|types\|utils\|views\|data)/'`（7）
+   开工先分别 `| wc -l` 打印；不符时按实际全集做，报告写明。
+
+**硬约束与证伪闸门**：只可写 `/home/kaua/projects/zzz-calculator/.zc/reports/W15-drift.md`（先 mkdir -p .zc/reports 并 zc claim）。其余一律只读。前提 = 事实行与锚符号都还能定位；可观察失败 = 找不到 ⇒ `broken-anchor` 并给候选。⚠ 本批含护栏自指事实（`engine:guards/*` 锚在 `scripts/check-guards.mjs`、`engine:zc/*` 锚在 `scripts/zc.mjs`）与 UI/store 事实——`check-guards.mjs` 在别的会话租约下**只读不接管**；只判「事实是否仍如实描述实现」，护栏阈值/条数本身会随加固变化，若事实写死了数字而实现已改为动态 ⇒ drifted 并注明。
+
+**步骤与验收**：同 W13 第 1–4 步（四态判据、证据格式、逐条列全不许抽样）。
+
+**固定报告与收工**：同 W13，报告路径 `.zc/reports/W15-drift.md`，`zc done --coverage '.zc/reports/W15-drift.md'`。工人不改任何仓库文件。
+<!-- /card:W15 -->
 
 ## 3. 本队列的来源：2026-09-24 OPEN-ITEMS 分诊
 
