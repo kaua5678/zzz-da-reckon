@@ -244,6 +244,20 @@ describe('pullValue · 四分位分级', () => {
     expect(yixuan.avgPerRoom).toBe(6000)
     expect(yixuan.recentAvg).toBe(6000) // 近 3 期（不足 3 期按实际 2 期）
   })
+
+  it('分级按累计不按场均：窗口更短但场均更高的卡不因此升级', () => {
+    // 艾莲 1191 实装早于两期：2 房 × 2000 = 累计 4000、场均 2000
+    // 希格莉德 1591 只在 69043 可用：1 房 × 3000 = 累计 3000、场均 3000
+    // 场均是并列读数；分级仍跟累计（§4.4，敏感性报告 ρ≈0.98 但不替换）
+    const runs = [...pairedRuns('1191', 2000, 10), ...pairedRuns('1591', 3000, 10, ['69043'])]
+    const res = computePullValue({ runs, seasons: SEASONS, rooms: ROOMS })
+    const ellen = res.cards.find(c => c.agentId === '1191')!
+    const sigrid = res.cards.find(c => c.agentId === '1591')!
+    expect(ellen.cumulative).toBeGreaterThan(sigrid.cumulative)
+    expect(sigrid.avgPerRoom).toBeGreaterThan(ellen.avgPerRoom)
+    expect(ellen.grade).toBe('T0')
+    expect(sigrid.grade).not.toBe('T0')
+  })
 })
 
 // ========== 真实归档冒烟 ==========

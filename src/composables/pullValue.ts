@@ -17,9 +17,11 @@
  *   （顶部饱和 = 该房间人人可兑现，边际报酬趋零本身即经济学结论）。
  * - **资本积累**（资本理论）：卡在实装日被抽取 = 投资，此后每期产出边际分；
  *   累计兑现 = Σ MP（无折现，「总和」字面口径）；过时/衰减由「近 3 期场均」呈现。
- * - **ROI**（投资学）：每万菲林兑现 = 累计 / (CINEMA_GOLD_FILM / 10000)；
- *   抽卡成本单一事实源 = data/filmEconomy.ts（限定角色本体 1 金 = 15000 菲林期望）。
- * - **分级**（非参数统计）：限定池内（含赠送 S）按累计兑现四分位 → T0/T1/T2/T3；
+ * - **ROI**（投资学）：每万菲林兑现 = 累计 / (CINEMA_GOLD_FILM / 10000)。
+ *   分母是「抽这张卡本体」的期望菲林（15000），不是归档里观察到的满配投入。
+ *   专武是另一次更便宜的购买（10000 菲林/金，见 filmEconomy），不进这张图的分母。
+ * - **分级**（非参数统计）：限定池内（含赠送 S）按累计兑现四分位 → T0/T1/T2/T3。
+ *   场均 / 近 3 期场均是跨实装时点的并列读数，不替换分级（实测与累计秩相关 ≈ 0.98）。
  *   配对数 < 阈值 → 样本不足（null）；常驻 S / A 级不参与分级（见分层）。
  *
  * 口径：
@@ -57,7 +59,7 @@ export interface PvRun {
   mode: string
   score: number
   authorName?: string
-  team: ReadonlyArray<{ agentId: string; mindscape?: number; phase?: number }>
+  team: ReadonlyArray<{ agentId: string; mindscape?: number; phase?: number; weaponId?: string }>
 }
 
 export interface PvSeasonMeta {
@@ -106,7 +108,7 @@ export interface PvRoom {
 export interface PvRoomFrontier {
   /** 顶分（= cap 才入前沿） */
   score: number
-  /** 队伍限定金数（本体 1/金 + 影画/精炼各 1/金；非限定成员 0） */
+  /** 队伍限定金数（角色本体 1 + 影画；限定专武本体 1 + 精炼。无限定专武不计音擎金） */
   gold: number
   /** 队伍 agentId */
   team: string[]
@@ -263,7 +265,7 @@ export function computePullValue(input: PullValueInput): PullValueResult {
     }
 
     // 效率前沿（用户口径 4）：满档（= cap）投稿里限定金数最低的 run。
-    // 金数口径单一事实源 = limitedGold.runLimitedGold（限定 S 本体 1 + 影画 + 专武精炼−1；常驻/A 不计）。
+    // 金数口径单一事实源 = limitedGold.runLimitedGold（角色本体 1 + 影画 + 限定专武本体与精炼）。
     let frontierLowestGold: PvRoomFrontier | null = null
     for (const r of rs) {
       if (r.score < SCORE_CAP) continue
@@ -362,7 +364,7 @@ export function computePullValue(input: PullValueInput): PullValueResult {
     })
   }
 
-  // ---- 5. 分级：限定池（含赠送）内按累计四分位 ----
+  // ---- 5. 分级：限定池（含赠送）内按累计四分位。场均只并列展示，不进分级。 ----
   const qualified = cards.filter(c => (c.tier === 'limited' || c.tier === 'freeGift') && c.totalPairs >= MIN_PAIRS_FOR_GRADE)
   const cumAsc = qualified.map(c => c.cumulative).sort((a, b) => a - b)
   if (cumAsc.length > 0) {

@@ -4,7 +4,7 @@
  * 用户口径（2026-08-28）：
  * - **队伍基底 = 归档每期危局「最低限金到（最低限金+4）的强队，其他全部无视**：
  *   按 Boss 聚合归档 run → 强队 = 分数 ≥ 该 Boss 顶分 ×0.9 → 金数窗 = [minGold, minGold+4]
- *   → 按队伍构成去重取顶分 run（金数 = 限定S本体1+影画+专武精炼−1，同 pullValue 效率前沿口径）。
+ *   → 按队伍构成去重取顶分 run（金数同 limitedGold：角色本体 1 + 影画 + 限定专武本体与精炼）。
  *   基底是「meta 效率前沿」的队伍清单——规划/增量的求值域只有这些队，求值量从
  *   C(池,3)≈数千 砍到每 Boss 封顶 N 队。
  * - **每期为账号带来的分数增量**（展示主体）：
@@ -47,7 +47,7 @@ export interface BaseTeam {
   bossId: string
   /** 成员（按归档槽位序） */
   members: [BaseTeamMember, BaseTeamMember, BaseTeamMember]
-  /** 限定金数（本体 1 + 影画 + 专武精炼−1；常驻/A 计 0） */
+  /** 限定金数（角色本体 1 + 影画 + 限定专武本体与精炼；无限定专武不计音擎金） */
   gold: number
   /** 该构成在归档里的最高分（溯源展示用） */
   bestScore: number

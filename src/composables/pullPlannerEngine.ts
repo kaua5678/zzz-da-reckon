@@ -1,6 +1,6 @@
 /**
  * 抽卡规划器的引擎 oracle 桥：把 pullPlanner 的 TeamOracle 接到真实伤害引擎
- * （teamTimeline 底座：applyTeamToStore / 预算感知配装 / maxIter 收敛过滤 / 现场快照恢复）。
+ * （teamTimeline 底座：applyTeamLite / 逐人持有档配装 / maxIter 收敛过滤 / 现场快照恢复）。
  *
  * 伤害 → 分数映射（分段线性，FEATURES_GUIDE §4.5）：
  *   score = scoreForDamageRatio(teamDamage / bossHp)（伤害分 0~60000，非线性——前段血值分多）
@@ -12,7 +12,8 @@
  */
 import { getInteractionDefaults, roleInteractionBaseline, useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { budgetAwareStateFor } from '@/composables/teamTimeline'
+import { isLimitedSWengineId } from '@/composables/limitedGold'
+import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import type { BossPreset, PhaseView } from '@/types/bossPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
 import type { PlannerBossRoom, PlannerPeriod, TeamOracle } from '@/composables/pullPlanner'
@@ -44,17 +45,58 @@ interface OracleState {
   cacheHits: number
 }
 
-/** 持有集 → 金数预算（队伍内限定成员按各自 tier 折算：本体 1 / +专武 2 / 满配 11 金） */
-function teamBudgetFor(team: [string, string, string], holdings: Record<string, number>): number {
-  let budget = 4 // 常驻/A 队友底
-  for (const id of team) {
-    const tier = holdings[id] ?? 0
-    budget += tier === 3 ? 11 : tier === 2 ? 2 : tier === 1 ? 1 : 0
-  }
-  return budget
+/**
+ * 没抽到限定专武时的固定下位：每职业一件，不逐队搜索。
+ * 辅助/击破选自默认下位池里通常最好的一把（2026-09-24 同队丽娜/雅/莱卡恩、无弱点各试几件：
+ * 摇篮 R5 615万 > R3 600万 > 阿炮 434万 > 游球 420万；齿轮 687万 > 刀俎 681万）。
+ * 游球的暴击要属性克制才触发，不作为默认。池外左轮转子单次略高，不据此扩大搜索。
+ * 其余职业 = 该职业常驻 S 专武（攻击用硫磺石，不用物理锁定的钢铁肉垫）；没有则一把 A 级。
+ * 精炼 5 是非限定音擎，不占限定金。起点就有的专武用 initialTier ≥ 2 表达，不在这里特判。
+ */
+export const PLANNER_FIXED_LOWER: Record<string, { id: string; mod: number }> = {
+  support: { id: '14121', mod: 5 },
+  stun: { id: '14110', mod: 5 },
+  attack: { id: '14104', mod: 5 },
+  anomaly: { id: '14118', mod: 5 },
+  rupture: { id: '13019', mod: 5 },
+  defense: { id: '13010', mod: 5 },
+  sharpen: { id: '13017', mod: 5 },
 }
+const FALLBACK_LOWER = { id: '13004', mod: 5 }
 
-import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
+/**
+ * 持有档 → 该人自己的配装。不把队伍金数并成一个池再按主C优先分配
+ * （那会让 {雅1,柳3} 和 {雅3,柳1} 装成同一套）。
+ * tier 1 = 本体、下位音擎；tier 2 = 本体+专武 R1；tier 3 = 满配 M6R5。
+ * 没买专武就不带专武。
+ */
+export function holdingStateFor(
+  team: [string, string, string],
+  holdings: Record<string, number>,
+  catalog: ReturnType<typeof useCatalogStore>,
+): { cinemas: [number, number, number]; wengineMods: [number, number, number]; wEngines: [string, string, string] } {
+  const cinemas: [number, number, number] = [0, 0, 0]
+  const wengineMods: [number, number, number] = [1, 1, 1]
+  const wEngines: [string, string, string] = ['', '', '']
+  for (let s = 0; s < 3; s++) {
+    const id = team[s]
+    const agent = catalog.getAgent(id)
+    const tier = holdings[id] ?? 0
+    const limited = !!agent && agent.rarity === 'S' && !STANDARD_S_AGENT_IDS.has(id)
+    const sig = catalog.displayWEngines.find(w => w.ownerAgentId === id)?.id ?? ''
+    if (limited && tier >= 2 && isLimitedSWengineId(sig)) {
+      cinemas[s] = tier >= 3 ? 6 : 0
+      wEngines[s] = sig
+      wengineMods[s] = tier >= 3 ? 5 : 1
+    } else {
+      cinemas[s] = limited && tier >= 3 ? 6 : 0
+      const lower = PLANNER_FIXED_LOWER[agent?.specialty ?? ''] ?? FALLBACK_LOWER
+      wEngines[s] = lower.id
+      wengineMods[s] = lower.mod
+    }
+  }
+  return { cinemas, wengineMods, wEngines }
+}
 
 /** 持有成员过滤：限定 S 未持有（tier 0）不可入队；常驻 S / A 级永远可用（成型号口径） */
 function usableMembers(pool: string[], holdings: Record<string, number>, catalog: ReturnType<typeof useCatalogStore>): string[] {
@@ -127,8 +169,7 @@ export function createEngineOracle(opts: EngineOracleOptions): {
     const hit = teamScoreCache.get(key)
     if (hit !== undefined) return hit
     const hp = bossRoom.hp > 0 ? bossRoom.hp : 1
-    const budget = teamBudgetFor(team, holdings)
-    const { state: goldState } = budgetAwareStateFor(team, budget, catalog)
+    const goldState = holdingStateFor(team, holdings, catalog)
     applyTeamLite(configStore, team, goldState)
     state.evaluations++
     const conv = opts.calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined

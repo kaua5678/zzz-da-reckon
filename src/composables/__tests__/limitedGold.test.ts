@@ -7,16 +7,22 @@ import { memberLimitedGold, runLimitedGold, lowGoldFrontier } from '@/composable
  * 常驻 S = 1021(猫又)/1211(丽娜)；未收录 A 级 = 1031（AGENT_RELEASE_NODE 无条目）。
  */
 describe('memberLimitedGold 金数口径', () => {
-  it('限定 S：本体 1 + 影画 + 精炼(phase−1)', () => {
+  it('限定 S：角色本体 1 + 影画；限定专武本体 1 + 精炼', () => {
     expect(memberLimitedGold({ agentId: '1091' })).toBe(1)
     expect(memberLimitedGold({ agentId: '1091', mindscape: 6 })).toBe(7)
-    expect(memberLimitedGold({ agentId: '1091', mindscape: 6, phase: 5 })).toBe(11)
-    expect(memberLimitedGold({ agentId: '1091', mindscape: 0, phase: 2 })).toBe(2)
+    // 没有音擎身份：phase 不算金（没抽专武不能当成带着）
+    expect(memberLimitedGold({ agentId: '1091', mindscape: 6, phase: 5 })).toBe(7)
+    expect(memberLimitedGold({ agentId: '1091', mindscape: 6, phase: 5, weaponId: '14109' })).toBe(12)
+    expect(memberLimitedGold({ agentId: '1091', mindscape: 0, phase: 2, weaponId: '14109' })).toBe(3)
+    // A 级 / 常驻音擎的精炼不计金
+    expect(memberLimitedGold({ agentId: '1091', phase: 5, weaponId: '13005' })).toBe(1)
+    expect(memberLimitedGold({ agentId: '1091', phase: 5, weaponId: '14121' })).toBe(1)
   })
 
   it('缺省：mindscape 默认 0、phase 默认 1（精炼不计）', () => {
     expect(memberLimitedGold({ agentId: '1511', phase: 1 })).toBe(1)
     expect(memberLimitedGold({ agentId: '1511', mindscape: 2 })).toBe(3)
+    expect(memberLimitedGold({ agentId: '1511', weaponId: '14151', phase: 1 })).toBe(2)
   })
 
   it('常驻 S（猫又/丽娜）不计金，无论影画精炼', () => {
@@ -32,11 +38,11 @@ describe('memberLimitedGold 金数口径', () => {
 describe('runLimitedGold 队伍求和', () => {
   it('限定 + 常驻 + A 级混合：只累加限定部分', () => {
     const team = [
-      { agentId: '1091', mindscape: 6, phase: 5 }, // 1 + 6 + 4 = 11
-      { agentId: '1211', mindscape: 3, phase: 4 }, // 常驻 = 0
-      { agentId: '1031', mindscape: 6, phase: 5 }, // A 级 = 0
+      { agentId: '1091', mindscape: 6, phase: 5, weaponId: '14109' }, // 1 + 6 + 5 = 12
+      { agentId: '1211', mindscape: 3, phase: 4, weaponId: '14121' }, // 常驻角色 + 常驻音擎 = 0
+      { agentId: '1031', mindscape: 6, phase: 5, weaponId: '13103' }, // A 级 = 0
     ]
-    expect(runLimitedGold(team)).toBe(11)
+    expect(runLimitedGold(team)).toBe(12)
   })
 })
 
@@ -46,7 +52,7 @@ describe('lowGoldFrontier 低金顶分前沿', () => {
   it('每房间只在顶分 run 里取最低金；低分低金不入选', () => {
     const A = room('s1', 't1')
     const runs = [
-      { ...A, score: 65000, team: [{ agentId: '1091', mindscape: 6, phase: 5 }] }, // 顶分但 11 金
+      { ...A, score: 65000, team: [{ agentId: '1091', mindscape: 6, phase: 5, weaponId: '14109' }] }, // 顶分但 12 金
       { ...A, score: 65000, team: [{ agentId: '1091' }, { agentId: '1211' }] }, // 顶分 1 金 → 前沿
       { ...A, score: 50000, team: [{ agentId: '1211' }] }, // 低分 0 金 → 不入选（非顶分）
     ]

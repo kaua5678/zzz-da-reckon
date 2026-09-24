@@ -21,6 +21,7 @@ import {
   createEngineOracle,
   freeMemberPool,
   freePoolRepresentatives,
+  holdingStateFor,
   plannerTestServerVersions,
   runPullPlanner,
 } from '@/composables/pullPlannerEngine'
@@ -73,6 +74,39 @@ describe('pullPlannerEngine · 期轴与卡清单', () => {
     expect(free).toContain('1551') // 佩洛伊斯赠送
     expect(free).toContain('1421') // 潘引壶特例
     expect(free).not.toContain('1371') // 仪玄限定不免费
+  })
+})
+
+describe('pullPlannerEngine · 持有档逐人配装', () => {
+  it('不把金数并池：{雅1,柳3} 与 {雅3,柳1} 不是同一套；没买专武不带专武', async () => {
+    await boot()
+    const catalog = useCatalogStore()
+    const team = ['1091', '1221', '1031'] as [string, string, string]
+    const yaOnly = holdingStateFor(team, { '1091': 1, '1221': 3 }, catalog)
+    const liuOnly = holdingStateFor(team, { '1091': 3, '1221': 1 }, catalog)
+    // 雅 slot0 专武 14109，柳 slot1 专武 14122，妮可辅助穿固定下位摇篮
+    expect(yaOnly.cinemas[0]).toBe(0)
+    expect(yaOnly.wEngines[0]).not.toBe('14109')
+    expect(yaOnly.cinemas[1]).toBe(6)
+    expect(yaOnly.wEngines[1]).toBe('14122')
+    expect(yaOnly.wengineMods[1]).toBe(5)
+    expect(liuOnly.cinemas[0]).toBe(6)
+    expect(liuOnly.wEngines[0]).toBe('14109')
+    expect(liuOnly.wengineMods[0]).toBe(5)
+    expect(liuOnly.cinemas[1]).toBe(0)
+    expect(liuOnly.wEngines[1]).not.toBe('14122')
+    expect(yaOnly.wEngines).not.toEqual(liuOnly.wEngines)
+    const bothBody = holdingStateFor(team, { '1091': 1, '1221': 1 }, catalog)
+    expect(bothBody.cinemas).toEqual([0, 0, 0])
+    expect(bothBody.wEngines[0]).not.toBe('14109')
+    expect(bothBody.wEngines[1]).not.toBe('14122')
+    expect(bothBody.wEngines[2]).toBe('14121')
+    const bothSig = holdingStateFor(team, { '1091': 2, '1221': 2 }, catalog)
+    expect(bothSig.cinemas).toEqual([0, 0, 0])
+    expect(bothSig.wEngines[0]).toBe('14109')
+    expect(bothSig.wengineMods[0]).toBe(1)
+    expect(bothSig.wEngines[1]).toBe('14122')
+    expect(bothSig.wengineMods[1]).toBe(1)
   })
 })
 

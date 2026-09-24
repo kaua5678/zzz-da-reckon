@@ -1,6 +1,11 @@
 /**
- * 限定金数（单一事实源，2026-08 口径）：限定 S 本体 1 + 影画 mindscape + 专武精炼 (phase−1)。
- * 常驻 S（STANDARD_S_AGENT_IDS）与未收录角色（AGENT_RELEASE_NODE 无条目，含四星）不计金。
+ * 限定金数（单一事实源）。金数与菲林是两套单位，不要互相折算：
+ * - 金数：限定 S 角色本体 1 + 影画；限定专武本体也是 1，再加精炼 (phase−1)。满配 = 12。
+ * - 菲林：角色金 15000、音擎金 10000（`data/filmEconomy.ts`）。专武金数同为 1，期望抽数更低。
+ * 音擎金只在 `weaponId` 能认出是限定 S 音擎时计入。没有音擎身份 = 没抽专武，不计音擎金
+ * （常驻/A 级音擎的精炼以前被 phase 误计，已去掉）。
+ * 常驻 S 角色与未收录角色（AGENT_RELEASE_NODE 无条目，含四星）的角色本体不计金；
+ * 他们若穿着限定专武，音擎金仍计（有金就是金）。
  *
  * 三处共用同一口径，改口径只改这里：
  * - pullValue（效率前沿 frontierLowestGold）
@@ -8,19 +13,37 @@
  * - 实战对比页 RunArchivePage（「仅看低金顶分」筛选）
  */
 import { AGENT_RELEASE_NODE } from '@/data/versionTimeline'
-import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
+import { STANDARD_S_AGENT_IDS, STANDARD_S_WENGINE_IDS } from '@/data/standardMultiplierTable'
 
 export interface LimitedGoldMember {
   agentId: string
   mindscape?: number
+  /** 音擎精炼 1–5。只在 weaponId 为限定 S 音擎时计入。 */
   phase?: number
+  /** 归档音擎 id。缺省 = 没有可识别的限定专武，不计音擎金。 */
+  weaponId?: string
+}
+
+/**
+ * 限定 S 音擎（占 1 金本体）。S 音擎 id 均为 141xx（catalog 2026-09：49 把 S 全是 141，
+ * 没有任何非 S 以 141 开头）；常驻 6 把除外。不依赖 catalog store，归档统计可直接用。
+ */
+export function isLimitedSWengineId(id: string | undefined | null): boolean {
+  if (!id) return false
+  return id.startsWith('141') && !STANDARD_S_WENGINE_IDS.has(id)
 }
 
 /** 单个成员的限定金数（常驻 S / 未收录 = 0） */
 export function memberLimitedGold(m: LimitedGoldMember): number {
-  if (!AGENT_RELEASE_NODE[m.agentId]) return 0
-  if (STANDARD_S_AGENT_IDS.has(m.agentId)) return 0
-  return 1 + (m.mindscape ?? 0) + Math.max(0, (m.phase ?? 1) - 1)
+  let gold = 0
+  if (AGENT_RELEASE_NODE[m.agentId] && !STANDARD_S_AGENT_IDS.has(m.agentId)) {
+    gold += 1 + (m.mindscape ?? 0)
+  }
+  if (isLimitedSWengineId(m.weaponId)) {
+    const phase = Number.isFinite(m.phase) ? Math.max(1, Math.floor(m.phase as number)) : 1
+    gold += phase
+  }
+  return gold
 }
 
 /** 一支队伍的限定金数 = Σ 成员 */
