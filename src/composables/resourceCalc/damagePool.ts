@@ -16,7 +16,7 @@ import { calcDirectDamage, calcAnomalyDamage, resolveSpecialDamageProfile, calcP
 import { panelAt } from '@/core/panel'
 import { attributeCountByStateChain } from '@/core/stunAxis/inStunAnomaly'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
-import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, resolveStatElement, getMainApplierSlot, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
+import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG, getBaseElement, resolveStatElement, getMainApplierSlot, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
 import { getAgentMechanic } from '@/mechanics'
 import type { AxisScalarOverlays } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
@@ -1239,12 +1239,32 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       single?: number
       baseFormula: string
     }> = {
-      fire: { label: '灼烧', perTick: 50, tickInterval: 0.5, baseTicks: 20, baseFormula: '灼烧基础 50% × 20 tick（10秒/0.5秒）' },
-      electric: { label: '感电', perTick: 125, tickInterval: 1, baseTicks: 10, baseFormula: '感电基础 125% × 10 tick' },
-      ether: { label: '侵蚀', perTick: 62.5, tickInterval: 0.5, baseTicks: 20, baseFormula: '侵蚀基础 62.5% × 20 tick（10秒/0.5秒）' },
-      physical: { label: '强击', single: 713, baseFormula: '强击 713% 单次' },
-      ice: { label: '碎冰', single: 500, baseFormula: '碎冰 500% 单次（冻结次数=碎冰次数）' },
-      wind: { label: '风化', single: 1250, baseFormula: '风化 1250% 单次' },
+      // 数值来源统一引 core/anomalyPool/helpers（规则 11）：DoT 三项取 STANDARD_DOT_CONFIG，
+      // 单次倍率取 ANOMALY_SINGLE_HIT_MULTIPLIER；baseFormula 改插值，渲染结果与原字面量逐字相同。
+      fire: {
+        label: '灼烧',
+        perTick: STANDARD_DOT_CONFIG.fire.tickMultiplier,
+        tickInterval: STANDARD_DOT_CONFIG.fire.tickInterval,
+        baseTicks: STANDARD_DOT_CONFIG.fire.totalTicks,
+        baseFormula: `灼烧基础 ${STANDARD_DOT_CONFIG.fire.tickMultiplier}% × ${STANDARD_DOT_CONFIG.fire.totalTicks} tick（10秒/${STANDARD_DOT_CONFIG.fire.tickInterval}秒）`,
+      },
+      electric: {
+        label: '感电',
+        perTick: STANDARD_DOT_CONFIG.electric.tickMultiplier,
+        tickInterval: STANDARD_DOT_CONFIG.electric.tickInterval,
+        baseTicks: STANDARD_DOT_CONFIG.electric.totalTicks,
+        baseFormula: `感电基础 ${STANDARD_DOT_CONFIG.electric.tickMultiplier}% × ${STANDARD_DOT_CONFIG.electric.totalTicks} tick`,
+      },
+      ether: {
+        label: '侵蚀',
+        perTick: STANDARD_DOT_CONFIG.ether.tickMultiplier,
+        tickInterval: STANDARD_DOT_CONFIG.ether.tickInterval,
+        baseTicks: STANDARD_DOT_CONFIG.ether.totalTicks,
+        baseFormula: `侵蚀基础 ${STANDARD_DOT_CONFIG.ether.tickMultiplier}% × ${STANDARD_DOT_CONFIG.ether.totalTicks} tick（10秒/${STANDARD_DOT_CONFIG.ether.tickInterval}秒）`,
+      },
+      physical: { label: '强击', single: ANOMALY_SINGLE_HIT_MULTIPLIER.physical, baseFormula: `强击 ${ANOMALY_SINGLE_HIT_MULTIPLIER.physical}% 单次` },
+      ice: { label: '碎冰', single: ANOMALY_SINGLE_HIT_MULTIPLIER.ice, baseFormula: `碎冰 ${ANOMALY_SINGLE_HIT_MULTIPLIER.ice}% 单次（冻结次数=碎冰次数）` },
+      wind: { label: '风化', single: ANOMALY_SINGLE_HIT_MULTIPLIER.wind, baseFormula: `风化 ${ANOMALY_SINGLE_HIT_MULTIPLIER.wind}% 单次` },
     }
     // 风化窗口内的火/电/以太 DoT 与冰冻结类不生效，按 (1 - windRate) 折算；
     // 强击、极性强击这类事件伤害仍可触发，因此保留 physical/physical_polar_assault/wind 全额次数。
@@ -1399,7 +1419,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const result = calcAnomalyDamage({
         panel: polarAlicePanel,
         settlementPanel: polarAlicePanel,
-        baseMultiplier: 713,
+        baseMultiplier: ANOMALY_SINGLE_HIT_MULTIPLIER.physical,
         element: 'physical' as any,
         enemyDefense: configStore.enemy.defense,
         enemyDefReduction: 0,
@@ -1426,8 +1446,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         count: polarAssaultProg.triggerCount,
         perDamage,
         totalDamage: perDamage * polarAssaultProg.triggerCount,
-        multiplier: 713,
-        note: `713% 单次 × 爱丽丝面板 · 赠送触发不耗异常条${isAxis ? ` · 易伤按触发源加权轴内占比 ${fmt(polarStunFor, 2)}（SW3 ${fmt(sw3Frac, 2)}${ultExtra > 0 ? ` ×${sw3Count} + 终结 ${fmt(ultimateInAxisFraction(polarAssaultSlot), 2)} ×${ultExtra}` : ''}）` : ''}`,
+        multiplier: ANOMALY_SINGLE_HIT_MULTIPLIER.physical,
+        note: `${ANOMALY_SINGLE_HIT_MULTIPLIER.physical}% 单次 × 爱丽丝面板 · 赠送触发不耗异常条${isAxis ? ` · 易伤按触发源加权轴内占比 ${fmt(polarStunFor, 2)}（SW3 ${fmt(sw3Frac, 2)}${ultExtra > 0 ? ` ×${sw3Count} + 终结 ${fmt(ultimateInAxisFraction(polarAssaultSlot), 2)} ×${ultExtra}` : ''}）` : ''}`,
       })
     }
 

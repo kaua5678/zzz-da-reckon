@@ -105,6 +105,10 @@ node -e 'const a=require("/home/kaua/calc-arch/dump-A.json"),b=require("/home/ka
 # ↑ 必须输出 DUMP-ZERO-DELTA；dump 是单行 JSON（值 = 伤害|hash(resourceResult)|hash(stunPool)|降配上限）。
 #   `__ms` = dump 自身墙钟耗时（dump.perf.ts 的 performance.now 差值），**不是场景值**，比对时排除
 #   （CC-1 工人实测：同代码两次 dump 仅 __ms 不同 42027 vs 49402，624/624 场景逐位相同；lead 裁决 2026-09-24）。
+#   ⚠ dump **不覆盖 damagePoolRows 的 note/baseFormula 文案**（只 hash resourceResult/stunPool + 总伤害）。
+#   动行文案的卡另跑 rowsnap（= dump + hash(damagePoolRows)，`.zc/perf/rowsnap.perf.ts`，文件名刻意不含 dump 以免被 `dump` 过滤器同时选中）：
+#   PERF_OUT=/home/kaua/calc-arch/rows-B.json npx vitest run --config .zc/perf/vitest.perf.config.ts rowsnap
+#   基线 rows-A.json 须在改前 HEAD 的 worktree 里跑（lead 在 da6c028 已存 /home/kaua/calc-arch/rows-A.json，零行为卡后仍有效），比对命令同上换文件名。
 npm run build                            # vue-tsc + vite，EXIT 0
 ```
 不许跑 `npm run verify`（12min+，lead 合并前统一跑）。报告写 `.zc/reports/<卡号>.md`，第一行 `STATUS: done|blocked`，
@@ -125,7 +129,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-6c | review | design（依赖 6b） | 1531/1431/1051 终局重推：`finalizePass` 能力 + 通用执行器 `core/resource/finalizePasses.ts`；agentId 3→0 | 见设计稿 §3.3（stage 顺序敏感） |
 | CC-6d | review | design（依赖 CC-D3 裁决） | velina 风蚀状态机：`anomalyStateSim` 能力；import 2→0 | 见设计稿 §3.4 |
 | CC-7 | fast | **done**（dsflash 工人 + lead 复核：PanelValues.atk/hp 必填 ⇒ `?? 0` 死分支；dump 624 零差、guards 21、build、48 测过） | 贯穿力单一事实源：导出 `calcPenetrationPower`，norma.ts / damagePool.ts:1067 改引用（**不碰 :1020**） | core/damage.ts、norma.ts、damagePool.ts |
-| CC-8 | fast | ready | damagePool 异常常量改引 core：713/500/1250 与 DoT 表改用 `ANOMALY_SINGLE_HIT_MULTIPLIER` / `STANDARD_DOT_CONFIG` | damagePool.ts 1242–1247 / 1402 / 1429 |
+| CC-8 | fast | **done**（dsflash 工人 + lead 复核：逐项值相等；dump 624 零差 + rowsnap（含行文案）624 零差、guards 21、build） | damagePool 异常常量改引 core：713/500/1250 与 DoT 表改用 `ANOMALY_SINGLE_HIT_MULTIPLIER` / `STANDARD_DOT_CONFIG` | damagePool.ts 1242–1247 / 1402 / 1429 |
 | CC-9 | review | design（依赖 CC-7/8） | damagePool 按簇拆到 `resourceCalc/` 直属文件（`damagePoolDirect.ts`/`damagePoolRelease.ts`/`damagePoolAnomaly.ts`/`damagePoolAxis.ts`），共享可变态 `rows/claimedInAxis/seenDirectIds` 由入口持有的 `RowSink` 注入 | damagePool.ts |
 | CC-10 | review | design | `solveTeam`：把 `computeCalcOutput`（runOuterLoop + stageResolveFeasibility）从 composable 抽成 Vue 无关函数 | useResourceCalc.ts 248–653 |
 | CC-11 | review | design | `runCalcRound` 引入 `RoundCtx`，按工人 C 的 C4–C10 簇拆；C1/C2/C3（轮输入簇、`resolveAxisUltimateDecibelCost`、`CalcRoundResult`）可先纯搬 | convergence.ts |
