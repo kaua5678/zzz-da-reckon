@@ -148,7 +148,12 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 1,  // R51 **简狂热块迁出编排层** 2→**1**（本批 **−1**，按**工作树实测**归因；
+    frozen: 3,  // 2026-09-24 CC-12 **换尺** 1→**3**（口径纠正，不是退步；与 AGENT_BRANCH_BASELINE 常量同步改）。
+    // 新形态 = 「局部 const 由 `.agentId`/`.id`/`teammateBuffId` 初始化，随后与四位数字字面量比较」
+    // ⇒ 实测新增 2 行：`convergence.ts:302`（`fillerAgentId === '1051'`）/ `:311`（`'1041'`）。
+    // 依据 AGENTS 规则 17②（度量口径纠正不适用「棘轮只减不增」）+ 17⑥（先分类再定计量单位）。
+    // 旧读数 1 = `anomalyPanels.ts` 的动态比较（未变）；core 无此形态 ⇒ core 保持 5。
+    // 以下为更早沿革：R51 **简狂热块迁出编排层** 2→**1**（本批 **−1**，按**工作树实测**归因；
     // 与 `AGENT_BRANCH_BASELINE` 常量同步改，两处一致）。站点 = `panelPhases.ts` 的
     // `agent.id === '1261' || agent.teammateBuffId === '1261'` 两臂（**同一行** ⇒ 棘轮按行去重只 −1，
     // 与 R20-h1 A11/A12 同款的「行 vs 表达式」陷阱）：**用户裁决**「jane.passionCoverage 一并注册成
@@ -1201,11 +1206,11 @@ export function runAllChecks(root = ROOT) {
   const branches = countAgentBranchLines(root)
   results.push({
     name: `agentId ratchet (规则 6: 队伍级机制走 applyTeamConfig) ${AGENT_BRANCH_FILE} + resourceCalc/ = ${branches}/${AGENT_BRANCH_BASELINE}`
-      + ` [AST 三形态: agentId/.id(四位数字)/teammateBuffId]`,
+      + ` [AST 身份判定: agentId/.id(四位数字)/teammateBuffId/局部 const 别名]`,
     ok: branches === AGENT_BRANCH_BASELINE,
     detail: branches > AGENT_BRANCH_BASELINE
       ? [`  ✗ 角色判定 ${AGENT_BRANCH_BASELINE}→${branches}：角色特例逻辑写进编排层了（度量面 ${branchFiles.length} 个文件）。移到 src/mechanics/agents/<id>.ts 的 applyTeamConfig（三阶段钩子）或声明式钩子（axisWindowOverlays / backstageAutoFill 等），派发器在 composables/resourceCalc/panelPhases.ts`,
-        '  → 度量口径 = AST 三形态（`agentId` / `.id` 四位数字 / `teammateBuffId`），按行去重；',
+        '  → 度量口径 = AST 身份判定形态（`agentId` / `.id` 四位数字 / `teammateBuffId` / 局部 const 别名），按行去重；',
         '     查当前清单：node scripts/report-agent-identity.mjs --md（分类 + 证据 + 观察项）']
       : branches < AGENT_BRANCH_BASELINE
         ? [`  ✗ 角色判定 ${AGENT_BRANCH_BASELINE}→${branches}：是进步，把 scripts/lib/agent-branch-ratchet.mjs 的 AGENT_BRANCH_BASELINE 下调到 ${branches}（棘轮只减不增）`]

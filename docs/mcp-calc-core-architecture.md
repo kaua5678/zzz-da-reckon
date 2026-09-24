@@ -137,7 +137,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-D2 | — | **decide** | core `standardDotDamage` 生产零消费：删掉，还是让 damagePool 消费它（两套算法不同，需先对账） | 需用户口径 |
 | CC-D3 | — | **decide（先探针）** | 风蚀状态机按「队里第一个风属性角色」触发（`convergence.ts:79-85` 只按 `damageElement==='wind'` 找槽，`anomalyPool.ts:329` 无身份判定）⇒ 1621 / 1631 队也跑 velina 的 `simulateVelinaCorrosionState`。是否给非 velina 风队产出了飓风伤害？**预测先行**：先写预测，再用 `PROBE_AGENT` 或一次性 vitest 读 1621 队 `velinaCorrosionSource` 的 cyclone 计数 | 若非零 = 数值缺陷，改法需用户确认 |
 | CC-D4 | — | 待立项 | `transformStore.velinaCorrosionSource` 死写（`anomalyPool.ts:98/111` 建、`velina.ts:277` 写、全仓无读）——接上或删，单独一批 | 与 CC-6d 分批 |
-| CC-12 | 换尺 | ready（单独一批） | 身份扫描器补「本地别名」形态（`convergence.ts:302/311` 的 `fillerAgentId === '1051'/'1041'` 现在量不到），按规则 17② 调 `frozen` 到真实值 | scripts/lib/agent-identity-lines.mjs 等 |
+| CC-12 | 换尺 | **done**（dsflash 工人 + lead 复核：新增命中恰为 convergence.ts:302/311 两行；编排层基线/frozen 1→3（口径纠正），core 5 不变；src 零改动；guards 21、scripts 测试 452 过、build） | 身份扫描器补「本地别名」形态（`convergence.ts:302/311` 的 `fillerAgentId === '1051'/'1041'` 现在量不到），按规则 17② 调 `frozen` 到真实值 | scripts/lib/agent-identity-lines.mjs 等 |
 
 ### CC-1 · 招式表查询迁出（fast）
 

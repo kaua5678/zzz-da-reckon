@@ -5,9 +5,9 @@
  * 业务回调 vs 存储标志 unknown —— 后者**不可静默排除**，必须带消费者线索露面）
  * ③ 仓库级口径（旧尺与官方 `countAgentIdBranchLines` 同源、输出确定、观察项不并入度量）。
  *
- * ⚠ 本文件**只测报告面**：不改任何运行时语义，也不改 frozen/棘轮（换尺是独立后批）。
- * ⚠ 别名盲区（`fillerAgentId === '1051'`）刻意**不计入任何计数**——若要纳入，必须先
- *   在 check-guards 定义新形态并单独换尺，不许在报告脚本里悄悄加宽尺度。
+ * ⚠ 2026-09-24 CC-12 换尺：**局部 const 身份别名**（`const fillerAgentId = …agentId…` 随后与
+ *   四位数字字面量比较）已**纳入执行尺**，并同批把 `AGENT_BRANCH_BASELINE` / `frozen` 调到真实值
+ *   （1→3，口径纠正不是退步，规则 17②）。其余别名形态（参数/props/动态值）仍是观察项。
  */
 import { describe, expect, it } from 'vitest'
 import { fileURLToPath } from 'node:url'
@@ -199,12 +199,46 @@ if (row.id === 'luminize_multiplier') work();
 if (agent.id === '1431') work();`).map(e => e.identity)).toEqual(['1431'])
   })
 
-  it('reports local alias comparisons as an observation only, never as a counted entry', () => {
+  it('★ 局部 const 身份别名 + 四位数字字面量 ⇒ 进执行尺（CC-12 换尺的新形态）', () => {
     const { entries, blindSpots } = scanIdentitySource(`const fillerAgentId = team[slot]?.agentId ?? ''
 if (fillerAgentId === '1051') work();
 if (agent.agentId === '1051') work();`)
-    expect(entries.map(e => [e.field, e.identity, e.line])).toEqual([['agentId', '1051', 3]])
-    expect(blindSpots.map(s => [s.alias, s.identity, s.line])).toEqual([['fillerAgentId', '1051', 2]])
+    // 别名形态（第 2 行）与三形态（第 3 行）**都**计数；按行去重后是 2 行
+    expect(entries.map(e => [e.field, e.identity, e.line])).toEqual([
+      ['agentId', '1051', 2], ['agentId', '1051', 3],
+    ])
+    // 局部 const 别名已进执行尺 ⇒ 不再是观察项（观察项只剩「名字像别名但不是局部 const」）
+    expect(blindSpots).toEqual([])
+    expect(countIdentityBranchLines(`const fillerAgentId = team[slot]?.agentId ?? ''
+if (fillerAgentId === '1051') work()`)).toBe(1)
+  })
+
+  it('★ 反例：同名变量但不与四位数字字面量比较 / 非局部 const 初始化 ⇒ 不命中', () => {
+    // ① 同名变量与动态值/非四位字符串比较 ⇒ 不计数（否则招式/数据行会误计）
+    expect(countIdentityBranchLines(`const fillerAgentId = team[slot]?.agentId ?? ''
+if (fillerAgentId === someVar) work()`)).toBe(0)
+    expect(countIdentityBranchLines(`const fillerAgentId = team[slot]?.agentId ?? ''
+if (fillerAgentId === 'basic') work()`)).toBe(0)
+    // ② 初始化来源不是身份字段（只是名字像）⇒ 不计数
+    expect(countIdentityBranchLines(`const fillerAgentId = pickSlot()
+if (fillerAgentId === '1051') work()`)).toBe(0)
+    // ③ `let`/参数/props 不是「局部 const 初始化」⇒ 不计数（仍是观察项，不许偷偷加宽）
+    expect(countIdentityBranchLines(`let fillerAgentId = team[slot]?.agentId ?? ''
+if (fillerAgentId === '1051') work()`)).toBe(0)
+    expect(countIdentityBranchLines(`function f(fillerAgentId) { return fillerAgentId === '1051' }`)).toBe(0)
+    // ④ 注释里的字样不命中（AST 天然不含）
+    expect(countIdentityBranchLines(`// const fillerAgentId = team[slot]?.agentId ?? ''
+// if (fillerAgentId === '1051') work()`)).toBe(0)
+  })
+
+  it('★ 反例里的非局部 const 别名仍作观察项露面（不计数 ≠ 看不见）', () => {
+    const { entries, blindSpots } = scanIdentitySource(`function f(fillerAgentId) { return fillerAgentId === '1051' }
+const fillerAgentId = pickSlot()
+if (fillerAgentId === '1051') work();`)
+    expect(entries).toEqual([])
+    expect(blindSpots.map(s => [s.alias, s.identity, s.line])).toEqual([
+      ['fillerAgentId', '1051', 1], ['fillerAgentId', '1051', 3],
+    ])
     // 关键不变量：观察项与度量互斥（不许双计，也不许借观察项偷偷加宽尺度）
     const measured = new Set(entries.map(e => `${e.file}:${e.line}:${e.column}`))
     for (const s of blindSpots) expect(measured.has(`${s.file}:${s.line}:${s.column}`)).toBe(false)
@@ -375,7 +409,7 @@ const flag = a.id === '1481'`)
     const md = formatMarkdown(first)
     expect(formatMarkdown(reportIdentity())).toBe(md)
     expect(md).toContain(`旧口径（正则，**已不作为棘轮判据**）：**${first.legacyLines}** 行`)
-    expect(md).toContain(`**执行尺（AST 三形态，= \`AGENT_BRANCH_BASELINE\`）：${first.summary.lines} 行**`)
+    expect(md).toContain(`**执行尺（AST 身份判定形态：agentId / .id(四位数字) / teammateBuffId / 局部 const 别名，= \`AGENT_BRANCH_BASELINE\`）：${first.summary.lines} 行**`)
     expect(md).toContain(`旧尺之外的新增业务判定：**${first.summary.deltaVsLegacy.businessLinesBeyondLegacyRuler}** 行`)
     expect(md).toContain('## 纯身份定义（0 表达式 / 0 行）')
     // ⚠ 2026-09-17 round 21 夜三批后：编排层已无 `unresolved` 字面量（死别名 remielle 随之迁走）

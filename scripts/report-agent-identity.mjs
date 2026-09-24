@@ -5,9 +5,10 @@
  * Pure named identity definitions are distinguished from business uses (including
  * find/filter callbacks). Unknown forms remain visible, never silently exempted,
  * and carry a best-effort same-file consumer trail.
- * Limits: syntax only, not symbol/type resolution; dynamic keys/indirect aliases
- * are unknown. This report does not claim complete semantic branch coverage.
- * `blindSpots` is observation-only: it is NOT part of any counted measure.
+ * Limits: syntax only, not symbol/type resolution; dynamic keys and non-const/indirect
+ * aliases are unknown. This report does not claim complete semantic branch coverage.
+ * Local `const` aliases initialized from an identity field ARE counted (CC-12 ruler shape);
+ * `blindSpots` holds the remaining alias-shaped comparisons and is observation-only.
  *
  * Usage: node scripts/report-agent-identity.mjs [--md] [--at-head]
  */
@@ -118,7 +119,7 @@ export function scanIdentitySource(content, file = 'fixture.ts') {
   }
   const blindSpots = aliases.map(a => ({
     file, ...positionOf(source, a.node), alias: a.alias, identity: a.identity,
-    reason: 'local alias of an identity value: neither legacy regex nor the ratchet shapes count it',
+    reason: 'alias-shaped name, but not a local const initialized from an identity field: still uncounted (observation only)',
     text: a.node.getText(source),
   }))
   // 观察项：非角色 `.id` 比较（moveId/dataId/overrideId/rowId 族）——**不进任何度量**，
@@ -313,7 +314,7 @@ export function formatMarkdown(report) {
   out.push(`# T8 身份判定分类报告（只读，不改运行时）`, '')
   out.push(`- 取数面：**${SURFACE[measuredAt] ?? measuredAt}**（进度自看用 \`--worktree\`）`)
   out.push(`- 旧口径（正则，**已不作为棘轮判据**）：**${legacyLines}** 行`)
-  out.push(`- **执行尺（AST 三形态，= \`AGENT_BRANCH_BASELINE\`）：${summary.lines} 行** / ${summary.comparisons} 比较表达式`)
+  out.push(`- **执行尺（AST 身份判定形态：agentId / .id(四位数字) / teammateBuffId / 局部 const 别名，= \`AGENT_BRANCH_BASELINE\`）：${summary.lines} 行** / ${summary.comparisons} 比较表达式`)
   for (const category of ['business', 'definition', 'unknown']) {
     out.push(`  - ${CATEGORY_LABEL[category]}：**${summary[category].lines}** 行 / ${summary[category].comparisons} 表达式`)
   }

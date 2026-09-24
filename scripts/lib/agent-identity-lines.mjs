@@ -20,9 +20,16 @@
  *  · `id`：**仅当另一侧是四位数字字面量**才计——`.id` 在本仓还用于招式/数据行
  *    （`move.id === moveId` / `m.id === rowId` 族），不设限会把它们误计成角色判定
  *    （换尺实测：不设限 49 行，加限后 **42** 行，差的 7 行全是招式查找，见 `scanNonCharacterIds`）。
+ *  · **局部别名（2026-09-24 CC-12 补，规则 17②）**：`const <名> = <身份字段初始化>`，
+ *    随后该名与**四位数字字面量**比较即计（`const fillerAgentId = team[slot]?.agentId ?? ''`
+ *    → `fillerAgentId === '1051'`）。这是换尺时被**明确留作观察项**的盲区：`convergence.ts:302/311`
+ *    的 `fillerAgentId === '1051'/'1041'` 与三形态同义却量不到，新写的同形判定永远不会被拦。
+ *    ⚠ 只认「**局部 `const` 初始化** + 四位数字字面量比较」这一种，别顺手扩大：
+ *    参数/props/`let`/动态值比较仍是观察项（`blindSpots`），不计数。
  *
  * 明确**不**纳入（各自有理由，别偷偷加宽）：
- *  · 局部别名（`fillerAgentId === '1051'`）：既非三形态也不被旧尺计，报告脚本作观察项。
+ *  · 名字像别名但**不是**局部 const 由身份字段初始化的比较（函数参数 / props / 未定形）
+ *    ⇒ 报告脚本作观察项 `blindSpots`，不计数。
  *  · 注释与字符串里的同形文本：AST 天然不含（旧正则靠「行首是否注释标记」的启发式，
  *    块注释中间的行若不以 `*` 开头就会漏计）。
  *
@@ -58,13 +65,65 @@ export function identityFieldOf(node) {
   return null
 }
 
-/** 局部别名形态（`fillerAgentId === '1051'`）：观察项，**不进执行尺** */
+/**
+ * 「名字像身份别名」的启发式（`fillerAgentId`）：**仅用于旧观察项**，别拿它当执行尺。
+ * 执行尺的别名判定是 `collectIdentityAliases`（局部 const 初始化来源），比本函数**更严**：
+ * 本函数只看名字后缀，任何以 `agentId` 结尾的参数/属性都会被它命中。
+ */
 export function identityAliasOf(node) {
   const n = unwrapIdentityNode(node)
   const name = ts.isIdentifier(n) ? n.text
     : ts.isPropertyAccessExpression(n) ? n.name.text
       : null
   return name && name !== 'agentId' && /agentId$/i.test(name) ? name : null
+}
+
+/**
+ * 初始化表达式是否「以身份字段为根」：`x.agentId` / `x?.agentId ?? ''` / `(x.id as string)`。
+ * 只下钻 `??`/`||`（默认值兜底不改变身份来源），不下钻条件/调用/属性取值
+ * —— `const a = char.agentId ? agentsMap.get(char.agentId) : null` 拿到的是**对象**不是身份，别当别名。
+ */
+function identityFieldRootOf(node) {
+  const n = unwrapIdentityNode(node)
+  if (ts.isBinaryExpression(n)
+    && (n.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken || n.operatorToken.kind === ts.SyntaxKind.BarBarToken)) {
+    return identityFieldRootOf(n.left)
+  }
+  if (ts.isPropertyAccessExpression(n)) return fields.has(n.name.text) ? n.name.text : null
+  if (ts.isElementAccessExpression(n) && ts.isStringLiteral(n.argumentExpression)) {
+    return fields.has(n.argumentExpression.text) ? n.argumentExpression.text : null
+  }
+  return null
+}
+
+/**
+ * 收集「局部 const 由身份字段初始化」的别名表（标识符 → 身份字段名）。
+ * 名字恰是身份字段名（`const agentId = …`）时不登记——那种裸标识符已被 `identityFieldOf` 直接计数。
+ */
+function collectIdentityAliases(source) {
+  const map = new Map()
+  const visit = node => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer
+      && ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Const)) {
+      const field = identityFieldRootOf(node.initializer)
+      if (field && !fields.has(node.name.text)) map.set(node.name.text, field)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return map
+}
+
+/** 别名比较判定：一侧是**局部 const 身份别名**，另一侧是四位数字字面量（执行尺形态之一） */
+function aliasComparison(node, aliases) {
+  const left = unwrapIdentityNode(node.left), right = unwrapIdentityNode(node.right)
+  for (const [id, other] of [[left, right], [right, left]]) {
+    if (ts.isIdentifier(id) && aliases.has(id.text)
+      && ts.isStringLiteralLike(other) && CHARACTER_ID.test(other.text)) {
+      return { field: aliases.get(id.text), identity: other.text, alias: id.text }
+    }
+  }
+  return null
 }
 
 /** 裸比较的比较名 + 另一侧字面量（不做任何分类；`literal === null` = 动态值） */
@@ -101,13 +160,15 @@ function positionOf(source, node) {
 
 /**
  * 一次遍历产出三类**节点级**命中（报告脚本要在节点上做分类/追消费者，故必须给 node）：
- *  · `identity` = 执行尺输入（角色身份判定）
- *  · `nonCharacter` = 观察项（非角色 `.id` 比较：动态 7 + 非四位字符串 10）
- *  · `aliases` = 观察项（局部别名 `fillerAgentId === '1051'`，既非三形态也不被旧尺计）
+ *  · `identity` = 执行尺输入（角色身份判定：三形态 + 局部 const 别名形态）
+ *  · `nonCharacter` = 观察项（非角色 `.id` 比较：动态 + 非四位字符串）
+ *  · `aliases` = 观察项（**仍是**别名的比较，但不是「局部 const 身份别名 + 四位数字」形态：
+ *    函数参数/props 等同形名字 ⇒ 既不计数也不消失）
  * 单一 visitor：`check-guards`（只数）与报告脚本（分类/证据）都从这里取，不各写一份（规则 11）。
  */
 export function scanIdentityNodes(content, file = 'fixture.ts') {
   const source = ts.createSourceFile(file, content, ts.ScriptTarget.Latest, true)
+  const aliasTable = collectIdentityAliases(source)
   const identity = []
   const nonCharacter = []
   const aliases = []
@@ -120,12 +181,18 @@ export function scanIdentityNodes(content, file = 'fixture.ts') {
         const bare = bareComparison(node)
         nonCharacter.push({ node, field: bare.field, identity: bare.literal })
       } else {
-        // 别名形态：一侧是「以 agentId 结尾但不是身份形态」的名字，另一侧是四位数字字面量
-        const l = identityAliasOf(node.left), r = identityAliasOf(node.right)
-        const alias = l || r
-        const other = unwrapIdentityNode(l ? node.right : node.left)
-        if (alias && ts.isStringLiteralLike(other) && CHARACTER_ID.test(other.text)) {
-          aliases.push({ node, alias, identity: other.text })
+        const aliased = aliasComparison(node, aliasTable)
+        if (aliased) {
+          // 2026-09-24 CC-12 换尺：局部 const 身份别名与四位数字字面量比较 ⇒ 进执行尺
+          identity.push({ node, field: aliased.field, identity: aliased.identity, alias: aliased.alias })
+        } else {
+          // 观察项：名字像身份别名，但不是「局部 const 身份别名」形态（参数/props/未定形）
+          const l = identityAliasOf(node.left), r = identityAliasOf(node.right)
+          const alias = l || r
+          const other = unwrapIdentityNode(l ? node.right : node.left)
+          if (alias && ts.isStringLiteralLike(other) && CHARACTER_ID.test(other.text)) {
+            aliases.push({ node, alias, identity: other.text })
+          }
         }
       }
     }
@@ -142,7 +209,8 @@ export function scanIdentityNodes(content, file = 'fixture.ts') {
 export function scanIdentitySurface(content, file = 'fixture.ts') {
   const { source, identity, nonCharacter } = scanIdentityNodes(content, file)
   const flat = hits => hits.map(h => ({
-    file, ...positionOf(source, h.node), field: h.field, identity: h.identity, text: h.node.getText(source),
+    file, ...positionOf(source, h.node), field: h.field, identity: h.identity,
+    ...(h.alias ? { alias: h.alias } : {}), text: h.node.getText(source),
   }))
   return { comparisons: flat(identity), nonCharacter: flat(nonCharacter) }
 }

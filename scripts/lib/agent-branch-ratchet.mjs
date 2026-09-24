@@ -85,8 +85,21 @@ export function countAgentBranchLinesLegacy(root = ROOT) {
 }
 
 /** AGENT_BRANCH_BASELINE 的沿革（编年史）已移至 docs/AGENT_ID_BURNDOWN_LOG.md（规则 8 分层契约：编年叙事不进代码）。
- *  当前读数 = 1；口径与判据见本文件下方注释与 RATCHET_BURNDOWN 登记表。 */
-export const AGENT_BRANCH_BASELINE = 1
+ *  当前读数 = 3；口径与判据见本文件下方注释与 RATCHET_BURNDOWN 登记表。 */
+export const AGENT_BRANCH_BASELINE = 3
+// ⚠ **2026-09-24 CC-12 换尺（口径纠正，不是退步）**：1 → **3**。
+// 旧尺（AST 三形态）系统性漏计**局部 const 身份别名**形态——`convergence.ts:301` 的
+// `const fillerAgentId = configStore.team[slot]?.agentId ?? ''`，随后 `:302/:311` 与四位数字
+// 字面量比较（`fillerAgentId === '1051'` / `'1041'`）。这两行与 `agentId === '1051'` 同义
+// （伊德海莉/「11号」平A回填分支），换尺前的报告只把它们列在「观察项·别名盲区」，既不计入
+// 棘轮、也不被 `report-agent-identity.mjs` 的计数面看见 ⇒ 新写的同形判定永远不被拦。
+// 依据 = AGENTS 规则 17②「度量口径纠正不适用棘轮只减不增」+ 17⑥「先分类，再定计量单位」；
+// 口径定义在新形态：**局部 const 由 `.agentId`/`.id`/`teammateBuffId` 初始化，随后与四位数字
+// 字面量比较**（只此一种，参数/props/动态值比较仍是观察项）。
+// 逐行清单（新增 2 行）：`src/composables/resourceCalc/convergence.ts:302`（'1051'）、`:311`（'1041'）。
+// 读数：旧 1 → 新 3（+2，全部来自新增别名形态；原 1 行 = `anomalyPanels.ts` 的动态比较未变）。
+// 判据：`src/scripts/__tests__/agentIdentity.test.ts` 的正/反例单测（同名变量但不与四位数字
+// 比较 / 注释里的字样不命中）+ `checkGuards.test.ts` 的基线常量同步锁。
 // R51（2026-09-20 round 51）**简狂热块迁出编排层：2 → 1**（按**工作树实测**归因）。
 // 站点 = `panelPhases.ts` 的 `agent.id === '1261' || agent.teammateBuffId === '1261'` 块。
 // **用户裁决**「`jane.passionCoverage` 一并注册成 MechanicSetting」⇒ 其唯一输入进
