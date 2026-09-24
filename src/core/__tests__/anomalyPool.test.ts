@@ -87,7 +87,9 @@ describe('calcAnomalyPool', () => {
         { moveId: 'physical_basic', moveName: 'Jane buildup', slot: 1, count: 1, baseBuildUp: 39600, element: 'physical' },
       ],
       panels: [
-        { anomalyMastery: 100, velinaCinema2: 1, velinaCinema6: 1 },
+        // `velinaEnabled` = 维琳娜专属资源标记（`applyVelinaPanel` 盖章，真实管线自带）；
+        // CC-D3 起它是风蚀归属的判据 ⇒ 手工 fixture 必须带上，否则整套风蚀不结算。
+        { anomalyMastery: 100, velinaEnabled: 1, velinaCinema2: 1, velinaCinema6: 1 },
         { anomalyMastery: 100 },
         { anomalyMastery: 100 },
       ],
@@ -118,5 +120,75 @@ describe('calcAnomalyPool', () => {
     expect(injected?.count).toBe((res as any).velinaCorrosionSource?.broadCycloneCount * 10)
     expect(wind?.triggerCount).toBeGreaterThanOrEqual(2)
     expect((res as any).velinaCorrosionSource?.broadCycloneCount).toBeGreaterThan(0)
+  })
+
+  /**
+   * CC-D3（2026-09-25）：风蚀是**维琳娜专属资源**，判据必须是「面板有 `velinaEnabled`」，
+   * 不能是「队里第一个风属性角色」。旧实现按 `windCharSlot` 取面板 ⇒ 洛克茜(1621) /
+   * 赛维里安(1631) 这类**别的风属性角色**在队时也会跑维琳娜风蚀状态机，并把
+   * 「维琳娜微域/广域气旋」的异放行挂在他们名下（实测 1621 队 2 条行共 1.5w 伤害）。
+   *
+   * 本用例是**反向验证**：把 `velinaEnabled` 拿掉（等价于队里是别的风角色），
+   * 风蚀整套必须消失——不只是「次数变 0」，`velinaCorrosionSource` 本身必须为 undefined
+   * （否则下游仍会推事件行）。
+   */
+  it('CC-D3：无维琳娜（只有别的风属性角色）⇒ 风蚀整套不结算', () => {
+    const base = {
+      executions: [
+        { moveId: '1561007', moveName: 'Sweeping Cyclone #1', slot: 0, count: 760, baseBuildUp: 45, element: 'wind' },
+        { moveId: 'physical_basic', moveName: 'Jane buildup', slot: 1, count: 1, baseBuildUp: 39600, element: 'physical' },
+      ],
+      totalTime: 180,
+      invincibleTime: 0,
+      enemyDefense: 0,
+      enemyDefReduction: 0,
+      enemyResistances: { physical: 0, wind: 0 },
+      enemyResReduction: 0,
+      enemyAnomalyResistances: { physical: 0, wind: 0 },
+      enemyAnomalyDefReduction: 0,
+      enemyDefFlatReduction: 0,
+      bossCoeff: 1,
+      anomalyCoeff: 1.1,
+      stunned: false,
+      stunMultiplier: 1.5,
+      hasWindChar: true,          // 队伍**有**风角色（1621 洛克茜这类），但**不是**维琳娜
+      windCharSlot: 0,
+      velinaCinema2CorrosionRate: 2 / 3,
+      globalAnomalyMultiplier: 1,
+      agentMechanics: [velinaMechanic],
+    }
+    // ① 有维琳娜（对照）：正常产出
+    const withVelina = calcAnomalyPool({
+      ...base,
+      panels: [
+        { anomalyMastery: 100, velinaEnabled: 1, velinaCinema2: 1, velinaCinema6: 1 },
+        { anomalyMastery: 100 },
+        { anomalyMastery: 100 },
+      ],
+    } as unknown as AnomalyPoolInput)
+    expect(withVelina.velinaCorrosionSource).toBeTruthy()
+    expect(withVelina.velinaCorrosionSource!.broadCycloneCount).toBeGreaterThan(0)
+    expect((withVelina.anomalyEvents ?? []).some(e => e.id === 'velina-corrosion-broad-cyclone' && e.count > 0)).toBe(true)
+
+    // ② 无维琳娜：整套消失（乱流本身仍在——它是风化状态的通用机制，不是维琳娜专属）
+    const withoutVelina = calcAnomalyPool({
+      ...base,
+      panels: [
+        { anomalyMastery: 100 },   // 风槽是别的风角色：无 velinaEnabled 标记
+        { anomalyMastery: 100 },
+        { anomalyMastery: 100 },
+      ],
+    } as unknown as AnomalyPoolInput)
+    expect(withoutVelina.velinaCorrosionSource, '无维琳娜时风蚀状态机不得结算（CC-D3）').toBeUndefined()
+    expect((withoutVelina.anomalyEvents ?? []).some(e => e.id.includes('velina-corrosion') && e.count > 0),
+      '无维琳娜时不得产出气旋异放事件行').toBe(false)
+    expect((withoutVelina.perElement as any[]).find(p => p.element === 'wind')?.contributions
+      ?.some((c: any) => c.moveId === 'velina_corrosion_broad'),
+      '无维琳娜时不得注入广域气旋积蓄').toBe(false)
+    // 乱流仍在（回归锁：别把 CC-D3 修成「无维琳娜就没有乱流」）
+    expect(withoutVelina.turbulenceDamage?.count ?? 0).toBeGreaterThan(0)
+    // 强化乱流（+150% 倍率）也必须归零
+    expect(withoutVelina.turbulenceDamage?.boostedCount ?? 0, '无维琳娜时乱流不得吃 +150% 强化').toBe(0)
+    expect(withVelina.turbulenceDamage?.boostedCount ?? 0).toBeGreaterThan(0)
   })
 })

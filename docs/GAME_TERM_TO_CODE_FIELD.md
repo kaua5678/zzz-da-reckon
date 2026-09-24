@@ -223,11 +223,22 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 
 | 游戏文本 | 字段 | 说明 |
 |---------|------|------|
-| 贯穿力提升 X 点 | `sheerForceFlat` | 固定贯穿力，加到 `atk×0.3 + hp×0.1 + sheerForceFlat` |
+| 贯穿力提升 X 点 | `sheerForceFlat` | 固定贯穿力，加到下方公式（唯一求值口 `calcPenetrationPower`） |
 | 贯穿伤害提升 X% | `penDmgBonus` | 贯穿增伤独立乘区 |
 | 贯穿伤害提升 X%（另一来源） | `sheerDmgBonus` | 与 `penDmgBonus` 加算 |
 
 **公式**：`贯穿力 = 局内攻击力 × 0.3 + 局内生命值 × 0.1 + sheerForceFlat`
+
+**命破角色被动里的「生命值转贯穿力」不要重复建模**：角色被动文本常写「每点生命值提高 0.1 贯穿力」，
+那只是**复述**上面公式里已有的 `hp × 0.1` 项，引擎按命破基底自动结算；再在 spec 里声明一条
+`hp → sheerForce` 转模会**双计**（三个命破角色的历史条目已按此删除，见各角色档案段）。
+
+**求值口纪律（规则 11 单一事实源）**：结算侧一律走 `core/damage.ts#calcPenetrationPower`，
+不要在新落点内联 `atk × 0.3 + hp × 0.1`。展示层三处纯渲染复述（属性面板卡 / 最终面板 /
+调试页）属例外——它们不参与结算，但改动公式时三处要一起改。
+
+- @fact engine:贯穿力/单一事实源 口径: 贯穿力**只许**经 `core/damage.ts#calcPenetrationPower` 求值（= atk×0.3 + hp×0.1 + sheerForceFlat）；任何「读队友/自己贯穿力」的新落点一律 import 它，**不得内联 `atk*0.3 + hp*0.1`**——漏 `sheerForceFlat` 会让潘引壶(1421)[通窍]、卢西娅(1451)[强特·碎暗] 等全队固定贯穿力提升静默失效（CC-D1 实测：琉音「命破队友 400% 贯穿力」行在面板 sheerForceFlat 781.6→0 时 delta=0，修复后琉音四预设 +0.58%~+1.00%）。展示层三处例外（StatPanel/FinalPanel/DebugPage）是纯渲染复述，不参与结算 | 据 CC-D1 裁决@2026-09-25（用户「别人有为什么不算」）+ 实测归因 | 验 src/composables/__tests__/ccD3D1Verdict.test.ts::CC-D1 | 锚 src/core/damage.ts#calcPenetrationPower | 信 确认
+  ⟳复核: `grep -rn "atk \* 0\.3\|hp \* 0\.1" src --include=*.ts` —— 命中项应只剩结算侧的 `calcPenetrationPower` 调用与展示层三处纯渲染复述；若出现新的内联 `atk*0.3 + hp*0.1`，说明漏项复发 | 到期 2027-03-31
 
 ---
 

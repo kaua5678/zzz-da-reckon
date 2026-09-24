@@ -47,12 +47,12 @@ import type {
   TurbulenceDamageResult, TurbulenceDamageDetail,
   DisorderFormula, TurbulenceFormula,
   StandardDotDamageResult, StandardDotDamageDetail,
-  AliceCoweringDotResult,
+  AliceCoweringDotResult, VelinaCorrosionSource,
 } from '@/types/resource'
 import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
-import { simulateVelinaCorrosionState } from '@/mechanics/agents/velina'
+import { resolveVelinaCorrosion } from '@/mechanics/agents/velina'
 
 // ============ 喧响奖励常量 ============
 // 下沉（2026-09-13 展示层越层棘轮）：定义在 src/data/anomalyDecibelBonuses.ts（单一事实源，
@@ -218,6 +218,18 @@ export const TURBULENCE_FORMULAS: Record<string, TurbulenceFormula> = {
   electric:  { baseMultiplier: 650,  tickMultiplier: 125,  tickInterval: 1   },
   ether:     { baseMultiplier: 650,  tickMultiplier: 62.5, tickInterval: 0.5 },
   frostfire: { baseMultiplier: 0,    tickMultiplier: 75,   tickInterval: 1   },
+}
+
+/** 无维琳娜时的空风蚀状态（队里有别的风角色时的逐位等价替身：boosted=0 ⇒ 乱流不加 +150%） */
+const EMPTY_CORROSION: VelinaCorrosionSource = {
+  turbulenceCount: 0,
+  microCycloneCount: 0,
+  broadCycloneCount: 0,
+  boostedTurbulenceCount: 0,
+  c2WindGainExpected: 0,
+  cinema6RefundCount: 0,
+  finalCorrosion: 0,
+  note: '',
 }
 
 function allocateBoostedEvents(globalTotalEvents: number, elementEvents: number, boostedEvents: number, processedBefore: number): number {
@@ -1189,14 +1201,18 @@ export function calcTurbulenceDamage(
 
   if (turbulenceCount <= 0) return undefined
 
+  // 风蚀 = 维琳娜专属资源 ⇒ 按 `panel.velinaEnabled` 认人，不按「队里第一个风属性角色」
+  // （CC-D3 2026-09-25）。队里无维琳娜 ⇒ `undefined` ⇒ 本次乱流**不吃** +150% 强化倍率
+  // （旧的按风槽取面板的写法会给 1621/1631 队凭空加 150% 倍率区）。
+  // 结算区仍用 `windPanel`（乱流触发者 = 风底属性提供者，**与风蚀归属无关**：乱流本身是
+  // 风化状态的通用机制，谁提供风化谁结算；只有风蚀/气旋是维琳娜专属）。
   const windPanel = panelAt(panels, windSlot) ?? emptyPanel()
-  const corrosionState = simulateVelinaCorrosionState(
+  const corrosionState = resolveVelinaCorrosion(
+    panels,
     turbulenceCount,
     windTriggerCount,
-    (windPanel.velinaCinema2 ?? 0) > 0,
-    (windPanel.velinaCinema6 ?? 0) > 0,
     config.velinaCinema2CorrosionRate,
-  )
+  ) ?? EMPTY_CORROSION
 
   // 如果总数超过上限，按比例缩减各元素的次数
   const scale = rawCount > turbulenceCount ? turbulenceCount / rawCount : 1

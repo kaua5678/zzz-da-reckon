@@ -12,7 +12,7 @@ import type {
   ReadonlyTeam,
   ReleaseModifierInput,
 } from '../types'
-import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
+import type { Agent, AgentSkills, SkillMove, PanelValues } from '@/types/catalog'
 import type {
   CharacterOperationConfig,
   IterationState,
@@ -102,6 +102,57 @@ function buildVelinaFloriaSource(
   }
 }
 
+/**
+ * 维琳娜面板（风蚀的**唯一归属者**）。
+ *
+ * 判据 = `panel.velinaEnabled` 标记（**唯一写入方 = 本模块 `applyVelinaPanel`**，见下）⇒
+ * 字段存在即蕴含「该槽是维琳娜」，与仓库「字段即身份」的既有判据同族（T6）。
+ *
+ * ⚠ **为什么不能按「风属性」找**（CC-D3 裁决 2026-09-25）：风蚀是维琳娜专属资源
+ * （`docs/GAME_TERM_TO_CODE_FIELD.md` §8.2「风蚀（维琳娜专属资源）」、spec `velina_corrosion`
+ * 与 `character-mechanics.json` 1561 的 `corrosion` 条目），与般岳嗔火、仪玄术法值同类。
+ * 但旧判据是 `windCharSlot`（队里**第一个风属性角色**）⇒ 洛克茜(1621) / 赛维里安(1631)
+ * 这类别的风属性角色在队时也会跑维琳娜的风蚀状态机，并把「维琳娜微域/广域气旋」的异放行
+ * 挂在**他们**名下。实测（2026-09-25）：1621/1141/1031 队产生
+ * `{turbulence:3, micro:2, broad:1, boosted:1}` 与两条「维琳娜…气旋」行共 15 702 伤害，
+ * 归到洛克茜身上；1631 队 5 936 归赛维里安 ⇒ 数值缺陷，已按「专属资源不给人」修。
+ *
+ * ⟳复核: 若未来有**第二个**角色也用「风蚀」（或维琳娜改名/换 id），本函数的
+ * 「标记 = 维琳娜本人」前提要重审——届时按 agentId 列表查 `findSlotByIdentity`，
+ * 不要退回按 `damageElement === 'wind'` 找槽 | 到期 2027-06-30
+ *
+ * @returns 维琳娜面板；队里没有维琳娜 ⇒ `undefined`（调用方据此整套跳过风蚀结算）
+ */
+export function findVelinaPanel(panels: readonly PanelValues[]): PanelValues | undefined {
+  return panels.find(p => (p.velinaEnabled ?? 0) > 0)
+}
+
+/**
+ * 风蚀状态机的**归属安全**入口（三个生产调用点共用，单一事实源）。
+ *
+ * 与直接调 `simulateVelinaCorrosionState` 的区别：本函数先按 `findVelinaPanel` 认人，
+ * **队里没有维琳娜 ⇒ 返回 `undefined`**（不是全零对象）——调用方据此「整套不结算」，
+ * 而不是「结算出 0 次」；后者仍会把 `velinaCorrosionSource`/事件行推给别的风角色。
+ *
+ * @param fallbackRate C2 风化获得风蚀的期望利用率（未盖章时的兜底）
+ */
+export function resolveVelinaCorrosion(
+  panels: readonly PanelValues[],
+  turbulenceCount: number,
+  windTriggerCount: number,
+  fallbackRate = 2 / 3,
+): VelinaCorrosionSource | undefined {
+  const panel = findVelinaPanel(panels)
+  if (!panel) return undefined
+  return simulateVelinaCorrosionState(
+    turbulenceCount,
+    windTriggerCount,
+    (panel.velinaCinema2 ?? 0) > 0,
+    (panel.velinaCinema6 ?? 0) > 0,
+    (panel.velinaCinema2CorrosionRate as number) ?? fallbackRate,
+  )
+}
+
 /** 风蚀状态机：乱流前已有2点则消耗并替换微域为广域，否则获得1点并触发微域。 */
 export function simulateVelinaCorrosionState(
   turbulenceCount: number,
@@ -136,6 +187,8 @@ export function simulateVelinaCorrosionState(
 
 function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelInput): void {
   const additionalAbilityActive = isAdditionalAbilityActive(team, slot, agent)
+  // 维琳娜专属资源标记（**本模块唯一写入方**）⇒ 该标记即「本槽是维琳娜」的判据，
+  // 供风蚀状态机按归属认人（2026-09-25 CC-D3：风蚀不按「队里第一个风属性」归属）。
   panel.velinaEnabled = 1
   panel.velinaCinema1 = cinemaLevel >= 1 ? 1 : 0
   panel.velinaCinema2 = cinemaLevel >= 2 ? 1 : 0
@@ -266,26 +319,31 @@ function buildVelinaAnomalyEvents({ cfg, state, events }: AgentEventInput): void
  */
 function transformVelinaAnomalyPool(input: AgentAnomalyTransformInput): void {
   if (!input.hasWindChar) return
-  const windPanel = panelAt(input.panels, input.windCharSlot) ?? emptyPanel()
-  const corrosion = simulateVelinaCorrosionState(
+  // 风蚀是维琳娜专属资源 ⇒ 按**面板标记**认人，不按「队里第一个风属性角色」
+  // （CC-D3 2026-09-25：1621/1631 队原本也会跑本状态机，见 `findVelinaPanel` 头注释）。
+  // 队里没有维琳娜 ⇒ 整套不结算（连 `store` 也不写）。
+  const corrosion = resolveVelinaCorrosion(
+    input.panels,
     input.preTurbulenceCount,
     input.preWindTriggerCount,
-    (windPanel.velinaCinema2 ?? 0) > 0,
-    (windPanel.velinaCinema6 ?? 0) > 0,
-    (windPanel.velinaCinema2CorrosionRate as number) ?? 2 / 3,
   )
+  if (!corrosion) return
   input.store.velinaCorrosionSource = corrosion
 
   const bcCount = corrosion.broadCycloneCount
   if (bcCount <= 0) return
   // 每次风蚀替换广域 = Sweeping Cyclone #1(1561007) ×10 段，单次积蓄 45
+  // 积蓄归属维琳娜自己的槽位（`findVelinaPanel` 盖章），不是 windCharSlot：
+  // 旧写法把广域积蓄记到「第一个风角色」名下，非维琳娜风队会凭空多出风积蓄。
+  const velinaSlot = findVelinaPanel(input.panels)?.slot ?? input.windCharSlot
+  const velinaPanel = panelAt(input.panels, velinaSlot) ?? emptyPanel()
   const windRes = input.enemyAnomalyResistances['wind'] ?? 0
-  const perHit = input.calcPerHitBuildUp(45, windPanel, windRes, 'wind')
+  const perHit = input.calcPerHitBuildUp(45, velinaPanel, windRes, 'wind')
   const totalCount = bcCount * 10
   const contrib = {
     moveId: 'velina_corrosion_broad',
     moveName: '广域气旋（风蚀替换，Sweeping Cyclone #1×10）',
-    slot: input.windCharSlot,
+    slot: velinaSlot,
     element: 'wind',
     count: totalCount,
     baseBuildUp: 45,

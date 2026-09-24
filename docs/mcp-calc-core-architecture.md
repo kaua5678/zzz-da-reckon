@@ -47,7 +47,9 @@ core 的 5 处角色模块 import ✔：`resource.ts:8` / `resource/helpers.ts:1
 
 **P4 · 公式在编排层有副本（规则 11）。** 均经 lead 复现 ✔：
 - 贯穿力 `atk*0.3 + hp*0.1 + sheerForceFlat`：`core/damage.ts:186`（**未导出**）+ `mechanics/agents/norma.ts:100` 私有副本 + `damagePool.ts:1067` 内联；
-  `damagePool.ts:1020` 的内联版**缺 `sheerForceFlat`**（可能是缺陷，见卡 CC-D1）。
+  `damagePool.ts:1020` 的内联版**缺 `sheerForceFlat`** —— ✅ **CC-D1 已裁决 = 真缺陷，2026-09-25 已修**
+  （改引 `calcPenetrationPower`；实测：琉音「命破队友 400% 贯穿力」行在面板 sheerForceFlat 781.6→0 时
+  delta=0，修复后 auto-1371/1051/1531-1481-1451 各 +0.58%~+0.60%、banyue-liuyin-lucia +1.00%）。
 - 强击 713：`damagePool.ts:1245/1402/1429` 裸字面量，而 `ANOMALY_SINGLE_HIT_MULTIPLIER` 已被同文件 import。
 - 标准 DoT：core `calcStandardDotDamage` 产出 `standardDotDamage`，**生产代码零消费**（只有探针测试读），damagePool 另算一套（算法不同，不是逐位重复）。
 
@@ -127,15 +129,15 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-6a | review | **done**（dsflash 工人 + lead 复核：dump 624 零差、反向验证 36 条 banyue 场景红、guards 21、build、27 文件 533 测过） | 引擎能力 `exSpecialCount`：1471 般岳分支迁模块；core agentId 6→5、core 角色 import 5→4 | mechanics/types.ts、agents/banyue.ts、core/resource/helpers.ts、2 个棘轮基线 + RATCHET_BURNDOWN |
 | CC-6b | review | design（依赖 6a） | 1451 帷幕：`curtainTriggers` 能力 + yidhari 声明 `crossAgentSupply.kind='curtain-open'`；agentId 5→3、import 4→2 | 见 CC-6 设计稿 §3.2 |
 | CC-6c | review | design（依赖 6b） | 1531/1431/1051 终局重推：`finalizePass` 能力 + 通用执行器 `core/resource/finalizePasses.ts`；agentId 3→0 | 见设计稿 §3.3（stage 顺序敏感） |
-| CC-6d | review | design（依赖 CC-D3 裁决） | velina 风蚀状态机：`anomalyStateSim` 能力；import 2→0 | 见设计稿 §3.4 |
+| CC-6d | review | ✅ **ready**（CC-D3 已裁决，阻塞解除） | velina 风蚀状态机：`anomalyStateSim` 能力；import 2→0 | 见设计稿 §3.4 |
 | CC-7 | fast | **done**（dsflash 工人 + lead 复核：PanelValues.atk/hp 必填 ⇒ `?? 0` 死分支；dump 624 零差、guards 21、build、48 测过） | 贯穿力单一事实源：导出 `calcPenetrationPower`，norma.ts / damagePool.ts:1067 改引用（**不碰 :1020**） | core/damage.ts、norma.ts、damagePool.ts |
 | CC-8 | fast | **done**（dsflash 工人 + lead 复核：逐项值相等；dump 624 零差 + rowsnap（含行文案）624 零差、guards 21、build） | damagePool 异常常量改引 core：713/500/1250 与 DoT 表改用 `ANOMALY_SINGLE_HIT_MULTIPLIER` / `STANDARD_DOT_CONFIG` | damagePool.ts 1242–1247 / 1402 / 1429 |
 | CC-9 | review | design（依赖 CC-7/8） | damagePool 按簇拆到 `resourceCalc/` 直属文件（`damagePoolDirect.ts`/`damagePoolRelease.ts`/`damagePoolAnomaly.ts`/`damagePoolAxis.ts`），共享可变态 `rows/claimedInAxis/seenDirectIds` 由入口持有的 `RowSink` 注入 | damagePool.ts |
 | CC-10 | review | design | `solveTeam`：把 `computeCalcOutput`（runOuterLoop + stageResolveFeasibility）从 composable 抽成 Vue 无关函数 | useResourceCalc.ts 248–653 |
 | CC-11 | review | design | `runCalcRound` 引入 `RoundCtx`，按工人 C 的 C4–C10 簇拆；C1/C2/C3（轮输入簇、`resolveAxisUltimateDecibelCost`、`CalcRoundResult`）可先纯搬 | convergence.ts |
-| CC-D1 | — | **decide** | `damagePool.ts:1020` 琉音命破队友分支的贯穿力缺 `sheerForceFlat`：漏写还是有意？ | 需用户口径 |
+| ~~CC-D1~~ | — | ✅ **done 2026-09-25（用户裁决「别人有为什么不算」）** | `damagePool.ts:1020` 琉音命破队友分支的贯穿力补 `sheerForceFlat`（改引 `calcPenetrationPower`） | damagePool.ts:1020 + `@fact engine:贯穿力/单一事实源`（GAME_TERM §10）+ 判据 `ccD3D1Verdict.test.ts::CC-D1` |
 | CC-D2 | — | **decide** | core `standardDotDamage` 生产零消费：删掉，还是让 damagePool 消费它（两套算法不同，需先对账） | 需用户口径 |
-| CC-D3 | — | **decide（先探针）** | 风蚀状态机按「队里第一个风属性角色」触发（`convergence.ts:79-85` 只按 `damageElement==='wind'` 找槽，`anomalyPool.ts:329` 无身份判定）⇒ 1621 / 1631 队也跑 velina 的 `simulateVelinaCorrosionState`。是否给非 velina 风队产出了飓风伤害？**预测先行**：先写预测，再用 `PROBE_AGENT` 或一次性 vitest 读 1621 队 `velinaCorrosionSource` 的 cyclone 计数 | 若非零 = 数值缺陷，改法需用户确认 |
+| ~~CC-D3~~ | — | ✅ **done 2026-09-25（用户裁决「维琳娜专属资源，不该给别人计算」）** | 风蚀归属改按面板标记 `velinaEnabled`（`velina.ts#findVelinaPanel`/`#resolveVelinaCorrosion`，模块唯一写入方）。探针先行的预测**已证实**：1621 队产出 `{turb:3,micro:2,broad:1,boosted:1}` + 2 条「维琳娜…气旋」行共 15 702 挂在洛克茜名下、1631 队 5 936 挂赛维里安 ⇒ 数值缺陷。修后无维琳娜 ⇒ `velinaCorrosionSource` 为 `undefined`（非全零），气旋行/广域积蓄注入整套消失；**乱流仍在**（通用机制）。dump A/B：6 支洛克茜队 −0.06%~−0.15% | velina.ts / anomalyPool.ts / anomalyPool/helpers.ts + 判据 `anomalyPool.test.ts::CC-D3` + `ccD3D1Verdict.test.ts` |
 | CC-D4 | — | 待立项 | `transformStore.velinaCorrosionSource` 死写（`anomalyPool.ts:98/111` 建、`velina.ts:277` 写、全仓无读）——接上或删，单独一批 | 与 CC-6d 分批 |
 | CC-12 | 换尺 | **done**（dsflash 工人 + lead 复核：新增命中恰为 convergence.ts:302/311 两行；编排层基线/frozen 1→3（口径纠正），core 5 不变；src 零改动；guards 21、scripts 测试 452 过、build） | 身份扫描器补「本地别名」形态（`convergence.ts:302/311` 的 `fillerAgentId === '1051'/'1041'` 现在量不到），按规则 17② 调 `frozen` 到真实值 | scripts/lib/agent-identity-lines.mjs 等 |
 
@@ -174,7 +176,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 ② **硬约束**：`core/damage.ts` 把 `calcPenetrationPower` 加 `export`（函数体不动）；norma.ts 删私有副本改 import
 （注意 norma 版本对 `atk`/`hp` 有 `?? 0`——`PanelValues` 这两个字段若非可选则等价，**先确认类型**，不等价就停下报告）；
 damagePool.ts:1067 改为 `basisValueOverride: calcPenetrationPower(panel)`（同样先确认 `panel.hp ?? 0` 等价性）。
-**:1020 不许动**（缺 `sheerForceFlat` 是 CC-D1 待裁决项）。norma.ts 是录入层，只许 import `@/core`（判据 19 只禁 `@/composables`）。
+~~**:1020 不许动**（缺 `sheerForceFlat` 是 CC-D1 待裁决项）~~ ⇒ **CC-D1 已于 2026-09-25 裁决并修**（:1020 改引 `calcPenetrationPower`），本约束解除。norma.ts 是录入层，只许 import `@/core`（判据 19 只禁 `@/composables`）。
 ③ **验收**：§4 全套 + `npx vitest run src/mechanics/__tests__/norma*.test.ts`。
 ④ **报告**：等价性论证（类型定义出处）、改动行、§4 尾部输出。
 

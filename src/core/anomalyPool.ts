@@ -7,7 +7,7 @@ import type {
   StandardDotDamageResult,
   AliceCoweringDotResult,
 } from '@/types/resource'
-import { simulateVelinaCorrosionState } from '@/mechanics/agents/velina'
+import { resolveVelinaCorrosion } from '@/mechanics/agents/velina'
 
 // ============ 喧响奖励常量 ============
 
@@ -325,13 +325,15 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
       turbulenceCap,
     )
     // 风蚀状态机按最终乱流次数重新结算（注入积蓄仍基于预构建的 preTurbulenceCount）
-    const windPanel = panelAt(panels, windCharSlot) ?? emptyPanel()
-    velinaCorrosionSource = simulateVelinaCorrosionState(
+    // ⚠ 风蚀是**维琳娜专属资源** ⇒ 归属按 `panel.velinaEnabled` 认人（模块唯一写入方），
+    // **不**按「队里第一个风属性角色」（CC-D3 2026-09-25）：1621/1631 等非维琳娜风队原本
+    // 也会跑这套状态机并把气旋异放行挂在他们名下。队里没有维琳娜 ⇒ `undefined`
+    // ⇒ 下面两条气旋事件 `count=0`（`anomalyEvents` 末尾按 count>0 过滤后整条不出现）。
+    velinaCorrosionSource = resolveVelinaCorrosion(
+      panels,
       turbulenceCount,
       windTriggerCount,
-      (windPanel.velinaCinema2 ?? 0) > 0,
-      (windPanel.velinaCinema6 ?? 0) > 0,
-      (windPanel.velinaCinema2CorrosionRate as number) ?? velinaCinema2CorrosionRate,
+      velinaCinema2CorrosionRate,
     )
     const velinaBroadFromCorrosionCount = velinaCorrosionSource?.broadCycloneCount ?? 0
     const velinaMicroCycloneCount = velinaCorrosionSource?.microCycloneCount ?? 0

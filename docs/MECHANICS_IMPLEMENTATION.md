@@ -296,6 +296,7 @@
 - **当前实现状态 [已实现·近似 2026-08-26]**（实现位置：`src/mechanics/agents/velina.ts` + `src/core/anomalyPool/` 乱流/风蚀 + `src/composables/useResourceCalc.ts` 风化伤害结算 + spec `1561.json`；测试 `src/mechanics/__tests__/velina.test.ts`）。含：风华/风蚀资源、广域/微域气旋、赋彩属性、核心异放、影画 1/2/4/6。
 - **风化本体伤害（用户口径 2026-08）**：风化触发直接造成一次 1250% 单次直伤（`ANOMALY_SINGLE_HIT_MULTIPLIER.wind`），并施加 30s 风化效果（不可被覆盖）；风化窗口内非风触发改走乱流（3s CD）。
 - **风蚀状态机**：每次乱流先检查已有 2 点风蚀 → 消耗 2 点替换微域为广域（乱流倍率区 +150%）并触发 255% 风异放；否则 +1 点触发 145% 微域风异放。C6 消耗后返还 1 点（参与后续循环）；C2 风化获得风蚀按期望 2/3 摊入（可调 `velina.cinema2CorrosionRate`）。
+- **★ 风蚀归属 = 维琳娜本人，不按「队里第一个风属性角色」（CC-D3 裁决 2026-09-25 已修）**：风蚀是维琳娜专属资源（同般岳嗔火 / 仪玄术法值），判据 = 面板标记 `velinaEnabled`（唯一写入方 `velina.ts#applyVelinaPanel`），经 `velina.ts#findVelinaPanel` / `#resolveVelinaCorrosion` 认人。旧实现按 `windCharSlot`（第一个 `damageElement === 'wind'` 的槽）取面板 ⇒ 洛克茜(1621) / 赛维里安(1631) 队也跑该状态机，并把「维琳娜微域/广域气旋」异放行挂在他们名下（实测 1621/1141/1031 队 2 条行共 15 702、1631 队 5 936）。修复后：无维琳娜 ⇒ `velinaCorrosionSource` 为 `undefined`（不是全零）⇒ 气旋事件行与广域积蓄注入整套不出现；**乱流本身仍在**（乱流是风化状态的通用机制，结算区仍归风底属性提供者，只有风蚀/气旋专属）。生效测试 `src/core/__tests__/anomalyPool.test.ts::CC-D3` + `src/composables/__tests__/ccD3D1Verdict.test.ts`。
 - **风异放失衡轴（2026-08 审计补接）**：风异放随乱流触发（乱流 = 风化窗口内非风异常触发）→ 轴内按「轴内非风异常触发 / 全局非风异常触发」拆 in/out 两段（in 全额失衡易伤；非轴保持全局覆盖率）。用户口径：轴内有异常触发事件即顺带触发轴内乱流。生效测试 `inStunAttribution.test.ts`「维琳娜风异放轴内拆分」。
 - **风华资源**：开局 45 点，每消耗 1 能量 +1，90 点触发一次广域气旋（真实 moveId 1561007/1561008）。
 - **未建模**：风华逐时序账本、风蚀逐层经济（状态机按整局总量近似）、风化持续时间逐秒。

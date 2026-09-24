@@ -1017,7 +1017,11 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         const prevPanel = panelAt(damagePanels, prevSlot)
         const prevAgent = prevSlot >= 0 ? (configStore.team[prevSlot]?.agentId ? catalogStore.agentsMap.get(configStore.team[prevSlot].agentId) : null) : null
         const isRupture = prevAgent?.specialty === 'rupture'
-        const basisValue = prevPanel ? (isRupture ? prevPanel.atk * 0.3 + prevPanel.hp * 0.1 : prevPanel.atk) : 0
+        // 贯穿力走引擎单一事实源 `calcPenetrationPower`（= atk×0.3 + hp×0.1 + sheerForceFlat）。
+        // CC-D1 2026-09-25 修：原内联式**漏了 `sheerForceFlat`** ⇒ 潘引壶(1421)[通窍]
+        // 等「贯穿力提升」拐对该行完全无效（实测：面板 sheerForceFlat 176→0，本行伤害
+        // delta = 0；而同文件般岳 C6 附伤用的 `calcPenetrationPower` 是含的 ⇒ 同量两套写法）。
+        const basisValue = prevPanel ? (isRupture ? calcPenetrationPower(prevPanel) : prevPanel.atk) : 0
         const ratio = isRupture ? 400 : 320
         const basisLabel = isRupture ? '上一位队友贯穿力' : '上一位队友攻击力'
         if (basisValue > 0) {
