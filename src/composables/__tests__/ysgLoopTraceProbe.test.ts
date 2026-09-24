@@ -40,10 +40,7 @@ describe('探针：叶瞬光+琉音+照 外层不动点轨迹', () => {
     })
     const run = createRunCalcRound({
       configStore: config, catalogStore: catalog, panels: calc.panels, resourceConfig: calc.resourceConfig,
-      resourceResult: { value: null }, adjustedResourceResult: { value: null },
-      inStunAnomalyState: { value: null }, bossAnomalyState: { value: null }, stunCoverage: { value: 0 },
-      matchedPlanName: { value: null }, banyueInteractionTopUp: { value: null },
-      windowDuration: { value: 10 }, computeWindowDuration: () => 10, computeStunCoverage: () => 0,
+      computeWindowDuration: () => 10, computeStunCoverage: () => 0,
       ...inputs,
     })
 

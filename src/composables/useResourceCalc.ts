@@ -833,12 +833,11 @@ export function useResourceCalc() {
   })
 
   // ===== runCalcRound 本体在 resourceCalc/convergence.ts（#10 收线刀：1180 行逐字整体搬）=====
-  // deps = 函数自由面 19 名（侦察：本函数体内零外层 let 依赖，跨轮态走显式 threads）；
-  // 调用点在全部依赖声明之后（装配序不变；下游 computed 以 ref 注入，懒求值语义原样）。
+  // deps = 函数自由面 13 名（侦察：本函数体内零外层 let 依赖，跨轮态走显式 threads）；
+  // 不注入任何下游 computed（单轮计算只经返回值流出，见 convergence.ts#createRunCalcRound 头注释）。
   const runCalcRound = createRunCalcRound({
-    configStore, catalogStore, panels, resourceConfig, resourceResult, adjustedResourceResult,
-    inStunAnomalyState, bossAnomalyState, stunCoverage, matchedPlanName, banyueInteractionTopUp,
-    computeWindowDuration, computeStunCoverage, windowDuration, buildStackAxes, expandExecutedToCounts,
+    configStore, catalogStore, panels, resourceConfig,
+    computeWindowDuration, computeStunCoverage, buildStackAxes, expandExecutedToCounts,
     resolveAxes, calcAnomalyPoolInput, extractAnomalyExecsFrom, extractStunExecsFrom, autoActive,
   })
 

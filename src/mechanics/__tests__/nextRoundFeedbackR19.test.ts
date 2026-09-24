@@ -38,10 +38,7 @@ describe('C-α next-round feedback', () => {
       panels: calc.panels, resourceConfig: calc.resourceConfig, remielleAnomalyMultiplier: computed(() => 1) })
     const run = createRunCalcRound({
       configStore: config, catalogStore: catalog, panels: calc.panels, resourceConfig: calc.resourceConfig,
-      resourceResult: { value: null }, adjustedResourceResult: { value: null },
-      inStunAnomalyState: { value: null }, bossAnomalyState: { value: null }, stunCoverage: { value: 0 },
-      matchedPlanName: { value: null }, banyueInteractionTopUp: { value: null },
-      windowDuration: { value: 10 }, computeWindowDuration: () => 10, computeStunCoverage: () => 0,
+      computeWindowDuration: () => 10, computeStunCoverage: () => 0,
       ...inputs,
     })
     // Sentinels at the approved module seam isolate dispatcher/threads wiring from domain arithmetic.

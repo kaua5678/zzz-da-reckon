@@ -427,25 +427,20 @@ export interface CalcRoundResult {
  * 全走显式 `threads` 参数与 `threadsNext` 返回。故 lift 是机械搬：函数体**逐字节未动**
  * （保持 2 空格缩进，diff 可读作纯移动）；工厂形态避免模块级创建 computed 的单例泄漏。
  *
- * ⚠ 10 个下游 computed（resourceResult/adjustedResourceResult/...）作为 ref 注入：
- * runCalcRound 在 calcOutput 求值**中**读它们（懒求值，首读前都已初始化——调用点在
- * 最后一个依赖声明之后，装配序不变）。
+ * 依赖面 = 13 名（store 实例 / 上游 computed / 轮输入工厂成员）。**不注入任何下游 computed**：
+ * 本轮产物只经返回值 `CalcRoundResult` 流出（由 `useResourceCalc#calcOutput` 组装），
+ * runCalcRound 不读自己的下游 ⇒ 单轮计算 = 「输入 → 输出」的单向函数，可脱离 Vue 响应式单测/搬迁。
+ * （2026-09-24 mcp-calc-core 批 0：旧契约声明了 8 个下游 ref〈resourceResult/adjustedResourceResult/
+ * inStunAnomalyState/bossAnomalyState/stunCoverage/matchedPlanName/banyueInteractionTopUp/windowDuration〉，
+ * 函数体 `.value` 读点实测 0 ⇒ 死依赖，旧注释「在 calcOutput 求值中读它们」与实现不符，已删。）
  */
 export function createRunCalcRound(deps: {
   configStore: ReturnType<typeof useConfigStore>
   catalogStore: ReturnType<typeof useCatalogStore>
   panels: ComputedRef<PanelValues[]>
   resourceConfig: ComputedRef<ResourceCalcConfig | null>
-  resourceResult: { value: TeamResourceResult | null }
-  adjustedResourceResult: { value: TeamResourceResult | null }
-  inStunAnomalyState: { value: InStunAnomalySummary | null }
-  bossAnomalyState: { value: BossAnomalyStateResult | null }
-  stunCoverage: { value: number }
-  matchedPlanName: { value: string | null }
-  banyueInteractionTopUp: { value: { slot: number; parry: number; dual: number } | null }
   computeWindowDuration: () => number
   computeStunCoverage: (sp: unknown, lostSeconds?: number) => number
-  windowDuration: { value: number }
   buildStackAxes: (axes: StunAxis[]) => { actions: import('@/core/stunAxisStack').StackActionCost[]; count?: number; basicFillerSlot?: number }[]
   expandExecutedToCounts: (executed: Record<string, { slot: number; moveId: string; count: number }>, basicFillBySlot: Record<number, number>) => Record<string, { slot: number; moveId: string; count: number }>
   resolveAxes: (stunCount: number, goodReview: number, energyBySlot: Record<number, number>) => { axes: StunAxis[]; planName: string | null }

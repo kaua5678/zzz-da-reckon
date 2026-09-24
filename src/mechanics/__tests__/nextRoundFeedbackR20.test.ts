@@ -168,10 +168,7 @@ describe('C-β next-round feedback', () => {
       panels: calc.panels, resourceConfig: calc.resourceConfig, remielleAnomalyMultiplier: computed(() => 1) })
     const run = createRunCalcRound({
       configStore: config, catalogStore: catalog, panels: calc.panels, resourceConfig: calc.resourceConfig,
-      resourceResult: { value: null }, adjustedResourceResult: { value: null },
-      inStunAnomalyState: { value: null }, bossAnomalyState: { value: null }, stunCoverage: { value: 0 },
-      matchedPlanName: { value: null }, banyueInteractionTopUp: { value: null },
-      windowDuration: { value: 10 }, computeWindowDuration: () => 10, computeStunCoverage: () => 0,
+      computeWindowDuration: () => 10, computeStunCoverage: () => 0,
       ...inputs,
     })
     // 哨兵 = 模块缝上的已知值：把「管线接线」与「领域算式」隔离（算式本身在层①精确测过）。
@@ -267,10 +264,7 @@ describe('C-β next-round feedback', () => {
         panels: calc.panels, resourceConfig: calc.resourceConfig, remielleAnomalyMultiplier: computed(() => 1) })
       const run = createRunCalcRound({
         configStore: config, catalogStore: catalog, panels: calc.panels, resourceConfig: calc.resourceConfig,
-        resourceResult: { value: null }, adjustedResourceResult: { value: null },
-        inStunAnomalyState: { value: null }, bossAnomalyState: { value: null }, stunCoverage: { value: 0 },
-        matchedPlanName: { value: null }, banyueInteractionTopUp: { value: null },
-        windowDuration: { value: 10 }, computeWindowDuration: () => 10, computeStunCoverage: () => 0,
+        computeWindowDuration: () => 10, computeStunCoverage: () => 0,
         ...inputs,
       })
       return run(2, initialCalcRoundThreads())!
