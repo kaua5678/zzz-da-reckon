@@ -24,87 +24,51 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - 工人报告首行 `STATUS: done|blocked`，路径写在卡里；`/tmp/worker-<卡>.err` 是推理过程，报告丢失时 `tail` 它回收。
 - 主代理复核 = `docs/mcp-lead-agent-handoff.md` §7：看真实 diff 是否越白名单、亲自重放一条正控一条负控、
   核对产物时效；然后显式路径提交、`node scripts/zc.mjs done` 留痕、删卡。
+- **两个写工人并行**：第二个放进隔离 worktree（`git worktree add --detach /tmp/wt-<卡> HEAD` 后软链 `node_modules`），
+  卡里写明工作区路径、禁止碰主仓库；合入 = `git -C /tmp/wt-<卡> diff > x.diff`，复核后在主仓库 `git apply`，
+  再 `git worktree remove --force /tmp/wt-<卡>`（只删软链本身，主仓库依赖不受影响；2026-09-24 W7 实测）。
+- **负控的还原**：在有未提交改动的树上做负控，先 `cp` 备份再改、用备份还原；**不要** `git checkout -- <文件>`
+  （会把工人的改动一起抹掉，2026-09-24 复核 W7 时踩过，按工人报告里的 diff 补回）。
 
 ## 1. 队列
 
 | 卡 | 标题 | 类型 | 写入白名单 | 状态 |
 |---|---|---|---|---|
-| W2 | 扫描器判据自证普查（反空洞下限 / 正控注入） | 只读普查（M） | 仅报告 | 可派 |
-| W3 | R62-J3：状态表声明 × `gate-census.json` 行为指纹对账 | 只读分析（M） | 仅报告 + `/tmp/w3/` | 可派 |
-| W4 | 历史 worktree 清点（删除须用户批准） | 只读（S） | 仅报告 | 可派 |
-| W5 | R35-J3：「只被本文件引用的导出」分桶量规模 | 只读普查（M） | 仅报告 + `/tmp/w5/` | 可派 |
+| W9 | verify:recording ③ 档案段定位修正（9 条 WARN 里 3 条误报、5 条标签错） | 脚本修正 + 测试（S） | `scripts/lib/recording.mjs` · `scripts/lib/recording.d.mts` · `scripts/verify-recording.mjs` · `recording.test.ts` | 可派 |
 
 ## 2. 任务卡
 
-### W2 · 扫描器判据自证普查
+### W9 · verify:recording ③ 档案段定位修正
 
-<!-- card:W2 -->
-你是只读普查工人：只完成本任务，不派子代理，不修改任何仓库文件；禁止 npm run check / verify / test / build 与 npx vitest。
-TASK_ID: W2-guard-selfproof-census
-仓库：/home/kaua/projects/zzz-calculator（WSL）。开工先 git rev-parse --short HEAD 记为 BASE。
-父目标：本仓教训「判据必须能区分『没问题』与『仪器坏了』」。只写「命中 0 处 ⇒ 绿」的扫描器，在 walker 写坏、目录改名、正则失效时会永久假绿，而读数与「真干净」完全一样。判据 21 的三件套（detector 自证 fixture + 反空洞下限 + 路径感知限定）是范式。需要一张全判据普查表，决定哪些判据值得补。
-前提假设：仍有扫描器判据「零命中即绿」且既无下限也无正控注入测试。可观察失败：每条扫描器判据都已有下限或正控 ⇒ 本面收口，如实报 done（「全部已具备」是有效结论）。
-先读：
-1. scripts/check-guards.mjs 头注释（判据清单）与各判据的判绿条件（grep -n "ok:" scripts/check-guards.mjs）。
-2. 范式：scripts/lib/json-dup-keys.mjs 头注释；scripts/lib/move-element-reconcile.mjs 第 1-60 行（下限常量 + 正控注入）。
-3. 判据测试：grep -ln "check-guards\|scripts/lib/" src/scripts/__tests__/*.ts。
-要做：对 check-guards 的每一条判据填一行：编号 / 名称 / 扫描面（目录或文件集）/ 判绿条件（文件:行）/ 反空洞下限（常量名 = 值，文件:行；没有写「无」）/ detector 自证或正控注入测试（测试文件:行；没有写「无」）/ 风险：高 = 零命中即绿且既无下限也无正控；中 = 缺其一；低 = 两者都有，或该判据不是扫描器（纯结构断言）。
-硬约束：只读，只许写报告文件；不要修补任何判据（修补另立卡，由主代理定价）。
-验收：
-1. 表的行数 = 判据实际条数：运行 node scripts/check-guards.mjs（只读，约 20 秒，允许），贴它自报的判据条数与你表的行数。
-2. 任选 2 条「高」风险判据，各写一段「如何注入退化能让它假绿」的具体做法（只写不改）。
-报告：写到 /tmp/worker-W2.report.md，首行 STATUS: done 或 STATUS: blocked；内容 = BASE + 普查表 + 抽样 + 无法判定的判据及原因。最终回复也以 STATUS 行开头。
-<!-- /card:W2 -->
-
-### W3 · R62-J3：状态表声明 × 行为指纹对账（静态半场）
-
-<!-- card:W3 -->
-你是只读分析工人：只完成本任务，不派子代理，不修改任何仓库文件；禁止 npm run check / verify / test / build 与 npx vitest。
-TASK_ID: W3-r62j3-census-join
-仓库：/home/kaua/projects/zzz-calculator（WSL）。开工先 git rev-parse --short HEAD 记为 BASE。
-父目标：状态表 character-constellations.json 里声明 implemented* 的影画/机制条目，是否真的改变了计算？R61 实测静态「悬空 id」扫描全是误报、R62 实测静态 B 向 44 条全是承载在别处的假阳 ⇒ 必须用行为读数。现成行为读数 = /home/kaua/r62-scratch/evidence/gate-census.json（62 角色 × 7 档全指纹，2026-09-20 生成）。本卡只做「声明 × 已有指纹」的对账，不重跑管线。
-前提假设：仍有「声明已实现，但该档行为指纹相对前一档无变化」的条目。可观察失败：B 类为 0 ⇒ 本面收口，如实报 done。
-先读：
-1. ls -la /home/kaua/r62-scratch/evidence/ 并读其中的说明或生成脚本，弄清 gate-census.json 的结构、档位含义与生成时的 HEAD。
-2. 状态表：find . -name character-constellations.json -not -path "*/node_modules/*"，读其结构。
-3. .claude/OPEN-ITEMS.md 中 R62-J3 条目（grep -n "R62-J3" .claude/OPEN-ITEMS.md，只读该条）。
-要做：在 /tmp/w3/ 写一次性 node 脚本：对状态表里每条声明 implemented* 的条目（角色 × 档位），查 gate-census 中该角色该档相对前一档的指纹是否变化；分三类输出：A = 声明已实现且指纹有变化（一致）；B = 声明已实现但指纹无变化（候选缺陷）；C = 对不上（id、档位映射不清，写明原因）。
-⚠ 陷阱：指纹生成于 2026-09-20，之后仓库有大量提交；B 类只是「候选」，报告里必须写明「指纹来自旧 HEAD，需主代理在当前 HEAD 复测」。影画效果可能由别处承载（队友通道、模块内部），不要仅凭名字推断承载位置。
-硬约束：只读仓库与 r62-scratch；脚本与中间产物只放 /tmp/w3/。
-验收：A + B + C 条数之和 = 状态表中 implemented* 条目总数（贴计数命令与结果）；B 类逐条列出 角色名(id) / 档位 / 声明原文 / 指纹证据。
-报告：写到 /tmp/worker-W3.report.md，首行 STATUS: done 或 STATUS: blocked；内容 = BASE + 统计 + B、C 清单 + 脚本路径。最终回复也以 STATUS 行开头。
-<!-- /card:W3 -->
-
-### W4 · 历史 worktree 清点
-
-<!-- card:W4 -->
-你是只读清点工人：只完成本任务，不派子代理；禁止任何删除、git worktree remove / prune、git branch -d、rm。
-TASK_ID: W4-worktree-census
-仓库：/home/kaua/projects/zzz-calculator（WSL）。
-父目标：git worktree list 挂着约 45 个历史 worktree（/home/kaua/r41-scratch … r65-scratch、/tmp/zzz-mcp-continuous-verify），全部 detached。要给用户一份可以直接批准的清理清单。
-先读：git worktree list；.claude/PROMPT-handoff-unattended-2026-09-22.md 第 192-201 行（「前几任的考古目录 /home/kaua/r6{1,2,3,4,5}-scratch/ 别删」）。
-要做：对每个 worktree 记录：路径 / HEAD 提交 / 是否是 master 的祖先（git merge-base --is-ancestor <提交> master）/ git -C <路径> status --porcelain 的修改数与未跟踪数 / du -sh 大小 / 同一 scratch 目录下 worktree 之外的其他文件（如 evidence/，只列出）。分类：可删 = 干净且 HEAD 是 master 祖先且不在 r61–r65 保留名单；保留 = 有未提交改动、HEAD 未合入或在保留名单；待定 = 其他。
-验收：清点条目数 = git worktree list 行数 − 1（主工作区）；贴计数。
-报告：写到 /tmp/worker-W4.report.md，首行 STATUS: done 或 STATUS: blocked；内容 = 清单表 + 三类计数 + 可删类的总大小 + 一段「若用户批准可执行的命令」（只写不执行，用 git worktree remove <路径>，不带 --force）。最终回复也以 STATUS 行开头。
-<!-- /card:W4 -->
-
-### W5 · R35-J3：「只被本文件引用的导出」分桶量规模
-
-<!-- card:W5 -->
-你是只读普查工人：只完成本任务，不派子代理，不修改任何仓库文件；禁止 npm run check / verify / test / build 与 npx vitest。
-TASK_ID: W5-overexport-census
-仓库：/home/kaua/projects/zzz-calculator（WSL）。开工先 git rev-parse --short HEAD 记为 BASE。
-父目标：R35 量出「导出但无其它模块具名 import」的符号 748 条，绝大多数是合法的 interface/type，噪音太高没法直接立项。现有死导出工具只覆盖「零引用」面（scripts/lib/dead-channel-ls.mjs 第 606 行 if (n > 0) continue：同文件内有引用就不算死；DEAD_EXPORT_BASELINE 已归零），「非定义引用全部落在声明文件内」= 过度导出面没人量过。本卡只量规模，给主代理定价用。
-前提假设：按 kind 分桶并排除 .vue 直引与动态取用后，function/const 桶仍有值得收窄 export 的符号。可观察失败：function/const 桶为 0，或全部有合法理由（测试直引、.d.mts 对外契约）⇒ 本面收口，如实报 done。
-先读：
-1. scripts/lib/dead-channel-ls.mjs 第 560-624 行（scanDeadExportsLs：LanguageService 的建法、findReferences 用法、第 607-612 行的 kind 判定）。
-2. .claude/OPEN-ITEMS.md 的 R35-J3 条目（grep -n "R35-J3" .claude/OPEN-ITEMS.md，只读该条）。
-要做：在 /tmp/w5/ 写一次性 node 脚本（可 import 该 lib 的导出函数，或仿其建 LanguageService），对 src/ 下（排除 __tests__）每个导出符号跑 findReferences：只保留「至少 1 个非定义引用，且全部非定义引用都在声明文件自身」的符号；再排除被 .vue 文件引用的，以及名字以字符串形式出现在 src/ 或 scripts/ 动态取用处的（grep 符号名兜底，命中即排除并记录）。按 kind 分桶计数（function / const / interface / type / class / enum / other），列出 function 与 const 桶的全部符号（文件:行 + 本文件内引用次数）。
-⚠ 陷阱：被测试文件（__tests__）引用的导出属于有外部引用，不在本面——先确认你的 LanguageService 程序包含测试文件，否则会把「只给测试用」的导出误判进来。
-硬约束：只读仓库；脚本与产物只放 /tmp/w5/；单次脚本运行 1-3 分钟（LanguageService 冷启动）属正常，允许。
-验收：1. 贴各桶计数与总数；2. 从 function 桶随机抽 3 个，用 grep -rn "<符号名>" src scripts 复核「确实只在本文件出现」，贴输出。
-报告：写到 /tmp/worker-W5.report.md，首行 STATUS: done 或 STATUS: blocked；内容 = BASE + 分桶计数 + function/const 清单 + 抽样复核 + 脚本路径。最终回复也以 STATUS 行开头。
-<!-- /card:W5 -->
+<!-- card:W9 -->
+你是执行工人：只完成本任务，不派子代理；禁止运行 npm run check / verify / test / build 与不带文件参数的 npx vitest（全量由主代理统一跑）。
+TASK_ID: W9-recording-archive-locator
+仓库：/home/kaua/projects/zzz-calculator（WSL）。开工先 git rev-parse --short HEAD 记为 BASE，再执行 node scripts/zc.mjs claim scripts/lib/recording.mjs scripts/lib/recording.d.mts scripts/verify-recording.mjs src/scripts/__tests__/recording.test.ts --as W9 占道。
+父目标：npm run verify:recording 长期挂 9 条 WARN，被当成「已知噪音」无人处理。主代理 2026-09-24 实测，它们大多是检查器自己的错：
+- 检查 ③（scripts/verify-recording.mjs 约第 88-101 行）取 agentId 在 docs/MECHANICS_IMPLEMENTATION.md 里**第一次出现**的位置，往后看 800 字符找「当前实现状态」。
+- 1101 珂蕾妲、1401 爱丽丝、1551 佩洛伊斯其实都有档案段（标题分别在第 304 / 435 / 349 行），段首第一条就是状态行；但它们的 id 先在别的段落出现（第 142 / 382 / 71 行）⇒ 看错了位置 ⇒ **3 条误报**。
+- 1391、1451、1471、1481、1531 根本没有档案段（没有任何标题行含这些 id），只是在别处被提到 ⇒ 报成「档案段无状态行」是**标签错**，应为「无该角色档案段」。
+- 1251 青衣全文未出现 ⇒ 「无该角色档案段」是对的。
+- 用「标题行含 id + 段内找状态行」的原型复算：62 个 implemented 角色 = 56 ok、6 无档案段（1251 / 1391 / 1451 / 1471 / 1481 / 1531）、0 有段无状态行。
+前提假设：按标题定位后 WARN 恰为上面 6 条且全是「无该角色档案段」。可观察失败：出现别的 WARN ⇒ 有标题不含 id 的档案段，停下报 blocked 并列出（不要自行放宽匹配）。
+先读：scripts/verify-recording.mjs 全文（134 行）；scripts/lib/recording.mjs 的导出列表与 scripts/lib/recording.d.mts（新增导出必须补声明，check-guards 判据 14 的 C 段会查 .d.mts 漂移）；src/scripts/__tests__/recording.test.ts 的 import 写法与现有用例风格；docs/MECHANICS_IMPLEMENTATION.md 第 1-10 行（档案段格式规则）与第 300-310 行（一个合格档案段的样子）。
+要做：
+1. 在 scripts/lib/recording.mjs 新增导出纯函数 locateArchiveStatus(doc, agentId)，返回 { status: 'ok' | 'no-section' | 'no-status-line', headingLine }（headingLine 为 1 起的行号，无段时为 null）。规则：
+   - 档案段标题 = 匹配 ^#{2,4} 空格 开头、且含独立 token agentId 的行（左边是「（」「(」「/」或空白，右边是「）」「)」或空白；不许把 11011 当成 1101）；
+   - 段体 = 标题之后直到下一个级别 ≤ 本标题级别的标题行（更深的 #### 子标题不结束本段）；
+   - 段体内出现「当前实现状态」⇒ ok；有段但段体没有 ⇒ no-status-line；没有这样的标题 ⇒ no-section。下一段的状态行不算本段的。
+2. scripts/lib/recording.d.mts 补声明。
+3. scripts/verify-recording.mjs 检查 ③ 改用 locateArchiveStatus：no-section ⇒ 「WARN <label>: MECHANICS_IMPLEMENTATION.md 无该角色档案段（标题行须含 agentId）」；no-status-line ⇒ 保留原文案「档案段无「当前实现状态」行（未核对现状，录入时补）」。checked / warned 计数方式不变；同步改文件头注释里 ③ 的描述。
+4. recording.test.ts 新增用例（合成 markdown 字符串即可）：(a) 标题含 id、段首有状态行 ⇒ ok；(b) id 先在前面别的段里出现、自己的段在后面且有状态行 ⇒ ok（本次误报的形状）；(c) id 只在正文出现、无标题 ⇒ no-section；(d) 有标题、段内无状态行、紧跟着的下一段有 ⇒ no-status-line；(e) 段内有 #### 子标题、状态行在子标题之后 ⇒ ok；(f) 查 1101 时标题只含 11011 ⇒ no-section。另加一条仓库现状用例：对真实 docs/MECHANICS_IMPLEMENTATION.md 查 1101 / 1401 / 1551 ⇒ 都是 ok。
+硬约束：只许改白名单 4 个文件；不改 docs/MECHANICS_IMPLEMENTATION.md（补档案段是另一件事，要核对现状，不在本卡）；不改任何 spec / 数据文件；不加依赖；LF 行尾、无行尾空格。
+验收（逐条执行，报告里贴命令、退出码与输出尾部）：
+1. npm run verify:recording → EXIT=0；贴全部 WARN 行，应恰为 6 条、id 集合 = {1251, 1391, 1451, 1471, 1481, 1531}、文案全是「无该角色档案段」；末行 checks 总数与改前相同（改前 189，贴改前改后两行）。
+2. npx vitest run src/scripts/__tests__/recording.test.ts → 全绿。
+3. 负控：临时把 locateArchiveStatus 的段体范围改成「只看标题行本身」，跑验收 2 → (a)(b)(e) 与仓库现状用例必须变红；贴红用例名后改回，重跑验收 2 → 绿。
+4. node scripts/check-guards.mjs → EXIT=0；npx vue-tsc -b → EXIT=0。
+报告：写到 /tmp/worker-W9.report.md，首行 STATUS: done 或 STATUS: blocked。内容：BASE、git diff --stat、完整 git diff（只应含白名单 4 个文件）、4 条验收的原始结果、未证明事项。不要 git add / commit，不要 zc done。最终回复也以 STATUS 行开头。
+停止条件：需要改白名单外的文件，或验收 1 出现 6 条之外的 WARN 时，停下写 blocked 并附证据。
+<!-- /card:W9 -->
 
 ## 3. 本队列的来源：2026-09-24 OPEN-ITEMS 分诊
 
@@ -123,3 +87,8 @@ TASK_ID: W5-overexport-census
   ⇒ 已按 §4 原意补忽略（工作区改动 80 → 11）。
 - 工人实测耗时：只读取证 4 条 / 卡用了 19–28 分钟（逐条翻 git 历史与历轮交接），边界清晰的实现卡 W1 约 5 分钟
   ⇒ **卡越窄，低级模型越快越准**；取证类任务宜每卡 ≤ 2 条。
+- 第 2 轮（2026-09-24）实测：只读普查 W2（21 条判据）22 分钟、W3 / W4 / W5 各约 5 分钟；实现卡 W6 约 10 分钟、
+  W7 4 分钟、W8 6.5 分钟。7 张卡全部 `STATUS: done`，复核发现 3 张有瑕疵：W6 缺落点同一性断言（适配层吞掉返回 index 时
+  原测试全绿，主代理补上并实测可红）、W2 漏判判据 18（lib 层下限测的是空目录，接不住整目录改名，并进 W8 修）、
+  W4 越界用 `rm` 清了自建的临时目录（已如实披露，未碰仓库）。
+  ⇒ 低级模型能把「写什么」做对，「证明它能红」仍要主代理自己变异一次。
