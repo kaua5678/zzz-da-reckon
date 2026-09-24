@@ -17,7 +17,7 @@ import { initialCalcRoundThreads, threadsAfterNullRound } from './resourceCalc/r
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
 import { freezeCached } from './resourceCalc/freezeCached'
 import { createConvergenceRoundInputs, createRunCalcRound, type CalcRoundResult } from './resourceCalc/convergence'
-import { isOuterTwoCycle, outerFeedbackSignature } from './resourceCalc/outerCycle'
+import { findOuterLongCycleLag, isOuterTwoCycle, outerFeedbackSignature, pickOuterCycleMember } from './resourceCalc/outerCycle'
 import { DOWNSCALE_SCALES, selectDownscaleScale, downscaleTrialAccepted, downscaleTrialFeasible } from './resourceCalc/feasibilitySearch'
 import type {
   CharacterOperationConfig,
@@ -305,6 +305,7 @@ export function useResourceCalc() {
        *      合轴可覆盖的量化残差、轴退化同源容差）视为同级**——动态合轴（R37-J5 ①）把超必要队的前台一律吸收到 ≈预算，
        *      成员间时间差常落在 1e-3 量级，⑥ 首版的 1e-9 容差等于重新掷骰子；
        *   ③ 同级取最后一轮（与旧行为一致 ⇒ 对既有 stable / 未分出高下的 cycle 队逐位零影响）。
+       * 选点纯函数见 outerCycle.ts#pickOuterCycleMember。
        */
       type OuterCycleMember = { out: CalcRoundResult | null; prev: CalcRoundResult | null; stunIn: number; next: number }
       const timeInconsistencyOf = (m: OuterCycleMember): number => {
@@ -331,7 +332,6 @@ export function useResourceCalc() {
         if (!r?.resourceResult) return Number.POSITIVE_INFINITY
         return r.resourceResult.convergence?.timeTruncatedSeconds ?? 0
       }
-      const stunInconsistencyOf = (m: OuterCycleMember): number => Math.abs(m.next - m.stunIn)
       /** 选中成员的前一轮结果（= 它的输入线程来源；轴退化判据用它算「还没装进计划的补齐量」） */
       let outPrev: CalcRoundResult | null = null
       const pickCanonical = (all: OuterCycleMember[]): CalcRoundResult | null => {
@@ -343,22 +343,12 @@ export function useResourceCalc() {
          * 门槛 = 判稳容差（≈0），**不是** 1：小数失衡（如 0.84 窗）是合法状态，按 1 划线会把 agent:1301 一类 0.84 ↔ 1.82 的环
          * 误判成「零窗 vs 带窗」而改落点。全员零窗（真 0 失衡队）时照旧全体参选。
          */
-        const windowed = all.filter(c => c.stunIn >= OUTER_STUN_TOLERANCE)
-        const candidates = windowed.length > 0 ? windowed : all
-        if (candidates.length < all.length) outerCyclePickedEarlier = true
-        let best = candidates[candidates.length - 1]
-        for (let i = candidates.length - 2; i >= 0; i--) {
-          const c = candidates[i]
-          const dStun = stunInconsistencyOf(c) - stunInconsistencyOf(best)
-          // ⓪′ 离散自洽优先（见 discreteInconsistencyOf）：截断差 > 容差时，装得下的成员胜出——
-          // 整次离散动作的差别会被 2s 同级容差抹平，这条把它捞回来。
-          const dDisc = discreteInconsistencyOf(c) - discreteInconsistencyOf(best)
-          const better = dStun < -OUTER_STUN_TOLERANCE
-            || (dStun <= OUTER_STUN_TOLERANCE && dDisc < -TIME_BUDGET_TOLERANCE_SECONDS)
-            || (dStun <= OUTER_STUN_TOLERANCE && dDisc <= TIME_BUDGET_TOLERANCE_SECONDS
-              && timeInconsistencyOf(c) < timeInconsistencyOf(best) - AXIS_FALLBACK_TOLERANCE_SEC)
-          if (better) { best = c; outerCyclePickedEarlier = true }
-        }
+        const picked = pickOuterCycleMember(
+          all.map(m => ({ stunIn: m.stunIn, next: m.next, disc: discreteInconsistencyOf(m), time: timeInconsistencyOf(m) })),
+          { stun: OUTER_STUN_TOLERANCE, disc: TIME_BUDGET_TOLERANCE_SECONDS, time: AXIS_FALLBACK_TOLERANCE_SEC },
+        )
+        const best = all[picked.index]
+        if (picked.pickedEarlier) outerCyclePickedEarlier = true
         outPrev = best.prev
         return best.out
       }
@@ -450,16 +440,12 @@ export function useResourceCalc() {
        * 命中后复用规范选点，可能替换末轮结果；不是只重标注标签。
        */
       if (outerExit === 'maxIter') {
-        outer: for (let lag = 3; lag < outerSigHistory.length; lag++) {
-          for (let k = lag; k < outerSigHistory.length; k++) {
-            if (outerSigHistory[k] !== outerSigHistory[k - lag]) continue
-            if (Math.abs(outerStunHistory[k] - outerStunHistory[k - lag]) >= OUTER_STUN_TOLERANCE) continue
-            outerExit = 'cycle'
-            // 长环（周期 lag）：成员 = 最近一个周期内的各轮结果，按环内判据取点
-            const from = Math.max(0, outerOutHistory.length - lag)
-            out = pickCanonical(outerOutHistory.slice(from).map((o, j) => ({ out: o, prev: outerOutHistory[from + j - 1] ?? null, stunIn: outerStunHistory[from + j], next: outerNextHistory[from + j] })))
-            break outer
-          }
+        const lag = findOuterLongCycleLag(outerSigHistory, outerStunHistory, OUTER_STUN_TOLERANCE)
+        if (lag !== null) {
+          outerExit = 'cycle'
+          // 长环（周期 lag）：成员 = 最近一个周期内的各轮结果，按环内判据取点
+          const from = Math.max(0, outerOutHistory.length - lag)
+          out = pickCanonical(outerOutHistory.slice(from).map((o, j) => ({ out: o, prev: outerOutHistory[from + j - 1] ?? null, stunIn: outerStunHistory[from + j], next: outerNextHistory[from + j] })))
         }
       }
       // 非环停点（stable / 真 maxIter）：前一轮 = 历史末项（stable 的本轮未入历史；maxIter 的本轮是历史末项，取其前一项）
