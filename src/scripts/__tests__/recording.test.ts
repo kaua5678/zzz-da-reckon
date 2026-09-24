@@ -4,7 +4,7 @@ import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, copyF
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { cleanRecordingText, loadPacket, makePacket, draftRecording, validateRecording, mechanismTemplate, repositoryReader } from '../../../scripts/lib/recording.mjs'
+import { cleanRecordingText, loadPacket, makePacket, draftRecording, validateRecording, mechanismTemplate, repositoryReader, locateArchiveStatus } from '../../../scripts/lib/recording.mjs'
 
 const raw = { id: 9999, skill: { basic: { description: [{ name: '示例', desc: '命中时增伤10%。' }] } }, passive: { level: { '9999507': { level: 7, name: ['核心'], desc: ['最多一层。'] } } }, talent: { '1': { name: '影画', desc: '强特后回能。' } } }
 const packet = () => makePacket(raw, {}, [], { raw: 'fixture', nouns: 'fixture' })
@@ -168,5 +168,46 @@ describe('recording evidence packet', () => {
     const original = '1011 1021 1031 1041 1051 1061 1071 1081 1091 1101 1111 1121 1131 1141 1151 1161 1171 1181 1191 1201 1211 1221 1241 1251 1261 1271 1281 1291 1301 1311 1321 1331 1341 1351 1361 1371 1381 1391 1401 1411 1421 1431 1441 1451 1461 1471 1481 1491 1501 1511 1521 1531 1541 1551 1561 1571 1581 1591 1611 1621 1631 1641'.split(' ')
     expect(legacy.every(id => original.includes(id))).toBe(true)
     expect(new Set(legacy).size).toBe(legacy.length)
+  })
+})
+
+describe('archive section locator', () => {
+  it('finds the status line in the heading that owns the agentId', () => {
+    const doc = ['## 前段', '', '### 珂蕾妲（koleda / 1101）—— 爆破锤', '- **当前实现状态 [已实现]**'].join('\n')
+    expect(locateArchiveStatus(doc, '1101')).toEqual({ status: 'ok', headingLine: 3 })
+  })
+  it('ignores an earlier mention in another section and uses the later own heading', () => {
+    const doc = [
+      '### 佩洛伊斯（pyrois / 1551）—— 命破',
+      '- **当前实现状态 [已实现]**',
+      '',
+      '## 通用修复',
+      '- 顺带修了 1101 的熔炉。',
+      '',
+      '### 珂蕾妲（koleda / 1101）—— 爆破锤',
+      '- **当前实现状态 [已实现·近似]**',
+    ].join('\n')
+    expect(locateArchiveStatus(doc, '1101')).toEqual({ status: 'ok', headingLine: 7 })
+  })
+  it('reports no-section when the agentId only appears in body prose', () => {
+    const doc = ['## 已实现机制的角色', '', '### 某角色（9999）', '- **当前实现状态**', '', '正文提到 1101 一次。'].join('\n')
+    expect(locateArchiveStatus(doc, '1101')).toEqual({ status: 'no-section', headingLine: null })
+  })
+  it('does not borrow the next section status line', () => {
+    const doc = ['### 卢西娅（1451）', '- 只有描述，无状态行。', '', '### 星徽·比利（1531）', '- **当前实现状态 [已实现]**'].join('\n')
+    expect(locateArchiveStatus(doc, '1451')).toEqual({ status: 'no-status-line', headingLine: 1 })
+    expect(locateArchiveStatus(doc, '1531')).toEqual({ status: 'ok', headingLine: 4 })
+  })
+  it('keeps deeper subheadings inside the section body', () => {
+    const doc = ['### 珂蕾妲（koleda / 1101）—— 爆破锤', '#### 子标题', '- **当前实现状态 [已实现]**'].join('\n')
+    expect(locateArchiveStatus(doc, '1101')).toEqual({ status: 'ok', headingLine: 1 })
+  })
+  it('never reads a longer id as the queried agentId', () => {
+    const doc = ['### 某角色（11011）', '- **当前实现状态 [已实现]**'].join('\n')
+    expect(locateArchiveStatus(doc, '1101')).toEqual({ status: 'no-section', headingLine: null })
+  })
+  it('real MECHANICS_IMPLEMENTATION.md resolves 1101/1401/1551 to ok', () => {
+    const doc = readFileSync('docs/MECHANICS_IMPLEMENTATION.md', 'utf8')
+    for (const id of ['1101', '1401', '1551']) expect(locateArchiveStatus(doc, id).status).toBe('ok')
   })
 })

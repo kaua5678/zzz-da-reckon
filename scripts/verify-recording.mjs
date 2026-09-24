@@ -8,15 +8,16 @@
  *      （无测试 = 声称实现但零验证 → FAIL）
  *   ② 断言存在：引用了 agentId 的测试文件里有 expect 断言。
  *      （有测试文件但只 assert 字段存在 / 空测试 → 弱信号，WARN）
- *   ③ 档案核对：docs/MECHANICS_IMPLEMENTATION.md 有该角色的档案段，且段首有「当前实现状态」行。
- *      （无状态行 = 未核对现状 → WARN，提示录入时补）
+ *   ③ 档案核对：docs/MECHANICS_IMPLEMENTATION.md 有该角色的档案段（`##`–`####` 标题行含独立
+ *      token agentId），且该段体内有「当前实现状态」行。
+ *      （无档案段 / 有段无状态行 = 未核对现状 → WARN，提示录入时补）
  *
  * 不检查"差分断言"形态（形态太杂会漏报），以"有测试文件 + 有 expect"作为客观完成信号。
  * 历史检查为纯文本；新录入另验 evidence contract（来源/逐条覆盖/AST 引用）。
  * 静态追踪不等于语义正确或测试通过；接入 `npm run verify` 的实际 Vitest 仍是必要条件。
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
-import { loadPacket, validateRecording, repositoryReader } from './lib/recording.mjs'
+import { loadPacket, validateRecording, repositoryReader, locateArchiveStatus } from './lib/recording.mjs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -85,20 +86,15 @@ for (const file of specs) {
     console.log(`  WARN ${label}: 有测试文件但无 expect 断言（${refs.map(t => t.name).join(', ')}）`)
   }
 
-  // ③ 档案状态行
+  // ③ 档案状态行（按标题定位该角色自己的档案段；别段的提及不算）
   checked++
-  const sectionMatch = mechDoc.includes(`（${agentId}）`) || mechDoc.includes(`/${agentId}`) || mechDoc.includes(agentId)
-  if (!sectionMatch) {
+  const archive = locateArchiveStatus(mechDoc, agentId)
+  if (archive.status === 'no-section') {
     warned++
-    console.log(`  WARN ${label}: MECHANICS_IMPLEMENTATION.md 无该角色档案段`)
-  } else {
-    // 段首状态行粗查：agentId 出现后 400 字符内有「当前实现状态」
-    const idx = mechDoc.indexOf(agentId)
-    const near = idx >= 0 ? mechDoc.slice(idx, idx + 800) : ''
-    if (!near.includes('当前实现状态')) {
-      warned++
-      console.log(`  WARN ${label}: 档案段无「当前实现状态」行（未核对现状，录入时补）`)
-    }
+    console.log(`  WARN ${label}: MECHANICS_IMPLEMENTATION.md 无该角色档案段（标题行须含 agentId）`)
+  } else if (archive.status === 'no-status-line') {
+    warned++
+    console.log(`  WARN ${label}: 档案段无「当前实现状态」行（未核对现状，录入时补）`)
   }
 }
 

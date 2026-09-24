@@ -1,5 +1,6 @@
 export declare const RECORDING_VERSION: number
 export declare function fingerprint(value: unknown): string
+export declare function locateArchiveStatus(doc: unknown, agentId: string): { status: 'ok' | 'no-section' | 'no-status-line'; headingLine: number | null }
 export declare function cleanRecordingText(text: unknown, nouns: Record<string, { name?: string }>): string
 export declare interface Unit { id: string; pointer: string; title: string; category: string; quote: string; context: string }
 export declare interface Packet { version: number; agentId: string; source: unknown; passiveLevel: number; hashes: Record<string, string>; moves: unknown[]; units: Unit[] }

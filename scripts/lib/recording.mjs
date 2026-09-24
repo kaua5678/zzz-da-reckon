@@ -51,6 +51,36 @@ export const fingerprint = value => createHash('sha256').update(canonical(value)
 const esc = key => String(key).replaceAll('~', '~0').replaceAll('/', '~1')
 const keys = obj => Object.keys(obj ?? {}).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
 
+/**
+ * Locate a character's archive section in MECHANICS_IMPLEMENTATION.md.
+ * A section heading is a `##`–`####` line whose text contains agentId as an independent
+ * token (bounded by （ ( / or whitespace on the left, ） ) or whitespace on the right —
+ * so 11011 is never read as 1101). The body runs to the next heading of the same or
+ * higher level; deeper `####` subheadings stay inside. Only the matched section's body
+ * counts: a status line in the following section does not satisfy this one.
+ */
+export function locateArchiveStatus(doc, agentId) {
+  const lines = String(doc ?? '').split('\n')
+  const id = String(agentId)
+  const heading = /^(#{2,4}) (.*)$/
+  const token = new RegExp(`(?:^|[（(/\\s])${id}(?=$|[）)\\s])`)
+  let headingLine = null
+  let level = 0
+  for (let i = 0; i < lines.length; i++) {
+    const m = heading.exec(lines[i])
+    if (!m) continue
+    if (token.test(m[2])) { headingLine = i + 1; level = m[1].length; break }
+  }
+  if (headingLine === null) return { status: 'no-section', headingLine: null }
+  let body = ''
+  for (let i = headingLine; i < lines.length; i++) {
+    const m = heading.exec(lines[i])
+    if (m && m[1].length <= level) break
+    body += `${lines[i]}\n`
+  }
+  return { status: body.includes('当前实现状态') ? 'ok' : 'no-status-line', headingLine }
+}
+
 export function cleanRecordingText(text, nouns) {
   return String(text ?? '')
     .replace(/<Term:(\d+)>(.*?)<\/Term>/gs, (_m, id, label) => {
