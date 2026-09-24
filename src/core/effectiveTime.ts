@@ -94,7 +94,7 @@ export function phaseDelayedCooldown(
 /** 切上前台频率滑块（用户口径 2026-08-31）：无下限——后台有大量纯跑 CD 的时间，
  * 滑块拉到 0 = 一次切上做完全部前台动作（块长最大、延后最大），不会出现「一次后台攻击都出不来」
  * （分母后台时间恒在，次数 = 后台时间/等效CD 只随延后项收缩）。 */
-export const FRONT_SWITCH_MIN_RATIO = 0
+const FRONT_SWITCH_MIN_RATIO = 0
 
 /**
  * 后台自动招式的前台块长（秒）：t = 前台时间 / 切上前台次数。

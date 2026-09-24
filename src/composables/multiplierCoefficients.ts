@@ -35,7 +35,7 @@ const MIN_ACTION_TIME = 0.01
 const DEVIATION_THRESHOLD = 0.05
 
 /** 参与纵向系数聚合的招式类型白名单（其余为设计空间/待确认口径） */
-export function isCleanVerticalType(moveType: MoveType | 'other'): boolean {
+function isCleanVerticalType(moveType: MoveType | 'other'): boolean {
   return moveType !== 'exSpecial' && moveType !== 'parryLight' && moveType !== 'parryHeavy' && moveType !== 'other'
 }
 

@@ -145,7 +145,7 @@ export function severianBasicFinisherHits(basicTime: number, cycle: { moveId: st
 }
 
 /** 流息基础收入（不含影画6[风起]反馈项，反馈在 countFromFlow 定点迭代里加） */
-export function severianFlowIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined): number {
+function severianFlowIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined): number {
   const record = cfg as unknown as Record<string, unknown>
   const cinema = whole(Number(record.severianCinemaLevel ?? 0))
   const basicCycle = (record.severianBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
@@ -167,7 +167,7 @@ export function severianFlowIncome(cfg: AgentCharConfigInput['cfg'], state: Agen
  * 苍风影猎次数（估时与物化唯一共用入口）：floor(流息收入/100)。
  * 影画6[风起]（每次苍风影猎 +30 流息）形成自指，定点迭代解（增益比 0.3 ⇒ 2 轮内稳定）。
  */
-export function severianShadowHuntCount(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined): number {
+function severianShadowHuntCount(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined): number {
   const override = setting(cfg, 'severian.shadowHuntCount', 0)
   if (override > 0) return whole(override)
   const record = cfg as unknown as Record<string, unknown>

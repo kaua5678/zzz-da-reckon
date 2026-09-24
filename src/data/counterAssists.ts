@@ -38,7 +38,7 @@ export const CLARET_COUNTER_ASSIST: CounterAssistMoves = {
 }
 
 /** agentId → 反制支援招式配对（当前全库唯一锋御 = 克拉蕾；新锋御录入时加行） */
-export const COUNTER_ASSIST_MOVES: Record<string, CounterAssistMoves> = {
+const COUNTER_ASSIST_MOVES: Record<string, CounterAssistMoves> = {
   [CLARET_COUNTER_ASSIST.agentId]: CLARET_COUNTER_ASSIST,
 }
 

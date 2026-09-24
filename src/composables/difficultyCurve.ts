@@ -362,7 +362,7 @@ export function attributeDmgChanges(changes: DmgSourceChange[], topN = 3, squeez
 }
 
 /** 一档快照（构成 = 关键次数 + 伤害来源），交给 `climbDifficultyLadder#opts.capture` */
-export function captureLadderSnapshot(calc: Calc): LadderSnapshot {
+function captureLadderSnapshot(calc: Calc): LadderSnapshot {
   return { counts: captureKeyCounts(calc), dmgBySource: captureDmgBySource(calc) }
 }
 

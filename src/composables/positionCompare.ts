@@ -83,7 +83,7 @@ export interface PositionCompareRow {
 }
 
 /** 识别某位置的角色槽位（按 specialty），无则 -1 */
-export function findPositionSlot(
+function findPositionSlot(
   team: { agentId?: string | null }[],
   catalogStore: ReturnType<typeof useCatalogStore>,
   position: ComparePosition,
@@ -102,7 +102,7 @@ export function findPositionSlot(
  * 异属性赠送/赋彩贡献（贡献元素 ≠ 角色伤害元素）记在接收人头上（该元素同属性主贡献者槽），
  * 不记赠送者。返回 [槽0, 槽1, 槽2] 的有效积蓄贡献。
  */
-export function computePerSlotBuildUp(
+function computePerSlotBuildUp(
   anomalyPoolResult: AnomalyPoolResult | null,
   team: { agentId?: string | null }[],
   catalogStore: ReturnType<typeof useCatalogStore>,

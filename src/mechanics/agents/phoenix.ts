@@ -160,7 +160,7 @@ export function phoenixBasicCombustionHits(basicTime: number, cycle: { moveId: s
  * 直接读它是 0（第一版因此长按普攻 0 次、1641 单人伤害全库垫底 #62/62）。分支攻击 1641006
  *（追斩后点按）是操作向量，不计自动收入。
  */
-export function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
+function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
   const record = cfg as unknown as Record<string, unknown>
   const meta = (record.phoenixCombustionMeta as Record<string, number> | undefined) ?? {}
   const basicCycle = (record.phoenixBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []

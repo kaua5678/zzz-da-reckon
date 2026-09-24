@@ -51,7 +51,7 @@ type Calc = ReturnType<typeof useResourceCalc>
  * 音擎名单在下方常量。2026-09-11 已删除 `STANDARD_S_AGENT_IDS` 的浅转出口——
  * 消费方一律直连单一事实源（原先 4 个 composable 经本文件间接引用 = 无谓横向依赖边）。
  */
-export const STANDARD_S_WENGINE_IDS = new Set(['14102', '14104', '14110', '14114', '14118', '14121'])
+const STANDARD_S_WENGINE_IDS = new Set(['14102', '14104', '14110', '14114', '14118', '14121'])
 
 /**
  * 自动下位默认候选池（用户准信，2026-08）：击破 = 人为刀俎(A)/燃狱齿轮(S常驻)，
@@ -225,7 +225,7 @@ export function defaultInteractionFormula(type: string): string {
  * 取 0.05 = 「180s 里只有 9s 非失衡」——实战极端（长失衡轴）也不会更窄；再窄按地板计，
  * 避免难度爆到 Infinity 把散点/曲线轴撑坏。
  */
-export const NON_STUN_RATIO_FLOOR = 0.05
+const NON_STUN_RATIO_FLOOR = 0.05
 
 /** 效果是否对当前队伍生效（特性限定 / 特性人数分档）。导出供测试。 */
 export function resolveBuffEffect(eff: PhaseBuffEffect, preset: TeamPreset): PhaseBuffEffect | null {
@@ -367,7 +367,7 @@ export function roundInteractionCount(v: number): number {
  */
 // @fact engine:操作难度/逐类型公式 口径: 难度公式**按交互类型逐项配置**（`DifficultyWeights.interactionFormula[type]`，缺省按类型默认）——**需要怪物一次攻击**的四类（仪玄 e 弹 / 佩洛伊斯完美格挡 / 般岳金身弹刀 / 般岳双反）默认 `c*w/pow(max(r,0.05),k)`（吃非失衡占比），其余默认 `c*w`（不吃）；变量 c=次数 w=权重 r=非失衡占比 k=指数；用户可逐项开关（写 `c*w` 即关闭）与自编公式；非法公式退化为 `c*w`（不修正，不是 0）| 据 用户@2026-09-20「仪玄的 e 弹、佩洛伊斯的完美格挡、般岳的金身弹刀和双反都需要怪物的一次攻击……这个我想让用户抉择，哪些是要吃非失衡占比的，让他自己编公式」 | 验 src/composables/__tests__/teamCompare.test.ts::逐类型公式 | 锚 src/composables/teamCompare.ts#evalDifficultyFormula | 信 确认
 // ⟳复核: `BOSS_ATTACK_INTERACTIONS` 名单（新增需怪攻击的角色机制时）、默认公式、或 `NON_STUN_RATIO_FLOOR` 再动时，复核「只对名单内类型修正（其余旧基线逐位不变）」+「非法公式退化不修正」两条 | 到期 2026-12-31
-export function evalDifficultyFormula(
+function evalDifficultyFormula(
   expression: string,
   c: number,
   w: number,
@@ -731,7 +731,7 @@ export function computeAutoEnginePicks(
 // ========== 最优加金（≤ GOLD_OPTIMIZE_CAP 金） ==========
 
 /** 最优加金的封顶总限定金（用户口径：12 金 = 全队 2命1精前用自动计算，之后按预设顺序） */
-export const GOLD_OPTIMIZE_CAP = 12
+const GOLD_OPTIMIZE_CAP = 12
 
 /** 最优加金的一个档位分配 */
 export interface OptimalGoldAllocation {

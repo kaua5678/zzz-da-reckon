@@ -18,11 +18,11 @@ export type ExecutableVerification = VerificationSpec & {
   expected: Record<string, number>
 }
 
-export function isExecutableVerification(verification: VerificationSpec): verification is ExecutableVerification {
+function isExecutableVerification(verification: VerificationSpec): verification is ExecutableVerification {
   return !!verification.panel && !!verification.expected
 }
 
-export function runSpecVerification(
+function runSpecVerification(
   spec: AgentMechanicSpec,
   verification: ExecutableVerification,
 ): SpecVerificationResult {
@@ -56,7 +56,7 @@ export function runSpecVerification(
   }
 }
 
-export function runSpecVerifications(spec: AgentMechanicSpec): SpecVerificationResult[] {
+function runSpecVerifications(spec: AgentMechanicSpec): SpecVerificationResult[] {
   return spec.verifications
     .filter(isExecutableVerification)
     .map(verification => runSpecVerification(spec, verification))

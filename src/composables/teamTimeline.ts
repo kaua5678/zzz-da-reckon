@@ -292,7 +292,7 @@ export function baseGoldOfTeam(team: [string, string, string], catalog: ReturnTy
  * 排名即「所选金数下的大致强度」，比基础金排名更贴近最优加金结果（换人时机正确）。
  * 与 applyGoldSteps 同口径（总限定金、钳制到 [基础金, 基础金+步数]）。
  */
-export function buildBudgetAwareGoldSteps(
+function buildBudgetAwareGoldSteps(
   team: [string, string, string],
   catalog: ReturnType<typeof useCatalogStore>,
 ): { steps: Parameters<typeof applyGoldSteps>[0]; baseWEngines: [string, string, string] } {

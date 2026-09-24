@@ -96,7 +96,7 @@ export interface DeployConfig {
 }
 
 /** 支持的模式前缀：Deadly Assault 与 Deadly Assault: Adversity Mode（危局·困难异构）都可落 Boss 预设。 */
-export const SUPPORTED_MODE_PREFIX = 'Deadly Assault'
+const SUPPORTED_MODE_PREFIX = 'Deadly Assault'
 
 function clampInt(value: unknown, min: number, max: number, fallback: number): number {
   const n = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback

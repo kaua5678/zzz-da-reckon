@@ -411,7 +411,7 @@ export const jointLeverStrategy: TimeWeightStrategy = {
  *   结论反过来锁死。次数变化改为**如实上报**（`note`），供人裁决，不做拦截。
  * 关联：`docs/ENGINE_PIPELINE_GUIDE.md` 坑35（含「打失衡手段效率」的实测表）。
  */
-export const marginalEqualizeStrategy: TimeWeightStrategy = {
+const marginalEqualizeStrategy: TimeWeightStrategy = {
   id: 'marginal-equalize',
   label: '边际均衡',
   description: '按团队总伤的边际产出在槽位间转移平A时间（保住主C 的能量需求；一次 ≈ 3 倍求值）',

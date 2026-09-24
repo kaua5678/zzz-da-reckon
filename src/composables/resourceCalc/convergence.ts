@@ -395,7 +395,7 @@ import { applyTeamMechanics, collectNextRoundFeedback } from './panelPhases'
 import { enrichExecutionPlan } from './helpers'
 
 /** 保底 4 喧响的四舍五入阈值（自 useResourceCalc 顶层随迁；那里改为了 import） */
-export const DECIBEL_ROUND_THRESHOLD = 1500
+const DECIBEL_ROUND_THRESHOLD = 1500
 import { aliceExternalCountsOf, aliceSlotOf, aliceSparkCountOf } from '@/mechanics/agents/alice'
 import { computeTeamVeilCountTotal } from '@/mechanics/teamVeil'
 

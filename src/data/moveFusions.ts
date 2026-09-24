@@ -46,7 +46,7 @@ export interface MoveFusionGroup {
 // @fact engine:moveFusion/春临 口径: 星见雅连携技·春临一次 = #1+#2+#3 三段求和（1091015+1091016+1091017）| 据 nanoka full/1091.json param.desc | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/data/moveFusions.ts#MIYABI_CHAIN | 信 确认
 
 /** 星见雅·强化特殊技·斩击（第一次 E）＝ 飞雪 #1 + #2 */
-export const MIYABI_EX_SLASH: MoveFusionGroup = {
+const MIYABI_EX_SLASH: MoveFusionGroup = {
   moveId: '1091009',
   agentId: '1091',
   label: '星见雅·强化特殊技·斩击（第一次 E）',
@@ -58,7 +58,7 @@ export const MIYABI_EX_SLASH: MoveFusionGroup = {
 }
 
 /** 星见雅·强化特殊技·追击（第二次 E）＝ 飞雪 #3 + #4（通常不打，仅登记口径） */
-export const MIYABI_EX_FOLLOWUP: MoveFusionGroup = {
+const MIYABI_EX_FOLLOWUP: MoveFusionGroup = {
   moveId: '1091011',
   agentId: '1091',
   label: '星见雅·强化特殊技·追击（第二次 E）',
@@ -70,7 +70,7 @@ export const MIYABI_EX_FOLLOWUP: MoveFusionGroup = {
 }
 
 /** 星见雅·连携技·春临＝ #1 + #2 + #3（一次连携全打） */
-export const MIYABI_CHAIN: MoveFusionGroup = {
+const MIYABI_CHAIN: MoveFusionGroup = {
   moveId: '1091015',
   agentId: '1091',
   label: '星见雅·连携技·春临',
@@ -83,7 +83,7 @@ export const MIYABI_CHAIN: MoveFusionGroup = {
 }
 
 /** 可琳·闪避反击：[舍]＝ #1 + #2 */
-export const CORIN_DODGE: MoveFusionGroup = {
+const CORIN_DODGE: MoveFusionGroup = {
   moveId: '1061015',
   agentId: '1061',
   label: '可琳·闪避反击：[舍]',
@@ -95,7 +95,7 @@ export const CORIN_DODGE: MoveFusionGroup = {
 }
 
 /** 可琳·快速支援：应急措施＝ #1 + #2 */
-export const CORIN_QUICK_ASSIST: MoveFusionGroup = {
+const CORIN_QUICK_ASSIST: MoveFusionGroup = {
   moveId: '1061019',
   agentId: '1061',
   label: '可琳·快速支援：应急措施',
@@ -107,7 +107,7 @@ export const CORIN_QUICK_ASSIST: MoveFusionGroup = {
 }
 
 /** 希希芙·强化特殊技·毒牙＝ #1 ×3 + #2 */
-export const XIXIFU_VENOM_FANG: MoveFusionGroup = {
+const XIXIFU_VENOM_FANG: MoveFusionGroup = {
   moveId: '1521008',
   agentId: '1521',
   label: '希希芙·强化特殊技·毒牙',
@@ -119,7 +119,7 @@ export const XIXIFU_VENOM_FANG: MoveFusionGroup = {
 }
 
 /** 珂蕾妲·强化特殊技·沸腾熔炉＝ 打击(#1) + 引爆(#2)（有班协同时引爆换协同引爆 #3，另待模块） */
-export const KOLEDA_BOILING_FURNACE: MoveFusionGroup = {
+const KOLEDA_BOILING_FURNACE: MoveFusionGroup = {
   moveId: '1101104',
   agentId: '1101',
   label: '珂蕾妲·强化特殊技·沸腾熔炉（打击+引爆）',
@@ -131,7 +131,7 @@ export const KOLEDA_BOILING_FURNACE: MoveFusionGroup = {
 }
 
 /** 月城柳·强化特殊技·月华流转＝ 突刺(#1) + 下砸(#2)（C2 长按可追加突刺，另见 yanagi.ts） */
-export const YANAGI_MOONLIGHT_FLOW: MoveFusionGroup = {
+const YANAGI_MOONLIGHT_FLOW: MoveFusionGroup = {
   moveId: '1221022',
   agentId: '1221',
   label: '月城柳·强化特殊技·月华流转（突刺+下砸）',
@@ -156,7 +156,7 @@ export const JANE_SOMERSAULT: MoveFusionGroup = {
 }
 
 /** 珂蕾妲·强化普攻（消耗熔炉升温）＝ 一段(#5) + 二段(#6)（协同=#7 替二段，另有层数额外火伤 75%/150%） */
-export const KOLEDA_ENHANCED_BASIC: MoveFusionGroup = {
+const KOLEDA_ENHANCED_BASIC: MoveFusionGroup = {
   moveId: '1101005',
   agentId: '1101',
   label: '珂蕾妲·强化普攻（熔炉升温）',
@@ -171,7 +171,7 @@ export const KOLEDA_ENHANCED_BASIC: MoveFusionGroup = {
 // @fact engine:moveFusion/孤影断獠 口径: 真斗支援突击·孤影·断獠「连打最大」= #1+#2（1441024+1441025）；单打档=仅 #1，总量口径取连打满 | 据 nanoka full/1441.json param.desc | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/data/moveFusions.ts#ZHENDOU_ASSIST_BREAKING_FANG | 信 确认
 // @fact engine:moveFusion/泡泡糖轰炸 口径: 千夏强特·泡泡糖轰炸一次 = #1+#2（1491007+1491018）；「快速衔接特别拍照技巧时」仅 #1 的变体只适用接拍照的轴 | 据 nanoka full/1491.json param.desc | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/data/moveFusions.ts#QIANXIA_EX_BUBBLEGUM_BARRAGE | 信 确认
 /** 照·终结技·兔兔连斩＝ #1 + #2（引擎取 #1 作主段，尾段整段丢失） */
-export const ZHAO_ULT_BUNNY_BARRAGE: MoveFusionGroup = {
+const ZHAO_ULT_BUNNY_BARRAGE: MoveFusionGroup = {
   moveId: '1341014',
   agentId: '1341',
   label: '照·终结技·兔兔连斩',
@@ -183,7 +183,7 @@ export const ZHAO_ULT_BUNNY_BARRAGE: MoveFusionGroup = {
 }
 
 /** 真斗·支援突击·孤影·断獠＝ #1 + #2（连打最大档；单打档=仅 #1，总量口径取连打满） */
-export const ZHENDOU_ASSIST_BREAKING_FANG: MoveFusionGroup = {
+const ZHENDOU_ASSIST_BREAKING_FANG: MoveFusionGroup = {
   moveId: '1441024',
   agentId: '1441',
   label: '真斗·支援突击·孤影·断獠（连打最大）',
@@ -195,7 +195,7 @@ export const ZHENDOU_ASSIST_BREAKING_FANG: MoveFusionGroup = {
 }
 
 /** 千夏·强化特殊技·泡泡糖轰炸＝ #1 + #2（完整强特；「快速衔接特别拍照技巧时」仅 #1 的变体另计） */
-export const QIANXIA_EX_BUBBLEGUM_BARRAGE: MoveFusionGroup = {
+const QIANXIA_EX_BUBBLEGUM_BARRAGE: MoveFusionGroup = {
   moveId: '1491007',
   agentId: '1491',
   label: '千夏·强化特殊技·泡泡糖轰炸',
@@ -208,7 +208,7 @@ export const QIANXIA_EX_BUBBLEGUM_BARRAGE: MoveFusionGroup = {
 
 /** 千夏·强化特殊技·特别拍照技巧（协同）＝ #1 + #2——引擎不选该行（无能耗），仅登记口径；
  *  该动作需模块接入（每 [天使协律] 40s 窗口一次、0 耗能，见 qianxia.ts 未建模项）。 */
-export const QIANXIA_EX_PHOTOGRAPHY: MoveFusionGroup = {
+const QIANXIA_EX_PHOTOGRAPHY: MoveFusionGroup = {
   moveId: '1491008',
   agentId: '1491',
   label: '千夏·强化特殊技·特别拍照技巧（协同）',
@@ -223,7 +223,7 @@ export const QIANXIA_EX_PHOTOGRAPHY: MoveFusionGroup = {
  * 妮可·连携技·高价以太爆弹＝ 炮击#1 + 炮击#2 + 能量场#3。
  * 能量场（1031303）是自动攻击：倍率/喧响照算，**不占前台时间**（countsTime:false）。
  */
-export const NICOLE_CHAIN: MoveFusionGroup = {
+const NICOLE_CHAIN: MoveFusionGroup = {
   moveId: '1031301',
   agentId: '1031',
   label: '妮可·连携技·高价以太爆弹（炮击两段 + 能量场）',
@@ -236,7 +236,7 @@ export const NICOLE_CHAIN: MoveFusionGroup = {
 }
 
 /** 妮可·终结技·特制以太榴弹＝ 炮击#1 + 能量场#2（能量场不占前台时间） */
-export const NICOLE_ULTIMATE: MoveFusionGroup = {
+const NICOLE_ULTIMATE: MoveFusionGroup = {
   moveId: '1031304',
   agentId: '1031',
   label: '妮可·终结技·特制以太榴弹（炮击 + 能量场）',
@@ -248,7 +248,7 @@ export const NICOLE_ULTIMATE: MoveFusionGroup = {
 }
 
 /** 妮可·闪避反击·牵制炮击＝ #1 + #2（两段都是炮击，均占时间） */
-export const NICOLE_DODGE: MoveFusionGroup = {
+const NICOLE_DODGE: MoveFusionGroup = {
   moveId: '1031205',
   agentId: '1031',
   label: '妮可·闪避反击·牵制炮击',
@@ -260,7 +260,7 @@ export const NICOLE_DODGE: MoveFusionGroup = {
 }
 
 /** 妮可·快速支援·救急炮击＝ #1 + #2（两段都是炮击，均占时间） */
-export const NICOLE_QUICK_ASSIST: MoveFusionGroup = {
+const NICOLE_QUICK_ASSIST: MoveFusionGroup = {
   moveId: '1031401',
   agentId: '1031',
   label: '妮可·快速支援·救急炮击',

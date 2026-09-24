@@ -67,7 +67,7 @@ export { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS
 export const LEVEL_COEFF_60 = 794
 
 /** 60级等级系数 = 1 + 1/59 × (60 - 1) = 2 */
-export const LEVEL_MULT_60 = 2
+const LEVEL_MULT_60 = 2
 
 /** 乱流CD（秒）：乱流槽位 = floor(风化时长 / CD) */
 export const TURBULENCE_CD_SECONDS = 3
@@ -132,7 +132,7 @@ export const BUILDUP_CAP_TABLE: Record<string, number[]> = {
 }
 
 /** 最大累计系数档位（第10管起不再增加，index 0-9） */
-export const MAX_CAP_INDEX = 9
+const MAX_CAP_INDEX = 9
 
 /**
  * 累积积蓄阈值表（前缀和）
@@ -220,7 +220,7 @@ export const TURBULENCE_FORMULAS: Record<string, TurbulenceFormula> = {
   frostfire: { baseMultiplier: 0,    tickMultiplier: 75,   tickInterval: 1   },
 }
 
-export function allocateBoostedEvents(globalTotalEvents: number, elementEvents: number, boostedEvents: number, processedBefore: number): number {
+function allocateBoostedEvents(globalTotalEvents: number, elementEvents: number, boostedEvents: number, processedBefore: number): number {
   if (globalTotalEvents <= 0 || elementEvents <= 0 || boostedEvents <= 0) return 0
   const before = Math.floor((processedBefore / globalTotalEvents) * boostedEvents)
   const after = Math.floor(((processedBefore + elementEvents) / globalTotalEvents) * boostedEvents)
@@ -431,7 +431,7 @@ export function calcPerSlotAnomalyDecibelBonus(
  * @param triggerCount 已触发该元素异常的次数（0 = 第一管）
  * @returns 基础积蓄上限
  */
-export function getBaseBuildUpCap(element: string, triggerCount: number): number {
+function getBaseBuildUpCap(element: string, triggerCount: number): number {
   const baseElement = getBaseElement(element)
   const table = BUILDUP_CAP_TABLE[baseElement]
   if (!table) {
@@ -450,7 +450,7 @@ export function getBaseBuildUpCap(element: string, triggerCount: number): number
  * @param anomalyCoeff 危局异常系数（用户输入，通常1.1）
  * @returns 实际积蓄上限
  */
-export function getBuildUpCap(
+function getBuildUpCap(
   element: string,
   triggerCount: number,
   bossCoeff: number,
@@ -459,7 +459,7 @@ export function getBuildUpCap(
   return getBaseBuildUpCap(element, triggerCount) * bossCoeff * anomalyCoeff
 }
 
-export function getElementAnomalyBuildUpEfficiency(panel: PanelValues, element: string): number {
+function getElementAnomalyBuildUpEfficiency(panel: PanelValues, element: string): number {
   const baseElement = getBaseElement(element)
   if (baseElement === 'electric') return panel.electricAnomalyBuildUpEfficiency ?? 0
   if (baseElement === 'physical') return panel.physicalAnomalyBuildUpEfficiency ?? 0
@@ -806,7 +806,7 @@ export function calcAnomalyMass(
  * @param stunned 是否处于失衡状态
  * @param stunMultiplier 失衡易伤基础倍率
  */
-export function calcDisorderSettlement(
+function calcDisorderSettlement(
   triggerPanel: PanelValues,
   element: string,
   enemyResistances: Record<string, number>,
@@ -854,7 +854,7 @@ export function calcDisorderSettlement(
  * @param stunned 是否处于失衡状态
  * @param stunMultiplier 失衡易伤基础倍率
  */
-export function calcTurbulenceSettlement(
+function calcTurbulenceSettlement(
   windPanel: PanelValues,
   sourcePanel: PanelValues,
   element: string,

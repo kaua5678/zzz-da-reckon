@@ -368,7 +368,7 @@ function decomposeSet(
 /**
  * 分解 4+2 套装组合。
  */
-export function decomposeFourPlusTwo(
+function decomposeFourPlusTwo(
   fourPieceId: string,
   twoPieceId: string,
   setsMap: Map<string, DriveDiscSet>,

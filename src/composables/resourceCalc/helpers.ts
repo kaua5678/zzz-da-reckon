@@ -189,7 +189,7 @@ export function safeElement(element?: string): any {
 }
 
 
-export const DAMAGE_ELEMENT_LABELS: Record<string, string> = {
+const DAMAGE_ELEMENT_LABELS: Record<string, string> = {
   physical: '物理',
   fire: '火',
   ice: '冰',

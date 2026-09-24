@@ -25,7 +25,7 @@ import { buildGiftRow } from '@/core/resource/giftRows'
 import { getAgentMechanic } from '@/mechanics'
 
 /** 琉音好评转大不动点迭代上限（好评≥90 开窗次数有界，正反馈单调收敛，8 轮兜底极端情况） */
-export const MAX_PROMOTE_ITER = 8
+const MAX_PROMOTE_ITER = 8
 
 /** 琉音好评转大参数（从某轮资源池结果构建：目标队友、连携/终结技 moveId、好评总量、客诉抱拳数） */
 export interface LiuyinPromoteParams {

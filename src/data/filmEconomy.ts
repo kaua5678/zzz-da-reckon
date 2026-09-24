@@ -13,21 +13,21 @@
  * - 每版本免费菲林 ≈ 1 金（用户口径「一版本给 1 金」= 15000 菲林，可编辑）。
  * - 一版本 ≈ 3 期危局（页面口径），每期收入 = 版本收入 / 3。
  */
-export const PULL_FILM = 160
+const PULL_FILM = 160
 /** 一金命座（角色池 1 个限定命座/本体）的期望菲林 = 93.75 抽 × 160 */
 export const CINEMA_GOLD_FILM = Math.ceil(93.75 * PULL_FILM) // 15000
 /** 一金武器（音擎池 1 个限定音擎/精炼）的期望菲林 = 62.5 抽 × 160 */
 export const WEAPON_GOLD_FILM = Math.ceil(62.5 * PULL_FILM) // 10000
 /** 直充汇率（菲林/元）——固定不可改（用户口径；首充双倍 = 20 为一次性，模拟不计） */
-export const TOPUP_FILM_PER_YUAN = 10
+const TOPUP_FILM_PER_YUAN = 10
 /** 月卡（绳网会员）：30 元 → 3000 + 300 = 3300 菲林（约 110 菲林/元，性价比最高） */
-export const MONTHLY_CARD_COST = 30
-export const MONTHLY_CARD_FILM = 3300
+const MONTHLY_CARD_COST = 30
+const MONTHLY_CARD_FILM = 3300
 /** 每版本最多买几张月卡（月卡覆盖 30 天，版本 ≈ 42 天 → 2 张覆盖全版本） */
-export const MONTHLY_CARD_MAX_PER_VERSION = 2
+const MONTHLY_CARD_MAX_PER_VERSION = 2
 /** 大月卡（丽都城募/成长计划）：68 元 → ~1320 菲林 + 抽卡道具（价值约 8 抽 = 1280）≈ 2600 菲林/版本（约 38 菲林/元） */
-export const BATTLE_PASS_COST = 68
-export const BATTLE_PASS_FILM = 2600
+const BATTLE_PASS_COST = 68
+const BATTLE_PASS_FILM = 2600
 /** 一期危局 ≈ 版本时长 / 3（一版约 3 期、每期 ~14 天） */
 export const PERIODS_PER_VERSION = 3
 /** 抽卡规划器默认每版本免费菲林（用户口径 2026-08-28：默认每版本发 25000 ≈ 1.67 金） */

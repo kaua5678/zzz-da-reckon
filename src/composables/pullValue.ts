@@ -42,7 +42,7 @@ export const SCORE_CAP = 65000
 /** 参与分级所需最小配对数（作者对数；低于此 = 估计噪声过大） */
 export const MIN_PAIRS_FOR_GRADE = 10
 /** 「近 3 期」窗口长度 */
-export const RECENT_ROOMS = 3
+const RECENT_ROOMS = 3
 /** 赠送 S（无抽卡成本，ROI 记 null）——佩洛伊斯 3.0 上半赠送（用户口径） */
 const FREE_GIFT_AGENT_IDS = new Set(['1551'])
 /** AGENT_RELEASE_NODE 唯一 A 级特例（潘引壶，贯穿拐演变路径收录）——归入 A 级基线层 */

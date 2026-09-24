@@ -351,7 +351,7 @@ function parseCinemaRequirement(sourceLabel: string): number {
  * 2026-09-24：watch 源曾手写成 `{agentId, cinemaLevel}`，而派生函数还读潜能/音擎（经额外能力判定），
  * 两边各写一份就会漂。现在新增依赖字段只改这一处，类型与 watch 同时跟上。
  */
-export const TEAMMATE_BUFF_INPUT_KEYS = ['slot', 'agentId', 'cinemaLevel', 'potentialLevel', 'wEngineId', 'wEngineModLevel'] as const
+const TEAMMATE_BUFF_INPUT_KEYS = ['slot', 'agentId', 'cinemaLevel', 'potentialLevel', 'wEngineId', 'wEngineModLevel'] as const
 type TeammateBuffInput = Pick<CharacterConfig, typeof TEAMMATE_BUFF_INPUT_KEYS[number]>
 
 export function deriveTeammateBuffEnabled(

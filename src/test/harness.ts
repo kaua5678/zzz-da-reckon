@@ -62,7 +62,7 @@ export function newPinia(): void {
 }
 
 /** 加载 catalog（+ 可选 teammate-buffs），返回 catalog store */
-export async function loadCatalogStore(loadTeammateBuffs = true) {
+async function loadCatalogStore(loadTeammateBuffs = true) {
   const catalog = useCatalogStore()
   await catalog.load()
   if (loadTeammateBuffs) await catalog.loadTeammateBuffs()

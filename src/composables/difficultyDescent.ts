@@ -44,7 +44,7 @@ import type { InteractionItem } from '@/types/teamPreset'
  * 降档的伤害差通常远大于 0.5%，设门槛只为拦「完全没变」的平台档）。做成 opts 会新增一条
  * 「只读不写」的旋钮通道，却没有第二个调用方需要改它。
  */
-export const DESCENT_PLATEAU_RATIO = 0.005
+const DESCENT_PLATEAU_RATIO = 0.005
 
 /**
  * 平台判据的**连续步数**（用户口径 2026-09-20 实机点通暴露后定）：
@@ -54,7 +54,7 @@ export const DESCENT_PLATEAU_RATIO = 0.005
  * 改为**连续 N 步**都低于门槛才停（N=2）：既拦住真平台（连降两档都不动），
  * 又不因一次量化波动（整数装包残差）提前收尾。
  */
-export const DESCENT_PLATEAU_STEPS = 2
+const DESCENT_PLATEAU_STEPS = 2
 
 /** 一个可退化杠杆：把某一维从「最优」降到「一般」 */
 export interface DescentLever {

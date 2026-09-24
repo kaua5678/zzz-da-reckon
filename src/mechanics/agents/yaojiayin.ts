@@ -225,7 +225,7 @@ function applyYaojiayinTeamFlags(characters: CharacterOperationConfig[]): void {
  * 连携总数与快支入场数原本由 useResourceCalc 直接写进 cfg（`yaojiayinTeamChainTotal` /
  * `yaojiayinQuickAssistEntries`），现在在模块内自算，编排层不再有 1311 特判分支。
  */
-export function applyYaojiayinTeamHook(input: AgentTeamConfigInput): void {
+function applyYaojiayinTeamHook(input: AgentTeamConfigInput): void {
   const { characters, phase, stunCount } = input
   if (phase !== 'build' && phase !== 'converge') return
   const yj = characters.find(c => c.agentId === YAOJIAYIN_ID)

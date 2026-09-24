@@ -188,7 +188,7 @@ export function poolFillText(t: TeamTimeSummary): string {
 }
 
 /** 招式短名（列表用）：`强化特殊技：论道（山威·论道连段）` → `论道` */
-export function shortMoveName(moveName: string, moveId: string): string {
+function shortMoveName(moveName: string, moveId: string): string {
   const afterColon = moveName.includes('：') ? moveName.slice(moveName.indexOf('：') + 1) : moveName
   const noParen = afterColon.replace(/（[^）]*）/g, '').trim()
   return noParen || moveId

@@ -183,7 +183,7 @@ export function downgradeCandidates(
  * `${teamKey}|${agentId}|${cinema}` 做键），否则档位 × 系列会被放大成 N×池 次求值。
  * 池为空（A 级角色等）返回 null，调用方回落空音擎。
  */
-export function pickDowngradeByDamage(
+function pickDowngradeByDamage(
   calc: Calc,
   configStore: ReturnType<typeof useConfigStore>,
   catalog: ReturnType<typeof useCatalogStore>,

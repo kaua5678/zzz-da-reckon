@@ -35,7 +35,7 @@ export const TIMELINE_LAYOUT = {
 } as const
 
 /** 泳道条数（主C / 队友1 / 队友2） */
-export const TIMELINE_LANE_COUNT = 3
+const TIMELINE_LANE_COUNT = 3
 
 /** 三泳道总高度 */
 export function timelineLaneTotalH(): number {

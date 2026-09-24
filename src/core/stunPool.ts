@@ -24,8 +24,8 @@ import type {
 } from '@/types/resource'
 
 /** 喧响奖励常量 */
-export const STUN_DECIBEL_BONUS = 20    // 进入失衡奖励
-export const CHAIN_DECIBEL_BONUS = 10   // 连携一次奖励
+const STUN_DECIBEL_BONUS = 20    // 进入失衡奖励
+const CHAIN_DECIBEL_BONUS = 10   // 连携一次奖励
 
 
 function getElementEnemyStunResReduction(panel: PanelValues, element: string, skillType?: string): number {

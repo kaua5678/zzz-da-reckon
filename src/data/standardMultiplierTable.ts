@@ -210,14 +210,14 @@ export const STANDARD_MULTIPLIER_TABLE: Record<MoveType, Partial<Record<Standard
 }
 
 /** 稀有度系数（只乘伤害与失衡）：限定 S 1.1 / 常驻 S 1.05 / A 及以下 1.0 */
-export const RARITY_DAMAGE_DAZE_COEF = {
+const RARITY_DAMAGE_DAZE_COEF = {
   limitedS: 1.1,
   standardS: 1.05,
   normal: 1.0,
 } as const
 
 /** 命破职业伤害倍率另乘系数 */
-export const RUPTURE_DAMAGE_COEF = 0.8
+const RUPTURE_DAMAGE_COEF = 0.8
 
 /**
  * 闪能质量 = 普通能量的 1.2 倍：强特公式里四个耗能利用率系数

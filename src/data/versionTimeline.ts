@@ -77,7 +77,7 @@ export const VERSION_NODES: VersionNode[] = [
 ]
 
 /** 节点 id → 下标（有序） */
-export const VERSION_NODE_INDEX: Record<string, number> = Object.fromEntries(
+const VERSION_NODE_INDEX: Record<string, number> = Object.fromEntries(
   VERSION_NODES.map((n, i) => [n.id, i]),
 )
 
