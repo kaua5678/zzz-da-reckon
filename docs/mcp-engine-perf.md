@@ -56,6 +56,11 @@
   在钩子里写会被 enrich 的推断值静默冲掉；transform 里写则是改缓存（零号·安比即此，已迁，逐位等价）。
 - 派生函数的依赖字段 = watch 源：`TEAMMATE_BUFF_INPUT_KEYS` 同时生成 `deriveTeammateBuffEnabled` 的入参类型与重同步 watch 源。
   旧 watch 手写 `{agentId, cinemaLevel}`，漏了潜能/音擎。
+- 第 5 轮：**钩子输入只有输出通道可写**，其余字段一律只读（`ReadonlyTeam`、`Readonly<IterationState>`、feedback / 轴 / 异常 panels 用 `DeepReadonly`），违规写入会让 tsc 报红。
+  - `buildCharConfig` 的 `panel` 改为只读后，编译器列出 3 处写入：雨果、蕾米埃尔两处与 `applyPanel` 重复；诺姆 C1 减抗写在 `cfg.panel` 上，这个面板从不进入伤害计算，是死写（C1 的单一来源是 teammate-buff）。3 处均已删除。
+  - `cfg` 暂作 scratch：23 个模块在 `buildExecutions` 里写 cfg 的临时键，由 `materializeRows` 负责快照和恢复。探针实测深泄漏为 0，因此不强行迁移。
+  - `skills` 暂不收紧：改成只读会让 110+ 个查表辅助函数签名报红，属于噪声，不是真实违规。
+  - vue-tsc **查不出** 组件 `v-model` 对只读值的写入，所以只读绑定的页面禁止使用 `v-model`，改为 `:value` + 编辑函数（示例见 `StunAxisPage`）。
 
 ## 剩余热点（第 2 轮后，自耗时 / 14.2s profile；第 3 轮已处理前两项的主要部分）
 

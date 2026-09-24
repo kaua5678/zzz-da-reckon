@@ -1,5 +1,5 @@
 import type { Agent } from '@/types/catalog'
-import type { MechanicTeamMember } from '@/mechanics/types'
+import type { ReadonlyTeam } from '@/mechanics/types'
 import type { AdditionalAbilitySpec, TeamConditionSpec } from './types'
 
 /**
@@ -7,7 +7,7 @@ import type { AdditionalAbilitySpec, TeamConditionSpec } from './types'
  * 满足任一条件即触发；不带 additionalAbility 声明时返回 undefined（未声明，由模块自行处理）。
  */
 export function evalTeamConditions(
-  team: MechanicTeamMember[],
+  team: ReadonlyTeam,
   ownSlot: number,
   agent: Agent | null,
   conditions: TeamConditionSpec[],
@@ -19,7 +19,7 @@ export function evalTeamConditions(
 }
 
 export function evalAdditionalAbility(
-  team: MechanicTeamMember[],
+  team: ReadonlyTeam,
   ownSlot: number,
   agent: Agent | null,
   spec: AdditionalAbilitySpec | undefined,
@@ -29,7 +29,7 @@ export function evalAdditionalAbility(
 }
 
 function matchTeamCondition(
-  team: MechanicTeamMember[],
+  team: ReadonlyTeam,
   ownSlot: number,
   agent: Agent | null,
   cond: TeamConditionSpec,

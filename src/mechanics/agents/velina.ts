@@ -9,7 +9,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentSkillTransformInput,
-  MechanicTeamMember,
+  ReadonlyTeam,
   ReleaseModifierInput,
 } from '../types'
 import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
@@ -48,14 +48,14 @@ function findMoveByEnglishName(skills: AgentSkills | undefined, englishName: str
   return null
 }
 
-function isAdditionalAbilityActive(team: MechanicTeamMember[], slot: number, agent: Agent): boolean {
+function isAdditionalAbilityActive(team: ReadonlyTeam, slot: number, agent: Agent): boolean {
   return team.some(member => {
     if (member.slot === slot || !member.agent) return false
     return member.agent.specialty === 'anomaly' || member.agent.damageElement === agent.damageElement
   })
 }
 
-function velinaColorElement(team: MechanicTeamMember[], _slot: number): string {
+function velinaColorElement(team: ReadonlyTeam, _slot: number): string {
   return team
     .map(member => member.agent?.damageElement ?? '')
     .find(element => element && element !== 'wind') || 'wind'

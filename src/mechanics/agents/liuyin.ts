@@ -6,7 +6,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  MechanicTeamMember,
+  ReadonlyTeam,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, LiuyinMechanicSource, MechanicSetting } from '@/types/resource'
@@ -137,7 +137,7 @@ function cfgNum(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number):
 }
 
 /** 判断队伍中是否存在强攻或命破角色（触发琉音额外能力） */
-function hasAttackOrRuptureTeammate(team: MechanicTeamMember[], ownSlot: number): boolean {
+function hasAttackOrRuptureTeammate(team: ReadonlyTeam, ownSlot: number): boolean {
   return team.some(m => m.slot !== ownSlot && m.agent && (m.agent.specialty === 'attack' || m.agent.specialty === 'rupture'))
 }
 

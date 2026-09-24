@@ -7,7 +7,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentSkillTransformInput,
-  MechanicTeamMember,
+  ReadonlyTeam,
 } from '../types'
 import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
 import type {
@@ -78,12 +78,12 @@ function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMov
  * （面板缺 30 冰抗无视 + 60 基本增伤，2026-09-22 取证复现）。收敛到声明式判定后不再有第二份口径。
  * 返回 `boolean | undefined`（无 spec 声明时 undefined）⇒ 必须 `=== true` 收口。
  */
-function isAdditionalAbilityActive(team: MechanicTeamMember[], slot: number, agent: Agent): boolean {
+function isAdditionalAbilityActive(team: ReadonlyTeam, slot: number, agent: Agent): boolean {
   return evalAdditionalAbility(team, slot, agent, getAgentSpec(MIYABI_AGENT_ID)?.additionalAbility) === true
 }
 
 /** 队伍中是否有风属性角色（影响霜灼状态覆盖率） */
-function hasWindTeammate(team: MechanicTeamMember[], slot: number): boolean {
+function hasWindTeammate(team: ReadonlyTeam, slot: number): boolean {
   return team.some(m => m.slot !== slot && m.agent?.damageElement === 'wind')
 }
 

@@ -70,30 +70,30 @@
       <div class="sap-axes" v-if="useAxes">
         <div v-for="(axis, ai) in axes" :key="ai" class="sap-axis">
           <div class="sap-axis-head">
-            <n-input v-model:value="axis.name" size="small" style="width:130px" placeholder="轴名" />
+            <n-input :value="axis.name" @update:value="v => editAxis(ai, a => { a.name = v })" size="small" style="width:130px" placeholder="轴名" />
             <span class="sap-label">×</span>
-            <n-input-number v-model:value="axis.count" size="small" :min="0" :max="20" style="width:60px" :placeholder="'兜底'" />
+            <n-input-number :value="axis.count" @update:value="v => editAxis(ai, a => { a.count = v ?? undefined })" size="small" :min="0" :max="20" style="width:60px" :placeholder="'兜底'" />
             <span class="sap-label">次（空=兜底）</span>
             <span class="sap-label">兜底平A</span>
             <n-select :value="fillerValue(ai)" @update:value="v => setFiller(ai, v)" size="small" style="width:110px" :options="fillerOptions" />
             <span class="sap-label">初始状态</span>
             <n-select :value="axis.entryAnomaly ?? 0" size="small" style="width:96px" :options="entryAnomalyOptions"
               :disabled="hasPlans" :title="hasPlans ? '条件轴方案模式下只读' : undefined"
-              @update:value="v => setEntryAnomaly(axis, v ?? 0)" />
+              @update:value="v => setEntryAnomaly(ai, v ?? 0)" />
             <span class="sap-label">异常条</span>
             <template v-for="el in entryBarList(axis)" :key="el">
               <span class="sap-label">{{ entryBarLabel(el) }}</span>
               <n-input-number :value="axis.entryBars?.[el] ?? 0" size="small" style="width:92px"
                 :min="0" :max="100" :step="10" suffix="%" :disabled="hasPlans"
-                @update:value="v => setEntryBar(axis, el, v)" />
+                @update:value="v => setEntryBar(ai, el, v)" />
             </template>
             <n-select
               v-if="!hasPlans && entryBarCandidates(axis).length > 0"
               size="small" style="width:86px" placeholder="+异常条"
               :options="entryBarCandidates(axis).map(el => ({ label: entryBarLabel(el), value: el }))"
-              @update:value="v => v && addEntryBar(axis, String(v))"
+              @update:value="v => v && addEntryBar(ai, String(v))"
             />
-            <n-button size="tiny" quaternary type="warning" @click="axes.splice(ai,1)">删除</n-button>
+            <n-button size="tiny" quaternary type="warning" @click="removeAxis(ai)">删除</n-button>
             <span class="sap-stat">实际 ×{{ axisResult?.axisDetails?.[ai]?.times ?? '?' }} 次 · 单轮 {{ (axisResult?.axisDetails?.[ai]?.axisDuration ?? 0).toFixed(1) }}s · 窗口 {{ maxDur }}s</span>
           </div>
 
@@ -147,15 +147,15 @@
           <div class="sap-stack" v-if="axis.actions.length > 0">
             <div v-for="(act, aii) in axis.actions" :key="aii" class="sap-stack-row">
               <span class="sap-prio" :class="{ top: aii === 0 }">{{ aii + 1 }}</span>
-              <n-select v-model:value="act.slot" :options="slotOptions" size="tiny" style="width:92px" />
-              <n-select v-model:value="act.moveId" :options="moveOptions(act.slot)" size="tiny" style="width:168px" @update:value="() => act.sourceTag = undefined" />
+              <n-select :value="act.slot" @update:value="v => editAction(ai, aii, a => { a.slot = v })" :options="slotOptions" size="tiny" style="width:92px" />
+              <n-select :value="act.moveId" :options="moveOptions(act.slot)" size="tiny" style="width:168px" @update:value="v => editAction(ai, aii, a => { a.moveId = v; a.sourceTag = undefined })" />
               <span>×</span>
-              <n-input-number v-model:value="act.count" size="tiny" :min="1" :max="99" style="width:52px" />
-              <n-select v-if="isPromotable(act.moveId)" :value="act.promoteVariant ?? ''" @update:value="v => act.promoteVariant = v || undefined" size="tiny" style="width:82px"
+              <n-input-number :value="act.count" @update:value="v => editAction(ai, aii, a => { a.count = v ?? 1 })" size="tiny" :min="1" :max="99" style="width:52px" />
+              <n-select v-if="isPromotable(act.moveId)" :value="act.promoteVariant ?? ''" @update:value="v => editAction(ai, aii, a => { a.promoteVariant = v || undefined })" size="tiny" style="width:82px"
                 :options="[{label:'常规',value:''},{label:'60转大',value:'60'},{label:'90转大',value:'90'}]" />
               <span v-if="act.moveId === '1371022'" class="sap-t" title="轴内凝云术蓄力时长（0-2s，可延长/缩短；倍率/耗能/daze 按秒均折算）">
                 蓄力<n-input-number :value="act.duration ?? 2" :min="0" :max="2" :step="0.1" size="tiny" style="width:62px"
-                  @update:value="v => act.duration = v ?? 2" />s
+                  @update:value="v => editAction(ai, aii, a => { a.duration = v ?? 2 })" />s
               </span>
               <span class="sap-t">
                 <span class="sap-t-time">{{ actDurationText(act) }}</span>s · 起点 <span class="sap-t-time">{{ (act.startTime ?? 0).toFixed(1) }}</span>s
@@ -163,7 +163,7 @@
               <span class="sap-ops">
                 <n-button size="tiny" quaternary :disabled="aii===0" @click="moveAction(ai, aii, -1)">↑</n-button>
                 <n-button size="tiny" quaternary :disabled="aii===axis.actions.length-1" @click="moveAction(ai, aii, 1)">↓</n-button>
-                <n-button size="tiny" quaternary type="error" @click="axis.actions.splice(aii,1)">×</n-button>
+                <n-button size="tiny" quaternary type="error" @click="editAxis(ai, a => { a.actions.splice(aii, 1) })">×</n-button>
               </span>
             </div>
           </div>
@@ -196,7 +196,7 @@
             style="display:inline-flex;align-items:center;gap:2px;background:var(--wa-60);padding:1px 6px;border-radius:3px"
             :style="chip.suppressed ? 'opacity:0.45;text-decoration:line-through' : ''">
             {{ chip.label }}
-            <n-button size="tiny" quaternary type="warning" @click="toggleTriggerSuppressed(axis, chip.id)">
+            <n-button size="tiny" quaternary type="warning" @click="toggleTriggerSuppressed(ai, chip.id)">
               {{ chip.suppressed ? '恢复' : '✕' }}
             </n-button>
           </span>
@@ -241,7 +241,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, type DeepReadonly } from 'vue'
 import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwitch, useMessage } from 'naive-ui'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
@@ -276,10 +276,12 @@ const autoPresetNote = computed(() => {
 })
 // 条件轴方案激活时，编辑器展示命中方案解析出的轴（只读展示，改动不写回方案本体）
 const hasPlans = computed(() => configStore.stunAxisPlans.length > 0)
-const axes = computed({
-  get: () => hasPlans.value || autoActive.value ? effectiveStunAxes.value : configStore.stunAxes,
-  set: (v) => { if (!hasPlans.value) configStore.stunAxes.splice(0, configStore.stunAxes.length, ...v) },
-})
+// 展示用轴 = **只读视图**（DeepReadonly：模板/脚本里任何直接写入都是 vue-tsc 红）。
+// 条件方案/自动命中模式下它是 calcOutput 缓存里的解析副本——原地改会污染记忆化结果
+// （下次命中拿到「改过的轴 + 按旧轴算的结果」），且不触发重算。所有写入走下方 editAxis 单一入口。
+// ⚠ vue-tsc 查不到组件 `v-model` 的赋值（只查显式 `x = …`）⇒ 本页禁用 v-model 绑轴字段，一律 :value + editAxis。
+const axes = computed<DeepReadonly<StunAxis[]>>(() =>
+  hasPlans.value || autoActive.value ? effectiveStunAxes.value : configStore.stunAxes)
 const useAxes = computed({
   get: () => configStore.useStunAxis || autoActive.value,
   set: (v) => {
@@ -367,9 +369,10 @@ function mingwangWindowsFor(ai: number): { key: string; layers: number; leftPct:
 const fillerOptions = computed(() => [{ label: '不填充', value: -1 }, ...slotOptions.value])
 function fillerValue(ai: number): number { return axes.value[ai]?.basicFillerSlot ?? -1 }
 function setFiller(ai: number, v: number) {
-  const axis = axes.value[ai]; if (!axis) return
-  if (v < 0) delete axis.basicFillerSlot
-  else axis.basicFillerSlot = v
+  editAxis(ai, axis => {
+    if (v < 0) delete axis.basicFillerSlot
+    else axis.basicFillerSlot = v
+  })
 }
 
 // 进窗初始异常状态/异常条（随预设导出；引擎取首个生效轴条目上的显式设置，未填回落全局 boss.*）
@@ -378,48 +381,64 @@ const entryAnomalyOptions = [
   { label: '无', value: 0 },
   ...BOSS_ENTRY_ANOMALY_OPTIONS.filter(o => o.value > 0).map(o => ({ label: ENTRY_ANOMALY_LABELS[o.element] ?? o.element, value: o.value })),
 ]
-// 自动命中/条件方案模式下展示的是解析副本，直接改不落盘（改动会被下一帧重算冲掉）——
-// 自动模式下首次编辑把展示的轴物化为手动轴（自动轴让路）；条件方案无法写回，控件禁用
+// ===== 轴编辑的**唯一写入口** =====
+// 自动命中/条件方案模式下展示的是解析副本，直接改不落盘（且会污染计算缓存）——
+// 自动模式下首次编辑把展示的轴物化为手动轴（自动轴让路）；条件方案无法写回，提示后拒绝。
 const editingEphemeral = computed(() => hasPlans.value || autoActive.value)
-function ensureWritableAxis(axis: StunAxis): StunAxis | null {
-  if (!editingEphemeral.value) return axis
-  if (hasPlans.value) return null
-  const idx = axes.value.indexOf(axis)
-  if (idx < 0) return null
-  const clones = cloneStunAxes(axes.value)
-  configStore.stunAxes.splice(0, configStore.stunAxes.length, ...clones)
-  message.info('已从自动命中的预设轴派生为手动轴，后续编辑直接生效')
-  return configStore.stunAxes[idx]
-}
-function setEntryAnomaly(axis: StunAxis, v: number) {
-  const target = ensureWritableAxis(axis); if (!target) return
-  if (v > 0) target.entryAnomaly = v
-  else {
-    target.entryAnomaly = undefined
-    target.entryBars = undefined
+/** 写前准备：条件方案 ⇒ 拒绝；自动命中 ⇒ 先把展示的轴物化为手动轴。返回 false = 不可写。 */
+function beginEdit(): boolean {
+  if (hasPlans.value) { message.warning('条件轴方案为只读，请在 JSON 预设里修改方案'); return false }
+  if (editingEphemeral.value) {
+    configStore.stunAxes.splice(0, configStore.stunAxes.length, ...cloneStunAxes(axes.value as StunAxis[]))
+    message.info('已从自动命中的预设轴派生为手动轴，后续编辑直接生效')
   }
+  return true
+}
+function writableAxisAt(ai: number): StunAxis | null {
+  if (!axes.value[ai] || !beginEdit()) return null
+  return configStore.stunAxes[ai] ?? null
+}
+function editAxis(ai: number, fn: (axis: StunAxis) => void) {
+  const axis = writableAxisAt(ai); if (axis) fn(axis)
+}
+function editAction(ai: number, aii: number, fn: (act: StunAxisAction) => void) {
+  editAxis(ai, axis => { const act = axis.actions[aii]; if (act) fn(act) })
+}
+function removeAxis(ai: number) {
+  if (!writableAxisAt(ai)) return
+  configStore.stunAxes.splice(ai, 1)
+}
+function setEntryAnomaly(ai: number, v: number) {
+  editAxis(ai, target => {
+    if (v > 0) target.entryAnomaly = v
+    else {
+      target.entryAnomaly = undefined
+      target.entryBars = undefined
+    }
+  })
 }
 
 // 多条异常条（v2.8 用户口径：多个角色各攒各的条，两条接近满进窗一碰即连续触发紊乱）
-function entryBarList(axis: StunAxis): string[] {
+function entryBarList(axis: DeepReadonly<StunAxis>): string[] {
   return Object.keys(axis.entryBars ?? {})
 }
-function entryBarCandidates(axis: StunAxis): string[] {
+function entryBarCandidates(axis: DeepReadonly<StunAxis>): string[] {
   const used = new Set(entryBarList(axis))
   return BOSS_ENTRY_ANOMALY_OPTIONS.filter(o => o.value > 0 && !used.has(o.element)).map(o => o.element)
 }
 function entryBarLabel(el: string): string { return ENTRY_ANOMALY_LABELS[el] ?? el }
-function addEntryBar(axis: StunAxis, el: string) {
-  const target = ensureWritableAxis(axis); if (!target) return
-  ;(target.entryBars ??= {})[el] = 50
+function addEntryBar(ai: number, el: string) {
+  editAxis(ai, target => { (target.entryBars ??= {})[el] = 50 })
 }
-function setEntryBar(axis: StunAxis, el: string, v: number | null) {
-  if (v === null || !Number.isFinite(v) || v <= 0) {
-    // 清空 = 移除该元素的条
-    if (axis.entryBars) delete axis.entryBars[el]
-    return
-  }
-  axis.entryBars = { ...(axis.entryBars ?? {}), [el]: Math.min(100, Math.round(v)) }
+function setEntryBar(ai: number, el: string, v: number | null) {
+  editAxis(ai, axis => {
+    if (v === null || !Number.isFinite(v) || v <= 0) {
+      // 清空 = 移除该元素的条
+      if (axis.entryBars) delete axis.entryBars[el]
+      return
+    }
+    axis.entryBars = { ...(axis.entryBars ?? {}), [el]: Math.min(100, Math.round(v)) }
+  })
 }
 
 // ===== 失衡内异常状态：板块展示 + 块级触发标注 =====
@@ -490,12 +509,13 @@ function entryTriggerChips(ai: number): Array<{ id: string; label: string; suppr
   }
   return out
 }
-function toggleTriggerSuppressed(axis: StunAxis, id: string) {
-  const target = ensureWritableAxis(axis); if (!target) return
-  const set = new Set(target.suppressedTriggers ?? [])
-  if (set.has(id)) set.delete(id)
-  else set.add(id)
-  target.suppressedTriggers = set.size > 0 ? [...set] : undefined
+function toggleTriggerSuppressed(ai: number, id: string) {
+  editAxis(ai, target => {
+    const set = new Set(target.suppressedTriggers ?? [])
+    if (set.has(id)) set.delete(id)
+    else set.add(id)
+    target.suppressedTriggers = set.size > 0 ? [...set] : undefined
+  })
 }
 function entryEventLine(ai: number): string {
   const st = inStunAnomalyState.value
@@ -804,13 +824,14 @@ function isPromotable(moveId: string): boolean {
 // ===== 拖拽（startTime） =====
 const dragging = ref<{ ai: number; aii: number; startX: number; origStart: number } | null>(null)
 function startDrag(e: PointerEvent, ai: number, aii: number) {
-  const axis = axes.value[ai]; if (!axis) return
-  const act = axis.actions[aii]
+  // 拖动起点即物化（自动模式），之后每帧写的是手动轴
+  const axis = writableAxisAt(ai); if (!axis) return
+  const act = axis.actions[aii]; if (!act) return
   dragging.value = { ai, aii, startX: e.clientX, origStart: act.startTime ?? 0 }
 }
 function onTimelineMove(e: PointerEvent, ai: number) {
   if (!dragging.value || dragging.value.ai !== ai) return
-  const axis = axes.value[ai]; if (!axis) return
+  const axis = configStore.stunAxes[ai]; if (!axis) return
   const act = axis.actions[dragging.value.aii]; if (!act) return
   const el = e.currentTarget as HTMLElement
   const rect = el.getBoundingClientRect()
@@ -837,11 +858,11 @@ function blockStyle(act: StunAxisAction, selected: boolean) {
 
 // ===== 栈操作 =====
 function addAxis() {
-  if (hasPlans.value) { message.warning('条件轴方案为只读，请在 JSON 预设里修改方案'); return }
+  if (!beginEdit()) return
   configStore.stunAxes.push({ name: `轴${axes.value.length+1}`, actions: [] })
 }
 function addToCurrentAxis(s: number, mid: string, promoteVariant?: '60' | '90', sourceTag?: 'gift') {
-  if (hasPlans.value) { message.warning('条件轴方案为只读，请在 JSON 预设里修改方案'); return }
+  if (!beginEdit()) return
   const axs = configStore.stunAxes; if (axs.length === 0) addAxis()
   const axis = axs[axs.length - 1]
   const info = slotMoves(s).find(m => m.moveId === mid)
@@ -852,11 +873,12 @@ function addToCurrentAxis(s: number, mid: string, promoteVariant?: '60' | '90', 
   axis.actions.push({ slot: s, moveId: mid, count: 1, label: info?.label, startTime: Math.round(endTime * 10) / 10, promoteVariant, sourceTag })
 }
 function moveAction(ai: number, aii: number, dir: -1 | 1) {
-  const axis = axes.value[ai]; if (!axis) return
-  const to = aii + dir
-  if (to < 0 || to >= axis.actions.length) return
-  const arr = axis.actions
-  const tmp = arr[aii]; arr[aii] = arr[to]; arr[to] = tmp
+  editAxis(ai, axis => {
+    const to = aii + dir
+    if (to < 0 || to >= axis.actions.length) return
+    const arr = axis.actions
+    const tmp = arr[aii]; arr[aii] = arr[to]; arr[to] = tmp
+  })
 }
 function agentName(s: number) {
   const c = configStore.team[s]; if (!c?.agentId) return `槽${s+1}`

@@ -129,7 +129,7 @@ export function computeCorinC4Triggers(input: {
  */
 export function computeCorinStunBonusMoves(
   slot: number,
-  axes: { actions: { slot: number; moveId: string; count: number; startTime?: number }[] }[],
+  axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>,
   basicMoveIds: ReadonlySet<string>,
 ): Map<string, number> {
   const out = new Map<string, number>()

@@ -38,13 +38,13 @@ import {
   type AgentTeamPhase,
   type AxisScalarOverlays,
   type MechanicTeamMember,
+  type ReadonlyTeam,
+  type AgentNextRoundFeedbackInput,
 } from '@/mechanics'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import type {
   CharacterOperationConfig,
-  TeamResourceResult,
-  AnomalyPoolResult,
   StunAxis,
 } from '@/types/resource'
 import type { PanelValues, TeammateBuff, Agent, DriveDiscConfig } from '@/types/catalog'
@@ -272,14 +272,14 @@ export function applyTeamMechanics(params: {
  * 才有意义**——同队重复角色在 UI 侧已被 `usedAgentIds` 过滤，此处不再防御（与既有钩子一致）。
  */
 export function collectNextRoundFeedback(params: {
-  characters: CharacterOperationConfig[]
+  characters: AgentNextRoundFeedbackInput['characters']
   /** 本轮装配后的全队资源结果 */
-  teamResult: TeamResourceResult
+  teamResult: AgentNextRoundFeedbackInput['teamResult']
   /** 展示口径结果（缺省 = teamResult） */
-  displayResult?: TeamResourceResult
+  displayResult?: AgentNextRoundFeedbackInput['displayResult']
   /** 调整后结果（诺姆赠链 / 琉音转大落地后）；null/缺省 = 本轮无调整 */
-  adjustedResult?: TeamResourceResult | null
-  anomalyPool: AnomalyPoolResult | null
+  adjustedResult?: AgentNextRoundFeedbackInput['adjustedResult']
+  anomalyPool: AgentNextRoundFeedbackInput['anomalyPool']
   /** 上一轮收敛线程快照（首轮守卫与自身反馈输入） */
   prevThreads: Readonly<CalcRoundThreads>
   catalogStore: ReturnType<typeof useCatalogStore>
@@ -443,7 +443,7 @@ export const ADDITIONAL_GATE_BUFFS: Record<string, readonly string[]> = {
  * 消费方判据为 `gates.get(buff.id) !== false`）。求值时机与迁移前逐位一致：面板阶段（calcPanel 之前）一次求值。
  */
 export function evalAdditionalAbilityBuffGates(
-  team: MechanicTeamMember[],
+  team: ReadonlyTeam,
   getCatalogAgent: (agentId: string) => Agent | null,
 ): Map<string, boolean> {
   // 第一步：每角色按 spec additionalAbility 声明求值（不在队 = false）；slot 查找走索引表，零 agentId 特判

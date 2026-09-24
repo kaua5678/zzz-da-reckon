@@ -7,7 +7,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  MechanicTeamMember,
+  ReadonlyTeam,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type {
@@ -73,7 +73,7 @@ function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMov
 }
 
 /** 爱丽丝额外能力：队伍中存在另一名「异常」或「支援」角色 */
-function isAdditionalAbilityActive(team: MechanicTeamMember[], slot: number): boolean {
+function isAdditionalAbilityActive(team: ReadonlyTeam, slot: number): boolean {
   return team.some(member => {
     if (member.slot === slot || !member.agent) return false
     return member.agent.specialty === 'anomaly' || member.agent.specialty === 'support'

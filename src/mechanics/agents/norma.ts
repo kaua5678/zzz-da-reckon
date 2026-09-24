@@ -5,7 +5,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  MechanicTeamMember,
+  ReadonlyTeam,
   AgentTeamConfigInput,
 } from '../types'
 import type { AgentSkills, SkillMove, PanelValues } from '@/types/catalog'
@@ -62,7 +62,6 @@ const TECH_GAP_ATK_CAP = 870
 
 // —— 命座 ——
 const C1_MISSILE_BAY_SECONDS = 12
-const C1_RES_REDUCTION = 15
 const C2_STUN_EASY_PER_STACK = 6
 const C2_ENERGY_PER_TRIGGER = 25 // 影画2：帽子把戏回 25 能量
 const C2_TRIGGER_INTERVAL = 20 // 影画2：20 秒冷却，按战斗时间触发
@@ -90,7 +89,7 @@ function cfgNum(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number):
 
 /** 额外能力触发条件由 spec.additionalAbility 声明式统一判定写入 panel.additionalAbilityActive；
  *  本模块只读标记开关，不硬编码条件（条件见 src/specs/agents/1571.json）。 */
-function isNormaExtraAbilityActive(panel: PanelValues | undefined, team: MechanicTeamMember[], ownSlot: number, agentFaction: string): boolean {
+function isNormaExtraAbilityActive(panel: PanelValues | undefined, team: ReadonlyTeam, ownSlot: number, agentFaction: string): boolean {
   return (panel?.additionalAbilityActive ?? 0) > 0
     || (panel?.additionalAbilityActive === undefined && team.some(m => m.slot !== ownSlot && m.agent && (
       m.agent.specialty === 'attack' || m.agent.specialty === 'rupture' || m.agent.faction === agentFaction
@@ -279,10 +278,9 @@ function buildNormaCharConfig({ slot, cinemaLevel, team, skills, cfg, panel }: A
     daze: [get(row(ARMOR_PIERCE_MOVE), 'daze'), get(row(HIGH_EXPLOSIVE_MOVE), 'daze')],
   }
 
-  // C1：弹头命中敌人全属性抗性 -15%（15 秒，重复刷新）；视为全局减抗，默认满覆盖。
-  if (cinemaLevel >= 1) {
-    panel.enemyResReduction = (panel.enemyResReduction ?? 0) + C1_RES_REDUCTION
-  }
+  // C1：弹头命中敌人全属性抗性 -15% —— 单一来源 = teammate-buffs.json
+  // `norma_hollowell.cinema_1_aggressive_foresight`（进伤害面板）。此处原有一行写 cfg.panel 的
+  // 同值减抗：cfg.panel 只供资源侧读取，从未进入伤害，属死写且一旦有人让 cfg.panel 参与伤害就会双计（2026-09-24 删）。
   // C2：帽子把戏回 25 能量/20s 冷却 —— 由资源池按战斗时间触发（见 core/resource/helpers.ts calcEnergySource）
   cfg.normaC2EnergyPerTrigger = cinemaLevel >= 2 ? C2_ENERGY_PER_TRIGGER : 0
   cfg.normaC2TriggerInterval = C2_TRIGGER_INTERVAL

@@ -165,7 +165,6 @@ function buildHugoCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput):
   record.hugoEchoCoverage = cinemaLevel >= 6 ? 1 : clampRatio(setting(cfg, 'hugo.echoCoverage', 1))
   record.hugoC4Coverage = cinemaLevel >= 4 ? clampRatio(setting(cfg, 'hugo.c4Coverage', 1)) : 0
   record.hugoAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
-  panel.hugoEchoCoverage = record.hugoEchoCoverage as number
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): HugoCycle {

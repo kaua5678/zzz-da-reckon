@@ -333,7 +333,7 @@ peiluoProminenceMechanic.buildExecutions = ({ cfg, executions }: any) => {
 export const PEILUO_KAGEROU_SECONDS = 21
 export function computePeiluoKagerouBonus(
   slot: number,
-  axes: { actions: { slot: number; moveId: string; count: number; startTime?: number }[] }[],
+  axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>,
 ): Map<string, number> {
   const TRIGGER = '1551015'
   const BENEFICIARIES = new Set<string>(['1551015', '1551016'])

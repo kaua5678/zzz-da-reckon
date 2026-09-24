@@ -60,7 +60,7 @@ describe('C-α next-round feedback', () => {
     const { catalog } = await setupHarness([])
     const grace = { agentId: '1181', slot: 2, graceC1Cycles: 3.9, initialEnergyGift: 0 }
     const ye = { agentId: '1431', slot: 1, initialEnergyGift: 0 }
-    const characters = [grace, ye] as unknown as AgentNextRoundFeedbackInput['characters']
+    const characters = [grace, ye] as unknown as AgentTeamConfigInput['characters']
     const next = collectNextRoundFeedback({
       characters, teamResult: result(100), adjustedResult: result(2.25),
       displayResult: result(200), anomalyPool: null,

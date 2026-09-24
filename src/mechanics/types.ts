@@ -28,12 +28,15 @@ export interface MechanicTeamMember {
   wEngineModLevel: number
 }
 
+/** 钩子收到的队伍快照：只读（队伍是全部钩子共享的派生输入，不是任何钩子的输出通道） */
+export type ReadonlyTeam = ReadonlyArray<Readonly<MechanicTeamMember>>
+
 export interface AgentPanelInput {
   slot: number
   agent: Agent
   cinemaLevel: number
   potentialLevel: number
-  team: MechanicTeamMember[]
+  team: ReadonlyTeam
   /** 未合并局内 buff 的面板，供“初始属性”类转化读取 */
   outOfCombatPanel: Readonly<PanelValues>
   panel: PanelValues
@@ -111,7 +114,7 @@ export interface AgentTeamPanelEffectInput {
   /** 来源角色的命座等级 */
   cinemaLevel: number
   /** 全队成员（按位置压缩：用 `.find(m => m.slot === …)`，禁下标） */
-  team: MechanicTeamMember[]
+  team: ReadonlyTeam
   /** 本次要写入的**目标**槽位号 */
   targetSlot: number
   /** 目标槽位的角色（`Agent`，供 `specialty` 等静态属性分支） */
@@ -130,15 +133,20 @@ export interface AgentCharConfigInput {
   potentialLevel: number
   wEngineId: string
   wEngineModLevel: number
-  team: MechanicTeamMember[]
-  panel: PanelValues
+  team: ReadonlyTeam
+  /**
+   * 本槽局内面板（**只读**，2026-09-24）：它会成为 `cfg.panel`，但只供资源侧读取，**不进伤害面板**
+   * （伤害走 `damagePanels` ← `applyPanel`）。曾有 3 个模块在此写 panel：两处与 `applyPanel` 重复、
+   * 一处（诺姆 C1 减抗）是永不生效的死写。面板字段一律写在 `applyPanel`；本钩子唯一出口 = `cfg`。
+   */
+  panel: DeepReadonly<PanelValues>
   cfg: CharacterOperationConfig
   getRowValue: (move: SkillMove | null | undefined, rowId: string) => number
 }
 
 export interface AgentResourceInput {
   cfg: CharacterOperationConfig
-  state: IterationState
+  state: Readonly<IterationState>
   executions: SkillExecution[]
   /** 其他队友前台时间合计（秒），供队友触发类机制使用 */
   teamFrontlineSeconds?: number
@@ -222,7 +230,7 @@ export interface AgentTeamConfigInput {
    * 身份判据访问，**禁止** `characters[槽位号]` 下标索引（槽位号 ≠ 下标）。
    */
   characters: CharacterOperationConfig[]
-  team: MechanicTeamMember[]
+  team: ReadonlyTeam
   /** 已解析的机制滑块值（与 AgentPanelInput.settings 同源） */
   settings: Readonly<Record<string, number>>
   /** 各槽位的「异常积储主元素」（该角色倍率表 anomaly_buildup 之和最大的 move.damageElement；
@@ -457,7 +465,7 @@ export interface AgentExSpecialTimeInput {
    * buildExecutions 写入 cfg 的结构量」的滞后——星徽·比利链数/最高马力星光即按
    * state.basicAttackTime 当前轮直推（估时与物化共用同一求解器，同一份时间只花一次）。
    */
-  state?: IterationState
+  state?: Readonly<IterationState>
 }
 
 export interface AgentExSpecialTimeEstimate {
@@ -476,14 +484,14 @@ export interface AgentExSpecialTimeEstimate {
 
 export interface AgentEventInput {
   cfg: CharacterOperationConfig
-  state: IterationState
+  state: Readonly<IterationState>
   events: AnomalyEventExecution[]
   totalTime: number
 }
 
 export interface AgentResourceResultInput {
   cfg: CharacterOperationConfig
-  state: IterationState
+  state: Readonly<IterationState>
   /** 其他队友前台时间合计（秒），供队友触发类机制使用 */
   teamFrontlineSeconds?: number
   /**
@@ -505,7 +513,7 @@ export interface AgentSkillTransformInput {
   panel: DeepReadonly<PanelValues> | null
   cinemaLevel: number
   potentialLevel: number
-  team: MechanicTeamMember[]
+  team: ReadonlyTeam
   dazeCoef: number
   stunExecs: StunSkillExecution[]
   anomalyExecs: AnomalySkillExecution[]
@@ -520,7 +528,7 @@ export interface AgentDamageResolutionInput {
   move: SkillMove | null
   /** 缓存资源结果里的行（跨读者共享）⇒ 只读 */
   exec: DeepReadonly<SkillExecution>
-  team: MechanicTeamMember[]
+  team: ReadonlyTeam
   cinemaLevel: number
   potentialLevel: number
 }
@@ -531,7 +539,7 @@ export interface ReleaseModifierInput {
 }
 
 export interface AgentResourceSectionsInput {
-  result: CharacterResourceResult
+  result: DeepReadonly<CharacterResourceResult>
   anomalyPoolResult?: AnomalyPoolResult | null
   /** 琉音好评转大收敛拆分（60=吃连携窗口 / 90=白送终结技，来自 promoteFixpoint 终值）；
    *  仅结果页注入——归档/难度曲线拿不到不动点终值，缺省时 60/90 拆分行不显示。纯展示载荷。 */
@@ -841,11 +849,11 @@ export interface CrossAgentSupplyInput {
   /** 提供者自己的 cfg */
   cfg: CharacterOperationConfig
   /** 提供者自己上一轮/本轮的收敛状态 */
-  state: IterationState
+  state: Readonly<IterationState>
   /** 供给落点槽的 cfg（槽位无效时 undefined ⇒ 返回 0） */
   targetCfg?: CharacterOperationConfig
   /** 供给落点槽的状态（同上；部分类别按落点次数折算） */
-  targetState?: IterationState
+  targetState?: Readonly<IterationState>
   /** 失衡次数（计划值；部分类别按它折算窗口数） */
   stunCount: number
   /** 战斗总时长（秒） */
@@ -902,7 +910,7 @@ export interface AgentAxisOverlayInput {
   /** 本模块角色所在槽位（编排层按注册表逐模块派发；模块无需自己 findIndex） */
   slot: number
   /** 生效失衡轴（**判模式不要用它**——见 `isAxis`；本钩子只管轴内覆盖与同角色的非轴折算） */
-  axes: StunAxis[]
+  axes: DeepReadonly<StunAxis[]>
   cinemaLevel: number
   /** 倍率表访问（可琳等需要把普攻段归并到 'basic_attack' 聚合行键时查 basic 段 moveId） */
   getAgentSkills: (agentId: string) => { categories: { id: string; moves: { id: string }[] }[] } | undefined
@@ -1016,7 +1024,7 @@ export interface AxisScalarOverlays {
 export interface AgentAnomalyTransformInput {
   /** 已按元素分组的积蓄贡献（可变：模块可 push 新贡献） */
   elementMap: Map<string, AnomalyContribution[]>
-  panels: PanelValues[]
+  panels: DeepReadonly<PanelValues[]>
   bossCoeff: number
   anomalyCoeff: number
   enemyAnomalyResistances: Record<string, number>
@@ -1052,7 +1060,7 @@ export interface AgentNextRoundFeedbackInput {
    * 槽位号 ≠ 下标：前导空槽时 `characters[slot]` 会取到 `undefined` 或**别人那份 cfg**
    * （2026-09-16 实测：`['', 1041, 1191]` 时 1191 的 `characters[2]` 为 undefined）。
    */
-  cfg: CharacterOperationConfig
+  cfg: DeepReadonly<CharacterOperationConfig>
   /**
    * 本轮全队 cfg（**可写**：写自己那份正是「模块自读字段」的通道）。
    *
@@ -1061,15 +1069,15 @@ export interface AgentNextRoundFeedbackInput {
    * `threadsNext` → 下一轮 `applyTeamConfig(converge)` 读 `threads` 写 cfg。写回仍逐位保留
    * （原实现如此，且有单测断言其守卫差异），但它**不是**反馈生效路径。
    */
-  characters: CharacterOperationConfig[]
+  characters: DeepReadonly<CharacterOperationConfig[]>
   /** 本轮装配后（`calcTeamResources` + `enrichExecutionPlan`）的全队资源结果 */
-  teamResult: TeamResourceResult
+  teamResult: DeepReadonly<TeamResourceResult>
   /** 展示口径结果（`normalizeDisplayTime` 后，含赠链/赠大行）；缺省 = 与 teamResult 同源 */
-  displayResult?: TeamResourceResult
+  displayResult?: DeepReadonly<TeamResourceResult>
   /** 调整后结果（诺姆赠链 / 琉音转大落地后，伤害池与执行计划口径）；null = 本轮无调整 */
-  adjustedResult?: TeamResourceResult | null
+  adjustedResult?: DeepReadonly<TeamResourceResult> | null
   /** 本轮异常池结果（无异常行队伍为 null） */
-  anomalyPool: AnomalyPoolResult | null
+  anomalyPool: DeepReadonly<AnomalyPoolResult> | null
   /**
    * **上一轮**收敛线程快照（只读）。两个用途：① 首轮守卫（`prev* <= 0` 才写 cfg）；
    * ② 自身反馈输入（如上一轮队友强特合计）。

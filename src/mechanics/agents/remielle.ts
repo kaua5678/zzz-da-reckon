@@ -5,7 +5,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentTeamPanelEffectInput,
-  MechanicTeamMember,
+  ReadonlyTeam,
 } from '../types'
 import type { Agent } from '@/types/catalog'
 import type { CharacterResourceResult, RemielleMechanicSource } from '@/types/resource'
@@ -84,7 +84,7 @@ export function isRemielleAgent(agent: { id?: string; teammateBuffId?: string } 
  * `buildMechanicTeamMembers` + `agent.faction`，本模块从钩子入参拿同一份 `team` 与 `agent`）。
  * 空槽（`agent` 为 null）不参与计数，也不与本人同槽比较 —— 与原实现的 `member.slot === slot` 等价。
  */
-function remielleDazeTier(slot: number, agent: Agent, team: MechanicTeamMember[]): number {
+function remielleDazeTier(slot: number, agent: Agent, team: ReadonlyTeam): number {
   const faction = agent.faction
   const active = team.some(member => {
     if (member.slot === slot || !member.agent) return false
@@ -95,7 +95,7 @@ function remielleDazeTier(slot: number, agent: Agent, team: MechanicTeamMember[]
 }
 
 /** 额外能力三档 → 失衡提升%（0 / 6 / 12 / 35）。 */
-function remielleDazeBonusPct(slot: number, agent: Agent, team: MechanicTeamMember[]): number {
+function remielleDazeBonusPct(slot: number, agent: Agent, team: ReadonlyTeam): number {
   return [0, 6, 12, 35][remielleDazeTier(slot, agent, team)] ?? 0
 }
 
@@ -154,11 +154,10 @@ function applyRemielleTeamPanelEffects({ slot, cinemaLevel, team, panel }: Agent
 }
 
 /** 把「本槽是不是蕾米埃尔」与额外能力档位写进 cfg（原 `helpers.ts:1661-1667` 的 cfg 出口）。 */
-function buildRemielleCharConfig({ slot, agent, team, panel, cfg }: AgentCharConfigInput): void {
+function buildRemielleCharConfig({ slot, agent, team, cfg }: AgentCharConfigInput): void {
   if (!isRemielleAgent(agent)) return
   const dazeBonusPct = remielleDazeBonusPct(slot, agent, team)
-  // 原实现先写 panel 再写 cfg（两处都是同一个数）⇒ 逐位保留「面板阶段已经写过、cfg 阶段再写一次」
-  panel.remielleRadiantTurnDazeBonusPct = dazeBonusPct
+  // panel 同名字段只由上方 applyRemiellePanel 写（buildCharConfig 的 panel 只读：cfg 是本钩子唯一出口）
   cfg.remielleEnabled = true
   cfg.remielleRadiantTurnDazeBonusPct = dazeBonusPct
 }

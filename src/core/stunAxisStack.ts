@@ -96,7 +96,7 @@ export interface StackTraversalResult {
  * 把失衡窗口数按轴顺序分配：count 有值 = 精确次数，缺省 = 兜底吃剩余。
  * 返回每个轴分配到的窗口数（与 axes 同序）。供栈遍历、连携加权、转大加权共用同一套口径。
  */
-export function allocateAxisWindows(axes: { count?: number }[], stunCount: number): number[] {
+export function allocateAxisWindows(axes: ReadonlyArray<{ readonly count?: number }>, stunCount: number): number[] {
   const wins: number[] = []
   let remaining = Math.max(0, stunCount)
   for (const axis of axes) {

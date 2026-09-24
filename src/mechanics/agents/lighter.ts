@@ -176,8 +176,8 @@ export function computeLighterFlameShockCount(combatTime: number, powerFinisherC
  * 在资源迭代收敛后由编排层写入 lighterTeamEnergyConsumed。
  */
 export function estimateTeamNormalEnergyConsumed(
-  characters: CharacterOperationConfig[],
-  exCounts: number[],
+  characters: ReadonlyArray<Pick<CharacterOperationConfig, 'isFlashUser' | 'exSpecialEnergyConsume'>>,
+  exCounts: readonly number[],
 ): number {
   let total = 0
   for (let i = 0; i < characters.length; i++) {

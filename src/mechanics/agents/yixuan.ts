@@ -231,7 +231,7 @@ export function computeYixuanExChain(
  */
 export function computeYixuanNingshenBonus(
   slot: number,
-  axes: { actions: { slot: number; moveId: string; count: number; startTime?: number }[] }[],
+  axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>,
   _cinemaLevel = 0,
 ): Map<string, { critDmg: number; sheerDmg: number }> {
   const triggerIds = new Set<string>(['1371014', '1371020'])
@@ -271,7 +271,7 @@ export function computeYixuanNingshenBonus(
  * 触发块（终结技）标 trigger=true（自身不享受）；落窗动作标 active=true（暴伤+40%）。
  */
 export function computeYixuanNingshenBlocks(
-  axes: { actions: { slot: number; moveId: string; count: number; startTime?: number }[] }[],
+  axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>,
   yixuanSlot: number,
 ): Map<string, { trigger: boolean; active: boolean }> {
   const out = new Map<string, { trigger: boolean; active: boolean }>()

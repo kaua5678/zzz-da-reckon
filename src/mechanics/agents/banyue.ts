@@ -361,7 +361,7 @@ export function computeBanyueRageCycle(
  */
 export function computeBanyueMingwangStacks(
   slot: number,
-  axes: { actions: { slot: number; moveId: string; count: number; startTime?: number }[] }[],
+  axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>,
   cinemaLevel: number,
 ): Map<string, number> {
   if (cinemaLevel >= 6) return new Map<string, number>()
@@ -402,7 +402,7 @@ export function computeBanyueMingwangStacks(
  * 6命不扫描（满覆盖，UI 单独提示）。
  */
 export function computeBanyueMingwangBlocks(
-  axes: { actions: { slot: number; moveId: string; count: number; startTime?: number }[] }[],
+  axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>,
   banyueSlot: number,
   cinemaLevel: number,
 ): Map<string, { layers: number; trigger: boolean }> {
