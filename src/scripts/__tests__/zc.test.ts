@@ -8,7 +8,8 @@
  *    agentIds: [AGENT_ID] 常量间接没解析 → 12 个模块被误报无覆盖）。
  */
 import { describe, expect, it } from 'vitest'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ROOT } from '../../../scripts/zc.mjs'
 import {
@@ -42,6 +43,7 @@ import {
   driftQueue,
   scanDeadClaims,
   scanStructureEntropy,
+  scanOpenItemsHygiene,
   recentlyOwnedPaths,
 } from '../../../scripts/zc.mjs'
 
@@ -323,6 +325,85 @@ describe('仓库级：索引真的建得起来', () => {
     // 清单里的每个符号都不得完整出现在扫描器源码里（拼接/描述性说法才行）。
     // 不清空时这条有牙齿；清单为空时它退化为恒真（可接受——真正的护栏是扫描器注释里的警示）。
     for (const name of listed) expect(scannerSrc.includes(name)).toBe(false)
+  })
+})
+
+describe('OPEN-ITEMS 结案残留体检（只报不红；只看 ##/### 标题行）', () => {
+  // 临时根 + .claude/OPEN-ITEMS.md 的 fixture；用完即删（不碰真实 .claude/）。
+  const withFixture = (content: string | null, fn: (root: string) => void) => {
+    const root = mkdtempSync(join(tmpdir(), 'zc-oi-'))
+    try {
+      if (content !== null) {
+        mkdirSync(join(root, '.claude'), { recursive: true })
+        writeFileSync(join(root, '.claude/OPEN-ITEMS.md'), content)
+      }
+      fn(root)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  }
+
+  it('① 文件不存在 → { exists: false }，不抛错', () => {
+    withFixture(null, (root) => {
+      expect(scanOpenItemsHygiene(root)).toEqual({ exists: false })
+    })
+  })
+
+  it('② 只认 ##/### 标题行：结案标题恰 1 条且行号正确，列表项里的结案词不算', () => {
+    // 第 6 行 = 「### ✅ … 已结案」；第 7 行的列表项是「已裁决不做」段式的合法否决摘要。
+    const content = [
+      '# OPEN-ITEMS',
+      '',
+      '## 活条目',
+      '- 待开工：某机制',
+      '',
+      '### ✅ R1 · 某事 —— 已结案',
+      '- ⛔ R2 · 已结案，别重做',
+      '',
+    ].join('\n')
+    withFixture(content, (root) => {
+      const r = scanOpenItemsHygiene(root)
+      expect(r.exists).toBe(true)
+      if (!r.exists) return
+      expect(r.closedHeadings).toHaveLength(1)
+      expect(r.closedHeadings[0].line).toBe(6)
+      expect(r.closedHeadings[0].title).toContain('R1')
+      expect(r.maxLines).toBe(600)
+    })
+  })
+
+  it('③ 601 行的文件 → lines > maxLines（量体温不治病）', () => {
+    const content = Array.from({ length: 601 }, (_, i) => '- 活条目 ' + i).join('\n')
+    withFixture(content, (root) => {
+      const r = scanOpenItemsHygiene(root)
+      expect(r.exists).toBe(true)
+      if (!r.exists) return
+      expect(r.lines).toBe(601)
+      expect(r.lines).toBeGreaterThan(r.maxLines)
+    })
+  })
+
+  it('④ 只有活条目 → closedHeadings 为空', () => {
+    const content = ['# OPEN-ITEMS', '', '## 未决口径', '- 某事待裁决', '', '## 待开工', '- 另一事', ''].join('\n')
+    withFixture(content, (root) => {
+      const r = scanOpenItemsHygiene(root)
+      expect(r.exists).toBe(true)
+      if (!r.exists) return
+      expect(r.closedHeadings).toEqual([])
+      expect(r.lines).toBeLessThanOrEqual(r.maxLines)
+    })
+  })
+
+  it('⑤ 结案词命中五选一（已结清/已收口/已完结/不立项），title 截断到 80 字', () => {
+    const long = '已收口 ' + 'x'.repeat(120)
+    const content = ['## ' + long, '### 已结清', '### 已完结', '### 不立项'].join('\n')
+    withFixture(content, (root) => {
+      const r = scanOpenItemsHygiene(root)
+      expect(r.exists).toBe(true)
+      if (!r.exists) return
+      expect(r.closedHeadings).toHaveLength(4)
+      expect(r.closedHeadings[0].title).toHaveLength(80)
+    })
   })
 })
 describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会悄悄过期」的机器答案）', () => {

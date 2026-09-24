@@ -578,6 +578,38 @@ export function scanStructureEntropy(root = ROOT) {
   return { maxFileLines: MAX_FILE_LINES, overThreshold: over, branches }
 }
 
+/**
+ * OPEN-ITEMS 结案残留体检（只报不红，与 scanStructureEntropy 同一哲学）。
+ *
+ * 动机：`.claude/OPEN-ITEMS.md` 的规则是「做完一条删一条」，但散文规则拦不住——瘦身后又涨回
+ * 1810 行，约 50 条标题自称已结案的条目没人删。要在每个会话开局必跑的 zc status 里点名，
+ * 而不是红了逼人删条目（红了会逼人给文件灌水/删活条目作弊，反而毁掉温度计）。
+ *
+ * 口径：**只看 ## / ### 标题行**。列表项 / 表格行 / 引用块里出现结案词是合法内容
+ * （「已裁决不做」段刻意用列表项保留否决摘要，规则 16③），一律不算残留。
+ * 返回 `{ exists: false }` 或 `{ exists: true, lines, maxLines, closedHeadings }`；
+ * 文件不存在不抛错。`line` 为 1 基行号，`title` 截断到 80 字。
+ */
+export function scanOpenItemsHygiene(root = ROOT) {
+  const MAX_OPEN_ITEMS_LINES = 600
+  const file = join(root, '.claude/OPEN-ITEMS.md')
+  if (!existsSync(file)) return { exists: false }
+  const raw = readFileSync(file, 'utf8')
+  const all = raw.split('\n')
+  // 行数按「实际内容行」算（与 wc -l 对齐）：末尾换行不额外算一行。
+  if (all.length && all[all.length - 1] === '') all.pop()
+  const CLOSED = /✅|已结案|已结清|已收口|已完结|不立项/
+  const closedHeadings = []
+  for (let i = 0; i < all.length; i++) {
+    const line = all[i]
+    if (!/^#{2,3} /.test(line)) continue
+    if (!CLOSED.test(line)) continue
+    const title = line.replace(/^#+\s*/, '').trim()
+    closedHeadings.push({ line: i + 1, title: title.length > 80 ? title.slice(0, 80) : title })
+  }
+  return { exists: true, lines: all.length, maxLines: MAX_OPEN_ITEMS_LINES, closedHeadings }
+}
+
 export function readLeases() {
   if (!existsSync(LEASES_FILE)) return []
   try { return JSON.parse(readFileSync(LEASES_FILE, 'utf8')) } catch { return [] }
@@ -768,6 +800,7 @@ async function verbStatus(root = ROOT) {
   const drift = driftQueue(root)
   const deadClaimScan = scanDeadClaims(root)
   const entropy = scanStructureEntropy(root)
+  const openItems = scanOpenItemsHygiene(root)
   const journal = allJournal.slice(-3)
   const next = foreign.length > 0
     ? 'zc lanes  # 有 ' + foreign.length + ' 个文件疑似并行会话在改：先确认归属再动手（规则 13）'
@@ -778,6 +811,9 @@ async function verbStatus(root = ROOT) {
     deadClaims: deadClaimScan.dead,
     overExportedClaims: deadClaimScan.overExported,
     entropy: { maxFileLines: entropy.maxFileLines, overCount: entropy.overThreshold.length, top: entropy.overThreshold.slice(0, 5), branchCount: entropy.branches.length, branches: entropy.branches },
+    openItems: openItems.exists
+      ? { exists: true, lines: openItems.lines, maxLines: openItems.maxLines, closedCount: openItems.closedHeadings.length, closedHeadings: openItems.closedHeadings }
+      : { exists: false },
   }, next)
 }
 
@@ -998,6 +1034,14 @@ function humanize(res) {
       const top = d.entropy.top?.[0]
       lines.push('结构熵 最大文件 ' + (top ? top.file + ' ' + top.lines + ' 行' : '无') + ' · 超 ' + d.entropy.maxFileLines + ' 行 ×' + d.entropy.overCount + ' · 本地分支 ' + d.entropy.branchCount)
       if (d.entropy.overCount) lines.push('  超标：' + d.entropy.top.map(f => f.file + ' ' + f.lines).join(' / '))
+    }
+    // OPEN-ITEMS 结案残留（只报不红）：与结构熵同一哲学——量体温不治病，红线由人评估。
+    // 文件不存在或干净时不输出（不打扰）。
+    if (d.openItems?.exists && (d.openItems.lines > d.openItems.maxLines || d.openItems.closedCount > 0)) {
+      const first = d.openItems.closedHeadings?.[0]
+      lines.push('OPEN-ITEMS ' + d.openItems.lines + ' 行 · 结案残留 ' + d.openItems.closedCount + ' 条'
+        + (first ? '（首条 L' + first.line + ' ' + first.title.slice(0, 30) + '）' : '')
+        + ' → 原样移到 .claude/archive/，主文件只留活条目（AGENTS §4）')
     }
     if (d.facts) lines.push('手写事实 ' + d.facts.authored + ' 条' + (d.facts.broken ? ' / ✗ 断锚 ' + d.facts.broken : '') + (d.facts.reviewQueue ? ' / ⟳ 待复核 ' + d.facts.reviewQueue : ''))
     for (const b of d.backlog ?? []) lines.push('待办 ' + b.dim + '：已实现 ' + b.done + ' / 未描述 ' + b.undescribed + ' / 待办条目 ' + b.pending)

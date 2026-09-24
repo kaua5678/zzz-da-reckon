@@ -115,6 +115,15 @@ export interface StructureEntropy {
   branches: string[]
 }
 export declare function scanStructureEntropy(root?: string): StructureEntropy
+/** OPEN-ITEMS 结案残留体检：文件不存在 → 仅 exists:false；只看 ##/### 标题行（列表项/表格/引用块里的结案词是合法内容） */
+export interface OpenItemsHygieneMissing { exists: false }
+export interface OpenItemsHygienePresent {
+  exists: true
+  lines: number
+  maxLines: number
+  closedHeadings: { line: number; title: string }[]
+}
+export declare function scanOpenItemsHygiene(root?: string): OpenItemsHygieneMissing | OpenItemsHygienePresent
 /** 死口径两态：dead=全仓含本文件零调用；overExported=仅本文件内调用（可去 export 收窄 API） */
 export interface DeadClaimHit { name: string; file: string }
 export declare function scanDeadClaims(root?: string): { dead: DeadClaimHit[]; overExported: DeadClaimHit[] }
