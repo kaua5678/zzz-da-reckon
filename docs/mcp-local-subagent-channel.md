@@ -25,7 +25,7 @@
 
 现场配置必须重新核验，不能照抄旧交接：
 
-1. 模型候选仍读 `~/.dsh/model-routing.yaml`。本次窄范围验证选择 fast 档首选，并核对模型支持 `low`。
+1. 模型用 `~/.dsh/model-routing.yaml` 里那一条（`wb/deepseek-v4.1-flash`，2026-09-23 用户裁决；旧的分档表已删）。窄范围验证按需把 effort 降到 `low`，核对模型确实声明了该 effort。
 2. 本次 `~/.dsh/settings.yaml` 已不存在；有效 provider 配置在 `~/.dsh/profiles/web/cordis.patch.yml`。只提取所选 provider，禁止把整份配置或凭据打印到 MCP 输出。
 3. `headless` 的默认模型指向 `wb`，但它自身组合的 `llm-pi-ai` 未带 provider 配置。直接运行不能等同于 Web 会话已有的模型能力。
 4. 使用临时 `--patch` 注入所需 provider 与只读限制；不编辑全局 profile、不重启现有 Web 服务、不安装依赖。
@@ -51,7 +51,7 @@
       allow: [read]
 ```
 
-以上是本次实测配置，不是永久路由事实源。复跑脚本重新读取 fast 候选，并核对该 provider 的模型/effort 声明；配置迁移或 schema 改变时先停下核对，不猜参数、不偷偷换模型。
+以上是本次实测配置，不是永久路由事实源。复跑时按 `~/.dsh/model-routing.yaml` 取当前那一条路由，并核对该 provider 的模型/effort 声明；配置迁移或 schema 改变时先停下核对，不猜参数、不偷偷换模型。
 
 ### 安全与资源约束
 

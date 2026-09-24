@@ -177,46 +177,22 @@ node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --cli
 4. 报告文件写在派活指定的路径（第一行 `STATUS: done|blocked`），**最后一条回复也带一行 STATUS**
    （双通道，报告丢了管理员还能从对话里回收）。
 
-## 6. 子代理模型路由（派发 workflow/subagent 前必读）
+## 6. 子代理模型路由
 
-派发子代理前先读 `~/.dsh/model-routing.yaml`（**它是单一事实源**，本节只是摘要；两者冲突以 yaml 为准）：
+**子代理统一用 `wb/deepseek-v4.1-flash`**（用户裁决 2026-09-23）。派发时不必选档、不必查白名单：
+`subagent` / `subagent_fork` / `workflow` 的 `agent()` 省略 `provider`/`model` 即走这条
+（继承父代理路由，父代理也是它）。单一事实源 = `~/.dsh/model-routing.yaml`。
 
-| 档 | 用途 | 默认路由（按序顺延） | effort 上限 |
-|---|---|---|---|
-| review | 代码审查、架构/接口设计、疑难诊断、验收评审、spec 拆分把关 | `wb/deepseek-v4.1-flash` → `wba/deepseek-v4.1-flash` → `wba/hy4-preview-f` | max |
-| fast | 批量机械改动、跑测试、日志/数据汇总、文档生成 | `wb/deepseek-v4.1-flash`@low → `wba/deepseek-v4.1-flash`@low → `mimo/xiaomi/mimo-pro` | low~high |
-| default | 未匹配到以上两档的兜底 | `wb/deepseek-v4.1-flash` → `wba/deepseek-v4.1-flash` → `mimo/xiaomi/mimo-pro` | high |
-
-**可用性实测（2026-09-16 逐条真调，别再凭记忆）**：
-- ❌ **`b-ai/qwen3.8-flash` 余额耗尽**（HTTP 400 `credit insufficient balance: balance=0`）⇒ **已从全部档位移除**。
-  它此前是"最稳"保底，现已不可用；不要再把它当兜底。
-- ✅ `wb/deepseek-v4.1-flash` · `wba/deepseek-v4.1-flash` · `wba/hy4-preview-f` · `wb/hy4-preview` · `mimo/xiaomi/mimo-pro`
-- ⚠ `wba`(7865) 上游**要求首条消息是 system prompt**：裸调（首条为 user）会被
-  `400 upstream_rejected: blocked by security policy` 拦下；带 system 立刻 200。
-  **DSH 调用天然满足**，所以 DSH 内无需担心——但**手写 curl 探活时别据此误判"wba 挂了"**。
-- ⚠ 探活踩坑：推理模型先吐 `reasoning_content`，`max_tokens` 给小（如 16）时 `content` 会是空串
-  ⇒ 别把「空 content」当成「模型坏了」（加大到 200 后全部正常）。
-
-- 显式钉档：`workflow` 的 `agent(prompt, { provider, model })`；同一 workflow 可按 phase 分档
-  （如调研用 fast、实施用 review）。
-- 白名单：模型须在 settings.yaml `subagent-model-selection.allowedModels` 内，否则界面上选不到。
-- effort 必须落在该模型 `reasoningEfforts` 声明内；`max` **wb / wba 有，mimo 没有**（上限 high）。
-  ⚠ 且**档位 ≠ 强度**：2026-09-14 四模型横评实测「四款全部不随 effort 档位单调缩放」（`~/.dsh/model-routing.yaml` 头），
-  别把 `max` 当"更聪明"用；hy4-preview-f 另有下限（思考预算 3k 会截断失败、12k OK）。
-- 档内 candidates 按序优先，失败（402 / 余额不足 / UNSUPPORTED / 连接失败）顺延下一个；全失败降级 default 并写明原因。
-- `wb`(7863,wb2api) 与 `wba`(7865,wbai-server) 是两个不同网关；hy4-preview-f 仅 wba 有。
-- ⚠ **`@snowamberx/dsh-role-router` 已彻底移除（2026-09-16，用户裁决"整体关掉也行"）**。
-  它曾按角色强制改写路由（`subagent` 角色被写死为 mimo-pro@high），由此产生的
-  「派子代理会被强制改路由到 mimo 并夭折」**已彻底失效** ⇒ **子代理现在完全按你指定的 provider/model 跑**。
-  移除面（4 处，全部已清）：`~/.dsh/profiles/web/` 的 `package.json`（依赖 + `dsh.profile.bundles`）、
-  `cordis.yml`（composition 条目）、`cordis.patch.yml`（patch 段，现为合法空数组 `[]`）、
-  `pnpm-lock.yaml`、`node_modules/@snowamberx/`。
-  （顺带清掉了 `dsh-codearts-auth` 的卸载残留条目。）
-  **若将来又想按角色分流**：装回该插件即可，但记住它的优先级**高于** `model-routing.yaml`。
-- **怎么知道子代理实际跑了哪个模型**（前端不显示）：① 工具 `_dsh_external_subagent_model_badge_status`
-  （badge 插件账本，权威）；② 直接读子代理 session log 的 `request/header.data.header.config`。
-  实测 badge 账本可能不含最新记录（按需拉取非轮询）⇒ 要精确值就读 log。
-- 想换档位模型：改 `~/.dsh/model-routing.yaml`，不要改本节。
+- **要临时换模型**：只有 `workflow` 的 `agent(prompt, { provider, model })` 能改子代理路由。
+  `subagent` 工具能否换，取决于本会话有没有模型选择白名单——有则工具 schema 里会多出
+  `provider`/`model`/`reasoning_effort` 三个字段，没有则只能继承父路由。
+  可选路由见 profile 的 `llm-pi-ai` provider 段（`~/.dsh/profiles/web/cordis.patch.yml`）；
+  **不必**在此维护可用性清单——有些 provider 已注册但不可用，撞到就换一个，别照抄旧结论。
+- **子代理不能再派子代理**：`maxDepth: 1`，实测报错 `subagent depth 2 exceeds maxDepth 1`。
+  要再拆，由你回收上下文后另开任务（同 §5「不允许工人继续发孙代理」）。
+- **怎么知道子代理实际跑了哪个模型**（前端不显示）：① badge 插件工具
+  `_dsh_external_subagent_model_badge_status`（本机已装，账本可能不含最新记录）；
+  ② 直接读子代理 session 的 `modelSelection.lastUsed`（始终可用，最可靠）。
 
 
 ---
