@@ -22,6 +22,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   npm 派生的子进程（子进程的信号处置会被重置为默认），2026-09-24 实测 `npm run check` 因此以 EXIT=129 被杀。
 - 并发上限：同时最多 2 个工人、1 个重计算时段（全量 vitest / build / 浏览器）；同一文件不派给两个工人（§5-3）。
 - 工人报告首行 `STATUS: done|blocked`，路径写在卡里；`/tmp/worker-<卡>.err` 是推理过程，报告丢失时 `tail` 它回收。
+- **回收时的读法**（2026-09-25）：`wsl_exec` 只回 stdout **尾部**（开头被静默截掉）⇒ 报告 / 长日志先落 `/tmp` 再 `sed -n` 分段读；等工人收工用 WSL 端有界轮询（`pgrep -f '^node .*dsh --profile headless ### <卡>'` 每 10 s 一次，单次调用 ≤ 9 min），远程客户端别用 Node 内置 `fetch` 干等（300 s 自断），见 `docs/mcp-local-subagent-channel.md` §5。
 - 主代理复核 = `docs/mcp-lead-agent-handoff.md` §7：看真实 diff 是否越白名单、亲自重放一条正控一条负控、
   核对产物时效；然后显式路径提交、`node scripts/zc.mjs done` 留痕、删卡。
 - **两个写工人并行**：第二个放进隔离 worktree（`git worktree add --detach /tmp/wt-<卡> HEAD` 后软链 `node_modules`），
@@ -216,8 +217,8 @@ lead 裁定（2026-09-25）：按数据字典 + 既有 4 条先例（`1101:C2`�
 **禁止**：改其它档位或其它角色（包括 W24 §1 提到的 1111 C1/C4/C6 镜像不一致——只报告，不修）；改 `src/`、`data/raw/`、`catalog.json`；改 JSON 的格式风格；跑全量 vitest / build。
 
 **步骤与验收**：
-1. **先证往返无损**：用 node 脚本 `JSON.parse` → 不做任何修改 → 按原风格序列化写到 `/tmp/w27-roundtrip-*.json`，与原文件 `sha256sum` 必须一致（两份 JSON 各证一次；不一致就先找出能逐字节还原的序列化方式，找不到 ⇒ `STATUS: blocked`）。之后才用同一脚本改值写回。
-2. 每档改为 `status: "implemented_approximation"`；`implemented` 写一句话（照 1121 C1 的句式：效果要点 +「防御向 / 生存向，伤害计算器不建模，不参与当前计算」）；1271 C1 写「护盾 / 上限 +30% 防御向不建模；核心被动异常精通失效后额外维持 10s 无独立时长维度，由 `seth.shieldCoverage` 持盾覆盖率滑块近似（默认 1 = 满覆盖时本条无增量）」；`pending` 清空，原 pending 里的用户确认日期挪进 `implemented` 句末括号，不许丢。
+1. **先证往返无损**：用 node 脚本 `JSON.parse` → 不做任何修改 → 按原风格序列化写到 `/tmp/w27-roundtrip-*.json`，与原文件 `sha256sum` 必须一致（两份 JSON 各证一次；不一致就先找出能逐字节还原的序列化方式，找不到 ⇒ `STATUS: blocked`）。之后才用同一脚本改值写回。（lead 预审 2026-09-25 实测：两份文件都是「紧凑单行 + 末尾一个 LF」，`JSON.stringify(o) + '\n'` 即逐字节还原。）
+2. 每档改为 `status: "implemented_approximation"`；`implemented` 写一句话（照 1121 C1 的句式：效果要点 +「防御向 / 生存向，伤害计算器不建模，不参与当前计算」）；1271 C1 写「护盾 / 上限 +30% 防御向不建模；核心被动异常精通失效后额外维持 10s 无独立时长维度，由 `seth.shieldCoverage` 持盾覆盖率滑块近似（默认 1 = 满覆盖时本条无增量）」；`pending` 清空，原 pending 里的用户确认日期挪进 `implemented` 句末括号，不许丢。**原文没有日期的档不许补日期**（lead 预审：只有 1421 C4 / 1041 C4 / 1111 C2 三档原文写了 `2026-08-31`）：1141 C4 原文只有「用户确认不建模」⇒ 括号只写「（用户确认）」；1271 C1 原文没有确认字样 ⇒ 用上面给定的整句，不加括号。
 3. 镜像同步：四个角色 mechanics 文件里的对应档与 constellations 同状态、同说明。
 4. `npm run docs:status` 重新生成产物；`node scripts/zc.mjs status` 的「命座」行必须变成「未描述 **1**」（只剩 1551 C6），「已实现」相应 +5。
 5. 验收：`npm run validate:data`、modelingGaps 的单测（自己定位路径，报告写明）、`npm run check-guards` 全部 EXIT=0；`git diff --stat` 只允许三份文件（两份 JSON + `docs/implementation-status.md`）。

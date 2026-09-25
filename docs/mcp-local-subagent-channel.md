@@ -143,6 +143,8 @@ cd /home/user/mcp-client && python3 -m unittest -v test_mcp.py
 - **进程退出 0 不代表子代理运行过**：第一次临时 patch 漏写 `tool-subagent.config.provider`，DSH 报该插件未激活，父代理返回 blocked，却仍退出 0。验证器因「无 subagent 工具调用」正确判 FAIL。补齐 `provider: spawn` 等完整配置后通过；不能假定 patch 会深合并原 `config`。
 - **网络失败不能自动补发派工**：一次复跑收到 HTTP 503 / `ERR_NGROK_3004`。客户端未重放；后续只读查询未发现新增 probe 记录，并成功复核既有 PASS 证据。未发现记录不等于可以证明命令绝未执行；模糊失败要先查本机记录/进程，再决定是否另开新任务。
 - **UNC 上的新文件 hard-link 不兼容**：本次 `apply_patch` 的 Add File 报 ENOTSUP，仓库无部分落盘。用 `wsl_exec` 独占创建一行占位文件，再 `read_files` 取版本、`apply_patch` 做带旧上下文的 Update 成功；空文件的无旧上下文 Update 会被拒绝。长正文仍全部走 `apply_patch`，没有 echo/base64 截断路径。
+- **`wsl_exec` 只回 stdout 尾部**（2026-09-25 实测）：返回体标着 `--- stdout (tail) ---`，长输出的**开头被静默截掉**（本次开头的 `date` / `pgrep` 两行先丢，险些误判为命令没执行）。长输出先重定向到 WSL 的 `/tmp/<名>.txt` 再用 `sed -n` 分段读；必须看到的判读行放在输出末尾。
+- **Node 内置 `fetch` 约 300 s 断流是客户端自己掐的**（2026-09-25 定位根因）：undici 默认 `headersTimeout` / `bodyTimeout` = 300 s，而 `tools/call` 在命令结束前一个字节都不发 ⇒ 客户端约 303 s 报 `terminated`，WSL 端命令**照常跑完**、结果丢失（`docs/mcp-logic-editor-state-safety.md` 记过同一现象，当时未定位）。远程客户端改用 `node:https` 这类无空闲超时的传输、只留整体超时后，一次 502 s 的 `wsl_exec` 等待调用正常返回。长等待仍宜放在 WSL 端做有界轮询（单次 ≤ 9 min，`wsl_exec` 自身上限 10 min），不要靠客户端干等。
 
 ## 6. 交付范围与后续闸门
 
