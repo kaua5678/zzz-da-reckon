@@ -450,6 +450,17 @@ export const yidhariMechanic: AgentMechanicModule = {
     kind: 'curtain-open',
     supply: ({ state }) => Math.max(0, Math.floor(state.ultimateCount)),
   },
+  /**
+   * 终局整数重推（规则 6 引擎落点，2026-09-25 CC-6c）：强特次数实数化收尾。
+   * `stage='tail'`（S3a 欠打回填之后、S4 装配之前）——与 preTail 不可合并（合并会改数值）；
+   * `reset` 无条件写 false（逐位保留原语义），装配后才由引擎复位。
+   */
+  finalizePass: {
+    stage: 'tail',
+    applies: cfg => cfg.yidhariContinuousEx === true,
+    begin: cfg => { cfg.yidhariFinalizeEx = true },
+    reset: cfg => { cfg.yidhariFinalizeEx = false },
+  },
   buildExecutions: buildYidhariExecutions,
   buildResourceResult: buildYidhariResourceResult,
   resourceSections: buildYidhariResourceSections,

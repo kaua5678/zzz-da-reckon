@@ -16,6 +16,9 @@ import {
   type CrossAgentSupplyInfo,
 } from './resource/crossAgentSupply'
 import { curtainInfoOf } from './resource/curtain'
+// 终局整数重推执行器（规则 6 引擎落点，2026-09-25 CC-6c）：1531/1431（preTail）与 1051（tail）
+// 的角色专属「谁参与/置哪个旗标」已迁各模块的 `finalizePass` 能力，本文件只调通用执行器。
+import { runFinalizePasses, resetFinalizePasses } from './resource/finalizePasses'
 
 export { crossAgentSupplyAt, crossAgentSuppliesOf, findCrossAgentSupplySlots, ultimateGiftOf }
 export type { CrossAgentSupplyInfo }
@@ -458,64 +461,20 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     return st
   }
 
-  // ===== 星徽·比利终局整数重推（链数实数化收尾，2026-09-06，1051 yidhariFinalizeEx 同骨架）=====
-  // 迭代期她的动力压制链数与最高马力星光以实数参与收敛（HP 池 ∝ 普攻回血 ∝ 平A时间 = 正反馈
-  // 连续通道；消滞后后估时与物化共用同一求解器），终局 floor 一次 + 整数态重推 ≤12 轮到全状态
-  // 逐位稳定，让时间预算/能量/喧响账本与整数链数自洽（只作用于 1531 非轴模式，轴模式恒整数）。
+  // ===== 终局整数重推（链数/轮数实数化收尾；规则 6 引擎落点，2026-09-25 CC-6c）=====
+  // 迭代期 1531 动力压制链数、1431 明心境轮数以**实数**参与收敛（正反馈连续通道；消滞后后估时与
+  // 物化共用同一求解器），终局 floor 一次 + 整数态重推 ≤12 轮到全状态逐位稳定，让时间预算/能量/
+  // 喧响账本与整数次数自洽。角色专属部分（谁参与 / 置哪个旗标 / 何时复位）已迁各模块的
+  // `finalizePass` 能力（starlightBilly / yeshuguang 声明 `stage='preTail'`），本处只调通用执行器
+  // `runFinalizePasses`——引擎不写 agentId、不 import 角色模块。
+  //
   // 旗标在最终装配后才复位：欠打回填试探与最终装配都必须按**整数物化行**测可行性/出账，
   // 否则「floor 后 +1 链（≈10s）」的时长会被当成余量放行（1s 容差兜不住一整链）。
-  const runBillyFinalize = (from: IterationState[]): IterationState[] => {
-    let st = from
-    // 星徽·比利终局整数重推：保留 agentId 判据。⚠ 2026-09-15 试过按字段改写（「唯一写入方是它的
-    // cfg ⇒ agentId 冗余」），**实测不成立**：`billyFinalizeChain` 的初值 `false` 是由本文件 :965
-    // 的 `if (cfg.agentId === '1531')` 循环写入的（非 undefined 即「已初始化」），故改用
-    // `billyFinalizeChain === false` 作判据会把**非比利 cfg**（该字段 undefined）也纳入重推，
-    // 而它对非比利 cfg 无意义。⇒ 该处属「写入方是编排/引擎层的按角色复位」，不在 T6 冗余判据范围内。
-    const billyFinalizeConfigs = configs.filter(c => c.agentId === '1531' && Number((c as unknown as Record<string, unknown>).billyAxisActive ?? 0) !== 1)
-    /**
-     * 叶瞬光（1431）终局整数化（2026-09-20，用户口径「余数剑势本来就该留着不打」）：
-     *
-     * 迭代期明心境轮数（照影/喧响进轮/转大赠轮）以**实数**参与收敛，防「平A↑→剑势↑→轮数+1整轮
-     * →必要时间↑→平A↓」正反馈环（见 `@fact agent:1431/轮数实数化`）。但照影是「攒满 6 点剑势
-     * ⇒ 变身一次」的**离散触发**——30.38 点剑势只能是 5 次照影，余 0.38 点留着不打；小数化会把
-     * 「差一点的轮」直接兑现成 0.9 轮，掩盖掉「多出的那一轮要靠合轴率/缩时轴装下」这条链路。
-     *
-     * 终局 floor 一次 + 整数态重推 ≤12 轮（与比利同骨架），旗标在最终装配后才复位——装配行
-     * 必须按终局整数语义出账（否则行数按实数出、账本按整数出，两边不自洽）。
-     */
-    // 叶瞬光：按**能力字段**找槽（规则 6 / core agentId 棘轮）——模块在 buildCharConfig 里声明
-    // `yeshuguangContinuousForms`，引擎只查询能力，不 import 角色模块、不按 id 判定。
-    const yeshuguangFinalizeConfigs = configs.filter(
-      c => Number((c as unknown as Record<string, unknown>).yeshuguangContinuousForms ?? 0) === 1)
-    if (billyFinalizeConfigs.length > 0 || yeshuguangFinalizeConfigs.length > 0) {
-      for (const bCfg of billyFinalizeConfigs) bCfg.billyFinalizeChain = true
-      for (const yCfg of yeshuguangFinalizeConfigs) {
-        ;(yCfg as unknown as Record<string, unknown>).yeshuguangFinalizeForms = true
-      }
-      let finalizeStable = false
-      for (let finalizePass = 0; finalizePass < 12; finalizePass++) {
-        const prev = st
-        st = iterate(configs, st, config)
-        let stable = true
-        for (let i = 0; i < st.length; i++) {
-          const a = st[i], b = prev[i]
-          if (a.exSpecialCount !== b.exSpecialCount || a.ultimateCount !== b.ultimateCount ||
-              a.basicAttackTime !== b.basicAttackTime || a.necessaryTime !== b.necessaryTime ||
-              a.frontlineTime !== b.frontlineTime || a.backstageTime !== b.backstageTime ||
-              a.comboAlignTime !== b.comboAlignTime || a.comboAlignCredit !== b.comboAlignCredit ||
-              a.totalEnergy !== b.totalEnergy || a.totalDecibel !== b.totalDecibel) {
-            stable = false
-            break
-          }
-        }
-        if (stable) {
-          finalizeStable = true
-          break
-        }
-      }
-      if (finalizeStable) converged = true
-    }
-    return st
+  // ⚠ preTail 与 tail 两个 stage **不可合并**（欠打回填前 vs 后，合并会改数值）。
+  const runPreTailFinalize = (from: IterationState[]): IterationState[] => {
+    const fp = runFinalizePasses(configs, from, 'preTail', iterate, config)
+    if (fp.converged) converged = true
+    return fp.states
   }
 
   // 正常轨迹：折叠 + 比利重推
@@ -524,7 +483,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   const s2EntryCfgs = configs.map(c => ({ ...c }))
   const s2EntrySeedStates = states.map(s => ({ ...s }))
   states = runFoldLoop(states)
-  states = runBillyFinalize(states)
+  states = runPreTailFinalize(states)
 
   // ===== S3–S4 尾段管线函数化（R37-J2 步骤 ①，2026-09-19，零行为搬迁）=====
   // 末轮欠打回填 → 伊德海莉终推 → 热启动落缓存 → 赠链/终结礼/帷幕次数 → S4 装配（stageAssembleSlot）。
@@ -665,45 +624,24 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 失衡次数由外部失衡池不动点收敛后传入（连携次数 = chainCountPerStun × stunCount，见 iterate）
     const inputStunCount = config.stunCount ?? 0
 
-    // 伊德海莉终局整数重推（targeted 连续松弛收尾，2026-09-04）：迭代期她的强特次数以实数参与收敛
-    // （refund 反馈解析求解 → 唯一不动点，消除 19/20 双稳态），终局 floor 一次 + 整数态重推 ≤12 轮
-    // 到全状态逐位稳定，让时间预算/能量/喧响账本与整数次数自洽（只作用于 1051，不动其他模块的收敛语义）。
-    // agentId 判断冗余已删（同上：yidhariContinuousEx 唯一写入方 = yidhari.ts:148）；写成 `=== true`
-    // 保持 findIndex 谓词返回 boolean，语义与原式逐位等价。
-    const yidhariFinalizeIdx = configs.findIndex(c => c.yidhariContinuousEx === true)
-    if (yidhariFinalizeIdx >= 0) {
-      const yCfg = configs[yidhariFinalizeIdx]
-      yCfg.yidhariFinalizeEx = true
-      let finalizeStable = false
-      for (let finalizePass = 0; finalizePass < 12; finalizePass++) {
-        const prev = states
-        states = iterate(configs, states, config)
-        // 终局重推要求全状态逐位稳定：她的次数已是整数，队友（如莱卡恩实数次数）在整数池下
-        // 是整数输入的确定性函数——逐位相等才是 determinism.test（伤害逐位一致）的判据；
-        // 只比次数会用 ε 外的平A时间残差破坏逐位一致。
-        let stable = true
-        for (let i = 0; i < states.length; i++) {
-          const a = states[i], b = prev[i]
-          if (a.exSpecialCount !== b.exSpecialCount || a.ultimateCount !== b.ultimateCount ||
-              a.basicAttackTime !== b.basicAttackTime || a.necessaryTime !== b.necessaryTime ||
-              a.frontlineTime !== b.frontlineTime || a.backstageTime !== b.backstageTime ||
-              a.comboAlignTime !== b.comboAlignTime || a.comboAlignCredit !== b.comboAlignCredit ||
-              a.totalEnergy !== b.totalEnergy || a.totalDecibel !== b.totalDecibel) {
-            stable = false
-            break
-          }
-        }
-        if (stable) {
-          finalizeStable = true
-          break
-        }
-      }
-      // 旗标复位移到装配之后（2026-09-09，与 billyFinalizeChain 同款）：装配行必须仍按终局语义
-      // floor（yidhari 蓄力 cycles 迭代期实数松弛后，装配期靠本旗标取整数行），复位只服务于
-      // 「cfg 被外层不动点/热启动复用，下轮调用回到实数迭代期」。
-      // 实数迭代期的 2-循环（次数↔喧响↔终结技阈值）被终局整数重推吸收：重推稳定的整数态
-      // 就是终局不动点，收敛标志按重推结果报（重推 ≤3 轮未稳 = 不谎报收敛）。
-      if (finalizeStable) converged = true
+    // 伊德海莉终局整数重推（targeted 连续松弛收尾，2026-09-04；规则 6 引擎落点，2026-09-25 CC-6c）：
+    // 迭代期她的强特次数以实数参与收敛（refund 反馈解析求解 → 唯一不动点，消除 19/20 双稳态），
+    // 终局 floor 一次 + 整数态重推 ≤12 轮到全状态逐位稳定，让时间预算/能量/喧响账本与整数次数自洽。
+    // 角色专属部分（`stage='tail'` / 置哪个旗标）已迁 yidhari 模块的 `finalizePass` 能力，本处只调
+    // 通用执行器（引擎不写 agentId、不 import 角色模块）。stage='tail' = 欠打回填之后、装配之前，
+    // **不可与 preTail 合并**（合并会改数值）。
+    // 终局重推要求全状态逐位稳定：她的次数已是整数，队友（如莱卡恩实数次数）在整数池下
+    // 是整数输入的确定性函数——逐位相等才是 determinism.test（伤害逐位一致）的判据；
+    // 只比次数会用 ε 外的平A时间残差破坏逐位一致。
+    // 旗标复位移到装配之后（2026-09-09，与 billyFinalizeChain 同款）：装配行必须仍按终局语义
+    // floor（yidhari 蓄力 cycles 迭代期实数松弛后，装配期靠本旗标取整数行），复位只服务于
+    // 「cfg 被外层不动点/热启动复用，下轮调用回到实数迭代期」。
+    // 实数迭代期的 2-循环（次数↔喧响↔终结技阈值）被终局整数重推吸收：重推稳定的整数态
+    // 就是终局不动点，收敛标志按重推结果报（重推 ≤3 轮未稳 = 不谎报收敛）。
+    {
+      const fp = runFinalizePasses(configs, states, 'tail', iterate, config)
+      states = fp.states
+      if (fp.converged) converged = true
     }
 
     // 热启动回写：本轮末态（无论是否完全收敛，同配置下次都从它出发）
@@ -1025,7 +963,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     config.timeBudgetRefund = 0
     resetDiagnostics()
     states = runFoldLoop(s2EntrySeedStates.map(s => ({ ...s })))
-    states = runBillyFinalize(states)
+    states = runPreTailFinalize(states)
     const trial = runTailPipeline()
     if (trial.timeTruncatedSeconds <= accepted.tail.timeTruncatedSeconds + 1e-6) {
       tail = trial
@@ -1072,14 +1010,10 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   config.overflowSeconds = timeTruncatedSeconds
 
   // 比利/伊德海莉/叶瞬光终局旗标复位：cfg 对象被外层不动点/热启动复用，下轮调用必须回到实数迭代期
-  // （伊德海莉复位必须在装配之后：装配行按 finalizeEx=true floor 蓄力 cycles，见 buildYidhariExecutions）
-  for (const cfg of configs) if (cfg.agentId === '1531') cfg.billyFinalizeChain = false
-  for (const cfg of configs) if (cfg.agentId === '1051') cfg.yidhariFinalizeEx = false
-  for (const cfg of configs) {
-    if (Number((cfg as unknown as Record<string, unknown>).yeshuguangContinuousForms ?? 0) === 1) {
-      ;(cfg as unknown as Record<string, unknown>).yeshuguangFinalizeForms = false
-    }
-  }
+  // （伊德海莉复位必须在装配之后：装配行按 finalizeEx=true floor 蓄力 cycles，见 buildYidhariExecutions）。
+  // 2026-09-25 CC-6c：角色专属复位（谁复位哪个旗标、叶瞬光的 `yeshuguangContinuousForms === 1` 门控）
+  // 已迁各模块的 `finalizePass.reset`，本处只调通用执行器 `resetFinalizePasses`——引擎不写 agentId。
+  resetFinalizePasses(configs)
 
   // 终局预留量（供 applyLiuyinPromote 判定跳过 post-hoc carve；与 iterate Step4 同一求解）
   // ——与上方 giftTimeOfSlot 同源（同一 helper、同一轴模式条件），不重算。

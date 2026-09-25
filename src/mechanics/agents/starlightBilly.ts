@@ -871,6 +871,17 @@ export const starlightBillyMechanic: AgentMechanicModule = {
   buildCharConfig: buildBillyCharConfig,
   applyTeamConfig: applyBillyTeamConfig,
   estimateExSpecialTime: billyExSpecialTime,
+  /**
+   * 终局整数重推（规则 6 引擎落点，2026-09-25 CC-6c）：链数实数化收尾。
+   * 只作用于**非轴模式**（轴模式恒整数，捏轴是用户意图）；`begin` 置旗标后由引擎
+   * `runFinalizePasses` 重推 ≤12 轮，装配后 `reset` 复位（无条件写 false，逐位保留原语义）。
+   */
+  finalizePass: {
+    stage: 'preTail',
+    applies: cfg => Number((cfg as unknown as Record<string, unknown>).billyAxisActive ?? 0) !== 1,
+    begin: cfg => { cfg.billyFinalizeChain = true },
+    reset: cfg => { cfg.billyFinalizeChain = false },
+  },
   buildExecutions: buildBillyExecutions,
   patchExecutions: patchBillyExecutions,
   buildResourceResult: buildBillyResourceResult,

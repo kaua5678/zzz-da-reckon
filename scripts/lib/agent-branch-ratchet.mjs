@@ -246,7 +246,18 @@ export const CORE_AGENT_BRANCH_FILES = ['src/core/resource.ts', 'src/core/resour
  *  `helpers.ts:1254`（般岳强特次数分支）· `helpers.ts:1389`（`luciaSlot`）。
  *  ⇒ 「core 6→4」在**当前树**上无可达路径；真要降 core 需先做上方「剩余 4 处的性质」里的能力契约。
  */
-export const CORE_AGENT_BRANCH_BASELINE = 3
+export const CORE_AGENT_BRANCH_BASELINE = 0
+// 沿革（2026-09-25 CC-6c，3 → 0，−3）：删 `resource.ts` 最后三处 `agentId` 特判——比利终局重推过滤
+// `:477`（`c.agentId === '1531'`）、终局旗标复位 `:1014`（1531）与 `:1015`（1051）。整块迁成
+// 模块能力 `finalizePass`（starlightBilly / yeshuguang 声明 `stage='preTail'`、yidhari 声明
+// `stage='tail'`）+ 引擎通用执行器 `core/resource/finalizePasses.ts`（`runFinalizePasses` /
+// `resetFinalizePasses`，按 `getAgentMechanic(cfg.agentId)?.finalizePass` 查询，`iterate` 参数注入）。
+// ⚠ 两处 stage 不可合并；`reset` 的不对称语义（叶瞬光仅在 `yeshuguangContinuousForms === 1` 时写）
+// 由模块自己保留（设计稿曾误写成「对所有声明者无条件 reset」）。逐位等价证据 = dump/rowsnap A/B
+// 排除 `__ms` 后零差异（624 场景）+ billy/yeshuguang/yidhari/truncationRefold/warmStart/
+// seedInvariance/convergenceProbe 全绿；反向验证两次（yidhari stage 改 'preTail' ⇒ 带 1051 场景
+// 精确红；注释掉 yeshuguang 能力 ⇒ 带 1431 场景精确红）。
+// `RATCHET_BURNDOWN.frozen` 同批下调（core agentId 3 → 0）。
 // 沿革（2026-09-25 CC-6b，5 → 3，−2）：删 `helpers.ts` 与 `resource.ts` 收敛后两处
 // `findIndex(c => c.agentId === '1451')`（`luciaSlot`）。整块迁成引擎能力 + 跨槽供给：
 //   · 帷幕提供者按模块能力 `getAgentMechanic(cfg.agentId)?.curtainTriggers` 找槽（`core/resource/curtain.ts`）；

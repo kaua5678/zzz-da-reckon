@@ -814,6 +814,35 @@ export interface AgentMechanicModule {
     /** 战斗总时长（秒），用于 15s CD 封顶 */
     totalTime: number
   }): number
+  /**
+   * **终局整数重推**（规则 6 引擎落点，2026-09-25 CC-6c；1531/1431/1051 先例）。
+   *
+   * 存在的理由：`calcTeamResources` 里曾住着两段角色专属的「实数化收尾」——preTail（S2 折叠
+   * 之后、S3a 欠打回填之前）的 1531 链数 / 1431 轮数，tail（S3a 欠打回填之后、S4 装配之前）的
+   * 1051 强特次数；三者共享同一台 ≤12 轮重推机器，只有「谁参与 / 置哪个旗标 / 何时复位」是
+   * 角色专属的。这正是规则 6 要消灭的形状（引擎替某个角色认人）。
+   *
+   * 契约：`applies` / `begin` / `reset` 都是**只碰自己那份 cfg** 的操作（`applies` 是纯判据）。
+   * 引擎拥有 ≤12 轮 `iterate` + 全状态逐位判稳 + `converged` 上报（执行器
+   * `core/resource/finalizePasses.ts#runFinalizePasses`）。
+   *
+   * ⚠ `stage` 逐位保留两个既有调用时机，**不可合并**（合并会改数值）：
+   *   · `'preTail'`：S2 折叠之后、S3a 欠打回填之前（1531 / 1431）
+   *   · `'tail'`   ：S3a 欠打回填之后、S4 装配之前（1051）
+   *
+   * ⚠ `reset` 的**不对称语义由模块自己保留**：`resetFinalizePasses` 对所有声明者都调 `reset`，
+   * 但叶瞬光须在 `reset` 内部先判 `yeshuguangContinuousForms === 1` 再写（否则 `undefined → false`
+   * 会漂进 cfg / 热启动键），比利 / 伊德海莉无条件写 `false`。
+   */
+  finalizePass?: {
+    stage: 'preTail' | 'tail'
+    /** 本模块本 stage 是否参与重推（纯判据，只读自己 cfg） */
+    applies(cfg: CharacterOperationConfig): boolean
+    /** 置位自己的终局旗标（引擎在重推循环前调用） */
+    begin(cfg: CharacterOperationConfig): void
+    /** 装配后复位（引擎在装配之后调用；不对称语义见上方说明） */
+    reset(cfg: CharacterOperationConfig): void
+  }
 }
 
 /**

@@ -809,6 +809,23 @@ export const yeshuguangMechanic: AgentMechanicModule = {
     if (phase !== 'converge' || !threads) return
     ;(cfg as unknown as Record<string, unknown>).yeshuguangGiftUltCount = threads.yeshuguangGiftUlt
   },
+  /**
+   * 终局整数重推（规则 6 引擎落点，2026-09-25 CC-6c）：明心境轮数实数化收尾。
+   * `stage='preTail'`（S2 折叠之后、S3a 欠打回填之前）。
+   *
+   * ⚠ `reset` **不对称**（逐位保留原语义）：只在 `yeshuguangContinuousForms === 1` 时写 false，
+   * 否则字段保持 `undefined`——引擎对所有声明者都调 reset，语义门控必须在模块内。
+   */
+  finalizePass: {
+    stage: 'preTail',
+    applies: cfg => Number((cfg as unknown as Record<string, unknown>).yeshuguangContinuousForms ?? 0) === 1,
+    begin: cfg => { (cfg as unknown as Record<string, unknown>).yeshuguangFinalizeForms = true },
+    reset: cfg => {
+      if (Number((cfg as unknown as Record<string, unknown>).yeshuguangContinuousForms ?? 0) === 1) {
+        (cfg as unknown as Record<string, unknown>).yeshuguangFinalizeForms = false
+      }
+    },
+  },
   buildExecutions,
   /** 相位写入（引擎在物化调用点补写）：本次物化的明心境 cycle 缓存，供下一轮 estimate 复用 */
   materializePhaseState: ({ cfg, state }) => {
