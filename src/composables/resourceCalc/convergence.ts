@@ -365,7 +365,7 @@ export function createRunCalcRound(deps: {
         }
       }
     }
-    // 伊德海莉失衡内强特（`yidhariInStunEx` / `yidhariInStunEnergy`）的轴内连段反推已迁进
+    // 伊德海莉失衡内强特（`exReservedCount` / `exReservedEnergyCost`）的轴内连段反推已迁进
     // `yidhari.ts#applyYidhariTeamConfig`（round 13 批次 3）——模块自己按 `axis.axes × axis.windows`
     // 数 `yidhari-heavy-single` / `yidhari-heavy-double` 两个连段块，与本文件原先在此处的算法同源
     // （连段块 id 与成本档常量已回收进模块，规则 11 单一事实源）。
@@ -514,11 +514,11 @@ export function createRunCalcRound(deps: {
       // `hugoAxisExVerdictCount` 是否存在的纯函数（只会是 `true`、只在原分支出现）⇒ 删它不改变
       // 热启动 key 的等价类划分，见 `.claude/task-card-round10-axis-context-contract.md` §10.1）。
       // 迁移后同理不再产生该字段（同一纯函数关系在模块内继续成立）。
-    // 伊德海莉 1051 的 `yidhariStunCount` / `yidhariInStunExCount` / `yidhariInStunEnergyCost`
+    // 伊德海莉 1051 的 `yidhariStunCount` / `exReservedCount` / `exReservedEnergyCost`
     // （轴内连段反推：单次碾 1 重碾/50-60 闪能、双次碾 2 重碾/85 闪能）已迁进 `yidhari.ts` 的
     // `applyTeamConfig`（round 13 批次 3）：前者读 `stunCount`（轴无关），后两者读下面 dispatch 的
     // `axis` 契约快照（`axis.axes × axis.windows` 现算，与原先在此处 `:661-681` 的算法逐位等价）。
-    // ⚠ 迁移的**关键约束是条件写形态**：`yidhariInStunExCount` 只在 `axis.active && 合计>0` 时写
+    // ⚠ 迁移的**关键约束是条件写形态**：`exReservedCount` 只在 `axis.active && 合计>0` 时写
     // ——`core/resource/helpers.ts#resolveExSpecialCount` 用 `!== undefined` 选通路，恒写 0 会改语义
     // （详见模块钩子注释）。core 侧那两条「字段即蕴含角色」的守卫因此仍然成立。
       // 2026-09-15 arch 棘轮：佩洛伊斯(1551) 的 peiluoVerdictCount / extraSelfDecibelReward 注入

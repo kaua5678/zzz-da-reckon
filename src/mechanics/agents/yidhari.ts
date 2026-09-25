@@ -150,10 +150,10 @@ function buildYidhariCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInp
 
   cfg.yidhariExPerStun = exPerStun
   cfg.yidhariTentacleInterval = tentacleInterval
-  cfg.yidhariRefundPerOutStunEx = OUT_STUN_REFUND
+  cfg.exRefundPerPaid = OUT_STUN_REFUND
   // refund 反馈（每发回 15）是自指方程：迭代期强特次数按实数参与收敛（唯一不动点），
-  // 终局才 floor 一次（calcTeamResources 重推 ≤3 轮）——见 resolveExSpecialCount 1051 分支
-  cfg.yidhariContinuousEx = true
+  // 终局才 floor 一次（calcTeamResources 重推 ≤3 轮）——见 resolveExSpecialCount 连续强特分支
+  cfg.exContinuous = true
 }
 
 export function computeYidhariHpSource(
@@ -177,9 +177,9 @@ export function computeYidhariHpSource(
   const cycles = cycleTime > 0 ? Math.max(0, Math.floor((state.basicAttackTime ?? 0) / cycleTime)) : 0
   const chargedAttackSeconds = cycles * CHARGE_SECONDS
 
-  // 极寒重碾拆分：失衡内 = 轴连段反推（有轴 yidhariInStunExCount）或 每次失衡次数 × 失衡次数；非失衡 = 剩余（每次回 15 闪能）
-  const axisInStun = Number(cfg.yidhariInStunExCount)
-  const inStunExCount = Number.isFinite(axisInStun) && (cfg.yidhariInStunExCount !== undefined)
+  // 极寒重碾拆分：失衡内 = 轴连段反推（有轴 exReservedCount）或 每次失衡次数 × 失衡次数；非失衡 = 剩余（每次回 15 闪能）
+  const axisInStun = Number(cfg.exReservedCount)
+  const inStunExCount = Number.isFinite(axisInStun) && (cfg.exReservedCount !== undefined)
     ? Math.min(exSpecialCount, Math.max(0, axisInStun))
     : Math.min(exSpecialCount, exPerStun * stunCount)
   const outStunExCount = Math.max(0, exSpecialCount - inStunExCount)
@@ -222,9 +222,9 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
   // 账本后，「cycles→闪能→强特次数→必要时间→平A池→cycles」闭成反馈环，floor 整数阶梯在
   // 循环边界（bat ≈ k×cycleTime）吸收不了 → 全状态精确 2-循环（实测 parry4/dodge10 格
   // bat 26.79↔26.99、cycles 6↔7，同坑②丽娜振荡器家族）。按「实数松弛、终局才 floor」教义
-  // （yidhariContinuousEx 同款）：迭代期实数参与收敛，终局重推与装配（yidhariFinalizeEx=true，
+  // （exContinuous 同款）：迭代期实数参与收敛，终局重推与装配（exFinalize=true，
   // 复位已移到装配后）floor 一次——行 count 终局仍整数。
-  const relaxCycles = cfg.yidhariContinuousEx === true && cfg.yidhariFinalizeEx !== true
+  const relaxCycles = cfg.exContinuous === true && cfg.exFinalize !== true
   const basicExec = executions.find(e => e.moveId === 'basic_attack')
   let cycles = 0
   if (basicExec && cycleTime > 0) {
@@ -390,10 +390,10 @@ function buildYidhariResourceSections({ result }: AgentResourceSectionsInput) {
  * （2026-09-16 round 13 批次 3，规则 6）。两条路刻意分开：
  *  · `yidhariStunCount` ← `stunCount`（**与轴无关**，轴/非轴恒写——`computeYidhariHpSource` 用它
  *    算「每次失衡 `yidhariExPerStun` 次」的非轴拆分上限）；
- *  · `yidhariInStunExCount` / `yidhariInStunEnergyCost` ← `axis`（**轴内连段反推**：单次碾 = 1 重碾 /
+ *  · `exReservedCount` / `exReservedEnergyCost` ← `axis`（**轴内连段反推**：单次碾 = 1 重碾 /
  *    50 或 60 闪能，双次碾 = 2 重碾 / 85 闪能，各自 × 块数 × 窗口数）。
  *
- * ⚠ **条件写形态逐位保留**：`yidhariInStunExCount` 只在 `axis.active && 合计 > 0` 时写，**不是**恒写
+ * ⚠ **条件写形态逐位保留**：`exReservedCount` 只在 `axis.active && 合计 > 0` 时写，**不是**恒写
  * 0——`core/resource/helpers.ts#resolveExSpecialCount` 用 `!== undefined` 判「走哪条通路」
  * （有该字段 = 失衡内次数已知、按 `(总闪能 − 失衡内成本)/消耗` 反推非失衡次数；缺 = 纯能量预算口径）。
  * 恒写 0 会把「本队没有轴内重碾」错判成「失衡内 0 次」而改掉非失衡次数的求解路径。
@@ -408,6 +408,11 @@ function applyYidhariTeamConfig({ cfg, phase, stunCount, team, axis }: AgentTeam
   if (phase !== 'converge') return
   const record = cfg as unknown as Record<string, unknown>
   record.yidhariStunCount = stunCount
+  // 连续强特通道：非保留模式（非轴）下不返还的强特次数上限。
+  // 原式 = `n(cfg.yidhariExPerStun ?? 2) * n(cfg.yidhariStunCount ?? 0)`（消费端 resourceIncome 非轴分支），
+  // 而 `yidhariStunCount` 的唯一写入方就是上面那行 ⇒ 此处用同一 stunCount 逐位复刻。
+  const fin = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : 0
+  record.exRefundFreeCap = fin(cfg.yidhariExPerStun ?? 2) * fin(stunCount)
   if (!axis) return
   let inStunEx = 0
   let inStunEnergy = 0
@@ -430,8 +435,8 @@ function applyYidhariTeamConfig({ cfg, phase, stunCount, team, axis }: AgentTeam
     })
   }
   if (inStunEx > 0) {
-    record.yidhariInStunExCount = inStunEx
-    record.yidhariInStunEnergyCost = inStunEnergy
+    record.exReservedCount = inStunEx
+    record.exReservedEnergyCost = inStunEnergy
   }
 }
 
@@ -457,9 +462,9 @@ export const yidhariMechanic: AgentMechanicModule = {
    */
   finalizePass: {
     stage: 'tail',
-    applies: cfg => cfg.yidhariContinuousEx === true,
-    begin: cfg => { cfg.yidhariFinalizeEx = true },
-    reset: cfg => { cfg.yidhariFinalizeEx = false },
+    applies: cfg => cfg.exContinuous === true,
+    begin: cfg => { cfg.exFinalize = true },
+    reset: cfg => { cfg.exFinalize = false },
   },
   buildExecutions: buildYidhariExecutions,
   buildResourceResult: buildYidhariResourceResult,

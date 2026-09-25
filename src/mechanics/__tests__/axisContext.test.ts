@@ -420,7 +420,7 @@ describe('1141 莱卡恩：lycaonWindowDuration ← axis.windowSeconds（棘轮 
 })
 
 // ── 批次 3：1051 伊德海莉 —— 轴内连段反推（条件写）+ stunCount 恒写 ─────────────────
-describe('1051 伊德海莉：轴内连段反推 yidhariInStunExCount / EnergyCost（条件写）', () => {
+describe('1051 伊德海莉：轴内连段反推 exReservedCount / EnergyCost（条件写）', () => {
   /** 单次碾 = 1 重碾 / 50-60 闪能；双次碾 = 2 重碾 / 85 闪能（模块 combos 的两把键） */
   const axes: StunAxis[] = [{
     name: '合成轴',
@@ -440,9 +440,9 @@ describe('1051 伊德海莉：轴内连段反推 yidhariInStunExCount / EnergyCo
       team: [{ slot: 0, agentId: '1051', cinemaLevel: 0 } as never],
     }))
     // 次数 = (1×3 + 2×2) × 2 窗 = 7 × 2 = 14
-    expect(cfg.yidhariInStunExCount).toBe(14)
+    expect(cfg.exReservedCount).toBe(14)
     // 闪能 = (60×3 + 85×2) × 2 窗 = (180 + 170) × 2 = 700
-    expect(cfg.yidhariInStunEnergyCost).toBe(700)
+    expect(cfg.exReservedEnergyCost).toBe(700)
     // stunCount 恒写（与轴无关；轴/非轴都要，供非轴拆分上限）
     expect(cfg.yidhariStunCount).toBe(3)
   })
@@ -453,9 +453,9 @@ describe('1051 伊德海莉：轴内连段反推 yidhariInStunExCount / EnergyCo
       axis: axisOf({ axes, windows: [2] }),
       team: [{ slot: 0, agentId: '1051', cinemaLevel: 1 } as never],
     }))
-    expect(cfg.yidhariInStunExCount).toBe(14) // 次数与命座无关
+    expect(cfg.exReservedCount).toBe(14) // 次数与命座无关
     // 闪能 = (50×3 + 85×2) × 2 = (150 + 170) × 2 = 640（≠ 0 命的 700，精确可分辨）
-    expect(cfg.yidhariInStunEnergyCost).toBe(640)
+    expect(cfg.exReservedEnergyCost).toBe(640)
   })
 
   it('多轴各自窗口数按轴下标对齐（不是拿第一个轴乘所有块）', () => {
@@ -469,14 +469,14 @@ describe('1051 伊德海莉：轴内连段反推 yidhariInStunExCount / EnergyCo
       team: [{ slot: 0, agentId: '1051', cinemaLevel: 0 } as never],
     }))
     // A: 1×3 = 3；B: 2×1 = 2 ⇒ 合计 5（若错用 windows[0] 乘两者 = 1×3+2×3 = 9）
-    expect(cfg.yidhariInStunExCount).toBe(5)
-    expect(cfg.yidhariInStunEnergyCost).toBe(60 * 3 + 85 * 1) // 265
+    expect(cfg.exReservedCount).toBe(5)
+    expect(cfg.exReservedEnergyCost).toBe(60 * 3 + 85 * 1) // 265
   })
 
   /**
    * ★ 条件写形态（本处迁移的**头号**风险，round 13 批次 3）。
    *
-   * `core/resource/helpers.ts#resolveExSpecialCount` 用 `cfg.yidhariInStunExCount !== undefined`
+   * `core/resource/helpers.ts#resolveExSpecialCount` 用 `cfg.exReservedCount !== undefined`
    * 判「走哪条通路」：有该字段 = 失衡内次数已知（按 `(总闪能 − 失衡内成本)/消耗` 反推非失衡次数）；
    * 缺 = 纯能量预算口径（`floor(总闪能/消耗)`）。⇒ **恒写 0 与不写是两种语义**，不能图省事。
    */
@@ -487,8 +487,8 @@ describe('1051 伊德海莉：轴内连段反推 yidhariInStunExCount / EnergyCo
       axis: axisOf({ axes: [{ name: '裸id轴', count: 1, actions: [{ slot: 0, moveId: '1051012', count: 4 }] }], windows: [2] }),
       team: [{ slot: 0, agentId: '1051', cinemaLevel: 0 } as never],
     }))
-    expect(cfg.yidhariInStunExCount, '合计 0 时不得写 0（消费端按 !== undefined 选通路）').toBeUndefined()
-    expect(cfg.yidhariInStunEnergyCost).toBeUndefined()
+    expect(cfg.exReservedCount, '合计 0 时不得写 0（消费端按 !== undefined 选通路）').toBeUndefined()
+    expect(cfg.exReservedEnergyCost).toBeUndefined()
     expect(cfg.yidhariStunCount, 'stunCount 与轴无关，照写').toBe(3)
 
     // 轴退化（active=false，axes 仍非空——契约递的是局部未清空版）：模块自判 active ⇒ 不写
@@ -497,12 +497,12 @@ describe('1051 伊德海莉：轴内连段反推 yidhariInStunExCount / EnergyCo
       axis: axisOf({ axes, windows: [2], active: false }),
       team: [{ slot: 0, agentId: '1051', cinemaLevel: 0 } as never],
     }))
-    expect(cfg2.yidhariInStunExCount, '轴退化时不得按未清空的 axes 算（模块必须自判 active）').toBeUndefined()
+    expect(cfg2.exReservedCount, '轴退化时不得按未清空的 axes 算（模块必须自判 active）').toBeUndefined()
 
     // 缺 axis（契约没接上）：同样不写，但 stunCount 照写
     const cfg3: Cfg = { slot: 0, agentId: '1051' }
     getAgentMechanic('1051')!.applyTeamConfig!(hookInput(cfg3))
-    expect(cfg3.yidhariInStunExCount).toBeUndefined()
+    expect(cfg3.exReservedCount).toBeUndefined()
     expect(cfg3.yidhariStunCount).toBe(3)
   })
 
@@ -514,7 +514,7 @@ describe('1051 伊德海莉：轴内连段反推 yidhariInStunExCount / EnergyCo
         team: [{ slot: 0, agentId: '1051', cinemaLevel: 0 } as never],
       }))
       expect(cfg.yidhariStunCount, `${phase} 相位不该写`).toBeUndefined()
-      expect(cfg.yidhariInStunExCount, `${phase} 相位不该写`).toBeUndefined()
+      expect(cfg.exReservedCount, `${phase} 相位不该写`).toBeUndefined()
     }
   })
 })

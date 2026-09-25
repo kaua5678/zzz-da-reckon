@@ -414,7 +414,7 @@ function buildCharConfig({ skills, cinemaLevel, panel, cfg }: AgentCharConfigInp
   cfg.yeshuguangSwordInitial = cinema >= 1 ? 6 : 0
   /**
    * 能力声明（规则 6：引擎按**能力**查询，不按 agentId 找槽）——模块声明自己需要
-   * 「迭代期实数 + 终局整数化」的收尾骨架（1051 `yidhariContinuousEx` / 1531 `billyFinalizeChain` 同款）。
+   * 「迭代期实数 + 终局整数化」的收尾骨架（1051 `exContinuous` / 1531 `billyFinalizeChain` 同款）。
    * 引擎据本字段置 `yeshuguangFinalizeForms` 并做整数态重推；见 `cfg.yeshuguangFinalizeForms` 语义。
    */
   record.yeshuguangContinuousForms = true

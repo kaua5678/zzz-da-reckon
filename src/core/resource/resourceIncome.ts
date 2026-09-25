@@ -121,7 +121,7 @@ export function calcEnergySource(
   const shieldBreakGift = shieldCount * 60
   const energyShieldBreakGift = cfg.isFlashUser ? 0 : energyShieldCount * 30
 
-  // 不含伊德海莉 refund 的固定源能量 E0（唯一来源：加一项固定源就补进这里，防两处漂移）
+  // 不含连续强特返还（refund）的固定源能量 E0（唯一来源：加一项固定源就补进这里，防两处漂移）
   const e0 = preEfficiencyAuto + gainEfficiencyBonus
     + skillRegen + supportUltimateRegen + timeSliceEnergy + zhenyuanEnergy
     + hatTrickEnergy
@@ -132,37 +132,38 @@ export function calcEnergySource(
     + antonC1EnergyGift
     + initialGift + shieldBreakGift + energyShieldBreakGift
 
-  // 伊德海莉：非失衡（溯寒后）极寒重碾每次回闪能；失衡内 = 轴连段反推（有轴）或 每次失衡次数 × 失衡次数，剩余为非失衡。
+  // 连续强特通道（引擎通用，模块声明；当前唯一声明方 = 1051）：非失衡（溯寒后）极寒重碾
+  // 每次回闪能；失衡内 = 轴连段反推（有轴）或 每次失衡次数 × 失衡次数，剩余为非失衡。
   // 自指反馈解析求解（2026-09-04 修复 19/20 双稳态）：refund 不回读上一轮整数强特次数
   // （floor 在迭代中途截断反馈 → 同一输入多个不动点，种子相关）。对 50·O = E0 − inStunCost + 15·O
   // 解析求解 O* = (E0 − inStunCost)/35；迭代期用实数 O*（强特次数同实数化 → 唯一不动点），
-  // 终局整数重推（yidhariFinalizeEx）才 floor——floor 只发生一次，不在收敛中途截断资源循环。
-  const yidhariRefundPer = cfg.yidhariRefundPerOutStunEx !== undefined ? n(cfg.yidhariRefundPerOutStunEx) : 0
-  const yidhariRefund = (() => {
-    // 原判据 `cfg.agentId !== '1051' || yidhariRefundPer <= 0`：左侧 agentId 判断**冗余**——
-    // `yidhariRefundPer` 派生自 `yidhariRefundPerOutStunEx`，其唯一写入方 = `yidhari.ts:145`
+  // 终局整数重推（exFinalize）才 floor——floor 只发生一次，不在收敛中途截断资源循环。
+  const refundPer = cfg.exRefundPerPaid !== undefined ? n(cfg.exRefundPerPaid) : 0
+  const exRefundEnergy = (() => {
+    // 原判据 `cfg.agentId !== '1051' || refundPer <= 0`：左侧 agentId 判断**冗余**——
+    // `refundPer` 派生自 `exRefundPerPaid`，其唯一写入方 = 该角色模块
     // （模块只写自己那份 cfg）⇒ 该值为 0 即蕴含「不是该角色或未启用」，短路语义由右操作数完全覆盖。
     // 2026-09-15 core 棘轮批次2（T6 冗余判据），timeGolden 0 delta。
-    if (yidhariRefundPer <= 0) return 0
+    if (refundPer <= 0) return 0
     const consume = n(cfg.exSpecialEnergyConsume)
-    if (consume <= yidhariRefundPer) return 0
-    const finalize = cfg.yidhariFinalizeEx === true
+    if (consume <= refundPer) return 0
+    const finalize = cfg.exFinalize === true
     const quant = (o: number) => (finalize ? Math.floor(o) : o)
-    if (cfg.yidhariInStunExCount !== undefined) {
+    if (cfg.exReservedCount !== undefined) {
       // 轴模式：失衡内次数固定（轴连段反推），refund 只作用于失衡外强特
-      const inStun = n(cfg.yidhariInStunExCount)
-      const inStunCost = n(cfg.yidhariInStunEnergyCost ?? inStun * consume)
-      const outStar = Math.max(0, (e0 - inStunCost) / (consume - yidhariRefundPer))
-      return quant(outStar) * yidhariRefundPer
+      const inStun = n(cfg.exReservedCount)
+      const inStunCost = n(cfg.exReservedEnergyCost ?? inStun * consume)
+      const outStar = Math.max(0, (e0 - inStunCost) / (consume - refundPer))
+      return quant(outStar) * refundPer
     }
     // 非轴：失衡内 = min(ex, cap)；ex ≤ cap 无 refund，ex > cap 的溢出部分每发回 refundPer
-    const cap = n(cfg.yidhariExPerStun ?? 2) * n(cfg.yidhariStunCount ?? 0)
+    const cap = n(cfg.exRefundFreeCap)
     if (e0 / consume <= cap) return 0
-    const outStar = Math.max(0, (e0 - cap * consume) / (consume - yidhariRefundPer))
-    return quant(outStar) * yidhariRefundPer
+    const outStar = Math.max(0, (e0 - cap * consume) / (consume - refundPer))
+    return quant(outStar) * refundPer
   })()
 
-  const total = e0 + yidhariRefund
+  const total = e0 + exRefundEnergy
 
   return {
     autoRegen,
@@ -180,7 +181,7 @@ export function calcEnergySource(
     qingyiC4Energy,
     lycaonC2Energy,
     billyC1Energy,
-    yidhariRefund,
+    exRefundEnergy,
     yixuanFlashBonus,
     antonC1EnergyGift,
     supportUltimateRegen,

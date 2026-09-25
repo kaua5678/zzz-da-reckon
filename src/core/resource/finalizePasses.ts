@@ -4,7 +4,7 @@
  * 取代原先住在 `core/resource.ts` 里的两段角色专属「实数化收尾」闭包：
  *   · preTail（S2 折叠之后、S3a 欠打回填之前）：星徽·比利 `billyFinalizeChain`、叶瞬光
  *     `yeshuguangFinalizeForms`；
- *   · tail（S3a 欠打回填之后、S4 装配之前）：伊德海莉 `yidhariFinalizeEx`。
+ *   · tail（S3a 欠打回填之后、S4 装配之前）：伊德海莉 `exFinalize`。
  * 三者共享同一台 ≤12 轮整数态重推机器，只有「谁参与 / 置哪个旗标 / 何时复位」是角色专属的。
  * 这正是规则 6 要消灭的形状（引擎替某个角色认人），现改为：
  *   · 模块声明能力 `finalizePass`（`AgentMechanicModule`，见 `mechanics/types.ts`）；

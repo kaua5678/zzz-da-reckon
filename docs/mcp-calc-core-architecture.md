@@ -110,6 +110,7 @@ node -e 'const a=require("/home/kaua/calc-arch/dump-A.json"),b=require("/home/ka
 #   ⚠ dump **不覆盖 damagePoolRows 的 note/baseFormula 文案**（只 hash resourceResult/stunPool + 总伤害）。
 #   动行文案的卡另跑 rowsnap（= dump + hash(damagePoolRows)，`.zc/perf/rowsnap.perf.ts`，文件名刻意不含 dump 以免被 `dump` 过滤器同时选中）：
 #   ⚠ 2026-09-25 CC-T1 起 **rowsnap 基线 = 637 场景**（`rows-A.json`；新增 13 个 `/axis` = 尾段角色队注入最小轴），dump 仍 624；旧 624 版备份 `old/rows-A-624.json`。
+#   ⚠ 2026-09-26 CC-13 起 dump-A / rows-A 按新键名（`exRefundEnergy` 等）重生成（旧版备份 `old/dump-A-pre13.json` / `old/rows-A-pre13.json`）；此后纯改名卡用 `PERF_KEY_ALIAS` 开关（`.zc/perf/*.perf.ts#enc`）证零差，映射表随卡更新。
 #   PERF_OUT=/home/kaua/calc-arch/rows-B.json npx vitest run --config .zc/perf/vitest.perf.config.ts rowsnap
 #   基线 rows-A.json 须在改前 HEAD 的 worktree 里跑，比对命令同上换文件名。
 #   ⚠ **基线代次**：`4ca47db`（CC-D1/D3 数值修复）改了 9 个预设 54 个场景 ⇒ 旧 A 作废（移至 /home/kaua/calc-arch/old/）。
@@ -152,7 +153,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | ~~CC-D3~~ | — | ✅ **done 2026-09-25（用户裁决「维琳娜专属资源，不该给别人计算」）** | 风蚀归属改按面板标记 `velinaEnabled`（`velina.ts#findVelinaPanel`/`#resolveVelinaCorrosion`，模块唯一写入方）。探针先行的预测**已证实**：1621 队产出 `{turb:3,micro:2,broad:1,boosted:1}` + 2 条「维琳娜…气旋」行共 15 702 挂在洛克茜名下、1631 队 5 936 挂赛维里安 ⇒ 数值缺陷。修后无维琳娜 ⇒ `velinaCorrosionSource` 为 `undefined`（非全零），气旋行/广域积蓄注入整套消失；**乱流仍在**（通用机制）。dump A/B：6 支洛克茜队 −0.06%~−0.15% | velina.ts / anomalyPool.ts / anomalyPool/helpers.ts + 判据 `anomalyPool.test.ts::CC-D3` + `ccD3D1Verdict.test.ts` |
 | CC-D4 | — | **done** `1eedd4c`（lead 自做） | 删 `AgentAnomalyTransformInput.store` 字段、`anomalyPool.ts` 的 `transformStore` 与 `velina.ts` 唯一写入：全仓无读，引擎经能力 `anomalyCorrosion` 按最终乱流次数重算同一结果；dump/rowsnap 零差，verify 绿 | anomalyPool.ts / types.ts / velina.ts |
 | CC-12 | 换尺 | **done**（dsflash 工人 + lead 复核：新增命中恰为 convergence.ts:302/311 两行；编排层基线/frozen 1→3（口径纠正），core 5 不变；src 零改动；guards 21、scripts 测试 452 过、build） | 身份扫描器补「本地别名」形态（`convergence.ts:302/311` 的 `fillerAgentId === '1051'/'1041'` 现在量不到），按规则 17② 调 `frozen` 到真实值 | scripts/lib/agent-identity-lines.mjs 等 |
-| CC-13 | review | **ready**（lead 2026-09-26 立卡） | 连续强特通道通用化（R22-D1 批 1-1）：引擎只认 `exContinuous`/`exFinalize`/`exRefundPerPaid`/`exReserved*`/`exRefundFreeCap`，1051 模块声明；零 delta | 见下方 CC-13 卡 |
+| CC-13 | review | **done**（dsflash 工人 v2 + lead 复核：闸门 grep 两条 0 行；build；guards 21；带 `PERF_KEY_ALIAS=1` dump 624 / rowsnap 637 零差，不带开关 dump 全量 DIFF 624（键名旁证）；反向验证删 `exRefundFreeCap` 写入 ⇒ DIFF 31 全为 yidhari-* 场景；verify 过。首派因卡面漏洞（EnergySource 键进 dump 哈希）停掉，见卡末 v2） | 连续强特通道通用化（R22-D1 批 1-1）：引擎只认 `exContinuous`/`exFinalize`/`exRefundPerPaid`/`exReserved*`/`exRefundFreeCap`，1051 模块声明；core 不再读 `yidhariExPerStun`/`yidhariStunCount`；零 delta | 14 文件，见下方 CC-13 卡 |
 
 ### CC-1 · 招式表查询迁出（fast）
 

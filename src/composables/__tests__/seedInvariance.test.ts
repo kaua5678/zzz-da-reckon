@@ -38,7 +38,7 @@ import type { ResourceCalcConfig, IterationState, TeamResourceResult } from '@/t
  * `before` / `after` **两个快照都必须留**，它们回答的是不同问题：
  * - `before` = **调用前**的入参。这是唯一能忠实复现该次调用的截面——引擎会**原地改写**传入的
  *   cfg（`converged` / `timeFeasibleScale` / `overflowSeconds` 等），且 `calcTeamResources` 在
- *   装配末尾还会把 `yidhariFinalizeEx` / `billyFinalizeChain` **复位**（见该文件末尾"复位"段）。
+ *   装配末尾还会把 `exFinalize` / `billyFinalizeChain` **复位**（见该文件末尾"复位"段）。
  *   ⇒ R25 实测：拿 `after` 当基准冷跑，**18/104 队复现不出该次调用的输出**（`before` 是 104/104）。
  * - `after` 只用于读该次调用写回的**读数**（`timeFeasibleScale` 等诊断量）。
  */

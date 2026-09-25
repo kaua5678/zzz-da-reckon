@@ -372,16 +372,24 @@ export interface CharacterOperationConfig {
   yidhariExPerStun?: number
   /** 伊德海莉寒冰触手触发间隔（秒，默认13.5） */
   yidhariTentacleInterval?: number
-  /** 伊德海莉非失衡（溯寒后）极寒重碾每次回闪能（默认15） */
-  yidhariRefundPerOutStunEx?: number
-  /** 伊德海莉强特次数迭代期实数化（refund 反馈解析求解后，必要时间按连续不动点参与收敛，终局才 floor） */
-  yidhariContinuousEx?: boolean
-  /** 伊德海莉终局整数重推标记（收敛后临时置位，重推 ≤3 轮让时间账本与整数次数自洽；迭代期勿置位） */
-  yidhariFinalizeEx?: boolean
-  /** 伊德海莉失衡内极寒重碾次数（失衡轴连段反推：单次1 + 双次2；缺省走 yidhariExPerStun × 失衡数） */
-  yidhariInStunExCount?: number
-  /** 伊德海莉失衡内强特消耗的闪能（单次×50 + 双次×85；缺省 = 次数 × exSpecialEnergyConsume） */
-  yidhariInStunEnergyCost?: number
+
+  // ============ 连续强特通道（引擎通用，模块声明）============
+  // 正反馈资源环（强特次数 → 回能 → 强特次数）的通用表达：引擎只认下列字段，
+  // 由角色模块在自己的 buildCharConfig / applyTeamConfig 里声明；引擎不读 agentId。
+  // 当前唯一声明方 = 1051 `mechanics/agents/yidhari.ts`。
+  /** 迭代期强特次数实数参与收敛（阻尼 + 实数 ult 时间信道 + 内层上限 ≥100） */
+  exContinuous?: boolean
+  /** 终局整数重推期：floor 一次、不阻尼 */
+  exFinalize?: boolean
+  /** 超出保留/上限部分的每发强特返还闪能 */
+  exRefundPerPaid?: number
+  /** 次数已知、不返还的强特（条件写形态：只在 `>0` 时写，消费端按 `!== undefined` 选通路） */
+  exReservedCount?: number
+  /** 上述不返还强特的闪能成本 */
+  exReservedEnergyCost?: number
+  /** 非保留模式下不返还的强特次数上限（`exRefundFreeCap`） */
+  exRefundFreeCap?: number
+
   /** 伊德海莉外部回血（%自身最大生命值）：如卢西娅星光汇聚之地等，由其他机制换算后累加 */
   yidhariExternalHealPct?: number
   /** 伊德海莉外部回血按卢西娅终结技次数结算的比例（每次大 %自身最大生命值），由卢西娅模块换算注入 */
@@ -656,7 +664,7 @@ export interface CharacterOperationConfig {
   /** 叶瞬光：琉音转大赠送逐云次数（编排层注入） */
   yeshuguangGiftUltCount?: number
   /**
-   * 叶瞬光终局整数化旗标（引擎写入，同 `yidhariFinalizeEx` / `billyFinalizeChain` 骨架）。
+   * 叶瞬光终局整数化旗标（引擎写入，同 `exFinalize` / `billyFinalizeChain` 骨架）。
    *
    * 迭代期明心境轮数以**实数**参与收敛（防「平A↑→剑势↑→轮数+1整轮→必要时间↑→平A↓」正反馈环，
    * 见 `@fact agent:1431/轮数实数化`）；收敛后置 true ⇒ 模块把**资源推导的触发次数**（照影）

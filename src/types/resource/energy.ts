@@ -66,8 +66,8 @@ export interface EnergySource {
   lycaonC2Energy: number
   /** 比利影画1：冲刺攻击/闪避反击命中回能（合并原始次数后按5秒冷却封顶） */
   billyC1Energy: number
-  /** 伊德海莉：非失衡（溯寒后）极寒重碾每次回 15 闪能 */
-  yidhariRefund: number
+  /** 连续强特通道：超出保留/上限部分的强特返还闪能总量（当前唯一声明方 1051） */
+  exRefundEnergy: number
   /** 仪玄：额外闪能总账（完美格挡+10/次、极限闪避+5/次、影画1落雷+5/次，模块汇总进 cfg.yixuanFlashBonus） */
   yixuanFlashBonus: number
   /** 安东影画1：每个实际电钻招式最多回5能量，已计入 total */

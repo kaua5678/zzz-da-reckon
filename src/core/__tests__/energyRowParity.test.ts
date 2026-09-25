@@ -127,7 +127,7 @@ describe('能量账本行级 Σ parity（记账层 == 展示层）', () => {
     const src = energyOf(yidhari, st, 100)
     expect(src.skillRegen).toBeGreaterThanOrEqual(slamTotal - 1e-6)
     // refund 通道与行级 Σ 并存不互斥（refund 是强特耗能返还，行值是蓄力循环闪能收入——不同物理量）
-    expect(Number.isFinite(src.yidhariRefund)).toBe(true)
+    expect(Number.isFinite(src.exRefundEnergy)).toBe(true)
   }, 60000)
 
   it('NaN 免疫：畸形合成配置（模块字段缺失）行值为 NaN 时账本仍有限', () => {

@@ -150,12 +150,12 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 伊德海莉连续松弛（0.5 阻尼）收敛比整数动力学慢：她的队内层迭代上限至少 100
   // （阻尼残差减半每轮，且判稳用严格相等——浮点不动点约需 40+ 轮）。2026-09-19 起缺省上限也是 100
   // （`INNER_LOOP_MAX_ITERATIONS`，理由见其注释）；这条 max 只在调用方显式传更小的 `maxIterations` 时仍为她兜底。
-  // agentId 判断冗余已删：yidhariContinuousEx 唯一写入方 = src/mechanics/agents/yidhari.ts:148
+  // agentId 判断冗余已删：exContinuous 唯一写入方 = src/mechanics/agents/yidhari.ts:148
   // （模块只对自己的 cfg 运行 ⇒ 该字段为 true 即蕴含 agentId === '1051'），引擎层不读 agentId。
-  const yidhariContinuousPresent = config.characters.some(c => c.yidhariContinuousEx === true)
-  const maxIter = Math.max(config.maxIterations || INNER_LOOP_MAX_ITERATIONS, yidhariContinuousPresent ? 100 : 0)
+  const continuousExPresent = config.characters.some(c => c.exContinuous === true)
+  const maxIter = Math.max(config.maxIterations || INNER_LOOP_MAX_ITERATIONS, continuousExPresent ? 100 : 0)
   /** 非收敛轨迹的停点轮次（历史上限；显式传更小的 maxIterations 时以它为准，1051 队 = 预算本身） */
-  const oscillatorStop = yidhariContinuousPresent ? maxIter : Math.min(maxIter, INNER_LOOP_OSCILLATOR_STOP)
+  const oscillatorStop = continuousExPresent ? maxIter : Math.min(maxIter, INNER_LOOP_OSCILLATOR_STOP)
   const configs = config.characters
   // 欠打试探排除队（2026-09-08 立 → **2026-09-10 解除，现无任何排除队**）：
   //  · **1591 希格莉德**（当时唯一排除）：试探的物化行测量口径（`buildExecutions` + 赠送行近似）

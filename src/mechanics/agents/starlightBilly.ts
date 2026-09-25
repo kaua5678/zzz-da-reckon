@@ -179,7 +179,7 @@ export function computeBillyChain(
  * 实数化（2026-09-06，1051/1431 targeted 骨架）：`quantize=false` 时链数以**实数**返回
  * （回血总量 ∝ 平A时间 = 连续信道，`floor` 一次翻转就是一条整链 ≈ 10s，正是
  * 「平A↑→回血↑→链+1→必要时间↑→平A↓」环增益 >1 的原产地）。迭代期实数、终局才 floor
- * （calcTeamResources 的 `billyFinalizeChain` 终局整数重推，同 1051 yidhariFinalizeEx）。
+ * （calcTeamResources 的 `billyFinalizeChain` 终局整数重推，同 1051 exFinalize）。
  * 摇曳/抓地次数保持整数（付费强特次数是闪能池的整数推导量，链预算只裁剪摇曳链）。
  * quantize=true 与原 8 轮循环逐位等价（先按整数预算裁摇曳 → 预算重算 → max(轴内, floor(预算))）。
  */
@@ -323,7 +323,7 @@ function buildBillyCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput
   cfg.skipGenericExSpecial = true
   cfg.exSpecialCountFloor = true
   cfg.exSpecialEnergyConsume = EX_FLASH_COST
-  // 链数实数化 opt-in（1051 yidhariContinuousEx 同款）：完整管线经本函数构建时恒置位；
+  // 链数实数化 opt-in（1051 exContinuous 同款）：完整管线经本函数构建时恒置位；
   // 外部直调模块（单元测试/面板探针）不带此旗标 → 走整数口径，保持历史行为。
   cfg.billyContinuousChain = true
 

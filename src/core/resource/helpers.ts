@@ -141,7 +141,7 @@ export { materializeRows, feasibleRows, buildExecutions, buildAnomalyEventExecut
 
 /**
  * 计算强特次数。
- * 伊德海莉：失衡内强特由失衡轴连段反推（yidhariInStunExCount），
+ * 连续强特通道：失衡内强特由失衡轴连段反推（exReservedCount），
  * 剩下闪能打非失衡强特（每次 50 闪能，回 15，净耗 35 由 refund 循环收敛）。
  */
 export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy: number): number {
@@ -158,25 +158,26 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
   // 返回 undefined = 本模块不认领 ⇒ 回落通用公式。
   const fromModule = getAgentMechanic(cfg.agentId)?.exSpecialCount?.({ cfg, totalEnergy })
   if (fromModule !== undefined) return fromModule
-  // agentId 判断冗余已删：yidhariContinuousEx 唯一写入方 = src/mechanics/agents/yidhari.ts:148
+  // agentId 判断冗余已删：exContinuous 唯一写入方 = src/mechanics/agents/yidhari.ts:148
   // （模块只对自己的 cfg 运行 ⇒ 字段为 true 即蕴含 agentId === '1051'），引擎层不读 agentId。
-  if (cfg.yidhariContinuousEx === true && (cfg.yidhariRefundPerOutStunEx ?? 0) > 0) {
-    // debt: 全局实数化收敛重构（正反馈模块统一连续通道 + 逐模块重校准）——本分支是 1051 的 targeted
-    // 修复（解析不动点 + 阻尼实数迭代 + 终局整数重推）；全局「实数化松弛、终局才 floor」会重排所有
+  if (cfg.exContinuous === true && (cfg.exRefundPerPaid ?? 0) > 0) {
+    // debt: 全局实数化收敛重构（正反馈模块统一连续通道 + 逐模块重校准）——本分支是通用连续强特
+    // 通道（解析不动点 + 阻尼实数迭代 + 终局整数重推）；全局「实数化松弛、终局才 floor」会重排所有
     // 带时间/资源循环模块的均衡（sigrid 出枪式消失前例），需专项按模块重校准。
     // ⚠ 本标记（1a）**保留**：R24 批 1-3 只销掉同名的 1b（可行性封顶处那条，其量化依据
-    //   「落点随初值差 ±1 次强特」已被三条独立实测证伪）。1a 的前提是「1051 的 refund 自指反馈
-    //   **只能**按角色开洞、无法用声明式通用通道表达」——该前提**未做验证**（批 1-1 通用连续通道
-    //   抽象未开工）⇒ 不许随 1b 一并删（规则 16③：没量过的不算证伪）。
+    //   「落点随初值差 ±1 次强特」已被三条独立实测证伪）。批 1-1 已由 CC-13 落地——通道已是
+    //   声明式通用字段（exContinuous/exFinalize/exRefundPerPaid/exReserved*/exRefundFreeCap），
+    //   故「1051 的 refund 自指反馈**只能**按角色开洞」这一前提已证伪。债本体（全局「实数化松弛、
+    //   终局才 floor」推广到其它正反馈模块 + 逐模块重校准）仍未做 ⇒ 标记保留（规则 16③）。
     // @fact yidhari:refund不动点 口径: 极寒重碾非失衡每发回15闪能属自指反馈——迭代期强特次数实数化（refund解析求解+必要时间信道阻尼）唯一连续不动点，floor只在终局整数重推发生一次（不在迭代中途截断资源循环）；曾致19/20双稳态（种子相关，parry4/dodge10、parry8/dodge2复现），勿改回「迭代期回读整数次数+floor」 | 据 用户@2026-09-04·复核@2026-09-08·复核@2026-09-25 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts | 锚 src/core/resource/helpers.ts#resolveExSpecialCount | 信 确认
-    // 伊德海莉 refund 反馈连续松弛（2026-09-04 修复 19/20 双稳态，用户口径「floor 应该最后算」）：
+    // 连续强特通道 refund 反馈连续松弛（2026-09-04 修复 19/20 双稳态，用户口径「floor 应该最后算」）：
     // 迭代期强特次数以实数参与收敛（refund 已解析求解，见 calcEnergySource），唯一不动点；
     // 终局整数重推（calcTeamResources）冻结非失衡整数次数后重推，floor 只发生一次。
     const consume = cfg.exSpecialEnergyConsume
-    const finalize = cfg.yidhariFinalizeEx === true
-    if (cfg.yidhariInStunExCount !== undefined) {
-      const inStun = cfg.yidhariInStunExCount
-      const inStunCost = cfg.yidhariInStunEnergyCost ?? inStun * consume
+    const finalize = cfg.exFinalize === true
+    if (cfg.exReservedCount !== undefined) {
+      const inStun = cfg.exReservedCount
+      const inStunCost = cfg.exReservedEnergyCost ?? inStun * consume
       const remaining = totalEnergy - inStunCost
       const outStun = remaining > 0 ? remaining / consume : 0
       return inStun + (finalize ? Math.floor(outStun) : outStun)
@@ -184,12 +185,12 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
     const paid = totalEnergy / consume
     return finalize ? Math.floor(paid) : paid
   }
-  // 伊德海莉失衡内强特：字段非 undefined 即蕴含是该角色（唯一写入方 = convergence.ts 的
-  // `merged.agentId === '1051'` 分支 ⇒ 只写它自己那份 cfg）⇒ agentId 判断冗余，已删
+  // 连续强特通道：失衡内强特次数已知时（字段非 undefined 即蕴含是该角色，唯一写入方 = yidhari.ts
+  // 的 applyTeamConfig converge 分支 ⇒ 只写它自己那份 cfg）⇒ agentId 判断冗余，已删
   // （2026-09-15 core 棘轮批次2，判据同 T6）。
-  if (cfg.yidhariInStunExCount !== undefined) {
-    const inStun = cfg.yidhariInStunExCount
-    const inStunCost = cfg.yidhariInStunEnergyCost ?? inStun * cfg.exSpecialEnergyConsume
+  if (cfg.exReservedCount !== undefined) {
+    const inStun = cfg.exReservedCount
+    const inStunCost = cfg.exReservedEnergyCost ?? inStun * cfg.exSpecialEnergyConsume
     const remaining = totalEnergy - inStunCost
     const outStun = remaining > 0 ? Math.floor(remaining / cfg.exSpecialEnergyConsume) : 0
     return inStun + outStun
@@ -268,8 +269,8 @@ function iterateBody(
     // 伊德海莉实数迭代期：喧响按 floor 后的整数次数算——若按实数，喧响→终结技阈值的
     // 4↔5 翻转会把实数次数拽成 2-循环（20.23↔20.35，必要时间随大翻跳）；floor 只影响
     // 迭代期喧响信道，终局整数重推后二者一致。
-    // agentId 判断冗余已删（同 resolveExSpecialCount：yidhariContinuousEx 唯一写入方 = yidhari.ts:148）。
-    const decibelExCount = cfg.yidhariContinuousEx === true
+    // agentId 判断冗余已删（同 resolveExSpecialCount：exContinuous 唯一写入方 = yidhari.ts:148）。
+    const decibelExCount = cfg.exContinuous === true
       ? Math.floor(exSpecialCount)
       : exSpecialCount
     const rawDecibel = calcRawDecibelParts(cfg, prev, chainCountInput, decibelExCount, prev.ultimateCount, totalTime, teamFrontline)
@@ -386,18 +387,18 @@ function iterateBody(
     // 4↔5 翻转会把实数强特次数拽成 2-循环（必要时间跳变 → 平A时间/回能/喧响同步跳变）；
     // 状态里 ult 仍是整数（终局一致），只有时间信道用实数参与收敛。
     // （旧「轴内喧响轨保持整数」的例外已随裁决 A 取消——轨不再反推次数。）
-    // agentId 判断冗余已删：yidhariContinuousEx 唯一写入方 = src/mechanics/agents/yidhari.ts:148。
-    const yidhariRealUlt = cfg.yidhariContinuousEx === true
-      && cfg.yidhariFinalizeEx !== true
-    const ultForTime = yidhariRealUlt ? decibels[i] / cfg.ultimateCost : ultimateCount
+    // agentId 判断冗余已删：exContinuous 唯一写入方 = src/mechanics/agents/yidhari.ts:148。
+    const realUltForTime = cfg.exContinuous === true
+      && cfg.exFinalize !== true
+    const ultForTime = realUltForTime ? decibels[i] / cfg.ultimateCost : ultimateCount
 
     // 时间信道阻尼（迭代期）：她的实数次数经「必要时间→共享平A池→队友回能→队友整数次数」
     // 与队友耦合，队友整数次数在阈值处翻转会把她的次数拽成 2-循环（如 19.54↔19.71，队友 6↔7）。
     // 必要时间按 (prev+new)/2 松弛：不动点不变（不动点处 prev==new），2-循环振幅每迭代减半，
     // 两个种子收敛到同一中点 → 终局 floor 唯一。终局重推（finalize）不阻尼（直接按整数账本重算）。
-    // agentId 判断冗余已删（同 yidhariRealUlt：yidhariContinuousEx 唯一写入方 = yidhari.ts:148）。
-    const exForTime = cfg.yidhariContinuousEx === true
-      && cfg.yidhariFinalizeEx !== true
+    // agentId 判断冗余已删（同 realUltForTime：exContinuous 唯一写入方 = yidhari.ts:148）。
+    const exForTime = cfg.exContinuous === true
+      && cfg.exFinalize !== true
       ? (prevStates[i].exSpecialCount + exSpecialCount) / 2
       : exSpecialCount
 
@@ -612,8 +613,8 @@ function iterateBody(
     // 伊德海莉迭代期状态写入阻尼值（与必要时间信道同源）：原始实数次数经共享平A池与队友整数
     // 次数耦合会 2-循环（19.54↔19.71），状态与时间信道统一按 (prev+new)/2 松弛——不动点不变，
     // 2-循环振幅每迭代减半，两个种子收敛到同一中点，终局 floor 唯一。终局重推（finalize）写整数。
-    // agentId 判断冗余已删（yidhariContinuousEx 唯一写入方 = src/mechanics/agents/yidhari.ts:148）。
-    const storedEx = cfg.yidhariContinuousEx === true && cfg.yidhariFinalizeEx !== true
+    // agentId 判断冗余已删（exContinuous 唯一写入方 = src/mechanics/agents/yidhari.ts:148）。
+    const storedEx = cfg.exContinuous === true && cfg.exFinalize !== true
       ? (prevStates[i].exSpecialCount + exSpecialCount) / 2
       : exSpecialCount
 
