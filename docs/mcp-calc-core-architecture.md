@@ -139,7 +139,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-6d | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差、反向验证 66 条 1561 场景红、guards 21、build、497 测过；core 角色 import 归零） | velina 风蚀：模块能力 `anomalyCorrosion`，core 经 `agentMechanics` 查询；core 角色 import 2→0 | `anomalyPool.ts`、`anomalyPool/helpers.ts`、新 `anomalyPool/corrosion.ts`、`mechanics/types.ts`、`agents/velina.ts`、棘轮 |
 | CC-7 | fast | **done**（dsflash 工人 + lead 复核：PanelValues.atk/hp 必填 ⇒ `?? 0` 死分支；dump 624 零差、guards 21、build、48 测过） | 贯穿力单一事实源：导出 `calcPenetrationPower`，norma.ts / damagePool.ts:1067 改引用（**不碰 :1020**） | core/damage.ts、norma.ts、damagePool.ts |
 | CC-8 | fast | **done**（dsflash 工人 + lead 复核：逐项值相等；dump 624 零差 + rowsnap（含行文案）624 零差、guards 21、build） | damagePool 异常常量改引 core：713/500/1250 与 DoT 表改用 `ANOMALY_SINGLE_HIT_MULTIPLIER` / `STANDARD_DOT_CONFIG` | damagePool.ts 1242–1247 / 1402 / 1429 |
-| CC-9 | review | design（依赖 CC-7/8） | damagePool 按簇拆到 `resourceCalc/` 直属文件（`damagePoolDirect.ts`/`damagePoolRelease.ts`/`damagePoolAnomaly.ts`/`damagePoolAxis.ts`），共享可变态 `rows/claimedInAxis/seenDirectIds` 由入口持有的 `RowSink` 注入 | damagePool.ts |
+| CC-9a | review | **ready**（lead 设计 2026-09-25，卡见下） | damagePool 尾段（:1142–1725 异常 + 1171/1401/1261/爱丽丝/1581 附加行）原样外提 `damagePoolAnomaly.ts` 的 `emitAnomalyRows(env)`，共享 `rows` 注入 | damagePool.ts |
+| CC-9b | review | design（待 9a） | 逐角色主循环（:423–1141，约 700 行）外提；`claimedInAxis/seenDirectIds` 由入口持有后注入；轴占比闭包（:316–422）视 9b 形状再定（原 CC-9 设想：`damagePoolDirect/Release/Axis.ts` + `RowSink`） | damagePool.ts |
 | CC-10 | review | design | `solveTeam`：把 `computeCalcOutput`（runOuterLoop + stageResolveFeasibility）从 composable 抽成 Vue 无关函数 | useResourceCalc.ts 248–653 |
 | CC-11 | review | design | `runCalcRound` 引入 `RoundCtx`，按工人 C 的 C4–C10 簇拆；C1/C2/C3（轮输入簇、`resolveAxisUltimateDecibelCost`、`CalcRoundResult`）可先纯搬 | convergence.ts |
 | ~~CC-D1~~ | — | ✅ **done 2026-09-25（用户裁决「别人有为什么不算」）** | `damagePool.ts:1020` 琉音命破队友分支的贯穿力补 `sheerForceFlat`（改引 `calcPenetrationPower`） | damagePool.ts:1020 + `@fact engine:贯穿力/单一事实源`（GAME_TERM §10）+ 判据 `ccD3D1Verdict.test.ts::CC-D1` |
@@ -312,6 +313,47 @@ anomalyPool 已有现成的能力通道 `input.agentMechanics`（同 `transformA
 
 ④ **报告**：改动行、闸门 grep、棘轮新旧值、两次反向验证差异条数与前 10 个场景键、§4 + rowsnap 尾部输出。
 
+
+### CC-9a · damagePool 异常/附加伤害尾段外提 `damagePoolAnomaly.ts`（review）
+
+**lead 设计（2026-09-25 lead-arena-0925c，@17fc318 实测）**。CC-9 拆刀：**9a 尾段**（本卡）→ 9b 逐角色主循环（:423–1141，约 700 行，待 lead 设计）→ 9c 轴占比闭包（:316–422）视 9b 形状再定。
+现状：`src/composables/resourceCalc/damagePool.ts`（1727 行）只有一个函数 `buildDamagePoolRows`（:103–1727）。其尾段 **:1142–1725** 是一串互相独立、只往共享 `rows` 数组 `push` 的块：
+风属性异常事件 / 乱流 / 紊乱明细 / 按元素异常累积（:1142–1357），然后 1171 C6 灼烧爆发、1401 极性强击、1261 C6、1401 C6、爱丽丝畏缩 DOT、1581 蕾米埃尔（:1358–1725）。:1726 `return rows.filter(...)`。
+lead 已 grep：尾段用到的外层**局部量**只有 `rows`、`agentName`、`enemyDamageRes`、`isAxis`（只作真值判断）、`windSlot`、`inWindowFraction`、`nonWindInAxisFraction`、`ultimateInAxisFraction`，其余来自 ctx 解构（`allocMap` = `ctx.axisAllocation`、`stunCoverage` 等）。
+**无 `@fact` 声明**在范围内（两条在 :152–153，不动）。agentId 棘轮按 `resourceCalc/` **直属文件合计**计数 ⇒ 字面量随代码搬到直属新文件，总数不变、基线不改。`DamagePoolRow` 定义在 `./helpers`（无环）。
+
+① **先读**：`damagePool.ts` 1–125、300–425、1130–1727；`scripts/lib/agent-branch-ratchet.mjs` 40–70（直属文件口径）。
+
+② **做法**：
+1. 新建 `src/composables/resourceCalc/damagePoolAnomaly.ts`（**直属**，不建子目录）：
+   ```ts
+   export interface AnomalyRowsEnv {
+     ctx: DamagePoolContext          // import type from './damagePool'（纯类型，运行时无环）
+     rows: DamagePoolRow[]           // 共享输出数组：按原顺序 push，禁止换成返回值拼接
+     agentName: (agentId: string, slot: number) => string
+     enemyDamageRes: Record<string, number>   // 类型照原局部量推断结果写，不收窄不放宽
+     isAxis: boolean                 // 调用处传 Boolean(isAxis)（尾段只作真值判断，lead 已核）
+     windSlot: number
+     inWindowFraction: (element: string) => number
+     nonWindInAxisFraction: () => number
+     ultimateInAxisFraction: (slot?: number) => number
+   }
+   export function emitAnomalyRows(env: AnomalyRowsEnv): void
+   ```
+   函数体 = :1142–1725 **原样搬**：开头按 `damagePool.ts:105–112` 的**同名同别名**解构 `env.ctx` 中尾段实际用到的字段，再解构 env 里的局部量，其余表达式一字不改；注释随搬；所需 import 从 damagePool.ts 照抄（只拿用到的）。
+2. damagePool.ts：原 :1142–1725 换成 `emitAnomalyRows({ ctx, rows, agentName, enemyDamageRes, isAxis: Boolean(isAxis), windSlot, inWindowFraction, nonWindInAxisFraction, ultimateInAxisFraction })`；
+   删搬走后成死绑定的 import / 局部量（逐个 grep 确认；**`windSlot` 等若主循环仍用则保留**）。
+3. 若 TS 报尾段还用到未列出的外层局部量：**可以**加进 `AnomalyRowsEnv`（照原类型），在报告里列出；但若它是**可变**的（`let`、或尾段对它赋值/push 以外的写），停下写 blocked。
+4. 禁止：改任何数值 / 条件 / 文案 / 块顺序；改 agentId 棘轮基线；建子目录。
+
+**证伪闸门**：前提 =「尾段只读外层量、只经 `rows.push` 输出」。可观察失败 = rowsnap / dump 非零差异，或发现尾段写了外层可变量（停下）。
+收工 `grep -cE "findSlotByIdentity\(" src/composables/resourceCalc/damagePool.ts src/composables/resourceCalc/damagePoolAnomaly.ts` 两文件之和 = 改前 damagePool.ts 的计数（报告写前后数）；`npm run check-guards` 的编排层 agentId 读数不变。
+
+③ **验收**：§4 全套 + **rowsnap（本卡主判据：行文案/顺序）** + `npm run check-guards` + `npm run validate:specs` + `npm run build` +
+`npx vitest run burnice remielle alice jane specialMechanics inStunAttribution damageSourceBreakdown damagePool src/scripts/__tests__/`（名字过滤，报告列出实际跑到的文件数）。
+**反向验证**（两次，各自恢复并以零差异证明）：① 调用处临时传 `isAxis: false` ⇒ rowsnap 非零差异（证明 env 接线生效）；② `damagePoolAnomaly.ts` 里临时在 1581 蕾米埃尔块前 `return` ⇒ rowsnap 非零差异（证明搬过去的末块是活的）。
+
+④ **报告**：改动行、damagePool.ts 行数前后、新增进 env 的字段（如有）、死绑定清单、闸门 grep 前后读数、两次反向验证差异条数与前 10 个键、§4 + rowsnap 尾部输出。
 
 ### CC-5d · 截断重折环外提 `truncationRefold.ts`（review）
 
