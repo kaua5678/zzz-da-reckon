@@ -187,7 +187,7 @@ function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: numb
 
 function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelInput): void {
   // 核心被动·初始转化：每 1% 初始暴击伤害 → 初始暴击率 +0.35%。
-  // 初始口径 → 只读局外面板（珂蕾妲潜能等局内暴伤拐不参与转化）；基础暴伤 0，收益全来自副/主词条。
+  // 初始口径 → 只读局外面板（珂蕾妲潜能等局内暴伤拐不参与转化）；基础暴伤 50（锋御同模板，见 `@fact agent:1611/初始暴伤转暴击`），其余来自副/主词条与驱动盘。
   const initialCritDmg = Number(outOfCombatPanel?.critDmg ?? 0)
   if (initialCritDmg > 0) {
     panel.critRate = (panel.critRate ?? 0) + initialCritDmg * INITIAL_CRIT_DMG_TO_CRIT_RATE
