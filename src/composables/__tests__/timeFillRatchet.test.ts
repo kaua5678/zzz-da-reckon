@@ -181,7 +181,7 @@ describe('时间系统不变量与留白棘轮', () => {
    * ⚠ 与棘轮的分工：**棘轮拦「变差」，本断言拦「基线漂移」**。红了先归因再重生成，
    * 别把本条当成"重生成就好"的信号（那正是它要拦的动作）。
    *
-   * @fact engine:guards/基线自洽 口径: 时间留白棘轮是**单向**判据（只拦「变差」）⇒ 必须配一条**零容差双向**自洽断言补对侧（棘轮拦变差、自洽拦基线漂移）；两侧缺一，则「改读数不重生成」类提交可全绿（容差一加缺口即原样复活） | 据 实测@2026-09-20（`70d7dc0` 改 2 队读数未重生成、`npm run verify` 全绿、潜伏 2 天跨 3 提交） | 验 src/composables/__tests__/timeFillRatchet.test.ts | 锚 src/composables/__tests__/timeFillRatchet.test.ts#基线自洽：逐队 measure() | 信 确认
+   * @fact engine:guards/基线自洽 口径: 时间留白棘轮是**单向**判据（只拦「变差」）⇒ 必须配一条**零容差双向**自洽断言补对侧（棘轮拦变差、自洽拦基线漂移）；两侧缺一，则「改读数不重生成」类提交可全绿（容差一加缺口即原样复活） | 据 实测@2026-09-20（`70d7dc0` 改 2 队读数未重生成、`npm run verify` 全绿、潜伏 2 天跨 3 提交）·复核@2026-09-25 | 验 src/composables/__tests__/timeFillRatchet.test.ts | 锚 src/composables/__tests__/timeFillRatchet.test.ts#基线自洽：逐队 measure() | 信 确认
    * ⟳复核: 引擎量化地板/`TOLERANCE` 口径变更时，确认本断言仍为零容差且覆盖全库 104 队 | 到期 2026-12-31
    */
   it('基线自洽：逐队 measure() 与基线**零容差**双向一致（拦「改读数不重生成」）', async () => {
@@ -230,7 +230,7 @@ describe('时间系统不变量与留白棘轮', () => {
    *
    * **成本 = 零**：复用 `measureAll()` 同一次扫描（残差在 `measureWithResidual` 里顺手算出）。
    *
-   * @fact engine:guards/留白四项分解 口径: 结果页留白归因必须是**精确闭合的四项分解** `slack == 账本虚高 + 平A池没打出来 + 池余额 + 合轴抵扣`（零容差、全库 104 队）；**不得**把 `basicShrink`（= basicTotal − 聚合行，含「池物化成模块行」与「池没打出来」两种相反含义）挂到留白之下当「其中」（实测 21 队 shrink>1s 而留白 ≤1s，`auto-1241-1031-1311` 117.57s vs 0.00s） | 据 闸门实测@2026-09-20（104/104 闭合、偏差 5.7e-14；反向注入两项各自独立变红） | 验 src/composables/__tests__/timeFillRatchet.test.ts | 锚 src/composables/teamTimeSummary.ts#slackHint | 信 确认
+   * @fact engine:guards/留白四项分解 口径: 结果页留白归因必须是**精确闭合的四项分解** `slack == 账本虚高 + 平A池没打出来 + 池余额 + 合轴抵扣`（零容差、全库 104 队）；**不得**把 `basicShrink`（= basicTotal − 聚合行，含「池物化成模块行」与「池没打出来」两种相反含义）挂到留白之下当「其中」（实测 21 队 shrink>1s 而留白 ≤1s，`auto-1241-1031-1311` 117.57s vs 0.00s） | 据 闸门实测@2026-09-20（104/104 闭合、偏差 5.7e-14；反向注入两项各自独立变红）·复核@2026-09-25 | 验 src/composables/__tests__/timeFillRatchet.test.ts | 锚 src/composables/teamTimeSummary.ts#slackHint | 信 确认
    * ⟳复核: 留白分解项增删 / `ledgerInflation` 或 `basicUnspent` 口径变更时，确认本断言仍零容差闭合，且结果页四项与 `slackHint` 同源 | 到期 2026-12-31
    */
   it('留白分解恒等式：四项带符号分解逐队零容差闭合（拦「展示层拿不闭合的量当留白」）', async () => {

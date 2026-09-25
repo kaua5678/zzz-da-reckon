@@ -15,7 +15,7 @@
  * （`findAssistFollowUp` 取第一条 = 无垢熔锋）。反制支援与其专属支援突击的配对是**角色数据**，
  * 显式登记在此；新锋御角色录入时加一行即可（引擎与 Boss 卡都只读本表，无 agentId 分支）。
  *
- * @fact data:反制支援/招式配对 口径: 克拉蕾(1611)反制支援 = 1611028 寸铁不让 + 专属支援突击 1611030 血华誓·琢形，一次化解一组控制技（整组弹刀不再发生）；两行按「一次动作」融合（见 data/moveFusions.ts#CLARET_COUNTER_ASSIST） | 据 用户@2026-09-12（「有反制支援的角色在场时，可以使用反制支援替换这些弹刀交互」「两个都算」） | 验 src/composables/__tests__/counterAssist.test.ts | 锚 src/data/counterAssists.ts#CLARET_COUNTER_ASSIST | 信 确认
+ * @fact data:反制支援/招式配对 口径: 克拉蕾(1611)反制支援 = 1611028 寸铁不让 + 专属支援突击 1611030 血华誓·琢形，一次化解一组控制技（整组弹刀不再发生）；两行按「一次动作」融合（见 data/moveFusions.ts#CLARET_COUNTER_ASSIST） | 据 用户@2026-09-12（「有反制支援的角色在场时，可以使用反制支援替换这些弹刀交互」「两个都算」）·复核@2026-09-25 | 验 src/composables/__tests__/counterAssist.test.ts | 锚 src/data/counterAssists.ts#CLARET_COUNTER_ASSIST | 信 确认
  */
 
 export interface CounterAssistMoves {

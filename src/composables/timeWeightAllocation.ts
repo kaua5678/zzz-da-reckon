@@ -45,7 +45,7 @@ export function reliefTrialAccepted(a: {
  * 能量杠杆逐 carry 喂能、角点解只压非输出槽（第二个 carry 也是输出，压到最小够用 = 卖伤害）。
  * 整队无输出位（理论不收录）→ 回落 [0]（旧「槽0=主C」约定，行为不变）。
  */
-// @fact engine:分配策略/主C判定 口径: 策略层「主C」= 队内**全部输出定位槽**（升序；单源 isCarrySpecialty，强攻/命破/异常/锋御），首元素=分类口径第一核心；能量喂能与 ex 守卫**逐核心**执行、角点解只压非输出槽；双主C 队核心间份额由均衡器按伤害边际协调（坐标上升=1D，A4）；整队无输出位回落 [0] | 据 用户@2026-09-10「有些队伍不是一个主c」+ 预设库分类同口径 用户@2026-09-08 | 验 src/composables/__tests__/timeWeightAllocation.test.ts#⑥f | 锚 src/composables/timeWeightAllocation.ts#carrySlotsOf | 信 确认
+// @fact engine:分配策略/主C判定 口径: 策略层「主C」= 队内**全部输出定位槽**（升序；单源 isCarrySpecialty，强攻/命破/异常/锋御），首元素=分类口径第一核心；能量喂能与 ex 守卫**逐核心**执行、角点解只压非输出槽；双主C 队核心间份额由均衡器按伤害边际协调（坐标上升=1D，A4）；整队无输出位回落 [0] | 据 用户@2026-09-10「有些队伍不是一个主c」+ 预设库分类同口径 用户@2026-09-08·复核@2026-09-25 | 验 src/composables/__tests__/timeWeightAllocation.test.ts#⑥f | 锚 src/composables/timeWeightAllocation.ts#carrySlotsOf | 信 确认
 function carrySlotsOf(configStore: ConfigStore, catalogStore: ReturnType<typeof useCatalogStore>): number[] {
   const slots = [0, 1, 2].filter(s => {
     const id = String(configStore.team[s]?.agentId ?? '')

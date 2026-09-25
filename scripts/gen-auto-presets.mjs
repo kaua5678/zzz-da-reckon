@@ -71,7 +71,7 @@ for (const { maxScore, runs } of byRoom.values()) {
 // 曾产出 11 组重复（14 条冗余，如 auto-1091-1031-1511 与 auto-1091-1511-1031 实为同一队）。
 // 排序键 = 成员 id 升序拼接；保留判据：金数低 > score 高 > 槽位 0 是输出核心（展示口径
 // 本库约定 0=主C）> run id 字典序（纯确定性兜底）。
-// @fact engine:preset/队伍身份 口径: 成员集合顺序无关——同 3 人换槽位 = 同队只留 1 条；保留判据 金数低 > score 高 > 槽位 0 是输出核心 > run id 字典序 |据 用户报障@2026-09-13 |验 src/data/__tests__/teamPresets.test.ts「auto-* 预设按成员集合去重」 |锚 scripts/gen-auto-presets.mjs#better |信 高
+// @fact engine:preset/队伍身份 口径: 成员集合顺序无关——同 3 人换槽位 = 同队只留 1 条；保留判据 金数低 > score 高 > 槽位 0 是输出核心 > run id 字典序 |据 用户报障@2026-09-13·复核@2026-09-25 |验 src/data/__tests__/teamPresets.test.ts「auto-* 预设按成员集合去重」 |锚 scripts/gen-auto-presets.mjs#better |信 高
 // ⟳复核: 若放宽到 4 人队 / 允许同队多形态共存（如按轴分家）时，确认「成员集合 = 队伍身份」这条去重口径仍成立，并同步保留判据 | 到期 2026-12-31
 const byTeam = new Map()
 const better = (r, cur) => {

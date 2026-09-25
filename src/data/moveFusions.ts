@@ -289,7 +289,7 @@ export const CLARET_COUNTER_ASSIST: MoveFusionGroup = {
   note: 'full/1611.json assist「支援突击：血华誓·琢形」desc =「发动[反制支援]后，点按 攻击 发动」→ 与 1611028 同属一次动作（用户 2026-09-12「两个都算」）。',
 }
 
-// @fact engine:autoField/能量场不占前台时间 口径: 自动攻击/能力场段（妮可 1031303 连携能量场、1031305 终结能量场、1031106 强特能量场）倍率·失衡·积蓄·喧响照算，时间通道按 0 计——一次招式「打是全打，站场不算」 | 据 用户@2026-09-11「只有炮击算时间，能力场是自动攻击，不算时间」+ nanoka full/1031.json 炮击/能量场分行 | 验 src/composables/__tests__/moveFusion.test.ts#倍率融合：时间通道（连携技「单次时长」） | 锚 src/data/moveFusions.ts#NICOLE_CHAIN | 信 确认
+// @fact engine:autoField/能量场不占前台时间 口径: 自动攻击/能力场段（妮可 1031303 连携能量场、1031305 终结能量场、1031106 强特能量场）倍率·失衡·积蓄·喧响照算，时间通道按 0 计——一次招式「打是全打，站场不算」 | 据 用户@2026-09-11「只有炮击算时间，能力场是自动攻击，不算时间」+ nanoka full/1031.json 炮击/能量场分行·复核@2026-09-25 | 验 src/composables/__tests__/moveFusion.test.ts#倍率融合：时间通道（连携技「单次时长」） | 锚 src/data/moveFusions.ts#NICOLE_CHAIN | 信 确认
 
 export const MOVE_FUSION_GROUPS: MoveFusionGroup[] = [
   MIYABI_EX_SLASH,

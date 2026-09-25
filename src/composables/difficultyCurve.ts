@@ -33,11 +33,11 @@
  *
  * `buildCurveChart` 是纯函数（不碰 store / 引擎），判据测试在同名单测文件里。
  *
- * @fact engine:难度曲线/x轴 口径: x = **自动算的操作难度绝对值** = `computeDifficulty`(当前档实打交互次数, 时间压力秒, 用户权重) —— 与散点页横轴同一函数同一单位（故可直接对齐比较）；**时间压力 = 硬溢出 overflowSeconds + 合轴抵扣 saved，一笔秒数只挂一个权重**（用户 2026-09-11「合轴本身就有难度，通过合轴来让溢出时间降低这俩其实是一个东西」）；各队起点不齐是特性，且 x 不保证单调（杠杆可减少交互 ⇒ 难度降伤害升 = 白拿） | 据 用户@2026-09-10·口径合并@2026-09-11 | 验 difficultyCurve.test.ts::集成：x 轴 = 实测操作难度 | 锚 src/composables/difficultyCurve.ts#measureOperationalDifficulty | 信 确认
- * @fact engine:难度曲线/伤害归因 口径: 每档伤害按来源分组（直伤行 = 招式名、异常行 = 行 `type`，同名跨槽位合并），Σ 分组 ≡ 该档总伤害 ⇒ 归因精确；相邻档差分 = 正贡献 top + 被挤掉（最负在前）+ 其余，三段合计 ≡ 总 Δ | 据 实测@2026-09-10 | 验 difficultyCurve.test.ts::伤害归因 | 锚 src/composables/difficultyCurve.ts#attributeDmgChanges | 信 确认
- * @fact engine:难度曲线/交互项截断缩 口径: x 的交互项按**装配期截断存活率**缩到「180s 里真打的次数」——每槽因子 = `convergence.truncationBySlot` 的 kept/requested（引擎截断是整槽按比例缩，故同比例缩该槽交互）；无截断/未传 rr 时因子 1 ⇒ 只有带截断的队数值会动。近似：按槽缩而没按交互类型精确缩（般岳 金身/双反 共用「冲霄」一行），精确版随 A 项（截断回灌资源循环）落地 | 据 用户@2026-09-11 | 验 difficultyCurve.test.ts::交互项按装配期截断存活率缩 | 锚 src/composables/difficultyCurve.ts#liveInteractions | 信 确认
- * @fact engine:难度曲线/关键次数标注 口径: 图上标注与「关键变化」面板只显示 Δ≥1 的次数跃迁（「多了一次」），Δ<1 的小数级微调只进 tooltip；关键次数 = 队伍级 7 项（大招/强特/连携/失衡/异常触发/紊乱/乱流，取自引擎结果字段）+ 角色专属「N 次」行（模块 `resourceSections` 自报，零角色硬编码） | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::只认「变多」 | 锚 src/composables/difficultyCurve.ts#diffKeyCounts | 信 确认
- * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
+ * @fact engine:难度曲线/x轴 口径: x = **自动算的操作难度绝对值** = `computeDifficulty`(当前档实打交互次数, 时间压力秒, 用户权重) —— 与散点页横轴同一函数同一单位（故可直接对齐比较）；**时间压力 = 硬溢出 overflowSeconds + 合轴抵扣 saved，一笔秒数只挂一个权重**（用户 2026-09-11「合轴本身就有难度，通过合轴来让溢出时间降低这俩其实是一个东西」）；各队起点不齐是特性，且 x 不保证单调（杠杆可减少交互 ⇒ 难度降伤害升 = 白拿） | 据 用户@2026-09-10·口径合并@2026-09-11·复核@2026-09-25 | 验 difficultyCurve.test.ts::集成：x 轴 = 实测操作难度 | 锚 src/composables/difficultyCurve.ts#measureOperationalDifficulty | 信 确认
+ * @fact engine:难度曲线/伤害归因 口径: 每档伤害按来源分组（直伤行 = 招式名、异常行 = 行 `type`，同名跨槽位合并），Σ 分组 ≡ 该档总伤害 ⇒ 归因精确；相邻档差分 = 正贡献 top + 被挤掉（最负在前）+ 其余，三段合计 ≡ 总 Δ | 据 实测@2026-09-10·复核@2026-09-25 | 验 difficultyCurve.test.ts::伤害归因 | 锚 src/composables/difficultyCurve.ts#attributeDmgChanges | 信 确认
+ * @fact engine:难度曲线/交互项截断缩 口径: x 的交互项按**装配期截断存活率**缩到「180s 里真打的次数」——每槽因子 = `convergence.truncationBySlot` 的 kept/requested（引擎截断是整槽按比例缩，故同比例缩该槽交互）；无截断/未传 rr 时因子 1 ⇒ 只有带截断的队数值会动。近似：按槽缩而没按交互类型精确缩（般岳 金身/双反 共用「冲霄」一行），精确版随 A 项（截断回灌资源循环）落地 | 据 用户@2026-09-11·复核@2026-09-25 | 验 difficultyCurve.test.ts::交互项按装配期截断存活率缩 | 锚 src/composables/difficultyCurve.ts#liveInteractions | 信 确认
+ * @fact engine:难度曲线/关键次数标注 口径: 图上标注与「关键变化」面板只显示 Δ≥1 的次数跃迁（「多了一次」），Δ<1 的小数级微调只进 tooltip；关键次数 = 队伍级 7 项（大招/强特/连携/失衡/异常触发/紊乱/乱流，取自引擎结果字段）+ 角色专属「N 次」行（模块 `resourceSections` 自报，零角色硬编码） | 据 用户@2026-09-10·复核@2026-09-25 | 验 difficultyCurve.test.ts::只认「变多」 | 锚 src/composables/difficultyCurve.ts#diffKeyCounts | 信 确认
+ * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10·复核@2026-09-25 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
  */
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -228,7 +228,7 @@ export function liveInteractions(
   // 反制支援（角力化解一组控制技）：次数不是 store 字段而是**运行时折算**（boss 控制技组 ×
   // 队内有反制支援招式的角色），按承接槽位的截断存活率缩。
   //
-  // @fact engine:操作难度/角力权重 口径: 反制支援每次角力 = 一次弹刀同权重（1.0），单列类型 `counterAssist` 以便明细可读、用户仍可单独覆盖；次数取运行时折算结果（`configStore.counterAssistSlot` ≥0 时的 `appliedBoss.counterAssistGroups.length`），并按承接槽位截断存活率缩，与其余交互同口径 | 据 用户@2026-09-12「角力的操作就是一次弹刀而已，计同等权重就行，确实不难」 | 验 src/composables/__tests__/counterAssist.test.ts::角力 = 一次弹刀同权重 | 锚 src/composables/difficultyCurve.ts#liveInteractions | 信 确认
+  // @fact engine:操作难度/角力权重 口径: 反制支援每次角力 = 一次弹刀同权重（1.0），单列类型 `counterAssist` 以便明细可读、用户仍可单独覆盖；次数取运行时折算结果（`configStore.counterAssistSlot` ≥0 时的 `appliedBoss.counterAssistGroups.length`），并按承接槽位截断存活率缩，与其余交互同口径 | 据 用户@2026-09-12「角力的操作就是一次弹刀而已，计同等权重就行，确实不难」·复核@2026-09-25 | 验 src/composables/__tests__/counterAssist.test.ts::角力 = 一次弹刀同权重 | 锚 src/composables/difficultyCurve.ts#liveInteractions | 信 确认
   const caSlot = config.counterAssistSlot
   const caCount = caSlot >= 0 ? shrink(caSlot, config.appliedBoss?.counterAssistGroups?.length ?? 0) : 0
   if (caCount > 0) out.push({ type: 'counterAssist', count: caCount, slot: caSlot })

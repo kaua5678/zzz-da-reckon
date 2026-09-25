@@ -8,7 +8,7 @@
  * 第 N 个副本；迁移清单见 .claude 账本 Open。对象分支是 **nullish 链**（空串 zhCN 算有效值、
  * 不回退 en，防"en 未录时闪英文"的误回退），其余形态一律 fallback。
  *
- * @fact utils/format/localized 口径: LocalizedString 解析=字符串原样；对象按 zhCN→en→fallback 的 nullish 链（空串 zhCN 有效不回退）；其余形态给 fallback | 据 终态核对@2026-09-12 | 验 src/utils/__tests__/format.test.ts | 锚 src/utils/format.ts#localized | 信 高
+ * @fact utils/format/localized 口径: LocalizedString 解析=字符串原样；对象按 zhCN→en→fallback 的 nullish 链（空串 zhCN 有效不回退）；其余形态给 fallback | 据 终态核对@2026-09-12·复核@2026-09-25 | 验 src/utils/__tests__/format.test.ts | 锚 src/utils/format.ts#localized | 信 高
  */
 export function localized(value: unknown, fallback = ''): string {
   if (typeof value === 'string') return value

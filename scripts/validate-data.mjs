@@ -244,7 +244,7 @@ check('status tables have no orphan ids (absent from catalog)', orphanMechanics.
 // 单一事实源（规则 8/11）：核心被动/额外能力只记在 mechanics[]，禁止顶层重复字段
 // （历史上顶层 corePassive/additionalAbility 是 sync 占位、从不回填 → 与 mechanics[] 漂移、
 // 且被 generate-implementation-status 漏读；2026-09-04 归一，此护栏防回归）。
-// @fact engine:mechanics单一事实源 口径: 角色核心被动/额外能力只记在 character-mechanics.json 的 mechanics[]，禁止顶层 corePassive/additionalAbility 重复字段（顶层占位从不回填会漂移且被状态表漏读）| 据 用户@2026-09-04 | 锚 scripts/validate-data.mjs#dupTopLevel | 信 确认
+// @fact engine:mechanics单一事实源 口径: 角色核心被动/额外能力只记在 character-mechanics.json 的 mechanics[]，禁止顶层 corePassive/additionalAbility 重复字段（顶层占位从不回填会漂移且被状态表漏读）| 据 用户@2026-09-04·复核@2026-09-25 | 锚 scripts/validate-data.mjs#dupTopLevel | 信 确认
 const mechData = load('public/static/character-mechanics.json').characters ?? {}
 const dupTopLevel = Object.entries(mechData)
   .filter(([, c]) => c && (c.corePassive != null || c.additionalAbility != null))

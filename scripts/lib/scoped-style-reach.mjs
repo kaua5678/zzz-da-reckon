@@ -25,7 +25,7 @@
  *   （静态解析不可靠，不判）；④ 无任何 scoped 定义的类（可能来自非 scoped 样式/运行时注入，
  *   不可证明失配，不判）；⑤ 组件经**非 scoped** `<style src>` 载入的文件里的类（全局注入，可达）。
  *
- * @fact ui:样式/scoped可达性 口径: 任何 scoped 定义面（页面私有 scoped 文件/内联、被 <style scoped src> 载入的共享 css、他组件内联 scoped）里的类，若被既未载入定义文件、自身内联也无同名定义的组件静态使用 ⇒ 该规则对组件不生效（判据 16 违规）；跨块共享的类必须放 styles/chart-blocks.css（经 <style scoped src> 由各块各自载入 ⇒ 特异性不变）或全局 charts.css | 据 实测@2026-09-14（Chart 3 击杀线 stroke:none / Chart 5 dd-caption 继承 13px，两条都是抽组件漏搬样式的静默回归）| 验 src/scripts/__tests__/scopedStyleReach.test.ts | 锚 scripts/lib/scoped-style-reach.mjs#scanScopedStyleReach | 信 高
+ * @fact ui:样式/scoped可达性 口径: 任何 scoped 定义面（页面私有 scoped 文件/内联、被 <style scoped src> 载入的共享 css、他组件内联 scoped）里的类，若被既未载入定义文件、自身内联也无同名定义的组件静态使用 ⇒ 该规则对组件不生效（判据 16 违规）；跨块共享的类必须放 styles/chart-blocks.css（经 <style scoped src> 由各块各自载入 ⇒ 特异性不变）或全局 charts.css | 据 实测@2026-09-14（Chart 3 击杀线 stroke:none / Chart 5 dd-caption 继承 13px，两条都是抽组件漏搬样式的静默回归）·复核@2026-09-25| 验 src/scripts/__tests__/scopedStyleReach.test.ts | 锚 scripts/lib/scoped-style-reach.mjs#scanScopedStyleReach | 信 高
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, relative, sep, dirname } from 'node:path'

@@ -83,7 +83,7 @@ function num(v) { return Number.isFinite(v) ? v : 0 }
  * 「无垢熔锋」（招架支援后续段）基数 0，故不能按「支援突击」名称通配。
  * Counter Assist 走名称规则（未来新锋御角色的反制支援自动同口径）。
  *
- * @fact data:1611/反制支援两行秽盾基数 口径: 克拉蕾 1611028 反制支援：寸铁不让 与 1611030 支援突击：血华誓·琢形 的 ether_purify = 300 + 100t → actionTime = 3.717s / 1.117s（catalog 曾按 ether/100 直录成 6.717 / 4.117，各多算 3s）；同族 1611027 无垢熔锋（招架支援的后续段）基数 0，不按「支援突击」名称通配 | 据 用户@2026-09-12 | 验 src/composables/__tests__/counterAssist.test.ts::秽盾 300+100t | 锚 scripts/import-nanoka-v12.mjs#MOVE_ETHER_BASE | 信 确认
+ * @fact data:1611/反制支援两行秽盾基数 口径: 克拉蕾 1611028 反制支援：寸铁不让 与 1611030 支援突击：血华誓·琢形 的 ether_purify = 300 + 100t → actionTime = 3.717s / 1.117s（catalog 曾按 ether/100 直录成 6.717 / 4.117，各多算 3s）；同族 1611027 无垢熔锋（招架支援的后续段）基数 0，不按「支援突击」名称通配 | 据 用户@2026-09-12·复核@2026-09-25 | 验 src/composables/__tests__/counterAssist.test.ts::秽盾 300+100t | 锚 scripts/import-nanoka-v12.mjs#MOVE_ETHER_BASE | 信 确认
  */
 const MOVE_ETHER_BASE = { '1611028': 300, '1611030': 300 }
 function actionTime(skill) {

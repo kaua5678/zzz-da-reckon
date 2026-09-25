@@ -1178,7 +1178,7 @@ export async function computeSlotComparePoints(calc: Calc, opts: SlotCompareOpti
 // Chart 7 只能比「预设里恰好凑成同两槽的 A/B 两队」，这里把同款求值推广到任意三元组：
 // 求值 = evalTeamByBudget 单一事实源（预算感知确定性分配 / 逐金贪婪），maxIter 未收敛跳过；
 // 不含当期 buff 牌与自动下位（与 Chart 7 /「队伍对比·不使用」一致）；快照/恢复不留痕。
-// @fact slotSweep:选第三人求值口径 口径: 候选=candidateIds 覆盖（缺省=catalog 可见角色−固定2人，页面层用职业筛选/手选收窄）；求值=evalTeamByBudget（预算感知确定性分配或逐金贪婪，maxIter 跳过）；槽位语义 0=主C/1=击破/2=支援，固定队友按其余两槽槽位序 | 据 用户 2026-09-13「对比固定2个队友，然后选第三个人。目前的都是预设队伍，不太自由」+ 同日「第三人不是海选，是选定部分角色」 | 验 src/composables/__tests__/slotSweep.test.ts | 锚 src/composables/teamTimeline.ts#computeSlotSweepPoints | 信 确认
+// @fact slotSweep:选第三人求值口径 口径: 候选=candidateIds 覆盖（缺省=catalog 可见角色−固定2人，页面层用职业筛选/手选收窄）；求值=evalTeamByBudget（预算感知确定性分配或逐金贪婪，maxIter 跳过）；槽位语义 0=主C/1=击破/2=支援，固定队友按其余两槽槽位序 | 据 用户 2026-09-13「对比固定2个队友，然后选第三个人。目前的都是预设队伍，不太自由」+ 同日「第三人不是海选，是选定部分角色」·复核@2026-09-25 | 验 src/composables/__tests__/slotSweep.test.ts | 锚 src/composables/teamTimeline.ts#computeSlotSweepPoints | 信 确认
 // ⟳复核: 若把「选第三人」改成吃当期 buff 牌/自动下位（向散点页口径靠）时，确认本口径「与 Chart 7 同口径、不含 buff/下位」是否仍成立并改写条目 | 到期 2026-12-31
 
 /** 组出「固定两槽 + 候选补海选槽」的队伍三元组（纯函数；fixed 按其余两槽的槽位序） */

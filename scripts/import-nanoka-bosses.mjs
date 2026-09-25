@@ -264,7 +264,7 @@ const BOSS_BODY_SIZES = {
   '300121': 'medium', // 恶名·冥宁芙
 }
 
-// @fact data:bossBodySize 口径: 22个TeamCompare可选boss的敌方体型为用户手录(2026-09-05)，覆盖表 BOSS_BODY_SIZES 随导入产物落 boss-presets.json 的 bodySize 字段；TeamCompare 选中 boss 自动写入敌方体型(未录 boss 默认中型)，艾莲霜锋剑气/苍角风团经 cfg.bodySize 消费 | 据 用户@2026-09-05 | 验 src/composables/__tests__/bossPresetsData.test.ts | 锚 scripts/import-nanoka-bosses.mjs#BOSS_BODY_SIZES | 信 确认
+// @fact data:bossBodySize 口径: 22个TeamCompare可选boss的敌方体型为用户手录(2026-09-05)，覆盖表 BOSS_BODY_SIZES 随导入产物落 boss-presets.json 的 bodySize 字段；TeamCompare 选中 boss 自动写入敌方体型(未录 boss 默认中型)，艾莲霜锋剑气/苍角风团经 cfg.bodySize 消费 | 据 用户@2026-09-05·复核@2026-09-25 | 验 src/composables/__tests__/bossPresetsData.test.ts | 锚 scripts/import-nanoka-bosses.mjs#BOSS_BODY_SIZES | 信 确认
 
 /** version.json 未收录的测试服期数兜底：3.2 正式三期（690451/690461/690471，2026-09 上线）
  *  + 3.3 测试服试炼三期（690481/690491/690501，无 live_begin） */
