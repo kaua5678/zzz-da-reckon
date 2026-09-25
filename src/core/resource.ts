@@ -26,6 +26,8 @@ import { createSolveDiagnostics } from './resource/solveDiagnostics'
 import { runFoldLoop as runFoldLoopPure, type FoldLoopContext } from './resource/foldLoop'
 // 物化 + 相位写入包装（CC-4 外提）：产行钩子对 cfg 只读，相位由引擎按同一 state 补写。
 import { buildExecutionsWithPhase } from './resource/phaseExecutions'
+// S3a 末轮欠打回填（CC-5a 外提）：门槛常量与其 `@fact` 留在本文件，经 ctx 注入；纯函数 `diag` 注入。
+import { runUnderfillProbe, type UnderfillProbeContext } from './resource/underfillProbe'
 
 export { crossAgentSupplyAt, crossAgentSuppliesOf, findCrossAgentSupplySlots, ultimateGiftOf }
 export type { CrossAgentSupplyInfo }
@@ -78,10 +80,12 @@ function ultimateGiftRowSpec(
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 import * as ResourceCalcHelpers from './resource/helpers'
 import { buildGiftRow } from './resource/giftRows'
-// S1 内层不动点已迁 src/core/resource/innerLoop.ts（CC-3）；此处按名 alias 引入，函数体内以同名
-// 包装 `runInnerLoop` 注入只读 ctx ⇒ 两个调用点（折叠环 / 欠打回填试探）逐字不改。
-import { runInnerLoop as runInnerLoopPure, type InnerLoopContext } from './resource/innerLoop'
-const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, materializeRows, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline } = ResourceCalcHelpers
+// S1 内层不动点已迁 src/core/resource/innerLoop.ts（CC-3）；本文件只保留只读 ctx 类型与装配。
+// CC-5a 后 `runInnerLoop` 的最后消费者（欠打回填 `convergeCounts`）已迁 `./resource/underfillProbe.ts`，
+// 本文件不再直接调用实现，只经 `foldCtx` / `probeCtx` 注入 `innerCtx`。
+import { type InnerLoopContext } from './resource/innerLoop'
+// `materializeRows` 已随欠打回填试探迁 `./resource/underfillProbe.ts`（CC-5a），本文件不再直接用。
+const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline } = ResourceCalcHelpers
 
 /**
  * 时间预算容差（秒）：量化（floor 次数）导致的残差属合轴可覆盖，不追求精确 0（坑12/19 既有口径）。
@@ -266,11 +270,12 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   const warmSeedStates: IterationState[] = states
   /**
    * 内层次数收敛 + 停点规范化（环检测 + 字典序规范停点）已迁 `src/core/resource/innerLoop.ts`
-   * （CC-3，纯函数）：折叠循环与「② 规范重跑」共用同一台机器。此处只注入只读 ctx
-   * （configs/config/maxIter/oscillatorStop），两个调用点（`runFoldLoop` / `convergeCounts`）逐字不改。
+   * （CC-3，纯函数）：折叠循环与欠打回填试探共用同一台机器。此处只注入只读 ctx
+   * （configs/config/maxIter/oscillatorStop），经 `foldCtx` / `probeCtx` 传给两个调用方。
+   * 原 `runInnerLoop` 包装行的最后一个消费者（欠打回填 `convergeCounts`）已随 CC-5a 迁出，
+   * 包装随之删除——`underfillProbe.ts` 直接 `runInnerLoop(from, ctx.innerCtx)`。
    */
   const innerCtx: InnerLoopContext = { configs, config, maxIter, oscillatorStop }
-  const runInnerLoop = (from: IterationState[]) => runInnerLoopPure(from, innerCtx)
   // `runFoldLoop`（S2 时间预算折叠环）已迁 `src/core/resource/foldLoop.ts`（CC-4，2026-09-25，纯函数）。
   // 下列 `@fact` 的**实现已迁**该文件，声明按既有惯例留在 re-export 壳处（同 CC-3 `innerLoop.ts` 的处理）；
   // **锚已随实现改指新文件**，豁免清单键（`src/core/resource.ts engine:收敛环停点规范化`）不变。
@@ -285,6 +290,16 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     injected: !!injectedStates, defaultSeedStates, innerCtx,
   }
   const runFoldLoop = (from: IterationState[]): IterationState[] => runFoldLoopPure(foldCtx, diag, from)
+  /**
+   * S3a 欠打回填试探（CC-5a 外提至 `./resource/underfillProbe.ts`，纯函数）的只读上下文。
+   * 门槛常量（`UNDERFILL_PROBE_THRESHOLD_SECONDS` / `TIME_BUDGET_TOLERANCE_SECONDS`）的声明与
+   * `@fact` 留在本文件（锚指常量本身），经 ctx 注入；`diag` 由包装**每次调用时读**（重折环换对象）。
+   */
+  const probeCtx: UnderfillProbeContext = {
+    configs, config, totalTime, innerCtx,
+    thresholdSeconds: UNDERFILL_PROBE_THRESHOLD_SECONDS,
+    toleranceSeconds: TIME_BUDGET_TOLERANCE_SECONDS,
+  }
 
   // ===== 终局整数重推（链数/轮数实数化收尾；规则 6 引擎落点，2026-09-25 CC-6c）=====
   // 迭代期 1531 动力压制链数、1431 明心境轮数以**实数**参与收敛（正反馈连续通道；消滞后后估时与
@@ -319,132 +334,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 装配产物改为返回值。判据 = timeGolden / timeFillRatchet / allAgentsSweep delta 0（规则 10）；先例 = #8 分刀 stageAssembleSlot。
   const runTailPipeline = () => {
     // ===== 末轮欠打回填（可行性门控，2026-09-05）=====
-    // 上面折叠循环的 refund **冻结在 pass0**，而 pass0 恒测到**正** excess（此时平A池按权重满额发放
-    // → 模块专属行爆量 → 行时间超账本）→ refund 被冻成 0；此后 excess 转负（账本 > 物化行 = 时间
-    // 没打满）就再也拿不到回填。实测 96/125 预设 refund=0、41 队留白 >1s（最大 93.7s = 朱鸢/妮可/苍角
-    // 的 1241 槽：账本必要 138.3s vs 物化必要行 44.6s），而 timeBudgetConverged 仍报 true——
-    // 「收敛健康」掩盖了「动作只打了 86s」。
-    // 修法：折叠循环退出后重测一次欠打量，**折半试探**注入 refund 并重收敛；只有「物化净占用更接近
-    // 预算、且不越过预算」才接受，否则回滚该次注入。必须是可行性门控而不是逐轮跟随——
-    // refund→平A→回能→次数→物化行 是放大环（naive 逐轮跟随实测：留白 1544s→267s 的同时
-    // 超预算队从 8 推到 20，破坏 netFrontlineOccupation ≤ 预算 这条被轴退化/降配/队伍对比消费的
-    // 硬不变量）。门控保证本步**绝不比现状差**：要么把留白收小，要么原样不动。
-    // 债1批1-3已销号（2026-09-18）：折半试探门控经 seedInvariance.test.ts（104 预设 × 4 种子）
-    // 机器判据验证，全库次数落点零偏差，天花板与净占用不变量保持稳定，离散修正影响已被约束在容差内。
-    {
-      const budgetSeconds = totalTime - (config.invincibleTime ?? 0)
-      const chainGiftProvider = findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1
-      /**
-       * Σ物化前台**净**占用：扣轴内合轴分摊 + 每槽超出该分摊的招式合轴抵扣（max 不叠加）——
-       * 与超时判定单一事实源 `netFrontlineOccupation` **完全同口径**，否则试探门控放行、
-       * 装配后仍超预算（实测差出 164s）。
-       */
-      const frontlineRowsOf = (st: IterationState[]): number => {
-        const overlap = config.axisOverlapByAction ?? {}
-        const overlapBySlot: number[] = configs.map(() => 0)
-        for (const [key, sec] of Object.entries(overlap)) {
-          const slot = Number(key.slice(0, key.indexOf(':')))
-          const idx = configs.findIndex(c => c.slot === slot)
-          if (idx >= 0 && Number.isFinite(sec)) overlapBySlot[idx] += sec
-        }
-        let total = 0
-        const chainGiftInfo = crossAgentSupplyAt(configs, st, chainGiftProvider, {
-          totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
-        })
-        // 琉音赠大：一律走 `ultimateGiftOf`（单一事实源，`@fact engine:赠送时间/轴模式四处同源` ③）——
-        // 轴模式用轴预设计数（`config.axisLiuyinPromote`），非轴用模块供给；不再在此内联轴分支（W19）
-        const giftLiu = ultimateGiftOf(configs, st, {
-          totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
-          ...(config.axisMode ? { axisMode: true } : {}),
-          ...(config.axisLiuyinPromote ? { axisPromote: config.axisLiuyinPromote } : {}),
-        })
-        const giftLiuTime = giftLiu.time
-        const giftLiuTarget = giftLiu.targetIdx
-        for (let i = 0; i < configs.length; i++) {
-          const cfg = configs[i]
-          const state = st[i]
-          const teammateFrontline = configs.reduce(
-            (sum, _, j) => (j === i ? sum : sum + st[j].frontlineTime), 0)
-          // 试探测量切 `materializeRows`（阶段1 第二刀收口，2026-09-09）：相位写入已拆到
-          // `materializePhaseState`（引擎侧显式补写），产行钩子对 cfg 只读——试探测量由此与装配同源
-          // （同一 `buildExecutions`）且不再污染相位。**实测否决记录（同日早间）**：当时 3 处相位写入
-          // 仍在钩子里，切换后 golden 多 9 条 delta（全在 1431，c0 留白 57.9→65.4s）——顺序必须是
-          // 「先拆相位写入、再切测量」，否则测出的是相位污染而不是测量口径差异。
-          const probeRows = materializeRows(cfg, state, state.chainCountTotal, teammateFrontline)
-          // 相位写入照旧补写（与折叠/装配同口径）：产行钩子已只读，写入由引擎显式声明。
-          // 不补写 = 下一轮 estimate 读到上一次物化的陈旧值（实测 golden 10 条 delta：1431 c0 留白
-          // 57.9→65.4s、1181:c6 ex −1.29）。
-          getAgentMechanic(cfg.agentId)?.materializePhaseState?.({ cfg, state, executions: probeRows, teamFrontlineSeconds: teammateFrontline })
-          const rowNet = probeRows.reduce(
-            (sum, e) => sum + Math.max(0, (e.totalTime ?? 0)
-              - (overlap[`${cfg.slot}:${e.moveId}`] ?? 0))
-              * (isFrontlineExecution(e) ? 1 : 0),
-            0) + (i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0)
-              + (i === giftLiuTarget ? giftLiuTime : 0)
-          const extraCredit = Math.max(0, (state.comboAlignCredit ?? 0) - overlapBySlot[i])
-          total += Math.max(0, rowNet - extraCredit)
-        }
-        return total
-      }
-      /**
-       * 内层次数收敛 = 折叠环同一台机器 `runInnerLoop`（判稳严格相等 + 精确环检测 + 浮点噪声环视为已收敛，规范停点）。
-       * 2026-09-19 前这里是一段**裸循环**（只有严格判稳、无环检测）：连续收缩队（1431 剑势环 / 1531 回血环）的试探
-       * 进入 ulp 级微环后永远「未稳」⇒ 回填一律被拒——单人 1431 命座 6 实测留白 29.0s、`auto-1431-1341-1311`
-       * 留白 1.5s 都是这一处拒出来的。真整数环仍 stable=false（与 ⑤a「规范停点当稳」不同——那次 1591 系变差被否决）。
-       */
-      const convergeCounts = (from: IterationState[]) => {
-        const r = runInnerLoop(from)
-        return { states: r.end, stable: r.clean }
-      }
-      let rowsFilled = frontlineRowsOf(states)
-      let underfill = budgetSeconds - rowsFilled
-      // 门槛 = 1s（量化容差，2026-09-08 用户口径「平A权重与留白不应并存，剩余自由时间按权重
-      // 全部分配」）：欠打 >1s 一律试探回填；≤1s 属量化地板（坑12「不追求精确 0」，合轴可覆盖），
-      // 不试探。历史：09-05 门槛 10s（当时扫描 1s=335/41/2(+2队崩) 5s=353/31/2 10s=391/23/2 20s=421/20/2，
-      // 「+2 队崩」= 近均衡队被推进 stunCount=0 吸引盆：失衡 116k→9.5k，runArchiveDeploy 雅/南宫/柚叶队崩）；
-      // 09-08 引擎（1051/1531 实数化、轴栈资源门控、sigrid 估时钩子、琉音三件套）上 1s 门槛复核：
-      // ratchet 绝对不变量/runArchiveDeploy/allAgentsSweep/yidhariInteractionGrid 全绿，旧盆不复现
-      // （实测数字见 underfillRefund.test.ts 与 docs 坑19① 否决记录）。
-      // **无排除队（2026-09-10 起）**：1591 一族原排除已于本日解除（见 `calcTeamResources` 顶部
-      // 注释的实测依据）；1051/1531 于 2026-09-08 随热启动规范种子修复放回。
-      if (underfill > UNDERFILL_PROBE_THRESHOLD_SECONDS) {
-        let probe = underfill
-        for (let attempt = 0; attempt < 4 && probe > 0.5; attempt++) {
-          const savedRefund: number = config.timeBudgetRefund ?? 0
-          // 试探轮跑 iterate 会触发模块钩子的**写回**（叶瞬光自动选轴在 estimateExSpecialTime 里
-          // 按 timeBudgetExcess 退化并改 record.yeshuguangAutoAxis；般岳补齐同款通道）——被拒的
-          // 试探必须连 cfg 一起回滚，否则结构选择被副作用永久改写（实测 1431 队留白 2.6→11.3s、
-          // 伤害 −13%，就是退化后的轴留在了 cfg 上）。
-          const savedCfg = configs.map(c => ({ ...c }))
-          // overflowSeconds 是 iterate 的副作用输出（编排层拿它判「非轴降配」缩交互次数）：
-          // 试探轮会写下自己的溢出值，被拒后若不回滚，编排层会按一个不存在的溢出把交互缩光
-          // → 失衡归零（实测 runArchiveDeploy 雅/南宫/柚叶队 stunCount 螺旋到 0）。
-          const savedOverflow = config.overflowSeconds ?? 0
-          config.timeBudgetRefund = savedRefund + probe
-          const trial = convergeCounts(states)
-          const trialRows = frontlineRowsOf(trial.states)
-          // 留 1× 容差余量：本步之后还有伊德海莉终局整数重推（实测 +1.3s）与外层不动点再平衡，
-          // 试探测得的行数不是最终装配的行数。margin 扫描（棘轮回归队数）：0=1 队 1=1 队 2=3 队。
-          const fitsBudget = trialRows <= budgetSeconds - TIME_BUDGET_TOLERANCE_SECONDS
-          if (trial.stable && fitsBudget && trialRows > rowsFilled) {
-            states = trial.states
-            rowsFilled = trialRows
-            diag.timeBudgetRefundedSeconds = config.timeBudgetRefund ?? 0
-            underfill = budgetSeconds - trialRows
-            if (underfill <= TIME_BUDGET_TOLERANCE_SECONDS) break
-          } else {
-            config.timeBudgetRefund = savedRefund // 回滚：宁可留白，不制造超预算
-            config.overflowSeconds = savedOverflow
-            configs.forEach((c, i) => Object.assign(c, savedCfg[i]))
-            probe /= 2
-          }
-        }
-        diag.timeBudgetIdleSeconds = Math.max(0, underfill)
-        // 热启动缓存**不存**试探前末态（2026-09-08 修）：折叠 pass0 的 refund 冻结与内层落点随初值变，
-        // 存末态会让同配置第二次计算换结果（1431 系 4 队冷/热 9.20 vs 4.86 等）。缓存存的是本轮的
-        // **规范种子**（见 warmSeedStates 声明处 @fact）——牺牲加速，换「同配置连续计算不许变」。
-      }
-    }
+    // 实现已迁 `src/core/resource/underfillProbe.ts#runUnderfillProbe`（CC-5a，2026-09-25，纯函数；
+    // 详细口径与否决记录随实现搬去该文件头 JSDoc）。此处只注入只读 ctx 并**每次调用时读 `diag`**
+    // （重折环会换新对象，禁止 `const d = diag` 缓存）；门槛常量经 `probeCtx` 注入（声明与 `@fact`
+    // 锚留在本文件）。
+    states = runUnderfillProbe(probeCtx, diag, states)
 
     // 失衡次数由外部失衡池不动点收敛后传入（连携次数 = chainCountPerStun × stunCount，见 iterate）
     const inputStunCount = config.stunCount ?? 0
