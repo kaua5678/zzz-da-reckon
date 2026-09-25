@@ -45,7 +45,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | W15 | drift 复核批 C：composables + scripts + 杂项 | 只读复核 | `.zc/reports/W15-drift.md` | ✅ 已落盘（`a721b58`；drift 全队列 102→1，仅余 1431 自动选轴待用户） |
 | W16 | 琉音(1481) 送客次数 floor 残留：预测先行取证 | 只读 + 隔离探针 | `.zc/reports/W16-predict.md`；探针只在 `/tmp/wt-W16` | ✅ 已回收（缺陷属实但当前 21 预设零影响；衍生 W20/W21） |
 | W17 | 补青衣(1251) 影画4 回能差分断言 | 新增测试 | `src/mechanics/__tests__/qingyiC4Energy.test.ts`、`.zc/reports/W17.md` | ✅ 已合入（lead 重放正控 5/5、负控 5→6 变红；卡已删） |
-| W18 | 两处纯清理：1531 spec notes 文案 + 般岳死写 | 小实现 | `src/specs/agents/1531.json`（仅 notes 字符串）、`src/mechanics/agents/banyue.ts`（仅删 1 行）、`.zc/reports/W18.md` | 进行中（09-25 派发，主仓库，持重计算时段） |
+| W18 | 两处纯清理：1531 spec notes 文案 + 般岳死写 | 小实现 | `src/specs/agents/1531.json`（仅 notes 字符串）、`src/mechanics/agents/banyue.ts`（仅删 1 行）、`.zc/reports/W18.md` | ✅ 已合入（lead 重放 banyue+billySmoke 63/63；validate:specs/check-guards/build 0；卡已删） |
 | W19 | frontlineRowsOf 琉音赠大收敛到 `ultimateGiftOf` | 小重构 | `src/core/resource.ts` | ✅ lead 自做（`85d90c6`，全量 3489 passed；W13 drifted #15 结案） |
 | W20 | 轴模式琉音送客行是否双计：取证 | 只读 + 隔离探针 | `.zc/reports/W20-axis-farewell.md`；探针只在 `/tmp/wt-W20` | ✅ 已回收（判定 `单计-模块`，账本多计 0s；轴声明 1481009 语义 A/B 已入 OPEN-ITEMS 待用户；W21 前置①满足） |
 | W21 | 琉音转大次数单源化（W16 契约 C） | 实现 | 见卡 | 进行中（09-25 派发，隔离 worktree `/tmp/wt-W21`，只跑定向 vitest，不 build） |
@@ -65,35 +65,6 @@ W18（W11/W12 的文案漂移与死写）。1451 梦境值 `maxValue 100 vs 500`
 headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾追加一行「测试/构建时段已授予」。
 
 ## 2. 任务卡
-
-<!-- card:W18 -->
-### W18 · 两处纯清理：星徽·比利(1531) spec notes 文案 + 般岳(1471) 死写
-
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W18。
-工作区 `/home/kaua/projects/zzz-calculator`。开工打印真实 HEAD 与 `git status --short`。
-父目标：2026-09-25 档案核对发现两处「文档/代码不说真话」，都不改任何数值行为。
-
-**任务 1 · `src/specs/agents/1531.json` notes 对齐实现（实现为准）**：
-- 事实：notes 某行写「默认 rockingRatio=0」，而 `src/mechanics/agents/starlightBilly.ts` 的 `DEFAULT_ROCKING_RATIO = 0.1`（滑块 default 0.1，头注释也写 0.1）⇒ 把该处改为「默认 rockingRatio=0.1（模块 DEFAULT_ROCKING_RATIO）」。
-- 事实：notes 有两行把「闪反 +10%」列为回血来源，另一行写「通用闪避反击（决斗之王）执行禁用，其 10% 回血随之不计入 HP 池」，`computeBillyHpModel` 只有抓地/摇曳/普攻回血 ⇒ 在前两行的「闪反 +10%」后补「（执行禁用，不计入 HP 池，见下文银河横行条）」，不删原文。
-- 只改 `notes` 数组里的这几条字符串；不动其它键、不重排、不改缩进风格。改前先 `grep -rn '\.notes' src --include=*.ts | grep -v __tests__` 确认 notes 不被计算消费，把结论写进报告。
-
-**任务 2 · 删除 `src/mechanics/agents/banyue.ts` 的死写 `record.banyueSwayExCount = cycle.swayExCount`**：
-- 事实：全仓唯一引用即该写入行（lead 已 grep）。动手前自己再 `grep -rn banyueSwayExCount src scripts public docs` 复核（含 .vue/.json/测试）；有任何读者就**停下写 blocked**，不删。
-- 只删这一行；**不要**动 `cycle.swayExCount` / 类型里的 `swayExCount`（那是活字段，资源卡 summary 在用）。
-
-**先读**：`AGENTS.md` §1 规则 4/13/14/16；上述两个文件的相关段落。`banyue.ts` 若在 `zc status` 显示被其它车道租约，只做任务 1 并在报告说明。
-**允许写入**：`src/specs/agents/1531.json`、`src/mechanics/agents/banyue.ts`、`.zc/reports/W18.md`（先 `zc claim`）。其余只读；不提交。
-
-**验收**（构建时段由派发附注授予）：
-1. `npm run validate:specs`、`npm run check-guards`（含判据 21 JSON 重复键）。
-2. `VITEST_MAX_WORKERS=4 npx vitest run src/mechanics/__tests__/banyue.test.ts src/mechanics/__tests__/billySmoke.test.ts src/specs/__tests__/verify.test.ts`。
-3. `npm run build`。
-4. `git diff` 全文贴进报告：1531.json 只有 notes 字符串行变化；banyue.ts 只有 1 行删除。
-
-**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`；含 HEAD、两次 grep 原始输出、`git diff` 全文、各验收命令退出码与结果尾部。
-`zc done --verifier '<命令>' --coverage 'src/specs/agents/1531.json, src/mechanics/agents/banyue.ts' --risk '<未证明事项>'`。
-<!-- /card:W18 -->
 
 <!-- card:W20 -->
 ### W20 · 轴模式琉音送客行是否双计：取证（不实现）

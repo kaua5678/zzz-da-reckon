@@ -562,7 +562,6 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
     // 轴模式：失衡内 = 轴内实际捏的连段块，失衡外 = 全部连段 − 轴内捏块（后摇按轴外单位数计）
     !!(cfg as unknown as Record<string, unknown>).banyueAxisActive,
   )
-  record.banyueSwayExCount = cycle.swayExCount
 
   const times = (record.banyueMoveTimes ?? {}) as Record<string, number>
   const dmg = (record.banyueMoveDmg ?? {}) as Record<string, number>
