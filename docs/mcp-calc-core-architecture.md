@@ -139,7 +139,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-6d | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差、反向验证 66 条 1561 场景红、guards 21、build、497 测过；core 角色 import 归零） | velina 风蚀：模块能力 `anomalyCorrosion`，core 经 `agentMechanics` 查询；core 角色 import 2→0 | `anomalyPool.ts`、`anomalyPool/helpers.ts`、新 `anomalyPool/corrosion.ts`、`mechanics/types.ts`、`agents/velina.ts`、棘轮 |
 | CC-7 | fast | **done**（dsflash 工人 + lead 复核：PanelValues.atk/hp 必填 ⇒ `?? 0` 死分支；dump 624 零差、guards 21、build、48 测过） | 贯穿力单一事实源：导出 `calcPenetrationPower`，norma.ts / damagePool.ts:1067 改引用（**不碰 :1020**） | core/damage.ts、norma.ts、damagePool.ts |
 | CC-8 | fast | **done**（dsflash 工人 + lead 复核：逐项值相等；dump 624 零差 + rowsnap（含行文案）624 零差、guards 21、build） | damagePool 异常常量改引 core：713/500/1250 与 DoT 表改用 `ANOMALY_SINGLE_HIT_MULTIPLIER` / `STANDARD_DOT_CONFIG` | damagePool.ts 1242–1247 / 1402 / 1429 |
-| CC-9a | review | **ready**（lead 设计 2026-09-25，卡见下） | damagePool 尾段（:1142–1725 异常 + 1171/1401/1261/爱丽丝/1581 附加行）原样外提 `damagePoolAnomaly.ts` 的 `emitAnomalyRows(env)`，共享 `rows` 注入 | damagePool.ts |
+| CC-9a | review | **done** `72e0eb5`（damagePool.ts 1727→1141；新 `damagePoolAnomaly.ts` 661 行；rowsnap/dump 624 零差，verify 3490） | damagePool 尾段（:1142–1725 异常 + 1171/1401/1261/爱丽丝/1581 附加行）原样外提 `damagePoolAnomaly.ts` 的 `emitAnomalyRows(env)`，共享 `rows` 注入 | damagePool.ts |
 | CC-9b | review | design（待 9a） | 逐角色主循环（:423–1141，约 700 行）外提；`claimedInAxis/seenDirectIds` 由入口持有后注入；轴占比闭包（:316–422）视 9b 形状再定（原 CC-9 设想：`damagePoolDirect/Release/Axis.ts` + `RowSink`） | damagePool.ts |
 | CC-10 | review | design | `solveTeam`：把 `computeCalcOutput`（runOuterLoop + stageResolveFeasibility）从 composable 抽成 Vue 无关函数 | useResourceCalc.ts 248–653 |
 | CC-11 | review | design | `runCalcRound` 引入 `RoundCtx`，按工人 C 的 C4–C10 簇拆；C1/C2/C3（轮输入簇、`resolveAxisUltimateDecibelCost`、`CalcRoundResult`）可先纯搬 | convergence.ts |
@@ -354,6 +354,10 @@ lead 已 grep：尾段用到的外层**局部量**只有 `rows`、`agentName`、
 **反向验证**（两次，各自恢复并以零差异证明）：① 调用处临时传 `isAxis: false` ⇒ rowsnap 非零差异（证明 env 接线生效）；② `damagePoolAnomaly.ts` 里临时在 1581 蕾米埃尔块前 `return` ⇒ rowsnap 非零差异（证明搬过去的末块是活的）。
 
 ④ **报告**：改动行、damagePool.ts 行数前后、新增进 env 的字段（如有）、死绑定清单、闸门 grep 前后读数、两次反向验证差异条数与前 10 个键、§4 + rowsnap 尾部输出。
+
+**结项（lead 复核 2026-09-25）**：env 比草案多 `axisStunFor` / `pushRelease` 两个只读函数声明（lead 核：均为 `function` 声明，无可变外层量）。反向 ② 蕾米埃尔块前 return ⇒ rowsnap DIFF 36。
+反向 ① `isAxis:false` 在 rowsnap 上**零差**——624 预设不含「轴 × 尾段敏感角色」组合，尾段 `isAxis` 分支在快照面恒走非轴臂；工人改用 `inStunAttribution.test.ts` 同改动 3 红作活性证明。
+**覆盖缺口备忘**：rowsnap 预设集对尾段轴内分支无覆盖，9b 若动轴占比闭包需先补预设或改用单测为判据。
 
 ### CC-5d · 截断重折环外提 `truncationRefold.ts`（review）
 
