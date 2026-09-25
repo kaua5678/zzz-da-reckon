@@ -550,7 +550,6 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     {
       const budgetSeconds = totalTime - (config.invincibleTime ?? 0)
       const chainGiftProvider = findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1
-      const ultimateGiftProvider = findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1
       /**
        * Σ物化前台**净**占用：扣轴内合轴分摊 + 每槽超出该分摊的招式合轴抵扣（max 不叠加）——
        * 与超时判定单一事实源 `netFrontlineOccupation` **完全同口径**，否则试探门控放行、
@@ -568,18 +567,15 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
         const chainGiftInfo = crossAgentSupplyAt(configs, st, chainGiftProvider, {
           totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
         })
-        // 琉音赠大：轴模式用轴预设计数（`config.axisLiuyinPromote`），非轴用模块供给（跨层统一入口）
-        const giftLiu = crossAgentSupplyAt(configs, st, ultimateGiftProvider, {
+        // 琉音赠大：一律走 `ultimateGiftOf`（单一事实源，`@fact engine:赠送时间/轴模式四处同源` ③）——
+        // 轴模式用轴预设计数（`config.axisLiuyinPromote`），非轴用模块供给；不再在此内联轴分支（W19）
+        const giftLiu = ultimateGiftOf(configs, st, {
           totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
-          // 轴模式：模块供给被 `axisSuppressed` 跳过，改用轴预设的 promote 计数（跨层统一入口）
           ...(config.axisMode ? { axisMode: true } : {}),
+          ...(config.axisLiuyinPromote ? { axisPromote: config.axisLiuyinPromote } : {}),
         })
-        const giftLiuTime = config.axisMode && config.axisLiuyinPromote && config.axisLiuyinPromote.count > 0
-          ? config.axisLiuyinPromote.count * (configs[config.axisLiuyinPromote.targetSlot]?.ultimateActionTime ?? 0)
-          : giftLiu.time
-        const giftLiuTarget = config.axisMode && config.axisLiuyinPromote && config.axisLiuyinPromote.count > 0
-          ? config.axisLiuyinPromote.targetSlot
-          : giftLiu.targetIdx
+        const giftLiuTime = giftLiu.time
+        const giftLiuTarget = giftLiu.targetIdx
         for (let i = 0; i < configs.length; i++) {
           const cfg = configs[i]
           const state = st[i]
