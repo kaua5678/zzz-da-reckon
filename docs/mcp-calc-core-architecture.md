@@ -142,14 +142,14 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-9a | review | **done** `72e0eb5`（damagePool.ts 1727→1141；新 `damagePoolAnomaly.ts` 661 行；rowsnap/dump 624 零差，verify 3490） | damagePool 尾段（:1142–1725 异常 + 1171/1401/1261/爱丽丝/1581 附加行）原样外提 `damagePoolAnomaly.ts` 的 `emitAnomalyRows(env)`，共享 `rows` 注入 | damagePool.ts |
 | CC-9b | review | **done** `740290d`（damagePool.ts 1141→438；Direct 350 / Release 297 / CharExtras 241 行；rowsnap/dump 624 零差，verify 3490） | 逐角色主循环（:415–1132）按 D 直伤 / R 异放事件 / X 角色附伤三段原样外提 `damagePoolDirect.ts` / `damagePoolRelease.ts` / `damagePoolCharExtras.ts`；共享 `rows/seenDirectIds/claimedInAxis` 以对象引用经 `CharRowsEnv` 注入；辅助闭包（:116–413）留入口，CC-9c 再议 | damagePool.ts |
 | CC-9c | review | **不做**（lead 2026-09-25） | 辅助闭包（:116–413 `pushDirect/pushRelease/axisSplitFor/*Fraction` 等）外提：它们闭包入口局部量，外提须改工厂函数（非原样搬），收益小；damagePool.ts 已 438 行、职责单一（ctx 解构 + 辅助 + 编排三段）。若日后要单测辅助函数再立卡 | damagePool.ts |
-| CC-T1 | review | **ready**（fast，低级模型可做；卡见下，改本机 `.zc/perf` 不入库） | rowsnap 预设补「失衡轴 × 尾段角色」（1171/1401/1261/1581 + 爱丽丝）组合：CC-9a 反向 ① 实测该面零覆盖，只有 `inStunAttribution.test.ts` 兜底。低级模型可做（只加预设 + 重生成 A 基线） | .zc/perf/ |
+| CC-T1 | review | **ready v2**（首派 blocked：尾段队无轴预设，仅开 `useStunAxis` 进不了轴分支；v2 改为同时注入最小轴，见卡末「v2 修订」） | rowsnap 预设补「失衡轴 × 尾段角色」（1171/1401/1261/1581 + 爱丽丝）组合：CC-9a 反向 ① 实测该面零覆盖，只有 `inStunAttribution.test.ts` 兜底。低级模型可做（只加预设 + 重生成 A 基线） | .zc/perf/ |
 | CC-10 | review | **done** `a73b6f8`（useResourceCalc.ts 1189→789；新 `solveTeam.ts` 476 行 + 纯度锁测试；dump/rowsnap 624 零差，verify 3493） | `computeCalcOutput`（:248–654，含 `runOuterLoop` / `stageResolveFeasibility`）原样外提 `resourceCalc/solveTeam.ts#solveTeam(input)`，Vue 无关；唯一 store 写（降配闸门 ceiling）改为返回 `ceilingWriteBack` 由 composable 执行 | useResourceCalc.ts |
 | CC-11a | review | **done** `129648b`（convergence.ts 1505→1153；roundInputs 354 / roundResult 24 行；vue 仅 type import；dump/rowsnap 624 零差，verify 3493） | C1 轮输入工厂 + C2 `resolveAxisUltimateDecibelCost` → `roundInputs.ts`；C3 `CalcRoundResult` → `roundResult.ts`；convergence.ts 原名 re-export，8 个消费者零改动 | convergence.ts |
-| CC-11b | review | design（待 11a） | `runCalcRound` 引入 `RoundCtx`，按工人 C 的 C4–C10 簇拆（33 个局部 `let` 的归属是设计核心；簇表行号 11a 后重测） | convergence.ts |
+| CC-11b | review | **暂缓**（lead 2026-09-25） | `runCalcRound`（convergence.ts :106–1151，顶层 16 个 `let`）引入 `RoundCtx` 按 C4–C10 簇拆。暂缓理由：§3 目标形态**不含** convergence.ts（§3 各项已由 CC-4…CC-10 落地），闭包内各段互读互写局部量、无清晰阶段边界，拆分风险高于收益。**重启条件**：出现要单测某一簇、或某簇需被 solveTeam 以外复用的真实需求；届时先做 CC-T1 v2 保证轴覆盖 | convergence.ts |
 | ~~CC-D1~~ | — | ✅ **done 2026-09-25（用户裁决「别人有为什么不算」）** | `damagePool.ts:1020` 琉音命破队友分支的贯穿力补 `sheerForceFlat`（改引 `calcPenetrationPower`） | damagePool.ts:1020 + `@fact engine:贯穿力/单一事实源`（GAME_TERM §10）+ 判据 `ccD3D1Verdict.test.ts::CC-D1` |
 | CC-D2 | — | **decide** | core `standardDotDamage` 生产零消费：删掉，还是让 damagePool 消费它（两套算法不同，需先对账） | 需用户口径 |
 | ~~CC-D3~~ | — | ✅ **done 2026-09-25（用户裁决「维琳娜专属资源，不该给别人计算」）** | 风蚀归属改按面板标记 `velinaEnabled`（`velina.ts#findVelinaPanel`/`#resolveVelinaCorrosion`，模块唯一写入方）。探针先行的预测**已证实**：1621 队产出 `{turb:3,micro:2,broad:1,boosted:1}` + 2 条「维琳娜…气旋」行共 15 702 挂在洛克茜名下、1631 队 5 936 挂赛维里安 ⇒ 数值缺陷。修后无维琳娜 ⇒ `velinaCorrosionSource` 为 `undefined`（非全零），气旋行/广域积蓄注入整套消失；**乱流仍在**（通用机制）。dump A/B：6 支洛克茜队 −0.06%~−0.15% | velina.ts / anomalyPool.ts / anomalyPool/helpers.ts + 判据 `anomalyPool.test.ts::CC-D3` + `ccD3D1Verdict.test.ts` |
-| CC-D4 | — | 待立项 | `transformStore.velinaCorrosionSource` 死写（`anomalyPool.ts:98/111` 建、`velina.ts:277` 写、全仓无读）——接上或删，单独一批 | 与 CC-6d 分批 |
+| CC-D4 | — | **done** `1eedd4c`（lead 自做） | 删 `AgentAnomalyTransformInput.store` 字段、`anomalyPool.ts` 的 `transformStore` 与 `velina.ts` 唯一写入：全仓无读，引擎经能力 `anomalyCorrosion` 按最终乱流次数重算同一结果；dump/rowsnap 零差，verify 绿 | anomalyPool.ts / types.ts / velina.ts |
 | CC-12 | 换尺 | **done**（dsflash 工人 + lead 复核：新增命中恰为 convergence.ts:302/311 两行；编排层基线/frozen 1→3（口径纠正），core 5 不变；src 零改动；guards 21、scripts 测试 452 过、build） | 身份扫描器补「本地别名」形态（`convergence.ts:302/311` 的 `fillerAgentId === '1051'/'1041'` 现在量不到），按规则 17② 调 `frozen` 到真实值 | scripts/lib/agent-identity-lines.mjs 等 |
 
 ### CC-1 · 招式表查询迁出（fast）
@@ -383,6 +383,18 @@ lead 已核事实：
 
 ③ **验收**：第 3、4 步两项比对输出；`git status` 显示仓库**无**已跟踪文件改动（damagePool.ts 已恢复）。
 ④ **报告** `.zc/reports/CC-T1.md`：新增键数与列表前 20、旧键逐值相等输出、反向输出、恢复后零差输出。
+
+**v2 修订（lead 2026-09-25，据首派报告 `.zc/reports/CC-T1.md` §5）**：首派 13 个 `/axis` 场景与 `/default` 逐字节相同 ⇒ blocked。原因（工人探针实测）：13/13 `stunAxisResult = null`——这些队无 `stunAxisPresetId`、`selectAutoStunAxisPreset` 无命中，`applyTeamToStore` 不写 `stunAxes`，而 `useResourceCalc.ts#stunAxisResult` 过滤掉 `actions` 为空的轴后为空即返回 null。
+v2 做法（替换第 1 步的变体体）：
+```ts
+if (/\b(1171|1261|1401|1581)\b/.test(p.id.replace(/-/g, ' '))) {
+  const ax = config.useStunAxis, axes = config.stunAxes
+  config.stunAxes = [{ name: 'T1', actions: [{ slot: 0, moveId: 'basic', count: 3 }] }]
+  config.useStunAxis = true; snap(`${p.id}/axis`)
+  config.useStunAxis = ax; config.stunAxes = axes
+}
+```
+（`moveId: 'basic'` 单位 = 秒，是 `StunAxisAction` 正式支持的形态，见 `types/resource/pools.ts:326`。）先在 perf 里临时 `console.log(calc.stunAxisResult.value !== null)` 确认 13/13 为 true 再跑第 2–5 步；若 `config.stunAxes` 需经 store action 写入（直接赋值不生效），改用该 action 并在报告写明。其余步骤、判据不变。
 
 ### CC-10 · `solveTeam` 抽离 Vue：`computeCalcOutput` 外提 `resourceCalc/solveTeam.ts`（review）
 
