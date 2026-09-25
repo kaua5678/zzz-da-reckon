@@ -179,7 +179,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 - **特殊虚耀**：垂虹（1581007）耀变倍率 × **2.5 独立乘区**——全仓唯一算术落点 `damagePool.ts` `specialMultiplier = rainbowMultiplier * 2.5`；吃蕾米**进场记录面板**（自身被动/命座/装备，**不吃**队友战内拐力）。普通虚耀三载体行（支援/终结/普攻）**无 ×2.5**。
   ⚠ 易误读：`core/damage.ts` 对该行「不走直伤公式、只计次数」的注释是**防双计**（core 直伤面板路径不重复结算），不是未实现——照字面再建一处乘区 = ×6.25 双计。
   证据：实测 C6 3 异常队垂虹 180% ⇒ 基础区 450%，行 perDamage 与独立重算逐位相等（回归锁 `src/mechanics/__tests__/remielle.test.ts`）。
-- @fact 1581·特殊虚耀 口径: 特殊虚耀 = 垂虹耀变倍率 ×2.5 独立乘区（唯一算术落点 damagePool.ts），吃进场面板、不吃队友拐；普通虚耀三载体行不吃 ×2.5；core/damage.ts「不走直伤公式」是防双计不是未实现 | 据 用户@2026-08-26·复核@2026-09-15 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/composables/resourceCalc/damagePool.ts#buildDamagePoolRows | 信 确认
+- @fact 1581·特殊虚耀 口径: 特殊虚耀 = 垂虹耀变倍率 ×2.5 独立乘区（唯一算术落点 damagePool.ts），吃进场面板、不吃队友拐；普通虚耀三载体行不吃 ×2.5；core/damage.ts「不走直伤公式」是防双计不是未实现 | 据 用户@2026-08-26·复核@2026-09-15·复核@2026-09-25 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/composables/resourceCalc/damagePool.ts#buildDamagePoolRows | 信 确认
   ⟳复核: 游戏内实伤对表一次，确认 ×2.5 独立乘区与进场面板口径 | 到期 2026-12-31
 
 ### 8.2 风化状态与风蚀
@@ -191,7 +191,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 浸染 | 风化状态下首次受其他属性伤害触发的染色直伤（+10% 独立乘区） |
 | 风蚀（维琳娜专属资源） | spec `velina_corrosion`（0–2 层状态机）；2 命「从风化获得」按近似比例滑块接入（默认 1.0） |
 
-- @fact 风化状态 口径: 风化 = 一次性伤害 1250% + 30s 状态（无逐跳 DoT）；有风属性时 DoT 归零、走乱流；持续时间唯一事实源 ANOMALY_DURATION（风化 30s） | 据 mechanism-reference 异常章@2026-09-15 | 验 src/core/__tests__/anomalyPool.test.ts::splits non-wind anomalies into disorder window and turbulence window | 锚 src/core/anomalyPool/helpers.ts#ANOMALY_DURATION | 信 高
+- @fact 风化状态 口径: 风化 = 一次性伤害 1250% + 30s 状态（无逐跳 DoT）；有风属性时 DoT 归零、走乱流；持续时间唯一事实源 ANOMALY_DURATION（风化 30s） | 据 mechanism-reference 异常章@2026-09-15·复核@2026-09-25 | 验 src/core/__tests__/anomalyPool.test.ts::splits non-wind anomalies into disorder window and turbulence window | 锚 src/core/anomalyPool/helpers.ts#ANOMALY_DURATION | 信 高
   ⟳复核: 游戏内实测一次风化单次伤害（1250%）与 30s 状态时长，确认无逐跳 DoT 与「有风属性时 DoT 归零走乱流」 | 到期 2026-12-31
 
 ### 8.3 余火（菲欧妮专属资源）的标度口径
