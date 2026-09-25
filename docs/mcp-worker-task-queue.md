@@ -49,6 +49,9 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | W19 | frontlineRowsOf 琉音赠大收敛到 `ultimateGiftOf` | 小重构 | `src/core/resource.ts` | ✅ lead 自做（`85d90c6`，全量 3489 passed；W13 drifted #15 结案） |
 | W20 | 轴模式琉音送客行是否双计：取证 | 只读 + 隔离探针 | `.zc/reports/W20-axis-farewell.md`；探针只在 `/tmp/wt-W20` | ✅ 已回收（判定 `单计-模块`，账本多计 0s；轴声明 1481009 语义 A/B 已入 OPEN-ITEMS 待用户；W21 前置①满足） |
 | W21 | 琉音转大次数单源化（W16 契约 C） | 实现 | 见卡 | 进行中（09-25 派发，隔离 worktree `/tmp/wt-W21`，只跑定向 vitest，不 build） |
+| W22 | R62-J3 census 指纹侧过期：当前 HEAD 重跑 + 逐角色 diff | 重计算 + 隔离 worktree | `/tmp/wt-W22` 下任意文件、`.zc/reports/W22-census-refresh.md` | 待派发（**必须等 W21 收工**，独占重计算时段） |
+| W23 | 爱丽丝(1401) 系留白 6.0s 归因（预测先行） | 只读 + 隔离探针 | `/tmp/wt-W23` 下任意文件、`.zc/reports/W23-1401-slack.md` | 待派发（单队探针，宜等 W21 收工） |
+| W24 | 命座「未描述」6 条的原文定位与可派性分诊 | 只读普查 | `.zc/reports/W24-undescribed-triage.md` | 待派发（纯只读，可立刻与 W21 并行） |
 
 **drift 落盘的工具坑（2026-09-25，后续 lead 必读）**：① 批量打 `·复核@` 按**锚点**选事实，而事实可能写在 docs 里（如 `GAME_TERM_TO_CODE_FIELD.md`）——提交时别只 `git add src/`，以 `git status` 为准；
 ② 事实行可能误写**两个「据」槽**，解析器静默取后一个 ⇒ 标签打在前一个无效，应合并为单槽（`liuyinPromote.ts` 失衡次数不动点即此例）；
@@ -63,6 +66,10 @@ W18（W11/W12 的文案漂移与死写）。1451 梦境值 `maxValue 100 vs 500`
 
 **重计算时段串行**：W16 → W17 → W18（各自要跑 vitest/build）；W13/W14/W15 是纯静态阅读，可与其中任一张并行（总工人数仍 ≤ 2）。
 headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾追加一行「测试/构建时段已授予」。
+
+**当前派发顺序（2026-09-25 lead 现场核实）**：W21 仍在跑（13:45 实测 `pgrep` 命中其进程、`/tmp/worker-W21.err` 1.9 MB 仍在增长、`.out` 0 字节属正常——dsh 只在收工时写 stdout；租约 `liuyin.ts` / `liuyinCarryCount.test.ts` / `.zc/reports/W21.md` 均新鲜）⇒ **只剩 1 个并发位**。
+W24 纯只读普查（不跑 vitest/build）可立刻并行；W23 只跑单队探针、轻于全量但仍占测试时段，宜等 W21 收工；W22 是 62 角色 × 7 档重计算，**必须**等 W21 收工后独占重计算时段。
+三张新卡都不碰 `src/mechanics/agents/liuyin.ts`（W21 白名单），符合 §5-3「同一文件不派给两个工人」。派发前照本节开头查重。
 
 ## 2. 任务卡
 
@@ -119,6 +126,99 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
 **固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、diff 全文、正控/负控原始输出尾部与退出码、`git status --short`。
 `zc done --verifier '<正控命令>' --coverage 'liuyin.ts computeLiuyinSource 及其调用点' --risk '<未证明事项>'`。不提交。
 <!-- /card:W21 -->
+
+<!-- card:W22 -->
+### W22 · R62-J3 census 指纹侧过期：当前 HEAD 重跑 + 逐角色 diff
+
+你是执行工人，只完成本卡，不继续委派。TASK_ID=W22。
+父目标：`.claude/OPEN-ITEMS.md` §2「R62-J3」的**剩余**段——静态半场已于 2026-09-24 收口（W3，lead 独立复算一致：状态表 `implemented*` **364 条** = A 354 + B 10 + C 0，B 类 10 条恰好就是 `/home/kaua/r62-scratch/evidence/TRIAGE-r62.md` 第 16-17 行已分诊的 9 角色 / 10 档 ⇒ 零新增）。
+但指纹基线 `gate-census.json` 生成于 2026-09-20 的 `3db9b32`，当前 HEAD `b9938c7` 与之相差 **86 个提交**（lead 实测 `git rev-list --count 3db9b32..HEAD`），其中含 R62-batchA 修复 `09c87e2`（1111 安东影画3/5 技能等级双计）⇒ **「此后的提交有没有把某档改成空操作」目前无结论**，本卡就是补这个结论。
+
+**先读**：`AGENTS.md` §1 规则 10（基线是测量工具不是否决权）/ 12 / 16 / 17、§5；`.claude/OPEN-ITEMS.md` §2 R62-J3 全段（含 ✅ 静态半场与「剩余」）；
+`/home/kaua/r62-scratch/teeth/src/composables/__tests__/r62census.test.ts` **全文**（⚠ 它在 teeth worktree 里是**未提交**的 `??` 文件，主仓库没有这份，必须从那里拷）；
+`/home/kaua/r62-scratch/evidence/TRIAGE-r62.md` 第 16-17 行（B 类 10 条的既有分诊结论，diff 时要用它排除已知项）。
+
+**允许写入**：隔离 worktree `/tmp/wt-W22`（`git worktree add --detach /tmp/wt-W22 HEAD` 后软链 `node_modules`）下任意文件；新 census 产物写 `/tmp/wt-W22/evidence/`；报告 `.zc/reports/W22-census-refresh.md`（先 `zc claim`）。
+**禁止（硬约束，违者本卡作废）**：
+- **绝不许写 `/home/kaua/r62-scratch/evidence/gate-census.json` 与 `step-census.json`**：仪器的 `OUT` / `OUT2` 常量（该测试第 28-29 行）**硬编码**指向这两个路径，而它们是 09-20 的**对照基线**，一旦覆盖就没有 diff 基准、整卡结论不可复现。开工先 `sha256sum` 记录两份基线、`cp` 成 `*.pre-W22.json` 留底，再把 worktree 内副本的 `OUT`/`OUT2` 改指 `/tmp/wt-W22/evidence/`；收工时用 sha256 证明基线**逐位未变**。
+- 改主仓库任何文件（报告除外）；改任何基线（`timeGolden` / `timeFillRatchet`）；改 `public/static/character-constellations.json`（它是本卡的**外部事实**，不是被测对象）。
+- 跑 `npm run build` / 全量 vitest；碰 `src/mechanics/agents/liuyin.ts`（W21 在改）。
+
+**步骤与验收**：
+1. 建 worktree + 软链 `node_modules` + 从 teeth 拷入 `r62census.test.ts` + 改 `OUT`/`OUT2`；打印真实 HEAD、`git status --short`、两份基线的 sha256。
+2. **先写预测再跑**（`AGENTS.md` §0 外部闭环表「排查数值」行）：报告里先写出「86 个提交中哪几类改动最可能把某档改成空操作」+ **预测新增 B 类的条数（给数字）**，再跑仪器。实测与预测不吻合 ⇒ 如实写 discrepancy，**不许就地改预测**。
+3. 跑仪器：`npx vitest run r62census`（缺省全 62 角色；OOM/超时就按 `R62_ALL=<id,…>` 分 3 批，每批 ~20 角色，报告写明分批）。口径照该文件头注释：62 角色 × cinema ∈ {0..6}，真 `setupHarness` + 真 `useResourceCalc()`，队友固定 `1211`(support) + `1181`(anomaly) cinema 6。记录每批耗时。
+4. 与 `/home/kaua/r62-scratch/evidence/gate-census.json` **逐角色 diff**，输出三类：① **活跃门控档位集变化**的角色（哪几档从「不活跃」变「活跃」或反之）；② **新增 B 类**（声明 `implemented*` 但指纹无变化，且不在 TRIAGE 第 16-17 行那 10 条里）；③ **消失的 B 类**（原 10 条里现在活跃了的 = 修复已生效，写明是哪条）。
+5. 判定：新增 B 类 = **0** ⇒ 指纹侧收口，报告里给出可直接替换 OPEN-ITEMS R62-J3「剩余」段的**一行结论**（工人不改 OPEN-ITEMS，由 lead 落盘）；新增 B 类 **> 0** ⇒ 每条给 `角色(id)` / 档位 / 状态表声明原文 / 指纹读数 / 怀疑提交（`git log --oneline 3db9b32..HEAD -- <相关文件>`），**不自行修**。
+6. 收工：`unlink /tmp/wt-W22/node_modules` → `git worktree remove --force /tmp/wt-W22`；主仓库 `git status --short` 只允许报告一项；贴出两份基线收工后的 sha256（必须与第 1 步一致）。
+
+**证伪闸门**：前提假设 = `3db9b32..HEAD` 的 86 个提交里至少有一个把某档已声明 `implemented*` 的效果改成了空操作（或让某档从不活跃变活跃）。
+假设为假时的可观察失败 = 逐角色 diff 的「活跃档位集」**零变化**且新增 B 类 = **0** ⇒ 指纹侧收口、R62-J3 整条可结案（这同样是有价值的结论，照常 `STATUS: done`）。
+
+**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、两份基线 sha256 前后对照、预测表、命令与分批耗时、diff 三类全文、未证明事项。
+`zc done --verifier '<census 命令原文>' --coverage '62 角色 × cinema 0-6 指纹 vs 09-20 基线' --risk '<未证明事项>'`。**不提交**。
+测试时段已授予（独占重计算位，派发方保证此时无其它工人跑 vitest/build）。
+<!-- /card:W22 -->
+
+<!-- card:W23 -->
+### W23 · 爱丽丝(1401) 系留白 6.0s 归因（预测先行，不实现）
+
+你是执行工人，只完成本卡，不继续委派。TASK_ID=W23。
+父目标：`.claude/OPEN-ITEMS.md` §2「R37-J5」的**需先归因**项——`src/composables/__tests__/timeFillRatchet.baseline.json` 里 `auto-1401-1411-1031` 实测 `slack: 6, over: 0, stun: 2, outerExit: "stable"`（lead 核实该键在第 322-327 行），是留白最大的一队；
+原怀疑写成「疑为折叠环 refund 一次性冻结追不上正反馈行」，**未证明**。本卡只做归因取证，不写修法。
+
+**先读**：`AGENTS.md` §1 规则 10 / 16 / 17、§0 外部闭环表「排查数值/机制错误」行、§5；
+`docs/ENGINE_PIPELINE_GUIDE.md` §4 开头**「时间系统三本账」表** + 坑 19**「否决记录」**（规则要求：碰时间/账本/留白先查这两处，别急着重新发明）；
+`src/composables/__tests__/timeFillRatchet.test.ts`（`slack` 究竟怎么算出来的）；折叠环 refund 的实现段（从 `src/core/resource.ts` 自己定位，报告写 `path:line`）；
+`docs/mcp-debt2-blade1-feasibility-v4.md` §19.4 / §20.5 中与留白/refund 有关的段落。
+
+**允许写入**：隔离 worktree `/tmp/wt-W23`（建法同 W22）下任意文件；报告 `.zc/reports/W23-1401-slack.md`（先 `zc claim`）。
+**禁止**：改主仓库任何文件（报告除外）；**改 `timeFillRatchet` / `timeGolden` 基线**（规则 10：基线不是否决权，但归因阶段更不许动它）；改 `slack` 判据或删断言；跑全量 vitest / build；碰 `src/mechanics/agents/liuyin.ts`（W21）。
+
+**步骤与验收**：
+1. 建 worktree，打印真实 HEAD 与 `git status --short`。
+2. **先写预测再跑**：报告里先给出「6.0s 留白的构成预测」——落在第几轮、涉及哪个折叠环、refund 冻结多少秒、正反馈行需要多少秒，写成**可对账的数字表**；再跑探针。
+3. 探针：对 `auto-1401-1411-1031` 打印**逐轮**时间账本（每轮 收入 / 支出 / 冻结 / refund / 轮末 slack），定位这 6.0s 具体落在哪几轮、由谁产生。
+4. 归因**三选一**并给证据 `path:line`：① `折叠环 refund 冻结时序`（原假设成立，写清是哪一次冻结追不上哪一行）；② `1401 机制本身的设计留白`（说明为什么该有）；③ `其它（说明）`。
+5. 若判为缺陷：只给**修法方向** + 预测受影响的 baseline key 与数值走向，**不实现**、不改基线。若结论依赖游戏语义（代码无字段可判）⇒ 标 `needs-user`，写成一个能让用户二选一的问题，不自行裁决（照 W20 §5-1 的先例格式）。
+6. 收工：`unlink /tmp/wt-W23/node_modules` → `git worktree remove --force /tmp/wt-W23`；主仓库 `git status --short` 只允许报告一项。
+
+**证伪闸门**：前提假设 = 这 6.0s 由「refund 一次性冻结追不上正反馈行」造成，属**可修的实现时序**问题。
+假设为假时的可观察失败 = 逐轮账本显示留白**均匀分布**在多轮、或落在**不涉及折叠环**的轮次 ⇒ 假设证伪，改判 ② 或另立归因，并如实写「原假设被证伪」。
+
+**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、预测数字表、探针源码全文、逐轮账本原始输出、归因判定与 `path:line`、未证明事项。
+`zc done --verifier '<探针命令原文>' --coverage 'auto-1401-1411-1031 时间账本' --risk '<未证明事项>'`。**不提交**。
+测试时段已授予（只跑单队定向探针）。
+<!-- /card:W23 -->
+
+<!-- card:W24 -->
+### W24 · 命座「未描述」6 条的原文定位与可派性分诊（只读普查，不录入）
+
+你是执行工人，只完成本卡，不继续委派。TASK_ID=W24。
+父目标：`node scripts/zc.mjs status` 报「待办 命座：已实现 364 / **未描述 6** / 待办条目 115」。lead 已用 `docs/implementation-status.md`（表头第 87 行，「命座未描述」是**第 6 列**）定位到 6 个角色各 1 档：
+**莱卡恩(1141) 第 106 行 · 潘引壶(1421) 第 115 行 · 11号(1041) 第 121 行 · 安东(1111) 第 127 行 · 赛斯(1271) 第 132 行 · 佩洛伊斯(1551) 第 147 行**（awk 按列求和 = 6，与 `zc status` 一致）。
+口径：`not_described_not_implemented` = 尚未收到机制描述、不视为已实现（该文档第 117 行）。**未知**：各是哪一档、原文在不在仓库里、能不能不经用户裁决就实现 ⇒ 本卡只做分诊，**不录入**。
+
+**先读**：`AGENTS.md` §0「录入角色 / 补机制：五步」（本卡只用到第 1、2 步的口径）、§1 规则 4 / 5 / 15、§5；
+`docs/implementation-status.md` 第 82 / 87 / 117 行（三处口径定义）；`public/static/character-constellations.json` 里这 6 个角色的条目（找 `status` = `not_described_not_implemented` 的那一档）；
+`data/raw/README.md` + `data/raw/gachabase/<id>.json` + `data/raw/nanoka_missing/full/<id>.json`（原文来源；lead 实测 `1141` 在这两处都存在）。
+
+**允许写入**：报告 `.zc/reports/W24-undescribed-triage.md`（先 `zc claim`）。
+**禁止**：改任何 `src/` / `public/static/` / `data/` 文件（本卡纯分诊）；跑 vitest / build；**挖 git 历史**（每项 ≤ 3 处 grep，查不到就写 `missing`，不要像 W13-W15 那样翻历轮交接）；凭名字联想编原文（规则 15：歧义或未命中就如实写未命中）；碰 `src/mechanics/agents/liuyin.ts`（W21）。
+
+**步骤与验收**：
+1. 对 6 个角色逐个输出：`名字(id)`、未描述的是**第几档**（C 几）、`character-constellations.json` 里该条目有哪些字段、`description` / 原文槽是否为空。
+2. 在 `data/raw/` 定位该档原文：给 `path:line` + **逐字摘录**（引用格式一律 `名字(id)` 绑定，规则 15）；查不到写 `missing`，并写清查过哪 3 处。
+3. 每条判**可派性**三选一 + 一句理由：`可直接录入`（原文有数值、口径无歧义、引擎有现成通道）/ `需用户裁决`（把问题写成可二选一的形式）/ `缺原文`（需用户供料）。判据引 `AGENTS.md` §0 五步第 1 步「只把『原文没数值 / 口径歧义 / 引擎缺通道』一次问用户」。
+4. 汇总成一张表，并给出**后续卡的切分建议**（按本文件 §3 的实测教训「取证类任务宜每卡 ≤ 2 条」，且录入卡要走 §0 五步、与本卡不同型）。
+5. 顺带核实：`docs/implementation-status.md` 是 `npm run docs:status` 生成的产物——报告里写明这 6 条的**上游数据文件**是哪个（改产物无效，要改源），供 lead 派后续卡时用。
+
+**证伪闸门**：前提假设 = 这 6 条里**至少有 1 条**「原文在仓库内且可直接录入」（即本队列能消化它）。
+假设为假时的可观察失败 = 6 条**全部** `missing` 或全部 `需用户裁决` ⇒ 本队列消化不了，整批升级 `.claude/OPEN-ITEMS.md` §1 待用户供料（这仍是 `STATUS: done`，不是失败）。
+
+**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、6 条表格、原文逐字摘录与 `path:line`、可派性判定与理由、上游数据文件、未证明事项。
+`zc done --verifier '<grep/awk 命令原文>' --coverage '6 角色命座未描述档' --risk '<未证明事项>'`。**不提交**。
+<!-- /card:W24 -->
 
 ## 3. 本队列的来源：2026-09-24 OPEN-ITEMS 分诊
 
