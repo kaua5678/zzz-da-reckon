@@ -131,7 +131,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-5a | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差；反向验证 ① 删被拒 cfg 回滚 16 红、② 删 `diag.timeBudgetIdleSeconds` 177 红；resource.ts 907→801；verify 过） | S3a 欠打回填外提 `core/resource/underfillProbe.ts` | 见下方 CC-5a 卡 |
 | CC-5b | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差；反向验证 ① `giftTimeThisSlot=0` 29 红、② 注释帷幕提供者块 42 红；resource.ts 801→630；verify 过） | S4 `stageAssembleSlot` 外提 `core/resource/assembleSlot.ts` | 见下方 CC-5b 卡 |
 | CC-5c | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差；反向验证 ① 删包装 `states = r.states` 0 差（尾段后外层 states 在当前调用图里是死值——重折每轮从 `s2EntrySeedStates` 重跑、循环后不再读；写回按旧语义保留）、② 删 `storeWarmStart` ⇒ warmStart.test 2 红；resource.ts 630→497；verify 过） | S3–S4 尾段管线 `runTailPipeline` 外提 `core/resource/tailPipeline.ts` | 见下方 CC-5c 卡 |
-| CC-5d | review | design（依赖 5c，**已解锁**） | 重折环外提；`calcTeamResources` 收成编排器（`SolveContext`）。lead 备忘：重折环读写 `states`/`diag`/`tail`/`config.timeBudgetRefund`/`config.overflowSeconds`/cfg（`restoreCfgs` 保同一性），调 `runFoldLoop`/`runPreTailFinalize`/`runTailPipeline` 三个包装——宜把三者作为回调注入（同 underfillProbe 的 converge 回调思路），`accepted` 快照整体搬 | resource.ts 重折环段（约 :320–400） |
+| CC-5d | review | **ready**（lead-arena-0925c @01f33ef 写设计，见下方 CC-5d 卡） | 截断重折环外提 `core/resource/truncationRefold.ts`（`rerun` 回调注入） | 见下方 CC-5d 卡 |
+| CC-5e | review | 待评估（依赖 5d） | `calcTeamResources` 收成编排器（`SolveContext`）——5d 合入后按剩余行数决定做不做 | resource.ts |
 | CC-6a | review | **done**（dsflash 工人 + lead 复核：dump 624 零差、反向验证 36 条 banyue 场景红、guards 21、build、27 文件 533 测过） | 引擎能力 `exSpecialCount`：1471 般岳分支迁模块；core agentId 6→5、core 角色 import 5→4 | mechanics/types.ts、agents/banyue.ts、core/resource/helpers.ts、2 个棘轮基线 + RATCHET_BURNDOWN |
 | CC-6b | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差、反向验证 42 条 1051+1451 场景红、guards 21、build、509 测过；另核全部 crossAgentSupply 消费点均按 kind 过滤 ⇒ yidhari 新声明不会被误取） | 1451 帷幕：`curtainTriggers` 能力 + yidhari 声明 `crossAgentSupply.kind='curtain-open'`；agentId 5→3、import 4→2 | 见下方 CC-6b 卡 |
 | CC-6c | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差；反向验证 ① yidhari→preTail 38 场景红、② 注释 yeshuguang 42 场景红；guards 21、verify 过；core agentId 分支归零） | 1531/1431/1051 终局重推：`finalizePass` 能力 + 通用执行器 `core/resource/finalizePasses.ts`；agentId 3→0 | 见下方 CC-6c 卡 |
@@ -311,6 +312,70 @@ anomalyPool 已有现成的能力通道 `input.agentMechanics`（同 `transformA
 
 ④ **报告**：改动行、闸门 grep、棘轮新旧值、两次反向验证差异条数与前 10 个场景键、§4 + rowsnap 尾部输出。
 
+
+### CC-5d · 截断重折环外提 `truncationRefold.ts`（review）
+
+**lead 设计（2026-09-25 lead-arena-0925c，@01f33ef 实测）**。原「重折环外提 + 编排器」只做**重折环**；「`calcTeamResources` 收成编排器（`SolveContext`）」改为 CC-5e，5d 合入后按剩余行数再评估是否值得做。
+现状：`resource.ts` **:317–394** = 头注释（:317–327）+ `ROW_REFOLD_MAX_PASSES` / `truncationRefoldPasses` / `truncationRefoldRejected` / `lastLimits` / `restoreCfgs` / `resetDiagnostics`（:328–342）+ 重折循环（:343–393）+ `delete cfg.rowTimeLimit`（:394）。
+循环读写外层 `states` / `diag` / `tail`，写 cfg（`restoreCfgs` 清键 + assign 保对象同一性、`rowTimeLimit`、`timeBudgetExcess`）与 `config.timeBudgetRefund` / `config.overflowSeconds`；
+每轮「从 S2 入口重跑」= `resetDiagnostics()` → `runFoldLoop(s2EntrySeedStates 拷贝)` → `runPreTailFinalize` → `runTailPipeline()`，三个包装都在调用时读外层 `diag`。
+范围内**无 `@fact` 声明**（最近的 `@fact engine:资源账本/截断` 在 :408，不动），lead 已 grep 核过。输出读数：`truncationRefoldPasses` / `truncationRefoldRejected` 被返回值（:463–465）消费。
+
+① **先读**：`src/core/resource.ts` 280–470；`src/core/resource/tailPipeline.ts` 的 `TailResult`；`src/core/resource/solveDiagnostics.ts`；`src/core/__tests__/truncationRefold.test.ts` 头注释。
+
+② **做法**：
+1. 新建 `src/core/resource/truncationRefold.ts`：
+   ```ts
+   export interface TruncationRefoldContext {
+     configs: CharacterOperationConfig[]; config: ResourceCalcConfig
+     s2EntryCfgs: CharacterOperationConfig[]      // resource.ts 的 s2EntryCfgs（入口态浅拷贝）
+     s2EntrySeedStates: IterationState[]
+     toleranceSeconds: number                     // = TIME_BUDGET_TOLERANCE_SECONDS（常量带 @fact，留 resource.ts 注入）
+     /** 从 S2 入口重跑到装配：调用方把外层 diag 换成传入的 d，再跑 fold → preTail 终推 → 尾段；返回重跑后的 states 与 tail */
+     rerun: (d: SolveDiagnostics, seed: IterationState[]) => { states: IterationState[]; tail: TailResult }
+   }
+   export interface TruncationRefoldResult {
+     states: IterationState[]; diag: SolveDiagnostics; tail: TailResult
+     passes: number; rejected: boolean
+   }
+   export function runTruncationRefold(ctx: TruncationRefoldContext, init: { states: IterationState[]; diag: SolveDiagnostics; tail: TailResult }): TruncationRefoldResult
+   ```
+   函数体 = :317–394 **原样搬**（头注释进 JSDoc；`ROW_REFOLD_MAX_PASSES`、`restoreCfgs` 成为本文件模块级 const / 函数），机械替换：
+   - 开头 `let { states, diag, tail } = init`、`let truncationRefoldPasses = 0` 等照旧；
+   - 「`resetDiagnostics()` + 两行 `states = runFoldLoop/runPreTailFinalize` + `const trial = runTailPipeline()`」→
+     `diag = createSolveDiagnostics(); const r = ctx.rerun(diag, ctx.s2EntrySeedStates.map(s => ({ ...s }))); states = r.states; const trial = r.tail`
+     （**顺序保持**：restoreCfgs → 写 rowTimeLimit → timeBudgetExcess=0 → config.timeBudgetRefund=0 → 新 diag → 重跑）；
+   - `accepted` 快照与拒绝还原逐字保留（`diag = accepted.diag` 等）；
+   - `delete cfg.rowTimeLimit` 循环留在函数末尾（return 前）；返回 `{ states, diag, tail, passes: truncationRefoldPasses, rejected: truncationRefoldRejected }`。
+   **不得 import `../resource`**。
+2. resource.ts：原 :317–394 换成
+   ```ts
+   const refold = runTruncationRefold({
+     configs, config, s2EntryCfgs, s2EntrySeedStates, toleranceSeconds: TIME_BUDGET_TOLERANCE_SECONDS,
+     rerun: (d, seed) => {
+       diag = d                                   // 三个包装在调用时读外层 diag
+       states = runFoldLoop(seed)
+       states = runPreTailFinalize(states)
+       const t = runTailPipeline()                // 包装内部会把 states 写回
+       return { states, tail: t }
+     },
+   }, { states, diag, tail })
+   states = refold.states; diag = refold.diag; tail = refold.tail
+   const truncationRefoldPasses = refold.passes
+   const truncationRefoldRejected = refold.rejected
+   ```
+   `tail` 若因此不再被重新赋值可改 `const`，否则保持 `let`。:463–465 的返回值字段不变。删死绑定（`createSolveDiagnostics` 若 resource.ts 其他处仍用则保留——逐个 grep）。
+3. 禁止：改数值 / 条件 / 顺序 / 容差（`1e-6`、`1e-3`、`ROW_REFOLD_MAX_PASSES = 3`）；把 `truncationBeforeRefold`（:315）搬走；动 `@fact`；建子目录。
+
+**证伪闸门**：前提 =「重折环只经 `states`/`diag`/`tail`、上列 ctx 与 cfg/config 副作用通信，且 `rerun` 回调能逐位复现原三步」。可观察失败 = dump 非零差异，或 TS 报出未列出的自由变量（停下写 blocked 并列出）。
+收工 `grep -nE 'restoreCfgs|ROW_REFOLD_MAX_PASSES|lastLimits|resetDiagnostics' src/core/resource.ts` 只允许命中注释。
+
+③ **验收**：§4 全套 + rowsnap + `npm run check-guards` + `npm run validate:specs` + `npm run build` +
+`npx vitest run truncationRefold timeFillRatchet warmStart seedInvariance determinism underfillRefund src/scripts/__tests__/`（报告列出实际跑到的文件数）。
+**反向验证**（两次，各自恢复并以零差异证明）：① `truncationRefold.ts` 里临时删拒绝分支的 `restoreCfgs(accepted.cfgs)` ⇒ dump 非零差异（CC-4 已知 `auto-1431-1481-1491/heavyGate` 走拒绝路径）；
+② 临时把接受判据的 `+ 1e-6` 改成 `- 1e9`（恒拒绝）⇒ dump 非零差异（进了重折环且被接受的场景变化）。
+
+④ **报告**：改动行、resource.ts 行数前后、死绑定清单、闸门 grep、docs 待改清单、两次反向验证差异条数与前 10 个键、§4 + rowsnap 尾部输出。
 
 ### CC-5c · S3–S4 尾段管线外提 `tailPipeline.ts`（review）
 
