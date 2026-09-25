@@ -5,7 +5,6 @@ import type {
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics'
-import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 
 import {
@@ -16,6 +15,7 @@ import {
   giftDecibelForCfg,
   type CrossAgentSupplyInfo,
 } from './resource/crossAgentSupply'
+import { curtainInfoOf } from './resource/curtain'
 
 export { crossAgentSupplyAt, crossAgentSuppliesOf, findCrossAgentSupplySlots, ultimateGiftOf }
 export type { CrossAgentSupplyInfo }
@@ -710,24 +710,13 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     if (!config.initialStates) storeWarmStart(warmExactKey, warmSeedStates)
 
     // 收敛后按最终状态折算跨角色联动：卢西娅4命帷幕触发次数（含伊德海莉大招开帷幕）、回血按卢西娅大招次数
-    // 2026-09-15 core 棘轮批次4：按模块专属字段找槽（同 helpers.ts 同款判据；见该处注释）。
-    // ⚠ 卢西娅**必须仍按 agentId 找槽**（2026-09-15 实测）：这里读的是 `config.initialStates` 收敛后的
-    // configs，而 `luciaCinemaLevel` 由 luciaElowen 的 buildCharConfig 写在**编排层的另一份 cfg**上，
-    // 到这一步实测为 undefined（探针：hasLucia=[null,null] ⇒ luciaSlot 恒 -1 ⇒ 帷幕触发数归零、
-    // luciaElowen.test.ts 的 yidhariExternalHealPct 12.8 变 0）。伊德海莉的
-    // `yidhariDecibelPerHpPct` 在这一步**有值**（探针 hasYid=[null,10]），故那半可以改字段判据。
-    const luciaSlot = configs.findIndex(c => c.agentId === '1451')
+    // 2026-09-25 CC-6b：整块迁进引擎能力/跨槽供给（规则 6）——提供者按模块能力
+    // `getAgentMechanic(cfg.agentId)?.curtainTriggers` 找槽（与 `luciaCinemaLevel` 是否在场无关，
+    // 该字段写在编排层另一份 cfg 上的旧顾虑随之消失），队友开帷幕量按 `curtain-open` 收集成标量
+    // （`yidhariSlot` 仍按 `yidhariDecibelPerHpPct` 字段找，继续用于外部回血写回与 yidhariBurn）。
+    const curtain = curtainInfoOf(configs, states, totalTime)
+    const curtainTriggers = curtain.triggers
     const yidhariSlot = configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)
-    const curtainCoverage = configs.find(c => c.luciaC4CurtainCoverage !== undefined)?.luciaC4CurtainCoverage ?? 1
-    const curtainTriggers = luciaSlot >= 0
-      ? computeLuciaCurtainTriggers(
-          states[luciaSlot]?.exSpecialCount ?? 0,
-          states[luciaSlot]?.ultimateCount ?? 0,
-          yidhariSlot >= 0 ? (states[yidhariSlot]?.ultimateCount ?? 0) : 0,
-          curtainCoverage,
-          totalTime,
-        )
-      : 0
 
     // 构建最终结果
     /**
@@ -786,31 +775,39 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       const chainCountTotal = state.chainCountTotal
 
       // 伊德海莉外部回血按卢西娅最终终结技次数折算后写回 cfg（供喧响/展示共用精确值）
-      if (i === yidhariSlot && luciaSlot >= 0) {
+      // 2026-09-25 CC-6b：回血源复用帷幕提供者槽（lead 裁决 §6-2；前提写死在 `./curtain.ts` 头注释）。
+      if (i === yidhariSlot && curtain.providerSlot >= 0) {
         cfg.yidhariExternalHealPct = (cfg.yidhariExternalHealPct ?? 0)
-          + (cfg.yidhariExternalHealPerUltPct ?? 0) * (states[luciaSlot]?.ultimateCount ?? 0)
+          + (cfg.yidhariExternalHealPerUltPct ?? 0) * (states[curtain.providerSlot]?.ultimateCount ?? 0)
       }
       // 卢西娅4命帷幕触发总次数写回 cfg（供模块资源卡展示）
-      if (i === luciaSlot) {
+      if (i === curtain.providerSlot) {
         cfg.luciaCurtainTriggerCount = curtainTriggers
         // 展示拆分（2026-09-19，零求值改动）：自开部分 + 队友来源归因（边际法：队友份额 = 总 − 自开，
-        // 15s CD 封顶与覆盖滑块折算效应按比例落到两边）。引擎当前只把伊德海莉终结技计作队友开帷幕
-        // （yidhariSlot 由 yidhariDecibelPerHpPct 判，见本函数前段——将来加队友源只需在此数组追加条目）。
-        cfg.luciaCurtainSelfCount = computeLuciaCurtainTriggers(
-          states[luciaSlot]?.exSpecialCount ?? 0,
-          states[luciaSlot]?.ultimateCount ?? 0,
-          0,
-          curtainCoverage,
+        // 15s CD 封顶与覆盖滑块折算效应按比例落到两边）。2026-09-25 CC-6b：队友源改为按
+        // `curtain-open` 跨槽供给的全部提供者收集，并按各自 rawCount 比例分摊队友份额。
+        // ⚠ **多提供者比例分摊是新语义、当前不可达**（唯一提供者 = 伊德海莉）：单提供者时
+        // mateTotal > 0 ⇒ 比例 = 1 ⇒ triggers 与原式 `max(0, 总 − 自开)` 逐位相同；出现第二个
+        // 提供者时行为与迁移前不同（旧实现只取 yidhariSlot 一个来源），故此处**不是**逐位等价承诺。
+        cfg.luciaCurtainSelfCount = getAgentMechanic(cfg.agentId)!.curtainTriggers!({
+          cfg,
+          state: states[i],
+          teammateOpenCount: 0,
           totalTime,
-        )
-        const curtainMateRaw = Math.max(0, Math.floor(states[yidhariSlot]?.ultimateCount ?? 0))
-        cfg.luciaCurtainTeammates = yidhariSlot >= 0 && curtainMateRaw > 0
-          ? [{
-            agentId: configs[yidhariSlot]?.agentId ?? '',
-            rawCount: curtainMateRaw,
-            triggers: Math.max(0, curtainTriggers - cfg.luciaCurtainSelfCount),
-          }]
-          : []
+        })
+        const mateSlots = findCrossAgentSupplySlots(configs, 'curtain-open')
+        const raw = mateSlots.map(s => ({
+          slot: s,
+          agentId: configs[s]?.agentId ?? '',
+          rawCount: Math.max(0, Math.floor(states[s]?.ultimateCount ?? 0)),
+        })).filter(m => m.rawCount > 0)
+        const mateTotal = raw.reduce((n, m) => n + m.rawCount, 0)
+        const mateTriggers = Math.max(0, curtainTriggers - cfg.luciaCurtainSelfCount)
+        cfg.luciaCurtainTeammates = raw.map(m => ({
+          agentId: m.agentId,
+          rawCount: m.rawCount,
+          triggers: mateTotal > 0 ? mateTriggers * (m.rawCount / mateTotal) : 0,
+        }))
       }
 
       // Σ 队友前台秒（行级能量/喧响与装配 buildExecutions 同语义：不含自己）

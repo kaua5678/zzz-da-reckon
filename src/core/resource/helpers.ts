@@ -13,9 +13,9 @@ import type {
   ResourceCalcConfig, CharacterOperationConfig,
   EnergySource, IterationState,
 } from '@/types/resource'
-import { computeLuciaCurtainTriggers } from '@/mechanics/agents/luciaElowen'
 import { getAgentMechanic } from '@/mechanics'
 import { crossAgentSupplyAt, findCrossAgentSupplySlots, ultimateGiftOf, giftDecibelForCfg } from './crossAgentSupply'
+import { curtainInfoOf } from './curtain'
 import { DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 
@@ -288,23 +288,12 @@ function iterateBody(
     teammateShares.push(share)
   }
 
-  // 卢西娅4命：帷幕开启/延长（含队友如伊德海莉大招开帷幕）→ 全队每人喧响；15s CD 封顶 × 利用率滑块
-  // 2026-09-15 core 棘轮批次4：伊德海莉按**模块专属字段**找槽（`yidhariDecibelPerHpPct` 的
-  // 唯一写入方 = yidhari.ts 的 buildCharConfig，无条件写、且无 `?? 默认` ⇒ 字段存在即蕴含是该角色）。
-  // ⚠ 卢西娅这半**保持 agentId**：`luciaCinemaLevel` 在 iterate 的这条路径上实测为 undefined
-  // （写在编排层的另一份 cfg 上），改字段判据会让 luciaSlot 恒 -1（详见 resource.ts 同款注释）。
-  const luciaSlot = configs.findIndex(c => c.agentId === '1451')
-  const yidhariSlot = configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)
-  const curtainCoverage = configs.find(c => c.luciaC4CurtainCoverage !== undefined)?.luciaC4CurtainCoverage ?? 1
-  const curtainTriggers = luciaSlot >= 0
-    ? computeLuciaCurtainTriggers(
-        prevStates[luciaSlot]?.exSpecialCount ?? 0,
-        prevStates[luciaSlot]?.ultimateCount ?? 0,
-        yidhariSlot >= 0 ? (prevStates[yidhariSlot]?.ultimateCount ?? 0) : 0,
-        curtainCoverage,
-        totalTime,
-      )
-    : 0
+  // 卢西娅4命：帷幕开启/延长（含队友如伊德海莉大招开帷幕）→ 全队每人喧响；15s CD 封顶 × 利用率滑块。
+  // 2026-09-25 CC-6b：角色数学迁进 lucia 模块的能力声明（规则 6），引擎按能力查询
+  // （`getAgentMechanic(cfg.agentId)?.curtainTriggers`），队友开帷幕量由 `curtain-open` 跨槽
+  // 供给收集成标量 ⇒ 本文件不再 import 角色模块、不写 agentId 字面量（详见 `./curtain.ts`）。
+  const curtain = curtainInfoOf(configs, prevStates, totalTime)
+  const curtainTriggers = curtain.triggers
 
   // Step 3: 计算总喧响和终结技次数
   for (let i = 0; i < configs.length; i++) {
@@ -317,8 +306,9 @@ function iterateBody(
       const missing = Math.max(0, Math.min(1, cfg.yidhariExHealMissingHpPct ?? 0.75))
       const decibelPerHp = cfg.yidhariDecibelPerHpPct ?? 10
       // 外部回血（卢西娅星光汇聚之地）：固定部分 + 按卢西娅终结技次数结算部分（%自身最大生命值）
+      // 2026-09-25 CC-6b：回血源复用帷幕提供者槽（lead 裁决 §6-2；当前唯一提供者 = 唯一回血源 = 卢西娅）。
       const external = Math.max(0, (cfg.yidhariExternalHealPct ?? 0)
-        + (cfg.yidhariExternalHealPerUltPct ?? 0) * (luciaSlot >= 0 ? (prevStates[luciaSlot]?.ultimateCount ?? 0) : 0))
+        + (cfg.yidhariExternalHealPerUltPct ?? 0) * (curtain.providerSlot >= 0 ? (prevStates[curtain.providerSlot]?.ultimateCount ?? 0) : 0))
       const cycleTime = 1 + (cfg.yidhariChargeSlam?.actionTime ?? 0) + (cfg.yidhariBasicFollow?.actionTime ?? 0)
       const cycles = cycleTime > 0 ? Math.floor((prev.basicAttackTime ?? 0) / cycleTime) : 0
       const exHeal = (prev.exSpecialCount ?? 0) * 33 * missing

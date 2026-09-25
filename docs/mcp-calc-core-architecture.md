@@ -130,7 +130,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-4 | review | design | `SolveDiagnostics` 累加器 + S2 `runFoldLoop` 外提 | core/resource.ts 329–600 |
 | CC-5 | review | design（依赖 CC-4） | S3a 欠打回填 / S4 `assembleSlot` / 重折环外提；`calcTeamResources` 收成编排器 | core/resource.ts 677–1210 |
 | CC-6a | review | **done**（dsflash 工人 + lead 复核：dump 624 零差、反向验证 36 条 banyue 场景红、guards 21、build、27 文件 533 测过） | 引擎能力 `exSpecialCount`：1471 般岳分支迁模块；core agentId 6→5、core 角色 import 5→4 | mechanics/types.ts、agents/banyue.ts、core/resource/helpers.ts、2 个棘轮基线 + RATCHET_BURNDOWN |
-| CC-6b | review | **ready**（lead 已核当前代码并裁决设计稿 §6-1/§6-2，见卡） | 1451 帷幕：`curtainTriggers` 能力 + yidhari 声明 `crossAgentSupply.kind='curtain-open'`；agentId 5→3、import 4→2 | 见下方 CC-6b 卡 |
+| CC-6b | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差、反向验证 42 条 1051+1451 场景红、guards 21、build、509 测过；另核全部 crossAgentSupply 消费点均按 kind 过滤 ⇒ yidhari 新声明不会被误取） | 1451 帷幕：`curtainTriggers` 能力 + yidhari 声明 `crossAgentSupply.kind='curtain-open'`；agentId 5→3、import 4→2 | 见下方 CC-6b 卡 |
 | CC-6c | review | design（依赖 6b） | 1531/1431/1051 终局重推：`finalizePass` 能力 + 通用执行器 `core/resource/finalizePasses.ts`；agentId 3→0 | 见设计稿 §3.3（stage 顺序敏感） |
 | CC-6d | review | ✅ **ready**（CC-D3 已裁决，阻塞解除） | velina 风蚀状态机：`anomalyStateSim` 能力；import 2→0 | 见设计稿 §3.4 |
 | CC-7 | fast | **done**（dsflash 工人 + lead 复核：PanelValues.atk/hp 必填 ⇒ `?? 0` 死分支；dump 624 零差、guards 21、build、48 测过） | 贯穿力单一事实源：导出 `calcPenetrationPower`，norma.ts / damagePool.ts:1067 改引用（**不碰 :1020**） | core/damage.ts、norma.ts、damagePool.ts |

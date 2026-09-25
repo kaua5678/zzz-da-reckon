@@ -154,6 +154,34 @@ export function crossAgentSuppliesOf(
 }
 
 /**
+ * 单个提供者的**供给量**（不解析落点/时间）——供「引擎只想要一个标量」的类别使用
+ * （`curtain-open`：队友开帷幕总量，2026-09-25 CC-6b）。
+ *
+ * 与 `crossAgentSupplyAt` 的分工：后者解析落点（`targetSlot`/环绕）并算占位秒数，
+ * 适用于赠链族；本函数只取 `supply()` 的数值，不要求类别有落点语义
+ * （`curtain-open` 的供给对象是「卢西娅的帷幕能力」而不是某个槽位）。
+ * 契约：`spec.supply` 是纯函数，只读 `cfg`/`state`（见 `CrossAgentSupplySpec`）。
+ */
+export function crossAgentSupplyCountOf(
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+  providerSlot: number,
+  query: CrossAgentSupplyQuery,
+): number {
+  const cfg = configs[providerSlot]
+  const spec = cfg ? getAgentMechanic(cfg.agentId)?.crossAgentSupply : undefined
+  const state = states[providerSlot]
+  if (!cfg || !spec || !state) return 0
+  return Math.max(0, Math.floor(spec.supply({
+    cfg,
+    state,
+    stunCount: query.stunCount,
+    totalTime: query.totalTime,
+    teamSize: query.teamSize ?? configs.length,
+  }) || 0))
+}
+
+/**
  * 「邻位回能」类别：返回 `targetSlot` 槽从**每个**提供者分别获得的能量（按提供者槽位索引）。
  *
  * 为什么返回明细而不只返回合计：`CrossAgentEnergy` 要向 UI 暴露

@@ -204,7 +204,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'core agentId 分支',
     file: 'src/core/resource.ts + core/resource/helpers.ts',
-    frozen: 5,  // 2026-09-24 CC-6a 6→**5**（−1，按工作树实测归因；与 CORE_AGENT_BRANCH_BASELINE 常量同步）：`helpers.ts` 般岳（1471）强特次数分支迁进模块能力 `exSpecialCount`（banyue.ts#banyueMechanic），引擎经 getAgentMechanic 查询；同批 core 角色 import 5→4。逐位等价 = dump A/B 排除 __ms 零差异（624 场景）+ banyue.test 全绿；反向验证 = 注释掉能力声明 ⇒ dump 含 1471 场景精确红。以下为更早沿革：2026-09-11 评审冻结 36（resource.ts 16 + helpers.ts 20）→ 26（2026-09-13 T6 首次真清偿 −10）→ 18（2026-09-13 crossAgentSupply 收口 −8）→ **12**（2026-09-15 批次2 −4：helpers.ts 里 4 处 yidhari 守卫化简——1 处 `!==` 短路左操作数（yidhariRefund）+ 2 处 `if (cfg.agentId !== '1051')`（yidhariBurn×2）+ 1 处 `agentId === '1051' && 字段!==undefined`；判据 = 相关字段唯一写入方 = yidhari.ts 模块且无默认值 ⇒ 字段判据完全覆盖角色判据，timeGolden 0 delta，反向验证破坏该字段消费 ⇒ preset:yidhari-qingyi-lucia 精确红）。详见 CORE_AGENT_BRANCH_BASELINE 头注释的沿革
+    frozen: 3,  // 2026-09-25 CC-6b 5→**3**（−2，按工作树实测归因；与 CORE_AGENT_BRANCH_BASELINE 常量同步）：删 `helpers.ts` / `resource.ts` 收敛后两处 `findIndex(c => c.agentId === '1451')`（`luciaSlot`）——整块迁成模块能力 `curtainTriggers`（luciaElowen.ts）+ 跨槽供给 `curtain-open`（yidhari.ts）+ 引擎执行器 `core/resource/curtain.ts`；同批 core 角色 import 4→2。逐位等价 = dump A/B 排除 __ms 零差异（624 场景）+ rowsnap 零差 + lucia/yidhari 测试全绿；反向验证 = yidhari 的 `curtain-open` supply 返回 0 ⇒ dump 带 1051+1451 场景精确红。以下为更早沿革：2026-09-24 CC-6a 6→**5**（−1，按工作树实测归因；与 CORE_AGENT_BRANCH_BASELINE 常量同步）：`helpers.ts` 般岳（1471）强特次数分支迁进模块能力 `exSpecialCount`（banyue.ts#banyueMechanic），引擎经 getAgentMechanic 查询；同批 core 角色 import 5→4。逐位等价 = dump A/B 排除 __ms 零差异（624 场景）+ banyue.test 全绿；反向验证 = 注释掉能力声明 ⇒ dump 含 1471 场景精确红。以下为更早沿革：2026-09-11 评审冻结 36（resource.ts 16 + helpers.ts 20）→ 26（2026-09-13 T6 首次真清偿 −10）→ 18（2026-09-13 crossAgentSupply 收口 −8）→ **12**（2026-09-15 批次2 −4：helpers.ts 里 4 处 yidhari 守卫化简——1 处 `!==` 短路左操作数（yidhariRefund）+ 2 处 `if (cfg.agentId !== '1051')`（yidhariBurn×2）+ 1 处 `agentId === '1051' && 字段!==undefined`；判据 = 相关字段唯一写入方 = yidhari.ts 模块且无默认值 ⇒ 字段判据完全覆盖角色判据，timeGolden 0 delta，反向验证破坏该字段消费 ⇒ preset:yidhari-qingyi-lucia 精确红）。详见 CORE_AGENT_BRANCH_BASELINE 头注释的沿革
     target: 0,
     due: '2027-03-31',
     plan: '剩 18 处：① 先把 convergence.ts:957 的 yidhariInStunExCount / :1074 的 billyAxisActive 写入方挪进对应角色模块，再删 helpers.ts:1271 与 resource.ts:595 的守卫（现不冗余）；② `!==` 短路形态逐处论证后化简；③ 跨角色查找（findIndex 找队友槽位）与纯 agentId 写入（billyFinalizeChain / yidhariFinalizeEx 由引擎写角色字段）属真特判，需走 applyTeamConfig / convergence 落点（评审 #10）；④ 同批新增判据 12（core role-import 棘轮 7 处）——它是本条的**语义补强面**：agentId 字面量清零 ≠ 角色无关，引擎静态 import 角色模块同样要清',
@@ -212,7 +212,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'core 角色模块引用',
     file: 'src/core/** → @/mechanics/agents/*',
-    frozen: 4,  // 2026-09-24 CC-6a 5→**4**（−1，与 CORE_ROLE_IMPORT_BASELINE 常量同步）：删 `helpers.ts` 的 `@/mechanics/agents/banyue` 值导入（该分支由模块能力 exSpecialCount 认领）。2026-09-13 架构诊断实测（不含测试）：赠链族契约落地后剩余 5 处 —— luciaElowen×3 / banyue×1 / norma×1 / liuyin×1 / velina×2
+    frozen: 2,  // 2026-09-25 CC-6b 4→**2**（−2，与 CORE_ROLE_IMPORT_BASELINE 常量同步）：删 `helpers.ts` 与 `resource.ts` 的 `@/mechanics/agents/luciaElowen` 值导入（该块由模块能力 curtainTriggers + 跨槽供给 curtain-open 认领）。2026-09-13 架构诊断实测（不含测试）：赠链族契约落地后剩余 5 处 —— luciaElowen×3 / banyue×1 / norma×1 / liuyin×1 / velina×2
     target: 0,
     due: '2027-03-31',
     plan: '⚠ 迁移前提已实测证伪（2026-09-13 T8）：5 处全是活引用、0 死引用；三处（velina / banyue / luciaElowen）都需**引擎契约改动**（给 AgentMechanicModule 加「引擎期求值」能力 + 把注册表穿进 calcTurbulenceDamage 等签名），不是机械迁移——详见 CORE_ROLE_IMPORT_BASELINE 头注释的逐条实测依据。勿按「可直接删死引用」的原计划重走',

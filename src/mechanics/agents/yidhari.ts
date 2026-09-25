@@ -443,6 +443,13 @@ export const yidhariMechanic: AgentMechanicModule = {
   applyPanel: applyYidhariPanel,
   buildCharConfig: buildYidhariCharConfig,
   applyTeamConfig: applyYidhariTeamConfig,
+  // 队友开帷幕供给（2026-09-25 CC-6b）：伊德海莉终结技每次开一次帷幕，供卢西娅 C4
+  // 帷幕能力消费。契约 = 纯函数，只读自己 state；引擎经 `crossAgentSupplyCountOf`
+  // 收集成标量，模块不直接读队友 state。
+  crossAgentSupply: {
+    kind: 'curtain-open',
+    supply: ({ state }) => Math.max(0, Math.floor(state.ultimateCount)),
+  },
   buildExecutions: buildYidhariExecutions,
   buildResourceResult: buildYidhariResourceResult,
   resourceSections: buildYidhariResourceSections,

@@ -496,6 +496,17 @@ export const luciaElowenMechanic: AgentMechanicModule = {
   },
   applyPanel: applyLuciaPanel,
   buildCharConfig: buildLuciaCharConfig,
+  // 4命帷幕触发次数（规则 6 引擎落点，2026-09-25 CC-6b）：队友开帷幕量由引擎按跨槽供给
+  // 类别（帷幕开启）收集成标量 `teammateOpenCount` 传入，本能力只读自己 cfg/state ⇒ 纯函数。
+  // `luciaC4CurtainCoverage` 由本模块 applyTeamConfig 写给全队（含自己）。
+  curtainTriggers: ({ cfg, state, teammateOpenCount, totalTime }) =>
+    computeLuciaCurtainTriggers(
+      state.exSpecialCount,
+      state.ultimateCount,
+      teammateOpenCount,
+      Number(cfg.luciaC4CurtainCoverage ?? 1),
+      totalTime,
+    ),
   estimateExSpecialTime: ({ cfg, exSpecialCount, ultimateCount }) => {
     const plan = computeLuciaDreamPlan(exSpecialCount, ultimateCount, cfgNum(cfg, 'lucia.additionalAttackCount', DEFAULT_ADDITIONAL_ATTACK_COUNT))
     const exTime = cfg.exSpecialActionTime

@@ -770,6 +770,28 @@ export interface AgentMechanicModule {
    * 引擎回落通用公式（`总能量 ÷ 强特消耗`）。同一 agentId 至多一个模块声明。
    */
   exSpecialCount?(input: { cfg: CharacterOperationConfig; totalEnergy: number }): number | undefined
+  /**
+   * **引擎期帷幕触发次数求解**（规则 6 引擎落点，2026-09-25 CC-6b）。
+   *
+   * 存在的理由：`core/resource/helpers.ts#iterate` 与 `core/resource.ts` 收敛后各住着一段
+   * 「1451 卢西娅 C4 帷幕触发次数」的角色数学（`computeLuciaCurtainTriggers`），且都要读
+   * **队友槽的中间态**（伊德海莉 `ultimateCount`）。这正是规则 6 要消灭的形状。
+   *
+   * 跨槽消解：队友开帷幕量**不由本能力读队友 state**——由提供者模块声明
+   * `crossAgentSupply.kind='curtain-open'`（伊德海莉每次终结技开一次帷幕），引擎用
+   * `findCrossAgentSupplySlots` + `crossAgentSupplyCountOf` 收集成标量 `teammateOpenCount`
+   * 再传入（见 `core/resource/curtain.ts`）。本能力因此保持**纯函数**：只读入参与自己 cfg。
+   *
+   * 返回 `undefined` = 本模块不提供帷幕（引擎不认领该槽）；同一 agentId 至多一个模块声明。
+   */
+  curtainTriggers?(input: {
+    cfg: CharacterOperationConfig
+    state: Readonly<IterationState>
+    /** 队友开帷幕总量（引擎按 `crossAgentSupply.kind='curtain-open'` 收集；无队友时为 0） */
+    teammateOpenCount: number
+    /** 战斗总时长（秒），用于 15s CD 封顶 */
+    totalTime: number
+  }): number
 }
 
 /**
@@ -785,7 +807,8 @@ export interface CrossAgentSupplySpec {
    * - `'gift-chain:ultimate'`：赠**终结技行**给队友——琉音好评转大
    *   （两者同属赠链但落点行不同 ⇒ 类别按「赠什么行」区分，不按「谁赠的」区分：
    *    同队可同时存在，引擎取**全部**同类提供者各自出数，不静默合并）
-   * - 后续批次：`'neighbor-ult-energy'` / `'vanguard-energy'` / `'c4-burst'` / `'curtain'`
+   * - `'curtain-open'`：队友**开帷幕**次数（供 `curtainTriggers` 能力消费，伊德海莉终结技即此例）
+   * - 后续批次：`'neighbor-ult-energy'` / `'vanguard-energy'` / `'c4-burst'`
    */
   kind: string
   /**

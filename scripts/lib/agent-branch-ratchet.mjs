@@ -246,7 +246,18 @@ export const CORE_AGENT_BRANCH_FILES = ['src/core/resource.ts', 'src/core/resour
  *  `helpers.ts:1254`（般岳强特次数分支）· `helpers.ts:1389`（`luciaSlot`）。
  *  ⇒ 「core 6→4」在**当前树**上无可达路径；真要降 core 需先做上方「剩余 4 处的性质」里的能力契约。
  */
-export const CORE_AGENT_BRANCH_BASELINE = 5
+export const CORE_AGENT_BRANCH_BASELINE = 3
+// 沿革（2026-09-25 CC-6b，5 → 3，−2）：删 `helpers.ts` 与 `resource.ts` 收敛后两处
+// `findIndex(c => c.agentId === '1451')`（`luciaSlot`）。整块迁成引擎能力 + 跨槽供给：
+//   · 帷幕提供者按模块能力 `getAgentMechanic(cfg.agentId)?.curtainTriggers` 找槽（`core/resource/curtain.ts`）；
+//   · 队友开帷幕量按 `crossAgentSupply.kind='curtain-open'`（yidhari.ts 声明）收集成标量；
+//   · 外部回血源复用 `curtain.providerSlot`（lead 裁决 §6-2，前提写死在 `curtain.ts` 头注释）。
+// 同批删两处 `@/mechanics/agents/luciaElowen` 值导入 ⇒ 判据 12 基线 4 → 2。逐位等价证据 =
+// dump A/B 排除 `__ms` 后零差异（624 场景）+ rowsnap 零差 + lucia/yidhari 测试全绿；
+// 反向验证：临时让 yidhari 的 `curtain-open` supply 返回 0 ⇒ dump 带 1051+1451 场景精确红。
+// 剩余 3 行（逐行，审计用）：`resource.ts:474`（比利终局重推过滤，已明确否决改字段判据）·
+// `:1079`/`:1080`（比利/伊德海莉终局旗标复位——按角色**复位自己那份 cfg** 的跨 cfg 循环）。
+// `RATCHET_BURNDOWN.frozen` 同批下调（core agentId 5 → 3）。
 // 沿革（2026-09-24 CC-6a，6 → 5，−1）：`helpers.ts` 般岳（`1471`）强特次数分支已按本注释上方
 // 「剩余 4 处的性质」的既定落点迁出——模块声明能力 `exSpecialCount`（`banyue.ts#banyueMechanic`），
 // 引擎经 `getAgentMechanic(cfg.agentId)?.exSpecialCount?.({ cfg, totalEnergy })` 查询
