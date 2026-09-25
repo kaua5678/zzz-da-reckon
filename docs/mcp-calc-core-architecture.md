@@ -144,7 +144,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-9c | review | **不做**（lead 2026-09-25） | 辅助闭包（:116–413 `pushDirect/pushRelease/axisSplitFor/*Fraction` 等）外提：它们闭包入口局部量，外提须改工厂函数（非原样搬），收益小；damagePool.ts 已 438 行、职责单一（ctx 解构 + 辅助 + 编排三段）。若日后要单测辅助函数再立卡 | damagePool.ts |
 | CC-T1 | review | **待立项** | rowsnap 预设补「失衡轴 × 尾段角色」（1171/1401/1261/1581 + 爱丽丝）组合：CC-9a 反向 ① 实测该面零覆盖，只有 `inStunAttribution.test.ts` 兜底。低级模型可做（只加预设 + 重生成 A 基线） | .zc/perf/ |
 | CC-10 | review | **done** `a73b6f8`（useResourceCalc.ts 1189→789；新 `solveTeam.ts` 476 行 + 纯度锁测试；dump/rowsnap 624 零差，verify 3493） | `computeCalcOutput`（:248–654，含 `runOuterLoop` / `stageResolveFeasibility`）原样外提 `resourceCalc/solveTeam.ts#solveTeam(input)`，Vue 无关；唯一 store 写（降配闸门 ceiling）改为返回 `ceilingWriteBack` 由 composable 执行 | useResourceCalc.ts |
-| CC-11 | review | design | `runCalcRound` 引入 `RoundCtx`，按工人 C 的 C4–C10 簇拆；C1/C2/C3（轮输入簇、`resolveAxisUltimateDecibelCost`、`CalcRoundResult`）可先纯搬 | convergence.ts |
+| CC-11a | review | **ready**（lead 设计 2026-09-25 @3d8350d，卡见下） | C1 轮输入工厂 + C2 `resolveAxisUltimateDecibelCost` → `roundInputs.ts`；C3 `CalcRoundResult` → `roundResult.ts`；convergence.ts 原名 re-export，8 个消费者零改动 | convergence.ts |
+| CC-11b | review | design（待 11a） | `runCalcRound` 引入 `RoundCtx`，按工人 C 的 C4–C10 簇拆（33 个局部 `let` 的归属是设计核心；簇表行号 11a 后重测） | convergence.ts |
 | ~~CC-D1~~ | — | ✅ **done 2026-09-25（用户裁决「别人有为什么不算」）** | `damagePool.ts:1020` 琉音命破队友分支的贯穿力补 `sheerForceFlat`（改引 `calcPenetrationPower`） | damagePool.ts:1020 + `@fact engine:贯穿力/单一事实源`（GAME_TERM §10）+ 判据 `ccD3D1Verdict.test.ts::CC-D1` |
 | CC-D2 | — | **decide** | core `standardDotDamage` 生产零消费：删掉，还是让 damagePool 消费它（两套算法不同，需先对账） | 需用户口径 |
 | ~~CC-D3~~ | — | ✅ **done 2026-09-25（用户裁决「维琳娜专属资源，不该给别人计算」）** | 风蚀归属改按面板标记 `velinaEnabled`（`velina.ts#findVelinaPanel`/`#resolveVelinaCorrosion`，模块唯一写入方）。探针先行的预测**已证实**：1621 队产出 `{turb:3,micro:2,broad:1,boosted:1}` + 2 条「维琳娜…气旋」行共 15 702 挂在洛克茜名下、1631 队 5 936 挂赛维里安 ⇒ 数值缺陷。修后无维琳娜 ⇒ `velinaCorrosionSource` 为 `undefined`（非全零），气旋行/广域积蓄注入整套消失；**乱流仍在**（通用机制）。dump A/B：6 支洛克茜队 −0.06%~−0.15% | velina.ts / anomalyPool.ts / anomalyPool/helpers.ts + 判据 `anomalyPool.test.ts::CC-D3` + `ccD3D1Verdict.test.ts` |
@@ -315,6 +316,45 @@ anomalyPool 已有现成的能力通道 `input.agentMechanics`（同 `transformA
 
 ④ **报告**：改动行、闸门 grep、棘轮新旧值、两次反向验证差异条数与前 10 个场景键、§4 + rowsnap 尾部输出。
 
+
+### CC-11a · convergence 轮输入簇 / 终结喧响纯函数 / 轮结果类型外提（review）
+
+**lead 设计（2026-09-25 lead-arena-0925c，@3d8350d 实测）**。CC-11 拆刀：**11a 纯搬 C1/C2/C3**（本卡）→ 11b `runCalcRound` 引入 `RoundCtx` 按 C4–C10 簇拆（待 lead 设计，工人 C 簇表见 `/home/kaua/calc-arch/C-outer.md` §4.5，行号需按 11a 后重测）。
+现状：`src/composables/resourceCalc/convergence.ts` 1505 行，三块与 `runCalcRound` 本体（`createRunCalcRound` :437–1505）**零值级耦合**：
+| 簇 | 行 | 内容 | 目标 |
+|---|---|---|---|
+| C1 | :1–13 文件头 + :35–330 | `createConvergenceRoundInputs(deps)` 工厂（含 `computed`，每实例一份） | `roundInputs.ts` |
+| C2 | :331–351（含 :332–343 文档注释） | `resolveAxisUltimateDecibelCost` 纯函数；**唯一生产调用点 = C1 内 :244** | `roundInputs.ts`（随唯一消费者） |
+| C3 | :403–436（含 :403 注释） | `export interface CalcRoundResult` | `roundResult.ts` |
+lead 已核事实：
+- :437–1505 **不引用** `createConvergenceRoundInputs` / `resolveAxisUltimateDecibelCost`（grep 仅 :244/:344）；`runCalcRound` 只用类型 `ComputedRef`（deps 签名）⇒ 11a 后 convergence.ts 对 `vue` 只剩 `import type`。
+- 外部消费面：`useResourceCalc.ts:17`、测试 `nextRoundFeedbackR19/R20`、`ysgLoopTraceProbe`（值 import 两工厂）、`peiluo.test.ts:62`（动态 `import('@/composables/resourceCalc/convergence')` 取 C2）、`outerCyclePick.test.ts` / `solveTeam.ts` / `outerCycle.ts`（`import type CalcRoundResult`）⇒ convergence.ts **原名 re-export**，这 8 个文件**一行不改**。
+- check-guards 绑定 convergence.ts 的只有 debt 键 `convergence.ts:轮换动作覆盖实数化`（标记在 :1156，属本体，不动）与锚 `convergence.ts#createRunCalcRound`（不动）。C1–C3 区域**无** `@fact` / `debt:`。
+- C1 含 `'1051'`/`'1041'` 身份字面量（:301/:311）与 sigrid/hugo 模块 import：agentId 棘轮按整个 `resourceCalc/` 目录计 ⇒ 随搬读数不变；`role-import` 护栏若按文件列举则报告读数（不许改基线，变化即 blocked）。
+- `tsconfig.app.json` 开 `noUnusedLocals` ⇒ `npm run build` 会抓死 import。
+
+① **先读**：convergence.ts 1–440（分段）；`C-outer.md` §4.5；`git show 740290d --stat`（同目录搬迁先例）。
+
+② **做法**：
+1. 新建 `src/composables/resourceCalc/roundInputs.ts`：文件头 = 原 :1–13 注释（首行改为「收敛轮输入 helpers（CC-11a 2026-09-25 自 `convergence.ts` 原样迁入；此前 #10 自 useResourceCalc 迁入 convergence）」，其余原样）→ C1/C2 需要的 import（从原 :14–33 与 :352–401 中**只取用到的**，注释随行）→ C1 :35–330 原样 → C2 :331–351 原样。
+2. 新建 `src/composables/resourceCalc/roundResult.ts`：C3 需要的 `import type` → :403–436 原样。
+3. convergence.ts：删除上述三块；新文件头（≤10 行）写「单轮计算工厂 `createRunCalcRound`；轮输入 → `./roundInputs`、轮结果类型 → `./roundResult`（CC-11a）；本体 RoundCtx 拆分见 CC-11b」；加
+   ```ts
+   export { createConvergenceRoundInputs, resolveAxisUltimateDecibelCost } from './roundInputs'
+   import type { CalcRoundResult } from './roundResult'
+   export type { CalcRoundResult } from './roundResult'
+   ```
+   删除只被三块使用的 import（build 会报；逐个核）；`import { computed, type ComputedRef } from 'vue'` 收窄为 `import type { ComputedRef } from 'vue'`。:352–365 的「5 个 compute*NextRoundFeedback 已迁出」注释块与 `DECIBEL_ROUND_THRESHOLD` 留在 convergence.ts（本体用）。
+4. 禁止：改任何表达式 / 注释内容（除第 1、3 步写明的文件头）/ 成员顺序；改 8 个消费者文件；改棘轮基线；新建子目录。
+
+**证伪闸门**：前提 =「C1–C3 与本体零值级耦合」。可观察失败 = build 报本体引用了被搬走的符号 / dump 或 rowsnap 非零差 / check-guards 任何读数变化（停下 blocked）。
+收工：`grep -c "export function createRunCalcRound" convergence.ts` = 1；`grep -cE "from 'vue'" convergence.ts` 的那一行必须是 `import type`；三文件行数之和 ≈ 1505 + 新增头/import 行（报告写明）。
+
+③ **验收**：§4 全套 + dump + rowsnap + `npm run check-guards` + `npm run build` +
+`npx vitest run nextRoundFeedback ysgLoopTraceProbe peiluo outerCyclePick solveTeamPurity convergence roundThreads src/scripts/__tests__/`（报告列实际文件数）。
+**反向验证**（各自恢复并以 dump 零差证明）：① `roundInputs.ts` 里 C2 临时恒 `return 3000` ⇒ `peiluo.test.ts` 红（证明 re-export 接的是新实现）；② `roundInputs.ts` 的 `expandExecutedToCounts` 首行临时 `return executed` ⇒ dump 非零差（证明 C1 是活的且被 useResourceCalc 经 re-export 调用）。
+
+④ **报告**：三文件行数、convergence.ts 删除的 import 清单、check-guards 全部读数前后、两次反向验证结果、§4 + dump/rowsnap 尾部。
 
 ### CC-10 · `solveTeam` 抽离 Vue：`computeCalcOutput` 外提 `resourceCalc/solveTeam.ts`（review）
 
