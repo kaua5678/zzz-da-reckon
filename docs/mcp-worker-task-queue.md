@@ -50,7 +50,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | W19 | frontlineRowsOf 琉音赠大收敛到 `ultimateGiftOf` | 小重构 | `src/core/resource.ts` | ✅ lead 自做（`85d90c6`，全量 3489 passed；W13 drifted #15 结案） |
 | W20 | 轴模式琉音送客行是否双计：取证 | 只读 + 隔离探针 | `.zc/reports/W20-axis-farewell.md`；探针只在 `/tmp/wt-W20` | ✅ 已回收（判定 `单计-模块`，账本多计 0s；轴声明 1481009 语义 A/B 已入 OPEN-ITEMS 待用户；W21 前置①满足） |
 | W21 | 琉音转大次数单源化（W16 契约 C） | 实现 | — | 🗑 作废（卡已删）：工人 blocked 证据成立（4 调用点仅 1 处拿得到失衡次数；同局 3 个转大读数不同源）；lead 设计 `docs/mcp-liuyin-promote-source.md` 定单源 = 答案层 `promote` 滞后注入，拆为 W25/W26 |
-| W22 | R62-J3 census 指纹侧过期：当前 HEAD 重跑 + 逐角色 diff | 重计算 + 隔离 worktree | `/tmp/wt-W22` 下任意文件、`.zc/reports/W22-census-refresh.md` | 待派发（独占重计算时段；排在 W25/W26 之后，见下方派发顺序） |
+| W22 | R62-J3 census 指纹侧过期：当前 HEAD 重跑 + 逐角色 diff | 重计算 + 隔离 worktree | `/tmp/wt-W22` 下任意文件、`.zc/reports/W22-census-refresh.md` | ✅ 已回收结案（16:33 收工；lead-arena-0925c 17:50 独立复算 accept：自建 worktree@`6e4f3f6` 重跑 r62census ⇒ 62/62 活跃集零变化、新增 B 恰 4 条 1041:C4 · 1111:C2 · 1141:C4 · 1421:C4、declared 变化恰 W27 五档、白拿 1271:C1 消失、原 B 10 条无一消失，与报告逐项一致；OPEN-ITEMS R62-J3 已结案；卡已删） |
 | W23 | 爱丽丝(1401) 系留白 6.0s 归因（预测先行） | 只读 + 隔离探针 | `/tmp/wt-W23` 下任意文件、`.zc/reports/W23-1401-slack.md` | ✅ 已回收（15:24；lead 复核 accept。独立负控：只去掉 `resource.ts:644` 的 1s 余量 ⇒ 本队 6→1，全库 29 队逐值复现工人 §5.3 表，另查出 2 队 stable→cycle）。归因 ① 成立但因果改写：pass0 冻 0、pass1 负 excess 19.915 不进 refund、post-fold 试探 attempt1 接受 9.958 后被内层不判稳与 1s 余量联合自锁；变体实验入坑 19 否决记录；卡已删 |
 | W24 | 命座「未描述」6 条的原文定位与可派性分诊 | 只读普查 | `.zc/reports/W24-undescribed-triage.md` | ✅ 已回收（14:50；lead 复核 accept：抽查 1121 C1 先例、1271 C1 pending、3 处原文落点均属实）。5/6 原文在库且只是标签错 ⇒ lead 按图例 + 4 条先例裁定改标（问题 Q 取 A）⇒ 派生 W27；1551 C6 真·未揭示 ⇒ OPEN-ITEMS §1 待供料；卡已删 |
 | W25 | 琉音转大次数四读数：预测探针 | 只读 + 隔离探针 | `/tmp/wt-W25` 下任意文件、`.zc/reports/W25-promote-readings.md` | ✅ 已回收（15:51；lead 复核 accept。重放：正控 25/25 个 key 逐字段一致；负控送客 +1 ⇒ C1 23→0）。前提成立（非轴 stable C4 25/25，闸门 0 条）；卡面 `design-gate: FAIL` 全部来自 5 个单角色 key 的空目标槽 ⇒ lead 裁定为夹具边界，设计 §8 增补生产端「目标槽有角色」条件；现语料四读数重合 ⇒ W26 改为零 delta 重构；卡已删 |
@@ -73,45 +73,14 @@ W18（W11/W12 的文案漂移与死写）。1451 梦境值 `maxValue 100 vs 500`
 **重计算时段串行**：W16 → W17 → W18（各自要跑 vitest/build）；W13/W14/W15 是纯静态阅读，可与其中任一张并行（总工人数仍 ≤ 2）。
 headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾追加一行「测试/构建时段已授予」。
 
-**当前派发顺序（2026-09-25 16:25 lead-arena-0925 现场核实）**：W23–W29 均已回收结案（W26 为 lead 合入时 blocked）；此刻无工人在跑，主仓库干净。
-下一步：**W22**（独占重计算时段，lead-arena-0925b 已移交）；琉音单源化待按设计文档 §9 的「出口校验 + 校正轮」重写卡，验收必须同时覆盖 `timeGolden` / `timeFillRatchet` / `truncationRefold`。
+**当前派发顺序（2026-09-25 17:50 lead-arena-0925c 现场核实）**：W22–W29 均已回收结案（W26 为 lead 合入时 blocked）；此刻无工人在跑，主仓库干净。
+下一步：琉音单源化待按设计文档 §9 的「出口校验 + 校正轮」重写卡，验收必须同时覆盖 `timeGolden` / `timeFillRatchet` / `truncationRefold`；计算核心 CC 系列另走 `docs/mcp-calc-core-architecture.md` §5（lead-arena-0925c 在推）。
 派发前照本节开头查重。
 **双 lead 分工（2026-09-25 15:15 起）**：两条 lead 会话并行，分工单源在 `.zc/lead-coordination.md`（不入库）——W23 复核、W25 → W26 归 `lead-arena-0925`；W27、W22 归 `lead-arena-0925b`。第三条会话接手前先读它，别照本段顺序自己派。
 
 ## 2. 任务卡
 
-<!-- card:W22 -->
-### W22 · R62-J3 census 指纹侧过期：当前 HEAD 重跑 + 逐角色 diff
-
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W22。
-父目标：`.claude/OPEN-ITEMS.md` §2「R62-J3」的**剩余**段——静态半场已于 2026-09-24 收口（W3，lead 独立复算一致：状态表 `implemented*` **364 条** = A 354 + B 10 + C 0，B 类 10 条恰好就是 `/home/kaua/r62-scratch/evidence/TRIAGE-r62.md` 第 16-17 行已分诊的 9 角色 / 10 档 ⇒ 零新增）。
-但指纹基线 `gate-census.json` 生成于 2026-09-20 的 `3db9b32`，当前 HEAD `b9938c7` 与之相差 **86 个提交**（lead 实测 `git rev-list --count 3db9b32..HEAD`），其中含 R62-batchA 修复 `09c87e2`（1111 安东影画3/5 技能等级双计）⇒ **「此后的提交有没有把某档改成空操作」目前无结论**，本卡就是补这个结论。
-
-**先读**：`AGENTS.md` §1 规则 10（基线是测量工具不是否决权）/ 12 / 16 / 17、§5；`.claude/OPEN-ITEMS.md` §2 R62-J3 全段（含 ✅ 静态半场与「剩余」）；
-`/home/kaua/r62-scratch/teeth/src/composables/__tests__/r62census.test.ts` **全文**（⚠ 它在 teeth worktree 里是**未提交**的 `??` 文件，主仓库没有这份，必须从那里拷）；
-`/home/kaua/r62-scratch/evidence/TRIAGE-r62.md` 第 16-17 行（B 类 10 条的既有分诊结论，diff 时要用它排除已知项）。
-
-**允许写入**：隔离 worktree `/tmp/wt-W22`（`git worktree add --detach /tmp/wt-W22 HEAD` 后软链 `node_modules`）下任意文件；新 census 产物写 `/tmp/wt-W22/evidence/`；报告 `.zc/reports/W22-census-refresh.md`（先 `zc claim`）。
-**禁止（硬约束，违者本卡作废）**：
-- **绝不许写 `/home/kaua/r62-scratch/evidence/gate-census.json` 与 `step-census.json`**：仪器的 `OUT` / `OUT2` 常量（该测试第 28-29 行）**硬编码**指向这两个路径，而它们是 09-20 的**对照基线**，一旦覆盖就没有 diff 基准、整卡结论不可复现。开工先 `sha256sum` 记录两份基线、`cp` 成 `*.pre-W22.json` 留底，再把 worktree 内副本的 `OUT`/`OUT2` 改指 `/tmp/wt-W22/evidence/`；收工时用 sha256 证明基线**逐位未变**。
-- 改主仓库任何文件（报告除外）；改任何基线（`timeGolden` / `timeFillRatchet`）；改 `public/static/character-constellations.json`（它是本卡的**外部事实**，不是被测对象）。
-- 跑 `npm run build` / 全量 vitest；碰 `src/mechanics/agents/liuyin.ts`（W21 在改）。
-
-**步骤与验收**：
-1. 建 worktree + 软链 `node_modules` + 从 teeth 拷入 `r62census.test.ts` + 改 `OUT`/`OUT2`；打印真实 HEAD、`git status --short`、两份基线的 sha256。
-2. **先写预测再跑**（`AGENTS.md` §0 外部闭环表「排查数值」行）：报告里先写出「86 个提交中哪几类改动最可能把某档改成空操作」+ **预测新增 B 类的条数（给数字）**，再跑仪器。实测与预测不吻合 ⇒ 如实写 discrepancy，**不许就地改预测**。
-3. 跑仪器：`npx vitest run r62census`（缺省全 62 角色；OOM/超时就按 `R62_ALL=<id,…>` 分 3 批，每批 ~20 角色，报告写明分批）。口径照该文件头注释：62 角色 × cinema ∈ {0..6}，真 `setupHarness` + 真 `useResourceCalc()`，队友固定 `1211`(support) + `1181`(anomaly) cinema 6。记录每批耗时。
-4. 与 `/home/kaua/r62-scratch/evidence/gate-census.json` **逐角色 diff**，输出三类：① **活跃门控档位集变化**的角色（哪几档从「不活跃」变「活跃」或反之）；② **新增 B 类**（声明 `implemented*` 但指纹无变化，且不在 TRIAGE 第 16-17 行那 10 条里）；③ **消失的 B 类**（原 10 条里现在活跃了的 = 修复已生效，写明是哪条）。
-5. 判定：新增 B 类 = **0** ⇒ 指纹侧收口，报告里给出可直接替换 OPEN-ITEMS R62-J3「剩余」段的**一行结论**（工人不改 OPEN-ITEMS，由 lead 落盘）；新增 B 类 **> 0** ⇒ 每条给 `角色(id)` / 档位 / 状态表声明原文 / 指纹读数 / 怀疑提交（`git log --oneline 3db9b32..HEAD -- <相关文件>`），**不自行修**。
-6. 收工：`unlink /tmp/wt-W22/node_modules` → `git worktree remove --force /tmp/wt-W22`；主仓库 `git status --short` 只允许报告一项；贴出两份基线收工后的 sha256（必须与第 1 步一致）。
-
-**证伪闸门**：前提假设 = `3db9b32..HEAD` 的 86 个提交里至少有一个把某档已声明 `implemented*` 的效果改成了空操作（或让某档从不活跃变活跃）。
-假设为假时的可观察失败 = 逐角色 diff 的「活跃档位集」**零变化**且新增 B 类 = **0** ⇒ 指纹侧收口、R62-J3 整条可结案（这同样是有价值的结论，照常 `STATUS: done`）。
-
-**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、两份基线 sha256 前后对照、预测表、命令与分批耗时、diff 三类全文、未证明事项。
-`zc done --verifier '<census 命令原文>' --coverage '62 角色 × cinema 0-6 指纹 vs 09-20 基线' --risk '<未证明事项>'`。**不提交**。
-测试时段已授予（独占重计算位，派发方保证此时无其它工人跑 vitest/build）。
-<!-- /card:W22 -->
+（当前无待派卡。）
 
 ## 3. 本队列的来源：2026-09-24 OPEN-ITEMS 分诊
 
