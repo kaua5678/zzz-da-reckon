@@ -140,7 +140,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-7 | fast | **done**（dsflash 工人 + lead 复核：PanelValues.atk/hp 必填 ⇒ `?? 0` 死分支；dump 624 零差、guards 21、build、48 测过） | 贯穿力单一事实源：导出 `calcPenetrationPower`，norma.ts / damagePool.ts:1067 改引用（**不碰 :1020**） | core/damage.ts、norma.ts、damagePool.ts |
 | CC-8 | fast | **done**（dsflash 工人 + lead 复核：逐项值相等；dump 624 零差 + rowsnap（含行文案）624 零差、guards 21、build） | damagePool 异常常量改引 core：713/500/1250 与 DoT 表改用 `ANOMALY_SINGLE_HIT_MULTIPLIER` / `STANDARD_DOT_CONFIG` | damagePool.ts 1242–1247 / 1402 / 1429 |
 | CC-9a | review | **done** `72e0eb5`（damagePool.ts 1727→1141；新 `damagePoolAnomaly.ts` 661 行；rowsnap/dump 624 零差，verify 3490） | damagePool 尾段（:1142–1725 异常 + 1171/1401/1261/爱丽丝/1581 附加行）原样外提 `damagePoolAnomaly.ts` 的 `emitAnomalyRows(env)`，共享 `rows` 注入 | damagePool.ts |
-| CC-9b | review | design（待 9a） | 逐角色主循环（:423–1141，约 700 行）外提；`claimedInAxis/seenDirectIds` 由入口持有后注入；轴占比闭包（:316–422）视 9b 形状再定（原 CC-9 设想：`damagePoolDirect/Release/Axis.ts` + `RowSink`） | damagePool.ts |
+| CC-9b | review | **ready**（lead 设计 2026-09-25 @4a387e1，卡见下） | 逐角色主循环（:415–1132）按 D 直伤 / R 异放事件 / X 角色附伤三段原样外提 `damagePoolDirect.ts` / `damagePoolRelease.ts` / `damagePoolCharExtras.ts`；共享 `rows/seenDirectIds/claimedInAxis` 以对象引用经 `CharRowsEnv` 注入；辅助闭包（:116–413）留入口，CC-9c 再议 | damagePool.ts |
 | CC-10 | review | design | `solveTeam`：把 `computeCalcOutput`（runOuterLoop + stageResolveFeasibility）从 composable 抽成 Vue 无关函数 | useResourceCalc.ts 248–653 |
 | CC-11 | review | design | `runCalcRound` 引入 `RoundCtx`，按工人 C 的 C4–C10 簇拆；C1/C2/C3（轮输入簇、`resolveAxisUltimateDecibelCost`、`CalcRoundResult`）可先纯搬 | convergence.ts |
 | ~~CC-D1~~ | — | ✅ **done 2026-09-25（用户裁决「别人有为什么不算」）** | `damagePool.ts:1020` 琉音命破队友分支的贯穿力补 `sheerForceFlat`（改引 `calcPenetrationPower`） | damagePool.ts:1020 + `@fact engine:贯穿力/单一事实源`（GAME_TERM §10）+ 判据 `ccD3D1Verdict.test.ts::CC-D1` |
@@ -313,6 +313,58 @@ anomalyPool 已有现成的能力通道 `input.agentMechanics`（同 `transformA
 
 ④ **报告**：改动行、闸门 grep、棘轮新旧值、两次反向验证差异条数与前 10 个场景键、§4 + rowsnap 尾部输出。
 
+
+### CC-9b · damagePool 逐角色主循环三段外提（review）
+
+**lead 设计（2026-09-25 lead-arena-0925c，@4a387e1 实测）**。承接 CC-9a（`72e0eb5`，尾段已外提）。现状：`damagePool.ts` 1141 行；`for (const charResult of adjustedResourceResult.characters)` 主循环在 **:415–1132**，循环头 :416–421 定义 4 个本槽局部量（`slot` / `agent` / `skills` / `liuyinSrc`），循环体按职责分三段、段间**无**跨段 `continue/break/return`（lead 已 grep）：
+
+| 段 | 行 | 内容 | 目标 |
+|---|---|---|---|
+| D | :423–671 | 逐招直伤 `for (const exec …)`（含 `emitExecDirect` 闭包、`seenDirectIds` 去重）+ `if (isAxis)` 轴内直读技能表兜底 | `damagePoolDirect.ts#emitCharDirectRows` |
+| R | :672–927 | `for (const event of charResult.anomalyEventExecutions …)` 异放/异常事件行 | `damagePoolRelease.ts#emitCharReleaseRows` |
+| X | :928–1131 | 1171 柏妮思机制行 / 琉音额外能力 / 半月 C6 碎击附伤 / 琉音非轴块 | `damagePoolCharExtras.ts#emitCharExtraRows` |
+
+lead 已核事实：
+- 共享可变态只有 `rows`（push）、`seenDirectIds`（Map，:389 定义、:473–474 写）、`claimedInAxis`（Record，仅经 `axisSplitFor` 闭包写）——全是**原地变更的对象引用**，传引用即共享，无需 RowSink。
+- 循环段内 `isAxis` 全部是真值用法（`if`/`!`/`&&` 条件/三元/`!!isAxis` 递进模块，:625 注释所说「原样递进」递的就是 `!!isAxis`）⇒ 同 9a 传 `Boolean(isAxis)`。**工人须复核**：若发现 `isAxis && …` 的**结果被赋值或作为非条件值使用**，改传原值并在报告写明。
+- `@fact` 两条在 :144–145，不在范围内；check-guards 按行内容（非行号）锚定它们。agentId 棘轮按整个 `resourceCalc/` 目录计 ⇒ 字面量随代码搬，读数不变。`checkGuards.test.ts:371` 只断言 damagePool.ts 存在。
+- 本卡**不动**辅助闭包（:116–413 的 `agentName` / `axisSplitFor` / `axisStunFor` / `pushDirect` / `pushRelease` / `releaseMultiplierFor` / 各 `*Fraction` / `releaseStunSegments` / `xixifuToxinInAxisFraction`）——它们留在入口、以函数引用进 env（CC-9c 再议）。
+
+① **先读**：`damagePool.ts` 全文（分段 `sed`）；`damagePoolAnomaly.ts` 1–75（9a 的 env 形状，照抄风格）；`git show 72e0eb5 --stat`。
+
+② **做法**：
+1. 新建 `src/composables/resourceCalc/damagePoolDirect.ts`（**直属**），导出：
+   ```ts
+   export interface CharLocals { charResult: <原类型>; slot: number; agent: <原推断类型>; skills: <原推断类型>; liuyinSrc: <原推断类型> }
+   export interface CharRowsEnv { ctx: DamagePoolContext; rows: DamagePoolRow[]; isAxis: boolean; /* + 三段实际用到的入口局部量与闭包，照原类型 */ }
+   export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void   // 函数体 = :423–671 原样
+   ```
+   `damagePoolRelease.ts#emitCharReleaseRows(env, cl)`（:672–927）与 `damagePoolCharExtras.ts#emitCharExtraRows(env, cl)`（:928–1131）同形，`import type { CharRowsEnv, CharLocals } from './damagePoolDirect'`。
+   三个函数**共用一个** `CharRowsEnv`（字段取三段并集，未用字段不解构即可）。各函数体开头：按 `damagePool.ts:97–105` **同名同别名**解构 `env.ctx` 中该段用到的字段 → 解构 env 其余字段 → 解构 `cl`；其余表达式、注释、顺序一字不改（只去公共缩进）。
+2. damagePool.ts：循环改为
+   ```ts
+   const charEnv: CharRowsEnv = { ctx, rows, isAxis: Boolean(isAxis), /* … */ }
+   for (const charResult of adjustedResourceResult.characters) {
+     <:416–421 原样保留，含注释>
+     const cl = { charResult, slot, agent, skills, liuyinSrc }
+     emitCharDirectRows(charEnv, cl)
+     emitCharReleaseRows(charEnv, cl)
+     emitCharExtraRows(charEnv, cl)
+   }
+   ```
+   `charEnv` 在循环**外**构造一次（各字段都是循环内不变的引用）。删除搬走后成死绑定的 import / ctx 解构字段（逐个 grep 确认）。9a 的 `emitAnomalyRows(...)` 调用不动。
+3. env 字段准入：只允许 `const` 绑定、`function` 声明、或原地变更的对象（`rows`/`seenDirectIds`/`claimedInAxis`）。若某段**给入口的 `let` 重新赋值**，停下写 blocked（附行号）。
+4. 禁止：改任何数值 / 条件 / 文案 / 块顺序；改辅助闭包；改棘轮基线；建子目录；把 `rows.push` 换成返回值拼接。
+
+**证伪闸门**：前提 =「三段只经共享对象引用通信、段间无控制流耦合」。可观察失败 = rowsnap / dump 非零差异，或 TS 报出入口 `let` 被段内赋值（停下）。
+收工 `grep -c "pushDirect(" / "pushRelease(" / "stunOverrideForMove"` 四个文件合计 = 改前 damagePool.ts 的读数（报告写前后）；`npm run check-guards` 编排层 agentId 读数不变。
+
+③ **验收**：§4 全套 + **rowsnap（主判据）** + `npm run check-guards` + `npm run validate:specs` + `npm run build` +
+`npx vitest run damagePool burnice liuyin banyue peiluo hugo yeshuguang inStunAttribution damageSourceBreakdown src/scripts/__tests__/`（报告列实际文件数）。
+**反向验证**（三次，各自恢复并以 rowsnap+dump 零差异证明）：分别在 `emitCharDirectRows` / `emitCharReleaseRows` / `emitCharExtraRows` 函数体首行临时 `return` ⇒ 各自 rowsnap 非零差异（报条数与前 10 键）。
+若某次**零差**：不要硬造，按 9a 先例用该段角色的单测（如 `burnice.test.ts`）做同改动活性证明，并在报告里标「rowsnap 覆盖缺口」。
+
+④ **报告**：三新文件行数与 damagePool.ts 行数前后、`CharRowsEnv` 最终字段表（注明哪段用）、死绑定清单、`isAxis` 复核结论、闸门 grep 前后读数、三次反向验证结果、§4 + rowsnap 尾部输出。
 
 ### CC-9a · damagePool 异常/附加伤害尾段外提 `damagePoolAnomaly.ts`（review）
 
