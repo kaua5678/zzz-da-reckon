@@ -505,6 +505,8 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
 
     ⚠ **轴模式四处同源（2026-09-20 R67，推翻上段早期口径）**：琉音赠大轴计数四处消费点（`iterate` 预留 / S2 折叠环 / 试探测量 / 截断上限）旧实现后两者计入、前两者漏计 ⇒ 截断额度被扣而账本没涨 ⇒ 决算被整数装包砍掉一整次（雨果 0 命轴 5→4）；统一走 `ultimateGiftOf` 后守恒恢复（`@fact engine:赠送时间/轴模式四处同源`，护栏 `liuyinAxisGiftSameSource.test.ts`）。
 
+    ⚠ **转大次数来源（2026-09-25，W21 blocked → lead 设计 `docs/mcp-liuyin-promote-source.md`）**：非轴模式同一轮有三个读数——送客行用 `floor(G/90)`、`crossAgentSupply` 预留用计划值结转、赠行用 `promoteFixpoint` 池口径。单源定为**答案层** `promote`，经 `prevPromoteCount` 线程滞后注入（卡 W25/W26）。**否决记录**：① 计划值通道（converge 写计划值、四处按它阈值结转；W21 变体 1/2）→ `timeGolden` 7 / 6 条 delta，且合一后仍 ≠ 赠行（`agent:1481:c0` 送客 3→4 而赠行仍 3）；② 事后按池 patch 送客行 → 送客时间记在 iterate 必要时间账里，改行不改账 ⇒ 守恒破（同 `liuyinPromote.ts:104-108` 旧 post-hoc carve 的 +7.2s 先例）。
+
 29. **轴的资源门控 = 总量，两个通道都「去掉」而非「只警告」（用户口径 2026-09-08）**：
     `core/stunAxisStack.ts` 原来对闪能/喧响都只记警告、**照样计入执行**（与它自己的头注释「不够就跳过」
     相反，从初始提交起就如此）。用户裁决：**耗资源的招式一律从总量里拿，总量没有不能凭空创造**——
