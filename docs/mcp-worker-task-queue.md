@@ -40,133 +40,117 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | 卡 | 标题 | 类型 | 写入白名单 | 状态 |
 |---|---|---|---|---|
 
-| W10 | 青衣(1251) / 橘福福(1391)档案取证与草稿 | 只读取证 | `.zc/reports/W10-dossier.md` | 已回收 09-25（双派发自洽，正文+§10 独立复核） |
-| W11 | 卢西娅·艾洛温(1451) / 般岳(1471)档案取证与草稿 | 只读取证 | `.zc/reports/W11-dossier.md` | 已回收 09-25（纯取证，测试未跑） |
-| W12 | 琉音(1481) / 星徽·比利(1531)档案取证与草稿 | 只读取证 | `.zc/reports/W12-dossier.md` | 进行中（09-25 01:19 派发） |
-| W13 | drift 复核批 A：calc-core 热区（锚 core/ + resourceCalc/） | 只读复核 | `.zc/reports/W13-drift.md` | 待派发 |
-| W14 | drift 复核批 B：mechanics 档案事实 | 只读复核 | `.zc/reports/W14-drift.md` | 待派发 |
-| W15 | drift 复核批 C：composables + scripts + 杂项 | 只读复核 | `.zc/reports/W15-drift.md` | 待派发 |
+| W13 | drift 复核批 A：calc-core 热区（锚 core/ + resourceCalc/） | 只读复核 | `.zc/reports/W13-drift.md` | 进行中（09-25 派发） |
+| W14 | drift 复核批 B：mechanics 档案事实 | 只读复核 | `.zc/reports/W14-drift.md` | 进行中（09-25 派发） |
+| W15 | drift 复核批 C：composables + scripts + 杂项 | 只读复核 | `.zc/reports/W15-drift.md` | 待派发（W13/W14 回收后） |
+| W16 | 琉音(1481) 送客次数 floor 残留：预测先行取证 | 只读 + 隔离探针 | `.zc/reports/W16-predict.md`；探针只在 `/tmp/wt-W16` | 待派发（占重计算时段） |
+| W17 | 补青衣(1251) 影画4 回能差分断言 | 新增测试 | `src/mechanics/__tests__/qingyiC4Energy.test.ts`、`.zc/reports/W17.md` | 待派发（W16 后，占重计算时段） |
+| W18 | 两处纯清理：1531 spec notes 文案 + 般岳死写 | 小实现 | `src/specs/agents/1531.json`（仅 notes 字符串）、`src/mechanics/agents/banyue.ts`（仅删 1 行）、`.zc/reports/W18.md` | 待派发（W17 后，占重计算时段） |
 
-本批先交证据及草稿，不直接写共享档案；主代理审查后串行合入 `docs/MECHANICS_IMPLEMENTATION.md`。
-R62-J3 当前 HEAD 行为指纹刷新、R37-J5 §19.6-a 留白归因仍是候选，不随本批自动启动。
+**W10–W12 已合入并删卡（2026-09-25 外部 lead 会话）**：三份草稿经 lead 复核后改写合入 `docs/MECHANICS_IMPLEMENTATION.md` 末尾六段
+（1251/1391/1451/1471/1481/1531），`verify:recording` 6 warn → 0 warn。lead 独立重放 7 个定向测试文件 118/118 通过（含 W11 未跑的
+`luciaElowen`/`banyue`）；抽查属实：`qingyiC4Energy` 测试零命中、`banyueSwayExCount` 零读者、`liuyin.ts` `promoteWindows=floor(G/90)`。
+合入时的修正：banyue 实为 54 例（W11 静态数 55）；`4ca47db`（CC-D1）在 W12 收工后改了 `damagePool.ts`（1020 行后 +4、琉音直伤贯穿力改走
+`calcPenetrationPower`）⇒ 档案改用符号/行 id 而非 damagePool 行号。派生卡：W16（W12 候选 A，lead 复核确认为真缺陷）、W17（W10 §6-T2）、
+W18（W11/W12 的文案漂移与死写）。1451 梦境值 `maxValue 100 vs 500` 涉及原文语义 ⇒ 进 OPEN-ITEMS §1，不入队列。
 
-2026-09-25 lead 会话：W10 / W11 已回收——W10 = 正文（青衣/橘福福两段草稿 + 27 个定向测试全绿）+ §10 双派发独立复核（两会话取证逐项吻合）；W11 = 纯取证（测试时段给了 W10，**合入前 lead 须自行重放** `luciaElowen.test.ts` + `banyue.test.ts`），其风险栏带真发现：1451 `maxValue 100 vs 500`、1471 `banyueSwayExCount` 死写零读者等口径漂移待裁决。W12 进行中（01:19 派发）。本日两条 lead 会话并行各派了一次 W10/W11（教训进 §0 查重条）。同日新增 drift 复核批 W13–W15：CC 批次（e2e8ae5..bbbaaa4）触发 102 条 ⟳ 待复核，成因/判据/分批见 `docs/mcp-drift-triage.md`；工人只交复核报告，「据」/锚落盘修正由主代理按报告分批做。
-
-### 本批立项证据与放行边界
-
-- 2026-09-24，BASE `143d3233766fda256161a4cd5a93ef4553d4eaa6`：实跑 `npm run verify:recording` 为 189 passed / 6 warn，
-  六条均为上述角色缺档案段；3 份 evidence contracts、59 个 legacy 未逐条复核。**缺档案不等于缺机制，补档案不等于原文验收。**
-- `dsh --profile headless` 的 pong 自检通过；只读取证任务 `DOC-PREFLIGHT-1251` 已返回 done（命令退出 0）。
-  本批 W10–W12 尚未派发。现场路由文件声明 `wb/deepseek-v4.1-flash`；本次未审计实际模型请求日志，不将配置冒充执行回执。
-- 主代理独立读回 `qingyi.ts:373-392`、`qingyi.test.ts:45-109`、`teamHook.test.ts:165-181`，确认工人所指注册对象和断言存在；
-  `resourceIncome.ts:98-100,128,180` 确有 C4 回能消费。工人未追到消费端不等于死通道。
-- 不采纳工人将整个 spec 概括为死数据的建议：`1251.json:15-27` 仍有声明式额外能力条件；必须逐字段追消费者。
-  状态行的“部分实现”也不能仅由测试未覆盖推导：**未证明 ≠ 未实现**，应分别写当前建模范围与验证边界。
-- 前提假设：模块、活消费者与现有测试足以支持有限范围的档案草稿。
-  可观察失败：发现声明与行为冲突、需新的业务裁决或无法定位消费者 ⇒ 对该结论标 unknown/blocked，不靠补一句状态行消 WARN。
-- 主代理收卡：先读引用代码与真实 diff，再重放代表性测试；确认通过后逐段合入，检查告警只减少已接受角色的条数。
-  两个角色均有充分证据时该卡预期减少 2 条 WARN，否则允许只接受一段或不合入。不能改 spec status、legacy 或检查器凑数。
+**重计算时段串行**：W16 → W17 → W18（各自要跑 vitest/build）；W13/W14/W15 是纯静态阅读，可与其中任一张并行（总工人数仍 ≤ 2）。
+headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾追加一行「测试/构建时段已授予」。
 
 ## 2. 任务卡
 
-<!-- card:W10 -->
-### W10 · 青衣(1251)、橘福福(1391)档案取证与草稿
+<!-- card:W16 -->
+### W16 · 琉音(1481) 送客次数 floor 残留：预测先行取证（不实现）
 
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W10。
-工作区 `/home/kaua/projects/zzz-calculator`；参考 BASE `143d3233766fda256161a4cd5a93ef4553d4eaa6`。
-开工打印真实 HEAD 和 `git status --short`，有漂移则按新文件重新取证，不 reset 回 BASE。
-父目标：为两个缺失档案段提供可审查草稿，不实现或重新裁决机制。
+你是执行工人，只完成本卡，不继续委派。TASK_ID=W16。
+主仓库 `/home/kaua/projects/zzz-calculator`（只读 + 写报告）；探针一律在隔离 worktree `/tmp/wt-W16` 里做。
+开工打印主仓库真实 HEAD 与 `git status --short`。
+父目标：lead 已确认 `computeLiuyinSource` 仍用旧预算模型算转大次数，与已确认的「阈值结转」口径不符；
+本卡按 AGENTS.md「排查数值须预测先行」先量化影响、给出修法契约，**修复另发卡**。
 
-**先读**（以下相对路径均相对于上述绝对工作区）：
-1. `AGENTS.md` §1、§5；`docs/MECHANICS_IMPLEMENTATION.md` 前 28 行及现有相邻档案格式。
-2. `src/mechanics/index.ts`，`src/mechanics/agents/` 下 qingyi.ts、specPanelBuffs.ts（jufufuTigerRoarMechanic）；`src/specs/agents/` 下 1251.json、1391.json。
-3. 定向测试 `src/mechanics/__tests__/qingyi.test.ts`、`src/mechanics/__tests__/jufufu.test.ts`、`src/mechanics/__tests__/teamHook.test.ts`；`data/recordings/legacy.json`。
-   只沿上述模块的字段读写链补读必要消费者；不全仓漫游。青衣 C4 追 src/core/resource/resourceIncome.ts；橘福福喧响上限先读 docs/mcp-r65j1-decibel-cap-verdict.md，不重开已裁决不做项。
+**已知事实（lead 2026-09-25 读回，行号以当前 HEAD 为准）**：
+- `src/mechanics/agents/liuyin.ts#computeLiuyinSource`：`promoteWindows = Math.floor(total / 90)`，`farewellCount = promoteWindows + ownUltimateCount`；
+  同函数注释与 `resourceSections` 的 detail 文案都写「阈值结转」。
+- 真实转大次数在 `src/composables/resourceCalc/liuyinPromote.ts#promoteFixpoint`：`promote = hug60 + hug90`（轴模式读轴，非轴走 `computeLiuyinHugCounts` 贪心）。
+- `farewellCount` 的消费者：`liuyin.ts` 的 `liuyinExSpecialTime`（送客必要时间）、`buildLiuyinExecutions`（1481009 行 count/totalTime/totalDecibelRecovery）、`resourceSections`（展示）。
+- `src/composables/resourceCalc/convergence.ts` 约 640–700 行有同形教训注释（「第一次写成 floor(rest/90) 是错的」）。
+- `liuyin.test.ts` 的 G=207 用例两口径恰好相等，钉不住差异。
 
-**硬约束与证伪闸门**：只可写 `/home/kaua/projects/zzz-calculator/.zc/reports/W10-dossier.md`（先 mkdir -p .zc/reports 并 zc claim 此报告）。
-其余一律只读，尤其档案、模块、测试、spec、catalog、legacy、规则、队列与全局配置；不提交/推送，不清理工作树，不修改快照或超时。
-前提是活模块及现有断言能支撑有限档案；找不到消费者、声明行为相悖或须裁决时写 unknown/blocked，不猜新口径。
-不把 notes 自述、grep 命中、测试文件存在或 C6 总伤变化当作逐条机制已验收。未测与未实现分栏。
+**待证假设 / 证伪闸门**：前提 = 生产管线中至少一个含 1481 的预设队伍，`promoteFixpoint` 的 promote ≠ `source.promoteWindows`。
+可观察失败 = 所有含 1481 的预设两者都相等（例如全部走轴模式且轴 hug 恰为 floor）⇒ 报告「当前预设无数值影响」，仍给修法契约但标低优先。
 
-**步骤与验收**（WSL 内执行；不得跑全量 check/verify/build）：
-1. 对 1251 / 1391 分别执行 `node scripts/resolve.mjs agent <id>` 核对实体；核对是否已有档案，已补则报告漂移，不重复造段。
-2. 列出每项草稿结论的“声明 → 注册/钩子 → 实际消费者 → 断言”证据，每项附路径:行与符号。
-3. 向主代理确认取得唯一测试时段后执行 `VITEST_MAX_WORKERS=4 npx vitest run src/mechanics/__tests__/qingyi.test.ts src/mechanics/__tests__/jufufu.test.ts src/mechanics/__tests__/teamHook.test.ts`，记录退出码及 passed/skipped。
-   未获时段则交纯取证报告并明确测试未运行，不自行并发重计算。测试红则读错误并报告，不改代码/断言。
-4. 草稿每段标题含 agentId；状态行遵照档案格式，日期用实际核对日；分列建模范围、已验证范围、未证明事项。
-   不因 legacy 豁免而宣称原文已验；不凭无测试宣布未建模。足以写结论才写，证据不足可不交状态行。
+**先读**：`AGENTS.md` §1 规则 10/11/17、§5；上面列出的四个符号及其直接调用点；`docs/ENGINE_PIPELINE_GUIDE.md` §4 开头「时间系统三本账」表。不全仓漫游。
 
-**固定报告与收工**：报告首行及最终回复均为 `STATUS: done|blocked`。正文含 HEAD、实际阅读范围、证据矩阵、
-两段可合入草稿、原始命令/退出码/结果摘要、测试未覆盖项、所有写入路径及未做事项。done 仅表示取证完成，不表示机制验收。
-用 `zc done --verifier '<实际运行命令或只读取证>' --coverage '.zc/reports/W10-dossier.md' --risk '<未证明事项>'` 释放本卡租约。
-主代理独立审查后才串行写入共享档案；工人不得自行消 WARN 或删任务卡。
-<!-- /card:W10 -->
+**允许写入**：`/home/kaua/projects/zzz-calculator/.zc/reports/W16-predict.md`（先 `mkdir -p .zc/reports` 并 `node scripts/zc.mjs claim` 它）；`/tmp/wt-W16/**`（探针）。
+**禁止**：主仓库任何其他文件（含 src、测试、基线、spec、docs）；不提交、不推送、不 reset/clean；不改 `timeGolden`/`timeFillRatchet`。
 
-<!-- card:W11 -->
-### W11 · 卢西娅·艾洛温(1451)、般岳(1471)档案取证与草稿
+**步骤与验收**（WSL；测试时段由派发附注授予，只跑下列命令，不跑全量 check/verify/build）：
+1. `git worktree add --detach /tmp/wt-W16 HEAD && ln -s /home/kaua/projects/zzz-calculator/node_modules /tmp/wt-W16/node_modules`。
+2. 找出含 1481 的预设：`grep -l '"1481"' public/static/presets/*.json src/**/presets* 2>/dev/null` 或按 `timeGolden` 测试的预设加载方式定位；报告写明找法与条数。
+3. 在 worktree 写一次性 vitest 探针（用 `src/test/harness.ts`），对每个含 1481 的预设跑全管线，逐队输出：
+   `goodReviewTotal`、`floor(G/90)`、fixpoint 的 `hug60`/`hug90`/`promote`、轴模式与否、`farewellCount`、1481009 行 `count` 与 `totalTime`。
+   找不到 fixpoint 输出字段时，读 `promoteFixpoint` 返回值被谁接住，沿返回值取；仍取不到则写 blocked 与卡点，不猜。
+4. 预测表：若改为 `farewellCount = promote + ownUltimateCount`，逐队 1481009 count/时间/喧响的 delta；并定性说明送客时间增加对必要时间与失衡收敛的方向（它进 `estimateExSpecialTime` → 必要时间）。
+5. 给 ≥ 2 个修法契约（例：A = `promoteFixpoint` 收敛后回写 1481009 行 count/时间/喧响；B = 由 converge 钩子把 hug 结果写入 cfg、`computeLiuyinSource` 读它），各列：改哪些文件/符号、单一事实源是否成立、是否引入新正反馈环、会红哪些现有测试/基线（只预测不改）。
+6. 收尾：`git worktree remove --force /tmp/wt-W16`（只删 worktree 与软链本身，**不要** `rm -rf` 带斜杠的 node_modules 路径）。
 
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W11。
-工作区 `/home/kaua/projects/zzz-calculator`；参考 BASE `143d3233766fda256161a4cd5a93ef4553d4eaa6`。
-开工打印真实 HEAD 和 `git status --short`，有漂移则按新文件重新取证，不 reset 回 BASE。
-父目标：为两个缺失档案段提供可审查草稿，不实现或重新裁决机制。
+**固定报告与收工**：报告首行及最终回复均为 `STATUS: done|blocked`。正文含 HEAD、预设找法与条数、逐队原始读数表、预测 delta 表、修法契约对比、探针源码全文（附录）、执行命令与退出码、未证明事项。
+`node scripts/zc.mjs done --verifier '<实际命令>' --coverage '.zc/reports/W16-predict.md' --risk '<未证明事项>'` 释放租约。不实现修复。
+<!-- /card:W16 -->
 
-**先读**（以下相对路径均相对于上述绝对工作区）：
-1. `AGENTS.md` §1、§5；`docs/MECHANICS_IMPLEMENTATION.md` 前 28 行及现有相邻档案格式。
-2. `src/mechanics/index.ts`，`src/mechanics/agents/` 下 luciaElowen.ts、banyue.ts；`src/specs/agents/` 下 1451.json、1471.json。
-3. 定向测试 `src/mechanics/__tests__/luciaElowen.test.ts`、`src/mechanics/__tests__/banyue.test.ts`；`data/recordings/legacy.json`。
-   只沿上述模块的字段读写链补读必要消费者；不全仓漫游。banyue.ts 已见其他车道租约，只读不接管；涉及时间口径先读 docs/ENGINE_PIPELINE_GUIDE.md §4 时间三本账及坑19。
+<!-- card:W17 -->
+### W17 · 补青衣(1251) 影画4 回能差分断言
 
-**硬约束与证伪闸门**：只可写 `/home/kaua/projects/zzz-calculator/.zc/reports/W11-dossier.md`（先 mkdir -p .zc/reports 并 zc claim 此报告）。
-其余一律只读，尤其档案、模块、测试、spec、catalog、legacy、规则、队列与全局配置；不提交/推送，不清理工作树，不修改快照或超时。
-前提是活模块及现有断言能支撑有限档案；找不到消费者、声明行为相悖或须裁决时写 unknown/blocked，不猜新口径。
-不把 notes 自述、grep 命中、测试文件存在或 C6 总伤变化当作逐条机制已验收。未测与未实现分栏。
+你是执行工人，只完成本卡，不继续委派。TASK_ID=W17。
+工作区 `/home/kaua/projects/zzz-calculator`。开工打印真实 HEAD 与 `git status --short`。
+父目标：档案段 1251 记录「影画4 护盾刷新回 5 能量/10s」有生产写入方与消费者，但 `grep -rn qingyiC4Energy src --include=*.test.ts` 零命中；本卡补一条会对错误变红的断言。
 
-**步骤与验收**（WSL 内执行；不得跑全量 check/verify/build）：
-1. 对 1451 / 1471 分别执行 `node scripts/resolve.mjs agent <id>` 核对实体；核对是否已有档案，已补则报告漂移，不重复造段。
-2. 列出每项草稿结论的“声明 → 注册/钩子 → 实际消费者 → 断言”证据，每项附路径:行与符号。
-3. 向主代理确认取得唯一测试时段后执行 `VITEST_MAX_WORKERS=4 npx vitest run src/mechanics/__tests__/luciaElowen.test.ts src/mechanics/__tests__/banyue.test.ts`，记录退出码及 passed/skipped。
-   未获时段则交纯取证报告并明确测试未运行，不自行并发重计算。测试红则读错误并报告，不改代码/断言。
-4. 草稿每段标题含 agentId；状态行遵照档案格式，日期用实际核对日；分列建模范围、已验证范围、未证明事项。
-   不因 legacy 豁免而宣称原文已验；不凭无测试宣布未建模。足以写结论才写，证据不足可不交状态行。
+**已知事实**：写入方 `src/mechanics/agents/qingyi.ts` `buildCharConfig`（`cfg.qingyiC4EnergyPerTrigger = cinemaLevel >= 4 ? C4_ENERGY_PER_TRIGGER : 0`，`cfg.qingyiC4TriggerInterval = C4_TRIGGER_INTERVAL`）；
+消费者 `src/core/resource/resourceIncome.ts#calcEnergySource`（`qingyiC4Energy = floor(totalTime / interval) × perTrigger`，并计入能量合计）；展示 `src/components/ResourceResultCard.vue`（`energySource.qingyiC4Energy`）。
 
-**固定报告与收工**：报告首行及最终回复均为 `STATUS: done|blocked`。正文含 HEAD、实际阅读范围、证据矩阵、
-两段可合入草稿、原始命令/退出码/结果摘要、测试未覆盖项、所有写入路径及未做事项。done 仅表示取证完成，不表示机制验收。
-用 `zc done --verifier '<实际运行命令或只读取证>' --coverage '.zc/reports/W11-dossier.md' --risk '<未证明事项>'` 释放本卡租约。
-主代理独立审查后才串行写入共享档案；工人不得自行消 WARN 或删任务卡。
-<!-- /card:W11 -->
+**先读**：`AGENTS.md` §1 规则 5/9/10、§3「新测试一律用 `src/test/harness.ts`」；`src/test/harness.ts`；`src/mechanics/__tests__/qingyi.test.ts`（照它的组队与取结果方式）；上面三个符号。
 
-<!-- card:W12 -->
-### W12 · 琉音(1481)、星徽·比利(1531)档案取证与草稿
+**允许写入**：新建 `src/mechanics/__tests__/qingyiC4Energy.test.ts`；报告 `.zc/reports/W17.md`（先 `zc claim` 这两个路径）。
+**禁止**：改任何生产代码、既有测试、基线、spec；负控时对 `qingyi.ts` 的临时改动必须用备份还原（见步骤 3）。
 
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W12。
-工作区 `/home/kaua/projects/zzz-calculator`；参考 BASE `143d3233766fda256161a4cd5a93ef4553d4eaa6`。
-开工打印真实 HEAD 和 `git status --short`，有漂移则按新文件重新取证，不 reset 回 BASE。
-父目标：为两个缺失档案段提供可审查草稿，不实现或重新裁决机制。
+**步骤与验收**（测试/构建时段由派发附注授予）：
+1. 写测试：同一队伍青衣 C3 vs C4，断言 ① C3 时 `energySource.qingyiC4Energy === 0`；② C4 时 `=== Math.floor(totalTime / 10) * 5`，`totalTime` 从结果对象读（不要写死 180）；③ C4 能量合计比 C3 多出恰好该值（若合计还受其它 C4 效果影响，改为只断言①②并在报告说明）。
+2. 正控：`VITEST_MAX_WORKERS=4 npx vitest run src/mechanics/__tests__/qingyiC4Energy.test.ts src/mechanics/__tests__/qingyi.test.ts` 全绿，记录 passed 数。
+3. 负控（证明能红）：`cp src/mechanics/agents/qingyi.ts /tmp/qingyi.ts.bak` → 把 `C4_ENERGY_PER_TRIGGER` 改成 4 → 重跑新测试，**必须红**且失败断言是 ②/③ → `cp /tmp/qingyi.ts.bak src/mechanics/agents/qingyi.ts` → `git diff --stat src/mechanics/agents/qingyi.ts` 必须为空。**不要**用 `git checkout` 还原。
+4. `npm run check-guards`（新测试不得新增三文件 fetch stub）+ `npm run build`（含 vue-tsc）。
 
-**先读**（以下相对路径均相对于上述绝对工作区）：
-1. `AGENTS.md` §1、§5；`docs/MECHANICS_IMPLEMENTATION.md` 前 28 行及现有相邻档案格式。
-2. `src/mechanics/index.ts`，`src/mechanics/agents/` 下 liuyin.ts、starlightBilly.ts；`src/specs/agents/` 下 1481.json、1531.json。
-3. 定向测试 `src/mechanics/__tests__/liuyin.test.ts`、`src/mechanics/__tests__/billySmoke.test.ts`；`data/recordings/legacy.json`。
-   只沿上述模块的字段读写链补读必要消费者；不全仓漫游。星徽·比利不是普通比利：只接受明确绑定 1531 的断言，不能按 billy 文件名推定覆盖；liuyin.ts 的他人租约不得接管。
+**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、测试源码全文、正控/负控原始输出尾部与退出码、`git diff --stat`、`git status --short`。
+`zc done --verifier '<正控命令>' --coverage 'src/mechanics/__tests__/qingyiC4Energy.test.ts' --risk '<未证明事项>'`。不提交（lead 复核后提交）。
+<!-- /card:W17 -->
 
-**硬约束与证伪闸门**：只可写 `/home/kaua/projects/zzz-calculator/.zc/reports/W12-dossier.md`（先 mkdir -p .zc/reports 并 zc claim 此报告）。
-其余一律只读，尤其档案、模块、测试、spec、catalog、legacy、规则、队列与全局配置；不提交/推送，不清理工作树，不修改快照或超时。
-前提是活模块及现有断言能支撑有限档案；找不到消费者、声明行为相悖或须裁决时写 unknown/blocked，不猜新口径。
-不把 notes 自述、grep 命中、测试文件存在或 C6 总伤变化当作逐条机制已验收。未测与未实现分栏。
+<!-- card:W18 -->
+### W18 · 两处纯清理：星徽·比利(1531) spec notes 文案 + 般岳(1471) 死写
 
-**步骤与验收**（WSL 内执行；不得跑全量 check/verify/build）：
-1. 对 1481 / 1531 分别执行 `node scripts/resolve.mjs agent <id>` 核对实体；核对是否已有档案，已补则报告漂移，不重复造段。
-2. 列出每项草稿结论的“声明 → 注册/钩子 → 实际消费者 → 断言”证据，每项附路径:行与符号。
-3. 向主代理确认取得唯一测试时段后执行 `VITEST_MAX_WORKERS=4 npx vitest run src/mechanics/__tests__/liuyin.test.ts src/mechanics/__tests__/billySmoke.test.ts`，记录退出码及 passed/skipped。
-   未获时段则交纯取证报告并明确测试未运行，不自行并发重计算。测试红则读错误并报告，不改代码/断言。
-4. 草稿每段标题含 agentId；状态行遵照档案格式，日期用实际核对日；分列建模范围、已验证范围、未证明事项。
-   不因 legacy 豁免而宣称原文已验；不凭无测试宣布未建模。足以写结论才写，证据不足可不交状态行。
+你是执行工人，只完成本卡，不继续委派。TASK_ID=W18。
+工作区 `/home/kaua/projects/zzz-calculator`。开工打印真实 HEAD 与 `git status --short`。
+父目标：2026-09-25 档案核对发现两处「文档/代码不说真话」，都不改任何数值行为。
 
-**固定报告与收工**：报告首行及最终回复均为 `STATUS: done|blocked`。正文含 HEAD、实际阅读范围、证据矩阵、
-两段可合入草稿、原始命令/退出码/结果摘要、测试未覆盖项、所有写入路径及未做事项。done 仅表示取证完成，不表示机制验收。
-用 `zc done --verifier '<实际运行命令或只读取证>' --coverage '.zc/reports/W12-dossier.md' --risk '<未证明事项>'` 释放本卡租约。
-主代理独立审查后才串行写入共享档案；工人不得自行消 WARN 或删任务卡。
-<!-- /card:W12 -->
+**任务 1 · `src/specs/agents/1531.json` notes 对齐实现（实现为准）**：
+- 事实：notes 某行写「默认 rockingRatio=0」，而 `src/mechanics/agents/starlightBilly.ts` 的 `DEFAULT_ROCKING_RATIO = 0.1`（滑块 default 0.1，头注释也写 0.1）⇒ 把该处改为「默认 rockingRatio=0.1（模块 DEFAULT_ROCKING_RATIO）」。
+- 事实：notes 有两行把「闪反 +10%」列为回血来源，另一行写「通用闪避反击（决斗之王）执行禁用，其 10% 回血随之不计入 HP 池」，`computeBillyHpModel` 只有抓地/摇曳/普攻回血 ⇒ 在前两行的「闪反 +10%」后补「（执行禁用，不计入 HP 池，见下文银河横行条）」，不删原文。
+- 只改 `notes` 数组里的这几条字符串；不动其它键、不重排、不改缩进风格。改前先 `grep -rn '\.notes' src --include=*.ts | grep -v __tests__` 确认 notes 不被计算消费，把结论写进报告。
+
+**任务 2 · 删除 `src/mechanics/agents/banyue.ts` 的死写 `record.banyueSwayExCount = cycle.swayExCount`**：
+- 事实：全仓唯一引用即该写入行（lead 已 grep）。动手前自己再 `grep -rn banyueSwayExCount src scripts public docs` 复核（含 .vue/.json/测试）；有任何读者就**停下写 blocked**，不删。
+- 只删这一行；**不要**动 `cycle.swayExCount` / 类型里的 `swayExCount`（那是活字段，资源卡 summary 在用）。
+
+**先读**：`AGENTS.md` §1 规则 4/13/14/16；上述两个文件的相关段落。`banyue.ts` 若在 `zc status` 显示被其它车道租约，只做任务 1 并在报告说明。
+**允许写入**：`src/specs/agents/1531.json`、`src/mechanics/agents/banyue.ts`、`.zc/reports/W18.md`（先 `zc claim`）。其余只读；不提交。
+
+**验收**（构建时段由派发附注授予）：
+1. `npm run validate:specs`、`npm run check-guards`（含判据 21 JSON 重复键）。
+2. `VITEST_MAX_WORKERS=4 npx vitest run src/mechanics/__tests__/banyue.test.ts src/mechanics/__tests__/billySmoke.test.ts src/specs/__tests__/verify.test.ts`。
+3. `npm run build`。
+4. `git diff` 全文贴进报告：1531.json 只有 notes 字符串行变化；banyue.ts 只有 1 行删除。
+
+**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`；含 HEAD、两次 grep 原始输出、`git diff` 全文、各验收命令退出码与结果尾部。
+`zc done --verifier '<命令>' --coverage 'src/specs/agents/1531.json, src/mechanics/agents/banyue.ts' --risk '<未证明事项>'`。
+<!-- /card:W18 -->
 
 <!-- card:W13 -->
 ### W13 · drift 复核批 A：calc-core 热区（锚 src/core/ 与 src/composables/resourceCalc/）
