@@ -109,6 +109,7 @@ node -e 'const a=require("/home/kaua/calc-arch/dump-A.json"),b=require("/home/ka
 #   （CC-1 工人实测：同代码两次 dump 仅 __ms 不同 42027 vs 49402，624/624 场景逐位相同；lead 裁决 2026-09-24）。
 #   ⚠ dump **不覆盖 damagePoolRows 的 note/baseFormula 文案**（只 hash resourceResult/stunPool + 总伤害）。
 #   动行文案的卡另跑 rowsnap（= dump + hash(damagePoolRows)，`.zc/perf/rowsnap.perf.ts`，文件名刻意不含 dump 以免被 `dump` 过滤器同时选中）：
+#   ⚠ 2026-09-25 CC-T1 起 **rowsnap 基线 = 637 场景**（`rows-A.json`；新增 13 个 `/axis` = 尾段角色队注入最小轴），dump 仍 624；旧 624 版备份 `old/rows-A-624.json`。
 #   PERF_OUT=/home/kaua/calc-arch/rows-B.json npx vitest run --config .zc/perf/vitest.perf.config.ts rowsnap
 #   基线 rows-A.json 须在改前 HEAD 的 worktree 里跑，比对命令同上换文件名。
 #   ⚠ **基线代次**：`4ca47db`（CC-D1/D3 数值修复）改了 9 个预设 54 个场景 ⇒ 旧 A 作废（移至 /home/kaua/calc-arch/old/）。
@@ -142,7 +143,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-9a | review | **done** `72e0eb5`（damagePool.ts 1727→1141；新 `damagePoolAnomaly.ts` 661 行；rowsnap/dump 624 零差，verify 3490） | damagePool 尾段（:1142–1725 异常 + 1171/1401/1261/爱丽丝/1581 附加行）原样外提 `damagePoolAnomaly.ts` 的 `emitAnomalyRows(env)`，共享 `rows` 注入 | damagePool.ts |
 | CC-9b | review | **done** `740290d`（damagePool.ts 1141→438；Direct 350 / Release 297 / CharExtras 241 行；rowsnap/dump 624 零差，verify 3490） | 逐角色主循环（:415–1132）按 D 直伤 / R 异放事件 / X 角色附伤三段原样外提 `damagePoolDirect.ts` / `damagePoolRelease.ts` / `damagePoolCharExtras.ts`；共享 `rows/seenDirectIds/claimedInAxis` 以对象引用经 `CharRowsEnv` 注入；辅助闭包（:116–413）留入口，CC-9c 再议 | damagePool.ts |
 | CC-9c | review | **不做**（lead 2026-09-25） | 辅助闭包（:116–413 `pushDirect/pushRelease/axisSplitFor/*Fraction` 等）外提：它们闭包入口局部量，外提须改工厂函数（非原样搬），收益小；damagePool.ts 已 438 行、职责单一（ctx 解构 + 辅助 + 编排三段）。若日后要单测辅助函数再立卡 | damagePool.ts |
-| CC-T1 | review | **ready v2**（首派 blocked：尾段队无轴预设，仅开 `useStunAxis` 进不了轴分支；v2 改为同时注入最小轴，见卡末「v2 修订」） | rowsnap 预设补「失衡轴 × 尾段角色」（1171/1401/1261/1581 + 爱丽丝）组合：CC-9a 反向 ① 实测该面零覆盖，只有 `inStunAttribution.test.ts` 兜底。低级模型可做（只加预设 + 重生成 A 基线） | .zc/perf/ |
+| CC-T1 | review | **done**（v2，本机 `.zc/perf`，无仓库提交）：rowsnap 新增 13 个 `/axis` 场景（注入最小轴），基线 624→**637**；lead 复跑：HEAD 零差 637，反向 `isAxis:false` ⇒ DIFF 9 全在 `/axis` | rowsnap 预设补「失衡轴 × 尾段角色」（1171/1401/1261/1581 + 爱丽丝）组合：CC-9a 反向 ① 实测该面零覆盖，只有 `inStunAttribution.test.ts` 兜底。低级模型可做（只加预设 + 重生成 A 基线） | .zc/perf/ |
 | CC-10 | review | **done** `a73b6f8`（useResourceCalc.ts 1189→789；新 `solveTeam.ts` 476 行 + 纯度锁测试；dump/rowsnap 624 零差，verify 3493） | `computeCalcOutput`（:248–654，含 `runOuterLoop` / `stageResolveFeasibility`）原样外提 `resourceCalc/solveTeam.ts#solveTeam(input)`，Vue 无关；唯一 store 写（降配闸门 ceiling）改为返回 `ceilingWriteBack` 由 composable 执行 | useResourceCalc.ts |
 | CC-11a | review | **done** `129648b`（convergence.ts 1505→1153；roundInputs 354 / roundResult 24 行；vue 仅 type import；dump/rowsnap 624 零差，verify 3493） | C1 轮输入工厂 + C2 `resolveAxisUltimateDecibelCost` → `roundInputs.ts`；C3 `CalcRoundResult` → `roundResult.ts`；convergence.ts 原名 re-export，8 个消费者零改动 | convergence.ts |
 | CC-11b | review | **暂缓**（lead 2026-09-25） | `runCalcRound`（convergence.ts :106–1151，顶层 16 个 `let`）引入 `RoundCtx` 按 C4–C10 簇拆。暂缓理由：§3 目标形态**不含** convergence.ts（§3 各项已由 CC-4…CC-10 落地），闭包内各段互读互写局部量、无清晰阶段边界，拆分风险高于收益。**重启条件**：出现要单测某一簇、或某簇需被 solveTeam 以外复用的真实需求；届时先做 CC-T1 v2 保证轴覆盖 | convergence.ts |
