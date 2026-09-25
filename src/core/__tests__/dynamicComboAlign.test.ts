@@ -7,7 +7,7 @@
  * **v3（用户 2026-09-19 同日）：吸收上限**——「全部吸收比较难，默认队友的 40% 可以被吸收（合轴率），超过了就无力合轴了」
  * ⇒ 容量 = `comboAlignAbsorbRatio`（机制参数 `time.comboAlignAbsorbRatio`，缺省 0.4）× 各自净必要。全额吸收的恒等式在 ratio=1 下仍钉
  * （机制本身没变），缺省 0.4 下溢出 ≤ 容量的队照旧吸收 == 溢出，溢出 > 容量的 1431 簇则回到无吸收的收敛点（见 ①）。
- * 口径与落点：`core/resource/helpers.ts#calcTimeAllocation`「动态合轴」段；配套：贴顶槽账本折回（`core/resource.ts#runFoldLoop` 负溢出分支）、
+ * 口径与落点：`core/resource/helpers.ts#calcTimeAllocation`「动态合轴」段；配套：贴顶槽账本折回（`core/resource/foldLoop.ts#runFoldLoop` 负溢出分支）、
  * 叶瞬光估计/行单源（`mechanics/agents/yeshuguang.ts#estimateExSpecialTime`）、外层 cycle 规范停点（`useResourceCalc#runOuterLoop`）。
  * 实测记录：docs/mcp-debt2-blade1-feasibility-v4.md §9–§16。
  */

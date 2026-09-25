@@ -19,6 +19,13 @@ import { curtainInfoOf } from './resource/curtain'
 // 终局整数重推执行器（规则 6 引擎落点，2026-09-25 CC-6c）：1531/1431（preTail）与 1051（tail）
 // 的角色专属「谁参与/置哪个旗标」已迁各模块的 `finalizePass` 能力，本文件只调通用执行器。
 import { runFinalizePasses, resetFinalizePasses } from './resource/finalizePasses'
+// 求解诊断累加器（CC-4，2026-09-25）：10 个函数级诊断 `let` 收成唯一可变对象；重折环换新对象
+// 即归零、拒绝时换回快照对象——口径 `engine:收敛读数归属`（诊断量归属被接受的那次调用）。
+import { createSolveDiagnostics } from './resource/solveDiagnostics'
+// S2 时间预算折叠环（CC-4）：纯函数外提，`diag` 每次调用时由包装读取（禁止缓存，重折换对象）。
+import { runFoldLoop as runFoldLoopPure, type FoldLoopContext } from './resource/foldLoop'
+// 物化 + 相位写入包装（CC-4 外提）：产行钩子对 cfg 只读，相位由引擎按同一 state 补写。
+import { buildExecutionsWithPhase } from './resource/phaseExecutions'
 
 export { crossAgentSupplyAt, crossAgentSuppliesOf, findCrossAgentSupplySlots, ultimateGiftOf }
 export type { CrossAgentSupplyInfo }
@@ -74,25 +81,7 @@ import { buildGiftRow } from './resource/giftRows'
 // S1 内层不动点已迁 src/core/resource/innerLoop.ts（CC-3）；此处按名 alias 引入，函数体内以同名
 // 包装 `runInnerLoop` 注入只读 ctx ⇒ 两个调用点（折叠环 / 欠打回填试探）逐字不改。
 import { runInnerLoop as runInnerLoopPure, type InnerLoopContext } from './resource/innerLoop'
-const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildExecutions, materializeRows, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline, TIME_FOLD_CONVERGENCE_SECONDS } = ResourceCalcHelpers
-
-/**
- * 物化 + **相位写入**（阶段1 第二刀，2026-09-09）：产行钩子对 cfg 只读，相位状态由引擎在此按
- * **同一个 state** 补写。与旧口径「写在 buildExecutions 里」逐位等价（同一调用点、同一 state、
- * 同一值），但产行函数变纯——`materializeRows` 不再需要为这些字段兜底快照/恢复。
- * 注意：`materializeRows` 内部**不**调本包装（那条路径会快照/恢复，写入本就该被丢弃）。
- */
-function buildExecutionsWithPhase(
-  cfg: CharacterOperationConfig,
-  state: IterationState,
-  chainCountTotal: number,
-  teamFrontlineSeconds: number,
-  moduleInputRows?: SkillExecution[],
-): SkillExecution[] {
-  const rows = buildExecutions(cfg, state, chainCountTotal, teamFrontlineSeconds, moduleInputRows)
-  getAgentMechanic(cfg.agentId)?.materializePhaseState?.({ cfg, state, executions: rows, teamFrontlineSeconds })
-  return rows
-}
+const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, materializeRows, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline } = ResourceCalcHelpers
 
 /**
  * 时间预算容差（秒）：量化（floor 次数）导致的残差属合轴可覆盖，不追求精确 0（坑12/19 既有口径）。
@@ -260,18 +249,10 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 重置上一轮调用残留的时间预算（cfg 可能被外层不动点复用）
   for (const cfg of configs) cfg.timeBudgetExcess = 0
   config.timeBudgetRefund = 0
-  let converged = false
-  let iter = 0
-  // 收敛诊断：三层不动点里第 ② 层（时间预算）原先耗尽上限就静默接受末轮结果，见 ConvergenceReport
-  let timeBudgetPasses = 0
-  let timeBudgetConverged = false
-  let timeBudgetResidualSeconds = 0
-  let timeBudgetIdleSeconds = 0
-  let timeBudgetRefundedSeconds = 0
-  let refundFrozen = false
-  /** 折叠环停滞判据（跨轮）：历史最小 maxExcess 与连续无改善轮数 */
-  let bestExcess: number | undefined
-  let stagnantPasses: number | undefined
+  // 求解诊断累加器（CC-4，2026-09-25）：原 10 个函数级 `let`（converged/iter/timeBudget*×5/
+  // refundFrozen/bestExcess/stagnantPasses）收成唯一可变对象，S2 折叠环经 `diag` 参数注入读写。
+  // 重折环 `resetDiagnostics` = 换新对象；被接受态存引用、拒绝时整体换回（口径 `engine:收敛读数归属`）。
+  let diag = createSolveDiagnostics()
   /**
    * 热启动种子 = **规范种子**（本轮 `states` 的初值：默认零种子或注入种子本身），**不是收敛末态**。
    * 为什么不能存末态（2026-09-08 修，用户实测「同一队算两次结果不一样」）：折叠 pass0 的 refund
@@ -290,176 +271,20 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
    */
   const innerCtx: InnerLoopContext = { configs, config, maxIter, oscillatorStop }
   const runInnerLoop = (from: IterationState[]) => runInnerLoopPure(from, innerCtx)
-  /** 时间预算折叠循环（内层次数收敛 + 停点规范化 + 折叠 excess/refund 冻结）；写函数级诊断量 */
-  const runFoldLoop = (from: IterationState[]): IterationState[] => {
-    let st = from
-    // 每次折叠管线运行（含规范重放）独立冻结 refund
-    refundFrozen = false
-    for (let timePass = 0; timePass < maxTimeIter; timePass++) {
-    timeBudgetPasses = timePass + 1
-    // @fact engine:收敛环停点规范化 口径: 注入种子（热启动/显式 initialStates）的收敛轨迹若属非正常收敛（跑满上限或全状态签名精确重复=入极限环），该停点含瞬态相位成分 → 弃用并从默认零种子**规范重跑**；重跑仍入环则取环内 JSON 字典序最小成员为规范停点（相位无关，冷/热进同一环成员集合相同）。正常收敛照旧接受（不动点唯一性 = 2026-09-04 连续松弛教义）。结果 = f(默认种子, 迭代映射)，与注入种子彻底解耦 | 据 喧响行级化专项实测@2026-09-08·复核@2026-09-25 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts + src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
-    // 否决记录（环停点侧，都有实测数字）：环均值阻尼（对环成员取均值）实测被吸回同一环、
-    // 桥接不了「冷种子收敛不动点 vs 热种子入环」的共存吸引子 → 否决；0.5 阻尼单独用也吸收不了
-    // 整数阶梯跳变（丽娜 ex 行随能量阈值 6↔7 跳变，账本阶跃 ~180 喧响经队伍分享闭环）→ 否决。
-    // 精确周期环检测 + 规范重跑（2026-09-08）：内层判稳只看强特/终结次数严格相等，但喧响
-    // 账本行级化后「喧响→能量→次数→必要时间→平A池→阶梯行数→喧响」反馈环带整数阶梯项
-    // （实测振荡器：丽娜 ex 行+子行随能量阈值 6↔7 整数量子跳变，账本阶跃 ~180 喧响经队伍
-    // 分享闭环），0.5 阻尼吸收不了 → 全状态精确 2-循环、甚至「冷种子收敛到不动点、热种子入环」
-    // 的多吸引子共存（yidhariInteractionGrid parry=4/dodge=2 格实测；环均值阻尼亦实测被吸回
-    // 同一环——均值桥接不了共存吸引子，否决）。停点必须与种子无关，规则三层：
-    // ① 逐轮记录全状态签名，签名精确重复 = 进入极限环 → 取环内 JSON 字典序最小成员为规范停点
-    //    （相位无关：冷/热从不同瞬态段进入同一个环，成员集合相同，规范选择必然相同）；
-    // ② 注入种子（显式 initialStates / 热启动缓存）的轨迹若非正常收敛（跑满上限或入环）= 停点
-    //    含瞬态相位成分 → 弃用并**规范重跑**：从默认零种子重启，逐位复刻冷启动轨迹；重跑仍入环
-    //    则按①取字典序规范——重跑结果是（默认种子, 迭代映射）的纯函数，与注入种子彻底解耦；
-    // ③ 正常收敛（次数严格相等判稳）的轨迹直接接受——不动点唯一性由既有连续松弛教义保证
-    //    （2026-09-04），冷/热正常收敛落点逐位一致是 determinism.test 的既有约定。
-    // 下游（折叠残差累计/欠打回填/终局整数重推/装配）全部是停点的确定性函数；pass>0 的起点
-    // 冷热已同，其上限停点亦同，冷热逐位一致由归纳保持。
-    let inner = runInnerLoop(st)
-    if (!inner.clean && timePass === 0 && injectedStates) {
-      // ② 规范重跑：种子轨迹的停点含瞬态相位，弃用，从默认零种子复刻冷启动
-      inner = runInnerLoop(defaultSeedStates.map(s => ({ ...s })))
-    }
-    st = inner.end
-    iter = inner.iterations // 诊断量 `iterations` 只记折叠环的内层轮数（欠打回填试探复用 runInnerLoop 但不覆盖它）
-    if (inner.clean) converged = true
-
-    // 测量每个角色执行计划的**前台**时间（后台行不占共享轴），对自家账本收敛：
-    // 超出账本 = 该角色有未付费的前台行 → 折入必要时间压缩平A池（团队级，非单人预算）。
-    // 只折正超出（真溢出）：负值 = estimate 高估必要时间 / 有空闲前台，不折回单角色
-    // （否则 necessary 变负），改为团队 refund 回填平A池（见下）。
-    let maxExcess = 0
-    let maxIdle = 0
-    let teamRefund = 0
-    /** 停滞判据用：历史最小残差 + 连续无改善轮数（阶段2，见下方收敛判据注释） */
-    if (typeof bestExcess === 'undefined') bestExcess = Infinity
-    if (typeof stagnantPasses === 'undefined') stagnantPasses = 0
-    // 诺姆膛温换连携赠链行在装配后被 applyNormaHatChain 追加、不在 buildExecutions 产物里——
-    // 行测量必须计入其时间（iterate 必要时间已按同一口径预留），否则折叠环会把预留读成
-    // idle → pass0 refund 双击（与最高马力星光行同病）。
-    // 供给量与落点由模块声明（`crossAgentSupply`），引擎按类别查询——本文件不再含角色 id。
-    const chainGiftInfo = crossAgentSupplyAt(configs, st, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
-      totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
-    })
-    // 琉音好评转大赠链行同理：装配后 applyLiuyinPromote 追加，行测量计入其时间。
-    // **轴模式必须用轴计数**（`ultimateGiftOf` = 该量的单一事实源）：模块供给带 `axisSuppressed`
-    // ⇒ 漏掉轴分支就看不见赠行 ⇒ 它占的前台被读成 idle，`timeBudgetRefund` 把它 refund 掉
-    // ⇒ iterate 侧刚补的预留又被打回（2026-09-20 R67 实测：只补 iterate 不补本处，账本净额仍 0）。
-    const ultimateGift = ultimateGiftOf(configs, st, {
-      totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
-      axisMode: config.axisMode, axisPromote: config.axisLiuyinPromote,
-    })
-    for (let i = 0; i < configs.length; i++) {
-      const cfg = configs[i]
-      const state = st[i]
-      const teammateFrontlineSeconds = configs.reduce(
-        (sum, _, j) => (j === i ? sum : sum + st[j].frontlineTime),
-        0,
-      )
-      const executions = buildExecutionsWithPhase(cfg, state, state.chainCountTotal, teammateFrontlineSeconds)
-      // 净占用口径：物化行全额 − 轴内合轴分摊（跨角色并行块只计一次前台；iterate 平A池吃进同一值）。
-      // 分摊按 `${slot}:${moveId}`（栈引擎比例分摊），行 count = 块次数、totalTime 全额。
-      const overlapByAction = config.axisOverlapByAction
-      const rowTime = executions.reduce(
-        (sum, e) => sum + Math.max(0, (e.totalTime ?? 0) - (overlapByAction?.[`${cfg.slot}:${e.moveId}`] ?? 0))
-          * (isFrontlineExecution(e) ? 1 : 0),
-        0,
-      ) + (i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0)
-        + (i === ultimateGift.targetIdx ? ultimateGift.time : 0)
-      // 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget + refund）
-      const excess = rowTime - (state.necessaryTime + state.basicAttackTime)
-      // 真实时间压力（模块退化判据的权威信号，见 CharacterOperationConfig.timePressureSeconds）：
-      // 本槽物化行 − 队友账本净占用后剩下的可用前台。用**当轮实测行**而不是累加的折叠残差，
-      // 否则 pass0 的虚高会把「其实装得下」的队误判成超支（叶瞬光自动轴退化即为此被关掉过）。
-      const teammatesLedgerNet = configs.reduce(
-        (sum, _, j) => (j === i ? sum
-          : sum + Math.max(0, st[j].necessaryTime - (st[j].comboAlignCredit ?? 0) + st[j].basicAttackTime)),
-        0)
-      const availableFrontline = Math.max(0, (totalTime - (config.invincibleTime ?? 0)) - teammatesLedgerNet)
-      cfg.timeAvailableFrontlineSeconds = availableFrontline
-      cfg.timePressureSeconds = rowTime - availableFrontline
-      if (excess > 1e-6) {
-        // 量化（floor 次数）导致残差 ~1s 属合轴可覆盖，不追求精确 0。
-        // `+=` 累加（2026-09-03 实测三语义对比）：`=` 对正反馈队（猫又/伊德海莉——模块行随
-        // 平A池增长）欠补偿 → 溢出 186s；峰值 `max()` 同样溢出；累加虽使单调队（希格莉德
-        // 敛枪式/凛冽枪尖）必要时间带历史残差，但这是全队模块行（雅/叶瞬光/柏妮思）的既有
-        // 口径（必要 = 估计 + 折叠残差），且收敛健康（timeBudgetConverged、无溢出）。
-        cfg.timeBudgetExcess = (cfg.timeBudgetExcess ?? 0) + excess
-        if (excess > maxExcess) maxExcess = excess
-      } else if (-excess > 1e-6) {
-        // 负溢出（该角色账本 > 物化行，idle_i = estimate 高估量，与 basicAttackTime 无关）：
-        // 单角色不折回（necessaryTime 变负、平A池膨胀），团队层面累计成 refund 回填平A池
-        // ——回填后 Σ前台行 = Σ物化必要行 + 平A池 ≈ 预算，时间打满。
-        // ⚠ 例外（R37-J5 动态合轴配套，2026-09-19）：该槽已贴满**单角色上限**（必要+平A ≥ 战斗时间）时，团队级 refund
-        //   到不了它——cap 让它一秒平A都拿不到，refund 只能流向队友并把次数收敛搅乱（实测 auto-1431-1491-1341：操作角色账本
-        //   180 / 物化行 167.2，欠打回填 4 次试探全部 stable=false 被拒，留白 12.8s）。此时按物化行把**本槽**账本折回
-        //   （累加负 excess，与正向折叠同一口径），省下的时间下一轮由它自己的平A池吸收；仍记入 maxExcess 视为未自洽、继续折叠。
-        //   用户口径：最后一点时间给平A；留白太多 = 引擎没把资源回复消耗算完备，不是可容忍残差。
-        const atSingleCap = state.necessaryTime + state.basicAttackTime >= (totalTime - (config.invincibleTime ?? 0)) - 1e-6
-        if (atSingleCap) {
-          cfg.timeBudgetExcess = (cfg.timeBudgetExcess ?? 0) + excess
-          if (-excess > maxExcess) maxExcess = -excess
-        } else {
-          teamRefund += -excess
-          if (-excess > maxIdle) maxIdle = -excess
-        }
-      }
-    }
-    timeBudgetResidualSeconds = maxExcess
-    timeBudgetIdleSeconds = maxIdle
-    // refund = Σ(该角色正 idle)：idle_i = 账本_i − 物化必要行_i。
-    // **冻结语义**：首轮测得的 idle 总和写入 timeBudgetRefund（第 2 轮起 iterate 吃进、次数重收敛），
-    // 之后**不再改写**——refund 与次数收敛存在耦合（平A回能→次数→必要时间→idle），逐轮跟随会
-    // 抖动到 8 轮耗尽（伊德海莉烧血/艾莲等强依赖角色的 idle 随次数跳变）；一次性修正 + 收敛判据
-    // 保持 excess-only（与旧行为同构），换 canceling 掉的精度是 ±1s 量化残差量级。
-    // 天然上限：idle_i ≤ E_i → refund ≤ ΣE → availableBasicTime ≤ 预算，不会填超战斗时间。
-    if (!refundFrozen) {
-      config.timeBudgetRefund = Math.max(0, teamRefund)
-      timeBudgetRefundedSeconds = config.timeBudgetRefund
-      refundFrozen = true
-      continue // 注入轮不判收敛：下一轮 iterate 吃进 refund 后再按 excess 判据停（否则 states 没吃到回填）
-    }
-    // 收敛判据：excess 是**秒**——精确估时（琉音/sigrid 钩子）把残差压到 ~5e-4s 浮点噪声量级，
-    // 1e-6 判据 8 轮耗尽 → timeBudgetConverged=false 而 allAgentsSweep 硬断言恒 true（2026-09-06
-    // 实测否决）。1e-3（1 毫秒）容差远小于任何量化残差（坑12 口径 ±1~2s），不改变折叠动力学，
-    // 只让「已收敛到浮点噪声」的队如实报收敛。
-    // 常量与 S4 截断入口容差同源（TIME_FOLD_CONVERGENCE_SECONDS）：这里放行的残差，截断处不得再当溢出。
-    if (maxExcess <= TIME_FOLD_CONVERGENCE_SECONDS) {
-      timeBudgetConverged = true
-      break
-    }
-    // 停滞判据（阶段2，用户 2026-09-10 口径「平A→资源→次数 的正反馈是模型本身，不能去掉」）：
-    // 折叠环在**量化地板**处会停在恒定残差上——实测叶瞬光队 pass7 起 maxExcess 恒 0.092~0.093s
-    // 持续 20+ 轮（累加器仍在增长，残差不动）。这不是「没收敛」，而是已到不动点（残差 = 量化粒度）。
-    // 判据：连续 3 轮无改善（改善 ≤ 1e-2 = 10 毫秒，量化噪声量级）即判收敛；
-    // 取代「残差 ≤ 1e-3」这个对离散系统过严的门槛。阈值取 1e-2 的依据：比利系每轮只改善
-    // ~0.002s（比利终局整数重推的量化残差），1e-3 会让停滞计数不断重置、差一两轮跑满上限。
-    if (maxExcess < (bestExcess as number) - 1e-2) {
-      bestExcess = maxExcess
-      stagnantPasses = 0
-    } else {
-      stagnantPasses = (stagnantPasses as number) + 1
-      if ((stagnantPasses as number) >= 3) {
-        timeBudgetConverged = true
-        break
-      }
-    }
-    // 逐轮残差轨迹（同一调用的折叠环内部序列；与上面的调用级记录同属收敛读数归属设施）
-    // 注意：`maxExcess ≤ 1e-3` 那条 break 在本记录之前 → **收敛即停的轮次不留记录**，
-    // 故「记录条数 = passes − 1 − 早停轮数」，别把记录条数当轮数读。
-    if (typeof process !== 'undefined' && process.env?.PROBE_TRACE_FOLD === '1') {
-      const g = globalThis as unknown as { __foldPasses?: unknown[] }
-      ;(g.__foldPasses ??= []).push({
-        call: (globalThis as unknown as { __foldTrace?: unknown[] }).__foldTrace?.length ?? 0,
-        pass: timePass, maxExcess, best: bestExcess, stagnant: stagnantPasses,
-        idle: maxIdle, refund: config.timeBudgetRefund ?? 0, conv: timeBudgetConverged,
-        innerClean: inner.clean, innerIters: inner.iterations,
-      })
-    }
-    }
-    return st
+  // `runFoldLoop`（S2 时间预算折叠环）已迁 `src/core/resource/foldLoop.ts`（CC-4，2026-09-25，纯函数）。
+  // 下列 `@fact` 的**实现已迁**该文件，声明按既有惯例留在 re-export 壳处（同 CC-3 `innerLoop.ts` 的处理）；
+  // **锚已随实现改指新文件**，豁免清单键（`src/core/resource.ts engine:收敛环停点规范化`）不变。
+  // @fact engine:收敛环停点规范化 口径: 注入种子（热启动/显式 initialStates）的收敛轨迹若属非正常收敛（跑满上限或全状态签名精确重复=入极限环），该停点含瞬态相位成分 → 弃用并从默认零种子**规范重跑**；重跑仍入环则取环内 JSON 字典序最小成员为规范停点（相位无关，冷/热进同一环成员集合相同）。正常收敛照旧接受（不动点唯一性 = 2026-09-04 连续松弛教义）。结果 = f(默认种子, 迭代映射)，与注入种子彻底解耦 | 据 喧响行级化专项实测@2026-09-08·复核@2026-09-25 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts + src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource/foldLoop.ts#runFoldLoop | 信 确认
+  /**
+   * S2 时间预算折叠环（CC-4 外提至 `./resource/foldLoop.ts`，纯函数）的只读上下文与包装。
+   * ⚠ 包装**每次调用时读 `diag`**（禁止 `const d = diag` 缓存——重折环会换新对象，缓存会写到旧对象）。
+   * 两个调用点（正常轨迹 / 截断重折环）逐字不改。
+   */
+  const foldCtx: FoldLoopContext = {
+    configs, config, totalTime, maxTimeIter,
+    injected: !!injectedStates, defaultSeedStates, innerCtx,
   }
+  const runFoldLoop = (from: IterationState[]): IterationState[] => runFoldLoopPure(foldCtx, diag, from)
 
   // ===== 终局整数重推（链数/轮数实数化收尾；规则 6 引擎落点，2026-09-25 CC-6c）=====
   // 迭代期 1531 动力压制链数、1431 明心境轮数以**实数**参与收敛（正反馈连续通道；消滞后后估时与
@@ -473,7 +298,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // ⚠ preTail 与 tail 两个 stage **不可合并**（欠打回填前 vs 后，合并会改数值）。
   const runPreTailFinalize = (from: IterationState[]): IterationState[] => {
     const fp = runFinalizePasses(configs, from, 'preTail', iterate, config)
-    if (fp.converged) converged = true
+    if (fp.converged) diag.converged = true
     return fp.states
   }
 
@@ -604,7 +429,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
           if (trial.stable && fitsBudget && trialRows > rowsFilled) {
             states = trial.states
             rowsFilled = trialRows
-            timeBudgetRefundedSeconds = config.timeBudgetRefund ?? 0
+            diag.timeBudgetRefundedSeconds = config.timeBudgetRefund ?? 0
             underfill = budgetSeconds - trialRows
             if (underfill <= TIME_BUDGET_TOLERANCE_SECONDS) break
           } else {
@@ -614,7 +439,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
             probe /= 2
           }
         }
-        timeBudgetIdleSeconds = Math.max(0, underfill)
+        diag.timeBudgetIdleSeconds = Math.max(0, underfill)
         // 热启动缓存**不存**试探前末态（2026-09-08 修）：折叠 pass0 的 refund 冻结与内层落点随初值变，
         // 存末态会让同配置第二次计算换结果（1431 系 4 队冷/热 9.20 vs 4.86 等）。缓存存的是本轮的
         // **规范种子**（见 warmSeedStates 声明处 @fact）——牺牲加速，换「同配置连续计算不许变」。
@@ -641,7 +466,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     {
       const fp = runFinalizePasses(configs, states, 'tail', iterate, config)
       states = fp.states
-      if (fp.converged) converged = true
+      if (fp.converged) diag.converged = true
     }
 
     // 热启动回写：本轮末态（无论是否完全收敛，同配置下次都从它出发）
@@ -922,16 +747,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     })
   }
   const resetDiagnostics = () => {
-    converged = false
-    iter = 0
-    timeBudgetPasses = 0
-    timeBudgetConverged = false
-    timeBudgetResidualSeconds = 0
-    timeBudgetIdleSeconds = 0
-    timeBudgetRefundedSeconds = 0
-    refundFrozen = false
-    bestExcess = undefined
-    stagnantPasses = undefined
+    // 换新对象 = 旧式 10 字段逐项归零（`createSolveDiagnostics` 初值与旧 `:263–274` 逐字相同）。
+    diag = createSolveDiagnostics()
   }
   for (let refoldPass = 0; refoldPass < ROW_REFOLD_MAX_PASSES; refoldPass++) {
     if (tail.timeTruncatedSeconds <= TIME_BUDGET_TOLERANCE_SECONDS) break
@@ -944,11 +761,12 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     if (lastLimits && lastLimits.size === keptBySlot.size
       && [...keptBySlot].every(([slot, k]) => Math.abs((lastLimits!.get(slot) ?? Infinity) - k) <= 1e-3)) break
     // 上一次接受态的快照（拒绝时整体还原）
+    // `diag` 存**引用**即可：随后 `resetDiagnostics()` 换新对象，旧对象此后无人写 ⇒ 引用等价于旧式
+    // 10 字段逐项值快照（口径 `engine:收敛读数归属`：诊断量归属被接受的那次调用）。
     const accepted = {
       cfgs: configs.map(c => ({ ...c })) as Record<string, unknown>[],
       states,
-      converged, iter, timeBudgetPasses, timeBudgetConverged, timeBudgetResidualSeconds,
-      timeBudgetIdleSeconds, timeBudgetRefundedSeconds, refundFrozen, bestExcess, stagnantPasses,
+      diag,
       timeBudgetRefund: config.timeBudgetRefund,
       overflowSeconds: config.overflowSeconds,
       tail,
@@ -975,16 +793,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 拒绝：整体还原到上一次接受态（cfg 同一性保持），停止重折
     restoreCfgs(accepted.cfgs)
     states = accepted.states
-    converged = accepted.converged
-    iter = accepted.iter
-    timeBudgetPasses = accepted.timeBudgetPasses
-    timeBudgetConverged = accepted.timeBudgetConverged
-    timeBudgetResidualSeconds = accepted.timeBudgetResidualSeconds
-    timeBudgetIdleSeconds = accepted.timeBudgetIdleSeconds
-    timeBudgetRefundedSeconds = accepted.timeBudgetRefundedSeconds
-    refundFrozen = accepted.refundFrozen
-    bestExcess = accepted.bestExcess
-    stagnantPasses = accepted.stagnantPasses
+    // 换回接受态那次调用的诊断对象（旧式 10 字段逐项还原；重折期间写的是已弃用的新对象）
+    diag = accepted.diag
     config.timeBudgetRefund = accepted.timeBudgetRefund
     config.overflowSeconds = accepted.overflowSeconds
     tail = accepted.tail
@@ -1028,11 +838,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   if (typeof process !== 'undefined' && process.env?.PROBE_TRACE_FOLD === '1') {
     const g = globalThis as unknown as { __foldTrace?: unknown[] }
     ;(g.__foldTrace ??= []).push({
-      passes: timeBudgetPasses,
-      conv: timeBudgetConverged,
-      residual: timeBudgetResidualSeconds,
-      idle: timeBudgetIdleSeconds,
-      refund: timeBudgetRefundedSeconds,
+      passes: diag.timeBudgetPasses,
+      conv: diag.timeBudgetConverged,
+      residual: diag.timeBudgetResidualSeconds,
+      idle: diag.timeBudgetIdleSeconds,
+      refund: diag.timeBudgetRefundedSeconds,
       truncated: timeTruncatedSeconds,
       team: configs.map(c => c.agentId).join('/'),
     })
@@ -1042,8 +852,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     totalTime,
     plannedStunCount: inputStunCount,
     characters,
-    iterations: iter,
-    converged,
+    iterations: diag.iterations,
+    converged: diag.converged,
     axisOverlapSeconds: config.axisOverlapSeconds,
     axisOverlapByAction: config.axisOverlapByAction,
     overflowSeconds: config.overflowSeconds,
@@ -1053,11 +863,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 诺姆膛温换连携赠链时间（对称暴露，供「账本预留 == 装配赠行」机器判据核对）
     normaGiftTimeReserved: tail.chainGiftTime > 0 ? tail.chainGiftTime : undefined,
     convergence: {
-      timeBudgetConverged,
-      timeBudgetPasses,
-      timeBudgetResidualSeconds,
-      timeBudgetIdleSeconds,
-      timeBudgetRefundedSeconds,
+      timeBudgetConverged: diag.timeBudgetConverged,
+      timeBudgetPasses: diag.timeBudgetPasses,
+      timeBudgetResidualSeconds: diag.timeBudgetResidualSeconds,
+      timeBudgetIdleSeconds: diag.timeBudgetIdleSeconds,
+      timeBudgetRefundedSeconds: diag.timeBudgetRefundedSeconds,
       timeTruncatedSeconds,
       truncationBySlot: truncationBySlot.length > 0 ? truncationBySlot : undefined,
       truncationRefoldPasses: truncationRefoldPasses > 0 ? truncationRefoldPasses : undefined,
