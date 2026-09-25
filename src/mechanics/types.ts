@@ -1124,8 +1124,6 @@ export interface AgentAnomalyTransformInput {
   preWindTriggerCount: number
   /** 单次积蓄计算函数（引擎注入，避免模块反向 import 引擎形成循环依赖） */
   calcPerHitBuildUp(baseBuildUp: number, panel: PanelValues, elementRes: number, element: string): number
-  /** 跨阶段状态存储：模块写入，引擎在读 velinaCorrosionSource 等时消费 */
-  store: Record<string, unknown>
 }
 
 /**

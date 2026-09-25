@@ -321,14 +321,16 @@ function transformVelinaAnomalyPool(input: AgentAnomalyTransformInput): void {
   if (!input.hasWindChar) return
   // 风蚀是维琳娜专属资源 ⇒ 按**面板标记**认人，不按「队里第一个风属性角色」
   // （CC-D3 2026-09-25：1621/1631 队原本也会跑本状态机，见 `findVelinaPanel` 头注释）。
-  // 队里没有维琳娜 ⇒ 整套不结算（连 `store` 也不写）。
+  // 队里没有维琳娜 ⇒ 整套不结算。
+  // CC-D4（2026-09-25）：原先这里还把 corrosion 写进 `input.store.velinaCorrosionSource`——全仓无读
+  // （引擎在 `anomalyPool.ts` 经能力 `anomalyCorrosion` 按最终乱流次数**重新结算**同一份结果），
+  // 已随 `AgentAnomalyTransformInput.store` 字段一并删除。
   const corrosion = resolveVelinaCorrosion(
     input.panels,
     input.preTurbulenceCount,
     input.preWindTriggerCount,
   )
   if (!corrosion) return
-  input.store.velinaCorrosionSource = corrosion
 
   const bcCount = corrosion.broadCycloneCount
   if (bcCount <= 0) return
