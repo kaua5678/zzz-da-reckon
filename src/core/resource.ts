@@ -1,7 +1,7 @@
 import type {
-  ResourceCalcConfig, CharacterOperationConfig,
-  TeamResourceResult, CharacterResourceResult,
-  IterationState, TruncationCut,
+  ResourceCalcConfig,
+  TeamResourceResult,
+  IterationState,
 } from '@/types/resource'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 
@@ -12,7 +12,6 @@ import {
   ultimateGiftOf,
   type CrossAgentSupplyInfo,
 } from './resource/crossAgentSupply'
-import { curtainInfoOf } from './resource/curtain'
 // 终局整数重推执行器（规则 6 引擎落点，2026-09-25 CC-6c）：1531/1431（preTail）与 1051（tail）
 // 的角色专属「谁参与/置哪个旗标」已迁各模块的 `finalizePass` 能力，本文件只调通用执行器。
 import { runFinalizePasses, resetFinalizePasses } from './resource/finalizePasses'
@@ -23,63 +22,31 @@ import { createSolveDiagnostics } from './resource/solveDiagnostics'
 import { runFoldLoop as runFoldLoopPure, type FoldLoopContext } from './resource/foldLoop'
 // 物化 + 相位写入包装已随装配段迁 `./resource/assembleSlot.ts`（CC-5b），本文件不再直接用。
 // S3a 末轮欠打回填（CC-5a 外提）：门槛常量与其 `@fact` 留在本文件，经 ctx 注入；纯函数 `diag` 注入。
-import { runUnderfillProbe, type UnderfillProbeContext } from './resource/underfillProbe'
+// 实现（`runUnderfillProbe`）随尾段管线迁 `./resource/tailPipeline.ts`（CC-5c），本文件只剩 ctx 类型。
+import { type UnderfillProbeContext } from './resource/underfillProbe'
 // `materializeRows` 已随欠打回填试探迁 `./resource/underfillProbe.ts`（CC-5a），本文件不再直接用。
 // 装配段的 helpers 消费者（calcEnergySource / calcRawDecibelParts / calcDecibelSource /
 // calcTimeAllocation / buildAnomalyEventExecutions / calcCrossAgentEnergy / truncateExecutionsToFrontline）
 // 已随 S4 迁 `./resource/assembleSlot.ts`（CC-5b）；本文件只剩 `iterate`（终局重推执行器注入）。
 import { iterate } from './resource/helpers'
-// S4 装配（CC-5b 外提）：逐槽装配闭包改纯函数，外层变量经 `AssembleSlotContext` 注入；
-// 累加器与 cfg 写回顺序仍留在本文件的 `configs.map` wrapper。
-import { assembleSlot, type AssembleSlotContext } from './resource/assembleSlot'
+// S4 装配（CC-5b）与 S3–S4 尾段管线（CC-5c）均已外提纯函数：
+// `assembleSlot(ctx, cfg, i)` 由 `./resource/tailPipeline.ts` 内部构造 `slotCtx` 调用（本文件不再 import 它）；
+// `runTailPipelinePure(ctx, diag, states)` 由本文件构造 `tailCtx` 后经保语义包装 `runTailPipeline` 调用。
+import { runTailPipeline as runTailPipelinePure, type TailPipelineContext } from './resource/tailPipeline'
 
 export { crossAgentSupplyAt, crossAgentSuppliesOf, findCrossAgentSupplySlots, ultimateGiftOf }
 export type { CrossAgentSupplyInfo }
 
 // 热启动缓存已迁 src/core/resource/warmStart.ts（CC-2）；此处 re-export 壳保持既有
 // `@/core/resource` 引用（测试 / dump / 编排层）零改动。
+// `storeWarmStart` 随尾段管线迁 `./resource/tailPipeline.ts`（CC-5c），本文件不再直接调用。
 import {
   warmStartExactKey,
   lookupWarmStart,
-  storeWarmStart,
 } from './resource/warmStart'
 export { clearWarmStartCache, getWarmStartStats } from './resource/warmStart'
 
 // ============ 单角色能量计算 ============
-
-/**
- * 赠行**物化口径**（阶段1 ②，2026-09-10）：行由引擎产出（存在/次数单一事实源），倍率由编排层补。
- *
- * 下面两个薄包装只是把「账本口径」（`crossAgentSupplyAt`，带秒数）转成「行口径」（带次数），
- * 并统一按 `config.teamSize`（编排层队长）解析目标槽——与账本口径 `configs.length` 解耦。
- */
-function chainGiftRowSpec(
-  configs: CharacterOperationConfig[], states: IterationState[], totalTime: number, teamSize: number | undefined,
-): { targetIdx: number; count: number } {
-  const [info] = crossAgentSuppliesOf(configs, states, 'gift-chain:chain', {
-    totalTime, stunCount: 0, teamSize, axisMode: false,
-  })
-  return !info || info.count <= 0 || !configs[info.targetIdx]
-    ? { targetIdx: -1, count: 0 }
-    : { targetIdx: info.targetIdx, count: info.count }
-}
-
-/** 行口径的琉音赠大（含次数）：轴模式用轴预设计数，非轴用模块供给；目标槽按 `teamSize` 解析 */
-function ultimateGiftRowSpec(
-  configs: CharacterOperationConfig[], states: IterationState[], totalTime: number, stunCount: number,
-  axisPromote: { targetSlot: number; count: number } | undefined, axisMode: boolean, teamSize: number | undefined,
-): { targetIdx: number; count: number } {
-  // 轴模式：次数由轴预设 `promoteVariant` 块决定（模块供给被 axisSuppressed 跳过），预设计数优先
-  if (axisMode && axisPromote && axisPromote.count > 0) {
-    return configs[axisPromote.targetSlot] ? { targetIdx: axisPromote.targetSlot, count: axisPromote.count } : { targetIdx: -1, count: 0 }
-  }
-  const [info] = crossAgentSuppliesOf(configs, states, 'gift-chain:ultimate', {
-    totalTime, stunCount, teamSize, axisMode,
-  })
-  return !info || info.count <= 0 || !configs[info.targetIdx]
-    ? { targetIdx: -1, count: 0 }
-    : { targetIdx: info.targetIdx, count: info.count }
-}
 
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 // S1 内层不动点已迁 src/core/resource/innerLoop.ts（CC-3）；本文件只保留只读 ctx 类型与装配。
@@ -170,6 +137,9 @@ const INNER_LOOP_OSCILLATOR_STOP = 20
  * 顺序不可交换：S1 定次数/资源 → S2 让账本与物化行自洽 → S3 决定"撑不下时怎么退" → S4 削行 →
  *  S5 输出。**S1 的行级资源收入按 `feasibleRows` 取（`cfg.rowTimeLimit` 由外环注入）**，
  *  这条是 A 项（截断回灌）的预留接口，缺省不截断 ⇒ 既有口径不动。
+ *  S3a 欠打回填 → S4 装配的执行链（含伊德海莉 tail 终推 / 热启动落缓存 / 赠链·帷幕折算）已外提
+ *  `core/resource/tailPipeline.ts#runTailPipeline`（CC-5c；本函数只留保语义包装，把新 `states`
+ *  写回外层供重折环快照/还原）。
  */
 export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResult {
   const totalTime = config.totalTime
@@ -325,123 +295,20 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   states = runFoldLoop(states)
   states = runPreTailFinalize(states)
 
-  // ===== S3–S4 尾段管线函数化（R37-J2 步骤 ①，2026-09-19，零行为搬迁）=====
+  // ===== S3–S4 尾段管线（R37-J2 步骤 ① 函数化 2026-09-19；CC-5c 外提 `./resource/tailPipeline.ts`）=====
   // 末轮欠打回填 → 伊德海莉终推 → 热启动落缓存 → 赠链/终结礼/帷幕次数 → S4 装配（`assembleSlot`）。
-  // 为什么函数化：债 2 批 2-1「截断外环回灌」要在初装截断 > 容差时按每槽 kept 设 cfg.rowTimeLimit，从 S2 折叠起
-  // **重跑到装配**；本段原是 calcTeamResources 体内的线性代码，不可二次进入——协作者半成品（分支
-  // collab/wip-snapshot-20260919）正是卡在这里。本步只搬不改：块内代码逐字节原样、缩进 +2；读写的外层量
-  // （states / converged / timeBudgetRefundedSeconds / timeBudgetIdleSeconds / config.* / cfg.*）仍经闭包，
-  // 装配产物改为返回值。判据 = timeGolden / timeFillRatchet / allAgentsSweep delta 0（规则 10）；先例 = #8 分刀 `assembleSlot`。
+  // 债 2 批 2-1「截断外环回灌」要在初装截断 > 容差时按每槽 kept 设 cfg.rowTimeLimit，从 S2 折叠起
+  // **重跑到装配**；实现已外提为纯函数 `runTailPipelinePure(ctx, diag, states)`（CC-5c，2026-09-25）。
+  // 下面只是**保语义包装**：每次调用读 `diag` 与 `states`，并把新 `states` 写回外层——重折环的
+  // `accepted.states` 快照 / 拒绝还原依赖它（两个调用点逐字不改）。判据 = timeGolden / timeFillRatchet
+  // delta 0（规则 10）；先例 = #8 分刀 `assembleSlot`。
+  const tailCtx: TailPipelineContext = {
+    configs, config, totalTime, probeCtx, warmExactKey, warmSeedStates,
+  }
   const runTailPipeline = () => {
-    // ===== 末轮欠打回填（可行性门控，2026-09-05）=====
-    // 实现已迁 `src/core/resource/underfillProbe.ts#runUnderfillProbe`（CC-5a，2026-09-25，纯函数；
-    // 详细口径与否决记录随实现搬去该文件头 JSDoc）。此处只注入只读 ctx 并**每次调用时读 `diag`**
-    // （重折环会换新对象，禁止 `const d = diag` 缓存）；门槛常量经 `probeCtx` 注入（声明与 `@fact`
-    // 锚留在本文件）。
-    states = runUnderfillProbe(probeCtx, diag, states)
-
-    // 失衡次数由外部失衡池不动点收敛后传入（连携次数 = chainCountPerStun × stunCount，见 iterate）
-    const inputStunCount = config.stunCount ?? 0
-
-    // 伊德海莉终局整数重推（targeted 连续松弛收尾，2026-09-04；规则 6 引擎落点，2026-09-25 CC-6c）：
-    // 迭代期她的强特次数以实数参与收敛（refund 反馈解析求解 → 唯一不动点，消除 19/20 双稳态），
-    // 终局 floor 一次 + 整数态重推 ≤12 轮到全状态逐位稳定，让时间预算/能量/喧响账本与整数次数自洽。
-    // 角色专属部分（`stage='tail'` / 置哪个旗标）已迁 yidhari 模块的 `finalizePass` 能力，本处只调
-    // 通用执行器（引擎不写 agentId、不 import 角色模块）。stage='tail' = 欠打回填之后、装配之前，
-    // **不可与 preTail 合并**（合并会改数值）。
-    // 终局重推要求全状态逐位稳定：她的次数已是整数，队友（如莱卡恩实数次数）在整数池下
-    // 是整数输入的确定性函数——逐位相等才是 determinism.test（伤害逐位一致）的判据；
-    // 只比次数会用 ε 外的平A时间残差破坏逐位一致。
-    // 旗标复位移到装配之后（2026-09-09，与 billyFinalizeChain 同款）：装配行必须仍按终局语义
-    // floor（yidhari 蓄力 cycles 迭代期实数松弛后，装配期靠本旗标取整数行），复位只服务于
-    // 「cfg 被外层不动点/热启动复用，下轮调用回到实数迭代期」。
-    // 实数迭代期的 2-循环（次数↔喧响↔终结技阈值）被终局整数重推吸收：重推稳定的整数态
-    // 就是终局不动点，收敛标志按重推结果报（重推 ≤3 轮未稳 = 不谎报收敛）。
-    {
-      const fp = runFinalizePasses(configs, states, 'tail', iterate, config)
-      states = fp.states
-      if (fp.converged) diag.converged = true
-    }
-
-    // 热启动回写：本轮末态（无论是否完全收敛，同配置下次都从它出发）
-    if (!config.initialStates) storeWarmStart(warmExactKey, warmSeedStates)
-
-    // 收敛后按最终状态折算跨角色联动：卢西娅4命帷幕触发次数（含伊德海莉大招开帷幕）、回血按卢西娅大招次数
-    // 2026-09-25 CC-6b：整块迁进引擎能力/跨槽供给（规则 6）——提供者按模块能力
-    // `getAgentMechanic(cfg.agentId)?.curtainTriggers` 找槽（与 `luciaCinemaLevel` 是否在场无关，
-    // 该字段写在编排层另一份 cfg 上的旧顾虑随之消失），队友开帷幕量按 `curtain-open` 收集成标量
-    // （`yidhariSlot` 仍按 `yidhariDecibelPerHpPct` 字段找，继续用于外部回血写回与 yidhariBurn）。
-    const curtain = curtainInfoOf(configs, states, totalTime)
-    const yidhariSlot = configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)
-
-    // 构建最终结果
-    /**
-     * 赠送行时间（诺姆膛温赠链 / 琉音好评转大赠大）：由 `applyNormaHatChain` / `applyLiuyinPromote`
-     * 在装配**之后**追加到目标槽执行计划，不在 `buildExecutions` 产物里；其时间已由 iterate 计入
-     * 目标槽必要时间（GROSS 全额，见 helpers.ts Step4 两处预留）。**截断上限与前台展示必须同口径计入**，
-     * 否则：① 其它行按「含赠送时间的账本」截断、再叠加赠送行 → 物化行超账本（守恒破）；
-     * ② 资源卡「总计」= 战斗时间 + 赠送秒数（用户实测 2026-09-08：诺姆入队后主C 180s + 诺姆连携秒数）。
-     * 轴模式同样计入（次数走 `ultimateGiftOf` 的轴分支，见下方；旧注释「轴模式不预留」已作废）。
-     */
-    const chainGiftFinal = crossAgentSupplyAt(configs, states, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
-      totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
-    })
-    /**
-     * 琉音赠大（装配侧：**截断上限 + 前台展示 + 赠行时间预留**）——四处同源之一（单一事实源 =
-     * `ultimateGiftOf`，见 `@fact engine:赠送时间/轴模式四处同源`）。
-     *
-     * ⚠ **2026-09-20 轴模式改为计入**（用户口径「同一个量转大次数，在轴模式下显示制定了部分好评值的
-     * 用途，剩余好评应该默认 90……所以转大次数应该很明确」）：
-     *
-     * 旧口径「轴模式不预留」（2026-09-10 为避数值重排暂时维持）的代价 = **双重计费**：模块的
-     * `axisSuppressed` 让非轴分支恒返回 count 0，而本处（截断上限）扣掉了轴赠大、`iterate` 账本与
-     * S2 折叠环测量却都没涨 ⇒ 截断额度凭空少 8.732s（雨果 0 命轴），决算行被整数装包砍掉一整次
-     * （5→4，实测 `hugoVerdictLanding`/`stunVulnSummary` 案例 B/D 红）。
-     *
-     * 现改为一律走 `ultimateGiftOf`（轴模式用 `axisLiuyinPromote.count`——编排层已按「轴声明 60 +
-     * 剩余好评默认 90」算好，与 `promoteFixpoint` 同源）⇒ 预留 == 赠行 == 截断扣除，守恒恢复，
-     * `applyLiuyinPromote` 也不再需要 post-hoc carve（`liuyinGiftTimeReserved` 有值即走预留路径）。
-     */
-    const ultimateGiftFinal = ultimateGiftOf(configs, states, {
-      totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
-      axisMode: config.axisMode, axisPromote: config.axisLiuyinPromote,
-    })
-    const giftTimeOfSlot = (idx: number): number =>
-      (idx === chainGiftFinal.targetIdx ? chainGiftFinal.time : 0)
-      + (idx === ultimateGiftFinal.targetIdx ? ultimateGiftFinal.time : 0)
-    // 赠行**物化口径**（阶段1 ②，2026-09-10）：行由引擎产出（存在/次数单一事实源），倍率由编排层补。
-    // 目标槽按 `config.teamSize`（编排层队长）解析——与账本口径 `configs.length` 解耦，见 giftRowTargetSlot。
-    const chainGiftRow = chainGiftRowSpec(configs, states, totalTime, config.teamSize)
-    const ultimateGiftRow = ultimateGiftRowSpec(
-      configs, states, totalTime, config.stunCount ?? 0,
-      config.axisLiuyinPromote, !!config.axisMode, config.teamSize,
-    )
-    // S4 装配（CC-5b 外提至 `./resource/assembleSlot.ts`，纯函数）的只读上下文：闭包捕获的
-    // `states`（装配期终态）/ `curtain` / `yidhariSlot` / 赠行查询函数与行口径在此显式化。
-    const slotCtx: AssembleSlotContext = {
-      configs, config, totalTime, states, curtain, yidhariSlot, giftTimeOfSlot, chainGiftRow, ultimateGiftRow,
-    }
-    /** 时间线截断总量（装配阶段砍掉的秒数）：= 资源允许但时间装不下的部分，上报为 overflowSeconds */
-    let timeTruncatedSeconds = 0
-    /** 逐行截断明细（团队级汇总，Σ cutSeconds == timeTruncatedSeconds）：资源池清单 + 难度轴交互缩放 */
-    const truncationCuts: TruncationCut[] = []
-    /** 各槽截断秒数账（requested/kept/cutSeconds）：存活率 = kept/requested，难度轴按它缩交互次数 */
-    const truncationBySlot: { slot: number; requested: number; kept: number; cutSeconds: number }[] = []
-    // ===== S4 装配段（#8 分刀 2026-09-12；CC-5b 2026-09-25 外提 `./resource/assembleSlot.ts#assembleSlot`）=====
-    // 逐槽装配闭包已搬为纯函数；本处只保留累加器与 `configs.map` wrapper：累加（timeTruncatedSeconds /
-    // truncationCuts / truncationBySlot）与 cfg 写回的**每槽执行顺序**、`cuts 非空才 push` 的条件守卫
-    // 原样保持；判据 = timeGolden / timeFillRatchet delta 0（规则 10）。
-    const characters: CharacterResourceResult[] = configs.map((cfg, i) => {
-      const s = assembleSlot(slotCtx, cfg, i)
-      timeTruncatedSeconds += s.cutSeconds
-      for (const c of s.cuts) truncationCuts.push(c)
-      if (s.bySlotEntry) truncationBySlot.push(s.bySlotEntry)
-      return s.result
-    })
-    return {
-      characters, timeTruncatedSeconds, truncationCuts, truncationBySlot, inputStunCount,
-      chainGiftTime: chainGiftFinal.time, liuyinGiftTimeTotal: ultimateGiftFinal.time,
-    }
+    const r = runTailPipelinePure(tailCtx, diag, states)
+    states = r.states
+    return r.tail
   }
   let tail = runTailPipeline()
   /** 重折环之前的初装截断（同一次运行内的读数；诊断量 `truncationBeforeRefoldSeconds`，只在进了重折环时上报） */
