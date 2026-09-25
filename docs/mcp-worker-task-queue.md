@@ -56,7 +56,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | W25 | 琉音转大次数四读数：预测探针 | 只读 + 隔离探针 | `/tmp/wt-W25` 下任意文件、`.zc/reports/W25-promote-readings.md` | 🏃 已派发（2026-09-25 14:52，与 W23 并行：两者都只跑定向探针，不占全量时段） |
 | W26 | 琉音转大次数单源化：非轴接线（替代 W21） | 实现（隔离 worktree） | 见卡 | 待派发（**必须等 W25 回收且 `design-gate: PASS`**） |
 | W27 | 命座「未描述」5 条改标（原文已收到、防御 / 生存向不建模） | 数据订正 | 两份 JSON 各 5 / 4 档 + `docs/implementation-status.md`（生成） | ✅ 已合入（`749e047`；lead-arena-0925b 复核 accept：语义 diff 恰 5 + 4 档、效果句逐条对 `data/raw` 原文、正控 validate:data / modelingGaps 9/9 / check-guards 21、负控 1271 C1 改回 ⇒ 未描述 1→2，`cp` 还原后三文件 sha256 逐位一致；卡已删） |
-| W28 | 命座镜像 `cinemaImplementation` 单源化预审（62 档 status 不一致） | 只读普查 | `/tmp/w28/`、`.zc/reports/W28-mirror-census.md` | 待派发（纯静态，不占测试时段；lead-arena-0925b 名下） |
+| W28 | 命座镜像 `cinemaImplementation` 单源化预审（62 档 status 不一致） | 只读普查 | `/tmp/w28/`、`.zc/reports/W28-mirror-census.md` | 🏃 已派发（2026-09-25 15:35 lead-arena-0925b；`/tmp/worker-W28.*`；纯静态，不占测试时段） |
 
 **drift 落盘的工具坑（2026-09-25，后续 lead 必读）**：① 批量打 `·复核@` 按**锚点**选事实，而事实可能写在 docs 里（如 `GAME_TERM_TO_CODE_FIELD.md`）——提交时别只 `git add src/`，以 `git status` 为准；
 ② 事实行可能误写**两个「据」槽**，解析器静默取后一个 ⇒ 标签打在前一个无效，应合并为单槽（`liuyinPromote.ts` 失衡次数不动点即此例）；
