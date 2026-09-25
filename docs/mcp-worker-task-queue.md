@@ -51,9 +51,10 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | W21 | 琉音转大次数单源化（W16 契约 C） | 实现 | — | 🗑 作废（卡已删）：工人 blocked 证据成立（4 调用点仅 1 处拿得到失衡次数；同局 3 个转大读数不同源）；lead 设计 `docs/mcp-liuyin-promote-source.md` 定单源 = 答案层 `promote` 滞后注入，拆为 W25/W26 |
 | W22 | R62-J3 census 指纹侧过期：当前 HEAD 重跑 + 逐角色 diff | 重计算 + 隔离 worktree | `/tmp/wt-W22` 下任意文件、`.zc/reports/W22-census-refresh.md` | 待派发（独占重计算时段；排在 W25/W26 之后，见下方派发顺序） |
 | W23 | 爱丽丝(1401) 系留白 6.0s 归因（预测先行） | 只读 + 隔离探针 | `/tmp/wt-W23` 下任意文件、`.zc/reports/W23-1401-slack.md` | 🏃 已派发（2026-09-25 14:25 外部 lead；`/tmp/worker-W23.*`） |
-| W24 | 命座「未描述」6 条的原文定位与可派性分诊 | 只读普查 | `.zc/reports/W24-undescribed-triage.md` | 🏃 已派发（2026-09-25 14:25 外部 lead；`/tmp/worker-W24.*`） |
-| W25 | 琉音转大次数四读数：预测探针 | 只读 + 隔离探针 | `/tmp/wt-W25` 下任意文件、`.zc/reports/W25-promote-readings.md` | 待派发（W23 收工后接测试时段） |
+| W24 | 命座「未描述」6 条的原文定位与可派性分诊 | 只读普查 | `.zc/reports/W24-undescribed-triage.md` | ✅ 已回收（14:50；lead 复核 accept：抽查 1121 C1 先例、1271 C1 pending、3 处原文落点均属实）。5/6 原文在库且只是标签错 ⇒ lead 按图例 + 4 条先例裁定改标（问题 Q 取 A）⇒ 派生 W27；1551 C6 真·未揭示 ⇒ OPEN-ITEMS §1 待供料；卡已删 |
+| W25 | 琉音转大次数四读数：预测探针 | 只读 + 隔离探针 | `/tmp/wt-W25` 下任意文件、`.zc/reports/W25-promote-readings.md` | 🏃 已派发（2026-09-25 14:52，与 W23 并行：两者都只跑定向探针，不占全量时段） |
 | W26 | 琉音转大次数单源化：非轴接线（替代 W21） | 实现（隔离 worktree） | 见卡 | 待派发（**必须等 W25 回收且 `design-gate: PASS`**） |
+| W27 | 命座「未描述」5 条改标（原文已收到、防御 / 生存向不建模） | 数据订正 | `public/static/character-constellations.json`、`public/static/character-mechanics.json`（各限 5 档 / 4 档）、`docs/implementation-status.md`（仅生成）、`.zc/reports/W27.md` | 待派发（有空位即可派；与 W25/W26 写入面不相交） |
 
 **drift 落盘的工具坑（2026-09-25，后续 lead 必读）**：① 批量打 `·复核@` 按**锚点**选事实，而事实可能写在 docs 里（如 `GAME_TERM_TO_CODE_FIELD.md`）——提交时别只 `git add src/`，以 `git status` 为准；
 ② 事实行可能误写**两个「据」槽**，解析器静默取后一个 ⇒ 标签打在前一个无效，应合并为单槽（`liuyinPromote.ts` 失衡次数不动点即此例）；
@@ -69,9 +70,9 @@ W18（W11/W12 的文案漂移与死写）。1451 梦境值 `maxValue 100 vs 500`
 **重计算时段串行**：W16 → W17 → W18（各自要跑 vitest/build）；W13/W14/W15 是纯静态阅读，可与其中任一张并行（总工人数仍 ≤ 2）。
 headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾追加一行「测试/构建时段已授予」。
 
-**当前派发顺序（2026-09-25 14:25 外部 lead 现场核实）**：W21 工人已于 14:15 收工（`pgrep` 无进程、journal 末条是它的 `done`），它的 3 条残留租约已按 lane 释放（`zc release --all --as <lane>`）；14:25 派出 W23 + W24，2 个并发位已满。
-下一步：W23 收工 → W25（占测试时段）→ lead 复核 → W26（隔离 worktree，占测试时段）→ lead 合入（重生成基线 + 全量 verify）→ W22（独占重计算时段，等前面全部停下再派）。W24 纯只读，不占时段。
-W25/W26 与 W22/W23/W24 的写入面互不相交；W26 只在 `/tmp/wt-W26` 里改 `liuyin.ts`，合入前主仓库的这个文件无人写。派发前照本节开头查重。
+**当前派发顺序（2026-09-25 14:52 外部 lead 现场核实）**：W21 工人 14:15 已收工，3 条残留租约已按 lane 释放（`zc release --all --as <lane>`）。14:25 派出 W23 + W24；W24 于 14:50 回收；14:52 派出 W25（与 W23 并行，两者都只跑定向探针）。
+下一步：W23 收工 → W27（轻，数据订正）；W25 回收并判 design-gate → W26（隔离 worktree）→ lead 合入（重生成基线 + 全量 verify）→ W22（独占重计算时段，等前面全部停下再派）。
+W25/W26/W27 与 W22/W23 的写入面互不相交；W26 只在 `/tmp/wt-W26` 里改 `liuyin.ts`，合入前主仓库的这个文件无人写。派发前照本节开头查重。
 
 ## 2. 任务卡
 
@@ -139,35 +140,6 @@ W25/W26 与 W22/W23/W24 的写入面互不相交；W26 只在 `/tmp/wt-W26` 里�
 测试时段已授予（只跑单队定向探针）。
 <!-- /card:W23 -->
 
-<!-- card:W24 -->
-### W24 · 命座「未描述」6 条的原文定位与可派性分诊（只读普查，不录入）
-
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W24。
-父目标：`node scripts/zc.mjs status` 报「待办 命座：已实现 364 / **未描述 6** / 待办条目 115」。lead 已用 `docs/implementation-status.md`（表头第 87 行，「命座未描述」是**第 6 列**）定位到 6 个角色各 1 档：
-**莱卡恩(1141) 第 106 行 · 潘引壶(1421) 第 115 行 · 11号(1041) 第 121 行 · 安东(1111) 第 127 行 · 赛斯(1271) 第 132 行 · 佩洛伊斯(1551) 第 147 行**（awk 按列求和 = 6，与 `zc status` 一致）。
-口径：`not_described_not_implemented` = 尚未收到机制描述、不视为已实现（该文档第 117 行）。**未知**：各是哪一档、原文在不在仓库里、能不能不经用户裁决就实现 ⇒ 本卡只做分诊，**不录入**。
-
-**先读**：`AGENTS.md` §0「录入角色 / 补机制：五步」（本卡只用到第 1、2 步的口径）、§1 规则 4 / 5 / 15、§5；
-`docs/implementation-status.md` 第 82 / 87 / 117 行（三处口径定义）；`public/static/character-constellations.json` 里这 6 个角色的条目（找 `status` = `not_described_not_implemented` 的那一档）；
-`data/raw/README.md` + `data/raw/gachabase/<id>.json` + `data/raw/nanoka_missing/full/<id>.json`（原文来源；lead 实测 `1141` 在这两处都存在）。
-
-**允许写入**：报告 `.zc/reports/W24-undescribed-triage.md`（先 `zc claim`）。
-**禁止**：改任何 `src/` / `public/static/` / `data/` 文件（本卡纯分诊）；跑 vitest / build；**挖 git 历史**（每项 ≤ 3 处 grep，查不到就写 `missing`，不要像 W13-W15 那样翻历轮交接）；凭名字联想编原文（规则 15：歧义或未命中就如实写未命中）；碰 `src/mechanics/agents/liuyin.ts`（W21）。
-
-**步骤与验收**：
-1. 对 6 个角色逐个输出：`名字(id)`、未描述的是**第几档**（C 几）、`character-constellations.json` 里该条目有哪些字段、`description` / 原文槽是否为空。
-2. 在 `data/raw/` 定位该档原文：给 `path:line` + **逐字摘录**（引用格式一律 `名字(id)` 绑定，规则 15）；查不到写 `missing`，并写清查过哪 3 处。
-3. 每条判**可派性**三选一 + 一句理由：`可直接录入`（原文有数值、口径无歧义、引擎有现成通道）/ `需用户裁决`（把问题写成可二选一的形式）/ `缺原文`（需用户供料）。判据引 `AGENTS.md` §0 五步第 1 步「只把『原文没数值 / 口径歧义 / 引擎缺通道』一次问用户」。
-4. 汇总成一张表，并给出**后续卡的切分建议**（按本文件 §3 的实测教训「取证类任务宜每卡 ≤ 2 条」，且录入卡要走 §0 五步、与本卡不同型）。
-5. 顺带核实：`docs/implementation-status.md` 是 `npm run docs:status` 生成的产物——报告里写明这 6 条的**上游数据文件**是哪个（改产物无效，要改源），供 lead 派后续卡时用。
-
-**证伪闸门**：前提假设 = 这 6 条里**至少有 1 条**「原文在仓库内且可直接录入」（即本队列能消化它）。
-假设为假时的可观察失败 = 6 条**全部** `missing` 或全部 `需用户裁决` ⇒ 本队列消化不了，整批升级 `.claude/OPEN-ITEMS.md` §1 待用户供料（这仍是 `STATUS: done`，不是失败）。
-
-**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、6 条表格、原文逐字摘录与 `path:line`、可派性判定与理由、上游数据文件、未证明事项。
-`zc done --verifier '<grep/awk 命令原文>' --coverage '6 角色命座未描述档' --risk '<未证明事项>'`。**不提交**。
-<!-- /card:W24 -->
-
 <!-- card:W25 -->
 ### W25 · 琉音转大次数四读数：预测探针（只读，不实现）
 
@@ -229,6 +201,34 @@ W25/W26 与 W22/W23/W24 的写入面互不相交；W26 只在 `/tmp/wt-W26` 里�
 `zc done --verifier '<正控命令>' --coverage 'liuyin 转大次数四读数（非轴）' --risk '<未证明事项>'`。**不提交**。
 测试时段已授予（定向测试 + check-guards；不跑 build 与全量）。
 <!-- /card:W26 -->
+
+<!-- card:W27 -->
+### W27 · 命座「未描述」5 条改标（原文已收到、防御 / 生存向不建模）
+
+你是执行工人，只完成本卡，不继续委派。TASK_ID=W27。
+工作区 `/home/kaua/projects/zzz-calculator`（主仓库；**只改下列两份 JSON 的这 5 档 + 生成产物**）。开工打印真实 HEAD 与 `git status --short`。
+父目标：W24（`.zc/reports/W24-undescribed-triage.md`）查明 `zc status`「命座未描述 6」里有 5 条的原文早已在库（`data/raw/nanoka_missing/full/<id>.json`），`pending` 也写明了「防御 / 生存向，用户确认不建模」或「已由现成滑块近似」——与图例 `not_described_not_implemented` =「未收到机制描述」的定义矛盾。
+lead 裁定（2026-09-25）：按数据字典 + 既有 4 条先例（`1101:C2`、`1121:C1`、`1551:C2`、`1551:C4` 均为防御向 `implemented_approximation` + 「不建模」说明）改标。**不改任何引擎数值**。
+
+**先读**：W24 报告 §1 / §2 / §5（字段结构、原文落点、上游文件与镜像关系）；`public/static/character-constellations.json` 的 `statusLegend` 与 1121 C1 条目（先例句式）；`public/static/character-mechanics.json` 里 1141 / 1041 / 1111 / 1271 的 `cinemaImplementation`（1421 无镜像）；`data/raw/README.md:34`（两份 JSON 手维护、`validate:data` 兜底）；`scripts/generate-implementation-status.mjs`（产物怎么生成）。
+
+**允许写入**：`public/static/character-constellations.json`（只动 1141 C4 / 1421 C4 / 1041 C4 / 1111 C2 / 1271 C1 五档的 `status` / `implemented` / `pending`）；`public/static/character-mechanics.json`（只动上述四个角色对应档的镜像）；`docs/implementation-status.md`（**只许**由 `npm run docs:status` 重新生成，不手改）；报告 `.zc/reports/W27.md`（均先 `zc claim`）。
+**禁止**：改其它档位或其它角色（包括 W24 §1 提到的 1111 C1/C4/C6 镜像不一致——只报告，不修）；改 `src/`、`data/raw/`、`catalog.json`；改 JSON 的格式风格；跑全量 vitest / build。
+
+**步骤与验收**：
+1. **先证往返无损**：用 node 脚本 `JSON.parse` → 不做任何修改 → 按原风格序列化写到 `/tmp/w27-roundtrip-*.json`，与原文件 `sha256sum` 必须一致（两份 JSON 各证一次；不一致就先找出能逐字节还原的序列化方式，找不到 ⇒ `STATUS: blocked`）。之后才用同一脚本改值写回。
+2. 每档改为 `status: "implemented_approximation"`；`implemented` 写一句话（照 1121 C1 的句式：效果要点 +「防御向 / 生存向，伤害计算器不建模，不参与当前计算」）；1271 C1 写「护盾 / 上限 +30% 防御向不建模；核心被动异常精通失效后额外维持 10s 无独立时长维度，由 `seth.shieldCoverage` 持盾覆盖率滑块近似（默认 1 = 满覆盖时本条无增量）」；`pending` 清空，原 pending 里的用户确认日期挪进 `implemented` 句末括号，不许丢。
+3. 镜像同步：四个角色 mechanics 文件里的对应档与 constellations 同状态、同说明。
+4. `npm run docs:status` 重新生成产物；`node scripts/zc.mjs status` 的「命座」行必须变成「未描述 **1**」（只剩 1551 C6），「已实现」相应 +5。
+5. 验收：`npm run validate:data`、modelingGaps 的单测（自己定位路径，报告写明）、`npm run check-guards` 全部 EXIT=0；`git diff --stat` 只允许三份文件（两份 JSON + `docs/implementation-status.md`）。
+6. 负控：临时把 1271 C1 的 `status` 改回 `not_described_not_implemented` 并重跑 `npm run docs:status`，`zc status` 应回到「未描述 2」；还原后再生成一次，回到 1，`git diff --stat` 与第 5 步一致。
+
+**证伪闸门**：前提假设 = 这 5 档只是标签错，改标不影响任何计算。可观察失败 = 任一既有测试因改标变红，或 `docs:status` 产物出现这 5 档以外的行变化 ⇒ 立即还原、`STATUS: blocked`，附失败输出。
+
+**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、往返无损的两组 sha256、每档改前 / 改后的对象（JSON 行过长时不要贴整行 diff）、验收命令原始输出尾部与退出码、负控输出、`zc status` 前后对照、未证明事项。
+`zc done --verifier '<验收命令>' --coverage '5 档命座改标 + 镜像 + implementation-status 产物' --risk '<未证明事项>'`。**不提交**。
+测试时段已授予（validate:data / modelingGaps / check-guards；不跑全量与 build）。
+<!-- /card:W27 -->
 
 ## 3. 本队列的来源：2026-09-24 OPEN-ITEMS 分诊
 
