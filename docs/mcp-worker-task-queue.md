@@ -51,7 +51,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | W20 | 轴模式琉音送客行是否双计：取证 | 只读 + 隔离探针 | `.zc/reports/W20-axis-farewell.md`；探针只在 `/tmp/wt-W20` | ✅ 已回收（判定 `单计-模块`，账本多计 0s；轴声明 1481009 语义 A/B 已入 OPEN-ITEMS 待用户；W21 前置①满足） |
 | W21 | 琉音转大次数单源化（W16 契约 C） | 实现 | — | 🗑 作废（卡已删）：工人 blocked 证据成立（4 调用点仅 1 处拿得到失衡次数；同局 3 个转大读数不同源）；lead 设计 `docs/mcp-liuyin-promote-source.md` 定单源 = 答案层 `promote` 滞后注入，拆为 W25/W26 |
 | W22 | R62-J3 census 指纹侧过期：当前 HEAD 重跑 + 逐角色 diff | 重计算 + 隔离 worktree | `/tmp/wt-W22` 下任意文件、`.zc/reports/W22-census-refresh.md` | 待派发（独占重计算时段；排在 W25/W26 之后，见下方派发顺序） |
-| W23 | 爱丽丝(1401) 系留白 6.0s 归因（预测先行） | 只读 + 隔离探针 | `/tmp/wt-W23` 下任意文件、`.zc/reports/W23-1401-slack.md` | 🏃 已派发（2026-09-25 14:25 外部 lead；`/tmp/worker-W23.*`） |
+| W23 | 爱丽丝(1401) 系留白 6.0s 归因（预测先行） | 只读 + 隔离探针 | `/tmp/wt-W23` 下任意文件、`.zc/reports/W23-1401-slack.md` | ✅ 已回收（15:24；lead 复核 accept。独立负控：只去掉 `resource.ts:644` 的 1s 余量 ⇒ 本队 6→1，全库 29 队逐值复现工人 §5.3 表，另查出 2 队 stable→cycle）。归因 ① 成立但因果改写：pass0 冻 0、pass1 负 excess 19.915 不进 refund、post-fold 试探 attempt1 接受 9.958 后被内层不判稳与 1s 余量联合自锁；变体实验入坑 19 否决记录；卡已删 |
 | W24 | 命座「未描述」6 条的原文定位与可派性分诊 | 只读普查 | `.zc/reports/W24-undescribed-triage.md` | ✅ 已回收（14:50；lead 复核 accept：抽查 1121 C1 先例、1271 C1 pending、3 处原文落点均属实）。5/6 原文在库且只是标签错 ⇒ lead 按图例 + 4 条先例裁定改标（问题 Q 取 A）⇒ 派生 W27；1551 C6 真·未揭示 ⇒ OPEN-ITEMS §1 待供料；卡已删 |
 | W25 | 琉音转大次数四读数：预测探针 | 只读 + 隔离探针 | `/tmp/wt-W25` 下任意文件、`.zc/reports/W25-promote-readings.md` | 🏃 已派发（2026-09-25 14:52，与 W23 并行：两者都只跑定向探针，不占全量时段） |
 | W26 | 琉音转大次数单源化：非轴接线（替代 W21） | 实现（隔离 worktree） | 见卡 | 待派发（**必须等 W25 回收且 `design-gate: PASS`**） |
@@ -71,9 +71,9 @@ W18（W11/W12 的文案漂移与死写）。1451 梦境值 `maxValue 100 vs 500`
 **重计算时段串行**：W16 → W17 → W18（各自要跑 vitest/build）；W13/W14/W15 是纯静态阅读，可与其中任一张并行（总工人数仍 ≤ 2）。
 headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾追加一行「测试/构建时段已授予」。
 
-**当前派发顺序（2026-09-25 14:52 外部 lead 现场核实）**：W21 工人 14:15 已收工，3 条残留租约已按 lane 释放（`zc release --all --as <lane>`）。14:25 派出 W23 + W24；W24 于 14:50 回收；14:52 派出 W25（与 W23 并行，两者都只跑定向探针）。
-下一步：W23 收工 → W27（轻，数据订正）；W25 回收并判 design-gate → W26（隔离 worktree）→ lead 合入（重生成基线 + 全量 verify）→ W22（独占重计算时段，等前面全部停下再派）。
-W25/W26/W27 与 W22/W23 的写入面互不相交；W26 只在 `/tmp/wt-W26` 里改 `liuyin.ts`，合入前主仓库的这个文件无人写。派发前照本节开头查重。
+**当前派发顺序（2026-09-25 15:35 lead-arena-0925 现场核实）**：W23 于 15:24、W24 于 14:50 回收；在跑 = W25（lead-arena-0925，14:52）+ W27（lead-arena-0925b，15:25），2 个并发位已满。
+下一步：W25 回收并判 design-gate → W26（隔离 worktree）→ lead 合入（重生成基线 + 全量 verify）；W27 回收 → W22（独占重计算时段，等前面全部停下再派）。
+W25/W26/W27 与 W22 的写入面互不相交；W26 只在 `/tmp/wt-W26` 里改 `liuyin.ts`，合入前主仓库的这个文件无人写。派发前照本节开头查重。
 **双 lead 分工（2026-09-25 15:15 起）**：两条 lead 会话并行，分工单源在 `.zc/lead-coordination.md`（不入库）——W23 复核、W25 → W26 归 `lead-arena-0925`；W27、W22 归 `lead-arena-0925b`。第三条会话接手前先读它，别照本段顺序自己派。
 
 ## 2. 任务卡
@@ -110,37 +110,6 @@ W25/W26/W27 与 W22/W23 的写入面互不相交；W26 只在 `/tmp/wt-W26` 里�
 `zc done --verifier '<census 命令原文>' --coverage '62 角色 × cinema 0-6 指纹 vs 09-20 基线' --risk '<未证明事项>'`。**不提交**。
 测试时段已授予（独占重计算位，派发方保证此时无其它工人跑 vitest/build）。
 <!-- /card:W22 -->
-
-<!-- card:W23 -->
-### W23 · 爱丽丝(1401) 系留白 6.0s 归因（预测先行，不实现）
-
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W23。
-父目标：`.claude/OPEN-ITEMS.md` §2「R37-J5」的**需先归因**项——`src/composables/__tests__/timeFillRatchet.baseline.json` 里 `auto-1401-1411-1031` 实测 `slack: 6, over: 0, stun: 2, outerExit: "stable"`（lead 核实该键在第 322-327 行），是留白最大的一队；
-原怀疑写成「疑为折叠环 refund 一次性冻结追不上正反馈行」，**未证明**。本卡只做归因取证，不写修法。
-
-**先读**：`AGENTS.md` §1 规则 10 / 16 / 17、§0 外部闭环表「排查数值/机制错误」行、§5；
-`docs/ENGINE_PIPELINE_GUIDE.md` §4 开头**「时间系统三本账」表** + 坑 19**「否决记录」**（规则要求：碰时间/账本/留白先查这两处，别急着重新发明）；
-`src/composables/__tests__/timeFillRatchet.test.ts`（`slack` 究竟怎么算出来的）；折叠环 refund 的实现段（从 `src/core/resource.ts` 自己定位，报告写 `path:line`）；
-`docs/mcp-debt2-blade1-feasibility-v4.md` §19.4 / §20.5 中与留白/refund 有关的段落。
-
-**允许写入**：隔离 worktree `/tmp/wt-W23`（建法同 W22）下任意文件；报告 `.zc/reports/W23-1401-slack.md`（先 `zc claim`）。
-**禁止**：改主仓库任何文件（报告除外）；**改 `timeFillRatchet` / `timeGolden` 基线**（规则 10：基线不是否决权，但归因阶段更不许动它）；改 `slack` 判据或删断言；跑全量 vitest / build；碰 `src/mechanics/agents/liuyin.ts`（W21）。
-
-**步骤与验收**：
-1. 建 worktree，打印真实 HEAD 与 `git status --short`。
-2. **先写预测再跑**：报告里先给出「6.0s 留白的构成预测」——落在第几轮、涉及哪个折叠环、refund 冻结多少秒、正反馈行需要多少秒，写成**可对账的数字表**；再跑探针。
-3. 探针：对 `auto-1401-1411-1031` 打印**逐轮**时间账本（每轮 收入 / 支出 / 冻结 / refund / 轮末 slack），定位这 6.0s 具体落在哪几轮、由谁产生。
-4. 归因**三选一**并给证据 `path:line`：① `折叠环 refund 冻结时序`（原假设成立，写清是哪一次冻结追不上哪一行）；② `1401 机制本身的设计留白`（说明为什么该有）；③ `其它（说明）`。
-5. 若判为缺陷：只给**修法方向** + 预测受影响的 baseline key 与数值走向，**不实现**、不改基线。若结论依赖游戏语义（代码无字段可判）⇒ 标 `needs-user`，写成一个能让用户二选一的问题，不自行裁决（照 W20 §5-1 的先例格式）。
-6. 收工：`unlink /tmp/wt-W23/node_modules` → `git worktree remove --force /tmp/wt-W23`；主仓库 `git status --short` 只允许报告一项。
-
-**证伪闸门**：前提假设 = 这 6.0s 由「refund 一次性冻结追不上正反馈行」造成，属**可修的实现时序**问题。
-假设为假时的可观察失败 = 逐轮账本显示留白**均匀分布**在多轮、或落在**不涉及折叠环**的轮次 ⇒ 假设证伪，改判 ② 或另立归因，并如实写「原假设被证伪」。
-
-**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、预测数字表、探针源码全文、逐轮账本原始输出、归因判定与 `path:line`、未证明事项。
-`zc done --verifier '<探针命令原文>' --coverage 'auto-1401-1411-1031 时间账本' --risk '<未证明事项>'`。**不提交**。
-测试时段已授予（只跑单队定向探针）。
-<!-- /card:W23 -->
 
 <!-- card:W25 -->
 ### W25 · 琉音转大次数四读数：预测探针（只读，不实现）
