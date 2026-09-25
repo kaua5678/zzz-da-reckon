@@ -131,7 +131,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-5 | review | design（依赖 CC-4） | S3a 欠打回填 / S4 `assembleSlot` / 重折环外提；`calcTeamResources` 收成编排器 | core/resource.ts 677–1210 |
 | CC-6a | review | **done**（dsflash 工人 + lead 复核：dump 624 零差、反向验证 36 条 banyue 场景红、guards 21、build、27 文件 533 测过） | 引擎能力 `exSpecialCount`：1471 般岳分支迁模块；core agentId 6→5、core 角色 import 5→4 | mechanics/types.ts、agents/banyue.ts、core/resource/helpers.ts、2 个棘轮基线 + RATCHET_BURNDOWN |
 | CC-6b | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差、反向验证 42 条 1051+1451 场景红、guards 21、build、509 测过；另核全部 crossAgentSupply 消费点均按 kind 过滤 ⇒ yidhari 新声明不会被误取） | 1451 帷幕：`curtainTriggers` 能力 + yidhari 声明 `crossAgentSupply.kind='curtain-open'`；agentId 5→3、import 4→2 | 见下方 CC-6b 卡 |
-| CC-6c | review | design（6b 已完成；**放行前 lead 须对当前代码重核 §3.3**，设计稿行号已过期） | 1531/1431/1051 终局重推：`finalizePass` 能力 + 通用执行器 `core/resource/finalizePasses.ts`；agentId 3→0（剩余 3 处 = `resource.ts` 474 / 1076 / 1077，@00174fc 实测） | 见设计稿 §3.3（stage 顺序敏感） |
+| CC-6c | review | **ready**（lead-arena-0925c 对 @83861c3 代码重核 §3.3，修正 reset 语义，见下方 CC-6c 卡；**排在 CC-6d 之后派**） | 1531/1431/1051 终局重推：`finalizePass` 能力 + 通用执行器 `core/resource/finalizePasses.ts`；agentId 3→0 | 见下方 CC-6c 卡 |
 | CC-6d | review | **ready**（lead-arena-0925c 按 `4ca47db` 后代码重写设计，见下方 CC-6d 卡；设计稿 §3.4 作废） | velina 风蚀：模块能力 `anomalyCorrosion`，core 经 `agentMechanics` 查询；core 角色 import 2→0 | `anomalyPool.ts`、`anomalyPool/helpers.ts`、新 `anomalyPool/corrosion.ts`、`mechanics/types.ts`、`agents/velina.ts`、棘轮 |
 | CC-7 | fast | **done**（dsflash 工人 + lead 复核：PanelValues.atk/hp 必填 ⇒ `?? 0` 死分支；dump 624 零差、guards 21、build、48 测过） | 贯穿力单一事实源：导出 `calcPenetrationPower`，norma.ts / damagePool.ts:1067 改引用（**不碰 :1020**） | core/damage.ts、norma.ts、damagePool.ts |
 | CC-8 | fast | **done**（dsflash 工人 + lead 复核：逐项值相等；dump 624 零差 + rowsnap（含行文案）624 零差、guards 21、build） | damagePool 异常常量改引 core：713/500/1250 与 DoT 表改用 `ANOMALY_SINGLE_HIT_MULTIPLIER` / `STANDARD_DOT_CONFIG` | damagePool.ts 1242–1247 / 1402 / 1429 |
@@ -278,6 +278,35 @@ anomalyPool 已有现成的能力通道 `input.agentMechanics`（同 `transformA
 **反向验证**：临时注释掉 velina 的 `anomalyCorrosion` 声明跑 dump ⇒ 带 1561 的场景必须非零差异，记条数后**恢复**，再跑一次 dump 确认回到零差异。
 
 ④ **报告**：改动行、两次闸门 grep 输出、棘轮新旧值、反向验证差异条数（列出场景键前 10 个）、§4 + rowsnap 尾部输出。
+
+### CC-6c · 比利 / 叶瞬光 / 伊德海莉终局整数重推迁引擎能力（review）
+
+**lead 重核（2026-09-25 lead-arena-0925c，@83861c3）**：设计稿 §3.3 的能力形状、执行器 `runFinalizePasses`、两个 stage 不合并、复位在装配后——**成立**，照做；
+但它的行号全部过期、且 **reset 语义写错一处**（见②第 3 条）。当前代码位置：
+- preTail 执行器 = `src/core/resource.ts` 闭包 `runBillyFinalize`（约 467–523）：1531 按 `agentId === '1531' && billyAxisActive !== 1` 筛（约 474）、1431 按 `yeshuguangContinuousForms === 1` 筛；
+  两类**一起** begin、共用一个 ≤12 轮 10 字段逐位判稳循环，稳定才 `converged = true`。调用点：正常轨迹约 527、截断重折环约 1028（`runFoldLoop` 之后）。
+- tail 执行器 = 约 668–705 伊德海莉块（`findIndex(c => c.yidhariContinuousEx === true)`），位于 `runTailPipeline` 内，在热启动回写 `storeWarmStart` 与 CC-6b 帷幕折算**之前**；重折环经 `runTailPipeline()` 自动重跑，无需另改。
+- 复位 = 约 1074–1082（装配之后）。
+- 三个模块各只注册自己（`starlightBilly.ts:867` / `yeshuguang.ts:761` / `yidhari.ts:440` 的 `agentIds` 均为单元素，lead 已核）。
+
+① **先读**：`.zc/reports/CC-6-design.md` §3.3（b）（c）（e）；上面列出的 resource.ts 三段；`src/mechanics/types.ts` 的 `AgentMechanicModule`；三个角色模块的 mechanic 定义。
+
+② **硬约束**：
+1. 能力形状照设计稿：`finalizePass?: { stage: 'preTail' | 'tail'; applies(cfg): boolean; begin(cfg): void; reset(cfg): void }`；新文件 `src/core/resource/finalizePasses.ts`
+   导出 `runFinalizePasses(configs, states, stage, iterate, config) → { states, converged }` 与 `resetFinalizePasses(configs)`；`iterate` **参数注入**（不 import helpers.ts）。
+2. `applies` 逐位对齐原筛选：1531 = `Number(billyAxisActive ?? 0) !== 1`（`agentId` 那层由「只有 1531 模块被问到」保证）；1431 = `Number(yeshuguangContinuousForms ?? 0) === 1`；1051 = `cfg.yidhariContinuousEx === true`。
+3. ⚠ **reset 必须保留原来的不对称**（设计稿写成「对所有声明者无条件 reset」是错的）：原代码对 **1531 / 1051 无条件**写 `false`（不看 applies，哪怕 begin 从没跑过），
+   对 **1431 只在 `yeshuguangContinuousForms === 1` 时**写 `false`（否则字段保持 undefined）。⇒ `resetFinalizePasses` 对每个声明了 `finalizePass` 的 cfg 都调 `reset`，
+   由**模块自己**决定：billy / yidhari 的 reset 无条件写 false；yeshuguang 的 reset 内部先判 `yeshuguangContinuousForms === 1` 再写。写错会让 undefined→false 漂进 cfg，可能进 hash / 热启动键。
+4. 执行器：`targets` 为空直接返回 `{ states, converged: false }`（不调 iterate）；判稳 = 原 10 字段逐位 `!==`，≤12 轮；调用点 `if (fp.converged) converged = true`（不许写成 `converged = fp.converged`）。
+5. 删 resource.ts 的 3 处 `'1531'` / `'1051'` 字面量；棘轮 core agentId 3→0（`agent-branch-ratchet.mjs` 基线 + `RATCHET_BURNDOWN.frozen` 同步，写沿革）；core 角色 import 不变（0）。
+6. 证伪闸门（动手前与收工前）：`grep -rn "finalizePass" src/mechanics/agents/` 收工时恰命中 starlightBilly / yeshuguang / yidhari 三个；动手前为 0。
+
+③ **验收**：§4 全套 + rowsnap + `npx vitest run src/mechanics/__tests__/billySmoke.test.ts src/core/__tests__/truncationRefold.test.ts src/composables/__tests__/seedInvariance.test.ts src/core/__tests__/warmStart.test.ts src/composables/__tests__/convergenceProbe.test.ts`
+（再加 `ls src/mechanics/__tests__ | grep -i -E 'yeshuguang|yidhari|billy'` 列出的全部）。
+**反向验证**（两次，各自恢复并以零差异证明）：① 临时把 yidhari 的 `stage` 改成 `'preTail'` ⇒ 带 1051 的场景非零差异（证明 stage 不可合并）；② 临时注释掉 yeshuguang 的 `finalizePass` ⇒ 带 1431 的场景非零差异。
+
+④ **报告**：改动行、闸门 grep、棘轮新旧值、两次反向验证差异条数与前 10 个场景键、§4 + rowsnap 尾部输出。
 
 
 每张 design 卡放行前，lead 在本节补三样：**接口签名**、**证伪闸门**（前提假设 + 假设为假时的可观察失败）、**切批顺序**。
