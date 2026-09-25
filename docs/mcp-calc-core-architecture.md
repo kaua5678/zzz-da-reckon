@@ -143,7 +143,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-9b | review | **done** `740290d`（damagePool.ts 1141→438；Direct 350 / Release 297 / CharExtras 241 行；rowsnap/dump 624 零差，verify 3490） | 逐角色主循环（:415–1132）按 D 直伤 / R 异放事件 / X 角色附伤三段原样外提 `damagePoolDirect.ts` / `damagePoolRelease.ts` / `damagePoolCharExtras.ts`；共享 `rows/seenDirectIds/claimedInAxis` 以对象引用经 `CharRowsEnv` 注入；辅助闭包（:116–413）留入口，CC-9c 再议 | damagePool.ts |
 | CC-9c | review | **不做**（lead 2026-09-25） | 辅助闭包（:116–413 `pushDirect/pushRelease/axisSplitFor/*Fraction` 等）外提：它们闭包入口局部量，外提须改工厂函数（非原样搬），收益小；damagePool.ts 已 438 行、职责单一（ctx 解构 + 辅助 + 编排三段）。若日后要单测辅助函数再立卡 | damagePool.ts |
 | CC-T1 | review | **待立项** | rowsnap 预设补「失衡轴 × 尾段角色」（1171/1401/1261/1581 + 爱丽丝）组合：CC-9a 反向 ① 实测该面零覆盖，只有 `inStunAttribution.test.ts` 兜底。低级模型可做（只加预设 + 重生成 A 基线） | .zc/perf/ |
-| CC-10 | review | **ready**（lead 设计 2026-09-25 @9f8cf0a，卡见下） | `computeCalcOutput`（:248–654，含 `runOuterLoop` / `stageResolveFeasibility`）原样外提 `resourceCalc/solveTeam.ts#solveTeam(input)`，Vue 无关；唯一 store 写（降配闸门 ceiling）改为返回 `ceilingWriteBack` 由 composable 执行 | useResourceCalc.ts |
+| CC-10 | review | **done** `a73b6f8`（useResourceCalc.ts 1189→789；新 `solveTeam.ts` 476 行 + 纯度锁测试；dump/rowsnap 624 零差，verify 3493） | `computeCalcOutput`（:248–654，含 `runOuterLoop` / `stageResolveFeasibility`）原样外提 `resourceCalc/solveTeam.ts#solveTeam(input)`，Vue 无关；唯一 store 写（降配闸门 ceiling）改为返回 `ceilingWriteBack` 由 composable 执行 | useResourceCalc.ts |
 | CC-11 | review | design | `runCalcRound` 引入 `RoundCtx`，按工人 C 的 C4–C10 簇拆；C1/C2/C3（轮输入簇、`resolveAxisUltimateDecibelCost`、`CalcRoundResult`）可先纯搬 | convergence.ts |
 | ~~CC-D1~~ | — | ✅ **done 2026-09-25（用户裁决「别人有为什么不算」）** | `damagePool.ts:1020` 琉音命破队友分支的贯穿力补 `sheerForceFlat`（改引 `calcPenetrationPower`） | damagePool.ts:1020 + `@fact engine:贯穿力/单一事实源`（GAME_TERM §10）+ 判据 `ccD3D1Verdict.test.ts::CC-D1` |
 | CC-D2 | — | **decide** | core `standardDotDamage` 生产零消费：删掉，还是让 damagePool 消费它（两套算法不同，需先对账） | 需用户口径 |
@@ -371,6 +371,8 @@ lead 已扫 :249–653 对 composable 的全部依赖（脚本 `/home/kaua/calc-
 **反向验证**（各自恢复并以 dump 零差 + 该测试转绿证明）：① composable 临时不执行 `ceilingWriteBack` ⇒ `difficultyDescent.test.ts` 应红（报红的用例名）；② solveTeam 内临时跳过 `stageResolveFeasibility`（直接用 `r`）⇒ dump 非零差（报条数与前 10 键）。
 
 ④ **报告**：useResourceCalc.ts 行数前后、solveTeam.ts 行数、`@fact` 最终位置与锚、两常量去向、死绑定清单、反向验证结果、§4 + dump/rowsnap 尾部输出。
+
+**结项（lead 复核 2026-09-25）**：lead 逐行比对删除行（差异仅 3 处 `.value` 机械替换、store 写→`ceilingWriteBack`、import、`@fact` 改锚、写回处一行注释改写）；三文件 get_diagnostics 0；`@fact` 3→0+3 全随实现迁移，check-guards 146/146；solveTeam 直接依赖（roundThreads/outerCycle/feasibilitySearch/core resource）均无 vue/pinia/stores。反向 ① 不执行写回 ⇒ difficultyDescent 1 红（0.25→0.375）；② 跳 S3 ⇒ dump DIFF 245。独立复跑 dump/rowsnap 624 零差、verify 3493 passed / 29 skipped。旁注：`zcWorkspace.test.ts` 高并发偶红一次（租约 TTL 计时竞态，单跑 8/8），与本卡无关，未立卡。
 
 ### CC-9b · damagePool 逐角色主循环三段外提（review）
 
