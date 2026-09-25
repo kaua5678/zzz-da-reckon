@@ -55,7 +55,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | W24 | 命座「未描述」6 条的原文定位与可派性分诊 | 只读普查 | `.zc/reports/W24-undescribed-triage.md` | ✅ 已回收（14:50；lead 复核 accept：抽查 1121 C1 先例、1271 C1 pending、3 处原文落点均属实）。5/6 原文在库且只是标签错 ⇒ lead 按图例 + 4 条先例裁定改标（问题 Q 取 A）⇒ 派生 W27；1551 C6 真·未揭示 ⇒ OPEN-ITEMS §1 待供料；卡已删 |
 | W25 | 琉音转大次数四读数：预测探针 | 只读 + 隔离探针 | `/tmp/wt-W25` 下任意文件、`.zc/reports/W25-promote-readings.md` | 🏃 已派发（2026-09-25 14:52，与 W23 并行：两者都只跑定向探针，不占全量时段） |
 | W26 | 琉音转大次数单源化：非轴接线（替代 W21） | 实现（隔离 worktree） | 见卡 | 待派发（**必须等 W25 回收且 `design-gate: PASS`**） |
-| W27 | 命座「未描述」5 条改标（原文已收到、防御 / 生存向不建模） | 数据订正 | `public/static/character-constellations.json`、`public/static/character-mechanics.json`（各限 5 档 / 4 档）、`docs/implementation-status.md`（仅生成）、`.zc/reports/W27.md` | 🏃 已派发（2026-09-25 15:25 lead-arena-0925b；`/tmp/worker-W27.*`；与 W25/W26 写入面不相交） |
+| W27 | 命座「未描述」5 条改标（原文已收到、防御 / 生存向不建模） | 数据订正 | 两份 JSON 各 5 / 4 档 + `docs/implementation-status.md`（生成） | ✅ 已合入（`749e047`；lead-arena-0925b 复核 accept：语义 diff 恰 5 + 4 档、效果句逐条对 `data/raw` 原文、正控 validate:data / modelingGaps 9/9 / check-guards 21、负控 1271 C1 改回 ⇒ 未描述 1→2，`cp` 还原后三文件 sha256 逐位一致；卡已删） |
+| W28 | 命座镜像 `cinemaImplementation` 单源化预审（62 档 status 不一致） | 只读普查 | `/tmp/w28/`、`.zc/reports/W28-mirror-census.md` | 待派发（纯静态，不占测试时段；lead-arena-0925b 名下） |
 
 **drift 落盘的工具坑（2026-09-25，后续 lead 必读）**：① 批量打 `·复核@` 按**锚点**选事实，而事实可能写在 docs 里（如 `GAME_TERM_TO_CODE_FIELD.md`）——提交时别只 `git add src/`，以 `git status` 为准；
 ② 事实行可能误写**两个「据」槽**，解析器静默取后一个 ⇒ 标签打在前一个无效，应合并为单槽（`liuyinPromote.ts` 失衡次数不动点即此例）；
@@ -72,7 +73,7 @@ W18（W11/W12 的文案漂移与死写）。1451 梦境值 `maxValue 100 vs 500`
 headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾追加一行「测试/构建时段已授予」。
 
 **当前派发顺序（2026-09-25 15:35 lead-arena-0925 现场核实）**：W23 于 15:24、W24 于 14:50 回收；在跑 = W25（lead-arena-0925，14:52）+ W27（lead-arena-0925b，15:25），2 个并发位已满。
-下一步：W25 回收并判 design-gate → W26（隔离 worktree）→ lead 合入（重生成基线 + 全量 verify）；W27 回收 → W22（独占重计算时段，等前面全部停下再派）。
+下一步：W25 回收并判 design-gate → W26（隔离 worktree）→ lead 合入（重生成基线 + 全量 verify）→ W22（独占重计算时段，等前面全部停下再派）。W27 已于 15:30 合入（`749e047`）；W28 纯静态，有空位即可派。
 W25/W26/W27 与 W22 的写入面互不相交；W26 只在 `/tmp/wt-W26` 里改 `liuyin.ts`，合入前主仓库的这个文件无人写。派发前照本节开头查重。
 **双 lead 分工（2026-09-25 15:15 起）**：两条 lead 会话并行，分工单源在 `.zc/lead-coordination.md`（不入库）——W23 复核、W25 → W26 归 `lead-arena-0925`；W27、W22 归 `lead-arena-0925b`。第三条会话接手前先读它，别照本段顺序自己派。
 
@@ -173,33 +174,34 @@ W25/W26/W27 与 W22 的写入面互不相交；W26 只在 `/tmp/wt-W26` 里改 `
 测试时段已授予（定向测试 + check-guards；不跑 build 与全量）。
 <!-- /card:W26 -->
 
-<!-- card:W27 -->
-### W27 · 命座「未描述」5 条改标（原文已收到、防御 / 生存向不建模）
+<!-- card:W28 -->
+### W28 · 命座镜像 `character-mechanics.json#cinemaImplementation` 单源化预审（只读，不实现）
 
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W27。
-工作区 `/home/kaua/projects/zzz-calculator`（主仓库；**只改下列两份 JSON 的这 5 档 + 生成产物**）。开工打印真实 HEAD 与 `git status --short`。
-父目标：W24（`.zc/reports/W24-undescribed-triage.md`）查明 `zc status`「命座未描述 6」里有 5 条的原文早已在库（`data/raw/nanoka_missing/full/<id>.json`），`pending` 也写明了「防御 / 生存向，用户确认不建模」或「已由现成滑块近似」——与图例 `not_described_not_implemented` =「未收到机制描述」的定义矛盾。
-lead 裁定（2026-09-25）：按数据字典 + 既有 4 条先例（`1101:C2`、`1121:C1`、`1551:C2`、`1551:C4` 均为防御向 `implemented_approximation` + 「不建模」说明）改标。**不改任何引擎数值**。
+你是执行工人，只完成本卡，不继续委派。TASK_ID=W28。
+工作区 `/home/kaua/projects/zzz-calculator`（**只读**）；脚本与产物只写 `/tmp/w28/`。开工打印真实 HEAD 与 `git status --short`。
+父目标：W24 §1 发现安东(1111) C1/C4/C6 在两份文件里状态互不一致。lead 预审（2026-09-25，`lead-arena-0925b`）全量普查证明**不是孤例**：以 `public/static/character-constellations.json` 的 `characters.<id>.cinemas` 为左、`public/static/character-mechanics.json` 的 `characters.<id>.cinemaImplementation` 为右、按 `cinema` 对齐——**status 不一致 62 档 / 21 角色**（绝大多数左 `implemented_approximation`、右 `not_described_not_implemented`）、status 相同但文本不同 53 档、右侧整段缺失 21 角色 126 档、完全一致 131 档（合计 62 角色 × 6 档 = 372）；全仓代码里只有 `scripts/sync-new-role-status.mjs`（写占位）出现 `cinemaImplementation` 字样。
+候选方案（**尚未决定**）：仿 `@fact engine:mechanics单一事实源` 的先例（顶层 corePassive/additionalAbility 重复字段「占位从不回填会漂移」⇒ 已删并由 validate:data 判据禁止）——删右侧镜像、单源 = constellations、sync 脚本停写、加判据。本卡只为这个决定取证。
 
-**先读**：W24 报告 §1 / §2 / §5（字段结构、原文落点、上游文件与镜像关系）；`public/static/character-constellations.json` 的 `statusLegend` 与 1121 C1 条目（先例句式）；`public/static/character-mechanics.json` 里 1141 / 1041 / 1111 / 1271 的 `cinemaImplementation`（1421 无镜像）；`data/raw/README.md:34`（两份 JSON 手维护、`validate:data` 兜底）；`scripts/generate-implementation-status.mjs`（产物怎么生成）。
+**先读**：`.zc/reports/W24-undescribed-triage.md` §1 第 22 行与 §5（两份文件的上游与写入者）；`scripts/sync-new-role-status.mjs`（`cinemaImplementation` 的 4 处）；validate:data 脚本里 `mechanics单一事实源` 那条 `@fact` 与其 `check(...)`（`grep -rn "mechanics单一事实源" scripts` 定位）；`scripts/generate-implementation-status.mjs`（状态表读哪份）。
 
-**允许写入**：`public/static/character-constellations.json`（只动 1141 C4 / 1421 C4 / 1041 C4 / 1111 C2 / 1271 C1 五档的 `status` / `implemented` / `pending`）；`public/static/character-mechanics.json`（只动上述四个角色对应档的镜像）；`docs/implementation-status.md`（**只许**由 `npm run docs:status` 重新生成，不手改）；报告 `.zc/reports/W27.md`（均先 `zc claim`）。
-**禁止**：改其它档位或其它角色（包括 W24 §1 提到的 1111 C1/C4/C6 镜像不一致——只报告，不修）；改 `src/`、`data/raw/`、`catalog.json`；改 JSON 的格式风格；跑全量 vitest / build。
+**允许写入**：`/tmp/w28/` 下任意文件；报告 `.zc/reports/W28-mirror-census.md`（先 `zc claim`）。
+**禁止**：改主仓库任何文件（报告除外）；改两份 JSON；跑 vitest / build。
 
 **步骤与验收**：
-1. **先证往返无损**：用 node 脚本 `JSON.parse` → 不做任何修改 → 按原风格序列化写到 `/tmp/w27-roundtrip-*.json`，与原文件 `sha256sum` 必须一致（两份 JSON 各证一次；不一致就先找出能逐字节还原的序列化方式，找不到 ⇒ `STATUS: blocked`）。之后才用同一脚本改值写回。（lead 预审 2026-09-25 实测：两份文件都是「紧凑单行 + 末尾一个 LF」，`JSON.stringify(o) + '\n'` 即逐字节还原。）
-2. 每档改为 `status: "implemented_approximation"`；`implemented` 写一句话（照 1121 C1 的句式：效果要点 +「防御向 / 生存向，伤害计算器不建模，不参与当前计算」）；1271 C1 写「护盾 / 上限 +30% 防御向不建模；核心被动异常精通失效后额外维持 10s 无独立时长维度，由 `seth.shieldCoverage` 持盾覆盖率滑块近似（默认 1 = 满覆盖时本条无增量）」；`pending` 清空，原 pending 里的用户确认日期挪进 `implemented` 句末括号，不许丢。**原文没有日期的档不许补日期**（lead 预审：只有 1421 C4 / 1041 C4 / 1111 C2 三档原文写了 `2026-08-31`）：1141 C4 原文只有「用户确认不建模」⇒ 括号只写「（用户确认）」；1271 C1 原文没有确认字样 ⇒ 用上面给定的整句，不加括号。
-3. 镜像同步：四个角色 mechanics 文件里的对应档与 constellations 同状态、同说明。
-4. `npm run docs:status` 重新生成产物；`node scripts/zc.mjs status` 的「命座」行必须变成「未描述 **1**」（只剩 1551 C6），「已实现」相应 +5。
-5. 验收：`npm run validate:data`、modelingGaps 的单测（自己定位路径，报告写明）、`npm run check-guards` 全部 EXIT=0；`git diff --stat` 只允许三份文件（两份 JSON + `docs/implementation-status.md`）。
-6. 负控：临时把 1271 C1 的 `status` 改回 `not_described_not_implemented` 并重跑 `npm run docs:status`，`zc status` 应回到「未描述 2」；还原后再生成一次，回到 1，`git diff --stat` 与第 5 步一致。
+1. 普查脚本 `/tmp/w28/census.mjs`（只 `JSON.parse` 两份文件）复现上面五个计数，输出 `/tmp/w28/diff.json`（每档：id、cinema、左右 status / implemented / pending）。**任一计数与 lead 数字不同 ⇒ 先查脚本与 HEAD 差异并写 discrepancy，不许改 lead 数字迁就**。
+   正控：1111 C1 / C4 / C6 必须落在「status 不一致」；负控：W27 刚改的 1141 C4 / 1041 C4 / 1111 C2 / 1271 C1 必须落在「完全一致」（1421 C4 落在「右侧缺失」）。
+2. **读者证明**（决定能不能删）：① 静态——`grep -rn "cinemaImplementation" src scripts index.html` 全文贴出；② 动态——逐处看所有读 `character-mechanics.json` 的代码（`grep -rn "character-mechanics" src scripts`）是否**整对象遍历或透传给 UI**（`Object.keys` / `Object.entries`、`v-for` 遍历条目键、`...` 展开进展示对象），每处写 `path:line` + 结论「只取已知键 / 可能透传」。任一处「可能透传」⇒ 报告里列为**删除阻塞**。
+3. **右侧独有信息**（决定删之前要不要迁移）：对「status 不一致」与「文本不同」共 115 档，用脚本找出右侧文本里有、左侧没有的数字 / 百分比 / 招式编号 / 设置键（正则 `\d+(\.\d+)?%?|#\d+|[a-z]+\.[A-Za-z]+`）；结果非空的逐条人工判 `冗余`（左侧已有同义表述）或 `独有`（贴原句 + 建议迁到左侧哪一档）。只列清单，不改文件。
+4. 写入者：`sync-new-role-status.mjs` 写 `cinemaImplementation` 的条件与内容（`path:line`）；若删镜像，它要改哪几行（只描述，不改）。
+5. 结论三选一：`可删`（零读者 + 独有信息已列迁移表）/ `须先迁移`（独有信息多，给迁移批次，每批 ≤ 5 档）/ `不可删`（有读者，写明读者与用途）。
 
-**证伪闸门**：前提假设 = 这 5 档只是标签错，改标不影响任何计算。可观察失败 = 任一既有测试因改标变红，或 `docs:status` 产物出现这 5 档以外的行变化 ⇒ 立即还原、`STATUS: blocked`，附失败输出。
+**证伪闸门**：前提假设 = 右侧镜像零读者，独有信息可忽略或可少量迁移。
+可观察失败 = 步骤 2 发现任一读者，或步骤 3 判为 `独有` 的超过 20 条 ⇒ 结论如实写 `不可删` / `须先迁移`（这同样是有效结论，照常 `STATUS: done`）。
 
-**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、往返无损的两组 sha256、每档改前 / 改后的对象（JSON 行过长时不要贴整行 diff）、验收命令原始输出尾部与退出码、负控输出、`zc status` 前后对照、未证明事项。
-`zc done --verifier '<验收命令>' --coverage '5 档命座改标 + 镜像 + implementation-status 产物' --risk '<未证明事项>'`。**不提交**。
-测试时段已授予（validate:data / modelingGaps / check-guards；不跑全量与 build）。
-<!-- /card:W27 -->
+**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、脚本全文、五个计数与正负控、读者证明逐处 `path:line`、独有信息清单、写入者行号、结论。
+`zc done --verifier 'node /tmp/w28/census.mjs' --coverage '62 角色命座镜像 × 读者 × 独有信息' --risk '<未证明事项>'`。**不提交**。
+不需要测试时段（纯静态读）。
+<!-- /card:W28 -->
 
 ## 3. 本队列的来源：2026-09-24 OPEN-ITEMS 分诊
 
