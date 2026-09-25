@@ -142,9 +142,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-9a | review | **done** `72e0eb5`（damagePool.ts 1727→1141；新 `damagePoolAnomaly.ts` 661 行；rowsnap/dump 624 零差，verify 3490） | damagePool 尾段（:1142–1725 异常 + 1171/1401/1261/爱丽丝/1581 附加行）原样外提 `damagePoolAnomaly.ts` 的 `emitAnomalyRows(env)`，共享 `rows` 注入 | damagePool.ts |
 | CC-9b | review | **done** `740290d`（damagePool.ts 1141→438；Direct 350 / Release 297 / CharExtras 241 行；rowsnap/dump 624 零差，verify 3490） | 逐角色主循环（:415–1132）按 D 直伤 / R 异放事件 / X 角色附伤三段原样外提 `damagePoolDirect.ts` / `damagePoolRelease.ts` / `damagePoolCharExtras.ts`；共享 `rows/seenDirectIds/claimedInAxis` 以对象引用经 `CharRowsEnv` 注入；辅助闭包（:116–413）留入口，CC-9c 再议 | damagePool.ts |
 | CC-9c | review | **不做**（lead 2026-09-25） | 辅助闭包（:116–413 `pushDirect/pushRelease/axisSplitFor/*Fraction` 等）外提：它们闭包入口局部量，外提须改工厂函数（非原样搬），收益小；damagePool.ts 已 438 行、职责单一（ctx 解构 + 辅助 + 编排三段）。若日后要单测辅助函数再立卡 | damagePool.ts |
-| CC-T1 | review | **待立项** | rowsnap 预设补「失衡轴 × 尾段角色」（1171/1401/1261/1581 + 爱丽丝）组合：CC-9a 反向 ① 实测该面零覆盖，只有 `inStunAttribution.test.ts` 兜底。低级模型可做（只加预设 + 重生成 A 基线） | .zc/perf/ |
+| CC-T1 | review | **ready**（fast，低级模型可做；卡见下，改本机 `.zc/perf` 不入库） | rowsnap 预设补「失衡轴 × 尾段角色」（1171/1401/1261/1581 + 爱丽丝）组合：CC-9a 反向 ① 实测该面零覆盖，只有 `inStunAttribution.test.ts` 兜底。低级模型可做（只加预设 + 重生成 A 基线） | .zc/perf/ |
 | CC-10 | review | **done** `a73b6f8`（useResourceCalc.ts 1189→789；新 `solveTeam.ts` 476 行 + 纯度锁测试；dump/rowsnap 624 零差，verify 3493） | `computeCalcOutput`（:248–654，含 `runOuterLoop` / `stageResolveFeasibility`）原样外提 `resourceCalc/solveTeam.ts#solveTeam(input)`，Vue 无关；唯一 store 写（降配闸门 ceiling）改为返回 `ceilingWriteBack` 由 composable 执行 | useResourceCalc.ts |
-| CC-11a | review | **ready**（lead 设计 2026-09-25 @3d8350d，卡见下） | C1 轮输入工厂 + C2 `resolveAxisUltimateDecibelCost` → `roundInputs.ts`；C3 `CalcRoundResult` → `roundResult.ts`；convergence.ts 原名 re-export，8 个消费者零改动 | convergence.ts |
+| CC-11a | review | **done** `129648b`（convergence.ts 1505→1153；roundInputs 354 / roundResult 24 行；vue 仅 type import；dump/rowsnap 624 零差，verify 3493） | C1 轮输入工厂 + C2 `resolveAxisUltimateDecibelCost` → `roundInputs.ts`；C3 `CalcRoundResult` → `roundResult.ts`；convergence.ts 原名 re-export，8 个消费者零改动 | convergence.ts |
 | CC-11b | review | design（待 11a） | `runCalcRound` 引入 `RoundCtx`，按工人 C 的 C4–C10 簇拆（33 个局部 `let` 的归属是设计核心；簇表行号 11a 后重测） | convergence.ts |
 | ~~CC-D1~~ | — | ✅ **done 2026-09-25（用户裁决「别人有为什么不算」）** | `damagePool.ts:1020` 琉音命破队友分支的贯穿力补 `sheerForceFlat`（改引 `calcPenetrationPower`） | damagePool.ts:1020 + `@fact engine:贯穿力/单一事实源`（GAME_TERM §10）+ 判据 `ccD3D1Verdict.test.ts::CC-D1` |
 | CC-D2 | — | **decide** | core `standardDotDamage` 生产零消费：删掉，还是让 damagePool 消费它（两套算法不同，需先对账） | 需用户口径 |
@@ -355,6 +355,34 @@ lead 已核事实：
 **反向验证**（各自恢复并以 dump 零差证明）：① `roundInputs.ts` 里 C2 临时恒 `return 3000` ⇒ `peiluo.test.ts` 红（证明 re-export 接的是新实现）；② `roundInputs.ts` 的 `expandExecutedToCounts` 首行临时 `return executed` ⇒ dump 非零差（证明 C1 是活的且被 useResourceCalc 经 re-export 调用）。
 
 ④ **报告**：三文件行数、convergence.ts 删除的 import 清单、check-guards 全部读数前后、两次反向验证结果、§4 + dump/rowsnap 尾部。
+
+**结项（lead 复核 2026-09-25）**：lead 逐行比对删除 348 行（差异仅按卡改写的文件头首行、一行 import 拆分）；三文件 get_diagnostics 0；check-guards 全读数不变（agentId 3/3、@fact 146/146、debt 6/6）。反向 ① C2 恒 3000 ⇒ peiluo 红（expected 3000 to be 2000）；② `expandExecutedToCounts` 短路 ⇒ dump DIFF 41。独立复跑 dump/rowsnap 624 零差、verify 3493 passed / 29 skipped。工人过程中自查出报告里编造的耗时数字并重跑取真值——提示词继续保留「附每条验收命令的尾部输出」。
+
+### CC-T1 · rowsnap 补「失衡轴 × 尾段角色」变体（fast，低级模型可做）
+
+**lead 设计（2026-09-25 lead-arena-0925c）**。背景：CC-9a 反向 ①（`emitAnomalyRows` 传 `isAxis:false`）在 rowsnap 上**零差**——现有 624 场景 = 预设 × {default,c0,c6,w,heavy,heavyGate}，**全部 `useStunAxis=false`**，尾段角色的轴内分支从未被快照覆盖（只有 `inStunAttribution.test.ts` 兜底）。
+⚠ `.zc/perf/` 被 `.gitignore:42` 忽略 ⇒ 本卡改的是**本机测试基建**，无仓库提交；产物是新基线文件 + 报告。
+
+① **先读**：`.zc/perf/rowsnap.perf.ts` 全文（~55 行）；§4 的 rowsnap / 比对命令；`src/stores/config.ts:519`（`useStunAxis`）；`src/composables/resourceCalc/damagePool.ts` 中 `const isAxis =` 一行（轴判据 = `(useStunAxis || autoActive) && stunAxisResult`）。
+
+② **做法**：
+1. 只改 `.zc/perf/rowsnap.perf.ts`（**不改** `dump.perf.ts`——dump 基线不动）：在每个预设的变体序列**末尾**（`heavyGate` 复位之后）追加
+   ```ts
+   if (/\b(1171|1261|1401|1581)\b/.test(p.id.replace(/-/g, ' '))) {
+     const ax = config.useStunAxis
+     config.useStunAxis = true; snap(`${p.id}/axis`)
+     config.useStunAxis = ax
+   }
+   ```
+   （1171 柏妮思 / 1261 简 / 1401 爱丽丝 / 1581 蕾米埃尔 = `damagePoolAnomaly.ts` 尾段的角色块。）
+2. 生成新基线：`PERF_OUT=/home/kaua/calc-arch/rows-A2.json npx vitest run --config .zc/perf/vitest.perf.config.ts rowsnap`。
+3. **旧键不变证明**：用 §4 比对脚本思路写一次性 node 比对，只比 `rows-A.json` 的键：rows-A2 在这 624 个键上必须与 rows-A **逐值相等**（证明追加变体不扰动其它场景）；新增键数 = N（报告写明，应 > 0）。
+4. **判据生效证明（本卡主判据）**：临时把 `src/composables/resourceCalc/damagePool.ts` 里 `emitAnomalyRows({... isAxis: Boolean(isAxis) ...})` 改为 `isAxis: false`，跑 rowsnap 到 `rows-T.json`，与 rows-A2 比对 ⇒ **必须非零差，且差异键全部以 `/axis` 结尾**（报条数与前 10 键）。**恢复**后再跑一次，与 rows-A2 零差。
+   若仍零差：说明 `useStunAxis=true` 下 `stunAxisResult` 为空或这些预设无轴块——**不要**改业务代码，写 STATUS: blocked，附：一个 `/axis` 场景的 `calc.stunAxisResult.value` 是否为 null（可在 perf 里临时 console.log）。
+5. 通过后：`mv rows-A2.json rows-A.json`（旧文件先备份为 `old/rows-A-624.json`），并在 §4 rowsnap 说明处由 lead 更新场景数（工人只在报告里写新场景数，**不改 docs**）。
+
+③ **验收**：第 3、4 步两项比对输出；`git status` 显示仓库**无**已跟踪文件改动（damagePool.ts 已恢复）。
+④ **报告** `.zc/reports/CC-T1.md`：新增键数与列表前 20、旧键逐值相等输出、反向输出、恢复后零差输出。
 
 ### CC-10 · `solveTeam` 抽离 Vue：`computeCalcOutput` 外提 `resourceCalc/solveTeam.ts`（review）
 
