@@ -302,6 +302,14 @@ lead 2026-09-26 实读：引擎侧的数学（refund 解析不动点 `O*=(E0−�
 
 **报告**：`.zc/reports/CC-13.md`，第一行 `STATUS: done|blocked`；逐文件改动摘要、两条闸门 grep 的原始输出、build / dump / rowsnap / check-guards 尾部输出（原文，不许估算）。
 
+**v2 修订（lead 2026-09-26，首派工人发现的卡面漏洞）**：§4 的 dump/rowsnap 对 `rr`（资源结果）整体做 sha256，
+每个角色的 `energySource` 都带 `yidhariRefund` 键 ⇒ **纯改名也会让 624/637 场景全部「有差」**（数值没变，是键名进了哈希）。
+首派工人正确识别后在「闸门要求改名」与「要求零差」之间打转、未改 src，lead 已停掉。修法（不放松判据）：
+`.zc/perf/{dump,rowsnap}.perf.ts` 的 `enc()` 新增开关 **`PERF_KEY_ALIAS=1`**——哈希前把上表 6 个新键名映射回旧名、剔除新增
+`exRefundFreeCap`，键位置不变，其它对象原样（lead 已在 HEAD 上验证开关透明：带开关对 A 零差）。**本卡零差判据 = 带
+`PERF_KEY_ALIAS=1` 跑出的 dump/rowsnap 对 A 零差**；另附不带开关的一次结果（预期全量 DIFF，仅作「键确实改了」的旁证）。
+合入后 lead 不带开关重生成 dump-A / rows-A。字段映射、步骤、闸门其余不变。
+
 ### CC-6d · 维琳娜风蚀迁引擎能力（review）
 
 **lead 设计（2026-09-25 lead-arena-0925c，替代设计稿 §3.4）**。现状（@4fa05c8 实测）：`4ca47db` 已把风蚀认人收敛为
