@@ -127,7 +127,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-1 | fast | **done（dsflash 工人 + lead 复核）** | `find*` 招式表查询迁 `core/resource/moveLookup.ts` | core/resource.ts 1288–1705 |
 | CC-2 | fast | **done（dsflash 工人 + lead 复核）** | 热启动缓存迁 `core/resource/warmStart.ts` | core/resource.ts 98–160 |
 | CC-3 | fast | **done**（lead 复核：dump 624 零差、guards 21、build、§4+floatNoise/miyabiCinema 37 测过；同机 A/B 耗时 HEAD 52.0/53.2s vs CC-3 50.0/52.6s 无退化） | S1 `runInnerLoop` 提为纯函数 `core/resource/innerLoop.ts` | core/resource.ts 356–430 |
-| CC-4 | review | design | `SolveDiagnostics` 累加器 + S2 `runFoldLoop` 外提 | core/resource.ts 329–600 |
+| CC-4 | review | **ready**（lead-arena-0925c @1da56fc 写设计，见下方 CC-4 卡） | `SolveDiagnostics` 累加器 + S2 `runFoldLoop` 外提（+ `buildExecutionsWithPhase` 迁 `phaseExecutions.ts`） | 见下方 CC-4 卡 |
 | CC-5 | review | design（依赖 CC-4） | S3a 欠打回填 / S4 `assembleSlot` / 重折环外提；`calcTeamResources` 收成编排器 | core/resource.ts 677–1210 |
 | CC-6a | review | **done**（dsflash 工人 + lead 复核：dump 624 零差、反向验证 36 条 banyue 场景红、guards 21、build、27 文件 533 测过） | 引擎能力 `exSpecialCount`：1471 般岳分支迁模块；core agentId 6→5、core 角色 import 5→4 | mechanics/types.ts、agents/banyue.ts、core/resource/helpers.ts、2 个棘轮基线 + RATCHET_BURNDOWN |
 | CC-6b | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差、反向验证 42 条 1051+1451 场景红、guards 21、build、509 测过；另核全部 crossAgentSupply 消费点均按 kind 过滤 ⇒ yidhari 新声明不会被误取） | 1451 帷幕：`curtainTriggers` 能力 + yidhari 声明 `crossAgentSupply.kind='curtain-open'`；agentId 5→3、import 4→2 | 见下方 CC-6b 卡 |
@@ -308,6 +308,64 @@ anomalyPool 已有现成的能力通道 `input.agentMechanics`（同 `transformA
 
 ④ **报告**：改动行、闸门 grep、棘轮新旧值、两次反向验证差异条数与前 10 个场景键、§4 + rowsnap 尾部输出。
 
+
+### CC-4 · SolveDiagnostics 累加器 + S2 `runFoldLoop` 外提（review）
+
+**lead 设计（2026-09-25 lead-arena-0925c，@1da56fc 实测；取代 §3 草图里的 `solveContext.ts` 命名——`SolveContext` 留给 CC-5）**。
+现状：`calcTeamResources`（`resource.ts:181`）有 **10 个诊断 `let`**（:263–274）：`converged`、`iter`、`timeBudgetPasses`、`timeBudgetConverged`、
+`timeBudgetResidualSeconds`、`timeBudgetIdleSeconds`、`timeBudgetRefundedSeconds`、`refundFrozen`、`bestExcess`、`stagnantPasses`。
+写入点：`runFoldLoop` 闭包（:294–467）、`runPreTailFinalize`（:476）、`runTailPipeline` 内欠打回填（:607 / :617）与伊德海莉 tail（:644）、
+`resetDiagnostics`（:924–935）、重折环 `accepted` 快照（:948–952）与拒绝还原（:978–987）。读出点：`PROBE_TRACE_FOLD` 打表（:1028–1035）与返回值（:1045–1060）。
+dump 对整个 `resourceResult` 取 hash（含 `iterations` / `converged` / `convergence.*`）⇒ 诊断量写错 dump 必红。
+
+① **先读**：`src/core/resource.ts` 75–100、181–300、294–470、470–500、595–650、905–1060；`src/core/resource/innerLoop.ts` 1–60（纯函数 + ctx 先例）；
+`src/core/resource/finalizePasses.ts`（参数注入先例）；`src/types/resource/team.ts` 中 `@fact engine:收敛读数归属`。
+
+② **做法**（同一提交，按序）：
+1. 新建 `src/core/resource/solveDiagnostics.ts`：
+   ```ts
+   export interface SolveDiagnostics {
+     converged: boolean; iterations: number
+     timeBudgetPasses: number; timeBudgetConverged: boolean
+     timeBudgetResidualSeconds: number; timeBudgetIdleSeconds: number; timeBudgetRefundedSeconds: number
+     refundFrozen: boolean; bestExcess: number | undefined; stagnantPasses: number | undefined
+   }
+   export function createSolveDiagnostics(): SolveDiagnostics // 初值与 :263–274 逐字相同
+   ```
+   resource.ts：10 个 `let` → `let diag = createSolveDiagnostics()`；所有读写改 `diag.<字段>`（`iter` → `diag.iterations`）。
+   `resetDiagnostics()` → `diag = createSolveDiagnostics()`；`accepted` 快照里 10 个字段 → 一个 `diag`（存引用即可：随后 reset 换新对象，旧对象此后无人写）；
+   拒绝分支 10 行还原 → `diag = accepted.diag`。**闭包里一律经变量 `diag` 访问，禁止 `const d = diag` 之类缓存**（重折换对象后会写到旧对象）。
+2. 新建 `src/core/resource/phaseExecutions.ts`：`buildExecutionsWithPhase`（:85–98）原样搬去并 export（依赖只有 `helpers.buildExecutions` + `getAgentMechanic`）；
+   resource.ts 改 import，:797 调用点不变。
+3. 新建 `src/core/resource/foldLoop.ts`：
+   ```ts
+   export interface FoldLoopContext {
+     configs: CharacterOperationConfig[]; config: ResourceCalcConfig
+     totalTime: number; maxTimeIter: number
+     injected: boolean                       // 原 `injectedStates` 的真值判断
+     defaultSeedStates: IterationState[]; innerCtx: InnerLoopContext
+   }
+   export function runFoldLoop(ctx: FoldLoopContext, diag: SolveDiagnostics, from: IterationState[]): IterationState[]
+   ```
+   函数体 = 闭包 :295–466 **原样搬**，只做机械替换：外层变量 → `ctx.x`；诊断 → `diag.x`；`runInnerLoop(x)` → `runInnerLoop(x, ctx.innerCtx)`
+   （直接 import `./innerLoop`、`./helpers`、`./crossAgentSupply`、`./phaseExecutions`，同 innerLoop 直接 import helpers 的先例；**不得 import `../resource`**，会成环）。
+   `PROBE_TRACE_FOLD` 打表块随搬、字段名不变（`convergenceProbe.test` 读 `globalThis.__foldPasses`）。
+   resource.ts 留一行 `const runFoldLoop = (from: IterationState[]) => runFoldLoopPure(foldCtx, diag, from)`（**每次调用时读 `diag`**），两个调用点（:485、:965）逐字不改。
+   - 原闭包 for 体没缩进（:298 起），搬时可规范缩进，但不许改任何表达式、顺序或常量。
+   - 注释全部随代码搬，含 `@fact engine:收敛环停点规范化`：其 `锚` 从 `src/core/resource.ts#calcTeamResources` 改为 `src/core/resource/foldLoop.ts#runFoldLoop`。
+   - 搬完 `grep -rn "runFoldLoop" docs/ src/ scripts/`：只改 `src/core/**` 内注释；`docs/` 里的引用只在报告里列清单，不改（lead 处理）。
+4. 禁止：改任何数值 / 条件 / 顺序；把每 pass 局部量（`teamRefund` / `maxExcess` / `maxIdle`）放进 diag；动 `runTailPipeline` 逻辑（只做诊断变量改名）；建子目录。
+
+**证伪闸门**：前提 =「10 个诊断量只在上列点读写，且『重折换新对象 / 拒绝换回旧对象』≡ 旧式逐字段快照还原」。可观察失败 = dump 非零差异。
+动手前记 `grep -cE '\b(iter|converged|refundFrozen|bestExcess|stagnantPasses|timeBudget(Passes|Converged|ResidualSeconds|IdleSeconds|RefundedSeconds))\b' src/core/resource.ts`；
+收工时 `grep -nE '^\s*let (converged|iter|refundFrozen|bestExcess|stagnantPasses|timeBudget)' src/core/resource.ts` 必须为空。
+
+③ **验收**：§4 全套 + rowsnap + `npm run check-guards` + `npm run validate:specs` + `npm run build` +
+`npx vitest run src/composables/__tests__/convergenceProbe.test.ts src/core/__tests__/truncationRefold.test.ts src/core/__tests__/warmStart.test.ts src/composables/__tests__/seedInvariance.test.ts src/core/__tests__/dynamicComboAlign.test.ts src/composables/__tests__/convergenceNightB.test.ts src/scripts/__tests__/`。
+**反向验证**（两次，各自恢复并以零差异证明）：① foldLoop.ts 里临时删 `diag.iterations = inner.iterations` ⇒ dump 必须非零差异（证明返回读数来自新 diag）；
+② 临时删拒绝分支的 `diag = accepted.diag` ⇒ 报告差异条数（624 场景若无「重折被拒」样本可能为 0：如实写「拒绝路径无 dump 样本」，不算失败）。
+
+④ **报告**：改动行、闸门 grep 前后读数、resource.ts 行数前后、docs 里需 lead 改的 `runFoldLoop` 引用清单、两次反向验证差异条数与前 10 个键、§4 + rowsnap 尾部输出。
 
 每张 design 卡放行前，lead 在本节补三样：**接口签名**、**证伪闸门**（前提假设 + 假设为假时的可观察失败）、**切批顺序**。
 已知前提与风险（工人 A/B/C 报告，lead 抽查）：
