@@ -197,7 +197,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 ### 8.3 余火（菲欧妮专属资源）的标度口径
 
 - 倍率表整型资源列统一 **×10000**：同一行 `energy_gain_base=71040` 在 catalog 就是 `energy_recovery 7.104`（`node scripts/resolve.mjs 招式 1641 1641004` 可查）⇒ `attack_data[1641004]=147634` 即 **14.7634 余火/次**（三段 8.02 / 四段 14.76 / 强特 15.02+19.70 / 连携 14.88 / 终结 28.82，gachabase 与 nanoka 双源同值）；长按普攻消耗 90。反证 `/100` 读法 = 1476 余火/次 ⇒ 一次命中连放 16 次长按，不成立。
-- @fact 1641·余火标度 口径: 倍率表整型列 ×10000（同列 energy_gain 71040 → catalog 7.104 互证），attack_data/10000 = 余火/次，长按消耗 90 | 据 用户复核@2026-09-14 | 验 src/mechanics/__tests__/phoenix.test.ts::余火自动推导防回归 | 锚 src/mechanics/agents/phoenix.ts#PHOENIX_COMBUSTION_MOVE_IDS | 信 确认
+- @fact 1641·余火标度 口径: 倍率表整型列 ×10000（同列 energy_gain 71040 → catalog 7.104 互证），attack_data/10000 = 余火/次，长按消耗 90 | 据 用户复核@2026-09-14·复核@2026-09-25 | 验 src/mechanics/__tests__/phoenix.test.ts::余火自动推导防回归 | 锚 src/mechanics/agents/phoenix.ts#PHOENIX_COMBUSTION_MOVE_IDS | 信 确认
   ⟳复核: 下个版本核对倍率表整型列标度仍为 ×10000（同列 energy_gain 与 catalog energy_recovery 互证），长按消耗仍为 90 | 到期 2026-12-31
 
 ---

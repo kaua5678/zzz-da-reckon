@@ -183,7 +183,7 @@ export function computeBillyChain(
  * 摇曳/抓地次数保持整数（付费强特次数是闪能池的整数推导量，链预算只裁剪摇曳链）。
  * quantize=true 与原 8 轮循环逐位等价（先按整数预算裁摇曳 → 预算重算 → max(轴内, floor(预算))）。
  */
-// @fact agent:1531/链数实数化 口径: 动力压制链数与最高马力星光在迭代期以**实数**参与收敛（HP 池 ∝ 普攻回血 ∝ 平A时间 = 正反馈连续信道，floor 一次翻转 = 一条整链 ≈10s 是环增益>1 原产地）——估时钩子收 `state` 直推当轮 basicAttackTime（与 buildExecutions 共用同一求解器，消掉「读上一轮 record.billyChainCount」的无意稳定器滞后），终局 `billyFinalizeChain` 整数重推 floor 一次；轴模式恒整数（捏轴是用户意图，重推与行时间物化均跳过轴）；最高马力星光 3.1s 行时间必须物化到行本身（否则账本>行 idle 被回填成 refund 双击，实测超预算 16s） | 据 实测@2026-09-06 + 1051/1431 targeted 前例 | 验 src/mechanics/__tests__/billySmoke.test.ts#星徽·比利链数实数化 | 锚 src/mechanics/agents/starlightBilly.ts#computeBillyHpModel | 信 高
+// @fact agent:1531/链数实数化 口径: 动力压制链数与最高马力星光在迭代期以**实数**参与收敛（HP 池 ∝ 普攻回血 ∝ 平A时间 = 正反馈连续信道，floor 一次翻转 = 一条整链 ≈10s 是环增益>1 原产地）——估时钩子收 `state` 直推当轮 basicAttackTime（与 buildExecutions 共用同一求解器，消掉「读上一轮 record.billyChainCount」的无意稳定器滞后），终局 `billyFinalizeChain` 整数重推 floor 一次；轴模式恒整数（捏轴是用户意图，重推与行时间物化均跳过轴）；最高马力星光 3.1s 行时间必须物化到行本身（否则账本>行 idle 被回填成 refund 双击，实测超预算 16s） | 据 实测@2026-09-06 + 1051/1431 targeted 前例·复核@2026-09-25 | 验 src/mechanics/__tests__/billySmoke.test.ts#星徽·比利链数实数化 | 锚 src/mechanics/agents/starlightBilly.ts#computeBillyHpModel | 信 高
 export function computeBillyHpModel(
   paidEx: number,
   rocking: number,

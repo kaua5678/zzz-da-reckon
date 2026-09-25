@@ -293,7 +293,7 @@ function pushEllenExecution(executions: AgentResourceInput['executions'], input:
   actionTime: number
 }): void {
   if (input.count <= 0) return
-  // @fact agent:1191/喧响行级回填审计 口径: 本 helper 全部 9 个调用行（1191006 急冻修剪法#3=61.38、1191007 回旋斩击=15.565、1191009 蓄力剪击=30.415、1191011 横扫=140.36、1191012 鲨卷风C2追加=130.71、1191027 挥刀=6.435、1191028 剑气=1.4025、1191029/1191030 冰刃浪=16.7475/21.0375）均为真实招式 moveId 且倍率表 decibel_recovery 为每次值——删除旧 decibelRecovery:0 硬编码后由 enrichExecutionPlan/记账层 Σ 按表回填；与通用强特行（鲨卷风本体）不重叠（C2 行是「全鲨卷风」的第二次施放），旧 0 曾使这些行在账本与展示双侧漏计 | 据 catalog 1191 表值逐行核对@2026-09-08 | 验 src/core/__tests__/decibelRowParity.test.ts | 锚 src/mechanics/agents/ellen.ts#pushEllenExecution | 信 确认
+  // @fact agent:1191/喧响行级回填审计 口径: 本 helper 全部 9 个调用行（1191006 急冻修剪法#3=61.38、1191007 回旋斩击=15.565、1191009 蓄力剪击=30.415、1191011 横扫=140.36、1191012 鲨卷风C2追加=130.71、1191027 挥刀=6.435、1191028 剑气=1.4025、1191029/1191030 冰刃浪=16.7475/21.0375）均为真实招式 moveId 且倍率表 decibel_recovery 为每次值——删除旧 decibelRecovery:0 硬编码后由 enrichExecutionPlan/记账层 Σ 按表回填；与通用强特行（鲨卷风本体）不重叠（C2 行是「全鲨卷风」的第二次施放），旧 0 曾使这些行在账本与展示双侧漏计 | 据 catalog 1191 表值逐行核对@2026-09-08·复核@2026-09-25 | 验 src/core/__tests__/decibelRowParity.test.ts | 锚 src/mechanics/agents/ellen.ts#pushEllenExecution | 信 确认
   executions.push({
     moveId: input.moveId,
     moveName: input.moveName,
@@ -399,7 +399,7 @@ function buildEllenExecutions({ cfg, state, executions }: AgentResourceInput): v
   // + 循环行 ~50s；1191/1361/1311 默认口径留白 15.0s、账本虚高 19.9s 全在她身上，1191/1161/1311 同 19.9s）。
   // 时间从聚合行挤出（总前台占用守恒）；喧响按剩余时间比例缩（循环行按表带每次喧响，不缩即双计）；
   // 能量**不动**（循环行不带回能——表值 0 落行值 0，回能留在聚合行防丢，同 sigrid 平A分段口径）。
-  // @fact agent:1191/循环行时间占用 口径: 蓄力剪击/急冻修剪法#3/冰刃浪/霜锋挥刀行由 basicAttackTime 解出，占的就是平A池那份时间，必须从通用 basic_attack 聚合行挤出（挤出量 = 循环行总时长，封顶聚合行时长），喧响按比例缩、能量不缩 | 据 模块头注释「循环战场时间由平A池驱动」+ 朱鸢 1241 用户口径 2026-08-26 同构·实测@2026-09-19 | 验 src/mechanics/__tests__/ellen.test.ts#循环行占的就是平A池那份时间 | 锚 src/mechanics/agents/ellen.ts#buildEllenExecutions | 信 确认
+  // @fact agent:1191/循环行时间占用 口径: 蓄力剪击/急冻修剪法#3/冰刃浪/霜锋挥刀行由 basicAttackTime 解出，占的就是平A池那份时间，必须从通用 basic_attack 聚合行挤出（挤出量 = 循环行总时长，封顶聚合行时长），喧响按比例缩、能量不缩 | 据 模块头注释「循环战场时间由平A池驱动」+ 朱鸢 1241 用户口径 2026-08-26 同构·实测@2026-09-19·复核@2026-09-25 | 验 src/mechanics/__tests__/ellen.test.ts#循环行占的就是平A池那份时间 | 锚 src/mechanics/agents/ellen.ts#buildEllenExecutions | 信 确认
   // ⟳复核: 艾莲循环模型（computeEllenCycle 的时间方程）或聚合行回能/喧响载体口径再动时，复核「聚合行 + 循环行时长 == basicAttackTime」守恒（ellen.test）+「1191 系默认口径留白 ≤ 2s」（timeFillRatchet auto-1191-*）+ 循环行喧响不双计（decibelRowParity） | 到期 2026-12-31
   const cycleTime = cycle.frostTrimSegments * ELLEN_FROST_TRIM_ACTION_TIMES[0]
     + cycle.dashChargedCount * ELLEN_DASH_TOTAL_ACTION_TIME

@@ -93,8 +93,8 @@ export function resolveUltimateTargetSlot(ownSlot: number, teamLength: number, s
  * 60 转大默认 = 每次失衡 1 次（用户口径 2026-09-19），上限每次失衡 2 次（用户口径 2026-09），可调。
  * 返回的 hug60 即"被替换掉的连携数"，也是影画6 余音的触发次数来源之一。
  */
-// @fact agent:1481/60转大上限 口径: 60 转大默认=每次失衡 1 次（2026-09-19 修正；原「默认=连携总数」废止），上限每次失衡 2 次，liuyin.hug60Count 可调总转大数 | 据 用户@2026-09-19「该默认1失衡提供一次连携转大的机会」 | 验 src/mechanics/__tests__/liuyin.test.ts | 锚 src/mechanics/agents/liuyin.ts#computeLiuyinHugCounts | 信 确认
-// @fact agent:1481/开窗次数 口径: 阈值结转——每次开窗要求当刻好评≥90，有连携窗口扣60/无窗口扣90，余额结转；故计数为贪心推进（好评390+连携窗口⇒6窗=90+60×5），**不是** floor(总量/90) 的预算上限模型（后者在好评落在 [90+60k,90(k+1)) 区间时少算；无连携窗口时两者一致） | 据 原文核心被动「当[好评]满90点且…」+ 用户需求链③@2026-09-13 | 验 src/mechanics/__tests__/liuyin.test.ts | 锚 src/mechanics/agents/liuyin.ts#computeLiuyinHugCounts | 信 确认
+// @fact agent:1481/60转大上限 口径: 60 转大默认=每次失衡 1 次（2026-09-19 修正；原「默认=连携总数」废止），上限每次失衡 2 次，liuyin.hug60Count 可调总转大数 | 据 用户@2026-09-19「该默认1失衡提供一次连携转大的机会」·复核@2026-09-25 | 验 src/mechanics/__tests__/liuyin.test.ts | 锚 src/mechanics/agents/liuyin.ts#computeLiuyinHugCounts | 信 确认
+// @fact agent:1481/开窗次数 口径: 阈值结转——每次开窗要求当刻好评≥90，有连携窗口扣60/无窗口扣90，余额结转；故计数为贪心推进（好评390+连携窗口⇒6窗=90+60×5），**不是** floor(总量/90) 的预算上限模型（后者在好评落在 [90+60k,90(k+1)) 区间时少算；无连携窗口时两者一致） | 据 原文核心被动「当[好评]满90点且…」+ 用户需求链③@2026-09-13·复核@2026-09-25 | 验 src/mechanics/__tests__/liuyin.test.ts | 锚 src/mechanics/agents/liuyin.ts#computeLiuyinHugCounts | 信 确认
 // ⟳复核: 若琉音原文改版（好评消耗值 60/90 或开窗条件变动）则复核本口径；另「连携/破阵按实际失衡次数」改造（坑19未落地·有裁决A）开工时一并复核 | 到期 2026-12-31
 export function computeLiuyinHugCounts(
   goodReviewTotal: number,
@@ -287,7 +287,7 @@ function buildLiuyinCharConfig({ slot, cinemaLevel, team, skills, cfg, panel, ge
  * 配套（同一轮）：折叠环收敛判据从 1e-6 放宽到量化残差容差——精确估时把 excess 压到 ~5e-4s
  * 量级，1e-6 判据 8 轮耗尽 → timeBudgetConverged=false 而 allAgentsSweep 硬断言恒 true。
  */
-// @fact agent:1481/强特计划估时 口径: 琉音必要时间 = 三强特（石头0.617/剪刀0.867/布1.383 × 轮转次数）+ 送客（转大次数+终结技次数 × farewellActionTime），由 estimateExSpecialTime 计账——通用公式只按单段计会漏 剪刀/布/送客 ≈15s，折叠积分器把漏差风卷成必要时间虚高（1591/1481 队 pass0 excess 15.1s 的来源）；强化A（猜拳把戏）从平A池 carve 不进必要时间 | 据 实测@2026-09-06 + sigrid 同款修复·复核@2026-09-08 | 验 src/mechanics/__tests__/liuyin.test.ts#强特计划估时 | 锚 src/mechanics/agents/liuyin.ts#liuyinExSpecialTime | 信 高
+// @fact agent:1481/强特计划估时 口径: 琉音必要时间 = 三强特（石头0.617/剪刀0.867/布1.383 × 轮转次数）+ 送客（转大次数+终结技次数 × farewellActionTime），由 estimateExSpecialTime 计账——通用公式只按单段计会漏 剪刀/布/送客 ≈15s，折叠积分器把漏差风卷成必要时间虚高（1591/1481 队 pass0 excess 15.1s 的来源）；强化A（猜拳把戏）从平A池 carve 不进必要时间 | 据 实测@2026-09-06 + sigrid 同款修复·复核@2026-09-08·复核@2026-09-25 | 验 src/mechanics/__tests__/liuyin.test.ts#强特计划估时 | 锚 src/mechanics/agents/liuyin.ts#liuyinExSpecialTime | 信 高
 function liuyinExSpecialTime({ cfg, exSpecialCount, ultimateCount }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
   // 轴模式回落：轴模式经 chainCountTotalOverride 注入窗口加权的最终连携次数（engine 口径），
   // 轴内 60/90 转大次数由轴预设 promoteVariant 块决定、不随好评推导——通用公式 + 折叠残差是
