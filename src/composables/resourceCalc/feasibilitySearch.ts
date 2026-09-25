@@ -85,7 +85,7 @@ export function downscaleTrialAccepted(args: {
  * `selectDownscaleScale` 先找达成目标的最大档，找不到才退回「比现状好」。
  * 容差与截断硬门槛同源（`TIME_BUDGET_TOLERANCE_SECONDS` = 1s 量化地板，坑 12「不追求精确 0」）。
  */
-// @fact engine:降配搜索/绝对可行优先 口径: 降配选档两层字典序——首个「截断≤容差 且 净占用超预算≤容差」的绝对可行档优先（= 真装进 180s 的最大档），无绝对可行档才退回首个「三臂不比基线更差」的相对档；相对臂是兜底不是终点（yixuan-roxy-lucia 曾靠假截断误拒 0.875 才碰巧选到真可行的 0.625，刀 1 去掉假截断后暴露） | 据 用户裁决@2026-09-18「治根」·R32 | 验 src/composables/__tests__/feasibilitySearch.test.ts | 锚 src/composables/resourceCalc/feasibilitySearch.ts#downscaleTrialFeasible | 信 确认
+// @fact engine:降配搜索/绝对可行优先 口径: 降配选档两层字典序——首个「截断≤容差 且 净占用超预算≤容差」的绝对可行档优先（= 真装进 180s 的最大档），无绝对可行档才退回首个「三臂不比基线更差」的相对档；相对臂是兜底不是终点（yixuan-roxy-lucia 曾靠假截断误拒 0.875 才碰巧选到真可行的 0.625，刀 1 去掉假截断后暴露） | 据 用户裁决@2026-09-18「治根」·R32·复核@2026-09-25 | 验 src/composables/__tests__/feasibilitySearch.test.ts | 锚 src/composables/resourceCalc/feasibilitySearch.ts#downscaleTrialFeasible | 信 确认
 // ⟳复核: DOWNSCALE_SCALES 网格或 TIME_BUDGET_TOLERANCE_SECONDS 再动时，复核「退回相对档」的队数（R32 实测全库 0 队走兜底）是否仍为 0 | 到期 2026-12-31
 export function downscaleTrialFeasible(args: {
   trialNet: number

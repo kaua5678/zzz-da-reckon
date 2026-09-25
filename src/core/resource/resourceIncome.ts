@@ -70,7 +70,7 @@ export function calcEnergySource(
   // 来自模块行与表值回填行——专属链角色行级能量曾系统性漏计（第一段清账后 89 行回填 + 模块预计算行，
   // 如伊德海莉蓄力循环把平A载体置 0、由 slam/follow 行承载闪能，旧聚合按全额平A时间计 = 口径分裂）。
   // 相位隔离复用 materializeRows（cfg 快照 + 恢复，喧响通道同款）；行值语义见 rowEnergyTotal。
-  // @fact engine:能量收入行级Σ 口径: skillRegen = Σ 可行行的行级能量收入（rowEnergyTotal，与喧响收入行级Σ 同构；记账层==展示层）。teamFrontlineSeconds 语义 == 装配层（Σ 队友前台秒）。cfg.rowTimeLimit 缺省 = 未截断行（默认路径走 materializeRows，零 delta）；被 calcTeamResources 重折环按上一轮装配 kept 写入时按 feasibleRows（招式行 ≤ kept，与装配同一截断算法）计——债 2「截断不回灌」由外环收敛吸收，账本与展示层同源 | 据 债务审计 07481b8 + 引擎探针@2026-09-09 · 债2批2-1@2026-09-19 R37 | 验 src/core/__tests__/energyRowParity.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource/rowBuild.ts#feasibleRows | 信 确认
+  // @fact engine:能量收入行级Σ 口径: skillRegen = Σ 可行行的行级能量收入（rowEnergyTotal，与喧响收入行级Σ 同构；记账层==展示层）。teamFrontlineSeconds 语义 == 装配层（Σ 队友前台秒）。cfg.rowTimeLimit 缺省 = 未截断行（默认路径走 materializeRows，零 delta）；被 calcTeamResources 重折环按上一轮装配 kept 写入时按 feasibleRows（招式行 ≤ kept，与装配同一截断算法）计——债 2「截断不回灌」由外环收敛吸收，账本与展示层同源 | 据 债务审计 07481b8 + 引擎探针@2026-09-09 · 债2批2-1@2026-09-19 R37·复核@2026-09-25 | 验 src/core/__tests__/energyRowParity.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource/rowBuild.ts#feasibleRows | 信 确认
   // ⟳复核: 账本行级收入口径再动、或重折环上限/容差/kept 口径再动时，复核「无 rowTimeLimit 的队 skillRegen 逐位不变」+「重折队 Σcut 只减不增」（truncationRefold.test.ts） | 到期 2026-12-31
   const skillRegen = feasibleRows(cfg, state, chainCountTotal, teamFrontlineSeconds, cfg.rowTimeLimit)
     .reduce((sum, row) => sum + rowEnergyTotal(cfg, row), 0)
@@ -203,7 +203,7 @@ export function calcRawDecibelParts(
   totalTime = 180,
   teamFrontlineSeconds = 0,
 ): { skillRegen: number; bonusRegen: number; timeSliceDecibel: number; shareableTotal: number } {
-  // @fact engine:喧响收入行级Σ 口径: skillRegen = Σ 可行行的行级喧响收入（rowDecibelTotal，与伤害/失衡/异常「倍率列逐行进账」同构）。旧「次数×常量」聚合通道删除：聚合行与 buildExecutions 常量同源故恒等，差异全部来自模块行（债务清偿——专属链角色曾系统性低估，仪玄行级 5628 vs 聚合 1702；yixuanBackstageDecibel 聚合项曾把 4 招全加而合轴语义是二选一替换对，行级即修复）。迭代期用本次调用的 exSpecialCount/ultimateCount 覆盖进 rowState（伊德海莉 decibel 通道 floor 口径、实数松弛口径均不变）；teamFrontlineSeconds 语义 == 装配层（Σ 队友前台秒）。cfg.rowTimeLimit 缺省 = 未截断行（默认路径零 delta）；重折环写入时按 feasibleRows 计，与能量行级Σ 同一分支 | 据 债务审计 5761e02 + 引擎探针@2026-09-08 · 债2批2-1@2026-09-19 R37 | 验 src/core/__tests__/decibelRowParity.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource/rowBuild.ts#feasibleRows | 信 确认
+  // @fact engine:喧响收入行级Σ 口径: skillRegen = Σ 可行行的行级喧响收入（rowDecibelTotal，与伤害/失衡/异常「倍率列逐行进账」同构）。旧「次数×常量」聚合通道删除：聚合行与 buildExecutions 常量同源故恒等，差异全部来自模块行（债务清偿——专属链角色曾系统性低估，仪玄行级 5628 vs 聚合 1702；yixuanBackstageDecibel 聚合项曾把 4 招全加而合轴语义是二选一替换对，行级即修复）。迭代期用本次调用的 exSpecialCount/ultimateCount 覆盖进 rowState（伊德海莉 decibel 通道 floor 口径、实数松弛口径均不变）；teamFrontlineSeconds 语义 == 装配层（Σ 队友前台秒）。cfg.rowTimeLimit 缺省 = 未截断行（默认路径零 delta）；重折环写入时按 feasibleRows 计，与能量行级Σ 同一分支 | 据 债务审计 5761e02 + 引擎探针@2026-09-08 · 债2批2-1@2026-09-19 R37·复核@2026-09-25 | 验 src/core/__tests__/decibelRowParity.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource/rowBuild.ts#feasibleRows | 信 确认
   // ⟳复核: 与能量收入行级Σ 的 ⟳复核 联动（同一分支、同一测试） | 到期 2026-12-31
   const rowState: IterationState = (exSpecialCount !== state.exSpecialCount || ultimateCount !== state.ultimateCount)
     ? { ...state, exSpecialCount, ultimateCount }
