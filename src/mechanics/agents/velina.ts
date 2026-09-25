@@ -523,6 +523,12 @@ export const velinaMechanic: AgentMechanicModule = {
   replaceSkillExecutionExtraction: true,
   transformSkillExecutions: transformVelinaSkillExecutions,
   transformAnomalyPool: transformVelinaAnomalyPool,
+  // 风蚀状态机的**引擎期求值**入口（规则 6 引擎落点，2026-09-25 CC-6d）：
+  // 引擎遍历 `AnomalyPoolInput.agentMechanics` 调 `anomalyCorrosion`（`core/anomalyPool/corrosion.ts#resolveAnomalyCorrosion`），不再值导入本模块
+  // （`core/anomalyPool.ts` 终局重结算 + `helpers.ts#calcTurbulenceDamage`）。
+  // `fallbackRate` **原样透传**（含 undefined）——默认 2/3 由 `resolveVelinaCorrosion` 兜底。
+  anomalyCorrosion: ({ panels, turbulenceCount, windTriggerCount, fallbackRate }) =>
+    resolveVelinaCorrosion(panels, turbulenceCount, windTriggerCount, fallbackRate),
   resolveExecutionDamage: resolveVelinaExecutionDamage,
   releaseModifier: velinaReleaseModifier,
   resourceSections: buildVelinaResourceSections,

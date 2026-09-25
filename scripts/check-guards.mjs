@@ -212,7 +212,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'core 角色模块引用',
     file: 'src/core/** → @/mechanics/agents/*',
-    frozen: 2,  // 2026-09-25 CC-6b 4→**2**（−2，与 CORE_ROLE_IMPORT_BASELINE 常量同步）：删 `helpers.ts` 与 `resource.ts` 的 `@/mechanics/agents/luciaElowen` 值导入（该块由模块能力 curtainTriggers + 跨槽供给 curtain-open 认领）。2026-09-13 架构诊断实测（不含测试）：赠链族契约落地后剩余 5 处 —— luciaElowen×3 / banyue×1 / norma×1 / liuyin×1 / velina×2
+    frozen: 0,  // 2026-09-25 CC-6d 2→**0**（−2，与 CORE_ROLE_IMPORT_BASELINE 常量同步）：删 `anomalyPool.ts` 与 `anomalyPool/helpers.ts` 的 `@/mechanics/agents/velina` 值导入（`resolveVelinaCorrosion`）——该块由模块能力 `anomalyCorrosion`（velina.ts 声明）+ 引擎执行器 `core/anomalyPool/corrosion.ts#resolveAnomalyCorrosion`（按 `input.agentMechanics` 取首个非 undefined）认领；异常池契约是纯数据、无 agentId 派发上下文，故调用方把注册表递进 `calcTurbulenceDamage`。同批 core agentId 基线 **3 不变**（本卡不碰 agentId 字面量）。⚠ 已知语义差（lead 已核）：调用方不传 `agentMechanics` 且面板带 `velinaEnabled` 时旧式仍结算、新式不结算；仓库内唯一不传的调用方 `onStunBuildup.test.ts` 面板无标记 ⇒ 两边皆 undefined。2026-09-25 CC-6b 4→**2**（−2，与 CORE_ROLE_IMPORT_BASELINE 常量同步）：删 `helpers.ts` 与 `resource.ts` 的 `@/mechanics/agents/luciaElowen` 值导入（该块由模块能力 curtainTriggers + 跨槽供给 curtain-open 认领）。2026-09-13 架构诊断实测（不含测试）：赠链族契约落地后剩余 5 处 —— luciaElowen×3 / banyue×1 / norma×1 / liuyin×1 / velina×2
     target: 0,
     due: '2027-03-31',
     plan: '⚠ 迁移前提已实测证伪（2026-09-13 T8）：5 处全是活引用、0 死引用；三处（velina / banyue / luciaElowen）都需**引擎契约改动**（给 AgentMechanicModule 加「引擎期求值」能力 + 把注册表穿进 calcTurbulenceDamage 等签名），不是机械迁移——详见 CORE_ROLE_IMPORT_BASELINE 头注释的逐条实测依据。勿按「可直接删死引用」的原计划重走',

@@ -12,6 +12,7 @@ import type {
   SpecialResourceSection,
   StunAxis,
   TeamResourceResult,
+  VelinaCorrosionSource,
 } from '@/types/resource'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
@@ -719,6 +720,27 @@ export interface AgentMechanicModule {
    * 引擎保证：调用顺序在所有模块的 perElement 汇总之前，注入值进入所有下游（触发次数/覆盖率/note）。
    */
   transformAnomalyPool?(input: AgentAnomalyTransformInput): void
+  /**
+   * **引擎期风蚀状态结算**（规则 6 引擎落点，2026-09-25 CC-6d）。
+   *
+   * 存在的理由：`core/anomalyPool.ts` 与 `core/anomalyPool/helpers.ts` 曾各自**值导入**
+   * `@/mechanics/agents/velina#resolveVelinaCorrosion`（`anomalyPool.ts:332` 终局按最终乱流次数
+   * 重结算；`helpers.ts:1210` 的 `calcTurbulenceDamage` 内）——引擎静态 import 角色模块正是规则 6
+   * 要消灭的形状（判据 12 core 角色 import 棘轮盯着）。风蚀是**维琳娜专属资源**，归属判据
+   * `panel.velinaEnabled`（`velina.ts#applyVelinaPanel` 唯一写入方，CC-D3 2026-09-25）。
+   *
+   * 契约：**纯函数**（同 `crossAgentSupply.supply` / `exSpecialCount`），只读入参；返回 `undefined`
+   * = 本模块不认领 / 队里没有该资源持有者（调用方据此整套跳过风蚀结算）。同一队至多一个模块返回
+   * 非 undefined（引擎按注册顺序取首个）。`fallbackRate` 原样透传（含 `undefined`）——默认值
+   * `2/3` 由模块侧 `resolveVelinaCorrosion` 兜底，引擎**不补默认值**。
+   */
+  anomalyCorrosion?(input: {
+    panels: readonly PanelValues[]
+    turbulenceCount: number
+    windTriggerCount: number
+    /** C2 风化获得风蚀的期望利用率（未盖章时的兜底）；`undefined` 由模块侧默认参数兜底 */
+    fallbackRate?: number
+  }): VelinaCorrosionSource | undefined
   /**
    * **本轮已收敛 → 算出「下一轮反馈」**（规则 6 在编排层的落点，2026-09-16 立项）。
    *

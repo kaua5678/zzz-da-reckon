@@ -7,7 +7,7 @@ import type {
   StandardDotDamageResult,
   AliceCoweringDotResult,
 } from '@/types/resource'
-import { resolveVelinaCorrosion } from '@/mechanics/agents/velina'
+import { resolveAnomalyCorrosion } from './anomalyPool/corrosion'
 
 // ============ 喧响奖励常量 ============
 
@@ -323,13 +323,16 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
       dmgConfig,
       elementTriggerCounts.wind ?? 0,
       turbulenceCap,
+      input.agentMechanics,
     )
     // 风蚀状态机按最终乱流次数重新结算（注入积蓄仍基于预构建的 preTurbulenceCount）
     // ⚠ 风蚀是**维琳娜专属资源** ⇒ 归属按 `panel.velinaEnabled` 认人（模块唯一写入方），
     // **不**按「队里第一个风属性角色」（CC-D3 2026-09-25）：1621/1631 等非维琳娜风队原本
     // 也会跑这套状态机并把气旋异放行挂在他们名下。队里没有维琳娜 ⇒ `undefined`
     // ⇒ 下面两条气旋事件 `count=0`（`anomalyEvents` 末尾按 count>0 过滤后整条不出现）。
-    velinaCorrosionSource = resolveVelinaCorrosion(
+    // CC-6d：改经模块能力 `anomalyCorrosion` 查询（不再值导入 velina 模块）。
+    velinaCorrosionSource = resolveAnomalyCorrosion(
+      input.agentMechanics,
       panels,
       turbulenceCount,
       windTriggerCount,

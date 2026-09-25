@@ -40,6 +40,7 @@
  *    覆盖率 = 有效DoT时间 / 总战斗时间
  */
 import type { PanelValues } from '@/types/catalog'
+import type { AgentMechanicModule } from '@/mechanics/types'
 import type {
   AnomalyProgress, AnomalyContribution,
   AnomalyCoverageResult,
@@ -52,7 +53,7 @@ import type {
 import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
-import { resolveVelinaCorrosion } from '@/mechanics/agents/velina'
+import { resolveAnomalyCorrosion } from './corrosion'
 
 // ============ 喧响奖励常量 ============
 // 下沉（2026-09-13 展示层越层棘轮）：定义在 src/data/anomalyDecibelBonuses.ts（单一事实源，
@@ -1183,6 +1184,8 @@ export function calcDisorderDamage(
  * @param windSlot 风属性角色slot（用于乱流结算区）
  * @param panels 各角色面板
  * @param config 伤害计算全局配置
+ * @param agentMechanics 已注册角色机制模块列表（风蚀状态经 `anomalyCorrosion` 能力查询；
+ *   缺省 = 旧调用方未传 ⇒ 不结算风蚀，见 `./corrosion` 头注释的已知语义差）
  */
 export function calcTurbulenceDamage(
   nonWindElements: { element: string; triggerCount: number; applierSlot: number }[],
@@ -1191,6 +1194,7 @@ export function calcTurbulenceDamage(
   config: DamageCalcConfig,
   windTriggerCount = 0,
   maxCount = Number.POSITIVE_INFINITY,
+  agentMechanics?: readonly AgentMechanicModule[],
 ): TurbulenceDamageResult | undefined {
   if (nonWindElements.length === 0) return undefined
 
@@ -1207,7 +1211,8 @@ export function calcTurbulenceDamage(
   // 结算区仍用 `windPanel`（乱流触发者 = 风底属性提供者，**与风蚀归属无关**：乱流本身是
   // 风化状态的通用机制，谁提供风化谁结算；只有风蚀/气旋是维琳娜专属）。
   const windPanel = panelAt(panels, windSlot) ?? emptyPanel()
-  const corrosionState = resolveVelinaCorrosion(
+  const corrosionState = resolveAnomalyCorrosion(
+    agentMechanics,
     panels,
     turbulenceCount,
     windTriggerCount,
