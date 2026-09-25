@@ -54,7 +54,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | W23 | 爱丽丝(1401) 系留白 6.0s 归因（预测先行） | 只读 + 隔离探针 | `/tmp/wt-W23` 下任意文件、`.zc/reports/W23-1401-slack.md` | ✅ 已回收（15:24；lead 复核 accept。独立负控：只去掉 `resource.ts:644` 的 1s 余量 ⇒ 本队 6→1，全库 29 队逐值复现工人 §5.3 表，另查出 2 队 stable→cycle）。归因 ① 成立但因果改写：pass0 冻 0、pass1 负 excess 19.915 不进 refund、post-fold 试探 attempt1 接受 9.958 后被内层不判稳与 1s 余量联合自锁；变体实验入坑 19 否决记录；卡已删 |
 | W24 | 命座「未描述」6 条的原文定位与可派性分诊 | 只读普查 | `.zc/reports/W24-undescribed-triage.md` | ✅ 已回收（14:50；lead 复核 accept：抽查 1121 C1 先例、1271 C1 pending、3 处原文落点均属实）。5/6 原文在库且只是标签错 ⇒ lead 按图例 + 4 条先例裁定改标（问题 Q 取 A）⇒ 派生 W27；1551 C6 真·未揭示 ⇒ OPEN-ITEMS §1 待供料；卡已删 |
 | W25 | 琉音转大次数四读数：预测探针 | 只读 + 隔离探针 | `/tmp/wt-W25` 下任意文件、`.zc/reports/W25-promote-readings.md` | ✅ 已回收（15:51；lead 复核 accept。重放：正控 25/25 个 key 逐字段一致；负控送客 +1 ⇒ C1 23→0）。前提成立（非轴 stable C4 25/25，闸门 0 条）；卡面 `design-gate: FAIL` 全部来自 5 个单角色 key 的空目标槽 ⇒ lead 裁定为夹具边界，设计 §8 增补生产端「目标槽有角色」条件；现语料四读数重合 ⇒ W26 改为零 delta 重构；卡已删 |
-| W26 | 琉音转大次数单源化：非轴接线（替代 W21） | 实现（隔离 worktree） | 见卡 | 待派发（前置已满足：W25 accept + 设计 §8；卡已按 §8 改写为零 delta） |
+| W26 | 琉音转大次数单源化：非轴接线（替代 W21） | 实现（隔离 worktree） | 见卡 | ⛔ lead 合入时 blocked（16:20 回退，未合入；卡已删）：工人实现合格（不变量 14/14、负控 14/14 红），但 timeGolden 4 预设 12 条 delta，且全量 check 在棘轮路径红（`auto-1201-1481-1491` 留白 0→1.3s 等 4 队、`truncationRefold` ④ 样本塌缩）⇒ 滞后注入改变外层暂态、落点路径敏感。diff 存档 `.zc/reports/W26-merge-attempt.diff`；重设计方向 = 出口校验 + 校正轮（设计文档 §9） |
 | W27 | 命座「未描述」5 条改标（原文已收到、防御 / 生存向不建模） | 数据订正 | 两份 JSON 各 5 / 4 档 + `docs/implementation-status.md`（生成） | ✅ 已合入（`749e047`；lead-arena-0925b 复核 accept：语义 diff 恰 5 + 4 档、效果句逐条对 `data/raw` 原文、正控 validate:data / modelingGaps 9/9 / check-guards 21、负控 1271 C1 改回 ⇒ 未描述 1→2，`cp` 还原后三文件 sha256 逐位一致；卡已删） |
 | W28 | 命座镜像 `cinemaImplementation` 单源化预审（62 档 status 不一致） | 只读普查 | `/tmp/w28/`、`.zc/reports/W28-mirror-census.md` | ✅ 已回收（15:43；lead-arena-0925b 复核 accept：结论 `可删`——9 处读者逐一只取已知键、独有信息 0 条；lead 隔离 worktree 删光镜像后 validate:data / modelingGaps 9/9 / check-guards 21 全绿、状态表逐字不变。更正：带镜像的是 41 角色（非 47）；漏了复数键 `cinemaImplementations`（1481）⇒ 均写进 W29；卡已删） |
 | W29 | 删命座镜像 `cinemaImplementation(s)`，单源 = constellations | 实现 | `public/static/character-mechanics.json`（只删两键）、`scripts/sync-new-role-status.mjs`、`scripts/validate-data.mjs`、`.zc/reports/W29.md` | ✅ 已合入 `798bb4d`（15:47 派发、约 6 分钟收工；lead-arena-0925b 复核：语义 diff 恰为 41 + 1 个键删除、无其它变化；正控 validate:data 366 / modelingGaps 9/9 / check-guards 21 / 状态表零 diff；负控单、复数键均红；lead 改 1 词 `信 确认→信 高`；卡已删） |
@@ -73,9 +73,9 @@ W18（W11/W12 的文案漂移与死写）。1451 梦境值 `maxValue 100 vs 500`
 **重计算时段串行**：W16 → W17 → W18（各自要跑 vitest/build）；W13/W14/W15 是纯静态阅读，可与其中任一张并行（总工人数仍 ≤ 2）。
 headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾追加一行「测试/构建时段已授予」。
 
-**当前派发顺序（2026-09-25 16:00 lead-arena-0925 现场核实）**：W23–W25、W27–W29 均已回收结案；此刻无工人在跑。
-下一步：W26（隔离 worktree，占测试时段）→ lead 合入（零 delta 预期；合入批带上 `underfillRefund.test.ts:55` 注释订正，跑 `npm run check` + build）→ W22（独占重计算时段；lead-arena-0925b 离线后移交 lead-arena-0925 或下一个 lead，等前面全部停下再派）。
-W26 只在 `/tmp/wt-W26` 里改 `liuyin.ts` 等 4 个源文件，合入前主仓库的这些文件无人写。派发前照本节开头查重。
+**当前派发顺序（2026-09-25 16:25 lead-arena-0925 现场核实）**：W23–W29 均已回收结案（W26 为 lead 合入时 blocked）；此刻无工人在跑，主仓库干净。
+下一步：**W22**（独占重计算时段，lead-arena-0925b 已移交）；琉音单源化待按设计文档 §9 的「出口校验 + 校正轮」重写卡，验收必须同时覆盖 `timeGolden` / `timeFillRatchet` / `truncationRefold`。
+派发前照本节开头查重。
 **双 lead 分工（2026-09-25 15:15 起）**：两条 lead 会话并行，分工单源在 `.zc/lead-coordination.md`（不入库）——W23 复核、W25 → W26 归 `lead-arena-0925`；W27、W22 归 `lead-arena-0925b`。第三条会话接手前先读它，别照本段顺序自己派。
 
 ## 2. 任务卡
@@ -112,39 +112,6 @@ W26 只在 `/tmp/wt-W26` 里改 `liuyin.ts` 等 4 个源文件，合入前主仓
 `zc done --verifier '<census 命令原文>' --coverage '62 角色 × cinema 0-6 指纹 vs 09-20 基线' --risk '<未证明事项>'`。**不提交**。
 测试时段已授予（独占重计算位，派发方保证此时无其它工人跑 vitest/build）。
 <!-- /card:W22 -->
-
-<!-- card:W26 -->
-### W26 · 琉音转大次数单源化：非轴接线（替代 W21；零 delta 重构）
-
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W26。
-工作区：隔离 worktree `/tmp/wt-W26`（`git worktree add --detach /tmp/wt-W26 HEAD` + 软链 `node_modules`），**禁止改主仓库源码**。开工打印两边 HEAD 与 `git status --short`。
-父目标：按 `docs/mcp-liuyin-promote-source.md` §3.1 + §8 把非轴模式下的「转大次数」统一到答案层（上一轮 `promote` 滞后注入）。
-W25 已实测：现语料 25 个 timeGolden key 上四个读数重合 ⇒ 本卡是**零 delta 重构**，价值在于消掉三源并存、修规则 11 的注释矛盾、把不变量钉进测试。
-**前置**：`docs/mcp-liuyin-promote-source.md` 含「## 8. W25 实测增补」一节；没有 ⇒ 立即 `STATUS: blocked`。
-
-**先读**：`docs/mcp-liuyin-promote-source.md` 全文（§3.1 五步 + §8 的生产端修正）；`.zc/reports/W25-promote-readings.md` §2（取数方式、插桩手法）与 §3（逐 key 表）；`AGENTS.md` §1 规则 6 / 10 / 11 / 13 / 16、§5；
-`src/composables/resourceCalc/roundThreads.ts`（头注释 + `prevPoolStunCount` 的定义与初值）；`src/composables/resourceCalc/convergence.ts:1097-1110`、`:1442-1500`；`src/mechanics/agents/hugo.ts:330-370`（converge 相位读 `threads` 的先例）；`src/mechanics/types.ts:230-310`（`applyTeamConfig` 入参、`phase`、`threads`）；`src/mechanics/agents/liuyin.ts` 全文。
-
-**允许写入**（除报告外只在 worktree 内）：`src/composables/resourceCalc/roundThreads.ts`（加字段 + 初值）；`src/composables/resourceCalc/convergence.ts`（**只加** `threadsNext.prevPromoteCount` 一行及注释）；`src/mechanics/agents/liuyin.ts`；`src/types/resource/config.ts`（只在 `liuyinCinemaLevel` 附近加 `liuyinPromoteLagged?: number` 及注释）；新建 `src/mechanics/__tests__/liuyinPromoteSource.test.ts`；报告 `.zc/reports/W26.md`（主仓库，先 `zc claim`）。
-**禁止**：改任何基线（`timeGolden` / `timeFillRatchet`）；改既有测试断言；改 `computeLiuyinHugCounts` / `promoteFixpoint` / `applyLiuyinPromote` 的算法；改 `outerFeedbackSignature`；改变轴模式或单角色空目标场景的行为；跑全量 vitest / `npm run verify` / build。
-
-**步骤与验收**：
-1. 接线：照设计 §3.1 第 1–5 步逐条做，其中第 1 步的生产端条件用 §8 修正版：`!axisMode && rr.characters.some(c => c.slot === sp1.targetSlot) ? sp1.promote : undefined`。第 4 步保留 `crossAgentSupply.supply` 开头的 `if (!targetCfg) return 0`。`@fact` 行格式照 `liuyin.ts:96-97` 的既有写法，「验」指向新测试。
-2. 新测试 `liuyinPromoteSource.test.ts`（用 `src/test/harness.ts` 的 `setupHarness` / `setTeam`，不许复制 fetch stub）：
-   ① 纯函数：不传 `promoteCount` 时 `promoteWindows === Math.floor(G/90)`（取 W21 报告的 G=363、G=207 两例）；传 `promoteCount: 5` 时 `promoteWindows === 5`、`farewellCount === 5 + ownUltimateCount`。
-   ② 管线不变量：对下列 14 个预设（W25 表中「非轴 且 stable 且目标槽有角色」），断言 `1481009 行 count − ownUltimateCount === promote === 预留次数 === 赠行 count`（取数方式复用 W25）：
-   `auto-1021-1481-1031`、`auto-1021-1481-1211`、`auto-1021-1481-1311`、`auto-1191-1481-1311`、`auto-1201-1481-1211`、`auto-1201-1481-1311`、`auto-1201-1481-1491`、`auto-1321-1481-1311`、`auto-1321-1481-1491`、`auto-1371-1481-1451`、`auto-1381-1481-1311`、`auto-1431-1481-1311`、`auto-1431-1481-1341`、`auto-1431-1481-1491`。
-3. 负控（必做，写进报告）：`cp` 备份 `convergence.ts` → 生产端临时改为注入 `sp1.promote + 1` → 测试②必须红（贴失败断言）→ 用备份还原 → `git diff --stat` 回到改动态。②在负控下仍绿 ⇒ 测试没咬住，`STATUS: blocked`。另在报告里写明：把 `promoteWindows` 改回 floor 的变异在现语料上不可分辨（W25），不作负控。
-4. 正控：`VITEST_MAX_WORKERS=2 npx vitest run src/mechanics/__tests__/liuyin src/composables/resourceCalc/__tests__/liuyinPromote.test.ts src/composables/__tests__/timeLedgerInvariants.test.ts src/composables/__tests__/giftMoveTimeLedger.test.ts src/composables/__tests__/timeGolden.test.ts`，**必须全绿**——`timeGolden` 逐位不变（W25 预测 25 个 key 全零 delta）。任何 delta ⇒ 不改基线，`STATUS: blocked`，附 key 与数值。
-5. worktree 内 `npm run check-guards` 必须 EXIT=0。
-6. `git -C /tmp/wt-W26 diff > /tmp/W26.diff`，报告贴全文（新建的测试文件用 `git add -N` 让它进 diff）。**不** `git apply` 到主仓库、不提交。确认 `/tmp/W26.diff` 已落盘后收工：`unlink /tmp/wt-W26/node_modules` → `git worktree remove --force /tmp/wt-W26`。
-
-**证伪闸门**：前提假设 = 接线后 timeGolden 逐位不变，且 14 个预设上四读数逐位相等。可观察失败 = 不变量在某个 key 上红，或 timeGolden 出现任何 delta，或某个琉音 key 的 `outerExit` 变化 ⇒ 照实报告 blocked，附 key 与数值，不许改测试迁就。
-
-**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含两边 HEAD、`/tmp/W26.diff` 全文、负控 / 正控原始输出尾部与退出码、`timeGolden` 结果、未证明事项。
-`zc done --verifier '<正控命令>' --coverage 'liuyin 转大次数四读数（非轴）' --risk '<未证明事项>'`。**不提交**。
-测试时段已授予（定向测试 + check-guards；不跑 build 与全量）。
-<!-- /card:W26 -->
 
 ## 3. 本队列的来源：2026-09-24 OPEN-ITEMS 分诊
 

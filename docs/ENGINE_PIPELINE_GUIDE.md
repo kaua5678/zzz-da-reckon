@@ -487,17 +487,14 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     ⟳复核: 拿到实战视频/游戏内单跳校准数据后，重跑 `PROBE_LOWGOLD=1` 探针确认族级偏斜是否已被 19①/实数化改动带走 | 到期 2026-11-30
 
 28. **赠送招式（诺姆赠链 / 琉音赠大）的时间账：装配后追加行必须回扣截断上限（2026-09-08 用户实测）**：
-    赠送行由 `applyNormaHatChain` / `applyLiuyinPromote` 在**装配之后**追加到目标槽执行计划，
-    不在 `buildExecutions` 产物里；其时间已由 iterate 计入目标槽必要时间（`helpers.ts` Step4 两处
-    `normaGiftChainTime` / `liuyinGiftTime` 预留）。但 `buildResourceResult` 里
-    ① 时间线截断上限 ② 前台展示**都没算这份时间** → 实测三症状：
+    赠送行由 `applyNormaHatChain` / `applyLiuyinPromote` 在**装配之后**追加到目标槽执行计划，不在 `buildExecutions` 产物里；其时间已由 iterate 计入目标槽必要时间（`helpers.ts` Step4 两处
+    `normaGiftChainTime` / `liuyinGiftTime` 预留）。但 `buildResourceResult` 里① 时间线截断上限 ② 前台展示**都没算这份时间** → 实测三症状：
     - 资源卡「总计」= 战斗时间 + 赠送秒数（猫又/诺姆/千夏 191.8s、希格莉德/诺姆/丽娜 188.8s、
       猫又/琉音/耀嘉音 183.8s，各多出赠送行秒数）——**用户报的就是这条**；
     - 其它行按「含赠送时间的账本」截断、再叠加赠送行 → 物化行超账本（预留被截断上限抵消）；
     - 赠送队普遍 over-budget（ratchet 实测 auto-1431-1481-1311 over 0.8s 等）。
     修法：`giftTimeOfSlot(i)`（诺姆赠链 + 琉音赠大，与 iterate 预留同口径/同条件）——
-    **截断上限先扣掉它**（引擎侧，物化行才不超账本）；**展示口径统一由编排层 `normalizeDisplayTime`
-    按最终执行行重算**（前台 = Σ前台行，后台 = 战斗时间 − 前台）——只有按最终行重算才能一并覆盖
+    **截断上限先扣掉它**（引擎侧，物化行才不超账本）；**展示口径统一由编排层 `normalizeDisplayTime`按最终执行行重算**（前台 = Σ前台行，后台 = 战斗时间 − 前台）——只有按最终行重算才能一并覆盖
     追加行（实测修复前 125 队里 42 队违反跨路径不变量，最大差 −14.24s；修复后 0 队）。
     实测影响（125 队预设）：7 队基线变化，全部是赠送队，且方向是 **over-budget → 0**（
     auto-1431-1481-1311 over 0.8→0、banyue-liuyin-lucia 0.6→0 等），留白合计 189.3→197.2s；
@@ -506,7 +503,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
 
     ⚠ **轴模式四处同源（2026-09-20 R67，推翻上段早期口径）**：琉音赠大轴计数四处消费点（`iterate` 预留 / S2 折叠环 / 试探测量 / 截断上限）旧实现后两者计入、前两者漏计 ⇒ 截断额度被扣而账本没涨 ⇒ 决算被整数装包砍掉一整次（雨果 0 命轴 5→4）；统一走 `ultimateGiftOf` 后守恒恢复（`@fact engine:赠送时间/轴模式四处同源`，护栏 `liuyinAxisGiftSameSource.test.ts`）。
 
-    ⚠ **转大次数来源（2026-09-25，W21 blocked → lead 设计 `docs/mcp-liuyin-promote-source.md`）**：非轴模式同一轮有三个读数——送客行用 `floor(G/90)`、`crossAgentSupply` 预留用计划值结转、赠行用 `promoteFixpoint` 池口径。单源定为**答案层** `promote`，经 `prevPromoteCount` 线程滞后注入（卡 W25/W26）。**否决记录**：① 计划值通道（converge 写计划值、四处按它阈值结转；W21 变体 1/2）→ `timeGolden` 7 / 6 条 delta，且合一后仍 ≠ 赠行（`agent:1481:c0` 送客 3→4 而赠行仍 3）；② 事后按池 patch 送客行 → 送客时间记在 iterate 必要时间账里，改行不改账 ⇒ 守恒破（同 `liuyinPromote.ts:104-108` 旧 post-hoc carve 的 +7.2s 先例）。
+    ⚠ **转大次数来源（2026-09-25，W21 blocked → lead 设计 `docs/mcp-liuyin-promote-source.md`）**：非轴模式同一轮有三个读数——送客行用 `floor(G/90)`、`crossAgentSupply` 预留用计划值结转、赠行用 `promoteFixpoint` 池口径。单源定为**答案层** `promote`；其中「经 `prevPromoteCount` 线程滞后注入」（W26）已否决：改变外层暂态 ⇒ 棘轮路径留白回退、`truncationRefold` 恒等式样本塌缩（`docs/mcp-liuyin-promote-source.md` §9）；修订方向 = 出口校验 + 校正轮。**否决记录**：① 计划值通道（converge 写计划值、四处按它阈值结转；W21 变体 1/2）→ `timeGolden` 7 / 6 条 delta，且合一后仍 ≠ 赠行（`agent:1481:c0` 送客 3→4 而赠行仍 3）；② 事后按池 patch 送客行 → 送客时间记在 iterate 必要时间账里，改行不改账 ⇒ 守恒破（同 `liuyinPromote.ts:104-108` 旧 post-hoc carve 的 +7.2s 先例）。
 
 29. **轴的资源门控 = 总量，两个通道都「去掉」而非「只警告」（用户口径 2026-09-08）**：
     `core/stunAxisStack.ts` 原来对闪能/喧响都只记警告、**照样计入执行**（与它自己的头注释「不够就跳过」
