@@ -129,7 +129,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-3 | fast | **done**（lead 复核：dump 624 零差、guards 21、build、§4+floatNoise/miyabiCinema 37 测过；同机 A/B 耗时 HEAD 52.0/53.2s vs CC-3 50.0/52.6s 无退化） | S1 `runInnerLoop` 提为纯函数 `core/resource/innerLoop.ts` | core/resource.ts 356–430 |
 | CC-4 | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差；反向验证 ① 删 `diag.iterations` 写入 489 场景红、② 删拒绝还原 1 场景红（`auto-1431-1481-1491/heavyGate`，重折拒绝路径有样本）；resource.ts 1097→907；verify 过） | `SolveDiagnostics` 累加器 + S2 `runFoldLoop` 外提（+ `buildExecutionsWithPhase` 迁 `phaseExecutions.ts`） | 见下方 CC-4 卡 |
 | CC-5a | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差；反向验证 ① 删被拒 cfg 回滚 16 红、② 删 `diag.timeBudgetIdleSeconds` 177 红；resource.ts 907→801；verify 过） | S3a 欠打回填外提 `core/resource/underfillProbe.ts` | 见下方 CC-5a 卡 |
-| CC-5b | review | design（依赖 5a） | S4 `stageAssembleSlot` 外提 `core/resource/assembleSlot.ts` | resource.ts `runTailPipeline` 内 |
+| CC-5b | review | **ready**（lead-arena-0925c @45d7e8a 写设计，见下方 CC-5b 卡） | S4 `stageAssembleSlot` 外提 `core/resource/assembleSlot.ts` | 见下方 CC-5b 卡 |
 | CC-5c | review | design（依赖 5b） | 重折环外提；`calcTeamResources` 收成编排器（`SolveContext`） | resource.ts 重折环段 |
 | CC-6a | review | **done**（dsflash 工人 + lead 复核：dump 624 零差、反向验证 36 条 banyue 场景红、guards 21、build、27 文件 533 测过） | 引擎能力 `exSpecialCount`：1471 般岳分支迁模块；core agentId 6→5、core 角色 import 5→4 | mechanics/types.ts、agents/banyue.ts、core/resource/helpers.ts、2 个棘轮基线 + RATCHET_BURNDOWN |
 | CC-6b | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差、反向验证 42 条 1051+1451 场景红、guards 21、build、509 测过；另核全部 crossAgentSupply 消费点均按 kind 过滤 ⇒ yidhari 新声明不会被误取） | 1451 帷幕：`curtainTriggers` 能力 + yidhari 声明 `crossAgentSupply.kind='curtain-open'`；agentId 5→3、import 4→2 | 见下方 CC-6b 卡 |
@@ -310,6 +310,47 @@ anomalyPool 已有现成的能力通道 `input.agentMechanics`（同 `transformA
 
 ④ **报告**：改动行、闸门 grep、棘轮新旧值、两次反向验证差异条数与前 10 个场景键、§4 + rowsnap 尾部输出。
 
+
+### CC-5b · S4 `stageAssembleSlot` 外提 `assembleSlot.ts`（review）
+
+**lead 设计（2026-09-25 lead-arena-0925c，@45d7e8a 实测）**。
+现状：`runTailPipeline`（`resource.ts:335`）里的 `stageAssembleSlot`（**:430–604**）是逐槽装配闭包，已返回 `{ result, cutSeconds, cuts, bySlotEntry }`，由 :605–611 的 `configs.map` 累加。
+自由变量（lead 已 grep 核过：块内**无** `diag`、无 resource.ts 常量、无 `chainGiftRowSpec`/`warm*`）：`configs`、`config`、`totalTime`、`states`、`curtain`（:374）、`curtainTriggers`（= `curtain.triggers`）、
+`yidhariSlot`（:376）、`giftTimeOfSlot`（:410）、`chainGiftRow` / `ultimateGiftRow`（:415–420）；函数：helpers 的 `calcEnergySource` / `calcCrossAgentEnergy` / `calcRawDecibelParts` / `calcDecibelSource` /
+`calcTimeAllocation` / `buildAnomalyEventExecutions` / `truncateExecutionsToFrontline`，以及 `buildGiftRow`（`./giftRows`）、`buildExecutionsWithPhase`（`./phaseExecutions`）、
+`giftDecibelForCfg` / `findCrossAgentSupplySlots`（`./crossAgentSupply`）、`getAgentMechanic`、`isFrontlineExecution`。
+
+① **先读**：`src/core/resource.ts` 80–95、335–620；`src/core/resource/underfillProbe.ts` 与 `foldLoop.ts`（ctx 注入先例）；`src/core/resource/curtain.ts` 20–40（`CurtainInfo`）。
+
+② **做法**：
+1. 新建 `src/core/resource/assembleSlot.ts`：
+   ```ts
+   export interface AssembleSlotContext {
+     configs: CharacterOperationConfig[]; config: ResourceCalcConfig; totalTime: number
+     states: IterationState[]            // 装配期终态（runTailPipeline 在此之前已完成全部 states 重绑定）
+     curtain: CurtainInfo; yidhariSlot: number
+     giftTimeOfSlot: (idx: number) => number
+     chainGiftRow: { targetIdx: number; count: number }
+     ultimateGiftRow: { targetIdx: number; count: number }
+   }
+   export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationConfig, i: number) // 返回类型让 TS 推断（与原闭包一致）
+   ```
+   函数体 = 闭包 :431–603 **原样搬**：函数开头加 `const { configs, config, totalTime, states, curtain, yidhariSlot, giftTimeOfSlot, chainGiftRow, ultimateGiftRow } = ctx` 与
+   `const curtainTriggers = curtain.triggers`，其余表达式**一字不改**（用解构而不是逐处 `ctx.x`，把 diff 压到最小）。注释全部随搬。
+2. resource.ts：在 :420 之后（`ultimateGiftRow` 定义后、累加器前）建 `const slotCtx: AssembleSlotContext = { configs, config, totalTime, states, curtain, yidhariSlot, giftTimeOfSlot, chainGiftRow, ultimateGiftRow }`；
+   `configs.map` 里 `stageAssembleSlot(cfg, i)` → `assembleSlot(slotCtx, cfg, i)`；删闭包。累加顺序、`characters` 的类型标注不变。
+   搬走后变成死绑定的 helpers 解构项（`resource.ts:88` 那行）与 import 要删（否则 build 报 TS6133）；**只删确实无引用的**，逐个 grep 确认。
+3. 函数头阶段表（:167）的 `stageAssembleSlot` 改成 `core/resource/assembleSlot.ts#assembleSlot`，其余提到 `stageAssembleSlot` 的 src 注释同步；docs/ 里的只在报告列清单。
+4. 禁止：改任何数值 / 条件 / 顺序（尤其 cfg 写回——`yidhariExternalHealPct`、`luciaCurtain*` 写在逐槽循环里，槽序即写序）；把累加器搬进新文件；建子目录。
+
+**证伪闸门**：前提 =「装配闭包只经上列自由变量与外界通信，且装配期间 `states` 不再重绑定」。可观察失败 = dump 非零差异，或 TS 报出未列出的自由变量（停下写 blocked 并列出）。
+收工 `grep -n 'stageAssembleSlot' src/` 只允许命中注释 / 文档性文字。
+
+③ **验收**：§4 全套 + rowsnap + `npm run check-guards` + `npm run validate:specs` + `npm run build` +
+`npx vitest run truncationRefold timeFillRatchet allAgentsGuards luciaElowen yidhari norma liuyin src/scripts/__tests__/`（名字过滤，匹配不到的忽略，报告里列出实际跑到的文件数）。
+**反向验证**（两次，各自恢复并以零差异证明）：① 临时把 `giftTimeThisSlot` 改成 `0` ⇒ 带赠行（诺姆 / 琉音）的场景非零差异；② 临时注释掉 `if (i === curtain.providerSlot) { … }` 整块 ⇒ 带卢西娅的场景非零差异。
+
+④ **报告**：改动行、resource.ts 行数前后、删掉的死绑定清单、闸门 grep、docs 待改清单、两次反向验证差异条数与前 10 个键、§4 + rowsnap 尾部输出。
 
 ### CC-5a · S3a 欠打回填外提 `underfillProbe.ts`（review）
 
