@@ -143,7 +143,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-9b | review | **done** `740290d`（damagePool.ts 1141→438；Direct 350 / Release 297 / CharExtras 241 行；rowsnap/dump 624 零差，verify 3490） | 逐角色主循环（:415–1132）按 D 直伤 / R 异放事件 / X 角色附伤三段原样外提 `damagePoolDirect.ts` / `damagePoolRelease.ts` / `damagePoolCharExtras.ts`；共享 `rows/seenDirectIds/claimedInAxis` 以对象引用经 `CharRowsEnv` 注入；辅助闭包（:116–413）留入口，CC-9c 再议 | damagePool.ts |
 | CC-9c | review | **不做**（lead 2026-09-25） | 辅助闭包（:116–413 `pushDirect/pushRelease/axisSplitFor/*Fraction` 等）外提：它们闭包入口局部量，外提须改工厂函数（非原样搬），收益小；damagePool.ts 已 438 行、职责单一（ctx 解构 + 辅助 + 编排三段）。若日后要单测辅助函数再立卡 | damagePool.ts |
 | CC-T1 | review | **待立项** | rowsnap 预设补「失衡轴 × 尾段角色」（1171/1401/1261/1581 + 爱丽丝）组合：CC-9a 反向 ① 实测该面零覆盖，只有 `inStunAttribution.test.ts` 兜底。低级模型可做（只加预设 + 重生成 A 基线） | .zc/perf/ |
-| CC-10 | review | design | `solveTeam`：把 `computeCalcOutput`（runOuterLoop + stageResolveFeasibility）从 composable 抽成 Vue 无关函数 | useResourceCalc.ts 248–653 |
+| CC-10 | review | **ready**（lead 设计 2026-09-25 @9f8cf0a，卡见下） | `computeCalcOutput`（:248–654，含 `runOuterLoop` / `stageResolveFeasibility`）原样外提 `resourceCalc/solveTeam.ts#solveTeam(input)`，Vue 无关；唯一 store 写（降配闸门 ceiling）改为返回 `ceilingWriteBack` 由 composable 执行 | useResourceCalc.ts |
 | CC-11 | review | design | `runCalcRound` 引入 `RoundCtx`，按工人 C 的 C4–C10 簇拆；C1/C2/C3（轮输入簇、`resolveAxisUltimateDecibelCost`、`CalcRoundResult`）可先纯搬 | convergence.ts |
 | ~~CC-D1~~ | — | ✅ **done 2026-09-25（用户裁决「别人有为什么不算」）** | `damagePool.ts:1020` 琉音命破队友分支的贯穿力补 `sheerForceFlat`（改引 `calcPenetrationPower`） | damagePool.ts:1020 + `@fact engine:贯穿力/单一事实源`（GAME_TERM §10）+ 判据 `ccD3D1Verdict.test.ts::CC-D1` |
 | CC-D2 | — | **decide** | core `standardDotDamage` 生产零消费：删掉，还是让 damagePool 消费它（两套算法不同，需先对账） | 需用户口径 |
@@ -315,6 +315,62 @@ anomalyPool 已有现成的能力通道 `input.agentMechanics`（同 `transformA
 
 ④ **报告**：改动行、闸门 grep、棘轮新旧值、两次反向验证差异条数与前 10 个场景键、§4 + rowsnap 尾部输出。
 
+
+### CC-10 · `solveTeam` 抽离 Vue：`computeCalcOutput` 外提 `resourceCalc/solveTeam.ts`（review）
+
+**lead 设计（2026-09-25 lead-arena-0925c，@9f8cf0a 实测）**。现状：`useResourceCalc.ts`（1189 行）的 `computeCalcOutput()` 在 **:248–654**，内嵌外层不动点 `runOuterLoop`（:276）与 S3 可行化 `stageResolveFeasibility`（:479），被 `calcOutput` computed（:214，含 LRU memo）调用。
+lead 已扫 :249–653 对 composable 的全部依赖（脚本 `/home/kaua/calc-arch/scan10*.sh`）：
+- **读**：`configStore.enemy.{stunCountLock,battleTime,invincibleTime}`（:251/:253，只在开头 3 个 const 里）、`computeWindowDuration()`（:252）、`resourceConfig.value?.interactionScaleMonotone / interactionScaleCeiling`（:575/:576/:599）、`runCalcRound(...)`（:364，composable 在 :838 用 `createRunCalcRound` 建）；模块级常量 `MAX_OUTER_ITER` / `OUTER_STUN_TOLERANCE`。
+- **写**：**唯一副作用** :624–626 `if (monotoneGate && interactionScale !== undefined) configStore.interactionScaleCeiling = Math.min(configStore.interactionScaleCeiling, interactionScale)`——它是 `stageResolveFeasibility` 的最后一条语句，之后到 :654 再无 `resourceConfig`/`configStore` 读；core 不读 `interactionScaleCeiling`（全仓只有 :141 组装与 :576 读）⇒ **推迟到 solveTeam 返回后由 composable 执行，读写时序不变**。
+- 其余 import 全是纯函数（`netFrontlineOccupation`、`outerCycle.*`、`feasibilitySearch.*`、`roundThreads.*`、`TIME_BUDGET_TOLERANCE_SECONDS`、`CalcRoundResult`）；**无** `vue` / `toRaw` / `catalogStore` / memo 引用。
+- `@fact engine:降配档单调闸门`（:568）锚 `useResourceCalc.ts#stageResolveFeasibility`，**不在** `CALIBER_TRIGGER_ALLOWLIST` ⇒ 随代码搬走、锚改 `src/composables/resourceCalc/solveTeam.ts#stageResolveFeasibility`（check-guards 会验 file/symbol 存在；先例 = check-guards.mjs:179 `engine:轴内块数落地` 锚随实现迁移）。
+
+① **先读**：`useResourceCalc.ts` 1–100、106–147、200–660、715–726、830–850；`resourceCalc/convergence.ts` 中 `createRunCalcRound` 的签名与返回类型；`difficultyDescent.test.ts` 100–140（闸门判据）。
+
+② **做法**：
+1. 新建 `src/composables/resourceCalc/solveTeam.ts`（**不许** import `vue` / `pinia` / `@/stores/*` / `useResourceCalc`）：
+   ```ts
+   export type RunCalcRound = ReturnType<typeof createRunCalcRound>   // import type
+   export interface SolveTeamInput {
+     runCalcRound: RunCalcRound
+     lockedStunCount: number          // 原 :251
+     stunWindowDur: number            // 原 :252
+     stunEffTime: number              // 原 :253
+     resourceConfig: ResourceCalcConfig | null   // = resourceConfig.value；函数体内原 `resourceConfig.value?.x` 改为 `resourceConfig?.x`（仅此机械替换，=== true / 真值口径各自照旧）
+   }
+   export interface SolveTeamResult {
+     out: <原 computeCalcOutput 返回类型>
+     /** 闸门写回：非 null ⇒ 调用方执行 configStore.interactionScaleCeiling = Math.min(当前值, 该值) */
+     ceilingWriteBack: number | null
+   }
+   export function solveTeam(input: SolveTeamInput): SolveTeamResult
+   ```
+   函数体 = 原 :254–653 **原样**（从 `AXIS_FALLBACK_TOLERANCE_SEC` 到 `return out` 之前的全部，含 `runOuterLoop` / `stageResolveFeasibility` / 注释 / `@fact` 行）。唯二改动：
+   - `resourceConfig.value?.` → `resourceConfig?.`（3 处）；
+   - :624–626 的 store 写改为 `if (monotoneGate && interactionScale !== undefined) ceilingWriteBack = interactionScale`（外层 `let ceilingWriteBack: number | null = null`），末尾 `return { out, ceilingWriteBack }`。
+   `MAX_OUTER_ITER` / `OUTER_STUN_TOLERANCE`：若 useResourceCalc.ts 其余位置不再使用 ⇒ 整体搬进 solveTeam.ts（连注释）；若仍用或被测试 import ⇒ 在 solveTeam.ts 定义并 export，useResourceCalc.ts 改 `import` + 原名 re-export（**不许**反向 import useResourceCalc）。
+2. useResourceCalc.ts 的 `computeCalcOutput()` 变薄（函数名与返回类型保持，memo 的 `ReturnType<typeof computeCalcOutput>` 不动）：
+   ```ts
+   function computeCalcOutput() {
+     <原 :249–253 三个 const 原样>
+     const { out, ceilingWriteBack } = solveTeam({ runCalcRound, lockedStunCount, stunWindowDur, stunEffTime, resourceConfig: resourceConfig.value })
+     if (ceilingWriteBack !== null) {
+       configStore.interactionScaleCeiling = Math.min(configStore.interactionScaleCeiling, ceilingWriteBack)
+     }
+     return out
+   }
+   ```
+   删搬走后成死绑定的 import（逐个 grep 确认）。文件头 :69 附近关于「computed 内写回」的注释改一句指向新位置（语义不变）。
+3. 新增 `src/composables/__tests__/solveTeamPurity.test.ts`：读 `solveTeam.ts` 源码断言不含 `from 'vue'` / `from 'pinia'` / `@/stores/` / `useResourceCalc`（抽离的意义 = 可脱 Vue 调用，用测试锁住）。
+4. 禁止：改任何数值 / 条件 / 迭代顺序；改 memo 逻辑；改 `createRunCalcRound`；改棘轮基线。
+
+**证伪闸门**：前提 =「:249–653 除上述依赖外不触碰 composable 状态、写回之后无读」。可观察失败 = TS 报出未列出的外层标识符（停下写 blocked 列出，**不许**自行扩 input）、dump/rowsnap 非零差、`difficultyDescent.test.ts` 红。
+
+③ **验收**：§4 全套 + dump + rowsnap + `npm run check-guards`（`@fact anchors` 行计数不降）+ `npm run build` +
+`npx vitest run difficultyDescent convergence outerCycle feasibility timeLedger solveTeamPurity useResourceCalc calcOutputMemo src/scripts/__tests__/`（报告列实际文件数）。
+**反向验证**（各自恢复并以 dump 零差 + 该测试转绿证明）：① composable 临时不执行 `ceilingWriteBack` ⇒ `difficultyDescent.test.ts` 应红（报红的用例名）；② solveTeam 内临时跳过 `stageResolveFeasibility`（直接用 `r`）⇒ dump 非零差（报条数与前 10 键）。
+
+④ **报告**：useResourceCalc.ts 行数前后、solveTeam.ts 行数、`@fact` 最终位置与锚、两常量去向、死绑定清单、反向验证结果、§4 + dump/rowsnap 尾部输出。
 
 ### CC-9b · damagePool 逐角色主循环三段外提（review）
 
