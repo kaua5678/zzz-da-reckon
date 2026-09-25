@@ -128,7 +128,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-2 | fast | **done（dsflash 工人 + lead 复核）** | 热启动缓存迁 `core/resource/warmStart.ts` | core/resource.ts 98–160 |
 | CC-3 | fast | **done**（lead 复核：dump 624 零差、guards 21、build、§4+floatNoise/miyabiCinema 37 测过；同机 A/B 耗时 HEAD 52.0/53.2s vs CC-3 50.0/52.6s 无退化） | S1 `runInnerLoop` 提为纯函数 `core/resource/innerLoop.ts` | core/resource.ts 356–430 |
 | CC-4 | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差；反向验证 ① 删 `diag.iterations` 写入 489 场景红、② 删拒绝还原 1 场景红（`auto-1431-1481-1491/heavyGate`，重折拒绝路径有样本）；resource.ts 1097→907；verify 过） | `SolveDiagnostics` 累加器 + S2 `runFoldLoop` 外提（+ `buildExecutionsWithPhase` 迁 `phaseExecutions.ts`） | 见下方 CC-4 卡 |
-| CC-5 | review | design（依赖 CC-4） | S3a 欠打回填 / S4 `assembleSlot` / 重折环外提；`calcTeamResources` 收成编排器 | core/resource.ts 677–1210 |
+| CC-5a | review | **ready**（lead-arena-0925c @1db534c 写设计，见下方 CC-5a 卡） | S3a 欠打回填外提 `core/resource/underfillProbe.ts` | 见下方 CC-5a 卡 |
+| CC-5b | review | design（依赖 5a） | S4 `stageAssembleSlot` 外提 `core/resource/assembleSlot.ts` | resource.ts `runTailPipeline` 内 |
+| CC-5c | review | design（依赖 5b） | 重折环外提；`calcTeamResources` 收成编排器（`SolveContext`） | resource.ts 重折环段 |
 | CC-6a | review | **done**（dsflash 工人 + lead 复核：dump 624 零差、反向验证 36 条 banyue 场景红、guards 21、build、27 文件 533 测过） | 引擎能力 `exSpecialCount`：1471 般岳分支迁模块；core agentId 6→5、core 角色 import 5→4 | mechanics/types.ts、agents/banyue.ts、core/resource/helpers.ts、2 个棘轮基线 + RATCHET_BURNDOWN |
 | CC-6b | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差、反向验证 42 条 1051+1451 场景红、guards 21、build、509 测过；另核全部 crossAgentSupply 消费点均按 kind 过滤 ⇒ yidhari 新声明不会被误取） | 1451 帷幕：`curtainTriggers` 能力 + yidhari 声明 `crossAgentSupply.kind='curtain-open'`；agentId 5→3、import 4→2 | 见下方 CC-6b 卡 |
 | CC-6c | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差；反向验证 ① yidhari→preTail 38 场景红、② 注释 yeshuguang 42 场景红；guards 21、verify 过；core agentId 分支归零） | 1531/1431/1051 终局重推：`finalizePass` 能力 + 通用执行器 `core/resource/finalizePasses.ts`；agentId 3→0 | 见下方 CC-6c 卡 |
@@ -308,6 +310,44 @@ anomalyPool 已有现成的能力通道 `input.agentMechanics`（同 `transformA
 
 ④ **报告**：改动行、闸门 grep、棘轮新旧值、两次反向验证差异条数与前 10 个场景键、§4 + rowsnap 尾部输出。
 
+
+### CC-5a · S3a 欠打回填外提 `underfillProbe.ts`（review）
+
+**lead 设计（2026-09-25 lead-arena-0925c，@1db534c 实测）**。CC-5 拆三刀：**5a 欠打回填**（本卡）→ 5b S4 `stageAssembleSlot` 外提 → 5c 重折环外提 + `calcTeamResources` 收成编排器（5b/5c 待 lead 设计）。
+现状：`runTailPipeline`（`resource.ts:320`）开头的欠打回填是一个自包含块 `{ … }`（**:334–447**，块前 :321–333 是它的头注释）：
+读 `configs` / `config` / `totalTime` / `states`，内部闭包 `frontlineRowsOf`（:342）与 `convergeCounts`（:395，调 `runInnerLoop`），
+写 `states`（接受时）、`config.timeBudgetRefund` / `config.overflowSeconds` / cfg（被拒时回滚）、`diag.timeBudgetRefundedSeconds`（接受时）、`diag.timeBudgetIdleSeconds`（进了试探才写）。
+它用到的 `UNDERFILL_PROBE_THRESHOLD_SECONDS` / `TIME_BUDGET_TOLERANCE_SECONDS` 定义在 `resource.ts` 且带 `@fact`（锚指常量本身）⇒ **常量不搬**，经 ctx 注入（新文件 import `../resource` 会成环）。
+
+① **先读**：`src/core/resource.ts` 95–120、260–300、313–450；`src/core/resource/foldLoop.ts` 全文（CC-4 同款先例：ctx + diag 注入、包装行）；`src/core/resource/solveDiagnostics.ts`。
+
+② **做法**：
+1. 新建 `src/core/resource/underfillProbe.ts`：
+   ```ts
+   export interface UnderfillProbeContext {
+     configs: CharacterOperationConfig[]; config: ResourceCalcConfig; totalTime: number
+     innerCtx: InnerLoopContext
+     thresholdSeconds: number   // = UNDERFILL_PROBE_THRESHOLD_SECONDS（resource.ts 注入）
+     toleranceSeconds: number   // = TIME_BUDGET_TOLERANCE_SECONDS（resource.ts 注入）
+   }
+   export function runUnderfillProbe(ctx: UnderfillProbeContext, diag: SolveDiagnostics, from: IterationState[]): IterationState[]
+   ```
+   函数体 = 块 :334–447 **原样搬**：开头 `let states = from`，末尾 `return states`；外层变量 → `ctx.x`；两个常量 → `ctx.thresholdSeconds` / `ctx.toleranceSeconds`；
+   `runInnerLoop(from)` → `runInnerLoop(from, ctx.innerCtx)`。`frontlineRowsOf` / `convergeCounts` 保持为函数内嵌套闭包（不 export、不改口径）。
+   头注释 :321–333 随搬到函数 JSDoc；resource.ts 原处留一行指路注释。直接 import `./innerLoop`、`./helpers`（`materializeRows`）、`./crossAgentSupply`、`@/mechanics`（`getAgentMechanic`）、`@/types/resource`；**不得 import `../resource`**。
+2. resource.ts：在 `foldCtx` 旁建 `const probeCtx: UnderfillProbeContext = { configs, config, totalTime, innerCtx, thresholdSeconds: UNDERFILL_PROBE_THRESHOLD_SECONDS, toleranceSeconds: TIME_BUDGET_TOLERANCE_SECONDS }`；
+   `runTailPipeline` 里原块换成 `states = runUnderfillProbe(probeCtx, diag, states)`（**调用时读 `diag`**，重折环会换对象）。
+3. 禁止：改任何数值 / 条件 / 顺序 / 回滚范围（cfg、`timeBudgetRefund`、`overflowSeconds` 三者都要回滚，见块内注释的实测事故）；动 `@fact` 声明位置；改 runTailPipeline 其他段；建子目录。
+
+**证伪闸门**：前提 =「块 :334–447 只经 `states` 与上列副作用和外界通信」。可观察失败 = dump 非零差异，或搬出后 TS 报出块内引用了未列出的外层变量（那就停下写 blocked，列出变量名）。
+收工 `grep -n 'frontlineRowsOf\|convergeCounts' src/core/resource.ts` 只允许命中注释。
+
+③ **验收**：§4 全套 + rowsnap + `npm run check-guards` + `npm run validate:specs` + `npm run build` +
+`npx vitest run underfillRefund seedInvariance determinism timeFillRatchet truncationRefold warmStart src/scripts/__tests__/`。
+**反向验证**（两次，各自恢复并以零差异证明）：① 临时删被拒分支的 `configs.forEach((c, i) => Object.assign(c, savedCfg[i]))` ⇒ dump 非零差异（块内注释说 1431 队会变）；
+② 临时删 `diag.timeBudgetIdleSeconds = Math.max(0, underfill)` ⇒ dump 非零差异（证明诊断经注入的 diag 上报）。
+
+④ **报告**：改动行、resource.ts 行数前后、闸门 grep、两次反向验证差异条数与前 10 个键、§4 + rowsnap 尾部输出。
 
 ### CC-4 · SolveDiagnostics 累加器 + S2 `runFoldLoop` 外提（review）
 
