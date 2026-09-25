@@ -44,10 +44,10 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | W14 | drift 复核批 B：mechanics 档案事实 | 只读复核 | `.zc/reports/W14-drift.md` | ✅ 已落盘（`bca6879`/`709e299`；余 `agent:1431/自动选轴` 待用户） |
 | W15 | drift 复核批 C：composables + scripts + 杂项 | 只读复核 | `.zc/reports/W15-drift.md` | ✅ 已落盘（`a721b58`；drift 全队列 102→1，仅余 1431 自动选轴待用户） |
 | W16 | 琉音(1481) 送客次数 floor 残留：预测先行取证 | 只读 + 隔离探针 | `.zc/reports/W16-predict.md`；探针只在 `/tmp/wt-W16` | ✅ 已回收（缺陷属实但当前 21 预设零影响；衍生 W20/W21） |
-| W17 | 补青衣(1251) 影画4 回能差分断言 | 新增测试 | `src/mechanics/__tests__/qingyiC4Energy.test.ts`、`.zc/reports/W17.md` | 进行中（09-25 派发，持重计算时段） |
+| W17 | 补青衣(1251) 影画4 回能差分断言 | 新增测试 | `src/mechanics/__tests__/qingyiC4Energy.test.ts`、`.zc/reports/W17.md` | ✅ 已合入（lead 重放正控 5/5、负控 5→6 变红；卡已删） |
 | W18 | 两处纯清理：1531 spec notes 文案 + 般岳死写 | 小实现 | `src/specs/agents/1531.json`（仅 notes 字符串）、`src/mechanics/agents/banyue.ts`（仅删 1 行）、`.zc/reports/W18.md` | 待派发（W17 后，占重计算时段） |
 | W19 | frontlineRowsOf 琉音赠大收敛到 `ultimateGiftOf` | 小重构 | `src/core/resource.ts` | ✅ lead 自做（`85d90c6`，全量 3489 passed；W13 drifted #15 结案） |
-| W20 | 轴模式琉音送客行是否双计：取证 | 只读 + 隔离探针 | `.zc/reports/W20-axis-farewell.md`；探针只在 `/tmp/wt-W20` | 待派发（可与 W18 并行；W17 交还重计算时段后） |
+| W20 | 轴模式琉音送客行是否双计：取证 | 只读 + 隔离探针 | `.zc/reports/W20-axis-farewell.md`；探针只在 `/tmp/wt-W20` | 进行中（09-25 派发，持重计算时段） |
 | W21 | 琉音转大次数单源化（W16 契约 C） | 实现 | 见卡 | 待派发（**W20 回收后**；前置不满足则 blocked） |
 
 **drift 落盘的工具坑（2026-09-25，后续 lead 必读）**：① 批量打 `·复核@` 按**锚点**选事实，而事实可能写在 docs 里（如 `GAME_TERM_TO_CODE_FIELD.md`）——提交时别只 `git add src/`，以 `git status` 为准；
@@ -65,31 +65,6 @@ W18（W11/W12 的文案漂移与死写）。1451 梦境值 `maxValue 100 vs 500`
 headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾追加一行「测试/构建时段已授予」。
 
 ## 2. 任务卡
-
-<!-- card:W17 -->
-### W17 · 补青衣(1251) 影画4 回能差分断言
-
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W17。
-工作区 `/home/kaua/projects/zzz-calculator`。开工打印真实 HEAD 与 `git status --short`。
-父目标：档案段 1251 记录「影画4 护盾刷新回 5 能量/10s」有生产写入方与消费者，但 `grep -rn qingyiC4Energy src --include=*.test.ts` 零命中；本卡补一条会对错误变红的断言。
-
-**已知事实**：写入方 `src/mechanics/agents/qingyi.ts` `buildCharConfig`（`cfg.qingyiC4EnergyPerTrigger = cinemaLevel >= 4 ? C4_ENERGY_PER_TRIGGER : 0`，`cfg.qingyiC4TriggerInterval = C4_TRIGGER_INTERVAL`）；
-消费者 `src/core/resource/resourceIncome.ts#calcEnergySource`（`qingyiC4Energy = floor(totalTime / interval) × perTrigger`，并计入能量合计）；展示 `src/components/ResourceResultCard.vue`（`energySource.qingyiC4Energy`）。
-
-**先读**：`AGENTS.md` §1 规则 5/9/10、§3「新测试一律用 `src/test/harness.ts`」；`src/test/harness.ts`；`src/mechanics/__tests__/qingyi.test.ts`（照它的组队与取结果方式）；上面三个符号。
-
-**允许写入**：新建 `src/mechanics/__tests__/qingyiC4Energy.test.ts`；报告 `.zc/reports/W17.md`（先 `zc claim` 这两个路径）。
-**禁止**：改任何生产代码、既有测试、基线、spec；负控时对 `qingyi.ts` 的临时改动必须用备份还原（见步骤 3）。
-
-**步骤与验收**（测试/构建时段由派发附注授予）：
-1. 写测试：同一队伍青衣 C3 vs C4，断言 ① C3 时 `energySource.qingyiC4Energy === 0`；② C4 时 `=== Math.floor(totalTime / 10) * 5`，`totalTime` 从结果对象读（不要写死 180）；③ C4 能量合计比 C3 多出恰好该值（若合计还受其它 C4 效果影响，改为只断言①②并在报告说明）。
-2. 正控：`VITEST_MAX_WORKERS=4 npx vitest run src/mechanics/__tests__/qingyiC4Energy.test.ts src/mechanics/__tests__/qingyi.test.ts` 全绿，记录 passed 数。
-3. 负控（证明能红）：`cp src/mechanics/agents/qingyi.ts /tmp/qingyi.ts.bak` → 把 `C4_ENERGY_PER_TRIGGER` 改成 4 → 重跑新测试，**必须红**且失败断言是 ②/③ → `cp /tmp/qingyi.ts.bak src/mechanics/agents/qingyi.ts` → `git diff --stat src/mechanics/agents/qingyi.ts` 必须为空。**不要**用 `git checkout` 还原。
-4. `npm run check-guards`（新测试不得新增三文件 fetch stub）+ `npm run build`（含 vue-tsc）。
-
-**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、测试源码全文、正控/负控原始输出尾部与退出码、`git diff --stat`、`git status --short`。
-`zc done --verifier '<正控命令>' --coverage 'src/mechanics/__tests__/qingyiC4Energy.test.ts' --risk '<未证明事项>'`。不提交（lead 复核后提交）。
-<!-- /card:W17 -->
 
 <!-- card:W18 -->
 ### W18 · 两处纯清理：星徽·比利(1531) spec notes 文案 + 般岳(1471) 死写
