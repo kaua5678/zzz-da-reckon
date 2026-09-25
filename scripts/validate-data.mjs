@@ -253,5 +253,16 @@ check('character-mechanics has no top-level corePassive/additionalAbility (singl
   dupTopLevel.length === 0,
   `顶层重复字段（应并入 mechanics[] 后删除）: ${dupTopLevel.join(', ')}`)
 
+// 单一事实源（规则 8/11）：命座状态只记在 constellations.cinemas，禁止 mechanics 角色条目
+// 再带 cinemaImplementation / cinemaImplementations 镜像（历史上由 sync 写占位、从不回填 →
+// 与 constellations 漂移 62 档/21 角色、零运行时读者；2026-09-25 W29 删除，此护栏防回归）。
+// @fact engine:mechanics命座单一事实源 口径: character-mechanics.json 角色条目禁止 cinemaImplementation/cinemaImplementations 镜像字段，命座状态单源 = character-constellations.json#characters.<id>.cinemas（镜像占位从不回填会漂移）| 据 lead-arena-0925b@2026-09-25（W28） | 验 npm run validate:data | 锚 scripts/validate-data.mjs#cinemaMirrorKeys | 信 高
+const cinemaMirrorKeys = /^cinemaImplementations?$/
+const cinemaMirrors = Object.entries(mechData)
+  .flatMap(([id, c]) => Object.keys(c ?? {}).filter(k => cinemaMirrorKeys.test(k)).map(k => `${id}.${k}`))
+check('character-mechanics has no cinemaImplementation(s) mirror (single source = constellations.cinemas)',
+  cinemaMirrors.length === 0,
+  `命座镜像字段（应删，单源 = character-constellations.json#characters.<id>.cinemas）: ${cinemaMirrors.join(', ')}`)
+
 console.log(failed === 0 ? `\n${checks} data checks passed` : `\n${failed} data check(s) failed`)
 process.exit(failed === 0 ? 0 : 1)

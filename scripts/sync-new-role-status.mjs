@@ -114,30 +114,15 @@ for (const id of Object.keys(list)) {
         codePaths: [],
       })
     }
-    const cinemaImplementation = Object.entries(data.talent ?? {})
-      .sort((a, b) => Number(a[0]) - Number(b[0]))
-      .map(([level, t]) => ({
-        cinema: Number(level),
-        status: 'not_described_not_implemented',
-        implemented: [],
-        pending: [`影画${level} ${t.name ?? ''}：${plain(t.desc ?? '')}`],
-      }))
-    for (const cinema of cinemaImplementation) {
-      const talent = data.talent?.[String(cinema.cinema)]
-      if (isGenericSkillLevelCinema(talent?.desc)) {
-        cinema.status = 'implemented_generic_skill_level'
-        cinema.implemented = ['通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。']
-        cinema.pending = []
-      }
-    }
     // 单一事实源：核心被动/额外能力的录入占位已在 mechanicsList（core_passive_<id> /
     // additional_ability_<id>）承载，不再另写顶层 corePassive/additionalAbility 重复字段
     // （历史上顶层占位从不回填，与 mechanics[] 漂移且被状态表漏读——2026-09-04 归一）。
+    // 命座状态单源 = character-constellations.json#characters.<id>.cinemas；mechanics 侧的
+    // 命座镜像字段已删（占位从不回填、与 constellations 漂移——2026-09-25 W29）。
     mechanics.characters[id] = {
       name,
       specialResources: [],
       mechanics: mechanicsList,
-      cinemaImplementation,
     }
     synced++
   }
@@ -162,15 +147,6 @@ for (const id of Object.keys(list)) {
   const data = JSON.parse(readFileSync(fullPath, 'utf8'))
   const constEntry = constellations.characters[id]
   for (const cinema of constEntry?.cinemas ?? []) {
-    const talent = data.talent?.[String(cinema.cinema)]
-    if (cinema.status === 'not_described_not_implemented' && isGenericSkillLevelCinema(talent?.desc)) {
-      cinema.status = 'implemented_generic_skill_level'
-      cinema.implemented = ['通用技能等级+2，通过 skillLevelBonus / skillLevelCoef 接入伤害与失衡倍率。']
-      cinema.pending = []
-    }
-  }
-  const mechEntry = mechanics.characters[id]
-  for (const cinema of mechEntry?.cinemaImplementation ?? []) {
     const talent = data.talent?.[String(cinema.cinema)]
     if (cinema.status === 'not_described_not_implemented' && isGenericSkillLevelCinema(talent?.desc)) {
       cinema.status = 'implemented_generic_skill_level'
