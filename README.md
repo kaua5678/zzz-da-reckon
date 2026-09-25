@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（41 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（42 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -121,6 +121,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-r65j1-decibel-cap-verdict.md` | **R65-J1 首案裁决备忘**：橘福福「喧响上限+1000」在整局总量口径下零消费者（不是缺口）；证据链、护栏判据 decibelCapVerdict.test.ts 与未来喧响时间轨接入时的重裁决步骤 |
 | `docs/mcp-worker-task-queue.md` | **低级模型任务队列（活文档）**：可直接派给 dsh 工人的自包含任务卡（四段式 brief + 证伪闸门 + 写入白名单 + 正负控验收）、`setsid` 派发命令与主代理复核口径；卡合入即删 |
 | `docs/mcp-drift-triage.md` | **drift 待复核队列分诊**：CC 批次触发 102 条 ⟳ 的成因、四态复核判据（still-holds / drifted / broken-anchor / needs-user）、W13–W15 工人分批与主代理落盘纪律（按批 commit、同文件同批清、禁止无归因刷日期） |
+| `docs/mcp-liuyin-promote-source.md` | **琉音转大次数唯一来源（W21 阻塞项 lead 设计）**：同轮四读数（floor / 计划值结转 / 池不动点 / 轴声明）的证据表、planned≠pool 的口径根因、单源 = 答案层 `promote` 滞后注入的通道设计、轴模式闸门（待用户）、否决记录与证伪闸门；拆卡 W25/W26 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（41 份），新增文档需同步本表。
+> 文档数量以本表为准（42 份），新增文档需同步本表。
