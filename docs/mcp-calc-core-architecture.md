@@ -152,6 +152,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | ~~CC-D3~~ | — | ✅ **done 2026-09-25（用户裁决「维琳娜专属资源，不该给别人计算」）** | 风蚀归属改按面板标记 `velinaEnabled`（`velina.ts#findVelinaPanel`/`#resolveVelinaCorrosion`，模块唯一写入方）。探针先行的预测**已证实**：1621 队产出 `{turb:3,micro:2,broad:1,boosted:1}` + 2 条「维琳娜…气旋」行共 15 702 挂在洛克茜名下、1631 队 5 936 挂赛维里安 ⇒ 数值缺陷。修后无维琳娜 ⇒ `velinaCorrosionSource` 为 `undefined`（非全零），气旋行/广域积蓄注入整套消失；**乱流仍在**（通用机制）。dump A/B：6 支洛克茜队 −0.06%~−0.15% | velina.ts / anomalyPool.ts / anomalyPool/helpers.ts + 判据 `anomalyPool.test.ts::CC-D3` + `ccD3D1Verdict.test.ts` |
 | CC-D4 | — | **done** `1eedd4c`（lead 自做） | 删 `AgentAnomalyTransformInput.store` 字段、`anomalyPool.ts` 的 `transformStore` 与 `velina.ts` 唯一写入：全仓无读，引擎经能力 `anomalyCorrosion` 按最终乱流次数重算同一结果；dump/rowsnap 零差，verify 绿 | anomalyPool.ts / types.ts / velina.ts |
 | CC-12 | 换尺 | **done**（dsflash 工人 + lead 复核：新增命中恰为 convergence.ts:302/311 两行；编排层基线/frozen 1→3（口径纠正），core 5 不变；src 零改动；guards 21、scripts 测试 452 过、build） | 身份扫描器补「本地别名」形态（`convergence.ts:302/311` 的 `fillerAgentId === '1051'/'1041'` 现在量不到），按规则 17② 调 `frozen` 到真实值 | scripts/lib/agent-identity-lines.mjs 等 |
+| CC-13 | review | **ready**（lead 2026-09-26 立卡） | 连续强特通道通用化（R22-D1 批 1-1）：引擎只认 `exContinuous`/`exFinalize`/`exRefundPerPaid`/`exReserved*`/`exRefundFreeCap`，1051 模块声明；零 delta | 见下方 CC-13 卡 |
 
 ### CC-1 · 招式表查询迁出（fast）
 
@@ -257,6 +258,49 @@ DoT 表 `{ 百分比, 间隔, tick 数 }` 逐项与 `STANDARD_DOT_CONFIG` 对照
 **反向验证**：临时让 yidhari 的 `curtain-open` supply 返回 0 跑 dump ⇒ 带 1051+1451 的场景必须非零差异，记条数后**恢复**，再跑一次 dump 确认回到零差异。
 
 ④ **报告**：改动行、两次闸门 grep 输出、三处棘轮新旧值、反向验证差异条数（列出场景键前 10 个）、§4 + rowsnap 尾部输出。
+
+### CC-13 · 连续强特通道通用化（R22-D1 债 1a 的前置「批 1-1」）（review，低级模型可做）
+
+**背景**：DEBT「全局实数化收敛重构」（1a，标记 `core/resource/helpers.ts#resolveExSpecialCount`）的保留理由是
+「1051 的 refund 自指反馈**只能**按角色开洞、无法用声明式通用通道表达——该前提未验证（批 1-1 未开工）」。
+lead 2026-09-26 实读：引擎侧的数学（refund 解析不动点 `O*=(E0−保留成本)/(消耗−返还)`、迭代期实数终结技
+时间信道、强特 0.5 阻尼、内层上限 ≥100、终局 floor 一次）**全部是通用的**，唯一绑定 1051 的是**字段名**，
+外加 `resourceIncome.ts` 非轴分支读 `yidhariExPerStun × yidhariStunCount` 当「无返还上限」。本卡把它改成
+**引擎只认通用字段、模块声明**，零行为改变。
+
+**字段映射**（旧名全仓消失，含测试；新名在 `types/resource/config.ts` 开一段「连续强特通道（引擎通用，模块声明）」逐字段写文档）：
+
+| 旧（1051 专名） | 新（引擎通用） | 写入方 | 语义 |
+|---|---|---|---|
+| `yidhariContinuousEx` | `exContinuous` | 模块 buildCharConfig | 迭代期强特次数实数参与收敛（阻尼 + 实数 ult 时间信道 + 内层上限 ≥100） |
+| `yidhariFinalizeEx` | `exFinalize` | 模块 finalizePass begin/reset | 终局整数重推期：floor 一次、不阻尼 |
+| `yidhariRefundPerOutStunEx` | `exRefundPerPaid` | 模块 buildCharConfig | 超出保留/上限部分的每发强特返还闪能 |
+| `yidhariInStunExCount` | `exReservedCount` | 模块 applyTeamConfig(converge) | 次数已知、不返还的强特（**条件写形态逐位保留**：只在 `inStunEx>0` 时写） |
+| `yidhariInStunEnergyCost` | `exReservedEnergyCost` | 同上 | 上述强特的闪能成本 |
+| （新增） | `exRefundFreeCap` | 模块 applyTeamConfig(converge)，紧跟 `record.yidhariStunCount = stunCount` **无条件**写 | 非保留模式下不返还的强特次数上限 |
+| `EnergySource.yidhariRefund`（`types/resource/energy.ts`） | `exRefundEnergy` | 引擎 | 返还闪能总量 |
+
+**步骤**：
+1. `types/resource/config.ts`：删 5 个旧字段声明，新增 6 个通用字段（带 JSDoc，注明「当前唯一声明方 = 1051 `mechanics/agents/yidhari.ts`」）。`yidhariExPerStun` / `yidhariStunCount` **保留**（模块内部仍用，`computeYidhariHpSource` 读）。`energy.ts` 改名。
+2. `mechanics/agents/yidhari.ts`：写入/读取全部换新名；`applyYidhariTeamConfig` 在 `record.yidhariStunCount = stunCount` 下一行加
+   `record.exRefundFreeCap = fin(cfg.yidhariExPerStun ?? 2) * fin(stunCount)`，其中 `fin` 逐字复刻 `resourceIncome.ts:36` 的
+   `n = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : 0`（逐位等价的关键：原式 = `n(yidhariExPerStun ?? 2) * n(yidhariStunCount ?? 0)`，而 `yidhariStunCount` 唯一写入方就是这一行上面那行）。
+3. `core/resource/resourceIncome.ts` refund 块：换新名；非轴分支改 `const cap = n(cfg.exRefundFreeCap)`；局部变量 `yidhariRefundPer`/`yidhariRefund` 改 `refundPer`/`exRefundEnergy`；注释改成通用口径（保留 2026-09-04 双稳态来历一句 + 「当前唯一声明方 1051」）。修完 `grep -n yidhari src/core/resource/resourceIncome.ts` 里 **refund 块内**为 0（块外其它伊德海莉机制不在本卡范围，别动）。
+4. `core/resource/helpers.ts`：`resolveExSpecialCount` 两个分支、`:390 yidhariRealUlt`、`:399 exForTime`、`:616 storedEx` 换新名，变量 `yidhariRealUlt`→`realUltForTime`；注释通用化。**debt 标记行（`// debt: 全局实数化收敛重构…`）保留**，其下「⚠ 本标记（1a）保留」那段改写为：批 1-1 已由 CC-13 落地（通道已是声明式通用字段 ⇒「只能按角色开洞」前提证伪）；债本体（全局「实数化松弛、终局才 floor」推广到其它正反馈模块 + 逐模块重校准）仍未做 ⇒ 标记保留。`@fact yidhari:refund不动点` 行**只允许**把其中的字段名换新名，其余逐字不动。
+5. `core/resource.ts:155`（`yidhariContinuousPresent`→`continuousExPresent`）、`core/resource/finalizePasses.ts`、`composables/resourceCalc/convergence.ts` 注释、`starlightBilly.ts` / `yeshuguang.ts` / `seedInvariance.test.ts` 注释里的旧名 → 新名。
+6. 测试：`mechanics/__tests__/axisContext.test.ts`（13 处）、`core/__tests__/energyRowParity.test.ts:130` 等全部换新名；断言语义不改。
+7. `scripts/check-guards.mjs` DEBT_REGISTRY 中该条上方注释补一句「2026-09-26 CC-13：批 1-1 通用连续通道已落地，债本体仍在」；**键与 due 不改**（标记关键词没变）。
+
+**禁止**：改 `docs/AGENT_ID_BURNDOWN_LOG.md`、`docs/ENGINE_PIPELINE_GUIDE.md`、`scripts/lib/agent-branch-ratchet.mjs` 与 `check-guards.mjs` 的 `plan:`/沿革字符串里的旧名——那些是**历史记录**，描述的是当时状态。不许改任何数值、分支结构、条件写形态、阻尼系数、迭代上限。不改比利/叶瞬光的各自旗标（`billyFinalizeChain` 等并入通用通道 = 后续「批 1-2」候选，不在本卡）。
+
+**闸门**：
+- `grep -rnE 'yidhari(ContinuousEx|FinalizeEx|RefundPerOutStunEx|InStunExCount|InStunEnergyCost)|yidhariRefund\b' src` ⇒ **0 行**；
+- `grep -nE 'yidhariExPerStun|yidhariStunCount' src/core -r` ⇒ **0 行**；
+- `get_diagnostics` 无新增；`npm run build` 过；§4 dump（624）与 rowsnap（637）对 `dump-A.json` / `rows-A.json` **零差**；`node scripts/check-guards.mjs` 全绿。
+
+**lead 复核加做**：反向验证——临时删掉步骤 2 新增的 `exRefundFreeCap` 写入行 ⇒ dump/rowsnap 必须在 1051 非轴场景出现差异（证明新字段真在通路上），恢复后零差。
+
+**报告**：`.zc/reports/CC-13.md`，第一行 `STATUS: done|blocked`；逐文件改动摘要、两条闸门 grep 的原始输出、build / dump / rowsnap / check-guards 尾部输出（原文，不许估算）。
 
 ### CC-6d · 维琳娜风蚀迁引擎能力（review）
 
