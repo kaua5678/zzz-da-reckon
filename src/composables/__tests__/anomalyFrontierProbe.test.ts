@@ -35,7 +35,7 @@ describe('探针：前沿异常/紊乱积储分层', () => {
     const configStore = useConfigStore()
     const catalog = useCatalogStore()
     await catalog.loadBuildRecommendations()
-    const { teamTotalDamage, anomalyPoolResult } = useResourceCalc()
+    const { teamTotalDamage, anomalyPoolResult, damagePoolRows } = useResourceCalc()
 
     const nameOf = (id?: string) => (id ? (catalog.getAgent(id)?.name?.zhCN ?? id) : '?')
     const specialtyOf = (id: string) => catalog.getAgent(id)?.specialty ?? ''
@@ -75,7 +75,10 @@ describe('探针：前沿异常/紊乱积储分层', () => {
       const perElement = (ap?.perElement ?? []).map(p => ({ element: p.element, buildup: p.totalBuildUp, cap: p.buildUpCap, triggers: p.triggerCount }))
       const disorderDamage = ap?.disorderDamage?.totalDamage ?? 0
       const turbulenceDamage = ap?.turbulenceDamage?.totalDamage ?? 0
-      const dotDamage = ap?.standardDotDamage?.totalDamage ?? 0
+      // CC-D2：core standardDotDamage 已删 ⇒ 改读生产 DoT 行（灼烧/感电/侵蚀）
+      const dotDamage = damagePoolRows.value
+        .filter(r => r.id.startsWith('anomaly-damage-') && (r.type === '灼烧' || r.type === '感电' || r.type === '侵蚀'))
+        .reduce((s, r) => s + r.totalDamage, 0)
       const anomalyDamageTotal = disorderDamage + turbulenceDamage + dotDamage
       rows.push({
         run,

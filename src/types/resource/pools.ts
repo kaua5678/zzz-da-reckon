@@ -126,8 +126,6 @@ export interface AnomalyPoolResult {
   turbulenceDamage?: TurbulenceDamageResult
   /** 维琳娜风蚀资源明细（有风属性且触发乱流时计算） */
   velinaCorrosionSource?: VelinaCorrosionSource
-  /** 标准元素 DOT 伤害明细（灼烧/感电/侵蚀） */
-  standardDotDamage?: StandardDotDamageResult
   /** 爱丽丝畏缩 DOT 伤害明细 */
   aliceCoweringDot?: AliceCoweringDotResult
   /** 异常事件明细：把”异常条触发/覆盖触发/动作跟随触发”等事件化展示给开发调试 */
@@ -231,29 +229,6 @@ export interface DisorderDamageResult {
 // ============ 爱丽丝畏缩 DOT ============
 
 /** 爱丽丝畏缩 DOT 伤害结果 */
-/** 标准元素 DOT 伤害明细（灼烧/感电/侵蚀） */
-export interface StandardDotDamageResult {
-  /** 各元素 DOT 详情 */
-  details: StandardDotDamageDetail[]
-  /** 总 DOT 伤害 */
-  totalDamage: number
-}
-
-export interface StandardDotDamageDetail {
-  element: string
-  applierSlot: number
-  /** 每 tick 倍率（%） */
-  tickMultiplier: number
-  /** tick 间隔（秒） */
-  tickInterval: number
-  /** 总 tick 数（按有效时间折算） */
-  totalTicks: number
-  /** 单 tick 伤害 */
-  perTickDamage: number
-  /** 总伤害 */
-  damage: number
-}
-
 export interface AliceCoweringDotResult {
   /** DOT tick 间隔（秒） */
   dotInterval: number

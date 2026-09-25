@@ -47,7 +47,6 @@ import type {
   DisorderDamageResult, DisorderDamageDetail,
   TurbulenceDamageResult, TurbulenceDamageDetail,
   DisorderFormula, TurbulenceFormula,
-  StandardDotDamageResult, StandardDotDamageDetail,
   AliceCoweringDotResult, VelinaCorrosionSource,
 } from '@/types/resource'
 import { panelAt, emptyPanel } from '../panel'
@@ -1349,96 +1348,6 @@ export const ANOMALY_SINGLE_HIT_MULTIPLIER: Record<string, number> = {
   physical: 713,                                        // 强击 713% 单次
   ice: 500,                                             // 碎冰 500% 单次
   wind: 1250,                                           // 风化 1250% 单次
-}
-
-/**
- * 计算标准元素 DOT 伤害（灼烧/感电/侵蚀）
- *
- * 每 tick 伤害 = 异常质量 × 结算区
- * 异常质量 = calcAnomalyMass(ATK × tickMultiplier, 精通区, 增伤区, 防御区, 等级区)
- * 结算区 = 抗性区 × 易伤区 × 失衡区 × 异常增伤区 × 异常暴击区
- * 总 tick 数 = 有效 DOT 覆盖时间 / tickInterval（上限 = 触发次数 × 每次总tick数）
- *
- * @param dotElements 有 DOT 的元素列表（fire/electric/ether）
- * @param panels 各角色面板
- * @param dotCoverageTime 有效 DOT 覆盖时间（秒）
- * @param config 伤害计算全局配置
- */
-export function calcStandardDotDamage(
-  dotElements: { element: string; triggerCount: number; applierSlot: number }[],
-  panels: PanelValues[],
-  dotCoverageTime: number,
-  config: DamageCalcConfig,
-): StandardDotDamageResult | undefined {
-  if (dotElements.length === 0 || dotCoverageTime <= 0) return undefined
-
-  const details: StandardDotDamageDetail[] = []
-  let totalDamage = 0
-
-  for (const { element, triggerCount, applierSlot } of dotElements) {
-    const dotConfig = STANDARD_DOT_CONFIG[element]
-    if (!dotConfig) continue
-
-    const applierPanel = panelAt(panels, applierSlot) ?? emptyPanel()
-
-    // 异常质量（每 tick 的基础伤害，含异常增伤）
-    const anomalyMass = calcAnomalyMass(
-      applierPanel,
-      dotConfig.tickMultiplier,
-      element,
-      config.enemyDefense,
-      config.enemyDefReduction,
-      true, // 含异常增伤
-    )
-
-    // 结算区乘数（抗性 × 易伤 × 失衡 × 异常暴击）
-    const baseRes = config.enemyResistances[getBaseElement(element)] ?? 0
-    const totalResReduction = config.enemyResReduction
-      + (applierPanel.enemyResReduction ?? 0)
-      + getElementEnemyResReduction(applierPanel, element)
-    const resMult = calcResistanceMultiplier(baseRes, totalResReduction)
-
-    const dmgTakenMult = 1 + (applierPanel.enemyDamageTakenBonus ?? 0) / 100
-
-    const stunMult = calcStunMultiplier(
-      config.stunMultiplier,
-      applierPanel.stunDmgMultiplierBonus ?? 0,
-      applierPanel.stunDmgMultiplierBonusAlways ?? 0,
-      applierPanel.stunDmgMultiplierBonusCapAlways ?? 0,
-      config.stunned,
-    )
-
-    const anomalyDmgMult = 1 + (applierPanel.anomalyDmgBonus ?? 0) / 100
-    const critMult = calcAnomalyCritExpect(applierPanel, element)
-
-    const settlementMultiplier = resMult * dmgTakenMult * stunMult * anomalyDmgMult * critMult
-
-    // 单 tick 伤害
-    const perTickDamage = anomalyMass * settlementMultiplier
-
-    // 总 tick 数 = DOT 覆盖时间 / tickInterval，上限 = 触发次数 × 每次总tick数
-    const maxTicks = triggerCount * dotConfig.totalTicks
-    const coverageTicks = dotCoverageTime / dotConfig.tickInterval
-    const totalTicks = Math.min(maxTicks, coverageTicks)
-
-    const damage = perTickDamage * totalTicks * config.globalAnomalyMultiplier
-
-    details.push({
-      element,
-      applierSlot,
-      tickMultiplier: dotConfig.tickMultiplier,
-      tickInterval: dotConfig.tickInterval,
-      totalTicks: round(totalTicks),
-      perTickDamage: round(perTickDamage),
-      damage: round(damage),
-    })
-
-    totalDamage += damage
-  }
-
-  if (details.length === 0) return undefined
-
-  return { details, totalDamage: round(totalDamage) }
 }
 
 export function calcAliceCoweringDot(

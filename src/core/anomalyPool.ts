@@ -4,7 +4,6 @@ import type {
   DisorderDamageResult,
   TurbulenceDamageResult,
   VelinaCorrosionSource,
-  StandardDotDamageResult,
   AliceCoweringDotResult,
 } from '@/types/resource'
 import { resolveAnomalyCorrosion } from './anomalyPool/corrosion'
@@ -15,7 +14,7 @@ import { panelAt, emptyPanel } from './panel'
 import * as AnomalyPoolHelpers from './anomalyPool/helpers'
 import type { AnomalyPoolInput, DamageCalcConfig } from './anomalyPool/helpers'
 export type { AnomalySkillExecution, AnomalyPoolInput, AliceCoweringConfig } from './anomalyPool/helpers'
-const { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, TURBULENCE_CD_SECONDS, resolveStatElement, ANOMALY_DURATION, STANDARD_DOT_CONFIG, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyDecibelBonus, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcStandardDotDamage, calcAliceCoweringDot } = AnomalyPoolHelpers
+const { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, TURBULENCE_CD_SECONDS, resolveStatElement, ANOMALY_DURATION, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyDecibelBonus, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcAliceCoweringDot } = AnomalyPoolHelpers
 export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   const {
     executions,
@@ -396,20 +395,10 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     )
   }
 
-  // ---- 5.5 标准元素 DOT 伤害（灼烧/感电/侵蚀） ----
-  // 物理（畏缩）、冰（霜寒）、风（风化）没有 DOT 伤害，只有特殊效果
-  let standardDotDamage: StandardDotDamageResult | undefined
-  if (!hasWindChar && coverage.effectiveDoTTime > 0) {
-    const dotElements = normalNonWindElements.filter(e => e.element in STANDARD_DOT_CONFIG)
-    if (dotElements.length > 0) {
-      standardDotDamage = calcStandardDotDamage(
-        dotElements,
-        damagePanels,
-        coverage.effectiveDoTTime,
-        dmgConfig,
-      )
-    }
-  }
+  // ---- 5.5 标准元素 DOT 伤害：CC-D2（2026-09-25）已删 core 侧 `calcStandardDotDamage` ----
+  // 生产 DoT 行唯一实现 = `composables/resourceCalc/damagePoolAnomaly.ts`（虚拟面板 + 按积蓄占比分摊、
+  // 含持续时间延长、按风化覆盖折算）。core 版只用施加者单人面板、跳数同为「触发×每次满额」无截断，
+  // 对账（78 预设 120 元素行）比值 0.41–1.77 ⇒ 接入只会降精度。见 docs/mcp-calc-core-architecture.md CC-D2。
 
   // ---- 6. 计算喧响奖励 ----
   const decibelBonus =
@@ -464,7 +453,6 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     disorderDamage,
     turbulenceDamage,
     velinaCorrosionSource,
-    standardDotDamage,
     aliceCoweringDot,
     anomalyEvents: anomalyEvents.filter(event => event.count > 0),
   }
