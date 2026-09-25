@@ -110,7 +110,10 @@ node -e 'const a=require("/home/kaua/calc-arch/dump-A.json"),b=require("/home/ka
 #   ⚠ dump **不覆盖 damagePoolRows 的 note/baseFormula 文案**（只 hash resourceResult/stunPool + 总伤害）。
 #   动行文案的卡另跑 rowsnap（= dump + hash(damagePoolRows)，`.zc/perf/rowsnap.perf.ts`，文件名刻意不含 dump 以免被 `dump` 过滤器同时选中）：
 #   PERF_OUT=/home/kaua/calc-arch/rows-B.json npx vitest run --config .zc/perf/vitest.perf.config.ts rowsnap
-#   基线 rows-A.json 须在改前 HEAD 的 worktree 里跑（lead 在 da6c028 已存 /home/kaua/calc-arch/rows-A.json，零行为卡后仍有效），比对命令同上换文件名。
+#   基线 rows-A.json 须在改前 HEAD 的 worktree 里跑，比对命令同上换文件名。
+#   ⚠ **基线代次**：`4ca47db`（CC-D1/D3 数值修复）改了 9 个预设 54 个场景 ⇒ 旧 A 作废（移至 /home/kaua/calc-arch/old/）。
+#   现行 dump-A.json / rows-A.json 由 lead-arena-0925c 于 `d97a8b0` 重生成（2026-09-25 17:55）；此后只要仍是零行为卡就一直有效，
+#   任何**有意改数值**的提交落盘后必须重生成并在此行更新代次。
 npm run build                            # vue-tsc + vite，EXIT 0
 ```
 不许跑 `npm run verify`（12min+，lead 合并前统一跑）。报告写 `.zc/reports/<卡号>.md`，第一行 `STATUS: done|blocked`，
@@ -127,7 +130,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-4 | review | design | `SolveDiagnostics` 累加器 + S2 `runFoldLoop` 外提 | core/resource.ts 329–600 |
 | CC-5 | review | design（依赖 CC-4） | S3a 欠打回填 / S4 `assembleSlot` / 重折环外提；`calcTeamResources` 收成编排器 | core/resource.ts 677–1210 |
 | CC-6a | review | **done**（dsflash 工人 + lead 复核：dump 624 零差、反向验证 36 条 banyue 场景红、guards 21、build、27 文件 533 测过） | 引擎能力 `exSpecialCount`：1471 般岳分支迁模块；core agentId 6→5、core 角色 import 5→4 | mechanics/types.ts、agents/banyue.ts、core/resource/helpers.ts、2 个棘轮基线 + RATCHET_BURNDOWN |
-| CC-6b | review | design（依赖 6a） | 1451 帷幕：`curtainTriggers` 能力 + yidhari 声明 `crossAgentSupply.kind='curtain-open'`；agentId 5→3、import 4→2 | 见 CC-6 设计稿 §3.2 |
+| CC-6b | review | **ready**（lead 已核当前代码并裁决设计稿 §6-1/§6-2，见卡） | 1451 帷幕：`curtainTriggers` 能力 + yidhari 声明 `crossAgentSupply.kind='curtain-open'`；agentId 5→3、import 4→2 | 见下方 CC-6b 卡 |
 | CC-6c | review | design（依赖 6b） | 1531/1431/1051 终局重推：`finalizePass` 能力 + 通用执行器 `core/resource/finalizePasses.ts`；agentId 3→0 | 见设计稿 §3.3（stage 顺序敏感） |
 | CC-6d | review | ✅ **ready**（CC-D3 已裁决，阻塞解除） | velina 风蚀状态机：`anomalyStateSim` 能力；import 2→0 | 见设计稿 §3.4 |
 | CC-7 | fast | **done**（dsflash 工人 + lead 复核：PanelValues.atk/hp 必填 ⇒ `?? 0` 死分支；dump 624 零差、guards 21、build、48 测过） | 贯穿力单一事实源：导出 `calcPenetrationPower`，norma.ts / damagePool.ts:1067 改引用（**不碰 :1020**） | core/damage.ts、norma.ts、damagePool.ts |
@@ -217,6 +220,34 @@ DoT 表 `{ 百分比, 间隔, tick 数 }` 逐项与 `STANDARD_DOT_CONFIG` 对照
 ③ **验收**：§4 全套 + `npx vitest run src/mechanics/__tests__/banyue*.test.ts src/composables/__tests__/yidhariInteractionGrid.test.ts`；
 反向验证：临时注释掉 banyue 的 `exSpecialCount` 跑 dump，含 1471 的场景必须非零差异，记下差异条数后**恢复**，再跑一次 dump 确认回到零差异。
 ④ **报告**：改动行、三处棘轮新旧值、反向验证差异条数、§4 尾部输出。
+
+### CC-6b · 1451 帷幕触发迁引擎能力（review）
+
+① **先读**：`.zc/reports/CC-6-design.md` §3.2（c）（d）（e）与 §6 第 1、2 条；**设计稿行号已过期**（CC-3/6a、`4ca47db` 之后），一律以当前代码为准：
+`src/core/resource/helpers.ts` 285–335（`luciaSlot` / `curtainTriggers` / yidhari 外部回血 `external` / `luciaC4DecibelPerTrigger`）；
+`src/core/resource.ts` 705–735（收敛后帷幕折算，含「卢西娅必须按 agentId 找槽」注释）与 785–860（装配段写回 `luciaCurtain*` / `yidhariExternalHealPct`、喧响源）；
+`src/core/resource/crossAgentSupply.ts` 40–63；`src/mechanics/types.ts` 755–800；`src/mechanics/agents/luciaElowen.ts` 88–103（`computeLuciaCurtainTriggers`）与其模块定义；`src/mechanics/agents/yidhari.ts` 模块定义。
+
+② **lead 裁决（2026-09-25 lead-arena-0925c）**：
+- §6-1：类别名定为 `'curtain-open'`（语义 = 队友开帷幕次数），同步把 `types.ts` `CrossAgentSupplySpec.kind` 注释里预告的 `'curtain'` 改成 `'curtain-open'`。
+- §6-2：外部回血源**复用**帷幕提供者槽 `providerSlot`，不新增 `heal-per-ult` 类别；在 `curtain.ts` 头注释写死前提：「当前唯一帷幕提供者 = 唯一外部回血源 = 卢西娅；出现第二个提供者时必须把回血源拆成独立能力」。
+
+**硬约束**：
+- 形状照设计稿 §3.2（c）：`curtainTriggers?(input: { cfg; state; teammateOpenCount; totalTime }): number`；yidhari 声明 `crossAgentSupply: { kind: 'curtain-open', supply: ({ state }) => Math.max(0, Math.floor(state.ultimateCount)) }`；
+  `crossAgentSupply.ts` 加 `crossAgentSupplyCountOf`；新文件 `src/core/resource/curtain.ts`（`curtainInfoOf`，不写 id、不 import 角色模块）；helpers.ts 与 resource.ts 两个调用点、装配段按设计稿改写，删两处 `computeLuciaCurtainTriggers` import 与两处 `'1451'` 字面量。
+- **证伪闸门（动手前与收工前各跑一次）**：`grep -rn "curtainTriggers" src/mechanics/agents/` 只命中 luciaElowen；`grep -rn "curtain-open" src/mechanics/agents/` 只命中 yidhari。
+  `crossAgentSupply` 每个模块**只能声明一条**（类型是单个 spec，不是数组）——lead 已核 yidhari 当前**没有**声明；若你开工时发现已有，停下报 blocked。
+- `yidhariSlot`（字段判据 `yidhariDecibelPerHpPct`）**保留**，继续用于外部回血写回与 yidhariBurn；只有「队友开帷幕数」改由 `curtain-open` 收集。
+  ⚠ 这是本卡最大的等价性风险：旧式按**字段**找 yidhari、新式按**模块**找；resource.ts 705–720 的注释证明「buildCharConfig 写的字段在某些 cfg 副本上会缺」。若 dump 在带 1051 的场景红，**首先怀疑这里**，报 blocked，不要硬修。
+- 装配段 `luciaCurtainTeammates` 的多提供者比例分摊是**新语义、当前不可达**，注释里写明（防后人以为逐位等价）。
+- 更新 resource.ts「卢西娅必须按 agentId 找槽」注释：说明现在按模块能力（`getAgentMechanic(cfg.agentId)?.curtainTriggers`）找槽，与 `luciaCinemaLevel` 是否在场无关。
+- `WARM_KEY_OMIT_CFG` 不动。三处棘轮同批下调：core agentId 5→3、core 角色 import 4→2、`RATCHET_BURNDOWN.frozen` 同步，并写沿革。
+
+③ **验收**：§4 全套（dump 用 `d97a8b0` 代次的 A）+ rowsnap（`luciaCurtain*` 进 damagePool 展示时可见）+
+`npx vitest run src/mechanics/__tests__/luciaElowen.test.ts src/mechanics/__tests__/yidhari.test.ts src/composables/__tests__/yidhariInteractionGrid.test.ts`。
+**反向验证**：临时让 yidhari 的 `curtain-open` supply 返回 0 跑 dump ⇒ 带 1051+1451 的场景必须非零差异，记条数后**恢复**，再跑一次 dump 确认回到零差异。
+
+④ **报告**：改动行、两次闸门 grep 输出、三处棘轮新旧值、反向验证差异条数（列出场景键前 10 个）、§4 + rowsnap 尾部输出。
 
 
 每张 design 卡放行前，lead 在本节补三样：**接口签名**、**证伪闸门**（前提假设 + 假设为假时的可观察失败）、**切批顺序**。
