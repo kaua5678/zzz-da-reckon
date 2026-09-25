@@ -48,7 +48,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | W18 | 两处纯清理：1531 spec notes 文案 + 般岳死写 | 小实现 | `src/specs/agents/1531.json`（仅 notes 字符串）、`src/mechanics/agents/banyue.ts`（仅删 1 行）、`.zc/reports/W18.md` | ✅ 已合入（lead 重放 banyue+billySmoke 63/63；validate:specs/check-guards/build 0；卡已删） |
 | W19 | frontlineRowsOf 琉音赠大收敛到 `ultimateGiftOf` | 小重构 | `src/core/resource.ts` | ✅ lead 自做（`85d90c6`，全量 3489 passed；W13 drifted #15 结案） |
 | W20 | 轴模式琉音送客行是否双计：取证 | 只读 + 隔离探针 | `.zc/reports/W20-axis-farewell.md`；探针只在 `/tmp/wt-W20` | ✅ 已回收（判定 `单计-模块`，账本多计 0s；轴声明 1481009 语义 A/B 已入 OPEN-ITEMS 待用户；W21 前置①满足） |
-| W21 | 琉音转大次数单源化（W16 契约 C） | 实现 | 见卡 | 进行中（09-25 派发，隔离 worktree `/tmp/wt-W21`，只跑定向 vitest，不 build） |
+| W21 | 琉音转大次数单源化（W16 契约 C） | 实现 | 见卡 | ⛔ blocked（14:2x 收工，worktree 已删，零源码改动）：前置②不成立——4 调用点仅 `crossAgentSupply` 拿得到 `stunCount`；轴模式同局 3 个转大读数（planned ≤2.39 / stunPool {3,4} / promoteFixpoint 3.17–5.05）。**需 lead 先设计「转大次数唯一来源」**（已入 OPEN-ITEMS），再拆卡；本卡暂留不派。W22/W23 的「等 W21 收工」闸门已解除 |
 | W22 | R62-J3 census 指纹侧过期：当前 HEAD 重跑 + 逐角色 diff | 重计算 + 隔离 worktree | `/tmp/wt-W22` 下任意文件、`.zc/reports/W22-census-refresh.md` | 待派发（**必须等 W21 收工**，独占重计算时段） |
 | W23 | 爱丽丝(1401) 系留白 6.0s 归因（预测先行） | 只读 + 隔离探针 | `/tmp/wt-W23` 下任意文件、`.zc/reports/W23-1401-slack.md` | 待派发（单队探针，宜等 W21 收工） |
 | W24 | 命座「未描述」6 条的原文定位与可派性分诊 | 只读普查 | `.zc/reports/W24-undescribed-triage.md` | 待派发（纯只读，可立刻与 W21 并行） |
