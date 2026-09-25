@@ -140,7 +140,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-7 | fast | **done**（dsflash 工人 + lead 复核：PanelValues.atk/hp 必填 ⇒ `?? 0` 死分支；dump 624 零差、guards 21、build、48 测过） | 贯穿力单一事实源：导出 `calcPenetrationPower`，norma.ts / damagePool.ts:1067 改引用（**不碰 :1020**） | core/damage.ts、norma.ts、damagePool.ts |
 | CC-8 | fast | **done**（dsflash 工人 + lead 复核：逐项值相等；dump 624 零差 + rowsnap（含行文案）624 零差、guards 21、build） | damagePool 异常常量改引 core：713/500/1250 与 DoT 表改用 `ANOMALY_SINGLE_HIT_MULTIPLIER` / `STANDARD_DOT_CONFIG` | damagePool.ts 1242–1247 / 1402 / 1429 |
 | CC-9a | review | **done** `72e0eb5`（damagePool.ts 1727→1141；新 `damagePoolAnomaly.ts` 661 行；rowsnap/dump 624 零差，verify 3490） | damagePool 尾段（:1142–1725 异常 + 1171/1401/1261/爱丽丝/1581 附加行）原样外提 `damagePoolAnomaly.ts` 的 `emitAnomalyRows(env)`，共享 `rows` 注入 | damagePool.ts |
-| CC-9b | review | **ready**（lead 设计 2026-09-25 @4a387e1，卡见下） | 逐角色主循环（:415–1132）按 D 直伤 / R 异放事件 / X 角色附伤三段原样外提 `damagePoolDirect.ts` / `damagePoolRelease.ts` / `damagePoolCharExtras.ts`；共享 `rows/seenDirectIds/claimedInAxis` 以对象引用经 `CharRowsEnv` 注入；辅助闭包（:116–413）留入口，CC-9c 再议 | damagePool.ts |
+| CC-9b | review | **done** `740290d`（damagePool.ts 1141→438；Direct 350 / Release 297 / CharExtras 241 行；rowsnap/dump 624 零差，verify 3490） | 逐角色主循环（:415–1132）按 D 直伤 / R 异放事件 / X 角色附伤三段原样外提 `damagePoolDirect.ts` / `damagePoolRelease.ts` / `damagePoolCharExtras.ts`；共享 `rows/seenDirectIds/claimedInAxis` 以对象引用经 `CharRowsEnv` 注入；辅助闭包（:116–413）留入口，CC-9c 再议 | damagePool.ts |
+| CC-9c | review | **不做**（lead 2026-09-25） | 辅助闭包（:116–413 `pushDirect/pushRelease/axisSplitFor/*Fraction` 等）外提：它们闭包入口局部量，外提须改工厂函数（非原样搬），收益小；damagePool.ts 已 438 行、职责单一（ctx 解构 + 辅助 + 编排三段）。若日后要单测辅助函数再立卡 | damagePool.ts |
+| CC-T1 | review | **待立项** | rowsnap 预设补「失衡轴 × 尾段角色」（1171/1401/1261/1581 + 爱丽丝）组合：CC-9a 反向 ① 实测该面零覆盖，只有 `inStunAttribution.test.ts` 兜底。低级模型可做（只加预设 + 重生成 A 基线） | .zc/perf/ |
 | CC-10 | review | design | `solveTeam`：把 `computeCalcOutput`（runOuterLoop + stageResolveFeasibility）从 composable 抽成 Vue 无关函数 | useResourceCalc.ts 248–653 |
 | CC-11 | review | design | `runCalcRound` 引入 `RoundCtx`，按工人 C 的 C4–C10 簇拆；C1/C2/C3（轮输入簇、`resolveAxisUltimateDecibelCost`、`CalcRoundResult`）可先纯搬 | convergence.ts |
 | ~~CC-D1~~ | — | ✅ **done 2026-09-25（用户裁决「别人有为什么不算」）** | `damagePool.ts:1020` 琉音命破队友分支的贯穿力补 `sheerForceFlat`（改引 `calcPenetrationPower`） | damagePool.ts:1020 + `@fact engine:贯穿力/单一事实源`（GAME_TERM §10）+ 判据 `ccD3D1Verdict.test.ts::CC-D1` |
@@ -365,6 +367,8 @@ lead 已核事实：
 若某次**零差**：不要硬造，按 9a 先例用该段角色的单测（如 `burnice.test.ts`）做同改动活性证明，并在报告里标「rowsnap 覆盖缺口」。
 
 ④ **报告**：三新文件行数与 damagePool.ts 行数前后、`CharRowsEnv` 最终字段表（注明哪段用）、死绑定清单、`isAxis` 复核结论、闸门 grep 前后读数、三次反向验证结果、§4 + rowsnap 尾部输出。
+
+**结项（lead 复核 2026-09-25）**：`740290d`。lead 逐行比对：删除行全部出现在三新文件中（差异仅 import / ctx 解构）；四文件 get_diagnostics 0；`isAxis` 全真值用法（工人复核同）；env 15 字段均为函数或原地变更对象。反向 ③ 三段首行 return ⇒ rowsnap DIFF 624 / 135 / 137（三段均被快照覆盖）。独立复跑 rowsnap/dump 624 零差、verify 3490 passed / 29 skipped。CC-9 系列收官（9c 不做）。
 
 ### CC-9a · damagePool 异常/附加伤害尾段外提 `damagePoolAnomaly.ts`（review）
 
