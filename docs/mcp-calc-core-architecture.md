@@ -132,7 +132,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-6a | review | **done**（dsflash 工人 + lead 复核：dump 624 零差、反向验证 36 条 banyue 场景红、guards 21、build、27 文件 533 测过） | 引擎能力 `exSpecialCount`：1471 般岳分支迁模块；core agentId 6→5、core 角色 import 5→4 | mechanics/types.ts、agents/banyue.ts、core/resource/helpers.ts、2 个棘轮基线 + RATCHET_BURNDOWN |
 | CC-6b | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差、反向验证 42 条 1051+1451 场景红、guards 21、build、509 测过；另核全部 crossAgentSupply 消费点均按 kind 过滤 ⇒ yidhari 新声明不会被误取） | 1451 帷幕：`curtainTriggers` 能力 + yidhari 声明 `crossAgentSupply.kind='curtain-open'`；agentId 5→3、import 4→2 | 见下方 CC-6b 卡 |
 | CC-6c | review | design（6b 已完成；**放行前 lead 须对当前代码重核 §3.3**，设计稿行号已过期） | 1531/1431/1051 终局重推：`finalizePass` 能力 + 通用执行器 `core/resource/finalizePasses.ts`；agentId 3→0（剩余 3 处 = `resource.ts` 474 / 1076 / 1077，@00174fc 实测） | 见设计稿 §3.3（stage 顺序敏感） |
-| CC-6d | review | design（CC-D3 已由 `4ca47db` 修复，阻塞解除；但**设计稿 §3.4 已过期**，须重写后放行） | velina 风蚀状态机迁能力；import 2→0 | `4ca47db` 已把风蚀认人收敛为 `velina.ts#resolveVelinaCorrosion` 单一事实源，core 残留**仅** `anomalyPool.ts:10` 与 `anomalyPool/helpers.ts:55` 两处对它的值导入（@00174fc 实测）⇒ 新设计只需把这一个函数改为能力查询；§3.4 的「扫 agentMechanics + >1 响亮失败 / signature 变化」方案按旧代码写，作废 |
+| CC-6d | review | **ready**（lead-arena-0925c 按 `4ca47db` 后代码重写设计，见下方 CC-6d 卡；设计稿 §3.4 作废） | velina 风蚀：模块能力 `anomalyCorrosion`，core 经 `agentMechanics` 查询；core 角色 import 2→0 | `anomalyPool.ts`、`anomalyPool/helpers.ts`、新 `anomalyPool/corrosion.ts`、`mechanics/types.ts`、`agents/velina.ts`、棘轮 |
 | CC-7 | fast | **done**（dsflash 工人 + lead 复核：PanelValues.atk/hp 必填 ⇒ `?? 0` 死分支；dump 624 零差、guards 21、build、48 测过） | 贯穿力单一事实源：导出 `calcPenetrationPower`，norma.ts / damagePool.ts:1067 改引用（**不碰 :1020**） | core/damage.ts、norma.ts、damagePool.ts |
 | CC-8 | fast | **done**（dsflash 工人 + lead 复核：逐项值相等；dump 624 零差 + rowsnap（含行文案）624 零差、guards 21、build） | damagePool 异常常量改引 core：713/500/1250 与 DoT 表改用 `ANOMALY_SINGLE_HIT_MULTIPLIER` / `STANDARD_DOT_CONFIG` | damagePool.ts 1242–1247 / 1402 / 1429 |
 | CC-9 | review | design（依赖 CC-7/8） | damagePool 按簇拆到 `resourceCalc/` 直属文件（`damagePoolDirect.ts`/`damagePoolRelease.ts`/`damagePoolAnomaly.ts`/`damagePoolAxis.ts`），共享可变态 `rows/claimedInAxis/seenDirectIds` 由入口持有的 `RowSink` 注入 | damagePool.ts |
@@ -248,6 +248,36 @@ DoT 表 `{ 百分比, 间隔, tick 数 }` 逐项与 `STANDARD_DOT_CONFIG` 对照
 **反向验证**：临时让 yidhari 的 `curtain-open` supply 返回 0 跑 dump ⇒ 带 1051+1451 的场景必须非零差异，记条数后**恢复**，再跑一次 dump 确认回到零差异。
 
 ④ **报告**：改动行、两次闸门 grep 输出、三处棘轮新旧值、反向验证差异条数（列出场景键前 10 个）、§4 + rowsnap 尾部输出。
+
+### CC-6d · 维琳娜风蚀迁引擎能力（review）
+
+**lead 设计（2026-09-25 lead-arena-0925c，替代设计稿 §3.4）**。现状（@4fa05c8 实测）：`4ca47db` 已把风蚀认人收敛为
+`velina.ts#resolveVelinaCorrosion(panels, turbulenceCount, windTriggerCount, fallbackRate?)`——按 `panel.velinaEnabled` 认人，队里没有维琳娜返回 `undefined`。
+core 只剩两处对它的**值导入**：`anomalyPool.ts:10`（调用点 `:332`，终局按最终乱流次数重结算）与 `anomalyPool/helpers.ts:55`（调用点 `calcTurbulenceDamage` 内 `:1210`）。
+anomalyPool 已有现成的能力通道 `input.agentMechanics`（同 `transformAnomalyPool` 的用法，`anomalyPool.ts:99`）；
+**生产调用方传的是全部已注册模块** `getRegisteredAgentMechanics()`（`convergence.ts:128`），不只本队 ⇒ 维琳娜模块恒在列表，由它自己按面板标记认人 ⇒ 逐位等价。
+
+① **先读**：`src/mechanics/agents/velina.ts` 100–160；`src/core/anomalyPool.ts` 90–110、300–345；`src/core/anomalyPool/helpers.ts` 1185–1215 与 `AnomalyPoolInput`（约 270–315）；
+`src/mechanics/types.ts` 的 `AgentMechanicModule`（`transformAnomalyPool?` 与 CC-6b 新加的 `curtainTriggers?` 附近）；`src/core/__tests__/anomalyPool.test.ts` 50–180；`src/composables/__tests__/ccD3D1Verdict.test.ts` 头注释。
+
+② **形状（照做）**：
+- `types.ts` 加 `anomalyCorrosion?(input: { panels: readonly PanelValues[]; turbulenceCount: number; windTriggerCount: number; fallbackRate?: number }): VelinaCorrosionSource | undefined`，
+  JSDoc 写明：纯函数；返回 `undefined` = 本模块不认领 / 队里没有该资源持有者；同一队至多一个模块返回非 undefined。
+- `velina.ts` 的模块声明 `anomalyCorrosion: ({ panels, turbulenceCount, windTriggerCount, fallbackRate }) => resolveVelinaCorrosion(panels, turbulenceCount, windTriggerCount, fallbackRate)`。
+  ⚠ `fallbackRate` 必须**原样透传**（包括 `undefined`）：helpers 调用点传的是 `config.velinaCinema2CorrosionRate`，可能为 undefined，靠 `resolveVelinaCorrosion` 的默认参数 `2/3` 兜底；不许在引擎侧补默认值。
+- 新文件 `src/core/anomalyPool/corrosion.ts`：`resolveAnomalyCorrosion(agentMechanics: readonly AgentMechanicModule[] | undefined, panels, turbulenceCount, windTriggerCount, fallbackRate?)`
+  = 按列表顺序取第一个非 undefined 结果，都没有返回 `undefined`。只许 `import type` 角色相关类型，不写 agentId、不 import 角色模块。
+- `anomalyPool.ts:332` 改为 `resolveAnomalyCorrosion(input.agentMechanics, …)`；`calcTurbulenceDamage` **末尾**加可选参数 `agentMechanics?`（唯一调用方 `anomalyPool.ts:319`，同步传 `input.agentMechanics`），`:1210` 改走 `resolveAnomalyCorrosion`。
+- 删两处 `resolveVelinaCorrosion` 值导入。棘轮：core 角色 import 2→0（`layer-import-ratchet.mjs` 基线 + `RATCHET_BURNDOWN.frozen` 同步，写沿革）；core agentId 基线 3 **不变**。
+- 已知语义差（lead 已核，可接受）：调用方**不传** `agentMechanics` 且面板带 `velinaEnabled` 时，旧式仍会结算风蚀、新式不结算。仓库内唯一不传的调用方是
+  `src/core/anomalyPool/__tests__/onStunBuildup.test.ts`，其面板无 `velinaEnabled` ⇒ 两边都是 undefined。在 `corrosion.ts` 头注释写明这一点。
+- **证伪闸门（动手前与收工前各跑一次）**：`grep -rn "anomalyCorrosion" src/mechanics/agents/` 只命中 velina。若 `anomalyPool.test.ts` / `ccD3D1Verdict.test.ts` 任一红 ⇒ 报 blocked，**不许改测试**。
+
+③ **验收**：§4 全套（dump 用 `d97a8b0` 代次的 A）+ rowsnap +
+`npx vitest run src/core/__tests__/anomalyPool.test.ts src/composables/__tests__/ccD3D1Verdict.test.ts src/mechanics/__tests__/velina.test.ts src/core/anomalyPool/__tests__/`。
+**反向验证**：临时注释掉 velina 的 `anomalyCorrosion` 声明跑 dump ⇒ 带 1561 的场景必须非零差异，记条数后**恢复**，再跑一次 dump 确认回到零差异。
+
+④ **报告**：改动行、两次闸门 grep 输出、棘轮新旧值、反向验证差异条数（列出场景键前 10 个）、§4 + rowsnap 尾部输出。
 
 
 每张 design 卡放行前，lead 在本节补三样：**接口签名**、**证伪闸门**（前提假设 + 假设为假时的可观察失败）、**切批顺序**。
