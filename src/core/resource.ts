@@ -1,10 +1,8 @@
 import type {
   ResourceCalcConfig, CharacterOperationConfig,
   TeamResourceResult, CharacterResourceResult,
-  IterationState, SkillExecution, TruncationCut,
+  IterationState, TruncationCut,
 } from '@/types/resource'
-import { isFrontlineExecution } from '@/types/resource'
-import { getAgentMechanic } from '@/mechanics'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 
 import {
@@ -12,7 +10,6 @@ import {
   crossAgentSuppliesOf,
   findCrossAgentSupplySlots,
   ultimateGiftOf,
-  giftDecibelForCfg,
   type CrossAgentSupplyInfo,
 } from './resource/crossAgentSupply'
 import { curtainInfoOf } from './resource/curtain'
@@ -24,10 +21,17 @@ import { runFinalizePasses, resetFinalizePasses } from './resource/finalizePasse
 import { createSolveDiagnostics } from './resource/solveDiagnostics'
 // S2 时间预算折叠环（CC-4）：纯函数外提，`diag` 每次调用时由包装读取（禁止缓存，重折换对象）。
 import { runFoldLoop as runFoldLoopPure, type FoldLoopContext } from './resource/foldLoop'
-// 物化 + 相位写入包装（CC-4 外提）：产行钩子对 cfg 只读，相位由引擎按同一 state 补写。
-import { buildExecutionsWithPhase } from './resource/phaseExecutions'
+// 物化 + 相位写入包装已随装配段迁 `./resource/assembleSlot.ts`（CC-5b），本文件不再直接用。
 // S3a 末轮欠打回填（CC-5a 外提）：门槛常量与其 `@fact` 留在本文件，经 ctx 注入；纯函数 `diag` 注入。
 import { runUnderfillProbe, type UnderfillProbeContext } from './resource/underfillProbe'
+// `materializeRows` 已随欠打回填试探迁 `./resource/underfillProbe.ts`（CC-5a），本文件不再直接用。
+// 装配段的 helpers 消费者（calcEnergySource / calcRawDecibelParts / calcDecibelSource /
+// calcTimeAllocation / buildAnomalyEventExecutions / calcCrossAgentEnergy / truncateExecutionsToFrontline）
+// 已随 S4 迁 `./resource/assembleSlot.ts`（CC-5b）；本文件只剩 `iterate`（终局重推执行器注入）。
+import { iterate } from './resource/helpers'
+// S4 装配（CC-5b 外提）：逐槽装配闭包改纯函数，外层变量经 `AssembleSlotContext` 注入；
+// 累加器与 cfg 写回顺序仍留在本文件的 `configs.map` wrapper。
+import { assembleSlot, type AssembleSlotContext } from './resource/assembleSlot'
 
 export { crossAgentSupplyAt, crossAgentSuppliesOf, findCrossAgentSupplySlots, ultimateGiftOf }
 export type { CrossAgentSupplyInfo }
@@ -78,14 +82,10 @@ function ultimateGiftRowSpec(
 }
 
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
-import * as ResourceCalcHelpers from './resource/helpers'
-import { buildGiftRow } from './resource/giftRows'
 // S1 内层不动点已迁 src/core/resource/innerLoop.ts（CC-3）；本文件只保留只读 ctx 类型与装配。
 // CC-5a 后 `runInnerLoop` 的最后消费者（欠打回填 `convergeCounts`）已迁 `./resource/underfillProbe.ts`，
 // 本文件不再直接调用实现，只经 `foldCtx` / `probeCtx` 注入 `innerCtx`。
 import { type InnerLoopContext } from './resource/innerLoop'
-// `materializeRows` 已随欠打回填试探迁 `./resource/underfillProbe.ts`（CC-5a），本文件不再直接用。
-const { calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation, buildAnomalyEventExecutions, iterate, calcCrossAgentEnergy, truncateExecutionsToFrontline } = ResourceCalcHelpers
 
 /**
  * 时间预算容差（秒）：量化（floor 次数）导致的残差属合轴可覆盖，不追求精确 0（坑12/19 既有口径）。
@@ -164,7 +164,7 @@ const INNER_LOOP_OSCILLATOR_STOP = 20
  * | S1 | 资源账本预解（内层不动点） | `runInnerLoop` → `iterate`（`helpers.ts#iterate`，四步见其函数头） | `cfg[]` + 种子 → `IterationState[]` | 判稳 = 强特/终结次数 + `basicAttackTime` **严格相等**；跑满/入环 → 规范停点（冷热解耦） |
  * | S2 | 时间预算折叠（外层不动点） | `runFoldLoop` | states → states（`cfg.timeBudgetExcess`/`timeBudgetRefund` 折入） | `Σ前台行 ≡ 账本`；`+=` 折正超出、负差 refund 回填；上限 `TIME_FOLD_MAX_PASSES` |
  * | S3 | 可行化决策 | `useResourceCalc#stageResolveFeasibility`（轴退化 + 降配，2026-09-11 抽出） | 整轮结果 → `{r, axisFallback, interactionScale}` | 三臂不更差（截断/超预算/留白各 1s）+ 枚举取最大可行；锁窗一律不动 |
- * | S4 | 装配 + 可行化截断 | `stageAssembleSlot`（#8 分刀自逐槽 `configs.map` 抽出；截断在 `truncateExecutionsToFrontline`） | states + cfg → `characters[]`（行/资源/时间） | 平A行不参与截断；后台行不占前台；整数装包；`overflowSeconds`/`truncationCuts` 逐行上报 |
+ * | S4 | 装配 + 可行化截断 | `core/resource/assembleSlot.ts#assembleSlot`（#8 分刀自逐槽 `configs.map` 抽出，CC-5b 外提；截断在 `truncateExecutionsToFrontline`） | states + cfg → `characters[]`（行/资源/时间） | 平A行不参与截断；后台行不占前台；整数装包；`overflowSeconds`/`truncationCuts` 逐行上报 |
  * | S5 | 物化输出 | 本函数尾部的 `return` | 上面各阶段 → `TeamResourceResult` | 资源/计数取**未截断账本**、伤害/失衡取**截断后行**（二者不自洽是已知债务，见 DEBT_REGISTRY「截断不回灌资源循环」） |
  *
  * 顺序不可交换：S1 定次数/资源 → S2 让账本与物化行自洽 → S3 决定"撑不下时怎么退" → S4 削行 →
@@ -326,12 +326,12 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   states = runPreTailFinalize(states)
 
   // ===== S3–S4 尾段管线函数化（R37-J2 步骤 ①，2026-09-19，零行为搬迁）=====
-  // 末轮欠打回填 → 伊德海莉终推 → 热启动落缓存 → 赠链/终结礼/帷幕次数 → S4 装配（stageAssembleSlot）。
+  // 末轮欠打回填 → 伊德海莉终推 → 热启动落缓存 → 赠链/终结礼/帷幕次数 → S4 装配（`assembleSlot`）。
   // 为什么函数化：债 2 批 2-1「截断外环回灌」要在初装截断 > 容差时按每槽 kept 设 cfg.rowTimeLimit，从 S2 折叠起
   // **重跑到装配**；本段原是 calcTeamResources 体内的线性代码，不可二次进入——协作者半成品（分支
   // collab/wip-snapshot-20260919）正是卡在这里。本步只搬不改：块内代码逐字节原样、缩进 +2；读写的外层量
   // （states / converged / timeBudgetRefundedSeconds / timeBudgetIdleSeconds / config.* / cfg.*）仍经闭包，
-  // 装配产物改为返回值。判据 = timeGolden / timeFillRatchet / allAgentsSweep delta 0（规则 10）；先例 = #8 分刀 stageAssembleSlot。
+  // 装配产物改为返回值。判据 = timeGolden / timeFillRatchet / allAgentsSweep delta 0（规则 10）；先例 = #8 分刀 `assembleSlot`。
   const runTailPipeline = () => {
     // ===== 末轮欠打回填（可行性门控，2026-09-05）=====
     // 实现已迁 `src/core/resource/underfillProbe.ts#runUnderfillProbe`（CC-5a，2026-09-25，纯函数；
@@ -372,7 +372,6 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     // 该字段写在编排层另一份 cfg 上的旧顾虑随之消失），队友开帷幕量按 `curtain-open` 收集成标量
     // （`yidhariSlot` 仍按 `yidhariDecibelPerHpPct` 字段找，继续用于外部回血写回与 yidhariBurn）。
     const curtain = curtainInfoOf(configs, states, totalTime)
-    const curtainTriggers = curtain.triggers
     const yidhariSlot = configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)
 
     // 构建最终结果
@@ -417,193 +416,23 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       configs, states, totalTime, config.stunCount ?? 0,
       config.axisLiuyinPromote, !!config.axisMode, config.teamSize,
     )
+    // S4 装配（CC-5b 外提至 `./resource/assembleSlot.ts`，纯函数）的只读上下文：闭包捕获的
+    // `states`（装配期终态）/ `curtain` / `yidhariSlot` / 赠行查询函数与行口径在此显式化。
+    const slotCtx: AssembleSlotContext = {
+      configs, config, totalTime, states, curtain, yidhariSlot, giftTimeOfSlot, chainGiftRow, ultimateGiftRow,
+    }
     /** 时间线截断总量（装配阶段砍掉的秒数）：= 资源允许但时间装不下的部分，上报为 overflowSeconds */
     let timeTruncatedSeconds = 0
     /** 逐行截断明细（团队级汇总，Σ cutSeconds == timeTruncatedSeconds）：资源池清单 + 难度轴交互缩放 */
     const truncationCuts: TruncationCut[] = []
     /** 各槽截断秒数账（requested/kept/cutSeconds）：存活率 = kept/requested，难度轴按它缩交互次数 */
     const truncationBySlot: { slot: number; requested: number; kept: number; cutSeconds: number }[] = []
-    // ===== S4 装配段本体（#8 分刀，2026-09-12 零行为抽出）=====
-    // 自 `configs.map` 回调一比一搬入：累加（timeTruncatedSeconds / truncationCuts / truncationBySlot）
-    // 与 cfg 写回的**每槽执行顺序**、`cuts 非空才 push` 的条件守卫全在循环 wrapper 原样保持；
-    // 判据 = timeGolden / timeFillRatchet delta 0（规则 10）。骨架先例：runFoldLoop / runBillyFinalize。
-    const stageAssembleSlot = (cfg: (typeof configs)[number], i: number) => {
-      const state = states[i]
-      const chainCountTotal = state.chainCountTotal
-
-      // 伊德海莉外部回血按卢西娅最终终结技次数折算后写回 cfg（供喧响/展示共用精确值）
-      // 2026-09-25 CC-6b：回血源复用帷幕提供者槽（lead 裁决 §6-2；前提写死在 `./curtain.ts` 头注释）。
-      if (i === yidhariSlot && curtain.providerSlot >= 0) {
-        cfg.yidhariExternalHealPct = (cfg.yidhariExternalHealPct ?? 0)
-          + (cfg.yidhariExternalHealPerUltPct ?? 0) * (states[curtain.providerSlot]?.ultimateCount ?? 0)
-      }
-      // 卢西娅4命帷幕触发总次数写回 cfg（供模块资源卡展示）
-      if (i === curtain.providerSlot) {
-        cfg.luciaCurtainTriggerCount = curtainTriggers
-        // 展示拆分（2026-09-19，零求值改动）：自开部分 + 队友来源归因（边际法：队友份额 = 总 − 自开，
-        // 15s CD 封顶与覆盖滑块折算效应按比例落到两边）。2026-09-25 CC-6b：队友源改为按
-        // `curtain-open` 跨槽供给的全部提供者收集，并按各自 rawCount 比例分摊队友份额。
-        // ⚠ **多提供者比例分摊是新语义、当前不可达**（唯一提供者 = 伊德海莉）：单提供者时
-        // mateTotal > 0 ⇒ 比例 = 1 ⇒ triggers 与原式 `max(0, 总 − 自开)` 逐位相同；出现第二个
-        // 提供者时行为与迁移前不同（旧实现只取 yidhariSlot 一个来源），故此处**不是**逐位等价承诺。
-        cfg.luciaCurtainSelfCount = getAgentMechanic(cfg.agentId)!.curtainTriggers!({
-          cfg,
-          state: states[i],
-          teammateOpenCount: 0,
-          totalTime,
-        })
-        const mateSlots = findCrossAgentSupplySlots(configs, 'curtain-open')
-        const raw = mateSlots.map(s => ({
-          slot: s,
-          agentId: configs[s]?.agentId ?? '',
-          rawCount: Math.max(0, Math.floor(states[s]?.ultimateCount ?? 0)),
-        })).filter(m => m.rawCount > 0)
-        const mateTotal = raw.reduce((n, m) => n + m.rawCount, 0)
-        const mateTriggers = Math.max(0, curtainTriggers - cfg.luciaCurtainSelfCount)
-        cfg.luciaCurtainTeammates = raw.map(m => ({
-          agentId: m.agentId,
-          rawCount: m.rawCount,
-          triggers: mateTotal > 0 ? mateTriggers * (m.rawCount / mateTotal) : 0,
-        }))
-      }
-
-      // Σ 队友前台秒（行级能量/喧响与装配 buildExecutions 同语义：不含自己）
-      const teammateFrontlineSeconds = configs.reduce(
-        (sum, _, j) => (j === i ? sum : sum + states[j].frontlineTime),
-        0,
-      )
-
-      // 能量源 = iterate 驱动次数的快照（2026-09-03：展示与驱动同源，Δ 恒 0——
-      // 曾各算各的：iterate 用上轮态、装配重算当前态，雅/莱卡恩 Δ=+55.5）。
-      // 快照缺失（历史状态/热启动）才回退重算 + 跨角色回补。
-      const energySrc = state.energySource
-        ? { ...state.energySource }
-        : calcEnergySource(cfg, state, configs, config.shieldCount, config.energyShieldCount, chainCountTotal, config.totalTime, teammateFrontlineSeconds)
-      if (!state.energySource) {
-        const crossAgent = calcCrossAgentEnergy(i, configs, states)
-        energySrc.crossAgent = crossAgent
-        energySrc.supportUltimateRegen = crossAgent.supportUltimateRegen
-        energySrc.total += crossAgent.total
-      }
-
-
-      // 喧响伴随
-      let teammateShare = 0
-      for (let j = 0; j < configs.length; j++) {
-        if (j === i) continue
-        const otherCfg = configs[j]
-        const otherChainCountTotal = states[j].chainCountTotal
-        // 行级喧响 Σ：j 视角的队友前台秒（Σ k≠j，与装配层 buildExecutions 传参同语义）
-        const otherTeamFrontline = configs.reduce((sum, _, k) => (k === j ? sum : sum + states[k].frontlineTime), 0)
-        const otherShareable = calcRawDecibelParts(otherCfg, states[j], otherChainCountTotal, states[j].exSpecialCount, states[j].ultimateCount, totalTime, otherTeamFrontline).shareableTotal
-        teammateShare += otherShareable * otherCfg.decibelShareRatio
-      }
-
-      // 诺姆影画4·膛温换连携喧响：`giftDecibelForCfg` 已含 `decibelPerUnit × count`
-      // （400 = 诺姆+上一位队友两侧合计，门控在模块内判），引擎**不再**自己乘系数。
-      const normaC4Decibel = giftDecibelForCfg(configs, states, cfg, totalTime)
-
-      const decibelSrc = calcDecibelSource(cfg, state, teammateShare, chainCountTotal, totalTime,
-        (cfg.luciaC4DecibelPerTrigger ?? 0) * curtainTriggers
-        // 诺姆影画4·膛温换连携：诺姆+上一位队友各 +200 不可分享喧响（计入终结技次数）
-        + normaC4Decibel,
-        config.specialActionDecibelBonusPerSlot?.[i] ?? 0,
-        config.anomalyDecibelBonusPerSlot?.[i] ?? 0,
-        teammateFrontlineSeconds)
-      // 物化钩子派发前的引擎行快照：供 buildResourceResult 复现钩子当时看到的行基准
-      // （阶段1 第二刀——卢西娅 cap 等派生量不再经 cfg 回写传递）
-      const preModuleExecutions: SkillExecution[] = []
-      const builtExecutions = buildExecutionsWithPhase(cfg, state, chainCountTotal, teammateFrontlineSeconds, preModuleExecutions)
-      // 本槽赠送行时间（诺姆赠链 / 琉音赠大）：账本已含（necessary 预留），但行不在 builtExecutions 里
-      // ——截断上限先扣掉它，装配后再追加的赠送行才与账本守恒（见上方 giftTimeOfSlot 注释）。
-      const giftTimeThisSlot = giftTimeOfSlot(i)
-      // ===== 时间线截断（通用资源循环规则，2026-09-05 用户口径）=====
-      // 本槽物化行超出账本（必要 + 平A）的部分按时间线尾部截断：平A行是填充项永远保留，
-      // 招式行从后往前整行丢、边界行等比缩（伤害/失衡/积蓄/回能线性缩）。iterate 已把必要时间
-      // 封顶到「预算 − 队友占用」，所以这里的上限就是账本本身。语义 = 实战 180s 到点结算，
-      // 资源攒多了也兑现不出来——旧实现没有这层，只能靠虚高账本挤平A池，结果两头都不准。
-      const truncated = truncateExecutionsToFrontline(
-        builtExecutions, Math.max(0, state.necessaryTime + state.basicAttackTime - giftTimeThisSlot))
-      // 赠行由**引擎**物化（阶段1 ②）：仍追加在截断之后（永不被截），截断上限仍先扣赠行时间
-      const giftRowsHere: SkillExecution[] = []
-      if (i === ultimateGiftRow.targetIdx && ultimateGiftRow.count > 0) {
-        giftRowsHere.push(buildGiftRow({
-          moveId: cfg.ultimateMoveId,
-          moveName: '好评转大·队友终结技',
-          count: ultimateGiftRow.count,
-          actionTime: cfg.ultimateActionTime ?? 0,
-          skillDamageTarget: 'ultimate',
-          skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
-        }))
-      }
-      if (i === chainGiftRow.targetIdx && chainGiftRow.count > 0) {
-        giftRowsHere.push(buildGiftRow({
-          moveId: cfg.chainMoveId,
-          moveName: '诺姆膛温替换·队友连携技',
-          count: chainGiftRow.count,
-          actionTime: cfg.chainActionTime ?? 0,
-          comboAlignRatio: cfg.chainComboAlignRatio ?? 0,
-          skillTableNote: '诺姆预热膛温≥80%帽子把戏：上一位队友的快速支援替换为其本人连携技（招式与倍率取该队友技能表）',
-          normaGiftChain: true,
-        }))
-      }
-      const executions = giftRowsHere.length > 0 ? [...truncated.executions, ...giftRowsHere] : truncated.executions
-      // 显示口径统一：前台时间 = **前台**执行行 ΣtotalTime（后台行不占共享轴，如莱卡恩围猎蓄力；
-      // 含合轴，机制改写行/倍率表行都在内），后台 = 总时间 - 前台。
-      // 装配后追加的赠送行（诺姆赠链/琉音赠大）不在 Σ行里——展示层由 `normalizeDisplayTime`
-      // 在编排层按最终行统一重算（单一口径，新增赠送机制不必各自回扣）。
-      // 赠行已在 `executions` 里（上方物化），故这里不再加 giftTimeThisSlot（否则双计）
-      const execFrontlineTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
-      const timeAlloc = {
-        ...calcTimeAllocation(cfg, state, totalTime),
-        frontlineTime: execFrontlineTime,
-        backstageTime: Math.max(0, totalTime - execFrontlineTime),
-      }
-      const anomalyEventExecutions = buildAnomalyEventExecutions(cfg, state, totalTime)
-      const mechanicResult = getAgentMechanic(cfg.agentId)?.buildResourceResult?.({
-        cfg,
-        state,
-        teamFrontlineSeconds: teammateFrontlineSeconds,
-        preModuleExecutions,
-      }) ?? {}
-
-      const result = {
-        slot: cfg.slot,
-        agentId: cfg.agentId,
-        agentName: cfg.agentId, // 名称由上层填充
-        isFlashUser: cfg.isFlashUser,
-        timeAllocation: timeAlloc,
-        energySource: energySrc,
-        // 真正驱动 exSpecialCount 的收敛后总能量（iterate 末轮 totalEnergy）
-        derivedEnergy: state.totalEnergy,
-        exSpecialCount: state.exSpecialCount,
-        exSpecialMoveId: cfg.exSpecialMoveId,
-        exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
-        decibelSource: decibelSrc,
-        ultimateCost: cfg.ultimateCost,
-        ultimateCount: state.ultimateCount,
-        chainCountPerStun: cfg.chainCountPerStun,
-        chainCountTotal,
-        executions,
-        anomalyEventExecutions,
-        totalStunBuildUp: 0, // 后续由 damage.ts 补充
-        ...mechanicResult,
-      }
-      return {
-        result,
-        cutSeconds: truncated.cutSeconds,
-        // 守卫原样：cut 非空才记 cuts/账（与抽取前 push 条件一致）
-        cuts: truncated.cuts.length > 0 ? truncated.cuts.map(c => ({ slot: cfg.slot, ...c })) : [],
-        bySlotEntry: truncated.cuts.length > 0 ? {
-          slot: cfg.slot,
-          requested: truncated.usedSeconds,
-          kept: Math.max(0, truncated.usedSeconds - truncated.cutSeconds),
-          cutSeconds: truncated.cutSeconds,
-        } : null,
-      }
-    }
+    // ===== S4 装配段（#8 分刀 2026-09-12；CC-5b 2026-09-25 外提 `./resource/assembleSlot.ts#assembleSlot`）=====
+    // 逐槽装配闭包已搬为纯函数；本处只保留累加器与 `configs.map` wrapper：累加（timeTruncatedSeconds /
+    // truncationCuts / truncationBySlot）与 cfg 写回的**每槽执行顺序**、`cuts 非空才 push` 的条件守卫
+    // 原样保持；判据 = timeGolden / timeFillRatchet delta 0（规则 10）。
     const characters: CharacterResourceResult[] = configs.map((cfg, i) => {
-      const s = stageAssembleSlot(cfg, i)
+      const s = assembleSlot(slotCtx, cfg, i)
       timeTruncatedSeconds += s.cutSeconds
       for (const c of s.cuts) truncationCuts.push(c)
       if (s.bySlotEntry) truncationBySlot.push(s.bySlotEntry)

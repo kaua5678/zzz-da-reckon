@@ -129,8 +129,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-3 | fast | **done**（lead 复核：dump 624 零差、guards 21、build、§4+floatNoise/miyabiCinema 37 测过；同机 A/B 耗时 HEAD 52.0/53.2s vs CC-3 50.0/52.6s 无退化） | S1 `runInnerLoop` 提为纯函数 `core/resource/innerLoop.ts` | core/resource.ts 356–430 |
 | CC-4 | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差；反向验证 ① 删 `diag.iterations` 写入 489 场景红、② 删拒绝还原 1 场景红（`auto-1431-1481-1491/heavyGate`，重折拒绝路径有样本）；resource.ts 1097→907；verify 过） | `SolveDiagnostics` 累加器 + S2 `runFoldLoop` 外提（+ `buildExecutionsWithPhase` 迁 `phaseExecutions.ts`） | 见下方 CC-4 卡 |
 | CC-5a | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差；反向验证 ① 删被拒 cfg 回滚 16 红、② 删 `diag.timeBudgetIdleSeconds` 177 红；resource.ts 907→801；verify 过） | S3a 欠打回填外提 `core/resource/underfillProbe.ts` | 见下方 CC-5a 卡 |
-| CC-5b | review | **ready**（lead-arena-0925c @45d7e8a 写设计，见下方 CC-5b 卡） | S4 `stageAssembleSlot` 外提 `core/resource/assembleSlot.ts` | 见下方 CC-5b 卡 |
-| CC-5c | review | design（依赖 5b） | 重折环外提；`calcTeamResources` 收成编排器（`SolveContext`） | resource.ts 重折环段 |
+| CC-5b | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差；反向验证 ① `giftTimeThisSlot=0` 29 红、② 注释帷幕提供者块 42 红；resource.ts 801→630；verify 过） | S4 `stageAssembleSlot` 外提 `core/resource/assembleSlot.ts` | 见下方 CC-5b 卡 |
+| CC-5c | review | **ready**（lead-arena-0925c 在 CC-5b 合入后写设计，见下方 CC-5c 卡） | S3–S4 尾段管线 `runTailPipeline` 外提 `core/resource/tailPipeline.ts` | 见下方 CC-5c 卡 |
+| CC-5d | review | design（依赖 5c） | 重折环外提；`calcTeamResources` 收成编排器（`SolveContext`） | resource.ts 重折环段 |
 | CC-6a | review | **done**（dsflash 工人 + lead 复核：dump 624 零差、反向验证 36 条 banyue 场景红、guards 21、build、27 文件 533 测过） | 引擎能力 `exSpecialCount`：1471 般岳分支迁模块；core agentId 6→5、core 角色 import 5→4 | mechanics/types.ts、agents/banyue.ts、core/resource/helpers.ts、2 个棘轮基线 + RATCHET_BURNDOWN |
 | CC-6b | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差、反向验证 42 条 1051+1451 场景红、guards 21、build、509 测过；另核全部 crossAgentSupply 消费点均按 kind 过滤 ⇒ yidhari 新声明不会被误取） | 1451 帷幕：`curtainTriggers` 能力 + yidhari 声明 `crossAgentSupply.kind='curtain-open'`；agentId 5→3、import 4→2 | 见下方 CC-6b 卡 |
 | CC-6c | review | **done**（dsflash 工人 + lead 复核：dump/rowsnap 624 零差；反向验证 ① yidhari→preTail 38 场景红、② 注释 yeshuguang 42 场景红；guards 21、verify 过；core agentId 分支归零） | 1531/1431/1051 终局重推：`finalizePass` 能力 + 通用执行器 `core/resource/finalizePasses.ts`；agentId 3→0 | 见下方 CC-6c 卡 |
@@ -310,6 +311,51 @@ anomalyPool 已有现成的能力通道 `input.agentMechanics`（同 `transformA
 
 ④ **报告**：改动行、闸门 grep、棘轮新旧值、两次反向验证差异条数与前 10 个场景键、§4 + rowsnap 尾部输出。
 
+
+### CC-5c · S3–S4 尾段管线外提 `tailPipeline.ts`（review）
+
+**lead 设计（2026-09-25 lead-arena-0925c，@CC-5b 合入后实测）**。CC-5 原「5c」再拆：**5c 尾段管线**（本卡）→ **5d 重折环外提 + `calcTeamResources` 收成编排器**（待 lead 设计）。
+现状：5a/5b 之后 `runTailPipeline` 闭包（`resource.ts:335–445`）只剩约 50 行代码：欠打回填 → 伊德海莉 tail 终推 → 热启动落缓存 → 帷幕 / 赠链 / 赠大 → `assembleSlot` 逐槽累加。
+它**重绑定外层 `states`**（欠打回填与 tail 终推两处），且重折环依赖这一点：`accepted.states` 快照在 tail 之后取、拒绝时 `states = accepted.states` 还原（:491 / :518）。
+模块级 `chainGiftRowSpec`（:56）/ `ultimateGiftRowSpec`（:68）只被它用。块内 / 两函数上**无 `@fact` 声明**（只有对 `@fact engine:赠送时间/轴模式四处同源` 的文字引用），lead 已 grep 核过。
+
+① **先读**：`src/core/resource.ts` 40–90、200–215、265–275、325–530；`src/core/resource/underfillProbe.ts`、`assembleSlot.ts`（ctx 注入先例）；`src/core/resource/warmStart.ts` 的 `storeWarmStart`。
+
+② **做法**：
+1. 新建 `src/core/resource/tailPipeline.ts`：
+   ```ts
+   export interface TailPipelineContext {
+     configs: CharacterOperationConfig[]; config: ResourceCalcConfig; totalTime: number
+     probeCtx: UnderfillProbeContext
+     warmExactKey: string; warmSeedStates: IterationState[]
+   }
+   export interface TailResult {
+     characters: CharacterResourceResult[]; timeTruncatedSeconds: number
+     truncationCuts: TruncationCut[]
+     truncationBySlot: { slot: number; requested: number; kept: number; cutSeconds: number }[]
+     inputStunCount: number; chainGiftTime: number; liuyinGiftTimeTotal: number
+   }
+   export function runTailPipeline(ctx: TailPipelineContext, diag: SolveDiagnostics, from: IterationState[]): { states: IterationState[]; tail: TailResult }
+   ```
+   函数体 = 闭包 :336–444 **原样搬**：开头 `let states = from` 并解构 `const { configs, config, totalTime, probeCtx, warmExactKey, warmSeedStates } = ctx`，末尾 `return { states, tail: { …原返回对象… } }`。
+   `chainGiftRowSpec` / `ultimateGiftRowSpec` 连同其注释一起搬进本文件（不 export）。注释全部随搬。**不得 import `../resource`**。
+2. resource.ts：建 `const tailCtx: TailPipelineContext = { configs, config, totalTime, probeCtx, warmExactKey, warmSeedStates }`；闭包换成**保语义包装**：
+   ```ts
+   const runTailPipeline = () => { const r = runTailPipelinePure(tailCtx, diag, states); states = r.states; return r.tail }
+   ```
+   （每次调用读 `diag` 与 `states`，并把新 `states` 写回外层——重折环的 `accepted.states` 快照 / 拒绝还原依赖它。）两个调用点（`let tail = runTailPipeline()`、重折环 `const trial = runTailPipeline()`）逐字不改。
+   删搬走后成死绑定的 import（逐个 grep 确认）。函数头阶段表与其他 src 注释里的位置同步；docs/ 只在报告列清单。
+3. 禁止：改数值 / 条件 / 顺序（尤其「tail 终推 → 热启动落缓存 → 帷幕/赠链」次序是 `@fact engine:热启动逐位透明` 的前提）；动重折环；建子目录。
+
+**证伪闸门**：前提 =「尾段只经 `states`（入/出）、`diag`、上列 ctx 与 cfg/config 副作用通信」。可观察失败 = dump 非零差异，或 TS 报出未列出的自由变量（停下写 blocked 并列出）。
+收工 `grep -nE 'chainGiftRowSpec|ultimateGiftRowSpec' src/core/resource.ts` 只允许命中注释。
+
+③ **验收**：§4 全套 + rowsnap + `npm run check-guards` + `npm run validate:specs` + `npm run build` +
+`npx vitest run truncationRefold warmStart seedInvariance determinism underfillRefund timeFillRatchet norma liuyin src/scripts/__tests__/`（名字过滤，报告列出实际跑到的文件数）。
+**反向验证**（两次，各自恢复并以零差异证明）：① 临时把包装里的 `states = r.states` 删掉 ⇒ 报告差异条数（预期非零：重折被拒 / 欠打回填接受的场景读到旧 states；若为 0 如实写明）；
+② 临时删 `tailPipeline.ts` 里 `storeWarmStart(...)` 调用 ⇒ 跑 `npx vitest run warmStart` 预期红（dump 不一定变，热启动逐位透明）；若不红，如实报告并写明 warmStart.test 实际覆盖了什么（不算失败，lead 裁决）。
+
+④ **报告**：改动行、resource.ts 行数前后、死绑定清单、闸门 grep、docs 待改清单、两次反向验证结果、§4 + rowsnap 尾部输出。
 
 ### CC-5b · S4 `stageAssembleSlot` 外提 `assembleSlot.ts`（review）
 
