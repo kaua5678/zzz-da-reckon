@@ -42,11 +42,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 |---|---|---|---|---|
 | W13 | drift 复核批 A：calc-core 热区（锚 core/ + resourceCalc/） | 只读复核 | `.zc/reports/W13-drift.md` | ✅ 已落盘（`8446be4`/`4f1c2f5`；drifted 2 条另见 `f6bf42e`、W19） |
 | W14 | drift 复核批 B：mechanics 档案事实 | 只读复核 | `.zc/reports/W14-drift.md` | ✅ 已落盘（`bca6879`/`709e299`；余 `agent:1431/自动选轴` 待用户） |
-| W15 | drift 复核批 C：composables + scripts + 杂项 | 只读复核 | `.zc/reports/W15-drift.md` | 进行中（09-25 派发） |
-| W16 | 琉音(1481) 送客次数 floor 残留：预测先行取证 | 只读 + 隔离探针 | `.zc/reports/W16-predict.md`；探针只在 `/tmp/wt-W16` | 进行中（09-25 派发） |
-| W17 | 补青衣(1251) 影画4 回能差分断言 | 新增测试 | `src/mechanics/__tests__/qingyiC4Energy.test.ts`、`.zc/reports/W17.md` | 待派发（W16 后，占重计算时段） |
+| W15 | drift 复核批 C：composables + scripts + 杂项 | 只读复核 | `.zc/reports/W15-drift.md` | ✅ 已落盘（`a721b58`；drift 全队列 102→1，仅余 1431 自动选轴待用户） |
+| W16 | 琉音(1481) 送客次数 floor 残留：预测先行取证 | 只读 + 隔离探针 | `.zc/reports/W16-predict.md`；探针只在 `/tmp/wt-W16` | ✅ 已回收（缺陷属实但当前 21 预设零影响；衍生 W20/W21） |
+| W17 | 补青衣(1251) 影画4 回能差分断言 | 新增测试 | `src/mechanics/__tests__/qingyiC4Energy.test.ts`、`.zc/reports/W17.md` | 进行中（09-25 派发，持重计算时段） |
 | W18 | 两处纯清理：1531 spec notes 文案 + 般岳死写 | 小实现 | `src/specs/agents/1531.json`（仅 notes 字符串）、`src/mechanics/agents/banyue.ts`（仅删 1 行）、`.zc/reports/W18.md` | 待派发（W17 后，占重计算时段） |
 | W19 | frontlineRowsOf 琉音赠大收敛到 `ultimateGiftOf` | 小重构 | `src/core/resource.ts` | ✅ lead 自做（`85d90c6`，全量 3489 passed；W13 drifted #15 结案） |
+| W20 | 轴模式琉音送客行是否双计：取证 | 只读 + 隔离探针 | `.zc/reports/W20-axis-farewell.md`；探针只在 `/tmp/wt-W20` | 待派发（可与 W18 并行；W17 交还重计算时段后） |
+| W21 | 琉音转大次数单源化（W16 契约 C） | 实现 | 见卡 | 待派发（**W20 回收后**；前置不满足则 blocked） |
 
 **drift 落盘的工具坑（2026-09-25，后续 lead 必读）**：① 批量打 `·复核@` 按**锚点**选事实，而事实可能写在 docs 里（如 `GAME_TERM_TO_CODE_FIELD.md`）——提交时别只 `git add src/`，以 `git status` 为准；
 ② 事实行可能误写**两个「据」槽**，解析器静默取后一个 ⇒ 标签打在前一个无效，应合并为单槽（`liuyinPromote.ts` 失衡次数不动点即此例）；
@@ -63,45 +65,6 @@ W18（W11/W12 的文案漂移与死写）。1451 梦境值 `maxValue 100 vs 500`
 headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾追加一行「测试/构建时段已授予」。
 
 ## 2. 任务卡
-
-<!-- card:W16 -->
-### W16 · 琉音(1481) 送客次数 floor 残留：预测先行取证（不实现）
-
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W16。
-主仓库 `/home/kaua/projects/zzz-calculator`（只读 + 写报告）；探针一律在隔离 worktree `/tmp/wt-W16` 里做。
-开工打印主仓库真实 HEAD 与 `git status --short`。
-父目标：lead 已确认 `computeLiuyinSource` 仍用旧预算模型算转大次数，与已确认的「阈值结转」口径不符；
-本卡按 AGENTS.md「排查数值须预测先行」先量化影响、给出修法契约，**修复另发卡**。
-
-**已知事实（lead 2026-09-25 读回，行号以当前 HEAD 为准）**：
-- `src/mechanics/agents/liuyin.ts#computeLiuyinSource`：`promoteWindows = Math.floor(total / 90)`，`farewellCount = promoteWindows + ownUltimateCount`；
-  同函数注释与 `resourceSections` 的 detail 文案都写「阈值结转」。
-- 真实转大次数在 `src/composables/resourceCalc/liuyinPromote.ts#promoteFixpoint`：`promote = hug60 + hug90`（轴模式读轴，非轴走 `computeLiuyinHugCounts` 贪心）。
-- `farewellCount` 的消费者：`liuyin.ts` 的 `liuyinExSpecialTime`（送客必要时间）、`buildLiuyinExecutions`（1481009 行 count/totalTime/totalDecibelRecovery）、`resourceSections`（展示）。
-- `src/composables/resourceCalc/convergence.ts` 约 640–700 行有同形教训注释（「第一次写成 floor(rest/90) 是错的」）。
-- `liuyin.test.ts` 的 G=207 用例两口径恰好相等，钉不住差异。
-
-**待证假设 / 证伪闸门**：前提 = 生产管线中至少一个含 1481 的预设队伍，`promoteFixpoint` 的 promote ≠ `source.promoteWindows`。
-可观察失败 = 所有含 1481 的预设两者都相等（例如全部走轴模式且轴 hug 恰为 floor）⇒ 报告「当前预设无数值影响」，仍给修法契约但标低优先。
-
-**先读**：`AGENTS.md` §1 规则 10/11/17、§5；上面列出的四个符号及其直接调用点；`docs/ENGINE_PIPELINE_GUIDE.md` §4 开头「时间系统三本账」表。不全仓漫游。
-
-**允许写入**：`/home/kaua/projects/zzz-calculator/.zc/reports/W16-predict.md`（先 `mkdir -p .zc/reports` 并 `node scripts/zc.mjs claim` 它）；`/tmp/wt-W16/**`（探针）。
-**禁止**：主仓库任何其他文件（含 src、测试、基线、spec、docs）；不提交、不推送、不 reset/clean；不改 `timeGolden`/`timeFillRatchet`。
-
-**步骤与验收**（WSL；测试时段由派发附注授予，只跑下列命令，不跑全量 check/verify/build）：
-1. `git worktree add --detach /tmp/wt-W16 HEAD && ln -s /home/kaua/projects/zzz-calculator/node_modules /tmp/wt-W16/node_modules`。
-2. 找出含 1481 的预设：`grep -l '"1481"' public/static/presets/*.json src/**/presets* 2>/dev/null` 或按 `timeGolden` 测试的预设加载方式定位；报告写明找法与条数。
-3. 在 worktree 写一次性 vitest 探针（用 `src/test/harness.ts`），对每个含 1481 的预设跑全管线，逐队输出：
-   `goodReviewTotal`、`floor(G/90)`、fixpoint 的 `hug60`/`hug90`/`promote`、轴模式与否、`farewellCount`、1481009 行 `count` 与 `totalTime`。
-   找不到 fixpoint 输出字段时，读 `promoteFixpoint` 返回值被谁接住，沿返回值取；仍取不到则写 blocked 与卡点，不猜。
-4. 预测表：若改为 `farewellCount = promote + ownUltimateCount`，逐队 1481009 count/时间/喧响的 delta；并定性说明送客时间增加对必要时间与失衡收敛的方向（它进 `estimateExSpecialTime` → 必要时间）。
-5. 给 ≥ 2 个修法契约（例：A = `promoteFixpoint` 收敛后回写 1481009 行 count/时间/喧响；B = 由 converge 钩子把 hug 结果写入 cfg、`computeLiuyinSource` 读它），各列：改哪些文件/符号、单一事实源是否成立、是否引入新正反馈环、会红哪些现有测试/基线（只预测不改）。
-6. 收尾：`git worktree remove --force /tmp/wt-W16`（只删 worktree 与软链本身，**不要** `rm -rf` 带斜杠的 node_modules 路径）。
-
-**固定报告与收工**：报告首行及最终回复均为 `STATUS: done|blocked`。正文含 HEAD、预设找法与条数、逐队原始读数表、预测 delta 表、修法契约对比、探针源码全文（附录）、执行命令与退出码、未证明事项。
-`node scripts/zc.mjs done --verifier '<实际命令>' --coverage '.zc/reports/W16-predict.md' --risk '<未证明事项>'` 释放租约。不实现修复。
-<!-- /card:W16 -->
 
 <!-- card:W17 -->
 ### W17 · 补青衣(1251) 影画4 回能差分断言
@@ -157,69 +120,59 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
 `zc done --verifier '<命令>' --coverage 'src/specs/agents/1531.json, src/mechanics/agents/banyue.ts' --risk '<未证明事项>'`。
 <!-- /card:W18 -->
 
-<!-- card:W13 -->
-### W13 · drift 复核批 A：calc-core 热区（锚 src/core/ 与 src/composables/resourceCalc/）
+<!-- card:W20 -->
+### W20 · 轴模式琉音送客行是否双计：取证（不实现）
 
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W13。
-工作区 `/home/kaua/projects/zzz-calculator`。开工打印真实 HEAD 和 `git status --short`。
-父目标：CC-1…CC-12（e2e8ae5..bbbaaa4）迁移计算核心后，`zc drift` 批量标记了 102 条 @fact 待复核；本卡只负责批 A 的**只读复核**，不修改任何仓库文件、不改「据」日期——落盘修正由主代理按你的报告分批执行。
+你是执行工人，只完成本卡，不继续委派。TASK_ID=W20。
+工作区 `/home/kaua/projects/zzz-calculator`（只读）；探针只在隔离 worktree `/tmp/wt-W20`。开工打印真实 HEAD 与 `git status --short`。
+父目标：W16 报告（`.zc/reports/W16-predict.md` §0/§5/§9.1）发现 2 个含琉音(1481)的**轴模式**预设 `auto-1521-1481-1311`、`auto-1531-1481-1451` 上
+`promoteFixpoint.promote = 0`（`axisHug = null`），而模块送客行 `1481009` 仍按 `computeLiuyinSource`（floor 口径）出 `count = 7`；
+其中 `auto-1531-1481-1451` 的轴预设「常规轴」**还声明了** `1481:1481009×1@3.7`。未证明：轴块 `1481009` 是否**另外**物化成行（= 双计），以及轴模式下送客次数的正确来源。
 
-**先读**：
-1. `docs/mcp-drift-triage.md`（上位文档：成因、四态判据、证伪闸门）。
-2. `AGENTS.md` §1 规则 8/16；`node scripts/zc.mjs lang`（@fact 语法）。
-3. 你的条目全集：`node scripts/zc.mjs drift` 输出中锚路径以 `src/core/` 或 `src/composables/resourceCalc/` 开头的全部行。开工先 `… | grep '^⟳' | grep -E '锚 src/core/\|锚 src/composables/resourceCalc/' | wc -l` 打印条数（09-25 快照为 37）；不符时按实际全集做，报告写明实际数。
+**先读**：`AGENTS.md` §1 规则 10/11/16/17、§5；W16 报告全文（尤其附录 A 探针源码，可直接复用）；`src/mechanics/agents/liuyin.ts#computeLiuyinSource/buildLiuyinExecutions`；
+`src/composables/resourceCalc/liuyinPromote.ts#promoteFixpoint`（轴分支 `axisHug`）；轴块物化路径（从 `src/data/stunAxisPresets.ts` 追到产行处，自己找，报告写出 path:line）。
 
-**硬约束与证伪闸门**：只可写 `/home/kaua/projects/zzz-calculator/.zc/reports/W13-drift.md`（先 `mkdir -p .zc/reports` 并 `zc claim` 此报告）。其余一律只读。前提 = 每条的事实行（行尾括号内 file:line）与锚符号（`锚 file#symbol`）都还能定位；可观察失败 = 两侧都找不到 ⇒ 该条标 `broken-anchor` 并给候选符号（grep 关键词），不猜新位置。只判「事实是否仍如实描述实现」，不判「机制该不该这样」，不重开已裁决项。
+**允许写入**：`/tmp/wt-W20` 下任意文件（`git worktree add --detach /tmp/wt-W20 HEAD` 后软链 `node_modules`）；报告 `.zc/reports/W20-axis-farewell.md`（先 `zc claim`）。
+**禁止**：改主仓库任何文件（报告除外）；改基线；跑全量 vitest / build。
 
-**步骤与验收**（WSL 内执行；纯静态阅读，不跑 vitest / check / build）：
-1. 逐条读事实行与锚实现两侧，按上位文档 §2 判 still-holds / drifted / broken-anchor / needs-user 四态。
-2. still-holds 给出：锚符号现位置（路径:行）+ 一句「为何仍成立」；实现已搬家导致事实行内路径过期时，给出应改成的锚路径。
-3. drifted 给出：两侧 path:line + 关键摘录（各 ≤3 行）+ 你认为哪侧对。疑似业务口径 ⇒ needs-user 并注 OPEN-ITEMS 编号（如有）。
-4. 报告用 markdown 表：条目原名 | 四态 | 证据 path:line | 建议新锚/新据 | 备注；逐条列全，不许抽样。表前给四态统计。
+**步骤与验收**：
+1. **先写预测再跑**：报告里先写两队各自预测的「轴块 1481009 声明次数 / 模块行次数 / 最终 1481009 行数与总次数 / 是否双计」，再跑探针。
+2. 探针：对两队读出最终物化行中所有 `moveId === '1481009'` 的行（count、totalTime、来源 = 模块 or 轴块），以及时间账本里送客占用的秒数；与预测逐项对照。
+3. 判定四选一：`双计` / `单计-模块` / `单计-轴` / `其它（说明）`。若双计：给出账本多计秒数、应以哪一处为单一事实源（引用规则 11/16），并预测修后 `timeGolden` 受影响的 key。
+4. 若结论依赖游戏语义（例如轴声明的 1481009 是否就是"全部送客"）而代码无法判定 ⇒ 标 needs-user，写成一个可以让用户二选一的问题，不自行裁决。
+5. 收工：`git worktree remove --force /tmp/wt-W20`（先删 node_modules 软链），主仓库 `git status --short` 只允许有报告外的既有项。
 
-**固定报告与收工**：报告首行及最终回复均为 `STATUS: done|blocked`。正文含 HEAD、实际条数、四态统计、逐条表、未决项清单。用 `node scripts/zc.mjs done --verifier 'node scripts/zc.mjs drift（只读）' --coverage '.zc/reports/W13-drift.md' --risk '<未决项>'` 释放租约。主代理复核后才批量落盘；工人不改任何仓库文件。
-<!-- /card:W13 -->
+**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、预测表、探针源码全文、原始输出、判定与证据 path:line、未证明事项。
+`zc done --verifier '<探针命令>' --coverage '1481 轴模式送客行' --risk '<未证明事项>'`。不提交。
+<!-- /card:W20 -->
 
-<!-- card:W14 -->
-### W14 · drift 复核批 B：mechanics 档案事实（锚 src/mechanics/）
+<!-- card:W21 -->
+### W21 · 琉音转大次数单源化（W16 契约 C）
 
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W14。
-工作区 `/home/kaua/projects/zzz-calculator`。开工打印真实 HEAD 和 `git status --short`。
-父目标：同 W13（见 `docs/mcp-drift-triage.md`），本卡只负责批 B（锚 `src/mechanics/`，09-25 快照 31 条，多为 `agent:NNNN/*` 角色机制事实）的**只读复核**。
+你是执行工人，只完成本卡，不继续委派。TASK_ID=W21。
+工作区 `/home/kaua/projects/zzz-calculator`。开工打印真实 HEAD 与 `git status --short`。
+父目标：`src/mechanics/agents/liuyin.ts#computeLiuyinSource` 的注释写「转大次数 = 阈值结转贪心」，代码却是 `promoteWindows = Math.floor(total / 90)`（规则 11：注释与实现不一致）；
+阈值结转的唯一实现是同文件 `computeLiuyinHugCounts`。W16 实测：当前 21 个预设因 `cap60 ≤ 2` 两口径恰好相等（零影响），但 `stun ≥ 3` 时 81.8% 的输入会分歧（`.zc/reports/W16-predict.md` §4/§6 契约 C）。
 
-**先读**：
-1. `docs/mcp-drift-triage.md`（上位文档）；`AGENTS.md` §1 规则 8/16；`node scripts/zc.mjs lang`。
-2. 你的条目全集：`node scripts/zc.mjs drift | grep '^⟳' | grep '锚 src/mechanics/'`，开工先 `| wc -l` 打印条数；不符时按实际全集做。
-3. 涉及具体角色机制时只沿该条目的锚文件补读必要消费者，不全仓漫游。
+**前置（不满足就 `STATUS: blocked` 并写明原因，不要硬改）**：
+- W20 已回收，且其结论不是「双计」；若是双计，本卡等 W20 的修复先落地。
+- `computeLiuyinSource` 的全部调用点（W16 列出 4 处：`liuyinExSpecialTime`、`buildLiuyinExecutions`、`buildLiuyinResourceResult`、跨角色供给）都能拿到**同源**的 `stunCount` 与连携窗口数；
+  若某调用点（尤其 `iterate` 内的）只能拿到别的来源 ⇒ blocked，报告列出每个调用点能拿到什么。
 
-**硬约束与证伪闸门**：只可写 `/home/kaua/projects/zzz-calculator/.zc/reports/W14-drift.md`（先 mkdir -p .zc/reports 并 zc claim）。其余一律只读。前提 = 事实行与锚符号都还能定位；可观察失败 = 找不到 ⇒ 标 `broken-anchor` 并给候选。⚠ 本批部分锚在 09-15…09-21 被真实改动过（非搬家）：语义变了就是 drifted，**别把「日期旧」当成「需要刷日期」**；疑似业务口径（如 yeshuguang formAxis 类，同 OPEN-ITEMS R2-C）⇒ needs-user，不自己裁。
+**允许写入**：`src/mechanics/agents/liuyin.ts`；`computeLiuyinSource` 调用点所在文件中**仅调用处的实参**；新建 `src/mechanics/__tests__/liuyinCarryCount.test.ts`；报告 `.zc/reports/W21.md`（均先 `zc claim`）。
+**禁止**：改基线、改既有测试断言（新增断言可以）、改 `computeLiuyinHugCounts` 的算法。
 
-**步骤与验收**：同 W13 第 1–4 步（四态判据、证据格式、逐条列全不许抽样）。
+**步骤与验收**：
+1. `computeLiuyinSource` 改为内部调用 `computeLiuyinHugCounts` 得到 `promoteWindows`，删除 `Math.floor(total / 90)`；轴模式行为按 W20 结论处理（报告写明）。
+2. 新测试：取一个 `stun ≥ 3`、`G ∈ [360,450)` 的输入，断言 `promoteWindows === 5`（旧 floor 口径 = 4，必须会红）；再取 W16 的 G=207 用例断言不变。
+3. 负控：`cp` 备份后把实现临时改回 floor，新测试必须红，用备份还原，`git diff --stat` 回到改动态。
+4. 正控：`VITEST_MAX_WORKERS=4 npx vitest run src/mechanics/__tests__/liuyin*.test.ts src/composables/__tests__/timeGolden.test.ts src/composables/__tests__/timeLedgerInvariants.test.ts src/composables/__tests__/giftMoveTimeLedger.test.ts`；
+   **`timeGolden` 必须逐位不变**（W16 预测当前预设 delta = 0）；若漂移 ⇒ 不改基线，blocked 并附漂移的 key 与数值。
+5. `npm run check-guards` + `npm run build`。
 
-**固定报告与收工**：同 W13，报告路径 `.zc/reports/W14-drift.md`，`zc done --coverage '.zc/reports/W14-drift.md'`。工人不改任何仓库文件。
-<!-- /card:W14 -->
-
-<!-- card:W15 -->
-### W15 · drift 复核批 C：composables（非 resourceCalc）+ scripts + 杂项
-
-你是执行工人，只完成本卡，不继续委派。TASK_ID=W15。
-工作区 `/home/kaua/projects/zzz-calculator`。开工打印真实 HEAD 和 `git status --short`。
-父目标：同 W13（见 `docs/mcp-drift-triage.md`），本卡只负责批 C 的**只读复核**。
-
-**先读**：
-1. `docs/mcp-drift-triage.md`（上位文档）；`AGENTS.md` §1 规则 8/16；`node scripts/zc.mjs lang`。
-2. 你的条目全集 = `node scripts/zc.mjs drift` 输出中满足以下任一条件的行（09-25 快照合计 34 = 15+12+7）：
-   - `grep '锚 src/composables/' | grep -v '锚 src/composables/resourceCalc/'`（15）
-   - `grep '锚 scripts/'`（12）
-   - `grep -E '锚 src/(stores\|types\|utils\|views\|data)/'`（7）
-   开工先分别 `| wc -l` 打印；不符时按实际全集做，报告写明。
-
-**硬约束与证伪闸门**：只可写 `/home/kaua/projects/zzz-calculator/.zc/reports/W15-drift.md`（先 mkdir -p .zc/reports 并 zc claim）。其余一律只读。前提 = 事实行与锚符号都还能定位；可观察失败 = 找不到 ⇒ `broken-anchor` 并给候选。⚠ 本批含护栏自指事实（`engine:guards/*` 锚在 `scripts/check-guards.mjs`、`engine:zc/*` 锚在 `scripts/zc.mjs`）与 UI/store 事实——`check-guards.mjs` 在别的会话租约下**只读不接管**；只判「事实是否仍如实描述实现」，护栏阈值/条数本身会随加固变化，若事实写死了数字而实现已改为动态 ⇒ drifted 并注明。
-
-**步骤与验收**：同 W13 第 1–4 步（四态判据、证据格式、逐条列全不许抽样）。
-
-**固定报告与收工**：同 W13，报告路径 `.zc/reports/W15-drift.md`，`zc done --coverage '.zc/reports/W15-drift.md'`。工人不改任何仓库文件。
-<!-- /card:W15 -->
+**固定报告与收工**：首行及最终回复 `STATUS: done|blocked`。含 HEAD、diff 全文、正控/负控原始输出尾部与退出码、`git status --short`。
+`zc done --verifier '<正控命令>' --coverage 'liuyin.ts computeLiuyinSource 及其调用点' --risk '<未证明事项>'`。不提交。
+<!-- /card:W21 -->
 
 ## 3. 本队列的来源：2026-09-24 OPEN-ITEMS 分诊
 
