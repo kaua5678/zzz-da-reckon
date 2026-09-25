@@ -55,7 +55,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | W24 | 命座「未描述」6 条的原文定位与可派性分诊 | 只读普查 | `.zc/reports/W24-undescribed-triage.md` | ✅ 已回收（14:50；lead 复核 accept：抽查 1121 C1 先例、1271 C1 pending、3 处原文落点均属实）。5/6 原文在库且只是标签错 ⇒ lead 按图例 + 4 条先例裁定改标（问题 Q 取 A）⇒ 派生 W27；1551 C6 真·未揭示 ⇒ OPEN-ITEMS §1 待供料；卡已删 |
 | W25 | 琉音转大次数四读数：预测探针 | 只读 + 隔离探针 | `/tmp/wt-W25` 下任意文件、`.zc/reports/W25-promote-readings.md` | 🏃 已派发（2026-09-25 14:52，与 W23 并行：两者都只跑定向探针，不占全量时段） |
 | W26 | 琉音转大次数单源化：非轴接线（替代 W21） | 实现（隔离 worktree） | 见卡 | 待派发（**必须等 W25 回收且 `design-gate: PASS`**） |
-| W27 | 命座「未描述」5 条改标（原文已收到、防御 / 生存向不建模） | 数据订正 | `public/static/character-constellations.json`、`public/static/character-mechanics.json`（各限 5 档 / 4 档）、`docs/implementation-status.md`（仅生成）、`.zc/reports/W27.md` | 待派发（有空位即可派；与 W25/W26 写入面不相交） |
+| W27 | 命座「未描述」5 条改标（原文已收到、防御 / 生存向不建模） | 数据订正 | `public/static/character-constellations.json`、`public/static/character-mechanics.json`（各限 5 档 / 4 档）、`docs/implementation-status.md`（仅生成）、`.zc/reports/W27.md` | 🏃 已派发（2026-09-25 15:25 lead-arena-0925b；`/tmp/worker-W27.*`；与 W25/W26 写入面不相交） |
 
 **drift 落盘的工具坑（2026-09-25，后续 lead 必读）**：① 批量打 `·复核@` 按**锚点**选事实，而事实可能写在 docs 里（如 `GAME_TERM_TO_CODE_FIELD.md`）——提交时别只 `git add src/`，以 `git status` 为准；
 ② 事实行可能误写**两个「据」槽**，解析器静默取后一个 ⇒ 标签打在前一个无效，应合并为单槽（`liuyinPromote.ts` 失衡次数不动点即此例）；
@@ -74,6 +74,7 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
 **当前派发顺序（2026-09-25 14:52 外部 lead 现场核实）**：W21 工人 14:15 已收工，3 条残留租约已按 lane 释放（`zc release --all --as <lane>`）。14:25 派出 W23 + W24；W24 于 14:50 回收；14:52 派出 W25（与 W23 并行，两者都只跑定向探针）。
 下一步：W23 收工 → W27（轻，数据订正）；W25 回收并判 design-gate → W26（隔离 worktree）→ lead 合入（重生成基线 + 全量 verify）→ W22（独占重计算时段，等前面全部停下再派）。
 W25/W26/W27 与 W22/W23 的写入面互不相交；W26 只在 `/tmp/wt-W26` 里改 `liuyin.ts`，合入前主仓库的这个文件无人写。派发前照本节开头查重。
+**双 lead 分工（2026-09-25 15:15 起）**：两条 lead 会话并行，分工单源在 `.zc/lead-coordination.md`（不入库）——W23 复核、W25 → W26 归 `lead-arena-0925`；W27、W22 归 `lead-arena-0925b`。第三条会话接手前先读它，别照本段顺序自己派。
 
 ## 2. 任务卡
 
