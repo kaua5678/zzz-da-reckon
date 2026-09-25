@@ -5,7 +5,7 @@
  * 降配要在「缩交互次数」的若干档里挑**最大可行**档
  * （保留最多交互）。这里只放**纯策略**，试算本身（`runOuterLoop`）由调用方经 `evaluate` 注入。
  *
- * @fact engine:降配搜索/非下闭可行集 口径: 候选 scale 必须**由大到小逐个试**、首个「三臂不比基线更差且截断≤1s」者采纳（= 该网格上的最大可行档）；不得改「先探最小档、失败即跳过」的成本闸门——实测可行集**非 scale 下闭**（全库进入枚举 21 队中 7 队「存在可行 x 且存在 y<x 不可行」，3 队最小档不可行但更大档可行），该闸门前提为假、会漏掉更大档 | 据 实测@2026-09-13（受控：同配置只变候选集/顺序；单跑 vs 混跑逐位相同 ⇒ 非状态泄漏） | 验 src/composables/__tests__/feasibilitySearch.test.ts | 锚 src/composables/resourceCalc/feasibilitySearch.ts#selectDownscaleScale | 信 确认
+ * @fact engine:降配搜索/非下闭可行集 口径: 候选 scale 必须**由大到小逐个试**、按**两层字典序**采纳：首个绝对可行（`feasible!==false`：净占用不超预算且截断≤容差）者优先（= 该网格上真装得下的最大档），无则回退首个相对档（`accepted` 但 `feasible===false`：三臂不比基线更差且截断≤1s），全不采纳 ⇒ null 保基线；不得改「先探最小档、失败即跳过」的成本闸门——实测可行集**非 scale 下闭**（全库进入枚举 21 队中 7 队「存在可行 x 且存在 y<x 不可行」，3 队最小档不可行但更大档可行），该闸门前提为假、会漏掉更大档 | 据 实测@2026-09-13（受控：同配置只变候选集/顺序；单跑 vs 混跑逐位相同 ⇒ 非状态泄漏）+ 两层字典序 R32 债 2 刀 1@2026-09-18·复核@2026-09-25 | 验 src/composables/__tests__/feasibilitySearch.test.ts | 锚 src/composables/resourceCalc/feasibilitySearch.ts#selectDownscaleScale | 信 确认
  */
 
 /** 降配候选档（严格递减）。顺序即语义：由大到小，首个可行即最大可行。 */
