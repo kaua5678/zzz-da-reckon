@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-27 第 33 轮，lead-arena-0925c）**：**CC-25 已落地 `7cef9c8`**。爱丽丝畏缩配置迁为模块能力 `anomalyPoolSetup`；roundInputs 的 `aliceInfo` 改名 `anomalyPoolSetupInfo`，按能力找槽，不再用 `findSlotByIdentity(['1401'])`，也不再直读 `cfg.alice*`。判据 22 从 410 降到 **403**，target 398 未达成，维持不变。verify EXIT=0。详见 §5.19。
+- **最新交接（2026-09-27 第 34 轮，lead-arena-0925c）**：**CC-26 已落地 `8b7d9db`**。core/resource 里蕾米埃尔「垂虹」必做动作行和时间合计改走模块能力 `extraNecessaryAction`（派发口 `rowAccounting.ts#extraNecessaryActionOf`）；「特殊虚耀」异常事件逐字迁入蕾米埃尔 `buildAnomalyEvents`。判据 22 从 403 降到 **363**（−40，core 内 `cfg.remielleRainbowEnd*` 读点一并消失），target 重设 **351**。verify EXIT=0。详见 §5.20。
+  **下一步（可以直接开工）**：**CC-26b**（rowBuild 里蕾米埃尔「光辉回转」后台行 → 模块能力，**必须在原位置派发**），开工清单见 §5.20。
+- **上一轮交接（2026-09-27 第 33 轮，lead-arena-0925c）**：**CC-25 已落地 `7cef9c8`**。爱丽丝畏缩配置迁为模块能力 `anomalyPoolSetup`；roundInputs 的 `aliceInfo` 改名 `anomalyPoolSetupInfo`，按能力找槽，不再用 `findSlotByIdentity(['1401'])`，也不再直读 `cfg.alice*`。判据 22 从 410 降到 **403**，target 398 未达成，维持不变。verify EXIT=0。详见 §5.19。
   **下一步（可以直接开工）**：**CC-26**（core/resource 里蕾米埃尔「垂虹」必做动作行 → 模块能力），开工清单见 §5.19；**先实读 §5.19 第 1 条列出的 4 个读点**。
 - **上一轮交接（2026-09-27 第 32 轮，lead-arena-0925c）**：**CC-24 已落地 `1d1d823`**（畏缩配置通用化：`aliceCoweringConfig` → `coweringConfig`，`AliceCoweringConfig` → `CoweringConfig`，纯改名）。判据 22 从 420 降到 **410**，target 重设 **398**。verify EXIT=0。详见 §5.18。
   **下一步（可以直接开工）**：**CC-25**（roundInputs 的 `aliceInfo` 按身份找槽 + 直读 `cfg.alice*` → 爱丽丝模块能力 `anomalyPoolSetup`），开工清单见 §5.18。
@@ -281,6 +283,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-27 CC-23 后**：**420**（`8ecd5f2`）；target 418 未达成，维持不变。下一张：CC-24（§5.17）。
 - **2026-09-27 CC-24 后**：**410**（`1d1d823`）；已低于 target 418，重设 target **398**。下一张：CC-25（§5.18）。
 - **2026-09-27 CC-25 后**：**403**（`7cef9c8`）；target 398 未达成，维持不变。下一张：CC-26（§5.19）。
+- **2026-09-27 CC-26 后**：**363**（`8b7d9db`）；已低于 target 398，重设 target **351**。下一张：CC-26b（§5.20）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -806,6 +809,44 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - `velinaCorrosionSource` 是 `AnomalyPoolResult` 的**输出字段**（`types/resource/pools.ts:128`），被 `ResourceResultCard.vue:599`、`velina.ts:491` 和多条测试读取。
 - `velinaCinema2CorrosionRate` 从 roundInputs 经 setting 下发（`velina.ts:152` 也从 panel 读）。
 - 改名只会给角色专属机制戴上通用名（同 CC-22 教训）。正确方向是：把风蚀结算迁到维琳娜模块已有的 `anomalyCorrosion?` / `transformAnomalyPool?` 能力（types.ts:794/809，**先读它们现在是谁在实现、谁在派发**）；输出字段可以保留原名（结果键），或者放进模块自有的结果槽。**设计稿写好再动手**，改动面涉及 core/anomalyPool 主流程。
+
+### 5.20 CC-26 落地记录 + CC-26b 开工清单（2026-09-27 第 34 轮 lead-arena-0925c）
+
+**实读修正 §5.19 清单（开工前发现）**：
+- ① `rowBuild.ts:573` **不是**同形的执行行，而是 `buildAnomalyEventExecutions` 里的「特殊虚耀」**异常事件**。该函数开头已经在派发 `buildAnomalyEvents` 钩子，所以把事件迁进蕾米埃尔的这个钩子即可。
+- ② `helpers.ts:410/433` 的时间合计**不检查** `remielleRainbowEndMoveId`，行构建那边检查。所以能力把「次数和时长」与「moveId」分开返回：moveId 为空时只预留时间、不补行，逐位保留迁移前的口径。
+
+**CC-26（`8b7d9db`，判据 22 403→363，target 351）**：
+- `mechanics/types.ts`：`AgentMechanicModule` 新增 `extraNecessaryAction?(cfg): ExtraNecessaryAction | null`；文件末尾新增 `interface ExtraNecessaryAction { count; moveId?; moveName; actionTime; comboAlignRatio; decibelRecovery }`。
+- `core/resource/rowAccounting.ts`：`remielleSpecialVoidflareUseCount` 删除，换成派发口 `extraNecessaryActionOf(cfg) = getAgentMechanic(cfg.agentId)?.extraNecessaryAction?.(cfg) ?? null`。同文件 `exSpecialNecessaryTime` 派发 `estimateExSpecialTime` 是先例；派发器不含角色 id，符合 core 禁止角色判定的规则。
+- `core/resource/helpers.ts`：re-export 改名；循环里先取 `const extraAction = extraNecessaryActionOf(cfg)`，必要时间 `+ (extraAction ? count × actionTime : 0)`，合轴时间再 `× comboAlignRatio`。
+- `core/resource/rowBuild.ts`：
+  - `buildExecutions` 的垂虹行改为 `extraAction && extraAction.moveId` 时 push，字段顺序经脚本逐字段断言与旧块一致；
+  - `buildAnomalyEventExecutions` 删掉局部量 `remielleRainbowEndCount` 和事件块，留一行注释指向模块。
+- `mechanics/agents/remielle.ts`：
+  - 模块对象新增 `extraNecessaryAction`（count <= 0 返回 null；`moveId: cfg.remielleRainbowEndMoveId || undefined`；moveName 逐字为「普通攻击：垂虹（特殊虚耀载体）」）；
+  - 新增 `buildAnomalyEvents`，原事件块逐字搬入；
+  - 文件末尾新增导出 `remielleSpecialVoidflareUseCount(cfg)`，公式逐字保留。
+- **事件顺序变化（拍板）**：原来特殊虚耀事件排在加农转子事件**之后**，迁进钩子后排到**之前**，因为钩子在函数开头派发。零差证明语料里没有任何影响（事件按 eventId 消费）。若日后发现顺序敏感，回退办法是在 rowBuild 末尾另派一个「后置事件」钩子。
+- **验证**：
+  - vue-tsc 0；零差（dump 625 / rowsnap 638，只有 `__ms` 不同）。
+  - 反向（能力里的 count +1）：rowsnap DIFF 42 = 6 组 1581 预设 × 7 个变体，与 CC-21 波及面一致，还原后 cmp 一致。
+  - `remielle.test` + `src/core` 共 251/251 通过；`npm run verify` EXIT=0。
+  - 脚本：`/home/kaua/calc-arch/cc26.py`（先全部断言再统一写盘）、`z26.sh`。
+- **回退点**：`git revert 8b7d9db`（单个提交，含棘轮常量 363/351）。
+
+**rf3（HEAD `8b7d9db`，363 处 / 110 个字段）前列**：velinaCorrosionSource 9、liuyinSrc 8、xideIdx 8（crossAgentEnergy）、liuyinIdx 7、liuyinPromoteCount 7、velinaCinema2CorrosionRate 7、remielleSpecialVoidflareCount 6（anomalyPanels / helpers / useResourceCalc）、remielleEntryPanels 6、lighterTeamEnergy 5、liuyinMechanicSource 5。
+
+**CC-26b 开工清单（蕾米埃尔「光辉回转」后台行 → 模块能力；lead 实读 HEAD `8b7d9db` 的 rowBuild.ts:405–434）**
+1. 现状：`if (cfg.remielleEnabled && cfg.remielleRadiantTurnMoveId)` 用 `frontBlockSeconds(state.frontlineTime, countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }), setting 'remielle.frontSwitchRatio', 5)` → `phaseDelayedCooldown` → `floor(effectiveBackstageTime / interval)` 算出次数，push 一行 category special、timeBucket backstage、totalTime 0 的后台行。
+2. **关键约束**：次数依赖**构建到这一步为止**的 `executions`（前台动作计数）。所以**不能**挪到末尾的 `patchExecutions`（那时已多出闪避反击等后续行，计数会变），也不能挪到 `buildAnomalyEvents`。
+3. 方案：
+   - 新增能力 `backstageAutoRows?({ cfg, state, executions }): ResourceExecution[]`（名字可调）；
+   - 在 rowBuild **原位置**派发 `getAgentMechanic(cfg.agentId)?.backstageAutoRows?.({ cfg, state, executions })`，结果 push 进 executions；
+   - 计算逐字迁入 remielle.ts。remielle.ts 需要 import `@/core/effectiveTime` 的 `frontBlockSeconds / countFrontActions / phaseDelayedCooldown / effectiveBackstageTime / effectiveBattleTime`（mechanics → core 按值 import 是允许的，判据 19 只禁 `@/composables`）。
+   - ⚠ 先 grep `backstageAutoFill`：它是已有的声明式字段，**名字相近但语义不同**，不要复用或混淆。
+4. 验证：零差；反向为次数 +1，预期 DIFF 42（1581）。判据 22 预计约 −6（`cfg.remielleRadiantTurn*` / `remielleEnabled` 读点）。执行：lead 自做。
+5. 之后的候选：remielleSpecialVoidflareCount 6 + remielleEntryPanels 6（composables 侧，先实读）；琉音一族（liuyinSrc / liuyinIdx / liuyinPromoteCount / liuyinMechanicSource，共约 27 处，横跨 damagePool / convergence / liuyinPromote，**需要设计稿**）；CC-27 维琳娜风蚀（§5.19）。
 
 ## 附录：普查脚本 census.sh
 
