@@ -56,7 +56,7 @@ export interface PromoteFixpointDeps {
  * 倍率表 damage/daze/anomaly_buildup 由目标队友执行计划自然调用。
  * adj 来自 promoteFixpoint 的收敛结果（runCalcRound 的 R0/R1 内层不动点）。
  */
-// @fact engine:实战档位喧响计数 口径: 「实战 N 喧响大」这类档位说法（含「叶释渊 3 例外」）的**口径主体 = 主C 自攒喧响 floor(总/消耗)，不计琉音好评赠大**——赠大只加进展示 `ultimateCount` 并独立成 `source='gift'` 行，是队友产出、不是自己攒的条。实测 Boss 30042（无敌24s/弹刀13）下：叶瞬光自攒 11227 → 3 ✓ 正落该档；仪玄自攒 12087 → 4，超 3 档线仅 87 喧响（边界敏感，**不据此改账**） | 据 用户@2026-09-08（裁决「不计琉音赠大，看自攒 floor」）·复核@2026-09-25| 锚 src/composables/resourceCalc/liuyinPromote.ts#applyLiuyinPromote | 信 确认
+// @fact engine:实战档位喧响计数 口径: 「实战 N 喧响大」这类档位说法（含「叶释渊 3 例外」）的**口径主体 = 主C 自攒喧响 floor(总/消耗)，不计琉音好评赠大**——赠大只加进展示 `ultimateCount` 并独立成 `source='gift'` 行，是队友产出、不是自己攒的条。实测 Boss 30042（无敌24s/弹刀13）下：叶瞬光自攒 11227 → 3 ✓ 正落该档；仪玄自攒 12087 → 4，超 3 档线仅 87 喧响（边界敏感，**不据此改账**） | 据 用户@2026-09-08（裁决「不计琉音赠大，看自攒 floor」）·复核@2026-09-25| 锚 src/composables/resourceCalc/ultimatePromote.ts#applyLiuyinPromote | 信 确认
 export function applyLiuyinPromote(
   base: TeamResourceResult | null,
   adj: { promote: number; hug60: number; targetSlot: number; chainMoveId: string; ultimateMoveId: string } | null,
@@ -242,7 +242,7 @@ function adjustStunExecs(
 }
 
 /** 转大不动点：给定基础失衡 execs 与畏缩覆盖率，迭代（失衡次数 ↔ 好评转大次数）至收敛 */
-// @fact engine:失衡次数不动点 口径: **轴/非轴统一**走连续闭式 N*=(g+gf−r)/((1−r)+g·x)（g=毛失衡/阈值、gf=Boss白送/阈值、r=雨果返还、x=N×窗长/有效时间），floor(N*) 即次数——时间域语义：窗口占用 N×窗长，剩余时间才攒条，故「打满 N 次后剩余时间不够一次」自然收敛于 N。**两种模式都必须传时间占比**（旧实现轴模式传 0，只信逐招 fraction：实测 auto-1521-1481-1311 窗口占时间 90% 只扣 4.8% 攒条 → 9 次，而轴栈只填满 3 窗）| 据 用户@2026-09-10「顺序不对：应先攒够再开窗，剩余时间不足则收敛于此」·前身口径 用户@2026-09-08 + 用户实测@2026-09-08（实战对比部署 雅/南宫/柚叶 vs 基塔布鲁·滞变畸兽 显示 0 次；同配置冷启动 4/热启动 0）+ 时间守恒不动点自洽（合并原重复「据」槽）·复核@2026-09-25 | 验 src/composables/resourceCalc/__tests__/liuyinPromote.test.ts + src/composables/__tests__/runArchiveDeploy.test.ts | 锚 src/composables/resourceCalc/liuyinPromote.ts#promoteFixpoint | 信 确认
+// @fact engine:失衡次数不动点 口径: **轴/非轴统一**走连续闭式 N*=(g+gf−r)/((1−r)+g·x)（g=毛失衡/阈值、gf=Boss白送/阈值、r=雨果返还、x=N×窗长/有效时间），floor(N*) 即次数——时间域语义：窗口占用 N×窗长，剩余时间才攒条，故「打满 N 次后剩余时间不够一次」自然收敛于 N。**两种模式都必须传时间占比**（旧实现轴模式传 0，只信逐招 fraction：实测 auto-1521-1481-1311 窗口占时间 90% 只扣 4.8% 攒条 → 9 次，而轴栈只填满 3 窗）| 据 用户@2026-09-10「顺序不对：应先攒够再开窗，剩余时间不足则收敛于此」·前身口径 用户@2026-09-08 + 用户实测@2026-09-08（实战对比部署 雅/南宫/柚叶 vs 基塔布鲁·滞变畸兽 显示 0 次；同配置冷启动 4/热启动 0）+ 时间守恒不动点自洽（合并原重复「据」槽）·复核@2026-09-25 | 验 src/composables/resourceCalc/__tests__/liuyinPromote.test.ts + src/composables/__tests__/runArchiveDeploy.test.ts | 锚 src/composables/resourceCalc/ultimatePromote.ts#promoteFixpoint | 信 确认
 export function promoteFixpoint(
   baseExecs: StunSkillExecution[],
   flinchRate: number,

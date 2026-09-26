@@ -414,13 +414,13 @@ export type { CalcRoundThreads }
  */
 export interface ModuleFeedback {
   /** 仪玄符法千重类终结次数（橘福福额外能力 +300 喧响；亦并入编排层 `teamUltimateForJufufu`） */
-  yixuanFuFaForJufufu?: number
+  teamUltimateExtra?: number
   /** 琉音转大赠送的叶瞬光逐云次数 */
   yeshuguangGiftUlt?: number
   /** 露西 C6 队友强特合计（C1 回能预估） */
   lucyTeammateEx?: number
   /** 莱特后场：全队常态能量消耗（converge 相位经通用输入 `teamEnergyConsumed` 递给模块） */
-  lighterTeamEnergy?: number
+  consumedTeamEnergy?: number
   /** 格莉丝影画1 全队回能轮换数 */
   graceC1Cycles?: number
   /** 零号·安比：队友追加攻击命中折算白雷层数 */
@@ -820,7 +820,7 @@ export interface AgentMechanicModule {
    */
   skipsGenericDirectRow?(input: { charResult: DeepReadonly<CharacterResourceResult>; moveId: string; isAxis: boolean }): boolean
   /**
-   * 赠终结技来源（CC-35d-B3 2026-09-27）：`resourceCalc/liuyinPromote.ts#ultimateGiftSourceOf` 取首个实现本能力的在队槽位，
+   * 赠终结技来源（CC-35d-B3 2026-09-27）：`resourceCalc/ultimatePromote.ts#ultimateGiftSourceOf` 取首个实现本能力的在队槽位，
    * 以其资源结果调用；返回 null = 本轮无来源（不做好评转大）。`goodReviewTotal` 驱动转大不动点
    * （`buildPromoteParams` / `promoteFixpoint`），目标 = 上一位队友。引擎时间预留走 `gift-chain:ultimate`
    * （`ultimateGiftOf`），两者须同源。现唯一实现：琉音。

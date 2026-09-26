@@ -5,7 +5,7 @@
  *
  * `configStore.team.findIndex(char => { const a = …; return a?.id === 'X' || a?.teammateBuffId === 'Y' })`
  * 这一形状在编排层**重复 18 次**（`damagePool` 5 / `helpers` 5 / `useResourceCalc` 3 /
- * `convergence` 3 / `normaHatChain` 1 / `liuyinPromote` 1），每处都是角色判定棘轮的计数站点。
+ * `convergence` 3 / `normaHatChain` 1 / `ultimatePromote` 1），每处都是角色判定棘轮的计数站点。
  * 收敛成一个 helper 后：调用点不再出现身份字面量（棘轮 −5），判定只在一处、不可能再漂移。
  *
  * ## 判据要点（这些正是「照抄旧表达式」时最容易写错的）

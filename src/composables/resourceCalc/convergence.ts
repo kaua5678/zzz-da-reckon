@@ -32,7 +32,7 @@ import {
   promoteFixpoint,
   ultimateGiftProviderSlot,
   ultimateGiftSourceOf,
-} from './liuyinPromote'
+} from './ultimatePromote'
 import { applyChainGift } from './chainGift'
 import type { CalcRoundThreads } from './roundThreads'
 import * as ResourceCalcHelpers from './helpers'
@@ -108,7 +108,7 @@ export function createRunCalcRound(deps: {
       anomalyDecibelBonus: prevAnomalyDecibelBonus,
       interactionTopUp: prevInteractionTopUp,
       parrySplit: prevParrySplit,
-      // `yixuanFuFaForJufufu` 同上：读点已迁进 1371 模块；2026-09-17 round 20 C-β 起
+      // `teamUltimateExtra` 同上：读点已迁进 1371 模块；2026-09-17 round 20 C-β 起
       // **产出侧**（`yixuanNextRoundFeedback`）也迁进 1371 模块 ⇒ 本文件对它只剩 merge。
       // 2026-09-15 arch 棘轮第 2 批：teamUltimateForJufufu / yeshuguangGiftUlt / lucyTeammateEx /
       // graceC1Cycles / anbyZeroTeammateWl / vivianAnomalyTriggers / promiaReleaseDecibel 这 7 条
@@ -120,7 +120,7 @@ export function createRunCalcRound(deps: {
       // ellenFreezeCount 这 4 条也不再在此解构——5 个 compute*NextRoundFeedback 已迁为模块
       // `nextRoundFeedback` 钩子，它们只作为 `prevThreads` 整份快照递入（首轮守卫用），
       // 编排层不再逐条取值。
-      // 2026-09-17 round 20 C-β 追加：`lighterTeamEnergy` 的产出侧也迁进 `lighter.ts` 的
+      // 2026-09-17 round 20 C-β 追加：`consumedTeamEnergy` 的产出侧也迁进 `lighter.ts` 的
       // `nextRoundFeedback`（仍在下方解构 = converge 相位要把它递给模块，见 `:901`）。
       // CC-22：`aliceTeamAssaultCount` / `aliceDisorderCount` 也不再在此解构——爱丽丝模块的
       // applyTeamConfig 改从 `threads` 自取，产出侧迁进爱丽丝 `nextRoundFeedback`。
@@ -527,7 +527,7 @@ export function createRunCalcRound(deps: {
       // 缩放 / 被 `parrySplit` 改写）⇒ `yixuanSmoke` **9 failed**；按 store 口径递入 ⇒ **13 passed**。
       // 另：本文件原先那处 `if (ch.agentId === '1371')`（读上一轮 `rr.characters` 的执行行统计
       // 符法千重次数）已于 2026-09-17 round 20 C-β 迁进 `yixuan.ts#yixuanNextRoundFeedback`
-      // （产出线程值 `yixuanFuFaForJufufu`）⇒ 本文件不再有该判据。
+      // （产出线程值 `teamUltimateExtra`）⇒ 本文件不再有该判据。
       // ⚠ 同批的「全队终结总次数」`teamUltimateForJufufu` **刻意留在本文件**（归属论证见其定义处）。
       // 莱卡恩 1141 的影画2 回能总额（分支的最后一个字段，**收尾批**）已于 2026-09-17
       // round 20 C-γ 迁进 `lycaon.ts#applyTeamConfig`：轴臂读 `axis.chainTotalBySlot`、
@@ -562,7 +562,7 @@ export function createRunCalcRound(deps: {
       phase: 'converge',
       combatTime: base.totalTime ?? 180,
       stunCount,
-      teamEnergyConsumed: Math.max(0, threads.moduleFeedback.lighterTeamEnergy || 0),
+      teamEnergyConsumed: Math.max(0, threads.moduleFeedback.consumedTeamEnergy || 0),
       // 上一轮收敛线程快照（2026-09-15 arch 棘轮第 2 批）：跨轮反馈的通用通道。
       // 原先这些量（1381/1391/1431/1151/1541/1331/1161/1181/1191 共 9 处）是在本文件
       // characters.map 里逐 `merged.agentId === '…'` 分支写进 cfg 的；现由各模块自己的
@@ -677,7 +677,7 @@ export function createRunCalcRound(deps: {
     //
     // 分量拆分（**与原式逐位等价**，原式 = `Σ ultimateCount` 循环内对 1371 那一次 `+= fufa`）：
     // ① 全队 `ultimateCount` 之和（下方那行，无角色判定、读点与原式同一处）；
-    // ② 仪玄符法千重分量 = `feedbackNext.yixuanFuFaForJufufu`（1371 模块产出）；
+    // ② 仪玄符法千重分量 = `feedbackNext.teamUltimateExtra`（1371 模块产出）；
     //    1371 不在队 ⇒ 该键缺席 ⇒ `?? 0`，与原式 `fufa` 恒 0 等价。
     // ⚠ 两眼必须**同在 `rr` 上取**（同一次 `enrichExecutionPlan` 结果），且 ② 只能在派发器之后合并。
     let teamUltimateBaseNext = 0
@@ -912,8 +912,8 @@ export function createRunCalcRound(deps: {
     // ⚠ 派发点必须在 ap1 之后（钩子入参含异常池）。迁移前安比那处在 ap1 之前，但两者既不读对方
     // 写的 cfg 字段、也无其它共享可变状态（钩子之间彼此独立）⇒ 合并为一次派发逐位等价。
     // 2026-09-17 C-α 批：叶瞬光(1431)/格莉丝(1181) 也迁入该派发，编排层只 merge。
-    // 2026-09-17 round 20 C-β 批：仪玄(1371) 的 `yixuanFuFaForJufufu` 与莱特(1161) 的
-    // `lighterTeamEnergy` 同样迁入；橘福福的「全队终结总次数」因与队伍组成无关仍留编排层。
+    // 2026-09-17 round 20 C-β 批：仪玄(1371) 的 `teamUltimateExtra` 与莱特(1161) 的
+    // `consumedTeamEnergy` 同样迁入；橘福福的「全队终结总次数」因与队伍组成无关仍留编排层。
     const feedbackNext = collectNextRoundFeedback({
       characters,
       teamResult: rr,
@@ -926,7 +926,7 @@ export function createRunCalcRound(deps: {
     })
 
     // 队伍级机制·postRound 阶段：本轮次数已收敛 → 为下一轮注入派生量。
-    // `lighterTeamEnergy` 的**计算与写 cfg** 都已回到莱特模块自己的 `applyTeamConfig`（postRound）
+    // `consumedTeamEnergy` 的**计算与写 cfg** 都已回到莱特模块自己的 `applyTeamConfig`（postRound）
     // 与 `nextRoundFeedback`（返回值 → threadsNext），编排层只 merge。
     let teamVeilCountTotalNext = 0
     {
@@ -1099,7 +1099,7 @@ export function createRunCalcRound(deps: {
         backstageAuto: backstageAutoNext,
         // ② 符法千重分量（1371 模块产出）：原式是循环内对 1371 那一次 `teamUlt += fufa`；
         // 1371 不在队 ⇒ 该键缺席 ⇒ `?? 0`（原式 `fufa` 恒 0）。
-        teamUltimateForJufufu: teamUltimateBaseNext + (feedbackNext.yixuanFuFaForJufufu ?? 0),
+        teamUltimateForJufufu: teamUltimateBaseNext + (feedbackNext.teamUltimateExtra ?? 0),
         // 「下一轮反馈」线程：由各模块 nextRoundFeedback 钩子算出（缺省 0 = 该角色不在队
         // 或守卫不成立，与迁移前各函数返回 0 逐位等价；露西无守卫恒写）。
         // ⚠ 例外 = `teamUltimateForJufufu`（上一行）：全队汇总、与队伍组成无关，刻意留编排层。

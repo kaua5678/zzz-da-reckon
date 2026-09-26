@@ -37,7 +37,7 @@ describe('叶瞬光面板分解 + 易伤平均', () => {
     const ys = calc.resourceResult.value!.characters.find(c => c.agentId === '1431')!
     console.log('=== 面板(资源池 computePanel) ===')
     console.log('atk=', p.atk, '| dmgBonus=', p.dmgBonus, '| physicalDmg=', p.physicalDmg, '| critRate=', p.critRate, '| critDmg=', p.critDmg, '| penRatio=', p.penRatio)
-    console.log('enemyDefReduction=', p.enemyDefReduction, '| enemyPhysicalResReduction=', p.enemyPhysicalResReduction, '| stunDmgMultiplierBonus=', p.stunDmgMultiplierBonus, '| yeshuguangStunCapMult=', p.yeshuguangStunCapMult)
+    console.log('enemyDefReduction=', p.enemyDefReduction, '| enemyPhysicalResReduction=', p.enemyPhysicalResReduction, '| stunDmgMultiplierBonus=', p.stunDmgMultiplierBonus, '| veilStunCapMult=', p.veilStunCapMult)
 
     console.log('=== 易伤平均（按倍率加权） ===')
     let whiteMult = 0, nonWhiteMult = 0

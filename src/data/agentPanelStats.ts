@@ -15,8 +15,8 @@ import type { PanelValues } from '@/types/catalog'
 export type AgentPanelStatGroup = 'stun' | 'anomaly'
 
 export const AGENT_PANEL_STATS = [
-  { key: 'yeshuguangStunCapMult', group: 'stun', initial: 0 }, // 叶瞬光（语义见 PanelValues 声明与叶瞬光模块）
-  { key: 'yeshuguangVeilStunBase', group: 'stun', initial: 0 }, // 叶瞬光
+  { key: 'veilStunCapMult', group: 'stun', initial: 0 }, // 叶瞬光（语义见 PanelValues 声明与叶瞬光模块）
+  { key: 'veilStunVulnBase', group: 'stun', initial: 0 }, // 叶瞬光
   { key: 'remielleRefringeCoefficient', group: 'anomaly', initial: 0 },
   { key: 'remielleRefringeCoefficientBonusPct', group: 'anomaly', initial: 0 },
   { key: 'remielleLuminizeMultiplierBonus', group: 'anomaly', initial: 0 },

@@ -769,7 +769,7 @@ export const yeshuguangMechanic: AgentMechanicModule = {
    * `if (agent.id === '1431')` 硬编码块里（历史绕法①：applyPanel 早于 cfg 构建、拿不到
    * configStore），而**消费**它的帷幕算式又住在伤害池的 `row.agentId === '1431'` 分支里。
    * 本钩子把两者一并收回模块：`applyPanel` 拿到 `enemyStunVuln`（面板阶段的新只读入参）
-   * 后**当场算出基数**并盖章 `panel.yeshuguangVeilStunBase`，伤害池只做「字段非 0 ⇒ 用该值」，
+   * 后**当场算出基数**并盖章 `panel.veilStunVulnBase`，伤害池只做「字段非 0 ⇒ 用该值」，
    * 不再出现角色 id 判据（判据同 T6：唯一写入方 = 本模块）。
    *
    * ⚠ 三项门控**逐位保留**（R14 分诊 §4.2/§4.3 实测）：
@@ -792,8 +792,8 @@ export const yeshuguangMechanic: AgentMechanicModule = {
     // 基数在**面板阶段**算好盖章（此时 bonus/capAlways 已由 buff 通道写入面板），
     // 伤害池在 `stunOverride > 0` 的行上直接取用。
     const cap = cinemaLevel >= 4 ? 3.0 : 2.1
-    panel.yeshuguangStunCapMult = cap
-    panel.yeshuguangVeilStunBase = veilStunBase(
+    panel.veilStunCapMult = cap
+    panel.veilStunVulnBase = veilStunBase(
       enemyStunVuln,
       (panel.stunDmgMultiplierBonus ?? 0) + (panel.stunDmgMultiplierBonusAlways ?? 0),
       panel.stunDmgMultiplierBonusCapAlways ?? 0,

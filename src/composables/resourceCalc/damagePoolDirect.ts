@@ -116,7 +116,7 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
     //      ⇒ 被跳过的行**必然**被重放（`mult(moveId) > 0` 成立）。无「两边都不算」的第三态。
     //   ③ 赠链/赠大不会把这三行搬到别人槽位：诺姆赠链搬的是**目标队友自己的连携技** moveId
     //      （`chainGift.ts` 取 `findChainAttack(targetSkills)`），琉音赠大搬的是**目标队友的终结技**
-    //      （`liuyinPromote.ts` 取 `ultimateMoveId`）——两者都取「目标自己的招」，不会产生 1481 的强特行。
+    //      （`ultimatePromote.ts` 取 `ultimateMoveId`）——两者都取「目标自己的招」，不会产生 1481 的强特行。
     // CC-35d-B2 2026-09-27：上面 ①②③ 的论证仍成立，但判据已迁进琉音模块能力 `skipsGenericDirectRow`
     // （`liuyin.ts`，与重放它的 `extraDirectRows` 强特拆分块同文件、同一 `!isAxis` + 来源门控）。
     if (getAgentMechanic(charResult.agentId)?.skipsGenericDirectRow?.({ charResult, moveId: exec.moveId, isAxis })) continue

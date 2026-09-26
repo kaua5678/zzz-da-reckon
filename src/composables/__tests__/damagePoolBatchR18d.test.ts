@@ -2,19 +2,19 @@
  * R15-d 批次（`damagePool.ts` `:162` 叶瞬光帷幕封顶 agentId 分支迁进模块）的**精确值判据**。
  *
  * 迁移内容（2026-09-17 round 18，编排棘轮 18 → 17）：
- *  · 原判据 `row.agentId === '1431' && (panel as any).yeshuguangStunCapMult && stunForThis > 0`
+ *  · 原判据 `row.agentId === '1431' && (panel as any).veilStunCapMult && stunForThis > 0`
  *    住在 `damagePool.ts#pushDirect` 里，算式 `veilStunMultiplier(boss, bonusPct, cap) - bonusPct/100`
  *    也在那里就地展开（就地读 `panel.stunDmgMultiplierBonus*` + `configStore.enemy.stunVuln`）。
  *  · 现整条迁进 `yeshuguang.ts#applyPanel`：面板阶段读新只读入参 `AgentPanelInput.enemyStunVuln`
- *    （= `configStore.enemy.stunVuln`），当场算出基数并盖章 `panel.yeshuguangVeilStunBase`；
+ *    （= `configStore.enemy.stunVuln`），当场算出基数并盖章 `panel.veilStunVulnBase`；
  *    伤害池只做「字段非 0 ⇒ 取该值」。`agentId` 项删除，依据 = **T6 判据**
- *    （`yeshuguangStunCapMult` / `yeshuguangVeilStunBase` 的唯一写入方 = 本角色模块）。
+ *    （`veilStunCapMult` / `veilStunVulnBase` 的唯一写入方 = 本角色模块）。
  *
  * 为什么必须单独有这个文件（不是「补测试」的仪式）：
  *  · 迁移面对的是**易伤基数分支**，错一位就是全角色数值漂移，而 `timeGolden` 把 dmg 归为「信息项」
  *    （`diffEntry` push 进 `info` 而非 `fail`）⇒ **全绿 ≠ 正确**，必须自建精确值判据。
  *  · ⚠ **三项门控必须逐位保留**，本文件逐条钉住：
- *    ① `yeshuguangStunCapMult` 非 0 = 身份判据（下面「跨槽泄漏反锁」+「无该角色队反锁」两组）；
+ *    ① `veilStunCapMult` 非 0 = 身份判据（下面「跨槽泄漏反锁」+「无该角色队反锁」两组）；
  *    ② `stunForThis > 0` = 「轴外段不吃帷幕封顶」的**必要**门控（R14 分诊 §4.2 实测，**不是冗余**）
  *       ——「轴外段」两组用 `stunMult === 1` 精确钉住；
  *    ③ `stunDmgMultiplierBonusCapAlways` 全仓零写入（R14 分诊 §4.3）⇒ 算式里原样保留，
@@ -127,14 +127,14 @@ describe('R15-d 跳③：applyPanel 盖章（唯一写入方 = 本角色模块�
     const { catalog, config } = await setupHarness([{ agentId: '1431', cinemaLevel: 0 }, { agentId: '1481' }, { agentId: '1311' }], { recommendedBuild: true })
     config.enemy.stunVuln = 2.5
     const p0: any = computePanelPhases(0, config, catalog)!.inCombat
-    expect(p0.yeshuguangStunCapMult).toBe(2.1)
-    expect(p0.yeshuguangVeilStunBase).toBe(1.5)
+    expect(p0.veilStunCapMult).toBe(2.1)
+    expect(p0.veilStunVulnBase).toBe(1.5)
 
     config.team[0].cinemaLevel = 4
     config.enemy.stunVuln = 3.5
     const p4: any = computePanelPhases(0, config, catalog)!.inCombat
-    expect(p4.yeshuguangStunCapMult).toBe(3.0)
-    expect(p4.yeshuguangVeilStunBase).toBe(2.4)
+    expect(p4.veilStunCapMult).toBe(3.0)
+    expect(p4.veilStunVulnBase).toBe(2.4)
   })
 
   it('★ 非本角色：两个字段都恒 0（= 身份判据成立，T6）——缺字段时不伪造', async () => {
@@ -142,8 +142,8 @@ describe('R15-d 跳③：applyPanel 盖章（唯一写入方 = 本角色模块�
     config.enemy.stunVuln = 2.5
     for (const slot of [0, 1, 2]) {
       const p: any = computePanelPhases(slot, config, catalog)!.inCombat
-      expect(p.yeshuguangStunCapMult).toBe(0)
-      expect(p.yeshuguangVeilStunBase).toBe(0)
+      expect(p.veilStunCapMult).toBe(0)
+      expect(p.veilStunVulnBase).toBe(0)
     }
   })
 
@@ -152,7 +152,7 @@ describe('R15-d 跳③：applyPanel 盖章（唯一写入方 = 本角色模块�
     const seen: number[] = []
     for (const v of [1.0, 1.5, 2.0, 2.5]) {
       config.enemy.stunVuln = v
-      seen.push((computePanelPhases(0, config, catalog)!.inCombat as any).yeshuguangVeilStunBase)
+      seen.push((computePanelPhases(0, config, catalog)!.inCombat as any).veilStunVulnBase)
     }
     // 未咬合段线性跟随：1.0 → 1.0、1.5 → 1.5；2.0 起 min(2.6, 2.1) − 0.6 = 1.5 封顶
     expect(seen).toEqual([1.0, 1.5, 1.5, 1.5])
@@ -179,8 +179,8 @@ describe('R15-d 跳③：applyPanel 盖章（唯一写入方 = 本角色模块�
     expect(p0.critRate).toBe(35)        // 5 + 30（核心被动·合道）
     expect(p0.dmgBonus).toBe(125)       // 100 + 25
     expect(p0.enemyDefReduction).toBe(0) // C0 无减防
-    expect(p0.yeshuguangStunCapMult).toBe(2.1)
-    expect(p0.yeshuguangVeilStunBase).toBe(1.5) // min(1.5+0.6, 2.1) − 0.6
+    expect(p0.veilStunCapMult).toBe(2.1)
+    expect(p0.veilStunVulnBase).toBe(1.5) // min(1.5+0.6, 2.1) − 0.6
 
     const p1: any = mk()
     call(p1, 1)
@@ -189,8 +189,8 @@ describe('R15-d 跳③：applyPanel 盖章（唯一写入方 = 本角色模块�
 
     const p4: any = mk()
     call(p4, 4, 3.5)
-    expect(p4.yeshuguangStunCapMult).toBe(3.0)
-    expect(p4.yeshuguangVeilStunBase).toBe(2.4) // min(3.5+0.6, 3.0) − 0.6
+    expect(p4.veilStunCapMult).toBe(3.0)
+    expect(p4.veilStunVulnBase).toBe(2.4) // min(3.5+0.6, 3.0) − 0.6
   })
 })
 

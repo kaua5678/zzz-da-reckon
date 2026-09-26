@@ -1833,7 +1833,9 @@ describe('判据 22：core 角色前缀字段计数棘轮（scripts/lib/core-rol
     const e = RATCHET_BURNDOWN.find(x => x.id === 'core 角色前缀字段')!
     expect(e).toBeDefined()
     expect(e.frozen).toBe(CORE_ROLE_FIELD_BASELINE)
-    expect(e.target).toBeLessThan(e.frozen)
+    // 2026-09-27 CC-40：判据 22 清零后是硬门（frozen 0 / target 0），不再要求 target < frozen。
+    if (e.frozen > 0) expect(e.target).toBeLessThan(e.frozen)
+    else expect(e.target).toBe(0)
     expect(e.due).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     expect(e.plan.length).toBeGreaterThan(20)
   })

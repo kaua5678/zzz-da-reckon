@@ -10,7 +10,7 @@
 ```
 数据层   public/static/*.json        唯一事实源（倍率/属性/buff/boss/音擎/驱动盘），只经 scripts/ 导入，不手改（中间产物 data/raw/ 的目录约定见 data/raw/README.md）
 状态层   src/stores/                  configStore（队伍/敌人/设置/滑块，可变）· catalogStore（只读数据快照）
-编排层   src/composables/             useResourceCalc.ts（一次计算的总管线，页面与引擎之间的胶水）+ resourceCalc/ 子模块（panelPhases/helpers/roundThreads/liuyinPromote/normaHatChain/damagePool）
+编排层   src/composables/             useResourceCalc.ts（一次计算的总管线，页面与引擎之间的胶水）+ resourceCalc/ 子模块（panelPhases/helpers/roundThreads/ultimatePromote/normaHatChain/damagePool）
 引擎层   src/core/                    纯函数引擎：resource（资源池）/ damage（伤害乘区）/ panel / stunPool / anomalyPool / buff
 录入层   src/specs/ + src/mechanics/  角色机制：声明式 spec（agents/*.json）+ TS 机制模块（agents/*.ts）
 展示层   src/views/ + src/components/ 页面与卡片（读编排层产物）

@@ -514,7 +514,7 @@ function applyYixuanTeamConfig(
   const jufufuOn = characters.some(
     c => c.agentId === JUFUFU_AGENT_ID && (c.panel?.additionalAbilityActive ?? 0) > 0,
   )
-  const prevFuFa = Number((threads?.moduleFeedback?.yixuanFuFaForJufufu ?? 0))
+  const prevFuFa = Number((threads?.moduleFeedback?.teamUltimateExtra ?? 0))
   const fufaDecibel = jufufuOn && prevFuFa > 0 ? prevFuFa * JUFUFU_FUFA_DECIBEL : 0
   record.extraSelfDecibelReward = Number(record.extraSelfDecibelReward ?? 0) + fufaDecibel
 
@@ -1011,7 +1011,7 @@ const settings: MechanicSetting[] = [
 
 /**
  * 仪玄·符法千重次数「下一轮反馈」（`nextRoundFeedback` 钩子，2026-09-17 round 20 C-β 自
- * `convergence.ts` 迁入）。产出线程值 `yixuanFuFaForJufufu`——**消费方是橘福福 1391**
+ * `convergence.ts` 迁入）。产出线程值 `teamUltimateExtra`——**消费方是橘福福 1391**
  * （额外能力：仪玄终结技类 +300 喧响/次，见本文件 `applyYixuanTeamConfig` 通道④的读点），
  * 但**产出侧归属仪玄**：它只数仪玄自己那份结果行。
  *
@@ -1029,16 +1029,16 @@ const settings: MechanicSetting[] = [
  * 不同——那边原式就是 `(adj2 ?? rr)`）：本处原实现读 `rr`，改读 adj 会改语义。
  */
 function yixuanNextRoundFeedback({ teamResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
-  let yixuanFuFaForJufufu = 0
+  let teamUltimateExtra = 0
   const self = teamResult.characters.find(c => c.agentId === AGENT_ID)
   for (const e of self?.executions ?? []) {
     const mid = e.moveId ?? ''
     const name = e.moveName ?? ''
     if (mid === MOVE.extraUlt || name.includes('符法千重')) {
-      yixuanFuFaForJufufu += e.count ?? 0
+      teamUltimateExtra += e.count ?? 0
     }
   }
-  return { yixuanFuFaForJufufu }
+  return { teamUltimateExtra }
 }
 
 export const yixuanMechanic: AgentMechanicModule = {

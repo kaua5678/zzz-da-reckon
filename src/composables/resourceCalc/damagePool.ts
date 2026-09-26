@@ -155,16 +155,16 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         : stunCoverage
       // 叶瞬光帷幕易伤（口径见 yeshuguang.ts#veilStunBase）：吃满「boss 基础失衡易伤 +
       // 全部失衡易伤加成」再按影画封顶。基数已在**面板阶段**由 `yeshuguang.ts#applyPanel`
-      // 算好并盖章在 `panel.yeshuguangVeilStunBase` 上（`calcDirectDamage` 内部还会加一次
+      // 算好并盖章在 `panel.veilStunVulnBase` 上（`calcDirectDamage` 内部还会加一次
       // bonus/100，所以模块侧已把 bonus 反向扣掉，使最终落到 veilStunMultiplier 的值上）。
       //
       // 2026-09-17 round 18 / R15-d 编排层棘轮：原判据 `row.agentId === '1431' &&
-      // (panel as any).yeshuguangStunCapMult && stunForThis > 0` 里的 **agentId 项已删**——
-      // `yeshuguangStunCapMult` 的**唯一写入方 = `yeshuguang.ts#applyPanel`**（本批从
+      // (panel as any).veilStunCapMult && stunForThis > 0` 里的 **agentId 项已删**——
+      // `veilStunCapMult` 的**唯一写入方 = `yeshuguang.ts#applyPanel`**（本批从
       // `helpers.ts` 的 `agent.id === '1431'` 硬编码块一并迁入）⇒ 字段非 0 即蕴含是本角色
       // （判据同 T6，与本文件 `:879 burniceMechanicSource` / `:953 liuyinMechanicSource` /
       // `:985 banyueC6CrushAttach` 同族）。**其余两项逐位保留**：
-      //  · `yeshuguangStunCapMult` 非 0 = 身份判据（非本角色 `emptyPanel()` 恒 0）；
+      //  · `veilStunCapMult` 非 0 = 身份判据（非本角色 `emptyPanel()` 恒 0）；
       //  · `stunForThis > 0` = 「轴外段不吃帷幕封顶」的门控（R14 分诊 §4.2 要求逐位保留）。
       //    ⚠ **诚实负结果（2026-09-17 round 18 实测，别再重做这个探针）**：把这一项删掉后跑
       //    10 队 × 3 轴态 × 2 命座 = 60 态（boss 易伤推到 2.5/3.5 让封顶真咬合），对全行原文
@@ -175,8 +175,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       //    ⇒ 即「能走到本行的 stunForThis 恒 > 0」。保留它是为了与 R14 分诊的判据面一致 +
       //    防未来有人改 `stunMultVal` 的那个三元，**不是因为它现在拦得住东西**。
       let stunBase = configStore.enemy.stunVuln
-      if (panel.yeshuguangStunCapMult && stunForThis > 0) {
-        stunBase = panel.yeshuguangVeilStunBase
+      if (panel.veilStunCapMult && stunForThis > 0) {
+        stunBase = panel.veilStunVulnBase
       }
       const stunMultVal = stunForThis > 0
         ? 1 + (stunBase - 1) * stunForThis

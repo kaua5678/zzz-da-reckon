@@ -557,7 +557,7 @@ export const aliceMechanic: AgentMechanicModule = {
    *
    * ⚠ 为什么不用 `buildExecutions` 直接读异常池：`buildExecutions` 在异常池**之前**跑
    * （异常池要消费执行行），读不到本轮次数——这正是它必须走跨轮反馈的原因（同
-   * `vivianAnomalyTriggers` / `lighterTeamEnergy` 的存在理由）。
+   * `vivianAnomalyTriggers` / `consumedTeamEnergy` 的存在理由）。
    */
   applyTeamConfig: ({ characters, phase, threads }) => {
     if (phase === 'build') {

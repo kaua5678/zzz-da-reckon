@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { promoteFixpoint } from '@/composables/resourceCalc/liuyinPromote'
+import { promoteFixpoint } from '@/composables/resourceCalc/ultimatePromote'
 import { stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import { emptyPanel } from '@/core/panel'
 import type { StunSkillExecution } from '@/core/stunPool'

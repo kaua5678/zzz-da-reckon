@@ -490,7 +490,7 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：琉音（含跨�
   /**
    * 琉音夹具：**队友必须显式喂 `chainCountPerStun: 2`**。
    *
-   * `promoteFixpoint`（`liuyinPromote.ts:277`）里 60 转大的上限走
+   * `promoteFixpoint`（`ultimatePromote.ts:277`）里 60 转大的上限走
    * `targetChainTotal = min(chainCountPerStun·stunCount, chainExecCount)`，
    * 而 `chainCountPerStun` 取自**槽位 cfg**（`configStore.team` 逐槽相加，`:242`）。
    * 队友槽不喂 ⇒ 只有琉音自己那 2，`min(2·stun, …)` 会把上限压到 2——
@@ -553,7 +553,7 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：琉音（含跨�
 
   /**
    * `liuyin.hug60Count`：声明 `liuyin.ts:470`；读 `liuyin.ts:257`（`floor(cfgNum(…, -1))`）
-   * 与 `liuyinPromote.ts:164`（`configStore.getMechanicSetting(…, -1)`）→ `computeLiuyinHugCounts`。
+   * 与 `ultimatePromote.ts:164`（`configStore.getMechanicSetting(…, -1)`）→ `computeLiuyinHugCounts`。
    *
    * 闭式：`hug60 === min(v, chainWindows, 2·stunCount)`（三重夹紧，`liuyin.ts:112-116`）。
    * 本夹具（lock=3 + 队友各 chainCountPerStun=2）实测上限 == 4 ⇒ 三点取 v = 0 / 2 / 4 全在线性段。

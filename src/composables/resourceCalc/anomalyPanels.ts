@@ -87,7 +87,7 @@ export function getTeamAnomalyDurationBonus(
  * 为什么需要（2026-09-17 round 20 侦察）：`findIndex(char => { const a = …; return a?.id === 'X'
  * || a?.teammateBuffId === 'Y' })` 这一形状在全仓编排层**重复 18 次**（`damagePool.ts` 5 /
  * `helpers.ts` 5 / `useResourceCalc.ts` 3 / `convergence.ts` 3 / `normaHatChain.ts` 1 /
- * `liuyinPromote.ts` 1），且每一处都是角色判定棘轮的计数站点。
+ * `ultimatePromote.ts` 1），且每一处都是角色判定棘轮的计数站点。
  * ⚠ **调用点若同时还要「查表/读该成员的其它字段」，请用本函数拿槽位后再按槽位取**（判据 17：
  * 槽位号 ≠ 下标，`team` 数组索引即槽位号但 `characters`/`panels` 是按位置压缩的）。
  *

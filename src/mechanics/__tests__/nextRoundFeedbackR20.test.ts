@@ -2,9 +2,9 @@
  * `nextRoundFeedback` 钩子 C-β 批判据（2026-09-17 round 20）。
  *
  * 迁移面（自 `src/composables/resourceCalc/convergence.ts` 迁出）：
- * · 目标 1 的一半：仪玄 1371「符法千重次数」→ `yixuanFuFaForJufufu`
+ * · 目标 1 的一半：仪玄 1371「符法千重次数」→ `teamUltimateExtra`
  *   （落点 `yixuan.ts#yixuanNextRoundFeedback`）；
- * · 目标 2：莱特 1161「下一轮全队普通能量消耗」→ `lighterTeamEnergy`
+ * · 目标 2：莱特 1161「下一轮全队普通能量消耗」→ `consumedTeamEnergy`
  *   （落点 `lighter.ts#lighterNextRoundFeedback`）。
  *
  * ⚠ **刻意留在编排层的那一半**：橘福福的「全队终结总次数」`teamUltimateForJufufu`
@@ -66,14 +66,14 @@ describe('C-β next-round feedback', () => {
     ] }
     const other = { agentId: '1481', executions: [{ moveId: '1371020', moveName: '符法千重', count: 999 }] }
     expect(feedback('1371', { teamResult: rows([other, yixuan]) }))
-      .toEqual({ yixuanFuFaForJufufu: 2 + 1.5 + 3 + 0 - 0.25 })
+      .toEqual({ teamUltimateExtra: 2 + 1.5 + 3 + 0 - 0.25 })
   })
 
   it('C6: no 1371 row ⇒ 0 (never其他角色的同名行)', () => {
     expect(feedback('1371', { teamResult: rows([
       { agentId: '1391', executions: [{ moveId: '1371020', moveName: '符法千重', count: 7 }] },
-    ]) })).toEqual({ yixuanFuFaForJufufu: 0 })
-    expect(feedback('1371', { teamResult: rows([]) })).toEqual({ yixuanFuFaForJufufu: 0 })
+    ]) })).toEqual({ teamUltimateExtra: 0 })
+    expect(feedback('1371', { teamResult: rows([]) })).toEqual({ teamUltimateExtra: 0 })
   })
 
   // ── 层② 来源隔离：仪玄读 `teamResult`，**不读** adjusted/display ──────────────
@@ -83,10 +83,10 @@ describe('C-β next-round feedback', () => {
     const displayResult = rows([{ agentId: '1371', executions: [{ moveId: '1371020', count: 222 }] }])
     // 三份都给 → 取 teamResult（原式读 `rr`，不是 `(adj2 ?? rr)`——与 C-α 叶瞬光刻意不同）
     expect(feedback('1371', { teamResult, adjustedResult, displayResult }))
-      .toEqual({ yixuanFuFaForJufufu: 6.25 })
+      .toEqual({ teamUltimateExtra: 6.25 })
     // 只给 adjusted ⇒ 仍是 teamResult 那份的 0（不是回落到 adjusted 的 111）
     expect(feedback('1371', { teamResult: rows([]), adjustedResult, displayResult }))
-      .toEqual({ yixuanFuFaForJufufu: 0 })
+      .toEqual({ teamUltimateExtra: 0 })
   })
 
   // ── 层① 精确值：莱特全队普通能量消耗 ────────────────────────────────────────
@@ -102,18 +102,18 @@ describe('C-β next-round feedback', () => {
       { agentId: '1371', exSpecialCount: 9 },     // 闪能用户  = 0
     ])
     expect(feedback('1161', { cfg: characters[1]!, characters, teamResult }))
-      .toEqual({ lighterTeamEnergy: 165 + 120 })
+      .toEqual({ consumedTeamEnergy: 165 + 120 })
     // 负 count ⇒ `Math.max(0, …)` 归零（原式同款 clamp）；缺 count ⇒ 0
     expect(feedback('1161', { cfg: characters[1]!, characters, teamResult: rows([
       { agentId: '1041', exSpecialCount: -5 }, { agentId: '1161' },
-    ]) })).toEqual({ lighterTeamEnergy: 0 })
+    ]) })).toEqual({ consumedTeamEnergy: 0 })
   })
 
   it('C9: absent lighter row ⇒ 0 (guard自然满足于「不在队不派发」)', () => {
     const characters = [{ agentId: '1041', slot: 0, isFlashUser: false, exSpecialEnergyConsume: 60 }] as unknown as AgentNextRoundFeedbackInput['characters']
     expect(feedback('1161', { cfg: characters[0]!, characters, teamResult: rows([
       { agentId: '1041', exSpecialCount: 5 },
-    ]) })).toEqual({ lighterTeamEnergy: 0 })
+    ]) })).toEqual({ consumedTeamEnergy: 0 })
   })
 
   // ── 层② 来源隔离：莱特 cost 读 `characters`（cfg 数组）、count 读 `teamResult` ──
@@ -133,7 +133,7 @@ describe('C-β next-round feedback', () => {
       { agentId: '1041', exSpecialCount: 77 }, { agentId: '1161', exSpecialCount: 77 },
     ])
     expect(feedback('1161', { cfg: characters[0]!, characters, teamResult, adjustedResult, displayResult }))
-      .toEqual({ lighterTeamEnergy: 60 * 1 + 40 * 2 })
+      .toEqual({ consumedTeamEnergy: 60 * 1 + 40 * 2 })
   })
 
   // ── 层③ 真派发器：乱序槽位 + 空队 ───────────────────────────────────────────
@@ -151,7 +151,7 @@ describe('C-β next-round feedback', () => {
     expect(collectNextRoundFeedback({
       characters, teamResult, anomalyPool: null,
       prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
-    })).toEqual({ yixuanFuFaForJufufu: 2.5, lighterTeamEnergy: 60 * 4 + 30 * 3 })
+    })).toEqual({ teamUltimateExtra: 2.5, consumedTeamEnergy: 60 * 4 + 30 * 3 })
     expect(collectNextRoundFeedback({
       characters: [], teamResult, anomalyPool: null,
       prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
@@ -173,14 +173,14 @@ describe('C-β next-round feedback', () => {
     })
     // 哨兵 = 模块缝上的已知值：把「管线接线」与「领域算式」隔离（算式本身在层①精确测过）。
     // 派发器按槽位序派发 ⇒ 前导空槽时 1161 在 slot 1、1371 在 slot 2（**不是**下标 0/1）。
-    const yx = vi.spyOn(getAgentMechanic('1371')!, 'nextRoundFeedback').mockReturnValue({ yixuanFuFaForJufufu: 2.5 })
-    const lt = vi.spyOn(getAgentMechanic('1161')!, 'nextRoundFeedback').mockReturnValue({ lighterTeamEnergy: 111 })
+    const yx = vi.spyOn(getAgentMechanic('1371')!, 'nextRoundFeedback').mockReturnValue({ teamUltimateExtra: 2.5 })
+    const lt = vi.spyOn(getAgentMechanic('1161')!, 'nextRoundFeedback').mockReturnValue({ consumedTeamEnergy: 111 })
     try {
       const r1 = run(2, initialCalcRoundThreads())
       expect(yx.mock.calls[0]![0].cfg.slot).toBe(2)
       expect(lt.mock.calls[0]![0].cfg.slot).toBe(1)
-      expect((r1?.threadsNext.moduleFeedback.yixuanFuFaForJufufu ?? 0)).toBe(2.5)
-      expect((r1?.threadsNext.moduleFeedback.lighterTeamEnergy ?? 0)).toBe(111)
+      expect((r1?.threadsNext.moduleFeedback.teamUltimateExtra ?? 0)).toBe(2.5)
+      expect((r1?.threadsNext.moduleFeedback.consumedTeamEnergy ?? 0)).toBe(111)
       // 全队汇总 = Σ ultimateCount（编排层，与队伍组成无关）**加上**模块产出的符法千重分量。
       // 期望值从同一份结果自算（不抄常数），并额外钉「分量真被加上」这一条。
       const base = r1!.resourceResult.characters.reduce((a, c) => a + (c.ultimateCount ?? 0), 0)
@@ -188,15 +188,15 @@ describe('C-β next-round feedback', () => {
       expect(base).toBeGreaterThan(0) // 前提前置：否则「加上分量」不可判
       // 第二轮：把第一轮的线程喂回去 ⇒ 三条值逐位不变（跨轮不翻倍 / 不累积）
       const r2 = run(2, r1!.threadsNext)
-      expect((r2?.threadsNext.moduleFeedback.yixuanFuFaForJufufu ?? 0)).toBe(2.5)
-      expect((r2?.threadsNext.moduleFeedback.lighterTeamEnergy ?? 0)).toBe(111)
+      expect((r2?.threadsNext.moduleFeedback.teamUltimateExtra ?? 0)).toBe(2.5)
+      expect((r2?.threadsNext.moduleFeedback.consumedTeamEnergy ?? 0)).toBe(111)
       const base2 = r2!.resourceResult.characters.reduce((a, c) => a + (c.ultimateCount ?? 0), 0)
       expect(r2?.threadsNext.teamUltimateForJufufu).toBe(base2 + 2.5)
       // 第三轮同款（防「只在偶数轮翻倍」这类相位错）
       const r3 = run(2, r2!.threadsNext)
       expect(r3?.threadsNext.teamUltimateForJufufu).toBe(
         r3!.resourceResult.characters.reduce((a, c) => a + (c.ultimateCount ?? 0), 0) + 2.5)
-      expect((r3?.threadsNext.moduleFeedback.lighterTeamEnergy ?? 0)).toBe(111)
+      expect((r3?.threadsNext.moduleFeedback.consumedTeamEnergy ?? 0)).toBe(111)
     } finally { yx.mockRestore(); lt.mockRestore() }
   })
 
@@ -206,7 +206,7 @@ describe('C-β next-round feedback', () => {
     const threads = {
       ...initialCalcRoundThreads(),
       teamUltimateForJufufu: 14,
-      moduleFeedback: { yixuanFuFaForJufufu: 2.5, lighterTeamEnergy: 680 },
+      moduleFeedback: { teamUltimateExtra: 2.5, consumedTeamEnergy: 680 },
     }
     // ① specPanelBuffs（橘福福 1391）：converge 读 threads 写自己那份 cfg（赋值 ⇒ 幂等）
     const jufufu = { agentId: '1391', slot: 0 } as Record<string, unknown>
@@ -273,7 +273,7 @@ describe('C-β next-round feedback', () => {
     // 若挂进 1391 模块 ⇒ 第二例（有 1371 无 1391）精确红。
     const withJufufuOnly = await build([{ agentId: '1391', cinemaLevel: 2 }, { agentId: '1041' }, { agentId: '1151' }])
     const baseOnlyJufufu = withJufufuOnly.resourceResult.characters.reduce((a, c) => a + (c.ultimateCount ?? 0), 0)
-    expect((withJufufuOnly.threadsNext.moduleFeedback.yixuanFuFaForJufufu ?? 0)).toBe(0) // 无 1371 ⇒ 分量为 0
+    expect((withJufufuOnly.threadsNext.moduleFeedback.teamUltimateExtra ?? 0)).toBe(0) // 无 1371 ⇒ 分量为 0
     expect(withJufufuOnly.threadsNext.teamUltimateForJufufu).toBe(baseOnlyJufufu) // 汇总仍如实产出
     // 本夹具（`[1391 C2, 1041, 1151]`，非轴）实测：三人终结技各 3/3/2 ⇒ Σ = 8（**非零**）。
     // ⚠ 这个 8 是本用例自己夹具的派生值（探针实测），不是从别处抄来的常数。
@@ -285,7 +285,7 @@ describe('C-β next-round feedback', () => {
     // 同夹具换 1371 C6：符法千重 14 次（探针实测），Σ ultimateCount 仍 8 ⇒ 汇总 = 22。
     // 2026-09-19 R37-J5 v2（动态合轴）：该非轴队 Σ净必要 > 预算，队友前台按溢出量被合轴吸收、不再降配 ⇒ 仪玄时间/闪能
     // 收入上升 → 符法千重 14→18（探针实测）；Σ ultimateCount 与汇总按同一恒等式重锚（下两条）。
-    expect((withYixuanOnly.threadsNext.moduleFeedback.yixuanFuFaForJufufu ?? 0)).toBe(18)
+    expect((withYixuanOnly.threadsNext.moduleFeedback.teamUltimateExtra ?? 0)).toBe(18)
     expect(withYixuanOnly.threadsNext.teamUltimateForJufufu).toBe(baseOnlyYixuan + 18)
     expect(withYixuanOnly.threadsNext.teamUltimateForJufufu).toBe(26) // Σ ultimateCount 仍 8
     // ★ 两条线程值**各自独立**：无 1371 时汇总非零（8）、有 1371 时分量非零（14）
