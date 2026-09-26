@@ -215,6 +215,15 @@ Windows 侧存在若干副本（`/f/trae_output/`、`/f/claude code/`、`/f/test
 > ShunCode **没有** remote-wsl 扩展（96 个扩展里没有，`workbench.desktop.main.js` 中
 > `wsl.localhost` 出现 0 次），装不上也别折腾。
 
+**`wsl_exec` 缺失时的退路**（工具清单 15 个而不是 16 个）：`run_command` 包一层，命令仍在 WSL 内执行——
+`wsl -d Ubuntu -e bash -lc "cd /home/kaua/projects/zzz-calculator && <命令>"`；不要让 `run_command` 直接读写 UNC 路径。汇报里注明「本轮走 run_command 退路」。
+
+**⚠ 环境安全硬规则（2026-09-26 事故，全仓停摆约 6 小时）**：
+- **禁止 `wsl --terminate` / `wsl --shutdown`**（lead / 工人都不许）。事故：lead 为清理失控的 node 普查脚本执行 `wsl --terminate Ubuntu`，WSL 整体卡死 ⇒ 文件工具 EIO、`run_command` PTY 起不来（起点是 UNC 工作区根）、`wsl_exec` 丢失；只有宿主侧管理员重启 WSL 服务才能恢复，沙箱内无权自救。
+- 杀进程只杀具体进程：先 `ps -eo pid,etime,cmd | grep <模式>` 取 pid，再 `kill -9 <pid>`（`pkill -f` 会匹配到发出命令的 shell 自身）。
+- 可能耗时的 node / vitest 脚本**禁止前台跑**：`setsid bash -c 'timeout -s KILL <秒> <命令>' > <log> 2>&1 &`，再轮询 log。普查类脚本用 `git ls-files` 取文件清单，不递归 stat、不跟随符号链接。
+- 详细经过：`docs/mcp-r22d1-batch12-field-census.md` 附录 A。
+
 ### 2. 写长文件用 apply_patch 分块
 
 Windows 命令行有 **8191 字符上限**，用 `echo` / `base64` 拼长内容会被**静默截断**
