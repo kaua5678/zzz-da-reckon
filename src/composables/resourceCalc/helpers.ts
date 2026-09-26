@@ -266,9 +266,6 @@ import {
   getWindInfectionCoverage,
   buildAnomalyVirtualPanel,
   buildAnomalySettlementEntries,
-  getRemielleLevelValue,
-  remielleSpecialVoidflareCount,
-  calcVoidflareDamage,
 } from './anomalyPanels'
 import type {
   AnomalyVirtualPanelRow,
@@ -285,9 +282,6 @@ export {
   getWindInfectionCoverage,
   buildAnomalyVirtualPanel,
   buildAnomalySettlementEntries,
-  getRemielleLevelValue,
-  remielleSpecialVoidflareCount,
-  calcVoidflareDamage,
 }
 export type {
   AnomalyVirtualPanelRow,
@@ -613,7 +607,8 @@ export function buildCharConfig(
     battleTime: configStore.enemy.battleTime ?? 180,
     invincibleTime: configStore.enemy.invincibleTime ?? 0,
     bodySize: configStore.enemy.bodySize ?? 'large',
-    extraSelfDecibelReward: (panel.remielleFlowerFeatherDanceDecibelPerUse ?? 0) * (panel.remielleFlowerFeatherDanceCount ?? 0),
+    // 跨角色 `+=` 累加通道：蕾米埃尔花羽轮舞项由 remielle.ts#buildRemielleCharConfig 累加（CC-34c 2026-09-27）
+    extraSelfDecibelReward: 0,
     decibelShareRatio: 0.5,
     supportUltimateEnergyRegen: 0,
     isSupport,

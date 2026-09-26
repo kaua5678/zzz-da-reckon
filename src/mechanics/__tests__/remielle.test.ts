@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
-import { computePanelPhases, calcVoidflareDamage, computeRemielleEntryPanel, findMoveById, getRemielleLevelValue } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases, computeRemielleEntryPanel, findMoveById } from '@/composables/resourceCalc/helpers'
 import { emptyPanel } from '@/core/panel'
-import { computeRemielleMechanic, remielleMechanic } from '@/mechanics/agents/remielle'
+import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic } from '@/mechanics/agents/remielle'
 import type { AgentSkills } from '@/types/catalog'
 
 /** 3异常队（蕾米+薇薇安+月城柳），额外能力 tier=3；globalBuffs 关掉防污染（SOP §7） */
@@ -252,4 +252,34 @@ describe('CC-21：蕾米埃尔 globalAnomalyMultiplierFactor（全队异常乘�
     expect(factor({ ...emptyPanel(), remielleRefringeCoefficient: 20, remielleRefringeCoefficientBonusPct: 5 })).toBeCloseTo(1.25, 12)
   })
 
+})
+
+describe('CC-34c：花羽轮舞喧响由 buildRemielleCharConfig 累加进 extraSelfDecibelReward', () => {
+  // 线上 `remielleFlowerFeatherDanceCount` 目前没有任何写入方（catalog 只给 DecibelPerUse=200），perf 语料里乘积恒为 0，
+  // dump 覆盖不到 ⇒ 这里直接调钩子，锁住「写入点接线 + `+=` 累加语义 + 非本人不写」。
+  const call = (agentId: string, cfg: Record<string, unknown>) => remielleMechanic.buildCharConfig!({
+    slot: 0,
+    agent: { id: agentId } as never,
+    skills: { categories: [] } as never,
+    cinemaLevel: 1,
+    potentialLevel: 6,
+    wEngineId: '',
+    wEngineModLevel: 1,
+    team: [] as never,
+    panel: { ...emptyPanel(), remielleFlowerFeatherDanceDecibelPerUse: 200, remielleFlowerFeatherDanceCount: 3 } as never,
+    cfg: cfg as never,
+    getRowValue: (() => 0) as never,
+  })
+
+  it('蕾米埃尔：在已有值上累加 每次喧响 × 次数（100 + 200×3 = 700）', () => {
+    const cfg: Record<string, unknown> = { extraSelfDecibelReward: 100 }
+    call('1581', cfg)
+    expect(cfg.extraSelfDecibelReward).toBe(700)
+  })
+
+  it('非蕾米埃尔槽：不写', () => {
+    const cfg: Record<string, unknown> = { extraSelfDecibelReward: 100 }
+    call('1331', cfg)
+    expect(cfg.extraSelfDecibelReward).toBe(100)
+  })
 })

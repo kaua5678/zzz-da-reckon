@@ -9,7 +9,8 @@
  *   ④ 异常虚拟面板 `buildAnomalyVirtualPanel`（属性加权 + 招式限定增伤按积蓄占比）与
  *      结算触发者分摊 `buildAnomalySettlementEntries`
  *   ⑤ 蕾米埃尔专属：`getRemielleLevelValue` / `remielleSpecialVoidflareCount` / `calcVoidflareDamage`
- *      已于 CC-19c-1（2026-09-26）迁 `@/mechanics/agents/remielle`，本文件只留 re-export 壳（见下）
+ *      已于 CC-19c-1（2026-09-26）迁 `@/mechanics/agents/remielle`；运行时 re-export 壳已于 CC-34d
+ *      （2026-09-27）删除，调用方直接从模块导入。本文件只留类型 `VoidflareDamageInput` 的壳（见下）
  *
  * 迁移纪律：逐字节剪切，算式/常量值/条件/求值顺序零改动。
  * 上游单一入口仍是 `./helpers`（该文件保留 re-export 壳）⇒ 目录外既有消费者（`damagePool.ts` 等）
@@ -381,8 +382,8 @@ export function buildAnomalySettlementEntries(
 // ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**。
 // ⚠ 改这几个函数请改 `mechanics/agents/remielle.ts`，不要回本文件重建同形函数。
 // ============================================================================
-import { getRemielleLevelValue, remielleSpecialVoidflareCount, calcVoidflareDamage } from '@/mechanics/agents/remielle'
-export { getRemielleLevelValue, remielleSpecialVoidflareCount, calcVoidflareDamage }
+// CC-34d（2026-09-27）：3 个运行时函数的 re-export 已删除（唯一经壳导入的调用方是 remielle.test，已改为直接导入）。
+// 类型 `VoidflareDamageInput` 不带角色前缀，保留在壳里，供 helpers.ts 的类型壳使用。
 export type { VoidflareDamageInput } from '@/mechanics/agents/remielle'
 
 // ============================================================================

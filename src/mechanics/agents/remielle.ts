@@ -302,7 +302,7 @@ export function findRemielleRadiantTurn(agentSkills: {
 }
 
 /** 把「本槽是不是蕾米埃尔」与额外能力档位写进 cfg（原 `helpers.ts:1661-1667` 的 cfg 出口）。 */
-function buildRemielleCharConfig({ slot, agent, skills, team, cfg }: AgentCharConfigInput): void {
+function buildRemielleCharConfig({ slot, agent, skills, team, panel, cfg }: AgentCharConfigInput): void {
   if (!isRemielleAgent(agent)) return
   // 垂虹（特殊虚耀载体）与后台 Radiant Turn 的招式参数（CC-34b 2026-09-27 由 `helpers.ts` cfg 字面量迁入；
   // 原先对每个槽都查一遍并写 '' / 0，读取方只有本模块的 extraNecessaryAction / backstageAutoRows）。
@@ -315,6 +315,11 @@ function buildRemielleCharConfig({ slot, agent, skills, team, cfg }: AgentCharCo
   cfg.remielleRadiantTurnMoveId = radiantTurn?.moveId ?? ''
   cfg.remielleRadiantTurnActionTime = radiantTurn?.actionTime ?? 0
   cfg.remielleRadiantTurnDecibelRecovery = radiantTurn?.decibelRecovery ?? 0
+  // 一命「花羽轮舞」每次额外喧响 × 次数（CC-34c 2026-09-27 由 `helpers.ts` cfg 字面量迁入）。
+  // 两个面板字段只在本人面板上非 0（catalog buff target=self），`extraSelfDecibelReward` 是跨角色 `+=` 通道，
+  // 字面量初值为 0，所以这里的累加结果与原先直接赋值逐位相同。
+  cfg.extraSelfDecibelReward = Number(cfg.extraSelfDecibelReward ?? 0)
+    + (panel.remielleFlowerFeatherDanceDecibelPerUse ?? 0) * (panel.remielleFlowerFeatherDanceCount ?? 0)
   const dazeBonusPct = remielleDazeBonusPct(slot, agent, team)
   // panel 同名字段只由上方 applyRemiellePanel 写（buildCharConfig 的 panel 只读：cfg 是本钩子唯一出口）
   cfg.remielleEnabled = true

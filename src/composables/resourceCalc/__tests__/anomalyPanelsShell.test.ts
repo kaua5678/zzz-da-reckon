@@ -27,7 +27,7 @@ import type {
   VoidflareDamageInput,
 } from '@/composables/resourceCalc/helpers'
 
-/** D 簇 11 个**运行时**符号（迁移前 helpers.ts 的导出面，迁移后经壳原样可达） */
+/** D 簇 8 个**运行时**符号（原 11 个，CC-34d 删去蕾米埃尔 3 个）（迁移前 helpers.ts 的导出面，迁移后经壳原样可达） */
 const D_EXPORTS = [
   'teamHasAgent',
   'getTeamAnomalyDurationBonus',
@@ -37,16 +37,16 @@ const D_EXPORTS = [
   'getWindInfectionCoverage',
   'buildAnomalyVirtualPanel',
   'buildAnomalySettlementEntries',
-  'getRemielleLevelValue',
-  'remielleSpecialVoidflareCount',
-  'calcVoidflareDamage',
 ] as const
+
+/** CC-34d（2026-09-27）有意收窄：蕾米埃尔 3 个函数的运行时壳已删，调用方直接从 `@/mechanics/agents/remielle` 导入 */
+const REMOVED_REMIELLE = ['getRemielleLevelValue', 'remielleSpecialVoidflareCount', 'calcVoidflareDamage'] as const
 
 /** 留在 `helpers.ts` 的真定义（本刀**不该**把它们搬走：展示归一 / 执行计划 / 资源池配置） */
 const STAYED = ['normalizeDisplayTime', 'enrichExecutionPlan', 'buildCharConfig', 'extractSkillExecutions'] as const
 
 describe('R22 刀 C：anomalyPanels 壳契约', () => {
-  it('① D 簇 11 个运行时符号经 ./helpers 壳可达，且与 ./anomalyPanels 是**同一个绑定**', () => {
+  it('① D 簇 8 个运行时符号经 ./helpers 壳可达，且与 ./anomalyPanels 是**同一个绑定**', () => {
     for (const name of D_EXPORTS) {
       expect((Helpers as Record<string, unknown>)[name], `helpers.${name} 缺失`).toBeDefined()
       // 同一绑定 = 壳不是第二份实现（单一事实源，规则 11）
@@ -85,7 +85,7 @@ describe('R22 刀 C：anomalyPanels 壳契约', () => {
   it('②bis ★ 类型 re-export 必须是**两行形态**（import type + export type）——这是本刀唯一能拦住它的判据', async () => {
     // ⚠ 实测（本批，非推测）：把 D 簇的类型壳写成 `export { … } from './anomalyPanels'` 时
     // **① / ② 都不红**——类型在运行时已擦除，`(Helpers as Record<string, unknown>)['AnomalyVirtualPanelRow']`
-    // 本来就是 `undefined`（所以 ① 只列 11 个**运行时**符号）；而 ② 的调用点全在别的文件。
+    // 本来就是 `undefined`（所以 ① 只列**运行时**符号）；而 ② 的调用点全在别的文件。
     // 真正红的只有 `vue-tsc -b`（本批实测：helpers.ts 4 条 TS2304 + useResourceCalc.ts TS7006 传染）。
     // ⇒ 本用例把「类型壳必须建本地绑定」这条契约钉在 vitest 里（比全量 `vue-tsc -b` 快得多），
     //   手法 = 读源文件断言两行形态（vitest 里跑 vue-tsc 不现实）。
@@ -102,6 +102,13 @@ describe('R22 刀 C：anomalyPanels 壳契约', () => {
     expect(src, '类型壳写成了 export-from（不建本地绑定 ⇒ vue-tsc TS2304）').not.toMatch(
       /export\s+type\s*\{[\s\S]*?\}\s*from\s*'\.\/anomalyPanels'/,
     )
+  })
+
+  it('①ter CC-34d：蕾米埃尔 3 个函数不再经 helpers / anomalyPanels 导出（防止壳被加回）', () => {
+    for (const name of REMOVED_REMIELLE) {
+      expect(name in Helpers, `helpers.${name} 不该再导出`).toBe(false)
+      expect(name in AnomalyPanels, `anomalyPanels.${name} 不该再导出`).toBe(false)
+    }
   })
 
   it('③ 未搬走的符号仍是 helpers.ts 的真定义（不借搬迁把执行计划簇也顺手挪走）', () => {
