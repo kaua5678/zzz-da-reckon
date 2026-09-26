@@ -16,7 +16,7 @@ import type {
   SpecialResourceSection,
   StunAxis,
   TeamResourceResult,
-  VelinaCorrosionSource,
+  CorrosionSource,
 } from '@/types/resource'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { SourcePanelsByOwner } from '@/core/buff'
@@ -970,7 +970,7 @@ export interface AgentMechanicModule {
     windTriggerCount: number
     /** C2 风化获得风蚀的期望利用率（未盖章时的兜底）；`undefined` 由模块侧默认参数兜底 */
     fallbackRate?: number
-  }): VelinaCorrosionSource | undefined
+  }): CorrosionSource | undefined
   /**
    * **本轮已收敛 → 算出「下一轮反馈」**（规则 6 在编排层的落点，2026-09-16 立项）。
    *

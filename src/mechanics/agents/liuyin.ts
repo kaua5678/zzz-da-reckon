@@ -525,7 +525,7 @@ export const liuyinMechanic: AgentMechanicModule = {
    *
    * 迁移自 `core/resource.ts#liuyinGiftChainInfo`（2026-09-13，数值逐位保留）。三处口径要点：
    * ① **轴模式抑制**（`axisSuppressed`）：轴内 60/90 转大次数由轴预设 `promoteVariant` 块决定
-   *    （+ 用户 2026-09-20 口径「剩余好评默认 90」，两者都在编排层算好后经 `axisLiuyinPromote` 注入）
+   *    （+ 用户 2026-09-20 口径「剩余好评默认 90」，两者都在编排层算好后经 `axisUltimatePromote` 注入）
    *    ⇒ 本供给在轴模式下不出数（恒 0）。引擎的**四处**消费点（`iterate` 账本预留 / S2 折叠环
    *    `rowTime` 测量 / `frontlineRowsOf` 试探测量 / `giftTimeOfSlot` 截断上限）统一走
    *    `ultimateGiftOf` 取轴计数（单一事实源，见 `@fact engine:赠送时间/轴模式四处同源`）。

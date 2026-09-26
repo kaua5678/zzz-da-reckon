@@ -820,7 +820,7 @@ export interface ResourceCalcConfig {
    * 通用公式与轴预设声明现在给出同一个开窗数（实测 10大轴 60×4+90×1=5 两侧一致，
    * 修前通用公式算 4），判据 = `liuyin.test.ts`「通用公式 vs 轴预设声明」。
    */
-  axisLiuyinPromote?: { targetSlot: number; count: number }
+  axisUltimatePromote?: { targetSlot: number; count: number }
   /**
    * 编排层队长（`configStore.team.length`，含空槽）：**赠行物化口径**解析「上一位队友」用。
    * 引擎只收到已配置角色（`configs.length`），退化配置（单角色扫描）下两者不同——账本/试探口径

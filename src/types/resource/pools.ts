@@ -5,7 +5,7 @@
  * 消费方一律经 `@/types/resource`（barrel = ./index.ts）引用，勿深链本目录内部文件。
  */
 
-import type { VelinaCorrosionSource } from './agentResources'
+import type { CorrosionSource } from './agentResources'
 
 // ============ 失衡池 ============
 
@@ -125,10 +125,10 @@ export interface AnomalyPoolResult {
   /** 乱流伤害详情（有风属性时计算） */
   turbulenceDamage?: TurbulenceDamageResult
   /** 维琳娜风蚀资源明细（有风属性且触发乱流时计算） */
-  corrosionSource?: VelinaCorrosionSource
+  corrosionSource?: CorrosionSource
   /** 畏缩 DOT 伤害明细（通用异常池输出；畏缩由 coweringConfig 开启，目前唯一开启方是爱丽丝）。
    *  CC-38c 2026-09-27 自 aliceCoweringDot 改名（dump/rowsnap 基线不含此键，零差）。 */
-  coweringDot?: AliceCoweringDotResult
+  coweringDot?: CoweringDotResult
   /** 异常事件明细：把”异常条触发/覆盖触发/动作跟随触发”等事件化展示给开发调试 */
   anomalyEvents: AnomalyEventRecord[]
 }
@@ -230,7 +230,7 @@ export interface DisorderDamageResult {
 // ============ 爱丽丝畏缩 DOT ============
 
 /** 爱丽丝畏缩 DOT 伤害结果 */
-export interface AliceCoweringDotResult {
+export interface CoweringDotResult {
   /** DOT tick 间隔（秒） */
   dotInterval: number
   /** DOT 每 tick 比例（% 强击伤害） */

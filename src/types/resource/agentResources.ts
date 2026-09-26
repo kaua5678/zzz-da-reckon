@@ -28,7 +28,7 @@ export interface VelinaFloriaSource {
 }
 
 /** 维琳娜风蚀资源明细 */
-export interface VelinaCorrosionSource {
+export interface CorrosionSource {
   /** 乱流总次数 */
   turbulenceCount: number
   /** 0/1风蚀触发乱流时获得风蚀并触发微域气旋的次数 */

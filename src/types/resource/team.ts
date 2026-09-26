@@ -149,7 +149,7 @@ export interface TeamResourceResult {
   truncationCuts?: TruncationCut[]
   /**
    * 赠终结技时间预留量（非轴模式，秒；CC-15 原名 liuyinGiftTimeReserved，当前唯一来源 = 琉音好评转大）：iterate 已把 promote × 目标终结技时长计入
-   * 必要时间（守恒由引擎成立）→ applyLiuyinPromote 见到本字段即**跳过 post-hoc carve**
+   * 必要时间（守恒由引擎成立）→ applyUltimatePromote 见到本字段即**跳过 post-hoc carve**
    * （旧 carve 只抠 basic_attack 聚合行，目标平A时间在分段行里时会落空 → 守恒破 +7.2s）。
    * 轴模式无预留（轴内 60/90 转大次数由轴预设决定），字段缺省。
    */

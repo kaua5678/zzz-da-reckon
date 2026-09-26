@@ -19,7 +19,7 @@
  * 其面板无 `velinaEnabled` ⇒ 两边都是 `undefined`（逐位等价）。
  */
 import type { PanelValues } from '@/types/catalog'
-import type { VelinaCorrosionSource } from '@/types/resource'
+import type { CorrosionSource } from '@/types/resource'
 import type { AgentMechanicModule } from '@/mechanics/types'
 
 /**
@@ -36,7 +36,7 @@ export function resolveAnomalyCorrosion(
   turbulenceCount: number,
   windTriggerCount: number,
   fallbackRate?: number,
-): VelinaCorrosionSource | undefined {
+): CorrosionSource | undefined {
   if (!agentMechanics) return undefined
   for (const mech of agentMechanics) {
     const result = mech.anomalyCorrosion?.({ panels, turbulenceCount, windTriggerCount, fallbackRate })

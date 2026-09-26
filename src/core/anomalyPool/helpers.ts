@@ -47,7 +47,7 @@ import type {
   DisorderDamageResult, DisorderDamageDetail,
   TurbulenceDamageResult, TurbulenceDamageDetail,
   DisorderFormula, TurbulenceFormula,
-  AliceCoweringDotResult, VelinaCorrosionSource,
+  CoweringDotResult, CorrosionSource,
 } from '@/types/resource'
 import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
@@ -221,7 +221,7 @@ export const TURBULENCE_FORMULAS: Record<string, TurbulenceFormula> = {
 }
 
 /** 无维琳娜时的空风蚀状态（队里有别的风角色时的逐位等价替身：boosted=0 ⇒ 乱流不加 +150%） */
-const EMPTY_CORROSION: VelinaCorrosionSource = {
+const EMPTY_CORROSION: CorrosionSource = {
   turbulenceCount: 0,
   microCycloneCount: 0,
   broadCycloneCount: 0,
@@ -1355,12 +1355,12 @@ export const ANOMALY_SINGLE_HIT_MULTIPLIER: Record<string, number> = {
   wind: 1250,                                           // 风化 1250% 单次
 }
 
-export function calcAliceCoweringDot(
+export function calcCoweringDot(
   physicalContribs: AnomalyContribution[],
   panels: PanelValues[],
   dotCoverageTime: number,
   config: DamageCalcConfig,
-): AliceCoweringDotResult | undefined {
+): CoweringDotResult | undefined {
   const cc = config.coweringConfig
   if (!cc) return undefined
   if (!physicalContribs || physicalContribs.length === 0) return undefined

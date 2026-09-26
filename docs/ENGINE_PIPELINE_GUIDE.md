@@ -487,7 +487,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     ⟳复核: 拿到实战视频/游戏内单跳校准数据后，重跑 `PROBE_LOWGOLD=1` 探针确认族级偏斜是否已被 19①/实数化改动带走 | 到期 2026-11-30
 
 28. **赠送招式（诺姆赠链 / 琉音赠大）的时间账：装配后追加行必须回扣截断上限（2026-09-08 用户实测）**：
-    赠送行由 `applyNormaHatChain` / `applyLiuyinPromote` 在**装配之后**追加到目标槽执行计划，不在 `buildExecutions` 产物里；其时间已由 iterate 计入目标槽必要时间（`helpers.ts` Step4 两处
+    赠送行由 `applyNormaHatChain` / `applyUltimatePromote` 在**装配之后**追加到目标槽执行计划，不在 `buildExecutions` 产物里；其时间已由 iterate 计入目标槽必要时间（`helpers.ts` Step4 两处
     `normaGiftChainTime` / `liuyinGiftTime` 预留）。但 `buildResourceResult` 里① 时间线截断上限 ② 前台展示**都没算这份时间** → 实测三症状：
     - 资源卡「总计」= 战斗时间 + 赠送秒数（猫又/诺姆/千夏 191.8s、希格莉德/诺姆/丽娜 188.8s、
       猫又/琉音/耀嘉音 183.8s，各多出赠送行秒数）——**用户报的就是这条**；

@@ -34,7 +34,7 @@ export function applyChainGift(
   const gift = providerResult ? getAgentMechanic(configStore.team[providerSlot].agentId)?.chainGift?.(providerResult) ?? null : null
   if (!gift) return base
   const hatCount = Math.max(0, Math.floor(gift.count))
-  // 引擎占位行（阶段1 ②）以**池口径**为准：hatCount = 0 时撤掉占位行（同 applyLiuyinPromote）
+  // 引擎占位行（阶段1 ②）以**池口径**为准：hatCount = 0 时撤掉占位行（同 applyUltimatePromote）
   if (hatCount <= 0) {
     if (!base.characters.some(c => (c.executions ?? []).some(e => e.chainGift))) return base
     return {

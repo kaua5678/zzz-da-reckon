@@ -343,13 +343,13 @@ function iterateBody(
   const comboAlignTimes: number[] = []
   const comboAlignCredits: number[] = []
   // ===== 琉音好评转大赠链时间信道（2026-09-06 补账，诺姆膛温赠链同款）=====
-  // applyLiuyinPromote 装配后给「上一位队友」追加 promote 个终结技行（时间 = 目标 ult actionTime），
+  // applyUltimatePromote 装配后给「上一位队友」追加 promote 个终结技行（时间 = 目标 ult actionTime），
   // 旧实现靠 post-hoc carve 目标 basic_attack 聚合行守恒——目标平A时间住在分段行里时（希格莉德
   // 枪尖/般岳焚身/琉音猜拳）聚合行被抠剩 ~0、carve 落空 → 守恒破、净占用 +7.2s（实测
   // auto-1591-1481-1311）。引擎侧按同一求解预留必要时间：赠行时间进目标槽必要（GROSS），
   // 平A池随之收缩，守恒成立且不再依赖 post-hoc carve。
   //
-  // **轴模式的次数来源 = `axisLiuyinPromote`（编排层按「轴声明 60 + 剩余好评默认 90」算好）**：
+  // **轴模式的次数来源 = `axisUltimatePromote`（编排层按「轴声明 60 + 剩余好评默认 90」算好）**：
   // 模块供给带 `axisSuppressed` ⇒ 轴模式下 `crossAgentSupplyAt` 恒返回 count 0。旧口径正是
   // 「轴模式不预留」（2026-09-10 为避数值重排暂时维持），其代价在 2026-09-20 暴露为**四处口径分裂**
   // —— 本处与 S2 折叠环 `rowTime` 漏计轴赠大，而 `giftTimeOfSlot`（截断上限）扣了它 ⇒ **双重计费**：
@@ -362,11 +362,11 @@ function iterateBody(
   // 预留挤平A池而赠送行不等量补回（折叠环把它读成 idle 再 refund 掉，净额仍 0）。现四处同源，
   // 该否决理由的前提已消失（实测见下方 `@fact engine:赠送时间/轴模式四处同源`）。
   // @fact engine:赠送时间/轴模式四处同源 口径: 琉音赠大（`gift-chain:ultimate`）在轴模式下的**次数与时长必须四处同源**（`ultimateGiftOf` 单一事实源）：① 本处 `iterate` 账本必要时间预留 ② S2 折叠环 `rowTime` 测量 ③ `frontlineRowsOf` 试探测量 ④ `giftTimeOfSlot` 装配截断上限。四处缺任一（尤其①与②）都会破守恒——实测雨果 0 命轴只做④不做①②时，截断额度被扣 8.732s 而账本/折叠都没涨 ⇒ **双重计费**、决算行被整数装包砍掉一整次（5→4）| 据 用户@2026-09-20「同一个量转大次数，在轴模式下显示制定了部分好评值的用途，剩余好评应该默认 90」·复核@2026-09-25（W19：③ frontlineRowsOf 内联轴分支已收敛到 ultimateGiftOf） | 验 src/composables/__tests__/timeLedgerInvariants.test.ts + src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/core/resource/crossAgentSupply.ts#ultimateGiftOf | 信 确认
-  // ⟳复核: 再增/删琉音赠大的消费点（尤其绕过 `ultimateGiftOf` 直调 `crossAgentSupplyAt`）时，复核「四处同源」覆盖面与 `Σ非赠行 + 赠行 ≡ 账本`（timeLedgerInvariants 全绿）；`axisLiuyinPromote` 的产生改为非编排层时一并重核 | 到期 2027-03-31
+  // ⟳复核: 再增/删琉音赠大的消费点（尤其绕过 `ultimateGiftOf` 直调 `crossAgentSupplyAt`）时，复核「四处同源」覆盖面与 `Σ非赠行 + 赠行 ≡ 账本`（timeLedgerInvariants 全绿）；`axisUltimatePromote` 的产生改为非编排层时一并重核 | 到期 2027-03-31
   const ultGift = ultimateGiftOf(configs, prevStates, {
     totalTime, stunCount: globalCfg.stunCount ?? 0,
     axisMode: !!globalCfg.axisMode,
-    axisPromote: globalCfg.axisLiuyinPromote,
+    axisPromote: globalCfg.axisUltimatePromote,
   })
   const ultGiftTargetIdx = ultGift.count > 0 && configs[ultGift.targetIdx] ? ultGift.targetIdx : -1
   const ultGiftTime = ultGiftTargetIdx >= 0 ? ultGift.time : 0
@@ -415,7 +415,7 @@ function iterateBody(
       // 诺姆膛温换连携赠链时间（目标槽）：装配后 applyChainGift 追加的赠链行占前台，
       // 引擎必要时间必须预留（同连携 GROSS 全额口径），否则净占用顶出预算
       + (i === chainGiftTargetIdx ? chainGiftTime : 0)
-      // 琉音好评转大赠链时间（目标槽，非轴）：装配后 applyLiuyinPromote 追加的赠大行占前台，
+      // 琉音好评转大赠链时间（目标槽，非轴）：装配后 applyUltimatePromote 追加的赠大行占前台，
       // 引擎预留（GROSS 全额口径），平A池随之收缩守恒——不再依赖 post-hoc carve
       + (i === ultGiftTargetIdx ? ultGiftTime : 0)
       // 时间预算收敛：执行计划中模块专属动作行（如雅霜月架势、叶瞬光飞光）占用前台但未计入

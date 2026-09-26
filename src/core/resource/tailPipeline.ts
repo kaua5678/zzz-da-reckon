@@ -139,7 +139,7 @@ export function runTailPipeline(
 
   // 构建最终结果
   /**
-   * 赠送行时间（诺姆膛温赠链 / 琉音好评转大赠大）：由 `applyChainGift` / `applyLiuyinPromote`
+   * 赠送行时间（诺姆膛温赠链 / 琉音好评转大赠大）：由 `applyChainGift` / `applyUltimatePromote`
    * 在装配**之后**追加到目标槽执行计划，不在 `buildExecutions` 产物里；其时间已由 iterate 计入
    * 目标槽必要时间（GROSS 全额，见 helpers.ts Step4 两处预留）。**截断上限与前台展示必须同口径计入**，
    * 否则：① 其它行按「含赠送时间的账本」截断、再叠加赠送行 → 物化行超账本（守恒破）；
@@ -161,13 +161,13 @@ export function runTailPipeline(
    * S2 折叠环测量却都没涨 ⇒ 截断额度凭空少 8.732s（雨果 0 命轴），决算行被整数装包砍掉一整次
    * （5→4，实测 `hugoVerdictLanding`/`stunVulnSummary` 案例 B/D 红）。
    *
-   * 现改为一律走 `ultimateGiftOf`（轴模式用 `axisLiuyinPromote.count`——编排层已按「轴声明 60 +
+   * 现改为一律走 `ultimateGiftOf`（轴模式用 `axisUltimatePromote.count`——编排层已按「轴声明 60 +
    * 剩余好评默认 90」算好，与 `promoteFixpoint` 同源）⇒ 预留 == 赠行 == 截断扣除，守恒恢复，
-   * `applyLiuyinPromote` 也不再需要 post-hoc carve（`ultimateGiftTimeReserved` 有值即走预留路径）。
+   * `applyUltimatePromote` 也不再需要 post-hoc carve（`ultimateGiftTimeReserved` 有值即走预留路径）。
    */
   const ultimateGiftFinal = ultimateGiftOf(configs, states, {
     totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
-    axisMode: config.axisMode, axisPromote: config.axisLiuyinPromote,
+    axisMode: config.axisMode, axisPromote: config.axisUltimatePromote,
   })
   const giftTimeOfSlot = (idx: number): number =>
     (idx === chainGiftFinal.targetIdx ? chainGiftFinal.time : 0)
@@ -177,7 +177,7 @@ export function runTailPipeline(
   const chainGiftRow = chainGiftRowSpec(configs, states, totalTime, config.teamSize)
   const ultimateGiftRow = ultimateGiftRowSpec(
     configs, states, totalTime, config.stunCount ?? 0,
-    config.axisLiuyinPromote, !!config.axisMode, config.teamSize,
+    config.axisUltimatePromote, !!config.axisMode, config.teamSize,
   )
   // S4 装配（CC-5b 外提至 `./resource/assembleSlot.ts`，纯函数）的只读上下文：闭包捕获的
   // `states`（装配期终态）/ `curtain` / 赠行查询函数与行口径在此显式化。

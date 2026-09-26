@@ -3,7 +3,7 @@
  *
  * ## 治的病（实测）
  *
- * `gift-chain:ultimate` 在轴模式下由编排层算好（`axisLiuyinPromote` = 轴声明的 `promoteVariant`
+ * `gift-chain:ultimate` 在轴模式下由编排层算好（`axisUltimatePromote` = 轴声明的 `promoteVariant`
  * 块 + **剩余好评默认 90**），但模块供给带 `axisSuppressed` ⇒ 轴模式下 `crossAgentSupplyAt`
  * 恒返回 0。该量有**四处**消费点，旧实现里它们**各自决定**轴模式怎么办 ⇒ 漂成两派：
  *

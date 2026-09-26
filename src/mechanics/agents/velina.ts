@@ -17,7 +17,7 @@ import type {
   CharacterOperationConfig,
   IterationState,
   SpecialResourceSection,
-  VelinaCorrosionSource,
+  CorrosionSource,
   VelinaFloriaSource,
 } from '@/types/resource'
 import { panelAt, emptyPanel } from '@/core/panel'
@@ -141,7 +141,7 @@ export function resolveVelinaCorrosion(
   turbulenceCount: number,
   windTriggerCount: number,
   fallbackRate = 2 / 3,
-): VelinaCorrosionSource | undefined {
+): CorrosionSource | undefined {
   const panel = findVelinaPanel(panels)
   if (!panel) return undefined
   return simulateVelinaCorrosionState(
@@ -160,7 +160,7 @@ export function simulateVelinaCorrosionState(
   hasCinema2: boolean,
   hasCinema6: boolean,
   cinema2CorrosionRate = 2 / 3,
-): VelinaCorrosionSource {
+): CorrosionSource {
   const safeTurbulenceCount = Math.max(0, Math.floor(turbulenceCount))
   const safeCinema2Rate = Math.max(0, Math.min(1, Number.isFinite(cinema2CorrosionRate) ? cinema2CorrosionRate : 2 / 3))
   const c2WindGainExpected = hasCinema2 ? Math.max(0, windTriggerCount) * safeCinema2Rate : 0

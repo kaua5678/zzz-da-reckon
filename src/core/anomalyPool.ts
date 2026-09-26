@@ -3,8 +3,8 @@ import type {
   AnomalyEventRecord,
   DisorderDamageResult,
   TurbulenceDamageResult,
-  VelinaCorrosionSource,
-  AliceCoweringDotResult,
+  CorrosionSource,
+  CoweringDotResult,
 } from '@/types/resource'
 import { resolveAnomalyCorrosion } from './anomalyPool/corrosion'
 
@@ -14,7 +14,7 @@ import { panelAt, emptyPanel } from './panel'
 import * as AnomalyPoolHelpers from './anomalyPool/helpers'
 import type { AnomalyPoolInput, DamageCalcConfig } from './anomalyPool/helpers'
 export type { AnomalySkillExecution, AnomalyPoolInput, CoweringConfig } from './anomalyPool/helpers'
-const { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, TURBULENCE_CD_SECONDS, resolveStatElement, ANOMALY_DURATION, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyDecibelBonus, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcAliceCoweringDot } = AnomalyPoolHelpers
+const { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, TURBULENCE_CD_SECONDS, resolveStatElement, ANOMALY_DURATION, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyDecibelBonus, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcCoweringDot } = AnomalyPoolHelpers
 export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   const {
     executions,
@@ -305,7 +305,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   let disorderDamage: DisorderDamageResult | undefined
   let turbulenceDamage: TurbulenceDamageResult | undefined
   let turbulenceCount = 0
-  let corrosionSource: VelinaCorrosionSource | undefined
+  let corrosionSource: CorrosionSource | undefined
 
   if (hasWindChar) {
     // 有风属性：风化窗口内的非风触发改走乱流
@@ -423,14 +423,14 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   // ---- 7. 畏缩 DOT 伤害 ----
   // 触发条件：任何异常触发（爱丽丝 DOT 不限物理，风化吞掉畏缩也打 DOT）
   // 覆盖时间 = 总异常有效时间（扣无敌后）
-  let coweringDot: AliceCoweringDotResult | undefined
+  let coweringDot: CoweringDotResult | undefined
   if (input.coweringConfig && totalTriggerCount > 0 && coverage.effectiveDoTTime > 0) {
     const physicalContribs = [
       ...(elementMap.get('physical') ?? []),
       ...(elementMap.get('physical_polar_assault') ?? []),
     ]
     if (physicalContribs.length > 0) {
-      coweringDot = calcAliceCoweringDot(
+      coweringDot = calcCoweringDot(
         physicalContribs,
         damagePanels,
         coverage.effectiveDoTTime,

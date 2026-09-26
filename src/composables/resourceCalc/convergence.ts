@@ -27,7 +27,7 @@ import { findMoveById } from './skillRows'
  * `AGENT_BRANCH_BASELINE` 头注释。
  */
 import {
-  applyLiuyinPromote,
+  applyUltimatePromote,
   buildPromoteParams,
   promoteFixpoint,
   ultimateGiftProviderSlot,
@@ -211,7 +211,7 @@ export function createRunCalcRound(deps: {
     const decibelParryActive = guaranteeUltimate && interactionTopUpSlot < 0
 
     /** 轴内某槽位捏的块次数（moveId → 总次数 = 块数 × 窗口数；赠品连携块不计） */
-    const computeBanyueAxisExFor = (slot: number): Record<string, number> => {
+    const computeAxisActionCountsFor = (slot: number): Record<string, number> => {
       const out: Record<string, number> = {}
       if (!axisActive) return out
       const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
@@ -342,11 +342,11 @@ export function createRunCalcRound(deps: {
     // 轴模式琉音赠大计数（跨层口径统一，2026-09-10）：轴内 60/90 转大次数由轴预设决定，
     // core 的通用公式（好评/连携窗口推导）会算出另一个数 → 按窗口加权后注入，
     // 使试探测量/账本预留与轴栈窗口口径同源（见 core/resource/helpers.ts 的 `ultGiftTime`，CC-35c-D 前名 liuyinGiftTime）。
-    let axisLiuyinPromote: { targetSlot: number; count: number } | undefined
+    let axisUltimatePromote: { targetSlot: number; count: number } | undefined
     if (axisActive && axisHug) {
       const giftSlot = ultimateGiftProviderSlot(configStore)  // CC-35d-B3：原按身份查找琉音槽位
       if (giftSlot >= 0) {
-        axisLiuyinPromote = {
+        axisUltimatePromote = {
           targetSlot: resolveUltimateTargetSlot(
             giftSlot, configStore.team.length,
             configStore.getMechanicSetting('liuyin.ultimateTargetSlot', -1),
@@ -409,7 +409,7 @@ export function createRunCalcRound(deps: {
         m[v.moveId] = (m[v.moveId] ?? 0) + v.count
       }
     } else {
-      for (const c of base.characters) axisActionCountsBySlot[c.slot] = computeBanyueAxisExFor(c.slot)
+      for (const c of base.characters) axisActionCountsBySlot[c.slot] = computeAxisActionCountsFor(c.slot)
     }
     const characters = base.characters.map(cfg => {
       // 轴模式：连携总次数完全由轴决定（未列连携块的槽位 = 0 次，轴即最终次数）
@@ -656,7 +656,7 @@ export function createRunCalcRound(deps: {
       stunCount,
       axisOverlapSeconds,
       axisOverlapByAction,
-      ...(axisLiuyinPromote ? { axisLiuyinPromote } : {}),
+      ...(axisUltimatePromote ? { axisUltimatePromote } : {}),
       teamSize: configStore.team.length,
       specialActionDecibelBonusPerSlot: specialBonusPerSlot,
       anomalyDecibelBonusPerSlot: anomalyBonusPerSlot,
@@ -793,7 +793,7 @@ export function createRunCalcRound(deps: {
     // 升级路径：实数化专项逐角色收口（弹刀反推/合轴自动填充同族手法），以归档对拍定每角色动作锚点。
     // Round 0：无易伤 → 畏缩覆盖率初算
     const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio)
-    const adj0 = applyLiuyinPromote(rr, sp0, catalogStore)
+    const adj0 = applyUltimatePromote(rr, sp0, catalogStore)
     // 本轮极性强击赠送次数：读本轮 rr 而非异常池 setup（循环依赖，见 calcAnomalyPoolInput）。
     // CC-38b 2026-09-27：改由模块能力 `giftedPolarAssaultCount` 派发求和（原按身份取首个提供方；队内角色不重复 ⇒ 等价）。
     const giftedPolarAssaultThisRound = rr.characters.reduce((sum, c) =>
@@ -888,7 +888,7 @@ export function createRunCalcRound(deps: {
       backstageAutoNext = backstageNext
     }
 
-    const adj1 = applyLiuyinPromote(rr, sp1, catalogStore)
+    const adj1 = applyUltimatePromote(rr, sp1, catalogStore)
     // 诺姆膛温换连携：帽子把戏触发上一位角色快速支援→替换为连携，连携归属上一位队友；C4 时诺姆+队友各 200 不可分享喧响。
     const adj2 = applyChainGift(adj1 ?? rr, configStore, catalogStore)
     // 展示层：resourceResult 也带上诺姆赠送连携（执行计划/次数在资源利用率页可见），
@@ -896,7 +896,7 @@ export function createRunCalcRound(deps: {
     // 琉音好评转大同样并入展示层（转大=目标队友真实打一次终结技，时间表/资源页应能看见耗时——
     // 曾只进 adjustedResourceResult（伤害池）导致时间表看不到转大耗时，用户 2026-09 般琉卢排查；
     // 时间从目标平A池挤出，总前台守恒，不撑破预算）。
-    const rrShown0 = applyLiuyinPromote(rr, sp1, catalogStore) ?? rr
+    const rrShown0 = applyUltimatePromote(rr, sp1, catalogStore) ?? rr
     // 展示口径归一：赠送行（诺姆赠链 / 琉音赠大，含轴模式 post-hoc carve 路径）在装配后追加，
     // 引擎 timeAllocation 看不到 → 按**最终行**重算前台/后台（单一展示口径，见 normalizeDisplayTime）
     const rrShown = ResourceCalcHelpers.normalizeDisplayTime(

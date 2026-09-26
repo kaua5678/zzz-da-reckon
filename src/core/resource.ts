@@ -169,7 +169,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   //    排除在**全链逐位零差异**（`timeGolden` 127 预设 + 60 角色×命座 0/6 全 0 delta、
   //    `timeLedgerInvariants`/`timeFillRatchet`/`underfillRefund` 同绿、`npm run verify` EXIT=0）。
   //    **该缺口已收口（2026-09-15 复核）**：轴模式赠大时间**已进** `frontlineRowsOf`
-  //    （见下方 `config.axisLiuyinPromote` 分支）；轴模式 promote 次数与通用公式的**分歧也已关闭**
+  //    （见下方 `config.axisUltimatePromote` 分支）；轴模式 promote 次数与通用公式的**分歧也已关闭**
   //    （阈值结转修正，判据 `liuyin.test.ts`「通用公式 vs 轴预设声明」）。
   //    ⚠ 旧注释引用的 `liuyinGiftChainInfo` 已删（2026-09-13 迁为模块 `crossAgentSupply`），
   //    别再按它去找代码。仍由 `timeLedgerInvariants` 持续兜住越账。
@@ -359,7 +359,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 已迁各模块的 `finalizePass.reset`，本处只调通用执行器 `resetFinalizePasses`——引擎不写 agentId。
   resetFinalizePasses(configs)
 
-  // 终局预留量（供 applyLiuyinPromote 判定跳过 post-hoc carve；与 iterate Step4 同一求解）
+  // 终局预留量（供 applyUltimatePromote 判定跳过 post-hoc carve；与 iterate Step4 同一求解）
   // ——与上方 giftTimeOfSlot 同源（同一 helper、同一轴模式条件），不重算。
   const ultimateGiftTime = tail.ultimateGiftTime
 
@@ -392,7 +392,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     axisOverlapByAction: config.axisOverlapByAction,
     overflowSeconds: config.overflowSeconds,
     truncationCuts: truncationCuts.length > 0 ? truncationCuts : undefined,
-    // 琉音好评转大赠链时间已由引擎预留（非轴）→ applyLiuyinPromote 不再 post-hoc carve 守恒
+    // 琉音好评转大赠链时间已由引擎预留（非轴）→ applyUltimatePromote 不再 post-hoc carve 守恒
     ultimateGiftTimeReserved: ultimateGiftTime > 0 ? ultimateGiftTime : undefined,
     // 诺姆膛温换连携赠链时间（对称暴露，供「账本预留 == 装配赠行」机器判据核对）
     chainGiftTimeReserved: tail.chainGiftTime > 0 ? tail.chainGiftTime : undefined,
