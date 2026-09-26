@@ -142,6 +142,15 @@ export interface TeamBuffSpec {
   name: string
   source: string
   description: string
+  /**
+   * debt: `target` 声明了 team/enemy/both 定向，但运行时**全仓零消费点**——引擎与
+   * `collectInCombatTeamBuffs` 的收集/分发均不读本字段（渲染面也不读），实为「声明了但实现
+   * 没接」的死通道（规则 16）。R2-E F3 用户裁决 2026-09-25：登记为债务挂账，不立即重构。
+   * 升级路径：要么引擎按 target 分流（team→队友面板 / enemy→敌方 debuff / both→两者），
+   * 要么从接口删除该字段并清理全库 spec 的同名键（需 validate:specs 同步放行）。
+   * 注：接口里**本就没有** `includeOwner` 字段——误传的第二死通道实为
+   * `src/core/inCombatBuffs.ts` 的同名字段（那是活跃通道，不归本条）。
+   */
   target: 'team' | 'enemy' | 'both'
   coverage: number
   effects: TeamBuffEffectSpec[]

@@ -523,7 +523,9 @@ function exportCSV() {
 .impact-tab-toggle { display: flex; align-items: center; }
 .impact-2d-container { display: flex; flex-direction: column; width: 100%; }
 .impact-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.ctl-label { font-size: 12px; color: var(--wa-500); }
+/* D4 用户裁决 2026-09-25（授权自定基准）：`.ctl-label` 统一全局口径 11px/--wa-550，
+   与 src/styles/charts.css 全局表一致；原 scoped 异类 12px/--wa-500 删除（跨页观感统一）。 */
+.ctl-label { font-size: 11px; color: var(--wa-550); }
 .cur-val { font-size: 12px; color: var(--wa-450); margin-left: auto; }
 .opt-toggle { font-size: 11px; color: var(--wa-550); display: flex; align-items: center; gap: 3px; cursor: pointer; }
 .opt-toggle input { cursor: pointer; }

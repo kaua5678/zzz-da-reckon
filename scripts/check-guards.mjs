@@ -766,6 +766,11 @@ export const DEBT_REGISTRY = {
   // （截断可见 + 难度轴交互按存活率缩）；正解 = A 项：截断后行重收敛（先按预算重分配平A池、
   // 交互只取达成目标的最少要求，装不下就重收敛到截断为 0）。
   'src/core/resource.ts:截断不回灌资源循环': { since: '2026-09-11', due: 'A 项立项：截断后行重收敛（含全库 delta 归因）；落地后销号（止血的可见性/交互缩不销）' },
+  // 2026-09-25（R2-E F3 用户裁决：登记为债务挂账，不立即重构）：TeamBuffSpec.target 声明了
+  // team/enemy/both 定向，但运行时全仓零消费点（引擎与 collectInCombatTeamBuffs 均不读，
+  // 渲染面也不读）⇒ 「声明了但实现没接」的死通道（规则 16）。误传的第二死通道 includeOwner
+  // 在 TeamBuffSpec 里本就不存在（活跃同名字段在 core/inCombatBuffs.ts，不归本条）。
+  'src/specs/types.ts:声明了 team/enemy/both 定向': { since: '2026-09-25', due: '裁决走向后销号：要么引擎按 target 分流（team→队友/enemy→敌方/both→两者）并接进 collectInCombatTeamBuffs，要么删字段并清全库 spec 同名键（validate:specs 同步放行）' },
   // 2026-09-12（账本交接欠账）：克拉蕾残痕「同时最多 3 层」是**时序**约束，整局总量口径只能表达成
   // 「不钳制 + 消耗需求封顶」⇒ 极端配装（积累速率 ≫ 消耗节奏）下偏乐观。上条会话因 check-guards.mjs
   // 被并行会话占用、按规则 13 先记账本不登记，本条补登（代码标记在 claret.ts gashStacks 计算处）。
