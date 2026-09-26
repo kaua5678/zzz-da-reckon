@@ -20,16 +20,12 @@ export interface CrossAgentEnergy {
   supportUltimateRegen: number
   /** 模块声明的「队友终结技回闪能」（仪玄额外能力·玄墨暗涌 20/次） */
   teamUltimateFlash: number
-  /** 丽娜（1211）终结技按槽位补充能量 */
-  rinaUltEnergy: number
-  /** 苍角（1131）终结技邻位回能（邻位 30/10） */
-  soukakuUltEnergy: number
-  /** 露西（1151）终结邻位回能 + 影画1 回旋全队回能 */
-  lucyEnergy: number
-  /** 莱特（1161）影画4 士气喷发后场回能 */
-  lighterC4Energy: number
-  /** 席德（1461）额外能力为正兵回能（2 能量/秒 × 席德前台时间，1秒至多1次） */
-  xideVanguardEnergy: number
+  /**
+   * 队友联动回能**按来源**明细（CC-32b 2026-09-27：原 rina/soukaku/lucy/lighterC4/xideVanguard 5 个角色具名字段）。
+   * 键 = 提供者模块自报的 `crossAgentSupply.displayKey`，或落点 cfg 通用字段 `crossAgentFlatEnergyBySource` 的键；
+   * 只含 > 0 的来源（缺键 = 0）。显示名表在 `ResourceResultCard.vue`（UI 层；引擎不认识角色名）。
+   */
+  bySource: Record<string, number>
   /** 合计（已计入 EnergySource.total） */
   total: number
 }

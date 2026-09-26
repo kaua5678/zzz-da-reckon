@@ -466,7 +466,7 @@ function applyLighterTeamEnergyFlags(
 
   if (cinema < 4) {
     for (const ch of characters) {
-      ;(ch as any).lighterC4BurstEnergy = 0
+      ;(ch as any).crossAgentFlatEnergyBySource = { ...((ch as any).crossAgentFlatEnergyBySource ?? {}), lighterC4Energy: 0 }
       ;(ch as any).lighterC4FrontEfficiency = 0
     }
     return
@@ -483,13 +483,13 @@ function applyLighterTeamEnergyFlags(
   const burstEnergy = capped * LIGHTER_C4_BURST_ENERGY
   for (const ch of characters) {
     if (ch.agentId === LIGHTER_ID) {
-      ;(ch as any).lighterC4BurstEnergy = 0
+      ;(ch as any).crossAgentFlatEnergyBySource = { ...((ch as any).crossAgentFlatEnergyBySource ?? {}), lighterC4Energy: 0 }
       ;(ch as any).lighterC4FrontEfficiency = 0
       continue
     }
     // 前场效率在 helpers 面板层按占比写入 energyGainEfficiency；此处仅保留喷发定额回能。
     ;(ch as any).lighterC4FrontEfficiency = LIGHTER_C4_FRONT_EFFICIENCY * ratio
-    ;(ch as any).lighterC4BurstEnergy = burstEnergy
+    ;(ch as any).crossAgentFlatEnergyBySource = { ...((ch as any).crossAgentFlatEnergyBySource ?? {}), lighterC4Energy: burstEnergy }
   }
 }
 

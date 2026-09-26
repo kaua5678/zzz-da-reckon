@@ -53,7 +53,7 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     for (const slot of [0, 1, 2]) {
       const cross = bySlot.get(slot)!.energySource.crossAgent
       expect(
-        cross.rinaUltEnergy + cross.soukakuUltEnergy + cross.lucyEnergy,
+        (cross.bySource.rinaUltEnergy ?? 0) + (cross.bySource.soukakuUltEnergy ?? 0) + (cross.bySource.lucyEnergy ?? 0),
         `槽${slot} 未收到任何邻位回能 —— 队伍级钩子没被派发`,
       ).toBeGreaterThan(0)
     }
@@ -62,22 +62,22 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     const rinaUlt = ults.get('1211') ?? 0
     expect(rinaUlt).toBeGreaterThan(0)
     const rinaGiven = [0, 1, 2]
-      .map(s => bySlot.get(s)!.energySource.crossAgent.rinaUltEnergy)
+      .map(s => (bySlot.get(s)!.energySource.crossAgent.bySource.rinaUltEnergy ?? 0))
       .reduce((a, b) => a + b, 0)
     expect(rinaGiven).toBe(rinaUlt * 30 + rinaUlt * 10)
 
     // 自己不给自己回能（邻位类别：提供者不给自己发；⚠ 露西影画1 的全队回旋**含她自己**，
     // 本用例是 0 命露西，故这里仍为 0）
-    expect(bySlot.get(0)!.energySource.crossAgent.rinaUltEnergy).toBe(0)
-    expect(bySlot.get(1)!.energySource.crossAgent.lucyEnergy).toBe(0)
-    expect(bySlot.get(2)!.energySource.crossAgent.soukakuUltEnergy).toBe(0)
+    expect((bySlot.get(0)!.energySource.crossAgent.bySource.rinaUltEnergy ?? 0)).toBe(0)
+    expect((bySlot.get(1)!.energySource.crossAgent.bySource.lucyEnergy ?? 0)).toBe(0)
+    expect((bySlot.get(2)!.energySource.crossAgent.bySource.soukakuUltEnergy ?? 0)).toBe(0)
 
     // 2026-09-15 core 棘轮批次3：明细字段现由模块 `crossAgentSupply.displayKey` 自报、
     // 引擎按 key 聚合（原为 `findIndex(c => c.agentId === '<id>')`）。本断言钉住
     // 「每个提供者的量确实只落到它自己的 key 上」，且三键之和 = 落点收到的总量。
     for (const slot of [0, 1, 2]) {
       const cross = bySlot.get(slot)!.energySource.crossAgent
-      expect(cross.rinaUltEnergy + cross.soukakuUltEnergy + cross.lucyEnergy,
+      expect((cross.bySource.rinaUltEnergy ?? 0) + (cross.bySource.soukakuUltEnergy ?? 0) + (cross.bySource.lucyEnergy ?? 0),
         `槽${slot} 的三项邻位明细之和应等于该槽收到的邻位能量合计`).toBeGreaterThan(0)
     }
   })
@@ -87,15 +87,15 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
   it('莱特影画4：后场喷发回能只给队友（32 = 4/次 × 8 次），莱特本人为 0', async () => {
     const out = await run([{ agentId: '1161', cinemaLevel: 4 }, { agentId: '1041' }, { agentId: '1101' }])
     const bySlot = new Map(out.characters.map(c => [c.slot, c]))
-    expect(bySlot.get(0)!.energySource.crossAgent.lighterC4Energy).toBe(0)
-    expect(bySlot.get(1)!.energySource.crossAgent.lighterC4Energy).toBe(32)
-    expect(bySlot.get(2)!.energySource.crossAgent.lighterC4Energy).toBe(32)
+    expect((bySlot.get(0)!.energySource.crossAgent.bySource.lighterC4Energy ?? 0)).toBe(0)
+    expect((bySlot.get(1)!.energySource.crossAgent.bySource.lighterC4Energy ?? 0)).toBe(32)
+    expect((bySlot.get(2)!.energySource.crossAgent.bySource.lighterC4Energy ?? 0)).toBe(32)
   })
 
   it('莱特 0 命：不触发影画4 喷发回能（钩子按命座门控，不是无条件写）', async () => {
     const out = await run([{ agentId: '1161', cinemaLevel: 0 }, { agentId: '1041' }, { agentId: '1101' }])
     for (const c of out.characters) {
-      expect(c.energySource.crossAgent.lighterC4Energy).toBe(0)
+      expect((c.energySource.crossAgent.bySource.lighterC4Energy ?? 0)).toBe(0)
     }
   })
 
@@ -104,13 +104,13 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     const out = await run([{ agentId: '1461' }, { agentId: '1081' }, ''])
     const bySlot = new Map(out.characters.map(c => [c.slot, c]))
     const vanguard = bySlot.get(1)!
-    expect(vanguard.energySource.crossAgent.xideVanguardEnergy).toBeGreaterThan(0)
+    expect((vanguard.energySource.crossAgent.bySource.xideVanguardEnergy ?? 0)).toBeGreaterThan(0)
     // 席德本人（槽0）不是正兵，不吃
-    expect(bySlot.get(0)!.energySource.crossAgent.xideVanguardEnergy).toBe(0)
+    expect((bySlot.get(0)!.energySource.crossAgent.bySource.xideVanguardEnergy ?? 0)).toBe(0)
     // 无强攻队友时（槽1 改为击破）正兵槽位 = -1，无回能
     const outNoVanguard = await run([{ agentId: '1461' }, { agentId: '1621' }, ''])
     const bySlot2 = new Map(outNoVanguard.characters.map(c => [c.slot, c]))
-    expect(bySlot2.get(1)!.energySource.crossAgent.xideVanguardEnergy).toBe(0)
+    expect((bySlot2.get(1)!.energySource.crossAgent.bySource.xideVanguardEnergy ?? 0)).toBe(0)
   })
 
   it('耀嘉音：入场次数（全队快支+招架+连携）经 converge 阶段汇总 → 咏叹资源非零', async () => {

@@ -322,10 +322,10 @@ describe('席德额外能力为正兵回能（applyTeamConfig + calcCrossAgentEn
       { frontlineTime: 0, comboAlignTime: 0, ultimateCount: 0, exSpecialCount: 0, chainCountTotal: 0 },
     ] as any
     const vanguard = calcCrossAgentEnergy(1, configs, states)
-    expect(vanguard.xideVanguardEnergy).toBeCloseTo(40, 5) // (30−10) × 2
+    expect((vanguard.bySource.xideVanguardEnergy ?? 0)).toBeCloseTo(40, 5) // (30−10) × 2
     // 算席德自己时写入正兵实际耗能 = 3 × 80 = 240
     const self = calcCrossAgentEnergy(0, configs, states)
-    expect(self.xideVanguardEnergy).toBe(0)
+    expect((self.bySource.xideVanguardEnergy ?? 0)).toBe(0)
     expect((configs[0] as any).xideVanguardEnergySpent).toBe(240)
   })
 })

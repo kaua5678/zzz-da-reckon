@@ -333,7 +333,7 @@ describe('★ 管线级：timeGolden 盲区（露西 C6 / 艾莲影画4 冻结�
     // ⚠ 这条队是 0 命预设唯一覆盖，C6 只在手动队出现 ⇒ `timeGolden` 对本条**完全盲**，
     // 本断言是它唯一的端到端护栏（反向验证：摘 `nextRoundFeedback: lucyNextRoundFeedback` ⇒ 本行红）。
     expect(
-      lucy.energySource.crossAgent.lucyEnergy,
+      (lucy.energySource.crossAgent.bySource.lucyEnergy ?? 0),
       '露西 C6 回旋全队回能没生效 —— nextRoundFeedback 未派发（timeGolden 对这条队是盲的）',
     ).toBe(58)
   })

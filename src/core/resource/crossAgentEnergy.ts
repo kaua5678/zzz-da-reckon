@@ -62,14 +62,22 @@ export function calcCrossAgentEnergy(
   const neighborUlt = neighborUltEnergyByProvider(configs, states, slotIndex, {
     totalTime: 180, stunCount: 0,
   })
-  const byKey = neighborUlt.byDisplayKey
-  const rinaUltEnergy = byKey.rinaUltEnergy ?? 0
-  const soukakuUltEnergy = byKey.soukakuUltEnergy ?? 0
-  const lucyEnergy = byKey.lucyEnergy ?? 0
+  // 按来源明细（CC-32b）：键 = 提供者模块自报的 displayKey / cfg 通用字段的键（引擎不认识角色名）。
+  const bySource: Record<string, number> = {}
+  const addSource = (src: Record<string, number>) => {
+    for (const [k, v] of Object.entries(src)) if (v > 0) bySource[k] = (bySource[k] ?? 0) + v
+  }
+  addSource(neighborUlt.byDisplayKey)
 
-  // 莱特影画4：进士气喷发时后场角色 +4 能量（18s CD，总额预写入 cfg.lighterC4BurstEnergy）
-  const lighterC4Raw = num((cfg as any).lighterC4BurstEnergy)
-  const lighterC4Energy = lighterC4Raw > 0 ? lighterC4Raw : 0
+  // 定额联动能量（CC-32b，原莱特影画4 专属读 `lighterC4BurstEnergy`）：模块给落点 cfg 预写
+  // `crossAgentFlatEnergyBySource`（莱特影画4：进士气喷发时后场角色 +4 能量，18s CD，总额按落点算好）。
+  const flat: Record<string, number> = {}
+  let flatEnergy = 0
+  for (const [k, raw] of Object.entries(cfg.crossAgentFlatEnergyBySource ?? {})) {
+    const v = num(raw)
+    if (v > 0) { flat[k] = v; flatEnergy += v }
+  }
+  addSource(flat)
 
   // 正兵回能（CC-32a 2026-09-27，census §5.25）：原为席德（1461）专属内联块（按 cfg 字段找席德槽、
   // 算正兵回能 + 算席德自己那槽时回写正兵实际耗能）。现按能力类别 `crossAgentSupply.kind = 'vanguard-energy'`
@@ -77,17 +85,14 @@ export function calcCrossAgentEnergy(
   // 回写走 `onOwnSlotCrossAgentEnergy`（同一时机：算提供者自己那槽时）。引擎侧零角色逻辑。
   const vanguard = perTargetEnergyByProvider(configs, states, slotIndex, { totalTime: 180, stunCount: 0 }, 'vanguard-energy')
   runOwnSlotCrossAgentEnergyHooks(configs, states, slotIndex, 'vanguard-energy')
+  addSource(vanguard.byDisplayKey)
 
   return {
     supportUltimateRegen,
     teamUltimateFlash,
-    rinaUltEnergy,
-    soukakuUltEnergy,
-    lucyEnergy,
-    lighterC4Energy,
-    xideVanguardEnergy: vanguard.byDisplayKey.xideVanguardEnergy ?? 0,
+    bySource,
     total: supportUltimateRegen + teamUltimateFlash + neighborUlt.total
-      + lighterC4Energy + vanguard.total,
+      + flatEnergy + vanguard.total,
   }
 }
 
@@ -96,11 +101,7 @@ export function emptyCrossAgentEnergy(): CrossAgentEnergy {
   return {
     supportUltimateRegen: 0,
     teamUltimateFlash: 0,
-    rinaUltEnergy: 0,
-    soukakuUltEnergy: 0,
-    lucyEnergy: 0,
-    lighterC4Energy: 0,
-    xideVanguardEnergy: 0,
+    bySource: {},
     total: 0,
   }
 }

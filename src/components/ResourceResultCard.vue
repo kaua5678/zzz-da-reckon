@@ -115,23 +115,11 @@
           <span class="bd-value">{{ fmt(result.energySource.crossAgent.teamUltimateFlash) }}</span>
           <span class="bd-detail">额外能力：队友每次终结技回能（队友终结次数 × 单次量）</span>
         </div>
-        <div v-if="(result.energySource.crossAgent?.rinaUltEnergy ?? 0) > 0" class="breakdown-row">
-          <span class="bd-label">丽娜终结邻位</span>
-          <span class="bd-value">{{ fmt(result.energySource.crossAgent.rinaUltEnergy) }}</span>
-        </div>
-        <div v-if="(result.energySource.crossAgent?.soukakuUltEnergy ?? 0) > 0" class="breakdown-row">
-          <span class="bd-label">苍角终结邻位</span>
-          <span class="bd-value">{{ fmt(result.energySource.crossAgent.soukakuUltEnergy) }}</span>
-        </div>
-        <div v-if="(result.energySource.crossAgent?.lucyEnergy ?? 0) > 0" class="breakdown-row">
-          <span class="bd-label">露西回能</span>
-          <span class="bd-value">{{ fmt(result.energySource.crossAgent.lucyEnergy) }}</span>
-          <span class="bd-detail">终结邻位 + 影画1 回旋全队</span>
-        </div>
-        <div v-if="(result.energySource.crossAgent?.lighterC4Energy ?? 0) > 0" class="breakdown-row">
-          <span class="bd-label">莱特影画4 喷发</span>
-          <span class="bd-value">{{ fmt(result.energySource.crossAgent.lighterC4Energy) }}</span>
-          <span class="bd-detail">后场 +4/次 × 18s 冷却</span>
+        <!-- 队友联动回能按来源（CC-32b：原 4 段写死的 v-if 行；键表见 script 的 CROSS_AGENT_SOURCE_LABELS） -->
+        <div v-for="src in crossAgentSourceRows" :key="src.key" class="breakdown-row">
+          <span class="bd-label">{{ src.label }}</span>
+          <span class="bd-value">{{ fmt(src.value) }}</span>
+          <span v-if="src.detail" class="bd-detail">{{ src.detail }}</span>
         </div>
         <div class="breakdown-row">
           <span class="bd-label">开局赠送</span>
@@ -332,6 +320,29 @@ const SPECIALTY_MAP: Record<string, { label: string; type: string }> = {
   support: { label: '支援', type: 'success' },
   defense: { label: '防护', type: 'default' },
 }
+
+/**
+ * 队友联动回能按来源明细（CC-32b 2026-09-27）：`energySource.crossAgent.bySource` 的键 = 提供者模块自报的展示键。
+ * 显示名/说明住在 UI 层（引擎不认识角色名）；表内顺序即展示顺序；表外的键兜底显示键名
+ * （防新增提供者漏配标签时整行静默消失）。
+ */
+const CROSS_AGENT_SOURCE_LABELS: ReadonlyArray<{ key: string; label: string; detail?: string }> = [
+  { key: 'rinaUltEnergy', label: '丽娜终结邻位' },
+  { key: 'soukakuUltEnergy', label: '苍角终结邻位' },
+  { key: 'lucyEnergy', label: '露西回能', detail: '终结邻位 + 影画1 回旋全队' },
+  { key: 'lighterC4Energy', label: '莱特影画4 喷发', detail: '后场 +4/次 × 18s 冷却' },
+  { key: 'xideVanguardEnergy', label: '席德正兵回能', detail: '额外能力：席德操作时间（前台 − 合轴）× 2/秒' },
+]
+const crossAgentSourceRows = computed<Array<{ key: string; label: string; detail?: string; value: number }>>(() => {
+  const src: Record<string, number> = props.result.energySource.crossAgent?.bySource ?? {}
+  const known = CROSS_AGENT_SOURCE_LABELS
+    .filter(e => (src[e.key] ?? 0) > 0)
+    .map(e => ({ ...e, value: src[e.key] ?? 0 }))
+  const extra = Object.keys(src)
+    .filter(k => (src[k] ?? 0) > 0 && !CROSS_AGENT_SOURCE_LABELS.some(e => e.key === k))
+    .map(k => ({ key: k, label: k, value: src[k] ?? 0 }))
+  return [...known, ...extra]
+})
 
 const specialtyInfo = computed(() => {
   return SPECIALTY_MAP[props.specialty ?? ''] ?? { label: '', type: 'default' }

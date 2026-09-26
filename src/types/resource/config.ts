@@ -688,8 +688,12 @@ export interface CharacterOperationConfig {
   lighterTeamEnergyConsumed?: number
   /** 莱特影画等级（模块缓存） */
   lighterCinemaLevel?: number
-  /** 莱特影画4：喷发时给后场角色的能量总额（次数×4，18s CD） */
-  lighterC4BurstEnergy?: number
+  /**
+   * 定额队友联动能量（CC-32b 2026-09-27，通用）：模块在 applyTeamConfig 里给**落点** cfg 预写「本槽额外获得的
+   * 队友联动能量」，键 = 展示键（并入 `CrossAgentEnergy.bySource`）。莱特影画4 士气喷发写 `{ lighterC4Energy }`
+   * （原 `lighterC4BurstEnergy`）。多提供者请合并写（`{ ...旧值, 我的键: 量 }`），不要整体覆盖。
+   */
+  crossAgentFlatEnergyBySource?: Record<string, number>
   /** 莱特后场时间占比（影画4 前场效率覆盖） */
   lighterBackstageRatio?: number
   /** 全队通用：当前轮失衡时间覆盖率（0-1；编排层按失衡次数×窗口时长/有效时间统一注入，供模块近似拆失衡内外） */
