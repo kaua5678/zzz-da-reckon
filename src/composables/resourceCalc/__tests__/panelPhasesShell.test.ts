@@ -35,7 +35,7 @@ const B_EXPORTS = [
   'buildMechanicTeamMembers',
   'computePanel',
   'computePanelPhases',
-  'computeRemielleEntryPanel',
+  'computeEntrySnapshotPanel',
   'resolveMechanicSettings',
   'applyTeamMechanics',
   'collectNextRoundFeedback',

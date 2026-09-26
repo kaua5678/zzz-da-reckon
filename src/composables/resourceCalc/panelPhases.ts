@@ -676,8 +676,11 @@ export function computePanelPhases(
   return { outOfCombat: { ...result.outOfCombat }, inCombat: panel }
 }
 
-/** 计算蕾米特殊虚耀使用的“进场记录面板”：只吃自身被动/命座/音擎/驱动盘，不吃队友战内拐力 */
-export function computeRemielleEntryPanel(
+/**
+ * 计算“进场记录面板”：只吃自身被动/命座/音擎/驱动盘，不吃队友战内拐力（通用计算，对每个槽位都可调用）。
+ * 现唯一消费者是蕾米埃尔特殊虚耀。CC-43d（2026-09-27）由 computeRemielleEntryPanel 零差改名（函数体无角色分支）。
+ */
+export function computeEntrySnapshotPanel(
   slot: number,
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,

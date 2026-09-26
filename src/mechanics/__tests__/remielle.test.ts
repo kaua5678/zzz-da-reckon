@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
-import { buildAnomalyVirtualPanel, computePanelPhases, computeRemielleEntryPanel, findMoveById } from '@/composables/resourceCalc/helpers'
+import { buildAnomalyVirtualPanel, computePanelPhases, computeEntrySnapshotPanel, findMoveById } from '@/composables/resourceCalc/helpers'
 import { emptyPanel } from '@/core/panel'
 import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic, remielleFlowerFeatherDanceCasts } from '@/mechanics/agents/remielle'
 import type { AgentSkills } from '@/types/catalog'
@@ -80,7 +80,7 @@ describe('蕾米埃尔（1581）虚曜·耀变·异化系数', () => {
     expect(special, 'C6 3异常队必须结算特殊虚耀行').toBeTruthy()
 
     // —— 独立重算：垂虹（1581007）耀变倍率 × 进场记录面板（特殊虚耀口径：不吃队友战内拐） ——
-    const entryPanel = computeRemielleEntryPanel(0, config, catalog)!
+    const entryPanel = computeEntrySnapshotPanel(0, config, catalog)!
     const rainbowMove = findMoveById(catalog.getAgentSkills('1581'), '1581007')
     const rainbowLuminizeRow = rainbowMove?.rows.find(r => (r as any).kind === 'luminizeMultiplier' || r.id === 'luminize_multiplier')
     const rainbowMultiplier = getRemielleLevelValue(rainbowLuminizeRow as never, entryPanel.skillLevelBonus ?? 0)

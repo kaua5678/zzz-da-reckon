@@ -85,7 +85,7 @@ export function scanCoreRoleFields(root) {
 // - 匹配：把标识符按驼峰切段（`computeRemielleEntryPanel` → compute/Remielle/Entry/Panel），
 //   任一段小写后 === 某前缀即计 1（⇒ `teamBenefit` 的 Benefit ≠ ben，不误报）；只数代码部分，字符串字面量不计
 // - 豁免：ROLE_INFIX_EXEMPT（写明理由；不许当放宽判据用）
-export const CORE_ROLE_INFIX_BASELINE = 13
+export const CORE_ROLE_INFIX_BASELINE = 8  // 2026-09-27 CC-43d 13→8
 export const INFIX_PREFIX_EXCLUDE = ['trigger']
 export const ROLE_INFIX_EXEMPT = [
   // configStore 用户持久化配置键（「自动伊德海莉轴」开关），改名需做存档迁移，收益低于成本；编排层只读它不写

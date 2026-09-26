@@ -83,7 +83,7 @@ export function setCalcOutputMemoEnabled(on: boolean): void {
   calcOutputMemoEnabled = on
 }
 
-const { computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays } = ResourceCalcHelpers
+const { computePanel, computeEntrySnapshotPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays } = ResourceCalcHelpers
 export function useResourceCalc() {
   const configStore = useConfigStore()
   const catalogStore = useCatalogStore()
@@ -149,7 +149,7 @@ export function useResourceCalc() {
   const entrySnapshotPanels = computed<PanelValues[]>(() => {
     const result: PanelValues[] = []
     for (let i = 0; i < 3; i++) {
-      const p = computeRemielleEntryPanel(i, configStore, catalogStore)
+      const p = computeEntrySnapshotPanel(i, configStore, catalogStore)
       if (p) result.push({ ...p, slot: i })
     }
     return result
