@@ -1161,6 +1161,35 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 2. 花羽轮舞次数（上面的未决项）：调研型，可派 dsflash，结论写回本节。
 3. 其余字段簇：简 `janeAssaultCritDmgBonus` 单独设计；琉音 35（先写设计稿）、维琳娜 19（§5.19 / CC-27）、诺玛约 14、爱丽丝约 11、雨果约 7，另有零散的 lighterSource 5、rinaSlot 4。开工前先用 `node /home/kaua/calc-arch/rf3.mjs` 按字段重新计数。
 
+### 5.32 CC-34c② done：Radiant Turn 失衡乘区改由模块能力 `skillDazeMultiplier` 提供（lead-arena-0925c，2026-09-27 第 45 轮）
+
+**提交**：代码 `99b945a`（6 文件：helpers.ts / mechanics/types.ts / remielle.ts / remielle.test.ts 加两个棘轮脚本）。判据 22 **149 → 148**，`CORE_ROLE_FIELD_BASELINE` / `frozen` 148，**target 仍为 143**。
+
+**做了什么**
+- 新增模块能力 `skillDazeMultiplier?({ moveId, panel }): number`（`mechanics/types.ts`，紧接 `patchExecutions` 声明）：招式级失衡**独立乘区**，缺省 1。`helpers.ts#extractSkillExecutions` 的非普攻分支用函数开头已有的 `mechanic = getAgentMechanic(agentId)` 派发，`baseDaze = 表值 × dazeCoef × skillDazeMult`。
+- 删除 helpers 里 `foundMove.id === '1581010' ? 1 + panel.remielleRadiantTurnDazeBonusPct/100 : 1` 的内联分支；`remielle.ts` 的模块对象逐字实现同一表达式。
+- **为什么不用 `patchExecutions` 写行字段（拍板依据）**：① `extractSkillExecutions` 有 panel 为 null 的调用路径（nangongSmoke 等测试），原分支此时为 1，行字段写法拿的是 cfg，结果会变；② rowBuild:539 之后加入的行拿不到 patch。纯函数能力在消费处派发，两条边界都与原分支一致。**为什么不用行字段 `stunBuildUpBonus`**：它和面板失衡值提升是加算，原来是独立乘，不等价。
+- 1581010 只存在于蕾米埃尔的技能表里（`foundMove` 在本槽 agent 的 skills 里查找），所以按槽位 agent 派发与原来对任意槽生效逐字等价。
+
+**验证**
+- vue-tsc 0；remielle / helpersNightC / skillRowsShell / nangongSmoke / helpers 单测 79/79 通过；新增 describe「CC-34c②」两条用例（1.35 / 1 / null 面板 → 1）。
+- `PERF_KEY_ALIAS=1` 对 H2a：dump / rowsnap **仅 `__ms` 差**。
+- **反向变异**（remielle 里 `/ 100` 改 `/ 50`）：dump **37 键出差**（`auto-*-1581` 队），remielle 单测红 1 条；已从 `calc-arch/rm34g.bak` 还原。
+- `npm run verify` EXIT=0（`/home/kaua/calc-arch/verify34g.log`）。脚本：`/home/kaua/calc-arch/cc34g.py`、`z34g.sh`。
+- **回退点**：`git revert 99b945a`（单提交）。
+
+**遗留（记录，本卡不做）**
+- `cfg.remielleRadiantTurnDazeBonusPct`（`remielle.ts#buildRemielleCharConfig` 写）在 src 里**没有读取方**，只有 `helpersNightC.test.ts:214` 断言非蕾米埃尔不写。它在 `types/resource/config.ts` 里，不计入判据 22。可以删，但要同步改测试；优先级低。
+- 蕾米埃尔在 core + resourceCalc 里只剩 `anomalyPanels.ts:248` 一处：`refringe: panel.remielleRefringeCoefficient + panel.remielleRefringeCoefficientBonusPct`（2 计），与模块 `globalAnomalyMultiplierFactor` 同一算式来源。
+
+**rf3 快照（HEAD 99b945a，148 计 / 53 字段，前若干名）**：velinaCorrosionSource 9、liuyinSrc 8、liuyinIdx 7、liuyinPromoteCount 7、velinaCinema2CorrosionRate 7、liuyinMechanicSource 5、lighterSource 5、liuyinGift 5、rinaSlot 4、normaIdx 4、normaGift 4；另 helpers.ts:575-580 的仪玄 5 字段 + promiaNiyingCount 共 12 计（每个 2 计）。
+
+**下一步（按顺序，可直接开工）**
+1. **CC-35a（蕾米埃尔收尾，2 计）**：`anomalyPanels.ts:248` 的 `refringe`。开工先读 248 行上下文，查清 `refringe` 这个字段给谁用；若语义就是「异化度合计」，给模块加一个返回该值的能力，或复用 `globalAnomalyMultiplierFactor` 反推（反推会引入浮点误差，**不要**）。验收：dump / rows 零差 + 反向变异出差。
+2. **CC-35b（仪玄 5 + 普罗米娅 1 用户输入字段，约 12 计）**：`helpers.ts:575-580` 把 `char.yixuan*Count` / `char.promiaNiyingCount`（队伍配置里的用户输入）逐字拷进 cfg 字面量。**需要先设计**：`AgentCharConfigInput` 里没有 `char`。候选方案：(a) 给钩子输入加只读的 `char`（通用，最小改动）；(b) 改走模块 `settings`（`setting:<id>`，但这些是按槽的用户输入，UI 的来源要一起改，改动大）。倾向 (a)。注意 `yixuanExtremeAssistCount` 的缺省值是 **-1**（不是 0），迁移时要逐字保留。先 `grep -rn 'yixuanInk2Count' src` 列出全部读写方。
+3. 琉音 35（liuyin\* 簇，先写设计稿）、维琳娜 19（§5.19 / CC-27）、诺玛约 14、爱丽丝约 11、雨果约 7，照旧。
+4. 调研待派：花羽轮舞次数没有写入方（§5.31 未决）；W31。
+
 ## 附录：普查脚本 census.sh
 
 ```bash

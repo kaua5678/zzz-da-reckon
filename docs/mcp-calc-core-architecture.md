@@ -186,6 +186,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-34a | review | **done** `7de5847`（判据 22 219→171，target 159） | 蕾米埃尔 14 + 叶瞬光 2 个角色专属面板属性：`core/buff.ts` 删等价 case，`core/panel.ts` 初值由 `data/agentPanelStats.ts` 表铺开；CC-34b/c/d 待做 | census §5.29 |
 | CC-34b | review | **done** `db01cb6`（判据 22 171→155，target 143） | 蕾米埃尔 RainbowEnd / RadiantTurn 7 个 cfg 字段与两个招式查找函数从 core/moveLookup + helpers 迁到 `remielle.ts#buildRemielleCharConfig`；`channelMetricsOf` 导出；dump / rows 零差 | census §5.30 |
 | CC-34c①+34d | review | **done** `372bbed`（判据 22 155→149，target 143 未变） | 花羽轮舞喧响读点从 helpers cfg 字面量迁 `buildRemielleCharConfig`（`+=`）；删 helpers / anomalyPanels 里蕾米埃尔 3 个函数的 re-export 壳；新增钩子单测（dump 覆盖不到：花羽轮舞次数全仓没有写入方，已记为未决）；CC-34c② 待做 | census §5.31 |
+| CC-34c② | review | **done** `99b945a`（判据 22 149→148，target 143 未变） | 新模块能力 `skillDazeMultiplier`（招式级失衡独立乘区）；删 helpers 里蕾米埃尔 1581010 内联分支，remielle 逐字实现；反向变异 dump 37 键 | census §5.32 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
