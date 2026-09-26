@@ -855,6 +855,11 @@ export interface AgentMechanicModule {
    */
   endsStunWindow?(moveId: string, cinemaLevel: number): boolean
   /**
+   * CC-42（2026-09-27）：风化浸染「默认挑槽」时跳过本角色（首选轮排除；兜底轮仍可被选中，语义同原 `!isRemielle`）。
+   * 读取方：`resourceCalc/anomalyPanels.ts#getWindInfectionTargetSlot`，按槽位 agentId 派发。现实现：蕾米埃尔。
+   */
+  excludeFromWindInfectionPick?: boolean
+  /**
    * **轴块动作时长兜底**（CC-39b）：入参为倍率表 / 块 duration 给出的时长，返回实际用于窗口截断的时长。
    * 用于无倍率表条目的合成行。现唯一实现：雨果（`1291_ex_verdict_final` 且 ≤ 0 时取 1.805s）。
    */

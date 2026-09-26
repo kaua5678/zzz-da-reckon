@@ -370,6 +370,8 @@ function applyRemielleTeamConfig({ cfg, phase, threads }: AgentTeamConfigInput):
 }
 
 export const remielleMechanic: AgentMechanicModule = {
+  // CC-42：风化浸染默认挑槽时排除（原 anomalyPanels 内的 isRemielleAgent 跨槽判定）
+  excludeFromWindInfectionPick: true,
   // CC-41：一命花羽轮舞喧响（跨轮反馈）
   nextRoundFeedback: remielleNextRoundFeedback,
   applyTeamConfig: applyRemielleTeamConfig,

@@ -25,7 +25,6 @@
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { emptyPanel, panelAt } from '@/core/panel'
-import { isRemielleAgent } from '@/mechanics/agents/remielle'
 import { getAgentMechanic } from '@/mechanics'
 import type { AnomalyProgress } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
@@ -113,14 +112,13 @@ export function findSlotByIdentity(
 /**
  * 风化浸染默认选择：优先非支援/防护、非蕾米埃尔的非风队友属性。
  *
- * ⚠ **「是不是蕾米埃尔」的判定已收敛为 `isRemielleAgent`（`remielle.ts` 导出，单一事实源）**：
- * 本函数原先内联 `agent?.id === '1581' || agent?.teammateBuffId === 'remielle'`，2026-09-17 round 21
- * 夜间批 C 改调该谓词（**本次不迁本函数**：它是「为我挑一个队友槽位」的**跨槽决策**，
- * `applyPanel` 只服务当前角色，无落点 ⇒ 迁移需新契约，属分诊 §4 批次 3/4）。
+ * 排除谁由模块能力 `excludeFromWindInfectionPick` 声明（CC-42，2026-09-27，census §5.45）：按槽位 agentId 派发，
+ * 本文件不再值导入任何角色模块。原先调 `remielle.ts#isRemielleAgent`（其 `teammateBuffId === 'remielle'` 别名臂在
+ * 数据面恒 false，`helpersNightC.test.ts` 组2-E 锁定），故按 agentId 派发与原判定逐位等价。
  *
  * ⚠ **与 UI 口径的分裂仍在（未修，如实挂账）**：`ResourceUtilizationPage.vue:417-423` 的
  * `janePassionSlot` 用的是 `agent?.id === '1261' || agent?.teammateBuffId === '1261'`——两臂同值
- * ⇒ **不是分裂**；真正未裁决的是本函数 `isRemielle` 与 UI 之间**没有**对应用户可见开关（分诊 §3.4）。
+ * ⇒ **不是分裂**；真正未裁决的是本函数的排除名单与 UI 之间**没有**对应用户可见开关（分诊 §3.4）。
  */
 export function getWindInfectionTargetSlot(
   configStore: ReturnType<typeof useConfigStore>,
@@ -139,7 +137,7 @@ export function getWindInfectionTargetSlot(
       agentId: char.agentId ?? '',
       element: agent?.damageElement ?? '',
       specialty: agent?.specialty ?? '',
-      isRemielle: isRemielleAgent(agent),
+      excludedFromPick: !!(char.agentId && getAgentMechanic(char.agentId)?.excludeFromWindInfectionPick),
     }
   }).filter(x => !!x.agentId)
 
@@ -149,7 +147,7 @@ export function getWindInfectionTargetSlot(
 
   return candidates.find(x =>
     x.slot !== windSlot && x.element && x.element !== 'wind'
-    && x.specialty !== 'support' && x.specialty !== 'defense' && !x.isRemielle,
+    && x.specialty !== 'support' && x.specialty !== 'defense' && !x.excludedFromPick,
   )?.slot
     ?? candidates.find(x => x.slot !== windSlot && x.element && x.element !== 'wind')?.slot
     ?? windSlot
