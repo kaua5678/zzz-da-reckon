@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（47 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（48 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -118,6 +118,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-workspace-integrity.md` | **共享工作区完整性**：Git 路径无损读取、收工快照与归属分离、隔离 CLI 回归及兼容策略 |
 | `docs/mcp-cc17-axis-overlay-consume.md` | **CC-17 设计稿**：axis overlay 消费端能力化（按槽归属 + `directRowBonus`），修可琳 `basic_attack` 轴模式泄漏；含接口/逐模块迁移表/零差论证/测试 |
 | `docs/mcp-cc18-extra-direct-rows.md` | **CC-18 设计稿**：角色专属附加直伤行迁模块能力 `extraDirectRows`（18a 柏妮思 + 半月 C6 摧岳附伤；18b 琉音、18c 柏妮思异常侧立项） |
+| `docs/mcp-cc19-extra-anomaly-rows.md` | **CC-19 设计稿**：异常尾段角色块迁模块能力 `extraAnomalyRows`（分组 + 顺序键保 rowsnap 行序；19a 柏妮思 C6 灼烧迸发 = 原 18c，19b 爱丽丝/简，19c 蕾米埃尔） |
 | `docs/mcp-logic-editor-state-safety.md` | **逻辑编辑器配置安全**：导入/缓存/草稿同源校验、存储失败提示、有效倍率快照隔离与兼容性回归 |
 | `docs/mcp-logic-editor-history.md` | **逻辑编辑器可逆试改**：会话级撤销/重做、无效草稿恢复、独立快照与输入框快捷键边界 |
 | `docs/mcp-r65j1-decibel-cap-verdict.md` | **R65-J1 首案裁决备忘**：橘福福「喧响上限+1000」在整局总量口径下零消费者（不是缺口）；证据链、护栏判据 decibelCapVerdict.test.ts 与未来喧响时间轨接入时的重裁决步骤 |
@@ -129,4 +130,4 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/REQUIREMENTS.md` | **用户需求唯一入口**：用户经助手写入的 `R<编号>` 需求；每轮开工先读、优先于自选待办，做完标 `[done <commit>]` 不删条目 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（44 份），新增文档需同步本表。
+> 文档数量以本表为准（48 份），新增文档需同步本表。
