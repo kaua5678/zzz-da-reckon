@@ -1444,6 +1444,42 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 2. 调研：莱特额外能力 buff 在默认配置下是否生效；`isRemielleAgent` 跨槽决策；W31。
 3. 可选观感收尾：`AliceCoweringDotResult` / `calcAliceCoweringDot` 改通用名。
 
+### 5.44 CC-41 done：蕾米埃尔 1 命花羽轮舞喧响接通（lead-arena-0925c，2026-09-27 第 57 轮）
+
+**提交**：src `8b2a1d2`（remielle.ts / mechanics/types.ts / catalog.ts / agentPanelStats.ts / StatPanel.vue / remielle.test.ts）。回退：`git revert 8b2a1d2`（整提交可逆，恢复为「效果恒 0」的旧行为）。
+
+**原文**（`src/specs/agents/1581.json:47`）：发动[支援技：花羽轮舞]时获得 200 点喧响值，18 秒内最多触发 1 次。catalog 给 `remielleFlowerFeatherDanceDecibelPerUse=200`（buff target=self，仅影画 ≥1）。
+
+**调研结论**
+- 改前探针（1581/1261/1331，推荐配装）：C0 decibelSource.total 12545.8、C1 12510.2，unshareableBonus 均 0 ⇒ 一命效果确为 0（差值是收敛噪声），ult 均 4。
+- 蕾米 executions 里没有 1581015（花羽轮舞）行；assist 类只有 1581018 招架支援 6 次、1581021 支援突击 6 次。花羽轮舞只以耀变行出现：`remielle-luminize-assist`，countsBySlot = voidflareBySlot（每个虚曜由一次花羽轮舞命中消耗）。
+- 次数来自异常池（晚于资源结算）⇒ 不能套 orphie 影画 2 的同轮 patchExecutions 写法，改用 promia 的跨轮模板。
+
+**决定（可逆）**
+1. 新 ModuleFeedback 键 `remielleFlowerFeatherDanceCasts`（mechanics/types.ts，前缀写法同 promiaReleaseDecibel；resourceCalc 不引用 ⇒ 判据 22 仍 0）。
+2. `remielleNextRoundFeedback`：casts = min(Σ 非本槽 ⌊perSlotAnomalyTriggers[slot]⌋, ⌊T/18⌋)，T = teamResult.totalTime（缺省 180）。**口径修订**：原卡写 ⌊T/18⌋+1，现取与 orphie CD 同款的 ⌊T/18⌋；「一次施放对应一个虚曜」是建模假设（依据 luminize-assist 行 count=voidflareBySlot）。
+3. `applyRemielleTeamConfig`：仅 phase==='converge'，`extraSelfDecibelReward += panel.remielleFlowerFeatherDanceDecibelPerUse × casts`。影画门槛由 perUse（C0 为 0）自然实现，无需判命座。
+4. 删除 `remielleFlowerFeatherDanceCount`（catalog.ts / agentPanelStats.ts / StatPanel.vue 展示集合 / buildRemielleCharConfig 乘法）。全仓只剩 remielle.ts 一条说明注释。
+5. 独立反馈判据：casts 由异常触发数派生，异常触发已在外层收敛签名覆盖范围内，未新增签名项（若日后发现振荡，把 casts 加进 outerCycle 签名）。
+
+**数值（改后探针，1581/1501/1561，slot0 影画）**
+| 影画 | unshareableBonus | decibel total | 各槽 ult |
+|---|---|---|---|
+| C0 | 0 | 11495.0 | 3/4/4 |
+| C1 | 2000（10 次 × 200，被 ⌊180/18⌋ 封顶） | 13330.0 | 4/4/4 |
+| C6 | 2000 | 12650.0 | 4/3/4 |
+
+**perf 对 H2a**：dump 与 rowsnap 各仅 1 键出差：`auto-1581-1501-1561/c6` 总伤 424117050.01 → 411843207.12（−2.9%）。原因：蕾米多 1 次终结技，固定时长内挤掉爱芮 1 次终结（4→3）。这是模型取舍，不是 bug，记为已知现象。其余 5 支含 1581 的队伍蕾米在第 3 槽，而 `/c6` 档只设 `setCinemaLevel(0,6)` ⇒ 不受影响；所有 default/c0/w/heavy/heavyGate/axis 档零差。**新基线**：`/home/kaua/calc-arch/dump-41.json`、`rows-41.json`（后续零差验收改用这两份）。
+
+**验证**
+- 单测（remielle.test.ts CC-41 块 4 条）：次数口径与封顶、converge 累加 100+200×3=700、C0/非 converge/无线程不写、真实管线集成（C0 unshareable=0，C1 >0 且为 200 的倍数、≤2000、ult 不减）。
+- 反向变异（applyTeamConfig 恒 return）：dump 回到对 H2a 零差，remielle 单测红 2 条（converge 累加、集成）。
+- `vue-tsc -b` 0；check-guards 22 passed；`npm run verify` 通过（298 文件 / 3605 条）。
+
+**遗留**
+- 蕾米不在 slot0 的 C1 队伍在语料里不覆盖（`/c6` 只设 slot0），由单测兜底。
+- 18s 冷却只做 ⌊T/18⌋ 封顶，未按时间轴逐个判定。若日后需要精细化，改 remielleFlowerFeatherDanceCasts 一处即可。
+
 ## 附录：普查脚本 census.sh
 
 ```bash

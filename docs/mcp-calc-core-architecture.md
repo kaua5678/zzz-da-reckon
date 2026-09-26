@@ -205,7 +205,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-39b | review | **done** `a1eb71e`（判据 22 7→5） | 模块能力 `endsStunWindow` / `axisMoveActionTime` + 单一派发点 helpers（convergence 截断与 roundInputs 轴栈同源；删 1551016 字面量与雨果值导入） | `docs/mcp-cc39b-stun-window-end.md`、census §5.41 |
 | CC-40 | review | **done** `0b6b973`（判据 22 5→0，**硬门**） | 40a `liuyinPromote.ts`→`ultimatePromote.ts`；40b moduleFeedback 键 `consumedTeamEnergy` / `teamUltimateExtra`；40c 面板 `veilStunCapMult` / `veilStunVulnBase` | census §5.42 |
 | CC-39c | review | **done** `0f9f329` | 佩洛伊斯右分支决算轴集成快照（`peiluoVerdictTruncation.test.ts`，覆盖率 0.0834 对 0.2778） | census §5.43 |
-| CC-41 | todo | — | 蕾米埃尔 1 命花羽轮舞喧响：`remielleFlowerFeatherDanceCount` 无写入方 ⇒ 效果恒 0（建模缺口），建议走 moduleFeedback | census §5.43 |
+| CC-41 | done | `8b2a1d2` | 蕾米埃尔 1 命花羽轮舞喧响：改走 moduleFeedback `remielleFlowerFeatherDanceCasts`（nextRoundFeedback → applyTeamConfig converge），次数 = min(队友虚曜数, ⌊T/18⌋)；删除无写入方的面板次数字段 | census §5.44 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
