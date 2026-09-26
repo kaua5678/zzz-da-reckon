@@ -77,6 +77,30 @@
 - 18b：扩展 `ExtraDirectRowsInput`（给出前一位队友面板与 agent、`stunCount`、`liuyinPromoteCount`、`getMechanicSetting`、`ultimateInAxisFraction`），琉音 3 块迁进 `liuyin.ts`。`damagePoolCharExtras.ts` 迁完后只剩循环外壳，可以考虑整个删掉，把调用并进 `damagePool.ts`。
 - 18c：异常侧先读 `damagePoolAnomaly.ts:280–345` 全段，看 `fireProg` / `entry` 的来源，再定接口。
 
+### 7.1 CC-18b 定稿（2026-09-26 第 25 轮 lead-arena-0925c）
+
+- **口径安全**：已读 `docs/mcp-liuyin-promote-source.md`。W26 被回退，是因为滞后注入改变了外层收敛的暂态读数路径。本卡**只搬运**，`promoteCount` 就是原 `ctx.liuyinPromoteCount`（来自 `useResourceCalc.ts:265` 的 `calcOutput.promote`）原样透传，读数路径不变，不涉及那条风险。
+- **`liuyinSrc` 等价**：`damagePool.ts:424` 的 `const liuyinSrc = charResult.liuyinMechanicSource`，没有任何加工。模块内直接读 `charResult.liuyinMechanicSource`，等价。
+- **接口扩展**：`ExtraDirectRowsInput` 新增 5 个字段，**一律必填**（唯一调用方每次都传全；18a 的 burnice / banyue 只解构自己需要的字段，不受影响）。字段名都不带角色前缀：
+  ```ts
+  /** 按槽位查队友：panel = panelAt(damagePanels, slot)；agent = slot >= 0 ? (team[slot]?.agentId ? agentsMap.get(team[slot].agentId) : null) : null（逐字复刻原块 2 的两行） */
+  teammateAt: (slot: number) => { panel: PanelValues | undefined; agent: Agent | null | undefined }
+  /** = stunPoolResult?.stunCount ?? 0 */
+  stunCount: number
+  /** = ctx.liuyinPromoteCount（答案层 promote，原样透传，勿改来源） */
+  promoteCount: number
+  /** = configStore.getMechanicSetting */
+  getMechanicSetting: (key: string, dflt: number) => number
+  /** = env.ultimateInAxisFraction */
+  ultimateInAxisFraction: () => number
+  ```
+  `teammateAt` 在调用点写成闭包：`(s) => ({ panel: panelAt(damagePanels, s), agent: s >= 0 ? (configStore.team[s]?.agentId ? catalogStore.agentsMap.get(configStore.team[s].agentId) : null) : null })`。原块 2 对 `prevSlot = -1` 同样会调用 `panelAt`，保持这个行为，不加守卫。
+- **迁移**：琉音块 2（重击附加）→ 块 4（非轴强特拆分）→ 块 5（影画6余音）按这个顺序写进 `liuyin.ts` 模块对象（约 :515，`agentIds: [LIUYIN_AGENT_ID]`）的 `extraDirectRows`，逐字保留（含 `'1481011'` 等字面量、note / source 模板、`isAxis ? ultimateInAxisFraction() : undefined`）。
+  原块注释随代码迁移（块 2 关于 `calcPenetrationPower` 单一事实源的说明、块 5「轴模式同样生效」的说明）。
+- **迁移后 charExtras**：只剩 `extraDirectRows` 的一次调用。`calcPenetrationPower`、`LIUYIN_*` 的 import 删除；`panelAt` 仍用于 `panel` 和 `teammateAt`，保留。文件保留不删（改名 / 并入 damagePool 另议，避免扩大 diff）。
+- **顺序论证**：原块顺序是 块 2 →（块 3 半月，18a 已迁走）→ 块 4 → 块 5，全部属于琉音；迁移后琉音 `extraDirectRows` 内部顺序为 2 → 4 → 5，调用点在原块 1 的位置，在琉音的所有行之前，琉音本来就没有其他行夹在中间，所以 `rows` 顺序不变。
+- **零差 / 反向**：琉音（1481）在语料里（dump 键中含 1481 的场景）。反向验证：块 2 的 `multiplier: ratio` ×0（应落在额外能力生效的琉音场景）；块 5 的 `count: echoCount` ×0（只影响 cinema≥6，应落在含 1481 的 c6 场景；如果 1481 从不在 0 号位，c6 变体不会切换到琉音的命座，此时预期**无差**，改用单测锁住）。
+
 ## 8. 实现记录
 
 - **CC-18a 已落地 `23470f2`**（2026-09-26 第 24 轮）：dsflash 工人在 worktree 实现（`6e0de26`），lead 复核后 `cherry-pick -n` 挑回并重写提交信息。8 个文件。
