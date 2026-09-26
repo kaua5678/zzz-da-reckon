@@ -79,4 +79,13 @@
 
 ## 8. 实现记录
 
-（实现后填写。）
+- **CC-18a 已落地 `23470f2`**（2026-09-26 第 24 轮）：dsflash 工人在 worktree 实现（`6e0de26`），lead 复核后 `cherry-pick -n` 挑回并重写提交信息。8 个文件。
+- 判据 22：661 → **623**（-38）。target 按规则重设为 **611**（实测 −12）。
+- 零差：dump 625 / rowsnap 638 个键，对 H2a **只有 `__ms` 不同**。
+- 反向（§4，两处都生效）：
+  - 柏妮思余烬 `multiplier` ×0 → DIFF 6，正好是 `auto-1561-1171-1411/{default,c0,c6,w,heavy,heavyGate}`；
+  - 半月摧岳附伤 `count` ×0 → DIFF 6，全部是 1471 的 c6 场景（banyue-{trigger,jufufu,roxy,liuyin,qingyi}-lucia/c6、auto-1471-1571-1451/c6）。
+  两处都 cp 还原，cmp 一致。
+- 定向测试 298 条通过；`vue-tsc -b` 为 0；master 全量 `npm run verify` EXIT=0（290 个测试文件），HEAD `23470f2`。
+- 偏离：无实质偏离。`damagePoolCharExtras` 从 `@/mechanics` import `getAgentMechanic`；`panelAt` 仍被块 2 使用，保留。
+- **CC-18b / 18c 未做**，开工清单见 §7 和 census §5.10。

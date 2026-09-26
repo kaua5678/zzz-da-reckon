@@ -163,7 +163,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-15 | review | **done** `b1ed48e`（判据 22 759→733，target 重设 720） | 赠行通用命名：ultimateGiftTimeReserved / chainGiftTimeReserved / chainGift 等，纯改名零差 |
 | CC-16 | review | **done** `fe8fb90`（判据 22 733→712，target 重设 700） | banyueTopUp→interactionTopUp 通用命名，纯改名零差 |
 | CC-17 | design | **done** `18bfd88`（判据 22 712→661，target 重设 649；修可琳 basic_attack 泄漏） | axis overlay 消费端能力化（damagePoolDirect 冥网/凝神/柯林失衡加成），约 30 处 |
-| CC-18 | design | **待设计** | 柏妮思 burniceSrc 簇（damagePoolCharExtras 额外伤害行 + damagePoolAnomaly），约 43 处，模块能力 extraDamageRows 方向 |
+| CC-18a | design | **done** `23470f2`（判据 22 661→623，target 重设 611） | 柏妮思附加直伤 4 行 + 半月 C6 摧岳附伤迁模块能力 extraDirectRows
+| CC-18b | review | **待做** |
+| CC-18c | design | **待设计** |
 
 ### CC-1 · 招式表查询迁出（fast）
 

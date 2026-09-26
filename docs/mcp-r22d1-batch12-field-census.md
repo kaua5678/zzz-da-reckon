@@ -5,6 +5,8 @@
 
 ## 1. 做到哪一步
 
+- **最新交接（2026-09-26 23:1x，lead-arena-0925c 第 24 轮）**：CC-18a 已落地 `23470f2`（设计稿 `docs/mcp-cc18-extra-direct-rows.md`，`3b9e75c`，README 已登记；dsflash 工人实现 `6e0de26`，lead 复核）。判据 22 从 661 降到 **623**，target 重设 **611**。master 上 `npm run verify` EXIT=0，HEAD `23470f2`。
+  **下一步（可以直接开工）**：**CC-18b**（琉音 3 块附加直伤行迁 `extraDirectRows`），开工清单见 §5.10。它是同一设计稿的第二期，不需要新设计稿，只需在设计稿 §7 补接口扩展。
 - **最新交接（2026-09-26 22:4x，lead-arena-0925c 第 23 轮）**：CC-17 已落地 `18bfd88`（设计稿 `docs/mcp-cc17-axis-overlay-consume.md`，`6038a70`；dsflash 工人实现 `df83ebd`，lead 复核）。判据 22 从 712 降到 **661**，target 重设 **649**。**顺带修了一个真 bug**：可琳扫除帮手在轴模式下经全局桶泄漏给队友的普攻行（设计稿 §2，已加泄漏锁）。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `18bfd88`。
   **下一步（可以直接开工）**：**CC-18 设计稿**（柏妮思 `burniceSrc` 簇，43 处），卡面见 §5.9。**新文档必须登记进 README §6**（坑见 §5.9）。
 - **最新交接（2026-09-26 22:0x，lead-arena-0925c 第 22 轮）**：CC-16 已落地 `fe8fb90`（lead 直接做，纯改名）。判据 22 从 733 降到 **712**，**提前达成 target 720 → 已重设 target 700**。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `fe8fb90`。
@@ -250,6 +252,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-26 CC-15 后**：**733**（`b1ed48e`）；已低于 target 740，重设 target **720**。下一张 CC-16（§5.7）。
 - **2026-09-26 CC-16 后**：**712**（`fe8fb90`）；已低于 target 720，重设 target **700**。下一张：CC-17 设计（§5.8）。
 - **2026-09-26 CC-17 后**：**661**（`18bfd88`）；已低于 target 700，重设 target **649**。下一张：CC-18 设计（§5.9）。
+- **2026-09-26 CC-18a 后**：**623**（`23470f2`）；已低于 target 649，重设 target **611**。下一张：CC-18b（§5.10）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -476,6 +479,30 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - 流程：lead 先写设计稿 `docs/mcp-cc18-*.md`（**同一提交里登记 README §6**），列出现状行号、接口、逐字迁移表、零差论证，再派 dsflash 工人在 worktree 实现（CC-17 的 `calc-arch/cc17.prompt` 可以作模板）。
 - 零差：柏妮思在 dump 语料里有没有，**先查**：`python3 -c` 读 `dump-H2a.json` 的键，看有没有含 1291 或 burnice 的（agentId 以 `src/specs/agents/` 为准）。如果没有，反向验证只能靠单测（dump 盲区）。
 - 另有小遗留（CC-16）：`convergence.ts:54` 直接 import `computeBanyueInteractionTopUp`，属于 B 类，可以设计一个能力 `computeInteractionTopUp` 挂到 mechanic 上。不急。
+
+### 5.10 CC-18a 落地记录 + CC-18b 开工清单（2026-09-26 第 24 轮 lead-arena-0925c）
+
+**CC-18a（`23470f2`，判据 22 661→623）**：完整记录在设计稿 `docs/mcp-cc18-extra-direct-rows.md` §8。
+- 新能力 `AgentMechanic.extraDirectRows`：模块按归属生成附加直伤行，`damagePoolCharExtras` 调用一次，按返回顺序 `pushDirect`。
+- 本轮迁了柏妮思 4 行和半月 C6 摧岳附伤。零差对 H2a 只有 `__ms` 不同；两个反向验证都精确落在对应角色的场景。
+- **更正 §5.9**：那里写「柏妮思 agentId 1291」是错的，**实际是 1171**（`src/specs/agents/1171.json`，`burnice.ts` 的 `BURNICE_AGENT_ID`）。柏妮思**在** dump 语料里（`auto-1561-1171-1411/*`，6 个场景）。
+- 本轮流程：设计稿与 README 登记在同一提交（`3b9e75c`），checkGuards.test 全程没红。§5.9 的坑已按要求执行。
+- 小坑：wsl_exec 偶尔把 stdout 整段吞掉，只剩 stderr 的「screen size is bogus」警告。办法是把命令包成 `{ …; } > /tmp/x.txt 2>&1; cat /tmp/x.txt`。
+
+**CC-18b 开工清单（琉音块 2 / 4 / 5，约 18 处 liuyinSrc 中 charExtras 那部分）**
+1. 先读 `docs/mcp-liuyin-promote-source.md`（转大次数口径；W26 blocked 的原因是 timeGolden 口径）。本卡**只搬运，不改任何读数来源**：`liuyinPromoteCount` 仍来自 `useResourceCalc.ts:265` 的 `calcOutput.promote`，经 ctx 原样透传。
+2. 在设计稿 §7 补上接口扩展，推荐在 `ExtraDirectRowsInput` 上加可选字段（加可选字段不影响 18a 的两个实现）：
+   - `prevTeammate?: { slot: number; panel: PanelValues | undefined; agent: Agent | null | undefined }`（块 2 用，原式见 `damagePoolCharExtras.ts` 块 2 的 prevSlot / prevPanel / prevAgent 三行，`previousTeammateSlot` 来自 liuyinSrc，所以更好的做法是传 `resolveTeammate(slot) => { panel, agent }` 查询函数，让模块自己拿 slot）；
+   - `stunCount: number`（块 4，原式 `stunPoolResult?.stunCount ?? 0`）；
+   - `promoteCount: number`（块 5，原式 `liuyinPromoteCount`）；
+   - `getMechanicSetting: (key: string, dflt: number) => number`（块 5 的 `liuyin.c6EchoMax`）；
+   - `ultimateInAxisFraction: () => number`（块 5）。
+   字段名不要带角色前缀，否则判据 22 又会记上。
+3. 琉音模块对象在 `src/mechanics/agents/liuyin.ts:515`（`agentIds: [LIUYIN_AGENT_ID]`）。`LIUYIN_EX_MOVE_IDS`、`CINEMA6_ECHO_MAX`、`CINEMA6_ECHO_RATIO` 本来就定义在这个文件里。
+4. **顺序**：原块顺序是 2 → (3 半月) → 4 → 5，且都属于琉音自己；迁移后在琉音的 `extraDirectRows` 里保持 2 → 4 → 5 的顺序。调用点只有一个（18a 已放好），不用改。
+5. `liuyinSrc` 另有上提到 `damagePool.ts` 槽位循环头的声明（与「跳过通用强特行」共用判据，见 charExtras 块 2 上方注释）。**18b 不要动那处**，只改 charExtras 里的 3 块；damagePool / damagePoolDirect / liuyinPromote 里的 liuyinSrc 另议。
+6. 零差：琉音在语料里（例如 `banyue-liuyin-lucia/*`，以及 dump 键里其他含 1481 的场景）。反向验证：琉音余音 `count` ×0（只影响 cinema≥6，应落在 c6 变体），重击附加 `multiplier` ×0。
+7. 执行方式同 18a：lead 在设计稿补 §7 接口，再派 dsflash 工人，提示词模板 `/home/kaua/calc-arch/cc18.prompt`（worktree 路径和块号要改）；lead 做零差、反向和挑回。
 
 ## 附录：普查脚本 census.sh
 
