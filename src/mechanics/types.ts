@@ -18,6 +18,9 @@ import type {
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
+// 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type，见设计稿
+// `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
+import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 
 /** 队伍中某个槽位的最小上下文快照 */
 export interface MechanicTeamMember {
@@ -721,6 +724,23 @@ export interface AgentMechanicModule {
    */
   directRowBonus?(input: DirectRowBonusInput): DirectRowBonus | null
   /**
+   * **角色专属附加直伤行**（规则 6 迁移落点，CC-18a 2026-09-26，设计稿
+   * `docs/mcp-cc18-extra-direct-rows.md` §2-1/§2-3）：
+   * 由行所属角色的模块生成自己的附加直伤行，返回数组，消费端（`damagePoolCharExtras.ts#emitCharExtraRows`）
+   * 按返回顺序逐个 `pushDirect`。
+   *
+   * 为什么单列声明而不是让编排层逐角色拼行：这些行是**角色自己的**机制产出
+   * （柏妮思余烬/搅拌式/灼热抛接法/C6 特殊余烬、半月 C6 摧岳附伤），触发判据与字段读法都
+   * 只属于该角色模块；原实现散在 `damagePoolCharExtras.ts` 里按 `charResult.xxxMechanicSource`
+   * 分支，每加一个角色都要改消费端（正是规则 6 要消灭的形状）。
+   *
+   * 顺序论证见设计稿 §2-3/§3：各块按角色互斥（同一角色只命中一块），迁走后对任意角色其
+   * 自己的行相对顺序不变，`rows` 的全局顺序也不变（角色逐个处理）。
+   *
+   * 返回 `[]`/缺省 = 本角色无附加直伤行。
+   */
+  extraDirectRows?(input: ExtraDirectRowsInput): DirectRowInput[]
+  /**
    * 保底自动补齐的交互次数由本模块产出（`CalcRoundResult.interactionTopUp` 的槽位归属，规则 6 落点）。
    *
    * 存在的理由：交互栏要用「弹刀 +N / 双反 +M」，读的是轮内收敛值 `calcOutput.interactionTopUp`——
@@ -1236,6 +1256,28 @@ export interface DirectRowBonus {
   sheerDmgBonus?: number
   /** 已拼好的片段，含前导「 · 」 */
   note?: string
+}
+
+/**
+ * `extraDirectRows` 钩子输入（CC-18a 2026-09-26，设计稿
+ * `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
+ *
+ * 契约：`charResult` 是本槽资源结果（柏妮思读 `burniceMechanicSource`、半月扫 `executions` 上的
+ * `banyueC6CrushAttach` 标记）；`panel` = `panelAt(damagePanels, slot)`（**本槽**面板，可能 undefined）；
+ * `axisStunFor` 是消费端注入的伴随事件易伤查询（0/1，非轴回落全局覆盖率）。模块返回的每一行
+ * 由消费端按返回顺序 `pushDirect`。
+ */
+export interface ExtraDirectRowsInput {
+  /** 本槽资源结果 */
+  charResult: CharacterResourceResult
+  /** 本槽槽位号（pushDirect 行上原样透传） */
+  slot: number
+  /** = `panelAt(damagePanels, slot)`（本槽面板，缺 cfg 时为 undefined） */
+  panel: PanelValues | undefined
+  /** 真·轴模式布尔 */
+  isAxis: boolean
+  /** 伴随事件易伤 0/1（非轴回落全局覆盖率） */
+  axisStunFor: (moveId: string) => number
 }
 
 /** transformAnomalyPool 钩子输入（calcAnomalyPool 内部，perElement 之前） */

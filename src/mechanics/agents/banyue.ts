@@ -1,6 +1,8 @@
 import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
+import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
+import { calcPenetrationPower } from '@/core/damage'
 import { fmt } from '@/utils/format'
 
 /**
@@ -1023,6 +1025,42 @@ export const banyueMechanic: AgentMechanicModule = {
       dmgBonus: dmg,
       note: ` · 明王+${dmg.toFixed(1)}%${isAxis ? '（轴内覆盖）' : '（覆盖率近似）'}`,
     }
+  },
+  /**
+   * 般岳影画6 摧岳附伤附加直伤行（CC-18a 2026-09-26，设计稿
+   * `docs/mcp-cc18-extra-direct-rows.md` §2）：自 `damagePoolCharExtras.ts` 原块 3 逐字迁入。
+   *
+   * 般岳影画6：600% 贯穿力火伤附伤是倾山的自动触发事件，次数 = 倾山次数（不可调，不产生资源利用率行）
+   * 2026-09-16 编排层棘轮（R15-a）：原判据 `charResult.agentId === '1471' && cinemaLevel >= 6` +
+   * 自己去找 `1471009` 行 —— 已改为读**倾山行上的模块标记** `banyueC6CrushAttach`（= 附伤倍率）。
+   * 标记的唯一写入方 = `banyue.ts#patchBanyueExecutions`（仅 C6 写自己的倾山行）⇒ 字段存在即蕴含
+   * 「是般岳且 C6」（判据同 T6，与本文件 :867 burniceMechanicSource / :941 liuyinMechanicSource 同族）。
+   * ⚠ 刻意**不**改成读 `banyueRageCycle.rageCount`：那份是**截断前**的循环次数，而本处口径是
+   * 截断后的倾山行 count（原 `executions.find(...)` 读的就是同一行）——换源 = 静默改语义。
+   */
+  extraDirectRows: ({ charResult, slot, panel, axisStunFor }) => {
+    const crushAttachExec = charResult.executions.find(e => (e as any).banyueC6CrushAttach !== undefined)
+    if (!crushAttachExec) return []
+    const attachCount = Math.max(0, Math.floor(crushAttachExec.count))
+    const attachRatio = Number((crushAttachExec as any).banyueC6CrushAttach)
+    if (!(attachCount > 0 && attachRatio > 0)) return []
+    // 不变量同 :609 —— 有 cfg 必有面板，缺失即契约破坏，响亮失败。
+    const row: DirectRowInput = {
+      id: 'banyue-c6-crush-attach',
+      slot,
+      agentId: charResult.agentId,
+      name: '影画6·摧岳附伤（倾山自动触发）',
+      element: 'fire',
+      source: '倾山自动触发',
+      count: attachCount,
+      multiplier: attachRatio,
+      note: `影画6：倾山命中时对周身造成 600% 贯穿力火伤；次数=倾山次数 ×${attachCount}（自动，不可调）`,
+      basisValueOverride: calcPenetrationPower(panel!),
+      basisLabelOverride: '贯穿力（600%附伤）',
+      moveId: 'banyue_c6_crush_attach',
+      stunOverride: axisStunFor('banyue_c6_crush_attach'),
+    }
+    return [row]
   },
   /**
    * 交互栏「轴模式自动补齐」的槽位归属声明（规则 6 迁入，棘轮站点 8/8，2026-09-12 #10 真清偿）：

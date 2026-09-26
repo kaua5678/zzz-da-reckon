@@ -2,8 +2,10 @@
  * 逐角色主循环·段 X「角色专属附加块」—— 自 `composables/resourceCalc/damagePool.ts#buildDamagePoolRows`
  * 的 :928–1131 原样外提（CC-9b，2026-09-25，零行为搬迁）。
  *
- * 职责：1171 柏妮思机制行（余烬 / 搅拌式 / 灼热抛接法 / C6 特殊余烬）/ 琉音额外能力 / 半月 C6
- * 碎击附伤 / 琉音非轴强特拆分 / 琉音影画6 余音。
+ * 职责：琉音额外能力 / 琉音非轴强特拆分 / 琉音影画6 余音；以及按角色模块能力
+ * `extraDirectRows` 派发本槽的附加直伤行（CC-18a 2026-09-26：1171 柏妮思机制行
+ * （余烬 / 搅拌式 / 灼热抛接法 / C6 特殊余烬）与 1471 半月 C6 碎击附伤已迁进各自模块，
+ * 设计稿 `docs/mcp-cc18-extra-direct-rows.md`）。
  *
  * 与外层闭包的通信面 = `CharRowsEnv`（定义在 `./damagePoolDirect`）：共享输出数组 `rows`
  * （经 `pushDirect` 闭包按原顺序 push，禁止换成返回值拼接）+ `ctx` 快照 + 只读局部量/闭包。
@@ -15,7 +17,7 @@
  */
 import { calcPenetrationPower } from '@/core/damage'
 import { panelAt } from '@/core/panel'
-import { getSkillLevelCoef } from '@/core/skillLevel'
+import { getAgentMechanic } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS, CINEMA6_ECHO_MAX, CINEMA6_ECHO_RATIO } from '@/mechanics/agents/liuyin'
 import type { CharRowsEnv, CharLocals } from './damagePoolDirect'
 
@@ -34,78 +36,13 @@ export function emitCharExtraRows(env: CharRowsEnv, cl: CharLocals): void {
   } = env
   const { charResult, slot, liuyinSrc } = cl
 
-  const burniceSrc = charResult.burniceMechanicSource
-  // 2026-09-15 编排层棘轮：去掉 `charResult.agentId === '1171'`——`burniceMechanicSource`
-  // 的唯一写入方 = `burnice.ts:312` 的 buildResourceResult ⇒ 字段存在即蕴含是该角色（判据同 T6）。
-  if (burniceSrc) {
-    const burniceSkillCoef = (() => {
-      const bonus = panelAt(damagePanels, slot)?.skillLevelBonus ?? 0
-      return bonus > 0 ? getSkillLevelCoef(bonus).damageCoef : 1
-    })()
-    if (burniceSrc.emberTotalTriggerCount > 0 && burniceSrc.emberDamageRatioWithMastery > 0) {
-      pushDirect({
-        id: 'burnice-ember',
-        slot,
-        agentId: charResult.agentId,
-        name: '柏妮思余烬（含搅拌式附带）',
-        element: 'fire',
-        source: `普通余烬 ${burniceSrc.emberTriggerCount} 次 + 搅拌式附带 ${burniceSrc.stirringFreeEmberCount} 次`,
-        count: burniceSrc.emberTotalTriggerCount,
-        multiplier: burniceSrc.emberDamageRatioWithMastery,
-        note: `${burniceSrc.emberDamageRatio}%攻击 × (1 + 精通加成)，基础积蓄60`,
-        critRateBonus: burniceSrc.cinema4CritRateBonus,
-        skillDamageTarget: 'assist',
-      })
-    }
-    if (burniceSrc.stirringCount > 0 && burniceSrc.stirringDamageRatio > 0) {
-      pushDirect({
-        id: 'burnice-stirring',
-        slot,
-        agentId: charResult.agentId,
-        name: '柏妮思搅拌式',
-        element: 'fire',
-        source: '溢出燃点消耗20点/次 · 支援攻击',
-        count: burniceSrc.stirringCount,
-        multiplier: burniceSrc.stirringDamageRatio * burniceSkillCoef,
-        note: `Mixed Flame Blend #1 × 0.5 + #2，分类为支援攻击${burniceSkillCoef !== 1 ? ` · 技能等级系数×${burniceSkillCoef.toFixed(4)}` : ''}`,
-        critRateBonus: burniceSrc.cinema4CritRateBonus,
-        skillDamageTarget: 'assist',
-      })
-    }
-    if (burniceSrc.tossingCount > 0 && burniceSrc.tossingDamageRatio > 0) {
-      pushDirect({
-        id: 'burnice-tossing',
-        slot,
-        agentId: charResult.agentId,
-        name: '柏妮思灼热抛接法',
-        element: 'fire',
-        source: '消耗1点流火 · EX Special Attack: Intense Heat Tossing Method',
-        count: burniceSrc.tossingCount,
-        multiplier: burniceSrc.tossingDamageRatio * burniceSkillCoef,
-        note: `强化特殊技，可吃4命暴击率+30%${burniceSkillCoef !== 1 ? ` · 技能等级系数×${burniceSkillCoef.toFixed(4)}` : ''}`,
-        critRateBonus: burniceSrc.cinema4CritRateBonus,
-        skillDamageTarget: 'exSpecial',
-      })
-    }
-    if (burniceSrc.cinema6SpecialEmberCount > 0 && burniceSrc.cinema6SpecialEmberDamageRatio > 0) {
-      pushDirect({
-        id: 'burnice-c6-special-ember',
-        slot,
-        agentId: charResult.agentId,
-        name: '柏妮思6命特殊余烬',
-        element: 'fire',
-        source: '双份命中触发 · 0.5s最多一次 · 不消耗燃点',
-        count: burniceSrc.cinema6SpecialEmberCount,
-        multiplier: burniceSrc.cinema6SpecialEmberDamageRatio,
-        note: `固定${burniceSrc.cinema6SpecialEmberBaseRatio}%攻击，不吃1命/精通加成，无视火抗${burniceSrc.cinema6FireResIgnore}%`,
-        critRateBonus: burniceSrc.cinema4CritRateBonus,
-        resIgnore: burniceSrc.cinema6FireResIgnore,
-        moveId: 'burnice-c6-special-ember',
-        stunOverride: axisStunFor('burnice-c6-special-ember'),
-        skillDamageTarget: 'assist',
-      })
-    }
-  }
+  // 角色专属附加直伤行（规则 6 迁移落点，CC-18a 2026-09-26，设计稿
+  // `docs/mcp-cc18-extra-direct-rows.md` §2-3）：柏妮思块 1 / 半月块 3 已迁进各自模块的
+  // `extraDirectRows`，消费端在原块 1 的位置放**一次**调用，按返回顺序 `pushDirect`。
+  // 顺序论证见设计稿 §2-3/§3：各块按角色互斥，迁走后对任意角色其自身行的相对顺序与 `rows`
+  // 的全局顺序都不变。
+  const extra = getAgentMechanic(charResult.agentId)?.extraDirectRows?.({ charResult, slot, panel: panelAt(damagePanels, slot), isAxis, axisStunFor })
+  if (extra) for (const row of extra) pushDirect(row)
 
   // 琉音专属直伤（额外能力）：石头/剪刀/布重击命中时，按上一位队友特性追加伤害。
   // 2026-09-15 编排层棘轮：去掉 `charResult.agentId === '1481'`——`liuyinMechanicSource` 的
@@ -145,38 +82,6 @@ export function emitCharExtraRows(env: CharRowsEnv, cl: CharLocals): void {
 
   // 琉音三个强特（石头→剪刀→布）按“失衡次数×25 能量留给失衡内第一个强特，剩余非失衡按 1→3 连打”拆分易伤。
   // 非失衡轴模式下通用强特行已跳过，这里重放并拆失衡/非失衡；失衡轴模式仍走轴内易伤归属。
-  // 般岳影画6：600% 贯穿力火伤附伤是倾山的自动触发事件，次数 = 倾山次数（不可调，不产生资源利用率行）
-  // 2026-09-16 编排层棘轮（R15-a）：原判据 `charResult.agentId === '1471' && cinemaLevel >= 6` +
-  // 自己去找 `1471009` 行 —— 已改为读**倾山行上的模块标记** `banyueC6CrushAttach`（= 附伤倍率）。
-  // 标记的唯一写入方 = `banyue.ts#patchBanyueExecutions`（仅 C6 写自己的倾山行）⇒ 字段存在即蕴含
-  // 「是般岳且 C6」（判据同 T6，与本文件 :867 burniceMechanicSource / :941 liuyinMechanicSource 同族）。
-  // ⚠ 刻意**不**改成读 `banyueRageCycle.rageCount`：那份是**截断前**的循环次数，而本处口径是
-  // 截断后的倾山行 count（原 `executions.find(...)` 读的就是同一行）——换源 = 静默改语义。
-  const crushAttachExec = charResult.executions.find(e => (e as any).banyueC6CrushAttach !== undefined)
-  if (crushAttachExec) {
-    const attachCount = Math.max(0, Math.floor(crushAttachExec.count))
-    const attachRatio = Number((crushAttachExec as any).banyueC6CrushAttach)
-    if (attachCount > 0 && attachRatio > 0) {
-      // 不变量同 :609 —— 有 cfg 必有面板，缺失即契约破坏，响亮失败。
-      const panel = panelAt(damagePanels, slot)!
-      pushDirect({
-        id: 'banyue-c6-crush-attach',
-        slot,
-        agentId: charResult.agentId,
-        name: '影画6·摧岳附伤（倾山自动触发）',
-        element: 'fire',
-        source: '倾山自动触发',
-        count: attachCount,
-        multiplier: attachRatio,
-        note: `影画6：倾山命中时对周身造成 600% 贯穿力火伤；次数=倾山次数 ×${attachCount}（自动，不可调）`,
-        basisValueOverride: calcPenetrationPower(panel),
-        basisLabelOverride: '贯穿力（600%附伤）',
-        moveId: 'banyue_c6_crush_attach',
-        stunOverride: axisStunFor('banyue_c6_crush_attach'),
-      })
-    }
-  }
-
   // 2026-09-15 编排层棘轮：去掉 agentId 判断（`liuyinMechanicSource` 唯一写入方 = liuyin.ts:387）。
   if (liuyinSrc && !isAxis) {
     const stunCount = stunPoolResult?.stunCount ?? 0

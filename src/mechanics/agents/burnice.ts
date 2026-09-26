@@ -8,9 +8,11 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { AgentSkills, PanelValues, SkillMove } from '@/types/catalog'
+import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { BurniceMechanicSource, CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { minusInvincibleTime } from '@/core/effectiveTime'
+import { getSkillLevelCoef } from '@/core/skillLevel'
 
 const BURNICE_AGENT_ID = '1171'
 const IGNITION_INITIAL = 100
@@ -606,5 +608,86 @@ export const burniceMechanic: AgentMechanicModule = {
   settings,
   attachedEvents: {
     [DOUBLE_SUSTAINED_MOVE]: ['burnice-c6-special-ember', 'burnice-c6-burn-burst'],
+  },
+  /**
+   * 柏妮思专属附加直伤行（CC-18a 2026-09-26，设计稿 `docs/mcp-cc18-extra-direct-rows.md` §2）：
+   * 余烬 / 搅拌式 / 灼热抛接法 / C6 特殊余烬。自 `damagePoolCharExtras.ts` 原块 1 逐字迁入，
+   * 字段与出现顺序照抄（对象键顺序可能进 rowsnap 哈希）；`panel` 读本槽面板，`axisStunFor` 由
+   * 消费端注入。
+   */
+  extraDirectRows: ({ charResult, slot, panel, axisStunFor }) => {
+    const burniceSrc = charResult.burniceMechanicSource
+    // 2026-09-15 编排层棘轮：去掉 `charResult.agentId === '1171'`——`burniceMechanicSource`
+    // 的唯一写入方 = `burnice.ts:312` 的 buildResourceResult ⇒ 字段存在即蕴含是该角色（判据同 T6）。
+    if (!burniceSrc) return []
+    const burniceSkillCoef = (() => {
+      const bonus = panel?.skillLevelBonus ?? 0
+      return bonus > 0 ? getSkillLevelCoef(bonus).damageCoef : 1
+    })()
+    const rows: DirectRowInput[] = []
+    if (burniceSrc.emberTotalTriggerCount > 0 && burniceSrc.emberDamageRatioWithMastery > 0) {
+      rows.push({
+        id: 'burnice-ember',
+        slot,
+        agentId: charResult.agentId,
+        name: '柏妮思余烬（含搅拌式附带）',
+        element: 'fire',
+        source: `普通余烬 ${burniceSrc.emberTriggerCount} 次 + 搅拌式附带 ${burniceSrc.stirringFreeEmberCount} 次`,
+        count: burniceSrc.emberTotalTriggerCount,
+        multiplier: burniceSrc.emberDamageRatioWithMastery,
+        note: `${burniceSrc.emberDamageRatio}%攻击 × (1 + 精通加成)，基础积蓄60`,
+        critRateBonus: burniceSrc.cinema4CritRateBonus,
+        skillDamageTarget: 'assist',
+      })
+    }
+    if (burniceSrc.stirringCount > 0 && burniceSrc.stirringDamageRatio > 0) {
+      rows.push({
+        id: 'burnice-stirring',
+        slot,
+        agentId: charResult.agentId,
+        name: '柏妮思搅拌式',
+        element: 'fire',
+        source: '溢出燃点消耗20点/次 · 支援攻击',
+        count: burniceSrc.stirringCount,
+        multiplier: burniceSrc.stirringDamageRatio * burniceSkillCoef,
+        note: `Mixed Flame Blend #1 × 0.5 + #2，分类为支援攻击${burniceSkillCoef !== 1 ? ` · 技能等级系数×${burniceSkillCoef.toFixed(4)}` : ''}`,
+        critRateBonus: burniceSrc.cinema4CritRateBonus,
+        skillDamageTarget: 'assist',
+      })
+    }
+    if (burniceSrc.tossingCount > 0 && burniceSrc.tossingDamageRatio > 0) {
+      rows.push({
+        id: 'burnice-tossing',
+        slot,
+        agentId: charResult.agentId,
+        name: '柏妮思灼热抛接法',
+        element: 'fire',
+        source: '消耗1点流火 · EX Special Attack: Intense Heat Tossing Method',
+        count: burniceSrc.tossingCount,
+        multiplier: burniceSrc.tossingDamageRatio * burniceSkillCoef,
+        note: `强化特殊技，可吃4命暴击率+30%${burniceSkillCoef !== 1 ? ` · 技能等级系数×${burniceSkillCoef.toFixed(4)}` : ''}`,
+        critRateBonus: burniceSrc.cinema4CritRateBonus,
+        skillDamageTarget: 'exSpecial',
+      })
+    }
+    if (burniceSrc.cinema6SpecialEmberCount > 0 && burniceSrc.cinema6SpecialEmberDamageRatio > 0) {
+      rows.push({
+        id: 'burnice-c6-special-ember',
+        slot,
+        agentId: charResult.agentId,
+        name: '柏妮思6命特殊余烬',
+        element: 'fire',
+        source: '双份命中触发 · 0.5s最多一次 · 不消耗燃点',
+        count: burniceSrc.cinema6SpecialEmberCount,
+        multiplier: burniceSrc.cinema6SpecialEmberDamageRatio,
+        note: `固定${burniceSrc.cinema6SpecialEmberBaseRatio}%攻击，不吃1命/精通加成，无视火抗${burniceSrc.cinema6FireResIgnore}%`,
+        critRateBonus: burniceSrc.cinema4CritRateBonus,
+        resIgnore: burniceSrc.cinema6FireResIgnore,
+        moveId: 'burnice-c6-special-ember',
+        stunOverride: axisStunFor('burnice-c6-special-ember'),
+        skillDamageTarget: 'assist',
+      })
+    }
+    return rows
   },
 }

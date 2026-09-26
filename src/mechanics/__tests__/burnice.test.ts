@@ -237,3 +237,131 @@ describe('柏妮思余烬/翻烤伤害池落地（damagePool 集成）', () => {
     expect((ember as any).agentId, '该行归属必须是柏妮思').toBe('1171')
   })
 })
+
+// CC-18a 2026-09-26：块 1 自 `damagePoolCharExtras.ts` 迁进模块能力 `extraDirectRows`
+// （设计稿 `docs/mcp-cc18-extra-direct-rows.md` §2/§5）。逐字锁 id/count/multiplier/note，
+// 含 `skillLevelBonus > 0` 时 note 带「技能等级系数×」。
+describe('CC-18a：柏妮思 extraDirectRows（附加直伤行逐字）', () => {
+  const burniceSrc = (overrides: Record<string, unknown> = {}) => ({
+    emberTriggerCount: 10,
+    stirringFreeEmberCount: 4,
+    emberTotalTriggerCount: 14,
+    emberDamageRatioWithMastery: 350,
+    emberDamageRatio: 350,
+    stirringCount: 3,
+    stirringDamageRatio: 250.8,
+    tossingCount: 2,
+    tossingDamageRatio: 400.1,
+    cinema6SpecialEmberCount: 7,
+    cinema6SpecialEmberDamageRatio: 60,
+    cinema6SpecialEmberBaseRatio: 60,
+    cinema6FireResIgnore: 25,
+    cinema4CritRateBonus: 30,
+    ...overrides,
+  })
+  const input = (panel: unknown, overrides: Record<string, unknown> = {}) => ({
+    charResult: { agentId: '1171', burniceMechanicSource: burniceSrc(overrides) } as never,
+    slot: 0,
+    panel: panel as never,
+    isAxis: false,
+    axisStunFor: () => 0,
+  })
+
+  it('无 burniceMechanicSource → 返回 []（不产行）', () => {
+    expect(burniceMechanic.extraDirectRows!({
+      charResult: { agentId: '1171' } as never,
+      slot: 0,
+      panel: undefined,
+      isAxis: false,
+      axisStunFor: () => 0,
+    })).toEqual([])
+  })
+
+  it('四种行逐字：id/count/multiplier/note（skillLevelBonus=0 → 系数 1，note 无系数片段）', () => {
+    const rows = burniceMechanic.extraDirectRows!(input({ skillLevelBonus: 0 }))
+    expect(rows.map(r => r.id)).toEqual(['burnice-ember', 'burnice-stirring', 'burnice-tossing', 'burnice-c6-special-ember'])
+
+    expect(rows[0]).toMatchObject({
+      slot: 0,
+      agentId: '1171',
+      name: '柏妮思余烬（含搅拌式附带）',
+      element: 'fire',
+      source: '普通余烬 10 次 + 搅拌式附带 4 次',
+      count: 14,
+      multiplier: 350,
+      note: '350%攻击 × (1 + 精通加成)，基础积蓄60',
+      critRateBonus: 30,
+      skillDamageTarget: 'assist',
+    })
+
+    expect(rows[1]).toMatchObject({
+      id: 'burnice-stirring',
+      name: '柏妮思搅拌式',
+      source: '溢出燃点消耗20点/次 · 支援攻击',
+      count: 3,
+      multiplier: 250.8,
+      note: 'Mixed Flame Blend #1 × 0.5 + #2，分类为支援攻击',
+      critRateBonus: 30,
+      skillDamageTarget: 'assist',
+    })
+
+    expect(rows[2]).toMatchObject({
+      id: 'burnice-tossing',
+      name: '柏妮思灼热抛接法',
+      source: '消耗1点流火 · EX Special Attack: Intense Heat Tossing Method',
+      count: 2,
+      multiplier: 400.1,
+      note: '强化特殊技，可吃4命暴击率+30%',
+      critRateBonus: 30,
+      skillDamageTarget: 'exSpecial',
+    })
+
+    expect(rows[3]).toMatchObject({
+      id: 'burnice-c6-special-ember',
+      name: '柏妮思6命特殊余烬',
+      source: '双份命中触发 · 0.5s最多一次 · 不消耗燃点',
+      count: 7,
+      multiplier: 60,
+      note: '固定60%攻击，不吃1命/精通加成，无视火抗25%',
+      critRateBonus: 30,
+      resIgnore: 25,
+      moveId: 'burnice-c6-special-ember',
+      skillDamageTarget: 'assist',
+    })
+    // 轴外（非轴）回落覆盖率 0：stunOverride 取 axisStunFor 返回值
+    expect(rows[3].stunOverride).toBe(0)
+  })
+
+  it('skillLevelBonus>0：搅拌式/灼热抛接法 multiplier 乘系数、note 带「技能等级系数×」', () => {
+    const rows = burniceMechanic.extraDirectRows!(input({ skillLevelBonus: 2 }))
+    const coef = (12 + 2 + 10) / 22 // getSkillLevelCoef(2).damageCoef = 1.090909…
+    expect(rows[1].multiplier).toBeCloseTo(250.8 * coef, 10)
+    expect(rows[1].note).toBe('Mixed Flame Blend #1 × 0.5 + #2，分类为支援攻击 · 技能等级系数×1.0909')
+    expect(rows[2].multiplier).toBeCloseTo(400.1 * coef, 10)
+    expect(rows[2].note).toBe('强化特殊技，可吃4命暴击率+30% · 技能等级系数×1.0909')
+    // 余烬 / C6 特殊余烬不吃技能等级系数
+    expect(rows[0].multiplier).toBe(350)
+    expect(rows[3].multiplier).toBe(60)
+  })
+
+  it('条件不满足的行不产出（余烬 0 次 / C6 无次数）', () => {
+    const rows = burniceMechanic.extraDirectRows!(input({ skillLevelBonus: 0 }, {
+      emberTotalTriggerCount: 0,
+      cinema6SpecialEmberCount: 0,
+    }))
+    expect(rows.map(r => r.id)).toEqual(['burnice-stirring', 'burnice-tossing'])
+  })
+
+  it('axisStunFor 透传：C6 特殊余烬 stunOverride = axisStunFor(moveId)', () => {
+    const rows = burniceMechanic.extraDirectRows!({
+      charResult: { agentId: '1171', burniceMechanicSource: burniceSrc() } as never,
+      slot: 1,
+      panel: { skillLevelBonus: 0 } as never,
+      isAxis: true,
+      axisStunFor: (moveId: string) => (moveId === 'burnice-c6-special-ember' ? 0.75 : 0),
+    })
+    const c6 = rows.find(r => r.id === 'burnice-c6-special-ember')!
+    expect(c6.stunOverride).toBe(0.75)
+    expect(c6.slot).toBe(1)
+  })
+})

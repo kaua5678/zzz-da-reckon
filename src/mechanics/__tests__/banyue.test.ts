@@ -979,3 +979,62 @@ describe('CC-17：般岳 directRowBonus（明王行级加成，轴/非轴两臂 
     })).toBeNull()
   })
 })
+
+// CC-18a 2026-09-26：块 3 自 `damagePoolCharExtras.ts` 迁进模块能力 `extraDirectRows`
+// （设计稿 `docs/mcp-cc18-extra-direct-rows.md` §2/§5）。逐字锁 id/count/multiplier/note。
+describe('CC-18a：般岳 extraDirectRows（C6 摧岳附伤逐字）', () => {
+  const crushExec = (count: number, ratio: unknown = 600) => ({
+    moveId: '1471009',
+    count,
+    banyueC6CrushAttach: ratio,
+  })
+  const panel = { atk: 2000, hp: 10000, sheerForceFlat: 300 } as never
+
+  it('无 banyueC6CrushAttach 标记 → 返回 []（非 C6 不产行）', () => {
+    expect(banyueMechanic.extraDirectRows!({
+      charResult: { agentId: '1471', executions: [{ moveId: '1471009', count: 4 }] } as never,
+      slot: 0, panel, isAxis: false, axisStunFor: () => 0,
+    })).toEqual([])
+  })
+
+  it('C6 倾山行逐字：id/count/multiplier/note + 贯穿力基底', () => {
+    const rows = banyueMechanic.extraDirectRows!({
+      charResult: { agentId: '1471', executions: [crushExec(4)] } as never,
+      slot: 2,
+      panel,
+      isAxis: false,
+      axisStunFor: () => 0,
+    })
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      id: 'banyue-c6-crush-attach',
+      slot: 2,
+      agentId: '1471',
+      name: '影画6·摧岳附伤（倾山自动触发）',
+      element: 'fire',
+      source: '倾山自动触发',
+      count: 4,
+      multiplier: 600,
+      note: '影画6：倾山命中时对周身造成 600% 贯穿力火伤；次数=倾山次数 ×4（自动，不可调）',
+      basisValueOverride: 2000 * 0.3 + 10000 * 0.1 + 300,
+      basisLabelOverride: '贯穿力（600%附伤）',
+      moveId: 'banyue_c6_crush_attach',
+      stunOverride: 0,
+    })
+  })
+
+  it('count 向下取整且为 0 时不产行', () => {
+    const cr = (count: number) => ({ charResult: { agentId: '1471', executions: [crushExec(count)] } as never, slot: 0, panel, isAxis: false, axisStunFor: () => 0 })
+    expect(banyueMechanic.extraDirectRows!(cr(3.9))[0].count).toBe(3)
+    expect(banyueMechanic.extraDirectRows!(cr(0))).toEqual([])
+  })
+
+  it('axisStunFor 透传：stunOverride = axisStunFor(banyue_c6_crush_attach)', () => {
+    const rows = banyueMechanic.extraDirectRows!({
+      charResult: { agentId: '1471', executions: [crushExec(2)] } as never,
+      slot: 0, panel, isAxis: true,
+      axisStunFor: (moveId: string) => (moveId === 'banyue_c6_crush_attach' ? 1 : 0),
+    })
+    expect(rows[0].stunOverride).toBe(1)
+  })
+})
