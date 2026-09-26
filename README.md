@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（51 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（52 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -122,6 +122,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-cc35d-gift-chain.md` | **CC-35d 设计稿**：诺玛 / 琉音「装配后赠送行」去角色化（A 诺玛模块能力 `chainGift` + `resourceCalc/chainGift.ts`；B1 出口改名 / B2 伤害池跳行能力 / B3 好评转大去身份查找） |
 | `docs/mcp-cc36-velina-anomaly.md` | **CC-36 设计稿与实施记录**：维琳娜在 core / 编排层的残留去角色化（36a 风蚀量改名；36b 1 命乱流抗性无视 → 面板字段 `turbulenceResIgnore`、6 命风化加成 → 模块能力 `windAnomalyBonus`）；含 `as any` 访问改名踩坑 |
 | `docs/mcp-cc38-alice.md` | **CC-38 设计稿与实施记录**：爱丽丝在 core / 编排层的残留去角色化（spark 局部量改名；模块能力 `giftedPolarAssaultCount`；异常池输出 `aliceCoweringDot` → `coweringDot`，推翻 CC-24「不改」口径）；判据 22 22→7 |
+| `docs/mcp-cc39b-stun-window-end.md` | **CC-39b 设计稿与实施记录**：「结束失衡窗口的轴块」统一能力 `endsStunWindow` / `axisMoveActionTime`，单一派发点 `resourceCalc/helpers.ts`；含 perf 语料对决算截断零覆盖的坑与 CC-39c 待补快照 |
 | `docs/mcp-logic-editor-state-safety.md` | **逻辑编辑器配置安全**：导入/缓存/草稿同源校验、存储失败提示、有效倍率快照隔离与兼容性回归 |
 | `docs/mcp-logic-editor-history.md` | **逻辑编辑器可逆试改**：会话级撤销/重做、无效草稿恢复、独立快照与输入框快捷键边界 |
 | `docs/mcp-r65j1-decibel-cap-verdict.md` | **R65-J1 首案裁决备忘**：橘福福「喧响上限+1000」在整局总量口径下零消费者（不是缺口）；证据链、护栏判据 decibelCapVerdict.test.ts 与未来喧响时间轨接入时的重裁决步骤 |

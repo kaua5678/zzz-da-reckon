@@ -1374,6 +1374,26 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 2. **零散 5 计（CC-40）**：`liuyinPromote`（convergence 里 `./liuyinPromote` import 路径，文件改名如 `ultimatePromote.ts`，同步所有 import）、`lighterTeamEnergy`、`yixuanFuFaForJufufu`、`yeshuguangStunCapMult` / `yeshuguangVeilStunBase`（damagePool.ts）。每个先 grep 读写方再定是改名还是能力化。
 3. 判据 22 清零后：把判据 22 改成「只许 0」的硬门（frozen 0 / target 0），并在 ARCHITECTURE 写明新增角色机制一律走模块能力。
 
+### 5.41 CC-39b done：终结失衡窗口招式统一能力（lead-arena-0925c，2026-09-27 第 54 轮）
+
+**提交** `a1eb71e`（verify EXIT=0）。判据 22 **7 → 5**；`BASELINE` / `frozen` 5，target 0 不变。设计稿与实施记录 `docs/mcp-cc39b-stun-window-end.md`（README §6 52 份）。
+
+- 新模块能力 `endsStunWindow(moveId, cinema)` / `axisMoveActionTime(moveId, t)`，由雨果和佩洛伊斯实现；统一派发点 `resourceCalc/helpers.ts#axisMoveEndsStunWindow` / `axisMoveActionTimeOf`。convergence 决算截断与 roundInputs 轴栈 `endsStunWindow` 同源。
+- roundInputs 不再值导入 `@/mechanics/agents/hugo`；两处 `'1551016'` 字面量删除。
+- 验证：tsc 0；dump / rows 零差；反向①②（两个能力）dump 零差、新单测各红 1；接线探针（调用点恒 false）stunVulnSummary 雨果集成快照红 2。
+- **坑**：perf 语料对决算截断零覆盖，改这条路径必须跑 `axisStunWindowEnd` + `stunVulnSummary`。
+
+**回退点**：`git revert a1eb71e`。
+
+**rf3 快照（5 计，5 字段）**：liuyinPromote 1（convergence import 路径）/ lighterTeamEnergy 1（convergence:565 读 moduleFeedback 键）/ yixuanFuFaForJufufu 1（convergence:1102 读 moduleFeedback 键）/ yeshuguangStunCapMult 1 / yeshuguangVeilStunBase 1（damagePool.ts:178–179 读面板字段）。
+
+**下一步：CC-40 清零（可直接开工，按顺序，建议拆 40a/40b/40c 三个提交）**
+1. **40a 文件改名**：`git mv src/composables/resourceCalc/liuyinPromote.ts ultimatePromote.ts`（文件里是 `promoteFixpoint` 等通用失衡/终结技提升不动点）。同步所有 import：`grep -rn "liuyinPromote'" src`，已知有 convergence.ts:35、`resourceCalc/__tests__/liuyinPromote.test.ts:12`（测试文件名可保留）。注释里的历史名（findSlotByIdentity.test.ts:8、anomalyPanels.ts:90）改成新路径。先确认 `vitest run liuyin` 的过滤器是否还能匹配到这个测试（按文件名匹配，测试文件不改名就不受影响）。−1。
+2. **40b moduleFeedback 键改通用名**：键定义在 `src/mechanics/types.ts` 的 `ModuleFeedback`（CC-31 起）。`lighterTeamEnergy` → `teamEnergyConsumed`（莱特写、convergence:565 读，赋给 cfg `lighterTeamEnergyConsumed`，这个 cfg 名属于模块自有，不在扫描范围）；`yixuanFuFaForJufufu` → `teamUltimateBonusForTigerRoar` 或同义通用名（仪玄写、convergence:1102 读）。整词替换并逐个 `grep -rnw` 旧名：测试 `nextRoundFeedbackR20.test.ts`（199/209/276/288）、`axisContext.test.ts`（707/724/734/747），都是 `as never` 字面量，**tsc 拦不住，漏改会让断言变成空断言**。另外查 `outerCycle` 签名和 `feedbackCfgKeys` 是否按键名枚举。−2。
+3. **40c 叶瞬光面板字段改通用名**（照 CC-37）：`yeshuguangStunCapMult` → `veilStunCapMult`，`yeshuguangVeilStunBase` → `veilStunBase`。涉及 `types/catalog.ts:80/89`、`data/agentPanelStats.ts:18–19`、`damagePool.ts:178–179`、叶瞬光模块（写入方）、`damagePoolBatchR18d.test.ts`、`zzz_ysg_probe.test.ts`；再 grep `src/specs/agents/1431.json`、`public/static/character-mechanics.json`、`docs/MECHANICS_IMPLEMENTATION.md`。反向：damagePool 读侧置 0 ⇒ dump 应出差（叶瞬光在语料里；若零差就补单测）。−2。
+4. 清零后把判据 22 改成硬门：frozen 0 / target 0，并在 `docs/ARCHITECTURE.md` 写明「core / 编排层不得出现 `<角色前缀>Xxx` 标识符，新机制一律走模块能力」。
+5. 小卡 **CC-39c**（可派低级模型）：给佩洛伊斯右分支决算补一条轴集成快照，锁 `verdictSecondsLost > 0`，详见设计稿 §4。
+
 ## 附录：普查脚本 census.sh
 
 ```bash
