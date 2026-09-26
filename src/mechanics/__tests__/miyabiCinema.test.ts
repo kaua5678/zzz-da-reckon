@@ -48,7 +48,9 @@ describe('星见雅命座生效（全管线）', () => {
 describe('星见雅滑块生效差分（防守卫冻结，SOP §3.5：改滑块→结果确实变）', () => {
   it('miyabi.iceFlameCoverage → 冰焰积蓄效率差分（applyPanel 静态消费）', () => {
     // coverage 由 applyPanel 从 settings 算（显式非 1 值优先，否则按队伍/命座自动默认）；
-    // 消费在 applyMiyabiPanel：iceFlameBonus = min(80, critRate) × coverage + 霜灼 20（无风队）
+    // 消费在 applyMiyabiPanel：iceFlameBonus = min(80, critRate) × coverage。
+    // 核心被动「所有单位 +20%」已迁到 teamPanelEffects（F2 裁决 2026-09-25 改全队），
+    // 直接调 applyPanel 不再含这 +20；该条由 C1 全队用例与霜灼全队行为另行覆盖。
     const efficiencyFor = (coverage: number, critRate = 20) => {
       const panel: any = { critRate, anomalyBuildUpEfficiency: 0, miyabiHasWindTeammate: 0 }
       miyabiMechanic.applyPanel!({
@@ -59,9 +61,9 @@ describe('星见雅滑块生效差分（防守卫冻结，SOP §3.5：改滑块�
     }
     const on = efficiencyFor(0.8)
     const off = efficiencyFor(0.2)
-    // 0.8 → 20×0.8=16 +20（霜灼）；0.2 → 20×0.2=4 +20
-    expect(on).toBeCloseTo(20 * 0.8 + 20, 1)
-    expect(off).toBeCloseTo(20 * 0.2 + 20, 1)
+    // 0.8 → 20×0.8=16；0.2 → 20×0.2=4（均不含已迁走的核心被动 +20）
+    expect(on).toBeCloseTo(20 * 0.8, 1)
+    expect(off).toBeCloseTo(20 * 0.2, 1)
     expect(on - off).toBeCloseTo(20 * 0.6, 1)
     // 面板链路原点：setting 经 resolveMechanicSettings → applyPanel 静态算 coverage
     const p2: any = { critRate: 20, anomalyBuildUpEfficiency: 0, miyabiHasWindTeammate: 0 }
@@ -200,5 +202,36 @@ describe('星见雅 C1 全队积蓄效率 +20%（影画一第二分句·生效�
     expect(auto.teammateEff).toBe(off.teammateEff)
     expect(auto.miyabiEff).toBe(off.miyabiEff)
     expect(auto.damage).toBe(off.damage)
+  })
+})
+
+describe('星见雅核心被动「所有单位」积蓄 +20% 改全队（F2 裁决 2026-09-25）', () => {
+  const MIYABI_SLOT = 0
+  const TEAMMATE_SLOT = 1
+  // 无风队（1091 雅 + 1131 苍角）：核心被动 +20% 应覆盖全队；C0 即激活（不依赖影画一）。
+  const C0_TEAM: Parameters<typeof setupHarness>[0] = [{ agentId: '1091', cinemaLevel: 0 }, { agentId: '1131' }, '']
+  // 无雅对照：核心被动 channel 不得泄漏（雅不在队 ⇒ 无 +20）。
+  const NO_MIYABI_TEAM: Parameters<typeof setupHarness>[0] = [{ agentId: '1131' }, { agentId: '1211' }, '']
+
+  async function effPair(team: Parameters<typeof setupHarness>[0]) {
+    await setupHarness(team)
+    const calc = useResourceCalc()
+    void calc.damagePoolRows.value
+    return {
+      miyabiEff: panelAt(calc.panels.value, MIYABI_SLOT)?.anomalyBuildUpEfficiency ?? 0,
+      teammateEff: panelAt(calc.panels.value, TEAMMATE_SLOT)?.anomalyBuildUpEfficiency ?? 0,
+    }
+  }
+
+  it('无风队：雅本人与队友的 anomalyBuildUpEfficiency 均含核心被动 +20（F2 全队）', async () => {
+    const withMiyabi = await effPair(C0_TEAM)
+    const withoutMiyabi = await effPair(NO_MIYABI_TEAM)
+    // 雅在队时，本人与队友都比「无雅对照」多 +20（核心被动唯一来源 = 雅）。
+    expect(withMiyabi.miyabiEff - withoutMiyabi.teammateEff,
+      `雅本人 delta（in=${withMiyabi.miyabiEff} ref=${withoutMiyabi.teammateEff}）`)
+      .toBeGreaterThanOrEqual(20)
+    expect(withMiyabi.teammateEff - withoutMiyabi.teammateEff,
+      `队友 delta（in=${withMiyabi.teammateEff} ref=${withoutMiyabi.teammateEff}）`)
+      .toBeCloseTo(20, 5)
   })
 })

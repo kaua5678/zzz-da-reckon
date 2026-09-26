@@ -7,6 +7,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentSkillTransformInput,
+  AgentTeamPanelEffectInput,
   ReadonlyTeam,
 } from '../types'
 import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
@@ -47,6 +48,8 @@ const C2_NA_AND_DODGE_COUNTER_DMG = 30
 const C4_FROSTBURN_DMG = 30
 /** C4：霜灼·破额外喧响 */
 const C4_FROSTBURN_DECIBEL = 250
+/** 核心被动「寒炎」：霜灼状态下所有单位（全队）属性异常积蓄效率 +20%（Lv.7，F2 裁决 2026-09-25 改全队） */
+const FROSTBURN_TEAM_BUILDUP_BONUS = 20
 /** C6：极意霜月伤害+30% */
 const C6_FROST_MOON_DMG = 30
 /** 霜月 #1 move id（C6 赠送） */
@@ -158,10 +161,9 @@ function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
   if (iceFlameBonus > 0) {
     panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + iceFlameBonus
   }
-  // 霜灼状态全队积蓄效率 +20%（风队除外：风化状态不被覆盖，霜灼无法触发）
-  if (!hasWind) {
-    panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + 20
-  }
+  // 核心被动「霜灼状态：所有单位积蓄 +20%」已迁到 `teamPanelEffects`（F2 裁决 2026-09-25：
+  // 原文「所有单位」= 全队，不是只写雅本人）。本槽的 `miyabiHasWindTeammate` 标记在此已写好，
+  // 供 teamPanelEffects 复用门控。
 }
 
 // ============ buildCharConfig ============
@@ -387,6 +389,23 @@ export const miyabiMechanic: AgentMechanicModule = {
   name: '雅',
   description: '烈霜独立元素、冰焰积蓄效率、落霜状态机、霜月架势三段、霜灼·破直伤与命座机制。',
   applyPanel: applyMiyabiPanel,
+  /**
+   * 核心被动「寒炎」：霜灼状态下，**所有单位**对目标累积的属性异常积蓄值 +20%（Lv.7）。
+   *
+   * F2 用户裁决 2026-09-25：原文「所有单位」= 全队，不是只写雅本人——从 `applyPanel`
+   * （只写雅面板）迁入本钩子，对全队每个槽位统一 +20%（含雅本人：雅在 `team` 里，
+   * 派发到自己槽位时同吃）。风队门控沿用（风化状态不被覆盖，霜灼无法触发 ⇒ 覆盖率为 0），
+   * 读目标槽面板上的 `miyabiHasWindTeammate` 标记——该标记由本模块 `applyPanel` 写入，
+   * 本钩子在其后跑（契约：先自己的、再别人的）。
+   *
+   * 与 spec teamBuff `miyabi_c1_team_buildup`（影画一 +20%）是**两条独立 +20%**，可叠加：
+   * 无风队里 C1 激活时每名队友与雅本人各 +40%（F1 裁决：核心被动与影画一在雅身上叠加为 +40）。
+   * 契约见 `AgentTeamPanelEffectInput`（本钩子只允许可交换的加法 `+=`）。
+   */
+  teamPanelEffects: ({ targetSlot: _targetSlot, panel }: AgentTeamPanelEffectInput): void => {
+    if ((panel.miyabiHasWindTeammate ?? 0) === 1) return
+    panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + FROSTBURN_TEAM_BUILDUP_BONUS
+  },
   buildCharConfig: buildMiyabiCharConfig,
   buildExecutions: buildMiyabiExecutions,
   anomalyBuildupElement: FROSTFIRE,
