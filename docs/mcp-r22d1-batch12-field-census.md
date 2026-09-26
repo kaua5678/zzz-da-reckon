@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-27 第 37 轮，lead-arena-0925c）**：**CC-29 已落地 `69b53f9`**。useResourceCalc `anomalyDamageEvents` 末尾按身份 `findSlotByIdentity(['1261'])` 的简 6 命事件分支 → jane 模块 `anomalyEventRecords`（入参扩 `cinemaLevel` / `perElementTriggerCounts`）；**useResourceCalc 已无 `findSlotByIdentity`**。判据 22 从 340 降到 **332**（target 328 未达成，维持）。verify EXIT=0。详见 §5.23。
+- **最新交接（2026-09-27 第 38 轮，lead-arena-0925c）**：**CC-30 已落地 `371a2c1`**（`remielleEntryPanels` → `entrySnapshotPanels` 纯改名，13 文件 21 处；判据 17 的 `COMPACTED_ARRAYS` 名单与其 fixture 测试同步改名 ⇒ 新名仍受槽位索引守卫；AGENTS.md / ARCHITECTURE.md / ENGINE_PIPELINE_GUIDE.md / MECHANICS_IMPLEMENTATION.md 现行规则文档同步）。判据 22 从 332 降到 **326**，**target 328 已达成 → 重设 314**。verify EXIT=0。详见 §5.24。
+  **下一步（可以直接开工）**：**CC-31**（`CalcRoundThreads` 里 14 个「模块下一轮反馈」具名字段 → 通用 `moduleFeedback` 字典；判据 22 最大一簇，预计 −40 以上），开工清单见 §5.24。
+- **上一轮交接（2026-09-27 第 37 轮，lead-arena-0925c）**：**CC-29 已落地 `69b53f9`**。useResourceCalc `anomalyDamageEvents` 末尾按身份 `findSlotByIdentity(['1261'])` 的简 6 命事件分支 → jane 模块 `anomalyEventRecords`（入参扩 `cinemaLevel` / `perElementTriggerCounts`）；**useResourceCalc 已无 `findSlotByIdentity`**。判据 22 从 340 降到 **332**（target 328 未达成，维持）。verify EXIT=0。详见 §5.23。
   **下一步（可以直接开工）**：**CC-30**（`remielleEntryPanels` → 通用名纯改名，判据 22 预计 −6，可达成 target 328），开工清单见 §5.23。
 - **上一轮交接（2026-09-27 第 36 轮，lead-arena-0925c）**：**CC-28 已落地 `69e85c4`**。useResourceCalc 的 `remielleVoidflareEvents`（按身份 `['1581']` 的编排层角色分支）改为通用的 `moduleAnomalyEventRecords` + 蕾米埃尔模块能力 `anomalyEventRecords`；ResultPage 同步改名；新增展示层单测 `moduleAnomalyEventRecords.test.ts`，期望值为迁移前旧实现的输出。判据 22 从 357 降到 **340**，target 重设 **328**。verify EXIT=0。详见 §5.22。
   **下一步（可以直接开工）**：**CC-29**（useResourceCalc 里简 6 命「强击暴击附伤」事件是同类编排层角色分支 → 复用 `anomalyEventRecords`），开工清单见 §5.22。
@@ -293,6 +295,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-27 CC-26b 后**：**357**（`0d65f59`）；target 351 未达成，维持不变。下一张：CC-28（§5.21）。
 - **2026-09-27 CC-28 后**：**340**（`69e85c4`）；已低于 target 351，重设 target **328**。下一张：CC-29（§5.22）。
 - **2026-09-27 CC-29 后**：**332**（`69b53f9`）；target 328 未达成，维持。下一张：CC-30（§5.23，预计 −6 → 326 达成）。
+- **2026-09-27 CC-30 后**：**326**（`371a2c1`）；target 328 已达成 → 重设 **314**（326 − 12）。下一张：CC-31（§5.24）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -941,6 +944,24 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 2. 做法：**只改字段/变量名** `remielleEntryPanels` → `entrySnapshotPanels`（useResourceCalc 变量 + ctx 字段 + damagePool 接口 + damagePoolAnomaly 解构 + types.ts/core/panel.ts 注释）；`computeRemielleEntryPanel` **本张不改**（它在 helpers 壳导出清单，`anomalyPanelsShell.test.ts`/`skillRowsShell.test.ts` 有名单断言，改名要连测试一起动 ⇒ 另开 CC-30b 或并入，先 rf3 看它是否计入判据 22 再定）。改前 `grep -rn remielleEntryPanels src scripts .zc` 列全引用，按词边界 sed。
 3. 验证：tsc 0；dump/rowsnap 零差（纯改名应全等）；rf 读数预计 326（< target 328 ⇒ **必须同时重设 target**，否则 checkGuards.test 2 条红，建议 326−12=314）；verify。
 4. 之后候选：琉音一族（xideIdx / liuyinIdx / liuyinSrc / liuyinPromoteCount，需设计稿）、velinaCorrosionSource / velinaCinema2CorrosionRate（CC-27，§5.19）。
+
+### 5.24 CC-30 落地记录 + CC-31 开工清单（2026-09-27 第 38 轮 lead-arena-0925c）
+
+**CC-30（`371a2c1`，判据 22 332→326，target 328→314）**：
+- 按词边界 `sed 's/\bremielleEntryPanels\b/entrySnapshotPanels/g'`，改前 21 处 → 改后旧名 0、新名 21；`computeRemielleEntryPanel`（大写 R，词边界不命中）8 处**刻意保留**（helpers 壳名单 `panelPhasesShell.test.ts:38`、`remielle.test.ts` 直接 import；它不计入判据 22 读数，rf3 已核）。
+- 改动文件：`src/core/panel.ts`（注释）、`src/mechanics/types.ts`（注释）、`src/composables/useResourceCalc.ts`、`resourceCalc/damagePool.ts`（ctx 字段）、`resourceCalc/damagePoolAnomaly.ts`、两份 `compactedSlotIndex.test.ts`、`scripts/lib/compacted-slot-index.mjs`（**`COMPACTED_ARRAYS` 名单**）、`scripts/check-guards.mjs`（判据 17 名称 + 棘轮常量）、`scripts/lib/core-role-field-ratchet.mjs`、AGENTS.md、docs/ARCHITECTURE.md、docs/ENGINE_PIPELINE_GUIDE.md、docs/MECHANICS_IMPLEMENTATION.md。历史 mcp-*.md 与 `.zc/lead-coordination.md` 保留旧名（历史记录，不改）。
+- **已知坑（已处理）**：判据 17 按**数组名**匹配压缩数组下标访问；只改变量不改 `COMPACTED_ARRAYS` ⇒ 新名脱离守卫。已连名单 + fixture（`src/scripts/__tests__/compactedSlotIndex.test.ts` 的 `k` 行与期望）一起改，fixture 测试断言 `entrySnapshotPanels[remielleSlot]` 被拦 ⇒ 守卫有牙。
+- **验证**：vue-tsc 0；`compactedSlotIndex` / `remielle.test` / `panelPhasesShell` 36/36；dump 625 / rowsnap 638 仅 `__ms` 差；check-guards 判据 17 ok（违规 0）；`npm run verify` EXIT=0（3570 passed）。脚本 `/home/kaua/calc-arch/z30.sh`。
+- **回退点**：`git revert 371a2c1`（单提交）。
+
+**CC-31 开工清单：轮间「模块下一轮反馈」具名字段 → 通用字典（lead 实读 HEAD `371a2c1`）**
+1. **事实**：`src/composables/resourceCalc/roundThreads.ts` 的 `CalcRoundThreads` 有 14 个模块反馈具名字段：yixuanFuFaForJufufu、yeshuguangGiftUlt、lucyTeammateEx、lighterTeamEnergy、graceC1Cycles、anbyZeroTeammateWl、vivianTeamEx、vivianAnomalyTriggers、promiaTriggerHits、promiaTeammateReleases、promiaReleaseDecibel、aliceTeamAssaultCount、aliceDisorderCount、ellenFreezeCount（接口 `:27-78`、`initialCalcRoundThreads` 初值 0）。产出：`convergence.ts:927` `feedbackNext = collectNextRoundFeedback(...)`（`resourceCalc/panelPhases.ts:268`，各模块 `nextRoundFeedback` 的**按键名合并记录**），`convergence.ts:1110-1132` 再逐个 `feedbackNext.x ?? 0` 拆回具名字段。消费：各模块 `applyTeamConfig` 读 `threads.<字段>`（grep `threads\.<字段>` 命中 promia/grace/lucy/vivian/yeshuguang/ellen/anbyZero/lighter；**alice / yixuan 未命中该写法，开工先换解构/别名形态再 grep**）；`convergence.ts:128` 解构 `lighterTeamEnergy: prevLighterTeamEnergy`（converge 相位递给莱特模块，`:901` 附近）；`nextRoundFeedback` 的「首轮守卫」读 `prevThreads` 整份快照（`convergence.ts:122-125` 注释）。
+2. **判据 22 份量**：rf3 这 14 个字段各计 4–5（convergence.ts + roundThreads.ts），合计约 55–60，是剩余 326 里最大的一簇。
+3. **方案（已拍板）**：`CalcRoundThreads` 删 14 个字段，加 `moduleFeedback: Readonly<Record<string, number>>`；初值 `{}`；`threadsNext.moduleFeedback = { ...feedbackNext }`（先核 `collectNextRoundFeedback` 返回类型是否全为 number，否则过滤）；消费侧一律 `threads.moduleFeedback.<键> ?? 0`。**等价性论证**：原字段缺省 = 0，新字典缺键 + `?? 0` = 0；`threadsAfterNullRound` 原把这些重置为 0 → 新 `{}`，等价。**例外保留**：`teamUltimateForJufufu`（全队汇总、无角色判定，原注释论证）继续是具名字段，它从 `feedbackNext.yixuanFuFaForJufufu` 求和的写法不变。**键名类型安全**：各模块把自己的键写成模块内 `const` 并在 producer/consumer 共用（不在 core/resourceCalc 列角色键名），可选在 `mechanics/types.ts` 加 `ModuleFeedbackKey` 字面量联合（mechanics 层允许角色名）。
+4. **拆两步提交（可逆）**：31a = 类型 + 产出 + 全部消费者一次改完（字段删掉后 tsc 会把漏改点全部报出来 = 天然清单）；31b = 注释/文档清理。
+5. **验证**：这些字段直接影响数值 ⇒ dump 625 / rowsnap 638 **零差是强判据**（覆盖含露西/薇薇安/普罗米娅/爱丽丝/艾莲的预设，开工先用 `grep` 语料确认每个模块都有预设覆盖，缺的用单测补）；**反向**：随便挑一个消费者把 `?? 0` 后的值 +1，dump 必须出差；check-guards；`npm run verify`。预计 rf ≈ 326 − 55 ≈ 270 < target 314 ⇒ **必须同时重设 target**（checkGuards.test 2 条会红）。
+6. 风险：`outerFeedbackSignature`（`resourceCalc/outerCycle.ts:10`）只读 `threadsNext.decibelParry` / `backstageAuto` 与 `aliceSwordWillSource.sparkCount`，**不读**这 14 个字段 ⇒ 收敛判据不受影响；测试里若有 `initialCalcRoundThreads()` 快照或手搓 threads 字面量（grep `__tests__` 里的 `lucyTeammateEx:` 等），要同步改。
+7. 执行：lead 自做（跨 10+ 文件、需要 tsc 驱动，不适合 dsflash 工人）。之后候选：琉音一族（需设计稿）、CC-27 维琳娜风蚀（§5.19）、crossAgentEnergy.ts 的 `xideIdx` / `xideVanguardEnergy` / 各 `*UltEnergy`（另立普查）。
 
 ## 附录：普查脚本 census.sh
 
