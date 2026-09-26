@@ -5,6 +5,12 @@
 
 ## 1. 做到哪一步
 
+- **最新交接（2026-09-26 20:2x，lead-arena-0925c 第 18 轮）**：CC-14a 已落地，提交 `285885b`（修订卡 §5.2-v2 = `a16d9ae`）。判据 22 从 803 降到 **775**，距 target 765 还差 10。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `285885b`，按 AGENTS「钉 HEAD」规则可归因。
+  **下一步（可以直接开工）**：立 CC-14c 卡，范围如下（§5.4 末尾已登记）：
+  - `core/resource/assembleSlot.ts:57–60` 把外部治疗写回 `cfg.yidhariExternalHealPct`；
+  - ctx 里的 `yidhariSlot`（`tailPipeline.ts` 中 `configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)`）。
+  做法：改成模块能力，例如 `onFinalAssemble({ cfg, providerUltCount })`。立卡前先 `grep -rn yidhariSlot src/core` 找全消费点，用判据 22 的读数估算降幅；若够 10 处，就能提前达成 target 765。
+  零差口径沿用 §4（两侧 `PERF_KEY_ALIAS=1`，基线在当前 HEAD 的原始 worktree 上重新生成）。
 - **最新交接（2026-09-26 19:5x，lead-arena-0925c 第 17 轮）**：CC-14b 已落地，提交 `6d8a995`（卡 `b88b1a6`，§5.4）。判据 22 从 821 降到 **803**。R1 已由并行会话完成（`ce307a0` / `4d80086`），所以 **CC-14a 的前置门已经打开**。
   **下一步（可以直接开工）**：派 CC-14a（§5.2）。派发前在当前 HEAD 按 §4「零差基线口径」重新生成基线，`dump-A` / `rows-A` / `*-H0*` 都已过期（`H0a` 生成于 `f0df0cb`，之后 R1 改了 src）。CC-14a 与 CC-14b 不交叠：CC-14a 动的是 resourceIncome 的命座能量段，以及 `EnergySource` / `ResourceResultCard`。
   再下一步：CC-14c（§5.4 末尾，登记未立卡），以及 B 类里不涉及能量的槽位变量卡。
@@ -65,6 +71,10 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **零差基线口径必须两侧对齐（2026-09-26 CC-14b 实测踩坑）**：`PERF_KEY_ALIAS=1` 会把 CC-13 的新键名映射回旧名，并剔除 `exRefundFreeCap`。基线如果不带这个开关生成、新代码却带开关跑，全部 624 个场景都会显示 DIFF。正确做法：在一个停在基线提交的 detached worktree 里，用**同一份** `.zc/perf`（已加上本卡的 alias），两侧都带 `PERF_KEY_ALIAS=1` 生成快照。脚本见 WSL `/home/kaua/calc-arch/verify14b.sh`，比对用 `node /home/kaua/calc-arch/cmp.mjs A B`，其中 `__ms` 是耗时元数据，出现差异属正常。
 - **dsflash 工人可能在验证中途退出**（CC-14b：改完代码、正在排查口径时 EXIT=0，没有提交）。lead 必须自己复核 diff、跑完验证再提交；不要因为工人「EXIT=0」就判定完成。
 - worktree 惯例：`git worktree add --detach /home/kaua/rNN-scratch/<名> <提交>`，然后把 `node_modules` 软链到主仓库，并 `cp -r .zc/perf`（gitignored，不会随 checkout 带过来）。派工人用 `/home/kaua/calc-arch/run-wt.sh <key>`（cd 目录已改成 cc14b，换 worktree 时改 sed）。
+- **dump 覆盖盲区（2026-09-26 CC-14a 实测）**：dump 只对 0 号位切换命座（default/c0/c6）。非 0 号位角色的高命座效果（例如青衣影画 4，青衣在所有预设里都不在 0 号位）**不在零差覆盖面内**。反向验证必须挑在 dump 里真实生效的项：CC-14a 先挑青衣得到 DIFF 0，改挑仪玄 1371 后 DIFF 36。覆盖面外的项靠单元测试兜底（`qingyiC4Energy.test.ts`）。若要补覆盖面，可给 `.zc/perf/dump.perf.ts` 加「全队 c6」变体（会改变基线键集）。
+- **并行 lead 的 src 提交会让对方的全量检查假红**（AGENTS.md「钉 HEAD」规则，`585dcf3`）。本线挑回 master 的 src 提交（`6d8a995` 19:41、`285885b` 20:12）都写进了 `.zc/lead-coordination.md`，方便对方归因。
+- 工人提交信息会照抄模板里的占位符（「803->实测值」），lead 用 `git cherry-pick -n` 加 `-F msgN.txt` 重写提交信息。
+- 工人遵守仓库规则 13，不用 `git add -A`，改为显式路径。以后提示词里直接写显式路径。
 
 ## 5. 普查结果
 
@@ -151,6 +161,15 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 
 #### 5.2-v2 CC-14a 修订卡（2026-09-26 第 18 轮 lead-arena-0925c，**取代上文「输入端 / core / 零差验证」三条**）
 
+> **已落地 `285885b`（2026-09-26 20:12）**。实现由工人在 worktree 提交 `de3be8d`，lead 复核后 cherry-pick 并重写提交信息。
+> 验证：
+> - dump 624 / rowsnap 637 零差（两侧 `PERF_KEY_ALIAS=1`，基线 H1a @ `66ba89a`）；
+> - 反向验证：仪玄 value×0 共 36 处 DIFF，全部在 1371 场景。卡面原写的青衣反向得到 DIFF 0，原因是覆盖盲区，见 §4；
+> - 定向 10 个测试文件 254 条通过，`vue-tsc -b` 为 0，master 全量 verify EXIT=0；判据 22 从 803 降到 775。
+> 工人偏离卡面两处，lead 认可：
+> - `src/core/__tests__/cinemaSkillLevel.test.ts` 的诺玛断言改成经 `normaMechanic.bonusEnergy` 取值（9×25），按 label 取，避开闸门字面量；
+> - 没用 `git add -A`（规则 13），改为显式路径。
+
 **决定：改用「模块能力」方案，输入端不动。**
 - **依据（读码实测）**：
   - 如果输入端改成 `bonusEnergyEntries` 列表，6 个模块的内部契约要全部重写：`yixuanFlashBonus` 是跨阶段 `+=` 累加通道，有 record 归一化（`yixuan.ts:373/540`）；`lycaonC2Energy` 在收敛期按失衡次数写入（`lycaon.ts:238`）。另有 9 个测试文件直接读写这些 cfg 字段。
@@ -215,6 +234,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
   - 反向验证：往 `src/core/damage.ts` 临时追加 `c.billyNegControl`，判据变红（822/821），还原后该文件无 diff。
 - **卡 CC-14a 完成后**：读数应降到 821 − 该卡清掉的引用数，届时同步下调常量和 frozen。
 - **2026-09-26 CC-14b 后**：基线与 frozen 都下调到 **803**（`6d8a995`）；target 765 不变，还差 38。
+- **2026-09-26 CC-14a 后**：基线与 frozen 都下调到 **775**（`285885b`）；target 765，还差 10。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 

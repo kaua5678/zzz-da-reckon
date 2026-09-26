@@ -155,7 +155,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-12 | 换尺 | **done**（dsflash 工人 + lead 复核：新增命中恰为 convergence.ts:302/311 两行；编排层基线/frozen 1→3（口径纠正），core 5 不变；src 零改动；guards 21、scripts 测试 452 过、build） | 身份扫描器补「本地别名」形态（`convergence.ts:302/311` 的 `fillerAgentId === '1051'/'1041'` 现在量不到），按规则 17② 调 `frozen` 到真实值 | scripts/lib/agent-identity-lines.mjs 等 |
 | CC-13 | review | **done**（dsflash 工人 v2 + lead 复核：闸门 grep 两条 0 行；build；guards 21；带 `PERF_KEY_ALIAS=1` dump 624 / rowsnap 637 零差，不带开关 dump 全量 DIFF 624（键名旁证）；反向验证删 `exRefundFreeCap` 写入 ⇒ DIFF 31 全为 yidhari-* 场景；verify 过。首派因卡面漏洞（EnergySource 键进 dump 哈希）停掉，见卡末 v2） | 连续强特通道通用化（R22-D1 批 1-1）：引擎只认 `exContinuous`/`exFinalize`/`exRefundPerPaid`/`exReserved*`/`exRefundFreeCap`，1051 模块声明；core 不再读 `yidhariExPerStun`/`yidhariStunCount`；零 delta | 14 文件，见下方 CC-13 卡 |
 | ~~批 1-2~~ | — | **不做**（lead 2026-09-26） | 比利/叶瞬光终局旗标并入 CC-13 通用通道：旗标只被各自模块读写、core 零读取，且语义不同 | `docs/mcp-r22d1-batch12-field-census.md` §2 |
-| CC-14a | review | **待派，前置门：R1 合入** | resourceIncome 命座能量 6 角色通用化（`bonusEnergyEntries`），零差用 PERF_KEY_ALIAS | 卡面 `docs/mcp-r22d1-batch12-field-census.md` §5.2；普查与分簇见 §5 |
+| CC-14a | review | **done** `285885b`（判据 22 803→775） | 6 角色专属能量项迁模块能力 `bonusEnergy`，EnergySource 收成 `bonusEntries`，零差（基线 H1a @ 66ba89a） | 卡面 `docs/mcp-r22d1-batch12-field-census.md` §5.2；普查与分簇见 §5 |
 | CC-14b | review | **done** `6d8a995`（判据 22 821→803） | 伊德海莉燃血喧响两处同式迁模块能力 `selfBurnDecibel`，零差（新基线 H0 @ f0df0cb） | 卡面 `docs/mcp-r22d1-batch12-field-census.md` §5.4 |
 
 ### CC-1 · 招式表查询迁出（fast）
