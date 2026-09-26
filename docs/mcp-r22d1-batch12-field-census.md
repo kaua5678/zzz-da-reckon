@@ -1106,6 +1106,35 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 3. **CC-34d（D 簇，约 6 计）**：re-export 壳。`grep -rn "remielleSpecialVoidflareCount\|getRemielleLevelValue\|calcVoidflareDamage" src` 找出经壳导入的调用方，改为直接从 `@/mechanics/agents/remielle` 导入（注意判据 19：mechanics/specs 不许值导入 composables，反方向没有限制），然后删壳。
 4. 其余：简 `janeAssaultCritDmgBonus`（`core/damage.ts`、`anomalyPool/helpers.ts` 读，`panel.ts:68` 初值，该行缩进异常）可以另开一组 `'assault'` 并入 `agentPanelStats` 表，但 core 读点仍在，需要单独设计；琉音（35）等设计稿；维琳娜 19（§5.19）。
 
+### 5.30 CC-34b done：蕾米埃尔 cfg 7 字段与两个招式查找函数迁入 remielle.ts（lead-arena-0925c，2026-09-27 第 44 轮）
+
+**提交**：代码 `db01cb6`（7 文件：5 个 src 加两个棘轮脚本）。判据 22 **171 → 155**（−16），`CORE_ROLE_FIELD_BASELINE` / `frozen` 155，**target 重设 143**。
+
+**做了什么**
+- `core/resource/moveLookup.ts`：`findRemielleRainbowEnd` / `findRemielleRadiantTurn` 两个函数**逐字**迁往 `mechanics/agents/remielle.ts`（插在 `buildRemielleCharConfig` 之前）。它们依赖的通用函数 `channelMetricsOf` 改为 `export`。moveLookup 只依赖类型层和数据层，mechanics 值导入它不会形成循环依赖。
+- `core/resource.ts`：删除 `findRemielle*` 的转导出。
+- `resourceCalc/helpers.ts`：删除两个查找函数的 import 和调用；cfg 字面量里 7 个字段 `remielleRainbowEnd{MoveId,ActionTime,DecibelRecovery,ComboAlignRatio}`、`remielleRadiantTurn{MoveId,ActionTime,DecibelRecovery}` 删除，原位置留 3 行注释指向 remielle.ts。
+- `remielle.ts#buildRemielleCharConfig`：从输入里解构 `skills`，调用两个查找函数写入这 7 个字段。`extraNecessaryAction` 的 3 个读点补 `?? 0`（字段在类型上已改为可选）。
+- `types/resource/config.ts`：RainbowEnd 的 4 个字段改为可选并加注释（RadiantTurn 原本就是可选）。
+- **行为差异（有意为之）**：非蕾米埃尔槽的 cfg 上不再带这 7 个字段（此前是 `undefined` / 0 值占位）。所有读点都在 remielle.ts 里，并且只在蕾米埃尔槽触发。
+
+**验证**
+- vue-tsc 0；相关单测 74/74 通过。
+- `PERF_KEY_ALIAS=1` 对 H2a：dump / rowsnap **仅 `__ms` 差**。结论：cfg 不进快照哈希，§5.29 担心的键序风险不存在，不需要 remap 或换基线。
+- **反向变异**（两个 actionTime ×2）：dump **37 键出差**，证明迁移后的写入点确实驱动结果；已从 `calc-arch/rm34c.bak` 还原，cmp 一致。
+- `npm run verify` EXIT=0（3573 passed / 29 skipped，`/home/kaua/calc-arch/verify34c.log`）。脚本：`/home/kaua/calc-arch/cc34b.py`、`z34c.sh`。
+- **回退点**：`git revert db01cb6`（单提交）。
+
+**CC-34c / CC-34d 预调研（HEAD db01cb6，只读）**
+- **C 簇 ①** `helpers.ts` 约 616 行：`extraSelfDecibelReward` 初值为 `panel.remielleFlowerFeatherDanceDecibelPerUse × panel.remielleFlowerFeatherDanceCount`。catalog 里 `remielle_c1_flower_feather_dance_decibel_per_use` 的 target 是 self（值 200），`teammate-buffs.json` 中没有 ⇒ 只在蕾米埃尔本人面板上非 0。迁移方法：字面量改为 0，在 `buildRemielleCharConfig` 里写 `cfg.extraSelfDecibelReward = Number(cfg.extraSelfDecibelReward ?? 0) + 乘积`（orphie、specPanelBuffs、yixuan 已经用 `+=` 写这个通道，先例成立）。**要先确认** buildCharConfig 里模块钩子在字面量**之后**执行，且之后没有别处覆盖这个字段。
+- **C 簇 ②** `helpers.ts` 约 811 行：`foundMove.id === '1581010'` 时读 `panel.remielleRadiantTurnDazeBonusPct`。改法是换成通用的执行级失衡加成字段，由 remielle 的 Radiant Turn 行写入；前提是查清 1581010 这个执行的全部产出方。**暂缓**，单独开卡。
+- **D 簇（re-export 壳）**：`helpers.ts` 从 `./anomalyPanels` 导入并导出 `getRemielleLevelValue` / `remielleSpecialVoidflareCount` / `calcVoidflareDamage`；`anomalyPanels.ts` 约 384-386 行从 `@/mechanics/agents/remielle` 导入并转导出。唯一经壳导入的调用方是 `mechanics/__tests__/remielle.test.ts:4`（测试不受判据 19 限制，但直接改为从 remielle 导入更干净）。**`composables/resourceCalc/__tests__/anomalyPanelsShell.test.ts` 的 `D_EXPORTS` 列了这 3 个名字**（刀 C 的壳契约测试，锁定「迁移不改变 API」），删壳时要同步把清单从 11 改为 8，并在注释里写明是 CC-34d 有意收窄。类型 `VoidflareDamageInput` 没有角色前缀，不计入判据 22，保留在壳里。
+
+**下一步（按顺序，可直接开工）**
+1. **CC-34c①+34d 合为一卡**（约 6 计，预计 155 → 约 149）：按上面的方法改 `helpers.ts`（extraSelfDecibelReward）、`remielle.ts`、`anomalyPanels.ts`、`remielle.test.ts`、`anomalyPanelsShell.test.ts`。验收：dump / rows 零差；反向变异（把 remielle 里的乘积 ×2）后 dump 应出差。
+2. CC-34c②：失衡加成读点，另开卡，先普查 1581010 的产出方。
+3. 其余字段簇：简 `janeAssaultCritDmgBonus` 需要单独设计；琉音 35（先写设计稿）、维琳娜 19（§5.19 / CC-27）、诺玛约 14、爱丽丝约 11、雨果约 7，另有零散的 lighterSource 5、rinaSlot 4。
+
 ## 附录：普查脚本 census.sh
 
 ```bash

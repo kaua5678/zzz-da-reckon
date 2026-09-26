@@ -184,6 +184,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-32b | review | **done** `a276399`（判据 22 254→231，target 219） | `CrossAgentEnergy` 5 个角色具名展示字段 → `bySource` 字典；结果卡改 v-for + 标签表，补席德正兵回能缺失的展示行 | census §5.26、§5.27 |
 | CC-33 | review | **done** `e882b9f`（判据 22 231→219，target 207） | 悠真 `harumasaStunOnly` → `SkillExecution.stunOnlyDmgBonus`（通用、带类型）；希希芙蚀骨轴内占比 → 模块能力 `directRowAxisSplit` | census §5.28 |
 | CC-34a | review | **done** `7de5847`（判据 22 219→171，target 159） | 蕾米埃尔 14 + 叶瞬光 2 个角色专属面板属性：`core/buff.ts` 删等价 case，`core/panel.ts` 初值由 `data/agentPanelStats.ts` 表铺开；CC-34b/c/d 待做 | census §5.29 |
+| CC-34b | review | **done** `db01cb6`（判据 22 171→155，target 143） | 蕾米埃尔 RainbowEnd / RadiantTurn 7 个 cfg 字段与两个招式查找函数从 core/moveLookup + helpers 迁到 `remielle.ts#buildRemielleCharConfig`；`channelMetricsOf` 导出；dump / rows 零差 | census §5.30 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
