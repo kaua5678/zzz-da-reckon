@@ -191,6 +191,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-35b | review | **done** `084a4e7`（判据 22 146→134，target 重设 122） | `AgentCharConfigInput` 加可选只读 `char`；仪玄 5 / 普罗米娅 1 个交互栏次数由模块 buildCharConfig 读入，删 helpers 字面量 6 行；新测试 charInputFields | census §5.33 |
 | CC-35c-A | review | **done** `d40a62d`（判据 22 134→130） | 新模块能力 `teamAnomalyDurationBonus`（全队异常持续时间通用规则臂，取最大值）；柏妮思 / 丽娜 / 简实现，删 anomalyPanels 按 id 写死分支 | census §5.34 |
 | CC-35c-B | review | **done** `b7b0d81`（判据 22 130→125） | 新模块能力 `adjustTeammateBuffSource`（队友 buff 来源面板修正）；莱特 / 耀嘉音实现，删 panelPhases 按 id 写死块；接线测试用包裹能力记录调用 | census §5.34 |
+| CC-35c-C | review | **done** `c763f5a`（判据 22 125→123） | cfg `luciaC4DecibelPerTrigger` → 通用名 `decibelPerCurtainTrigger`（帷幕喧响） | census §5.35 |
+| CC-35c-D | review | **done** `dbc7e92`（判据 22 123→103，target 重设 91） | core/resource/helpers.ts 赠链局部量去角色名（取值早已走 crossAgentSupply 通道） | census §5.35 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 

@@ -1254,6 +1254,31 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - 编排层 / resourceCalc 里遍历队伍时**不要**写 `a.agentId === b.agentId` 之类的比较，agentId 棘轮会计数；用下标对应或 `getAgentMechanic(char.agentId)` 派发。
 - 队友 buff 相关改动的「移除 → 结果不变」差分测试容易是空的，优先用包裹能力记录调用来锁接线。
 
+### 5.35 CC-35c-C / CC-35c-D done：露西亚 C4 cfg 字段改通用名、赠链局部量去角色名（lead-arena-0925c，2026-09-27 第 48 轮）
+
+**提交**：C 代码 `c763f5a`（6 src + GAME_TERM + 2 棘轮），D 代码 `dbc7e92`（helpers.ts + convergence.ts 注释 + 2 棘轮）。判据 22 **125 → 123 → 103**；`CORE_ROLE_FIELD_BASELINE` / `frozen` 103，**target 122 已达成 → 重设 91**（实测 103 − 12，沿用惯例）。agentId 棘轮保持 3/3。
+
+**CC-35c-C：`cfg.luciaC4DecibelPerTrigger` → `cfg.decibelPerCurtainTrigger`**
+- 「帷幕」本身已是通用能力（`curtainTriggers` / `curtain-open`），引擎 `core/resource/helpers.ts` 与 `assembleSlot.ts` 只读「每次帷幕触发的喧响」这一个数，名字里的角色是残留。写入方仍是露西亚模块（C4 = 100）。
+- `luciaC4CurtainCoverage` 只有露西亚模块自己读，**保留原名**（不计入判据 22 也无需改）。census 历史节保留旧名。
+- 验证：vue-tsc 0；luciaElowen / teamHookMigration / yidhari 43/43；dump / rows 仅 `__ms` 差；**反向变异 100→200：dump 零差（语料不含露西亚 C4），单测红 1 条** → 由单测锁住；还原后 rf 123。verify EXIT=0，3592 passed（`/home/kaua/calc-arch/verify35cc.log`）。
+- 踩坑：改名脚本若先写入「含旧名的说明注释」再做计数断言，会多计一处。**先全局改名，再插含旧名的说明**。
+
+**CC-35c-D：`core/resource/helpers.ts` 赠链局部量去角色名（计划外，顺手做，20 计）**
+- 普查 CC-35d 时发现：`helpers.ts` 里 `normaGift*` / `liuyinGift*` 六个局部变量**取值早已走通用通道**——`crossAgentSupplyAt(… findCrossAgentSupplySlots(configs, 'gift-chain:chain') …)` 与 `ultimateGiftOf`（CC-32 落地）。角色名只剩变量名，改名即可，零行为风险。
+- 映射：`normaGift`→`chainGift`、`normaGiftTargetIdx`→`chainGiftTargetIdx`、`normaGiftChainTime`→`chainGiftTime`；`liuyinGift`→`ultGift`、`liuyinGiftTargetIdx`→`ultGiftTargetIdx`、`liuyinGiftTime`→`ultGiftTime`（`\b` 词界替换，逐名断言计数 4/3/3/5/3/2）。`convergence.ts:354` 的过期引用 `core/resource.ts#liuyinGiftTime` 顺手改指向。`crossAgentSupply.ts` 头注释里的历史函数名（`normaGiftChainInfo` 等）是沿革记录，保留。
+- 纯改名不做反向变异：vue-tsc 0 保证无残留引用；timeLedgerInvariants / hugoVerdictLanding / norma / liuyin / crossAgentSupply 36/36；dump / rows 仅 `__ms` 差。verify 见 `/home/kaua/calc-arch/verify35cd.log`（EXIT=0）。
+- 决定依据：规则 17② 只禁止「换尺」与代码同批；这里尺子没变（rf.mjs 未动），读数下降是代码改动的结果，target 按惯例重设，不属换尺。
+
+**rf3 快照（103 计，36 字段，2026-09-27 D 块后）**：维琳娜 velinaCorrosionSource 9 / velinaCinema2CorrosionRate 7 / velinaCorrosion 3 / velinaC6 2 / velinaBroadFromCorrosionCount 2 / velinaMicroCycloneCount 2 / velinaCinema1ResIgnore 2；琉音 liuyinSrc 8 / liuyinIdx 7 / liuyinPromoteCount 7 / liuyinMechanicSource 5 / liuyinPromoteHug60 2 / liuyinPromote 1；诺玛 normaIdx 4 / normaSrc 3 / normaResult 2 / normaHatChain 1（全在 `normaHatChain.ts`）；爱丽丝 aliceSpark* / aliceCoweringDot 共 14；雨果 hugo* 共 11（convergence / roundInputs）；简 janeAssaultCritDmgBonus 3；莱特 lighterTeamEnergy 1。
+
+**脚本**：`/home/kaua/calc-arch/cc35cc.py`、`z35cc.sh`、`cc35cd.py`、`z35cd.sh`。**回退点**：`git revert dbc7e92` / `git revert c763f5a`（两者都改棘轮同一行，先撤 D 再撤 C）。
+
+**下一步（按顺序，可直接开工）**
+1. **CC-35d（诺玛 / 琉音装配后赠送行，约 40 计）**：剩余的是编排层两个装配后补丁——`resourceCalc/normaHatChain.ts#applyNormaHatChain`（`findSlotByIdentity(['1571'])` → `normaMechanicSource.hatToChainCount` → `resolveUltimateTargetSlot` 给上一位队友追加赠连携行）与 `liuyinPromote.ts#applyLiuyinPromote`（同构：赠终结技行），外加 damagePool* 读 `liuyinSrc` / `liuyinPromoteCount`。先写设计稿 `docs/mcp-cc35d-gift-chain.md`（**同提交登记 README §6**）：思路是模块自报「装配后赠送」供给（复用 CC-32 `crossAgentSupply` 的 `gift-chain:chain` / `gift-chain:ultimate` 通道拿次数与目标），编排层只按通道遍历，去掉 `findSlotByIdentity` 身份查找。验收必须含 timeLedgerInvariants（Σ非赠行 + 赠行 ≡ 账本）+ dump / rows 零差 + 反向变异。
+2. 维琳娜 27 计（anomalyPool 为主）、爱丽丝 14、雨果 11、简 3 照旧。
+3. 调研待派：花羽轮舞次数（§5.31）、莱特额外能力 buff 默认是否生效（§5.34）、W31。
+
 ## 附录：普查脚本 census.sh
 
 ```bash
