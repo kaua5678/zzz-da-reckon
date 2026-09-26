@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-27 第 35 轮，lead-arena-0925c）**：**CC-26b 已落地 `0d65f59`**（rowBuild 里蕾米埃尔「光辉回转」后台行 → 模块能力 `backstageAutoRows`，在原位置派发）。判据 22 从 363 降到 **357**，target 351 未达成，维持不变。verify EXIT=0。详见 §5.21。
+- **最新交接（2026-09-27 第 36 轮，lead-arena-0925c）**：**CC-28 已落地 `69e85c4`**。useResourceCalc 的 `remielleVoidflareEvents`（按身份 `['1581']` 的编排层角色分支）改为通用的 `moduleAnomalyEventRecords` + 蕾米埃尔模块能力 `anomalyEventRecords`；ResultPage 同步改名；新增展示层单测 `moduleAnomalyEventRecords.test.ts`，期望值为迁移前旧实现的输出。判据 22 从 357 降到 **340**，target 重设 **328**。verify EXIT=0。详见 §5.22。
+  **下一步（可以直接开工）**：**CC-29**（useResourceCalc 里简 6 命「强击暴击附伤」事件是同类编排层角色分支 → 复用 `anomalyEventRecords`），开工清单见 §5.22。
+- **上一轮交接（2026-09-27 第 35 轮，lead-arena-0925c）**：**CC-26b 已落地 `0d65f59`**（rowBuild 里蕾米埃尔「光辉回转」后台行 → 模块能力 `backstageAutoRows`，在原位置派发）。判据 22 从 363 降到 **357**，target 351 未达成，维持不变。verify EXIT=0。详见 §5.21。
   **下一步（可以直接开工）**：**CC-28**（`useResourceCalc.ts` 的 `remielleVoidflareEvents` computed 是**编排层角色分支**，直接违反 AGENTS.md「禁止在 useResourceCalc 加角色分支」→ 模块能力），开工清单见 §5.21。
 - **上一轮交接（2026-09-27 第 34 轮，lead-arena-0925c）**：**CC-26 已落地 `8b7d9db`**。core/resource 里蕾米埃尔「垂虹」必做动作行和时间合计改走模块能力 `extraNecessaryAction`（派发口 `rowAccounting.ts#extraNecessaryActionOf`）；「特殊虚耀」异常事件逐字迁入蕾米埃尔 `buildAnomalyEvents`。判据 22 从 403 降到 **363**（−40，core 内 `cfg.remielleRainbowEnd*` 读点一并消失），target 重设 **351**。verify EXIT=0。详见 §5.20。
   **下一步（可以直接开工）**：**CC-26b**（rowBuild 里蕾米埃尔「光辉回转」后台行 → 模块能力，**必须在原位置派发**），开工清单见 §5.20。
@@ -287,6 +289,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-27 CC-25 后**：**403**（`7cef9c8`）；target 398 未达成，维持不变。下一张：CC-26（§5.19）。
 - **2026-09-27 CC-26 后**：**363**（`8b7d9db`）；已低于 target 398，重设 target **351**。下一张：CC-26b（§5.20）。
 - **2026-09-27 CC-26b 后**：**357**（`0d65f59`）；target 351 未达成，维持不变。下一张：CC-28（§5.21）。
+- **2026-09-27 CC-28 后**：**340**（`69e85c4`）；已低于 target 351，重设 target **328**。下一张：CC-29（§5.22）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -884,6 +887,38 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
    - 反向验证：把能力里的 `voidflareTotal` +1，新单测应当变红。
 4. 执行：lead 自做。完成后在 AGENTS.md 相关条目下不需要改规则，只在 census 里记录「useResourceCalc 角色分支 −1」。
 5. 之后的候选：`remielleEntryPanels`（useResourceCalc:149 `computeRemielleEntryPanel` × 3 槽 → ctx → damagePoolAnomaly:327 的 `entryPanel`，可以做成模块能力 `entryPanel?`，并通用改名为 `entryPanels`）；琉音一族（需要设计稿）；CC-27 维琳娜风蚀（§5.19）。
+
+### 5.22 CC-28 落地记录 + CC-29 开工清单（2026-09-27 第 36 轮 lead-arena-0925c）
+
+**CC-28（`69e85c4`，判据 22 357→340，target 328；useResourceCalc 角色分支 −1）**：
+- **先固化再迁移**：迁移前用临时测试在旧代码上采集了 4 种队伍的输出，存为 `/home/kaua/calc-arch/cc28-base.json`：
+  - `r0` = [1581, 1501, 1561]，4 条记录；
+  - `r2` = [1261, 1331, 1581]，4 条；
+  - `lead-empty` = ['', 1501, 1581]，4 条；
+  - `none` = [1261, 1331, 1501]，0 条。
+  - 「特殊虚耀」那条在这些配置下 count=0，被 filter 掉。
+  这份输出原样嵌入新单测 `src/composables/__tests__/moduleAnomalyEventRecords.test.ts` 作为 EXPECTED，逐字段 `toEqual`，另有 1 条负控断言 EXPECTED 不是空壳。临时采集测试已删除。
+- `mechanics/types.ts`：`AgentMechanicModule` 新增 `anomalyEventRecords?(input: AgentAnomalyEventRecordsInput): AnomalyEventRecord[]`；文件末尾新增入参接口 `{ slot; panel; teamAgentIds; perSlotAnomalyTriggers }`；`AnomalyEventRecord` 加入 `@/types/resource` 的 type import。
+- `mechanics/agents/remielle.ts`：新增导出 `remielleAnomalyEventRecords`，原 computed 的函数体逐字搬入（`remielleSlot` → `ownSlot`，`configStore.team[slot]?.agentId` → `teamAgentIds[slot]`，面板直接用入参）；模块对象挂 `anomalyEventRecords`。
+- `composables/useResourceCalc.ts`：
+  - 整段替换为 `moduleAnomalyEventRecords` computed：槽位 0→2，对挂了能力的模块用 `panelAt(panels.value, slot)` 派发，无面板就跳过，结果拼接；
+  - 导出名改为 `moduleAnomalyEventRecords`；
+  - 解构里不再使用的 `remielleSpecialVoidflareCount` 删除（先剥注释再判断）。
+- `views/ResultPage.vue`：两处 `remielleVoidflareEvents` 改为 `moduleAnomalyEventRecords`。
+- **验证**：
+  - vue-tsc 0；新单测 5/5；dump 625 / rowsnap 638 零差（这些记录只进展示层，零差只证明没有顺带改坏别的东西）。
+  - **单测反向**（模块里 `voidflareTotal` +1）：r0 / r2 / lead-empty 3 条变红，none 和负控仍然通过；还原后 cmp 一致。
+  - `npm run verify` EXIT=0。
+  - 脚本：`/home/kaua/calc-arch/cc28.py`、`z28.sh`。
+- **回退点**：`git revert 69e85c4`（单个提交，含棘轮常量 340/328 和新单测）。
+
+**CC-29 开工清单（简 6 命事件，同类编排层角色分支；lead 实读 HEAD `69e85c4`）**
+1. 现状：`useResourceCalc.ts` 的 `anomalyDamageEvents` computed 末尾（约 `:657`）用 `findSlotByIdentity(configStore, catalogStore, ['1261'])` 找槽，条件是 `configStore.team[janeSlot]?.cinemaLevel >= 6` 且 `panelAt(panels.value, janeSlot)` 存在。它读 `anomalyPoolResult.value?.perElement` 里 physical 的 `triggerCount` 和面板的 `assaultCritRate`，满足 `critCount > 0` 时 push 一条 `id: 'jane-c6-assault-followup-event'`。这是 useResourceCalc 里**最后一处** `findSlotByIdentity` 调用，改完后该 import 可以删除。
+2. 方案：复用 `anomalyEventRecords` 能力。入参接口加两个可选字段：`cinemaLevel: number`（派发侧取 `configStore.team[slot]?.cinemaLevel ?? 0`）和 `physicalTriggerCount: number`；或者更通用地传 `perElementTriggerCounts: Record<string, number>`（从 perElement 映射），**二选一，按「只给真正要读的」定**。jane.ts 实现，逻辑逐字搬迁。
+3. **展示顺序（需要拍板，已拍）**：ResultPage 大致按「通用池事件 → `moduleAnomalyEventRecords` → `anomalyDamageEvents`」拼接（**开工时先实读 ResultPage 确认实际顺序**）。简的事件迁走后，会从 anomalyDamageEvents 末尾挪到它们**前面**。**决定：接受这个顺序变化**。依据：这是一张异常事件列表，没有依赖顺序的消费方（先 grep `anomalyDamageEvents` / `moduleAnomalyEventRecords` 在 ResultPage 里的用法确认，结果表是否另有排序）。回退方式：给能力返回值加 `placement: 'afterDamage'`，或者另加一个 `moduleAnomalyDamageEventRecords` computed。
+4. 验证：同 CC-28，**先采集旧输出**。需要一支含 1261 的 6 命队伍，harness 能否设命座要先看 `src/test/harness.ts` 的 `HarnessTeamSlot`；如果不能，就在 setupHarness 之后改 `config.team[i].cinemaLevel = 6`。采集的是 `anomalyDamageEvents` 里 `id === 'jane-c6-assault-followup-event'` 的那条，以及 `moduleAnomalyEventRecords` 的全量。迁移后断言那条记录出现在 `moduleAnomalyEventRecords`、且逐字段相等，同时 `anomalyDamageEvents` 里不再有它。反向：`critCount` ×2，新单测应当变红。
+5. 执行：lead 自做。完成后 useResourceCalc 就不再有 `findSlotByIdentity` 了，在 census 记一笔。
+6. 之后的候选：`remielleEntryPanels`（§5.21 第 5 条）、琉音一族（需要设计稿）、CC-27 维琳娜风蚀（§5.19）。
 
 ## 附录：普查脚本 census.sh
 
