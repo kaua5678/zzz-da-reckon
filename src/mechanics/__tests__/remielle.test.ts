@@ -3,7 +3,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import { buildAnomalyVirtualPanel, computePanelPhases, computeRemielleEntryPanel, findMoveById } from '@/composables/resourceCalc/helpers'
 import { emptyPanel } from '@/core/panel'
-import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic } from '@/mechanics/agents/remielle'
+import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic, remielleFlowerFeatherDanceCasts } from '@/mechanics/agents/remielle'
 import type { AgentSkills } from '@/types/catalog'
 
 /** 3异常队（蕾米+薇薇安+月城柳），额外能力 tier=3；globalBuffs 关掉防污染（SOP §7） */
@@ -254,34 +254,49 @@ describe('CC-21：蕾米埃尔 globalAnomalyMultiplierFactor（全队异常乘�
 
 })
 
-describe('CC-34c：花羽轮舞喧响由 buildRemielleCharConfig 累加进 extraSelfDecibelReward', () => {
-  // 线上 `remielleFlowerFeatherDanceCount` 目前没有任何写入方（catalog 只给 DecibelPerUse=200），perf 语料里乘积恒为 0，
-  // dump 覆盖不到 ⇒ 这里直接调钩子，锁住「写入点接线 + `+=` 累加语义 + 非本人不写」。
-  const call = (agentId: string, cfg: Record<string, unknown>) => remielleMechanic.buildCharConfig!({
-    slot: 0,
-    agent: { id: agentId } as never,
-    skills: { categories: [] } as never,
-    cinemaLevel: 1,
-    potentialLevel: 6,
-    wEngineId: '',
-    wEngineModLevel: 1,
-    team: [] as never,
-    panel: { ...emptyPanel(), remielleFlowerFeatherDanceDecibelPerUse: 200, remielleFlowerFeatherDanceCount: 3 } as never,
-    cfg: cfg as never,
-    getRowValue: (() => 0) as never,
+describe('CC-41：一命花羽轮舞喧响走跨轮反馈（nextRoundFeedback → applyTeamConfig converge）', () => {
+  // 原 CC-34c 用例测的是 buildCharConfig × 面板次数，而那个面板次数没有写入方（效果恒 0）；CC-41 改为跨轮反馈。
+  it('次数 = 队友虚曜数（排除本槽），按 18s 冷却封顶', () => {
+    expect(remielleFlowerFeatherDanceCasts(0, [99, 3, 4], 180)).toBe(7)
+    expect(remielleFlowerFeatherDanceCasts(1, [3, 99, 4.9], 180)).toBe(7)
+    expect(remielleFlowerFeatherDanceCasts(0, [0, 30, 30], 180)).toBe(10)
+    expect(remielleFlowerFeatherDanceCasts(0, [0, 30, 30], 35)).toBe(1)
+    expect(remielleFlowerFeatherDanceCasts(0, undefined, 180)).toBe(0)
   })
-
-  it('蕾米埃尔：在已有值上累加 每次喧响 × 次数（100 + 200×3 = 700）', () => {
-    const cfg: Record<string, unknown> = { extraSelfDecibelReward: 100 }
-    call('1581', cfg)
+  const apply = (cfg: Record<string, unknown>, phase: string, casts?: number) => remielleMechanic.applyTeamConfig!({
+    cfg: cfg as never, characters: [] as never, team: [] as never, phase: phase as never,
+    threads: (casts === undefined ? undefined : { moduleFeedback: { remielleFlowerFeatherDanceCasts: casts } }) as never,
+  } as never)
+  it('converge：在已有值上累加 每次喧响 × 次数（100 + 200×3 = 700）', () => {
+    const cfg: Record<string, unknown> = { extraSelfDecibelReward: 100, panel: { remielleFlowerFeatherDanceDecibelPerUse: 200 } }
+    apply(cfg, 'converge', 3)
     expect(cfg.extraSelfDecibelReward).toBe(700)
   })
-
-  it('非蕾米埃尔槽：不写', () => {
-    const cfg: Record<string, unknown> = { extraSelfDecibelReward: 100 }
-    call('1331', cfg)
-    expect(cfg.extraSelfDecibelReward).toBe(100)
+  it('影画 < 1（每次喧响 0）/ 非 converge 相位 / 无线程：不写', () => {
+    const c0: Record<string, unknown> = { extraSelfDecibelReward: 100, panel: { remielleFlowerFeatherDanceDecibelPerUse: 0 } }
+    apply(c0, 'converge', 3)
+    expect(c0.extraSelfDecibelReward).toBe(100)
+    const c1: Record<string, unknown> = { extraSelfDecibelReward: 100, panel: { remielleFlowerFeatherDanceDecibelPerUse: 200 } }
+    apply(c1, 'pre', 3)
+    apply(c1, 'converge', undefined)
+    expect(c1.extraSelfDecibelReward).toBe(100)
   })
+  it('集成：影画 1 比影画 0 喧响更多、终结次数不减（真实管线）', async () => {
+    const run = async (cinema: number) => {
+      const { config } = await setupHarness([{ agentId: '1581' }, { agentId: '1261' }, { agentId: '1331' }], { recommendedBuild: true })
+      config.setCinemaLevel(0, cinema)
+      const calc = useResourceCalc()
+      const c = (calc.resourceResult.value?.characters ?? []).find(x => x.slot === 0)
+      return { unshareable: c?.decibelSource?.unshareableBonus ?? 0, ult: c?.ultimateCount ?? 0 }
+    }
+    const c0 = await run(0)
+    const c1 = await run(1)
+    expect(c0.unshareable).toBe(0)
+    expect(c1.unshareable).toBeGreaterThan(0)
+    expect(c1.unshareable % 200).toBe(0)
+    expect(c1.unshareable).toBeLessThanOrEqual(200 * 10)
+    expect(c1.ult).toBeGreaterThanOrEqual(c0.ult)
+  }, 60000)
 })
 
 describe('CC-34c②：Radiant Turn 失衡乘区由模块能力 skillDazeMultiplier 提供', () => {

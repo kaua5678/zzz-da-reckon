@@ -729,7 +729,6 @@ const RESOURCE_EVENT_PANEL_FIELDS = new Set([
   'timeSliceEnergyPerTrigger',
   'zhenyuanEnergyPerTrigger',
   'remielleFlowerFeatherDanceDecibelPerUse',
-  'remielleFlowerFeatherDanceCount',
 ])
 
 const allPanelRows = computed(() => {

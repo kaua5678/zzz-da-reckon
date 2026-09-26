@@ -24,7 +24,6 @@ export const AGENT_PANEL_STATS = [
   { key: 'remielleCinema1SpecialVoidflareCount', group: 'anomaly', initial: 0 },
   { key: 'remielleCinema1SpecialVoidflareDamage', group: 'anomaly', initial: 0 },
   { key: 'remielleFlowerFeatherDanceDecibelPerUse', group: 'anomaly', initial: 0 },
-  { key: 'remielleFlowerFeatherDanceCount', group: 'anomaly', initial: 0 },
   { key: 'remielleCinema4SpecialVoidflareRefillCount', group: 'anomaly', initial: 0 },
   { key: 'remielleCinema6LuminizeTriggerMultiplier', group: 'anomaly', initial: 1 },
   { key: 'remielleCinema6SpecialVoidflareTriggerMultiplier', group: 'anomaly', initial: 1 },

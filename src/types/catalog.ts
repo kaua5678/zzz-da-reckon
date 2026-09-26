@@ -110,7 +110,6 @@ export interface PanelValues {
   remielleCinema1SpecialVoidflareCount: number // 一命开局特殊虚耀数量
   remielleCinema1SpecialVoidflareDamage: number // 一命开局特殊虚耀伤害占位/计算结果
   remielleFlowerFeatherDanceDecibelPerUse: number // 花羽轮舞每次额外喧响
-  remielleFlowerFeatherDanceCount: number // 花羽轮舞次数
   remielleCinema4SpecialVoidflareRefillCount: number // 四命特殊虚耀一次性再装填数量
   remielleCinema6LuminizeTriggerMultiplier: number // 六命异放/异常弹触发次数倍率
   remielleCinema6SpecialVoidflareTriggerMultiplier: number // 六命特殊虚耀触发次数倍率

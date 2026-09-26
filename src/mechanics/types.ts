@@ -435,6 +435,8 @@ export interface ModuleFeedback {
   promiaTeammateReleases?: number
   /** 普罗米娅自身异放回喧响（绝裁/影画6 各 +100） */
   promiaReleaseDecibel?: number
+  /** 蕾米埃尔一命：上一轮花羽轮舞施放次数（= 队友虚曜数，按 18s 冷却封顶；CC-41，读回方 remielle.ts#applyRemielleTeamConfig） */
+  remielleFlowerFeatherDanceCasts?: number
   /** 爱丽丝剑仪：爱丽丝自己触发的强击次数（字段名里的 Team 是历史名，口径见 alice.ts `aliceExternalCountsOf`） */
   aliceTeamAssaultCount?: number
   /** 爱丽丝剑仪：全队紊乱次数 */

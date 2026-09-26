@@ -10,6 +10,9 @@ import type {
   ExtraAnomalyRowGroup,
   ExtraAnomalyRowsInput,
   ReadonlyTeam,
+  AgentNextRoundFeedbackInput,
+  AgentTeamConfigInput,
+  ModuleFeedback,
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { Agent, PanelValues, SkillMove } from '@/types/catalog'
@@ -302,7 +305,7 @@ export function findRemielleRadiantTurn(agentSkills: {
 }
 
 /** 把「本槽是不是蕾米埃尔」与额外能力档位写进 cfg（原 `helpers.ts:1661-1667` 的 cfg 出口）。 */
-function buildRemielleCharConfig({ slot, agent, skills, team, panel, cfg }: AgentCharConfigInput): void {
+function buildRemielleCharConfig({ slot, agent, skills, team, cfg }: AgentCharConfigInput): void {
   if (!isRemielleAgent(agent)) return
   // 垂虹（特殊虚耀载体）与后台 Radiant Turn 的招式参数（CC-34b 2026-09-27 由 `helpers.ts` cfg 字面量迁入；
   // 原先对每个槽都查一遍并写 '' / 0，读取方只有本模块的 extraNecessaryAction / backstageAutoRows）。
@@ -315,11 +318,8 @@ function buildRemielleCharConfig({ slot, agent, skills, team, panel, cfg }: Agen
   cfg.remielleRadiantTurnMoveId = radiantTurn?.moveId ?? ''
   cfg.remielleRadiantTurnActionTime = radiantTurn?.actionTime ?? 0
   cfg.remielleRadiantTurnDecibelRecovery = radiantTurn?.decibelRecovery ?? 0
-  // 一命「花羽轮舞」每次额外喧响 × 次数（CC-34c 2026-09-27 由 `helpers.ts` cfg 字面量迁入）。
-  // 两个面板字段只在本人面板上非 0（catalog buff target=self），`extraSelfDecibelReward` 是跨角色 `+=` 通道，
-  // 字面量初值为 0，所以这里的累加结果与原先直接赋值逐位相同。
-  cfg.extraSelfDecibelReward = Number(cfg.extraSelfDecibelReward ?? 0)
-    + (panel.remielleFlowerFeatherDanceDecibelPerUse ?? 0) * (panel.remielleFlowerFeatherDanceCount ?? 0)
+  // 一命「花羽轮舞」喧响：CC-41（2026-09-27）起改走跨轮反馈（remielleNextRoundFeedback → applyTeamConfig），
+  // 原先这里乘的面板次数 `remielleFlowerFeatherDanceCount` 没有任何写入方（效果恒 0），已删除。
   const dazeBonusPct = remielleDazeBonusPct(slot, agent, team)
   // panel 同名字段只由上方 applyRemiellePanel 写（buildCharConfig 的 panel 只读：cfg 是本钩子唯一出口）
   cfg.remielleEnabled = true
@@ -334,7 +334,45 @@ function remielleRefringePct(panel: Readonly<PanelValues>): number {
   return (panel.remielleRefringeCoefficient ?? 0) + (panel.remielleRefringeCoefficientBonusPct ?? 0)
 }
 
+/**
+ * CC-41（2026-09-27，census §5.44）：一命「发动[支援技：花羽轮舞]时，获得 200 点喧响值，18 秒内最多触发 1 次」。
+ * 施放次数口径 = 队友触发的虚曜数（非蕾米槽位的异常触发之和，与耀变行 `remielle-luminize-assist` 的次数同源：
+ * 模型里每个虚曜由一次花羽轮舞命中消耗），再按 18s 冷却取上限 ⌊战斗时长 / 18⌋（与 orphie 影画 2 的 CD 近似同款）。
+ * 次数依赖异常池（晚于资源结算）⇒ 走 moduleFeedback 跨轮键，下一轮 converge 相位写回 cfg。
+ */
+export const REMIELLE_FLOWER_FEATHER_DANCE_CD_SECONDS = 18
+export function remielleFlowerFeatherDanceCasts(
+  ownSlot: number,
+  perSlotAnomalyTriggers: ReadonlyArray<number> | undefined,
+  combatTime: number,
+): number {
+  const voidflare = [0, 1, 2]
+    .filter(slot => slot !== ownSlot)
+    .reduce((sum, slot) => sum + Math.max(0, Math.floor(perSlotAnomalyTriggers?.[slot] ?? 0)), 0)
+  const cap = Math.floor(Math.max(0, combatTime) / REMIELLE_FLOWER_FEATHER_DANCE_CD_SECONDS)
+  return Math.max(0, Math.min(voidflare, cap))
+}
+
+function remielleNextRoundFeedback({ slot, teamResult, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
+  return {
+    remielleFlowerFeatherDanceCasts: remielleFlowerFeatherDanceCasts(
+      slot, anomalyPool?.perSlotAnomalyTriggers, teamResult?.totalTime ?? 180),
+  }
+}
+
+/** CC-41：converge 相位把上一轮花羽轮舞次数 × 每次喧响（面板值，影画 < 1 时为 0）累加进 extraSelfDecibelReward。 */
+function applyRemielleTeamConfig({ cfg, phase, threads }: AgentTeamConfigInput): void {
+  if (phase !== 'converge' || !threads) return
+  const casts = Math.max(0, Math.floor(threads.moduleFeedback?.remielleFlowerFeatherDanceCasts ?? 0))
+  const perUse = Math.max(0, cfg.panel?.remielleFlowerFeatherDanceDecibelPerUse ?? 0)
+  if (casts <= 0 || perUse <= 0) return
+  cfg.extraSelfDecibelReward = Number(cfg.extraSelfDecibelReward ?? 0) + perUse * casts
+}
+
 export const remielleMechanic: AgentMechanicModule = {
+  // CC-41：一命花羽轮舞喧响（跨轮反馈）
+  nextRoundFeedback: remielleNextRoundFeedback,
+  applyTeamConfig: applyRemielleTeamConfig,
   id: 'agent:remielle',
   agentIds: [REMIELLE_AGENT_ID],
   // CC-26b：后台飞行状态「光辉回转」自动行（原 core/resource/rowBuild.ts 内联，逐字搬迁）
