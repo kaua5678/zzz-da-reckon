@@ -55,7 +55,7 @@ import type { PanelValues, TeammateBuff, Agent, DriveDiscConfig } from '@/types/
 import { statSettlementMode } from '@/utils/statMeta'
 // 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-import { getTeamAnomalyDurationBonus, findSlotByIdentity } from './anomalyPanels'
+import { getTeamAnomalyDurationBonus } from './anomalyPanels'
 
 export function buildMechanicTeamMembers(
   configStore: ReturnType<typeof useConfigStore>,
@@ -492,35 +492,12 @@ export function computePanelPhases(
     enemyWeakness: configStore.enemy.weakness,
   })
 
-  // 莱特：昂扬公式读局内冲击力；喷发耗士气冲击 +20% 需并入 source 面板，否则公式少算一层。
-  const lighterSource = sourcePanelsByOwner['1161']
-  if (lighterSource?.inCombat) {
-    lighterSource.inCombat = {
-      ...lighterSource.inCombat,
-      impact: (lighterSource.inCombat.impact ?? 0) * 1.2,
-    }
-  }
-
-  // 耀嘉音：咏叹华彩公式用 dynamicSkillLevel（s）；源面板需写入 3/5 命技能等级加成。
-  {
-    const yjSlot = findSlotByIdentity(configStore, catalogStore, ['1311'])
-    if (yjSlot >= 0) {
-      const yjCinema = configStore.team[yjSlot]?.cinemaLevel ?? 0
-      const skillBonus = yjCinema >= 5 ? 4 : yjCinema >= 3 ? 2 : 0
-      const yjSource = sourcePanelsByOwner['1311']
-      if (yjSource?.outOfCombat) {
-        yjSource.outOfCombat = {
-          ...yjSource.outOfCombat,
-          skillLevelBonus: Math.max(yjSource.outOfCombat.skillLevelBonus ?? 0, skillBonus),
-        }
-      }
-      if (yjSource?.inCombat) {
-        yjSource.inCombat = {
-          ...yjSource.inCombat,
-          skillLevelBonus: Math.max(yjSource.inCombat.skillLevelBonus ?? 0, skillBonus),
-        }
-      }
-    }
+  // CC-35c-B（2026-09-27）：队友 buff 来源面板修正改由在队模块能力 `adjustTeammateBuffSource` 提供
+  // （原按 '1161' 莱特 / '1311' 耀嘉音写死）。按本槽 agentId 取条目；别名键（teammateBuffId）指向同一个对象，改动同步可见。
+  for (const member of configStore.team) {
+    const mod = member?.agentId ? getAgentMechanic(member.agentId) : undefined
+    const source = mod?.adjustTeammateBuffSource ? sourcePanelsByOwner[member.agentId] : undefined
+    if (source) mod!.adjustTeammateBuffSource!({ source, cinemaLevel: member.cinemaLevel ?? 0 })
   }
 
   // 全局 Buff（属性配置页手动添加）转 TeammateBuff 并入 calcPanel 同批 apply：

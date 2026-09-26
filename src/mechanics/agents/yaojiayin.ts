@@ -445,6 +445,22 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
 }
 
 export const yaojiayinMechanic: AgentMechanicModule = {
+  // CC-35c-B：咏叹华彩公式用 dynamicSkillLevel（s），来源面板需写入 3/5 命技能等级加成（原 panelPhases 按 '1311' 写死，逐字迁入）
+  adjustTeammateBuffSource: ({ source, cinemaLevel }) => {
+    const skillBonus = cinemaLevel >= 5 ? 4 : cinemaLevel >= 3 ? 2 : 0
+    if (source.outOfCombat) {
+      source.outOfCombat = {
+        ...source.outOfCombat,
+        skillLevelBonus: Math.max(source.outOfCombat.skillLevelBonus ?? 0, skillBonus),
+      }
+    }
+    if (source.inCombat) {
+      source.inCombat = {
+        ...source.inCombat,
+        skillLevelBonus: Math.max(source.inCombat.skillLevelBonus ?? 0, skillBonus),
+      }
+    }
+  },
   applyTeamConfig: applyYaojiayinTeamHook,
   id: 'agent:yaojiayin',
   agentIds: [YAOJIAYIN_ID],

@@ -529,6 +529,15 @@ function lighterNextRoundFeedback({ characters, teamResult }: AgentNextRoundFeed
 }
 
 export const lighterMechanic: AgentMechanicModule = {
+  // CC-35c-B：昂扬公式读局内冲击力；喷发耗士气冲击 +20% 需并入来源面板，否则公式少算一层（原 panelPhases 按 '1161' 写死，逐字迁入）
+  adjustTeammateBuffSource: ({ source }) => {
+    if (source.inCombat) {
+      source.inCombat = {
+        ...source.inCombat,
+        impact: (source.inCombat.impact ?? 0) * 1.2,
+      }
+    }
+  },
   id: 'agent:lighter',
   agentIds: [LIGHTER_ID],
   name: '莱特·士气喷发',

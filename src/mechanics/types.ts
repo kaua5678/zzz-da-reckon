@@ -19,6 +19,7 @@ import type {
   VelinaCorrosionSource,
 } from '@/types/resource'
 import type { StunSkillExecution } from '@/core/stunPool'
+import type { SourcePanelsByOwner } from '@/core/buff'
 import type { AnomalySkillExecution, CoweringConfig } from '@/core/anomalyPool'
 import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type，见设计稿
@@ -847,6 +848,12 @@ export interface AgentMechanicModule {
    * ⚠ 爱芮的以太 +3 走 spec `teamBuffs` 的 buff 通道，**不要**在这里再实现（会双计）。
    */
   teamAnomalyDurationBonus?(input: { element: string; slot: number; agent: Agent | null; team: ReadonlyTeam }): number
+  /**
+   * 修正本角色的**队友 buff 来源面板**（CC-35c-B 2026-09-27）：`resourceCalc/panelPhases.ts#computePanelPhases` 构建
+   * `sourcePanelsByOwner` 后，对在队各槽调用（`source` = 以本角色 agentId 为键的条目，可直接替换其 `inCombat` / `outOfCombat`）。
+   * 用途：队友 buff 公式读来源面板，而来源面板只含自身配置，缺少某些局内状态（莱特喷发冲击 +20%、耀嘉音 3/5 命技能等级）。
+   */
+  adjustTeammateBuffSource?(input: { source: SourcePanelsByOwner[string]; cinemaLevel: number }): void
   /**
    * 保底自动补齐的交互次数由本模块产出（`CalcRoundResult.interactionTopUp` 的槽位归属，规则 6 落点）。
    *
