@@ -515,7 +515,7 @@
 - **建模范围**：① 梦境值计划（初始 60；A5 +40 / E +60 / Q +100；目标 500；默认 Q=2 → A5×3+E×2+Q×2；计划外强特合轴 0 秒）；② 追加攻击（合唱）默认 20 次、1100%/200 异常/0 失衡/0 前台时间，次数受相位延后 CD 封顶；③ [合唱]行修正：最后一段按最大生命 (34%+3%×终结技等级) `flatDamageBonus`、C2 +15% `dmgBonus`、C6 必暴+暴伤 30%；④ C6 最大生命 2%→攻击（spec `attributeConversions` + 模块显式 `applySpecAttributeConversions`）；⑤ C4 帷幕开启/延长 → 全队 +100 喧响、15s CD 封顶 × `lucia.c4CurtainCoverage`；⑥ 星光汇聚之地回血 × `lucia.healingCoverage` → 换算伊德海莉生命% 接入烧血→喧响；⑦ 核心被动/额外能力/影画拐力由 teammate-buffs 1451 组承载。
 - **已验证范围**：`luciaElowen.test.ts` 17 例（梦境计划 Q=1/2/3/4 与能量不足、CD 不再折算、帷幕触发 8/10/12、回血 12.8%/14.4%、C6 转模、patchExecutions 三档、跨角色集成）+ spec golden `verifyAllSpecs`。主代理 2026-09-25 重放通过。
 - **未证明事项**：① 帷幕来源拆分行（自开/队友边际法）**无独立断言**，仅总数有区间断言；② teammate-buffs 1451 组 5 条拐力无专属断言；③ spec 自述未建模：随想→合唱招式升级伤害未拆分、影画1 回音延续、帷幕延长默认全覆盖。
-- **⚠ 口径漂移（待核对，未修）**：spec `1451.json` 资源 `maxValue: 100` 与 `character-mechanics.json`（500）及模块 `DREAM_TARGET=500` 不一致；spec `gainRules` 的连携/闪反回梦境值条目未被模块消费（规则 4：模块角色 spec 为记录性数据），两处对「连携/闪反是否回梦境值」表述不一致。
+ - **✅ 口径漂移已裁决（2026-09-25，以模块为准，不改代码）**：spec `1451.json` 资源 `maxValue: 100` 与 `character-mechanics.json`（500）及模块 `DREAM_TARGET=500` 不一致；spec `gainRules` 的连携/闪反回梦境值条目未被模块消费。**用户裁决：以模块现状为准**（`DREAM_TARGET=500`、连携/闪反不回梦境值）——卢西娅是辅助、不常打连携/闪反，几乎无影响；`maxValue:100` 疑为「入梦阈值」非上限、`gainRules` 连携+40/闪反+20 为记录性死数据（规则 4：模块角色 spec 是记录）。本条仅为口径记录，不改模块/spec 数值。
 - **模块**：`src/mechanics/agents/luciaElowen.ts`；数值单一事实源 = 模块常量 + spec `src/specs/agents/1451.json` notes。
 
 ### 般岳（banyue / 1471）—— 嗔火/怒相循环 + 山威免费强特 + 明王/影画
@@ -533,6 +533,7 @@
 - **未证明事项**：暴击转冲击、强特暴伤 +50%、失衡 +2s 无 1481 专属 live 断言（spec `verifications` 仅离线 `specs/verify.ts` 跑，与模块 `applyLiuyinPanel` 不同源）；强化A 无断言；spec 自述「exSpecialCount 含送客会高估」待核。
 - **⚠ 已确认缺陷（主代理 2026-09-25 复核，未修，任务卡 W16）**：`computeLiuyinSource` 的 `promoteWindows = Math.floor(total / 90)` 是**旧预算模型残留**——同函数注释与资源卡 detail 文案都写「阈值结转」，真实转大次数在 `liuyinPromote.ts#promoteFixpoint` = `hug60 + hug90`（贪心）。`farewellCount` 取前者 ⇒ **有连携窗口时 1481009 送客行次数/时间/喧响少算**（例：G=390 贪心 6 次 vs floor 4 次）。`liuyin.test.ts` 的 G=207 用例两口径恰好相等，钉不住。`convergence.ts` 已有同形教训注释（「第一次写成 floor(rest/90) 是错的」）。
 - **模块**：`src/mechanics/agents/liuyin.ts`（口径见头注释与 `@fact`）；数值单一事实源 = 模块常量 + spec `src/specs/agents/1481.json` notes。
+ - **✅ 轴预设 `1481:1481009×N` 语义已裁决（2026-09-25，W20）**：**选 (B) = N 次在失衡窗内、其余在窗外照打**（当前实现），不改代码。备选 (A)「本局送客总数=N（轴为上限）」被否。另：`plannedStunCount`(0) vs `stunPoolResult.stunCount`(3) 不同源 ⇒ `axisHug=null`（W20 §5-2）仍未展开。裁决后可拆 `docs/mcp-liuyin-promote-source.md` §3.3 的轴模式闸门（W26 只接非轴，轴模式逐位不变）。
 
 ### 星徽·比利（starlight_billy / 1531）—— 主循环 HP 池 + 决意/星辉/煊赫星辉
 - **当前实现状态 [已实现·近似 2026-09-25 档案核对]**（实现位置：`src/mechanics/agents/starlightBilly.ts`（注册于 `src/mechanics/index.ts:133`）+ spec `1531.json`（`status: implemented_approximation`）；测试 `src/mechanics/__tests__/billySmoke.test.ts` 9 例 + `specialMechanics.test.ts`，另有 `axisContext` / `panelBlocksR20h1` 等引用）。**⚠ 星徽·比利(1531) ≠ 比利(1081)**：1081 是 `billy.ts`、另有「比利（billy / 1081）」段；只接受显式绑定 1531 的断言。teammate-buffs 无 1531 条目。**本轮是档案核对，不是完整录入验收**：`data/recordings/1531.json` 不存在、仍在 `legacy.json` 豁免内 ⇒ 原文覆盖**未核对**。
