@@ -763,6 +763,13 @@ export interface AgentMechanicModule {
    * 返回 `[]`/缺省 = 本角色无异常附加行。
    */
   extraAnomalyRows?(input: ExtraAnomalyRowsInput): ExtraAnomalyRowGroup[]
+
+  /**
+   * 全队异常伤害乘区因子（CC-21 2026-09-26，census §5.14）：`useResourceCalc#globalAnomalyMultiplier`
+   * 对全队各槽的本能力（入参 = 本槽面板）连乘，缺省视为 1；结果经 ctx / roundInputs 注入异常池与伤害池。
+   * 现仅蕾米埃尔实现（异化系数）。
+   */
+  globalAnomalyMultiplierFactor?(panel: PanelValues): number
   /**
    * 保底自动补齐的交互次数由本模块产出（`CalcRoundResult.interactionTopUp` 的槽位归属，规则 6 落点）。
    *
@@ -1365,7 +1372,7 @@ export interface ExtraAnomalyRowsInput {
   /** = configStore.enemy（只读，块内用 defense / level / stunVuln） */
   enemy: { defense: number; level: number; stunVuln: number }
   enemyDamageRes: Record<string, number>
-  /** = ctx.remielleAnomalyMultiplier（全队异常伤害乘区；通用名） */
+  /** = ctx.globalAnomalyMultiplier（全队异常伤害乘区） */
   anomalyMultiplier: number
   /** = (s) => configStore.team[s]?.agentId ?? '' */
   teamAgentId: (slot: number) => string

@@ -244,3 +244,12 @@ describe('CC-19c-2：蕾米埃尔耀变行进伤害池（extraAnomalyRows 派发
     }
   })
 })
+
+describe('CC-21：蕾米埃尔 globalAnomalyMultiplierFactor（全队异常乘区因子，自 useResourceCalc 迁入）', () => {
+  it('异化系数 = 1 + (异化度 + 异化度提升) / 100；空面板 = 1', () => {
+    const factor = remielleMechanic.globalAnomalyMultiplierFactor!
+    expect(factor(emptyPanel())).toBe(1)
+    expect(factor({ ...emptyPanel(), remielleRefringeCoefficient: 20, remielleRefringeCoefficientBonusPct: 5 })).toBeCloseTo(1.25, 12)
+  })
+
+})

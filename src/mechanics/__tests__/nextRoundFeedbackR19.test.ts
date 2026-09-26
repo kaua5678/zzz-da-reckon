@@ -35,7 +35,7 @@ describe('C-α next-round feedback', () => {
     config.useStunAxis = false
     const calc = useResourceCalc()
     const inputs = createConvergenceRoundInputs({ configStore: config, catalogStore: catalog,
-      panels: calc.panels, resourceConfig: calc.resourceConfig, remielleAnomalyMultiplier: computed(() => 1) })
+      panels: calc.panels, resourceConfig: calc.resourceConfig, globalAnomalyMultiplier: computed(() => 1) })
     const run = createRunCalcRound({
       configStore: config, catalogStore: catalog, panels: calc.panels, resourceConfig: calc.resourceConfig,
       computeWindowDuration: () => 10, computeStunCoverage: () => 0,

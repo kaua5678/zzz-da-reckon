@@ -39,9 +39,9 @@ export function createConvergenceRoundInputs(deps: {
   catalogStore: ReturnType<typeof useCatalogStore>
   panels: ComputedRef<PanelValues[]>
   resourceConfig: ComputedRef<ResourceCalcConfig | null>
-  remielleAnomalyMultiplier: ComputedRef<number>
+  globalAnomalyMultiplier: ComputedRef<number>
 }) {
-  const { configStore, catalogStore, panels, resourceConfig, remielleAnomalyMultiplier } = deps
+  const { configStore, catalogStore, panels, resourceConfig, globalAnomalyMultiplier } = deps
 
 /** 从某个资源池结果提取异常 execs（参数化）；`skipGift` = 只取「装配前」口径（赠行单独结算） */
   function extractAnomalyExecsFrom(res: TeamResourceResult, skipGift = false): AnomalySkillExecution[] {
@@ -123,7 +123,7 @@ export function createConvergenceRoundInputs(deps: {
       stunned: stunCov, stunMultiplier: configStore.enemy.stunVuln,
       hasWindChar: wind.hasWindChar, windCharSlot: wind.windCharSlot,
       velinaCinema2CorrosionRate: configStore.getMechanicSetting('velina.cinema2CorrosionRate', 2 / 3),
-      globalAnomalyMultiplier: remielleAnomalyMultiplier.value,
+      globalAnomalyMultiplier: globalAnomalyMultiplier.value,
       aliceCoweringConfig: alice?.coweringConfig,
       giftedTriggerCounts: alice && aliceSpark > 0 ? { 'physical_polar_assault': aliceSpark } : undefined,
       giftedTriggerSlot: alice?.slot,

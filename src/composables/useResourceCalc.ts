@@ -155,17 +155,22 @@ export function useResourceCalc() {
     return result
   })
 
-  /** 蕾米异化系数倍率：1 + (异化度 + 异化度提升) / 100，乘到所有异常相关伤害 */
-  const remielleAnomalyMultiplier = computed<number>(() => {
-    // 按身份找槽位（单一事实源 `findSlotByIdentity`；2026-09-18 round 21 夜）
-    const slot = findSlotByIdentity(configStore, catalogStore, ['1581'])
-    // ⚠ 判据 17：`panels` 按位置压缩（下标 ≠ 槽位号）⇒ 必须 `panelAt` 按盖章身份取。
-    // 2026-09-18 round 21 夜：原写法 `panels.value[slot]` 在「前导/中间空槽」时取到**别人那份**面板
-    // （实测 [空,1581,·] 时 1581 在 team 下标 1、panels 盖章 [1,2] ⇒ panels.value[1] 拿到槽位 2 的角色）。
-    const panel = slot >= 0 ? panelAt(panels.value, slot) ?? null : null
-    if (!panel) return 1
-    const coefficient = (panel.remielleRefringeCoefficient ?? 0) + (panel.remielleRefringeCoefficientBonusPct ?? 0)
-    return 1 + coefficient / 100
+  /**
+   * 全队异常伤害乘区（CC-21 2026-09-26，census §5.14）：各槽模块能力 `globalAnomalyMultiplierFactor`
+   * 连乘，无提供者 = 1，乘到所有异常相关伤害。现仅蕾米埃尔（异化系数 1 + (异化度 + 异化度提升) / 100，
+   * 公式在 `mechanics/agents/remielle.ts`）。原为本处按身份 `['1581']` 找槽 + 读角色面板字段的编排层特判。
+   */
+  const globalAnomalyMultiplier = computed<number>(() => {
+    let multiplier = 1
+    configStore.team.forEach((char, slot) => {
+      const mod = char?.agentId ? getAgentMechanic(char.agentId) : undefined
+      if (!mod?.globalAnomalyMultiplierFactor) return
+      // ⚠ 判据 17：`panels` 按位置压缩（下标 ≠ 槽位号）⇒ 必须 `panelAt` 按盖章身份取
+      // （2026-09-18 round 21 夜实测：`panels.value[slot]` 在前导/中间空槽时取到别人那份面板）。
+      const panel = panelAt(panels.value, slot)
+      if (panel) multiplier *= mod.globalAnomalyMultiplierFactor(panel)
+    })
+    return multiplier
   })
 
   // ===== 两轮迭代破循环（anomalyPool ↔ stunPool ↔ stunCoverage） =====
@@ -176,7 +181,7 @@ export function useResourceCalc() {
   const {
     extractAnomalyExecsFrom, extractStunExecsFrom, autoPreset, autoActive,
     resolveAxes, buildStackAxes, expandExecutedToCounts, calcAnomalyPoolInput,
-  } = createConvergenceRoundInputs({ configStore, catalogStore, panels, resourceConfig, remielleAnomalyMultiplier })
+  } = createConvergenceRoundInputs({ configStore, catalogStore, panels, resourceConfig, globalAnomalyMultiplier })
 
 
   /**
@@ -581,7 +586,7 @@ export function useResourceCalc() {
     stunPoolResult: stunPoolResult.value,
     effectiveStunAxes: effectiveStunAxes.value,
     remielleEntryPanels: remielleEntryPanels.value,
-    remielleAnomalyMultiplier: remielleAnomalyMultiplier.value,
+    globalAnomalyMultiplier: globalAnomalyMultiplier.value,
     liuyinPromoteCount: liuyinPromoteCount.value,
     agentNames: agentNames.value,
     autoActive: autoActive.value,

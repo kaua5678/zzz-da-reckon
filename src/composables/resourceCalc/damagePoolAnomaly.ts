@@ -74,7 +74,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
     configStore, catalogStore,
     adjustedResourceResult, damagePanels, stunCoverage, axisAllocation: allocMap,
     anomalyPoolResult,
-    remielleEntryPanels, remielleAnomalyMultiplier,
+    remielleEntryPanels, globalAnomalyMultiplier,
   } = env.ctx
   const {
     rows, agentName, enemyDamageRes, isAxis, windSlot,
@@ -267,7 +267,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
         stunMultiplier: configStore.enemy.stunVuln,
         critMode: 'expect',
         damageKind: 'anomaly',
-        anomalyMultiplier: remielleAnomalyMultiplier,
+        anomalyMultiplier: globalAnomalyMultiplier,
       })
 
       const perDamage = result.damage
@@ -312,7 +312,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
         axisStunFor,
         enemy: configStore.enemy,
         enemyDamageRes,
-        anomalyMultiplier: remielleAnomalyMultiplier,
+        anomalyMultiplier: globalAnomalyMultiplier,
         teamAgentId: (s) => configStore.team[s]?.agentId ?? '',
         agentName,
         panel: panelAt(damagePanels, slot),

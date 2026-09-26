@@ -36,7 +36,7 @@ describe('探针：叶瞬光+琉音+照 外层不动点轨迹', () => {
     const inputs = createConvergenceRoundInputs({
       configStore: config, catalogStore: catalog,
       panels: calc.panels, resourceConfig: calc.resourceConfig,
-      remielleAnomalyMultiplier: computed(() => 1),
+      globalAnomalyMultiplier: computed(() => 1),
     })
     const run = createRunCalcRound({
       configStore: config, catalogStore: catalog, panels: calc.panels, resourceConfig: calc.resourceConfig,

@@ -69,7 +69,7 @@ export interface DamagePoolContext {
   /** 蕾米进场记录面板（特殊虚耀用） */
   remielleEntryPanels: PanelValues[]
   /** 蕾米异化系数倍率（1 + (异化度+提升)/100） */
-  remielleAnomalyMultiplier: number
+  globalAnomalyMultiplier: number
   /** 琉音转大收敛次数（余音直伤用） */
   liuyinPromoteCount: number
   agentNames: Record<string, string>
@@ -97,7 +97,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     configStore, catalogStore,
     adjustedResourceResult, damagePanels, stunCoverage, axisAllocation: allocMap, attachedInAxisMap: attachedInAxis,
     anomalyPoolResult, inStunAnomalyState,
-    remielleAnomalyMultiplier, agentNames, autoActive,
+    globalAnomalyMultiplier, agentNames, autoActive,
     stunAxisResult,
   } = ctx
   if (!adjustedResourceResult || damagePanels.length === 0) return []
@@ -266,7 +266,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         stunMultiplier: configStore.enemy.stunVuln,
         critMode: 'expect',
         damageKind: 'release',
-        anomalyMultiplier: remielleAnomalyMultiplier,
+        anomalyMultiplier: globalAnomalyMultiplier,
         anomalyCritOverride: critOverride,
       })
       rows.push({
