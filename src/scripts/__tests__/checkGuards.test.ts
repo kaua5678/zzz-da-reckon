@@ -1847,12 +1847,13 @@ describe('判据 22：core 角色前缀字段计数棘轮（scripts/lib/core-rol
       '/* billyBlockStart',
       ' * qingyiInBlock',
       ' */',
-      'const n = r.triggerCount + r.triggerSlot',
+      'const n = r.triggerCount + r.triggerSlot + r.triggerShotCount',  // triggerSlot = 触发者通用名（CC-20 豁免）；triggerShotCount = 假想扳机角色字段（正控）
       'const billy = 1  // 裸前缀（无大写尾）不算',
     ].join('\n')
     const refs = findRoleFieldRefs(src, prefixes)
-    expect(refs.map(r => `${r.field}@${r.line}`)).toEqual(['billyC1Energy@1', 'qingyiC4Energy@1', 'triggerSlot@6'])
+    expect(refs.map(r => `${r.field}@${r.line}`)).toEqual(['billyC1Energy@1', 'qingyiC4Energy@1', 'triggerShotCount@6'])
     expect(ROLE_FIELD_EXEMPT).toContain('triggerCount')
+    expect(ROLE_FIELD_EXEMPT).toContain('triggerSlot')
     // 负控：去掉豁免 ⇒ triggerCount 被计入
     expect(findRoleFieldRefs(src, prefixes, []).some(r => r.field === 'triggerCount')).toBe(true)
   })

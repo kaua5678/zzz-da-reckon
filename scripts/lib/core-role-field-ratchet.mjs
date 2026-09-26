@@ -10,12 +10,17 @@
 // - 前缀：src/mechanics/agents/*.ts 文件名开头的小写词（排除 spec/starlight/index/shared/types）
 // - 匹配：\b<前缀>[A-Z]\w*\b，只数代码部分（整行注释 / 块注释 / 行尾 // 之后不计）
 // - 豁免：ROLE_FIELD_EXEMPT（通用词撞了角色前缀的误报，例：triggerCount = 异常触发次数，不是扳机）
+//   2026-09-26 CC-20 口径纠正（换尺，规则 17②，不与代码改动混批）：追加 triggerPanel / triggerSlot /
+//   triggerAgentId / triggerCountValues / triggerSources —— 实读全部用处均为「触发者（覆盖异常的角色）」
+//   或「触发源」通用义（例 core/anomalyPool/helpers.ts `@param triggerPanel 触发者面板`），与扳机（trigger.ts）
+//   无关，共 37 处误报。⚠ 从此这 5 个名字**专指触发者**：扳机角色自己的字段不得用这些名字（改用
+//   模块内局部量或 getAgentMechanic 能力），否则会被豁免漏计。
 import { execFileSync } from 'node:child_process'
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join, basename } from 'node:path'
 
-export const CORE_ROLE_FIELD_BASELINE = 499
-export const ROLE_FIELD_EXEMPT = ['triggerCount']
+export const CORE_ROLE_FIELD_BASELINE = 462
+export const ROLE_FIELD_EXEMPT = ['triggerCount', 'triggerPanel', 'triggerSlot', 'triggerAgentId', 'triggerCountValues', 'triggerSources']
 const PREFIX_EXCLUDE = ['spec', 'starlight', 'index', 'shared', 'types']
 const SCOPE = ['src/core/*.ts', 'src/composables/resourceCalc/*.ts', 'src/composables/useResourceCalc.ts']
 
