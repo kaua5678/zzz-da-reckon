@@ -1,4 +1,5 @@
 import type { DeepReadonly } from 'vue'
+import type { CharacterConfig } from '@/stores/config'
 import type { Agent, AgentSkills, PanelValues, SkillDamageTarget, SkillMove } from '@/types/catalog'
 import type {
   AnomalyEventRecord,
@@ -157,6 +158,12 @@ export interface AgentCharConfigInput {
   panel: DeepReadonly<PanelValues>
   cfg: CharacterOperationConfig
   getRowValue: (move: SkillMove | null | undefined, rowId: string) => number
+  /**
+   * 本槽队伍配置（只读，CC-35b 2026-09-27）：模块从这里取**本角色专属**的用户输入（交互栏次数等），
+   * 而不是让 `helpers.ts#buildCharConfig` 的 cfg 字面量替每个槽拷一遍。可选：部分测试 / 模块内部转调
+   * （如仪玄转调 specBase）不传。通用输入（弹刀 / 闪反等）仍由字面量写。
+   */
+  char?: Readonly<CharacterConfig>
 }
 
 export interface AgentResourceInput {

@@ -329,13 +329,20 @@ function readAxisEx(cfg: AgentCharConfigInput['cfg']): Record<string, number> {
   return out
 }
 
-function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg }: AgentCharConfigInput): void {
+function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg, char }: AgentCharConfigInput): void {
   // 进场恢复全部闪能（用户确认 120）
   cfg.initialEnergyGift = ENTRY_FLASH
   // 强特全部由模块生成（墨痕化形链/凝云术链）；exSpecialCount 仅作喧响估算（60 闪能/循环当量）
   cfg.skipGenericExSpecial = true
   cfg.exSpecialCountFloor = true
   cfg.exSpecialEnergyConsume = CLOUD_CYCLE_COST
+  // 交互栏用户输入（CC-35b 2026-09-27 由 helpers.ts cfg 字面量迁入，缺省值逐字保留：极限支援 -1 = 自动）。
+  // 必须在下方读取 `yixuanPerfectBlockCount` / `yixuanExtremeAssistCount` 之前写好。
+  cfg.yixuanInk2Count = char?.yixuanInk2Count ?? 0
+  cfg.yixuanInk3Count = char?.yixuanInk3Count ?? 0
+  cfg.yixuanPerfectBlockCount = char?.yixuanPerfectBlockCount ?? 0
+  cfg.yixuanExtremeAssistCount = char?.yixuanExtremeAssistCount ?? -1
+  cfg.yixuanBackstageComboCount = char?.yixuanBackstageComboCount ?? 0
 
   const record = cfg as unknown as Record<string, unknown>
   record.yixuanCinemaLevel = cinemaLevel

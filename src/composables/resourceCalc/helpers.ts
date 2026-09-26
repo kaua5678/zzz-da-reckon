@@ -572,12 +572,7 @@ export function buildCharConfig(
     dualCounterCount: char.dualCounterCount ?? 0,
     tauntCancelCount: char.tauntCancelCount ?? 0,
     quickAssistCount: char.quickAssistCount ?? 0,
-    yixuanInk2Count: char.yixuanInk2Count ?? 0,
-    promiaNiyingCount: char.promiaNiyingCount ?? 0,
-    yixuanInk3Count: char.yixuanInk3Count ?? 0,
-    yixuanPerfectBlockCount: char.yixuanPerfectBlockCount ?? 0,
-    yixuanExtremeAssistCount: char.yixuanExtremeAssistCount ?? -1,
-    yixuanBackstageComboCount: char.yixuanBackstageComboCount ?? 0,
+    // 仪玄 5 项 / 普罗米娅 1 项交互栏次数：CC-35b（2026-09-27）改由各自模块 buildCharConfig 从 `char` 读入
     dodgeCounterMoveId: dodgeCounter?.moveId ?? '',
     dodgeCounterActionTime: dodgeCounter?.actionTime ?? 0,
     dodgeCounterDecibelRecovery: dodgeCounter?.decibelRecovery ?? 0,
@@ -635,6 +630,7 @@ export function buildCharConfig(
     panel,
     cfg,
     getRowValue,
+    char,
   })
 
   // 通用「单次释放必打招 + 可持续招」强特（src/data/sustainedEx.ts）：
