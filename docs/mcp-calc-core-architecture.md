@@ -210,8 +210,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-43a | done | `d573b4a` | 编排层/core 纯命名项去角色名 7 个（映射见 census §5.47），dump/rows 零差 | census §5.47 |
 | CC-43b | done | `6a6c6d7` | 新增判据 23：角色名中缀 / core 子目录棘轮（驼峰切段），基线 13 | census §5.47 |
 | CC-43c | todo | — | 琉音转大次数 `computeLiuyinHugCounts` 被编排层按值导入（convergence、ultimatePromote，判据 23 计 4）→ 模块能力 | census §5.47 |
-| CC-43d | todo | — | `computeRemielleEntryPanel`（panelPhases，对所有槽位调用）→ 先读证实是通用计算后零差改名 `computeEntrySnapshotPanel`（计 5） | census §5.47 |
-| CC-43e | todo | — | roundInputs `hasLiuyin`（`findSlotByIdentity(['1481'])` 身份字面量，计 2）→ 模块声明「拥有 promoteVariant 轴块」 | census §5.47 |
+| CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
+| CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | todo | — | roundInputs 希格莉德破阵展开（`'sigrid-pozhen'` 字面量 + `SIGRID_LANCE_SEGMENT_IDS` 值导入 + C6 ×0.75，计 2）→ 轴块展开模块钩子 | census §5.47 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |

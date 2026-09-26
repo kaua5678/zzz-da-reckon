@@ -1568,6 +1568,22 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 4. **CC-43c**（最难，放最后；编号沿用架构表，本节按难度排序）：`computeLiuyinHugCounts` 被 convergence.ts（52 import、332 调用）和 ultimatePromote.ts（13 import、294 调用）按值导入。它是琉音「好评→转大」的阈值结转算法。方向：挂到 liuyin 模块能力（如 `promoteHugCounts`），编排层经 getAgentMechanic 取。−4。ultimatePromote.ts 同时导入的 `resolveUltimateTargetSlot` 不计数，但属同类债，可一并处理。
 
 **下一步**：CC-43d（见上 1）。
+### 5.48 CC-43d/e done（lead-arena-0925c，2026-09-27 第 61 轮）
+
+**提交**：CC-43d `afc6003`、CC-43e `7ae18b5`。判据 23 读数 13 → 8 → 6（`CORE_ROLE_INFIX_BASELINE` 与 RATCHET_BURNDOWN frozen 同批下调，读数相等）。回退：各自 `git revert`；只撤代码不撤基线会让判据 23 报红，两者在同一提交里，整提交 revert 即可。
+
+**CC-43d**：先读了 `panelPhases.ts` 的函数体。它用本角色的 agent / 音擎 / 驱动盘 / 命座算 `calcPanel(...).inCombat`（队友 buff 传空数组），再补影画 3/5 技能等级。**没有任何蕾米埃尔分支**，所以只做零差改名 `computeEntrySnapshotPanel`（6 文件 10 处，含 MECHANICS_IMPLEMENTATION.md）。`checkGuards.test.ts` 里 `camelSegments('computeRemielleEntryPanel')` 是切段样例字符串，**故意保留**。验证：vue-tsc 0；dump/rows 对 dump-41/rows-41 零差；verify 300 文件 / 3613 条，23 guards。
+
+**CC-43e**：`types.ts` 新增声明字段 `ownsPromoteVariantAxisBlocks?: boolean`（同 `producesInteractionTopUp` 范式），琉音模块声明 true。`roundInputs.ts#buildStackAxes` 改为 `configStore.team.some(c => !!c.agentId && getAgentMechanic(c.agentId)?.ownsPromoteVariantAxisBlocks === true)`，并删掉不再用的 `findSlotByIdentity` 导入。
+- 等价依据：`findSlotByIdentity` 同时认 agentId 与 teammateBuffId，而琉音 teammateBuffId = 自身 id。
+- 验证：vue-tsc 0；agentId 棘轮不变；dump/rows 零差。反向变异（琉音声明改 false）后 rowsnap 出差 15 键，全是含 1481 的队伍（如 auto-1051-1481-1451/*、auto-1591-1481-1211/*），语料覆盖到了。**但 liuyin / giftAxis / promote 单测 27 条对此变异全绿**：单测层没有锁「无声明者时跳过 promoteVariant 块」，靠 rowsnap 兜底。可选补测见下一步 3。
+- verify：见 `/home/kaua/calc-arch/verify43e.log`。
+
+**下一步（按顺序）**
+1. **CC-43f**：`roundInputs.ts` 约 205-215 行的 `'sigrid-pozhen'` 展开（`SIGRID_LANCE_SEGMENT_IDS` 值导入 + C6 时长 ×0.75）。建议在 `AgentMechanicModule` 加钩子 `expandAxisAction?(act, ctx): StackActionCost[] | undefined`，ctx 给 `{ skills, cinemaLevel }`（由编排层按 act.slot 取），sigrid 模块实现并返回三段；roundInputs 按 `configStore.team[act.slot]?.agentId` 派发，返回非 undefined 时 push 并 continue。判据 23 −2（6→4）。**先做反向变异**确认语料是否覆盖希格莉德破阵轴（perf 语料里有 auto-1591-* 队伍）；覆盖不到就补单测。同段的 `'norma-hat-chain'` 字面量是字符串、不计数，可顺手评估能否用同一钩子。
+2. **CC-43c**：`computeLiuyinHugCounts` 被 convergence.ts 与 ultimatePromote.ts 按值导入（计 4）→ 琉音模块能力。开工前先读 `docs/mcp-liuyin-promote-source.md` 与 ultimatePromote.ts 全文，这是最复杂的一张。
+3. 可选补测：单测锁住「队里无 promoteVariant 声明者时，轴里的 promoteVariant 块不产出终结技行」（CC-43e 的反向变异在单测层是绿的）。
+
 ## 附录：普查脚本 census.sh
 
 ```bash
