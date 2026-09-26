@@ -424,7 +424,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **新发现的 dump 覆盖盲区（已知坑补充）**：般岳的轴模式保底交互补齐（`interactionTopUp` 线程）**不在 dump/rowsnap 语料里**，语料没有覆盖「般岳 + 轴模式 / 保底喧响」的场景。以后改这条线，反向验证必须看单测（convergenceNightB/D、banyue.test），不能只看 dump 零差。
 - **target 重设 720→700（可逆）**：依据见下面的零散小项和 CC-17 规模。改 `scripts/check-guards.mjs` 的 target 一行即可（须 < frozen）。
 
-**剩余分布（HEAD `fe8fb90`，712 处，153 个字段）**：前几名是 burniceSrc 36、remielleSlot 20、liuyinSrc 18、triggerPanel 16、aliceSlot 16、remiellePanel 14、remielleAnomalyMultiplier 14、triggerSlot 13、janeSlot 13、janePanel 12。**大头是 `*Slot` / `*Panel` / `*Src` / `*Idx` 这类槽位定位变量**（B 类：编排层要知道「谁是 XX」，才去拿 XX 的面板和数据），需要逐角色设计能力，不能靠改名解决。统计命令：见 §5.6 的 `rf.mjs`，按字段统计的单行 node 脚本写法见本轮 lead-coordination。
+**剩余分布（HEAD `fe8fb90`，712 处，153 个字段）**：前几名是 burniceSrc 36、remielleSlot 20、liuyinSrc 18、triggerPanel 16、aliceSlot 16、remiellePanel 14、remielleAnomalyMultiplier 14、triggerSlot 13、janeSlot 13、janePanel 12。**大头是 `*Slot` / `*Panel` / `*Src` / `*Idx` 这类槽位定位变量**（B 类：编排层要知道「谁是 XX」，才去拿 XX 的面板和数据），需要逐角色设计能力，不能靠改名解决。统计命令：见 §5.6 的 `rf.mjs`，按字段统计用 WSL `/home/kaua/calc-arch/rf3.mjs [前N名]`（仓库外脚本；丢了就照 rf.mjs 按 field 聚合重写，10 行）。
 
 **CC-17 设计候选：axis overlay 消费端能力化（约 30 处）**
 - 现状：
