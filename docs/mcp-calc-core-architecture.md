@@ -179,7 +179,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-28 | review | **done** `69e85c4`（判据 22 357→340，target 328） | useResourceCalc `remielleVoidflareEvents`（编排层角色分支）→ moduleAnomalyEventRecords + 模块能力 anomalyEventRecords；展示层单测固化迁移前输出 | census §5.22 |
 | CC-29 | review | **done** `69b53f9`（判据 22 340→332） | useResourceCalc 简 6 命强击暴击附伤事件（findSlotByIdentity 1261，最后一处）→ jane 模块 anomalyEventRecords；useResourceCalc 已无 findSlotByIdentity | census §5.23 |
 | CC-30 | review | **done** `371a2c1`（判据 22 332→326，target 314） | `remielleEntryPanels` → `entrySnapshotPanels` 纯改名；判据 17 名单与规则文档同步 | census §5.24 |
-| CC-31 | review | **待做**（已实读，方案已定） | `CalcRoundThreads` 14 个模块下一轮反馈具名字段 → 通用 `moduleFeedback` 字典（`teamUltimateForJufufu` 例外保留）；预计判据 22 −55 | census §5.24 |
+| CC-31 | review | **done** `0b8a28a`（判据 22 326→270，target 258） | `CalcRoundThreads` 14 个模块下一轮反馈具名字段 → `moduleFeedback` 字典（键类型 mechanics/types `ModuleFeedback`，缺键 = 0） | census §5.25 |
+| CC-32 | review | **待做**（已实读，拆 a/b） | 32a：core/resource/crossAgentEnergy.ts 席德正兵回能块 → 模块能力（扩 crossAgentSupply）；32b：`CrossAgentEnergy` 5 个展示字段 → byDisplayKey（动 UI） | census §5.25 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
