@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-26 第 28 轮，lead-arena-0925c）**：**CC-19 全部完成**。19c-1 `b45652c`、19c-2 `de1cc8d`（蕾米埃尔块 6 迁 `extraAnomalyRows`），判据 22 545→535→**499**（target 重设 487）。**CC-20 `ea61032`**：判据 22 口径纠正，5 个 trigger* 触发者通用名加入豁免，读数 499→**462**，target 平移到 **450**（换尺，规则 17②，单独提交）。master 上 `npm run verify` EXIT=0，HEAD `ea61032`（docs 提交在其后）。详见 §5.14。
+- **最新交接（2026-09-26 第 29 轮，lead-arena-0925c）**：**CC-21 已落地 `3d000d0`**（全队异常乘区做成模块能力 `globalAnomalyMultiplierFactor`，并通用改名为 `globalAnomalyMultiplier`；lead 自做，没派工人，因为改动面只有约 17 处机械改名 + 1 个 computed + 1 个模块方法）。判据 22 从 462 降到 **447**，target 重设 **435**。master 上 `npm run verify` EXIT=0（291 个测试文件 / 3559 条测试），HEAD `3d000d0`（docs 提交在其后）。详见 §5.15。
+  **下一步（可以直接开工）**：**CC-22**（回合线程字段 `aliceTeamAssaultCount` / `aliceDisorderCount` 通用改名为 `teamAssaultCount` / `teamDisorderCount`，纯改名），开工清单见 §5.15。
+- **上一轮交接（2026-09-26 第 28 轮，lead-arena-0925c）**：**CC-19 全部完成**。19c-1 `b45652c`、19c-2 `de1cc8d`（蕾米埃尔块 6 迁 `extraAnomalyRows`），判据 22 545→535→**499**（target 重设 487）。**CC-20 `ea61032`**：判据 22 口径纠正，5 个 trigger* 触发者通用名加入豁免，读数 499→**462**，target 平移到 **450**（换尺，规则 17②，单独提交）。master 上 `npm run verify` EXIT=0，HEAD `ea61032`（docs 提交在其后）。详见 §5.14。
   **下一步（可以直接开工）**：**CC-21**（全队异常乘区 `remielleAnomalyMultiplier` 做成模块能力，并通用改名为 `globalAnomalyMultiplier`），开工清单见 §5.14。
 - **上一轮交接（2026-09-26 第 27 轮，lead-arena-0925c）**：**CC-19b 已落地 `3fbb326`**（爱丽丝极性强击 / C6 / 畏缩 + 简 C6 迁 `extraAnomalyRows`，工人 `d1dd95a`）。判据 22 从 601 降到 **545**，target 重设 **533**。master 上 `npm run verify` EXIT=0，HEAD `3fbb326`。19c 已实读并定稿（设计稿 §7.2）。详见 §5.13。
   **下一步（可以直接开工）**：**CC-19c**（蕾米埃尔块 6，分 19c-1 准备步 + 19c-2 迁块步，同一 worktree 里两个提交），开工清单见 §5.13。
@@ -266,6 +268,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-26 CC-19b 后**：**545**（`3fbb326`）；已低于 target 589，重设 target **533**。下一张：CC-19c（§5.13）。
 - **2026-09-26 CC-19c 后**：535（`b45652c`，19c-1）→ **499**（`de1cc8d`，19c-2）；已低于 target 533，重设 target **487**。
 - **2026-09-26 CC-20 口径纠正**：**462**（`ea61032`）= 499 − 37 个误报（trigger* 触发者通用名），**不是进步**；target 同口径平移 487→**450**。下一张：CC-21（§5.14）。
+- **2026-09-26 CC-21 后**：**447**（`3d000d0`）；已低于 target 450，重设 target **435**。下一张：CC-22（§5.15）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -604,6 +607,40 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
    - `aliceCoweringConfig` / `velinaCorrosionSource` / `velinaCinema2CorrosionRate`（anomalyPool 输入，考虑按模块能力声明）；
    - `banyueSlot`（convergence）；
    - `remielleRainbowEndCount` / `remielleSpecialVoidflareUseCount`（rowBuild / rowAccounting）。
+
+### 5.15 CC-21 落地记录 + CC-22 / CC-23 开工清单（2026-09-26 第 29 轮 lead-arena-0925c）
+
+**CC-21（`3d000d0`，判据 22 462→447，target 435）**：
+- `useResourceCalc.ts` 原来按身份 `findSlotByIdentity(['1581'])` 找槽、读 `remielleRefringeCoefficient*` 面板字段，现改为全队各槽 `getAgentMechanic(id)?.globalAnomalyMultiplierFactor(panelAt(panels.value, slot))` 连乘，初值 1，无面板的槽跳过（与原「无面板返回 1」等价）。
+- 公式逐字迁入 `remielle.ts` 模块对象（`agentIds` 下一行）。`mechanics/types.ts` 的 `AgentMechanicModule` 新增可选能力 `globalAnomalyMultiplierFactor?(panel)`。
+- 改名 16 处：ctx 字段、`roundInputs` deps、damagePool / damagePoolAnomaly，以及 nextRoundFeedbackR19 / R20、ysgLoopTraceProbe 的测试桩。下游 core/anomalyPool 早就叫 `globalAnomalyMultiplier`，现在全链同名。
+- **遗留 1 处不改**：`src/specs/agents/1581.json:71` 的说明文字里有 `remielleAnomalyMultiplier` 字样。那是用户确认过的账本校对记录（历史口径描述），不是代码引用。
+- 零差：dump 625 / rowsnap 638 个键，只有 `__ms` 不同。反向：因子 `/ 100` → `/ 1e9`，rowsnap DIFF 42 = 6 组 1581 预设 × 7 个变体，没有波及其他角色，cp 还原并 cmp 一致。
+- `remielle.test.ts` 新增 1 条公式用例：空面板返回 1；异化度 20 + 提升 5 返回 1.25。
+- 角色判定棘轮没有变化：`findSlotByIdentity(['1581'])` 这种数组写法不在 AST 三形态的统计范围内。
+
+**rf3 读数（HEAD `3d000d0`，447 处 / 123 个字段）前列**：banyueSlot 10（convergence）、aliceCoweringConfig 10（roundInputs / anomalyPool / helpers）、aliceTeamAssaultCount 9、aliceDisorderCount 9（convergence / panelPhases / roundThreads）、velinaCorrosionSource 9（anomalyPool）、remielleRainbowEndCount 9（rowBuild）、liuyinSrc 8、xideIdx 8（crossAgentEnergy）、remielleSpecialVoidflareUseCount 8、liuyinIdx 7、liuyinPromoteCount 7、velinaCinema2CorrosionRate 7。
+
+**CC-22 开工清单（纯改名；lead 实读 HEAD `3d000d0`）**
+1. 语义（`mechanics/types.ts:291–299` 注释原文）：
+   - `aliceTeamAssaultCount` = **全队强击触发次数**（`physical` + `physical_polar_assault` 两键之和，上一轮异常池收敛值）；
+   - `aliceDisorderCount` = **全队紊乱次数**。
+   两者都是跨轮反馈，build 阶段为 0。**它们是通用事实，只是目前唯一的消费者是爱丽丝**（剑仪 `alice_team_assault_gain` / `alice_disorder_gain`）。
+2. 改名：`aliceTeamAssaultCount` → `teamAssaultCount`，`aliceDisorderCount` → `teamDisorderCount`。范围：
+   - `mechanics/types.ts:297/299`（`AgentTeamConfigInput` 字段）以及 :310 注释里的引用；
+   - `composables/resourceCalc/roundThreads.ts:65/67/103/104`（`CalcRoundThreads`）；
+   - `panelPhases.ts:144/146/186/187/245/246`；
+   - `convergence.ts:130/131/579/580/1133/1134`（对象键；右侧的 `prevAliceTeamAssaultCount` 等局部量也一并改成 `prevTeamAssaultCount` / `prevTeamDisorderCount`，先 grep 它们的全部出处）；
+   - `alice.ts:555/569/570` 里 `applyTeamConfig` 解构的入参名；
+   - `alice.test.ts:190/191/196/197` 若是 `applyTeamConfig` 入参就一起改。
+3. **不改**：
+   - 爱丽丝 cfg 上的同名字段：`alice.ts:210/211/322/323/327/333/559–561/568`（`cc.aliceTeamAssaultCount = …`），以及 `types/resource/config.ts:262/264`（`CharacterConfig` 字段）。它们属于模块自己写的 cfg，不在判据 22 的计数范围内；改了会波及 feedbackCfgKeys / 快照键，没有收益。
+   - ⚠ `alice.ts:569` 这一行左边是 cfg 字段（不改），右边是入参（要改）。**必须手工逐行改，禁止全仓 sed**。这和 CC-16 的「cfg 字段与 computed 同名但不同物」是同一类坑。
+4. 名字冲突检查（已做）：`teamAssaultCount` 只在 `src/specs/resources.ts:10/197`（spec 上下文字段）出现，与本卡改名的对象不同，语义一致（都是全队强击次数），不冲突。`teamDisorderCount` 全仓未使用。
+5. 判据 22 预计约 −18。纯改名，零差应当逐位成立。反向验证用单测：把 `alice.ts` 里 `applyTeamConfig` 写 cfg 那一行的入参改成 0，`alice.test.ts` 190–197 附近的用例应当变红。
+6. 执行：改动面约 25 处且有 cfg 同名坑，**建议 lead 自做**（参照 CC-21：python 逐处断言恰好匹配 1 次再替换）；若派 dsflash，提示词必须写明第 3 条。零差命令参照 `/home/kaua/calc-arch/z21.sh`（在主仓库工作区跑 dump + rowsnap + 反向验证）。
+
+**CC-23（待设计，CC-22 之后）**：`convergence.ts:63` 直接 `import { aliceExternalCountsOf, aliceSlotOf, aliceSparkCountOf } from '@/mechanics/agents/alice'`，编排层直连角色模块。它和 CC-16 遗留的 `convergence.ts:54` 直接 import `computeBanyueInteractionTopUp` 是同一类问题。方向：做成模块能力（例如 `nextRoundTeamCounts(ap, rr)`），经 `getAgentMechanic` 派发。`banyueSlot`（convergence，10 处）一起考虑。
 
 ## 附录：普查脚本 census.sh
 
