@@ -1328,6 +1328,34 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 4. 零散 5 计：`liuyinPromote.ts` 改名（CC-35d-B4）、叶瞬光 2、仪玄 1、莱特 1。
 5. 调研待派同 §5.35。
 
+### 5.39 CC-37 / CC-39a done：简面板字段改通用名、雨果决算返还能力化（lead-arena-0925c，2026-09-27 第 52 轮）
+
+**提交**：CC-37 `f67c0ab`、CC-39a `a87da93`（各自 verify EXIT=0）。判据 22 **34 → 31 → 22**；`BASELINE` / `frozen` 22，**target 10**（39a 后读数 22 < 28，按「实测 − 12」重设）。agentId 棘轮 3/3。
+
+**CC-37：面板字段 `janeAssaultCritDmgBonus` → `selfAssaultCritDmgBonus`**
+- 语义：只给**本角色自身触发**的强击吃的暴伤加成（简潜能觉醒·致命舞步；乱流不继承）。写入方仍是 `jane.ts`，读取方 `core/damage.ts`（直伤强击）、`core/anomalyPool/helpers.ts`（异常池强击），声明在 `types/catalog.ts`、默认值在 `core/panel.ts`。
+- perl 词界替换 11 文件 15 处，含 `src/specs/agents/1261.json` 与 `public/static/character-mechanics.json` 的说明文本（两者同步改，JSON 校验通过）、`docs/MECHANICS_IMPLEMENTATION.md`。`check-guards.mjs` 里的旧名只在沿革注释，未改。
+- 验证：vue-tsc 0；jane / potentialAxisBatchB / specialMechanics / anomalyPool / modelingGaps / damage 177 条；dump / rows 仅 `__ms` 差；**反向变异（damage.ts 读侧置 0）dump 31 键出差**（`auto-1401-1261-1411` 等）。
+- 脚本 `/home/kaua/calc-arch/z37.sh`（含改名）。
+
+**CC-39a：雨果决算失衡值返还 → 模块能力 `stunRefundRatio`**
+- 原 `convergence.ts` 用 `findSlotByIdentity(['1291'])` 得 `hugoSlot`，再内联 `hugoHasVerdict` / `hugoRefundRatio` 公式。`hugoSlot` 的唯一用途就是这里，所以整段迁入 `hugo.ts` 的 `stunRefundRatio({ getMechanicSetting })`，编排层对在队模块求值取最大值后传 `promoteFixpoint`。
+- `convergence.ts` 不再导入 `findSlotByIdentity`（已无调用）。`roundInputs.ts` 局部量 `hugoCinema` → `slotCinema`（纯改名）。
+- 等价性：原查找同时认 `teammateBuffId`，本库均等于自身 id（同 CC-35d-A 的论证）。
+- 验证：vue-tsc 0；hugo / stunVulnSummary / timeLedgerInvariants / liuyin 60 条；dump / rows 仅 `__ms` 差；**反向变异（返还率恒 0）dump 零差**（perf 语料不含雨果返还路径），**单测红 5 条** → 由单测锁住。
+- 脚本 `/home/kaua/calc-arch/cc39a.py`、`z39a.sh`。
+
+**回退点**：`git revert a87da93`，再 `git revert f67c0ab`（两者都改棘轮同一行）。
+
+**rf3 快照（22 计，12 字段，39a 后）**：爱丽丝 aliceSparkOverride 3 / aliceSparkThisRound 3 / aliceSpark 3 / aliceCoweringDot 3 / aliceSparkCountOf 2 / aliceSwordWillSource 1（共 15）；雨果 hugoMoveActionTime 2（convergence 值导入的函数名）；零散 liuyinPromote 1 / lighterTeamEnergy 1 / yixuanFuFaForJufufu 1 / yeshuguangStunCapMult 1 / yeshuguangVeilStunBase 1。
+
+**下一步（按顺序，可直接开工）**
+1. **CC-38 爱丽丝（15 计）**：`convergence.ts` / `roundInputs.ts` 的 spark 跨轮反馈（`aliceSpark*`）、`core/anomalyPool.ts` 的 `aliceCoweringDot`、`outerCycle.ts` 的 `aliceSwordWillSource`。先写设计稿 `docs/mcp-cc38-alice.md`（同提交登记 README §6，文档数 50 → 51），参照 `nextRoundFeedback` / `AgentTeamConfigInput.threads` 先例。
+2. **CC-39b（2 计 + 结构）**：「终结失衡窗口的招式」统一能力。现状三处写死：`convergence.ts` 决算截断 `act.moveId === '1551016' || isHugoEndsWindowMove(act.moveId, cinema)` + `hugoMoveActionTime(act.moveId, dur)`；`roundInputs.ts` `endsWindow = '1551016' || HUGO_EX_VERDICT_MOVE_ID || (HUGO_ULT_MOVE_ID && slotCinema < 2)` + `HUGO_EX_FINAL_ACTION_TIME` 兜底。方案：新能力 `endsStunWindow?(moveId, cinemaLevel): boolean` + `axisMoveActionTime?(moveId, dur): number`，佩洛伊斯 / 雨果各自实现，编排层按 `configStore.team[act.slot].agentId` 派发。两处门控必须同源；验收含 `hugoVerdictLanding` 与反向变异。
+3. 零散 5 计：CC-35d-B4（`liuyinPromote.ts` 改名）、叶瞬光 2、仪玄 1、莱特 1。
+4. 判据 22 清零后，考虑把判据 22 的 target 设为 0 并改成「只许降」的硬门（届时再定）。
+5. 调研待派同 §5.35。
+
 ## 附录：普查脚本 census.sh
 
 ```bash

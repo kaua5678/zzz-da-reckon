@@ -199,6 +199,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-35d-B3 | review | **done** `840fa70`（76→63，target 51） | 新模块能力 `ultimateGiftSource`；好评转大三处身份查找改能力派发 | 设计稿 §D、census §5.37 |
 | CC-36a | review | **done** `8af6ca2`（判据 22 63→40，target 28） | 维琳娜风蚀量去角色名（corrosionSource / cinema2CorrosionRate / 气旋计数） | `docs/mcp-cc36-velina-anomaly.md`、census §5.38 |
 | CC-36b | review | **done** `1ea574e`（40→34） | 1 命乱流抗性无视 → 面板字段 `turbulenceResIgnore`；6 命风化加成 → 新模块能力 `windAnomalyBonus`；补单测 | `docs/mcp-cc36-velina-anomaly.md`、census §5.38 |
+| CC-37 | review | **done** `f67c0ab`（判据 22 34→31） | 简面板字段 → 通用名 `selfAssaultCritDmgBonus` | census §5.39 |
+| CC-39a | review | **done** `a87da93`（31→22，target 10） | 新模块能力 `stunRefundRatio`（雨果决算返还），convergence 去 findSlotByIdentity(1291) | census §5.39 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
