@@ -156,6 +156,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-13 | review | **done**（dsflash 工人 v2 + lead 复核：闸门 grep 两条 0 行；build；guards 21；带 `PERF_KEY_ALIAS=1` dump 624 / rowsnap 637 零差，不带开关 dump 全量 DIFF 624（键名旁证）；反向验证删 `exRefundFreeCap` 写入 ⇒ DIFF 31 全为 yidhari-* 场景；verify 过。首派因卡面漏洞（EnergySource 键进 dump 哈希）停掉，见卡末 v2） | 连续强特通道通用化（R22-D1 批 1-1）：引擎只认 `exContinuous`/`exFinalize`/`exRefundPerPaid`/`exReserved*`/`exRefundFreeCap`，1051 模块声明；core 不再读 `yidhariExPerStun`/`yidhariStunCount`；零 delta | 14 文件，见下方 CC-13 卡 |
 | ~~批 1-2~~ | — | **不做**（lead 2026-09-26） | 比利/叶瞬光终局旗标并入 CC-13 通用通道：旗标只被各自模块读写、core 零读取，且语义不同 | `docs/mcp-r22d1-batch12-field-census.md` §2 |
 | CC-14a | review | **待派，前置门：R1 合入** | resourceIncome 命座能量 6 角色通用化（`bonusEnergyEntries`），零差用 PERF_KEY_ALIAS | 卡面 `docs/mcp-r22d1-batch12-field-census.md` §5.2；普查与分簇见 §5 |
+| CC-14b | review | **已派**（worktree r66-scratch/cc14b） | 伊德海莉燃血喧响两处同式迁模块能力 `selfBurnDecibel`，零差（新基线 H0 @ f0df0cb） | 卡面 `docs/mcp-r22d1-batch12-field-census.md` §5.4 |
 
 ### CC-1 · 招式表查询迁出（fast）
 

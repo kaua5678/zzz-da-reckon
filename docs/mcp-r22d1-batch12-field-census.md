@@ -116,7 +116,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 | 簇 | 代表字段 | 类 | 依据 | 卡 |
 |---|---|---|---|---|
 | resourceIncome 命座能量 | 周期型：`normaC2TriggerInterval/EnergyPerTrigger`、`qingyiC4TriggerInterval/EnergyPerTrigger`；定值型：`lycaonC2Energy`、`billyC1Energy`、`yixuanFlashBonus`、`antonC1EnergyGift` | **A** | core 里只有「间隔×每次」和「定值」两种算式，全部由模块写入（qingyi.ts:145、lycaon.ts:238、billy.ts:114、yixuan.ts:373、anton.ts:79），core 只负责求和 | **CC-14a**（首选） |
-| resourceIncome 伊德海莉残余 | `yidhariBurnDecibel`、`yidhariDecibelPerHpPct`、`yidhariExHealMissingHpPct`、`yidhariExternalHealPct`、`yidhariChargeSlam`、`yidhariBasicFollow` | A（待逐字段核实） | 与 CC-13 同一角色、同一类「模块写数值、core 求和」的形状 | CC-14b（待立卡） |
+| 伊德海莉燃血喧响（resourceIncome + helpers 两处同式） | `yidhariBurnDecibel`、`yidhariDecibelPerHpPct`、`yidhariExHealMissingHpPct`、`yidhariExternalHealPct`、`yidhariChargeSlam`、`yidhariBasicFollow` | **B**（2026-09-26 读码改判，见 §5.4） | 与 CC-13 同一角色、同一类「模块写数值、core 求和」的形状 | CC-14b（§5.4） |
 | 槽位定位变量 | `remielleSlot`、`aliceSlot`、`janeSlot`、`triggerSlot`、`triggerPanel`、`banyueSlot`、`xideIdx`、`liuyinIdx`、`burniceSrc`、`liuyinSrc` | **B** | 本质是在编排层按角色找槽位，等于变相的 agentId 判定 | 按角色逐卡，先从引用最少的起 |
 | 蕾米尔 remielle 机制 | `remielleCinema*`、`remielleSpecialVoidflare*`、`remielleRainbowEnd*`、`remielleRefringe*`，散布在 `core/buff.ts`、`core/panel.ts`、`core/resource/rowBuild.ts`、`rowAccounting.ts` | **B** | 角色专属逻辑深入 core 面板和行构建，引用最多（202 处、37 个字段） | 需要单独做设计稿再拆卡，不直接派 |
 | 爱丽丝 alice / 琉音 liuyin / 般岳 banyue / 诺玛 norma 专用流程 | `aliceCoweringConfig`、`aliceDisorderCount`、`liuyinPromote*`、`banyueTopUp`、`normaGiftChain` | B | 已有专用文件（`liuyinPromote.ts`、`normaHatChain.ts`），属于能力接口的下一阶段 | ⚠ `liuyinPromote` 与 `docs/mcp-liuyin-promote-source.md` W26 重设计线相交，要等那条线结束 |
@@ -153,6 +153,47 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
   - `check-guards` 22/22 通过；`vue-tsc -b` 退出码 0。
   - 反向验证：往 `src/core/damage.ts` 临时追加 `c.billyNegControl`，判据变红（822/821），还原后该文件无 diff。
 - **卡 CC-14a 完成后**：读数应降到 821 − 该卡清掉的引用数，届时同步下调常量和 frozen。
+
+
+### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
+
+> 2026-09-26 lead-arena-0925c 立卡。**更正 §5.1**：这一簇原先标「A（待核实）」，逐行读码后改判 **B**。
+> 依据：算式本身是伊德海莉独有的，包括缺失生命折算、蓄力重碾加普攻追击的循环、外部治疗；它不是「只有名字带角色」的通用算式。
+
+**现状（三处连成一条链，读码实测）**
+
+| 位置 | 作用 | 外部治疗项 |
+|---|---|---|
+| `core/resource/helpers.ts:304–320` `yidhariBurn` | 迭代期算喧响，进终结技次数 | `externalHealPct + externalHealPerUltPct × 提供者终结技次数`（`curtain.providerSlot` 的 `prevStates[..].ultimateCount`） |
+| `core/resource/assembleSlot.ts:57–60` | 最终装配时把「每次 × 次数」**累加写回** `cfg.yidhariExternalHealPct` | —（写回） |
+| `core/resource/resourceIncome.ts:264–280` `yidhariBurnDecibel` | 结果装配，读写回后的值；输出键 `DecibelSource.yidhariBurnDecibel`（`types/resource/energy.ts:110`） | 只用 `externalHealPct`（已含写回） |
+
+**做法**
+1. `src/mechanics/types.ts` 的 `AgentMechanicModule` 新增可选能力：
+   `selfBurnDecibel?(input: { cfg: CharacterOperationConfig; basicAttackTime: number; exSpecialCount: number; providerUltCount: number }): number`
+   注释写明：它是不可分享的自身喧响，调用方负责乘效率；`providerUltCount` 是帷幕提供者的终结技次数，已经写回 cfg 的调用方传 0。
+2. `src/mechanics/agents/yidhari.ts` 实现该能力，把两段算式**原样**搬过去，常量 75 / 33 / 10 和取整方式都不改：
+   - 判别：`cfg.yidhariDecibelPerHpPct === undefined` 时返回 0，保留原有防御；
+   - `external = max(0, (cfg.yidhariExternalHealPct ?? 0) + (cfg.yidhariExternalHealPerUltPct ?? 0) * providerUltCount)`。
+3. `helpers.ts` 的调用改成 `getAgentMechanic(cfg.agentId)?.selfBurnDecibel?.({ cfg, basicAttackTime: prev.basicAttackTime ?? 0, exSpecialCount: prev.exSpecialCount ?? 0, providerUltCount: curtain.providerSlot >= 0 ? (prevStates[curtain.providerSlot]?.ultimateCount ?? 0) : 0 }) ?? 0`。
+4. `resourceIncome.ts` 同样改，传 `providerUltCount: 0`（外部治疗已由 assembleSlot 写回）。输出键 `yidhariBurnDecibel` 改名为 `selfBurnDecibel`，同步 `energy.ts:110`，以及所有读这个键的测试（`src/core/__tests__/decibelRowParity.test.ts`、`energyRowParity.test.ts` 等，用 grep 找全）。
+5. `import { getAgentMechanic } from '@/mechanics'` 按 `core/resource/finalizePasses.ts:33` 的同款写法。**禁止** import 具体角色模块，否则判据 12 会红。
+6. **不在本卡范围**：`assembleSlot.ts:57–60` 的写回（依赖槽位定位变量 `yidhariSlot`，留给 CC-14c）；`luciaElowen.ts` 写 `yidhariExternalHealPerUltPct` 的那一行。
+
+**验收（零差）**
+- 闸门：`grep -nE 'yidhari[A-Z]' src/core/resource/resourceIncome.ts` 为 0 行；`src/core/resource/helpers.ts` 的 304–330 段不再出现 `yidhari` 前缀字段（其余行不动）。
+- `.zc/perf/dump.perf.ts` 与 `rowsnap.perf.ts` 的 `KEY_ALIAS` 各追加 `selfBurnDecibel: 'yidhariBurnDecibel'`，然后带 `PERF_KEY_ALIAS=1` 跑 dump 和 rowsnap，与**新基线** `/home/kaua/calc-arch/dump-H0.json`、`rows-H0.json`（在 `f0df0cb` 上生成）零差。**不要**用 `dump-A` / `rows-A`：它们生成于 `d983b5a`，已经过期。
+- 反向验证：临时把模块里的 75 改成 76，DIFF 必须只出现在含伊德海莉(1051) 的场景；改完用 cp 备份还原。
+- `npx vitest run src/mechanics/__tests__/yidhari.test.ts src/core/__tests__/decibelRowParity.test.ts src/core/__tests__/energyRowParity.test.ts src/scripts/__tests__/checkGuards.test.ts` 全过；`npx vue-tsc -b` 退出码 0。
+- 判据 22 读数会下降，预计约 18 处（`resourceIncome.ts` 约 9 处、`helpers.ts` 约 9 处）。以实测为准，把 `scripts/lib/core-role-field-ratchet.mjs` 的 `CORE_ROLE_FIELD_BASELINE` 和 `scripts/check-guards.mjs` 里 RATCHET_BURNDOWN「core 角色前缀字段」的 frozen **同步下调到实测值**。
+
+**环境**
+- 在 worktree `/home/kaua/r66-scratch/cc14b` 里做（基于 `f0df0cb` 的 detached HEAD，`node_modules` 软链到主仓库，`.zc/perf` 已复制）。
+- 主仓库有 R1 并行会话的 WIP，**一律不碰主仓库**。
+- 做完在 worktree 里 `git commit`，由 lead 复核后 cherry-pick 到 master。
+- **回退点**：单卡单提交，`git revert` 即可。
+
+**CC-14c（登记，未立卡）**：`assembleSlot.ts` 的外部治疗写回，以及 ctx 里的 `yidhariSlot`，改成模块能力，比如 `onFinalAssemble({ cfg, providerUltCount })`。之后 `resourceIncome` 就可以不依赖写回。
 
 ## 附录：普查脚本 census.sh
 
