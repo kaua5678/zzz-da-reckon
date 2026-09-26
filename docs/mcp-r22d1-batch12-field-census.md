@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-26 第 26 轮，lead-arena-0925c）**：CC-19 设计稿 `docs/mcp-cc19-extra-anomaly-rows.md`（`c7f2068`，README §6 已登记为 48 份），**CC-19a 已落地 `b14fb4a`**（柏妮思 C6 灼烧迸发迁 `extraAnomalyRows`，工人 `7be6233`）。判据 22 从 613 降到 **601**，target 重设 **589**。master 上 `npm run verify` EXIT=0，HEAD `b14fb4a`。详见 §5.12。
+- **最新交接（2026-09-26 第 27 轮，lead-arena-0925c）**：**CC-19b 已落地 `3fbb326`**（爱丽丝极性强击 / C6 / 畏缩 + 简 C6 迁 `extraAnomalyRows`，工人 `d1dd95a`）。判据 22 从 601 降到 **545**，target 重设 **533**。master 上 `npm run verify` EXIT=0，HEAD `3fbb326`。19c 已实读并定稿（设计稿 §7.2）。详见 §5.13。
+  **下一步（可以直接开工）**：**CC-19c**（蕾米埃尔块 6，分 19c-1 准备步 + 19c-2 迁块步，同一 worktree 里两个提交），开工清单见 §5.13。
+- **上一轮交接（2026-09-26 第 26 轮，lead-arena-0925c）**：CC-19 设计稿 `docs/mcp-cc19-extra-anomaly-rows.md`（`c7f2068`，README §6 已登记为 48 份），**CC-19a 已落地 `b14fb4a`**（柏妮思 C6 灼烧迸发迁 `extraAnomalyRows`，工人 `7be6233`）。判据 22 从 613 降到 **601**，target 重设 **589**。master 上 `npm run verify` EXIT=0，HEAD `b14fb4a`。详见 §5.12。
   **下一步（可以直接开工）**：**CC-19b**（爱丽丝极性强击 / C6 / 畏缩 + 简 C6 迁 `extraAnomalyRows`）。接口已在设计稿 §7.1 定稿，不需要再设计，直接派工人：提示词以 `/home/kaua/calc-arch/cc19a.prompt` 为模板，块号、替换规则按 §7.1 改。
 - **上一轮交接（2026-09-26 第 25 轮，lead-arena-0925c）**：CC-18b 已落地 `a936127`（设计定稿见设计稿 §7.1，`583f2ea`；dsflash 工人实现 `1a8c98e`，lead 复核）。判据 22 从 623 降到 **613**，target 611 不变。master 上 `npm run verify` EXIT=0，HEAD `a936127`。详见 §5.11。
   **下一步（可以直接开工）**：**CC-19 设计**（异常侧角色块能力化；CC-18c 柏妮思异常侧是它的第一片）。开工清单见 §5.11。
@@ -259,6 +261,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-26 CC-18a 后**：**623**（`23470f2`）；已低于 target 649，重设 target **611**。下一张：CC-18b（§5.10）。
 - **2026-09-26 CC-18b 后**：**613**（`a936127`）；target 611 不变。下一张：CC-19 设计（§5.11）。
 - **2026-09-26 CC-19a 后**：**601**（`b14fb4a`）；已低于 target 611，重设 target **589**。下一张：CC-19b（§5.12）。
+- **2026-09-26 CC-19b 后**：**545**（`3fbb326`）；已低于 target 589，重设 target **533**。下一张：CC-19c（§5.13）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -544,6 +547,22 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 4. 零差用 `/home/kaua/calc-arch/v19a.sh`（sed 改成 cc19b / 19b）；反向验证模板 `/home/kaua/calc-arch/r19a.sh`（突变点见 §7.1）。
 5. 其余照 19a：cherry-pick -n → verify → 文档 → zc done。
 6. 19c（蕾米埃尔，:514 起，字段最多）在 19b 之后单独实读设计。
+
+### 5.13 CC-19b 落地记录 + CC-19c 开工清单（2026-09-26 第 27 轮 lead-arena-0925c）
+
+**CC-19b（`3fbb326`，判据 22 601→545，target 533）**：完整记录在设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §8。
+
+**rf3 读数（HEAD `3fbb326`，545 处 / 132 个字段）前列**：remielleSlot 20、triggerPanel 16、remiellePanel 14、remielleAnomalyMultiplier 13、triggerSlot 13、banyueSlot 10（convergence.ts）、aliceCoweringConfig 10（roundInputs / anomalyPool / helpers）、remielleCinema1SpecialVoidflareCount 9（跨 7 个文件，含 core/buff、core/panel）、aliceTeamAssaultCount 9、aliceDisorderCount 9。
+
+**CC-19c 开工清单**
+1. 定稿见设计稿 §7.2（lead 于 `3fbb326` 实读块 6 与依赖）。**两步两提交**：19c-1 把 `ELEMENT_*_KEYS` 搬到 `src/core/elementKeys.ts`，并把蕾米埃尔 3 个辅助函数搬进 `mechanics/agents/remielle.ts`，原处改为转发导出（零行为）；19c-2 把块 6 迁进 remielle 模块的 `extraAnomalyRows`（order 60），输入面追加 6 个字段。
+2. worktree：`git worktree add --detach /home/kaua/r69-scratch/cc19c <HEAD>`，软链 node_modules，拷入 `.zc/perf`；`sed -i 's#r69-scratch/cc19b #r69-scratch/cc19c #' /home/kaua/calc-arch/run-wt.sh`。
+3. 提示词：以 `/home/kaua/calc-arch/cc19b.prompt` 为模板。棘轮 frozen 当前 **545**、target **533**。要求两个提交，并在各自提交前各跑一遍 check-guards + vue-tsc。
+4. lead 验收：**两个提交分别做零差**（先 checkout 19c-1 跑 v19b.sh 的副本，再验 19c-2）。反向验证点见 §7.2。
+5. 19c 做完后的候选（届时实读再定）：
+   - `triggerPanel` / `triggerSlot`（damagePool*.ts 与 helpers.ts，疑似触发者 / 扳机角色的通用名误报，要先确认是不是角色前缀；若是扳机 Trigger 这个角色就立卡）；
+   - `aliceCoweringConfig` / `aliceTeamAssaultCount` / `aliceDisorderCount`（convergence / panelPhases / roundThreads 的回合线程字段，走 CC-15 那种通用命名的纯改名路线）；
+   - `banyueSlot`（convergence.ts）。
 
 ## 附录：普查脚本 census.sh
 

@@ -166,8 +166,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-18a | design | **done** `23470f2`（判据 22 661→623，target 重设 611） | 柏妮思附加直伤 4 行 + 半月 C6 摧岳附伤迁模块能力 extraDirectRows
 | CC-18b | review | **done** `a936127`（判据 22 623→613） | 琉音 3 块（重击附加 / 非轴强特拆分 / 影画6余音）迁 extraDirectRows，零差 | census §5.11 |
 | CC-19a | design | **done** `b14fb4a`（判据 22 613→601，target 重设 589） | 新能力 extraAnomalyRows（分组 + 顺序键）；柏妮思 C6 灼烧迸发迁模块，零差 | 设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` / census §5.12 |
-| CC-19b | review | **待做**（接口已定稿，设计稿 §7.1） | 爱丽丝极性强击 / C6 / 畏缩 + 简 C6 迁 extraAnomalyRows | census §5.12 |
-| CC-19c | design | **待设计** | 蕾米埃尔耀变 / 特殊虚耀（damagePoolAnomaly :514 起） | 设计稿 §7 |
+| CC-19b | review | **done** `3fbb326`（判据 22 601→545，target 重设 533） | 爱丽丝极性强击 / C6 / 畏缩 + 简 C6 迁 extraAnomalyRows，零差；排序反向验证生效 | census §5.13 |
+| CC-19c | review | **待做**（已定稿，设计稿 §7.2：19c-1 准备步 + 19c-2 迁块步） | 蕾米埃尔耀变 / 特殊虚耀迁 extraAnomalyRows；辅助函数迁 mechanics、ELEMENT_*_KEYS 迁 core | census §5.13 |
 | CC-18c | design | **并入 CC-19a** |
 
 ### CC-1 · 招式表查询迁出（fast）

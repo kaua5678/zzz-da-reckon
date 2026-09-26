@@ -189,6 +189,56 @@ anomalyPool: <anomalyPoolResult 的类型>
 - 若语料里爱丽丝 / 简不在 0 号位，C6 两块在 dump 里多半无差，同样用单测反向（参照 19a）。畏缩和极性强击不看命座，应在含 1401 的场景出现 DIFF。
 - **顺序反向**：把爱丽丝极性强击的 order 临时改成 35，rowsnap 在「同队含 1261 + 1401」的场景应出现 DIFF（证明排序生效）。若语料里没有同队的场景，就只看单测。
 
+### 7.2 CC-19c 定稿（2026-09-26 第 27 轮 lead 实读 HEAD `3fbb326`）
+
+块 6（蕾米埃尔耀变 / 特殊虚耀）是 `damagePoolAnomaly.ts` 里最后一个内联角色块，位置搜 `const remielleSlot`，一直到函数末尾。
+
+**障碍（实测）**：块 6 调用 `getRemielleLevelValue` / `remielleSpecialVoidflareCount` / `calcVoidflareDamage`（定义在 `composables/resourceCalc/anomalyPanels.ts` :375–450 附近）、`findMoveById`、`elementLabel`（`composables/resourceCalc/helpers.ts:205`）。**守卫判据 19 禁止 mechanics 按值 import `@/composables`**（`import type` 豁免）。另外，`calcVoidflareDamage` 依赖 `composables/resourceCalc/skillRows.ts:40–72` 的 `ELEMENT_DMG_KEYS` / `ELEMENT_DEF_REDUCTION_KEYS` / `ELEMENT_RES_REDUCTION_KEYS`。`findMoveById` 在非 composables 的 `src/data/moveTableQueries.ts:54` 有正本，mechanics 可以直接 import。
+
+**决定：拆两步，放在同一个 worktree 里，分两个提交（任一步都可单独 revert）**
+
+**19c-1 准备步（零行为）**：
+1. 新建 `src/core/elementKeys.ts`，把 skillRows.ts 的 3 个 `ELEMENT_*_KEYS` 常量逐字搬过去。skillRows.ts 改成 `import { … } from '@/core/elementKeys'`，并 `export { … }` 转发，所有旧的 import 点不用改。
+2. 把 `getRemielleLevelValue`、`remielleSpecialVoidflareCount`、`VoidflareDamageInput`（interface）、`calcVoidflareDamage` 逐字搬进**现有的** `src/mechanics/agents/remielle.ts`。不新建 agents 下的文件，理由是先查清 registry 有没有用 glob 自动加载 agents/*.ts；工人先 `grep -n "glob" src/mechanics/registry.ts src/mechanics/index.ts`，若没有 glob，新建文件也可以，但仍优先放进 remielle.ts。
+   依赖只有 `@/core/skillLevel` 的 `getSkillLevelCoef`、`@/core/elementKeys`、`@/utils/format`、`@/types/catalog` 类型。
+   anomalyPanels.ts 删掉这些定义，改成 `export { getRemielleLevelValue, remielleSpecialVoidflareCount, calcVoidflareDamage } from '@/mechanics/agents/remielle'` 和 `export type { VoidflareDamageInput } from …`。helpers.ts :271/:290、useResourceCalc.ts :86/:610、damagePoolAnomaly.ts 的 import 都不用改。注意 anomalyPanels.ts:29 已经从 remielle.ts import 了 `isRemielleAgent`，不会形成新环。
+3. 这一步 rows 不变，dump / rowsnap 应当逐位零差。判据 22 会因为 anomalyPanels 里的 remielle* 字段减少而下降，按规则同步 frozen。
+
+**19c-2 迁块步**：块 6 逐字迁入 `remielle.ts` 模块对象（:167 附近，`agentIds: [REMIELLE_AGENT_ID]`）的 `extraAnomalyRows`，order = `EXTRA_ANOMALY_ROW_ORDER.voidflare`（60）。`ExtraAnomalyRowsInput` 追加以下字段（必填，名字不带角色前缀）：
+
+```ts
+/** = panelAt(remielleEntryPanels, slot)（进场快照面板；ctx.remielleEntryPanels 原样） */
+entryPanel: PanelValues | undefined
+/** = catalogStore.agentSkillsByAgentMap.get(configStore.team[slot]?.agentId ?? '') */
+skills: AgentSkills | undefined
+/** = (s) => panelAt(damagePanels, s) */
+panelOf: (slot: number) => PanelValues | undefined
+/** = (s) => catalogStore.agentsMap.get(configStore.team[s]?.agentId ?? '')?.damageElement ?? 'physical' */
+teamElement: (slot: number) => string
+/** = (k, d) => configStore.getTeamMechanicSetting(k, d) */
+getTeamMechanicSetting: (key: string, dflt: number) => number
+/** = elementLabel（helpers.ts:205，闭包注入以绕开判据 19） */
+elementLabel: (element: string) => string
+```
+
+**替换规则**：
+- `remiellePanel` → `input.panel`；`remielleEntryPanel` → `input.entryPanel`；`remielleSkills` → `input.skills`；`remielleSlot` → `input.slot`（原式 `remielleSlot >= 0 ?` 在模块内恒真）；
+- `anomalyPoolResult?.perSlotAnomalyTriggers ?? []` → `input.anomalyPool?.perSlotAnomalyTriggers ?? []`；
+- `catalogStore.agentsMap.get(...)?.damageElement ?? 'physical'` → `input.teamElement(slot)`；
+- `panelAt(damagePanels, slot)` → `input.panelOf(slot)`；
+- `configStore.getTeamMechanicSetting` → `input.getTeamMechanicSetting`；
+- `configStore.enemy` → `input.enemy`；`configStore.team[x]?.agentId ?? ''` → `input.teamAgentId(x)`；
+- `findMoveById` 从 `@/data/moveTableQueries` import。工人先确认 skillRows.ts:38 转发的就是这个函数；若不是同一实现，就停下报告。
+- 行对象字段、字段顺序、id / name / source / note 模板逐字不变；`[0, 1, 2]` 字面量不变。
+
+**零差 / 反向**：
+- 语料里含 1581 的预设有 `auto-1261-1561-1581`、`auto-1261-1331-1581`（蕾米埃尔在 2 号位），另有 `/axis` 变体。
+- 反向验证点：耀变 `totalDamage: result.damage * count` ×0，应在这两组预设的全部变体出现 DIFF。
+- 特殊虚耀需要 C1，而 c6 变体只切换 0 号位，dump 看不到，改用单测反向。
+- 19c-2 完成后，`damagePoolAnomaly.ts` 里不再有内联角色块；派发点是异常尾段唯一的角色出口。
+
+**预计**：判据 22 两步合计下降约 30–40（damagePoolAnomaly 里的 remielleSlot / remiellePanel / remielleEntryPanel，加上 anomalyPanels 里 3 个函数体内的 remielle* 面板字段）。useResourceCalc.ts:610 的 remielle 引用不在本卡范围内。
+
 ## 8. 实现记录
 
 - **CC-19a 已落地 `b14fb4a`**（2026-09-26 第 26 轮 lead-arena-0925c）：设计稿 `c7f2068`。dsflash 工人在 worktree `r69-scratch/cc19a` 实现（`7be6233`），lead 逐行复核后 `cherry-pick -n` 挑回。7 个文件：types / burnice / damagePoolAnomaly / burnice.test / 新增 `src/composables/__tests__/damagePoolAnomalyGroups.test.ts` / 2 个棘轮常量。
@@ -196,4 +246,15 @@ anomalyPool: <anomalyPoolResult 的类型>
 - 零差：dump 625 / rowsnap 638 个键，只有 `__ms` 不同。
 - 反向：灼烧迸发 `baseMultiplier` ×0 → rowsnap **无差**（语料无 1171 C6，与 §4 预判一致）。`burnice.test.ts` 红 2 条（模块逐字用例 + 真管线「派发点接线」集成用例），还原后绿。
 - 全量：master `npm run verify` EXIT=0（291 个测试文件 / 3543 条测试，22 条守卫通过），HEAD `b14fb4a`。
-- 偏离（均合理）：`buildVirtualPanel` 定型为单参闭包 `(prog) => ReturnType<typeof buildAnomalyVirtualPanel>`；`buildSettlementEntries` 定型为 `(build, count)`，类型用 `Parameters` / `ReturnType` 推导。派发点用 `for (const r of flattenAnomalyRowGroups(extraGroups)) rows.push(r)`。
+- **CC-19b 已落地 `3fbb326`**（2026-09-26 第 27 轮 lead-arena-0925c）：dsflash 工人在 worktree `r69-scratch/cc19b` 实现（`d1dd95a`），lead 逐行复核后 `cherry-pick -n` 挑回。9 个文件：types / alice / jane / damagePoolAnomaly / alice、jane、burnice 测试 / 2 个棘轮常量。
+  - 判据 22：601 → **545**（-56）；低于 target 589，**重设 target 533**。
+  - 零差：dump 625 / rowsnap 638 个键，只有 `__ms` 不同。本次 `__ms` 从约 39s 涨到 53s，是后台多个 vitest 同时跑造成的负载波动；随后全量 verify 耗时 122s，属正常。
+  - 反向（rowsnap，5 个突变，均 cp 还原并 cmp 一致）：
+    - 爱丽丝 C6 `skillMultiplier: 3300` ×0 → DIFF 4，是 4 组「1401 在 0 号位」预设的 c6 变体；
+    - 简 C6 `1600` ×0 → DIFF 4，是 4 组「1261 在 0 号位」预设的 c6 变体；
+    - 畏缩 `count` ×0 → DIFF 28（4 组 1401 预设 × 7 个变体，含 `/axis`）；
+    - **畏缩 order 50→15 → DIFF 28**：纯顺序变化，证明派发排序确实决定行序；
+    - 极性强击 order 20→35 → 无差：同队的 `auto-1401-1261-1411` 里简在 1 号位、命座不到 6，没有 order 30 的行可以换位，预期内。
+  - 全量：master `npm run verify` EXIT=0（291 个测试文件 / 3551 条测试，22 条守卫通过），HEAD `3fbb326`。
+  - 偏离：块内用 `const aliceSlot = slot` / `alicePanel = panel` 等局部别名，以保持块体文本逐字不变（等价）；jane.ts 多了一个 `import type { DamagePoolRow }`。
+- 19a 偏离（均合理）：`buildVirtualPanel` 定型为单参闭包 `(prog) => ReturnType<typeof buildAnomalyVirtualPanel>`；`buildSettlementEntries` 定型为 `(build, count)`，类型用 `Parameters` / `ReturnType` 推导。派发点用 `for (const r of flattenAnomalyRowGroups(extraGroups)) rows.push(r)`。
