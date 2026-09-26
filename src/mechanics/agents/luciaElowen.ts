@@ -1,5 +1,5 @@
 import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput } from '../types'
-import type { CharacterResourceResult, MechanicSetting, SkillExecution } from '@/types/resource'
+import type { CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting, SkillExecution } from '@/types/resource'
 import type { LuciaMechanicSource } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
 import { fmt } from '@/utils/format'
@@ -456,6 +456,49 @@ const settings: MechanicSetting[] = [
   },
 ]
 
+/**
+ * 装配期写回（2026-09-26 CC-14e，自 `core/resource/assembleSlot.ts` 逐字迁入）：卢西娅 4 命
+ * 帷幕触发总次数写回 cfg（供模块资源卡展示）。
+ *
+ * 三个写回（`luciaCurtainTriggerCount` / `luciaCurtainSelfCount` / `luciaCurtainTeammates`）的算式、
+ * 顺序、取整与 filter 逐字保留原 core 块；自开次数调用本模块 `curtainTriggers` 实现
+ * （`teammateOpenCount: 0`），不复制算式。`curtainOpeners` 由引擎按 `curtain-open` 跨槽供给收集
+ * （已滤掉 `rawCount <= 0`），模块只做比例分摊。
+ *
+ * 展示拆分（2026-09-19，零求值改动）：自开部分 + 队友来源归因（边际法：队友份额 = 总 − 自开，
+ * 15s CD 封顶与覆盖滑块折算效应按比例落到两边）。2026-09-25 CC-6b：队友源改为按 `curtain-open`
+ * 跨槽供给的全部提供者收集，并按各自 rawCount 比例分摊队友份额。
+ * ⚠ **多提供者比例分摊是新语义、当前不可达**（唯一提供者 = 伊德海莉）：单提供者时
+ * mateTotal > 0 ⇒ 比例 = 1 ⇒ triggers 与原式 `max(0, 总 − 自开)` 逐位相同；出现第二个
+ * 提供者时行为与迁移前不同（旧实现只取按角色字段找到的那一个槽作来源），故此处**不是**逐位等价承诺。
+ */
+function luciaOnFinalAssemble({ cfg, isCurtainProvider, curtainTriggers, state, totalTime, curtainOpeners }: {
+  cfg: CharacterOperationConfig
+  providerUltCount: number
+  isCurtainProvider: boolean
+  curtainTriggers: number
+  state: IterationState
+  totalTime: number
+  curtainOpeners: Array<{ agentId: string; rawCount: number }>
+}): void {
+  if (!isCurtainProvider) return
+  cfg.luciaCurtainTriggerCount = curtainTriggers
+  cfg.luciaCurtainSelfCount = luciaElowenMechanic.curtainTriggers!({
+    cfg,
+    state,
+    teammateOpenCount: 0,
+    totalTime,
+  })
+  const raw = curtainOpeners
+  const mateTotal = raw.reduce((n, m) => n + m.rawCount, 0)
+  const mateTriggers = Math.max(0, curtainTriggers - cfg.luciaCurtainSelfCount)
+  cfg.luciaCurtainTeammates = raw.map(m => ({
+    agentId: m.agentId,
+    rawCount: m.rawCount,
+    triggers: mateTotal > 0 ? mateTriggers * (m.rawCount / mateTotal) : 0,
+  }))
+}
+
 export const luciaElowenMechanic: AgentMechanicModule = {
   id: 'agent:lucia_elowen',
   agentIds: ['1451'],
@@ -510,6 +553,8 @@ export const luciaElowenMechanic: AgentMechanicModule = {
       Number(cfg.luciaC4CurtainCoverage ?? 1),
       totalTime,
     ),
+  // 装配期写回（2026-09-26 CC-14e）：卢西娅 C4 帷幕三写回，见上方 luciaOnFinalAssemble 注释。
+  onFinalAssemble: luciaOnFinalAssemble,
   estimateExSpecialTime: ({ cfg, exSpecialCount, ultimateCount }) => {
     const plan = computeLuciaDreamPlan(exSpecialCount, ultimateCount, cfgNum(cfg, 'lucia.additionalAttackCount', DEFAULT_ADDITIONAL_ATTACK_COUNT))
     const exTime = cfg.exSpecialActionTime

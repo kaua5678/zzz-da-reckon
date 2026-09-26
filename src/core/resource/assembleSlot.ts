@@ -5,7 +5,8 @@
  * 职责：逐槽把 `states` + `cfg` 装配成 `CharacterResourceResult`（行/资源/时间），并做时间线截断
  * （`truncateExecutionsToFrontline`：平A行不参与截断、后台行不占前台、整数装包、
  * `overflowSeconds`/`truncationCuts` 逐行上报）。同时把跨槽派生量写回 cfg
- * （模块能力 `onFinalAssemble` 的写回、`luciaCurtain*`）——**槽序即写序**，装配段不可重排。
+ * （模块能力 `onFinalAssemble`：外部回血按提供者终结技次数折算、卢西娅 C4 帷幕三写回
+ * `luciaCurtainTriggerCount`/`SelfCount`/`Teammates`）——**槽序即写序**，装配段不可重排。
  *
  * 与旧闭包的差别**只有机械替换**：闭包捕获的外层变量改经 `ctx` 解构读取，函数体逐字保留原
  * 表达式、顺序、常量与注释。累加器（`timeTruncatedSeconds` / `truncationCuts` /
@@ -52,43 +53,27 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
   const chainCountTotal = state.chainCountTotal
 
   // 装配期写回：依赖帷幕提供者**最终**终结技次数的派生量由模块能力写回本槽 cfg（供喧响/展示共用精确值；
-  // 当前唯一实现 = 外部回血按提供者终结技次数折算）。回血源复用帷幕提供者槽（2026-09-25 CC-6b，
-  // lead 裁决 §6-2；前提写死在 `./curtain.ts` 头注释）。2026-09-26 CC-14c：原 `i === <按角色字段找的槽>`
-  // 判据与写回算式迁进模块能力 `onFinalAssemble`（规则 6），调用点位置不变（槽序即写序）。
+  // 当前实现 = 外部回血按提供者终结技次数折算 + 卢西娅 C4 帷幕三写回）。回血源复用帷幕提供者槽
+  // （2026-09-25 CC-6b，lead 裁决 §6-2；前提写死在 `./curtain.ts` 头注释）。2026-09-26 CC-14c：
+  // 原 `i === <按角色字段找的槽>` 判据与写回算式迁进模块能力 `onFinalAssemble`（规则 6），调用点
+  // 位置不变（槽序即写序）。2026-09-26 CC-14e：卢西娅 C4 帷幕三写回（`luciaCurtain*`）并入同一调用点
+  // ——`curtainOpeners` 由引擎按 `curtain-open` 跨槽供给收集原始次数后传入，模块内自调 `curtainTriggers`。
   if (curtain.providerSlot >= 0) {
+    const curtainOpeners = findCrossAgentSupplySlots(configs, 'curtain-open')
+      .map(s => ({
+        agentId: configs[s]?.agentId ?? '',
+        rawCount: Math.max(0, Math.floor(states[s]?.ultimateCount ?? 0)),
+      }))
+      .filter(m => m.rawCount > 0)
     getAgentMechanic(cfg.agentId)?.onFinalAssemble?.({
       cfg,
       providerUltCount: states[curtain.providerSlot]?.ultimateCount ?? 0,
-    })
-  }
-  // 卢西娅4命帷幕触发总次数写回 cfg（供模块资源卡展示）
-  if (i === curtain.providerSlot) {
-    cfg.luciaCurtainTriggerCount = curtainTriggers
-    // 展示拆分（2026-09-19，零求值改动）：自开部分 + 队友来源归因（边际法：队友份额 = 总 − 自开，
-    // 15s CD 封顶与覆盖滑块折算效应按比例落到两边）。2026-09-25 CC-6b：队友源改为按
-    // `curtain-open` 跨槽供给的全部提供者收集，并按各自 rawCount 比例分摊队友份额。
-    // ⚠ **多提供者比例分摊是新语义、当前不可达**（唯一提供者 = 伊德海莉）：单提供者时
-    // mateTotal > 0 ⇒ 比例 = 1 ⇒ triggers 与原式 `max(0, 总 − 自开)` 逐位相同；出现第二个
-    // 提供者时行为与迁移前不同（旧实现只取按角色字段找到的那一个槽作来源），故此处**不是**逐位等价承诺。
-    cfg.luciaCurtainSelfCount = getAgentMechanic(cfg.agentId)!.curtainTriggers!({
-      cfg,
-      state: states[i],
-      teammateOpenCount: 0,
+      isCurtainProvider: i === curtain.providerSlot,
+      curtainTriggers,
+      state,
       totalTime,
+      curtainOpeners,
     })
-    const mateSlots = findCrossAgentSupplySlots(configs, 'curtain-open')
-    const raw = mateSlots.map(s => ({
-      slot: s,
-      agentId: configs[s]?.agentId ?? '',
-      rawCount: Math.max(0, Math.floor(states[s]?.ultimateCount ?? 0)),
-    })).filter(m => m.rawCount > 0)
-    const mateTotal = raw.reduce((n, m) => n + m.rawCount, 0)
-    const mateTriggers = Math.max(0, curtainTriggers - cfg.luciaCurtainSelfCount)
-    cfg.luciaCurtainTeammates = raw.map(m => ({
-      agentId: m.agentId,
-      rawCount: m.rawCount,
-      triggers: mateTotal > 0 ? mateTriggers * (m.rawCount / mateTotal) : 0,
-    }))
   }
 
   // Σ 队友前台秒（行级能量/喧响与装配 buildExecutions 同语义：不含自己）

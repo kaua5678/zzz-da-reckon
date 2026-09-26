@@ -274,6 +274,13 @@ describe('卢西娅↔伊德海莉 资源池跨角色联动（calcTeamResources 
     // 4命触发次数：E=4/Q=2 基础 8 次 + 伊德海莉大招开帷幕（约2）≈ 10，15s CD 封顶 12
     expect(luciaCfg.luciaCurtainTriggerCount).toBeGreaterThanOrEqual(8)
     expect(luciaCfg.luciaCurtainTriggerCount).toBeLessThanOrEqual(12)
+    // CC-14e：三写回迁入模块能力后仍齐备且自洽——自开 + 队友分摊份额 = 总次数（边际法）
+    expect(luciaCfg.luciaCurtainSelfCount).toBeGreaterThan(0)
+    const mates = luciaCfg.luciaCurtainTeammates!
+    expect(mates).toHaveLength(1)
+    expect(mates[0].agentId).toBe('1051')
+    const mateTriggersSum = mates.reduce((n, m) => n + m.triggers, 0)
+    expect(luciaCfg.luciaCurtainSelfCount! + mateTriggersSum).toBeCloseTo(luciaCfg.luciaCurtainTriggerCount!, 6)
     // 卢西娅自己的不可分享喧响 = 4命全队喧响（触发次数 × 100）
     expect(lucia.decibelSource.unshareableBonus).toBeGreaterThanOrEqual(800)
     expect(lucia.decibelSource.unshareableBonus).toBeLessThanOrEqual(1200)

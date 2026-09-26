@@ -844,8 +844,26 @@ export interface AgentMechanicModule {
    *
    * 为什么单列：原先 core 用 `yidhariSlot = configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)`
    * 认人，再在装配段直接改写 `cfg.yidhariExternalHealPct`——引擎替某个角色认人 + 写角色字段。
+   *
+   * 2026-09-26 CC-14e：入参扩为「帷幕写回」通用面——`isCurtainProvider` = 本槽是否帷幕提供者
+   * （卢西娅 C4 三个写回只在为真时执行）、`curtainTriggers` = 本态帷幕触发总次数、`state`/`totalTime`
+   * 供模块自调能力、`curtainOpeners` = 引擎按 `curtain-open` 收集的队友开帷幕原始次数
+   * （`agentId` + `rawCount`，已滤掉 0）。**唯一调用方 = core，五个字段每次全传 ⇒ 必填**。
    */
-  onFinalAssemble?(input: { cfg: CharacterOperationConfig; providerUltCount: number }): void
+  onFinalAssemble?(input: {
+    cfg: CharacterOperationConfig
+    providerUltCount: number
+    /** 本槽是否帷幕提供者槽（`i === curtain.providerSlot`） */
+    isCurtainProvider: boolean
+    /** 本态帷幕触发总次数（含队友开帷幕；15s CD 封顶 × 利用率滑块已折算） */
+    curtainTriggers: number
+    /** 本槽装配期终态 */
+    state: IterationState
+    /** 战斗总时长（秒） */
+    totalTime: number
+    /** 队友开帷幕原始次数（引擎按 `crossAgentSupply.kind='curtain-open'` 收集；`rawCount > 0` 才入列） */
+    curtainOpeners: Array<{ agentId: string; rawCount: number }>
+  }): void
   /**
    * **收敛后写回本模块 cfg 的反馈字段名**（2026-09-26 CC-14d；伊德海莉/卢西娅/诺姆先例）。
    *
