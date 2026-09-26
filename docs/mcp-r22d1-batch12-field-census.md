@@ -1294,6 +1294,23 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 3. **CC-35d-B3**：好评转大去身份查找（设计稿 §B3，风险最高，必须跑 timeLedgerInvariants / hugoVerdictLanding / giftMoveTimeLedger）。
 4. 维琳娜 27、爱丽丝 14、雨果 11、简 3 照旧；调研待派同 §5.35。
 
+### 5.37 CC-35d-B1 / B2 / B3 done：琉音装配后赠大与伤害池去角色化（lead-arena-0925c，2026-09-27 第 50 轮）
+
+**提交**：B1 `0aa191e`、B2 `e9e80cd`、B3 `840fa70`（各自单提交、各自 verify EXIT=0）。判据 22 **92 → 83 → 76 → 63**；`BASELINE` / `frozen` 63，**target 51**（两次达成、两次按「实测 − 12」重设：91→71→51）。agentId 棘轮 3/3。细节与验证数字见设计稿 **`docs/mcp-cc35d-gift-chain.md` §D**。
+
+- B1：出口改名 `ultPromoteCount` / `ultPromoteHug60`（含 `views/ResultPage.vue`）。
+- B2：新能力 `skipsGenericDirectRow`（琉音强特行跳过通用直伤，与 `extraDirectRows` 重放块同源）。反向变异 dump 107 键。
+- B3：新能力 `ultimateGiftSource` + `ultimateGiftProviderSlot` / `ultimateGiftSourceOf`，编排层不再按身份找琉音。反向变异 dump 119 键。
+- 决定：B1 ctx 字段名取 `ultPromoteCount`（偏离设计稿 `promoteCount`，理由：上下游同名）；B3 不改文件名（留 B4）。
+
+**rf3 快照（63 计，26 字段，B3 后）**：维琳娜 velinaCorrosionSource 9 / velinaCinema2CorrosionRate 7 / velinaCorrosion 3 / velinaC6 2 / velinaBroadFromCorrosionCount 2 / velinaMicroCycloneCount 2 / velinaCinema1ResIgnore 2 / velinaCinema6 1 / velinaCinema1 1（共 29，`anomalyPool.ts` 为主，另 `roundInputs.ts` / `helpers.ts` / `damagePoolAnomaly.ts`）；爱丽丝 aliceSparkOverride 3 / aliceSparkThisRound 3 / aliceSpark 3 / aliceCoweringDot 3 / aliceSparkCountOf 2 / aliceSwordWillSource 1（共 15，convergence / roundInputs / anomalyPool / outerCycle）；雨果 hugoRefundRatio 3 / hugoMoveActionTime 2 / hugoSlot 2 / hugoHasVerdict 2 / hugoCinema 2（共 11，convergence / roundInputs）；简 janeAssaultCritDmgBonus 3（core helpers / damage / panel）；零散 liuyinPromote 1（import 路径）/ lighterTeamEnergy 1 / yixuanFuFaForJufufu 1 / yeshuguangStunCapMult 1 / yeshuguangVeilStunBase 1。
+
+**下一步（按顺序，可直接开工）**
+1. **CC-36 维琳娜（29 计）**：先普查 `anomalyPool.ts` 里 velina* 的语义（侵蚀来源 / 2 命侵蚀率 / 微型气旋 / 6 命），写设计稿 `docs/mcp-cc36-velina-anomaly.md`（同提交登记 README §6，文档数 49 → 50），再分块实现。参照先例：`anomalyPoolSetup` / `extraAnomalyRows` / `anomalyEventRecords` 能力（CC-19 / CC-2x）。
+2. 爱丽丝 15（convergence 的 spark 跨轮反馈，参照 `nextRoundFeedback` / `threads`）、雨果 11（convergence 决算，参照 `hugoVerdictLanding` 测试）、简 3（core 层 cfg 字段改通用名，类似 CC-35c-C）。
+3. 顺手小卡 CC-35d-B4（`liuyinPromote.ts` → `ultimateGift.ts`，1 计）。
+4. 调研待派同 §5.35（莱特额外能力 buff、花羽轮舞次数、W31）。
+
 ## 附录：普查脚本 census.sh
 
 ```bash

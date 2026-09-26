@@ -35,21 +35,21 @@
 
 ## B. 琉音（CC-35d-B，下一轮起按 B1 → B2 → B3 顺序做，各自单独提交）
 
-### B1：出口改名（约 11 计，纯改名，风险最低，先做）
+### B1：出口改名（约 11 计，纯改名，风险最低，先做）—— **done `0aa191e`**
 - `useResourceCalc.ts:270-272, 590, 730-731`：`liuyinPromoteCount` → `ultPromoteCount`，`liuyinPromoteHug60` → `ultPromoteHug60`。
   - **消费方在 `src/views/*.vue` 与组件里**，必须先 `grep -rn 'liuyinPromoteCount\|liuyinPromoteHug60' src` 全量列出，一并改。
   - vue 文件不在判据 22 的扫描范围内，但不改会编译失败。
 - `damagePool.ts:74` 形参 `liuyinPromoteCount` → `promoteCount`（`damagePoolCharExtras.ts:29/49` 已映射到 `promoteCount`，顺势对齐）。
 - 验收：vue-tsc -b 0（vue 文件靠它兜底）+ dump / rows 零差。
 
-### B2：伤害池跳过琉音强特行（约 4 计，要新增能力）
+### B2：伤害池跳过琉音强特行（约 4 计，要新增能力）—— **done `e9e80cd`**
 - 现状：`damagePool.ts:400` 取 `charResult.liuyinMechanicSource` 作为 `liuyinSrc` 传进 `CharLocals`；`damagePoolDirect.ts:122` 在非轴模式下跳过 `LIUYIN_EX_MOVE_IDS`（1481011/12/13），由后面的专用块按融合倍率重放。
 - 方案：新增模块能力 `skipGenericDirectRow?(input: { exec; charResult; isAxis }): boolean`，琉音实现为「有来源 && 非轴 && moveId ∈ 集合」，编排层改成 `getAgentMechanic(charResult.agentId)?.skipGenericDirectRow?.(…)`。
   - **先读** `damagePoolDirect.ts` 里「专用块」的位置和门控：注释说门控与本行完全一致（同一个 `liuyinSrc`、同一个 `!isAxis`）。专用块也要一起判断，它可能已由 CC-18b `extraDirectRows` 接管。**两边门控必须同源**，否则会「两边都不算」，静默少算伤害。
   - `CharLocals.liuyinSrc` 字段若只剩这两处使用，就删除。
 - 验收：dump 零差 + 反向变异（能力恒返回 false，应多算伤害，dump 出差）。
 
-### B3：好评转大编排去身份查找（约 15 计，最复杂，最后做）
+### B3：好评转大编排去身份查找（约 15 计，最复杂，最后做）—— **done `840fa70`**
 - 现状：
   - `liuyinPromote.ts:163-179` 用 `findSlotByIdentity(['1481'])` 取 `liuyinMechanicSource.goodReviewTotal`，构建 `LiuyinPromoteParams`，然后跑 `promoteFixpoint`（失衡池内层不动点）。
   - `convergence.ts:357-361` 同样按身份找槽，用于轴模式 `axisLiuyinPromote`。
@@ -69,3 +69,8 @@
 ## D. 实施记录
 - **CC-35d-A done `a1241ba`**（2026-09-27 第 49 轮）：vue-tsc 0；dump / rows 对 H2a 仅 `__ms` 差；反向变异（norma `count + 1`）rowsnap **73 键**出差（`auto-1041-1571-1031/*` 等）、giftMoveTimeLedger / norma 单测红 4；还原后判据 22 读数 **92**（103 → 92）；verify EXIT=0（`/home/kaua/calc-arch/verify35da.log`）。脚本 `/home/kaua/calc-arch/cc35da.py`、`z35da.sh`。
 - 顺手：`src/specs/agents/1571.json` 两条 notes 里的函数名同步为 `applyChainGift`（文本，不参与计算）。
+- **CC-35d-B1 done `0aa191e`**（第 50 轮）：`liuyinPromoteCount` → `ultPromoteCount`、`liuyinPromoteHug60` → `ultPromoteHug60`（perl 词界替换 6 文件 23 处：`useResourceCalc.ts`、`views/ResultPage.vue`、`damagePool.ts`、`damagePoolCharExtras.ts`、`mechanics/types.ts` 注释、`mechanicSettingsEffect.test.ts`）。**偏离设计稿**：`damagePool` 的 ctx 字段也叫 `ultPromoteCount`（不是 `promoteCount`）——上下游同名便于 grep，`damagePoolCharExtras` 仍映射到能力输入的 `promoteCount`。纯改名：vue-tsc 0、单测 129/129、dump / rows 仅 `__ms` 差。判据 22 92 → 83，**target 91 达成 → 重设 71**。verify EXIT=0 3592。
+- **CC-35d-B2 done `e9e80cd`**：新能力 `skipsGenericDirectRow({ charResult, moveId, isAxis })`，琉音实现（来源存在 && `!isAxis` && `LIUYIN_EX_MOVE_IDS`），与重放它的 `extraDirectRows` 强特拆分块同在 `liuyin.ts`、门控同源。`damagePoolDirect.ts` 改为 `getAgentMechanic(charResult.agentId)?.skipsGenericDirectRow?.(…)`；删 `CharLocals.liuyinSrc`、`damagePool.ts` 本槽级 `liuyinSrc`、`LIUYIN_EX_MOVE_IDS` 值导入。新单测 3 条（`liuyin.test.ts` 末尾）。**反向变异（能力恒 false）dump 107 键出差**（`auto-1371-1481-1451` 等伤害上升 = 双计）。判据 22 83 → 76。verify EXIT=0 3595。
+- **CC-35d-B3 done `840fa70`**：新能力 `ultimateGiftSource(result) → { goodReviewTotal } | null`，琉音实现；`liuyinPromote.ts` 新导出 `ultimateGiftProviderSlot(configStore)` / `ultimateGiftSourceOf(configStore, rr)`，替换三处：`buildPromoteParams` 的 `findSlotByIdentity(['1481'])` + 直读来源、`convergence.ts` 轴模式 `axisLiuyinPromote` 的身份查找、`convergence.ts` `goodReview` 的 `find(c => c.liuyinMechanicSource)`。单测 58/58（含 timeLedgerInvariants / hugoVerdictLanding / giftMoveTimeLedger / mechanicSettingsEffect）；dump / rows 仅 `__ms` 差；**反向变异（能力恒 null）dump 119 键出差**（伤害下降 = 不转大）。判据 22 76 → 63，**target 71 达成 → 重设 51**。verify 见 `/home/kaua/calc-arch/verify35db3.log`。
+- **未做（有意）**：`liuyinPromote.ts` 文件未改名（import 路径 `'./liuyinPromote'` 还计 1）；`LiuyinPromoteParams` 等类型名、`computeLiuyinHugCounts` 值导入保留（不计判据 22）。可作为顺手小卡 CC-35d-B4：`git mv` 成 `ultimateGift.ts` + 改 convergence / 测试 import。
+- 脚本：`/home/kaua/calc-arch/z35db.sh`（B1 含改名）、`cc35db2.py` / `z35db2.sh`、`cc35db3.py` / `z35db3.sh`。回退点：按 B3 → B2 → B1 顺序 `git revert`（三者都改棘轮同一行）。

@@ -194,6 +194,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-35c-C | review | **done** `c763f5a`（判据 22 125→123） | cfg `luciaC4DecibelPerTrigger` → 通用名 `decibelPerCurtainTrigger`（帷幕喧响） | census §5.35 |
 | CC-35c-D | review | **done** `dbc7e92`（判据 22 123→103，target 重设 91） | core/resource/helpers.ts 赠链局部量去角色名（取值早已走 crossAgentSupply 通道） | census §5.35 |
 | CC-35d-A | review | **done** `a1241ba`（判据 22 103→92） | 新模块能力 `chainGift`（装配后赠送连携）；`normaHatChain.ts` → `chainGift.ts#applyChainGift`，去 findSlotByIdentity([1571]) | `docs/mcp-cc35d-gift-chain.md`、census §5.36 |
+| CC-35d-B1 | review | **done** `0aa191e`（判据 22 92→83，target 71） | 琉音出口改名 ultPromoteCount / ultPromoteHug60 | 设计稿 §D、census §5.37 |
+| CC-35d-B2 | review | **done** `e9e80cd`（83→76） | 新模块能力 `skipsGenericDirectRow`（琉音强特行跳过通用直伤），删 CharLocals.liuyinSrc | 设计稿 §D、census §5.37 |
+| CC-35d-B3 | review | **done** `840fa70`（76→63，target 51） | 新模块能力 `ultimateGiftSource`；好评转大三处身份查找改能力派发 | 设计稿 §D、census §5.37 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
