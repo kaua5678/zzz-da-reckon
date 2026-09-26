@@ -433,6 +433,13 @@ function buildHugoResourceSections({ result }: AgentResourceSectionsInput) {
 
 export const hugoMechanic: AgentMechanicModule = {
   id: 'agent:hugo',
+  // 决算失衡值返还（CC-39a 2026-09-27，原 convergence.ts 内联）：每次失衡结束返还 min(25%, 剩余秒×5%) × bossStunValue
+  // 进下一次失衡条。返还只由「结束失衡」的决算产生（C2 的 Q 不结束不返还），恒为每窗 1 次；剩余秒取滑块。
+  stunRefundRatio: ({ getMechanicSetting }) => {
+    const hasVerdict = getMechanicSetting('hugo.exVerdictRatio', 1) > 0
+      || getMechanicSetting('hugo.ultimateVerdictRatio', 1) > 0
+    return hasVerdict ? Math.min(0.25, Math.max(0, getMechanicSetting('hugo.remainingStunSeconds', 5)) * 0.05) : 0
+  },
   agentIds: [HUGO_ID],
   name: '雨果·终末裁决',
   description: '暗渊回响、击破队友攻击、决算倍率、额外能力与影画1/2/4/6。',

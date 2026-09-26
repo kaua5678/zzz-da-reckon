@@ -833,6 +833,12 @@ export interface AgentMechanicModule {
    */
   windAnomalyBonus?(input: { panel: PanelValues | undefined; triggerCount: number }): { pct: number; note: string } | null
   /**
+   * 失衡结束时返还进下一次失衡条的比例（0~1，× bossStunValue；CC-39a 2026-09-27）：`resourceCalc/convergence.ts`
+   * 对在队各模块求值取**最大值**，传给 `promoteFixpoint` 的失衡池。现唯一实现：雨果决算
+   * （有决算时 min(25%, 剩余秒 × 5%)，剩余秒取设置 `hugo.remainingStunSeconds`）。
+   */
+  stunRefundRatio?(input: { getMechanicSetting: (key: string, dflt: number) => number }): number
+  /**
    * **角色专属异常附加行**（规则 6 迁移落点，CC-19a 2026-09-26，设计稿
    * `docs/mcp-cc19-extra-anomaly-rows.md` §2.1/§2.3）：
    * 由行所属角色的模块生成自己的异常尾段附加行，返回**分组**（`order` 取

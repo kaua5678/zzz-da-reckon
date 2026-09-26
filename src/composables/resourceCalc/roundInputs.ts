@@ -256,10 +256,10 @@ export function createConvergenceRoundInputs(deps: {
         if (actionTime <= 0 && act.moveId === HUGO_EX_VERDICT_MOVE_ID) actionTime = HUGO_EX_FINAL_ACTION_TIME
         // 窗口终结（决算）：佩洛伊斯右分支 1551016；雨果强特终结一击(1291_ex_verdict_final) 永远结束失衡；
         // 雨果终结技本体(1291018) 仅 C0/C1 结束失衡——影画2「终结技决算不结束失衡」不截断窗口（0命2命区分）。
-        const hugoCinema = configStore.team[act.slot]?.cinemaLevel ?? 0
+        const slotCinema = configStore.team[act.slot]?.cinemaLevel ?? 0
         const endsWindow = act.moveId === '1551016'
           || act.moveId === HUGO_EX_VERDICT_MOVE_ID
-          || (act.moveId === HUGO_ULT_MOVE_ID && hugoCinema < 2)
+          || (act.moveId === HUGO_ULT_MOVE_ID && slotCinema < 2)
         axisActions.push({
           slot: act.slot,
           moveId: act.moveId,

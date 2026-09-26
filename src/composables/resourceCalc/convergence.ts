@@ -10,9 +10,6 @@ import type { StunSkillExecution } from '@/core/stunPool'
 import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { getAgentMechanic } from '@/mechanics'
-// 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
-// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-import { findSlotByIdentity } from './anomalyPanels'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { findMoveById } from './skillRows'
@@ -151,14 +148,7 @@ export function createRunCalcRound(deps: {
     const { axes: resolvedAxes, planName } = resolveAxes(stunCount, prevGoodReview, prevEnergyBySlot)
     // forceNoAxis（轴退化）：跳过轴注入（轴块/连携覆盖/自动补齐全关），退回 chainCountPerStun 兜底的一般循环
     const axisActive = !opts?.forceNoAxis && (configStore.useStunAxis || autoActive.value) && resolvedAxes.length > 0
-    /**
-     * 雨果槽位（**单一事实源**，2026-09-17 夜间批 B 收敛）：
-     * 本函数原先把这个身份查了**两次**——`:521` 判「轴模式且队里有雨果」（`team.some(c => c.agentId === '1291')`）、
-     * `:1108` 再算 `hugoSlot` 给决算返还用。两处是同一问题、且都可能各自漂移；
-     * 提到轴解析之后（此处 `catalogStore.ready` 已由上方 `:476` 的就绪门保证 ⇒ 查表安全），
-     * 两处共用一份结果。`findSlotByIdentity` = 前批（`8723329`）抽的「按身份找槽位」helper。
-     */
-    const hugoSlot = findSlotByIdentity(configStore, catalogStore, ['1291'])
+    // 雨果槽位查找已删（CC-39a 2026-09-27）：唯一用途「决算失衡值返还」改由模块能力 `stunRefundRatio` 派发（见下方）。
     // 决算截断（佩洛伊斯右分支 1551016）：轴内决算做完时清空窗口剩余失衡时间 →
     // 有效失衡时长按截断结束时刻计，损失秒数从覆盖率里扣除（失衡时间/比例重算口径）。
     let verdictSecondsLost = 0
@@ -795,17 +785,16 @@ export function createRunCalcRound(deps: {
 
     // 雨果决算失衡值返还：每次失衡结束返还 min(25%, 剩余秒×5%) × bossStunValue 进下一次失衡条。
     // 返还只由「结束失衡」的决算产生（C2 的 Q 不结束不返还），恒为每窗 1 次；剩余秒非轴取滑块（轴模式待接轴反推）。
-    const hugoHasVerdict = configStore.getMechanicSetting('hugo.exVerdictRatio', 1) > 0
-      || configStore.getMechanicSetting('hugo.ultimateVerdictRatio', 1) > 0
-    const hugoRefundRatio = hugoSlot >= 0 && hugoHasVerdict
-      ? Math.min(0.25, Math.max(0, configStore.getMechanicSetting('hugo.remainingStunSeconds', 5)) * 0.05)
-      : 0
+    // CC-39a 2026-09-27：公式迁入雨果模块能力 `stunRefundRatio`（原内联 hugoSlot / hugoHasVerdict）；在队各模块取最大值。
+    const getSetting = (k: string, d: number) => configStore.getMechanicSetting(k, d)
+    const stunRefundRatio = Math.max(0, ...configStore.team.map(m =>
+      (m.agentId ? getAgentMechanic(m.agentId)?.stunRefundRatio?.({ getMechanicSetting: getSetting }) : 0) ?? 0))
 
     // debt: 轮换动作覆盖实数化——物化执行行少于实战动作序列（仪玄强特 11 vs 实战 15+、平A填充/
     // 闪反取职业基准），竖向字段（伤害/失衡/异常）已行级进账而横向动作覆盖无逐角色锚点。
     // 升级路径：实数化专项逐角色收口（弹刀反推/合轴自动填充同族手法），以归档对拍定每角色动作锚点。
     // Round 0：无易伤 → 畏缩覆盖率初算
-    const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, hugoRefundRatio)
+    const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio)
     const adj0 = applyLiuyinPromote(rr, sp0, catalogStore)
     // 爱丽丝本轮剑意触发次数（极性强击赠送计数）：读本轮 rr 而非 aliceInfo（循环依赖，见 calcAnomalyPoolInput）
     const aliceSparkThisRound = aliceSparkCountOf(rr)
@@ -813,7 +802,7 @@ export function createRunCalcRound(deps: {
 
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
     const flinch1 = ap0?.coverage?.physicalCoverageRate ?? 0
-    const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, hugoRefundRatio)
+    const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio)
 
     // Boss 预设弹刀反推下一轮量（保底4失衡）：本轮失衡池（含注入的击破位弹刀）→ 非弹刀基数 → 缺口 → 补齐。
     // 击破位弹刀行（轻弹刀 + 支援突击，count 随弹刀次数缩放）：行贡献剔出非弹刀基数（防 0↔T 振荡），
