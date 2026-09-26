@@ -607,7 +607,7 @@ function executionValue(row: any, key: string, totalKey?: string): string {
 /** 次数列：Sweeping Cyclone #1 附加风蚀替换广域次数（微域升级广域） */
 function renderCount(row: any): any {
   const base = row.count ?? 0
-  const corrosion = props.anomalyPoolResult?.velinaCorrosionSource as any
+  const corrosion = props.anomalyPoolResult?.corrosionSource as any
   if (row.moveId === '1561007' && corrosion?.broadCycloneCount) {
     const extra = corrosion.broadCycloneCount * 10
     return h('span', { title: `${base}（风华触发） + ${extra}（风蚀替换广域）` }, `${base + extra}`)

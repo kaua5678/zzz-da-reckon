@@ -126,7 +126,7 @@ export function createConvergenceRoundInputs(deps: {
       enemyResistances: configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}, enemyResReduction: 0,
       stunned: stunCov, stunMultiplier: configStore.enemy.stunVuln,
       hasWindChar: wind.hasWindChar, windCharSlot: wind.windCharSlot,
-      velinaCinema2CorrosionRate: configStore.getMechanicSetting('velina.cinema2CorrosionRate', 2 / 3),
+      cinema2CorrosionRate: configStore.getMechanicSetting('velina.cinema2CorrosionRate', 2 / 3),
       globalAnomalyMultiplier: globalAnomalyMultiplier.value,
       coweringConfig: setup?.coweringConfig,
       giftedTriggerCounts: setup && aliceSpark > 0 ? { 'physical_polar_assault': aliceSpark } : undefined,

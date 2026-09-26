@@ -69,7 +69,7 @@ describe('calcAnomalyPool', () => {
       stunMultiplier: 1.5,
       hasWindChar: true,
       windCharSlot: 0,
-      velinaCinema2CorrosionRate: 2 / 3,
+      cinema2CorrosionRate: 2 / 3,
       globalAnomalyMultiplier: 1,
       agentMechanics: [],
     } as unknown as AnomalyPoolInput)
@@ -108,7 +108,7 @@ describe('calcAnomalyPool', () => {
       stunMultiplier: 1.5,
       hasWindChar: true,
       windCharSlot: 0,
-      velinaCinema2CorrosionRate: 2 / 3,
+      cinema2CorrosionRate: 2 / 3,
       globalAnomalyMultiplier: 1,
       agentMechanics: [velinaMechanic],
     } as unknown as AnomalyPoolInput)
@@ -117,9 +117,9 @@ describe('calcAnomalyPool', () => {
     expect(wind?.contributions?.some((c: any) => c.moveId === 'velina_corrosion_broad')).toBe(true)
 
     const injected = wind?.contributions?.find((c: any) => c.moveId === 'velina_corrosion_broad')
-    expect(injected?.count).toBe((res as any).velinaCorrosionSource?.broadCycloneCount * 10)
+    expect(injected?.count).toBe((res as any).corrosionSource?.broadCycloneCount * 10)
     expect(wind?.triggerCount).toBeGreaterThanOrEqual(2)
-    expect((res as any).velinaCorrosionSource?.broadCycloneCount).toBeGreaterThan(0)
+    expect((res as any).corrosionSource?.broadCycloneCount).toBeGreaterThan(0)
   })
 
   /**
@@ -129,7 +129,7 @@ describe('calcAnomalyPool', () => {
    * 「维琳娜微域/广域气旋」的异放行挂在他们名下（实测 1621 队 2 条行共 1.5w 伤害）。
    *
    * 本用例是**反向验证**：把 `velinaEnabled` 拿掉（等价于队里是别的风角色），
-   * 风蚀整套必须消失——不只是「次数变 0」，`velinaCorrosionSource` 本身必须为 undefined
+   * 风蚀整套必须消失——不只是「次数变 0」，`corrosionSource` 本身必须为 undefined
    * （否则下游仍会推事件行）。
    */
   it('CC-D3：无维琳娜（只有别的风属性角色）⇒ 风蚀整套不结算', () => {
@@ -153,7 +153,7 @@ describe('calcAnomalyPool', () => {
       stunMultiplier: 1.5,
       hasWindChar: true,          // 队伍**有**风角色（1621 洛克茜这类），但**不是**维琳娜
       windCharSlot: 0,
-      velinaCinema2CorrosionRate: 2 / 3,
+      cinema2CorrosionRate: 2 / 3,
       globalAnomalyMultiplier: 1,
       agentMechanics: [velinaMechanic],
     }
@@ -166,8 +166,8 @@ describe('calcAnomalyPool', () => {
         { anomalyMastery: 100 },
       ],
     } as unknown as AnomalyPoolInput)
-    expect(withVelina.velinaCorrosionSource).toBeTruthy()
-    expect(withVelina.velinaCorrosionSource!.broadCycloneCount).toBeGreaterThan(0)
+    expect(withVelina.corrosionSource).toBeTruthy()
+    expect(withVelina.corrosionSource!.broadCycloneCount).toBeGreaterThan(0)
     expect((withVelina.anomalyEvents ?? []).some(e => e.id === 'velina-corrosion-broad-cyclone' && e.count > 0)).toBe(true)
 
     // ② 无维琳娜：整套消失（乱流本身仍在——它是风化状态的通用机制，不是维琳娜专属）
@@ -179,7 +179,7 @@ describe('calcAnomalyPool', () => {
         { anomalyMastery: 100 },
       ],
     } as unknown as AnomalyPoolInput)
-    expect(withoutVelina.velinaCorrosionSource, '无维琳娜时风蚀状态机不得结算（CC-D3）').toBeUndefined()
+    expect(withoutVelina.corrosionSource, '无维琳娜时风蚀状态机不得结算（CC-D3）').toBeUndefined()
     expect((withoutVelina.anomalyEvents ?? []).some(e => e.id.includes('velina-corrosion') && e.count > 0),
       '无维琳娜时不得产出气旋异放事件行').toBe(false)
     expect((withoutVelina.perElement as any[]).find(p => p.element === 'wind')?.contributions

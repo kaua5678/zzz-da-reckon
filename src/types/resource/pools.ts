@@ -125,7 +125,7 @@ export interface AnomalyPoolResult {
   /** 乱流伤害详情（有风属性时计算） */
   turbulenceDamage?: TurbulenceDamageResult
   /** 维琳娜风蚀资源明细（有风属性且触发乱流时计算） */
-  velinaCorrosionSource?: VelinaCorrosionSource
+  corrosionSource?: VelinaCorrosionSource
   /** 爱丽丝畏缩 DOT 伤害明细 */
   aliceCoweringDot?: AliceCoweringDotResult
   /** 异常事件明细：把”异常条触发/覆盖触发/动作跟随触发”等事件化展示给开发调试 */

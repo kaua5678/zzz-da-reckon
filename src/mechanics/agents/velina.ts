@@ -132,7 +132,7 @@ export function findVelinaPanel(panels: readonly PanelValues[]): PanelValues | u
  *
  * 与直接调 `simulateVelinaCorrosionState` 的区别：本函数先按 `findVelinaPanel` 认人，
  * **队里没有维琳娜 ⇒ 返回 `undefined`**（不是全零对象）——调用方据此「整套不结算」，
- * 而不是「结算出 0 次」；后者仍会把 `velinaCorrosionSource`/事件行推给别的风角色。
+ * 而不是「结算出 0 次」；后者仍会把 `corrosionSource`/事件行推给别的风角色。
  *
  * @param fallbackRate C2 风化获得风蚀的期望利用率（未盖章时的兜底）
  */
@@ -322,7 +322,7 @@ function transformVelinaAnomalyPool(input: AgentAnomalyTransformInput): void {
   // 风蚀是维琳娜专属资源 ⇒ 按**面板标记**认人，不按「队里第一个风属性角色」
   // （CC-D3 2026-09-25：1621/1631 队原本也会跑本状态机，见 `findVelinaPanel` 头注释）。
   // 队里没有维琳娜 ⇒ 整套不结算。
-  // CC-D4（2026-09-25）：原先这里还把 corrosion 写进 `input.store.velinaCorrosionSource`——全仓无读
+  // CC-D4（2026-09-25）：原先这里还把 corrosion 写进 `input.store.corrosionSource`——全仓无读
   // （引擎在 `anomalyPool.ts` 经能力 `anomalyCorrosion` 按最终乱流次数**重新结算**同一份结果），
   // 已随 `AgentAnomalyTransformInput.store` 字段一并删除。
   const corrosion = resolveVelinaCorrosion(
@@ -488,7 +488,7 @@ function buildVelinaResourceSections({ result, anomalyPoolResult }: AgentResourc
     })
   }
 
-  const corrosion = anomalyPoolResult?.velinaCorrosionSource
+  const corrosion = anomalyPoolResult?.corrosionSource
   if (corrosion) {
     sections.push({
       id: 'velina-corrosion',

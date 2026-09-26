@@ -40,8 +40,8 @@ describe('CC-D3：风蚀是维琳娜专属资源（不按「队里第一个风�
       expect(velinaRows, `${windId} 队不该产出维琳娜气旋行（实测：${velinaRows.map(r => r.name).join('/')}）`)
         .toHaveLength(0)
       // ② 风蚀源整体不存在（不只是次数为 0）
-      expect((calc.anomalyPoolResult.value as any)?.velinaCorrosionSource,
-        `${windId} 队不该有 velinaCorrosionSource`).toBeUndefined()
+      expect((calc.anomalyPoolResult.value as any)?.corrosionSource,
+        `${windId} 队不该有 corrosionSource`).toBeUndefined()
       // ③ 乱流本身仍在（回归锁：风蚀专属 ≠ 乱流专属）
       const turb = rows.filter(r => r.type === '乱流')
       expect(turb.length, `${windId} 队仍应有乱流（风化是通用机制）`).toBeGreaterThan(0)
@@ -54,7 +54,7 @@ describe('CC-D3：风蚀是维琳娜专属资源（不按「队里第一个风�
       { agentId: '1141' },
       { agentId: '1031' },
     ])
-    expect((calc.anomalyPoolResult.value as any)?.velinaCorrosionSource).toBeTruthy()
+    expect((calc.anomalyPoolResult.value as any)?.corrosionSource).toBeTruthy()
     expect(rows.filter(r => String(r.id ?? '').includes('velina-corrosion')).length)
       .toBeGreaterThan(0)
   })
