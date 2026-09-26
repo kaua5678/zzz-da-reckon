@@ -1135,6 +1135,32 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 2. CC-34c②：失衡加成读点，另开卡，先普查 1581010 的产出方。
 3. 其余字段簇：简 `janeAssaultCritDmgBonus` 需要单独设计；琉音 35（先写设计稿）、维琳娜 19（§5.19 / CC-27）、诺玛约 14、爱丽丝约 11、雨果约 7，另有零散的 lighterSource 5、rinaSlot 4。
 
+### 5.31 CC-34c①+34d done：花羽轮舞喧响读点迁模块 + 删蕾米埃尔 re-export 壳（lead-arena-0925c，2026-09-27 第 44 轮）
+
+**提交**：代码 `372bbed`（7 文件：5 个 src/测试加两个棘轮脚本）。判据 22 **155 → 149**（−6），`CORE_ROLE_FIELD_BASELINE` / `frozen` 149，**target 仍为 143**（未达成，不重设）。
+
+**做了什么**
+- `resourceCalc/helpers.ts`：cfg 字面量 `extraSelfDecibelReward` 由 `DecibelPerUse × Count` 改为 `0`（加注释说明它是跨角色 `+=` 通道）；删除 `getRemielleLevelValue` / `remielleSpecialVoidflareCount` / `calcVoidflareDamage` 在 import 与 export 两处的壳。
+- `remielle.ts#buildRemielleCharConfig`：解构出只读 `panel`，写 `cfg.extraSelfDecibelReward = Number(cfg.extraSelfDecibelReward ?? 0) + DecibelPerUse × Count`。已确认 `buildCharConfig` 里模块钩子在字面量**之后**执行，其余写入方（orphie / specPanelBuffs / yixuan / promia）全是 `+=` 累加、没有覆盖写，数值都是整数，先后顺序不影响结果 ⇒ 蕾米埃尔槽 `0 + a×b + …` 与原先的 `a×b + …` 逐位相同。
+- `anomalyPanels.ts`：删除 3 个运行时函数的 import+export 壳，头注释 ⑤ 同步；类型 `VoidflareDamageInput` 不带角色前缀，壳保留。
+- `mechanics/__tests__/remielle.test.ts`：两个函数改为直接从 `@/mechanics/agents/remielle` 导入；新增 describe「CC-34c」两条用例（直接调钩子：100 + 200×3 = 700；非蕾米埃尔槽不写）。
+- `anomalyPanelsShell.test.ts`：`D_EXPORTS` 从 11 个收窄到 8 个（注释写明是 CC-34d 有意为之），新增用例 ①ter 反锁这 3 个名字不得再经 helpers / anomalyPanels 导出。
+
+**验证**
+- vue-tsc 0；remielle / anomalyPanelsShell / helpers / orphie / yixuan 单测 95/95 通过。
+- `PERF_KEY_ALIAS=1` 对 H2a：dump / rowsnap **仅 `__ms` 差**。
+- **反向变异（乘积 ×2）**：dump **零差**，是空验证，原因见下面的未决项；于是补了钩子单测，同一变异下单测红 1 条（expected 1300 to be 700），还原后绿。脚本：`/home/kaua/calc-arch/cc34c.py`、`cc34c2.py`、`z34d.sh`、`z34e.sh`。
+- `npm run verify` EXIT=0（`/home/kaua/calc-arch/verify34d.log`）。
+- **回退点**：`git revert 372bbed`（单提交）。
+
+**未决（已知坑，可派低级模型调研）**
+- **`remielleFlowerFeatherDanceCount` 全仓没有任何写入方**：catalog 只有 `remielle_c1_flower_feather_dance_decibel_per_use`（值 200，target self），没有给次数的 buff，ts 代码里也没人写它 ⇒ 线上乘积恒为 0，一命「花羽轮舞」的额外喧响从未生效。这可能是一命机制漏了实现，也可能是有意留的占位。**本卡不改行为**（纯迁移）。要做的话：先按原文（`docs` 里的蕾米埃尔账本 / catalog 原文描述）确认花羽轮舞的触发条件与次数口径，再在 `remielle.ts#applyRemiellePanel` 或 `buildRemielleCharConfig` 里给出次数，并在 dump 基线上单独说明差异。
+
+**下一步（按顺序，可直接开工）**
+1. **CC-34c②**（蕾米埃尔最后一块 core/resourceCalc 读点）：`helpers.ts` 约 811 行 `foundMove.id === '1581010'` 时乘 `panel.remielleRadiantTurnDazeBonusPct`。开工先 `grep -rn "1581010\|remielleRadiantTurnDazeBonusPct\|radiantTurnDazeMult" src` 列出全部产出方与读点，再设计成通用的执行级失衡加成字段，由 `remielleRadiantTurnRows` 写入。验收：dump / rows 零差 + 反向变异 dump 出差（这条有 perf 覆盖的可能性较大，反向变异时再确认）。
+2. 花羽轮舞次数（上面的未决项）：调研型，可派 dsflash，结论写回本节。
+3. 其余字段簇：简 `janeAssaultCritDmgBonus` 单独设计；琉音 35（先写设计稿）、维琳娜 19（§5.19 / CC-27）、诺玛约 14、爱丽丝约 11、雨果约 7，另有零散的 lighterSource 5、rinaSlot 4。开工前先用 `node /home/kaua/calc-arch/rf3.mjs` 按字段重新计数。
+
 ## 附录：普查脚本 census.sh
 
 ```bash
