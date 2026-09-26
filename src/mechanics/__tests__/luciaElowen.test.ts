@@ -278,7 +278,7 @@ describe('卢西娅↔伊德海莉 资源池跨角色联动（calcTeamResources 
     expect(lucia.decibelSource.unshareableBonus).toBeGreaterThanOrEqual(800)
     expect(lucia.decibelSource.unshareableBonus).toBeLessThanOrEqual(1200)
     // 伊德海莉烧血喧响 > 仅开局 75% 的基线（外部回血已计入）
-    expect(yidhari.decibelSource.yidhariBurnDecibel).toBeGreaterThan(75 * 10)
-    expect(yidhari.decibelSource.yidhariBurnDecibel).toBeGreaterThan((75 + 12.8) * 10)
+    expect(yidhari.decibelSource.selfBurnDecibel).toBeGreaterThan(75 * 10)
+    expect(yidhari.decibelSource.selfBurnDecibel).toBeGreaterThan((75 + 12.8) * 10)
   })
 })

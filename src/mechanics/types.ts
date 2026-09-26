@@ -815,6 +815,25 @@ export interface AgentMechanicModule {
     totalTime: number
   }): number
   /**
+   * **自身烧血喧响**（规则 6 引擎落点，2026-09-26 CC-14b；伊德海莉先例）。
+   *
+   * 语义：本模块角色因「烧血 → 回血」循环产生的**不可分享**自身喧响（原始量，未乘获得效率）。
+   * 调用方负责乘 `decibelEfficiencyMultiplier`；与队友分享比例无关。
+   *
+   * 为什么单列一个能力：`core/resource/helpers.ts#iterate` 与 `core/resource/resourceIncome.ts`
+   * 曾各住着一段伊德海莉专属的「75% 开局烧血 + 回血总量」算式（含缺失生命折算、蓄力重碾 +
+   * 平A追击循环、外部治疗）。算式本身是角色独有的，正是规则 6 要消灭的「引擎替某个角色认人」。
+   *
+   * `providerUltCount` = 帷幕提供者的终结技次数（供外部治疗按次结算部分消费）；已经由
+   * `assembleSlot` 把「每次 × 次数」写回 cfg 的调用方传 0（避免重复计入）。
+   */
+  selfBurnDecibel?(input: {
+    cfg: CharacterOperationConfig
+    basicAttackTime: number
+    exSpecialCount: number
+    providerUltCount: number
+  }): number
+  /**
    * **终局整数重推**（规则 6 引擎落点，2026-09-25 CC-6c；1531/1431/1051 先例）。
    *
    * 存在的理由：`calcTeamResources` 里曾住着两段角色专属的「实数化收尾」——preTail（S2 折叠

@@ -8,7 +8,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
-import type { CharacterResourceResult, IterationState, YidhariHpSource, YidhariLoopMove } from '@/types/resource'
+import type { CharacterOperationConfig, CharacterResourceResult, IterationState, YidhariHpSource, YidhariLoopMove } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { effectiveBattleTime } from '@/core/effectiveTime'
@@ -440,6 +440,39 @@ function applyYidhariTeamConfig({ cfg, phase, stunCount, team, axis }: AgentTeam
   }
 }
 
+/**
+ * 自身烧血喧响（规则 6 引擎落点，2026-09-26 CC-14b）：伊德海莉「开局场外烧 75% 至 25% +
+ * 战斗中把全部回复量烧掉」换算的**不可分享**喧响（原始量，未乘获得效率）。
+ *
+ * 算式逐字来自 `core/resource/helpers.ts#iterate`（迭代期）与 `core/resource/resourceIncome.ts
+ * #calcDecibelSource`（结果装配），两处常量 75 / 33 / 10 与取整方式逐位不变。差别只在外部治疗项：
+ *  · 迭代期调用方传 `providerUltCount`（帷幕提供者的终结技次数），按 `yidhariExternalHealPerUltPct`
+ *    逐次结算；
+ *  · 结果装配调用方传 `providerUltCount: 0`——`assembleSlot` 已把「每次 × 次数」写回
+ *    `cfg.yidhariExternalHealPct`，再乘次数会重复计入。
+ *
+ * 判别用**无默认值**的模块专属字段 `yidhariDecibelPerHpPct`（唯一写入方 = 本模块
+ * `buildYidhariCharConfig`，非该角色 cfg 恒 undefined）；带 `?? 默认` 的两个字段对任意 cfg 都有值，
+ * 不能做判据（判据同 T6；规则 6：引擎按能力/字段查询，不按角色名查询）。
+ */
+function yidhariSelfBurnDecibel({ cfg, basicAttackTime, exSpecialCount, providerUltCount }: {
+  cfg: CharacterOperationConfig
+  basicAttackTime: number
+  exSpecialCount: number
+  providerUltCount: number
+}): number {
+  if (cfg.yidhariDecibelPerHpPct === undefined) return 0
+  const missing = Math.max(0, Math.min(1, cfg.yidhariExHealMissingHpPct ?? 0.75))
+  const decibelPerHp = cfg.yidhariDecibelPerHpPct ?? 10
+  const external = Math.max(0, (cfg.yidhariExternalHealPct ?? 0)
+    + (cfg.yidhariExternalHealPerUltPct ?? 0) * providerUltCount)
+  const cycleTime = 1 + (cfg.yidhariChargeSlam?.actionTime ?? 0) + (cfg.yidhariBasicFollow?.actionTime ?? 0)
+  const cycles = cycleTime > 0 ? Math.floor(basicAttackTime / cycleTime) : 0
+  const exHeal = exSpecialCount * 33 * missing
+  const followHeal = cycles * 10
+  return (75 + exHeal + followHeal + external) * decibelPerHp
+}
+
 export const yidhariMechanic: AgentMechanicModule = {
   id: 'agent:yidhari',
   agentIds: [YIDHARI_AGENT_ID],
@@ -455,6 +488,8 @@ export const yidhariMechanic: AgentMechanicModule = {
     kind: 'curtain-open',
     supply: ({ state }) => Math.max(0, Math.floor(state.ultimateCount)),
   },
+  // 自身烧血喧响（2026-09-26 CC-14b）：算式见上方 yidhariSelfBurnDecibel 注释。
+  selfBurnDecibel: yidhariSelfBurnDecibel,
   /**
    * 终局整数重推（规则 6 引擎落点，2026-09-25 CC-6c）：强特次数实数化收尾。
    * `stage='tail'`（S3a 欠打回填之后、S4 装配之前）——与 preTail 不可合并（合并会改数值）；

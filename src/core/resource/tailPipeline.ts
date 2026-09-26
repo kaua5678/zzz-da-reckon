@@ -134,7 +134,7 @@ export function runTailPipeline(
   // 2026-09-25 CC-6b：整块迁进引擎能力/跨槽供给（规则 6）——提供者按模块能力
   // `getAgentMechanic(cfg.agentId)?.curtainTriggers` 找槽（与 `luciaCinemaLevel` 是否在场无关，
   // 该字段写在编排层另一份 cfg 上的旧顾虑随之消失），队友开帷幕量按 `curtain-open` 收集成标量
-  // （`yidhariSlot` 仍按 `yidhariDecibelPerHpPct` 字段找，继续用于外部回血写回与 yidhariBurn）。
+  // （`yidhariSlot` 仍按 `yidhariDecibelPerHpPct` 字段找，继续用于外部回血写回与 selfBurn）。
   const curtain = curtainInfoOf(configs, states, totalTime)
   const yidhariSlot = configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)
 

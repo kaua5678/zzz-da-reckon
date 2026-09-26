@@ -15,6 +15,7 @@ import type {
   CharacterOperationConfig, EnergySource, DecibelSource, IterationState,
 } from '@/types/resource'
 import { emptyCrossAgentEnergy } from './crossAgentEnergy'
+import { getAgentMechanic } from '@/mechanics'
 import {
   decibelEfficiencyMultiplier, timeSliceTriggerCounts, rowEnergyTotal, rowDecibelTotal,
 } from './rowAccounting'
@@ -260,27 +261,20 @@ export function calcDecibelSource(
   const bonusRegen = raw.bonusRegen * efficiency
   const timeSliceDecibel = raw.timeSliceDecibel * efficiency
   const teammateShareWithEfficiency = teammateShare * efficiency
-  // 伊德海莉烧血喧响：开局场外烧 75% 至 25% + 战斗中把全部回复量烧掉；固定不可分享
-  const yidhariBurnDecibel = (() => {
-    // 原判据 `cfg.agentId !== '1051'`：改用**模块专属字段**判别（2026-09-15 core 棘轮批次2）。
-    // `yidhariDecibelPerHpPct` 的唯一写入方 = `yidhari.ts:113`（模块无条件写自己那份 cfg）⇒
-    // 非该角色 cfg 恒 undefined。不能用下面带 `?? 默认` 的两个字段做判据（它们对任意 cfg 都有值），
-    // 故显式取这个无默认的字段（判据同 T6；规则 6：引擎按能力/字段查询，不按角色名查询）。
-    // timeGolden 0 delta。
-    if (cfg.yidhariDecibelPerHpPct === undefined) return 0
-    const missing = Math.max(0, Math.min(1, cfg.yidhariExHealMissingHpPct ?? 0.75))
-    const decibelPerHp = cfg.yidhariDecibelPerHpPct ?? 10
-    const external = Math.max(0, cfg.yidhariExternalHealPct ?? 0)
-    const cycleTime = 1 + (cfg.yidhariChargeSlam?.actionTime ?? 0) + (cfg.yidhariBasicFollow?.actionTime ?? 0)
-    const cycles = cycleTime > 0 ? Math.floor((state.basicAttackTime ?? 0) / cycleTime) : 0
-    const exHeal = (state.exSpecialCount ?? 0) * 33 * missing
-    const followHeal = cycles * 10
-    return (75 + exHeal + followHeal + external) * decibelPerHp
-  })()
+  // 自身烧血喧响（如伊德海莉开局场外烧 75% 至 25% + 战斗中把全部回复量烧掉）；固定不可分享。
+  // 2026-09-26 CC-14b：角色数学迁进对应角色模块的能力声明（规则 6），引擎按能力查询。
+  // `providerUltCount: 0`——外部治疗「每次 × 次数」已由 `assembleSlot` 写回
+  // `cfg` 的外部治疗字段（见卡面 §5.4 第 4 条），此处再乘次数会重复计入。
+  const selfBurnDecibel = getAgentMechanic(cfg.agentId)?.selfBurnDecibel?.({
+    cfg,
+    basicAttackTime: state.basicAttackTime ?? 0,
+    exSpecialCount: state.exSpecialCount ?? 0,
+    providerUltCount: 0,
+  }) ?? 0
   const unshareableBonus = (
     (cfg.extraSelfDecibelReward ?? 0)
     + (cfg.extraSelfDecibelPerUltimate ?? 0) * state.ultimateCount
-    + yidhariBurnDecibel
+    + selfBurnDecibel
     + extraUnshareableDecibel
   ) * efficiency
   const specialActionBonusWithEfficiency = specialActionBonus * efficiency
@@ -298,7 +292,7 @@ export function calcDecibelSource(
     anomalyBonus: anomalyBonusWithEfficiency,
     teammateShare: teammateShareWithEfficiency,
     unshareableBonus,
-    yidhariBurnDecibel,
+    selfBurnDecibel,
     shareableTotal,
     total,
   }

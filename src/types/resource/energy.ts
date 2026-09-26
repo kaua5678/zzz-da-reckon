@@ -106,8 +106,8 @@ export interface DecibelSource {
   teammateShare: number
   /** 不可分享的额外喧响（如蕾米一命花羽轮舞） */
   unshareableBonus: number
-  /** 伊德海莉烧血喧响（75%开局 + 回血总量）换算，固定不可分享 */
-  yidhariBurnDecibel: number
+  /** 自身烧血喧响（如伊德海莉 75%开局 + 回血总量）换算，固定不可分享；由模块 `selfBurnDecibel` 能力提供 */
+  selfBurnDecibel: number
   /** 总计（不含开局赠送，用于分给队友） */
   shareableTotal: number
   /** 总计（含开局赠送） */

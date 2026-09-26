@@ -300,29 +300,22 @@ function iterateBody(
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]
     const prev = prevStates[i]
-    // 伊德海莉烧血喧响：开局场外烧 75% + 战斗中把全部回复量烧掉（固定不可分享，参与终结技次数）
-    const yidhariBurn = (() => {
-      // 同上方 yidhariBurnDecibel：用无默认值的模块专属字段判别（2026-09-15 core 棘轮批次2）。
-      if (cfg.yidhariDecibelPerHpPct === undefined) return 0
-      const missing = Math.max(0, Math.min(1, cfg.yidhariExHealMissingHpPct ?? 0.75))
-      const decibelPerHp = cfg.yidhariDecibelPerHpPct ?? 10
-      // 外部回血（卢西娅星光汇聚之地）：固定部分 + 按卢西娅终结技次数结算部分（%自身最大生命值）
-      // 2026-09-25 CC-6b：回血源复用帷幕提供者槽（lead 裁决 §6-2；当前唯一提供者 = 唯一回血源 = 卢西娅）。
-      const external = Math.max(0, (cfg.yidhariExternalHealPct ?? 0)
-        + (cfg.yidhariExternalHealPerUltPct ?? 0) * (curtain.providerSlot >= 0 ? (prevStates[curtain.providerSlot]?.ultimateCount ?? 0) : 0))
-      const cycleTime = 1 + (cfg.yidhariChargeSlam?.actionTime ?? 0) + (cfg.yidhariBasicFollow?.actionTime ?? 0)
-      const cycles = cycleTime > 0 ? Math.floor((prev.basicAttackTime ?? 0) / cycleTime) : 0
-      const exHeal = (prev.exSpecialCount ?? 0) * 33 * missing
-      const followHeal = cycles * 10
-      return (75 + exHeal + followHeal + external) * decibelPerHp
-    })()
+    // 自身烧血喧响（如伊德海莉开局场外烧 75% + 战斗中把全部回复量烧掉；固定不可分享，参与终结技次数）。
+    // 2026-09-26 CC-14b：角色数学迁进 yidhari 模块的能力声明（规则 6），引擎按能力查询；
+    // 外部回血「每次 × 提供者终结技次数」由调用方按帷幕提供者槽结算后传入。
+    const selfBurn = getAgentMechanic(cfg.agentId)?.selfBurnDecibel?.({
+      cfg,
+      basicAttackTime: prev.basicAttackTime ?? 0,
+      exSpecialCount: prev.exSpecialCount ?? 0,
+      providerUltCount: curtain.providerSlot >= 0 ? (prevStates[curtain.providerSlot]?.ultimateCount ?? 0) : 0,
+    }) ?? 0
     const extraSelfDecibel = (cfg.extraSelfDecibelReward ?? 0)
       + (cfg.extraSelfDecibelPerUltimate ?? 0) * prev.ultimateCount
       + (cfg.luciaC4DecibelPerTrigger ?? 0) * curtainTriggers
       // 诺姆影画4·膛温换连携：每次赠链「诺姆 + 上一位队友各 +200 不可分享喧响」，计入终结技次数。
       // 次数与门控由模块经 `crossAgentSupply` 自报（本文件不再 import 角色模块、不写 id）。
       + giftDecibelForCfg(configs, prevStates, cfg, totalTime)
-      + yidhariBurn
+      + selfBurn
     // 特殊动作奖励（本轮即时按连携/弹刀/闪反/快支次数结算）+ 异常奖励（上一轮异常池回填），均含队友伴随
     const externalDecibelBonus = (globalCfg.specialActionDecibelBonusPerSlot?.[i] ?? 0)
       + (globalCfg.anomalyDecibelBonusPerSlot?.[i] ?? 0)
