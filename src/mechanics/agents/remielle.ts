@@ -7,9 +7,11 @@ import type {
   AgentTeamPanelEffectInput,
   ReadonlyTeam,
 } from '../types'
-import type { Agent } from '@/types/catalog'
+import type { Agent, PanelValues, SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, RemielleMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
+import { getSkillLevelCoef } from '@/core/skillLevel'
+import { ELEMENT_DMG_KEYS, ELEMENT_DEF_REDUCTION_KEYS, ELEMENT_RES_REDUCTION_KEYS } from '@/core/elementKeys'
 
 const REMIELLE_AGENT_ID = '1581'
 /**
@@ -65,6 +67,93 @@ function buildRemielleResourceSections({ result }: AgentResourceSectionsInput) {
       footer: source.note,
     },
   ]
+}
+
+// ============================================================================
+// 蕾米埃尔专属异常辅助函数（CC-19c-1 2026-09-26，设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §7.2）：
+// 自 `composables/resourceCalc/anomalyPanels.ts` 逐字迁入（算式/常量值/条件/求值顺序零改动）。
+// `anomalyPanels.ts` 保留 import + export 壳 ⇒ `helpers.ts` / `useResourceCalc.ts` /
+// `damagePoolAnomaly.ts` / 既有测试的 import 路径零改动。依赖只有 `@/core/skillLevel` /
+// `@/core/elementKeys` / `@/utils/format` / `@/types/catalog` 类型。
+// ============================================================================
+export function getRemielleLevelValue(row: SkillMove['rows'][number] | undefined, skillLevelBonus: number): number {
+  if (!row) return 0
+  const values = row.values ?? []
+  if (!values.length) return 0
+  const skillLevel = getSkillLevelCoef(skillLevelBonus).skillLevel
+  const levelValues = (row as any).levelValues ?? (row as any).luminizeLevelValues
+  if (Array.isArray(levelValues)) {
+    const idx = levelValues.indexOf(skillLevel)
+    if (idx >= 0) return values[idx] ?? values[0] ?? 0
+  }
+  if (values.length === 3) {
+    return values[skillLevel >= 16 ? 2 : skillLevel >= 14 ? 1 : 0] ?? values[0] ?? 0
+  }
+  return values[0] ?? 0
+}
+
+export function remielleSpecialVoidflareCount(panel: PanelValues): number {
+  const firstRound = panel.remielleCinema1SpecialVoidflareCount ?? 0
+  if (firstRound <= 0) return 0
+  const refillRound = panel.remielleCinema4SpecialVoidflareRefillCount ?? 0
+  const c6Multiplier = 1 + Math.max(0, panel.remielleCinema6SpecialVoidflareTriggerMultiplier ?? 0)
+  return (firstRound + Math.max(0, refillRound)) * c6Multiplier
+}
+
+export interface VoidflareDamageInput {
+  sourcePanel: PanelValues
+  remiellePanel: PanelValues
+  multiplier: number
+  element: string
+  enemyDefense: number
+  enemyResistances: Record<string, number>
+  stunMultiplier: number
+  /** 是否失衡或失衡易伤覆盖率（0-1） */
+  stunned: boolean | number
+  cinema1ResIgnore: number
+}
+
+export function calcVoidflareDamage(input: VoidflareDamageInput): { damage: number; formula: string } {
+  const { sourcePanel: source, remiellePanel: remielle, multiplier, element, enemyDefense, enemyResistances, stunMultiplier, stunned, cinema1ResIgnore } = input
+
+  const baseDmg = source.atk * (multiplier / 100)
+  const elementDmg = source[ELEMENT_DMG_KEYS[element]] ?? 0
+  const dmgMult = 1 + ((source.dmgBonus ?? 0) + elementDmg) / 100
+  const profMult = (source.anomalyProficiency ?? 0) / 100
+
+  const remielleDefReduction = (remielle.enemyDefReduction ?? 0)
+    + (remielle.enemyAnomalyDefReduction ?? 0)
+    + (remielle[ELEMENT_DEF_REDUCTION_KEYS[element]] ?? 0)
+  const effectiveDef = Math.max(0,
+    enemyDefense * (1 - (source.penRatio ?? 0) / 100) * (1 - remielleDefReduction / 100)
+    - ((source.penFlat ?? 0) + (remielle.enemyDefFlatReduction ?? 0)),
+  )
+  const defMult = 794 / (794 + effectiveDef)
+  const levelMult = 2
+  const mass = baseDmg * dmgMult * profMult * defMult * levelMult
+
+  const baseRes = enemyResistances[element] ?? 0
+  const sourceResReduction = (source.enemyResReduction ?? 0)
+    + (source[ELEMENT_RES_REDUCTION_KEYS[element]] ?? 0)
+    + cinema1ResIgnore
+  const resMult = 1 - (baseRes - sourceResReduction) / 100
+
+  const anomalyDmgMult = 1 + (remielle.anomalyDmgBonus ?? 0) / 100
+  const passiveLuminizeMult = 1 + (remielle.remielleLuminizeMultiplierBonus ?? 0) / 100
+  const cinema4LuminizeMult = 1 + (remielle.remielleCinema4LuminizeMultiplierBonus ?? 0) / 100
+  const luminizeMult = passiveLuminizeMult * cinema4LuminizeMult
+  const refringeMult = 1 + ((remielle.remielleRefringeCoefficient ?? 0) + (remielle.remielleRefringeCoefficientBonusPct ?? 0)) / 100
+
+  const dmgTakenMult = 1 + (remielle.enemyDamageTakenBonus ?? 0) / 100
+  let stunBonus = (remielle.stunDmgMultiplierBonus ?? 0) + (remielle.stunDmgMultiplierBonusAlways ?? 0)
+  const stunCap = remielle.stunDmgMultiplierBonusCapAlways ?? 0
+  if (stunCap > 0) stunBonus = Math.min(stunBonus, stunCap)
+  const stunMult = stunned ? Math.max(0, stunMultiplier + stunBonus / 100) : 1
+
+  const damage = mass * resMult * anomalyDmgMult * luminizeMult * refringeMult * stunMult * dmgTakenMult
+  const formula = `基础 ${fmt(source.atk)}×${fmt(multiplier)}% × 增伤(1+${fmt((source.dmgBonus ?? 0) + elementDmg)}%) × 精通(${fmt(source.anomalyProficiency ?? 0)}/100) × 防御(${fmt(defMult, 4)}) × 等级(${levelMult}) × 抗性(${fmt(resMult, 4)}) × 异化(${fmt(refringeMult, 4)}) × 异常增伤(1+${fmt(remielle.anomalyDmgBonus ?? 0)}%) × 耀变被动(${fmt(passiveLuminizeMult, 4)}) × 4命(${fmt(cinema4LuminizeMult, 4)}) × 失衡(${fmt(stunMult, 4)}) × 易伤(${fmt(dmgTakenMult, 4)})`
+
+  return { damage, formula }
 }
 
 /**

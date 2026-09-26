@@ -37,38 +37,11 @@ import type { SkillExecution } from '@/types/resource'
 import { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment } from '@/data/moveTableQueries'
 export { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment }
 
-export const ELEMENT_DMG_KEYS: Record<string, string> = {
-  physical: 'physicalDmg',
-  fire: 'fireDmg',
-  ice: 'iceDmg',
-  electric: 'electricDmg',
-  ether: 'etherDmg',
-  wind: 'windDmg',
-  lumiflux: 'lumifluxDmg',
-  physical_polar_assault: 'physicalDmg',  // 物理变种，使用物理增伤
-}
-
-export const ELEMENT_DEF_REDUCTION_KEYS: Record<string, string> = {
-  physical: 'enemyPhysicalDefReduction',
-  fire: 'enemyFireDefReduction',
-  ice: 'enemyIceDefReduction',
-  electric: 'enemyElectricDefReduction',
-  ether: 'enemyEtherDefReduction',
-  wind: 'enemyWindDefReduction',
-  lumiflux: 'enemyLumifluxDefReduction',
-  physical_polar_assault: 'enemyPhysicalDefReduction',  // 物理变种
-}
-
-export const ELEMENT_RES_REDUCTION_KEYS: Record<string, string> = {
-  physical: 'enemyPhysicalResReduction',
-  fire: 'enemyFireResReduction',
-  ice: 'enemyIceResReduction',
-  electric: 'enemyElectricResReduction',
-  ether: 'enemyEtherResReduction',
-  wind: 'enemyWindResReduction',
-  lumiflux: 'enemyLumifluxResReduction',
-  physical_polar_assault: 'enemyPhysicalResReduction',  // 物理变种
-}
+// ---- 3 张元素键映射表的定义已下沉 `core/elementKeys.ts`（CC-19c-1，2026-09-26），这里是壳 ----
+// ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**（同上方 4 个纯查询的教训）。
+// ⚠ 改这三张表请去 `core/elementKeys.ts`，不要在本文件重建同形常量。
+import { ELEMENT_DMG_KEYS, ELEMENT_DEF_REDUCTION_KEYS, ELEMENT_RES_REDUCTION_KEYS } from '@/core/elementKeys'
+export { ELEMENT_DMG_KEYS, ELEMENT_DEF_REDUCTION_KEYS, ELEMENT_RES_REDUCTION_KEYS }
 
 export function isHealingRow(row: any): boolean {
   const id = String(row.id ?? '').toLowerCase()

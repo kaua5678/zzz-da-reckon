@@ -9,6 +9,7 @@
  *   ④ 异常虚拟面板 `buildAnomalyVirtualPanel`（属性加权 + 招式限定增伤按积蓄占比）与
  *      结算触发者分摊 `buildAnomalySettlementEntries`
  *   ⑤ 蕾米埃尔专属：`getRemielleLevelValue` / `remielleSpecialVoidflareCount` / `calcVoidflareDamage`
+ *      已于 CC-19c-1（2026-09-26）迁 `@/mechanics/agents/remielle`，本文件只留 re-export 壳（见下）
  *
  * 迁移纪律：逐字节剪切，算式/常量值/条件/求值顺序零改动。
  * 上游单一入口仍是 `./helpers`（该文件保留 re-export 壳）⇒ 目录外既有消费者（`damagePool.ts` 等）
@@ -23,15 +24,13 @@
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { emptyPanel, panelAt } from '@/core/panel'
-import { getSkillLevelCoef } from '@/core/skillLevel'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { isRemielleAgent } from '@/mechanics/agents/remielle'
-import { fmt } from '@/utils/format'
 import type { AnomalyProgress } from '@/types/resource'
-import type { PanelValues, SkillMove } from '@/types/catalog'
+import type { PanelValues } from '@/types/catalog'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块直接指真实现
-import { ELEMENT_DMG_KEYS, ELEMENT_DEF_REDUCTION_KEYS, ELEMENT_RES_REDUCTION_KEYS } from './skillRows'
+import { ELEMENT_DMG_KEYS, ELEMENT_RES_REDUCTION_KEYS } from './skillRows'
 // 面板/机制编排簇（B 簇）已迁 `./panelPhases`（R22 熵批 1 刀 A）——同目录兄弟模块直接指真实现。
 // ⚠ 本 import 让 `panelPhases ↔ anomalyPanels` 成环（那边也取本文件的
 // `getTeamAnomalyDurationBonus` / `findSlotByIdentity`）：**两边全是函数声明（提升）且模块初始化期
@@ -372,85 +371,19 @@ export function buildAnomalySettlementEntries(
   }).filter(e => e.triggerCount > 0)
 }
 
-export function getRemielleLevelValue(row: SkillMove['rows'][number] | undefined, skillLevelBonus: number): number {
-  if (!row) return 0
-  const values = row.values ?? []
-  if (!values.length) return 0
-  const skillLevel = getSkillLevelCoef(skillLevelBonus).skillLevel
-  const levelValues = (row as any).levelValues ?? (row as any).luminizeLevelValues
-  if (Array.isArray(levelValues)) {
-    const idx = levelValues.indexOf(skillLevel)
-    if (idx >= 0) return values[idx] ?? values[0] ?? 0
-  }
-  if (values.length === 3) {
-    return values[skillLevel >= 16 ? 2 : skillLevel >= 14 ? 1 : 0] ?? values[0] ?? 0
-  }
-  return values[0] ?? 0
-}
-
-export function remielleSpecialVoidflareCount(panel: PanelValues): number {
-  const firstRound = panel.remielleCinema1SpecialVoidflareCount ?? 0
-  if (firstRound <= 0) return 0
-  const refillRound = panel.remielleCinema4SpecialVoidflareRefillCount ?? 0
-  const c6Multiplier = 1 + Math.max(0, panel.remielleCinema6SpecialVoidflareTriggerMultiplier ?? 0)
-  return (firstRound + Math.max(0, refillRound)) * c6Multiplier
-}
-
-export interface VoidflareDamageInput {
-  sourcePanel: PanelValues
-  remiellePanel: PanelValues
-  multiplier: number
-  element: string
-  enemyDefense: number
-  enemyResistances: Record<string, number>
-  stunMultiplier: number
-  /** 是否失衡或失衡易伤覆盖率（0-1） */
-  stunned: boolean | number
-  cinema1ResIgnore: number
-}
-
-export function calcVoidflareDamage(input: VoidflareDamageInput): { damage: number; formula: string } {
-  const { sourcePanel: source, remiellePanel: remielle, multiplier, element, enemyDefense, enemyResistances, stunMultiplier, stunned, cinema1ResIgnore } = input
-
-  const baseDmg = source.atk * (multiplier / 100)
-  const elementDmg = source[ELEMENT_DMG_KEYS[element]] ?? 0
-  const dmgMult = 1 + ((source.dmgBonus ?? 0) + elementDmg) / 100
-  const profMult = (source.anomalyProficiency ?? 0) / 100
-
-  const remielleDefReduction = (remielle.enemyDefReduction ?? 0)
-    + (remielle.enemyAnomalyDefReduction ?? 0)
-    + (remielle[ELEMENT_DEF_REDUCTION_KEYS[element]] ?? 0)
-  const effectiveDef = Math.max(0,
-    enemyDefense * (1 - (source.penRatio ?? 0) / 100) * (1 - remielleDefReduction / 100)
-    - ((source.penFlat ?? 0) + (remielle.enemyDefFlatReduction ?? 0)),
-  )
-  const defMult = 794 / (794 + effectiveDef)
-  const levelMult = 2
-  const mass = baseDmg * dmgMult * profMult * defMult * levelMult
-
-  const baseRes = enemyResistances[element] ?? 0
-  const sourceResReduction = (source.enemyResReduction ?? 0)
-    + (source[ELEMENT_RES_REDUCTION_KEYS[element]] ?? 0)
-    + cinema1ResIgnore
-  const resMult = 1 - (baseRes - sourceResReduction) / 100
-
-  const anomalyDmgMult = 1 + (remielle.anomalyDmgBonus ?? 0) / 100
-  const passiveLuminizeMult = 1 + (remielle.remielleLuminizeMultiplierBonus ?? 0) / 100
-  const cinema4LuminizeMult = 1 + (remielle.remielleCinema4LuminizeMultiplierBonus ?? 0) / 100
-  const luminizeMult = passiveLuminizeMult * cinema4LuminizeMult
-  const refringeMult = 1 + ((remielle.remielleRefringeCoefficient ?? 0) + (remielle.remielleRefringeCoefficientBonusPct ?? 0)) / 100
-
-  const dmgTakenMult = 1 + (remielle.enemyDamageTakenBonus ?? 0) / 100
-  let stunBonus = (remielle.stunDmgMultiplierBonus ?? 0) + (remielle.stunDmgMultiplierBonusAlways ?? 0)
-  const stunCap = remielle.stunDmgMultiplierBonusCapAlways ?? 0
-  if (stunCap > 0) stunBonus = Math.min(stunBonus, stunCap)
-  const stunMult = stunned ? Math.max(0, stunMultiplier + stunBonus / 100) : 1
-
-  const damage = mass * resMult * anomalyDmgMult * luminizeMult * refringeMult * stunMult * dmgTakenMult
-  const formula = `基础 ${fmt(source.atk)}×${fmt(multiplier)}% × 增伤(1+${fmt((source.dmgBonus ?? 0) + elementDmg)}%) × 精通(${fmt(source.anomalyProficiency ?? 0)}/100) × 防御(${fmt(defMult, 4)}) × 等级(${levelMult}) × 抗性(${fmt(resMult, 4)}) × 异化(${fmt(refringeMult, 4)}) × 异常增伤(1+${fmt(remielle.anomalyDmgBonus ?? 0)}%) × 耀变被动(${fmt(passiveLuminizeMult, 4)}) × 4命(${fmt(cinema4LuminizeMult, 4)}) × 失衡(${fmt(stunMult, 4)}) × 易伤(${fmt(dmgTakenMult, 4)})`
-
-  return { damage, formula }
-}
+// ============================================================================
+// 蕾米埃尔专属异常辅助函数（`getRemielleLevelValue` / `remielleSpecialVoidflareCount` /
+// `VoidflareDamageInput` / `calcVoidflareDamage`）已于 CC-19c-1（2026-09-26）逐字迁至
+// `@/mechanics/agents/remielle`（设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §7.2）——
+// 因为 `calcVoidflareDamage` 需要 `core/elementKeys` 的三张表，而判据 19 禁止 mechanics
+// 按值 import `@/composables`。本块是 **re-export 壳**：`helpers.ts` / `useResourceCalc.ts` /
+// `damagePoolAnomaly.ts` / 既有测试的 import 路径零改动。
+// ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**。
+// ⚠ 改这几个函数请改 `mechanics/agents/remielle.ts`，不要回本文件重建同形函数。
+// ============================================================================
+import { getRemielleLevelValue, remielleSpecialVoidflareCount, calcVoidflareDamage } from '@/mechanics/agents/remielle'
+export { getRemielleLevelValue, remielleSpecialVoidflareCount, calcVoidflareDamage }
+export type { VoidflareDamageInput } from '@/mechanics/agents/remielle'
 
 // ============================================================================
 // 本簇 12 个公开符号（10 函数 + 4 interface 里的 2 个类型在本簇内联）在 `./helpers.ts` 保留
