@@ -1190,6 +1190,39 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 3. 琉音 35（liuyin\* 簇，先写设计稿）、维琳娜 19（§5.19 / CC-27）、诺玛约 14、爱丽丝约 11、雨果约 7，照旧。
 4. 调研待派：花羽轮舞次数没有写入方（§5.31 未决）；W31。
 
+### 5.33 CC-35a / CC-35b done：蕾米埃尔收尾 + 仪玄 / 普罗米娅交互栏次数迁模块（lead-arena-0925c，2026-09-27 第 46 轮）
+
+**提交**：CC-35a 代码 `c684126`（6 文件），CC-35b 代码 `084a4e7`（7 文件，含新测试 `src/mechanics/__tests__/charInputFields.test.ts`）。判据 22 **148 → 146 → 134**，`CORE_ROLE_FIELD_BASELINE` / `frozen` 134，**target 已达成（143），重设为 122**。蕾米埃尔在 core + resourceCalc 的 `remielle*` 计数已清零（`anomalyPanels.ts` 仍按值导入 `isRemielleAgent`，见下「未决」）。
+
+**CC-35a：异化度展示列 → 模块能力 `anomalyRefringePct`**
+- `anomalyPanels.ts#buildAnomalyVirtualPanel` 每个积蓄贡献行的 `refringe`（结果页异常虚拟面板表的「异化度」列，`ResultPage.vue:476/487`，**只用于展示**，另写回虚拟面板 `panel.refringe`，全仓没有读取方）原来内联读蕾米埃尔两个面板字段。现改为：取**在队**各模块的 `anomalyRefringePct(该行面板)` 求和。
+- `remielle.ts` 抽出 `remielleRefringePct(panel)`（异化系数 + 提升），作为 `globalAnomalyMultiplierFactor`（`1 + pct / 100`，运算顺序与原式相同，逐位不变）和新能力的**唯一来源**。
+- 等价依据：这两个面板字段只由蕾米埃尔的自身 buff、队友 buff 和 applyPanel 写，她不在队时恒为 0；在队时是 `0 + x = x`。
+- 验证：vue-tsc 0；单测 99/99；dump / rows 仅 `__ms` 差。**反向变异（能力返回 ×2）dump 零差**：refringe 不进快照哈希，属于预期。新增的 3 条单测（同源性、在队逐行相等且 > 0、不在队为 0）在该变异下红 2 条（26.8≠13.4、85≠42.5）。verify EXIT=0（3581 passed）。
+
+**CC-35b：交互栏次数 → 模块 `buildCharConfig` 从 `char` 读入**
+- `AgentCharConfigInput` 新增可选只读字段 `char?: Readonly<CharacterConfig>`（`mechanics/types.ts` 用 `import type` 引 `@/stores/config`，运行时擦除；之前 mechanics 源码从未引用 stores，这是首次，**拍板理由**：强类型，且只是类型依赖）。**设为可选的原因**：helpersNightC 等测试手工构造这个输入，仪玄还会把输入转交给 specBase，设成必填会一起报错。
+- `helpers.ts#buildCharConfig`：删掉 cfg 字面量里的 6 行（`yixuanInk2Count` / `yixuanInk3Count` / `yixuanPerfectBlockCount` / `yixuanExtremeAssistCount`（缺省 **-1**）/ `yixuanBackstageComboCount` / `promiaNiyingCount`），在模块钩子调用处传入 `char`。
+- `yixuan.ts#buildYixuanCharConfig`：开头写入 5 项（缺省值逐字保留），**位置在 362 行读 `yixuanPerfectBlockCount`、370 行读 `yixuanExtremeAssistCount` 之前**。`promia.ts#buildPromiaCharConfig` 写 `promiaNiyingCount`。
+- 已核实全仓只有 helpers 构造这 6 个字段，读取方全在两个模块内部，并且只读本槽 cfg。`yixuan.ts:370` 把 `yixuanExtremeAssistCount` 拷进 `yixuanExtremeAssistCountInput`，793 行再读它，之后 `buildYixuanExecutions` 会用实际次数覆盖 `yixuanExtremeAssistCount`，名字链条是自洽的，不是 bug。
+- 行为差异（有意为之）：非仪玄 / 非普罗米娅槽的 cfg 不再带这些字段。
+- 验证：vue-tsc 0；charInputFields / yixuan / promia / helpers / difficulty 单测 128 通过（2 skipped）；dump / rows 仅 `__ms` 差。perf 语料只用缺省输入，读取方兜底值又和缺省值相同，dump 覆盖不到，所以新测试走真实 harness，用非缺省输入锁住接线。反向变异（`yixuanInk2Count` ×2）后新测试红（6≠3）。verify 见 `/home/kaua/calc-arch/verify35b.log`（EXIT=0）。
+- 脚本：`/home/kaua/calc-arch/cc35a.py`、`z35a.sh`、`cc35b.py`、`z35b.sh`。**回退点**：分别 `git revert 084a4e7` / `git revert c684126`（单提交，互不依赖；都改了 `mechanics/types.ts` 的不同位置，先撤 35b 再撤 35a 最省事）。
+
+**未决 / 已知坑**
+- `anomalyPanels.ts#getWindInfectionTargetSlot` 仍按值导入 `isRemielleAgent`（风属性感染目标挑选里排除蕾米埃尔）。这是**跨槽决策**，文件内注释写明归分诊 §4 批次 3/4、需要新契约。不计入判据 22，本轮不动。
+- `cfg.remielleRadiantTurnDazeBonusPct` 没有读取方（§5.32 遗留），照旧。
+- 花羽轮舞次数没有写入方（§5.31 未决），照旧待调研。
+- 新规律（写给后续卡）：**用户输入类字段**（交互栏次数）的反向变异 dump 基本抓不到，必须补走真实 harness 的单测，并且用非缺省值。
+
+**rf3 快照（HEAD 084a4e7，134 计）前列**：velinaCorrosionSource 9、liuyinSrc 8、liuyinIdx 7、liuyinPromoteCount 7、velinaCinema2CorrosionRate 7、liuyinMechanicSource 5、lighterSource 5（panelPhases）、liuyinGift 5、rinaSlot 4（anomalyPanels）、normaIdx 4、normaGift 4、爱丽丝 aliceSpark\* 约 11、雨果 hugo\* 约 9、janeAssaultCritDmgBonus 3、velinaCinema1ResIgnore 2、luciaC4DecibelPerTrigger 2。
+
+**下一步（按顺序，可直接开工）**
+1. **CC-35c（小块，约 11 计）**：`lighterSource`（panelPhases.ts，5）+ `rinaSlot`（anomalyPanels.ts，4）+ `luciaC4DecibelPerTrigger`（assembleSlot.ts / helpers.ts，2）。开工先 `grep -rn 'lighterSource\|rinaSlot\|luciaC4DecibelPerTrigger' src` 列出全部读写方，逐个判断能不能套已有模块能力（`teamPanelEffects`、`crossAgentSupply`、`buildCharConfig` + `char`、`bonusDecibel` 类）。每块单独提交，套不上的就记录下来跳过。
+2. **CC-35d（中块）**：诺玛 `normaGift*` / `normaIdx` / `normaSrc`（helpers.ts + normaHatChain.ts，约 14）与琉音 `liuyinGift*`（helpers.ts，约 8）：两者都是「赠送连携」的目标槽与时间，结构很像，**先写一份共用设计稿** `docs/mcp-cc35d-gift-chain.md`（并登记 README §6），再实现。
+3. 维琳娜 19（§5.19 / CC-27）、琉音其余（liuyinSrc / Idx / PromoteCount / MechanicSource，需设计稿）、爱丽丝 / 雨果 / 简照旧。
+4. 调研待派：花羽轮舞次数；W31。
+
 ## 附录：普查脚本 census.sh
 
 ```bash
