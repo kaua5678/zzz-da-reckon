@@ -267,9 +267,9 @@ export function useResourceCalc() {
   const anomalyPoolResult = computed<AnomalyPoolResult | null>(() => calcOutput.value?.anomalyPool ?? null)
   const adjustedResourceResult = computed<TeamResourceResult | null>(() => calcOutput.value?.adjustedResourceResult ?? null)
   /** 琉音好评转大收敛后的转大次数（60+90 抱拳之和），供伤害池/影画6/倍率表消费 */
-  const liuyinPromoteCount = computed(() => calcOutput.value?.promote ?? 0)
-  /** 琉音好评转大收敛后的 60 抱拳次数（被替换掉的连携数；90 档 = liuyinPromoteCount − 本值）。纯展示载荷。 */
-  const liuyinPromoteHug60 = computed(() => calcOutput.value?.promoteHug60 ?? 0)
+  const ultPromoteCount = computed(() => calcOutput.value?.promote ?? 0)
+  /** 琉音好评转大收敛后的 60 抱拳次数（被替换掉的连携数；90 档 = ultPromoteCount − 本值）。纯展示载荷。 */
+  const ultPromoteHug60 = computed(() => calcOutput.value?.promoteHug60 ?? 0)
 
   /** 生效轴：条件轴方案命中后的轴（无方案时回退手动 stunAxes），供下游栈遍历/易伤分配统一消费 */
   const effectiveStunAxes = computed<StunAxis[]>(() => calcOutput.value?.resolvedAxes ?? configStore.stunAxes)
@@ -587,7 +587,7 @@ export function useResourceCalc() {
     effectiveStunAxes: effectiveStunAxes.value,
     entrySnapshotPanels: entrySnapshotPanels.value,
     globalAnomalyMultiplier: globalAnomalyMultiplier.value,
-    liuyinPromoteCount: liuyinPromoteCount.value,
+    ultPromoteCount: ultPromoteCount.value,
     agentNames: agentNames.value,
     autoActive: autoActive.value,
     stunAxisResult: stunAxisResult.value,
@@ -727,7 +727,7 @@ const damageSourceBreakdown = computed<DamageSourceBreakdown[]>(() =>
     stunCoverage,
     interactionTopUp,
     parrySplitResult,
-    liuyinPromoteCount,
-    liuyinPromoteHug60,
+    ultPromoteCount,
+    ultPromoteHug60,
   }
 }

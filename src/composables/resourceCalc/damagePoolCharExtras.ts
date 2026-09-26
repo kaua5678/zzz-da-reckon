@@ -26,7 +26,7 @@ import type { CharRowsEnv, CharLocals } from './damagePoolDirect'
 export function emitCharExtraRows(env: CharRowsEnv, cl: CharLocals): void {
   const {
     configStore, catalogStore,
-    damagePanels, stunPoolResult, liuyinPromoteCount,
+    damagePanels, stunPoolResult, ultPromoteCount,
   } = env.ctx
   const {
     isAxis, axisStunFor, pushDirect, ultimateInAxisFraction,
@@ -46,7 +46,7 @@ export function emitCharExtraRows(env: CharRowsEnv, cl: CharLocals): void {
     axisStunFor,
     teammateAt: (s) => ({ panel: panelAt(damagePanels, s), agent: s >= 0 ? (configStore.team[s]?.agentId ? catalogStore.agentsMap.get(configStore.team[s].agentId) : null) : null }),
     stunCount: stunPoolResult?.stunCount ?? 0,
-    promoteCount: liuyinPromoteCount,
+    promoteCount: ultPromoteCount,
     getMechanicSetting: (k, d) => configStore.getMechanicSetting(k, d),
     ultimateInAxisFraction,
   })

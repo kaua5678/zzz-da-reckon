@@ -19,7 +19,7 @@ import { execFileSync } from 'node:child_process'
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join, basename } from 'node:path'
 
-export const CORE_ROLE_FIELD_BASELINE = 92
+export const CORE_ROLE_FIELD_BASELINE = 83
 export const ROLE_FIELD_EXEMPT = ['triggerCount', 'triggerPanel', 'triggerSlot', 'triggerAgentId', 'triggerCountValues', 'triggerSources']
 const PREFIX_EXCLUDE = ['spec', 'starlight', 'index', 'shared', 'types']
 const SCOPE = ['src/core/*.ts', 'src/composables/resourceCalc/*.ts', 'src/composables/useResourceCalc.ts']

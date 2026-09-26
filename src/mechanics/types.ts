@@ -1465,7 +1465,7 @@ export interface ExtraDirectRowsInput {
   teammateAt: (slot: number) => { panel: PanelValues | undefined; agent: Agent | null | undefined }
   /** = stunPoolResult?.stunCount ?? 0 */
   stunCount: number
-  /** = ctx.liuyinPromoteCount（答案层 promote，原样透传，勿改来源） */
+  /** = ctx.ultPromoteCount（答案层 promote，原样透传，勿改来源） */
   promoteCount: number
   /** = configStore.getMechanicSetting */
   getMechanicSetting: (key: string, dflt: number) => number

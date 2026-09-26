@@ -511,8 +511,8 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：琉音（含跨�
    *
    * ⇒ **只能走真管线才测得到**（手写 cfg 完全碰不到 `configStore.getMechanicSetting`）。
    *
-   * 闭式：`row.count === liuyinPromoteCount · v`、`row.multiplier === 480`（`CINEMA6_ECHO_RATIO`）、
-   * `row.totalDamage === perUnit · count`（严格线性）。`liuyinPromoteCount` 从**同一份管线**读
+   * 闭式：`row.count === ultPromoteCount · v`、`row.multiplier === 480`（`CINEMA6_ECHO_RATIO`）、
+   * `row.totalDamage === perUnit · count`（严格线性）。`ultPromoteCount` 从**同一份管线**读
    * （本队 lock=3 实测 4），不硬编。v=0 时**行缺失**（`:1117` 的 `c6EchoMax > 0` 守卫）——
    * ⚠ R50 侦察第一版就把它写成 `count === 0` 而 FAIL。
    */
@@ -522,10 +522,10 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：琉音（含跨�
     for (const v of [0, 3, 12]) {
       const r = await probe(LIUYIN_TEAM, 'liuyin.c6EchoMax', v, calc => {
         const rows = calc.damagePoolRows.value.filter(x => x.name === '琉音影画6·余音')
-        return { promote: calc.liuyinPromoteCount.value, rows }
+        return { promote: calc.ultPromoteCount.value, rows }
       }, { lock: 3 })
       if (r.promote <= 0) {
-        failures.push(`v=${v}: 夹具失效 —— liuyinPromoteCount = ${r.promote}（需 > 0 否则行恒缺失）⇒ 本条退化成假绿`)
+        failures.push(`v=${v}: 夹具失效 —— ultPromoteCount = ${r.promote}（需 > 0 否则行恒缺失）⇒ 本条退化成假绿`)
         continue
       }
       if (v === 0) {
@@ -565,10 +565,10 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：琉音（含跨�
     const failures: string[] = []
     for (const v of [0, 2, 4]) {
       const r = await probe(LIUYIN_TEAM, 'liuyin.hug60Count', v, calc => ({
-        hug60: calc.liuyinPromoteHug60.value, promote: calc.liuyinPromoteCount.value,
+        hug60: calc.ultPromoteHug60.value, promote: calc.ultPromoteCount.value,
       }), { lock: 3 })
       if (r.promote <= 0) {
-        failures.push(`v=${v}: 夹具失效 —— liuyinPromoteCount = ${r.promote} ⇒ 本条无从观测`)
+        failures.push(`v=${v}: 夹具失效 —— ultPromoteCount = ${r.promote} ⇒ 本条无从观测`)
         continue
       }
       if (r.hug60 !== v) {

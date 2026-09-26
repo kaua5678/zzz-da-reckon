@@ -71,7 +71,7 @@ export interface DamagePoolContext {
   /** 蕾米异化系数倍率（1 + (异化度+提升)/100） */
   globalAnomalyMultiplier: number
   /** 琉音转大收敛次数（余音直伤用） */
-  liuyinPromoteCount: number
+  ultPromoteCount: number
   agentNames: Record<string, string>
   autoActive: boolean
   stunAxisResult: unknown
