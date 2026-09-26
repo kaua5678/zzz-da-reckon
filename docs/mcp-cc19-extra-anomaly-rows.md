@@ -257,4 +257,12 @@ elementLabel: (element: string) => string
     - 极性强击 order 20→35 → 无差：同队的 `auto-1401-1261-1411` 里简在 1 号位、命座不到 6，没有 order 30 的行可以换位，预期内。
   - 全量：master `npm run verify` EXIT=0（291 个测试文件 / 3551 条测试，22 条守卫通过），HEAD `3fbb326`。
   - 偏离：块内用 `const aliceSlot = slot` / `alicePanel = panel` 等局部别名，以保持块体文本逐字不变（等价）；jane.ts 多了一个 `import type { DamagePoolRow }`。
+- **CC-19c 已落地**（2026-09-26 第 28 轮 lead-arena-0925c）：dsflash 工人在 worktree `r69-scratch/cc19c` 按 §7.2 分两个提交实现（`28e7463`、`a39380a`），lead 分别挑回：
+  - **19c-1 = `b45652c`**：新建 `src/core/elementKeys.ts`；蕾米埃尔 3 个辅助函数和 `VoidflareDamageInput` 迁入 `mechanics/agents/remielle.ts`；skillRows.ts / anomalyPanels.ts 改成 import + export 转发壳（类型用 `export type … from`）。判据 22：545 → 535。lead 用程序比对确认逐字：删除行除 3 行 import 外，全部原样出现在 remielle.ts。
+  - **19c-2 = `de1cc8d`**：块 6 迁入 remielle 模块的 `extraAnomalyRows`（order 60）；输入面加了 6 个字段。判据 22：535 → **499**，低于 target 533，**重设 target 487**。lead 用程序比对确认：块 6 的 133 行里，没原样出现的都是 §7.2 替换点，而且每一处都有一一对应的新写法。
+  - 零差：**两个提交分别**跑了 dump 625 / rowsnap 638，都只有 `__ms` 不同。
+  - 反向：耀变 `totalDamage` ×0 → rowsnap DIFF 42（6 组 1581 预设 × 7 个变体，只波及 1581）。特殊虚耀 `totalDamage` ×0 → rowsnap 看不到（需要 C1），`remielle.test.ts`「特殊虚耀 ×2.5 独立乘区」用例红，还原后绿。
+  - 全量：master `npm run verify` EXIT=0（291 个测试文件 / 3558 条测试），HEAD `de1cc8d`。
+  - **现状：`damagePoolAnomaly.ts` 里已没有内联角色块**，派发点是异常尾段唯一的角色出口。文件里剩下的 remielle 字样只有 ctx 解构、派发点的 `remielleEntryPanels`，以及两处 `anomalyMultiplier: remielleAnomalyMultiplier`（这两处归 CC-21）。
+- **`__ms` 漂移不是回退（lead A/B 实测）**：19b / 19c 的零差 `__ms` 约 53–54s，基线 H2a 是 38.9s。在同一时段交替跑 19b 之前的 `6831a29` 和 `a39380a` 各两次：54.2 / 58.0 / 57.3 / 51.1s，互有高低，没有系统差。**结论：`__ms` 随机器状态漂移，和代码无关；判断性能要做同条件 A/B，不要拿基线里的 `__ms` 比较。**（脚本 `/home/kaua/calc-arch/ab.sh`）
 - 19a 偏离（均合理）：`buildVirtualPanel` 定型为单参闭包 `(prog) => ReturnType<typeof buildAnomalyVirtualPanel>`；`buildSettlementEntries` 定型为 `(build, count)`，类型用 `Parameters` / `ReturnType` 推导。派发点用 `for (const r of flattenAnomalyRowGroups(extraGroups)) rows.push(r)`。

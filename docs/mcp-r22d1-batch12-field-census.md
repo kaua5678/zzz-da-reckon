@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-26 第 27 轮，lead-arena-0925c）**：**CC-19b 已落地 `3fbb326`**（爱丽丝极性强击 / C6 / 畏缩 + 简 C6 迁 `extraAnomalyRows`，工人 `d1dd95a`）。判据 22 从 601 降到 **545**，target 重设 **533**。master 上 `npm run verify` EXIT=0，HEAD `3fbb326`。19c 已实读并定稿（设计稿 §7.2）。详见 §5.13。
+- **最新交接（2026-09-26 第 28 轮，lead-arena-0925c）**：**CC-19 全部完成**。19c-1 `b45652c`、19c-2 `de1cc8d`（蕾米埃尔块 6 迁 `extraAnomalyRows`），判据 22 545→535→**499**（target 重设 487）。**CC-20 `ea61032`**：判据 22 口径纠正，5 个 trigger* 触发者通用名加入豁免，读数 499→**462**，target 平移到 **450**（换尺，规则 17②，单独提交）。master 上 `npm run verify` EXIT=0，HEAD `ea61032`（docs 提交在其后）。详见 §5.14。
+  **下一步（可以直接开工）**：**CC-21**（全队异常乘区 `remielleAnomalyMultiplier` 做成模块能力，并通用改名为 `globalAnomalyMultiplier`），开工清单见 §5.14。
+- **上一轮交接（2026-09-26 第 27 轮，lead-arena-0925c）**：**CC-19b 已落地 `3fbb326`**（爱丽丝极性强击 / C6 / 畏缩 + 简 C6 迁 `extraAnomalyRows`，工人 `d1dd95a`）。判据 22 从 601 降到 **545**，target 重设 **533**。master 上 `npm run verify` EXIT=0，HEAD `3fbb326`。19c 已实读并定稿（设计稿 §7.2）。详见 §5.13。
   **下一步（可以直接开工）**：**CC-19c**（蕾米埃尔块 6，分 19c-1 准备步 + 19c-2 迁块步，同一 worktree 里两个提交），开工清单见 §5.13。
 - **上一轮交接（2026-09-26 第 26 轮，lead-arena-0925c）**：CC-19 设计稿 `docs/mcp-cc19-extra-anomaly-rows.md`（`c7f2068`，README §6 已登记为 48 份），**CC-19a 已落地 `b14fb4a`**（柏妮思 C6 灼烧迸发迁 `extraAnomalyRows`，工人 `7be6233`）。判据 22 从 613 降到 **601**，target 重设 **589**。master 上 `npm run verify` EXIT=0，HEAD `b14fb4a`。详见 §5.12。
   **下一步（可以直接开工）**：**CC-19b**（爱丽丝极性强击 / C6 / 畏缩 + 简 C6 迁 `extraAnomalyRows`）。接口已在设计稿 §7.1 定稿，不需要再设计，直接派工人：提示词以 `/home/kaua/calc-arch/cc19a.prompt` 为模板，块号、替换规则按 §7.1 改。
@@ -262,6 +264,8 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-26 CC-18b 后**：**613**（`a936127`）；target 611 不变。下一张：CC-19 设计（§5.11）。
 - **2026-09-26 CC-19a 后**：**601**（`b14fb4a`）；已低于 target 611，重设 target **589**。下一张：CC-19b（§5.12）。
 - **2026-09-26 CC-19b 后**：**545**（`3fbb326`）；已低于 target 589，重设 target **533**。下一张：CC-19c（§5.13）。
+- **2026-09-26 CC-19c 后**：535（`b45652c`，19c-1）→ **499**（`de1cc8d`，19c-2）；已低于 target 533，重设 target **487**。
+- **2026-09-26 CC-20 口径纠正**：**462**（`ea61032`）= 499 − 37 个误报（trigger* 触发者通用名），**不是进步**；target 同口径平移 487→**450**。下一张：CC-21（§5.14）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -563,6 +567,43 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
    - `triggerPanel` / `triggerSlot`（damagePool*.ts 与 helpers.ts，疑似触发者 / 扳机角色的通用名误报，要先确认是不是角色前缀；若是扳机 Trigger 这个角色就立卡）；
    - `aliceCoweringConfig` / `aliceTeamAssaultCount` / `aliceDisorderCount`（convergence / panelPhases / roundThreads 的回合线程字段，走 CC-15 那种通用命名的纯改名路线）；
    - `banyueSlot`（convergence.ts）。
+
+### 5.14 CC-19c / CC-20 落地记录 + CC-21 开工清单（2026-09-26 第 28 轮 lead-arena-0925c）
+
+**CC-19c**：完整记录在设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §8。同一节还记了「`__ms` 漂移不是回退」的 A/B 结论。**以后判断性能要做同条件 A/B，不要拿基线里的 `__ms` 比较。**
+
+**CC-20（`ea61032`，换尺）**：
+- 实读 `triggerPanel`（16）/ `triggerSlot`（13）/ `triggerAgentId`（4）/ `triggerCountValues`（3）/ `triggerSources`（1）的全部用处，都是「触发者（覆盖异常的角色）/ 触发源」的通用义（例：`core/anomalyPool/helpers.ts` 里的 `@param triggerPanel 触发者面板`），和扳机（`trigger.ts`）无关，共 37 处误报。
+- 按 `triggerCount` 的先例，把这 5 个名字加入 `scripts/lib/core-role-field-ratchet.mjs` 的 `ROLE_FIELD_EXEMPT`。注释锁定：**这 5 个名字专指触发者，扳机角色字段不得复用**。
+- `checkGuards.test` 的正控样本由 `triggerSlot` 换成假想扳机字段 `triggerShotCount`，并加一条断言：`triggerSlot` 在豁免表里。
+- `/home/kaua/calc-arch/census.mjs` 是出原始普查表的工具，它的数字本来就含误报（当初 `triggerCount` 的 84 处也是事后人工扣除的），**所以不改**。rf3.mjs 直接 import 计数库，自动跟随新口径。
+
+**rf3 读数（HEAD `ea61032`，462 处 / 124 个字段）前列**：remielleAnomalyMultiplier 13、banyueSlot 10（convergence）、aliceCoweringConfig 10（roundInputs / anomalyPool / helpers）、aliceTeamAssaultCount 9、aliceDisorderCount 9（convergence / panelPhases / roundThreads）、velinaCorrosionSource 9（anomalyPool）、remielleRainbowEndCount 9（rowBuild）、liuyinSrc 8、xideIdx 8（crossAgentEnergy）、remielleSpecialVoidflareUseCount 8。
+
+**CC-21 开工清单（全队异常乘区能力化 + 通用改名；lead 实读 HEAD `ea61032`）**
+1. 现状：`src/composables/useResourceCalc.ts:159`
+   ```
+   const remielleAnomalyMultiplier = computed(() => { slot = findSlotByIdentity(…, ['1581']); panel = panelAt(panels.value, slot); 1 + (panel.remielleRefringeCoefficient + panel.remielleRefringeCoefficientBonusPct) / 100 })
+   ```
+   这是在编排层写死的蕾米埃尔知识（身份 + 角色面板字段）。下游 `roundInputs.ts:126` 传进 anomalyPool 时本来就叫 `globalAnomalyMultiplier`（core/anomalyPool 里已用这个名字）。
+   引用分布：useResourceCalc 3、roundInputs 3、damagePool 3、damagePoolAnomaly 3、mechanics/types 1，测试有 nextRoundFeedbackR19 / R20 和 ysgLoopTraceProbe，共 4 处。
+2. 决定（规则 17：选长期）：
+   - (a) `AgentMechanicModule` 新增可选能力 `globalAnomalyMultiplierFactor?(panel: PanelValues): number`（返回乘法因子，缺省视为 1）。remielle.ts 实现：`1 + (coef + bonus) / 100`，逐字搬现有公式。
+   - (b) useResourceCalc 的 computed 改名为 `globalAnomalyMultiplier`，函数体改为遍历 `configStore.team` 各槽：`getAgentMechanic(agentId)?.globalAnomalyMultiplierFactor?.(panelAt(panels.value, slot))`，把有面板的因子连乘，初值 1。原式「无面板时返回 1」等价。
+   - (c) 全仓把 `remielleAnomalyMultiplier` 改名为 `globalAnomalyMultiplier`，包括 ctx 字段、roundInputs deps、mechanics/types 的字段、测试。
+     ⚠ 改名时先 grep 同文件内已有的 `globalAnomalyMultiplier`：roundInputs.ts:126 已有对象键 `globalAnomalyMultiplier: remielleAnomalyMultiplier.value`，改完变成 `globalAnomalyMultiplier: globalAnomalyMultiplier.value`，这是合法的。core/anomalyPool 里的同名字段本来就是同一个意思。
+3. 零差论证：目前只有 remielle 实现这个能力，findSlotByIdentity 与逐槽 agentId 等价（catalog 62 个角色里没有 teammateBuffId 别名，见 CC-19 设计稿 §1），因此乘积恒等于原值。
+4. 判据：
+   - 判据 22 预计约 −15（13 处 remielleAnomalyMultiplier，加上 useResourceCalc 里的 2 处 remielleRefringe*）；
+   - useResourceCalc 删掉了 `['1581']` 身份判定，**角色判定棘轮（判据 6 / agent-identity）可能跟着下降**，按报错同步它的 baseline；
+   - 两个都是进步，不是换尺，可以和代码同批提交。
+5. 反向：remielle 因子里的 `/ 100` 改成 `/ 1e9`（因子 ≈ 1），rowsnap 应在 6 组含 1581 的预设 × 7 个变体出现 DIFF（异常行受全队乘区影响）。
+6. 执行：dsflash 工人 + worktree `r69-scratch/cc21`，提示词以 `/home/kaua/calc-arch/cc19c.prompt` 为模板（单个提交）。零差用 `/home/kaua/calc-arch/v19c.sh <commit> <tag>`（先 sed 把 cc19c 改成 cc21）。
+7. CC-21 之后的候选（届时实读再定）：
+   - `aliceTeamAssaultCount` / `aliceDisorderCount`（回合线程字段，走 CC-15 那种通用命名的纯改名路线）；
+   - `aliceCoweringConfig` / `velinaCorrosionSource` / `velinaCinema2CorrosionRate`（anomalyPool 输入，考虑按模块能力声明）；
+   - `banyueSlot`（convergence）；
+   - `remielleRainbowEndCount` / `remielleSpecialVoidflareUseCount`（rowBuild / rowAccounting）。
 
 ## 附录：普查脚本 census.sh
 
