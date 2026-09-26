@@ -173,7 +173,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-22 | review | **done** `05bb382`（修订版；判据 22 447→430，target 418） | 原「改名 teamAssaultCount」作废（assault 实为爱丽丝自己触发的强击，并非全队次数）→ 爱丽丝剑仪外部次数源改走 nextRoundFeedback + threads，删掉 AgentTeamConfigInput/panelPhases 专用字段及 convergence 对爱丽丝的直连 import，零差 | census §5.16 |
 | CC-23 | review | **done** `8ecd5f2`（判据 22 430→420，target 418） | 般岳交互补齐：banyueSlot 身份找槽 → producesInteractionTopUp 声明式；computeBanyueInteractionTopUp → 模块能力 computeInteractionTopUp；InteractionTopUp 类型迁 mechanics/types；零差 + 单测反向 | census §5.17 |
 | CC-24 | review | **done** `1d1d823`（判据 22 420→410，target 398） | 畏缩配置通用化：aliceCoweringConfig → coweringConfig、AliceCoweringConfig → CoweringConfig（输出字段 aliceCoweringDot 不改），零差 | census §5.18 |
-| CC-25 | review | **待做**（已实读定稿） | roundInputs `aliceInfo`（findSlotByIdentity 1401 + 直读 cfg.alice*）→ 模块能力 anomalyPoolSetup（畏缩配置；giftedTriggerSlot 取提供者槽位） | census §5.18 |
+| CC-25 | review | **done** `7cef9c8`（判据 22 410→403，target 398） | roundInputs `aliceInfo`（findSlotByIdentity 1401 + 直读 cfg.alice*）→ 模块能力 anomalyPoolSetup（畏缩配置；giftedTriggerSlot 取提供者槽位），零差 + 单测反向 | census §5.19 |
+| CC-26 | review | **待做**（已实读，待定稿接口名） | core/resource 蕾米埃尔「垂虹」必做动作行（rowBuild ×2 + helpers 时间合计 ×2 + remielleSpecialVoidflareUseCount）→ 模块能力 extraNecessaryAction | census §5.19 |
+| CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
 ### CC-1 · 招式表查询迁出（fast）

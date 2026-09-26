@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-27 第 32 轮，lead-arena-0925c）**：**CC-24 已落地 `1d1d823`**（畏缩配置通用化：`aliceCoweringConfig` → `coweringConfig`，`AliceCoweringConfig` → `CoweringConfig`，纯改名）。判据 22 从 420 降到 **410**，target 重设 **398**。verify EXIT=0。详见 §5.18。
+- **最新交接（2026-09-27 第 33 轮，lead-arena-0925c）**：**CC-25 已落地 `7cef9c8`**。爱丽丝畏缩配置迁为模块能力 `anomalyPoolSetup`；roundInputs 的 `aliceInfo` 改名 `anomalyPoolSetupInfo`，按能力找槽，不再用 `findSlotByIdentity(['1401'])`，也不再直读 `cfg.alice*`。判据 22 从 410 降到 **403**，target 398 未达成，维持不变。verify EXIT=0。详见 §5.19。
+  **下一步（可以直接开工）**：**CC-26**（core/resource 里蕾米埃尔「垂虹」必做动作行 → 模块能力），开工清单见 §5.19；**先实读 §5.19 第 1 条列出的 4 个读点**。
+- **上一轮交接（2026-09-27 第 32 轮，lead-arena-0925c）**：**CC-24 已落地 `1d1d823`**（畏缩配置通用化：`aliceCoweringConfig` → `coweringConfig`，`AliceCoweringConfig` → `CoweringConfig`，纯改名）。判据 22 从 420 降到 **410**，target 重设 **398**。verify EXIT=0。详见 §5.18。
   **下一步（可以直接开工）**：**CC-25**（roundInputs 的 `aliceInfo` 按身份找槽 + 直读 `cfg.alice*` → 爱丽丝模块能力 `anomalyPoolSetup`），开工清单见 §5.18。
 - **上一轮交接（2026-09-27 第 31 轮，lead-arena-0925c）**：**CC-23 已落地 `8ecd5f2`**。般岳交互补齐的找槽从按身份 `findSlotByIdentity(['1471'])` 改为声明式 `producesInteractionTopUp`，补齐求解改走模块能力 `computeInteractionTopUp`，补齐量类型提到 `mechanics/types.ts#InteractionTopUp`；convergence / roundThreads / roundResult 不再 import 般岳模块。判据 22 从 430 降到 **420**，target 仍为 418（未达成）。verify EXIT=0。详见 §5.17。
   **下一步（可以直接开工）**：**CC-24**（`aliceCoweringConfig` 改名为通用的 `coweringConfig`：畏缩是物理强击附带的通用状态），开工清单见 §5.17。
@@ -278,6 +280,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-27 CC-22 后**：**430**（`05bb382`）；已低于 target 435，重设 target **418**。下一张：CC-23（§5.16）。
 - **2026-09-27 CC-23 后**：**420**（`8ecd5f2`）；target 418 未达成，维持不变。下一张：CC-24（§5.17）。
 - **2026-09-27 CC-24 后**：**410**（`1d1d823`）；已低于 target 418，重设 target **398**。下一张：CC-25（§5.18）。
+- **2026-09-27 CC-25 后**：**403**（`7cef9c8`）；target 398 未达成，维持不变。下一张：CC-26（§5.19）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -760,6 +763,49 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
    - 语料反向：能力返回的 `disorderBonusMax` 改为 0，预期 DIFF 28（同 CC-24）。
 5. 判据 22 预计小幅下降（主要是删掉 `alice` 前缀局部量）；角色判定棘轮不会变（数组写法 `['1401']` 不计数）。执行：lead 自做。
 6. 之后的候选：velinaCorrosionSource（`core/anomalyPool.ts`，9 处）+ velinaCinema2CorrosionRate（7 处），同属维琳娜风蚀，可合成一张，动手前先实读。
+
+### 5.19 CC-25 落地记录 + CC-26 开工清单 + CC-27（维琳娜风蚀）设计要点（2026-09-27 第 33 轮 lead-arena-0925c）
+
+**CC-25（`7cef9c8`，判据 22 410→403，target 398 不变）**：
+- `mechanics/types.ts`：`AgentMechanicModule` 新增 `anomalyPoolSetup?(cfg: DeepReadonly<CharacterOperationConfig>): { coweringConfig?: CoweringConfig } | null`，从 `@/core/anomalyPool` 做 type import `CoweringConfig`，符合判据 19。
+- `alice.ts` 模块对象：`anomalyPoolSetup: (cfg) => cfg.aliceEnabled ? { coweringConfig: {…} } : null`，4 个 cfg 默认值（2.5 / 0.95 / 18 / 180）和 `assaultBaseMultiplier: 853` 从 roundInputs 逐字搬迁。
+- `roundInputs.ts`：
+  - `aliceInfo` 改名为 `anomalyPoolSetupInfo`；
+  - 找槽改为 `configStore.team.findIndex(c => c.agentId && getAgentMechanic(c.agentId)?.anomalyPoolSetup)`；
+  - cfg 仍按 `characters.find(c => c.slot === slot)` 取（判据 17，前导空槽）；
+  - 返回 `{ slot, ...setup(cfg) }` 或 null；
+  - `calcAnomalyPoolInput` 里的局部量 `alice` 改为 `setup`（`giftedTriggerCounts` / `giftedTriggerSlot` 门控语义不变）。
+  - 头注释的「不能读 resourceResult，否则成环」约束保留，并在找槽处注明仍然成立。`findSlotByIdentity` 的 import 保留（`:184` 琉音判定还在用）。
+- **验证**：
+  - vue-tsc 0；零差（dump 625 / rowsnap 638，只有 `__ms` 不同）。
+  - **语料反向**（能力返回的 `disorderBonusMax` 改为 0）：DIFF 28 = 4 组 1401 预设 × 7 个变体。
+  - **单测反向**（能力恒返回 null）：`convergenceNightB.test.ts` 组 4 的 2 条「前导空槽 + 爱丽丝在槽 2」「槽 0 / 槽 2 同一份配置」变红（17/19）。
+  - 还原后 cmp 一致；convergenceNightB + inStunAttribution + alice.test 共 74/74 通过；`npm run verify` EXIT=0。
+  - 脚本：`/home/kaua/calc-arch/cc25.py`（先全部断言再统一写盘，遵守 §5.18 踩坑①）、`z25.sh`。
+- **未改**：`calcAnomalyPoolInput` 的形参 `aliceSparkOverride` 和局部量 `aliceSpark`（来自 convergence 的 `aliceSparkCountOf(rr)`，属于 CC-22 之后剩下的「极性强击赠送计数」通道）。如果要做，可以单独一张：让 `anomalyPoolSetup` 也返回赠送计数，但它要读本轮 rr，会撞上成环约束，**不能**直接塞进同一个 computed。
+- **回退点**：`git revert 7cef9c8`（单个提交，含棘轮常量 403）。
+
+**CC-26 开工清单（蕾米埃尔「垂虹」必做动作行 → 模块能力；lead 实读 HEAD `7cef9c8`）**
+1. 现状（core/resource 里的角色专属逻辑，判据 22 的 rf3 前列 `remielleRainbowEndCount` 9 / `remielleSpecialVoidflareUseCount` 8 都在这里）：
+   - `core/resource/rowAccounting.ts:27` `remielleSpecialVoidflareUseCount(cfg)`：按 `panel.remielleCinema1/4/6*` 算特殊虚耀次数；
+   - `core/resource/rowBuild.ts:224–242`：`count > 0 && cfg.remielleRainbowEndMoveId` 时 push 一行「普通攻击：垂虹（特殊虚耀载体）」，category basic，timeBucket necessary，actionTime / comboAlignRatio / decibelRecovery 取 `cfg.remielleRainbowEnd*`；
+   - `rowBuild.ts:573–600` 是第二处同形逻辑（**开工前先实读**，确认差异）；
+   - `core/resource/helpers.ts:410/433`：时间合计里内联了 `remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndActionTime`（以及 `* ComboAlignRatio`）；
+   - `helpers.ts:57/68/83`：re-export。
+2. 先例：同一层的 `rowAccounting.ts#exSpecialNecessaryTime` 已经在 core 里用 `getAgentMechanic(cfg.agentId)?.estimateExSpecialTime` 派发模块能力，所以 core/resource 按 cfg.agentId 派发**不违反** core/** 禁写 agentId 判定（派发器不含 id）。
+3. 方案：
+   - `AgentMechanicModule` 新增 `extraNecessaryAction?(cfg: CharacterOperationConfig): { moveId: string; moveName: string; category: 'basic'; count: number; actionTime: number; comboAlignRatio: number; decibelRecovery: number } | null`（名字可调，写进设计时定稿）；
+   - remielle.ts 实现：搬入 `remielleSpecialVoidflareUseCount` 公式，`count <= 0 || !cfg.remielleRainbowEndMoveId` 时返回 null；
+   - rowBuild 两处和 helpers 两处改为调用同一个 helper，例如在 rowAccounting 里放 `extraNecessaryActionOf(cfg)`（内部 `getAgentMechanic(cfg.agentId)?.extraNecessaryAction?.(cfg) ?? null`），再按返回值 push 行或累加时间；
+   - `remielleSpecialVoidflareUseCount` 若还有其他调用方（先 grep），保留为 remielle.ts 的导出。
+4. **风险**：rowBuild 两处的 moveName / timeBucket 如果不同，要逐字保留（能力只返回数据，文案留在调用点或放进返回值）。helpers 的时间合计必须与行的 totalTime 同源，否则前台时间会漂移。
+5. 验证：零差（rowsnap 会直接覆盖这一行）；反向：能力返回的 count +1，预期只波及含 1581 的预设（6 组 × 7 = 42，参见 CC-21）。执行：lead 自做。
+
+**CC-27（维琳娜风蚀，待设计；为什么不能只改名）**：`velinaCorrosionSource`（9 处）和 `velinaCinema2CorrosionRate`（7 处）是 **core 里驻留的角色机制**，不是可以通用化的字段。
+- 风蚀状态机 `resolveAnomalyCorrosion` 在 `core/anomalyPool.ts:308–339` 结算，并且只有维琳娜有（CC-D3 测试 `anomalyPool.test.ts:132–182` / `ccD3D1Verdict.test.ts` 写明「无维琳娜时风蚀状态机不得结算」）。
+- `velinaCorrosionSource` 是 `AnomalyPoolResult` 的**输出字段**（`types/resource/pools.ts:128`），被 `ResourceResultCard.vue:599`、`velina.ts:491` 和多条测试读取。
+- `velinaCinema2CorrosionRate` 从 roundInputs 经 setting 下发（`velina.ts:152` 也从 panel 读）。
+- 改名只会给角色专属机制戴上通用名（同 CC-22 教训）。正确方向是：把风蚀结算迁到维琳娜模块已有的 `anomalyCorrosion?` / `transformAnomalyPool?` 能力（types.ts:794/809，**先读它们现在是谁在实现、谁在派发**）；输出字段可以保留原名（结果键），或者放进模块自有的结果槽。**设计稿写好再动手**，改动面涉及 core/anomalyPool 主流程。
 
 ## 附录：普查脚本 census.sh
 
