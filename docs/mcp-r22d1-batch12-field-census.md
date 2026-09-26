@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-27 第 30 轮，lead-arena-0925c）**：**CC-22（修订版）已落地 `05bb382`**。§5.15 原定的「纯改名为 teamAssaultCount」**作废**：实读 `aliceExternalCountsOf` 后确认，assault 是**爱丽丝自己**触发的 physical 强击，不是全队次数。改为走通用通道：爱丽丝 `nextRoundFeedback` 负责产出，`applyTeamConfig` 从 `threads` 读取，同时删掉 `AgentTeamConfigInput` 和 panelPhases 的专用字段，convergence 不再 import `aliceExternalCountsOf` / `aliceSlotOf`。判据 22 从 447 降到 **430**，target 重设 **418**。verify EXIT=0。详见 §5.16。
+- **最新交接（2026-09-27 第 31 轮，lead-arena-0925c）**：**CC-23 已落地 `8ecd5f2`**。般岳交互补齐的找槽从按身份 `findSlotByIdentity(['1471'])` 改为声明式 `producesInteractionTopUp`，补齐求解改走模块能力 `computeInteractionTopUp`，补齐量类型提到 `mechanics/types.ts#InteractionTopUp`；convergence / roundThreads / roundResult 不再 import 般岳模块。判据 22 从 430 降到 **420**，target 仍为 418（未达成）。verify EXIT=0。详见 §5.17。
+  **下一步（可以直接开工）**：**CC-24**（`aliceCoweringConfig` 改名为通用的 `coweringConfig`：畏缩是物理强击附带的通用状态），开工清单见 §5.17。
+- **上一轮交接（2026-09-27 第 30 轮，lead-arena-0925c）**：**CC-22（修订版）已落地 `05bb382`**。§5.15 原定的「纯改名为 teamAssaultCount」**作废**：实读 `aliceExternalCountsOf` 后确认，assault 是**爱丽丝自己**触发的 physical 强击，不是全队次数。改为走通用通道：爱丽丝 `nextRoundFeedback` 负责产出，`applyTeamConfig` 从 `threads` 读取，同时删掉 `AgentTeamConfigInput` 和 panelPhases 的专用字段，convergence 不再 import `aliceExternalCountsOf` / `aliceSlotOf`。判据 22 从 447 降到 **430**，target 重设 **418**。verify EXIT=0。详见 §5.16。
   **下一步（可以直接开工）**：**CC-23**（般岳交互补齐：convergence 里 `banyueSlot` 改为声明式找槽 + `computeBanyueInteractionTopUp` 升格为模块能力），开工清单见 §5.16。
 - **上上轮交接（2026-09-26 第 29 轮，lead-arena-0925c）**：**CC-21 已落地 `3d000d0`**（全队异常乘区做成模块能力 `globalAnomalyMultiplierFactor`，并通用改名为 `globalAnomalyMultiplier`；lead 自做，没派工人，因为改动面只有约 17 处机械改名 + 1 个 computed + 1 个模块方法）。判据 22 从 462 降到 **447**，target 重设 **435**。master 上 `npm run verify` EXIT=0（291 个测试文件 / 3559 条测试），HEAD `3d000d0`（docs 提交在其后）。详见 §5.15。
   **下一步（可以直接开工）**：**CC-22**（回合线程字段 `aliceTeamAssaultCount` / `aliceDisorderCount` 通用改名为 `teamAssaultCount` / `teamDisorderCount`，纯改名），开工清单见 §5.15。
@@ -272,6 +274,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-26 CC-20 口径纠正**：**462**（`ea61032`）= 499 − 37 个误报（trigger* 触发者通用名），**不是进步**；target 同口径平移 487→**450**。下一张：CC-21（§5.14）。
 - **2026-09-26 CC-21 后**：**447**（`3d000d0`）；已低于 target 450，重设 target **435**。下一张：CC-22（§5.15）。
 - **2026-09-27 CC-22 后**：**430**（`05bb382`）；已低于 target 435，重设 target **418**。下一张：CC-23（§5.16）。
+- **2026-09-27 CC-23 后**：**420**（`8ecd5f2`）；target 418 未达成，维持不变。下一张：CC-24（§5.17）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -673,6 +676,48 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 3. 预计判据 22 约 −10；角色判定棘轮（`findSlotByIdentity(['1471'])` 是数组写法，不计数）无变化。零差应当逐位成立。反向验证：在 banyue 模块的能力里把返回值的补齐量 +1（或让 `producesInteractionTopUp` 找槽失效），rowsnap 应当只波及含 1471 的预设。
 4. 执行：lead 自做（约 15 处，参照 cc22.py 逐处断言），零差模板 `/home/kaua/calc-arch/z22.sh`（把 MUT 那行 sed 换成 banyue）。
 5. 之后的候选：aliceCoweringConfig 10（roundInputs / anomalyPool / helpers；core/anomalyPool 里带角色前缀的 cfg，可能适合做成通用的「附加异常 dot 配置」）、velinaCorrosionSource 9（anomalyPool）。两者动手前都要先实读。
+
+### 5.17 CC-23 落地记录 + CC-24 开工清单（2026-09-27 第 31 轮 lead-arena-0925c）
+
+**CC-23（`8ecd5f2`，判据 22 430→420，target 418 不变）**：
+- `convergence.ts`：
+  - 找槽改为 `const interactionTopUpSlot = configStore.team.findIndex(c => c.agentId && getAgentMechanic(c.agentId)?.producesInteractionTopUp)`，与 `useResourceCalc.ts` 交互栏的 `interactionTopUp` computed **同一写法**，两处判定同源；
+  - `banyueSlot` 在本文件内全部 10 处改名为 `interactionTopUpSlot`；
+  - `if (autoTopUp)` 里改为 `getAgentMechanic(storeChar.agentId)?.computeInteractionTopUp`，能力缺席时保持上一轮值；
+  - 删掉对 `computeBanyueInteractionTopUp` 的 import。
+- `mechanics/types.ts`：
+  - `AgentMechanicModule` 新增 `computeInteractionTopUp?(opts: InteractionTopUpInput): InteractionTopUp`；
+  - 文件末尾新增 `InteractionTopUp` / `InteractionTopUpInput` 两个接口，字段与注释从 banyue.ts 逐字迁入。
+- `banyue.ts`：
+  - `BanyueInteractionTopUp` 改为 `export type … = InteractionTopUp` 别名，`banyue.test` 等既有引用不用动；
+  - `computeBanyueInteractionTopUp(opts: InteractionTopUpInput): InteractionTopUp`；
+  - 模块对象挂 `computeInteractionTopUp: computeBanyueInteractionTopUp`。
+- `roundThreads.ts` / `roundResult.ts`：类型改从 `@/mechanics/types` import `InteractionTopUp`。这两处也是编排层直连角色模块（类型级），**清单外顺手清掉**。
+- `convergenceNightB.test.ts` ② 新增断言：般岳模块必须挂出 `computeInteractionTopUp`。
+- **等价口径（拍板）**：`findSlotByIdentity` 按 catalog 条目的 `id` / `teammateBuffId` 匹配，声明式写法按模块声明匹配。两者只在「角色不在 catalog」或「别人的 teammateBuffId 恰好是 '1471'」时可能不同，实际语料中不存在这两种情况（零差已证）。选用与交互栏相同的写法，是为了让「谁是补齐提供者」只有一个判据。
+- **验证**：
+  - vue-tsc 0；零差（dump 625 / rowsnap 638，只有 `__ms` 不同）。
+  - **perf 语料反向为 DIFF 0**：语料没有开轴模式或保底开关的般岳队，autoTopUp 路径不在 dump 覆盖范围内（已知局限，见 Errors 口径「dump 抓不到的改动用单测反向」）。
+  - 因此改用**单测反向**：`/home/kaua/calc-arch/r23.sh` 把模块能力改成 `parry + 3`，5 个相关测试文件里 `convergenceNightD.test.ts` 的 2 条真管线端到端用例变红（「保底4喧响 + 般岳队 ⇒ 补齐量精确值」「只开保底4嗔火 ⇒ 喧响侧补齐为 0」），还原后 cmp 一致。
+  - `npm run verify` EXIT=0。
+  - 脚本：`cc23.py`（改代码）、`z23.sh`（tsc + 零差 + 语料反向）、`r23.sh`（单测反向）。
+- **不改**：setting 键 `'banyue.autoTopUpInteractions'`（持久化键）、`computeBanyueAxisExFor`（convergence 局部函数，不在判据计数中）、注释里的「般岳」字样。
+- **回退点**：`git revert 8ecd5f2`（单个提交，含棘轮常量 420）。
+
+**rf3（HEAD `8ecd5f2`，420 处 / 119 个字段）前列**：aliceCoweringConfig 10、velinaCorrosionSource 9、remielleRainbowEndCount 9、liuyinSrc 8、xideIdx 8、remielleSpecialVoidflareUseCount 8、liuyinIdx 7、liuyinPromoteCount 7。
+
+**CC-24 开工清单（畏缩配置通用化；lead 实读 HEAD `8ecd5f2`）**
+1. 语义：畏缩（Cowering / Flinch）是**物理异常「强击」附带的通用状态**，爱丽丝的核心被动只是强化它（畏缩期间有固定 DOT，紊乱覆盖物理时倍率 +18%/s，上限 180%）。配置本身（`dotRatio / dotInterval / disorderBonusPerSec / disorderBonusMax / assaultBaseMultiplier`）不含角色身份，引擎侧的消费（`helpers.ts:1108` 紊乱倍率加成、`anomalyPool.ts:427` DOT）也只看物理元素，不看是谁。
+2. (a) 纯改名（判据 22 预计 −10）：
+   - `core/anomalyPool/helpers.ts:306/1043` 字段 `aliceCoweringConfig` → `coweringConfig`，以及 `:1108/1110/1111/1359` 的读点；
+   - `:317` `interface AliceCoweringConfig` → `CoweringConfig`，保留 `export type AliceCoweringConfig = CoweringConfig` 别名以防外部引用（先 grep 使用方）；
+   - `core/anomalyPool.ts:16`（re-export 同步加 `CoweringConfig`）、`:302`、`:427`；
+   - `composables/resourceCalc/roundInputs.ts:127` 的键名；
+   - `convergenceNightB.test.ts:232/239` 的注释。
+3. **不改**：异常池**输出**字段 `aliceCoweringDot`（`AliceCoweringDotResult`，结果对象键，被快照/展示/行构建消费，改了会影响 rowsnap 键）；函数 `calcAliceCoweringDot`（函数名，不计数，可留到下一张）；cfg 字段 `aliceEnabled` / `aliceCoweringDot*`（爱丽丝模块自己写的 cfg）。
+4. (b) 可选第二步（另立 CC-25）：`roundInputs.ts:100–108` 的 `aliceInfo` computed 仍按身份 `findSlotByIdentity(['1401'])` 找槽，并直读 `cfg.aliceEnabled` / `cfg.aliceCowering*`。方向是做成模块能力，例如 `anomalyPoolSetup?(cfg) → { coweringConfig?, giftedTriggerSlot? }`。`giftedTriggerCounts`（`physical_polar_assault` 取 aliceSpark）也在这里，要一并设计。**动手前先读 `convergenceNightB.test.ts` 那组等价性 oracle**（前导空槽实算）。
+5. 验证：纯改名，零差应当逐位成立。反向：把 `helpers.ts` 紊乱倍率加成的 `disorderBonusMax` 读点改成 0，rowsnap 应当只波及 1401 预设（语料里 4 组，参见 CC-22 反向 DIFF 28）。模板 `/home/kaua/calc-arch/z22.sh`，把 MUT 那行 sed 换掉。
+6. 执行：lead 自做（约 12 处）。
 
 ## 附录：普查脚本 census.sh
 
