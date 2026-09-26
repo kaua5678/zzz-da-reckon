@@ -62,14 +62,14 @@ export interface CharacterOperationConfig {
   basicAttackRegenPerSec: number
   /** 平A秒均喧响（预计算值） */
   basicAttackDecibelPerSec: number
-  /** 蕾米一/四命特殊虚耀跟随的「普通攻击：垂虹」move id */
-  remielleRainbowEndMoveId: string
+  /** 蕾米一/四命特殊虚耀跟随的「普通攻击：垂虹」move id（CC-34b 起垂虹 / Radiant Turn 各字段只由 `remielle.ts#buildRemielleCharConfig` 写，非蕾米槽缺省） */
+  remielleRainbowEndMoveId?: string
   /** 蕾米「普通攻击：垂虹」actionTime */
-  remielleRainbowEndActionTime: number
+  remielleRainbowEndActionTime?: number
   /** 蕾米「普通攻击：垂虹」喧响回复 */
-  remielleRainbowEndDecibelRecovery: number
+  remielleRainbowEndDecibelRecovery?: number
   /** 蕾米「普通攻击：垂虹」合轴率 0-1 */
-  remielleRainbowEndComboAlignRatio: number
+  remielleRainbowEndComboAlignRatio?: number
   /** 蕾米后台飞行状态每5秒自动释放一次 Radiant Turn */
   remielleEnabled?: boolean
   /** 蕾米后台 Radiant Turn move id */

@@ -435,7 +435,5 @@ export {
   findDefensiveAssist,
   findAssistFollowUp,
   findCounterAssist,
-  findRemielleRainbowEnd,
-  findRemielleRadiantTurn,
   calcBasicAttackRegenPerSec,
 } from './resource/moveLookup'

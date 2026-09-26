@@ -174,7 +174,7 @@ export function fusedGroupActionTime(
  * **时间不是「招式段」的单元，是「一次动作」的单元**——只回头段会把一次动作
  * 的其余段整段漏掉（坑 31：雅连携显示 0.515s，实际一次打三段 1.717s）。
  */
-function channelMetricsOf(
+export function channelMetricsOf(
   agentSkills: {
     categories: {
       moves: { id: string; actionTime?: number | null; rows?: { id: string; values: number[] }[] }[]
@@ -328,56 +328,6 @@ export function findCounterAssist(agentSkills: {
   }
 }
 
-
-/** 从倍率表提取蕾米「普通攻击：垂虹」信息（特殊虚耀跟随该动作触发） */
-export function findRemielleRainbowEnd(agentSkills: {
-  categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
-  const basic = agentSkills.categories.find(c => c.id === 'basic')
-  if (!basic) return null
-
-  const move = basic.moves.find(m => {
-    const en = (m.name?.en ?? '').toLowerCase()
-    const zh = m.name?.zhCN ?? ''
-    return m.id === '1581007' || en.includes("rainbow's end") || zh.includes('垂虹')
-  })
-  if (!move) return null
-
-  // 一次动作可能被 catalog 拆成多段（登记融合组）：时间与喧响走融合口径（坑 31）。
-  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
-
-  return {
-    moveId: move.id,
-    actionTime,
-    decibelRecovery,
-    comboAlignRatio: move.comboAlignRatio ?? 0,
-  }
-}
-
-/** 从倍率表提取蕾米后台 Radiant Turn 信息 */
-export function findRemielleRadiantTurn(agentSkills: {
-  categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
-  const special = agentSkills.categories.find(c => c.id === 'special')
-  if (!special) return null
-
-  const move = special.moves.find(m => {
-    const en = (m.name?.en ?? '').toLowerCase()
-    const zh = m.name?.zhCN ?? ''
-    return m.id === '1581010' || en.includes('radiant turn') || zh.includes('radiant turn') || zh.includes('曙光回旋')
-  })
-  if (!move) return null
-
-  // 一次动作可能被 catalog 拆成多段（登记融合组）：时间与喧响走融合口径（坑 31）。
-  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
-
-  return {
-    moveId: move.id,
-    actionTime,
-    decibelRecovery,
-    comboAlignRatio: move.comboAlignRatio ?? 0,
-  }
-}
 
 /** 计算平A秒均回能
  *  遍历 basic category，取 #1-#N 普通平A段（排除强化平A），求秒均回能平均值

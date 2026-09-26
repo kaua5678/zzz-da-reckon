@@ -25,8 +25,6 @@ import {
   findCounterAssist,
   findDodgeCounter,
   calcBasicAttackRegenPerSec,
-  findRemielleRainbowEnd,
-  findRemielleRadiantTurn,
   ULTIMATE_COST_DEFAULT,
 } from '@/core/resource'
 import { counterAssistOf } from '@/data/counterAssists'
@@ -494,8 +492,6 @@ export function buildCharConfig(
     : 0
   const dodgeCounter = findDodgeCounter(skills as AgentSkills)
   const basicRegen = calcBasicAttackRegenPerSec(skills as AgentSkills)
-  const remielleRainbowEnd = findRemielleRainbowEnd(skills as AgentSkills)
-  const remielleRadiantTurn = findRemielleRadiantTurn(skills as AgentSkills)
 
   // 倍率表 decibel_recovery / energy_recovery 全量预存（喧响+能量收入行级化 Σ 切换的前置）：
   // 核心层 calcRawDecibelParts / calcEnergySource 无 catalog 访问权，按此表复刻 enrichExecutionPlan
@@ -549,16 +545,9 @@ export function buildCharConfig(
     panel,
     basicAttackRegenPerSec: basicRegen.energyPerSec,
     basicAttackDecibelPerSec: basicRegen.decibelPerSec,
-    remielleRainbowEndMoveId: remielleRainbowEnd?.moveId ?? '',
-    remielleRainbowEndActionTime: remielleRainbowEnd?.actionTime ?? 0,
-    remielleRainbowEndDecibelRecovery: remielleRainbowEnd?.decibelRecovery ?? 0,
-    remielleRainbowEndComboAlignRatio: remielleRainbowEnd?.comboAlignRatio ?? 0,
-    // `remielleEnabled` / `remielleRadiantTurnDazeBonusPct` 由下方
-    // `charModule?.buildCharConfig?.()`（= `remielle.ts#buildRemielleCharConfig`）写入，
-    // 不再在此处按身份判定（2026-09-17 round 21 夜间批 C）。
-    remielleRadiantTurnMoveId: remielleRadiantTurn?.moveId ?? '',
-    remielleRadiantTurnActionTime: remielleRadiantTurn?.actionTime ?? 0,
-    remielleRadiantTurnDecibelRecovery: remielleRadiantTurn?.decibelRecovery ?? 0,
+    // 蕾米埃尔 cfg 字段（垂虹 4 项 / Radiant Turn 3 项 / `remielleEnabled` / `remielleRadiantTurnDazeBonusPct`）
+    // 全部由下方 `charModule?.buildCharConfig?.()`（= `remielle.ts#buildRemielleCharConfig`）写入
+    // （CC-34b 2026-09-27 迁走垂虹 / Radiant Turn 7 项与两个招式查找函数；前序 2026-09-17 round 21 夜间批 C）。
     exSpecialMoveId: exSpecial?.moveId ?? '',
     exSpecialEnergyConsume: exSpecial?.energyConsume ?? 0,
     exSpecialCostType: exSpecial?.costType ?? (exSpecial?.energyConsume ? 'energy' : 'free'),

@@ -20,6 +20,7 @@ import { fmt } from '@/utils/format'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { ELEMENT_DMG_KEYS, ELEMENT_DEF_REDUCTION_KEYS, ELEMENT_RES_REDUCTION_KEYS } from '@/core/elementKeys'
 import { findMoveById } from '@/data/moveTableQueries'
+import { channelMetricsOf } from '@/core/resource/moveLookup'
 
 const REMIELLE_AGENT_ID = '1581'
 /**
@@ -250,9 +251,70 @@ function applyRemielleTeamPanelEffects({ slot, cinemaLevel, team, panel }: Agent
   panel.dmgBonus = (panel.dmgBonus ?? 0) + (12 + skillLevelBonus) * 1.5
 }
 
+/** 从倍率表提取蕾米「普通攻击：垂虹」信息（CC-34b 2026-09-27 由 `core/resource/moveLookup.ts` 逐字迁入）（特殊虚耀跟随该动作触发） */
+export function findRemielleRainbowEnd(agentSkills: {
+  categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
+}): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+  const basic = agentSkills.categories.find(c => c.id === 'basic')
+  if (!basic) return null
+
+  const move = basic.moves.find(m => {
+    const en = (m.name?.en ?? '').toLowerCase()
+    const zh = m.name?.zhCN ?? ''
+    return m.id === '1581007' || en.includes("rainbow's end") || zh.includes('垂虹')
+  })
+  if (!move) return null
+
+  // 一次动作可能被 catalog 拆成多段（登记融合组）：时间与喧响走融合口径（坑 31）。
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
+
+  return {
+    moveId: move.id,
+    actionTime,
+    decibelRecovery,
+    comboAlignRatio: move.comboAlignRatio ?? 0,
+  }
+}
+
+/** 从倍率表提取蕾米后台 Radiant Turn 信息 */
+export function findRemielleRadiantTurn(agentSkills: {
+  categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
+}): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+  const special = agentSkills.categories.find(c => c.id === 'special')
+  if (!special) return null
+
+  const move = special.moves.find(m => {
+    const en = (m.name?.en ?? '').toLowerCase()
+    const zh = m.name?.zhCN ?? ''
+    return m.id === '1581010' || en.includes('radiant turn') || zh.includes('radiant turn') || zh.includes('曙光回旋')
+  })
+  if (!move) return null
+
+  // 一次动作可能被 catalog 拆成多段（登记融合组）：时间与喧响走融合口径（坑 31）。
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
+
+  return {
+    moveId: move.id,
+    actionTime,
+    decibelRecovery,
+    comboAlignRatio: move.comboAlignRatio ?? 0,
+  }
+}
+
 /** 把「本槽是不是蕾米埃尔」与额外能力档位写进 cfg（原 `helpers.ts:1661-1667` 的 cfg 出口）。 */
-function buildRemielleCharConfig({ slot, agent, team, cfg }: AgentCharConfigInput): void {
+function buildRemielleCharConfig({ slot, agent, skills, team, cfg }: AgentCharConfigInput): void {
   if (!isRemielleAgent(agent)) return
+  // 垂虹（特殊虚耀载体）与后台 Radiant Turn 的招式参数（CC-34b 2026-09-27 由 `helpers.ts` cfg 字面量迁入；
+  // 原先对每个槽都查一遍并写 '' / 0，读取方只有本模块的 extraNecessaryAction / backstageAutoRows）。
+  const rainbowEnd = findRemielleRainbowEnd(skills)
+  const radiantTurn = findRemielleRadiantTurn(skills)
+  cfg.remielleRainbowEndMoveId = rainbowEnd?.moveId ?? ''
+  cfg.remielleRainbowEndActionTime = rainbowEnd?.actionTime ?? 0
+  cfg.remielleRainbowEndDecibelRecovery = rainbowEnd?.decibelRecovery ?? 0
+  cfg.remielleRainbowEndComboAlignRatio = rainbowEnd?.comboAlignRatio ?? 0
+  cfg.remielleRadiantTurnMoveId = radiantTurn?.moveId ?? ''
+  cfg.remielleRadiantTurnActionTime = radiantTurn?.actionTime ?? 0
+  cfg.remielleRadiantTurnDecibelRecovery = radiantTurn?.decibelRecovery ?? 0
   const dazeBonusPct = remielleDazeBonusPct(slot, agent, team)
   // panel 同名字段只由上方 applyRemiellePanel 写（buildCharConfig 的 panel 只读：cfg 是本钩子唯一出口）
   cfg.remielleEnabled = true
@@ -274,9 +336,9 @@ export const remielleMechanic: AgentMechanicModule = {
       count,
       moveId: cfg.remielleRainbowEndMoveId || undefined,
       moveName: '普通攻击：垂虹（特殊虚耀载体）',
-      actionTime: cfg.remielleRainbowEndActionTime,
-      comboAlignRatio: cfg.remielleRainbowEndComboAlignRatio,
-      decibelRecovery: cfg.remielleRainbowEndDecibelRecovery,
+      actionTime: cfg.remielleRainbowEndActionTime ?? 0,
+      comboAlignRatio: cfg.remielleRainbowEndComboAlignRatio ?? 0,
+      decibelRecovery: cfg.remielleRainbowEndDecibelRecovery ?? 0,
     }
   },
   // CC-26：特殊虚耀异常事件（原 core/resource/rowBuild.ts#buildAnomalyEventExecutions 内联，逐字搬迁）
