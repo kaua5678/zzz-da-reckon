@@ -1067,6 +1067,10 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 1. **W31**（派低级模型）：给悠真轴模式补一条伤害池消费端测试，卡面在任务队列 §2。
 2. **判据 22 剩余 219**：开工前先跑 `node /home/kaua/calc-arch/rf3.mjs`，按字段统计再挑。已知大头：琉音一族约 32（`liuyin*`，**需先写设计稿**，参见 `docs/mcp-liuyin-promote-source.md` 的单源化教训：W21 / W26 都卡在「多读数不同源」上）、CC-27 维琳娜风蚀 16（§5.19，先设计）。建议下一轮先跑 rf3，找还剩哪些 ≤10 计的小块（这种纯改名或「模块预写通用字段」模式一轮就能做完），把琉音留给写好设计稿之后。
 3. **已知坑**：`directRowAxisSplit` 只在 `isAxis && axisSlots.has(slot)` 时询问；非轴模式下蚀骨行照旧走通用路径（与原来一致）。新增实现方时注意分支顺序：赠链、CD 自动行优先。
+4. **rf3 快照（e882b9f 之后实跑，共 219 计 / 77 个字段）与下一张卡的拍板**：
+   - 按簇合计：**remielle\* 63**（`core/buff.ts`、`core/panel.ts`、`resourceCalc/helpers.ts`、`anomalyPanels.ts`、`substatOptimizer.ts`；多为 `remielleCinema*` / `remielleRefringeCoefficient*` / `remielleFlowerFeatherDance*` 这类面板、buff 数值字段，每个 3–5 计）；**liuyin\* 35**（`liuyinSrc` 8、`liuyinIdx` 7、`liuyinPromoteCount` 7、`liuyinMechanicSource` 5、`liuyinGift` 5 …）；velina 19（`velinaCorrosionSource` 9、`velinaCinema2CorrosionRate` 7、`velinaCorrosion` 3）；norma 约 14（`normaHatChain.ts` / helpers）；alice 约 11（convergence / roundInputs / anomalyPool）；hugo 约 7（convergence）；零散：`lighterSource` 5（panelPhases）、`rinaSlot` 4（anomalyPanels）、`janeAssaultCritDmgBonus` 3、`yeshuguangStunCapMult` 2。
+   - **拍板：CC-34 = 蕾米埃尔字段普查 + 方案（只读，产出 §5.29，然后按方案拆 CC-34a/b… 实做）**。依据：占剩余的 29%，是最大的一簇；这些字段看上去是「模块往 core 面板 / buff 结构里写的具名数值」，很可能可以套 CC-14a `bonusEntries` / CC-31 `moduleFeedback` 那种「通用字典 + 模块自报键」的先例，但**必须先实读** `core/buff.ts` 与 `core/panel.ts` 里这些字段的定义与读点，再决定是一个字典还是按用途拆几块。琉音（35）继续等设计稿；零散小块可以在两张大卡之间顺手清。
+   - 普查命令：`grep -rnoE '\bremielle[A-Z][A-Za-z0-9]*\b' src/core src/composables --include=*.ts | grep -v __tests__ | awk -F: '{print $1" "$3}' | sort | uniq -c`，再按写入方（`src/mechanics/agents/remielle*.ts`）反查。
 
 ## 附录：普查脚本 census.sh
 
