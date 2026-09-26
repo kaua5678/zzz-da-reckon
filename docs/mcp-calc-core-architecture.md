@@ -175,7 +175,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-24 | review | **done** `1d1d823`（判据 22 420→410，target 398） | 畏缩配置通用化：aliceCoweringConfig → coweringConfig、AliceCoweringConfig → CoweringConfig（输出字段 aliceCoweringDot 不改），零差 | census §5.18 |
 | CC-25 | review | **done** `7cef9c8`（判据 22 410→403，target 398） | roundInputs `aliceInfo`（findSlotByIdentity 1401 + 直读 cfg.alice*）→ 模块能力 anomalyPoolSetup（畏缩配置；giftedTriggerSlot 取提供者槽位），零差 + 单测反向 | census §5.19 |
 | CC-26 | review | **done** `8b7d9db`（判据 22 403→363，target 351） | core/resource 蕾米埃尔「垂虹」必做动作行 + helpers 时间合计 → 模块能力 extraNecessaryAction；特殊虚耀事件 → remielle buildAnomalyEvents，零差 | census §5.20 |
-| CC-26b | review | **待做**（已实读定稿） | rowBuild 蕾米埃尔「光辉回转」后台行 → 模块能力 backstageAutoRows（原位置派发，依赖当前 executions） | census §5.20 |
+| CC-26b | review | **done** `0d65f59`（判据 22 363→357，target 351） | rowBuild 蕾米埃尔「光辉回转」后台行 → 模块能力 backstageAutoRows（原位置派发），零差 | census §5.21 |
+| CC-28 | review | **待做**（已实读，优先） | useResourceCalc `remielleVoidflareEvents`（编排层角色分支，违反 AGENTS.md）→ 模块能力 anomalyEventRecords；需补展示层单测 | census §5.21 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 

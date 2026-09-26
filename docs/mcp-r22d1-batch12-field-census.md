@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-27 第 34 轮，lead-arena-0925c）**：**CC-26 已落地 `8b7d9db`**。core/resource 里蕾米埃尔「垂虹」必做动作行和时间合计改走模块能力 `extraNecessaryAction`（派发口 `rowAccounting.ts#extraNecessaryActionOf`）；「特殊虚耀」异常事件逐字迁入蕾米埃尔 `buildAnomalyEvents`。判据 22 从 403 降到 **363**（−40，core 内 `cfg.remielleRainbowEnd*` 读点一并消失），target 重设 **351**。verify EXIT=0。详见 §5.20。
+- **最新交接（2026-09-27 第 35 轮，lead-arena-0925c）**：**CC-26b 已落地 `0d65f59`**（rowBuild 里蕾米埃尔「光辉回转」后台行 → 模块能力 `backstageAutoRows`，在原位置派发）。判据 22 从 363 降到 **357**，target 351 未达成，维持不变。verify EXIT=0。详见 §5.21。
+  **下一步（可以直接开工）**：**CC-28**（`useResourceCalc.ts` 的 `remielleVoidflareEvents` computed 是**编排层角色分支**，直接违反 AGENTS.md「禁止在 useResourceCalc 加角色分支」→ 模块能力），开工清单见 §5.21。
+- **上一轮交接（2026-09-27 第 34 轮，lead-arena-0925c）**：**CC-26 已落地 `8b7d9db`**。core/resource 里蕾米埃尔「垂虹」必做动作行和时间合计改走模块能力 `extraNecessaryAction`（派发口 `rowAccounting.ts#extraNecessaryActionOf`）；「特殊虚耀」异常事件逐字迁入蕾米埃尔 `buildAnomalyEvents`。判据 22 从 403 降到 **363**（−40，core 内 `cfg.remielleRainbowEnd*` 读点一并消失），target 重设 **351**。verify EXIT=0。详见 §5.20。
   **下一步（可以直接开工）**：**CC-26b**（rowBuild 里蕾米埃尔「光辉回转」后台行 → 模块能力，**必须在原位置派发**），开工清单见 §5.20。
 - **上一轮交接（2026-09-27 第 33 轮，lead-arena-0925c）**：**CC-25 已落地 `7cef9c8`**。爱丽丝畏缩配置迁为模块能力 `anomalyPoolSetup`；roundInputs 的 `aliceInfo` 改名 `anomalyPoolSetupInfo`，按能力找槽，不再用 `findSlotByIdentity(['1401'])`，也不再直读 `cfg.alice*`。判据 22 从 410 降到 **403**，target 398 未达成，维持不变。verify EXIT=0。详见 §5.19。
   **下一步（可以直接开工）**：**CC-26**（core/resource 里蕾米埃尔「垂虹」必做动作行 → 模块能力），开工清单见 §5.19；**先实读 §5.19 第 1 条列出的 4 个读点**。
@@ -284,6 +286,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-27 CC-24 后**：**410**（`1d1d823`）；已低于 target 418，重设 target **398**。下一张：CC-25（§5.18）。
 - **2026-09-27 CC-25 后**：**403**（`7cef9c8`）；target 398 未达成，维持不变。下一张：CC-26（§5.19）。
 - **2026-09-27 CC-26 后**：**363**（`8b7d9db`）；已低于 target 398，重设 target **351**。下一张：CC-26b（§5.20）。
+- **2026-09-27 CC-26b 后**：**357**（`0d65f59`）；target 351 未达成，维持不变。下一张：CC-28（§5.21）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -847,6 +850,40 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
    - ⚠ 先 grep `backstageAutoFill`：它是已有的声明式字段，**名字相近但语义不同**，不要复用或混淆。
 4. 验证：零差；反向为次数 +1，预期 DIFF 42（1581）。判据 22 预计约 −6（`cfg.remielleRadiantTurn*` / `remielleEnabled` 读点）。执行：lead 自做。
 5. 之后的候选：remielleSpecialVoidflareCount 6 + remielleEntryPanels 6（composables 侧，先实读）；琉音一族（liuyinSrc / liuyinIdx / liuyinPromoteCount / liuyinMechanicSource，共约 27 处，横跨 damagePool / convergence / liuyinPromote，**需要设计稿**）；CC-27 维琳娜风蚀（§5.19）。
+
+### 5.21 CC-26b 落地记录 + CC-28 开工清单（2026-09-27 第 35 轮 lead-arena-0925c）
+
+**CC-26b（`0d65f59`，判据 22 363→357，target 351 不变）**：
+- `mechanics/types.ts`：`AgentMechanicModule` 新增 `backstageAutoRows?(input: AgentResourceInput): SkillExecution[]`，入参复用 `patchExecutions` 的 `AgentResourceInput`。注释写明：`executions` 是「构建到派发点为止」的快照，模块只读；它与 `backstageAutoFill` 名字相近但语义无关。
+- `core/resource/rowBuild.ts`：光辉回转整块（原 405–434）换成原位置派发 `getAgentMechanic(cfg.agentId)?.backstageAutoRows?.({ cfg, state, executions, teamFrontlineSeconds })`，返回的行 push 进 executions。effectiveTime 的 import 只剩 `effectiveBattleTime`（加农转子事件在用）。
+- `mechanics/agents/remielle.ts`：新增导出 `remielleRadiantTurnRows({ cfg, state, executions })`，原块逐字搬入，只把 `executions.push` 改为 `rows.push`（`countFrontActions(executions, …)` 读的仍是构建器当前的数组）；模块对象挂 `backstageAutoRows: remielleRadiantTurnRows`；import `@/core/effectiveTime` 的 5 个函数（mechanics → core 按值 import 是允许的）。
+- **验证**：
+  - vue-tsc 0；零差（dump 625 / rowsnap 638，只有 `__ms` 不同）。
+  - 反向（模块里 `radiantTurnCount` +1）：rowsnap DIFF 42 = 6 组 1581 预设 × 7 个变体，还原后 cmp 一致。
+  - `remielle.test` + `src/core` 共 251/251 通过；`npm run verify` EXIT=0。
+  - 脚本：`/home/kaua/calc-arch/cc26b.py`、`z26b.sh`。
+- **本轮踩坑**：脚本用 `\bname\b` 在「删掉旧 import 行后的全文」里判断某个名字是否还有使用，结果**我新写的注释里提到了 `countFrontActions`**，被误判为仍在使用，vue-tsc 报 TS6133。修复是手动从 import 删掉。**以后判断 import 是否还在使用时，先剥掉注释再匹配**（例如 `re.sub(r'//.*|/\*[\s\S]*?\*/', '', s)`），或者直接以 vue-tsc 的结果为准。
+- **回退点**：`git revert 0d65f59`（单个提交，含棘轮常量 357）。
+
+**CC-28 开工清单（编排层角色分支 `remielleVoidflareEvents` → 模块能力；lead 实读 HEAD `0d65f59`）**
+1. 现状：
+   - `composables/useResourceCalc.ts:600` 起的 `remielleVoidflareEvents = computed<AnomalyEventRecord[]>` 用 `findSlotByIdentity(configStore, catalogStore, ['1581'])` 找槽；
+   - 读 `anomalyPoolResult.value?.perSlotAnomalyTriggers`，把其他槽的异常触发合计为 `voidflareTotal`；
+   - 读 `panelAt(panels.value, remielleSlot)` 的 `remielleCinema6LuminizeTriggerMultiplier`，并调用 `remielleSpecialVoidflareCount(remiellePanel)`；
+   - 拼出 `id: 'remielle-voidflare-pool'` 等若干条 `AnomalyEventRecord`（含 label / formula / fields / note 文案）。
+   - 在 `:765` 导出，唯一消费方是 `views/ResultPage.vue:834/1051`（`...remielleVoidflareEvents.value`）。
+   - **这是 AGENTS.md 明令禁止的「在 useResourceCalc 加角色分支」**，优先级高于继续压判据 22。
+2. 方案：
+   - `AgentMechanicModule` 新增 `anomalyEventRecords?(input: { slot: number; panel: PanelValues; team: readonly (string | undefined)[]; perSlotAnomalyTriggers: readonly number[] }): AnomalyEventRecord[]`（字段按实读定稿，只给它真正要读的东西）。
+   - remielle.ts 实现，把整段逐字搬入：先读完 `:600` 到 computed 结束的全部代码，确认它读了哪些量，`configStore.team[slot]?.agentId` 改用入参 `team`。
+   - useResourceCalc 改为通用的 `moduleAnomalyEventRecords` computed：遍历 `configStore.team` 的槽位，对挂了能力的模块用 `panelAt(panels.value, slot)` 调用并拼接结果。导出名可以保留 `remielleVoidflareEvents` 作为别名，以免改 ResultPage；更好的做法是 ResultPage 改用新名，并同步它的解构。
+   - `useResourceCalc.ts:86` 解构里的 `remielleSpecialVoidflareCount` 如果不再使用，就一并删除（**先剥注释再判断**，见上面的踩坑）。
+3. 验证：
+   - 这些事件记录**只进展示层，dump / rowsnap 很可能覆盖不到**，参见口径「展示字段的改动 dump 抓不到」。因此零差只能证明没有顺带改坏别的东西。
+   - **必须补单测**：固定一个含 1581 的队伍（例如 rowsnap 语料 `auto-1581-1501-1561`），用 harness（参考 `convergenceNightB.test.ts` 的 `setupHarness`）断言新 computed 输出与迁移前**逐字段相等**。做法是迁移前先跑一次，把输出 JSON 固化成 expected 常量。
+   - 反向验证：把能力里的 `voidflareTotal` +1，新单测应当变红。
+4. 执行：lead 自做。完成后在 AGENTS.md 相关条目下不需要改规则，只在 census 里记录「useResourceCalc 角色分支 −1」。
+5. 之后的候选：`remielleEntryPanels`（useResourceCalc:149 `computeRemielleEntryPanel` × 3 槽 → ctx → damagePoolAnomaly:327 的 `entryPanel`，可以做成模块能力 `entryPanel?`，并通用改名为 `entryPanels`）；琉音一族（需要设计稿）；CC-27 维琳娜风蚀（§5.19）。
 
 ## 附录：普查脚本 census.sh
 
