@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
-import { computePanelPhases, computeRemielleEntryPanel, findMoveById } from '@/composables/resourceCalc/helpers'
+import { buildAnomalyVirtualPanel, computePanelPhases, computeRemielleEntryPanel, findMoveById } from '@/composables/resourceCalc/helpers'
 import { emptyPanel } from '@/core/panel'
 import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic } from '@/mechanics/agents/remielle'
 import type { AgentSkills } from '@/types/catalog'
@@ -293,5 +293,38 @@ describe('CC-34c②：Radiant Turn 失衡乘区由模块能力 skillDazeMultipli
     expect(fn({ moveId: '1581001', panel: { ...emptyPanel(), remielleRadiantTurnDazeBonusPct: 35 } as never })).toBe(1)
     expect(fn({ moveId: '1581010', panel: null })).toBe(1)
     expect(fn({ moveId: '1581010', panel: emptyPanel() as never })).toBe(1)
+  })
+})
+
+describe('CC-35a：异常虚拟面板「异化度」列由模块能力 anomalyRefringePct 提供', () => {
+  it('能力与全队乘区同源：factor = 1 + pct / 100', () => {
+    const p = { ...emptyPanel(), remielleRefringeCoefficient: 12.5, remielleRefringeCoefficientBonusPct: 30 }
+    expect(remielleMechanic.anomalyRefringePct!(p)).toBe(42.5)
+    expect(remielleMechanic.globalAnomalyMultiplierFactor!(p)).toBe(1 + 42.5 / 100)
+  })
+
+  it('蕾米埃尔在队：每行 refringe = 该行面板的异化系数 + 提升（> 0）', async () => {
+    const { config, catalog } = await setup(0)
+    const panels = [0, 1, 2].map(s => computePanelPhases(s, config, catalog)!.inCombat)
+    const prog = { element: 'electric', totalBuildUp: 200, contributions: [{ slot: 0, totalBuildUp: 120 }, { slot: 1, totalBuildUp: 80 }] }
+    const built = buildAnomalyVirtualPanel(prog as never, panels, config, catalog)!
+    expect(built.rows.length).toBe(2)
+    for (const row of built.rows) {
+      const p = panels[row.slot]
+      const want = (p.remielleRefringeCoefficient ?? 0) + (p.remielleRefringeCoefficientBonusPct ?? 0)
+      expect(want).toBeGreaterThan(0)
+      expect(row.refringe).toBe(want)
+    }
+  })
+
+  it('蕾米埃尔不在队：refringe 为 0', async () => {
+    const { config, catalog } = await setupHarness([
+      { agentId: '1331', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1221', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ])
+    const panels = [0, 1].map(s => computePanelPhases(s, config, catalog)!.inCombat)
+    const prog = { element: 'electric', totalBuildUp: 100, contributions: [{ slot: 0, totalBuildUp: 100 }] }
+    const built = buildAnomalyVirtualPanel(prog as never, panels, config, catalog)!
+    expect(built.rows[0].refringe).toBe(0)
   })
 })

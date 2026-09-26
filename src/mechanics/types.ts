@@ -827,6 +827,13 @@ export interface AgentMechanicModule {
    */
   globalAnomalyMultiplierFactor?(panel: PanelValues): number
   /**
+   * 异化度展示值（%，CC-35a 2026-09-27）：`resourceCalc/anomalyPanels.ts#buildAnomalyVirtualPanel` 对每个积蓄
+   * 贡献行，把**在队**各模块的返回值（以该行的面板为参数）求和，写进 `AnomalyVirtualPanelRow.refringe`
+   * （结果页异常虚拟面板表的「异化度」列），不参与伤害计算。伤害乘区另走 `globalAnomalyMultiplierFactor`，
+   * 两者应出自同一算式。首个实现：蕾米埃尔。
+   */
+  anomalyRefringePct?(panel: Readonly<PanelValues>): number
+  /**
    * 保底自动补齐的交互次数由本模块产出（`CalcRoundResult.interactionTopUp` 的槽位归属，规则 6 落点）。
    *
    * 存在的理由：交互栏要用「弹刀 +N / 双反 +M」，读的是轮内收敛值 `calcOutput.interactionTopUp`——

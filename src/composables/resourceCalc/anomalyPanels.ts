@@ -28,6 +28,7 @@ import { emptyPanel, panelAt } from '@/core/panel'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { isRemielleAgent } from '@/mechanics/agents/remielle'
+import { getAgentMechanic } from '@/mechanics'
 import type { AnomalyProgress } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块直接指真实现
@@ -216,6 +217,11 @@ export function buildAnomalyVirtualPanel(
   const totalBuildUp = [...slotBuildUp.values()].reduce((a, b) => a + b, 0)
   if (totalBuildUp <= 0) return null
 
+  // CC-35a（2026-09-27）：异化度展示列由在队模块能力 `anomalyRefringePct` 按行面板求和
+  // （原内联读蕾米埃尔两个面板字段；这两个字段只由蕾米埃尔的 buff 写，她不在队时恒为 0，逐位等价）
+  const refringeProviders = configStore.team
+    .map(char => (char?.agentId ? getAgentMechanic(char.agentId) : undefined))
+    .filter(mod => !!mod?.anomalyRefringePct)
   const rows: AnomalyVirtualPanelRow[] = [...slotBuildUp.entries()]
     .map(([slot, buildup]) => {
       const panel = panelAt(panels, slot) ?? emptyPanel()
@@ -245,7 +251,7 @@ export function buildAnomalyVirtualPanel(
         elementResReduction: panel[ELEMENT_RES_REDUCTION_KEYS[prog.element]] ?? 0,
         penRatio: panel.penRatio ?? 0,
         penFlat: panel.penFlat ?? 0,
-        refringe: (panel.remielleRefringeCoefficient ?? 0) + (panel.remielleRefringeCoefficientBonusPct ?? 0),
+        refringe: refringeProviders.reduce((sum, mod) => sum + mod!.anomalyRefringePct!(panel), 0),
       }
     })
     .sort((a, b) => b.buildup - a.buildup)

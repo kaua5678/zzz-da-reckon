@@ -326,6 +326,14 @@ function buildRemielleCharConfig({ slot, agent, skills, team, panel, cfg }: Agen
   cfg.remielleRadiantTurnDazeBonusPct = dazeBonusPct
 }
 
+/**
+ * 异化度（%）= 异化系数 + 异化系数提升。CC-35a（2026-09-27）抽出，是全队异常乘区
+ * `globalAnomalyMultiplierFactor` 与 `anomalyPanels` 展示列 `refringe` 的唯一来源（原两处各写一遍）。
+ */
+function remielleRefringePct(panel: Readonly<PanelValues>): number {
+  return (panel.remielleRefringeCoefficient ?? 0) + (panel.remielleRefringeCoefficientBonusPct ?? 0)
+}
+
 export const remielleMechanic: AgentMechanicModule = {
   id: 'agent:remielle',
   agentIds: [REMIELLE_AGENT_ID],
@@ -369,10 +377,9 @@ export const remielleMechanic: AgentMechanicModule = {
     }
   },
   /** 异化系数倍率：1 + (异化度 + 异化度提升) / 100，乘到全队所有异常相关伤害（CC-21 自 useResourceCalc 逐字迁入） */
-  globalAnomalyMultiplierFactor: (panel: PanelValues) => {
-    const coefficient = (panel.remielleRefringeCoefficient ?? 0) + (panel.remielleRefringeCoefficientBonusPct ?? 0)
-    return 1 + coefficient / 100
-  },
+  globalAnomalyMultiplierFactor: (panel: PanelValues) => 1 + remielleRefringePct(panel) / 100,
+  // CC-35a：异化度展示值（anomalyPanels 异常虚拟面板 refringe 列），与上面的乘区同一来源
+  anomalyRefringePct: remielleRefringePct,
   name: '蕾米埃尔',
   description: '虚曜/耀变/异化系数：队友异常反应生成虚曜，特定招式命中触发耀变；异化系数与耀变倍率随异常精通提升。',
   applyPanel: applyRemiellePanel,
