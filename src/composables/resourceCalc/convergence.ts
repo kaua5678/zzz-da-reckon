@@ -351,7 +351,7 @@ export function createRunCalcRound(deps: {
     }
     // 轴模式琉音赠大计数（跨层口径统一，2026-09-10）：轴内 60/90 转大次数由轴预设决定，
     // core 的通用公式（好评/连携窗口推导）会算出另一个数 → 按窗口加权后注入，
-    // 使试探测量/账本预留与轴栈窗口口径同源（见 core/resource.ts#liuyinGiftTime）。
+    // 使试探测量/账本预留与轴栈窗口口径同源（见 core/resource/helpers.ts 的 `ultGiftTime`，CC-35c-D 前名 liuyinGiftTime）。
     let axisLiuyinPromote: { targetSlot: number; count: number } | undefined
     if (axisActive && axisHug) {
       const liuyinIdx = findSlotByIdentity(configStore, catalogStore, ['1481'])

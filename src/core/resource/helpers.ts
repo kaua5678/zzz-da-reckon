@@ -332,11 +332,13 @@ function iterateBody(
   // 它把净占用顶出预算（实测 billy/norma 队 +14.2s）。按同一通道把 hatCount × 目标连携
   // 时长加进目标槽必要时间（GROSS 全额，合轴比随目标连携行口径）。
   // 数量/落点/单位耗时由模块的 `crossAgentSupply` 自报（引擎不 import 角色模块、不写 id）。
-  const normaGift = crossAgentSupplyAt(configs, prevStates, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
+  // CC-35c-D 2026-09-27：赠链局部量去角色名（原 normaGift*/liuyinGift*）——取值早已走通用供给通道
+  // `gift-chain:chain`（赠连携）/ `ultimateGiftOf`（赠终结技），名字里的角色只是历史残留。
+  const chainGift = crossAgentSupplyAt(configs, prevStates, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
     totalTime, stunCount: globalCfg.stunCount ?? 0,
   })
-  const normaGiftTargetIdx = normaGift.count > 0 ? normaGift.targetIdx : -1
-  const normaGiftChainTime = normaGift.time
+  const chainGiftTargetIdx = chainGift.count > 0 ? chainGift.targetIdx : -1
+  const chainGiftTime = chainGift.time
   const totalNecessary: number[] = []
   const comboAlignTimes: number[] = []
   const comboAlignCredits: number[] = []
@@ -361,13 +363,13 @@ function iterateBody(
   // 该否决理由的前提已消失（实测见下方 `@fact engine:赠送时间/轴模式四处同源`）。
   // @fact engine:赠送时间/轴模式四处同源 口径: 琉音赠大（`gift-chain:ultimate`）在轴模式下的**次数与时长必须四处同源**（`ultimateGiftOf` 单一事实源）：① 本处 `iterate` 账本必要时间预留 ② S2 折叠环 `rowTime` 测量 ③ `frontlineRowsOf` 试探测量 ④ `giftTimeOfSlot` 装配截断上限。四处缺任一（尤其①与②）都会破守恒——实测雨果 0 命轴只做④不做①②时，截断额度被扣 8.732s 而账本/折叠都没涨 ⇒ **双重计费**、决算行被整数装包砍掉一整次（5→4）| 据 用户@2026-09-20「同一个量转大次数，在轴模式下显示制定了部分好评值的用途，剩余好评应该默认 90」·复核@2026-09-25（W19：③ frontlineRowsOf 内联轴分支已收敛到 ultimateGiftOf） | 验 src/composables/__tests__/timeLedgerInvariants.test.ts + src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/core/resource/crossAgentSupply.ts#ultimateGiftOf | 信 确认
   // ⟳复核: 再增/删琉音赠大的消费点（尤其绕过 `ultimateGiftOf` 直调 `crossAgentSupplyAt`）时，复核「四处同源」覆盖面与 `Σ非赠行 + 赠行 ≡ 账本`（timeLedgerInvariants 全绿）；`axisLiuyinPromote` 的产生改为非编排层时一并重核 | 到期 2027-03-31
-  const liuyinGift = ultimateGiftOf(configs, prevStates, {
+  const ultGift = ultimateGiftOf(configs, prevStates, {
     totalTime, stunCount: globalCfg.stunCount ?? 0,
     axisMode: !!globalCfg.axisMode,
     axisPromote: globalCfg.axisLiuyinPromote,
   })
-  const liuyinGiftTargetIdx = liuyinGift.count > 0 && configs[liuyinGift.targetIdx] ? liuyinGift.targetIdx : -1
-  const liuyinGiftTime = liuyinGiftTargetIdx >= 0 ? liuyinGift.time : 0
+  const ultGiftTargetIdx = ultGift.count > 0 && configs[ultGift.targetIdx] ? ultGift.targetIdx : -1
+  const ultGiftTime = ultGiftTargetIdx >= 0 ? ultGift.time : 0
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]
     const exSpecialCount = resolveExSpecialCount(cfg, energies[i])
@@ -412,18 +414,18 @@ function iterateBody(
       + (extraAction ? extraAction.count * extraAction.actionTime : 0)
       // 诺姆膛温换连携赠链时间（目标槽）：装配后 applyNormaHatChain 追加的赠链行占前台，
       // 引擎必要时间必须预留（同连携 GROSS 全额口径），否则净占用顶出预算
-      + (i === normaGiftTargetIdx ? normaGiftChainTime : 0)
+      + (i === chainGiftTargetIdx ? chainGiftTime : 0)
       // 琉音好评转大赠链时间（目标槽，非轴）：装配后 applyLiuyinPromote 追加的赠大行占前台，
       // 引擎预留（GROSS 全额口径），平A池随之收缩守恒——不再依赖 post-hoc carve
-      + (i === liuyinGiftTargetIdx ? liuyinGiftTime : 0)
+      + (i === ultGiftTargetIdx ? ultGiftTime : 0)
       // 时间预算收敛：执行计划中模块专属动作行（如雅霜月架势、叶瞬光飞光）占用前台但未计入
       // estimateExSpecialTime → Σ执行行时间超战斗时间；外层循环把超出部分折入必要时间，压缩平A池。
       + (cfg.timeBudgetExcess ?? 0)
     totalNecessary.push(necessary)
 
     // 合轴时间 = 各招式合轴部分之和（展示/非操作回能通道用全额）
-    const giftComboAlign = i === normaGiftTargetIdx
-      ? normaGiftChainTime * cfg.chainComboAlignRatio
+    const giftComboAlign = i === chainGiftTargetIdx
+      ? chainGiftTime * cfg.chainComboAlignRatio
       : 0
     const comboAlignGeneric =
       ultForTime * cfg.ultimateActionTime * cfg.ultimateComboAlignRatio
