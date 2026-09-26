@@ -193,6 +193,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-35c-B | review | **done** `b7b0d81`（判据 22 130→125） | 新模块能力 `adjustTeammateBuffSource`（队友 buff 来源面板修正）；莱特 / 耀嘉音实现，删 panelPhases 按 id 写死块；接线测试用包裹能力记录调用 | census §5.34 |
 | CC-35c-C | review | **done** `c763f5a`（判据 22 125→123） | cfg `luciaC4DecibelPerTrigger` → 通用名 `decibelPerCurtainTrigger`（帷幕喧响） | census §5.35 |
 | CC-35c-D | review | **done** `dbc7e92`（判据 22 123→103，target 重设 91） | core/resource/helpers.ts 赠链局部量去角色名（取值早已走 crossAgentSupply 通道） | census §5.35 |
+| CC-35d-A | review | **done** `a1241ba`（判据 22 103→92） | 新模块能力 `chainGift`（装配后赠送连携）；`normaHatChain.ts` → `chainGift.ts#applyChainGift`，去 findSlotByIdentity([1571]) | `docs/mcp-cc35d-gift-chain.md`、census §5.36 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 

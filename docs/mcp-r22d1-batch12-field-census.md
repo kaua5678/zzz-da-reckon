@@ -1279,6 +1279,21 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 2. 维琳娜 27 计（anomalyPool 为主）、爱丽丝 14、雨果 11、简 3 照旧。
 3. 调研待派：花羽轮舞次数（§5.31）、莱特额外能力 buff 默认是否生效（§5.34）、W31。
 
+### 5.36 CC-35d-A done：诺姆装配后赠送连携 → 模块能力 `chainGift`（lead-arena-0925c，2026-09-27 第 49 轮）
+
+**提交**：代码 `a1241ba`。判据 22 **103 → 92**（`BASELINE` / `frozen` 92，target 91 未达成，差 1）。agentId 棘轮 3/3。设计稿 **`docs/mcp-cc35d-gift-chain.md`**（新增，已登记 README §6，文档数 48 → 49）。
+
+- `resourceCalc/normaHatChain.ts#applyNormaHatChain` → **`resourceCalc/chainGift.ts#applyChainGift`**：提供者槽位 = 首个实现 `chainGift` 能力的在队模块，去掉 `findSlotByIdentity(['1571'])` 与 `normaIdx/normaResult/normaSrc`；招式名后缀与技能表说明也由能力返回，编排文件不再含诺姆文案。
+- 诺姆模块实现 `chainGift`（返回 `hatToChainCount` + 文案）；`Math.floor`/`max(0)` 仍在编排层。
+- 验证：vue-tsc 0；dump / rows 仅 `__ms` 差；**反向变异 count+1 → rowsnap 73 键出差、单测红 4**；verify EXIT=0（`/home/kaua/calc-arch/verify35da.log`）。
+- 回退点：`git revert a1241ba`（含文件改名，revert 自动恢复 `normaHatChain.ts`）。
+
+**下一步（可直接开工，细节见设计稿 §B）**
+1. **CC-35d-B1**（约 11 计，纯改名）：`useResourceCalc` 导出 `liuyinPromoteCount`/`liuyinPromoteHug60` → `ultPromoteCount`/`ultPromoteHug60`（先 grep 全部 vue 消费方），`damagePool.ts` 形参 → `promoteCount`。做完判据 22 应 ≤ 81，**target 91 达成 → 按「实测 − 12」重设**。
+2. **CC-35d-B2**：伤害池跳过琉音强特行 → 新能力（设计稿 §B2，注意与专用块门控同源）。
+3. **CC-35d-B3**：好评转大去身份查找（设计稿 §B3，风险最高，必须跑 timeLedgerInvariants / hugoVerdictLanding / giftMoveTimeLedger）。
+4. 维琳娜 27、爱丽丝 14、雨果 11、简 3 照旧；调研待派同 §5.35。
+
 ## 附录：普查脚本 census.sh
 
 ```bash
