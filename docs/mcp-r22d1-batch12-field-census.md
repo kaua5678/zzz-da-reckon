@@ -1040,6 +1040,34 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 2. 琉音一族（≈32，需先写设计稿）、CC-27 维琳娜风蚀（16，§5.19 先设计）不变。
 3. **已知坑**：`bySource` 只含 > 0 项，测试/调用方读它必须 `?? 0`；新增联动回能提供者要同时在 `CROSS_AGENT_SOURCE_LABELS` 补中文标签（漏了会显示英文键名，不会消失）；多个模块写 `crossAgentFlatEnergyBySource` 必须合并写。
 
+### 5.28 CC-33 done：悠真 `harumasaStunOnly` → 通用行级字段；希希芙蚀骨轴内占比 → 模块能力 `directRowAxisSplit`（lead-arena-0925c，2026-09-27 第 42 轮）
+
+**提交**：代码 `e882b9f`（11 文件，含新测试与两个棘轮脚本）。判据 22 **231 → 219**，`CORE_ROLE_FIELD_BASELINE` / `frozen` 219，**target 重设 207**。
+
+**CC-33a 悠真（纯改名 + 补类型）**
+- `src/types/resource/execution.ts`：`SkillExecution` 新增显式字段 `stunOnlyDmgBonus?: number`（仅失衡段生效的增伤%，原来是无类型的 `harumasaStunOnly`，靠 `as any` 读写）。
+- `harumasa.ts` 写入改为 `exec.stunOnlyDmgBonus = …`；`damagePoolDirect.ts` 读取去掉 `as any`，局部变量 `harumasaStunOnlyBonus` 改为 `stunOnlyDmgBonus`（5 处）；note 文案「失衡增伤+x%（轴内直加）」不变。`harumasa.test.ts` 3 处断言、`specs/agents/1201.json` notes 1 处同步。
+- perf 工装 `KEY_ALIAS` 加 `stunOnlyDmgBonus: 'harumasaStunOnly'`（`.zc/` 不进仓库）。
+- **覆盖盲区（已查实，这是原本就存在的问题，不是本卡引入的）**：悠真只在**轴模式**写这个字段，而 dump/rowsnap 语料没有走到悠真轴模式路径——反向变异（`stunOverride > 0` 改 `>= 0`）让 rows 出差 **0** 个 1201 键。本卡的等价性依据是：写入方和读取方现在都经同一个类型声明访问，任何一侧拼错 tsc 都会报错；harumasa.test 3 条断言守住写入侧。**读取侧缺单测，已立 W31**（`docs/mcp-worker-task-queue.md` §2）。
+
+**CC-33b 希希芙（新模块能力）**
+- `src/mechanics/types.ts`：新增 `DirectRowAxisSplitInput { exec, slot, charResult, axisInUnits(moveId) }`、`DirectRowAxisSplit { inFraction, inNote, outNote }`，以及模块钩子 `directRowAxisSplit?(input)`。
+- `damagePoolDirect.ts`：原来的「希希芙蚀骨专属分支」（按 moveId `1521019` / `xixifu_shigu_special` 判断）改为询问行所属模块的 `directRowAxisSplit`，**分支位置不变**（在赠链、CD 自动行之后，伴随事件之前）；占比仍夹到 [0,1]，`Math.round` 取整方式不变。`CharRowsEnv.xixifuToxinInAxisFraction` 删掉。编排层只传 `axisInUnits = moveId => allocMap[`${slot}:${moveId}`]?.inAxisUnits ?? 0`，不再把 allocMap 整体暴露给模块。
+- `damagePool.ts`：删掉 `xixifuToxinInAxisFraction` 闭包（26 行），算式**逐字**搬进 `xixifu.ts`（`xixifuToxinInAxisFraction` + `xixifuDirectRowAxisSplit`，`XIXIFU_SHIGU_MOVE_IDS`）。
+- 新测试 `src/mechanics/__tests__/xixifuAxisSplit.test.ts`（3 条）：经 `getAgentMechanic('1521')` 取模块（顺带证明注册表 / spec 合并没丢掉这个能力），覆盖非蚀骨行不认领、手算 0.5、无毒素时为 0。
+
+**验证**
+- vue-tsc 0；`harumasa` / `xixifu` / `damagePool` 单测 124/124；`get_diagnostics` 0。
+- `PERF_KEY_ALIAS=1` 对 H2a：dump 625 / rowsnap 638 **仅 `__ms` 差**。
+- 反向变异（希希芙占比 ×0.5 + 悠真 `>= 0`）：新测试 1 红（0.25 ≠ 0.5）；rows 出差 16 键，**全是 1521 队**（4 队 × 4 变体），1201 为 0（即上面说的盲区）。还原后 cmp 一致。
+- `npm run verify` EXIT=0（`/home/kaua/calc-arch/verify33.log`）。脚本 `/home/kaua/calc-arch/cc33.py`、`perf33.py`、`z33.sh`。
+- **回退点**：`git revert e882b9f`（单提交；perf 工装的别名在代码里没有新名字时不会触发，可以留着）。
+
+**下一步（可直接开工）**
+1. **W31**（派低级模型）：给悠真轴模式补一条伤害池消费端测试，卡面在任务队列 §2。
+2. **判据 22 剩余 219**：开工前先跑 `node /home/kaua/calc-arch/rf3.mjs`，按字段统计再挑。已知大头：琉音一族约 32（`liuyin*`，**需先写设计稿**，参见 `docs/mcp-liuyin-promote-source.md` 的单源化教训：W21 / W26 都卡在「多读数不同源」上）、CC-27 维琳娜风蚀 16（§5.19，先设计）。建议下一轮先跑 rf3，找还剩哪些 ≤10 计的小块（这种纯改名或「模块预写通用字段」模式一轮就能做完），把琉音留给写好设计稿之后。
+3. **已知坑**：`directRowAxisSplit` 只在 `isAxis && axisSlots.has(slot)` 时询问；非轴模式下蚀骨行照旧走通用路径（与原来一致）。新增实现方时注意分支顺序：赠链、CD 自动行优先。
+
 ## 附录：普查脚本 census.sh
 
 ```bash
