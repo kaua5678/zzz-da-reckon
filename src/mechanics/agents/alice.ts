@@ -467,7 +467,7 @@ export function aliceSparkCountOf(rr: { characters: Array<{ agentId?: string; al
 /**
  * 从异常池结果汇总爱丽丝两条外部次数源（剑仪 gain 用）。
  *
- * - **全队强击次数** = **只算 `physical`**（属性积蓄条打满触发的那种强击）。
+ * - **强击次数** = **只算 `physical`**，且**只算爱丽丝自己触发的那部分**（见函数体；类型名里的 Team 是历史名）（属性积蓄条打满触发的那种强击）。
  * - **紊乱次数** = `disorderCount`（引擎已按 `min(Σ触发−1, 2×(Σ−max))` 算好）。
  *
  * ⚠ **`physical_polar_assault` 必须排除（否则双计）**——这条是实测+原文一起定的：
@@ -489,7 +489,7 @@ export function aliceSparkCountOf(rr: { characters: Array<{ agentId?: string; al
  */
 export function aliceExternalCountsOf(
   anomalyPool: {
-    perElement?: Array<{ element: string; triggerCount?: number; perSlotTriggerCounts?: number[] }>
+    perElement?: ReadonlyArray<{ element: string; triggerCount?: number; perSlotTriggerCounts?: readonly number[] }>
     disorderCount?: number
   } | null | undefined,
   /** 爱丽丝所在槽位（编排层从 rr 里数出来；-1 = 本队无爱丽丝 ⇒ 返回 null） */
@@ -528,6 +528,17 @@ export const aliceMechanic: AgentMechanicModule = {
   name: '爱丽丝',
   description: '剑意专属资源：技能命中积累剑意，300点触发星芒圆舞曲#3（可合轴），生成极性强击。畏缩状态下敌人每0.95秒受到强击伤害2.5%的固定异常伤害，紊乱倍率随物理异常剩余时长提升。',
   applyPanel: applyAlicePanel,
+  /**
+   * CC-22：剑仪外部次数源的「下一轮注入」。原先 `convergence.ts` 直接 import
+   * `aliceExternalCountsOf` + `aliceSlotOf` 现场算（编排层直连角色模块）；现走通用派发器
+   * `collectNextRoundFeedback`（anomalyPool = 同一个 ap1，slot = cfg.slot）。爱丽丝不在队 ⇒
+   * 派发器不调本钩子 ⇒ 键缺席 ⇒ 编排层 `?? 0`，与原 `null → ?? 0` 逐位等价。
+   * ⚠ assault 是**爱丽丝自己**触发的 physical 强击（不是全队），口径见 `aliceExternalCountsOf`。
+   */
+  nextRoundFeedback: ({ slot, anomalyPool }) => {
+    const counts = aliceExternalCountsOf(anomalyPool, slot)
+    return counts ? { aliceTeamAssaultCount: counts.assaultCount, aliceDisorderCount: counts.disorderCount } : undefined
+  },
   buildCharConfig: buildAliceCharConfig,
   buildExecutions: buildAliceExecutions,
   transformAnomalyPool: transformAliceAnomalyPool,
@@ -552,7 +563,7 @@ export const aliceMechanic: AgentMechanicModule = {
    * （异常池要消费执行行），读不到本轮次数——这正是它必须走跨轮反馈的原因（同
    * `vivianAnomalyTriggers` / `lighterTeamEnergy` 的存在理由）。
    */
-  applyTeamConfig: ({ characters, phase, aliceTeamAssaultCount, aliceDisorderCount }) => {
+  applyTeamConfig: ({ characters, phase, threads }) => {
     if (phase === 'build') {
       for (const c of characters) {
         if (c.agentId !== ALICE_AGENT_ID) continue
@@ -566,8 +577,10 @@ export const aliceMechanic: AgentMechanicModule = {
     for (const c of characters) {
       if (c.agentId !== ALICE_AGENT_ID) continue
       const cc = c as { aliceTeamAssaultCount?: number; aliceDisorderCount?: number }
-      cc.aliceTeamAssaultCount = Math.max(0, aliceTeamAssaultCount ?? 0)
-      cc.aliceDisorderCount = Math.max(0, aliceDisorderCount ?? 0)
+      // CC-22：两条次数改从 `threads`（上一轮收敛快照）读，不再占 AgentTeamConfigInput 专用字段；
+      // 产出方 = 本模块 `nextRoundFeedback`（下方）。threads 缺省 ⇒ 0（与原入参缺省逐位等价）。
+      cc.aliceTeamAssaultCount = Math.max(0, threads?.aliceTeamAssaultCount ?? 0)
+      cc.aliceDisorderCount = Math.max(0, threads?.aliceDisorderCount ?? 0)
     }
   },
   // 伴随事件：三蓄 SW3(1401012) 末尾赠送极性强击（polar_assault），易伤跟随父动作

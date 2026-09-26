@@ -60,7 +60,7 @@ import { enrichExecutionPlan } from './helpers'
 
 /** 保底 4 喧响的四舍五入阈值（自 useResourceCalc 顶层随迁；那里改为了 import） */
 const DECIBEL_ROUND_THRESHOLD = 1500
-import { aliceExternalCountsOf, aliceSlotOf, aliceSparkCountOf } from '@/mechanics/agents/alice'
+import { aliceSparkCountOf } from '@/mechanics/agents/alice'
 import { computeTeamVeilCountTotal } from '@/mechanics/teamVeil'
 
 export { createConvergenceRoundInputs, resolveAxisUltimateDecibelCost } from './roundInputs'
@@ -127,8 +127,8 @@ export function createRunCalcRound(deps: {
       // 2026-09-17 round 20 C-β 追加：`lighterTeamEnergy` 的产出侧也迁进 `lighter.ts` 的
       // `nextRoundFeedback`（仍在下方解构 = converge 相位要把它递给模块，见 `:901`）。
       lighterTeamEnergy: prevLighterTeamEnergy,
-      aliceTeamAssaultCount: prevAliceTeamAssaultCount,
-      aliceDisorderCount: prevAliceDisorderCount,
+      // CC-22：`aliceTeamAssaultCount` / `aliceDisorderCount` 也不再在此解构——爱丽丝模块的
+      // applyTeamConfig 改从 `threads` 自取，产出侧迁进爱丽丝 `nextRoundFeedback`。
       // 2026-09-16 round 13：`inStunWindowTriggers` 也不再在此解构——它最后一个读点
       // （`:1414` 的 `prevInStunWindowTriggers <= 0` 守卫 + 对 `characters` 局部克隆的死写）
       // 已作为死写删除（判死依据见该处注释）；1511 模块经 `threads` 契约自取（round 12 批次 2）。
@@ -573,11 +573,6 @@ export function createRunCalcRound(deps: {
       combatTime: base.totalTime ?? 180,
       stunCount,
       teamEnergyConsumed: Math.max(0, prevLighterTeamEnergy || 0),
-      // 爱丽丝剑仪的两条外部次数源（上一轮异常池收敛值）：全队强击 = physical +
-      // physical_polar_assault 两键之和；紊乱 = disorderCount。本模块的 applyTeamConfig
-      // 在 converge 阶段把它们写进 cfg，供本轮 buildExecutions 产星芒圆舞曲行时消费。
-      aliceTeamAssaultCount: prevAliceTeamAssaultCount,
-      aliceDisorderCount: prevAliceDisorderCount,
       // 上一轮收敛线程快照（2026-09-15 arch 棘轮第 2 批）：跨轮反馈的通用通道。
       // 原先这些量（1381/1391/1431/1151/1541/1331/1161/1181/1191 共 9 处）是在本文件
       // characters.map 里逐 `merged.agentId === '…'` 分支写进 cfg 的；现由各模块自己的
@@ -963,8 +958,6 @@ export function createRunCalcRound(deps: {
       })
     }
 
-    // 爱丽丝剑仪外部次数源（下一轮注入）：口径在模块里（规则 6：编排层不写角色规则）
-    const aliceExternalCounts = aliceExternalCountsOf(ap1, aliceSlotOf(rr))
     // 薇薇安落羽生花双源 / 普罗米娅·霜刑回复端的「下一轮注入」已迁进各自模块的
     // `nextRoundFeedback` 钩子（2026-09-16 arch 棘轮第 6 批）⇒ 统一由上方 feedbackNext 承载。
     // 失衡内异常系统 v2：轴内逐窗积蓄槽时间线 → 平均每窗触发次数 + 逐元素活跃覆盖。
@@ -1128,10 +1121,10 @@ export function createRunCalcRound(deps: {
         promiaTriggerHits: feedbackNext.promiaTriggerHits ?? 0,
         promiaTeammateReleases: feedbackNext.promiaTeammateReleases ?? 0,
         promiaReleaseDecibel: feedbackNext.promiaReleaseDecibel ?? 0,
-        // 爱丽丝剑仪外部次数源（下一轮注入）：口径全部收敛在 aliceExternalCountsOf 里
-        // （只算 physical 且只算爱丽丝自己触发的部分、紊乱带额外能力门控），此处不重写规则。
-        aliceTeamAssaultCount: aliceExternalCounts?.assaultCount ?? 0,
-        aliceDisorderCount: aliceExternalCounts?.disorderCount ?? 0,
+        // 爱丽丝剑仪外部次数源（下一轮注入）：CC-22 起由爱丽丝 `nextRoundFeedback` 产出
+        // （口径仍在 aliceExternalCountsOf：只算爱丽丝自己触发的 physical 强击），编排层只 merge。
+        aliceTeamAssaultCount: feedbackNext.aliceTeamAssaultCount ?? 0,
+        aliceDisorderCount: feedbackNext.aliceDisorderCount ?? 0,
         inStunWindowTriggers: inStunWindowTriggersNext,
         ellenFreezeCount: feedbackNext.ellenFreezeCount ?? 0,
         teamVeilCountTotal: teamVeilCountTotalNext,

@@ -57,7 +57,8 @@ export interface CalcRoundThreads {
   promiaReleaseDecibel: number
   /**
    * 爱丽丝剑仪的两条外部次数源（上一轮异常池收敛值）：
-   * 全队强击次数（`physical` + `physical_polar_assault` 两键之和）/ 紊乱次数。
+   * 爱丽丝**自己**触发的强击次数（只算 `physical`、排除极性强击；字段名里的 Team 是历史名，
+   * 口径见 alice.ts `aliceExternalCountsOf`）/ 全队紊乱次数。产出方 = 爱丽丝 `nextRoundFeedback`（CC-22）。
    * 为什么必须跨轮：异常池在 `buildExecutions` **之后**才算，而剑仪的星芒圆舞曲行要在
    * `buildExecutions` 里产出 ⇒ 只能带上一轮值（`vivianAnomalyTriggers` 同款理由）。
    * 消费方 = 爱丽丝模块的 `applyTeamConfig`（converge 阶段写进 cfg，供本轮 buildCharConfig 读）。

@@ -140,10 +140,6 @@ export function applyTeamMechanics(params: {
    */
   countStun?: number
   teamEnergyConsumed?: number
-  /** 全队强击触发次数（上一轮异常池收敛值；爱丽丝剑仪 `alice_team_assault_gain` 用） */
-  aliceTeamAssaultCount?: number
-  /** 全队紊乱次数（上一轮异常池收敛值；爱丽丝剑仪 `alice_disorder_gain` 用） */
-  aliceDisorderCount?: number
   /** 上一轮收敛线程快照（跨轮反馈通用通道；模块按需读并写进自己那份 cfg，规则 6） */
   threads?: Readonly<CalcRoundThreads>
   /**
@@ -183,8 +179,6 @@ export function applyTeamMechanics(params: {
   // 「接口没接上」与「这局真的 0 次失衡」不可分辨（与 axis/interactions 同款纪律）。
   const countStun = params.countStun
   const teamEnergyConsumed = params.teamEnergyConsumed ?? 0
-  const aliceTeamAssaultCount = params.aliceTeamAssaultCount ?? 0
-  const aliceDisorderCount = params.aliceDisorderCount ?? 0
   const threads = params.threads
   // 轴上下文：**不做 `?? {}` 兜底**——缺省即 undefined 递给模块，模块用
   // `phase !== 'converge' || !axis` 双判据门控（缺了就是缺了，不许静默降级成空快照）。
@@ -242,8 +236,6 @@ export function applyTeamMechanics(params: {
       stunCount,
       countStun,
       teamEnergyConsumed,
-      aliceTeamAssaultCount,
-      aliceDisorderCount,
       threads,
       axis,
       interactions,

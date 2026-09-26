@@ -288,15 +288,6 @@ export interface AgentTeamConfigInput {
   /** 全队普通能量消耗（莱特影画4 用；build 阶段 0） */
   teamEnergyConsumed: number
 
-  /**
-   * 全队**强击**触发次数（`physical` + `physical_polar_assault` 两键之和；上一轮异常池收敛值）。
-   * 消费方：爱丽丝剑仪的 `alice_team_assault_gain`（`src/specs/agents/1401.json`）。
-   * build 阶段 0（次数还没产出）；这是**跨轮反馈**——异常池在 `buildExecutions` **之后**才算，
-   * 所以只能带上一轮的值进来（与 `teamEnergyConsumed` 同款，都是被这个顺序逼出来的）。
-   */
-  aliceTeamAssaultCount?: number
-  /** 全队**紊乱**次数（上一轮异常池收敛值）。消费方：爱丽丝剑仪的 `alice_disorder_gain`。build 阶段 0 */
-  aliceDisorderCount?: number
 
   /**
    * 上一轮收敛线程（`CalcRoundThreads`）的**只读快照** —— 跨轮反馈的通用输入通道。
@@ -307,7 +298,7 @@ export interface AgentTeamConfigInput {
    * 而 `threads` 本身**已经是**这份集合的单一事实源（`resourceCalc/roundThreads.ts`，头注释写明
    * 它就是为了终结「每加一个反馈要在三处同步加一行」而结构体化的）。
    *
-   * 语义与 `aliceTeamAssaultCount` / `teamEnergyConsumed` 同款：**build 阶段是初值**（次数还没产出），
+   * 语义与 `teamEnergyConsumed` 同款：**build 阶段是初值**（次数还没产出），
    * converge 阶段带上一轮的收敛值进来 —— 这是「异常池在 `buildExecutions` **之后**才算」这个顺序逼出来的。
    * 模块自己决定读哪个字段、怎么写进 cfg（规则 6：编排层不写角色规则）。
    *
