@@ -455,16 +455,6 @@ function buildAliceResourceSections({ result }: AgentResourceSectionsInput): Spe
 // ============ 模块导出 ============
 
 /**
- * 从资源结果提取爱丽丝剑意触发次数（极性强击赠送计数）。
- * 供编排层（useResourceCalc）注入异常池——提取逻辑留在模块侧，
- * 避免 useResourceCalc 新增 agentId 分支（规则 6 棘轮）。
- */
-export function aliceSparkCountOf(rr: { characters: Array<{ agentId?: string; aliceSwordWillSource?: { sparkCount?: number } | null }> } | null | undefined): number {
-  if (!rr) return 0
-  return rr.characters.find(c => c.agentId === ALICE_AGENT_ID)?.aliceSwordWillSource?.sparkCount ?? 0
-}
-
-/**
  * 从异常池结果汇总爱丽丝两条外部次数源（剑仪 gain 用）。
  *
  * - **强击次数** = **只算 `physical`**，且**只算爱丽丝自己触发的那部分**（见函数体；类型名里的 Team 是历史名）（属性积蓄条打满触发的那种强击）。
@@ -515,7 +505,7 @@ export function aliceExternalCountsOf(
 
 /**
  * 从资源结果里数出爱丽丝的槽位（-1 = 本队无爱丽丝）。
- * 与 `aliceSparkCountOf` 同款：提取逻辑留模块侧，编排层不写 agentId 字面量（规则 6 棘轮）。
+ * 与模块能力 `giftedPolarAssaultCount` 同款：提取逻辑留模块侧，编排层不写 agentId 字面量（规则 6 棘轮）。
  */
 export function aliceSlotOf(rr: { characters: Array<{ slot?: number; agentId?: string }> } | null | undefined): number {
   if (!rr) return -1
@@ -528,6 +518,8 @@ export const aliceMechanic: AgentMechanicModule = {
   name: '爱丽丝',
   description: '剑意专属资源：技能命中积累剑意，300点触发星芒圆舞曲#3（可合轴），生成极性强击。畏缩状态下敌人每0.95秒受到强击伤害2.5%的固定异常伤害，紊乱倍率随物理异常剩余时长提升。',
   applyPanel: applyAlicePanel,
+  // CC-38b：原导出 helper aliceSparkCountOf（编排层按身份查找）→ 模块能力
+  giftedPolarAssaultCount: (c) => c.aliceSwordWillSource?.sparkCount ?? 0,
   // CC-25：畏缩配置（原 roundInputs.ts aliceInfo 内联，默认值逐字搬迁）；未启用爱丽丝机制 ⇒ null
   anomalyPoolSetup: (cfg) => cfg.aliceEnabled
     ? { coweringConfig: { dotRatio: cfg.aliceCoweringDotRatio ?? 2.5, dotInterval: cfg.aliceCoweringDotInterval ?? 0.95, disorderBonusPerSec: cfg.aliceCoweringDisorderBonusPerSec ?? 18, disorderBonusMax: cfg.aliceCoweringDisorderBonusMax ?? 180, assaultBaseMultiplier: 853 } }
@@ -721,8 +713,8 @@ export const aliceMechanic: AgentMechanicModule = {
       }
     }
 
-    // ---- 爱丽丝被动 DOT（异常池 aliceCoweringDot 入池；畏缩/任意异常状态期间每 0.95s 强击伤害 2.5%） ----
-    const coweringDot = anomalyPool?.aliceCoweringDot
+    // ---- 爱丽丝被动 DOT（异常池 coweringDot 入池；畏缩/任意异常状态期间每 0.95s 强击伤害 2.5%） ----
+    const coweringDot = anomalyPool?.coweringDot
     if (aliceSlot >= 0 && coweringDot && coweringDot.totalDotDamage > 0) {
       groups.push({ order: EXTRA_ANOMALY_ROW_ORDER.coweringDot, rows: [{
         id: 'alice-cowering-dot',

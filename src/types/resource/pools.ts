@@ -126,8 +126,9 @@ export interface AnomalyPoolResult {
   turbulenceDamage?: TurbulenceDamageResult
   /** 维琳娜风蚀资源明细（有风属性且触发乱流时计算） */
   corrosionSource?: VelinaCorrosionSource
-  /** 爱丽丝畏缩 DOT 伤害明细 */
-  aliceCoweringDot?: AliceCoweringDotResult
+  /** 畏缩 DOT 伤害明细（通用异常池输出；畏缩由 coweringConfig 开启，目前唯一开启方是爱丽丝）。
+   *  CC-38c 2026-09-27 自 aliceCoweringDot 改名（dump/rowsnap 基线不含此键，零差）。 */
+  coweringDot?: AliceCoweringDotResult
   /** 异常事件明细：把”异常条触发/覆盖触发/动作跟随触发”等事件化展示给开发调试 */
   anomalyEvents: AnomalyEventRecord[]
 }

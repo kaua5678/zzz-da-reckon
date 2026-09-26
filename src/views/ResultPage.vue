@@ -1084,7 +1084,7 @@ interface AliceDamageSummary {
 }
 
 const aliceDamageSummary = computed<AliceDamageSummary | null>(() => {
-  const dot = anomalyPoolResult.value?.aliceCoweringDot
+  const dot = anomalyPoolResult.value?.coweringDot
   const hasDot = dot && dot.totalDotDamage > 0
 
   // 从 damagePoolRows 中汇总爱丽丝专属行

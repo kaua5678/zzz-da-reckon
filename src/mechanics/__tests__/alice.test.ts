@@ -68,7 +68,7 @@ describe('爱丽丝畏缩 DOT', () => {
     await setup(0)
     const calc = useResourceCalc()
     // 异常池已算出畏缩 DOT 总伤害
-    const dot = calc.anomalyPoolResult.value?.aliceCoweringDot
+    const dot = calc.anomalyPoolResult.value?.coweringDot
     expect(dot?.totalDotDamage ?? 0).toBeGreaterThan(0)
     // 曾遗漏：畏缩 DOT 只在 ResultPage 单独展示、未进 damagePoolRows（团队总伤害漏算）
     const rows = calc.damagePoolRows.value.filter(r => r.type === '畏缩 DOT')
@@ -276,7 +276,7 @@ describe('CC-19b：爱丽丝 extraAnomalyRows（极性强击 / C6 决胜 / 畏�
     ultimateInAxisFraction: () => 1,
     axisInUnits: () => 0,
     getMechanicSetting: (_k: string, d: number) => d,
-    anomalyPool: { aliceCoweringDot: coweringDot } as never,
+    anomalyPool: { coweringDot: coweringDot } as never,
     // CC-19c-2 2026-09-26：ExtraAnomalyRowsInput 再扩 6 个必填字段；爱丽丝只解构自己需要的字段，桩值不参与。
     entryPanel: undefined,
     skills: undefined,

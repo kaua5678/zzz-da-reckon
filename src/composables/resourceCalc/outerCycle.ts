@@ -6,6 +6,7 @@
  * 这是既有监测量的显式投影，不是全部 CalcRoundThreads 的序列化；新增独立反馈需补判据。
  */
 import type { CalcRoundResult } from './convergence'
+import { getAgentMechanic } from '@/mechanics'
 
 export function outerFeedbackSignature(out: CalcRoundResult): string {
   const chars = out.resourceResult?.characters ?? []
@@ -20,7 +21,8 @@ export function outerFeedbackSignature(out: CalcRoundResult): string {
     // 保底填充依赖积蓄分数；只比较 floor 后的失衡次数会提前停止。
     out.stunPool ? (out.stunPool.totalStunBuildUp / out.stunPool.bossStunValue).toFixed(2) : '',
     // 剑仪反馈可能只改变执行行而不改变终结次数，必须独立监测。
-    chars.map(c => c.aliceSwordWillSource?.sparkCount ?? 0).join(','),
+    // CC-38b：经模块能力 giftedPolarAssaultCount 派发（无此能力的角色记 0，与原字段缺省同形）。
+    chars.map(c => (c.agentId ? getAgentMechanic(c.agentId)?.giftedPolarAssaultCount?.(c) : 0) ?? 0).join(','),
   ].join('|')
 }
 

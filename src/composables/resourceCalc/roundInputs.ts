@@ -90,7 +90,7 @@ export function createConvergenceRoundInputs(deps: {
   /** 异常池入参设置（CC-25 自 aliceInfo 改名；目前唯一提供方 = 爱丽丝模块 `anomalyPoolSetup`）：仅承载与 resourceResult 无关的畏缩结算配置。
    *  极性强击赠送计数不在此读——本 computed 读 resourceResult（= calcOutput.value.resourceResult）
    *  会在 calcOutput 自身求值内构成循环依赖（首算恒读空，曾致极性强击行整行缺失），
-   *  由 calcAnomalyPoolInput 的 aliceSparkOverride 注入本轮资源结果。 */
+   *  由 calcAnomalyPoolInput 的 giftedPolarAssaultOverride 注入本轮资源结果。 */
   const anomalyPoolSetupInfo = computed(() => {
     // ⚠ **本行的「循环依赖」只与读 `resourceResult` 有关，与身份查找无关**（2026-09-17 夜间批 B 实测澄清）：
     // 头注释那条禁令针对的是 `aliceSlotOf(rr)` / `aliceSparkCountOf(rr)` 那族**读资源结果**的模块 helper
@@ -113,10 +113,10 @@ export function createConvergenceRoundInputs(deps: {
   })
 
   /** 构建积蓄池（参数化 stunCoverage + 异常 execs） */
-  function calcAnomalyPoolInput(stunCov: number, execs: AnomalySkillExecution[], aliceSparkOverride?: number) {
+  function calcAnomalyPoolInput(stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number) {
     if (execs.length === 0) return null
     const wind = windInfo.value; const setup = anomalyPoolSetupInfo.value
-    const aliceSpark = aliceSparkOverride ?? 0
+    const giftedPolarAssault = giftedPolarAssaultOverride ?? 0
     return calcAnomalyPool({
       executions: execs, panels: panels.value,
       bossCoeff: configStore.enemy.anomalyCoeff, anomalyCoeff: configStore.enemy.bossAnomalyCoeff,
@@ -129,7 +129,7 @@ export function createConvergenceRoundInputs(deps: {
       cinema2CorrosionRate: configStore.getMechanicSetting('velina.cinema2CorrosionRate', 2 / 3),
       globalAnomalyMultiplier: globalAnomalyMultiplier.value,
       coweringConfig: setup?.coweringConfig,
-      giftedTriggerCounts: setup && aliceSpark > 0 ? { 'physical_polar_assault': aliceSpark } : undefined,
+      giftedTriggerCounts: setup && giftedPolarAssault > 0 ? { 'physical_polar_assault': giftedPolarAssault } : undefined,
       giftedTriggerSlot: setup?.slot,
       agentMechanics: getRegisteredAgentMechanics(),
     })

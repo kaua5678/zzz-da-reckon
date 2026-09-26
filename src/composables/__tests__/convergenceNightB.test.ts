@@ -240,7 +240,7 @@ describe('convergence 夜间批 B · 组 4 真管线（`:79` 调用点，不只�
     const { config } = await setupHarness(['', { agentId: '1181' }, { agentId: '1401' }] as never, { recommendedBuild: true })
     config.setMechanicSetting('alice.coweringEnabled', 1)
     const calc = useResourceCalc()
-    const dot = calc.anomalyPoolResult.value?.aliceCoweringDot
+    const dot = calc.anomalyPoolResult.value?.coweringDot
     expect(dot, '前导空槽时 aliceInfo 必须仍解析出爱丽丝（否则本行红）').toBeTruthy()
     expect(dot!.totalDotDamage).toBeGreaterThan(0)
   })
@@ -250,7 +250,7 @@ describe('convergence 夜间批 B · 组 4 真管线（`:79` 调用点，不只�
     const read = async (team: unknown[]) => {
       const { config } = await setupHarness(team as never, { recommendedBuild: true })
       config.setMechanicSetting('alice.coweringEnabled', 1)
-      return useResourceCalc().anomalyPoolResult.value?.aliceCoweringDot
+      return useResourceCalc().anomalyPoolResult.value?.coweringDot
     }
     const slot0 = await read([{ agentId: '1401' }, { agentId: '1181' }, { agentId: '1451' }])
     const slot2 = await read([{ agentId: '1181' }, { agentId: '1451' }, { agentId: '1401' }])
@@ -264,7 +264,7 @@ describe('convergence 夜间批 B · 组 4 真管线（`:79` 调用点，不只�
   it('★ 无爱丽丝队伍 ⇒ 畏缩 DOT 不存在（反向锁：上面两行不是因为恒真而绿）', async () => {
     const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1451' }, { agentId: '1011' }], { recommendedBuild: true })
     config.setMechanicSetting('alice.coweringEnabled', 1)
-    expect(useResourceCalc().anomalyPoolResult.value?.aliceCoweringDot).toBeFalsy()
+    expect(useResourceCalc().anomalyPoolResult.value?.coweringDot).toBeFalsy()
   })
 })
 

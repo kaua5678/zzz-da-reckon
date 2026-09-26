@@ -839,6 +839,13 @@ export interface AgentMechanicModule {
    */
   stunRefundRatio?(input: { getMechanicSetting: (key: string, dflt: number) => number }): number
   /**
+   * **本轮极性强击赠送次数**（CC-38b 2026-09-27，设计稿 `docs/mcp-cc38-alice.md`）：
+   * 从本角色资源结果读出「无视积蓄、直接赠送的 physical_polar_assault 触发数」。
+   * 编排层（convergence）对 `rr.characters` 派发**求和**后注入异常池 `giftedTriggerCounts`；
+   * 外层收敛签名（outerCycle）逐角色投影同一值。现唯一实现：爱丽丝（星芒圆舞曲 #3 次数）。
+   */
+  giftedPolarAssaultCount?(char: CharacterResourceResult): number
+  /**
    * **角色专属异常附加行**（规则 6 迁移落点，CC-19a 2026-09-26，设计稿
    * `docs/mcp-cc19-extra-anomaly-rows.md` §2.1/§2.3）：
    * 由行所属角色的模块生成自己的异常尾段附加行，返回**分组**（`order` 取
@@ -1571,7 +1578,7 @@ export interface ExtraAnomalyRowsInput {
   axisInUnits: (key: string) => number
   /** = (k, d) => configStore.getMechanicSetting(k, d) */
   getMechanicSetting: (key: string, dflt: number) => number
-  /** = ctx.anomalyPoolResult（只读整体注入，模块内读 .aliceCoweringDot；避免在 core 侧出现角色前缀字段） */
+  /** = ctx.anomalyPoolResult（只读整体注入，模块内读 .coweringDot；避免在 core 侧出现角色前缀字段） */
   anomalyPool: DamagePoolContext['anomalyPoolResult']
   /** = panelAt(entrySnapshotPanels, slot)（进场快照面板；ctx.entrySnapshotPanels 原样） */
   entryPanel: PanelValues | undefined

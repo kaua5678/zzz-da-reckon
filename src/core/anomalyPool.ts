@@ -423,14 +423,14 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   // ---- 7. 畏缩 DOT 伤害 ----
   // 触发条件：任何异常触发（爱丽丝 DOT 不限物理，风化吞掉畏缩也打 DOT）
   // 覆盖时间 = 总异常有效时间（扣无敌后）
-  let aliceCoweringDot: AliceCoweringDotResult | undefined
+  let coweringDot: AliceCoweringDotResult | undefined
   if (input.coweringConfig && totalTriggerCount > 0 && coverage.effectiveDoTTime > 0) {
     const physicalContribs = [
       ...(elementMap.get('physical') ?? []),
       ...(elementMap.get('physical_polar_assault') ?? []),
     ]
     if (physicalContribs.length > 0) {
-      aliceCoweringDot = calcAliceCoweringDot(
+      coweringDot = calcAliceCoweringDot(
         physicalContribs,
         damagePanels,
         coverage.effectiveDoTTime,
@@ -453,7 +453,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     disorderDamage,
     turbulenceDamage,
     corrosionSource,
-    aliceCoweringDot,
+    coweringDot,
     anomalyEvents: anomalyEvents.filter(event => event.count > 0),
   }
 }

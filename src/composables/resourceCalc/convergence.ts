@@ -58,7 +58,6 @@ import { enrichExecutionPlan } from './helpers'
 
 /** 保底 4 喧响的四舍五入阈值（自 useResourceCalc 顶层随迁；那里改为了 import） */
 const DECIBEL_ROUND_THRESHOLD = 1500
-import { aliceSparkCountOf } from '@/mechanics/agents/alice'
 import { computeTeamVeilCountTotal } from '@/mechanics/teamVeil'
 
 export { createConvergenceRoundInputs, resolveAxisUltimateDecibelCost } from './roundInputs'
@@ -90,7 +89,7 @@ export function createRunCalcRound(deps: {
   buildStackAxes: (axes: StunAxis[]) => { actions: import('@/core/stunAxisStack').StackActionCost[]; count?: number; basicFillerSlot?: number }[]
   expandExecutedToCounts: (executed: Record<string, { slot: number; moveId: string; count: number }>, basicFillBySlot: Record<number, number>) => Record<string, { slot: number; moveId: string; count: number }>
   resolveAxes: (stunCount: number, goodReview: number, energyBySlot: Record<number, number>) => { axes: StunAxis[]; planName: string | null }
-  calcAnomalyPoolInput: (stunCov: number, execs: AnomalySkillExecution[], aliceSparkOverride?: number) => AnomalyPoolResult | null
+  calcAnomalyPoolInput: (stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number) => AnomalyPoolResult | null
   extractAnomalyExecsFrom: (res: TeamResourceResult, skipGift?: boolean) => AnomalySkillExecution[]
   extractStunExecsFrom: (res: TeamResourceResult, skipGift?: boolean) => StunSkillExecution[]
   autoActive: { value: boolean }
@@ -796,9 +795,11 @@ export function createRunCalcRound(deps: {
     // Round 0：无易伤 → 畏缩覆盖率初算
     const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio)
     const adj0 = applyLiuyinPromote(rr, sp0, catalogStore)
-    // 爱丽丝本轮剑意触发次数（极性强击赠送计数）：读本轮 rr 而非 aliceInfo（循环依赖，见 calcAnomalyPoolInput）
-    const aliceSparkThisRound = aliceSparkCountOf(rr)
-    const ap0 = calcAnomalyPoolInput(0, adj0 ? extractAnomalyExecsFrom(adj0) : baseAnomaly, aliceSparkThisRound)
+    // 本轮极性强击赠送次数：读本轮 rr 而非异常池 setup（循环依赖，见 calcAnomalyPoolInput）。
+    // CC-38b 2026-09-27：改由模块能力 `giftedPolarAssaultCount` 派发求和（原按身份取首个提供方；队内角色不重复 ⇒ 等价）。
+    const giftedPolarAssaultThisRound = rr.characters.reduce((sum, c) =>
+      sum + ((c.agentId ? getAgentMechanic(c.agentId)?.giftedPolarAssaultCount?.(c) : 0) ?? 0), 0)
+    const ap0 = calcAnomalyPoolInput(0, adj0 ? extractAnomalyExecsFrom(adj0) : baseAnomaly, giftedPolarAssaultThisRound)
 
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
     const flinch1 = ap0?.coverage?.physicalCoverageRate ?? 0
@@ -903,7 +904,7 @@ export function createRunCalcRound(deps: {
       applyChainGift(rrShown0, configStore, catalogStore) ?? rrShown0)
 
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
-    const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly, aliceSparkThisRound)
+    const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly, giftedPolarAssaultThisRound)
 
     // 「下一轮反馈」统一派发（2026-09-16 arch 棘轮第 6 批）：普罗米娅(1541)/零号·安比(1381)/
     // 露西(1151)/薇薇安(1331)/艾莲(1191) 的算法已迁进各自模块的 `nextRoundFeedback` 钩子
