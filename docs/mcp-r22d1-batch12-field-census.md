@@ -1394,6 +1394,31 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 4. 清零后把判据 22 改成硬门：frozen 0 / target 0，并在 `docs/ARCHITECTURE.md` 写明「core / 编排层不得出现 `<角色前缀>Xxx` 标识符，新机制一律走模块能力」。
 5. 小卡 **CC-39c**（可派低级模型）：给佩洛伊斯右分支决算补一条轴集成快照，锁 `verdictSecondsLost > 0`，详见设计稿 §4。
 
+### 5.42 CC-40 done：判据 22 清零 → 硬门（lead-arena-0925c，2026-09-27 第 55 轮）
+
+**提交** `0b6b973`（verify EXIT=0）。判据 22 **5 → 0**；`CORE_ROLE_FIELD_BASELINE` 0、`frozen` 0、`target` 0。**自此判据 22 是硬门**：core / resourceCalc / useResourceCalc 里新增任何 `<角色前缀>Xxx` 标识符（含 import 路径）check-guards 即红。规则同步写进 `docs/ARCHITECTURE.md` §3 决策表。
+
+| 步 | 旧名 | 新名 | 处数 |
+|---|---|---|---|
+| 40a | 文件 `resourceCalc/liuyinPromote.ts` | `resourceCalc/ultimatePromote.ts`（`git mv`） | 整词 18 处（import 2、@fact 锚 2、注释）+ check-guards @fact 豁免键 2；测试文件名 `liuyinPromote.test.ts` 不改（正则排除 `.test`） |
+| 40b | moduleFeedback `lighterTeamEnergy` | `consumedTeamEnergy` | 23（cfg `lighterTeamEnergyConsumed` 属模块自有，不在扫描面，未改） |
+| 40b | moduleFeedback `yixuanFuFaForJufufu` | `teamUltimateExtra` | 28 |
+| 40c | 面板 `yeshuguangStunCapMult` | `veilStunCapMult` | 19 |
+| 40c | 面板 `yeshuguangVeilStunBase` | `veilStunVulnBase`（叶瞬光模块已有同名函数 `veilStunBase`，避开） | 14 |
+
+- 新名先 `grep -rnw` 确认无占用（`teamEnergyConsumed` / `veilStunBase` 已被占，所以没用）。
+- 验证：tsc 0；check-guards 22 项通过（判据 22 = 0/0）；相关单测 197 条；dump / rows 零差（基线 JSON 不含这些键）；反向（两处 moduleFeedback 读侧 ×0 + damagePool 帷幕封顶门控 false）dump 6 键出差（`auto-1431-*`），单测红 6。脚本 `/home/kaua/calc-arch/cc40.py`、`z40.sh`。
+- **测试同步**：`src/scripts/__tests__/checkGuards.test.ts` 的「基线常量 == RATCHET_BURNDOWN.frozen」原本断言 `target < frozen`，清零后 0 < 0 恒红；改为 frozen > 0 时照旧，frozen = 0 时断言 target = 0（硬门）。首次 verify 因此红 1 条，改后通过。
+- 三步合为一个提交：都是纯改名、同一验收，拆开没有回退价值。
+- **没有改**：历史 docs（mcp-*.md、AGENT_ID_BURNDOWN_LOG）里的旧文件名和旧字段名保留原样，是沉淀；活文档 `MECHANICS_IMPLEMENTATION.md` / `ENGINE_PIPELINE_GUIDE.md` / `ARCHITECTURE.md` 已同步新文件名。check-guards 注释里的历史旧名保留。
+
+**回退点**：`git revert 0b6b973`（含 git mv 与棘轮常量）。
+
+**判据 22 系列收官。下一步（按顺序）**
+1. **CC-39c**（小卡，可派低级模型）：佩洛伊斯右分支决算轴集成快照，见 `docs/mcp-cc39b-stun-window-end.md` §4。
+2. **遗留未决项**（见 §5.39 前各节）：莱特额外能力 buff 在默认配置下是否生效（调研）；`cfg.remielleRadiantTurnDazeBonusPct` 没有读取方、`remielleFlowerFeatherDanceCount` 没有写入方（死通道，先 grep 读写方再决定删或补）；`isRemielleAgent` 跨槽决策；W31。
+3. 可选观感收尾：类型名 `AliceCoweringDotResult`、函数 `calcAliceCoweringDot`（首字母大写或非前缀，不计入判据 22）改通用名。
+
 ## 附录：普查脚本 census.sh
 
 ```bash

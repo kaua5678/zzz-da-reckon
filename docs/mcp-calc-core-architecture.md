@@ -203,7 +203,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-39a | review | **done** `a87da93`（31→22，target 10） | 新模块能力 `stunRefundRatio`（雨果决算返还），convergence 去 findSlotByIdentity(1291) | census §5.39 |
 | CC-38 | review | **done** `7b865bf`（判据 22 22→7，target 0，爱丽丝清零） | spark 局部量去前缀 + 模块能力 `giftedPolarAssaultCount` + 异常池输出 `coweringDot` | `docs/mcp-cc38-alice.md`、census §5.40 |
 | CC-39b | review | **done** `a1eb71e`（判据 22 7→5） | 模块能力 `endsStunWindow` / `axisMoveActionTime` + 单一派发点 helpers（convergence 截断与 roundInputs 轴栈同源；删 1551016 字面量与雨果值导入） | `docs/mcp-cc39b-stun-window-end.md`、census §5.41 |
-| CC-40 | todo | — | 清零剩余 5 计（40a 文件改名 / 40b moduleFeedback 键 / 40c 叶瞬光面板字段） | census §5.41 下一步 |
+| CC-40 | review | **done** `0b6b973`（判据 22 5→0，**硬门**） | 40a `liuyinPromote.ts`→`ultimatePromote.ts`；40b moduleFeedback 键 `consumedTeamEnergy` / `teamUltimateExtra`；40c 面板 `veilStunCapMult` / `veilStunVulnBase` | census §5.42 |
 | CC-39c | todo（可派） | — | 佩洛伊斯右分支决算轴集成快照 | `docs/mcp-cc39b-stun-window-end.md` §4 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
