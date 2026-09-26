@@ -270,13 +270,14 @@ export function useResourceCalc() {
   const effectiveStunAxes = computed<StunAxis[]>(() => calcOutput.value?.resolvedAxes ?? configStore.stunAxes)
 
   /**
-   * 失衡轴窗口覆盖四桶 + 标量表（般岳明王 / 仪玄凝神 / 佩洛伊斯阳炎 / 可琳扫除帮手 / 希格莉德浸染）。
+   * 失衡轴窗口覆盖：按槽归属的 `bucketsBySlot` + 标量表（般岳明王 / 仪玄凝神 / 佩洛伊斯阳炎 /
+   * 可琳扫除帮手 / 希格莉德浸染）。
    *
    * 2026-09-12 #10 真清偿（棘轮站点 4-7/8）：原本是四个各自
    * `configStore.team.findIndex(...)` 按角色 id 找槽位的 computed——编排层替角色找槽位、
    * 判空、判轴，每加一个轴覆盖角色都要再改本文件。现在统一走注册表派发
    * （`collectAxisWindowOverlays` → 模块自己的 `axisWindowOverlays` 钩子），
-   * 本文件不再出现任何角色 id。桶名与 DamagePoolContext 同名，下游零改动。
+   * 本文件不再出现任何角色 id。
    *
    * 2026-09-16 round 16：入参补 `isAxis`（真轴模式布尔，**不是** `axes.length > 0`）与
    * `damagePanels`（提供 `additionalAbilityActive` / `windInfectionRate` 两个门控值，
@@ -285,6 +286,9 @@ export function useResourceCalc() {
    * `stunAxisResult` 都已在下方/上方就绪；用 `effectiveStunAxes.length > 0` 代替会让
    * `forceNoAxis` 轴退化态（`resolvedAxes` 清空、但 `effectiveStunAxes` 回落到手动轴）
    * 静默走错支。
+   *
+   * 2026-09-26 CC-17：四个 moveId 桶不再跨模块合并成全局表（会泄漏 `basic_attack`），
+   * 改为按槽归属的 `bucketsBySlot`（设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §3）。
    */
   const axisOverlays = computed(() => collectAxisWindowOverlays(
     effectiveStunAxes.value,
@@ -582,10 +586,7 @@ export function useResourceCalc() {
     agentNames: agentNames.value,
     autoActive: autoActive.value,
     stunAxisResult: stunAxisResult.value,
-    banyueMingwangStacks: axisOverlays.value.banyueMingwangStacks,
-    yixuanNingshenMap: axisOverlays.value.yixuanNingshenMap,
-    peiluoKagerouMap: axisOverlays.value.peiluoKagerouMap,
-    corinStunBonusMap: axisOverlays.value.corinStunBonusMap,
+    axisBucketsBySlot: axisOverlays.value.bucketsBySlot,
     axisScalarBySlot: axisOverlays.value.scalarBySlot,
     computeWindowDuration,
   }))

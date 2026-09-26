@@ -707,6 +707,20 @@ export interface AgentMechanicModule {
    */
   axisWindowOverlays?(input: AgentAxisOverlayInput): AgentAxisOverlays | null
   /**
+   * **行级 overlay 加成**（规则 6 迁移落点，CC-17 2026-09-26，设计稿
+   * `docs/mcp-cc17-axis-overlay-consume.md` §3/§4）：
+   * 由**行所属角色**的模块把自己的 `axisWindowOverlays` 原始返回（桶 + 标量）换算成该行的
+   * `dmgBonus` / `critDmgBonus` / `sheerDmgBonus` / note 片段。
+   *
+   * 为什么单列声明而不是让伤害池按角色分支算：这些换算是**角色自己的**窗口语义
+   * （般岳明王层数×每层 / 仪玄凝神暴伤贯穿 / 佩洛阳炎配对 / 可琳扫除帮手 / 希格莉德浸染），
+   * 且 overlay 自 CC-17 起**按槽归属**——消费端拿到的就是本行 slot 的桶与标量，
+   * 不存在「别的角色的项加到了这一行」的可能（设计稿 §5 零差论证）。
+   *
+   * 返回 null/缺省 = 本行无 overlay 加成。
+   */
+  directRowBonus?(input: DirectRowBonusInput): DirectRowBonus | null
+  /**
    * 保底自动补齐的交互次数由本模块产出（`CalcRoundResult.interactionTopUp` 的槽位归属，规则 6 落点）。
    *
    * 存在的理由：交互栏要用「弹刀 +N / 双反 +M」，读的是轮内收敛值 `calcOutput.interactionTopUp`——
@@ -1124,9 +1138,14 @@ export interface AgentAxisOverlayInput {
  * - `peiluoKagerouMap`：moveId → 阳炎暴伤（0-40）
  * - `corinStunBonusMap`：moveId → 扫除帮手增伤%（轴内恒 CORIN_ADDITIONAL_DMG）
  *
- * ⚠ 四个桶**跨模块合并**且**不按槽位分**：它们只靠「moveId 全局唯一」这条既有事实避免串味
- * （`corinStunBonusMap` 里只有 1061 的 moveId，别的角色查不到自己的键）。**新增字段不要依赖这条**：
- * 只要值对「全角色全部行」同值（没有 moveId 可索引），就必须走 `scalarBySlot`。
+ * ⚠ **CC-17（2026-09-26）起四个桶不再跨模块合并**：`panelPhases.ts#collectAxisWindowOverlays`
+ * 改为 `bucketsBySlot: Map<slot, AgentAxisOverlays>`，消费端（`directRowBonus`）只读**本行所属槽**
+ * 的桶。**原注释「moveId 全局唯一所以不会串味」已被证伪**：所有角色的普攻聚合行 moveId 都是
+ * `'basic_attack'`，而可琳 `corinStunBonusMap` 正是把平A块归并到该键 ⇒ 旧实现（全局桶）会把
+ * 可琳扫除帮手 +35% 泄漏给队友的轴内 `basic_attack` 行（设计稿 `docs/mcp-cc17-axis-overlay-consume.md`
+ * §2 已实测）。按槽归属后此泄漏面消失；`scalarBySlot` 的按槽口径不变。
+ *
+ * 新增字段仍遵循：只要值对「全角色全部行」同值（没有 moveId 可索引），就必须走 `scalarBySlot`。
  */
 export interface AgentAxisOverlays {
   banyueMingwangStacks?: Map<string, number>
@@ -1182,6 +1201,41 @@ export interface AxisScalarOverlays {
   peiluoKagerouPct?: number
   /** 希格莉德浸染增伤（**与轴模式无关**）：百分比 = `SIGRID_INFECTION_DMG × 队伍风化侵染覆盖率` */
   sigridInfectionPct?: number
+}
+
+/**
+ * `directRowBonus` 钩子输入（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §3）。
+ *
+ * 契约：`buckets` / `scalar` 都是**本行所属槽位**的 overlay（`bucketsBySlot.get(slot)` /
+ * `scalarBySlot.get(slot)`），故模块读到的永远是「自己这个角色的」覆盖量——这是 CC-17 修
+ * 可琳 `basic_attack` 泄漏的关键（旧实现把四个桶跨模块合并成全局表，见 `AgentAxisOverlays` 头注释）。
+ */
+export interface DirectRowBonusInput {
+  /** 当前行（读 `moveId`；佩洛读 `peiluoKagerouPairRatio`） */
+  exec: SkillExecution
+  /** 真·轴模式布尔（口径同 `AgentAxisOverlayInput.isAxis`） */
+  isAxis: boolean
+  /** 本段是否轴内（>0 = 敌人失衡）；可琳的**段级**门控用 */
+  stunOverride: number
+  /** = `bucketsBySlot.get(本行 slot)`，即本槽模块 `axisWindowOverlays` 的原始返回 */
+  buckets: AgentAxisOverlays | undefined
+  /** = `scalarBySlot.get(本行 slot)`（与原 `overlayScalar` 同一个值） */
+  scalar: AxisScalarOverlays | undefined
+}
+
+/**
+ * `directRowBonus` 钩子返回类型（CC-17 2026-09-26）。
+ *
+ * 各字段语义与伤害池 `pushDirect` 的对应入参相同；`note` 是**已拼好的片段、含前导「 · 」**，
+ * 顺序与原伤害池模板一致（明王 / 可琳 / 希格莉德 / 仪玄暴伤 / 仪玄贯穿；悠真片段由消费端
+ * 放在 `rb.note` 之后，见设计稿 §3 第 3 条）。
+ */
+export interface DirectRowBonus {
+  dmgBonus?: number
+  critDmgBonus?: number
+  sheerDmgBonus?: number
+  /** 已拼好的片段，含前导「 · 」 */
+  note?: string
 }
 
 /** transformAnomalyPool 钩子输入（calcAnomalyPool 内部，perElement 之前） */

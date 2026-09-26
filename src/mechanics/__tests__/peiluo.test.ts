@@ -324,3 +324,35 @@ describe('佩洛伊斯阳炎配对比例（非轴模式：无上分支铺垫的�
     expect(verdict.peiluoKagerouPairRatio).toBe(1)
   })
 })
+
+describe('CC-17：佩洛伊斯 directRowBonus（阳炎，轴臂桶 / 非轴标量×行级配对比例）', () => {
+  const exec = (moveId: string, pair?: number) => ({ moveId, ...(pair !== undefined ? { peiluoKagerouPairRatio: pair } : {}) } as never)
+
+  it('轴臂：查本槽桶（值恒 40）；桶里没有 → null', () => {
+    const buckets = { peiluoKagerouMap: new Map([['1551016', 40]]) }
+    const rb = peiluoProminenceMechanic.directRowBonus!({
+      exec: exec('1551016'), isAxis: true, stunOverride: 1, buckets: buckets as never, scalar: undefined,
+    })!
+    expect(rb.critDmgBonus).toBe(40)
+    expect(rb.note).toBeUndefined()   // 阳炎不进 note
+    expect(peiluoProminenceMechanic.directRowBonus!({
+      exec: exec('1551015'), isAxis: true, stunOverride: 1, buckets: buckets as never, scalar: undefined,
+    })).toBeNull()
+  })
+
+  it('非轴臂：标量 × 行级配对比例；只有决算 1551016 乘比例，其余行恒 1', () => {
+    const scalar = { peiluoKagerouPct: 40 }
+    // 决算：比例 0.5 ⇒ 20
+    expect(peiluoProminenceMechanic.directRowBonus!({
+      exec: exec('1551016', 0.5), isAxis: false, stunOverride: 0, buckets: undefined, scalar: scalar as never,
+    })!.critDmgBonus).toBe(20)
+    // 上分支：无比例字段 ⇒ 恒 1 ⇒ 40
+    expect(peiluoProminenceMechanic.directRowBonus!({
+      exec: exec('1551015'), isAxis: false, stunOverride: 0, buckets: undefined, scalar: scalar as never,
+    })!.critDmgBonus).toBe(40)
+    // 比例 0（无铺垫决算）⇒ 0 ⇒ null
+    expect(peiluoProminenceMechanic.directRowBonus!({
+      exec: exec('1551016', 0), isAxis: false, stunOverride: 0, buckets: undefined, scalar: scalar as never,
+    })).toBeNull()
+  })
+})

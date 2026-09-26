@@ -4,7 +4,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getAgentSpec } from '@/specs/registry'
-import { computeYixuanExChain, computeYixuanNingshenBonus } from '@/mechanics/agents/yixuan'
+import { computeYixuanExChain, computeYixuanNingshenBonus, yixuanMechanic } from '@/mechanics/agents/yixuan'
 
 beforeEach(() => {
   newPinia()
@@ -535,5 +535,46 @@ describe('仪玄失衡延时（影画2，回归：2026-08 修复全队多计）'
     config.team[0] = teamChar(0, '1371', 0)
     config.syncTeammateBuffsFromTeam()
     expect(calc.windowDuration.value).toBe(12 + 4)
+  })
+})
+
+describe('CC-17：仪玄 directRowBonus（凝神，标量优先 / 轴臂桶 / 先暴伤后贯穿）', () => {
+  const exec = (moveId: string) => ({ moveId } as never)
+
+  it('非轴臂：读本槽标量，note「凝神暴伤…（覆盖率近似）」（无贯穿段）', () => {
+    const rb = yixuanMechanic.directRowBonus!({
+      exec: exec('1371009'), isAxis: false, stunOverride: 0, buckets: undefined,
+      scalar: { yixuanNingshen: { critDmg: 20, sheerDmg: 0 } } as never,
+    })!
+    expect(rb.critDmgBonus).toBe(20)
+    expect(rb.sheerDmgBonus).toBe(0)
+    expect(rb.note).toBe(' · 凝神暴伤+20%（覆盖率近似）')
+  })
+
+  it('轴臂：标量缺席时查本槽桶，note「（buff轴）」', () => {
+    const rb = yixuanMechanic.directRowBonus!({
+      exec: exec('1371009'), isAxis: true, stunOverride: 1,
+      buckets: { yixuanNingshenMap: new Map([['1371009', { critDmg: 40, sheerDmg: 0 }]]) } as never,
+      scalar: undefined,
+    })!
+    expect(rb.critDmgBonus).toBe(40)
+    expect(rb.note).toBe(' · 凝神暴伤+40%（buff轴）')
+  })
+
+  it('C6 标量优先于轴桶；note **先暴伤后贯穿**', () => {
+    const rb = yixuanMechanic.directRowBonus!({
+      exec: exec('1371009'), isAxis: true, stunOverride: 1,
+      buckets: { yixuanNingshenMap: new Map([['1371009', { critDmg: 40, sheerDmg: 0 }]]) } as never,
+      scalar: { yixuanNingshen: { critDmg: 40, sheerDmg: 20 } } as never,
+    })!
+    expect(rb.critDmgBonus).toBe(40)
+    expect(rb.sheerDmgBonus).toBe(20)
+    expect(rb.note).toBe(' · 凝神暴伤+40%（buff轴） · 凝神贯穿+20%')
+  })
+
+  it('两段皆 0 → null', () => {
+    expect(yixuanMechanic.directRowBonus!({
+      exec: exec('1371009'), isAxis: false, stunOverride: 0, buckets: undefined, scalar: undefined,
+    })).toBeNull()
   })
 })

@@ -86,6 +86,20 @@ peiluoProminenceMechanic.axisWindowOverlays = ({ slot, axes, isAxis, settings })
   }
 }
 /**
+ * 阳炎行级加成（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §4）：
+ * 轴模式查**本槽**桶；非轴模式 = 本槽折算标量 × **行级配对比例**（决算 `1551016` 才乘，
+ * 其余行恒 1）。算式与 note 模板逐字照原 `damagePoolDirect.ts#emitExecDirect`（阳炎不进 note）。
+ */
+peiluoProminenceMechanic.directRowBonus = ({ exec, isAxis, buckets, scalar }) => {
+  const moveId = exec.moveId ?? ''
+  const pair = moveId === PEILUO_ULT_VERDICT ? ((exec as any).peiluoKagerouPairRatio ?? 0) : 1
+  const crit = isAxis
+    ? (buckets?.peiluoKagerouMap?.get(moveId) ?? 0)
+    : (scalar?.peiluoKagerouPct ?? 0) * pair
+  if (crit <= 0) return null
+  return { critDmgBonus: crit }
+}
+/**
  * converge 阶段（2026-09-15 arch 棘轮自 `convergence.ts` 的 `merged.agentId === '1551'` 分支搬入，规则 6）：
  *
  * ① `peiluoVerdictCount` —— **非轴**模式决算次数 = 失衡次数（一次失衡只能决算一次，决算后即出失衡）；

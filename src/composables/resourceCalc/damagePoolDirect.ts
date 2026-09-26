@@ -18,7 +18,6 @@ import { panelAt } from '@/core/panel'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
 import { getAgentMechanic } from '@/mechanics'
 import { LIUYIN_EX_MOVE_IDS } from '@/mechanics/agents/liuyin'
-import { MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import type { Agent, AgentSkills, PanelValues } from '@/types/catalog'
 import type { AnomalyEventExecution, CharacterResourceResult } from '@/types/resource'
@@ -90,7 +89,7 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
     configStore, catalogStore,
     damagePanels, stunCoverage, axisAllocation: allocMap, attachedInAxisMap: attachedInAxis,
     stunPoolResult, effectiveStunAxes,
-    banyueMingwangStacks, yixuanNingshenMap, peiluoKagerouMap, corinStunBonusMap,
+    axisBucketsBySlot,
     axisScalarBySlot,
   } = env.ctx
   const {
@@ -159,40 +158,26 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
       // 本槽的标量覆盖（非轴折算臂 + 与轴无关的标量臂）。**按槽位取**——这些值对全角色全部行同值，
       // 没有 moveId 可索引，合并成裸标量会泄漏给队友行（见 `AxisScalarOverlays` 头注释）。
       const overlayScalar = axisScalarBySlot.get(slot)
-      // 般岳明王：6命满覆盖（applyPanel 全局 +39%）；非6命轴模式按时间轴扫描层数（8s 窗口，怒相二连触发）；
-      // 非6命非轴模式按覆盖率滑块近似（满层3×5%×覆盖率）。
-      // 2026-09-16 round 16 编排层棘轮：原 `charResult.agentId === '1471'` + `additionalAbilityActive` +
-      // `cinemaLevel < 6` 三重门控已迁进 `banyue.ts#axisWindowOverlays`（两臂都由模块给：
-      // 轴臂 → 桶（层数）/ 非轴臂 → `banyueMingwangPct` 标量）。此处只剩「轴/非轴选哪条臂」。
-      let mingwangDmgBonus = 0
-      if (isAxis) {
-        const stacks = banyueMingwangStacks.get(exec.moveId ?? '') ?? 0
-        if (stacks > 0) mingwangDmgBonus = stacks * MINGWANG_BASE_PER_STACK
-      } else {
-        mingwangDmgBonus = overlayScalar?.banyueMingwangPct ?? 0
-      }
-      // 可琳额外能力扫除帮手：命中失衡敌人自身伤害+35%。
-      // 轴模式按 buff 轴扫描（轴内所有招式都在失衡窗口内，普攻段归并 basic_attack 聚合行键），
-      // 且只吃轴内段（stunOverride=0 的轴外段敌人未失衡，不符合「命中失衡敌人」条件）；
-      // 非轴模式按覆盖率滑块近似（默认 0.5，用户口径）。
-      // 2026-09-16 round 16 编排层棘轮：原 `charResult.agentId === '1061'` + `additionalAbilityActive`
-      // 门控已迁进 `corin.ts#axisWindowOverlays`；此处保留 `stunOverride > 0` 的**段级**门控
-      // （轴外段不吃，与角色判据无关）。
-      let corinStunBonus = 0
-      if (isAxis) {
-        corinStunBonus = stunOverride > 0 ? (corinStunBonusMap.get(exec.moveId ?? '') ?? 0) : 0
-      } else {
-        corinStunBonus = overlayScalar?.corinStunBonusPct ?? 0
-      }
-      // 希格莉德额外能力·天际联军：命中[浸染]敌人伤害+15% × 风化侵染覆盖率
-      // （用户口径 2026-02：直接读风化覆盖率；无风角色=0）。
-      // 2026-09-16 round 16 编排层棘轮：**与轴模式无关**（原分支里 `isAxis` 不出现）⇒
-      // 整支迁进 `sigrid.ts#axisWindowOverlays`，此处只剩取值。
-      const sigridInfectionBonus = overlayScalar?.sigridInfectionPct ?? 0
+      // 本槽的轴窗口 overlay 原始返回（含 4 个 moveId 桶）。**按槽位取**——CC-17 起不再跨模块
+      // 合并成全局表：`'basic_attack'` 是所有角色普攻聚合行的公共键，全局桶会让可琳扫除帮手
+      // 泄漏给队友轴内普攻行（设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §2/§3）。
+      const overlayBuckets = axisBucketsBySlot.get(slot)
+      // 行级 overlay 加成（明王 / 可琳 / 希格莉德 / 仪玄 / 佩洛）**整段迁进行所属角色的模块**
+      // （`AgentMechanicModule.directRowBonus`，规则 6 迁移落点，CC-17 2026-09-26）：
+      // 模块只读本槽的桶与标量，消费端在此合并。算式/note 模板逐字照旧（见各模块 directRowBonus）。
+      const rb = getAgentMechanic(charResult.agentId)?.directRowBonus?.({
+        exec,
+        isAxis,
+        stunOverride,
+        buckets: overlayBuckets,
+        scalar: overlayScalar,
+      }) ?? null
       // 悠真额外能力（失衡/异常并集 +40%）：轴模式「失衡专属 buff 轴内直加」（2026-09-03，
       // 可琳扫除帮手同款分段通道）——patchHarumasaExecutions 已把公共异常部分（40×异常覆盖率）
       // 摊入全部行，这里只补失衡独有部分 40×(1−异常覆盖)，且仅轴内段（stunOverride>0，敌人失衡）加；
       // 轴外段敌人未失衡、只吃异常部分。非轴走 patch 并集口径（不加此处）。
+      // ⚠ 悠真是**行级字段**（`harumasaStunOnly`），不属于 overlay、没有 `axisWindowOverlays`
+      // （设计稿 §3 第 3 条），故留在消费端，其 note 片段放在 `rb.note` 之后。
       let harumasaStunOnlyBonus = 0
       // 2026-09-15 编排层棘轮：原判据 `charResult.agentId === '1201' && isAxis && exec.harumasaStunOnly !== undefined`。
       // agentId 判断**冗余**——该字段的唯一写入方 = `harumasa.ts:329` 的 patchExecutions
@@ -200,29 +185,6 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
       if ((exec as any).harumasaStunOnly !== undefined) {
         harumasaStunOnlyBonus = stunOverride > 0 ? Math.max(0, Number((exec as any).harumasaStunOnly)) : 0
       }
-      // 仪玄凝神：三臂（C6满覆盖 / 非C6轴内扫描 / 非C6非轴折算）**全在模块**
-      // （`yixuan.ts#axisWindowOverlays`）——C6 臂与非轴臂产「本槽全行同值」的标量
-      // `yixuanNingshen`（走 `scalarBySlot`，避免泄漏给队友行），非 C6 轴臂产 moveId 桶。
-      // 2026-09-17 round 21 夜 A 编排层棘轮：原判据 `charResult.agentId === '1371' &&
-      // (execPanel?.additionalAbilityActive ?? 0) > 0` 三重门控 + 三臂已整段迁进模块
-      // （T7 裁决把注册 default 与伤害池 fallback 归一为 0.5 ⇒ 迁移 0 delta）。
-      // ⚠ 按槽位取标量（这些值对全角色全部行同值，裸标量会泄漏给队友行）。
-      const yixuanNingshen = overlayScalar?.yixuanNingshen
-        ?? (isAxis ? yixuanNingshenMap.get(exec.moveId ?? '') : undefined)
-        ?? { critDmg: 0, sheerDmg: 0 }
-      // 佩洛伊斯阳炎：轴模式按 buff 轴扫描（上分支后 21s 窗口，仅上分支/决算终结吃）；
-      // 非轴模式 = `40 × 覆盖率滑块`（模块标量）× **行级配对比例**。
-      // 2026-09-17 round 21 夜 A 编排层棘轮：原判据 `charResult.agentId === '1551'`
-      // + 两臂已整段迁进 `specPanelBuffs.ts#peiluoProminenceMechanic.axisWindowOverlays`
-      // （轴臂 → `peiluoKagerouMap` 桶 / 非轴臂 → `peiluoKagerouPct` 标量）。
-      // ⚠ 配对比例**留在行上**（`peiluoKagerouPairRatio` 的唯一写入方 = 本角色模块的
-      // `patchExecutions`）——它逐 moveId 不同（只有决算 `1551016` 乘
-      // `min(上分支,决算)/决算`），进不了「全行同值」的标量，故消费端在此乘回：
-      // `标量 × 行级比例` 即原式 `PEILUO_KAGEROU_CRIT × 覆盖率 × 配对比例`，逐位等价。
-      const peiluoPairRatio = exec.moveId === '1551016' ? ((exec as any).peiluoKagerouPairRatio ?? 0) : 1
-      const peiluoKagerouCrit = isAxis
-        ? (peiluoKagerouMap.get(exec.moveId ?? '') ?? 0)
-        : (overlayScalar?.peiluoKagerouPct ?? 0) * peiluoPairRatio
       pushDirect({
         id: `${rowId}${idSuffix}`,
         slot,
@@ -232,12 +194,12 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
         source: resolved?.source ?? exec.moveId,
         count: isPerSecondRow ? 1 : units,
         multiplier: unitMultiplier * (isPerSecondRow ? units : 1),
-        note: `${baseNote}${extraNote}${mingwangDmgBonus > 0 ? ` · 明王+${mingwangDmgBonus.toFixed(1)}%${isAxis ? '（轴内覆盖）' : '（覆盖率近似）'}` : ''}${corinStunBonus > 0 ? ` · 失衡增伤+${corinStunBonus.toFixed(1)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${harumasaStunOnlyBonus > 0 ? ` · 失衡增伤+${harumasaStunOnlyBonus.toFixed(1)}%（轴内直加）` : ''}${sigridInfectionBonus > 0 ? ` · 浸染增伤+${sigridInfectionBonus.toFixed(1)}%（风化覆盖率×15%）` : ''}${yixuanNingshen.critDmg > 0 ? ` · 凝神暴伤+${yixuanNingshen.critDmg.toFixed(0)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}` : ''}${yixuanNingshen.sheerDmg > 0 ? ` · 凝神贯穿+${yixuanNingshen.sheerDmg.toFixed(0)}%` : ''}`,
+        note: `${baseNote}${extraNote}${rb?.note ?? ''}${harumasaStunOnlyBonus > 0 ? ` · 失衡增伤+${harumasaStunOnlyBonus.toFixed(1)}%（轴内直加）` : ''}`,
         moveId: exec.moveId,
         critRateBonus,
-        critDmgBonus: critDmgBonus + yixuanNingshen.critDmg + peiluoKagerouCrit,
-        dmgBonus: (exec.dmgBonus ?? 0) + mingwangDmgBonus + corinStunBonus + sigridInfectionBonus + harumasaStunOnlyBonus,
-        sheerDmgBonus: (exec.sheerDmgBonus ?? 0) + yixuanNingshen.sheerDmg,
+        critDmgBonus: critDmgBonus + (rb?.critDmgBonus ?? 0),
+        dmgBonus: (exec.dmgBonus ?? 0) + (rb?.dmgBonus ?? 0) + harumasaStunOnlyBonus,
+        sheerDmgBonus: (exec.sheerDmgBonus ?? 0) + (rb?.sheerDmgBonus ?? 0),
         flatDamageBonus: exec.flatDamageBonus,
         basisValueOverride: exec.basisValueOverride,
         basisLabelOverride: exec.basisLabelOverride,

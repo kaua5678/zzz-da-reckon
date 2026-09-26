@@ -667,5 +667,17 @@ export const sigridMechanic: AgentMechanicModule = {
     const spec = getAgentSpec(SIGRID_AGENT_ID)
     return spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
   },
+  /**
+   * 浸染增伤行级加成（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §4）：
+   * **与轴模式无关**，只读本槽标量（原伤害池分支整支迁入 `axisWindowOverlays`，此处只取值）。
+   */
+  directRowBonus: ({ scalar }) => {
+    const v = scalar?.sigridInfectionPct ?? 0
+    if (v <= 0) return null
+    return {
+      dmgBonus: v,
+      note: ` · 浸染增伤+${v.toFixed(1)}%（风化覆盖率×15%）`,
+    }
+  },
   settings,
 }

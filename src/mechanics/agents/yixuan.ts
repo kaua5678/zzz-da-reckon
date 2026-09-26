@@ -1114,6 +1114,22 @@ export const yixuanMechanic: AgentMechanicModule = {
       }]]),
     }
   },
+  /**
+   * 凝神行级加成（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §4）：
+   * 优先用本槽标量（C6 满覆盖臂 / 非 C6 非轴折算臂），否则轴模式查**本槽**桶，否则取 0。
+   * note **先暴伤后贯穿**，模板逐字照原 `damagePoolDirect.ts#emitExecDirect`。
+   */
+  directRowBonus: ({ exec, isAxis, buckets, scalar }) => {
+    const moveId = exec.moveId ?? ''
+    const ns = scalar?.yixuanNingshen
+      ?? (isAxis ? buckets?.yixuanNingshenMap?.get(moveId) : undefined)
+      ?? { critDmg: 0, sheerDmg: 0 }
+    if (ns.critDmg <= 0 && ns.sheerDmg <= 0) return null
+    let note = ''
+    if (ns.critDmg > 0) note += ` · 凝神暴伤+${ns.critDmg.toFixed(0)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}`
+    if (ns.sheerDmg > 0) note += ` · 凝神贯穿+${ns.sheerDmg.toFixed(0)}%`
+    return { critDmgBonus: ns.critDmg, sheerDmgBonus: ns.sheerDmg, note }
+  },
   settings,
   /**
    * 额外闪能总账（2026-09-26 CC-14a）：`buildCharConfig` 写「完美格挡+10/次、极限闪避+5/次、

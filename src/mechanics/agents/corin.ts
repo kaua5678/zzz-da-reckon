@@ -330,6 +330,28 @@ export const corinMechanic: AgentMechanicModule = {
   applyPanel: applyCorinPanel,
   buildResourceResult: buildCorinResourceResult,
   resourceSections: buildCorinResourceSections,
+  /**
+   * 扫除帮手行级加成（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §4）：
+   * 轴模式按**本槽**桶查（`stunOverride > 0` 段级门控：轴外段敌人未失衡不吃），非轴按折算标量。
+   * 算式与 note 模板逐字照原 `damagePoolDirect.ts#emitExecDirect`。
+   *
+   * ⚠ 只读**本行所属槽**的桶（CC-17 前是跨模块全局桶）：可琳平A块归并键 `'basic_attack'`
+   * 与所有角色普攻聚合行同名，全局桶会把 +35% 泄漏给队友轴内普攻行（设计稿 §2）。
+   */
+  directRowBonus: ({ exec, isAxis, stunOverride, buckets, scalar }) => {
+    const moveId = exec.moveId ?? ''
+    let v = 0
+    if (isAxis) {
+      v = stunOverride > 0 ? (buckets?.corinStunBonusMap?.get(moveId) ?? 0) : 0
+    } else {
+      v = scalar?.corinStunBonusPct ?? 0
+    }
+    if (v <= 0) return null
+    return {
+      dmgBonus: v,
+      note: ` · 失衡增伤+${v.toFixed(1)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}`,
+    }
+  },
 }
 
 export default corinMechanic

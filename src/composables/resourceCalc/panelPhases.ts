@@ -36,6 +36,7 @@ import {
   type AgentAxisContext,
   type AgentInteractionContext,
   type AgentTeamPhase,
+  type AgentAxisOverlays,
   type AxisScalarOverlays,
   type MechanicTeamMember,
   type ReadonlyTeam,
@@ -320,7 +321,13 @@ export function collectNextRoundFeedback(params: {
  * ——编排层替角色找槽位，每加一个轴覆盖角色就要再改一次编排层。
  *
  * 派发顺序 = 注册表顺序（取值式无写入，顺序不影响结果；与 applyTeamMechanics 的槽位序不同不需要）。
- * 返回扁平化后的四桶（与 `DamagePoolContext` 同名，调用方直接展开）+ 按槽位索引的标量表。
+ * 返回**按槽位归属**的 `bucketsBySlot`（各模块 `axisWindowOverlays` 的原始返回）+ 按槽位索引的标量表。
+ *
+ * ⚠ **CC-17（2026-09-26）起不再把四个桶跨模块合并成全局表**（设计稿
+ * `docs/mcp-cc17-axis-overlay-consume.md` §3）：合并后只靠「moveId 全局唯一」避免串味，
+ * 而 `'basic_attack'` 是所有角色普攻聚合行的公共键 ⇒ 可琳扫除帮手会泄漏给队友轴内普攻行（§2 实测）。
+ * 改为 `Map<slot, AgentAxisOverlays>` 后，消费端（`directRowBonus`）只读本行所属槽的桶。
+ * `scalarBySlot` 的合并逻辑不变（它本来就按槽位，已经是安全的）。
  *
  * ⚠ **这里没有「`axes.length === 0` 就早退」**（2026-09-16 round 16 删）。原来那行早退让
  * 「非轴折算臂」**物理不可达**（钩子根本不被调用）——非轴模式没有轴可扫描，但**有覆盖率滑块**，
@@ -341,17 +348,11 @@ export function collectAxisWindowOverlays(
   isAxis: boolean,
   damagePanels: readonly PanelValues[],
 ): {
-  banyueMingwangStacks: Map<string, number>
-  yixuanNingshenMap: Map<string, { critDmg: number; sheerDmg: number }>
-  peiluoKagerouMap: Map<string, number>
-  corinStunBonusMap: Map<string, number>
+  bucketsBySlot: Map<number, AgentAxisOverlays>
   scalarBySlot: Map<number, AxisScalarOverlays>
 } {
   const out = {
-    banyueMingwangStacks: new Map<string, number>(),
-    yixuanNingshenMap: new Map<string, { critDmg: number; sheerDmg: number }>(),
-    peiluoKagerouMap: new Map<string, number>(),
-    corinStunBonusMap: new Map<string, number>(),
+    bucketsBySlot: new Map<number, AgentAxisOverlays>(),
     scalarBySlot: new Map<number, AxisScalarOverlays>(),
   }
   const getAgentSkills = (agentId: string) => catalogStore.agentSkillsByAgentMap.get(agentId) as
@@ -376,10 +377,8 @@ export function collectAxisWindowOverlays(
       settings,
     })
     if (!res) continue
-    if (res.banyueMingwangStacks) out.banyueMingwangStacks = res.banyueMingwangStacks
-    if (res.yixuanNingshenMap) out.yixuanNingshenMap = res.yixuanNingshenMap
-    if (res.peiluoKagerouMap) out.peiluoKagerouMap = res.peiluoKagerouMap
-    if (res.corinStunBonusMap) out.corinStunBonusMap = res.corinStunBonusMap
+    // 按槽归属存各模块原始返回（CC-17）；消费端只读本行 slot 的桶
+    out.bucketsBySlot.set(member.slot, res)
     if (res.scalarBySlot) {
       for (const [slot, scalar] of res.scalarBySlot) out.scalarBySlot.set(slot, scalar)
     }

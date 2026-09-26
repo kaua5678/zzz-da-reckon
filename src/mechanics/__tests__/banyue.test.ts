@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { AUTO_TOPUP_TIME_LIMIT_SEC, computeBanyueRageCycle, computeBanyueMingwangStacks, computeBanyueMingwangBlocks, computeBanyueInteractionTopUp } from '@/mechanics/agents/banyue'
+import { AUTO_TOPUP_TIME_LIMIT_SEC, computeBanyueRageCycle, computeBanyueMingwangStacks, computeBanyueMingwangBlocks, computeBanyueInteractionTopUp, banyueMechanic, MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
 import { isFrontlineExecution } from '@/types/resource'
 
 describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', () => {
@@ -943,5 +943,39 @@ describe('自动补齐的时间合法性（用户口径 2026-09-01：>200s 即�
 
   it('上限是常量单一来源（规则 11），不是散落的字面量', () => {
     expect(AUTO_TOPUP_TIME_LIMIT_SEC).toBe(200)
+  })
+})
+
+describe('CC-17：般岳 directRowBonus（明王行级加成，轴/非轴两臂 + note 逐字）', () => {
+  const exec = (moveId: string) => ({ moveId } as never)
+  const buckets = (stacks: number) => ({ banyueMingwangStacks: new Map([['1471010', stacks]]) })
+  const scalar = (pct: number) => ({ banyueMingwangPct: pct })
+
+  it('轴臂：桶层数 × MINGWANG_BASE_PER_STACK，note「（轴内覆盖）」', () => {
+    const rb = banyueMechanic.directRowBonus!({
+      exec: exec('1471010'), isAxis: true, stunOverride: 1, buckets: buckets(2) as never, scalar: undefined,
+    })!
+    expect(rb.dmgBonus).toBe(2 * MINGWANG_BASE_PER_STACK)
+    expect(rb.note).toBe(' · 明王+10.0%（轴内覆盖）')
+  })
+
+  it('轴臂：桶里查不到的 moveId → null（不产 0 段）', () => {
+    expect(banyueMechanic.directRowBonus!({
+      exec: exec('9999'), isAxis: true, stunOverride: 1, buckets: buckets(2) as never, scalar: undefined,
+    })).toBeNull()
+  })
+
+  it('非轴臂：读本槽标量，note「（覆盖率近似）」', () => {
+    const rb = banyueMechanic.directRowBonus!({
+      exec: exec('1471010'), isAxis: false, stunOverride: 0, buckets: undefined, scalar: scalar(7.5) as never,
+    })!
+    expect(rb.dmgBonus).toBe(7.5)
+    expect(rb.note).toBe(' · 明王+7.5%（覆盖率近似）')
+  })
+
+  it('两臂皆 0 → null（不产空 note）', () => {
+    expect(banyueMechanic.directRowBonus!({
+      exec: exec('1471010'), isAxis: false, stunOverride: 0, buckets: undefined, scalar: scalar(0) as never,
+    })).toBeNull()
   })
 })

@@ -16,7 +16,7 @@ import { calcDirectDamage, calcAnomalyDamage, resolveSpecialDamageProfile } from
 import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, resolveStatElement } from '@/core/anomalyPool/helpers'
 import { getAgentMechanic } from '@/mechanics'
-import type { AxisScalarOverlays } from '@/mechanics'
+import type { AgentAxisOverlays, AxisScalarOverlays } from '@/mechanics'
 // 2026-09-16 round 17（R15-c）：`YESHUGUANG_FULL_STUN_MOVES` 与 `HUGO_FULL_STUN_MOVES` 的 import
 // 已删——两处白名单判据迁进各自模块的 `stunOverrideForMove` 钩子。
 // 2026-09-17 round 18（R15-d）：`veilStunMultiplier` 的 import 也已删——帷幕封顶算式整条迁进
@@ -75,15 +75,16 @@ export interface DamagePoolContext {
   agentNames: Record<string, string>
   autoActive: boolean
   stunAxisResult: unknown
-  /** 般岳明王轴覆盖（moveId → 层数） */
-  banyueMingwangStacks: Map<string, number>
-  yixuanNingshenMap: Map<string, { critDmg: number; sheerDmg: number }>
-  peiluoKagerouMap: Map<string, number>
-  corinStunBonusMap: Map<string, number>
+  /**
+   * 按**槽位**归属的轴窗口 overlay 原始返回（CC-17 2026-09-26）：
+   * `slot → AgentAxisOverlays`（该槽模块 `axisWindowOverlays` 的原始返回，含 4 个 moveId 桶）。
+   * 消费端（`directRowBonus`）只读**本行所属槽**的桶——旧的跨模块全局桶会把可琳扫除帮手
+   * 泄漏给队友轴内 `basic_attack` 行（设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §2）。
+   */
+  axisBucketsBySlot: Map<number, AgentAxisOverlays>
   /**
    * 按**槽位**索引的标量覆盖（非轴折算臂 + 与轴无关的标量臂；见 `AxisScalarOverlays`）。
-   * 与四个 moveId 索引的桶并列：那些只靠「moveId 全局唯一」避免串味，而标量对全角色全部行同值，
-   * 没有 moveId 可索引 ⇒ 必须按槽位键控，否则会泄漏给队友行。
+   * 标量对全角色全部行同值，没有 moveId 可索引 ⇒ 必须按槽位键控，否则会泄漏给队友行。
    */
   axisScalarBySlot: Map<number, AxisScalarOverlays>
   /** 当前窗口时长（秒）：函数注入（读 configStore 失衡延时等实时口径） */

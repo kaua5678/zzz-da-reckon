@@ -575,3 +575,24 @@ describe('出枪式段的时间占用（2026-09-05 重复计费修复）', () =>
     expect(t.slack).toBeLessThanOrEqual(5)
   })
 })
+
+describe('CC-17：希格莉德 directRowBonus（浸染增伤，与轴模式无关）', () => {
+  it('读本槽标量，note 逐字；0 不产出；轴/非轴同值', () => {
+    const exec = { moveId: 'basic_attack' } as never
+    const rb = sigridMechanic.directRowBonus!({
+      exec, isAxis: false, stunOverride: 0, buckets: undefined, scalar: { sigridInfectionPct: 7.5 } as never,
+    })!
+    expect(rb.dmgBonus).toBe(7.5)
+    expect(rb.note).toBe(' · 浸染增伤+7.5%（风化覆盖率×15%）')
+    // 与轴模式无关：轴模式给同一值（原分支里 isAxis 不出现）
+    const onAxis = sigridMechanic.directRowBonus!({
+      exec, isAxis: true, stunOverride: 1, buckets: undefined, scalar: { sigridInfectionPct: 15 } as never,
+    })!
+    expect(onAxis.dmgBonus).toBe(15)
+    expect(onAxis.note).toBe(' · 浸染增伤+15.0%（风化覆盖率×15%）')
+    // 0 ⇒ null
+    expect(sigridMechanic.directRowBonus!({
+      exec, isAxis: false, stunOverride: 0, buckets: undefined, scalar: undefined,
+    })).toBeNull()
+  })
+})

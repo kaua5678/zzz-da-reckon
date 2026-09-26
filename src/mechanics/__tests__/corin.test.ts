@@ -279,6 +279,46 @@ describe('可琳额外能力 buff 轴（轴模式：轴内全招式+35%，般岳
     return { catalog, config }
   }
 
+  /**
+   * §2 泄漏场景（CC-17）：队 [1061, 1021]（1021 使可琳额外能力生效），轴内除可琳自己的动作外
+   * 还有 slot1 的平A块。可琳的 `corinStunBonusMap` 把平A块归并到键 `'basic_attack'`，
+   * 而所有角色的普攻聚合行 moveId 都是 `'basic_attack'` ⇒ 旧实现（桶跨模块合并）会把 35%
+   * 泄漏给队友的轴内普攻行。修好后队友行不再带「失衡增伤」。
+   */
+  async function setupAxisLeak(cinemaLevel = 0) {
+    const { catalog, config } = await setup('1021', cinemaLevel)
+    config.useStunAxis = true
+    config.stunAxes = [{
+      name: '可琳轴',
+      actions: [
+        { slot: 0, moveId: '1061011', count: 1, startTime: 0 }, // 可琳强化特殊技（EX）
+        { slot: 0, moveId: 'basic', count: 5, startTime: 2 },   // 可琳平A块（5 秒，编辑器口径）
+        { slot: 1, moveId: 'basic', count: 3, startTime: 7 },   // 队友平A块（泄漏面）
+        { slot: 0, moveId: '1061018', count: 1, startTime: 10 }, // 可琳终结技
+      ],
+    }]
+    return { catalog, config }
+  }
+
+  it('泄漏锁：队友轴内 basic_attack 不吃可琳扫除帮手（CC-17）', async () => {
+    await setupAxisLeak(0)
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    expect(calc.stunAxisResult.value).not.toBeNull()
+    // (a) 正对照：可琳自己的轴内 basic_attack 行仍带「失衡增伤+35.0%（buff轴）」
+    const corinBasic = calc.damagePoolRows.value.filter(
+      r => r.slot === 0 && r.agentId === '1061' && r.moveId === 'basic_attack',
+    )
+    expect(corinBasic.length).toBeGreaterThan(0)
+    expect(corinBasic.some(r => (r.note ?? '').includes('失衡增伤+35.0%（buff轴）'))).toBe(true)
+    // (b) 队友（1021）的所有 basic_attack 行都不带失衡增伤（旧实现此处红）
+    const mateBasic = calc.damagePoolRows.value.filter(
+      r => r.slot === 1 && r.agentId === '1021' && r.moveId === 'basic_attack',
+    )
+    expect(mateBasic.length).toBeGreaterThan(0)
+    for (const row of mateBasic) expect(row.note ?? '').not.toContain('失衡增伤')
+  })
+
   it('轴内招式行吃 +35%（note 标注 buff轴），basic_attack 聚合行经普攻段归并同样生效，轴外行不吃', async () => {
     await setupAxis(0)
     const calc = useResourceCalc()
@@ -300,6 +340,27 @@ describe('可琳额外能力 buff 轴（轴模式：轴内全招式+35%，般岳
     const outAxis = rows.filter(r => (r.note ?? '').includes('轴外'))
     expect(outAxis.length).toBeGreaterThan(0)
     for (const row of outAxis) expect(row.note ?? '').not.toContain('失衡增伤')
+  })
+
+  it('CC-17：directRowBonus 轴臂按 stunOverride 段级门控，非轴读标量，note 逐字', () => {
+    const exec = { moveId: 'basic_attack' } as never
+    const buckets = { corinStunBonusMap: new Map([['basic_attack', CORIN_ADDITIONAL_DMG]]) }
+    // 轴内段：吃桶值，note「（buff轴）」
+    const inAxis = corinMechanic.directRowBonus!({
+      exec, isAxis: true, stunOverride: 1, buckets: buckets as never, scalar: undefined,
+    })!
+    expect(inAxis.dmgBonus).toBe(CORIN_ADDITIONAL_DMG)
+    expect(inAxis.note).toBe(' · 失衡增伤+35.0%（buff轴）')
+    // 轴外段（stunOverride=0）：桶里有键也不吃（段级门控）
+    expect(corinMechanic.directRowBonus!({
+      exec, isAxis: true, stunOverride: 0, buckets: buckets as never, scalar: undefined,
+    })).toBeNull()
+    // 非轴：读本槽标量，note「（覆盖率近似）」
+    const nonAxis = corinMechanic.directRowBonus!({
+      exec, isAxis: false, stunOverride: 0, buckets: undefined, scalar: { corinStunBonusPct: 17.5 } as never,
+    })!
+    expect(nonAxis.dmgBonus).toBe(17.5)
+    expect(nonAxis.note).toBe(' · 失衡增伤+17.5%（覆盖率近似）')
   })
 })
 

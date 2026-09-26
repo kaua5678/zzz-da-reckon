@@ -1005,6 +1005,26 @@ export const banyueMechanic: AgentMechanicModule = {
     }
   },
   /**
+   * 明王行级加成（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §4）：
+   * 由伤害池消费端按**本行所属槽**的 overlay 调用——轴模式用桶层数 × `MINGWANG_BASE_PER_STACK`，
+   * 非轴模式用折算标量。算式与 note 模板逐字照原 `damagePoolDirect.ts#emitExecDirect`。
+   */
+  directRowBonus: ({ exec, isAxis, buckets, scalar }) => {
+    const moveId = exec.moveId ?? ''
+    let dmg = 0
+    if (isAxis) {
+      const stacks = buckets?.banyueMingwangStacks?.get(moveId) ?? 0
+      if (stacks > 0) dmg = stacks * MINGWANG_BASE_PER_STACK
+    } else {
+      dmg = scalar?.banyueMingwangPct ?? 0
+    }
+    if (dmg <= 0) return null
+    return {
+      dmgBonus: dmg,
+      note: ` · 明王+${dmg.toFixed(1)}%${isAxis ? '（轴内覆盖）' : '（覆盖率近似）'}`,
+    }
+  },
+  /**
    * 交互栏「轴模式自动补齐」的槽位归属声明（规则 6 迁入，棘轮站点 8/8，2026-09-12 #10 真清偿）：
    * 原本 `useResourceCalc.interactionTopUp` 写死 `findIndex(c => c.agentId === '1471')`。
    * 该 computed 的槽位查找 + 懒守卫（非本角色队伍不触发全量计算）改由编排层按本声明完成。
