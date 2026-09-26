@@ -1480,6 +1480,38 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - 蕾米不在 slot0 的 C1 队伍在语料里不覆盖（`/c6` 只设 slot0），由单测兜底。
 - 18s 冷却只做 ⌊T/18⌋ 封顶，未按时间轴逐个判定。若日后需要精细化，改 remielleFlowerFeatherDanceCasts 一处即可。
 
+### 5.45 莱特额外能力 buff 生效性核实 + CC-42 done + CC-35d-B4 状态纠正（lead-arena-0925c，2026-09-27 第 58 轮）
+
+**提交**：测试 `edecb55`（新文件 `src/composables/__tests__/lighterAdditionalGate.test.ts`），CC-42 src `d57c0c3`（mechanics/types.ts、remielle.ts、resourceCalc/anomalyPanels.ts）。回退：各自 `git revert`，两者互不依赖。
+
+**1. 莱特额外能力 buff 是否默认生效（§5.34 未决，本轮关闭）**
+- 对象：`lighter.additional_morale_ice_fire_dmg`（teammate-buffs.json，公式 `min(75, 25 + floor(max(0, x−170)/10)×5)`，x = 莱特局内冲击力）。门控：spec 1161 `additionalAbility` = 队中有[强攻] 或同阵营（卡吕冬之子）。
+- 探针实测（推荐配装，C0）：
+  | 队伍 | 选择表默认 | 莱特冲击 局外/局内 | 关 buff 后 slot0 冰伤/火伤 变化 |
+  |---|---|---|---|
+  | 1191-1161-1311 | enabled | 185.66 / 278.49 | 170→95、75→0（各 −75） |
+  | 1041-1161-1311 | enabled | 185.66 / 278.49 | 75→0、147.5→72.5（各 −75） |
+  | 1251-1161-1131（无强攻、无卡吕冬） | **不勾** | 185.66 / 278.49 | 强行勾上后仍不变（面板层 `ADDITIONAL_GATE_BUFFS` 第二道门控） |
+- **结论**：门控满足时默认生效；推荐配装下局内冲击 278.49 ≥ 270，公式顶在硬顶 75。所以 CC-35c-B 的 ×1.2→×1.3 dump 零差是**已顶上限**，不是未生效。含 1161 的 perf 语料 5 队（1041/1321/1591×2/1191）都有强攻，门控都开。
+- 已知覆盖缺口：来源面板 ×1.2（`adjustTeammateBuffSource`）只在局内冲击 <270 时影响结果（推荐配装到不了），靠模块单测兜底；本轮不补。
+- 回归测试 `lighterAdditionalGate.test.ts`（2 条）：①门控满足时默认勾选、莱特冲击 ≥270、关掉后冰伤/火伤各 −75；②门控不满足时默认不勾，强行勾上面板仍不变。反向变异（`panelPhases.ts` 的 `ADDITIONAL_GATE_BUFFS['1161']` 置空）：第 ②条红；还原后绿。
+- 注意：用例①断言了「推荐配装冲击 ≥270」。若日后推荐配装数据改动导致它红，那是数据变化信号，不是回归：把该断言改为按实测冲击算期望值即可。
+
+**2. CC-42：`isRemielleAgent` 跨槽判定 → 模块能力 `excludeFromWindInfectionPick`**
+- 原状：`anomalyPanels.ts#getWindInfectionTargetSlot` 在风化浸染默认挑槽时，按值导入 `isRemielleAgent` 排除蕾米埃尔（首选轮排除，兜底轮不排除）。以前注释说「跨槽决策无落点，需新契约」。
+- 决定：新增**声明式**模块能力 `excludeFromWindInfectionPick?: boolean`（mechanics/types.ts），不需要钩子入参，因此不算新契约。蕾米埃尔模块声明 true；anomalyPanels 按槽位 agentId 调 `getAgentMechanic` 读取，删除对 `@/mechanics/agents/remielle` 的值导入。
+- 等价依据：`isRemielleAgent` 的别名臂 `teammateBuffId === 'remielle'` 在数据面恒 false（蕾米 teammateBuffId = '1581'，`helpersNightC.test.ts` 组2-E 第 2 条锁定），所以按 agentId 派发与原判定逐位等价。`isRemielleAgent` 本身保留（remielle.ts 内部 3 处在用）。
+- 验证：vue-tsc 0；helpersNightC / lighterAdditionalGate / remielle / anomalyPanels 74 条通过；dump、rowsnap 对 `dump-41`/`rows-41` **零差**。反向变异（改为 false）：helpersNightC 风染挑槽成对用例红 1 条，dump 出差 6 键（语料覆盖到了），还原后绿。`npm run verify` 见 `/home/kaua/calc-arch/verify42.log`。
+- 判据 22 / agentId 棘轮不变（`isRemielleAgent` 不以角色前缀开头，本来就不计数）。
+
+**3. CC-35d-B4 状态纠正**：`liuyinPromote.ts` 改名已在 CC-40（`0b6b973`）做成 `ultimatePromote.ts`（census §5.42）。§5.33/§5.35/§5.36 里「CC-35d-B4 待做」是过期状态，**视为 done（并入 CC-40），不要再开工**。
+
+**下一步（按顺序）**
+1. W31（派低级模型）：悠真轴模式伤害池消费端测试，卡面在任务队列 §2。
+2. 可选观感收尾：`AliceCoweringDotResult` / `calcAliceCoweringDot` 改通用名（不计判据 22，纯可读性）。
+3. 候选调研：来源面板 ×1.2 在低冲击配装下的集成覆盖（见上文「已知覆盖缺口」）；多槽同角色时 `giftedPolarAssaultCount` 的求和语义复核。
+4. 暂缓不动：CC-11b（理由见 arch 表）。
+
 ## 附录：普查脚本 census.sh
 
 ```bash

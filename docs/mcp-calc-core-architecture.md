@@ -206,6 +206,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-40 | review | **done** `0b6b973`（判据 22 5→0，**硬门**） | 40a `liuyinPromote.ts`→`ultimatePromote.ts`；40b moduleFeedback 键 `consumedTeamEnergy` / `teamUltimateExtra`；40c 面板 `veilStunCapMult` / `veilStunVulnBase` | census §5.42 |
 | CC-39c | review | **done** `0f9f329` | 佩洛伊斯右分支决算轴集成快照（`peiluoVerdictTruncation.test.ts`，覆盖率 0.0834 对 0.2778） | census §5.43 |
 | CC-41 | done | `8b2a1d2` | 蕾米埃尔 1 命花羽轮舞喧响：改走 moduleFeedback `remielleFlowerFeatherDanceCasts`（nextRoundFeedback → applyTeamConfig converge），次数 = min(队友虚曜数, ⌊T/18⌋)；删除无写入方的面板次数字段 | census §5.44 |
+| CC-42 | done | `d57c0c3` | 风化浸染默认挑槽的蕾米埃尔排除（跨槽决策）→ 模块能力 `excludeFromWindInfectionPick`；anomalyPanels 不再值导入 `@/mechanics/agents/remielle`；dump/rows 对 dump-41 零差 | census §5.45 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
