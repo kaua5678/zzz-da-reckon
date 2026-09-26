@@ -159,6 +159,13 @@ describe('CC-19b：简 extraAnomalyRows（C6 强击暴击附伤逐字）', () =>
     axisInUnits: () => 0,
     getMechanicSetting: (_k: string, d: number) => d,
     anomalyPool: null,
+    // CC-19c-2 2026-09-26：ExtraAnomalyRowsInput 再扩 6 个必填字段；简只解构自己需要的字段，桩值不参与。
+    entryPanel: undefined,
+    skills: undefined,
+    panelOf: () => undefined,
+    teamElement: () => 'physical',
+    getTeamMechanicSetting: (_k: string, d: number) => d,
+    elementLabel: (el: string) => el,
     ...overrides,
   })
 

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import { computePanelPhases, calcVoidflareDamage, computeRemielleEntryPanel, findMoveById, getRemielleLevelValue } from '@/composables/resourceCalc/helpers'
-import { computeRemielleMechanic } from '@/mechanics/agents/remielle'
+import { emptyPanel } from '@/core/panel'
+import { computeRemielleMechanic, remielleMechanic } from '@/mechanics/agents/remielle'
+import type { AgentSkills } from '@/types/catalog'
 
 /** 3异常队（蕾米+薇薇安+月城柳），额外能力 tier=3；globalBuffs 关掉防污染（SOP §7） */
 async function setup(cinemaLevel = 0) {
@@ -112,6 +114,133 @@ describe('蕾米埃尔（1581）虚曜·耀变·异化系数', () => {
         expect(baseMultiplierIn(r.note)).toBeCloseTo(mult, 9)
         expect(baseMultiplierIn(r.note)).not.toBeCloseTo(mult * 2.5, 3)
       }
+    }
+  })
+})
+
+// CC-19c-2 2026-09-26：块 6（耀变 / 特殊虚耀）自 `damagePoolAnomaly.ts` 迁进模块能力
+// `extraAnomalyRows`（设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §7.2）。逐字锁 id/count/order。
+describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字）', () => {
+  const panel = (overrides: Record<string, unknown> = {}) => ({
+    ...emptyPanel(), atk: 1000, anomalyProficiency: 100, skillLevelBonus: 0, ...overrides,
+  })
+  /** 四个招式的耀变倍率行（values=[100] ⇒ multiplier=100） */
+  const skills = () => ({
+    id: '1581', agentId: '1581', name: { zhCN: '蕾米埃尔', en: 'Remielle' },
+    categories: [{
+      id: 'c', name: { zhCN: '', en: '' }, levelRange: { min: 1, max: 12, default: 12 },
+      moves: ['1581015', '1581016', '1581008', '1581007'].map(id => ({
+        id, name: { zhCN: '', en: '' },
+        rows: [{ id: 'luminize_multiplier', label: { zhCN: '', en: '' }, kind: 'luminizeMultiplier', values: [100] }],
+      })),
+    }],
+  })
+  const input = (overrides: Record<string, unknown> = {}) => ({
+    slot: 0,
+    charResult: undefined,
+    windRate: 0,
+    anomalyProgress: () => undefined,
+    buildVirtualPanel: () => null,
+    buildSettlementEntries: () => [],
+    axisStunFor: () => 0,
+    enemy: { defense: 0, level: 60, stunVuln: 1.5 },
+    enemyDamageRes: {},
+    anomalyMultiplier: 1,
+    teamAgentId: (s: number) => (s === 0 ? '1581' : s === 1 ? '1331' : '1221'),
+    agentName: (_id: string, s: number) => (s === 0 ? '蕾米埃尔' : `队友${s}`),
+    panel: panel() as never,
+    cinemaLevel: 0,
+    isAxis: false,
+    stunCoverage: 1,
+    inWindowFraction: () => 1,
+    ultimateInAxisFraction: () => 1,
+    axisInUnits: () => 0,
+    getMechanicSetting: (_k: string, d: number) => d,
+    anomalyPool: null,
+    entryPanel: panel() as never,
+    skills: skills() as unknown as AgentSkills,
+    panelOf: (s: number) => (s === 1 || s === 2 ? panel() as never : undefined),
+    teamElement: () => 'electric',
+    getTeamMechanicSetting: (_k: string, d: number) => d,
+    elementLabel: (el: string) => (el === 'electric' ? '电' : el),
+    ...overrides,
+  })
+
+  it('无 entryPanel → []', () => {
+    expect(remielleMechanic.extraAnomalyRows!(input({ entryPanel: undefined }))).toEqual([])
+  })
+
+  it('无 panel → []', () => {
+    expect(remielleMechanic.extraAnomalyRows!(input({ panel: undefined }))).toEqual([])
+  })
+
+  it('无队友虚耀计数（perSlotAnomalyTriggers 全 0）→ []', () => {
+    expect(remielleMechanic.extraAnomalyRows!(input({
+      anomalyPool: { perSlotAnomalyTriggers: [0, 0, 0] } as never,
+    }))).toEqual([])
+  })
+
+  it('2 个队友虚耀计数：order=60，耀变行 id/count 逐字', () => {
+    const groups = remielleMechanic.extraAnomalyRows!(input({
+      anomalyPool: { perSlotAnomalyTriggers: [0, 2, 3] } as never,
+    }))
+    expect(groups).toHaveLength(1)
+    expect(groups[0].order).toBe(60)
+    // 3 个载体 × 2 个队友槽 = 6 行，顺序为 actionRows 外层循环 × voidflareBySlot 内层循环
+    expect(groups[0].rows.map(r => r.id)).toEqual([
+      'remielle-luminize-assist-1', 'remielle-luminize-assist-2',
+      'remielle-luminize-ultimate-1', 'remielle-luminize-ultimate-2',
+      'remielle-luminize-basic-1', 'remielle-luminize-basic-2',
+    ])
+    // 支援技按队友虚耀次数原样；终结技按 q 批次（5 次 ⇒ 1 批：firstPerBatch=1, secondPerBatch=2）
+    expect(groups[0].rows[0]).toMatchObject({
+      slot: 0, agentId: '1581', agentName: '蕾米埃尔', type: '耀变',
+      name: '支援技花羽轮舞·耀变', element: 'electric',
+      source: '队友1 的电异常虚耀', count: 2,
+    })
+    expect(groups[0].rows[1]).toMatchObject({ id: 'remielle-luminize-assist-2', count: 3 })
+    expect(groups[0].rows[2]).toMatchObject({ id: 'remielle-luminize-ultimate-1', count: 1 })
+    expect(groups[0].rows[3]).toMatchObject({ id: 'remielle-luminize-ultimate-2', count: 2 })
+    // 惊鸿按 c6LuminizeMultiplier（emptyPanel 默认 remielleCinema6LuminizeTriggerMultiplier=1 ⇒ ×2）
+    expect(groups[0].rows[4]).toMatchObject({ id: 'remielle-luminize-basic-1', count: 4 })
+    expect(groups[0].rows[5]).toMatchObject({ id: 'remielle-luminize-basic-2', count: 6 })
+  })
+
+  it('C1（remielleCinema1SpecialVoidflareCount>0）时含 remielle-special-voidflare 行', () => {
+    const groups = remielleMechanic.extraAnomalyRows!(input({
+      anomalyPool: { perSlotAnomalyTriggers: [0, 2, 3] } as never,
+      panel: panel({ remielleCinema1SpecialVoidflareCount: 1 }) as never,
+    }))
+    const special = groups[0].rows.find(r => r.id === 'remielle-special-voidflare')
+    expect(special, 'C1 特殊虚耀行缺失').toBeTruthy()
+    expect(special).toMatchObject({
+      slot: 0, agentId: '1581', type: '特殊虚耀',
+      name: '普通攻击垂虹·特殊虚耀', element: 'lumiflux',
+      source: '蕾米进场记录面板 × 2.5 特殊独立乘区', count: 2,
+    })
+  })
+
+  it('无 C1 → 不含特殊虚耀行（普通耀变行仍在）', () => {
+    const groups = remielleMechanic.extraAnomalyRows!(input({
+      anomalyPool: { perSlotAnomalyTriggers: [0, 2, 3] } as never,
+    }))
+    expect(groups[0].rows.find(r => r.id === 'remielle-special-voidflare')).toBeUndefined()
+    expect(groups[0].rows.length).toBe(6)
+  })
+})
+
+// CC-19c-2 2026-09-26：块 6 经 `extraAnomalyRows` 派发点进伤害池（真管线）。
+// 这条是派发点接线的自证锚点：把派发点短路成空，本断言必须红。
+describe('CC-19c-2：蕾米埃尔耀变行进伤害池（extraAnomalyRows 派发点接线）', () => {
+  it('remielle-luminize-* 行进伤害池', async () => {
+    await setup(0)
+    const calc = useResourceCalc()
+    const rows = calc.damagePoolRows.value.filter(r => String(r.id).startsWith('remielle-luminize-'))
+    expect(rows.length, '耀变行未进伤害池（extraAnomalyRows 派发点断了）').toBeGreaterThan(0)
+    for (const r of rows) {
+      expect(r.type).toBe('耀变')
+      expect(r.count).toBeGreaterThan(0)
+      expect(r.totalDamage).toBeGreaterThan(0)
     }
   })
 })

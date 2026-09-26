@@ -4,10 +4,11 @@
  *
  * 职责（一个域：**异常池产出行 + 角色专属附伤块**）：风属性异常事件（维琳娜风异放按轴内
  * 非风触发占比拆段）/ 乱流 / 紊乱明细 / 按元素异常累积（虚拟面板 + 按触发者分摊结算），
- * 以及角色专属异常附加行的**派发点**（按模块能力 `extraAnomalyRows` 收集分组、稳定排序后展开）
- * 与仍内联的 1581 蕾米埃尔耀变/特殊虚耀。柏妮思 C6 灼烧迸发已于 CC-19a（2026-09-26）、
- * 1401 极性强击/爱丽丝 C6 决胜附伤/爱丽丝畏缩 DOT 与 1261 简 C6 已于 CC-19b（2026-09-26）
- * 迁进各角色模块的 `extraAnomalyRows`。
+ * 以及角色专属异常附加行的**派发点**（按模块能力 `extraAnomalyRows` 收集分组、稳定排序后展开）。
+ * 各角色块已全部迁进各自模块：柏妮思 C6 灼烧迸发已于 CC-19a（2026-09-26）、
+ * 1401 极性强击/爱丽丝 C6 决胜附伤/爱丽丝畏缩 DOT 与 1261 简 C6 已于 CC-19b（2026-09-26）、
+ * 1581 蕾米埃尔耀变/特殊虚耀已于 CC-19c（2026-09-26）迁进 `extraAnomalyRows`。
+ * 本文件不再有内联角色块；派发点是异常尾段唯一的角色出口。
  *
  * 与外层闭包的通信面 = `AnomalyRowsEnv`：共享输出数组 `rows`（**按原顺序 push，禁止换成
  * 返回值拼接**）+ `ctx` 快照 + 只读局部量/闭包（`agentName` / `enemyDamageRes` / `isAxis` /
@@ -21,7 +22,6 @@
 import { calcAnomalyDamage } from '@/core/damage'
 import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG, resolveStatElement } from '@/core/anomalyPool/helpers'
-import { fmt } from '@/utils/format'
 import type { PanelValues } from '@/types/catalog'
 import type { AnomalyEventExecution } from '@/types/resource'
 import { elementLabel, parseReleaseMultiplier, type DamagePoolRow } from './helpers'
@@ -30,12 +30,7 @@ import {
   buildAnomalyVirtualPanel,
   buildAnomalySettlementEntries,
   getTeamAnomalyDurationBonus,
-  getRemielleLevelValue,
-  remielleSpecialVoidflareCount,
-  calcVoidflareDamage,
-  findSlotByIdentity,
 } from './anomalyPanels'
-import { findMoveById } from './skillRows'
 import { getAgentMechanic } from '@/mechanics'
 import type { ExtraAnomalyRowGroup } from '@/mechanics'
 // 纯类型：运行时被擦除，与 damagePool.ts 的 `emitAnomalyRows` 值导入不构成运行时环。
@@ -329,141 +324,15 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
         axisInUnits: (key) => allocMap[key]?.inAxisUnits ?? 0,
         getMechanicSetting: (k, d) => configStore.getMechanicSetting(k, d),
         anomalyPool: anomalyPoolResult,
+        entryPanel: panelAt(remielleEntryPanels, slot),
+        skills: catalogStore.agentSkillsByAgentMap.get(configStore.team[slot]?.agentId ?? ''),
+        panelOf: (s) => panelAt(damagePanels, s),
+        teamElement: (s) => catalogStore.agentsMap.get(configStore.team[s]?.agentId ?? '')?.damageElement ?? 'physical',
+        getTeamMechanicSetting: (k, d) => configStore.getTeamMechanicSetting(k, d),
+        elementLabel,
       })
       : undefined
     if (groups) extraGroups.push(...groups)
   })
   for (const r of flattenAnomalyRowGroups(extraGroups)) rows.push(r)
-
-  const remielleSlot = findSlotByIdentity(configStore, catalogStore, ['1581'])
-  const remiellePanel = remielleSlot >= 0 ? panelAt(damagePanels, remielleSlot) : undefined
-  const remielleEntryPanel = remielleSlot >= 0 ? panelAt(remielleEntryPanels, remielleSlot) : undefined
-  if (remiellePanel && remielleEntryPanel) {
-    const remielleSkills = catalogStore.agentSkillsByAgentMap.get(configStore.team[remielleSlot]?.agentId ?? '')
-    const otherSlots = [0, 1, 2].filter(slot => slot !== remielleSlot)
-    const perSlotAnomaly = anomalyPoolResult?.perSlotAnomalyTriggers ?? []
-    const voidflareBySlot = otherSlots
-      .map(slot => ({
-        slot,
-        count: Math.max(0, Math.floor(perSlotAnomaly[slot] ?? 0)),
-        element: catalogStore.agentsMap.get(configStore.team[slot]?.agentId ?? '')?.damageElement ?? 'physical',
-        panel: panelAt(damagePanels, slot),
-      }))
-      .filter(item => item.count > 0 && item.panel)
-    const voidflareTotal = voidflareBySlot.reduce((sum, item) => sum + item.count, 0)
-
-    if (voidflareTotal > 0 && remielleSkills) {
-      const skillLevelBonus = remiellePanel.skillLevelBonus ?? 0
-      const c1ResIgnore = (remiellePanel.remielleCinema1SpecialVoidflareCount ?? 0) > 0 ? 50 : 0
-      const c6LuminizeMultiplier = 1 + Math.max(0, remiellePanel.remielleCinema6LuminizeTriggerMultiplier ?? 0)
-      const qBatches = Math.floor(voidflareTotal / 3)
-      const firstOtherSlot = otherSlots[0]
-      const secondOtherSlot = otherSlots[1]
-      const firstPerBatch = otherSlots.length === 1
-        ? 3
-        : Math.max(0, Math.min(3, Math.floor(configStore.getTeamMechanicSetting(`remielle.q:${remielleSlot}`, 1))))
-      const secondPerBatch = Math.max(0, 3 - firstPerBatch)
-      const qCountBySlot: Record<string, number> = {}
-      if (otherSlots.length === 1) {
-        qCountBySlot[String(firstOtherSlot)] = qBatches * 3
-      } else {
-        qCountBySlot[String(firstOtherSlot)] = qBatches * firstPerBatch
-        qCountBySlot[String(secondOtherSlot)] = qBatches * secondPerBatch
-      }
-      const actionRows = [
-        {
-          id: 'remielle-luminize-assist',
-          name: '支援技花羽轮舞·耀变',
-          moveId: '1581015',
-          countsBySlot: Object.fromEntries(voidflareBySlot.map(item => [item.slot, item.count])),
-        },
-        {
-          id: 'remielle-luminize-ultimate',
-          name: '终结技缭乱终幕·耀变',
-          moveId: '1581016',
-          countsBySlot: qCountBySlot,
-        },
-        {
-          id: 'remielle-luminize-basic',
-          name: '普通攻击惊鸿·耀变',
-          moveId: '1581008',
-          countsBySlot: Object.fromEntries(voidflareBySlot.map(item => [item.slot, item.count * c6LuminizeMultiplier])),
-        },
-      ]
-
-      for (const action of actionRows) {
-        const move = findMoveById(remielleSkills, action.moveId)
-        const luminizeRow = move?.rows.find(row => row.kind === 'luminizeMultiplier' || row.id === 'luminize_multiplier')
-        const multiplier = getRemielleLevelValue(luminizeRow, skillLevelBonus)
-        if (multiplier <= 0) continue
-        const actionCount = Object.values(action.countsBySlot).reduce((a, b) => a + b, 0)
-        if (actionCount <= 0) continue
-
-        for (const item of voidflareBySlot) {
-          const count = action.countsBySlot[String(item.slot)] ?? 0
-          if (count <= 0 || !item.panel) continue
-          const result = calcVoidflareDamage({
-            sourcePanel: item.panel,
-            remiellePanel,
-            multiplier,
-            element: item.element,
-            enemyDefense: configStore.enemy.defense,
-            enemyResistances: enemyDamageRes,
-            stunMultiplier: configStore.enemy.stunVuln,
-            stunned: stunCoverage,
-            cinema1ResIgnore: c1ResIgnore,
-          })
-          rows.push({
-            id: `${action.id}-${item.slot}`,
-            slot: remielleSlot,
-            agentId: configStore.team[remielleSlot]?.agentId ?? '',
-            agentName: agentName(configStore.team[remielleSlot]?.agentId ?? '', remielleSlot),
-            type: '耀变',
-            name: action.name,
-            element: item.element,
-            source: `${agentName(configStore.team[item.slot]?.agentId ?? '', item.slot)} 的${elementLabel(item.element)}异常虚耀`,
-            count,
-            perDamage: result.damage,
-            totalDamage: result.damage * count,
-            note: `来源虚耀 ${count} 次 · ${result.formula}`,
-          })
-        }
-      }
-
-      const specialCount = remielleSpecialVoidflareCount(remiellePanel)
-      if (specialCount > 0) {
-        const rainbowMove = findMoveById(remielleSkills, '1581007')
-        const rainbowLuminizeRow = rainbowMove?.rows.find(row => row.kind === 'luminizeMultiplier' || row.id === 'luminize_multiplier')
-        const rainbowMultiplier = getRemielleLevelValue(rainbowLuminizeRow, skillLevelBonus)
-        const specialMultiplier = rainbowMultiplier * 2.5
-        if (specialMultiplier > 0) {
-          const result = calcVoidflareDamage({
-            sourcePanel: remielleEntryPanel,
-            remiellePanel: remielleEntryPanel,
-            multiplier: specialMultiplier,
-            element: 'lumiflux',
-            enemyDefense: configStore.enemy.defense,
-            enemyResistances: enemyDamageRes,
-            stunMultiplier: configStore.enemy.stunVuln,
-            stunned: stunCoverage,
-            cinema1ResIgnore: c1ResIgnore,
-          })
-          rows.push({
-            id: 'remielle-special-voidflare',
-            slot: remielleSlot,
-            agentId: configStore.team[remielleSlot]?.agentId ?? '',
-            agentName: agentName(configStore.team[remielleSlot]?.agentId ?? '', remielleSlot),
-            type: '特殊虚耀',
-            name: '普通攻击垂虹·特殊虚耀',
-            element: 'lumiflux',
-            source: '蕾米进场记录面板 × 2.5 特殊独立乘区',
-            count: specialCount,
-            perDamage: result.damage,
-            totalDamage: result.damage * specialCount,
-            note: `垂虹倍率 ${fmt(rainbowMultiplier)}% × 2.5 · ${result.formula}`,
-          })
-        }
-      }
-    }
-  }
 }

@@ -277,6 +277,13 @@ describe('CC-19b：爱丽丝 extraAnomalyRows（极性强击 / C6 决胜 / 畏�
     axisInUnits: () => 0,
     getMechanicSetting: (_k: string, d: number) => d,
     anomalyPool: { aliceCoweringDot: coweringDot } as never,
+    // CC-19c-2 2026-09-26：ExtraAnomalyRowsInput 再扩 6 个必填字段；爱丽丝只解构自己需要的字段，桩值不参与。
+    entryPanel: undefined,
+    skills: undefined,
+    panelOf: () => undefined,
+    teamElement: () => 'physical',
+    getTeamMechanicSetting: (_k: string, d: number) => d,
+    elementLabel: (el: string) => el,
     ...overrides,
   })
 

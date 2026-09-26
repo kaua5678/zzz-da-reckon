@@ -1388,6 +1388,18 @@ export interface ExtraAnomalyRowsInput {
   getMechanicSetting: (key: string, dflt: number) => number
   /** = ctx.anomalyPoolResult（只读整体注入，模块内读 .aliceCoweringDot；避免在 core 侧出现角色前缀字段） */
   anomalyPool: DamagePoolContext['anomalyPoolResult']
+  /** = panelAt(remielleEntryPanels, slot)（进场快照面板；ctx.remielleEntryPanels 原样） */
+  entryPanel: PanelValues | undefined
+  /** = catalogStore.agentSkillsByAgentMap.get(configStore.team[slot]?.agentId ?? '') */
+  skills: AgentSkills | undefined
+  /** = (s) => panelAt(damagePanels, s) */
+  panelOf: (slot: number) => PanelValues | undefined
+  /** = (s) => catalogStore.agentsMap.get(configStore.team[s]?.agentId ?? '')?.damageElement ?? 'physical' */
+  teamElement: (slot: number) => string
+  /** = (k, d) => configStore.getTeamMechanicSetting(k, d) */
+  getTeamMechanicSetting: (key: string, dflt: number) => number
+  /** = elementLabel（helpers.ts:205，闭包注入以绕开判据 19） */
+  elementLabel: (element: string) => string
 }
 
 /** transformAnomalyPool 钩子输入（calcAnomalyPool 内部，perElement 之前） */

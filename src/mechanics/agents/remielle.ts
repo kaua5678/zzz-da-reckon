@@ -5,13 +5,18 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentTeamPanelEffectInput,
+  ExtraAnomalyRowGroup,
+  ExtraAnomalyRowsInput,
   ReadonlyTeam,
 } from '../types'
+import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { Agent, PanelValues, SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, RemielleMechanicSource } from '@/types/resource'
+import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt } from '@/utils/format'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { ELEMENT_DMG_KEYS, ELEMENT_DEF_REDUCTION_KEYS, ELEMENT_RES_REDUCTION_KEYS } from '@/core/elementKeys'
+import { findMoveById } from '@/data/moveTableQueries'
 
 const REMIELLE_AGENT_ID = '1581'
 /**
@@ -261,4 +266,150 @@ export const remielleMechanic: AgentMechanicModule = {
   buildCharConfig: buildRemielleCharConfig,
   buildResourceResult: buildRemielleResourceResult,
   resourceSections: buildRemielleResourceSections,
+  /**
+   * 蕾米埃尔专属异常附加行（CC-19c-2 2026-09-26，设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §7.2）：
+   * 块 6（耀变 / 特殊虚耀）自 `damagePoolAnomaly.ts` 逐字迁入，order = `EXTRA_ANOMALY_ROW_ORDER.voidflare`（60）。
+   * 字段、字段顺序、id / name / type / source / note 模板与 `[0, 1, 2]` 字面量逐字不变（对象键顺序可能进
+   * rowsnap 哈希）；`remielleSlot` / `remiellePanel` / `remielleEntryPanel` / `remielleSkills` 用局部别名
+   * 保持块体逐字（派发循环里本模块只被自己那槽调用 ⇒ `remielleSlot >= 0` 恒真，别名等价）。
+   */
+  extraAnomalyRows: ({
+    slot, panel, entryPanel, skills, panelOf, teamElement, getTeamMechanicSetting,
+    enemy, enemyDamageRes, stunCoverage, anomalyPool, teamAgentId, agentName, elementLabel,
+  }: ExtraAnomalyRowsInput): ExtraAnomalyRowGroup[] => {
+    const rows: DamagePoolRow[] = []
+    const remielleSlot = slot
+    const remiellePanel = panel
+    const remielleEntryPanel = entryPanel
+    const remielleSkills = skills
+    if (remiellePanel && remielleEntryPanel) {
+      const otherSlots = [0, 1, 2].filter(slot => slot !== remielleSlot)
+      const perSlotAnomaly = anomalyPool?.perSlotAnomalyTriggers ?? []
+      const voidflareBySlot = otherSlots
+        .map(slot => ({
+          slot,
+          count: Math.max(0, Math.floor(perSlotAnomaly[slot] ?? 0)),
+          element: teamElement(slot),
+          panel: panelOf(slot),
+        }))
+        .filter(item => item.count > 0 && item.panel)
+      const voidflareTotal = voidflareBySlot.reduce((sum, item) => sum + item.count, 0)
+
+      if (voidflareTotal > 0 && remielleSkills) {
+        const skillLevelBonus = remiellePanel.skillLevelBonus ?? 0
+        const c1ResIgnore = (remiellePanel.remielleCinema1SpecialVoidflareCount ?? 0) > 0 ? 50 : 0
+        const c6LuminizeMultiplier = 1 + Math.max(0, remiellePanel.remielleCinema6LuminizeTriggerMultiplier ?? 0)
+        const qBatches = Math.floor(voidflareTotal / 3)
+        const firstOtherSlot = otherSlots[0]
+        const secondOtherSlot = otherSlots[1]
+        const firstPerBatch = otherSlots.length === 1
+          ? 3
+          : Math.max(0, Math.min(3, Math.floor(getTeamMechanicSetting(`remielle.q:${remielleSlot}`, 1))))
+        const secondPerBatch = Math.max(0, 3 - firstPerBatch)
+        const qCountBySlot: Record<string, number> = {}
+        if (otherSlots.length === 1) {
+          qCountBySlot[String(firstOtherSlot)] = qBatches * 3
+        } else {
+          qCountBySlot[String(firstOtherSlot)] = qBatches * firstPerBatch
+          qCountBySlot[String(secondOtherSlot)] = qBatches * secondPerBatch
+        }
+        const actionRows = [
+          {
+            id: 'remielle-luminize-assist',
+            name: '支援技花羽轮舞·耀变',
+            moveId: '1581015',
+            countsBySlot: Object.fromEntries(voidflareBySlot.map(item => [item.slot, item.count])),
+          },
+          {
+            id: 'remielle-luminize-ultimate',
+            name: '终结技缭乱终幕·耀变',
+            moveId: '1581016',
+            countsBySlot: qCountBySlot,
+          },
+          {
+            id: 'remielle-luminize-basic',
+            name: '普通攻击惊鸿·耀变',
+            moveId: '1581008',
+            countsBySlot: Object.fromEntries(voidflareBySlot.map(item => [item.slot, item.count * c6LuminizeMultiplier])),
+          },
+        ]
+
+        for (const action of actionRows) {
+          const move = findMoveById(remielleSkills, action.moveId)
+          const luminizeRow = move?.rows.find(row => row.kind === 'luminizeMultiplier' || row.id === 'luminize_multiplier')
+          const multiplier = getRemielleLevelValue(luminizeRow, skillLevelBonus)
+          if (multiplier <= 0) continue
+          const actionCount = Object.values(action.countsBySlot).reduce((a, b) => a + b, 0)
+          if (actionCount <= 0) continue
+
+          for (const item of voidflareBySlot) {
+            const count = action.countsBySlot[String(item.slot)] ?? 0
+            if (count <= 0 || !item.panel) continue
+            const result = calcVoidflareDamage({
+              sourcePanel: item.panel,
+              remiellePanel,
+              multiplier,
+              element: item.element,
+              enemyDefense: enemy.defense,
+              enemyResistances: enemyDamageRes,
+              stunMultiplier: enemy.stunVuln,
+              stunned: stunCoverage,
+              cinema1ResIgnore: c1ResIgnore,
+            })
+            rows.push({
+              id: `${action.id}-${item.slot}`,
+              slot: remielleSlot,
+              agentId: teamAgentId(remielleSlot),
+              agentName: agentName(teamAgentId(remielleSlot), remielleSlot),
+              type: '耀变',
+              name: action.name,
+              element: item.element,
+              source: `${agentName(teamAgentId(item.slot), item.slot)} 的${elementLabel(item.element)}异常虚耀`,
+              count,
+              perDamage: result.damage,
+              totalDamage: result.damage * count,
+              note: `来源虚耀 ${count} 次 · ${result.formula}`,
+            })
+          }
+        }
+
+        const specialCount = remielleSpecialVoidflareCount(remiellePanel)
+        if (specialCount > 0) {
+          const rainbowMove = findMoveById(remielleSkills, '1581007')
+          const rainbowLuminizeRow = rainbowMove?.rows.find(row => row.kind === 'luminizeMultiplier' || row.id === 'luminize_multiplier')
+          const rainbowMultiplier = getRemielleLevelValue(rainbowLuminizeRow, skillLevelBonus)
+          const specialMultiplier = rainbowMultiplier * 2.5
+          if (specialMultiplier > 0) {
+            const result = calcVoidflareDamage({
+              sourcePanel: remielleEntryPanel,
+              remiellePanel: remielleEntryPanel,
+              multiplier: specialMultiplier,
+              element: 'lumiflux',
+              enemyDefense: enemy.defense,
+              enemyResistances: enemyDamageRes,
+              stunMultiplier: enemy.stunVuln,
+              stunned: stunCoverage,
+              cinema1ResIgnore: c1ResIgnore,
+            })
+            rows.push({
+              id: 'remielle-special-voidflare',
+              slot: remielleSlot,
+              agentId: teamAgentId(remielleSlot),
+              agentName: agentName(teamAgentId(remielleSlot), remielleSlot),
+              type: '特殊虚耀',
+              name: '普通攻击垂虹·特殊虚耀',
+              element: 'lumiflux',
+              source: '蕾米进场记录面板 × 2.5 特殊独立乘区',
+              count: specialCount,
+              perDamage: result.damage,
+              totalDamage: result.damage * specialCount,
+              note: `垂虹倍率 ${fmt(rainbowMultiplier)}% × 2.5 · ${result.formula}`,
+            })
+          }
+        }
+      }
+    }
+    if (rows.length === 0) return []
+    return [{ order: EXTRA_ANOMALY_ROW_ORDER.voidflare, rows }]
+  },
 }
