@@ -11,7 +11,7 @@ import type {
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { Agent, PanelValues, SkillMove } from '@/types/catalog'
-import type { CharacterResourceResult, RemielleMechanicSource } from '@/types/resource'
+import type { CharacterOperationConfig, CharacterResourceResult, RemielleMechanicSource } from '@/types/resource'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt } from '@/utils/format'
 import { getSkillLevelCoef } from '@/core/skillLevel'
@@ -259,6 +259,41 @@ function buildRemielleCharConfig({ slot, agent, team, cfg }: AgentCharConfigInpu
 export const remielleMechanic: AgentMechanicModule = {
   id: 'agent:remielle',
   agentIds: [REMIELLE_AGENT_ID],
+  // CC-26：一/四/六命「特殊虚耀 → 垂虹」必做动作（原 core/resource/rowBuild + helpers 内联）
+  extraNecessaryAction: (cfg) => {
+    const count = remielleSpecialVoidflareUseCount(cfg)
+    if (count <= 0) return null
+    return {
+      count,
+      moveId: cfg.remielleRainbowEndMoveId || undefined,
+      moveName: '普通攻击：垂虹（特殊虚耀载体）',
+      actionTime: cfg.remielleRainbowEndActionTime,
+      comboAlignRatio: cfg.remielleRainbowEndComboAlignRatio,
+      decibelRecovery: cfg.remielleRainbowEndDecibelRecovery,
+    }
+  },
+  // CC-26：特殊虚耀异常事件（原 core/resource/rowBuild.ts#buildAnomalyEventExecutions 内联，逐字搬迁）
+  buildAnomalyEvents: ({ cfg, events }) => {
+    const remielleRainbowEndCount = remielleSpecialVoidflareUseCount(cfg)
+    if (remielleRainbowEndCount > 0 && cfg.remielleRainbowEndMoveId) {
+      events.push({
+        eventId: 'remielle_special_voidflare_event',
+        eventName: '特殊虚耀',
+        eventType: 'special_voidflare',
+        carrierMoveId: cfg.remielleRainbowEndMoveId,
+        carrierMoveName: '普通攻击：垂虹',
+        count: remielleRainbowEndCount,
+        formula: 'count = (remielleCinema1SpecialVoidflareCount + remielleCinema4SpecialVoidflareRefillCount) × remielleCinema6SpecialVoidflareTriggerMultiplier',
+        fields: [
+          'remielleCinema1SpecialVoidflareCount',
+          'remielleCinema4SpecialVoidflareRefillCount',
+          'remielleCinema6SpecialVoidflareTriggerMultiplier',
+          'remielleRainbowEndMoveId',
+        ],
+        note: '异常事件只记录次数和载体动作；不进入普通招式执行计划，不读取 damageMultiplier。',
+      })
+    }
+  },
   /** 异化系数倍率：1 + (异化度 + 异化度提升) / 100，乘到全队所有异常相关伤害（CC-21 自 useResourceCalc 逐字迁入） */
   globalAnomalyMultiplierFactor: (panel: PanelValues) => {
     const coefficient = (panel.remielleRefringeCoefficient ?? 0) + (panel.remielleRefringeCoefficientBonusPct ?? 0)
@@ -417,4 +452,13 @@ export const remielleMechanic: AgentMechanicModule = {
     if (rows.length === 0) return []
     return [{ order: EXTRA_ANOMALY_ROW_ORDER.voidflare, rows }]
   },
+}
+
+/** 特殊虚耀使用次数（CC-26 自 core/resource/rowAccounting.ts 迁入，公式逐字保留） */
+export function remielleSpecialVoidflareUseCount(cfg: CharacterOperationConfig): number {
+  const firstRound = cfg.panel.remielleCinema1SpecialVoidflareCount ?? 0
+  if (firstRound <= 0) return 0
+  const refillRound = cfg.panel.remielleCinema4SpecialVoidflareRefillCount ?? 0
+  const c6Multiplier = 1 + Math.max(0, cfg.panel.remielleCinema6SpecialVoidflareTriggerMultiplier ?? 0)
+  return (firstRound + Math.max(0, refillRound)) * c6Multiplier
 }

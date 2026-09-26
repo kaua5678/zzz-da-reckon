@@ -17,7 +17,7 @@ import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBl
 import { resolveExtraExCount } from '@/data/exSpecialPlans'
 import { EVADE_ASSIST_ACTION_TIME_SECONDS, EVADE_ASSIST_MOVE_ID } from '@/data/resourceDefaults'
 import {
-  applyExecutionUtilization, applyEventUtilization, remielleSpecialVoidflareUseCount,
+  applyExecutionUtilization, applyEventUtilization, extraNecessaryActionOf,
 } from './rowAccounting'
 import { truncateExecutionsToFrontline } from './timeTruncation'
 
@@ -221,23 +221,25 @@ export function buildExecutions(
     })
   }
 
-  // 蕾米一/四命：特殊虚耀跟随「普通攻击：垂虹」触发，需要补入垂虹动作
-  const remielleRainbowEndCount = remielleSpecialVoidflareUseCount(cfg)
-  if (remielleRainbowEndCount > 0 && cfg.remielleRainbowEndMoveId) {
-    const car = cfg.remielleRainbowEndComboAlignRatio
+  // 模块专属必做动作行（CC-26，自蕾米埃尔一/四命内联迁出）：如特殊虚耀跟随「普通攻击：垂虹」触发，需补入垂虹动作。
+  // 次数/时长/喧响由模块能力 `extraNecessaryAction` 给出；无 moveId 时不补行（与原 `&& cfg.remielleRainbowEndMoveId` 等价），
+  // 但时间合计（helpers.ts）照旧按 count × actionTime 预留——与迁移前口径一致。
+  const extraAction = extraNecessaryActionOf(cfg)
+  if (extraAction && extraAction.moveId) {
+    const car = extraAction.comboAlignRatio
     executions.push({
-      moveId: cfg.remielleRainbowEndMoveId,
-      moveName: '普通攻击：垂虹（特殊虚耀载体）',
+      moveId: extraAction.moveId,
+      moveName: extraAction.moveName,
       category: 'basic',
-      count: remielleRainbowEndCount,
-      actionTime: cfg.remielleRainbowEndActionTime,
+      count: extraAction.count,
+      actionTime: extraAction.actionTime,
       comboAlignRatio: car,
-      totalTime: remielleRainbowEndCount * cfg.remielleRainbowEndActionTime,
-      totalComboAlignTime: remielleRainbowEndCount * cfg.remielleRainbowEndActionTime * car,
+      totalTime: extraAction.count * extraAction.actionTime,
+      totalComboAlignTime: extraAction.count * extraAction.actionTime * car,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      decibelRecovery: cfg.remielleRainbowEndDecibelRecovery,
-      totalDecibelRecovery: remielleRainbowEndCount * cfg.remielleRainbowEndDecibelRecovery,
+      decibelRecovery: extraAction.decibelRecovery,
+      totalDecibelRecovery: extraAction.count * extraAction.decibelRecovery,
       timeBucket: 'necessary',
     })
   }
@@ -570,7 +572,6 @@ export function buildAnomalyEventExecutions(cfg: CharacterOperationConfig, state
   const events: AnomalyEventExecution[] = []
   getAgentMechanic(cfg.agentId)?.buildAnomalyEvents?.({ cfg, state, events, totalTime })
 
-  const remielleRainbowEndCount = remielleSpecialVoidflareUseCount(cfg)
   const cannonRotorMultiplier = cfg.cannonRotorDamageMultiplier ?? 0
   const cannonRotorCooldown = cfg.cannonRotorCooldownSeconds ?? 0
   if (cannonRotorMultiplier > 0 && cannonRotorCooldown > 0) {
@@ -587,23 +588,6 @@ export function buildAnomalyEventExecutions(cfg: CharacterOperationConfig, state
     })
   }
 
-  if (remielleRainbowEndCount > 0 && cfg.remielleRainbowEndMoveId) {
-    events.push({
-      eventId: 'remielle_special_voidflare_event',
-      eventName: '特殊虚耀',
-      eventType: 'special_voidflare',
-      carrierMoveId: cfg.remielleRainbowEndMoveId,
-      carrierMoveName: '普通攻击：垂虹',
-      count: remielleRainbowEndCount,
-      formula: 'count = (remielleCinema1SpecialVoidflareCount + remielleCinema4SpecialVoidflareRefillCount) × remielleCinema6SpecialVoidflareTriggerMultiplier',
-      fields: [
-        'remielleCinema1SpecialVoidflareCount',
-        'remielleCinema4SpecialVoidflareRefillCount',
-        'remielleCinema6SpecialVoidflareTriggerMultiplier',
-        'remielleRainbowEndMoveId',
-      ],
-      note: '异常事件只记录次数和载体动作；不进入普通招式执行计划，不读取 damageMultiplier。',
-    })
-  }
+  // 蕾米埃尔「特殊虚耀」事件已迁入其模块 `buildAnomalyEvents`（CC-26；由本函数开头的钩子派发）
   return events.map(event => applyEventUtilization(cfg, event))
 }

@@ -17,6 +17,7 @@ import type {
   CharacterOperationConfig, SkillExecution, IterationState, AnomalyEventExecution,
 } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics'
+import type { ExtraNecessaryAction } from '@/mechanics/types'
 
 // ============ 单角色喧响计算 ============
 
@@ -24,12 +25,14 @@ export function decibelEfficiencyMultiplier(cfg: CharacterOperationConfig): numb
   return 1 + ((cfg.panel.decibelGainEfficiency ?? 0) / 100)
 }
 
-export function remielleSpecialVoidflareUseCount(cfg: CharacterOperationConfig): number {
-  const firstRound = cfg.panel.remielleCinema1SpecialVoidflareCount ?? 0
-  if (firstRound <= 0) return 0
-  const refillRound = cfg.panel.remielleCinema4SpecialVoidflareRefillCount ?? 0
-  const c6Multiplier = 1 + Math.max(0, cfg.panel.remielleCinema6SpecialVoidflareTriggerMultiplier ?? 0)
-  return (firstRound + Math.max(0, refillRound)) * c6Multiplier
+/**
+ * 模块专属必做动作（CC-26）：派发 `extraNecessaryAction` 能力（派发器不含角色 id；同文件
+ * `exSpecialNecessaryTime` 派发 `estimateExSpecialTime` 的先例）。原为内联的
+ * `remielleSpecialVoidflareUseCount`（公式已迁 `mechanics/agents/remielle.ts`）。
+ * 消费方：`rowBuild.ts#buildExecutions`（补行）与 `helpers.ts` 的必要时间/合轴时间合计（预留）。
+ */
+export function extraNecessaryActionOf(cfg: CharacterOperationConfig): ExtraNecessaryAction | null {
+  return getAgentMechanic(cfg.agentId)?.extraNecessaryAction?.(cfg) ?? null
 }
 
 /** 强化特殊技（及模块专属必做动作）前台时间：优先走角色机制模块覆盖（如卢西娅计划内E+A5），否则按通用公式 */

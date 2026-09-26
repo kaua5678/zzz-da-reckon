@@ -787,6 +787,13 @@ export interface AgentMechanicModule {
    */
   anomalyPoolSetup?(cfg: DeepReadonly<CharacterOperationConfig>): { coweringConfig?: CoweringConfig } | null
   /**
+   * 模块专属必做动作（CC-26）：core/resource 经 `rowAccounting.ts#extraNecessaryActionOf` 派发。
+   * 返回非 null ⇒ ① `helpers.ts` 必要时间/合轴时间按 `count × actionTime`（× comboAlignRatio）预留；
+   * ② `rowBuild.ts#buildExecutions` 在 `moveId` 非空时补一行（category basic，timeBucket necessary）。
+   * 原为 core 内联的蕾米埃尔一/四/六命「特殊虚耀 → 垂虹」逻辑。count <= 0 时应返回 null。
+   */
+  extraNecessaryAction?(cfg: CharacterOperationConfig): ExtraNecessaryAction | null
+  /**
    * 异常池预构建钩子：在 perElement 积蓄汇总之前调用（引擎已构建 elementMap 并预算 turbulenceCount）。
    * 模块可向 elementMap 注入额外积蓄贡献（如维琳娜风蚀替换广域），或把机制状态写入 store 供引擎消费。
    * 引擎保证：调用顺序在所有模块的 perElement 汇总之前，注入值进入所有下游（触发次数/覆盖率/note）。
@@ -1516,4 +1523,14 @@ export interface InteractionTopUpInput {
   perParrySeconds?: number
   /** 单次补齐双反的原始动作时间（秒）；cfg 暂未暴露该字段时留 0 */
   perDualSeconds?: number
+}
+
+/** `extraNecessaryAction` 能力返回值（CC-26）。moveId 为空 ⇒ 只预留时间、不补执行行（迁移前口径） */
+export interface ExtraNecessaryAction {
+  count: number
+  moveId?: string
+  moveName: string
+  actionTime: number
+  comboAlignRatio: number
+  decibelRecovery: number
 }

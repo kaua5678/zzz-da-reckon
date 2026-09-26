@@ -54,7 +54,7 @@ export { calcEnergySource, calcRawDecibelParts, calcDecibelSource }
 
 // ============================================================================
 // 行级收入账本 + 利用率/冷却切片族（`decibelEfficiencyMultiplier` /
-// `remielleSpecialVoidflareUseCount` / `cappedCooldownTriggers` / `getUtilizedCount` /
+// `extraNecessaryActionOf` / `cappedCooldownTriggers` / `getUtilizedCount` /
 // `applyExecutionUtilization` / `applyEventUtilization` / `timeSliceTriggerCounts`）
 // 已整段迁至 `./rowAccounting.ts`（R43 结构熵切面，纯搬运）。
 // 本块是 **re-export 壳**：既有消费者（`core/resource.ts` / `iterate` /
@@ -65,7 +65,7 @@ export { calcEnergySource, calcRawDecibelParts, calcDecibelSource }
 // ============================================================================
 import {
   decibelEfficiencyMultiplier,
-  remielleSpecialVoidflareUseCount,
+  extraNecessaryActionOf,
   cappedCooldownTriggers,
   getUtilizedCount,
   applyExecutionUtilization,
@@ -80,7 +80,7 @@ import {
 } from './rowAccounting'
 export {
   decibelEfficiencyMultiplier,
-  remielleSpecialVoidflareUseCount,
+  extraNecessaryActionOf,
   cappedCooldownTriggers,
   getUtilizedCount,
   applyExecutionUtilization,
@@ -399,6 +399,8 @@ function iterateBody(
     // 失衡轴模式用 chainCountTotalOverride（各轴按窗口数加权后的最终连携次数）
     const chainCount = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * countStunOf(globalCfg)
 
+    // 模块专属必做动作（CC-26；原内联蕾米埃尔垂虹）：与 rowBuild 补行同源，时间照旧按 count × actionTime 预留
+    const extraAction = extraNecessaryActionOf(cfg)
     const necessary = exSpecialNecessaryTime(cfg, exForTime, ultForTime, prevStates[i])
       + ultForTime * cfg.ultimateActionTime
       + chainCount * cfg.chainActionTime
@@ -407,7 +409,7 @@ function iterateBody(
       + ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistActionTime
       // 反制支援（控制技整组化解）与弹刀同类：必做前台时间，账本必须预留（否则物化行顶出预算被截断）
       + Math.max(0, Math.floor(cfg.counterAssistCount ?? 0)) * (cfg.counterAssistActionTime ?? 0)
-      + remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndActionTime
+      + (extraAction ? extraAction.count * extraAction.actionTime : 0)
       // 诺姆膛温换连携赠链时间（目标槽）：装配后 applyNormaHatChain 追加的赠链行占前台，
       // 引擎必要时间必须预留（同连携 GROSS 全额口径），否则净占用顶出预算
       + (i === normaGiftTargetIdx ? normaGiftChainTime : 0)
@@ -430,7 +432,7 @@ function iterateBody(
       + (cfg.parryCount ?? 0) * cfg.assistFollowUpActionTime * cfg.assistFollowUpComboAlignRatio
       + ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistActionTime * cfg.defensiveAssistComboAlignRatio
       + Math.max(0, Math.floor(cfg.counterAssistCount ?? 0)) * (cfg.counterAssistActionTime ?? 0) * (cfg.counterAssistComboAlignRatio ?? 0)
-      + remielleSpecialVoidflareUseCount(cfg) * cfg.remielleRainbowEndActionTime * cfg.remielleRainbowEndComboAlignRatio
+      + (extraAction ? extraAction.count * extraAction.actionTime * extraAction.comboAlignRatio : 0)
       + giftComboAlign
     comboAlignTimes.push(exSpecialComboAlignTime(cfg, exForTime, ultForTime, prevStates[i]) + comboAlignGeneric)
     // 预算抵扣部分：通用项全额可抵扣（necessary 按全额计），强特项按 GROSS/NET 约定
