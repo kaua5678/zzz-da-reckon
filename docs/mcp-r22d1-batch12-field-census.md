@@ -1356,6 +1356,24 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 4. 判据 22 清零后，考虑把判据 22 的 target 设为 0 并改成「只许降」的硬门（届时再定）。
 5. 调研待派同 §5.35。
 
+### 5.40 CC-38 done：爱丽丝清零（lead-arena-0925c，2026-09-27 第 53 轮）
+
+**提交** `7b865bf`（verify EXIT=0）。判据 22 **22 → 7**；`BASELINE` / `frozen` 7，**target 0**（实测 7 − 12 < 0，取 0 作清零目标）。agentId 棘轮 3/3。设计稿与实施记录 `docs/mcp-cc38-alice.md`（README §6 51 份）。
+
+- 38a 改名：`aliceSparkOverride` / `aliceSpark` / `aliceSparkThisRound` → `giftedPolarAssault*`（−9）。
+- 38b 新模块能力 `giftedPolarAssaultCount(char)`：convergence 派发求和、outerCycle 逐角色投影；删除 `aliceSparkCountOf`（−3）。
+- 38c 异常池输出 `aliceCoweringDot` → `coweringDot`（−3）。**推翻 §5.17/§5.18「不改」口径**：基线 JSON 实测不含此键，零差。
+- 验证：tsc 0；dump / rows 零差；反向① dump 25 键、反向② rows 29 键出差，对应单测红 2 / 4。
+
+**回退点**：`git revert 7b865bf`（单提交含棘轮常量）。
+
+**rf3 快照（7 计，6 字段）**：hugoMoveActionTime 2 / liuyinPromote 1 / lighterTeamEnergy 1 / yixuanFuFaForJufufu 1 / yeshuguangStunCapMult 1 / yeshuguangVeilStunBase 1。
+
+**下一步（按顺序，可直接开工）**
+1. **CC-39b（2 计 + 结构）**：见 §5.39 下一步 2（「终结失衡窗口招式」统一能力 `endsStunWindow` + `axisMoveActionTime`，佩洛伊斯 `'1551016'` 与雨果常量一起收走）。先写设计稿 `docs/mcp-cc39b-stun-window-end.md`，README §6 → 52。验收必须含 `hugoVerdictLanding` 单测与反向变异（perf 语料不覆盖雨果返还，见 §5.39）。
+2. **零散 5 计（CC-40）**：`liuyinPromote`（convergence 里 `./liuyinPromote` import 路径，文件改名如 `ultimatePromote.ts`，同步所有 import）、`lighterTeamEnergy`、`yixuanFuFaForJufufu`、`yeshuguangStunCapMult` / `yeshuguangVeilStunBase`（damagePool.ts）。每个先 grep 读写方再定是改名还是能力化。
+3. 判据 22 清零后：把判据 22 改成「只许 0」的硬门（frozen 0 / target 0），并在 ARCHITECTURE 写明新增角色机制一律走模块能力。
+
 ## 附录：普查脚本 census.sh
 
 ```bash

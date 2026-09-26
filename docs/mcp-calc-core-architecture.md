@@ -201,6 +201,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-36b | review | **done** `1ea574e`（40→34） | 1 命乱流抗性无视 → 面板字段 `turbulenceResIgnore`；6 命风化加成 → 新模块能力 `windAnomalyBonus`；补单测 | `docs/mcp-cc36-velina-anomaly.md`、census §5.38 |
 | CC-37 | review | **done** `f67c0ab`（判据 22 34→31） | 简面板字段 → 通用名 `selfAssaultCritDmgBonus` | census §5.39 |
 | CC-39a | review | **done** `a87da93`（31→22，target 10） | 新模块能力 `stunRefundRatio`（雨果决算返还），convergence 去 findSlotByIdentity(1291) | census §5.39 |
+| CC-38 | review | **done** `7b865bf`（判据 22 22→7，target 0，爱丽丝清零） | spark 局部量去前缀 + 模块能力 `giftedPolarAssaultCount` + 异常池输出 `coweringDot` | `docs/mcp-cc38-alice.md`、census §5.40 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
