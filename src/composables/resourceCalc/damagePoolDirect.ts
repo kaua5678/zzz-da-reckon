@@ -17,7 +17,6 @@
 import { panelAt } from '@/core/panel'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
 import { getAgentMechanic } from '@/mechanics'
-import { LIUYIN_EX_MOVE_IDS } from '@/mechanics/agents/liuyin'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import type { Agent, AgentSkills, PanelValues } from '@/types/catalog'
 import type { AnomalyEventExecution, CharacterResourceResult } from '@/types/resource'
@@ -34,7 +33,6 @@ export interface CharLocals {
   slot: number
   agent: Agent | undefined
   skills: AgentSkills | undefined
-  liuyinSrc: CharacterResourceResult['liuyinMechanicSource']
 }
 
 /** `pushDirect` 的行入参（照 `damagePool.ts` 原内联类型，逐位保留）。 */
@@ -94,7 +92,7 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
   const {
     isAxis, axisSlots, axisSplitFor, pushDirect, seenDirectIds,
   } = env
-  const { charResult, slot, agent, skills, liuyinSrc } = cl
+  const { charResult, slot, agent, skills } = cl
 
   for (const exec of charResult.executions) {
     if ((exec.damageMultiplier ?? 0) <= 0) continue
@@ -119,7 +117,9 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
     //   ③ 赠链/赠大不会把这三行搬到别人槽位：诺姆赠链搬的是**目标队友自己的连携技** moveId
     //      （`chainGift.ts` 取 `findChainAttack(targetSkills)`），琉音赠大搬的是**目标队友的终结技**
     //      （`liuyinPromote.ts` 取 `ultimateMoveId`）——两者都取「目标自己的招」，不会产生 1481 的强特行。
-    if (liuyinSrc && !isAxis && LIUYIN_EX_MOVE_IDS.has(exec.moveId)) continue
+    // CC-35d-B2 2026-09-27：上面 ①②③ 的论证仍成立，但判据已迁进琉音模块能力 `skipsGenericDirectRow`
+    // （`liuyin.ts`，与重放它的 `extraDirectRows` 强特拆分块同文件、同一 `!isAxis` + 来源门控）。
+    if (getAgentMechanic(charResult.agentId)?.skipsGenericDirectRow?.({ charResult, moveId: exec.moveId, isAxis })) continue
     const move = findMoveById(skills, exec.moveId)
     const mechanic = getAgentMechanic(charResult.agentId)
     // 2026-09-16 编排层棘轮（R15-a）：柏妮思影画4/6 原在此处按 `charResult.agentId === '1171'`

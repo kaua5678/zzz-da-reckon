@@ -565,6 +565,13 @@ export const liuyinMechanic: AgentMechanicModule = {
     secondsPerUnit: ({ targetCfg }) => targetCfg.ultimateActionTime ?? 0,
   },
   /**
+   * 通用直伤跳过（CC-35d-B2 2026-09-27；原 `damagePoolDirect.ts` 内联 `liuyinSrc && !isAxis && LIUYIN_EX_MOVE_IDS`）：
+   * 非轴模式下三个强特行由下方 `extraDirectRows` 的强特拆分块按失衡次数重放，这里与那块**同门控**
+   * （来源存在 + `!isAxis`），保证「跳过的行必被重放」。
+   */
+  skipsGenericDirectRow: ({ charResult, moveId, isAxis }) =>
+    !!charResult.liuyinMechanicSource && !isAxis && LIUYIN_EX_MOVE_IDS.has(moveId),
+  /**
    * 琉音专属附加直伤行（CC-18b 2026-09-26，设计稿 `docs/mcp-cc18-extra-direct-rows.md` §7.1）：
    * 自 `damagePoolCharExtras.ts` 原块 2（重击附加）→ 块 4（非轴强特拆分）→ 块 5（影画6余音）
    * 逐字迁入，字段与出现顺序照抄（对象键顺序可能进 rowsnap 哈希）；原块注释随代码迁移。

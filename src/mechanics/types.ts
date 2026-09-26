@@ -814,6 +814,12 @@ export interface AgentMechanicModule {
    */
   extraDirectRows?(input: ExtraDirectRowsInput): DirectRowInput[]
   /**
+   * 通用直伤行跳过（CC-35d-B2 2026-09-27）：`resourceCalc/damagePoolDirect.ts#emitCharDirectRows` 遍历本槽执行行时，
+   * 返回 true 的行不走通用直伤结算，改由本模块 `extraDirectRows` 自行重放。**两处门控必须同源**，否则该行
+   * 要么两边都不算（静默少伤），要么双计。现唯一实现：琉音非轴模式的三个强特行（石头 / 剪刀 / 布）。
+   */
+  skipsGenericDirectRow?(input: { charResult: DeepReadonly<CharacterResourceResult>; moveId: string; isAxis: boolean }): boolean
+  /**
    * **角色专属异常附加行**（规则 6 迁移落点，CC-19a 2026-09-26，设计稿
    * `docs/mcp-cc19-extra-anomaly-rows.md` §2.1/§2.3）：
    * 由行所属角色的模块生成自己的异常尾段附加行，返回**分组**（`order` 取

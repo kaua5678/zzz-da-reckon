@@ -395,11 +395,9 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const slot = charResult.slot
       const agent = catalogStore.agentsMap.get(charResult.agentId)
       const skills = catalogStore.agentSkillsByAgentMap.get(charResult.agentId)
-      // 琉音机制来源（**本槽级**，循环外读一次）：既是身份令牌，也是「强特拆分块会不会重放本行」的判据。
-      // 唯一写入方 = `liuyin.ts#buildLiuyinResourceResult`（无条件写）⇒ 存在即蕴含是该角色（判据同 T6）。
-      const liuyinSrc = charResult.liuyinMechanicSource
-
-      const cl: CharLocals = { charResult, slot, agent, skills, liuyinSrc }
+      // CC-35d-B2 2026-09-27：原本槽级 `liuyinSrc` 已删——「跳过通用强特行」改由模块能力
+      // `skipsGenericDirectRow` 判定（与重放块同在 liuyin.ts，门控同源）。
+      const cl: CharLocals = { charResult, slot, agent, skills }
       emitCharDirectRows(charEnv, cl)
       emitCharReleaseRows(charEnv, cl)
       emitCharExtraRows(charEnv, cl)

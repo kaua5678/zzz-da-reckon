@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computeLiuyinSource, computeLiuyinHugCounts, liuyinMechanic } from '@/mechanics/agents/liuyin'
+import { computeLiuyinSource, computeLiuyinHugCounts, liuyinMechanic, LIUYIN_EX_MOVE_IDS } from '@/mechanics/agents/liuyin'
 
 describe('琉音好评/等效规则（用户确认）', () => {
   it('好评 = 60 + 0.6×接战秒 + 7.5×强特数（无命座）', () => {
@@ -359,5 +359,22 @@ describe('CC-18b：琉音 extraDirectRows（重击附加 / 非轴强特拆分 / 
       getMechanicSetting: (_k: string, _d: number) => 4,
     }))
     expect(rows.some(r => r.id === 'liuyin-c6-echo')).toBe(false)
+  })
+})
+
+// CC-35d-B2 2026-09-27：「跳过通用强特直伤」判据迁入模块能力；门控须与 extraDirectRows 强特拆分块同源。
+describe('琉音 skipsGenericDirectRow（CC-35d-B2）', () => {
+  const exId = [...LIUYIN_EX_MOVE_IDS][0]
+  const withSrc = { liuyinMechanicSource: {} } as never
+  const noSrc = {} as never
+  it('非轴 + 有来源 + 强特行 → 跳过', () => {
+    expect(liuyinMechanic.skipsGenericDirectRow!({ charResult: withSrc, moveId: exId, isAxis: false })).toBe(true)
+  })
+  it('轴模式不跳过（轴模式无强特拆分重放）', () => {
+    expect(liuyinMechanic.skipsGenericDirectRow!({ charResult: withSrc, moveId: exId, isAxis: true })).toBe(false)
+  })
+  it('无来源 / 非强特行不跳过', () => {
+    expect(liuyinMechanic.skipsGenericDirectRow!({ charResult: noSrc, moveId: exId, isAxis: false })).toBe(false)
+    expect(liuyinMechanic.skipsGenericDirectRow!({ charResult: withSrc, moveId: 'not-an-ex', isAxis: false })).toBe(false)
   })
 })
