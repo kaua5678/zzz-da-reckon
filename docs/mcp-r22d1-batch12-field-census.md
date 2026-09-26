@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-27 第 31 轮，lead-arena-0925c）**：**CC-23 已落地 `8ecd5f2`**。般岳交互补齐的找槽从按身份 `findSlotByIdentity(['1471'])` 改为声明式 `producesInteractionTopUp`，补齐求解改走模块能力 `computeInteractionTopUp`，补齐量类型提到 `mechanics/types.ts#InteractionTopUp`；convergence / roundThreads / roundResult 不再 import 般岳模块。判据 22 从 430 降到 **420**，target 仍为 418（未达成）。verify EXIT=0。详见 §5.17。
+- **最新交接（2026-09-27 第 32 轮，lead-arena-0925c）**：**CC-24 已落地 `1d1d823`**（畏缩配置通用化：`aliceCoweringConfig` → `coweringConfig`，`AliceCoweringConfig` → `CoweringConfig`，纯改名）。判据 22 从 420 降到 **410**，target 重设 **398**。verify EXIT=0。详见 §5.18。
+  **下一步（可以直接开工）**：**CC-25**（roundInputs 的 `aliceInfo` 按身份找槽 + 直读 `cfg.alice*` → 爱丽丝模块能力 `anomalyPoolSetup`），开工清单见 §5.18。
+- **上一轮交接（2026-09-27 第 31 轮，lead-arena-0925c）**：**CC-23 已落地 `8ecd5f2`**。般岳交互补齐的找槽从按身份 `findSlotByIdentity(['1471'])` 改为声明式 `producesInteractionTopUp`，补齐求解改走模块能力 `computeInteractionTopUp`，补齐量类型提到 `mechanics/types.ts#InteractionTopUp`；convergence / roundThreads / roundResult 不再 import 般岳模块。判据 22 从 430 降到 **420**，target 仍为 418（未达成）。verify EXIT=0。详见 §5.17。
   **下一步（可以直接开工）**：**CC-24**（`aliceCoweringConfig` 改名为通用的 `coweringConfig`：畏缩是物理强击附带的通用状态），开工清单见 §5.17。
 - **上一轮交接（2026-09-27 第 30 轮，lead-arena-0925c）**：**CC-22（修订版）已落地 `05bb382`**。§5.15 原定的「纯改名为 teamAssaultCount」**作废**：实读 `aliceExternalCountsOf` 后确认，assault 是**爱丽丝自己**触发的 physical 强击，不是全队次数。改为走通用通道：爱丽丝 `nextRoundFeedback` 负责产出，`applyTeamConfig` 从 `threads` 读取，同时删掉 `AgentTeamConfigInput` 和 panelPhases 的专用字段，convergence 不再 import `aliceExternalCountsOf` / `aliceSlotOf`。判据 22 从 447 降到 **430**，target 重设 **418**。verify EXIT=0。详见 §5.16。
   **下一步（可以直接开工）**：**CC-23**（般岳交互补齐：convergence 里 `banyueSlot` 改为声明式找槽 + `computeBanyueInteractionTopUp` 升格为模块能力），开工清单见 §5.16。
@@ -275,6 +277,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-26 CC-21 后**：**447**（`3d000d0`）；已低于 target 450，重设 target **435**。下一张：CC-22（§5.15）。
 - **2026-09-27 CC-22 后**：**430**（`05bb382`）；已低于 target 435，重设 target **418**。下一张：CC-23（§5.16）。
 - **2026-09-27 CC-23 后**：**420**（`8ecd5f2`）；target 418 未达成，维持不变。下一张：CC-24（§5.17）。
+- **2026-09-27 CC-24 后**：**410**（`1d1d823`）；已低于 target 418，重设 target **398**。下一张：CC-25（§5.18）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -718,6 +721,45 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 4. (b) 可选第二步（另立 CC-25）：`roundInputs.ts:100–108` 的 `aliceInfo` computed 仍按身份 `findSlotByIdentity(['1401'])` 找槽，并直读 `cfg.aliceEnabled` / `cfg.aliceCowering*`。方向是做成模块能力，例如 `anomalyPoolSetup?(cfg) → { coweringConfig?, giftedTriggerSlot? }`。`giftedTriggerCounts`（`physical_polar_assault` 取 aliceSpark）也在这里，要一并设计。**动手前先读 `convergenceNightB.test.ts` 那组等价性 oracle**（前导空槽实算）。
 5. 验证：纯改名，零差应当逐位成立。反向：把 `helpers.ts` 紊乱倍率加成的 `disorderBonusMax` 读点改成 0，rowsnap 应当只波及 1401 预设（语料里 4 组，参见 CC-22 反向 DIFF 28）。模板 `/home/kaua/calc-arch/z22.sh`，把 MUT 那行 sed 换掉。
 6. 执行：lead 自做（约 12 处）。
+
+### 5.18 CC-24 落地记录 + CC-25 开工清单（2026-09-27 第 32 轮 lead-arena-0925c）
+
+**CC-24（`1d1d823`，判据 22 420→410，target 398）**：整词改名，共 17 处：
+- `core/anomalyPool/helpers.ts` 9 处（`DamageCalcConfig` / `AnomalyPoolInput` 两个字段，第 306、1043 行各含字段名和类型名；接口 `CoweringConfig`；紊乱倍率加成与 `calcAliceCoweringDot` 的读点）；
+- `core/anomalyPool.ts` 4 处（re-export、透传、DOT 门控）；
+- `roundInputs.ts` 1 处键名；
+- `convergenceNightB.test.ts` 2 处注释；
+- `ResultPage.vue` 1 处注释。
+
+接口和字段注释改为「畏缩是物理强击附带的通用状态，引擎只按物理元素消费，目前唯一开启方是爱丽丝」。**不留别名**：`AliceCoweringConfig` 除 core 的 re-export 外没有其他使用方（grep 确认）。helpers.ts:317 注释里保留了一次历史名，是有意的。
+- **不改**：输出字段 `aliceCoweringDot` / `AliceCoweringDotResult`（结果对象键，被 rowsnap / 展示消费），函数名 `calcAliceCoweringDot`，爱丽丝 cfg 字段 `aliceEnabled` / `aliceCowering*`。
+- **验证**：vue-tsc 0；零差（dump 625 / rowsnap 638，只有 `__ms` 不同）；反向（helpers.ts 紊乱倍率加成的 `disorderBonusMax` 读点改为 0）rowsnap DIFF 28 = 4 组 1401 预设 × 7 个变体，与 CC-22 的波及面一致，cp 还原并 cmp 一致；`npm run verify` EXIT=0。脚本：`/home/kaua/calc-arch/cc24.py`、`z24.sh`（tsc + 零差 + 反向 + 读 rf）。
+- **回退点**：`git revert 1d1d823`（单个提交，含棘轮常量 410/398）。
+- **本轮踩坑（写给后来者）**：
+  - ① 改动脚本是「逐文件断言、逐文件写入」，第二个文件断言失败时第一个已经写盘，重跑就不再幂等（预期次数也跟着变了）。**以后的改动脚本要先对全部文件断言完毕，再统一写盘**。
+  - ② 预期次数要按「**行内出现次数**」数，不能按 grep 行数数（`key: input.key` 这种行一行算 2 次）。
+  - ③ 在断言失败前就启动了后台验证，结果在旧代码上跑。**后台验证必须用 `&&` 接在改动脚本成功之后**。杀掉它时，`setsid` 的 pgid 并不是 bg.sh 打印的那个 pid（打印的是子 bash），要用 `ps -eo pid,pgid,cmd` 查到具体 pid 再逐个 `kill -9`，**禁止使用 wsl --terminate**。
+
+**rf3（HEAD `1d1d823`，410 处）前列**：velinaCorrosionSource 9（anomalyPool）、remielleRainbowEndCount 9（rowBuild）、liuyinSrc 8、xideIdx 8（crossAgentEnergy）、remielleSpecialVoidflareUseCount 8、liuyinIdx 7、liuyinPromoteCount 7、velinaCinema2CorrosionRate 7。（跑 `node /home/kaua/calc-arch/rf3.mjs 10` 核对。）
+
+**CC-25 开工清单（爱丽丝异常池入参能力化；lead 实读 HEAD `1d1d823` 的 roundInputs.ts）**
+1. 现状（`composables/resourceCalc/roundInputs.ts:90–130`）：
+   - `aliceInfo` computed 用 `findSlotByIdentity(configStore, catalogStore, ['1401'])` 找槽（**身份判定**）；
+   - 再用 `resourceConfig.value?.characters.find(c => c.slot === slot)` 取 cfg（按身份取，**禁止** `characters[slot]` 下标，见头注释和判据 17）；
+   - `!cfg?.aliceEnabled` 时返回 null；否则拼出 `coweringConfig`（`aliceCoweringDotRatio ?? 2.5` 等 4 个 cfg 字段 + `assaultBaseMultiplier: 853`）；
+   - `calcAnomalyPoolInput` 消费 `coweringConfig`、`giftedTriggerCounts`（`alice && aliceSpark > 0 ? { physical_polar_assault: aliceSpark }`）和 `giftedTriggerSlot: alice?.slot`。
+2. 方案：
+   - `AgentMechanicModule` 新增可选能力 `anomalyPoolSetup?(cfg: CharacterOperationConfig): { coweringConfig?: CoweringConfig } | null`，类型从 `@/core/anomalyPool` 做 type import。**判据 19**：mechanics 禁止按值 import `@/composables`，type import 没问题。
+   - alice.ts 实现：`cfg.aliceEnabled` 为假时返回 null，否则返回原样拼出的 `coweringConfig`（默认值逐字搬迁）。
+   - roundInputs：把 `aliceInfo` 改名为 `anomalyPoolSetupInfo`，逻辑改为遍历 `configStore.team` 的槽位，找第一个 `getAgentMechanic(agentId)?.anomalyPoolSetup` 存在的槽，按 `characters.find(c => c.slot === slot)` 取 cfg，调用能力；结果为 null 时整体返回 null，否则返回 `{ slot, ...result }`。`giftedTriggerSlot` 用这个 slot。
+   - **保留原头注释的循环依赖约束**：这个 computed 只能读 configStore / catalogStore / resourceConfig，不能读 resourceResult。
+3. **等价风险**：原来按 catalog 身份找槽，新写法按模块能力找槽，差异面与 CC-23 相同（零差会证）。`giftedTriggerCounts` 的 `alice &&` 门控变成「有 setup 结果」，语义不变（爱丽丝未启用时原来也是 null）。
+4. 验证：
+   - 零差（rowsnap 应当逐位一致）；
+   - 反向用单测：`convergenceNightB.test.ts:241–262` 两条「前导空槽 + 爱丽丝在槽 2」「槽 0 / 槽 2 同一份配置」是现成的端到端判据。变异方式：让能力返回 null，这两条应当变红；
+   - 语料反向：能力返回的 `disorderBonusMax` 改为 0，预期 DIFF 28（同 CC-24）。
+5. 判据 22 预计小幅下降（主要是删掉 `alice` 前缀局部量）；角色判定棘轮不会变（数组写法 `['1401']` 不计数）。执行：lead 自做。
+6. 之后的候选：velinaCorrosionSource（`core/anomalyPool.ts`，9 处）+ velinaCinema2CorrosionRate（7 处），同属维琳娜风蚀，可合成一张，动手前先实读。
 
 ## 附录：普查脚本 census.sh
 
