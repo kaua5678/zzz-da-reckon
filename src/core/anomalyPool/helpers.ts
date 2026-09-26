@@ -735,7 +735,7 @@ export function calcAnomalyCritExpect(
   const critRateRaw = (panel.anomalyCritRate ?? 0) + (isAssault ? assaultSource.assaultCritRate ?? 0 : 0)
   const selfAssaultBonus = options?.includeSelfAssaultBonus === false
     ? 0
-    : (assaultSource.janeAssaultCritDmgBonus ?? 0)
+    : (assaultSource.selfAssaultCritDmgBonus ?? 0)
   const critDmg = (panel.anomalyCritDmg ?? 0) + (isAssault ? (assaultSource.assaultCritDmg ?? 0) + selfAssaultBonus : 0)
   const critRate = Math.min(100, Math.max(0, critRateRaw))
   return 1 + (critRate / 100) * (critDmg / 100)

@@ -322,7 +322,7 @@ describe('Jane mechanic', () => {
       anomalyCritDmg: 0,
       assaultCritRate: 30,
       assaultCritDmg: 50,
-      janeAssaultCritDmgBonus: 30,
+      selfAssaultCritDmgBonus: 30,
     } as any
     const windPanel = {
       anomalyCritRate: 0,

@@ -39,7 +39,7 @@ describe('简（1261）啮咬/狂热/强击暴击', () => {
     janeMechanic.applyPanel!({ panel } as any)
     expect(panel.assaultCritRate).toBeCloseTo(50, 5) // 20 + 300×0.1
     expect(panel.assaultCritDmg).toBe(50)
-    expect(panel.janeAssaultCritDmgBonus).toBe(30)
+    expect(panel.selfAssaultCritDmgBonus).toBe(30)
   })
 
   it('影画1/6 面板区在 helpers 简专属分支生效（passionCoverage 默认90%折算）', async () => {
@@ -86,7 +86,7 @@ describe('简（1261）啮咬/狂热/强击暴击', () => {
 
     const p = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(p.assaultCritRate).toBeGreaterThan(20)
-    expect(p.janeAssaultCritDmgBonus).toBe(30)
+    expect(p.selfAssaultCritDmgBonus).toBe(30)
   })
 
   it('萨霍夫跳进入执行计划：狂热 1 次，影画1 额外 +1 次', async () => {

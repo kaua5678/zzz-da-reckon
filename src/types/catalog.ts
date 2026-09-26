@@ -120,7 +120,7 @@ export interface PanelValues {
   skillLevelBonus: number // 技能等级提升（3命+2，5命+4，通用字段）
   assaultCritRate: number     // 强击暴击率，百分比（仅物理强击及其乱流继承）
   assaultCritDmg: number      // 强击暴击伤害，百分比（仅物理强击及其乱流继承）
-  janeAssaultCritDmgBonus: number // 简潜能觉醒：仅简自身触发强击时生效，乱流不继承
+  selfAssaultCritDmgBonus: number // 简潜能觉醒：仅简自身触发强击时生效，乱流不继承
   enemyAssaultDefReduction: number // 强击伤害无视/降低防御，百分比（简2命等）
   // 能量/资源相关
   energyRegenBonusPct: number     // 能量回复百分比加成（作用于基础回能）

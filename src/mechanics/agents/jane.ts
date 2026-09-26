@@ -111,8 +111,8 @@ function applyJanePanel({ panel, settings, agent, slot, team, cinemaLevel, poten
   })
   panel.assaultCritRate = (panel.assaultCritRate ?? 0) + source.assaultCritRate
   panel.assaultCritDmg = (panel.assaultCritDmg ?? 0) + ASSAULT_CRIT_DMG
-  // 潜能觉醒只给简自身触发的强击吃，乱流不继承；由异常池按 janeAssaultCritDmgBonus 单独结算。
-  panel.janeAssaultCritDmgBonus = source.assaultCritDmgBonus
+  // 潜能觉醒只给简自身触发的强击吃，乱流不继承；由异常池按 selfAssaultCritDmgBonus 单独结算。
+  panel.selfAssaultCritDmgBonus = source.assaultCritDmgBonus
 
   // ⚠ 身份守卫必须**容忍直调**（`jane.test.ts` 曾只传 `{ panel }` 就调本钩子，见该文件）：
   // 缺失 `agent` 时按「是简」放行（本模块本来就只被简的槽位派发），而不是抛 TypeError。

@@ -193,8 +193,8 @@ describe('R59 · 1261 简潜能觉醒·致命舞步（潜能 II~VI 强击暴伤 
     }
   })
 
-  it('② 行为层正交四臂：janeAssaultCritDmgBonus 只随 potentialLevel 变', async () => {
-    await assertOrthogonal('1261', '1281', p => p.janeAssaultCritDmgBonus ?? 0, [10, 15, 20, 25, 30])
+  it('② 行为层正交四臂：selfAssaultCritDmgBonus 只随 potentialLevel 变', async () => {
+    await assertOrthogonal('1261', '1281', p => p.selfAssaultCritDmgBonus ?? 0, [10, 15, 20, 25, 30])
   })
 })
 

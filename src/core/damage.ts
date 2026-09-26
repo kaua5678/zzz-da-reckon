@@ -164,7 +164,7 @@ function calcSharpCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | '
 /**
  * 物理强击的异常暴击统计（期望口径）。
  *
- * ⚠ `janeAssaultCritDmgBonus` **只给简自身触发的强击**（简潜能觉醒·致命舞步；
+ * ⚠ `selfAssaultCritDmgBonus` **只给简自身触发的强击**（简潜能觉醒·致命舞步；
  * 乱流不继承 ⇒ `calcAnomalyCritExpect` 的 `includeSelfAssaultBonus:false` 右臂保持不变）。
  * 本函数由 `calcAnomalyDamage` 在**结算者面板**（`settlementPanel`）上调用，
  * 而结算者正是真正触发该次强击的槽位 ⇒ 在此累加等价于「只给简自己的强击」。
@@ -175,7 +175,7 @@ function calcSharpCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | '
  */
 function getAnomalyCritStats(panel: PanelValues, element: DamageElement | undefined): { rate: number; dmg: number; labelPrefix: string } {
   const isAssault = element === 'physical'
-  const selfAssaultBonus = isAssault ? (panel.janeAssaultCritDmgBonus ?? 0) : 0
+  const selfAssaultBonus = isAssault ? (panel.selfAssaultCritDmgBonus ?? 0) : 0
   return {
     rate: (panel.anomalyCritRate ?? 0) + (isAssault ? panel.assaultCritRate ?? 0 : 0),
     dmg: (panel.anomalyCritDmg ?? 0) + (isAssault ? (panel.assaultCritDmg ?? 0) + selfAssaultBonus : 0),

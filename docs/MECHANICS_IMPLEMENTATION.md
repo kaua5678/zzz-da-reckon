@@ -429,7 +429,7 @@
 - 实现：`src/mechanics/agents/trigger.ts`（口径见其头注释）+ spec `src/specs/agents/1361.json` notes。
 
 ### 简（1261）—— 物理异常：啮咬/狂热/强击暴击
-- **当前实现状态 [已实现·近似 2026-08-25]**（实现位置：`src/mechanics/agents/jane.ts` 强击暴击账本 + `composables/resourceCalc/helpers.ts` 简**专属分支**承载面板区 + spec `1261.json`；拐力 teammate-buffs 3条含 M2 强击防穿/暴伤、M4 全队异常伤；测试 `src/mechanics/__tests__/jane.test.ts` 5 例 + `potentialAxisBatchB.test.ts`）。状态由 not_described_not_implemented 修正。**潜能觉醒·致命舞步 10/15/20/25/30% 按 `potentialLevel` 取档**（R59 前写死 30 满档 ⇒ 滑块失效；且该值经 `janeAssaultCritDmgBonus` 进 `getAnomalyCritStats` 的通道 R59 前零消费者 ⇒ 直伤强击端到端恒 0）。
+- **当前实现状态 [已实现·近似 2026-08-25]**（实现位置：`src/mechanics/agents/jane.ts` 强击暴击账本 + `composables/resourceCalc/helpers.ts` 简**专属分支**承载面板区 + spec `1261.json`；拐力 teammate-buffs 3条含 M2 强击防穿/暴伤、M4 全队异常伤；测试 `src/mechanics/__tests__/jane.test.ts` 5 例 + `potentialAxisBatchB.test.ts`）。状态由 not_described_not_implemented 修正。**潜能觉醒·致命舞步 10/15/20/25/30% 按 `potentialLevel` 取档**（R59 前写死 30 满档 ⇒ 滑块失效；且该值经 `selfAssaultCritDmgBonus` 进 `getAnomalyCritStats` 的通道 R59 前零消费者 ⇒ 直伤强击端到端恒 0）。
 - **未建模项**：影画1「萨霍夫跳+1次」（无执行计划基础次数）。影画6「强击暴击触发1600%精通附加攻击」已实现（damagePool `jane-c6-assault-followup`，次数=强击期望暴击数）；乘区口径（用户 2026-09-03）：附伤占攻击区(异常精通)×倍率区(1600%)两基础区，增伤/防御/抗性/易伤/暴击乘区全吃（calcDirectDamage 标准管线，爱丽丝 6 命附伤同款）——2026-08 审计的失衡易伤通道保留（轴内按物理强击轴内占比 `inWindowFraction('physical')`；非轴全局覆盖率）。生效测试 `jane.test.ts`「附伤走标准直伤管线」+ `inStunAttribution.test.ts`「简6命附伤」。
 - 实现：`src/mechanics/agents/jane.ts`（口径见其头注释）+ spec `src/specs/agents/1261.json` notes。
 

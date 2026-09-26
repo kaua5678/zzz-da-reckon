@@ -52,7 +52,7 @@ export function emptyPanel(): PanelValues {
     skillLevelBonus: 0,
   assaultCritRate: 0,
   assaultCritDmg: 0,
-  janeAssaultCritDmgBonus: 0,
+  selfAssaultCritDmgBonus: 0,
     enemyAssaultDefReduction: 0,
     // 能量/资源相关
     energyRegenBonusPct: 0,
