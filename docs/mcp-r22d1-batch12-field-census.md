@@ -1072,6 +1072,40 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
    - **拍板：CC-34 = 蕾米埃尔字段普查 + 方案（只读，产出 §5.29，然后按方案拆 CC-34a/b… 实做）**。依据：占剩余的 29%，是最大的一簇；这些字段看上去是「模块往 core 面板 / buff 结构里写的具名数值」，很可能可以套 CC-14a `bonusEntries` / CC-31 `moduleFeedback` 那种「通用字典 + 模块自报键」的先例，但**必须先实读** `core/buff.ts` 与 `core/panel.ts` 里这些字段的定义与读点，再决定是一个字典还是按用途拆几块。琉音（35）继续等设计稿；零散小块可以在两张大卡之间顺手清。
    - 普查命令：`grep -rnoE '\bremielle[A-Z][A-Za-z0-9]*\b' src/core src/composables --include=*.ts | grep -v __tests__ | awk -F: '{print $1" "$3}' | sort | uniq -c`，再按写入方（`src/mechanics/agents/remielle*.ts`）反查。
 
+### 5.29 CC-34 蕾米埃尔普查 + CC-34a done：角色专属面板属性改由数据表驱动（lead-arena-0925c，2026-09-27 第 43 轮）
+
+**提交**：代码 `7de5847`（6 文件，含新文件 `src/data/agentPanelStats.ts` 与两个棘轮脚本）。判据 22 **219 → 171**（−48），`CORE_ROLE_FIELD_BASELINE` / `frozen` 171，**target 重设 159**。
+
+**普查结论（HEAD 840dbf6 实读）**：core + resourceCalc 里 remielle\* 共 63 计，分四簇：
+- **A 面板属性（44 计，本卡已清）**：`PanelValues`（`types/catalog.ts`）上 14 个 `remielle*` 字段（折射系数 / 耀变倍率 / 影画 1·4·6 虚耀 / 花羽轮舞 …）。它们同时是 buff 数据（`public/static/catalog.json`、`teammate-buffs.json`）里的 stat 键。core 里只在两处出现：`core/buff.ts#applyStat` 有 14 个 `case 'x': panel.x += value`，`core/panel.ts#emptyPanel` 给 14 个初值（3 个 TriggerMultiplier 为 1，其余为 0）。读取方全在 core 之外（`remielle.ts` 25 处、`StatPanel.vue` 8、`DebugPage.vue` 6、`statMeta.ts` 4、`anomalyPanels.ts` / `helpers.ts` 各 2）。
+- **B 字符配置字段（约 20 计）**：`resourceCalc/helpers.ts:497-561` 调 `findRemielleRainbowEnd` / `findRemielleRadiantTurn`，往 cfg 字面量写 7 个字段 `remielleRainbowEnd{MoveId,ActionTime,DecibelRecovery,ComboAlignRatio}`、`remielleRadiantTurn{MoveId,ActionTime,DecibelRecovery}`。
+- **C 面板读点（约 5 计）**：`helpers.ts:627` `extraSelfDecibelReward = FlowerFeatherDanceDecibelPerUse × FlowerFeatherDanceCount`；`helpers.ts:822` 读 `remielleRadiantTurnDazeBonusPct`。
+- **D re-export 壳（约 6 计）**：`helpers.ts:272/291` 与 `anomalyPanels.ts:384-386` 转导出 `remielleSpecialVoidflareCount` 等（函数本体在 CC-19c-1 已迁到 `remielle.ts`）。
+
+**CC-34a 做了什么（等价性论证）**
+- **关键事实**：`applyStat` 的 `default:` 分支本来就是 `if (!(stat in panel)) panel[stat] = 0; panel[stat] += value`。而这 14 个键在 `emptyPanel()` 里都有初值，所以 14 个逐字段 case 与 default **逐字等价** ⇒ 直接删掉，default 分支前补注释。
+- `core/panel.ts`：两段初值改为 `...agentPanelStatInitials('stun')`（原叶瞬光 `yeshuguangStunCapMult` / `yeshuguangVeilStunBase` 的位置）和 `...agentPanelStatInitials('anomaly')`（原 remielle 14 项的位置）。对象展开**保持键序**（面板键序进入快照哈希）。
+- 新文件 `src/data/agentPanelStats.ts`：表 `AGENT_PANEL_STATS`（16 行，`key` / `group` / `initial`，`as const satisfies`，键被约束为 `keyof PanelValues`），`agentPanelStatInitials(group)` 按表序铺初值。**为什么放数据层、不放 mechanics**：core 禁止值导入 `@/mechanics/agents/*`（判据冻结 0），而 mechanics 各模块又依赖 `core/panel` ⇒ 让 core 去问模块注册表有循环依赖风险。这些键本来就是 StatId（buff JSON 按键引用），与 `utils/statMeta.ts` 同属数据层。
+- **面板形状不动**：没有把字段收进字典。依据：`composables/cinemaUplift.ts:247` 用 `Object.keys(panelAfter)` 按数值比较算 `changedFields`（R1 验收口径「changedFields 不要退化」），嵌套字典会让这些字段的变化被静默吞掉；另外 StatPanel / DebugPage / remielle.ts 都按扁平字段读。
+- 顺手：`core/substatOptimizer.ts#computeAtkTeamBenefit` 的参数 `remielleATK` 改名为 `sourceATK`（纯局部改名）。
+- `PanelValues` 的类型声明仍在 `types/catalog.ts`（不在判据 22 的统计范围内，读取方靠它获得类型）。
+
+**验证**
+- vue-tsc 0；`remielle` / `panel` / `buff` / `yeshuguang` / `cinemaUplift` / `substat` 单测全绿（168 + 76）。
+- `PERF_KEY_ALIAS=1` 对 H2a：dump 625 / rowsnap 638 **仅 `__ms` 差**，不需要 remap。
+- **反向变异**（表内 `remielleCinema6LuminizeTriggerMultiplier` 初值 1 改 2）：remielle 单测 1 红，dump **37 键出差**（`auto-*-1581` 队），证明表确实驱动初值；还原后 cmp 一致。
+- `npm run verify` EXIT=0（`/home/kaua/calc-arch/verify34.log`）。脚本 `/home/kaua/calc-arch/cc34.py`、`z34.sh`。
+- **回退点**：`git revert 7de5847`（单提交）。
+- **踩坑**：泛型返回值 `return out as Record<Extract<…>['key'], number>` 报 TS2719（同名不相关类型），改为 `return out as never`，精确键集仍由函数签名保证。
+
+**下一步（按顺序，可直接开工）**
+1. **CC-34b（B 簇，约 20 计）**：把 `helpers.ts:497-561` 的两个 `findRemielle*` 调用和 7 个 cfg 字段整块迁进 `remielle.ts#buildRemielleCharConfig`（该函数已经在写 `remielleEnabled` / `remielleRadiantTurnDazeBonusPct`，先例见 `helpers.ts:471-477` 的注释）。
+   - 开工先 `grep -rn 'remielleRainbowEnd\|remielleRadiantTurn' src` 列出全部读点。`rowBuild.ts:225` 注释说补行已经走 `extraNecessaryAction`，要确认 cfg 字段是否仍被读。
+   - **风险**：cfg 键会从字面量中间挪到 `buildCharConfig` 写入的位置，键序可能变化。如果 dump 因此出差，并且只是键序差：按规则 17② 在 perf remap 里做键序映射，或者单独一批换基线，**不与代码混提交**。
+2. **CC-34c（C 簇，约 5 计）**：`helpers.ts:627` 花羽轮舞喧响 → 先查有没有现成的「自身额外喧响」模块能力（CC-14b `selfBurnDecibel`、`bonusDecibel` 一类），没有再设计；`helpers.ts:822` 失衡加成读点同理。
+3. **CC-34d（D 簇，约 6 计）**：re-export 壳。`grep -rn "remielleSpecialVoidflareCount\|getRemielleLevelValue\|calcVoidflareDamage" src` 找出经壳导入的调用方，改为直接从 `@/mechanics/agents/remielle` 导入（注意判据 19：mechanics/specs 不许值导入 composables，反方向没有限制），然后删壳。
+4. 其余：简 `janeAssaultCritDmgBonus`（`core/damage.ts`、`anomalyPool/helpers.ts` 读，`panel.ts:68` 初值，该行缩进异常）可以另开一组 `'assault'` 并入 `agentPanelStats` 表，但 core 读点仍在，需要单独设计；琉音（35）等设计稿；维琳娜 19（§5.19）。
+
 ## 附录：普查脚本 census.sh
 
 ```bash
