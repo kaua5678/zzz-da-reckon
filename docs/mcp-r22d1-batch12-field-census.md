@@ -5,6 +5,8 @@
 
 ## 1. 做到哪一步
 
+- **最新交接（2026-09-26 21:1x，lead-arena-0925c 第 20 轮）**：CC-14e 已落地 `1e3dc99`（dsflash 工人实现 `ee0bd8b`，lead 复核、零差、反向验证，重写提交信息）。判据 22 从 763 降到 **759**；target 740，还差 19。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `1e3dc99`。
+  **下一步（可以直接开工）**：派 **CC-15**（赠行通用命名，A 类改名，预计减少约 25–30 处，可达成 target 740），卡面见 §5.6。零差基线 H2a（`007a6b7`）经 CC-14c/d/e 传递仍然有效；但 CC-15 要给 KEY_ALIAS 加新条目，**基线须在加 alias 之后、在原始 worktree 上带 `PERF_KEY_ALIAS=1` 重新生成**（alias 对原始代码不起作用，所以 H2a 其实也能用；稳妥起见重新生成 H3a）。
 - **最新交接（2026-09-26 20:5x，lead-arena-0925c 第 19 轮）**：CC-14c 已落地 `ba6db48`，CC-14d 已落地 `e94b896`（卡面在 §5.5，都由 lead 直接实现，每卡改 4–8 个文件）。判据 22 从 775 降到 766，再降到 **763**，**提前达成原 target 765**。因为棘轮测试要求 target < frozen，**已重设 target 740、due 2026-12-31**（决定与依据见 §5.5）。两张卡在 master 上都跑了 `npm run verify`，EXIT=0，前后都钉了 HEAD。
   **下一步（可以直接开工）**：CC-14e，卢西娅帷幕写回迁模块，卡面见 §5.5 末尾。零差基线须在当前 HEAD 的原始 worktree 上重新生成（§4 口径）；H2a 生成于 `007a6b7`，CC-14c/d 已证明零差，所以 H2a 对 `e94b896` 仍然有效，可以直接复用。
 - **最新交接（2026-09-26 20:2x，lead-arena-0925c 第 18 轮）**：CC-14a 已落地，提交 `285885b`（修订卡 §5.2-v2 = `a16d9ae`）。判据 22 从 803 降到 **775**，距 target 765 还差 10。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `285885b`，按 AGENTS「钉 HEAD」规则可归因。
@@ -238,6 +240,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-26 CC-14b 后**：基线与 frozen 都下调到 **803**（`6d8a995`）；target 765 不变，还差 38。
 - **2026-09-26 CC-14a 后**：基线与 frozen 都下调到 **775**（`285885b`）；target 765，还差 10。
 - **2026-09-26 CC-14c / CC-14d 后**：766（`ba6db48`）→ **763**（`e94b896`），原 target 765 已提前达成；重设 target 740、due 2026-12-31（§5.5）。
+- **2026-09-26 CC-14e 后**：**759**（`1e3dc99`）；target 740，还差 19。下一张 CC-15（§5.6）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -327,6 +330,46 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
   - 反向验证：把队友分摊临时乘 0，DIFF 须只出现在含卢西娅(1451) 的场景。若 DIFF 为 0，说明展示字段不进 dump 哈希，应改为在 `luciaElowen.test.ts` 里断言 `luciaCurtainTeammates`；
   - `luciaElowen.test.ts` 通过，`vue-tsc -b` 为 0，master 全量 verify 钉 HEAD。
 - 回退点：单卡单提交，`git revert`。
+
+### 5.6 CC-14e 落地记录 + CC-15 卡（2026-09-26 第 20 轮 lead-arena-0925c）
+
+**CC-14e（`1e3dc99`，判据 22 763→759）卢西娅帷幕写回并入 `onFinalAssemble`**
+- **对卡面的修订**：`onFinalAssemble` 新增入参 `isCurtainProvider`、`curtainTriggers`、`state`、`totalTime`、`curtainOpeners` 一律改为**必填**。依据：唯一调用方是 core，每次都传全；yidhari 的实现只解构 `cfg` 和 `providerUltCount`，不受影响。
+- `luciaElowen.ts#luciaOnFinalAssemble`：`isCurtainProvider` 为假时直接返回；三个写回逐字迁入。自开次数调用 `luciaElowenMechanic.curtainTriggers`。原写法是 `getAgentMechanic(provider).curtainTriggers`，已用 grep 核实 luciaElowen 是唯一实现者，两者等价。若将来出现第二个帷幕提供者模块，它需要自己实现 `onFinalAssemble`。
+- assembleSlot：每个槽都按原 `raw` 算式（含 filter）收集 `curtainOpeners` 后传入。原来只在提供者槽收集，现在每槽一次；这是纯函数，3 槽开销可忽略。
+- `luciaElowen.test.ts` 新增断言：自开次数 + 队友分摊之和 = 触发总次数（toBeCloseTo 精度 6）。
+- 验证：
+  - dump 624 / rowsnap 637 零差（H2a）；
+  - 反向验证：队友分摊临时乘 0，DIFF 42，全部在卢西娅场景，说明这些展示字段**会**进 dump 哈希；同一改动下新断言变红；
+  - 定向 384 条测试通过，`vue-tsc -b` 为 0，master 全量 verify EXIT=0。
+- **遗留（低优先级，只影响缓存命中率）**：`luciaCurtainSelfCount`、`luciaCurtainTeammates` 仍不在卢西娅的 `feedbackCfgKeys` 里（见 §5.5）。加进去时，需要在 `warmStart.test.ts` 的 CC-14d 用例表里补两行。
+
+**剩余分布（HEAD `1e3dc99`，判据 22 共 759 处）**
+- 按文件：damagePoolAnomaly 121、convergence 79、useResourceCalc 51、damagePoolCharExtras 50、damagePoolDirect 43、crossAgentEnergy 39、resourceCalc/helpers 35、rowBuild 35、roundThreads 32，其余小于 30。
+- 按前缀：remielle 202、alice 90、liuyin 59、burnice 48、banyue 44、norma 38、trigger 37、jane 33、yixuan 33，其余小于 30。
+- 统计脚本在 WSL `/home/kaua/calc-arch/rf.mjs`（按文件、按前缀）和 `rf2.mjs`（列出 ≤6 处的小文件的字段与行号），都调用 `scanCoreRoleFields`。
+
+**CC-15 卡：赠行通用命名（A 类，纯改名，零差）**
+- 依据：引擎已有通用的赠行概念（`tailPipeline.ts` 的 `chainGiftFinal` / `ultimateGiftFinal`、`crossAgentSupply` 的赠链供给）。对外字段和执行行标记却仍挂着角色名，其实指的就是「赠连携 / 赠终结」。
+- 改名表（**先 `grep -rn` 找全再改**，测试一起改）：
+
+  | 旧 | 新 | 位置（HEAD `1e3dc99` 实测） |
+  |---|---|---|
+  | 团队结果 `liuyinGiftTimeReserved` | `ultimateGiftTimeReserved` | `types/resource/team.ts:156`；`core/resource.ts:396`；`composables/resourceCalc/liuyinPromote.ts:105/109`；测试 liuyinAxisGiftSameSource、timeLedgerInvariants、giftMoveTimeLedger、giftAxisProbe |
+  | 团队结果 `normaGiftTimeReserved` | `chainGiftTimeReserved` | `team.ts:162`；`resource.ts:398`；测试 timeLedgerInvariants、giftMoveTimeLedger |
+  | 尾段 `tail.liuyinGiftTimeTotal` 与 `resource.ts` 局部变量 `liuyinGiftTimeTotal` | `ultimateGiftTime` | `tailPipeline.ts:50/208`；`resource.ts:364/396` |
+  | 执行行标记 `SkillExecution.normaGiftChain` | `chainGift` | `types/resource/execution.ts:102`；`giftRows.ts:37/75`；`assembleSlot.ts:156`；useResourceCalc 2 处、resourceCalc/helpers 3 处、normaHatChain 4 处、liuyinPromote 2 处、damagePoolDirect 2 处；测试 giftRows、normaSmoke、moveFusion |
+  | assembleSlot 局部变量 `normaC4Decibel` | `giftDecibel` | `assembleSlot.ts:113/118` |
+
+- `execution.ts` 里 `chainGift` 的注释改写为：「赠送的连携行（引擎赠链供给产出；当前唯一来源 = 诺姆膛温换连携）。失衡捏轴下吃易伤的次数由提供者槽的 'norma-hat-chain' 轴内块决定（见 useResourceCalc）」。轴块 id `'norma-hat-chain'` 是数据标识，**不改**。
+- **不在本卡范围**：`luciaC4DecibelPerTrigger`（assembleSlot:116，属于帷幕能力，另议）；`banyueTopUp`（outerCycle/solveTeam/roundResult，另议）；`normaHatChain.ts` 文件名。
+- 零差：
+  - lead 在 `.zc/perf/{dump,rowsnap}.perf.ts` 的 KEY_ALIAS 里加上 `ultimateGiftTimeReserved: 'liuyinGiftTimeReserved', chainGiftTimeReserved: 'normaGiftTimeReserved', chainGift: 'normaGiftChain'`（键位置不变，纯改名）；
+  - 在原始 worktree 上带 `PERF_KEY_ALIAS=1` 生成基线 H3a，新代码同样带开关；用 `cmp.mjs` 比对，只允许 `__ms` 不同。
+- 反向验证：纯改名卡没有算式可改，改用「临时把 `giftRows.ts` 的 `chainGift: true` 删掉」，DIFF 须出现在含诺姆(1571) 的场景，证明这个标记进了哈希。
+- 预计判据 22 降约 25–30 处，以实测为准，两处常量同步下调。若读数 < 740，**同步重设 target**（`checkGuards.test` 要求 target < frozen），参考 §5.5 的重设写法，并在本节记录新 target 的依据。
+- 验收：`vue-tsc -b` 为 0；`npx vitest run src/core/__tests__ src/composables/__tests__/liuyinAxisGiftSameSource.test.ts src/composables/__tests__/timeLedgerInvariants.test.ts src/composables/__tests__/giftMoveTimeLedger.test.ts src/mechanics/__tests__/normaSmoke.test.ts src/scripts/__tests__/checkGuards.test.ts` 全过；master 全量 verify 钉 HEAD。
+- 派给：dsflash 工人（worktree，提示词写显式 git add 路径）。回退点：单卡单提交，`git revert`。
 
 ## 附录：普查脚本 census.sh
 

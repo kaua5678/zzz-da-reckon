@@ -159,7 +159,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-14b | review | **done** `6d8a995`（判据 22 821→803） | 伊德海莉燃血喧响两处同式迁模块能力 `selfBurnDecibel`，零差（新基线 H0 @ f0df0cb） | 卡面 `docs/mcp-r22d1-batch12-field-census.md` §5.4 |
 | CC-14c | review | **done** `ba6db48`（判据 22 775→766） | 装配期外部回血写回迁模块能力 `onFinalAssemble`，删 `yidhariSlot`，零差 | §5.5 |
 | CC-14d | review | **done** `e94b896`（判据 22 766→763，target 重设 740） | 热启动反馈字段改模块声明 `feedbackCfgKeys` | §5.5 |
-| CC-14e | review | **待做**（卡面已写） | 卢西娅帷幕写回（assembleSlot luciaCurtain*）并入 onFinalAssemble，零差 | 卡面 `docs/mcp-r22d1-batch12-field-census.md` §5.5 |
+| CC-14e | review | **done** `1e3dc99`（判据 22 763→759） | 卢西娅帷幕写回（assembleSlot luciaCurtain*）并入 onFinalAssemble，零差 | §5.5 / §5.6
+| CC-15 | review | **待派**（卡面已写） | 赠行通用命名：ultimateGiftTimeReserved / chainGiftTimeReserved / chainGift 等，纯改名零差 |
 
 ### CC-1 · 招式表查询迁出（fast）
 
