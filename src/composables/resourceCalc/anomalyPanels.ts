@@ -25,8 +25,6 @@
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { emptyPanel, panelAt } from '@/core/panel'
-import { getAgentSpec } from '@/specs/registry'
-import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { isRemielleAgent } from '@/mechanics/agents/remielle'
 import { getAgentMechanic } from '@/mechanics'
 import type { AnomalyProgress } from '@/types/resource'
@@ -56,14 +54,21 @@ export function getTeamAnomalyDurationBonus(
   catalogStore: ReturnType<typeof useCatalogStore>,
   element: string,
 ): number {
-  if (element === 'fire' && teamHasAgent(configStore, catalogStore, ['1171'])) return 3
-  if (element === 'electric' && teamHasAgent(configStore, catalogStore, ['1211'])) {
-    const team = buildMechanicTeamMembers(configStore, catalogStore)
-    // 槽位查找收敛为 `findSlotByIdentity`（单一事实源，规则 11）；`?? -1` 兜底逐位保留
-    // ——原式是 `team.find(...)?.slot ?? -1`，`findSlotByIdentity` 未命中同样返回 -1。
-    const rinaSlot = findSlotByIdentity(configStore, catalogStore, ['1211']) ?? -1
-    const rina = rinaSlot >= 0 ? catalogStore.agentsMap.get('1211') ?? null : null
-    if (rinaSlot >= 0 && evalAdditionalAbility(team, rinaSlot, rina, getAgentSpec('1211')?.additionalAbility)) return 3
+  // CC-35c（2026-09-27）：通用规则臂改由在队模块能力 `teamAnomalyDurationBonus` 提供（原按 1171 / 1211 / 1261 写死：
+  // 柏妮思 火 +3、丽娜 电 +3（额外能力激活）、简 物理 +5）。多个提供者取最大值，现状每种属性至多一个，与原先的提前返回等价。
+  // 队伍快照只在确有提供者时才构建（本函数每次面板计算要调 4 次）。本库 teammateBuffId 全部等于自身 id（2026-09-27 实查），
+  // 所以按 agentId 派发模块与原 `teamHasAgent`（agentId 或 teammateBuffId 命中）等价。
+  let bonus = 0
+  let team: ReturnType<typeof buildMechanicTeamMembers> | null = null
+  // ⚠ 按下标对应 `team[i]`（`buildMechanicTeamMembers` 就是 `configStore.team.map`），**不要**写 agentId 比较——
+  // agentId 棘轮（规则 6）按 AST 把 `x.agentId === y.agentId` 计为编排层身份判定（2026-09-27 实测 3→4 红）。
+  for (let i = 0; i < configStore.team.length; i++) {
+    const agentId = configStore.team[i]?.agentId
+    const mod = agentId ? getAgentMechanic(agentId) : undefined
+    if (!mod?.teamAnomalyDurationBonus) continue
+    team ??= buildMechanicTeamMembers(configStore, catalogStore)
+    const member = team[i]
+    bonus = Math.max(bonus, mod.teamAnomalyDurationBonus({ element, slot: member.slot, agent: member.agent, team }))
   }
   // ★ 以太臂**已删除**（R63，2026-09-20 round 63）：原先写作
   // `element === 'ether' && teamHasAgent(..., ['aria'])`，但 `'aria'` 在本库**没有任何**命中 ——
@@ -73,8 +78,7 @@ export function getTeamAnomalyDurationBonus(
   // 该效果的**唯一写者**是 spec `1501.json` 的 `teamBuffs[].aire_extra_erosion_duration`
   // → `etherAnomalyDurationBonusSeconds` +3，走 `calcPanel` 的 buff 通道（与 1171/1211/1261
   // 三臂「写在通用规则里」的口径不同）。⚠ 若要把它并回本函数，必须先删 spec 那条，否则**双计**。
-  if (element === 'physical' && teamHasAgent(configStore, catalogStore, ['1261'])) return 5
-  return 0
+  return bonus
 }
 
 /**

@@ -25,6 +25,8 @@ import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
+import { getAgentSpec } from '@/specs/registry'
+import { evalAdditionalAbility } from '@/specs/teamCondition'
 
 export const RINA_ID = '1211'
 const C2_COVERAGE = 12 / 18
@@ -306,6 +308,9 @@ function resolveExecutionDamage({ exec }: AgentDamageResolutionInput): { element
 }
 
 export const rinaMechanic: AgentMechanicModule = {
+  // CC-35c：额外能力激活时全队电属性异常持续 +3s（原 anomalyPanels#getTeamAnomalyDurationBonus 按 '1211' 写死，逐字迁入）
+  teamAnomalyDurationBonus: ({ element, slot, agent, team }) =>
+    (element === 'electric' && evalAdditionalAbility(team, slot, agent, getAgentSpec('1211')?.additionalAbility) ? 3 : 0),
   // 队伍级机制（原先由 useResourceCalc 手工 import + 调用 applyRinaTeamEnergyFlags）：
   // 丽娜终结技邻位回能。只在 build 阶段动手，与迁移前的调用时机一致。
   applyTeamConfig: ({ characters, phase }) => {

@@ -271,6 +271,8 @@ export function janeAnomalyEventRecords(input: AgentAnomalyEventRecordsInput): A
 }
 
 export const janeMechanic: AgentMechanicModule = {
+  // CC-35c：在队时全队强击（物理属性异常）持续 +5s（原 anomalyPanels#getTeamAnomalyDurationBonus 按 '1261' 写死）
+  teamAnomalyDurationBonus: ({ element }) => (element === 'physical' ? 5 : 0),
   id: 'agent:jane',
   agentIds: [JANE_AGENT_ID],
   name: '简',

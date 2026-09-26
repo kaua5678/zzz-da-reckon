@@ -598,6 +598,8 @@ function patchBurniceExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 export const burniceMechanic: AgentMechanicModule = {
+  // CC-35c：在队时全队灼烧（火属性异常）持续 +3s（原 anomalyPanels#getTeamAnomalyDurationBonus 按 '1171' 写死）
+  teamAnomalyDurationBonus: ({ element }) => (element === 'fire' ? 3 : 0),
   id: 'agent:burnice',
   agentIds: [BURNICE_AGENT_ID],
   name: '柏妮思',

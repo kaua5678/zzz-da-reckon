@@ -841,6 +841,13 @@ export interface AgentMechanicModule {
    */
   anomalyRefringePct?(panel: Readonly<PanelValues>): number
   /**
+   * 本角色在队时，全队某属性异常的持续时间延长秒数（CC-35c 2026-09-27，「通用规则臂」）：
+   * `resourceCalc/anomalyPanels.ts#getTeamAnomalyDurationBonus(element)` 对在队各模块求值，**取最大值**（不叠加；
+   * 现状每种属性至多一个提供者）。未命中返回 0。现有实现：柏妮思 火 +3、丽娜 电 +3（额外能力激活时）、简 物理 +5。
+   * ⚠ 爱芮的以太 +3 走 spec `teamBuffs` 的 buff 通道，**不要**在这里再实现（会双计）。
+   */
+  teamAnomalyDurationBonus?(input: { element: string; slot: number; agent: Agent | null; team: ReadonlyTeam }): number
+  /**
    * 保底自动补齐的交互次数由本模块产出（`CalcRoundResult.interactionTopUp` 的槽位归属，规则 6 落点）。
    *
    * 存在的理由：交互栏要用「弹刀 +N / 双反 +M」，读的是轮内收敛值 `calcOutput.interactionTopUp`——
