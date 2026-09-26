@@ -177,7 +177,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-26 | review | **done** `8b7d9db`（判据 22 403→363，target 351） | core/resource 蕾米埃尔「垂虹」必做动作行 + helpers 时间合计 → 模块能力 extraNecessaryAction；特殊虚耀事件 → remielle buildAnomalyEvents，零差 | census §5.20 |
 | CC-26b | review | **done** `0d65f59`（判据 22 363→357，target 351） | rowBuild 蕾米埃尔「光辉回转」后台行 → 模块能力 backstageAutoRows（原位置派发），零差 | census §5.21 |
 | CC-28 | review | **done** `69e85c4`（判据 22 357→340，target 328） | useResourceCalc `remielleVoidflareEvents`（编排层角色分支）→ moduleAnomalyEventRecords + 模块能力 anomalyEventRecords；展示层单测固化迁移前输出 | census §5.22 |
-| CC-29 | review | **待做**（已实读定稿） | useResourceCalc 简 6 命强击暴击附伤事件（findSlotByIdentity 1261，最后一处）→ 复用 anomalyEventRecords | census §5.22 |
+| CC-29 | review | **done** `69b53f9`（判据 22 340→332） | useResourceCalc 简 6 命强击暴击附伤事件（findSlotByIdentity 1261，最后一处）→ jane 模块 anomalyEventRecords；useResourceCalc 已无 findSlotByIdentity | census §5.23 |
+| CC-30 | review | **待做**（已实读） | `remielleEntryPanels`（全槽进场快照面板，无角色判定，仅名字带前缀）→ `entrySnapshotPanels` 纯改名；预计判据 22 →326，需同时重设 target | census §5.23 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
