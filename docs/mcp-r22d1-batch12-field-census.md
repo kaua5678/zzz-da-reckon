@@ -1311,6 +1311,23 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 3. 顺手小卡 CC-35d-B4（`liuyinPromote.ts` → `ultimateGift.ts`，1 计）。
 4. 调研待派同 §5.35（莱特额外能力 buff、花羽轮舞次数、W31）。
 
+### 5.38 CC-36a / CC-36b done：维琳娜在判据 22 中清零（lead-arena-0925c，2026-09-27 第 51 轮）
+
+**提交**：36a `8af6ca2`、36b `1ea574e`（各自 verify EXIT=0）。判据 22 **63 → 40 → 34**；`BASELINE` / `frozen` 34，**target 28**（36a 后读数 40 < 51，按「实测 − 12」重设）。agentId 棘轮 3/3。设计稿与实施记录 **`docs/mcp-cc36-velina-anomaly.md`**（新增，已登记 README §6，文档数 49 → 50）。
+
+- 36a：`corrosionSource`（含 `AnomalyPoolResult` 结果字段）、`cinema2CorrosionRate`（异常池输入）、气旋计数局部量、事件 fields 展示串。
+- 36b：面板字段 `turbulenceResIgnore`（1 命 20）+ 模块能力 `windAnomalyBonus`（6 命）；补 3 条单测。
+- **踩坑**：测试里 `(x as any)?.旧字段名` 的访问 tsc 拦不住，改名后 `toBeUndefined` 会变成空断言。**改结果字段名必须 grep 全仓旧名**（已写进设计稿 §A）。
+
+**rf3 快照（34 计，17 字段，36b 后）**：爱丽丝 aliceSparkOverride 3 / aliceSparkThisRound 3 / aliceSpark 3 / aliceCoweringDot 3 / aliceSparkCountOf 2 / aliceSwordWillSource 1（共 15：convergence / roundInputs / anomalyPool / outerCycle）；雨果 hugoRefundRatio 3 / hugoMoveActionTime 2 / hugoSlot 2 / hugoHasVerdict 2 / hugoCinema 2（共 11：convergence / roundInputs）；简 janeAssaultCritDmgBonus 3（core helpers / damage / panel）；零散 liuyinPromote 1（import 路径）/ lighterTeamEnergy 1 / yixuanFuFaForJufufu 1 / yeshuguangStunCapMult 1 / yeshuguangVeilStunBase 1。
+
+**下一步（按顺序，可直接开工）**
+1. **CC-37 简（3 计，最小）**：`janeAssaultCritDmgBonus` 在 `core/**/helpers.ts`、`core/damage.ts`、`core/panel.ts`。先读这个字段的写入方（简模块）与语义（强击暴伤加成），若 core 只是按字段读数，就照 CC-35c-C 改成通用名（如 `assaultCritDmgBonus`），同步 `docs/GAME_TERM_TO_CODE_FIELD.md`；反向变异看 dump 是否覆盖，不覆盖就补单测。
+2. **CC-38 爱丽丝（15 计）**：convergence / roundInputs 的 spark 跨轮反馈（`aliceSpark*`）+ anomalyPool 的 `aliceCoweringDot`。先写设计稿 `docs/mcp-cc38-alice.md`（登记 README §6），参照 `nextRoundFeedback` / `AgentTeamConfigInput.threads` 先例。
+3. **CC-39 雨果（11 计）**：convergence 决算（`hugoSlot` 仍是 `findSlotByIdentity(['1291'])`），参照 CC-35d-B3 的「按能力找提供者槽位」写法；必须跑 `hugoVerdictLanding`。
+4. 零散 5 计：`liuyinPromote.ts` 改名（CC-35d-B4）、叶瞬光 2、仪玄 1、莱特 1。
+5. 调研待派同 §5.35。
+
 ## 附录：普查脚本 census.sh
 
 ```bash

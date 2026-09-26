@@ -197,6 +197,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-35d-B1 | review | **done** `0aa191e`（判据 22 92→83，target 71） | 琉音出口改名 ultPromoteCount / ultPromoteHug60 | 设计稿 §D、census §5.37 |
 | CC-35d-B2 | review | **done** `e9e80cd`（83→76） | 新模块能力 `skipsGenericDirectRow`（琉音强特行跳过通用直伤），删 CharLocals.liuyinSrc | 设计稿 §D、census §5.37 |
 | CC-35d-B3 | review | **done** `840fa70`（76→63，target 51） | 新模块能力 `ultimateGiftSource`；好评转大三处身份查找改能力派发 | 设计稿 §D、census §5.37 |
+| CC-36a | review | **done** `8af6ca2`（判据 22 63→40，target 28） | 维琳娜风蚀量去角色名（corrosionSource / cinema2CorrosionRate / 气旋计数） | `docs/mcp-cc36-velina-anomaly.md`、census §5.38 |
+| CC-36b | review | **done** `1ea574e`（40→34） | 1 命乱流抗性无视 → 面板字段 `turbulenceResIgnore`；6 命风化加成 → 新模块能力 `windAnomalyBonus`；补单测 | `docs/mcp-cc36-velina-anomaly.md`、census §5.38 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
