@@ -1049,9 +1049,9 @@ function setComboAlignAbsorbPct(v: number) {
   configStore.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, Math.round(pct) / 100)
 }
 // 般岳轴模式自动补齐（保底语义）：弹刀/双反在交互栏输入之上补的量（懒计算，仅般岳选中时求值）
-const { banyueInteractionTopUp, autoPreset, parrySplitResult, resourceResult } = useResourceCalc()
+const { interactionTopUp, autoPreset, parrySplitResult, resourceResult } = useResourceCalc()
 const banyueTopUpForSlot = computed(() => {
-  const t = banyueInteractionTopUp.value
+  const t = interactionTopUp.value
   return t && t.slot === configStore.selectedSlot ? t : null
 })
 // Boss 预设弹刀反推（保底4失衡）：击破位显示「→ 有效次数（含无突击弹刀/保底反推）」、未手填的主C 显示「→ 剩余（Boss 默认）」

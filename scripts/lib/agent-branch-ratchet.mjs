@@ -121,7 +121,7 @@ export const AGENT_BRANCH_BASELINE = 3
 //    连 `@fact engine:轴内块数落地` 一起迁移锚点（`convergence.ts` → `hugo.ts#applyHugoTeamConfig`），
 //    并按判据 15 补 `⟳复核` 到期日（同时从 `CALIBER_TRIGGER_ALLOWLIST` 删旧行）。
 //  · `:849` 般岳 1471（整块 `banyueAxisEx` / `banyueAxisActive` / `banyueInteractionTopUp` + 弹刀/双反注入）
-//    ⇒ `banyue.ts#applyBanyueTeamConfig`。取数：轴内量走 `axis`、补齐量走 `threads.banyueTopUp`、
+//    ⇒ `banyue.ts#applyBanyueTeamConfig`。取数：轴内量走 `axis`、补齐量走 `threads.interactionTopUp`、
 //    保底开关走本轮新增的 `guarantee` 契约、自动补齐设置走**已注册** setting
 //    `banyue.autoTopUpInteractions`（default 1，`settings` 契约与 `getMechanicSetting` 同源同值）。
 //    `topUp.parry>0||topUp.dual>0` 条件写 + 非补齐态字面量 `{parry:0,dual:0}` 逐位保留。

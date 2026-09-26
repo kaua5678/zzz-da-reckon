@@ -16,7 +16,7 @@ export interface CalcRoundResult {
     stunCoverage: number
     resolvedAxes: StunAxis[]
     matchedPlanName: string | null
-    banyueTopUp: BanyueInteractionTopUp
+    interactionTopUp: BanyueInteractionTopUp
     parrySplit: ParrySplitResult
     inStunAnomalyState: InStunAnomalySummary | null
     bossAnomalyState: BossAnomalyStateResult | null

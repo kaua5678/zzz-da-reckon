@@ -422,12 +422,12 @@ export function useResourceCalc() {
   })
 
   /** 轴模式自动补齐的交互次数（保底，最终收敛值）：交互栏显示「弹刀 +N / 双反 +M」用 */
-  const banyueInteractionTopUp = computed<{ slot: number; parry: number; dual: number } | null>(() => {
+  const interactionTopUp = computed<{ slot: number; parry: number; dual: number } | null>(() => {
     // 懒守卫：无声明该能力的角色或非轴模式 → 不触发全量计算（首页交互栏只在选中该角色时读取）。
     // 槽位由模块声明（producesInteractionTopUp）驱动，本文件不含角色 id（2026-09-12 #10 真清偿）。
     const slot = configStore.team.findIndex(c => c.agentId && getAgentMechanic(c.agentId)?.producesInteractionTopUp)
     if (slot < 0 || (!configStore.useStunAxis && !autoActive.value)) return null
-    const topUp = calcOutput.value?.banyueTopUp
+    const topUp = calcOutput.value?.interactionTopUp
     if (!topUp || (topUp.parry === 0 && topUp.dual === 0)) return null
     return { slot, ...topUp }
   })
@@ -460,7 +460,7 @@ export function useResourceCalc() {
 
   /** 特殊动作喧响奖励 */
   const specialActionBonus = computed<SpecialActionBonusResult | null>(() => {
-    const topUp = banyueInteractionTopUp.value
+    const topUp = interactionTopUp.value
     const split = parrySplitResult.value
     const perSlotParry = configStore.team.map((c, s) => {
       let p = (c.parryCount ?? 0) + (topUp && s === topUp.slot ? topUp.parry : 0)
@@ -781,7 +781,7 @@ const damageSourceBreakdown = computed<DamageSourceBreakdown[]>(() =>
      * ⇒ 这里按规则 11（共享量从单一来源引用）暴露，不再让调用方各自近似。
      */
     stunCoverage,
-    banyueInteractionTopUp,
+    interactionTopUp,
     parrySplitResult,
     liuyinPromoteCount,
     liuyinPromoteHug60,

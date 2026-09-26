@@ -309,7 +309,7 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
       cfg: cfg as never,
       axis: axisOf({ actionCountsBySlot: { 0: { 'banyue-combo': 2 } } }),
       guarantee: { stun: false, fury: false, ultimate: true },
-      threads: { banyueTopUp: { parry: 3, dual: 5 } } as never,
+      threads: { interactionTopUp: { parry: 3, dual: 5 } } as never,
       settings: { 'banyue.autoTopUpInteractions': 1 },
     }))
     expect(cfg.banyueInteractionTopUp).toEqual({ parry: 3, dual: 5 })
@@ -327,7 +327,7 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
       cfg: cfg as never,
       axis: axisOf({ active: false }),
       guarantee: { stun: false, fury: false, ultimate: false },
-      threads: { banyueTopUp: { parry: 3, dual: 5 } } as never,
+      threads: { interactionTopUp: { parry: 3, dual: 5 } } as never,
       settings: { 'banyue.autoTopUpInteractions': 1 },
     }))
     expect(cfg.banyueInteractionTopUp).toEqual({ parry: 0, dual: 0 })
@@ -344,7 +344,7 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
       cfg: cfg as never,
       axis: axisOf({}),
       guarantee: { stun: false, fury: false, ultimate: true },
-      threads: { banyueTopUp: { parry: 3, dual: 5 } } as never,
+      threads: { interactionTopUp: { parry: 3, dual: 5 } } as never,
       settings: { 'banyue.autoTopUpInteractions': 0 },
     }))
     expect(cfg.banyueInteractionTopUp).toEqual({ parry: 0, dual: 0 })
@@ -358,7 +358,7 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
       cfg: cfg as never,
       axis: axisOf({ active: false }),
       guarantee: { stun: false, fury: true, ultimate: false },
-      threads: { banyueTopUp: { parry: 0, dual: 4 } } as never,
+      threads: { interactionTopUp: { parry: 0, dual: 4 } } as never,
       settings: { 'banyue.autoTopUpInteractions': 1 },
     }))
     expect(cfg.banyueInteractionTopUp).toEqual({ parry: 0, dual: 4 })
@@ -369,7 +369,7 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
   it('★ 契约缺 `guarantee` ⇒ 整块不写（不静默按「保底全关」算）', () => {
     const hook = getAgentMechanic('1471')!.applyTeamConfig!
     const cfg = { slot: 0, agentId: '1471' } as never as Record<string, unknown>
-    hook(hookInput({ cfg: cfg as never, axis: axisOf({}), threads: { banyueTopUp: { parry: 3, dual: 5 } } as never }))
+    hook(hookInput({ cfg: cfg as never, axis: axisOf({}), threads: { interactionTopUp: { parry: 3, dual: 5 } } as never }))
     expect(cfg.banyueInteractionTopUp).toBeUndefined()
     expect(cfg.banyueAxisEx).toBeUndefined()
   })
@@ -389,7 +389,7 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
         cfg: cfg as never, phase,
         axis: axisOf({}),
         guarantee: { stun: false, fury: true, ultimate: false },
-        threads: { banyueTopUp: { parry: 3, dual: 5 } } as never,
+        threads: { interactionTopUp: { parry: 3, dual: 5 } } as never,
       }))
       expect(cfg.banyueInteractionTopUp, `phase=${phase}`).toBeUndefined()
     }

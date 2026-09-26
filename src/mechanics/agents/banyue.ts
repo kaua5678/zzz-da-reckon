@@ -466,7 +466,7 @@ function rowValue(move: SkillMove | null, rowId: string): number {
  *     判据选中本模块，`slot` 即般岳槽位；UI 侧 `usedAgentIds` 保证同一角色不重复进队）；
  *   · `banyue.autoTopUpInteractions` 是**已注册** setting（本文件 `settings`，default 1）
  *     ⇒ 从 `settings` 契约读，与 `getMechanicSetting(id, 1)` 同源同值。
- * - `topUp` 原读 `prevBanyueTopUp`（= `threads.banyueTopUp`）⇒ 现读 `threads.banyueTopUp`。
+ * - `topUp` 原读 `prevInteractionTopUp`（= `threads.interactionTopUp`）⇒ 现读 `threads.interactionTopUp`。
  *   ⚠ 非补齐态原式取**字面量** `{ parry: 0, dual: 0 }`（新对象，不是线程对象引用）
  *   ⇒ 逐位保留该形状，避免把线程对象泄漏进 cfg。
  * - `parryCount` / `dualCounterCount` 的**条件写**逐位保留（`topUp.parry > 0 || topUp.dual > 0`
@@ -484,7 +484,7 @@ function applyBanyueTeamConfig({ slot, cfg, phase, axis, guarantee, settings, th
   // 轴模式自动补齐（保底）：轴模式之外，保底开关也可独立驱动（非轴亦生效）；设置可整体关闭。
   const autoTopUp = (axis.active || guarantee.fury || guarantee.ultimate)
     && Number(settings?.['banyue.autoTopUpInteractions'] ?? 1) !== 0
-  const topUp = autoTopUp ? (threads?.banyueTopUp ?? { parry: 0, dual: 0 }) : { parry: 0, dual: 0 }
+  const topUp = autoTopUp ? (threads?.interactionTopUp ?? { parry: 0, dual: 0 }) : { parry: 0, dual: 0 }
   if (topUp.parry > 0 || topUp.dual > 0) {
     record.parryCount = (cfg.parryCount ?? 0) + topUp.parry
     record.dualCounterCount = (cfg.dualCounterCount ?? 0) + topUp.dual
@@ -1006,7 +1006,7 @@ export const banyueMechanic: AgentMechanicModule = {
   },
   /**
    * 交互栏「轴模式自动补齐」的槽位归属声明（规则 6 迁入，棘轮站点 8/8，2026-09-12 #10 真清偿）：
-   * 原本 `useResourceCalc.banyueInteractionTopUp` 写死 `findIndex(c => c.agentId === '1471')`。
+   * 原本 `useResourceCalc.interactionTopUp` 写死 `findIndex(c => c.agentId === '1471')`。
    * 该 computed 的槽位查找 + 懒守卫（非本角色队伍不触发全量计算）改由编排层按本声明完成。
    */
   producesInteractionTopUp: true,

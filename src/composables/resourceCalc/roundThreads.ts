@@ -9,8 +9,8 @@
  * 同步评估终止判据并补真实管线测试。“字段传到了下一轮”不代表求解器会等到它稳定。
  *
  * 语义约定（与旧位置参数版逐字段等价）：
- * - 轮内持久（null 轮不清零）：goodReview / energyBySlot / banyueTopUp / parrySplit / decibelParry
- *   —— 它们的下一轮值在 runCalcRound 内部已由 prev 兜底（如 banyueTopUpNext 初值 = prev.banyueTopUp）。
+ * - 轮内持久（null 轮不清零）：goodReview / energyBySlot / interactionTopUp / parrySplit / decibelParry
+ *   —— 它们的下一轮值在 runCalcRound 内部已由 prev 兜底（如 interactionTopUpNext 初值 = prev.interactionTopUp）。
  * - 其余字段：null 轮（runCalcRound 返回 null，如无失衡行队伍）重置为初值。
  */
 import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
@@ -26,7 +26,7 @@ export interface CalcRoundThreads {
   /** 异常/紊乱/乱流喧响奖励（按槽位，上一轮异常池回填） */
   anomalyDecibelBonus: number[]
   /** 般岳轴模式自动补齐（弹刀/双反） */
-  banyueTopUp: BanyueInteractionTopUp
+  interactionTopUp: BanyueInteractionTopUp
   /** Boss 预设弹刀反推拆分（保底4失衡） */
   parrySplit: ParrySplitResult | null
   /** 后台合轴自动填充（agentId → 自动对数）：由模块 backstageAutoFill 声明驱动，编排层通用反推 */
@@ -85,7 +85,7 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
     energyBySlot: {},
     auricInkFlash: 0,
     anomalyDecibelBonus: [],
-    banyueTopUp: { parry: 0, dual: 0, requiredSeconds: 0, illegal: false },
+    interactionTopUp: { parry: 0, dual: 0, requiredSeconds: 0, illegal: false },
     parrySplit: null,
     backstageAuto: null,
     yixuanFuFaForJufufu: 0,
@@ -120,7 +120,7 @@ export function threadsAfterNullRound(prev: CalcRoundThreads): CalcRoundThreads 
     ...initialCalcRoundThreads(),
     goodReview: prev.goodReview,
     energyBySlot: prev.energyBySlot,
-    banyueTopUp: prev.banyueTopUp,
+    interactionTopUp: prev.interactionTopUp,
     parrySplit: prev.parrySplit,
     backstageAuto: prev.backstageAuto,
     decibelParry: prev.decibelParry,

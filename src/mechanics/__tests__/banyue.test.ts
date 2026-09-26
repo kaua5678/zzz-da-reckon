@@ -480,7 +480,7 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     const c0 = calc.resourceResult.value!.characters[0]
     const cycle = c0.banyueRageCycle!
     // 自动补齐非零（双反补嗔火），且不写回 store（保底语义：交互栏输入不变）
-    const topUp = calc.banyueInteractionTopUp.value
+    const topUp = calc.interactionTopUp.value
     expect(topUp).not.toBeNull()
     expect(topUp!.slot).toBe(0)
     expect(topUp!.dual).toBeGreaterThan(0)
@@ -523,7 +523,7 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     }
     expect(front).toBeLessThanOrEqual(182)
     // 自动补齐清零（退化 = 非轴模式，autoTopUp 关闭；补齐是把轴需求抬成交互行的通道）
-    const topUpAfter = calc.banyueInteractionTopUp.value
+    const topUpAfter = calc.interactionTopUp.value
     expect(!topUpAfter || (topUpAfter.parry === 0 && topUpAfter.dual === 0)).toBe(true)
   })
 

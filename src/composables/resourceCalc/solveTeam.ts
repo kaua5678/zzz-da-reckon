@@ -82,14 +82,14 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     return netFrontlineOccupation(r.resourceResult)
   }
   /**
-   * **待装补齐**（⑥″，2026-09-19）：般岳补齐（轴自动补齐 / 保底4喧响补弹刀）是反馈线程——本轮算出的 `banyueTopUp`
+   * **待装补齐**（⑥″，2026-09-19）：般岳补齐（轴自动补齐 / 保底4喧响补弹刀）是反馈线程——本轮算出的 `interactionTopUp`
    * 要到**下一轮**才装进计划。外层落进环时，「输入补齐 = 0、本轮才算出要补 N 次」的成员计划看似最贴预算，实则少装了它自己
    * 声明的补齐（般岳厚轴 4-环实测：179.2s 的计划装上 46.66s 补齐是 225.9s；保底4喧响 2-环：180.0s 的计划少装 7 弹刀 16.3s）。
    * 待装 = 本轮补齐时长 − 上一轮（= 本轮输入）补齐时长，取正；stable 停点两轮相等 ⇒ 0，对已收敛的队零影响。
    * 环内选点、轴退化判据、非轴降配的净占用**都**按「计划 + 待装」算。
    */
   const pendingTopUpSeconds = (x: CalcRoundResult | null, prev: CalcRoundResult | null): number =>
-    Math.max(0, (x?.banyueTopUp?.requiredSeconds ?? 0) - (prev?.banyueTopUp?.requiredSeconds ?? 0))
+    Math.max(0, (x?.interactionTopUp?.requiredSeconds ?? 0) - (prev?.interactionTopUp?.requiredSeconds ?? 0))
   /**
    * 跑完整外层不动点。forceNoAxis = 轴退化重算（用户口径 2026-08：轴的资源需求
    * （喧响/嗔火/轴内块 × 窗口数）超出时间预算 → 必要时间 > 战斗时间 → 该轴不可操作
@@ -340,7 +340,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     if (lockedStunCount < 0) {
       // 非法补齐（自动填充交互 > 200s，用户口径 2026-09-01）与超预算同等对待：
       // 轴要的资源根本填不出来 ⇒ 轴不可操作 ⇒ 走同一条退化路径（补齐次数已在源头清零）
-      const topUpIllegal = (x: CalcRoundResult | null) => x?.banyueTopUp?.illegal === true
+      const topUpIllegal = (x: CalcRoundResult | null) => x?.interactionTopUp?.illegal === true
       // 轴太厚判据按「计划 + 待装补齐」算（见 pendingTopUpSeconds 注释）
       if ((overBudget(r) || topUpIllegal(r.out)) && r.out?.resolvedAxes?.length) {
         hadAxis = true

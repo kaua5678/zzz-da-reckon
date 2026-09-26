@@ -110,7 +110,7 @@ export function createRunCalcRound(deps: {
       // 2026-09-16 round 14：`auricInkFlash` 也不再在此解构——仪玄 1371 整条分支已迁进
       // `yixuan.ts#applyYixuanTeamConfig`（该模块经 `threads` 契约自取，规则 6）。
       anomalyDecibelBonus: prevAnomalyDecibelBonus,
-      banyueTopUp: prevBanyueTopUp,
+      interactionTopUp: prevInteractionTopUp,
       parrySplit: prevParrySplit,
       // `yixuanFuFaForJufufu` 同上：读点已迁进 1371 模块；2026-09-17 round 20 C-β 起
       // **产出侧**（`yixuanNextRoundFeedback`）也迁进 1371 模块 ⇒ 本文件对它只剩 merge。
@@ -191,7 +191,7 @@ export function createRunCalcRound(deps: {
     // 当前轮失衡覆盖率（供诺姆火力实验高爆/破甲按失衡时长拆分；与 computeStunCoverage 同口径，含决算截断）
     const provStunCoverage = computeStunCoverage({ stunCount }, verdictSecondsLost)
     // 般岳轴模式自动补齐（保底语义，方案 A）：轴内怒相/终结技对嗔火/喧响有硬性需求，不足时抬双反（补嗔火）与弹刀（补喧响），
-    // 有效次数 = 交互栏输入 + 补齐量（不写回 store，不覆盖用户输入）；计算轮间通过 prevBanyueTopUp 线程收敛。
+    // 有效次数 = 交互栏输入 + 补齐量（不写回 store，不覆盖用户输入）；计算轮间通过 prevInteractionTopUp 线程收敛。
     const banyueSlot = findSlotByIdentity(configStore, catalogStore, ['1471'])
     // Boss 预设弹刀反推（用户口径 2026-08）：appliedBoss 声明 parryTotal/parryNoFollowUpTotal（如 叶释渊 13 / 司祭 15）且
     // 「保底4失衡」勾选时，击破位（队伍首个 stun 特性槽位）弹刀按保底失衡反推补齐、主C 拿剩余
@@ -525,7 +525,7 @@ export function createRunCalcRound(deps: {
       // 已迁进 specPanelBuffs 的 peiluoProminenceMechanic.applyTeamConfig（规则 6）。
       // 般岳 1471 的整块（`banyueAxisEx` / `banyueAxisActive` / `banyueInteractionTopUp`
       // + 弹刀/双反注入）已于 2026-09-17 round 21 夜D 迁进 `banyue.ts#applyBanyueTeamConfig`
-      // （converge 相位）：轴内量走 `axis` 契约、补齐量走 `threads.banyueTopUp`、
+      // （converge 相位）：轴内量走 `axis` 契约、补齐量走 `threads.interactionTopUp`、
       // 保底开关走本轮新增的 `guarantee` 契约（`guarantee.*` 刻意不注册 MechanicSetting，
       // 理由见 `AgentTeamConfigInput.guarantee` 头注释）⇒ 本 map 里不再有 1471 判据。
       // 仪玄 1371 的 8 个字段已整条迁进 `yixuan.ts#applyYixuanTeamConfig`（round 14 批次 4）：
@@ -699,15 +699,15 @@ export function createRunCalcRound(deps: {
     for (const ch of rr.characters) teamUltimateBaseNext += ch.ultimateCount ?? 0
 
     // 轴模式自动补齐下一轮量（保底）：嗔火缺口 → 双反；喧响缺口 → 弹刀。用 store 原始输入 + 本轮实际资源供给计算，
-    // 外不动点收敛时 prevBanyueTopUp 稳定（round 0 无补齐 → 本轮算出的下一轮量即最终缺口）。
-    let banyueTopUpNext = prevBanyueTopUp
+    // 外不动点收敛时 prevInteractionTopUp 稳定（round 0 无补齐 → 本轮算出的下一轮量即最终缺口）。
+    let interactionTopUpNext = prevInteractionTopUp
     if (autoTopUp) {
       const storeChar = configStore.team[banyueSlot]
       const ultNeed = axisUltimateNeed(resolvedAxes, stunCount, banyueSlot)
       // 喧响供给取般岳个人（终结技次数 = 个人喧响 / 终结技消耗，非全队总和；曾用全队总和导致
       // 队友喧响把缺口抹平 → 保底4喧响不补齐、般岳卡在 9000 出头打不满 4 大）
       const decibelHave = rr.characters.find(c => c.slot === banyueSlot)?.decibelSource?.total ?? 0
-      banyueTopUpNext = computeBanyueInteractionTopUp({
+      interactionTopUpNext = computeBanyueInteractionTopUp({
         dodgeCount: storeChar?.dodgeCounterCount ?? 0,
         parryCount: storeChar?.parryCount ?? 0,
         blockCount: storeChar?.blockCount ?? 0,
@@ -1099,7 +1099,7 @@ export function createRunCalcRound(deps: {
       // 轴退化时生效轴 = 无（诚实反映：轴定义仍解析，但没有注入计算）
       resolvedAxes: opts?.forceNoAxis ? [] : resolvedAxes,
       matchedPlanName: opts?.forceNoAxis ? null : planName,
-      banyueTopUp: banyueTopUpNext,
+      interactionTopUp: interactionTopUpNext,
       parrySplit: parrySplitNext,
       inStunAnomalyState: inStunAnomalyStateNext,
       bossAnomalyState: bossAnomalyStateNext,
@@ -1108,7 +1108,7 @@ export function createRunCalcRound(deps: {
         energyBySlot,
         auricInkFlash: ap1?.perElement?.find(p => p.element === 'ether_ink')?.triggerCount ?? 0,
         anomalyDecibelBonus: [],
-        banyueTopUp: banyueTopUpNext,
+        interactionTopUp: interactionTopUpNext,
         parrySplit: parrySplitNext,
         backstageAuto: backstageAutoNext,
         yixuanFuFaForJufufu: feedbackNext.yixuanFuFaForJufufu ?? 0,

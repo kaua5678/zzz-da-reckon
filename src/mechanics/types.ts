@@ -707,9 +707,9 @@ export interface AgentMechanicModule {
    */
   axisWindowOverlays?(input: AgentAxisOverlayInput): AgentAxisOverlays | null
   /**
-   * 保底自动补齐的交互次数由本模块产出（`CalcRoundResult.banyueTopUp` 的槽位归属，规则 6 落点）。
+   * 保底自动补齐的交互次数由本模块产出（`CalcRoundResult.interactionTopUp` 的槽位归属，规则 6 落点）。
    *
-   * 存在的理由：交互栏要用「弹刀 +N / 双反 +M」，读的是轮内收敛值 `calcOutput.banyueTopUp`——
+   * 存在的理由：交互栏要用「弹刀 +N / 双反 +M」，读的是轮内收敛值 `calcOutput.interactionTopUp`——
    * 而它**很贵**，非本角色队伍不该触发全量计算（原实现是这个懒守卫的唯一理由）。编排层要保留
    * 该守卫就得知道「本队有没有这种角色」，此前写成 `team.findIndex(c => c.agentId === '1471')`。
    * 声明式（同 `backstageAutoFill` 范式）：编排层按声明找槽位，新角色接入不必再动编排层。
