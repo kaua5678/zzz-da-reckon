@@ -27,6 +27,12 @@ export declare const CORE_AGENT_BRANCH_BASELINE: number
 export declare function countAgentIdBranchLinesInFiles(files: string[], root?: string): number
 // 引擎层「按角色名的值导入」棘轮（判据 12，T8 证伪后改口径：baseline=5，全活引用不许增）
 export declare const CORE_ROLE_IMPORT_BASELINE: number
+// 判据 22：core 角色前缀字段计数棘轮（scripts/lib/core-role-field-ratchet.mjs）
+export declare const CORE_ROLE_FIELD_BASELINE: number
+export declare const ROLE_FIELD_EXEMPT: string[]
+export declare function rolePrefixesFrom(fileNames: string[]): string[]
+export declare function findRoleFieldRefs(text: string, prefixes: string[], exempt?: string[]): { field: string; line: number }[]
+export declare function scanCoreRoleFields(root: string): { count: number; byFile: Map<string, { field: string; line: number }[]>; prefixes: string[] } | null
 
 // 判据 3：工作区状态防误提交
 export declare const CLAUDE_TRACKED_ALLOWLIST: string[]

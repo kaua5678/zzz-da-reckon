@@ -333,6 +333,14 @@ export const RATCHET_BURNDOWN = [
       + '⚠ 不许把本清单当豁免面用（那是放宽判据）；`jane.frenzyActive` 一条需**用户裁决**（见 OPEN-ITEMS §R48-J1）'
       + '——它是真死声明，补测试会红，应先裁决再动。',
   },
+  {
+    id: 'core 角色前缀字段',
+    file: 'src/core/** + src/composables/resourceCalc/** + useResourceCalc.ts（口径见 scripts/lib/core-role-field-ratchet.mjs）',
+    frozen: 821,  // 2026-09-26 lead-arena-0925c 立项：首次普查 905 − 误报 triggerCount 84 = 821（docs/mcp-r22d1-batch12-field-census.md §5）。与 CORE_ROLE_FIELD_BASELINE 同步改。
+    target: 765,  // A 类（resourceIncome 命座能量 CC-14a + 伊德海莉残余 CC-14b，约 56 处）全部通用化后的读数；B 类（remielle/alice/liuyin 等）另立设计后再下调 target
+    due: '2026-11-30',
+    plan: 'CC-14a（卡面 census 文档 §5.2，前置门 R1 合入）→ CC-14b 伊德海莉残余 → B 类槽位定位变量按角色逐卡；remielle 簇需先出设计稿',
+  },
 ]
 
 /**
@@ -723,6 +731,8 @@ export function findForbiddenTracked(trackedPaths) {
 // ⚠ 改判据口径请改 `./lib/layer-import-ratchet.mjs`，**不要在本文件重建同形函数**。
 import { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMPORT_BASELINE, CORE_LAYER_DIR, CORE_ROLE_IMPORT_BASELINE, scanCoreRoleImports, detectExhibitionLayerImport, countExhibitionLayerImports, scanExhibitionLayerImports } from './lib/layer-import-ratchet.mjs'
 export { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMPORT_BASELINE, CORE_LAYER_DIR, CORE_ROLE_IMPORT_BASELINE, scanCoreRoleImports, detectExhibitionLayerImport, countExhibitionLayerImports, scanExhibitionLayerImports } from './lib/layer-import-ratchet.mjs'
+import { CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, scanCoreRoleFields, findRoleFieldRefs, rolePrefixesFrom } from './lib/core-role-field-ratchet.mjs'
+export { CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, scanCoreRoleFields, findRoleFieldRefs, rolePrefixesFrom } from './lib/core-role-field-ratchet.mjs'
 
 
 // ---- 判据 4：实现已整段迁至 `./lib/settings-coverage.mjs`（R46 结构熵切面，纯搬运）----
@@ -1284,6 +1294,27 @@ export function runAllChecks(root = ROOT) {
         ? [`  ✗ core role-import ${CORE_ROLE_IMPORT_BASELINE}→${coreRole.count}：是进步，把 CORE_ROLE_IMPORT_BASELINE 下调到 ${coreRole.count}（棘轮只减不增）`]
         : [],
   })
+
+  // ---- 判据 22：core/编排层读角色前缀字段计数棘轮（口径 scripts/lib/core-role-field-ratchet.mjs） ----
+  const roleField = scanCoreRoleFields(root)
+  if (roleField === null) {
+    results.push({ name: 'core role-field ratchet ⚠ 非 git 环境，跳过', ok: true, detail: [] })
+  } else {
+    results.push({
+      name: `core role-field ratchet (判据 22: 角色知识回模块, 引擎不读 <角色>Xxx 字段) = ${roleField.count}/${CORE_ROLE_FIELD_BASELINE}`,
+      ok: roleField.count === CORE_ROLE_FIELD_BASELINE,
+      detail: roleField.count > CORE_ROLE_FIELD_BASELINE
+        ? [
+          `  ✗ 角色前缀字段引用 ${CORE_ROLE_FIELD_BASELINE}→${roleField.count}（新增）：`,
+          '    → 数学通用的改通用字段（范式 CC-13 / CC-14a）；逻辑专属的迁模块能力 getAgentMechanic(id)?.<能力>',
+          `    → 通用词撞角色前缀的误报加进 ROLE_FIELD_EXEMPT（现：${ROLE_FIELD_EXEMPT.join(', ')}）并写明理由`,
+          ...[...roleField.byFile].slice(0, 8).map(([f, r]) => `      ${f}: ${r.length}`),
+        ]
+        : roleField.count < CORE_ROLE_FIELD_BASELINE
+          ? [`  ✗ core role-field ${CORE_ROLE_FIELD_BASELINE}→${roleField.count}：是进步，把 CORE_ROLE_FIELD_BASELINE 与 RATCHET_BURNDOWN「core 角色前缀字段」.frozen 同步下调到 ${roleField.count}（棘轮只减不增）`]
+          : [],
+    })
+  }
 
   const settings = scanSettingsCoverage(root)
   // ⚠ 冻结清单按 id 本体匹配（`module::id` 里的 id 部分）——见 settings-coverage.mjs 的注释：

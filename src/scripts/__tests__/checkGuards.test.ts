@@ -11,6 +11,7 @@ import { readFileSync, readdirSync, mkdirSync, mkdtempSync, writeFileSync } from
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
+  CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, findRoleFieldRefs, rolePrefixesFrom, scanCoreRoleFields,
   DEBT_REGISTRY,
   ROOT,
   AGENT_BRANCH_BASELINE,
@@ -567,11 +568,13 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('二十一条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖****)', () => {
+  it('二十二条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / **core role-field ' + CORE_ROLE_FIELD_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖****)', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(21)
+    expect(results).toHaveLength(22)
+    // 判据 22：core 角色前缀字段计数棘轮（2026-09-26，docs/mcp-r22d1-batch12-field-census.md §5）——agentId 棘轮看不见 `cfg.billyC1Energy` 这类以角色命名的字段
+    expect(results.some(r => r.name.startsWith('core role-field ratchet'))).toBe(true)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
     expect(results.map(r => r.name.split(' ')[0])).toContain('exhibition-layer')
     // core 棘轮必须在列（规则 6 的引擎层延伸——此前 core 是豁免区）
@@ -1822,5 +1825,41 @@ describe('scanDocReviewTriggers（手册复核触发器，任务卡第 5 步：�
     const found = scanDocReviewTriggers().length
     expect(found).toBeGreaterThanOrEqual(3)  // 坑 19/27/38 三条示范标记
     expect(found).toBe(marked)               // 可解析数 == 挂账数（漏一条 = 挂了个假账）
+  })
+})
+
+describe('判据 22：core 角色前缀字段计数棘轮（scripts/lib/core-role-field-ratchet.mjs）', () => {
+  it('基线常量 == RATCHET_BURNDOWN.frozen，且登记了 due/plan（改基线必须两处同步）', () => {
+    const e = RATCHET_BURNDOWN.find(x => x.id === 'core 角色前缀字段')!
+    expect(e).toBeDefined()
+    expect(e.frozen).toBe(CORE_ROLE_FIELD_BASELINE)
+    expect(e.target).toBeLessThan(e.frozen)
+    expect(e.due).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(e.plan.length).toBeGreaterThan(20)
+  })
+
+  it('检测器只数代码部分，跳过注释与豁免词（正控 + 负控）', () => {
+    const prefixes = rolePrefixesFrom(['billy.ts', 'starlightBilly.ts', 'qingyi.ts', 'trigger.ts', 'index.ts', 'types.ts'])
+    expect(prefixes).toEqual(['billy', 'qingyi', 'trigger'])
+    const src = [
+      'const a = cfg.billyC1Energy + cfg.qingyiC4Energy // lycaonC2Energy qingyiInComment',
+      '// billyLineComment',
+      '/* billyBlockStart',
+      ' * qingyiInBlock',
+      ' */',
+      'const n = r.triggerCount + r.triggerSlot',
+      'const billy = 1  // 裸前缀（无大写尾）不算',
+    ].join('\n')
+    const refs = findRoleFieldRefs(src, prefixes)
+    expect(refs.map(r => `${r.field}@${r.line}`)).toEqual(['billyC1Energy@1', 'qingyiC4Energy@1', 'triggerSlot@6'])
+    expect(ROLE_FIELD_EXEMPT).toContain('triggerCount')
+    // 负控：去掉豁免 ⇒ triggerCount 被计入
+    expect(findRoleFieldRefs(src, prefixes, []).some(r => r.field === 'triggerCount')).toBe(true)
+  })
+
+  it('仓库实测读数 == 基线（同 check-guards 判据 22）', () => {
+    const r = scanCoreRoleFields(process.cwd())
+    expect(r).not.toBeNull()
+    expect(r!.count).toBe(CORE_ROLE_FIELD_BASELINE)
   })
 })

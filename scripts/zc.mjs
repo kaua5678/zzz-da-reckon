@@ -783,6 +783,7 @@ async function verbStatus(root = ROOT) {
       // 若写成 `SETTINGS_UNTESTED_BACKLOG.length` ⇒ 补了测试也不降，棘轮永远显示零进展。
       // 正解 = 清单长度 − stale 长度（stale = 清单里**已被测试引用**、待回收的行；
       // 补测试但漏删行时 stale 也涨 ⇒ 读数照样下降，不会因「忘了删行」而假装没还）。
+      'core 角色前缀字段': () => g.scanCoreRoleFields(root)?.count ?? NaN,
       '滑块生效测试存量': () => {
         const r = g.scanSettingsCoverage(root)
         return g.SETTINGS_UNTESTED_BACKLOG.length - r.stale.length
