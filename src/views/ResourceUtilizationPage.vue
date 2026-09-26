@@ -196,7 +196,7 @@
 
       <n-card size="small" class="mechanic-card" :bordered="true">
         <template #header>
-          命座提升率（当前配队与滑块下，逐级影画带来的伤害增量）
+          命座提升率（当前配队与滑块下，逐级影画带来的伤害与失衡值/积蓄/喧响/能量增量）
           <n-tag v-if="!axisActiveForUplift" size="tiny" type="warning" :bordered="false" style="margin-left:8px;vertical-align:middle">
             非轴模式：本页命座提升率仅供参考，失衡轴模式才可信
           </n-tag>
@@ -206,19 +206,56 @@
             {{ cinemaComputing ? '计算中' : (cinemaGains.length > 0 ? '重新计算' : '计算') }}
           </n-button>
         </div>
-        <div v-if="cinemaGains.length > 0" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-          <div v-for="g in cinemaGains" :key="g.slot">
-            <div style="font-size:12px;color:var(--wa-700);margin-bottom:2px">{{ g.name }}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:4px">
-              <span
-                v-for="e in g.entries"
-                :key="e.to"
-                :style="entryBadgeStyle(e)"
-              >
-                影画{{ e.to - 1 }}→{{ e.to }} {{ e.gainPct >= 0 ? '+' : '' }}{{ fmt(e.gainPct, 1) }}%<template v-if="e.gainPct < 0">（预算权衡：该命座资源侧收益被时间成本抵消）</template><template v-if="e.ultAfter !== e.ultBefore">（全队大招 {{ e.ultBefore }}→{{ e.ultAfter }}）</template><template v-if="e.warn === 'execLevel'"> · 执行级</template><template v-if="e.warn === 'unimplemented'"> · ⚠无变化</template>
-                <template v-if="e.warn === 'unimplemented' && e.changedFields.length === 0">（该命座无面板字段与伤害变化，效果可能未接进计算）</template>
-              </span>
+        <!--
+          R1（docs/REQUIREMENTS.md）：由「一排角标」改为「一档一行、一指标一栏」的表格。
+          列顺序与中文列名不在这里写死，一律取 cinemaUplift.ts 的 CINEMA_METRICS（单一事实源，规则 11）。
+        -->
+        <div v-if="cinemaGains.length > 0" class="cinema-uplift-wrap">
+          <div v-for="g in cinemaGains" :key="g.slot" class="cinema-uplift-block">
+            <div class="cinema-uplift-name">{{ g.name }}</div>
+            <div class="cinema-uplift-scroll">
+              <table class="cinema-uplift-table">
+                <thead>
+                  <tr>
+                    <th>影画</th>
+                    <th>伤害</th>
+                    <th v-for="m in upliftMetricDefs" :key="m.key">{{ m.label }}</th>
+                    <th>大招</th>
+                    <th>自检</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="e in g.entries" :key="e.to">
+                    <td>{{ e.to - 1 }}→{{ e.to }}</td>
+                    <td
+                      :class="upliftCellClass(e.gainPct)"
+                      :title="`伤害提升率 ${fmt(e.gainPct, 2)}%${e.gainPct < 0 ? '（预算权衡：该命座资源侧收益被时间成本抵消）' : ''}`"
+                    >{{ signed1(e.gainPct) }}%</td>
+                    <td
+                      v-for="m in upliftMetricDefs"
+                      :key="m.key"
+                      :class="upliftCellClass(displayDelta(metricOf(e, m.key)))"
+                      :title="metricTitle(metricOf(e, m.key))"
+                    >
+                      {{ upliftDeltaText(metricOf(e, m.key)) }}<small v-if="upliftPctText(metricOf(e, m.key))" class="uplift-pct">{{ upliftPctText(metricOf(e, m.key)) }}</small>
+                    </td>
+                    <td
+                      :class="e.ultAfter === e.ultBefore ? 'uplift-flat' : upliftCellClass(e.ultAfter - e.ultBefore)"
+                      title="全队终结技总次数（与伤害同场景读数）"
+                    >{{ e.ultAfter === e.ultBefore ? '—' : `${e.ultBefore}→${e.ultAfter}` }}</td>
+                    <td class="cinema-uplift-warn"><span :style="entryBadgeStyle(e)">{{ upliftWarnLabel(e) }}</span></td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
+            <div v-if="g.entries.some(e => e.warn === 'unimplemented')" class="cinema-uplift-note">
+              ⚠无变化 = 该命座无面板字段与伤害变化，效果可能未接进计算（AGENTS 规则 5 的肉眼自检面）。
+            </div>
+          </div>
+          <div class="cinema-uplift-note">
+            口径：伤害与各栏同在「失衡次数锁定{{ cinemaStunLock > 0 ? `（${cinemaStunLock} 次）` : '' }}」场景下逐级对比，保证同场景同固定条件；
+            <b>失衡栏是失衡值总量</b>——失衡次数正是被锁的量，用它当栏会恒为 0（探针证据见 docs/mcp-cinema-uplift-multi-metric.md §2）。
+            负值 = 该命座的资源侧收益被时间预算抵消（预算权衡），不是错误。`—` = 本级该量无变化。
           </div>
         </div>
       </n-card>
@@ -299,7 +336,15 @@ import { NButton, NCard, NInputNumber, NSelect } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { analyzeCinemaUplift, type CinemaUpliftRow } from '@/composables/cinemaUplift'
+import {
+  analyzeCinemaUplift,
+  collectCinemaMetrics,
+  CINEMA_METRICS,
+  UPLIFT_EPSILON_PCT,
+  type CinemaUpliftEntry,
+  type CinemaUpliftMetric,
+  type CinemaUpliftRow,
+} from '@/composables/cinemaUplift'
 import { fmt } from '@/utils/format'
 import { getAgentMechanic } from '@/mechanics'
 import type { MechanicSetting } from '@/types/resource'
@@ -507,6 +552,10 @@ const marginalGainsBySlot = computed(() => {
 // 类型与算法同源于 composables/cinemaUplift.ts（勿在此另抄一份）
 const cinemaGains = ref<CinemaUpliftRow[]>([])
 const cinemaComputing = ref(false)
+/** 本次分析锁定的失衡次数（只用于页面口径说明文案） */
+const cinemaStunLock = ref(0)
+/** 栏位定义（顺序 + 中文列名）单源在 cinemaUplift.ts，页面不另抄 */
+const upliftMetricDefs = CINEMA_METRICS
 
 function teamUltimateTotal(): number {
   return (resourceResult.value?.characters ?? []).reduce((sum, c) => sum + (c.ultimateCount ?? 0), 0)
@@ -523,17 +572,81 @@ function entryBadgeStyle(e: { warn: 'ok' | 'execLevel' | 'unimplemented' }): Rec
   return { fontSize: '11px', padding: '2px 6px', borderRadius: '3px', color: 'var(--wa-600)', background: 'var(--wa-40)' }
 }
 
+/** 三态角标的中文文案（原先散在模板的 <template v-if> 里，改成表格后集中一处） */
+function upliftWarnLabel(e: CinemaUpliftEntry): string {
+  if (e.warn === 'unimplemented') return '⚠无变化'
+  return e.warn === 'execLevel' ? '执行级' : 'ok'
+}
+
+function metricOf(e: CinemaUpliftEntry, key: string): CinemaUpliftMetric | undefined {
+  return e.metrics.find(m => m.key === key)
+}
+
+/** 涨跌着色走令牌（--c-success/--c-danger 明暗双主题都有定义），不写死色值 */
+function upliftCellClass(delta: number): string {
+  return delta > 0 ? 'uplift-up' : delta < 0 ? 'uplift-down' : 'uplift-flat'
+}
+
+function signed1(v: number): string {
+  return `${v >= 0 ? '+' : ''}${fmt(v, 1)}`
+}
+
+/**
+ * 「显示用 delta」= 单元格文案与着色的**共同**判据（两者必须同源，否则会出现「绿色的 —」这种自相矛盾的格子）。
+ *
+ * 口径：**按本栏的显示位数四舍五入后为 0 的变化，一律当无变化**（显示 `—`、不着色）。
+ * 为什么这么定（2026-09-26 实机 DOM 读回抓到的两个缺陷，见 docs/mcp-cinema-uplift-multi-metric.md §4）：
+ *   ① rate 栏曾抢在「零变化 → —」之前返回，导致 异常覆盖 每行都印 `+0pp`，与其它栏不一致；
+ *   ② 维琳娜 1→2 命失衡值 Δ=-18.2、基数约 4.5 万 ⇒ 提升率 -0.04%，格子印成 `-18.2 -0%`——`-0%` 是纯噪声。
+ * 精确值不丢：`metricTitle` 的悬浮提示里仍是 before → after 全精度。
+ */
+function displayDelta(m: CinemaUpliftMetric | undefined): number {
+  if (!m) return 0
+  const shown = m.kind === 'rate' ? m.delta * 100 : m.delta
+  const digits = m.kind === 'count' ? 0 : 1
+  return Number(Math.abs(shown).toFixed(digits)) === 0 ? 0 : m.delta
+}
+
+/** 单元格主文：比率栏按百分点（pp）、次数栏取整、数量栏 1 位小数；显示位上为 0 的一律 `—` */
+function upliftDeltaText(m: CinemaUpliftMetric | undefined): string {
+  if (!m || displayDelta(m) === 0) return '—'
+  if (m.kind === 'rate') return `${m.delta >= 0 ? '+' : ''}${fmt(m.delta * 100, 1)}pp`
+  return m.kind === 'count' ? `${m.delta >= 0 ? '+' : ''}${fmt(m.delta, 0)}` : signed1(m.delta)
+}
+
+/**
+ * 单元格副文：提升率%（只对数量栏显示；次数/比率栏的百分比没有意义）。
+ * 阈值复用本模块的 `UPLIFT_EPSILON_PCT`（= 「零移动」判据同一个数），避免又立一把尺。
+ */
+function upliftPctText(m: CinemaUpliftMetric | undefined): string {
+  if (!m || m.kind !== 'value' || Math.abs(m.pct) < UPLIFT_EPSILON_PCT) return ''
+  return `${m.pct >= 0 ? '+' : ''}${fmt(m.pct, 1)}%`
+}
+
+function metricTitle(m: CinemaUpliftMetric | undefined): string {
+  if (!m) return '（本栏无读数）'
+  return `${m.label}：${fmt(m.before, 1)} → ${fmt(m.after, 1)}（Δ ${signed1(m.delta)}，${signed1(m.pct)}%）`
+}
+
 async function computeCinemaGains() {
   cinemaComputing.value = true
   try {
     // 算法已抽到 composables/cinemaUplift.ts（同一份实现同时服务页面与测试：
     // 「命座必须有效果」的红灯断言见 composables/__tests__/cinemaUplift.test.ts 与 allAgentsSweep）
+    const targetStun = stunPoolResult.value?.stunCount ?? 4 // 固定场景：以当前配置收敛的失衡次数为准
+    cinemaStunLock.value = targetStun
     cinemaGains.value = await analyzeCinemaUplift({
       configStore,
       catalogStore,
       readDamage: () => teamTotalDamage.value,
       readUltimateTotal: teamUltimateTotal,
-      targetStunCount: stunPoolResult.value?.stunCount ?? 4, // 固定场景：以当前配置收敛的失衡次数为准
+      // R1：附加指标与伤害**同场景**读数；求和口径单源在 collectCinemaMetrics（页面不另抄一份）
+      readMetrics: () => collectCinemaMetrics({
+        characters: resourceResult.value?.characters,
+        stunPool: stunPoolResult.value,
+        anomalyPool: anomalyPoolResult.value,
+      }),
+      targetStunCount: targetStun,
       resolveName: agentId => agentNames.value[agentId] || '',
     })
   } finally {
@@ -655,6 +768,83 @@ function setCap(slot: number, id: string, value: number | null) {
   margin-top: 12px;
 }
 
+/* R1：命座提升率多指标表（列名与顺序单源在 cinemaUplift.ts 的 CINEMA_METRICS）
+   房型照 CharIncrementPage 的 .rank-table：裸 table + border-collapse + --wa-60 分隔线 */
+.cinema-uplift-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cinema-uplift-block {
+  min-width: 0;
+}
+
+.cinema-uplift-name {
+  font-size: 12px;
+  color: var(--wa-700);
+  margin-bottom: 2px;
+}
+
+.cinema-uplift-scroll {
+  overflow-x: auto;
+}
+
+.cinema-uplift-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.cinema-uplift-table th,
+.cinema-uplift-table td {
+  text-align: right;
+  padding: 4px 8px;
+  /* 分隔线走语义别名 --line（= --wa-120）而不是裸 --wa-*：check-tokens 的 alias 棘轮要求新代码用别名。
+     ⚠ --wa-60 的语义是 --fill-hover（行/按钮 hover 底），拿它当分隔线是用错令牌。 */
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.cinema-uplift-table th {
+  color: var(--fg-2);
+  font-weight: 500;
+}
+
+.cinema-uplift-table th:first-child,
+.cinema-uplift-table td:first-child {
+  text-align: left;
+}
+
+/* 特异性要压过上面的 `.cinema-uplift-table td`（0,1,1 > 0,1,0），否则居中不生效 */
+.cinema-uplift-table td.cinema-uplift-warn {
+  text-align: center;
+}
+
+.uplift-pct {
+  margin-left: 3px;
+  font-size: 10px;
+  color: var(--fg-2);
+}
+
+.uplift-up {
+  color: var(--c-success);
+}
+
+.uplift-down {
+  color: var(--c-danger);
+}
+
+.uplift-flat {
+  color: var(--fg-2);
+}
+
+.cinema-uplift-note {
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--fg-2);
+}
 .mechanic-row,
 .card-header {
   display: flex;

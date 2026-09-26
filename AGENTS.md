@@ -229,6 +229,12 @@ Windows 侧存在若干副本（`/f/trae_output/`、`/f/claude code/`、`/f/test
 Windows 命令行有 **8191 字符上限**，用 `echo` / `base64` 拼长内容会被**静默截断**
 （不报错，文件就是短一截）。长文件一律 `apply_patch` 分块写入。
 
+**⚠ 新建文件的坑（2026-09-26 lead 现场实测并绕过）**：`apply_patch` 的 `*** Add File:` 在本环境**必然失败**，
+报 `IO_ERROR: ENOTSUP: operation not supported on socket, link '\\wsl.localhost\...'`——Windows 侧 UNC 路径不支持原子 link，与内容无关，重试无用。
+绕法：先用 `wsl_exec` 执行 `printf '<!-- SEED -->\n' > <路径>` 建文件并留一行种子，再用 `*** Update File:` 把种子行当上下文删掉、换成正文。
+两条附带约束：① `*** Update File:` **至少要有一行旧内容**，真空文件改不了（种子行就是为此存在）；
+② 用脚本生成多个 hunk 时，务必 `-` 行在 `+` 行之前（写成 context→additions→deletions 的顺序会让 patcher 认错，表现为 no-op 或错位）。
+
 ### 3. ShunCode 设置（`%APPDATA%\ShunCode\User\settings.json`）
 
 ```json

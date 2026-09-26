@@ -58,6 +58,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | W27 | 命座「未描述」5 条改标（原文已收到、防御 / 生存向不建模） | 数据订正 | 两份 JSON 各 5 / 4 档 + `docs/implementation-status.md`（生成） | ✅ 已合入（`749e047`；lead-arena-0925b 复核 accept：语义 diff 恰 5 + 4 档、效果句逐条对 `data/raw` 原文、正控 validate:data / modelingGaps 9/9 / check-guards 21、负控 1271 C1 改回 ⇒ 未描述 1→2，`cp` 还原后三文件 sha256 逐位一致；卡已删） |
 | W28 | 命座镜像 `cinemaImplementation` 单源化预审（62 档 status 不一致） | 只读普查 | `/tmp/w28/`、`.zc/reports/W28-mirror-census.md` | ✅ 已回收（15:43；lead-arena-0925b 复核 accept：结论 `可删`——9 处读者逐一只取已知键、独有信息 0 条；lead 隔离 worktree 删光镜像后 validate:data / modelingGaps 9/9 / check-guards 21 全绿、状态表逐字不变。更正：带镜像的是 41 角色（非 47）；漏了复数键 `cinemaImplementations`（1481）⇒ 均写进 W29；卡已删） |
 | W29 | 删命座镜像 `cinemaImplementation(s)`，单源 = constellations | 实现 | `public/static/character-mechanics.json`（只删两键）、`scripts/sync-new-role-status.mjs`、`scripts/validate-data.mjs`、`.zc/reports/W29.md` | ✅ 已合入 `798bb4d`（15:47 派发、约 6 分钟收工；lead-arena-0925b 复核：语义 diff 恰为 41 + 1 个键删除、无其它变化；正控 validate:data 366 / modelingGaps 9/9 / check-guards 21 / 状态表零 diff；负控单、复数键均红；lead 改 1 词 `信 确认→信 高`；卡已删） |
+| W30 | `check-tokens` hint 指向不存在的令牌（`--text-2`/`--text-3` 应为 `--fg-2`/`--fg-3`） | 守卫文案订正 | `scripts/check-tokens.mjs`（只改字符串）、`.zc/reports/W30.md` | ⏳ 待派（2026-09-26 lead 立卡；来源 = R1 改表格边框时撞出，证据见 `docs/mcp-cinema-uplift-multi-metric.md` §5） |
 
 **drift 落盘的工具坑（2026-09-25，后续 lead 必读）**：① 批量打 `·复核@` 按**锚点**选事实，而事实可能写在 docs 里（如 `GAME_TERM_TO_CODE_FIELD.md`）——提交时别只 `git add src/`，以 `git status` 为准；
 ② 事实行可能误写**两个「据」槽**，解析器静默取后一个 ⇒ 标签打在前一个无效，应合并为单槽（`liuyinPromote.ts` 失衡次数不动点即此例）；
@@ -80,7 +81,25 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
 
 ## 2. 任务卡
 
+### W30 · `check-tokens` 的 hint 把改样式的人指向**不存在**的令牌
+
+- **一句话**：守卫脚本报错时推荐用 `--text-2` / `--text-3`，但仓库里没有这两个变量（只有字号用的 `--text-2xs` / `--text-2xl`）；真正的文字色语义别名是 `--fg-2` / `--fg-3`（`--fg-2` = `var(--wa-750)`）。照提示改必然失败 ⇒ 守卫在骗人，必须订正文案。
+- **类型**：守卫文案订正（纯字符串）。**写入白名单**：`scripts/check-tokens.mjs`、`.zc/reports/W30.md`。**其它文件一律不许碰**。
+- **先读**（只读这两个）：① `grep -nE '\-\-text-[23]\b' scripts/check-tokens.mjs`（实测约 650 行、1023 行两处 hint，**以 grep 为准，别信本卡行号**）；② 令牌定义文件里 `--fg-2` / `--fg-3` / `--text-2xs` / `--text-2xl` 的真实定义（用 `grep -rnE '^\s*--(fg-[23]|text-2(xl|xs)?):' src/` 找，别假设在 `global.css`）。
+- **硬约束**：① 只改**字符串与注释**，计数逻辑、判定分支、基线常量（`VAR_TOTAL_BASELINE`=808、`WA_REF_BASELINE`=447）**一个都不许动**；② 改前先跑前提假设的证伪命令（见下），前提不成立就**停手写报告**，不许顺手改代码；③ 不许顺带重排格式、改引号风格、动缩进；④ 单卡单提交。
+- **前提假设（证伪闸门）**：假设「`--text-2` / `--text-3` 在全仓既无定义也无有效引用」。
+  **可观察失败** = `grep -rnE '\-\-text-[23]\b' src/ scripts/ public/ 2>/dev/null` 出现**定义**（形如 `--text-2:` 在 `:root`/主题块里）或出现被 CSS 真正消费的引用 ⇒ 前提不成立，本卡作废：不改任何文件，把 grep 原始输出贴进 `.zc/reports/W30.md` 并收工。
+  （注意：`scripts/check-tokens.mjs` 自己的 hint 里出现不算「引用」，那是本卡要改的对象。）
+- **验收（四条全绿才算完）**：
+  1. `npm run check-tokens` 12 项全绿，且**输出的数字与改前逐位相同**（基线没被碰动的证据）——贴改前、改后两段命令输出尾部；
+  2. `grep -nE '\-\-text-[23]\b' scripts/check-tokens.mjs` 返回 **0 行**；
+  3. `git diff --stat` 只有 1 个文件，`git diff` 里每一行改动都是字符串/注释（**贴完整 diff**，预期 ≤ 20 行；超了说明改多了）；
+  4. `npm run check-guards` 全绿（确认没碰坏别的守卫）。
+- **报告**：`.zc/reports/W30.md` 按 `AGENTS.md` §5 四段式写，**每条验收都附真实命令输出的尾部**（转述不算数）。若走了证伪分支，报告里写清「前提不成立 + grep 原文」即可收工。
+
 - **CC-14a**（架构线，lead-arena-0925c 立卡）：卡面在 `docs/mcp-r22d1-batch12-field-census.md` §5.2。**前置门：R1（`docs/REQUIREMENTS.md`）合入、src 无 cinemaUplift WIP**，未满足前不要派。
+- **CC-14a 前置门已于 2026-09-26 打开（lead 现场核实，可直接派）**：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
+  **相交点已核，派单时必须带这三句**：① R1 的「能量」栏读的是 `energyTotal`，**不是** CC-14a 要删的 6 个键之一，但 CC-14a 的零差闸门（dump 624 / rowsnap 637）覆盖 `energyTotal` ⇒ 该栏受零差保护；② R1 新增的另 6 个指标（`totalStunBuildUp`/`anomBuildUp`/`decibelTotal`/`exSpecial`/`anomTriggers`/`coverage`）**不在 perf 语料里**，其回归网 = `src/composables/__tests__/cinemaUplift.test.ts`（11 测试，其中「不恒 0」「锁下仍会动」两条专门钉口径）+ `allAgentsSweep.test.ts`（311）⇒ **CC-14a 收尾必须额外跑这两个文件**，只跑 perf 零差会漏；③ R1 已把命座分析的「锁定场景读数」收敛到 `cinemaUplift.ts` 的 `readScene()` 一处，CC-14a 若动 `EnergySource` 结构，改动面就在那一个函数里，别全文件搜。
 - **CC-14b**（架构线，lead-arena-0925c 立卡并派发）：卡面在 `docs/mcp-r22d1-batch12-field-census.md` §5.4。在 worktree `/home/kaua/r66-scratch/cc14b` 里做，不碰主仓库；与 R1 不相交。
 
 ## 3. 本队列的来源：2026-09-24 OPEN-ITEMS 分诊
