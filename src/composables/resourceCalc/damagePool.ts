@@ -67,7 +67,7 @@ export interface DamagePoolContext {
   stunPoolResult: StunPoolResult | null
   effectiveStunAxes: StunAxis[]
   /** 蕾米进场记录面板（特殊虚耀用） */
-  remielleEntryPanels: PanelValues[]
+  entrySnapshotPanels: PanelValues[]
   /** 蕾米异化系数倍率（1 + (异化度+提升)/100） */
   globalAnomalyMultiplier: number
   /** 琉音转大收敛次数（余音直伤用） */

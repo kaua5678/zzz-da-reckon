@@ -74,7 +74,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
     configStore, catalogStore,
     adjustedResourceResult, damagePanels, stunCoverage, axisAllocation: allocMap,
     anomalyPoolResult,
-    remielleEntryPanels, globalAnomalyMultiplier,
+    entrySnapshotPanels, globalAnomalyMultiplier,
   } = env.ctx
   const {
     rows, agentName, enemyDamageRes, isAxis, windSlot,
@@ -324,7 +324,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
         axisInUnits: (key) => allocMap[key]?.inAxisUnits ?? 0,
         getMechanicSetting: (k, d) => configStore.getMechanicSetting(k, d),
         anomalyPool: anomalyPoolResult,
-        entryPanel: panelAt(remielleEntryPanels, slot),
+        entryPanel: panelAt(entrySnapshotPanels, slot),
         skills: catalogStore.agentSkillsByAgentMap.get(configStore.team[slot]?.agentId ?? ''),
         panelOf: (s) => panelAt(damagePanels, s),
         teamElement: (s) => catalogStore.agentsMap.get(configStore.team[s]?.agentId ?? '')?.damageElement ?? 'physical',

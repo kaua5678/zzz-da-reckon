@@ -2,7 +2,7 @@
  * 「压缩数组按槽位号索引」扫描器（判据 17 的实现面）。
  *
  * ## 要拦的形态
- * `characters` / `panels` / `damagePanels` / `remielleEntryPanels` 四个数组由
+ * `characters` / `panels` / `damagePanels` / `entrySnapshotPanels` 四个数组由
  * `for (let i = 0; i < 3; i++) { const x = buildX(i); if (x) arr.push(x) }` 构建
  * ⇒ **按位置紧凑**（空槽被跳过）⇒ **槽位号 ≠ 下标**。
  * 任何 `arr[<槽位表达式>]` 都是缺陷：前导/中间空槽时静默取到 `undefined` 或**别人那份对象**。
@@ -27,14 +27,14 @@
  *   · `panelAt(panels, slot)` —— 面板族专用（`src/core/panel.ts`，带未盖章密集数组兜底）；
  *   · `characters.map/some/filter(...)` —— 整体消费者，无下标语义。
  *
- * @fact engine:压缩数组/按槽位索引 口径: `characters`/`panels`/`damagePanels`/`remielleEntryPanels` 按位置压缩（空槽跳过）⇒ 槽位号 ≠ 下标，四数组一律禁止 `arr[<槽位表达式>]` 下标访问；模块内取自己那份 cfg 用 `AgentTeamConfigInput.cfg` / `AgentNextRoundFeedbackInput.cfg`（派发器直给），取队友那份或面板一律 `.find(x => x.slot === slot)` / `panelAt(panels, slot)` | 据 用户@2026-09-16「你挖出结构性缺陷就直接动手做」+ 本会话实测三档后果（艾莲影画4 静默归零 / 格雷丝写进队友 cfg / 奥菲丝·薇薇安·蕾米埃尔硬崩）·复核@2026-09-25| 验 src/composables/__tests__/compactedSlotIndex.test.ts | 锚 scripts/lib/compacted-slot-index.mjs#scanCompactedSlotIndex | 信 确认
+ * @fact engine:压缩数组/按槽位索引 口径: `characters`/`panels`/`damagePanels`/`entrySnapshotPanels` 按位置压缩（空槽跳过）⇒ 槽位号 ≠ 下标，四数组一律禁止 `arr[<槽位表达式>]` 下标访问；模块内取自己那份 cfg 用 `AgentTeamConfigInput.cfg` / `AgentNextRoundFeedbackInput.cfg`（派发器直给），取队友那份或面板一律 `.find(x => x.slot === slot)` / `panelAt(panels, slot)` | 据 用户@2026-09-16「你挖出结构性缺陷就直接动手做」+ 本会话实测三档后果（艾莲影画4 静默归零 / 格雷丝写进队友 cfg / 奥菲丝·薇薇安·蕾米埃尔硬崩）·复核@2026-09-25| 验 src/composables/__tests__/compactedSlotIndex.test.ts | 锚 scripts/lib/compacted-slot-index.mjs#scanCompactedSlotIndex | 信 确认
  * ⟳复核: 若 `characters`/`panels` 的 producer 改成「槽位对齐」（不再压缩）或改由专门的 `.slot` 键控 Map 承载，本判据的前提消失 ⇒ 连同 IDX_SAFE_ALLOWLIST 一起重审或删除 | 到期 2027-03-31
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 
 /** 受判据约束的四个压缩数组名 */
-export const COMPACTED_ARRAYS = ['characters', 'panels', 'damagePanels', 'remielleEntryPanels']
+export const COMPACTED_ARRAYS = ['characters', 'panels', 'damagePanels', 'entrySnapshotPanels']
 
 /**
  * 逐条豁免：**下标语义**（不是槽位语义）的访问点。每条必须写明理由，且随代码消失即销号。

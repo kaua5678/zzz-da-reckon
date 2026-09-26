@@ -69,12 +69,12 @@ describe('scanCompactedSlotIndex：核心 discriminating pair', () => {
         'export const h = (characters: any[], c: any) => characters[c.slot]',
         'export const i = (damagePanels: any[], banyueSlot: number) => damagePanels[banyueSlot]',
         'export const j = (panels: any[], windSlot: number) => panels[windSlot]',
-        'export const k = (remielleEntryPanels: any[], remielleSlot: number) => remielleEntryPanels[remielleSlot]',
+        'export const k = (entrySnapshotPanels: any[], remielleSlot: number) => entrySnapshotPanels[remielleSlot]',
       ].join('\n') + '\n',
     })
     expect(r.violations.map(v => `${v.array}[${v.key}]`)).toEqual([
       'characters[input.slot]', 'panels[row.slot]', 'characters[c.slot]',
-      'damagePanels[banyueSlot]', 'panels[windSlot]', 'remielleEntryPanels[remielleSlot]',
+      'damagePanels[banyueSlot]', 'panels[windSlot]', 'entrySnapshotPanels[remielleSlot]',
     ])
   })
 

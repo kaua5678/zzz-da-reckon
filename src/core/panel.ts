@@ -143,7 +143,7 @@ export function emptyPanel(): PanelValues {
  * 按**槽位号**取面板 —— 数组是**按位置压缩**的（`computePanel` 跳过空槽），故**不能**用
  * `panels[slot]` 下标（槽位号 ≠ 下标）。
  *
- * 为什么需要它（2026-09-16 实测的整类缺陷）：`panels` / `damagePanels` / `remielleEntryPanels`
+ * 为什么需要它（2026-09-16 实测的整类缺陷）：`panels` / `damagePanels` / `entrySnapshotPanels`
  * 都由 `for (let i = 0; i < 3; i++) { const p = computeX(i); if (p) result.push(p) }` 产出——
  * 空槽不 push ⇒ 长度 = 有角色的槽数。下游 `panels[slot]` 在**前导/中间空槽**时静默错位：
  * 轻则取到 `undefined`、重则取到**别人那份面板**（跨角色污染），实测 3 个角色直接抛 TypeError。

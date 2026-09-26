@@ -1422,7 +1422,7 @@ export interface ExtraAnomalyRowsInput {
   getMechanicSetting: (key: string, dflt: number) => number
   /** = ctx.anomalyPoolResult（只读整体注入，模块内读 .aliceCoweringDot；避免在 core 侧出现角色前缀字段） */
   anomalyPool: DamagePoolContext['anomalyPoolResult']
-  /** = panelAt(remielleEntryPanels, slot)（进场快照面板；ctx.remielleEntryPanels 原样） */
+  /** = panelAt(entrySnapshotPanels, slot)（进场快照面板；ctx.entrySnapshotPanels 原样） */
   entryPanel: PanelValues | undefined
   /** = catalogStore.agentSkillsByAgentMap.get(configStore.team[slot]?.agentId ?? '') */
   skills: AgentSkills | undefined

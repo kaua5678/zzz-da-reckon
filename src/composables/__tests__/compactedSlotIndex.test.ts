@@ -3,7 +3,7 @@
  *
  * ## 缺陷（本文件是它唯一的护栏）
  * `useResourceCalc` 用 `for (let i = 0; i < 3; i++) { const x = buildX(i); if (x) arr.push(x) }`
- * 构建 `characters` / `panels` / `damagePanels` / `remielleEntryPanels` ⇒ 数组**按位置紧凑**
+ * 构建 `characters` / `panels` / `damagePanels` / `entrySnapshotPanels` ⇒ 数组**按位置紧凑**
  * （空槽被跳过），**槽位号 ≠ 下标**。而下游长期按**槽位号**取值（`arr[slot]`），前导/中间空槽时
  * 静默取到 `undefined` 或**别人那份对象**。
  *

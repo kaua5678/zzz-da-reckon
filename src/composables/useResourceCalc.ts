@@ -146,7 +146,7 @@ export function useResourceCalc() {
   })
 
   /** 各角色“进场记录面板”（特殊虚耀使用） */
-  const remielleEntryPanels = computed<PanelValues[]>(() => {
+  const entrySnapshotPanels = computed<PanelValues[]>(() => {
     const result: PanelValues[] = []
     for (let i = 0; i < 3; i++) {
       const p = computeRemielleEntryPanel(i, configStore, catalogStore)
@@ -585,7 +585,7 @@ export function useResourceCalc() {
     bossAnomalyState: bossAnomalyState.value,
     stunPoolResult: stunPoolResult.value,
     effectiveStunAxes: effectiveStunAxes.value,
-    remielleEntryPanels: remielleEntryPanels.value,
+    entrySnapshotPanels: entrySnapshotPanels.value,
     globalAnomalyMultiplier: globalAnomalyMultiplier.value,
     liuyinPromoteCount: liuyinPromoteCount.value,
     agentNames: agentNames.value,
