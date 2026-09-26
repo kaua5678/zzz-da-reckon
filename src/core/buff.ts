@@ -736,20 +736,6 @@ export function applyStat(panel: PanelValues, stat: StatId, value: number, mode:
     case 'windAnomalyDmgBonus': panel.windAnomalyDmgBonus += value; break
     case 'turbulenceDamageBonus': panel.turbulenceDamageBonus += value; break
     case 'anomalyReleaseDmgBonus': panel.anomalyReleaseDmgBonus += value; break
-    case 'remielleRefringeCoefficient': panel.remielleRefringeCoefficient += value; break
-    case 'remielleRefringeCoefficientBonusPct': panel.remielleRefringeCoefficientBonusPct += value; break
-    case 'remielleLuminizeMultiplierBonus': panel.remielleLuminizeMultiplierBonus += value; break
-    case 'remielleCinema4LuminizeMultiplierBonus': panel.remielleCinema4LuminizeMultiplierBonus += value; break
-    case 'remielleCinema1SpecialVoidflareCount': panel.remielleCinema1SpecialVoidflareCount += value; break
-    case 'remielleCinema1SpecialVoidflareDamage': panel.remielleCinema1SpecialVoidflareDamage += value; break
-    case 'remielleFlowerFeatherDanceDecibelPerUse': panel.remielleFlowerFeatherDanceDecibelPerUse += value; break
-    case 'remielleFlowerFeatherDanceCount': panel.remielleFlowerFeatherDanceCount += value; break
-    case 'remielleCinema4SpecialVoidflareRefillCount': panel.remielleCinema4SpecialVoidflareRefillCount += value; break
-    case 'remielleCinema6LuminizeTriggerMultiplier': panel.remielleCinema6LuminizeTriggerMultiplier += value; break
-    case 'remielleCinema6SpecialVoidflareTriggerMultiplier': panel.remielleCinema6SpecialVoidflareTriggerMultiplier += value; break
-    case 'remielleCinema6FleetingGraceVoidflareTriggerMultiplier': panel.remielleCinema6FleetingGraceVoidflareTriggerMultiplier += value; break
-    case 'remielleCinema6SpecialVoidflareCount': panel.remielleCinema6SpecialVoidflareCount += value; break
-    case 'remielleCinema6SpecialVoidflareDamageRatio': panel.remielleCinema6SpecialVoidflareDamageRatio += value; break
     case 'skillLevelBonus': panel.skillLevelBonus += value; break
     case 'anomalyCritRate': panel.anomalyCritRate += value; break
     case 'anomalyCritDmg': panel.anomalyCritDmg += value; break
@@ -803,6 +789,8 @@ export function applyStat(panel: PanelValues, stat: StatId, value: number, mode:
     case 'disorderDamageBonus': panel.disorderDamageBonus += value; break
     case 'disorderBaseMultiplierBonus': panel.disorderBaseMultiplierBonus += value; break
     case 'anomalyDurationBonusSeconds': panel.anomalyDurationBonusSeconds += value; break
+    // 角色专属面板属性（`@/data/agentPanelStats`，如蕾米埃尔 14 项）也走这里：`emptyPanel()` 已按表铺好初值，
+    // 按键名直加即可（CC-34a 2026-09-27 删掉了与本分支等价的 14 个逐字段 case）。
     default:
       if (!(stat in panel)) panel[stat] = 0
       panel[stat] += value

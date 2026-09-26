@@ -513,7 +513,7 @@ interface AtkTransferConfig {
  * 计算蕾米攻击拐力给全队的伤害增量。
  * 只有 atkPct 词条增加攻击时，全队攻击 buff 才会变大（其他词条不影响）。
  *
- * @param remielleATK      蕾米当前攻击力
+ * @param sourceATK        转模来源（当前唯一 = 蕾米埃尔）当前攻击力（CC-34a 前名为蕾米埃尔专名）
  * @param baseATK          蕾米基础攻击力（不含 atkPct 副词条）
  * @param atkPctVal        当前 atkPct 副词条总百分比值
  * @param stepTable        副词条步长表
@@ -522,7 +522,7 @@ interface AtkTransferConfig {
  * @returns 加一步 atkPct 的拐力增量（伤害期望量纲）
  */
 function computeAtkTeamBenefit(
-  remielleATK: number,
+  sourceATK: number,
   baseATK: number,
   _atkPctVal: number,
   stepTable: Record<string, number>,
@@ -533,16 +533,16 @@ function computeAtkTeamBenefit(
   if (transfer.ratio <= 0) return 0
 
   // 检查是否已达转模上限（边际为 0）
-  if (remielleATK * transfer.ratio >= transfer.cap) return 0
+  if (sourceATK * transfer.ratio >= transfer.cap) return 0
 
   // 加一步 atkPct 后的新攻击力：增量 = 基础攻击 × 步长%，叠加到当前面板攻击上
   // （面板其他攻击来源——音擎/主词条/套装——不随副词条变化，保持一致基数）
   const atkPctStep = stepTable['atkPct'] ?? 3
   const atkDelta = baseATK * (atkPctStep / 100)
-  const newATK = remielleATK + atkDelta
+  const newATK = sourceATK + atkDelta
 
   // 拐力增量 = 新转模量 - 旧转模量（同一口径：当前面板攻击 × 比例）
-  const oldTransfer = Math.min(remielleATK * transfer.ratio, transfer.cap)
+  const oldTransfer = Math.min(sourceATK * transfer.ratio, transfer.cap)
   const newTransfer = Math.min(newATK * transfer.ratio, transfer.cap)
   const deltaTransfer = Math.max(0, newTransfer - oldTransfer)
 

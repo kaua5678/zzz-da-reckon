@@ -5,6 +5,7 @@ import type {
   Agent, WEngine, DriveDiscSet, PanelValues, DriveDiscConfig, TeammateBuff, BuffEffect, StatId,
 } from '@/types/catalog'
 import { applyBuffs, applyEffect, applyStat, collectAllBuffs, finalizeCoreStatBonuses, type CollectedBuffs } from './buff'
+import { agentPanelStatInitials } from '@/data/agentPanelStats'
 import type { StatRules } from '@/types/catalog'
 
 /** 创建空面板 */
@@ -34,8 +35,7 @@ export function emptyPanel(): PanelValues {
     stunDmgMultiplierBonus: 0,
     stunDmgMultiplierBonusAlways: 0,
     stunDmgMultiplierBonusCapAlways: 0,
-    yeshuguangStunCapMult: 0,
-    yeshuguangVeilStunBase: 0,
+    ...agentPanelStatInitials('stun'),
     // 异常积蓄相关
     anomalyBuildUpEfficiency: 0,
     electricAnomalyBuildUpEfficiency: 0,
@@ -48,20 +48,7 @@ export function emptyPanel(): PanelValues {
     anomalyCritRate: 0,
     anomalyCritDmg: 0,
     anomalyReleaseDmgBonus: 0,
-    remielleRefringeCoefficient: 0,
-    remielleRefringeCoefficientBonusPct: 0,
-    remielleLuminizeMultiplierBonus: 0,
-    remielleCinema4LuminizeMultiplierBonus: 0,
-    remielleCinema1SpecialVoidflareCount: 0,
-    remielleCinema1SpecialVoidflareDamage: 0,
-    remielleFlowerFeatherDanceDecibelPerUse: 0,
-    remielleFlowerFeatherDanceCount: 0,
-    remielleCinema4SpecialVoidflareRefillCount: 0,
-    remielleCinema6LuminizeTriggerMultiplier: 1,
-    remielleCinema6SpecialVoidflareTriggerMultiplier: 1,
-    remielleCinema6FleetingGraceVoidflareTriggerMultiplier: 1,
-    remielleCinema6SpecialVoidflareCount: 0,
-    remielleCinema6SpecialVoidflareDamageRatio: 0,
+    ...agentPanelStatInitials('anomaly'),
     skillLevelBonus: 0,
   assaultCritRate: 0,
   assaultCritDmg: 0,
