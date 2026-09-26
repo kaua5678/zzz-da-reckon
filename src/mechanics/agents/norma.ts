@@ -590,6 +590,8 @@ export function computeNormaHatToChainCount(
 export const normaMechanic: AgentMechanicModule = {
   id: 'agent:norma',
   agentIds: [NORMA_AGENT_ID],
+  // 热启动精确键剔除（2026-09-26 CC-14d）：膛温换连携次数由本模块收敛后回写（C4 喧响注入），不是输入。
+  feedbackCfgKeys: ['normaHatToChainCount'],
   name: '诺姆',
   description: '预热膛温资源、嗯呢弹幕（6段+炮塔+全队增伤）、膛温帽子把戏→连携替换、火力实验导弹、技术鸿沟失衡易伤。',
   applyPanel: applyNormaPanel,

@@ -12,6 +12,8 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { calcTeamResources, clearWarmStartCache, getWarmStartStats } from '@/core/resource'
+import { warmStartExactKey } from '@/core/resource/warmStart'
+import { getAgentMechanic } from '@/mechanics'
 import type { ResourceCalcConfig, IterationState } from '@/types/resource'
 
 function deepCopy(cfg: ResourceCalcConfig): ResourceCalcConfig {
@@ -150,5 +152,24 @@ describe('热启动缓存', () => {
     const hot = calcTeamResources(deepCopy(cfg))
     expect(fingerprint(hot)).toEqual(fingerprint(cold))
     expect(hot.converged).toBe(true)
+  })
+})
+
+// 2026-09-26 CC-14d：角色反馈字段名由模块声明 `feedbackCfgKeys`，warmStart.ts 不再列角色字段。
+// 锁定：声明字段不进精确键（值不同仍同键）；未声明字段照常进键；通用字段对任意角色剔除。
+describe('热启动精确键：模块声明的反馈字段剔除（CC-14d）', () => {
+  const keyOf = (c: Record<string, unknown>) =>
+    warmStartExactKey({ characters: [c] } as unknown as ResourceCalcConfig)
+  it.each([
+    ['1051', 'yidhariExternalHealPct'],
+    ['1451', 'luciaCurtainTriggerCount'],
+    ['1571', 'normaHatToChainCount'],
+  ])('%s 声明 %s ⇒ 值不同仍同键', (agentId, key) => {
+    expect(getAgentMechanic(agentId)?.feedbackCfgKeys).toContain(key)
+    expect(keyOf({ agentId, slot: 0, [key]: 1 })).toBe(keyOf({ agentId, slot: 0, [key]: 2 }))
+  })
+  it('未声明字段照常进键；通用字段 timeBudgetExcess 对任意角色剔除', () => {
+    expect(keyOf({ agentId: '1051', slot: 0, someInput: 1 })).not.toBe(keyOf({ agentId: '1051', slot: 0, someInput: 2 }))
+    expect(keyOf({ agentId: '1371', slot: 0, timeBudgetExcess: 1 })).toBe(keyOf({ agentId: '1371', slot: 0, timeBudgetExcess: 2 }))
   })
 })

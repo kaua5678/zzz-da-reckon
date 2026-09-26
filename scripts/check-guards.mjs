@@ -336,10 +336,10 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'core 角色前缀字段',
     file: 'src/core/** + src/composables/resourceCalc/** + useResourceCalc.ts（口径见 scripts/lib/core-role-field-ratchet.mjs）',
-    frozen: 766,  // 2026-09-26 CC-14c 775→766（装配期写回迁模块 onFinalAssemble）。2026-09-26 CC-14a 803→775（诺姆/青衣/莱卡恩/比利/仪玄/安东 6 个角色专属能量项迁模块能力 bonusEnergy）。前值：2026-09-26 CC-14b 821→803（伊德海莉燃血喧响迁模块）。立项：首次普查 905 − 误报 triggerCount 84 = 821（docs/mcp-r22d1-batch12-field-census.md §5）。与 CORE_ROLE_FIELD_BASELINE 同步改。
-    target: 765,  // A 类（resourceIncome 命座能量 CC-14a + 伊德海莉残余 CC-14b，约 56 处）全部通用化后的读数；B 类（remielle/alice/liuyin 等）另立设计后再下调 target
-    due: '2026-11-30',
-    plan: 'CC-14a（卡面 census 文档 §5.2，前置门 R1 合入）→ CC-14b 伊德海莉残余 → B 类槽位定位变量按角色逐卡；remielle 簇需先出设计稿',
+    frozen: 763,  // 2026-09-26 CC-14d 766→763（热启动反馈字段改模块声明 feedbackCfgKeys；已低于 target 765）。2026-09-26 CC-14c 775→766（装配期写回迁模块 onFinalAssemble）。2026-09-26 CC-14a 803→775（诺姆/青衣/莱卡恩/比利/仪玄/安东 6 个角色专属能量项迁模块能力 bonusEnergy）。前值：2026-09-26 CC-14b 821→803（伊德海莉燃血喧响迁模块）。立项：首次普查 905 − 误报 triggerCount 84 = 821（docs/mcp-r22d1-batch12-field-census.md §5）。与 CORE_ROLE_FIELD_BASELINE 同步改。
+    target: 740,  // 2026-09-26 CC-14d 后重设（前 target 765 已于 CC-14d 提前达成 = 763）：CC-14e 卢西娅帷幕写回（assembleSlot luciaCurtain*）+ B 类槽位定位变量首批，约 23 处；可逆，按实际节奏再调
+    due: '2026-12-31',
+    plan: 'CC-14e 卢西娅帷幕写回迁模块能力（census 文档 §1）→ B 类槽位定位变量按角色逐卡（remielleSlot/aliceSlot/janeSlot…）；remielle 簇需先出设计稿',
   },
 ]
 

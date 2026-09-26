@@ -11,6 +11,7 @@
  * `@fact engine:热启动逐位透明`，搬迁不得重排。
  */
 import type { ResourceCalcConfig, CharacterOperationConfig, IterationState } from '@/types/resource'
+import { getAgentMechanic } from '@/mechanics'
 
 // ============ 热启动缓存 ============
 /**
@@ -27,13 +28,11 @@ export interface WarmStartEntry {
   states: IterationState[]
 }
 const WARM_START_CACHE_MAX = 16
-/** 收敛后写回 cfg 的反馈字段 + 每次进入先清零的草稿字段：不是输入，进精确键只会造成假未命中。
- *  新增「收敛后写回 cfg」的字段时必须同步加进这里。 */
+/** 收敛后写回 cfg 的**通用**反馈字段 + 每次进入先清零的草稿字段：不是输入，进精确键只会造成假未命中。
+ *  新增「收敛后写回 cfg」的通用字段时必须同步加进这里；**角色字段**改由模块声明
+ *  `feedbackCfgKeys`（2026-09-26 CC-14d，规则 6：引擎按能力查询，不在 core 列角色字段名）。 */
 const WARM_KEY_OMIT_CFG = new Set([
   'timeBudgetExcess',
-  'luciaCurtainTriggerCount',
-  'yidhariExternalHealPct',
-  'normaHatToChainCount',
   'rowTimeLimit',
 ])
 const warmStartCache: WarmStartEntry[] = []
@@ -41,8 +40,9 @@ const warmStartStats = { stored: 0, seeded: 0 }
 
 function sanitizeWarmKeyCfg(cfg: CharacterOperationConfig): Record<string, unknown> {
   const out: Record<string, unknown> = {}
+  const moduleOmit = getAgentMechanic(cfg.agentId)?.feedbackCfgKeys
   for (const [k, v] of Object.entries(cfg as unknown as Record<string, unknown>)) {
-    if (!WARM_KEY_OMIT_CFG.has(k)) out[k] = v
+    if (!WARM_KEY_OMIT_CFG.has(k) && !moduleOmit?.includes(k)) out[k] = v
   }
   return out
 }

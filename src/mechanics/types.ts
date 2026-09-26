@@ -847,6 +847,15 @@ export interface AgentMechanicModule {
    */
   onFinalAssemble?(input: { cfg: CharacterOperationConfig; providerUltCount: number }): void
   /**
+   * **收敛后写回本模块 cfg 的反馈字段名**（2026-09-26 CC-14d；伊德海莉/卢西娅/诺姆先例）。
+   *
+   * 热启动精确键（`core/resource/warmStart.ts#warmStartExactKey`）会剔除这些字段：它们不是输入，
+   * 进键只会造成假未命中。**新增「收敛后写回 cfg」的角色字段时必须声明在这里**
+   * （通用字段 `timeBudgetExcess` / `rowTimeLimit` 仍由 warmStart.ts 自己列）。
+   * 只影响缓存命中，不影响计算结果（热启动只做精确键命中，冷热逐位一致由 warmStart.test 锁定）。
+   */
+  feedbackCfgKeys?: readonly string[]
+  /**
    * **角色专属能量项**（规则 6 引擎落点，2026-09-26 CC-14a；诺姆/青衣/莱卡恩/比利/仪玄/安东先例）。
    *
    * 语义：本模块角色独有的**固定源能量**（如诺姆影画2 帽子把戏、青衣影画4 稳态电弧屏障、
