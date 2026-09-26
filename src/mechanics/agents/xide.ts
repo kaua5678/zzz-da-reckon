@@ -1,4 +1,4 @@
-import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
+import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, CrossAgentSupplySpec } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
@@ -292,14 +292,48 @@ function buildXideResourceSections(input: AgentResourceSectionsInput) {
   return spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
 }
 
+/**
+ * 席德额外能力·正兵回能（CC-32a 2026-09-27：原 `core/resource/crossAgentEnergy.ts` 内联块逐字搬迁）。
+ * 作为操作角色造成伤害时为正兵回 2 能量/秒（1 秒至多 1 次）；操作时间 = 前台时间 − 合轴时间。
+ * 正兵槽 = 本模块 applyTeamConfig（build）写入的 `cfg.xideVanguardSlot`（未写 ⇒ 不供给、不回写，
+ * = 原「按字段找不到席德槽」分支）。算席德自己那槽时回写正兵实际耗能 `xideVanguardEnergySpent`
+ * （层级：席德为正兵回能 → 正兵强特变多 → 正兵耗能 → 席德钢能）。
+ */
+const xideNum = (v: unknown) => {
+  const x = Number(v)
+  return Number.isFinite(x) ? x : 0
+}
+export const xideVanguardSupply: CrossAgentSupplySpec = {
+  kind: 'vanguard-energy',
+  displayKey: 'xideVanguardEnergy',
+  supply: () => 0,
+  perTargetAmounts({ ownSlot, cfg, state }) {
+    const raw = (cfg as unknown as Record<string, unknown>).xideVanguardSlot
+    if (raw === undefined) return {}
+    const vanguardSlot = Math.floor(xideNum(raw))
+    if (vanguardSlot < 0 || vanguardSlot === ownSlot) return {}
+    return { [vanguardSlot]: Math.max(0, xideNum(state.frontlineTime) - xideNum(state.comboAlignTime)) * 2 }
+  },
+  onOwnSlotCrossAgentEnergy({ ownSlot, cfg, configs, states }) {
+    const raw = (cfg as unknown as Record<string, unknown>).xideVanguardSlot
+    if (raw === undefined) return
+    const vanguardSlot = Math.floor(xideNum(raw))
+    const vanguardEnergySpent = vanguardSlot >= 0 && vanguardSlot < configs.length && vanguardSlot !== ownSlot
+      ? Math.max(0, Math.floor(states[vanguardSlot].exSpecialCount ?? 0)) * Math.max(0, configs[vanguardSlot].exSpecialEnergyConsume ?? 0)
+      : 0
+    ;(cfg as unknown as Record<string, unknown>).xideVanguardEnergySpent = vanguardEnergySpent
+  },
+}
+
 export const xideMechanic: AgentMechanicModule = {
   id: 'agent:seed',
   agentIds: [XIDE_AGENT_ID],
   name: '「席德」',
-  description: '正兵拐在 teammate-buffs（明攻/围杀，按其他强攻门控）；额外能力增伤/电抗无视招式限定在 patchExecutions（1461006/07/08/1015）；影画1 崩坠暴伤/影画6 激光在 patchExecutions；钢能消耗出口（三招落华）+ 铁萼雨幕衔接重戮在 buildExecutions；钢能资源循环（耗能/攻击数据/正兵耗能）走 spec resource + calcCrossAgentEnergy。',
+  description: '正兵拐在 teammate-buffs（明攻/围杀，按其他强攻门控）；额外能力增伤/电抗无视招式限定在 patchExecutions（1461006/07/08/1015）；影画1 崩坠暴伤/影画6 激光在 patchExecutions；钢能消耗出口（三招落华）+ 铁萼雨幕衔接重戮在 buildExecutions；钢能资源循环（耗能/攻击数据/正兵耗能）走 spec resource；正兵回能 + 正兵耗能回写走 crossAgentSupply `vanguard-energy`（CC-32a）。',
   applyPanel: applyXidePanel,
   buildCharConfig: buildXideCharConfig,
   applyTeamConfig: applyXideTeamConfig,
+  crossAgentSupply: xideVanguardSupply,
   buildExecutions: buildXideExecutions,
   patchExecutions: patchXideExecutions,
   buildResourceResult: buildXideResourceResult,

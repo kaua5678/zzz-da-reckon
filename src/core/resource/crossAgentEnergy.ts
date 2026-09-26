@@ -7,7 +7,7 @@
  * （R43 闸门实测：剥注释后依赖图出度为 0）。
  */
 import type { CharacterOperationConfig, CrossAgentEnergy, IterationState } from '@/types/resource'
-import { neighborUltEnergyByProvider } from './crossAgentSupply'
+import { neighborUltEnergyByProvider, perTargetEnergyByProvider, runOwnSlotCrossAgentEnergyHooks } from './crossAgentSupply'
 
 // ============ 单角色能量计算 ============
 
@@ -71,29 +71,12 @@ export function calcCrossAgentEnergy(
   const lighterC4Raw = num((cfg as any).lighterC4BurstEnergy)
   const lighterC4Energy = lighterC4Raw > 0 ? lighterC4Raw : 0
 
-  // 席德（1461）额外能力：作为操作角色造成伤害时为正兵回 2 能量/秒（1秒至多1次）。
-  // 操作时间 = 前台时间 − 合轴时间（后台与自动追加攻击不计）。
-  // 正兵槽位由席德模块 applyTeamConfig（build）写入 cfg.xideVanguardSlot（初始攻击最高的强攻队友）。
-  let xideVanguardEnergy = 0
-  // 2026-09-15 core 棘轮批次2：原 `configs.findIndex(c => c.agentId === '1461')` 改为**按字段找槽**
-  // ——`xideVanguardSlot` 的唯一写入方 = `xide.ts` 的 applyTeamConfig（build 阶段，早于本函数）
-  // ⇒ 该字段存在即蕴含「是席德的 cfg」（判据同 T6；规则 6：引擎按能力/字段查询，不按角色名查询）。
-  const xideIdx = configs.findIndex(c => (c as unknown as Record<string, unknown>).xideVanguardSlot !== undefined)
-  if (xideIdx >= 0) {
-    const xideCfg = configs[xideIdx]
-    const vanguardSlot = Math.floor(num((xideCfg as any).xideVanguardSlot))
-    if (xideIdx !== slotIndex && vanguardSlot === slotIndex) {
-      xideVanguardEnergy = Math.max(0, num(states[xideIdx].frontlineTime) - num(states[xideIdx].comboAlignTime)) * 2
-    }
-    // 正兵实际耗能 → 席德钢能（严格读正兵，非按席德强特耗能近似）：算席德自己能量时写入。
-    // 层级关系：席德为正兵回能 → 正兵能量变多 → 正兵强特次数变多 → 正兵耗能 → 席德钢能。
-    if (slotIndex === xideIdx) {
-      const vanguardEnergySpent = vanguardSlot >= 0 && vanguardSlot < configs.length && vanguardSlot !== xideIdx
-        ? Math.max(0, Math.floor(states[vanguardSlot].exSpecialCount ?? 0)) * Math.max(0, configs[vanguardSlot].exSpecialEnergyConsume ?? 0)
-        : 0
-      ;(xideCfg as any).xideVanguardEnergySpent = vanguardEnergySpent
-    }
-  }
+  // 正兵回能（CC-32a 2026-09-27，census §5.25）：原为席德（1461）专属内联块（按 cfg 字段找席德槽、
+  // 算正兵回能 + 算席德自己那槽时回写正兵实际耗能）。现按能力类别 `crossAgentSupply.kind = 'vanguard-energy'`
+  // 派发：落点量走 `perTargetAmounts`（与邻位回能同一派发器，按模块自报 displayKey 聚合），
+  // 回写走 `onOwnSlotCrossAgentEnergy`（同一时机：算提供者自己那槽时）。引擎侧零角色逻辑。
+  const vanguard = perTargetEnergyByProvider(configs, states, slotIndex, { totalTime: 180, stunCount: 0 }, 'vanguard-energy')
+  runOwnSlotCrossAgentEnergyHooks(configs, states, slotIndex, 'vanguard-energy')
 
   return {
     supportUltimateRegen,
@@ -102,9 +85,9 @@ export function calcCrossAgentEnergy(
     soukakuUltEnergy,
     lucyEnergy,
     lighterC4Energy,
-    xideVanguardEnergy,
+    xideVanguardEnergy: vanguard.byDisplayKey.xideVanguardEnergy ?? 0,
     total: supportUltimateRegen + teamUltimateFlash + neighborUlt.total
-      + lighterC4Energy + xideVanguardEnergy,
+      + lighterC4Energy + vanguard.total,
   }
 }
 

@@ -1066,7 +1066,9 @@ export interface CrossAgentSupplySpec {
    *   （两者同属赠链但落点行不同 ⇒ 类别按「赠什么行」区分，不按「谁赠的」区分：
    *    同队可同时存在，引擎取**全部**同类提供者各自出数，不静默合并）
    * - `'curtain-open'`：队友**开帷幕**次数（供 `curtainTriggers` 能力消费，伊德海莉终结技即此例）
-   * - 后续批次：`'neighbor-ult-energy'` / `'vanguard-energy'` / `'c4-burst'`
+   * - `'neighbor-ult-energy'`（丽娜/苍角/露西邻位终结回能）/ `'vanguard-energy'`（席德正兵回能，CC-32a）：
+   *   多落点回能，走 `perTargetAmounts` + `displayKey`（派发器 `perTargetEnergyByProvider`）
+   * - 后续批次：`'c4-burst'`
    */
   kind: string
   /**
@@ -1107,6 +1109,19 @@ export interface CrossAgentSupplySpec {
     /** 各槽位的 cfg（模块需要按落点读字段时用；`targetCfgOf(slot)` 取不到则 undefined） */
     targetCfgOf?: (slot: number) => CharacterOperationConfig | undefined
   }): Record<number, number>
+  /**
+   * 提供者**自己那一槽**的回写钩子（可选，CC-32a 2026-09-27）：`calcCrossAgentEnergy` 在算提供者自己
+   * （`slotIndex === ownSlot`）时调用一次，允许把「读落点状态得出的量」写回**提供者自己的 cfg**。
+   * 席德 `'vanguard-energy'` 即此例：写 `xideVanguardEnergySpent = floor(正兵强特次数) × 正兵强特耗能`
+   * 供钢能资源循环读。时机与迁移前引擎内联块逐位一致（iterate 与最终装配两处调用都会触发）。
+   * ⚠ 唯一允许的副作用 = 写**自己**的 cfg；不得写其他槽、不得依赖 store。
+   */
+  onOwnSlotCrossAgentEnergy?(input: {
+    ownSlot: number
+    cfg: CharacterOperationConfig
+    configs: readonly CharacterOperationConfig[]
+    states: readonly IterationState[]
+  }): void
   /**
    * 本供给在 `CrossAgentEnergy` 里对应的**展示明细键**（可选）。
    *

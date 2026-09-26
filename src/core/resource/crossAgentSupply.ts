@@ -199,17 +199,18 @@ export function crossAgentSupplyCountOf(
  * （邻位 30/10 的分配语义、影画1 的回旋回能、乘自己终结技次数，全在模块内）。
  * 引擎只做「按 kind 找提供者 + 按落点取数」。求和而非覆盖：一个落点可同时收到多名提供者。
  */
-export function neighborUltEnergyByProvider(
+export function perTargetEnergyByProvider(
   configs: CharacterOperationConfig[],
   states: IterationState[],
   targetSlot: number,
   query: CrossAgentSupplyQuery,
+  kind: string,
 ): { total: number; byProvider: Record<number, number>; byDisplayKey: Record<string, number> } {
   const teamSize = query.teamSize ?? configs.length
   const byProvider: Record<number, number> = {}
   const byDisplayKey: Record<string, number> = {}
   let total = 0
-  for (const providerSlot of findCrossAgentSupplySlots(configs, 'neighbor-ult-energy')) {
+  for (const providerSlot of findCrossAgentSupplySlots(configs, kind)) {
     // ⚠ **不在引擎侧跳过提供者自己**：是否给自己回能由模块的 perTargetAmounts 决定
     // （丽娜/苍角的 assignXxx 内部已 `others = slots.filter(s => s !== ownSlot)`；
     //   露西影画1 的「回旋全队回能」**含她自己**——引擎侧一刀切 skip 会少算，实测 timeGolden 红）。
@@ -228,6 +229,33 @@ export function neighborUltEnergyByProvider(
     }
   }
   return { total, byProvider, byDisplayKey }
+}
+
+/** 「邻位回能」类别（丽娜/苍角/露西）= `perTargetEnergyByProvider(…, 'neighbor-ult-energy')`（CC-32a 泛化前的原入口，保留）。 */
+export function neighborUltEnergyByProvider(
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+  targetSlot: number,
+  query: CrossAgentSupplyQuery,
+): { total: number; byProvider: Record<number, number>; byDisplayKey: Record<string, number> } {
+  return perTargetEnergyByProvider(configs, states, targetSlot, query, 'neighbor-ult-energy')
+}
+
+/**
+ * 提供者自己那一槽的回写派发（CC-32a）：`kind` 的每个提供者若恰是 `slotIndex`，调其
+ * `onOwnSlotCrossAgentEnergy`（契约见 `CrossAgentSupplySpec`：只写自己的 cfg）。
+ */
+export function runOwnSlotCrossAgentEnergyHooks(
+  configs: CharacterOperationConfig[],
+  states: IterationState[],
+  slotIndex: number,
+  kind: string,
+): void {
+  for (const providerSlot of findCrossAgentSupplySlots(configs, kind)) {
+    if (providerSlot !== slotIndex) continue
+    const cfg = configs[providerSlot]
+    getAgentMechanic(cfg.agentId)?.crossAgentSupply?.onOwnSlotCrossAgentEnergy?.({ ownSlot: providerSlot, cfg, configs, states })
+  }
 }
 
 /**

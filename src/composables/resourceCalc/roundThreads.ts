@@ -3,7 +3,7 @@
  *
  * 历史形态：runCalcRound 挂 21 个 prev* 位置参数 + 19 个同名字段返回，每加一个跨轮反馈
  * （如薇薇安双源、普罗米娅触发命中）就要在签名/调用点/返回体三处同步加一行——漏一处即
- * 静默断链。结构体化后：新增反馈 = CalcRoundThreads 加一个字段 + 初值 + 轮内读写。
+ * 静默断链。结构体化后：新增反馈 = CalcRoundThreads 加一个字段 + 初值 + 轮内读写（**模块下一轮反馈**例外：CC-31 起走 `moduleFeedback` 字典，键加在 `mechanics/types.ts` 的 `ModuleFeedback`，编排层零改动）。
  * ⚠ 反馈签名的显式投影单源 = outerCycle.ts#outerFeedbackSignature；玄墨次数的自由失衡
  * 判稳仍在 runOuterLoop。这不是对整份结构体自动比对：新增会独立变化的线程时，必须
  * 同步评估终止判据并补真实管线测试。“字段传到了下一轮”不代表求解器会等到它稳定。
