@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-26 第 25 轮，lead-arena-0925c）**：CC-18b 已落地 `a936127`（设计定稿见设计稿 §7.1，`583f2ea`；dsflash 工人实现 `1a8c98e`，lead 复核）。判据 22 从 623 降到 **613**，target 611 不变。master 上 `npm run verify` EXIT=0，HEAD `a936127`。详见 §5.11。
+- **最新交接（2026-09-26 第 26 轮，lead-arena-0925c）**：CC-19 设计稿 `docs/mcp-cc19-extra-anomaly-rows.md`（`c7f2068`，README §6 已登记为 48 份），**CC-19a 已落地 `b14fb4a`**（柏妮思 C6 灼烧迸发迁 `extraAnomalyRows`，工人 `7be6233`）。判据 22 从 613 降到 **601**，target 重设 **589**。master 上 `npm run verify` EXIT=0，HEAD `b14fb4a`。详见 §5.12。
+  **下一步（可以直接开工）**：**CC-19b**（爱丽丝极性强击 / C6 / 畏缩 + 简 C6 迁 `extraAnomalyRows`）。接口已在设计稿 §7.1 定稿，不需要再设计，直接派工人：提示词以 `/home/kaua/calc-arch/cc19a.prompt` 为模板，块号、替换规则按 §7.1 改。
+- **上一轮交接（2026-09-26 第 25 轮，lead-arena-0925c）**：CC-18b 已落地 `a936127`（设计定稿见设计稿 §7.1，`583f2ea`；dsflash 工人实现 `1a8c98e`，lead 复核）。判据 22 从 623 降到 **613**，target 611 不变。master 上 `npm run verify` EXIT=0，HEAD `a936127`。详见 §5.11。
   **下一步（可以直接开工）**：**CC-19 设计**（异常侧角色块能力化；CC-18c 柏妮思异常侧是它的第一片）。开工清单见 §5.11。
 - **上一轮交接（2026-09-26 23:1x，lead-arena-0925c 第 24 轮）**：CC-18a 已落地 `23470f2`（设计稿 `docs/mcp-cc18-extra-direct-rows.md`，`3b9e75c`，README 已登记；dsflash 工人实现 `6e0de26`，lead 复核）。判据 22 从 661 降到 **623**，target 重设 **611**。master 上 `npm run verify` EXIT=0，HEAD `23470f2`。
   **下一步（可以直接开工）**：**CC-18b**（琉音 3 块附加直伤行迁 `extraDirectRows`），开工清单见 §5.10。它是同一设计稿的第二期，不需要新设计稿，只需在设计稿 §7 补接口扩展。
@@ -256,6 +258,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-26 CC-17 后**：**661**（`18bfd88`）；已低于 target 700，重设 target **649**。下一张：CC-18 设计（§5.9）。
 - **2026-09-26 CC-18a 后**：**623**（`23470f2`）；已低于 target 649，重设 target **611**。下一张：CC-18b（§5.10）。
 - **2026-09-26 CC-18b 后**：**613**（`a936127`）；target 611 不变。下一张：CC-19 设计（§5.11）。
+- **2026-09-26 CC-19a 后**：**601**（`b14fb4a`）；已低于 target 611，重设 target **589**。下一张：CC-19b（§5.12）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -527,6 +530,20 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 4. 建议拆分：19a = 柏妮思（即 18c，约 48 行，最独立）；19b = 简 + 爱丽丝 C6 + 畏缩；19c = 瑞米尔（字段最多，含 entryPanels，另议）。极地爱丽丝是否为「角色块」待查（可能按元素，而非按角色）。
 5. 执行方式同 18a/18b：lead 写设计稿并提交 → worktree `r69-scratch/cc19a` → 提示词以 `/home/kaua/calc-arch/cc18b.prompt` 为模板 → `run-wt.sh` 改 cd → 零差用 `v18b.sh`，反向用 `r18b.sh`（改路径与突变点）→ cherry-pick -n → verify → 文档 → zc done。
 6. 反向注意：柏妮思 1171 只在 `auto-1561-1171-1411/*` 这一组（18a 实测 DIFF 6）；C6 相关突变只有 0 号位是柏妮思时 c6 变体才会触发，否则用单测锁住（参考本轮余音的做法）。
+
+### 5.12 CC-19a 落地记录 + CC-19b 开工清单（2026-09-26 第 26 轮 lead-arena-0925c）
+
+**CC-19a（`b14fb4a`，判据 22 613→601，target 589）**：完整记录在设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §8。新能力 `extraAnomalyRows` 返回 `{ order, rows }` 分组；`damagePoolAnomaly.ts` 在原柏妮思块的位置跨全队收集分组，用导出的纯函数 `flattenAnomalyRowGroups` 稳定排序后 push。`EXTRA_ANOMALY_ROW_ORDER`（types.ts）固定原块序，保证 rowsnap 行序不变。
+
+**rf3 读数（HEAD `b14fb4a`，601 处 / 139 个字段）前列**：remielleSlot 20、triggerPanel 16、aliceSlot 16、remiellePanel 14、remielleAnomalyMultiplier 14、triggerSlot 13、janeSlot 13、janePanel 12。19b 预计能清掉 damagePoolAnomaly 里的 aliceSlot（16）、janeSlot / janePanel 中本文件的那部分，以及 polarAlicePanel 等。
+
+**CC-19b 开工清单**
+1. 接口、分组、替换规则、反向验证点已在设计稿 §7.1 定稿（lead 于 `b14fb4a` 实读块 2–5 全文）。
+2. 建 worktree：`git worktree add --detach /home/kaua/r69-scratch/cc19b <HEAD>`，软链 node_modules，拷入 `.zc/perf`；`sed -i 's#r69-scratch/cc19a #r69-scratch/cc19b #' /home/kaua/calc-arch/run-wt.sh`。
+3. 提示词：复制 `/home/kaua/calc-arch/cc19a.prompt` 为 `cc19b.prompt`，改成「按 §7.1 迁块 2–5 到 alice（1401，模块文件先 `grep -ln "'1401'\|ALICE" src/mechanics/agents/`）与 jane（1261）模块」。棘轮 frozen 当前 **601**、target **589**；单测要求每块一条逐字用例，再加一条「爱丽丝 3 组 order 为 20/40/50」的用例。
+4. 零差用 `/home/kaua/calc-arch/v19a.sh`（sed 改成 cc19b / 19b）；反向验证模板 `/home/kaua/calc-arch/r19a.sh`（突变点见 §7.1）。
+5. 其余照 19a：cherry-pick -n → verify → 文档 → zc done。
+6. 19c（蕾米埃尔，:514 起，字段最多）在 19b 之后单独实读设计。
 
 ## 附录：普查脚本 census.sh
 

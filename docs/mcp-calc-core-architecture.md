@@ -165,7 +165,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-17 | design | **done** `18bfd88`（判据 22 712→661，target 重设 649；修可琳 basic_attack 泄漏） | axis overlay 消费端能力化（damagePoolDirect 冥网/凝神/柯林失衡加成），约 30 处 |
 | CC-18a | design | **done** `23470f2`（判据 22 661→623，target 重设 611） | 柏妮思附加直伤 4 行 + 半月 C6 摧岳附伤迁模块能力 extraDirectRows
 | CC-18b | review | **done** `a936127`（判据 22 623→613） | 琉音 3 块（重击附加 / 非轴强特拆分 / 影画6余音）迁 extraDirectRows，零差 | census §5.11 |
-| CC-19 | design | **待设计** | 异常侧角色块能力化（damagePoolAnomaly 柏妮思 / 简 / 爱丽丝 / 瑞米尔），18c 并入为 19a | census §5.11 |
+| CC-19a | design | **done** `b14fb4a`（判据 22 613→601，target 重设 589） | 新能力 extraAnomalyRows（分组 + 顺序键）；柏妮思 C6 灼烧迸发迁模块，零差 | 设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` / census §5.12 |
+| CC-19b | review | **待做**（接口已定稿，设计稿 §7.1） | 爱丽丝极性强击 / C6 / 畏缩 + 简 C6 迁 extraAnomalyRows | census §5.12 |
+| CC-19c | design | **待设计** | 蕾米埃尔耀变 / 特殊虚耀（damagePoolAnomaly :514 起） | 设计稿 §7 |
 | CC-18c | design | **并入 CC-19a** |
 
 ### CC-1 · 招式表查询迁出（fast）

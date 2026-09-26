@@ -143,6 +143,57 @@ for (const g of extraGroups) rows.push(...g.rows)
 - **19c**（块 6 蕾米埃尔）：字段最多（带 entryPanels），另开设计。
 - 执行方式同 18a / 18b：lead 定稿 → dsflash 工人在 worktree 里实现 → lead 做零差、反向验证、挑回。
 
+### 7.1 CC-19b 定稿（2026-09-26 第 26 轮 lead 实读 HEAD `b14fb4a`）
+
+19a 合入后行号：极性强击 :329–375（`polarAssaultProg` 声明在 :329，块外）、简 C6 :377–423（`jane-c6-assault-followup`）、爱丽丝 C6 :425–494（`alice-c6-decisive-extra-attack`）、畏缩 DoT :496–512（`alice-cowering-dot`）、蕾米埃尔 :514 起（19c）。
+
+**`ExtraAnomalyRowsInput` 追加字段（一律必填，调用点每次都传全；burnice 只解构自己需要的字段，不受影响）**：
+
+```ts
+/** = panelAt(damagePanels, slot) */
+panel: PanelValues | undefined
+/** = configStore.team[slot]?.cinemaLevel ?? 0 */
+cinemaLevel: number
+isAxis: boolean
+/** = ctx.stunCoverage */
+stunCoverage: number
+/** = env.inWindowFraction */
+inWindowFraction: (element: string) => number
+/** = env.ultimateInAxisFraction（模块调用时传 input.slot） */
+ultimateInAxisFraction: (slot?: number) => number
+/** = (key) => allocMap[key]?.inAxisUnits ?? 0（allocMap = ctx.axisAllocation；爱丽丝 C6 读 `${slot}:1401012`） */
+axisInUnits: (key: string) => number
+/** = (k, d) => configStore.getMechanicSetting(k, d) */
+getMechanicSetting: (key: string, dflt: number) => number
+/** = ctx.anomalyPoolResult（只读整体注入，模块内读 .aliceCoweringDot；避免在 core 侧出现角色前缀字段） */
+anomalyPool: <anomalyPoolResult 的类型>
+```
+
+**分组**：爱丽丝模块（1401）返回最多 3 组：order 20（极性强击，**不看命座**，条件是 prog.triggerCount > 0 且 panel 存在）、40（C6，`cinemaLevel >= 6 && panel`）、50（畏缩 DoT，条件是 `coweringDot && totalDotDamage > 0`，原式的 `aliceSlot >= 0` 恒真）。简模块（1261）返回 order 30（`cinemaLevel >= 6 && panel`）。空行组可以返回，也可以不返回，两者等价。
+
+**替换规则**：
+- `polarAlicePanel` / `janePanel` / `alicePanel` → `input.panel`；
+- `xxxSlot` → `input.slot`；
+- `configStore.team[xxxSlot]?.cinemaLevel ?? 0` → `input.cinemaLevel`；
+- `configStore.enemy` → `input.enemy`；
+- `allocMap[...]?.inAxisUnits ?? 0` → `input.axisInUnits(...)`（key 模板逐字）；
+- `adjustedResourceResult?.characters.find(c => c.slot === aliceSlot)` → `input.charResult`；
+- `anomalyPoolResult?.aliceCoweringDot` → `input.anomalyPool?.aliceCoweringDot`；
+- `remielleAnomalyMultiplier` → `input.anomalyMultiplier`；
+- `calcDirectDamage` / `calcAnomalyDamage` 从 `@/core/damage` import，`fmt` 从 `@/utils/format` import，`ANOMALY_SINGLE_HIT_MULTIPLIER` 从 `@/core/anomalyPool/helpers` import。
+- **注意**：`polarAssaultProg` 声明在块外（:329）。工人先 `grep -n polarAssaultProg` 确认只在块 2 使用，再随块迁走。若别处也用，保留声明，并报告。
+
+**零差 / 反向**：
+- rowsnap 对含 1261 / 1401 的预设有 `/axis` 变体。
+- 反向验证点：爱丽丝 C6 `skillMultiplier: 3300` ×0、简 `skillMultiplier: 1600` ×0、畏缩 `count` ×0。
+- 若语料里爱丽丝 / 简不在 0 号位，C6 两块在 dump 里多半无差，同样用单测反向（参照 19a）。畏缩和极性强击不看命座，应在含 1401 的场景出现 DIFF。
+- **顺序反向**：把爱丽丝极性强击的 order 临时改成 35，rowsnap 在「同队含 1261 + 1401」的场景应出现 DIFF（证明排序生效）。若语料里没有同队的场景，就只看单测。
+
 ## 8. 实现记录
 
-（19a 落地后填）
+- **CC-19a 已落地 `b14fb4a`**（2026-09-26 第 26 轮 lead-arena-0925c）：设计稿 `c7f2068`。dsflash 工人在 worktree `r69-scratch/cc19a` 实现（`7be6233`），lead 逐行复核后 `cherry-pick -n` 挑回。7 个文件：types / burnice / damagePoolAnomaly / burnice.test / 新增 `src/composables/__tests__/damagePoolAnomalyGroups.test.ts` / 2 个棘轮常量。
+- 判据 22：613 → **601**（-12）；低于 target 611，按规则**重设 target 589**。
+- 零差：dump 625 / rowsnap 638 个键，只有 `__ms` 不同。
+- 反向：灼烧迸发 `baseMultiplier` ×0 → rowsnap **无差**（语料无 1171 C6，与 §4 预判一致）。`burnice.test.ts` 红 2 条（模块逐字用例 + 真管线「派发点接线」集成用例），还原后绿。
+- 全量：master `npm run verify` EXIT=0（291 个测试文件 / 3543 条测试，22 条守卫通过），HEAD `b14fb4a`。
+- 偏离（均合理）：`buildVirtualPanel` 定型为单参闭包 `(prog) => ReturnType<typeof buildAnomalyVirtualPanel>`；`buildSettlementEntries` 定型为 `(build, count)`，类型用 `Parameters` / `ReturnType` 推导。派发点用 `for (const r of flattenAnomalyRowGroups(extraGroups)) rows.push(r)`。
