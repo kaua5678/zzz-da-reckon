@@ -827,6 +827,12 @@ export interface AgentMechanicModule {
    */
   ultimateGiftSource?(result: DeepReadonly<CharacterResourceResult>): { goodReviewTotal: number } | null
   /**
+   * 风化（风属性异常）事件倍率加成（CC-36b 2026-09-27）：`resourceCalc/damagePoolAnomaly.ts` 结算风化事件时，
+   * 按**风槽**角色调用（`panel` = 风槽面板，`triggerCount` = 风化触发次数）。返回 `pct`（%，乘到事件倍率上）与
+   * 拼到公式说明末尾的 `note`；null = 无加成。现唯一实现：维琳娜 6 命（再次施加风化，按平均剩余时长 +2.5%/s，上限 40%）。
+   */
+  windAnomalyBonus?(input: { panel: PanelValues | undefined; triggerCount: number }): { pct: number; note: string } | null
+  /**
    * **角色专属异常附加行**（规则 6 迁移落点，CC-19a 2026-09-26，设计稿
    * `docs/mcp-cc19-extra-anomaly-rows.md` §2.1/§2.3）：
    * 由行所属角色的模块生成自己的异常尾段附加行，返回**分组**（`order` 取

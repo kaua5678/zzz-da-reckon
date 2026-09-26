@@ -883,8 +883,9 @@ function calcTurbulenceSettlement(
 
   // 1. 抗性乘区（使用非风元素伤害抗性，boss有偏好如火抗冰弱）
   const baseRes = enemyResistances[element] ?? 0
-  const velinaCinema1ResIgnore = (p.velinaCinema1 ?? 0) > 0 ? 20 : 0
-  const totalResReduction = enemyResReduction + (p.enemyResReduction ?? 0) + getElementEnemyResReduction(p, element) + velinaCinema1ResIgnore
+  // 乱流抗性无视（%）：通用面板字段，由角色模块 applyPanel 写入（现为维琳娜 1 命 20；CC-36b 2026-09-27，原读 velinaCinema1）
+  const turbulenceResIgnore = p.turbulenceResIgnore ?? 0
+  const totalResReduction = enemyResReduction + (p.enemyResReduction ?? 0) + getElementEnemyResReduction(p, element) + turbulenceResIgnore
   const resMult = calcResistanceMultiplier(baseRes, totalResReduction)
 
   // 2. 易伤乘区

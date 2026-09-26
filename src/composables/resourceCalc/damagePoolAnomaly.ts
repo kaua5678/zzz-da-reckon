@@ -234,16 +234,16 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
       formula = `${spec.perTick}% × ${ticks} tick${durationBonus > 0 ? `（含${durationBonus}秒延长）` : ''}`
     }
 
-    // 维琳娜6命：对风化状态敌人再次施加风化，按平均剩余时长给风化事件增伤（每1s +2.5%，上限40%）
-    if (prog.element === 'wind') {
-      const windPanel = panelAt(damagePanels, windSlot)
-      const velinaC6 = (windPanel as any)?.velinaCinema6 ?? 0
-      const windCount = prog.triggerCount
-      if (velinaC6 && windCount > 1) {
-        const avgRemaining = (30 * (windCount - 1) / windCount) / 2
-        const c6BonusPct = Math.min(40, 2.5 * avgRemaining)
-        multiplier *= (1 + c6BonusPct / 100)
-        formula += ` · 6命风化期望+${c6BonusPct.toFixed(1)}%（平均剩余${avgRemaining.toFixed(1)}s）`
+    // 风化事件倍率加成：按风槽角色模块能力 `windAnomalyBonus` 派发（CC-36b 2026-09-27；现为维琳娜 6 命，
+    // 原内联读 windPanel.velinaCinema6。风槽非维琳娜时原本就无加成，派发与之等价）
+    if (prog.element === 'wind' && windSlot >= 0) {
+      const windAgentId = configStore.team[windSlot]?.agentId
+      const bonus = windAgentId
+        ? getAgentMechanic(windAgentId)?.windAnomalyBonus?.({ panel: panelAt(damagePanels, windSlot), triggerCount: prog.triggerCount }) ?? null
+        : null
+      if (bonus) {
+        multiplier *= (1 + bonus.pct / 100)
+        formula += bonus.note
       }
     }
 

@@ -191,6 +191,8 @@ function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelI
   // 供风蚀状态机按归属认人（2026-09-25 CC-D3：风蚀不按「队里第一个风属性」归属）。
   panel.velinaEnabled = 1
   panel.velinaCinema1 = cinemaLevel >= 1 ? 1 : 0
+  // 乱流抗性无视（通用面板字段，core/anomalyPool/helpers.ts#calcTurbulenceSettlement 读；CC-36b）
+  panel.turbulenceResIgnore = cinemaLevel >= 1 ? 20 : 0
   panel.velinaCinema2 = cinemaLevel >= 2 ? 1 : 0
   panel.velinaCinema4 = cinemaLevel >= 4 ? 1 : 0
   panel.velinaCinema6 = cinemaLevel >= 6 ? 1 : 0
@@ -525,6 +527,14 @@ export const velinaMechanic: AgentMechanicModule = {
   replaceSkillExecutionExtraction: true,
   transformSkillExecutions: transformVelinaSkillExecutions,
   transformAnomalyPool: transformVelinaAnomalyPool,
+  // 6 命风化事件加成（CC-36b 2026-09-27，原 damagePoolAnomaly.ts 内联）：对风化状态敌人再次施加风化，
+  // 按平均剩余时长给风化事件增伤（每 1s +2.5%，上限 40%）。公式与说明文案逐字迁入。
+  windAnomalyBonus: ({ panel, triggerCount }) => {
+    if (!((panel?.velinaCinema6 ?? 0) > 0) || triggerCount <= 1) return null
+    const avgRemaining = (30 * (triggerCount - 1) / triggerCount) / 2
+    const c6BonusPct = Math.min(40, 2.5 * avgRemaining)
+    return { pct: c6BonusPct, note: ` · 6命风化期望+${c6BonusPct.toFixed(1)}%（平均剩余${avgRemaining.toFixed(1)}s）` }
+  },
   // 风蚀状态机的**引擎期求值**入口（规则 6 引擎落点，2026-09-25 CC-6d）：
   // 引擎遍历 `AnomalyPoolInput.agentMechanics` 调 `anomalyCorrosion`（`core/anomalyPool/corrosion.ts#resolveAnomalyCorrosion`），不再值导入本模块
   // （`core/anomalyPool.ts` 终局重结算 + `helpers.ts#calcTurbulenceDamage`）。

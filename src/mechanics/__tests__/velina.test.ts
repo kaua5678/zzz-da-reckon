@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { simulateVelinaCorrosionState } from '@/mechanics/agents/velina'
+import { simulateVelinaCorrosionState, velinaMechanic } from '@/mechanics/agents/velina'
 import { setupHarness } from '@/test/harness'
 
 /** 维琳娜（风）+ 格莉丝（电异常，触发额外能力 + 提供非风异常触发 → 乱流） */
@@ -89,5 +89,30 @@ describe('维琳娜滑块生效差分（防守卫冻结，SOP §3.5）', () => {
     expect(half.c2WindGainExpected).toBeCloseTo(4.5, 5)
     expect(off.c2WindGainExpected).toBe(0)
     expect(full.c2WindGainExpected).toBeGreaterThan(off.c2WindGainExpected)
+  })
+})
+
+// CC-36b 2026-09-27：两条命座规则从 core / 编排层迁入模块后，由这里锁住数值（perf 语料里 1 命只在 c6 档与 6 命同时出现，分不开）。
+describe('维琳娜 CC-36b：乱流抗性无视面板字段 / 风化事件加成能力', () => {
+  const panelAfter = (cinemaLevel: number) => {
+    const panel: Record<string, number> = {}
+    velinaMechanic.applyPanel!({ slot: 0, agent: { damageElement: 'wind' }, cinemaLevel, team: [], panel } as never)
+    return panel
+  }
+  it('1 命起写 turbulenceResIgnore = 20，0 命为 0', () => {
+    expect(panelAfter(0).turbulenceResIgnore).toBe(0)
+    expect(panelAfter(1).turbulenceResIgnore).toBe(20)
+    expect(panelAfter(6).turbulenceResIgnore).toBe(20)
+  })
+  it('6 命 windAnomalyBonus：平均剩余时长 × 2.5%/s（上限 40），文案逐字', () => {
+    const bonus = velinaMechanic.windAnomalyBonus!({ panel: { velinaCinema6: 1 } as never, triggerCount: 2 })
+    // 平均剩余 = 30 × (2−1)/2 / 2 = 7.5s → 18.75%
+    expect(bonus?.pct).toBeCloseTo(18.75, 10)
+    expect(bonus?.note).toBe(' · 6命风化期望+18.8%（平均剩余7.5s）')
+  })
+  it('非 6 命 / 触发 ≤1 次 / 无面板 → null', () => {
+    expect(velinaMechanic.windAnomalyBonus!({ panel: { velinaCinema6: 0 } as never, triggerCount: 5 })).toBeNull()
+    expect(velinaMechanic.windAnomalyBonus!({ panel: { velinaCinema6: 1 } as never, triggerCount: 1 })).toBeNull()
+    expect(velinaMechanic.windAnomalyBonus!({ panel: undefined, triggerCount: 5 })).toBeNull()
   })
 })
