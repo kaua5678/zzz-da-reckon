@@ -846,6 +846,18 @@ export interface AgentMechanicModule {
    */
   giftedPolarAssaultCount?(char: CharacterResourceResult): number
   /**
+   * **本角色的轴块是否结束失衡窗口**（决算类招式；CC-39b 2026-09-27，设计稿
+   * `docs/mcp-cc39b-stun-window-end.md`）。编排层经 `resourceCalc/helpers.ts#axisMoveEndsStunWindow`
+   * 按轴块所在槽的角色派发：convergence 决算截断剩余失衡秒数 + roundInputs 给轴栈打 `endsStunWindow`。
+   * 现实现：佩洛伊斯（右分支决算 1551016）、雨果（强特终结一击恒真；终结技仅影画 < 2）。
+   */
+  endsStunWindow?(moveId: string, cinemaLevel: number): boolean
+  /**
+   * **轴块动作时长兜底**（CC-39b）：入参为倍率表 / 块 duration 给出的时长，返回实际用于窗口截断的时长。
+   * 用于无倍率表条目的合成行。现唯一实现：雨果（`1291_ex_verdict_final` 且 ≤ 0 时取 1.805s）。
+   */
+  axisMoveActionTime?(moveId: string, catalogActionTime: number): number
+  /**
    * **角色专属异常附加行**（规则 6 迁移落点，CC-19a 2026-09-26，设计稿
    * `docs/mcp-cc19-extra-anomaly-rows.md` §2.1/§2.3）：
    * 由行所属角色的模块生成自己的异常尾段附加行，返回**分组**（`order` 取

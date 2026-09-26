@@ -42,6 +42,9 @@ const PEILUO_FLARE_ENERGY = 15 // 耀斑：能量获得效率 +15%
 const PEILUO_FLARE_DMG = 40 // 耀斑：造成的伤害 +40%
 export const PEILUO_KAGEROU_CRIT = 40 // 阳炎：终结技对失衡敌人暴伤 +40%
 
+// CC-39b：右分支决算结束失衡窗口（原为 convergence / roundInputs 里的字面量判定）
+peiluoProminenceMechanic.endsStunWindow = (moveId) => moveId === PEILUO_ULT_VERDICT
+
 // 决算次数无滑块：轴模式由轴内 1551016 块计数，非轴模式 = 失衡次数（编排层写入 cfg.peiluoVerdictCount）
 peiluoProminenceMechanic.settings = [{
   id: 'peiluo.kagerouCoverage',

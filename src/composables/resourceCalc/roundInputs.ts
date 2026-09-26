@@ -23,8 +23,7 @@ import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
 import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { SIGRID_LANCE_SEGMENT_IDS } from '@/mechanics/agents/sigrid'
-import { HUGO_EX_VERDICT_MOVE_ID, HUGO_ULT_MOVE_ID, HUGO_EX_FINAL_ACTION_TIME } from '@/mechanics/agents/hugo'
-import { extractSkillExecutions } from './helpers'
+import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
 // 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { findSlotByIdentity } from './anomalyPanels'
@@ -251,15 +250,14 @@ export function createConvergenceRoundInputs(deps: {
           // 60/90 转大块是琉音好评赠送的终结技（白送，不耗目标喧响），只占窗口时间不扣喧响
           if (act.promoteVariant) decibelCost = 0
         }
-        // 雨果强特终结一击（合成行 1291_ex_verdict_final）无倍率表条目：动作时长用模块常量兜底，
-        // 保证窗口截断按「块结束时刻」而非「块起点」算剩余失衡时间。
-        if (actionTime <= 0 && act.moveId === HUGO_EX_VERDICT_MOVE_ID) actionTime = HUGO_EX_FINAL_ACTION_TIME
+        // 合成行（无倍率表条目）的动作时长兜底由本槽模块能力 `axisMoveActionTime` 提供（CC-39b；
+        // 现唯一实现 = 雨果强特终结一击），保证窗口截断按「块结束时刻」而非「块起点」算剩余失衡时间。
+        actionTime = axisMoveActionTimeOf(configStore.team[act.slot]?.agentId, act.moveId, actionTime)
         // 窗口终结（决算）：佩洛伊斯右分支 1551016；雨果强特终结一击(1291_ex_verdict_final) 永远结束失衡；
         // 雨果终结技本体(1291018) 仅 C0/C1 结束失衡——影画2「终结技决算不结束失衡」不截断窗口（0命2命区分）。
         const slotCinema = configStore.team[act.slot]?.cinemaLevel ?? 0
-        const endsWindow = act.moveId === '1551016'
-          || act.moveId === HUGO_EX_VERDICT_MOVE_ID
-          || (act.moveId === HUGO_ULT_MOVE_ID && slotCinema < 2)
+        // CC-39b：由本槽角色模块能力 `endsStunWindow` 判定（convergence 决算截断同源）
+        const endsWindow = axisMoveEndsStunWindow(configStore.team[act.slot]?.agentId, act.moveId, slotCinema)
         axisActions.push({
           slot: act.slot,
           moveId: act.moveId,

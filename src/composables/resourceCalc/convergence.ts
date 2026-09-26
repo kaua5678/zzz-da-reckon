@@ -50,11 +50,10 @@ import { getBaseElement, BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/help
 import { calcSpecialActionBonus, PARRY_DECIBEL_BONUS } from '@/core/anomalyPool'
 import { ULTIMATE_COST_DEFAULT, calcTeamResources } from '@/core/resource'
 import { resolveUltimateTargetSlot, computeLiuyinHugCounts } from '@/mechanics/agents/liuyin'
-import { isHugoEndsWindowMove, hugoMoveActionTime } from '@/mechanics/agents/hugo'
 // 面板/机制编排簇（B 簇）已迁 `./panelPhases`（R22 熵批 1 / T67-a1 刀 A）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { applyTeamMechanics, collectNextRoundFeedback } from './panelPhases'
-import { enrichExecutionPlan } from './helpers'
+import { enrichExecutionPlan, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
 
 /** 保底 4 喧响的四舍五入阈值（自 useResourceCalc 顶层随迁；那里改为了 import） */
 const DECIBEL_ROUND_THRESHOLD = 1500
@@ -148,7 +147,7 @@ export function createRunCalcRound(deps: {
     // forceNoAxis（轴退化）：跳过轴注入（轴块/连携覆盖/自动补齐全关），退回 chainCountPerStun 兜底的一般循环
     const axisActive = !opts?.forceNoAxis && (configStore.useStunAxis || autoActive.value) && resolvedAxes.length > 0
     // 雨果槽位查找已删（CC-39a 2026-09-27）：唯一用途「决算失衡值返还」改由模块能力 `stunRefundRatio` 派发（见下方）。
-    // 决算截断（佩洛伊斯右分支 1551016）：轴内决算做完时清空窗口剩余失衡时间 →
+    // 决算截断（结束失衡窗口的招式，由模块能力 endsStunWindow 声明）：轴内决算做完时清空窗口剩余失衡时间 →
     // 有效失衡时长按截断结束时刻计，损失秒数从覆盖率里扣除（失衡时间/比例重算口径）。
     let verdictSecondsLost = 0
     if (axisActive) {
@@ -160,15 +159,15 @@ export function createRunCalcRound(deps: {
         let truncEnd = -1
         for (const act of axis.actions) {
           const cinema = configStore.team[act.slot]?.cinemaLevel ?? 0
-          // 佩洛伊斯右分支决算 + 雨果决算（强特终结永远 / 终结技仅 C0/C1）才截断窗口
-          const isEnds = act.moveId === '1551016' || isHugoEndsWindowMove(act.moveId, cinema)
+          // CC-39b：是否截断窗口由本槽角色模块能力 `endsStunWindow` 判定（与 roundInputs 的 endsStunWindow 同源）
+          const isEnds = axisMoveEndsStunWindow(configStore.team[act.slot]?.agentId, act.moveId, cinema)
           if (!isEnds) continue
           const skills = catalogStore.agentSkillsByAgentMap.get(configStore.team[act.slot]?.agentId ?? '')
           const move = findMoveById(skills, act.moveId)
           let dur = typeof (act as { duration?: number }).duration === 'number'
             ? (act as { duration: number }).duration
             : (move?.actionTime ?? 0)
-          dur = hugoMoveActionTime(act.moveId, dur)
+          dur = axisMoveActionTimeOf(configStore.team[act.slot]?.agentId, act.moveId, dur)
           truncEnd = Math.max(truncEnd, Math.max(0, act.startTime ?? 0) + dur)
         }
         if (truncEnd >= 0) verdictSecondsLost += Math.max(0, windowDur - truncEnd) * wins

@@ -849,3 +849,17 @@ export function extractSkillExecutions(
   return { stunExecs, anomalyExecs }
 }
 
+/**
+ * CC-39b（2026-09-27，设计稿 `docs/mcp-cc39b-stun-window-end.md`）：轴块「是否结束失衡窗口」
+ * 按**本槽角色**派发模块能力 `endsStunWindow`。convergence 的决算截断与 roundInputs 的
+ * `endsStunWindow` 标记**必须同源**，一律经此函数；空槽 / 无此能力 ⇒ false。
+ */
+export function axisMoveEndsStunWindow(agentId: string | undefined, moveId: string, cinemaLevel: number): boolean {
+  return !!(agentId && getAgentMechanic(agentId)?.endsStunWindow?.(moveId, cinemaLevel))
+}
+
+/** CC-39b：轴块动作时长兜底，按本槽角色派发模块能力 `axisMoveActionTime`；无此能力 ⇒ 原值。 */
+export function axisMoveActionTimeOf(agentId: string | undefined, moveId: string, actionTime: number): number {
+  const fn = agentId ? getAgentMechanic(agentId)?.axisMoveActionTime : undefined
+  return fn ? fn(moveId, actionTime) : actionTime
+}
