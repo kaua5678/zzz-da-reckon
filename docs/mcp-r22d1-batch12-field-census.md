@@ -5,6 +5,8 @@
 
 ## 1. 做到哪一步
 
+- **最新交接（2026-09-26 20:5x，lead-arena-0925c 第 19 轮）**：CC-14c 已落地 `ba6db48`，CC-14d 已落地 `e94b896`（卡面在 §5.5，都由 lead 直接实现，每卡改 4–8 个文件）。判据 22 从 775 降到 766，再降到 **763**，**提前达成原 target 765**。因为棘轮测试要求 target < frozen，**已重设 target 740、due 2026-12-31**（决定与依据见 §5.5）。两张卡在 master 上都跑了 `npm run verify`，EXIT=0，前后都钉了 HEAD。
+  **下一步（可以直接开工）**：CC-14e，卢西娅帷幕写回迁模块，卡面见 §5.5 末尾。零差基线须在当前 HEAD 的原始 worktree 上重新生成（§4 口径）；H2a 生成于 `007a6b7`，CC-14c/d 已证明零差，所以 H2a 对 `e94b896` 仍然有效，可以直接复用。
 - **最新交接（2026-09-26 20:2x，lead-arena-0925c 第 18 轮）**：CC-14a 已落地，提交 `285885b`（修订卡 §5.2-v2 = `a16d9ae`）。判据 22 从 803 降到 **775**，距 target 765 还差 10。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `285885b`，按 AGENTS「钉 HEAD」规则可归因。
   **下一步（可以直接开工）**：立 CC-14c 卡，范围如下（§5.4 末尾已登记）：
   - `core/resource/assembleSlot.ts:57–60` 把外部治疗写回 `cfg.yidhariExternalHealPct`；
@@ -235,6 +237,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **卡 CC-14a 完成后**：读数应降到 821 − 该卡清掉的引用数，届时同步下调常量和 frozen。
 - **2026-09-26 CC-14b 后**：基线与 frozen 都下调到 **803**（`6d8a995`）；target 765 不变，还差 38。
 - **2026-09-26 CC-14a 后**：基线与 frozen 都下调到 **775**（`285885b`）；target 765，还差 10。
+- **2026-09-26 CC-14c / CC-14d 后**：766（`ba6db48`）→ **763**（`e94b896`），原 target 765 已提前达成；重设 target 740、due 2026-12-31（§5.5）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -278,6 +281,52 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **回退点**：单卡单提交，`git revert` 即可。
 
 **CC-14c（登记，未立卡）**：`assembleSlot.ts` 的外部治疗写回，以及 ctx 里的 `yidhariSlot`，改成模块能力，比如 `onFinalAssemble({ cfg, providerUltCount })`。之后 `resourceIncome` 就可以不依赖写回。
+
+### 5.5 CC-14c / CC-14d 落地记录 + CC-14e 卡（2026-09-26 第 19 轮 lead-arena-0925c）
+
+**CC-14c（`ba6db48`，判据 22 775→766）装配期外部回血写回迁模块能力**
+- `AgentMechanicModule.onFinalAssemble?({ cfg, providerUltCount }): void`，由 `assembleSlot` 逐槽开头调用，前提是 `curtain.providerSlot >= 0`，槽序即写序。
+- `yidhari.ts#yidhariOnFinalAssemble` 逐字迁入原写回算式，并保留 `yidhariDecibelPerHpPct === undefined` 守卫，与原 `findIndex` 选槽等价。
+- `AssembleSlotContext.yidhariSlot` 和 `tailPipeline.ts` 的按字段找槽已删除。
+- 验证：
+  - dump / rowsnap 零差，基线 H2a @ `007a6b7`；
+  - 反向验证把写回乘数改成 `providerUltCount + 1`，DIFF 42，全部在 `yidhari-*-lucia` 场景；
+  - 定向 37 个测试文件 389 条通过，`vue-tsc -b` 为 0，master 全量 verify EXIT=0（HEAD `ba6db48` 前后一致）。
+- **决定：lead 直接实现，不派工人**。依据：只改 4 个文件、约 30 行，派工的往返成本比改动本身还高（AGENTS 子代理规则：不要为一步能做完的小事派活）。
+
+**CC-14d（`e94b896`，判据 22 766→763）热启动反馈字段改模块声明**
+- `AgentMechanicModule.feedbackCfgKeys?: readonly string[]`。yidhari 声明 `yidhariExternalHealPct`，luciaElowen 声明 `luciaCurtainTriggerCount`，norma 声明 `normaHatToChainCount`。
+- `warmStart.ts` 的 `WARM_KEY_OMIT_CFG` 只保留通用字段 `timeBudgetExcess` 和 `rowTimeLimit`；`sanitizeWarmKeyCfg` 按 `getAgentMechanic(cfg.agentId)?.feedbackCfgKeys` 剔除角色字段。warmStart.ts 因此新增了 `@/mechanics` 依赖，与 assembleSlot 等同层文件一致。
+- 语义差异：旧实现对**任意** cfg 剔除这 3 个名字；新实现只对声明它的模块所属 cfg 剔除。这 3 个字段只会写在各自角色的 cfg 上（已读码核实：诺玛写自己的 cfg；卢西娅字段由 assembleSlot 在提供者槽写回；伊德海莉字段由自身模块写回），所以缓存键实际上不变。热启动只做精确键命中，本来就不影响计算结果。
+- 验证：
+  - `warmStart.test.ts` 新增 CC-14d 用例：声明字段值不同仍同键；未声明字段照常进键；通用字段对任意角色剔除；
+  - 反向验证：删掉 yidhari 的声明后，该用例变红；
+  - dump / rowsnap 零差（H2a）；master 全量 verify EXIT=0。
+- 顺带发现，**未修**：`luciaCurtainSelfCount`、`luciaCurtainTeammates` 同样是装配期写回，但旧清单里就没有，会让下次精确键假未命中。只影响缓存命中率，不影响结果。CC-14e 做完后可以一并加进卢西娅的 `feedbackCfgKeys`（届时须补测试，并确认计算结果仍零差）。
+
+**决定：重设判据 22 的 target**
+- 原 target 765（due 2026-11-30）已被 CC-14d 提前达成（763）。
+- `checkGuards.test.ts` 的两条用例要求 `target < frozen`，所以必须重设：target 改为 **740**，due 改为 **2026-12-31**，plan 写成「CC-14e → B 类槽位定位变量按角色逐卡；remielle 需先出设计稿」。
+- 依据：剩下的是 B 类工作，每卡都需要设计，节奏比 A 类慢；约 23 处需要 CC-14e 加上首批槽位变量卡来完成。
+- 回退点：`scripts/check-guards.mjs` RATCHET_BURNDOWN 中该条目的 target 和 due 可以随时改，改完同步跑 checkGuards.test。
+
+**CC-14e 卡：卢西娅帷幕写回迁模块能力（B 类，零差）**
+- 现状：`core/resource/assembleSlot.ts` 约第 64–91 行的 `if (i === curtain.providerSlot) { ... }` 块。core 直接写 `cfg.luciaCurtainTriggerCount`、`cfg.luciaCurtainSelfCount`（调用模块能力 `curtainTriggers`，teammateOpenCount 为 0）和 `cfg.luciaCurtainTeammates`（按 `findCrossAgentSupplySlots(configs, 'curtain-open')` 收集队友 rawCount，并按比例分摊 `curtainTriggers - selfCount`）。
+- 做法：
+  1. 扩展 `onFinalAssemble` 入参，全部为可选新增字段，yidhari 实现不用改：
+     `isCurtainProvider: boolean`、`curtainTriggers: number`、`state: IterationState`、`totalTime: number`、`curtainOpeners: Array<{ agentId: string; rawCount: number }>`。
+     其中 `curtainOpeners` 由 core 用原 `raw` 算式收集，包括 `.filter(m => m.rawCount > 0)`。
+  2. `luciaElowen.ts` 实现 `onFinalAssemble`：在 `isCurtainProvider` 为真时逐字执行原块内的三个写回；自开次数调用本模块的 `curtainTriggers` 实现，入参 `{ cfg, state, teammateOpenCount: 0, totalTime }`。
+  3. assembleSlot 删掉整块，并入 CC-14c 的同一个调用点。
+     - **调用条件要注意**：原卢西娅块的条件是 `i === curtain.providerSlot`，不要求别的；而 CC-14c 调用点的外层条件是 `curtain.providerSlot >= 0`。提供者槽存在时两者恒成立，逐位等价。
+     - 顺序：卢西娅块原在伊德海莉写回之后，两者写的是不同槽的 cfg，而且卢西娅块只读 states/curtain/configs，合并到同一个调用点后顺序无关。
+  4. 预计判据 22 降约 4–5 处，以实测为准，同步下调两处常量。
+- 验收：
+  - `grep -n 'luciaCurtain' src/core/resource/assembleSlot.ts` 只剩注释；
+  - dump / rowsnap 两侧 `PERF_KEY_ALIAS=1` 零差；
+  - 反向验证：把队友分摊临时乘 0，DIFF 须只出现在含卢西娅(1451) 的场景。若 DIFF 为 0，说明展示字段不进 dump 哈希，应改为在 `luciaElowen.test.ts` 里断言 `luciaCurtainTeammates`；
+  - `luciaElowen.test.ts` 通过，`vue-tsc -b` 为 0，master 全量 verify 钉 HEAD。
+- 回退点：单卡单提交，`git revert`。
 
 ## 附录：普查脚本 census.sh
 

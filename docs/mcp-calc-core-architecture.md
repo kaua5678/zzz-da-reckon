@@ -157,6 +157,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | ~~批 1-2~~ | — | **不做**（lead 2026-09-26） | 比利/叶瞬光终局旗标并入 CC-13 通用通道：旗标只被各自模块读写、core 零读取，且语义不同 | `docs/mcp-r22d1-batch12-field-census.md` §2 |
 | CC-14a | review | **done** `285885b`（判据 22 803→775） | 6 角色专属能量项迁模块能力 `bonusEnergy`，EnergySource 收成 `bonusEntries`，零差（基线 H1a @ 66ba89a） | 卡面 `docs/mcp-r22d1-batch12-field-census.md` §5.2；普查与分簇见 §5 |
 | CC-14b | review | **done** `6d8a995`（判据 22 821→803） | 伊德海莉燃血喧响两处同式迁模块能力 `selfBurnDecibel`，零差（新基线 H0 @ f0df0cb） | 卡面 `docs/mcp-r22d1-batch12-field-census.md` §5.4 |
+| CC-14c | review | **done** `ba6db48`（判据 22 775→766） | 装配期外部回血写回迁模块能力 `onFinalAssemble`，删 `yidhariSlot`，零差 | §5.5 |
+| CC-14d | review | **done** `e94b896`（判据 22 766→763，target 重设 740） | 热启动反馈字段改模块声明 `feedbackCfgKeys` | §5.5 |
+| CC-14e | review | **待做**（卡面已写） | 卢西娅帷幕写回（assembleSlot luciaCurtain*）并入 onFinalAssemble，零差 | 卡面 `docs/mcp-r22d1-batch12-field-census.md` §5.5 |
 
 ### CC-1 · 招式表查询迁出（fast）
 
