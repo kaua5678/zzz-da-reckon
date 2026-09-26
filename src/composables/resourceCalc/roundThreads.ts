@@ -13,6 +13,7 @@
  *   —— 它们的下一轮值在 runCalcRound 内部已由 prev 兜底（如 interactionTopUpNext 初值 = prev.interactionTopUp）。
  * - 其余字段：null 轮（runCalcRound 返回 null，如无失衡行队伍）重置为初值。
  */
+import type { ModuleFeedback } from '@/mechanics/types'
 import type { InteractionTopUp } from '@/mechanics/types'
 import type { ParrySplitResult } from '@/core/parrySplit'
 
@@ -31,45 +32,15 @@ export interface CalcRoundThreads {
   parrySplit: ParrySplitResult | null
   /** 后台合轴自动填充（agentId → 自动对数）：由模块 backstageAutoFill 声明驱动，编排层通用反推 */
   backstageAuto: Record<string, number> | null
-  /** 仪玄符法千重类终结次数（橘福福额外能力 +300 喧响） */
-  yixuanFuFaForJufufu: number
   /** 全队终结总次数（橘福福影画2 威势） */
   teamUltimateForJufufu: number
-  /** 琉音转大赠送的叶瞬光逐云次数 */
-  yeshuguangGiftUlt: number
-  /** 露西 C6 队友强特合计（C1 回能预估） */
-  lucyTeammateEx: number
-  /** 莱特后场：全队常态能量消耗（applyTeamConfig converge 输入） */
-  lighterTeamEnergy: number
-  /** 格莉丝影画1 全队回能轮换数 */
-  graceC1Cycles: number
-  /** 零号·安比：队友追加攻击命中折算白雷层数 */
-  anbyZeroTeammateWl: number
-  /** 薇薇安落羽生花源1：全队强特命中次数 */
-  vivianTeamEx: number
-  /** 薇薇安落羽生花源2：全队异常触发次数 */
-  vivianAnomalyTriggers: number
-  /** 普罗米娅·霜刑：触发命中数 */
-  promiaTriggerHits: number
-  /** 普罗米娅·霜刑：队友异放次数 */
-  promiaTeammateReleases: number
-  /** 普罗米娅自身异放回喧响（绝裁/影画6 各 +100） */
-  promiaReleaseDecibel: number
   /**
-   * 爱丽丝剑仪的两条外部次数源（上一轮异常池收敛值）：
-   * 爱丽丝**自己**触发的强击次数（只算 `physical`、排除极性强击；字段名里的 Team 是历史名，
-   * 口径见 alice.ts `aliceExternalCountsOf`）/ 全队紊乱次数。产出方 = 爱丽丝 `nextRoundFeedback`（CC-22）。
-   * 为什么必须跨轮：异常池在 `buildExecutions` **之后**才算，而剑仪的星芒圆舞曲行要在
-   * `buildExecutions` 里产出 ⇒ 只能带上一轮值（`vivianAnomalyTriggers` 同款理由）。
-   * 消费方 = 爱丽丝模块的 `applyTeamConfig`（converge 阶段写进 cfg，供本轮 buildCharConfig 读）。
+   * 各模块 `nextRoundFeedback` 的合并结果（CC-31：原 14 个角色具名字段收拢为字典，键定义见
+   * `mechanics/types.ts#ModuleFeedback`）。**缺键 = 0**，读侧 `threads.moduleFeedback.<键> ?? 0`。
    */
-  aliceTeamAssaultCount: number
-  /** 爱丽丝剑仪：全队紊乱次数（上一轮异常池收敛值） */
-  aliceDisorderCount: number
+  moduleFeedback: Readonly<ModuleFeedback>
   /** 失衡内异常系统 v2：平均每窗异常触发次数（南宫羽颤音自动层数） */
   inStunWindowTriggers: number
-  /** 艾莲影画4 冻结次数（异常池 ice 触发数） */
-  ellenFreezeCount: number
   /** 全队以太帷幕开启总次数（照霜寒开帷幕 + 爱芮/叶瞬光终结技 + 千夏强特；叶瞬光溯影惊鸿/爱芮合作舞台/千夏磨爪器消费） */
   teamVeilCountTotal: number
   /** 通用保底4喧响：弹刀补齐量（非般岳队伍） */
@@ -89,22 +60,9 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
     interactionTopUp: { parry: 0, dual: 0, requiredSeconds: 0, illegal: false },
     parrySplit: null,
     backstageAuto: null,
-    yixuanFuFaForJufufu: 0,
     teamUltimateForJufufu: 0,
-    yeshuguangGiftUlt: 0,
-    lucyTeammateEx: 0,
-    lighterTeamEnergy: 0,
-    graceC1Cycles: 0,
-    anbyZeroTeammateWl: 0,
-    vivianTeamEx: 0,
-    vivianAnomalyTriggers: 0,
-    promiaTriggerHits: 0,
-    promiaTeammateReleases: 0,
-    promiaReleaseDecibel: 0,
-    aliceTeamAssaultCount: 0,
-    aliceDisorderCount: 0,
+    moduleFeedback: {},
     inStunWindowTriggers: 0,
-    ellenFreezeCount: 0,
     teamVeilCountTotal: 0,
     decibelParry: 0,
     decibelRegenBySlot: {},

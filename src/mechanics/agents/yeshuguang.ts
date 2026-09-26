@@ -807,7 +807,7 @@ export const yeshuguangMechanic: AgentMechanicModule = {
    */
   applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
-    ;(cfg as unknown as Record<string, unknown>).yeshuguangGiftUltCount = threads.yeshuguangGiftUlt
+    ;(cfg as unknown as Record<string, unknown>).yeshuguangGiftUltCount = (threads.moduleFeedback?.yeshuguangGiftUlt ?? 0)
   },
   /**
    * 终局整数重推（规则 6 引擎落点，2026-09-25 CC-6c）：明心境轮数实数化收尾。

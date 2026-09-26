@@ -583,8 +583,8 @@ export const aliceMechanic: AgentMechanicModule = {
       const cc = c as { aliceTeamAssaultCount?: number; aliceDisorderCount?: number }
       // CC-22：两条次数改从 `threads`（上一轮收敛快照）读，不再占 AgentTeamConfigInput 专用字段；
       // 产出方 = 本模块 `nextRoundFeedback`（下方）。threads 缺省 ⇒ 0（与原入参缺省逐位等价）。
-      cc.aliceTeamAssaultCount = Math.max(0, threads?.aliceTeamAssaultCount ?? 0)
-      cc.aliceDisorderCount = Math.max(0, threads?.aliceDisorderCount ?? 0)
+      cc.aliceTeamAssaultCount = Math.max(0, (threads?.moduleFeedback?.aliceTeamAssaultCount ?? 0))
+      cc.aliceDisorderCount = Math.max(0, (threads?.moduleFeedback?.aliceDisorderCount ?? 0))
     }
   },
   // 伴随事件：三蓄 SW3(1401012) 末尾赠送极性强击（polar_assault），易伤跟随父动作

@@ -28,7 +28,7 @@ import type {
   ReleaseModifierInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
+import type { ModuleFeedback } from '../types'
 
 export const PROMIA_ID = '1541'
 export const PROMIA_MASTERY_THRESHOLD = 150
@@ -342,13 +342,13 @@ function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number)
  * ——展示端直接读那些字段，迁移前就在此处写，原地语义不变（同数组对象引用传入）。
  *
  * ⚠ 首轮守卫语义是本角色口径（同族里露西**没有**这个守卫），逐位保留：
- * 只在 `prevThreads.promiaTriggerHits <= 0 && prevThreads.promiaTeammateReleases <= 0` 时写回。
+ * 只在 `(prevThreads.moduleFeedback?.promiaTriggerHits ?? 0) <= 0 && (prevThreads.moduleFeedback?.promiaTeammateReleases ?? 0) <= 0` 时写回。
  */
-function promiaNextRoundFeedback({ cfg, characters, teamResult, displayResult, anomalyPool, prevThreads }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+function promiaNextRoundFeedback({ cfg, characters, teamResult, displayResult, anomalyPool, prevThreads }: AgentNextRoundFeedbackInput): ModuleFeedback {
   // 展示口径行集优先（displayResult = rrShown），缺失回退装配结果——迁移前语义。
   const shown = displayResult ?? teamResult
-  const prevPromiaTriggerHits = prevThreads.promiaTriggerHits
-  const prevPromiaTeammateReleases = prevThreads.promiaTeammateReleases
+  const prevPromiaTriggerHits = (prevThreads.moduleFeedback?.promiaTriggerHits ?? 0)
+  const prevPromiaTeammateReleases = (prevThreads.moduleFeedback?.promiaTeammateReleases ?? 0)
   let promiaTriggerHitsNext = 0
   let promiaTeammateReleasesNext = 0
   let promiaReleaseDecibelNext = 0
@@ -393,10 +393,10 @@ export const promiaMechanic: AgentMechanicModule = {
   applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
     const record = cfg as unknown as Record<string, unknown>
-    record.promiaTriggerHitCount = Math.max(0, Math.floor(threads.promiaTriggerHits))
-    record.promiaTeammateReleaseCount = Math.max(0, Math.floor(threads.promiaTeammateReleases))
+    record.promiaTriggerHitCount = Math.max(0, Math.floor((threads.moduleFeedback?.promiaTriggerHits ?? 0)))
+    record.promiaTeammateReleaseCount = Math.max(0, Math.floor((threads.moduleFeedback?.promiaTeammateReleases ?? 0)))
     record.extraSelfDecibelReward =
-      Math.max(0, Number(record.extraSelfDecibelReward ?? 0)) + Math.max(0, Math.floor(threads.promiaReleaseDecibel))
+      Math.max(0, Number(record.extraSelfDecibelReward ?? 0)) + Math.max(0, Math.floor((threads.moduleFeedback?.promiaReleaseDecibel ?? 0)))
   },
   buildExecutions: buildPromiaExecutions,
   buildAnomalyEvents: buildPromiaAnomalyEvents,

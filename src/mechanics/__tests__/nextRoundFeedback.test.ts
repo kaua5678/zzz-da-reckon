@@ -140,7 +140,7 @@ describe('普罗米娅 1541：触发命中 / 队友异放 / 自身异放回喧�
     // 二轮：prevThreads 带上轮值 ⇒ 守卫不成立 ⇒ 不写
     const second = run('1541', {
       teamResult: teamResult([row({ agentId: '1471', anomalyEventExecutions: [ev({ count: 2 })] })]),
-      prevThreads: { ...initialCalcRoundThreads(), promiaTriggerHits: 5, promiaTeammateReleases: 2 },
+      prevThreads: { ...initialCalcRoundThreads(), moduleFeedback: { promiaTriggerHits: 5, promiaTeammateReleases: 2 } },
     })
     expect('promiaTriggerHitCount' in second.cfg).toBe(false)
   })
@@ -176,7 +176,7 @@ describe('露西 1151（C6 回旋预估）', () => {
     const r2 = run('1151', {
       cfg: cfg as never, characters: [cfg] as never,
       teamResult: teamResult([row({ agentId: '1151', exSpecialCount: 5 })]),
-      prevThreads: { ...initialCalcRoundThreads(), lucyTeammateEx: 99 },
+      prevThreads: { ...initialCalcRoundThreads(), moduleFeedback: { lucyTeammateEx: 99 } },
     })
     expect(r2.cfg.lucyCheerSpinsEstimate).toBe(5)
   })
@@ -253,7 +253,7 @@ describe('薇薇安 1331 / 艾莲 1191（同款首轮守卫）', () => {
     run('1331', {
       cfg: cfg2 as never, characters: [cfg2] as never,
       teamResult: teamResult([]), anomalyPool: anomalyPool(),
-      prevThreads: { ...initialCalcRoundThreads(), vivianTeamEx: 5 },
+      prevThreads: { ...initialCalcRoundThreads(), moduleFeedback: { vivianTeamEx: 5 } },
     })
     expect('vivianTeamExTotal' in cfg2).toBe(false) // 非首轮不写回
 
@@ -278,7 +278,7 @@ describe('薇薇安 1331 / 艾莲 1191（同款首轮守卫）', () => {
     run('1191', {
       cfg: cfg2 as never, characters: [cfg2] as never,
       anomalyPool: anomalyPool({ perElement: [{ element: 'ice', triggerCount: 6 }] }),
-      prevThreads: { ...initialCalcRoundThreads(), ellenFreezeCount: 3 },
+      prevThreads: { ...initialCalcRoundThreads(), moduleFeedback: { ellenFreezeCount: 3 } },
     })
     expect('ellenFreezeCount' in cfg2).toBe(false) // 非首轮不写回
   })

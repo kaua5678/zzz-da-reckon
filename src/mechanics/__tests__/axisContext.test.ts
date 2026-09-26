@@ -704,7 +704,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
     const withJufufu: Cfg = { slot: 0, agentId: '1371', extraSelfDecibelReward: 1500 }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(withJufufu, {
       axis: axisOf({ axes: [], windows: [] }),
-      threads: { auricInkFlash: 0, yixuanFuFaForJufufu: 3 } as never,
+      threads: { auricInkFlash: 0, moduleFeedback: { yixuanFuFaForJufufu: 3 } } as never,
       interactions: interactionsOf([{ agentId: '1371' }]),
       // 橘福福 1391 且额外能力开启（`additionalAbilityActive > 0`）
       characters: [{ slot: 0, agentId: '1371' }, { slot: 1, agentId: '1391', panel: { additionalAbilityActive: 1 } }] as never,
@@ -721,7 +721,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
       const cfg: Cfg = { slot: 0, agentId: '1371', extraSelfDecibelReward: 40 }
       getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
         axis: axisOf({ axes: [], windows: [] }),
-        threads: { auricInkFlash: 0, yixuanFuFaForJufufu: prev } as never,
+        threads: { auricInkFlash: 0, moduleFeedback: { yixuanFuFaForJufufu: prev } } as never,
         interactions: interactionsOf([{ agentId: '1371' }]),
         characters: chars as never,
       }))
@@ -731,7 +731,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
     const cfg: Cfg = { slot: 0, agentId: '1371', extraSelfDecibelReward: 40 }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
       axis: axisOf({ axes: [], windows: [] }),
-      threads: { auricInkFlash: 0, yixuanFuFaForJufufu: 0 } as never,
+      threads: { auricInkFlash: 0, moduleFeedback: { yixuanFuFaForJufufu: 0 } } as never,
       interactions: interactionsOf([{ agentId: '1371' }]),
       characters: [{ slot: 0, agentId: '1371' }, { slot: 1, agentId: '1391', panel: { additionalAbilityActive: 1 } }] as never,
     }))
@@ -744,7 +744,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
       getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
         phase,
         axis: axisOf({ axes, windows: [2] }),
-        threads: { auricInkFlash: 5, yixuanFuFaForJufufu: 2 } as never,
+        threads: { auricInkFlash: 5, moduleFeedback: { yixuanFuFaForJufufu: 2 } } as never,
         interactions: interactionsOf([{ agentId: '1371' }, { agentId: '1481', parry: 4 }]),
         characters: [{ slot: 0, agentId: '1371' }, { slot: 1, agentId: '1391', panel: { additionalAbilityActive: 1 } }] as never,
       }))

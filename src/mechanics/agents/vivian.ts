@@ -31,7 +31,7 @@ import type {
   ReleaseModifierInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
+import type { ModuleFeedback } from '../types'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 
 export const VIVIAN_ID = '1331'
@@ -441,9 +441,9 @@ function vivianReleaseModifier({ panels }: ReleaseModifierInput): { enemyResRedu
  * `convergence.ts#computeVivianNextRoundFeedback` 逐字搬入，规则 6）：
  * 源1 = 全队强特命中（含自己，同一招式至多一次由行计数保证）；源2 = 全队异常触发次数。首轮直接写回。
  *
- * ⚠ 首轮守卫逐位保留：只在 `prevThreads.vivianTeamEx <= 0` 时写回 cfg（同族里露西**没有**这个守卫）。
+ * ⚠ 首轮守卫逐位保留：只在 `(prevThreads.moduleFeedback?.vivianTeamEx ?? 0) <= 0` 时写回 cfg（同族里露西**没有**这个守卫）。
  */
-function vivianNextRoundFeedback({ cfg, characters, teamResult, anomalyPool, prevThreads }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+function vivianNextRoundFeedback({ cfg, characters, teamResult, anomalyPool, prevThreads }: AgentNextRoundFeedbackInput): ModuleFeedback {
   let vivianTeamExNext = 0
   let vivianAnomalyTriggersNext = 0
   // 迁移前判据 =「队里有 1331」；迁进模块后即「本模块被派发」。⚠ 用派发器给的 `cfg`，不用
@@ -455,7 +455,7 @@ function vivianNextRoundFeedback({ cfg, characters, teamResult, anomalyPool, pre
       0,
     )
     // 首轮无 prev → 用本轮值直接注入（buildExecutions 读 cfg）
-    if (prevThreads.vivianTeamEx <= 0) {
+    if ((prevThreads.moduleFeedback?.vivianTeamEx ?? 0) <= 0) {
       const record = cfg as unknown as Record<string, unknown>
       record.vivianTeamExTotal = vivianTeamExNext
       record.vivianAnomalyTriggerTotal = vivianAnomalyTriggersNext
@@ -483,8 +483,8 @@ export const vivianMechanic: AgentMechanicModule = {
   applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
     const record = cfg as unknown as Record<string, unknown>
-    record.vivianTeamExTotal = threads.vivianTeamEx
-    record.vivianAnomalyTriggerTotal = threads.vivianAnomalyTriggers
+    record.vivianTeamExTotal = (threads.moduleFeedback?.vivianTeamEx ?? 0)
+    record.vivianAnomalyTriggerTotal = (threads.moduleFeedback?.vivianAnomalyTriggers ?? 0)
   },
   buildExecutions: buildVivianExecutions,
   patchExecutions: patchVivianExecutions,

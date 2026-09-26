@@ -30,6 +30,7 @@ import {
 import { calcPanel, panelAt } from '@/core/panel'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import type { CalcRoundThreads } from './roundThreads'
+import type { ModuleFeedback } from '@/mechanics/types'
 import {
   getAgentMechanic,
   getRegisteredMechanicSettings,
@@ -278,9 +279,9 @@ export function collectNextRoundFeedback(params: {
   prevThreads: Readonly<CalcRoundThreads>
   catalogStore: ReturnType<typeof useCatalogStore>
   combatTime?: number
-}): Partial<CalcRoundThreads> {
+}): ModuleFeedback {
   const { characters, teamResult, displayResult, adjustedResult, anomalyPool, prevThreads, catalogStore } = params
-  const out: Partial<CalcRoundThreads> = {}
+  const out: ModuleFeedback = {}
   if (characters.length === 0) return out
   const combatTime = params.combatTime ?? 180
   const getAgentSkills = (agentId: string) => catalogStore.agentSkillsByAgentMap.get(agentId)

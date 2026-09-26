@@ -143,7 +143,7 @@ function applyGraceTeamConfig({ cfg, phase, characters, cinemaLevel, threads }: 
   // 语义 = `convergence.ts` 原 `merged.agentId === '1181'` 分支（规则 6），取整/地板逐位保留。
   if (threads) {
     ;(cfg as unknown as Record<string, unknown>).graceC1Cycles =
-      Math.max(0, Math.floor(Number(threads.graceC1Cycles ?? 0)))
+      Math.max(0, Math.floor(Number((threads.moduleFeedback?.graceC1Cycles ?? 0))))
   }
   if ((cinemaLevel ?? 0) < 1) return
   const cycles = Math.max(0, Math.floor(Number((cfg as any).graceC1Cycles ?? 0)))

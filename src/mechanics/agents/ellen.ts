@@ -38,7 +38,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
+import type { ModuleFeedback } from '../types'
 
 export const ELLEN_ID = '1191'
 export const ELLEN_FROST_TRIM_MOVE_IDS = ['1191006'] as const
@@ -253,7 +253,7 @@ function applyEllenTeamConfig({ cfg, cinemaLevel, phase, stunCount, threads }: A
   // 语义 = `convergence.ts` 原 `merged.agentId === '1191'` 分支（规则 6），地板逐位保留。
   // ⚠ 必须写在 cinemaLevel 门之前：原分支对任意命座都写该字段，且 cycleFromInput 在 C0-C3 也读它。
   if (threads) {
-    record.ellenFreezeCount = Math.max(0, Math.floor(Number(threads.ellenFreezeCount ?? 0)))
+    record.ellenFreezeCount = Math.max(0, Math.floor(Number((threads.moduleFeedback?.ellenFreezeCount ?? 0))))
   }
   if (cinemaLevel < 4) return
   const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))
@@ -498,17 +498,17 @@ function buildEllenResourceSections({ result }: AgentResourceSectionsInput) {
  * `convergence.ts#computeEllenNextRoundFeedback` 逐字搬入，规则 6）：读异常池 ice 触发数；
  * 薇薇安同款首轮守卫。
  *
- * ⚠ 首轮守卫逐位保留：只在 `prevThreads.ellenFreezeCount <= 0` 时写回 cfg（同族里露西**没有**）。
+ * ⚠ 首轮守卫逐位保留：只在 `(prevThreads.moduleFeedback?.ellenFreezeCount ?? 0) <= 0` 时写回 cfg（同族里露西**没有**）。
  * 跨轮真正生效路径 = 返回值 → `threadsNext.ellenFreezeCount` → 下一轮 `applyEllenTeamConfig`
- * 的 converge 分支（`threads.ellenFreezeCount` 地板后写 cfg，供影画4 回能消费）。
+ * 的 converge 分支（`(threads.moduleFeedback?.ellenFreezeCount ?? 0)` 地板后写 cfg，供影画4 回能消费）。
  */
-function ellenNextRoundFeedback({ cfg, characters, anomalyPool, prevThreads }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+function ellenNextRoundFeedback({ cfg, characters, anomalyPool, prevThreads }: AgentNextRoundFeedbackInput): ModuleFeedback {
   let ellenFreezeCountNext = 0
   // 迁移前判据 =「队里有 1191」。⚠ 用派发器给的 `cfg`，不用 `characters[slot]`
   // （该数组按位置压缩，前导空槽时槽位号 ≠ 下标 ⇒ 会写错对象）。
   if (cfg && characters.some(c => c.agentId === ELLEN_ID)) {
     ellenFreezeCountNext = anomalyPool?.perElement?.find(p => p.element === 'ice')?.triggerCount ?? 0
-    if (prevThreads.ellenFreezeCount <= 0) {
+    if ((prevThreads.moduleFeedback?.ellenFreezeCount ?? 0) <= 0) {
       ;(cfg as unknown as Record<string, unknown>).ellenFreezeCount = ellenFreezeCountNext
     }
   }

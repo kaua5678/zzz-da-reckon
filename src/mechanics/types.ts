@@ -398,6 +398,44 @@ export interface AgentTeamConfigInput {
 export type { CalcRoundThreads }
 
 /**
+ * 模块「下一轮反馈」键值（CC-31，2026-09-27）：各模块 `nextRoundFeedback` 的返回值，编排层**整份**
+ * 存进 `CalcRoundThreads.moduleFeedback`（不逐键拆字段），下一轮各模块从 `threads.moduleFeedback.<键>` 自取。
+ * **缺键 = 0**（该角色不在队 / 守卫不成立；与迁移前具名字段初值 0 逐位等价）⇒ 读侧一律 `?? 0`。
+ * 键名住在 mechanics 层（这里），编排层（composables/resourceCalc）不再列角色字段名（判据 22）。
+ * 新增一条跨轮反馈 = 这里加一个可选键 + 产出模块 `nextRoundFeedback` 返回它 + 消费模块读它。
+ */
+export interface ModuleFeedback {
+  /** 仪玄符法千重类终结次数（橘福福额外能力 +300 喧响；亦并入编排层 `teamUltimateForJufufu`） */
+  yixuanFuFaForJufufu?: number
+  /** 琉音转大赠送的叶瞬光逐云次数 */
+  yeshuguangGiftUlt?: number
+  /** 露西 C6 队友强特合计（C1 回能预估） */
+  lucyTeammateEx?: number
+  /** 莱特后场：全队常态能量消耗（converge 相位经通用输入 `teamEnergyConsumed` 递给模块） */
+  lighterTeamEnergy?: number
+  /** 格莉丝影画1 全队回能轮换数 */
+  graceC1Cycles?: number
+  /** 零号·安比：队友追加攻击命中折算白雷层数 */
+  anbyZeroTeammateWl?: number
+  /** 薇薇安落羽生花源1：全队强特命中次数 */
+  vivianTeamEx?: number
+  /** 薇薇安落羽生花源2：全队异常触发次数 */
+  vivianAnomalyTriggers?: number
+  /** 普罗米娅·霜刑：触发命中数 */
+  promiaTriggerHits?: number
+  /** 普罗米娅·霜刑：队友异放次数 */
+  promiaTeammateReleases?: number
+  /** 普罗米娅自身异放回喧响（绝裁/影画6 各 +100） */
+  promiaReleaseDecibel?: number
+  /** 爱丽丝剑仪：爱丽丝自己触发的强击次数（字段名里的 Team 是历史名，口径见 alice.ts `aliceExternalCountsOf`） */
+  aliceTeamAssaultCount?: number
+  /** 爱丽丝剑仪：全队紊乱次数 */
+  aliceDisorderCount?: number
+  /** 艾莲影画4 冻结次数（异常池 ice 触发数） */
+  ellenFreezeCount?: number
+}
+
+/**
  * 单个槽位的**未缩放**交互次数快照（= `configStore.team[slot]` 的 **store 原值**）。
  *
  * 字段全部**必填**（不是可选）：这份快照是「store 那一刻长什么样」的完整拷贝，
@@ -854,7 +892,7 @@ export interface AgentMechanicModule {
    * 返回 = 本模块的**下一轮线程值**（`CalcRoundThreads` 的字段子集），由编排层 merge 后统一
    * 线程化。返回缺省/`undefined` 的字段保持编排层的 0 初值（与迁移前各函数「守卫不成立就返回 0」等价）。
    */
-  nextRoundFeedback?(input: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> | void
+  nextRoundFeedback?(input: AgentNextRoundFeedbackInput): ModuleFeedback | void
   /**
    * **跨槽位供给声明**（规则 6 在引擎层的落点，2026-09-13 立项）。
    *

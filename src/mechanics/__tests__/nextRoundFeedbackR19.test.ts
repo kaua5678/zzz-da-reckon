@@ -46,8 +46,8 @@ describe('C-α next-round feedback', () => {
     const grace = vi.spyOn(getAgentMechanic('1181')!, 'nextRoundFeedback').mockReturnValue({ graceC1Cycles: 3 })
     try {
       const out = run(2, initialCalcRoundThreads())
-      expect(out?.threadsNext.yeshuguangGiftUlt).toBe(7.25)
-      expect(out?.threadsNext.graceC1Cycles).toBe(3)
+      expect((out?.threadsNext.moduleFeedback.yeshuguangGiftUlt ?? 0)).toBe(7.25)
+      expect((out?.threadsNext.moduleFeedback.graceC1Cycles ?? 0)).toBe(3)
       expect(ye.mock.calls[0]![0].cfg.slot).toBe(1)
       expect(grace.mock.calls[0]![0].cfg.slot).toBe(2)
     } finally { ye.mockRestore(); grace.mockRestore() }
@@ -64,7 +64,7 @@ describe('C-α next-round feedback', () => {
       prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
     })
     expect(next).toEqual({ graceC1Cycles: 3, yeshuguangGiftUlt: 2.25 })
-    const threads = { ...initialCalcRoundThreads(), ...next }
+    const threads = { ...initialCalcRoundThreads(), moduleFeedback: next }
     const input = { slot: 2, cfg: grace, characters, phase: 'converge', cinemaLevel: 1, threads } as unknown as AgentTeamConfigInput
     getAgentMechanic('1181')!.applyTeamConfig!(input)
     expect(characters.map(c => c.initialEnergyGift)).toEqual([6, 6])
@@ -106,7 +106,7 @@ describe('C-α next-round feedback', () => {
     const cfg = { agentId: '1181', slot: 2, graceC1Cycles: value } as never
     expect(feedback('1181', {
       cfg, characters: [cfg],
-      prevThreads: { ...initialCalcRoundThreads(), graceC1Cycles: 91 },
+      prevThreads: { ...initialCalcRoundThreads(), moduleFeedback: { graceC1Cycles: 91 } },
     })).toEqual({ graceC1Cycles: expected })
   })
 })

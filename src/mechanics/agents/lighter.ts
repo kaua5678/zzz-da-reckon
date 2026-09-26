@@ -35,7 +35,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
+import type { ModuleFeedback } from '../types'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
@@ -496,7 +496,7 @@ function applyLighterTeamEnergyFlags(
 /**
  * 莱特「下一轮全队普通能量消耗」反馈（`nextRoundFeedback` 钩子，2026-09-17 round 20 C-β
  * 自 `convergence.ts` 迁入）。返回线程值 `lighterTeamEnergy` → 下一轮 `converge` 相位由本模块
- * 的 `applyTeamConfig` 读回（`threads.lighterTeamEnergy` → `cfg.lighterTeamEnergyConsumed`）。
+ * 的 `applyTeamConfig` 读回（`(threads.moduleFeedback?.lighterTeamEnergy ?? 0)` → `cfg.lighterTeamEnergyConsumed`）。
  *
  * **逐位等价论证**（原编排层式子：`if (characters.some(c => c.agentId === '1161'))
  * lighterTeamEnergyNext = estimateTeamNormalEnergyConsumed(characters, exCounts)`）：
@@ -519,7 +519,7 @@ function applyLighterTeamEnergyFlags(
  * `buildResourceResult` 都早于 postRound，而下一轮 converge 会用线程值覆盖它 ⇒ 该写当前是
  * 死写。是否删除属独立决策，本批不动它，只留痕。）
  */
-function lighterNextRoundFeedback({ characters, teamResult }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+function lighterNextRoundFeedback({ characters, teamResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
   // 本槽 = 莱特自己那份结果行；`teamResult.characters` 与 `characters` 同序但**只许按身份查**
   // （按位置压缩，槽位号 ≠ 下标）。
   if (!teamResult.characters.some(c => c.agentId === LIGHTER_ID)) return { lighterTeamEnergy: 0 }
@@ -567,7 +567,7 @@ export const lighterMechanic: AgentMechanicModule = {
       // 2026-09-15 arch 棘轮第 2 批：本槽的「上一轮全队能量消耗」线程值写进 cfg（莱特 C4 消费）。
       // 自 `convergence.ts` 原 `merged.agentId === '1161'` 分支搬入（规则 6）；地板语义逐位保留。
       if (threads) {
-        ;(lighter as any).lighterTeamEnergyConsumed = Math.max(0, threads.lighterTeamEnergy || 0)
+        ;(lighter as any).lighterTeamEnergyConsumed = Math.max(0, (threads.moduleFeedback?.lighterTeamEnergy ?? 0) || 0)
       }
       return
     }

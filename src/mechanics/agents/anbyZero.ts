@@ -32,7 +32,7 @@ import type {
   AgentTeamConfigInput,
   AgentNextRoundFeedbackInput,
 } from '../types'
-import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
+import type { ModuleFeedback } from '../types'
 import { inferSkillDamageTarget } from '@/core/damage'
 
 export const ANBY_ZERO_ID = '1381'
@@ -291,7 +291,7 @@ function buildAnbyZeroResourceSections({ result }: AgentResourceSectionsInput) {
  * 由算式里的 `?? 180` 兜底），不是 `base.totalTime`；二者通常同源但缺省路径不同，不合并。
  * 输入侧用调整后结果（诺姆赠链/琉音转大落地后）优先，`adjustedResult` 为 null 时回退本轮装配结果。
  */
-function anbyNextRoundFeedback({ cfg, teamResult, adjustedResult, combatTime, getAgentSkills }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+function anbyNextRoundFeedback({ cfg, teamResult, adjustedResult, combatTime, getAgentSkills }: AgentNextRoundFeedbackInput): ModuleFeedback {
   if (!cfg) return {}
   const az = adjustedResult ?? teamResult
   let anbyZeroTeammateWlNext = 0
@@ -341,7 +341,7 @@ export const anbyZeroMechanic: AgentMechanicModule = {
    */
   applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
-    ;(cfg as unknown as Record<string, unknown>).anbyZeroTeammateWhiteLightning = threads.anbyZeroTeammateWl
+    ;(cfg as unknown as Record<string, unknown>).anbyZeroTeammateWhiteLightning = (threads.moduleFeedback?.anbyZeroTeammateWl ?? 0)
   },
   buildExecutions: buildAnbyZeroExecutions,
   buildResourceResult: buildAnbyZeroResourceResult,

@@ -1,5 +1,5 @@
 import type { AgentMechanicModule, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
-import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
+import type { ModuleFeedback } from '../types'
 import type { CharacterResourceResult, MechanicSetting, YixuanExChain } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
@@ -507,7 +507,7 @@ function applyYixuanTeamConfig(
   const jufufuOn = characters.some(
     c => c.agentId === JUFUFU_AGENT_ID && (c.panel?.additionalAbilityActive ?? 0) > 0,
   )
-  const prevFuFa = Number(threads?.yixuanFuFaForJufufu ?? 0)
+  const prevFuFa = Number((threads?.moduleFeedback?.yixuanFuFaForJufufu ?? 0))
   const fufaDecibel = jufufuOn && prevFuFa > 0 ? prevFuFa * JUFUFU_FUFA_DECIBEL : 0
   record.extraSelfDecibelReward = Number(record.extraSelfDecibelReward ?? 0) + fufaDecibel
 
@@ -1021,7 +1021,7 @@ const settings: MechanicSetting[] = [
  * 数据源 = `teamResult`（== 原式的 `rr`）。⚠ **刻意不读 `adjustedResult`**（与 C-α 的叶瞬光
  * 不同——那边原式就是 `(adj2 ?? rr)`）：本处原实现读 `rr`，改读 adj 会改语义。
  */
-function yixuanNextRoundFeedback({ teamResult }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+function yixuanNextRoundFeedback({ teamResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
   let yixuanFuFaForJufufu = 0
   const self = teamResult.characters.find(c => c.agentId === AGENT_ID)
   for (const e of self?.executions ?? []) {

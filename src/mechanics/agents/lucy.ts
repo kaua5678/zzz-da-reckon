@@ -16,7 +16,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
+import type { ModuleFeedback } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
 
@@ -313,7 +313,7 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
  * ⚠ 写回目标是**全队每一份 cfg**（`lucyCheerSpinsEstimate`/`lucyTeammateExTotal`），
  * 不只是露西自己那份——`crossAgentSupply` 的 `targetCfgOf` 会读**落点**那份 cfg。
  */
-function lucyNextRoundFeedback({ cfg, characters, teamResult }: AgentNextRoundFeedbackInput): Partial<CalcRoundThreads> {
+function lucyNextRoundFeedback({ cfg, characters, teamResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
   let mateEx = 0
   for (const ch of teamResult.characters) {
     if (ch.agentId !== LUCY_ID) mateEx += ch.exSpecialCount ?? 0
@@ -344,7 +344,7 @@ export const lucyMechanic: AgentMechanicModule = {
       // 2026-09-15 arch 棘轮第 2 批：注入上一轮「队友强特合计（不含自己）」——影画1 回能预估用。
       // 自 `convergence.ts` 的 `merged.agentId === '1151'` 分支搬入（规则 6）。
       if (cfg && threads) {
-        ;(cfg as unknown as Record<string, unknown>).lucyTeammateExTotal = threads.lucyTeammateEx
+        ;(cfg as unknown as Record<string, unknown>).lucyTeammateExTotal = (threads.moduleFeedback?.lucyTeammateEx ?? 0)
       }
       return
     }
