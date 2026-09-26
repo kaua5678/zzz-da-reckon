@@ -1015,6 +1015,31 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 5. 预计判据 22 −~20（→ ~234 < target 242 ⇒ **同时重设 target**）。
 6. 其余候选不变：琉音一族（≈32，需设计稿）、CC-27 维琳娜风蚀（16，§5.19）、`damagePoolDirect.ts` harumasaStunOnlyBonus / xixifuToxinInAxisFraction（各 5）。
 
+### 5.27 CC-32b done：`CrossAgentEnergy` 角色具名展示字段 → `bySource` 字典（lead-arena-0925c，2026-09-27 第 41 轮）
+
+**提交**：代码 `a276399`（10 文件，含两个棘轮脚本）。判据 22 **254 → 231**（−23 = 5 字段各计 + `lighterC4Raw` 3），`CORE_ROLE_FIELD_BASELINE` / `frozen` 231，**target 重设 219**（231 − 12）。
+
+**改了什么**
+- `src/types/resource/energy.ts`：`CrossAgentEnergy` 删 `rinaUltEnergy / soukakuUltEnergy / lucyEnergy / lighterC4Energy / xideVanguardEnergy`，**原位**加 `bySource: Record<string, number>`（字段序 `supportUltimateRegen, teamUltimateFlash, bySource, total`）。只收 > 0 的来源，缺键 = 0。
+- `src/core/resource/crossAgentEnergy.ts`：`bySource` = neighbor 派发 `byDisplayKey` + cfg 定额联动能量 + vanguard 派发 `byDisplayKey`（同键累加）；`total` 公式与加法顺序不变（`flatEnergy` 在只有莱特时 ≡ 原 `lighterC4Energy`）。`emptyCrossAgentEnergy` → `bySource: {}`。core 里已无这 5 个名字与 `lighterC4BurstEnergy`（仅注释提及）。
+- **莱特（与 §5.26 第 2 条的偏差，已拍板）**：§5.26 原定「`crossAgentFlatEnergy` 数值 + `crossAgentFlatEnergyKey` 键名」两个字段；实做改为**一个**通用字段 `crossAgentFlatEnergyBySource?: Record<string, number>`（`types/resource/config.ts`，替换 `lighterC4BurstEnergy`）。依据：两字段形态一个 cfg 只能容纳一个提供者，第二个提供者会互相覆盖；字典天然支持多提供者，且键就是展示键、引擎直接并入 `bySource`。`lighter.ts` 三处写入改为合并写 `{ ...旧值, lighterC4Energy: x }`（原写 0 处照写 0，保持字段存在与插入序）。
+- `src/components/ResourceResultCard.vue`：4 段写死的 `v-if` 行 → `v-for="src in crossAgentSourceRows"`；表 `CROSS_AGENT_SOURCE_LABELS`（放在组件 script 里，UI 层，不进 core）按展示顺序列 5 项，原四行中文标签/说明逐字搬入，**新增「席德正兵回能」**（说明「额外能力：席德操作时间（前台 − 合轴）× 2/秒」，措辞取自 `xide.test.ts:319-325` 与 energy.ts 原注释）。表外键兜底显示键名。
+- 测试：`teamHook.test.ts` 17 处、`xide.test.ts` 2 处、`nextRoundFeedback.test.ts` 1 处 `X.<键>` → `(X.bySource.<键> ?? 0)`（`it(` 标题字符串未改）。
+- perf 工装（`.zc/` 已 gitignore，不进仓库）：`dump.perf.ts` / `rowsnap.perf.ts` 的 `remap` 加 `CROSS_SRC` 展开——`PERF_KEY_ALIAS=1` 时，带 `teamUltimateFlash` 的对象把 `bySource` 在原位展开为 5 个旧键（缺省 0）；cfg 的 `crossAgentFlatEnergyBySource` 映射回 `lighterC4BurstEnergy`（取 `lighterC4Energy ?? 0`）。**先用改前代码跑过**：dump 625 / rows 638 仅 `__ms` 差 ⇒ 工装改动本身零影响。
+
+**验证**
+- vue-tsc 0；`xide` / `teamHook` / `crossAgent` / `nextRoundFeedback` 单测 80/80。
+- `PERF_KEY_ALIAS=1` 对 H2a：dump 625 / rowsnap 638 **仅 `__ms` 差**。
+- **反向变异**（`addSource` 每项 +1）：单测 3 红，dump **91 键出差**（证明 remap 确实读 `bySource`，零差不是空跑）；还原 cmp 一致。
+- UI 实机：`npm run build` 后起 `dist` 静态服务，`node scripts/ui-check.mjs --step 'tab:队伍配置' --step "eval:<经 pinia 调 config.setAgent(0,'1521'); setAgent(1,'1461'); setAgent(2,'1361')>" --step 'tab:资源池' --step 'sleep:8000' --step "eval:<读 .breakdown-row 文本>"` → **PASS**（零 JS 错误、动作全部命中）。读回：正兵（希希芙 1521）卡出现「席德正兵回能 238.01 额外能力：席德操作时间（前台 − 合轴）× 2/秒」这一行（此前 UI 没有这一行）。脚本 `/home/kaua/calc-arch/ui32b.sh`，截图 `/home/kaua/calc-arch/ui32b/ui-check-full.png`。**坑**：「选择预设队伍」下拉只列手工预设，auto-* 预设不在里面，而且 `type:` 过滤后选项为空 ⇒ 要配指定队伍，请用 eval 经 `__vue_app__.config.globalProperties.$pinia._s.get('config').setAgent(slot, id)` 直设。
+- `npm run verify` EXIT=0（见 `/home/kaua/calc-arch/verify32b.log`）。脚本 `/home/kaua/calc-arch/cc32b.py`、`perf32b.py`、`z32b.sh`、`z32b0.sh`。
+- **回退点**：`git revert a276399`（单提交；perf 工装的展开段在无 `bySource` 时不触发，可留）。
+
+**下一步（可直接开工）**
+1. **CC-33 候选（小卡，建议先做）**：`src/core/resource/damagePoolDirect.ts`（或其现址，先 `grep -rn 'harumasaStunOnlyBonus\|xixifuToxinInAxisFraction' src`）的 `harumasaStunOnlyBonus` / `xixifuToxinInAxisFraction` 各 5 计。开工先实读写入点（哪个模块预写、core 怎么读），套用本卡「通用 cfg 字段 + 模块预写」或既有 `directRowBonus` / `extraDirectRows` 能力，择一；零差用同一 `PERF_KEY_ALIAS` 口径，若只改名需在 remap 加映射。
+2. 琉音一族（≈32，需先写设计稿）、CC-27 维琳娜风蚀（16，§5.19 先设计）不变。
+3. **已知坑**：`bySource` 只含 > 0 项，测试/调用方读它必须 `?? 0`；新增联动回能提供者要同时在 `CROSS_AGENT_SOURCE_LABELS` 补中文标签（漏了会显示英文键名，不会消失）；多个模块写 `crossAgentFlatEnergyBySource` 必须合并写。
+
 ## 附录：普查脚本 census.sh
 
 ```bash

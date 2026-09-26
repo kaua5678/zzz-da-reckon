@@ -181,7 +181,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-30 | review | **done** `371a2c1`（判据 22 332→326，target 314） | `remielleEntryPanels` → `entrySnapshotPanels` 纯改名；判据 17 名单与规则文档同步 | census §5.24 |
 | CC-31 | review | **done** `0b8a28a`（判据 22 326→270，target 258） | `CalcRoundThreads` 14 个模块下一轮反馈具名字段 → `moduleFeedback` 字典（键类型 mechanics/types `ModuleFeedback`，缺键 = 0） | census §5.25 |
 | CC-32a | review | **done** `0671c4c`（判据 22 270→254，target 242） | crossAgentEnergy 席德正兵回能内联块 → 席德 `crossAgentSupply` `vanguard-energy`（perTargetAmounts + onOwnSlotCrossAgentEnergy 回写） | census §5.26 |
-| CC-32b | review | **待做**（已普查，方案已定） | `CrossAgentEnergy` 5 个角色具名展示字段 → `bySource` 字典；结果卡改 v-for + 标签表，补席德正兵回能缺失的展示行 | census §5.26 |
+| CC-32b | review | **done** `a276399`（判据 22 254→231，target 219） | `CrossAgentEnergy` 5 个角色具名展示字段 → `bySource` 字典；结果卡改 v-for + 标签表，补席德正兵回能缺失的展示行 | census §5.26、§5.27 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
