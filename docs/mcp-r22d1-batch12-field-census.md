@@ -149,6 +149,60 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **回退点**：单卡单提交，`git revert <sha>` 即可。
 - **派给**：dsflash 工人。提示词要求附上真实命令输出的尾部。
 
+#### 5.2-v2 CC-14a 修订卡（2026-09-26 第 18 轮 lead-arena-0925c，**取代上文「输入端 / core / 零差验证」三条**）
+
+**决定：改用「模块能力」方案，输入端不动。**
+- **依据（读码实测）**：
+  - 如果输入端改成 `bonusEnergyEntries` 列表，6 个模块的内部契约要全部重写：`yixuanFlashBonus` 是跨阶段 `+=` 累加通道，有 record 归一化（`yixuan.ts:373/540`）；`lycaonC2Energy` 在收敛期按失衡次数写入（`lycaon.ts:238`）。另有 9 个测试文件直接读写这些 cfg 字段。
+  - 判据 22 只数 core 对角色前缀字段的读取，模块写自己 cfg 上的私有字段不违规。
+  - 与 CC-14b（`selfBurnDecibel`）同款，符合规则 6「引擎按能力查询」。
+- **回退点**：单卡单提交，`git revert`。日后若仍想统一输入端，可以在模块能力内部改，不影响 core。
+
+**做法**
+1. `src/types/resource/energy.ts`：
+   - 新增并导出 `export interface BonusEnergyEntry { key: string; label: string; value: number; detail?: string }`。
+   - `EnergySource` 删去 `hatTrickEnergy`、`qingyiC4Energy`、`lycaonC2Energy`、`billyC1Energy`、`yixuanFlashBonus`、`antonC1EnergyGift` 这 6 个键。
+   - 在原 `hatTrickEnergy` 的位置新增 `bonusEntries: BonusEnergyEntry[]`，注释写「角色专属能量项，由模块能力 bonusEnergy 声明，已计入 e0/total」。
+2. `src/mechanics/types.ts` 的 `AgentMechanicModule` 新增可选能力：
+   `bonusEnergy?(input: { cfg: CharacterOperationConfig; totalTime: number }): BonusEnergyEntry[]`
+   注释写明：值为最终能量（未乘任何系数），调用方直接计入 e0；每个模块只报告自己 cfg 的项。
+3. 6 个模块各自实现，都只返回 1 个条目。本地定义 `const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : 0`，与 `resourceIncome.ts:37` 同式。
+
+   | 模块 | key | value（与 `resourceIncome.ts` 现有算式逐字相同） | label | detail |
+   |---|---|---|---|---|
+   | norma.ts | `hatTrickEnergy` | `n(per)>0 && interval>0 ? Math.max(0, Math.floor(totalTime/interval)) * n(per) : 0`，其中 per=`cfg.normaC2EnergyPerTrigger`，interval=`n(cfg.normaC2TriggerInterval)` | 帽子把戏 | 影画2：25/次 × 20s 冷却（按战斗时间触发） |
+   | qingyi.ts | `qingyiC4Energy` | 同上式，用 `qingyiC4EnergyPerTrigger` 和 `qingyiC4TriggerInterval` | 稳态电弧屏障 | 青衣影画4：5/次 × 10s 冷却（护盾刷新回能） |
+   | lycaon.ts | `lycaonC2Energy` | `n(cfg.lycaonC2Energy)` | 能量回馈 | 莱卡恩影画2：(失衡次数 + 队伍连携总次数) × 5 |
+   | billy.ts | `billyC1Energy` | `n(cfg.billyC1Energy)` | 闪亮登场 | 比利影画1：冲刺/闪反命中按 5s ICD 封顶 |
+   | yixuan.ts | `yixuanFlashBonus` | `n(cfg.yixuanFlashBonus)` | 额外闪能 | 仪玄：完美格挡 +10/次、极限闪避 +5/次、影画1落雷 +5/次 |
+   | anton.ts | `antonC1EnergyGift` | `n((cfg as any).antonC1EnergyGift)` | 影画1回能 | 安东影画1：钻击招式回能（每招上限） |
+
+   key 故意沿用旧 EnergySource 键名，方便零差展开和测试迁移。
+4. `src/core/resource/resourceIncome.ts`：
+   - 删除第 92–119 行的 6 段，改成：
+     `const bonusEntries = getAgentMechanic(cfg.agentId)?.bonusEnergy?.({ cfg, totalTime }) ?? []`
+     `let bonusEnergyTotal = 0; for (const e of bonusEntries) bonusEnergyTotal += e.value`
+     import 写法照 `import { getAgentMechanic } from '@/mechanics'`（文件第 18 行已有）。
+   - e0 里在原 `+ hatTrickEnergy` 的位置换成 `+ bonusEnergyTotal`，并删掉另外 5 项。浮点逐位不变：每个 cfg 至多 1 项非零，x + 0 = x。
+   - 返回对象在原 `hatTrickEnergy` 的位置写 `bonusEntries: [...bonusEntries]`，删掉另外 5 个键。**不要调换其他键的顺序**，零差展开依赖键序。
+   - 所有提到这 6 个名字的注释都要改写，闸门连注释一起数。
+5. `src/components/ResourceResultCard.vue`：把「帽子把戏」「稳态电弧屏障」两个固定行替换成
+   `<div v-for="e in result.energySource.bonusEntries.filter(x => x.value > 0)" :key="e.key" class="breakdown-row">`，里面用 bd-label/bd-value(`fmt(e.value)`)/bd-detail（`v-if="e.detail"`）。
+   其余 4 项因此首次在卡片上显示，这是有意为之：它们本来就计入总账，符合「记账 == 展示」。
+6. 测试迁移：
+   - `src/mechanics/__tests__/qingyiC4Energy.test.ts` 第 52/57 行、`lycaonC2Contract.test.ts` 第 446/469 行，读法改成 `energySource.bonusEntries.find(e => e.key === 'qingyiC4Energy')?.value ?? 0`（莱卡恩同理）。
+   - 其余测试只读 cfg 字段，不用改；如果 `vue-tsc` 报别的构造点，照同法修。
+7. 判据 22 会下降，以实测为准。把 `scripts/lib/core-role-field-ratchet.mjs` 的 `CORE_ROLE_FIELD_BASELINE` 和 `scripts/check-guards.mjs` 里 RATCHET_BURNDOWN「core 角色前缀字段」的 frozen（当前 803）同步改成实测值，frozen 的注释前面加上「2026-09-26 CC-14a 803→实测」。
+
+**闸门**
+`grep -rnE 'qingyiC4|normaC2|lycaonC2Energy|billyC1Energy|yixuanFlashBonus|antonC1EnergyGift|hatTrickEnergy' src/core src/composables/resourceCalc src/composables/useResourceCalc.ts` 结果为 0 行（注释也算）。
+
+**零差（口径见 §4「零差基线口径」）**
+- `.zc/perf/{dump,rowsnap}.perf.ts` 的 remap 已由 lead 加入 `bonusEntries` 按旧键序原位展开：展开到 `bonusEntries` 的位置时依次输出 hatTrick、qingyi、lycaon、billy，`exRefundEnergy` 之后输出 yixuan、anton。
+- 基线 `/home/kaua/calc-arch/{dump,rows}-H1a.json` 在 `66ba89a` 的原始 worktree 上带 `PERF_KEY_ALIAS=1` 生成；新代码同样带 `PERF_KEY_ALIAS=1`。
+- 比对：`node /home/kaua/calc-arch/cmp.mjs <基线> <新>`，只允许 `__ms` 不同。
+- 反向验证：把 qingyi 模块里的 perTrigger 临时乘 0，DIFF 必须全部落在键名含 `1251` 或 `qingyi` 的场景（青衣 agentId = 1251）。
+
 ### 5.3 计数棘轮（已落地，2026-09-26 lead-arena-0925c）
 
 - **实现**：`scripts/lib/core-role-field-ratchet.mjs` 提供纯函数 `rolePrefixesFrom` / `findRoleFieldRefs`、扫描器 `scanCoreRoleFields`、基线常量 `CORE_ROLE_FIELD_BASELINE = 821`、豁免表 `ROLE_FIELD_EXEMPT = ['triggerCount']`；接入 `check-guards` 成为**判据 22**，guards 共 22 项。
