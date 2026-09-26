@@ -207,6 +207,12 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-39c | review | **done** `0f9f329` | 佩洛伊斯右分支决算轴集成快照（`peiluoVerdictTruncation.test.ts`，覆盖率 0.0834 对 0.2778） | census §5.43 |
 | CC-41 | done | `8b2a1d2` | 蕾米埃尔 1 命花羽轮舞喧响：改走 moduleFeedback `remielleFlowerFeatherDanceCasts`（nextRoundFeedback → applyTeamConfig converge），次数 = min(队友虚曜数, ⌊T/18⌋)；删除无写入方的面板次数字段 | census §5.44 |
 | CC-42 | done | `d57c0c3` | 风化浸染默认挑槽的蕾米埃尔排除（跨槽决策）→ 模块能力 `excludeFromWindInfectionPick`；anomalyPanels 不再值导入 `@/mechanics/agents/remielle`；dump/rows 对 dump-41 零差 | census §5.45 |
+| CC-43a | done | `d573b4a` | 编排层/core 纯命名项去角色名 7 个（映射见 census §5.47），dump/rows 零差 | census §5.47 |
+| CC-43b | done | `6a6c6d7` | 新增判据 23：角色名中缀 / core 子目录棘轮（驼峰切段），基线 13 | census §5.47 |
+| CC-43c | todo | — | 琉音转大次数 `computeLiuyinHugCounts` 被编排层按值导入（convergence、ultimatePromote，判据 23 计 4）→ 模块能力 | census §5.47 |
+| CC-43d | todo | — | `computeRemielleEntryPanel`（panelPhases，对所有槽位调用）→ 先读证实是通用计算后零差改名 `computeEntrySnapshotPanel`（计 5） | census §5.47 |
+| CC-43e | todo | — | roundInputs `hasLiuyin`（`findSlotByIdentity(['1481'])` 身份字面量，计 2）→ 模块声明「拥有 promoteVariant 轴块」 | census §5.47 |
+| CC-43f | todo | — | roundInputs 希格莉德破阵展开（`'sigrid-pozhen'` 字面量 + `SIGRID_LANCE_SEGMENT_IDS` 值导入 + C6 ×0.75，计 2）→ 轴块展开模块钩子 | census §5.47 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 

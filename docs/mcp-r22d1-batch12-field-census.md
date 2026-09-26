@@ -1535,6 +1535,39 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 2. 候选调研：①莱特来源面板 ×1.2 在低冲击配装（局内冲击 <270）下的集成覆盖（census §5.45）；②多槽同角色时 `giftedPolarAssaultCount` 的求和语义复核。
 3. 若以上都做完：重新盘点 `docs/mcp-calc-core-architecture.md` §3 目标形态与现状的差距，再立新卡。立卡前先读 CC-11b 的暂缓理由。
 
+### 5.47 CC-43a/b done：判据 22 口径盲区 → 零差改名 + 新判据 23（lead-arena-0925c，2026-09-27 第 60 轮）
+
+**提交**：CC-43a `d573b4a`（24 文件纯改名），CC-43b `6a6c6d7`（守卫：lib / check-guards / d.mts / checkGuards.test）。按规则 17② 换尺与代码改动分两批。回退：`git revert 6a6c6d7`（撤判据 23），`git revert d573b4a`（撤改名）。先撤 B 再撤 A 最安全；只撤 A 会让判据 23 读数升到 13+ 而报红。
+
+**发现**：判据 22 只数 `\b<小写前缀>[A-Z]`，且只扫 `src/core/*.ts` 顶层。盘点脚本 `/home/kaua/calc-arch/inv60.mjs` 扫 core/**、resourceCalc、useResourceCalc 后，找出两类漏网：①标识符中缀带角色名；②core 子目录（anomalyPool/、resource/、stunAxis/）。`types/resource/config.ts` 里大量 `qingyiXxx` 等 cfg 字段属于类型层（由各角色 buildCharConfig 写），不在本卡范围。
+
+**CC-43a 改名映射**（src 与测试整词替换；现行指南 ENGINE_PIPELINE_GUIDE.md、MECHANICS_IMPLEMENTATION.md 同步；历史 mcp-* 文档保留旧名）：
+| 旧名 | 新名 | 处数 |
+|---|---|---|
+| axisLiuyinPromote | axisUltimatePromote | 19 |
+| applyLiuyinPromote | applyUltimatePromote | 18 |
+| LiuyinPromoteParams | UltimatePromoteParams | 4 |
+| VelinaCorrosionSource | CorrosionSource | 14 |
+| AliceCoweringDotResult | CoweringDotResult | 6 |
+| calcAliceCoweringDot | calcCoweringDot | 4 |
+| computeBanyueAxisExFor | computeAxisActionCountsFor（函数体是通用的轴内块次数统计，与般岳无关） | 2 |
+验证：残留 0；vue-tsc 0；dump/rows 对 dump-41/rows-41 零差；verify 300 文件 / 3609 条。
+
+**CC-43b 判据 23 口径**（`scripts/lib/core-role-field-ratchet.mjs` 判据 23 段）
+- 范围：git ls-files src/core、src/composables/resourceCalc、useResourceCalc.ts 中的 .ts，排除 __tests__。
+- 匹配：标识符按驼峰切段（`camelSegments`），任一段小写后等于角色前缀即计 1。只数代码，注释和字符串字面量不计。切段匹配让 `teamBenefit`/`basicBenchmarkMoveId` 不再撞 `ben`，无需撞词表。
+- 前缀排除 `trigger`（英文通用词，判据 22 已用豁免表处理）。豁免 `autoYidhariAxis`：configStore 用户持久化配置键，改名需存档迁移，编排层只读。
+- 判据 22 不动：它是 0 的硬门，扩口径会破坏硬门语义。所以另立判据 23。
+- 基线 13（RATCHET_BURNDOWN「core 角色名中缀/子目录」frozen 13 / target 0 / due 2026-12-31）。检查项数 22→23（checkGuards.test 的 toHaveLength 同步）。
+- 验证：check-guards 23 项通过；反向变异（skillRows.ts 追加 `probeLiuyinX`）报 14/13 并点名文件，还原后绿；checkGuards.test 139 条；vue-tsc 0；verify 3613 条。
+
+**还款卡（按建议顺序，每张做完把 CORE_ROLE_INFIX_BASELINE 与 frozen 同步下调，读数必须相等）**
+1. **CC-43d（最简单，先做）**：`computeRemielleEntryPanel`（`resourceCalc/panelPhases.ts:680`；helpers.ts 66/78 re-export；useResourceCalc.ts 86/152 对 3 个槽位全调用）。注释写的是「只吃自身被动/命座/音擎/驱动盘、不吃队友战内拐力的进场记录面板」。**先读函数体**：若无蕾米专属逻辑，就零差改名 `computeEntrySnapshotPanel`（−5，dump/rows 应零差）；若有专属分支，把专属部分迁 remielle 模块，再改名。
+2. **CC-43e**：`roundInputs.ts:187` `hasLiuyin = findSlotByIdentity(configStore, catalogStore, ['1481']) >= 0`，用于跳过 `act.promoteVariant` 轴块。建议 `AgentMechanicModule` 加声明字段 `ownsPromoteVariantAxisBlocks?: true`（liuyin 模块声明），roundInputs 改为 `team.some(m => getAgentMechanic(m.agentId)?.ownsPromoteVariantAxisBlocks)`（注意 agentId 棘轮：不要写 `x.agentId===y.agentId`）。−2，应零差。代码注释（约 183-186 行）早已写明这个缺口。
+3. **CC-43f**：`roundInputs.ts:205-215` 的 `'sigrid-pozhen'` 展开（`SIGRID_LANCE_SEGMENT_IDS` 值导入 + C6 ×0.75）。建议加模块钩子 `expandAxisAction?(act, ctx): AxisAction[] | undefined`，由 sigrid 模块实现，roundInputs 按 act.slot 的 agentId 派发。−2。同段还有 `'norma-hat-chain'` 字面量（字符串不计数），可一并评估。语料是否覆盖希格莉德破阵轴要先做反向变异确认，覆盖不到就补单测。
+4. **CC-43c**（最难，放最后；编号沿用架构表，本节按难度排序）：`computeLiuyinHugCounts` 被 convergence.ts（52 import、332 调用）和 ultimatePromote.ts（13 import、294 调用）按值导入。它是琉音「好评→转大」的阈值结转算法。方向：挂到 liuyin 模块能力（如 `promoteHugCounts`），编排层经 getAgentMechanic 取。−4。ultimatePromote.ts 同时导入的 `resolveUltimateTargetSlot` 不计数，但属同类债，可一并处理。
+
+**下一步**：CC-43d（见上 1）。
 ## 附录：普查脚本 census.sh
 
 ```bash
