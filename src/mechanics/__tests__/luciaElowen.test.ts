@@ -241,7 +241,7 @@ describe('卢西娅↔伊德海莉 资源池跨角色联动（calcTeamResources 
       exSpecialCountFloor: true,
       initialDecibelGift: 7000,
       luciaA5ActionTime: 1.887,
-      luciaC4DecibelPerTrigger: 100,
+      decibelPerCurtainTrigger: 100,
       luciaC4CurtainCoverage: 1,
     })
     // 伊德海莉：卢西娅每大回血 12.8% × 覆盖50% × 生命比1.0 = 6.4%/大（外部回血）

@@ -84,13 +84,13 @@ describe('卢西娅 4命帷幕 + 回血→伊德海莉（原 luciaCfg 两个内�
     luciaElowenMechanic.applyTeamConfig!(teamInput({
       slot: 0, characters: c4, cinemaLevel: 4, settings: { 'lucia.c4CurtainCoverage': 0.5 },
     }))
-    expect(c4[0].luciaC4DecibelPerTrigger).toBe(100)
-    expect(c4[1].luciaC4DecibelPerTrigger).toBe(100)
+    expect(c4[0].decibelPerCurtainTrigger).toBe(100)
+    expect(c4[1].decibelPerCurtainTrigger).toBe(100)
     expect(c4[0].luciaC4CurtainCoverage).toBe(0.5)
 
     const c0: any[] = [{ slot: 0, agentId: '1451', panel: {} }]
     luciaElowenMechanic.applyTeamConfig!(teamInput({ slot: 0, characters: c0, cinemaLevel: 0 }))
-    expect(c0[0].luciaC4DecibelPerTrigger).toBeUndefined()
+    expect(c0[0].decibelPerCurtainTrigger).toBeUndefined()
   })
 
   it('回血：换算比 = 卢西娅生命 / 伊德海莉生命，×覆盖滑块；伊德海莉不在队则不写', () => {

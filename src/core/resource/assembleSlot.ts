@@ -113,7 +113,7 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
   const giftDecibel = giftDecibelForCfg(configs, states, cfg, totalTime)
 
   const decibelSrc = calcDecibelSource(cfg, state, teammateShare, chainCountTotal, totalTime,
-    (cfg.luciaC4DecibelPerTrigger ?? 0) * curtainTriggers
+    (cfg.decibelPerCurtainTrigger ?? 0) * curtainTriggers
     // 诺姆影画4·膛温换连携：诺姆+上一位队友各 +200 不可分享喧响（计入终结技次数）
     + giftDecibel,
     config.specialActionDecibelBonusPerSlot?.[i] ?? 0,

@@ -311,7 +311,7 @@ function iterateBody(
     }) ?? 0
     const extraSelfDecibel = (cfg.extraSelfDecibelReward ?? 0)
       + (cfg.extraSelfDecibelPerUltimate ?? 0) * prev.ultimateCount
-      + (cfg.luciaC4DecibelPerTrigger ?? 0) * curtainTriggers
+      + (cfg.decibelPerCurtainTrigger ?? 0) * curtainTriggers
       // 诺姆影画4·膛温换连携：每次赠链「诺姆 + 上一位队友各 +200 不可分享喧响」，计入终结技次数。
       // 次数与门控由模块经 `crossAgentSupply` 自报（本文件不再 import 角色模块、不写 id）。
       + giftDecibelForCfg(configs, prevStates, cfg, totalTime)

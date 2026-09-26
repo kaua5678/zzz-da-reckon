@@ -394,8 +394,11 @@ export interface CharacterOperationConfig {
   yidhariExternalHealPct?: number
   /** 伊德海莉外部回血按卢西娅终结技次数结算的比例（每次大 %自身最大生命值），由卢西娅模块换算注入 */
   yidhariExternalHealPerUltPct?: number
-  /** 卢西娅4命：每次帷幕开启/延长给全队每人的喧响（100；未开4命为 0/undefined） */
-  luciaC4DecibelPerTrigger?: number
+  /**
+   * 每次帷幕开启/延长给本槽的喧响（通用字段，CC-35c-C 2026-09-27 由 `luciaC4DecibelPerTrigger` 改名）。
+   * 引擎按「帷幕触发次数（`curtainTriggers` 能力）× 本值」计入自身喧响。现唯一写入方：卢西娅4命（全队每人 100），未开时为 undefined。
+   */
+  decibelPerCurtainTrigger?: number
   /** 卢西娅4命帷幕触发利用率（0-1，帷幕连着放卡15s CD 时调低），默认 1 */
   luciaC4CurtainCoverage?: number
   /** 卢西娅4命本局帷幕触发总次数（收敛后由资源池按最终终结技次数写入，供模块展示） */

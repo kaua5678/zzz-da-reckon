@@ -278,7 +278,7 @@ function computeLuciaSource(
   const curtainTriggerCount = Number.isFinite(Number(cfg.luciaCurtainTriggerCount))
     ? Math.max(0, Number(cfg.luciaCurtainTriggerCount))
     : computeLuciaCurtainTriggers(state.exSpecialCount, state.ultimateCount, 0)
-  const c4PerTrigger = Math.max(0, Number(cfg.luciaC4DecibelPerTrigger ?? 0))
+  const c4PerTrigger = Math.max(0, Number(cfg.decibelPerCurtainTrigger ?? 0))
   // 帷幕来源拆分（展示用）：引擎同点写入自开/队友归因；外部直调（缺写入）时自开回退 = 总次数。
   const curtainSelfRaw = Number(cfg.luciaCurtainSelfCount)
   const curtainSelfCount = Number.isFinite(curtainSelfRaw) ? Math.max(0, curtainSelfRaw) : curtainTriggerCount
@@ -512,7 +512,8 @@ export const luciaElowenMechanic: AgentMechanicModule = {
    * 「卢西娅在队」守卫，故合并进本钩子一次清两处：
    *
    * ① **影画4·帷幕开启/延长** → 全队每人 +100 喧响（触发次数按梦境轴 + 15s CD 封顶 × 利用率滑块）。
-   *    消费端 `core/resource.ts` 读 `cfg.luciaC4DecibelPerTrigger` / `cfg.luciaC4CurtainCoverage`。
+   *    写通用 cfg 字段 `decibelPerCurtainTrigger`（CC-35c-C 2026-09-27 由 `luciaC4DecibelPerTrigger` 改名），引擎
+   *    `core/resource/helpers.ts` / `assembleSlot.ts` 按「帷幕触发次数 × 每次喧响」结算；`luciaC4CurtainCoverage` 只有本模块读。
    * ② **星光汇聚之地回血** → 终结技等级公式（12级 12.8%/大）× 覆盖滑块，换算成**伊德海莉自身生命%**
    *    喂给烧血→喧响（仅伊德海莉在队时）。②跨槽位写 yidhari 字段正是本钩子的用途。
    *
@@ -527,7 +528,7 @@ export const luciaElowenMechanic: AgentMechanicModule = {
     // ① 影画4：帷幕触发 → 全队 +100 喧响/次（非 4 命不写字段 = 引擎既有无字段语义）
     if (cinemaLevel >= 4) {
       for (const cfg of characters) {
-        cfg.luciaC4DecibelPerTrigger = 100
+        cfg.decibelPerCurtainTrigger = 100
         cfg.luciaC4CurtainCoverage = clamp01(settings['lucia.c4CurtainCoverage'] ?? 1)
       }
     }

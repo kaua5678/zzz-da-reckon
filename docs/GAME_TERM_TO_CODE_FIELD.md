@@ -331,7 +331,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 |---------|------|
 | [随想] / [合唱] | 随想 = `1451005`；合唱 = `patchExecutions` 按 moveId 集合修正（追加攻击 `1451007` + `cfg.*MoveId`）；[合唱]末段按最大生命 X% 附加 → `SkillExecution.flatDamageBonus` |
 | [梦境值] | spec `lucia_dream_value` + `computeLuciaDreamPlan`（目标 500；消耗 25/次 → 追加攻击默认 20 次、不占前台时间） |
-| [以太帷幕·涌泉] | `computeLuciaCurtainTriggers` + `luciaC4DecibelPerTrigger`（4命开启/延长 → 全队每人 +100 喧响，15s CD 封顶 × `lucia.c4CurtainCoverage` 滑块） |
+| [以太帷幕·涌泉] | `computeLuciaCurtainTriggers` + `decibelPerCurtainTrigger`（通用 cfg 字段，原名 `luciaC4DecibelPerTrigger`；4命开启/延长 → 全队每人 +100 喧响，15s CD 封顶 × `lucia.c4CurtainCoverage` 滑块） |
 | [巡梦童谣] / [破暗] | teammate-buffs `lucia_elowen.*` 组（F级全队伤、一命全抗无视+喧响获取、破暗贯穿力 formula、额外能力暴伤） |
 | 影画2 / 影画6 | 影画2：全队贯穿增伤 + 自身[合唱]增伤；影画6：`attributeConversions` 生命→攻击 + [合唱]必暴/暴伤（patchExecutions） |
 | [星光汇聚之地]回血 | `computeLuciaHealPctPerUlt` → `yidhariExternalHealPerUltPct`（换算成伊德海莉生命%接入烧血→喧响，伊德海莉在队时） |
