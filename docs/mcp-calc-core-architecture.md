@@ -170,8 +170,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-19c | review | **done** `b45652c` + `de1cc8d`（判据 22 545→535→499，target 重设 487） | 蕾米埃尔耀变 / 特殊虚耀迁 extraAnomalyRows；辅助函数迁 mechanics、ELEMENT_*_KEYS 迁 core；异常尾段已无内联角色块 | 设计稿 §8 / census §5.14 |
 | CC-20 | review | **done** `ea61032`（判据 22 口径纠正 499→462，target 平移 450） | trigger* 触发者通用名 5 个入 ROLE_FIELD_EXEMPT（换尺，规则 17②，单独提交） | census §5.14 |
 | CC-21 | review | **done** `3d000d0`（判据 22 462→447，target 重设 435） | 全队异常乘区 remielleAnomalyMultiplier → 模块能力 globalAnomalyMultiplierFactor + 通用改名 globalAnomalyMultiplier，零差 | census §5.15 |
-| CC-22 | review | **待做**（已实读定稿） | 回合线程字段 aliceTeamAssaultCount / aliceDisorderCount → teamAssaultCount / teamDisorderCount（纯改名；爱丽丝 cfg 同名字段不改） | census §5.15 |
-| CC-23 | design | **待设计** | convergence 直连角色模块（aliceExternalCountsOf 等 + computeBanyueInteractionTopUp）→ 模块能力派发；banyueSlot | census §5.15 |
+| CC-22 | review | **done** `05bb382`（修订版；判据 22 447→430，target 418） | 原「改名 teamAssaultCount」作废（assault 实为爱丽丝自己触发的强击，并非全队次数）→ 爱丽丝剑仪外部次数源改走 nextRoundFeedback + threads，删掉 AgentTeamConfigInput/panelPhases 专用字段及 convergence 对爱丽丝的直连 import，零差 | census §5.16 |
+| CC-23 | review | **待做**（已实读定稿） | 般岳交互补齐：banyueSlot 身份找槽 → producesInteractionTopUp 声明式；computeBanyueInteractionTopUp → 模块能力 computeInteractionTopUp；局部量改名 interactionTopUpSlot | census §5.16 |
 | CC-18c | design | **并入 CC-19a** |
 
 ### CC-1 · 招式表查询迁出（fast）

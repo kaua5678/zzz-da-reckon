@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-26 第 29 轮，lead-arena-0925c）**：**CC-21 已落地 `3d000d0`**（全队异常乘区做成模块能力 `globalAnomalyMultiplierFactor`，并通用改名为 `globalAnomalyMultiplier`；lead 自做，没派工人，因为改动面只有约 17 处机械改名 + 1 个 computed + 1 个模块方法）。判据 22 从 462 降到 **447**，target 重设 **435**。master 上 `npm run verify` EXIT=0（291 个测试文件 / 3559 条测试），HEAD `3d000d0`（docs 提交在其后）。详见 §5.15。
+- **最新交接（2026-09-27 第 30 轮，lead-arena-0925c）**：**CC-22（修订版）已落地 `05bb382`**。§5.15 原定的「纯改名为 teamAssaultCount」**作废**：实读 `aliceExternalCountsOf` 后确认，assault 是**爱丽丝自己**触发的 physical 强击，不是全队次数。改为走通用通道：爱丽丝 `nextRoundFeedback` 负责产出，`applyTeamConfig` 从 `threads` 读取，同时删掉 `AgentTeamConfigInput` 和 panelPhases 的专用字段，convergence 不再 import `aliceExternalCountsOf` / `aliceSlotOf`。判据 22 从 447 降到 **430**，target 重设 **418**。verify EXIT=0。详见 §5.16。
+  **下一步（可以直接开工）**：**CC-23**（般岳交互补齐：convergence 里 `banyueSlot` 改为声明式找槽 + `computeBanyueInteractionTopUp` 升格为模块能力），开工清单见 §5.16。
+- **上上轮交接（2026-09-26 第 29 轮，lead-arena-0925c）**：**CC-21 已落地 `3d000d0`**（全队异常乘区做成模块能力 `globalAnomalyMultiplierFactor`，并通用改名为 `globalAnomalyMultiplier`；lead 自做，没派工人，因为改动面只有约 17 处机械改名 + 1 个 computed + 1 个模块方法）。判据 22 从 462 降到 **447**，target 重设 **435**。master 上 `npm run verify` EXIT=0（291 个测试文件 / 3559 条测试），HEAD `3d000d0`（docs 提交在其后）。详见 §5.15。
   **下一步（可以直接开工）**：**CC-22**（回合线程字段 `aliceTeamAssaultCount` / `aliceDisorderCount` 通用改名为 `teamAssaultCount` / `teamDisorderCount`，纯改名），开工清单见 §5.15。
 - **上一轮交接（2026-09-26 第 28 轮，lead-arena-0925c）**：**CC-19 全部完成**。19c-1 `b45652c`、19c-2 `de1cc8d`（蕾米埃尔块 6 迁 `extraAnomalyRows`），判据 22 545→535→**499**（target 重设 487）。**CC-20 `ea61032`**：判据 22 口径纠正，5 个 trigger* 触发者通用名加入豁免，读数 499→**462**，target 平移到 **450**（换尺，规则 17②，单独提交）。master 上 `npm run verify` EXIT=0，HEAD `ea61032`（docs 提交在其后）。详见 §5.14。
   **下一步（可以直接开工）**：**CC-21**（全队异常乘区 `remielleAnomalyMultiplier` 做成模块能力，并通用改名为 `globalAnomalyMultiplier`），开工清单见 §5.14。
@@ -269,6 +271,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-26 CC-19c 后**：535（`b45652c`，19c-1）→ **499**（`de1cc8d`，19c-2）；已低于 target 533，重设 target **487**。
 - **2026-09-26 CC-20 口径纠正**：**462**（`ea61032`）= 499 − 37 个误报（trigger* 触发者通用名），**不是进步**；target 同口径平移 487→**450**。下一张：CC-21（§5.14）。
 - **2026-09-26 CC-21 后**：**447**（`3d000d0`）；已低于 target 450，重设 target **435**。下一张：CC-22（§5.15）。
+- **2026-09-27 CC-22 后**：**430**（`05bb382`）；已低于 target 435，重设 target **418**。下一张：CC-23（§5.16）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -621,7 +624,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 
 **rf3 读数（HEAD `3d000d0`，447 处 / 123 个字段）前列**：banyueSlot 10（convergence）、aliceCoweringConfig 10（roundInputs / anomalyPool / helpers）、aliceTeamAssaultCount 9、aliceDisorderCount 9（convergence / panelPhases / roundThreads）、velinaCorrosionSource 9（anomalyPool）、remielleRainbowEndCount 9（rowBuild）、liuyinSrc 8、xideIdx 8（crossAgentEnergy）、remielleSpecialVoidflareUseCount 8、liuyinIdx 7、liuyinPromoteCount 7、velinaCinema2CorrosionRate 7。
 
-**CC-22 开工清单（纯改名；lead 实读 HEAD `3d000d0`）**
+**CC-22 开工清单（纯改名；lead 实读 HEAD `3d000d0`）** ——⚠ **已作废**（前提错误，见 §5.16），保留作为账本
 1. 语义（`mechanics/types.ts:291–299` 注释原文）：
    - `aliceTeamAssaultCount` = **全队强击触发次数**（`physical` + `physical_polar_assault` 两键之和，上一轮异常池收敛值）；
    - `aliceDisorderCount` = **全队紊乱次数**。
@@ -641,6 +644,35 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 6. 执行：改动面约 25 处且有 cfg 同名坑，**建议 lead 自做**（参照 CC-21：python 逐处断言恰好匹配 1 次再替换）；若派 dsflash，提示词必须写明第 3 条。零差命令参照 `/home/kaua/calc-arch/z21.sh`（在主仓库工作区跑 dump + rowsnap + 反向验证）。
 
 **CC-23（待设计，CC-22 之后）**：`convergence.ts:63` 直接 `import { aliceExternalCountsOf, aliceSlotOf, aliceSparkCountOf } from '@/mechanics/agents/alice'`，编排层直连角色模块。它和 CC-16 遗留的 `convergence.ts:54` 直接 import `computeBanyueInteractionTopUp` 是同一类问题。方向：做成模块能力（例如 `nextRoundTeamCounts(ap, rr)`），经 `getAgentMechanic` 派发。`banyueSlot`（convergence，10 处）一起考虑。
+
+### 5.16 CC-22（修订版）落地记录 + CC-23 开工清单（2026-09-27 第 30 轮 lead-arena-0925c）
+
+**§5.15 的 CC-22 为什么作废（决定 + 依据）**：§5.15 的语义依据是 `mechanics/types.ts` 注释写的「全队**强击**触发次数（physical + physical_polar_assault 两键之和）」。但 `alice.ts#aliceExternalCountsOf` 的函数体和注释写明了两点：只取 `physical`（极性强击另有 `alice_polarity_feedback` 规则，计入就会双计）；按 `perSlotTriggerCounts[aliceSlot]` **只取爱丽丝自己触发的**（原文「爱丽丝通过属性异常积蓄触发强击时」，实测会多算 45%）。所以那条注释是**过时的**。改名成 `teamAssaultCount` 会把角色专属的量伪装成通用事实，还会和 `src/specs/resources.ts` 里真正的全队 `teamAssaultCount` 混淆。**教训：开工清单里的语义要以实现为准，不能以注释为准。**
+
+**CC-22 修订版（`05bb382`，判据 22 447→430，target 418）**：
+- `alice.ts`：新增 `nextRoundFeedback: ({ slot, anomalyPool }) => aliceExternalCountsOf(anomalyPool, slot) → { aliceTeamAssaultCount, aliceDisorderCount }`（爱丽丝不在队时派发器不调，键缺席）。`applyTeamConfig` 从解构入参改为读 `threads?.aliceTeamAssaultCount ?? 0`。`aliceExternalCountsOf` 的 `perElement` 形参放宽为 `ReadonlyArray`（钩子收到的是 DeepReadonly）。
+- `convergence.ts`：import 只剩 `aliceSparkCountOf`。删掉 `threads` 解构里的 `prevAlice*` 两项，删掉 converge 相位 `applyTeamMechanics` 的两个入参，删掉 `aliceExternalCounts` 局部量。threadsNext 改写为 `feedbackNext.aliceTeamAssaultCount ?? 0`。
+- `panelPhases.ts`：`applyTeamMechanics` 的 params 删掉 2 个字段、2 个局部量和 2 个透传。`mechanics/types.ts`：`AgentTeamConfigInput` 删掉 2 个字段（含过时注释）。`roundThreads.ts`：注释更正为「爱丽丝自己触发的 physical 强击 / 全队紊乱；产出方为爱丽丝 nextRoundFeedback」。
+- **等价论证**：钩子的 `anomalyPool` 就是原来的 `ap1`（convergence 调用 `collectNextRoundFeedback({ anomalyPool: ap1, prevThreads: threads })`）。converge 相位的 `threads` 就是原来 `prevAlice*` 解构的来源。`slot = cfg.slot` 与 `aliceSlotOf(rr)`（`rr.characters[].slot`）同源。
+- **验证**：vue-tsc 0；零差（dump 625 / rowsnap 638，只有 `__ms` 不同）；反向（钩子里 `assaultCount + 1000`）rowsnap DIFF 28 = 4 组 1401 预设（`auto-1401-{1361,1511,1261}-1411`、`auto-1401-1411-1031`）× 7 个变体，没有波及其他角色，cp 还原并 cmp 一致；`npm run verify` EXIT=0。脚本：`/home/kaua/calc-arch/cc22.py`（改代码）、`z22.sh`（tsc + 零差 + 反向）。
+- **遗留（有意保留）**：cfg 上的同名字段 `aliceTeamAssaultCount` / `aliceDisorderCount`（alice.ts、`types/resource/config.ts`）以及线程字段名都没有改名。它们本来就是爱丽丝专属，名字里的 Team 是历史名，已在注释里标明。`aliceSlotOf` 已无代码调用方（只剩 `roundInputs.ts:96` 注释提到），**暂留导出**，属于可选清理项，删除时要同步那段注释。
+- **回退点**：`git revert 05bb382`（单个提交，含棘轮常量 430/418）。
+
+**rf3（HEAD `05bb382`，430 处 / 120 个字段）前列**：banyueSlot 10（convergence）、aliceCoweringConfig 10、velinaCorrosionSource 9、remielleRainbowEndCount 9、liuyinSrc 8、xideIdx 8、remielleSpecialVoidflareUseCount 8、liuyinIdx 7、liuyinPromoteCount 7、velinaCinema2CorrosionRate 7。
+
+**CC-23 开工清单（般岳交互补齐；lead 实读 HEAD `05bb382` 的 convergence.ts）**
+1. 现状：
+   - `convergence.ts:195` 为 `const banyueSlot = findSlotByIdentity(configStore, catalogStore, ['1471'])`，是身份判定。
+   - `:217` autoTopUp 门控为 `… && banyueSlot >= 0 && setting('banyue.autoTopUpInteractions', 1)`；`:221` 为 `decibelParryActive = guaranteeUltimate && banyueSlot < 0`（通用保底 4 喧响与般岳互斥，避免双计）。
+   - `:699–721` 在 `if (autoTopUp)` 中用 `banyueSlot` 取 storeChar / axisUltimateNeed / decibelHave / axisActionCountsBySlot / ultimateCost / perParrySeconds，调用直连 import 的 `computeBanyueInteractionTopUp`（`:54`）。
+2. 方案（两步，可以合成一个提交）：
+   - (a) 找槽改为声明式：`const interactionTopUpSlot = configStore.team.findIndex(c => c?.agentId && getAgentMechanic(c.agentId)?.producesInteractionTopUp)`。这和 `useResourceCalc.ts:437` 同一写法；`banyue.ts:1070` 已声明 `producesInteractionTopUp: true`；`convergenceNightB.test.ts:290` 的注释早就指出这里「本可走声明式」。**先读 `findSlotByIdentity` 的实现**，确认它和 `team.findIndex(agentId)` 在空槽、变体身份上是否等价；不等价就改用同一个 helper，再用模块声明过滤。
+   - (b) `AgentMechanicModule` 新增可选能力 `computeInteractionTopUp?(opts)`，签名直接复用 `computeBanyueInteractionTopUp` 的 opts 类型（从 banyue.ts 导出类型，或提到 types.ts）。banyue 模块对象挂 `computeInteractionTopUp: computeBanyueInteractionTopUp`。convergence 改为 `getAgentMechanic(team[slot].agentId)?.computeInteractionTopUp?.({...}) ?? prevInteractionTopUp`，删掉 `:54` 的 import。
+   - 局部量 `banyueSlot` 全部改名为 `interactionTopUpSlot`（只在 convergence.ts 内，共 10 处，`grep -n banyueSlot` 逐处核对）。`computeBanyueAxisExFor` 如果只服务这里，改名留到下一张。
+   - **不改**：setting 键 `'banyue.autoTopUpInteractions'`（持久化配置键，改了会让用户已有设置失效），以及注释里的「般岳」字样。
+3. 预计判据 22 约 −10；角色判定棘轮（`findSlotByIdentity(['1471'])` 是数组写法，不计数）无变化。零差应当逐位成立。反向验证：在 banyue 模块的能力里把返回值的补齐量 +1（或让 `producesInteractionTopUp` 找槽失效），rowsnap 应当只波及含 1471 的预设。
+4. 执行：lead 自做（约 15 处，参照 cc22.py 逐处断言），零差模板 `/home/kaua/calc-arch/z22.sh`（把 MUT 那行 sed 换成 banyue）。
+5. 之后的候选：aliceCoweringConfig 10（roundInputs / anomalyPool / helpers；core/anomalyPool 里带角色前缀的 cfg，可能适合做成通用的「附加异常 dot 配置」）、velinaCorrosionSource 9（anomalyPool）。两者动手前都要先实读。
 
 ## 附录：普查脚本 census.sh
 
