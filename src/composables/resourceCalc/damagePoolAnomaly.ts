@@ -5,8 +5,9 @@
  * 职责（一个域：**异常池产出行 + 角色专属附伤块**）：风属性异常事件（维琳娜风异放按轴内
  * 非风触发占比拆段）/ 乱流 / 紊乱明细 / 按元素异常累积（虚拟面板 + 按触发者分摊结算），
  * 以及角色专属异常附加行的**派发点**（按模块能力 `extraAnomalyRows` 收集分组、稳定排序后展开）
- * 与仍内联的 1401 极性强击、1261 简 C6、1401 爱丽丝 C6 决胜附伤、爱丽丝畏缩 DOT、1581 蕾米埃尔
- * 耀变/特殊虚耀。柏妮思 C6 灼烧迸发已于 CC-19a（2026-09-26）迁进 `burnice.ts#extraAnomalyRows`。
+ * 与仍内联的 1581 蕾米埃尔耀变/特殊虚耀。柏妮思 C6 灼烧迸发已于 CC-19a（2026-09-26）、
+ * 1401 极性强击/爱丽丝 C6 决胜附伤/爱丽丝畏缩 DOT 与 1261 简 C6 已于 CC-19b（2026-09-26）
+ * 迁进各角色模块的 `extraAnomalyRows`。
  *
  * 与外层闭包的通信面 = `AnomalyRowsEnv`：共享输出数组 `rows`（**按原顺序 push，禁止换成
  * 返回值拼接**）+ `ctx` 快照 + 只读局部量/闭包（`agentName` / `enemyDamageRes` / `isAxis` /
@@ -17,7 +18,7 @@
  * 依赖方向：本文件不得 import `./damagePool`（值）；只依赖类型与同目录兄弟模块
  * （`./anomalyPanels` / `./skillRows` / `./helpers`）与引擎子模块（`@/core/damage` 等）。
  */
-import { calcDirectDamage, calcAnomalyDamage } from '@/core/damage'
+import { calcAnomalyDamage } from '@/core/damage'
 import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG, resolveStatElement } from '@/core/anomalyPool/helpers'
 import { fmt } from '@/utils/format'
@@ -319,197 +320,20 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
         anomalyMultiplier: remielleAnomalyMultiplier,
         teamAgentId: (s) => configStore.team[s]?.agentId ?? '',
         agentName,
+        panel: panelAt(damagePanels, slot),
+        cinemaLevel: configStore.team[slot]?.cinemaLevel ?? 0,
+        isAxis,
+        stunCoverage,
+        inWindowFraction,
+        ultimateInAxisFraction,
+        axisInUnits: (key) => allocMap[key]?.inAxisUnits ?? 0,
+        getMechanicSetting: (k, d) => configStore.getMechanicSetting(k, d),
+        anomalyPool: anomalyPoolResult,
       })
       : undefined
     if (groups) extraGroups.push(...groups)
   })
   for (const r of flattenAnomalyRowGroups(extraGroups)) rows.push(r)
-
-  // ---- 极性强击伤害（赠送触发，不走虚拟面板） ----
-  const polarAssaultProg = anomalyPoolResult?.perElement.find(prog => prog.element === 'physical_polar_assault')
-  const polarAssaultSlot = findSlotByIdentity(configStore, catalogStore, ['1401'])
-  const polarAlicePanel = polarAssaultSlot >= 0 ? panelAt(damagePanels, polarAssaultSlot) : undefined
-  if (polarAssaultProg && polarAssaultProg.triggerCount > 0 && polarAlicePanel) {
-    // 轴模式：极性强击易伤跟随父动作 SW3(1401012) 的轴内占比；影画2 终结技额外触发的
-    // 极性强击（c2UltSparkCount）跟随终结技轴内占比——按次数加权（2026-08 审计补接）
-    const sw3Frac = axisStunFor('polar_assault')
-    const aliceSm = adjustedResourceResult?.characters.find(c => c.slot === polarAssaultSlot)?.aliceSwordWillSource
-    const ultExtra = Math.max(0, Math.floor(aliceSm?.c2UltSparkCount ?? 0))
-    const sw3Count = Math.max(0, Math.floor(polarAssaultProg.triggerCount) - ultExtra)
-    const polarStunFor = polarAssaultProg.triggerCount > 0
-      ? (sw3Count * sw3Frac + ultExtra * ultimateInAxisFraction(polarAssaultSlot)) / polarAssaultProg.triggerCount
-      : stunCoverage
-    const result = calcAnomalyDamage({
-      panel: polarAlicePanel,
-      settlementPanel: polarAlicePanel,
-      baseMultiplier: ANOMALY_SINGLE_HIT_MULTIPLIER.physical,
-      element: 'physical' as any,
-      enemyDefense: configStore.enemy.defense,
-      enemyDefReduction: 0,
-      enemyDefFlatReduction: 0,
-      enemyLevel: configStore.enemy.level,
-      enemyResistance: enemyDamageRes.physical ?? 0,
-      enemyResReduction: polarAlicePanel?.enemyResReduction ?? 0,
-      stunned: polarStunFor,
-      stunMultiplier: configStore.enemy.stunVuln,
-      critMode: 'expect',
-      damageKind: 'anomaly',
-      anomalyMultiplier: remielleAnomalyMultiplier,
-    })
-    const perDamage = result.damage
-    rows.push({
-      id: 'polar-assault-damage',
-      slot: polarAssaultSlot,
-      agentId: configStore.team[polarAssaultSlot]?.agentId ?? '',
-      agentName: agentName(configStore.team[polarAssaultSlot]?.agentId ?? '', polarAssaultSlot),
-      type: '极性强击',
-      name: `极性强击（三蓄赠送）`,
-      element: 'physical_polar_assault',
-      source: `三蓄赠送触发 · 无视积蓄进度 · 爱丽丝面板`,
-      count: polarAssaultProg.triggerCount,
-      perDamage,
-      totalDamage: perDamage * polarAssaultProg.triggerCount,
-      multiplier: ANOMALY_SINGLE_HIT_MULTIPLIER.physical,
-      note: `${ANOMALY_SINGLE_HIT_MULTIPLIER.physical}% 单次 × 爱丽丝面板 · 赠送触发不耗异常条${isAxis ? ` · 易伤按触发源加权轴内占比 ${fmt(polarStunFor, 2)}（SW3 ${fmt(sw3Frac, 2)}${ultExtra > 0 ? ` ×${sw3Count} + 终结 ${fmt(ultimateInAxisFraction(polarAssaultSlot), 2)} ×${ultExtra}` : ''}）` : ''}`,
-    })
-  }
-
-  const janeSlot = findSlotByIdentity(configStore, catalogStore, ['1261'])
-  const janeCinema = configStore.team[janeSlot]?.cinemaLevel ?? 0
-  const janePanel = janeSlot >= 0 ? panelAt(damagePanels, janeSlot) : undefined
-  if (janeCinema >= 6 && janePanel) {
-    const physicalProg = anomalyPoolResult?.perElement.find(prog => prog.element === 'physical')
-    const assaultCritRate = Math.min(100, Math.max(0, janePanel.assaultCritRate ?? 0))
-    const critCount = (physicalProg?.triggerCount ?? 0) * (assaultCritRate / 100)
-    if (critCount > 0) {
-      // 附伤随强击暴击触发 → 轴内易伤跟随物理强击触发轴内占比（用户口径 2026-08：
-      // 6命附伤事件和动作绑定，理应该伴随计数并且吃易伤）；非轴回落全局覆盖率。
-      // 乘区口径（用户 2026-09-03）：附伤占攻击区(异常精通)×倍率区(1600%)两个基础区，
-      // 其余增伤/防御/抗性/易伤/暴击乘区全吃（爱丽丝 6 命附伤同款）→ 走 calcDirectDamage 标准管线
-      const janeStun = isAxis ? inWindowFraction('physical') : stunCoverage
-      const result = calcDirectDamage({
-        panel: janePanel,
-        skillMultiplier: 1600,
-        damageElement: 'physical',
-        damageBasis: 'atk',
-        enemyDefense: configStore.enemy.defense,
-        enemyDefReduction: janePanel.enemyDefReduction ?? 0,
-        enemyDefFlatReduction: janePanel.enemyDefFlatReduction ?? 0,
-        enemyLevel: configStore.enemy.level,
-        enemyResistance: enemyDamageRes['physical'] ?? 0,
-        enemyResReduction: janePanel.enemyResReduction ?? 0,
-        stunMultiplier: configStore.enemy.stunVuln,
-        stunned: janeStun,
-        critMode: 'expect',
-        count: critCount,
-        basisValueOverride: janePanel.anomalyProficiency ?? 0,
-        basisLabelOverride: '异常精通',
-      })
-      rows.push({
-        id: 'jane-c6-assault-followup',
-        slot: janeSlot,
-        agentId: configStore.team[janeSlot]?.agentId ?? '',
-        agentName: agentName(configStore.team[janeSlot]?.agentId ?? '', janeSlot),
-        type: '简6命附伤',
-        name: '简6命强击暴击附伤',
-        element: 'physical',
-        source: '强击暴击后触发',
-        count: critCount,
-        perDamage: critCount > 0 ? result.damage / critCount : 0,
-        totalDamage: result.damage,
-        note: `异常精通 ${fmt(janePanel.anomalyProficiency ?? 0)} × 1600% 标准直伤管线（增伤/防御/抗性/易伤/暴击全吃）；按强击期望暴击次数 ${fmt(critCount, 2)} 次${isAxis ? ` · 易伤跟随物理强击轴内占比 ${fmt(janeStun, 2)}` : ''}`,
-      })
-    }
-  }
-
-  // ---- 爱丽丝六命决胜状态额外攻击 ----
-  const aliceSlot = findSlotByIdentity(configStore, catalogStore, ['1401'])
-  const aliceCinema = configStore.team[aliceSlot]?.cinemaLevel ?? 0
-  const alicePanel = aliceSlot >= 0 ? panelAt(damagePanels, aliceSlot) : undefined
-  if (aliceCinema >= 6 && alicePanel) {
-    const aliceResult = adjustedResourceResult?.characters.find(c => c.slot === aliceSlot)
-    const smSrc = aliceResult?.aliceSwordWillSource
-
-    if (smSrc && smSrc.sparkCount > 0) {
-      // 状态进入次数 = sparkCount + ultimateCount（每次星芒圆舞曲#3 或终结技进入/刷新决胜状态）
-      const ultimateCount = aliceResult.ultimateCount
-      const stateEntries = smSrc.sparkCount + ultimateCount
-
-      // 每状态额外攻击次数（默认5次；单轮最多6次，1秒CD）
-      const perStateCount = configStore.getMechanicSetting('alice.cinema6PerStateCount', 5)
-
-      // 总触发次数 = 状态进入次数 × 每次攻击次数
-      const totalTriggers = stateEntries * perStateCount
-
-      if (totalTriggers > 0) {
-        // 附伤随决胜状态进入（SW3 1401012 / 终结技）触发 → 轴内易伤 = 状态进入的加权轴内占比
-        // （用户口径 2026-08：6命附伤事件和动作绑定，理应该伴随计数并且吃易伤）；非轴回落全局覆盖率
-        const sw3Frac = isAxis && smSrc.sparkCount > 0
-          ? Math.max(0, Math.min(1, (allocMap[`${aliceSlot}:1401012`]?.inAxisUnits ?? 0) / smSrc.sparkCount))
-          : stunCoverage
-        const ultFrac = ultimateInAxisFraction(aliceSlot)
-        const stateFrac = stateEntries > 0
-          ? (smSrc.sparkCount * sw3Frac + ultimateCount * ultFrac) / stateEntries
-          : stunCoverage
-        // 乘区口径（用户 2026-09-03）：附伤占攻击区(异常精通)×倍率区(3300%)两个基础区，
-        // 其余增伤/防御/抗性/易伤/暴击乘区全吃（同简 6 命附伤）→ 走 calcDirectDamage 标准管线；
-        // 攻击本体必定暴击（原文：额外攻击必定暴击）→ critMode='crit'
-        const proficiency = alicePanel.anomalyProficiency ?? 0
-        const result = calcDirectDamage({
-          panel: alicePanel,
-          skillMultiplier: 3300,
-          damageElement: 'physical',
-          damageBasis: 'atk',
-          enemyDefense: configStore.enemy.defense,
-          enemyDefReduction: alicePanel.enemyDefReduction ?? 0,
-          enemyDefFlatReduction: alicePanel.enemyDefFlatReduction ?? 0,
-          enemyLevel: configStore.enemy.level,
-          enemyResistance: enemyDamageRes['physical'] ?? 0,
-          enemyResReduction: alicePanel.enemyResReduction ?? 0,
-          stunMultiplier: configStore.enemy.stunVuln,
-          stunned: stateFrac,
-          critMode: 'crit',
-          count: totalTriggers,
-          basisValueOverride: proficiency,
-          basisLabelOverride: '异常精通',
-        })
-
-        rows.push({
-          id: 'alice-c6-decisive-extra-attack',
-          slot: aliceSlot,
-          agentId: configStore.team[aliceSlot]?.agentId ?? '',
-          agentName: agentName(configStore.team[aliceSlot]?.agentId ?? '', aliceSlot),
-          type: '爱丽丝6命附伤',
-          name: '爱丽丝6命决胜状态额外攻击',
-          element: 'physical',
-          source: '三蓄/终结技进入决胜状态 → 全队攻击额外命中',
-          count: totalTriggers,
-          perDamage: totalTriggers > 0 ? result.damage / totalTriggers : 0,
-          totalDamage: result.damage,
-          note: `异常精通 ${fmt(proficiency)} × 3300% 标准直伤管线（增伤/防御/抗性/易伤全吃）× 必定暴击 → 单次 ${fmt(totalTriggers > 0 ? result.damage / totalTriggers : 0)} · 状态进入 ${stateEntries} 次 × 每次 ${perStateCount} 次 = ${totalTriggers} 次${isAxis ? ` · 易伤按状态进入加权轴内占比 ${fmt(stateFrac, 2)}（SW3 ${fmt(sw3Frac, 2)} / 终结 ${fmt(ultFrac, 2)}）` : ''}`,
-        })
-      }
-    }
-  }
-
-  // ---- 爱丽丝被动 DOT（异常池 aliceCoweringDot 入池；畏缩/任意异常状态期间每 0.95s 强击伤害 2.5%） ----
-  const coweringDot = anomalyPoolResult?.aliceCoweringDot
-  if (aliceSlot >= 0 && coweringDot && coweringDot.totalDotDamage > 0) {
-    rows.push({
-      id: 'alice-cowering-dot',
-      slot: aliceSlot,
-      agentId: configStore.team[aliceSlot]?.agentId ?? '',
-      agentName: agentName(configStore.team[aliceSlot]?.agentId ?? '', aliceSlot),
-      type: '畏缩 DOT',
-      name: '爱丽丝畏缩 DOT',
-      element: 'physical',
-      source: '畏缩状态 · 每 0.95s 强击伤害 2.5%',
-      count: coweringDot.totalTicks,
-      perDamage: coweringDot.dotDamagePerTick,
-      totalDamage: coweringDot.totalDotDamage,
-      note: `畏缩 DOT：每 ${coweringDot.dotInterval}s 造成强击伤害 ${coweringDot.dotRatio}% · ${fmt(coweringDot.totalTicks)} tick`,
-    })
-  }
 
   const remielleSlot = findSlotByIdentity(configStore, catalogStore, ['1581'])
   const remiellePanel = remielleSlot >= 0 ? panelAt(damagePanels, remielleSlot) : undefined

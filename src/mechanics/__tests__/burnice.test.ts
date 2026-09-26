@@ -429,6 +429,16 @@ describe('CC-19a：柏妮思 extraAnomalyRows（C6 灼烧迸发逐字）', () =>
     anomalyMultiplier: 1,
     teamAgentId: (s: number) => (s === 0 ? '1171' : '1101'),
     agentName: (_id: string, s: number) => (s === 0 ? '柏妮思' : '队友'),
+    // CC-19b 2026-09-26：ExtraAnomalyRowsInput 扩 9 个必填字段；柏妮思只解构自己需要的字段，桩值不参与。
+    panel: undefined,
+    cinemaLevel: 0,
+    isAxis: false,
+    stunCoverage: 0,
+    inWindowFraction: () => 0,
+    ultimateInAxisFraction: () => 0,
+    axisInUnits: () => 0,
+    getMechanicSetting: (_k: string, d: number) => d,
+    anomalyPool: null,
     ...overrides,
   })
 

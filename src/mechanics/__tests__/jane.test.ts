@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { emptyPanel } from '@/core/panel'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import { computeJaneMechanic, janeMechanic } from '@/mechanics/agents/jane'
@@ -129,5 +130,57 @@ describe('简（1261）啮咬/狂热/强击暴击', () => {
     await new Promise(r => setTimeout(r, 50))
     const withTaken = calc.damagePoolRows.value.find(r => r.id === 'jane-c6-assault-followup')
     expect(withTaken!.perDamage).toBeGreaterThan(base)
+  })
+})
+
+// CC-19b 2026-09-26：块 3 自 `damagePoolAnomaly.ts` 迁进模块能力 `extraAnomalyRows`
+// （设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §7.1）。逐字锁 id/count/order。
+describe('CC-19b：简 extraAnomalyRows（C6 强击暴击附伤逐字）', () => {
+  const panel = () => ({ ...emptyPanel(), atk: 1000, anomalyProficiency: 100, assaultCritRate: 50 })
+  const input = (overrides: Record<string, unknown> = {}) => ({
+    slot: 0,
+    charResult: undefined,
+    windRate: 0,
+    anomalyProgress: (el: string) => (el === 'physical' ? { element: 'physical', triggerCount: 4 } as never : undefined),
+    buildVirtualPanel: () => null,
+    buildSettlementEntries: () => [],
+    axisStunFor: () => 0,
+    enemy: { defense: 0, level: 60, stunVuln: 1.5 },
+    enemyDamageRes: {},
+    anomalyMultiplier: 1,
+    teamAgentId: (s: number) => (s === 0 ? '1261' : ''),
+    agentName: (_id: string, _s: number) => '简',
+    panel: panel() as never,
+    cinemaLevel: 6,
+    isAxis: false,
+    stunCoverage: 1,
+    inWindowFraction: () => 1,
+    ultimateInAxisFraction: () => 0,
+    axisInUnits: () => 0,
+    getMechanicSetting: (_k: string, d: number) => d,
+    anomalyPool: null,
+    ...overrides,
+  })
+
+  it('C6 行 id/count 逐字、order=30（count = 强击次数 4 × 暴击率 50%）', () => {
+    const groups = janeMechanic.extraAnomalyRows!(input())
+    expect(groups).toHaveLength(1)
+    expect(groups[0].order).toBe(30)
+    expect(groups[0].rows[0]).toMatchObject({
+      id: 'jane-c6-assault-followup',
+      slot: 0,
+      agentId: '1261',
+      agentName: '简',
+      type: '简6命附伤',
+      name: '简6命强击暴击附伤',
+      element: 'physical',
+      source: '强击暴击后触发',
+      count: 2, // 4 × 0.5
+    })
+    expect(groups[0].rows[0].perDamage).toBeGreaterThan(0)
+  })
+
+  it('cinemaLevel<6 → 不产行', () => {
+    expect(janeMechanic.extraAnomalyRows!(input({ cinemaLevel: 5 }))).toEqual([])
   })
 })

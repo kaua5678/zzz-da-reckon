@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { emptyPanel } from '@/core/panel'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
+import { aliceMechanic } from '@/mechanics/agents/alice'
 
 /** 爱丽丝（物理）+ 格莉丝（电异常，触发额外能力） */
 async function setup(cinemaLevel = 0) {
@@ -76,6 +78,30 @@ describe('爱丽丝畏缩 DOT', () => {
       expect(row.totalDamage).toBeGreaterThan(0)
       expect(row.count).toBeGreaterThan(0)
     }
+  })
+})
+
+// CC-19b 2026-09-26：块 2/4/5 经 `extraAnomalyRows` 派发点进伤害池（真管线）。
+// 这条是派发点接线（`flattenAnomalyRowGroups` 消费 + 稳定排序）的自证锚点：
+// 把派发点短路成空，本断言必须红。
+describe('CC-19b：爱丽丝异常附加行进伤害池（extraAnomalyRows 派发点接线）', () => {
+  it('极性强击行 polar-assault-damage 与畏缩行 alice-cowering-dot 进伤害池', async () => {
+    // 爱丽丝(物理) + 格莉丝(电异常) + 11号(火强攻)：多属性 ⇒ 剑意攒满触发星芒圆舞曲#3 赠送极性强击
+    await setupHarness([
+      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1041', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ], { recommendedBuild: true })
+    const calc = useResourceCalc()
+    const polar = calc.damagePoolRows.value.find(r => r.id === 'polar-assault-damage')
+    expect(polar, '极性强击行未进伤害池（extraAnomalyRows 派发点断了）').toBeTruthy()
+    expect(polar!.count).toBeGreaterThan(0)
+    expect(polar!.multiplier).toBe(713)
+
+    const dot = calc.damagePoolRows.value.find(r => r.id === 'alice-cowering-dot')
+    expect(dot, '畏缩 DOT 行未进伤害池（extraAnomalyRows 派发点断了）').toBeTruthy()
+    expect(dot!.count).toBeGreaterThan(0)
+    expect(dot!.perDamage).toBeGreaterThan(0)
   })
 })
 
@@ -207,5 +233,111 @@ describe('爱丽丝剑仪外部次数源（全队强击 / 紊乱）', () => {
     expect(polar, '该队应当触发过极性强击（星芒圆舞曲#3 赠送）').toBeGreaterThan(0)
     // 强击收入只按 physical 计数：若把 physical_polar_assault 也加进来会多算 polar×10
     expect(src!.teamAssaultGain).toBeLessThan((phys + polar) * 10)
+  })
+})
+
+// CC-19b 2026-09-26：块 2/4/5 自 `damagePoolAnomaly.ts` 迁进模块能力 `extraAnomalyRows`
+// （设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §7.1）。逐字锁 id/count/multiplier/order。
+describe('CC-19b：爱丽丝 extraAnomalyRows（极性强击 / C6 决胜 / 畏缩 DoT 逐字）', () => {
+  const panel = () => ({ ...emptyPanel(), atk: 1000, anomalyProficiency: 100, assaultCritRate: 50 })
+  const aliceSrc = (overrides: Record<string, unknown> = {}) => ({
+    sparkCount: 2,
+    c2UltSparkCount: 1,
+    ...overrides,
+  })
+  const coweringDot = {
+    dotInterval: 0.95,
+    dotRatio: 2.5,
+    assaultDamagePerTrigger: 100,
+    dotDamagePerTick: 2.5,
+    totalTicks: 8,
+    totalDotDamage: 20,
+  }
+  const input = (overrides: Record<string, unknown> = {}) => ({
+    slot: 0,
+    charResult: { agentId: '1401', ultimateCount: 1, aliceSwordWillSource: aliceSrc() } as never,
+    windRate: 0,
+    anomalyProgress: (el: string) => (el === 'physical_polar_assault'
+      ? { element: 'physical_polar_assault', triggerCount: 3 } as never
+      : undefined),
+    buildVirtualPanel: () => null,
+    buildSettlementEntries: () => [],
+    axisStunFor: () => 0.5,
+    enemy: { defense: 0, level: 60, stunVuln: 1.5 },
+    enemyDamageRes: {},
+    anomalyMultiplier: 1,
+    teamAgentId: (s: number) => (s === 0 ? '1401' : ''),
+    agentName: (_id: string, _s: number) => '爱丽丝',
+    panel: panel() as never,
+    cinemaLevel: 6,
+    isAxis: false,
+    stunCoverage: 1,
+    inWindowFraction: () => 1,
+    ultimateInAxisFraction: () => 1,
+    axisInUnits: () => 0,
+    getMechanicSetting: (_k: string, d: number) => d,
+    anomalyPool: { aliceCoweringDot: coweringDot } as never,
+    ...overrides,
+  })
+
+  it('极性强击逐字：id/count/multiplier（order=20，不看命座）', () => {
+    const groups = aliceMechanic.extraAnomalyRows!(input({ cinemaLevel: 0 }))
+    const g = groups.find(x => x.order === 20)!
+    expect(g, 'cinemaLevel<6 也必须有极性强击组（块 2 不看命座）').toBeTruthy()
+    expect(g.rows[0]).toMatchObject({
+      id: 'polar-assault-damage',
+      slot: 0,
+      agentId: '1401',
+      agentName: '爱丽丝',
+      type: '极性强击',
+      name: '极性强击（三蓄赠送）',
+      element: 'physical_polar_assault',
+      source: '三蓄赠送触发 · 无视积蓄进度 · 爱丽丝面板',
+      count: 3,
+      multiplier: 713,
+    })
+    expect(g.rows[0].perDamage).toBeGreaterThan(0)
+    expect(g.rows[0].totalDamage).toBe(g.rows[0].perDamage * 3)
+  })
+
+  it('C6 行逐字：id/count（order=40，状态进入 2+1 次 × 5）', () => {
+    const groups = aliceMechanic.extraAnomalyRows!(input())
+    const g = groups.find(x => x.order === 40)!
+    expect(g.rows[0]).toMatchObject({
+      id: 'alice-c6-decisive-extra-attack',
+      slot: 0,
+      agentId: '1401',
+      type: '爱丽丝6命附伤',
+      name: '爱丽丝6命决胜状态额外攻击',
+      element: 'physical',
+      count: 15, // (sparkCount 2 + ultimateCount 1) × perStateCount 5
+    })
+  })
+
+  it('畏缩行逐字：id/count/perDamage（order=50）', () => {
+    const groups = aliceMechanic.extraAnomalyRows!(input())
+    const g = groups.find(x => x.order === 50)!
+    expect(g.rows[0]).toMatchObject({
+      id: 'alice-cowering-dot',
+      slot: 0,
+      agentId: '1401',
+      type: '畏缩 DOT',
+      name: '爱丽丝畏缩 DOT',
+      element: 'physical',
+      source: '畏缩状态 · 每 0.95s 强击伤害 2.5%',
+      count: 8,
+      perDamage: 2.5,
+      totalDamage: 20,
+    })
+  })
+
+  it('三组齐全时 order 依次为 20/40/50', () => {
+    const groups = aliceMechanic.extraAnomalyRows!(input())
+    expect(groups.map(g => g.order)).toEqual([20, 40, 50])
+  })
+
+  it('cinemaLevel<6 → 不含 C6 组（极性强击/畏缩仍在）', () => {
+    const groups = aliceMechanic.extraAnomalyRows!(input({ cinemaLevel: 0 }))
+    expect(groups.map(g => g.order)).toEqual([20, 50])
   })
 })

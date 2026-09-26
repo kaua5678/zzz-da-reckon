@@ -5,8 +5,13 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  ExtraAnomalyRowGroup,
+  ExtraAnomalyRowsInput,
 } from '../types'
+import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { CharacterResourceResult, JaneMechanicSource, MechanicSetting } from '@/types/resource'
+import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
+import { calcDirectDamage } from '@/core/damage'
 import { fmt } from '@/utils/format'
 
 const JANE_AGENT_ID = '1261'
@@ -252,5 +257,65 @@ export const janeMechanic: AgentMechanicModule = {
   buildExecutions: buildJaneExecutions,
   buildResourceResult: buildJaneResourceResult,
   resourceSections: buildJaneResourceSections,
+  /**
+   * 简专属异常附加行（CC-19b 2026-09-26，设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §7.1）：
+   * 六命强击暴击附伤（原块 3，order 30）。自 `damagePoolAnomaly.ts` 逐字迁入，字段与出现顺序照抄
+   * （对象键顺序可能进 rowsnap 哈希）；`panel` / 物理进度 / 轴内占比 / 敌人由消费端以闭包注入。
+   */
+  extraAnomalyRows: ({
+    slot, panel, cinemaLevel, isAxis, stunCoverage,
+    anomalyProgress, inWindowFraction, enemy, enemyDamageRes, teamAgentId, agentName,
+  }: ExtraAnomalyRowsInput) => {
+    const groups: ExtraAnomalyRowGroup[] = []
+    const janeSlot = slot
+    const janeCinema = cinemaLevel
+    const janePanel = panel
+    if (janeCinema >= 6 && janePanel) {
+      const physicalProg = anomalyProgress('physical')
+      const assaultCritRate = Math.min(100, Math.max(0, janePanel.assaultCritRate ?? 0))
+      const critCount = (physicalProg?.triggerCount ?? 0) * (assaultCritRate / 100)
+      if (critCount > 0) {
+        // 附伤随强击暴击触发 → 轴内易伤跟随物理强击触发轴内占比（用户口径 2026-08：
+        // 6命附伤事件和动作绑定，理应该伴随计数并且吃易伤）；非轴回落全局覆盖率。
+        // 乘区口径（用户 2026-09-03）：附伤占攻击区(异常精通)×倍率区(1600%)两个基础区，
+        // 其余增伤/防御/抗性/易伤/暴击乘区全吃（爱丽丝 6 命附伤同款）→ 走 calcDirectDamage 标准管线
+        const janeStun = isAxis ? inWindowFraction('physical') : stunCoverage
+        const result = calcDirectDamage({
+          panel: janePanel,
+          skillMultiplier: 1600,
+          damageElement: 'physical',
+          damageBasis: 'atk',
+          enemyDefense: enemy.defense,
+          enemyDefReduction: janePanel.enemyDefReduction ?? 0,
+          enemyDefFlatReduction: janePanel.enemyDefFlatReduction ?? 0,
+          enemyLevel: enemy.level,
+          enemyResistance: enemyDamageRes['physical'] ?? 0,
+          enemyResReduction: janePanel.enemyResReduction ?? 0,
+          stunMultiplier: enemy.stunVuln,
+          stunned: janeStun,
+          critMode: 'expect',
+          count: critCount,
+          basisValueOverride: janePanel.anomalyProficiency ?? 0,
+          basisLabelOverride: '异常精通',
+        })
+        const rows: DamagePoolRow[] = [{
+          id: 'jane-c6-assault-followup',
+          slot: janeSlot,
+          agentId: teamAgentId(janeSlot),
+          agentName: agentName(teamAgentId(janeSlot), janeSlot),
+          type: '简6命附伤',
+          name: '简6命强击暴击附伤',
+          element: 'physical',
+          source: '强击暴击后触发',
+          count: critCount,
+          perDamage: critCount > 0 ? result.damage / critCount : 0,
+          totalDamage: result.damage,
+          note: `异常精通 ${fmt(janePanel.anomalyProficiency ?? 0)} × 1600% 标准直伤管线（增伤/防御/抗性/易伤/暴击全吃）；按强击期望暴击次数 ${fmt(critCount, 2)} 次${isAxis ? ` · 易伤跟随物理强击轴内占比 ${fmt(janeStun, 2)}` : ''}`,
+        }]
+        groups.push({ order: EXTRA_ANOMALY_ROW_ORDER.assaultCritC6, rows })
+      }
+    }
+    return groups
+  },
   settings,
 }

@@ -7,14 +7,19 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  ExtraAnomalyRowGroup,
+  ExtraAnomalyRowsInput,
   ReadonlyTeam,
 } from '../types'
+import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type {
   CharacterOperationConfig,
   IterationState,
   SpecialResourceSection,
 } from '@/types/resource'
+import { calcAnomalyDamage, calcDirectDamage } from '@/core/damage'
+import { ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecAnomalyEvents } from '@/specs/mechanics'
@@ -567,6 +572,159 @@ export const aliceMechanic: AgentMechanicModule = {
   },
   // 伴随事件：三蓄 SW3(1401012) 末尾赠送极性强击（polar_assault），易伤跟随父动作
   attachedEvents: { '1401012': ['polar_assault'] },
+  /**
+   * 爱丽丝专属异常附加行（CC-19b 2026-09-26，设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §7.1）：
+   * 极性强击（块 2，order 20，**不看命座**）/ 六命决胜状态额外攻击（块 4，order 40）/ 畏缩 DOT（块 5，order 50）。
+   * 自 `damagePoolAnomaly.ts` 原块 2/4/5 逐字迁入，字段与出现顺序照抄（对象键顺序可能进 rowsnap 哈希）；
+   * 三块都读 `input.panel`（= `panelAt(damagePanels, slot)`），异常进度/轴内占比/机制滑块/异常池由消费端以闭包注入。
+   */
+  extraAnomalyRows: ({
+    slot, charResult, panel, cinemaLevel, isAxis, stunCoverage,
+    anomalyProgress, ultimateInAxisFraction, axisInUnits, getMechanicSetting, anomalyPool,
+    axisStunFor, enemy, enemyDamageRes, anomalyMultiplier, teamAgentId, agentName,
+  }: ExtraAnomalyRowsInput) => {
+    const groups: ExtraAnomalyRowGroup[] = []
+
+    // ---- 极性强击伤害（赠送触发，不走虚拟面板） ----
+    const polarAssaultProg = anomalyProgress('physical_polar_assault')
+    const polarAssaultSlot = slot
+    const polarAlicePanel = panel
+    if (polarAssaultProg && polarAssaultProg.triggerCount > 0 && polarAlicePanel) {
+      // 轴模式：极性强击易伤跟随父动作 SW3(1401012) 的轴内占比；影画2 终结技额外触发的
+      // 极性强击（c2UltSparkCount）跟随终结技轴内占比——按次数加权（2026-08 审计补接）
+      const sw3Frac = axisStunFor('polar_assault')
+      const aliceSm = charResult?.aliceSwordWillSource
+      const ultExtra = Math.max(0, Math.floor(aliceSm?.c2UltSparkCount ?? 0))
+      const sw3Count = Math.max(0, Math.floor(polarAssaultProg.triggerCount) - ultExtra)
+      const polarStunFor = polarAssaultProg.triggerCount > 0
+        ? (sw3Count * sw3Frac + ultExtra * ultimateInAxisFraction(polarAssaultSlot)) / polarAssaultProg.triggerCount
+        : stunCoverage
+      const result = calcAnomalyDamage({
+        panel: polarAlicePanel,
+        settlementPanel: polarAlicePanel,
+        baseMultiplier: ANOMALY_SINGLE_HIT_MULTIPLIER.physical,
+        element: 'physical' as any,
+        enemyDefense: enemy.defense,
+        enemyDefReduction: 0,
+        enemyDefFlatReduction: 0,
+        enemyLevel: enemy.level,
+        enemyResistance: enemyDamageRes.physical ?? 0,
+        enemyResReduction: polarAlicePanel?.enemyResReduction ?? 0,
+        stunned: polarStunFor,
+        stunMultiplier: enemy.stunVuln,
+        critMode: 'expect',
+        damageKind: 'anomaly',
+        anomalyMultiplier,
+      })
+      const perDamage = result.damage
+      groups.push({ order: EXTRA_ANOMALY_ROW_ORDER.polarAssault, rows: [{
+        id: 'polar-assault-damage',
+        slot: polarAssaultSlot,
+        agentId: teamAgentId(polarAssaultSlot),
+        agentName: agentName(teamAgentId(polarAssaultSlot), polarAssaultSlot),
+        type: '极性强击',
+        name: `极性强击（三蓄赠送）`,
+        element: 'physical_polar_assault',
+        source: `三蓄赠送触发 · 无视积蓄进度 · 爱丽丝面板`,
+        count: polarAssaultProg.triggerCount,
+        perDamage,
+        totalDamage: perDamage * polarAssaultProg.triggerCount,
+        multiplier: ANOMALY_SINGLE_HIT_MULTIPLIER.physical,
+        note: `${ANOMALY_SINGLE_HIT_MULTIPLIER.physical}% 单次 × 爱丽丝面板 · 赠送触发不耗异常条${isAxis ? ` · 易伤按触发源加权轴内占比 ${fmt(polarStunFor, 2)}（SW3 ${fmt(sw3Frac, 2)}${ultExtra > 0 ? ` ×${sw3Count} + 终结 ${fmt(ultimateInAxisFraction(polarAssaultSlot), 2)} ×${ultExtra}` : ''}）` : ''}`,
+      }] })
+    }
+
+    // ---- 爱丽丝六命决胜状态额外攻击 ----
+    const aliceSlot = slot
+    const aliceCinema = cinemaLevel
+    const alicePanel = panel
+    if (aliceCinema >= 6 && alicePanel) {
+      const aliceResult = charResult
+      const smSrc = aliceResult?.aliceSwordWillSource
+
+      if (smSrc && smSrc.sparkCount > 0) {
+        // 状态进入次数 = sparkCount + ultimateCount（每次星芒圆舞曲#3 或终结技进入/刷新决胜状态）
+        const ultimateCount = aliceResult.ultimateCount
+        const stateEntries = smSrc.sparkCount + ultimateCount
+
+        // 每状态额外攻击次数（默认5次；单轮最多6次，1秒CD）
+        const perStateCount = getMechanicSetting('alice.cinema6PerStateCount', 5)
+
+        // 总触发次数 = 状态进入次数 × 每次攻击次数
+        const totalTriggers = stateEntries * perStateCount
+
+        if (totalTriggers > 0) {
+          // 附伤随决胜状态进入（SW3 1401012 / 终结技）触发 → 轴内易伤 = 状态进入的加权轴内占比
+          // （用户口径 2026-08：6命附伤事件和动作绑定，理应该伴随计数并且吃易伤）；非轴回落全局覆盖率
+          const sw3Frac = isAxis && smSrc.sparkCount > 0
+            ? Math.max(0, Math.min(1, (axisInUnits(`${aliceSlot}:1401012`)) / smSrc.sparkCount))
+            : stunCoverage
+          const ultFrac = ultimateInAxisFraction(aliceSlot)
+          const stateFrac = stateEntries > 0
+            ? (smSrc.sparkCount * sw3Frac + ultimateCount * ultFrac) / stateEntries
+            : stunCoverage
+          // 乘区口径（用户 2026-09-03）：附伤占攻击区(异常精通)×倍率区(3300%)两个基础区，
+          // 其余增伤/防御/抗性/易伤/暴击乘区全吃（同简 6 命附伤）→ 走 calcDirectDamage 标准管线；
+          // 攻击本体必定暴击（原文：额外攻击必定暴击）→ critMode='crit'
+          const proficiency = alicePanel.anomalyProficiency ?? 0
+          const result = calcDirectDamage({
+            panel: alicePanel,
+            skillMultiplier: 3300,
+            damageElement: 'physical',
+            damageBasis: 'atk',
+            enemyDefense: enemy.defense,
+            enemyDefReduction: alicePanel.enemyDefReduction ?? 0,
+            enemyDefFlatReduction: alicePanel.enemyDefFlatReduction ?? 0,
+            enemyLevel: enemy.level,
+            enemyResistance: enemyDamageRes['physical'] ?? 0,
+            enemyResReduction: alicePanel.enemyResReduction ?? 0,
+            stunMultiplier: enemy.stunVuln,
+            stunned: stateFrac,
+            critMode: 'crit',
+            count: totalTriggers,
+            basisValueOverride: proficiency,
+            basisLabelOverride: '异常精通',
+          })
+
+          groups.push({ order: EXTRA_ANOMALY_ROW_ORDER.decisiveC6, rows: [{
+            id: 'alice-c6-decisive-extra-attack',
+            slot: aliceSlot,
+            agentId: teamAgentId(aliceSlot),
+            agentName: agentName(teamAgentId(aliceSlot), aliceSlot),
+            type: '爱丽丝6命附伤',
+            name: '爱丽丝6命决胜状态额外攻击',
+            element: 'physical',
+            source: '三蓄/终结技进入决胜状态 → 全队攻击额外命中',
+            count: totalTriggers,
+            perDamage: totalTriggers > 0 ? result.damage / totalTriggers : 0,
+            totalDamage: result.damage,
+            note: `异常精通 ${fmt(proficiency)} × 3300% 标准直伤管线（增伤/防御/抗性/易伤全吃）× 必定暴击 → 单次 ${fmt(totalTriggers > 0 ? result.damage / totalTriggers : 0)} · 状态进入 ${stateEntries} 次 × 每次 ${perStateCount} 次 = ${totalTriggers} 次${isAxis ? ` · 易伤按状态进入加权轴内占比 ${fmt(stateFrac, 2)}（SW3 ${fmt(sw3Frac, 2)} / 终结 ${fmt(ultFrac, 2)}）` : ''}`,
+          }] })
+        }
+      }
+    }
+
+    // ---- 爱丽丝被动 DOT（异常池 aliceCoweringDot 入池；畏缩/任意异常状态期间每 0.95s 强击伤害 2.5%） ----
+    const coweringDot = anomalyPool?.aliceCoweringDot
+    if (aliceSlot >= 0 && coweringDot && coweringDot.totalDotDamage > 0) {
+      groups.push({ order: EXTRA_ANOMALY_ROW_ORDER.coweringDot, rows: [{
+        id: 'alice-cowering-dot',
+        slot: aliceSlot,
+        agentId: teamAgentId(aliceSlot),
+        agentName: agentName(teamAgentId(aliceSlot), aliceSlot),
+        type: '畏缩 DOT',
+        name: '爱丽丝畏缩 DOT',
+        element: 'physical',
+        source: '畏缩状态 · 每 0.95s 强击伤害 2.5%',
+        count: coweringDot.totalTicks,
+        perDamage: coweringDot.dotDamagePerTick,
+        totalDamage: coweringDot.totalDotDamage,
+        note: `畏缩 DOT：每 ${coweringDot.dotInterval}s 造成强击伤害 ${coweringDot.dotRatio}% · ${fmt(coweringDot.totalTicks)} tick`,
+      }] })
+    }
+
+    return groups
+  },
   settings: [
     {
       id: 'alice.cinema6PerStateCount',

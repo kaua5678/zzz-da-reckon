@@ -24,6 +24,8 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 // CC-19a：异常附加行返回类型与派发输入（纯类型，不构成值边）。
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
+// CC-19b：`anomalyPool` 字段类型从 `DamagePoolContext['anomalyPoolResult']` 推导（纯类型）。
+import type { DamagePoolContext } from '@/composables/resourceCalc/damagePool'
 import type {
   buildAnomalyVirtualPanel as buildAnomalyVirtualPanelFn,
   buildAnomalySettlementEntries as buildAnomalySettlementEntriesFn,
@@ -1369,6 +1371,23 @@ export interface ExtraAnomalyRowsInput {
   teamAgentId: (slot: number) => string
   /** = env.agentName */
   agentName: (agentId: string, slot: number) => string
+  /** = panelAt(damagePanels, slot) */
+  panel: PanelValues | undefined
+  /** = configStore.team[slot]?.cinemaLevel ?? 0 */
+  cinemaLevel: number
+  isAxis: boolean
+  /** = ctx.stunCoverage */
+  stunCoverage: number
+  /** = env.inWindowFraction */
+  inWindowFraction: (element: string) => number
+  /** = env.ultimateInAxisFraction（模块调用时传 input.slot） */
+  ultimateInAxisFraction: (slot?: number) => number
+  /** = (key) => allocMap[key]?.inAxisUnits ?? 0（allocMap = ctx.axisAllocation；爱丽丝 C6 读 `${slot}:1401012`） */
+  axisInUnits: (key: string) => number
+  /** = (k, d) => configStore.getMechanicSetting(k, d) */
+  getMechanicSetting: (key: string, dflt: number) => number
+  /** = ctx.anomalyPoolResult（只读整体注入，模块内读 .aliceCoweringDot；避免在 core 侧出现角色前缀字段） */
+  anomalyPool: DamagePoolContext['anomalyPoolResult']
 }
 
 /** transformAnomalyPool 钩子输入（calcAnomalyPool 内部，perElement 之前） */
