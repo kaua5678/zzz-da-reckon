@@ -135,14 +135,14 @@ describe('悠真（1201）电壶→电囚→飞弦·斩资源循环', () => {
     expect(executions[0].dmgBonus).toBeCloseTo(8, 5)
     expect(executions[1].dmgBonus).toBeCloseTo(8, 5)
     // 失衡独有部分 = 40 × 0.8 = 32 留给 damagePool 按段直加
-    expect(executions[0].harumasaStunOnly).toBeCloseTo(32, 5)
+    expect(executions[0].stunOnlyDmgBonus).toBeCloseTo(32, 5)
 
     // 非轴：并集口径（0.5 + 0.2×0.5 = 0.6 → +24），无行级标记
     const cfgOff: any = { ...cfg, harumasaAxisActive: false }
     const rows2: any[] = [{ moveId: '1201020', category: 'special' }]
     harumasaMechanic.patchExecutions!({ cfg: cfgOff, state: { exSpecialCount: 1, chainCountTotal: 1, ultimateCount: 1 }, executions: rows2 } as any)
     expect(rows2[0].dmgBonus).toBeCloseTo(24, 5)
-    expect(rows2[0].harumasaStunOnly).toBeUndefined()
+    expect(rows2[0].stunOnlyDmgBonus).toBeUndefined()
   })
 
   it('未激活额外能力：轴模式不标记、不增伤', () => {
@@ -154,7 +154,7 @@ describe('悠真（1201）电壶→电囚→飞弦·斩资源循环', () => {
     const executions: any[] = [{ moveId: '1201020', category: 'special' }]
     harumasaMechanic.patchExecutions!({ cfg, state: { exSpecialCount: 1, chainCountTotal: 1, ultimateCount: 1 }, executions } as any)
     expect(executions[0].dmgBonus ?? 0).toBe(0)
-    expect(executions[0].harumasaStunOnly).toBeUndefined()
+    expect(executions[0].stunOnlyDmgBonus).toBeUndefined()
   })
 })
 

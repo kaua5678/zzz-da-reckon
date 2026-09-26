@@ -775,6 +775,12 @@ export interface AgentMechanicModule {
    */
   directRowBonus?(input: DirectRowBonusInput): DirectRowBonus | null
   /**
+   * 行级轴内占比（CC-33b 2026-09-27，类型注释见 `DirectRowAxisSplitInput`）：认领本行则返回占比与 note，
+   * 伤害池按占比拆「轴内吃满易伤 / 轴外无易伤」两段；不认领返回 null（走后续通用分支）。
+   * 当前实现方 = 希希芙蚀骨（`xixifu.ts`）。
+   */
+  directRowAxisSplit?(input: DirectRowAxisSplitInput): DirectRowAxisSplit | null
+  /**
    * **角色专属附加直伤行**（规则 6 迁移落点，CC-18a 2026-09-26，设计稿
    * `docs/mcp-cc18-extra-direct-rows.md` §2-1/§2-3）：
    * 由行所属角色的模块生成自己的附加直伤行，返回数组，消费端（`damagePoolCharExtras.ts#emitCharExtraRows`）
@@ -1340,6 +1346,30 @@ export interface AxisScalarOverlays {
  * `scalarBySlot.get(slot)`），故模块读到的永远是「自己这个角色的」覆盖量——这是 CC-17 修
  * 可琳 `basic_attack` 泄漏的关键（旧实现把四个桶跨模块合并成全局表，见 `AgentAxisOverlays` 头注释）。
  */
+/**
+ * `directRowAxisSplit` 钩子入参（CC-33b 2026-09-27）：轴模式下，某些直伤行的「轴内（吃失衡易伤）占比」
+ * 不能按该行自己的轴内块数算（如希希芙蚀骨：伤害来自毒素消耗，失衡内攒的毒素才在失衡内爆发）。
+ * 由**行所属角色**的模块给占比；伤害池只在 `isAxis && axisSlots.has(slot)` 时询问，且排在
+ * 赠链 / CD 自动行分支之后、伴随事件分支之前（与原希希芙专属分支同位）。
+ */
+export interface DirectRowAxisSplitInput {
+  /** 当前行（模块按 `moveId` 认领；不认领返回 null） */
+  exec: SkillExecution
+  /** 行所属槽位 */
+  slot: number
+  /** 本槽资源结果（希希芙读 `specResources.xixifu_toxin` 与各类次数） */
+  charResult: CharacterResourceResult
+  /** 本槽某 moveId 的轴内块数（= 伤害池 `axisAllocation["${slot}:${moveId}"]?.inAxisUnits ?? 0`） */
+  axisInUnits: (moveId: string) => number
+}
+
+/** `directRowAxisSplit` 返回：轴内占比（伤害池再夹到 [0,1]）与两段 note 片段（含前导「 · 」） */
+export interface DirectRowAxisSplit {
+  inFraction: number
+  inNote: string
+  outNote: string
+}
+
 export interface DirectRowBonusInput {
   /** 当前行（读 `moveId`；佩洛读 `peiluoKagerouPairRatio`） */
   exec: SkillExecution

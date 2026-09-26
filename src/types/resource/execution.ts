@@ -104,6 +104,10 @@ export interface SkillExecution {
   /** CD 驱动的后台自动行（如猫又超凶爪印每秒 dot）：轴模式不按捏轴认领、不进轴编辑器放置语义，
    *  改按失衡时间占比拆「占比内吃满易伤 / 其余无易伤」（非轴模式本就按全局覆盖率，不受影响） */
   autoSplitByStun?: boolean
+  /** 仅失衡段生效的增伤%（CC-33a 2026-09-27，原名 `harumasaStunOnly`）：轴模式下模块把「失衡专属 buff」写在行上，
+   *  伤害池按段直加（轴内段 stunOverride>0 才加、轴外段不加）；字段存在即表示「本行有失衡专属部分」。
+   *  当前唯一写入方 = 悠真额外能力（`harumasa.ts` patchExecutions，只在轴模式写）。 */
+  stunOnlyDmgBonus?: number
   /** 时间桶：necessary=必做动作（必要池）/ basic=平A池渲染 / backstage=后台活动。
    *  前台判定见 isFrontlineExecution：未打标按前台处理（保守，不漏计）。
    *  Σ前台行时间 ≡ 该角色账本（necessaryTime+basicAttackTime）由折叠循环强制收敛（resource.ts）。 */

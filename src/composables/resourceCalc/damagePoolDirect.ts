@@ -7,7 +7,7 @@
  *
  * 与外层闭包的通信面 = `CharRowsEnv`：共享输出数组 `rows`（经 `pushDirect` 闭包按原顺序 push，
  * 禁止换成返回值拼接）+ `ctx` 快照 + 只读局部量/闭包（`isAxis` / `axisSlots` / `axisSplitFor` /
- * `pushDirect` / `seenDirectIds` / `xixifuToxinInAxisFraction`）。函数**不** import
+ * `pushDirect` / `seenDirectIds`）。函数**不** import
  * `./damagePool`（只 `import type` `DamagePoolContext`，运行时无环），也不写任何外层可变量
  * ——`pushDirect` / `seenDirectIds` 自带闭包写共享 `rows`，其余全是只读查询。
  *
@@ -21,6 +21,7 @@ import { LIUYIN_EX_MOVE_IDS } from '@/mechanics/agents/liuyin'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import type { Agent, AgentSkills, PanelValues } from '@/types/catalog'
 import type { AnomalyEventExecution, CharacterResourceResult } from '@/types/resource'
+import type { DirectRowAxisSplit } from '@/mechanics/types'
 import { findMoveById } from './skillRows'
 import { buildMechanicTeamMembers } from './panelPhases'
 import type { DamagePoolRow } from './helpers'
@@ -71,8 +72,6 @@ export interface CharRowsEnv {
   releaseStunSegments: (event: AnomalyEventExecution, element: string, count: number, carrierInAxisFraction?: number) => Array<{ count: number; stunned: number; suffix: string; tag: string }>
   /** 同 slot 同 moveId 多行 id 去重计数（原地变更） */
   seenDirectIds: Map<string, number>
-  /** 希希芙蚀骨轴内占比 */
-  xixifuToxinInAxisFraction: (slot: number, cr: any) => number
   /** 槽位显示名 */
   agentName: (agentId: string, slot: number) => string
   /** 终极技轴内占比（琉音6命余音等「终结技驱动附伤」） */
@@ -93,7 +92,7 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
     axisScalarBySlot,
   } = env.ctx
   const {
-    isAxis, axisSlots, axisSplitFor, pushDirect, seenDirectIds, xixifuToxinInAxisFraction,
+    isAxis, axisSlots, axisSplitFor, pushDirect, seenDirectIds,
   } = env
   const { charResult, slot, agent, skills, liuyinSrc } = cl
 
@@ -176,14 +175,14 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
       // 可琳扫除帮手同款分段通道）——patchHarumasaExecutions 已把公共异常部分（40×异常覆盖率）
       // 摊入全部行，这里只补失衡独有部分 40×(1−异常覆盖)，且仅轴内段（stunOverride>0，敌人失衡）加；
       // 轴外段敌人未失衡、只吃异常部分。非轴走 patch 并集口径（不加此处）。
-      // ⚠ 悠真是**行级字段**（`harumasaStunOnly`），不属于 overlay、没有 `axisWindowOverlays`
+      // ⚠ 悠真是**行级字段**（`stunOnlyDmgBonus`，CC-33a 前名 `harumasaStunOnly`），不属于 overlay、没有 `axisWindowOverlays`
       // （设计稿 §3 第 3 条），故留在消费端，其 note 片段放在 `rb.note` 之后。
-      let harumasaStunOnlyBonus = 0
+      let stunOnlyDmgBonus = 0
       // 2026-09-15 编排层棘轮：原判据 `charResult.agentId === '1201' && isAxis && exec.harumasaStunOnly !== undefined`。
       // agentId 判断**冗余**——该字段的唯一写入方 = `harumasa.ts:329` 的 patchExecutions
       // （只在 `cycle.axisActive` 时写自己的行）⇒ 字段存在即蕴含「是悠真且轴模式」（判据同 T6）。
-      if ((exec as any).harumasaStunOnly !== undefined) {
-        harumasaStunOnlyBonus = stunOverride > 0 ? Math.max(0, Number((exec as any).harumasaStunOnly)) : 0
+      if (exec.stunOnlyDmgBonus !== undefined) {
+        stunOnlyDmgBonus = stunOverride > 0 ? Math.max(0, Number(exec.stunOnlyDmgBonus)) : 0
       }
       pushDirect({
         id: `${rowId}${idSuffix}`,
@@ -194,11 +193,11 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
         source: resolved?.source ?? exec.moveId,
         count: isPerSecondRow ? 1 : units,
         multiplier: unitMultiplier * (isPerSecondRow ? units : 1),
-        note: `${baseNote}${extraNote}${rb?.note ?? ''}${harumasaStunOnlyBonus > 0 ? ` · 失衡增伤+${harumasaStunOnlyBonus.toFixed(1)}%（轴内直加）` : ''}`,
+        note: `${baseNote}${extraNote}${rb?.note ?? ''}${stunOnlyDmgBonus > 0 ? ` · 失衡增伤+${stunOnlyDmgBonus.toFixed(1)}%（轴内直加）` : ''}`,
         moveId: exec.moveId,
         critRateBonus,
         critDmgBonus: critDmgBonus + (rb?.critDmgBonus ?? 0),
-        dmgBonus: (exec.dmgBonus ?? 0) + (rb?.dmgBonus ?? 0) + harumasaStunOnlyBonus,
+        dmgBonus: (exec.dmgBonus ?? 0) + (rb?.dmgBonus ?? 0) + stunOnlyDmgBonus,
         sheerDmgBonus: (exec.sheerDmgBonus ?? 0) + (rb?.sheerDmgBonus ?? 0),
         flatDamageBonus: exec.flatDamageBonus,
         basisValueOverride: exec.basisValueOverride,
@@ -211,6 +210,8 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
         sourceTag: sourceTag ?? exec.source,
       })
     }
+    // 模块自定的行级轴内占比（CC-33b，见下方对应分支）；只在该分支条件里求值。
+    let rowSplit: DirectRowAxisSplit | null = null
     if (isAxis && exec.chainGift) {
       // 诺姆膛温换连携（赠送连携招式=上一位队友本人的连携技，注入时带 chainGift 标记）：
       // 吃失衡易伤的次数 = 轴内实际执行的赠块数（':gift' 后缀 key，受窗口时间门控：占时间、超窗跳过）
@@ -229,12 +230,15 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
       const inUnits = Math.min(totalUnits, Math.round(totalUnits * Math.max(0, Math.min(1, stunCoverage))))
       emitExecDirect(inUnits, 1, '', ' · 失衡内（CD自动行按占比）')
       emitExecDirect(totalUnits - inUnits, 0, '-out', ' · 轴外（CD自动行按占比，无易伤）')
-    } else if (isAxis && axisSlots.has(slot) && (exec.moveId === '1521019' || exec.moveId === 'xixifu_shigu_special')) {
-      // 希希芙蚀骨：失衡内回复的毒素由蛇吻手动消耗 → 全部在失衡内爆发（吃满易伤），其余轴外无易伤
-      const frac = xixifuToxinInAxisFraction(slot, charResult)
-      const inUnits = Math.min(totalUnits, Math.round(totalUnits * frac))
-      emitExecDirect(inUnits, 1, '', ' · 失衡内毒素爆发')
-      emitExecDirect(totalUnits - inUnits, 0, '-out', ' · 轴外毒素（无失衡易伤）')
+    } else if (isAxis && axisSlots.has(slot) && (rowSplit = mechanic?.directRowAxisSplit?.({
+      exec, slot, charResult, axisInUnits: moveId => allocMap[`${slot}:${moveId}`]?.inAxisUnits ?? 0,
+    }) ?? null) !== null) {
+      // 行级轴内占比由行所属角色的模块给（CC-33b 2026-09-27，`AgentMechanicModule.directRowAxisSplit`）。
+      // 原为希希芙蚀骨专属分支（按 moveId 1521019 / xixifu_shigu_special 判）+ 编排层 `xixifuToxinInAxisFraction`，
+      // 算式逐字搬进 `xixifu.ts`。占比内吃满易伤，其余轴外无易伤。
+      const inUnits = Math.min(totalUnits, Math.round(totalUnits * Math.max(0, Math.min(1, rowSplit.inFraction))))
+      emitExecDirect(inUnits, 1, '', rowSplit.inNote)
+      emitExecDirect(totalUnits - inUnits, 0, '-out', rowSplit.outNote)
     } else if (isAxis && axisSlots.has(slot) && attachedInAxis[exec.moveId] !== undefined) {
       // **伴随事件**（附伤/异放，注册面 = 模块的 `attachedEvents`）：自身不占轴内块，
       // 故不能按自己的 moveId 查 `axisSplitFor`（查不到 ⇒ 整段被判轴外、零易伤）。

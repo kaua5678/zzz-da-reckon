@@ -345,13 +345,13 @@ function patchHarumasaExecutions({ cfg, state, executions }: AgentResourceInput)
     }
     // 额外能力增伤：失衡/异常并集。
     // 轴模式「失衡专属 buff 轴内直加」（2026-09-03，可琳扫除帮手同款通道）：公共异常部分
-    // （40×异常覆盖率）摊入全部行；失衡独有部分（40×(1−异常覆盖率)）经 exec.harumasaStunOnly
+    // （40×异常覆盖率）摊入全部行；失衡独有部分（40×(1−异常覆盖率)）经 exec.stunOnlyDmgBonus
     // 由 damagePool 按段直加（轴内段 +、轴外段不 +）。非轴并集口径不变。
     if (additionalActive && cycle.unionCoverage > 0) {
       if (cycle.axisActive) {
         const abnormalPart = HARUMASA_ADDITIONAL_DMG * cycle.abnormalCoverage
         if (abnormalPart > 0) exec.dmgBonus = (exec.dmgBonus ?? 0) + abnormalPart
-        ;(exec as unknown as Record<string, unknown>).harumasaStunOnly = HARUMASA_ADDITIONAL_DMG * (1 - cycle.abnormalCoverage)
+        exec.stunOnlyDmgBonus = HARUMASA_ADDITIONAL_DMG * (1 - cycle.abnormalCoverage)
       } else {
         exec.dmgBonus = (exec.dmgBonus ?? 0) + HARUMASA_ADDITIONAL_DMG * cycle.unionCoverage
       }

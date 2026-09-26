@@ -1,3 +1,4 @@
+import type { DirectRowAxisSplit, DirectRowAxisSplitInput } from '@/mechanics/types'
 import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
@@ -241,6 +242,41 @@ function buildXixifuResourceSections(input: AgentResourceSectionsInput) {
   return sections
 }
 
+/** 希希芙蚀骨轴内占比（CC-33b 2026-09-27 由 `damagePool.ts` 逐字搬入）：失衡内回复的毒素占总毒素比例（蛇吻手动消耗 → 失衡内爆发，用户口径 2026-08）。
+ *  毒牙/终结/连携按轴内单位数折算；C2（连携/终结失衡命中）视为全轴内；平A吐信按非平A轴内占比近似。 */
+function xixifuToxinInAxisFraction(input: DirectRowAxisSplitInput): number {
+  const cr: any = input.charResult
+  const { axisInUnits } = input
+  const toxin = cr.specResources?.['xixifu_toxin']
+  const total = Math.max(0, (toxin?.initialValue ?? 0) + (toxin?.totalGain ?? 0))
+  if (total <= 0) return 0
+  const g = (toxin?.gains ?? {}) as Record<string, number>
+  const totalEx = Math.max(1, cr.exSpecialCount ?? 0)
+  const totalUlt = Math.max(1, cr.ultimateCount ?? 0)
+  const totalChain = Math.max(1, cr.chainCountTotal ?? 0)
+  const inEx = axisInUnits('1521008') + axisInUnits('1521009')
+  const inUlt = axisInUnits('1521013')
+  const inChain = axisInUnits('1521012')
+  const duya = (g.toxin_duya_base ?? 0) + (g.toxin_duya_hold ?? 0)
+  const ult = g.toxin_ultimate ?? 0
+  const chain = g.toxin_chain ?? 0
+  const c2 = g.toxin_c2_stunned_chain_ultimate ?? 0
+  const basic = (g.toxin_tuxin_stage4 ?? 0) + (g.toxin_tuxin_stunned_bonus ?? 0)
+  const nonBasicTotal = duya + ult + chain + c2
+  const nonBasicIn = duya * (inEx / totalEx) + ult * (inUlt / totalUlt) + chain * (inChain / totalChain) + c2
+  const basicIn = basic * (nonBasicTotal > 0 ? nonBasicIn / nonBasicTotal : 0)
+  return Math.max(0, Math.min(1, (nonBasicIn + basicIn) / total))
+}
+
+/** 蚀骨直伤行 moveId（毒素消耗蚀骨 / 特殊蚀骨两种表达；原伤害池专属分支的判据） */
+const XIXIFU_SHIGU_MOVE_IDS = new Set(['1521019', 'xixifu_shigu_special'])
+
+/** 希希芙蚀骨：失衡内回复的毒素由蛇吻手动消耗 → 全部在失衡内爆发（吃满易伤），其余轴外无易伤 */
+function xixifuDirectRowAxisSplit(input: DirectRowAxisSplitInput): DirectRowAxisSplit | null {
+  if (!XIXIFU_SHIGU_MOVE_IDS.has(input.exec.moveId)) return null
+  return { inFraction: xixifuToxinInAxisFraction(input), inNote: ' · 失衡内毒素爆发', outNote: ' · 轴外毒素（无失衡易伤）' }
+}
+
 export const xixifuMechanic: AgentMechanicModule = {
   id: 'agent:xixifu',
   agentIds: [XIXIFU_AGENT_ID],
@@ -252,4 +288,5 @@ export const xixifuMechanic: AgentMechanicModule = {
   buildExecutions: buildXixifuExecutions,
   buildResourceResult: buildXixifuResourceResult,
   resourceSections: buildXixifuResourceSections,
+  directRowAxisSplit: xixifuDirectRowAxisSplit,
 }

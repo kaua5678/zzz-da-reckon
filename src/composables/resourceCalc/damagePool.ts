@@ -385,34 +385,10 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
 
     const seenDirectIds = new Map<string, number>()
 
-    /** 希希芙蚀骨轴内占比：失衡内回复的毒素占总毒素比例（蛇吻手动消耗 → 失衡内爆发，用户口径 2026-08）。
-     *  毒牙/终结/连携按轴内单位数折算；C2（连携/终结失衡命中）视为全轴内；平A吐信按非平A轴内占比近似。 */
-    const xixifuToxinInAxisFraction = (slot: number, cr: any): number => {
-      const toxin = cr.specResources?.['xixifu_toxin']
-      const total = Math.max(0, (toxin?.initialValue ?? 0) + (toxin?.totalGain ?? 0))
-      if (total <= 0) return 0
-      const g = (toxin?.gains ?? {}) as Record<string, number>
-      const totalEx = Math.max(1, cr.exSpecialCount ?? 0)
-      const totalUlt = Math.max(1, cr.ultimateCount ?? 0)
-      const totalChain = Math.max(1, cr.chainCountTotal ?? 0)
-      const inEx = (allocMap[`${slot}:1521008`]?.inAxisUnits ?? 0) + (allocMap[`${slot}:1521009`]?.inAxisUnits ?? 0)
-      const inUlt = allocMap[`${slot}:1521013`]?.inAxisUnits ?? 0
-      const inChain = allocMap[`${slot}:1521012`]?.inAxisUnits ?? 0
-      const duya = (g.toxin_duya_base ?? 0) + (g.toxin_duya_hold ?? 0)
-      const ult = g.toxin_ultimate ?? 0
-      const chain = g.toxin_chain ?? 0
-      const c2 = g.toxin_c2_stunned_chain_ultimate ?? 0
-      const basic = (g.toxin_tuxin_stage4 ?? 0) + (g.toxin_tuxin_stunned_bonus ?? 0)
-      const nonBasicTotal = duya + ult + chain + c2
-      const nonBasicIn = duya * (inEx / totalEx) + ult * (inUlt / totalUlt) + chain * (inChain / totalChain) + c2
-      const basicIn = basic * (nonBasicTotal > 0 ? nonBasicIn / nonBasicTotal : 0)
-      return Math.max(0, Math.min(1, (nonBasicIn + basicIn) / total))
-    }
-
     const charEnv: CharRowsEnv = {
       ctx, rows, isAxis: Boolean(isAxis), axisSlots, axisSplitFor, axisStunFor,
       pushDirect, pushRelease, releaseMultiplierFor, inStunAttributionCandidates,
-      releaseStunSegments, seenDirectIds, xixifuToxinInAxisFraction, agentName,
+      releaseStunSegments, seenDirectIds, agentName,
       ultimateInAxisFraction,
     }
     for (const charResult of adjustedResourceResult.characters) {
