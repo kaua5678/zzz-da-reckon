@@ -15,9 +15,6 @@ import type { TeamResourceResult, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-// 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
-// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-import { findSlotByIdentity } from './anomalyPanels'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { findMoveById, fusedRowValue } from './skillRows'
@@ -153,20 +150,37 @@ export function applyLiuyinPromote(
   }
 }
 
-/** 从某轮资源池结果构建转大参数；队伍无琉音（1481）时返回 null */
+/**
+ * 赠终结技提供者槽位（CC-35d-B3 2026-09-27；原按身份 `findSlotByIdentity(['1481'])`）：
+ * 首个实现模块能力 `ultimateGiftSource` 的在队槽位，无则 -1。本库 teammateBuffId 均等于自身 id，与原查找等价。
+ */
+export function ultimateGiftProviderSlot(configStore: ReturnType<typeof useConfigStore>): number {
+  return configStore.team.findIndex(m => !!m.agentId && !!getAgentMechanic(m.agentId)?.ultimateGiftSource)
+}
+
+/** 提供者槽位 + 本轮赠大来源（好评总量）；无提供者或本轮无来源时 null（CC-35d-B3） */
+export function ultimateGiftSourceOf(
+  configStore: ReturnType<typeof useConfigStore>,
+  rr: TeamResourceResult,
+): { slot: number; goodReviewTotal: number } | null {
+  const slot = ultimateGiftProviderSlot(configStore)
+  if (slot < 0) return null
+  const res = rr.characters.find(c => c.slot === slot)
+  const src = res ? getAgentMechanic(configStore.team[slot].agentId)?.ultimateGiftSource?.(res) ?? null : null
+  return src ? { slot, goodReviewTotal: src.goodReviewTotal } : null
+}
+
+/** 从某轮资源池结果构建转大参数；队伍无赠大提供者（现为琉音）时返回 null */
 export function buildPromoteParams(
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
   rr: TeamResourceResult,
 ): LiuyinPromoteParams | null {
-  // 按身份找槽位（单一事实源 `findSlotByIdentity`，规则 11；2026-09-18 round 21 夜）
-  const liuyinIdx = findSlotByIdentity(configStore, catalogStore, ['1481'])
-  if (liuyinIdx < 0) return null
-  const liuyinSrc = rr.characters.find(c => c.slot === liuyinIdx)?.liuyinMechanicSource
-  if (!liuyinSrc) return null
+  const gift = ultimateGiftSourceOf(configStore, rr)
+  if (!gift) return null
   const hug60Setting = configStore.getMechanicSetting('liuyin.hug60Count', -1)
   const targetSetting = configStore.getMechanicSetting('liuyin.ultimateTargetSlot', -1)
-  const targetSlot = resolveUltimateTargetSlot(liuyinIdx, configStore.team.length, targetSetting)
+  const targetSlot = resolveUltimateTargetSlot(gift.slot, configStore.team.length, targetSetting)
   const targetAgentId = configStore.team[targetSlot]?.agentId ?? ''
   const targetChar = rr.characters.find(c => c.slot === targetSlot)
   const targetSkills = targetAgentId ? catalogStore.agentSkillsByAgentMap.get(targetAgentId) : undefined
@@ -176,7 +190,7 @@ export function buildPromoteParams(
   const chain = targetSkills ? findChainAttack(targetSkills) : null
   const ultElement = (targetAgentId && catalogStore.agentsMap.get(targetAgentId)?.damageElement) || 'physical'
   return {
-    goodReviewTotal: liuyinSrc.goodReviewTotal,
+    goodReviewTotal: gift.goodReviewTotal,
     hug60Setting,
     targetSlot,
     chainMoveId: chain?.moveId ?? '',

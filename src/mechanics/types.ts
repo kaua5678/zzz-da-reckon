@@ -820,6 +820,13 @@ export interface AgentMechanicModule {
    */
   skipsGenericDirectRow?(input: { charResult: DeepReadonly<CharacterResourceResult>; moveId: string; isAxis: boolean }): boolean
   /**
+   * 赠终结技来源（CC-35d-B3 2026-09-27）：`resourceCalc/liuyinPromote.ts#ultimateGiftSourceOf` 取首个实现本能力的在队槽位，
+   * 以其资源结果调用；返回 null = 本轮无来源（不做好评转大）。`goodReviewTotal` 驱动转大不动点
+   * （`buildPromoteParams` / `promoteFixpoint`），目标 = 上一位队友。引擎时间预留走 `gift-chain:ultimate`
+   * （`ultimateGiftOf`），两者须同源。现唯一实现：琉音。
+   */
+  ultimateGiftSource?(result: DeepReadonly<CharacterResourceResult>): { goodReviewTotal: number } | null
+  /**
    * **角色专属异常附加行**（规则 6 迁移落点，CC-19a 2026-09-26，设计稿
    * `docs/mcp-cc19-extra-anomaly-rows.md` §2.1/§2.3）：
    * 由行所属角色的模块生成自己的异常尾段附加行，返回**分组**（`order` 取

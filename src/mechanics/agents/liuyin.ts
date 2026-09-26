@@ -564,6 +564,10 @@ export const liuyinMechanic: AgentMechanicModule = {
       resolveUltimateTargetSlot(ownSlot, teamSize, Math.floor(cfgNum(cfg, 'liuyin.ultimateTargetSlot', -1))),
     secondsPerUnit: ({ targetCfg }) => targetCfg.ultimateActionTime ?? 0,
   },
+  /** 赠终结技来源（CC-35d-B3：编排层按能力找提供者，原 findSlotByIdentity(['1481']) + 直读 liuyinMechanicSource） */
+  ultimateGiftSource: result => result.liuyinMechanicSource
+    ? { goodReviewTotal: result.liuyinMechanicSource.goodReviewTotal }
+    : null,
   /**
    * 通用直伤跳过（CC-35d-B2 2026-09-27；原 `damagePoolDirect.ts` 内联 `liuyinSrc && !isAxis && LIUYIN_EX_MOVE_IDS`）：
    * 非轴模式下三个强特行由下方 `extraDirectRows` 的强特拆分块按失衡次数重放，这里与那块**同门控**

@@ -33,6 +33,8 @@ import {
   applyLiuyinPromote,
   buildPromoteParams,
   promoteFixpoint,
+  ultimateGiftProviderSlot,
+  ultimateGiftSourceOf,
 } from './liuyinPromote'
 import { applyChainGift } from './chainGift'
 import type { CalcRoundThreads } from './roundThreads'
@@ -354,11 +356,11 @@ export function createRunCalcRound(deps: {
     // 使试探测量/账本预留与轴栈窗口口径同源（见 core/resource/helpers.ts 的 `ultGiftTime`，CC-35c-D 前名 liuyinGiftTime）。
     let axisLiuyinPromote: { targetSlot: number; count: number } | undefined
     if (axisActive && axisHug) {
-      const liuyinIdx = findSlotByIdentity(configStore, catalogStore, ['1481'])
-      if (liuyinIdx >= 0) {
+      const giftSlot = ultimateGiftProviderSlot(configStore)  // CC-35d-B3：原按身份查找琉音槽位
+      if (giftSlot >= 0) {
         axisLiuyinPromote = {
           targetSlot: resolveUltimateTargetSlot(
-            liuyinIdx, configStore.team.length,
+            giftSlot, configStore.team.length,
             configStore.getMechanicSetting('liuyin.ultimateTargetSlot', -1),
           ),
           count: axisHug.hug60 + axisHug.hug90,
@@ -745,7 +747,7 @@ export function createRunCalcRound(deps: {
     const baseAnomaly = extractAnomalyExecsFrom(rr, true)
     const p = buildPromoteParams(configStore, catalogStore, rr)
     if (baseStun.length === 0) return null
-    const goodReview = rr.characters.find(c => c.liuyinMechanicSource)?.liuyinMechanicSource?.goodReviewTotal ?? -1
+    const goodReview = ultimateGiftSourceOf(configStore, rr)?.goodReviewTotal ?? -1  // CC-35d-B3
     const energyBySlot: Record<number, number> = {}
     for (const c of rr.characters) energyBySlot[c.slot] = c.energySource?.total ?? 0
 
