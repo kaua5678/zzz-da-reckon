@@ -344,7 +344,7 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'core 角色名中缀/子目录',
     file: 'src/core/** + src/composables/resourceCalc/** + useResourceCalc.ts（口径见 scripts/lib/core-role-field-ratchet.mjs 判据 23 段）',
-    frozen: 8,  // 2026-09-27 CC-43d 13→8（computeRemielleEntryPanel → computeEntrySnapshotPanel 零差改名）。CC-43b 立尺 13（CC-43a 先零差改名 7 个纯命名项后实测）：computeLiuyinHugCounts 4 / computeRemielleEntryPanel 5 / hasLiuyin 2 / SIGRID_LANCE_SEGMENT_IDS 2
+    frozen: 6,  // 2026-09-27 CC-43e 8→6（roundInputs hasLiuyin 身份判定 → 模块声明 ownsPromoteVariantAxisBlocks）。CC-43d 13→8（computeRemielleEntryPanel → computeEntrySnapshotPanel 零差改名）。CC-43b 立尺 13（CC-43a 先零差改名 7 个纯命名项后实测）：computeLiuyinHugCounts 4 / computeRemielleEntryPanel 5 / hasLiuyin 2 / SIGRID_LANCE_SEGMENT_IDS 2
     target: 0,
     due: '2026-12-31',
     plan: 'census §5.47 立卡：CC-43c 琉音转大次数（computeLiuyinHugCounts 值导入 → 模块能力）、CC-43d 蕾米入场面板（computeRemielleEntryPanel 迁模块/通用化）、CC-43e hasLiuyin 身份字面量 → 模块能力、CC-43f 希格莉德枪段 id 常量 → 模块能力',

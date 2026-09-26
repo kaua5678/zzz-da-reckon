@@ -26,7 +26,6 @@ import { SIGRID_LANCE_SEGMENT_IDS } from '@/mechanics/agents/sigrid'
 import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
 // 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-import { findSlotByIdentity } from './anomalyPanels'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { findMoveById } from './skillRows'
@@ -179,14 +178,12 @@ export function createConvergenceRoundInputs(deps: {
       const axisActions: StackActionCost[] = []
       // 60/90 转大块是琉音（1481）好评赠送终结技的专属机制：队伍无琉音时跳过（不当作普通轴动作执行，
       // 否则无琉音队伍也会打出 promoteVariant 块的终结技——2026-08 修复）
-      // ⚠ 本判定是「队里有没有琉音」⇒ 同一个身份形状，复用 `findSlotByIdentity`（`>= 0` = 存在，
-      // 与 `some` 同义）。**但「转大块归琉音所有」这条知识仍留在编排层**（只是从内联回调收成实参）——
-      // 真正的 0 判定形态需模块声明「我拥有 promoteVariant 块」（`backstageAutoFill`/
-      // `producesInteractionTopUp` 同族），那要给 `AgentMechanicModule` 加新声明字段 =
-      // 改 `src/mechanics/types.ts`，超出本批授权面 ⇒ 本批只做 DRY、把缺口如实挂账。
-      const hasLiuyin = findSlotByIdentity(configStore, catalogStore, ['1481']) >= 0
+      // CC-43e（2026-09-27）：「转大块归谁」由模块声明 `ownsPromoteVariantAxisBlocks`（琉音），编排层无身份判定。
+      // 原为 `findSlotByIdentity(…, ['1481']) >= 0`；琉音 teammateBuffId 即自身 id ⇒ 按 agentId 派发等价。
+      const hasPromoteVariantOwner = configStore.team.some(c =>
+        !!c.agentId && getAgentMechanic(c.agentId)?.ownsPromoteVariantAxisBlocks === true)
       for (const act of axis.actions) {
-        if (act.promoteVariant && !hasLiuyin) continue
+        if (act.promoteVariant && !hasPromoteVariantOwner) continue
         // 诺姆转连携块（norma-hat-chain）与赠品连携块（怒焰·赠 sourceTag='gift'）：
         // 都标记「赠送连携吃失衡易伤」的轴内单位，不占目标自身连携次数/喧响。
         if (act.moveId === 'norma-hat-chain' || act.sourceTag === 'gift') {

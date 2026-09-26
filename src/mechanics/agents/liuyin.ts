@@ -514,6 +514,8 @@ const settings: MechanicSetting[] = [
 ]
 
 export const liuyinMechanic: AgentMechanicModule = {
+  // CC-43e：轴预设 60/90 转大块（promoteVariant）归琉音所有；队里无琉音时编排层跳过这些块
+  ownsPromoteVariantAxisBlocks: true,
   id: 'agent:liuyin',
   agentIds: [LIUYIN_AGENT_ID],
   name: '琉音',

@@ -922,6 +922,12 @@ export interface AgentMechanicModule {
    */
   producesInteractionTopUp?: boolean
   /**
+   * CC-43e（2026-09-27）：本角色「拥有」轴预设里的 `promoteVariant`（60/90 转大）块。
+   * 编排层 `roundInputs.ts#buildStackAxes`：队里没有任何声明者时跳过 promoteVariant 块（不当普通轴动作执行）。
+   * 声明式（同 `producesInteractionTopUp` 范式），替代原身份判定 `findSlotByIdentity(['1481'])`。现实现：琉音。
+   */
+  ownsPromoteVariantAxisBlocks?: boolean
+  /**
    * 交互补齐量求解（CC-23，与 `producesInteractionTopUp` 配套）：编排层（`convergence.ts`）在
    * autoTopUp 门控成立时，对「声明了 producesInteractionTopUp 的那个槽位」的模块调用本能力，
    * 求下一轮的弹刀/双反补齐量（轮间经 `threads.interactionTopUp` 收敛）。原先编排层直连
