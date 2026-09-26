@@ -5,6 +5,8 @@
 
 ## 1. 做到哪一步
 
+- **最新交接（2026-09-26 22:4x，lead-arena-0925c 第 23 轮）**：CC-17 已落地 `18bfd88`（设计稿 `docs/mcp-cc17-axis-overlay-consume.md`，`6038a70`；dsflash 工人实现 `df83ebd`，lead 复核）。判据 22 从 712 降到 **661**，target 重设 **649**。**顺带修了一个真 bug**：可琳扫除帮手在轴模式下经全局桶泄漏给队友的普攻行（设计稿 §2，已加泄漏锁）。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `18bfd88`。
+  **下一步（可以直接开工）**：**CC-18 设计稿**（柏妮思 `burniceSrc` 簇，43 处），卡面见 §5.9。**新文档必须登记进 README §6**（坑见 §5.9）。
 - **最新交接（2026-09-26 22:0x，lead-arena-0925c 第 22 轮）**：CC-16 已落地 `fe8fb90`（lead 直接做，纯改名）。判据 22 从 733 降到 **712**，**提前达成 target 720 → 已重设 target 700**。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `fe8fb90`。
   **下一步（可以直接开工）**：**CC-17 设计稿**（axis overlay 消费端的模块能力化，合计约 30 处），范围、现状和设计要点见 §5.8。先出设计稿并落盘（`docs/mcp-cc17-axis-overlay-consume.md`），再实现。如果本轮时间不够出设计，可以先做 §5.8 列出的零散小项（每项 1–2 处）。
 - **最新交接（2026-09-26 21:4x，lead-arena-0925c 第 21 轮）**：CC-15 已落地 `b1ed48e`（lead 直接实现：纯改名，用 sed 按词边界批量替换，19 个文件，另加注释 2 处和常量 2 处）。判据 22 从 759 降到 **733**，**提前达成 target 740 → 已重设 target 720**（due 2026-12-31）。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `b1ed48e`。
@@ -247,6 +249,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-26 CC-14e 后**：**759**（`1e3dc99`）；target 740，还差 19。下一张 CC-15（§5.6）。
 - **2026-09-26 CC-15 后**：**733**（`b1ed48e`）；已低于 target 740，重设 target **720**。下一张 CC-16（§5.7）。
 - **2026-09-26 CC-16 后**：**712**（`fe8fb90`）；已低于 target 720，重设 target **700**。下一张：CC-17 设计（§5.8）。
+- **2026-09-26 CC-17 后**：**661**（`18bfd88`）；已低于 target 700，重设 target **649**。下一张：CC-18 设计（§5.9）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -442,6 +445,37 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - `luciaC4DecibelPerTrigger`（assembleSlot:116，可以考虑并入卢西娅的 `onFinalAssemble` 或 `bonusDecibel` 类能力）；
 - `janeAssaultCritDmgBonus`（core/damage.ts:178）；
 - remielle 的 `rowAccounting.ts` 4 处、`substatOptimizer.ts` 4 处（remielle 整体需要设计稿，**别单独动**）。
+
+### 5.9 CC-17 落地记录 + 新坑 + CC-18 卡（2026-09-26 第 23 轮 lead-arena-0925c）
+
+**CC-17（`18bfd88`，判据 22 712→661）**：完整记录在设计稿 `docs/mcp-cc17-axis-overlay-consume.md` 的 §8，这里只列要点。
+- 结构变化：
+  - `collectAxisWindowOverlays` 改为返回 `bucketsBySlot`，不再跨模块合并；
+  - 新增模块能力 `AgentMechanic.directRowBonus`，由 banyue / corin / sigrid / yixuan / peiluo 各自实现；
+  - `damagePoolDirect` 只负责合并加成，悠真的行级字段保留在原地。
+- **修复的 bug**：可琳平A块在桶里的键是 `'basic_attack'`，与所有角色普攻聚合行的 moveId 相同，经全局桶泄漏给了队友的轴内普攻行（+35% 增伤）。这是本卡唯一有意的行为变化。dump / rowsnap 语料不含 1061，比对里看不到这处修复，已用 `corin.test.ts` 泄漏锁锁住（旧代码红、新代码绿）。
+- **发现过程值得记住**：当初以为风险是零差，查到 `corin.ts:140` 的键归并注释才起疑；最初的探针还跑在另一个未还原的变异上，结果被污染。
+  **教训：后台变异脚本跑着的时候，别在同一个工作区跑别的探针**。要么等它 RESTORED，要么在 worktree 里跑。
+- 零差：对 H2a 只有 `__ms` 不同。反向：仪玄 critDmg ×0 → DIFF 36，全部是仪玄场景。
+
+**新坑：新增 `docs/*.md` 必须登记进 README §6**
+- 要在文档表里加一行，并更新节标题里的「N 份」。否则 `src/scripts/__tests__/checkGuards.test.ts` 的判据 9（docs 表一致性）会红。
+- `node scripts/check-guards.mjs` 本身**不查这一项**：守卫显示 22/22 通过，不代表 checkGuards.test 也是绿的。
+- 本轮 `6038a70` 就漏了这一步，master 红到 `18bfd88` 才修好（工人的提交里带了修复）。**写设计稿时同一提交里就把 README 一起改掉。**
+
+**剩余分布（HEAD `18bfd88`，661 处）前几名**：burniceSrc 36、remielleSlot 20、liuyinSrc 18、triggerPanel 16、aliceSlot 16、remiellePanel 14、remielleAnomalyMultiplier 14、triggerSlot 13、janeSlot 13、janePanel 12、banyueSlot 10、aliceCoweringConfig 10。统计用 `node /home/kaua/calc-arch/rf3.mjs [N]`。
+
+**CC-18 卡：柏妮思 `burniceSrc` 簇（设计优先，约 43 处）**
+- 现状（第 23 轮实读）：
+  - `damagePoolCharExtras.ts:37` 的 `const burniceSrc = charResult.burniceMechanicSource`，接着在 `:40–72` 用它拼出「余烬」「搅拌式」等额外伤害行（count / multiplier / note / critRateBonus 全部取自 burniceSrc，另乘 `burniceSkillCoef`，这个变量在同一文件计 7 处）；
+  - `damagePoolAnomaly.ts:294` 先用 `burniceSlot` 定位柏妮思，再取 burniceSrc（另有异常侧的用法）。
+- 设计方向（参照 CC-17 的「按归属调用模块能力」）：
+  - 新增模块能力，例如 `extraDamageRows(charResult, ctx) => DamagePoolRow[]`，由行所属角色的模块生成自己的额外行；`damagePoolCharExtras` 只负责遍历和 push。
+  - **先查**同文件里 `liuyinSrc`（18 处，分布在 damagePool / damagePoolCharExtras / damagePoolDirect / liuyinPromote）是否是同一种模式；如果是，同一个能力一并覆盖，收益更大。但 liuyin 涉及转大次数的读数，**先读 `docs/mcp-liuyin-promote-source*.md`**（§5.7 的阻塞提醒）。
+  - 异常侧（damagePoolAnomaly 的 burniceSlot / burniceSrc）可以拆成第二阶段。
+- 流程：lead 先写设计稿 `docs/mcp-cc18-*.md`（**同一提交里登记 README §6**），列出现状行号、接口、逐字迁移表、零差论证，再派 dsflash 工人在 worktree 实现（CC-17 的 `calc-arch/cc17.prompt` 可以作模板）。
+- 零差：柏妮思在 dump 语料里有没有，**先查**：`python3 -c` 读 `dump-H2a.json` 的键，看有没有含 1291 或 burnice 的（agentId 以 `src/specs/agents/` 为准）。如果没有，反向验证只能靠单测（dump 盲区）。
+- 另有小遗留（CC-16）：`convergence.ts:54` 直接 import `computeBanyueInteractionTopUp`，属于 B 类，可以设计一个能力 `computeInteractionTopUp` 挂到 mechanic 上。不急。
 
 ## 附录：普查脚本 census.sh
 

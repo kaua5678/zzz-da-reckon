@@ -102,4 +102,13 @@
 
 ## 8. 实现记录
 
-（实现后填写：提交号、判据读数、零差 / 反向结果、偏离设计之处。）
+- **已落地 `18bfd88`**（2026-09-26 第 23 轮）：dsflash 工人在 worktree 实现（`df83ebd`），lead 复核后 `cherry-pick -n` 挑回并重写提交信息。18 个文件。
+- 判据 22：712 → **661**（-51，比 §6 预估多；消费端的局部变量 `corinStunBonus`、`yixuanNingshen` 等也一起消失了）。target 按规则重设为 **649**（实测 −12）。
+- 泄漏锁：`corin.test.ts`「泄漏锁：队友轴内 basic_attack 不吃可琳扫除帮手（CC-17）」。**在旧代码上先确认红了**（expected '…失衡增伤+35.0%（buff轴）' not to contain '失衡增伤'），实现后转绿。
+- 零差：dump 625 / rowsnap 638 个键，对 H2a **只有 `__ms` 不同**，与 §5 论证一致（语料不含 1061，所以修复不体现在比对里）。
+- 反向：`yixuan.ts#directRowBonus` 的 `critDmgBonus` 临时 ×0 → dump DIFF 36，全部落在仪玄场景（1371 队伍，以及 `yixuan-trigger-lucia` / `yixuan-jufufu-lucia` 这类命名预设）；cp 还原后 cmp 一致。注意 `cmp.mjs` 只列出前 10 行差异。
+- 定向测试 13 个文件、354 条通过；`vue-tsc -b` 为 0；master 全量 `npm run verify` EXIT=0，前后 HEAD 都是 `18bfd88`。
+- 偏离设计：
+  1. 佩洛的 moveId 用模块内已有的常量 `PEILUO_ULT_VERDICT`（值就是 `'1551016'`），没有写字面量；
+  2. `panelPhases.ts` 补 import 了 `AgentAxisOverlays` 类型；
+  3. **README §6 补登了本设计稿**（份数 45→46）。本设计稿的提交 `6038a70` 漏了这一步，导致 master 上 `checkGuards.test` 的判据 9（docs 表）从 `6038a70` 到 `18bfd88` 之间是红的。坑已记入 census §5.9。
